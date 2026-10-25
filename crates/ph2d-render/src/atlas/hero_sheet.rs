@@ -17,7 +17,8 @@ pub const HERO_SHEET_COLS: u32 = 6;
 /// Linhas (uma por animação).
 pub const HERO_SHEET_ROWS: u32 = 4;
 
-const _: () = assert!(HERO_SHEET_KEY > super::FIRST_IMPORT_KEY && HERO_SHEET_KEY < super::DISC_TILE_KEY);
+const _: () =
+    assert!(HERO_SHEET_KEY > super::FIRST_IMPORT_KEY && HERO_SHEET_KEY < super::DISC_TILE_KEY);
 
 /// Do centro da célula à sola do boneco, em fracção do lado da célula (a perna acaba no texel 61,6 de
 /// 64). Quem põe o boneco no mundo faz o personagem pairar a esta altura: os pés tocam o chão.
@@ -93,7 +94,8 @@ const PUPIL: [f32; 3] = [0.08, 0.10, 0.16];
 /// Distância com sinal a um segmento de espessura `r` (cápsula).
 fn capsule(p: [f32; 2], a: [f32; 2], b: [f32; 2], r: f32) -> f32 {
     let (pa, ba) = ([p[0] - a[0], p[1] - a[1]], [b[0] - a[0], b[1] - a[1]]);
-    let h = ((pa[0] * ba[0] + pa[1] * ba[1]) / (ba[0] * ba[0] + ba[1] * ba[1]).max(1e-6)).clamp(0.0, 1.0);
+    let h = ((pa[0] * ba[0] + pa[1] * ba[1]) / (ba[0] * ba[0] + ba[1] * ba[1]).max(1e-6))
+        .clamp(0.0, 1.0);
     let (dx, dy) = (pa[0] - ba[0] * h, pa[1] - ba[1] * h);
     (dx * dx + dy * dy).sqrt() - r
 }
@@ -127,9 +129,14 @@ fn cell(row: u32, col: u32) -> Vec<[f32; 4]> {
     let body_c = [cx + p.lean * 8.0, hip_y - 16.0 + p.bob];
     let (rx, ry) = (14.0 / p.stretch.sqrt(), 17.0 * p.stretch);
     let shoulder = [body_c[0], body_c[1] + 3.0];
-    let limb = |base: [f32; 2], ang: f32, len: f32| [base[0] + ang.sin() * len, base[1] + ang.cos() * len];
+    let limb =
+        |base: [f32; 2], ang: f32, len: f32| [base[0] + ang.sin() * len, base[1] + ang.cos() * len];
     // Ancas juntas quando as pernas balançam (abrem em tesoura em vez de cruzar).
-    let hips = if p.leg[0] * p.leg[1] < 0.0 && row == 1 { [hip[0] - 1.5, hip[0] + 1.5] } else { [hip[0] - 4.0, hip[0] + 4.0] };
+    let hips = if p.leg[0] * p.leg[1] < 0.0 && row == 1 {
+        [hip[0] - 1.5, hip[0] + 1.5]
+    } else {
+        [hip[0] - 4.0, hip[0] + 4.0]
+    };
     let feet = [
         limb([hips[0], hip[1]], p.leg[0], leg_len),
         limb([hips[1], hip[1]], p.leg[1], leg_len),
@@ -153,12 +160,29 @@ fn cell(row: u32, col: u32) -> Vec<[f32; 4]> {
             for (i, foot) in feet.iter().enumerate() {
                 over(LIMB, cover(capsule(q, [hips[i], hip[1]], *foot, 2.6)));
             }
-            over(LIMB, cover(capsule(q, [shoulder[0] - 11.0, shoulder[1]], hands[0], 2.2)));
+            over(
+                LIMB,
+                cover(capsule(q, [shoulder[0] - 11.0, shoulder[1]], hands[0], 2.2)),
+            );
             over(BODY, cover(ellipse(q, body_c, rx, ry)));
-            over(BELLY, cover(ellipse(q, [body_c[0] + 1.5, body_c[1] + 5.0], rx * 0.62, ry * 0.5)));
+            over(
+                BELLY,
+                cover(ellipse(
+                    q,
+                    [body_c[0] + 1.5, body_c[1] + 5.0],
+                    rx * 0.62,
+                    ry * 0.5,
+                )),
+            );
             over(EYE, cover(ellipse(q, eye_c, 4.6, 5.5)));
-            over(PUPIL, cover(ellipse(q, [eye_c[0] + 1.8, eye_c[1] + 0.5], 2.1, 2.8)));
-            over(LIMB, cover(capsule(q, [shoulder[0] + 11.0, shoulder[1]], hands[1], 2.2)));
+            over(
+                PUPIL,
+                cover(ellipse(q, [eye_c[0] + 1.8, eye_c[1] + 0.5], 2.1, 2.8)),
+            );
+            over(
+                LIMB,
+                cover(capsule(q, [shoulder[0] + 11.0, shoulder[1]], hands[1], 2.2)),
+            );
             out[y * n + x] = px;
         }
     }

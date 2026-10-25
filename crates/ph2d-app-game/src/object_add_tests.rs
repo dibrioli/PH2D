@@ -3,9 +3,14 @@ use crate::registo_de_teste as registo;
 use ph2d_physics_ecs::{LockRotation, PlatformPlayer};
 
 fn nasce(entry: AddEntry, sim: &mut SimWorld) -> Entity {
-    let bits = add(entry, sim, &registo(), ph2d_app_physics::physics_seed::COMPONENT_SEEDS)
-        .expect("a entrada é desta família")
-        .unwrap_or_else(|e| panic!("{}: {e}", entry.key.key()));
+    let bits = add(
+        entry,
+        sim,
+        &registo(),
+        ph2d_app_physics::physics_seed::COMPONENT_SEEDS,
+    )
+    .expect("a entrada é desta família")
+    .unwrap_or_else(|e| panic!("{}: {e}", entry.key.key()));
     Entity::from_bits(bits)
 }
 
@@ -70,9 +75,18 @@ fn o_personagem_tem_capsula_e_as_quatro_animacoes() {
     let a = w.get::<SpriteAnimator>(e).expect("animador");
     assert_eq!((a.current.as_str(), a.autoplay), ("idle", true));
     let p = w.get::<PlatformPlayer>(e).expect("player");
-    assert_eq!(p.float_height, ph2d_render::HERO_SHEET_SOLE_BELOW_CENTRE, "paira à altura dos pés");
-    let min = ph2d_app_physics::inspector::player::fitted_float(Some(CAPSULA), p.max_slope_deg).expect("cápsula") / 1.2;
-    assert!(p.float_height > min, "a cápsula ({min}) não cabe acima dos pés");
+    assert_eq!(
+        p.float_height,
+        ph2d_render::HERO_SHEET_SOLE_BELOW_CENTRE,
+        "paira à altura dos pés"
+    );
+    let min = ph2d_app_physics::inspector::player::fitted_float(Some(CAPSULA), p.max_slope_deg)
+        .expect("cápsula")
+        / 1.2;
+    assert!(
+        p.float_height > min,
+        "a cápsula ({min}) não cabe acima dos pés"
+    );
     let anims = w.get::<CharacterAnimations>(e).expect("ligação");
     assert_eq!(anims, &CharacterAnimations::default());
 }
@@ -82,6 +96,14 @@ fn o_personagem_tem_capsula_e_as_quatro_animacoes() {
 fn entrada_alheia_nao_cria_nada() {
     let mut sim = SimWorld::new();
     let antes = sim.world().entities().len();
-    assert!(add(ph2d_editor_core::object_add::EMPTY, &mut sim, &registo(), &[]).is_none());
+    assert!(
+        add(
+            ph2d_editor_core::object_add::EMPTY,
+            &mut sim,
+            &registo(),
+            &[]
+        )
+        .is_none()
+    );
     assert_eq!(sim.world().entities().len(), antes);
 }

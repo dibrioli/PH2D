@@ -266,13 +266,23 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.player.glide" => "GLIDE",
         "panel.inspector.player.fall" => "FALL",
         "panel.inspector.player.how_wide_that_slow_top" => "How wide that slow top is, in m/s.",
-        "panel.inspector.player.anim_off_tip" => "The picture keeps whatever animation it was given.",
-        "panel.inspector.player.anim_on_tip" => "Play a different animation when he stands, runs, jumps and falls.",
+        "panel.inspector.player.anim_off_tip" => {
+            "The picture keeps whatever animation it was given."
+        }
+        "panel.inspector.player.anim_on_tip" => {
+            "Play a different animation when he stands, runs, jumps and falls."
+        }
         "panel.inspector.player.anim_flip_tip" => "Mirror the picture when he faces left.",
-        "panel.inspector.player.anim_state_tip" => "Click to pick the next animation from this object's list.",
-        "panel.inspector.player.anim_run_from_tip" => "Walking faster than this, in m/s against the ground, plays Run.",
+        "panel.inspector.player.anim_state_tip" => {
+            "Click to pick the next animation from this object's list."
+        }
+        "panel.inspector.player.anim_run_from_tip" => {
+            "Walking faster than this, in m/s against the ground, plays Run."
+        }
         "panel.inspector.player.anim_missing" => "{name} (not in the list)",
-        "panel.inspector.player.anim_no_tags" => "No animations here: add an Animated Sprite (or give this object animations) to choose them.",
+        "panel.inspector.player.anim_no_tags" => {
+            "No animations here: add an Animated Sprite (or give this object animations) to choose them."
+        }
         // ph2d-migrar-texto:end
         _ => return None,
     })

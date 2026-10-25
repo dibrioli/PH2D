@@ -74,10 +74,11 @@ mod gpu_ops;
 mod hero_sheet;
 mod region;
 
-pub use region::{AtlasInsertError, AtlasRegion};
 pub use hero_sheet::{
-    HERO_SHEET_CELL_PX, HERO_SHEET_COLS, HERO_SHEET_KEY, HERO_SHEET_ROWS, HERO_SHEET_SOLE_BELOW_CENTRE, HERO_SHEET_TAGS, hero_sheet_pixels,
+    HERO_SHEET_CELL_PX, HERO_SHEET_COLS, HERO_SHEET_KEY, HERO_SHEET_ROWS,
+    HERO_SHEET_SOLE_BELOW_CENTRE, HERO_SHEET_TAGS, hero_sheet_pixels,
 };
+pub use region::{AtlasInsertError, AtlasRegion};
 
 use demo::make_hsv_tile;
 use gpu_ops::{clear_level0_transparent, create_texture, readback_atlas_texture, upload_region};

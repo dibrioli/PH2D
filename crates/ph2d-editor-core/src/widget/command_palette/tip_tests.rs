@@ -49,10 +49,7 @@ fn model() -> PaletteModel {
             color: ColorToken::NodeCatOutput,
             subs: vec![PaletteSub {
                 title: None,
-                items: vec![
-                    item("Character", with_tip()),
-                    item("Camera", without_tip()),
-                ],
+                items: vec![item("Character", with_tip()), item("Camera", without_tip())],
             }],
         }],
         toggle: None,
@@ -169,7 +166,10 @@ fn the_card_sits_beside_the_item_inside_the_viewport() {
 fn the_card_flips_left_and_rises_at_the_edges() {
     let near_right = Rect::new(VP.w - 120.0, VP.h - 30.0, 100.0, 26.0);
     let c = place(near_right, TIP_W, 400.0, 8.0, VP);
-    assert!(c.x + c.w <= near_right.x, "não virou para a esquerda: {c:?}");
+    assert!(
+        c.x + c.w <= near_right.x,
+        "não virou para a esquerda: {c:?}"
+    );
     assert!(c.y + c.h <= VP.h, "saiu pelo fundo: {c:?}");
     let left = Rect::new(40.0, 100.0, 100.0, 26.0);
     let c = place(left, TIP_W, 400.0, 8.0, VP);

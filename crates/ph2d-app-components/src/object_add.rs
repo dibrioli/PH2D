@@ -10,8 +10,10 @@ use ph2d_ecs::{Name, SimWorld, Transform};
 use ph2d_editor_core::object_add::{AddEntry, AddGroup};
 
 /// Câmara de jogo.
-pub const CAMERA: AddEntry = AddEntry::new("object_add.game.camera", AddGroup::Game)
-    .with_tip("object_add.game.camera.tip", crate::object_add_dicas::CAMERA);
+pub const CAMERA: AddEntry = AddEntry::new("object_add.game.camera", AddGroup::Game).with_tip(
+    "object_add.game.camera.tip",
+    crate::object_add_dicas::CAMERA,
+);
 /// Corpo de física.
 pub const BODY: AddEntry = AddEntry::new("object_add.game.body", AddGroup::Game)
     .with_tip("object_add.game.body.tip", crate::object_add_dicas::BODY);

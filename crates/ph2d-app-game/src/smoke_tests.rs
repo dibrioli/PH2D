@@ -149,8 +149,15 @@ fn o_nivel_2_nasce_so_pelo_menu() {
     let w = sim.world();
     for (nome, ..) in BLOCOS_2.iter() {
         let e = por_nome[*nome];
-        assert_eq!(w.get::<RigidBody>(e).map(|b| b.kind), Some(BodyKind::Static), "{nome}");
-        assert!(w.get::<Sprite>(e).is_some() && w.get::<Collider>(e).is_some(), "{nome}");
+        assert_eq!(
+            w.get::<RigidBody>(e).map(|b| b.kind),
+            Some(BodyKind::Static),
+            "{nome}"
+        );
+        assert!(
+            w.get::<Sprite>(e).is_some() && w.get::<Collider>(e).is_some(),
+            "{nome}"
+        );
     }
     let parede = por_nome["Invisible Wall"];
     assert!(w.get::<Collider>(parede).is_some() && w.get::<RigidBody>(parede).is_none());
@@ -160,10 +167,19 @@ fn o_nivel_2_nasce_so_pelo_menu() {
         Some(por_nome["Ground Right"])
     );
     assert_eq!(por_nome["Player"], jogador);
-    assert!(w.get::<PlatformPlayer>(jogador).is_some() && w.get::<CharacterAnimations>(jogador).is_some());
-    assert!(w.get::<ph2d_ecs::SpriteAnimator>(por_nome["Friend"]).is_some());
+    assert!(
+        w.get::<PlatformPlayer>(jogador).is_some()
+            && w.get::<CharacterAnimations>(jogador).is_some()
+    );
+    assert!(
+        w.get::<ph2d_ecs::SpriteAnimator>(por_nome["Friend"])
+            .is_some()
+    );
     assert!(w.get::<Sprite>(por_nome["Goal"]).is_some());
-    assert!(w.get::<CameraFollow>(por_nome["Camera"]).is_some_and(|f| f.target == "Player"));
+    assert!(
+        w.get::<CameraFollow>(por_nome["Camera"])
+            .is_some_and(|f| f.target == "Player")
+    );
 }
 
 /// Corre o nível 2 como o app: o horário do condutor vira o dedo do jogador, a física avança e a ponte
@@ -176,27 +192,52 @@ fn corre_o_nivel_2(dedo: impl Fn(u32) -> (f32, bool)) -> (Vec<String>, Vec2, boo
     let mut vistas: Vec<String> = Vec::new();
     for tick in 1..=420_u32 {
         let (drive, jump) = dedo(tick + 60);
-        bridge.set_player_input(jogador, PlayerInput { drive, jump, ..PlayerInput::default() });
+        bridge.set_player_input(
+            jogador,
+            PlayerInput {
+                drive,
+                jump,
+                ..PlayerInput::default()
+            },
+        );
         bridge.dispatch(&mut sim, true, u64::from(tick));
         crate::personagem::anima_personagens(sim.world_mut(), &bridge);
-        let agora = sim.world().get::<ph2d_ecs::SpriteAnimator>(jogador).expect("animador").current.clone();
+        let agora = sim
+            .world()
+            .get::<ph2d_ecs::SpriteAnimator>(jogador)
+            .expect("animador")
+            .current
+            .clone();
         if vistas.last() != Some(&agora) {
             vistas.push(agora);
         }
     }
     let w = sim.world();
     let pose = w.get::<Transform>(jogador).expect("pose").translation;
-    (vistas, pose, w.get::<Sprite>(jogador).expect("sprite").flip_x)
+    (
+        vistas,
+        pose,
+        w.get::<Sprite>(jogador).expect("sprite").flip_x,
+    )
 }
 
 /// O dedo do horário do condutor no quadro `q` (a seta direita e a de saltar premidas?).
 fn dedo_do_horario(q: u32) -> (f32, bool) {
     let premida = |liga: Gesto, desliga: Gesto| {
-        let em = |g| HORARIO_2.iter().find(|(_, x)| *x == g).map(|(q, _)| *q).expect("no horário");
+        let em = |g| {
+            HORARIO_2
+                .iter()
+                .find(|(_, x)| *x == g)
+                .map(|(q, _)| *q)
+                .expect("no horário")
+        };
         (em(liga)..em(desliga)).contains(&q)
     };
     let direita = premida(Gesto::Direita(true), Gesto::Direita(false));
-    (if direita { 1.0 } else { 0.0 }, premida(Gesto::Salta(true), Gesto::Salta(false)))
+    (
+        if direita { 1.0 } else { 0.0 },
+        premida(Gesto::Salta(true), Gesto::Salta(false)),
+    )
 }
 
 /// ⭐⭐ **J2 + J3**: com o horário do condutor o boneco corre, salta, cai e pára — a animação troca por
@@ -207,17 +248,25 @@ fn o_nivel_2_anda_salta_cai_e_anima() {
     let ordem = ["idle", "run", "jump", "fall", "idle"];
     let mut it = vistas.iter();
     for want in ordem {
-        assert!(it.any(|v| v == want), "faltou «{want}» por ordem em {vistas:?}");
+        assert!(
+            it.any(|v| v == want),
+            "faltou «{want}» por ordem em {vistas:?}"
+        );
     }
     assert!(pose.x > 5.0, "não passou o vão: x = {}", pose.x);
-    assert!((0.0..2.0).contains(&pose.y), "não acabou de pé no chão: y = {}", pose.y);
+    assert!(
+        (0.0..2.0).contains(&pose.y),
+        "não acabou de pé no chão: y = {}",
+        pose.y
+    );
     assert!(!flip, "a olhar para a direita não espelha");
 }
 
 /// A andar para a ESQUERDA a imagem espelha (o boneco desenhado olha para a direita).
 #[test]
 fn a_andar_para_a_esquerda_o_boneco_espelha() {
-    let (vistas, _, flip) = corre_o_nivel_2(|q| (if (120..200).contains(&q) { -1.0 } else { 0.0 }, false));
+    let (vistas, _, flip) =
+        corre_o_nivel_2(|q| (if (120..200).contains(&q) { -1.0 } else { 0.0 }, false));
     assert!(vistas.iter().any(|v| v == "run"), "{vistas:?}");
     assert!(flip);
 }

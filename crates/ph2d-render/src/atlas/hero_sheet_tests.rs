@@ -1,7 +1,10 @@
 use super::*;
 
 fn sheet() -> (Vec<SrgbRgba>, usize) {
-    (hero_sheet_pixels(), (HERO_SHEET_CELL_PX * HERO_SHEET_COLS) as usize)
+    (
+        hero_sheet_pixels(),
+        (HERO_SHEET_CELL_PX * HERO_SHEET_COLS) as usize,
+    )
 }
 
 fn cell_alpha(px: &[SrgbRgba], w: usize, row: u32, col: u32) -> Vec<u8> {
@@ -16,7 +19,10 @@ fn cell_alpha(px: &[SrgbRgba], w: usize, row: u32, col: u32) -> Vec<u8> {
 fn a_folha_e_deterministica() {
     assert_eq!(hero_sheet_pixels(), hero_sheet_pixels());
     let (px, w) = sheet();
-    assert_eq!(px.len(), w * (HERO_SHEET_CELL_PX * HERO_SHEET_ROWS) as usize);
+    assert_eq!(
+        px.len(),
+        w * (HERO_SHEET_CELL_PX * HERO_SHEET_ROWS) as usize
+    );
 }
 
 /// Cada célula tem margem transparente de 2 texels: o filtro bilinear não traz a vizinha.
@@ -27,13 +33,19 @@ fn cada_celula_tem_margem_transparente() {
     for row in 0..HERO_SHEET_ROWS {
         for col in 0..HERO_SHEET_COLS {
             let a = cell_alpha(&px, w, row, col);
-            for k in 0..n * n {
+            for (k, alfa) in a.iter().enumerate() {
                 let (x, y) = (k % n, k / n);
                 if x < 2 || y < 2 || x >= n - 2 || y >= n - 2 {
-                    assert_eq!(a[k], 0, "linha {row} célula {col} pinta a margem em ({x},{y})");
+                    assert_eq!(
+                        *alfa, 0,
+                        "linha {row} célula {col} pinta a margem em ({x},{y})"
+                    );
                 }
             }
-            assert!(a.iter().filter(|v| **v > 128).count() > 400, "linha {row} célula {col} vazia");
+            assert!(
+                a.iter().filter(|v| **v > 128).count() > 400,
+                "linha {row} célula {col} vazia"
+            );
         }
     }
 }
@@ -69,7 +81,10 @@ fn a_sola_declarada_e_a_do_desenho() {
     for row in [0, 1] {
         for col in 0..HERO_SHEET_COLS {
             let a = cell_alpha(&px, w, row, col);
-            let baixo = (0..n).rev().find(|y| (0..n).any(|x| a[y * n + x] > 64)).expect("desenho");
+            let baixo = (0..n)
+                .rev()
+                .find(|y| (0..n).any(|x| a[y * n + x] > 64))
+                .expect("desenho");
             assert!(
                 (baixo as f32 + 1.0 - sola).abs() <= 1.5,
                 "linha {row} célula {col}: a sola desenhada está no texel {baixo}, a declarada em {sola}"
@@ -82,7 +97,10 @@ fn a_sola_declarada_e_a_do_desenho() {
 #[test]
 fn grava_a_folha_para_olhar() {
     if let Ok(path) = std::env::var("PH2D_HERO_SHEET_RGBA") {
-        let bytes: Vec<u8> = hero_sheet_pixels().iter().flat_map(|p| [p.r(), p.g(), p.b(), p.a()]).collect();
+        let bytes: Vec<u8> = hero_sheet_pixels()
+            .iter()
+            .flat_map(|p| [p.r(), p.g(), p.b(), p.a()])
+            .collect();
         std::fs::write(path, bytes).expect("grava");
     }
 }

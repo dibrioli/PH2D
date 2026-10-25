@@ -87,7 +87,12 @@ impl crate::App {
             return;
         }
         if let Some(cx) = self.components_ctx() {
-            ph2d_app_game::smoke::montar(cx.sim, cx.registry, nivel);
+            let jogador = ph2d_app_game::smoke::montar(cx.sim, cx.registry, nivel).to_bits();
+            if let Some(hero) = cx.hero_screen.filter(|_| nivel == 2) {
+                hero.gizmo.replace_selection(Some(jogador)); // o Inspector abre no personagem
+                hero.store
+                    .set_collapsed(ph2d_editor_core::ids::INSP_LIVE_PLAYER_SECTION, false);
+            }
         }
         self.timeline.flags.simulate_physics = true;
         self.playhead.rewind();
@@ -110,7 +115,9 @@ impl crate::App {
             }
             Some(g @ (Gesto::Direita(_) | Gesto::Salta(_))) => {
                 use winit::keyboard::KeyCode;
-                let Some((seta, desce)) = g.seta() else { return };
+                let Some((seta, desce)) = g.seta() else {
+                    return;
+                };
                 let tecla = match seta {
                     s::Seta::Direita => KeyCode::ArrowRight,
                     s::Seta::Cima => KeyCode::ArrowUp,

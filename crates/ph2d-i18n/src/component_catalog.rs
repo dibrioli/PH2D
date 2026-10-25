@@ -79,7 +79,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "component.category.transform" => "Transform",
         "component.category.vector" => "Vector",
         "component.ccd.name" => "Continuous Collision",
-        "component.character_animations.name" => "Animations by State",
+        "component.character_animations.name" => "Auto Animate",
         "component.clip_children.name" => "Clip Children",
         "component.collider.name" => "Collision Shape",
         "component.counter.name" => "Counter",

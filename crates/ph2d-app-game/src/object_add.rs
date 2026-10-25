@@ -10,16 +10,19 @@ use ph2d_ecs::{Entity, SimWorld, SpriteAnimations, SpriteAnimator, SpriteGrid};
 use ph2d_editor_core::object_add::{AddEntry, AddGroup};
 use ph2d_physics_ecs::{BodyKind, CharacterAnimations, Collider, ColliderShape, RigidBody};
 use ph2d_render::{
-    HERO_SHEET_COLS, HERO_SHEET_KEY, HERO_SHEET_ROWS, HERO_SHEET_SOLE_BELOW_CENTRE, HERO_SHEET_TAGS, Sprite,
-    WHITE_TILE_KEY,
+    HERO_SHEET_COLS, HERO_SHEET_KEY, HERO_SHEET_ROWS, HERO_SHEET_SOLE_BELOW_CENTRE,
+    HERO_SHEET_TAGS, Sprite, WHITE_TILE_KEY,
 };
 
 /// Uma imagem.
 pub const SPRITE: AddEntry = AddEntry::new("object_add.game.sprite", AddGroup::Game)
     .with_tip("object_add.game.sprite.tip", crate::dicas::SPRITE);
 /// Uma imagem que se anima por intervalos da folha.
-pub const ANIMATED_SPRITE: AddEntry = AddEntry::new("object_add.game.animated_sprite", AddGroup::Game)
-    .with_tip("object_add.game.animated_sprite.tip", crate::dicas::ANIMATED_SPRITE);
+pub const ANIMATED_SPRITE: AddEntry =
+    AddEntry::new("object_add.game.animated_sprite", AddGroup::Game).with_tip(
+        "object_add.game.animated_sprite.tip",
+        crate::dicas::ANIMATED_SPRITE,
+    );
 /// Um bloco fixo em que as coisas batem (chão, plataforma, parede).
 pub const STATIC_BODY: AddEntry = AddEntry::new("object_add.game.static_body", AddGroup::Game)
     .with_tip("object_add.game.static_body.tip", crate::dicas::STATIC_BODY);
@@ -27,10 +30,19 @@ pub const STATIC_BODY: AddEntry = AddEntry::new("object_add.game.static_body", A
 pub const CHARACTER: AddEntry = AddEntry::new("object_add.game.character", AddGroup::Game)
     .with_tip("object_add.game.character.tip", crate::dicas::CHARACTER);
 /// Uma forma de colisão invisível — dentro de um corpo, é mais uma forma dele.
-pub const COLLISION_SHAPE: AddEntry = AddEntry::new("object_add.game.collision_shape", AddGroup::Game)
-    .with_tip("object_add.game.collision_shape.tip", crate::dicas::COLLISION_SHAPE);
+pub const COLLISION_SHAPE: AddEntry =
+    AddEntry::new("object_add.game.collision_shape", AddGroup::Game).with_tip(
+        "object_add.game.collision_shape.tip",
+        crate::dicas::COLLISION_SHAPE,
+    );
 /// O que esta família põe no menu, na ordem do modal.
-pub const ENTRIES: &[AddEntry] = &[SPRITE, ANIMATED_SPRITE, STATIC_BODY, CHARACTER, COLLISION_SHAPE];
+pub const ENTRIES: &[AddEntry] = &[
+    SPRITE,
+    ANIMATED_SPRITE,
+    STATIC_BODY,
+    CHARACTER,
+    COLLISION_SHAPE,
+];
 
 const BRANCO: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
 const PEDRA: [f32; 4] = [0.45, 0.47, 0.52, 1.0];
@@ -85,13 +97,17 @@ pub fn add(
     let r = (|| -> Result<(), String> {
         let world = sim.world_mut();
         if entry == SPRITE {
-            world.entity_mut(e).insert(Sprite::atlas(WHITE_TILE_KEY, [1.0, 1.0], BRANCO));
+            world
+                .entity_mut(e)
+                .insert(Sprite::atlas(WHITE_TILE_KEY, [1.0, 1.0], BRANCO));
         } else if entry == ANIMATED_SPRITE {
             anima(world, e)?;
         } else if entry == STATIC_BODY {
             world.entity_mut(e).insert((
                 Sprite::atlas(WHITE_TILE_KEY, BLOCO, PEDRA),
-                RigidBody { kind: BodyKind::Static },
+                RigidBody {
+                    kind: BodyKind::Static,
+                },
             ));
             attach(sim, "ph2d::physics::Collider")?;
         } else if entry == CHARACTER {
@@ -106,7 +122,10 @@ pub fn add(
             attach(sim, "ph2d::physics::LockRotation")?;
             attach(sim, "ph2d::physics::PlatformPlayer")?;
             // Paira à altura dos pés desenhados (a semente parte de 0,5 m e só sobe).
-            if let Some(mut p) = sim.world_mut().get_mut::<ph2d_physics_ecs::PlatformPlayer>(e) {
+            if let Some(mut p) = sim
+                .world_mut()
+                .get_mut::<ph2d_physics_ecs::PlatformPlayer>(e)
+            {
                 p.float_height = HERO_SHEET_SOLE_BELOW_CENTRE;
             }
         } else {

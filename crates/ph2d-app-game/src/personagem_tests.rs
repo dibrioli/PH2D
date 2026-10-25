@@ -19,7 +19,12 @@ fn o_alvo_e_o_proprio_ou_o_filho_com_animador() {
 #[test]
 fn sem_vista_nao_escreve() {
     let mut w = World::new();
-    let e = w.spawn((CharacterAnimations::default(), SpriteAnimator::new("idle"))).id();
+    let e = w
+        .spawn((CharacterAnimations::default(), SpriteAnimator::new("idle")))
+        .id();
     anima_personagens(&mut w, &PhysicsBridge::new());
-    assert_eq!(w.get::<SpriteAnimator>(e).map(|a| a.current.as_str()), Some("idle"));
+    assert_eq!(
+        w.get::<SpriteAnimator>(e).map(|a| a.current.as_str()),
+        Some("idle")
+    );
 }

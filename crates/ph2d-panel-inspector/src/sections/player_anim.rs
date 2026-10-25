@@ -107,23 +107,67 @@ pub(super) fn paint_anim_block(
             &labels.map(TextKey::tr),
         );
         let (y1, r) = state_row(
-            scene, text_system, theme, hit_index, store, x, w, yy, labels[0], ids::INSP_PLAYER_ANIM_IDLE,
-            &a.names[0], a.known[0], sec,
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            x,
+            w,
+            yy,
+            labels[0],
+            ids::INSP_PLAYER_ANIM_IDLE,
+            &a.names[0],
+            a.known[0],
+            sec,
         );
         hit_index.register(ids::INSP_PLAYER_ANIM_IDLE, r);
         let (y2, r) = state_row(
-            scene, text_system, theme, hit_index, store, x, w, y1, labels[1], ids::INSP_PLAYER_ANIM_RUN,
-            &a.names[1], a.known[1], sec,
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            x,
+            w,
+            y1,
+            labels[1],
+            ids::INSP_PLAYER_ANIM_RUN,
+            &a.names[1],
+            a.known[1],
+            sec,
         );
         hit_index.register(ids::INSP_PLAYER_ANIM_RUN, r);
         let (y3, r) = state_row(
-            scene, text_system, theme, hit_index, store, x, w, y2, labels[2], ids::INSP_PLAYER_ANIM_JUMP,
-            &a.names[2], a.known[2], sec,
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            x,
+            w,
+            y2,
+            labels[2],
+            ids::INSP_PLAYER_ANIM_JUMP,
+            &a.names[2],
+            a.known[2],
+            sec,
         );
         hit_index.register(ids::INSP_PLAYER_ANIM_JUMP, r);
         let (y4, r) = state_row(
-            scene, text_system, theme, hit_index, store, x, w, y3, labels[3], ids::INSP_PLAYER_ANIM_FALL,
-            &a.names[3], a.known[3], sec,
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            x,
+            w,
+            y3,
+            labels[3],
+            ids::INSP_PLAYER_ANIM_FALL,
+            &a.names[3],
+            a.known[3],
+            sec,
         );
         hit_index.register(ids::INSP_PLAYER_ANIM_FALL, r);
         yy = y4;

@@ -3,7 +3,9 @@
 
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::interaction::WidgetEvent;
-use ph2d_editor_core::screens::hero::{InspectorCharacterAnimInfo, InspectorPlayerInfo, PlayerFieldEdit};
+use ph2d_editor_core::screens::hero::{
+    InspectorCharacterAnimInfo, InspectorPlayerInfo, PlayerFieldEdit,
+};
 use ph2d_editor_core::zones::Rect;
 use ph2d_panel_inspector::ids;
 use ph2d_panel_inspector::{InspectorPanel, InspectorState, set_current_inspector_player};
@@ -54,7 +56,9 @@ fn click_real(info: InspectorPlayerInfo, id: ph2d_a11y::NodeId) -> Vec<EditorAct
         .unwrap_or_else(|| panic!("o bloco nunca pintou {id:?}"));
     let events = host.click_at(r.x + r.w * 0.5, r.y + r.h * 0.5);
     assert!(
-        events.iter().any(|e| matches!(e, WidgetEvent::Click(c) if *c == id)),
+        events
+            .iter()
+            .any(|e| matches!(e, WidgetEvent::Click(c) if *c == id)),
         "{id:?} está pintado mas morto sob o rato: {events:?}"
     );
     for ev in events {
@@ -82,7 +86,10 @@ fn desligado_e_so_o_interruptor_e_liga_lo_anexa() {
     let r = painted(off.clone());
     assert!(tem(&r, ids::INSP_PLAYER_ANIM_IDS[1]));
     for id in ids::INSP_PLAYER_ANIM_STATE_IDS {
-        assert!(!tem(&r, id), "um estado pintado sem o componente é um controlo sem dono");
+        assert!(
+            !tem(&r, id),
+            "um estado pintado sem o componente é um controlo sem dono"
+        );
     }
     assert!(!tem(&r, ids::INSP_PLAYER_ANIM_RUN_FROM));
     assert_eq!(
@@ -102,7 +109,10 @@ fn ligado_cada_estado_e_um_botao_vivo() {
         );
     }
     assert_eq!(
-        edits(&click_real(com_anim(true), ids::INSP_PLAYER_ANIM_FLIP_IDS[0])),
+        edits(&click_real(
+            com_anim(true),
+            ids::INSP_PLAYER_ANIM_FLIP_IDS[0]
+        )),
         [PlayerFieldEdit::AnimFlip(false)]
     );
     assert_eq!(
@@ -117,7 +127,10 @@ fn ligado_cada_estado_e_um_botao_vivo() {
         &mut state,
         WidgetEvent::ValueChanged(ids::INSP_PLAYER_ANIM_RUN_FROM),
     );
-    assert_eq!(edits(&host.drained_actions()), [PlayerFieldEdit::AnimRunFrom(2.0)]);
+    assert_eq!(
+        edits(&host.drained_actions()),
+        [PlayerFieldEdit::AnimRunFrom(2.0)]
+    );
     set_current_inspector_player(None);
 }
 

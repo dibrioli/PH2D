@@ -235,7 +235,11 @@ pub(crate) fn sanitize(canonical: &str, world: &mut World, entity: Entity) {
 /// **A lei do `CharacterAnimations`** (GameEngineFuncional N1): o piso do limiar e o teto de bytes de
 /// cada nome — o campo é alcançável por um script e por um ficheiro, não só pelo cartão.
 pub(crate) fn sanitize_character_animations(a: &mut ph2d_physics_ecs::CharacterAnimations) {
-    a.run_from = if a.run_from.is_finite() { a.run_from.max(0.0) } else { 0.0 };
+    a.run_from = if a.run_from.is_finite() {
+        a.run_from.max(0.0)
+    } else {
+        0.0
+    };
     for s in [&mut a.idle, &mut a.run, &mut a.jump, &mut a.fall] {
         if s.len() > ph2d_ecs::ANIM_NAME_MAX_BYTES {
             let mut cut = ph2d_ecs::ANIM_NAME_MAX_BYTES;

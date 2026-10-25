@@ -11,7 +11,9 @@
 
 use ph2d_core::Vec2;
 use ph2d_ecs::scene::ComponentRegistry;
-use ph2d_ecs::{CameraFollow, CameraLimits, ChildOf, Entity, GameCamera, Name, SimWorld, Transform};
+use ph2d_ecs::{
+    CameraFollow, CameraLimits, ChildOf, Entity, GameCamera, Name, SimWorld, Transform,
+};
 use ph2d_editor_core::game_stage::GameStage;
 use ph2d_render::{Sprite, WHITE_TILE_KEY};
 use ph2d_script::{LuauScript, ProjectScripts};
@@ -229,7 +231,11 @@ fn nivel_1(world: &mut ph2d_ecs::World) -> Entity {
 }
 
 /// Um objecto do menu Add, pela porta do menu (as sementes do app incluídas).
-fn do_menu(sim: &mut SimWorld, registry: &ComponentRegistry, entry: ph2d_editor_core::object_add::AddEntry) -> Entity {
+fn do_menu(
+    sim: &mut SimWorld,
+    registry: &ComponentRegistry,
+    entry: ph2d_editor_core::object_add::AddEntry,
+) -> Entity {
     let seeds = ph2d_app_physics::physics_seed::COMPONENT_SEEDS;
     let bits = crate::object_add::add(entry, sim, registry, seeds)
         .or_else(|| ph2d_app_components::object_add::add(entry, sim, registry, seeds))
@@ -262,11 +268,19 @@ pub const PAREDE_INVISIVEL: ([f32; 2], [f32; 2]) = ([17.5, 3.0], [0.5, 4.0]);
 
 /// O nível 2 — ver o cabeçalho do módulo.
 fn nivel_2(sim: &mut SimWorld, registry: &ComponentRegistry) -> Entity {
-    use crate::object_add::{ANIMATED_SPRITE, BLOCO, CHARACTER, COLLISION_SHAPE, SPRITE, STATIC_BODY};
+    use crate::object_add::{
+        ANIMATED_SPRITE, BLOCO, CHARACTER, COLLISION_SHAPE, SPRITE, STATIC_BODY,
+    };
     let mut chao_direito = None;
     for (nome, c, h) in BLOCOS_2 {
         let e = do_menu(sim, registry, STATIC_BODY);
-        arruma(sim, e, nome, c, [2.0 * h[0] / BLOCO[0], 2.0 * h[1] / BLOCO[1]]);
+        arruma(
+            sim,
+            e,
+            nome,
+            c,
+            [2.0 * h[0] / BLOCO[0], 2.0 * h[1] / BLOCO[1]],
+        );
         if nome == "Ground Right" {
             chao_direito = Some((e, c, h));
         }

@@ -83,8 +83,13 @@ fn o_play_liga_o_autoplay_depois_da_fotografia() {
         .expect("o jogo_entra")
         .0;
     let foto = corpo.find("self.capture_project()").expect("a fotografia");
-    let liga = corpo.find("start_autoplay_animations(").expect("o Play não liga o autoplay");
-    assert!(foto < liga, "o autoplay liga-se antes da fotografia: o documento guardaria o animador a tocar");
+    let liga = corpo
+        .find("start_autoplay_animations(")
+        .expect("o Play não liga o autoplay");
+    assert!(
+        foto < liga,
+        "o autoplay liga-se antes da fotografia: o documento guardaria o animador a tocar"
+    );
     let mut sim = ph2d_ecs::SimWorld::new();
     let e = sim
         .world_mut()
@@ -96,11 +101,17 @@ fn o_play_liga_o_autoplay_depois_da_fotografia() {
             },
             {
                 let mut t = ph2d_ecs::SpriteAnimations::new();
-                t.insert(ph2d_ecs::AnimationTag::new("idle", 0, 5)).expect("tag");
+                t.insert(ph2d_ecs::AnimationTag::new("idle", 0, 5))
+                    .expect("tag");
                 t
             },
         ))
         .id();
     crate::render_loop::start_autoplay_animations(&mut sim);
-    assert!(sim.world().get::<ph2d_ecs::SpriteAnimator>(e).expect("animador").playing);
+    assert!(
+        sim.world()
+            .get::<ph2d_ecs::SpriteAnimator>(e)
+            .expect("animador")
+            .playing
+    );
 }

@@ -29,7 +29,8 @@ pub const FAMILY: ph2d_app_host::AppFamily = ph2d_app_host::AppFamily {
 struct Encenado;
 
 /// ⭐ **A porta do quadro.** Na primeira chamada encena a cena armada (`PH2D_CONSTRAINT_SMOKE`);
-/// depois drena o que a curva mandou ([`canais::aplicar`]) e avalia a pilha. Devolve quantas entidades a pilha moveu.
+/// depois drena o que a curva mandou ([`canais::aplicar`]) e avalia a pilha — objectos e ossos, a IK
+/// incluída. Corre DEPOIS do osso inteligente (a pose de base). Devolve quantas entidades a pilha moveu.
 pub fn quadro(sim: &mut SimWorld, preview: &mut PreviewDrive) -> usize {
     let w = sim.world_mut();
     if !w.contains_resource::<Encenado>() {
@@ -38,6 +39,8 @@ pub fn quadro(sim: &mut SimWorld, preview: &mut PreviewDrive) -> usize {
             smoke::encenar(w, n);
         }
     }
+    // Um `IkGoal` de antes da W2 (ficheiro, prefab, colagem) vira o item IK antes de avaliar.
+    ph2d_constraints_ecs::converter_ik_goals(sim.world_mut());
     canais::aplicar(sim, preview);
     ph2d_constraints_ecs::evaluate(sim, preview)
 }

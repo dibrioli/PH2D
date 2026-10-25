@@ -153,11 +153,17 @@ pub fn evaluate(sim: &mut SimWorld, preview: &mut PreviewDrive) -> usize {
     let (ordem, ciclo) = ordem(sim.world());
     let mut estados = BTreeMap::new();
     let ja = preview.driven_by(Driver::ConstraintPose);
-    let com_pilha: std::collections::BTreeSet<u64> = ordem
+    // Quem a pilha conduz: as entidades com pilha e os ossos que uma IK delas escreve.
+    let mut com_pilha: std::collections::BTreeSet<u64> = ordem
         .iter()
         .chain(ciclo.iter())
         .map(|e| e.to_bits())
         .collect();
+    for &e in &ordem {
+        if let Some(c) = sim.world().get::<Constraints>(e) {
+            com_pilha.extend(crate::ik::correntes(sim.world(), e, c).iter().map(|x| x.to_bits()));
+        }
+    }
     for e in ja {
         if !com_pilha.contains(&e.to_bits()) {
             preview.release_to_authored(sim, e, Driver::ConstraintPose);

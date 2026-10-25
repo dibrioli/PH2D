@@ -6,10 +6,12 @@
 
 mod avalia;
 mod ik;
+pub mod ik_item;
 mod ordem;
 
 pub use avalia::{Adotar, Estado, Estados, evaluate};
 pub use ordem::ordem;
+pub use ik_item::{com_ik, converter_ik_goals, ik_de, iks, por_ik, tirar_ik};
 
 use bevy_ecs::component::Component;
 use ph2d_constraints::Kind;

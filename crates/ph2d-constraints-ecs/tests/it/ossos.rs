@@ -186,10 +186,12 @@ fn bend_side_flips_with_the_mirror() {
 fn a_reader_of_the_chain_runs_after_the_ik() {
     let mut sim = SimWorld::new();
     let mut drive = PreviewDrive::default();
-    // O leitor nasce PRIMEIRO (bits menores): sem a aresta da corrente correria antes da IK.
-    let leitor = sim.world_mut().spawn((StableId(30), Transform::IDENTITY)).id();
     let (b1, b2) = braco_recto(&mut sim);
     sim.world_mut().spawn((StableId(10), em(1.2, 0.9, 0.0)));
+    // O leitor nasce DEPOIS (bits menores — o desempate da ordem corre-o primeiro): sem a aresta da
+    // corrente leria o ombro de antes da IK (medido pela mutação M2).
+    let leitor = sim.world_mut().spawn((StableId(30), Transform::IDENTITY)).id();
+    assert!(leitor.to_bits() < b2.to_bits());
     let mut c = Constraints::default();
     c.push(ik(2), Some(StableId(10)));
     sim.world_mut().entity_mut(b2).insert(c);

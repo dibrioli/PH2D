@@ -24,9 +24,9 @@
 //!
 //! *Todo motor que ESCREVE pose corre antes de qualquer consumidor que a LEIA* — e nesta metade os
 //! consumidores são dois (a malha da imagem, aqui; a pele vectorial, na fase de canvas, que
-//! continua a correr depois). A ordem interna entre os dois motores é a de sempre e continua
-//! load-bearing: **o osso inteligente primeiro** (ele é a correcção autorada, a pose de BASE), a
-//! **âncora depois** (a restrição persegue um alvo e tem de ver a pose já corrigida).
+//! continua a correr depois). A ordem interna é load-bearing: **o osso inteligente primeiro** (ele é a
+//! correcção autorada, a pose de BASE), a **pilha de constraints depois** — objectos e ossos, a IK
+//! (o antigo goal) incluída: ela persegue um alvo e tem de ver a pose já corrigida.
 
 impl crate::App {
     /// Ver o cabeçalho deste ficheiro. Corre entre o apply da timeline e o extract das sprites.
@@ -35,9 +35,8 @@ impl crate::App {
             return;
         };
         let sim = &mut gfx.sim;
-        ph2d_app_constraints::quadro(sim, &mut self.preview_drive);
         crate::skeleton_smart::drive(sim, &self.timeline.doc, &mut self.preview_drive);
-        crate::skeleton_goal::solve(sim, &mut self.preview_drive);
+        ph2d_app_constraints::quadro(sim, &mut self.preview_drive);
         // A cena de smoke das constraints abre com o sujeito escolhido e o Inspector à vista.
         if let Some(b) = ph2d_app_constraints::smoke::escolhido(sim.world_mut())
             && let Some(hero) = gfx.hero_screen.as_mut()

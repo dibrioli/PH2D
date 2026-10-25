@@ -8,6 +8,7 @@
 //! ⛔ Excepção: um ficheiro com `#[global_allocator]` tem de ser binário PRÓPRIO (dois alocadores
 //! globais não cabem num binário, e um contador global veria as alocações dos vizinhos): fica em `tests/`.
 
+mod a_borracha_de_textura; // a Texture Eraser morde o grão à Strength 1 (25/10)
 mod a_caneta_deitada;
 mod a_cauda_das_pontas; // L5 + L18/L19: a cauda pela porta do despacho e com o fim do trilho de píxel
 mod a_estrela_pequena; // o Stars pequeno sem degraus

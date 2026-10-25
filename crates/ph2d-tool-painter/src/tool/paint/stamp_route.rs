@@ -303,6 +303,15 @@ impl PainterTool {
                 // target alpha is fractional at full strength, because overlapping dabs would build
                 // the rim right back to a hard edge (measured: 0.64 -> 0.94).
                 || brush.film_aa_wanted(brush.shape.is_active())
+                // O Grain PRESO À TELA (Tiled, Stencil): o tecto do texel é `g·tecto` (`cover_add`), fraccionário à
+                // Strength 1 — sem ele os dabs saturam e o grão deixa de morder (Texture Eraser 159 ± 45 a 0,99 →
+                // 255 ± 0 a 1). O grão preso à ponta (View, Random) muda de `g` a cada dab: é o «cada ponta».
+                || (brush.texture.is_active()
+                    && matches!(
+                        brush.texture.mapping,
+                        ph2d_painter_brush::TextureMapping::Tiled
+                            | ph2d_painter_brush::TextureMapping::Stencil
+                    ))
                 // O tecto POR DAB (J3): a opacidade da mão é o tecto de cada texel também à Strength 1.
                 || brush.tecto_por_dab
                 // O Wash (25/10): o máximo do traço é a sua lei também à Strength e ao Flow 1.

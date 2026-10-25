@@ -155,6 +155,10 @@ pub enum Driver {
     /// e o marcador `WestonAxle` (a talha é a presença dele) — um facto só, como o
     /// [`Self::JointParams`].
     Roldana,
+    /// ⭐ **A pose que a pilha de CONSTRAINTS escreve** (`ph2d-constraints-ecs`, ADR-0192). Condutor
+    /// PERSISTENTE como o [`Self::SolverPose`], e entrada própria pela mesma razão do
+    /// [`Self::TweenPose`]: um objecto restringido pode ter também curva, script ou solver.
+    ConstraintPose,
 }
 
 /// **O FACTO que um motor escreve** — o recorte exacto do componente que é dele, e nada mais.
@@ -241,6 +245,8 @@ pub enum Driven {
         /// O marcador `WestonAxle` está lá.
         weston: bool,
     },
+    /// ⭐ A pose das constraints — ver [`Driver::ConstraintPose`].
+    ConstraintPose(Transform),
 }
 
 /// Uma entidade sob condução: o que o artista autorou, e o que o motor deixou no último quadro.

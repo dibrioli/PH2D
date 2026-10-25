@@ -23,6 +23,7 @@ impl Driven {
             Self::SpriteCor { .. } => Driver::SpriteCor,
             Self::PontaNoMundo(_) => Driver::PontaNoMundo,
             Self::Roldana { .. } => Driver::Roldana,
+            Self::ConstraintPose(_) => Driver::ConstraintPose,
         }
     }
 
@@ -99,6 +100,9 @@ impl Driven {
                     roda: *w.get::<ph2d_physics_ecs::PulleyWheel>(entity)?,
                     weston: w.get::<ph2d_physics_ecs::WestonAxle>(entity).is_some(),
                 })
+            }
+            Driver::ConstraintPose => {
+                Some(Self::ConstraintPose(*sim.world().get::<Transform>(entity)?))
             }
         }
     }
@@ -280,6 +284,13 @@ impl Driven {
                         w.entity_mut(entity)
                             .remove::<ph2d_physics_ecs::WestonAxle>();
                     }
+                }
+            }
+            Self::ConstraintPose(pose) => {
+                if let Some(mut t) = sim.world_mut().get_mut::<Transform>(entity)
+                    && *t != pose
+                {
+                    *t = pose;
                 }
             }
         }

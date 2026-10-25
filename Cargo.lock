@@ -6113,6 +6113,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-constraints-ecs"
+version = "0.0.0"
+dependencies = [
+ "bevy_ecs",
+ "ph2d-constraints",
+ "ph2d-ecs",
+ "ph2d-physics-ecs",
+ "ph2d-preview-drive",
+ "serde",
+]
+
+[[package]]
 name = "ph2d-contact"
 version = "0.0.0"
 dependencies = [

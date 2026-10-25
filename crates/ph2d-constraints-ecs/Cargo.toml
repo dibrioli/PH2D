@@ -1,0 +1,23 @@
+[package]
+name = "ph2d-constraints-ecs"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# A pilha de constraints no mundo: o componente gravado, a ordem, a fase que escreve a pose pelo
+# `PreviewDrive` (plano: docs/BlenderConstraints/01_plano.md §2). A lei é da `ph2d-constraints`.
+[dependencies]
+ph2d-constraints = { path = "../ph2d-constraints" }
+ph2d-ecs = { path = "../ph2d-ecs" }
+ph2d-physics-ecs = { path = "../ph2d-physics-ecs" }
+ph2d-preview-drive = { path = "../ph2d-preview-drive" }
+bevy_ecs = "0.19"
+serde = { version = "1", features = ["derive"] }
+
+[lints]
+workspace = true

@@ -22,6 +22,10 @@ ph2d-editor-core = { path = "../ph2d-editor-core" }
 # O losango do Auto Key: os ids do cartão e o estado do canal na linha do tempo.
 ph2d-panel-inspector = { path = "../ph2d-panel-inspector" }
 ph2d-timeline = { path = "../ph2d-timeline" }
+# O instante da chave de compensação (`compensa`).
+ph2d-anim = { path = "../ph2d-anim" }
+# A cena 1 conduzida (`cena_pega`): o relógio que ela arrasta.
+ph2d-core = { path = "../ph2d-core" }
 ph2d-preview-drive = { path = "../ph2d-preview-drive" }
 # O gizmo do palco: a câmera e a janela da cena, os tokens e a cena vectorial do overlay.
 ph2d-host = { path = "../ph2d-host" }

@@ -235,7 +235,11 @@ fn avalia_uma(
     };
     let agora = *sim.world().get::<Transform>(e).unwrap_or(&base_local);
     if local == base_local {
-        preview.release_to_authored(sim, e, Driver::ConstraintPose);
+        // Outra mão (a curva) escreveu o autorado neste quadro: ele já está no mundo, e devolver o
+        // do ledger pisá-lo-ia; o `settle` esquece a condução.
+        if base_local != agora {
+            preview.release_to_authored(sim, e, Driver::ConstraintPose);
+        }
         return false;
     }
     if local == agora {

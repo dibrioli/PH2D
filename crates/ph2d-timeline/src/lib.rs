@@ -94,7 +94,8 @@ pub use apply_prop::bone_bend_refusal;
 pub use apply_prop::clear_macro_clocks;
 pub use apply_views::{apply_active_clip, apply_container};
 pub use autokey::{
-    AutokeyPlan, PoseSample, autokey_props, autokey_props_solo, key_value_in_active_clip,
+    AutokeyPlan, PoseSample, autokey_props, autokey_props_solo, curve_seen,
+    key_value_in_active_clip,
 };
 pub use binding::{TargetBinding, WireId};
 pub use channel_group::{Forca, Instante, Ligacoes, clique_no_grupo, estado_do_grupo};

@@ -12,6 +12,9 @@ use ph2d_editor_core::constraint_edits::{
 };
 use ph2d_preview_drive::PreviewDrive;
 
+use crate::compensa::{Pega, Pegas};
+use ph2d_ecs::canal_constraint::{FORCA, LIGADA};
+
 /// O item cujo alvo o próximo clique no palco escolhe: `(dono, Item::id)`. Estado de sessão.
 #[derive(Resource, Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct AlvoArmado(pub Option<(u64, u32)>);
@@ -251,11 +254,31 @@ fn liga(
             .and_then(|s| entity_with_stable_id(sim.world(), s));
         let _ = bind_on_create(sim, &PreviewDrive::default(), e, &mut depois.kind, alvo);
     }
-    if activo(&antes) && !activo(&depois) && matches!(antes.kind, Kind::ChildOf(_)) {
+    let larga_pose = activo(&antes) && !activo(&depois) && matches!(antes.kind, Kind::ChildOf(_));
+    if larga_pose {
         sim.world_mut()
             .get_resource_or_insert_with(Adotar::default)
             .0
             .insert(e.to_bits());
+    }
+    if activo(&antes) != activo(&depois) {
+        let campo = if antes.influence == depois.influence {
+            LIGADA
+        } else {
+            FORCA
+        };
+        let ler = |it| crate::campos::ler_item(it, campo).unwrap_or_default();
+        sim.world_mut()
+            .get_resource_or_insert_with(Pegas::default)
+            .0
+            .push(Pega {
+                dono: e.to_bits(),
+                item: id,
+                campo,
+                antes: ler(&antes),
+                depois: ler(&depois),
+                larga_pose,
+            });
     }
     if let Some(mut c) = sim.world_mut().get_mut::<Constraints>(e)
         && let Some(it) = c.item_mut(id)

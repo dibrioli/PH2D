@@ -5184,9 +5184,11 @@ name = "ph2d-app-constraints"
 version = "0.0.0"
 dependencies = [
  "bevy_ecs",
+ "ph2d-anim",
  "ph2d-app-host",
  "ph2d-constraints",
  "ph2d-constraints-ecs",
+ "ph2d-core",
  "ph2d-ecs",
  "ph2d-editor-core",
  "ph2d-host",

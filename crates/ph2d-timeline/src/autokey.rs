@@ -327,7 +327,7 @@ fn persisted_shown(doc: &TimelineDoc, entity: u64, prop: PropKind) -> Option<f32
 /// apply pass wrote. `None` when nothing drives it (the unbound path).
 /// **O que a curva desenha agora** — a pergunta do diff do auto-key e do losango do painel
 /// ([`crate::channel_mark`]): a mesma porta, ou os dois discordariam de «saiu da curva».
-pub(crate) fn curve_seen(
+pub fn curve_seen(
     doc: &TimelineDoc,
     entity: u64,
     prop: PropKind,

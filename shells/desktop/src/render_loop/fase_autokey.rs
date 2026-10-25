@@ -23,15 +23,8 @@ impl crate::App {
         let Some(hero) = hero_screen.as_mut() else {
             return;
         };
-        // AutoKey (W4.T1/T2) — the single choke point. Runs HERE, after every
-        // UI Transform/opacity write for the frame (gizmo early, Inspector +
-        // Hierarchy reset just above) so it reads the settled pose of each
-        // selected sprite and keys only what left its curve. Placed after the
-        // apply pass too, so an undo/paste/scrub — which the apply writes back
-        // to the world — reads world == curve and keys nothing.
-        // The pass authors on the clock the APPLY drove — the same `ViewClock` the drain
-        // picked. Handing it the wrong clock while a solo drives the pose is how one strip in
-        // a lane killed auto-key (2026-07-22).
+        // AutoKey — the single choke point, AFTER every UI write of the frame and the apply (an
+        // undo/scrub reads world == curve: no key), on the clock the apply drove (`ViewClock`).
         let autokey_clock = self.timeline.view_clock().pick(
             &self.playhead,
             &self.clip_playhead,
@@ -58,6 +51,22 @@ impl crate::App {
         ph2d_app_physics::canais_corpo::publicar(sim, &publicar);
         ph2d_app_flip::canais_camada::publicar(sim, flip, &publicar);
         ph2d_app_constraints::canais::publicar(sim, &publicar);
+        let sel: Vec<u64> = hero.gizmo.iter_selected().collect();
+        let (solo, t_raw) = (self.timeline.keys_mode, autokey_clock.time());
+        let inst = ph2d_timeline::Instante {
+            t_cut: self
+                .timeline
+                .doc
+                .author_cut(solo, self.timeline.container_open, t_raw),
+            solo,
+        };
+        // Pegar/largar no cartão das constraints: as chaves de f−1 e f (`compensa`), lida a curva
+        // ANTES de o Auto Key gravar f — senão f−1 lê a chave nova.
+        let painel = hero.is_panel_visible("timeline");
+        let (pd, ak) = (&self.preview_drive, timeline_bridge::default_interp());
+        let novas =
+            ph2d_app_constraints::compensa::compensar(&self.timeline, painel, sim, pd, inst, ak);
+        self.timeline_intents.extend(novas);
         autokey_pass::run(
             &mut self.timeline,
             autokey_clock,
@@ -73,15 +82,6 @@ impl crate::App {
         );
         // ⭐ O LOSANGO ao lado de cada campo (plano 35 §5): o clique desde o último quadro, depois o
         // estado de cada canal no instante do autor para a pintura deste quadro.
-        let sel: Vec<u64> = hero.gizmo.iter_selected().collect();
-        let (solo, t_raw) = (self.timeline.keys_mode, autokey_clock.time());
-        let inst = ph2d_timeline::Instante {
-            t_cut: self
-                .timeline
-                .doc
-                .author_cut(solo, self.timeline.container_open, t_raw),
-            solo,
-        };
         let mundo = timeline_bridge::Mundo::com_vetor(sim.world(), vec_scene);
         let valor = |e, p| match timeline_bridge::sample_prop_value(mundo, e, p) {
             Some(ph2d_anim::AnimValue::Float(v)) => Some(v),

@@ -2,13 +2,16 @@
 //!
 //! | n | o que ensina |
 //! |---|---|
+//! | 1 | **Mão e espada** — a MÃO passa (curva da timeline); no 24 pega a ESPADA do chão (Child Of, força 0→1 com o Auto Key), no 48 larga-a noutro sítio; nem pegar nem largar salta, e o antes do 24 continua no chão (as chaves de compensação, `compensa`) |
 //! | 2 | **Olho** — arraste a BOLA vermelha: a SETA aponta para ela (Look At) e a PUPILA corre atrás dela (Copy Location) sem sair do olho (Limit Distance, por baixo na pilha) |
 //! | 3 | **Ponteiros** — os dois autorados a 170°: o de cima tem limite −45°…45° e pára na borda MAIS PERTO (45°); o de baixo copia a rotação da GUIA (−170°) a 50 % e fica a 180° (o arco curto, não 0°) |
 
 use bevy_ecs::entity::Entity;
 use bevy_ecs::prelude::Resource;
 use bevy_ecs::world::World;
-use ph2d_constraints::{Canais, CopyTransform, Distance, DistanceMode, Kind, Limit, LookAt, Space};
+use ph2d_constraints::{
+    Canais, ChildOf, CopyTransform, Distance, DistanceMode, Kind, Limit, LookAt, Space,
+};
 use ph2d_constraints_ecs::Constraints;
 use ph2d_ecs::{GlobalTransform, Name, Transform, assign_missing_stable_ids, stable_id_of};
 use ph2d_render::{DISC_TILE_KEY, Sprite, WHITE_TILE_KEY};
@@ -39,6 +42,7 @@ pub struct Escolher(pub u64);
 /// Povoa `world` com a cena `nivel`. Devolve se havia cena para esse nível.
 pub fn encenar(world: &mut World, nivel: u32) -> bool {
     let sujeito = match nivel {
+        1 => mao_e_espada(world),
         2 => olho(world),
         3 => ponteiros(world),
         _ => return false,
@@ -192,4 +196,58 @@ fn ponteiros(world: &mut World) -> Entity {
     });
     pilha(world, meio, &[(copia, Some(guia), 0.5)]);
     limitado
+}
+
+/// Cena 1: as poses da MÃO por quadro — `(quadro, x, y, graus)`. Desce à espada no 24, levanta-a no
+/// 36, pousa-a no 48 e vai-se embora.
+pub const MAO: [(i64, f32, f32, f32); 5] = [
+    (0, -4.0, 1.5, 0.0),
+    (QUADRO_PEGA, -1.0, -0.9, 0.0),
+    (36, 0.75, 1.4, 25.0),
+    (QUADRO_LARGA, 2.5, -0.9, 0.0),
+    (72, 4.5, 1.5, 0.0),
+];
+/// O quadro em que a mão pega a espada e o em que a larga.
+pub const QUADRO_PEGA: i64 = 24;
+pub const QUADRO_LARGA: i64 = 48;
+/// Onde a espada está no chão.
+pub const ESPADA_NO_CHAO: [f32; 2] = [-1.0, -1.25];
+
+/// Cena 1 — **Mão e espada.** A espada tem um Child Of na mão a força 0; abre escolhida. A curva da
+/// mão é da timeline: a cena conduzida ([`crate::cena_pega`]) grava-a.
+fn mao_e_espada(world: &mut World) -> Entity {
+    let _ = peca(
+        world,
+        "Chão",
+        WHITE_TILE_KEY,
+        [0.5, -1.4],
+        0.0,
+        [10.0, 0.12],
+        [0.35, 0.3, 0.25, 1.0],
+    );
+    let (_, x, y, r) = MAO[0];
+    let mao = peca(
+        world,
+        "Mão",
+        DISC_TILE_KEY,
+        [x, y],
+        r,
+        [0.5, 0.5],
+        [0.95, 0.75, 0.6, 1.0],
+    );
+    let espada = peca(
+        world,
+        "Espada",
+        WHITE_TILE_KEY,
+        ESPADA_NO_CHAO,
+        0.0,
+        [1.6, 0.16],
+        [0.75, 0.8, 0.9, 1.0],
+    );
+    pilha(
+        world,
+        espada,
+        &[(Kind::ChildOf(ChildOf::default()), Some(mao), 0.0)],
+    );
+    espada
 }

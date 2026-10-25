@@ -5,6 +5,8 @@
 
 pub mod campos;
 pub mod canais;
+pub mod cena_pega;
+pub mod compensa;
 pub mod gizmo;
 pub mod inspector;
 pub mod marcas;

@@ -503,7 +503,7 @@ end"#,
             "The object's own table: `self.id` and the declared properties are already in it.",
         )],
         returns: "",
-        more: "It runs on the object's first tick of Play, right before its first [hooks.update], and again after every rewind. Saving a new version of the script does not run it again: the objects keep their `self` and carry on with the new code.\n\nIf `init` fails, the object stops and its `update` never runs; the console shows the error. Saving a fix makes it run again.",
+        more: "It runs on the object's first tick of Play, before its [hooks.ready] and its first [hooks.update], and again after every rewind. Other objects that start in the same tick may not have run theirs yet; what needs them goes in [hooks.ready]. Saving a new version of the script does not run it again: the objects keep their `self` and carry on with the new code.\n\nIf `init` fails, the object stops and its `update` never runs; the console shows the error. Saving a fix makes it run again.",
         example: r#"ph2d.property("lives", 3)
 
 function init(self)
@@ -531,11 +531,15 @@ end"#,
         params: &[
             ("self", "The object's own table."),
             ("signal", "The name of the signal, as it was sent."),
+            (
+                "from",
+                "The object that sent it: the script that called [ph2d.emit], the sensor that was touched, the timer that ended. `nil` when nothing sent it, such as a marker of the timeline.",
+            ),
         ],
         returns: "",
-        more: "It runs once per signal and object, after the frame's ticks, only while the scene plays and only for objects that have already had their first tick. Signals come from [ph2d.emit] in any script (one frame later, the sender's own included) and from the rest of the scene.\n\nEvery object with this hook hears every signal, so check the name and ignore the rest.",
-        example: r#"function on_signal(self, signal)
-  if signal == "jump" then
+        more: "It runs once per signal and object, after the frame's ticks, only while the scene plays and only for objects that have already had their first tick. Signals come from [ph2d.emit] in any script (one frame later, the sender's own included) and from the rest of the scene.\n\nEvery object with this hook hears every signal, so check the name and ignore the rest. To listen to one object only, use [ph2d.connect].",
+        example: r#"function on_signal(self, signal, from)
+  if signal == "jump" and from == ph2d.find_by_name("Button") then
     local y = ph2d.get(self.id, "y") or 0
     ph2d.set(self.id, "y", y + 1)
   end
@@ -650,7 +654,11 @@ pub fn api_help(key: &str) -> Option<&'static ApiHelp> {
     all_help().find(|h| h.key == key)
 }
 
-/// Todas as páginas: as da [`API_HELP`] e as das propriedades dos componentes (irmão por LOC).
+/// Todas as páginas: as da [`API_HELP`], as das propriedades dos componentes e as do ciclo de vida
+/// (irmãos por LOC).
 pub fn all_help() -> impl Iterator<Item = &'static ApiHelp> {
-    API_HELP.iter().chain(crate::api_help_props::PROPERTY_HELP)
+    API_HELP
+        .iter()
+        .chain(crate::api_help_props::PROPERTY_HELP)
+        .chain(crate::api_help_life::LIFE_HELP)
 }

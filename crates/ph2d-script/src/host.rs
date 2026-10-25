@@ -237,21 +237,43 @@ impl ScriptHost {
         r
     }
 
-    /// Os sinais deste quadro sem portas — ver [`Self::scene_hear_with`].
+    /// Os sinais deste quadro sem portas nem emissor — ver [`Self::scene_hear_with`].
     pub fn scene_hear(&mut self, sim: &mut SimWorld, signals: &[&str]) -> SceneReport {
-        self.scene_hear_with(sim, signals, &mut NoDoors)
+        let signals: Vec<(&str, Option<u64>)> = signals.iter().map(|s| (*s, None)).collect();
+        self.scene_hear_with(sim, &signals, &mut NoDoors)
     }
 
-    /// Os sinais deste quadro — ver [`SceneScripts::hear`].
+    /// Os sinais deste quadro, cada um com os bits de quem o emitiu (`None` = sem emissor) — ver
+    /// [`SceneScripts::hear`].
     pub fn scene_hear_with(
         &mut self,
         sim: &mut SimWorld,
-        signals: &[&str],
+        signals: &[(&str, Option<u64>)],
         doors: &mut dyn SceneDoors,
     ) -> SceneReport {
         let r = self
             .scene
             .hear(self.runtime.lua(), &self.deadline, sim, signals, doors);
+        self.forget_the_dead(&r);
+        r
+    }
+
+    /// ⭐ **Um quadro desenhado** sem portas — ver [`Self::scene_process_with`].
+    pub fn scene_process(&mut self, sim: &mut SimWorld, dt: f64) -> SceneReport {
+        self.scene_process_with(sim, dt, &mut NoDoors)
+    }
+
+    /// ⭐ **Um quadro desenhado**: `process(self, dt)` com o `dt` do quadro — ver
+    /// [`SceneScripts::process`]. Só com o jogo a correr (quem chama decide).
+    pub fn scene_process_with(
+        &mut self,
+        sim: &mut SimWorld,
+        dt: f64,
+        doors: &mut dyn SceneDoors,
+    ) -> SceneReport {
+        let r = self
+            .scene
+            .process(self.runtime.lua(), &self.deadline, sim, dt, doors);
         self.forget_the_dead(&r);
         r
     }
@@ -268,6 +290,14 @@ impl ScriptHost {
         self.state_table.clear_all();
         self.devices.forget_edges();
         self.scene.rewind()
+    }
+
+    /// ⭐ **O Stop** — cada vivo recebe o `exit` (o que ele escreve não pousa), depois o
+    /// [`Self::scene_rewind`]. Ver [`SceneScripts::stop`].
+    pub fn scene_stop(&mut self, sim: &mut SimWorld) -> usize {
+        let n = self.scene.stop(self.runtime.lua(), &self.deadline, sim);
+        self.scene_rewind();
+        n
     }
 
     /// O que se sabe do script `id` — ver [`SceneScripts::info`].

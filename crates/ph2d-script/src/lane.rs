@@ -13,7 +13,7 @@
 use std::cell::RefCell;
 use std::collections::{BTreeMap, BTreeSet};
 
-use mlua::{Lua, Table, Value};
+use mlua::{Function, Lua, Table, Value};
 use ph2d_ecs::{ChildOf, Entity, MasterRoot, Name, SimWorld, Spawned, StableId, Transform, World};
 
 use crate::component::{LuauScript, ProjectScripts};
@@ -140,6 +140,10 @@ pub(crate) struct Lane<'w> {
     names: Option<BTreeMap<String, Entity>>,
     /// Quem fala agora (o `by` de quem nasce).
     pub(crate) speaker: Option<Entity>,
+    /// As ligações pedidas nesta passagem, por quem as pediu.
+    connects: Vec<(Entity, crate::scene::Connection)>,
+    /// O Stop: os `exit` leem o mundo, mas nada nasce nem muda de script.
+    stopping: bool,
 }
 
 fn entity_of(id: f64) -> Option<Entity> {
@@ -197,11 +201,41 @@ impl<'w> Lane<'w> {
             out: LaneOut::default(),
             names: None,
             speaker: None,
+            connects: Vec::new(),
+            stopping: false,
         }
+    }
+
+    /// A pista do Stop ([`crate::SceneScripts`] `stop`).
+    pub(crate) fn stopping(mut self) -> Self {
+        self.stopping = true;
+        self
     }
 
     pub(crate) fn finish(self) -> LaneOut {
         self.out
+    }
+
+    /// Quem pediu para morrer nesta passagem, pela ordem do pedido.
+    pub(crate) fn despawned(&self) -> &[Entity] {
+        &self.out.despawned
+    }
+
+    pub(crate) fn take_connects(&mut self) -> Vec<(Entity, crate::scene::Connection)> {
+        std::mem::take(&mut self.connects)
+    }
+
+    fn connect(&mut self, id: f64, signal: String, func: Function) -> mlua::Result<()> {
+        let c = crate::scene::connection(self.speaker, entity_of(id), signal, func)?;
+        self.connects.push(c);
+        Ok(())
+    }
+
+    fn refuse_when_stopping(&self, verb: &str) -> Result<(), String> {
+        if self.stopping {
+            return Err(format!("ph2d.{verb}: not while the scene stops"));
+        }
+        Ok(())
     }
 
     /// Pediu para morrer neste quadro?
@@ -258,6 +292,7 @@ impl<'w> Lane<'w> {
         let Some(by) = self.speaker else {
             return Err("ph2d.spawn: only inside a hook".into());
         };
+        self.refuse_when_stopping("spawn")?;
         let e = match master {
             Some(name) => {
                 let Some(m) = self.master_named(name) else {
@@ -298,6 +333,8 @@ impl<'w> Lane<'w> {
 
     /// `ph2d.despawn` — `Ok(true)` pedido; `Ok(false)` o id já não é de ninguém.
     fn despawn(&mut self, id: f64) -> Result<bool, Refusal> {
+        self.refuse_when_stopping("despawn")
+            .map_err(Refusal::Error)?;
         let Some(e) = entity_of(id).filter(|&e| self.sim.world().get_entity(e).is_ok()) else {
             return Ok(false);
         };
@@ -316,6 +353,8 @@ impl<'w> Lane<'w> {
 
     /// `ph2d.attach_script` — só num objecto da corrida; o `init` dele corre no tique seguinte.
     fn attach(&mut self, id: f64, script: &str) -> Result<bool, Refusal> {
+        self.refuse_when_stopping("attach_script")
+            .map_err(Refusal::Error)?;
         let Some(sid) = self
             .sim
             .world()
@@ -511,6 +550,9 @@ pub(crate) fn with_lane<R>(
             let r = cell.borrow_mut().attach(id, &script);
             refused(lua, r)
         })?;
+        let connect = scope.create_function(|_, (id, name, f): (f64, String, Function)| {
+            cell.borrow_mut().connect(id, name, f)
+        })?;
         for (k, v) in [
             ("get", get),
             ("find_by_name", find),
@@ -518,6 +560,7 @@ pub(crate) fn with_lane<R>(
             ("spawn", spawn),
             ("despawn", despawn),
             ("attach_script", attach),
+            ("connect", connect),
             ("set_property", set_property),
             ("properties", properties),
             ("damage", damage),
@@ -533,6 +576,7 @@ pub(crate) fn with_lane<R>(
             "spawn",
             "despawn",
             "attach_script",
+            "connect",
             "set_property",
             "properties",
             "damage",
@@ -575,7 +619,7 @@ local function through(name)
   return function(...)
     local f = lane[name]
     if f == nil then
-      error("ph2d." .. name .. ": only while the scene runs (inside init, update or on_signal)", 2)
+      error("ph2d." .. name .. ": only while the scene runs (inside a hook)", 2)
     end
     return f(...)
   end
@@ -590,13 +634,14 @@ ph2d.object = function(...)
     if declared ~= nil then
       return declared
     end
-    error("ph2d.object: only while the scene runs (inside init, update or on_signal)", 2)
+    error("ph2d.object: only while the scene runs (inside a hook)", 2)
   end
   return f(...)
 end
 ph2d.spawn = through("spawn")
 ph2d.despawn = through("despawn")
 ph2d.attach_script = through("attach_script")
+ph2d.connect = through("connect")
 ph2d.properties = through("properties")
 ph2d.damage = through("damage")
 ph2d.heal = through("heal")

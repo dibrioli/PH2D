@@ -230,7 +230,10 @@ fn declare(sim: &SimWorld, before: &BTreeMap<Entity, Transform>, drive: &mut Pre
 }
 
 /// ⭐⭐⭐ **Um quadro dos scripts.** `playing` é o relógio a andar; `ticks` os passos fixos deste
-/// quadro; `heard` os sinais que o outbox entregou a este leitor.
+/// quadro; `frame_dt` a duração do quadro desenhado (o `dt` do `process`); `heard` os sinais que o
+/// outbox entregou a este leitor, com os bits de quem os emitiu.
+///
+/// A correr: os passos fixos (`physics` → `update`), os sinais, e UMA vez o `process`.
 ///
 /// ⚠️ **O `drive` é obrigatório na assinatura**, pela lei que a `ProjectState::capture` escreve para
 /// si mesma: uma função-irmã «sem ledger» seria a segunda porta pela qual cada quadro de uma
@@ -243,7 +246,8 @@ pub fn frame(
     playing: bool,
     ticks: u32,
     fixed_dt: f64,
-    heard: &[&str],
+    frame_dt: f64,
+    heard: &[(&str, Option<u64>)],
     doors: &mut dyn SceneDoors,
 ) -> ScriptFrame {
     let mut out = ScriptFrame::default();
@@ -256,6 +260,8 @@ pub fn frame(
             absorb(&mut out, &mut before, r);
         }
         let r = host.scene_hear_with(sim, heard, doors);
+        absorb(&mut out, &mut before, r);
+        let r = host.scene_process_with(sim, frame_dt, doors);
         absorb(&mut out, &mut before, r);
     } else {
         // Parado, nenhuma borda do teclado ou do rato espera pelo Play.
@@ -308,14 +314,15 @@ pub fn boot(ms: u128) -> Option<ScriptHost> {
     Some(h)
 }
 
-/// ⭐ **REBOBINAR É RENASCER** — o `self` de cada objecto volta a nascer no próximo Play, e a pose
-/// que a corrida escreveu volta à que o artista pôs. Devolve quantos objectos tinham vivo.
+/// ⭐ **REBOBINAR É RENASCER** — cada vivo recebe o `exit` (o que ele escreve não pousa), o `self`
+/// de cada objecto volta a nascer no próximo Play, e a pose que a corrida escreveu volta à que o
+/// artista pôs. Devolve quantos objectos tinham vivo.
 ///
 /// ⚠️ **Chamada pelo INVARIANTE do rebobinar da shell** (relógio no início e parado), ao lado da
 /// porta da família `Logic` — nunca por um gancho num botão: o transporte tem mais de um caminho até
 /// ao zero.
 pub fn rewind(host: &mut ScriptHost, sim: &mut SimWorld, drive: &mut PreviewDrive) -> usize {
-    let n = host.scene_rewind();
+    let n = host.scene_stop(sim);
     for entity in drive.driven_by(Driver::ScriptPose) {
         drive.release_to_authored(sim, entity, Driver::ScriptPose);
     }

@@ -139,7 +139,7 @@ pub(super) fn resume_due(
         };
         // Retomada por fora (o script guardou `coroutine.running()`)? Já não espera.
         if inst.script != p.script
-            || inst.failed.is_some()
+            || !inst.runs()
             || p.thread.status() != mlua::thread::ThreadStatus::Resumable
         {
             continue;

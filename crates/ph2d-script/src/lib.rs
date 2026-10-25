@@ -23,6 +23,7 @@
 
 /// O texto da página de ajuda de cada linha da `api_table`.
 pub mod api_help;
+mod api_help_life;
 mod api_help_props;
 /// A API Luau como tabela — a fonte única do `ph2d.d.luau`.
 pub mod api_table;
@@ -90,7 +91,7 @@ function ph2d.wait(seconds)
     error("ph2d.wait: seconds must be a number", 2)
   end
   if not coroutine.isyieldable() then
-    error("ph2d.wait: only inside init, update or on_signal while the scene runs", 2)
+    error("ph2d.wait: only inside a hook while the scene runs", 2)
   end
   return coroutine.yield(token, seconds)
 end

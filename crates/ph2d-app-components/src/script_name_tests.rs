@@ -62,6 +62,7 @@ impl Cena {
             true,
             1,
             1.0 / 60.0,
+            1.0 / 60.0,
             &[],
             &mut portas,
         );

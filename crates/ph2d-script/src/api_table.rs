@@ -43,7 +43,7 @@ pub struct ApiHook {
     pub doc: &'static str,
 }
 
-/// Os ganchos, lidos de `scene.rs` (`tick` / `hear`); o teste da tabela compara-os com os
+/// Os ganchos, lidos de `scene.rs` e `scene_life.rs` (`tick` / `hear` / `process` / o `exit`); o teste da tabela compara-os com os
 /// `.hook("…")` do fonte. Saem no `ph2d.d.luau` como linhas `-- @hook <nome>: <tipo>` — comentário,
 /// porque DECLARÁ-los como globais faz o `luau-lsp` acusar `BuiltinGlobalWrite` em cada script
 /// (medido 15/10); o `ph2d-code-lsp` lê essas linhas para não acusar `FunctionUnused` neles.
@@ -51,17 +51,37 @@ pub const HOOKS: &[ApiHook] = &[
     ApiHook {
         ident: "init",
         luau_type: "(self: ScriptSelf) -> ()",
-        doc: "Once, before the first update, with the properties already in `self`.",
+        doc: "Once, when the object starts, with the properties already in `self`.",
+    },
+    ApiHook {
+        ident: "ready",
+        luau_type: "(self: ScriptSelf) -> ()",
+        doc: "Once, in the same tick as `init`, after every object that started in it ran its `init`.",
+    },
+    ApiHook {
+        ident: "physics",
+        luau_type: "(self: ScriptSelf, dt: number) -> ()",
+        doc: "Every fixed tick, before `update`; `dt` in seconds.",
     },
     ApiHook {
         ident: "update",
         luau_type: "(self: ScriptSelf, dt: number) -> ()",
-        doc: "Every fixed tick; `dt` in seconds.",
+        doc: "Every fixed tick, after `physics`; `dt` in seconds.",
+    },
+    ApiHook {
+        ident: "process",
+        luau_type: "(self: ScriptSelf, dt: number) -> ()",
+        doc: "Once per drawn frame while the game runs; `dt` is that frame's length in seconds.",
     },
     ApiHook {
         ident: "on_signal",
-        luau_type: "(self: ScriptSelf, signal: string) -> ()",
-        doc: "For each signal heard this tick, by name.",
+        luau_type: "(self: ScriptSelf, signal: string, from: Entity?) -> ()",
+        doc: "For each signal heard this frame, by name, with the object that sent it (nil if none).",
+    },
+    ApiHook {
+        ident: "exit",
+        luau_type: "(self: ScriptSelf) -> ()",
+        doc: "Once, when the object leaves: removed, given another script, or the game stops.",
     },
 ];
 
@@ -173,6 +193,12 @@ pub const API: &[ApiEntry] = &[
         ident: "emit",
         luau_type: "(signal: string) -> ()",
         doc: "Emits a signal from this object; an empty name is an error.",
+    },
+    ApiEntry {
+        table: "ph2d",
+        ident: "connect",
+        luau_type: "(entity: Entity, signal: string, callback: (ScriptSelf, Entity?) -> ()) -> ()",
+        doc: "Calls `callback(self, from)` of this object each time that object sends the signal; ends when either leaves.",
     },
     ApiEntry {
         table: "ph2d",

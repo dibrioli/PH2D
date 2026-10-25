@@ -28,17 +28,32 @@ pub struct Relogio {
     pub ticks: u32,
     /// Quanto dura um passo fixo.
     pub dt: f64,
+    /// Quanto durou o quadro desenhado — o `dt` do `process` dos scripts.
+    pub frame_dt: f64,
 }
 
 impl Relogio {
-    /// **O relógio deste quadro.**
+    /// **O relógio deste quadro.** Sem [`Self::com_quadro`], o quadro dura o tempo de jogo que
+    /// avançou (`ticks × dt`).
     ///
     /// ⚠️ **Construir-se é assunto de quem é dono do tipo** — e o corte foi imposto pelo tecto de
     /// 200 LOC da `fase_signal_outbox` (ela chegou a `202` ao ganhar o terceiro motor). *A cura de
     /// um tecto é o CORTE, nunca uma entrada nova no `FN_OVERAGE_OK`.*
     #[must_use]
-    pub const fn do_quadro(playing: bool, ticks: u32, dt: f64) -> Self {
-        Self { playing, ticks, dt }
+    pub fn do_quadro(playing: bool, ticks: u32, dt: f64) -> Self {
+        Self {
+            playing,
+            ticks,
+            dt,
+            frame_dt: f64::from(ticks) * dt,
+        }
+    }
+
+    /// O tempo de parede do quadro desenhado (o que o acumulador do passo fixo recebeu).
+    #[must_use]
+    pub const fn com_quadro(mut self, frame_dt: f64) -> Self {
+        self.frame_dt = frame_dt;
+        self
     }
 }
 
@@ -134,11 +149,15 @@ fn scripts(
     relogio: &Relogio,
     portas: &mut crate::script_bridge::ScriptDoors<'_, '_>,
 ) -> Vec<ph2d_ecs::Death> {
-    let ouvidos: Vec<String> = signals.read(reader).map(|s| s.name.to_string()).collect();
+    // Cada sinal leva quem o emitiu (`on_signal(self, nome, de)` e o `ph2d.connect`).
+    let ouvidos: Vec<(String, Option<u64>)> = signals
+        .read(reader)
+        .map(|s| (s.name.to_string(), s.origin.quem().map(|b| b.0)))
+        .collect();
     let Some(host) = script.as_mut() else {
         return Vec::new();
     };
-    let nomes: Vec<&str> = ouvidos.iter().map(String::as_str).collect();
+    let nomes: Vec<(&str, Option<u64>)> = ouvidos.iter().map(|(n, de)| (n.as_str(), *de)).collect();
     let f = crate::script_bridge::frame(
         host,
         sim,
@@ -146,6 +165,7 @@ fn scripts(
         relogio.playing,
         relogio.ticks,
         relogio.dt,
+        relogio.frame_dt,
         &nomes,
         portas,
     );

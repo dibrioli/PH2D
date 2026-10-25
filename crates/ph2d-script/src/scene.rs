@@ -1,5 +1,5 @@
-//! ⭐⭐⭐ **OS SCRIPTS DA CENA** — um módulo por ficheiro, uma tabela `self` por objecto, e os três
-//! ganchos a correr no passo fixo (TOP-20 #16, W2). O plano é o
+//! ⭐⭐⭐ **OS SCRIPTS DA CENA** — um módulo por ficheiro, uma tabela `self` por objecto, e os
+//! ganchos (TOP-20 #16, W2; o ciclo de vida e os passes em `scene_life.rs`). O plano é o
 //! `docs/Components/13_plano_script_properties.md` §3.
 //!
 //! # O que este módulo decide, e o que ele NÃO decide
@@ -31,22 +31,19 @@
 //! - **O texto vem da BIBLIOTECA do projeto** (ADR-0188 §2), por [`ScriptId`]: recarrega quando o
 //!   `blake3` do texto (ou o nome) muda — sem disco. Um `Unimported` nunca corre.
 
-use std::collections::btree_map::Entry;
 use std::collections::{BTreeMap, BTreeSet};
 
 use mlua::{Lua, Table};
-use ph2d_ecs::{Entity, SimWorld, StableId, Transform, World};
+use ph2d_ecs::{Entity, StableId, Transform, World};
 
 use crate::component::{LuauScript, ScriptSource};
-use crate::console::speaking;
 use crate::diagnostic::ScriptDiagnostic;
 use crate::io::{EntityWrite, WriteQueue, WriteValue, pose_field};
-use crate::lane::{Lane, SceneDoors, with_lane};
 use crate::module::ScriptModule;
 use crate::props::{PropDecl, ScriptValue};
 use ph2d_script_doc::{ScriptId, ScriptLibrary};
+use wait::Parked;
 pub(crate) use wait::WAIT_TOKEN;
-use wait::{Parked, micros, park, resume_due, run_hook};
 
 /// **O que se sabe de um script** — o que o painel mostra.
 #[derive(Clone, Debug, PartialEq)]
@@ -113,6 +110,19 @@ struct Instance {
     applied: BTreeMap<String, ScriptValue>,
     /// Porque parou de correr, se parou.
     failed: Option<ScriptDiagnostic>,
+    /// Já correu o `exit` (ou pediu para morrer): não corre mais nada.
+    gone: bool,
+    /// As ligações `ph2d.connect` que ELE fez.
+    connections: Vec<Connection>,
+    /// A identidade com que nasceu — a ordem dos `exit` de quem já saiu do mundo.
+    sid: u64,
+}
+
+impl Instance {
+    /// Ainda corre ganchos: não parou nem saiu.
+    fn runs(&self) -> bool {
+        self.failed.is_none() && !self.gone
+    }
 }
 
 /// **O que um tique fez** — os factos que a ponte declara.
@@ -210,12 +220,16 @@ pub struct SceneScripts {
     parked: Vec<Parked>,
     /// Quem pediu para morrer neste quadro: os ganchos dele já não correm.
     dying: BTreeSet<u64>,
+    /// Quem saiu entre quadros e ainda não correu o `exit` (`scene_life.rs`).
+    leaving: Vec<Leaving>,
 }
 
 /// Um objecto com script, no instante do tique.
 struct Actor {
     entity: Entity,
     cfg: LuauScript,
+    /// A identidade (`StableId`, `u64::MAX` sem ela) — a ordem.
+    sid: u64,
 }
 
 /// Os objectos com script, **pela ordem da identidade** — menos quem pediu para morrer.
@@ -233,6 +247,7 @@ fn actors(world: &mut World, dying: &BTreeSet<u64>) -> Vec<Actor> {
                 Actor {
                     entity,
                     cfg: cfg.clone(),
+                    sid: sid.map_or(u64::MAX, |s| s.0),
                 },
             )
         })
@@ -275,6 +290,7 @@ impl SceneScripts {
         self.instances.clear();
         // As corrotinas são da VM velha.
         self.parked.clear();
+        self.leaving.clear();
     }
 
     /// ⛔ **Outra biblioteca = outro projecto**: os módulos, os vivos e as recargas por drenar são
@@ -295,12 +311,14 @@ impl SceneScripts {
         swapped
     }
 
-    /// ⭐ **REBOBINAR É RENASCER** — o `init` volta a correr no próximo tique.
+    /// ⭐ **REBOBINAR É RENASCER** — o `init` volta a correr no próximo tique. Sem `exit`: o Stop
+    /// que o corre é o [`Self::stop`].
     pub fn rewind(&mut self) -> usize {
         let n = self.instances.len();
         self.instances.clear();
         self.parked.clear();
         self.dying.clear();
+        self.leaving.clear();
         n
     }
 
@@ -349,195 +367,45 @@ impl SceneScripts {
         for id in actors.iter().filter_map(|a| library_id(&a.cfg)) {
             *wanted.entry(id).or_default() += 1;
         }
+        // Quem sumiu ou mudou de script sai; o `exit` dele corre no próximo tique (apanhado antes
+        // de o módulo poder sair com o último utilizador).
+        let now: BTreeMap<u64, Option<ScriptId>> = actors
+            .iter()
+            .map(|a| (a.entity.to_bits(), library_id(&a.cfg)))
+            .collect();
+        let out: Vec<u64> = self
+            .instances
+            .iter()
+            .filter(|(bits, inst)| !now.get(bits).is_some_and(|id| *id == Some(inst.script)))
+            .map(|(bits, _)| *bits)
+            .collect();
+        for bits in out {
+            let inst = self.instances.remove(&bits).expect("listado acima");
+            if inst.runs() {
+                let exit = life::exit_of(&self.slots, inst.script);
+                let entity = Entity::from_bits(bits);
+                self.leaving.push(Leaving { entity, inst, exit });
+            }
+        }
+        self.leaving
+            .sort_by_key(|l| (l.inst.sid, l.entity.to_bits()));
+        // Uma ligação cujo emissor já não existe morre com ele.
+        for inst in self.instances.values_mut() {
+            inst.connections.retain(|c| {
+                Entity::try_from_bits(c.emitter).is_some_and(|e| world.get_entity(e).is_ok())
+            });
+        }
         // Quem ninguém aponta sai — o vivo de um script esquecido não fica na VM.
         self.slots.retain(|id, _| wanted.contains_key(id));
         for (id, users) in wanted {
             self.refresh(lua, deadline, lib, id, users);
         }
-        let now: BTreeMap<u64, Option<ScriptId>> = actors
-            .iter()
-            .map(|a| (a.entity.to_bits(), library_id(&a.cfg)))
-            .collect();
-        self.instances
-            .retain(|bits, inst| now.get(bits).is_some_and(|id| *id == Some(inst.script)));
         let instances = &self.instances;
         self.parked.retain(|p| {
             instances
                 .get(&p.entity.to_bits())
-                .is_some_and(|i| i.script == p.script && i.failed.is_none())
+                .is_some_and(|i| i.script == p.script && i.runs())
         });
-    }
-
-    /// ⭐ **Os sinais deste quadro chegam a quem os ouve** (`on_signal(self, nome)`), uma chamada
-    /// por par. Só em quem já nasceu — um objecto que ainda não correu um tique não tem `self`.
-    ///
-    /// ⚠️ **A mesma pista e a mesma fila do [`Self::tick`]**: lê-se o mundo do início, e as escritas
-    /// pousam depois do último gancho. Uma espera começada aqui conta a partir do tique seguinte.
-    pub(crate) fn hear(
-        &mut self,
-        lua: &Lua,
-        deadline: &Deadline,
-        sim: &mut SimWorld,
-        signals: &[&str],
-        doors: &mut dyn SceneDoors,
-    ) -> SceneReport {
-        let mut report = SceneReport::default();
-        if signals.is_empty() || self.instances.is_empty() {
-            return report;
-        }
-        let actors = actors(sim.world_mut(), &self.dying);
-        let mut writes: Vec<EntityWrite> = Vec::new();
-        let Self {
-            slots,
-            instances,
-            parked,
-            dying,
-            ..
-        } = self;
-        let lane = Lane::new(sim, doors, dying);
-        let ran = with_lane(lua, lane, |cell| {
-            for a in &actors {
-                let Some(hook) = module_in(slots, &a.cfg).and_then(|m| m.hook("on_signal")) else {
-                    continue;
-                };
-                let Some(inst) = instances
-                    .get_mut(&a.entity.to_bits())
-                    .filter(|i| Some(i.script) == library_id(&a.cfg))
-                else {
-                    continue;
-                };
-                cell.borrow_mut().speaker = Some(a.entity);
-                for name in signals {
-                    if inst.failed.is_some() || cell.borrow().is_dying(a.entity) {
-                        break;
-                    }
-                    report.calls += 1;
-                    let ran = speaking(lua, inst.script, Some(a.entity), || {
-                        deadline.within(|| run_hook(lua, &hook, (inst.this.clone(), *name)))
-                    });
-                    let ran = park(ran, a.entity, inst.script, parked);
-                    settle_call(lua, a.entity, ran, inst, &mut writes, &mut report);
-                }
-            }
-        });
-        absorb_lane(lua, ran, &mut report);
-        apply_writes(sim.world_mut(), &writes, &mut report);
-        crate::lane_property::apply(sim, doors, &writes, &mut report);
-        crate::motion_api::apply(sim.world_mut(), &report.motion);
-        report.wrote.sort_by_key(|e| e.to_bits());
-        report.wrote.dedup();
-        report
-    }
-
-    /// ⭐⭐⭐ **UM PASSO FIXO** — nasce quem ainda não nasceu (`init`), actualiza os números que o
-    /// artista mexeu, corre `update(self, dt)`, retoma as esperas que chegaram e aplica as escritas.
-    pub(crate) fn tick(
-        &mut self,
-        lua: &Lua,
-        deadline: &Deadline,
-        sim: &mut SimWorld,
-        dt: f64,
-        doors: &mut dyn SceneDoors,
-    ) -> SceneReport {
-        let mut report = SceneReport::default();
-        let actors = actors(sim.world_mut(), &self.dying);
-        let mut writes: Vec<EntityWrite> = Vec::new();
-        let Self {
-            slots,
-            instances,
-            parked,
-            dying,
-            ..
-        } = self;
-        let lane = Lane::new(sim, doors, dying);
-        let ran = with_lane(lua, lane, |cell| {
-            for a in &actors {
-                let Some(module) = module_in(slots, &a.cfg) else {
-                    continue; // sem script, partido, por importar ou por carregar: o painel já o diz
-                };
-                let decls = module.decls.clone();
-                let init = module.hook("init");
-                let update = module.hook("update");
-                let bits = a.entity.to_bits();
-                let chunk = chunk_in(slots, &a.cfg);
-                cell.borrow_mut().speaker = Some(a.entity);
-                if cell.borrow().is_dying(a.entity) {
-                    continue;
-                }
-                // Trocou de script a meio do quadro (`ph2d.attach_script`): renasce já, com o `init`
-                // do novo — o `self` do anterior não é dele.
-                if instances
-                    .get(&bits)
-                    .is_some_and(|i| Some(i.script) != library_id(&a.cfg))
-                {
-                    instances.remove(&bits);
-                    parked.retain(|p| p.entity != a.entity);
-                }
-                if let Entry::Vacant(slot) = instances.entry(bits) {
-                    let inst = match born(lua, a, bits, chunk.clone()) {
-                        Ok(inst) => slot.insert(inst),
-                        Err(e) => {
-                            let d = ScriptDiagnostic::from_error(&e, &chunk);
-                            if let Some(c) = crate::console::of(lua) {
-                                c.diagnostic(
-                                    library_id(&a.cfg).unwrap_or_default(),
-                                    Some(a.entity),
-                                    &d,
-                                    false,
-                                );
-                            }
-                            report.failed.push((a.entity, d));
-                            continue;
-                        }
-                    };
-                    apply_props(lua, inst, &decls, &a.cfg, &mut |n| {
-                        cell.borrow_mut().object_id(n)
-                    });
-                    if let Some(init) = init {
-                        report.calls += 1;
-                        let ran = speaking(lua, inst.script, Some(a.entity), || {
-                            deadline.within(|| run_hook(lua, &init, inst.this.clone()))
-                        });
-                        let ran = park(ran, a.entity, inst.script, parked);
-                        if !settle_call(lua, a.entity, ran, inst, &mut writes, &mut report) {
-                            continue;
-                        }
-                    }
-                }
-                let inst = instances.get_mut(&bits).expect("nasceu acima");
-                if inst.failed.is_some() || cell.borrow().is_dying(a.entity) {
-                    continue;
-                }
-                apply_props(lua, inst, &decls, &a.cfg, &mut |n| {
-                    cell.borrow_mut().object_id(n)
-                });
-                if let Some(update) = update {
-                    report.calls += 1;
-                    let ran = speaking(lua, inst.script, Some(a.entity), || {
-                        deadline.within(|| run_hook(lua, &update, (inst.this.clone(), dt)))
-                    });
-                    let ran = park(ran, a.entity, inst.script, parked);
-                    settle_call(lua, a.entity, ran, inst, &mut writes, &mut report);
-                }
-            }
-            resume_due(
-                lua,
-                deadline,
-                cell,
-                instances,
-                parked,
-                micros(dt),
-                &mut writes,
-                &mut report,
-            );
-        });
-        absorb_lane(lua, ran, &mut report);
-        apply_writes(sim.world_mut(), &writes, &mut report);
-        crate::lane_property::apply(sim, doors, &writes, &mut report);
-        crate::motion_api::apply(sim.world_mut(), &report.motion);
-        report.wrote.sort_by_key(|e| e.to_bits());
-        report.wrote.dedup();
-        report
     }
 }
 
@@ -678,11 +546,15 @@ fn apply_writes(world: &mut World, writes: &[EntityWrite], report: &mut SceneRep
 mod reload;
 pub use reload::{ReloadOutcome, ScriptReload};
 
+#[path = "scene_life.rs"]
+mod life;
+use life::Leaving;
+pub(crate) use life::{Connection, connection};
+
 #[path = "scene_self.rs"]
 mod this;
 #[path = "scene_wait.rs"]
 mod wait;
-use this::{apply_props, born};
 
 #[cfg(test)]
 #[path = "scene_tests.rs"]

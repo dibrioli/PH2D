@@ -687,7 +687,7 @@ fn os_esqueletos_preenchidos_passam_limpos_normal_e_estrito() {
         assert!(texto.contains("ph2d.property(\"altura\", 1)"), "{texto}");
         assert!(
             texto
-                .contains("function on_signal(self: ScriptSelf, signal: string)\n  print(self.id)"),
+                .contains("function on_signal(self: ScriptSelf, signal: string, from: Entity?)\n  print(self.id)"),
             "{texto}"
         );
         let fim = Instant::now() + Duration::from_secs(30);

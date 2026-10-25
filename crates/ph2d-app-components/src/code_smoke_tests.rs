@@ -153,6 +153,7 @@ fn a_cena_6_e_um_jogo_que_responde_ao_teclado_e_ao_rato() {
             true,
             1,
             1.0 / 60.0,
+            1.0 / 60.0,
             &[],
             &mut portas,
         );

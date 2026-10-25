@@ -101,6 +101,7 @@ fn tres_bonecos_tres_amplitudes_e_o_rapido_acende_a_lampada() {
             true,
             1,
             1.0 / 60.0,
+            1.0 / 60.0,
             &[],
             &mut ph2d_script::NoDoors,
         );
@@ -203,6 +204,7 @@ fn mudar_o_default_no_ficheiro_muda_quem_nao_tem_aquele_numero_proprio() {
             true,
             1,
             1.0 / 60.0,
+            1.0 / 60.0,
             &[],
             &mut ph2d_script::NoDoors,
         );
@@ -221,6 +223,7 @@ fn mudar_o_default_no_ficheiro_muda_quem_nao_tem_aquele_numero_proprio() {
             &mut drive,
             true,
             1,
+            1.0 / 60.0,
             1.0 / 60.0,
             &[],
             &mut ph2d_script::NoDoors,

@@ -196,7 +196,8 @@ fn esperar_fora_de_um_gancho_diz_porque() {
         panic!("o topo que espera tem de ser recusado");
     };
     assert!(
-        d.message.contains("only inside init, update or on_signal"),
+        d.message
+            .contains("only inside a hook while the scene runs"),
         "{}",
         d.message
     );
@@ -675,3 +676,7 @@ end
 /// As leis que as mutações do fecho acharam sem portão (20/10).
 #[path = "scene_api_tests_fecho.rs"]
 mod fecho;
+
+/// O ciclo de vida (GameEngineFuncional N0).
+#[path = "scene_life_tests.rs"]
+mod life;

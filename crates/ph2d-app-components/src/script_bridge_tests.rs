@@ -56,6 +56,7 @@ impl Cena {
             playing,
             1,
             1.0 / 60.0,
+            1.0 / 60.0,
             &[],
             &mut ph2d_script::NoDoors,
         );
@@ -206,11 +207,48 @@ fn dois_tiques_num_quadro_sao_duas_chamadas() {
         true,
         2,
         1.0 / 60.0,
+        1.0 / 60.0,
         &[],
         &mut ph2d_script::NoDoors,
     );
     assert_eq!(f.calls, 3, "init + dois update");
     assert_eq!(c.x(), 12.0);
+}
+
+/// ⭐ **`process` uma vez por QUADRO, com o dt do quadro** — três passos fixos num quadro são três
+/// `physics` e UM `process`; parado, nenhum (GameEngineFuncional N0).
+#[test]
+fn tres_tiques_num_quadro_sao_um_process() {
+    let mut c = cena(
+        r#"
+function physics(self) self.p = (self.p or 0) + 1 end
+function process(self, dt)
+  self.q = (self.q or 0) + 1
+  ph2d.set(self.id, "x", self.q * 100 + self.p)
+  ph2d.set(self.id, "y", dt)
+end
+"#,
+    );
+    for playing in [true, false] {
+        frame(
+            &mut c.host,
+            &mut c.sim,
+            &mut c.drive,
+            playing,
+            3,
+            1.0 / 60.0,
+            0.04,
+            &[],
+            &mut ph2d_script::NoDoors,
+        );
+    }
+    assert_eq!(
+        c.x(),
+        103.0,
+        "um process depois de três physics; parado, nenhum"
+    );
+    let y = c.sim.world().get::<Transform>(c.e).unwrap().translation.y;
+    assert_eq!(y, 0.04, "o dt do quadro");
 }
 
 /// ⭐⭐ **`ph2d.spawn("Mestre")` pela porta da FÁBRICA** (CodeEditor item 6): a mesma instanciação,
@@ -261,6 +299,7 @@ end
         true,
         1,
         1.0 / 60.0,
+        1.0 / 60.0,
         &[],
         &mut portas,
     );
@@ -287,6 +326,7 @@ end
         &mut drive,
         true,
         1,
+        1.0 / 60.0,
         1.0 / 60.0,
         &[],
         &mut portas,

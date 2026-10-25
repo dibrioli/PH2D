@@ -95,7 +95,11 @@ pub(crate) fn hook_snippet(h: &ApiHook, keyword: bool) -> String {
     let args: Vec<String> = params(h.luau_type)
         .iter()
         .enumerate()
-        .map(|(k, (name, ty, _))| format!("${{{}:{name}}}: {ty}", k + 1))
+        .map(|(k, (name, ty, opt))| {
+            // Um argumento que pode chegar `nil` (o `from` do `on_signal`) leva o `?`.
+            let q = if *opt { "?" } else { "" };
+            format!("${{{}:{name}}}: {ty}{q}", k + 1)
+        })
         .collect();
     format!(
         "{}{}({})\n\t$0\nend",

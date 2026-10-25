@@ -49,6 +49,9 @@ pub(super) fn born(lua: &Lua, a: &Actor, bits: u64, chunk: String) -> mlua::Resu
         this,
         applied: BTreeMap::new(),
         failed: None,
+        gone: false,
+        connections: Vec::new(),
+        sid: a.sid,
     })
 }
 

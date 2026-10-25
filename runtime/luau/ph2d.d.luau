@@ -50,6 +50,8 @@ declare ph2d: {
     input: (key: string) -> number?,
     --- Emits a signal from this object; an empty name is an error.
     emit: (signal: string) -> (),
+    --- Calls `callback(self, from)` of this object each time that object sends the signal; ends when either leaves.
+    connect: (entity: Entity, signal: string, callback: (ScriptSelf, Entity?) -> ()) -> (),
     --- The first object with this name, in the order of the object list; nil if none.
     find_by_name: (name: string) -> Entity?,
     --- The object with this name (what dragging it from the Hierarchy writes); an error if none.
@@ -107,9 +109,17 @@ declare motion: {
 }
 
 -- Engine hooks: global functions of a script that the engine calls.
---- Once, before the first update, with the properties already in `self`.
+--- Once, when the object starts, with the properties already in `self`.
 -- @hook init: (self: ScriptSelf) -> ()
---- Every fixed tick; `dt` in seconds.
+--- Once, in the same tick as `init`, after every object that started in it ran its `init`.
+-- @hook ready: (self: ScriptSelf) -> ()
+--- Every fixed tick, before `update`; `dt` in seconds.
+-- @hook physics: (self: ScriptSelf, dt: number) -> ()
+--- Every fixed tick, after `physics`; `dt` in seconds.
 -- @hook update: (self: ScriptSelf, dt: number) -> ()
---- For each signal heard this tick, by name.
--- @hook on_signal: (self: ScriptSelf, signal: string) -> ()
+--- Once per drawn frame while the game runs; `dt` is that frame's length in seconds.
+-- @hook process: (self: ScriptSelf, dt: number) -> ()
+--- For each signal heard this frame, by name, with the object that sent it (nil if none).
+-- @hook on_signal: (self: ScriptSelf, signal: string, from: Entity?) -> ()
+--- Once, when the object leaves: removed, given another script, or the game stops.
+-- @hook exit: (self: ScriptSelf) -> ()

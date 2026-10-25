@@ -11,5 +11,5 @@ pub mod zoom;
 
 pub use view::{
     CHECKER_CELLS, SpriteImage, cell_at, draw_border, draw_cell_cursor, draw_checker,
-    draw_pixel_grid, image_to_world, px_per_cell,
+    draw_pixel_grid, draw_symmetry_axes, image_to_world, px_per_cell,
 };

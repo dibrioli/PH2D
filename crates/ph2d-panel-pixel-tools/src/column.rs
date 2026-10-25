@@ -1,5 +1,5 @@
 //! ⭐ **A coluna da esquerda do Pixel Sprite ▸ Draw** (dono 25/10: *«o padrão a seguir para a UI é a
-//! mesma do módulo painter: tools na barra lateral esquerda»*): as quatro ferramentas e, em baixo, as
+//! mesma do módulo painter: tools na barra lateral esquerda»*): as ferramentas em três grupos e, em baixo, as
 //! duas cores e o trocar — a MESMA porta das barras do vetor e do pintor ([`BarButton`]). Os ids são
 //! os deste painel e o clique segue pelo despacho dele ([`crate::seam`]); as amostras abrem o seletor
 //! partilhado num Down (`register_picker_swatch`).
@@ -15,8 +15,18 @@ use ph2d_i18n::{tr, tr_with};
 pub const fn icon(t: PixelTool) -> IconId {
     match t {
         PixelTool::Pencil => IconId::VectorPencil,
+        PixelTool::Spray => IconId::PixelSpray,
         PixelTool::Eraser => IconId::Erase,
         PixelTool::Eyedropper => IconId::Eyedropper,
+        PixelTool::Bucket => IconId::VectorBucket,
+        PixelTool::Line => IconId::Line,
+        PixelTool::Curve => IconId::PixelCurve,
+        PixelTool::Rectangle => IconId::PixelRect,
+        PixelTool::FilledRectangle => IconId::PixelRectFilled,
+        PixelTool::Ellipse => IconId::PixelEllipse,
+        PixelTool::FilledEllipse => IconId::PixelEllipseFilled,
+        PixelTool::Contour => IconId::PixelContour,
+        PixelTool::Polygon => IconId::Polygon,
         PixelTool::Hand => IconId::Pan,
     }
 }
@@ -51,16 +61,24 @@ pub fn column(info: &PixelPanelInfo) -> Vec<Vec<BarButton>> {
     if !info.editing {
         return Vec::new();
     }
-    let ferramentas = ids::TOOLS
-        .iter()
-        .map(|&(t, id)| BarButton {
-            id,
-            face: BarFace::Icon(icon(t)),
-            label: nome(t),
-            on: t == info.tool,
-            family: BarFamily::Draw,
-        })
-        .collect();
+    // Três grupos, como a barra do Aseprite: o que pinta à mão, as formas, a vista.
+    let grupo = |de: PixelTool, ate: PixelTool| {
+        ids::TOOLS
+            .iter()
+            .skip_while(|(t, _)| *t != de)
+            .take_while(|(t, _)| *t != ate)
+            .map(|&(t, id)| BarButton {
+                id,
+                face: BarFace::Icon(icon(t)),
+                label: nome(t),
+                on: t == info.tool,
+                family: BarFamily::Draw,
+            })
+            .collect::<Vec<_>>()
+    };
+    let mao = grupo(PixelTool::Pencil, PixelTool::Line);
+    let formas = grupo(PixelTool::Line, PixelTool::Hand);
+    let vista = grupo(PixelTool::Hand, PixelTool::Pencil);
     let cores = vec![
         amostra(ids::PIXEL_FG, info.fg, "panel.pixel.fg"),
         amostra(ids::PIXEL_BG, info.bg, "panel.pixel.bg"),
@@ -72,7 +90,7 @@ pub fn column(info: &PixelPanelInfo) -> Vec<Vec<BarButton>> {
             family: BarFamily::Neutral,
         },
     ];
-    vec![ferramentas, cores]
+    vec![mao, formas, vista, cores]
 }
 
 /// ⑤ A dica do rodapé: a ferramenta na mão, o que o arrasto faz.
@@ -80,8 +98,16 @@ pub fn column(info: &PixelPanelInfo) -> Vec<Vec<BarButton>> {
 pub fn hint(info: &PixelPanelInfo) -> String {
     let key = match info.tool {
         PixelTool::Pencil => "pixel.hint.pencil",
+        PixelTool::Spray => "pixel.hint.spray",
         PixelTool::Eraser => "pixel.hint.eraser",
         PixelTool::Eyedropper => "pixel.hint.eyedropper",
+        PixelTool::Bucket => "pixel.hint.bucket",
+        PixelTool::Line => "pixel.hint.line",
+        PixelTool::Curve => "pixel.hint.curve",
+        PixelTool::Rectangle | PixelTool::FilledRectangle => "pixel.hint.rectangle",
+        PixelTool::Ellipse | PixelTool::FilledEllipse => "pixel.hint.ellipse",
+        PixelTool::Contour => "pixel.hint.contour",
+        PixelTool::Polygon => "pixel.hint.polygon",
         PixelTool::Hand => "pixel.hint.hand",
     };
     tr_with(key, &[("tool", &nome(info.tool))])

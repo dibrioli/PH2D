@@ -2,7 +2,7 @@
 //! `ph2d_app_pixel::compose`, que decide. `true` = consumido.
 
 use super::*;
-use ph2d_app_pixel::compose::{Pointer, View};
+use ph2d_app_pixel::compose::{Mods, Pointer, View};
 use winit::keyboard::PhysicalKey;
 
 impl crate::App {
@@ -22,11 +22,11 @@ impl crate::App {
         on_canvas: bool,
         menu_open_before: bool,
     ) -> bool {
-        let (p, alt) = (self.last_pointer, self.modifiers.alt_key());
+        let (p, m) = (self.last_pointer, Mods::of(self.modifiers));
         let Some((app, mut v)) = self.pixel_view() else {
             return false;
         };
-        match app.pointer(&mut v, kind, button, p, alt, on_canvas && !menu_open_before) {
+        match app.pointer(&mut v, kind, button, p, m, on_canvas && !menu_open_before) {
             Pointer::NotMine => return false,
             Pointer::Done => {}
             Pointer::PanStart => self.pan_anchor = Some(p),
@@ -36,9 +36,9 @@ impl crate::App {
     }
 
     pub(crate) fn ramo_pixel_mover(&mut self) -> bool {
-        let p = self.last_pointer;
+        let (p, m) = (self.last_pointer, Mods::of(self.modifiers));
         self.pixel_view()
-            .is_some_and(|(app, v)| app.pointer_moved(&v, p))
+            .is_some_and(|(app, v)| app.pointer_moved(&v, p, m))
     }
 
     pub(crate) fn roda_pixel(&mut self, delta: winit::event::MouseScrollDelta) -> bool {

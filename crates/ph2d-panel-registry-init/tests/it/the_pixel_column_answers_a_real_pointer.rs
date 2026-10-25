@@ -55,6 +55,7 @@ fn every_tool_and_swatch_of_the_pixel_column_answers_a_real_pointer() {
         fg: [255, 255, 255, 255],
         bg: [0, 0, 0, 255],
         palette: vec![[1, 2, 3, 255]; 32],
+        options: Default::default(),
     };
     let mut hero = HeroScreen::new(NodeId(1));
     // O 1.º quadro arruma os encaixes; a coluna cai na área do 2.º (o mesmo que o teste do vetor).

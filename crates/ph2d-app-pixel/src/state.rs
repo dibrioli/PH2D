@@ -5,6 +5,7 @@ use std::collections::BTreeMap;
 use ph2d_pixel_core::{FrameId, History, LayerId, NewSprite, Op, OpError, Sprite, Stroke};
 use ph2d_pixel_render::SpriteImage;
 
+pub use ph2d_editor_core::pixel_panel::PixelOptions as Options;
 /// A ferramenta na mão (Aseprite: `B`, `E`, `I`, `H`). O dono é o vocabulário do chrome (o painel
 /// PIXEL mostra-a sem ver a família); aqui é o mesmo tipo.
 pub use ph2d_editor_core::pixel_panel::PixelTool as Tool;
@@ -20,6 +21,10 @@ pub struct Doc {
     pub(crate) stamp: u64,
     /// Ainda não foi aberto em Draw: a primeira entrada enquadra-o (o *Fit Screen*).
     pub(crate) fresh: bool,
+    /// Os eixos da simetria em meias células, se o artista os arrastou (`None` = no meio).
+    pub axis2: Option<(i32, i32)>,
+    /// O último ponto do último traço livre (o `Shift`+clique do Aseprite traça a reta dali).
+    pub(crate) last_point: Option<(i32, i32)>,
 }
 
 impl Doc {
@@ -34,21 +39,30 @@ impl Doc {
             view: SpriteImage::default(),
             stamp,
             fresh: true,
+            axis2: None,
+            last_point: None,
         }
     }
 }
 
-/// O traço em curso e o objecto onde corre.
+/// O gesto em curso e o objecto onde corre.
 pub(crate) struct Gesture {
     pub(crate) entity: u64,
     pub(crate) key: u32,
     pub(crate) stroke: Stroke,
+    pub(crate) kind: crate::gesture::Kind,
+    /// O botão está premido (a curva e o polígono continuam com ele solto).
+    pub(crate) held: bool,
+    /// A célula do último evento (o `Espaço` desloca a forma por ela).
+    pub(crate) cursor: (i32, i32),
 }
 
 /// **O estado da família Pixel Art.**
 pub struct PixelApp {
     pub(crate) docs: BTreeMap<u32, Doc>,
     pub tool: Tool,
+    /// As opções das ferramentas (pincel, balde, spray, simetria, ladrilho).
+    pub options: Options,
     /// Cor de frente e de fundo (RGBA de alfa reto). O Aseprite 1.3.18 abre com branco/preto
     /// (`docs/PixelArt/aseprite/01_editor.png`).
     pub fg: [u8; 4],
@@ -86,6 +100,7 @@ impl Default for PixelApp {
         Self {
             docs: BTreeMap::new(),
             tool: Tool::Pencil,
+            options: Options::default(),
             fg: [255, 255, 255, 255],
             bg: [0, 0, 0, 255],
             grid: false,

@@ -1,6 +1,7 @@
 //! **O modo Draw pelo caminho real**: o objecto nasce pelo Add, o ponteiro entra pelas mesmas
 //! funções que a shell chama, e o efeito lê-se no documento, no desfazer e no blob.
 
+use ph2d_app_pixel::compose::Mods;
 use ph2d_app_pixel::input::{self, Button, Canvas, KeyAnswer, Press};
 use ph2d_app_pixel::{PixelApp, Tool, mode, object_add, persist};
 use ph2d_ecs::{Name, SimWorld, Transform};
@@ -12,14 +13,20 @@ use ph2d_render::Camera2d;
 use ph2d_vector::Point;
 use winit::keyboard::KeyCode;
 
-const WINDOW: WindowSize = WindowSize {
+pub(crate) const WINDOW: WindowSize = WindowSize {
     width: 800,
     height: 600,
 };
-const PPM: f32 = 100.0;
+pub(crate) const PPM: f32 = 100.0;
+
+const ALT: Mods = Mods {
+    alt: true,
+    shift: false,
+    ctrl: false,
+};
 
 /// O vazio da casa (`spawn_empty_root`): nome e identidade estável.
-fn spawn_root(sim: &mut SimWorld, name: &str) -> u64 {
+pub(crate) fn spawn_root(sim: &mut SimWorld, name: &str) -> u64 {
     let bits = sim
         .world_mut()
         .spawn((Transform::IDENTITY, Name::new(name)))
@@ -30,7 +37,7 @@ fn spawn_root(sim: &mut SimWorld, name: &str) -> u64 {
 }
 
 /// Um Pixel Sprite nascido pelo Add, com a câmera já enquadrada pela entrada em Edit.
-fn born() -> (PixelApp, SimWorld, Camera2d, u64) {
+pub(crate) fn born() -> (PixelApp, SimWorld, Camera2d, u64) {
     let mut app = PixelApp::default();
     let mut sim = SimWorld::new();
     let bits = object_add::add(object_add::PIXEL_SPRITE, &mut sim, &mut app, spawn_root)
@@ -41,7 +48,7 @@ fn born() -> (PixelApp, SimWorld, Camera2d, u64) {
     (app, sim, camera, bits)
 }
 
-fn canvas<'a>(sim: &'a SimWorld, camera: &'a Camera2d, bits: u64) -> Canvas<'a> {
+pub(crate) fn canvas<'a>(sim: &'a SimWorld, camera: &'a Camera2d, bits: u64) -> Canvas<'a> {
     Canvas {
         world: sim.world(),
         camera,
@@ -52,7 +59,14 @@ fn canvas<'a>(sim: &'a SimWorld, camera: &'a Camera2d, bits: u64) -> Canvas<'a> 
 }
 
 /// O ponto de ecrã do CENTRO da célula `(x, y)`.
-fn at(app: &PixelApp, sim: &SimWorld, camera: &Camera2d, bits: u64, x: i32, y: i32) -> (f32, f32) {
+pub(crate) fn at(
+    app: &PixelApp,
+    sim: &SimWorld,
+    camera: &Camera2d,
+    bits: u64,
+    x: i32,
+    y: i32,
+) -> (f32, f32) {
     let key = input::key_of(sim.world(), bits).expect("marcador");
     let m = input::to_screen(
         sim.world(),
@@ -67,7 +81,7 @@ fn at(app: &PixelApp, sim: &SimWorld, camera: &Camera2d, bits: u64, x: i32, y: i
     (p.x as f32, p.y as f32)
 }
 
-fn value(app: &PixelApp, sim: &SimWorld, bits: u64, x: i32, y: i32) -> [u8; 4] {
+pub(crate) fn value(app: &PixelApp, sim: &SimWorld, bits: u64, x: i32, y: i32) -> [u8; 4] {
     let key = input::key_of(sim.world(), bits).expect("marcador");
     let d = app.doc(key).expect("doc");
     d.sprite
@@ -84,13 +98,18 @@ fn drag(
 ) {
     let p0 = at(app, sim, cam, bits, cells[0].0, cells[0].1);
     assert_eq!(
-        input::press(app, &canvas(sim, cam, bits), p0, b, false),
+        input::press(app, &canvas(sim, cam, bits), p0, b, Mods::default()),
         Press::Done,
         "o premir não foi do sprite"
     );
     for &(x, y) in &cells[1..] {
         let p = at(app, sim, cam, bits, x, y);
-        assert!(input::moved(app, &canvas(sim, cam, bits), p));
+        assert!(input::moved(
+            app,
+            &canvas(sim, cam, bits),
+            p,
+            Mods::default()
+        ));
     }
     assert!(input::release(app));
 }
@@ -240,7 +259,7 @@ fn b_e_i_pick_the_tool_and_the_eraser_and_eyedropper_do_their_job() {
             &canvas(&sim, &cam, bits),
             p,
             Button::Primary,
-            false
+            Mods::default()
         )
     );
     assert_eq!(
@@ -268,13 +287,7 @@ fn alt_held_turns_the_pencil_into_the_eyedropper_without_painting() {
     let p = at(&app, &sim, &cam, bits, 8, 8);
     assert_eq!(
         Press::Done,
-        input::press(
-            &mut app,
-            &canvas(&sim, &cam, bits),
-            p,
-            Button::Primary,
-            true
-        )
+        input::press(&mut app, &canvas(&sim, &cam, bits), p, Button::Primary, ALT)
     );
     assert!(!app.stroking(), "Alt não começa um traço");
     assert_eq!(app.fg, [0x99, 0xe5, 0x50, 0xff]);
@@ -288,7 +301,7 @@ fn outside_edit_the_pointer_and_the_keys_are_not_the_familys() {
     c.editing = None;
     assert_eq!(
         Press::NotMine,
-        input::press(&mut app, &c, p, Button::Primary, false)
+        input::press(&mut app, &c, p, Button::Primary, Mods::default())
     );
     assert_eq!(
         input::key(&mut app, sim.world(), None, KeyCode::KeyB, false, false),
@@ -526,7 +539,7 @@ fn smoke_1_stages_a_face_in_four_undo_steps_and_asks_for_edit() {
         Some((bits, ObjectMode::Draw))
     );
     assert!(
-        !ph2d_app_pixel::smoke::stage(&mut app, &mut sim, 2, spawn_root),
+        !ph2d_app_pixel::smoke::stage(&mut app, &mut sim, 3, spawn_root),
         "nível sem cena"
     );
 }
@@ -542,7 +555,7 @@ fn space_or_h_turn_the_drag_into_a_pan_that_lands_cells_on_whole_pixels() {
             &canvas(&sim, &cam, bits),
             p,
             Button::Primary,
-            false
+            Mods::default()
         ),
         Press::Pan
     );
@@ -588,7 +601,7 @@ fn space_or_h_turn_the_drag_into_a_pan_that_lands_cells_on_whole_pixels() {
             &canvas(&sim, &cam, bits),
             p,
             Button::Primary,
-            false
+            Mods::default()
         ),
         Press::Pan
     );

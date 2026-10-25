@@ -290,6 +290,7 @@ fn arma_o_pixel() {
         palette: (0..32u8)
             .map(|i| [i * 7, 255 - i * 5, i * 3, 255])
             .collect(),
+        options: Default::default(),
     });
 }
 

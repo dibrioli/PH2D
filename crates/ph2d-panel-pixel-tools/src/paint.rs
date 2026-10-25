@@ -4,11 +4,14 @@
 
 use crate::state::with_current;
 use crate::{PixelToolsPanel, PixelToolsPanelState, ids, seam};
+use ph2d_a11y::NodeId;
 use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
 use ph2d_editor_core::paint::{paint_text, paint_text_block, resolve};
 use ph2d_editor_core::panel::{PaintCtx, Panel};
-use ph2d_editor_core::pixel_panel::PixelPanelInfo;
+use ph2d_editor_core::pixel_panel::{PixelBrushShape, PixelPanelInfo, PixelTool};
+use ph2d_editor_core::property_row;
+use ph2d_editor_core::widget::Seccao;
 use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEAD_PAD, PANEL_HEADER_CLOSE_RESERVE, PANEL_TITLE_BASELINE, paint_panel_close_button,
     paint_panel_surface, paint_panel_title,
@@ -51,6 +54,15 @@ pub(crate) fn paint(_st: &mut PixelToolsPanelState, ctx: &mut PaintCtx) {
     );
     let n = with_current(|i| if i.editing { i.palette.len() } else { 0 });
     seam::register_palette(ctx.host.store_mut(), n);
+    // Os campos mostram o MODELO (o instantâneo); a edição em curso de um campo com foco fica.
+    let opcoes = with_current(|i| i.options);
+    let store = ctx.host.store_mut();
+    for (id, _) in ids::NUMBERS {
+        let v = seam::numero(&opcoes, id);
+        if store.number_value(id) != Some(v) {
+            store.set_number_value(id, v);
+        }
+    }
 
     let inner_x = rect.x + PANEL_HEAD_PAD;
     let scrollbar_reserve = SCROLLBAR_W + Spacing::Sm.px();
@@ -108,8 +120,164 @@ impl Corpo<'_> {
             return self.bloco(tr("panel.pixel.empty"), ColorToken::Text3, y);
         }
         let gap = ph2d_tokens::control_gap_px();
+        let y = self.opcoes(info, y) + gap;
         let y = self.cores(info, y) + gap;
         self.paleta(info, y)
+    }
+
+    /// ⭐ **As opções da ferramenta na mão** (a barra de contexto do Aseprite): o pincel, o canto do
+    /// retângulo, o spray, o balde, e para tudo o que pinta a simetria e o ladrilho.
+    fn opcoes(&mut self, info: &PixelPanelInfo, y: f32) -> f32 {
+        let (o, t) = (info.options, info.tool);
+        let nomes = [
+            tr("panel.pixel.shape"),
+            tr("panel.pixel.size"),
+            tr("panel.pixel.angle"),
+            tr("panel.pixel.corner"),
+            tr("panel.pixel.tolerance"),
+            tr("panel.pixel.connectivity"),
+            tr("panel.pixel.sample"),
+            tr("panel.pixel.spray_width"),
+            tr("panel.pixel.spray_speed"),
+        ];
+        let sec = Seccao::medida(self.text_system, 1, &nomes);
+        let mut y = y;
+        if t.uses_brush() {
+            y = self.linha(tr("panel.pixel.brush"), ColorToken::Text3, y);
+            let formas: Vec<(&str, bool, NodeId)> = ids::SHAPES
+                .iter()
+                .map(|&(s, id)| (tr(s.label_key()), s == o.shape, id))
+                .collect();
+            y = self.escolha(tr("panel.pixel.shape"), &formas, sec, y);
+            y = self.campo(tr("panel.pixel.size"), ids::SIZE, sec, y);
+            if o.shape != PixelBrushShape::Circle {
+                y = self.campo(tr("panel.pixel.angle"), ids::ANGLE, sec, y);
+            }
+            if matches!(
+                t,
+                PixelTool::Pencil | PixelTool::Eraser | PixelTool::Contour
+            ) {
+                y = self.caixas(
+                    &[(
+                        ids::PIXEL_PERFECT,
+                        tr("panel.pixel.pixel_perfect"),
+                        o.pixel_perfect,
+                    )],
+                    sec,
+                    y,
+                );
+            }
+        }
+        if matches!(t, PixelTool::Rectangle | PixelTool::FilledRectangle) {
+            y = self.campo(tr("panel.pixel.corner"), ids::CORNER, sec, y);
+        }
+        if t == PixelTool::Spray {
+            y = self.campo(tr("panel.pixel.spray_width"), ids::SPRAY_WIDTH, sec, y);
+            y = self.campo(tr("panel.pixel.spray_speed"), ids::SPRAY_SPEED, sec, y);
+        }
+        if t == PixelTool::Bucket {
+            y = self.linha(tr("panel.pixel.bucket"), ColorToken::Text3, y);
+            y = self.campo(tr("panel.pixel.tolerance"), ids::TOLERANCE, sec, y);
+            y = self.caixas(
+                &[(ids::CONTIGUOUS, tr("panel.pixel.contiguous"), o.contiguous)],
+                sec,
+                y,
+            );
+            let conn = [
+                (tr("panel.pixel.connect4"), !o.eight, ids::CONNECT_4),
+                (tr("panel.pixel.connect8"), o.eight, ids::CONNECT_8),
+            ];
+            y = self.escolha(tr("panel.pixel.connectivity"), &conn, sec, y);
+            let amostra = [
+                (
+                    tr("panel.pixel.sample.layer"),
+                    !o.sample_visible,
+                    ids::SAMPLE_LAYER,
+                ),
+                (
+                    tr("panel.pixel.sample.visible"),
+                    o.sample_visible,
+                    ids::SAMPLE_VISIBLE,
+                ),
+            ];
+            y = self.escolha(tr("panel.pixel.sample"), &amostra, sec, y);
+        }
+        if t.paints() {
+            y = self.linha(tr("panel.pixel.symmetry"), ColorToken::Text3, y);
+            y = self.caixas(
+                &[
+                    (ids::SYM_H, tr("panel.pixel.sym_h"), o.sym_h),
+                    (ids::SYM_V, tr("panel.pixel.sym_v"), o.sym_v),
+                    (ids::SYM_D1, tr("panel.pixel.sym_d1"), o.sym_d1),
+                    (ids::SYM_D2, tr("panel.pixel.sym_d2"), o.sym_d2),
+                ],
+                sec,
+                y,
+            );
+            y = self.linha(tr("panel.pixel.tiled"), ColorToken::Text3, y);
+            y = self.caixas(
+                &[
+                    (ids::TILE_X, tr("panel.pixel.tile_x"), o.tile_x),
+                    (ids::TILE_Y, tr("panel.pixel.tile_y"), o.tile_y),
+                ],
+                sec,
+                y,
+            );
+        }
+        y
+    }
+
+    fn campo(&mut self, nome: &str, id: NodeId, sec: Seccao, y: f32) -> f32 {
+        let (store, hit) = (self.store, &mut *self.hit_index);
+        property_row::paint_field_row(
+            self.scene,
+            self.text_system,
+            self.theme,
+            hit,
+            store,
+            self.x,
+            self.w,
+            y,
+            nome,
+            id,
+            1.0,
+            None,
+            sec,
+        )
+        .0
+    }
+
+    fn escolha(&mut self, nome: &str, seg: &[(&str, bool, NodeId)], sec: Seccao, y: f32) -> f32 {
+        let (store, hit) = (self.store, &mut *self.hit_index);
+        property_row::paint_choice_row(
+            self.scene,
+            self.text_system,
+            self.theme,
+            hit,
+            store,
+            self.x,
+            self.w,
+            y,
+            nome,
+            seg,
+            sec,
+        )
+    }
+
+    fn caixas(&mut self, cx: &[(NodeId, &str, bool)], sec: Seccao, y: f32) -> f32 {
+        let (store, hit) = (self.store, &mut *self.hit_index);
+        property_row::paint_check_rows(
+            self.scene,
+            self.text_system,
+            self.theme,
+            hit,
+            store,
+            self.x,
+            self.w,
+            y,
+            cx,
+            sec,
+        )
     }
 
     /// Frente e fundo (amostra + hex, uma linha cada) e o Trocar.

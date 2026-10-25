@@ -160,7 +160,7 @@ pub fn curve_path(x0: i32, y0: i32, cx: i32, cy: i32, x1: i32, y1: i32) -> Vec<C
     let ctrl = (fcx - fx0).hypot(fcy - fy0) + (fx1 - fcx).hypot(fy1 - fcy);
     let steps = (ctrl.ceil() as u64).max(2);
     let mut raw: Vec<Cell> = Vec::new();
-    let mut push = |c: Cell, raw: &mut Vec<Cell>| {
+    let push = |c: Cell, raw: &mut Vec<Cell>| {
         if raw.last() != Some(&c) {
             raw.push(c);
         }

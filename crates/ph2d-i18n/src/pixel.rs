@@ -9,6 +9,16 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "pixel.tool.eraser" => "Eraser",
         "pixel.tool.eyedropper" => "Eyedropper",
         "pixel.tool.hand" => "Hand",
+        "pixel.tool.spray" => "Spray",
+        "pixel.tool.bucket" => "Paint Bucket",
+        "pixel.tool.line" => "Line",
+        "pixel.tool.curve" => "Curve",
+        "pixel.tool.rectangle" => "Rectangle",
+        "pixel.tool.filled_rectangle" => "Filled Rectangle",
+        "pixel.tool.ellipse" => "Ellipse",
+        "pixel.tool.filled_ellipse" => "Filled Ellipse",
+        "pixel.tool.contour" => "Contour",
+        "pixel.tool.polygon" => "Polygon",
         "pixel.tool_switched" => "{tool} ({key})",
         "pixel.zoom" => "Zoom {n}00 %",
         "pixel.grid_on" => "Pixel grid on",
@@ -29,6 +39,53 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "{tool}: click picks the foreground · right button the background"
         }
         "pixel.hint.hand" => "{tool}: drag to move the view · hold Space with any tool",
+        "pixel.hint.spray" => "{tool}: hold to spray · Width and Speed in the Pixel panel",
+        "pixel.hint.bucket" => {
+            "{tool}: click fills the area · Tolerance, Contiguous and 4/8 in the Pixel panel"
+        }
+        "pixel.hint.line" => "{tool}: drag a line · Shift snaps to pixel-art angles",
+        "pixel.hint.curve" => {
+            "{tool}: drag the ends, then move to bend and click to finish · Esc cancels"
+        }
+        "pixel.hint.rectangle" => {
+            "{tool}: drag a box · Shift = square · Ctrl = from the center · Space moves it"
+        }
+        "pixel.hint.ellipse" => {
+            "{tool}: drag a box · Shift = circle · Ctrl = from the center · Space moves it"
+        }
+        "pixel.hint.contour" => "{tool}: draw around an area; releasing closes and fills it",
+        "pixel.hint.polygon" => {
+            "{tool}: click each corner · click the first corner or press Enter to fill · Esc cancels"
+        }
+        "pixel.hint.axis" => "Drag the symmetry axis · it snaps to whole and half pixels",
+        "panel.pixel.brush" => "Brush",
+        "panel.pixel.shape" => "Shape",
+        "panel.pixel.shape.circle" => "Circle",
+        "panel.pixel.shape.square" => "Square",
+        "panel.pixel.shape.line" => "Line",
+        "panel.pixel.size" => "Size",
+        "panel.pixel.angle" => "Angle",
+        "panel.pixel.pixel_perfect" => "Pixel-perfect",
+        "panel.pixel.corner" => "Corner radius",
+        "panel.pixel.spray_width" => "Spray width",
+        "panel.pixel.spray_speed" => "Spray speed",
+        "panel.pixel.bucket" => "Paint Bucket",
+        "panel.pixel.tolerance" => "Tolerance",
+        "panel.pixel.contiguous" => "Contiguous",
+        "panel.pixel.connectivity" => "Connectivity",
+        "panel.pixel.connect4" => "4",
+        "panel.pixel.connect8" => "8",
+        "panel.pixel.sample" => "Sample",
+        "panel.pixel.sample.layer" => "Active layer",
+        "panel.pixel.sample.visible" => "All visible",
+        "panel.pixel.symmetry" => "Symmetry",
+        "panel.pixel.sym_h" => "Horizontal",
+        "panel.pixel.sym_v" => "Vertical",
+        "panel.pixel.sym_d1" => "Diagonal \\",
+        "panel.pixel.sym_d2" => "Diagonal /",
+        "panel.pixel.tiled" => "Tiled Mode",
+        "panel.pixel.tile_x" => "Tile X",
+        "panel.pixel.tile_y" => "Tile Y",
         "panel.pixel.swap" => "Swap (X)",
         "panel.pixel.swap_tip" => "Swap the foreground and background colors (X)",
         "panel.pixel.palette" => "Palette",

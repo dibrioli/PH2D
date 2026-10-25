@@ -13,6 +13,7 @@
 pub mod compose;
 pub mod draw;
 mod frame;
+mod gesture;
 pub mod input;
 pub mod mode;
 pub mod object_add;
@@ -21,7 +22,7 @@ pub mod persist;
 pub mod smoke;
 mod state;
 
-pub use state::{Doc, PixelApp, Tool};
+pub use state::{Doc, Options, PixelApp, Tool};
 
 /// A família declarada à shell.
 pub const FAMILY: ph2d_app_host::AppFamily = ph2d_app_host::AppFamily {

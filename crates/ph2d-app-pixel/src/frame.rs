@@ -46,11 +46,31 @@ impl PixelApp {
             self.frame_on_entry(sim.world(), camera, window, ppm, bits);
         }
         self.was_editing = editing;
+        self.spray_tick();
         self.zoom = editing.and_then(|bits| {
             let doc = self.docs.get(&crate::input::key_of(sim.world(), bits)?)?;
             let m = to_screen(sim.world(), bits, doc, camera, window, ppm)?;
             Some(zoom::nearest(px_per_cell(m)))
         });
+    }
+
+    /// O spray segurado borrifa a cada quadro, mesmo com o ponteiro parado (Aseprite).
+    fn spray_tick(&mut self) {
+        let held = self
+            .gesture
+            .as_ref()
+            .is_some_and(|g| g.held && g.kind == crate::gesture::Kind::Spray);
+        if !held {
+            return;
+        }
+        let (w, n) = (self.options.spray_width, self.options.spray_speed);
+        let stamp = self.stamp();
+        if let Some(g) = self.gesture.as_mut()
+            && let Some(doc) = self.docs.get_mut(&g.key)
+        {
+            g.stroke.spray(&doc.sprite, g.cursor, w, n);
+            doc.stamp = stamp;
+        }
     }
 
     /// Todo objecto aponta para um documento SEU: uma cópia do objecto (duplicar) ganha uma cópia

@@ -22,7 +22,8 @@ impl PixelApp {
     /// Aplica um gesto do painel.
     pub fn aplica(&mut self, r: PixelRequest) {
         match r {
-            PixelRequest::Tool(t) => self.tool = t,
+            PixelRequest::Tool(t) => crate::input::set_tool(self, t),
+            PixelRequest::Options(o) => self.options = o,
             PixelRequest::Fg(c) => self.fg = c,
             PixelRequest::Bg(c) => self.bg = c,
             PixelRequest::Swap => std::mem::swap(&mut self.fg, &mut self.bg),
@@ -71,6 +72,7 @@ pub fn frame(app: &mut PixelApp, world: &ph2d_ecs::World, hero: &mut HeroScreen)
         fg: app.fg,
         bg: app.bg,
         palette: palette.unwrap_or_default(),
+        options: app.options,
     }
 }
 

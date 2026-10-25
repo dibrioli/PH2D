@@ -6,7 +6,9 @@
 
 use ph2d_editor_core::paint::resolve;
 use ph2d_host::WindowSize;
-use ph2d_pixel_render::{draw_border, draw_cell_cursor, draw_pixel_grid, px_per_cell};
+use ph2d_pixel_render::{
+    draw_border, draw_cell_cursor, draw_pixel_grid, draw_symmetry_axes, px_per_cell,
+};
 use ph2d_render::Camera2d;
 use ph2d_tokens::{ColorToken, Theme};
 use ph2d_vector::VectorScene;
@@ -99,6 +101,22 @@ pub fn draw(
         doc.view
             .refresh(&doc.sprite, doc.frame, pending.as_ref(), doc.stamp);
         let edit = editing == Some(bits);
+        let o = app.options;
+        if edit && (o.tile_x || o.tile_y) {
+            // O Tiled Mode mostra as vizinhas: o desenho que sai por um lado entra pelo outro.
+            let (fw, fh) = (f64::from(w), f64::from(h));
+            let xs: &[f64] = if o.tile_x { &[-1.0, 0.0, 1.0] } else { &[0.0] };
+            let ys: &[f64] = if o.tile_y { &[-1.0, 0.0, 1.0] } else { &[0.0] };
+            for &ty in ys {
+                for &tx in xs {
+                    if (tx, ty) != (0.0, 0.0) {
+                        let k = m * ph2d_vector::Affine::translate((tx * fw, ty * fh));
+                        doc.view.draw_checker_under(scene, w, h, k);
+                        doc.view.draw(scene, k);
+                    }
+                }
+            }
+        }
         if edit {
             doc.view.draw_checker_under(scene, w, h, m);
         }
@@ -122,6 +140,18 @@ pub fn draw(
             resolve(ColorToken::Selection, theme),
             LINE_PX,
         );
+        if app.tool.paints() && (o.sym_h || o.sym_v || o.sym_d1 || o.sym_d2) {
+            let s = crate::gesture::symmetry(&o, doc);
+            draw_symmetry_axes(
+                scene,
+                (w, h),
+                m,
+                (s.axis2_x, s.axis2_y),
+                (o.sym_h, o.sym_v, o.sym_d1, o.sym_d2),
+                resolve(ColorToken::Accent, theme),
+                LINE_PX,
+            );
+        }
         if let Some((hb, cell)) = app.hover
             && hb == bits
             && doc.sprite.bounds().contains(cell.0, cell.1)

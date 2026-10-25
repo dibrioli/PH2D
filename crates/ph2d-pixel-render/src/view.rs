@@ -228,3 +228,45 @@ pub fn draw_cell_cursor(
         .inner_mut()
         .stroke(&Pen::new(width_px), Affine::IDENTITY, color, None, &path);
 }
+
+/// Os eixos da simetria sobre um canvas `w × h`: `axis2` em MEIAS células (o do espelho H é
+/// vertical, o do V horizontal); as diagonais passam pelo centro e cortam-se na borda.
+#[allow(clippy::too_many_arguments)]
+pub fn draw_symmetry_axes(
+    scene: &mut VectorScene,
+    (w, h): (u32, u32),
+    to_screen: Affine,
+    axis2: (i32, i32),
+    (sym_h, sym_v, d1, d2): (bool, bool, bool, bool),
+    color: Color,
+    width_px: f64,
+) {
+    let (fw, fh) = (f64::from(w), f64::from(h));
+    let (cx, cy) = (f64::from(axis2.0) / 2.0, f64::from(axis2.1) / 2.0);
+    let mut path = BezPath::new();
+    let mut seg = |a: Point, b: Point| {
+        path.move_to(to_screen * a);
+        path.line_to(to_screen * b);
+    };
+    if sym_h {
+        seg(Point::new(cx, 0.0), Point::new(cx, fh));
+    }
+    if sym_v {
+        seg(Point::new(0.0, cy), Point::new(fw, cy));
+    }
+    if d1 {
+        let (lo, hi) = ((-cx).max(-cy), (fw - cx).min(fh - cy));
+        if lo < hi {
+            seg(Point::new(cx + lo, cy + lo), Point::new(cx + hi, cy + hi));
+        }
+    }
+    if d2 {
+        let (lo, hi) = ((-cx).max(cy - fh), (fw - cx).min(cy));
+        if lo < hi {
+            seg(Point::new(cx + lo, cy - lo), Point::new(cx + hi, cy - hi));
+        }
+    }
+    scene
+        .inner_mut()
+        .stroke(&Pen::new(width_px), Affine::IDENTITY, color, None, &path);
+}

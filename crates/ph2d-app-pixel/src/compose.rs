@@ -11,6 +11,7 @@ use winit::event::MouseScrollDelta;
 use winit::keyboard::{KeyCode, PhysicalKey};
 
 use crate::PixelApp;
+pub use crate::gesture::Mods;
 use crate::input::{self, Button, Canvas, KeyAnswer, Press};
 
 /// O viewport deste quadro, como a shell o tem: a câmera e os avisos emprestados.
@@ -76,7 +77,7 @@ impl PixelApp {
         kind: PointerKind,
         button: PointerButton,
         p: (f32, f32),
-        alt: bool,
+        mods: Mods,
         free: bool,
     ) -> Pointer {
         if kind == PointerKind::Up {
@@ -97,7 +98,7 @@ impl PixelApp {
         if kind != PointerKind::Down || !free {
             return Pointer::NotMine;
         }
-        match input::press(self, &v.canvas(), p, button, alt) {
+        match input::press(self, &v.canvas(), p, button, mods) {
             Press::Pan => Pointer::PanStart,
             Press::Done => Pointer::Done,
             Press::NotMine => Pointer::NotMine,
@@ -105,8 +106,8 @@ impl PixelApp {
     }
 
     /// Mover: o traço em curso continua (consumido); sem traço, só a célula sob o cursor.
-    pub fn pointer_moved(&mut self, v: &View<'_>, p: (f32, f32)) -> bool {
-        input::moved(self, &v.canvas(), p)
+    pub fn pointer_moved(&mut self, v: &View<'_>, p: (f32, f32), mods: Mods) -> bool {
+        input::moved(self, &v.canvas(), p, mods)
     }
 
     /// A roda sobre o canvas (`on_canvas`) em Draw: zoom inteiro, sem aviso (o degrau lê-se no

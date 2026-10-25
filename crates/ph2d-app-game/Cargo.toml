@@ -33,6 +33,8 @@ ph2d-script = { path = "../ph2d-script" }
 [dev-dependencies]
 # A vista do player nos gates da lei de animação.
 ph2d-platformer = { path = "../ph2d-platformer" }
+# A arte de fábrica abre como vetor editável (`arte_tests.rs`).
+ph2d-vec-svg = { path = "../ph2d-vec-svg" }
 
 [lints]
 workspace = true

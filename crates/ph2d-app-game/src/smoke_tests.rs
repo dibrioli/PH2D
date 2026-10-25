@@ -171,11 +171,64 @@ fn o_nivel_2_nasce_so_pelo_menu() {
         w.get::<PlatformPlayer>(jogador).is_some()
             && w.get::<CharacterAnimations>(jogador).is_some()
     );
-    assert!(
-        w.get::<ph2d_ecs::SpriteAnimator>(por_nome["Friend"])
-            .is_some()
+    // A arte de fábrica: cada bloco repete o azulejo do seu papel ao tamanho dele; as moedas giram e a
+    // bandeira ondula; o céu fica atrás de tudo.
+    for (nome, _, h) in BLOCOS_2.iter() {
+        let e = por_nome[*nome];
+        let key = w.get::<Sprite>(e).map(|s| s.source);
+        let uv = w.get::<ph2d_ecs::UvTransform>(e).expect(nome).scale;
+        let (art, alto) = match *nome {
+            "Platform Low" | "Platform High" => (ph2d_render::PLATFORM_TILE, 0.5),
+            "Wall Left" => (ph2d_render::DIRT_TILE, 1.0),
+            _ => (ph2d_render::GROUND_TILE, 1.0),
+        };
+        assert_eq!(
+            key,
+            Some(ph2d_render::SpriteSource::Atlas { key: art.key }),
+            "{nome}"
+        );
+        assert_eq!(uv, [2.0 * h[0], 2.0 * h[1] / alto], "{nome}");
+        assert_eq!(
+            w.get::<ph2d_ecs::SpriteGrid>(e).map(|g| g.frame),
+            Some(art.middle_frame()),
+            "{nome} pinta a cópia do meio"
+        );
+        assert_eq!(
+            w.get::<ph2d_ecs::TextureRepeat>(e).map(|r| r.0),
+            Some(ph2d_ecs::RepeatMode::Enabled),
+            "{nome}"
+        );
+    }
+    for (nome, art, tag) in [
+        ("Goal", ph2d_render::FLAG_SHEET, "wave"),
+        ("Coin 1", ph2d_render::COIN_SHEET, "spin"),
+        ("Coin 5", ph2d_render::COIN_SHEET, "spin"),
+    ] {
+        let e = por_nome[nome];
+        assert_eq!(
+            w.get::<Sprite>(e).map(|s| s.source),
+            Some(ph2d_render::SpriteSource::Atlas { key: art.key }),
+            "{nome}"
+        );
+        let a = w.get::<ph2d_ecs::SpriteAnimator>(e).expect(nome);
+        assert_eq!((a.current.as_str(), a.autoplay), (tag, true), "{nome}");
+        assert_eq!(
+            w.get::<ph2d_ecs::SpriteGrid>(e).map(|g| g.hframes),
+            Some(art.grid[0])
+        );
+    }
+    let moedas = (1..=MOEDAS_2.len())
+        .filter(|i| {
+            w.get::<LuauScript>(por_nome[&format!("Coin {i}")])
+                .is_some()
+        })
+        .count();
+    assert_eq!(moedas, MOEDAS_2.len(), "cada moeda corre o moeda.luau");
+    assert_eq!(
+        w.get::<ph2d_ecs::ZIndexOverride>(por_nome["Sky"])
+            .map(|z| z.0),
+        Some(-1)
     );
-    assert!(w.get::<Sprite>(por_nome["Goal"]).is_some());
     assert!(
         w.get::<CameraFollow>(por_nome["Camera"])
             .is_some_and(|f| f.target == "Player")

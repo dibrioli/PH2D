@@ -48,22 +48,25 @@ const BRANCO: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
 const PEDRA: [f32; 4] = [0.45, 0.47, 0.52, 1.0];
 /// O bloco do *Static Body* nasce como uma plataforma (m).
 pub const BLOCO: [f32; 2] = [3.0, 0.5];
-/// A cápsula do personagem cobre o corpo e a cabeça do boneco de fábrica; ele paira à altura que a
-/// semente do `PlatformPlayer` lhe dá, e as pernas desenhadas chegam ao chão.
+/// A cápsula do personagem vai do corpo ao topo do capacete do boneco de fábrica (0,36 acima do centro); um
+/// pouco mais estreita que ele (±0,2 contra ±0,27) porque o raio também tem de pairar numa rampa de 45° à
+/// altura dos pés (`fitted_float`). As pernas desenhadas chegam ao chão.
 pub const CAPSULA: ColliderShape = ColliderShape::Capsule {
-    half_height: 0.07,
+    half_height: 0.15,
     radius: 0.2,
 };
 
 /// A folha do boneco de fábrica, as suas animações e o animador a tocar `idle`.
 fn anima(world: &mut ph2d_ecs::World, e: Entity) -> Result<(), String> {
     let mut tags = SpriteAnimations::new();
-    for (name, from, to, ms) in HERO_SHEET_TAGS {
-        let mut tag = ph2d_ecs::AnimationTag::new(name, from, to);
-        tag.frame_ms = ms;
+    for t in HERO_SHEET_TAGS {
+        let mut tag = ph2d_ecs::AnimationTag::new(t.name, t.from, t.to);
+        tag.frame_ms = t.per_frame_ms[0];
+        tag.per_frame_ms = t.per_frame_ms.to_vec();
+        tag.repeat = t.once.then_some(1);
         tags.insert(tag).map_err(|e| format!("{e:?}"))?;
     }
-    let mut animator = SpriteAnimator::new(HERO_SHEET_TAGS[0].0);
+    let mut animator = SpriteAnimator::new(HERO_SHEET_TAGS[0].name);
     animator.autoplay = true;
     world.entity_mut(e).insert((
         Sprite::atlas(HERO_SHEET_KEY, [1.0, 1.0], BRANCO),

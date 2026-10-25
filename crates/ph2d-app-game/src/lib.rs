@@ -20,3 +20,7 @@ pub(crate) fn registo_de_teste() -> ph2d_ecs::scene::ComponentRegistry {
     ph2d_physics_ecs::register_physics_components(&mut reg);
     reg
 }
+
+#[cfg(test)]
+#[path = "arte_tests.rs"]
+mod arte_tests;

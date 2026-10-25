@@ -226,6 +226,21 @@ fn wrap_uv(t: vec2<f32>, mode: u32) -> vec2<f32> {
     }
 }
 
+// The atlas texel at `uv` for a fragment whose UV went through `wrap_uv`/`fract`. Where the wrapped
+// coordinate turns over, the implicit derivative of the 2×2 quad jumps by a whole tile and the hardware
+// picks the smallest mip (the whole atlas averaged): a grey seam at every tile and along the sprite's edge
+// (helper lanes past the quad wrap too). A wrapping sprite therefore samples with the gradient of the
+// UNWRAPPED coordinate; one that does not wrap keeps the implicit `textureSample`, bit for bit.
+fn sample_tiled(uv: vec2<f32>, quv: vec2<f32>, uv_xform: vec4<f32>, atlas_uv: vec4<f32>, mode: u32) -> vec4<f32> {
+    let cont = quv * uv_xform.xy * (atlas_uv.zw - atlas_uv.xy);
+    let ddx = dpdx(cont);
+    let ddy = dpdy(cont);
+    let implicit = textureSample(atlas_tex, atlas_sampler, uv);
+    let graded = textureSampleGrad(atlas_tex, atlas_sampler, uv, ddx, ddy);
+    let wraps = mode == 2u || mode == 3u || any(uv_xform.zw != vec2<f32>(0.0));
+    return select(implicit, graded, wraps);
+}
+
 @vertex
 fn vs_main(@builtin(vertex_index) vi: u32, v: VertexInput, i: InstanceInput) -> VertexOutput {
     // Local-space sprite corner (the quad is centered on its own
@@ -304,7 +319,7 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     );
     // anatomia §4.2 canonical multiplicative math. All channels multiply
     // (no add/lerp/max), so composition is commutative and batch-stable.
-    let sample = textureSample(atlas_tex, atlas_sampler, uv);
+    let sample = sample_tiled(uv, in.quv, in.uv_xform, in.atlas_uv, in.repeat_mode);
 
     // Step 4 — tint_fill: ignore the texel RGB (silhouette mode), keep
     // alpha. RGB becomes the combined per-corner × cascade tint.
@@ -422,7 +437,7 @@ fn fs_stencil_mark(in: StencilMarkOutput) -> @location(0) vec4<f32> {
     );
     // The parent's texel alpha is the silhouette. Below the cutoff = OUTSIDE
     // the mask → discard so the pipeline does NOT write the stencil there.
-    let a = textureSample(atlas_tex, atlas_sampler, uv).a;
+    let a = sample_tiled(uv, in.quv, in.uv_xform, in.atlas_uv, in.repeat_mode).a;
     if (a <= in.cutoff) {
         discard;
     }

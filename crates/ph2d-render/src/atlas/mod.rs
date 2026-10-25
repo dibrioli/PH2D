@@ -70,13 +70,19 @@
 //! one.
 
 mod demo;
+mod fabrica;
 mod gpu_ops;
 mod hero_sheet;
 mod region;
 
+pub use fabrica::{
+    COIN_FRAME_MS, COIN_SHEET, COIN_SHEET_KEY, DIRT_TILE, DIRT_TILE_KEY, FACTORY_ART,
+    FLAG_FRAME_MS, FLAG_SHEET, FLAG_SHEET_KEY, FactoryArt, GROUND_TILE, GROUND_TILE_KEY, HERO_ART,
+    PLATFORM_TILE, PLATFORM_TILE_KEY, factory_pixels,
+};
 pub use hero_sheet::{
     HERO_SHEET_CELL_PX, HERO_SHEET_COLS, HERO_SHEET_KEY, HERO_SHEET_ROWS,
-    HERO_SHEET_SOLE_BELOW_CENTRE, HERO_SHEET_TAGS, hero_sheet_pixels,
+    HERO_SHEET_SOLE_BELOW_CENTRE, HERO_SHEET_TAGS, HeroTag, hero_sheet_pixels,
 };
 pub use region::{AtlasInsertError, AtlasRegion};
 
@@ -330,8 +336,9 @@ impl TextureAtlas {
     }
 
     /// The reserved tiles a renderer needs before any sprite draws: the
-    /// [`WHITE_TILE_KEY`] square, the [`DISC_TILE_KEY`] disc and the [`HERO_SHEET_KEY`] sheet. Returns the
-    /// white tile's UV rect (see [`Self::insert_white_tile`]).
+    /// [`WHITE_TILE_KEY`] square, the [`DISC_TILE_KEY`] disc and the [`FACTORY_ART`] (the
+    /// [`HERO_SHEET_KEY`] sheet and the platformer's tiles). Returns the white tile's UV rect (see
+    /// [`Self::insert_white_tile`]).
     pub fn insert_reserved_tiles(
         &mut self,
         gpu: &GpuContext,
@@ -339,14 +346,9 @@ impl TextureAtlas {
         let px = disc_tile_pixels(DISC_TILE_PX);
         let bytes: &[u8] = bytemuck::cast_slice(&px);
         self.insert(gpu, DISC_TILE_KEY, DISC_TILE_PX, DISC_TILE_PX, bytes)?;
-        let hero = hero_sheet_pixels();
-        self.insert(
-            gpu,
-            HERO_SHEET_KEY,
-            HERO_SHEET_CELL_PX * HERO_SHEET_COLS,
-            HERO_SHEET_CELL_PX * HERO_SHEET_ROWS,
-            bytemuck::cast_slice(&hero),
-        )?;
+        for art in &FACTORY_ART {
+            self.insert(gpu, art.key, art.px[0], art.px[1], factory_pixels(art))?;
+        }
         self.insert_white_tile(gpu)
     }
 

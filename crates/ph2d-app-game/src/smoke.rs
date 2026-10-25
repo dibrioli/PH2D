@@ -7,15 +7,21 @@
 //! - **2** (J2 + J3, `05_N1_plano.md` §5): o mesmo desenho de nível montado SÓ com os objectos do menu
 //!   Add ([`crate::object_add`]) — chão e plataformas são *Static Body*, a parede do fim é uma *Collision
 //!   Shape* dentro do chão, o jogador é um *Character* (o boneco anima-se pelo estado: parado, correr,
-//!   saltar, cair), um amigo à meta é um *Animated Sprite* e a bandeira é um *Sprite*.
+//!   saltar, cair), as moedas e a bandeira são *Animated Sprite* e o céu é um *Sprite*. A arte é a de
+//!   fábrica (`ph2d_render::FACTORY_ART`, plano 06): os blocos repetem o azulejo pelo `UvTransform`.
 
 use ph2d_core::Vec2;
 use ph2d_ecs::scene::ComponentRegistry;
 use ph2d_ecs::{
-    CameraFollow, CameraLimits, ChildOf, Entity, GameCamera, Name, SimWorld, Transform,
+    AnimationTag, CameraFollow, CameraLimits, ChildOf, Entity, GameCamera, Name, RepeatMode,
+    SimWorld, SpriteAnimations, SpriteAnimator, SpriteGrid, TextureRepeat, Transform, UvTransform,
+    ZIndexOverride,
 };
 use ph2d_editor_core::game_stage::GameStage;
-use ph2d_render::{Sprite, WHITE_TILE_KEY};
+use ph2d_render::{
+    COIN_FRAME_MS, COIN_SHEET, DIRT_TILE, FLAG_FRAME_MS, FLAG_SHEET, FactoryArt, GROUND_TILE,
+    PLATFORM_TILE, Sprite, WHITE_TILE_KEY,
+};
 use ph2d_script::{LuauScript, ProjectScripts};
 use std::sync::OnceLock;
 
@@ -266,6 +272,64 @@ pub const BLOCOS_2: [(&str, [f32; 2], [f32; 2]); 5] = [
 /// A parede invisível do fim do nível: centro e meia-extensão no mundo (m).
 pub const PAREDE_INVISIVEL: ([f32; 2], [f32; 2]) = ([17.5, 3.0], [0.5, 4.0]);
 
+/// As moedas do nível 2: sobre o chão, sobre cada plataforma e antes da meta.
+pub const MOEDAS_2: [[f32; 2]; 5] = [
+    [-4.0, 0.6],
+    [-1.5, 0.6],
+    [3.5, 1.65],
+    [8.5, 2.8],
+    [13.5, 0.6],
+];
+
+/// O céu do nível 2 (centro, tamanho em m) e a cor do fundo do pacote do Kenney (`#C2E3E8`).
+const CEU: ([f32; 2], [f32; 2]) = ([2.5, 4.0], [40.0, 16.0]);
+const CEU_COR: [f32; 4] = [194.0 / 255.0, 227.0 / 255.0, 232.0 / 255.0, 1.0];
+
+/// Veste um bloco com o azulejo de fábrica do seu papel, repetido ao tamanho do bloco (o que o artista faz
+/// no Inspector: a imagem, *Repeat* e a escala do UV).
+fn azulejo(sim: &mut SimWorld, e: Entity, nome: &str, meia: [f32; 2]) {
+    let art = match nome {
+        "Platform Low" | "Platform High" => PLATFORM_TILE,
+        "Wall Left" => DIRT_TILE,
+        _ => GROUND_TILE,
+    };
+    let [cw, ch] = art.cell_px();
+    let lado_m = [1.0, ch as f32 / cw as f32];
+    sim.world_mut().entity_mut(e).insert((
+        Sprite::atlas(art.key, crate::object_add::BLOCO, [1.0; 4]),
+        SpriteGrid {
+            hframes: art.grid[0],
+            vframes: art.grid[1],
+            frame: art.middle_frame(),
+        },
+        UvTransform {
+            scale: [2.0 * meia[0] / lado_m[0], 2.0 * meia[1] / lado_m[1]],
+            offset: [0.0, 0.0],
+        },
+        TextureRepeat(RepeatMode::Enabled),
+    ));
+}
+
+/// Troca a folha de um *Animated Sprite* por uma folha de fábrica de uma linha, a tocar em laço.
+fn folha(sim: &mut SimWorld, e: Entity, art: FactoryArt, tag: &str, ms: u32) {
+    let mut tags = SpriteAnimations::new();
+    let mut t = AnimationTag::new(tag, 0, art.grid[0] - 1);
+    t.frame_ms = ms;
+    tags.insert(t).expect("uma tag");
+    let mut animator = SpriteAnimator::new(tag);
+    animator.autoplay = true;
+    sim.world_mut().entity_mut(e).insert((
+        Sprite::atlas(art.key, [1.0, 1.0], [1.0; 4]),
+        SpriteGrid {
+            hframes: art.grid[0],
+            vframes: art.grid[1],
+            frame: 0,
+        },
+        tags,
+        animator,
+    ));
+}
+
 /// O nível 2 — ver o cabeçalho do módulo.
 fn nivel_2(sim: &mut SimWorld, registry: &ComponentRegistry) -> Entity {
     use crate::object_add::{
@@ -281,6 +345,7 @@ fn nivel_2(sim: &mut SimWorld, registry: &ComponentRegistry) -> Entity {
             c,
             [2.0 * h[0] / BLOCO[0], 2.0 * h[1] / BLOCO[1]],
         );
+        azulejo(sim, e, nome, h);
         if nome == "Ground Right" {
             chao_direito = Some((e, c, h));
         }
@@ -298,17 +363,35 @@ fn nivel_2(sim: &mut SimWorld, registry: &ComponentRegistry) -> Entity {
         [2.0 * hx / escala[0], 2.0 * hy / escala[1]],
     );
     sim.world_mut().entity_mut(parede).insert(ChildOf(chao));
-    let meta = do_menu(sim, registry, SPRITE);
-    arruma(sim, meta, "Goal", [15.5, 1.0], [0.3, 2.0]);
-    if let Some(mut s) = sim.world_mut().get_mut::<Sprite>(meta) {
-        s.tint = META;
+    let ceu = do_menu(sim, registry, SPRITE);
+    arruma(sim, ceu, "Sky", CEU.0, CEU.1);
+    sim.world_mut().entity_mut(ceu).insert(ZIndexOverride(-1));
+    if let Some(mut s) = sim.world_mut().get_mut::<Sprite>(ceu) {
+        s.tint = CEU_COR;
     }
-    let amigo = do_menu(sim, registry, ANIMATED_SPRITE);
-    arruma(sim, amigo, "Friend", [14.3, 0.5], [1.0, 1.0]);
+    let meta = do_menu(sim, registry, ANIMATED_SPRITE);
+    arruma(sim, meta, "Goal", [15.5, 1.0], [1.0, 2.0]);
+    folha(sim, meta, FLAG_SHEET, "wave", FLAG_FRAME_MS);
+    let moeda = sim
+        .world_mut()
+        .get_resource_or_init::<ProjectScripts>()
+        .insert(MOEDA_NAME, MOEDA_LUAU);
+    for (i, at) in MOEDAS_2.into_iter().enumerate() {
+        let e = do_menu(sim, registry, ANIMATED_SPRITE);
+        arruma(sim, e, &format!("Coin {}", i + 1), at, [0.5, 0.5]);
+        folha(sim, e, COIN_SHEET, "spin", COIN_FRAME_MS);
+        sim.world_mut()
+            .entity_mut(e)
+            .insert(LuauScript::library(moeda));
+    }
     let jogador = do_menu(sim, registry, CHARACTER);
     arruma(sim, jogador, "Player", [-8.0, 1.5], [1.0, 1.0]);
     let camara = do_menu(sim, registry, ph2d_app_components::object_add::CAMERA);
     arruma(sim, camara, "Camera", [-8.0, 2.0], [1.0, 1.0]);
+    // Mais perto que os 10 m de fábrica: o boneco desenhado lê-se (~110 px de altura numa janela de 900).
+    if let Some(mut c) = sim.world_mut().get_mut::<GameCamera>(camara) {
+        c.height_world = 8.0;
+    }
     sim.world_mut().entity_mut(camara).insert((
         CameraFollow {
             target: "Player".into(),
@@ -324,10 +407,11 @@ fn nivel_2(sim: &mut SimWorld, registry: &ComponentRegistry) -> Entity {
     ));
     ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
     println!(
-        "[game-smoke] =2 o mesmo nível feito SÓ com o menu Add (Add ▸ Game): chão e plataformas \
-         (Static Body), a parede invisível do fim (Collision Shape dentro do chão), o jogador \
-         (Character), o amigo animado (Animated Sprite) e a bandeira (Sprite). Run ▸ Play in a Window: \
-         o boneco fica parado, corre, salta e cai — a animação troca sozinha."
+        "[game-smoke] =2 o mesmo nível feito SÓ com o menu Add (Add ▸ Game), com a arte do Kenney \
+         redesenhada em vetor: chão e plataformas de relva (Static Body), a parede invisível do fim \
+         (Collision Shape dentro do chão), o jogador (Character), as moedas a girar e a bandeira a \
+         ondular (Animated Sprite) e o céu (Sprite). Run ▸ Play in a Window: o boneco fica parado, \
+         corre, salta e cai — a animação troca sozinha — e as moedas somem ao tocar."
     );
     jogador
 }

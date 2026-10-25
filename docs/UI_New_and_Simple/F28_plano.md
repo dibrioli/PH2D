@@ -44,7 +44,7 @@ Gates (cada um visto VERMELHO por mutação antes de valer):
 | F25 §6.6 (eixo do motor zera o alvo) | **desenho** | trocar o eixo muda a UNIDADE do alvo (ângulo ↔ distância): o zero é a resposta certa (`joint.rs:443-449`); se a faixa tem curva, `canais_junta.rs:373-396` repõe-na no mesmo quadro. |
 | F25 §6.7 (fração / índice arbitrário) | **aberto → cura A** | `intent_apply.rs:260` grava qualquer `f64`. |
 | F25 §6.8 (losango da camada do Flip só em Draw/Edit) | **desenho** | a lista de camadas só existe no painel do Flip (`ph2d-panel-flip/src/paint.rs:130`): o losango mora ao lado do controle que grava. |
-| F25 §6.9 (contentor do Envelope na população do Auto Key) | **a medir** (teste vermelho primeiro) | a população é a seleção do gizmo + as mãos (`autokey_amostra.rs:60`); o painel acha o contentor subindo dos FILHOS seleccionados (`envelope_live::sole_container`). Com um filho seleccionado, o contentor fica fora. |
+| F25 §6.9 (contentor do Envelope na população do Auto Key) | **fechado (desenho)** | `crates/ph2d-app-vec/src/vec_selection.rs:107`: uma seleção que vive sob UM contentor de Envelope faz o gizmo seleccionar o CONTENTOR sozinho, logo `autokey_amostra::populacao` o inclui; gate `selecting_an_envelope_child_selects_only_the_container` (`vec_selection.rs:460`). |
 | F25 §6.11 | parcial | `marcas()` 51,5 → 0,23 ms (F27 B3+C), menu da linha de grupo (F27 D), ADR-0191 (F27): **fechados**. Perf de `linhas::layout`, «gate de fecho da LINHA» e undo da timeline separado do do vetor: fora da família, seguem abertos. |
 | F18–F26 §6.9 (`canal.junta.*` só no locale base) | **não é defeito** | só há UMA tabela (`ph2d-i18n/src/canais.rs`, 34 chaves `canal.junta.*`); o pseudo-locale `teste` deriva dela. |
 

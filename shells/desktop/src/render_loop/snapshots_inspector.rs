@@ -294,9 +294,15 @@ fn late(
     ray_hits: &[(u64, u64, f32)],
 ) -> LateSections {
     let sel = inspector_selection;
-    let inspector_anim = hero.gizmo.selection.and_then(|b| {
+    let mut inspector_anim = hero.gizmo.selection.and_then(|b| {
         ph2d_app_sprite_anim::inspector::build_anim_info(sim.world(), b, selected_count)
     });
+    // As teclas do mapa do herói são as opções «Key held» das regras (plano GameEngineFuncional 08).
+    if let Some(a) = inspector_anim.as_mut() {
+        for x in hero.input_map.actions() {
+            a.card.rule_actions.push(x.name.clone());
+        }
+    }
     // ⭐ A secção TIMERS — `None` para quem não tem o componente (ADR-0166).
     let inspector_timer = hero.gizmo.selection.and_then(|b| {
         crate::render_loop::inspector_timer::build_timer_info(sim.world(), b, selected_count)

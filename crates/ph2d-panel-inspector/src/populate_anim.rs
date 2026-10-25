@@ -102,22 +102,53 @@ pub(crate) fn populate_anim(store: &mut WidgetStore) {
 }
 
 /// **O cartão «Animation»** (plano GameEngineFuncional 07): o ▶ de cada linha, «Edit Animations…»,
-/// «Who Picks», os quatro menus de estado e o grupo «Advanced» (nasce FECHADO).
+/// «Who Picks», a lista de regras e o grupo «Advanced» (nasce FECHADO).
 fn populate_anim_card(store: &mut WidgetStore) {
     register_button_ids(store, &crate::ids::INSP_ANIM_PLAY_ROW);
     register_button_ids(store, &[crate::ids::INSP_ANIM_OPEN_EDITOR]);
     register_button_ids(store, &crate::ids::INSP_ANIM_CHOOSER);
-    register_button_ids(store, &crate::ids::INSP_ANIM_STATE_OPT);
-    for id in crate::ids::INSP_ANIM_STATE_PICK {
-        store.register(
-            id,
-            InteractiveState::Dropdown {
-                state: DropdownState::Normal,
-                open: false,
-                selected_index: None,
-            },
-        );
-        store.set_tooltip(id, tr("panel.inspector.anim_card.state_tip"));
+    // A lista de regras (plano 08): pega, ×, «+ Rule» e as linhas dos dois popovers são BOTÕES; os
+    // menus «When» e «Play» de cada regra são `Dropdown`.
+    register_button_ids(store, &crate::ids::INSP_ANIM_RULE_GRIP);
+    register_button_ids(store, &crate::ids::INSP_ANIM_RULE_DEL);
+    register_button_ids(store, &[crate::ids::INSP_ANIM_RULE_ADD]);
+    register_button_ids(store, &crate::ids::INSP_ANIM_RULE_WHEN_OPT);
+    register_button_ids(store, &crate::ids::INSP_ANIM_RULE_PLAY_OPT);
+    for (ids, tip) in [
+        (
+            crate::ids::INSP_ANIM_RULE_WHEN,
+            "panel.inspector.anim_card.rule_when_tip",
+        ),
+        (
+            crate::ids::INSP_ANIM_RULE_PLAY,
+            "panel.inspector.anim_card.rule_play_tip",
+        ),
+    ] {
+        for id in ids {
+            store.register(
+                id,
+                InteractiveState::Dropdown {
+                    state: DropdownState::Normal,
+                    open: false,
+                    selected_index: None,
+                },
+            );
+            store.set_tooltip(id, tr(tip));
+        }
+    }
+    for (ids, tip) in [
+        (
+            crate::ids::INSP_ANIM_RULE_GRIP,
+            "panel.inspector.anim_card.rule_grip_tip",
+        ),
+        (
+            crate::ids::INSP_ANIM_RULE_DEL,
+            "panel.inspector.anim_card.rule_del_tip",
+        ),
+    ] {
+        for id in ids {
+            store.set_tooltip(id, tr(tip));
+        }
     }
     for id in crate::ids::INSP_ANIM_PLAY_ROW
         .into_iter()

@@ -1,5 +1,6 @@
 use super::*;
 use ph2d_ecs::ChildOf;
+use ph2d_physics_ecs::{AnimRule, AnimWhen, LifeEvent};
 
 /// O animador é o do próprio personagem; sem ele, o do 1.º filho que tem um (a imagem dentro do corpo).
 #[test]
@@ -42,9 +43,146 @@ fn sem_vista_nao_escreve() {
     let e = w
         .spawn((CharacterAnimations::default(), SpriteAnimator::new("idle")))
         .id();
-    anima_personagens(&mut w, &PhysicsBridge::new());
+    anima_personagens(
+        &mut w,
+        &PhysicsBridge::new(),
+        &BTreeSet::new(),
+        &SignalOutbox::new(),
+    );
     assert_eq!(
         w.get::<SpriteAnimator>(e).map(|a| a.current.as_str()),
         Some("idle")
     );
+}
+
+fn regra(when: AnimWhen, play: &str) -> AnimRule {
+    AnimRule {
+        when,
+        play: play.into(),
+    }
+}
+
+/// As regras do teste: ↓ premida → crouch · levou dano → hurt · sinal «boom» → fall · e as 4 poses.
+fn regras() -> Vec<AnimRule> {
+    let mut r = vec![
+        regra(AnimWhen::Action("down".into()), "crouch"),
+        regra(AnimWhen::Life(LifeEvent::Damaged), "hurt"),
+        regra(AnimWhen::Signal("boom".into()), "fall"),
+    ];
+    r.extend(AnimRules::of_character(&CharacterAnimations::default()).0);
+    r
+}
+
+struct Mundo {
+    premidas: BTreeSet<String>,
+    vida: Vec<LifeEvent>,
+    ouvidos: BTreeSet<String>,
+    pose: Option<CharacterPose>,
+}
+
+impl Mundo {
+    fn parado() -> Self {
+        Self {
+            premidas: BTreeSet::new(),
+            vida: Vec::new(),
+            ouvidos: BTreeSet::new(),
+            pose: Some(CharacterPose::Run),
+        }
+    }
+    fn passo(&self, seguro: &mut Option<Segura>, a: &mut SpriteAnimator) -> Passo {
+        let f = Factos {
+            pose: self.pose,
+            premidas: &self.premidas,
+            vida: &self.vida,
+            ouvidos: &self.ouvidos,
+        };
+        let p = decide(&regras(), &f, seguro, a);
+        if let Passo::Toca(t) | Passo::Recomeca(t) = &p {
+            troca(a, t.clone());
+        }
+        p
+    }
+}
+
+/// ⭐ A de cima ganha: ↓ premida vence a pose; soltá-la devolve à regra seguinte que vale.
+#[test]
+fn a_regra_de_cima_ganha_e_soltar_devolve() {
+    let mut a = SpriteAnimator::new("idle");
+    let mut seguro = None;
+    let mut m = Mundo::parado();
+    assert_eq!(m.passo(&mut seguro, &mut a), Passo::Toca("run".into()));
+    m.premidas.insert("down".into());
+    assert_eq!(m.passo(&mut seguro, &mut a), Passo::Toca("crouch".into()));
+    m.premidas.clear();
+    assert_eq!(m.passo(&mut seguro, &mut a), Passo::Toca("run".into()));
+    m.pose = None;
+    assert_eq!(
+        m.passo(&mut seguro, &mut a),
+        Passo::Fica,
+        "nenhuma vale = fica"
+    );
+}
+
+/// ⭐ «Levou dano» dura um quadro, mas a animação dele toca até fechar uma volta; só uma regra ACIMA
+/// a interrompe.
+#[test]
+fn levar_dano_segura_a_animacao_ate_ao_fim_da_volta() {
+    let mut a = SpriteAnimator::new("run");
+    let mut seguro = None;
+    let mut m = Mundo::parado();
+    m.vida.push(LifeEvent::Damaged);
+    assert_eq!(m.passo(&mut seguro, &mut a), Passo::Recomeca("hurt".into()));
+    m.vida.clear();
+    assert_eq!(
+        m.passo(&mut seguro, &mut a),
+        Passo::Fica,
+        "a corrida (abaixo) não a interrompe"
+    );
+    m.ouvidos.insert("boom".into());
+    assert_eq!(
+        m.passo(&mut seguro, &mut a),
+        Passo::Fica,
+        "o sinal (abaixo) também não"
+    );
+    m.ouvidos.clear();
+    a.repeat_count = 1;
+    assert_eq!(
+        m.passo(&mut seguro, &mut a),
+        Passo::Toca("run".into()),
+        "acabou a volta: solta"
+    );
+
+    m.vida.push(LifeEvent::Damaged);
+    m.passo(&mut seguro, &mut a);
+    m.vida.clear();
+    m.premidas.insert("down".into());
+    assert_eq!(
+        m.passo(&mut seguro, &mut a),
+        Passo::Toca("crouch".into()),
+        "a de cima interrompe"
+    );
+    assert_eq!(seguro, None);
+}
+
+/// Um ficheiro antigo (só `CharacterAnimations`): as regras derivadas dão a tag que a ponte de antes dava.
+#[test]
+fn as_quatro_derivadas_dao_a_tag_de_cada_pose() {
+    let c = CharacterAnimations::default();
+    let rules = AnimRules::effective(None, Some(&c)).unwrap();
+    let nada = BTreeSet::new();
+    for pose in CharacterPose::ALL {
+        let f = Factos {
+            pose: Some(pose),
+            premidas: &nada,
+            vida: &[],
+            ouvidos: &nada,
+        };
+        let mut a = SpriteAnimator::new("x");
+        assert_eq!(
+            decide(&rules.0, &f, &mut None, &a),
+            Passo::Toca(c.tag(pose).to_owned()),
+            "{pose:?}"
+        );
+        a.current = c.tag(pose).to_owned();
+    }
 }

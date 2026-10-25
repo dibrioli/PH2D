@@ -6,18 +6,19 @@
 
 use std::sync::Arc;
 
-/// **Quem escolhe a animação que toca.** Derivado, nunca guardado: `Character` = o objecto tem
-/// `CharacterAnimations`; senão `Me` = o tocador arranca sozinho (autoplay) e `Script` = não arranca.
+/// **Quem escolhe a animação que toca.** Derivado, nunca guardado: `Rules` = o objecto tem regras
+/// (`AnimRules`, ou as 4 do `CharacterAnimations`); senão `Me` = o tocador arranca sozinho (autoplay) e
+/// `Script` = não arranca.
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
 pub enum AnimChooser {
     #[default]
     Me,
     Script,
-    Character,
+    Rules,
 }
 
 impl AnimChooser {
-    pub const ALL: [Self; 3] = [Self::Me, Self::Script, Self::Character];
+    pub const ALL: [Self; 3] = [Self::Me, Self::Script, Self::Rules];
 
     #[must_use]
     pub fn tag(self) -> u8 {
@@ -101,13 +102,34 @@ impl std::fmt::Debug for SheetImage {
     }
 }
 
-/// O que o modo «O personagem» mostra: o nome da animação de cada estado (Parado · Correr · Saltar ·
-/// Cair), o limiar de correr (m/s) e o espelho ao andar para trás.
+/// O que o personagem acrescenta às regras: o limiar de correr (m/s) e o espelho ao andar para trás.
 #[derive(Clone, Debug, PartialEq)]
 pub struct AnimCharacterInfo {
-    pub names: [String; 4],
     pub run_from: f32,
     pub flip: bool,
+}
+
+/// **A condição de uma regra**, como o cartão a lê (espelho de `ph2d_physics_ecs::AnimWhen`; esta crate
+/// não depende da física — ADR-0029). `Pose`: Parado · A correr · A subir · A cair; `Life`: Levou dano ·
+/// Morreu · Curou-se · Esquivou-se — os índices de `CharacterPose::ALL` / `LifeEvent::ALL`.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum AnimWhenInfo {
+    Pose(u8),
+    Action(String),
+    Life(u8),
+    Signal(String),
+}
+
+/// Quantas poses e quantos factos de vida existem (os comprimentos de `CharacterPose::ALL` e
+/// `LifeEvent::ALL`; `the_rule_mirrors_are_the_physics` prende-os).
+pub const ANIM_POSES: u8 = 4;
+pub const ANIM_LIFE_EVENTS: u8 = 4;
+
+/// Uma regra: quando `when` vale, toca `play`.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct AnimRuleInfo {
+    pub when: AnimWhenInfo,
+    pub play: String,
 }
 
 /// **Tudo o que o cartão e o editor leem e a §11 de sempre não tinha.**
@@ -117,6 +139,12 @@ pub struct AnimCardInfo {
     /// O objecto tem Platform Player? Sem ele «O personagem» não se oferece (não há estados).
     pub has_character_body: bool,
     pub character: Option<AnimCharacterInfo>,
+    /// As regras que valem, pela ordem (a de cima ganha) — as gravadas ou as 4 do personagem.
+    pub rules: Vec<AnimRuleInfo>,
+    /// As ações do mapa de teclas, pelo nome (as opções «Key held»).
+    pub rule_actions: Vec<String>,
+    /// Os nomes de sinal que o projecto já autorou (as opções «Signal»).
+    pub rule_signals: Vec<String>,
     pub hframes: u32,
     pub vframes: u32,
     /// O passo da lista de quadros que está no ecrã (`SpriteAnimCursor`); num intervalo, `frame - from`.
@@ -132,11 +160,29 @@ impl Default for AnimCardInfo {
             chooser: AnimChooser::Me,
             has_character_body: false,
             character: None,
+            rules: Vec::new(),
+            rule_actions: Vec::new(),
+            rule_signals: Vec::new(),
             hframes: 1,
             vframes: 1,
             step: 0,
             sheet: None,
         }
+    }
+}
+
+impl AnimCardInfo {
+    /// **As opções do menu «When»**, pela ordem do menu: as poses (só com Platform Player), as teclas,
+    /// os factos de vida e os sinais.
+    #[must_use]
+    pub fn when_options(&self) -> Vec<AnimWhenInfo> {
+        let poses = (0..ANIM_POSES)
+            .filter(|_| self.has_character_body)
+            .map(AnimWhenInfo::Pose);
+        let keys = self.rule_actions.iter().cloned().map(AnimWhenInfo::Action);
+        let life = (0..ANIM_LIFE_EVENTS).map(AnimWhenInfo::Life);
+        let signals = self.rule_signals.iter().cloned().map(AnimWhenInfo::Signal);
+        poses.chain(keys).chain(life).chain(signals).collect()
     }
 }
 

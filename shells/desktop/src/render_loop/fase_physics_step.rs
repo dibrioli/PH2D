@@ -10,6 +10,11 @@ use super::*;
 impl crate::App {
     /// Ver o cabeçalho do módulo.
     pub(super) fn fase_physics_step(&mut self, player_input: ph2d_physics_ecs::PlayerInput) {
+        let hero = self.gfx.as_ref().and_then(|g| g.hero_screen.as_ref());
+        let premidas = ph2d_app_game::personagem::acoes_premidas(
+            hero.map(|h| &h.input_map),
+            &self.input_actions,
+        );
         // O `gfx` re-derivado; os guardas do quadro já correram na `fase_chrome_clock`.
         let Some(gfx) = self.gfx.as_mut() else {
             return;
@@ -54,7 +59,12 @@ impl crate::App {
         // que nascem. Depois do dispatch, que é quem os produz.
         health_bars.impacto.ouve(sim, physics.health_events());
         if self.playhead.is_playing() {
-            ph2d_app_game::personagem::anima_personagens(sim.world_mut(), physics); // N1: estado → animação
+            ph2d_app_game::personagem::anima_personagens(
+                sim.world_mut(),
+                physics,
+                &premidas,
+                &self.signals,
+            ); // as regras (08)
         }
         let corrida =
             (simulate_physics && self.playhead.is_playing()).then(|| (de, physics.last_stepped()));

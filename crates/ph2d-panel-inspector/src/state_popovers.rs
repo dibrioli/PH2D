@@ -90,10 +90,10 @@ thread_local! {
     pub(crate) static PENDING_SEQ_DD:
         std::cell::Cell<Option<ph2d_editor_core::zones::Rect>> = const { std::cell::Cell::new(None) };
 
-    /// O cartão «Animation»: `(estado 0..4, rect do chip)` do menu de estado aberto. As opções
-    /// (as animações da lista) rederivam-se do snapshot no passe diferido.
-    pub(crate) static PENDING_ANIM_STATE_DD:
-        std::cell::Cell<Option<(u8, ph2d_editor_core::zones::Rect)>> = const { std::cell::Cell::new(None) };
+    /// O cartão «Animation»: `(é o «When»?, regra, rect do chip)` do menu de regra aberto. As opções
+    /// (as condições ou as animações) rederivam-se do snapshot no passe diferido.
+    pub(crate) static PENDING_ANIM_RULE_DD:
+        std::cell::Cell<Option<(bool, u8, ph2d_editor_core::zones::Rect)>> = const { std::cell::Cell::new(None) };
 
     /// COUNTER WATCH: `(comparação escolhida, rect do chip)`.
     ///
@@ -272,10 +272,10 @@ pub(crate) fn take_painted_popover() -> Option<ph2d_editor_core::widget::Painted
     PAINTED_POPOVER.with(|c| c.take())
 }
 
-pub(crate) fn set_pending_anim_state_dd(chip: Option<(u8, ph2d_editor_core::zones::Rect)>) {
-    PENDING_ANIM_STATE_DD.with(|c| c.set(chip));
+pub(crate) fn set_pending_anim_rule_dd(chip: Option<(bool, u8, ph2d_editor_core::zones::Rect)>) {
+    PENDING_ANIM_RULE_DD.with(|c| c.set(chip));
 }
 
-pub(crate) fn take_pending_anim_state_dd() -> Option<(u8, ph2d_editor_core::zones::Rect)> {
-    PENDING_ANIM_STATE_DD.with(std::cell::Cell::take)
+pub(crate) fn take_pending_anim_rule_dd() -> Option<(bool, u8, ph2d_editor_core::zones::Rect)> {
+    PENDING_ANIM_RULE_DD.with(std::cell::Cell::take)
 }

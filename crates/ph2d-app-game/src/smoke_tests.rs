@@ -254,7 +254,12 @@ fn corre_o_nivel_2(dedo: impl Fn(u32) -> (f32, bool)) -> (Vec<String>, Vec2, boo
             },
         );
         bridge.dispatch(&mut sim, true, u64::from(tick));
-        crate::personagem::anima_personagens(sim.world_mut(), &bridge);
+        crate::personagem::anima_personagens(
+            sim.world_mut(),
+            &bridge,
+            &Default::default(),
+            &ph2d_runtime::SignalOutbox::new(),
+        );
         let agora = sim
             .world()
             .get::<ph2d_ecs::SpriteAnimator>(jogador)

@@ -2,7 +2,8 @@
 //!
 //! Cada controlo novo é dirigido pelo ponteiro REAL (o `click_at` do testkit cai no rectângulo que a
 //! pintura registou) e afirma a `AnimFieldEdit` que levanta: o ▶ da linha, «Edit Animations…»,
-//! «Who Picks», os quatro menus de estado (exactamente as animações da lista, e seguem um renomear),
+//! «Who Picks», a lista de regras (os menus «Play» são exactamente as animações da lista, e seguem um
+//! renomear — os outros gestos das regras estão no `seam_anim_rules`),
 //! «Run From», «Flip», «Playback», a animação escolhida e o grupo «Advanced» que nasce FECHADO. E as duas saídas: o Platform Player já não
 //! pinta o «Auto Animate», e não há secção «Sprite Sheet».
 
@@ -10,7 +11,7 @@ use crate::seam_anim::{anim, clear, click, click_fresh, commit, host_with};
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::screens::hero::InspectorTransformInfo;
 use ph2d_editor_core::screens::hero::{
-    AnimCharacterInfo, AnimChooser, AnimFieldEdit, InspectorAnimInfo,
+    AnimCharacterInfo, AnimChooser, AnimFieldEdit, AnimRuleInfo, AnimWhenInfo, InspectorAnimInfo,
 };
 use ph2d_editor_core::screens::layout::ChromeBands;
 use ph2d_editor_core::zones::Rect;
@@ -25,7 +26,7 @@ const VIEWPORT: Rect = Rect {
     h: 2400.0,
 };
 
-fn edits(actions: &[EditorAction]) -> Vec<AnimFieldEdit> {
+pub(crate) fn edits(actions: &[EditorAction]) -> Vec<AnimFieldEdit> {
     actions
         .iter()
         .filter_map(|a| match a {
@@ -43,30 +44,40 @@ pub(crate) fn with_frame_list(mut info: InspectorAnimInfo) -> InspectorAnimInfo 
     info
 }
 
-/// A fixtura no modo «The Character», com corpo; os estados apontam para as duas animações.
+/// A fixtura de um personagem no modo «Rules», com corpo: as 4 regras derivadas (parado · a correr ·
+/// a subir · a cair) apontam para as duas animações, e o mapa de teclas tem `left` e `down`.
 pub(crate) fn with_character(mut info: InspectorAnimInfo) -> InspectorAnimInfo {
-    info.card.chooser = AnimChooser::Character;
+    info.card.chooser = AnimChooser::Rules;
     info.card.has_character_body = true;
     info.card.character = Some(AnimCharacterInfo {
-        names: [
-            "walk".into(),
-            "attack".into(),
-            "walk".into(),
-            "attack".into(),
-        ],
         run_from: 0.75,
         flip: true,
     });
+    info.card.rules = ["walk", "attack", "walk", "attack"]
+        .iter()
+        .zip(0u8..)
+        .map(|(play, i)| AnimRuleInfo {
+            when: AnimWhenInfo::Pose(i),
+            play: (*play).into(),
+        })
+        .collect();
+    info.card.rule_actions = vec!["left".into(), "down".into()];
     info
 }
 
-/// Abre o menu do estado `state` e clica na opção `opt`; devolve as edições.
-fn pick_state(info: InspectorAnimInfo, state: usize, opt: usize) -> Vec<EditorAction> {
+/// Abre o menu `menu` da regra `rule` e clica na linha `opt` do popover; devolve as edições.
+pub(crate) fn pick_rule(
+    info: InspectorAnimInfo,
+    menu: &[ph2d_a11y::NodeId],
+    opts: &[ph2d_a11y::NodeId],
+    rule: usize,
+    opt: usize,
+) -> Vec<EditorAction> {
     let (mut host, mut st) = host_with(info);
-    host.set_dropdown_open(ids::INSP_ANIM_STATE_PICK[state], true);
-    let out = click(&mut host, &mut st, ids::INSP_ANIM_STATE_OPT[opt]);
+    host.set_dropdown_open(menu[rule], true);
+    let out = click(&mut host, &mut st, opts[opt]);
     assert_eq!(
-        host.dropdown_is_open(ids::INSP_ANIM_STATE_PICK[state]),
+        host.dropdown_is_open(menu[rule]),
         Some(false),
         "escolher uma opção tem de fechar o menu"
     );
@@ -74,17 +85,30 @@ fn pick_state(info: InspectorAnimInfo, state: usize, opt: usize) -> Vec<EditorAc
     out
 }
 
-/// Os três gestos do modo «The Character», para a varredura do `seam_anim`.
+/// O menu «Play» da regra `rule`, opção `opt`.
+fn pick_play(info: InspectorAnimInfo, rule: usize, opt: usize) -> Vec<EditorAction> {
+    pick_rule(
+        info,
+        &ids::INSP_ANIM_RULE_PLAY,
+        &ids::INSP_ANIM_RULE_PLAY_OPT,
+        rule,
+        opt,
+    )
+}
+
+/// Os gestos do modo «Rules», para a varredura do `seam_anim`.
 pub(crate) fn character_gestures() -> Vec<Vec<EditorAction>> {
-    vec![
+    let mut out = vec![
         click_fresh(with_character(anim(true, false)), ids::INSP_ANIM_FLIP),
         commit(
             with_character(anim(true, false)),
             ids::INSP_ANIM_RUN_FROM,
             1.5,
         ),
-        pick_state(with_character(anim(true, false)), 1, 0),
-    ]
+        pick_play(with_character(anim(true, false)), 1, 0),
+    ];
+    out.extend(crate::seam_anim_rules::rule_gestures());
+    out
 }
 
 #[test]
@@ -120,17 +144,20 @@ fn quem_escolhe_cada_segmento_escreve_a_sua_escolha() {
     }
 }
 
-/// ⛔ Sem Platform Player «The Character» não pega: o clique não emite nada (a cena recusá-lo-ia).
+/// ⭐ «Rules» vale sem Platform Player (teclas, factos de vida, sinais — plano 08).
 #[test]
-fn o_personagem_nao_se_oferece_sem_platform_player() {
+fn as_regras_oferecem_se_sem_platform_player() {
     let info = anim(false, false);
     assert!(!info.card.has_character_body);
-    assert!(edits(&click_fresh(info, ids::INSP_ANIM_CHOOSER[2])).is_empty());
+    assert_eq!(
+        edits(&click_fresh(info, ids::INSP_ANIM_CHOOSER[2])),
+        [AnimFieldEdit::Chooser(AnimChooser::Rules.tag())]
+    );
 }
 
-/// Os menus só existem no modo «The Character».
+/// As regras só existem no modo «Rules».
 #[test]
-fn os_menus_de_estado_so_no_modo_do_personagem() {
+fn os_menus_das_regras_so_no_modo_rules() {
     for (info, want) in [
         (anim(false, false), false),
         (with_character(anim(false, false)), true),
@@ -138,25 +165,31 @@ fn os_menus_de_estado_so_no_modo_do_personagem() {
         let (mut host, mut st) = host_with(info);
         let rects = host.paint::<InspectorPanel>(&mut st, VIEWPORT);
         clear();
-        for id in ids::INSP_ANIM_STATE_PICK
-            .into_iter()
-            .chain([ids::INSP_ANIM_RUN_FROM, ids::INSP_ANIM_FLIP])
+        for id in ids::INSP_ANIM_RULE_WHEN[..4]
+            .iter()
+            .chain(&ids::INSP_ANIM_RULE_PLAY[..4])
+            .copied()
+            .chain([
+                ids::INSP_ANIM_RUN_FROM,
+                ids::INSP_ANIM_FLIP,
+                ids::INSP_ANIM_RULE_ADD,
+            ])
         {
             assert_eq!(rects.iter().any(|(n, _)| *n == id), want, "{id:?}");
         }
     }
 }
 
-/// ⭐⭐ **O menu lista EXACTAMENTE as animações e segue um renomear** — escolher a 2.ª opção escreve o
-/// nome dela; com a lista renomeada, a mesma opção escreve o nome NOVO.
+/// ⭐⭐ **O menu «Play» lista EXACTAMENTE as animações e segue um renomear** — escolher a 2.ª opção
+/// escreve o nome dela; com a lista renomeada, a mesma opção escreve o nome NOVO.
 #[test]
-fn o_menu_de_estado_lista_as_animacoes_e_segue_o_renomear() {
+fn o_menu_play_lista_as_animacoes_e_segue_o_renomear() {
     let info = with_character(anim(false, false));
     let (mut host, mut st) = host_with(info.clone());
-    host.set_dropdown_open(ids::INSP_ANIM_STATE_PICK[0], true);
+    host.set_dropdown_open(ids::INSP_ANIM_RULE_PLAY[0], true);
     let rects = host.paint::<InspectorPanel>(&mut st, VIEWPORT);
     clear();
-    for (i, &id) in ids::INSP_ANIM_STATE_OPT.iter().enumerate() {
+    for (i, &id) in ids::INSP_ANIM_RULE_PLAY_OPT.iter().enumerate() {
         assert_eq!(
             rects.iter().any(|(n, _)| *n == id),
             i < info.rows.len(),
@@ -164,15 +197,19 @@ fn o_menu_de_estado_lista_as_animacoes_e_segue_o_renomear() {
         );
     }
     assert_eq!(
-        edits(&pick_state(info.clone(), 2, 1)),
-        [AnimFieldEdit::CharacterState(2, "attack".into())]
+        edits(&pick_play(info.clone(), 2, 1)),
+        [AnimFieldEdit::RulePlay(2, "attack".into())]
     );
     let mut renamed = info;
     renamed.rows[1].name = "golpe".into();
-    renamed.card.character.as_mut().unwrap().names[1] = "golpe".into();
+    for r in &mut renamed.card.rules {
+        if r.play == "attack" {
+            r.play = "golpe".into();
+        }
+    }
     assert_eq!(
-        edits(&pick_state(renamed, 2, 1)),
-        [AnimFieldEdit::CharacterState(2, "golpe".into())]
+        edits(&pick_play(renamed, 2, 1)),
+        [AnimFieldEdit::RulePlay(2, "golpe".into())]
     );
 }
 
@@ -532,12 +569,12 @@ fn card_fits_at(w: f32) {
             .map(|m| (&m.pintado, m.largura))
             .collect::<Vec<_>>()
     );
-    let hint = ph2d_i18n::tr("panel.inspector.anim_card.character_hint");
+    let hint = ph2d_i18n::tr("panel.inspector.anim_card.rules_hint");
     assert!(
         !medidos.iter().any(|m| m.texto == hint && !m.coube()),
         "«{hint}» saiu elidido numa linha"
     );
-    // A frase mora entre «Who Picks» e o 1.º menu de estado, e ocupa as linhas que pede.
+    // A frase mora entre «Who Picks» e a 1.ª regra, e ocupa as linhas que pede.
     let at = |id| {
         rects
             .iter()
@@ -546,7 +583,7 @@ fn card_fits_at(w: f32) {
             .unwrap_or_else(|| panic!("{id:?} não foi pintado"))
     };
     let chooser = at(ids::INSP_ANIM_CHOOSER[2]);
-    let first_state = at(ids::INSP_ANIM_STATE_PICK[0]);
+    let first_state = at(ids::INSP_ANIM_RULE_GRIP[0]);
     let font = ph2d_tokens::TypeToken::Sm.px();
     assert!(
         first_state.y - (chooser.y + chooser.h) >= 2.0 * font, // LITERAL-PX-OK: duas linhas

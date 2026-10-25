@@ -7,8 +7,12 @@ use ph2d_ecs::{
     AnimDirection, AnimationTag, Entity, SimWorld, SpriteAnimCursor, SpriteAnimFrames,
     SpriteAnimations, SpriteAnimator, SpriteGrid, Transform,
 };
-use ph2d_editor_core::{AnimChooser, AnimCycleMode, AnimFieldEdit, InspectorAnimInfo};
-use ph2d_physics_ecs::{CharacterAnimations, PlatformPlayer};
+use ph2d_editor_core::{
+    AnimChooser, AnimCycleMode, AnimFieldEdit, AnimWhenInfo, InspectorAnimInfo,
+};
+use ph2d_physics_ecs::{
+    AnimRule, AnimRules, AnimWhen, CharacterAnimations, LifeEvent, PlatformPlayer,
+};
 
 fn registry() -> ComponentRegistry {
     let mut r = ComponentRegistry::new();
@@ -115,16 +119,30 @@ fn quem_escolhe_eu_script_e_o_personagem() {
     assert!(!sim.world().get::<SpriteAnimator>(e).unwrap().autoplay);
     assert_eq!(info(&sim, e).card.chooser, AnimChooser::Script);
 
-    // Sem Platform Player não há estados: «O personagem» não pega.
+    // Sem Platform Player «Rules» começa VAZIA (teclas, vida, sinais — plano 08): nada de personagem.
     edit(
         &mut sim,
         e,
         &reg,
-        AnimFieldEdit::Chooser(AnimChooser::Character.tag()),
+        AnimFieldEdit::Chooser(AnimChooser::Rules.tag()),
     );
     assert!(sim.world().get::<CharacterAnimations>(e).is_none());
-    assert!(!info(&sim, e).card.has_character_body);
+    assert_eq!(sim.world().get::<AnimRules>(e), Some(&AnimRules::default()));
+    let card = info(&sim, e).card;
+    assert_eq!(card.chooser, AnimChooser::Rules);
+    assert!(!card.has_character_body && card.rules.is_empty());
+    edit(
+        &mut sim,
+        e,
+        &reg,
+        AnimFieldEdit::Chooser(AnimChooser::Me.tag()),
+    );
+    assert!(
+        sim.world().get::<AnimRules>(e).is_none(),
+        "sair leva as regras"
+    );
 
+    // Num personagem, «Rules» pré-preenche as 4 (derivadas, sem gravar `AnimRules`).
     sim.world_mut()
         .entity_mut(e)
         .insert(PlatformPlayer::default());
@@ -132,11 +150,13 @@ fn quem_escolhe_eu_script_e_o_personagem() {
         &mut sim,
         e,
         &reg,
-        AnimFieldEdit::Chooser(AnimChooser::Character.tag()),
+        AnimFieldEdit::Chooser(AnimChooser::Rules.tag()),
     );
     let card = info(&sim, e).card;
-    assert_eq!(card.chooser, AnimChooser::Character);
+    assert_eq!(card.chooser, AnimChooser::Rules);
     assert!(card.has_character_body && card.character.is_some());
+    assert_eq!(card.rules.len(), 4);
+    assert!(sim.world().get::<AnimRules>(e).is_none());
     edit(
         &mut sim,
         e,
@@ -149,18 +169,68 @@ fn quem_escolhe_eu_script_e_o_personagem() {
     );
 }
 
-#[test]
-fn os_estados_do_personagem_escolhem_se_e_acompanham_o_renomear() {
-    let (mut sim, reg) = (SimWorld::new(), registry());
-    let e = hero(&mut sim);
+/// Um personagem com só o `CharacterAnimations` (as 4 regras derivadas).
+fn character(sim: &mut SimWorld) -> Entity {
+    let e = hero(sim);
     sim.world_mut()
         .entity_mut(e)
         .insert((PlatformPlayer::default(), CharacterAnimations::default()));
+    e
+}
+
+/// ⭐ **A 1.ª edição da lista grava as `AnimRules`: as 4 derivadas + a mudança** (plano 08).
+#[test]
+fn editar_as_regras_grava_as_quatro_derivadas_e_a_mudanca() {
+    let reg = registry();
+    let derived = AnimRules::of_character(&CharacterAnimations::default()).0;
+    let mut added = derived.clone();
+    added.push(AnimRule {
+        when: AnimWhen::Action("down".into()),
+        play: "run".into(),
+    });
+    let mut moved = derived.clone();
+    let r = moved.remove(0);
+    moved.insert(2, r);
+    let mut removed = derived.clone();
+    removed.remove(1);
+    for (ed, want) in [
+        (
+            AnimFieldEdit::RuleAdd(AnimWhenInfo::Action("down".into()), "run".into()),
+            added,
+        ),
+        (AnimFieldEdit::RuleMove(0, 2), moved),
+        (AnimFieldEdit::RuleRemove(1), removed),
+    ] {
+        let mut sim = SimWorld::new();
+        let e = character(&mut sim);
+        assert!(sim.world().get::<AnimRules>(e).is_none());
+        edit(&mut sim, e, &reg, ed.clone());
+        assert_eq!(
+            sim.world().get::<AnimRules>(e).map(|r| &r.0),
+            Some(&want),
+            "{ed:?}"
+        );
+        let shown: Vec<String> = info(&sim, e)
+            .card
+            .rules
+            .into_iter()
+            .map(|r| r.play)
+            .collect();
+        let want: Vec<String> = want.into_iter().map(|r| r.play).collect();
+        assert_eq!(shown, want, "o snapshot mostra o que se gravou ({ed:?})");
+    }
+}
+
+#[test]
+fn as_regras_do_personagem_escolhem_se_e_acompanham_o_renomear() {
+    let (mut sim, reg) = (SimWorld::new(), registry());
+    let e = character(&mut sim);
+    edit(&mut sim, e, &reg, AnimFieldEdit::RulePlay(0, "run".into()));
     edit(
         &mut sim,
         e,
         &reg,
-        AnimFieldEdit::CharacterState(1, "run".into()),
+        AnimFieldEdit::RuleWhen(3, AnimWhenInfo::Life(0)),
     );
     edit(&mut sim, e, &reg, AnimFieldEdit::CharacterRunFrom(1.25));
     edit(&mut sim, e, &reg, AnimFieldEdit::CharacterFlip(false));
@@ -170,12 +240,19 @@ fn os_estados_do_personagem_escolhem_se_e_acompanham_o_renomear() {
     let w = sim.world();
     let a = w.get::<CharacterAnimations>(e).unwrap();
     assert_eq!((a.run.as_str(), a.run_from, a.flip), ("corre", 1.25, false));
+    let r = &w.get::<AnimRules>(e).unwrap().0;
+    assert_eq!(
+        r.iter().map(|r| r.play.as_str()).collect::<Vec<_>>(),
+        ["corre", "corre", "jump", "fall"],
+        "o renomear leva as regras gravadas"
+    );
+    assert_eq!(r[3].when, AnimWhen::Life(LifeEvent::Damaged));
     assert_eq!(w.get::<SpriteAnimator>(e).unwrap().current, "corre");
     assert_eq!(
         w.get::<SpriteAnimFrames>(e).and_then(|f| f.get("corre")),
         Some(&[8, 9][..])
     );
-    assert_eq!(info(&sim, e).card.character.unwrap().names[1], "corre");
+    assert_eq!(info(&sim, e).card.rules[1].play, "corre");
 }
 
 #[test]

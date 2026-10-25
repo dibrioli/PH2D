@@ -1,5 +1,5 @@
 //! **O VOCABULÁRIO DO CARTÃO «ANIMATION»** (plano GameEngineFuncional 07) — as chaves
-//! `panel.inspector.anim_card.…`: a lista com ▶, «quem escolhe» e os estados do personagem. Irmão do
+//! `panel.inspector.anim_card.…`: a lista com ▶, «quem escolhe» e as regras (plano 08). Irmão do
 //! `inspector.rs` por ASSUNTO (o tecto de 700 linhas). Os nomes dos quatro estados, «Run From» e
 //! «Flip» são os do catálogo (`component.field.character_animations.*`).
 
@@ -23,20 +23,36 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.anim_card.who_picks" => "Who Picks",
         "panel.inspector.anim_card.me" => "Me",
         "panel.inspector.anim_card.script" => "Script",
-        "panel.inspector.anim_card.character" => "The Character",
+        "panel.inspector.anim_card.rules" => "Rules",
         "panel.inspector.anim_card.me_hint" => {
             "The animation you play here starts by itself when the game runs."
         }
         "panel.inspector.anim_card.script_hint" => {
             "Nothing starts by itself: a script picks with ph2d.set(self.id, \"animator.animation\", \"run\") and starts it with ph2d.set(self.id, \"animator.playing\", true)."
         }
-        "panel.inspector.anim_card.character_hint" => {
-            "The character picks by what he does: standing, running, jumping, falling."
+        "panel.inspector.anim_card.rules_hint" => {
+            "The rule on top wins. Add rules for keys, damage or signals; a script can still pick for the hard cases."
         }
-        "panel.inspector.anim_card.needs_player" => {
-            "The character can pick only with a Platform Player on this object."
+        "panel.inspector.anim_card.rule_add" => "+ Rule",
+        "panel.inspector.anim_card.rule_grip_tip" => {
+            "Drag to reorder \u{2014} the rule on top wins"
         }
-        "panel.inspector.anim_card.state_tip" => "Which animation plays in this state.",
+        "panel.inspector.anim_card.rule_del_tip" => "Remove this rule",
+        "panel.inspector.anim_card.rule_when_tip" => "When this happens\u{2026}",
+        "panel.inspector.anim_card.rule_play_tip" => "\u{2026}play this animation",
+        "panel.inspector.anim_card.rules_hidden" => {
+            "{n} more rules do not fit here; they still count, in order, below these."
+        }
+        "panel.inspector.anim_card.when_pose_0" => "Standing still",
+        "panel.inspector.anim_card.when_pose_1" => "Running",
+        "panel.inspector.anim_card.when_pose_2" => "Going up",
+        "panel.inspector.anim_card.when_pose_3" => "Falling",
+        "panel.inspector.anim_card.when_life_0" => "Took damage",
+        "panel.inspector.anim_card.when_life_1" => "Died",
+        "panel.inspector.anim_card.when_life_2" => "Got healed",
+        "panel.inspector.anim_card.when_life_3" => "Dodged",
+        "panel.inspector.anim_card.when_action" => "Key held: {name}",
+        "panel.inspector.anim_card.when_signal" => "Signal: {name}",
         "panel.inspector.anim_card.run_from_tip" => {
             "Walking faster than this, in m/s against the ground, plays Run."
         }

@@ -64,6 +64,11 @@ pub(crate) fn sync_new_sections(
         inspector_state.last_anim_row = Some(row);
         sync_anim_fields(host, &an, row, entity_changed || row_changed);
     }
+    // As pegas arrastáveis das regras do cartão «Animation» (plano 08), republicadas por quadro.
+    crate::sections::anim_rules::sync_rule_rows(
+        host,
+        crate::state::current_inspector_anim().as_ref(),
+    );
     if let Some(tm) = crate::state_components::current_inspector_timer() {
         // ⚠️ **A mesma ARESTA das duas irmãs**, e pelo mesmo defeito medido.
         let row = if tm.rows.is_empty() {

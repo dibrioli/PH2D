@@ -41,8 +41,8 @@ impl Default for CharacterAnimations {
     }
 }
 
-/// O estado do personagem que escolhe a animação.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+/// O estado do personagem que escolhe a animação. ⚠️ Gravado nas `AnimRules` pelo índice: append-only.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CharacterPose {
     Idle,
     Run,
@@ -51,6 +51,8 @@ pub enum CharacterPose {
 }
 
 impl CharacterPose {
+    pub const ALL: [Self; 4] = [Self::Idle, Self::Run, Self::Jump, Self::Fall];
+
     /// A lei: no chão corre se a velocidade relativa ao chão passa de `run_from`; no ar (ou numa
     /// rampa íngreme demais para ficar de pé) sobe = salta, desce = cai.
     #[must_use]

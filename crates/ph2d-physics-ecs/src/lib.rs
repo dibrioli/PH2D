@@ -79,16 +79,16 @@ pub use bridge::{
     FrozenScene, HeldInput, InputTape, PhysicsBridge, PlayerInputAtTick, SceneAtTick, TapeWire,
 };
 pub use components::{
-    AreaBuoyancy, AreaDrag, AreaEffector, AreaFalloff, AreaForceWorldAxes, AreaFormDrag,
-    AreaTorque, BodyKind, Ccd, CharacterAnimations, CharacterPose, Collider, ColliderShape,
-    CombineRule, Damage, DampMode, DampingOverride, Dominance, GravityScale, Health, HealthBar,
-    HealthNow, InitialVelocity, LockPositionX, LockPositionY, LockRotation, MassOverride,
-    MaterialCombine, NavAgent, NavCostArea, NavCostAreaNow, NavLink, NavNow, NavRegion, NavRoute,
-    NavTarget, NoWallCling, OnHit, OneWayPlatform, PlatformLift, PlatformPlayer, PlayerMode,
-    PlayerSignals, ProjectileMotion, PulleyWheel, RESISTANCES_MAX, RayHit, RaySensor, RaySignals,
-    Resistance, RigidBody, RopeStops, SignalOnHit, SignalOnLeave, SignalTagFilter, TopDownPlayer,
-    WalkSurface, WestonAxle, WrapSide, kind_key, reseat_mounted_axle, reseat_wheel_geometry,
-    rope_joint_of,
+    AnimRule, AnimRules, AnimWhen, AreaBuoyancy, AreaDrag, AreaEffector, AreaFalloff,
+    AreaForceWorldAxes, AreaFormDrag, AreaTorque, BodyKind, Ccd, CharacterAnimations,
+    CharacterPose, Collider, ColliderShape, CombineRule, Damage, DampMode, DampingOverride,
+    Dominance, GravityScale, Health, HealthBar, HealthNow, InitialVelocity, LifeEvent,
+    LockPositionX, LockPositionY, LockRotation, MassOverride, MaterialCombine, NavAgent,
+    NavCostArea, NavCostAreaNow, NavLink, NavNow, NavRegion, NavRoute, NavTarget, NoWallCling,
+    OnHit, OneWayPlatform, PlatformLift, PlatformPlayer, PlayerMode, PlayerSignals,
+    ProjectileMotion, PulleyWheel, RESISTANCES_MAX, RayHit, RaySensor, RaySignals, Resistance,
+    RigidBody, RopeStops, SignalOnHit, SignalOnLeave, SignalTagFilter, TopDownPlayer, WalkSurface,
+    WestonAxle, WrapSide, kind_key, reseat_mounted_axle, reseat_wheel_geometry, rope_joint_of,
 };
 pub use interaction::{
     HoldMode, InteractionSettings, InteractionTool, MAX_ATTRACT_FORCE, MAX_BLAST_IMPULSE,
@@ -221,6 +221,9 @@ pub fn register_physics_components(reg: &mut ComponentRegistry) {
     // ⭐ GameEngineFuncional N1 — que animação toca em cada estado do personagem. ⚠️ Registado novo
     // ⇒ `PROJECT_SCHEMA` +1 e os dois espelhos +1.
     reg.register_default::<CharacterAnimations>("ph2d::physics::CharacterAnimations");
+    // ⭐ GameEngineFuncional 08 — as regras «quando → toca», irmãs do de cima (sem degrau de schema:
+    // um ficheiro antigo não as tem e deriva-as do `CharacterAnimations`).
+    reg.register_default::<AnimRules>("ph2d::physics::AnimRules");
     // ⭐ TOP-20 #13. ⚠️ Componente registado novo ⇒ o `PROJECT_SCHEMA` sobe e os
     // DOIS espelhos (`ph2d-render`, `ph2d-script`) sobem com ele — conte o DELTA.
     reg.register_default::<TopDownPlayer>("ph2d::physics::TopDownPlayer");
@@ -283,7 +286,8 @@ mod tests {
         // `main` desta linha é **+2** (o `main` de 02/10 tem 42). Dois tipos e UM degrau.
         // ⭐ **+1 (GameEngineFuncional N1: `CharacterAnimations`)** ⇒ `44 -> 45`; delta contra o
         // merge-base desta linha **+1**. Quem integrar conta o DELTA, nunca o literal.
-        assert_eq!(reg.len(), 45);
+        // ⭐ **+1 (GameEngineFuncional 08: `AnimRules`)** ⇒ `45 -> 46`; delta contra o merge-base **+2**.
+        assert_eq!(reg.len(), 46);
         assert!(reg.get_by_name("ph2d::physics::NavCostArea").is_some());
         assert!(reg.get_by_name("ph2d::physics::NavLink").is_some());
         assert!(reg.get_by_name("ph2d::physics::NavRegion").is_some());

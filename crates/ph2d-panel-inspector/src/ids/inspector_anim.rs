@@ -282,92 +282,254 @@ const fn build_insp_anim_play_row() -> [NodeId; 64] {
 /// «Edit animations…» — abre o editor de animações desta sprite numa aba (`AnimFieldEdit::OpenEditor`).
 pub const INSP_ANIM_OPEN_EDITOR: NodeId = hash_node_id("insp_anim_open_editor");
 
-/// «Who picks»: Me · Script · The character. ⚠️ A POSIÇÃO é o `AnimChooser::tag`.
+/// «Who picks»: Me · Script · Rules. ⚠️ A POSIÇÃO é o `AnimChooser::tag`.
 pub const INSP_ANIM_CHOOSER: [NodeId; 3] = [
     hash_node_id("insp_anim_chooser_me"),
     hash_node_id("insp_anim_chooser_script"),
     hash_node_id("insp_anim_chooser_character"),
 ];
 
-/// Os quatro menus dos estados do personagem — Idle · Run · Jump · Fall (a ordem do
-/// `AnimFieldEdit::CharacterState`).
-pub const INSP_ANIM_STATE_PICK: [NodeId; 4] = [
-    hash_node_id("insp_anim_state_idle"),
-    hash_node_id("insp_anim_state_run"),
-    hash_node_id("insp_anim_state_jump"),
-    hash_node_id("insp_anim_state_fall"),
+/// ⭐ **Quantas regras do cartão «Animation» ganham linha própria** (plano GameEngineFuncional 08).
+///
+/// ⚠️ **É um teto de TABELA DE IDS, e ele diz de que recurso é** — a mesma razão do
+/// `MAX_INSTANCE_ORPHAN_ROWS`: os ids são `const` para o censo do `hit_indexed_ids_are_registered`
+/// os poder **ver**, e uma tabela `const` tem tamanho.
+///
+/// ⛔ **A LISTA de regras no DADO não tem tecto** (`AnimRules` é um `Vec`). Acima de 16 o cartão
+/// pinta uma linha a dizer quantas não cabem, e o «+ Rule» não aparece — nunca uma regra escondida
+/// que ainda decide sem se ver editável.
+///
+/// **O número:** as 4 poses + uma tecla ou um facto de vida por estado de jogo; 16 cobre um
+/// personagem cheio com folga. Os casos acima disso são os do script.
+pub const MAX_ANIM_RULE_ROWS: usize = 16;
+
+/// A pega `[n]` de cada regra — arrastá-la reordena (família `PanelRowFamily::AnimRule`).
+pub const INSP_ANIM_RULE_GRIP: [NodeId; MAX_ANIM_RULE_ROWS] = [
+    hash_node_id("insp_anim_rule_grip_00"),
+    hash_node_id("insp_anim_rule_grip_01"),
+    hash_node_id("insp_anim_rule_grip_02"),
+    hash_node_id("insp_anim_rule_grip_03"),
+    hash_node_id("insp_anim_rule_grip_04"),
+    hash_node_id("insp_anim_rule_grip_05"),
+    hash_node_id("insp_anim_rule_grip_06"),
+    hash_node_id("insp_anim_rule_grip_07"),
+    hash_node_id("insp_anim_rule_grip_08"),
+    hash_node_id("insp_anim_rule_grip_09"),
+    hash_node_id("insp_anim_rule_grip_10"),
+    hash_node_id("insp_anim_rule_grip_11"),
+    hash_node_id("insp_anim_rule_grip_12"),
+    hash_node_id("insp_anim_rule_grip_13"),
+    hash_node_id("insp_anim_rule_grip_14"),
+    hash_node_id("insp_anim_rule_grip_15"),
 ];
 
-/// As linhas do popover de um estado: uma por animação da lista, pela ordem dela. ⚠️ Partilhadas pelos
-/// quatro menus — só um popover está aberto de cada vez, e o despacho pergunta QUAL.
-pub const INSP_ANIM_STATE_OPT: [NodeId; 64] = build_insp_anim_state_opt();
+/// O menu «When» de cada regra.
+pub const INSP_ANIM_RULE_WHEN: [NodeId; MAX_ANIM_RULE_ROWS] = [
+    hash_node_id("insp_anim_rule_when_00"),
+    hash_node_id("insp_anim_rule_when_01"),
+    hash_node_id("insp_anim_rule_when_02"),
+    hash_node_id("insp_anim_rule_when_03"),
+    hash_node_id("insp_anim_rule_when_04"),
+    hash_node_id("insp_anim_rule_when_05"),
+    hash_node_id("insp_anim_rule_when_06"),
+    hash_node_id("insp_anim_rule_when_07"),
+    hash_node_id("insp_anim_rule_when_08"),
+    hash_node_id("insp_anim_rule_when_09"),
+    hash_node_id("insp_anim_rule_when_10"),
+    hash_node_id("insp_anim_rule_when_11"),
+    hash_node_id("insp_anim_rule_when_12"),
+    hash_node_id("insp_anim_rule_when_13"),
+    hash_node_id("insp_anim_rule_when_14"),
+    hash_node_id("insp_anim_rule_when_15"),
+];
 
-const fn build_insp_anim_state_opt() -> [NodeId; 64] {
+/// O menu «Play» de cada regra.
+pub const INSP_ANIM_RULE_PLAY: [NodeId; MAX_ANIM_RULE_ROWS] = [
+    hash_node_id("insp_anim_rule_play_00"),
+    hash_node_id("insp_anim_rule_play_01"),
+    hash_node_id("insp_anim_rule_play_02"),
+    hash_node_id("insp_anim_rule_play_03"),
+    hash_node_id("insp_anim_rule_play_04"),
+    hash_node_id("insp_anim_rule_play_05"),
+    hash_node_id("insp_anim_rule_play_06"),
+    hash_node_id("insp_anim_rule_play_07"),
+    hash_node_id("insp_anim_rule_play_08"),
+    hash_node_id("insp_anim_rule_play_09"),
+    hash_node_id("insp_anim_rule_play_10"),
+    hash_node_id("insp_anim_rule_play_11"),
+    hash_node_id("insp_anim_rule_play_12"),
+    hash_node_id("insp_anim_rule_play_13"),
+    hash_node_id("insp_anim_rule_play_14"),
+    hash_node_id("insp_anim_rule_play_15"),
+];
+
+/// O × de cada regra.
+pub const INSP_ANIM_RULE_DEL: [NodeId; MAX_ANIM_RULE_ROWS] = [
+    hash_node_id("insp_anim_rule_del_00"),
+    hash_node_id("insp_anim_rule_del_01"),
+    hash_node_id("insp_anim_rule_del_02"),
+    hash_node_id("insp_anim_rule_del_03"),
+    hash_node_id("insp_anim_rule_del_04"),
+    hash_node_id("insp_anim_rule_del_05"),
+    hash_node_id("insp_anim_rule_del_06"),
+    hash_node_id("insp_anim_rule_del_07"),
+    hash_node_id("insp_anim_rule_del_08"),
+    hash_node_id("insp_anim_rule_del_09"),
+    hash_node_id("insp_anim_rule_del_10"),
+    hash_node_id("insp_anim_rule_del_11"),
+    hash_node_id("insp_anim_rule_del_12"),
+    hash_node_id("insp_anim_rule_del_13"),
+    hash_node_id("insp_anim_rule_del_14"),
+    hash_node_id("insp_anim_rule_del_15"),
+];
+
+/// «+ Rule» — acrescenta uma regra no fim.
+pub const INSP_ANIM_RULE_ADD: NodeId = hash_node_id("insp_anim_rule_add");
+
+/// As linhas do popover «When»: uma por opção de `AnimCardInfo::when_options`, pela ordem dela.
+/// ⚠️ Partilhadas pelos menus de todas as regras — só um popover está aberto de cada vez, e o despacho
+/// pergunta QUAL.
+pub const INSP_ANIM_RULE_WHEN_OPT: [NodeId; 64] = build_insp_anim_rule_when_opt();
+
+const fn build_insp_anim_rule_when_opt() -> [NodeId; 64] {
     [
-        hash_node_id("insp_anim_state_opt_00"),
-        hash_node_id("insp_anim_state_opt_01"),
-        hash_node_id("insp_anim_state_opt_02"),
-        hash_node_id("insp_anim_state_opt_03"),
-        hash_node_id("insp_anim_state_opt_04"),
-        hash_node_id("insp_anim_state_opt_05"),
-        hash_node_id("insp_anim_state_opt_06"),
-        hash_node_id("insp_anim_state_opt_07"),
-        hash_node_id("insp_anim_state_opt_08"),
-        hash_node_id("insp_anim_state_opt_09"),
-        hash_node_id("insp_anim_state_opt_10"),
-        hash_node_id("insp_anim_state_opt_11"),
-        hash_node_id("insp_anim_state_opt_12"),
-        hash_node_id("insp_anim_state_opt_13"),
-        hash_node_id("insp_anim_state_opt_14"),
-        hash_node_id("insp_anim_state_opt_15"),
-        hash_node_id("insp_anim_state_opt_16"),
-        hash_node_id("insp_anim_state_opt_17"),
-        hash_node_id("insp_anim_state_opt_18"),
-        hash_node_id("insp_anim_state_opt_19"),
-        hash_node_id("insp_anim_state_opt_20"),
-        hash_node_id("insp_anim_state_opt_21"),
-        hash_node_id("insp_anim_state_opt_22"),
-        hash_node_id("insp_anim_state_opt_23"),
-        hash_node_id("insp_anim_state_opt_24"),
-        hash_node_id("insp_anim_state_opt_25"),
-        hash_node_id("insp_anim_state_opt_26"),
-        hash_node_id("insp_anim_state_opt_27"),
-        hash_node_id("insp_anim_state_opt_28"),
-        hash_node_id("insp_anim_state_opt_29"),
-        hash_node_id("insp_anim_state_opt_30"),
-        hash_node_id("insp_anim_state_opt_31"),
-        hash_node_id("insp_anim_state_opt_32"),
-        hash_node_id("insp_anim_state_opt_33"),
-        hash_node_id("insp_anim_state_opt_34"),
-        hash_node_id("insp_anim_state_opt_35"),
-        hash_node_id("insp_anim_state_opt_36"),
-        hash_node_id("insp_anim_state_opt_37"),
-        hash_node_id("insp_anim_state_opt_38"),
-        hash_node_id("insp_anim_state_opt_39"),
-        hash_node_id("insp_anim_state_opt_40"),
-        hash_node_id("insp_anim_state_opt_41"),
-        hash_node_id("insp_anim_state_opt_42"),
-        hash_node_id("insp_anim_state_opt_43"),
-        hash_node_id("insp_anim_state_opt_44"),
-        hash_node_id("insp_anim_state_opt_45"),
-        hash_node_id("insp_anim_state_opt_46"),
-        hash_node_id("insp_anim_state_opt_47"),
-        hash_node_id("insp_anim_state_opt_48"),
-        hash_node_id("insp_anim_state_opt_49"),
-        hash_node_id("insp_anim_state_opt_50"),
-        hash_node_id("insp_anim_state_opt_51"),
-        hash_node_id("insp_anim_state_opt_52"),
-        hash_node_id("insp_anim_state_opt_53"),
-        hash_node_id("insp_anim_state_opt_54"),
-        hash_node_id("insp_anim_state_opt_55"),
-        hash_node_id("insp_anim_state_opt_56"),
-        hash_node_id("insp_anim_state_opt_57"),
-        hash_node_id("insp_anim_state_opt_58"),
-        hash_node_id("insp_anim_state_opt_59"),
-        hash_node_id("insp_anim_state_opt_60"),
-        hash_node_id("insp_anim_state_opt_61"),
-        hash_node_id("insp_anim_state_opt_62"),
-        hash_node_id("insp_anim_state_opt_63"),
+        hash_node_id("insp_anim_rule_when_opt_00"),
+        hash_node_id("insp_anim_rule_when_opt_01"),
+        hash_node_id("insp_anim_rule_when_opt_02"),
+        hash_node_id("insp_anim_rule_when_opt_03"),
+        hash_node_id("insp_anim_rule_when_opt_04"),
+        hash_node_id("insp_anim_rule_when_opt_05"),
+        hash_node_id("insp_anim_rule_when_opt_06"),
+        hash_node_id("insp_anim_rule_when_opt_07"),
+        hash_node_id("insp_anim_rule_when_opt_08"),
+        hash_node_id("insp_anim_rule_when_opt_09"),
+        hash_node_id("insp_anim_rule_when_opt_10"),
+        hash_node_id("insp_anim_rule_when_opt_11"),
+        hash_node_id("insp_anim_rule_when_opt_12"),
+        hash_node_id("insp_anim_rule_when_opt_13"),
+        hash_node_id("insp_anim_rule_when_opt_14"),
+        hash_node_id("insp_anim_rule_when_opt_15"),
+        hash_node_id("insp_anim_rule_when_opt_16"),
+        hash_node_id("insp_anim_rule_when_opt_17"),
+        hash_node_id("insp_anim_rule_when_opt_18"),
+        hash_node_id("insp_anim_rule_when_opt_19"),
+        hash_node_id("insp_anim_rule_when_opt_20"),
+        hash_node_id("insp_anim_rule_when_opt_21"),
+        hash_node_id("insp_anim_rule_when_opt_22"),
+        hash_node_id("insp_anim_rule_when_opt_23"),
+        hash_node_id("insp_anim_rule_when_opt_24"),
+        hash_node_id("insp_anim_rule_when_opt_25"),
+        hash_node_id("insp_anim_rule_when_opt_26"),
+        hash_node_id("insp_anim_rule_when_opt_27"),
+        hash_node_id("insp_anim_rule_when_opt_28"),
+        hash_node_id("insp_anim_rule_when_opt_29"),
+        hash_node_id("insp_anim_rule_when_opt_30"),
+        hash_node_id("insp_anim_rule_when_opt_31"),
+        hash_node_id("insp_anim_rule_when_opt_32"),
+        hash_node_id("insp_anim_rule_when_opt_33"),
+        hash_node_id("insp_anim_rule_when_opt_34"),
+        hash_node_id("insp_anim_rule_when_opt_35"),
+        hash_node_id("insp_anim_rule_when_opt_36"),
+        hash_node_id("insp_anim_rule_when_opt_37"),
+        hash_node_id("insp_anim_rule_when_opt_38"),
+        hash_node_id("insp_anim_rule_when_opt_39"),
+        hash_node_id("insp_anim_rule_when_opt_40"),
+        hash_node_id("insp_anim_rule_when_opt_41"),
+        hash_node_id("insp_anim_rule_when_opt_42"),
+        hash_node_id("insp_anim_rule_when_opt_43"),
+        hash_node_id("insp_anim_rule_when_opt_44"),
+        hash_node_id("insp_anim_rule_when_opt_45"),
+        hash_node_id("insp_anim_rule_when_opt_46"),
+        hash_node_id("insp_anim_rule_when_opt_47"),
+        hash_node_id("insp_anim_rule_when_opt_48"),
+        hash_node_id("insp_anim_rule_when_opt_49"),
+        hash_node_id("insp_anim_rule_when_opt_50"),
+        hash_node_id("insp_anim_rule_when_opt_51"),
+        hash_node_id("insp_anim_rule_when_opt_52"),
+        hash_node_id("insp_anim_rule_when_opt_53"),
+        hash_node_id("insp_anim_rule_when_opt_54"),
+        hash_node_id("insp_anim_rule_when_opt_55"),
+        hash_node_id("insp_anim_rule_when_opt_56"),
+        hash_node_id("insp_anim_rule_when_opt_57"),
+        hash_node_id("insp_anim_rule_when_opt_58"),
+        hash_node_id("insp_anim_rule_when_opt_59"),
+        hash_node_id("insp_anim_rule_when_opt_60"),
+        hash_node_id("insp_anim_rule_when_opt_61"),
+        hash_node_id("insp_anim_rule_when_opt_62"),
+        hash_node_id("insp_anim_rule_when_opt_63"),
+    ]
+}
+
+/// As linhas do popover «Play»: uma por animação da lista, pela ordem dela. ⚠️ Partilhadas pelos
+/// menus de todas as regras, como as do «When».
+pub const INSP_ANIM_RULE_PLAY_OPT: [NodeId; 64] = build_insp_anim_rule_play_opt();
+
+const fn build_insp_anim_rule_play_opt() -> [NodeId; 64] {
+    [
+        hash_node_id("insp_anim_rule_play_opt_00"),
+        hash_node_id("insp_anim_rule_play_opt_01"),
+        hash_node_id("insp_anim_rule_play_opt_02"),
+        hash_node_id("insp_anim_rule_play_opt_03"),
+        hash_node_id("insp_anim_rule_play_opt_04"),
+        hash_node_id("insp_anim_rule_play_opt_05"),
+        hash_node_id("insp_anim_rule_play_opt_06"),
+        hash_node_id("insp_anim_rule_play_opt_07"),
+        hash_node_id("insp_anim_rule_play_opt_08"),
+        hash_node_id("insp_anim_rule_play_opt_09"),
+        hash_node_id("insp_anim_rule_play_opt_10"),
+        hash_node_id("insp_anim_rule_play_opt_11"),
+        hash_node_id("insp_anim_rule_play_opt_12"),
+        hash_node_id("insp_anim_rule_play_opt_13"),
+        hash_node_id("insp_anim_rule_play_opt_14"),
+        hash_node_id("insp_anim_rule_play_opt_15"),
+        hash_node_id("insp_anim_rule_play_opt_16"),
+        hash_node_id("insp_anim_rule_play_opt_17"),
+        hash_node_id("insp_anim_rule_play_opt_18"),
+        hash_node_id("insp_anim_rule_play_opt_19"),
+        hash_node_id("insp_anim_rule_play_opt_20"),
+        hash_node_id("insp_anim_rule_play_opt_21"),
+        hash_node_id("insp_anim_rule_play_opt_22"),
+        hash_node_id("insp_anim_rule_play_opt_23"),
+        hash_node_id("insp_anim_rule_play_opt_24"),
+        hash_node_id("insp_anim_rule_play_opt_25"),
+        hash_node_id("insp_anim_rule_play_opt_26"),
+        hash_node_id("insp_anim_rule_play_opt_27"),
+        hash_node_id("insp_anim_rule_play_opt_28"),
+        hash_node_id("insp_anim_rule_play_opt_29"),
+        hash_node_id("insp_anim_rule_play_opt_30"),
+        hash_node_id("insp_anim_rule_play_opt_31"),
+        hash_node_id("insp_anim_rule_play_opt_32"),
+        hash_node_id("insp_anim_rule_play_opt_33"),
+        hash_node_id("insp_anim_rule_play_opt_34"),
+        hash_node_id("insp_anim_rule_play_opt_35"),
+        hash_node_id("insp_anim_rule_play_opt_36"),
+        hash_node_id("insp_anim_rule_play_opt_37"),
+        hash_node_id("insp_anim_rule_play_opt_38"),
+        hash_node_id("insp_anim_rule_play_opt_39"),
+        hash_node_id("insp_anim_rule_play_opt_40"),
+        hash_node_id("insp_anim_rule_play_opt_41"),
+        hash_node_id("insp_anim_rule_play_opt_42"),
+        hash_node_id("insp_anim_rule_play_opt_43"),
+        hash_node_id("insp_anim_rule_play_opt_44"),
+        hash_node_id("insp_anim_rule_play_opt_45"),
+        hash_node_id("insp_anim_rule_play_opt_46"),
+        hash_node_id("insp_anim_rule_play_opt_47"),
+        hash_node_id("insp_anim_rule_play_opt_48"),
+        hash_node_id("insp_anim_rule_play_opt_49"),
+        hash_node_id("insp_anim_rule_play_opt_50"),
+        hash_node_id("insp_anim_rule_play_opt_51"),
+        hash_node_id("insp_anim_rule_play_opt_52"),
+        hash_node_id("insp_anim_rule_play_opt_53"),
+        hash_node_id("insp_anim_rule_play_opt_54"),
+        hash_node_id("insp_anim_rule_play_opt_55"),
+        hash_node_id("insp_anim_rule_play_opt_56"),
+        hash_node_id("insp_anim_rule_play_opt_57"),
+        hash_node_id("insp_anim_rule_play_opt_58"),
+        hash_node_id("insp_anim_rule_play_opt_59"),
+        hash_node_id("insp_anim_rule_play_opt_60"),
+        hash_node_id("insp_anim_rule_play_opt_61"),
+        hash_node_id("insp_anim_rule_play_opt_62"),
+        hash_node_id("insp_anim_rule_play_opt_63"),
     ]
 }
 

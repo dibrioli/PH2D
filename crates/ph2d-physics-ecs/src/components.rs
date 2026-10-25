@@ -239,6 +239,8 @@ impl Default for Collider {
 
 impl SimComponent for Collider {}
 
+/// As regras de animação «quando → toca» (GameEngineFuncional 08).
+mod anim_rules;
 /// The optional per-body overrides — one component per §11 control (gravity scale,
 /// initial velocity, the constraint markers, mass, dominance, material combine,
 /// damping, one-way, the force zone). Re-exported so `components::GravityScale` and
@@ -270,6 +272,7 @@ mod surface;
 /// ⭐⭐⭐ **O mover de VISTA DE CIMA** (TOP-20 #13) — ver o cabeçalho dele.
 mod topdown;
 
+pub use anim_rules::{AnimRule, AnimRules, AnimWhen, LifeEvent};
 pub use area::{
     AreaBuoyancy, AreaDrag, AreaEffector, AreaFalloff, AreaForceWorldAxes, AreaFormDrag, AreaTorque,
 };

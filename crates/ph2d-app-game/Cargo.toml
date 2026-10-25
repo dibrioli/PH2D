@@ -22,6 +22,11 @@ ph2d-core = { path = "../ph2d-core" }
 ph2d-ecs = { path = "../ph2d-ecs" }
 # Onde o jogo se mostra (`game_stage::GameStage`, a escolha do menu *Run*).
 ph2d-editor-core = { path = "../ph2d-editor-core" }
+# As regras de animação: as ações premidas (`ActionState`) e os sinais ouvidos (`SignalOutbox`).
+ph2d-input = { path = "../ph2d-input" }
+# O `#[derive(Resource)]` do estado das regras em curso (o derive pede o caminho `bevy_ecs`).
+bevy_ecs = "0.19"
+ph2d-runtime = { path = "../ph2d-runtime" }
 # O personagem: o `CharacterAnimations`, a vista do player e os corpos dos objectos do menu Add.
 ph2d-physics-ecs = { path = "../ph2d-physics-ecs" }
 ph2d-render = { path = "../ph2d-render" }

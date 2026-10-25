@@ -1,8 +1,8 @@
 //! **Os cliques do cartão «Animation»** (plano GameEngineFuncional 07) — o ▶ de cada linha,
-//! «Edit Animations…», «Who Picks» e as linhas dos menus de estado. Irmão do [`crate::event_anim`]
-//! pelo tecto de função.
+//! «Edit Animations…», «Who Picks», «Run From» e «Flip»; a lista de regras está no
+//! [`crate::event_anim_rules`]. Irmão do [`crate::event_anim`] pelo tecto de função.
 
-use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent};
+use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::screens::hero::{AnimChooser, AnimFieldEdit, InspectorAnimInfo};
 
@@ -16,6 +16,9 @@ pub(crate) fn apply_card_event(
     info: &InspectorAnimInfo,
     ev: WidgetEvent,
 ) -> bool {
+    if crate::event_anim_rules::apply_rules_event(host, info, ev) {
+        return true;
+    }
     if let WidgetEvent::Click(id) = ev {
         return apply_card_click(panel, host, info, id);
     }
@@ -99,39 +102,11 @@ fn apply_card_click(
         demote(host, id);
         return true;
     }
-    // ⚠️ A POSIÇÃO no array é o `AnimChooser::tag`. «The Character» sem Platform Player não pega: o
-    // cartão diz porquê, e aqui não se emite nada que a cena recusaria.
+    // ⚠️ A POSIÇÃO no array é o `AnimChooser::tag`. «Rules» vale sem Platform Player (teclas,
+    // factos de vida, sinais — plano 08); as poses só aparecem no menu com ele.
     if let Some(i) = crate::ids::INSP_ANIM_CHOOSER.iter().position(|&o| o == id) {
         let choice = AnimChooser::from_tag(i as u8);
-        if choice != AnimChooser::Character || info.card.has_character_body {
-            push(host, bits, AnimFieldEdit::Chooser(choice.tag()));
-        }
-        demote(host, id);
-        return true;
-    }
-    // Uma linha do popover de ESTADO: o estado é o do menu que está ABERTO (as linhas são partilhadas).
-    if let Some(j) = crate::ids::INSP_ANIM_STATE_OPT
-        .iter()
-        .position(|&o| o == id)
-    {
-        let open = crate::ids::INSP_ANIM_STATE_PICK.iter().position(|&pick| {
-            matches!(
-                host.store().get(pick),
-                Some(InteractiveState::Dropdown { open: true, .. })
-            )
-        });
-        if let (Some(state), Some(row)) = (open, info.rows.get(j)) {
-            push(
-                host,
-                bits,
-                AnimFieldEdit::CharacterState(state as u8, row.name.clone()),
-            );
-        }
-        for pick in crate::ids::INSP_ANIM_STATE_PICK {
-            if let Some(InteractiveState::Dropdown { open, .. }) = host.store_mut().get_mut(pick) {
-                *open = false;
-            }
-        }
+        push(host, bits, AnimFieldEdit::Chooser(choice.tag()));
         demote(host, id);
         return true;
     }

@@ -1,6 +1,6 @@
 //! **O cartão «Animation»** (plano GameEngineFuncional 07, «Desenho aprovado» 1): a pré-visualização,
-//! a lista com miniatura e ▶, «Edit Animations…», a grelha e «Who Picks» — Me · Script · The Character,
-//! com os quatro estados do personagem em MENUS das animações da lista (nunca texto livre).
+//! a lista com miniatura e ▶, «Edit Animations…», a grelha e «Who Picks» — Me · Script · Rules,
+//! com a lista de regras em [`super::anim_rules`] (plano 08).
 //!
 //! ⚠️ Irmão de [`super::anim`] (o cabeçalho, a face sem tocador, «Playback» e o grupo «Advanced») e
 //! de [`super::anim_rows`] (os campos da animação escolhida) pelo tecto de LOC dos painéis.
@@ -8,32 +8,13 @@
 use super::*;
 use ph2d_editor_core::screens::hero::{AnimChooser, InspectorAnimInfo, row_cells};
 use ph2d_editor_core::widget::sheet_cell::paint_sheet_cell;
-use ph2d_editor_core::widget::{Dropdown, DropdownOption, paint_dropdown_chip};
-use ph2d_i18n::{TextKey, tr, tr_with};
+use ph2d_i18n::{tr, tr_with};
 
 const ROW_H: f32 = ph2d_tokens::ROW_H_PX;
 /// Quantas linhas de lista a pré-visualização ocupa (um número de linhas, não pixels).
 const PREVIEW_ROWS: f32 = 4.0; // LITERAL-PX-OK: contagem de linhas da grelha do painel
 /// Onde o resumo de uma linha da lista começa, como fração da largura.
 const SUMMARY_COL_FRAC: f32 = 0.55; // LITERAL-PX-OK: fração de layout
-
-/// As chaves dos quatro estados, na ordem do `AnimFieldEdit::CharacterState`.
-pub(crate) const STATE_KEYS: [&str; 4] = [
-    "component.field.character_animations.0",
-    "component.field.character_animations.1",
-    "component.field.character_animations.2",
-    "component.field.character_animations.3",
-];
-
-/// As opções de um menu de estado: as animações da lista, pela ordem dela (o índice É a posição).
-pub(crate) fn state_options(info: &InspectorAnimInfo) -> Vec<DropdownOption<usize>> {
-    ids::INSP_ANIM_STATE_OPT
-        .iter()
-        .enumerate()
-        .zip(info.rows.iter())
-        .map(|((i, &id), row)| DropdownOption::new(id, i, row.name.clone()))
-        .collect()
-}
 
 /// A pré-visualização da célula no ecrã — só quando a sprite tem pixels em memória.
 pub(crate) fn paint_preview(
@@ -259,7 +240,7 @@ pub(crate) fn paint_chooser(
     let labels = [
         tr("panel.inspector.anim_card.me"),
         tr("panel.inspector.anim_card.script"),
-        tr("panel.inspector.anim_card.character"),
+        tr("panel.inspector.anim_card.rules"),
     ];
     let segments: Vec<(&str, bool, NodeId)> = AnimChooser::ALL
         .iter()
@@ -283,7 +264,7 @@ pub(crate) fn paint_chooser(
     let key = match chosen {
         AnimChooser::Me => "panel.inspector.anim_card.me_hint",
         AnimChooser::Script => "panel.inspector.anim_card.script_hint",
-        AnimChooser::Character => "panel.inspector.anim_card.character_hint",
+        AnimChooser::Rules => "panel.inspector.anim_card.rules_hint",
     };
     cur_y = hint(
         scene,
@@ -295,8 +276,8 @@ pub(crate) fn paint_chooser(
         tr(key),
         ColorToken::Text3,
     );
-    if chosen == AnimChooser::Character {
-        return character_rows(
+    if chosen == AnimChooser::Rules {
+        return super::anim_rules::rule_rows(
             scene,
             text_system,
             theme,
@@ -309,128 +290,5 @@ pub(crate) fn paint_chooser(
             sec,
         );
     }
-    // ⛔ Sem Platform Player «The Character» não pega (o despacho recusa-o); a frase diz porquê.
-    if !info.card.has_character_body {
-        cur_y = hint(
-            scene,
-            text_system,
-            theme,
-            x,
-            w,
-            cur_y,
-            tr("panel.inspector.anim_card.needs_player"),
-            ColorToken::Text3,
-        );
-    }
     cur_y
-}
-
-/// Os quatro menus dos estados, «Run From» e «Flip». Devolve o `y` seguinte.
-#[allow(clippy::too_many_arguments)]
-fn character_rows(
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: Theme,
-    hit_index: &mut HitIndex,
-    store: &WidgetStore,
-    x: f32,
-    w: f32,
-    y: f32,
-    info: &InspectorAnimInfo,
-    sec: ph2d_editor_core::property_row::Seccao,
-) -> f32 {
-    let Some(ch) = info.card.character.as_ref() else {
-        return y;
-    };
-    let mut cur_y = y;
-    if info.rows.is_empty() {
-        return hint(
-            scene,
-            text_system,
-            theme,
-            x,
-            w,
-            cur_y,
-            tr("panel.inspector.anim_card.no_animations"),
-            ColorToken::Text3,
-        );
-    }
-    for (state, (&pick, key)) in ids::INSP_ANIM_STATE_PICK.iter().zip(STATE_KEYS).enumerate() {
-        let row = ph2d_editor_core::property_row::paint_label_row(
-            scene,
-            text_system,
-            theme,
-            x,
-            w,
-            cur_y,
-            ROW_H,
-            tr(key),
-            sec,
-        );
-        hit_index.register(pick, row.control);
-        let open = matches!(
-            store.get(pick),
-            Some(ph2d_editor_core::interaction::InteractiveState::Dropdown { open: true, .. })
-        );
-        let name = &ch.names[state];
-        let known = info.rows.iter().position(|r| &r.name == name);
-        let placeholder = if known.is_none() {
-            tr_with("panel.inspector.anim_card.missing", &[("name", name)])
-        } else {
-            name.clone()
-        };
-        let mut dd = Dropdown::new(pick, "", state_options(info))
-            .open(open)
-            .placeholder(placeholder)
-            .visual(store.dropdown_visual(pick));
-        // ⚠️ A escolha vem do SNAPSHOT (o nome guardado), nunca do store.
-        if let Some(i) = known {
-            dd.select(i);
-        }
-        paint_dropdown_chip(&dd, row.control, scene, text_system, theme);
-        if open {
-            crate::state_popovers::set_pending_anim_state_dd(Some((state as u8, row.control)));
-        }
-        if let Some(alvo) = ph2d_editor_core::widget::key_mark::paint_decorator_campo(
-            scene,
-            theme,
-            row.dot,
-            &[pick],
-            TextKey::new(key).into(),
-        ) {
-            hit_index.register(alvo, row.dot);
-        }
-        cur_y += ph2d_tokens::row_pitch_px();
-    }
-    cur_y = super::rows::fields_row(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        x,
-        w,
-        cur_y,
-        TextKey::new("component.field.character_animations.4"),
-        &[ids::INSP_ANIM_RUN_FROM],
-        0.1, // LITERAL-PX-OK: passo de scrub em m/s, não em pixels
-        None,
-        sec,
-    );
-    ph2d_editor_core::property_row::paint_check_row(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        x,
-        w,
-        cur_y,
-        (
-            ids::INSP_ANIM_FLIP,
-            TextKey::new("component.field.character_animations.5"),
-            ch.flip,
-        ),
-        sec,
-    )
 }

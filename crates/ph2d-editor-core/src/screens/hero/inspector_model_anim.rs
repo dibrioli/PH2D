@@ -397,8 +397,17 @@ pub enum AnimFieldEdit {
     CycleMode(u8, u8),
     /// Quem escolhe a animação (`AnimChooser::tag`).
     Chooser(u8),
-    /// A animação do estado `0..4` (Parado · Correr · Saltar · Cair) no modo «O personagem».
-    CharacterState(u8, String),
+    /// A condição da regra `i` (plano 08). A 1.ª edição de uma regra grava as `AnimRules` (antes disso
+    /// as 4 do personagem são derivadas).
+    RuleWhen(u8, AnimWhenInfo),
+    /// A animação que a regra `i` toca.
+    RulePlay(u8, String),
+    /// «+ Rule»: acrescenta no fim (a condição e a animação são as 1.ªs dos menus).
+    RuleAdd(AnimWhenInfo, String),
+    /// Retira a regra `i`.
+    RuleRemove(u8),
+    /// Move a regra `de` para a posição final `para` (arrastar).
+    RuleMove(u8, u8),
     /// A partir de que velocidade (m/s) o personagem corre.
     CharacterRunFrom(f32),
     /// Virar a imagem ao andar para trás.

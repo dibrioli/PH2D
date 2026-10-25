@@ -255,23 +255,48 @@ pub(crate) fn paint_deferred_popovers(
     // objecto (amostragem, camada, âncora, verbo); estes três escolhem uma **tag da árvore do
     // projecto**, e as opções deles saem de outra porta. ⛔ Subir o número seria adiar com juros.
     tags::paint_deferred_tag_popovers(scene, text_system, theme, hit_index, store, region);
-    // O menu de ESTADO do cartão «Animation» (plano GameEngineFuncional 07): as animações da lista.
-    if let Some((state, chip)) = state_popovers::take_pending_anim_state_dd()
+    // Os menus de uma REGRA do cartão «Animation» (plano GameEngineFuncional 08) — no irmão, pelo
+    // tecto de 200 LOC desta função.
+    anim_rule_popover(scene, text_system, theme, hit_index, store, region);
+}
+
+/// O menu aberto de uma REGRA do cartão «Animation»: as condições ou as animações da lista, com a
+/// escolha atual relida do snapshot.
+fn anim_rule_popover(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: ph2d_tokens::Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    region: Rect,
+) {
+    if let Some((is_when, rule, chip)) = state_popovers::take_pending_anim_rule_dd()
         && let Some(info) = crate::state::current_inspector_anim()
-        && let Some(&pick) = crate::ids::INSP_ANIM_STATE_PICK.get(usize::from(state))
+        && let Some(r) = info.card.rules.get(usize::from(rule))
+        && let Some(i) = Some(usize::from(rule)).filter(|&i| i < crate::ids::MAX_ANIM_RULE_ROWS)
     {
-        let mut dd = Dropdown::new(pick, "", crate::sections::anim_state_options(&info)).open(true);
-        let name = info
-            .card
-            .character
-            .as_ref()
-            .map(|c| c.names[usize::from(state).min(3)].clone());
-        if let Some(i) = info
-            .rows
-            .iter()
-            .position(|r| Some(&r.name) == name.as_ref())
-        {
-            dd.select(i);
+        let (dd, current) = if is_when {
+            (
+                Dropdown::new(
+                    crate::ids::INSP_ANIM_RULE_WHEN[i],
+                    "",
+                    sections::anim_rules::when_options(&info),
+                ),
+                info.card.when_options().iter().position(|o| *o == r.when),
+            )
+        } else {
+            (
+                Dropdown::new(
+                    crate::ids::INSP_ANIM_RULE_PLAY[i],
+                    "",
+                    sections::anim_rules::play_options(&info),
+                ),
+                info.rows.iter().position(|row| row.name == r.play),
+            )
+        };
+        let mut dd = dd.open(true);
+        if let Some(j) = current {
+            dd.select(j);
         }
         paint_open_popover(
             &dd,

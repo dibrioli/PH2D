@@ -62,6 +62,7 @@ mod os_grupos_dos_cartoes_compostos_dobram;
 mod seam;
 mod seam_anim;
 mod seam_anim_card;
+mod seam_anim_rules;
 mod seam_anim_this_frame;
 mod seam_apply_ladder;
 mod seam_joint;

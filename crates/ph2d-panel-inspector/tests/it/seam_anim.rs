@@ -20,7 +20,7 @@
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::screens::hero::{
-    AnimFieldEdit, InspectorAnimInfo, InspectorAnimRow, InspectorNameInfo,
+    AnimFieldEdit, AnimWhenInfo, InspectorAnimInfo, InspectorAnimRow, InspectorNameInfo,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_panel_inspector::{
@@ -468,7 +468,11 @@ fn every_edit_the_model_declares_is_reachable_by_a_gesture() {
         E::Frames(0, Vec::new()),
         E::CycleMode(0, 0),
         E::Chooser(0),
-        E::CharacterState(0, String::new()),
+        E::RuleWhen(0, AnimWhenInfo::Life(0)),
+        E::RulePlay(0, String::new()),
+        E::RuleAdd(AnimWhenInfo::Life(0), String::new()),
+        E::RuleRemove(0),
+        E::RuleMove(0, 0),
         E::CharacterRunFrom(0.0),
         E::CharacterFlip(false),
         E::SetStep(0),
@@ -502,7 +506,11 @@ fn every_edit_the_model_declares_is_reachable_by_a_gesture() {
             E::Frames(..) => 22,
             E::CycleMode(..) => 23,
             E::Chooser(..) => 24,
-            E::CharacterState(..) => 25,
+            E::RuleWhen(..) => 25,
+            E::RulePlay(..) => 31,
+            E::RuleAdd(..) => 32,
+            E::RuleRemove(..) => 33,
+            E::RuleMove(..) => 34,
             E::CharacterRunFrom(..) => 26,
             E::CharacterFlip(..) => 27,
             E::SetStep(..) => 28,
@@ -588,7 +596,7 @@ fn every_edit_the_model_declares_is_reachable_by_a_gesture() {
     clear();
     note(out);
 
-    // ⭐ Os gestos do modo «The Character» e o arrasto de uma LISTA (plano GameEngineFuncional 07).
+    // ⭐ Os gestos do modo «Rules» (plano 08) e o arrasto de uma LISTA (plano GameEngineFuncional 07).
     for acts in crate::seam_anim_card::character_gestures() {
         note(acts);
     }

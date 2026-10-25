@@ -123,6 +123,9 @@ pub enum PanelRowFamily {
     TagTree,
     /// Os pincéis no navegador de presets do Painter (23/10) — a ordem é do `estado.json` do artista.
     PainterPreset,
+    /// As regras do cartão «Animation» do Inspector (plano GameEngineFuncional 08) — a ordem é das
+    /// `AnimRules` do objecto (a de cima ganha).
+    AnimRule,
 }
 
 impl PanelRowFamily {
@@ -130,7 +133,7 @@ impl PanelRowFamily {
     /// meio em `Before` / `After`.
     #[must_use]
     pub fn aninha(self) -> bool {
-        !matches!(self, Self::PainterPreset)
+        !matches!(self, Self::PainterPreset | Self::AnimRule)
     }
 }
 

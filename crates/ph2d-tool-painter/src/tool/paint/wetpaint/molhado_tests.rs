@@ -296,3 +296,116 @@ fn sonda_fps_mesclar() {
         );
     }
 }
+
+/// A cena do smoke da janela 9 (fotos `docs/Painter/smoke_2026-10-24/fotos_janela9/`): tela 2048², Wet Flat, Grid 1,
+/// Flow 1, Size 122, Wet bloom 0,50, Tip pickup 0,46; amarelo sobre azul molhado × papel limpo. ms do Move (dab) e do
+/// tick (sim + composite) separados, por variante; rodadas intercaladas, o MÍNIMO.
+#[test]
+#[ignore = "sonda: cronometra; correr sozinha"]
+fn sonda_fps_cena_do_dono() {
+    const N: usize = 2048;
+    let bytes = std::fs::read(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../assets/brushes/WetPainter/Watercolor/Fluid/Wet Flat.ph2d-brush.png"
+    ))
+    .unwrap();
+    let preset = ph2d_brush_presets::ler(&bytes).unwrap();
+    // (nome, bloom, pickup, grid, flow)
+    let variantes = [
+        ("dono", 0.5, 0.46, 1.0, 1.0),
+        ("sem_knobs", 0.0, 0.0, 1.0, 1.0),
+        ("dono_serie", 0.5, 0.46, 1.0, 1.0),
+        ("grid2", 0.5, 0.46, 2.0, 1.0),
+    ];
+    let piso0 = ph2d_wet_paint::par::PISO_ALVOS_ESTICA.load(std::sync::atomic::Ordering::Relaxed);
+    // [variante][sobre|limpo][move, pior_move, tick, pior_tick, assenta]
+    let mut melhor = [[[f64::MAX; 5]; 2]; 4];
+    let ms = |d: std::time::Duration| d.as_secs_f64() * 1e3;
+    for _ronda in 0..3 {
+        for (vi, &(_, bloom, pickup, grid, flow)) in variantes.iter().enumerate() {
+            for (si, sobre) in [true, false].into_iter().enumerate() {
+                ph2d_wet_paint::par::PISO_ALVOS_ESTICA.store(
+                    if vi == 2 { usize::MAX } else { piso0 },
+                    std::sync::atomic::Ordering::Relaxed,
+                );
+                let mut t = PainterTool::default();
+                t.set_source(vec![255u8; N * N * 4], N as u32, N as u32);
+                t.set_paint_tool_mode("wetpaint");
+                t.preset_aplicar(&preset).unwrap();
+                t.set_wet_relogio_fixo(true);
+                t.set_wet_grid_ratio(grid);
+                t.set_wet_flow_ratio(flow);
+                for (id, v) in [
+                    (crate::ids::PAINTER_WETPAINT_WET_BLOOM, bloom),
+                    (crate::ids::PAINTER_WETPAINT_TIP_PICKUP, pickup),
+                ] {
+                    assert!(t.route_brush_wetpaint_event(&PanelEvent::SetValue(id, v)));
+                }
+                traco(
+                    &mut t,
+                    [0.1, 0.3, 0.8],
+                    61.0,
+                    [300.0, 900.0],
+                    [1700.0, 900.0],
+                    &mut |_, _| {},
+                );
+                let dy = if sobre { 0.0 } else { 600.0 };
+                t.paint.brush.color = [1.0, 0.85, 0.0];
+                t.paint.brush.radius_px = 61.0;
+                t.paint.brush_by_mode.fill(t.paint.brush);
+                let (de, ate) = ([400.0, 700.0 + dy], [1600.0, 1100.0 + dy]);
+                t.on_canvas_pointer(cp(de, PointerPhase::Down));
+                let (mut mv, mut pmv, mut tk, mut ptk) = (0.0f64, 0.0f64, 0.0f64, 0.0f64);
+                let n = 40;
+                for k in 1..=n {
+                    let a = k as f32 / n as f32;
+                    let t0 = std::time::Instant::now();
+                    t.on_canvas_pointer(cp(
+                        [de[0] + (ate[0] - de[0]) * a, de[1] + (ate[1] - de[1]) * a],
+                        PointerPhase::Move,
+                    ));
+                    let t1 = std::time::Instant::now();
+                    t.on_tick(1000.0 / 60.0);
+                    let (a1, a2) = (ms(t1 - t0), ms(t1.elapsed()));
+                    mv += a1;
+                    tk += a2;
+                    pmv = pmv.max(a1);
+                    ptk = ptk.max(a2);
+                }
+                t.on_canvas_pointer(cp(ate, PointerPhase::Up));
+                let t2 = std::time::Instant::now();
+                for _ in 0..30 {
+                    t.on_tick(1000.0 / 60.0);
+                }
+                let assenta = ms(t2.elapsed()) / 30.0;
+                if _ronda == 0 {
+                    use std::hash::{Hash, Hasher};
+                    let mut hs = std::collections::hash_map::DefaultHasher::new();
+                    t.canvas_rgba.hash(&mut hs);
+                    eprintln!("HASH {} {sobre} {:016x}", variantes[vi].0, hs.finish());
+                }
+                let m = &mut melhor[vi][si];
+                for (j, v) in [mv / n as f64, pmv, tk / n as f64, ptk, assenta]
+                    .into_iter()
+                    .enumerate()
+                {
+                    m[j] = m[j].min(v);
+                }
+            }
+        }
+    }
+    eprintln!(
+        "loadavg {}",
+        std::fs::read_to_string("/proc/loadavg")
+            .unwrap_or_default()
+            .trim()
+    );
+    eprintln!(
+        "{:10} | move pior_mv tick pior_tk assenta (sobre o azul) | idem (papel limpo)",
+        "variante"
+    );
+    for (vi, v) in variantes.iter().enumerate() {
+        let f = |a: [f64; 5]| a.map(|x| format!("{x:7.2}")).join(" ");
+        eprintln!("{:10} | {} | {}", v.0, f(melhor[vi][0]), f(melhor[vi][1]));
+    }
+}

@@ -230,3 +230,67 @@ fn a_velocidade_estreita_o_traco() {
         );
     }
 }
+
+/// ⭐ **O preset do Wet leva a mão sem knob** (auditoria 25/10): a velocidade, a curva em S, o jitter e o atraso moram
+/// na `Dynamics` do pincel e o Wet lê-os (`mao_do_wet` parte dela), mas o preset só gravava as duas da velocidade — o
+/// Speed lag mexido perdia-se ao gravar, e escolher outro preset do Wet deixava as cinco do pincel anterior. Gravar e
+/// reabrir devolve cada uma; um preset que não as traz repõe o neutro.
+#[test]
+fn o_preset_do_wet_leva_a_mao_sem_knob() {
+    let bytes = std::fs::read(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../assets/brushes/WetPainter/Watercolor/Fluid/Wet Flat.ph2d-brush.png"
+    ))
+    .unwrap();
+    let fabrica = ph2d_brush_presets::ler(&bytes).unwrap();
+    let novo = || {
+        let mut t = super::super::super::PainterTool::default();
+        t.set_source(vec![255u8; 64 * 64 * 4], 64, 64);
+        t.set_paint_media(PaintMedia::WetPaint);
+        t.preset_aplicar(&fabrica).unwrap();
+        t
+    };
+    let linhas: Vec<LinhaDaMao> = linhas_da_dinamica_do_wet().collect();
+    assert_eq!(
+        linhas,
+        [
+            LinhaDaMao::SpeedSize,
+            LinhaDaMao::SpeedOpacity,
+            LinhaDaMao::PressureSCurve,
+            LinhaDaMao::PressureJitter,
+            LinhaDaMao::SpeedLag,
+        ]
+    );
+    let valor = |l: LinhaDaMao| {
+        let (lo, hi, passo) = l.faixa();
+        let v = l.limpa(((lo + (hi - lo) * 0.37) / passo).round() * passo);
+        assert_ne!(v, l.omissao(), "{l:?}");
+        v
+    };
+    let le_mao =
+        |t: &super::super::super::PainterTool, l| le(&t.paint.dynamics, &t.paint.brush.pen_tilt, l);
+    let mut t = novo();
+    for &l in &linhas {
+        t.set_mao(l, valor(l));
+    }
+    let mut gravado = fabrica.clone();
+    gravado.parametros = t.wet_preset_capturar(&fabrica.parametros).0;
+    let mut u = novo();
+    u.preset_aplicar(&gravado).unwrap();
+    for &l in &linhas {
+        assert_eq!(
+            le_mao(&u, l),
+            le_mao(&t, l),
+            "{l:?} não voltou do preset gravado"
+        );
+    }
+    // CONTROLO: o preset de fábrica não as traz — escolhê-lo depois do mexido repõe o neutro.
+    u.preset_aplicar(&fabrica).unwrap();
+    for &l in &linhas {
+        assert_eq!(
+            le_mao(&u, l),
+            l.omissao(),
+            "{l:?} ficou a do pincel anterior"
+        );
+    }
+}

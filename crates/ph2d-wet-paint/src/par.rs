@@ -345,6 +345,26 @@ pub static PISO_NS_DEPOSITO: std::sync::atomic::AtomicU64 =
 /// salta o papel em branco —, e por isso o piso dele é mais alto.
 pub const MIN_CELLS_TIP: usize = 16 << 10;
 
+/// Piso do POUSO do esticão do molhado × molhado (`trail/molhado.rs`), em DESTINOS (`Σ n` das células da janela, cada
+/// um 4 cantos). A célula custa ~6× mais quando a janela abre inteira (5 destinos) do que sem abrir (1): o piso de
+/// células errava, o de destinos não. Os destinos de cada célula vão pela rota MEDIDA ([`PISO_NS_AGUA`]). Medido 25/10
+/// (`tests/it/measure_estica_rows.rs`, smoke, mínimo de 9 intercalados, load 10; ms do esticão por traço):
+///
+/// ```text
+///   raio  ~células |   ∞      0     2k     8k    32k   128k
+///      3      144  | 0,004  0,096  0,006  0,004  0,005  0,004
+///     12    1 681  | 0,044  0,452  0,043  0,039  0,039  0,037
+///     32   11 025  | 0,571  1,251  0,718  0,575  0,566  0,569
+///     48   24 336  | 1,539  1,444  1,354  1,314  1,458  1,414
+///     61   39 204  | 2,393  2,339  2,371  2,240  2,269  2,141
+/// ```
+///
+/// Na cena do smoke da janela 9 (`sonda_fps_cena_do_dono`: tela 2048², Wet Flat, Size 122, amarelo sobre azul
+/// molhado) o pouso custa 0,84 ms por Move a 8k contra 3,00 em série (∞); o Move inteiro 7,6 contra 10,7 ms. O piso
+/// fica onde nenhuma cena perde para `∞`.
+pub static PISO_ALVOS_ESTICA: std::sync::atomic::AtomicUsize =
+    std::sync::atomic::AtomicUsize::new(1 << 13);
+
 /// Piso do PENTE do relevo dos fios (W3b, [`crate::painter::Engine::pentear_relevo`]), em células da caixa da
 /// pegada da lâmina do óleo — medido por `tests/it/measure_pente_rows.rs` (release, load 1,6, as duas rotas
 /// ALTERNADAS, mínimo de 15; a lei real dos fios e do relevo):

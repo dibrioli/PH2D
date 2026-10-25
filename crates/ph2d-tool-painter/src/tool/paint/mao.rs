@@ -341,6 +341,14 @@ pub(crate) fn de_fabrica() -> (Dynamics, PenTilt) {
     (d, t)
 }
 
+/// As linhas da `Dynamics` que o Wet Paint lê sem knob do motor — a mão do Wet herda-as do pincel
+/// (`mao_do_wet`), e o preset do Wet grava-as e lê-as pela chave delas.
+pub(crate) fn linhas_da_dinamica_do_wet() -> impl Iterator<Item = LinhaDaMao> {
+    LINHAS_DA_MAO.into_iter().filter(|l| {
+        !matches!(l, LinhaDaMao::Knob(_)) && da_pressao(*l) && l.lida_por(PaintMedia::WetPaint)
+    })
+}
+
 /// As linhas que governam a `Dynamics` (a pressão e a corda); as outras são da `PenTilt`, um campo do pincel.
 fn da_pressao(l: LinhaDaMao) -> bool {
     matches!(

@@ -426,12 +426,9 @@ impl PainterTool {
             self.paint.brush.shape = k.cerdas_no_shape(self.paint.brush.shape);
         }
         self.paint.wetpaint.knobs = k;
-        // A velocidade (L12) não é knob do motor: mora na `Dynamics` do pincel, que a mão do Wet herda. Ausente
-        // = a de fábrica (sem velocidade), nunca a do pincel anterior.
-        for l in [
-            super::mao::LinhaDaMao::SpeedSize,
-            super::mao::LinhaDaMao::SpeedOpacity,
-        ] {
+        // A velocidade (L12), a curva em S, o jitter e o atraso não são knobs do motor: moram na `Dynamics` do pincel,
+        // que a mão do Wet herda. Ausente = a de fábrica, nunca a do pincel anterior.
+        for l in super::mao::linhas_da_dinamica_do_wet() {
             let v = prm
                 .engine
                 .get(l.chave())
@@ -564,11 +561,8 @@ impl PainterTool {
             p.engine.remove(KNOB_DEFS[kn as usize].key);
         }
         p.engine.insert(CHAVE_ERASE.to_owned(), k.erase);
-        // A velocidade (L12) só quando o pincel a tem: o preset sem ela é o de antes, ao byte.
-        for l in [
-            super::mao::LinhaDaMao::SpeedSize,
-            super::mao::LinhaDaMao::SpeedOpacity,
-        ] {
+        // As linhas da `Dynamics` sem knob só quando o pincel as mexe: o preset sem elas é o de antes, ao byte.
+        for l in super::mao::linhas_da_dinamica_do_wet() {
             let v = super::mao::le(&self.paint.dynamics, &self.paint.brush.pen_tilt, l);
             if v == l.omissao() {
                 p.engine.remove(l.chave());

@@ -110,3 +110,27 @@ fn o_levantar_do_molhado_e_o_mesmo_nas_duas_rotas() {
         "o grid difere entre as rotas em {diferentes} palavras"
     );
 }
+
+/// FNV-1a de 64 bits sobre as palavras do grid.
+fn fnv(v: &[u32]) -> u64 {
+    v.iter().fold(0xcbf2_9ce4_8422_2325, |h, &w| {
+        w.to_le_bytes()
+            .iter()
+            .fold(h, |h, &b| (h ^ u64::from(b)).wrapping_mul(0x100_0000_01b3))
+    })
+}
+
+/// ⭐ **O esticão em duas fases pousa o grid do esticão em série de antes, ao bit** (25/10): os destinos por célula em
+/// paralelo, depois cada faixa de linhas aplica só os seus cantos pela ordem das células — cada destino recebe as
+/// mesmas parcelas pela mesma ordem. As duas rotas partilham o código, logo o gate acima não o veria; a âncora é o
+/// grid do código em série anterior (`ab26424e7e`), o mesmo traço. Mutação que sangra: a faixa a varrer as células ao
+/// contrário (a ordem das parcelas muda os bits da cor).
+#[test]
+fn o_esticao_pousa_o_grid_do_codigo_em_serie_de_antes() {
+    let antes_da_cura = 0x1659_f3d6_0603_62cb_u64;
+    for mode in [Rows::Serial, Rows::Parallel] {
+        let h = fnv(&pousa(mode, 0.6).grid);
+        eprintln!("HASH_GRID {mode:?} {h:#018x}");
+        assert_eq!(h, antes_da_cura, "o grid do esticão mudou ({mode:?})");
+    }
+}

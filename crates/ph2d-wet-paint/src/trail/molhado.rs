@@ -63,6 +63,29 @@ pub(crate) struct Molhado {
     pig: Vec<f32>,
     agua: Vec<f32>,
     cor: Vec<[f64; 3]>,
+    /// Os destinos de cada célula da janela no esticão e as linhas da caixa que eles alcançam.
+    fontes: Vec<Fonte>,
+    alcance_y: Vec<(i32, i32)>,
+}
+
+/// Uma célula da janela no esticão: a massa, a cor da ponta e os destinos `(x, y, parte)` (só os `n` primeiros).
+#[derive(Clone, Copy)]
+struct Fonte {
+    v: f32,
+    a: f32,
+    tip: [f64; 3],
+    n: u8,
+    alvos: [(f64, f64, f64); PASSOS],
+}
+
+impl Fonte {
+    const VAZIA: Self = Self {
+        v: 0.0,
+        a: 0.0,
+        tip: [0.0; 3],
+        n: 0,
+        alvos: [(0.0, 0.0, 0.0); PASSOS],
+    };
 }
 
 impl Molhado {
@@ -302,18 +325,91 @@ impl Trail {
         cor.resize(n, [0.0; 3]);
         let tri = |j: usize| (j + 1).min(PASSOS - j) as f64;
         let total: f64 = (0..PASSOS).map(tri).sum();
-        let mut ext = (0i32, 0i32, -1i32, -1i32);
-        for ly in self.ly0..=self.ly1 {
-            for lx in self.lx0..=self.lx1 {
-                let l = (lx + ly * size) as usize;
-                let (v, a) = (self.pig[l], self.water[l]);
-                if v <= 0.0 && a <= 0.0 {
+        // 1. Os destinos de cada célula da janela (cada uma só lê a janela e o caminho: linha a linha, em paralelo).
+        let (lx0, ly0) = (self.lx0, self.ly0);
+        let jw = (self.lx1 - lx0 + 1) as usize;
+        let jn = jw * (self.ly1 - ly0 + 1) as usize;
+        // Os destinos pela rota MEDIDA (o custo de uma célula varia ~6× com a abertura); o pouso pelos destinos contados.
+        let modo1 = mode.unwrap_or(crate::par::Rows::Medida(
+            crate::par::PISO_NS_AGUA.load(std::sync::atomic::Ordering::Relaxed),
+        ));
+        let mut fontes = std::mem::take(&mut self.molhado.fontes);
+        let mut alcance_y = std::mem::take(&mut self.molhado.alcance_y);
+        // Cada célula escreve a sua (a vazia também): só crescer, nunca encher.
+        if fontes.len() < jn {
+            fontes.resize(jn, Fonte::VAZIA);
+            alcance_y.resize(jn, (i32::MAX, i32::MIN));
+        }
+        {
+            let (tpig, twater) = (&self.pig, &self.water);
+            let (tr, tg, tb) = (&self.tip_r, &self.tip_g, &self.tip_b);
+            crate::par::walk_rows2(
+                modo1,
+                &mut fontes[..jn],
+                &mut alcance_y[..jn],
+                jw,
+                |k, linha, ys| {
+                    let ly = ly0 + k as i32;
+                    for (c, (f, fy)) in linha.iter_mut().zip(ys.iter_mut()).enumerate() {
+                        let lx = lx0 + c as i32;
+                        let l = (lx + ly * size) as usize;
+                        let (v, a) = (tpig[l], twater[l]);
+                        *fy = (i32::MAX, i32::MIN);
+                        if v <= 0.0 && a <= 0.0 {
+                            f.n = 0;
+                            continue;
+                        }
+                        let (x, y) = (f64::from(lx), f64::from(ly));
+                        let (s, dx, dy, _, o) = mais_perto(&pts, !tampa, true, x, y);
+                        *f = Fonte {
+                            v,
+                            a,
+                            tip: [tr[l], tg[l], tb[l]].map(f64::from),
+                            n: 1,
+                            alvos: [(x, y, 1.0); PASSOS],
+                        };
+                        if o > 0.0 && s > 1e-9 {
+                            f.n = PASSOS as u8;
+                            let alvo = s * (1.0 + o);
+                            for j in 0..PASSOS {
+                                let c = (j as f64 + 0.5) / PASSOS as f64 * 2.0 - 1.0;
+                                let d = alvo * (1.0 + BORDA * c) - s;
+                                f.alvos[j] = (x + d * dx, y + d * dy, tri(j) / total);
+                            }
+                        }
+                        for &(_, fy_, _) in &f.alvos[..usize::from(f.n)] {
+                            let y0 = fy_.floor() as i32;
+                            *fy = (fy.0.min(y0), fy.1.max(y0 + 1));
+                        }
+                    }
+                },
+            );
+        }
+        // 2. O pouso: cada faixa de linhas da caixa aplica, na ordem das células (a da série), só os cantos que caem
+        // nela — cada destino recebe as mesmas parcelas pela mesma ordem nas duas rotas, ao bit.
+        let modo = mode.unwrap_or_else(|| {
+            let alvos: usize = fontes[..jn].iter().map(|f| usize::from(f.n)).sum();
+            if alvos >= crate::par::PISO_ALVOS_ESTICA.load(std::sync::atomic::Ordering::Relaxed) {
+                crate::par::Rows::Parallel
+            } else {
+                crate::par::Rows::Serial
+            }
+        });
+        let bh = (by1 - by0 + 1) as usize;
+        let faixa = match modo {
+            crate::par::Rows::Serial => bh,
+            _ => bh.div_ceil(rayon::current_num_threads()).max(1),
+        };
+        let pousa_faixa = |b: usize, pig: &mut [f32], agua: &mut [f32], cor: &mut [[f64; 3]]| {
+            let fy0 = by0 + (b * faixa) as i32;
+            let fy1 = fy0 + (pig.len() / bw) as i32 - 1;
+            let mut ext = (0i32, 0i32, -1i32, -1i32);
+            for (f, &(ya, yb)) in fontes[..jn].iter().zip(&alcance_y[..jn]) {
+                if yb < fy0 || ya > fy1 {
                     continue;
                 }
-                let tip = [self.tip_r[l], self.tip_g[l], self.tip_b[l]].map(f64::from);
-                let (x, y) = (f64::from(lx), f64::from(ly));
-                let (s, dx, dy, _, o) = mais_perto(&pts, !tampa, true, x, y);
-                let mut pousa = |fx: f64, fy: f64, parte: f64| {
+                let v = f64::from(f.v);
+                for &(fx, fy, parte) in &f.alvos[..usize::from(f.n)] {
                     let (x0, y0) = (fx.floor(), fy.floor());
                     let (ax, ay) = (fx - x0, fy - y0);
                     for (qx, qy, peso) in [
@@ -323,55 +419,81 @@ impl Trail {
                         (x0 + 1.0, y0 + 1.0, parte * ax * ay),
                     ] {
                         let (qx, qy) = (qx as i32, qy as i32);
-                        if peso <= 0.0 || qx < bx0 || qx > bx1 || qy < by0 || qy > by1 {
+                        if peso <= 0.0 || qx < bx0 || qx > bx1 || qy < fy0 || qy > fy1 {
                             continue;
                         }
-                        let q = (qx - bx0) as usize + (qy - by0) as usize * bw;
-                        let dv = f64::from(v) * peso;
+                        let q = (qx - bx0) as usize + (qy - fy0) as usize * bw;
+                        let dv = v * peso;
                         let antes = f64::from(pig[q]);
                         if dv > 0.0 {
                             let w = dv / (antes + dv);
                             for k in 0..3 {
-                                cor[q][k] += (tip[k] - cor[q][k]) * w;
+                                cor[q][k] += (f.tip[k] - cor[q][k]) * w;
                             }
                         } else if antes <= 0.0 {
-                            cor[q] = tip;
+                            cor[q] = f.tip;
                         }
                         pig[q] = (antes + dv) as f32;
-                        agua[q] = (f64::from(agua[q]) + f64::from(a) * peso) as f32;
+                        agua[q] = (f64::from(agua[q]) + f64::from(f.a) * peso) as f32;
                         super::touch_ext(&mut ext, qx, qy);
                     }
-                };
-                if o <= 0.0 || s <= 1e-9 {
-                    pousa(x, y, 1.0);
-                    continue;
-                }
-                let alvo = s * (1.0 + o);
-                for j in 0..PASSOS {
-                    let c = (j as f64 + 0.5) / PASSOS as f64 * 2.0 - 1.0;
-                    let peso = tri(j) / total;
-                    let d = alvo * (1.0 + BORDA * c) - s;
-                    pousa(x + d * dx, y + d * dy, peso);
                 }
             }
+            ext
+        };
+        let exts: Vec<(i32, i32, i32, i32)> = if faixa >= bh {
+            vec![pousa_faixa(0, &mut pig, &mut agua, &mut cor)]
+        } else {
+            use rayon::prelude::*;
+            let passo = faixa * bw;
+            pig.par_chunks_mut(passo)
+                .zip(agua.par_chunks_mut(passo))
+                .zip(cor.par_chunks_mut(passo))
+                .enumerate()
+                .map(|(b, ((p, a), c))| pousa_faixa(b, p, a, c))
+                .collect()
+        };
+        let mut ext = (0i32, 0i32, -1i32, -1i32);
+        for e in exts.into_iter().filter(|e| e.2 >= e.0) {
+            super::touch_ext(&mut ext, e.0, e.1);
+            super::touch_ext(&mut ext, e.2, e.3);
         }
-        for ly in self.ly0..=self.ly1 {
-            let b = (ly * size) as usize;
-            self.pig[b + self.lx0 as usize..=b + self.lx1 as usize].fill(0.0);
-            self.water[b + self.lx0 as usize..=b + self.lx1 as usize].fill(0.0);
-        }
+        (self.molhado.fontes, self.molhado.alcance_y) = (fontes, alcance_y);
+        // A janela larga a tinta de antes e recebe a da caixa: cada linha da janela só a sua (em paralelo).
+        let (ly0_antes, ly1_antes) = (self.ly0, self.ly1);
+        let (lxa, lxb) = (self.lx0 as usize, self.lx1 as usize);
         (self.lx0, self.ly0, self.lx1, self.ly1) = ext;
-        for ly in self.ly0..=self.ly1 {
-            for lx in self.lx0..=self.lx1 {
-                let l = (lx + ly * size) as usize;
-                let q = (lx - bx0) as usize + (ly - by0) as usize * bw;
-                self.pig[l] = pig[q];
-                self.water[l] = agua[q];
-                if pig[q] > 0.0 {
-                    [self.tip_r[l], self.tip_g[l], self.tip_b[l]] = cor[q].map(|c| c as f32);
+        let (ry0, ry1) = (ly0_antes.min(ext.1), ly1_antes.max(ext.3));
+        let su = size as usize;
+        let linhas = ry0 as usize * su..(ry1 + 1) as usize * su;
+        crate::par::walk_rows5(
+            modo,
+            &mut self.pig[linhas.clone()],
+            &mut self.water[linhas.clone()],
+            &mut self.tip_r[linhas.clone()],
+            &mut self.tip_g[linhas.clone()],
+            &mut self.tip_b[linhas],
+            su,
+            |k, lp, lw, tr, tg, tb| {
+                let ly = ry0 + k as i32;
+                if (ly0_antes..=ly1_antes).contains(&ly) {
+                    lp[lxa..=lxb].fill(0.0);
+                    lw[lxa..=lxb].fill(0.0);
                 }
-            }
-        }
+                if ly < ext.1 || ly > ext.3 {
+                    return;
+                }
+                for lx in ext.0..=ext.2 {
+                    let l = lx as usize;
+                    let q = (lx - bx0) as usize + (ly - by0) as usize * bw;
+                    lp[l] = pig[q];
+                    lw[l] = agua[q];
+                    if pig[q] > 0.0 {
+                        [tr[l], tg[l], tb[l]] = cor[q].map(|c| c as f32);
+                    }
+                }
+            },
+        );
         (self.molhado.pig, self.molhado.agua, self.molhado.cor) = (pig, agua, cor);
         self.molhado_levanta(g, p, m, mode)
     }

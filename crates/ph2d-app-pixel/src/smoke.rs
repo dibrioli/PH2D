@@ -21,6 +21,8 @@
 //! com cores da paleta: lá RGBA ↔ Indexed é idêntico byte a byte e nenhum dither muda nada.)
 //! 5 — a cena 4 com o diálogo Color Mode ABERTO (Indexed + Floyd–Steinberg escolhidos), para a foto.
 //! 6 — a cena 4 já convertida para Indexed com Ordered 4×4 (um passo do desfazer), para a foto.
+//! 7 — P3, as camadas que SE VÊEM ([`crate::smoke_camadas`]): os 19 modos lado a lado, opacidade,
+//! escondida, trancada, referência e grupo.
 
 use ph2d_ecs::SimWorld;
 use ph2d_pixel_core::{NewSprite, Paint, Stroke};
@@ -30,7 +32,7 @@ use ph2d_editor_core::pixel_panel::{ColorModeChoice, NewSpriteMode, PixelDither,
 
 pub const ROUTERS: &[ph2d_app_host::SmokeRouter] = &[ph2d_app_host::SmokeRouter {
     env: "PH2D_PIXEL_SMOKE",
-    max_level: 6,
+    max_level: 7,
 }];
 
 /// O nível armado em `PH2D_PIXEL_SMOKE`.
@@ -90,6 +92,7 @@ pub fn stage(
             app.converte(key, c);
             app.docs[&key].sprite.mode() == ph2d_pixel_core::ColorMode::Indexed
         }),
+        7 => crate::smoke_camadas::stage(app, sim, spawn_root).is_some(),
         _ => false,
     }
 }

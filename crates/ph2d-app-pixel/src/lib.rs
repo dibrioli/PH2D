@@ -22,6 +22,7 @@ pub mod paleta;
 pub mod panel;
 pub mod persist;
 pub mod smoke;
+pub mod smoke_camadas;
 mod state;
 
 pub use state::{Doc, Options, PixelApp, Tool};

@@ -20,6 +20,16 @@ fn alvo(world: &World, e: Entity) -> Option<Entity> {
         .find(|c| world.get::<SpriteAnimator>(*c).is_some())
 }
 
+/// A troca de estado: a animação nova começa do início e TOCA — uma tag de uma vez só (saltar) que acabou
+/// deixou o animador parado, e a seguinte ficaria presa no 1.º desenho.
+fn troca(a: &mut SpriteAnimator, tag: String) {
+    a.current = tag;
+    a.elapsed_ticks = 0;
+    a.pingpong_reverse = false;
+    a.repeat_count = 0;
+    a.playing = true;
+}
+
 /// ⭐ Escreve, em cada personagem com [`CharacterAnimations`] e vista do player, a animação do estado
 /// (reiniciada só quando o estado muda) e o espelho pelo lado para que ele olha.
 pub fn anima_personagens(world: &mut World, physics: &PhysicsBridge) {
@@ -37,10 +47,7 @@ pub fn anima_personagens(world: &mut World, physics: &PhysicsBridge) {
         if let Some(mut a) = world.get_mut::<SpriteAnimator>(alvo)
             && a.current != tag
         {
-            a.current = tag;
-            a.elapsed_ticks = 0;
-            a.pingpong_reverse = false;
-            a.repeat_count = 0;
+            troca(&mut a, tag);
         }
         if let (Some(flip), Some(mut s)) = (flip, world.get_mut::<Sprite>(alvo))
             && s.flip_x != flip

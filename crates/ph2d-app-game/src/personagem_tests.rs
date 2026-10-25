@@ -15,6 +15,26 @@ fn o_alvo_e_o_proprio_ou_o_filho_com_animador() {
     assert_eq!(alvo(&w, nada), None);
 }
 
+/// ⭐ Report do dono 25/10 («ao pular não volta mais a correr»): o salto toca UMA vez e, ao acabar, o
+/// animador pára; a troca para correr tem de o pôr a tocar outra vez, do início.
+#[test]
+fn depois_do_salto_que_acabou_a_corrida_toca() {
+    let mut a = SpriteAnimator::new("jump");
+    a.playing = false;
+    a.repeat_count = 1;
+    a.elapsed_ticks = 9_999;
+    troca(&mut a, "run".into());
+    assert_eq!(
+        (
+            a.current.as_str(),
+            a.playing,
+            a.elapsed_ticks,
+            a.repeat_count
+        ),
+        ("run", true, 0, 0)
+    );
+}
+
 /// Sem vista do player (a física desarmada), a ponte não escreve nada.
 #[test]
 fn sem_vista_nao_escreve() {

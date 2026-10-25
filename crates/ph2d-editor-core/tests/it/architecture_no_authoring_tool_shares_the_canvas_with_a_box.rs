@@ -61,6 +61,12 @@ const RAMOS: &[&str] = &[
     // ⭐ O 5.º (A14, 05/10): a ferramenta de OSSO saiu de dentro da vectorial e tem ramo próprio —
     // é uma ferramenta que autora, logo ENTRA na condição da caixa (`"bone"` em `AUTORAS`).
     "ramo_ferramenta_osso(",
+    // ⭐ O 7.º, o PIXEL SPRITE ▸ Edit (ADR-0192, 2026-10-25): autora no canvas inteiro (o lápis), logo
+    // ENTRA na condição da caixa — mas pelo MODO do objecto, não por um `ToolId` (as ferramentas são
+    // da família, sem id no registo): `!pixel_edit` (`ph2d_app_pixel::mode::editing`) no
+    // `fase_snapshots_publish`, e por isso não está em `AUTORAS`. Gate:
+    // `the_object_box_condition_names_the_pixel_edit_mode`, abaixo.
+    "ramo_pixel(",
 ];
 
 fn shell_src() -> PathBuf {
@@ -100,6 +106,19 @@ fn the_object_box_condition_names_every_authoring_tool() {
             f.display()
         );
     }
+}
+
+/// O 7.º ramo (`ramo_pixel`) autora pelo MODO do objecto: a condição tem de o nomear e de o usar.
+#[test]
+fn the_object_box_condition_names_the_pixel_edit_mode() {
+    let f = shell_src().join("render_loop/fase_snapshots_publish.rs");
+    let src = sem_comentarios(&std::fs::read_to_string(&f).expect("a fase do publish"));
+    assert!(
+        src.contains("ph2d_app_pixel::mode::editing(") && src.contains("&& !pixel_edit"),
+        "{} não tira a caixa de objecto no Pixel Sprite ▸ Edit: as alças dela registam hit-rects \
+         e o `ramo_pixel` exige `on_canvas` — os cantos do sprite deixam de pintar (ADR-0112).",
+        f.display()
+    );
 }
 
 #[test]

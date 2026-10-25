@@ -17,36 +17,70 @@ impl super::ProjectState {
     }
 }
 
+/// O que a entrada da corrida guarda e a saída repõe.
+pub(crate) struct FotoDoJogo {
+    estado: super::ProjectState,
+    marca: super::SelectionMark,
+    /// A vista do editor antes do palco (ecrã cheio ou janela); `None` = jogou no editor.
+    pub(crate) vista: Option<crate::janela_do_jogo::VistaAntes>,
+}
+
+/// O smoke do jogo (ou `PH2D_JOGO_LOG=1`) imprime o resumo do documento no Play e no Stop.
+fn log_on() -> bool {
+    ph2d_app_game::smoke::armed_level().is_some() || std::env::var_os("PH2D_JOGO_LOG").is_some()
+}
+
 impl crate::App {
     /// As bordas da corrida deste quadro. `corre` = a cena está a correr depois do dreno dela.
     pub(crate) fn jogo_quadro(&mut self, corre: bool) {
         match self.jogo.quadro(corre) {
             Passo::Fotografa => self.jogo_entra(),
-            Passo::Repoe((foto, mark)) => {
-                self.apply_project_with(&foto, Some(&mark));
-                if let Some(gfx) = self.gfx.as_mut() {
-                    gfx.toasts
-                        .push(ph2d_editor_core::toast::Toast::info(ph2d_i18n::tr(
-                            "shell.undo_jogo.scene_restored",
-                        )));
-                }
-            }
+            Passo::Repoe(foto) => self.jogo_sai(foto),
             Passo::Nada => {}
         }
     }
 
     fn jogo_entra(&mut self) {
         self.settle_tree_before_capture();
-        let Some(foto) = self.capture_project() else {
+        let Some(estado) = self.capture_project() else {
             return;
         };
         // O que o artista fez e o undo ainda não registou vira um passo ANTES da corrida: a saída
         // repõe a fotografia como baseline, e sem isto essa edição ficava sem Ctrl+Z.
-        if self.undo_baseline.as_ref() != Some(&foto) {
-            self.empurra(foto.clone());
+        if self.undo_baseline.as_ref() != Some(&estado) {
+            self.empurra(estado.clone());
         }
-        let mark = self.field_selection_mark();
-        self.jogo.guarda((foto, mark));
+        if log_on() {
+            println!("[jogo] Play: documento {:016x}", estado.digest());
+        }
+        let marca = self.field_selection_mark();
+        let vista = self.palco_entra();
+        self.jogo.guarda(FotoDoJogo {
+            estado,
+            marca,
+            vista,
+        });
+    }
+
+    fn jogo_sai(&mut self, foto: FotoDoJogo) {
+        self.apply_project_with(&foto.estado, Some(&foto.marca));
+        if let Some(v) = foto.vista {
+            self.palco_sai(v);
+        }
+        if log_on() {
+            let agora = self.capture_project().map(|s| s.digest());
+            let antes = foto.estado.digest();
+            println!(
+                "[jogo] Stop: documento {} · igual ao do Play: {}",
+                agora.map_or("?".into(), |d| format!("{d:016x}")),
+                if agora == Some(antes) { "SIM" } else { "NÃO" }
+            );
+        }
+        if let Some(gfx) = self.gfx.as_mut() {
+            gfx.toasts.push(ph2d_editor_core::toast::Toast::info(ph2d_i18n::tr(
+                "shell.undo_jogo.scene_restored",
+            )));
+        }
     }
 
     /// Um Ctrl+Z com o jogo a correr: recusado, e dito. `true` = recusou.

@@ -12,6 +12,17 @@ authors.workspace = true
 # A família do JOGO a correr (GameEngineFuncional R0, `docs/GameEngineFuncional/04_R0_N0_plano.md`):
 # a sessão de Play (o jogo corre sobre uma cópia do documento) e onde ele se mostra.
 [dependencies]
+# O roteador do smoke (`SmokeRouter`).
+ph2d-app-host = { path = "../ph2d-app-host" }
+# Os blocos e o jogador de plataforma do nível (`common::slab`, `common::spawn_player`).
+ph2d-app-physics = { path = "../ph2d-app-physics" }
+ph2d-core = { path = "../ph2d-core" }
+ph2d-ecs = { path = "../ph2d-ecs" }
+# Onde o jogo se mostra (`game_stage::GameStage`, a escolha do menu *Run*).
+ph2d-editor-core = { path = "../ph2d-editor-core" }
+ph2d-render = { path = "../ph2d-render" }
+# As moedas correm um script da biblioteca do projecto.
+ph2d-script = { path = "../ph2d-script" }
 
 [lints]
 workspace = true

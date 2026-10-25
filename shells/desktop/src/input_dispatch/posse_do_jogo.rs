@@ -51,6 +51,13 @@ impl crate::App {
             .foco_do_jogo
             .tecla(&mut self.input, cena, t, chave, previa, &code);
         match (d.transporte, self.gfx.as_mut()) {
+            // Fora da corrida o F5 ENTRA nela — a porta do Play de cima (GameEngineFuncional R0).
+            (Some(Transporte::Alterna), Some(gfx)) if !self.timeline.runtime => {
+                if let Some(hero) = gfx.hero_screen.as_mut() {
+                    use ph2d_editor_core::action_bus::{EditorAction, TransportCmd};
+                    hero.bus.push(EditorAction::Transport(TransportCmd::Play));
+                }
+            }
             (Some(Transporte::Alterna), Some(gfx)) => {
                 alterna_o_relogio(
                     self.timeline.containers_list,

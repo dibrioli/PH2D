@@ -290,6 +290,9 @@ pub(super) const MENU_BAR_RUN_ROWS: &[MenuRow] = &[
     menu_row(ids::TOPBAR_PLAY_BUTTON, "chrome.menu.play_space"),
     menu_row(ids::TOPBAR_PAUSE, "chrome.menu.pause_space"),
     menu_row(ids::TOPBAR_RESET, "chrome.menu.rewind"),
+    menu_row(ids::MENUBAR_RUN_WINDOW, "chrome.menu.play_in_window"),
+    menu_row(ids::MENUBAR_RUN_FULLSCREEN, "chrome.menu.play_fullscreen"),
+    menu_row(ids::MENUBAR_RUN_EDITOR, "chrome.menu.play_in_editor"),
 ];
 
 /// As linhas de `ContextMenuKind::SaveMenu`.

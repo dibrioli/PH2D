@@ -117,3 +117,10 @@ pub const MENUBAR_VIEW_COLUMN_LEFT: NodeId = hash_node_id("menubar_view_column_l
 /// (`dock_closed: [Option<ClosedColumn>; 2]`), e uma linha só que fechasse as duas perderia a
 /// distinção que a involução precisa — reabrir devolveria a união dos dois fechos.
 pub const MENUBAR_VIEW_COLUMN_RIGHT: NodeId = hash_node_id("menubar_view_column_right");
+
+/// *Run ▸ Play in a Window* — escolhe [`crate::game_stage::GameStage::Window`] e joga.
+pub const MENUBAR_RUN_WINDOW: NodeId = hash_node_id("menubar_run_window");
+/// *Run ▸ Play Fullscreen* — escolhe [`crate::game_stage::GameStage::Fullscreen`] e joga.
+pub const MENUBAR_RUN_FULLSCREEN: NodeId = hash_node_id("menubar_run_fullscreen");
+/// *Run ▸ Play in the Editor* — escolhe [`crate::game_stage::GameStage::Editor`] e joga.
+pub const MENUBAR_RUN_EDITOR: NodeId = hash_node_id("menubar_run_editor");

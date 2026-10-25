@@ -94,7 +94,7 @@ pub const MENUS: [(NodeId, TextKey, ContextMenuKind); 5] = [
 /// ⚠️ Existe para o registo não ser uma lista escrita à mão ao lado da tabela de rows: quem
 /// acrescentar um verbo novo a um destes menus acrescenta-o aqui, e o gate
 /// `every_menu_bar_row_is_registered` reprova se esquecer.
-pub const OWN_ROWS: [NodeId; 12] = [
+pub const OWN_ROWS: [NodeId; 15] = [
     ids::MENUBAR_FILE_NEW,
     ids::MENUBAR_FILE_SCENES,
     ids::MENUBAR_EDIT_PREFERENCES,
@@ -107,6 +107,9 @@ pub const OWN_ROWS: [NodeId; 12] = [
     ids::MENUBAR_VIEW_TOOL_ROW_BOTTOM,
     ids::MENUBAR_VIEW_FRAME_ALL,
     ids::MENUBAR_VIEW_FRAME_SELECTED,
+    ids::MENUBAR_RUN_WINDOW,
+    ids::MENUBAR_RUN_FULLSCREEN,
+    ids::MENUBAR_RUN_EDITOR,
 ];
 
 /// Recuo da barra à esquerda, para o primeiro título não nascer colado à borda da janela.
@@ -204,6 +207,8 @@ pub enum ModuleTruth {
     Column(crate::screens::layout::DockSide),
     /// A fila ② está embaixo da área (F5)? Aceso = embaixo.
     ToolRowBottom,
+    /// Onde o Play mostra o jogo (menu *Run*): aceso = a escolha actual.
+    GameStage(crate::game_stage::GameStage),
 }
 
 impl ModuleTruth {
@@ -216,13 +221,14 @@ impl ModuleTruth {
             Self::Rulers => hero.view.rulers_visible,
             Self::Column(side) => !super::dock_columns::is_closed(hero, side),
             Self::ToolRowBottom => hero.store.tool_row_bottom(),
+            Self::GameStage(s) => hero.view.game_stage == s,
         }
     }
 }
 
 /// A tabela. ⚠️ **Toda linha de alternância dos menus tem de estar aqui**, e há censo a exigi-lo
 /// (`every_toggle_row_of_the_bar_is_marked_by_its_own_state`).
-pub const MODULE_TRUTHS: [(NodeId, ModuleTruth); 19] = [
+pub const MODULE_TRUTHS: [(NodeId, ModuleTruth); 22] = [
     (ids::TOPBAR_MOTION, ModuleTruth::Tool("motion")),
     (ids::TOPBAR_PHYSICS, ModuleTruth::Panel("physics")),
     // ⭐⭐⭐ **OS OSSOS** (ordem do dono, 2026-09-09). ⚠️ O literal é o `Panel::ID` da
@@ -266,6 +272,18 @@ pub const MODULE_TRUTHS: [(NodeId, ModuleTruth); 19] = [
     (
         ids::MENUBAR_VIEW_COLUMN_RIGHT,
         ModuleTruth::Column(crate::screens::layout::DockSide::Right),
+    ),
+    (
+        ids::MENUBAR_RUN_WINDOW,
+        ModuleTruth::GameStage(crate::game_stage::GameStage::Window),
+    ),
+    (
+        ids::MENUBAR_RUN_FULLSCREEN,
+        ModuleTruth::GameStage(crate::game_stage::GameStage::Fullscreen),
+    ),
+    (
+        ids::MENUBAR_RUN_EDITOR,
+        ModuleTruth::GameStage(crate::game_stage::GameStage::Editor),
     ),
 ];
 

@@ -3,5 +3,6 @@
 //! A shell compõe; a lei vive aqui: [`Sessao`] decide quando o documento se fotografa e quando volta.
 
 pub mod sessao;
+pub mod smoke;
 
 pub use sessao::{Passo, Sessao};

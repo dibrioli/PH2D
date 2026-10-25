@@ -80,6 +80,14 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         hero.view.rulers_visible = !hero.view.rulers_visible;
         hero.store.close_context_menu();
         return true;
+    } else if let Some(stage) = game_stage_of(id) {
+        // Escolher onde jogar É jogar (GameEngineFuncional R0); o Play de cima lembra a escolha.
+        hero.view.game_stage = stage;
+        hero.bus.push(crate::action_bus::EditorAction::Transport(
+            crate::action_bus::TransportCmd::Play,
+        ));
+        hero.store.close_context_menu();
+        return true;
     } else {
         return false;
     };
@@ -91,3 +99,19 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
     });
     true
 }
+
+/// A linha do menu *Run* que escolhe onde o jogo se mostra.
+fn game_stage_of(id: ph2d_a11y::NodeId) -> Option<crate::game_stage::GameStage> {
+    use crate::game_stage::GameStage;
+    [
+        (ids::MENUBAR_RUN_WINDOW, GameStage::Window),
+        (ids::MENUBAR_RUN_FULLSCREEN, GameStage::Fullscreen),
+        (ids::MENUBAR_RUN_EDITOR, GameStage::Editor),
+    ]
+    .into_iter()
+    .find_map(|(row, stage)| (row == id).then_some(stage))
+}
+
+#[cfg(test)]
+#[path = "menu_bar_run_tests.rs"]
+mod run_tests;

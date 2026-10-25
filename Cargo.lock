@@ -5219,6 +5219,15 @@ dependencies = [
 [[package]]
 name = "ph2d-app-game"
 version = "0.0.0"
+dependencies = [
+ "ph2d-app-host",
+ "ph2d-app-physics",
+ "ph2d-core",
+ "ph2d-ecs",
+ "ph2d-editor-core",
+ "ph2d-render",
+ "ph2d-script",
+]
 
 [[package]]
 name = "ph2d-app-host"

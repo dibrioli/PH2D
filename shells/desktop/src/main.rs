@@ -230,6 +230,7 @@ mod image_import;
 mod import_router;
 mod init;
 mod input_dispatch;
+mod janela_do_jogo;
 mod input_drop;
 mod input_handlers;
 mod input_log;
@@ -727,6 +728,7 @@ impl App {
             prefab_cancel: None,
             prefab_cancel_pending: false,
             jogo: ph2d_app_game::Sessao::default(),
+            janela_do_jogo: None,
             pending_ui_sound: None,
             hover_outline: Vec::new(),
             dragging: None,
@@ -966,10 +968,19 @@ impl ApplicationHandler for App {
         }
     }
 
-    fn window_event(&mut self, event_loop: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {
+    fn window_event(&mut self, event_loop: &ActiveEventLoop, id: WindowId, event: WindowEvent) {
+        // Só a janela onde o app vive conduz; a outra (o editor parado atrás da janela do jogo) só
+        // sabe fechar — e fechar pára o jogo (`janela_do_jogo`).
+        if self.window.as_ref().is_some_and(|w| w.id() != id) {
+            if matches!(event, WindowEvent::CloseRequested) {
+                self.jogo_para();
+            }
+            return;
+        }
         // A pure dispatch table (PR 9b): one arm here + one `input_dispatch::App::on_<arm>` method
         // there — `docs/Migracao/2026-05-convention-by-discovery.md`.
         match event {
+            WindowEvent::CloseRequested if self.janela_do_jogo.is_some() => self.jogo_para(),
             WindowEvent::CloseRequested => self.on_close_request(event_loop),
             WindowEvent::Resized(size) => self.on_resized(size),
             WindowEvent::HoveredFile(path) => self.on_hovered_file(path),
@@ -1001,6 +1012,7 @@ impl ApplicationHandler for App {
             WindowEvent::KeyboardInput { event, .. } => self.on_keyboard_input(event),
             WindowEvent::RedrawRequested => {
                 self.render_frame();
+                self.palco_janela(event_loop);
                 self.exit_after_frames_tick(event_loop);
             }
             _ => {}

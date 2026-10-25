@@ -111,6 +111,8 @@ pub struct ViewState {
     /// ⭐ O JOGO tem o teclado (a cena corre e o foco é dele — CodeEditor item 7): a shell escreve-o a cada quadro e a
     /// cena leva a moldura de destaque. Ver `ph2d_app_components::posse_do_jogo`.
     pub jogo_com_o_teclado: bool,
+    /// Onde o Play mostra o jogo (menu *Run*).
+    pub game_stage: crate::game_stage::GameStage,
 }
 
 impl Default for ViewState {
@@ -124,6 +126,7 @@ impl Default for ViewState {
             center_split: crate::screens::layout::CenterSplit::None,
             luz2d: crate::luz_edits::PreferenciaDaLuz::default(),
             jogo_com_o_teclado: false,
+            game_stage: crate::game_stage::GameStage::default(),
         }
     }
 }

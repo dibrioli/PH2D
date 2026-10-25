@@ -493,6 +493,7 @@ mod app;
 mod app_macros;
 #[path = "undo_jogo.rs"]
 mod jogo;
+pub(crate) use jogo::FotoDoJogo;
 
 #[cfg(test)]
 #[path = "undo_tests.rs"]

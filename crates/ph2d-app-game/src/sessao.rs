@@ -49,6 +49,12 @@ impl<S> Sessao<S> {
         }
     }
 
+    /// A fotografia desta corrida, enquanto ela dura.
+    #[must_use]
+    pub fn foto(&self) -> Option<&S> {
+        self.foto.as_ref()
+    }
+
     /// Com o jogo a correr o undo não regista: o que o jogo muda não é do artista.
     #[must_use]
     pub fn a_correr(&self) -> bool {

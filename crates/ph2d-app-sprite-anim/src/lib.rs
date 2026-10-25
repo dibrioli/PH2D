@@ -2,5 +2,7 @@
 //! o tique que toca as animações ([`tick`]) e o snapshot e as edições do cartão «Animation» ([`inspector`]).
 
 pub mod card;
+pub mod editor;
 pub mod inspector;
+pub mod sheet;
 pub mod tick;

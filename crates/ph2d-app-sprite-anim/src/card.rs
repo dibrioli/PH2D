@@ -11,7 +11,7 @@ use ph2d_ecs::{
     SpriteGrid, World,
 };
 use ph2d_editor_core::{
-    AnimCardInfo, AnimCharacterInfo, AnimChooser, AnimCycleMode, AnimFieldEdit, SheetImage,
+    AnimCardInfo, AnimCharacterInfo, AnimChooser, AnimCycleMode, AnimFieldEdit,
 };
 use ph2d_inspector_ordering::{queue_remove, queue_set};
 use ph2d_physics_ecs::{CharacterAnimations, PlatformPlayer};
@@ -48,7 +48,7 @@ fn state_mut(a: &mut CharacterAnimations, i: u8) -> Option<&mut String> {
     })
 }
 
-/// O que o cartão lê. `sheet` vem de quem tem os pixels (a shell); aqui sai `None`.
+/// O que o cartão lê. `sheet` vem da [`crate::sheet::SheetCache`] (resolvida por quadro antes disto).
 #[must_use]
 pub fn build_card_info(world: &World, entity: Entity) -> AnimCardInfo {
     let character = world.get::<CharacterAnimations>(entity);
@@ -98,7 +98,11 @@ pub fn build_card_info(world: &World, entity: Entity) -> AnimCardInfo {
         hframes: grid.hframes,
         vframes: grid.vframes,
         step,
-        sheet: None::<SheetImage>,
+        // A folha que `sheet::refresh` descodificou neste quadro (a sprite escolhida e as abas do editor).
+        sheet: world
+            .get_resource::<crate::sheet::SheetCache>()
+            .and_then(|c| c.of_entity(entity.to_bits()))
+            .map(|e| e.sheet.clone()),
     }
 }
 

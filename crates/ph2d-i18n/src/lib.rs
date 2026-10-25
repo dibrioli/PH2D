@@ -27,6 +27,7 @@
 //! assert_eq!(tr("tool.unknown.key"), "tool.unknown.key"); // missing-key passthrough
 //! ```
 
+mod anim_editor;
 /// O que a família das INSTÂNCIAS diz (avisos dos verbos de prefab, a paleta de componentes).
 mod app_components;
 /// O que a família do FLIP diz (os avisos de pintar, preencher, colorir, esculpir).
@@ -119,6 +120,8 @@ mod component_keywords;
 //    item seguinte é o mesmo acidente que esta fatia quase repetiu duas declarações abaixo. Ele
 //    voltou para o irmão a que pertence; este módulo fica sem doc, que é honesto, em vez de com um
 //    que descreve outra coisa.
+/// O cartão «Animation» (GameEngineFuncional plano 07).
+mod anim_card;
 mod factory;
 mod inspector;
 /// ⭐ **As secções de JOGO do Inspector** (TOP-20 #9..#18 — tags, fábrica, ciclo de vida, mover de
@@ -568,6 +571,7 @@ fn tr_ingles(key: &str) -> &'static str {
             .or_else(|| inspector_motion_input::tr(k))
             .or_else(|| inspector_macro::tr(k))
             .or_else(|| inspector_player::tr(k))
+            .or_else(|| anim_card::tr(k))
             .or_else(|| audio::tr(k))
             .or_else(|| grid_snap::tr(k))
             .or_else(|| flip::tr(k))
@@ -606,6 +610,7 @@ fn tr_ingles(key: &str) -> &'static str {
             .or_else(|| app_motion::tr(k))
             .or_else(|| app_vec::tr(k))
             .or_else(|| code_editor::tr(k))
+            .or_else(|| anim_editor::tr(k))
             .or_else(|| code_explain::tr(k))
             .or_else(|| code_help::tr(k))
             .unwrap_or_else(|| leak_key(k)),

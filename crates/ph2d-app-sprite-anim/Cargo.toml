@@ -23,8 +23,18 @@ ph2d-preview-drive = { path = "../ph2d-preview-drive" }
 ph2d-entity-visibility = { path = "../ph2d-entity-visibility" }
 # Os estados do personagem (`CharacterAnimations`) no modo «O personagem» do cartão.
 ph2d-physics-ecs = { path = "../ph2d-physics-ecs" }
+# O editor de animações (uma aba de família, `DocumentSurface`) e a folha descodificada.
+ph2d-asset = { path = "../ph2d-asset" }
+ph2d-host = { path = "../ph2d-host" }
+ph2d-sprite-sheet = { path = "../ph2d-sprite-sheet" }
+ph2d-text = { path = "../ph2d-text" }
+ph2d-tokens = { path = "../ph2d-tokens" }
+ph2d-vector = { path = "../ph2d-vector" }
+# `#[derive(Resource)]` da cache das folhas e dos pedidos de abrir o editor.
+bevy_ecs = "0.19"
 
 [dev-dependencies]
+ph2d-a11y = { path = "../ph2d-a11y" }
 ph2d-preview-drive = { path = "../ph2d-preview-drive", features = ["test-support"] }
 
 [lints]

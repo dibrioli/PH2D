@@ -34,15 +34,9 @@ pub(crate) struct AnimSignal {
     pub(crate) cycles: u32,
 }
 
-/// Quantos microssegundos vale um passo fixo. Convertido **uma vez**, a partir de uma constante.
-///
-/// ⚠️ `round`, e não `as u64`: a 60 Hz o passo é `16666,66…` µs, e truncar perderia 0,66 µs por
-/// tique — 40 µs por segundo, 2,4 ms por minuto. Invisível num quadro, e uma animação longa
-/// dessincronizaria de um relógio que não trunca.
-#[must_use]
-pub(crate) fn step_ticks(fixed_dt: f64) -> u64 {
-    (fixed_dt * 1_000_000.0).round().max(0.0) as u64
-}
+/// Quantos microssegundos vale um passo fixo — a MESMA conversão do tique do `Timer`, que a
+/// guarda (o porquê do `round` está lá).
+pub(crate) use ph2d_app_components::timer_tick::step_ticks;
 
 /// Avança toda sprite animada em `ticks` passos fixos.
 ///

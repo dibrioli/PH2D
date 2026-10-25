@@ -1,6 +1,9 @@
-//! The segment-menu resolution tests of `timeline_presets` (`preset_tests`),
-//! extracted to a sibling file under the HR-18 shell LOC cap (same pattern as
-//! `timeline_presets_tests.rs`).
+//! The segment-menu resolution tests of [`ph2d_panel_timeline::presets`].
+//!
+//! ⚠️ They lived in the shell (`render_loop/timeline_presets_menu_tests.rs`) until 2026-10-25 and
+//! moved here, next to the law they measure, under the `the_shell_only_shrinks` ratchet. They read
+//! nothing of the shell; the sibling `timeline_presets_tests.rs` stays there because it reads the
+//! shell's `default_interp`.
 
 use ph2d_editor_core::ids as c;
 use ph2d_panel_timeline::presets::*;
@@ -235,9 +238,9 @@ fn a_column_rove_selects_the_column_and_toggles_it() {
 /// as mesmas famílias a partir do enum. Duas listas de nomes divergem no dia em que alguém
 /// renomeia uma delas, e o artista lê *"Expo"* num painel e outra palavra no menu.
 ///
-/// A shell é o único sítio onde os dois lados são visíveis ao mesmo tempo: ela tem a tabela de
-/// editor-core **e** o `preset_for` que a traduz para vocabulário de anim. Por isso o gate mora
-/// aqui e não em nenhuma das duas crates.
+/// Os dois lados são visíveis ao mesmo tempo nesta crate: ela tem a tabela de editor-core **e** o
+/// `preset_for` que a traduz para vocabulário de anim. Por isso o gate mora aqui (vivia na shell
+/// até 2026-10-25, antes de a lei descer para cá).
 ///
 /// ⚠️ Ele compara **famílias**, não modos: as rows de modo da cascata são decoradas
 /// (*"Ease In ▶"*) porque ali são rows de um menu, e exigir que a decoração de um consumidor

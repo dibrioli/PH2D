@@ -237,6 +237,9 @@ pub mod tags_doc;
 /// ⭐⭐⭐ As duas cenas do TOP-20 #9 (`PH2D_TAGS_SMOKE=1|2`) — ver o cabeçalho do módulo.
 pub mod tags_smoke;
 pub mod timer_smoke;
+/// ⭐⭐⭐ **A ponte do `Timer`** (TOP-20 #2) — o tique no passo fixo e o sinal que sai dele.
+/// Desceu de `shells/desktop/src/render_loop/` em 2026-10-25.
+pub mod timer_tick;
 pub mod topdown_smoke;
 /// ⭐⭐⭐ **O GATILHO** (suplente #24) — a ponte PURA do teclado; ver o cabeçalho.
 pub mod trigger_bridge;

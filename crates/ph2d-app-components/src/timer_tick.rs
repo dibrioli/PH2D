@@ -9,7 +9,7 @@
 //!
 //! # ⚠️ As três leis que este ficheiro honra, e onde cada uma foi paga
 //!
-//! - **`ticks × dt` numa chamada só.** É a lição do irmão [`super::sprite_anim_tick`], onde ela foi
+//! - **`ticks × dt` numa chamada só.** É a lição do irmão `render_loop::sprite_anim_tick` (shell), onde ela foi
 //!   uma MEDIÇÃO: a primeira versão dele corria um laço de `ticks` chamadas *«porque um passo
 //!   grande atravessaria o fim de um ciclo sem o fechar»* — e **era falso**, porque a lei pura tem
 //!   o próprio laço de recuperação. A [`ph2d_ecs::timer_advance`] tem-no também.
@@ -29,11 +29,24 @@
 use ph2d_ecs::{Entity, SimWorld, Timers};
 
 /// Um sinal que um timer produziu neste tique.
-pub(crate) struct TimerSignal {
-    pub(crate) entity: Entity,
-    pub(crate) name: String,
+pub struct TimerSignal {
+    pub entity: Entity,
+    pub name: String,
     /// Quantos períodos fecharam. **Sempre ≥ 1** — zero não chega a virar um destes.
-    pub(crate) fires: u32,
+    pub fires: u32,
+}
+
+/// Quantos microssegundos vale um passo fixo. Convertido **uma vez**, a partir de uma constante.
+///
+/// ⚠️ `round`, e não `as u64`: a 60 Hz o passo é `16666,66…` µs, e truncar perderia 0,66 µs por
+/// tique — 40 µs por segundo, 2,4 ms por minuto. Invisível num quadro, e uma animação longa
+/// dessincronizaria de um relógio que não trunca.
+///
+/// ⚠️ Desceu da `sprite_anim_tick` da shell com esta ponte (2026-10-25): os dois tiques do passo
+/// fixo partilham a MESMA conversão, e a shell reexporta-a daqui.
+#[must_use]
+pub fn step_ticks(fixed_dt: f64) -> u64 {
+    (fixed_dt * 1_000_000.0).round().max(0.0) as u64
 }
 
 /// Avança todo timer da cena em `ticks` passos fixos e devolve o que eles têm a dizer.
@@ -42,7 +55,7 @@ pub(crate) struct TimerSignal {
 /// da timeline, e um sinal publicado antes de o quadro virar chegaria ao consumidor um quadro
 /// atrasado. Um atraso de um quadro é invisível num toast e deixa de o ser quando o consumidor for
 /// **som**.
-pub(crate) fn tick_timers(sim: &mut SimWorld, ticks: u32, fixed_dt: f64) -> Vec<TimerSignal> {
+pub fn tick_timers(sim: &mut SimWorld, ticks: u32, fixed_dt: f64) -> Vec<TimerSignal> {
     let mut out = Vec::new();
     // ⚠️ **ANTES do `ticks == 0`, e de propósito:** um quadro sem passo fixo ainda tem de
     // reconciliar. Senão um `Timers` anexado pela paleta ficaria por armar até calhar um quadro
@@ -51,7 +64,7 @@ pub(crate) fn tick_timers(sim: &mut SimWorld, ticks: u32, fixed_dt: f64) -> Vec<
     if ticks == 0 {
         return out;
     }
-    let dt = super::sprite_anim_tick::step_ticks(fixed_dt) * u64::from(ticks);
+    let dt = step_ticks(fixed_dt) * u64::from(ticks);
     if dt == 0 {
         return out;
     }
@@ -90,7 +103,7 @@ pub(crate) fn tick_timers(sim: &mut SimWorld, ticks: u32, fixed_dt: f64) -> Vec<
 ///
 /// ⚠️⚠️ **E os gates estavam VERDES sobre isso**, porque cada um chamava esta função à mão antes de
 /// tiquear — *uma fixtura que arma o que o produto não arma mede a minha intenção, não o produto*.
-/// O gate que faltava é o que **não** a chama: [`super::timer_tick_tests`].
+/// O gate que faltava é o que **não** a chama: `timer_tick_tests.rs`.
 ///
 /// ⇒ ela passa a correr por quadro, e a aresta muda de sítio: não é *«não está a correr»* (que um
 /// *one-shot* terminado satisfaz, e que a faria disparar para sempre), é **o nascimento do slot**.
@@ -104,7 +117,7 @@ pub(crate) fn tick_timers(sim: &mut SimWorld, ticks: u32, fixed_dt: f64) -> Vec<
 /// ⚠️ **Dois chamadores, uma porta:** o tique (o caminho normal) e o load — este último para que um
 /// projecto acabado de abrir tenha os relógios armados **antes** do primeiro quadro, e não a meio
 /// dele.
-pub(crate) fn start_autostart_timers(sim: &mut SimWorld) {
+pub fn start_autostart_timers(sim: &mut SimWorld) {
     // ⭐ **A TRAVESSIA desceu para o `ph2d-ecs` em 2026-09-19** (`reconcile_timers`), onde já moram
     // as irmãs dela (`reconcile_factories`, `reconcile_lifetimes`): ela é uma varredura sobre as
     // portas daquele módulo e não tinha uma linha de composição. O que fica aqui é o NOME que os
@@ -112,7 +125,7 @@ pub(crate) fn start_autostart_timers(sim: &mut SimWorld) {
     ph2d_ecs::reconcile_timers(sim.world_mut());
 }
 
-/// Os gates desta ponte — módulo irmão, pelo teto de 600 LOC da shell.
+/// Os gates desta ponte — módulo irmão, pelo teto de 600 LOC por ficheiro.
 #[cfg(test)]
 #[path = "timer_tick_tests.rs"]
 mod tests;

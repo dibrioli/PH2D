@@ -26,6 +26,7 @@ mod o_tempo_da_macro_chega_a_lista;
 mod one_door_names_the_channel;
 mod seam;
 mod strip_ease_grip_seam;
+mod timeline_presets_menu_tests;
 mod transport_motion_path_seam;
 mod transport_onion_seam;
 mod transport_physics_seam;

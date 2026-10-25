@@ -82,7 +82,7 @@ impl Jogo {
     /// **Um quadro**, com os sinais `extra` a soar (o gatilho de uma arma, um relógio forçado).
     fn quadro(&mut self, extra: &[&str]) -> Quadro {
         let mut q = Quadro::default();
-        // (a) os relógios — o que o `timer_tick::tick_timers` da shell faz.
+        // (a) os relógios — o que o [`crate::timer_tick::tick_timers`] faz.
         ph2d_ecs::reconcile_timers(self.sim.world_mut());
         let mut soaram: Vec<(String, Option<Entity>)> = std::mem::take(&mut self.fila);
         {

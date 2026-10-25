@@ -75,9 +75,6 @@ mod padding_bridge;
 pub(crate) mod timeline_bridge;
 /// **A AUTORIA de uma chave** — irmão do `timeline_bridge` por teto de LOC (HR-18).
 mod timeline_bridge_keys;
-#[cfg(test)]
-#[path = "timeline_presets_menu_tests.rs"]
-mod timeline_presets_menu_tests;
 /// Os dois gates da resolução de PRESETS da timeline. ⚠️ A LEI mudou-se para
 /// [`ph2d_panel_timeline::presets`] na integração de 2026-09-16 (tecto da shell) e eles FICAM:
 /// um deles lê o `default_interp` do `timeline_bridge`, que é costura desta shell.
@@ -158,11 +155,12 @@ mod present_fx;
 /// é ele o motor que declara a §11 como pré-visualização, e um gate que o encenasse à mão mediria
 /// a encenação.
 pub(crate) mod sprite_anim_tick;
-/// ⭐⭐⭐ **A ponte do `Timer`** (TOP-20 #2) — o tique no passo fixo e o sinal que sai dele.
-mod timer_tick;
+/// ⭐⭐⭐ **A ponte do `Timer`** (TOP-20 #2) — mora em [`ph2d_app_components::timer_tick`] desde
+/// 2026-10-25; o nome fica ligado aqui para as fases do quadro.
+use ph2d_app_components::timer_tick;
 
 /// ⭐⭐⭐ **A corrente inteira da VIGIA DO CONTADOR**, sem janela — ver o cabeçalho do irmão.
-/// ⚠️ Ele mora aqui porque o `signal_actions` e o `timer_tick` são privados a este módulo.
+/// ⚠️ Ele mora aqui porque o `signal_actions` é privado a este módulo.
 #[cfg(test)]
 #[path = "counter_watch_chain_tests.rs"]
 mod counter_watch_chain_tests;

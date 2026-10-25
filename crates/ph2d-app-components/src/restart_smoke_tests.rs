@@ -274,7 +274,7 @@ fn o_jogo_joga_se_recomeca_e_as_luzes_voltam() {
     let mut apagou_todas = false;
 
     for q in 0..QUADROS {
-        // (a) o tique dos relógios — o que o `timer_tick::tick_timers` da shell faz.
+        // (a) o tique dos relógios — o que o [`crate::timer_tick::tick_timers`] faz.
         ph2d_ecs::reconcile_timers(sim.world_mut());
         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
         let dt_us = (DT * 1e6) as u64;

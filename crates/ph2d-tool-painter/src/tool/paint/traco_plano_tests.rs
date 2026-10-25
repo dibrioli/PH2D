@@ -743,13 +743,54 @@ fn o_plano_compoe_a_capsula_inteira() {
     }
 }
 
-/// ⭐ **A cauda com a taxa afila sem discos nem degraus** (dono 25/10, as duas fotos): com o Flow 0,3 — o Accumulate
-/// desligado com e sem o Continuous, e o Continuous com o Accumulate ligado — o corpo é o do traço sem cauda (± 1) e a cauda, do seu pico ao fim, só desce
-/// (± 1), sem passar 15 % do pico do corpo. Antes: os dabs SOLTOS que adensavam a ponta pousavam o Flow inteiro cada
-/// um (a cauda a `73…101` sobre um corpo de `54/66`, e com o Continuous discos e degraus).
+/// A envoltória de um eixo: o máximo em cada janela de um passo (Spacing 0,4 × 40 px = 16 px) à frente — sem o
+/// Continuous os dabs espaçados ondulam o corpo inteiro, e é a envoltória que afila.
+fn envoltoria(v: &[u8]) -> Vec<u8> {
+    (0..v.len())
+        .map(|i| *v[i..(i + 16).min(v.len())].iter().max().unwrap())
+        .collect()
+}
+
+/// Sonda (25/10): a cauda nas 4 combinações (Continuous, Accumulate) a Flow 0,3 — o pico do corpo, o pico da
+/// entrada da janela (420..460), o pico da cauda e o eixo dela.
+#[test]
+#[ignore = "sonda: a cauda nas 4 combinações"]
+fn sonda_cauda_quatro() {
+    for (cont, acc) in [(true, false), (false, false), (true, true), (false, true)] {
+        let com = eixo_do_recto(recto_translucido(cont, acc, 0.6, BrushBlend::Mix, 3.0));
+        let sem = eixo_do_recto(recto_translucido(cont, acc, 0.6, BrushBlend::Mix, 0.0));
+        let corpo = (60..410).map(|x| sem[x]).max().unwrap();
+        let entrada = (410..460).map(|x| com[x]).max().unwrap();
+        let cauda = (436..600).map(|x| com[x]).max().unwrap();
+        let sobe = com[436..600]
+            .windows(2)
+            .map(|w| i32::from(w[1]) - i32::from(w[0]))
+            .max()
+            .unwrap();
+        let env = envoltoria(&com[410..600]);
+        let pico = env.iter().enumerate().max_by_key(|(_, v)| **v).unwrap().0;
+        let env_sobe = env[pico..]
+            .windows(2)
+            .map(|w| i32::from(w[1]) - i32::from(w[0]))
+            .max()
+            .unwrap_or(0);
+        println!(
+            "[quatro] C{cont} A{acc}: corpo {corpo} entrada {entrada} cauda {cauda} sobe {sobe} env_sobe {env_sobe}\n  {:?}",
+            &com[400..600]
+        );
+    }
+}
+
+/// ⭐ **A cauda com a taxa afila sem discos nem degraus** (dono 25/10, as duas fotos): com o Flow 0,3, nas quatro
+/// combinações de Continuous × Accumulate, o corpo é o do traço sem cauda (± 1), da entrada da janela ao fim nada passa
+/// do pico do corpo por mais de 2/255, e a cauda, do seu pico ao fim, só desce (± 1) — sem o Continuous e com o
+/// Accumulate os dabs espaçados ondulam o corpo inteiro (53…72), e é a ENVOLTÓRIA que desce (± 3).
+/// Medido 25/10, pico de 410…600 / pico do corpo — antes → depois:
+/// `(T,F)` 61/62 → 61/62 · `(F,F)` 74/67 → 69/67 (o ressalto da entrada) · `(T,T)` 231/231 · `(F,T)` 146/72 → 72/72
+/// (os dabs do adensar a passagem inteira cada um: `⌈x⌉` onde o passo pedia `x`). Envoltória `(F,T)`: sobe 3.
 #[test]
 fn a_cauda_com_a_taxa_afila_sem_discos() {
-    for (cont, acc) in [(true, false), (false, false), (true, true)] {
+    for (cont, acc) in [(true, false), (false, false), (true, true), (false, true)] {
         let com = eixo_do_recto(recto_translucido(cont, acc, 0.6, BrushBlend::Mix, 3.0));
         let sem = eixo_do_recto(recto_translucido(cont, acc, 0.6, BrushBlend::Mix, 0.0));
         // A janela da cauda: 3 diâmetros (120 px) antes do último dab (556), e a faixa limpa um raio antes dela.
@@ -764,15 +805,21 @@ fn a_cauda_com_a_taxa_afila_sem_discos() {
             "Continuous {cont} Accumulate {acc}: o corpo com a cauda difere em {pior}/255"
         );
         let pico_do_corpo = corpo.map(|x| sem[x]).max().unwrap();
-        let cauda = &com[436..600];
-        let (i, &pico) = cauda.iter().enumerate().max_by_key(|(_, v)| **v).unwrap();
+        let pico = *com[410..600].iter().max().unwrap();
         assert!(
-            f32::from(pico) <= f32::from(pico_do_corpo) * 1.15,
-            "Continuous {cont} Accumulate {acc}: a cauda {pico} sobre o corpo {pico_do_corpo}\n{cauda:?}"
+            pico <= pico_do_corpo + 2,
+            "Continuous {cont} Accumulate {acc}: a cauda {pico} sobre o corpo {pico_do_corpo}\n{:?}",
+            &com[410..600]
         );
+        let (eixo, folga) = if !cont && acc {
+            (envoltoria(&com[410..600]), 3)
+        } else {
+            (com[436..600].to_vec(), 1)
+        };
+        let i = eixo.iter().enumerate().max_by_key(|(_, v)| **v).unwrap().0;
         assert!(
-            cauda[i..].windows(2).all(|w| w[1] <= w[0] + 1),
-            "Continuous {cont} Accumulate {acc}: a cauda volta a subir\n{cauda:?}"
+            eixo[i..].windows(2).all(|w| w[1] <= w[0] + folga),
+            "Continuous {cont} Accumulate {acc}: a cauda volta a subir\n{eixo:?}"
         );
     }
 }

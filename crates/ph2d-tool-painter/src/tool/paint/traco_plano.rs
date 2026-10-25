@@ -383,26 +383,59 @@ impl PainterTool {
         // a cápsula interpola a largura em recta entre dois dabs, e com o Flow 1 os dabs soltos re-afilados um a um seguem
         // a lei exacta e batem no tecto sem escurecer nada (`o_toque_e_o_traco_curto_escalam_as_janelas`). Com o
         // Accumulate LIGADO a cápsula compõe cada sub-dab à opacidade da passagem (o traço denso, 229 sobre um corpo
-        // espaçado de 72, medido 25/10): não é uma passagem por passo, e fica o adensar de sempre (`o_toque_e_o_traco_curto_escalam_as_janelas`).
+        // espaçado de 72, medido 25/10): não é uma passagem por passo, e fica o adensar, RALO ([`ralo`]).
         let b = &self.paint.brush;
         let um_caminho = !b.symmetry.enabled && b.spray_count <= 1 && !self.pixel_vivo(b);
         let pela_capsula =
             (!b.accumulate && b.flow < 1.0) || cauda_orig.iter().any(|x| x.step != [0.0, 0.0]);
         let passo = self.passo_px();
         let mut anterior: Option<Dab> = None;
+        // ⭐ A 1.ª cápsula da cadeia ABRE do zero (a cobertura de trás a `0`): o disco do dab de onde ela parte já
+        // pousou a sua metade do passo, e a cápsula inteira por cima dele dava +10 % na entrada da janela (74 sobre um
+        // corpo de 67, medido 25/10); encadear com o último dab do corpo só mudava o ressalto de sítio (75).
+        let mut a_ligado = false;
         let mut encadeia = |x: &Dab| -> Dab {
             let mut y = *x;
+            let mut ligou = false;
             if let Some(a) = anterior.filter(|a| {
                 pela_capsula && um_caminho && da_cauda(a) && da_cauda(x) && x.step == [0.0, 0.0]
             }) {
                 let p = [x.center[0] - a.center[0], x.center[1] - a.center[1]];
                 let dist = p[0].hypot(p[1]);
                 if dist > 0.0 && dist <= 1.5 * passo {
-                    (y.step, y.ante) = (p, Some(ph2d_painter_brush::Ante::de(&a)));
+                    let mut ante = ph2d_painter_brush::Ante::de(&a);
+                    if !a_ligado {
+                        ante.coverage = 0.0;
+                    }
+                    (y.step, y.ante) = (p, Some(ante));
+                    ligou = true;
                 }
             }
+            a_ligado = ligou;
             anterior = Some(*x);
             y
+        };
+        // ⭐ Sob o Accumulate cada dab é uma passagem source-over: o adensar põe `n = ⌈x⌉` dabs onde o passo da
+        // largura nova pede `x` — logo abaixo da largura cheia `x = 1,05` dava `n = 2`, o DOBRO das passagens (a cauda
+        // a 146 sobre um corpo de 72, medido 25/10). Cada dab da ponta passa a `1 − (1 − a)^r`, `r` = passo posto / passo pedido: a densidade do corpo.
+        let densa = !pela_capsula && um_caminho;
+        let flow = (densa && b.accumulate && b.flow > 0.0).then_some(b.flow.min(1.0));
+        let (extra, razao) = if densa {
+            adensa(&cauda_orig, &janela, passo, flow)
+        } else {
+            (Vec::new(), Vec::new())
+        };
+        let mut k = 0usize;
+        let mut afila_na_cauda = |x: Dab| -> Dab {
+            if !da_cauda(&x) {
+                return x;
+            }
+            let y = janela.afila(x);
+            k += 1;
+            match (flow, razao.get(k - 1)) {
+                (Some(f), Some(&r)) => ralo(y, f, r),
+                _ => y,
+            }
         };
         // Os lotes que tocam a janela, INTEIROS e pela ordem, com a cauda re-afilada no lugar.
         let mut lotes: Vec<Lote> = s
@@ -411,22 +444,16 @@ impl PainterTool {
             .map(|l| (l, l.dabs.iter().map(&mut encadeia).collect::<Vec<Dab>>()))
             .filter(|(l, _)| ladrilhada(&l.dabs).iter().any(|c| toca(c, limpa, reach)))
             .map(|(l, dabs)| Lote {
-                dabs: dabs
-                    .into_iter()
-                    .map(|x| if da_cauda(&x) { janela.afila(x) } else { x })
-                    .collect(),
+                dabs: dabs.into_iter().map(&mut afila_na_cauda).collect(),
                 ..l.clone()
             })
             .collect();
-        if !pela_capsula && um_caminho {
-            let extra = adensa(&cauda_orig, &janela, passo);
-            if !extra.is_empty() {
-                lotes.push(Lote {
-                    rng: self.paint.tex_rng,
-                    ancorado: false,
-                    dabs: extra,
-                });
-            }
+        if !extra.is_empty() {
+            lotes.push(Lote {
+                rng: self.paint.tex_rng,
+                ancorado: false,
+                dabs: extra,
+            });
         }
         let tudo: Vec<Dab> = lotes.iter().flat_map(|l| l.dabs.iter().copied()).collect();
         let tocados = self
@@ -606,17 +633,25 @@ impl Janelas {
 }
 
 /// Os dabs que ADENSAM a ponta fina: entre dois dabs seguidos do mesmo caminho entram dabs interpolados ao passo
-/// da largura nova, para a ponta não sair em contas (os originais já estão nos lotes).
-fn adensa(orig: &[Dab], j: &Janelas, passo: f32) -> Vec<Dab> {
+/// da largura nova, para a ponta não sair em contas (os originais já estão nos lotes). Com o Flow do Accumulate
+/// (`flow`) cada dab fica [`ralo`] pela razão LOCAL `passo posto / passo pedido` (o pedido é o da largura dele: num
+/// segmento a largura muda, e uma razão por segmento deixava a ponta em dente de serra); devolve também a de cada
+/// original (o passo posto é a média dos seus dois lados; o corpo antes da janela está ao passo cheio).
+fn adensa(orig: &[Dab], j: &Janelas, passo: f32, flow: Option<f32>) -> (Vec<Dab>, Vec<f32>) {
+    let razao = |posto: f32, arc: f32| (posto / (j.largura(arc) * passo).max(0.5)).min(1.0);
     let mut out = Vec::new();
+    // O passo posto em cada segmento (`None` = o segmento não se adensa).
+    let mut postos = Vec::with_capacity(orig.len().saturating_sub(1));
     for (a, b) in orig.iter().zip(orig.iter().skip(1)) {
         let dist =
             ((b.center[0] - a.center[0]).powi(2) + (b.center[1] - a.center[1]).powi(2)).sqrt();
         if dist > 1.5 * passo || dist <= 0.0 {
+            postos.push(None);
             continue;
         }
         let fino = (j.largura(a.arc_len).min(j.largura(b.arc_len)) * passo).max(0.5);
         let n = (dist / fino).ceil() as usize;
+        postos.push(Some(dist / n as f32));
         for k in 1..n {
             let t = k as f32 / n as f32;
             let mut m = *a;
@@ -629,10 +664,37 @@ fn adensa(orig: &[Dab], j: &Janelas, passo: f32) -> Vec<Dab> {
             m.coverage = a.coverage + (b.coverage - a.coverage) * t;
             // Um dab SOLTO: a cápsula do `a` (o passo e o estado de trás dele) não é a deste ponto do meio.
             (m.step, m.ante) = ([0.0, 0.0], None);
-            out.push(j.afila(m));
+            let r = razao(dist / n as f32, m.arc_len);
+            let m = j.afila(m);
+            out.push(flow.map_or(m, |f| ralo(m, f, r)));
         }
     }
-    out
+    let por_original = orig
+        .iter()
+        .enumerate()
+        .map(|(i, d)| {
+            let antes = if i == 0 { Some(passo) } else { postos[i - 1] };
+            let lados: Vec<f32> = [antes, postos.get(i).copied().flatten()]
+                .into_iter()
+                .flatten()
+                .collect();
+            if lados.is_empty() {
+                1.0
+            } else {
+                razao(lados.iter().sum::<f32>() / lados.len() as f32, d.arc_len)
+            }
+        })
+        .collect();
+    (out, por_original)
+}
+
+/// O dab a `r` passagens (`0 < r ≤ 1`) sob o Accumulate: a opacidade `a = cobertura·flow` passa a `1 − (1 − a)^r`.
+fn ralo(mut d: Dab, flow: f32, r: f32) -> Dab {
+    let a = (d.coverage * flow).clamp(0.0, 1.0);
+    if r < 1.0 && a > 0.0 && a < 1.0 {
+        d.coverage = ((1.0 - (1.0 - a).powf(r)) / flow).min(d.coverage);
+    }
+    d
 }
 
 /// Zera `r` num plano de `canais` canais por texel e `w` de largura.

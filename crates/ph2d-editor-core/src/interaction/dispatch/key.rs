@@ -461,17 +461,16 @@ pub fn graph_key_for(keycode: u32, cmd: bool, alt: bool) -> Option<GraphKey> {
     })
 }
 
-/// **O diálogo New Sprite tem o Enter e o Esc** (Aseprite): Enter = OK — o campo que se estava a
+/// **Os diálogos New Sprite e Color Mode têm o Enter e o Esc** (Aseprite): Enter = OK — o campo que se estava a
 /// escrever entra primeiro —, Esc = Cancel, esteja o foco onde estiver dentro dele.
 fn new_sprite_dialog_key<'a>(
     store: &mut WidgetStore,
     keycode: u32,
     events: &mut BumpVec<'a, WidgetEvent>,
 ) -> bool {
-    let open = matches!(
-        store.context_menu().map(|r| r.kind),
-        Some(crate::interaction::ContextMenuKind::NewSpriteDialog)
-    );
+    use crate::interaction::ContextMenuKind as K;
+    let kind = store.context_menu().map(|r| r.kind);
+    let open = matches!(kind, Some(K::NewSpriteDialog | K::PixelColorModeDialog));
     if !open || !matches!(keycode, KEY_ENTER | KEY_ESCAPE) {
         return false;
     }
@@ -485,7 +484,9 @@ fn new_sprite_dialog_key<'a>(
         store.set_focus(None);
         events.push(WidgetEvent::Blur(id));
     }
-    if keycode == KEY_ENTER {
+    if keycode == KEY_ENTER && kind == Some(K::PixelColorModeDialog) {
+        store.request_color_mode();
+    } else if keycode == KEY_ENTER {
         store.request_new_sprite();
     } else {
         store.close_context_menu();

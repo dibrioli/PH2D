@@ -369,7 +369,7 @@ pub struct WidgetStore {
     pub(super) sheet_size: u32,
     /// Pedido pendente de criação de folha, em pixels de lado — a shell drena-o.
     pub(super) sheet_size_request: Option<u32>,
-    pub(super) new_sprite: crate::pixel_panel::NewSpriteDialog,
+    pub(super) pixel: crate::pixel_panel::PixelDialogs,
     /// Fill (Bucket) "Fill adjust" floating modal: `Some((x, y))` = the card's top-left in screen px
     /// (open); `None` = closed. Opened at the ColorDrop release point by the shell; dragging the title
     /// band offsets it. Its threshold slider's value lives in the `PAINTER_FILL_MODAL_SLIDER` widget.

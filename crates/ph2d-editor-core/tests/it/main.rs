@@ -156,6 +156,7 @@ mod the_new_sprite_dialog_is_alive;
 mod the_painted_control_reaches_a_consumer;
 mod the_panel_row_reads_the_sliders_state;
 mod the_physics_pill_opens_the_physics_panel;
+mod the_pixel_color_mode_dialog_is_alive;
 mod the_pointer_and_the_clock_agree_on_who_lights_up;
 mod the_property_row_manual_names_only_doors_that_exist;
 mod the_rail_label_band_is_one_number;

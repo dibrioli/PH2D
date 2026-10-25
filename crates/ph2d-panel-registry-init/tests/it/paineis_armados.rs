@@ -291,6 +291,7 @@ fn arma_o_pixel() {
             .map(|i| [i * 7, 255 - i * 5, i * 3, 255])
             .collect(),
         options: Default::default(),
+        ..Default::default()
     });
 }
 

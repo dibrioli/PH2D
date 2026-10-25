@@ -9,7 +9,7 @@ impl WidgetStore {
     /// Os widgets registam-se aqui: o diálogo só existe enquanto aberto.
     pub fn open_new_sprite_dialog(&mut self) {
         use crate::interaction::InteractiveState as S;
-        let c = self.new_sprite.choice;
+        let c = self.pixel.new_sprite.choice;
         for (id, v) in crate::ids::NEW_SPRITE_FIELDS
             .into_iter()
             .zip([c.width, c.height])
@@ -47,15 +47,15 @@ impl WidgetStore {
     /// A escolha do diálogo New Sprite (os campos numéricos vivem nos widgets até ao OK).
     #[must_use]
     pub fn new_sprite_choice(&self) -> crate::pixel_panel::NewSpriteChoice {
-        self.new_sprite.choice
+        self.pixel.new_sprite.choice
     }
 
     pub fn set_new_sprite_mode(&mut self, m: crate::pixel_panel::NewSpriteMode) {
-        self.new_sprite.choice.mode = m;
+        self.pixel.new_sprite.choice.mode = m;
     }
 
     pub fn set_new_sprite_background(&mut self, b: crate::pixel_panel::NewSpriteBackground) {
-        self.new_sprite.choice.background = b;
+        self.pixel.new_sprite.choice.background = b;
     }
 
     /// O OK: os lados escritos (presos a `1..=65535`) entram na escolha, que vira o pedido; fecha.
@@ -65,15 +65,15 @@ impl WidgetStore {
             side(crate::ids::NEW_SPRITE_WIDTH),
             side(crate::ids::NEW_SPRITE_HEIGHT),
         );
-        let choice = &mut self.new_sprite.choice;
+        let choice = &mut self.pixel.new_sprite.choice;
         choice.width = w.unwrap_or(choice.width);
         choice.height = h.unwrap_or(choice.height);
-        self.new_sprite.request = Some(self.new_sprite.choice);
+        self.pixel.new_sprite.request = Some(self.pixel.new_sprite.choice);
         self.close_context_menu();
     }
 
     /// Toma (e limpa) o pedido do OK. Fechar o diálogo por outro caminho não arma nada.
     pub fn take_new_sprite_request(&mut self) -> Option<crate::pixel_panel::NewSpriteChoice> {
-        self.new_sprite.request.take()
+        self.pixel.new_sprite.request.take()
     }
 }

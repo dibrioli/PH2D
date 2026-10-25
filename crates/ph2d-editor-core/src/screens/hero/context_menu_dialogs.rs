@@ -460,3 +460,6 @@ pub(super) fn paint_sheet_size_dialog(
 #[path = "context_menu_new_sprite.rs"]
 mod new_sprite;
 pub(super) use new_sprite::paint_new_sprite_dialog;
+#[path = "context_menu_color_mode.rs"]
+mod color_mode;
+pub(super) use color_mode::paint_color_mode_dialog;

@@ -152,6 +152,9 @@ impl PixelBrushShape {
 /// O maior pincel — o `MAX_BRUSH` do `ph2d-pixel-core` (a família prova a igualdade).
 pub const PIXEL_MAX_BRUSH: u32 = 64;
 
+/// O maior tamanho de paleta — o `MAX_COLORS` do `ph2d-pixel-core` (a família prova a igualdade).
+pub const PIXEL_MAX_COLORS: u32 = 256;
+
 /// **As opções das ferramentas** (a barra de contexto do Aseprite): uma só por sessão, como no
 /// Aseprite com *Same in all Tools*.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -184,6 +187,142 @@ pub struct PixelOptions {
     /// Tiled Mode por eixo.
     pub tile_x: bool,
     pub tile_y: bool,
+    /// A tinta das ferramentas que pintam (a borracha pinta sempre com a `Simple`).
+    pub ink: PixelInk,
+    /// `0..=255`: a tolerância do *Replace Color* (por canal RGBA).
+    pub replace_tolerance: u8,
+}
+
+/// A tinta (*Ink* do Aseprite) no vocabulário do chrome; a família traduz para o núcleo.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum PixelInk {
+    #[default]
+    Simple,
+    AlphaCompositing,
+    CopyAlphaColor,
+    LockAlpha,
+    /// Anda um degrau na rampa = as cores SELECCIONADAS na paleta.
+    Shading,
+}
+
+impl PixelInk {
+    pub const ALL: [Self; 5] = [
+        Self::Simple,
+        Self::AlphaCompositing,
+        Self::CopyAlphaColor,
+        Self::LockAlpha,
+        Self::Shading,
+    ];
+
+    #[must_use]
+    pub const fn label_key(self) -> &'static str {
+        match self {
+            Self::Simple => "panel.pixel.ink.simple",
+            Self::AlphaCompositing => "panel.pixel.ink.alpha",
+            Self::CopyAlphaColor => "panel.pixel.ink.copy",
+            Self::LockAlpha => "panel.pixel.ink.lock",
+            Self::Shading => "panel.pixel.ink.shading",
+        }
+    }
+}
+
+/// O critério do *Sort* da paleta (a ordem do menu do Aseprite).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum PixelSortKey {
+    #[default]
+    Hue,
+    Saturation,
+    Brightness,
+    Luminance,
+    Red,
+    Green,
+    Blue,
+    Alpha,
+}
+
+impl PixelSortKey {
+    pub const ALL: [Self; 8] = [
+        Self::Hue,
+        Self::Saturation,
+        Self::Brightness,
+        Self::Luminance,
+        Self::Red,
+        Self::Green,
+        Self::Blue,
+        Self::Alpha,
+    ];
+
+    #[must_use]
+    pub const fn label_key(self) -> &'static str {
+        match self {
+            Self::Hue => "panel.pixel.sort.hue",
+            Self::Saturation => "panel.pixel.sort.saturation",
+            Self::Brightness => "panel.pixel.sort.brightness",
+            Self::Luminance => "panel.pixel.sort.luminance",
+            Self::Red => "panel.pixel.sort.red",
+            Self::Green => "panel.pixel.sort.green",
+            Self::Blue => "panel.pixel.sort.blue",
+            Self::Alpha => "panel.pixel.sort.alpha",
+        }
+    }
+}
+
+/// Como um clique esquerdo numa amostra da paleta mexe na selecção (sempre põe a cor de frente).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PixelSelect {
+    /// Só esta.
+    Only,
+    /// `Shift`: da âncora até esta.
+    Range,
+    /// `Ctrl`: liga/desliga esta.
+    Toggle,
+}
+
+/// O dither da conversão para Indexed — a lista do diálogo *Color Mode* do Aseprite 1.3.18.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum PixelDither {
+    #[default]
+    None,
+    Ordered2,
+    Ordered4,
+    Ordered8,
+    Old2,
+    Old4,
+    Old8,
+    FloydSteinberg,
+}
+
+/// O método de RGB → cinza do diálogo *Color Mode*.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum PixelToGray {
+    #[default]
+    Luminance,
+    Hsv,
+    Hsl,
+}
+
+/// **As escolhas do diálogo *Color Mode*** (Sprite ▸ Color Mode ▸ More Options).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct ColorModeChoice {
+    pub target: NewSpriteMode,
+    pub dither: PixelDither,
+    pub gray: PixelToGray,
+}
+
+/// O estado do diálogo *Color Mode*: a última escolha, o modo do sprite ao abrir (o alvo que não se
+/// escolhe) e o pedido do OK.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct ColorModeDialog {
+    pub choice: ColorModeChoice,
+    pub current: NewSpriteMode,
+    pub(crate) request: Option<ColorModeChoice>,
+}
+
+/// Os diálogos do Pixel Art no `WidgetStore`.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct PixelDialogs {
+    pub(crate) new_sprite: NewSpriteDialog,
+    pub(crate) color_mode: ColorModeDialog,
 }
 
 impl Default for PixelOptions {
@@ -208,6 +347,8 @@ impl Default for PixelOptions {
             sym_d2: false,
             tile_x: false,
             tile_y: false,
+            ink: PixelInk::Simple,
+            replace_tolerance: 0,
         }
     }
 }
@@ -224,6 +365,13 @@ pub struct PixelPanelInfo {
     /// A paleta do sprite em edição.
     pub palette: Vec<[u8; 4]>,
     pub options: PixelOptions,
+    /// O modo de cor do sprite em edição.
+    pub mode: NewSpriteMode,
+    /// As amostras seleccionadas, em ordem de paleta (a rampa do Shading).
+    pub selected: Vec<usize>,
+    /// A última amostra clicada: a que o *Edit color* edita.
+    pub anchor: Option<usize>,
+    pub sort_key: PixelSortKey,
 }
 
 /// Um gesto do painel PIXEL (`EditorAction::Pixel`).
@@ -236,6 +384,30 @@ pub enum PixelRequest {
     Swap,
     /// As opções novas, inteiras (o painel escreve o campo que mudou sobre as que leu).
     Options(PixelOptions),
+    /// Clique esquerdo na amostra `index`: a cor de frente e a selecção.
+    Swatch {
+        index: usize,
+        how: PixelSelect,
+    },
+    /// *Palette Size*: corta ou estende com preto.
+    PaletteSize(u16),
+    SortKey(PixelSortKey),
+    /// Ordena a selecção (2+ amostras) ou a paleta inteira; a imagem não muda.
+    Sort {
+        descending: bool,
+    },
+    /// Desloca as amostras seleccionadas um lugar (`-1` esquerda, `+1` direita); a imagem não muda.
+    MoveSelection(i8),
+    /// *Select ▸ Used Colors* (Indexed).
+    SelectUsed,
+    /// *New Palette from Sprite*.
+    PaletteFromSprite,
+    LoadPalette,
+    SavePalette,
+    /// *Load Default Palette* (DB32).
+    DefaultPalette,
+    /// *Edit ▸ Replace Color*: a cor de frente vira a de fundo no cel activo.
+    ReplaceColor,
 }
 
 /// O lado máximo de um sprite — o mesmo `MAX_SIDE` do `ph2d-pixel-core` (a família prova a

@@ -233,6 +233,9 @@ pub enum ContextMenuKind {
     /// **O diálogo New Sprite** (Add ▸ Pixel Sprite, ADR-0192): Width/Height, Color Mode, Background,
     /// OK/Cancel; o OK arma o pedido que a shell drena, fora ou Esc/Cancel não arma nada.
     NewSpriteDialog,
+    /// **O diálogo Color Mode** do Pixel Art (Sprite ▸ Color Mode ▸ More Options): o alvo, o dither
+    /// (Indexed) ou o método de cinza (Grayscale), OK/Cancel; o OK arma o pedido que a família drena.
+    PixelColorModeDialog,
     /// Right-clicked on a Painter brush Falloff curve control point. Menu offers
     /// the two handle types — Vector (sharp corner) / Auto (smooth). No payload:
     /// the secondary-click already selected the point; the chrome handler routes
@@ -452,6 +455,7 @@ impl ContextMenuKind {
         Self::NewImageDialog,
         Self::SheetSizeDialog,
         Self::NewSpriteDialog,
+        Self::PixelColorModeDialog,
         Self::FalloffPointHandle,
         Self::CurvePointHandle,
         Self::MotionPathAnchor { target: 0, i: 0 },

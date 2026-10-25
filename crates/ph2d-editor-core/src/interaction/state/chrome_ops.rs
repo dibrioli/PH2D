@@ -14,6 +14,8 @@ use crate::interaction::InteractiveState;
 use crate::widget::{ButtonState, SliderOrientation, SliderState};
 use ph2d_a11y::NodeId;
 
+#[path = "color_mode_ops.rs"]
+mod color_mode_ops;
 #[path = "new_sprite_ops.rs"]
 mod new_sprite_ops;
 

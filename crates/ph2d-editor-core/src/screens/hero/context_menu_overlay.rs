@@ -173,6 +173,9 @@ pub fn paint_context_menu_overlay(
         ContextMenuKind::NewSpriteDialog => {
             Some(super::context_menu_dialogs::paint_new_sprite_dialog)
         }
+        ContextMenuKind::PixelColorModeDialog => {
+            Some(super::context_menu_dialogs::paint_color_mode_dialog)
+        }
         _ => None,
     };
     if let Some(paint_dialog) = dialog {

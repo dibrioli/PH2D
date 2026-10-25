@@ -161,3 +161,43 @@ fn a_second_click_places_the_caret_for_surgical_edits() {
         "after a second click typing must INSERT (buffer keeps the 2), got {buffer:?}"
     );
 }
+
+/// ⭐⭐ **A mão TREME entre o Down e o Up** (report do dono 25/10, «This frame»: *«clicar no tempo,
+/// o número tem de ficar selecionado»*). O rato real manda Moves de 1–2 px durante um clique; cada
+/// um caía no arrasto-para-selecionar e encolhia a seleção do foco para `0..byte do clique` — o
+/// gate de cima, sem Move, ficava verde sobre o defeito. ⇒ num `NumberInput` o corpo é clique
+/// (seleção do Down) ou ARRASTO de valor; nunca arrasto de texto. Vale para foco e 2.º clique.
+#[test]
+fn a_trembling_click_still_selects_the_whole_number() {
+    for (dx, dy) in [(1.0, 0.0), (-2.0, 1.0), (0.0, 2.0)] {
+        let (mut store, hits) = unfocused_chip(250.0);
+        let arena = Bump::new();
+        // À ESQUERDA do texto: o byte do clique é 0, a pior seleção encolhida (vazia).
+        let (x, y) = (2.0, 12.0);
+        let _ = dispatch_pointer(
+            &mut store,
+            &hits,
+            pointer(PointerKind::Down, x, y, 0),
+            &arena,
+        );
+        let _ = dispatch_pointer(
+            &mut store,
+            &hits,
+            pointer(PointerKind::Move, x + dx, y + dy, 1),
+            &arena,
+        );
+        let _ = dispatch_pointer(
+            &mut store,
+            &hits,
+            pointer(PointerKind::Up, x + dx, y + dy, 2),
+            &arena,
+        );
+        let _ = dispatch_text_input(&mut store, '7', &arena);
+        let _ = dispatch_key(&mut store, key(KEY_ENTER), &arena);
+        let (_, v, _, _, _) = store.number_input(CHIP).expect("chip");
+        assert!(
+            (v - 7.0).abs() < 1e-9,
+            "tremor ({dx}, {dy}): typing '7' must replace 250, got {v}"
+        );
+    }
+}

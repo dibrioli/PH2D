@@ -372,6 +372,11 @@ pub(super) fn dispatch_move<'frame>(
                     | Some(InteractiveState::NumberInput { .. })
                     | Some(InteractiveState::Combobox { .. })
             ) && number_input_drag_consumed != Some(active)
+                // ⛔ Nem ANTES do limiar: o corpo de um `NumberInput` é clique (a seleção do
+                // Down — tudo, no foco) ou arrasto de VALOR. O tremor de 1 px de um clique real
+                // encolhia o «seleciona tudo» para `0..byte` e digitar juntava (report 25/10;
+                // gate `a_trembling_click_still_selects_the_whole_number`).
+                && !matches!(store.number_input_drag(), Some(d) if d.id == active)
             {
                 let offset =
                     byte_offset_from_click_xy(store, active, rect, event.x, event.y, ts.take());

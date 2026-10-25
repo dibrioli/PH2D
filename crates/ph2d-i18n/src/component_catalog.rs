@@ -58,6 +58,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "component.bloqueia_luz.name" => "Light Occluder",
         "component.bone.name" => "Bone",
         "component.bone_limit.name" => "Angle Limit",
+        "component.constraints.name" => "Constraints",
         "component.bone_rest.name" => "Rest Pose",
         "component.camera_follow.name" => "Camera Follow",
         "component.camera_limits.name" => "Camera Limits",

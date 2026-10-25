@@ -34,6 +34,7 @@ const SEM_REMAP: &str = "a reference to another object that is not remapped yet"
 
 /// **A tabela**, ordenada pelo nome canónico — a classificação de 24/10 (os 165 do registo do produto).
 pub const PORTAS: &[(&str, Porta)] = &[
+    ("ph2d::constraints::Constraints", Recusado(SEM_REMAP)),
     ("ph2d::ecs::AnchorMount", Gravado),
     ("ph2d::ecs::AnchorVisibility", Gravado),
     ("ph2d::ecs::AudioListener2D", Gravado),

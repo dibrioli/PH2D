@@ -6568,6 +6568,7 @@ dependencies = [
  "ph2d-audio-encode",
  "ph2d-color",
  "ph2d-component-desc",
+ "ph2d-constraints-ecs",
  "ph2d-core",
  "ph2d-ecs",
  "ph2d-editor-core",

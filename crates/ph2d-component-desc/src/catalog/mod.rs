@@ -27,6 +27,8 @@ pub mod audio;
 pub mod bridges;
 /// ⭐⭐⭐ **O PONTO DE VISTA do jogo** (TOP-20 #7) — a câmera, quem ela segue e a cerca dela.
 pub mod camera;
+/// ⭐ **As CONSTRAINTS** — a pilha por objecto e por osso.
+pub mod constraints;
 pub mod core;
 /// ⭐⭐⭐ **O HUD** (TOP-20 #20) — a raiz, o rótulo, o botão e o contador.
 pub mod hud;
@@ -51,6 +53,7 @@ const FAMILIES: &[&[ComponentDesc]] = &[
     audio::DESCS,
     bridges::DESCS,
     camera::DESCS,
+    constraints::DESCS,
     core::DESCS,
     hud::DESCS,
     image::DESCS,

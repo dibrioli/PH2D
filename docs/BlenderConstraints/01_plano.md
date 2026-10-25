@@ -69,7 +69,7 @@ Resumo do [relatório](reports/Constraints%20para%20engine%202D.md); números no
 | «em que ordem se avalia?» | `ph2d_constraints_ecs::ordem(world) -> Vec<Entity>`: topológica sobre (hierarquia ∪ alvos); dentro da entidade, a ordem da pilha, **IK incluída** | nenhum `if kind == Ik { … por último }` |
 | «isto faz alguma coisa?» | `ph2d_constraints_ecs::estado(item) -> Estado {Activa, SemAlvo, Ciclo, Inerte(força 0), CorpoDinamico, Invalida(motivo)}` — o cartão, o gizmo e o gate leem esta | o cartão não recalcula |
 | «qual o canal animável deste campo?» | família **`CONSTRAINT = 8`** (append em `ph2d-ecs/src/canal.rs:212`, ficheiro irmão `canal_constraint.rs`): `campo` = id do parâmetro, `i:j` = **id estável do item** (`u32`, monotónico, nunca reusado) | a família `COMPONENTE` (6) **não serve**: endereça por tipo de componente, não por item da lista (`canal_componente.rs:4`) — reordenar partiria as chaves |
-| «onde está o offset?» | `Constraint.offset: Pose2`, gravado ao **ligar** (força 0→>0 por gesto, criação, troca de alvo); botão *Reset offset* | sem botão *Set Inverse* |
+| «onde está o offset?» | `Kind::keep_current(&Ctx)` (`ph2d-constraints/src/kind.rs`): acerta o desvio para que o tipo não mova nada. Ao NASCER só o Child Of e o Distance o chamam (`keeps_current_on_create`, como o Blender 5.2); Copy e Look At apontam logo ao alvo e o «manter desvio» é um botão | sem botão *Set Inverse* |
 | «um intervalo cozido» | `ph2d_app_constraints::bake(range)` escreve chaves pela porta do Auto Key e uma chave de força 0 no intervalo | — |
 
 ### 2.3 Onde corre no quadro (`shells/desktop/src/render_loop/fase_frame_open.rs:21`)

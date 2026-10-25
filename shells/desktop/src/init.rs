@@ -63,17 +63,14 @@ pub(crate) fn build_component_registry() -> ComponentRegistry {
     // ADR-0131 W1: RigidBody/Collider — without this the WorldSnapshot (undo + save) silently
     // drops them.
     ph2d_physics_ecs::register_physics_components(&mut reg);
-    // ⭐⭐⭐ O ESQUELETO (2026-09-06) — o osso e a pele. Eles viveram dentro do `ph2d-ecs` até virarem
-    // MÓDULO: ele serve vector, raster e Flip, e um componente por mídia dentro da fundação a
-    // faria crescer uma vez por cliente. Sem esta linha o WorldSnapshot descarta-os EM SILÊNCIO, e
-    // o sintoma é o personagem perder o esqueleto ao desfazer.
+    // O ESQUELETO (2026-09-06), módulo próprio: sem esta linha o personagem perde os ossos ao desfazer.
     ph2d_skeleton_ecs::register_skeleton_components(&mut reg);
     // A luz 2D (Luz, BloqueiaLuz, NaoRecebeLuz) — sem esta linha o WorldSnapshot a descarta.
     ph2d_light2d_ecs::register_light2d_components(&mut reg);
-    // ⭐⭐⭐ O SCRIPT DO ARTISTA (TOP-20 #16, 2026-09-16) — o sexto registador, que ficou de fora do
-    // boot desde o M14 com a consequência escrita no catálogo: um `LuauScript` era descartado EM
-    // SILÊNCIO pelo WorldSnapshot. Entrar aqui é o degrau `133 → 134` do `PROJECT_SCHEMA`.
+    // O SCRIPT DO ARTISTA (TOP-20 #16; degrau `133 → 134` do `PROJECT_SCHEMA`).
     ph2d_script::register_script_components(&mut reg);
+    // A pilha de CONSTRAINTS (ADR-0192) — sem esta linha o objecto perde-a ao desfazer.
+    ph2d_constraints_ecs::register_constraint_components(&mut reg);
     reg
 }
 

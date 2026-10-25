@@ -35,6 +35,7 @@ impl crate::App {
             return;
         };
         let sim = &mut gfx.sim;
+        ph2d_constraints_ecs::evaluate(sim, &mut self.preview_drive);
         crate::skeleton_smart::drive(sim, &self.timeline.doc, &mut self.preview_drive);
         crate::skeleton_goal::solve(sim, &mut self.preview_drive);
     }

@@ -6,6 +6,10 @@
 //! forma um passo do desfazer: paredes (Rectangle), telhado (Polygon), porta (Filled Rectangle de
 //! canto redondo), sol (Filled Ellipse), chão (Line), fumo (Curve). As paredes FECHAM — o balde
 //! enche a casa sem vazar —, e a Rectangle fica na mão.
+//! 3 — P2: um Pixel Sprite 64 × 48 INDEXED com a DB32: céu em degradê (seis azuis), chão, e uma bola
+//! laranja sombreada com a rampa 4‥7 da DB32. As quatro amostras da rampa vêm seleccionadas e a tinta
+//! Shading na mão: pintar a bola com o esquerdo clareia um degrau, o direito escurece, o céu (fora
+//! da rampa) não muda. O Color Mode… e o menu da paleta estão no painel PIXEL.
 
 use ph2d_ecs::SimWorld;
 use ph2d_pixel_core::{NewSprite, Paint, Stroke};
@@ -14,7 +18,7 @@ use crate::PixelApp;
 
 pub const ROUTERS: &[ph2d_app_host::SmokeRouter] = &[ph2d_app_host::SmokeRouter {
     env: "PH2D_PIXEL_SMOKE",
-    max_level: 2,
+    max_level: 3,
 }];
 
 /// O nível armado em `PH2D_PIXEL_SMOKE`.
@@ -60,6 +64,7 @@ pub fn stage(
             true
         }
         2 => stage_house(app, sim, spawn_root),
+        3 => stage_ball(app, sim, spawn_root),
         _ => false,
     }
 }
@@ -170,5 +175,112 @@ fn draw_path(app: &mut PixelApp, key: u32, color: usize, path: &[(i32, i32)]) ->
     let Some(op) = st.op(s) else {
         return false;
     };
+    app.commit(key, op).is_ok()
+}
+
+/// A rampa da bola da cena 3 (índices da DB32, do escuro ao claro e contíguos: o Shading anda em
+/// ordem de PALETA).
+pub const BALL_RAMP: [usize; 4] = [4, 5, 6, 7];
+/// Os azuis do céu, de cima para baixo (índices contíguos da DB32).
+pub const SKY: [usize; 6] = [15, 16, 17, 18, 19, 20];
+/// O chão.
+pub const GROUND: usize = 12;
+/// O centro e o raio da bola.
+pub const BALL: ((i32, i32), i32) = ((32, 26), 9);
+
+/// O degrau da rampa de cada célula da bola: a luz vem de cima à esquerda.
+fn ball_step(x: i32, y: i32) -> Option<usize> {
+    let ((cx, cy), r) = BALL;
+    let (dx, dy) = (x - cx, y - cy);
+    if dx * dx + dy * dy > r * r {
+        return None;
+    }
+    let (lx, ly) = (x - (cx - 3), y - (cy - 3));
+    let d = lx * lx + ly * ly;
+    Some(match d {
+        0..=6 => 3,
+        7..=30 => 2,
+        31..=110 => 1,
+        _ => 0,
+    })
+}
+
+fn stage_ball(
+    app: &mut PixelApp,
+    sim: &mut SimWorld,
+    spawn_root: impl FnOnce(&mut SimWorld, &str) -> u64,
+) -> bool {
+    let spec = NewSprite {
+        width: 64,
+        height: 48,
+        mode: ph2d_pixel_core::ColorMode::Indexed,
+        ..NewSprite::default()
+    };
+    let Ok(bits) = crate::object_add::spawn(sim, app, spec, spawn_root) else {
+        return false;
+    };
+    let Some(key) = crate::input::key_of(sim.world(), bits) else {
+        return false;
+    };
+    let (w, h) = (64, 48);
+    let banda = 36 / SKY.len() as i32;
+    let mut pecas: Vec<Vec<((i32, i32), usize)>> = vec![Vec::new(); 3];
+    for y in 0..h {
+        for x in 0..w {
+            if y < 36 {
+                pecas[0].push(((x, y), SKY[(y / banda) as usize]));
+            } else {
+                pecas[1].push(((x, y), GROUND));
+            }
+            if let Some(k) = ball_step(x, y) {
+                pecas[2].push(((x, y), BALL_RAMP[k]));
+            }
+        }
+    }
+    for p in &pecas {
+        if !draw_cells(app, key, p) {
+            return false;
+        }
+    }
+    app.select(BALL_RAMP);
+    app.options.ink = ph2d_editor_core::pixel_panel::PixelInk::Shading;
+    app.tool = crate::Tool::Pencil;
+    app.options.size = 3;
+    let Some(doc) = app.docs.get(&key) else {
+        return false;
+    };
+    app.fg = doc.sprite.palette()[BALL_RAMP[1]];
+    app.bg = doc.sprite.palette()[BALL_RAMP[0]];
+    true
+}
+
+/// Células com os índices dados (um sprite Indexed), como UM passo do desfazer.
+fn draw_cells(app: &mut PixelApp, key: u32, cells: &[((i32, i32), usize)]) -> bool {
+    let Some(doc) = app.docs.get(&key) else {
+        return false;
+    };
+    let s = &doc.sprite;
+    let rect = cells
+        .iter()
+        .fold(ph2d_pixel_core::Rect::default(), |r, &((x, y), _)| {
+            r.union(ph2d_pixel_core::Rect::new(x, y, 1, 1))
+        });
+    let mut pixels = s.read_rect((doc.layer, doc.frame), rect);
+    for &((x, y), i) in cells {
+        let Ok(v) = u8::try_from(i) else {
+            return false;
+        };
+        pixels[(y - rect.y) as usize * rect.w as usize + (x - rect.x) as usize] = v;
+    }
+    let bbox = s
+        .cel((doc.layer, doc.frame))
+        .map_or(rect, |c| c.bbox.union(rect));
+    let op = ph2d_pixel_core::Op::Patch(ph2d_pixel_core::Patch {
+        layer: doc.layer,
+        frame: doc.frame,
+        bbox: Some(bbox),
+        rect,
+        pixels,
+    });
     app.commit(key, op).is_ok()
 }

@@ -17,6 +17,7 @@ mod gesture;
 pub mod input;
 pub mod mode;
 pub mod object_add;
+pub mod paleta;
 pub mod panel;
 pub mod persist;
 pub mod smoke;

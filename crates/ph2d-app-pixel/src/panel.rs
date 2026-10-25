@@ -5,8 +5,9 @@
 
 use ph2d_editor_core::NodeId;
 use ph2d_editor_core::interaction::{BarButton, ToolBars, WidgetStore};
-use ph2d_editor_core::pixel_panel::{PixelPanelInfo, PixelRequest};
+use ph2d_editor_core::pixel_panel::{NewSpriteMode, PixelPanelInfo, PixelRequest};
 use ph2d_editor_core::screens::hero::HeroScreen;
+use ph2d_editor_core::{Toast, ToastQueue};
 
 use crate::PixelApp;
 
@@ -19,23 +20,57 @@ impl PixelApp {
         self.pedidos.push(r);
     }
 
-    /// Aplica um gesto do painel.
+    /// Aplica um gesto do painel (os da paleta e da cor vão ao documento em Draw).
     pub fn aplica(&mut self, r: PixelRequest) {
+        if self.aplica_paleta(r) {
+            return;
+        }
         match r {
             PixelRequest::Tool(t) => crate::input::set_tool(self, t),
             PixelRequest::Options(o) => self.options = o,
             PixelRequest::Fg(c) => self.fg = c,
             PixelRequest::Bg(c) => self.bg = c,
             PixelRequest::Swap => std::mem::swap(&mut self.fg, &mut self.bg),
+            _ => {}
         }
     }
 }
 
-/// **Uma vez por quadro, depois do modo**: aplica os pedidos, abre/fecha o painel no flanco do Draw e
-/// devolve o instantâneo que a shell publica.
-pub fn frame(app: &mut PixelApp, world: &ph2d_ecs::World, hero: &mut HeroScreen) -> PixelPanelInfo {
+/// O nome de um modo de cor (as chaves do New Sprite).
+#[must_use]
+pub fn mode_label(m: NewSpriteMode) -> &'static str {
+    let key = ph2d_editor_core::ids::NEW_SPRITE_MODES
+        .iter()
+        .find(|(n, ..)| *n == m)
+        .map_or("pixel.new_sprite.mode.rgba", |(.., k)| *k);
+    ph2d_i18n::tr(key)
+}
+
+/// **Uma vez por quadro, depois do modo**: aplica os pedidos (e o OK do *Color Mode*), abre/fecha o
+/// painel no flanco do Draw, passa os avisos e devolve o instantâneo que a shell publica.
+pub fn frame(
+    app: &mut PixelApp,
+    world: &ph2d_ecs::World,
+    hero: &mut HeroScreen,
+    toasts: &mut ToastQueue,
+) -> PixelPanelInfo {
+    let editing = crate::mode::editing(world, hero);
+    app.chave = editing.and_then(|b| crate::input::key_of(world, b));
     for r in std::mem::take(&mut app.pedidos) {
         app.aplica(r);
+    }
+    if let Some(c) = hero.store.take_color_mode_request()
+        && let Some(key) = app.chave
+    {
+        app.converte(key, c);
+    }
+    app.sincroniza_edicao(&mut hero.store, app.chave);
+    for (erro, texto) in app.take_avisos() {
+        let _ = toasts.push(if erro {
+            Toast::error(texto)
+        } else {
+            Toast::info(texto)
+        });
     }
     let [fg, bg] = &mut app.semeadas;
     sync_swatch(
@@ -50,7 +85,6 @@ pub fn frame(app: &mut PixelApp, world: &ph2d_ecs::World, hero: &mut HeroScreen)
         &mut app.bg,
         bg,
     );
-    let editing = crate::mode::editing(world, hero);
     let selecionado = hero.gizmo.mode.active().is_none()
         && hero
             .gizmo
@@ -62,10 +96,12 @@ pub fn frame(app: &mut PixelApp, world: &ph2d_ecs::World, hero: &mut HeroScreen)
         app.painel_em_edicao = editing.is_some();
         hero.panel_visibility.insert(PANEL_ID, app.painel_em_edicao);
     }
-    let palette = editing
-        .and_then(|b| crate::input::key_of(world, b))
-        .and_then(|k| app.doc(k))
-        .map(|d| d.sprite.palette().to_vec());
+    let doc = app.chave.and_then(|k| app.doc(k));
+    let palette = doc.map(|d| d.sprite.palette().to_vec());
+    let mode = doc.map_or(NewSpriteMode::Rgba, |d| {
+        crate::paleta::modo(d.sprite.mode())
+    });
+    let n = palette.as_ref().map_or(0, Vec::len);
     PixelPanelInfo {
         editing: palette.is_some(),
         tool: app.tool,
@@ -73,6 +109,10 @@ pub fn frame(app: &mut PixelApp, world: &ph2d_ecs::World, hero: &mut HeroScreen)
         bg: app.bg,
         palette: palette.unwrap_or_default(),
         options: app.options,
+        mode,
+        selected: app.sel.iter().copied().filter(|&i| i < n).collect(),
+        anchor: app.ultima.filter(|&i| i < n),
+        sort_key: app.sort_key,
     }
 }
 

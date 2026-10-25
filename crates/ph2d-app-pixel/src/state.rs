@@ -93,6 +93,19 @@ pub struct PixelApp {
     pub(crate) zoom: Option<u32>,
     /// A roda ainda por virar degrau (o trackpad manda o gesto aos bocados).
     pub(crate) roda: crate::input::Roda,
+    /// As amostras seleccionadas da paleta (a rampa do Shading; o alvo de Sort/Move).
+    pub(crate) sel: std::collections::BTreeSet<usize>,
+    /// A âncora do `Shift`+clique e a última amostra clicada (a do *Edit color*).
+    pub(crate) ancora: Option<usize>,
+    pub(crate) ultima: Option<usize>,
+    pub(crate) sort_key: ph2d_editor_core::pixel_panel::PixelSortKey,
+    /// O documento em Draw, lido no quadro (os pedidos da paleta aplicam-se a ele).
+    pub(crate) chave: Option<u32>,
+    /// A edição de cor em curso pelo seletor: `(chave, índice, passos do desfazer depois dela)` —
+    /// arrastar no seletor reescreve O MESMO passo.
+    pub(crate) edicao: Option<(u32, usize, usize)>,
+    /// Os avisos a mostrar (a shell drena-os no quadro).
+    pub(crate) avisos: Vec<(bool, String)>,
 }
 
 impl Default for PixelApp {
@@ -117,6 +130,13 @@ impl Default for PixelApp {
             semeadas: [[0; 4]; 2],
             zoom: None,
             roda: crate::input::Roda::default(),
+            sel: std::collections::BTreeSet::new(),
+            ancora: None,
+            ultima: None,
+            sort_key: ph2d_editor_core::pixel_panel::PixelSortKey::Hue,
+            chave: None,
+            edicao: None,
+            avisos: Vec::new(),
         }
     }
 }

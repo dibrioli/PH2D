@@ -205,12 +205,16 @@ fn diag() -> bool {
     *ON.get_or_init(|| std::env::var_os("PH2D_PIXEL_DIAG").is_some())
 }
 
-/// O diálogo *New Sprite* está aberto — MODAL: toda tecla vai só para ele.
+/// Um diálogo do Pixel Art (*New Sprite*, *Color Mode*) está aberto — MODAL: toda tecla vai só para
+/// ele.
 #[must_use]
 pub fn dialog_open(store: &WidgetStore) -> bool {
-    store
-        .context_menu()
-        .is_some_and(|r| matches!(r.kind, ContextMenuKind::NewSpriteDialog))
+    store.context_menu().is_some_and(|r| {
+        matches!(
+            r.kind,
+            ContextMenuKind::NewSpriteDialog | ContextMenuKind::PixelColorModeDialog
+        )
+    })
 }
 
 /// Os caracteres do texto digitado que vão para o campo do diálogo (sem controlo, sem os atalhos

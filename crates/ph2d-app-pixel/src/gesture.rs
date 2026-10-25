@@ -4,6 +4,7 @@
 
 use ph2d_pixel_core::brush::{Brush, BrushShape};
 use ph2d_pixel_core::fill::{Bucket, BucketSample};
+use ph2d_pixel_core::ink::Ink;
 use ph2d_pixel_core::raster::{
     Cell, curve_path, ellipse_cells, ellipse_filled_cells, line_cells, polygon_cells,
     rounded_rect_cells, snap_pixel_angle, square_box,
@@ -66,7 +67,19 @@ pub(crate) enum Kind {
     },
 }
 
-/// O pincel, a simetria e o ladrilho das opções, para o documento `doc`.
+/// A tinta do chrome no vocabulário do núcleo.
+pub(crate) fn ink(i: ph2d_editor_core::pixel_panel::PixelInk) -> Ink {
+    use ph2d_editor_core::pixel_panel::PixelInk as I;
+    match i {
+        I::Simple => Ink::Simple,
+        I::AlphaCompositing => Ink::AlphaCompositing,
+        I::CopyAlphaColor => Ink::CopyAlphaColor,
+        I::LockAlpha => Ink::LockAlpha,
+        I::Shading => Ink::Shading,
+    }
+}
+
+/// O pincel, a simetria, o ladrilho e a tinta das opções, para o documento `doc`.
 pub(crate) fn paint(o: &Options, doc: &Doc) -> Paint {
     use ph2d_editor_core::pixel_panel::PixelBrushShape as S;
     let shape = match o.shape {
@@ -86,6 +99,7 @@ pub(crate) fn paint(o: &Options, doc: &Doc) -> Paint {
             y: o.tile_y,
         },
         pixel_perfect: o.pixel_perfect,
+        ink: ink(o.ink),
     }
 }
 

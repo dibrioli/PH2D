@@ -15,6 +15,8 @@ authors.workspace = true
 [dependencies]
 ph2d-pixel-core = { path = "../ph2d-pixel-core" }
 ph2d-pixel-render = { path = "../ph2d-pixel-render" }
+# Load/Save Palette (os formatos de ficheiro de paleta).
+ph2d-pixel-io = { path = "../ph2d-pixel-io" }
 ph2d-app-host = { path = "../ph2d-app-host" }
 ph2d-component-desc = { path = "../ph2d-component-desc" }
 ph2d-ecs = { path = "../ph2d-ecs" }
@@ -26,6 +28,8 @@ ph2d-tokens = { path = "../ph2d-tokens" }
 ph2d-unique-name = { path = "../ph2d-unique-name" }
 ph2d-vector = { path = "../ph2d-vector" }
 winit = "0.30"
+# O diálogo de ficheiro do Load/Save Palette (pela porta `ph2d_app_host::modal`).
+rfd = "0.17"
 
 [lints]
 workspace = true

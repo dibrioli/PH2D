@@ -8,7 +8,8 @@ impl crate::App {
         let Some(hero) = g.hero_screen.as_mut() else {
             return;
         };
-        let info = ph2d_app_pixel::panel::frame(&mut self.pixel, g.sim.world(), hero);
+        let (pixel, world) = (&mut self.pixel, g.sim.world());
+        let info = ph2d_app_pixel::panel::frame(pixel, world, hero, &mut g.toasts);
         #[cfg(feature = "panel-pixel-tools")]
         {
             let (column, hint) = (

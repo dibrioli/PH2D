@@ -21,6 +21,10 @@ fn spawn_root(sim: &mut SimWorld, name: &str) -> u64 {
     bits
 }
 
+fn avisos() -> ph2d_editor_core::ToastQueue {
+    ph2d_editor_core::ToastQueue::new()
+}
+
 fn sprites(sim: &SimWorld) -> usize {
     ph2d_app_pixel::mode::sprites(sim.world()).len()
 }
@@ -28,6 +32,10 @@ fn sprites(sim: &SimWorld) -> usize {
 #[test]
 fn o_tecto_do_dialogo_e_o_do_documento() {
     assert_eq!(NEW_SPRITE_MAX_SIDE, ph2d_pixel_core::MAX_SIDE);
+    assert_eq!(
+        ph2d_editor_core::pixel_panel::PIXEL_MAX_COLORS as usize,
+        ph2d_pixel_core::palette::MAX_COLORS
+    );
 }
 
 #[test]
@@ -95,13 +103,13 @@ fn o_painel_abre_no_edit_fecha_ao_sair_e_leva_a_paleta() {
     let bits = object_add::add(object_add::PIXEL_SPRITE, &mut sim, &mut app, spawn_root)
         .expect("é desta família")
         .expect("nasce");
-    let info = panel::frame(&mut app, sim.world(), &mut hero);
+    let info = panel::frame(&mut app, sim.world(), &mut hero, &mut avisos());
     assert!(!info.editing && info.palette.is_empty());
     assert!(!hero.is_panel_visible(panel::PANEL_ID));
 
     hero.gizmo.mode.enter(bits, ObjectMode::Draw);
     app.pede(PixelRequest::Tool(PixelTool::Eraser));
-    let info = panel::frame(&mut app, sim.world(), &mut hero);
+    let info = panel::frame(&mut app, sim.world(), &mut hero, &mut avisos());
     assert!(
         hero.is_panel_visible(panel::PANEL_ID),
         "entrar em Edit abre o painel"
@@ -116,12 +124,12 @@ fn o_painel_abre_no_edit_fecha_ao_sair_e_leva_a_paleta() {
 
     // Fechado à mão no meio do Edit: o quadro seguinte não o reabre.
     hero.panel_visibility.insert(panel::PANEL_ID, false);
-    let _ = panel::frame(&mut app, sim.world(), &mut hero);
+    let _ = panel::frame(&mut app, sim.world(), &mut hero, &mut avisos());
     assert!(!hero.is_panel_visible(panel::PANEL_ID));
 
     hero.panel_visibility.insert(panel::PANEL_ID, true);
     let _ = hero.gizmo.mode.leave();
-    let _ = panel::frame(&mut app, sim.world(), &mut hero);
+    let _ = panel::frame(&mut app, sim.world(), &mut hero, &mut avisos());
     assert!(
         !hero.is_panel_visible(panel::PANEL_ID),
         "sair do Edit fecha"
@@ -173,7 +181,7 @@ fn o_seletor_oferece_object_e_draw_e_a_coluna_em_draw_e_a_do_pixel() {
         height: 600,
     };
     app.frame(&mut sim, &mut cam, window, 100.0, Some(bits), spawn_root);
-    let _ = panel::frame(&mut app, sim.world(), &mut hero);
+    let _ = panel::frame(&mut app, sim.world(), &mut hero, &mut avisos());
     // ⭐ Report do dono 25/10 (2.ª volta): com o layout *Vector* gravado o vetor estava na mão e
     // cobria o sprite em Draw — o sinal diz-lhe que largue.
     assert!(
@@ -207,7 +215,7 @@ fn o_seletor_oferece_object_e_draw_e_a_coluna_em_draw_e_a_do_pixel() {
 
     let _ = hero.gizmo.mode.leave();
     hero.gizmo.selection = Some(bits);
-    let _ = panel::frame(&mut app, sim.world(), &mut hero);
+    let _ = panel::frame(&mut app, sim.world(), &mut hero, &mut avisos());
     panel::publish_bars(&app, &mut hero, Vec::new(), String::new());
     assert!(
         hero.store.tool_bars().is_none(),
@@ -218,7 +226,7 @@ fn o_seletor_oferece_object_e_draw_e_a_coluna_em_draw_e_a_do_pixel() {
         "seleccionado em Object o vetor também larga (o seletor Object · Draw fica à vista)"
     );
     hero.gizmo.selection = None;
-    let _ = panel::frame(&mut app, sim.world(), &mut hero);
+    let _ = panel::frame(&mut app, sim.world(), &mut hero, &mut avisos());
     assert!(
         !hero.store.family_owns_canvas(),
         "sem sprite activo o vetor volta"

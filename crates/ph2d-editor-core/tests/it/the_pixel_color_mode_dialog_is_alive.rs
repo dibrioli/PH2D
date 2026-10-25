@@ -2,8 +2,10 @@
 //! irmão `the_new_sprite_dialog_is_alive`: o hero pinta, o ponteiro carrega no meio do que se
 //! pintou, as teclas entram pelo `handle_key` e cada evento passa pelo `apply_event`.
 //!
-//! O que se prova: todo controlo do alvo escolhido está VIVO; o modo actual aparece mas não se
-//! escolhe; OK e Enter armam o pedido com a escolha; Cancel e Esc não armam nada; a escolha fica.
+//! O que se prova: todo controlo do alvo escolhido está VIVO; o diálogo abre com o modo actual
+//! ESCOLHIDO e clicável (smoke do dono 25/10: apagado confundia), e o OK sobre ele não arma nada;
+//! OK e Enter armam o pedido com a escolha; Cancel e Esc não armam nada; a escolha fica; e nenhum
+//! rótulo do diálogo sai cortado (`…`) na largura dele — medido pelo censo das elisões do pintor.
 
 use bumpalo::Bump;
 use ph2d_a11y::NodeId;
@@ -13,6 +15,7 @@ use ph2d_editor_core::pixel_panel::{ColorModeChoice, NewSpriteMode, PixelDither,
 use ph2d_editor_core::screens::hero::{
     HERO_VIEWPORT_H, HERO_VIEWPORT_W, HeroScreen, paint_hero_screen,
 };
+use ph2d_editor_core::text_elide::elisao;
 use ph2d_editor_core::zones::Rect;
 use ph2d_host::{
     KeyEvent, KeyKind, Modifiers, PointerButton, PointerEvent, PointerKind, PointerSource,
@@ -120,26 +123,53 @@ fn alvo(m: NewSpriteMode) -> NodeId {
 }
 
 #[test]
-fn todo_controlo_do_alvo_esta_vivo_e_o_modo_actual_nao_se_escolhe() {
-    let mut e = Ecra::aberto(NewSpriteMode::Rgba);
-    assert_eq!(
-        e.hero.store.color_mode_choice().target,
+fn abre_com_o_modo_actual_escolhido_e_vivo() {
+    for m in [
+        NewSpriteMode::Rgba,
+        NewSpriteMode::Gray,
         NewSpriteMode::Indexed,
-        "o alvo nunca é o modo actual"
+    ] {
+        let e = Ecra::aberto(m);
+        assert_eq!(e.hero.store.color_mode_choice().target, m, "abre no actual");
+        for (_, id, _) in ids::COLOR_MODE_TARGETS {
+            assert!(e.centro(id).is_some(), "{m:?}: o alvo {id:?} sem clique");
+            assert!(e.hero.store.get(id).is_some(), "{id:?} sem estado: MORTO");
+        }
+    }
+}
+
+#[test]
+fn ok_e_enter_sobre_o_modo_actual_nao_armam_nada() {
+    let mut e = Ecra::aberto(NewSpriteMode::Rgba);
+    e.carrega(ids::COLOR_MODE_OK);
+    assert!(!e.aberto_ainda(), "o OK fecha");
+    assert_eq!(e.hero.store.take_color_mode_request(), None);
+    // Escolher outro e voltar ao actual também não arma.
+    let mut e = Ecra::aberto(NewSpriteMode::Indexed);
+    e.carrega(alvo(NewSpriteMode::Gray));
+    e.carrega(alvo(NewSpriteMode::Indexed));
+    e.tecla(KEY_ENTER);
+    assert!(!e.aberto_ainda(), "o Enter fecha");
+    assert_eq!(e.hero.store.take_color_mode_request(), None);
+}
+
+#[test]
+fn todo_controlo_do_alvo_esta_vivo() {
+    let mut e = Ecra::aberto(NewSpriteMode::Rgba);
+    assert!(
+        e.centro(ids::COLOR_MODE_DITHERS[0].1).is_none(),
+        "RGBA: sem dithers"
     );
+    e.carrega(alvo(NewSpriteMode::Indexed));
     let vivos = ids::COLOR_MODE_DITHERS
         .iter()
         .map(|(_, id, _)| *id)
-        .chain([alvo(NewSpriteMode::Gray), alvo(NewSpriteMode::Indexed)])
+        .chain(ids::COLOR_MODE_TARGETS.iter().map(|(_, id, _)| *id))
         .chain([ids::COLOR_MODE_OK, ids::COLOR_MODE_CANCEL]);
     for id in vivos {
         assert!(e.centro(id).is_some(), "{id:?} não se pintou");
         assert!(e.hero.store.get(id).is_some(), "{id:?} sem estado: MORTO");
     }
-    assert!(
-        e.centro(alvo(NewSpriteMode::Rgba)).is_none(),
-        "o modo actual não tem clique"
-    );
     // Grayscale troca a fila dos dithers pela dos métodos.
     e.carrega(alvo(NewSpriteMode::Gray));
     assert!(e.aberto_ainda(), "escolher não fecha");
@@ -152,6 +182,7 @@ fn todo_controlo_do_alvo_esta_vivo_e_o_modo_actual_nao_se_escolhe() {
 #[test]
 fn ok_e_enter_armam_o_pedido_com_a_escolha_e_ela_fica_lembrada() {
     let mut e = Ecra::aberto(NewSpriteMode::Rgba);
+    e.carrega(alvo(NewSpriteMode::Indexed));
     e.carrega(ids::COLOR_MODE_DITHERS[7].1);
     e.carrega(ids::COLOR_MODE_OK);
     let quer = ColorModeChoice {
@@ -190,4 +221,46 @@ fn cancel_e_esc_nao_armam_nada() {
     e.tecla(KEY_ESCAPE);
     assert!(!e.aberto_ainda(), "o Esc fecha");
     assert_eq!(e.hero.store.take_color_mode_request(), None);
+}
+
+/// ⭐ **Nenhum rótulo do diálogo se corta** na largura dele (smoke do dono 25/10: os três
+/// `Ordere…` liam-se iguais). Mede o que o PINTOR mediu — o censo das elisões ([`elisao`]) —, em
+/// cada alvo; e o controlo positivo: todo rótulo esperado tem de ter sido medido.
+#[test]
+fn nenhum_rotulo_do_dialogo_se_corta() {
+    let mut esperados: Vec<&str> = ids::COLOR_MODE_DITHERS
+        .iter()
+        .map(|(_, _, k)| *k)
+        .chain(ids::COLOR_MODE_GRAYS.iter().map(|(_, _, k)| *k))
+        .chain(ids::COLOR_MODE_TARGETS.iter().map(|(_, _, k)| *k))
+        .chain(ids::COLOR_MODE_DITHER_ROWS.iter().map(|(k, _)| *k))
+        .map(ph2d_i18n::tr)
+        .collect();
+    esperados.extend(["pixel.new_sprite.ok", "pixel.new_sprite.cancel"].map(ph2d_i18n::tr));
+    let mut vistos = Vec::new();
+    for m in [
+        NewSpriteMode::Rgba,
+        NewSpriteMode::Gray,
+        NewSpriteMode::Indexed,
+    ] {
+        let mut e = Ecra::aberto(NewSpriteMode::Rgba);
+        e.hero.store.set_color_mode_target(m);
+        let ((), medidos) = elisao::medindo(|| e.pinta());
+        for md in medidos
+            .iter()
+            .filter(|md| esperados.contains(&md.texto.as_str()))
+        {
+            assert!(
+                md.coube(),
+                "{m:?}: «{}» cortado em «{}» ({:.1} px)",
+                md.texto,
+                md.pintado,
+                md.largura
+            );
+            vistos.push(md.texto.clone());
+        }
+    }
+    for t in esperados {
+        assert!(vistos.iter().any(|v| v == t), "«{t}» nunca foi medido");
+    }
 }

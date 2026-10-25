@@ -112,37 +112,56 @@ pub const COLOR_MODE_DITHERS: [(PixelDither, NodeId, &str); 8] = [
     (
         PixelDither::Ordered2,
         hash_node_id("pixel.color_mode.dither.ordered2"),
-        "pixel.color_mode.dither.ordered2",
+        "pixel.color_mode.dither.size2",
     ),
     (
         PixelDither::Ordered4,
         hash_node_id("pixel.color_mode.dither.ordered4"),
-        "pixel.color_mode.dither.ordered4",
+        "pixel.color_mode.dither.size4",
     ),
     (
         PixelDither::Ordered8,
         hash_node_id("pixel.color_mode.dither.ordered8"),
-        "pixel.color_mode.dither.ordered8",
+        "pixel.color_mode.dither.size8",
     ),
     (
         PixelDither::Old2,
         hash_node_id("pixel.color_mode.dither.old2"),
-        "pixel.color_mode.dither.old2",
+        "pixel.color_mode.dither.size2",
     ),
     (
         PixelDither::Old4,
         hash_node_id("pixel.color_mode.dither.old4"),
-        "pixel.color_mode.dither.old4",
+        "pixel.color_mode.dither.size4",
     ),
     (
         PixelDither::Old8,
         hash_node_id("pixel.color_mode.dither.old8"),
-        "pixel.color_mode.dither.old8",
+        "pixel.color_mode.dither.size8",
     ),
     (
         PixelDither::FloydSteinberg,
         hash_node_id("pixel.color_mode.dither.floyd"),
         "pixel.color_mode.dither.floyd",
+    ),
+];
+
+/// A arrumação dos dithers no diálogo: a 1.ª fila sem rótulo (os dois nomes longos), depois uma
+/// fila por família com o rótulo dela à esquerda e os três tamanhos — os nomes nunca se cortam.
+pub const COLOR_MODE_DITHER_WIDE: [PixelDither; 2] =
+    [PixelDither::None, PixelDither::FloydSteinberg];
+pub const COLOR_MODE_DITHER_ROWS: [(&str, [PixelDither; 3]); 2] = [
+    (
+        "pixel.color_mode.dither.ordered",
+        [
+            PixelDither::Ordered2,
+            PixelDither::Ordered4,
+            PixelDither::Ordered8,
+        ],
+    ),
+    (
+        "pixel.color_mode.dither.old",
+        [PixelDither::Old2, PixelDither::Old4, PixelDither::Old8],
     ),
 ];
 

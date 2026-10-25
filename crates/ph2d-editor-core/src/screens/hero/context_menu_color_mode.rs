@@ -1,15 +1,17 @@
 //! **O diálogo Color Mode** do Pixel Art (Sprite ▸ Color Mode ▸ More Options do Aseprite 1.3.18) —
-//! irmão do *New Sprite* na forma: o alvo (o modo actual aparece desligado), para Indexed os oito
-//! dithers, para Grayscale os três métodos, Cancel | OK. As filas saem das tabelas
-//! `ids::COLOR_MODE_*`, as mesmas que o despacho e o registo leem.
+//! irmão do *New Sprite* na forma: o alvo (abre no modo actual, ESCOLHIDO e não apagado — o smoke
+//! do dono 25/10: apagado confundia), para Indexed os oito dithers (os dois longos numa fila, depois
+//! `Ordered` e `Old` como rótulo de fila com os três tamanhos — nenhum nome se corta), para Grayscale
+//! os três métodos, Cancel | OK. As filas saem das tabelas `ids::COLOR_MODE_*`, as mesmas que o
+//! despacho e o registo leem.
 
 use super::super::context_menu_overlay::{ROW_H, pad_y};
 use super::{DIALOG_W, paint_choice_button};
 use crate::ids;
 use crate::interaction::{HitIndex, WidgetStore};
-use crate::paint::{fill_rounded_rect, paint_text, resolve};
-use crate::pixel_panel::NewSpriteMode;
-use crate::widget::{Button, ButtonState, paint_button};
+use crate::paint::{fill_rounded_rect, paint_text, paint_text_elided, resolve};
+use crate::pixel_panel::{NewSpriteMode, PixelDither};
+use crate::widget::{Button, paint_button};
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
 use ph2d_i18n::tr;
@@ -17,8 +19,8 @@ use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
 use ph2d_vector::VectorScene;
 
-/// Quantos botões cabem numa fila de dithers.
-const POR_FILA: usize = 4;
+/// A grelha das filas rotuladas: o rótulo ocupa uma coluna, os três tamanhos as outras.
+const COLUNAS: usize = 4;
 
 pub(in crate::screens::hero) fn paint_color_mode_dialog(
     scene: &mut VectorScene,
@@ -31,7 +33,7 @@ pub(in crate::screens::hero) fn paint_color_mode_dialog(
     let choice = store.color_mode_choice();
     let current = store.color_mode_current();
     let extra = match choice.target {
-        NewSpriteMode::Indexed => 1 + ids::COLOR_MODE_DITHERS.len().div_ceil(POR_FILA),
+        NewSpriteMode::Indexed => 2 + ids::COLOR_MODE_DITHER_ROWS.len(),
         NewSpriteMode::Gray => 2,
         NewSpriteMode::Rgba => 0,
     };
@@ -96,8 +98,12 @@ pub(in crate::screens::hero) fn paint_color_mode_dialog(
     );
     let alvos: Vec<_> = ids::COLOR_MODE_TARGETS
         .iter()
-        .map(|(m, id, k)| (*id, tr(k), *m == choice.target, *m == current))
+        .map(|(m, id, k)| (*id, tr(k), *m == choice.target))
         .collect();
+    debug_assert!(
+        alvos.iter().any(|a| a.2),
+        "{current:?}: um alvo está sempre escolhido"
+    );
     y = f.fila(&alvos, y);
     match choice.target {
         NewSpriteMode::Indexed => {
@@ -108,12 +114,17 @@ pub(in crate::screens::hero) fn paint_color_mode_dialog(
                 y,
                 ColorToken::Text3,
             );
-            let todos: Vec<_> = ids::COLOR_MODE_DITHERS
-                .iter()
-                .map(|(d, id, k)| (*id, tr(k), *d == choice.dither, false))
-                .collect();
-            for fila in todos.chunks(POR_FILA) {
-                y = f.fila(fila, y);
+            let opt = |d: PixelDither| {
+                let (_, id, k) = ids::COLOR_MODE_DITHERS
+                    .iter()
+                    .find(|(x, ..)| *x == d)
+                    .expect("todo dither está na tabela");
+                (*id, tr(k), d == choice.dither)
+            };
+            let largos: Vec<_> = ids::COLOR_MODE_DITHER_WIDE.map(opt).to_vec();
+            y = f.fila(&largos, y);
+            for (rotulo, ds) in ids::COLOR_MODE_DITHER_ROWS {
+                y = f.fila_rotulada(tr(rotulo), &ds.map(opt), y);
             }
         }
         NewSpriteMode::Gray => {
@@ -126,7 +137,7 @@ pub(in crate::screens::hero) fn paint_color_mode_dialog(
             );
             let metodos: Vec<_> = ids::COLOR_MODE_GRAYS
                 .iter()
-                .map(|(g, id, k)| (*id, tr(k), *g == choice.gray, false))
+                .map(|(g, id, k)| (*id, tr(k), *g == choice.gray))
                 .collect();
             y = f.fila(&metodos, y);
         }
@@ -167,21 +178,39 @@ struct Fila<'a> {
 }
 
 impl Fila<'_> {
-    /// Uma fila de escolhas de largura igual: `(id, rótulo, escolhida, desligada)`. A desligada não
-    /// tem hit-rect (o clique nela não existe).
-    fn fila(&mut self, opts: &[(NodeId, &str, bool, bool)], y: f32) -> f32 {
+    /// Uma fila de escolhas de largura igual: `(id, rótulo, escolhida)`.
+    fn fila(&mut self, opts: &[(NodeId, &str, bool)], y: f32) -> f32 {
+        self.botoes(opts, self.x, self.w, y)
+    }
+
+    /// Uma fila com o RÓTULO dela na 1.ª coluna da grelha (como o de uma propriedade) e as
+    /// escolhas nas outras.
+    fn fila_rotulada(&mut self, rotulo: &str, opts: &[(NodeId, &str, bool)], y: f32) -> f32 {
+        let gap = Spacing::Xs.px();
+        #[expect(clippy::cast_precision_loss, reason = "uma contagem de colunas, < 16")]
+        let col = ((self.w - gap * (COLUNAS - 1) as f32) / COLUNAS as f32).max(1.0);
+        let font = TypeToken::Sm.px();
+        paint_text_elided(
+            self.text_system,
+            self.scene,
+            rotulo,
+            self.x,
+            y + (ROW_H - font) * 0.5,
+            font,
+            col,
+            resolve(ColorToken::Text2, self.theme),
+        );
+        self.botoes(opts, self.x + col + gap, self.w - col - gap, y)
+    }
+
+    fn botoes(&mut self, opts: &[(NodeId, &str, bool)], x: f32, w: f32, y: f32) -> f32 {
         let gap = Spacing::Xs.px();
         #[expect(clippy::cast_precision_loss, reason = "≤ 4 escolhas")]
         let n = opts.len() as f32;
-        let bw = ((self.w - gap * (n - 1.0)) / n).max(1.0);
-        for (i, (id, lbl, on, off)) in opts.iter().enumerate() {
+        let bw = ((w - gap * (n - 1.0)) / n).max(1.0);
+        for (i, (id, lbl, on)) in opts.iter().enumerate() {
             #[expect(clippy::cast_precision_loss, reason = "≤ 4 escolhas")]
-            let r = Rect::new(self.x + i as f32 * (bw + gap), y, bw, ROW_H);
-            if *off {
-                let b = Button::new(*id, *lbl).state(ButtonState::Disabled);
-                paint_button(&b, r, self.scene, self.text_system, self.theme);
-                continue;
-            }
+            let r = Rect::new(x + i as f32 * (bw + gap), y, bw, ROW_H);
             paint_choice_button(
                 self.scene,
                 self.text_system,

@@ -7,18 +7,14 @@ use crate::interaction::ContextMenuRequest;
 use crate::pixel_panel::{ColorModeChoice, NewSpriteMode, PixelDither, PixelToGray};
 
 impl WidgetStore {
-    /// Abre o diálogo **Color Mode** sobre um sprite no modo `current`. Se a última escolha é o
-    /// próprio modo, o alvo passa ao seguinte (o modo actual não se escolhe).
+    /// Abre o diálogo **Color Mode** sobre um sprite no modo `current`, com o próprio modo
+    /// ESCOLHIDO (smoke do dono 25/10: o modo actual apagado confundia). O dither e o método de
+    /// cinza ficam os da última vez.
     pub fn open_color_mode_dialog(&mut self, current: NewSpriteMode) {
         use crate::interaction::InteractiveState as S;
         let d = &mut self.pixel.color_mode;
         d.current = current;
-        if d.choice.target == current {
-            d.choice.target = match current {
-                NewSpriteMode::Indexed => NewSpriteMode::Rgba,
-                _ => NewSpriteMode::Indexed,
-            };
-        }
+        d.choice.target = current;
         let targets = crate::ids::COLOR_MODE_TARGETS.iter().map(|(_, id, _)| *id);
         let dithers = crate::ids::COLOR_MODE_DITHERS.iter().map(|(_, id, _)| *id);
         let grays = crate::ids::COLOR_MODE_GRAYS.iter().map(|(_, id, _)| *id);
@@ -45,13 +41,9 @@ impl WidgetStore {
         self.pixel.color_mode.current
     }
 
-    /// Escolhe o alvo — o modo actual é recusado (`false`).
-    pub fn set_color_mode_target(&mut self, m: NewSpriteMode) -> bool {
-        if m == self.pixel.color_mode.current {
-            return false;
-        }
+    /// Escolhe o alvo (o modo actual também: OK sobre ele não muda nada).
+    pub fn set_color_mode_target(&mut self, m: NewSpriteMode) {
         self.pixel.color_mode.choice.target = m;
-        true
     }
 
     pub fn set_color_mode_dither(&mut self, d: PixelDither) {
@@ -62,7 +54,7 @@ impl WidgetStore {
         self.pixel.color_mode.choice.gray = g;
     }
 
-    /// O OK: a escolha vira o pedido; fecha.
+    /// O OK: a escolha vira o pedido — nenhum quando o alvo é o modo actual; fecha.
     pub fn request_color_mode(&mut self) {
         let d = &mut self.pixel.color_mode;
         d.request = (d.choice.target != d.current).then_some(d.choice);

@@ -1,6 +1,6 @@
 // ph2d-chrome-sync:z=177 (dispatch priority, ADR-0107; lower = earlier)
 //! **O diálogo Color Mode** do Pixel Art: o alvo, o dither e o cinza guardam a escolha (o modo actual
-//! não se escolhe); o OK arma o pedido e fecha; o Cancel só fecha. A família drena
+//! também se escolhe, e o OK sobre ele não arma nada); o OK arma o pedido e fecha; o Cancel só fecha. A família drena
 //! `take_color_mode_request` e converte o sprite como UM passo do desfazer.
 
 use crate::ids;
@@ -20,7 +20,7 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         return true;
     }
     if let Some(&(m, ..)) = ids::COLOR_MODE_TARGETS.iter().find(|(_, b, _)| *b == id) {
-        let _ = hero.store.set_color_mode_target(m);
+        hero.store.set_color_mode_target(m);
         return true;
     }
     if let Some(&(d, ..)) = ids::COLOR_MODE_DITHERS.iter().find(|(_, b, _)| *b == id) {

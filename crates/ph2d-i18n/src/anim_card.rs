@@ -28,7 +28,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "The animation you play here starts by itself when the game runs."
         }
         "panel.inspector.anim_card.script_hint" => {
-            "Nothing starts by itself: a script picks with ph2d.set(self.id, \"animator.animation\", \"run\")."
+            "Nothing starts by itself: a script picks with ph2d.set(self.id, \"animator.animation\", \"run\") and starts it with ph2d.set(self.id, \"animator.playing\", true)."
         }
         "panel.inspector.anim_card.character_hint" => {
             "The character picks by what he does: standing, running, jumping, falling."

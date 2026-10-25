@@ -412,3 +412,40 @@ fn a_aba_fecha_quando_a_sprite_sai_da_cena() {
     m.frame();
     assert!(m.docs().tabs().is_empty());
 }
+
+#[test]
+fn largar_uma_folha_abre_o_editor_com_a_proposta_e_uma_imagem_so_nao() {
+    let mut sim = SimWorld::new();
+    let e = sim
+        .world_mut()
+        .spawn((
+            Transform::default(),
+            ph2d_render::Sprite::atlas(0, [1.0, 1.0], [1.0; 4]),
+        ))
+        .id()
+        .to_bits();
+    // Três figuras de 4 px no meio de células de 8 px: uma folha 3 × 1.
+    let (w, h) = (24u32, 8u32);
+    let mut rgba = vec![0u8; (w * h * 4) as usize];
+    for cell in 0..3 {
+        for y in 2..6 {
+            for x in 2..6 {
+                rgba[((y * w + cell * 8 + x) * 4 + 3) as usize] = 255;
+            }
+        }
+    }
+    assert!(propose_after_drop(&mut sim, e, &rgba, w, h));
+    let asked = &sim.world().get_resource::<AnimEditorRequests>().unwrap().0;
+    assert_eq!(asked, &[e]);
+
+    // Uma figura só não é folha: nada abre.
+    let mut sim = SimWorld::new();
+    let e = sim.world_mut().spawn(Transform::default()).id().to_bits();
+    let mut one = vec![0u8; 8 * 8 * 4];
+    one[(3 * 8 + 3) * 4 + 3] = 255;
+    assert!(!propose_after_drop(&mut sim, e, &one, 8, 8));
+    assert!(
+        !propose_after_drop(&mut sim, e, &one, 9, 9),
+        "tamanho errado"
+    );
+}

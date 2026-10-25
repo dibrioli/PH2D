@@ -72,6 +72,14 @@ impl crate::App {
         gfx.toasts = toasts;
         match r {
             Ok(_) => {
+                // Uma folha largada propõe colunas × linhas no editor de animações (plano GEF 07).
+                ph2d_app_sprite_anim::editor::propose_after_drop(
+                    &mut gfx.sim,
+                    entity_bits,
+                    &img.pixels,
+                    img.width,
+                    img.height,
+                );
                 gfx.toasts.push(ph2d_editor_core::Toast::success(tr(
                     "shell.asset_drop_apply.texture_applied",
                 )));
@@ -129,6 +137,13 @@ impl crate::App {
         if let Some(hero) = gfx.hero_screen.as_mut() {
             hero.gizmo.replace_selection(Some(bits));
         }
+        ph2d_app_sprite_anim::editor::propose_after_drop(
+            &mut gfx.sim,
+            bits,
+            &img.pixels,
+            img.width,
+            img.height,
+        );
         gfx.toasts.push(ph2d_editor_core::Toast::success(tr(
             "shell.asset_drop_apply.image_placed",
         )));

@@ -40,6 +40,29 @@ pub fn request_open(sim: &mut SimWorld, entity_bits: u64, edit: &AnimFieldEdit) 
     true
 }
 
+/// **Uma imagem acabou de ser largada sobre a sprite `bits` (ou de nascer nela)**: se a transparência
+/// propõe uma grelha de várias células diferente da que a sprite tem, abre o editor dela — a faixa
+/// «Parece C × L — Usar» é a proposta, e o artista confirma (plano 07, «Desenho aprovado» 3).
+/// `rgba` é a imagem reta, `w × h × 4`. Devolve se pediu o editor.
+pub fn propose_after_drop(sim: &mut SimWorld, bits: u64, rgba: &[u8], w: u32, h: u32) -> bool {
+    if rgba.len() != (w as usize) * (h as usize) * 4 {
+        return false;
+    }
+    let alpha: Vec<u8> = rgba.chunks_exact(4).map(|p| p[3]).collect();
+    let Some(g) = ph2d_sprite_sheet::guess_grid(&alpha, w, h) else {
+        return false;
+    };
+    let grid = sim
+        .world()
+        .get::<ph2d_ecs::SpriteGrid>(Entity::from_bits(bits))
+        .copied()
+        .unwrap_or(ph2d_ecs::SpriteGrid::SINGLE);
+    if g.cols * g.rows <= 1 || (g.cols, g.rows) == (grid.hframes, grid.vframes) {
+        return false;
+    }
+    request_open(sim, bits, &AnimFieldEdit::OpenEditor)
+}
+
 /// A família: as abas abertas.
 #[derive(Debug, Default)]
 pub struct AnimDocs {

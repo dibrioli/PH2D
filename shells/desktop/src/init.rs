@@ -372,6 +372,9 @@ fn boot_hero_screen(
         ph2d_app_board::smoke::stage_armed_smokes(&mut hero);
         hero.documents
             .install_surface(Box::new(ph2d_app_code::CodeDocs::default()));
+        // O editor de animações (GameEngineFuncional plano 07): uma aba por sprite.
+        hero.documents
+            .install_surface(Box::new(ph2d_app_sprite_anim::editor::AnimDocs::default()));
         Some(hero)
     } else {
         None

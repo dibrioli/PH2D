@@ -87,6 +87,16 @@ impl crate::App {
             tools.active().map(|t| t.id()) == Some(ph2d_editor_core::ToolId::new("vector"));
         let caixa = ph2d_app_vec::overlay::object_box(vector, self.vec.draw_config.mode);
         hero.gizmo.handles_only = caixa == ph2d_app_vec::overlay::ObjectBox::HandlesOnly;
+        // ⭐ O EDITOR DE ANIMAÇÕES (a família, plano GameEngineFuncional 07) — ANTES dos snapshots: ele
+        // descodifica as folhas que o cartão Animation também mostra.
+        ph2d_app_sprite_anim::editor::frame(
+            sim,
+            hero,
+            asset_db,
+            atlas_asset_map,
+            component_registry,
+            toasts,
+        );
         // A publicação dos snapshots (`snapshots.rs`, HR-8 / ADR-0021: o paint só lê o HeroScreen).
         snapshots::publish(
             hero,

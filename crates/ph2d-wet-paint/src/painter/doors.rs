@@ -217,13 +217,15 @@ impl Engine {
     /// ([`crate::tools::apply_erase`]) — LANE-LESS: erase is a direct grid op
     /// (no trail window), so every symmetry/tiling copy simply erases where
     /// it lands. `sil`/`grain` exactly as in the paint door; the host gates
-    /// the sim by opening a direct stroke around the gesture as usual.
+    /// the sim by opening a direct stroke around the gesture as usual. `taxa`
+    /// (`0..1`, o Flow do anfitrião) escala a força do `sliders.erase` (1 = a do slider).
     #[allow(clippy::too_many_arguments)]
     pub fn dispatch_pressure_dab_erase(
         &mut self,
         x: f64,
         y: f64,
         b: f64,
+        taxa: f64,
         r: f64,
         sil: Option<crate::brush::CellFn<'_>>,
         grain: Option<crate::brush::CellFn<'_>>,
@@ -235,7 +237,7 @@ impl Engine {
         }
         self.texture();
         let tex = self.brush_tex.take().unwrap();
-        let erase = self.sliders.erase;
+        let erase = self.sliders.erase * taxa;
         let layer = &mut self.layers[self.active_layer];
         let rect = match sil {
             Some(sil) => {

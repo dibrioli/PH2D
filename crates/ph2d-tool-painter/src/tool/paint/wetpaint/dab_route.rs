@@ -592,11 +592,13 @@ impl PainterTool {
             if erasing {
                 // W2.6: the same §9 mapping, routed to the engine's ERASER —
                 // silhouette and grain shape the erase exactly as they shape
-                // the deposit.
+                // the deposit. O Flow (a taxa por dab, à vista na Borracha do Wet) escala a força
+                // do Erase Strength; a Strength escondida já saiu do `b` (`coverage / strength`).
                 sess.engine.dispatch_pressure_dab_erase(
                     cell_x,
                     cell_y,
                     b,
+                    f64::from(brush.flow.clamp(0.0, 1.0)),
                     cell_r,
                     Some(&sil),
                     grain_arg,

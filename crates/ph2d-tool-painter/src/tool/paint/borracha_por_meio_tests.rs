@@ -281,3 +281,46 @@ fn o_follow_sem_lado_nao_muda_a_agua() {
         );
     }
 }
+
+/// A tinta que fica no miolo apagado depois de a Borracha do Wet passar, com `(strength, flow)` na Borracha.
+fn wet_vivo_apagado(strength: f32, flow: f32) -> (f64, f64) {
+    let mut t = tela_de_aguada();
+    t.paint.brush.watercolor = false;
+    t.paint.brush_by_mode.fill(t.paint.brush);
+    t.set_paint_media(PaintMedia::WetPaint);
+    traco_h(&mut t, 64.0);
+    for _ in 0..4 {
+        t.paint_tick(1.0 / 40.0);
+    }
+    let antes = tinta(&t, APAGADO);
+    borracha_em(&mut t, PaintMedia::WetPaint);
+    t.set_brush_strength(strength);
+    t.set_brush_flow(flow);
+    traco_v(&mut t, 64.0);
+    (antes, tinta(&t, APAGADO))
+}
+
+/// ⭐ **A Borracha do Wet sobre tinta VIVA obedece ao Flow que o painel lhe mostra** (25/10). Antes, Flow e Strength
+/// davam 25,9 em todas as combinações: o `b` satura no `min(3)` da intensidade e a Strength sai dele. O Flow escala a
+/// força do Erase Strength (como escala a taxa da Borracha seca); a Strength, escondida no Wet, não age.
+#[test]
+fn a_borracha_do_wet_obedece_ao_flow() {
+    let [cheio, medio, fraco, sem_forca] =
+        [(1.0, 1.0), (1.0, 0.3), (1.0, 0.1), (0.3, 1.0)].map(|(s, f)| wet_vivo_apagado(s, f));
+    eprintln!(
+        "BWF\tFlow 1 {cheio:?}\tFlow 0,3 {medio:?}\tFlow 0,1 {fraco:?}\tStrength 0,3 {sem_forca:?}"
+    );
+    assert!(
+        cheio.1 < cheio.0 * 0.6,
+        "fixtura: a Borracha do Wet levanta"
+    );
+    assert!(
+        cheio.1 < medio.1 - 10.0 && medio.1 < fraco.1 - 5.0,
+        "o Flow à vista não muda o que a Borracha do Wet levanta: {cheio:?} {medio:?} {fraco:?}"
+    );
+    assert_eq!(
+        sem_forca.1.to_bits(),
+        cheio.1.to_bits(),
+        "a Strength está escondida no Wet: não pode agir"
+    );
+}

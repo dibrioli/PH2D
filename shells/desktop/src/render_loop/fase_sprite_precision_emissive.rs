@@ -27,6 +27,7 @@ impl crate::App {
             asset_db,
             toasts,
             hero_live,
+            hero_screen,
             atlas_asset_map,
             ..
         } = FrameGfx::of(gfx);
@@ -118,6 +119,20 @@ impl crate::App {
                 .map(ph2d_ecs::Entity::from_bits)
                 .and_then(|e| ph2d_sheet_bounds::sheet_parent(sim, e));
             if in_sheet.is_some() {
+                // F30 §F: com a linha seleccionada, saem TODAS as peças seleccionadas que estão numa
+                // folha — e só essas (um seleccionado fora de folha não perde o pai dele).
+                let selected: Vec<u64> = hero_screen
+                    .as_ref()
+                    .map(|h| {
+                        h.gizmo
+                            .iter_selected()
+                            .filter(|&b| {
+                                ph2d_sheet_bounds::sheet_parent(sim, ph2d_ecs::Entity::from_bits(b))
+                                    .is_some()
+                            })
+                            .collect()
+                    })
+                    .unwrap_or_default();
                 hero_intents::drain_reparent(
                     ph2d_editor_core::screens::hero::HierReparentIntent {
                         dragged: row,
@@ -125,6 +140,7 @@ impl crate::App {
                         before: None,
                         after: None,
                     },
+                    &selected,
                     live,
                     sim,
                     toasts,

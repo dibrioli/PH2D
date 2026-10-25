@@ -27,6 +27,7 @@ impl crate::App {
             vec_scene,
             flip,
             hero_live,
+            hero_screen,
             ..
         } = FrameGfx::of(gfx);
         let TreeSettleIntents {
@@ -125,7 +126,11 @@ impl crate::App {
         if let Some(intent) = reparent_intent.take()
             && let Some(live) = hero_live.as_ref()
         {
-            hero_intents::drain_reparent(intent, live, sim, toasts);
+            let selected: Vec<u64> = hero_screen
+                .as_ref()
+                .map(|h| h.gizmo.iter_selected().collect())
+                .unwrap_or_default();
+            hero_intents::drain_reparent(intent, &selected, live, sim, toasts);
             self.title_dirty = true;
         }
         if let Some(live) = hero_live.as_mut() {

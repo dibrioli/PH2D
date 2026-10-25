@@ -279,6 +279,7 @@ fn the_real_root_drag_changes_the_capture() {
             before: Some(node_of(&live, ids[0])),
             after: None,
         },
+        &[],
         &live,
         &mut sim,
         &mut toasts,
@@ -368,6 +369,7 @@ fn the_real_sibling_drag_reorders_and_sticks() {
             before: Some(node_of(&live, ids[0])),
             after: None,
         },
+        &[],
         &live,
         &mut sim,
         &mut toasts,
@@ -387,4 +389,90 @@ fn the_real_sibling_drag_reorders_and_sticks() {
     );
     let _ = drive;
     let _ = reg;
+}
+
+/// O pai (por `StableId`) de cada objecto — sobrevive ao respawn do restauro.
+fn pais_por_stable_id(sim: &mut SimWorld) -> Vec<(u64, Option<u64>)> {
+    let mut q = sim
+        .world_mut()
+        .query::<(&ph2d_ecs::StableId, Option<&ph2d_ecs::ChildOf>)>();
+    let mut v: Vec<(u64, Option<u64>)> = q
+        .iter(sim.world())
+        .map(|(s, c)| {
+            (
+                s.0,
+                c.and_then(|c| sim.world().get::<ph2d_ecs::StableId>(c.parent()))
+                    .map(|p| p.0),
+            )
+        })
+        .collect();
+    v.sort_unstable();
+    v
+}
+
+/// ⭐⭐ F30 §F (report do dono 25/10): agarrar UMA das linhas seleccionadas e largá-la sobre o P
+/// leva a selecção INTEIRA, num pedido só — e por isso num passo só de undo: UM restauro devolve
+/// as duas ao lugar.
+#[test]
+fn largar_varios_e_um_passo_de_undo() {
+    let reg = reg2();
+    let drive = PreviewDrive::default();
+    let mut sim = SimWorld::new();
+    let spawn = |sim: &mut SimWorld, nome: &str, id: u64| {
+        sim.world_mut()
+            .spawn((
+                Transform::default(),
+                Name::new(nome),
+                ph2d_ecs::StableId(id),
+                ph2d_ecs::RootOrder(id as u32),
+            ))
+            .id()
+    };
+    let p = spawn(&mut sim, "P", 0);
+    let a = spawn(&mut sim, "A", 1);
+    let _b = spawn(&mut sim, "B", 2);
+    let c = spawn(&mut sim, "C", 3);
+    let mut live = crate::HeroLive {
+        bridge: crate::hero_bridge::EntityNodeMap::new(),
+        walk_state: ph2d_ecs::scene::HierarchyWalkState::new(sim.world_mut()),
+        walk_scratch: Vec::new(),
+        snapshot: ph2d_ecs::scene::HierarchySnapshot::new(),
+        z_walk_state: ph2d_ecs::scene::HierarchyWalkState::new(sim.world_mut()),
+        z_walk_scratch: Vec::new(),
+        z_snapshot: ph2d_ecs::scene::HierarchySnapshot::new(),
+    };
+    ph2d_ecs::scene::build_hierarchy_snapshot(
+        sim.world(),
+        &mut live.walk_state,
+        &mut live.walk_scratch,
+        &mut live.snapshot,
+    );
+    let _ = live.bridge.sync_from_snapshot(&live.snapshot);
+    let node = |e: ph2d_ecs::Entity| live.bridge.node_for(e.to_bits()).expect("no na ponte");
+    let antes = capture(&drive, &mut sim, &reg);
+    let mut toasts = ph2d_editor_core::ToastQueue::new();
+    crate::hero_intents::drain_reparent(
+        ph2d_editor_core::screens::hero::HierReparentIntent {
+            dragged: node(a),
+            new_parent: Some(node(p)),
+            before: None,
+            after: None,
+        },
+        &[c.to_bits(), a.to_bits()],
+        &live,
+        &mut sim,
+        &mut toasts,
+    );
+    assert_eq!(
+        pais_por_stable_id(&mut sim),
+        vec![(0, None), (1, Some(0)), (2, None), (3, Some(0))],
+        "o gesto nao levou a seleccao inteira para dentro do P"
+    );
+    assert_ne!(antes, capture(&drive, &mut sim, &reg));
+    let _ = antes.restore(&mut sim, &reg);
+    assert_eq!(
+        pais_por_stable_id(&mut sim),
+        vec![(0, None), (1, None), (2, None), (3, None)],
+        "um restauro so nao devolveu as duas"
+    );
 }

@@ -51,16 +51,26 @@ fn the_drag_asks_the_door_before_changing_the_parent() {
     // `refuses_reparent` (acima nesta ficheiro) o censo ficou **VÁCUO**: a mutação que apagava a
     // chamada dentro do gesto **sobreviveu**, porque o nome continuava a aparecer no ficheiro.
     // *Um censo que casa um nome onde ele passou a viver deixa de medir quem o invoca.*
-    let file = code_of("hero_intents/hierarchy.rs");
-    let at = file
+    // ⚠️ 3.ª mudança de casa (F30 §F, 25/10): o corpo do gesto — para uma ou VÁRIAS linhas — saiu
+    // para `hierarchy_reparent::reparentar`; o dreno da shell só o chama. As duas metades medem-se.
+    let drain = code_of("hero_intents/hierarchy.rs");
+    let at = drain
         .find("pub(crate) fn drain_reparent(")
+        .expect("o gesto mudou de nome — reancore este censo");
+    assert!(
+        drain[at..].contains("reparentar(sim, &quem, queda)"),
+        "o dreno da Hierarquia deixou de passar pela lei do reparentar"
+    );
+    let file = code_of("../../../crates/ph2d-app-components/src/hierarchy_reparent.rs");
+    let at = file
+        .find("fn reparentar(")
         .expect("o gesto mudou de nome — reancore este censo");
     let body = &file[at..];
     let ask = body
-        .find("refuses_reparent(sim, dragged, new_parent_entity)")
+        .find("refuses_reparent(sim, m, pai)")
         .expect("o arrasto deixou de consultar a porta da recusa — ele desfaz-se sozinho");
     let write = body
-        .find("entry.insert(ph2d_ecs::ChildOf(p))")
+        .find("entry.insert(ChildOf(p))")
         .expect("a escrita do pai novo");
     assert!(
         ask < write,

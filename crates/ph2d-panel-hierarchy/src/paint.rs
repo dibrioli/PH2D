@@ -333,6 +333,9 @@ fn paint_hierarchy_body(
     let row_w = (rect.w - body_pad).max(0.0);
     let order: Vec<ph2d_a11y::NodeId> = store.hierarchy_order().to_vec();
     let dragging = store.hierarchy_drag().filter(|d| d.active);
+    // F30 §F: agarrada uma linha SELECCIONADA, a selecção inteira viaja — e apaga-se toda.
+    let drag_carries_selection =
+        dragging.is_some_and(|d| entities_by_id.get(&d.dragged).is_some_and(|e| e.selected));
 
     // ⭐ **O recuo vem da porta** (wave 23): era `Spacing::Xl` (16) aqui, `14` no Painter Layers,
     //    `16` no `variant_editor` e `8` no catálogo — quatro respostas para *«quanto recua um
@@ -384,7 +387,10 @@ fn paint_hierarchy_body(
         // selection_label` was removed 2026-05-27 because two sprites
         // sharing a name (e.g. duplicates pre-uniqueness fix) both lit
         // up on a single-entity selection.
-        entity.muted = entity.muted || dragging.map(|d| d.dragged == *id).unwrap_or(false);
+        entity.muted = entity.muted
+            || dragging.is_some_and(|d| {
+                row_rides_the_drag(*id == d.dragged, drag_carries_selection, entity.selected)
+            });
         hit_index.register(*id, row_rect);
         // ⭐⭐ **A listra da linha ímpar** (report do dono com a foto do Outliner, 2026-09-06).
         //
@@ -494,4 +500,26 @@ fn paint_rename_input(
         text_system,
         theme,
     );
+}
+
+/// ⭐ A linha viaja no arrasto (pinta-se apagada): é a agarrada, ou está seleccionada quando a
+/// agarrada também está — o mesmo critério do `hierarchy_reparent::quem_viaja` (F30 §F).
+fn row_rides_the_drag(is_dragged: bool, drag_carries_selection: bool, row_selected: bool) -> bool {
+    is_dragged || (drag_carries_selection && row_selected)
+}
+
+#[cfg(test)]
+mod drag_tests {
+    use super::row_rides_the_drag;
+
+    #[test]
+    fn arrastar_uma_seleccionada_apaga_todas_as_seleccionadas() {
+        assert!(row_rides_the_drag(true, false, false));
+        assert!(row_rides_the_drag(false, true, true));
+        assert!(!row_rides_the_drag(false, true, false));
+        assert!(
+            !row_rides_the_drag(false, false, true),
+            "agarrada fora da seleccao: as seleccionadas ficam"
+        );
+    }
 }

@@ -100,7 +100,7 @@ impl Frame {
         ph2d_ecs::assign_missing_root_order(sim.world_mut());
         if let Some((live, intent)) = drag {
             let mut toasts = ph2d_editor_core::ToastQueue::new();
-            crate::hero_intents::drain_reparent(intent, live, sim, &mut toasts);
+            crate::hero_intents::drain_reparent(intent, &[], live, sim, &mut toasts);
         }
         build_hierarchy_snapshot(
             sim.world(),

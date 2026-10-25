@@ -1,338 +1,79 @@
 //! Hierarchy drag-reparent drain (`EditorAction::Hierarchy(ph2d_editor_core::action_bus::HierRequest::Reparent)`).
 //!
-//! Wave 3.1 stage A — extracted from `hero_intents.rs` as part of
-//! the HR-18 closeout split. Behavior-preserving lift.
+//! A lei (quem viaja, ciclo, receita, ordem, pose de mundo) mora em
+//! [`ph2d_app_components::hierarchy_reparent`]; aqui só a ponte `NodeId → Entity`, a folha e a voz.
 
 use ph2d_ecs::SimWorld;
 use ph2d_i18n::tr;
 
-/// Drain a `pending_reparent` hierarchy intent: move a dragged
-/// hierarchy row to a new parent (or root), positioning it relative
-/// to a target sibling (before / after). Guards against cycles
-/// (refuses to make dragged a descendant of itself). Re-inserts
-/// `ChildOf` on every sibling in the desired order so bevy_ecs's
-/// `Children` list reflects the user-chosen sequence.
+/// Drena um pedido de reparent da Hierarquia. `selected` = os bits da selecção do gizmo: se a linha
+/// agarrada está nela, viaja a selecção inteira (F30 §F, report do dono 25/10); senão, só ela.
 ///
-/// Returns `false` — o reparent é mudo (é o UX que já existia). Caller does not set title_dirty.
+/// Returns `false` — o reparent é mudo, salvo as duas vozes:
 ///
-/// ⚠️⚠️ **Com UMA excepção, e ela é a 4.ª porta do §1.1 da auditoria de 2026-08-27:** largar uma
-/// linha dentro de uma RECEITA tira o objecto da cena, porque o que está debaixo de um `MasterRoot`
-/// só desenha enquanto aquela receita está seleccionada. Mudo, esse gesto lê-se como *«o meu objecto
-/// desapareceu»* — e o artista não tem como saber que aquela linha era uma biblioteca. ⇒ **essa**
-/// fala. *Um reparent silencioso está certo enquanto o resultado for visível.*
+/// * ⚠️ largar dentro de uma RECEITA tira o objecto da cena (só desenha com a receita
+///   seleccionada) — mudo, leria-se *«o meu objecto desapareceu»* (auditoria 27/08 §1.1);
+/// * ⛔ a peça dada por uma receita tem o lugar da receita (F5.12) — a recusa diz onde fazer.
 pub(crate) fn drain_reparent(
     intent: ph2d_editor_core::screens::hero::HierReparentIntent,
+    selected: &[u64],
     live: &crate::HeroLive,
     sim: &mut SimWorld,
     toasts: &mut ph2d_editor_core::ToastQueue,
 ) -> bool {
-    use ph2d_ecs::Transform;
-    // ⭐⭐⭐ **O QUE O ARRASTO PEDIU** (report do Enio, 2026-09-07: *«reordenei objectos na
-    // hierarquia e não funcionou o undo»*).
-    //
-    // ⚠️ **A corrida com `PH2D_UNDO_LOG=1` mostrou que a ORDEM não mudou** (`ordem das raizes
-    // AGORA` idêntica antes e depois) enquanto **uma** linha mudava de bytes. ⇒ o passo de undo
-    // nasce sem nada visível dentro, e o `Ctrl+Z` parece morto. ⛔ O que faltava era ver o PEDIDO:
-    // um `before`/`after` vazio manda a peça para o FIM da lista (que numa peça que já é a última
-    // é um no-op), e um `new_parent` cheio é um *drop DENTRO* — três gestos com a mesma cara no
-    // ecrã e três resultados diferentes.
+    use ph2d_app_components::hierarchy_reparent::{Desfecho, Queda, quem_viaja, reparentar};
+    // O PEDIDO (report 07/09: três gestos com a mesma cara no ecrã e três resultados).
     if crate::App::undo_log_on() {
         eprintln!(
-            "[hier] pedido: dragged={:?} new_parent={:?} before={:?} after={:?}",
-            intent.dragged, intent.new_parent, intent.before, intent.after
+            "[hier] pedido: dragged={:?} new_parent={:?} before={:?} after={:?} seleccao={}",
+            intent.dragged,
+            intent.new_parent,
+            intent.before,
+            intent.after,
+            selected.len()
         );
     }
-    let Some(dragged_bits) = live.bridge.entity_for(intent.dragged) else {
+    let entity = |n: Option<ph2d_editor_core::NodeId>| {
+        n.and_then(|n| live.bridge.entity_for(n))
+            .map(ph2d_ecs::Entity::from_bits)
+    };
+    let Some(agarrado) = entity(Some(intent.dragged)) else {
         return false;
     };
-    let dragged = ph2d_ecs::Entity::from_bits(dragged_bits);
-
-    let new_parent_entity = if let Some(parent_node) = intent.new_parent
-        && let Some(parent_bits) = live.bridge.entity_for(parent_node)
-    {
-        Some(ph2d_ecs::Entity::from_bits(parent_bits))
-    } else if let Some(before_node) = intent.before
-        && let Some(target_bits) = live.bridge.entity_for(before_node)
-    {
-        let target = ph2d_ecs::Entity::from_bits(target_bits);
-        sim.world()
-            .get::<ph2d_ecs::ChildOf>(target)
-            .map(|c| c.parent())
-    } else if let Some(after_node) = intent.after
-        && let Some(target_bits) = live.bridge.entity_for(after_node)
-    {
-        let target = ph2d_ecs::Entity::from_bits(target_bits);
-        sim.world()
-            .get::<ph2d_ecs::ChildOf>(target)
-            .map(|c| c.parent())
-    } else {
-        None
+    let seleccionados: Vec<ph2d_ecs::Entity> = selected
+        .iter()
+        .map(|&b| ph2d_ecs::Entity::from_bits(b))
+        .collect();
+    let quem = quem_viaja(sim.world_mut(), agarrado, &seleccionados);
+    let queda = Queda {
+        new_parent: entity(intent.new_parent),
+        before: entity(intent.before),
+        after: entity(intent.after),
     };
-    // World-transform preservation (Enio 2026-06-08): a sprite that is
-    // rotated / displaced must NOT jump when it gains or loses a parent —
-    // its GLOBAL position + rotation must be kept. We capture the dragged
-    // entity's current world transform HERE (under its OLD parent chain),
-    // and after the `ChildOf` change re-solve its LOCAL transform so the
-    // world transform round-trips. Without this, only `ChildOf` changes and
-    // `parent_world_transform` then composes a different chain → the sprite
-    // visibly snaps to a new pose.
-    let old_local = sim.world().get::<Transform>(dragged).copied();
-    let old_world = old_local
-        .map(|l| Transform::compose(ph2d_ecs::parent_world_transform(sim.world(), dragged), l));
-    // ⚠️ **Perguntado ANTES de o `ChildOf` mudar** — depois, `master_root_of(dragged)` responde o
-    // mesmo por outra razão (o objecto já lá está), e o toast sairia para todo reparent de dentro
-    // de uma receita, incluindo os que a não atravessam.
-    let into_a_recipe =
-        new_parent_entity.is_some_and(|p| ph2d_ecs::master_root_of(sim.world(), p).is_some());
-    // ⭐⭐⭐ **O LUGAR de uma peça de cópia é da RECEITA, e a guarda vive no GESTO** (F5.12).
-    //
-    // ⛔ Sem ela o arrasto **desfazia-se sozinho no quadro seguinte**: desde a F5.12 o passe
-    // estrutural arruma cada peça no pai que a receita lhe dá, então a mão do artista ficava a
-    // perder para um passe invisível. *É a lei que o apagar já pagou em 2026-09-05 — a guarda vive
-    // no gesto; a lei fica no passe.*
-    //
-    // ⚠️ **Só quando o PAI muda.** Reordenar entre irmãos continua a valer: a ordem viaja no
-    // `SiblingOrder`, que **é** componente registado e por isso vira excepção da cópia como
-    // qualquer outro valor. *Duas perguntas diferentes sobre o mesmo arrasto, e só uma delas é
-    // sobre a forma.*
-    //
-    // ⚠️ **E a voz diz ONDE fazer** — a receita alcança-se pelo *Edit Prefab* da biblioteca. Uma
-    // recusa muda deixa o artista a repetir o mesmo gesto.
-    //
-    // ⚠️⚠️ **A DECISÃO saiu para uma porta** (`refuses_reparent`) — report do Enio, 2026-09-06:
-    // *«a mensagem da recusa não apareceu»*. Ela estava certa e o **passo do smoke** é que pedia um
-    // gesto que ela não apanha (depois de a receita mover a peça, arrastá-la para o pai onde ela já
-    // está é *o mesmo pai*, e isso é um reordenar). Enquanto a condição vivia dentro desta função —
-    // que recebe o `HeroLive`, e por isso nenhum teste a monta — **não havia como medir qual dos
-    // dois gestos ela apanha.* Agora há.
-    if ph2d_app_components::instance_verbs_walk::refuses_reparent(sim, dragged, new_parent_entity) {
-        toasts.push(ph2d_editor_core::Toast::warning(tr(
-            "shell.hierarchy.that_piece_s_place",
-        )));
-        return false;
-    }
-    let sim_w = sim.world_mut();
-    let would_cycle = new_parent_entity.is_some_and(|np| {
-        let mut current = Some(np);
-        while let Some(c) = current {
-            if c == dragged {
-                return true;
-            }
-            current = sim_w.get::<ph2d_ecs::ChildOf>(c).map(|c| c.parent());
+    match reparentar(sim, &quem, queda) {
+        Desfecho::RecusaPecaDeReceita => {
+            toasts.push(ph2d_editor_core::Toast::warning(tr(
+                "shell.hierarchy.that_piece_s_place",
+            )));
         }
-        false
-    });
-    if would_cycle {
-        return false;
-    }
-    // Step 1: pick the new ChildOf relation.
-    if let Ok(mut entry) = sim_w.get_entity_mut(dragged) {
-        match new_parent_entity {
-            Some(p) => {
-                entry.insert(ph2d_ecs::ChildOf(p));
+        Desfecho::RecusaCiclo => {}
+        Desfecho::Movidos {
+            quem,
+            into_a_recipe,
+        } => {
+            // LARGAR UM SPRITE DENTRO DE UMA FOLHA PÕE-NO DENTRO DELA (Enio 19/08) — anula de
+            // propósito a pose de mundo, e só para este pai; depois de a pose local estar resolvida.
+            for m in quem {
+                ph2d_sheet_bounds::confine(sim, m);
             }
-            None => {
-                entry.remove::<ph2d_ecs::ChildOf>();
+            if into_a_recipe {
+                toasts.push(ph2d_editor_core::Toast::warning(tr(
+                    "shell.hierarchy.moved_into_a_prefab_it",
+                )));
             }
         }
-    }
-    order_among_roots(sim_w, dragged, new_parent_entity, intent, live);
-    order_among_siblings(sim_w, dragged, new_parent_entity, intent, live);
-    // Re-solve the dragged entity's LOCAL transform so its captured world
-    // transform survives the parent change. The new parent chain is now in
-    // place, so `parent_world_transform` reflects the FINAL parent.
-    // `new_local = parent_world⁻¹ ∘ old_world`: translation via the canonical
-    // world→local inverse, rotation/scale/skew by subtraction/division
-    // (mirrors the additive skew cascade in `Transform::compose`). The
-    // translation inverse drops parent skew — matching every other gizmo
-    // helper; sprites carry skew only on leaves, never on rig ancestors.
-    if crate::App::undo_log_on() {
-        let mut q = sim
-            .world_mut()
-            .query_filtered::<(&ph2d_ecs::StableId, Option<&ph2d_ecs::RootOrder>), ph2d_ecs::Without<ph2d_ecs::ChildOf>>();
-        let mut v: Vec<(u64, Option<u32>)> = q
-            .iter(sim.world())
-            .map(|(s, r)| (s.0, r.map(|r| r.0)))
-            .collect();
-        v.sort_unstable();
-        eprintln!("[hier] ordem das raizes logo depois de aplicar: {v:?}");
-    }
-    let sim_w = sim.world_mut();
-    if let Some(old_world) = old_world {
-        let new_parent = ph2d_ecs::parent_world_transform(sim_w, dragged);
-        let np = ph2d_editor_core::TransformSnapshot {
-            translation: [new_parent.translation.x, new_parent.translation.y],
-            rotation: new_parent.rotation,
-            scale: [new_parent.scale.x, new_parent.scale.y],
-        };
-        let local_t = ph2d_editor_core::world_translation_to_local(
-            np,
-            [old_world.translation.x, old_world.translation.y],
-        );
-        let psx = if new_parent.scale.x.abs() > 1e-6 {
-            new_parent.scale.x
-        } else {
-            1.0
-        };
-        let psy = if new_parent.scale.y.abs() > 1e-6 {
-            new_parent.scale.y
-        } else {
-            1.0
-        };
-        if let Some(mut t) = sim_w.get_mut::<Transform>(dragged) {
-            t.translation = ph2d_core::Vec2::new(local_t[0], local_t[1]);
-            t.rotation = old_world.rotation - new_parent.rotation;
-            t.scale = ph2d_core::Vec2::new(old_world.scale.x / psx, old_world.scale.y / psy);
-            t.skew_x = old_world.skew_x - new_parent.skew_x;
-            t.skew_y = old_world.skew_y - new_parent.skew_y;
-        }
-    }
-    // **LARGAR UM SPRITE DENTRO DE UMA FOLHA PÕE-NO DENTRO DELA** (Enio 2026-08-19: *"Para
-    // acrescentar um sprite numa sheet o usuário deve colocá-la como filha da sheet na hierarquia.
-    // Se assim fizer automaticamente a sprite deve se deslocar para dentro das fronteiras"*).
-    //
-    // ⚠️ **Isto ANULA de propósito a preservação de mundo** que as linhas acima acabam de fazer, e
-    // só para este pai. A preservação existe porque um sprite não deve saltar ao ganhar um pai —
-    // mas a folha é o caso em que ele DEVE: ficar onde estava significaria ficar fora da folha de
-    // que acabou de ser feito filho, e o artista veria a hierarquia dizer uma coisa e o canvas
-    // outra. *A regra geral está certa; a folha é a excepção que se nomeia, não que se esconde.*
-    //
-    // A ordem também é de propósito: confinar DEPOIS de a pose local estar re-resolvida, senão
-    // confinaríamos a pose antiga, do pai anterior.
-    ph2d_sheet_bounds::confine(sim, dragged);
-    // ⭐ A única fala deste dreno — ver o doc: sem ela o objecto sai da cena em silêncio.
-    if into_a_recipe {
-        toasts.push(ph2d_editor_core::Toast::warning(tr(
-            "shell.hierarchy.moved_into_a_prefab_it",
-        )));
     }
     false
-}
-
-/// O passo 1-bis do [`drain_reparent`]: largado na raiz, o arrastado ganha um `RootOrder` entre as raízes.
-fn order_among_roots(
-    sim_w: &mut ph2d_ecs::World,
-    dragged: ph2d_ecs::Entity,
-    new_parent_entity: Option<ph2d_ecs::Entity>,
-    intent: ph2d_editor_core::screens::hero::HierReparentIntent,
-    live: &crate::HeroLive,
-) {
-    use ph2d_ecs::Transform;
-    // M14.7 polish: root drops need an explicit `RootOrder`.
-    if new_parent_entity.is_none() {
-        let mut roots: Vec<ph2d_ecs::Entity> = {
-            let mut q = sim_w.query_filtered::<ph2d_ecs::Entity, (
-                ph2d_ecs::With<Transform>,
-                ph2d_ecs::Without<ph2d_ecs::ChildOf>,
-            )>();
-            let mut acc: Vec<(ph2d_ecs::Entity, u32)> = Vec::new();
-            for entity in q.iter(sim_w) {
-                if entity == dragged {
-                    continue;
-                }
-                let order = sim_w
-                    .get::<ph2d_ecs::RootOrder>(entity)
-                    .map(|r| r.0)
-                    .unwrap_or(u32::MAX);
-                acc.push((entity, order));
-            }
-            acc.sort_unstable_by(|a, b| {
-                a.1.cmp(&b.1)
-                    .then_with(|| a.0.to_bits().cmp(&b.0.to_bits()))
-            });
-            acc.into_iter().map(|(e, _)| e).collect()
-        };
-        let before_target = intent
-            .before
-            .and_then(|n| live.bridge.entity_for(n))
-            .map(ph2d_ecs::Entity::from_bits);
-        let after_target = intent
-            .after
-            .and_then(|n| live.bridge.entity_for(n))
-            .map(ph2d_ecs::Entity::from_bits);
-        let insert_at = if let Some(b) = before_target {
-            roots.iter().position(|e| *e == b).unwrap_or(roots.len())
-        } else if let Some(a) = after_target {
-            roots
-                .iter()
-                .position(|e| *e == a)
-                .map(|i| i + 1)
-                .unwrap_or(roots.len())
-        } else {
-            roots.len()
-        };
-        roots.insert(insert_at.min(roots.len()), dragged);
-        for (idx, e) in roots.iter().enumerate() {
-            if let Ok(mut entry) = sim_w.get_entity_mut(*e) {
-                entry.insert(ph2d_ecs::RootOrder(idx as u32));
-            }
-        }
-    }
-}
-
-/// O passo 2 do [`drain_reparent`]: a ordem entre irmãos, no `Children` do bevy e no `SiblingOrder` do ficheiro.
-fn order_among_siblings(
-    sim_w: &mut ph2d_ecs::World,
-    dragged: ph2d_ecs::Entity,
-    new_parent_entity: Option<ph2d_ecs::Entity>,
-    intent: ph2d_editor_core::screens::hero::HierReparentIntent,
-    live: &crate::HeroLive,
-) {
-    // Step 2: enforce sibling order.
-    let target_kind: Option<(ph2d_ecs::Entity, bool)> = if let Some(before_node) = intent.before
-        && let Some(b) = live.bridge.entity_for(before_node)
-    {
-        Some((ph2d_ecs::Entity::from_bits(b), true))
-    } else if let Some(after_node) = intent.after
-        && let Some(a) = live.bridge.entity_for(after_node)
-    {
-        Some((ph2d_ecs::Entity::from_bits(a), false))
-    } else {
-        None
-    };
-    if let (Some(parent), Some((target, place_before))) = (new_parent_entity, target_kind) {
-        let current: Vec<ph2d_ecs::Entity> = sim_w
-            .get::<bevy_ecs::hierarchy::Children>(parent)
-            .map(|c| c.iter().copied().filter(|e| *e != dragged).collect())
-            .unwrap_or_default();
-        let mut desired: Vec<ph2d_ecs::Entity> = Vec::with_capacity(current.len() + 1);
-        let mut inserted = false;
-        for &c in &current {
-            if !inserted && c == target && place_before {
-                desired.push(dragged);
-                inserted = true;
-            }
-            desired.push(c);
-            if !inserted && c == target && !place_before {
-                desired.push(dragged);
-                inserted = true;
-            }
-        }
-        if !inserted {
-            desired.push(dragged);
-        }
-        for &child in &desired {
-            if let Ok(mut entry) = sim_w.get_entity_mut(child) {
-                entry.remove::<ph2d_ecs::ChildOf>();
-                entry.insert(ph2d_ecs::ChildOf(parent));
-            }
-        }
-        // ⭐ **E a ordem vira DADO** (ADR-0164 F1). O bloco acima reescreve a lista `Children`
-        // do bevy, que é **memória de runtime**: ela não entra no snapshot, então até esta
-        // wave reordenar irmãos não era desfazível, não sobrevivia a um Ctrl+Z de outra ação e
-        // não sobrevivia ao save (classe BUGS #15, medida na auditoria de 21/08).
-        //
-        // ⚠️ **As duas escritas são precisas.** O `ChildOf` acima é o que o bevy usa AGORA (o
-        // pai e a relação); o `SiblingOrder` aqui é o que o FICHEIRO guarda, e é dele que o
-        // `world_to_snapshot` e a árvore do painel leem a ordem. Tirar uma das duas dá metade
-        // do gesto: sem a de cima o objeto não muda de pai; sem esta ele volta ao lugar antigo
-        // no próximo Ctrl+Z.
-        //
-        // ⚠️ Escreve com comparação (o `set_sibling_order` só toca no que difere): reescrever
-        // o mesmo número em todo irmão marcaria o arquétipo de cada um como mudado, e o diff
-        // do undo registaria um passo espúrio por quadro em que o gesto corresse.
-        ph2d_ecs::set_sibling_order(sim_w, parent, &desired);
-    }
 }
 
 #[cfg(test)]

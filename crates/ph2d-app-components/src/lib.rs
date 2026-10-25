@@ -115,6 +115,8 @@ pub mod factory_smoke;
 /// ⭐⭐⭐ **A ponte da BARRA DE VIDA** (plano 28, W4) — o rasto e as três faixas de cada barra.
 pub mod health_bar_bridge;
 /// ⭐ TOP-20 #16 — a ponte dos scripts do artista (o quadro, o ledger e o rebobinar).
+/// ⭐ Largar uma ou VÁRIAS linhas da Hierarquia sobre outra (F30 §F).
+pub mod hierarchy_reparent;
 pub mod hud_anchors;
 pub mod hud_arranjo;
 pub mod hud_bridge;

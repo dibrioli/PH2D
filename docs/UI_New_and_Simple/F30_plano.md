@@ -201,6 +201,40 @@ e `o_overlay_vetorial_nao_tem_cor_crua` (`ph2d-vec-render/src/cor_crua_tests.rs`
 **Dívida contada que fica** (outros overlays com RGBA fixo, cada um com cor semântica própria a decidir):
 `connector.rs` 5 · `marquee.rs` 4 · `cut_line.rs` 2 · `gradient.rs` 2 · `guides.rs` 2 · `symmetry_overlay.rs` 1.
 
+### F — report do dono (25/10): arrastar vários na hierarquia leva só um
+
+**Mecanismo.** O gesto inteiro tinha UM sujeito em cada degrau e nenhum deles lia a selecção:
+`HierarchyDragState.dragged` (`ph2d-editor-core/src/interaction/drag.rs:182`) → o `WidgetEvent::HierReparent`
+que o `pointer_up` emite (`interaction/dispatch/pointer_up.rs:170–219`) → o `HierReparentIntent` do painel
+(`ph2d-panel-hierarchy/src/event.rs:203`) → o dreno da shell `drain_reparent`, que resolvia `intent.dragged` e
+mexia só nessa entidade (`shells/desktop/src/hero_intents/hierarchy.rs`, antes `:46–48`). A selecção vive no
+`GizmoStateGroup` (`selection` + `extra_selection`), que o dreno nunca recebia. ⚠️ Emitir N eventos não curaria: o
+barramento guarda um pedido por quadro (`fase_bus_hierarchy.rs:35`, `get_or_insert`).
+
+**Cura** (uma porta): a lei saiu da shell para `ph2d-app-components/src/hierarchy_reparent.rs` —
+`quem_viaja(agarrado, seleccionados)` (agarrada fora da selecção ⇒ só ela; um seleccionado com antepassado
+seleccionado viaja dentro dele; ordem = `ph2d_ecs::list_order`, não a do clique) e `reparentar(quem, queda)`
+(atómico: ciclo ⇒ `RecusaCiclo`, peça de receita ⇒ recusa com a voz de sempre; o bloco entra no lugar do alvo contando
+só os que ficam; `RootOrder`/`SiblingOrder` reescritos; pose de MUNDO re-resolvida por peça). O dreno passa a receber
+os bits da selecção (`fase_vector_tree_settle.rs`). Num quadro ⇒ um passo de undo. O painel apaga todas as linhas que
+viajam (`paint.rs`, `row_rides_the_drag`). De graça: a ordem entre irmãos passa a ler `ordered_children` (o dado), não a
+lista `Children` do bevy, e largar DENTRO escreve o `SiblingOrder` (antes ficava o do pai antigo).
+
+**A família (§0.10):** largar antes/depois (reordenar) e na raiz (des-parentar) — o mesmo intent e o mesmo dreno, curados
+juntos (testes `reordenar_varios_*`, `largar_varios_na_raiz_*`) · *Remove from Sheet* (menu) — mesmo dreno; leva as
+peças seleccionadas que estão numa folha, só essas (`fase_sprite_precision_emissive.rs`) · arrastar para o canvas/outro
+painel — não reparenta (`hierarchy_drop_in_own_panel`), fora da família · camadas do Painter (`PanelRowReparent`) — outra
+estrutura, sem selecção múltipla de linhas · modo fixture do store (`pointer_up` move só o agarrado no `hierarchy_order`)
+— é o espelho visual sem ECS, re-sincronizado da árvore no quadro seguinte.
+
+**Testes:** `hierarchy_reparent_tests.rs` (7: `largar_varios_seleccionados_num_objecto_torna_os_todos_filhos`,
+`largar_varios_mantem_a_ordem_e_o_lugar_no_mundo`, `nao_se_larga_um_objecto_dentro_de_si_proprio`,
+`agarrar_uma_linha_nao_seleccionada_leva_so_ela`, `um_seleccionado_filho_de_outro_seleccionado_vai_junto_com_o_pai`,
+`reordenar_varios_entre_as_raizes_leva_o_bloco_para_o_alvo`, `largar_varios_na_raiz_tira_os_todos_do_pai`) ·
+`largar_varios_e_um_passo_de_undo` (shell, `hierarchy_order_tests.rs`, pelo dreno real + `ProjectState::restore`) ·
+`arrastar_uma_seleccionada_apaga_todas_as_seleccionadas` (painel). O censo
+`the_drag_asks_the_door_before_changing_the_parent` re-ancorado na casa nova (3.ª mudança).
+
 ## Smoke
 
 `PH2D_AUTOKEY_SMOKE=35` (a 34 é da F28; conta-se no despachante): um objecto com dois Timers e uma forma vetorial com três

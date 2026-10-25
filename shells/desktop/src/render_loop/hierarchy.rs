@@ -355,7 +355,8 @@ fn drain_view_and_row_toggles(
     if let Some(intent) = reparent_intent
         && let Some(live) = hero_live.as_ref()
     {
-        hero_intents::drain_reparent(intent, live, sim, toasts);
+        let selected: Vec<u64> = hero.gizmo.iter_selected().collect();
+        hero_intents::drain_reparent(intent, &selected, live, sim, toasts);
     }
     title_dirty
 }

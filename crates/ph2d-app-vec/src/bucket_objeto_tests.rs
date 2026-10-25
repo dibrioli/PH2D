@@ -28,7 +28,10 @@ fn caixa(x0: f64, y0: f64, x1: f64, y1: f64) -> VecPath {
 }
 
 /// A tinta a nascer como o `apply_bucket` a deixa: o caminho no documento, a receita pendente.
-fn tinta(scene: &mut VecScene, parede: u64) -> (u64, Vec<(u64, [f32; 2], Vec<FillAnchor>)>) {
+/// As receitas pendentes, como o `apply_bucket` as deixa para o `arm_new_fills`.
+type Pendentes = Vec<(u64, [f32; 2], Vec<FillAnchor>)>;
+
+fn tinta(scene: &mut VecScene, parede: u64) -> (u64, Pendentes) {
     let id = scene.push_path(VecPath {
         fill: Some(ph2d_vec_scene::Paint::solid(ph2d_vec_scene::Rgba8::new(
             200, 30, 30, 255,
@@ -141,7 +144,10 @@ fn apagar_o_pai_leva_a_tinta_filha() {
     scene.remove_path(parede);
     entities::sync(&mut sim, &mut scene, &mut map);
     entities::sync(&mut sim, &mut scene, &mut map);
-    assert!(scene.path(t).is_none(), "o caminho saiu e a tinta dele ficou");
+    assert!(
+        scene.path(t).is_none(),
+        "o caminho saiu e a tinta dele ficou"
+    );
 }
 
 /// ⭐⭐ **A solda leva as filhas do traço CONSUMIDO para a rede** — sem isto a tinta pendurada
@@ -175,6 +181,9 @@ fn a_solda_leva_as_filhas_do_traco_consumido() {
     entities::sync(&mut sim, &mut scene, &mut map);
     entities::sync(&mut sim, &mut scene, &mut map);
 
-    assert!(scene.path(filha).is_some(), "a filha morreu com o traço consumido");
+    assert!(
+        scene.path(filha).is_some(),
+        "a filha morreu com o traço consumido"
+    );
     assert_eq!(pai(&sim, &map, filha), Some(Entity::from_bits(map[&h])));
 }

@@ -256,10 +256,11 @@ mod sonda_tampa_redonda_tests;
 mod tampa_redonda_tests;
 /// A cena 22 (15/10): o Arrange e o Alinhar nas duas linhas da ④.
 mod vector_mode_alinhar;
+/// A cena 38 (F29): o composto do balde, a booleana com transparente e a ④ do Corte.
+#[path = "vector_mode_composto_smoke.rs"]
+mod vector_mode_composto;
 /// A cena 23 (F16): a barra de controle do Illustrator e o painel do traço aberto.
 mod vector_mode_controle;
-/// A cena 38 (F29): o composto do balde, a booleana com transparente e a ④ do Corte.
-mod vector_mode_composto;
 /// As cenas 33 e 34 (F21): a cor escolhida chega a todas; a pilha de camadas diz «misto».
 mod vector_mode_cor;
 /// A cena 16 (F10; F12): a estrela pelas alças e a fila de ⇕ da lateral.

@@ -306,5 +306,8 @@ fn um_operando_transparente_nao_apaga_o_preenchimento() {
     assert_eq!(out[0].fill, cor_de_tras, "o Subtrair vestiu o cortador");
     // E com os dois visíveis o Unir continua a vestir o de CIMA (a lei de sempre).
     let out = pathfinder(&[&tras, &cortador], PathfinderOp::Union).unwrap();
-    assert_eq!(out[0].fill, cortador.fill, "o Unir deixou de vestir o de cima");
+    assert_eq!(
+        out[0].fill, cortador.fill,
+        "o Unir deixou de vestir o de cima"
+    );
 }

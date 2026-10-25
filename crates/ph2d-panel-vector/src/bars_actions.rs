@@ -26,22 +26,33 @@ const PRECISE: [DrawMode; 12] = [
     DrawMode::Eyedropper,
 ];
 
+/// ⭐ (dono 25/10, F29: *«a tool Cut não exibe suas funções … vamos colocar na barra flutuante»*)
+/// **A ④ do Corte**: os verbos dele SÃO o «a seguir» da lâmina que acabou de nascer seleccionada —
+/// e só então, porque é só então que o Cortar corta (`apply_cut` exige a lâmina na seleção).
+fn cut_actions(sel: usize) -> Vec<Vec<BarButton>> {
+    if sel == 0 || !crate::state::cut_line_exists() {
+        return Vec::new();
+    }
+    let b = |id, icon, key: &str| button(id, icon, tr(key).to_owned(), false, BarFamily::Carve);
+    vec![vec![
+        b(
+            crate::ids::VECTOR_CUT_APPLY,
+            IconId::Knife,
+            "panel.vector.cut.apply",
+        ),
+        b(
+            crate::ids::VECTOR_CUT_DISCARD,
+            IconId::Trash,
+            "panel.vector.cut.discard",
+        ),
+    ]]
+}
+
 /// ④ as ações da seleção — *o que faço a seguir com isto?*, com seleção, em toda ferramenta que
 /// não é de clique preciso. ⚠️ Os verbos de caminho não entram no Node: lá eles estão na ②.
 pub(super) fn actions(mode: DrawMode, sel: usize) -> Vec<Vec<BarButton>> {
-    // ⭐ (dono 25/10, F29: *«a tool Cut não exibe suas funções … vamos colocar na barra
-    // flutuante»*) **O Corte é a excepção: os verbos dele SÃO o «a seguir»** da lâmina que acabou de
-    // nascer seleccionada — e só então, porque é só então que o Cortar corta (`apply_cut` exige a
-    // lâmina na seleção).
     if mode == DrawMode::Cut {
-        if sel == 0 || !crate::state::cut_line_exists() {
-            return Vec::new();
-        }
-        let b = |id, icon, key: &str| button(id, icon, tr(key).to_owned(), false, BarFamily::Carve);
-        return vec![vec![
-            b(crate::ids::VECTOR_CUT_APPLY, IconId::Knife, "panel.vector.cut.apply"),
-            b(crate::ids::VECTOR_CUT_DISCARD, IconId::Trash, "panel.vector.cut.discard"),
-        ]];
+        return cut_actions(sel);
     }
     if sel == 0 || PRECISE.contains(&mode) {
         return Vec::new();

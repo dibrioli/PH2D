@@ -336,9 +336,8 @@ pub fn arm_new_fills(
         sim.world_mut()
             .entity_mut(e)
             .insert(VecBucketFill::new(seed, ancoras));
-        let pendurou = pai.is_some_and(|pai| {
-            ph2d_vec_entities::transform::reparent_keeping_world(sim, e, pai)
-        });
+        let pendurou = pai
+            .is_some_and(|pai| ph2d_vec_entities::transform::reparent_keeping_world(sim, e, pai));
         if pendurou {
             sim.world_mut()
                 .entity_mut(e)

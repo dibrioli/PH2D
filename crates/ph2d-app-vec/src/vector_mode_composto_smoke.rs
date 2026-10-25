@@ -126,7 +126,10 @@ fn pai_de(sim: &SimWorld, vec: &VecState, id: VecPathId) -> Option<VecPathId> {
         .get::<ph2d_ecs::ChildOf>(Entity::from_bits(bits))?
         .parent()
         .to_bits();
-    vec.entities.iter().find(|(_, b)| **b == pai).map(|(k, _)| *k)
+    vec.entities
+        .iter()
+        .find(|(_, b)| **b == pai)
+        .map(|(k, _)| *k)
 }
 
 /// A pilha de desenho do Vetor, pela porta do produto.
@@ -169,13 +172,19 @@ pub fn step(
             let id = mais_novo(vec)?;
             scene.path_mut(id)?.fill = None;
             let d = 1.0;
-            let (a, b) = ([ELIPSE[0] - d, ELIPSE[1] - d], [ELIPSE[0] + d, ELIPSE[1] + d]);
+            let (a, b) = (
+                [ELIPSE[0] - d, ELIPSE[1] - d],
+                [ELIPSE[0] + d, ELIPSE[1] + d],
+            );
             crate::vector_mode::draw_line(vec, scene, a, b);
             LINHA_B
         }
         LINHA_B if n == 3 => {
             let d = 1.0;
-            let (a, b) = ([ELIPSE[0] - d, ELIPSE[1] + d], [ELIPSE[0] + d, ELIPSE[1] - d]);
+            let (a, b) = (
+                [ELIPSE[0] - d, ELIPSE[1] + d],
+                [ELIPSE[0] + d, ELIPSE[1] - d],
+            );
             crate::vector_mode::draw_line(vec, scene, a, b);
             SOLDA
         }
@@ -264,7 +273,8 @@ pub fn step(
             LAMINA
         }
         LAMINA if vec.draw_config.mode == DrawMode::Cut => {
-            vec.pen.on_press_blade(scene, [-1.0, -1.2], 0.01, &mut |q| q);
+            vec.pen
+                .on_press_blade(scene, [-1.0, -1.2], 0.01, &mut |q| q);
             let lamina = vec.pen.selected();
             vec.pen.on_release();
             vec.pen.on_press_blade(scene, [1.0, -1.2], 0.01, &mut |q| q);
@@ -275,13 +285,10 @@ pub fn step(
             FIM
         }
         FIM => {
-            let barra = hero.store.tool_bars().map(|b| {
-                b.actions
-                    .iter()
-                    .flatten()
-                    .map(|x| x.id)
-                    .collect::<Vec<_>>()
-            });
+            let barra = hero
+                .store
+                .tool_bars()
+                .map(|b| b.actions.iter().flatten().map(|x| x.id).collect::<Vec<_>>());
             let ids = barra.clone().unwrap_or_default();
             let cortar = ids.contains(&ph2d_panel_vector::ids::VECTOR_CUT_APPLY);
             let descartar = ids.contains(&ph2d_panel_vector::ids::VECTOR_CUT_DISCARD);

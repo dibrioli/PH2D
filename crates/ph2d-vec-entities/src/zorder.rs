@@ -340,9 +340,21 @@ fn emission_rank(world: &bevy_ecs::world::World, snap: &HierarchySnapshot) -> Ve
             next += 1;
             continue;
         }
-        stack.extend(kids[i].iter().rev().filter(|&&c| !behind(c)).map(|&c| (c, true)));
+        stack.extend(
+            kids[i]
+                .iter()
+                .rev()
+                .filter(|&&c| !behind(c))
+                .map(|&c| (c, true)),
+        );
         stack.push((i, false));
-        stack.extend(kids[i].iter().rev().filter(|&&c| behind(c)).map(|&c| (c, true)));
+        stack.extend(
+            kids[i]
+                .iter()
+                .rev()
+                .filter(|&&c| behind(c))
+                .map(|&c| (c, true)),
+        );
     }
     rank
 }

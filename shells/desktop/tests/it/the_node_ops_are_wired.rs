@@ -127,8 +127,8 @@ fn the_cut_mode_draws_with_the_pen_and_owns_no_press_branch() {
     let window = &DISPATCH[pen..at(&DISPATCH[pen..], "Some(kind) => {") + pen];
     for (needle, why) in [
         ("DrawMode::Cut", "a adocao nao e' gateada no modo Corte"),
-        ("self.vec.pen.on_press_blade(", "o Corte agarra nos da forma"),
-        ("self.vec.pen.on_press_encaixe(", "fora do Corte a caneta deixou de ser a caneta"),
+        ("self.vec.pen.on_press_blade(", "o Corte agarra nos"),
+        ("self.vec.pen.on_press_encaixe(", "a caneta comum sumiu"),
         (
             "PenClick::Started",
             "adota em todo clique, nao so' no que CRIA um caminho",

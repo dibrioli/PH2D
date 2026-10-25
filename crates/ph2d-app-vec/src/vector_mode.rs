@@ -599,7 +599,12 @@ pub fn smoke_step(
 }
 
 /// Desenha um traço aberto de dois cliques pela CANETA (o mesmo gesto do artista) e acaba-o.
-pub(crate) fn draw_line(vec: &mut VecState, scene: &mut ph2d_vec_scene::VecScene, a: [f64; 2], b: [f64; 2]) {
+pub(crate) fn draw_line(
+    vec: &mut VecState,
+    scene: &mut ph2d_vec_scene::VecScene,
+    a: [f64; 2],
+    b: [f64; 2],
+) {
     for p in [a, b] {
         vec.pen.on_press(scene, p, 0.01, false, &mut |q| q);
         vec.pen.on_release();

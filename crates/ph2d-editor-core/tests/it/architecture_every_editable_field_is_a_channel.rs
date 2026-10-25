@@ -219,11 +219,6 @@ const POR_ID: &[(&str, Classe, &str)] = &[
         "a margem vista como um número ou quatro: estado do painel; as margens têm canal",
     ),
     (
-        "VECTOR_CUT_",
-        NaoAnimavel,
-        "os verbos da ferramenta Cut (§8)",
-    ),
-    (
         "VECTOR_BAR_STROKE",
         NaoAnimavel,
         "abre o painel do traço: um verbo",

@@ -285,7 +285,7 @@ fn leaving_the_tool_clears_the_highlight_and_the_cache() {
 #[test]
 fn the_network_is_cached_not_rebuilt_every_frame() {
     for (chave, monta) in [
-        ("Some(r) if r.chave == k => r,", "rede: guardada(&contornos),"),
+        ("if r.chave == k => r,", "guardada(&contornos)"),
         ("&& c.chave == h", "let rede = guardada(contornos);"),
     ] {
         assert!(
@@ -294,7 +294,8 @@ fn the_network_is_cached_not_rebuilt_every_frame() {
         );
     }
     let porta = at(LEI, "fn guardada(", "a lei do bucket");
-    assert!(LEI[porta..].contains("ph2d_vec_fill::rede(contornos)"), "a porta nao monta a rede");
+    let monta = LEI[porta..].contains("ph2d_vec_fill::rede(contornos)");
+    assert!(monta, "a porta nao monta a rede");
     assert_eq!(
         LEI.matches("ph2d_vec_fill::rede(").count(),
         1,

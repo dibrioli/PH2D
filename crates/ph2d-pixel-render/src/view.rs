@@ -24,6 +24,11 @@ pub struct SpriteImage {
     image: Option<StableImage>,
     checker: Option<(u32, u32, StableImage)>,
     scratch: Vec<u8>,
+    /// O retângulo do traço em curso na última composição (o próximo quadro do MESMO traço só
+    /// recompõe a união dele com o novo).
+    pending_rect: Option<ph2d_pixel_core::Rect>,
+    /// O traço acabou e o documento ficou nesta versão: ela só difere da imagem na janela dele.
+    settled: Option<u64>,
 }
 
 impl SpriteImage {
@@ -38,13 +43,47 @@ impl SpriteImage {
         if self.stamp == Some(stamp) && self.image.is_some() {
             return;
         }
-        compose_rgba(sprite, frame, pending, &mut self.scratch);
+        let cheio = sprite.width() as usize * sprite.height() as usize * 4;
+        let cur = pending.map(Stroke::rect);
+        // Durante um traço o documento não muda: só a janela do traço (a de antes ∪ a de agora, a
+        // forma pode encolher) se recompõe. Medido: 512² × 20 camadas cheio ≫ a janela de um pincel.
+        let assentou = self.settled.take() == Some(stamp);
+        match (self.pending_rect, cur) {
+            (Some(a), None) if assentou && self.scratch.len() == cheio && self.image.is_some() => {
+                ph2d_pixel_core::compose_region(
+                    sprite,
+                    frame,
+                    None,
+                    a,
+                    ph2d_pixel_core::Purpose::View,
+                    &mut self.scratch,
+                );
+            }
+            (Some(a), Some(b)) if self.scratch.len() == cheio && self.image.is_some() => {
+                ph2d_pixel_core::compose_region(
+                    sprite,
+                    frame,
+                    pending,
+                    a.union(b),
+                    ph2d_pixel_core::Purpose::View,
+                    &mut self.scratch,
+                );
+            }
+            _ => compose_rgba(sprite, frame, pending, &mut self.scratch),
+        }
+        self.pending_rect = cur;
         self.image = StableImage::from_rgba(
             Arc::new(self.scratch.clone()),
             sprite.width(),
             sprite.height(),
         );
         self.stamp = Some(stamp);
+    }
+
+    /// O traço em curso acabou (gravado ou largado) e o documento está na versão `stamp`: a próxima
+    /// composição dessa versão só refaz a janela do traço. Qualquer outra versão recompõe tudo.
+    pub fn settle(&mut self, stamp: u64) {
+        self.settled = Some(stamp);
     }
 
     /// Desenha o sprite (nearest).
@@ -284,4 +323,48 @@ fn stroke_halo(scene: &mut VectorScene, path: &BezPath, width_px: f64, core: Col
     let anel = Pen::new(nucleo + 2.0 * HALO_PX);
     s.stroke(&anel, Affine::IDENTITY, HALO, None, path);
     s.stroke(&Pen::new(nucleo), Affine::IDENTITY, core, None, path);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::SpriteImage;
+    use ph2d_pixel_core::layers;
+    use ph2d_pixel_core::{NewSprite, Paint, Sprite, Stroke, apply, compose_rgba};
+
+    /// ⭐ A janela do traço e a do «assentar» dão os MESMOS bytes que a composição cheia — senão
+    /// o artista veria um retângulo velho que só aparece enquanto edita.
+    #[test]
+    fn the_stroke_window_and_the_settle_give_the_bytes_of_the_full_compose() {
+        let mut s = Sprite::new(NewSprite::default()).expect("s");
+        let base = s.layers()[0].id;
+        let (op, top) = layers::new_layer(&mut s, base).expect("l");
+        apply(&mut s, op).expect("l");
+        let op = layers::edit(&s, top, |l| {
+            l.opacity = 140;
+            l.blend = ph2d_pixel_core::blend::BlendMode::Screen;
+        })
+        .expect("e");
+        apply(&mut s, op).expect("e");
+        let f = s.frames()[0].id;
+        let mut img = SpriteImage::default();
+        img.refresh(&s, f, None, 1);
+        let mut st = Stroke::begin(&s, top, f, s.value_of_rgba([200, 40, 90, 255]), Paint::default(), (2, 2));
+        let full = |s: &Sprite, p: Option<&Stroke>| {
+            let mut out = Vec::new();
+            compose_rgba(s, f, p, &mut out);
+            out
+        };
+        let mut stamp = 2;
+        for (x, y) in [(9, 4), (20, 25), (3, 30)] {
+            st.to(&s, x, y);
+            img.refresh(&s, f, Some(&st), stamp);
+            assert_eq!(img.scratch, full(&s, Some(&st)), "o traço em curso");
+            stamp += 1;
+        }
+        let op = st.op(&s).expect("op");
+        apply(&mut s, op).expect("commit");
+        img.settle(stamp);
+        img.refresh(&s, f, None, stamp);
+        assert_eq!(img.scratch, full(&s, None), "o traço gravado");
+    }
 }

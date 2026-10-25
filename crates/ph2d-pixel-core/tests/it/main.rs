@@ -8,5 +8,6 @@ mod history;
 mod layer_laws;
 mod layer_parity;
 mod line_parity;
+mod mede_compose;
 mod pure_core;
 mod stroke;

@@ -74,6 +74,22 @@ projecto, como se desfaz, como se desenha, e por onde a entrada chega.
    (`WidgetStore::family_owns_canvas`, lido nos dois sítios que decidem se o vetor está activo). O painel PIXEL da direita fica
    com as cores e a paleta. As amostras abrem o seletor de cor partilhado e a família lê-o de volta.
 
+10. **Emenda 25/10 (onda P3 — camadas).** A camada ganha `opacity`, `blend` (os 19 modos, ids do
+    `.ase`), `locked`, `reference`, `kind` (Image · Group{collapsed}) e `parent` (a árvore; a ordem do
+    `Vec` é o z entre irmãos). Toda mudança de lista é UM `Op::Layers { layers, cels }` — a lista
+    inteira e os cels que mudam com ela —, validado pelas leis da árvore (ids já emitidos, pai é
+    grupo, sem ciclo, Background única/primeira/de imagem, nenhum cel órfão nem em grupo); as acções
+    do menu Layer são construtores puros em `ph2d_pixel_core::layers`. Formato `PH2DPIXEL` 1.1 (campos
+    novos do registo Layer; um 1.0 lê-se com os padrões). **Leis medidas no Aseprite Trial observado**
+    (103 ficheiros `.ase` nossos, 6 144 células cada, todos EXACTOS, fixtura `oracle_trial_blend.json`):
+    a cor final é `d + trunc((B(d,s) − d) · mul(Sa, opacidade) / 255)`; Dodge/Burn/Divide arredondam a
+    divisão; Hue/Saturation/Color/Luminosity (W3C, `f64`) truncam; **o grupo é pass-through e o seu
+    modo e opacidade NÃO entram** (o diálogo de propriedades de um grupo no Trial só tem o Nome — o
+    painel faz o mesmo); a opacidade do cel segue a lei da camada; o Indexed mistura em RGB e não volta
+    à paleta. A composição é na CPU por janela (`compose_window`); a GPU com paridade fica para quando
+    a medição da cena a pedir (o plano punha-a aqui). Copy e *Layer via Copy/Cut* pedem selecção, como
+    no Trial: até a P6 a selecção é só *Select All* (`Doc::selected_all`).
+
 ## Alternativas recusadas
 
 | Alternativa | Porque não |
@@ -82,6 +98,9 @@ projecto, como se desfaz, como se desenha, e por onde a entrada chega.
 | Ferramentas sob o contrato `Tool=12` | Contrato congelado das ferramentas de bitmap; o Pixel tem as suas leis (inteiras, por célula). |
 | O documento dentro de um componente (como o `Macro`) | Entraria no `ProjectState`: o diff por quadro e o snapshot pagariam o blob inteiro a cada amostra de traço. |
 | Um `Sprite` derivado (render pelo passe de sprites do mundo) já na P0 | O marcador `Sprite` faria do objecto uma IMAGEM (`kind_of`), com os modos e ferramentas de imagem a aplicarem-se a ele; fica para a P14, com o tipo próprio. |
+| Grupo ISOLADO (compor os filhos sobre transparente e misturar com o modo/opacidade do grupo) | Medido no Trial: 1 663–1 979 de 6 144 células certas; pass-through dá 6 144/6 144 (P3). |
+| Opacidade de camada em Indexed como cobertura Bayer 8×8 (a lei do MVP) | O Trial mistura em RGB: 6 144/6 144; voltar à paleta mais próxima acerta 183–189 (P3). |
+| `clip` (máscara da camada de baixo, a do MVP) | O Aseprite não a tem (grupos); fica fora (P3). |
 | Fila única do editor com um passo por traço | Possível por diff, mas o custo do diff e a semântica do Aseprite (o desfazer é do sprite) apontam para fila própria. |
 
 ## Consequências

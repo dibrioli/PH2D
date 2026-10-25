@@ -1,6 +1,6 @@
 //! A vista derivada: o RGBA de um frame, camadas visíveis de baixo para cima.
 
-use crate::blend::blend;
+use crate::blend::{BlendMode, blend};
 use crate::sprite::{ColorMode, FrameId, Layer, LayerId, LayerKind, Rect, Sprite};
 use crate::stroke::Stroke;
 
@@ -103,17 +103,43 @@ impl Ctx<'_> {
             (None, None) => return,
         }
         .intersect(self.region);
+        let s = self.sprite;
         let rw = self.region.w as usize;
+        let bpp = s.mode().bpp();
+        // A cor de cada valor: em Indexed uma tabela de 256 (a LUT), senão a conversão directa.
+        let lut: Option<Vec<[u8; 4]>> = (s.mode() == ColorMode::Indexed)
+            .then(|| (0..=255u32).map(|v| s.rgba_of_value(v)).collect());
+        let srect = stroke.map(Stroke::rect);
+        // O caminho rápido (medido: o Normal opaco é a maioria das células) copia em vez de misturar.
+        let copia = layer.blend == BlendMode::Normal && layer.opacity == 255;
         for y in area.y..area.y + area.h as i32 {
+            let linha = cel.filter(|c| y >= c.bbox.y && y < c.bbox.y + c.bbox.h as i32);
             for x in area.x..area.x + area.w as i32 {
-                let v = stroke
-                    .and_then(|s| s.value_at(self.sprite, x, y))
-                    .unwrap_or_else(|| self.sprite.value_at(key, x, y));
-                let src = self.sprite.rgba_of_value(v);
+                let traco = srect
+                    .filter(|r| r.contains(x, y))
+                    .and_then(|_| stroke?.value_at(s, x, y));
+                let v = match (traco, linha) {
+                    (Some(v), _) => v,
+                    (None, Some(c)) if x >= c.bbox.x && x < c.bbox.x + c.bbox.w as i32 => {
+                        let i = ((y - c.bbox.y) as usize * c.bbox.w as usize
+                            + (x - c.bbox.x) as usize)
+                            * bpp;
+                        s.read_value(&c.data[i..i + bpp])
+                    }
+                    _ => continue,
+                };
+                let src = match &lut {
+                    Some(t) => t[(v & 0xff) as usize],
+                    None => s.rgba_of_value(v),
+                };
                 if src[3] == 0 {
                     continue;
                 }
                 let i = ((y - self.region.y) as usize * rw + (x - self.region.x) as usize) * 4;
+                if copia && src[3] == 255 {
+                    buf[i..i + 4].copy_from_slice(&src);
+                    continue;
+                }
                 let dst = [buf[i], buf[i + 1], buf[i + 2], buf[i + 3]];
                 buf[i..i + 4].copy_from_slice(&blend(layer.blend, dst, src, layer.opacity));
             }

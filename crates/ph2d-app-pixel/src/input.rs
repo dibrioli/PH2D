@@ -479,8 +479,11 @@ pub(crate) fn finish(app: &mut PixelApp) {
             }
         }
     }
-    if free && let Some(d) = app.docs.get_mut(&g.key) {
-        d.last_point = Some(last);
+    if let Some(d) = app.docs.get_mut(&g.key) {
+        d.view.settle(d.stamp);
+        if free {
+            d.last_point = Some(last);
+        }
     }
 }
 

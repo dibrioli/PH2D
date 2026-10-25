@@ -203,6 +203,19 @@ pub fn take_smoke_open() -> bool {
         && std::env::var("PH2D_OBJECT_ADD_SMOKE").is_ok_and(|v| v == "1")
 }
 
+/// ⭐ **O rato do smoke sobre um item** — `PH2D_OBJECT_ADD_HOVER=<chave do item>` (ex.:
+/// `object_add.game.character`), com o menu aberto pelo [`take_smoke_open`]: a foto apanha a dica
+/// ilustrada desse item, que o rato sintético não consegue pedir na tela virtual.
+#[must_use]
+pub fn smoke_hover() -> Option<NodeId> {
+    use std::sync::OnceLock;
+    static ID: OnceLock<Option<NodeId>> = OnceLock::new();
+    *ID.get_or_init(|| {
+        let key = std::env::var("PH2D_OBJECT_ADD_HOVER").ok()?;
+        Some(ph2d_tool_registry::hash_node_id_runtime(&key))
+    })
+}
+
 #[cfg(test)]
 #[path = "object_add_tests.rs"]
 mod tests;

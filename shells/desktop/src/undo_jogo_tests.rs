@@ -68,3 +68,39 @@ fn o_resumo_e_o_do_conteudo() {
     }
     assert_ne!(capture(&mut sim, &vec, &reg).digest(), a);
 }
+
+/// ⭐ **O Play liga o «tocar sozinho» das animações** (N1): só o abrir do projecto o fazia, e um
+/// *Animated Sprite* ou um *Character* acabado de pôr pelo menu ficava parado no 1.º quadro a jogar.
+/// A ligação vem DEPOIS da fotografia — o documento guarda o animador parado e o Stop devolve-o assim.
+///
+/// *Mutação: tirar a chamada do `jogo_entra` ⇒ vermelho (a ordem: pô-la antes do `capture_project`).*
+#[test]
+fn o_play_liga_o_autoplay_depois_da_fotografia() {
+    let fonte = include_str!("undo_jogo.rs");
+    let corpo = fonte
+        .split_once("fn jogo_entra(&mut self) {")
+        .and_then(|(_, r)| r.split_once("fn jogo_sai("))
+        .expect("o jogo_entra")
+        .0;
+    let foto = corpo.find("self.capture_project()").expect("a fotografia");
+    let liga = corpo.find("start_autoplay_animations(").expect("o Play não liga o autoplay");
+    assert!(foto < liga, "o autoplay liga-se antes da fotografia: o documento guardaria o animador a tocar");
+    let mut sim = ph2d_ecs::SimWorld::new();
+    let e = sim
+        .world_mut()
+        .spawn((
+            {
+                let mut a = ph2d_ecs::SpriteAnimator::new("idle");
+                a.autoplay = true;
+                a
+            },
+            {
+                let mut t = ph2d_ecs::SpriteAnimations::new();
+                t.insert(ph2d_ecs::AnimationTag::new("idle", 0, 5)).expect("tag");
+                t
+            },
+        ))
+        .id();
+    crate::render_loop::start_autoplay_animations(&mut sim);
+    assert!(sim.world().get::<ph2d_ecs::SpriteAnimator>(e).expect("animador").playing);
+}

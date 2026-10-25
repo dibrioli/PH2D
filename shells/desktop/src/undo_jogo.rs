@@ -53,6 +53,10 @@ impl crate::App {
         if log_on() {
             println!("[jogo] Play: documento {:016x}", estado.digest());
         }
+        // As animações com «tocar sozinho» começam com o jogo (só o abrir do projecto as ligava).
+        if let Some(g) = self.gfx.as_mut() {
+            crate::render_loop::start_autoplay_animations(&mut g.sim);
+        }
         let marca = self.field_selection_mark();
         let vista = self.palco_entra();
         self.undo.jogo.guarda(FotoDoJogo {

@@ -48,6 +48,9 @@ impl crate::App {
             hero.store
                 .open_command_palette(object_add::build(FAMILIES, &|_| None));
         }
+        if let Some(id) = object_add::smoke_hover().filter(|_| hero.store.command_palette_open()) {
+            hero.store.set_hot(Some(id));
+        }
         // ⚠️ O dreno é CONDICIONAL: o canal de pick tem outros quatro consumidores.
         let Some(entry) = hero
             .store

@@ -62,6 +62,9 @@ pub fn dispatch_key<'frame>(
         store.push_graph_key(gk);
         return events.into_bump_slice();
     }
+    if new_sprite_dialog_key(store, event.keycode, &mut events) {
+        return events.into_bump_slice();
+    }
     match event.keycode {
         KEY_TAB => {
             if event.modifiers.shift {
@@ -456,4 +459,34 @@ pub fn graph_key_for(keycode: u32, cmd: bool, alt: bool) -> Option<GraphKey> {
         KEY_F2 => GraphKey::Rename,
         _ => return None,
     })
+}
+
+/// **O diálogo New Sprite tem o Enter e o Esc** (Aseprite): Enter = OK — o campo que se estava a
+/// escrever entra primeiro —, Esc = Cancel, esteja o foco onde estiver dentro dele.
+fn new_sprite_dialog_key<'a>(
+    store: &mut WidgetStore,
+    keycode: u32,
+    events: &mut BumpVec<'a, WidgetEvent>,
+) -> bool {
+    let open = matches!(
+        store.context_menu().map(|r| r.kind),
+        Some(crate::interaction::ContextMenuKind::NewSpriteDialog)
+    );
+    if !open || !matches!(keycode, KEY_ENTER | KEY_ESCAPE) {
+        return false;
+    }
+    if let Some(id) = store.focus_id() {
+        if keycode == KEY_ENTER && matches!(store.get(id), Some(InteractiveState::NumberInput { .. })) {
+            commit_number_buffer(store, id, events, true);
+        }
+        reset_focused_visual_state(store, id);
+        store.set_focus(None);
+        events.push(WidgetEvent::Blur(id));
+    }
+    if keycode == KEY_ENTER {
+        store.request_new_sprite();
+    } else {
+        store.close_context_menu();
+    }
+    true
 }

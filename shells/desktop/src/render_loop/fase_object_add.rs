@@ -52,6 +52,17 @@ impl crate::App {
         if let Some(id) = object_add::smoke_hover().filter(|_| hero.store.command_palette_open()) {
             hero.store.set_hot(Some(id));
         }
+        // O OK do diálogo New Sprite (aberto por um pick anterior) nasce o Pixel Sprite.
+        let dialog = ph2d_app_pixel::object_add::born_from_dialog(
+            &mut hero.store,
+            sim,
+            &mut self.pixel,
+            ph2d_app_components::object_add::spawn_empty_root,
+        );
+        if let Some(r) = dialog {
+            let born = r.map(Born::Entity).map_err(String::from);
+            return self.object_born(ph2d_app_pixel::object_add::PIXEL_SPRITE, born);
+        }
         // ⚠️ O dreno é CONDICIONAL: o canal de pick tem outros quatro consumidores.
         let Some(entry) = hero
             .store
@@ -113,16 +124,16 @@ impl crate::App {
             ph2d_app_components::object_add::spawn_empty_root,
         ) {
             r.map(Born::Entity).map_err(String::from)
-        } else if let Some(r) = ph2d_app_pixel::object_add::add(
-            entry,
-            sim,
-            &mut self.pixel,
-            ph2d_app_components::object_add::spawn_empty_root,
-        ) {
-            r.map(Born::Entity).map_err(String::from)
+        } else if ph2d_app_pixel::object_add::open_dialog(entry, &mut hero.store) {
+            Ok(Born::Dialog)
         } else {
             return;
         };
+        self.object_born(entry, born);
+    }
+
+    /// O que o Add faz a um objecto que nasceu: a macro, a selecção, o aviso.
+    fn object_born(&mut self, entry: AddEntry, born: Result<Born, String>) {
         let bits = match born {
             Ok(Born::Entity(bits)) => Some(bits),
             Ok(Born::Dialog) => None,

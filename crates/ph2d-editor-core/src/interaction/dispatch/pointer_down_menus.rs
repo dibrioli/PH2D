@@ -351,6 +351,8 @@ pub(super) fn click_belongs_to_the_open_menu(
                     .iter()
                     .any(|(_, b)| *b == id)
         }
+        // O New Sprite: os dois campos, os modos, os fundos, OK e Cancel — todos das tabelas.
+        ContextMenuKind::NewSpriteDialog => crate::ids::new_sprite_dialog_owns(id),
         // ⭐ Uma linha INDISPONÍVEL (hoje: *Load Custom Theme* sem nada gravado) — o Down nela é
         //   um clique no menu, não fora dele; o clique a seguir chega ao verbo, que recusa.
         ContextMenuKind::SectionOutline { .. } => store.menu_row_is_unavailable(id),

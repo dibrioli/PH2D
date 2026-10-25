@@ -14,6 +14,9 @@ use crate::interaction::InteractiveState;
 use crate::widget::{ButtonState, SliderOrientation, SliderState};
 use ph2d_a11y::NodeId;
 
+#[path = "new_sprite_ops.rs"]
+mod new_sprite_ops;
+
 impl WidgetStore {
     /// Drain the pending clipboard-copy text (set by a Cmd+C / Cmd+X
     /// dispatch); shell should call once per frame and write to OS

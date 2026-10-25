@@ -57,6 +57,11 @@ const BENIGN_SET_MODE: &[(&str, &str)] = &[
          fresh each frame from the published snapshot to route input + the gizmo.",
     ),
     (
+        "set_new_sprite_mode",
+        "o modo de cor ESCOLHIDO no diálogo New Sprite (ADR-0192): uma escrita na escolha, que o \
+         pintor do diálogo lê a cada quadro e o OK copia para o pedido. Nada derivado dela.",
+    ),
+    (
         "set_erase_mode",
         "FlipTool erase sub-mode (Soft/Hard/Stroke): a single `erase` field write, read \
          fresh at erase time by `flip_erase::erase_at`. No derived cache keyed on it.",

@@ -165,6 +165,7 @@ mod the_row_height_is_one_number;
 mod the_ruler_prints_the_projects_unit;
 mod the_rulers_never_share_a_pixel_with_docked_chrome;
 mod the_sheet_resolution_modal_is_alive;
+mod the_new_sprite_dialog_is_alive;
 mod the_side_columns_are_anchored;
 mod the_tab_row_recedes_and_the_chosen_tab_rises;
 mod the_tail_of_a_block_is_one_answer;

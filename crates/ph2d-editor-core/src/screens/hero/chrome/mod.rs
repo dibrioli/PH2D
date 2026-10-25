@@ -65,6 +65,7 @@ mod menu_bar;
 mod motion_path_handle;
 mod motion_toggle;
 mod new_image;
+mod new_sprite;
 mod object_mode_menu;
 mod onion_modal;
 mod palette_rename;
@@ -186,6 +187,7 @@ pub fn dispatch_all(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         || palette_rename::apply(hero, event)
         || new_image::apply(hero, event)
         || sheet_size::apply(hero, event)
+        || new_sprite::apply(hero, event)
         || fill_modal::apply(hero, event)
         || onion_modal::apply(hero, event)
         || input_map::apply(hero, event)

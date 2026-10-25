@@ -456,3 +456,7 @@ pub(super) fn paint_sheet_size_dialog(
     .visual(store.button_visual(ids::CTX_MENU_SHEET_SIZE_CREATE));
     paint_button(&btn, create_rect, scene, text_system, theme);
 }
+
+#[path = "context_menu_new_sprite.rs"]
+mod new_sprite;
+pub(super) use new_sprite::paint_new_sprite_dialog;

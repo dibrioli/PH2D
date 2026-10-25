@@ -87,6 +87,7 @@ pub fn menu_rows(kind: ContextMenuKind) -> &'static [crate::ids::MenuRow] {
         ContextMenuKind::NewImageDialog => &[],
         // O modal de resolução da folha desenha o próprio corpo, como os irmãos acima.
         ContextMenuKind::SheetSizeDialog => &[],
+        ContextMenuKind::NewSpriteDialog => &[],
         ContextMenuKind::HierarchyRow { .. } => menu_tables::HIERARCHY_ROW_ROWS,
         ContextMenuKind::CatalogRow { .. } => menu_tables::CATALOG_ROW_ROWS,
         ContextMenuKind::AssetCard { .. } => menu_tables::ASSET_CARD_ROWS,

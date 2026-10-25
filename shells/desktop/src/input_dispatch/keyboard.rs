@@ -90,6 +90,10 @@ impl App {
         if self.command_palette_keys(physical_key, state, text.as_deref()) {
             return;
         }
+        // O diálogo New Sprite (Pixel Art) é modal pela mesma lei — a porta está no mesmo irmão.
+        if self.new_sprite_dialog_keys(physical_key, state, kind, text.as_deref()) {
+            return;
+        }
 
         self.handler.on_key(KeyEvent {
             keycode,

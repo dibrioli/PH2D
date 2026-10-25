@@ -230,6 +230,9 @@ pub enum ContextMenuKind {
     /// encaixa DENTRO da resolução escolhida, e o que não couber acende a moldura — vide
     /// `sheet_bounds::health`.
     SheetSizeDialog,
+    /// **O diálogo New Sprite** (Add ▸ Pixel Sprite, ADR-0192): Width/Height, Color Mode, Background,
+    /// OK/Cancel; o OK arma o pedido que a shell drena, fora ou Esc/Cancel não arma nada.
+    NewSpriteDialog,
     /// Right-clicked on a Painter brush Falloff curve control point. Menu offers
     /// the two handle types — Vector (sharp corner) / Auto (smooth). No payload:
     /// the secondary-click already selected the point; the chrome handler routes
@@ -448,6 +451,7 @@ impl ContextMenuKind {
         Self::CatalogRow { row: NodeId(1) },
         Self::NewImageDialog,
         Self::SheetSizeDialog,
+        Self::NewSpriteDialog,
         Self::FalloffPointHandle,
         Self::CurvePointHandle,
         Self::MotionPathAnchor { target: 0, i: 0 },

@@ -75,6 +75,7 @@ impl WidgetStore {
             // peças; este valor é só o que aparece antes de haver sugestão nenhuma.
             sheet_size: 1024,
             sheet_size_request: None,
+            new_sprite: crate::pixel_panel::NewSpriteDialog::default(),
             fill_modal: None,
             input_map_window: None,
             input_map_listening: None,

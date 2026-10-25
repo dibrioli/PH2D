@@ -1,16 +1,61 @@
-//! **Add ▸ Pixel Sprite** — o objecto nasce com um documento novo (o *New Sprite* do Aseprite com os
-//! valores por omissão: 32 × 32, RGBA, transparente) e pede o modo Edit.
+//! **Add ▸ Pixel Sprite** — a entrada abre o diálogo *New Sprite* (o *File ▸ New* do Aseprite:
+//! Width, Height, Color Mode, Background; por omissão 32 × 32, RGBA, transparente). O OK nasce o
+//! objecto com um documento novo e pede o modo Edit; Cancel não cria nada.
 
 use ph2d_ecs::SimWorld;
 use ph2d_editor_core::object_add::{AddEntry, AddGroup};
-use ph2d_pixel_core::NewSprite;
+use ph2d_editor_core::pixel_panel::{NewSpriteBackground, NewSpriteChoice, NewSpriteMode};
+use ph2d_pixel_core::{Background, ColorMode, NewSprite};
 
 use crate::PixelApp;
 
 pub const PIXEL_SPRITE: AddEntry = AddEntry::new("object_add.pixel_sprite", AddGroup::TwoD);
 pub const ENTRIES: &[AddEntry] = &[PIXEL_SPRITE];
 
-/// Cria o objecto desta entrada — `None` se a entrada não é desta família.
+/// **O pick do menu Add**: abre o diálogo *New Sprite* — `false` se a entrada não é desta família.
+pub fn open_dialog(
+    entry: AddEntry,
+    store: &mut ph2d_editor_core::interaction::WidgetStore,
+) -> bool {
+    if entry != PIXEL_SPRITE {
+        return false;
+    }
+    store.open_new_sprite_dialog();
+    true
+}
+
+/// **O OK do diálogo**: drena o pedido e cria o objecto com aquelas escolhas — `None` sem pedido.
+pub fn born_from_dialog(
+    store: &mut ph2d_editor_core::interaction::WidgetStore,
+    sim: &mut SimWorld,
+    app: &mut PixelApp,
+    spawn_root: impl FnOnce(&mut SimWorld, &str) -> u64,
+) -> Option<Result<u64, &'static str>> {
+    let c = store.take_new_sprite_request()?;
+    Some(spawn(sim, app, new_sprite(c), spawn_root))
+}
+
+/// As escolhas do diálogo no vocabulário do documento.
+#[must_use]
+pub fn new_sprite(c: NewSpriteChoice) -> NewSprite {
+    NewSprite {
+        width: c.width,
+        height: c.height,
+        mode: match c.mode {
+            NewSpriteMode::Rgba => ColorMode::Rgba,
+            NewSpriteMode::Gray => ColorMode::Gray,
+            NewSpriteMode::Indexed => ColorMode::Indexed,
+        },
+        background: match c.background {
+            NewSpriteBackground::Transparent => Background::Transparent,
+            NewSpriteBackground::White => Background::White,
+            NewSpriteBackground::Black => Background::Black,
+        },
+    }
+}
+
+/// Cria o objecto desta entrada com os valores por omissão, sem diálogo (o caminho dos testes e do
+/// smoke) — `None` se a entrada não é desta família.
 pub fn add(
     entry: AddEntry,
     sim: &mut SimWorld,

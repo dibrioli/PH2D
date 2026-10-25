@@ -1,1 +1,2 @@
 mod edit;
+mod painel_e_dialogo;

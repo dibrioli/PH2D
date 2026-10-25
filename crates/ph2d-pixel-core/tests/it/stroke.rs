@@ -1,7 +1,7 @@
 //! O traço: acumula entre premir e largar, e vira UM passo de desfazer.
 
 use ph2d_pixel_core::{
-    Background, ColorMode, FrameId, History, LayerId, NewSprite, Sample, Sprite, Stroke,
+    Background, ColorMode, FrameId, History, LayerId, NewSprite, Paint, Sample, Sprite, Stroke,
     compose_rgba, pick,
 };
 
@@ -26,7 +26,7 @@ fn one_stroke_is_one_undo_step_and_undo_gives_the_document_back_to_the_byte() {
         let before = s.clone();
         let (l, f) = ids(&s);
         let red = s.value_of_rgba([0xac, 0x32, 0x32, 0xff]);
-        let mut st = Stroke::begin(&s, l, f, red, 2, 2);
+        let mut st = Stroke::begin(&s, l, f, red, Paint::default(), (2, 2));
         st.to(&s, 20, 9);
         st.to(&s, 5, 30);
         let mut h = History::default();
@@ -52,14 +52,14 @@ fn undo_shrinks_the_cel_back_to_the_box_it_had() {
     let mut s = sprite(ColorMode::Rgba, Background::Transparent);
     let (l, f) = ids(&s);
     let mut h = History::default();
-    let a = Stroke::begin(&s, l, f, 0xff00_00ff, 1, 1);
+    let a = Stroke::begin(&s, l, f, 0xff00_00ff, Paint::default(), (1, 1));
     {
         let op = a.op(&s).expect("op");
         h.commit(&mut s, op)
     }
     .expect("commit");
     let one = s.clone();
-    let mut b = Stroke::begin(&s, l, f, 0xff00_00ff, 30, 30);
+    let mut b = Stroke::begin(&s, l, f, 0xff00_00ff, Paint::default(), (30, 30));
     b.to(&s, 28, 31);
     {
         let op = b.op(&s).expect("op");
@@ -77,7 +77,7 @@ fn a_click_that_changes_nothing_spends_no_step() {
     let s = sprite(ColorMode::Rgba, Background::White);
     let (l, f) = ids(&s);
     let white = s.value_of_rgba([255, 255, 255, 255]);
-    let st = Stroke::begin(&s, l, f, white, 3, 3);
+    let st = Stroke::begin(&s, l, f, white, Paint::default(), (3, 3));
     assert!(st.op(&s).is_none());
 }
 
@@ -85,7 +85,7 @@ fn a_click_that_changes_nothing_spends_no_step() {
 fn the_pending_stroke_is_seen_over_its_layer_without_touching_the_document() {
     let s = sprite(ColorMode::Indexed, Background::Transparent);
     let (l, f) = ids(&s);
-    let st = Stroke::begin(&s, l, f, 21, 4, 5);
+    let st = Stroke::begin(&s, l, f, 21, Paint::default(), (4, 5));
     let mut out = Vec::new();
     compose_rgba(&s, f, Some(&st), &mut out);
     let i = (5 * 32 + 4) * 4;
@@ -100,7 +100,7 @@ fn the_eraser_writes_transparency_and_the_eyedropper_reads_it_back() {
     let (l, f) = ids(&s);
     let green = s.value_of_rgba([0x6a, 0xbe, 0x30, 0xff]);
     let mut h = History::default();
-    let mut st = Stroke::begin(&s, l, f, green, 0, 0);
+    let mut st = Stroke::begin(&s, l, f, green, Paint::default(), (0, 0));
     st.to(&s, 31, 0);
     {
         let op = st.op(&s).expect("op");
@@ -108,7 +108,7 @@ fn the_eraser_writes_transparency_and_the_eyedropper_reads_it_back() {
     }
     .expect("commit");
     assert_eq!(pick(&s, f, 10, 0, Sample::AllLayers), Some(green));
-    let er = Stroke::begin(&s, l, f, s.transparent_value(), 10, 0);
+    let er = Stroke::begin(&s, l, f, s.transparent_value(), Paint::default(), (10, 0));
     {
         let op = er.op(&s).expect("op");
         h.commit(&mut s, op)
@@ -130,7 +130,7 @@ fn the_eraser_writes_transparency_and_the_eyedropper_reads_it_back() {
 fn a_stroke_that_leaves_the_canvas_is_clipped_to_it() {
     let s = sprite(ColorMode::Rgba, Background::Transparent);
     let (l, f) = ids(&s);
-    let mut st = Stroke::begin(&s, l, f, 0xff00_00ff, -5, 3);
+    let mut st = Stroke::begin(&s, l, f, 0xff00_00ff, Paint::default(), (-5, 3));
     st.to(&s, 40, 3);
     let r = st.rect();
     assert_eq!((r.x, r.w), (0, 32));
@@ -164,19 +164,19 @@ fn a_replacing_stroke_only_touches_the_cells_of_the_from_color() {
     let (l, f) = ids(&s);
     let (red, blue, green) = (0xff00_00ffu32, 0xffff_0000u32, 0xff00_ff00u32);
     let mut h = History::default();
-    let mut a = Stroke::begin(&s, l, f, red, 0, 0);
+    let mut a = Stroke::begin(&s, l, f, red, Paint::default(), (0, 0));
     a.to(&s, 9, 0);
     let op = a.op(&s).expect("op");
     h.commit(&mut s, op).expect("commit");
-    let b = Stroke::begin(&s, l, f, blue, 4, 0);
+    let b = Stroke::begin(&s, l, f, blue, Paint::default(), (4, 0));
     let op = b.op(&s).expect("op");
     h.commit(&mut s, op).expect("commit");
-    let mut r = Stroke::begin_replacing(&s, l, f, red, green, 0, 0);
+    let mut r = Stroke::begin_replacing(&s, l, f, (red, green), Paint::default(), (0, 0));
     r.to(&s, 9, 0);
     let op = r.op(&s).expect("op");
     h.commit(&mut s, op).expect("commit");
     assert_eq!(s.value_at((l, f), 3, 0), green);
     assert_eq!(s.value_at((l, f), 4, 0), blue, "a célula de outra cor fica");
-    let none = Stroke::begin_replacing(&s, l, f, red, green, 0, 1);
+    let none = Stroke::begin_replacing(&s, l, f, (red, green), Paint::default(), (0, 1));
     assert!(none.op(&s).is_none(), "sem a cor de origem, nada muda");
 }

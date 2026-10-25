@@ -4,7 +4,7 @@
 //! do desfazer, para o `Ctrl+Z` ter o que mostrar). O dono desenha por cima, desfaz, grava e reabre.
 
 use ph2d_ecs::SimWorld;
-use ph2d_pixel_core::{NewSprite, Stroke};
+use ph2d_pixel_core::{NewSprite, Paint, Stroke};
 
 use crate::PixelApp;
 
@@ -71,7 +71,14 @@ fn draw_path(app: &mut PixelApp, key: u32, color: usize, path: &[(i32, i32)]) ->
     let Some(&(x0, y0)) = path.first() else {
         return false;
     };
-    let mut st = Stroke::begin(s, doc.layer, doc.frame, s.value_of_rgba(rgba), x0, y0);
+    let mut st = Stroke::begin(
+        s,
+        doc.layer,
+        doc.frame,
+        s.value_of_rgba(rgba),
+        Paint::default(),
+        (x0, y0),
+    );
     for &(x, y) in &path[1..] {
         st.to(s, x, y);
     }

@@ -3,7 +3,9 @@
 use std::collections::BTreeMap;
 
 use ph2d_pixel_core::codec::{read_library, write_library};
-use ph2d_pixel_core::{Background, CodecError, ColorMode, History, NewSprite, Sprite, Stroke};
+use ph2d_pixel_core::{
+    Background, CodecError, ColorMode, History, NewSprite, Paint, Sprite, Stroke,
+};
 
 fn drawn(mode: ColorMode, background: Background) -> Sprite {
     let mut s = Sprite::new(NewSprite {
@@ -15,7 +17,7 @@ fn drawn(mode: ColorMode, background: Background) -> Sprite {
     .expect("sprite");
     let (l, f) = (s.layers()[0].id, s.frames()[0].id);
     let v = s.value_of_rgba([0x5b, 0x6e, 0xe1, 0xff]);
-    let mut st = Stroke::begin(&s, l, f, v, -3, 1);
+    let mut st = Stroke::begin(&s, l, f, v, Paint::default(), (-3, 1));
     st.to(&s, 17, 20);
     let op = st.op(&s).expect("op");
     History::default().commit(&mut s, op).expect("commit");

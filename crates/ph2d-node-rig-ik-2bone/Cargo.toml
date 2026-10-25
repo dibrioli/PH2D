@@ -13,6 +13,7 @@ authors.workspace = true
 ph2d-rig-kinematics = { path = "../ph2d-rig-kinematics" }
 ph2d-nodegraph = { path = "../ph2d-nodegraph" }
 ph2d-node-registry = { path = "../ph2d-node-registry" }
+ph2d-skeleton = { path = "../ph2d-skeleton" }
 
 [lints]
 workspace = true

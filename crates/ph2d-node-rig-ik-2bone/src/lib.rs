@@ -91,28 +91,29 @@ pub const MANIFEST: NodeManifest = NodeManifest {
 
 /// The elbow and hand that put the hand on `goal` with rigid bones.
 ///
-/// Returns `(elbow, hand)` in world space. `hand` is the goal itself when it is in
-/// reach, and the farthest reachable point along the same direction when it is not.
+/// Returns `(elbow, hand)` in world space. The law is `ph2d_skeleton::reach` — one owner for the
+/// two-bone law (docs/BlenderConstraints/02_W2_ossos.md): `flip` picks the side (`Cw`), the
+/// default is `Ccw`.
+#[expect(clippy::cast_possible_truncation, reason = "the stream is f32; the law is f64")]
 fn solve(root: [f32; 2], l1: f32, l2: f32, goal: [f32; 2], flip: bool) -> ([f32; 2], [f32; 2]) {
-    let to_goal = [goal[0] - root[0], goal[1] - root[1]];
-    let raw = (to_goal[0] * to_goal[0] + to_goal[1] * to_goal[1]).sqrt();
-    // The direction to reach along. A goal ON the root has no direction — pick one
-    // rather than dividing by zero.
-    let u = pose::unit(to_goal, [1.0, 0.0]);
-    // Out of reach (too far / folded inside itself): reach as far as the bones allow.
-    let d = raw.clamp((l1 - l2).abs().max(f32::EPSILON), l1 + l2);
-
-    // Law of cosines at the root. The clamp is float hygiene: at full extension the
-    // quotient is exactly 1 in real arithmetic and 1 + 1e-7 in this one, and `sqrt` of a
-    // negative would hand back a NaN limb.
-    let cos_a = ((l1 * l1 + d * d - l2 * l2) / (2.0 * l1 * d)).clamp(-1.0, 1.0);
-    let sin_a = (1.0 - cos_a * cos_a).sqrt() * if flip { -1.0 } else { 1.0 };
-
-    // Rotate the reach direction by that angle — multiply-add, no trig call (HR-5).
-    let bone1 = [u[0] * cos_a - u[1] * sin_a, u[0] * sin_a + u[1] * cos_a];
-    let elbow = [root[0] + l1 * bone1[0], root[1] + l1 * bone1[1]];
-    let hand = [root[0] + d * u[0], root[1] + d * u[1]];
-    (elbow, hand)
+    let r = [f64::from(root[0]), f64::from(root[1])];
+    let (a, b) = (f64::from(l1), f64::from(l2));
+    let mut j = [r, [r[0] + a, r[1]], [r[0] + a + b, r[1]]];
+    ph2d_skeleton::reach(
+        &mut j,
+        &[a, b],
+        [f64::from(goal[0]), f64::from(goal[1])],
+        ph2d_skeleton::Reach {
+            bend: if flip {
+                ph2d_skeleton::BendSide::Cw
+            } else {
+                ph2d_skeleton::BendSide::Ccw
+            },
+            ..ph2d_skeleton::Reach::default()
+        },
+    );
+    let f = |p: [f64; 2]| [p[0] as f32, p[1] as f32];
+    (f(j[1]), f(j[2]))
 }
 
 /// Is `root, root+1, root+2` a real 3-joint chain in this stream?
@@ -209,6 +210,47 @@ static PARAM_HINTS: &[ParamUiHint] = &[
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// ⭐ A lei dos 2 ossos tem UM dono (`ph2d_skeleton::reach`): o nó dá os bits dela, cast a `f32`.
+    #[test]
+    fn the_node_solves_with_the_skeleton_law() {
+        let (l1, l2) = (1.3f32, 0.7f32);
+        let mut alvos = vec![[0.0f32, 0.0], [5.0, 1.0], [0.6, 0.0], [-0.2, 0.3]];
+        for i in 0..64 {
+            let a = i as f32 * 0.37;
+            let r = 0.5 + 0.03 * i as f32;
+            alvos.push([r * a.cos(), r * a.sin()]);
+        }
+        // A quase-extensão, onde a lei fechada encosta na recta.
+        alvos.push([l1 + l2 - 1e-5, 0.0]);
+        alvos.push([(l1 + l2) * 0.999_95, 0.01]);
+        for goal in alvos {
+            for flip in [false, true] {
+                let root = [0.25f32, -0.5];
+                let goal = [root[0] + goal[0], root[1] + goal[1]];
+                let mut j = [
+                    [f64::from(root[0]), f64::from(root[1])],
+                    [f64::from(root[0] + l1), f64::from(root[1])],
+                    [f64::from(root[0] + l1 + l2), f64::from(root[1])],
+                ];
+                ph2d_skeleton::reach(
+                    &mut j,
+                    &[f64::from(l1), f64::from(l2)],
+                    [f64::from(goal[0]), f64::from(goal[1])],
+                    ph2d_skeleton::Reach {
+                        bend: if flip {
+                            ph2d_skeleton::BendSide::Cw
+                        } else {
+                            ph2d_skeleton::BendSide::Ccw
+                        },
+                        ..ph2d_skeleton::Reach::default()
+                    },
+                );
+                let f = |p: [f64; 2]| [p[0] as f32, p[1] as f32];
+                assert_eq!(solve(root, l1, l2, goal, flip), (f(j[1]), f(j[2])), "{goal:?} {flip}");
+            }
+        }
+    }
 
     const L1: f32 = 2.0;
     const L2: f32 = 1.0;

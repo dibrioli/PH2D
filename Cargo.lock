@@ -8148,6 +8148,7 @@ dependencies = [
  "ph2d-node-registry",
  "ph2d-nodegraph",
  "ph2d-rig-kinematics",
+ "ph2d-skeleton",
 ]
 
 [[package]]

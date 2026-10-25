@@ -9,7 +9,13 @@ use ph2d_painter_brush::BrushBlend;
 const W: u32 = 200;
 const H: u32 = 120;
 /// Um laço fechado que atravessa a metade OPACA (x < 100) e a TRANSPARENTE.
-const LACO: [[f32; 2]; 5] = [[30.0, 30.0], [170.0, 30.0], [170.0, 90.0], [30.0, 90.0], [30.0, 30.0]];
+const LACO: [[f32; 2]; 5] = [
+    [30.0, 30.0],
+    [170.0, 30.0],
+    [170.0, 90.0],
+    [30.0, 90.0],
+    [30.0, 30.0],
+];
 
 fn cp(pos: [f32; 2], phase: PointerPhase) -> CanvasPointer {
     CanvasPointer {
@@ -62,10 +68,17 @@ fn difere(a: &[u8], b: &[u8]) -> usize {
 #[test]
 fn os_controlos_de_cor_e_modo_do_wet_mudam_a_tinta() {
     let base = pinta(false, |_| {});
-    assert_eq!(base, pinta(false, |_| {}), "o controlo: o traço repete-se ao byte");
+    assert_eq!(
+        base,
+        pinta(false, |_| {}),
+        "o controlo: o traço repete-se ao byte"
+    );
     let multiplica = |t: &mut PainterTool| t.set_brush_blend(BrushBlend::Multiply as u8);
     let casos: [(&str, Vec<u8>); 4] = [
-        ("Color", pinta(false, |t| t.set_brush_color_srgb8([200, 180, 20]))),
+        (
+            "Color",
+            pinta(false, |t| t.set_brush_color_srgb8([200, 180, 20])),
+        ),
         ("Solid", pinta(false, |t| t.toggle_style_solid())),
         ("Type", pinta(false, multiplica)),
         (
@@ -86,7 +99,11 @@ fn os_controlos_de_cor_e_modo_do_wet_mudam_a_tinta() {
     }
     // Inerte onde a lei diz: no Mix, e sobre a tela OPACA (as duas leis coincidem com αb = 1).
     let vazio = |t: &mut PainterTool| t.set_blend_sobre_vazio(true);
-    assert_eq!(difere(&base, &pinta(false, vazio)), 0, "On empty agiu no Mix");
+    assert_eq!(
+        difere(&base, &pinta(false, vazio)),
+        0,
+        "On empty agiu no Mix"
+    );
     let mult_opaca = pinta(true, multiplica);
     let mult_opaca_vazio = pinta(true, |t| {
         multiplica(t);

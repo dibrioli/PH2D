@@ -8,8 +8,8 @@ use super::brush_settings::BrushTextureImage;
 use crate::tool::PainterTool;
 use ph2d_editor_core::tool::PanelEvent;
 use ph2d_painter_brush::{
-    BrushSpec, TEX_OFFSET_MAX, TEX_OFFSET_MIN, TEX_SIZE_MAX, TEX_SIZE_MIN, TextureKind,
-    TextureMapping, TextureSettings,
+    TEX_OFFSET_MAX, TEX_OFFSET_MIN, TEX_SIZE_MAX, TEX_SIZE_MIN, TextureKind, TextureMapping,
+    TextureSettings,
 };
 
 /// O que o menu "Use as …" da Hierarquia faz com uma linha — ver [`PainterTool::use_layers_as`].

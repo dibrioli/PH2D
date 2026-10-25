@@ -589,6 +589,10 @@ mod verde_no_soltar_tests; // azul sobre azul não fica verde no soltar (Bug #49
 #[cfg(test)]
 mod achatamento_tests; // o escorrimento não se corta em rectângulos (W1f)
 #[cfg(test)]
+mod controlos_medidos_tests; // Color, Solid, Type e On empty medidos num traço de fábrica
+#[cfg(test)]
+mod dry_brush_tests; // o Dry brush só age com o portão seco aberto (a cobertura que cai)
+#[cfg(test)]
 mod gota_tests;
 #[cfg(test)]
 mod janela_do_rasto_tests; // a janela do rasto não corta o dab (smoke do dono 16/10)
@@ -596,10 +600,6 @@ mod janela_do_rasto_tests; // a janela do rasto não corta o dab (smoke do dono 
 mod lei_b_tests; // plano 27 W3: o padrão do Shape multiplica DEPOIS do portão do papel
 #[cfg(test)]
 mod medida_undo; // o Ctrl+Z com as opções da W1g (dono 10/10)
-#[cfg(test)]
-mod controlos_medidos_tests; // Color, Solid, Type e On empty medidos num traço de fábrica
-#[cfg(test)]
-mod dry_brush_tests; // o Dry brush só age com o portão seco aberto (a cobertura que cai)
 #[cfg(test)]
 mod mistura_camadas_tests; // N camadas de amarelo sobre azul seco convergem sem preto (prompt 15)
 #[cfg(test)]

@@ -182,7 +182,8 @@ fn the_plain_paint_mode_is_not_owned_by_any_medium() {
 #[test]
 fn a_brush_preset_switches_medium_through_the_same_door() {
     let de_fabrica = |nome: &str| {
-        let raiz = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes");
+        let raiz =
+            std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes");
         ph2d_brush_presets::Biblioteca::carregar(&raiz, None)
             .entradas
             .into_iter()

@@ -11,9 +11,11 @@ use ph2d_a11y::NodeId;
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::tool::{PanelEvent, Tool};
 use ph2d_editor_core::zones::Rect;
-use ph2d_panel_painter_layers::state::{PainterLayersPanelState, set_current_brush};
 use ph2d_panel_painter_layers::PainterLayersPanel;
-use ph2d_tool_painter::{BrushSettings, LINHAS_DA_MAO, MAO_DE_FABRICA, PaintMedia, PainterTool, ids};
+use ph2d_panel_painter_layers::state::{PainterLayersPanelState, set_current_brush};
+use ph2d_tool_painter::{
+    BrushSettings, LINHAS_DA_MAO, MAO_DE_FABRICA, PaintMedia, PainterTool, ids,
+};
 use ph2d_ui_testkit::MockPanelHost;
 
 fn viewport() -> Rect {

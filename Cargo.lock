@@ -5484,6 +5484,7 @@ dependencies = [
  "ph2d-panel-audio-mixer",
  "ph2d-timeline",
  "ph2d-tokens",
+ "ph2d-vector",
 ]
 
 [[package]]

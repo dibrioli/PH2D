@@ -41,6 +41,8 @@ ph2d-timeline = { path = "../ph2d-timeline" }
 # O `#[derive(Resource)]` do `MesaDoc` (a mesma versão da `ph2d-ecs`).
 bevy_ecs = "0.19"
 ph2d-tokens = { path = "../ph2d-tokens" }
+# A cena vetorial em que o overlay do Audio Editor pinta as costuras e o espectrograma.
+ph2d-vector = { path = "../ph2d-vector" }
 
 # ⚠️⚠️ **AS FEATURES NÃO VIAJAM COM O CÓDIGO** (HOWTO §2.4, a armadilha MUDA): 21 sítios deste
 # módulo vivem sob um `cfg(feature = …)`, e numa crate que não as declara o `cfg` é falso **por

@@ -11,18 +11,19 @@
 //! only thing spectral repair can act on, because the beep and the voice beneath it live
 //! in the very same samples and differ only in where they sit on this axis.
 //!
-//! Split out of `audio_overlay` to keep that file under the shell's 600-LOC cap.
+//! Split out of `audio_overlay` to keep that file under the shell's 600-LOC cap; moved from the
+//! shell (`render_loop/audio_spectrogram.rs`) to the family on 2026-10-25 (`the_shell_only_shrinks`).
 
 use ph2d_editor_core::paint::{fill_rounded_rect, resolve, stroke_rect};
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, Theme};
 use ph2d_vector::{ImageQuality, VectorScene};
 
-use ph2d_app_audio::AudioSystem;
+use crate::AudioSystem;
 
 /// Draw the spectrogram into `area`. Falls back to painting nothing if the picture is not
 /// ready (no clip) — the caller has already drawn the panel surface under it.
-pub(super) fn draw_spectrogram(
+pub fn draw_spectrogram(
     scene: &mut VectorScene,
     audio: &mut AudioSystem,
     area: Rect,
@@ -57,7 +58,7 @@ pub(super) fn draw_spectrogram(
 /// Only the time half comes from the clip's selection; the frequency half is the band the
 /// user dragged. Without a band there is nothing to draw here — a full-height band would
 /// say "the whole spectrum", which is exactly what the user did *not* select.
-pub(super) fn draw_band(
+pub fn draw_band(
     scene: &mut VectorScene,
     audio: &AudioSystem,
     area: Rect,

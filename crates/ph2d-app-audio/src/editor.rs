@@ -23,6 +23,9 @@ mod markers;
 mod meta;
 mod ml_smoke;
 mod multiband_smoke;
+/// The Audio Editor overlay's seams/drag and spectrogram painters (the shell's overlay calls them).
+pub mod overlay_pieces;
+pub mod overlay_spectrogram;
 pub mod pieces;
 pub mod platforms;
 pub mod pricing;

@@ -7,8 +7,6 @@
 
 #[cfg(feature = "panel-audio-editor")]
 mod audio_overlay;
-mod audio_pieces;
-mod audio_spectrogram;
 /// **O dreno do painel autorado** — um braço por variante do `AuthoredIntent`, e nenhum curinga.
 /// Irmão porque o `FOLLOW-UP` do topo deste arquivo já o pedia, e porque o `if let` que ele
 /// substitui matava **seis famílias de widget** de uma vez (2026-08-30).
@@ -270,8 +268,6 @@ mod fase_legacy_chrome;
 mod fase_live_offset_and_width;
 /// Fase do quadro: as macros (Gravar ▸ Parar, as etapas, o painel MACROS).
 mod fase_macros;
-/// Fase do quadro: o painel PIXEL (pedidos, abrir no Edit, instantâneo).
-mod fase_pixel_panel;
 /// Fase do quadro: o Motion: publicar, despachar e os sinais.
 mod fase_motion_bridge;
 /// Fase do quadro: os gizmos do Motion que leem o cozido (o colisor e o warp).
@@ -303,6 +299,8 @@ mod fase_physics_join_rig_bake;
 mod fase_physics_overlay;
 /// Fase do quadro: o passo da física (dispatch, flash, readout do player, juntas que cederam).
 mod fase_physics_step;
+/// Fase do quadro: o painel PIXEL (pedidos, abrir no Edit, instantâneo).
+mod fase_pixel_panel;
 /// Fase do quadro: o que está sob o cursor (a 1.ª do `run_render_frame`).
 mod fase_pointer_subjects;
 /// Fase do quadro: os verbos de receita e de assets.

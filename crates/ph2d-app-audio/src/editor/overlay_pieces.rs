@@ -1,4 +1,5 @@
-//! Drawing the **pieces**: the seams, and the drag in flight.
+//! Drawing the **pieces**: the seams, and the drag in flight. Moved from the shell
+//! (`render_loop/audio_pieces.rs`) to the family on 2026-10-25 (`the_shell_only_shrinks`).
 //!
 //! Four things already claim a colour on this overlay — the selection is blue, the loop green, the
 //! markers purple, the playhead orange — so a cut takes the one that is left and the one it should
@@ -14,8 +15,8 @@ use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, Theme};
 use ph2d_vector::{Color, VectorScene};
 
-use ph2d_app_audio::AudioSystem;
-use ph2d_app_audio::editor::pieces::PieceDrag;
+use super::pieces::PieceDrag;
+use crate::AudioSystem;
 
 /// A shell canvas overlay may use literal colours (the `no_literal_color` gate scans panels +
 /// editor-core, not the shell) — this mirrors the selection band and the markers, which do the same.
@@ -30,7 +31,7 @@ const NOTCH: f32 = 5.0; // LITERAL-PX-OK: the triangle-ish nub that marks a seam
 
 /// Draw the cut seams over the waveform. No-op on an uncut clip — which is most of them, so this
 /// costs nothing until the user asks for it.
-pub(super) fn draw_cuts(
+pub fn draw_cuts(
     scene: &mut VectorScene,
     audio: &AudioSystem,
     wave: Rect,
@@ -61,7 +62,7 @@ pub(super) fn draw_cuts(
 }
 
 /// Draw the drag in flight: where the piece would land, or how long it would become.
-pub(super) fn draw_piece_drag(
+pub fn draw_piece_drag(
     scene: &mut VectorScene,
     audio: &AudioSystem,
     wave: Rect,

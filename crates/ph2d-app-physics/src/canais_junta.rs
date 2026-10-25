@@ -156,12 +156,15 @@ pub fn ler_mundo(w: &World, e: Entity, kk: FieldKey) -> Option<f32> {
     ler(pj, kk)
 }
 
-/// `bits` é a corda de uma Pulley — o comprimento dela (`max_length`) cai da rota, não da mão.
+/// O comprimento (`max_length`) da corda `bits` é o que a ponte semeou da rota de uma Pulley — não
+/// foi a mão que o pôs. O que a mão digita depois grava-se (F30 §D; o dono, 19/10: grava tudo).
 #[must_use]
-pub fn e_polia(w: &World, bits: u64) -> bool {
+pub fn comprimento_da_rota(w: &World, bits: u64) -> bool {
     Entity::try_from_bits(bits)
         .and_then(|e| w.get::<PhysicsJoint>(e))
-        .is_some_and(|j| j.kind == JointKind::Pulley)
+        .filter(|j| j.kind == JointKind::Pulley)
+        .zip(w.get_resource::<ph2d_physics_ecs::ComprimentoDaRota>())
+        .is_some_and(|(j, rota)| rota.veio_da_rota(bits, j.max_length))
 }
 
 /// O índice de uma escolha discreta: arredonda e prende a `0..=max`.

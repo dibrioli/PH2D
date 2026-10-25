@@ -86,7 +86,7 @@ pub use components::{
     LockPositionX, LockPositionY, LockRotation, MassOverride, MaterialCombine, NavAgent,
     NavCostArea, NavCostAreaNow, NavLink, NavNow, NavRegion, NavRoute, NavTarget, NoWallCling,
     OnHit, OneWayPlatform, PlatformLift, PlatformPlayer, PlayerMode, PlayerSignals,
-    ProjectileMotion, PulleyWheel, RESISTANCES_MAX, RayHit, RaySensor, RaySignals, Resistance,
+    ComprimentoDaRota, ProjectileMotion, PulleyWheel, RESISTANCES_MAX, RayHit, RaySensor, RaySignals, Resistance,
     RigidBody, RopeStops, SignalOnHit, SignalOnLeave, SignalTagFilter, TopDownPlayer, WalkSurface,
     WestonAxle, WrapSide, anim_target, kind_key, reseat_mounted_axle, reseat_wheel_geometry,
     rope_joint_of,

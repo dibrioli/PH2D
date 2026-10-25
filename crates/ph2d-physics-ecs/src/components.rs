@@ -290,8 +290,8 @@ pub use player::{PlatformLift, PlatformPlayer, PlayerMode};
 pub use projectile::ProjectileMotion;
 pub use ray_sensor::{RayHit, RaySensor, RaySignals};
 pub use rope::{
-    PulleyWheel, RopeStops, WestonAxle, WrapSide, reseat_mounted_axle, reseat_wheel_geometry,
-    rope_joint_of,
+    ComprimentoDaRota, PulleyWheel, RopeStops, WestonAxle, WrapSide, reseat_mounted_axle,
+    reseat_wheel_geometry, rope_joint_of,
 };
 pub use signal::{PlayerSignals, SignalOnHit, SignalOnLeave, SignalTagFilter};
 pub use surface::{NoWallCling, WalkSurface};

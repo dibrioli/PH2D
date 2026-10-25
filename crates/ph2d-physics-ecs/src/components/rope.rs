@@ -386,6 +386,20 @@ pub fn reseat_wheel_geometry(
     true
 }
 
+/// O último comprimento que a PONTE semeou da rota, por corda (`Entity::to_bits`). O Auto Key
+/// distingue a mão da ponte por ele: uma corda que ainda tem este valor foi a rota que o pôs
+/// ([F30 §D](../../../../docs/UI_New_and_Simple/F30_plano.md)).
+#[derive(bevy_ecs::resource::Resource, Default, Debug)]
+pub struct ComprimentoDaRota(pub std::collections::BTreeMap<u64, f32>);
+
+impl ComprimentoDaRota {
+    /// `valor` é o que a ponte semeou da rota para a corda `bits`.
+    #[must_use]
+    pub fn veio_da_rota(&self, bits: u64, valor: f32) -> bool {
+        self.0.get(&bits) == Some(&valor)
+    }
+}
+
 /// **De que CORDA é esta roldana?** — a resposta única.
 ///
 /// Uma roldana aponta a corda pelo **NOME** (`stable_name_id`), a mesma chave por

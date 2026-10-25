@@ -347,3 +347,16 @@ fn os_numeros_da_junta_mexidos_no_painel_pedem_a_chave() {
         assert_eq!(got.keys, vec![(prop, 2.0)], "{prop:?}");
     }
 }
+
+/// O clique no chip do lado da dobra, com o Auto Key armado, é uma edição como as outras (F30 §D;
+/// dono, 19/10: o Auto Key grava tudo).
+#[test]
+fn trocar_o_lado_da_dobra_pede_a_chave() {
+    let st = doc_with_tx_track();
+    let i = PropKind::AUTOKEYED
+        .iter()
+        .position(|&p| p == PropKind::IkBendSide)
+        .expect("IkBendSide fora do AUTOKEYED");
+    let got = ak(&st, 0.5, &pose(&[(i, -1.0)]), &pose(&[(i, 1.0)]), true);
+    assert_eq!(got.keys, vec![(PropKind::IkBendSide, -1.0)]);
+}

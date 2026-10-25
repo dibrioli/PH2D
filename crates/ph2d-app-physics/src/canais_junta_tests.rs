@@ -407,9 +407,10 @@ fn escrever_o_mesmo_tipo_nao_mexe_na_junta() {
     );
 }
 
-/// O comprimento de uma POLIA é da rota (o Auto Key não o amostra); o de uma corda é do artista.
+/// O comprimento de uma POLIA é da rota enquanto tem o valor que a ponte semeou; o que a mão
+/// digita depois é do artista (F30 §D) — e o de uma corda simples nunca é da rota.
 #[test]
-fn so_a_corda_da_polia_tem_o_comprimento_da_rota() {
+fn o_comprimento_da_polia_e_da_mao_quando_a_mao_o_muda() {
     let mut sim = SimWorld::new();
     let polia = sim
         .world_mut()
@@ -419,6 +420,19 @@ fn so_a_corda_da_polia_tem_o_comprimento_da_rota() {
         .world_mut()
         .spawn(PhysicsJoint::of_kind(JointKind::Rope))
         .id();
-    assert!(e_polia(sim.world(), polia.to_bits()));
-    assert!(!e_polia(sim.world(), corda.to_bits()));
+    let semeado = sim.world().get::<PhysicsJoint>(polia).unwrap().max_length;
+    let mut rota = ph2d_physics_ecs::ComprimentoDaRota::default();
+    rota.0.insert(polia.to_bits(), semeado);
+    rota.0.insert(corda.to_bits(), semeado);
+    sim.world_mut().insert_resource(rota);
+    assert!(comprimento_da_rota(sim.world(), polia.to_bits()));
+    assert!(!comprimento_da_rota(sim.world(), corda.to_bits()));
+    sim.world_mut()
+        .get_mut::<PhysicsJoint>(polia)
+        .unwrap()
+        .max_length = semeado + 1.0;
+    assert!(
+        !comprimento_da_rota(sim.world(), polia.to_bits()),
+        "a mão mudou o comprimento e o Auto Key continua a tomá-lo pela rota"
+    );
 }

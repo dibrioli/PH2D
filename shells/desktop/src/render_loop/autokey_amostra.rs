@@ -18,10 +18,10 @@ pub(super) fn sample_pose<'a>(
     let src = src.into();
     let mut pose: PoseSample = [None; PropKind::AUTOKEYED.len()];
     for (i, &prop) in PropKind::AUTOKEYED.iter().enumerate() {
-        // ⛔ O comprimento de uma POLIA cai da rota (a ponte re-deriva-o quando a roldana muda):
-        // amostrá-lo gravava a ponte como se fosse a mão (F26).
+        // ⛔ O comprimento que a ponte semeou da rota de uma POLIA não é da mão (F26); o que a mão
+        // digita depois é (F30 §D).
         if prop == PropKind::JointMaxLength
-            && ph2d_app_physics::canais_junta::e_polia(src.world, entity)
+            && ph2d_app_physics::canais_junta::comprimento_da_rota(src.world, entity)
         {
             continue;
         }

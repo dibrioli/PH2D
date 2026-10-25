@@ -174,6 +174,22 @@ fn a_fresh_pulley_seeds_its_rope_from_the_route_the_wheels_draw() {
     );
 }
 
+/// A semente da corda fica anotada em `ComprimentoDaRota` — é por ela que o Auto Key distingue a
+/// rota da mão (F30 §D).
+#[test]
+fn a_ponte_anota_o_comprimento_que_semeou_da_rota() {
+    let mut sim = rig(JointKind::Pulley, 1.0, 1.0, true);
+    let mut bridge = PhysicsBridge::new();
+    run(&mut sim, &mut bridge, 1);
+    let l0 = joint_of(&mut sim).max_length;
+    let e = entity_named(&mut sim, "Rope");
+    let rota = sim
+        .world()
+        .get_resource::<ph2d_physics_ecs::ComprimentoDaRota>()
+        .expect("a ponte semeou e não anotou");
+    assert!(rota.veio_da_rota(e.to_bits(), l0), "anotou {rota:?}, a corda tem {l0}");
+}
+
 /// **O RAIO acrescenta ARCO à corda** — o pedido (3) do artista, no número que a
 /// polia guarda.
 ///

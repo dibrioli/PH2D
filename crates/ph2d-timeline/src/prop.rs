@@ -176,10 +176,9 @@ pub enum PropKind {
     /// significam *«deriva o lado da pose que chega»*, e um canal que os animasse estaria a keyar a
     /// AUSÊNCIA de uma escolha.
     ///
-    /// ⚠️ Fora do [`PropKind::ALL`] (não é pose de sprite) **e** fora do [`PropKind::AUTOKEYED`]:
-    /// este valor muda por um clique num chip do painel, e o auto-key desta casa grava o que a MÃO
-    /// move no canvas. *Pô-lo lá faria toda troca de chip virar uma chave, inclusive a que o
-    /// artista fez para ver como fica.* Appended — the discriminant is a frozen wire value.
+    /// ⚠️ Fora do [`PropKind::ALL`] (não é pose de sprite), **dentro** do [`PropKind::AUTOKEYED`]
+    /// desde a F30: o Auto Key armado grava toda propriedade que o artista muda (dono, 19/10), o
+    /// clique num chip incluído. Appended — the discriminant is a frozen wire value.
     IkBendSide = 17,
     /// **O relógio de uma MACRO** (ADR-0186, item 5 da W4): o instante, em segundos do relógio da
     /// macro, que o tocador do objecto mostra neste quadro. Escreve `ph2d_ecs::MacroTempo`, que é
@@ -247,7 +246,10 @@ impl PropKind {
     /// comprimentos nasceram fora daqui («digitados no Inspector, a porta é o K»), e o Auto Key
     /// armado não os via — a edição do painel voltava à curva no quadro seguinte. *O Auto Key grava
     /// tudo* (dono, 19/10). Numa entidade sem `PhysicsJoint` o amostrador devolve `None`.
-    pub const AUTOKEYED: [PropKind; 15] = [
+    ///
+    /// E o lado da dobra do IK (F30): um clique no chip com o Auto Key armado é uma edição. Numa
+    /// entidade sem `IkGoal` o amostrador devolve `None`.
+    pub const AUTOKEYED: [PropKind; 16] = [
         PropKind::TranslationX,
         PropKind::TranslationY,
         PropKind::Rotation,
@@ -263,6 +265,7 @@ impl PropKind {
         PropKind::JointMotorSpeed,
         PropKind::JointRestLength,
         PropKind::JointMaxLength,
+        PropKind::IkBendSide,
     ];
 
     /// The opaque [`AnimTarget`] a track uses to drive this property.

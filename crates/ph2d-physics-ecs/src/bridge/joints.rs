@@ -646,6 +646,12 @@ impl PhysicsBridge {
                 }
                 j.anchored = true;
             }
+            if let Some(l0) = rope_length {
+                sim.world_mut()
+                    .get_resource_or_insert_with(crate::ComprimentoDaRota::default)
+                    .0
+                    .insert(e.to_bits(), l0);
+            }
         }
         self.joints_to_seed.clear();
 

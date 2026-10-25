@@ -82,6 +82,12 @@ const FORMAS_NAO_LITERAIS: &[(&str, &str, Especie, &str)] = &[
         "item do menu Add de objectos = hash da CHAVE i18n da entrada (`object_add.*`); só é hit-registado com a paleta aberta; a colisão com as outras paletas do canal de pick é o no_menu_id_belongs_to_another_palette da shell",
     ),
     (
+        "crates/ph2d-editor-core/src/object_add.rs",
+        "smoke_hover",
+        Especie::HashDeExpressao,
+        "o rato do smoke (`PH2D_OBJECT_ADD_HOVER=<chave>`) = o MESMO hash da chave que o `id` acima usa — aponta para um item que já existe, não cria id novo; inerte sem a env",
+    ),
+    (
         "crates/ph2d-app-motion/src/motion_bridge_library.rs",
         "build_palette_model",
         Especie::HashDeExpressao,

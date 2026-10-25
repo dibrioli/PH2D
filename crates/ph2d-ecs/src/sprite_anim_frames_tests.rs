@@ -150,3 +150,16 @@ fn por_uma_lista_vazia_apaga_a_entrada() {
     f.set("a", vec![]);
     assert!(f.is_empty());
 }
+
+#[test]
+fn um_tempo_igual_ao_ritmo_nao_e_tempo_proprio() {
+    let mut t = AnimationTag::new("idle", 0, 5);
+    t.frame_ms = 167;
+    t.per_frame_ms = vec![167; 6];
+    assert!(
+        !t.has_per_frame_timing(),
+        "o herói de fábrica escreve o ritmo por extenso"
+    );
+    t.per_frame_ms[2] = 300;
+    assert!(t.has_per_frame_timing());
+}

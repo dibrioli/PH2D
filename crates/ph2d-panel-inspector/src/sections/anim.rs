@@ -302,7 +302,10 @@ fn player_block(
     );
     // A duração DESTE quadro (spec §8.12) — só quando ele a tem (o editor é onde se dá tempo a um
     // quadro); colada à barra, que é o selector do quadro.
-    if info.this_frame_ms().is_some_and(|ms| ms > 0) {
+    if info
+        .this_frame_ms()
+        .is_some_and(|ms| ms > 0 && Some(ms) != info.current_frame_ms())
+    {
         cur_y = super::rows::fields_row(
             scene,
             text_system,

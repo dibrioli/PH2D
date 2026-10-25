@@ -263,7 +263,10 @@ impl AnimationTag {
     /// Esta tag tem ritmo próprio por célula? (O que o painel mostra, e o que o importador diz.)
     #[must_use]
     pub fn has_per_frame_timing(&self) -> bool {
-        self.per_frame_ms.iter().any(|&v| v > 0)
+        // Um valor igual ao `frame_ms` não é tempo PRÓPRIO: é o ritmo da tag escrito por extenso.
+        self.per_frame_ms
+            .iter()
+            .any(|&v| v > 0 && v != self.frame_ms)
     }
 }
 

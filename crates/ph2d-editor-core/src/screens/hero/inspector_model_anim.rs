@@ -56,7 +56,10 @@ impl InspectorAnimRow {
     /// lado dele — duas respostas à mesma pergunta divergem no dia em que uma for esquecida.
     #[must_use]
     pub fn has_per_frame_timing(&self) -> bool {
-        self.per_frame_ms.iter().any(|&v| v > 0)
+        // Um valor igual ao `frame_ms` não é tempo PRÓPRIO: é o ritmo da tag escrito por extenso.
+        self.per_frame_ms
+            .iter()
+            .any(|&v| v > 0 && v != self.frame_ms)
     }
 
     /// O intervalo cabe na grelha que a sprite tem?
@@ -250,6 +253,12 @@ impl InspectorAnimInfo {
         let i = self.this_frame_index()?;
         let row = self.rows.get(self.current_index()?)?;
         Some(row.per_frame_ms.get(i).copied().unwrap_or(0))
+    }
+
+    /// O ritmo da animação que toca (`frame_ms`) — contra ele se lê se um quadro tem tempo PRÓPRIO.
+    #[must_use]
+    pub fn current_frame_ms(&self) -> Option<u32> {
+        Some(self.rows.get(self.current_index()?)?.frame_ms)
     }
 
     /// **QUEM o campo de duração edita: `(linha, célula)`** — e as duas saem da mesma lei.

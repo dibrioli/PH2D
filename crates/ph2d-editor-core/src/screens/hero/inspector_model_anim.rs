@@ -572,7 +572,10 @@ mod tests {
         i.card.step = 9; // um cursor velho: a célula visível decide
         assert_eq!(i.this_frame_index(), Some(0));
         i.rows[1].frames = vec![6, 9];
-        assert!(i.current_dangling(), "uma célula fora da grelha cala a lista inteira");
+        assert!(
+            i.current_dangling(),
+            "uma célula fora da grelha cala a lista inteira"
+        );
         assert_eq!(i.progress(), None);
     }
 

@@ -4,7 +4,10 @@
 use ph2d_editor_core::pixel_panel::PixelPanelInfo;
 
 #[derive(Clone, Debug, Default)]
-pub struct PixelToolsPanelState;
+pub struct PixelToolsPanelState {
+    /// O renomear aberto: `(camada, o campo já foi semeado)`.
+    pub(crate) rename: Option<(u32, bool)>,
+}
 
 thread_local! {
     static CURRENT: std::cell::RefCell<PixelPanelInfo> =

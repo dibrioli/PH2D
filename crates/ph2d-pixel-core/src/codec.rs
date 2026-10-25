@@ -7,7 +7,9 @@
 //! Entry    : 1 chave (varint) · 2 Sprite (registo)
 //! Sprite   : 1 largura · 2 altura · 3 modo · 4 paleta (n×4 bytes) · 5 transparente · 6 Layer*
 //!            · 7 Frame* · 8 Cel* · 9 próximo id                       (inteiros em varint)
-//! Layer    : 1 id · 2 nome (utf8) · 3 bandeiras (bit0 visível, bit1 background)
+//! Layer    : 1 id · 2 nome (utf8) · 3 bandeiras (bit0 visível, bit1 background, bit2 trancada,
+//!            bit3 referência, bit4 grupo, bit5 grupo recolhido) · 4 opacidade (sem = 255)
+//!            · 5 modo de mistura (id do `.ase`, sem = Normal) · 6 pai (id; sem = raiz)   [1.1]
 //! Frame    : 1 id · 2 duração ms
 //! Cel      : 1 camada · 2 frame · 3 x (zigzag) · 4 y (zigzag) · 5 w · 6 h · 7 bytes
 //! ```
@@ -17,11 +19,14 @@
 
 use std::collections::BTreeMap;
 
-use crate::sprite::{Cel, ColorMode, Frame, FrameId, Layer, LayerId, MAX_SIDE, Rect, Sprite};
+use crate::blend::BlendMode;
+use crate::sprite::{
+    Cel, ColorMode, Frame, FrameId, Layer, LayerId, LayerKind, MAX_SIDE, Rect, Sprite,
+};
 
 pub const MAGIC: &[u8; 9] = b"PH2DPIXEL";
 pub const MAJOR: u16 = 1;
-pub const MINOR: u16 = 0;
+pub const MINOR: u16 = 1;
 
 /// Ficheiro recusado; nunca um documento meio lido.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -117,11 +122,29 @@ fn sprite_record(s: &Sprite) -> Vec<u8> {
         let mut b = Vec::new();
         put_uint(&mut b, 1, u64::from(l.id.0));
         put_field(&mut b, 2, l.name.as_bytes());
+        let (group, collapsed) = match l.kind {
+            LayerKind::Image => (false, false),
+            LayerKind::Group { collapsed } => (true, collapsed),
+        };
         put_uint(
             &mut b,
             3,
-            u64::from(l.visible) | (u64::from(l.background) << 1),
+            u64::from(l.visible)
+                | (u64::from(l.background) << 1)
+                | (u64::from(l.locked) << 2)
+                | (u64::from(l.reference) << 3)
+                | (u64::from(group) << 4)
+                | (u64::from(collapsed) << 5),
         );
+        if l.opacity != 255 {
+            put_uint(&mut b, 4, u64::from(l.opacity));
+        }
+        if l.blend != BlendMode::Normal {
+            put_uint(&mut b, 5, u64::from(l.blend.code()));
+        }
+        if let Some(p) = l.parent {
+            put_uint(&mut b, 6, u64::from(p.0));
+        }
         b.push(0);
         put_field(&mut r, 6, &b);
     }
@@ -181,12 +204,7 @@ fn read_sprite(bytes: &[u8]) -> Result<Sprite, CodecError> {
                     .map_err(|_| CodecError::Invalid("sprite.transparent"))?;
             }
             6 => {
-                let mut l = Layer {
-                    id: LayerId(0),
-                    name: String::new(),
-                    visible: true,
-                    background: false,
-                };
+                let mut l = Layer::image(LayerId(0), String::new());
                 for (t, v) in Fields::new(b)? {
                     match t {
                         1 => l.id = LayerId(u32_of(v, "layer.id")?),
@@ -198,7 +216,25 @@ fn read_sprite(bytes: &[u8]) -> Result<Sprite, CodecError> {
                             let f = uint(v)?;
                             l.visible = f & 1 != 0;
                             l.background = f & 2 != 0;
+                            l.locked = f & 4 != 0;
+                            l.reference = f & 8 != 0;
+                            if f & 16 != 0 {
+                                l.kind = LayerKind::Group {
+                                    collapsed: f & 32 != 0,
+                                };
+                            }
                         }
+                        4 => {
+                            l.opacity = u8::try_from(uint(v)?)
+                                .map_err(|_| CodecError::Invalid("layer.opacity"))?;
+                        }
+                        5 => {
+                            l.blend = u8::try_from(uint(v)?)
+                                .ok()
+                                .and_then(BlendMode::from_code)
+                                .ok_or(CodecError::Invalid("layer.blend"))?;
+                        }
+                        6 => l.parent = Some(LayerId(u32_of(v, "layer.parent")?)),
                         _ => {}
                     }
                 }
@@ -260,9 +296,10 @@ fn validate(s: &mut Sprite, raw_cels: Vec<((LayerId, FrameId), Cel)>) -> Result<
             return Err(CodecError::Invalid("id"));
         }
     }
+    crate::op::check_layers(&s.layers, s.next_id).map_err(|_| CodecError::Invalid("layers"))?;
     let bpp = s.mode.bpp();
     for (key, cel) in raw_cels {
-        if s.layer(key.0).is_none() || !s.frames.iter().any(|f| f.id == key.1) {
+        if s.layer(key.0).is_none_or(Layer::is_group) || !s.frames.iter().any(|f| f.id == key.1) {
             return Err(CodecError::Invalid("cel.key"));
         }
         if cel.bbox.is_empty() || cel.data.len() != cel.bbox.area() * bpp {

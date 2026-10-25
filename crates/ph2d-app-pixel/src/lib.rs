@@ -10,6 +10,7 @@
 //! [`frame`](PixelApp::frame) uma vez por quadro, encaminha o ponteiro/roda/teclado ([`input`]) e
 //! pede o desenho ([`draw`]).
 
+pub mod camadas;
 pub mod compose;
 pub mod draw;
 mod frame;

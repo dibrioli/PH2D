@@ -22,7 +22,7 @@ impl PixelApp {
 
     /// Aplica um gesto do painel (os da paleta e da cor vão ao documento em Draw).
     pub fn aplica(&mut self, r: PixelRequest) {
-        if self.aplica_paleta(r) {
+        if self.aplica_camada(&r) || self.aplica_paleta(r.clone()) {
             return;
         }
         match r {
@@ -112,6 +112,8 @@ pub fn frame(
         crate::paleta::modo(d.sprite.mode())
     });
     let n = palette.as_ref().map_or(0, Vec::len);
+    let layers = doc.map(|d| crate::camadas::rows(&d.sprite)).unwrap_or_default();
+    let active_layer = doc.map(|d| d.layer.0);
     PixelPanelInfo {
         editing: palette.is_some(),
         tool: app.tool,
@@ -123,6 +125,9 @@ pub fn frame(
         selected: app.sel.iter().copied().filter(|&i| i < n).collect(),
         anchor: app.ultima.filter(|&i| i < n),
         sort_key: app.sort_key,
+        layers,
+        active_layer,
+        has_clip: app.clip.is_some(),
     }
 }
 

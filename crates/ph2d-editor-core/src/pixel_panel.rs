@@ -372,10 +372,139 @@ pub struct PixelPanelInfo {
     /// A última amostra clicada: a que o *Edit color* edita.
     pub anchor: Option<usize>,
     pub sort_key: PixelSortKey,
+    /// As camadas na ordem da lista (de CIMA para baixo); os filhos de um grupo recolhido não vêm.
+    pub layers: Vec<PixelLayerRow>,
+    /// A camada activa (a que as ferramentas pintam).
+    pub active_layer: Option<u32>,
+    /// Há uma imagem copiada (o *Paste as New Layer* acende).
+    pub has_clip: bool,
+}
+
+/// Uma linha da lista de camadas.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PixelLayerRow {
+    pub id: u32,
+    pub name: String,
+    /// Quantos grupos a contêm (o recuo da linha).
+    pub depth: u8,
+    pub group: bool,
+    pub collapsed: bool,
+    pub visible: bool,
+    pub locked: bool,
+    pub reference: bool,
+    pub background: bool,
+    pub opacity: u8,
+    pub blend: PixelBlend,
+}
+
+/// O modo de mistura no vocabulário do chrome (os 19 do Aseprite, na ordem dos ids do `.ase`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum PixelBlend {
+    #[default]
+    Normal,
+    Multiply,
+    Screen,
+    Overlay,
+    Darken,
+    Lighten,
+    ColorDodge,
+    ColorBurn,
+    HardLight,
+    SoftLight,
+    Difference,
+    Exclusion,
+    Hue,
+    Saturation,
+    Color,
+    Luminosity,
+    Addition,
+    Subtract,
+    Divide,
+}
+
+impl PixelBlend {
+    pub const ALL: [Self; 19] = [
+        Self::Normal,
+        Self::Multiply,
+        Self::Screen,
+        Self::Overlay,
+        Self::Darken,
+        Self::Lighten,
+        Self::ColorDodge,
+        Self::ColorBurn,
+        Self::HardLight,
+        Self::SoftLight,
+        Self::Difference,
+        Self::Exclusion,
+        Self::Hue,
+        Self::Saturation,
+        Self::Color,
+        Self::Luminosity,
+        Self::Addition,
+        Self::Subtract,
+        Self::Divide,
+    ];
+
+    /// Os grupos do menu (escurecer, clarear, contraste, diferença, cor), na ordem do Aseprite.
+    pub const GROUPS: [&'static [Self]; 6] = [
+        &[Self::Normal],
+        &[Self::Darken, Self::Multiply, Self::ColorBurn],
+        &[Self::Lighten, Self::Screen, Self::ColorDodge, Self::Addition],
+        &[Self::Overlay, Self::SoftLight, Self::HardLight],
+        &[Self::Difference, Self::Exclusion, Self::Subtract, Self::Divide],
+        &[Self::Hue, Self::Saturation, Self::Color, Self::Luminosity],
+    ];
+
+    #[must_use]
+    pub const fn label_key(self) -> &'static str {
+        match self {
+            Self::Normal => "panel.pixel.blend.normal",
+            Self::Multiply => "panel.pixel.blend.multiply",
+            Self::Screen => "panel.pixel.blend.screen",
+            Self::Overlay => "panel.pixel.blend.overlay",
+            Self::Darken => "panel.pixel.blend.darken",
+            Self::Lighten => "panel.pixel.blend.lighten",
+            Self::ColorDodge => "panel.pixel.blend.color_dodge",
+            Self::ColorBurn => "panel.pixel.blend.color_burn",
+            Self::HardLight => "panel.pixel.blend.hard_light",
+            Self::SoftLight => "panel.pixel.blend.soft_light",
+            Self::Difference => "panel.pixel.blend.difference",
+            Self::Exclusion => "panel.pixel.blend.exclusion",
+            Self::Hue => "panel.pixel.blend.hue",
+            Self::Saturation => "panel.pixel.blend.saturation",
+            Self::Color => "panel.pixel.blend.color",
+            Self::Luminosity => "panel.pixel.blend.luminosity",
+            Self::Addition => "panel.pixel.blend.addition",
+            Self::Subtract => "panel.pixel.blend.subtract",
+            Self::Divide => "panel.pixel.blend.divide",
+        }
+    }
+}
+
+/// As acções do menu Layer (e do Edit que fazem camadas).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PixelLayerAction {
+    NewLayer,
+    NewGroup,
+    Delete,
+    Duplicate,
+    /// Um degrau acima/abaixo entre irmãos.
+    MoveUp,
+    MoveDown,
+    MergeDown,
+    Flatten,
+    FlattenVisible,
+    /// *Layer via Copy* / *via Cut* (sem selecção: o cel inteiro do frame).
+    ViaCopy,
+    ViaCut,
+    /// *Edit ▸ Copy* do cel activo.
+    Copy,
+    PasteAsLayer,
+    PasteAsReference,
 }
 
 /// Um gesto do painel PIXEL (`EditorAction::Pixel`).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PixelRequest {
     Tool(PixelTool),
     Fg([u8; 4]),
@@ -408,6 +537,23 @@ pub enum PixelRequest {
     DefaultPalette,
     /// *Edit ▸ Replace Color*: a cor de frente vira a de fundo no cel activo.
     ReplaceColor,
+    /// Clique no nome: a camada activa.
+    LayerSelect(u32),
+    /// O olho / o cadeado / o triângulo do grupo.
+    LayerVisible(u32),
+    LayerLocked(u32),
+    LayerCollapsed(u32),
+    /// *Solo*: só esta camada se vê (outra vez: todas voltam como estavam).
+    LayerSolo(u32),
+    /// As propriedades da camada activa.
+    LayerOpacity(u8),
+    LayerBlend(PixelBlend),
+    LayerAction(PixelLayerAction),
+    /// O nome novo (o campo do duplo clique; vazio = fica o antigo).
+    LayerRename {
+        id: u32,
+        name: String,
+    },
 }
 
 /// O lado máximo de um sprite — o mesmo `MAX_SIDE` do `ph2d-pixel-core` (a família prova a

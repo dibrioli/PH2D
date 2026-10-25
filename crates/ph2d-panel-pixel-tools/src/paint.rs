@@ -26,7 +26,10 @@ use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, StrokeToken, Theme, TypeToken};
 use ph2d_vector::VectorScene;
 
-pub(crate) fn paint(_st: &mut PixelToolsPanelState, ctx: &mut PaintCtx) {
+#[path = "paint_camadas.rs"]
+mod camadas;
+
+pub(crate) fn paint(st: &mut PixelToolsPanelState, ctx: &mut PaintCtx) {
     if !ctx.host.panel_visible(PixelToolsPanel::ID) {
         ctx.host.store_mut().clear_panel_rect(core_ids::PIXEL_PANEL);
         return;
@@ -54,15 +57,22 @@ pub(crate) fn paint(_st: &mut PixelToolsPanelState, ctx: &mut PaintCtx) {
     );
     let n = with_current(|i| if i.editing { i.palette.len() } else { 0 });
     seam::register_palette(ctx.host.store_mut(), n);
+    with_current(|i| seam::register_layers(ctx.host.store_mut(), &i.layers));
+    seam::seed_rename(st, ctx.host.store_mut());
+    let renaming = st.rename.map(|(id, _)| id);
     // Os campos mostram o MODELO (o instantâneo); a edição em curso de um campo com foco fica.
-    let (opcoes, cores) = with_current(|i| (i.options, i.palette.len()));
+    let (opcoes, cores, opacidade) = with_current(|i| {
+        let activa = i.active_layer.and_then(|a| i.layers.iter().find(|r| r.id == a));
+        (i.options, i.palette.len(), activa.map_or(255, |r| r.opacity))
+    });
     let store = ctx.host.store_mut();
     #[expect(clippy::cast_precision_loss, reason = "uma paleta, ≤ 256")]
     let tamanho = (ids::PALETTE_SIZE, cores as f64);
     let numeros = ids::NUMBERS
         .iter()
         .map(|(id, _)| (*id, seam::numero(&opcoes, *id)));
-    for (id, v) in numeros.chain([tamanho]) {
+    let opacidade = (ids::LAYER_OPACITY, f64::from(opacidade));
+    for (id, v) in numeros.chain([tamanho, opacidade]) {
         if store.number_value(id) != Some(v) {
             store.set_number_value(id, v);
         }
@@ -80,6 +90,7 @@ pub(crate) fn paint(_st: &mut PixelToolsPanelState, ctx: &mut PaintCtx) {
         Rect::new(rect.x, body_top, rect.w, body_h),
     );
     let top = area.top();
+    let mut blend_aberto = None;
     let content_h = with_current(|info| {
         let (store, hit_index) = ctx.host.store_and_hit_index_mut();
         let mut c = Corpo {
@@ -90,11 +101,21 @@ pub(crate) fn paint(_st: &mut PixelToolsPanelState, ctx: &mut PaintCtx) {
             theme,
             x: inner_x,
             w: inner_w,
+            blend_aberto: None,
         };
-        let y = c.tudo(info, top);
+        let y = c.tudo(info, renaming, top);
+        blend_aberto = c.blend_aberto;
         (y - top + PANEL_HEAD_PAD).max(0.0)
     });
     ph2d_editor_core::panel::scroll_area::close(area, ctx, content_h);
+    // O menu do modo, por cima do corpo (fora do recorte da rolagem).
+    if let Some((chip, cur)) = blend_aberto {
+        let dd = ph2d_editor_core::widget::Dropdown::new(ids::LAYER_BLEND, "", camadas::blend_options())
+            .selected(cur)
+            .open(true);
+        let viewport = ctx.viewport;
+        ph2d_editor_core::panel::paint_dropdown_list(ctx, &dd, chip, viewport, theme, None);
+    }
 }
 
 struct Corpo<'a> {
@@ -105,6 +126,8 @@ struct Corpo<'a> {
     theme: Theme,
     x: f32,
     w: f32,
+    /// O menu do modo aberto: o chip e o modo actual (pinta-se depois, por cima).
+    blend_aberto: Option<(Rect, ph2d_editor_core::pixel_panel::PixelBlend)>,
 }
 
 /// `#RRGGBB` (com `AA` quando a cor não é opaca) — o hex que o Aseprite mostra.
@@ -119,13 +142,14 @@ pub fn hex(c: [u8; 4]) -> String {
 }
 
 impl Corpo<'_> {
-    fn tudo(&mut self, info: &PixelPanelInfo, y: f32) -> f32 {
+    fn tudo(&mut self, info: &PixelPanelInfo, renaming: Option<u32>, y: f32) -> f32 {
         if !info.editing {
             return self.bloco(tr("panel.pixel.empty"), ColorToken::Text3, y);
         }
         let gap = ph2d_tokens::control_gap_px();
         let y = self.opcoes(info, y) + gap;
         let y = self.cores(info, y) + gap;
+        let y = self.camadas(info, renaming, y) + gap;
         let y = self.paleta(info, y) + gap;
         let y = self.acoes_da_paleta(info, y) + gap;
         self.sprite(y)

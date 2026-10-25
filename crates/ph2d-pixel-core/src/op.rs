@@ -3,7 +3,7 @@
 use std::collections::BTreeMap;
 
 use crate::palette::{MAX_COLORS, invert_permutation, is_permutation};
-use crate::sprite::{Cel, CelKey, ColorMode, FrameId, LayerId, Rect, Sprite};
+use crate::sprite::{Cel, CelKey, ColorMode, FrameId, Layer, LayerId, Rect, Sprite};
 
 /// Uma mutação do documento. O catálogo cresce por onda; cada variante tem inverso exato.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -22,6 +22,17 @@ pub enum Op {
     /// O documento inteiro de uma vez: modo, paleta, transparente e cels (Color Mode, New Palette
     /// from Sprite com remapeamento). O inverso é o estado de antes.
     Whole(Box<Whole>),
+    /// A lista de camadas inteira e os cels que mudam com ela (nova, apagar, mover, propriedades,
+    /// duplicar, Merge Down, Flatten…). O inverso é a lista de antes e esses cels como estavam.
+    Layers(Box<LayerSet>),
+}
+
+/// O que [`Op::Layers`] põe no sprite: `layers` substitui a lista; cada `(chave, cel)` de `cels`
+/// põe (`Some`) ou tira (`None`) esse cel.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LayerSet {
+    pub layers: Vec<Layer>,
+    pub cels: Vec<(CelKey, Option<Cel>)>,
 }
 
 /// O que [`Op::Whole`] põe no sprite.
@@ -65,6 +76,8 @@ pub enum OpError {
     /// Um cel do [`Whole`] não bate com o modo (bytes ≠ área × bpp) ou nomeia camada/frame que
     /// não existe.
     BadCel(CelKey),
+    /// A lista de camadas viola uma lei da árvore (o campo diz qual).
+    BadLayers(&'static str),
 }
 
 impl Op {
@@ -75,6 +88,13 @@ impl Op {
             Op::Patch(p) => p.pixels.len() + std::mem::size_of::<Patch>(),
             Op::Palette { colors, .. } => colors.len() * 4 + std::mem::size_of::<Op>(),
             Op::Remap { perm } => perm.len() * std::mem::size_of::<usize>(),
+            Op::Layers(l) => {
+                l.layers.len() * std::mem::size_of::<Layer>()
+                    + l.cels
+                        .iter()
+                        .map(|(_, c)| c.as_ref().map_or(0, |c| c.data.len()) + 32)
+                        .sum::<usize>()
+            }
             Op::Whole(w) => {
                 w.palette.len() * 4
                     + w.cels.values().map(|c| c.data.len() + 32).sum::<usize>()
@@ -109,7 +129,73 @@ pub fn apply(sprite: &mut Sprite, op: Op) -> Result<Op, OpError> {
             perm: invert_permutation(&perm),
         }),
         Op::Whole(w) => apply_whole(sprite, *w).map(|w| Op::Whole(Box::new(w))),
+        Op::Layers(l) => apply_layers(sprite, *l).map(|l| Op::Layers(Box::new(l))),
     }
+}
+
+/// As leis da árvore de camadas: ids únicos e já emitidos; pai existe, é grupo e vem de uma
+/// cadeia sem ciclo; a Background é no máximo uma, na raiz, a primeira e de imagem; há pelo
+/// menos uma camada de imagem.
+pub(crate) fn check_layers(layers: &[Layer], next_id: u32) -> Result<(), OpError> {
+    let bad = OpError::BadLayers;
+    if !layers.iter().any(|l| !l.is_group()) {
+        return Err(bad("no image layer"));
+    }
+    let mut seen = std::collections::BTreeSet::new();
+    for l in layers {
+        if l.id.0 == 0 || l.id.0 >= next_id || !seen.insert(l.id) {
+            return Err(bad("layer.id"));
+        }
+    }
+    for (i, l) in layers.iter().enumerate() {
+        let mut p = l.parent;
+        let mut hops = 0;
+        while let Some(id) = p {
+            let g = layers.iter().find(|x| x.id == id).ok_or(bad("layer.parent"))?;
+            if !g.is_group() || hops > layers.len() {
+                return Err(bad("layer.parent"));
+            }
+            p = g.parent;
+            hops += 1;
+        }
+        if l.background && (i != 0 || l.parent.is_some() || l.is_group()) {
+            return Err(bad("layer.background"));
+        }
+    }
+    Ok(())
+}
+
+fn apply_layers(s: &mut Sprite, set: LayerSet) -> Result<LayerSet, OpError> {
+    check_layers(&set.layers, s.next_id)?;
+    let bpp = s.mode.bpp();
+    let image = |id: LayerId| set.layers.iter().any(|l| l.id == id && !l.is_group());
+    for (key, cel) in &set.cels {
+        if let Some(c) = cel
+            && (!image(key.0)
+                || !s.frames.iter().any(|f| f.id == key.1)
+                || c.data.len() != c.bbox.area() * bpp)
+        {
+            return Err(OpError::BadCel(*key));
+        }
+    }
+    // Nenhum cel pode ficar órfão: o de uma camada que sai (ou vira grupo) tem de vir em `cels`.
+    let touched: std::collections::BTreeSet<CelKey> = set.cels.iter().map(|(k, _)| *k).collect();
+    if let Some(k) = s.cels.keys().find(|k| !touched.contains(k) && !image(k.0)) {
+        return Err(OpError::BadCel(*k));
+    }
+    let mut before = Vec::with_capacity(set.cels.len());
+    for (key, cel) in set.cels {
+        let old = match cel {
+            Some(c) => s.cels.insert(key, c),
+            None => s.cels.remove(&key),
+        };
+        before.push((key, old));
+    }
+    before.reverse();
+    Ok(LayerSet {
+        layers: std::mem::replace(&mut s.layers, set.layers),
+        cels: before,
+    })
 }
 
 fn apply_remap(s: &mut Sprite, perm: &[usize]) -> Result<(), OpError> {

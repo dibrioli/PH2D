@@ -109,6 +109,10 @@ pub struct PixelApp {
     /// O diálogo Color Mode a abrir com esta escolha quando houver documento em Draw (a cena de
     /// smoke 5, para a foto).
     pub(crate) abre_color_mode: Option<ph2d_editor_core::pixel_panel::ColorModeChoice>,
+    /// A imagem copiada (Edit ▸ Copy), de qualquer sprite.
+    pub(crate) clip: Option<ph2d_pixel_core::layers::Clip>,
+    /// O Solo em curso: `(chave, camada, a visibilidade de antes)`.
+    pub(crate) solo: Option<(u32, LayerId, Vec<(LayerId, bool)>)>,
 }
 
 impl Default for PixelApp {
@@ -141,6 +145,8 @@ impl Default for PixelApp {
             edicao: None,
             avisos: Vec::new(),
             abre_color_mode: None,
+            clip: None,
+            solo: None,
         }
     }
 }

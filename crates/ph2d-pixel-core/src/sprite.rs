@@ -157,7 +157,16 @@ impl Rect {
     }
 }
 
-/// Uma camada. Ordem no `Vec` = z (0 = fundo).
+/// O que uma camada é (Aseprite: Layer ▸ New Layer / New Group).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LayerKind {
+    /// Tem cels com células.
+    Image,
+    /// Não tem cels: compõe os filhos (`parent == Some(id)`) e mistura o resultado.
+    Group { collapsed: bool },
+}
+
+/// Uma camada. Ordem no `Vec` = z entre irmãos (0 = fundo); a árvore vem de `parent`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Layer {
     pub id: LayerId,
@@ -165,6 +174,39 @@ pub struct Layer {
     pub visible: bool,
     /// A camada Background do Aseprite: opaca, no fundo; a borracha pinta a cor de fundo nela.
     pub background: bool,
+    /// Trancada (Aseprite: o cadeado, *editable* desligado): nenhuma ferramenta escreve nela.
+    pub locked: bool,
+    /// Camada de referência (Aseprite: New Reference Layer): vê-se, não se exporta nem funde.
+    pub reference: bool,
+    pub opacity: u8,
+    pub blend: crate::blend::BlendMode,
+    pub kind: LayerKind,
+    /// O grupo que a contém; `None` = na raiz.
+    pub parent: Option<LayerId>,
+}
+
+impl Layer {
+    /// Uma camada de imagem visível, opaca, Normal, na raiz.
+    #[must_use]
+    pub fn image(id: LayerId, name: impl Into<String>) -> Self {
+        Self {
+            id,
+            name: name.into(),
+            visible: true,
+            background: false,
+            locked: false,
+            reference: false,
+            opacity: 255,
+            blend: crate::blend::BlendMode::Normal,
+            kind: LayerKind::Image,
+            parent: None,
+        }
+    }
+
+    #[must_use]
+    pub fn is_group(&self) -> bool {
+        matches!(self.kind, LayerKind::Group { .. })
+    }
 }
 
 /// Um frame, com a duração própria em milissegundos (Aseprite: 100 ms por omissão).
@@ -232,12 +274,12 @@ impl Sprite {
         };
         let opaque = background != Background::Transparent;
         let layer = s.alloc_id();
-        s.layers.push(Layer {
-            id: LayerId(layer),
-            name: if opaque { "Background" } else { "Layer 1" }.to_owned(),
-            visible: true,
-            background: opaque,
-        });
+        let mut first = Layer::image(
+            LayerId(layer),
+            if opaque { "Background" } else { "Layer 1" },
+        );
+        first.background = opaque;
+        s.layers.push(first);
         let frame = s.alloc_id();
         s.frames.push(Frame {
             id: FrameId(frame),
@@ -303,6 +345,25 @@ impl Sprite {
     pub fn layer(&self, id: LayerId) -> Option<&Layer> {
         self.layers.iter().find(|l| l.id == id)
     }
+    /// Visível ela e todos os grupos que a contêm.
+    #[must_use]
+    pub fn is_shown(&self, id: LayerId) -> bool {
+        let mut cur = self.layer(id);
+        while let Some(l) = cur {
+            if !l.visible {
+                return false;
+            }
+            cur = l.parent.and_then(|p| self.layer(p));
+        }
+        true
+    }
+
+    /// Um id novo para uma camada que um [`crate::Op::Layers`] vai pôr (ids nunca se reciclam,
+    /// e o desfazer não os devolve: o refazer reata os cels pelo MESMO id).
+    pub fn reserve_id(&mut self) -> u32 {
+        self.alloc_id()
+    }
+
     /// O retângulo do sprite inteiro.
     #[must_use]
     pub fn bounds(&self) -> Rect {

@@ -1,9 +1,12 @@
+mod blend_oracle;
 mod codec;
 mod color_laws;
 mod color_parity;
 mod draw_laws;
 mod draw_parity;
 mod history;
+mod layer_laws;
+mod layer_parity;
 mod line_parity;
 mod pure_core;
 mod stroke;

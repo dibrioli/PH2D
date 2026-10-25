@@ -1,43 +1,121 @@
 //! A vista derivada: o RGBA de um frame, camadas visíveis de baixo para cima.
 
-use crate::sprite::{ColorMode, FrameId, LayerId, Sprite};
+use crate::blend::blend;
+use crate::sprite::{ColorMode, FrameId, Layer, LayerId, LayerKind, Rect, Sprite};
 use crate::stroke::Stroke;
+
+/// Para quem é a imagem composta: a VISTA mostra as camadas de referência; a EXPORTAÇÃO e as
+/// fusões (Merge Down, Flatten) não as levam (Aseprite: a referência não entra no ficheiro).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Purpose {
+    View,
+    Export,
+}
 
 /// Compõe o frame `frame` em `out` (`w * h * 4` bytes, RGBA de alfa reto). `pending` é o traço em
 /// curso, visto por cima da camada dele sem tocar o documento.
-///
-/// ⚠️ A mistura é a Normal (source-over, alfa reto) em inteiros; os 19 modos e a opacidade de
-/// camada chegam com as camadas (P3), contra a tabela-fixtura.
 pub fn compose_rgba(sprite: &Sprite, frame: FrameId, pending: Option<&Stroke>, out: &mut Vec<u8>) {
     let (w, h) = (sprite.width() as usize, sprite.height() as usize);
     out.clear();
     out.resize(w * h * 4, 0);
-    for layer in sprite.layers().iter().filter(|l| l.visible) {
-        let key = (layer.id, frame);
-        let stroke = pending.filter(|s| s.layer == layer.id && s.frame == frame);
-        let cel = sprite.cel(key);
-        if cel.is_none() && stroke.is_none() {
-            continue;
+    compose_region(sprite, frame, pending, sprite.bounds(), Purpose::View, out);
+}
+
+/// Compõe só `region` (cortada ao sprite) dentro do `out` de tamanho cheio, que tem de vir já com
+/// `w * h * 4` bytes; fora de `region` nada se toca. É o mesmo laço da composição cheia (uma só
+/// resposta para «o que está por baixo deste pixel»).
+pub fn compose_region(
+    sprite: &Sprite,
+    frame: FrameId,
+    pending: Option<&Stroke>,
+    region: Rect,
+    purpose: Purpose,
+    out: &mut [u8],
+) {
+    let region = region.intersect(sprite.bounds());
+    if region.is_empty() {
+        return;
+    }
+    let w = sprite.width() as usize;
+    let buf = compose_window(sprite, frame, pending, region, purpose);
+    for y in 0..region.h as usize {
+        let src = &buf[y * region.w as usize * 4..(y + 1) * region.w as usize * 4];
+        let o = ((region.y as usize + y) * w + region.x as usize) * 4;
+        out[o..o + src.len()].copy_from_slice(src);
+    }
+}
+
+/// A janela `region` (já dentro do sprite) composta num buffer só dela, `region.area() * 4` bytes.
+#[must_use]
+pub fn compose_window(
+    sprite: &Sprite,
+    frame: FrameId,
+    pending: Option<&Stroke>,
+    region: Rect,
+    purpose: Purpose,
+) -> Vec<u8> {
+    let mut buf = vec![0u8; region.area() * 4];
+    Ctx {
+        sprite,
+        frame,
+        pending,
+        region,
+        purpose,
+    }
+    .children(None, &mut buf);
+    buf
+}
+
+struct Ctx<'a> {
+    sprite: &'a Sprite,
+    frame: FrameId,
+    pending: Option<&'a Stroke>,
+    region: Rect,
+    purpose: Purpose,
+}
+
+impl Ctx<'_> {
+    /// Compõe os filhos de `parent`, de baixo para cima, sobre `buf` (a janela `region`).
+    fn children(&self, parent: Option<LayerId>, buf: &mut [u8]) {
+        for layer in self.sprite.layers().iter().filter(|l| l.parent == parent) {
+            if !layer.visible || (layer.reference && self.purpose == Purpose::Export) {
+                continue;
+            }
+            match layer.kind {
+                LayerKind::Image => self.image(layer, buf),
+                // O grupo é PASS-THROUGH: os filhos misturam-se direto com o que está por baixo, e o
+                // modo do grupo não entra (Trial, g*/gm*.ase: 6 144/6 144 por modo).
+                LayerKind::Group { .. } => self.children(Some(layer.id), buf),
+            }
         }
-        let region = match (cel, stroke) {
+    }
+
+    fn image(&self, layer: &Layer, buf: &mut [u8]) {
+        let key = (layer.id, self.frame);
+        let stroke = self
+            .pending
+            .filter(|s| s.layer == layer.id && s.frame == self.frame);
+        let cel = self.sprite.cel(key);
+        let area = match (cel, stroke) {
             (Some(c), Some(s)) => c.bbox.union(s.rect()),
             (Some(c), None) => c.bbox,
             (None, Some(s)) => s.rect(),
-            (None, None) => continue,
+            (None, None) => return,
         }
-        .intersect(sprite.bounds());
-        for y in region.y..region.y + region.h as i32 {
-            for x in region.x..region.x + region.w as i32 {
+        .intersect(self.region);
+        let rw = self.region.w as usize;
+        for y in area.y..area.y + area.h as i32 {
+            for x in area.x..area.x + area.w as i32 {
                 let v = stroke
-                    .and_then(|s| s.value_at(sprite, x, y))
-                    .unwrap_or_else(|| sprite.value_at(key, x, y));
-                let src = sprite.rgba_of_value(v);
+                    .and_then(|s| s.value_at(self.sprite, x, y))
+                    .unwrap_or_else(|| self.sprite.value_at(key, x, y));
+                let src = self.sprite.rgba_of_value(v);
                 if src[3] == 0 {
                     continue;
                 }
-                let i = (y as usize * w + x as usize) * 4;
-                let dst = [out[i], out[i + 1], out[i + 2], out[i + 3]];
-                out[i..i + 4].copy_from_slice(&over(dst, src));
+                let i = ((y - self.region.y) as usize * rw + (x - self.region.x) as usize) * 4;
+                let dst = [buf[i], buf[i + 1], buf[i + 2], buf[i + 3]];
+                buf[i..i + 4].copy_from_slice(&blend(layer.blend, dst, src, layer.opacity));
             }
         }
     }
@@ -85,20 +163,14 @@ pub fn pick(sprite: &Sprite, frame: FrameId, x: i32, y: i32, sample: Sample) -> 
                     .layers()
                     .iter()
                     .rev()
-                    .filter(|l| l.visible)
+                    .filter(|l| !l.is_group() && sprite.is_shown(l.id))
                     .map(|l| sprite.value_at((l.id, frame), x, y))
                     .find(|&v| v != sprite.transparent_value())
                     .unwrap_or_else(|| sprite.transparent_value()),
             ),
             _ => {
-                let mut px = [0u8; 4];
-                for l in sprite.layers().iter().filter(|l| l.visible) {
-                    let src = sprite.rgba_of_value(sprite.value_at((l.id, frame), x, y));
-                    if src[3] != 0 {
-                        px = over(px, src);
-                    }
-                }
-                Some(sprite.value_of_rgba(px))
+                let px = compose_window(sprite, frame, None, Rect::new(x, y, 1, 1), Purpose::View);
+                Some(sprite.value_of_rgba([px[0], px[1], px[2], px[3]]))
             }
         },
     }

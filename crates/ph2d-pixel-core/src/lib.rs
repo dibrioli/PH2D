@@ -7,6 +7,7 @@
 //! ⛔ Nada aqui lê relógio, aleatoriedade ou o SO; a iteração é em ordem definida (`BTreeMap`) e o
 //! formato gravado ([`codec`]) é byte-determinístico.
 
+pub mod blend;
 pub mod brush;
 pub mod codec;
 pub mod color;
@@ -15,6 +16,7 @@ pub mod convert;
 pub mod fill;
 mod history;
 pub mod ink;
+pub mod layers;
 mod op;
 pub mod palette;
 pub mod raster;
@@ -23,11 +25,11 @@ mod stroke;
 pub mod symmetry;
 
 pub use codec::{CodecError, MAJOR, MINOR};
-pub use compose::{Sample, compose_rgba, pick};
+pub use compose::{Purpose, Sample, compose_region, compose_rgba, compose_window, pick};
 pub use history::{DEFAULT_CAP_BYTES, History};
-pub use op::{Op, OpError, Patch, Whole, apply};
+pub use op::{LayerSet, Op, OpError, Patch, Whole, apply};
 pub use sprite::{
-    Background, Cel, CelKey, ColorMode, Frame, FrameId, Layer, LayerId, MAX_SIDE, NewSprite, Rect,
+    Background, Cel, CelKey, ColorMode, Frame, FrameId, Layer, LayerId, LayerKind, MAX_SIDE, NewSprite, Rect,
     Sprite, SpriteError,
 };
 pub use stroke::{Paint, Stroke};

@@ -141,6 +141,13 @@ pub fn press(app: &mut PixelApp, c: &Canvas<'_>, p: (f32, f32), button: Button, 
     let (fg, bg, options) = (app.fg, app.bg, app.options);
     let sel = app.sel.clone();
     let stamp = app.stamp();
+    // O Aseprite recusa pintar numa camada trancada, escondida ou num grupo, e DIZ porquê.
+    if tool.paints()
+        && let Some(motivo) = app.docs.get(&key).and_then(crate::camadas::recusa_pintar)
+    {
+        app.avisos.push((true, ph2d_i18n::tr(motivo).to_owned()));
+        return Press::Done;
+    }
     let Some(doc) = app.docs.get_mut(&key) else {
         return Press::NotMine;
     };

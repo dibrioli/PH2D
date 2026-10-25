@@ -6,7 +6,7 @@
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::pixel_panel::{
-    PixelBrushShape, PixelInk, PixelRequest, PixelSortKey, PixelTool,
+    PixelBrushShape, PixelInk, PixelLayerAction, PixelRequest, PixelSortKey, PixelTool,
 };
 use ph2d_tool_registry::{hash_node_id, hash_node_id_runtime};
 
@@ -217,4 +217,69 @@ pub const ACTIONS: [(NodeId, PixelRequest, &str); 10] = [
         PixelRequest::ReplaceColor,
         "panel.pixel.replace_apply",
     ),
+];
+
+// ── as camadas (P3) ───────────────────────────────────────────────────────────
+
+/// As partes de uma linha da lista de camadas.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LayerWidget {
+    /// O nome: clique = activa, duplo clique = renomear.
+    Row,
+    Eye,
+    Lock,
+    Solo,
+    /// O triângulo do grupo.
+    Collapse,
+}
+
+impl LayerWidget {
+    pub const ALL: [Self; 5] = [Self::Row, Self::Eye, Self::Lock, Self::Solo, Self::Collapse];
+
+    const fn tag(self) -> &'static str {
+        match self {
+            Self::Row => "row",
+            Self::Eye => "eye",
+            Self::Lock => "lock",
+            Self::Solo => "solo",
+            Self::Collapse => "collapse",
+        }
+    }
+}
+
+/// O id da parte `w` da linha da camada `layer` (a população é a lista, sem tecto).
+#[must_use]
+pub fn layer_widget_id(layer: u32, w: LayerWidget) -> NodeId {
+    hash_node_id_runtime(&format!("pixel.layer.{layer}.{}", w.tag()))
+}
+
+/// O campo do renomear (duplo clique no nome).
+pub const LAYER_RENAME: NodeId = hash_node_id("pixel.layer.rename");
+/// A opacidade da camada activa (`0..=255`, a escala do Aseprite).
+pub const LAYER_OPACITY: NodeId = hash_node_id("pixel.layer.opacity");
+/// O modo da camada activa (um menu de escolha).
+pub const LAYER_BLEND: NodeId = hash_node_id("pixel.layer.blend");
+
+/// A opção `i` do menu do modo (a ordem de [`ph2d_editor_core::pixel_panel::PixelBlend::ALL`]).
+#[must_use]
+pub fn blend_option_id(i: usize) -> NodeId {
+    hash_node_id_runtime(&format!("pixel.layer.blend.{i}"))
+}
+
+/// Os botões do menu Layer: o id, a acção e o rótulo, nas filas em que se pintam.
+pub const LAYER_ACTIONS: [(NodeId, PixelLayerAction, &str); 14] = [
+    (hash_node_id("pixel.layer.new"), PixelLayerAction::NewLayer, "panel.pixel.layer.new"),
+    (hash_node_id("pixel.layer.new_group"), PixelLayerAction::NewGroup, "panel.pixel.layer.new_group"),
+    (hash_node_id("pixel.layer.duplicate"), PixelLayerAction::Duplicate, "panel.pixel.layer.duplicate"),
+    (hash_node_id("pixel.layer.delete"), PixelLayerAction::Delete, "panel.pixel.layer.delete"),
+    (hash_node_id("pixel.layer.up"), PixelLayerAction::MoveUp, "panel.pixel.layer.up"),
+    (hash_node_id("pixel.layer.down"), PixelLayerAction::MoveDown, "panel.pixel.layer.down"),
+    (hash_node_id("pixel.layer.merge_down"), PixelLayerAction::MergeDown, "panel.pixel.layer.merge_down"),
+    (hash_node_id("pixel.layer.flatten"), PixelLayerAction::Flatten, "panel.pixel.layer.flatten"),
+    (hash_node_id("pixel.layer.flatten_visible"), PixelLayerAction::FlattenVisible, "panel.pixel.layer.flatten_visible"),
+    (hash_node_id("pixel.layer.via_copy"), PixelLayerAction::ViaCopy, "panel.pixel.layer.via_copy"),
+    (hash_node_id("pixel.layer.via_cut"), PixelLayerAction::ViaCut, "panel.pixel.layer.via_cut"),
+    (hash_node_id("pixel.layer.copy"), PixelLayerAction::Copy, "panel.pixel.layer.copy"),
+    (hash_node_id("pixel.layer.paste"), PixelLayerAction::PasteAsLayer, "panel.pixel.layer.paste"),
+    (hash_node_id("pixel.layer.paste_reference"), PixelLayerAction::PasteAsReference, "panel.pixel.layer.paste_reference"),
 ];

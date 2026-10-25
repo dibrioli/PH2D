@@ -34,6 +34,12 @@ ph2d-editor-core = { path = "../ph2d-editor-core" }
 # unidades da leitura) — HR-15.
 ph2d-i18n = { path = "../ph2d-i18n" }
 ph2d-panel-audio-editor = { path = "../ph2d-panel-audio-editor", optional = true }
+# A MESA como documento (F30 §B2): o painel pinta o vivo e escreve o autorado; o losango lê os ids
+# dele (como a `ph2d-app-physics` lê os da `ph2d-panel-physics`). A feature da shell só regista o painel.
+ph2d-panel-audio-mixer = { path = "../ph2d-panel-audio-mixer" }
+ph2d-timeline = { path = "../ph2d-timeline" }
+# O `#[derive(Resource)]` do `MesaDoc` (a mesma versão da `ph2d-ecs`).
+bevy_ecs = "0.19"
 ph2d-tokens = { path = "../ph2d-tokens" }
 
 # ⚠️⚠️ **AS FEATURES NÃO VIAJAM COM O CÓDIGO** (HOWTO §2.4, a armadilha MUDA): 21 sítios deste

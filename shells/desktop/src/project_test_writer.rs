@@ -66,6 +66,7 @@ pub(super) fn bare_file(state: ProjectState) -> ProjectFile {
         scripts: Vec::new(),
         marcas_do_artista: Vec::new(),
         jogo: Vec::new(),
+        mesa: Vec::new(),
     }
 }
 

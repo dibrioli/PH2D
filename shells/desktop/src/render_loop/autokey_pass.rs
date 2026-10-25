@@ -44,8 +44,8 @@ mod autokey_state;
 pub(crate) use autokey_state::AutokeyState;
 #[path = "autokey_amostra.rs"]
 mod autokey_amostra;
-use autokey_amostra::sample_pose;
 pub(crate) use autokey_amostra::populacao;
+use autokey_amostra::sample_pose;
 pub(crate) use ph2d_ecs::canal::campos_lidos;
 
 use super::timeline_bridge::default_interp;

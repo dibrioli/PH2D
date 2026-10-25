@@ -143,6 +143,7 @@ pub(crate) fn paint(_state: &mut AudioMixerState, ctx: &mut PaintCtx) {
     let sub_soloed = snapshot::sub_soloed();
     let sub_clipped = snapshot::sub_clipped();
 
+    crate::event::espelhar_sliders(ctx.host.store_mut());
     let store = ctx.host.store();
     // Fader values are slider *positions* (0..1); the dB taper maps them to gain.
     let master_gain = store

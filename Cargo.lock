@@ -5380,6 +5380,7 @@ dependencies = [
 name = "ph2d-app-audio"
 version = "0.0.0"
 dependencies = [
+ "bevy_ecs",
  "cpal",
  "ph2d-app-host",
  "ph2d-audio",
@@ -5395,6 +5396,8 @@ dependencies = [
  "ph2d-i18n",
  "ph2d-label-census",
  "ph2d-panel-audio-editor",
+ "ph2d-panel-audio-mixer",
+ "ph2d-timeline",
  "ph2d-tokens",
 ]
 
@@ -6112,6 +6115,8 @@ version = "0.0.0"
 dependencies = [
  "crossbeam-queue",
  "ph2d-core",
+ "postcard",
+ "serde",
  "thiserror 2.0.20",
 ]
 
@@ -9027,6 +9032,7 @@ name = "ph2d-panel-audio-mixer"
 version = "0.0.0"
 dependencies = [
  "ph2d-a11y",
+ "ph2d-audio",
  "ph2d-editor-core",
  "ph2d-host",
  "ph2d-i18n",

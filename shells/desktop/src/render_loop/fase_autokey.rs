@@ -2,6 +2,7 @@
 //! Transform/opacidade da UI no quadro (gizmo, Inspector, reset da Hierarquia) (OBRA 2 da `line/render-loop`, 2026-09-12).
 
 use super::*;
+use ph2d_app_audio::marcas_mesa;
 use ph2d_app_physics::marcas_mundo;
 
 impl crate::App {
@@ -55,6 +56,7 @@ impl crate::App {
         ph2d_app_physics::publicar_canais(sim, physics, &publicar);
         ph2d_app_flip::canais_camada::publicar(sim, flip, &publicar);
         ph2d_app_constraints::canais::publicar(sim, &publicar);
+        ph2d_app_audio::canais_mesa::publicar(sim);
         let sel: Vec<u64> = hero.gizmo.iter_selected().collect();
         let (solo, t_raw) = (self.timeline.keys_mode, autokey_clock.time());
         let inst = ph2d_timeline::Instante {
@@ -72,18 +74,18 @@ impl crate::App {
         );
         ph2d_app_constraints::chaves::do_quadro(&mut self.timeline, sim, pd, ph, inst, painel, ak);
         autokey_pass::run(
-            &mut self.timeline,
-            autokey_clock,
-            &mut self.autokey,
-            toasts,
-            hero,
-            sim,
-            vec_scene,
-            &self.preview_drive,
-            // ⭐ A SEGUNDA mão: a ferramenta Bone a posar um osso é um arrasto como o do gizmo, e é
-            // isso que faz o gesto inteiro ser UM passo de undo (ver `autokey_pass::run`).
-            &self.skeleton,
-        );
+        &mut self.timeline,
+        autokey_clock,
+        &mut self.autokey,
+        toasts,
+        hero,
+        sim,
+        vec_scene,
+        &self.preview_drive,
+        // ⭐ A SEGUNDA mão: a ferramenta Bone a posar um osso é um arrasto como o do gizmo, e é
+        // isso que faz o gesto inteiro ser UM passo de undo (ver `autokey_pass::run`).
+        &self.skeleton,
+    );
         // ⭐ O LOSANGO ao lado de cada campo (plano 35 §5): o clique desde o último quadro, depois o
         // estado de cada canal no instante do autor para a pintura deste quadro.
         let mundo = timeline_bridge::Mundo::com_vetor(sim.world(), vec_scene);
@@ -125,6 +127,9 @@ impl crate::App {
             if intents.is_empty() {
                 intents = marcas_mundo::clique(tl, &c.fields, sim.world(), inst, lidos, valor, k);
             }
+            if intents.is_empty() {
+                intents = marcas_mesa::clique(tl, &c.fields, sim.world(), inst, lidos, valor, k);
+            }
             self.timeline_intents.extend(intents);
         }
         let mut marcas = ph2d_app_vec::marcas::marcas(tl, ctx, &sel, inst, valor);
@@ -140,6 +145,7 @@ impl crate::App {
             tl, sim, &sel, inst, valor,
         ));
         marcas.extend(marcas_mundo::marcas(tl, sim.world(), inst, valor));
+        marcas.extend(marcas_mesa::marcas(tl, sim.world(), inst, valor));
         ph2d_editor_core::widget::key_mark::set_key_marks(marcas);
     }
 }

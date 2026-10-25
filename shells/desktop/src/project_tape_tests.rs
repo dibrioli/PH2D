@@ -77,6 +77,7 @@ fn a_recorded_run_survives_the_file() {
         scripts: Vec::new(),
         marcas_do_artista: Vec::new(),
         jogo: Vec::new(),
+        mesa: Vec::new(),
     };
     std::fs::write(
         &path,

@@ -94,6 +94,8 @@ const ESCOPO: &[(&str, Option<&[&str]>)] = &[
     ("ph2d-panel-flip", None),
     // ⭐ F30 §B: o MUNDO da física é canal da Cena (`ph2d_app_physics::marcas_mundo`).
     ("ph2d-panel-physics", None),
+    // ⭐ F30 §B2: a MESA DE SOM é documento e canal da Cena (`ph2d_app_audio::marcas_mesa`).
+    ("ph2d-panel-audio-mixer", None),
 ];
 
 /// As tabelas de canais (caminhos a partir de `crates/`).
@@ -104,6 +106,7 @@ const TABELAS: &[&str] = &[
     "ph2d-app-flip/src/marcas_camada.rs",
     "ph2d-app-constraints/src/marcas.rs",
     "ph2d-app-physics/src/marcas_mundo.rs",
+    "ph2d-app-audio/src/marcas_mesa.rs",
 ];
 
 /// Os helpers de LINHA de cada painel: recebem o id do chamador e repassam-no a uma porta — a
@@ -142,6 +145,10 @@ const LINHAS: &[(&str, &str)] = &[
     ("ph2d-panel-flip", "slider_row"),
     ("ph2d-panel-flip", "slider_row_linked"),
     ("ph2d-panel-physics", "check"),
+    ("ph2d-panel-audio-mixer", "check_row"),
+    ("ph2d-panel-audio-mixer", "slider_row"),
+    ("ph2d-panel-audio-mixer", "sub_bus_rows"),
+    ("ph2d-panel-audio-mixer", "paint_labeled_slider"),
 ];
 
 /// A classe de uma chamada por um dos seus ids — exacto, ou PREFIXO quando acaba em `_`.
@@ -1291,6 +1298,59 @@ const POR_FUNCAO: &[(&str, &str, Classe, &[&str], &str)] = &[
         "o tamanho do pincel ou da borracha (o id pelo modo): ajuste da ferramenta (§8)",
     ),
     (
+        "ph2d-panel-audio-mixer",
+        "paint_master.rs::paint_limiter",
+        Canal,
+        &["AMIX_LIMITER"],
+        "a mesa de som é canal da Cena (canal MESA, F30 §B2; `ph2d_app_audio::marcas_mesa`)",
+    ),
+    (
+        "ph2d-panel-audio-mixer",
+        "paint_master.rs::paint_eq",
+        Canal,
+        &["AMIX_EQ_LOW", "AMIX_EQ_MID", "AMIX_EQ_HIGH"],
+        "a mesa de som é canal da Cena (canal MESA, F30 §B2; `ph2d_app_audio::marcas_mesa`)",
+    ),
+    (
+        "ph2d-panel-audio-mixer",
+        "paint_master.rs::paint_reverb",
+        Canal,
+        &[
+            "AMIX_REVERB",
+            "AMIX_REVERB_SIZE",
+            "AMIX_REVERB_MIX",
+            "SUB_SEND",
+        ],
+        "a mesa de som é canal da Cena (canal MESA, F30 §B2; `ph2d_app_audio::marcas_mesa`)",
+    ),
+    (
+        "ph2d-panel-audio-mixer",
+        "paint_master.rs::paint_delay",
+        Canal,
+        &[
+            "AMIX_DELAY",
+            "AMIX_DELAY_TIME",
+            "AMIX_DELAY_FEEDBACK",
+            "AMIX_DELAY_MIX",
+            "SUB_DELAY_SEND",
+        ],
+        "a mesa de som é canal da Cena (canal MESA, F30 §B2; `ph2d_app_audio::marcas_mesa`)",
+    ),
+    (
+        "ph2d-panel-audio-mixer",
+        "paint_master.rs::paint_comp",
+        Canal,
+        &["SUB_COMP"],
+        "a mesa de som é canal da Cena (canal MESA, F30 §B2; `ph2d_app_audio::marcas_mesa`)",
+    ),
+    (
+        "ph2d-panel-audio-mixer",
+        "paint_master.rs::paint_ducking",
+        Canal,
+        &["AMIX_DUCK", "AMIX_DUCK_KEY_BUS", "AMIX_DUCK_DEPTH"],
+        "a mesa de som é canal da Cena (canal MESA, F30 §B2; `ph2d_app_audio::marcas_mesa`)",
+    ),
+    (
         "ph2d-panel-physics",
         "paint.rs::paint_row",
         Canal,
@@ -1355,12 +1415,6 @@ const DIVIDA_CRATE: &[(&str, Classe, &str)] = &[
         NaoAnimavel,
         "edita o ASSET de som (cortes, o rack que o Apply coze no ficheiro, loop, variações, \
          entrega), não a cena; o som na cena é o componente Áudio do objecto",
-    ),
-    (
-        "ph2d-panel-audio-mixer",
-        NaoAnimavel,
-        "a mesa de MONITORIZAÇÃO da sessão: o estado mora no painel (thread-local) e não viaja no \
-         projecto; o motor lê-o do painel, não do mundo — sem documento, não há o que animar",
     ),
     (
         "ph2d-panel-painter-layers",

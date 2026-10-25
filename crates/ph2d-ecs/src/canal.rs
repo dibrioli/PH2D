@@ -67,7 +67,7 @@ impl FieldKey {
     /// da Cena.
     #[must_use]
     pub const fn da_cena(self) -> bool {
-        self.familia == familia::MUNDO
+        matches!(self.familia, familia::MUNDO | familia::MESA)
     }
 
     /// Chave `ph2d-i18n` do nome deste campo DENTRO do grupo («Point X», «R», «Dash») — a linha do
@@ -85,6 +85,7 @@ impl FieldKey {
             familia::CONSTRAINT => crate::canal_constraint::membro(self.campo),
             familia::CAD => crate::canal_cad::membro(self.campo),
             familia::MUNDO => crate::canal_mundo::membro(self.campo),
+            familia::MESA => crate::canal_mesa::membro(self.campo),
             _ => None,
         }
     }
@@ -246,6 +247,8 @@ pub mod familia {
     // (CONSTRAINT, CAD) — a linha UIUX renumerou-se na integração de 29/10.
     /// O MUNDO da física (`PhysicsSettings`) sobre a entidade da Cena — `crate::canal_mundo`.
     pub const MUNDO: u16 = 11;
+    /// A MESA DE SOM (`ph2d_audio::Mesa`) sobre a entidade da Cena — `crate::canal_mesa`.
+    pub const MESA: u16 = 10;
 }
 
 /// ⭐ **A porta única de «o que é este campo»** — `None` = endereço que nenhuma família declara (um
@@ -263,6 +266,7 @@ pub fn info(k: FieldKey) -> Option<CampoInfo> {
         familia::CONSTRAINT => crate::canal_constraint::info(k.campo),
         familia::CAD => crate::canal_cad::info(k.campo),
         familia::MUNDO => crate::canal_mundo::info(k.campo),
+        familia::MESA => crate::canal_mesa::info(k.campo),
         _ => None,
     }
 }

@@ -146,6 +146,10 @@ impl crate::App {
                     .map(|h| h.project)
                     .unwrap_or_default(),
             ),
+            // O AUTORADO: uma curva da Cena a tocar não entra no ficheiro (F30 §B2).
+            mesa: (self.gfx.as_ref())
+                .map(|g| ph2d_app_audio::mesa_doc::autorado(&g.sim).to_bytes())
+                .unwrap_or_default(),
             // ⚠️ **A taxonomia NÃO está aqui, e a ausência é a decisão** (v105): ela viaja dentro
             // do `state`, que é a unidade do undo — ver [`crate::project_library`]. Um campo aqui
             // seria a **segunda** resposta à mesma pergunta, e a que o load lesse ganharia sem

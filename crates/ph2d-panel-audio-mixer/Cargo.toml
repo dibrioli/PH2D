@@ -16,6 +16,8 @@ authors.workspace = true
 [dependencies]
 ph2d-editor-core = { path = "../ph2d-editor-core" }
 ph2d-a11y = { path = "../ph2d-a11y" }
+# O documento da mesa (`ph2d_audio::Mesa`, F30 §B2): o painel pinta o vivo e escreve o autorado.
+ph2d-audio = { path = "../ph2d-audio" }
 ph2d-vector = { path = "../ph2d-vector" }
 ph2d-text = { path = "../ph2d-text" }
 ph2d-tokens = { path = "../ph2d-tokens" }

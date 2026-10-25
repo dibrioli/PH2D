@@ -40,8 +40,14 @@ use editor::AudioEditorRuntime;
 /// ⭐⭐ **A PONTE do som de cena** — lê o mundo, chama a lei e manda o livro tocar. Desceu da
 /// shell na integração de 2026-09-25 (catraca `the_shell_only_shrinks`): nunca tocou na `App`.
 pub mod audio_2d;
+/// ⭐⭐ A família MESA nos canais: a mesa de som sobre a Cena (F30 §B2).
+pub mod canais_mesa;
 /// A ESCOLHA DO DISPOSITIVO e a escrita nele — irmão por assunto e pelo teto de 600 LOC.
 mod device;
+/// O losango das linhas da mesa (F30 §B2).
+pub mod marcas_mesa;
+/// A mesa de som como documento: o autorado, o vivo e o quadro dela (F30 §B2).
+pub mod mesa_doc;
 /// ⭐⭐⭐ **O SOM DA CENA** (TOP-20 #4) — o livro das vozes que os objectos tem a soar.
 pub mod scene;
 /// AS DUAS CENAS DE SMOKE DO DISPOSITIVO — irmao por assunto e pelo teto de 600 LOC.

@@ -99,11 +99,12 @@ pub mod canal_constraint;
 pub mod canal_fisica;
 pub mod canal_flip;
 pub mod canal_junta;
+pub mod canal_mesa;
+pub mod canal_mundo;
 pub mod canal_objeto;
 pub mod canal_palavra;
 pub mod canal_script;
 pub mod canal_vetor;
-pub mod canal_mundo;
 /// ⭐ A Cena como alvo da timeline (F30 §B).
 pub mod cena;
 pub use cena::{Cena, bits_da_cena, entidade_da_cena, garante_cena};

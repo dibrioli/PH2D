@@ -171,6 +171,9 @@ impl crate::App {
             // joga fora, e a cena carregaria com a gravidade do documento
             // ANTERIOR — em silêncio.
             gfx.physics.set_settings(file.physics);
+            let mesa =
+                ph2d_audio::Mesa::from_bytes(&file.mesa).inspect_err(|e| eprintln!("[proj] {e}"));
+            ph2d_app_audio::mesa_doc::instalar(&mut gfx.sim, mesa.unwrap_or_default());
         }
         self.physics.mundo = Default::default(); // o load não é a mão (F30 §B)
         // **A TABELA DE COR do documento anterior morre aqui, e a do arquivo entra** (W6) —

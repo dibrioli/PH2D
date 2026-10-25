@@ -2,8 +2,15 @@
 //! the panel painter. Thread-local (UI + shell run on the main thread), mirrors
 //! the other panels' publish channels (e.g. `panel-painter-layers`). Split out
 //! of `lib.rs` to keep it under the panel LOC cap.
+//!
+//! ⭐ **A mesa é DOCUMENTO** (F30 §B2): o painel guarda dois retratos da `ph2d_audio::Mesa` — o
+//! AUTORADO (o que a mão escreve e o projecto grava) e o VIVO (o autorado com a curva da Cena por
+//! cima: o que se pinta e o que o motor ouve). A edição escreve nos dois e marca-se; a ponte
+//! (`ph2d_app_audio::mesa_doc`) toma-a para o documento e devolve os dois retratos a cada quadro.
+//! O toggle lê o VIVO (o que o artista vê), como o painel da física.
 
 use crate::SUB_BUS_COUNT;
+use ph2d_audio::Mesa;
 use std::cell::Cell;
 
 /// Per-frame peak-hold decay factor (UI ballistics). The held marker falls
@@ -19,42 +26,68 @@ thread_local! {
     static PEAK_HOLD: Cell<[f32; 2]> = const { Cell::new([0.0, 0.0]) };
     static CLIP: Cell<[bool; 2]> = const { Cell::new([false, false]) };
     static SUB_CLIP: Cell<[[bool; 2]; SUB_BUS_COUNT]> = const { Cell::new([[false, false]; SUB_BUS_COUNT]) };
-    static MASTER_GAIN: Cell<f32> = const { Cell::new(1.0) };
-    static CUTOFF_HZ: Cell<f32> = const { Cell::new(20_000.0) }; // LITERAL-PX-OK: default cutoff 20 kHz (audio frequency, not a UI metric)
-    static LOWCUT_HZ: Cell<f32> = const { Cell::new(20.0) }; // LITERAL-PX-OK: default low-cut 20 Hz (off — audio floor, not a UI metric)
-    static MUTED: Cell<bool> = const { Cell::new(false) };
-    static MASTER_PAN: Cell<f32> = const { Cell::new(0.0) };
+    // Play Test é ferramenta de AUDIÇÃO da sessão: fica fora da mesa.
     static PLAY_TEST: Cell<bool> = const { Cell::new(false) };
-    static LIMITER: Cell<bool> = const { Cell::new(false) };
-    static REVERB_ON: Cell<bool> = const { Cell::new(false) };
-    static REVERB_SIZE: Cell<f32> = const { Cell::new(0.5) };
-    static REVERB_MIX: Cell<f32> = const { Cell::new(0.3) }; // LITERAL-PX-OK: default reverb wet/dry mix (audio param)
-    static DUCKING: Cell<bool> = const { Cell::new(false) };
-    static DUCK_DEPTH: Cell<f32> = const { Cell::new(0.7) }; // LITERAL-PX-OK: default duck depth (audio param)
-    // Sidechain key sub-bus index; everything else ducks under it. Default = the
-    // last sub-bus (Voice), preserving the original dialogue-priority behavior.
-    static DUCK_KEY: Cell<usize> = const { Cell::new(SUB_BUS_COUNT - 1) };
-    // Per-sub-bus channels, index-aligned with `BusId::SUB_BUSES`.
     static SUB_LEVELS_PEAK: Cell<[[f32; 2]; SUB_BUS_COUNT]> = const { Cell::new([[0.0, 0.0]; SUB_BUS_COUNT]) };
     static SUB_LEVELS_RMS: Cell<[[f32; 2]; SUB_BUS_COUNT]> = const { Cell::new([[0.0, 0.0]; SUB_BUS_COUNT]) };
     static SUB_PEAK_HOLD: Cell<[[f32; 2]; SUB_BUS_COUNT]> = const { Cell::new([[0.0, 0.0]; SUB_BUS_COUNT]) };
-    static SUB_GAIN: Cell<[f32; SUB_BUS_COUNT]> = const { Cell::new([1.0; SUB_BUS_COUNT]) };
-    static SUB_MUTED: Cell<[bool; SUB_BUS_COUNT]> = const { Cell::new([false; SUB_BUS_COUNT]) };
-    static SUB_SOLOED: Cell<[bool; SUB_BUS_COUNT]> = const { Cell::new([false; SUB_BUS_COUNT]) };
-    static SUB_PAN: Cell<[f32; SUB_BUS_COUNT]> = const { Cell::new([0.0; SUB_BUS_COUNT]) };
-    static SUB_TONE_HZ: Cell<[f32; SUB_BUS_COUNT]> = const { Cell::new([20_000.0; SUB_BUS_COUNT]) }; // LITERAL-PX-OK: default tone cutoff 20 kHz (open)
-    static SUB_LOWCUT_HZ: Cell<[f32; SUB_BUS_COUNT]> = const { Cell::new([20.0; SUB_BUS_COUNT]) }; // LITERAL-PX-OK: default low-cut 20 Hz (off)
-    static SUB_SEND_AMT: Cell<[f32; SUB_BUS_COUNT]> = const { Cell::new([0.0; SUB_BUS_COUNT]) };
-    static SUB_DELAY_SEND_AMT: Cell<[f32; SUB_BUS_COUNT]> = const { Cell::new([0.0; SUB_BUS_COUNT]) };
-    static SUB_COMP_AMT: Cell<[f32; SUB_BUS_COUNT]> = const { Cell::new([0.0; SUB_BUS_COUNT]) };
-    // Master delay/echo: enable + time (slider pos = seconds, 0..1 s) + feedback +
-    // return mix, all 0..1.
-    static DELAY_ON: Cell<bool> = const { Cell::new(false) };
-    static DELAY_TIME: Cell<f32> = const { Cell::new(0.25) }; // LITERAL-PX-OK: default echo 250 ms (audio param)
-    static DELAY_FEEDBACK: Cell<f32> = const { Cell::new(0.3) }; // LITERAL-PX-OK: default echo feedback (audio param)
-    static DELAY_MIX: Cell<f32> = const { Cell::new(0.3) }; // LITERAL-PX-OK: default delay return level (audio param)
-    // Master 3-band EQ slider positions (0..1; 0.5 = flat), [low, mid, high].
-    static EQ_POS: Cell<[f32; 3]> = const { Cell::new([0.5; 3]) }; // LITERAL-PX-OK: 3 EQ bands, 0.5 = flat
+    static AUTORADO: Cell<Mesa> = Cell::new(Mesa::default());
+    static VIVO: Cell<Mesa> = Cell::new(Mesa::default());
+    static EDITADO: Cell<bool> = const { Cell::new(false) };
+}
+
+/// O que a mesa CORRE agora (o que se pinta e o que o motor ouve).
+#[must_use]
+pub fn mesa_viva() -> Mesa {
+    VIVO.with(Cell::get)
+}
+
+/// O que a mão deixou na mesa (o que o projecto grava).
+#[must_use]
+pub fn mesa_autorada() -> Mesa {
+    AUTORADO.with(Cell::get)
+}
+
+/// Ponte → painel: os dois retratos do documento, a cada quadro.
+pub fn publicar_mesa(autorado: Mesa, vivo: Mesa) {
+    AUTORADO.with(|c| c.set(autorado));
+    VIVO.with(|c| c.set(vivo));
+}
+
+/// Painel → ponte: o autorado, se a mão o mudou desde a última tomada.
+#[must_use]
+pub fn tomar_edicao() -> Option<Mesa> {
+    EDITADO.with(|e| e.replace(false)).then(mesa_autorada)
+}
+
+/// A mão escreve `f` no autorado E no vivo (a linha mostra-a já).
+fn editar(f: impl Fn(&mut Mesa)) {
+    for c in [&AUTORADO, &VIVO] {
+        c.with(|c| {
+            let mut m = c.get();
+            f(&mut m);
+            c.set(m);
+        });
+    }
+    EDITADO.with(|e| e.set(true));
+}
+
+/// O interruptor `campo` passa ao contrário do que se VÊ; devolve o novo.
+fn virar(campo: impl Fn(&mut Mesa) -> &mut bool) -> bool {
+    let next = !*campo(&mut mesa_viva());
+    editar(|m| *campo(m) = next);
+    next
+}
+
+fn no_bus(i: usize, f: impl Fn(&mut ph2d_audio::BusMesa)) {
+    if i < SUB_BUS_COUNT {
+        editar(|m| f(&mut m.bus[i]));
+    }
+}
+
+fn por_bus<T>(f: impl Fn(&ph2d_audio::BusMesa) -> T) -> [T; SUB_BUS_COUNT] {
+    let m = mesa_viva();
+    std::array::from_fn(|i| f(&m.bus[i]))
 }
 
 /// Decay the held peak toward silence, snapping up to any new peak.
@@ -117,51 +150,46 @@ pub(crate) fn tick_master_hold() -> [f32; 2] {
 
 /// Panel → shell: the master gain the fader drives (0..1).
 pub(crate) fn set_master_gain(gain: f32) {
-    MASTER_GAIN.with(|c| c.set(gain));
+    editar(|m| m.ganho = gain);
 }
 
 pub fn master_gain() -> f32 {
-    MASTER_GAIN.with(Cell::get)
+    mesa_viva().ganho
 }
 
 /// Panel → shell: the master low-pass cutoff in Hz (from the Cutoff slider).
 pub(crate) fn set_cutoff(hz: f32) {
-    CUTOFF_HZ.with(|c| c.set(hz));
+    editar(|m| m.corte_alto_hz = hz);
 }
 
 pub fn cutoff() -> f32 {
-    CUTOFF_HZ.with(Cell::get)
+    mesa_viva().corte_alto_hz
 }
 
-/// Panel → shell: the master high-pass (low-cut) cutoff in Hz (from the Low
-/// Cut slider; 20 Hz = off).
+/// Panel → shell: the master high-pass (low-cut) cutoff in Hz (20 Hz = off).
 pub(crate) fn set_lowcut(hz: f32) {
-    LOWCUT_HZ.with(|c| c.set(hz));
+    editar(|m| m.corte_baixo_hz = hz);
 }
 
 pub fn lowcut() -> f32 {
-    LOWCUT_HZ.with(Cell::get)
+    mesa_viva().corte_baixo_hz
 }
 
 pub fn muted() -> bool {
-    MUTED.with(Cell::get)
+    mesa_viva().mudo
 }
 
 pub(crate) fn toggle_muted() -> bool {
-    MUTED.with(|c| {
-        let next = !c.get();
-        c.set(next);
-        next
-    })
+    virar(|m| &mut m.mudo)
 }
 
 /// Panel → shell: the master stereo balance (`-1.0`..`1.0`, `0.0` = center).
 pub(crate) fn set_master_pan(pan: f32) {
-    MASTER_PAN.with(|c| c.set(pan));
+    editar(|m| m.pan = pan);
 }
 
 pub fn master_pan() -> f32 {
-    MASTER_PAN.with(Cell::get)
+    mesa_viva().pan
 }
 
 /// Panel → shell: whether the built-in test signal should be playing.
@@ -179,115 +207,101 @@ pub(crate) fn toggle_play_test() -> bool {
 
 /// Panel → shell: whether the master soft-clip limiter is engaged.
 pub fn limiter() -> bool {
-    LIMITER.with(Cell::get)
+    mesa_viva().limitador
 }
 
 pub(crate) fn toggle_limiter() -> bool {
-    LIMITER.with(|c| {
-        let next = !c.get();
-        c.set(next);
-        next
-    })
+    virar(|m| &mut m.limitador)
 }
 
 /// Panel → shell: master reverb enable + room size (0..1) + wet/dry mix (0..1).
 pub fn reverb_on() -> bool {
-    REVERB_ON.with(Cell::get)
+    mesa_viva().reverb
 }
 
 pub fn reverb_size() -> f32 {
-    REVERB_SIZE.with(Cell::get)
+    mesa_viva().reverb_tamanho
 }
 
 pub fn reverb_mix() -> f32 {
-    REVERB_MIX.with(Cell::get)
+    mesa_viva().reverb_retorno
 }
 
 pub(crate) fn toggle_reverb() -> bool {
-    REVERB_ON.with(|c| {
-        let next = !c.get();
-        c.set(next);
-        next
-    })
+    virar(|m| &mut m.reverb)
 }
 
 pub(crate) fn set_reverb_size(v: f32) {
-    REVERB_SIZE.with(|c| c.set(v));
+    editar(|m| m.reverb_tamanho = v);
 }
 
 pub(crate) fn set_reverb_mix(v: f32) {
-    REVERB_MIX.with(|c| c.set(v));
+    editar(|m| m.reverb_retorno = v);
 }
 
 /// Panel → shell: master delay enable + time (s) + feedback + return mix.
 pub fn delay_on() -> bool {
-    DELAY_ON.with(Cell::get)
+    mesa_viva().delay
 }
 
 pub fn delay_time() -> f32 {
-    DELAY_TIME.with(Cell::get)
+    mesa_viva().delay_tempo
 }
 
 pub fn delay_feedback() -> f32 {
-    DELAY_FEEDBACK.with(Cell::get)
+    mesa_viva().delay_feedback
 }
 
 pub fn delay_mix() -> f32 {
-    DELAY_MIX.with(Cell::get)
+    mesa_viva().delay_retorno
 }
 
 pub(crate) fn toggle_delay() -> bool {
-    DELAY_ON.with(|c| {
-        let next = !c.get();
-        c.set(next);
-        next
-    })
+    virar(|m| &mut m.delay)
 }
 
 pub(crate) fn set_delay_time(v: f32) {
-    DELAY_TIME.with(|c| c.set(v));
+    editar(|m| m.delay_tempo = v);
 }
 
 pub(crate) fn set_delay_feedback(v: f32) {
-    DELAY_FEEDBACK.with(|c| c.set(v));
+    editar(|m| m.delay_feedback = v);
 }
 
 pub(crate) fn set_delay_mix(v: f32) {
-    DELAY_MIX.with(|c| c.set(v));
+    editar(|m| m.delay_retorno = v);
 }
 
 /// Panel → shell: ducking enable + depth (every bus ducks under the key bus).
 pub fn ducking() -> bool {
-    DUCKING.with(Cell::get)
+    mesa_viva().ducking
 }
 
 pub fn duck_depth() -> f32 {
-    DUCK_DEPTH.with(Cell::get)
+    mesa_viva().ducking_profundidade
 }
 
 /// Panel → shell: the sidechain key sub-bus index (everything else ducks under
 /// it). Defaults to the last sub-bus (Voice).
 pub fn ducking_key() -> usize {
-    DUCK_KEY.with(Cell::get)
+    usize::from(mesa_viva().ducking_chave).min(SUB_BUS_COUNT - 1)
 }
 
 pub(crate) fn toggle_ducking() -> bool {
-    DUCKING.with(|c| {
-        let next = !c.get();
-        c.set(next);
-        next
-    })
+    virar(|m| &mut m.ducking)
 }
 
 pub(crate) fn set_duck_depth(v: f32) {
-    DUCK_DEPTH.with(|c| c.set(v));
+    editar(|m| m.ducking_profundidade = v);
 }
 
 /// Choose the sidechain key sub-bus. An index past the last bus is ignored — the choice has
 /// exactly [`SUB_BUS_COUNT`] segments, so it cannot happen from the panel.
 pub(crate) fn set_duck_key(i: usize) {
-    if i < SUB_BUS_COUNT {
-        DUCK_KEY.with(|c| c.set(i));
+    if let Ok(k) = u8::try_from(i)
+        && i < SUB_BUS_COUNT
+    {
+        editar(|m| m.ducking_chave = k);
     }
 }
 
@@ -340,156 +354,98 @@ pub(crate) fn tick_sub_hold(i: usize) -> [f32; 2] {
 
 /// Panel → shell: each sub-bus fader gain (0..1).
 pub fn sub_gain() -> [f32; SUB_BUS_COUNT] {
-    SUB_GAIN.with(Cell::get)
+    por_bus(|b| b.ganho)
 }
 
 pub(crate) fn set_sub_gain(i: usize, gain: f32) {
-    SUB_GAIN.with(|c| {
-        let mut v = c.get();
-        if let Some(slot) = v.get_mut(i) {
-            *slot = gain;
-        }
-        c.set(v);
-    });
+    no_bus(i, |b| b.ganho = gain);
 }
 
 /// Panel → shell: each sub-bus mute flag (bridge sends gain 0 when engaged).
 pub fn sub_muted() -> [bool; SUB_BUS_COUNT] {
-    SUB_MUTED.with(Cell::get)
+    por_bus(|b| b.mudo)
 }
 
 pub(crate) fn toggle_sub_muted(i: usize) {
-    SUB_MUTED.with(|c| {
-        let mut v = c.get();
-        if let Some(slot) = v.get_mut(i) {
-            *slot = !*slot;
-        }
-        c.set(v);
-    });
+    if i < SUB_BUS_COUNT {
+        virar(|m| &mut m.bus[i].mudo);
+    }
 }
 
 /// Panel → shell: each sub-bus stereo balance (`-1.0`..`1.0`).
 pub fn sub_pan() -> [f32; SUB_BUS_COUNT] {
-    SUB_PAN.with(Cell::get)
+    por_bus(|b| b.pan)
 }
 
 pub(crate) fn set_sub_pan(i: usize, pan: f32) {
-    SUB_PAN.with(|c| {
-        let mut v = c.get();
-        if let Some(slot) = v.get_mut(i) {
-            *slot = pan;
-        }
-        c.set(v);
-    });
+    no_bus(i, |b| b.pan = pan);
 }
 
 /// Panel → shell: each sub-bus low-pass cutoff in Hz (from its Tone slider).
 pub fn sub_tone() -> [f32; SUB_BUS_COUNT] {
-    SUB_TONE_HZ.with(Cell::get)
+    por_bus(|b| b.tom_hz)
 }
 
 pub(crate) fn set_sub_tone(i: usize, hz: f32) {
-    SUB_TONE_HZ.with(|c| {
-        let mut v = c.get();
-        if let Some(slot) = v.get_mut(i) {
-            *slot = hz;
-        }
-        c.set(v);
-    });
+    no_bus(i, |b| b.tom_hz = hz);
 }
 
-/// Panel → shell: each sub-bus high-pass (low-cut) cutoff in Hz (from its Low
-/// Cut slider; 20 Hz = off).
+/// Panel → shell: each sub-bus high-pass (low-cut) cutoff in Hz (20 Hz = off).
 pub fn sub_lowcut() -> [f32; SUB_BUS_COUNT] {
-    SUB_LOWCUT_HZ.with(Cell::get)
+    por_bus(|b| b.corte_baixo_hz)
 }
 
 pub(crate) fn set_sub_lowcut(i: usize, hz: f32) {
-    SUB_LOWCUT_HZ.with(|c| {
-        let mut v = c.get();
-        if let Some(slot) = v.get_mut(i) {
-            *slot = hz;
-        }
-        c.set(v);
-    });
+    no_bus(i, |b| b.corte_baixo_hz = hz);
 }
 
-/// Panel → shell: each sub-bus reverb aux-send amount (0..1; 0 = dry) from its
-/// Send slider in the master Reverb section.
+/// Panel → shell: each sub-bus reverb aux-send amount (0..1; 0 = dry).
 pub fn sub_send() -> [f32; SUB_BUS_COUNT] {
-    SUB_SEND_AMT.with(Cell::get)
+    por_bus(|b| b.envio_reverb)
 }
 
 pub(crate) fn set_sub_send(i: usize, amount: f32) {
-    SUB_SEND_AMT.with(|c| {
-        let mut v = c.get();
-        if let Some(slot) = v.get_mut(i) {
-            *slot = amount;
-        }
-        c.set(v);
-    });
+    no_bus(i, |b| b.envio_reverb = amount);
 }
 
-/// Panel → shell: each sub-bus delay aux-send amount (0..1; 0 = dry) from its
-/// Send slider in the master Delay section.
+/// Panel → shell: each sub-bus delay aux-send amount (0..1; 0 = dry).
 pub fn sub_delay_send() -> [f32; SUB_BUS_COUNT] {
-    SUB_DELAY_SEND_AMT.with(Cell::get)
+    por_bus(|b| b.envio_delay)
 }
 
 pub(crate) fn set_sub_delay_send(i: usize, amount: f32) {
-    SUB_DELAY_SEND_AMT.with(|c| {
-        let mut v = c.get();
-        if let Some(slot) = v.get_mut(i) {
-            *slot = amount;
-        }
-        c.set(v);
-    });
+    no_bus(i, |b| b.envio_delay = amount);
 }
 
-/// Panel → shell: each sub-bus compressor amount (0..1; 0 = off) from its Comp
-/// slider in the master Compressor section.
+/// Panel → shell: each sub-bus compressor amount (0..1; 0 = off).
 pub fn sub_comp() -> [f32; SUB_BUS_COUNT] {
-    SUB_COMP_AMT.with(Cell::get)
+    por_bus(|b| b.comp)
 }
 
 pub(crate) fn set_sub_comp(i: usize, amount: f32) {
-    SUB_COMP_AMT.with(|c| {
-        let mut v = c.get();
-        if let Some(slot) = v.get_mut(i) {
-            *slot = amount;
-        }
-        c.set(v);
-    });
+    no_bus(i, |b| b.comp = amount);
 }
 
 /// Panel → shell: the master 3-band EQ slider positions (0..1; 0.5 = flat),
 /// `[low, mid, high]`. The shell maps each to ±12 dB.
 pub fn eq() -> [f32; 3] {
-    EQ_POS.with(Cell::get)
+    mesa_viva().eq
 }
 
 pub(crate) fn set_eq(band: usize, pos: f32) {
-    EQ_POS.with(|c| {
-        let mut v = c.get();
-        if let Some(slot) = v.get_mut(band) {
-            *slot = pos;
-        }
-        c.set(v);
-    });
+    if band < 3 {
+        editar(|m| m.eq[band] = pos);
+    }
 }
 
 /// Panel → shell: each sub-bus solo flag. When *any* is set, the shell mutes
 /// every non-soloed sub-bus (so you hear only the soloed ones).
 pub fn sub_soloed() -> [bool; SUB_BUS_COUNT] {
-    SUB_SOLOED.with(Cell::get)
+    por_bus(|b| b.solo)
 }
 
 pub(crate) fn toggle_sub_soloed(i: usize) {
-    SUB_SOLOED.with(|c| {
-        let mut v = c.get();
-        if let Some(slot) = v.get_mut(i) {
-            *slot = !*slot;
-        }
-        c.set(v);
-    });
+    if i < SUB_BUS_COUNT {
+        virar(|m| &mut m.bus[i].solo);
+    }
 }

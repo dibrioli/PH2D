@@ -15,6 +15,47 @@ use crate::{
 fn slider_to_hz(v: f32) -> f32 {
     20.0 * 1000.0_f32.powf(v.clamp(0.0, 1.0)) // LITERAL-PX-OK: cutoff log map (20 Hz..20 kHz)
 }
+
+/// The inverse of [`slider_to_hz`].
+fn hz_to_slider(hz: f32) -> f32 {
+    ((hz.max(20.0) / 20.0).log10() / 3.0).clamp(0.0, 1.0) // LITERAL-PX-OK: cutoff log map (20 Hz..20 kHz)
+}
+
+/// ⭐ **Os sliders mostram a mesa VIVA** (F30 §B2): a curva da Cena move-os, e o próximo gesto parte
+/// de onde se vê. As posições derivam do documento pelos inversos dos mapas de cada slider.
+pub(crate) fn espelhar_sliders(store: &mut ph2d_editor_core::interaction::WidgetStore) {
+    let m = snapshot::mesa_viva();
+    let pan = |p: f32| (p.clamp(-1.0, 1.0) + 1.0) * 0.5;
+    let mut pares = vec![
+        (AMIX_FADER, crate::fader::fader_pos(m.ganho)),
+        (AMIX_CUTOFF, hz_to_slider(m.corte_alto_hz)),
+        (AMIX_LOWCUT, hz_to_slider(m.corte_baixo_hz)),
+        (AMIX_PAN, pan(m.pan)),
+        (AMIX_REVERB_SIZE, m.reverb_tamanho),
+        (AMIX_REVERB_MIX, m.reverb_retorno),
+        (AMIX_DELAY_TIME, m.delay_tempo),
+        (AMIX_DELAY_FEEDBACK, m.delay_feedback),
+        (AMIX_DELAY_MIX, m.delay_retorno),
+        (AMIX_DUCK_DEPTH, m.ducking_profundidade),
+        (AMIX_EQ_LOW, m.eq[0]),
+        (AMIX_EQ_MID, m.eq[1]),
+        (AMIX_EQ_HIGH, m.eq[2]),
+    ];
+    for (i, b) in m.bus.iter().enumerate() {
+        pares.extend([
+            (SUB_FADER[i], crate::fader::fader_pos(b.ganho)),
+            (SUB_PAN[i], pan(b.pan)),
+            (SUB_TONE[i], hz_to_slider(b.tom_hz)),
+            (SUB_LOWCUT[i], hz_to_slider(b.corte_baixo_hz)),
+            (SUB_SEND[i], b.envio_reverb),
+            (SUB_DELAY_SEND[i], b.envio_delay),
+            (SUB_COMP[i], b.comp),
+        ]);
+    }
+    for (id, v) in pares {
+        store.set_slider_value(id, v);
+    }
+}
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::WidgetEvent;

@@ -183,9 +183,12 @@ pub(crate) struct ProjectFile {
     pub(crate) marcas_do_artista: Vec<u8>,
     /// **O FORMATO DO JOGO** (v198, plano GEF 17 D-F/D-V) — a resolução que o jogo mostra e quando a moldura da
     /// câmera se vê ([`crate::project_settings::collect_jogo`]), com versão PRÓPRIA. Fora do `ProjectState` como o
-    /// `settings`. ⚠️ **O último campo** — os braços `189`..`197` do load leem-no acrescentando o `0` deste `Vec`
+    /// `settings`. ⚠️ Os braços `189`..`197` do load leem-no acrescentando o `0` deste `Vec`
     /// vazio (= o formato de fábrica).
     pub(crate) jogo: Vec<u8>,
+    /// **A MESA DE SOM** (v204, F30 §B2) — `ph2d_audio::Mesa::to_bytes`, versão PRÓPRIA (vazio = a de
+    /// fábrica). Fora do `ProjectState`: a mesa nunca teve undo. ⚠️ O último campo.
+    pub(crate) mesa: Vec<u8>,
 }
 
 /// Uma imagem de sprite embutida no projeto: os pixels RGBA + a célula de atlas que

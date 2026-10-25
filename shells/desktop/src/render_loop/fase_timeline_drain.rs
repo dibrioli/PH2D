@@ -103,6 +103,7 @@ impl crate::App {
         let dd = (&mut self.preview_drive, &self.timeline.doc);
         let st = &mut self.physics;
         ph2d_app_physics::aplicar_canais(sim, component_registry, physics, st, dd);
+        ph2d_app_audio::canais_mesa::aplicar(sim);
         ph2d_app_flip::canais_camada::aplicar(sim, flip, &mut self.flip_state.conducao);
         // Sob pilha, o relógio do EDITOR segue o da Keys onde o clip toca uma vez (emenda 3).
         if vista == ph2d_timeline::ViewClock::Clip {

@@ -100,10 +100,9 @@ pub const AMIX_SEC_COMP: NodeId = hash_node_id("audio_mixer_sec_comp");
 pub const AMIX_SEC_DUCK: NodeId = hash_node_id("audio_mixer_sec_duck");
 
 /// Sub-buses shown as their own strips, **in `ph2d_audio::BusId::SUB_BUSES`
-/// order** (Music, SFX). The panel is UI-only (no `ph2d-audio` dep); the shell's
-/// bridge maps strip index `i` → `BusId::SUB_BUSES[i]`, so this count and order
-/// must match the core. A compile-time assert in the shell guards the count.
-pub const SUB_BUS_COUNT: usize = 4;
+/// order**: strip `i` is sub-bus `i`. The count IS the core's (the panel reads the
+/// `ph2d_audio::Mesa` document since F30 §B2).
+pub const SUB_BUS_COUNT: usize = ph2d_audio::SUB_BUS_COUNT;
 /// Strip labels, index-aligned with [`SUB_BUS_COUNT`].
 /// ⚠️ São CHAVES (`TextKey`): a tabela de strings traduz no sítio que pinta — o `tr` não é `const fn`.
 pub const SUB_BUS_LABELS: [TextKey; SUB_BUS_COUNT] = [
@@ -275,5 +274,7 @@ pub use snapshot::sub_tone as sub_tone_target;
 pub use snapshot::{delay_feedback, delay_mix, delay_on, delay_time};
 /// Panel → shell: ducking enable + depth (Music/SFX duck under the Voice bus).
 pub use snapshot::{duck_depth, ducking, ducking_key};
+/// ⭐ A mesa como documento (F30 §B2): os dois retratos e a edição da mão.
+pub use snapshot::{mesa_autorada, mesa_viva, publicar_mesa, tomar_edicao};
 /// Panel → shell: master reverb enable / room size / wet-dry mix.
 pub use snapshot::{reverb_mix, reverb_on, reverb_size};

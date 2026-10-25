@@ -417,9 +417,8 @@ fn project_file_round_trips_through_postcard() {
         player_tape: ph2d_physics_ecs::TapeWire::default(),
         sprite_pixels: Vec::new(),
         stable_id_counter: ph2d_ecs::StableId::FIRST,
-        // ⚠️ NAO-DEFAULT de proposito: um mapa vazio aqui faria a ida-e-volta passar sobre o
-        // `Default` do serde em vez de sobre os bytes que o campo de facto escreve -- foi
-        // exactamente assim que uma mutacao sobreviveu a 10.503 testes na auditoria de 23/08.
+        // ⚠️ NAO-DEFAULT de proposito: vazio, a ida-e-volta passaria sobre o `Default` do serde e
+        // nao sobre os bytes do campo -- assim uma mutacao sobreviveu a 10.503 testes (23/08).
         input_map: super::input_map_tests::authored_input_map(),
         pattern_art: Vec::new(),
         // NÃO-vazio pela razão do `input_map` acima: dois quadros com nome.
@@ -427,6 +426,7 @@ fn project_file_round_trips_through_postcard() {
         scripts: Vec::new(),
         marcas_do_artista: Vec::new(),
         jogo: Vec::new(),
+        mesa: Vec::new(),
     };
     let bytes = postcard::to_allocvec(&(PROJECT_SCHEMA, &file)).unwrap();
     let (ver, back): (u32, ProjectFile) = postcard::from_bytes(&bytes).unwrap();

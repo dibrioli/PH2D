@@ -484,13 +484,6 @@ use ph2d_editor_core::zones::Rect as EditorRect;
 use ph2d_editor_core::{Layout as EditorLayout, RequestedSpriteStrategy, Toast};
 use std::time::Instant;
 
-// The mixer panel is UI-only (no `ph2d-audio` dep); its sub-bus strips are
-// index-aligned with `BusId::SUB_BUSES` by convention. This asserts the two
-// counts agree at compile time, so adding a core bus without a panel strip (or
-// vice-versa) is a build error, not a silent misroute.
-#[cfg(feature = "panel-audio-mixer")]
-const _: () = assert!(ph2d_audio::SUB_BUS_COUNT == ph2d_panel_audio_mixer::SUB_BUS_COUNT);
-
 impl crate::App {
     pub(super) fn run_render_frame(&mut self) {
         // De quem é o teclado neste quadro — antes dos dois leitores (o jogador aqui, os scripts adiante).

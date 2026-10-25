@@ -5,6 +5,9 @@ use super::*;
 
 const V191: &[u8] = include_bytes!("../tests/fixtures/projecto_marcas_v191.ph2dproj");
 const V192: &[u8] = include_bytes!("../tests/fixtures/projecto_marcas_v192.ph2dproj");
+/// **A MESA DE SOM no arquivo** (F30 §B2, v194) — neta pela mesma razão: as fixtures são as portas.
+#[path = "project_mesa_tests.rs"]
+mod mesa;
 
 /// ⭐ **As marcas atravessam o arquivo** — os bytes que o palco deu voltam iguais ao abrir.
 #[test]

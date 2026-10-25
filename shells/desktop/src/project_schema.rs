@@ -557,7 +557,20 @@
 /// # `201 → 202` — **o arranjo do HUD** (W5.5, ADR-0194, 27/10): `UiArranjo` REGISTADO, como a cola.
 ///
 /// # `202 → 203` — **o «Show notice» por timer** (W6, 28/10): `TimersQuiet` REGISTADO, como a cola.
-pub(crate) const PROJECT_SCHEMA: u32 = 203;
+///
+/// # `203 → 204` — **a mesa de som é documento** (`line/UIUX`, F30 §B2, 2026-10-25)
+///
+/// Campo novo no FIM do `ProjectFile`: `mesa: Vec<u8>` — `ph2d_audio::Mesa::to_bytes`, blob com versão
+/// PRÓPRIA (`MESA_VERSAO`; vazio = a de fábrica), o AUTORADO da mesa (a curva da Cena não entra).
+/// ⭐ **COM leitura dos anteriores:** o v203 acrescenta o `0` do `Vec` vazio, e os braços `202`..`189`
+/// mais um (um projecto antigo abre com a mesa no padrão, que é o que a mesa era em toda sessão).
+/// Gate: `project_mesa_tests`. Registos de componentes: `0`.
+///
+/// ⚠️ **A tripla NÃO vê este degrau** — nem a forma do `FlipDoc` nem a da `VecScene` mudam.
+pub(crate) const PROJECT_SCHEMA: u32 = 204;
+
+/// O último degrau sem a mesa de som — a mesma forma do actual, sem o `Vec` final.
+pub(crate) const PROJECT_SCHEMA_SEM_MESA: u32 = 203;
 
 /// O último degrau cuja geometria do vetor é a v23 (vértices sem id).
 pub(crate) const PROJECT_SCHEMA_GEOMETRIA_V23: u32 = 199;

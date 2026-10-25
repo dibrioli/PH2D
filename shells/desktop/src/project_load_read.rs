@@ -58,6 +58,7 @@ impl crate::App {
             // ⭐ **193 → … → 197: as animações do personagem, o `TiledDraw`, a memória do uso da imagem, o
             // `ImageRegion`** — um componente novo cada, a mesma forma; falta-lhes o `jogo` (198): o `0` do `Vec` vazio.
             PROJECT_SCHEMA
+            | crate::project_schema::PROJECT_SCHEMA_SEM_MESA
             | crate::project_schema::PROJECT_SCHEMA_GEOMETRIA_V23
             | crate::project_schema::PROJECT_SCHEMA_SEM_CONSTRAINTS
             | crate::project_schema::PROJECT_SCHEMA_SEM_FORMATO_DO_JOGO
@@ -65,11 +66,14 @@ impl crate::App {
             | crate::project_schema::PROJECT_SCHEMA_SEM_MEMORIA_DO_USO
             | crate::project_schema::PROJECT_SCHEMA_SEM_TILED_DRAW
             | crate::project_schema::PROJECT_SCHEMA_SEM_ANIMACOES_DO_PERSONAGEM => {
-                // ⭐ do `198` (o `jogo` já lá está) para cima os bytes são os do tipo vivo; abaixo falta-lhes o `0`.
-                let falta: &[u8] = if ver >= crate::project_schema::PROJECT_SCHEMA_SEM_CONSTRAINTS {
+                // ⭐ do `204` (a `mesa` já lá está) para cima os bytes são os do tipo vivo; do `198` ao `203`
+                // falta-lhes a `mesa` (um `0`); abaixo falta-lhes também o `jogo` (outro).
+                let falta: &[u8] = if ver >= PROJECT_SCHEMA {
                     &[]
-                } else {
+                } else if ver >= crate::project_schema::PROJECT_SCHEMA_SEM_CONSTRAINTS {
                     &[0]
+                } else {
+                    &[0, 0]
                 };
                 match postcard::from_bytes::<(u32, ProjectFile)>(&[&bytes[..], falta].concat()) {
                     Ok((_, f)) => (f, None),
@@ -129,8 +133,9 @@ impl crate::App {
             // ⭐ **192 → 193: as marcas do artista** (W9 das Macros): o campo novo é o ÚLTIMO, e o `0` do
             // `Vec` vazio acrescentado lê o v192 com o tipo vivo (os anteriores levam-no também). O `191`
             // tem a mesma forma; só o SIGNIFICADO da opacidade nas poses mudou (abaixo).
+            // ⭐ **203 → 204: a mesa de som** (F30 §B2): mais um `Vec` vazio no fim — um `0` a mais.
             192 | crate::project_schema::PROJECT_SCHEMA_OPACIDADE_FORA_DOS_ESTADOS => {
-                match postcard::from_bytes::<(u32, ProjectFile)>(&[&bytes[..], &[0, 0]].concat()) {
+                match postcard::from_bytes::<(u32, ProjectFile)>(&[&bytes[..], &[0, 0, 0]].concat()) {
                     Ok((_, f)) => (f, None),
                     Err(e) => {
                         eprintln!("[proj] v{ver} ilegivel: {e}");
@@ -143,7 +148,7 @@ impl crate::App {
                 use ph2d_app_components::script_project::read_before_scripts;
                 match read_before_scripts(
                     ver,
-                    &[&bytes[..], &[0, 0]].concat(),
+                    &[&bytes[..], &[0, 0, 0]].concat(),
                     |f: &mut ProjectFile| &mut f.state.world,
                     PROJECT_SCHEMA,
                 ) {

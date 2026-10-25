@@ -57,6 +57,7 @@ fn the_world_settings_survive_the_project_file() {
         scripts: Vec::new(),
         marcas_do_artista: Vec::new(),
         jogo: Vec::new(),
+        mesa: Vec::new(),
     };
     let bytes = postcard::to_allocvec(&(PROJECT_SCHEMA, &file)).expect("serializa");
     std::fs::write(&path, bytes).expect("grava");
@@ -135,6 +136,7 @@ fn the_project_scale_and_unit_survive_the_project_file() {
         scripts: Vec::new(),
         marcas_do_artista: Vec::new(),
         jogo: crate::project_settings::collect_jogo(authored),
+        mesa: Vec::new(),
     };
     let bytes = postcard::to_allocvec(&(PROJECT_SCHEMA, &file)).expect("serializa");
     std::fs::write(&path, bytes).expect("grava");

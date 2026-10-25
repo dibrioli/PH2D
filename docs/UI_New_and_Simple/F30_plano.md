@@ -134,6 +134,43 @@ cujas faixas estão em clips de dono `None` (`animation_view.rs:162-177`). A pop
 - O load repõe o `ConducaoMundo` (`project_load.rs`): o autorado do ficheiro não é a mão.
 - ⚠️ **Aberto:** o scrub re-simula do checkpoint com o `vivo` do alvo, sem reler a curva por passo (a mesma nota da §C).
 
+### B2 — ✅ a MESA DE SOM é documento e canal da Cena (25/10)
+
+- **O documento** `ph2d_audio::Mesa` (`crates/ph2d-audio/src/mesa.rs`): master (ganho, corte alto/baixo, mute, pan,
+  limitador), reverb on/tamanho/retorno, EQ ×3, delay on/tempo/feedback/retorno, ducking on/profundidade/chave, 4 ×
+  `BusMesa` (ganho, mute, solo, pan, tom, corte baixo, envios reverb/delay, comp). ⛔ Fora: medidores, clip e o *Play
+  Test* (ferramenta de AUDIÇÃO da sessão, `snapshot.rs` `PLAY_TEST`). Casa: a crate do motor (folha, só `ph2d-core`; ganhou
+  `serde`+`postcard`) — o painel é `optional` na shell e o `ProjectFile` não pode depender de uma feature.
+- **Onde mora em runtime:** o recurso `MesaDoc { autorado, vivo, conducao }` no `SimWorld`
+  (`ph2d-app-audio/src/mesa_doc.rs`) — o `SimWorld` só nasce uma vez (`init_subsystems.rs:105`) e o undo/load não apagam
+  recursos. ⛔ Sem undo: a mesa nunca o teve (thread-local, nenhum passo), e fica fora do `ProjectState` como o `physics`.
+- **O ficheiro** (`PROJECT_SCHEMA 193 → 194`, `project_schema.rs`): `mesa: Vec<u8>` no FIM do `ProjectFile`, blob com
+  versão própria (`MESA_VERSAO`; a de fábrica grava vazio). Leitura dos anteriores: `project_load_read.rs:144` acrescenta um
+  `0` ao v193 e dois aos `192`/`191`/`190`/`189`. Save `project_save.rs:143` (o AUTORADO); load `project_load.rs:176`
+  (`instalar`: o load não é a mão). Gates: `a_mesa_viaja_no_projecto`, `um_projecto_antigo_abre_com_a_mesa_no_padrao`
+  (bytes escritos campo a campo, e as marcas do v193 não se desalinham).
+- **O painel** (`snapshot.rs`): dois retratos `AUTORADO`/`VIVO` e a marca `EDITADO`; a mão escreve nos dois
+  (`editar`, `:64`), o interruptor vira o que se VÊ (`virar`, `:76`, a lei do painel da física). Os sliders espelham o vivo
+  pelos inversos dos mapas (`event.rs:26` `espelhar_sliders`, `fader::fader_pos`): a curva move-os e o próximo gesto parte de
+  onde se vê. `SUB_BUS_COUNT` passa a ser o do motor (o `assert` da shell saiu).
+- **O quadro** `mesa_doc::quadro` (`mesa_doc.rs:50`, chamado em `fase_audio_panels.rs:19`, com ou sem a feature do painel):
+  a edição tomada entra no autorado, o painel recebe os dois retratos, o motor ouve o vivo (`aplicar_ao_motor`, o corpo que
+  era `fase_audio_mixer.rs` na shell — −90 linhas lá).
+- **Família `MESA = 10`** (`ph2d-ecs/src/canal_mesa.rs`): 19 campos do master + `bus(b, f) = 32 + 16·b + f` (9 por
+  barramento, o barramento no NÚMERO para cada um ter o seu rótulo — `por_i` poria «Gain 1» no SFX). Espécies: `Continuo`
+  (ganhos, pans, Hz, envios), `Ligado` (mute/solo/on), `Opcoes` (a chave do ducking, os nomes dos barramentos).
+  `da_cena()` passa a valer para MUNDO e MESA (a guarda `SceneNotInView` do §B1 serve as duas).
+- **O funil** `ph2d-app-audio/src/canais_mesa.rs`: `publicar` (`fase_autokey.rs:63`) e `aplicar`
+  (`fase_timeline_drain.rs:102`) com `ConducaoMesa` — a lei do `ConducaoMundo`. A ordem do quadro: a mão do quadro N entra
+  no documento no início do N+1 (`quadro`), e o `aplicar` desse quadro vê-a como mão e o Auto Key grava-a.
+- **Losango** `ph2d-app-audio/src/marcas_mesa.rs` (tabela + `marcas` + `clique`, a guarda do clip da Cena).
+- **Gate:** `ph2d-panel-audio-mixer` sai de `DIVIDA_CRATE` para o `ESCOPO`; `LINHAS` `check_row`/`slider_row`/
+  `sub_bus_rows`/`paint_labeled_slider`; `paint_master.rs::paint_{limiter,eq,reverb,delay,comp,ducking}` = Canal. O Play
+  Test e os medidores não são população (`paint_toggle`/`paint_level_meter` não são portas): não há o que isentar.
+- ⚠️ **Aberto:** as TIRAS (fader, pan, tom, corte baixo, M/S de cada barramento) pintam-se com `paint_slider`/`paint_toggle`
+  sem coluna de losango — gravam pelo Auto Key e a curva move-as, mas o clique no losango só existe nas linhas do rodapé.
+  ⚠️ A chave do ducking interpola-se como índice com `Hold` (a curva escolhe o barramento, não mistura).
+
 ### C — o corpo vivo obedece à curva a meio da simulação
 
 ✅ **Feito** (`419e93f20e`): `PhysicsWorld::retune_body` (o colisor copiado do MESMO `build_collider`; desmonte exaustivo do

@@ -30,9 +30,25 @@ pub fn fader_gain(pos: f32) -> f32 {
     }
 }
 
+/// The inverse of [`fader_gain`]: the fader position that gives `gain` (0 → bottom).
+pub fn fader_pos(gain: f32) -> f32 {
+    if gain <= 0.0 || !gain.is_finite() {
+        return 0.0;
+    }
+    let db = 20.0 * gain.log10(); // LITERAL-PX-OK: gain→dB constant (audio domain)
+    ((db - FADER_MIN_DB) / (FADER_MAX_DB - FADER_MIN_DB)).clamp(0.0, 1.0)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_position_is_the_inverse_of_the_gain() {
+        for p in [0.0, 0.1, FADER_UNITY_POS, 0.97, 1.0] {
+            assert!((fader_pos(fader_gain(p)) - p).abs() < 1e-4, "{p}");
+        }
+    }
 
     #[test]
     fn unity_position_is_zero_db_unity_gain() {

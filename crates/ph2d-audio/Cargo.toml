@@ -18,6 +18,9 @@ authors.workspace = true
 [dependencies]
 crossbeam-queue = "0.3"
 ph2d-core = { path = "../ph2d-core" }
+# A MESA como documento (`mesa.rs`, F30 §B2): o blob que o `.ph2dproj` leva.
+postcard = { version = "1", features = ["alloc"] }
+serde = { version = "1", features = ["derive"] }
 thiserror = "2"
 
 [lints]

@@ -419,7 +419,7 @@ pub fn smooth_velocity(g: &mut Grid, p: &Params) {
     let (fbx0, fby0, fbx1, fby1) = crate::flow::flow_bbox((g.bx0, g.by0, g.bx1, g.by1), g.flow.rf);
     let rows = (fby1 - fby0 + 1).max(0) as usize;
     let span = (fbx1 - fbx0 + 1).max(0) as usize;
-    smooth_velocity_rows(g, p, Rows::pick(rows, span, par::MIN_CELLS_GATHER));
+    smooth_velocity_rows(g, p, Rows::pick_medido(rows, span, par::MIN_CELLS_GATHER));
 }
 
 /// [`smooth_velocity`] com a rota de caminhada FORÇADA — a porta dos gates de

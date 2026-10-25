@@ -370,3 +370,63 @@ fn the_parallel_jacobi_drying_is_the_serial_one_to_the_byte() {
     });
     assert!(d.is_empty(), "as rotas da secagem divergiram: {d:?}");
 }
+
+/// [`puddle_of_two_colours`] na lei do Rebelle (a do Wet de fábrica) e com 40 passos de água: há assentado sob o filme,
+/// então a secagem assenta E re-molha pelo Newton do `assenta` — a célula cara que a [`Rows::Medida`] existe para pagar.
+fn puddle_do_rebelle() -> Engine {
+    let mut e = puddle_of_two_colours();
+    e.sim.lei = ph2d_wet_paint::assenta::Lei::Cobre;
+    e.sim.glaze_filme = 0.35;
+    e.sim.esconde = ph2d_wet_paint::colorops::TINTA_ESCONDE;
+    for _ in 0..40 {
+        e.step_simulation();
+    }
+    e
+}
+
+/// **A rota MEDIDA é a rota serial, ao byte** — nos seis passes da água que a escolhem (`Rows::pick_medido`), nos
+/// dois extremos do relógio: `Medida(0)` caminha o resto em paralelo, `Medida(u64::MAX)` em série, e as duas correm a
+/// linha do meio PRIMEIRO. A precondição: cada passe muda a poça.
+#[test]
+fn a_rota_medida_e_a_serie_ao_byte() {
+    type Passe = fn(&mut Grid, &Params, Rows);
+    let passes: [(&str, Passe); 6] = [
+        ("drying", |g, p, m| {
+            ph2d_wet_paint::drying::drying_pass_jacobi_rows(g, p, 0.001, 0.0001, false, m);
+        }),
+        ("advect", |g, p, m| {
+            solver::advect_jacobi_rows(g, p, 0.0, 1.0, m);
+        }),
+        ("sedimenta", |g, _, m| {
+            solver::sedimenta_rows(g, 0.3, 0.4, 0.9, true, m)
+        }),
+        ("flow", |g, p, m| {
+            solver::build_flow_field_jacobi_rows(g, p, 0.0, 0.6, false, m)
+        }),
+        ("project", |g, p, m| solver::project_rows(g, p, m)),
+        ("smooth", |g, p, m| solver::smooth_velocity_rows(g, p, m)),
+    ];
+    let nascida = puddle_do_rebelle();
+    assert!(
+        nascida.active_grid().has_fluid,
+        "a poça do Rebelle secou antes do passe"
+    );
+    for (nome, passe) in passes {
+        let mut serie = puddle_do_rebelle();
+        let p = params(&serie);
+        passe(serie.active_grid_mut(), &p, Rows::Serial);
+        assert!(
+            !diff(nascida.active_grid(), serie.active_grid()).is_empty(),
+            "{nome}: o passe não mudou a poça — a identidade seria vácuo"
+        );
+        for piso in [0, u64::MAX] {
+            let mut medida = puddle_do_rebelle();
+            passe(medida.active_grid_mut(), &p, Rows::Medida(piso));
+            let d = diff(serie.active_grid(), medida.active_grid());
+            assert!(
+                d.is_empty(),
+                "{nome}: a rota Medida({piso}) divergiu da série: {d:?}"
+            );
+        }
+    }
+}

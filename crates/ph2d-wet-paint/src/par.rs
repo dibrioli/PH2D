@@ -57,16 +57,48 @@ use rayon::prelude::*;
 
 /// Como as linhas de um passe row-paralelo são caminhadas.
 ///
-/// As duas variantes são a **MESMA resposta** — a paralela existe só para o
+/// As variantes são a **MESMA resposta** — a paralela existe só para o
 /// relógio. O produto pergunta [`Rows::pick`]; os gates de identidade forçam
-/// as duas sobre a MESMA fixture e comparam byte a byte.
+/// as rotas sobre a MESMA fixture e comparam byte a byte.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Rows {
     Serial,
     Parallel,
+    /// **A rota MEDIDA**: a linha do meio corre em série e o relógio dela, vezes as linhas, escolhe o
+    /// caminhante do resto — paralelo quando a estimativa passa o piso (ns). As linhas são independentes
+    /// (o contrato da paralela), então a ordem não muda a resposta.
+    Medida(u64),
 }
 
+/// O piso de TEMPO da [`Rows::Medida`] dos passes da água ([`Rows::pick_medido`]): o custo de despachar
+/// um caminhar ao pool. Medido 25/10 pela `sonda_o_piso_de_tempo_da_agua` (`ph2d-tool-painter`, smoke, o
+/// Wet Round de fábrica, ms por ciclo de 12 passos, mínimo de 7 intercalados, load 8,7):
+///
+/// ```text
+///   tela      raio  janela |  piso ∞     0     10     20     40     80 µs
+///     60×120    2    1 380 |   1,02   1,21   0,99   0,97   0,96   0,96
+///    120×120    2    2 737 |   2,08   1,59   1,33   1,35   1,43   1,91
+///    500×120    2   10 152 |   8,10   3,87   3,88   3,93   4,17   4,55
+///   1000×158   13   39 621 |  58,71  10,64  10,21  10,48  10,78  10,96
+///   1000×410   55  120 764 | 236,53  27,07  26,97  27,77  27,67  26,98
+///   1000×800  120  291 000 |  54,10  53,58  54,81  55,81  55,88  53,59   (acima dos pisos de células)
+/// ```
+///
+/// `∞` é a rota de antes (série abaixo dos pisos de células); `0` perde na janela mínima. O piso fica onde
+/// nenhuma cena perde para `∞` e todas ficam a ≤ 5 % da melhor.
+pub static PISO_NS_AGUA: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(20_000);
+
 impl Rows {
+    /// [`Self::pick`] com a rota [`Rows::Medida`] abaixo do piso de células (os passes da água): o piso de
+    /// células foi medido com a célula barata do port, e a do pincel de fábrica custa até 10× — abaixo dele
+    /// decide o relógio, não a contagem.
+    pub fn pick_medido(rows: usize, span: usize, min_cells: usize) -> Rows {
+        match Self::pick(rows, span, min_cells) {
+            Rows::Serial => Rows::Medida(PISO_NS_AGUA.load(std::sync::atomic::Ordering::Relaxed)),
+            r => r,
+        }
+    }
+
     /// A rota para uma janela de `rows × span` células, dado o **piso medido do
     /// passe que pergunta**.
     ///
@@ -154,7 +186,53 @@ where
             .par_chunks_mut(stride)
             .enumerate()
             .for_each(|(r, row)| f(r, row)),
+        Rows::Medida(piso) => medida(
+            buf.chunks_mut(stride).enumerate().collect(),
+            piso,
+            |(r, row)| f(r, row),
+        ),
     }
+}
+
+/// O caminhar da [`Rows::Medida`]: o item do meio em série, cronometrado; o resto em paralelo se o relógio
+/// dele vezes os itens passa `piso_ns`, senão em série. A ordem dos itens é livre (o contrato da paralela).
+fn medida<I: Send>(mut itens: Vec<I>, piso_ns: u64, f: impl Fn(I) + Send + Sync) {
+    let n = itens.len();
+    if n < 2 {
+        itens.into_iter().for_each(f);
+        return;
+    }
+    let meio = itens.swap_remove(n / 2);
+    let t0 = std::time::Instant::now();
+    f(meio);
+    if t0.elapsed().as_nanos() * n as u128 >= u128::from(piso_ns) {
+        itens.into_par_iter().for_each(f);
+    } else {
+        itens.into_iter().for_each(f);
+    }
+}
+
+/// [`medida`] com uma redução (`red` associativa e comutativa, a regra de [`walk_rows_reduce`]).
+fn medida_reduce<I: Send, R: Send + Sync + Copy>(
+    mut itens: Vec<I>,
+    piso_ns: u64,
+    ident: R,
+    f: impl Fn(I) -> R + Send + Sync,
+    red: impl Fn(R, R) -> R + Send + Sync,
+) -> R {
+    let n = itens.len();
+    if n < 2 {
+        return itens.into_iter().map(f).fold(ident, red);
+    }
+    let meio = itens.swap_remove(n / 2);
+    let t0 = std::time::Instant::now();
+    let r_meio = f(meio);
+    let r = if t0.elapsed().as_nanos() * n as u128 >= u128::from(piso_ns) {
+        itens.into_par_iter().map(f).reduce(|| ident, &red)
+    } else {
+        itens.into_iter().map(f).fold(ident, &red)
+    };
+    red(r_meio, r)
 }
 
 /// [`walk_rows`] para um passe que escreve **DOIS** planos na mesma passada
@@ -179,6 +257,14 @@ where
             .zip(b.par_chunks_mut(stride))
             .enumerate()
             .for_each(|(r, (ra, rb))| f(r, ra, rb)),
+        Rows::Medida(piso) => medida(
+            a.chunks_mut(stride)
+                .zip(b.chunks_mut(stride))
+                .enumerate()
+                .collect(),
+            piso,
+            |(r, (ra, rb))| f(r, ra, rb),
+        ),
     }
 }
 
@@ -213,6 +299,13 @@ where
             .enumerate()
             .map(|(r, row)| f(r, row))
             .reduce(|| ident, &red),
+        Rows::Medida(piso) => medida_reduce(
+            buf.chunks_mut(stride).enumerate().collect(),
+            piso,
+            ident,
+            |(r, row)| f(r, row),
+            red,
+        ),
     }
 }
 
@@ -312,6 +405,7 @@ where
     match mode {
         Rows::Serial => items.iter_mut().map(&f).fold(ident, &red),
         Rows::Parallel => items.par_iter_mut().map(&f).reduce(|| ident, &red),
+        Rows::Medida(piso) => medida_reduce(items.iter_mut().collect(), piso, ident, f, red),
     }
 }
 
@@ -372,6 +466,11 @@ where
             .zip(b.par_iter_mut())
             .enumerate()
             .for_each(|(r, (ra, rb))| f(r, ra, rb)),
+        Rows::Medida(piso) => medida(
+            a.iter_mut().zip(b.iter_mut()).enumerate().collect(),
+            piso,
+            |(r, (ra, rb))| f(r, ra, rb),
+        ),
     }
 }
 
@@ -410,6 +509,15 @@ pub(crate) fn walk_rows3<T, U, V, F>(
             .zip(c.par_chunks_mut(stride))
             .enumerate()
             .for_each(|(r, ((ra, rb), rc))| f(r, ra, rb, rc)),
+        Rows::Medida(piso) => medida(
+            a.chunks_mut(stride)
+                .zip(b.chunks_mut(stride))
+                .zip(c.chunks_mut(stride))
+                .enumerate()
+                .collect(),
+            piso,
+            |(r, ((ra, rb), rc))| f(r, ra, rb, rc),
+        ),
     }
 }
 
@@ -439,6 +547,16 @@ where
             .zip(d.par_chunks_mut(stride))
             .enumerate()
             .for_each(|(r, (((ra, rb), rc), rd))| f(r, [ra, rb, rc, rd])),
+        Rows::Medida(piso) => medida(
+            a.chunks_mut(stride)
+                .zip(b.chunks_mut(stride))
+                .zip(c.chunks_mut(stride))
+                .zip(d.chunks_mut(stride))
+                .enumerate()
+                .collect(),
+            piso,
+            |(r, (((ra, rb), rc), rd))| f(r, [ra, rb, rc, rd]),
+        ),
     }
 }
 
@@ -490,6 +608,17 @@ pub(crate) fn walk_rows5<A, B, C, D, E, F>(
             .zip(e.par_chunks_mut(stride))
             .enumerate()
             .for_each(|(r, ((((ra, rb), rc), rd), re))| f(r, ra, rb, rc, rd, re)),
+        Rows::Medida(piso) => medida(
+            a.chunks_mut(stride)
+                .zip(b.chunks_mut(stride))
+                .zip(c.chunks_mut(stride))
+                .zip(d.chunks_mut(stride))
+                .zip(e.chunks_mut(stride))
+                .enumerate()
+                .collect(),
+            piso,
+            |(r, ((((ra, rb), rc), rd), re))| f(r, ra, rb, rc, rd, re),
+        ),
     }
 }
 
@@ -522,3 +651,7 @@ pub const MIN_CELLS_DRYING: usize = 192 << 10;
 /// janela para a rota que perde. O joelho está entre 123k e 195k; o piso fica
 /// logo abaixo do lado que ganha.
 pub const MIN_CELLS_FLOW: usize = 160 << 10;
+
+#[cfg(test)]
+#[path = "par_medida_tests.rs"]
+mod medida_tests;

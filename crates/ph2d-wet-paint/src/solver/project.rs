@@ -14,7 +14,7 @@ pub fn project(g: &mut Grid, p: &Params) {
     let (fbx0, fby0, fbx1, fby1) = crate::flow::flow_bbox((g.bx0, g.by0, g.bx1, g.by1), g.flow.rf);
     let rows = (fby1 - fby0 + 1).max(0) as usize;
     let span = (fbx1 - fbx0 + 1).max(0) as usize;
-    project_rows(g, p, Rows::pick(rows, span, par::MIN_CELLS_JACOBI));
+    project_rows(g, p, Rows::pick_medido(rows, span, par::MIN_CELLS_JACOBI));
 }
 
 /// [`project`] com a rota de caminhada FORÇADA — a porta dos gates de

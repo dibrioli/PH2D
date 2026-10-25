@@ -147,7 +147,7 @@ pub fn build_flow_field_jacobi(g: &mut Grid, p: &Params, gx: f64, gy: f64, ext_b
     let (bx0, by0, bx1, by1) = crate::flow::flow_bbox((g.bx0, g.by0, g.bx1, g.by1), g.flow.rf);
     let rows = (by1 - by0 + 1).max(0) as usize;
     let span = (bx1 - bx0 + 1).max(0) as usize;
-    let mode = Rows::pick(rows, span, par::MIN_CELLS_FLOW);
+    let mode = Rows::pick_medido(rows, span, par::MIN_CELLS_FLOW);
     build_flow_field_jacobi_rows(g, p, gx, gy, ext_bypass, mode);
 }
 

@@ -255,7 +255,8 @@ fn tuning_resets_restore_their_own_scope_only() {
 }
 
 /// Os grupos AVANÇADOS do Tuning (25/10): a linha de um ex-`Hidden` chega aos knobs, e o repor do
-/// grupo Bristles repõe só os fios — nem o Wet effects, nem o Leveling do cartão (que segue `Hidden`).
+/// grupo Bristles repõe só os fios — nem o Wet effects, nem o Leveling e o Backrun do cartão (fora do Tuning
+/// desde a janela 7: o Backrun lê-se pela porta do cartão).
 #[test]
 fn os_grupos_avancados_do_tuning_chegam_aos_knobs_e_repoem_so_o_seu() {
     let mut t = wet_tool_fixture();
@@ -264,9 +265,11 @@ fn os_grupos_avancados_do_tuning_chegam_aos_knobs_e_repoem_so_o_seu() {
         crate::ids::wet_tuning_slider_id("bristleStreak"),
         0.4,
     );
-    set(&mut t, crate::ids::wet_tuning_chip_id("extBackrun"), 1.2);
+    set(&mut t, crate::ids::wet_tuning_chip_id("extFingering"), 0.6);
     set(&mut t, crate::ids::PAINTER_WETPAINT_LEVELING, 1.8);
+    set(&mut t, crate::ids::PAINTER_WETPAINT_BACKRUN, 1.2);
     assert_eq!(t.paint.wetpaint.knobs.get(Knob::BristleStreak), 0.4);
+    assert_eq!(t.paint.wetpaint.knobs.get(Knob::ExtFingering), 0.6);
     assert_eq!(t.paint.wetpaint.knobs.get(Knob::ExtBackrun), 1.2);
     let i = crate::ids::WET_TUNING_RESET_GROUPS
         .iter()
@@ -278,9 +281,14 @@ fn os_grupos_avancados_do_tuning_chegam_aos_knobs_e_repoem_so_o_seu() {
         KNOB_DEFS[Knob::BristleStreak as usize].default
     );
     assert_eq!(
+        t.paint.wetpaint.knobs.get(Knob::ExtFingering),
+        0.6,
+        "wrong group"
+    );
+    assert_eq!(
         t.paint.wetpaint.knobs.get(Knob::ExtBackrun),
         1.2,
-        "wrong group"
+        "o cartão não é do Tuning"
     );
     assert_eq!(
         t.paint.wetpaint.knobs.get(Knob::Leveling),

@@ -295,3 +295,132 @@ fn re_molhar_tinta_seca_leva_a_cor_do_assentado() {
         );
     }
 }
+
+/// **O tapar calculado uma vez é o de cada avaliação, ao bit**: a avaliação que o Newton repete
+/// ([`sobre_branco_tapando`] com o [`tapa`] da cobertura) é a [`sobre_branco`] — nas leis, com e sem Glaze, de
+/// filme vazio a opaco.
+#[test]
+fn o_tapar_de_uma_vez_e_o_de_cada_avaliacao() {
+    let leis = [
+        Ecra::Porto,
+        Ecra::PorCima(0.35),
+        Ecra::Cobre {
+            filme: 0.35,
+            esconde: crate::colorops::TINTA_ESCONDE,
+            molhada: 1.0,
+            vela: 0.0,
+        },
+        Ecra::Cobre {
+            filme: 0.2,
+            esconde: 3.0,
+            molhada: 1.0,
+            vela: 0.6,
+        },
+        Ecra::Cobre {
+            filme: 0.0,
+            esconde: 2.0,
+            molhada: 1.8,
+            vela: 1.0,
+        },
+    ];
+    let cores = [
+        AZ,
+        AM,
+        [255.0; 3],
+        [0.0; 3],
+        [151.0, 29.0, 29.0],
+        [190.0, 55.0, 55.0],
+    ];
+    let coberturas = [0.0, 1e-6, 0.05, 0.3, 0.5, 0.77, 0.99, 1.0];
+    let mut casos = 0;
+    for e in leis {
+        for sc in cores {
+            for uc in cores {
+                for a_s in coberturas {
+                    for a_f in coberturas {
+                        let a = sobre_branco(e, sc, uc, a_s, a_f);
+                        let b = sobre_branco_tapando(e, sc, uc, a_s, a_f, tapa(e, a_f));
+                        assert!(
+                            (0..3).all(|c| a[c].to_bits() == b[c].to_bits()),
+                            "{e:?} {sc:?} {uc:?} {a_s} {a_f}: {a:?} ≠ {b:?}"
+                        );
+                        casos += 1;
+                    }
+                }
+            }
+        }
+    }
+    assert_eq!(casos, 5 * 36 * 64);
+    // O valor do tapar, não só a igualdade das duas rotas (que um erro comum às duas passaria).
+    let e = Ecra::Cobre {
+        filme: 0.35,
+        esconde: 5.0,
+        molhada: 1.0,
+        vela: 0.0,
+    };
+    assert_eq!(tapa(e, 0.3).to_bits(), (1.0 - 0.7f64.powf(5.0)).to_bits());
+    assert_eq!(tapa(Ecra::Porto, 0.3), 0.0);
+}
+
+/// **Sonda: de que custa uma avaliação da lei do Rebelle** — ns por chamada das peças do Newton, sobre entradas
+/// sorteadas da faixa do assentar (a lei do Wet Round: tapar 5, velatura 0,35, sem Glaze).
+#[test]
+#[ignore = "sonda de medicao (perfil smoke)"]
+fn sonda_o_custo_da_lei_do_rebelle() {
+    use std::hint::black_box as bb;
+    use std::time::Instant;
+    let e = Ecra::Cobre {
+        filme: 0.35,
+        esconde: crate::colorops::TINTA_ESCONDE,
+        molhada: 1.0,
+        vela: 0.0,
+    };
+    let mut s = 0x9e37_79b9_u64;
+    let mut r = || {
+        s ^= s << 13;
+        s ^= s >> 7;
+        s ^= s << 17;
+        (s >> 11) as f64 / (1u64 << 53) as f64
+    };
+    let ent: Vec<_> = (0..4096)
+        .map(|_| {
+            let sc = [r() * 255.0, r() * 255.0, r() * 255.0];
+            let uc = [r() * 255.0, r() * 255.0, r() * 255.0];
+            let (a_s, a_f, d) = (r(), r() * 0.99, r() * 0.05);
+            (
+                sc,
+                uc,
+                a_s,
+                a_f,
+                1.0 - (1.0 - a_s) * (1.0 - d),
+                1.0 - (1.0 - a_f) / (1.0 - d),
+            )
+        })
+        .collect();
+    const N: usize = 200;
+    let mede = |nome: &str, f: &dyn Fn(&([f64; 3], [f64; 3], f64, f64, f64, f64)) -> f64| {
+        let mut melhor = f64::MAX;
+        for _ in 0..5 {
+            let t = Instant::now();
+            let mut acc = 0.0;
+            for _ in 0..N {
+                for x in &ent {
+                    acc += f(bb(x));
+                }
+            }
+            bb(acc);
+            melhor = melhor.min(t.elapsed().as_secs_f64() * 1e9 / (N * ent.len()) as f64);
+        }
+        println!("  {nome:<28} {melhor:7.1} ns");
+    };
+    mede("powf (tapa)", &|x| (1.0 - x.3).powf(5.0));
+    mede("diferenca_de_pigmento", &|x| {
+        crate::colorops::diferenca_de_pigmento(x.0, x.1)
+    });
+    mede("cor_e_alfa", &|x| cor_e_alfa(e, x.0, x.1, x.2, x.3).1);
+    mede("sobre_branco_tapando", &|x| {
+        sobre_branco_tapando(e, x.0, x.1, x.2, x.3, 0.5)[0]
+    });
+    mede("assenta", &|x| assenta(e, x.0, x.1, x.2, x.3, x.4, x.5)[0]);
+    mede("levanta", &|x| levanta(e, x.0, x.1, x.4, x.5, x.2, x.3)[0]);
+}

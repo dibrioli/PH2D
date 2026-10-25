@@ -122,7 +122,13 @@ fn take_scale(outflow: f64) -> f64 {
 pub fn advect_jacobi(g: &mut Grid, p: &Params, gx: f64, gy: f64) -> f64 {
     let rows = (g.by1 - g.by0 + 1).max(0) as usize;
     let span = (g.bx1 - g.bx0 + 1).max(0) as usize;
-    advect_jacobi_rows(g, p, gx, gy, Rows::pick(rows, span, par::MIN_CELLS_ADVECT))
+    advect_jacobi_rows(
+        g,
+        p,
+        gx,
+        gy,
+        Rows::pick_medido(rows, span, par::MIN_CELLS_ADVECT),
+    )
 }
 
 /// [`advect_jacobi`] com a rota forçada — a porta dos gates de identidade.

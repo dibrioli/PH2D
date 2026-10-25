@@ -84,7 +84,7 @@ pub fn sedimenta(g: &mut Grid, a: f64, gx: f64, gy: f64, km: bool) {
         gx,
         gy,
         km,
-        Rows::pick(rows, span, par::MIN_CELLS_ADVECT),
+        Rows::pick_medido(rows, span, par::MIN_CELLS_ADVECT),
     );
 }
 

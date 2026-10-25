@@ -100,11 +100,34 @@ impl Ecra {
 /// suspensão (`a_f`). ⛔ Uma porta só — o render e as transferências verticais passam por aqui.
 #[inline]
 pub fn cor_e_alfa(e: Ecra, sc: [f64; 3], uc: [f64; 3], a_s: f64, a_f: f64) -> ([f64; 3], f64) {
+    cor_e_alfa_tapando(e, sc, uc, a_s, a_f, || tapa(e, a_f))
+}
+
+/// O tapar da [`Ecra::Cobre`] a cobertura `a_f`, `h = 1 − (1 − a_f)^esconde` — só lê `a_f`, e o Newton do [`resolve`]
+/// avalia o ecrã muitas vezes à MESMA cobertura: a potência calcula-se uma vez por célula ([`sobre_branco_tapando`]).
+#[inline]
+fn tapa(e: Ecra, a_f: f64) -> f64 {
+    match e {
+        Ecra::Cobre { esconde, .. } => 1.0 - (1.0 - a_f).powf(esconde),
+        _ => 0.0,
+    }
+}
+
+/// [`cor_e_alfa`] com o [`tapa`] de `a_f` à mão (pedido só onde a conta o usa).
+#[inline]
+fn cor_e_alfa_tapando(
+    e: Ecra,
+    sc: [f64; 3],
+    uc: [f64; 3],
+    a_s: f64,
+    a_f: f64,
+    tapa: impl FnOnce() -> f64,
+) -> ([f64; 3], f64) {
     let Ecra::Cobre {
         filme,
-        esconde,
         molhada,
         vela,
+        ..
     } = e
     else {
         return (cor(e, sc, uc, a_s, a_f), a_s + a_f * (1.0 - a_s));
@@ -134,7 +157,7 @@ pub fn cor_e_alfa(e: Ecra, sc: [f64; 3], uc: [f64; 3], a_s: f64, a_f: f64) -> ([
     }
     // O tapar EXTRA é da diferença de pigmento: a mesma tinta sobre si mesma só soma pigmento (sem ele,
     // re-molhar o azul para dentro de um filme azul clareava-o — medido no teste das transferências).
-    let h = 1.0 - (1.0 - a_f).powf(esconde);
+    let h = tapa();
     // Sob o Glaze, a mesma tinta filtrada por si não é OUTRA a tapar: com o extra, cada filme fino que a água traz
     // clareava o assentado escuro e o assentar guardava-o — as linhas claras na orla (doc 42 §8).
     let d = if vela > 0.0 && crate::colorops::a_mesma_tinta_filtrada(sc, uc) {
@@ -169,6 +192,20 @@ pub fn cor_e_alfa(e: Ecra, sc: [f64; 3], uc: [f64; 3], a_s: f64, a_f: f64) -> ([
 #[inline]
 pub fn sobre_branco(e: Ecra, sc: [f64; 3], uc: [f64; 3], a_s: f64, a_f: f64) -> [f64; 3] {
     let (c, la) = cor_e_alfa(e, sc, uc, a_s, a_f);
+    c.map(|v| 255.0 * (1.0 - la) + v * la)
+}
+
+/// [`sobre_branco`] com o [`tapa`] de `a_f` já calculado — a avaliação que o [`resolve`] repete.
+#[inline]
+fn sobre_branco_tapando(
+    e: Ecra,
+    sc: [f64; 3],
+    uc: [f64; 3],
+    a_s: f64,
+    a_f: f64,
+    h: f64,
+) -> [f64; 3] {
+    let (c, la) = cor_e_alfa_tapando(e, sc, uc, a_s, a_f, || h);
     c.map(|v| 255.0 * (1.0 - la) + v * la)
 }
 
@@ -310,7 +347,10 @@ pub fn assenta(
             }
         }
         let cego = if vela > 0.0 { CEGO_COM_GLAZE } else { CEGO };
-        return resolve(x0, alvo, cego, |x| sobre_branco(e, x, uc, a_s2, a_f2));
+        let h2 = tapa(e, a_f2);
+        return resolve(x0, alvo, cego, |x| {
+            sobre_branco_tapando(e, x, uc, a_s2, a_f2, h2)
+        });
     }
     let alvo = cor(e, sc, uc, a_s, a_f);
     if a_f2 <= 0.0 {
@@ -363,7 +403,10 @@ fn levanta_cobre(
         let w = ((a_f2 - a_f) / a_f2).clamp(0.0, 1.0);
         [0, 1, 2].map(|c| uc[c] + (sc[c] - uc[c]) * w)
     };
-    resolve(x0, alvo, CEGO, |x| sobre_branco(e, sc, x, a_s2, a_f2))
+    let h2 = tapa(e, a_f2);
+    resolve(x0, alvo, CEGO, |x| {
+        sobre_branco_tapando(e, sc, x, a_s2, a_f2, h2)
+    })
 }
 
 /// **A caixa das tintas** do re-molhar: o filme que a água leva fica, por canal, entre a cor dele (`fica`) e a

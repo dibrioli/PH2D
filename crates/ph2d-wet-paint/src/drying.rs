@@ -428,7 +428,7 @@ pub fn drying_pass_jacobi(
 ) {
     let rows = (g.by1 - g.by0 + 1).max(0) as usize;
     let span = (g.bx1 - g.bx0 + 1).max(0) as usize;
-    let mode = crate::par::Rows::pick(rows, span, crate::par::MIN_CELLS_DRYING);
+    let mode = crate::par::Rows::pick_medido(rows, span, crate::par::MIN_CELLS_DRYING);
     drying_pass_jacobi_rows(g, p, evap_base, rewet_base, ext_bypass, mode);
 }
 

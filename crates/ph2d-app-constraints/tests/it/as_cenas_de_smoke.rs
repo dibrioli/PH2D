@@ -116,3 +116,34 @@ fn the_limited_pointer_stops_at_45_and_the_half_copy_lands_at_180() {
         graus(meio)
     );
 }
+
+/// Cena 2, report do dono 25/10 (*«Inside e Surface estão na mesma posição»*): com a bola FORA do
+/// olho os dois põem a pupila na borda (é a mesma resposta); com a bola DENTRO da folga, o Inside
+/// deixa-a na bola e o Surface empurra-a até à borda — e o Outside também.
+#[test]
+fn inside_and_surface_differ_only_with_the_ball_inside_the_eye() {
+    use ph2d_app_constraints::inspector::apply_all;
+    use ph2d_constraints_ecs::Constraints;
+    use ph2d_ecs::canal_constraint::MODO;
+    use ph2d_editor_core::constraint_edits::ConstraintFieldEdit as E;
+    let pupila_com = |modo: f32, bola_x: f32| {
+        let (mut sim, mut drive) = cena(2);
+        let bola = chamada(&mut sim, "Bola");
+        let pupila = chamada(&mut sim, "Pupila");
+        let id = sim.world().get::<Constraints>(pupila).unwrap().items[1].id;
+        apply_all(&mut sim, &[(pupila.to_bits(), E::Campo(id, MODO, modo))]);
+        let mut t = sim.world_mut().get_mut::<Transform>(bola).unwrap();
+        t.translation.x = bola_x;
+        t.translation.y = 0.0;
+        evaluate(&mut sim, &mut drive);
+        drive.settle();
+        f64::from(mundo(&sim, pupila).translation.x)
+    };
+    let fora = 3.0;
+    assert!((pupila_com(0.0, fora) - FOLGA_DA_PUPILA).abs() < 1e-5);
+    assert!((pupila_com(2.0, fora) - FOLGA_DA_PUPILA).abs() < 1e-5, "fora, iguais");
+    let dentro = 0.2;
+    assert!((pupila_com(0.0, dentro) - f64::from(dentro)).abs() < 1e-5, "Inside move-a");
+    assert!((pupila_com(2.0, dentro) - FOLGA_DA_PUPILA).abs() < 1e-5, "Surface à borda");
+    assert!((pupila_com(1.0, dentro) - FOLGA_DA_PUPILA).abs() < 1e-5, "Outside à borda");
+}

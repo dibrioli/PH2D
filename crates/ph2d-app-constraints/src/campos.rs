@@ -1,5 +1,5 @@
 //! ⭐ **Os ajustes de cada tipo** — a porta única de «que campos tem este tipo, quanto valem e como se
-//! escrevem», nas unidades do cartão (graus, px, índice da opção). O cartão ([`crate::inspector`]), o
+//! escrevem», nas unidades do cartão (graus, metros, índice da opção). O cartão ([`crate::inspector`]), o
 //! losango ([`crate::marcas`]) e a curva ([`crate::canais`]) passam todos por aqui.
 
 use ph2d_constraints::{ChildOf, DistanceMode, Kind, Mix, Pose2, Space};
@@ -72,7 +72,7 @@ pub fn ajustes(k: &Kind) -> (Vec<AjusteNumero>, Vec<AjusteEscolha>) {
                 rotulo: rotulo(campo),
                 valor: ler(k, campo)?,
                 unidade: if campo == DISTANCIA {
-                    Unidade::Px
+                    Unidade::Metros
                 } else {
                     Unidade::Graus
                 },

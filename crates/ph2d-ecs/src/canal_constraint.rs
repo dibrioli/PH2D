@@ -1,6 +1,6 @@
 //! **O vocabulário de canais da pilha de CONSTRAINTS** ([`crate::canal::familia::CONSTRAINT`]) — o
 //! que se anima num item da pilha (plano `docs/BlenderConstraints/01_plano.md` §2.2): a força, o
-//! liga/desliga e os ajustes de cada tipo, nas unidades que o cartão mostra (graus, px, índice). Quem lê e escreve é `ph2d-app-constraints` (`canais.rs`).
+//! liga/desliga e os ajustes de cada tipo, nas unidades que o cartão mostra (graus, metros, índice). Quem lê e escreve é `ph2d-app-constraints` (`canais.rs`).
 //!
 //! ⛔ **Os números são gravados no documento da timeline: só APPEND, nunca renumerar** (gate
 //! `o_vocabulario_das_constraints_nao_renumera`).
@@ -20,7 +20,7 @@ pub const LIGADA: u16 = 2;
 pub const LIMITE_MIN: u16 = 3;
 /// Limit Rotation: o lado de cima do arco, em graus.
 pub const LIMITE_MAX: u16 = 4;
-/// Limit Distance: a distância ao alvo, em px.
+/// Limit Distance: a distância ao alvo, em metros (a unidade do mundo).
 pub const DISTANCIA: u16 = 5;
 /// Look At: o desvio do eixo, em graus.
 pub const DESVIO: u16 = 6;

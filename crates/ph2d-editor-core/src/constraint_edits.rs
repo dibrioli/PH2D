@@ -31,7 +31,9 @@ pub const MAX_OPCOES: usize = 3;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Unidade {
     Graus,
-    Px,
+    /// A unidade do mundo (a da lâmpada da Luz 2D) — o `Transform` guarda-a; o cartão do
+    /// Transform é que a mostra em px.
+    Metros,
 }
 
 /// Um número de um tipo (Min, Max, Distance, Offset). `campo` = o canal dele

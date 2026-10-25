@@ -198,6 +198,190 @@ def caso_ik_por_ultimo():
     return res
 
 
+# ─── Onda 2: ossos ────────────────────────────────────────────────────────────────────────────────
+# O comprimento do osso no Blender é o eixo Y local; aqui grava-se a cabeça, a cauda, o rumo do osso
+# (cabeça → cauda, graus) e o factor de comprimento (|cauda − cabeça| / comprimento de repouso).
+# ⚠️ O Blender 5.2 NÃO tem «Softness» na IK (é do Spine, que só corre com interface): essa lei não
+# tem oráculo corrível — ver docs/BlenderConstraints/01_plano.md §5, onda 2.
+
+
+def rig(ossos, escala_obj=(1.0, 1.0)):
+    """`ossos` = [(nome, cabeça, cauda, pai)] ligados; devolve o objecto armadura."""
+    arm_data = bpy.data.armatures.new("rig")
+    arm = bpy.data.objects.new("rig", arm_data)
+    bpy.context.scene.collection.objects.link(arm)
+    arm.scale = (escala_obj[0], escala_obj[1], 1.0)
+    bpy.context.view_layer.objects.active = arm
+    bpy.ops.object.mode_set(mode="EDIT")
+    for nome, cabeca, cauda, pai in ossos:
+        b = arm_data.edit_bones.new(nome)
+        b.head = (cabeca[0], cabeca[1], 0.0)
+        b.tail = (cauda[0], cauda[1], 0.0)
+        b.roll = 0.0
+        if pai is not None:
+            b.parent = arm_data.edit_bones[pai]
+            b.use_connect = True
+    bpy.ops.object.mode_set(mode="OBJECT")
+    return arm
+
+
+def osso2d(arm, nome):
+    bpy.context.view_layer.update()
+    dg = bpy.context.evaluated_depsgraph_get()
+    ev = arm.evaluated_get(dg)
+    pb = ev.pose.bones[nome]
+    cab = ev.matrix_world @ pb.head
+    cau = ev.matrix_world @ pb.tail
+    m = ev.matrix_world @ pb.matrix
+    d = cau - cab
+    return {
+        "cabeca_x": round(cab.x, 6),
+        "cabeca_y": round(cab.y, 6),
+        "cauda_x": round(cau.x, 6),
+        "cauda_y": round(cau.y, 6),
+        "rumo_deg": round(math.degrees(math.atan2(d.y, d.x)), 6),
+        "comprimento": round(d.length / pb.bone.length, 6),
+        "largura": round((m.to_3x3() @ Vector((1.0, 0.0, 0.0))).length, 6),
+        "fundo": round((m.to_3x3() @ Vector((0.0, 0.0, 1.0))).length, 6),
+    }
+
+
+# Braço dobrado para CIMA em repouso (o lado da dobra é o do repouso, sem pólo): b1 1,0, b2 1,0.
+BRACO = [
+    ("b1", (0.0, 0.0), (1.0, 0.0), None),
+    ("b2", (1.0, 0.0), (1.0 + math.cos(math.radians(30.0)), math.sin(math.radians(30.0))), "b1"),
+]
+
+
+def caso_ik_dois_ossos():
+    """IK de 2 ossos sem pólo: a cauda chega ao alvo? De que lado dobra? E fora de alcance?"""
+    out = {}
+    alvos = {"perto": (1.2, 0.9), "baixo": (1.5, -0.6), "fora": (3.0, 1.0), "colado": (0.3, 0.1)}
+    for espelho in (False, True):
+        for nome, (ax, ay) in alvos.items():
+            limpa()
+            sx = -1.0 if espelho else 1.0
+            arm = rig(BRACO, escala_obj=(sx, 1.0))
+            alvo = vazio("alvo", loc=(ax * sx, ay))
+            ik = arm.pose.bones["b2"].constraints.new("IK")
+            ik.target = alvo
+            ik.chain_count = 2
+            ik.use_stretch = False
+            chave = ("espelho." if espelho else "") + nome
+            out[chave] = {
+                "alvo": [ax * sx, ay],
+                "b1": osso2d(arm, "b1"),
+                "b2": osso2d(arm, "b2"),
+            }
+    return out
+
+
+def caso_ik_estica():
+    """IK com Stretch (os dois ossos com `ik_stretch` 1): fora de alcance, quem estica e quanto?"""
+    out = {}
+    for nome, (ax, ay) in {"fora": (3.0, 1.0), "perto": (1.2, 0.9)}.items():
+        limpa()
+        arm = rig(BRACO)
+        alvo = vazio("alvo", loc=(ax, ay))
+        for n in ("b1", "b2"):
+            arm.pose.bones[n].ik_stretch = 1.0
+        ik = arm.pose.bones["b2"].constraints.new("IK")
+        ik.target = alvo
+        ik.chain_count = 2
+        ik.use_stretch = True
+        out[nome] = {"alvo": [ax, ay], "b1": osso2d(arm, "b1"), "b2": osso2d(arm, "b2")}
+    return out
+
+
+def caso_ik_cadeia():
+    """Cadeia de 3 ossos: a cauda chega? (o solver dele é iterativo; o PH2D compara a CHEGADA e os
+    comprimentos, não o ângulo de cada osso — uma cadeia de 3 tem infinitas soluções)."""
+    limpa()
+    arm = rig(
+        [
+            ("c1", (0.0, 0.0), (1.0, 0.0), None),
+            ("c2", (1.0, 0.0), (1.7, 0.3), "c1"),
+            ("c3", (1.7, 0.3), (2.2, 0.6), "c2"),
+        ]
+    )
+    alvo = vazio("alvo", loc=(1.0, 1.4))
+    ik = arm.pose.bones["c3"].constraints.new("IK")
+    ik.target = alvo
+    ik.chain_count = 3
+    ik.use_stretch = False
+    return {"alvo": [1.0, 1.4], **{n: osso2d(arm, n) for n in ("c1", "c2", "c3")}}
+
+
+def caso_stretch_to():
+    """Stretch To num osso de comprimento 1 (repouso 1): alvo a 2 e a 0,5 — e o volume por modo."""
+    out = {}
+    for volume in ("VOLUME_XZX", "VOLUME_X", "VOLUME_Z", "NO_VOLUME"):
+        for dist in (2.0, 0.5):
+            limpa()
+            arm = rig([("s", (0.0, 0.0), (1.0, 0.0), None)])
+            ang = math.radians(25.0)
+            alvo = vazio("alvo", loc=(dist * math.cos(ang), dist * math.sin(ang)))
+            c = arm.pose.bones["s"].constraints.new("STRETCH_TO")
+            c.target = alvo
+            c.rest_length = 1.0
+            c.volume = volume
+            c.bulge = 1.0
+            out[f"{volume}.{dist}"] = osso2d(arm, "s")
+    return out
+
+
+def caminho_poly(pontos):
+    cu = bpy.data.curves.new("caminho", "CURVE")
+    cu.dimensions = "2D"
+    cu.use_path = True
+    sp = cu.splines.new("POLY")
+    sp.points.add(len(pontos) - 1)
+    for p, (x, y) in zip(sp.points, pontos):
+        p.co = (x, y, 0.0, 1.0)
+    o = bpy.data.objects.new("caminho", cu)
+    bpy.context.scene.collection.objects.link(o)
+    return o
+
+
+def caminho_bezier_meio_circulo(raio):
+    """Meio círculo de (r,0) a (−r,0) por (0,r), Bézier de 3 pontos; resolução alta para a medida
+    não depender da poligonal do Blender."""
+    cu = bpy.data.curves.new("caminho", "CURVE")
+    cu.dimensions = "2D"
+    cu.use_path = True
+    cu.resolution_u = 64
+    sp = cu.splines.new("BEZIER")
+    sp.bezier_points.add(2)
+    k = 0.5522847498 * raio
+    pts = [((raio, 0.0), (raio, -k), (raio, k)), ((0.0, raio), (k, raio), (-k, raio)), ((-raio, 0.0), (-raio, k), (-raio, -k))]
+    for b, (co, h1, h2) in zip(sp.bezier_points, pts):
+        b.co = (co[0], co[1], 0.0)
+        b.handle_left = (h1[0], h1[1], 0.0)
+        b.handle_right = (h2[0], h2[1], 0.0)
+    o = bpy.data.objects.new("caminho", cu)
+    bpy.context.scene.collection.objects.link(o)
+    return o
+
+
+def caso_follow_path():
+    """Follow Path por % (posição fixa), orientado pela tangente (+X para a frente)."""
+    out = {}
+    for forma in ("L", "meio_circulo"):
+        for f in (0.0, 0.25, 0.5, 0.75, 1.0):
+            limpa()
+            cam = caminho_poly([(0.0, 0.0), (4.0, 0.0), (4.0, 3.0)]) if forma == "L" else caminho_bezier_meio_circulo(2.0)
+            dono = vazio("dono")
+            c = dono.constraints.new("FOLLOW_PATH")
+            c.target = cam
+            c.use_fixed_location = True
+            c.offset_factor = f
+            c.use_curve_follow = True
+            c.forward_axis = "FORWARD_X"
+            c.up_axis = "UP_Z"
+            out[f"{forma}.{f}"] = avalia(dono)
+    return out
+
+
 def main():
     saida = sys.argv[sys.argv.index("--") + 1]
     dados = {
@@ -214,6 +398,11 @@ def main():
         "limit_distance_inside_2": caso_distancia(),
         "ordem_da_pilha": caso_ordem(),
         "ik_com_copy_rotation_abaixo": caso_ik_por_ultimo(),
+        "ik_dois_ossos": caso_ik_dois_ossos(),
+        "ik_estica": caso_ik_estica(),
+        "ik_cadeia_3": caso_ik_cadeia(),
+        "stretch_to": caso_stretch_to(),
+        "follow_path": caso_follow_path(),
     }
     with open(saida, "w", encoding="utf-8") as f:
         json.dump(dados, f, indent=1, ensure_ascii=False)

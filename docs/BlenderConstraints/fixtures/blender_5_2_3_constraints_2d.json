@@ -199,5 +199,459 @@
    "cauda_x": 1.2,
    "cauda_y": 0.9
   }
+ },
+ "ik_dois_ossos": {
+  "perto": {
+   "alvo": [
+    1.2,
+    0.9
+   ],
+   "b1": {
+    "cabeca_x": 0.0,
+    "cabeca_y": 0.0,
+    "cauda_x": 0.996863,
+    "cauda_y": -0.07915,
+    "rumo_deg": -4.539688,
+    "comprimento": 1.0,
+    "largura": 1.0,
+    "fundo": 1.0
+   },
+   "b2": {
+    "cabeca_x": 0.996863,
+    "cabeca_y": -0.07915,
+    "cauda_x": 1.200001,
+    "cauda_y": 0.900001,
+    "rumo_deg": 78.279486,
+    "comprimento": 1.0,
+    "largura": 1.0,
+    "fundo": 1.0
+   }
+  },
+  "baixo": {
+   "alvo": [
+    1.5,
+    -0.6
+   ],
+   "b1": {
+    "cabeca_x": 0.0,
+    "cabeca_y": 0.0,
+    "cauda_x": 0.531154,
+    "cauda_y": -0.847275,
+    "rumo_deg": -57.916555,
+    "comprimento": 1.0,
+    "largura": 1.0,
+    "fundo": 1.0
+   },
+   "b2": {
+    "cabeca_x": 0.531154,
+    "cabeca_y": -0.847275,
+    "cauda_x": 1.500104,
+    "cauda_y": -0.60002,
+    "rumo_deg": 14.315182,
+    "comprimento": 1.0,
+    "largura": 1.0,
+    "fundo": 1.0
+   }
+  },
+  "fora": {
+   "alvo": [
+    3.0,
+    1.0
+   ],
+   "b1": {
+    "cabeca_x": 0.0,
+    "cabeca_y": 0.0,
+    "cauda_x": 0.949555,
+    "cauda_y": 0.3136,
+    "rumo_deg": 18.276342,
+    "comprimento": 1.0,
+    "largura": 1.0,
+    "fundo": 1.0
+   },
+   "b2": {
+    "cabeca_x": 0.949555,
+    "cabeca_y": 0.3136,
+    "cauda_x": 1.897523,
+    "cauda_y": 0.631965,
+    "rumo_deg": 18.56406,
+    "comprimento": 1.0,
+    "largura": 1.0,
+    "fundo": 1.0
+   }
+  },
+  "colado": {
+   "alvo": [
+    0.3,
+    0.1
+   ],
+   "b1": {
+    "cabeca_x": 0.0,
+    "cabeca_y": 0.0,
+    "cauda_x": 0.462451,
+    "cauda_y": -0.886645,
+    "rumo_deg": -62.454589,
+    "comprimento": 1.0,
+    "largura": 1.0,
+    "fundo": 1.0
+   },
+   "b2": {
+    "cabeca_x": 0.462451,
+    "cabeca_y": -0.886645,
+    "cauda_x": 0.300044,
+    "cauda_y": 0.100079,
+    "rumo_deg": 99.346679,
+    "comprimento": 1.0,
+    "largura": 1.0,
+    "fundo": 1.0
+   }
+  },
+  "espelho.perto": {
+   "alvo": [
+    -1.2,
+    0.9
+   ],
+   "b1": {
+    "cabeca_x": 0.0,
+    "cabeca_y": 0.0,
+    "cauda_x": -0.996863,
+    "cauda_y": -0.07915,
+    "rumo_deg": -175.460312,
+    "comprimento": 1.0,
+    "largura": 1.0,
+    "fundo": 1.0
+   },
+   "b2": {
+    "cabeca_x": -0.996863,
+    "cabeca_y": -0.07915,
+    "cauda_x": -1.200001,
+    "cauda_y": 0.900001,
+    "rumo_deg": 101.720514,
+    "comprimento": 1.0,
+    "largura": 1.0,
+    "fundo": 1.0
+   }
+  },
+  "espelho.baixo": {
+   "alvo": [
+    -1.5,
+    -0.6
+   ],
+   "b1": {
+    "cabeca_x": 0.0,
+    "cabeca_y": 0.0,
+    "cauda_x": -0.531154,
+    "cauda_y": -0.847275,
+    "rumo_deg": -122.083445,
+    "comprimento": 1.0,
+    "largura": 1.0,
+    "fundo": 1.0
+   },
+   "b2": {
+    "cabeca_x": -0.531154,
+    "cabeca_y": -0.847275,
+    "cauda_x": -1.500104,
+    "cauda_y": -0.60002,
+    "rumo_deg": 165.684818,
+    "comprimento": 1.0,
+    "largura": 1.0,
+    "fundo": 1.0
+   }
+  },
+  "espelho.fora": {
+   "alvo": [
+    -3.0,
+    1.0
+   ],
+   "b1": {
+    "cabeca_x": 0.0,
+    "cabeca_y": 0.0,
+    "cauda_x": -0.949555,
+    "cauda_y": 0.3136,
+    "rumo_deg": 161.723658,
+    "comprimento": 1.0,
+    "largura": 1.0,
+    "fundo": 1.0
+   },
+   "b2": {
+    "cabeca_x": -0.949555,
+    "cabeca_y": 0.3136,
+    "cauda_x": -1.897523,
+    "cauda_y": 0.631965,
+    "rumo_deg": 161.43594,
+    "comprimento": 1.0,
+    "largura": 1.0,
+    "fundo": 1.0
+   }
+  },
+  "espelho.colado": {
+   "alvo": [
+    -0.3,
+    0.1
+   ],
+   "b1": {
+    "cabeca_x": 0.0,
+    "cabeca_y": 0.0,
+    "cauda_x": -0.462451,
+    "cauda_y": -0.886645,
+    "rumo_deg": -117.545411,
+    "comprimento": 1.0,
+    "largura": 1.0,
+    "fundo": 1.0
+   },
+   "b2": {
+    "cabeca_x": -0.462451,
+    "cabeca_y": -0.886645,
+    "cauda_x": -0.300044,
+    "cauda_y": 0.100079,
+    "rumo_deg": 80.653321,
+    "comprimento": 1.0,
+    "largura": 1.0,
+    "fundo": 1.0
+   }
+  }
+ },
+ "ik_estica": {
+  "fora": {
+   "alvo": [
+    3.0,
+    1.0
+   ],
+   "b1": {
+    "cabeca_x": 0.0,
+    "cabeca_y": 0.0,
+    "cauda_x": 1.599871,
+    "cauda_y": 0.104739,
+    "rumo_deg": 3.745651,
+    "comprimento": 1.603296,
+    "largura": 1.603296,
+    "fundo": 1.603296
+   },
+   "b2": {
+    "cabeca_x": 1.599871,
+    "cabeca_y": 0.104739,
+    "cauda_x": 2.999997,
+    "cauda_y": 0.999999,
+    "rumo_deg": 32.595406,
+    "comprimento": 1.661879,
+    "largura": 1.661879,
+    "fundo": 1.661879
+   }
+  },
+  "perto": {
+   "alvo": [
+    1.2,
+    0.9
+   ],
+   "b1": {
+    "cabeca_x": 0.0,
+    "cabeca_y": 0.0,
+    "cauda_x": 0.612953,
+    "cauda_y": 0.150448,
+    "rumo_deg": 13.790467,
+    "comprimento": 0.631147,
+    "largura": 0.631147,
+    "fundo": 0.631147
+   },
+   "b2": {
+    "cabeca_x": 0.612953,
+    "cabeca_y": 0.150448,
+    "cauda_x": 1.2,
+    "cauda_y": 0.9,
+    "rumo_deg": 51.932064,
+    "comprimento": 0.952078,
+    "largura": 0.952078,
+    "fundo": 0.952078
+   }
+  }
+ },
+ "ik_cadeia_3": {
+  "alvo": [
+   1.0,
+   1.4
+  ],
+  "c1": {
+   "cabeca_x": 0.0,
+   "cabeca_y": 0.0,
+   "cauda_x": 0.993206,
+   "cauda_y": 0.116369,
+   "rumo_deg": 6.682607,
+   "comprimento": 1.0,
+   "largura": 1.0,
+   "fundo": 1.0
+  },
+  "c2": {
+   "cabeca_x": 0.993206,
+   "cabeca_y": 0.116369,
+   "cauda_x": 1.195396,
+   "cauda_y": 0.850617,
+   "rumo_deg": 74.604017,
+   "comprimento": 1.0,
+   "largura": 1.0,
+   "fundo": 1.0
+  },
+  "c3": {
+   "cabeca_x": 1.195396,
+   "cabeca_y": 0.850617,
+   "cauda_x": 1.000001,
+   "cauda_y": 1.399999,
+   "rumo_deg": 109.578586,
+   "comprimento": 1.0,
+   "largura": 1.0,
+   "fundo": 1.0
+  }
+ },
+ "stretch_to": {
+  "VOLUME_XZX.2.0": {
+   "cabeca_x": 0.0,
+   "cabeca_y": 0.0,
+   "cauda_x": 1.812616,
+   "cauda_y": 0.845236,
+   "rumo_deg": 24.999997,
+   "comprimento": 2.0,
+   "largura": 0.707107,
+   "fundo": 0.707107
+  },
+  "VOLUME_XZX.0.5": {
+   "cabeca_x": 0.0,
+   "cabeca_y": 0.0,
+   "cauda_x": 0.453154,
+   "cauda_y": 0.211309,
+   "rumo_deg": 24.999997,
+   "comprimento": 0.5,
+   "largura": 1.414214,
+   "fundo": 1.414214
+  },
+  "VOLUME_X.2.0": {
+   "cabeca_x": 0.0,
+   "cabeca_y": 0.0,
+   "cauda_x": 1.812616,
+   "cauda_y": 0.845236,
+   "rumo_deg": 24.999997,
+   "comprimento": 2.0,
+   "largura": 0.5,
+   "fundo": 1.0
+  },
+  "VOLUME_X.0.5": {
+   "cabeca_x": 0.0,
+   "cabeca_y": 0.0,
+   "cauda_x": 0.453154,
+   "cauda_y": 0.211309,
+   "rumo_deg": 24.999997,
+   "comprimento": 0.5,
+   "largura": 2.0,
+   "fundo": 1.0
+  },
+  "VOLUME_Z.2.0": {
+   "cabeca_x": 0.0,
+   "cabeca_y": 0.0,
+   "cauda_x": 1.812616,
+   "cauda_y": 0.845236,
+   "rumo_deg": 24.999997,
+   "comprimento": 2.0,
+   "largura": 1.0,
+   "fundo": 0.5
+  },
+  "VOLUME_Z.0.5": {
+   "cabeca_x": 0.0,
+   "cabeca_y": 0.0,
+   "cauda_x": 0.453154,
+   "cauda_y": 0.211309,
+   "rumo_deg": 24.999997,
+   "comprimento": 0.5,
+   "largura": 1.0,
+   "fundo": 2.0
+  },
+  "NO_VOLUME.2.0": {
+   "cabeca_x": 0.0,
+   "cabeca_y": 0.0,
+   "cauda_x": 1.812616,
+   "cauda_y": 0.845236,
+   "rumo_deg": 24.999997,
+   "comprimento": 2.0,
+   "largura": 1.0,
+   "fundo": 1.0
+  },
+  "NO_VOLUME.0.5": {
+   "cabeca_x": 0.0,
+   "cabeca_y": 0.0,
+   "cauda_x": 0.453154,
+   "cauda_y": 0.211309,
+   "rumo_deg": 24.999997,
+   "comprimento": 0.5,
+   "largura": 1.0,
+   "fundo": 1.0
+  }
+ },
+ "follow_path": {
+  "L.0.0": {
+   "x": 0.0,
+   "y": 0.0,
+   "rot_deg": 0.0,
+   "sx": 1.0,
+   "sy": 1.0
+  },
+  "L.0.25": {
+   "x": 1.75,
+   "y": 0.0,
+   "rot_deg": 19.687504,
+   "sx": 1.0,
+   "sy": 1.0
+  },
+  "L.0.5": {
+   "x": 3.5,
+   "y": 0.0,
+   "rot_deg": 39.374991,
+   "sx": 1.0,
+   "sy": 1.0
+  },
+  "L.0.75": {
+   "x": 4.0,
+   "y": 1.25,
+   "rot_deg": 63.749997,
+   "sx": 1.0,
+   "sy": 1.0
+  },
+  "L.1.0": {
+   "x": 4.0,
+   "y": 3.0,
+   "rot_deg": 89.999988,
+   "sx": 1.0,
+   "sy": 1.0
+  },
+  "meio_circulo.0.0": {
+   "x": 2.0,
+   "y": 0.0,
+   "rot_deg": 89.999988,
+   "sx": 1.0,
+   "sy": 1.0
+  },
+  "meio_circulo.0.25": {
+   "x": 1.414214,
+   "y": 1.414214,
+   "rot_deg": 134.99999,
+   "sx": 1.0,
+   "sy": 1.0
+  },
+  "meio_circulo.0.5": {
+   "x": -1e-06,
+   "y": 2.0,
+   "rot_deg": 179.999942,
+   "sx": 1.0,
+   "sy": 1.0
+  },
+  "meio_circulo.0.75": {
+   "x": -1.414214,
+   "y": 1.414214,
+   "rot_deg": -134.999978,
+   "sx": 1.0,
+   "sy": 1.0
+  },
+  "meio_circulo.1.0": {
+   "x": -2.0,
+   "y": 0.0,
+   "rot_deg": -89.999988,
+   "sx": 1.0,
+   "sy": 1.0
+  }
  }
 }

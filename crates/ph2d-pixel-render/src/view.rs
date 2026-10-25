@@ -204,9 +204,7 @@ pub fn draw_border(
     path.line_to(to_screen * Point::new(fw, fh));
     path.line_to(to_screen * Point::new(0.0, fh));
     path.close_path();
-    scene
-        .inner_mut()
-        .stroke(&Pen::new(width_px), Affine::IDENTITY, color, None, &path);
+    stroke_halo(scene, &path, width_px, color);
 }
 
 /// O contorno da célula `(x, y)` — onde o lápis vai pintar.
@@ -224,9 +222,7 @@ pub fn draw_cell_cursor(
     path.line_to(to_screen * Point::new(x + 1.0, y + 1.0));
     path.line_to(to_screen * Point::new(x, y + 1.0));
     path.close_path();
-    scene
-        .inner_mut()
-        .stroke(&Pen::new(width_px), Affine::IDENTITY, color, None, &path);
+    stroke_halo(scene, &path, width_px, color);
 }
 
 /// Os eixos da simetria sobre um canvas `w × h`: `axis2` em MEIAS células (o do espelho H é
@@ -266,7 +262,26 @@ pub fn draw_symmetry_axes(
             seg(Point::new(cx + lo, cy - lo), Point::new(cx + hi, cy - hi));
         }
     }
-    scene
-        .inner_mut()
-        .stroke(&Pen::new(width_px), Affine::IDENTITY, color, None, &path);
+    stroke_halo(scene, &path, width_px, color);
+}
+
+/// A cor de dentro do cursor de célula: clara em QUALQUER tema, porque o fundo é a arte, não o
+/// chrome (a mesma razão do xadrez).
+pub const CURSOR_CORE: Color = Color::new([1.0, 1.0, 1.0, 1.0]); // LITERAL-COLOR-OK: núcleo claro do cursor sobre a arte (invariante ao tema)
+/// O anel escuro por fora de todo traço do Draw: com o núcleo claro, um dos dois contrasta com
+/// qualquer cor por baixo (dono 25/10: o cursor sumia sobre uma cor parecida).
+const HALO: Color = Color::new([0.0, 0.0, 0.0, 0.85]); // LITERAL-COLOR-OK: anel de contraste sobre a arte (invariante ao tema)
+/// Quanto o anel sai de cada lado do núcleo, em píxeis de ECRÃ.
+const HALO_PX: f64 = 1.0; // LITERAL-PX-OK: espessura do anel de contraste, em píxeis de ecrã
+
+/// O traço com o anel escuro por baixo e o núcleo `core` por cima. As arestas das células caem em
+/// píxeis INTEIROS do ecrã (o zoom do Draw alinha-as), e só uma largura PAR centrada numa aresta
+/// cobre píxeis inteiros — com 1 px o núcleo espalhava-se a 50 % por dois píxeis e virava cinzento
+/// sobre o anel. ⇒ núcleo `2 × width_px`, anel `HALO_PX` de cada lado.
+fn stroke_halo(scene: &mut VectorScene, path: &BezPath, width_px: f64, core: Color) {
+    let nucleo = 2.0 * width_px;
+    let s = scene.inner_mut();
+    let anel = Pen::new(nucleo + 2.0 * HALO_PX);
+    s.stroke(&anel, Affine::IDENTITY, HALO, None, path);
+    s.stroke(&Pen::new(nucleo), Affine::IDENTITY, core, None, path);
 }

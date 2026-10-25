@@ -7,7 +7,7 @@
 use ph2d_editor_core::paint::resolve;
 use ph2d_host::WindowSize;
 use ph2d_pixel_render::{
-    draw_border, draw_cell_cursor, draw_pixel_grid, draw_symmetry_axes, px_per_cell,
+    CURSOR_CORE, draw_border, draw_cell_cursor, draw_pixel_grid, draw_symmetry_axes, px_per_cell,
 };
 use ph2d_render::Camera2d;
 use ph2d_tokens::{ColorToken, Theme};
@@ -156,7 +156,7 @@ pub fn draw(
             && hb == bits
             && doc.sprite.bounds().contains(cell.0, cell.1)
         {
-            draw_cell_cursor(scene, cell, m, resolve(ColorToken::Text1, theme), LINE_PX);
+            draw_cell_cursor(scene, cell, m, CURSOR_CORE, LINE_PX);
         }
     }
     DRAWN.with(|d| *d.borrow_mut() = drawn);

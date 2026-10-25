@@ -20,12 +20,13 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "pixel.tool.contour" => "Contour",
         "pixel.tool.polygon" => "Polygon",
         "pixel.tool_switched" => "{tool} ({key})",
+        "pixel.shortcut_shift" => "Shift+{key}",
         "pixel.zoom" => "Zoom {n}00 %",
         "pixel.grid_on" => "Pixel grid on",
         "pixel.grid_off" => "Pixel grid off",
         "pixel.nothing_to_undo" => "Nothing to undo in this sprite",
         "pixel.nothing_to_redo" => "Nothing to redo in this sprite",
-        "panel.pixel.title" => "Pixel",
+        "panel.pixel_tools.title" => "Pixel",
         "panel.pixel.empty" => {
             "Select a Pixel Sprite and press Tab (Draw) to draw with these colors."
         }

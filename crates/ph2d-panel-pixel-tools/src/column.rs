@@ -35,7 +35,7 @@ pub const fn icon(t: PixelTool) -> IconId {
 fn nome(t: PixelTool) -> String {
     tr_with(
         "pixel.tool_switched",
-        &[("tool", &tr(t.label_key())), ("key", &t.shortcut())],
+        &[("tool", &tr(t.label_key())), ("key", &t.shortcut_label())],
     )
 }
 

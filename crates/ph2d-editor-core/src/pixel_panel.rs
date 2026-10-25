@@ -67,22 +67,37 @@ impl PixelTool {
         }
     }
 
-    /// O atalho por omissão (o do Aseprite; a mesma tecla de novo alterna a variante cheia).
+    /// A tecla do atalho por omissão (a do Aseprite; a mesma tecla de novo alterna a variante cheia).
     #[must_use]
     pub const fn shortcut(self) -> &'static str {
         match self {
-            Self::Pencil => "B",
-            Self::Spray => "Shift+B",
+            Self::Pencil | Self::Spray => "B",
             Self::Eraser => "E",
             Self::Eyedropper => "I",
             Self::Bucket => "G",
-            Self::Line => "L",
-            Self::Curve => "Shift+L",
-            Self::Rectangle | Self::FilledRectangle => "U",
-            Self::Ellipse | Self::FilledEllipse => "Shift+U",
-            Self::Contour => "D",
-            Self::Polygon => "Shift+D",
+            Self::Line | Self::Curve => "L",
+            Self::Rectangle | Self::FilledRectangle | Self::Ellipse | Self::FilledEllipse => "U",
+            Self::Contour | Self::Polygon => "D",
             Self::Hand => "H",
+        }
+    }
+
+    /// O atalho leva `Shift` (a sub-ferramenta do Aseprite).
+    #[must_use]
+    pub const fn shifted(self) -> bool {
+        matches!(
+            self,
+            Self::Spray | Self::Curve | Self::Ellipse | Self::FilledEllipse | Self::Polygon
+        )
+    }
+
+    /// O atalho como o artista o lê: «B», «Shift+B».
+    #[must_use]
+    pub fn shortcut_label(self) -> String {
+        if self.shifted() {
+            ph2d_i18n::tr_with("pixel.shortcut_shift", &[("key", &self.shortcut())])
+        } else {
+            self.shortcut().to_owned()
         }
     }
 

@@ -666,7 +666,7 @@ pub fn key(
             "pixel.tool_switched",
             &[
                 ("tool", &ph2d_i18n::tr(t.label_key())),
-                ("key", &t.shortcut()),
+                ("key", &t.shortcut_label()),
             ],
         ))
     };

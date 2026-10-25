@@ -412,7 +412,7 @@ pub fn polygon_cells(pts: &[Cell]) -> (Vec<Cell>, Vec<Cell>) {
             }
         }
         xs.sort_by(f64::total_cmp);
-        for pair in xs.chunks_exact(2) {
+        for pair in xs.as_chunks::<2>().0 {
             for x in pair[0].ceil() as i32..=pair[1].floor() as i32 {
                 interior.push((x, y));
             }

@@ -73,7 +73,7 @@ pub const HOUSE: [Peca; 6] = [
     (crate::Tool::Polygon, &[(11, 22), (27, 9), (43, 22)], 27),
     (crate::Tool::FilledRectangle, &[(24, 30), (30, 40)], 3),
     (crate::Tool::FilledEllipse, &[(50, 3), (59, 12)], 8),
-    (crate::Tool::Curve, &[(36, 14), (52, 2), (50, 14)], 2),
+    (crate::Tool::Curve, &[(34, 13), (28, 1), (44, 2)], 2),
 ];
 
 fn stage_house(

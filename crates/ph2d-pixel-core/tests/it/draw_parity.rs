@@ -116,7 +116,12 @@ fn brush_stamps_match_the_authored_table() {
             .iter()
             .map(i)
             .collect();
-        let want: Vec<Cell> = flat.chunks_exact(2).map(|p| (p[0], p[1])).collect();
+        let want: Vec<Cell> = flat
+            .as_chunks::<2>()
+            .0
+            .iter()
+            .map(|p| (p[0], p[1]))
+            .collect();
         let b = Brush {
             shape,
             size: d,
@@ -202,7 +207,12 @@ fn the_funnel_mirrors_the_stamp_and_wraps_like_the_mvp() {
             .iter()
             .map(i)
             .collect();
-        let offs: Vec<Cell> = flat.chunks_exact(2).map(|p| (p[0], p[1])).collect();
+        let offs: Vec<Cell> = flat
+            .as_chunks::<2>()
+            .0
+            .iter()
+            .map(|p| (p[0], p[1]))
+            .collect();
         let s = Symmetry::centered(
             mirrors(c["mode"].as_str().expect("mode")),
             w as u32,

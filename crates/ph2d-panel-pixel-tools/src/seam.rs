@@ -23,7 +23,7 @@ pub(crate) fn populate(store: &mut WidgetStore) {
     for (t, id) in ids::TOOLS {
         let dica = tr_with(
             "pixel.tool_switched",
-            &[("tool", &tr(t.label_key())), ("key", &t.shortcut())],
+            &[("tool", &tr(t.label_key())), ("key", &t.shortcut_label())],
         );
         store.set_tooltip(id, dica);
     }

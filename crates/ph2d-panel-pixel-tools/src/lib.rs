@@ -36,7 +36,7 @@ impl Panel for PixelToolsPanel {
     /// Nasce FECHADO: abre ao entrar em Pixel Sprite ▸ Draw (a família escreve a visibilidade) e
     /// pelo *Window → Pixel*.
     const DEFAULT_VISIBLE: bool = false;
-    const TITLE: TextKey = TextKey::new("panel.pixel.title");
+    const TITLE: TextKey = TextKey::new("panel.pixel_tools.title");
     const ICON: ph2d_editor_core::icons::IconId = ph2d_editor_core::icons::IconId::LayoutGrid;
     const ALLOWED_SLOTS: ph2d_editor_core::screens::slot::SlotSet =
         ph2d_editor_core::screens::slot::SlotSet::SIDES;

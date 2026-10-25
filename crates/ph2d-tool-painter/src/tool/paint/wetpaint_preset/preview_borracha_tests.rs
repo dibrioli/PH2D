@@ -123,3 +123,36 @@ fn o_pincel_continua_no_branco() {
     let i = ((ALTURA_DO_PREVIEW - 4) * LARGURA_DO_PREVIEW * 4) as usize;
     assert_eq!(&px[i..i + 3], &[255, 255, 255], "o pincel ganhou o fundo");
 }
+
+/// ⭐ **No Wet Paint (e na Watercolor) o preview da Borracha é o da Borracha** (handoff FERRAMENTAS_2 §4 b): no Wet o
+/// modo é `WetPaint`, não `Paint`, e a cena caía no S do pincel molhado sobre o branco.
+#[test]
+fn o_preview_da_borracha_no_wet_pinta_a_borracha() {
+    let w = LARGURA_DO_PREVIEW as usize;
+    for meio in [PaintMedia::WetPaint, PaintMedia::Watercolor] {
+        let t = na_mao(meio, "eraser");
+        assert!(t.paint.eraser, "fixtura: a Borracha na mão no {meio:?}");
+        assert!(
+            e_a_borracha(&t),
+            "{meio:?}: a Borracha não leva a cena dela"
+        );
+        let px = ultimo_quadro(&t);
+        let em = |x: usize, y: usize| &px[(y * w + x) * 4..(y * w + x) * 4 + 3];
+        let brancos = px
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .filter(|p| p[..3].iter().all(|&c| c > 230))
+            .count();
+        eprintln!("{meio:?}: canto {:?} · {brancos} brancos", em(0, 0));
+        assert_eq!(
+            em(0, 0),
+            &COR_DO_FUNDO_DA_BORRACHA,
+            "{meio:?}: sem a tela cheia"
+        );
+        assert!(
+            brancos >= 500,
+            "{meio:?}: o S não mostra a folha ({brancos})"
+        );
+    }
+}

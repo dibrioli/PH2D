@@ -4,13 +4,12 @@
 //!
 //! O Blur, o Smear (e a Faca), o Clone e a Máscara não têm preview (dono 24/10; `LinhaDaFerramenta::Preview`).
 
-use super::super::PaintMode;
 use crate::PainterTool;
 
-/// A borracha do trilho está na mão (o modo Paint com a borracha armada)?
+/// A borracha do trilho está na mão, em qualquer meio? A lei da gaveta de presets (no Wet o modo é `WetPaint`).
 #[must_use]
 pub(super) fn e_a_borracha(t: &PainterTool) -> bool {
-    t.paint.paint_mode == PaintMode::Paint && t.paint.eraser
+    t.ferramenta_dos_presets() == Some(crate::FerramentaDoPincel::Borracha)
 }
 
 /// A cor cheia do fundo do preview da borracha — o vermelho das miniaturas das ferramentas.

@@ -151,14 +151,23 @@ pub(crate) fn montar(
 
     // Fill: vermelho → amarelo (o verde sobe) · Stroke: engrossa.
     let verde = c::TINTA_PREENCH + c::OFF_SOLIDA + 1;
-    chaves(tl, a, FieldKey::do_item(VETOR, verde, fill, 0), [30.0, 230.0, 30.0]);
+    chaves(
+        tl,
+        a,
+        FieldKey::do_item(VETOR, verde, fill, 0),
+        [30.0, 230.0, 30.0],
+    );
     let largura = FieldKey::do_item(VETOR, c::TRACO_LARGURA, stroke, 0);
     chaves(tl, a, largura, [0.04, 0.2, 0.04]);
     // Glow: o raio cresce · Drop Shadow: afasta-se.
     let raio = FieldKey::do_item(VETOR, c::FILTRO_RAIO, fglow, 0);
     chaves(tl, a, raio, [0.05, 0.25, 0.05]);
     for campo in [c::FILTRO_DESLOCA_X, c::FILTRO_DESLOCA_Y] {
-        let s = if campo == c::FILTRO_DESLOCA_X { 1.0 } else { -1.0 };
+        let s = if campo == c::FILTRO_DESLOCA_X {
+            1.0
+        } else {
+            -1.0
+        };
         let kk = FieldKey::do_item(VETOR, campo, fsombra, 0);
         chaves(tl, a, kk, [0.06 * s, 0.4 * s, 0.06 * s]);
     }
@@ -179,7 +188,10 @@ pub(crate) fn montar(
             let meio_do_laco = if i == 0 {
                 [a[0], a[1] + 0.6]
             } else {
-                [meio[0] + (a[0] - meio[0]) * 0.4, meio[1] + (a[1] - meio[1]) * 0.4]
+                [
+                    meio[0] + (a[0] - meio[0]) * 0.4,
+                    meio[1] + (a[1] - meio[1]) * 0.4,
+                ]
             };
             let pos = [a, meio_do_laco, a];
             let j = u16::try_from(j).unwrap_or(0);

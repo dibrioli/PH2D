@@ -312,12 +312,12 @@ mod dash_pattern;
 /// as suas conversões ao lado dos seus tipos.
 mod stroke_style;
 pub use dash_pattern::{DashLengths, DashPattern, MAX_DASH_PAIRS};
-/// A leitura por versão — o âmbito do fio (F16c, W4.2).
-mod stroke_wire;
 /// A leitura das entradas da pilha por versão — o âmbito v23 (F31).
 mod pilha_wire;
-pub use pilha_wire::{PilhaLayoutV23, with_pilha_layout_v23};
+/// A leitura por versão — o âmbito do fio (F16c, W4.2).
+mod stroke_wire;
 pub use brush_stroke::{brush_along_path, brush_copies, brush_height, brush_spans};
+pub use pilha_wire::{PilhaLayoutV23, with_pilha_layout_v23};
 pub use stroke_wire::{WireLayout, with_wire_layout};
 
 pub use stroke_style::{

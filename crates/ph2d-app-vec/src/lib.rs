@@ -145,8 +145,6 @@ pub mod marcas;
 /// forma usa a mesma porta, com a ordem de z preservada).
 pub use ph2d_render::fx_atlas;
 pub mod fx_bridge;
-/// O id de cada entrada da pilha e o espelho `IdsDoVetor` (F31 §B.3).
-pub mod ids_da_pilha;
 pub mod fx_bridge_dispatch;
 pub mod fx_dump;
 pub mod fx_live;
@@ -157,6 +155,8 @@ pub mod fx_silhouette;
 pub mod group_gizmo_view;
 pub mod guide;
 pub mod hier_group;
+/// O id de cada entrada da pilha e o espelho `IdsDoVetor` (F31 §B.3).
+pub mod ids_da_pilha;
 pub mod marquee;
 pub mod morph_edit;
 pub mod morph_live;

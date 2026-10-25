@@ -29,7 +29,7 @@ pub fn compose_rgba(sprite: &Sprite, frame: FrameId, pending: Option<&Stroke>, o
         for y in region.y..region.y + region.h as i32 {
             for x in region.x..region.x + region.w as i32 {
                 let v = stroke
-                    .and_then(|s| s.value_at(x, y))
+                    .and_then(|s| s.value_at(sprite, x, y))
                     .unwrap_or_else(|| sprite.value_at(key, x, y));
                 let src = sprite.rgba_of_value(v);
                 if src[3] == 0 {
@@ -44,7 +44,7 @@ pub fn compose_rgba(sprite: &Sprite, frame: FrameId, pending: Option<&Stroke>, o
 }
 
 /// Source-over de alfa reto, arredondado (`floor(x + 0.5)`).
-fn over(dst: [u8; 4], src: [u8; 4]) -> [u8; 4] {
+pub(crate) fn over(dst: [u8; 4], src: [u8; 4]) -> [u8; 4] {
     let sa = u32::from(src[3]);
     if sa == 255 || dst[3] == 0 {
         return src;

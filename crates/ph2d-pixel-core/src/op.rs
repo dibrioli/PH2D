@@ -1,12 +1,36 @@
 //! **A porta única de mutação**: [`apply`] muda o sprite e devolve o inverso exato.
 
-use crate::sprite::{Cel, CelKey, FrameId, LayerId, Rect, Sprite};
+use std::collections::BTreeMap;
+
+use crate::palette::{MAX_COLORS, invert_permutation, is_permutation};
+use crate::sprite::{Cel, CelKey, ColorMode, FrameId, LayerId, Rect, Sprite};
 
 /// Uma mutação do documento. O catálogo cresce por onda; cada variante tem inverso exato.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Op {
     /// Células de um cel (traço, borracha, preenchimento…).
     Patch(Patch),
+    /// A paleta e o índice transparente, sem tocar as células (editar uma cor, Palette Size, Load
+    /// Palette). Em Indexed, mudar uma cor muda o desenho — é a lei do modo.
+    Palette {
+        colors: Vec<[u8; 4]>,
+        transparent: u8,
+    },
+    /// **Reordenar a paleta sem mudar a imagem**: `perm[novo] = antigo`; o transparente e, em
+    /// Indexed, cada célula seguem a cor (MVP «a lei do remap»).
+    Remap { perm: Vec<usize> },
+    /// O documento inteiro de uma vez: modo, paleta, transparente e cels (Color Mode, New Palette
+    /// from Sprite com remapeamento). O inverso é o estado de antes.
+    Whole(Box<Whole>),
+}
+
+/// O que [`Op::Whole`] põe no sprite.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Whole {
+    pub mode: ColorMode,
+    pub palette: Vec<[u8; 4]>,
+    pub transparent: u8,
+    pub cels: BTreeMap<CelKey, Cel>,
 }
 
 /// «Põe o cel `(layer, frame)` com a caixa `bbox` (`None` = sem cel), guardando o que já estava
@@ -34,6 +58,13 @@ pub enum OpError {
         expected: usize,
         got: usize,
     },
+    /// Paleta vazia, com mais de [`MAX_COLORS`] cores ou transparente fora dela.
+    BadPalette,
+    /// `perm` não é uma permutação do tamanho da paleta.
+    BadPermutation,
+    /// Um cel do [`Whole`] não bate com o modo (bytes ≠ área × bpp) ou nomeia camada/frame que
+    /// não existe.
+    BadCel(CelKey),
 }
 
 impl Op {
@@ -42,6 +73,13 @@ impl Op {
     pub fn bytes(&self) -> usize {
         match self {
             Op::Patch(p) => p.pixels.len() + std::mem::size_of::<Patch>(),
+            Op::Palette { colors, .. } => colors.len() * 4 + std::mem::size_of::<Op>(),
+            Op::Remap { perm } => perm.len() * std::mem::size_of::<usize>(),
+            Op::Whole(w) => {
+                w.palette.len() * 4
+                    + w.cels.values().map(|c| c.data.len() + 32).sum::<usize>()
+                    + std::mem::size_of::<Whole>()
+            }
         }
     }
 }
@@ -50,7 +88,68 @@ impl Op {
 pub fn apply(sprite: &mut Sprite, op: Op) -> Result<Op, OpError> {
     match op {
         Op::Patch(p) => apply_patch(sprite, p).map(Op::Patch),
+        Op::Palette {
+            colors,
+            transparent,
+        } => {
+            if colors.is_empty()
+                || colors.len() > MAX_COLORS
+                || usize::from(transparent) >= colors.len()
+            {
+                return Err(OpError::BadPalette);
+            }
+            let colors = std::mem::replace(&mut sprite.palette, colors);
+            let transparent = std::mem::replace(&mut sprite.transparent, transparent);
+            Ok(Op::Palette {
+                colors,
+                transparent,
+            })
+        }
+        Op::Remap { perm } => apply_remap(sprite, &perm).map(|()| Op::Remap {
+            perm: invert_permutation(&perm),
+        }),
+        Op::Whole(w) => apply_whole(sprite, *w).map(|w| Op::Whole(Box::new(w))),
     }
+}
+
+fn apply_remap(s: &mut Sprite, perm: &[usize]) -> Result<(), OpError> {
+    if perm.len() != s.palette.len() || !is_permutation(perm) {
+        return Err(OpError::BadPermutation);
+    }
+    let inv = invert_permutation(perm);
+    s.palette = perm.iter().map(|&old| s.palette[old]).collect();
+    s.transparent = inv[usize::from(s.transparent)] as u8;
+    if s.mode == ColorMode::Indexed {
+        for cel in s.cels.values_mut() {
+            for v in &mut cel.data {
+                if let Some(&n) = inv.get(usize::from(*v)) {
+                    *v = n as u8;
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+fn apply_whole(s: &mut Sprite, w: Whole) -> Result<Whole, OpError> {
+    if w.palette.is_empty()
+        || w.palette.len() > MAX_COLORS
+        || usize::from(w.transparent) >= w.palette.len()
+    {
+        return Err(OpError::BadPalette);
+    }
+    for (&key, cel) in &w.cels {
+        let known = s.layer(key.0).is_some() && s.frames.iter().any(|f| f.id == key.1);
+        if !known || cel.data.len() != cel.bbox.area() * w.mode.bpp() {
+            return Err(OpError::BadCel(key));
+        }
+    }
+    Ok(Whole {
+        mode: std::mem::replace(&mut s.mode, w.mode),
+        palette: std::mem::replace(&mut s.palette, w.palette),
+        transparent: std::mem::replace(&mut s.transparent, w.transparent),
+        cels: std::mem::replace(&mut s.cels, w.cels),
+    })
 }
 
 fn apply_patch(s: &mut Sprite, p: Patch) -> Result<Patch, OpError> {

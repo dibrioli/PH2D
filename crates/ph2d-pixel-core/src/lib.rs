@@ -9,9 +9,11 @@
 
 pub mod brush;
 pub mod codec;
+pub mod color;
 mod compose;
 pub mod fill;
 mod history;
+pub mod ink;
 mod op;
 pub mod palette;
 pub mod raster;
@@ -22,7 +24,7 @@ pub mod symmetry;
 pub use codec::{CodecError, MAJOR, MINOR};
 pub use compose::{Sample, compose_rgba, pick};
 pub use history::{DEFAULT_CAP_BYTES, History};
-pub use op::{Op, OpError, Patch, apply};
+pub use op::{Op, OpError, Patch, Whole, apply};
 pub use sprite::{
     Background, Cel, CelKey, ColorMode, Frame, FrameId, Layer, LayerId, MAX_SIDE, NewSprite, Rect,
     Sprite, SpriteError,

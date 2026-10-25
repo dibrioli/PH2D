@@ -325,10 +325,7 @@ impl Sprite {
         match self.mode {
             ColorMode::Rgba => u32::from_le_bytes(c),
             ColorMode::Gray => {
-                let [r, g, b, a] = c;
-                // Rec. 601 em inteiros, arredondado (floor(x+0.5)).
-                let v = (299 * u32::from(r) + 587 * u32::from(g) + 114 * u32::from(b) + 500) / 1000;
-                v | (u32::from(a) << 8)
+                u32::from(crate::color::luma(c)) | (u32::from(c[3]) << 8)
             }
             ColorMode::Indexed => {
                 if c[3] == 0 {

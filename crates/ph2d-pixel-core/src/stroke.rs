@@ -6,18 +6,21 @@ use std::collections::BTreeMap;
 
 use crate::brush::{Brush, SplitMix32, hash3};
 use crate::fill::{Bucket, bucket_cells};
+use crate::ink::{self, Ink};
 use crate::op::{Op, Patch};
 use crate::raster::{Cell, PixelPerfect, line_path};
 use crate::sprite::{FrameId, LayerId, Rect, Sprite};
 use crate::symmetry::{Symmetry, Tiling, expand, symmetry_images};
 
-/// Como o gesto deposita: o pincel, a simetria, o ladrilho e o pixel-perfect (só com pincel de 1).
+/// Como o gesto deposita: o pincel, a simetria, o ladrilho, o pixel-perfect (só com pincel de 1)
+/// e a tinta.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct Paint {
     pub brush: Brush,
     pub symmetry: Symmetry,
     pub tiling: Tiling,
     pub pixel_perfect: bool,
+    pub ink: Ink,
 }
 
 /// O gesto. Não toca o sprite até [`Stroke::op`]; a pré-visualização lê [`Stroke::value_at`].
@@ -37,6 +40,9 @@ pub struct Stroke {
     cells: BTreeMap<Cell, u32>,
     last: Cell,
     rng: SplitMix32,
+    /// A rampa do Shading (valores no modo do sprite) e o sentido (+1 / −1).
+    ramp: Vec<u32>,
+    dir: i8,
 }
 
 impl Stroke {
@@ -55,7 +61,17 @@ impl Stroke {
             cells: BTreeMap::new(),
             last: (0, 0),
             rng: SplitMix32::new(0),
+            ramp: Vec::new(),
+            dir: 1,
         }
+    }
+
+    /// A rampa e o sentido do Shading (botão esquerdo = +1, direito = −1).
+    #[must_use]
+    pub fn with_shading(mut self, ramp: Vec<u32>, dir: i8) -> Self {
+        self.ramp = ramp;
+        self.dir = dir;
+        self
     }
 
     /// Começa um traço livre em `(x, y)`.
@@ -195,10 +211,18 @@ impl Stroke {
         }
     }
 
-    /// O valor que o gesto põe em `(x, y)`, se a tocou.
+    /// O valor que o gesto põe em `(x, y)`, se a tocou: a tinta aplicada UMA vez sobre o que o
+    /// documento lá tem (o Shading anda um degrau por traço, por mais amostras que passem).
     #[must_use]
-    pub fn value_at(&self, x: i32, y: i32) -> Option<u32> {
-        self.cells.contains_key(&(x, y)).then_some(self.value)
+    pub fn value_at(&self, sprite: &Sprite, x: i32, y: i32) -> Option<u32> {
+        self.cells
+            .contains_key(&(x, y))
+            .then(|| self.ink_value(sprite, x, y))
+    }
+
+    fn ink_value(&self, sprite: &Sprite, x: i32, y: i32) -> u32 {
+        let dest = sprite.value_at((self.layer, self.frame), x, y);
+        ink::apply(sprite, self.paint.ink, self.value, dest, &self.ramp, self.dir)
     }
 
     /// As células tocadas, em ordem.
@@ -224,18 +248,21 @@ impl Stroke {
     #[must_use]
     pub fn op(&self, sprite: &Sprite) -> Option<Op> {
         let key = (self.layer, self.frame);
-        let v = self.value;
-        if !self
+        let values: Vec<(Cell, u32)> = self
             .cells
             .keys()
-            .any(|&(x, y)| sprite.value_at(key, x, y) != v)
+            .map(|&(x, y)| ((x, y), self.ink_value(sprite, x, y)))
+            .collect();
+        if values
+            .iter()
+            .all(|&((x, y), v)| sprite.value_at(key, x, y) == v)
         {
             return None;
         }
         let rect = self.rect();
         let bpp = sprite.mode().bpp();
         let mut pixels = sprite.read_rect(key, rect);
-        for &(x, y) in self.cells.keys() {
+        for ((x, y), v) in values {
             let i = ((y - rect.y) as usize * rect.w as usize + (x - rect.x) as usize) * bpp;
             pixels[i..i + bpp].copy_from_slice(&v.to_le_bytes()[..bpp]);
         }

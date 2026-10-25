@@ -13,6 +13,8 @@ authors.workspace = true
 # Nasce vazia na P0 (o documento grava-se pelo `ph2d-pixel-core::codec`); a P9 enche-a.
 [dependencies]
 ph2d-pixel-core = { path = "../ph2d-pixel-core" }
+# O JSON da API do Lospec (Load Palette).
+serde_json = "1"
 
 [lints]
 workspace = true

@@ -355,14 +355,14 @@ fn pixel_perfect_retraction_never_erases_a_cell_another_point_painted() {
     for p in [(1, 0), (1, 1), (2, 1), (2, 2)] {
         st.to(&s, p.0, p.1);
     }
-    assert_eq!(st.value_at(1, 0), None, "o cotovelo saiu");
-    assert_eq!(st.value_at(1, 1), Some(1));
+    assert_eq!(st.value_at(&s, 1, 0), None, "o cotovelo saiu");
+    assert_eq!(st.value_at(&s, 1, 1), Some(1));
     // Controlo: sem pixel-perfect o cotovelo fica.
     let mut raw = Stroke::begin(&s, l, f, 1, Paint::default(), (0, 0));
     for p in [(1, 0), (1, 1)] {
         raw.to(&s, p.0, p.1);
     }
-    assert_eq!(raw.value_at(1, 0), Some(1));
+    assert_eq!(raw.value_at(&s, 1, 0), Some(1));
     // Pincel maior que 1: o pixel-perfect não se aplica (Aseprite).
     let big = Paint {
         pixel_perfect: true,
@@ -376,7 +376,7 @@ fn pixel_perfect_retraction_never_erases_a_cell_another_point_painted() {
     for p in [(5, 4), (5, 5)] {
         b.to(&s, p.0, p.1);
     }
-    assert_eq!(b.value_at(5, 4), Some(1));
+    assert_eq!(b.value_at(&s, 5, 4), Some(1));
 }
 
 #[test]

@@ -6,6 +6,8 @@
 
 use ph2d_pixel_core::{FrameId, Sprite, compose_rgba};
 
+pub mod palette_file;
+
 /// O RGBA (alfa reto) do frame `frame`, `width * height * 4` bytes.
 #[must_use]
 pub fn frame_rgba(sprite: &Sprite, frame: FrameId) -> Vec<u8> {

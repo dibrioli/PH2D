@@ -162,7 +162,9 @@ fn player_block(
     //    e os dois nomes saíam CORTADOS. *O degrau a seguir a «não cabe o nome» é deixar de
     //    emparelhar.*
     let sec = super::anim_rows::seccao_da_animacao(text_system);
-    cur_y = ph2d_editor_core::property_row::paint_check_rows(
+    // ⚠️ O «Autoplay» saiu (plano GameEngineFuncional 07): é o «Who Picks» Me × Script do cartão — duas
+    // caixas para o mesmo facto eram duas portas a divergir.
+    cur_y = ph2d_editor_core::property_row::paint_check_row(
         scene,
         text_system,
         theme,
@@ -171,18 +173,11 @@ fn player_block(
         x,
         w,
         cur_y,
-        &[
-            (
-                ids::INSP_ANIM_PLAYING,
-                TextKey::new("component.field.sprite_animator.1"),
-                info.playing,
-            ),
-            (
-                ids::INSP_ANIM_AUTOPLAY,
-                TextKey::new("component.field.sprite_animator.2"),
-                info.autoplay,
-            ),
-        ],
+        (
+            ids::INSP_ANIM_PLAYING,
+            TextKey::new("component.field.sprite_animator.1"),
+            info.playing,
+        ),
         sec,
     );
 
@@ -413,18 +408,9 @@ pub(crate) fn paint_anim_section(
         );
     }
 
-    cur_y = player_block(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        x,
-        w,
-        cur_y,
-        info,
-    );
-    cur_y = super::anim_rows::paint_library(
+    // ⭐ O CARTÃO (plano GameEngineFuncional 07): ver, escolher, abrir o editor, quem escolhe.
+    cur_y = super::anim_card::paint_preview(scene, x, w, cur_y, info);
+    cur_y = super::anim_card::paint_list(
         scene,
         text_system,
         theme,
@@ -436,5 +422,95 @@ pub(crate) fn paint_anim_section(
         info,
         selected,
     );
+    cur_y = super::anim_rows::paint_add_remove(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        cur_y,
+        info,
+    );
+    cur_y = super::anim_card::button_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        cur_y,
+        ids::INSP_ANIM_OPEN_EDITOR,
+        tr("panel.inspector.anim_card.open_editor"),
+    );
+    let sec = super::anim_rows::seccao_da_animacao(text_system);
+    cur_y = super::paint_sheet_grid_rows(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        cur_y,
+        info.card.hframes,
+        info.card.vframes,
+        false,
+        sec,
+    );
+    cur_y = super::anim_card::paint_chooser(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        cur_y,
+        info,
+        sec,
+    );
+    // ⭐ «More» nasce FECHADO: o tocador fino (velocidade, substituições, barra) e os campos da animação
+    // escolhida. Nada se perdeu do que a §11 tinha — só deixou de ocupar o cartão.
+    let more = super::rows::grupo_dobravel(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        cur_y,
+        ids::INSP_ANIM_MORE,
+        tr("panel.inspector.anim_card.more"),
+    );
+    if more.aberto() {
+        cur_y = player_block(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            more.x,
+            more.w,
+            more.y,
+            info,
+        );
+        cur_y = super::anim_rows::paint_selected_editor(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            more.x,
+            more.w,
+            cur_y,
+            info,
+            selected,
+        );
+    }
+    cur_y = more.fecha(store, scene, hit_index, cur_y);
     fold.finish(store, scene, hit_index, cur_y + SECTION_BOTTOM_PAD_PX)
 }

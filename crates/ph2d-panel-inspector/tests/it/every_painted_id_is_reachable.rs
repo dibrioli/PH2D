@@ -205,6 +205,7 @@ fn publish_the_whole_sprite_scene() {
             signal_on_finish: String::new(),
             signal_on_loop: String::new(),
             per_frame_ms: Vec::new(),
+            frames: Vec::new(),
         }],
         player_present: true,
         cells: 8,
@@ -216,6 +217,7 @@ fn publish_the_whole_sprite_scene() {
         loop_override_tag: 0,
         frame: 1,
         selected_count: 1,
+        card: Default::default(),
     }));
     set_current_inspector_blend(Some(InspectorBlendInfo {
         entity_bits: ENTITY,

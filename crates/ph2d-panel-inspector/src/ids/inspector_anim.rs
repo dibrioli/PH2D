@@ -196,3 +196,178 @@ pub const INSP_ANIM_LOOP_OVERRIDE: [NodeId; 3] = [
     hash_node_id("insp_anim_loop_on"),
     hash_node_id("insp_anim_loop_off"),
 ];
+
+// ── O cartão «Animation» (plano GameEngineFuncional 07) ─────────────────────────────────────────
+
+/// O ▶ de cada linha da lista: escolhe a animação E põe-na a tocar. A ORDEM é o índice da animação.
+pub const INSP_ANIM_PLAY_ROW: [NodeId; 64] = build_insp_anim_play_row();
+
+const fn build_insp_anim_play_row() -> [NodeId; 64] {
+    [
+        hash_node_id("insp_anim_play_row_00"),
+        hash_node_id("insp_anim_play_row_01"),
+        hash_node_id("insp_anim_play_row_02"),
+        hash_node_id("insp_anim_play_row_03"),
+        hash_node_id("insp_anim_play_row_04"),
+        hash_node_id("insp_anim_play_row_05"),
+        hash_node_id("insp_anim_play_row_06"),
+        hash_node_id("insp_anim_play_row_07"),
+        hash_node_id("insp_anim_play_row_08"),
+        hash_node_id("insp_anim_play_row_09"),
+        hash_node_id("insp_anim_play_row_10"),
+        hash_node_id("insp_anim_play_row_11"),
+        hash_node_id("insp_anim_play_row_12"),
+        hash_node_id("insp_anim_play_row_13"),
+        hash_node_id("insp_anim_play_row_14"),
+        hash_node_id("insp_anim_play_row_15"),
+        hash_node_id("insp_anim_play_row_16"),
+        hash_node_id("insp_anim_play_row_17"),
+        hash_node_id("insp_anim_play_row_18"),
+        hash_node_id("insp_anim_play_row_19"),
+        hash_node_id("insp_anim_play_row_20"),
+        hash_node_id("insp_anim_play_row_21"),
+        hash_node_id("insp_anim_play_row_22"),
+        hash_node_id("insp_anim_play_row_23"),
+        hash_node_id("insp_anim_play_row_24"),
+        hash_node_id("insp_anim_play_row_25"),
+        hash_node_id("insp_anim_play_row_26"),
+        hash_node_id("insp_anim_play_row_27"),
+        hash_node_id("insp_anim_play_row_28"),
+        hash_node_id("insp_anim_play_row_29"),
+        hash_node_id("insp_anim_play_row_30"),
+        hash_node_id("insp_anim_play_row_31"),
+        hash_node_id("insp_anim_play_row_32"),
+        hash_node_id("insp_anim_play_row_33"),
+        hash_node_id("insp_anim_play_row_34"),
+        hash_node_id("insp_anim_play_row_35"),
+        hash_node_id("insp_anim_play_row_36"),
+        hash_node_id("insp_anim_play_row_37"),
+        hash_node_id("insp_anim_play_row_38"),
+        hash_node_id("insp_anim_play_row_39"),
+        hash_node_id("insp_anim_play_row_40"),
+        hash_node_id("insp_anim_play_row_41"),
+        hash_node_id("insp_anim_play_row_42"),
+        hash_node_id("insp_anim_play_row_43"),
+        hash_node_id("insp_anim_play_row_44"),
+        hash_node_id("insp_anim_play_row_45"),
+        hash_node_id("insp_anim_play_row_46"),
+        hash_node_id("insp_anim_play_row_47"),
+        hash_node_id("insp_anim_play_row_48"),
+        hash_node_id("insp_anim_play_row_49"),
+        hash_node_id("insp_anim_play_row_50"),
+        hash_node_id("insp_anim_play_row_51"),
+        hash_node_id("insp_anim_play_row_52"),
+        hash_node_id("insp_anim_play_row_53"),
+        hash_node_id("insp_anim_play_row_54"),
+        hash_node_id("insp_anim_play_row_55"),
+        hash_node_id("insp_anim_play_row_56"),
+        hash_node_id("insp_anim_play_row_57"),
+        hash_node_id("insp_anim_play_row_58"),
+        hash_node_id("insp_anim_play_row_59"),
+        hash_node_id("insp_anim_play_row_60"),
+        hash_node_id("insp_anim_play_row_61"),
+        hash_node_id("insp_anim_play_row_62"),
+        hash_node_id("insp_anim_play_row_63"),
+    ]
+}
+
+/// «Edit animations…» — abre o editor de animações desta sprite numa aba (`AnimFieldEdit::OpenEditor`).
+pub const INSP_ANIM_OPEN_EDITOR: NodeId = hash_node_id("insp_anim_open_editor");
+
+/// «Who picks»: Me · Script · The character. ⚠️ A POSIÇÃO é o `AnimChooser::tag`.
+pub const INSP_ANIM_CHOOSER: [NodeId; 3] = [
+    hash_node_id("insp_anim_chooser_me"),
+    hash_node_id("insp_anim_chooser_script"),
+    hash_node_id("insp_anim_chooser_character"),
+];
+
+/// Os quatro menus dos estados do personagem — Idle · Run · Jump · Fall (a ordem do
+/// `AnimFieldEdit::CharacterState`).
+pub const INSP_ANIM_STATE_PICK: [NodeId; 4] = [
+    hash_node_id("insp_anim_state_idle"),
+    hash_node_id("insp_anim_state_run"),
+    hash_node_id("insp_anim_state_jump"),
+    hash_node_id("insp_anim_state_fall"),
+];
+
+/// As linhas do popover de um estado: uma por animação da lista, pela ordem dela. ⚠️ Partilhadas pelos
+/// quatro menus — só um popover está aberto de cada vez, e o despacho pergunta QUAL.
+pub const INSP_ANIM_STATE_OPT: [NodeId; 64] = build_insp_anim_state_opt();
+
+const fn build_insp_anim_state_opt() -> [NodeId; 64] {
+    [
+        hash_node_id("insp_anim_state_opt_00"),
+        hash_node_id("insp_anim_state_opt_01"),
+        hash_node_id("insp_anim_state_opt_02"),
+        hash_node_id("insp_anim_state_opt_03"),
+        hash_node_id("insp_anim_state_opt_04"),
+        hash_node_id("insp_anim_state_opt_05"),
+        hash_node_id("insp_anim_state_opt_06"),
+        hash_node_id("insp_anim_state_opt_07"),
+        hash_node_id("insp_anim_state_opt_08"),
+        hash_node_id("insp_anim_state_opt_09"),
+        hash_node_id("insp_anim_state_opt_10"),
+        hash_node_id("insp_anim_state_opt_11"),
+        hash_node_id("insp_anim_state_opt_12"),
+        hash_node_id("insp_anim_state_opt_13"),
+        hash_node_id("insp_anim_state_opt_14"),
+        hash_node_id("insp_anim_state_opt_15"),
+        hash_node_id("insp_anim_state_opt_16"),
+        hash_node_id("insp_anim_state_opt_17"),
+        hash_node_id("insp_anim_state_opt_18"),
+        hash_node_id("insp_anim_state_opt_19"),
+        hash_node_id("insp_anim_state_opt_20"),
+        hash_node_id("insp_anim_state_opt_21"),
+        hash_node_id("insp_anim_state_opt_22"),
+        hash_node_id("insp_anim_state_opt_23"),
+        hash_node_id("insp_anim_state_opt_24"),
+        hash_node_id("insp_anim_state_opt_25"),
+        hash_node_id("insp_anim_state_opt_26"),
+        hash_node_id("insp_anim_state_opt_27"),
+        hash_node_id("insp_anim_state_opt_28"),
+        hash_node_id("insp_anim_state_opt_29"),
+        hash_node_id("insp_anim_state_opt_30"),
+        hash_node_id("insp_anim_state_opt_31"),
+        hash_node_id("insp_anim_state_opt_32"),
+        hash_node_id("insp_anim_state_opt_33"),
+        hash_node_id("insp_anim_state_opt_34"),
+        hash_node_id("insp_anim_state_opt_35"),
+        hash_node_id("insp_anim_state_opt_36"),
+        hash_node_id("insp_anim_state_opt_37"),
+        hash_node_id("insp_anim_state_opt_38"),
+        hash_node_id("insp_anim_state_opt_39"),
+        hash_node_id("insp_anim_state_opt_40"),
+        hash_node_id("insp_anim_state_opt_41"),
+        hash_node_id("insp_anim_state_opt_42"),
+        hash_node_id("insp_anim_state_opt_43"),
+        hash_node_id("insp_anim_state_opt_44"),
+        hash_node_id("insp_anim_state_opt_45"),
+        hash_node_id("insp_anim_state_opt_46"),
+        hash_node_id("insp_anim_state_opt_47"),
+        hash_node_id("insp_anim_state_opt_48"),
+        hash_node_id("insp_anim_state_opt_49"),
+        hash_node_id("insp_anim_state_opt_50"),
+        hash_node_id("insp_anim_state_opt_51"),
+        hash_node_id("insp_anim_state_opt_52"),
+        hash_node_id("insp_anim_state_opt_53"),
+        hash_node_id("insp_anim_state_opt_54"),
+        hash_node_id("insp_anim_state_opt_55"),
+        hash_node_id("insp_anim_state_opt_56"),
+        hash_node_id("insp_anim_state_opt_57"),
+        hash_node_id("insp_anim_state_opt_58"),
+        hash_node_id("insp_anim_state_opt_59"),
+        hash_node_id("insp_anim_state_opt_60"),
+        hash_node_id("insp_anim_state_opt_61"),
+        hash_node_id("insp_anim_state_opt_62"),
+        hash_node_id("insp_anim_state_opt_63"),
+    ]
+}
+
+/// «Run from» (m/s) do modo «The character».
+pub const INSP_ANIM_RUN_FROM: NodeId = hash_node_id("insp_anim_run_from");
+
+/// «Flip when walking back» do modo «The character».
+pub const INSP_ANIM_FLIP: NodeId = hash_node_id("insp_anim_flip");
+
+/// O cabeçalho do grupo «More» (o tocador e os campos da animação escolhida) — nasce FECHADO.
+pub const INSP_ANIM_MORE: NodeId = hash_node_id("insp_anim_more");

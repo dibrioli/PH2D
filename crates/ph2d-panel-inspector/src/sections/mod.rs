@@ -58,7 +58,10 @@ pub(crate) mod actions;
 pub(crate) mod anchor_mount_row;
 pub(crate) mod anchors;
 pub(crate) mod anim;
+/// O cartão «Animation» (plano GameEngineFuncional 07): lista com ▶, «Who Picks», estados.
+pub(crate) mod anim_card;
 pub(crate) mod anim_rows;
+pub(crate) use anim_card::state_options as anim_state_options;
 /// ⭐⭐⭐ O SOM de um objecto (TOP-20 #4) — a fonte e as orelhas.
 pub(crate) mod audio;
 pub(crate) mod camera;
@@ -145,7 +148,7 @@ pub(crate) mod shake_emitter;
 /// **§5 9-Slice** — a seção que a spec declarou em 2026-05 e que nasceu em 2026-08-21.
 pub(crate) mod slice_grid;
 pub(crate) mod slice_nine;
-mod sprite_sheet;
+mod sprite_pose;
 /// ⭐⭐⭐ A secção STATE MACHINE (TOP-20 #15) — ver o cabeçalho.
 pub(crate) mod statemachine;
 /// ⭐⭐⭐ **A secção TAGS** (TOP-20 #9, W3a) — a que o objecto É.
@@ -183,7 +186,7 @@ pub(crate) use render_source::paint_render_source_section;
 /// a única crate que vê o painel e o `ph2d-render` ao mesmo tempo.
 pub use sampling::FILTER_LABELS;
 pub(crate) use sampling::paint_sampling_section;
-pub(crate) use sprite_sheet::paint_sprite_sheet_section;
+pub(crate) use sprite_pose::paint_sheet_grid_rows;
 pub(crate) use transform::paint_transform_section;
 pub(crate) use visibility::paint_visibility_section;
 pub(crate) use wheel::paint_wheel_section;

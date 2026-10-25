@@ -10,15 +10,10 @@ use super::*;
 use ph2d_editor_core::screens::hero::InspectorAnimInfo;
 use ph2d_i18n::tr;
 
-// ⭐ **A linha de uma LISTA e a linha do app** (wave 17): o `22.0` a mao coincidia com o
-// token, e uma coincidencia nao segue quem mexe no token.
-const ROW_H: f32 = ph2d_tokens::ROW_H_PX;
-/// Onde o resumo (`2-5 · Forward`) começa, como fração da largura.
-const SUMMARY_COL_FRAC: f32 = 0.52; // LITERAL-PX-OK: fração de layout
-
-/// A lista mais o editor. Devolve o `y` seguinte.
+/// **Os campos da animação escolhida** (nome, intervalo, ritmo, direção, sinais) — o corpo do grupo
+/// «More» do cartão. Devolve o `y` seguinte.
 #[allow(clippy::too_many_arguments)]
-pub(crate) fn paint_library(
+pub(crate) fn paint_selected_editor(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
@@ -30,131 +25,29 @@ pub(crate) fn paint_library(
     info: &InspectorAnimInfo,
     selected: usize,
 ) -> f32 {
-    let font = TypeToken::Sm.px();
-    let mut cur_y = y;
-    paint_text(
-        text_system,
-        scene,
-        tr("panel.inspector.animation.this_sprite_s_animations"),
-        x,
-        cur_y,
-        font,
-        w,
-        resolve(ColorToken::Text3, theme),
-    );
-    cur_y += font + ph2d_tokens::control_gap_px();
-
-    if info.rows.is_empty() {
-        paint_text(
-            text_system,
-            scene,
-            tr("panel.inspector.animation.no_animations_yet"),
-            x,
-            cur_y,
-            font,
-            w,
-            resolve(ColorToken::Text3, theme),
-        );
-        cur_y += font + ph2d_tokens::control_gap_px();
-    } else {
-        // ⚠️ `zip` com o array de ids: uma biblioteca com mais tags do que ids (impossível
-        // enquanto o gate `the_anim_row_ids_cover_the_model_cap` viver) perde as excedentes em
-        // vez de as pintar umas sobre as outras.
-        for (i, (row, &id)) in info.rows.iter().zip(ids::INSP_ANIM_ROW.iter()).enumerate() {
-            let rect = Rect::new(x, cur_y, w, ROW_H);
-            hit_index.register(id, rect);
-            // ⭐ A listra da linha ímpar — aqui o índice do laço É o visual (nada é saltado).
-            // ⚠️ **O tom base vem da PORTA** (`CardDepth::Section.token()`), nunca do `ColorToken::Bg1`
-            //    escrito à mão: é a lei da wave 13, e o censo dela apanhou esta linha na 1.ª redacção.
-            //    ⛔ E é a `Section`, não a `Subsection`: a listra **não é uma superfície nova dentro do**
-            //    **cartão** — ela é o próprio fundo do cartão movido 5/255, e é esse tamanho que a
-            //    impede de se ler como um aninhamento.
-            ph2d_editor_core::widget::paint_row_stripe(
-                scene,
-                rect,
-                theme,
-                ph2d_editor_core::widget::section_cards::CardDepth::Section.token(),
-                i,
-            );
-            // **Duas coisas diferentes, dois realces:** a que está ABERTA no editor (fundo), e a
-            // que está a TOCAR (o texto aceso). Elas são a mesma na esmagadora maioria dos
-            // casos — mas não quando a que toca deixou de caber na grelha.
-            let is_open = i == selected;
-            let is_current = info.current == row.name;
-            // ⭐ Pela porta (wave 21) — ver o irmão em `anchors.rs`.
-            ph2d_editor_core::widget::paint_row_highlight(
-                scene,
-                rect,
-                theme,
-                if is_open {
-                    ph2d_editor_core::widget::RowHighlight::Selected
-                } else {
-                    ph2d_editor_core::widget::RowHighlight::None
-                },
-                0.0,
-            );
-            let color = if is_current {
-                resolve(ColorToken::Accent, theme)
-            } else if is_open {
-                resolve(ColorToken::Text1, theme)
-            } else {
-                resolve(ColorToken::Text2, theme)
-            };
-            paint_text(
-                text_system,
-                scene,
-                &row.name,
-                x + Spacing::Sm.px(),
-                cur_y + (ROW_H - font) * 0.5,
-                font,
-                w,
-                color,
-            );
-            // ⚠️ **O resumo diz o que a linha FAZ**, e o alcance sai da grelha de hoje: uma tag
-            // que deixou de caber mostra-o aqui, e não só quando alguém carrega em Play.
-            let dir = ph2d_ecs_dir_label(row.direction_tag);
-            let summary = if row.fits(info.cells) {
-                format!(
-                    "{}-{} \u{b7} {dir}",
-                    row.from.min(row.to),
-                    row.from.max(row.to)
-                )
-            } else {
-                String::from(tr("panel.inspector.animation.out_of_grid"))
-            };
-            let summary_color = if row.fits(info.cells) {
-                resolve(ColorToken::Text3, theme)
-            } else {
-                resolve(ColorToken::Danger, theme)
-            };
-            paint_text(
-                text_system,
-                scene,
-                &summary,
-                x + w * SUMMARY_COL_FRAC,
-                cur_y + (ROW_H - font) * 0.5,
-                font,
-                w,
-                summary_color,
-            );
-            cur_y += ROW_H + ph2d_tokens::list_row_gap_px();
-        }
-        cur_y += Spacing::Sm.px();
-        if let Some(row) = info.rows.get(selected.min(info.rows.len() - 1)) {
-            cur_y = editor(
-                scene,
-                text_system,
-                theme,
-                hit_index,
-                store,
-                x,
-                w,
-                cur_y,
-                row,
-            );
-        }
+    match info
+        .rows
+        .get(selected.min(info.rows.len().saturating_sub(1)))
+    {
+        Some(row) => editor(scene, text_system, theme, hit_index, store, x, w, y, row),
+        None => y,
     }
+}
 
+/// «+ Add Animation» e «× Remove Animation», por baixo da lista. Devolve o `y` seguinte.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn paint_add_remove(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+    info: &InspectorAnimInfo,
+) -> f32 {
+    let mut cur_y = y;
     let add = ph2d_editor_core::property_row::caixa_do_botao(
         text_system,
         x,
@@ -200,26 +93,6 @@ pub(crate) fn paint_library(
         cur_y = ph2d_editor_core::property_row::abaixo_do_botao(rm);
     }
     cur_y + ph2d_tokens::control_gap_px()
-}
-
-/// O rótulo de uma direção, pelo tag.
-///
-/// ⚠️⚠️ **A redacção anterior dizia que isto ESPELHA a `ph2d_ecs::AnimDirection::label` e que «o
-/// gate da shell prende os dois» — e esse gate NUNCA EXISTIU** (medido 2026-09-19: o
-/// `ph2d_ecs_dir_label` é citado por este ficheiro e por uma linha de prosa, e por mais nada). É a
-/// família que o `named_gates_census` da escultura curou em 13/09: *um gate citado em comentário
-/// lê-se como um gate.*
-///
-/// ⭐ Hoje não há o que prender: a `AnimDirection::label` foi **apagada** como órfã na mesma
-/// medição — ela não tinha um único consumidor de produto —, e esta é a ÚNICA cópia do
-/// vocabulário. *Apagar a segunda resposta é mais forte do que gatear as duas.*
-fn ph2d_ecs_dir_label(tag: u8) -> &'static str {
-    match tag {
-        1 => tr("panel.inspector.animation.reverse"),
-        2 => tr("panel.inspector.animation.ping_pong"),
-        3 => tr("panel.inspector.animation.ping_pong_rev"),
-        _ => tr("panel.inspector.animation.forward"),
-    }
 }
 
 /// **O INTERVALO e o RITMO de uma animação** — seis linhas guiadas por tabela.
@@ -385,6 +258,17 @@ pub(super) fn seccao_da_animacao(
         "panel.inspector.animation.direction",
         "panel.inspector.animation.direction_override",
         "panel.inspector.animation.loop_override",
+        // O cartão (plano GameEngineFuncional 07): a grelha, «Who Picks» e os estados.
+        "component.field.sprite_grid.1",
+        "component.field.sprite_grid.2",
+        "panel.inspector.sprite_sheet.show_sheet_on_canvas",
+        "panel.inspector.anim_card.who_picks",
+        "component.field.character_animations.0",
+        "component.field.character_animations.1",
+        "component.field.character_animations.2",
+        "component.field.character_animations.3",
+        "component.field.character_animations.4",
+        "component.field.character_animations.5",
     ] {
         nomes.push(tr(chave));
     }

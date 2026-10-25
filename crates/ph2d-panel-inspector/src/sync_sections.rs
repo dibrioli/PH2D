@@ -297,6 +297,10 @@ fn sync_anim_fields(
         }
     };
     put(host, crate::ids::INSP_ANIM_SPEED, f64::from(an.speed));
+    // «Run From» do modo «The Character» (plano GameEngineFuncional 07) — o mundo, como a velocidade.
+    if let Some(ch) = an.card.character.as_ref() {
+        put(host, crate::ids::INSP_ANIM_RUN_FROM, f64::from(ch.run_from));
+    }
     // ⚠️ **A barra de frames espelha o mundo — MENOS enquanto o dedo a segura.** Ela pinta-se do
     // snapshot, então o valor guardado no store só serve ao despachante (que compara com ele para
     // decidir se houve mudança) e à a11y. Deixá-lo parado faria um segundo clique no MESMO sítio

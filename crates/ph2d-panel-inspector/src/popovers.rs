@@ -255,6 +255,35 @@ pub(crate) fn paint_deferred_popovers(
     // objecto (amostragem, camada, âncora, verbo); estes três escolhem uma **tag da árvore do
     // projecto**, e as opções deles saem de outra porta. ⛔ Subir o número seria adiar com juros.
     tags::paint_deferred_tag_popovers(scene, text_system, theme, hit_index, store, region);
+    // O menu de ESTADO do cartão «Animation» (plano GameEngineFuncional 07): as animações da lista.
+    if let Some((state, chip)) = state_popovers::take_pending_anim_state_dd()
+        && let Some(info) = crate::state::current_inspector_anim()
+        && let Some(&pick) = crate::ids::INSP_ANIM_STATE_PICK.get(usize::from(state))
+    {
+        let mut dd = Dropdown::new(pick, "", crate::sections::anim_state_options(&info)).open(true);
+        let name = info
+            .card
+            .character
+            .as_ref()
+            .map(|c| c.names[usize::from(state).min(3)].clone());
+        if let Some(i) = info
+            .rows
+            .iter()
+            .position(|r| Some(&r.name) == name.as_ref())
+        {
+            dd.select(i);
+        }
+        paint_open_popover(
+            &dd,
+            chip,
+            region,
+            store,
+            scene,
+            text_system,
+            theme,
+            hit_index,
+        );
+    }
 }
 
 /// O ▾ do *Play Clip* da secção SIGNAL ACTIONS (onda 5, item c): a LINHA vem no slot, e as opções

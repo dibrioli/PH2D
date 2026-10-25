@@ -269,6 +269,7 @@ pub fn arma_tudo() {
             signal_on_finish: "idle_done".to_string(),
             signal_on_loop: "idle_loop".to_string(),
             per_frame_ms: vec![100, 120, 100, 80],
+            frames: Vec::new(),
         }],
         player_present: true,
         cells: 8,
@@ -280,6 +281,7 @@ pub fn arma_tudo() {
         loop_override_tag: 0,
         frame: 1,
         selected_count: selecionados(),
+        card: Default::default(),
     }));
     insp::set_current_inspector_instance(Some(InspectorInstanceInfo {
         entity_bits: BITS,
@@ -563,7 +565,6 @@ fn arma_a_fisica() {
             velocity: [1.0, 0.0],
         }),
         emits_signals: true,
-        anim: None,
     }));
 }
 

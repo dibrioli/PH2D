@@ -143,6 +143,35 @@ pub(crate) fn paint_render_source_section(
         cur_y,
     );
 
+    // ⭐ O que era a secção «Sprite Sheet» (plano GameEngineFuncional 07 §4): a pose fica na sprite, e
+    // a grelha só aqui quando não há cartão «Animation» que a mostre.
+    cur_y = super::sprite_pose::paint_sprite_pose_rows(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        cur_y,
+    );
+    if crate::state::current_inspector_anim().is_none() {
+        let sec = super::sprite_pose::seccao(text_system);
+        cur_y = super::sprite_pose::paint_sheet_grid_rows(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            x,
+            w,
+            cur_y,
+            info.hframes,
+            info.vframes,
+            true,
+            sec,
+        );
+    }
     let btn_rect = ph2d_editor_core::property_row::caixa_do_botao(
         text_system,
         x,

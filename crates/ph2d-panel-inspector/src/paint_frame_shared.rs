@@ -215,10 +215,11 @@ pub(crate) fn push_sprite_sections<'a>(
     let Some(info) = sprite else {
         return;
     };
+    // ⚠️ A §4 Sprite Sheet saiu (plano GameEngineFuncional 07 §4): as linhas dela vivem no Render Source
+    // e no cartão «Animation» (`sections::sprite_pose`).
     for (section_id, which) in [
         (ids::INSP_LIVE_RENDER_SECTION, 0u8),
         (ids::INSP_LIVE_COLOR_SECTION, 1),
-        (ids::INSP_LIVE_SHEET_SECTION, 2),
     ] {
         emoldurada(
             plano,
@@ -231,11 +232,8 @@ pub(crate) fn push_sprite_sections<'a>(
                 0 => crate::sections::paint_render_source_section(
                     c.scene, c.text, t, c.hit, store, inner_x, inner_w, y, info,
                 ),
-                1 => crate::sections::paint_color_tint_section(
+                _ => crate::sections::paint_color_tint_section(
                     c.scene, c.text, t, c.hit, store, inner_x, inner_w, y,
-                ),
-                _ => crate::sections::paint_sprite_sheet_section(
-                    c.scene, c.text, t, c.hit, store, inner_x, inner_w, y, info,
                 ),
             },
         );

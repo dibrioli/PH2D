@@ -90,6 +90,11 @@ thread_local! {
     pub(crate) static PENDING_SEQ_DD:
         std::cell::Cell<Option<ph2d_editor_core::zones::Rect>> = const { std::cell::Cell::new(None) };
 
+    /// O cartão «Animation»: `(estado 0..4, rect do chip)` do menu de estado aberto. As opções
+    /// (as animações da lista) rederivam-se do snapshot no passe diferido.
+    pub(crate) static PENDING_ANIM_STATE_DD:
+        std::cell::Cell<Option<(u8, ph2d_editor_core::zones::Rect)>> = const { std::cell::Cell::new(None) };
+
     /// COUNTER WATCH: `(comparação escolhida, rect do chip)`.
     ///
     /// ⚠️ **A comparação VIAJA no slot, ao contrário do selector da cutscene** — e a razão é onde a
@@ -265,4 +270,12 @@ pub(crate) fn set_painted_popover(painted: ph2d_editor_core::widget::PaintedPopo
 
 pub(crate) fn take_painted_popover() -> Option<ph2d_editor_core::widget::PaintedPopover> {
     PAINTED_POPOVER.with(|c| c.take())
+}
+
+pub(crate) fn set_pending_anim_state_dd(chip: Option<(u8, ph2d_editor_core::zones::Rect)>) {
+    PENDING_ANIM_STATE_DD.with(|c| c.set(chip));
+}
+
+pub(crate) fn take_pending_anim_state_dd() -> Option<(u8, ph2d_editor_core::zones::Rect)> {
+    PENDING_ANIM_STATE_DD.with(std::cell::Cell::take)
 }

@@ -91,59 +91,8 @@ fn populate_player_chips(store: &mut WidgetStore) {
     );
 }
 
-/// **O bloco *Animations*** (GameEngineFuncional N1) — os dois interruptores, os quatro botões dos
-/// estados e o limiar de correr.
-fn populate_player_anim(store: &mut WidgetStore) {
-    register_button_ids(store, &ids::INSP_PLAYER_ANIM_IDS);
-    store.set_tooltip(
-        ids::INSP_PLAYER_ANIM_IDS[0],
-        tr("panel.inspector.player.anim_off_tip"),
-    );
-    store.set_tooltip(
-        ids::INSP_PLAYER_ANIM_IDS[1],
-        tr("panel.inspector.player.anim_on_tip"),
-    );
-    register_button_ids(store, &ids::INSP_PLAYER_ANIM_FLIP_IDS);
-    store.set_tooltip(
-        ids::INSP_PLAYER_ANIM_FLIP_IDS[1],
-        tr("panel.inspector.player.anim_flip_tip"),
-    );
-    register_button_ids(
-        store,
-        &[
-            ids::INSP_PLAYER_ANIM_IDLE,
-            ids::INSP_PLAYER_ANIM_RUN,
-            ids::INSP_PLAYER_ANIM_JUMP,
-            ids::INSP_PLAYER_ANIM_FALL,
-        ],
-    );
-    for id in ids::INSP_PLAYER_ANIM_STATE_IDS {
-        store.set_tooltip(id, tr("panel.inspector.player.anim_state_tip"));
-    }
-    store.set_tooltip(
-        ids::INSP_PLAYER_ANIM_RUN_FROM,
-        tr("panel.inspector.player.anim_run_from_tip"),
-    );
-    // O ponto de partida do `CharacterAnimations::run_from`; o `sync` escreve o do objecto.
-    let run_from = 0.5;
-    store.register(
-        ids::INSP_PLAYER_ANIM_RUN_FROM,
-        InteractiveState::NumberInput {
-            state: TextInputState::Normal,
-            value: run_from,
-            buffer: format_number(run_from),
-            caret: 0,
-            last_committed: run_from,
-            selection_anchor: None,
-        },
-    );
-    // m/s relativos ao chão; o teto 10 é a faixa da UI (o `speed` de partida é 6), não recurso.
-    store.set_number_range(ids::INSP_PLAYER_ANIM_RUN_FROM, 0.0, 10.0, 0.1); // LITERAL-PX-OK: m/s
-}
-
 pub(super) fn populate_player(store: &mut WidgetStore) {
     populate_player_chips(store);
-    populate_player_anim(store);
     // ⭐⭐ **O `INSP_PLAYER_ADD` VOLTOU a esta lista em 2026-09-14, com o botão que o nomeia.**
     //
     // Ele é o «Make Platform Player» da face vazia. Entre 2026-08-30 e hoje ele **não** esteve

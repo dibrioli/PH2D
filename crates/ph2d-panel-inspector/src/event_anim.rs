@@ -29,6 +29,11 @@ pub(crate) fn apply_anim_event(
     let sel = panel.anim_selected.min(info.rows.len().saturating_sub(1));
     let sel_u8 = u8::try_from(sel).unwrap_or(0);
 
+    if let WidgetEvent::Click(id) = ev
+        && crate::event_anim_card::apply_card_click(panel, host, &info, id)
+    {
+        return true;
+    }
     if let WidgetEvent::Click(id) = ev {
         // Uma linha da lista: abre a ficha **e** escolhe o que toca.
         if let Some(i) = crate::ids::INSP_ANIM_ROW.iter().position(|&o| o == id)
@@ -113,17 +118,25 @@ pub(crate) fn apply_anim_event(
     // ⇒ O clique afirma **o contrário do que estava no ecrã**, que é o que um toggle promete.
     // Gate: `seam_anim::the_playing_box_asks_the_scene_not_its_own_memory`.
     if let WidgetEvent::Toggled(id) = ev
-        && matches!(
-            id,
-            crate::ids::INSP_ANIM_PLAYING | crate::ids::INSP_ANIM_AUTOPLAY
-        )
+        && id == crate::ids::INSP_ANIM_PLAYING
     {
-        let edit = if id == crate::ids::INSP_ANIM_PLAYING {
-            AnimFieldEdit::Playing(!info.playing)
-        } else {
-            AnimFieldEdit::Autoplay(!info.autoplay)
-        };
-        push(host, info.entity_bits, edit);
+        push(
+            host,
+            info.entity_bits,
+            AnimFieldEdit::Playing(!info.playing),
+        );
+        return true;
+    }
+    // «Flip» do modo «The Character» — a mesma lei: o contrário do que está DESENHADO.
+    if let WidgetEvent::Toggled(id) = ev
+        && id == crate::ids::INSP_ANIM_FLIP
+        && let Some(ch) = info.card.character.as_ref()
+    {
+        push(
+            host,
+            info.entity_bits,
+            AnimFieldEdit::CharacterFlip(!ch.flip),
+        );
         return true;
     }
 
@@ -157,8 +170,9 @@ pub(crate) fn apply_anim_event(
         && id == crate::ids::INSP_ANIM_FRAME_SCRUB
     {
         let v = host.store().slider(id).map_or(0.0, |(_, v)| v);
-        if let Some(cell) = info.scrub_cell(v) {
-            push(host, info.entity_bits, AnimFieldEdit::SetFrame(cell));
+        // ⭐ Numa lista de quadros o arrasto escolhe o PASSO (`SetStep`), num intervalo a célula.
+        if let Some(edit) = info.scrub_edit(v) {
+            push(host, info.entity_bits, edit);
         }
         return true;
     }
@@ -192,6 +206,17 @@ pub(crate) fn apply_anim_event(
             push(host, info.entity_bits, AnimFieldEdit::Speed(v as f32));
             return true;
         }
+        if id == crate::ids::INSP_ANIM_RUN_FROM {
+            if info.card.character.is_some() {
+                #[allow(clippy::cast_possible_truncation)]
+                push(
+                    host,
+                    info.entity_bits,
+                    AnimFieldEdit::CharacterRunFrom(v as f32),
+                );
+            }
+            return true;
+        }
         if info.rows.is_empty() {
             return false;
         }
@@ -216,13 +241,13 @@ pub(crate) fn apply_anim_event(
     false
 }
 
-fn push(host: &mut dyn PanelHostInternal, entity_bits: u64, edit: AnimFieldEdit) {
+pub(crate) fn push(host: &mut dyn PanelHostInternal, entity_bits: u64, edit: AnimFieldEdit) {
     host.bus_mut()
         .push(EditorAction::InspectorAnimEdit { entity_bits, edit });
 }
 
 /// Repõe o visual de um botão momentâneo — senão ele fica `Pressed` depois do clique.
-fn demote(host: &mut dyn PanelHostInternal, id: ph2d_a11y::NodeId) {
+pub(crate) fn demote(host: &mut dyn PanelHostInternal, id: ph2d_a11y::NodeId) {
     if let Some(InteractiveState::Button { state }) = host.store_mut().get_mut(id) {
         *state = ButtonState::Normal;
     }

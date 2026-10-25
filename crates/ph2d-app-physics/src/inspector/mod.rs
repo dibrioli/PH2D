@@ -6,5 +6,3 @@
 /// da [`player`] por assunto, e morava noutra pasta só por ordem de chegada.
 pub mod body;
 pub mod player;
-/// O bloco *Animations* da §14 (as animações por estado do personagem).
-pub mod player_anim;

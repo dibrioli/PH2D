@@ -51,6 +51,7 @@ mod event_particles;
 mod event_path_follow;
 mod event_physics;
 pub use event_physics::physics_edit_for;
+mod event_anim_card;
 mod event_player;
 mod event_precision;
 mod event_projectile;

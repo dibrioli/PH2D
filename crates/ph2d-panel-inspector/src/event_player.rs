@@ -61,24 +61,6 @@ pub(crate) fn apply_player_event(host: &mut dyn PanelHostInternal, ev: WidgetEve
                 id == crate::ids::INSP_PLAYER_CROUCH_WALK_OFF_IDS[0],
             ))
         }
-        // ⭐ O bloco *Animations* (GameEngineFuncional N1): o índice É a resposta, como nos irmãos.
-        WidgetEvent::Click(id) if crate::ids::INSP_PLAYER_ANIM_IDS.contains(&id) => Some(
-            PlayerFieldEdit::AnimateByState(id == crate::ids::INSP_PLAYER_ANIM_IDS[1]),
-        ),
-        WidgetEvent::Click(id) if crate::ids::INSP_PLAYER_ANIM_FLIP_IDS.contains(&id) => Some(
-            PlayerFieldEdit::AnimFlip(id == crate::ids::INSP_PLAYER_ANIM_FLIP_IDS[1]),
-        ),
-        WidgetEvent::Click(id) if crate::ids::INSP_PLAYER_ANIM_STATE_IDS.contains(&id) => {
-            // ⚠️ Um clique num estado só tem para onde ir com animações na lista — sem elas o
-            // pintor não oferece o botão, e a recusa repete-se aqui.
-            info.anim.as_ref().filter(|a| a.has_tags).map(|_| {
-                let i = crate::ids::INSP_PLAYER_ANIM_STATE_IDS
-                    .iter()
-                    .position(|&o| o == id)
-                    .unwrap_or(0);
-                PlayerFieldEdit::AnimNext(i as u8)
-            })
-        }
         WidgetEvent::Click(id) if id == crate::ids::INSP_PLAYER_ADD => Some(PlayerFieldEdit::Add),
         WidgetEvent::Click(id) if id == crate::ids::INSP_PLAYER_REMOVE => {
             Some(PlayerFieldEdit::Remove)
@@ -154,9 +136,6 @@ pub(crate) fn apply_player_event(host: &mut dyn PanelHostInternal, ev: WidgetEve
                 // Graus na row, cosseno no motor — a conversão acontece UMA vez,
                 // na `WalkConfig::max_slope_cos`.
                 crate::ids::INSP_PLAYER_MAX_SLOPE => Some(PlayerFieldEdit::MaxSlopeDeg(v)),
-                crate::ids::INSP_PLAYER_ANIM_RUN_FROM if info.anim.is_some() => {
-                    Some(PlayerFieldEdit::AnimRunFrom(v))
-                }
                 _ => None,
             }
         }

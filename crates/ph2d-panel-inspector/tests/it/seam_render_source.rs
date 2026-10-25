@@ -34,7 +34,7 @@ const ENTITY: u64 = 0xC0FF_EE00;
 
 /// Um sprite de ATLAS, que é como todo sprite importado nasce — e por isso o estado de partida
 /// certo para perguntar *"consigo mudar de estratégia?"*.
-fn atlas_sprite(can_reimport: bool) -> InspectorSpriteInfo {
+pub(crate) fn atlas_sprite(can_reimport: bool) -> InspectorSpriteInfo {
     InspectorSpriteInfo {
         emissive: 0.0,
         entity_bits: ENTITY,

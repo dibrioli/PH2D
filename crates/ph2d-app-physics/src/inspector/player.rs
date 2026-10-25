@@ -176,7 +176,6 @@ pub fn build_player_info(
             .world()
             .get::<ph2d_physics_ecs::PlayerSignals>(entity)
             .is_some(),
-        anim: super::player_anim::anim_info(sim.world(), entity),
     })
 }
 
@@ -382,16 +381,6 @@ pub fn apply_player_edit(sim: &mut SimWorld, entity_bits: u64, edit: PlayerField
             }
             return;
         }
-        // ⚠️ **Anexa ou REMOVE — nunca escreve um campo** (A3): o marcador é o
-        // booleano, e um componente que ficasse presente a dizer *"desligado"*
-        // seria um no-op guardado no arquivo (o idioma do detach dos overrides).
-        PlayerFieldEdit::AnimateByState(_)
-        | PlayerFieldEdit::AnimNext(_)
-        | PlayerFieldEdit::AnimRunFrom(_)
-        | PlayerFieldEdit::AnimFlip(_) => {
-            super::player_anim::apply_anim_edit(sim.world_mut(), entity, edit);
-            return;
-        }
         PlayerFieldEdit::EmitSignals(on) => {
             let mut e = sim.world_mut().entity_mut(entity);
             if on {
@@ -420,11 +409,7 @@ pub fn apply_player_edit(sim: &mut SimWorld, entity_bits: u64, edit: PlayerField
         | PlayerFieldEdit::Remove
         | PlayerFieldEdit::ClearRun
         | PlayerFieldEdit::RestoreRun
-        | PlayerFieldEdit::EmitSignals(_)
-        | PlayerFieldEdit::AnimateByState(_)
-        | PlayerFieldEdit::AnimNext(_)
-        | PlayerFieldEdit::AnimRunFrom(_)
-        | PlayerFieldEdit::AnimFlip(_) => {}
+        | PlayerFieldEdit::EmitSignals(_) => {}
         PlayerFieldEdit::Mode(_) => {}
         PlayerFieldEdit::FitFloatHeight => {
             if let Some(fit) = fitted_float(shape, p.max_slope_deg) {

@@ -41,7 +41,7 @@ const VIEWPORT: Rect = Rect {
 /// ⚠️ **Duas linhas e não uma**: com uma só, um despacho que ignorasse o índice da linha aberta
 /// ficaria verde por não haver outra para onde errar. *Uma fixtura que não contém o fenómeno mede
 /// silêncio.*
-fn anim(playing: bool, autoplay: bool) -> InspectorAnimInfo {
+pub(crate) fn anim(playing: bool, autoplay: bool) -> InspectorAnimInfo {
     InspectorAnimInfo {
         entity_bits: ENTITY,
         rows: vec![
@@ -57,6 +57,7 @@ fn anim(playing: bool, autoplay: bool) -> InspectorAnimInfo {
                 signal_on_finish: String::new(),
                 signal_on_loop: String::new(),
                 per_frame_ms: Vec::new(),
+                frames: Vec::new(),
             },
             InspectorAnimRow {
                 name: "attack".into(),
@@ -70,6 +71,7 @@ fn anim(playing: bool, autoplay: bool) -> InspectorAnimInfo {
                 signal_on_finish: String::new(),
                 signal_on_loop: String::new(),
                 per_frame_ms: Vec::new(),
+                frames: Vec::new(),
             },
         ],
         player_present: true,
@@ -84,6 +86,7 @@ fn anim(playing: bool, autoplay: bool) -> InspectorAnimInfo {
         loop_override_tag: 0,
         frame: 1,
         selected_count: 1,
+        card: Default::default(),
     }
 }
 
@@ -100,7 +103,7 @@ fn no_player() -> InspectorAnimInfo {
 /// ⚠️ **O nome faz parte da fixtura, e a premissa é declarada:** o `entity_changed` do sync — a
 /// porta que decide re-semear as caixas — lê a entidade do transform/nome/visibilidade, nunca do
 /// info da §11. Sem esta publicação o gate mediria um sync que nunca correu.
-fn host_with(info: InspectorAnimInfo) -> (MockPanelHost, InspectorState) {
+pub(crate) fn host_with(info: InspectorAnimInfo) -> (MockPanelHost, InspectorState) {
     let mut host = MockPanelHost::with_panel::<InspectorPanel>();
     let mut state = InspectorState::default();
     set_current_inspector_name(Some(InspectorNameInfo {
@@ -108,17 +111,20 @@ fn host_with(info: InspectorAnimInfo) -> (MockPanelHost, InspectorState) {
         name: "Hero".into(),
     }));
     set_current_inspector_anim(Some(info));
+    // ⚠️ O tocador fino e os campos da animação vivem no grupo «More» do cartão, que nasce FECHADO
+    // (plano GameEngineFuncional 07) — estes gates são sobre o CONTEÚDO dele.
+    host.set_collapsed(ph2d_panel_inspector::ids::INSP_ANIM_MORE, false);
     let _ = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
     (host, state)
 }
 
-fn clear() {
+pub(crate) fn clear() {
     set_current_inspector_anim(None);
     set_current_inspector_name(None);
 }
 
 /// Clica no meio do widget e devolve o que chegou ao barramento.
-fn click(
+pub(crate) fn click(
     host: &mut MockPanelHost,
     state: &mut InspectorState,
     id: ph2d_a11y::NodeId,
@@ -142,14 +148,14 @@ fn click(
 }
 
 /// Clica num widget de uma sprite recém-pintada e devolve o barramento.
-fn click_fresh(info: InspectorAnimInfo, id: ph2d_a11y::NodeId) -> Vec<EditorAction> {
+pub(crate) fn click_fresh(info: InspectorAnimInfo, id: ph2d_a11y::NodeId) -> Vec<EditorAction> {
     let (mut host, mut state) = host_with(info);
     let out = click(&mut host, &mut state, id);
     clear();
     out
 }
 
-fn commit(info: InspectorAnimInfo, id: ph2d_a11y::NodeId, v: f64) -> Vec<EditorAction> {
+pub(crate) fn commit(info: InspectorAnimInfo, id: ph2d_a11y::NodeId, v: f64) -> Vec<EditorAction> {
     let (mut host, mut state) = host_with(info);
     host.set_number_value(id, v);
     let _ = host.apply_panel_event::<InspectorPanel>(&mut state, WidgetEvent::ValueChanged(id));
@@ -218,36 +224,6 @@ fn the_playing_box_asks_the_scene_not_its_own_memory() {
         "marcar uma caixa que a CENA esvaziou por conta própria (a animação de uma \
          volta chegou ao fim) — o primeiro clique tem de tocar, não de mandar parar \
          uma cena já parada",
-    );
-}
-
-/// **O mesmo para «Autoplay»** — a lei é da caixa, não de quem hoje lhe mexe.
-///
-/// ⚠️ Hoje só o painel escreve o `autoplay`, então o defeito é **latente** aqui e vivo no irmão.
-/// Prendê-lo agora é o que impede a próxima porta que o escreva de reabrir o mesmo buraco a partir
-/// de um sítio que ninguém liga a esta caixa.
-#[test]
-fn the_autoplay_box_asks_the_scene_not_its_own_memory() {
-    expect(
-        &click_fresh(
-            anim(false, true),
-            ph2d_panel_inspector::ids::INSP_ANIM_AUTOPLAY,
-        ),
-        AnimFieldEdit::Autoplay(false),
-        "desmarcar o autoplay",
-    );
-    let (mut host, mut state) = host_with(anim(false, true));
-    set_current_inspector_anim(Some(anim(false, false)));
-    let out = click(
-        &mut host,
-        &mut state,
-        ph2d_panel_inspector::ids::INSP_ANIM_AUTOPLAY,
-    );
-    clear();
-    expect(
-        &out,
-        AnimFieldEdit::Autoplay(true),
-        "marcar um autoplay que a cena mudou por baixo da caixa",
     );
 }
 
@@ -407,7 +383,6 @@ fn the_empty_face_offers_only_the_gesture_that_creates_the_player() {
     clear();
     for id in [
         ph2d_panel_inspector::ids::INSP_ANIM_PLAYING,
-        ph2d_panel_inspector::ids::INSP_ANIM_AUTOPLAY,
         ph2d_panel_inspector::ids::INSP_ANIM_SPEED,
         ph2d_panel_inspector::ids::INSP_ANIM_REWIND,
         ph2d_panel_inspector::ids::INSP_ANIM_ADD,
@@ -490,6 +465,15 @@ fn every_edit_the_model_declares_is_reachable_by_a_gesture() {
         E::LoopOverride(0),
         E::Rewind,
         E::SetFrame(0),
+        E::Frames(0, Vec::new()),
+        E::CycleMode(0, 0),
+        E::Chooser(0),
+        E::CharacterState(0, String::new()),
+        E::CharacterRunFrom(0.0),
+        E::CharacterFlip(false),
+        E::SetStep(0),
+        E::OpenEditor,
+        E::Grid(1, 1),
     ];
     fn sample(e: &AnimFieldEdit) -> u8 {
         match e {
@@ -515,6 +499,15 @@ fn every_edit_the_model_declares_is_reachable_by_a_gesture() {
             E::LoopOverride(..) => 16,
             E::Rewind => 17,
             E::SetFrame(..) => 18,
+            E::Frames(..) => 22,
+            E::CycleMode(..) => 23,
+            E::Chooser(..) => 24,
+            E::CharacterState(..) => 25,
+            E::CharacterRunFrom(..) => 26,
+            E::CharacterFlip(..) => 27,
+            E::SetStep(..) => 28,
+            E::OpenEditor => 29,
+            E::Grid(..) => 30,
         }
     }
     let want: std::collections::BTreeSet<u8> = declared.iter().map(sample).collect();
@@ -538,8 +531,10 @@ fn every_edit_the_model_declares_is_reachable_by_a_gesture() {
         ph2d_panel_inspector::ids::INSP_ANIM_REMOVE,
         ph2d_panel_inspector::ids::INSP_ANIM_REWIND,
         ph2d_panel_inspector::ids::INSP_ANIM_PLAYING,
-        ph2d_panel_inspector::ids::INSP_ANIM_AUTOPLAY,
         ph2d_panel_inspector::ids::INSP_ANIM_ROW[1],
+        ph2d_panel_inspector::ids::INSP_ANIM_PLAY_ROW[0],
+        ph2d_panel_inspector::ids::INSP_ANIM_OPEN_EDITOR,
+        ph2d_panel_inspector::ids::INSP_ANIM_CHOOSER[1],
         ph2d_panel_inspector::ids::INSP_ANIM_DIR[1],
         ph2d_panel_inspector::ids::INSP_ANIM_DIR_OVERRIDE[2],
         ph2d_panel_inspector::ids::INSP_ANIM_LOOP_OVERRIDE[1],
@@ -592,6 +587,26 @@ fn every_edit_the_model_declares_is_reachable_by_a_gesture() {
     clear();
     note(out);
 
+    // ⭐ Os gestos do modo «The Character» e o arrasto de uma LISTA (plano GameEngineFuncional 07).
+    for acts in crate::seam_anim_card::character_gestures() {
+        note(acts);
+    }
+    note(drag_frame_bar(
+        crate::seam_anim_card::with_frame_list(anim(true, false)),
+        0.9,
+    ));
+    // ⚠️ **Os que NÃO são deste painel, nomeados** (e não engolidos por um `_`): a lista de quadros, o
+    // modo do ciclo e a grelha confirmada são do EDITOR de animações (`ph2d-app-sprite-anim`), que
+    // os levanta pelos gestos dele; o `Autoplay` escreve-o o «Who Picks» (Me × Script) pela
+    // `Chooser` — a caixa saiu do cartão.
+    for e in [
+        E::Frames(0, Vec::new()),
+        E::CycleMode(0, 0),
+        E::Grid(1, 1),
+        E::Autoplay(false),
+    ] {
+        raised.insert(sample(&e));
+    }
     let missing: Vec<u8> = want.difference(&raised).copied().collect();
     assert!(
         missing.is_empty(),
@@ -634,9 +649,10 @@ fn a_seleccao_multipla_diz_se_uma_vez_e_quem_a_diz_e_o_painel() {
         ph2d_panel_inspector::set_current_inspector_selecionados(0);
         rects
             .iter()
-            .find(|(n, _)| *n == ph2d_panel_inspector::ids::INSP_ANIM_PLAYING)
+            // A 1.ª linha da lista: o «Playing» mora no grupo «More», que nasce fechado (plano 07).
+            .find(|(n, _)| *n == ph2d_panel_inspector::ids::INSP_ANIM_ROW[0])
             .map(|(_, r)| r.y)
-            .expect("a caixa Playing é pintada nos três casos")
+            .expect("a 1.ª linha da lista é pintada nos três casos")
     };
     let base = primeiro_controlo(1, 1);
     // (a) ⛔ A SECÇÃO já não avisa: só o número DELA a mudar não desloca nada.

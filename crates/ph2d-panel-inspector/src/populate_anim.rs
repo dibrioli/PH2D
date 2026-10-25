@@ -9,8 +9,9 @@
 
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore, format_number};
 use ph2d_editor_core::widget::{
-    CheckboxState, CheckboxValue, SliderOrientation, SliderState, TextInputState,
+    CheckboxState, CheckboxValue, DropdownState, SliderOrientation, SliderState, TextInputState,
 };
+use ph2d_i18n::tr;
 
 use super::populate::register_button_ids;
 
@@ -43,10 +44,7 @@ pub(crate) fn populate_anim(store: &mut WidgetStore) {
         },
     );
 
-    for id in [
-        crate::ids::INSP_ANIM_PLAYING,
-        crate::ids::INSP_ANIM_AUTOPLAY,
-    ] {
+    for id in [crate::ids::INSP_ANIM_PLAYING, crate::ids::INSP_ANIM_FLIP] {
         store.register(
             id,
             InteractiveState::Checkbox {
@@ -80,6 +78,7 @@ pub(crate) fn populate_anim(store: &mut WidgetStore) {
         (crate::ids::INSP_ANIM_DELAY_MS, 0.0),
         (crate::ids::INSP_ANIM_REPEAT, 0.0),
         (crate::ids::INSP_ANIM_SPEED, 1.0),
+        (crate::ids::INSP_ANIM_RUN_FROM, 0.5), // LITERAL-PX-OK: m/s, o `CharacterAnimations::default`
     ] {
         store.register(
             id,
@@ -97,4 +96,45 @@ pub(crate) fn populate_anim(store: &mut WidgetStore) {
     // isto o scrub de arrasto teria passo livre sobre um valor que o commit depois trunca — o
     // knob prometeria uma excursão que a cena não tem.
     store.set_number_range(crate::ids::INSP_ANIM_SPEED, -100.0, 100.0, 0.1); // LITERAL-PX-OK: faixa do motor
+    // m/s relativos ao chão; o tecto 10 é a faixa da UI (o `speed` de partida é 6), não recurso.
+    store.set_number_range(crate::ids::INSP_ANIM_RUN_FROM, 0.0, 10.0, 0.1); // LITERAL-PX-OK: m/s
+    populate_anim_card(store);
+}
+
+/// **O cartão «Animation»** (plano GameEngineFuncional 07): o ▶ de cada linha, «Edit Animations…»,
+/// «Who Picks», os quatro menus de estado e o grupo «More» (nasce FECHADO).
+fn populate_anim_card(store: &mut WidgetStore) {
+    register_button_ids(store, &crate::ids::INSP_ANIM_PLAY_ROW);
+    register_button_ids(store, &[crate::ids::INSP_ANIM_OPEN_EDITOR]);
+    register_button_ids(store, &crate::ids::INSP_ANIM_CHOOSER);
+    register_button_ids(store, &crate::ids::INSP_ANIM_STATE_OPT);
+    for id in crate::ids::INSP_ANIM_STATE_PICK {
+        store.register(
+            id,
+            InteractiveState::Dropdown {
+                state: DropdownState::Normal,
+                open: false,
+                selected_index: None,
+            },
+        );
+        store.set_tooltip(id, tr("panel.inspector.anim_card.state_tip"));
+    }
+    for id in crate::ids::INSP_ANIM_PLAY_ROW {
+        store.set_tooltip(id, tr("panel.inspector.anim_card.play_tip"));
+    }
+    store.set_tooltip(
+        crate::ids::INSP_ANIM_OPEN_EDITOR,
+        tr("panel.inspector.anim_card.open_editor_tip"),
+    );
+    store.set_tooltip(
+        crate::ids::INSP_ANIM_RUN_FROM,
+        tr("panel.inspector.anim_card.run_from_tip"),
+    );
+    store.set_tooltip(
+        crate::ids::INSP_ANIM_FLIP,
+        tr("panel.inspector.anim_card.flip_tip"),
+    );
+    // ⛔ `_if_unchosen` (a lei da máscara da câmera): re-popular não pode fechar o que o artista abriu.
+    store.set_collapsed_if_unchosen(crate::ids::INSP_ANIM_MORE, true);
+    store.mark_collapsible_section(crate::ids::INSP_ANIM_MORE);
 }

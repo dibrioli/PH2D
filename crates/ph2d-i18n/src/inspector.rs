@@ -229,15 +229,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "This sprite does not play animations yet."
         }
         "panel.inspector.animation.plus_add_animator" => "+ Add Animator",
-        "panel.inspector.animation.this_sprite_s_animations" => "This sprite's animations",
         "panel.inspector.animation.no_animations_yet" => "No animations yet.",
         "panel.inspector.animation.out_of_grid" => "out of grid",
         "panel.inspector.animation.plus_add_animation" => "+ Add Animation",
         "panel.inspector.animation.x_remove_animation" => "x Remove Animation",
-        "panel.inspector.animation.reverse" => "Reverse",
-        "panel.inspector.animation.ping_pong" => "Ping-Pong",
-        "panel.inspector.animation.ping_pong_rev" => "Ping-Pong Rev",
-        "panel.inspector.animation.forward" => "Forward",
         "panel.inspector.animation.animation_name" => "animation_name\u{2026}",
         "panel.inspector.animation.this_animation_has_per_frame" => {
             "\u{2022} this animation has per-frame timing (imported)"
@@ -446,7 +441,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "Whole = entire tiles, so the last one meets the border. \
                           Mirror always uses whole tiles."
         }
-        "panel.inspector.sprite_sheet.sprite_sheet" => "Sprite Sheet",
         "panel.inspector.sprite_sheet.offset_x" => "{offset} X",
         "panel.inspector.sprite_sheet.offset_y" => "{offset} Y",
         "panel.inspector.sprite_sheet.show_sheet_on_canvas" => "Show sheet on canvas",

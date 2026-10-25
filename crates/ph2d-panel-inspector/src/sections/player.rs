@@ -46,9 +46,6 @@ mod door;
 mod live;
 use live::paint_live_readout;
 
-/// O bloco *Animations* — as animações por estado (GameEngineFuncional N1).
-#[path = "player_anim.rs"]
-mod anim;
 pub(crate) use table::{PLAYER_CARDS, player_row_count};
 
 /// As dicas dos QUATRO BOTÕES da seção — a mesma lei das rows, num lugar onde não
@@ -167,17 +164,6 @@ pub(crate) fn paint_player_section(
             tr("panel.inspector.player.on"),
         ],
         u8::from(info.emits_signals),
-    );
-    yy = anim::paint_anim_block(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        x,
-        w,
-        yy,
-        info.anim.as_ref(),
     );
 
     yy = paint_cards(

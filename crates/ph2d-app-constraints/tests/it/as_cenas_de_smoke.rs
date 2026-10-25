@@ -141,9 +141,75 @@ fn inside_and_surface_differ_only_with_the_ball_inside_the_eye() {
     };
     let fora = 3.0;
     assert!((pupila_com(0.0, fora) - FOLGA_DA_PUPILA).abs() < 1e-5);
-    assert!((pupila_com(2.0, fora) - FOLGA_DA_PUPILA).abs() < 1e-5, "fora, iguais");
+    assert!(
+        (pupila_com(2.0, fora) - FOLGA_DA_PUPILA).abs() < 1e-5,
+        "fora, iguais"
+    );
     let dentro = 0.2;
-    assert!((pupila_com(0.0, dentro) - f64::from(dentro)).abs() < 1e-5, "Inside move-a");
-    assert!((pupila_com(2.0, dentro) - FOLGA_DA_PUPILA).abs() < 1e-5, "Surface à borda");
-    assert!((pupila_com(1.0, dentro) - FOLGA_DA_PUPILA).abs() < 1e-5, "Outside à borda");
+    assert!(
+        (pupila_com(0.0, dentro) - f64::from(dentro)).abs() < 1e-5,
+        "Inside move-a"
+    );
+    assert!(
+        (pupila_com(2.0, dentro) - FOLGA_DA_PUPILA).abs() < 1e-5,
+        "Surface à borda"
+    );
+    assert!(
+        (pupila_com(1.0, dentro) - FOLGA_DA_PUPILA).abs() < 1e-5,
+        "Outside à borda"
+    );
+}
+
+/// Cena 2, report do dono 25/10 (*«Outside: a pupila fica sempre em cima da bola»*): o Outside é
+/// «nunca mais PERTO que a distância» — com a bola fora do círculo a pupila segue-a (nada a
+/// corrigir); com a bola DENTRO, a pupila vai à borda, pelo raio, em qualquer raio e direcção; a
+/// meia força fica a meio caminho entre a bola e a borda.
+#[test]
+fn outside_pushes_the_pupil_to_the_edge_whenever_the_ball_is_inside() {
+    use ph2d_app_constraints::inspector::apply_all;
+    use ph2d_constraints_ecs::Constraints;
+    use ph2d_ecs::canal_constraint::MODO;
+    use ph2d_editor_core::constraint_edits::ConstraintFieldEdit as E;
+    let (mut sim, mut drive) = cena(2);
+    let bola = chamada(&mut sim, "Bola");
+    let pupila = chamada(&mut sim, "Pupila");
+    let ids: Vec<u32> = sim
+        .world()
+        .get::<Constraints>(pupila)
+        .unwrap()
+        .items
+        .iter()
+        .map(|i| i.id)
+        .collect();
+    apply_all(&mut sim, &[(pupila.to_bits(), E::Campo(ids[1], MODO, 1.0))]);
+    let em = |sim: &mut SimWorld, drive: &mut PreviewDrive, x: f32, y: f32| {
+        let mut t = sim.world_mut().get_mut::<Transform>(bola).unwrap();
+        t.translation.x = x;
+        t.translation.y = y;
+        for _ in 0..3 {
+            ph2d_app_constraints::quadro(sim, drive);
+            drive.settle();
+        }
+        let p = mundo(sim, pupila).translation;
+        (f64::from(p.x), f64::from(p.y))
+    };
+    for (x, y) in [(0.05, 0.0), (0.3, 0.2), (-0.1, -0.4), (0.0, 0.59)] {
+        let (px, py) = em(&mut sim, &mut drive, x, y);
+        assert!(
+            (px.hypot(py) - FOLGA_DA_PUPILA).abs() < 1e-4,
+            "bola em ({x}, {y}) ⇒ pupila a {}",
+            px.hypot(py)
+        );
+    }
+    let (px, py) = em(&mut sim, &mut drive, 2.0, 1.0);
+    assert!(
+        (px - 2.0).abs() < 1e-5 && (py - 1.0).abs() < 1e-5,
+        "fora, segue a bola"
+    );
+    apply_all(&mut sim, &[(pupila.to_bits(), E::Forca(ids[1], 0.5))]);
+    let (px, _) = em(&mut sim, &mut drive, 0.2, 0.0);
+    assert!(
+        (px - (0.2 + FOLGA_DA_PUPILA) / 2.0).abs() < 1e-4,
+        "meia força ⇒ {px}"
+    );
 }

@@ -66,6 +66,30 @@ pub(crate) fn apply_anim_event(
             demote(host, id);
             return true;
         }
+        // ⚠️ O ▶/⏸ da fileira «Playback» decide pelo que está DESENHADO (o snapshot), nunca pelo
+        // store: o motor põe `playing = false` sozinho ao fim de uma animação que não repete, e o
+        // primeiro clique tem de tocar (`seam_anim::the_playing_box_asks_the_scene_not_its_own_memory`).
+        if id == crate::ids::INSP_ANIM_PLAYING {
+            push(
+                host,
+                info.entity_bits,
+                AnimFieldEdit::Playing(!info.playing),
+            );
+            demote(host, id);
+            return true;
+        }
+        // O ciclo como o artista o diz: a POSIÇÃO no array é o `AnimCycleMode::tag`.
+        if let Some(i) = crate::ids::INSP_ANIM_CYCLE.iter().position(|&o| o == id)
+            && !info.rows.is_empty()
+        {
+            push(
+                host,
+                info.entity_bits,
+                AnimFieldEdit::CycleMode(sel_u8, i as u8),
+            );
+            demote(host, id);
+            return true;
+        }
         // Os três segmentados. ⚠️ A POSIÇÃO no array é a tag — reordenar o array faria um clique
         // escrever outra direção, e compila.
         if let Some(i) = crate::ids::INSP_ANIM_DIR.iter().position(|&o| o == id)
@@ -99,31 +123,6 @@ pub(crate) fn apply_anim_event(
             demote(host, id);
             return true;
         }
-    }
-
-    // ⚠️ **AS DUAS CAIXAS DECIDEM PELO QUE ESTÁ DESENHADO, e não pelo que o store lembra.**
-    //
-    // O pintor da §11 já tira o valor do SNAPSHOT (`sections::anim`, `.value(info.playing)`) —
-    // ler aqui o `host.store().checkbox(id)` dava **duas fontes de verdade para uma caixa**, e
-    // elas divergem no instante em que alguém que não é o painel escreve o facto. O `playing` é
-    // exatamente esse campo: uma animação que não repete põe-se a `false` sozinha ao chegar ao
-    // fim, sem que a entidade nem a linha aberta mudem, por isso a semente do sync não volta a
-    // correr e o valor guardado fica a dizer «marcada» sobre uma caixa desenhada vazia.
-    //
-    // Sintoma medido (Enio, 2026-08-23): *«às vezes preciso clicar mais de uma vez para checar
-    // Playing»* — o primeiro clique mandava `Playing(false)` a uma cena já parada.
-    //
-    // ⇒ O clique afirma **o contrário do que estava no ecrã**, que é o que um toggle promete.
-    // Gate: `seam_anim::the_playing_box_asks_the_scene_not_its_own_memory`.
-    if let WidgetEvent::Toggled(id) = ev
-        && id == crate::ids::INSP_ANIM_PLAYING
-    {
-        push(
-            host,
-            info.entity_bits,
-            AnimFieldEdit::Playing(!info.playing),
-        );
-        return true;
     }
 
     if let WidgetEvent::TextChanged(id) = ev
@@ -178,6 +177,17 @@ pub(crate) fn apply_anim_event(
         if info.rows.is_empty() {
             return false;
         }
+        // O ritmo em quadros por segundo: o dado é o `frame_ms` (a mesma lei do editor). Zero ou
+        // negativo não é um ritmo — não se escreve nada.
+        if id == crate::ids::INSP_ANIM_FPS {
+            #[allow(clippy::cast_possible_truncation)]
+            let fps = v as f32;
+            if fps > 0.0 {
+                let ms = ph2d_editor_core::screens::hero::InspectorAnimRow::frame_ms_of_fps(fps);
+                push(host, info.entity_bits, AnimFieldEdit::FrameMs(sel_u8, ms));
+            }
+            return true;
+        }
         // ⚠️ Um valor negativo num campo de célula ou de milissegundos não existe: o `max(0.0)`
         // mora aqui, na entrada, para que o commit receba sempre um `u32` honesto.
         #[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation)]
@@ -185,7 +195,6 @@ pub(crate) fn apply_anim_event(
         let edit = match id {
             _ if id == crate::ids::INSP_ANIM_FROM => Some(AnimFieldEdit::From(sel_u8, n)),
             _ if id == crate::ids::INSP_ANIM_TO => Some(AnimFieldEdit::To(sel_u8, n)),
-            _ if id == crate::ids::INSP_ANIM_FRAME_MS => Some(AnimFieldEdit::FrameMs(sel_u8, n)),
             _ if id == crate::ids::INSP_ANIM_HOLD_MS => Some(AnimFieldEdit::HoldMs(sel_u8, n)),
             _ if id == crate::ids::INSP_ANIM_DELAY_MS => Some(AnimFieldEdit::DelayMs(sel_u8, n)),
             _ if id == crate::ids::INSP_ANIM_REPEAT => Some(AnimFieldEdit::Repeat(sel_u8, n)),

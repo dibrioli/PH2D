@@ -7,11 +7,12 @@
 //! desenha-se com o mesmo realce que a §12 dá à ficha aberta, e o clique nela vai ao barramento.
 
 use super::*;
+use ph2d_editor_core::screens::hero::AnimCycleMode;
 use ph2d_editor_core::screens::hero::InspectorAnimInfo;
-use ph2d_i18n::tr;
+use ph2d_i18n::{tr, tr_with};
 
-/// **Os campos da animação escolhida** (nome, intervalo, ritmo, direção, sinais) — o corpo do grupo
-/// «More» do cartão. Devolve o `y` seguinte.
+/// **A animação escolhida** (o grupo com o nome dela): nome, quadros, ritmo em quadros por segundo e
+/// o ciclo — as mesmas leituras do editor. Devolve o `y` seguinte.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn paint_selected_editor(
     scene: &mut VectorScene,
@@ -25,13 +26,50 @@ pub(crate) fn paint_selected_editor(
     info: &InspectorAnimInfo,
     selected: usize,
 ) -> f32 {
-    match info
-        .rows
-        .get(selected.min(info.rows.len().saturating_sub(1)))
-    {
+    match selected_row(info, selected) {
+        Some(row) => range_and_timing_rows(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            x,
+            w,
+            y,
+            row,
+            info.cells,
+        ),
+        None => y,
+    }
+}
+
+/// **«Advanced»** (o corpo do grupo que nasce fechado): os campos finos da animação escolhida. As
+/// substituições do tocador vêm a seguir, do `anim.rs`. Devolve o `y` seguinte.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn paint_advanced(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+    info: &InspectorAnimInfo,
+    selected: usize,
+) -> f32 {
+    match selected_row(info, selected) {
         Some(row) => editor(scene, text_system, theme, hit_index, store, x, w, y, row),
         None => y,
     }
+}
+
+fn selected_row(
+    info: &InspectorAnimInfo,
+    selected: usize,
+) -> Option<&ph2d_editor_core::screens::hero::InspectorAnimRow> {
+    info.rows
+        .get(selected.min(info.rows.len().saturating_sub(1)))
 }
 
 /// «+ Add Animation» e «× Remove Animation», por baixo da lista. Devolve o `y` seguinte.
@@ -95,21 +133,12 @@ pub(crate) fn paint_add_remove(
     cur_y + ph2d_tokens::control_gap_px()
 }
 
-/// **O INTERVALO e o RITMO de uma animação** — seis linhas guiadas por tabela.
+/// **O nome, os quadros, o ritmo e o ciclo da animação escolhida.**
 ///
-/// ⚠️ **Sai do [`editor`] por TETO de função** (200), estourado em 2026-09-15 ao partir as três
-/// rows de DUAS propriedades em seis de uma. ⛔ *A cura de um teto é o corte por responsabilidade,
-/// nunca um número maior* (`CLAUDE.md` §5.0) — e o corte é honesto: o que sai é *«que células e a
-/// que ritmo»*, contra *«que animação e como toca»* que fica no pai.
-///
-/// ⭐⭐ **Eram TRÊS linhas com DUAS propriedades cada** (`From / To (cell)` ·
-/// `Frame ms / Repeat (0 = forever)` · `Hold ms / Repeat delay ms`). Com o rótulo POR CIMA os dois
-/// campos ficavam lado a lado e o «A / B» mapeava da esquerda para a direita; com o nome AO LADO e
-/// a coluna do controlo a refluí-los, **esse mapeamento desaparece** — um nome que descreve duas
-/// caixas empilhadas não diz qual é qual. *A conversão forçou o corte que já devia existir.*
-///
-/// ⚠️ **E o `ms` saiu dos rótulos para dentro das caixas** (ordem do dono, 2026-09-15:
-/// *«para manter padrão universal melhor todos na caixa»*).
+/// ⛔ From/To só existem numa animação SEM lista de quadros: numa lista eles não dizem o que toca
+/// (report do dono 25/10: «From 0 To 31» numa animação de 5 quadros). Aí a linha diz quantos quadros
+/// o editor escolheu. O ritmo é em quadros por segundo e o ciclo é Repeat · Once · Ping-pong — as
+/// leituras do editor; o dado continua `frame_ms` + `repeat`/`direction`.
 #[allow(clippy::too_many_arguments)]
 fn range_and_timing_rows(
     scene: &mut VectorScene,
@@ -121,34 +150,104 @@ fn range_and_timing_rows(
     w: f32,
     y: f32,
     row: &ph2d_editor_core::screens::hero::InspectorAnimRow,
+    cells: u32,
 ) -> f32 {
     let seccao = seccao_da_animacao(text_system);
-    let mut cur_y = y;
-    for (chave, id, passo, unidade) in ANTES {
-        cur_y = super::rows::fields_row(
-            scene,
-            text_system,
-            theme,
-            hit_index,
-            store,
-            x,
-            w,
-            cur_y,
-            tr(chave),
-            &[id],
-            passo,
-            unidade,
-            seccao,
-        );
+    let mut cur_y = super::anim::subtitle(scene, text_system, theme, x, w, y, &row.name);
+    cur_y = text_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        cur_y,
+        tr("panel.inspector.animation.name_label"),
+        ids::INSP_ANIM_NAME,
+        TextInput::new(ids::INSP_ANIM_NAME, "")
+            .placeholder(tr("panel.inspector.animation.animation_name")),
+        seccao,
+    );
+    let n = ph2d_editor_core::screens::hero::row_cells(row, cells).len();
+    let has_list = !row.frames.is_empty();
+    let count = if has_list {
+        tr_with("panel.inspector.anim_card.frames_chosen", &[("n", &n)])
+    } else {
+        tr_with("panel.inspector.anim_card.frames", &[("n", &n)])
+    };
+    cur_y = super::rows::aviso(
+        scene,
+        text_system,
+        theme,
+        x,
+        w,
+        cur_y,
+        &count,
+        ColorToken::Text3,
+    );
+    if !has_list {
+        for (chave, id, passo, unidade) in RANGE {
+            cur_y = super::rows::fields_row(
+                scene,
+                text_system,
+                theme,
+                hit_index,
+                store,
+                x,
+                w,
+                cur_y,
+                tr(chave),
+                &[id],
+                passo,
+                unidade,
+                seccao,
+            );
+        }
     }
-    // ⚠️ **Uma animação com ritmo PRÓPRIO por célula (§8.12) tem de o DIZER.** Sem esta linha o
-    // campo `Frame` acima mente sobre ela — mostra a duração mais comum e nada explica por que a
-    // animação não anda naquele ritmo. O Inspector não a edita (a §8.8 põe essa edição no editor de
-    // timeline futuro); ele diz que ela existe, que é a diferença entre um dado e um mistério.
+    cur_y = super::rows::fields_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        cur_y,
+        tr("panel.inspector.anim_card.fps"),
+        &[ids::INSP_ANIM_FPS],
+        1.0,
+        None,
+        seccao,
+    );
+    let mode = AnimCycleMode::of_row(row.direction_tag, row.repeat);
+    let rotulos = [
+        tr("panel.inspector.anim_card.cycle_repeat"),
+        tr("panel.inspector.anim_card.cycle_once"),
+        tr("panel.inspector.anim_card.cycle_ping_pong"),
+    ];
+    let segmentos: Vec<(&str, bool, NodeId)> = AnimCycleMode::ALL
+        .iter()
+        .zip(rotulos)
+        .zip(ids::INSP_ANIM_CYCLE)
+        .map(|((&m, l), id)| (l, m == mode, id))
+        .collect();
+    cur_y = ph2d_editor_core::property_row::paint_choice_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        cur_y,
+        tr("panel.inspector.anim_card.cycle"),
+        &segmentos,
+        seccao,
+    );
+    // Uma animação com tempo PRÓPRIO em algum quadro (§8.12, dado no editor) di-lo: sem isto o ritmo
+    // acima mentiria sobre ela.
     if row.has_per_frame_timing() {
-        // ⭐ **É uma FRASE, logo QUEBRA** — a porta é a mesma dos avisos das outras secções
-        //    (`rows::aviso`, 2026-09-19). Medida na coluna de `268 px` ela saía
-        //    `• this animation has per-frame timing (impor…`.
         cur_y = super::rows::aviso(
             scene,
             text_system,
@@ -156,35 +255,19 @@ fn range_and_timing_rows(
             x,
             w,
             cur_y,
-            tr("panel.inspector.animation.this_animation_has_per_frame"),
+            tr("panel.inspector.anim_card.own_times"),
             ColorToken::Warn,
         );
     }
-    for (chave, id, passo, unidade) in DEPOIS {
-        cur_y = super::rows::fields_row(
-            scene,
-            text_system,
-            theme,
-            hit_index,
-            store,
-            x,
-            w,
-            cur_y,
-            tr(chave),
-            &[id],
-            passo,
-            unidade,
-            seccao,
-        );
-    }
-    cur_y
+    // O vão entre grupos: «Who Picks» começa outro assunto.
+    cur_y + Spacing::Sm.px()
 }
 
 // ⚠️ **O passo é em MILISSEGUNDOS ou em CÉLULAS, nunca em pixels** — daí o marcador.
 const MS_STEP: f64 = 10.0; // LITERAL-PX-OK: passo de scrub em MILISSEGUNDOS, não em pixels
 const MS: Option<ph2d_editor_core::widget::Unit> =
     Some(ph2d_editor_core::widget::Unit::Milliseconds);
-const ANTES: [(&str, NodeId, f64, Option<ph2d_editor_core::widget::Unit>); 4] = [
+const RANGE: [(&str, NodeId, f64, Option<ph2d_editor_core::widget::Unit>); 2] = [
     (
         "panel.inspector.animation.from_cell",
         ids::INSP_ANIM_FROM,
@@ -197,20 +280,9 @@ const ANTES: [(&str, NodeId, f64, Option<ph2d_editor_core::widget::Unit>); 4] = 
         1.0,
         None,
     ),
-    (
-        "panel.inspector.animation.frame",
-        ids::INSP_ANIM_FRAME_MS,
-        1.0,
-        MS,
-    ),
-    (
-        "panel.inspector.animation.repeat_forever",
-        ids::INSP_ANIM_REPEAT,
-        1.0,
-        None,
-    ),
 ];
-const DEPOIS: [(&str, NodeId, f64, Option<ph2d_editor_core::widget::Unit>); 2] = [
+/// Os números finos de «Advanced».
+const FINE: [(&str, NodeId, f64, Option<ph2d_editor_core::widget::Unit>); 3] = [
     (
         "panel.inspector.animation.hold",
         ids::INSP_ANIM_HOLD_MS,
@@ -222,6 +294,12 @@ const DEPOIS: [(&str, NodeId, f64, Option<ph2d_editor_core::widget::Unit>); 2] =
         ids::INSP_ANIM_DELAY_MS,
         MS_STEP,
         MS,
+    ),
+    (
+        "panel.inspector.anim_card.repeat_count",
+        ids::INSP_ANIM_REPEAT,
+        1.0,
+        None,
     ),
 ];
 
@@ -238,10 +316,7 @@ pub(super) fn seccao_da_animacao(
     text_system: &mut TextSystem,
 ) -> ph2d_editor_core::property_row::Seccao {
     let mut nomes: Vec<&str> = Vec::new();
-    for (chave, ..) in ANTES {
-        nomes.push(tr(chave));
-    }
-    for (chave, ..) in DEPOIS {
+    for (chave, ..) in RANGE.iter().chain(FINE.iter()) {
         nomes.push(tr(chave));
     }
     // ⚠️ As duas linhas que vivem no `anim.rs` — ver o doc acima.
@@ -253,6 +328,8 @@ pub(super) fn seccao_da_animacao(
     //    coluna por linha com outro nome.*
     for chave in [
         "panel.inspector.animation.name_label",
+        "panel.inspector.anim_card.fps",
+        "panel.inspector.anim_card.cycle",
         "panel.inspector.animation.on_finish_label",
         "panel.inspector.animation.on_loop_label",
         "panel.inspector.animation.direction",
@@ -275,7 +352,8 @@ pub(super) fn seccao_da_animacao(
     ph2d_editor_core::property_row::Seccao::medida(text_system, 1, &nomes)
 }
 
-/// O editor da animação aberta.
+/// Os campos FINOS da animação aberta («Advanced»): Hold, Repeat delay, Repeat count, a direcção
+/// fina e os sinais.
 #[allow(clippy::too_many_arguments)]
 fn editor(
     scene: &mut VectorScene,
@@ -292,33 +370,23 @@ fn editor(
     //    (report do dono), logo ela mede-se sobre eles.
     let sec_texto = seccao_da_animacao(text_system);
     let mut cur_y = y;
-    cur_y = text_row(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        x,
-        w,
-        cur_y,
-        tr("panel.inspector.animation.name_label"),
-        ids::INSP_ANIM_NAME,
-        TextInput::new(ids::INSP_ANIM_NAME, "")
-            .placeholder(tr("panel.inspector.animation.animation_name")),
-        sec_texto,
-    );
-
-    cur_y = range_and_timing_rows(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        x,
-        w,
-        cur_y,
-        row,
-    );
+    for (chave, id, passo, unidade) in FINE {
+        cur_y = super::rows::fields_row(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            x,
+            w,
+            cur_y,
+            tr(chave),
+            &[id],
+            passo,
+            unidade,
+            sec_texto,
+        );
+    }
 
     // ⭐⭐ **A direção é UMA escolha com NOME, pela porta** (2026-09-23). ⛔ Ela era quatro
     //    `Button` em partes IGUAIS com o nome POR CIMA — a quarta forma de «escolha com nome» deste

@@ -111,9 +111,9 @@ pub(crate) fn host_with(info: InspectorAnimInfo) -> (MockPanelHost, InspectorSta
         name: "Hero".into(),
     }));
     set_current_inspector_anim(Some(info));
-    // ⚠️ O tocador fino e os campos da animação vivem no grupo «More» do cartão, que nasce FECHADO
+    // ⚠️ Os campos finos e as substituições vivem no grupo «Advanced» do cartão, que nasce FECHADO
     // (plano GameEngineFuncional 07) — estes gates são sobre o CONTEÚDO dele.
-    host.set_collapsed(ph2d_panel_inspector::ids::INSP_ANIM_MORE, false);
+    host.set_collapsed(ph2d_panel_inspector::ids::INSP_ANIM_ADVANCED, false);
     let _ = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
     (host, state)
 }
@@ -301,9 +301,9 @@ fn every_library_control_reaches_the_bus() {
             AnimFieldEdit::To(0, 6),
         ),
         (
-            ph2d_panel_inspector::ids::INSP_ANIM_FRAME_MS,
-            33.0,
-            AnimFieldEdit::FrameMs(0, 33),
+            ph2d_panel_inspector::ids::INSP_ANIM_FPS,
+            12.0,
+            AnimFieldEdit::FrameMs(0, 83),
         ),
         (
             ph2d_panel_inspector::ids::INSP_ANIM_HOLD_MS,
@@ -351,16 +351,16 @@ fn clicking_a_row_picks_what_plays_and_moves_the_editor_with_it() {
         "clicar na segunda linha",
     );
     // E agora o editor edita a SEGUNDA.
-    host.set_number_value(ph2d_panel_inspector::ids::INSP_ANIM_FRAME_MS, 42.0);
+    host.set_number_value(ph2d_panel_inspector::ids::INSP_ANIM_FPS, 10.0);
     let _ = host.apply_panel_event::<InspectorPanel>(
         &mut state,
-        WidgetEvent::ValueChanged(ph2d_panel_inspector::ids::INSP_ANIM_FRAME_MS),
+        WidgetEvent::ValueChanged(ph2d_panel_inspector::ids::INSP_ANIM_FPS),
     );
     let out = host.drained_actions();
     clear();
     expect(
         &out,
-        AnimFieldEdit::FrameMs(1, 42),
+        AnimFieldEdit::FrameMs(1, 100),
         "o número seguinte edita a linha que se abriu",
     );
 }
@@ -405,7 +405,7 @@ fn the_library_fields_show_what_was_authored_not_the_seed() {
     let got: Vec<f64> = [
         ph2d_panel_inspector::ids::INSP_ANIM_FROM,
         ph2d_panel_inspector::ids::INSP_ANIM_TO,
-        ph2d_panel_inspector::ids::INSP_ANIM_FRAME_MS,
+        ph2d_panel_inspector::ids::INSP_ANIM_FPS,
         ph2d_panel_inspector::ids::INSP_ANIM_HOLD_MS,
         ph2d_panel_inspector::ids::INSP_ANIM_DELAY_MS,
         ph2d_panel_inspector::ids::INSP_ANIM_REPEAT,
@@ -415,7 +415,7 @@ fn the_library_fields_show_what_was_authored_not_the_seed() {
     .map(|&id| host.store().number_value(id).unwrap_or(f64::NAN))
     .collect();
     clear();
-    let want = [0.0, 3.0, 90.0, 40.0, 250.0, 0.0, 2.5];
+    let want = [0.0, 3.0, 11.1, 40.0, 250.0, 0.0, 2.5];
     for (g, w) in got.iter().zip(want) {
         assert!(
             (g - w).abs() < 1.0e-4,
@@ -536,6 +536,7 @@ fn every_edit_the_model_declares_is_reachable_by_a_gesture() {
         ph2d_panel_inspector::ids::INSP_ANIM_OPEN_EDITOR,
         ph2d_panel_inspector::ids::INSP_ANIM_CHOOSER[1],
         ph2d_panel_inspector::ids::INSP_ANIM_DIR[1],
+        ph2d_panel_inspector::ids::INSP_ANIM_CYCLE[2],
         ph2d_panel_inspector::ids::INSP_ANIM_DIR_OVERRIDE[2],
         ph2d_panel_inspector::ids::INSP_ANIM_LOOP_OVERRIDE[1],
     ] {
@@ -549,7 +550,7 @@ fn every_edit_the_model_declares_is_reachable_by_a_gesture() {
     for (id, v) in [
         (ph2d_panel_inspector::ids::INSP_ANIM_FROM, 1.0),
         (ph2d_panel_inspector::ids::INSP_ANIM_TO, 2.0),
-        (ph2d_panel_inspector::ids::INSP_ANIM_FRAME_MS, 33.0),
+        (ph2d_panel_inspector::ids::INSP_ANIM_FPS, 12.0),
         (ph2d_panel_inspector::ids::INSP_ANIM_HOLD_MS, 10.0),
         (ph2d_panel_inspector::ids::INSP_ANIM_DELAY_MS, 20.0),
         (ph2d_panel_inspector::ids::INSP_ANIM_REPEAT, 2.0),
@@ -597,14 +598,9 @@ fn every_edit_the_model_declares_is_reachable_by_a_gesture() {
     ));
     // ⚠️ **Os que NÃO são deste painel, nomeados** (e não engolidos por um `_`): a lista de quadros, o
     // modo do ciclo e a grelha confirmada são do EDITOR de animações (`ph2d-app-sprite-anim`), que
-    // os levanta pelos gestos dele; o `Autoplay` escreve-o o «Who Picks» (Me × Script) pela
-    // `Chooser` — a caixa saiu do cartão.
-    for e in [
-        E::Frames(0, Vec::new()),
-        E::CycleMode(0, 0),
-        E::Grid(1, 1),
-        E::Autoplay(false),
-    ] {
+    // os levanta pelos gestos dele (o ciclo também tem o segmentado do cartão, acima); o `Autoplay`
+    // escreve-o o «Who Picks» (Me × Script) pela `Chooser` — a caixa saiu do cartão.
+    for e in [E::Frames(0, Vec::new()), E::Grid(1, 1), E::Autoplay(false)] {
         raised.insert(sample(&e));
     }
     let missing: Vec<u8> = want.difference(&raised).copied().collect();

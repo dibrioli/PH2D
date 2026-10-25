@@ -49,7 +49,7 @@ const LIST_SURFACES: &[(&str, &str, &str)] = &[
         "",
     ),
     (
-        "crates/ph2d-panel-inspector/src/sections/anim_rows.rs",
+        "crates/ph2d-panel-inspector/src/sections/anim_card.rs",
         "ROW_H",
         "",
     ),
@@ -238,7 +238,7 @@ const ROW_HIGHLIGHT_SITES: &[(&str, &str)] = &[
     ("crates/ph2d-panel-audio-editor/src/paint_fx.rs", ""),
     ("crates/ph2d-panel-audio-editor/src/paint_variation.rs", ""),
     ("crates/ph2d-panel-inspector/src/sections/anchors.rs", ""),
-    ("crates/ph2d-panel-inspector/src/sections/anim_rows.rs", ""),
+    ("crates/ph2d-panel-inspector/src/sections/anim_card.rs", ""),
     (
         "crates/ph2d-editor-core/src/grid_snap/inspect.rs",
         "e' um BLOCO DE LEITURA rotulo/valor: nao ha' linha escolhida nenhuma para realcar",

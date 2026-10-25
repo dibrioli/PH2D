@@ -65,6 +65,12 @@ pub(crate) fn apply_card_event(
     false
 }
 
+/// A linha `row` mostra ⏸ (e não ▶): é a que está no ecrã E a tocar. O pintor e o clique leem
+/// esta mesma pergunta.
+pub(crate) fn row_shows_pause(info: &InspectorAnimInfo, row: usize) -> bool {
+    info.playing && info.rows.get(row).is_some_and(|r| r.name == info.current)
+}
+
 /// `true` = o clique era do cartão e foi consumido.
 fn apply_card_click(
     panel: &mut InspectorState,
@@ -73,13 +79,18 @@ fn apply_card_click(
     id: ph2d_a11y::NodeId,
 ) -> bool {
     let bits = info.entity_bits;
-    // ▶: escolhe E põe a tocar (a linha, sozinha, só escolhe).
+    // ▶ noutra linha: escolhe E põe a tocar (a linha, sozinha, só escolhe). Na linha que está no
+    // ecrã o botão é o que ela DESENHA ([`row_shows_pause`]): ⏸ pausa, ▶ retoma de onde parou.
     if let Some(i) = crate::ids::INSP_ANIM_PLAY_ROW.iter().position(|&o| o == id)
         && let Some(row) = info.rows.get(i)
     {
         panel.anim_selected = i;
-        push(host, bits, AnimFieldEdit::SetCurrent(row.name.clone()));
-        push(host, bits, AnimFieldEdit::Playing(true));
+        if info.current == row.name {
+            push(host, bits, AnimFieldEdit::Playing(!info.playing));
+        } else {
+            push(host, bits, AnimFieldEdit::SetCurrent(row.name.clone()));
+            push(host, bits, AnimFieldEdit::Playing(true));
+        }
         demote(host, id);
         return true;
     }

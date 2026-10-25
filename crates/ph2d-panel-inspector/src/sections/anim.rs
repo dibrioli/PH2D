@@ -140,7 +140,62 @@ fn override_rows(
     cur_y
 }
 
-/// O bloco do TOCADOR. Devolve o `y` seguinte.
+/// Um título de grupo do cartão («Playback», o nome da animação escolhida): `SemiBold`, `Text1`, sem
+/// chevron (o grupo não dobra). Devolve o `y` seguinte.
+pub(super) fn subtitle(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    x: f32,
+    w: f32,
+    y: f32,
+    text: &str,
+) -> f32 {
+    let font = TypeToken::Sm.px();
+    ph2d_editor_core::paint::paint_text_title(
+        text_system,
+        scene,
+        text,
+        x,
+        y,
+        font,
+        w,
+        resolve(ColorToken::Text1, theme),
+    );
+    y + font + ph2d_tokens::control_gap_px()
+}
+
+/// Um botão-ícone quadrado de uma fileira; o rótulo fica como nome acessível.
+#[allow(clippy::too_many_arguments)]
+pub(super) fn icon_button(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    rect: Rect,
+    id: NodeId,
+    icon: IconId,
+    label: &str,
+) {
+    hit_index.register(id, rect);
+    paint_button(
+        &Button::new(id, label)
+            .kind(ButtonKind::IconOnly { icon })
+            .visual(store.button_visual(id)),
+        rect,
+        scene,
+        text_system,
+        theme,
+    );
+}
+
+/// **«Playback»** — sempre à vista por baixo da lista (plano 07, desenho aprovado 25/10): numa fileira
+/// ⏮ · ▶/⏸ · a barra · «Frame 3 / 5»; por baixo a velocidade e, SÓ quando o quadro no ecrã tem tempo
+/// próprio, «This frame». O ▶/⏸ é o facto «a tocar» (a caixa «Playing» saiu). Devolve o `y` seguinte.
+///
+/// ⚠️ A barra é um `Slider` cujo rectângulo de acerto É a trilha (o despacho deriva o valor de
+/// `rect.x`/`rect.w`), e a posição vem do SNAPSHOT (`scrub_position`), nunca do store.
 #[allow(clippy::too_many_arguments)]
 fn player_block(
     scene: &mut VectorScene,
@@ -154,33 +209,82 @@ fn player_block(
     info: &InspectorAnimInfo,
 ) -> f32 {
     let font = TypeToken::Sm.px();
-    let mut cur_y = y;
-
-    // ⭐⭐⭐ **As duas caixas partilham uma fileira SE couberem** — spec §6-quater, e a porta
-    //    [`ph2d_editor_core::property_row::paint_check_rows`] tem a tabela medida: desde que a
-    //    marca ganhou CAIXA, uma METADE deixa ao nome `0,0`–`31,0 px` em todo o curso útil do dock,
-    //    e os dois nomes saíam CORTADOS. *O degrau a seguir a «não cabe o nome» é deixar de
-    //    emparelhar.*
+    let gap = ph2d_tokens::control_gap_px();
+    let row_h = ph2d_tokens::ROW_H_PX;
     let sec = super::anim_rows::seccao_da_animacao(text_system);
-    // ⚠️ O «Autoplay» saiu (plano GameEngineFuncional 07): é o «Who Picks» Me × Script do cartão — duas
-    // caixas para o mesmo facto eram duas portas a divergir.
-    cur_y = ph2d_editor_core::property_row::paint_check_row(
+    let mut cur_y = subtitle(
+        scene,
+        text_system,
+        theme,
+        x,
+        w,
+        y,
+        tr("panel.inspector.anim_card.playback"),
+    );
+    icon_button(
         scene,
         text_system,
         theme,
         hit_index,
         store,
-        x,
-        w,
-        cur_y,
-        (
-            ids::INSP_ANIM_PLAYING,
-            TextKey::new("component.field.sprite_animator.1"),
-            info.playing,
-        ),
-        sec,
+        Rect::new(x, cur_y, row_h, row_h),
+        ids::INSP_ANIM_REWIND,
+        IconId::SkipBack,
+        tr("panel.inspector.animation.rewind"),
     );
-
+    let (icon, label) = if info.playing {
+        (IconId::Pause, tr("panel.inspector.anim_card.pause"))
+    } else {
+        (IconId::Play, tr("panel.inspector.anim_card.play"))
+    };
+    icon_button(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        Rect::new(x + row_h + gap, cur_y, row_h, row_h),
+        ids::INSP_ANIM_PLAYING,
+        icon,
+        label,
+    );
+    if let Some((step, span)) = info.progress() {
+        let text = tr_with(
+            "panel.inspector.animation.frame_of",
+            &[("n", &(step + 1)), ("span", &span)],
+        );
+        // O rótulo mede-se (nunca se elide); a barra fica com o que sobra entre os botões e ele.
+        let text_w =
+            ph2d_editor_core::paint::label_column_width(text_system, font, [text.as_str()]);
+        let text_x = x + w - text_w;
+        paint_text(
+            text_system,
+            scene,
+            &text,
+            text_x,
+            cur_y + (row_h - font) * 0.5,
+            font,
+            text_w + 1.0, // LITERAL-PX-OK: folga de arredondamento da medida
+            resolve(ColorToken::Text2, theme),
+        );
+        let bar_x = x + 2.0 * (row_h + gap);
+        let track = Rect::new(
+            bar_x,
+            cur_y + (row_h - BAR_H) * 0.5,
+            (text_x - gap - bar_x).max(0.0),
+            BAR_H,
+        );
+        hit_index.register(ids::INSP_ANIM_FRAME_SCRUB, track);
+        ph2d_editor_core::widget::paint_slider_track(
+            track,
+            info.scrub_position().unwrap_or(0.0),
+            ph2d_editor_core::widget::SliderOrientation::Horizontal,
+            store.slider_visual(ids::INSP_ANIM_FRAME_SCRUB),
+            scene,
+            theme,
+        );
+    }
+    cur_y += row_h + gap;
     cur_y = super::rows::fields_row(
         scene,
         text_system,
@@ -196,92 +300,25 @@ fn player_block(
         None,
         sec,
     );
-
-    cur_y = override_rows(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        x,
-        w,
-        cur_y,
-        info,
-    );
-
-    // **O frame, e onde ele está dentro da animação — e a barra ARRASTA** (Enio, 2026-08-23).
-    //
-    // ⚠️ O número é `frame + 1 / total` — o artista conta a partir de um, e a barra é o mesmo
-    // facto desenhado. *Uma fonte, duas leituras*: os dois saem do `progress()` do snapshot.
-    //
-    // ⚠️ **A fração é POSIÇÃO (`step / (span-1)`), e já foi PROGRESSO (`(step+1) / span`).** A
-    // troca não é estética: um `Slider` mapeia o curso inteiro, então com a régua antiga arrastar
-    // até à esquerda pararia no segundo frame e o primeiro seria **inalcançável pelo gesto**. Uma
-    // barra que só informa pode medir «quanto já passou»; uma que se agarra tem de medir «onde
-    // está».
-    //
-    // ⚠️ **O valor pintado vem do SNAPSHOT, nunca do store** — a lei que a caixa «Playing» pagou
-    // no mesmo dia: o `Sprite::frame` é escrito pelo TIQUE a cada avanço, e um widget que se
-    // lembra do que mostrou mente assim que outra pessoa mexe no facto.
-    if let Some((step, span)) = info.progress() {
-        let text = tr_with(
-            "panel.inspector.animation.frame_of",
-            &[("n", &(step + 1)), ("span", &span)],
-        );
-        paint_text(
+    // A duração DESTE quadro (spec §8.12) — só quando ele a tem (o editor é onde se dá tempo a um
+    // quadro); colada à barra, que é o selector do quadro.
+    if info.this_frame_ms().is_some_and(|ms| ms > 0) {
+        cur_y = super::rows::fields_row(
+            scene,
             text_system,
-            scene,
-            &text,
-            x,
-            cur_y,
-            font,
-            w,
-            resolve(ColorToken::Text2, theme),
-        );
-        cur_y += font + ph2d_tokens::control_gap_px();
-        let track = Rect::new(x, cur_y, w, BAR_H);
-        hit_index.register(ids::INSP_ANIM_FRAME_SCRUB, track);
-        // ⚠️ O retângulo de acerto **é** o da trilha, e tem de o ser: o despachante deriva o valor
-        // de `(px - rect.x) / rect.w`, então um hit mais largo que o desenho poria o polegar noutro
-        // sítio que não debaixo do dedo.
-        ph2d_editor_core::widget::paint_slider_track(
-            track,
-            info.scrub_position().unwrap_or(0.0),
-            ph2d_editor_core::widget::SliderOrientation::Horizontal,
-            store.slider_visual(ids::INSP_ANIM_FRAME_SCRUB),
-            scene,
             theme,
+            hit_index,
+            store,
+            x,
+            w,
+            cur_y,
+            tr("panel.inspector.animation.this_frame_ms_0_use"),
+            &[ids::INSP_ANIM_FRAME_MS_THIS],
+            10.0, // LITERAL-PX-OK: passo de scrub em MILISSEGUNDOS, não em pixels
+            Some(ph2d_editor_core::widget::Unit::Milliseconds),
+            sec,
         );
-        cur_y += BAR_H + ph2d_tokens::control_gap_px();
-        // **A DURAÇÃO DESTA CÉLULA** (spec §8.12, pedido do Enio: *«se não tiver um parâmetro de
-        // duração para cada quadro, crie»*).
-        //
-        // ⚠️ **Ele mora AQUI, colado à barra, e não na autoria lá em baixo** — a barra é que
-        // escolhe a célula, e pôr o campo longe dela obrigaria o artista a segurar na cabeça qual
-        // quadro está a editar. *Um painel que pede duas vezes «qual quadro?» é um painel em que
-        // os dois podem discordar.*
-        //
-        // ⚠️ E ele só existe quando há célula a que se referir: o `this_frame_index` devolve `None`
-        // se o frame no ecrã caiu fora do intervalo da animação a tocar.
-        if info.this_frame_index().is_some() {
-            cur_y = super::rows::fields_row(
-                scene,
-                text_system,
-                theme,
-                hit_index,
-                store,
-                x,
-                w,
-                cur_y,
-                tr("panel.inspector.animation.this_frame_ms_0_use"),
-                &[ids::INSP_ANIM_FRAME_MS_THIS],
-                10.0, // LITERAL-PX-OK: passo de scrub em MILISSEGUNDOS, não em pixels
-                Some(ph2d_editor_core::widget::Unit::Milliseconds),
-                sec,
-            );
-        }
     }
-
     if info.current_dangling() {
         paint_text(
             text_system,
@@ -293,30 +330,65 @@ fn player_block(
             w,
             resolve(ColorToken::Danger, theme),
         );
-        cur_y += font + ph2d_tokens::control_gap_px();
+        cur_y += font + gap;
     }
+    cur_y
+}
 
-    let rw = ph2d_editor_core::property_row::caixa_do_botao(
-        text_system,
-        x,
-        w,
-        cur_y,
-        tr("panel.inspector.animation.rewind"),
-    );
-    hit_index.register(ids::INSP_ANIM_REWIND, rw);
-    paint_button(
-        &Button::new(
-            ids::INSP_ANIM_REWIND,
-            tr("panel.inspector.animation.rewind"),
-        )
-        .kind(ButtonKind::Default)
-        .visual(store.button_visual(ids::INSP_ANIM_REWIND)),
-        rw,
+/// **«Advanced»** — nasce FECHADO: os campos finos da animação escolhida e as substituições do
+/// tocador. Devolve o `y` seguinte.
+#[allow(clippy::too_many_arguments)]
+fn advanced_group(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+    info: &InspectorAnimInfo,
+    selected: usize,
+) -> f32 {
+    let mut cur_y = y;
+    let adv = super::rows::grupo_dobravel(
         scene,
         text_system,
         theme,
+        hit_index,
+        store,
+        x,
+        w,
+        cur_y,
+        ids::INSP_ANIM_ADVANCED,
+        tr("panel.inspector.anim_card.advanced"),
     );
-    ph2d_editor_core::property_row::abaixo_do_botao(rw)
+    if adv.aberto() {
+        cur_y = super::anim_rows::paint_advanced(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            adv.x,
+            adv.w,
+            adv.y,
+            info,
+            selected,
+        );
+        cur_y = override_rows(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            adv.x,
+            adv.w,
+            cur_y,
+            info,
+        );
+    }
+    adv.fecha(store, scene, hit_index, cur_y)
 }
 
 /// Pinta a §11 e devolve o `y` a seguir a ela.
@@ -408,7 +480,9 @@ pub(crate) fn paint_anim_section(
         );
     }
 
-    // ⭐ O CARTÃO (plano GameEngineFuncional 07): ver, escolher, abrir o editor, quem escolhe.
+    // ⭐ O CARTÃO (plano GameEngineFuncional 07, desenho aprovado 25/10), de cima para baixo: ver ·
+    // a lista · «Playback» · os verbos da biblioteca · «Edit Animations…» · a animação escolhida ·
+    // «Who Picks» · a grelha · «Advanced» (nasce FECHADO). Nada se perdeu do que a §11 tinha.
     cur_y = super::anim_card::paint_preview(scene, x, w, cur_y, info);
     cur_y = super::anim_card::paint_list(
         scene,
@@ -421,6 +495,17 @@ pub(crate) fn paint_anim_section(
         cur_y,
         info,
         selected,
+    );
+    cur_y = player_block(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        cur_y,
+        info,
     );
     cur_y = super::anim_rows::paint_add_remove(
         scene,
@@ -445,7 +530,31 @@ pub(crate) fn paint_anim_section(
         ids::INSP_ANIM_OPEN_EDITOR,
         tr("panel.inspector.anim_card.open_editor"),
     );
+    cur_y = super::anim_rows::paint_selected_editor(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        cur_y,
+        info,
+        selected,
+    );
     let sec = super::anim_rows::seccao_da_animacao(text_system);
+    cur_y = super::anim_card::paint_chooser(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        cur_y,
+        info,
+        sec,
+    );
     cur_y = super::paint_sheet_grid_rows(
         scene,
         text_system,
@@ -460,7 +569,7 @@ pub(crate) fn paint_anim_section(
         false,
         sec,
     );
-    cur_y = super::anim_card::paint_chooser(
+    cur_y = advanced_group(
         scene,
         text_system,
         theme,
@@ -470,47 +579,7 @@ pub(crate) fn paint_anim_section(
         w,
         cur_y,
         info,
-        sec,
+        selected,
     );
-    // ⭐ «More» nasce FECHADO: o tocador fino (velocidade, substituições, barra) e os campos da animação
-    // escolhida. Nada se perdeu do que a §11 tinha — só deixou de ocupar o cartão.
-    let more = super::rows::grupo_dobravel(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        x,
-        w,
-        cur_y,
-        ids::INSP_ANIM_MORE,
-        tr("panel.inspector.anim_card.more"),
-    );
-    if more.aberto() {
-        cur_y = player_block(
-            scene,
-            text_system,
-            theme,
-            hit_index,
-            store,
-            more.x,
-            more.w,
-            more.y,
-            info,
-        );
-        cur_y = super::anim_rows::paint_selected_editor(
-            scene,
-            text_system,
-            theme,
-            hit_index,
-            store,
-            more.x,
-            more.w,
-            cur_y,
-            info,
-            selected,
-        );
-    }
-    cur_y = more.fecha(store, scene, hit_index, cur_y);
     fold.finish(store, scene, hit_index, cur_y + SECTION_BOTTOM_PAD_PX)
 }

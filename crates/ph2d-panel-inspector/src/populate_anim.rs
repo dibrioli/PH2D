@@ -26,9 +26,11 @@ pub(crate) fn populate_anim(store: &mut WidgetStore) {
             crate::ids::INSP_ANIM_REMOVE,
             crate::ids::INSP_ANIM_ADD_PLAYER,
             crate::ids::INSP_ANIM_REWIND,
+            crate::ids::INSP_ANIM_PLAYING,
         ],
     );
     register_button_ids(store, &crate::ids::INSP_ANIM_DIR);
+    register_button_ids(store, &crate::ids::INSP_ANIM_CYCLE);
     register_button_ids(store, &crate::ids::INSP_ANIM_DIR_OVERRIDE);
     register_button_ids(store, &crate::ids::INSP_ANIM_LOOP_OVERRIDE);
 
@@ -44,15 +46,13 @@ pub(crate) fn populate_anim(store: &mut WidgetStore) {
         },
     );
 
-    for id in [crate::ids::INSP_ANIM_PLAYING, crate::ids::INSP_ANIM_FLIP] {
-        store.register(
-            id,
-            InteractiveState::Checkbox {
-                state: CheckboxState::Normal,
-                value: CheckboxValue::Unchecked,
-            },
-        );
-    }
+    store.register(
+        crate::ids::INSP_ANIM_FLIP,
+        InteractiveState::Checkbox {
+            state: CheckboxState::Normal,
+            value: CheckboxValue::Unchecked,
+        },
+    );
     // ⚠️ Os três campos de TEXTO da §11: o nome da animação e os dois nomes de sinal (§8.10).
     for id in [
         crate::ids::INSP_ANIM_NAME,
@@ -72,7 +72,7 @@ pub(crate) fn populate_anim(store: &mut WidgetStore) {
     for (id, value) in [
         (crate::ids::INSP_ANIM_FROM, 0.0_f64),
         (crate::ids::INSP_ANIM_TO, 0.0),
-        (crate::ids::INSP_ANIM_FRAME_MS, 100.0), // LITERAL-PX-OK: ms por frame (10 fps), valor de domínio
+        (crate::ids::INSP_ANIM_FPS, 10.0), // LITERAL-PX-OK: quadros por segundo (100 ms), valor de domínio
         (crate::ids::INSP_ANIM_FRAME_MS_THIS, 0.0), // 0 = herda o `Frame ms` (spec §8.12)
         (crate::ids::INSP_ANIM_HOLD_MS, 0.0),
         (crate::ids::INSP_ANIM_DELAY_MS, 0.0),
@@ -102,7 +102,7 @@ pub(crate) fn populate_anim(store: &mut WidgetStore) {
 }
 
 /// **O cartão «Animation»** (plano GameEngineFuncional 07): o ▶ de cada linha, «Edit Animations…»,
-/// «Who Picks», os quatro menus de estado e o grupo «More» (nasce FECHADO).
+/// «Who Picks», os quatro menus de estado e o grupo «Advanced» (nasce FECHADO).
 fn populate_anim_card(store: &mut WidgetStore) {
     register_button_ids(store, &crate::ids::INSP_ANIM_PLAY_ROW);
     register_button_ids(store, &[crate::ids::INSP_ANIM_OPEN_EDITOR]);
@@ -119,9 +119,16 @@ fn populate_anim_card(store: &mut WidgetStore) {
         );
         store.set_tooltip(id, tr("panel.inspector.anim_card.state_tip"));
     }
-    for id in crate::ids::INSP_ANIM_PLAY_ROW {
+    for id in crate::ids::INSP_ANIM_PLAY_ROW
+        .into_iter()
+        .chain([crate::ids::INSP_ANIM_PLAYING])
+    {
         store.set_tooltip(id, tr("panel.inspector.anim_card.play_tip"));
     }
+    store.set_tooltip(
+        crate::ids::INSP_ANIM_REWIND,
+        tr("panel.inspector.anim_card.rewind_tip"),
+    );
     store.set_tooltip(
         crate::ids::INSP_ANIM_OPEN_EDITOR,
         tr("panel.inspector.anim_card.open_editor_tip"),
@@ -140,6 +147,6 @@ fn populate_anim_card(store: &mut WidgetStore) {
         tr("panel.inspector.anim_card.flip_tip"),
     );
     // ⛔ `_if_unchosen` (a lei da máscara da câmera): re-popular não pode fechar o que o artista abriu.
-    store.set_collapsed_if_unchosen(crate::ids::INSP_ANIM_MORE, true);
-    store.mark_collapsible_section(crate::ids::INSP_ANIM_MORE);
+    store.set_collapsed_if_unchosen(crate::ids::INSP_ANIM_ADVANCED, true);
+    store.mark_collapsible_section(crate::ids::INSP_ANIM_ADVANCED);
 }

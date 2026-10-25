@@ -314,7 +314,7 @@ fn no_anim_id_collides_with_the_anchor_section() {
                 ph2d_panel_inspector::ids::INSP_ANIM_NAME,
                 ph2d_panel_inspector::ids::INSP_ANIM_FROM,
                 ph2d_panel_inspector::ids::INSP_ANIM_TO,
-                ph2d_panel_inspector::ids::INSP_ANIM_FRAME_MS,
+                ph2d_panel_inspector::ids::INSP_ANIM_FPS,
                 ph2d_panel_inspector::ids::INSP_ANIM_HOLD_MS,
                 ph2d_panel_inspector::ids::INSP_ANIM_DELAY_MS,
                 ph2d_panel_inspector::ids::INSP_ANIM_REPEAT,

@@ -140,6 +140,30 @@ impl Default for AnimCardInfo {
     }
 }
 
+/// Os limites do `frame_ms` do motor (`ph2d_ecs::FRAME_MS_MIN`/`MAX`). ⚠️ Cópia: esta crate não
+/// depende da `ph2d-ecs` fora dos testes (ADR-0029); `the_fps_law_is_the_engines` prende-a.
+const FRAME_MS_MIN: u32 = 1;
+const FRAME_MS_MAX: u32 = 60_000; // LITERAL-PX-OK: ms, o tecto do motor
+
+impl super::InspectorAnimRow {
+    /// Quadros por segundo desta animação — a mesma leitura do editor (`ph2d_ecs::fps_of_ms`).
+    #[must_use]
+    pub fn fps(&self) -> f32 {
+        1000.0 / self.frame_ms.max(1) as f32 // LITERAL-PX-OK: ms por segundo
+    }
+
+    /// O `frame_ms` de `fps` quadros por segundo (`ph2d_ecs::ms_of_fps`): arredondado e nos limites.
+    #[must_use]
+    pub fn frame_ms_of_fps(fps: f32) -> u32 {
+        if !(fps.is_finite() && fps > 0.0) {
+            return FRAME_MS_MAX;
+        }
+        #[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation)]
+        let ms = (1000.0 / fps).round() as u32; // LITERAL-PX-OK: ms por segundo
+        ms.clamp(FRAME_MS_MIN, FRAME_MS_MAX)
+    }
+}
+
 /// As células que a linha `row` toca, na ordem: a lista, ou o intervalo `from..=to` cortado na grelha.
 #[must_use]
 pub fn row_cells(row: &super::InspectorAnimRow, cells: u32) -> Vec<u32> {
@@ -164,6 +188,59 @@ mod tests {
             assert_eq!(AnimCycleMode::from_tag(m.tag()), m);
         }
         assert_eq!(AnimChooser::from_tag(9), AnimChooser::Me);
+    }
+
+    /// A cópia da lei dos quadros por segundo é a do motor, ponto a ponto (o editor usa a do motor).
+    #[test]
+    fn the_fps_law_is_the_engines() {
+        use super::super::InspectorAnimRow as R;
+        assert_eq!(FRAME_MS_MIN, ph2d_ecs::FRAME_MS_MIN);
+        assert_eq!(FRAME_MS_MAX, ph2d_ecs::FRAME_MS_MAX);
+        for fps in [
+            -1.0,
+            0.0,
+            0.01,
+            0.5,
+            1.0,
+            7.0,
+            12.0,
+            24.0,
+            29.97,
+            60.0,
+            999.0,
+            1e9,
+            f32::NAN,
+        ] {
+            assert_eq!(
+                R::frame_ms_of_fps(fps),
+                ph2d_ecs::ms_of_fps(fps),
+                "{fps} fps"
+            );
+        }
+        for ms in [0, 1, 16, 83, 100, 1000, 60_000] {
+            let row = R {
+                frame_ms: ms,
+                ..anim_row()
+            };
+            assert_eq!(row.fps(), ph2d_ecs::fps_of_ms(ms), "{ms} ms");
+        }
+    }
+
+    fn anim_row() -> super::super::InspectorAnimRow {
+        super::super::InspectorAnimRow {
+            name: String::new(),
+            from: 0,
+            to: 0,
+            frame_ms: 100,
+            direction_tag: 0,
+            repeat: 0,
+            hold_ms: 0,
+            repeat_delay_ms: 0,
+            signal_on_finish: String::new(),
+            signal_on_loop: String::new(),
+            per_frame_ms: Vec::new(),
+            frames: Vec::new(),
+        }
     }
 
     #[test]

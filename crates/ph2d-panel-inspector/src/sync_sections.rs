@@ -335,10 +335,7 @@ fn sync_anim_fields(
     // ⇒ Deixá-lo numa aresta punha-o a mentir a quem o lê pela acessibilidade no instante em que o
     // MOTOR muda o facto (uma animação de uma volta pára-se sozinha). *Um valor que ninguém usa
     // para decidir tem de acompanhar quem decide, senão é só um segundo estado a envelhecer.*
-    for (id, on) in [
-        (crate::ids::INSP_ANIM_PLAYING, an.playing),
-        (crate::ids::INSP_ANIM_AUTOPLAY, an.autoplay),
-    ] {
+    for (id, on) in [(crate::ids::INSP_ANIM_AUTOPLAY, an.autoplay)] {
         if let Some(InteractiveState::Checkbox { value, .. }) = host.store_mut().get_mut(id) {
             *value = if on {
                 CheckboxValue::Checked
@@ -350,10 +347,11 @@ fn sync_anim_fields(
     if let Some(row) = an.rows.get(selected) {
         put(host, crate::ids::INSP_ANIM_FROM, f64::from(row.from));
         put(host, crate::ids::INSP_ANIM_TO, f64::from(row.to));
+        // Em quadros por segundo, uma casa decimal (a leitura do editor); o dado é o `frame_ms`.
         put(
             host,
-            crate::ids::INSP_ANIM_FRAME_MS,
-            f64::from(row.frame_ms),
+            crate::ids::INSP_ANIM_FPS,
+            (f64::from(row.fps()) * 10.0).round() / 10.0, // LITERAL-PX-OK: uma casa decimal
         );
         put(host, crate::ids::INSP_ANIM_HOLD_MS, f64::from(row.hold_ms));
         put(

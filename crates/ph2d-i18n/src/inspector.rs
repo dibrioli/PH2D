@@ -234,9 +234,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.animation.plus_add_animation" => "+ Add Animation",
         "panel.inspector.animation.x_remove_animation" => "x Remove Animation",
         "panel.inspector.animation.animation_name" => "animation_name\u{2026}",
-        "panel.inspector.animation.this_animation_has_per_frame" => {
-            "\u{2022} this animation has per-frame timing (imported)"
-        }
         "panel.inspector.animation.direction" => "Direction",
         "panel.inspector.animation.signals_empty_silent" => "Signals (empty = silent)",
         "panel.inspector.animation.on_finish" => "on finish\u{2026}",
@@ -496,11 +493,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.anchors.sockets_anchors" => "Sockets / Anchors",
         "panel.inspector.animation.from_cell" => "From (cell)",
         "panel.inspector.animation.to_cell" => "To (cell)",
-        "panel.inspector.animation.frame" => "Frame",
-        // ⭐ O nome ficou CURTO e a regra foi para o BALÃO (ordem do dono, 2026-09-21:
-        //    *«os nomes grandes precisam reduzir, as dicas devem ir para o mouse Hover»*).
-        //    ⚠️ A chave mantém o nome antigo de propósito: renomeá-la custa a prosa que a cita.
-        "panel.inspector.animation.repeat_forever" => "Repeat",
         "panel.inspector.animation.hold" => "Hold",
         "panel.inspector.animation.repeat_delay" => "Repeat delay",
         "panel.inspector.joint.swap_a_b" => "Swap A / B",

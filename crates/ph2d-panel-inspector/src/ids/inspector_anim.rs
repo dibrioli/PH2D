@@ -118,8 +118,16 @@ pub const INSP_ANIM_FROM: NodeId = hash_node_id("insp_anim_from");
 /// Última célula, **inclusive**.
 pub const INSP_ANIM_TO: NodeId = hash_node_id("insp_anim_to");
 
-/// Duração de cada frame desta animação, em ms. ⚠️ Absoluta, nunca um multiplicador de FPS.
-pub const INSP_ANIM_FRAME_MS: NodeId = hash_node_id("insp_anim_frame_ms");
+/// O ritmo da animação em QUADROS POR SEGUNDO (a leitura do editor); o dado é o `frame_ms`, e a
+/// conversão é `InspectorAnimRow::fps` / `frame_ms_of_fps`.
+pub const INSP_ANIM_FPS: NodeId = hash_node_id("insp_anim_fps");
+
+/// O ciclo como o artista o diz — a ordem é a de `AnimCycleMode::ALL` (Repeat · Once · Ping-pong).
+pub const INSP_ANIM_CYCLE: [NodeId; 3] = [
+    hash_node_id("insp_anim_cycle_repeat"),
+    hash_node_id("insp_anim_cycle_once"),
+    hash_node_id("insp_anim_cycle_ping_pong"),
+];
 
 /// Pausa no último frame do ciclo, em ms.
 pub const INSP_ANIM_HOLD_MS: NodeId = hash_node_id("insp_anim_hold_ms");
@@ -156,7 +164,7 @@ pub const INSP_ANIM_DIR: [NodeId; 4] = [
 /// **«+ Add Animator»** — anexa o estado de reprodução a esta sprite.
 pub const INSP_ANIM_ADD_PLAYER: NodeId = hash_node_id("insp_anim_add_player");
 
-/// A caixa «Playing».
+/// O ▶/⏸ da fileira «Playback» — o botão é o facto «a tocar» (a caixa «Playing» saiu).
 pub const INSP_ANIM_PLAYING: NodeId = hash_node_id("insp_anim_playing");
 
 /// A caixa «Autoplay» — começa a tocar quando o projeto abre.
@@ -369,5 +377,6 @@ pub const INSP_ANIM_RUN_FROM: NodeId = hash_node_id("insp_anim_run_from");
 /// «Flip when walking back» do modo «The character».
 pub const INSP_ANIM_FLIP: NodeId = hash_node_id("insp_anim_flip");
 
-/// O cabeçalho do grupo «More» (o tocador e os campos da animação escolhida) — nasce FECHADO.
-pub const INSP_ANIM_MORE: NodeId = hash_node_id("insp_anim_more");
+/// O cabeçalho do grupo «Advanced» (os campos finos da animação e as substituições do tocador) —
+/// nasce FECHADO.
+pub const INSP_ANIM_ADVANCED: NodeId = hash_node_id("insp_anim_advanced");

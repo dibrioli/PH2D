@@ -14,7 +14,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
     }
     Some(match key {
         "panel.inspector.anim_card.play" => "\u{25B6}",
-        "panel.inspector.anim_card.play_tip" => "Play this animation.",
+        "panel.inspector.anim_card.play_tip" => "Play or pause this animation.",
         "panel.inspector.anim_card.open_editor" => "Edit Animations\u{2026}",
         "panel.inspector.anim_card.open_editor_tip" => {
             "Open the animation editor: pick frames on the sheet, set their timing and how they loop."
@@ -43,7 +43,18 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.anim_card.flip_tip" => "Mirror the picture when he faces left.",
         "panel.inspector.anim_card.missing" => "{name} (not in the list)",
         "panel.inspector.anim_card.no_animations" => "Add an animation first.",
-        "panel.inspector.anim_card.more" => "More",
+        "panel.inspector.anim_card.pause" => "\u{23F8}",
+        "panel.inspector.anim_card.rewind_tip" => "Back to the first frame.",
+        "panel.inspector.anim_card.playback" => "Playback",
+        "panel.inspector.anim_card.frames_chosen" => "{n} frames chosen in the editor",
+        "panel.inspector.anim_card.fps" => "Frames/s",
+        "panel.inspector.anim_card.cycle" => "Cycle",
+        "panel.inspector.anim_card.cycle_repeat" => "Repeat",
+        "panel.inspector.anim_card.cycle_once" => "Once",
+        "panel.inspector.anim_card.cycle_ping_pong" => "Ping-pong",
+        "panel.inspector.anim_card.own_times" => "\u{2022} some frames have their own time",
+        "panel.inspector.anim_card.repeat_count" => "Repeat count",
+        "panel.inspector.anim_card.advanced" => "Advanced",
         _ => return None,
     })
 }

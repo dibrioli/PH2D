@@ -3,7 +3,7 @@
 //! Cada controlo novo é dirigido pelo ponteiro REAL (o `click_at` do testkit cai no rectângulo que a
 //! pintura registou) e afirma a `AnimFieldEdit` que levanta: o ▶ da linha, «Edit Animations…»,
 //! «Who Picks», os quatro menus de estado (exactamente as animações da lista, e seguem um renomear),
-//! «Run From», «Flip» e o grupo «More» que nasce FECHADO. E as duas saídas: o Platform Player já não
+//! «Run From», «Flip», «Playback», a animação escolhida e o grupo «Advanced» que nasce FECHADO. E as duas saídas: o Platform Player já não
 //! pinta o «Auto Animate», e não há secção «Sprite Sheet».
 
 use crate::seam_anim::{anim, clear, click, click_fresh, commit, host_with};
@@ -196,23 +196,197 @@ fn run_from_e_flip_escrevem_o_personagem() {
     );
 }
 
-/// ⭐ **«More» nasce FECHADO** e abre-se pelo cabeçalho: o tocador fino só aparece depois.
+/// Pinta a fixtura num host novo (com «Advanced» como o store o deixou) e devolve os rects.
+fn painted(info: InspectorAnimInfo) -> Vec<(ph2d_a11y::NodeId, Rect)> {
+    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut st = InspectorState::default();
+    set_current_inspector_anim(Some(info));
+    let rects = host.paint::<InspectorPanel>(&mut st, VIEWPORT);
+    clear();
+    rects
+}
+
+fn has(rects: &[(ph2d_a11y::NodeId, Rect)], id: ph2d_a11y::NodeId) -> bool {
+    rects.iter().any(|(n, _)| *n == id)
+}
+
+/// ⭐ **«Advanced» nasce FECHADO, e «Playback» está à vista com ele fechado.** Abri-lo pelo cabeçalho
+/// pinta os campos finos (Hold, a direcção fina, Repeat count), os sinais e as substituições do tocador.
 #[test]
-fn o_grupo_more_nasce_fechado_e_abre_pelo_cabecalho() {
+fn advanced_nasce_fechado_e_playback_esta_a_vista() {
     let mut host = MockPanelHost::with_panel::<InspectorPanel>();
     let mut st = InspectorState::default();
     set_current_inspector_anim(Some(anim(true, false)));
     let rects = host.paint::<InspectorPanel>(&mut st, VIEWPORT);
-    assert!(rects.iter().any(|(n, _)| *n == ids::INSP_ANIM_MORE));
-    assert!(!rects.iter().any(|(n, _)| *n == ids::INSP_ANIM_SPEED));
-    let _ = click(&mut host, &mut st, ids::INSP_ANIM_MORE);
+    assert!(has(&rects, ids::INSP_ANIM_ADVANCED));
+    for id in [
+        ids::INSP_ANIM_REWIND,
+        ids::INSP_ANIM_PLAYING,
+        ids::INSP_ANIM_FRAME_SCRUB,
+        ids::INSP_ANIM_SPEED,
+    ] {
+        assert!(
+            has(&rects, id),
+            "«Playback» sem {id:?} com «Advanced» fechado"
+        );
+    }
+    let fine = [
+        ids::INSP_ANIM_HOLD_MS,
+        ids::INSP_ANIM_DELAY_MS,
+        ids::INSP_ANIM_REPEAT,
+        ids::INSP_ANIM_DIR[0],
+        ids::INSP_ANIM_SIGNAL_FINISH,
+        ids::INSP_ANIM_SIGNAL_LOOP,
+        ids::INSP_ANIM_DIR_OVERRIDE[0],
+        ids::INSP_ANIM_LOOP_OVERRIDE[0],
+    ];
+    for id in fine {
+        assert!(!has(&rects, id), "{id:?} pintado com «Advanced» fechado");
+    }
+    let _ = click(&mut host, &mut st, ids::INSP_ANIM_ADVANCED);
     host.settle_section_folds();
     let rects = host.paint::<InspectorPanel>(&mut st, VIEWPORT);
     clear();
-    assert!(
-        rects.iter().any(|(n, _)| *n == ids::INSP_ANIM_SPEED),
-        "o cabeçalho de «More» não abre — o grupo não está marcado dobrável"
+    for id in fine {
+        assert!(
+            has(&rects, id),
+            "abrir «Advanced» não pintou {id:?} — o grupo não está marcado dobrável ou perdeu-o"
+        );
+    }
+}
+
+/// ⭐ **⏸ só na linha que está no ecrã E a toca**, e clicá-lo PAUSA; ▶ na mesma linha parada RETOMA
+/// (sem `SetCurrent` nem `Rewind`); ▶ noutra linha escolhe e toca.
+#[test]
+fn o_pause_mora_na_linha_que_toca_e_pausa_sem_rebobinar() {
+    // `walk` (linha 0) está no ecrã a tocar.
+    assert_eq!(
+        edits(&click_fresh(anim(true, false), ids::INSP_ANIM_PLAY_ROW[0])),
+        [AnimFieldEdit::Playing(false)]
     );
+    assert_eq!(
+        edits(&click_fresh(anim(false, false), ids::INSP_ANIM_PLAY_ROW[0])),
+        [AnimFieldEdit::Playing(true)],
+        "▶ na animação parada no ecrã retoma de onde parou — sem escolher de novo nem rebobinar"
+    );
+    assert_eq!(
+        edits(&click_fresh(anim(true, false), ids::INSP_ANIM_PLAY_ROW[1])),
+        [
+            AnimFieldEdit::SetCurrent("attack".into()),
+            AnimFieldEdit::Playing(true)
+        ]
+    );
+    // E o ▶/⏸ da fileira «Playback» pergunta à cena.
+    assert_eq!(
+        edits(&click_fresh(anim(true, false), ids::INSP_ANIM_PLAYING)),
+        [AnimFieldEdit::Playing(false)]
+    );
+}
+
+/// ⭐ **O ⏸ PINTA-SE numa só linha.** Entre «a tocar» e «parada» só os ícones mudam: o ▶/⏸ de
+/// «Playback» (um ícone, `d`) e o da linha no ecrã. Com a animação no ecrã fora da lista nenhuma
+/// linha muda e a diferença é `d`; com ela na lista é `2d` — nem zero linhas, nem todas.
+#[test]
+fn o_pause_pinta_se_so_na_linha_que_toca() {
+    let delta = |current: &str, rows: usize| -> i64 {
+        let segs = |playing: bool| {
+            let mut info = anim(playing, false);
+            info.current = current.into();
+            let extra = info.rows[1].clone();
+            while info.rows.len() < rows {
+                let mut r = extra.clone();
+                r.name = format!("extra{}", info.rows.len());
+                info.rows.push(r);
+            }
+            let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+            let mut st = InspectorState::default();
+            set_current_inspector_anim(Some(info));
+            let (_, segs) = host.paint_and_count_geometry::<InspectorPanel>(&mut st, VIEWPORT);
+            clear();
+            i64::from(segs)
+        };
+        segs(true) - segs(false)
+    };
+    let d = delta("ghost", 2);
+    assert_ne!(d, 0, "o ▶/⏸ de «Playback» não mudou de ícone");
+    assert_eq!(
+        delta("walk", 2),
+        2 * d,
+        "a linha que toca não pintou ⏸ (ou pintou-o mais de uma)"
+    );
+    assert_eq!(delta("walk", 3), 2 * d, "mais linhas, o mesmo ⏸ único");
+}
+
+/// ⛔ **From/To só numa animação SEM lista de quadros** (report do dono: «From 0 To 31» numa animação
+/// de 5 quadros). Com lista, a linha «N frames chosen in the editor» e nada de From/To.
+#[test]
+fn from_e_to_so_numa_animacao_sem_lista() {
+    let range = painted(anim(false, false));
+    assert!(has(&range, ids::INSP_ANIM_FROM) && has(&range, ids::INSP_ANIM_TO));
+    let list = painted(with_frame_list(anim(false, false)));
+    assert!(
+        !has(&list, ids::INSP_ANIM_FROM),
+        "From pintado sobre uma lista de quadros"
+    );
+    assert!(
+        !has(&list, ids::INSP_ANIM_TO),
+        "To pintado sobre uma lista de quadros"
+    );
+    assert!(has(&list, ids::INSP_ANIM_FPS) && has(&list, ids::INSP_ANIM_CYCLE[0]));
+}
+
+/// ⭐ **O ritmo é em QUADROS POR SEGUNDO** (a leitura do editor): o campo mostra `1000 / frame_ms` e
+/// escrever `x` levanta `FrameMs(frame_ms_of_fps(x))` — a lei que `the_fps_law_is_the_engines` prende
+/// à do motor.
+#[test]
+fn o_campo_de_quadros_por_segundo_escreve_o_frame_ms() {
+    use ph2d_editor_core::screens::hero::InspectorAnimRow as R;
+    for fps in [12.0, 24.0, 7.5] {
+        assert_eq!(
+            edits(&commit(anim(false, false), ids::INSP_ANIM_FPS, fps)),
+            [AnimFieldEdit::FrameMs(0, R::frame_ms_of_fps(fps as f32))],
+            "{fps} fps"
+        );
+    }
+    assert_eq!(R::frame_ms_of_fps(12.0), 83);
+    assert!(
+        edits(&commit(anim(false, false), ids::INSP_ANIM_FPS, 0.0)).is_empty(),
+        "zero quadros por segundo não é um ritmo"
+    );
+    let (host, _st) = host_with(anim(false, false));
+    let shown = host.store().number_value(ids::INSP_ANIM_FPS);
+    clear();
+    assert_eq!(shown, Some(11.1), "walk tem 90 ms por quadro = 11,1 fps");
+}
+
+/// ⭐ **O ciclo é Repeat · Once · Ping-pong**: a POSIÇÃO do segmento é o `AnimCycleMode::tag`, e o
+/// aceso é o `of_row` da animação (attack = vai-e-volta).
+#[test]
+fn o_ciclo_segmentado_escreve_o_modo() {
+    use ph2d_editor_core::screens::hero::AnimCycleMode;
+    for (i, m) in AnimCycleMode::ALL.iter().enumerate() {
+        assert_eq!(
+            edits(&click_fresh(anim(false, false), ids::INSP_ANIM_CYCLE[i])),
+            [AnimFieldEdit::CycleMode(0, m.tag())],
+            "{m:?}"
+        );
+    }
+}
+
+/// ⛔ «per-frame timing (imported)» mentia sobre tempos dados no editor: a frase diz só o facto, e só
+/// quando ele é verdade; e «This frame» só aparece quando o quadro no ecrã tem tempo próprio.
+#[test]
+fn o_tempo_proprio_diz_se_so_quando_existe() {
+    let plain = painted(anim(false, false));
+    assert!(!has(&plain, ids::INSP_ANIM_FRAME_MS_THIS));
+    let mut own = anim(false, false);
+    own.rows[0].per_frame_ms = vec![0, 250, 0, 0];
+    assert!(
+        has(&painted(own), ids::INSP_ANIM_FRAME_MS_THIS),
+        "o quadro 2 tem 250 ms"
+    );
+    let text = ph2d_i18n::tr("panel.inspector.anim_card.own_times");
+    assert!(!text.contains("imported"), "{text}");
 }
 
 /// Numa LISTA de quadros o arrasto da barra escolhe o PASSO — a célula 2 aparece duas vezes.

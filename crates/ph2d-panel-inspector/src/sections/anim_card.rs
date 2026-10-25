@@ -2,8 +2,8 @@
 //! a lista com miniatura e ▶, «Edit Animations…», a grelha e «Who Picks» — Me · Script · The Character,
 //! com os quatro estados do personagem em MENUS das animações da lista (nunca texto livre).
 //!
-//! ⚠️ Irmão de [`super::anim`] (o cabeçalho, a face sem tocador e o grupo «More») e de
-//! [`super::anim_rows`] (os campos da animação escolhida) pelo tecto de LOC dos painéis.
+//! ⚠️ Irmão de [`super::anim`] (o cabeçalho, a face sem tocador, «Playback» e o grupo «Advanced») e
+//! de [`super::anim_rows`] (os campos da animação escolhida) pelo tecto de LOC dos painéis.
 
 use super::*;
 use ph2d_editor_core::screens::hero::{AnimChooser, InspectorAnimInfo, row_cells};
@@ -173,19 +173,23 @@ pub(crate) fn paint_list(
                 theme,
             ),
         );
-        hit_index.register(play_id, play);
-        paint_button(
-            // O ▶ é o ÍCONE (uma caixa de linha não tem respiro para o glifo de texto: o censo das
-            // elisões media «nada pintado»); o rótulo fica como nome acessível.
-            &Button::new(play_id, tr("panel.inspector.anim_card.play"))
-                .kind(ButtonKind::IconOnly {
-                    icon: ph2d_editor_core::icons::IconId::Play,
-                })
-                .visual(store.button_visual(play_id)),
-            play,
+        // O ▶ é o ÍCONE (uma caixa de linha não tem respiro para o glifo de texto); a linha que está
+        // no ecrã a tocar mostra ⏸ — a mesma pergunta que o clique faz (`row_shows_pause`).
+        let (icon, label) = if crate::event_anim_card::row_shows_pause(info, i) {
+            (IconId::Pause, tr("panel.inspector.anim_card.pause"))
+        } else {
+            (IconId::Play, tr("panel.inspector.anim_card.play"))
+        };
+        super::anim::icon_button(
             scene,
             text_system,
             theme,
+            hit_index,
+            store,
+            play,
+            play_id,
+            icon,
+            label,
         );
         cur_y += ROW_H + ph2d_tokens::list_row_gap_px();
     }

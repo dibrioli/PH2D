@@ -18,9 +18,11 @@ impl crate::App {
         // `vector_bridge` reflects the active tool's Style into the shell
         // Pen + recolours the selection; the edit gizmos draw ONLY while the
         // Vector tool is active (mirror of how the pen input is gated).
-        let vector_active = tools
-            .active()
-            .is_some_and(|t| t.id() == ph2d_editor_core::ToolId::new("vector"));
+        // Com um Pixel Sprite em Draw as barras e o canvas são do Pixel (ADR-0192).
+        let vector_active = !self.pixel.drawing()
+            && tools
+                .active()
+                .is_some_and(|t| t.id() == ph2d_editor_core::ToolId::new("vector"));
         // World units per screen pixel (1px delta) — lets the bridge convert
         // the tool's px stroke width into the selected path's world width.
         let vw0 = camera.screen_to_world((0.0, 0.0), janela_da_cena);

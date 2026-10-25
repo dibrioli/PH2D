@@ -223,7 +223,9 @@ pub fn bar_rail(
     // não distingue os estados que abre.
     // A coluna do PINTOR não é um módulo com barra de controle (F16): o seletor de modo continua na fila — é por
     // ele que se sai do modo Paint (`painter_column`).
-    if module.is_none_or(|b| b.painter_rail) && !store.area_menus().is_empty() {
+    if module.is_none_or(crate::interaction::ToolBars::is_family_column)
+        && !store.area_menus().is_empty()
+    {
         entries.push(crate::widget::ToolRailEntry::Divider);
         for (slot, menu) in store.area_menus().iter().enumerate() {
             entries.push(

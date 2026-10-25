@@ -1,9 +1,10 @@
 //! **`ph2d-panel-pixel-tools`** — o painel PIXEL (ADR-0192, `docs/PixelArt/02_plano_modulo.md`),
 //! `Panel<State>` tipado (ADR-0029): a barra de cores e de ferramentas do Aseprite.
 //!
-//! As quatro ferramentas (Pencil `B`, Eraser `E`, Eyedropper `I`, Hand `H`), as cores de frente e
-//! de fundo com o hex e o trocar (`X`), e a grelha da PALETA do sprite em edição — clique esquerdo
-//! = cor de frente, direito = cor de fundo. Sem Pixel Sprite em Edit o painel diz como entrar.
+//! As cores de frente e de fundo com o hex e o trocar (`X`), e a grelha da PALETA do sprite em
+//! edição — clique esquerdo = cor de frente, direito = cor de fundo. Sem Pixel Sprite em Draw o
+//! painel diz como entrar. As quatro ferramentas (Pencil `B`, Eraser `E`, Eyedropper `I`, Hand `H`)
+//! e as duas amostras moram na coluna da esquerda ([`column`]), como no Painter.
 //!
 //! O painel não vê a família: o instantâneo chega pelo vocabulário de
 //! [`ph2d_editor_core::pixel_panel`], publicado pela shell ([`set_current_pixel`]), e cada gesto sai
@@ -11,6 +12,7 @@
 
 #![forbid(unsafe_code)]
 
+pub mod column;
 pub mod ids;
 mod paint;
 mod seam;
@@ -31,7 +33,7 @@ impl Panel for PixelToolsPanel {
 
     const ID: &'static str = ph2d_editor_core::screens::hero::PANEL_PIXEL;
     const NODE_ID: NodeId = ph2d_editor_core::ids::PIXEL_PANEL;
-    /// Nasce FECHADO: abre ao entrar em Pixel Sprite ▸ Edit (a família escreve a visibilidade) e
+    /// Nasce FECHADO: abre ao entrar em Pixel Sprite ▸ Draw (a família escreve a visibilidade) e
     /// pelo *Window → Pixel*.
     const DEFAULT_VISIBLE: bool = false;
     const TITLE: TextKey = TextKey::new("panel.pixel.title");

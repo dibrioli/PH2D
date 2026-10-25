@@ -1,6 +1,6 @@
 //! **O painel PIXEL e o diálogo New Sprite do lado da família** (ADR-0192): o OK do diálogo nasce o
 //! objecto com AS escolhas, sem OK não nasce nada; os pedidos do painel mudam a ferramenta e as
-//! cores; o painel abre no flanco do Edit e fecha ao sair; o instantâneo leva a paleta do sprite.
+//! cores; o painel abre no flanco do Draw e fecha ao sair; o instantâneo leva a paleta do sprite.
 
 use ph2d_app_pixel::{PixelApp, Tool, input, object_add, panel};
 use ph2d_ecs::{Name, SimWorld, Transform};
@@ -99,7 +99,7 @@ fn o_painel_abre_no_edit_fecha_ao_sair_e_leva_a_paleta() {
     assert!(!info.editing && info.palette.is_empty());
     assert!(!hero.is_panel_visible(panel::PANEL_ID));
 
-    hero.gizmo.mode.enter(bits, ObjectMode::Edit);
+    hero.gizmo.mode.enter(bits, ObjectMode::Draw);
     app.pede(PixelRequest::Tool(PixelTool::Eraser));
     let info = panel::frame(&mut app, sim.world(), &mut hero);
     assert!(
@@ -125,5 +125,85 @@ fn o_painel_abre_no_edit_fecha_ao_sair_e_leva_a_paleta() {
     assert!(
         !hero.is_panel_visible(panel::PANEL_ID),
         "sair do Edit fecha"
+    );
+}
+
+/// ⭐ **Report do dono 25/10, defeitos 1 e 2, pelo caminho do modo**: o seletor do topo oferece
+/// Object · Draw ao Pixel Sprite (como a Imagem e o Vetor); em Draw a coluna da esquerda é a do
+/// Pixel — com a marca que guarda o seletor na fila e que o vetor inactivo não apaga — e o rodapé lê
+/// o zoom; ao sair, só as SUAS barras se limpam.
+#[test]
+fn o_seletor_oferece_object_e_draw_e_a_coluna_em_draw_e_a_do_pixel() {
+    use ph2d_editor_core::interaction::{BarButton, BarFace, BarFamily};
+    use ph2d_editor_core::screens::hero::mode_drive::{self, ModeFamily};
+    let mut hero = HeroScreen::new(ph2d_editor_core::NodeId(1));
+    let (mut sim, mut app) = (SimWorld::new(), PixelApp::default());
+    let bits = object_add::add(object_add::PIXEL_SPRITE, &mut sim, &mut app, spawn_root)
+        .expect("é desta família")
+        .expect("nasce");
+    let mut tools = ph2d_editor_core::ToolRegistry::new();
+    let mut toasts = ph2d_editor_core::ToastQueue::new();
+    {
+        let mut fam = ph2d_app_pixel::mode::Family::new(&mut app, sim.world());
+        let mut fams: [&mut dyn ModeFamily; 1] = [&mut fam];
+        mode_drive::drive(
+            &mut fams,
+            &|_| ph2d_component_desc::ObjectKind::PixelSprite,
+            &|_| "Pixel Sprite".to_owned(),
+            &mut tools,
+            &mut hero,
+            &mut toasts,
+            None,
+        );
+    }
+    assert_eq!(
+        hero.gizmo.mode.available(),
+        [ObjectMode::Object, ObjectMode::Draw]
+    );
+    assert!(hero.store.has_mode_selector(), "sem seletor no topo");
+    assert_eq!(
+        ph2d_app_pixel::mode::editing(sim.world(), &hero),
+        Some(bits),
+        "o sprite que nasceu entrou em Draw"
+    );
+
+    let mut cam = ph2d_render::Camera2d::default();
+    let window = ph2d_host::WindowSize {
+        width: 800,
+        height: 600,
+    };
+    app.frame(&mut sim, &mut cam, window, 100.0, Some(bits), spawn_root);
+    let _ = panel::frame(&mut app, sim.world(), &mut hero);
+    let botao = BarButton {
+        id: ph2d_editor_core::NodeId(7),
+        face: BarFace::Icon(ph2d_editor_core::icons::IconId::Erase),
+        label: String::new(),
+        on: true,
+        family: BarFamily::Draw,
+    };
+    panel::publish_bars(
+        &app,
+        &mut hero,
+        vec![vec![botao.clone()]],
+        "dica".to_owned(),
+    );
+    let bars = hero.store.tool_bars().expect("a coluna do Pixel");
+    assert!(bars.pixel_rail && bars.is_family_column());
+    assert_eq!(bars.column, vec![vec![botao]]);
+    let level = app.zoom().expect("zoom em Draw");
+    assert_eq!(
+        bars.readout,
+        [ph2d_i18n::tr_with(
+            "pixel.zoom",
+            &[("n", &level.to_string())]
+        )]
+    );
+
+    let _ = hero.gizmo.mode.leave();
+    let _ = panel::frame(&mut app, sim.world(), &mut hero);
+    panel::publish_bars(&app, &mut hero, Vec::new(), String::new());
+    assert!(
+        hero.store.tool_bars().is_none(),
+        "sair do Draw deixou a coluna"
     );
 }

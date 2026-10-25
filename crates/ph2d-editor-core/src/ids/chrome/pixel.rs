@@ -12,6 +12,12 @@ pub const PIXEL_PANEL: NodeId = hash_node_id("pixel.panel");
 /// A linha *Pixel* do menu *Window*.
 pub const TOPBAR_PIXEL: NodeId = hash_node_id("topbar_pixel");
 
+/// A amostra da cor de FRENTE (a coluna da esquerda em Draw): um Down abre o seletor partilhado, e
+/// a família lê de volta a cor dele (`ph2d_app_pixel::panel`).
+pub const PIXEL_FG: NodeId = hash_node_id("pixel.fg");
+/// A amostra da cor de FUNDO, na mesma forma.
+pub const PIXEL_BG: NodeId = hash_node_id("pixel.bg");
+
 /// O campo da largura do *New Sprite*.
 pub const NEW_SPRITE_WIDTH: NodeId = hash_node_id("pixel.new_sprite.width");
 /// O campo da altura do *New Sprite*.

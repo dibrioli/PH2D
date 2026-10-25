@@ -1,5 +1,5 @@
 //! **O quadro da família**: a cena de smoke armada, os documentos que os objectos pedem (cópia e
-//! ausência) e o enquadramento ao entrar em Edit.
+//! ausência) e o enquadramento ao entrar em Draw.
 
 use ph2d_ecs::SimWorld;
 use ph2d_host::WindowSize;
@@ -17,7 +17,7 @@ const FIT_FRACTION: f64 = 0.6;
 
 impl PixelApp {
     /// Uma vez por quadro, antes do modo e da entrada. `editing` = o objecto em Pixel Sprite ▸
-    /// Edit; `spawn_root` cria o objecto vazio da casa (nome único, ordem de raiz).
+    /// Draw; `spawn_root` cria o objecto vazio da casa (nome único, ordem de raiz).
     #[allow(clippy::too_many_arguments)]
     pub fn frame(
         &mut self,
@@ -46,6 +46,11 @@ impl PixelApp {
             self.frame_on_entry(sim.world(), camera, window, ppm, bits);
         }
         self.was_editing = editing;
+        self.zoom = editing.and_then(|bits| {
+            let doc = self.docs.get(&crate::input::key_of(sim.world(), bits)?)?;
+            let m = to_screen(sim.world(), bits, doc, camera, window, ppm)?;
+            Some(zoom::nearest(px_per_cell(m)))
+        });
     }
 
     /// Todo objecto aponta para um documento SEU: uma cópia do objecto (duplicar) ganha uma cópia
@@ -86,7 +91,7 @@ impl PixelApp {
         }
     }
 
-    /// Ao entrar em Edit: um sprite novo enquadra-se (centro e o maior zoom inteiro que cabe); um
+    /// Ao entrar em Draw: um sprite novo enquadra-se (centro e o maior zoom inteiro que cabe); um
     /// já aberto antes só prende o zoom ao degrau inteiro mais próximo.
     fn frame_on_entry(
         &mut self,

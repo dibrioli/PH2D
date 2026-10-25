@@ -1,4 +1,4 @@
-//! **O modo Edit pelo caminho real**: o objecto nasce pelo Add, o ponteiro entra pelas mesmas
+//! **O modo Draw pelo caminho real**: o objecto nasce pelo Add, o ponteiro entra pelas mesmas
 //! funções que a shell chama, e o efeito lê-se no documento, no desfazer e no blob.
 
 use ph2d_app_pixel::input::{self, Button, Canvas, KeyAnswer, Press};
@@ -107,9 +107,9 @@ fn add_creates_a_32_by_32_sprite_that_asks_for_edit_once() {
     assert_eq!((d.sprite.width(), d.sprite.height()), (32, 32));
     let mut tools = ToolRegistry::default();
     let mut fam = mode::Family::new(&mut app, sim.world());
-    assert_eq!(fam.wants(&mut tools), Some((bits, ObjectMode::Edit)));
+    assert_eq!(fam.wants(&mut tools), Some((bits, ObjectMode::Draw)));
     assert_eq!(fam.wants(&mut tools), None, "o pedido é UM");
-    assert!(fam.holds(ObjectMode::Edit, bits, &mut tools));
+    assert!(fam.holds(ObjectMode::Draw, bits, &mut tools));
 }
 
 #[test]
@@ -296,36 +296,51 @@ fn outside_edit_the_pointer_and_the_keys_are_not_the_familys() {
     );
 }
 
-#[test]
-fn the_wheel_walks_the_integer_ladder_around_the_cursor() {
-    let (app, sim, mut cam, bits) = born();
+/// O zoom do sprite em edição, em píxeis de ecrã por célula.
+fn zoom_of(app: &PixelApp, sim: &SimWorld, cam: &Camera2d, bits: u64) -> f64 {
     let key = input::key_of(sim.world(), bits).expect("marcador");
-    let cursor = at(&app, &sim, &cam, bits, 20, 10);
-    let before = ph2d_pixel_render::px_per_cell(
-        input::to_screen(
-            sim.world(),
-            bits,
-            app.doc(key).expect("doc"),
-            &cam,
-            WINDOW,
-            PPM,
-        )
-        .expect("afim"),
-    );
-    let level = input::wheel(
-        &app,
+    let doc = app.doc(key).expect("doc");
+    ph2d_pixel_render::px_per_cell(
+        input::to_screen(sim.world(), bits, doc, cam, WINDOW, PPM).expect("afim"),
+    )
+}
+
+fn turn(
+    app: &mut PixelApp,
+    sim: &SimWorld,
+    cam: &mut Camera2d,
+    bits: u64,
+    at: (f32, f32),
+    t: input::Turn,
+) -> bool {
+    input::wheel(
+        app,
         sim.world(),
-        &mut cam,
+        cam,
         WINDOW,
         PPM,
         Some(bits),
-        input::Notch {
-            at: cursor,
-            up: true,
-        },
+        input::Notch { at, turn: t },
     )
-    .expect("zoom");
-    assert_eq!(level, ph2d_pixel_render::zoom::step(before, true));
+}
+
+/// A roda do rato: uma linha = um degrau da escada, com a célula sob o cursor parada.
+#[test]
+fn the_wheel_walks_the_integer_ladder_around_the_cursor() {
+    let (mut app, sim, mut cam, bits) = born();
+    let cursor = at(&app, &sim, &cam, bits, 20, 10);
+    let before = zoom_of(&app, &sim, &cam, bits);
+    assert!(turn(
+        &mut app,
+        &sim,
+        &mut cam,
+        bits,
+        cursor,
+        input::Turn::Lines(1.0)
+    ));
+    let level = ph2d_pixel_render::zoom::step(before, true);
+    assert!((zoom_of(&app, &sim, &cam, bits) - f64::from(level)).abs() < 1e-3);
+    let key = input::key_of(sim.world(), bits).expect("marcador");
     let m = input::to_screen(
         sim.world(),
         bits,
@@ -335,13 +350,107 @@ fn the_wheel_walks_the_integer_ladder_around_the_cursor() {
         PPM,
     )
     .expect("afim");
-    assert!((ph2d_pixel_render::px_per_cell(m) - f64::from(level)).abs() < 1e-3);
     let still = ph2d_pixel_render::cell_at(m, (f64::from(cursor.0), f64::from(cursor.1)));
     assert_eq!(
         still,
         Some((20, 10)),
         "a célula sob o cursor fica sob o cursor"
     );
+}
+
+/// ⭐ **O trackpad** (report do dono 25/10: a foto chegou a 4800 %): um gesto manda dezenas de
+/// bocados em píxeis. Ele tem de aproximar como o viewport aproxima com o MESMO gesto — o degrau
+/// final é o maior da escada que não passa do zoom do viewport, e o seguinte já passaria. Um degrau
+/// por bocado (o defeito) dava 30 degraus e o tecto da escada.
+#[test]
+fn a_trackpad_gesture_zooms_like_the_viewport_and_not_one_step_per_event() {
+    let (mut app, sim, mut cam, bits) = born();
+    let cursor = at(&app, &sim, &cam, bits, 16, 16);
+    let before = zoom_of(&app, &sim, &cam, bits);
+    let (events, px) = (30_u8, 10.0_f32);
+    for _ in 0..events {
+        assert!(
+            turn(
+                &mut app,
+                &sim,
+                &mut cam,
+                bits,
+                cursor,
+                input::Turn::Pixels(px)
+            ),
+            "um bocado sem degrau completo continua a ser da roda do Pixel"
+        );
+    }
+    let after = zoom_of(&app, &sim, &cam, bits);
+    let total = f32::from(events) * px;
+    let viewport = before / f64::from(Camera2d::wheel_factor(total));
+    assert!(
+        after > before,
+        "o gesto não aproximou nada: {before} -> {after}"
+    );
+    assert!(
+        after <= viewport + 1e-6
+            && f64::from(ph2d_pixel_render::zoom::step(after, true)) > viewport,
+        "{events} bocados de {px} px: o Pixel foi a {after} px/célula, o viewport iria a {viewport:.2} \
+         (partindo de {before})"
+    );
+}
+
+/// Um bocado só não chega a um degrau (fica guardado), e trocar de sentido esquece o resto.
+#[test]
+fn a_lone_trackpad_event_keeps_its_remainder_and_a_reversal_forgets_it() {
+    let (mut app, sim, mut cam, bits) = born();
+    let cursor = at(&app, &sim, &cam, bits, 16, 16);
+    let before = zoom_of(&app, &sim, &cam, bits);
+    let mut roda = input::Roda::default();
+    let need = Camera2d::wheel_px_for(
+        (before / f64::from(ph2d_pixel_render::zoom::step(before, true))) as f32,
+    );
+    assert_eq!(roda.walk(input::Turn::Pixels(need * 0.6), before), None);
+    assert_eq!(roda.walk(input::Turn::Pixels(-1.0), before), None);
+    assert_eq!(
+        roda.walk(input::Turn::Pixels(need * 0.6), before),
+        None,
+        "o resto de antes da inversão contou"
+    );
+    assert!(turn(
+        &mut app,
+        &sim,
+        &mut cam,
+        bits,
+        cursor,
+        input::Turn::Pixels(1.0)
+    ));
+    assert!((zoom_of(&app, &sim, &cam, bits) - before).abs() < 1e-9);
+}
+
+/// ⭐ Report do dono 25/10: cada degrau da roda empilhava um aviso «Zoom N %». O degrau lê-se no
+/// rodapé ([`ph2d_app_pixel::PixelApp::zoom`]); a roda não fala.
+#[test]
+fn the_wheel_never_pushes_a_toast_and_the_footer_reads_the_level() {
+    let (mut app, mut sim, mut cam, bits) = born();
+    let cursor = at(&app, &sim, &cam, bits, 16, 16);
+    let mut toasts = ph2d_editor_core::ToastQueue::new();
+    for _ in 0..5 {
+        let mut v = ph2d_app_pixel::compose::View {
+            world: sim.world(),
+            camera: &mut cam,
+            toasts: &mut toasts,
+            window: WINDOW,
+            ppm: PPM,
+            editing: Some(bits),
+        };
+        assert!(app.wheel_event(
+            &mut v,
+            winit::event::MouseScrollDelta::LineDelta(0.0, 1.0),
+            cursor,
+            true
+        ));
+    }
+    assert!(toasts.is_empty(), "a roda empilhou {} avisos", toasts.len());
+    app.frame(&mut sim, &mut cam, WINDOW, PPM, Some(bits), spawn_root);
+    let level = app.zoom().expect("o rodapé lê o degrau em Draw");
+    assert!((f64::from(level) - zoom_of(&app, &sim, &cam, bits)).abs() < 1e-3);
 }
 
 #[test]
@@ -414,7 +523,7 @@ fn smoke_1_stages_a_face_in_four_undo_steps_and_asks_for_edit() {
     let mut tools = ToolRegistry::default();
     assert_eq!(
         mode::Family::new(&mut app, sim.world()).wants(&mut tools),
-        Some((bits, ObjectMode::Edit))
+        Some((bits, ObjectMode::Draw))
     );
     assert!(
         !ph2d_app_pixel::smoke::stage(&mut app, &mut sim, 2, spawn_root),

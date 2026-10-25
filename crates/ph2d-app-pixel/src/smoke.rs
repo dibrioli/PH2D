@@ -1,6 +1,6 @@
 //! **As cenas de smoke** (`PH2D_PIXEL_SMOKE=n`).
 //!
-//! 1 — um Pixel Sprite 32 × 32 já em Edit, com uma cara desenhada em QUATRO traços (quatro passos
+//! 1 — um Pixel Sprite 32 × 32 já em Draw, com uma cara desenhada em QUATRO traços (quatro passos
 //! do desfazer, para o `Ctrl+Z` ter o que mostrar). O dono desenha por cima, desfaz, grava e reabre.
 
 use ph2d_ecs::SimWorld;

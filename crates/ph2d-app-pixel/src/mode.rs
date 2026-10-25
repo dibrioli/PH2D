@@ -1,4 +1,4 @@
-//! **Pixel Sprite ▸ Edit** — o modo onde o lápis pinta. O seletor do topo oferece Object · Edit, e
+//! **Pixel Sprite ▸ Draw** — o modo onde o lápis pinta. O seletor do topo oferece Object · Draw, e
 //! o `Tab` alterna.
 
 use ph2d_component_desc::ObjectKind;
@@ -42,15 +42,15 @@ pub fn sprites(world: &ph2d_ecs::World) -> Vec<(u64, u32)> {
 
 impl ModeFamily for Family<'_> {
     fn modes(&self) -> &'static [(ObjectKind, ObjectMode)] {
-        &[(ObjectKind::PixelSprite, ObjectMode::Edit)]
+        &[(ObjectKind::PixelSprite, ObjectMode::Draw)]
     }
     fn holds(&mut self, mode: ObjectMode, entity: u64, _: &mut ToolRegistry) -> bool {
-        mode == ObjectMode::Edit && self.sprites.contains(&entity)
+        mode == ObjectMode::Draw && self.sprites.contains(&entity)
     }
     fn enter(&mut self, mode: ObjectMode, entity: u64, tools: &mut ToolRegistry) -> bool {
         self.holds(mode, entity, tools)
     }
-    /// Largar o Edit a meio de um traço deixa-o cair (nunca um passo fantasma).
+    /// Largar o Draw a meio de um traço deixa-o cair (nunca um passo fantasma).
     fn leave(&mut self, _: ObjectMode, entity: u64, _: &mut ToolRegistry) {
         if self
             .app
@@ -65,20 +65,20 @@ impl ModeFamily for Family<'_> {
         let bits = self.app.wants_edit.take()?;
         self.sprites
             .contains(&bits)
-            .then_some((bits, ObjectMode::Edit))
+            .then_some((bits, ObjectMode::Draw))
     }
     fn heir(&mut self, _: ObjectMode, _: u64, _: &mut ToolRegistry) -> Option<u64> {
         None
     }
 }
 
-/// O objecto em Pixel Sprite ▸ Edit neste quadro, se há.
+/// O objecto em Pixel Sprite ▸ Draw neste quadro, se há.
 #[must_use]
 pub fn editing(
     world: &ph2d_ecs::World,
     hero: &ph2d_editor_core::screens::hero::HeroScreen,
 ) -> Option<u64> {
     let a = hero.gizmo.mode.active()?;
-    (a.mode == ObjectMode::Edit && crate::input::key_of(world, a.entity).is_some())
+    (a.mode == ObjectMode::Draw && crate::input::key_of(world, a.entity).is_some())
         .then_some(a.entity)
 }

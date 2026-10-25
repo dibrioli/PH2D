@@ -17,8 +17,18 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "pixel.nothing_to_redo" => "Nothing to redo in this sprite",
         "panel.pixel.title" => "Pixel",
         "panel.pixel.empty" => {
-            "Select a Pixel Sprite and press Tab (Edit) to draw with these tools and colors."
+            "Select a Pixel Sprite and press Tab (Draw) to draw with these colors."
         }
+        "panel.pixel.fg" => "Foreground color",
+        "panel.pixel.bg" => "Background color",
+        "pixel.hint.pencil" => "{tool}: drag to draw · right button draws the background color",
+        "pixel.hint.eraser" => {
+            "{tool}: drag to erase · right button turns the foreground color into the background"
+        }
+        "pixel.hint.eyedropper" => {
+            "{tool}: click picks the foreground · right button the background"
+        }
+        "pixel.hint.hand" => "{tool}: drag to move the view · hold Space with any tool",
         "panel.pixel.swap" => "Swap (X)",
         "panel.pixel.swap_tip" => "Swap the foreground and background colors (X)",
         "panel.pixel.palette" => "Palette",

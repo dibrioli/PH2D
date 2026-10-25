@@ -107,8 +107,9 @@ fn the_composed_families_declare_every_creation_mode() {
         // ⚠️ 2026-10-05: `4` -> `6` pares, delta +2 — o esqueleto (A14): Edit e Pose.
         (K::Skeleton, ObjectMode::Edit),
         (K::Skeleton, ObjectMode::Pose),
-        // ⚠️ 2026-10-25: `6` -> `7` pares, delta +1 — o Pixel Sprite (ADR-0192): Edit.
-        (K::PixelSprite, ObjectMode::Edit),
+        // ⚠️ 2026-10-25: `6` -> `7` pares, delta +1 — o Pixel Sprite (ADR-0192): Draw (o dono chama-lhe
+        // Draw, como o Flip; nasceu Edit na P0).
+        (K::PixelSprite, ObjectMode::Draw),
     ];
     for p in d6 {
         assert!(

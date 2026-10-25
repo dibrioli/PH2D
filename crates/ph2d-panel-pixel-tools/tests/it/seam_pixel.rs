@@ -88,12 +88,49 @@ fn so(a: &[EditorAction], r: PixelRequest) {
     assert_eq!(a, [EditorAction::Pixel(r)]);
 }
 
+/// As ferramentas moram na COLUNA da esquerda (dono 25/10), que a pinta o chrome: o clique dela
+/// chega a este painel pelo mesmo `apply_event` (com o painel fechado também) e vira o pedido.
 #[test]
-fn cada_ferramenta_chega_ao_barramento_pelo_clique() {
+fn cada_ferramenta_da_coluna_chega_ao_barramento() {
     for (t, id) in ids::TOOLS {
         let mut p = Palco::novo(info(true));
-        so(&p.carrega(id), PixelRequest::Tool(t));
+        p.host
+            .set_panel_visible(ph2d_editor_core::screens::hero::PANEL_PIXEL, false);
+        so(
+            &p.aplica(vec![WidgetEvent::Click(id)]),
+            PixelRequest::Tool(t),
+        );
+        assert!(
+            p.rect(id).is_none(),
+            "{id:?} continua pintado no painel direito"
+        );
     }
+}
+
+/// A coluna: as quatro ferramentas (a da mão acesa) e as duas amostras com o trocar; sem sprite em
+/// Draw, nada.
+#[test]
+fn a_coluna_tem_as_quatro_ferramentas_e_as_duas_cores() {
+    use ph2d_editor_core::interaction::BarFace;
+    let mut i = info(true);
+    i.tool = PixelTool::Eyedropper;
+    let col = ph2d_panel_pixel_tools::column::column(&i);
+    assert_eq!(col.len(), 2);
+    let ferr: Vec<_> = col[0].iter().map(|b| (b.id, b.on)).collect();
+    let quer: Vec<_> = ids::TOOLS
+        .iter()
+        .map(|(t, id)| (*id, *t == PixelTool::Eyedropper))
+        .collect();
+    assert_eq!(ferr, quer);
+    let cores: Vec<_> = col[1].iter().map(|b| (b.id, b.face.clone())).collect();
+    assert!(
+        matches!(cores[0], (id, BarFace::Swatch { rgba: Some(c), ring: false, .. }) if id == ids::PIXEL_FG && c == i.fg)
+    );
+    assert!(
+        matches!(cores[1], (id, BarFace::Swatch { rgba: Some(c), ring: false, .. }) if id == ids::PIXEL_BG && c == i.bg)
+    );
+    assert_eq!(cores[2].0, ids::PIXEL_SWAP);
+    assert!(ph2d_panel_pixel_tools::column::column(&info(false)).is_empty());
 }
 
 #[test]

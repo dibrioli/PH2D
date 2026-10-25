@@ -1,5 +1,5 @@
 //! **O desenho**: todo Pixel Sprite visível como imagem nítida no lugar do objecto; o que está em
-//! Edit leva o xadrez por baixo, a borda, a grelha de pixels (se ligada) e o cursor de célula.
+//! Draw leva o xadrez por baixo, a borda, a grelha de pixels (se ligada) e o cursor de célula.
 //!
 //! ⚠️ P0: desenha-se na cena de sobreposição do viewport (por cima dos sprites do mundo). Entrar na
 //! ordem de desenho do mundo (luz, camadas, câmera do jogo) é a P14 — «o sprite vive na cena».
@@ -59,7 +59,7 @@ pub fn half_extents(bits: u64, ppm: f32) -> Option<[f32; 2]> {
     })
 }
 
-/// Espessura das linhas do modo Edit, em píxeis de ECRÃ (saem com `Affine::IDENTITY`).
+/// Espessura das linhas do modo Draw, em píxeis de ECRÃ (saem com `Affine::IDENTITY`).
 const LINE_PX: f64 = 1.0; // LITERAL-PX-OK: chrome de sobreposição, espessura de ecrã
 /// Abaixo disto a grelha de pixels vira um borrão cinzento (uma linha por célula de 1–3 px).
 const GRID_MIN_PX_PER_CELL: f64 = 4.0; // LITERAL-PX-OK: legibilidade da grelha, em píxeis de ecrã

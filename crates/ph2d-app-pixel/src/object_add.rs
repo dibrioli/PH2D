@@ -1,6 +1,6 @@
 //! **Add ▸ Pixel Sprite** — a entrada abre o diálogo *New Sprite* (o *File ▸ New* do Aseprite:
 //! Width, Height, Color Mode, Background; por omissão 32 × 32, RGBA, transparente). O OK nasce o
-//! objecto com um documento novo e pede o modo Edit; Cancel não cria nada.
+//! objecto com um documento novo e pede o modo Draw; Cancel não cria nada.
 
 use ph2d_ecs::SimWorld;
 use ph2d_editor_core::object_add::{AddEntry, AddGroup};
@@ -68,7 +68,7 @@ pub fn add(
     Some(spawn(sim, app, NewSprite::default(), spawn_root))
 }
 
-/// Cria um objecto Pixel Sprite com o documento `spec` e pede o Edit para ele.
+/// Cria um objecto Pixel Sprite com o documento `spec` e pede o Draw para ele.
 pub fn spawn(
     sim: &mut SimWorld,
     app: &mut PixelApp,

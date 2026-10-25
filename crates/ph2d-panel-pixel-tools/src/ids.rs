@@ -10,10 +10,8 @@ use ph2d_tool_registry::{hash_node_id, hash_node_id_runtime};
 
 /// O `×` do cabeçalho.
 pub const PIXEL_CLOSE: NodeId = hash_node_id("pixel.close");
-/// A amostra da cor de FRENTE (só mostra; não tem hit-rect).
-pub const PIXEL_FG: NodeId = hash_node_id("pixel.fg");
-/// A amostra da cor de FUNDO (só mostra).
-pub const PIXEL_BG: NodeId = hash_node_id("pixel.bg");
+/// As amostras de frente e de fundo: o chrome conhece-as (a família lê o seletor por elas).
+pub use ph2d_editor_core::ids::{PIXEL_BG, PIXEL_FG};
 /// **Trocar** frente e fundo (o `X` do Aseprite).
 pub const PIXEL_SWAP: NodeId = hash_node_id("pixel.swap");
 

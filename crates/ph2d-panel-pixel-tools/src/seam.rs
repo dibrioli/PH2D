@@ -27,6 +27,10 @@ pub(crate) fn populate(store: &mut WidgetStore) {
         store.set_tooltip(id, dica);
     }
     store.set_tooltip(ids::PIXEL_SWAP, tr("panel.pixel.swap_tip"));
+    // As amostras da coluna abrem o seletor partilhado num Down — marcadas AQUI, porque a coluna as
+    // pinta com o painel fechado.
+    store.register_picker_swatch(ids::PIXEL_FG);
+    store.register_picker_swatch(ids::PIXEL_BG);
 }
 
 /// O registo POR QUADRO das células da paleta (os ids derivam do índice).

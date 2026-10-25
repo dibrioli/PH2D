@@ -20,12 +20,12 @@ pub struct View<'a> {
     pub toasts: &'a mut ToastQueue,
     pub window: WindowSize,
     pub ppm: f32,
-    /// O objecto em Pixel Sprite ▸ Edit, se há.
+    /// O objecto em Pixel Sprite ▸ Draw, se há.
     pub editing: Option<u64>,
 }
 
 impl<'a> View<'a> {
-    /// A vista lida do `hero` (régua do projecto, objecto em Edit) e da janela da CENA.
+    /// A vista lida do `hero` (régua do projecto, objecto em Draw) e da janela da CENA.
     #[must_use]
     pub fn of(
         world: &'a ph2d_ecs::World,
@@ -109,7 +109,8 @@ impl PixelApp {
         input::moved(self, &v.canvas(), p)
     }
 
-    /// A roda sobre o canvas (`on_canvas`) em Edit: zoom inteiro, com o aviso do degrau.
+    /// A roda sobre o canvas (`on_canvas`) em Draw: zoom inteiro, sem aviso (o degrau lê-se no
+    /// rodapé, [`crate::panel::publish_bars`]).
     pub fn wheel_event(
         &mut self,
         v: &mut View<'_>,
@@ -117,31 +118,18 @@ impl PixelApp {
         p: (f32, f32),
         on_canvas: bool,
     ) -> bool {
-        let dy = match delta {
-            MouseScrollDelta::LineDelta(_, y) => y,
-            MouseScrollDelta::PixelDelta(d) => d.y as f32,
+        let turn = match delta {
+            MouseScrollDelta::LineDelta(_, y) => input::Turn::Lines(y),
+            MouseScrollDelta::PixelDelta(d) => input::Turn::Pixels(d.y as f32),
         };
-        if dy == 0.0 || !on_canvas {
+        if matches!(turn, input::Turn::Lines(0.0) | input::Turn::Pixels(0.0)) || !on_canvas {
             return false;
         }
-        let notch = input::Notch {
-            at: p,
-            up: dy > 0.0,
-        };
-        let Some(level) = input::wheel(self, v.world, v.camera, v.window, v.ppm, v.editing, notch)
-        else {
-            return false;
-        };
-        let n = level.to_string();
-        v.toasts
-            .push(ph2d_editor_core::Toast::info(ph2d_i18n::tr_with(
-                "pixel.zoom",
-                &[("n", &n)],
-            )));
-        true
+        let notch = input::Notch { at: p, turn };
+        input::wheel(self, v.world, v.camera, v.window, v.ppm, v.editing, notch)
     }
 
-    /// As teclas do Edit (B, E, I, H, X, Espaço, Ctrl+Z…). A shell já descartou o campo de texto
+    /// As teclas do Draw (B, E, I, H, X, Espaço, Ctrl+Z…). A shell já descartou o campo de texto
     /// com o foco. `true` = consumida.
     pub fn keyboard(
         &mut self,
@@ -171,7 +159,7 @@ impl PixelApp {
 }
 
 impl PixelApp {
-    /// O [`PixelApp::frame`] com a régua e o Edit lidos do `hero`.
+    /// O [`PixelApp::frame`] com a régua e o Draw lidos do `hero`.
     pub fn frame_of(
         &mut self,
         sim: &mut ph2d_ecs::SimWorld,
@@ -185,7 +173,7 @@ impl PixelApp {
         self.frame(sim, camera, window, ppm, editing, spawn_root);
     }
 
-    /// O [`crate::draw::draw`] com a régua, o Edit e o tema lidos do `hero`.
+    /// O [`crate::draw::draw`] com a régua, o Draw e o tema lidos do `hero`.
     pub fn draw_of(
         &mut self,
         world: &ph2d_ecs::World,

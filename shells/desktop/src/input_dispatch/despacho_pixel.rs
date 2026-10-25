@@ -1,4 +1,4 @@
-//! **O Pixel Sprite ▸ Edit** (ADR-0192) — composição só: o ponteiro, a roda e o teclado chegam à
+//! **O Pixel Sprite ▸ Draw** (ADR-0192) — composição só: o ponteiro, a roda e o teclado chegam à
 //! `ph2d_app_pixel::compose`, que decide. `true` = consumido.
 
 use super::*;
@@ -14,7 +14,7 @@ impl crate::App {
         Some((&mut self.pixel, view))
     }
 
-    /// Premir/largar no canvas em Edit.
+    /// Premir/largar no canvas em Draw.
     pub(super) fn ramo_pixel(
         &mut self,
         kind: PointerKind,
@@ -50,7 +50,7 @@ impl crate::App {
         eaten
     }
 
-    /// As teclas do Edit, salvo com um campo de texto a escrever.
+    /// As teclas do Draw, salvo com um campo de texto a escrever.
     pub(crate) fn pixel_owns_the_keyboard(&mut self, key: PhysicalKey, s: ElementState) -> bool {
         if self.surface_owns_the_keyboard() {
             return false;

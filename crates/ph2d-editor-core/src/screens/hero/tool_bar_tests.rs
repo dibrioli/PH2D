@@ -251,3 +251,39 @@ fn nenhuma_face_de_pulldown_da_coluna_e_cortada() {
         acusados.join("\n  ")
     );
 }
+
+/// ⭐ **Report do dono 25/10** (Pixel Sprite em Draw sem Object · Draw no topo): a coluna de uma
+/// FAMÍLIA (a do Pixel, como a do pintor) guarda o seletor de modo na fila de cima; as barras de um
+/// MÓDULO (o vetor, F16) não — o controlo do mesmo gate.
+#[test]
+fn a_coluna_do_pixel_guarda_o_seletor_de_modo_na_fila() {
+    use crate::interaction::{AreaMenu, ToolBars};
+    let mut ts = ph2d_text::TextSystem::new();
+    let chip = crate::ids::area_menu_button(0);
+    let tem_chip = |bars: ToolBars, ts: &mut ph2d_text::TextSystem| {
+        let mut store = WidgetStore::default();
+        store.publish_mode_menu(Some(AreaMenu {
+            label: ph2d_i18n::tr("object_mode.menu").to_owned(),
+            face: ph2d_i18n::tr("object_mode.draw").to_owned(),
+            faces: Vec::new(),
+            rows: Vec::new(),
+        }));
+        store.set_tool_bars(Some(bars));
+        bar_rail(&store, ts, false, false)
+            .entries
+            .iter()
+            .any(|e| e.node_id() == Some(chip))
+    };
+    let pixel = ToolBars {
+        pixel_rail: true,
+        ..ToolBars::default()
+    };
+    assert!(
+        tem_chip(pixel, &mut ts),
+        "a coluna do Pixel escondeu o seletor"
+    );
+    assert!(
+        !tem_chip(ToolBars::default(), &mut ts),
+        "controlo: as barras de um módulo (F16) também o mostram"
+    );
+}

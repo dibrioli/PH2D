@@ -173,12 +173,14 @@ fn bar(stats: BottomHudStats) -> StatusBar {
 }
 
 /// ⑤ **O rodapé fala do módulo?** — a dica e as leituras, só no layout que o módulo É (o *Vetor*,
-/// D7) e só quando ele publicou uma dica; senão `None` e a pílula continua de motor.
+/// D7) ou com o Pixel Sprite em Draw (o zoom lê-se aqui, ADR-0192), e só quando ele publicou uma
+/// dica; senão `None` e a pílula continua de motor.
 #[must_use]
 pub fn module_hint(store: &crate::interaction::WidgetStore) -> Option<(String, Vec<String>)> {
-    (store.active_layout() == crate::screens::task_layout::TaskLayout::Vector)
-        .then(|| store.tool_bars())
-        .flatten()
+    let vector = store.active_layout() == crate::screens::task_layout::TaskLayout::Vector;
+    store
+        .tool_bars()
+        .filter(|b| vector || b.pixel_rail)
         .filter(|b| !b.hint.is_empty())
         .map(|b| (b.hint.clone(), b.readout.clone()))
 }

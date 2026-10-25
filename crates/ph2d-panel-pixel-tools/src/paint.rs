@@ -1,5 +1,6 @@
 //! O quadro do painel PIXEL — porta de visibilidade (+ limpeza do rect) · rect do encaixe · moldura
-//! · corpo dentro do recorte da rolagem (ferramentas, cores, paleta) · barra.
+//! · corpo dentro do recorte da rolagem (cores, paleta — as ferramentas moram na coluna da
+//! esquerda, [`crate::column`]) · barra.
 
 use crate::state::with_current;
 use crate::{PixelToolsPanel, PixelToolsPanelState, ids, seam};
@@ -13,7 +14,7 @@ use ph2d_editor_core::widget::panel_chrome::{
     paint_panel_surface, paint_panel_title,
 };
 use ph2d_editor_core::widget::{
-    Button, ButtonKind, ColorSwatch, PIXEL_SCROLLBAR_ID, SCROLLBAR_W, SwatchState, paint_button,
+    Button, ColorSwatch, PIXEL_SCROLLBAR_ID, SCROLLBAR_W, SwatchState, paint_button,
     paint_color_swatch,
 };
 use ph2d_editor_core::zones::Rect;
@@ -107,30 +108,8 @@ impl Corpo<'_> {
             return self.bloco(tr("panel.pixel.empty"), ColorToken::Text3, y);
         }
         let gap = ph2d_tokens::control_gap_px();
-        let y = self.ferramentas(info, y) + gap;
         let y = self.cores(info, y) + gap;
         self.paleta(info, y)
-    }
-
-    /// As quatro ferramentas, uma por linha à largura toda (a barra vertical do Aseprite: o nome
-    /// inteiro cabe em qualquer largura de coluna); a activa acentuada.
-    fn ferramentas(&mut self, info: &PixelPanelInfo, y: f32) -> f32 {
-        let mut y = y;
-        for (t, id) in ids::TOOLS {
-            let r = Rect::new(self.x, y, self.w, ROW_H_PX);
-            let kind = if t == info.tool {
-                ButtonKind::Accent
-            } else {
-                ButtonKind::Default
-            };
-            let b = Button::new(id, tr(t.label_key()))
-                .kind(kind)
-                .visual(self.store.button_visual(id));
-            paint_button(&b, r, self.scene, self.text_system, self.theme);
-            self.hit_index.register(id, r);
-            y += ROW_H_PX + ph2d_tokens::control_gap_px();
-        }
-        y
     }
 
     /// Frente e fundo (amostra + hex, uma linha cada) e o Trocar.

@@ -446,6 +446,7 @@ pub fn tool_bars(store: &WidgetStore, selection: Option<Rect>, readout: Vec<Stri
         stage_tint: (crate::state::aba() == crate::state::Aba::Interface)
             .then_some(ph2d_tokens::ColorToken::StageTintUi),
         painter_rail: false,
+        pixel_rail: false,
     }
 }
 

@@ -18,7 +18,7 @@ pub struct Doc {
     pub(crate) view: SpriteImage,
     /// Muda a cada mudança visível (documento ou traço em curso) — a chave da imagem.
     pub(crate) stamp: u64,
-    /// Ainda não foi aberto em Edit: a primeira entrada enquadra-o (o *Fit Screen*).
+    /// Ainda não foi aberto em Draw: a primeira entrada enquadra-o (o *Fit Screen*).
     pub(crate) fresh: bool,
 }
 
@@ -56,22 +56,29 @@ pub struct PixelApp {
     /// A grelha de pixels (View ▸ Show ▸ Pixel Grid; desligada por omissão, como no Aseprite).
     pub grid: bool,
     pub(crate) gesture: Option<Gesture>,
-    /// `Espaço` segurado em Edit (a mão temporária do Aseprite).
+    /// `Espaço` segurado em Draw (a mão temporária do Aseprite).
     pub(crate) space: bool,
     /// Um arrasto da mão em curso (a shell move a câmera; ao largar, as células realinham).
     pub(crate) panning: bool,
     pub(crate) hover: Option<(u64, (i32, i32))>,
     pub(crate) next_stamp: u64,
-    /// O objecto que nasceu e pede o modo Edit (uma vez).
+    /// O objecto que nasceu e pede o modo Draw (uma vez).
     pub(crate) wants_edit: Option<u64>,
-    /// O objecto em Edit no quadro anterior (para enquadrar à entrada).
+    /// O objecto em Draw no quadro anterior (para enquadrar à entrada).
     pub(crate) was_editing: Option<u64>,
     /// A cena de smoke armada por `PH2D_PIXEL_SMOKE`, encenada no primeiro quadro.
     pub(crate) smoke: Option<u32>,
     /// Os pedidos do painel PIXEL deste quadro, aplicados no [`crate::panel::frame`].
     pub(crate) pedidos: Vec<ph2d_editor_core::pixel_panel::PixelRequest>,
-    /// Havia sprite em Edit no quadro anterior (o painel abre/fecha no FLANCO).
+    /// Havia sprite em Draw no quadro anterior (o painel abre/fecha no FLANCO).
     pub(crate) painel_em_edicao: bool,
+    /// As cores que as amostras da coluna mostravam no fim do quadro anterior (frente, fundo): o
+    /// que o seletor partilhado escrever por cima delas é escolha do artista.
+    pub(crate) semeadas: [[u8; 4]; 2],
+    /// O degrau de zoom do sprite em Draw (píxeis de ecrã por célula), lido no quadro — o rodapé.
+    pub(crate) zoom: Option<u32>,
+    /// A roda ainda por virar degrau (o trackpad manda o gesto aos bocados).
+    pub(crate) roda: crate::input::Roda,
 }
 
 impl Default for PixelApp {
@@ -92,6 +99,9 @@ impl Default for PixelApp {
             smoke: None,
             pedidos: Vec::new(),
             painel_em_edicao: false,
+            semeadas: [[0; 4]; 2],
+            zoom: None,
+            roda: crate::input::Roda::default(),
         }
     }
 }
@@ -166,6 +176,19 @@ impl PixelApp {
             doc.stamp = stamp;
         }
         done
+    }
+
+    /// Há um Pixel Sprite em Draw neste quadro (o vetor larga a mão: as barras e o canvas são do
+    /// Pixel).
+    #[must_use]
+    pub fn drawing(&self) -> bool {
+        self.painel_em_edicao
+    }
+
+    /// O degrau de zoom do sprite em Draw, em píxeis de ecrã por célula.
+    #[must_use]
+    pub fn zoom(&self) -> Option<u32> {
+        self.zoom
     }
 
     /// Há um traço em curso.

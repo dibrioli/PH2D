@@ -90,8 +90,13 @@ pub fn publish(
     px_to_world: f64,
 ) {
     if !vector_active {
-        // Só as SUAS: a coluna do pintor é do chrome e ele a limpa (`painter_column::publish`).
-        if hero.store.tool_bars().is_some_and(|b| !b.painter_rail) {
+        // Só as SUAS: a coluna do pintor é do chrome e ele a limpa (`painter_column::publish`); a do
+        // Pixel, a família dela.
+        if hero
+            .store
+            .tool_bars()
+            .is_some_and(|b| !b.is_family_column())
+        {
             hero.store.set_tool_bars(None);
             hero.store.set_area_commands(Vec::new(), Vec::new());
         }
@@ -132,6 +137,16 @@ mod tests {
         assert!(
             hero.store.tool_bars().is_some(),
             "o vetor inactivo apagou a coluna do pintor"
+        );
+        // A coluna do Pixel Sprite ▸ Draw (ADR-0192) também é de família, não do vetor.
+        hero.store.set_tool_bars(Some(ToolBars {
+            pixel_rail: true,
+            ..ToolBars::default()
+        }));
+        super::publish(&mut hero, &scene, &pen, &xf, false, false, 1.0);
+        assert!(
+            hero.store.tool_bars().is_some_and(|b| b.pixel_rail),
+            "o vetor inactivo apagou a coluna do Pixel"
         );
         hero.store.set_tool_bars(Some(ToolBars::default()));
         super::publish(&mut hero, &scene, &pen, &xf, false, false, 1.0);

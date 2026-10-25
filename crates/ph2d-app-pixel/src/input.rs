@@ -1,4 +1,4 @@
-//! **A entrada do modo Edit**: ponteiro (lápis, borracha, conta-gotas), roda (zoom inteiro) e
+//! **A entrada do modo Draw**: ponteiro (lápis, borracha, conta-gotas), roda (zoom inteiro) e
 //! teclado (os atalhos do Aseprite). Cada função devolve `true` quando CONSUMIU o evento — a shell
 //! não o passa a mais ninguém.
 
@@ -20,14 +20,14 @@ pub struct Canvas<'a> {
     pub window: WindowSize,
     /// Píxeis por metro do projecto (a régua que põe uma célula no mundo).
     pub ppm: f32,
-    /// O objecto em Pixel Sprite ▸ Edit, se há.
+    /// O objecto em Pixel Sprite ▸ Draw, se há.
     pub editing: Option<u64>,
 }
 
 /// O que um premir fez.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Press {
-    /// Não é da família (fora de Edit).
+    /// Não é da família (fora de Draw).
     NotMine,
     /// Consumido: pintou, apagou ou leu uma cor.
     Done,
@@ -79,7 +79,7 @@ fn cell(app: &PixelApp, c: &Canvas<'_>, bits: u64, key: u32, p: (f32, f32)) -> O
     cell_at(m, (f64::from(p.0), f64::from(p.1)))
 }
 
-/// Premir no canvas. Em Edit, todo clique esquerdo/direito é do sprite (não selecciona outros
+/// Premir no canvas. Em Draw, todo clique esquerdo/direito é do sprite (não selecciona outros
 /// objectos): com o lápis pinta a cor de frente (esquerdo) ou de fundo (direito); a borracha apaga
 /// (direito: troca a cor de frente pela de fundo); o conta-gotas (ou `Alt`) lê a cor para a frente
 /// (esquerdo) ou o fundo (direito).
@@ -224,31 +224,99 @@ pub fn release(app: &mut PixelApp) -> bool {
     true
 }
 
-/// Um degrau da roda: onde está o cursor e para que lado.
+/// O que a roda mandou num evento (positivo = aproxima).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum Turn {
+    /// Linhas (a roda do rato): um degrau por linha inteira, como no Aseprite.
+    Lines(f32),
+    /// Píxeis (o trackpad manda o gesto aos bocados): um degrau quando os píxeis somados dão o
+    /// factor dele pela lei da roda do viewport ([`Camera2d::wheel_px_for`]) — o gesto aproxima à
+    /// MESMA velocidade que fora do Draw, em vez de um degrau por bocado.
+    Pixels(f32),
+}
+
+/// Um evento da roda: onde está o cursor e quanto virou.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Notch {
     /// O ponto de ecrã que fica parado.
     pub at: (f32, f32),
-    /// `true` = aproxima.
-    pub up: bool,
+    pub turn: Turn,
 }
 
-/// A roda sobre o canvas em Edit: o degrau seguinte da escada de zoom inteiro, à volta do cursor.
+/// A roda ainda por virar degrau. Trocar de sentido esquece o resto; o fim da escada também.
+#[derive(Debug, Default, Clone, Copy, PartialEq)]
+pub struct Roda {
+    linhas: f32,
+    px: f32,
+}
+
+impl Roda {
+    /// Soma `turn` e anda os degraus que ele completa a partir de `from` píxeis por célula: o
+    /// degrau final, ou `None` se nenhum se completou.
+    pub fn walk(&mut self, turn: Turn, from: f64) -> Option<u32> {
+        const EPS: f64 = 1e-6;
+        let mut at = from;
+        let mut level = None;
+        match turn {
+            Turn::Lines(y) => {
+                if y * self.linhas < 0.0 {
+                    self.linhas = 0.0;
+                }
+                self.linhas += y;
+                while self.linhas.abs() >= 1.0 {
+                    let next = zoom::step(at, self.linhas > 0.0);
+                    self.linhas -= self.linhas.signum();
+                    level = Some(next);
+                    at = f64::from(next);
+                }
+            }
+            Turn::Pixels(y) => {
+                if y * self.px < 0.0 {
+                    self.px = 0.0;
+                }
+                self.px += y;
+                loop {
+                    let next = zoom::step(at, self.px > 0.0);
+                    if (f64::from(next) - at).abs() < EPS {
+                        self.px = 0.0;
+                        break;
+                    }
+                    let need = Camera2d::wheel_px_for((at / f64::from(next)) as f32).abs();
+                    if need <= 0.0 || self.px.abs() < need {
+                        break;
+                    }
+                    self.px -= need.copysign(self.px);
+                    level = Some(next);
+                    at = f64::from(next);
+                }
+            }
+        }
+        level
+    }
+}
+
+/// A roda sobre o canvas em Draw: os degraus da escada de zoom inteiro que ela completa, à volta
+/// do cursor. `true` = consumida (mesmo sem degrau completo: o resto fica na [`Roda`]).
 pub fn wheel(
-    app: &PixelApp,
+    app: &mut PixelApp,
     world: &ph2d_ecs::World,
     camera: &mut Camera2d,
     window: WindowSize,
     ppm: f32,
     editing: Option<u64>,
     notch: Notch,
-) -> Option<u32> {
-    let bits = editing?;
-    let doc = app.docs.get(&key_of(world, bits)?)?;
-    let m = to_screen(world, bits, doc, camera, window, ppm)?;
-    let target = zoom::step(px_per_cell(m), notch.up);
-    set_zoom(world, bits, doc, camera, window, ppm, target, notch.at);
-    Some(target)
+) -> bool {
+    let Some(bits) = editing else { return false };
+    let Some(doc) = key_of(world, bits).and_then(|k| app.docs.get(&k)) else {
+        return false;
+    };
+    let Some(m) = to_screen(world, bits, doc, camera, window, ppm) else {
+        return false;
+    };
+    if let Some(target) = app.roda.walk(notch.turn, px_per_cell(m)) {
+        set_zoom(world, bits, doc, camera, window, ppm, target, notch.at);
+    }
+    true
 }
 
 /// Põe o zoom em `target` píxeis por célula, com o ponto de ecrã `anchor` parado, e alinha as
@@ -305,7 +373,7 @@ pub enum KeyAnswer {
     Toast(String),
 }
 
-/// `Espaço` segurado/solto em Edit — a mão temporária. `true` = consumido.
+/// `Espaço` segurado/solto em Draw — a mão temporária. `true` = consumido.
 pub fn space(
     app: &mut PixelApp,
     world: &ph2d_ecs::World,
@@ -320,7 +388,7 @@ pub fn space(
     true
 }
 
-/// As teclas do modo Edit (só ao premir; a shell já descartou o caso de um campo de texto com o
+/// As teclas do modo Draw (só ao premir; a shell já descartou o caso de um campo de texto com o
 /// foco). `None` = não é desta família.
 pub fn key(
     app: &mut PixelApp,

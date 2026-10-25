@@ -37,7 +37,7 @@ pub fn ordem(world: &World) -> (Vec<Entity>, BTreeSet<Entity>) {
     let mut deps: BTreeMap<u64, BTreeSet<u64>> = BTreeMap::new();
     for &e in com.values() {
         let mut de = BTreeSet::new();
-        let mut sobe = |mut x: Option<Entity>, de: &mut BTreeSet<u64>| {
+        let sobe = |mut x: Option<Entity>, de: &mut BTreeSet<u64>| {
             let mut guarda = 0;
             while let Some(a) = x {
                 if tem(a) {

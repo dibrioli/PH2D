@@ -1,6 +1,6 @@
 //! **O vocabulário de canais da pilha de CONSTRAINTS** ([`crate::canal::familia::CONSTRAINT`]) — o
-//! que se anima num item da pilha (plano `docs/BlenderConstraints/01_plano.md` §2.2): a força e o
-//! liga/desliga. Quem lê e escreve é `ph2d-app-constraints` (`canais.rs`).
+//! que se anima num item da pilha (plano `docs/BlenderConstraints/01_plano.md` §2.2): a força, o
+//! liga/desliga e os ajustes de cada tipo, nas unidades que o cartão mostra (graus, px, índice). Quem lê e escreve é `ph2d-app-constraints` (`canais.rs`).
 //!
 //! ⛔ **Os números são gravados no documento da timeline: só APPEND, nunca renumerar** (gate
 //! `o_vocabulario_das_constraints_nao_renumera`).
@@ -16,8 +16,42 @@ pub const FORCA: u16 = 1;
 /// `Item::enabled` (0/1).
 pub const LIGADA: u16 = 2;
 
-/// Os campos de um item, na ordem do cartão.
-pub const CAMPOS: [u16; 2] = [FORCA, LIGADA];
+/// Limit Rotation: o lado de baixo do arco, em graus.
+pub const LIMITE_MIN: u16 = 3;
+/// Limit Rotation: o lado de cima do arco, em graus.
+pub const LIMITE_MAX: u16 = 4;
+/// Limit Distance: a distância ao alvo, em px.
+pub const DISTANCIA: u16 = 5;
+/// Look At: o desvio do eixo, em graus.
+pub const DESVIO: u16 = 6;
+/// Limit Distance: Inside · Outside · Surface ([`MODOS`]).
+pub const MODO: u16 = 7;
+/// Copy e Limit: World · Local ([`ESPACOS`]).
+pub const ESPACO: u16 = 8;
+/// Copy: Replace · Add ([`MISTURAS`]).
+pub const MISTURA: u16 = 9;
+
+/// As palavras de [`MODO`], pelo índice.
+pub const MODOS: &[&str] = &[
+    "panel.inspector.constraint.mode.inside",
+    "panel.inspector.constraint.mode.outside",
+    "panel.inspector.constraint.mode.surface",
+];
+/// As palavras de [`ESPACO`], pelo índice.
+pub const ESPACOS: &[&str] = &[
+    "panel.inspector.constraint.space.world",
+    "panel.inspector.constraint.space.local",
+];
+/// As palavras de [`MISTURA`], pelo índice.
+pub const MISTURAS: &[&str] = &[
+    "panel.inspector.constraint.mix.replace",
+    "panel.inspector.constraint.mix.add",
+];
+
+/// Os campos de um item, na ordem do cartão (o tipo diz quais tem).
+pub const CAMPOS: [u16; 9] = [
+    FORCA, LIGADA, LIMITE_MIN, LIMITE_MAX, DISTANCIA, DESVIO, MODO, ESPACO, MISTURA,
+];
 
 /// A chave do campo `campo` do item `item`.
 #[must_use]
@@ -47,6 +81,13 @@ pub fn info(campo: u16) -> Option<CampoInfo> {
     Some(match campo {
         FORCA => c("canal.constraint.forca", campo, Especie::Continuo),
         LIGADA => c("canal.constraint.ligada", campo, Especie::Ligado),
+        LIMITE_MIN => c("canal.constraint.limite_min", campo, Especie::Continuo),
+        LIMITE_MAX => c("canal.constraint.limite_max", campo, Especie::Continuo),
+        DISTANCIA => c("canal.constraint.distancia", campo, Especie::Continuo),
+        DESVIO => c("canal.constraint.desvio", campo, Especie::Continuo),
+        MODO => c("canal.constraint.modo", campo, Especie::Opcoes(MODOS)),
+        ESPACO => c("canal.constraint.espaco", campo, Especie::Opcoes(ESPACOS)),
+        MISTURA => c("canal.constraint.mistura", campo, Especie::Opcoes(MISTURAS)),
         _ => return None,
     })
 }

@@ -343,6 +343,13 @@ const POR_FUNCAO: &[(&str, &str, Classe, &[&str], &str)] = &[
     ),
     (
         "ph2d-panel-inspector",
+        "sections/constraint.rs::ajustes",
+        Canal,
+        &["INSP_CONSTRAINT_NUMERO", "INSP_CONSTRAINT_OPCAO"],
+        "o ajuste j da linha k: o campo do canal vem do tipo do item (`ph2d_app_constraints::campos`), a mesma tabela que o `marcas` lê",
+    ),
+    (
+        "ph2d-panel-inspector",
         "sections/ordering.rs::layer_row",
         Canal,
         &["component.field.sorting_layer.1"],

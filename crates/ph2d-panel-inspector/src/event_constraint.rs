@@ -20,6 +20,32 @@ fn item(
     info.rows.get(k).map(|r| r.id)
 }
 
+/// O `(Item::id, campo)` do número `id`: a linha pela coluna da tabela, o campo pelo ajuste `j` dela.
+fn numero(info: &InspectorConstraintsInfo, id: ph2d_a11y::NodeId) -> Option<(u32, u16)> {
+    ids::INSP_CONSTRAINT_NUMERO
+        .iter()
+        .enumerate()
+        .find_map(|(j, tabela)| {
+            let row = info.rows.get(tabela.iter().position(|&o| o == id)?)?;
+            Some((row.id, row.numeros.get(j)?.campo))
+        })
+}
+
+/// A edição da opção `id`: a escolha `j`, a opção `o`, a linha `k`.
+fn opcao(info: &InspectorConstraintsInfo, id: ph2d_a11y::NodeId) -> Option<E> {
+    ids::INSP_CONSTRAINT_OPCAO
+        .iter()
+        .enumerate()
+        .find_map(|(j, opcoes)| {
+            opcoes.iter().enumerate().find_map(|(o, tabela)| {
+                let row = info.rows.get(tabela.iter().position(|&n| n == id)?)?;
+                let e = row.escolhas.get(j).filter(|e| o < e.opcoes.len())?;
+                #[expect(clippy::cast_precision_loss, reason = "um índice pequeno")]
+                Some(E::Campo(row.id, e.campo, o as f32))
+            })
+        })
+}
+
 /// Despacha um evento do cartão **CONSTRAINTS**. `true` = consumido.
 pub(crate) fn apply_constraint_event(
     panel: &mut InspectorState,
@@ -47,6 +73,10 @@ pub(crate) fn apply_constraint_event(
                 E::Apagar(r)
             } else if let Some(r) = item(&info, &ids::INSP_CONSTRAINT_ALVO, id) {
                 E::EscolherAlvo(r)
+            } else if let Some(r) = item(&info, &ids::INSP_CONSTRAINT_ZERAR, id) {
+                E::ZerarDesvio(r)
+            } else if let Some(e) = opcao(&info, id) {
+                e
             } else {
                 return false;
             }
@@ -62,11 +92,16 @@ pub(crate) fn apply_constraint_event(
             E::Ligada(row.id, !row.ligada)
         }
         WidgetEvent::ValueChanged(id) => {
-            let Some(r) = item(&info, &ids::INSP_CONSTRAINT_FORCA, id) else {
+            if let Some(r) = item(&info, &ids::INSP_CONSTRAINT_FORCA, id) {
+                let v = host.store().slider(id).map_or(0.0, |(_, v)| v);
+                E::Forca(r, v.clamp(0.0, 1.0))
+            } else if let Some((r, campo)) = numero(&info, id) {
+                #[expect(clippy::cast_possible_truncation, reason = "o campo é f32")]
+                let v = host.store().number_value(id).unwrap_or(0.0) as f32;
+                E::Campo(r, campo, v)
+            } else {
                 return false;
-            };
-            let v = host.store().slider(id).map_or(0.0, |(_, v)| v);
-            E::Forca(r, v.clamp(0.0, 1.0))
+            }
         }
         _ => return false,
     };

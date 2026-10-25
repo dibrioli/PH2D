@@ -21,6 +21,39 @@ pub const TIPOS: [&str; 8] = [
 /// o **+** recusa com a frase `panel.inspector.constraint.full`.
 pub const MAX_LINHAS: usize = 32;
 
+/// Quantos números, escolhas e opções por escolha um item mostra debaixo da força — o tamanho das
+/// tabelas de ids do painel; o tipo mais largo (Limit Rotation: Min, Max e o espaço) cabe.
+pub const MAX_NUMEROS: usize = 2;
+pub const MAX_ESCOLHAS: usize = 2;
+pub const MAX_OPCOES: usize = 3;
+
+/// A unidade em que um número do cartão se lê, se escreve e se anima.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Unidade {
+    Graus,
+    Px,
+}
+
+/// Um número de um tipo (Min, Max, Distance, Offset). `campo` = o canal dele
+/// (`ph2d_ecs::canal_constraint`) — é por ele que a edição chega ao item e o losango acha a curva.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct AjusteNumero {
+    pub campo: u16,
+    /// A chave `ph2d-i18n` do nome.
+    pub rotulo: &'static str,
+    pub valor: f32,
+    pub unidade: Unidade,
+}
+
+/// Uma escolha de um tipo (Mode, Space, Mix): `opcoes` são as chaves `ph2d-i18n`, `valor` o índice.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct AjusteEscolha {
+    pub campo: u16,
+    pub rotulo: &'static str,
+    pub opcoes: &'static [&'static str],
+    pub valor: u8,
+}
+
 /// O que um item faz neste quadro — o espelho, sem ECS, do `ph2d_constraints_ecs::Estado`.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum EstadoDaConstraint {
@@ -76,6 +109,12 @@ pub struct InspectorConstraintRow {
     pub estado: EstadoDaConstraint,
     /// O próximo clique no palco escolhe o alvo deste item.
     pub escolhendo: bool,
+    /// Os números do tipo, por esta ordem (no máximo [`MAX_NUMEROS`]).
+    pub numeros: Vec<AjusteNumero>,
+    /// As escolhas do tipo (no máximo [`MAX_ESCOLHAS`], cada uma com até [`MAX_OPCOES`]).
+    pub escolhas: Vec<AjusteEscolha>,
+    /// O tipo tem desvio que se pode zerar (o botão «Reset Offset»).
+    pub zera_desvio: bool,
 }
 
 /// O snapshot do cartão para a entidade escolhida (`None` = ela não tem pilha: o cartão não aparece).
@@ -98,4 +137,9 @@ pub enum ConstraintFieldEdit {
     Mover(u32, i8),
     /// Arma o clique no palco que escolhe o alvo (outro clique no mesmo botão desarma).
     EscolherAlvo(u32),
+    /// Um ajuste do tipo: `(item, campo, valor)` — o número na unidade do cartão, ou o índice da
+    /// opção. `campo` é o de [`AjusteNumero::campo`]/[`AjusteEscolha::campo`].
+    Campo(u32, u16, f32),
+    /// Zera o desvio: o dono cola-se ao alvo.
+    ZerarDesvio(u32),
 }

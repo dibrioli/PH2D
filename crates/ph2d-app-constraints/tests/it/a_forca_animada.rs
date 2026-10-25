@@ -46,7 +46,11 @@ fn the_curve_drives_the_influence_and_a_save_keeps_the_authored_one() {
     let c = sim.world().get::<Constraints>(e).unwrap().clone();
     assert_eq!(c.item(segundo).unwrap().influence, 0.25);
     assert!(!c.item(primeiro).unwrap().enabled);
-    assert_eq!(c.item(primeiro).unwrap().influence, 1.0, "a curva de um item não toca no outro");
+    assert_eq!(
+        c.item(primeiro).unwrap().influence,
+        1.0,
+        "a curva de um item não toca no outro"
+    );
 
     // O Auto Key lê o valor da curva: nada a gravar.
     canais::publicar(&mut sim, &[b]);
@@ -60,7 +64,15 @@ fn the_curve_drives_the_influence_and_a_save_keeps_the_authored_one() {
     assert_eq!(gravado.item(segundo).unwrap().influence, 1.0);
     assert!(gravado.item(primeiro).unwrap().enabled);
     FieldDrive::restore(&mut sim, &vivo);
-    assert_eq!(sim.world().get::<Constraints>(e).unwrap().item(segundo).unwrap().influence, 0.25);
+    assert_eq!(
+        sim.world()
+            .get::<Constraints>(e)
+            .unwrap()
+            .item(segundo)
+            .unwrap()
+            .influence,
+        0.25
+    );
 }
 
 /// A meia força conduzida pela curva move a meio caminho, e a pilha avalia o que a curva deixou no
@@ -74,4 +86,53 @@ fn the_stack_reads_the_curve_in_the_same_frame() {
     escrever(&mut sim, b, chave(FORCA, segundo), 0.5);
     ph2d_app_constraints::quadro(&mut sim, &mut drive);
     assert_eq!(sim.world().get::<Transform>(e).unwrap().translation.x, 5.0);
+}
+
+/// ⭐ A curva de um AJUSTE (o Max do Limit Rotation, em graus) apara a pose no mesmo quadro, o Auto
+/// Key lê-o, e gravar a meio do play grava o autorado.
+#[test]
+fn a_curve_drives_a_setting_and_a_save_keeps_the_authored_one() {
+    use ph2d_constraints::Limit;
+    use ph2d_ecs::canal_constraint::LIMITE_MAX;
+    let mut sim = SimWorld::new();
+    let mut c = Constraints::default();
+    let id = c.push(
+        Kind::Limit(Limit {
+            rot: Some([-1.0, 1.0]),
+            ..Limit::default()
+        }),
+        None,
+    );
+    let mut t = Transform::IDENTITY;
+    t.rotation = 0.9;
+    let e = sim.world_mut().spawn((StableId(3), t, c)).id();
+    let b = e.to_bits();
+    let mut drive = PreviewDrive::default();
+    escrever(&mut sim, b, chave(LIMITE_MAX, id), 30.0);
+    ph2d_app_constraints::quadro(&mut sim, &mut drive);
+    let rot = sim.world().get::<Transform>(e).unwrap().rotation;
+    assert!(
+        (f64::from(rot) - 30f64.to_radians()).abs() < 1e-6,
+        "a curva não aparou: {rot}"
+    );
+    canais::publicar(&mut sim, &[b]);
+    let lido = sim
+        .world()
+        .resource::<CanaisLidos>()
+        .valor(b, chave(LIMITE_MAX, id))
+        .unwrap();
+    assert!((lido - 30.0).abs() < 1e-4, "o Auto Key leu {lido}");
+    let vivo = drive.fields.substitute(&mut sim);
+    let Kind::Limit(l) = sim
+        .world()
+        .get::<Constraints>(e)
+        .unwrap()
+        .item(id)
+        .unwrap()
+        .kind
+    else {
+        panic!()
+    };
+    assert_eq!(l.rot, Some([-1.0, 1.0]), "gravou a curva");
+    FieldDrive::restore(&mut sim, &vivo);
 }

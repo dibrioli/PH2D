@@ -49,7 +49,11 @@ fn novo(sim: &SimWorld, e: Entity, i: u8) -> Option<Kind> {
         4 => copia(Canais::ALL),
         5 => Kind::LookAt(LookAt::default()),
         6 => {
-            let r = f64::from(world_transform(sim.world(), e).unwrap_or(Transform::IDENTITY).rotation);
+            let r = f64::from(
+                world_transform(sim.world(), e)
+                    .unwrap_or(Transform::IDENTITY)
+                    .rotation,
+            );
             let q = std::f64::consts::FRAC_PI_4;
             Kind::Limit(Limit {
                 rot: Some([r - q, r + q]),
@@ -76,7 +80,11 @@ fn estado(e: Estado) -> EstadoDaConstraint {
 
 /// ⭐ O snapshot do cartão. `None` = a entidade não tem pilha (o cartão não aparece).
 #[must_use]
-pub fn info(sim: &SimWorld, entity_bits: u64, selected_count: usize) -> Option<InspectorConstraintsInfo> {
+pub fn info(
+    sim: &SimWorld,
+    entity_bits: u64,
+    selected_count: usize,
+) -> Option<InspectorConstraintsInfo> {
     let w = sim.world();
     let e = Entity::try_from_bits(entity_bits)?;
     let c = w.get::<Constraints>(e)?;
@@ -87,6 +95,7 @@ pub fn info(sim: &SimWorld, entity_bits: u64, selected_count: usize) -> Option<I
         .iter()
         .map(|it| {
             let alvo = it.target.and_then(|s| entity_with_stable_id(w, s));
+            let (numeros, escolhas) = crate::campos::ajustes(&it.kind);
             #[expect(clippy::cast_possible_truncation, reason = "a força é 0..=1")]
             InspectorConstraintRow {
                 id: it.id,
@@ -99,6 +108,9 @@ pub fn info(sim: &SimWorld, entity_bits: u64, selected_count: usize) -> Option<I
                     .and_then(|s| s.of(e, it.id))
                     .map_or(EstadoDaConstraint::Activa, estado),
                 escolhendo: armado == Some((entity_bits, it.id)),
+                numeros,
+                escolhas,
+                zera_desvio: crate::campos::zera_desvio(&it.kind),
             }
         })
         .collect();
@@ -161,6 +173,14 @@ fn aplicar(sim: &mut SimWorld, e: Entity, edit: E) -> bool {
             return liga(sim, e, id, |it| it.influence = v);
         }
         E::Ligada(id, on) => return liga(sim, e, id, |it| it.enabled = on),
+        E::Campo(id, campo, v) => {
+            return muda(sim, e, id, |it| {
+                crate::campos::escrever(&mut it.kind, campo, v)
+            });
+        }
+        E::ZerarDesvio(id) => {
+            return muda(sim, e, id, |it| crate::campos::zerar_desvio(&mut it.kind));
+        }
         _ => {}
     }
     let Some(mut c) = sim.world_mut().get_mut::<Constraints>(e) else {
@@ -180,16 +200,43 @@ fn aplicar(sim: &mut SimWorld, e: Entity, edit: E) -> bool {
             }
             c.move_to(id, para);
         }
-        E::Forca(..) | E::Ligada(..) | E::EscolherAlvo(_) | E::Adicionar(_) => return false,
+        E::Forca(..)
+        | E::Ligada(..)
+        | E::EscolherAlvo(_)
+        | E::Adicionar(_)
+        | E::Campo(..)
+        | E::ZerarDesvio(_) => return false,
     }
     true
+}
+
+fn muda(
+    sim: &mut SimWorld,
+    e: Entity,
+    id: u32,
+    f: impl FnOnce(&mut ph2d_constraints_ecs::Item) -> bool,
+) -> bool {
+    sim.world_mut()
+        .get_mut::<Constraints>(e)
+        .and_then(|mut c| c.item_mut(id).map(f))
+        .unwrap_or(false)
 }
 
 /// Muda a força ou o liga/desliga de um item SEM SALTO no gesto de pegar e largar: ao passar de
 /// inerte a activo, o tipo que guarda a pose (Child Of, Limit Distance) re-acerta o desvio contra a
 /// pose que se vê; ao largar um Child Of, a pose que se vê passa a ser a autorada ([`Adotar`]).
-fn liga(sim: &mut SimWorld, e: Entity, id: u32, muda: impl FnOnce(&mut ph2d_constraints_ecs::Item)) -> bool {
-    let Some(antes) = sim.world().get::<Constraints>(e).and_then(|c| c.item(id)).copied() else {
+fn liga(
+    sim: &mut SimWorld,
+    e: Entity,
+    id: u32,
+    muda: impl FnOnce(&mut ph2d_constraints_ecs::Item),
+) -> bool {
+    let Some(antes) = sim
+        .world()
+        .get::<Constraints>(e)
+        .and_then(|c| c.item(id))
+        .copied()
+    else {
         return false;
     };
     let mut depois = antes;
@@ -199,7 +246,9 @@ fn liga(sim: &mut SimWorld, e: Entity, id: u32, muda: impl FnOnce(&mut ph2d_cons
     }
     let activo = |i: &ph2d_constraints_ecs::Item| i.enabled && i.influence > 0.0;
     if !activo(&antes) && activo(&depois) {
-        let alvo = antes.target.and_then(|s| entity_with_stable_id(sim.world(), s));
+        let alvo = antes
+            .target
+            .and_then(|s| entity_with_stable_id(sim.world(), s));
         let _ = bind_on_create(sim, &PreviewDrive::default(), e, &mut depois.kind, alvo);
     }
     if activo(&antes) && !activo(&depois) && matches!(antes.kind, Kind::ChildOf(_)) {
@@ -232,7 +281,9 @@ pub enum Escolha {
 /// `true` se o próximo clique no palco é deste cartão.
 #[must_use]
 pub fn armado(sim: &SimWorld) -> bool {
-    sim.world().get_resource::<AlvoArmado>().is_some_and(|a| a.0.is_some())
+    sim.world()
+        .get_resource::<AlvoArmado>()
+        .is_some_and(|a| a.0.is_some())
 }
 
 /// ⭐ **O clique que escolhe o alvo.** `debaixo` = as entidades sob o cursor, a de cima primeiro (o

@@ -148,6 +148,8 @@ pub fn installed_registry() -> Option<&'static registry::Registry> {
 
 /// ⭐⭐⭐ **O vocabulário da CUTSCENE** (TOP-20 #19) — o que o painel mostra de um `SequencePlayer`.
 pub mod action_trigger_edits;
+/// O vocabulário do cartão CONSTRAINTS — ver o cabeçalho dele.
+pub mod constraint_edits;
 pub mod counter_watch_edits;
 /// ⭐⭐⭐ **O vocabulário das TAGS** — os dois gestos, num módulo abaixo do `action_bus` e do
 /// `screens`. Ver o cabeçalho dele: é o primeiro degrau da cura que a catraca do DAG prescreve.
@@ -159,8 +161,6 @@ pub mod hud_edits;
 /// ⭐ O vocabulário do USO DA IMAGEM (GEF 13–16) — abaixo do `action_bus` (catraca do DAG).
 pub mod image_use_edits;
 pub use image_use_edits::{ImageUseEdit, InspectorImageUse};
-/// O vocabulário do cartão CONSTRAINTS — ver o cabeçalho dele.
-pub mod constraint_edits;
 /// ⭐ **O vocabulário da secção LUZ** (Luz 2D, W4) — ver o cabeçalho dele.
 pub mod luz_edits;
 /// O vocabulário da secção MACRO e do painel MACROS (ADR-0186).

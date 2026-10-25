@@ -3,6 +3,7 @@
 //! [`docs/BlenderConstraints/01_plano.md`](https://github.com/dibrioli/PH2D/blob/main/docs/BlenderConstraints/01_plano.md)
 //! §2.1). A shell chama [`quadro`] uma vez por quadro, entre o apply da timeline e o esqueleto.
 
+pub mod campos;
 pub mod canais;
 pub mod inspector;
 pub mod marcas;

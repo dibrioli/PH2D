@@ -5,7 +5,9 @@
 use std::collections::BTreeMap;
 
 use bevy_ecs::entity::Entity;
-use ph2d_constraints_ecs::Constraints;
+use ph2d_constraints_ecs::{Constraints, Item};
+
+use crate::campos;
 use ph2d_ecs::canal_constraint::{FORCA, LIGADA, chave};
 use ph2d_ecs::{FieldKey, SimWorld};
 use ph2d_editor_core::NodeId;
@@ -13,12 +15,28 @@ use ph2d_editor_core::widget::key_mark::KeyMark;
 use ph2d_panel_inspector::ids as insp;
 use ph2d_timeline::{Forca, Instante, PropKind, TimelineDoc, TimelineIntent};
 
-/// Os controlos de uma linha e o campo que cada um mostra.
-fn controlos(k: usize) -> [(u16, Option<&'static NodeId>); 2] {
-    [
+/// Os controlos da linha `k` (o item `it`) e o campo que cada um mostra — os ajustes pela ordem
+/// que [`crate::campos`] dá ao cartão.
+fn controlos(k: usize, it: &Item) -> Vec<(u16, NodeId)> {
+    let mut out = vec![
         (FORCA, insp::INSP_CONSTRAINT_FORCA.get(k)),
         (LIGADA, insp::INSP_CONSTRAINT_LIGADA.get(k)),
-    ]
+    ];
+    for (&campo, tabela) in campos::numeros(&it.kind)
+        .iter()
+        .zip(&insp::INSP_CONSTRAINT_NUMERO)
+    {
+        out.push((campo, tabela.get(k)));
+    }
+    for (&campo, opcoes) in campos::escolhas(&it.kind)
+        .iter()
+        .zip(&insp::INSP_CONSTRAINT_OPCAO)
+    {
+        out.extend(opcoes.iter().map(|t| (campo, t.get(k))));
+    }
+    out.into_iter()
+        .filter_map(|(c, n)| Some((c, *n?)))
+        .collect()
 }
 
 fn marca(m: Forca) -> KeyMark {
@@ -35,16 +53,19 @@ fn dono<'a>(sim: &'a SimWorld, sel: &[u64]) -> Option<(u64, &'a Constraints)> {
     let [b] = sel else {
         return None;
     };
-    Some((*b, sim.world().get::<Constraints>(Entity::try_from_bits(*b)?)?))
+    Some((
+        *b,
+        sim.world().get::<Constraints>(Entity::try_from_bits(*b)?)?,
+    ))
 }
 
 /// O canal que o controlo `id` mostra.
 #[must_use]
 pub fn canal_do_campo(c: &Constraints, id: NodeId) -> Option<FieldKey> {
     c.items.iter().enumerate().find_map(|(k, it)| {
-        controlos(k)
+        controlos(k, it)
             .into_iter()
-            .find(|(_, n)| n.is_some_and(|&n| n == id))
+            .find(|&(_, n)| n == id)
             .map(|(campo, _)| chave(campo, it.id))
     })
 }
@@ -64,11 +85,9 @@ pub fn marcas(
     };
     let lig = ph2d_timeline::Ligacoes::de(doc, &[e], inst);
     for (k, it) in c.items.iter().enumerate() {
-        for (campo, n) in controlos(k) {
-            if let Some(&n) = n {
-                let reps = [PropKind::Field(chave(campo, it.id))];
-                out.insert(n, marca(lig.estado(&reps, &valor).0));
-            }
+        for (campo, n) in controlos(k, it) {
+            let reps = [PropKind::Field(chave(campo, it.id))];
+            out.insert(n, marca(lig.estado(&reps, &valor).0));
         }
     }
     out
@@ -93,5 +112,13 @@ pub fn clique(
     let Some(kk) = campos.iter().find_map(|&n| canal_do_campo(c, n)) else {
         return Vec::new();
     };
-    ph2d_timeline::clique_no_grupo(doc, &[PropKind::Field(kk)], &[e], inst, lidos, valor, autorar)
+    ph2d_timeline::clique_no_grupo(
+        doc,
+        &[PropKind::Field(kk)],
+        &[e],
+        inst,
+        lidos,
+        valor,
+        autorar,
+    )
 }

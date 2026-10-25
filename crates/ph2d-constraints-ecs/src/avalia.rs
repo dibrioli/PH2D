@@ -133,7 +133,11 @@ fn contexto(
 /// ⭐ **A FASE.** Uma vez por quadro, depois da física e antes do esqueleto. Devolve quantas entidades
 /// a pilha moveu.
 pub fn evaluate(sim: &mut SimWorld, preview: &mut PreviewDrive) -> usize {
-    let adotar = sim.world_mut().remove_resource::<Adotar>().unwrap_or_default().0;
+    let adotar = sim
+        .world_mut()
+        .remove_resource::<Adotar>()
+        .unwrap_or_default()
+        .0;
     let (ordem, ciclo) = ordem(sim.world());
     let mut estados = BTreeMap::new();
     let ja = preview.driven_by(Driver::ConstraintPose);

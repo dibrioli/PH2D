@@ -8,7 +8,10 @@ use ph2d_preview_drive::PreviewDrive;
 
 fn cena(n: u32) -> (SimWorld, PreviewDrive) {
     let mut sim = SimWorld::new();
-    assert!(smoke::encenar(sim.world_mut(), n), "a cena {n} não respondeu");
+    assert!(
+        smoke::encenar(sim.world_mut(), n),
+        "a cena {n} não respondeu"
+    );
     let mut drive = PreviewDrive::default();
     evaluate(&mut sim, &mut drive);
     drive.settle();
@@ -33,7 +36,10 @@ fn every_level_up_to_the_router_ceiling_answers() {
     let teto = ROUTERS[0].max_level;
     for n in 1..=teto {
         let mut sim = SimWorld::new();
-        assert!(smoke::encenar(sim.world_mut(), n), "a cena {n} está abaixo do tecto e é muda");
+        assert!(
+            smoke::encenar(sim.world_mut(), n),
+            "a cena {n} está abaixo do tecto e é muda"
+        );
     }
     assert!(!smoke::encenar(SimWorld::new().world_mut(), teto + 1));
 }
@@ -59,19 +65,37 @@ fn the_pupil_never_leaves_the_eye_and_the_arrow_aims_at_the_ball() {
         }
         evaluate(&mut sim, &mut drive);
         drive.settle();
-        let (o, p, b, s) = (mundo(&sim, olho), mundo(&sim, pupila), mundo(&sim, bola), mundo(&sim, seta));
+        let (o, p, b, s) = (
+            mundo(&sim, olho),
+            mundo(&sim, pupila),
+            mundo(&sim, bola),
+            mundo(&sim, seta),
+        );
         let d = f64::from(p.translation.x - o.translation.x)
             .hypot(f64::from(p.translation.y - o.translation.y));
         maior = maior.max(d);
         if r < FOLGA_DA_PUPILA {
-            assert!((p.translation - b.translation).length() < 1e-5, "dentro da folga a pupila É a bola");
+            assert!(
+                (p.translation - b.translation).length() < 1e-5,
+                "dentro da folga a pupila É a bola"
+            );
         }
-        let alvo = f64::from(b.translation.y - s.translation.y).atan2(f64::from(b.translation.x - s.translation.x));
+        let alvo = f64::from(b.translation.y - s.translation.y)
+            .atan2(f64::from(b.translation.x - s.translation.x));
         let erro = ph2d_constraints::wrap_pi(f64::from(s.rotation) - alvo).abs();
-        assert!(erro < 1e-5, "a seta erra a bola por {erro} rad no passo {k}");
+        assert!(
+            erro < 1e-5,
+            "a seta erra a bola por {erro} rad no passo {k}"
+        );
     }
-    assert!(maior <= FOLGA_DA_PUPILA + 1e-5, "a pupila saiu do olho: {maior}");
-    assert!(maior >= FOLGA_DA_PUPILA - 1e-5, "a pupila nunca chegou à borda: {maior}");
+    assert!(
+        maior <= FOLGA_DA_PUPILA + 1e-5,
+        "a pupila saiu do olho: {maior}"
+    );
+    assert!(
+        maior >= FOLGA_DA_PUPILA - 1e-5,
+        "a pupila nunca chegou à borda: {maior}"
+    );
 }
 
 /// Cena 3: os dois ponteiros autorados a 170°.
@@ -81,6 +105,14 @@ fn the_limited_pointer_stops_at_45_and_the_half_copy_lands_at_180() {
     let limitado = chamada(&mut sim, "Ponteiro com limite");
     let meio = chamada(&mut sim, "Ponteiro a meio");
     let graus = |e| f64::from(mundo(&sim, e).rotation).to_degrees();
-    assert!((graus(limitado) - 45.0).abs() < 1e-4, "limite: {}", graus(limitado));
-    assert!((graus(meio).abs() - 180.0).abs() < 1e-4, "meia cópia: {}", graus(meio));
+    assert!(
+        (graus(limitado) - 45.0).abs() < 1e-4,
+        "limite: {}",
+        graus(limitado)
+    );
+    assert!(
+        (graus(meio).abs() - 180.0).abs() < 1e-4,
+        "meia cópia: {}",
+        graus(meio)
+    );
 }

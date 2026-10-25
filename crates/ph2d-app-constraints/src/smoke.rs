@@ -7,9 +7,7 @@
 
 use bevy_ecs::entity::Entity;
 use bevy_ecs::world::World;
-use ph2d_constraints::{
-    Canais, CopyTransform, Distance, DistanceMode, Kind, Limit, LookAt, Space,
-};
+use ph2d_constraints::{Canais, CopyTransform, Distance, DistanceMode, Kind, Limit, LookAt, Space};
 use ph2d_constraints_ecs::Constraints;
 use ph2d_ecs::{GlobalTransform, Name, Transform, assign_missing_stable_ids, stable_id_of};
 use ph2d_render::{DISC_TILE_KEY, Sprite, WHITE_TILE_KEY};
@@ -81,10 +79,42 @@ fn pilha(world: &mut World, dono: Entity, itens: &[(Kind, Option<Entity>, f64)])
 /// Cena 2 — **Olho.**
 fn olho(world: &mut World) {
     let d = 2.0 * RAIO_DO_OLHO;
-    let olho = peca(world, "Olho", DISC_TILE_KEY, [0.0, 0.0], 0.0, [d, d], [0.95, 0.95, 0.92, 1.0]);
-    let bola = peca(world, "Bola", DISC_TILE_KEY, [3.0, 1.2], 0.0, [0.5, 0.5], [0.9, 0.15, 0.1, 1.0]);
-    let pupila = peca(world, "Pupila", DISC_TILE_KEY, [0.0, 0.0], 0.0, [0.7, 0.7], [0.08, 0.08, 0.1, 1.0]);
-    let seta = peca(world, "Seta", WHITE_TILE_KEY, [-3.0, -1.5], 0.0, [1.4, 0.18], [0.2, 0.45, 0.9, 1.0]);
+    let olho = peca(
+        world,
+        "Olho",
+        DISC_TILE_KEY,
+        [0.0, 0.0],
+        0.0,
+        [d, d],
+        [0.95, 0.95, 0.92, 1.0],
+    );
+    let bola = peca(
+        world,
+        "Bola",
+        DISC_TILE_KEY,
+        [3.0, 1.2],
+        0.0,
+        [0.5, 0.5],
+        [0.9, 0.15, 0.1, 1.0],
+    );
+    let pupila = peca(
+        world,
+        "Pupila",
+        DISC_TILE_KEY,
+        [0.0, 0.0],
+        0.0,
+        [0.7, 0.7],
+        [0.08, 0.08, 0.1, 1.0],
+    );
+    let seta = peca(
+        world,
+        "Seta",
+        WHITE_TILE_KEY,
+        [-3.0, -1.5],
+        0.0,
+        [1.4, 0.18],
+        [0.2, 0.45, 0.9, 1.0],
+    );
     let copia = Kind::CopyTransform(CopyTransform {
         canais: Canais::LOCATION,
         space: Space::World,
@@ -94,16 +124,48 @@ fn olho(world: &mut World) {
         distance: FOLGA_DA_PUPILA,
         mode: DistanceMode::Inside,
     });
-    pilha(world, pupila, &[(copia, Some(bola), 1.0), (dentro, Some(olho), 1.0)]);
-    pilha(world, seta, &[(Kind::LookAt(LookAt::default()), Some(bola), 1.0)]);
+    pilha(
+        world,
+        pupila,
+        &[(copia, Some(bola), 1.0), (dentro, Some(olho), 1.0)],
+    );
+    pilha(
+        world,
+        seta,
+        &[(Kind::LookAt(LookAt::default()), Some(bola), 1.0)],
+    );
 }
 
 /// Cena 3 — **Ponteiros.**
 fn ponteiros(world: &mut World) {
     let lado = [2.0, 0.2];
-    let limitado = peca(world, "Ponteiro com limite", WHITE_TILE_KEY, [0.0, 1.5], 170.0, lado, [0.9, 0.55, 0.1, 1.0]);
-    let meio = peca(world, "Ponteiro a meio", WHITE_TILE_KEY, [0.0, -1.5], 170.0, lado, [0.2, 0.7, 0.35, 1.0]);
-    let guia = peca(world, "Guia", WHITE_TILE_KEY, [3.5, -1.5], -170.0, lado, [0.6, 0.6, 0.6, 1.0]);
+    let limitado = peca(
+        world,
+        "Ponteiro com limite",
+        WHITE_TILE_KEY,
+        [0.0, 1.5],
+        170.0,
+        lado,
+        [0.9, 0.55, 0.1, 1.0],
+    );
+    let meio = peca(
+        world,
+        "Ponteiro a meio",
+        WHITE_TILE_KEY,
+        [0.0, -1.5],
+        170.0,
+        lado,
+        [0.2, 0.7, 0.35, 1.0],
+    );
+    let guia = peca(
+        world,
+        "Guia",
+        WHITE_TILE_KEY,
+        [3.5, -1.5],
+        -170.0,
+        lado,
+        [0.6, 0.6, 0.6, 1.0],
+    );
     let q = std::f64::consts::FRAC_PI_4;
     let limite = Kind::Limit(Limit {
         rot: Some([-q, q]),

@@ -26,6 +26,13 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // Um item da pilha de constraints (`ph2d_ecs::canal_constraint`).
         "canal.constraint.forca" => "Constraint Influence",
         "canal.constraint.ligada" => "Constraint Enabled",
+        "canal.constraint.limite_min" => "Constraint Min Angle",
+        "canal.constraint.limite_max" => "Constraint Max Angle",
+        "canal.constraint.distancia" => "Constraint Distance",
+        "canal.constraint.desvio" => "Constraint Offset",
+        "canal.constraint.modo" => "Constraint Distance Mode",
+        "canal.constraint.espaco" => "Constraint Space",
+        "canal.constraint.mistura" => "Constraint Mix",
         // O corpo de física da §11 (`ph2d_ecs::canal_fisica`).
         "canal.fisica.tipo" => "Body Type",
         "canal.fisica.ccd" => "Continuous Collision",

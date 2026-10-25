@@ -116,6 +116,8 @@ mod chrome;
 mod component_catalog;
 /// As palavras de INTENÇÃO do *Add Component* — só a busca as lê (F6).
 mod component_keywords;
+/// As palavras do cartão CONSTRAINTS.
+mod constraints;
 // ⚠️ O `factory` fica SEM doc: o que aqui estava era o do [`tags`] (um `///` colado ao item
 //    seguinte descreve o vizinho errado), e voltou para o irmão a que pertence.
 mod factory;
@@ -130,8 +132,6 @@ mod inspector_motion_input;
 mod inspector_nav;
 mod inspector_player;
 mod inspector_vida;
-/// As palavras do cartão CONSTRAINTS.
-mod constraints;
 /// ⭐ As palavras da LUZ 2D (W4) — a secção do Inspector e os avisos da luz do quadro.
 mod luz2d;
 /// As MACROS (ADR-0186, W5d): o painel e o nome do clipe.

@@ -4,8 +4,10 @@
 //! A barra da força é `0..1` — a fração da `Item::forca`: é uma fração, não tem outro recurso.
 
 use crate::ids;
-use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
-use ph2d_editor_core::widget::{CheckboxState, CheckboxValue, SliderOrientation, SliderState};
+use ph2d_editor_core::interaction::{InteractiveState, WidgetStore, format_number};
+use ph2d_editor_core::widget::{
+    CheckboxState, CheckboxValue, SliderOrientation, SliderState, TextInputState,
+};
 
 pub(crate) fn populate_constraint(store: &mut WidgetStore) {
     super::populate::register_button_ids(store, &[ids::INSP_CONSTRAINT_ADD]);
@@ -15,6 +17,7 @@ pub(crate) fn populate_constraint(store: &mut WidgetStore) {
         &ids::INSP_CONSTRAINT_DESCER,
         &ids::INSP_CONSTRAINT_APAGAR,
         &ids::INSP_CONSTRAINT_ALVO,
+        &ids::INSP_CONSTRAINT_ZERAR,
     ] {
         super::populate::register_button_ids(store, tabela);
     }
@@ -24,6 +27,23 @@ pub(crate) fn populate_constraint(store: &mut WidgetStore) {
             InteractiveState::Checkbox {
                 state: CheckboxState::Normal,
                 value: CheckboxValue::Checked,
+            },
+        );
+    }
+    for tabela in ids::INSP_CONSTRAINT_OPCAO.iter().flatten() {
+        super::populate::register_button_ids(store, tabela);
+    }
+    // A partida é 0; o `sync_constraint` semeia o do documento.
+    for &id in ids::INSP_CONSTRAINT_NUMERO.iter().flatten() {
+        store.register(
+            id,
+            InteractiveState::NumberInput {
+                state: TextInputState::Normal,
+                value: 0.0,
+                buffer: format_number(0.0),
+                caret: 0,
+                last_committed: 0.0,
+                selection_anchor: None,
             },
         );
     }

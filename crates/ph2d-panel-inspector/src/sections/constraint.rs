@@ -1,17 +1,20 @@
 //! **O cartão CONSTRAINTS** (`docs/BlenderConstraints/01_plano.md` §4): a pilha do objecto, de cima
 //! para baixo — por item o tipo, «Enabled», subir · descer · apagar, o alvo (quando o tipo o pede),
-//! a força e a frase do estado; no fim o «Add Constraint» com a lista dos tipos.
+//! a força, os ajustes do tipo (números, escolhas, «Reset Offset») e a frase do estado; no fim o «Add
+//! Constraint» com a lista dos tipos.
 //!
 //! Os valores pintados vêm do INSTANTÂNEO; a barra da força só mostra o store enquanto o dedo a
 //! segura.
 
 use super::*;
 use crate::plano::{Plano, emoldurada};
-use ph2d_editor_core::constraint_edits::{InspectorConstraintRow, InspectorConstraintsInfo, TIPOS};
-use ph2d_editor_core::property_row::{
-    Seccao, abaixo_do_botao, caixa_do_botao, paint_check_row, paint_label_row,
+use ph2d_editor_core::constraint_edits::{
+    InspectorConstraintRow, InspectorConstraintsInfo, TIPOS, Unidade,
 };
-use ph2d_editor_core::widget::SliderOrientation;
+use ph2d_editor_core::property_row::{
+    Seccao, abaixo_do_botao, caixa_do_botao, paint_check_row, paint_choice_row, paint_label_row,
+};
+use ph2d_editor_core::widget::{SliderOrientation, Unit};
 use ph2d_i18n::{TextKey, tr};
 
 /// Uma fileira de botões agrupados pela porta do grupo. Devolve o `y` seguinte.
@@ -175,6 +178,87 @@ fn forca(
     y + ph2d_tokens::row_pitch_px()
 }
 
+/// O passo do arrasto de um número do cartão, na unidade dele.
+const DEG_STEP: f64 = 1.0; // LITERAL-PX-OK: passo em graus
+const PX_STEP: f64 = 1.0; // LITERAL-PX-OK: passo em pixels da FONTE, não um token de desenho
+
+/// Os ajustes do tipo (os números, as escolhas e o «Reset Offset»), na ordem que a família deu.
+#[allow(clippy::too_many_arguments)]
+fn ajustes(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    (x, w, y): (f32, f32, f32),
+    row: &InspectorConstraintRow,
+    k: usize,
+    seccao: Seccao,
+) -> f32 {
+    let mut cur_y = y;
+    for (n, ids_n) in row.numeros.iter().zip(ids::INSP_CONSTRAINT_NUMERO.iter()) {
+        let (step, unit) = match n.unidade {
+            Unidade::Graus => (DEG_STEP, Unit::Degrees),
+            Unidade::Px => (PX_STEP, Unit::Px),
+        };
+        cur_y = ph2d_editor_core::property_row::paint_field_row(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            x,
+            w,
+            cur_y,
+            TextKey::new(n.rotulo),
+            ids_n[k],
+            step,
+            Some(unit),
+            seccao,
+        )
+        .0;
+    }
+    for (e, ids_e) in row.escolhas.iter().zip(ids::INSP_CONSTRAINT_OPCAO.iter()) {
+        let segmentos: Vec<(&str, bool, NodeId)> = e
+            .opcoes
+            .iter()
+            .zip(ids_e.iter())
+            .enumerate()
+            .map(|(o, (chave, tabela))| (tr(chave), o == usize::from(e.valor), tabela[k]))
+            .collect();
+        cur_y = paint_choice_row(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            x,
+            w,
+            cur_y,
+            TextKey::new(e.rotulo),
+            &segmentos,
+            seccao,
+        );
+    }
+    if row.zera_desvio {
+        let id = ids::INSP_CONSTRAINT_ZERAR[k];
+        let rotulo = tr("panel.inspector.constraint.reset_offset");
+        let caixa = caixa_do_botao(text_system, x, w, cur_y, rotulo);
+        hit_index.register(id, caixa);
+        paint_button(
+            &Button::new(id, rotulo)
+                .kind(ButtonKind::Default)
+                .visual(store.button_visual(id)),
+            caixa,
+            scene,
+            text_system,
+            theme,
+        );
+        cur_y = abaixo_do_botao(caixa);
+    }
+    cur_y
+}
+
 /// Um item da pilha, na posição `k`. Devolve o `y` seguinte.
 #[allow(clippy::too_many_arguments)]
 fn item(
@@ -255,6 +339,17 @@ fn item(
         );
     }
     cur_y = forca(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        (x, w, cur_y),
+        row,
+        k,
+        seccao,
+    );
+    cur_y = ajustes(
         scene,
         text_system,
         theme,
@@ -369,6 +464,9 @@ pub(crate) fn paint_constraints_section(
             tr("panel.inspector.constraint.enabled"),
             tr("panel.inspector.constraint.target"),
             tr("panel.inspector.constraint.influence"),
+            tr("panel.inspector.constraint.distance"),
+            tr("panel.inspector.constraint.offset"),
+            tr("panel.inspector.constraint.space"),
         ],
     );
     if i.rows.is_empty() {

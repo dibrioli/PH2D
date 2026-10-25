@@ -5,7 +5,8 @@
 
 use ph2d_editor_core::action_bus::{ComponentEdit, EditorAction};
 use ph2d_editor_core::constraint_edits::{
-    ConstraintFieldEdit as E, EstadoDaConstraint, InspectorConstraintRow, InspectorConstraintsInfo,
+    AjusteEscolha, AjusteNumero, ConstraintFieldEdit as E, EstadoDaConstraint,
+    InspectorConstraintRow, InspectorConstraintsInfo, Unidade,
 };
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::zones::Rect;
@@ -13,6 +14,12 @@ use ph2d_panel_inspector::{
     InspectorPanel, InspectorState, ids, set_current_inspector_constraints,
 };
 use ph2d_ui_testkit::MockPanelHost;
+
+// Os campos do canal (`ph2d_ecs::canal_constraint`): o painel não depende da `ph2d-ecs`; o gate
+// `o_vocabulario_das_constraints_nao_renumera` prende os números do lado de lá.
+const LIMITE_MIN: u16 = 3;
+const LIMITE_MAX: u16 = 4;
+const ESPACO: u16 = 8;
 
 const ENTITY: u64 = 0x1_0000_00C5;
 const VIEWPORT: Rect = Rect {
@@ -36,6 +43,9 @@ fn pilha() -> InspectorConstraintsInfo {
                 ligada: true,
                 estado: EstadoDaConstraint::Activa,
                 escolhendo: false,
+                numeros: vec![],
+                escolhas: vec![],
+                zera_desvio: true,
             },
             InspectorConstraintRow {
                 id: 42,
@@ -46,6 +56,30 @@ fn pilha() -> InspectorConstraintsInfo {
                 ligada: true,
                 estado: EstadoDaConstraint::Ciclo,
                 escolhendo: false,
+                numeros: vec![
+                    AjusteNumero {
+                        campo: LIMITE_MIN,
+                        rotulo: "panel.inspector.constraint.min",
+                        valor: -45.0,
+                        unidade: Unidade::Graus,
+                    },
+                    AjusteNumero {
+                        campo: LIMITE_MAX,
+                        rotulo: "panel.inspector.constraint.max",
+                        valor: 45.0,
+                        unidade: Unidade::Graus,
+                    },
+                ],
+                escolhas: vec![AjusteEscolha {
+                    campo: ESPACO,
+                    rotulo: "panel.inspector.constraint.space",
+                    opcoes: &[
+                        "panel.inspector.constraint.space.world",
+                        "panel.inspector.constraint.space.local",
+                    ],
+                    valor: 0,
+                }],
+                zera_desvio: false,
             },
         ],
         selected_count: 1,
@@ -209,4 +243,44 @@ fn cheio_o_mais_desaparece() {
     set_current_inspector_constraints(None);
     assert!(rect_de(&rects, ids::INSP_CONSTRAINT_ADD).is_none());
     assert!(rect_de(&rects, *ids::INSP_CONSTRAINT_FORCA.last().unwrap()).is_some());
+}
+
+/// ⭐⭐⭐ **Os ajustes de cada tipo** (report do dono 25/10: *«em Limit Rotation, onde estão
+/// configuradas as limitações?»*): o Max ESCRITO na caixa publica `Campo(42, LIMITE_MAX, v)`; a
+/// opção «Local» publica o índice dela no campo da escolha; «Reset Offset» só existe no Child Of e
+/// manda o id dele.
+///
+/// **Mutações que devem sangrar:** o `j` do número trocado (Min ↔ Max) · a opção pela posição da
+/// linha · tirar `INSP_CONSTRAINT_ZERAR` do `populate_constraint`.
+#[test]
+fn os_ajustes_de_cada_tipo_mandam_o_campo_da_linha() {
+    assert_eq!(
+        clica(ids::INSP_CONSTRAINT_ZERAR[0]),
+        vec![E::ZerarDesvio(7)]
+    );
+    assert_eq!(
+        clica(ids::INSP_CONSTRAINT_OPCAO[0][1][1]),
+        vec![E::Campo(42, ESPACO, 1.0)]
+    );
+    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut state = InspectorState::default();
+    set_current_inspector_constraints(Some(pilha()));
+    let rects = pinta(&mut host, &mut state);
+    assert!(
+        rect_de(&rects, ids::INSP_CONSTRAINT_ZERAR[1]).is_none(),
+        "o Limit não tem desvio"
+    );
+    assert!(
+        rect_de(&rects, ids::INSP_CONSTRAINT_NUMERO[0][0]).is_none(),
+        "o Child Of não tem números"
+    );
+    assert!(
+        rect_de(&rects, ids::INSP_CONSTRAINT_OPCAO[0][2][1]).is_none(),
+        "o espaço tem 2 opções"
+    );
+    let evs = host.type_into_number(ids::INSP_CONSTRAINT_NUMERO[1][1], "30");
+    aplica(&mut host, &mut state, evs);
+    let e = edicoes(host.drained_actions());
+    set_current_inspector_constraints(None);
+    assert_eq!(e.last(), Some(&E::Campo(42, LIMITE_MAX, 30.0)), "{e:?}");
 }

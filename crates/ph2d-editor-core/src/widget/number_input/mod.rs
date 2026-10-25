@@ -44,6 +44,10 @@ pub struct NumberInput {
     /// **Valor HERDADO** (ver [`crate::interaction::WidgetStore::number_input_inherited`]): o
     /// texto pinta-se apagado em repouso, e o campo continua editável.
     pub dimmed: bool,
+    /// **As casas que o número mostra EM REPOUSO** — `None` = [`format_number`] (inteiro ou 3 casas).
+    /// Quem passa `Some(n)` vê sempre `n` casas (`0` = inteiro), e duas caixas da mesma secção deixam
+    /// de mostrar `0.700` ao lado de `1` (auditoria do cartão Pen, 25/10).
+    pub casas: Option<usize>,
 }
 
 impl NumberInput {
@@ -59,6 +63,7 @@ impl NumberInput {
             hover_t: crate::motion::SETTLED,
             suffix: None,
             dimmed: false,
+            casas: None,
         }
     }
 
@@ -73,6 +78,13 @@ impl NumberInput {
     fn text_dimmed(&self) -> bool {
         self.state == TextInputState::Disabled
             || (self.dimmed && self.state != TextInputState::Focused)
+    }
+
+    /// **As casas em repouso** — ver [`NumberInput::casas`].
+    #[must_use]
+    pub fn casas(mut self, casas: Option<usize>) -> Self {
+        self.casas = casas;
+        self
     }
 
     /// **A unidade colada ao número** — ver [`NumberInput::suffix`].
@@ -296,7 +308,7 @@ pub fn paint_number_input_with_buffer(
         Some(b) if input.state == TextInputState::Focused => b,
         _ if misto => "",
         _ => {
-            value_text_owned = format_number(input.value);
+            value_text_owned = format_number_com_casas(input.value, input.casas);
             value_text_owned.as_str()
         }
     };
@@ -476,6 +488,23 @@ pub fn format_number(v: f64) -> String {
         format!("{}", v as i64)
     } else {
         format!("{v:.3}")
+    }
+}
+
+/// [`format_number`] com as casas pedidas: `Some(0)` = inteiro, `Some(n)` = `n` casas fixas.
+#[must_use]
+pub fn format_number_com_casas(v: f64, casas: Option<usize>) -> String {
+    match casas {
+        Some(n) if v.is_finite() => {
+            let s = format!("{v:.n$}");
+            // `-0.00` não tem sinal que se leia.
+            if s.parse::<f64>().is_ok_and(|x| x == 0.0) {
+                s.trim_start_matches('-').to_owned()
+            } else {
+                s
+            }
+        }
+        _ => format_number(v),
     }
 }
 

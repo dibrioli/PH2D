@@ -36,11 +36,19 @@ fn gesto(caneta: bool) -> Vec<([f32; 2], f32, [f32; 2])> {
     let mut v = Vec::new();
     for k in 0..=100 {
         let u = k as f32 / 100.0;
-        v.push(([40.0 + 2.0 * k as f32, Y], 0.1 + 0.9 * u, [0.2 + 0.3 * u, 0.15 * u]));
+        v.push((
+            [40.0 + 2.0 * k as f32, Y],
+            0.1 + 0.9 * u,
+            [0.2 + 0.3 * u, 0.15 * u],
+        ));
     }
     for k in 1..=8 {
         let u = k as f32 / 8.0;
-        v.push(([240.0 + 40.0 * k as f32, Y], 0.5, [0.5 + 0.2 * u, 0.15 + 0.15 * u]));
+        v.push((
+            [240.0 + 40.0 * k as f32, Y],
+            0.5,
+            [0.5 + 0.2 * u, 0.15 + 0.15 * u],
+        ));
     }
     if !caneta {
         for s in &mut v {
@@ -130,7 +138,8 @@ fn sonda_cartao_pen() {
         b.hardness, b.stroke_method, b.mao, MAO_DE_FABRICA
     );
     // (linha, valor fora do neutro, linhas de apoio que a ligam)
-    let casos: &[(usize, f64, &[(usize, f64)])] = &[
+    type Caso = (usize, f64, &'static [(usize, f64)]);
+    let casos: &[Caso] = &[
         (0, 0.0, &[]),
         (0, 0.5, &[]),
         (1, 2.5, &[]),
@@ -211,7 +220,9 @@ fn sonda_cartao_pen() {
     }
     t.handle_panel_event(PanelEvent::Click(ids::PAINTER_PEN_RESET));
     let pos = t.brush_settings().mao;
-    let fora: Vec<usize> = (0..pos.len()).filter(|k| pos[*k] != MAO_DE_FABRICA[*k]).collect();
+    let fora: Vec<usize> = (0..pos.len())
+        .filter(|k| pos[*k] != MAO_DE_FABRICA[*k])
+        .collect();
     let fora_preset: Vec<usize> = (0..pos.len()).filter(|k| pos[*k] != pre[*k]).collect();
     println!("[reset] fora da MAO_DE_FABRICA {fora:?} · fora da do preset {fora_preset:?}");
 }
@@ -221,7 +232,10 @@ fn sonda_cartao_pen() {
 #[ignore = "sonda: a dureza pela velocidade num clique"]
 fn sonda_speed_softness_clique() {
     for nome in ["Glaze Round", "Soft Round", "Hard Round"] {
-        for (linha, ks) in [(21usize, [0.0, 0.02, 0.04, 0.1, 0.3, 1.0]), (22, [0.0, 0.1, 0.3, 0.5, 1.0, 1.0])] {
+        for (linha, ks) in [
+            (21usize, [0.0, 0.02, 0.04, 0.1, 0.3, 1.0]),
+            (22, [0.0, 0.1, 0.3, 0.5, 1.0, 1.0]),
+        ] {
             for k in ks {
                 // o clique
                 let mut t = tool(nome);
@@ -232,14 +246,18 @@ fn sonda_speed_softness_clique() {
                 // o traço rápido (40 px/tique), o arranque × o meio
                 let mut tr = tool(nome);
                 set(&mut tr, linha, k);
-                let g: Vec<_> = (0..=12).map(|i| ([60.0 + 40.0 * i as f32, Y], 1.0, [0.0, 0.0])).collect();
+                let g: Vec<_> = (0..=12)
+                    .map(|i| ([60.0 + 40.0 * i as f32, Y], 1.0, [0.0, 0.0]))
+                    .collect();
                 let pr = pinta(&mut tr, &g);
                 let (p0, l0, o0) = coluna(&pr, 62);
                 let (pm, lm, om) = coluna(&pr, 300);
                 // o traço lento (2 px/tique)
                 let mut tl = tool(nome);
                 set(&mut tl, linha, k);
-                let g: Vec<_> = (0..=120).map(|i| ([60.0 + 2.0 * i as f32, Y], 1.0, [0.0, 0.0])).collect();
+                let g: Vec<_> = (0..=120)
+                    .map(|i| ([60.0 + 2.0 * i as f32, Y], 1.0, [0.0, 0.0]))
+                    .collect();
                 let pl = pinta(&mut tl, &g);
                 let (ps, ls, os) = coluna(&pl, 180);
                 println!(
@@ -270,7 +288,10 @@ fn sonda_mao_sem_pressao() {
             let mut tv = mk();
             set(&mut tv, i, v);
             let pv = pinta(&mut tv, &g);
-            println!("[sem pressão] leitor {leitor:?} · linha {i} = {v} · {d} · Δpx {}", diff(&pa, &pv));
+            println!(
+                "[sem pressão] leitor {leitor:?} · linha {i} = {v} · {d} · Δpx {}",
+                diff(&pa, &pv)
+            );
         }
     }
 }

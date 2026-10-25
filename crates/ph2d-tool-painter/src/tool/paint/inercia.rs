@@ -61,10 +61,12 @@ pub enum Dependente {
     DualForaDoTraco,
     // O atraso da velocidade (J4) só filtra a velocidade que uma lei da velocidade lê.
     AtrasoSemVelocidade,
+    // A pressão leve e a velocidade só TIRAM dureza (`Dynamics::dureza_da_mao`): com a Hardness 0 não há o que tirar.
+    MaciezSemDureza,
 }
 
 impl Dependente {
-    pub const TODOS: [Dependente; 41] = [
+    pub const TODOS: [Dependente; 42] = [
         Dependente::ForaDaPontaDePixel,
         Dependente::TaperTip,
         Dependente::TaperOpacity,
@@ -106,6 +108,7 @@ impl Dependente {
         Dependente::DualForaDoDigital,
         Dependente::DualForaDoTraco,
         Dependente::AtrasoSemVelocidade,
+        Dependente::MaciezSemDureza,
     ];
 
     /// Os ids que o painel pinta para este controlo.
@@ -195,11 +198,17 @@ impl Dependente {
                 &[ids::PAINTER_PONTA_FIELDS[2], ids::PAINTER_PONTA_FIELDS[4]]
             }
             Dependente::DualForaDoDigital | Dependente::DualForaDoTraco => &DUAL,
+            // Min/Max pressure, Smoothing e a curva em S: o caminho da pressão que todo leitor dela lê.
             Dependente::MaoSemPressao => &[
                 ids::PAINTER_PEN_FIELDS[4],
                 ids::PAINTER_PEN_FIELDS[5],
                 ids::PAINTER_PEN_FIELDS[6],
+                ids::PAINTER_PEN_FIELDS[18],
             ],
+            // Speed softness e a da pressão, pela ordem de `LINHAS_DA_MAO`.
+            Dependente::MaciezSemDureza => {
+                &[ids::PAINTER_PEN_FIELDS[21], ids::PAINTER_PEN_FIELDS[22]]
+            }
             // «Speed lag», pela ordem de `LINHAS_DA_MAO`.
             Dependente::AtrasoSemVelocidade => &[ids::PAINTER_PEN_FIELDS[20]],
         }
@@ -241,6 +250,7 @@ impl Dependente {
             Dependente::PegadaDaAutomatica => "panel.painter_layers.inerte.shape_automatic_off",
             Dependente::CurvaDoTamanhoSemPressao => "panel.painter_layers.inerte.pressure_size_on",
             Dependente::MaoSemPressao => "panel.painter_layers.inerte.pressure_on",
+            Dependente::MaciezSemDureza => "panel.painter_layers.inerte.hardness_above_zero",
             Dependente::MarcaSemSpray => "panel.painter_layers.inerte.spray_count_above_one",
             Dependente::OpacidadeNaAguada => "panel.painter_layers.inerte.wash_ignores_dab_opacity",
             Dependente::CorDaMaoSemLeitor => "panel.painter_layers.inerte.color_owned_by_ramp",
@@ -580,6 +590,7 @@ impl PainterTool {
                 let t = self.inclinacao_do_pincel();
                 !t.active() && t.opacity <= 0.0
             }),
+            (Dependente::MaciezSemDureza, !agua && b.hardness <= 0.0),
             // A Watercolor com a Shape «Automatic» não lê a pegada deitada (`inclinacao_dos_antigos`).
             (
                 Dependente::PegadaDaAutomatica,
@@ -645,9 +656,19 @@ impl PainterTool {
                 Dependente::DualForaDoTraco,
                 self.dual_recusado() == Some(super::traco_plano::SemPlano::ForaDoTraco),
             ),
+            // O piso, o tecto, a suavização e a curva em S moldam a pressão de TODO leitor dela: o tamanho, a
+            // opacidade, a dureza, o espalhar, a profundidade do grão e a imagem da ponta (`dab_build`).
             (Dependente::MaoSemPressao, {
                 let d = self.dinamica_do_traco();
-                !agua && (!d.size_pressure || d.size_min >= 1.0) && !d.strength_pressure
+                !agua
+                    && (!d.size_pressure || d.size_min >= 1.0)
+                    && !d.strength_pressure
+                    && (d.pressure_hardness <= 0.0 || b.hardness <= 0.0)
+                    && d.jitter_pressure <= 0.0
+                    && !(b.texture.is_active()
+                        && b.texture.lei.varia_por_dab()
+                        && b.texture.lei.depth_pressure)
+                    && !(b.hose.ativa() && b.hose.mode == ph2d_painter_brush::HoseMode::Pressure)
             }),
             // O traço só mede (e filtra) a velocidade com uma lei dela armada (`Dynamics::speed_armed`, a mesma porta
             // que arma a `Mao` em `stroke/speed.rs`).

@@ -626,6 +626,41 @@ fn as_linhas_da_pressao_apagam_sem_pressao() {
     }
 }
 
+/// ⭐ **O piso, o tecto, a suavização e a curva em S servem TODO leitor da pressão** (auditoria do cartão Pen, 25/10):
+/// sem pressão no tamanho nem na opacidade, mas com a dureza ou o espalhar pela pressão, eles mudam a tinta — e não
+/// esmaecem.
+#[test]
+fn as_linhas_da_pressao_agem_com_qualquer_leitor() {
+    let sem = (LinhaDaMao::Knob(Knob::PressureSize), 0.0);
+    let mexe = [
+        (LinhaDaMao::Knob(Knob::PressureFloor), 0.4),
+        (LinhaDaMao::Knob(Knob::PressureCeiling), 0.7),
+        (LinhaDaMao::PressureSCurve, 1.0),
+    ];
+    let leitor = (LinhaDaMao::PressureJitter, 0.5);
+    let (base, i) = deitado(PaintMedia::Digital, &[sem, leitor], true);
+    assert!(!i.inerte(Dependente::MaoSemPressao));
+    let todas: Vec<_> = [sem, leitor].iter().chain(&mexe).copied().collect();
+    assert!(
+        deitado(PaintMedia::Digital, &todas, true).0 != base,
+        "as linhas da pressão não mudaram a tinta"
+    );
+}
+
+/// ⭐ **A maciez pela pressão e pela velocidade só tira dureza** (auditoria do cartão Pen, 25/10): com a Hardness 0
+/// do pincel de omissão nada há a tirar — elas não mudam a tinta, esmaecem, e não acordam as linhas da pressão.
+#[test]
+fn a_maciez_sem_dureza_esmaece() {
+    let sem = (LinhaDaMao::Knob(Knob::PressureSize), 0.0);
+    let (base, _) = deitado(PaintMedia::Digital, &[sem], true);
+    for linha in [LinhaDaMao::PressureHardness, LinhaDaMao::SpeedHardness] {
+        let (tinta, i) = deitado(PaintMedia::Digital, &[sem, (linha, 0.3)], true);
+        assert!(i.inerte(Dependente::MaciezSemDureza), "{linha:?}");
+        assert!(i.inerte(Dependente::MaoSemPressao), "{linha:?}");
+        assert!(tinta == base, "{linha:?} mudou a tinta");
+    }
+}
+
 /// «Base de outro meio só empresta nome e grupo» também no Wet: capturar o pincel molhado sobre um preset Digital
 /// não leva o gesto nem a mão do Digital para o ficheiro.
 #[test]

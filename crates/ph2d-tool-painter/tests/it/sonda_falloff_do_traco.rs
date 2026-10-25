@@ -44,7 +44,9 @@ fn tool(nome: &str) -> PainterTool {
 /// O Accumulate pela porta do painel (um clique alterna).
 fn acumula(t: &mut PainterTool, on: bool) {
     if t.brush_settings().accumulate != on {
-        t.handle_panel_event(PanelEvent::Click(ph2d_tool_painter::ids::PAINTER_BRUSH_ACCUMULATE));
+        t.handle_panel_event(PanelEvent::Click(
+            ph2d_tool_painter::ids::PAINTER_BRUSH_ACCUMULATE,
+        ));
     }
     assert_eq!(t.brush_settings().accumulate, on);
 }
@@ -172,7 +174,11 @@ fn sonda_toque_parado() {
                 let c = corte(&mut t, 200);
                 println!(
                     "[parado] airbrush {airbrush:<5} flow {flow:<3} {tiques:>2} tiques · {}",
-                    c.iter().step_by(2).map(|a| format!("{a:.2}")).collect::<Vec<_>>().join(" ")
+                    c.iter()
+                        .step_by(2)
+                        .map(|a| format!("{a:.2}"))
+                        .collect::<Vec<_>>()
+                        .join(" ")
                 );
             }
         }
@@ -192,7 +198,9 @@ fn sonda_toque_depois_de_trocas() {
             .unwrap()
             .preset;
         if let Some(f) = falloff {
-            p.parametros.brush.insert("falloff".into(), serde_json::json!(f));
+            p.parametros
+                .brush
+                .insert("falloff".into(), serde_json::json!(f));
         }
         p
     };
@@ -214,11 +222,16 @@ fn sonda_toque_depois_de_trocas() {
     let mostra = |rot: &str, c: &[f32]| {
         println!(
             "[trocas] {rot:<40} {}",
-            c.iter().step_by(2).map(|a| format!("{a:.2}")).collect::<Vec<_>>().join(" ")
+            c.iter()
+                .step_by(2)
+                .map(|a| format!("{a:.2}"))
+                .collect::<Vec<_>>()
+                .join(" ")
         );
     };
     let mut t = novo();
-    t.preset_aplicar(&preset("Soft Round", Some("Smooth"))).unwrap();
+    t.preset_aplicar(&preset("Soft Round", Some("Smooth")))
+        .unwrap();
     t.set_brush_size_px(40.0);
     toque(&mut t, 60.0);
     mostra("novo · Soft Smooth", &corte(&mut t, 60));
@@ -226,7 +239,8 @@ fn sonda_toque_depois_de_trocas() {
     t.preset_aplicar(&preset("Hard Round", None)).unwrap();
     t.set_brush_size_px(40.0);
     toque(&mut t, 50.0);
-    t.preset_aplicar(&preset("Soft Round", Some("Smooth"))).unwrap();
+    t.preset_aplicar(&preset("Soft Round", Some("Smooth")))
+        .unwrap();
     t.set_brush_size_px(40.0);
     toque(&mut t, 140.0);
     t.set_brush_flow(0.5);
@@ -234,8 +248,14 @@ fn sonda_toque_depois_de_trocas() {
     t.set_brush_flow(1.0);
     toque(&mut t, 340.0);
     let px = t.run_full().0;
-    for (rot, x) in [("Hard → Soft Smooth", 140usize), ("… Flow 0,5", 240), ("… Flow 1 de volta", 340)] {
-        let c: Vec<f32> = (0..=26).map(|d| f32::from(px[((Y as usize + d) * W + x) * 4 + 3]) / 255.0).collect();
+    for (rot, x) in [
+        ("Hard → Soft Smooth", 140usize),
+        ("… Flow 0,5", 240),
+        ("… Flow 1 de volta", 340),
+    ] {
+        let c: Vec<f32> = (0..=26)
+            .map(|d| f32::from(px[((Y as usize + d) * W + x) * 4 + 3]) / 255.0)
+            .collect();
         mostra(rot, &c);
     }
 }
@@ -254,8 +274,12 @@ fn sonda_toque_por_tamanho() {
                 .find(|e| e.preset.parametros.name == nome)
                 .unwrap()
                 .preset;
-            p.parametros.brush.insert("falloff".into(), serde_json::json!("Smooth"));
-            p.parametros.brush.insert("hardness".into(), serde_json::json!(0.0));
+            p.parametros
+                .brush
+                .insert("falloff".into(), serde_json::json!("Smooth"));
+            p.parametros
+                .brush
+                .insert("hardness".into(), serde_json::json!(0.0));
             let mut t = PainterTool::default();
             t.set_source(vec![0u8; L * L * 4], L as u32, L as u32);
             t.set_paint_media(PaintMedia::Digital);
@@ -301,7 +325,9 @@ fn sonda_toque_com_dureza_da_mao() {
             .find(|e| e.preset.parametros.name == "Soft Round")
             .unwrap()
             .preset;
-        p.parametros.brush.insert("falloff".into(), serde_json::json!("Smooth"));
+        p.parametros
+            .brush
+            .insert("falloff".into(), serde_json::json!("Smooth"));
         if !chave.is_empty() {
             p.parametros.engine.insert(chave.into(), v);
         }

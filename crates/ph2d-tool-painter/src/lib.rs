@@ -168,8 +168,8 @@ pub use tool::{
     MAX_COMPOSITE_LAYER_SIZE, MAX_IMPASTO_LIGHTS, MAX_SHAPE_LAYERS, MIN_ELEV_DEG,
     N_COMPOSITE_ERASE_SCOPES, N_COMPOSITE_LAYERS, N_COMPOSITE_OPS, PANEL_RAMP_STOPS, PaintMedia,
     PainterTool, PolygonOverlay, SelectionGizmoView, StencilOverlay, StencilPreview, StrokeOpBadge,
-    TangentHandles, TransformGizmo, UsoDaCamada, WetKnobs, WetTool, brush_dab_weight_at, brush_falloff_weight_at,
-    render_classic_flow_preview, set_pending_select_mods,
+    TangentHandles, TransformGizmo, UsoDaCamada, WetKnobs, WetTool, brush_dab_weight_at,
+    brush_falloff_weight_at, render_classic_flow_preview, set_pending_select_mods,
 };
 pub use tool::{DICA_DO_PARAMETRO, Dependente, Inercias, Natureza};
 pub use undo::{DEFAULT_MAX_BYTES, MAX_HISTORY_STEPS, UndoController, history_budget_bytes};

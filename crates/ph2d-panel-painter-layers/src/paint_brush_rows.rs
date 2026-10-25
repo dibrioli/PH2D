@@ -182,6 +182,45 @@ pub(crate) fn paint_dropdown_row(
     (y + ph2d_tokens::row_pitch_px(), open.then_some(rect))
 }
 
+/// A [`paint_dropdown_row`] de um cartão de CAIXAS numéricas: o chip ocupa a caixa de um campo
+/// ([`ph2d_editor_core::property_row::caixa_do_controlo`]) e a linha leva o ponto do Auto Key, como
+/// as caixas vizinhas da porta — sem isto o menu ia até à borda e a coluna do ponto ficava vazia
+/// (cartão Pen, auditoria 25/10).
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn paint_dropdown_row_de_caixa(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    content_w: f32,
+    y: f32,
+    chave: &str,
+    id: ph2d_a11y::NodeId,
+    cur_value: u8,
+    cur_label: &str,
+) -> (f32, Option<Rect>) {
+    // A mesma secção que a porta das caixas usa (`row_and_layout`): um campo, com o nome medido.
+    let seccao = crate::seccoes::seccao_da_chave(ctx.text_system, chave)
+        .com_pelo_menos(1)
+        .com_o_nome(ctx.text_system, tr(chave));
+    let row = ph2d_editor_core::widget::colunas_da_linha(x, content_w, y, ROW_H_PX, seccao);
+    let rect = ph2d_editor_core::property_row::caixa_do_controlo(x, content_w, y, seccao);
+    let area = Rect::new(x, y, content_w, ph2d_tokens::row_pitch_px());
+    let open = crate::esmaecer::talvez_esmaecido(ctx, theme, area, &[id], |ctx| {
+        label(ctx, theme, tr(chave), &row, TypeToken::Sm.px());
+        if let Some(alvo) = ph2d_editor_core::widget::key_mark::paint_decorator_campo(
+            ctx.scene,
+            theme,
+            row.dot,
+            &[id],
+            tr(chave).into(),
+        ) {
+            ctx.host.hit_index_mut().register(alvo, row.dot);
+        }
+        paint_dropdown_chip(ctx, theme, id, cur_value, cur_label, rect)
+    });
+    (y + ph2d_tokens::row_pitch_px(), open.then_some(rect))
+}
+
 /// Paint a dropdown chip (registered as a `Dropdown` for the generic open/close
 /// dispatch). Returns whether it is open. Shared by the Blend + Falloff chips.
 pub(crate) fn paint_dropdown_chip(

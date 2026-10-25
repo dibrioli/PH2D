@@ -56,8 +56,7 @@ pub struct BrushSettings {
     pub falloff: u8,
     /// A **Hardness** do pincel (`0..1`, a linha do painel): a curva do Falloff corre só no `1 − dureza` de fora.
     pub hardness: f32,
-    /// A dureza que o dab USA (`BrushSpec::dureza_do_dab`: a Hardness, presa pela orla em píxeis ao raio de agora) —
-    /// a que o preview da silhueta aplica.
+    /// A dureza que o dab USA (`BrushSpec::dureza_do_dab`) — a que o preview da silhueta aplica.
     pub dureza_do_dab: f32,
     /// The `Custom` falloff curve's control points (id + `[distance, strength]` + handle), first [`Self::falloff_len`] valid, ascending by distance; panel plots + drags by stable id.
     pub falloff_points: [FalloffPoint; MAX_FALLOFF_POINTS],

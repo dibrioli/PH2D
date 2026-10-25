@@ -49,9 +49,9 @@ mod presets_dos_meios;
 mod receitas_de_fabrica;
 mod regua_escada;
 mod regua_midia;
+mod sonda_cartao_pen; // auditoria do cartão Pen (24/10)
 mod sonda_custo_no_app;
 mod sonda_etapas;
-mod sonda_cartao_pen; // auditoria do cartão Pen (24/10)
 mod sonda_falloff_do_traco; // o falloff do traço × o de um dab, e o Accumulate do Glaze Round (24/10)
 mod sonda_gestos;
 mod sonda_largura;

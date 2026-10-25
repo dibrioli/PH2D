@@ -50,5 +50,8 @@ fn a_hardness_fica_abaixo_do_falloff_e_muda_o_pincel() {
             t.handle_panel_event(pe);
         }
     }
-    assert!((t.brush_settings().hardness - 0.4).abs() < 1e-6, "digitar não mudou a dureza");
+    assert!(
+        (t.brush_settings().hardness - 0.4).abs() < 1e-6,
+        "digitar não mudou a dureza"
+    );
 }

@@ -264,10 +264,11 @@ impl Stroke {
             });
         }
         // A dureza pela pressão e pela velocidade (J4 efeitos): viaja na pegada do dab (`DabTilt::dureza`, lida por
-        // `at_dab`).
+        // `at_dab`). Ela só tira a que o pincel tem: com a Hardness 0 o dab não ganha pegada (a rota dela arredonda).
         let dureza = self
             .dynamics
-            .dureza_da_mao(pressure, self.velocidade_do_dab());
+            .dureza_da_mao(pressure, self.velocidade_do_dab())
+            .max(-self.spec.hardness.max(0.0));
         if dureza != 0.0 {
             let t = dab.tilt.unwrap_or(crate::DabTilt::NEUTRA);
             dab.tilt = Some(crate::DabTilt { dureza, ..t });

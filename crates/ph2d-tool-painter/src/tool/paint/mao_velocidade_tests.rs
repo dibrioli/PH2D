@@ -24,10 +24,24 @@ fn alturas_com(
     linhas: &[(LinhaDaMao, f64)],
     xs: &[usize],
 ) -> Vec<usize> {
+    alturas_duras(m, passo, None, linhas, xs)
+}
+
+/// [`alturas_com`] com a Hardness do pincel (`None` = a de omissão).
+fn alturas_duras(
+    m: PaintMedia,
+    passo: f32,
+    dureza: Option<f32>,
+    linhas: &[(LinhaDaMao, f64)],
+    xs: &[usize],
+) -> Vec<usize> {
     let mut t = super::super::super::PainterTool::default();
     t.set_source(vec![255u8; 600 * 120 * 4], 600, 120);
     t.set_paint_media(m);
     t.set_brush_size_px(16.0);
+    if let Some(h) = dureza {
+        t.set_brush_hardness(h);
+    }
     for &(l, v) in linhas {
         t.set_mao(l, v);
     }
@@ -54,31 +68,61 @@ fn alturas_com(
         .collect()
 }
 
-/// ⭐ **A mão lenta endurece a queda e a rápida amacia** (J4 efeitos 2.ª ronda, `exames/efeitos.md`; o
-/// `hardness ← speed1` do MyPaint `experimental/glow`): com `speedHardness` e o atraso, o traço a 300 px/s
-/// NASCE mais largo (a queda mais dura onde a caneta pousa — o caroço do néon) e fica a largura de sempre no meio
-/// (a curva é zero a 300 px/s); o rápido (2 500 px/s) sai mais fino que sem a linha. Sem ela, o início é o meio.
+/// ⭐ **A mão rápida amacia a queda, a parada é a Hardness** (J4 efeitos 2.ª ronda, `exames/efeitos.md`; o
+/// `hardness ← speed1` do MyPaint `experimental/glow`; a lei só amacia desde a auditoria do cartão Pen, 25/10): com
+/// `speedHardness` e o atraso, o traço a 300 px/s nasce mais largo (o filtro ainda não viu a mão: ~100 px/s a 4 px)
+/// e afina no meio, quando a velocidade chega — e nunca é mais largo que sem a linha.
 #[test]
-fn a_mao_lenta_endurece_a_queda() {
+fn a_mao_rapida_amacia_a_queda() {
     let xs = [24, 400];
     let lag = (LinhaDaMao::SpeedLag, 0.04);
-    let dura = (LinhaDaMao::SpeedHardness, 0.3);
-    let sem = alturas_com(PaintMedia::Digital, 2.4, &[lag], &xs);
-    let com = alturas_com(PaintMedia::Digital, 2.4, &[lag, dura], &xs);
+    let macia = (LinhaDaMao::SpeedHardness, 0.3);
+    let sem = alturas_duras(PaintMedia::Digital, 2.4, Some(0.9), &[lag], &xs);
+    let com = alturas_duras(PaintMedia::Digital, 2.4, Some(0.9), &[lag, macia], &xs);
     assert!(
         sem[0].abs_diff(sem[1]) <= 1,
         "sem a linha o início é o meio: {sem:?}"
     );
     assert!(
-        com[0] >= com[1] + 2,
-        "com a linha o traço lento nasce mais largo: {com:?}"
+        com.iter().zip(&sem).all(|(c, s)| c <= s),
+        "a velocidade só amacia, nunca alarga: {com:?} × {sem:?}"
     );
     assert!(
-        com[1].abs_diff(sem[1]) <= 1,
-        "a 300 px/s a dureza é a do pincel: {com:?} × {sem:?}"
+        com[0] >= com[1] + 2,
+        "com a linha o meio rápido sai mais fino: {com:?}"
     );
-    // O rápido amacia (a dureza desce): o pincel de omissão já tem a dureza 0, o tecto de baixo — a lei vê-se
-    // na própria curva (`ph2d_painter_brush::dynamics`, `a_dureza_da_velocidade_e_a_curva_do_mypaint`).
+}
+
+/// ⭐ **O arranque do traço rápido não sai duro** (auditoria do cartão Pen, 25/10): sem atraso, os dabs do 1.º
+/// quadro esperam pela velocidade medida (`stroke/speed.rs`) e saem com a dureza DELA, não com a da mão parada — o
+/// início tem a largura do meio.
+#[test]
+fn o_arranque_rapido_leva_a_dureza_da_velocidade() {
+    let xs = [22, 400];
+    let h = alturas_duras(
+        PaintMedia::Digital,
+        2.4,
+        Some(0.9),
+        &[(LinhaDaMao::SpeedHardness, 0.3)],
+        &xs,
+    );
+    assert!(h[0].abs_diff(h[1]) <= 1, "o início é o meio: {h:?}");
+}
+
+/// ⭐ **O rato não muda nada** (auditoria do cartão Pen, 25/10): a pressão cheia é a Hardness do pincel, então o
+/// `pressureHardness` com o rato pinta a mesma faixa que sem ele.
+#[test]
+fn a_dureza_pela_pressao_nao_age_com_o_rato() {
+    let xs = [24, 400];
+    let sem = alturas_duras(PaintMedia::Digital, 2.4, Some(0.5), &[], &xs);
+    let com = alturas_duras(
+        PaintMedia::Digital,
+        2.4,
+        Some(0.5),
+        &[(LinhaDaMao::PressureHardness, 1.0)],
+        &xs,
+    );
+    assert_eq!(com, sem);
 }
 
 /// ⭐ **A velocidade vale desde o 1.º dab** (J3, `docs/Painter/Pinceis/exames/canetas.md` 2.ª onda): o traço só

@@ -135,13 +135,13 @@ fn as_linhas_novas_so_vao_para_o_preset_mexidas() {
             "{} no preset de fábrica",
             l.chave()
         );
-        t.set_mao(l, 0.5);
+        t.set_mao(l, 0.25);
     }
     let (p, _) = t.preset_capturar(&base);
     for l in novas {
         assert_eq!(
             p.engine.get(l.chave()).copied(),
-            Some(0.5),
+            Some(0.25),
             "{} mexida e não gravada",
             l.chave()
         );

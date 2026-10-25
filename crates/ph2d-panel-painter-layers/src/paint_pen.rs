@@ -10,10 +10,10 @@
 
 use crate::paint_brush_top::{end_fold, paint_collapsible_section};
 use ph2d_editor_core::panel::PaintCtx;
-use ph2d_editor_core::widget::DropdownOption;
+use ph2d_editor_core::widget::{DropdownOption, Unit};
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
-use ph2d_tool_painter::{BrushSettings, LINHAS_DA_MAO, PaintMedia, ids};
+use ph2d_tool_painter::{BrushSettings, LINHAS_DA_MAO, LinhaDaMao, PaintMedia, ids};
 use std::cell::Cell;
 
 thread_local! {
@@ -60,6 +60,22 @@ fn casas(passo: f64) -> usize {
     (-passo.log10()).ceil().max(0.0) as usize
 }
 
+/// As linhas com grandeza física, pela chave da linha (a do mapa `engine`); as outras são fracções ou
+/// expoentes sem unidade.
+const UNIDADES: [(&str, Unit); 5] = [
+    ("pulledString", Unit::Px),
+    ("tiltStart", Unit::Degrees),
+    ("tiltFull", Unit::Degrees),
+    ("tiltLag", Unit::Px),
+    ("speedLag", Unit::Seconds),
+];
+
+/// A unidade da linha `l`, colada ao número dentro da caixa.
+fn unidade(l: LinhaDaMao) -> Option<Unit> {
+    let chave = l.chave();
+    UNIDADES.iter().find(|(c, _)| *c == chave).map(|&(_, u)| u)
+}
+
 /// Pinta o cartão Pen; devolve o `y` seguinte.
 pub(crate) fn paint_pen_section(
     ctx: &mut PaintCtx,
@@ -93,7 +109,7 @@ pub(crate) fn paint_pen_section(
             continue;
         }
         let (lo, hi, passo) = l.faixa();
-        y = crate::number_field::paint_num_row(
+        y = crate::number_field::paint_num_row_com_unidade(
             ctx,
             theme,
             x,
@@ -106,6 +122,7 @@ pub(crate) fn paint_pen_section(
             hi as f32,
             passo,
             casas(passo),
+            unidade(l),
             sec,
         );
     }
@@ -122,7 +139,7 @@ fn paint_rotation_row(
     valor: f64,
 ) -> f32 {
     let cur = (valor.round() as u8).min(ids::PAINTER_PEN_ROTATION_COUNT - 1);
-    let (ny, open) = crate::paint_brush_rows::paint_dropdown_row(
+    let (ny, open) = crate::paint_brush_rows::paint_dropdown_row_de_caixa(
         ctx,
         theme,
         x,
@@ -166,4 +183,20 @@ pub(crate) fn paint_pen_popovers(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme) 
 /// Uma opção do menu da rotação → o índice dela.
 pub(crate) fn decode_rotation_option(id: ph2d_a11y::NodeId) -> Option<u8> {
     (0..ids::PAINTER_PEN_ROTATION_COUNT).find(|&i| ids::painter_pen_rotation_option_id(i) == id)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Cada unidade nomeia uma linha que EXISTE — uma chave com erro de grafia deixaria a linha muda.
+    #[test]
+    fn cada_unidade_do_cartao_pen_nomeia_uma_linha() {
+        for (chave, _) in UNIDADES {
+            assert!(
+                LINHAS_DA_MAO.iter().any(|l| l.chave() == chave),
+                "`{chave}` não é a chave de nenhuma linha da mão"
+            );
+        }
+    }
 }

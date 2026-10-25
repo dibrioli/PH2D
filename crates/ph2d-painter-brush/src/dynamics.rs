@@ -41,13 +41,13 @@ pub struct Dynamics {
     /// traço rápido do `experimental/glow`). `0` = a velocidade medida desde o 1.º dab (a lei da J3), ao bit.
     pub speed_lag_s: f32,
     /// ⭐ **A velocidade AMACIA a queda** (J4 efeitos 2.ª ronda; o `hardness ← speed1` do libmypaint, ISC, no
-    /// `experimental/glow`: 0,24 a mão parada · 0,13 a 300 px/s · 0,05 a 2 500): a dureza do dab soma
-    /// `speed_hardness · ln((Γ + v₀)/(Γ + v))` ([`Self::dureza_da_velocidade`]) — o caroço onde a caneta pousa (o
-    /// traço nasce a `v = 0` com o [`Self::speed_lag_s`]) e o rápido mais fino. `0` = a dureza do pincel, ao bit.
+    /// `experimental/glow`: 0,24 a mão parada · 0,13 a 300 px/s · 0,05 a 2 500): a dureza do dab perde
+    /// `speed_hardness · ln((Γ + v)/Γ)` ([`Self::dureza_da_velocidade`]) — a mão parada (e o clique) é a Hardness
+    /// do pincel, a rápida mais macia; nunca endurece. `0` = a dureza do pincel, ao bit.
     pub speed_hardness: f32,
-    /// ⭐ **A pressão ENDURECE a queda** (J4 efeitos 2.ª ronda; o `hardness ← pressure` do libmypaint: a esferográfica
-    /// `deevad/ballpen` vai de 0,2 a 0,5): a dureza do dab soma `pressure_hardness · p` — o traço cheio de topo
-    /// chato (sem contas a 200 px), o leve macio. `0` = a dureza do pincel, ao bit.
+    /// ⭐ **A pressão leve AMACIA a queda** (J4 efeitos 2.ª ronda; o `hardness ← pressure` do libmypaint: a
+    /// esferográfica `deevad/ballpen` vai de 0,2 a 0,5): a dureza do dab perde `pressure_hardness · (1 − p)` — o
+    /// traço cheio é a Hardness do pincel (o rato também), o leve macio. `0` = a dureza do pincel, ao bit.
     pub pressure_hardness: f32,
 }
 
@@ -129,6 +129,11 @@ pub const VELOCIDADE_EXPOENTE_MAX: f32 = 1.0;
 /// único pincel medido que a pede — onde a curva logarítmica dele dobra.
 pub const DUREZA_GAMA_PX_S: f32 = 17.6;
 
+/// O tecto do [`Dynamics::speed_hardness`]: a velocidade a que ele tira a dureza INTEIRA (1 → 0) é
+/// `Γ·(e^(1/k) − 1)` — k 0,3 → 474 px/s (o traço lento) · 0,5 → 112 · 1 → 30 (a mão quase parada: o resto da faixa
+/// não muda nada que se pinte). O glow do MyPaint é 0,038; o Glow em estudo 0,059.
+pub const DUREZA_DA_VELOCIDADE_MAX: f32 = 0.3;
+
 /// ⭐ **A lei da velocidade** (L12): `(v / v₀)^−p` acima de `v₀`, `1` abaixo dele e com `p = 0` (sem `powf`).
 /// UMA potência serve as quatro curvas medidas — Fineliner `p 0,058` (0,96 · 0,92 · 0,88 · 0,85 contra 0,95 ·
 /// 0,95 · 0,90 · 0,85), pen `0,136`, pen-note `0,18`, Marker `0,45` —, e nunca chega a zero (a log-linear sim).
@@ -157,25 +162,23 @@ impl Dynamics {
         self.speed_size > 0.0 || self.speed_opacity > 0.0 || self.speed_hardness > 0.0
     }
 
-    /// A dureza que a velocidade `v` (px/s) SOMA à do pincel ([`Self::speed_hardness`]): a curva logarítmica do
-    /// MyPaint (`m·ln(Γ + v) + q`, o `speed1` dele), zero em [`VELOCIDADE_DE_REFERENCIA_PX_S`] — o pincel calibra-se
-    /// no traço lento —, positiva abaixo (a mão a pousar) e negativa acima.
+    /// A dureza que a velocidade `v` (px/s) TIRA à do pincel ([`Self::speed_hardness`]): a curva logarítmica do
+    /// MyPaint (`m·ln(Γ + v) + q`, o `speed1` dele) com zero na mão parada — `≤ 0` sempre, o nome do controlo.
     #[must_use]
     pub fn dureza_da_velocidade(&self, v: f32) -> f32 {
         if self.speed_hardness <= 0.0 || !v.is_finite() {
             return 0.0;
         }
-        let k = self.speed_hardness.min(VELOCIDADE_EXPOENTE_MAX);
-        k * ((DUREZA_GAMA_PX_S + VELOCIDADE_DE_REFERENCIA_PX_S) / (DUREZA_GAMA_PX_S + v.max(0.0)))
-            .ln()
+        let k = self.speed_hardness.min(DUREZA_DA_VELOCIDADE_MAX);
+        -k * ((DUREZA_GAMA_PX_S + v.max(0.0)) / DUREZA_GAMA_PX_S).ln()
     }
 
-    /// A dureza que a MÃO soma à do pincel neste dab: a da pressão `p` ([`Self::pressure_hardness`]) e a da
-    /// velocidade `v` ([`Self::dureza_da_velocidade`]). `0` sem as duas linhas.
+    /// A dureza que a MÃO soma à do pincel neste dab (`≤ 0`): a da pressão `p` ([`Self::pressure_hardness`]) e a
+    /// da velocidade `v` ([`Self::dureza_da_velocidade`]). `0` sem as duas linhas, e com a pressão cheia parada.
     #[must_use]
     pub fn dureza_da_mao(&self, p: f32, v: f32) -> f32 {
         let pressao = if self.pressure_hardness > 0.0 {
-            self.pressure_hardness.min(1.0) * p.clamp(0.0, 1.0)
+            -self.pressure_hardness.min(1.0) * (1.0 - p.clamp(0.0, 1.0))
         } else {
             0.0
         };
@@ -264,7 +267,7 @@ mod tests {
 
     /// ⭐ A dureza pela velocidade é a curva do MyPaint `experimental/glow` (`hardness ← speed1`, `k` 0,04 × 0,939):
     /// a dureza dele 0,238 a mão parada, 0,129 a 300 px/s e 0,051 a 2 500 (medido nos dabs do libmypaint) — a
-    /// diferença à de 300 px/s, ± 0,005; e `0` sem a linha.
+    /// diferença à da mão parada, ± 0,005; `0` parada e sem a linha.
     #[test]
     fn a_dureza_da_velocidade_e_a_curva_do_mypaint() {
         let d = Dynamics {
@@ -274,11 +277,32 @@ mod tests {
         for (v, mypaint) in [(0.0, 0.238), (300.0, 0.129), (2500.0, 0.051)] {
             let dh = d.dureza_da_velocidade(v);
             assert!(
-                (dh - (mypaint - 0.129)).abs() < 0.005,
+                (dh - (mypaint - 0.238)).abs() < 0.005,
                 "v {v}: {dh} × {}",
-                mypaint - 0.129
+                mypaint - 0.238
             );
         }
+        assert_eq!(d.dureza_da_velocidade(0.0), 0.0);
         assert_eq!(Dynamics::default().dureza_da_velocidade(0.0), 0.0);
+    }
+
+    /// ⭐ A mão só AMACIA (auditoria do cartão Pen, 25/10): a pressão cheia (o rato) e a mão parada (o clique) são a
+    /// Hardness do pincel — `0` ao bit —, e nenhuma pressão nem velocidade soma dureza.
+    #[test]
+    fn a_mao_so_amacia() {
+        let d = Dynamics {
+            speed_hardness: 1.0,
+            pressure_hardness: 1.0,
+            ..Dynamics::default()
+        };
+        assert_eq!(d.dureza_da_mao(1.0, 0.0), 0.0);
+        for p in [0.0, 0.3, 0.7, 1.0] {
+            for v in [0.0, 50.0, 300.0, 2500.0] {
+                assert!(d.dureza_da_mao(p, v) <= 0.0, "p {p} v {v}");
+            }
+        }
+        assert!((d.dureza_da_mao(0.25, 0.0) + 0.75).abs() < 1e-6);
+        // O tecto: a 474 px/s a faixa inteira tira a dureza toda.
+        assert!((d.dureza_da_velocidade(474.0) + 1.0).abs() < 0.01);
     }
 }

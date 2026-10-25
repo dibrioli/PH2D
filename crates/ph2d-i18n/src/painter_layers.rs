@@ -46,12 +46,15 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         "panel.painter_layers.inerte.pressure_size_on" => "Acts when Pressure size is above 0",
         "panel.painter_layers.inerte.pressure_on" => {
-            "Acts when Pressure size or Pressure opacity is above 0"
+            "Acts when something reads the pressure: Pressure size, opacity, softness or scatter, a Grain depth or tip images by pressure"
         }
         "panel.painter_layers.inerte.shape_automatic_off" => {
             "Acts when the Shape's Automatic is off"
         }
         "panel.painter_layers.inerte.spray_count_above_one" => "Acts when Count is above 1",
+        "panel.painter_layers.inerte.hardness_above_zero" => {
+            "Acts when Hardness is above 0: it only softens the brush"
+        }
         "panel.painter_layers.inerte.speed_on" => {
             "Acts when Speed size, Speed opacity or Speed softness is above 0"
         }
@@ -547,11 +550,11 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_layers.pen.pressure_opacity_curve" => "Opacity curve",
         "panel.painter_layers.pen.pressure_floor" => "Min pressure",
         "panel.painter_layers.pen.pressure_ceiling" => "Max pressure",
-        "panel.painter_layers.pen.pressure_s_curve" => "Pressure curve",
+        "panel.painter_layers.pen.pressure_s_curve" => "Press. S-curve",
         "panel.painter_layers.pen.pressure_jitter" => "Light scatter",
         "panel.painter_layers.pen.speed_lag" => "Speed lag",
         "panel.painter_layers.pen.speed_hardness" => "Speed softness",
-        "panel.painter_layers.pen.pressure_hardness" => "Pen hardness",
+        "panel.painter_layers.pen.pressure_hardness" => "Press. softness",
         "panel.painter_layers.pen.pressure_smoothing" => "Smoothing",
         "panel.painter_layers.pen.pulled_string" => "Pulled string",
         "panel.painter_layers.pen.dab_rotation" => "Rotation",

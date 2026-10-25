@@ -106,7 +106,7 @@ fn preview(nome: &str) -> (Vec<u8>, u32, u32) {
 
 fn ppm(px: &[u8], w: u32, h: u32) -> Vec<u8> {
     let mut v = format!("P6\n{w} {h}\n255\n").into_bytes();
-    for c in px.chunks_exact(4) {
+    for c in px.as_chunks::<4>().0 {
         v.extend_from_slice(&c[..3]);
     }
     v
@@ -125,7 +125,7 @@ fn sonda_secao_render() {
     for nome in NOMES {
         let px = pinta(nome);
         let mut ppm = format!("P6\n{W} {H}\n255\n").into_bytes();
-        for c in px.chunks_exact(4) {
+        for c in px.as_chunks::<4>().0 {
             ppm.extend_from_slice(&c[..3]);
         }
         std::fs::write(PathBuf::from(&dir).join(format!("{nome}.ppm")), ppm).unwrap();

@@ -313,3 +313,15 @@ fn o_piso_da_caixa_obedece_ao_tamanho_do_texto() {
     }
     ph2d_text::set_active_text_style(UiTextStyle::default());
 }
+
+/// As casas pedidas mandam em repouso (cartão Pen, 25/10: `0.700` ao lado de `1`); `None` é o de sempre.
+#[test]
+fn format_number_com_casas_mostra_as_casas_pedidas() {
+    assert_eq!(format_number_com_casas(0.7_f32.into(), Some(2)), "0.70");
+    assert_eq!(format_number_com_casas(1.0, Some(2)), "1.00");
+    assert_eq!(format_number_com_casas(37.5, Some(1)), "37.5");
+    assert_eq!(format_number_com_casas(12.4, Some(0)), "12");
+    assert_eq!(format_number_com_casas(-0.001, Some(2)), "0.00");
+    assert_eq!(format_number_com_casas(f64::INFINITY, Some(2)), "\u{221E}");
+    assert_eq!(format_number_com_casas(0.7_f32.into(), None), "0.700");
+}

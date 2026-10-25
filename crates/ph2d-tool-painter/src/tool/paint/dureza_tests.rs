@@ -39,7 +39,11 @@ fn o_preview_da_silhueta_e_o_peso_do_dab() {
         super::brush_falloff_weight_at(&s, 0.5) < 0.9,
         "o editor da curva passou a mostrar a dureza"
     );
-    assert_eq!(super::brush_dab_weight_at(&s, 0.5), 1.0, "controlo: a dureza 0,8 enche a metade de dentro");
+    assert_eq!(
+        super::brush_dab_weight_at(&s, 0.5),
+        1.0,
+        "controlo: a dureza 0,8 enche a metade de dentro"
+    );
 }
 
 /// A linha do painel chega ao PINCEL (o leitor decide: `falloff_weight` lê `hardness`), presa a `0..1`.

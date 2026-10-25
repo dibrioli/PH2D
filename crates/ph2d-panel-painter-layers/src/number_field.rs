@@ -156,7 +156,8 @@ pub(crate) fn chip(
     let buf = buf.to_string();
     let input = NumberInput::new(id, "", f64::from(value))
         .step(step)
-        .visual((state, ctx.host.store().hover_live(id)));
+        .visual((state, ctx.host.store().hover_live(id)))
+        .casas(Some(decimals));
     paint_number_input_with_buffer(
         &input,
         Some(&buf),
@@ -190,11 +191,36 @@ pub(crate) fn paint_num_row(
     //    dono de 2026-09-15 (*«a caixa recua quando na verdade o nome deveria criar as colunas»*).
     sec: ph2d_editor_core::property_row::Seccao,
 ) -> f32 {
+    paint_num_row_com_unidade(
+        ctx, theme, x, content_w, y, label_txt, id, value, min, max, step, decimals, None, sec,
+    )
+}
+
+/// A [`paint_num_row`] com a UNIDADE colada ao número, dentro da caixa (a porta `NumberInput::suffix`).
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn paint_num_row_com_unidade(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    content_w: f32,
+    y: f32,
+    label_txt: &str,
+    id: NodeId,
+    value: f32,
+    min: f32,
+    max: f32,
+    step: f64,
+    decimals: usize,
+    unidade: Option<ph2d_editor_core::widget::Unit>,
+    sec: ph2d_editor_core::property_row::Seccao,
+) -> f32 {
     arm_field(ctx.host.store_mut(), id, value, min, max, step, decimals);
     let area = Rect::new(x, y, content_w, ph2d_tokens::row_pitch_px());
     crate::esmaecer::talvez_esmaecido(ctx, theme, area, &[id], |ctx| {
         let (store, hit_index) = ctx.host.store_and_hit_index_mut();
-        ph2d_editor_core::property_row::paint_fields_row(
+        // ⚠️ `com_casas`: o espelho escreve `decimals` casas no buffer, e a caixa em repouso tem de
+        //    mostrar as MESMAS (sem isto ela mostrava `format_number`: `0.700` ao lado de `1`).
+        ph2d_editor_core::property_row::paint_fields_row_com_casas(
             ctx.scene,
             ctx.text_system,
             theme,
@@ -206,7 +232,8 @@ pub(crate) fn paint_num_row(
             label_txt,
             &[id],
             step,
-            None,
+            unidade,
+            Some(decimals),
             sec,
         )
     })
@@ -247,7 +274,7 @@ pub(crate) fn paint_num_xy(
     let area = Rect::new(x, y, content_w, ph2d_tokens::row_pitch_px());
     crate::esmaecer::talvez_esmaecido(ctx, theme, area, &[id_x, id_y], |ctx| {
         let (store, hit_index) = ctx.host.store_and_hit_index_mut();
-        ph2d_editor_core::property_row::paint_fields_row(
+        ph2d_editor_core::property_row::paint_fields_row_com_casas(
             ctx.scene,
             ctx.text_system,
             theme,
@@ -260,6 +287,7 @@ pub(crate) fn paint_num_xy(
             &[id_x, id_y],
             step,
             None,
+            Some(decimals),
             sec,
         )
     })
@@ -395,7 +423,7 @@ fn half_param(
     let area = Rect::new(x, y, w, ph2d_tokens::row_pitch_px());
     crate::esmaecer::talvez_esmaecido(ctx, theme, area, &[id], |ctx| {
         let (store, hit_index) = ctx.host.store_and_hit_index_mut();
-        ph2d_editor_core::property_row::paint_fields_row(
+        ph2d_editor_core::property_row::paint_fields_row_com_casas(
             ctx.scene,
             ctx.text_system,
             theme,
@@ -408,6 +436,7 @@ fn half_param(
             &[id],
             e.step,
             None,
+            Some(e.decimals()),
             sec,
         );
     });

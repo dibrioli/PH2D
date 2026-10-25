@@ -31,9 +31,9 @@ mod seam_curve_drag_ownership;
 mod seam_deform;
 mod seam_dock_modes;
 mod seam_estado_escondido; // o interruptor que neutraliza: a tinta depois dele é a do pincel limpo (22/10)
-mod seam_hardness; // a Hardness abaixo do Falloff, digitada pelo ponteiro (24/10)
 mod seam_flow; // o Flow (a taxa) abaixo da Strength (o tecto), onde a ferramenta e o meio o lêem (24/10)
 mod seam_grid_stamp;
+mod seam_hardness; // a Hardness abaixo do Falloff, digitada pelo ponteiro (24/10)
 mod seam_impasto_rig;
 mod seam_impasto_tool;
 mod seam_line_card;

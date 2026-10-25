@@ -470,7 +470,9 @@ fn a_cauda_nao_costura_o_grao_aleatorio() {
             ..b.texture
         };
         b.grain_depth = 1.0;
-        b.taper.end = end;
+        // O plano armado nos dois: só a cauda muda. Num `Mix` só a cauda o arma (desde que o tecto saiu, 25/10) —
+        // o controlo leva uma cauda de 0,02 px, cuja janela não chega à faixa medida.
+        b.taper.end = end.max(1e-3);
         b
     };
     let pts: Vec<[f32; 2]> = (0..=80).map(|k| [40.0 + 4.0 * k as f32, 50.0]).collect();

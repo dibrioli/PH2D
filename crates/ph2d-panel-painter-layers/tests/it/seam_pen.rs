@@ -161,6 +161,20 @@ fn a_rotacao_escolhe_se_no_menu() {
     assert_eq!(t.brush_settings().mao[indice("dabRotation")], 2.0);
 }
 
+/// O menu da rotação cai na MESMA caixa que as linhas numéricas vizinhas (auditoria 25/10: ia até à borda).
+#[test]
+fn a_rotacao_alinha_com_as_caixas_do_cartao() {
+    let (_, _, rects) = novo(&no_meio(PaintMedia::Digital));
+    let chip = rect_of(&rects, ids::PAINTER_PEN_ROTATION).expect("o chip da rotação");
+    for chave in ["pulledString", "tiltStart"] {
+        let caixa = rect_of(&rects, ids::PAINTER_PEN_FIELDS[indice(chave)]).expect(chave);
+        assert!(
+            (chip.x - caixa.x).abs() < 0.01 && (chip.w - caixa.w).abs() < 0.01,
+            "o chip {chip:?} e a caixa de `{chave}` {caixa:?} têm de partilhar a coluna e a largura"
+        );
+    }
+}
+
 /// O Reset do cartão devolve a mão de fábrica do meio.
 #[test]
 fn o_reset_do_cartao_devolve_a_mao_de_fabrica() {

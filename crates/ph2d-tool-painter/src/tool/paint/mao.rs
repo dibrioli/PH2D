@@ -31,7 +31,7 @@ pub enum LinhaDaMao {
     SpeedLag,
     /// A velocidade amacia a queda ([`Dynamics::speed_hardness`], J4 efeitos 2.ª ronda).
     SpeedHardness,
-    /// A pressão endurece a queda ([`Dynamics::pressure_hardness`], J4 efeitos 2.ª ronda).
+    /// A pressão leve amacia a queda ([`Dynamics::pressure_hardness`], J4 efeitos 2.ª ronda).
     PressureHardness,
 }
 
@@ -103,14 +103,14 @@ const PRESSURE_S_CURVE: (&str, f64, f64, f64, f64) = ("pressureSCurve", 0.0, 1.0
 const PRESSURE_JITTER: (&str, f64, f64, f64, f64) = ("pressureJitter", 0.0, 1.0, 0.01, 0.0);
 /// O atraso da velocidade (s): o `speed1_slowness` do MyPaint (0,04 em 164 dos 196 pincéis dele; o maior 0,2).
 const SPEED_LAG: (&str, f64, f64, f64, f64) = ("speedLag", 0.0, 0.5, 0.01, 0.0);
-/// A pressão endurece a queda: a dureza somada na pressão 1 (a esferográfica do MyPaint: 0,3).
+/// A pressão leve amacia a queda: a dureza tirada na pressão 0 (a esferográfica do MyPaint: 0,3).
 const PRESSURE_HARDNESS: (&str, f64, f64, f64, f64) = ("pressureHardness", 0.0, 1.0, 0.01, 0.0);
 /// A velocidade amacia a queda: o `k` da curva logarítmica (o `experimental/glow` do MyPaint: 0,04 × 0,94 = 0,038 na
-/// dureza dele; a nossa queda pede mais — `exames/efeitos.md` 2.ª ronda); o tecto é o do motor.
+/// dureza dele; a nossa queda pede mais — `exames/efeitos.md` 2.ª ronda); o tecto é o da dureza inteira.
 const SPEED_HARDNESS: (&str, f64, f64, f64, f64) = (
     "speedHardness",
     0.0,
-    ph2d_painter_brush::dynamics::VELOCIDADE_EXPOENTE_MAX as f64,
+    ph2d_painter_brush::dynamics::DUREZA_DA_VELOCIDADE_MAX as f64,
     0.005,
     0.0,
 );

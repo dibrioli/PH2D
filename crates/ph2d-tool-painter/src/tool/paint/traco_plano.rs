@@ -45,6 +45,8 @@ pub(crate) struct PlanoDoTraco {
     pub(super) mascara: Option<Arc<Vec<u8>>>,
     /// O traço de uma FERRAMENTA com o dual ([`super::dual_ferramenta`]): `None` = o plano do pincel.
     pub(super) ferramenta: Option<Box<super::dual_ferramenta::Ferramenta>>,
+    /// A Strength que a composição aplica ([`PainterTool::escala_do_plano`]): o plano guarda o traço a `1/escala`.
+    escala: f32,
 }
 
 impl PlanoDoTraco {
@@ -56,6 +58,7 @@ impl PlanoDoTraco {
             lotes: Vec::new(),
             mascara: None,
             ferramenta: Some(Box::default()),
+            escala: 1.0,
         }
     }
 }
@@ -152,14 +155,36 @@ impl PainterTool {
                 lotes: Vec::new(),
                 mascara: None,
                 ferramenta: None,
+                escala: self.escala_do_plano(),
             },
+        }
+    }
+
+    /// ⭐ **A Strength sai do plano e entra na composição** (a *Opacity* do Photoshop: a camada do traço composta à
+    /// opacidade): o plano é `u8`, e guardar nele o traço à Strength `S` quantizava o tecto — `0,056` virava
+    /// `14/255 = 0,0549`, e 10 passagens de um Multiply ficavam 3 níveis aquém do W3C (`efeito_modos_tests`). Sob a lei
+    /// do Accumulate desligado (`stroke_cover::cover_add`) a cobertura do traço é LINEAR no tecto: os dabs a `1/S`
+    /// dão o plano a `m/S` e a composição a `S·(m/S) = m`, com o alfa do `u8` inteiro. Fora dessa lei (o Accumulate,
+    /// a ponta de píxel, o Shape em modo de cor — rotas que não leem a cobertura do traço —, e a mistura de pigmento,
+    /// que no plano não é o source-over cujo alfa telescopa para `m`) `1`: o plano de sempre.
+    fn escala_do_plano(&self) -> f32 {
+        let b = &self.paint.brush;
+        let shape_cor = self.paint.shape_layers.is_color_mode()
+            && b.shape_silhouette_active(self.paint.shape_image.is_some());
+        let linear =
+            !b.accumulate && b.effective_pigment_mix() <= 0.0 && !self.pixel_vivo(b) && !shape_cor;
+        if linear && b.strength > 0.0 && b.strength < 1.0 {
+            b.strength
+        } else {
+            1.0
         }
     }
 
     /// Carimba `dabs` no plano: troca o plano para dentro da tela, `Mix` e sem o trinco de alfa (o modo e o
     /// trinco são da composição), e volta.
     fn carimba_no_plano(&mut self, s: &mut PlanoDoTraco, dabs: &[Dab]) {
-        self.dentro_do_plano(s, |t| t.stamp_dabs_dispatch(dabs));
+        let dabs = sem_a_strength(dabs, s.escala);
+        self.dentro_do_plano(s, |t| t.stamp_dabs_dispatch(&dabs));
     }
 
     /// Corre `f` com o plano do traço DENTRO da tela (`Mix`, `acumulando_no_plano`): pela porta do despacho
@@ -196,7 +221,7 @@ impl PainterTool {
         let dual = brush.dual.map(|d| d.modo).zip(s.mascara.as_deref());
         // O alfa do plano como a composição o vê: o trinco de alfa e o recorte da 2.ª ponta.
         let alfa = |i: usize| {
-            let mut a = dec(s.plano[i + 3]);
+            let mut a = dec(s.plano[i + 3]) * s.escala;
             if trinco {
                 a *= dec(s.base[i + 3]);
             }
@@ -401,11 +426,12 @@ impl PainterTool {
         // O trilho de píxel (L18) anda de novo do início do re-carimbo; o último píxel pendente já está no lote
         // ANCORADO que o pen-up gravou — o que sobra no trilho no fim é ele outra vez, e descarta-se.
         self.paint.pixel_trilhos.zera();
+        let escala = s.escala;
         self.dentro_do_plano(s, |t| {
             for l in &c.lotes {
                 t.paint.tex_rng = l.rng;
                 t.paint.pixel_trilhos.ja_ancorado = l.ancorado;
-                t.stamp_dabs_dispatch(&l.dabs);
+                t.stamp_dabs_dispatch(&sem_a_strength(&l.dabs, escala));
             }
         });
         self.paint.pixel_trilhos.zera();
@@ -430,6 +456,18 @@ impl PainterTool {
         let b = &self.paint.brush;
         (b.spacing * 2.0 * b.clamped_radius()).max(0.5)
     }
+}
+
+/// Os dabs como o plano os carimba: a cobertura sem a Strength `escala` ([`PainterTool::escala_do_plano`]).
+fn sem_a_strength(dabs: &[Dab], escala: f32) -> std::borrow::Cow<'_, [Dab]> {
+    if escala >= 1.0 {
+        return std::borrow::Cow::Borrowed(dabs);
+    }
+    let mut v = dabs.to_vec();
+    for d in &mut v {
+        d.coverage = (d.coverage / escala).min(1.0);
+    }
+    std::borrow::Cow::Owned(v)
 }
 
 /// O plano da cauda ([`PainterTool::planeia_a_cauda`]).

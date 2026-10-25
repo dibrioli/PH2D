@@ -231,6 +231,9 @@ mod crossing_scale_probe;
 /// **L6 nas ferramentas** — a borracha, o Blur, o Smear e o Clone com a 2.ª ponta.
 #[cfg(test)]
 mod dual_ferramenta_tests;
+/// A Hardness à vista e o preview da silhueta que pinta o peso do dab (24/10).
+#[cfg(test)]
+mod dureza_tests;
 /// **L7** — o efeito do pincel compõe no seu modo (W3C em sRGB), contra a fórmula e as fotos do Rebelle.
 #[cfg(test)]
 mod efeito_modos_tests;
@@ -251,9 +254,6 @@ mod shape_relief_tests;
 /// **O esfregão numa CURVA** — o tecto do transporte, e a prova de que a RECTA não mexeu.
 #[cfg(test)]
 mod smear_curva_tests;
-/// A Hardness à vista e o preview da silhueta que pinta o peso do dab (24/10).
-#[cfg(test)]
-mod dureza_tests;
 /// **L8 + L5** — o traço num modo de cor como uma camada, a cauda e o fall-off (o plano do traço).
 #[cfg(test)]
 mod traco_plano_tests;

@@ -33,7 +33,8 @@ pub const MEIOS: &[ReceitaMeio] = &[
     // o papel é o over e sobre outra tinta escurece (`exames/canetas.md` 2.ª onda).
     ReceitaMeio {
         pincel: &[
-            ("hardness", "0.0"),
+            // A dureza da pressão cheia: a pressão leve TIRA a do `pressureHardness` (0,15 → 0 na pressão 0).
+            ("hardness", "0.15"),
             ("falloff", r#""Sharp""#),
             ("spacing", "0.16"),
             ("pigment", "true"),

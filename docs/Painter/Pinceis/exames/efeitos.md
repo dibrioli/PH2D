@@ -108,6 +108,12 @@ o relevo pelo grão sem tirar tinta.
    Portões `a_mao_lenta_endurece_a_queda`, `a_dureza_da_velocidade_e_a_curva_do_mypaint`, `o_passo_segue_a_velocidade`,
    `a_esferografica_de_200_px_nao_sai_em_contas`; H1–H3 sangram. Painel 21 → 23 linhas.
 
+> ⚠️ **25/10 — a mão só AMACIA** (auditoria do cartão Pen): `speedHardness` passou a `−k·ln((Γ+v)/Γ)` (zero na mão
+> parada; tecto `0,3`) e `pressureHardness` a `−k·(1−p)` (zero na pressão cheia e com o rato). As receitas levam a
+> diferença na Hardness, sem mudar o traço: Ballpoint `0 → 0,15` (miniatura igual ao píxel), Glow `0,1 → 0,2707`. O
+> portão `a_mao_lenta_endurece_a_queda` virou `a_mao_rapida_amacia_a_queda`; a mutação da esferográfica tira a linha E
+> a Hardness.
+
 **C-7 Ballpoint — APROVADA** (sai do `EM_ESTUDO` das canetas para a fábrica `Digital/Ink/Ballpoint`): a receita da J3 +
 espectral + `pressureHardness 0,15` (contas a 200 px 0,044 → 0,006; MyPaint 0,0125). Régua **440/454**
 (`ballpoint_regua.txt`); vizinho Graphite HB **d 0,938**; prancha `pranchas/efeitos/ballpoint_r2.png`. Razão: a

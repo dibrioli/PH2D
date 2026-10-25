@@ -15,8 +15,7 @@ use ph2d_i18n::tr;
 use ph2d_tokens::{ColorToken, Radius};
 use ph2d_tool_painter::{
     BrushSettings, Falloff, FootprintDeform, ImageMask, TEX_ANGLE_MAX_DEG, TEX_OFFSET_MAX,
-    TEX_OFFSET_MIN, TEX_SIZE_MAX, TEX_SIZE_MIN, TextureKind,
-    render_shape_preview,
+    TEX_OFFSET_MIN, TEX_SIZE_MAX, TEX_SIZE_MIN, TextureKind, render_shape_preview,
 };
 use ph2d_vector::ImageQuality;
 
@@ -107,22 +106,6 @@ pub(crate) fn paint_shape_section(
         if let Some(r) = open {
             state::set_pending_brush_falloff_dd(Some((r, brush.falloff)));
         }
-        // A Hardness empurra a curva para a borda: à vista com o Falloff que ela muda (o preview da silhueta já a
-        // aplica, `brush_dab_weight_at`).
-        y = crate::card::card_row(
-            ctx,
-            theme,
-            x,
-            content_w,
-            y,
-            "panel.painter_layers.shape.hardness",
-            ph2d_tool_painter::ids::PAINTER_BRUSH_HARDNESS,
-            brush.hardness,
-            0.0,
-            1.0,
-            crate::number_field::FINE_STEP,
-            2,
-        );
         y = crate::paint_falloff::paint_falloff_section(ctx, theme, x, content_w, y, brush);
     }
     // ── 3b. TAPER — the stroke's END shaping, directly below the Falloff (Enio 2026-08-08). ──

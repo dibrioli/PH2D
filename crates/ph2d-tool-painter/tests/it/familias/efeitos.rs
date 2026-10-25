@@ -102,7 +102,8 @@ const GLOW: ReceitaMeio =
         pincel: &[
             // A dureza 0,1 com a queda que a desconta (2.ª ronda): a velocidade tem por onde a AMACIAR — o recto
             // rápido do MyPaint (a dureza dele 0,05 a 2 500 px/s) é um fio fino; com a dureza 0 não havia como.
-            ("hardness", "0.1"),
+            // É a da mão PARADA: 0,1 a 300 px/s + 0,059·ln((Γ + 300)/Γ) = 0,2707 (a velocidade só amacia, 25/10).
+            ("hardness", "0.2707"),
             ("falloff", "\"Custom\""),
             ("custom_falloff", NEON),
             ("accumulate", "true"),
@@ -578,6 +579,14 @@ fn a_esferografica_de_200_px_nao_sai_em_contas() {
             assert!(
                 p.parametros.engine.remove("pressureHardness").is_some(),
                 "a receita perdeu a linha"
+            );
+            // A dureza 0 de antes: sem a linha, a Hardness da pressão cheia deixaria a cheia chata na mesma.
+            assert!(
+                p.parametros
+                    .brush
+                    .insert("hardness".into(), serde_json::json!(0.0))
+                    .is_some(),
+                "a receita perdeu a dureza"
             );
             contas_a_200_px(p, escala)
         });

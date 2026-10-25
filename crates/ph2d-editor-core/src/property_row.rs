@@ -32,6 +32,8 @@ mod botao;
 pub mod escolha;
 use crate::zones::Rect;
 pub use botao::{abaixo_do_botao, caixa_do_botao};
+mod casas;
+pub use casas::paint_fields_row_com_casas;
 pub use escolha::paint_choice_row;
 use ph2d_a11y::NodeId;
 use ph2d_text::TextSystem;
@@ -175,6 +177,7 @@ fn paint_fields_row_inner(
     field_ids: &[NodeId],
     step: f64,
     unit: Option<Unit>,
+    casas: Option<usize>,
     seccao: Seccao,
 ) -> (f32, Option<Rect>) {
     let (row, por_linha, linhas, cw) = row_and_layout(
@@ -207,7 +210,8 @@ fn paint_fields_row_inner(
             .step(step)
             .visual((state, store.hover_live(id)))
             .suffix(unit.map(Unit::suffix))
-            .dimmed(store.number_input_inherited(id));
+            .dimmed(store.number_input_inherited(id))
+            .casas(casas);
         paint_number_input_with_buffer(
             &input,
             Some(buffer),
@@ -258,6 +262,7 @@ pub fn paint_fields_row<'a>(
         field_ids,
         step,
         unit,
+        None,
         seccao,
     )
     .0
@@ -303,6 +308,7 @@ pub fn paint_field_row<'a>(
         &[id],
         step,
         unit,
+        None,
         seccao,
     );
     (

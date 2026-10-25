@@ -136,8 +136,19 @@ impl Stroke {
             *r = (*r * kr).clamp(0.5, MAX_BRUSH_RADIUS_PX);
             *c = (*c * kc).clamp(0.0, 1.0);
         };
+        // A dureza: o dab segurado levou a da mão parada (`dab_build`, `dureza_da_velocidade(0) = 0`), então a da
+        // velocidade medida soma-se a ele.
+        let (dh, piso) = (
+            self.dynamics.dureza_da_velocidade(v),
+            -self.spec.hardness.max(0.0),
+        );
         for d in &mut h {
             escala(&mut d.radius_px, &mut d.coverage);
+            let t = d.tilt.unwrap_or(crate::DabTilt::NEUTRA);
+            let dureza = (t.dureza + dh).max(piso);
+            if dureza != t.dureza {
+                d.tilt = Some(crate::DabTilt { dureza, ..t });
+            }
             if let Some(a) = &mut d.ante {
                 escala(&mut a.radius_px, &mut a.coverage);
             }

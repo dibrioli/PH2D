@@ -51,7 +51,22 @@ pub(crate) fn paint_falloff_section(
 ) -> f32 {
     let gap = Spacing::Xs.px();
     let is_custom = brush.falloff == Falloff::Custom.to_u8();
-    let mut y = y;
+    // A Hardness empurra a curva para a borda: à vista com o Falloff que ela muda (o preview da silhueta já a
+    // aplica, `brush_dab_weight_at`).
+    let mut y = crate::card::card_row(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        "panel.painter_layers.shape.hardness",
+        ph2d_tool_painter::ids::PAINTER_BRUSH_HARDNESS,
+        brush.hardness,
+        0.0,
+        1.0,
+        crate::number_field::FINE_STEP,
+        2,
+    );
 
     // ── (Custom only) +/− point buttons, right-aligned above the canvas ──
     if is_custom {

@@ -65,7 +65,7 @@ const ELIDEM_POR_LARGURA: &[(f32, usize)] = &[
     //    nos quatro meios) — «Pressure opacity» e «Pressure ceiling» cortam só aqui, no mínimo do dock; de
     //    `245` para cima a escada não muda.
     // ⬇️ **15 → 13 em 2026-10-22 (J5 fecho): os nomes do Pen ficaram no idioma curto dos grandes apps** («Press.
-    //    opacity», «Min/Max pressure», «Pressure curve», «Light scatter», «Pen hardness») — nenhum corta a `220`.
+    //    opacity», «Min/Max pressure», «Pressure curve», «Light scatter», «Press. softness») — nenhum corta a `220`.
     (220.0, 13),
     (245.0, 1),
     // Amostra DATADA da largura do dono (lida em 2026-09-14).

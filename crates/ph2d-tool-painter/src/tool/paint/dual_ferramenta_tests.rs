@@ -366,24 +366,16 @@ fn a_mao_age_no_smear() {
         t.paint.brush.pen_tilt.start_deg = 0.0;
         t.paint.brush.pen_tilt.full_deg = 1.0;
     };
+    // O `pressureHardness` com a pressão 1 deste risco é a Hardness (o rato não muda nada, 25/10): a dureza da mão
+    // chega ao smear pelo MESMO canal (`dureza_da_mao`) que o `speedHardness` prova aqui.
     sem_falhas(vec![
-        relata(
-            "pressureHardness",
-            "smear",
-            o_extra_age(
-                "smear",
-                [0.0; 2],
-                |_| {},
-                |t| t.paint.dynamics.pressure_hardness = 1.0,
-            ),
-        ),
         relata(
             "speedHardness",
             "smear",
             o_extra_age(
                 "smear",
                 [0.0; 2],
-                |_| {},
+                |t| t.paint.brush.hardness = 0.8,
                 |t| t.paint.dynamics.speed_hardness = 1.0,
             ),
         ),

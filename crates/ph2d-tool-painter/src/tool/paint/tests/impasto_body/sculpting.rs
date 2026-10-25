@@ -446,6 +446,8 @@ fn the_composite_stack_closes_its_smear_session_at_pen_up() {
     b.radius_px = 12.0;
     t.paint.brush = b;
     t.paint.brush_by_mode.fill(b);
+    // O Composite é só do Digital (dono 25/10, `PaintMedia::offers_composite`).
+    t.set_paint_media(crate::PaintMedia::Digital);
     t.paint.composite_enabled = true;
     // ⛔ A pilha nasce VAZIA desde 2026-09-21: a fixtura CRIA o Smear que ela mede. Sem isto o
     // controlo (1) reprova — e reprova com razão, porque não há camada nenhuma a abrir sessão.

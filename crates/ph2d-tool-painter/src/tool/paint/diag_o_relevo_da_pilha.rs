@@ -19,8 +19,9 @@ pub(super) fn tela(camadas: &[CompositeOp]) -> PainterTool {
     };
     t.paint.brush = b;
     t.paint.brush_by_mode.fill(b);
-    t.set_brush_impasto(true);
-    t.set_brush_impasto_depth(1.0);
+    // O Composite é só do Digital (dono 25/10, `PaintMedia::offers_composite`): o relevo da pilha é o FILME
+    // do Shape › Relief, que passa pela mesma porta de altura que o corpo do Impasto.
+    t.set_shape_relief(1.0);
     t.set_brush_falloff(Falloff::Smooth as u8);
     t.paint.composite_enabled = !camadas.is_empty();
     for pos in 0..N_CAMADAS {

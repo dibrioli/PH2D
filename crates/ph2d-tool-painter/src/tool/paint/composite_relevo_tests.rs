@@ -8,6 +8,10 @@ use ph2d_painter_brush::{DrawTo, Falloff};
 
 const S: u32 = 128;
 
+/// Metade do corpo que o traço `horizontal` do avulso deposita com o filme do Shape › Relief a 1 (medido
+/// 25/10: `60,89`; a meio do traço `32,14`). O corpo do Impasto era `974,24` — o filme é 16× mais fino.
+const CORPO_DA_FIXTURA: f32 = 30.0;
+
 fn tela(camadas: &[CompositeOp]) -> PainterTool {
     let mut t = PainterTool::default();
     t.set_source(vec![255u8; (S * S * 4) as usize], S, S);
@@ -21,8 +25,9 @@ fn tela(camadas: &[CompositeOp]) -> PainterTool {
     };
     t.paint.brush = b;
     t.paint.brush_by_mode.fill(b);
-    t.set_brush_impasto(true);
-    t.set_brush_impasto_depth(1.0);
+    // O Composite é só do Digital (dono 25/10, `PaintMedia::offers_composite`): o relevo da pilha é o FILME
+    // do Shape › Relief, que passa pela mesma porta de altura que o corpo do Impasto.
+    t.set_shape_relief(1.0);
     t.set_brush_falloff(Falloff::Smooth as u8);
     t.paint.composite_enabled = !camadas.is_empty();
     for pos in 0..N_CAMADAS {
@@ -88,7 +93,7 @@ fn com_duas_camadas_o_corpo_e_o_do_pincel_avulso() {
     assert!(pilha.composite_active());
     horizontal(&mut pilha);
     // Controlo: a fixtura contém o fenómeno — o avulso deposita corpo.
-    assert!(soma(&corpo(&avulso)) > 100.0);
+    assert!(soma(&corpo(&avulso)) > CORPO_DA_FIXTURA);
     igual(
         &corpo(&pilha),
         &corpo(&avulso),
@@ -114,24 +119,36 @@ fn a_cadeia_do_relevo_e_de_cada_camada() {
     );
 }
 
-/// **Um pincel de só-relevo não pinta COR na pilha** — e deposita o corpo. Antes da cura a tela saía
-/// com a tinta das duas camadas (`393 834` níveis) e sem corpo nenhum.
+/// **Um pincel de só-relevo com o Composite ligado não pinta COR no Impasto** — e deposita o corpo do avulso.
+/// Antes da cura da pilha a tela saía com a tinta das duas camadas (`393 834` níveis) e sem corpo; desde o
+/// dono 25/10 a pilha é só do Digital, e no Impasto o checkbox de um preset antigo não a arma: o traço é o
+/// do pincel avulso, ao bit.
 #[test]
-fn so_relevo_na_pilha_nao_pinta_cor() {
+fn so_relevo_com_o_composite_ligado_no_impasto_nao_pinta_cor() {
+    let no_impasto = |camadas: &[CompositeOp], draw_to: Option<DrawTo>| {
+        let mut t = tela(camadas);
+        t.set_shape_relief(0.0);
+        t.set_brush_impasto(true);
+        t.set_brush_impasto_depth(1.0);
+        if let Some(d) = draw_to {
+            t.paint.brush.impasto_draw_to = d;
+        }
+        t
+    };
     let branca = vec![255u8; (S * S * 4) as usize];
-    let mut pilha = tela(&[CompositeOp::Brush, CompositeOp::Brush]);
-    pilha.paint.brush.impasto_draw_to = DrawTo::Depth;
+    let mut pilha = no_impasto(&[CompositeOp::Brush, CompositeOp::Brush], Some(DrawTo::Depth));
+    assert!(!pilha.composite_active(), "o Composite armou fora do Digital");
     horizontal(&mut pilha);
     assert!(
         *pilha.canvas_rgba == branca,
         "a pilha pintou cor com Draw To = Depth"
     );
-    let mut avulso = tela(&[]);
-    avulso.paint.brush.impasto_draw_to = DrawTo::Depth;
+    let mut avulso = no_impasto(&[], Some(DrawTo::Depth));
     horizontal(&mut avulso);
+    assert!(soma(&corpo(&avulso)) > CORPO_DA_FIXTURA, "a fixtura deposita corpo");
     igual(&corpo(&pilha), &corpo(&avulso), "e o corpo é o do avulso");
-    // Controlo: com cor e corpo a mesma pilha pinta — senão a primeira metade não distingue nada.
-    let mut com_cor = tela(&[CompositeOp::Brush, CompositeOp::Brush]);
+    // Controlo: com cor e corpo o mesmo pincel pinta — senão a primeira metade não distingue nada.
+    let mut com_cor = no_impasto(&[CompositeOp::Brush, CompositeOp::Brush], None);
     horizontal(&mut com_cor);
     assert!(*com_cor.canvas_rgba != branca);
 }
@@ -178,7 +195,7 @@ fn com_tiling_o_corpo_embrulha_como_o_do_avulso() {
     atravessa(&mut avulso);
     let mut pilha = tela(&[CompositeOp::Brush, CompositeOp::Brush]);
     atravessa(&mut pilha);
-    assert!(soma(&corpo(&avulso)) > 100.0);
+    assert!(soma(&corpo(&avulso)) > CORPO_DA_FIXTURA);
     igual(&corpo(&pilha), &corpo(&avulso), "o Tiling");
 }
 
@@ -189,33 +206,33 @@ fn pilha_de_uma(op: CompositeOp) -> PainterTool {
     t
 }
 
-/// **No Impasto a COR da pilha é a do pincel avulso, ao byte** — o pigmento de um pincel que deposita
-/// corpo é cortado num FILME, e os planos forçavam `Draw To = Color`, o que desligava o corte: a
-/// camada pintava a tinta cheia do Digital (`4 290` bytes diferentes, pior `178`). O CONTROLO é o
-/// Digital, que já era idêntico.
+/// **A COR da pilha é a do pincel avulso, ao byte, com e sem o filme do Relief** — os planos forçavam
+/// `Draw To = Color`, e no Impasto a camada pintava a tinta cheia do Digital (`4 290` bytes diferentes,
+/// pior `178`). Desde o dono 25/10 a pilha é só do Digital: a metade do Impasto saiu com a lei (lá o
+/// checkbox não arma a pilha, `so_relevo_com_o_composite_ligado_no_impasto_nao_pinta_cor`); fica o
+/// Digital, com o filme que deposita corpo e sem ele.
 #[test]
-fn no_impasto_a_cor_da_pilha_e_a_do_avulso() {
-    for impasto in [false, true] {
+fn a_cor_da_pilha_e_a_do_avulso_com_e_sem_filme() {
+    for relief in [0.0, 1.0] {
         let mut avulso = tela(&[]);
         let mut pilha = pilha_de_uma(CompositeOp::Brush);
         for t in [&mut avulso, &mut pilha] {
-            t.set_brush_impasto(impasto);
+            t.set_shape_relief(relief);
             horizontal(t);
         }
         assert!(pilha.composite_active());
         assert!(
             *avulso.canvas_rgba == *pilha.canvas_rgba,
-            "impasto={impasto}: a cor da pilha divergiu da do avulso"
+            "relief={relief}: a cor da pilha divergiu da do avulso"
         );
         igual(&corpo(&pilha), &corpo(&avulso), "e o corpo");
+        // Controlo: o filme existe só com o Relief — senão as duas voltas não distinguiam nada.
+        assert_eq!(
+            soma(&corpo(&avulso)) > CORPO_DA_FIXTURA,
+            relief > 0.0,
+            "relief={relief}: o corpo da fixtura"
+        );
     }
-    // Controlo: o filme existe — sem ele as duas metades acima não distinguiam nada.
-    let mut com_corpo = tela(&[]);
-    horizontal(&mut com_corpo);
-    let mut sem_corpo = tela(&[]);
-    sem_corpo.paint.brush.impasto_draw_to = DrawTo::Color;
-    horizontal(&mut sem_corpo);
-    assert!(*com_corpo.canvas_rgba != *sem_corpo.canvas_rgba);
 }
 
 /// **Com Tiling a pilha pinta do OUTRO LADO da costura, ao byte.** A região da pilha era medida com
@@ -320,7 +337,10 @@ fn filme(t: &PainterTool) -> u64 {
 fn a_borracha_de_cima_apaga_o_corpo_do_brush_de_baixo() {
     let mut avulso = tela(&[]);
     horizontal(&mut avulso);
-    assert!(soma(&corpo(&avulso)) > 100.0, "a fixtura deposita corpo");
+    assert!(
+        soma(&corpo(&avulso)) > CORPO_DA_FIXTURA,
+        "a fixtura deposita corpo"
+    );
     for escopo in [EscopoDaBorracha::Traco, EscopoDaBorracha::Tudo] {
         let mut t = borracha_cheia_sobre_brush(escopo, true);
         assert!(t.corpo_por_camada());
@@ -360,7 +380,7 @@ fn a_meio_do_traco_o_corpo_ja_vem_apagado() {
         t.paint.relief.stroke_height.iter().sum::<f32>()
     };
     assert!(
-        a_meio(false) > 50.0,
+        a_meio(false) > 0.5 * CORPO_DA_FIXTURA,
         "controlo: sem borracha por cima há corpo vivo"
     );
     assert_eq!(a_meio(true), 0.0, "o corpo vivo não foi apagado");

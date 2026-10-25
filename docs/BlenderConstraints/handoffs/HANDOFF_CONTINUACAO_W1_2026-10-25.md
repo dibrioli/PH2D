@@ -8,8 +8,9 @@
 
 - Worktree `Worktrees/line-BlenderConstraints`, branch `line/BlenderConstraints`, base (merge-base)
   `c3662cd8e4`. HEAD = o commit deste handoff. Árvore limpa.
-- Decisão do dono pendente (só pesa na W2): **IK na posição da pilha** (diferente do Blender, que a corre
-  sempre por último — medido). Proposta feita, sem resposta; perguntar de novo ao abrir a W2.
+- **Decidido 25/10** (o dono delegou: «descubra o melhor e faça»): **a IK corre na posição da pilha**
+  (Spine/Rive/Unity 2D; o Blender corre-a por último — medido, dor documentada). A aresta da cadeia na
+  `ordem()` e o resto: [`01_plano.md`](../01_plano.md) §1 e §2.2. Não perguntar de novo.
 
 ## Feito (verde)
 

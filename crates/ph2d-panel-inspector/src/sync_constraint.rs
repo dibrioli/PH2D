@@ -2,9 +2,11 @@
 //! linha vêm do instantâneo (é assim que um `Ctrl+Z` se vê neles), MENOS o controlo que a mão segura:
 //! reescrevê-lo durante o arrasto ou a escrita faria o valor recuar sob o dedo.
 
+use ph2d_editor_core::constraint_edits::Unidade;
 use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::panel::PanelHostInternal;
-use ph2d_editor_core::widget::{CheckboxValue, SliderState};
+use ph2d_editor_core::project::ProjectSettings;
+use ph2d_editor_core::widget::{CheckboxValue, SliderState, Unit};
 
 /// Chamada pelo [`crate::sync_sections`].
 pub(crate) fn sync(host: &mut dyn PanelHostInternal) {
@@ -32,7 +34,8 @@ pub(crate) fn sync(host: &mut dyn PanelHostInternal) {
             if host.store().focus_id() != Some(id)
                 && host.store().number_input_drag().map(|d| d.id) != Some(id)
             {
-                host.store_mut().set_number_value(id, f64::from(n.valor));
+                let v = no_ecra(n.unidade, n.valor, host.project());
+                host.store_mut().set_number_value(id, v);
             }
         }
         if let Some(InteractiveState::Checkbox { value, .. }) = host.store_mut().get_mut(ligada) {
@@ -41,6 +44,46 @@ pub(crate) fn sync(host: &mut dyn PanelHostInternal) {
             } else {
                 CheckboxValue::Unchecked
             };
+        }
+    }
+}
+
+/// ⭐ **O número do cartão na unidade que o PROJECTO mostra** (Settings → px/metros e
+/// graus/radianos, como o Transform): a família fala metros e graus; o ecrã, o que o artista
+/// escolheu. [`do_ecra`] é a volta.
+pub(crate) fn no_ecra(u: Unidade, v: f32, p: &ProjectSettings) -> f64 {
+    match u {
+        Unidade::Metros => p
+            .display_unit
+            .from_meters_f64(f64::from(v), p.pixels_per_meter),
+        Unidade::Graus => p.display_angle.from_radians_f64(f64::from(v).to_radians()),
+    }
+}
+
+/// O valor escrito no ecrã de volta a metros/graus.
+#[expect(clippy::cast_possible_truncation, reason = "o campo do cartão é f32")]
+pub(crate) fn do_ecra(u: Unidade, v: f64, p: &ProjectSettings) -> f32 {
+    match u {
+        Unidade::Metros => p.display_unit.to_meters_f64(v, p.pixels_per_meter) as f32,
+        Unidade::Graus => p.display_angle.to_radians_f64(v).to_degrees() as f32,
+    }
+}
+
+/// O sufixo e o passo do arrasto na unidade do ecrã: 1 px ou 0,01 m; um grau na unidade activa.
+pub(crate) fn unidade_e_passo(u: Unidade) -> (Unit, f64) {
+    use ph2d_editor_core::project::{DisplayAngle, DisplayUnit};
+    match u {
+        Unidade::Metros => match crate::state::current_display_unit() {
+            DisplayUnit::Pixels => (Unit::Px, 1.0),
+            DisplayUnit::Meters => (Unit::Meters, 0.01), // LITERAL-PX-OK: passo em metros
+        },
+        Unidade::Graus => {
+            let a = crate::state::current_display_angle();
+            let unit = match a {
+                DisplayAngle::Degrees => Unit::Degrees,
+                DisplayAngle::Radians => Unit::Radians,
+            };
+            (unit, f64::from(a.from_radians(1.0_f32.to_radians())))
         }
     }
 }

@@ -284,3 +284,49 @@ fn os_ajustes_de_cada_tipo_mandam_o_campo_da_linha() {
     set_current_inspector_constraints(None);
     assert_eq!(e.last(), Some(&E::Campo(42, LIMITE_MAX, 30.0)), "{e:?}");
 }
+
+/// ⭐⭐ **Os números obedecem aos seletores do projecto** (dono 25/10: *«temos um seletor nas
+/// configurações entre px e metros, e precisa ser obedecido»*): com o projecto em px a Distance
+/// mostra-se em px (1,5 m a 100 px/m = 150) e o 300 escrito volta como 3 m; com o projecto em
+/// radianos o Max mostra-se em radianos e o 1 escrito volta como 57,3°.
+#[test]
+fn os_numeros_obedecem_a_px_metros_e_graus_radianos_do_projecto() {
+    use ph2d_editor_core::project::{DisplayAngle, DisplayUnit};
+    const DISTANCIA: u16 = 5;
+    let mut info = pilha();
+    info.rows[0].numeros = vec![AjusteNumero {
+        campo: DISTANCIA,
+        rotulo: "panel.inspector.constraint.distance",
+        valor: 1.5,
+        unidade: Unidade::Metros,
+    }];
+    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut state = InspectorState::default();
+    host.project_mut().display_unit = DisplayUnit::Pixels;
+    host.project_mut().pixels_per_meter = 100.0;
+    host.project_mut().display_angle = DisplayAngle::Radians;
+    set_current_inspector_constraints(Some(info));
+    pinta(&mut host, &mut state);
+    let mostrado = host.store().number_value(ids::INSP_CONSTRAINT_NUMERO[0][0]);
+    let max = host.store().number_value(ids::INSP_CONSTRAINT_NUMERO[1][1]);
+    let evs = host.type_into_number(ids::INSP_CONSTRAINT_NUMERO[0][0], "300");
+    aplica(&mut host, &mut state, evs);
+    let evs = host.type_into_number(ids::INSP_CONSTRAINT_NUMERO[1][1], "1");
+    aplica(&mut host, &mut state, evs);
+    let e = edicoes(host.drained_actions());
+    set_current_inspector_constraints(None);
+    assert!(
+        mostrado.is_some_and(|v| (v - 150.0).abs() < 1e-3),
+        "a Distance mostrou {mostrado:?}"
+    );
+    assert!(
+        max.is_some_and(|v| (v - 45f64.to_radians()).abs() < 1e-4),
+        "o Max mostrou {max:?}"
+    );
+    assert!(e.contains(&E::Campo(7, DISTANCIA, 3.0)), "{e:?}");
+    assert!(
+        e.iter()
+            .any(|x| matches!(x, E::Campo(42, LIMITE_MAX, v) if (v - 57.29578).abs() < 1e-3)),
+        "{e:?}"
+    );
+}

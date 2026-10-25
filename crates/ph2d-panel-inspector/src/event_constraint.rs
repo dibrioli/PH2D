@@ -2,7 +2,9 @@
 //! vai ao barramento é o `Item::id` dessa linha no instantâneo — nunca a posição.
 
 use ph2d_editor_core::action_bus::{ComponentEdit, EditorAction};
-use ph2d_editor_core::constraint_edits::{ConstraintFieldEdit as E, InspectorConstraintsInfo};
+use ph2d_editor_core::constraint_edits::{
+    AjusteNumero, ConstraintFieldEdit as E, InspectorConstraintsInfo,
+};
 use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent};
 use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::widget::ButtonState;
@@ -20,14 +22,14 @@ fn item(
     info.rows.get(k).map(|r| r.id)
 }
 
-/// O `(Item::id, campo)` do número `id`: a linha pela coluna da tabela, o campo pelo ajuste `j` dela.
-fn numero(info: &InspectorConstraintsInfo, id: ph2d_a11y::NodeId) -> Option<(u32, u16)> {
+/// O `(Item::id, ajuste)` do número `id`: a linha pela coluna da tabela, o ajuste pelo `j` dela.
+fn numero(info: &InspectorConstraintsInfo, id: ph2d_a11y::NodeId) -> Option<(u32, AjusteNumero)> {
     ids::INSP_CONSTRAINT_NUMERO
         .iter()
         .enumerate()
         .find_map(|(j, tabela)| {
             let row = info.rows.get(tabela.iter().position(|&o| o == id)?)?;
-            Some((row.id, row.numeros.get(j)?.campo))
+            Some((row.id, *row.numeros.get(j)?))
         })
 }
 
@@ -95,10 +97,13 @@ pub(crate) fn apply_constraint_event(
             if let Some(r) = item(&info, &ids::INSP_CONSTRAINT_FORCA, id) {
                 let v = host.store().slider(id).map_or(0.0, |(_, v)| v);
                 E::Forca(r, v.clamp(0.0, 1.0))
-            } else if let Some((r, campo)) = numero(&info, id) {
-                #[expect(clippy::cast_possible_truncation, reason = "o campo é f32")]
-                let v = host.store().number_value(id).unwrap_or(0.0) as f32;
-                E::Campo(r, campo, v)
+            } else if let Some((r, n)) = numero(&info, id) {
+                let v = host.store().number_value(id).unwrap_or(0.0);
+                E::Campo(
+                    r,
+                    n.campo,
+                    crate::sync_constraint::do_ecra(n.unidade, v, host.project()),
+                )
             } else {
                 return false;
             }

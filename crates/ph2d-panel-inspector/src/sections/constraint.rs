@@ -8,13 +8,11 @@
 
 use super::*;
 use crate::plano::{Plano, emoldurada};
-use ph2d_editor_core::constraint_edits::{
-    InspectorConstraintRow, InspectorConstraintsInfo, TIPOS, Unidade,
-};
+use ph2d_editor_core::constraint_edits::{InspectorConstraintRow, InspectorConstraintsInfo, TIPOS};
 use ph2d_editor_core::property_row::{
     Seccao, abaixo_do_botao, caixa_do_botao, paint_check_row, paint_choice_row, paint_label_row,
 };
-use ph2d_editor_core::widget::{SliderOrientation, Unit};
+use ph2d_editor_core::widget::SliderOrientation;
 use ph2d_i18n::{TextKey, tr};
 
 /// Uma fileira de botões agrupados pela porta do grupo. Devolve o `y` seguinte.
@@ -178,10 +176,6 @@ fn forca(
     y + ph2d_tokens::row_pitch_px()
 }
 
-/// O passo do arrasto de um número do cartão, na unidade dele.
-const DEG_STEP: f64 = 1.0; // LITERAL-PX-OK: passo em graus
-const M_STEP: f64 = 0.01; // LITERAL-PX-OK: passo de scrub em METROS (o da lâmpada)
-
 /// Os ajustes do tipo (os números, as escolhas e o «Reset Offset»), na ordem que a família deu.
 #[allow(clippy::too_many_arguments)]
 fn ajustes(
@@ -197,10 +191,7 @@ fn ajustes(
 ) -> f32 {
     let mut cur_y = y;
     for (n, ids_n) in row.numeros.iter().zip(ids::INSP_CONSTRAINT_NUMERO.iter()) {
-        let (step, unit) = match n.unidade {
-            Unidade::Graus => (DEG_STEP, Unit::Degrees),
-            Unidade::Metros => (M_STEP, Unit::Meters),
-        };
+        let (unit, step) = crate::sync_constraint::unidade_e_passo(n.unidade);
         cur_y = ph2d_editor_core::property_row::paint_field_row(
             scene,
             text_system,

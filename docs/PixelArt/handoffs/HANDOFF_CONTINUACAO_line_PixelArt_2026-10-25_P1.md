@@ -50,7 +50,7 @@ Fotos: [`smoke_P1_2026-10-25.png`](smoke_P1_2026-10-25.png) (HOME de fábrica) �
 
 1. `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-PixelArt && PH2D_PIXEL_SMOKE=2 ./target/smoke/ph2d-host-desktop`
 2. Abre um sprite 64×48 com uma casa já desenhada (chão, paredes, telhado, porta, sol, fumaça). Na coluna da esquerda: as 14 ferramentas em três grupos; no painel **Pixel**, as opções da ferramenta activa.
-3. Teste: **Line** (`L`) com Shift segurado; **Rectangle** e **Filled Rectangle** (`U`, de novo `U` = preenchido); **Ellipse** (`D`); **Curve** (arraste a linha, depois clique para curvar); **Polygon** (clique cada canto, clique no primeiro para fechar, `Enter` termina, `Esc` cancela); **Bucket** (`G`) dentro da parede; **Spray** com o botão premido.
+3. Teste: **Line** (`L`) com Shift segurado; **Rectangle** e **Filled Rectangle** (`U`, de novo `U` = preenchido); **Ellipse** (`Shift+U`, de novo = preenchida); **Curve** (`Shift+L`: arraste a corda, solte, mova para curvar, clique para acabar); **Contour** (`D`) e **Polygon** (`Shift+D`); no **Polygon** (clique cada canto, clique no primeiro para fechar, `Enter` termina, `Esc` cancela); **Bucket** (`G`) dentro da parede; **Spray** com o botão premido.
 4. Ligue a simetria no painel, arraste um eixo com o rato (encaixa em meias células); ligue o Tiled Mode: aparecem vizinhos. `Ctrl+Z` desfaz um desenho por vez (6 passos na casa).
 5. Cursor e eixos têm anel escuro e centro claro: visíveis sobre qualquer cor.
 

@@ -33,9 +33,9 @@ fn n16(n: usize) -> u16 {
 }
 
 /// Os contornos que uma leitura da família tem: `i` → os vértices, em ordem.
-fn contornos(lidos: &[(FieldKey, f32)]) -> BTreeMap<u16, Vec<Vert>> {
+fn contornos(lidos: impl IntoIterator<Item = (FieldKey, f32)>) -> BTreeMap<u16, Vec<Vert>> {
     let mut out: BTreeMap<u16, BTreeMap<u16, Vert>> = BTreeMap::new();
-    for &(kk, v) in lidos {
+    for (kk, v) in lidos {
         if kk.familia == VETOR && (c::ANCORA_X..=c::TIPO_VERTICE).contains(&kk.campo) {
             out.entry(kk.i).or_default().entry(kk.j).or_insert([0.0; 8])
                 [usize::from(kk.campo - c::ANCORA_X)] = v;
@@ -201,51 +201,105 @@ fn refazer(
         .collect()
 }
 
-/// `true` se algum contorno mudou de nº de pontos entre as duas leituras — a pergunta barata que
-/// decide se vale abrir um passo de undo para [`propagar`].
+/// Um contorno de hoje é o mesmo de ontem se TODAS as âncoras são iguais bit a bit.
+fn mesmas_ancoras(a: &[Vert], b: &[Vert]) -> bool {
+    a.len() == b.len()
+        && a.iter()
+            .zip(b)
+            .all(|(x, y)| x[0].to_bits() == y[0].to_bits() && x[1].to_bits() == y[1].to_bits())
+}
+
+/// Casa cada contorno de hoje com um de ontem (`hoje → ontem`): primeiro o de âncoras iguais (o
+/// primeiro livre, pela ordem); depois, entre os que sobram, o que partilha mais âncoras exactas
+/// (um contorno a que a mesma edição também mexeu nos pontos). Sem par ⇒ contorno novo.
+fn casar(ontem: &BTreeMap<u16, Vec<Vert>>, hoje: &BTreeMap<u16, Vec<Vert>>) -> BTreeMap<u16, u16> {
+    let mut par: BTreeMap<u16, u16> = BTreeMap::new();
+    let mut livre: BTreeSet<u16> = ontem.keys().copied().collect();
+    for (&hi, h) in hoje {
+        if let Some(&oi) = livre.iter().find(|oi| mesmas_ancoras(&ontem[oi], h)) {
+            livre.remove(&oi);
+            par.insert(hi, oi);
+        }
+    }
+    for (&hi, h) in hoje {
+        if par.contains_key(&hi) {
+            continue;
+        }
+        let melhor = livre
+            .iter()
+            .map(|&oi| (alinhar(&ontem[&oi], h).len(), oi))
+            .filter(|&(n, _)| n > 0)
+            .fold(None, |b: Option<(usize, u16)>, x| match b {
+                Some(b) if b.0 >= x.0 => Some(b),
+                _ => Some(x),
+            });
+        if let Some((_, oi)) = melhor {
+            livre.remove(&oi);
+            par.insert(hi, oi);
+        }
+    }
+    par
+}
+
+/// `true` se os CONTORNOS mudaram de nº ou de lugar (apagar, inserir, reordenar). Leituras sem
+/// contornos (forma paramétrica, caminho ausente) não contam.
+fn contornos_mudaram(ontem: &BTreeMap<u16, Vec<Vert>>, hoje: &BTreeMap<u16, Vec<Vert>>) -> bool {
+    if ontem.is_empty() || hoje.is_empty() {
+        return false;
+    }
+    ontem.len() != hoje.len()
+        || hoje.iter().any(|(&hi, h)| {
+            !mesmas_ancoras(&ontem[&hi], h)
+                && ontem.iter().any(|(&oi, o)| {
+                    oi != hi
+                        && mesmas_ancoras(o, h)
+                        && !hoje.get(&oi).is_some_and(|x| mesmas_ancoras(o, x))
+                })
+        })
+}
+
+/// `true` se algum contorno mudou de nº de pontos, ou os contornos mudaram de nº ou de lugar — a
+/// pergunta barata que decide se vale abrir um passo de undo para [`propagar`].
 #[must_use]
 pub fn mudou(antes: &BTreeMap<FieldKey, f32>, agora: &[(FieldKey, f32)]) -> bool {
-    let conta = |it: &mut dyn Iterator<Item = FieldKey>| {
-        let mut n: BTreeMap<u16, usize> = BTreeMap::new();
-        for kk in it.filter(|kk| kk.familia == VETOR && kk.campo == c::ANCORA_X) {
-            *n.entry(kk.i).or_default() += 1;
-        }
-        n
-    };
     let (o, h) = (
-        conta(&mut antes.keys().copied()),
-        conta(&mut agora.iter().map(|&(kk, _)| kk)),
+        contornos(antes.iter().map(|(&kk, &v)| (kk, v))),
+        contornos(agora.iter().copied()),
     );
-    h.iter().any(|(i, n)| o.get(i).is_some_and(|m| m != n))
+    contornos_mudaram(&o, &h)
+        || h.iter()
+            .any(|(i, vs)| o.get(i).is_some_and(|m| m.len() != vs.len()))
+}
+
+/// O valor de `kk` na trilha da forma no instante `t` (`None` sem trilha ou sem chaves).
+fn amostra(doc: &TimelineDoc, entidade: u64, kk: FieldKey, t: RationalTime) -> Option<f32> {
+    match doc
+        .binding_for(entidade, PropKind::Field(kk))
+        .and_then(|b| doc.active_clip().track(b.target))
+        .filter(|tr| !tr.is_empty())
+        .map(|tr| tr.sample(t.to_seconds()))
+    {
+        Some(AnimValue::Float(x)) => Some(x),
+        _ => None,
+    }
 }
 
 /// O que [`propagar`] fez — para a sonda e a mensagem.
 #[derive(Debug, Default, PartialEq)]
 pub struct Propagacao {
     pub chaves: usize,
+    /// Pontos (ou CONTORNOS, quando foram os contornos que mudaram) novos e apagados.
     pub novos: usize,
     pub apagados: usize,
 }
 
-/// ⭐ **Leva a topologia de hoje a todas as chaves da forma de `entidade`.** `antes` = a leitura do
-/// quadro anterior, `agora` = a deste. `None` se a forma não está animada ou o nº de pontos não
-/// mudou.
-pub fn propagar(
-    doc: &mut TimelineDoc,
-    entidade: u64,
-    antes: &BTreeMap<FieldKey, f32>,
-    agora: &[(FieldKey, f32)],
-) -> Option<Propagacao> {
-    let ontem = contornos(&antes.iter().map(|(&kk, &v)| (kk, v)).collect::<Vec<_>>());
-    let hoje = contornos(agora);
-    let mudou: Vec<u16> = hoje
-        .iter()
-        .filter(|(i, vs)| ontem.get(i).is_some_and(|o| o.len() != vs.len()))
-        .map(|(&i, _)| i)
-        .collect();
-    if mudou.is_empty() {
-        return None;
-    }
+/// As trilhas da forma (vértices + `FECHADO`) e os instantes das suas chaves.
+type Forma = (
+    Vec<(PropKind, ph2d_anim::AnimTarget)>,
+    BTreeMap<RationalTime, Interp>,
+);
+
+fn forma_animada(doc: &TimelineDoc, entidade: u64) -> Option<Forma> {
     let forma: Vec<(PropKind, ph2d_anim::AnimTarget)> = doc
         .bindings()
         .iter()
@@ -271,12 +325,40 @@ pub fn propagar(
             }
         }
     }
-    let fechado = |i: u16| {
-        agora
-            .iter()
-            .find(|(kk, _)| kk.campo == c::FECHADO && kk.i == i)
-            .is_some_and(|&(_, v)| v >= 0.5)
-    };
+    Some((forma, tempos))
+}
+
+fn fechado_em(lidos: &[(FieldKey, f32)], i: u16) -> Option<f32> {
+    lidos
+        .iter()
+        .find(|(kk, _)| kk.familia == VETOR && kk.campo == c::FECHADO && kk.i == i)
+        .map(|&(_, v)| v)
+}
+
+/// ⭐ **Leva a topologia de hoje a todas as chaves da forma de `entidade`.** `antes` = a leitura do
+/// quadro anterior, `agora` = a deste. `None` se a forma não está animada ou nem os contornos nem o
+/// nº de pontos mudaram.
+pub fn propagar(
+    doc: &mut TimelineDoc,
+    entidade: u64,
+    antes: &BTreeMap<FieldKey, f32>,
+    agora: &[(FieldKey, f32)],
+) -> Option<Propagacao> {
+    let ontem = contornos(antes.iter().map(|(&kk, &v)| (kk, v)));
+    let hoje = contornos(agora.iter().copied());
+    if contornos_mudaram(&ontem, &hoje) {
+        return propagar_contornos(doc, entidade, antes, agora, &ontem, &hoje);
+    }
+    let mudou: Vec<u16> = hoje
+        .iter()
+        .filter(|(i, vs)| ontem.get(i).is_some_and(|o| o.len() != vs.len()))
+        .map(|(&i, _)| i)
+        .collect();
+    if mudou.is_empty() {
+        return None;
+    }
+    let (forma, tempos) = forma_animada(doc, entidade)?;
+    let fechado = |i: u16| fechado_em(agora, i).is_some_and(|v| v >= 0.5);
     let mut rel = Propagacao::default();
     for i in mudou {
         let (o, h) = (&ontem[&i], &hoje[&i]);
@@ -285,21 +367,7 @@ pub fn propagar(
         rel.apagados += o.len() - pares.len();
         for (&t, &interp) in &tempos {
             let na_chave: Vec<Vert> = (0..o.len())
-                .map(|j| {
-                    let mut v = o[j];
-                    for campo in 0..N_CAMPOS {
-                        let p = PropKind::Field(k(c::ANCORA_X + campo, i, n16(j)));
-                        if let Some(AnimValue::Float(x)) = doc
-                            .binding_for(entidade, p)
-                            .and_then(|b| doc.active_clip().track(b.target))
-                            .filter(|tr| !tr.is_empty())
-                            .map(|tr| tr.sample(t.to_seconds()))
-                        {
-                            v[usize::from(campo)] = x;
-                        }
-                    }
-                    v
-                })
+                .map(|j| na_chave(doc, entidade, t, i, j, o[j]))
                 .collect();
             let nova = refazer(o, h, &na_chave, &pares, fechado(i));
             for (j, v) in nova.iter().enumerate() {
@@ -327,6 +395,102 @@ pub fn propagar(
     }
     rel.chaves = tempos.len();
     Some(rel)
+}
+
+/// O vértice `(i, j)` da forma na chave `t`; o que não tem trilha fica com o valor de ontem.
+fn na_chave(
+    doc: &TimelineDoc,
+    entidade: u64,
+    t: RationalTime,
+    i: u16,
+    j: usize,
+    ontem: Vert,
+) -> Vert {
+    let mut v = ontem;
+    for campo in 0..N_CAMPOS {
+        if let Some(x) = amostra(doc, entidade, k(c::ANCORA_X + campo, i, n16(j)), t) {
+            v[usize::from(campo)] = x;
+        }
+    }
+    v
+}
+
+/// ⭐ **Apagar, inserir ou reordenar um CONTORNO re-chaveia a forma inteira** (lei do dono 20/10):
+/// cada contorno de hoje leva, em cada chave, os valores do seu par de ontem ([`casar`]); o que
+/// também mudou de pontos passa pela mesma [`refazer`] do caso dos pontos; um contorno novo entra
+/// com o valor de hoje; as trilhas dos `i`/`j` que deixaram de existir saem. Lê TODAS as amostras
+/// antes de escrever: mover `1→0` e `2→1` em sítio sobrescreveria a fonte do seguinte.
+fn propagar_contornos(
+    doc: &mut TimelineDoc,
+    entidade: u64,
+    antes: &BTreeMap<FieldKey, f32>,
+    agora: &[(FieldKey, f32)],
+    ontem: &BTreeMap<u16, Vec<Vert>>,
+    hoje: &BTreeMap<u16, Vec<Vert>>,
+) -> Option<Propagacao> {
+    let (forma, tempos) = forma_animada(doc, entidade)?;
+    let par = casar(ontem, hoje);
+    let lidos_antes: Vec<(FieldKey, f32)> = antes.iter().map(|(&kk, &v)| (kk, v)).collect();
+    let mut escritas: Vec<(RationalTime, Interp, Vec<(FieldKey, f32)>)> = Vec::new();
+    for (&t, &interp) in &tempos {
+        let mut vals = Vec::new();
+        for (&hi, h) in hoje {
+            let fechado_hoje = fechado_em(agora, hi).unwrap_or(0.0);
+            let (verts, fechado) = match par.get(&hi) {
+                Some(&oi) => {
+                    let o = &ontem[&oi];
+                    let na: Vec<Vert> = (0..o.len())
+                        .map(|j| na_chave(doc, entidade, t, oi, j, o[j]))
+                        .collect();
+                    let fch = amostra(doc, entidade, k(c::FECHADO, oi, 0), t)
+                        .or_else(|| fechado_em(&lidos_antes, oi))
+                        .unwrap_or(fechado_hoje);
+                    let verts = if mesmas_ancoras(o, h) {
+                        na
+                    } else {
+                        refazer(o, h, &na, &alinhar(o, h), fechado_hoje >= 0.5)
+                    };
+                    (verts, fch)
+                }
+                None => (h.clone(), fechado_hoje),
+            };
+            vals.push((k(c::FECHADO, hi, 0), fechado));
+            for (j, v) in verts.iter().enumerate() {
+                for campo in 0..N_CAMPOS {
+                    vals.push((k(c::ANCORA_X + campo, hi, n16(j)), v[usize::from(campo)]));
+                }
+            }
+        }
+        escritas.push((t, interp, vals));
+    }
+    for (t, interp, vals) in escritas {
+        for (kk, v) in vals {
+            doc.upsert_key(
+                entidade,
+                PropKind::Field(kk),
+                t,
+                AnimValue::Float(v),
+                interp,
+            );
+        }
+    }
+    let sobra: BTreeSet<ph2d_anim::AnimTarget> = forma
+        .iter()
+        .filter(|(p, _)| {
+            matches!(p, PropKind::Field(kk) if hoje.get(&kk.i).is_none_or(|h| {
+                kk.campo != c::FECHADO && usize::from(kk.j) >= h.len()
+            }))
+        })
+        .map(|&(_, tg)| tg)
+        .collect();
+    for tg in sobra {
+        doc.purge_binding(tg);
+    }
+    Some(Propagacao {
+        chaves: tempos.len(),
+        novos: hoje.len() - par.len(),
+        apagados: ontem.len() - par.len(),
+    })
 }
 
 #[cfg(test)]

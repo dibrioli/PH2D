@@ -41,9 +41,13 @@ fn animado() -> TimelineDoc {
 }
 
 fn na_chave(doc: &TimelineDoc, t: f64, j: u16) -> [f32; 2] {
+    na_chave_i(doc, t, 0, j)
+}
+
+fn na_chave_i(doc: &TimelineDoc, t: f64, i: u16, j: u16) -> [f32; 2] {
     let v = |campo| {
         let b = doc
-            .binding_for(E, PropKind::Field(k(campo, 0, j)))
+            .binding_for(E, PropKind::Field(k(campo, i, j)))
             .expect("trilha");
         match doc.active_clip().track(b.target).unwrap().sample(t) {
             AnimValue::Float(x) => x,
@@ -136,4 +140,144 @@ fn num_segmento_curvo_as_alcas_dos_vizinhos_acompanham() {
         "a alça de saída do vizinho encolhe a metade"
     );
     assert_eq!([b[2], b[3]], [10.0, 3.0]);
+}
+
+/// Duas formas num caminho: o quadrado `a` na origem e o quadrado `b` deslocado de 100 em x.
+fn dois(a: f64, b: f64) -> VecPath {
+    let mut p = quadrado(a);
+    let sub = quadrado(b);
+    p.subpaths.push(ph2d_vec_scene::Contour {
+        verts: sub
+            .verts
+            .iter()
+            .map(|v| VecVertex::corner([v.anchor[0] + 100.0, v.anchor[1]]))
+            .collect(),
+        closed: true,
+    });
+    p
+}
+
+/// O caminho `dois` animado: `(10, 50)` em t=0 e `(20, 100)` em t=1.
+fn dois_animado() -> TimelineDoc {
+    let mut doc = TimelineDoc::new();
+    for (t, (a, b)) in [(0.0, (10.0, 50.0)), (1.0, (20.0, 100.0))] {
+        for (kk, v) in leitura(&dois(a, b)) {
+            doc.upsert_key(
+                E,
+                PropKind::Field(kk),
+                RationalTime::from_seconds(t),
+                AnimValue::Float(v),
+                Interp::Linear,
+            );
+        }
+    }
+    doc
+}
+
+fn n_trilhas_do_contorno(doc: &TimelineDoc, i: u16) -> usize {
+    doc.bindings()
+        .iter()
+        .filter(|b| matches!(b.prop, PropKind::Field(kk) if kk.familia == VETOR && kk.i == i))
+        .count()
+}
+
+/// ⭐ Apagar o contorno 0 (lei do dono 20/10): em CADA chave o novo `i=0` tem os valores do antigo
+/// `i=1`, e não sobra trilha de `i=1`.
+#[test]
+fn apagar_o_contorno_0_leva_as_chaves_do_1() {
+    let mut doc = dois_animado();
+    let ontem = dois(15.0, 75.0);
+    let mut hoje = ontem.clone();
+    assert!(hoje.remove_contour(0));
+    let antes: BTreeMap<FieldKey, f32> = leitura(&ontem).into_iter().collect();
+    assert!(mudou(&antes, &leitura(&hoje)), "a pergunta que abre o undo");
+    propagar(&mut doc, E, &antes, &leitura(&hoje)).expect("propagou");
+    assert_eq!(
+        na_chave_i(&doc, 0.0, 0, 1),
+        [150.0, 0.0],
+        "o antigo 1 na chave de lado 50"
+    );
+    assert_eq!(
+        na_chave_i(&doc, 1.0, 0, 2),
+        [200.0, 100.0],
+        "o antigo 1 na chave de lado 100"
+    );
+    assert_eq!(
+        n_trilhas_do_contorno(&doc, 1),
+        0,
+        "as trilhas do i que deixou de existir saem"
+    );
+    assert_eq!(n_vertices(&doc), 4);
+}
+
+/// Inserir um contorno no índice 0: os antigos passam a 1 e 2 com os seus valores; o novo entra com
+/// o valor de hoje em todas as chaves.
+#[test]
+fn inserir_um_contorno_nao_mexe_nos_outros() {
+    let mut doc = dois_animado();
+    let ontem = dois(15.0, 75.0);
+    let mut hoje = ontem.clone();
+    let novo = [[-50.0, -50.0], [-40.0, -50.0], [-45.0, -40.0]];
+    let velho = ph2d_vec_scene::Contour {
+        verts: std::mem::replace(
+            &mut hoje.verts,
+            novo.into_iter().map(VecVertex::corner).collect(),
+        ),
+        closed: true,
+    };
+    hoje.subpaths.insert(0, velho);
+    let antes: BTreeMap<FieldKey, f32> = leitura(&ontem).into_iter().collect();
+    assert!(mudou(&antes, &leitura(&hoje)));
+    let rel = propagar(&mut doc, E, &antes, &leitura(&hoje)).expect("propagou");
+    assert_eq!((rel.novos, rel.apagados), (1, 0), "um contorno novo");
+    assert_eq!(
+        na_chave_i(&doc, 0.0, 1, 2),
+        [10.0, 10.0],
+        "o antigo 0 na chave de lado 10"
+    );
+    assert_eq!(na_chave_i(&doc, 1.0, 1, 2), [20.0, 20.0]);
+    assert_eq!(na_chave_i(&doc, 0.0, 2, 1), [150.0, 0.0], "o antigo 1");
+    assert_eq!(na_chave_i(&doc, 1.0, 2, 1), [200.0, 0.0]);
+    for t in [0.0, 1.0] {
+        assert_eq!(
+            na_chave_i(&doc, t, 0, 1),
+            [-40.0, -50.0],
+            "o novo vale o de hoje"
+        );
+    }
+    assert_eq!(n_vertices(&doc), 3 + 4 + 4);
+}
+
+/// Trocar a ordem dos dois contornos (mesmo nº) leva as chaves de cada um para o seu novo `i`.
+#[test]
+fn reordenar_contornos_leva_as_chaves() {
+    let mut doc = dois_animado();
+    let ontem = dois(15.0, 75.0);
+    let mut hoje = ontem.clone();
+    std::mem::swap(&mut hoje.verts, &mut hoje.subpaths[0].verts);
+    let antes: BTreeMap<FieldKey, f32> = leitura(&ontem).into_iter().collect();
+    assert!(mudou(&antes, &leitura(&hoje)));
+    propagar(&mut doc, E, &antes, &leitura(&hoje)).expect("propagou");
+    assert_eq!(
+        na_chave_i(&doc, 0.0, 0, 1),
+        [150.0, 0.0],
+        "o antigo 1 é agora o 0"
+    );
+    assert_eq!(
+        na_chave_i(&doc, 1.0, 1, 1),
+        [20.0, 0.0],
+        "o antigo 0 é agora o 1"
+    );
+    assert_eq!(n_vertices(&doc), 8);
+}
+
+/// Mexer num ponto de um contorno sem mudar o nº de nada não é topologia.
+#[test]
+fn mexer_um_ponto_de_uma_forma_de_dois_contornos_nao_e_topologia() {
+    let ontem = dois(15.0, 75.0);
+    let mut hoje = ontem.clone();
+    hoje.subpaths[0].verts[0].anchor = [101.0, 1.0];
+    let antes: BTreeMap<FieldKey, f32> = leitura(&ontem).into_iter().collect();
+    assert!(!mudou(&antes, &leitura(&hoje)));
+    assert!(propagar(&mut dois_animado(), E, &antes, &leitura(&hoje)).is_none());
 }

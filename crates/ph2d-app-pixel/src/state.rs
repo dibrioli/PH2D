@@ -106,6 +106,9 @@ pub struct PixelApp {
     pub(crate) edicao: Option<(u32, usize, usize)>,
     /// Os avisos a mostrar (a shell drena-os no quadro).
     pub(crate) avisos: Vec<(bool, String)>,
+    /// O diálogo Color Mode a abrir com esta escolha quando houver documento em Draw (a cena de
+    /// smoke 5, para a foto).
+    pub(crate) abre_color_mode: Option<ph2d_editor_core::pixel_panel::ColorModeChoice>,
 }
 
 impl Default for PixelApp {
@@ -137,6 +140,7 @@ impl Default for PixelApp {
             chave: None,
             edicao: None,
             avisos: Vec::new(),
+            abre_color_mode: None,
         }
     }
 }

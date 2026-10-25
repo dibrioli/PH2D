@@ -10,7 +10,9 @@ use ph2d_ecs::SimWorld;
 use ph2d_editor_core::ToastQueue;
 use ph2d_editor_core::ToolRegistry;
 use ph2d_editor_core::object_mode::ObjectMode;
-use ph2d_editor_core::pixel_panel::{NewSpriteMode, PixelInk, PixelRequest, PixelSelect};
+use ph2d_editor_core::pixel_panel::{
+    NewSpriteMode, PixelDither, PixelInk, PixelRequest, PixelSelect,
+};
 use ph2d_editor_core::screens::hero::HeroScreen;
 use ph2d_editor_core::screens::hero::mode_drive::ModeFamily;
 use ph2d_pixel_core::{ColorMode, compose_rgba};
@@ -31,10 +33,15 @@ struct Palco {
 impl Palco {
     /// A cena 3 em Draw, com um quadro da shell já corrido.
     fn novo() -> Self {
+        Self::cena(3)
+    }
+
+    /// A cena `level` em Draw, com um quadro da shell já corrido.
+    fn cena(level: u32) -> Self {
         let mut app = PixelApp::default();
         let mut sim = SimWorld::new();
         assert!(ph2d_app_pixel::smoke::stage(
-            &mut app, &mut sim, 3, spawn_root
+            &mut app, &mut sim, level, spawn_root
         ));
         let (bits, key) = mode::sprites(sim.world())[0];
         let mut hero = HeroScreen::new(ph2d_editor_core::NodeId(1));
@@ -342,7 +349,7 @@ fn the_color_mode_ok_converts_the_sprite_as_one_undo_step() {
     let mut p = Palco::novo();
     let img = p.imagem();
     p.hero.store.open_color_mode_dialog(NewSpriteMode::Indexed);
-    assert!(p.hero.store.set_color_mode_target(NewSpriteMode::Rgba));
+    p.hero.store.set_color_mode_target(NewSpriteMode::Rgba);
     p.hero.store.request_color_mode();
     let info = p.quadro();
     assert_eq!(p.sprite().mode(), ColorMode::Rgba);
@@ -350,6 +357,137 @@ fn the_color_mode_ok_converts_the_sprite_as_one_undo_step() {
     assert_eq!(p.imagem(), img, "Indexed → RGB é exacto");
     assert!(p.app.undo(p.key));
     assert_eq!(p.sprite().mode(), ColorMode::Indexed);
+}
+
+/// OK com o alvo = o modo actual (o diálogo abre assim): nada muda e nenhum passo do desfazer.
+#[test]
+fn the_color_mode_ok_on_the_current_mode_is_no_undo_step() {
+    let mut p = Palco::novo();
+    let _ = p.quadro();
+    let (img, passos) = (p.imagem(), p.passos());
+    p.hero.store.open_color_mode_dialog(NewSpriteMode::Indexed);
+    assert_eq!(
+        p.hero.store.color_mode_choice().target,
+        NewSpriteMode::Indexed
+    );
+    p.hero.store.request_color_mode();
+    assert!(p.hero.store.context_menu().is_none(), "o OK fecha");
+    let info = p.quadro();
+    assert_eq!(info.mode, NewSpriteMode::Indexed);
+    assert_eq!(p.sprite().mode(), ColorMode::Indexed);
+    assert_eq!(p.imagem(), img);
+    assert_eq!(p.passos(), passos, "nenhum passo do desfazer");
+}
+
+/// ⭐ **A cena 4 MOSTRA o Color Mode** (smoke do dono 25/10: na cena 3 «não percebi diferença»):
+/// a imagem RGBA tem centenas de cores, cada dither dá outro plano de índices sobre a DB32, o
+/// Grayscale dá cinza, e o `Ctrl+Z` volta sempre à imagem lisa. (Old 2×2 = Ordered 2×2 é a lei
+/// medida no Aseprite, `ph2d_pixel_core::convert`.)
+#[test]
+fn scene_4_shows_every_color_mode_difference() {
+    use ph2d_editor_core::ids::COLOR_MODE_DITHERS;
+    use std::collections::BTreeSet;
+    let mut p = Palco::cena(4);
+    assert_eq!(p.sprite().mode(), ColorMode::Rgba);
+    let lisa = p.imagem();
+    let cores: BTreeSet<&[u8; 4]> = lisa.as_chunks::<4>().0.iter().collect();
+    assert!(
+        cores.len() > 500,
+        "a imagem lisa tem só {} cores",
+        cores.len()
+    );
+    let (w, h) = ph2d_app_pixel::smoke::GRADIENT_SIZE;
+    let mut planos = Vec::new();
+    for (d, ..) in COLOR_MODE_DITHERS {
+        p.hero.store.open_color_mode_dialog(NewSpriteMode::Rgba);
+        p.hero.store.set_color_mode_target(NewSpriteMode::Indexed);
+        p.hero.store.set_color_mode_dither(d);
+        p.hero.store.request_color_mode();
+        let _ = p.quadro();
+        assert_eq!(p.sprite().mode(), ColorMode::Indexed, "{d:?}");
+        let plano: Vec<u32> = (0..h as i32)
+            .flat_map(|y| (0..w as i32).map(move |x| (x, y)))
+            .map(|(x, y)| p.indice(x, y))
+            .collect();
+        planos.push((d, plano));
+        assert!(p.app.undo(p.key));
+        assert_eq!(p.imagem(), lisa, "{d:?}: o Ctrl+Z volta à imagem lisa");
+    }
+    let plano = |d: PixelDither| &planos.iter().find(|(x, _)| *x == d).expect("dither").1;
+    // As células que diferem entre dois planos, em ‰.
+    let diferem = |a: PixelDither, b: PixelDither| {
+        plano(a)
+            .iter()
+            .zip(plano(b))
+            .filter(|(x, y)| x != y)
+            .count()
+            * 1000
+            / plano(a).len()
+    };
+    let usados: BTreeSet<_> = plano(PixelDither::None).iter().collect();
+    assert!(
+        usados.len() >= 8,
+        "sem dither: faixas de {} cores",
+        usados.len()
+    );
+    // Medido 25/10 (‰, arredondado à dezena): None×Floyd 380 · None×Ord4 240 · Ord2×Ord4 100 · Ord4×Ord8 20 ·
+    // Ord4×Old4 180 · Old4×Old8 10.
+    for (a, b, min) in [
+        (PixelDither::None, PixelDither::FloydSteinberg, 100),
+        (PixelDither::None, PixelDither::Ordered4, 100),
+        (PixelDither::Ordered2, PixelDither::Ordered4, 50),
+        (PixelDither::Ordered4, PixelDither::Ordered8, 5),
+        (PixelDither::Ordered4, PixelDither::Old4, 50),
+        (PixelDither::Old4, PixelDither::Old8, 3),
+    ] {
+        let d = diferem(a, b);
+        assert!(d >= min, "{a:?} × {b:?}: só {d} ‰ das células diferem");
+    }
+    // Grayscale: a imagem cinza.
+    p.hero.store.open_color_mode_dialog(NewSpriteMode::Rgba);
+    p.hero.store.set_color_mode_target(NewSpriteMode::Gray);
+    p.hero.store.request_color_mode();
+    let _ = p.quadro();
+    assert_eq!(p.sprite().mode(), ColorMode::Gray);
+    let cinza = p.imagem();
+    assert!(
+        cinza
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .all(|c| c[0] == c[1] && c[1] == c[2])
+    );
+    let tons: BTreeSet<u8> = cinza.as_chunks::<4>().0.iter().map(|c| c[0]).collect();
+    assert!(
+        tons.len() > 32,
+        "um degradê cinza, não faixas: {}",
+        tons.len()
+    );
+}
+
+/// As cenas das fotos: a 5 abre o diálogo (Indexed + Floyd–Steinberg) no 1.º quadro em Draw, a 6
+/// já vem convertida com Ordered 4×4 como UM passo (o `Ctrl+Z` volta ao RGBA).
+#[test]
+fn scenes_5_and_6_stage_the_color_mode_photos() {
+    use ph2d_editor_core::interaction::ContextMenuKind;
+    let p = Palco::cena(5);
+    assert_eq!(
+        p.hero.store.context_menu().map(|r| r.kind),
+        Some(ContextMenuKind::PixelColorModeDialog)
+    );
+    let c = p.hero.store.color_mode_choice();
+    assert_eq!(
+        (c.target, c.dither, p.hero.store.color_mode_current()),
+        (
+            NewSpriteMode::Indexed,
+            PixelDither::FloydSteinberg,
+            NewSpriteMode::Rgba
+        )
+    );
+    let mut p = Palco::cena(6);
+    assert_eq!(p.sprite().mode(), ColorMode::Indexed);
+    assert!(p.app.undo(p.key));
+    assert_eq!(p.sprite().mode(), ColorMode::Rgba);
 }
 
 /// O *Edit color*: o seletor partilhado aberto na amostra escreve a cor da última amostra clicada,

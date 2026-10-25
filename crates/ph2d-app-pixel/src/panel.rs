@@ -64,6 +64,16 @@ pub fn frame(
     {
         app.converte(key, c);
     }
+    if let Some(c) = app.abre_color_mode
+        && let Some(doc) = app.chave.and_then(|k| app.docs.get(&k))
+    {
+        app.abre_color_mode = None;
+        let s = &mut hero.store;
+        s.open_color_mode_dialog(crate::paleta::modo(doc.sprite.mode()));
+        s.set_color_mode_target(c.target);
+        s.set_color_mode_dither(c.dither);
+        s.set_color_mode_gray(c.gray);
+    }
     app.sincroniza_edicao(&mut hero.store, app.chave);
     for (erro, texto) in app.take_avisos() {
         let _ = toasts.push(if erro {

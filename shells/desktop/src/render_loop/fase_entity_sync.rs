@@ -20,12 +20,15 @@ impl crate::App {
         // entidades (path novo ⇒ entidade; entidade apagada ⇒ path), projeta a
         // ordem de z da árvore na pilha, e lê visibilidade/trava herdadas.
         ph2d_vec_entities::entities::sync(sim, vec_scene, &mut self.vec.entities);
-        // ⭐⭐⭐ **O BALDE** (plano 40): a entidade do preenchimento acabou de nascer — é agora
-        // que a RECEITA (a semente) lhe é presa e que ele vai para o FUNDO. ⚠️ O
-        // `insert_path(0, …)` NÃO é o fundo: quem manda no desenho é o `RootOrder` da entidade,
-        // e o `sync` dá a toda entidade nova **o maior**.
+        // ⭐ O BALDE (plano 40, F29): a tinta acabou de ganhar entidade — a receita prende-se e ela
+        // pendura-se, atrás, no caminho que a cerca.
         if !self.vec.bucket_new.is_empty() {
-            crate::vec_bucket::arm_new_fills(sim, &self.vec.entities, &mut self.vec.bucket_new);
+            crate::vec_bucket::arm_new_fills(
+                sim,
+                vec_scene,
+                &self.vec.entities,
+                &mut self.vec.bucket_new,
+            );
         }
         // ADR-0114: idem para os objetos Flip (objeto novo ⇒ entidade; entidade
         // apagada ⇒ objeto). No W0 é no-op (nenhuma tool cria objetos ainda); a

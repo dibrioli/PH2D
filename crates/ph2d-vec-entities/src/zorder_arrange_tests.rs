@@ -413,3 +413,32 @@ fn the_readout_follows_the_button() {
         "o readout nao acompanhou o botao"
     );
 }
+
+/// ⭐ **O filho `ShowBehindParent` desenha imediatamente ATRÁS do pai** (F29: a tinta do balde é
+/// filha do caminho que a cerca e fica por baixo do traço dele), com o z do pai — uma raiz vizinha
+/// não se mete entre os dois. E o *To Back* do pai não mira no próprio filho.
+///
+/// Mutação que deve sangrar: o `emission_rank` ignorar o marcador (o filho volta a desenhar por cima).
+#[test]
+fn a_behind_child_draws_right_under_its_parent() {
+    let (mut sim, mut map) = parent_with_kids();
+    let e201 = Entity::from_bits(map[&201]);
+    sim.world_mut()
+        .entity_mut(e201)
+        .insert(ph2d_ecs::ShowBehindParent);
+    let viz = sim
+        .world_mut()
+        .spawn((Transform::default(), VecPathRef(50), RootOrder(1)))
+        .id();
+    map.insert(50, viz.to_bits());
+    assert_eq!(stack(&mut sim), vec![201, 100, 200, 202, 50]);
+    assert_eq!(
+        hierarchy(&mut sim),
+        vec![100, 200, 201, 202, 50],
+        "a Hierarquia não muda: só a ordem de desenho"
+    );
+    assert!(
+        !reorder(&mut sim, &map, 100, ZOrder::ToBack),
+        "atrás do pai só está o filho dele: não há ninguém cruzável"
+    );
+}

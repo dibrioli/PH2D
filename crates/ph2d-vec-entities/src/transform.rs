@@ -219,6 +219,24 @@ pub fn reparent_keeping_world(sim: &mut SimWorld, child: Entity, parent: Entity)
     false
 }
 
+/// **Os filhos de `from` passam para `to`, sem se moverem** — [`reparent_keeping_world`] em cada
+/// um. Devolve quantos mudaram.
+///
+/// ⚠️ Existe para quem CONSOME um caminho e escreve o resultado noutro (a solda): o `sync` despawna
+/// a entidade consumida com a sub-árvore, e a tinta do balde pendurada nela (F29) iria junto.
+pub fn adopt_children(sim: &mut SimWorld, from: Entity, to: Entity) -> usize {
+    let kids: Vec<Entity> = sim
+        .world_mut()
+        .query::<(Entity, &ph2d_ecs::ChildOf)>()
+        .iter(sim.world())
+        .filter(|(_, c)| c.parent() == from)
+        .map(|(e, _)| e)
+        .collect();
+    kids.into_iter()
+        .filter(|&k| reparent_keeping_world(sim, k, to))
+        .count()
+}
+
 /// Põe a origem de cada path recém-criado no **centro da bbox dele**.
 ///
 /// Um path nasce com a geometria em coordenadas de mundo e a entidade na

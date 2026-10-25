@@ -113,8 +113,8 @@ fn the_close_button_goes_through_the_welding_door() {
 /// uma curva?"* — divergiria dela no primeiro refino (handles, fechamento, snap, continuar por um
 /// endpoint), e o artista teria duas canetas com comportamentos diferentes.
 ///
-/// O que o modo muda é só o que a caneta PRODUZ: o caminho começado nele fica pendente até o
-/// `sync` lhe dar entidade.
+/// O modo muda o que a caneta PRODUZ (a lâmina, pendente até ao `sync`) e, F29, que o clique só a
+/// COMEÇA: `on_press_blade` é o MESMO `press`, sem agarrar nem inserir nós na forma por baixo.
 #[test]
 fn the_cut_mode_draws_with_the_pen_and_owns_no_press_branch() {
     // Nenhum ramo exclusivo de modo intercepta o Cut antes do roteador do pen/shape.
@@ -123,10 +123,12 @@ fn the_cut_mode_draws_with_the_pen_and_owns_no_press_branch() {
         "o modo Corte ganhou um ramo de press proprio -- ele deixaria de desenhar pela caneta"
     );
     // E o press da caneta ARMA a adoção da lâmina.
-    let pen = at(&DISPATCH, "let click = self.vec.pen.on_press_encaixe(");
+    let pen = at(&DISPATCH, "let corte = self.vec.draw_config.mode");
     let window = &DISPATCH[pen..at(&DISPATCH[pen..], "Some(kind) => {") + pen];
     for (needle, why) in [
         ("DrawMode::Cut", "a adocao nao e' gateada no modo Corte"),
+        ("self.vec.pen.on_press_blade(", "o Corte agarra nos da forma"),
+        ("self.vec.pen.on_press_encaixe(", "fora do Corte a caneta deixou de ser a caneta"),
         (
             "PenClick::Started",
             "adota em todo clique, nao so' no que CRIA um caminho",

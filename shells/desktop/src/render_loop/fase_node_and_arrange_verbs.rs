@@ -85,11 +85,11 @@ impl crate::App {
         // ⚠️ Um comando que não cortou nada não muda a cena, e por isso não gasta um Ctrl+Z (o
         // undo global regista por diff).
         if pending_vec_weld {
-            let xf = ph2d_vec_entities::transform::build(sim, &self.vec.entities);
-            crate::vec_weld::apply_vec_weld(
+            crate::vec_weld::soldar(
+                sim,
                 vec_scene,
+                &self.vec.entities,
                 &mut self.vec.pen,
-                &xf,
                 crate::vec_snap::vec_weld_tolerance(vec_px_to_world),
             );
         }

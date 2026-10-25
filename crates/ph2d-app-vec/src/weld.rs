@@ -33,16 +33,20 @@ fn contornos_mundo(scene: &VecScene, xforms: &VecXforms, id: u64) -> Vec<Contour
 /// ⛔ **Um caminho que É cortado dissolve-se por inteiro**, e um composto perde o buraco: depois da
 /// solda os contornos são arcos de uma rede, e um arco não tem dentro. É o preço declarado de
 /// *"consome os originais"*.
+///
+/// Devolve `(o anfitrião da rede, os caminhos consumidos)` — quem pendura objectos nos caminhos
+/// (a tinta do balde é filha do caminho que a cerca, F29) muda-os para o anfitrião antes de o
+/// `sync` despawnar os consumidos com os filhos.
 pub fn apply_vec_weld(
     scene: &mut VecScene,
     pen: &mut ph2d_vec_edit::PenTool,
     xforms: &VecXforms,
     ligacao: f64,
-) {
+) -> Option<(u64, Vec<u64>)> {
     let sel: Vec<u64> = pen.selected_paths().to_vec();
     if sel.is_empty() {
         eprintln!("[ph2d-vec] soldar: selecione os tracos a soldar (Shift+clique)");
-        return;
+        return None;
     }
     // Todos os contornos de todos os seleccionados, no mundo — o universo que se cruza.
     let por_caminho: Vec<(u64, Vec<Contour>)> = sel
@@ -146,7 +150,7 @@ pub fn apply_vec_weld(
         .any(|(n, s)| n.is_some() && matches!(s, Slot::Caminho(..)));
     if cortados.is_empty() && !ligou {
         eprintln!("[ph2d-vec] soldar: nada se cruza nem se encontra na selecao — nada a soldar");
-        return;
+        return None;
     }
 
     // As pontas dos ARCOS mudam-se no mundo; as dos caminhos INTACTOS descem à pose deles, que é o
@@ -207,6 +211,7 @@ pub fn apply_vec_weld(
         })
         .min();
     let mut rede: Option<u64> = None;
+    let mut consumidos: Vec<u64> = Vec::new();
     if let Some((_, host)) = anfitriao {
         // ⚠️ **Os arcos falam MUNDO e o documento guarda LOCAL** (a regra-mãe do módulo): eles
         // descem ao espaço do anfitrião pelo inverso da pose DELE. Com a pose na identidade — o
@@ -267,6 +272,7 @@ pub fn apply_vec_weld(
             for id in ids_cortados {
                 if id != host {
                     scene.remove_path(id);
+                    consumidos.push(id);
                 }
             }
         }
@@ -284,6 +290,34 @@ pub fn apply_vec_weld(
         usize::from(rede.is_some()),
         nos.len()
     );
+    rede.map(|h| (h, consumidos))
+}
+
+/// ⭐ **SOLDA a selecção com as POSES da cena e muda os filhos dos consumidos para a rede** — a porta
+/// da shell. Os traços só se cruzam depois de o `Transform` os pôr no lugar.
+pub fn soldar(
+    sim: &mut ph2d_ecs::SimWorld,
+    scene: &mut VecScene,
+    map: &ph2d_vec_entities::entities::VecEntityMap,
+    pen: &mut ph2d_vec_edit::PenTool,
+    ligacao: f64,
+) {
+    let xf = ph2d_vec_entities::transform::build(sim, map);
+    let Some((host, consumidos)) = apply_vec_weld(scene, pen, &xf, ligacao) else {
+        return;
+    };
+    let Some(&para) = map.get(&host) else {
+        return;
+    };
+    for id in consumidos {
+        if let Some(&de) = map.get(&id) {
+            ph2d_vec_entities::transform::adopt_children(
+                sim,
+                ph2d_ecs::Entity::from_bits(de),
+                ph2d_ecs::Entity::from_bits(para),
+            );
+        }
+    }
 }
 
 /// Um contorno em MUNDO desce ao espaço LOCAL de quem o vai guardar.

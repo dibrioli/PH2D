@@ -224,23 +224,40 @@ fn the_shape_catalog_is_the_flyout_of_the_shape_tool_and_only_of_it() {
     }
 }
 
-/// ⭐ Os botões do Corte só existem com a ferramenta na mão E uma lâmina desenhada.
+/// ⭐ Os botões do Corte vivem na barra FLUTUANTE (dono 25/10, F29) e só existem com a ferramenta
+/// na mão E uma lâmina desenhada E seleccionada — é só então que o Cortar corta.
 #[test]
 fn the_cut_chips_need_the_cut_tool_and_a_blade() {
-    let com = |mode, blade| {
+    let com = |mode, blade, sel| {
         let r = Retrato {
             blade,
+            sel,
             ..Retrato::em(mode)
         };
-        row_ids(&r.barras()).contains(&p::VECTOR_CUT_APPLY)
+        let b = r.barras();
+        assert!(
+            !row_ids(&b).contains(&p::VECTOR_CUT_APPLY),
+            "o Cortar tem UMA casa: a barra flutuante"
+        );
+        let ids = action_ids(&b);
+        assert_eq!(
+            ids.contains(&p::VECTOR_CUT_APPLY),
+            ids.contains(&p::VECTOR_CUT_DISCARD),
+            "o Cortar e o Descartar andam juntos"
+        );
+        ids.contains(&p::VECTOR_CUT_APPLY)
     };
-    assert!(com(DrawMode::Cut, true));
+    assert!(com(DrawMode::Cut, true, 1));
     assert!(
-        !com(DrawMode::Cut, false),
+        !com(DrawMode::Cut, false, 1),
         "sem lâmina o Cortar não tem o que cortar"
     );
     assert!(
-        !com(DrawMode::Select, true),
+        !com(DrawMode::Cut, true, 0),
+        "com a lâmina fora da seleção o Cortar não corta"
+    );
+    assert!(
+        !com(DrawMode::Select, true, 1),
         "fora do Corte os dois seriam de outra ferramenta"
     );
 }

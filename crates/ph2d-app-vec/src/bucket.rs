@@ -33,8 +33,16 @@ type Forma = (Vec<VecVertex>, Vec<ph2d_vec_scene::Contour>);
 /// As PAREDES e a ETIQUETA de cada uma: `(caminho, contorno)`, que é o que dá nome a um arco.
 type Paredes = (Vec<(Vec<VecVertex>, bool)>, Vec<(u64, u16)>);
 
-/// A rede guardada, com a chave do documento que a produziu.
+/// As redes guardadas, com a chave do documento que as produziu.
 pub struct BucketCache {
+    /// A chave das redes dos OBJECTOS pintados (a re-cozedura) — ver [`objectos`].
+    chave: u64,
+    /// A rede da CENA inteira, só com o balde na mão: o que o realce acende e o clique deposita.
+    realce: Option<RedeGuardada>,
+}
+
+/// Uma rede e a chave dela.
+struct RedeGuardada {
     chave: u64,
     rede: Rede,
     /// De que `(caminho, contorno)` veio cada contorno que a produziu — o que dá NOME a um arco,
@@ -290,18 +298,22 @@ fn preenchimentos(
     out
 }
 
-/// ⭐⭐⭐ **Prende a receita à forma recém-nascida e manda-a para o FUNDO.**
+/// ⭐⭐⭐ **Prende a receita à forma recém-nascida e pendura-a no CAMINHO-BASE, atrás dele.**
 ///
 /// Corre **logo depois do `vec_entities::sync`**, que é quem cria a entidade: no clique ela ainda
 /// não existe.
 ///
-/// ⚠️⚠️ **O `insert_path(0, …)` NÃO põe a forma no fundo, e foi assim que ela nasceu por cima das
-/// linhas** (report do Enio, 2026-09-01: *"o preenchimento está acima do stroke, mas deveria estar
-/// abaixo"*). Quem manda no desenho é o `RootOrder` da ENTIDADE, e o `sync` dá a toda entidade nova
-/// **o maior** — ou seja, a frente. *O índice na cena e a ordem de desenho são duas listas, e a que
-/// o olho vê é a segunda.*
+/// ⚠️⚠️ **A tinta é FILHA do caminho que a cerca** (reports do dono 25/10, F29): solta no fundo da
+/// cena, um terceiro objecto metia-se entre ela e as linhas do composto — *«o objeto composto não
+/// se comporta como um único objeto com um z index fixo»*. Filha, ela tem o z do pai e move, esconde
+/// e apaga com ele; o `ShowBehindParent` põe-na debaixo do traço dele (*"o preenchimento está acima
+/// do stroke, mas deveria estar abaixo"*, 2026-09-01). O pai é o caminho das âncoras mais à FRENTE:
+/// atrás dele a tinta fica por cima dos outros que a cercam.
+///
+/// Sem caminho de âncora vivo, a tinta vai para o fundo como antes.
 pub fn arm_new_fills(
     sim: &mut SimWorld,
+    scene: &VecScene,
     map: &ph2d_vec_entities::entities::VecEntityMap,
     pendentes: &mut Vec<(u64, [f32; 2], Vec<ph2d_ecs::FillAnchor>)>,
 ) {
@@ -310,13 +322,84 @@ pub fn arm_new_fills(
             continue;
         };
         let e = Entity::from_bits(bits);
-        if sim.world().get_entity(e).is_ok() {
+        if sim.world().get_entity(e).is_err() {
+            continue;
+        }
+        // A cena está na ordem de desenho (o `sync` projeta a pilha nela): o maior índice é a frente.
+        let pai = scene
+            .paths()
+            .iter()
+            .rev()
+            .find(|p| ancoras.iter().any(|a| a.path == p.id))
+            .and_then(|p| map.get(&p.id))
+            .map(|&b| Entity::from_bits(b));
+        sim.world_mut()
+            .entity_mut(e)
+            .insert(VecBucketFill::new(seed, ancoras));
+        let pendurou = pai.is_some_and(|pai| {
+            ph2d_vec_entities::transform::reparent_keeping_world(sim, e, pai)
+        });
+        if pendurou {
             sim.world_mut()
                 .entity_mut(e)
-                .insert(VecBucketFill::new(seed, ancoras));
+                .remove::<ph2d_ecs::RootOrder>()
+                .insert(ph2d_ecs::ShowBehindParent);
+        } else {
+            ph2d_vec_entities::entities::zorder::reorder(
+                sim,
+                map,
+                id,
+                ph2d_vec_scene::ZOrder::ToBack,
+            );
         }
-        ph2d_vec_entities::entities::zorder::reorder(sim, map, id, ph2d_vec_scene::ZOrder::ToBack);
     }
+}
+
+/// ⭐⭐⭐ **OS OBJECTOS PINTADOS** — as tintas agrupadas pelas paredes que partilham, e as paredes de
+/// cada grupo (F29).
+///
+/// As paredes de uma tinta são **o caminho-pai e os caminhos das âncoras dela** — nunca a cena
+/// inteira. ⛔ Com a cena inteira, arrastar o composto sobre outro objecto punha os arcos dele na
+/// rede e partia as faces pela borda dele (*«o quadrado corta a tinta amarela»*, foto 3 da F28).
+/// Tintas que partilham um caminho caem no MESMO grupo e disputam faces como sempre (a fusão e a
+/// partição do [`crate::bucket_claim`]).
+///
+/// Devolve, por grupo, `(os índices em `fills`, os caminhos-parede)`.
+fn objectos(
+    sim: &SimWorld,
+    scene: &VecScene,
+    fills: &[(u64, Entity, VecBucketFill)],
+) -> Vec<(Vec<usize>, std::collections::BTreeSet<u64>)> {
+    use std::collections::BTreeSet;
+    let paredes: Vec<BTreeSet<u64>> = fills
+        .iter()
+        .map(|(_, e, f)| {
+            let w = sim.world();
+            let pai = w
+                .get::<ph2d_ecs::ChildOf>(*e)
+                .and_then(|c| w.get::<ph2d_ecs::VecPathRef>(c.parent()))
+                .map(|r| r.0);
+            pai.into_iter()
+                .chain(f.ancoras.iter().map(|a| a.path))
+                .filter(|id| scene.path(*id).is_some())
+                .collect()
+        })
+        .collect();
+    let mut grupos: Vec<(Vec<usize>, BTreeSet<u64>)> = Vec::new();
+    for (k, mine) in paredes.into_iter().enumerate() {
+        let (mut idx, mut set) = (vec![k], mine);
+        grupos.retain(|(gi, gs)| {
+            if gs.is_disjoint(&set) {
+                return true;
+            }
+            idx.extend(gi);
+            set.extend(gs);
+            false
+        });
+        idx.sort_unstable();
+        grupos.push((idx, set));
+    }
+    grupos
 }
 
 /// ⭐⭐⭐ **O UPKEEP do balde** — a rede e os preenchimentos vivos, uma vez por quadro.
@@ -348,14 +431,69 @@ pub fn upkeep(
     let xf = ph2d_vec_entities::transform::build(sim, map);
     let vista = ph2d_vec_entities::entities::view_state(sim, map);
     let so_fill: std::collections::BTreeSet<u64> = fills.iter().map(|(id, _, _)| *id).collect();
-    let (contornos, tags) = contornos_mundo(scene, &xf, &|id| {
-        fora_da_rede(vista.is_hidden(id), so_fill.contains(&id))
+    let fora = |id| fora_da_rede(vista.is_hidden(id), so_fill.contains(&id));
+    // A rede do REALCE: a cena inteira, só com o balde na mão — o artista pinta o que vê.
+    let realce = armado.then(|| {
+        let (contornos, tags) = contornos_mundo(scene, &xf, &fora);
+        let k = chave(&contornos);
+        match cache.as_mut().and_then(|c| c.realce.take()) {
+            Some(r) if r.chave == k => r,
+            _ => RedeGuardada {
+                chave: k,
+                rede: guardada(&contornos),
+                tags,
+            },
+        }
     });
-    let k = chave(&contornos);
-    if cache.as_ref().is_some_and(|c| c.chave == k) {
-        return; // nada mudou: nem rede nova, nem re-cozedura
+    // As redes dos OBJECTOS pintados — a re-cozedura.
+    let grupos: Vec<(Vec<usize>, Paredes)> = objectos(sim, scene, &fills)
+        .into_iter()
+        .map(|(idx, ids)| {
+            (
+                idx,
+                contornos_mundo(scene, &xf, &|id| !ids.contains(&id) || fora(id)),
+            )
+        })
+        .collect();
+    let mut h: u64 = 0xcbf2_9ce4_8422_2325;
+    for (idx, (contornos, _)) in &grupos {
+        h = h.wrapping_mul(0x0100_0000_01b3) ^ chave(contornos);
+        for &i in idx {
+            h = h.wrapping_mul(0x0100_0000_01b3) ^ fills[i].0;
+        }
     }
-    let rede = ph2d_vec_fill::rede(&contornos);
+    if let Some(c) = cache.as_mut()
+        && c.chave == h
+    {
+        c.realce = realce;
+        return; // nada mudou nos objectos pintados: nem rede nova, nem re-cozedura
+    }
+    let mut orfaos: Vec<u64> = Vec::new();
+    let mut novos: Vec<(u64, Forma)> = Vec::new();
+    for (idx, (contornos, tags)) in &grupos {
+        let rede = guardada(contornos);
+        let meus: Vec<&(u64, Entity, VecBucketFill)> = idx.iter().map(|&i| &fills[i]).collect();
+        recozer(scene, &xf, &rede, tags, &meus, &mut orfaos, &mut novos);
+    }
+    for id in orfaos {
+        scene.remove_path(id);
+    }
+    for (id, (primeiro, subs)) in novos {
+        if let Some(p) = scene.path_mut(id) {
+            if p.verts != primeiro {
+                p.verts = primeiro;
+            }
+            if p.subpaths != subs {
+                p.subpaths = subs;
+            }
+        }
+    }
+    *cache = Some(BucketCache { chave: h, realce });
+}
+
+/// Monta a rede de `contornos`, e diz ao artista quando ela recusa.
+fn guardada(contornos: &[(Vec<VecVertex>, bool)]) -> Rede {
+    let rede = ph2d_vec_fill::rede(contornos);
     // ⛔⛔ **Acima do tecto de amostragem a rede RECUSA**, e o artista tem de saber porquê: sem
     // isto ele vê o balde parar de acender e conclui que a ferramenta se partiu. ⚠️ A linha sai
     // uma vez por reconstrução (a rede é guardada), não por quadro.
@@ -366,6 +504,19 @@ pub fn upkeep(
             contornos.len()
         );
     }
+    rede
+}
+
+/// **Re-coze as tintas de UM objecto** sobre a rede dele.
+fn recozer(
+    scene: &VecScene,
+    xf: &VecXforms,
+    rede: &Rede,
+    tags: &[(u64, u16)],
+    fills: &[&(u64, Entity, VecBucketFill)],
+    orfaos: &mut Vec<u64>,
+    novos: &mut Vec<(u64, Forma)>,
+) {
     // ⭐⭐⭐ **RE-COZER os preenchimentos**: cada um reencontra as faces dele pelas ÂNCORAS —
     // os pedaços de linha que o cercavam quando o artista clicou ([`crate::bucket_claim`]).
     //
@@ -386,46 +537,20 @@ pub fn upkeep(
             semente: [f64::from(f.seed[0]), f64::from(f.seed[1])],
         })
         .collect();
-    let donos = crate::bucket_claim::donos(&rede, &faces, &tags, &receitas);
+    let donos = crate::bucket_claim::donos(rede, &faces, tags, &receitas);
     let minhas = crate::bucket_claim::por_preenchimento(&faces, &donos, fills.len());
     // ⛔ **Sem face E com uma borda que já não existe, a tinta é ÓRFÃ e sai** (report do dono 24/10:
     // apagar a forma pintada deixava a tinta congelada, derivada e por isso inapagável). Uma borda
     // que só mudou de forma continua a congelar (ela pode voltar); uma borda apagada não volta — o
     // undo devolve a forma e a tinta juntas.
-    let mut orfaos: Vec<u64> = Vec::new();
-    let novos: Vec<(u64, Forma)> = fills
-        .iter()
-        .enumerate()
-        .filter_map(|(k, (id, _, f))| {
-            let meus = &minhas[k];
-            let xfp = ph2d_vec_scene::xform_of(&xf, *id);
-            let forma = geometria_local(&rede, &faces, meus, &xfp);
-            if forma.is_none() && f.ancoras.iter().any(|a| scene.path(a.path).is_none()) {
-                orfaos.push(*id);
-            }
-            Some((*id, forma?))
-        })
-        .collect();
-    for id in orfaos {
-        scene.remove_path(id);
-    }
-    {
-        for (id, (primeiro, subs)) in novos {
-            if let Some(p) = scene.path_mut(id) {
-                if p.verts != primeiro {
-                    p.verts = primeiro;
-                }
-                if p.subpaths != subs {
-                    p.subpaths = subs;
-                }
-            }
+    for (k, (id, _, f)) in fills.iter().enumerate() {
+        let xfp = ph2d_vec_scene::xform_of(xf, *id);
+        match geometria_local(rede, &faces, &minhas[k], &xfp) {
+            Some(forma) => novos.push((*id, forma)),
+            None if f.ancoras.iter().any(|a| scene.path(a.path).is_none()) => orfaos.push(*id),
+            None => {}
         }
     }
-    *cache = Some(BucketCache {
-        chave: k,
-        rede,
-        tags,
-    });
 }
 
 /// **A região sob o cursor**, sobre a rede JÁ guardada.
@@ -433,8 +558,9 @@ pub fn upkeep(
 /// ⚠️ Recebe o ponto em MUNDO: converter ecrã→mundo é da câmara, que é da shell.
 #[must_use]
 pub fn hover(cache: &BucketCache, world: [f64; 2]) -> Option<BucketHit> {
-    cache.rede.face_em(world).and_then(|f| {
-        let verts = cache.rede.geometria(&f);
+    let r = cache.realce.as_ref()?;
+    r.rede.face_em(world).and_then(|f| {
+        let verts = r.rede.geometria(&f);
         (verts.len() >= 2).then(|| BucketHit {
             face: VecPath {
                 verts,
@@ -444,7 +570,7 @@ pub fn hover(cache: &BucketCache, world: [f64; 2]) -> Option<BucketHit> {
             seed: world,
             // ⭐ As âncoras saem da MESMA face que o realce acende — o que o artista vê é o que
             // a receita grava.
-            ancoras: crate::bucket_claim::ancoras_da_face(&cache.rede, &cache.tags, &f),
+            ancoras: crate::bucket_claim::ancoras_da_face(&r.rede, &r.tags, &f),
         })
     })
 }
@@ -482,3 +608,7 @@ pub fn deposit(
 #[cfg(test)]
 #[path = "bucket_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "bucket_objeto_tests.rs"]
+mod objeto_tests;

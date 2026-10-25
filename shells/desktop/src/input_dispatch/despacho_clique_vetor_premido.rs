@@ -105,18 +105,16 @@ impl crate::App {
                     }
                 }
                 None => {
-                    let click = self.vec.pen.on_press_encaixe(
-                        &mut gfx.vec_scene,
-                        [w[0] as f64, w[1] as f64],
-                        px_to_world,
-                        alt,
-                        &mut snap,
-                    );
-                    // **O modo Corte só muda o que a caneta PRODUZ.** Um caminho
-                    // começado aqui em modo Cut é a LÂMINA, e não desenho: fica
-                    // pendente até o `sync` lhe dar entidade, e aí recebe o
-                    // `VecCutPath` (o padrão exato do conector e do blend).
-                    if self.vec.draw_config.mode == ph2d_tool_vector::DrawMode::Cut
+                    // **O modo Corte só desenha a LÂMINA** (`on_press_blade`): pendente até o
+                    // `sync` lhe dar entidade, e aí recebe o `VecCutPath`.
+                    let corte = self.vec.draw_config.mode == ph2d_tool_vector::DrawMode::Cut;
+                    let (sc, pt) = (&mut gfx.vec_scene, [w[0] as f64, w[1] as f64]);
+                    let click = if corte {
+                        self.vec.pen.on_press_blade(sc, pt, px_to_world, &mut snap)
+                    } else {
+                        self.vec.pen.on_press_encaixe(sc, pt, px_to_world, alt, &mut snap)
+                    };
+                    if corte
                         && click == ph2d_vec_edit::PenClick::Started
                         && let Some(id) = self.vec.pen.selected()
                     {

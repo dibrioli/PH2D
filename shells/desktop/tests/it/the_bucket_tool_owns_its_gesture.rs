@@ -231,14 +231,10 @@ fn the_upkeep_runs_in_every_tool_not_only_in_the_bucket() {
     );
     // ⭐⭐⭐ **E o dono de cada face sai das ÂNCORAS, não de comparar com o quadro anterior.**
     //
-    // ⚠️⚠️ **Esta lista de literais mudou pela SEGUNDA vez, e a mudança é a lição.** Ela exigiu,
-    // sucessivamente, `rede.face_em(*seed)` (uma face por semente), depois `donos(…)` com regiões
-    // do quadro anterior, e agora a resolução por âncora — três modelos em três dias. ⛔ Um gate
-    // textual afirma sobre a REDACÇÃO, nunca sobre o comportamento: o que a lei faz está medido em
-    // `vec_bucket_claim_tests` e nos ficheiros que o Enio exportou; o que aqui se prova é só que o
-    // `bucket_upkeep` **chama** a lei e **escreve** o que ela devolve.
+    // ⛔ Um gate textual afirma sobre a REDACÇÃO (esta lista já mudou três vezes): o que a lei faz
+    // mede-se em `bucket_claim` e `bucket_objeto_tests`; aqui só que o upkeep a CHAMA e ESCREVE.
     assert!(
-        LEI[l..lfim].contains("crate::bucket_claim::donos(&rede, &faces, &tags, &receitas)"),
+        LEI[l..lfim].contains("crate::bucket_claim::donos(rede, &faces, tags, &receitas)"),
         "o upkeep nao resolve as ancoras — a tinta voltaria a depender do quadro anterior"
     );
     assert!(
@@ -284,21 +280,21 @@ fn leaving_the_tool_clears_the_highlight_and_the_cache() {
     );
 }
 
-/// ⛔ **A rede é GUARDADA, não montada por quadro** — o `rede(` só corre atrás da comparação de
-/// chave.
+/// ⛔ **As redes são GUARDADAS, não montadas por quadro** — a do realce e as dos objectos (F29) só
+/// passam pelo `guardada(` (a única porta do `rede(`) atrás da comparação de chave.
 #[test]
 fn the_network_is_cached_not_rebuilt_every_frame() {
-    let chave = at(
-        LEI,
-        "if cache.as_ref().is_some_and(|c| c.chave == k) {",
-        "a lei do bucket",
-    );
-    let monta = at(LEI, "ph2d_vec_fill::rede(&contornos)", "a lei do bucket");
-    assert!(
-        chave < monta,
-        "a rede e' montada ANTES da comparacao de chave — isso e' montar por quadro, e custa \
-         3,8 ms a 20 tracos"
-    );
+    for (chave, monta) in [
+        ("Some(r) if r.chave == k => r,", "rede: guardada(&contornos),"),
+        ("&& c.chave == h", "let rede = guardada(contornos);"),
+    ] {
+        assert!(
+            at(LEI, chave, "a lei do bucket") < at(LEI, monta, "a lei do bucket"),
+            "a rede e' montada ANTES da chave — montar por quadro custa 3,8 ms a 20 tracos"
+        );
+    }
+    let porta = at(LEI, "fn guardada(", "a lei do bucket");
+    assert!(LEI[porta..].contains("ph2d_vec_fill::rede(contornos)"), "a porta nao monta a rede");
     assert_eq!(
         LEI.matches("ph2d_vec_fill::rede(").count(),
         1,

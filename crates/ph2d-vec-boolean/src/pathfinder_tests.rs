@@ -273,3 +273,38 @@ fn a_refused_input_carries_its_reason() {
         "a recusa chegou sem motivo -- e' o motivo que o artista le^"
     );
 }
+
+/// ⭐⭐⭐ **Um operando TRANSPARENTE não doa o estilo, e o CORTADOR também não** (report do dono
+/// 25/10, F29: *«Operação booleana onde um objeto é transparente fica com preenchimento bugado até o
+/// usuário mudar o fill.»*). O de cima sem preenchimento (ou com alfa 0) vestia o resultado de
+/// nada; e o Subtrair vestia-o com o cortador — o Illustrator dá ao *Minus Front* o estilo do de TRÁS.
+///
+/// Mutação que deve sangrar: o doador voltar a ser `folds.last()`.
+#[test]
+fn um_operando_transparente_nao_apaga_o_preenchimento() {
+    let tras = square(0.0, 0.0, 4.0, 90);
+    let cor_de_tras = tras.fill.clone();
+    for transparente in [None, Some(Paint::solid(Rgba8::new(255, 0, 0, 0)))] {
+        let frente = VecPath {
+            fill: transparente.clone(),
+            ..square(2.0, 0.0, 4.0, 0)
+        };
+        for op in [PathfinderOp::Union, PathfinderOp::Subtract] {
+            let out = pathfinder(&[&tras, &frente], op).unwrap();
+            assert!(!out.is_empty(), "{op:?} não produziu nada");
+            for p in &out {
+                assert_eq!(
+                    p.fill, cor_de_tras,
+                    "{op:?} com a frente {transparente:?}: o resultado perdeu a cor"
+                );
+            }
+        }
+    }
+    // O cortador OPACO também não doa: o Subtrair veste o de trás.
+    let cortador = square(2.0, 0.0, 4.0, 200);
+    let out = pathfinder(&[&tras, &cortador], PathfinderOp::Subtract).unwrap();
+    assert_eq!(out[0].fill, cor_de_tras, "o Subtrair vestiu o cortador");
+    // E com os dois visíveis o Unir continua a vestir o de CIMA (a lei de sempre).
+    let out = pathfinder(&[&tras, &cortador], PathfinderOp::Union).unwrap();
+    assert_eq!(out[0].fill, cortador.fill, "o Unir deixou de vestir o de cima");
+}

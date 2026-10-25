@@ -177,18 +177,6 @@ pub(super) fn gesture_chips(
                 snap.pencil_quickshape,
             ));
         }
-        DrawMode::Cut if crate::state::cut_line_exists() => {
-            v.push(chip(
-                crate::ids::VECTOR_CUT_APPLY,
-                "panel.vector.cut.apply",
-                false,
-            ));
-            v.push(chip(
-                crate::ids::VECTOR_CUT_DISCARD,
-                "panel.vector.cut.discard",
-                false,
-            ));
-        }
         _ => {}
     }
     v

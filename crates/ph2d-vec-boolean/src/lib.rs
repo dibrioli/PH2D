@@ -125,7 +125,7 @@ pub fn area(path: &VecPath) -> f64 {
 /// o que dá exatamente a semântica do Pathfinder do Illustrator para as quatro
 /// ops (`((a−b)−c) == a − (b∪c)`, e Union/Intersect/Xor são associativas). Ou
 /// seja: **Subtract preserva o de trás e remove tudo que está por cima.** O estilo
-/// (fill + stroke) vem do path do **topo**, também como no Illustrator.
+/// (fill + stroke) vem do [`doador`].
 ///
 /// Devolve os paths-resultado (compound quando há buraco); vazio se degenerar
 /// (interseção de disjuntos) ou se `paths` tem < 2 entradas.
@@ -165,7 +165,7 @@ pub fn apply_many_checked(paths: &[&VecPath], op: BoolOp) -> Result<Vec<VecPath>
 /// desenhar o nada em silêncio. É também o que o Illustrator faz num compound shape vivo — o
 /// componente de baixo tem um modo na UI e ele é **inerte**.
 ///
-/// O estilo continua a vir do path do **topo** (o último de `folds`), como no Illustrator.
+/// O estilo vem do [`doador`].
 ///
 /// # Errors
 /// [`SweepFailed`] quando o `linesweeper` recusa a entrada.
@@ -173,11 +173,12 @@ pub fn apply_chain_checked(
     base: &VecPath,
     folds: &[(&VecPath, BoolOp)],
 ) -> Result<Vec<VecPath>, SweepFailed> {
-    let Some((style, _)) = folds.last() else {
+    if folds.is_empty() {
         // Menos de duas entradas: não há operação nenhuma a fazer, e o vazio é a resposta —
         // exatamente como quando esta porta recebia um `paths` de um só.
         return Ok(Vec::new());
-    };
+    }
+    let style = doador(base, folds);
     let mut acc = to_bez(base);
     // A regra de entrada do 1º fold precisa ler os contornos das FONTES. Só um
     // compound depende de EvenOdd (é o que faz seu contorno interno ser buraco);
@@ -205,6 +206,40 @@ pub fn apply_chain_checked(
         .iter()
         .filter_map(|group| compound_from(group, style))
         .collect())
+}
+
+/// ⭐⭐⭐ **QUEM VESTE O RESULTADO** — o operando de CIMA que não corta e que tem preenchimento
+/// visível; sem nenhum visível, o de cima que não corta.
+///
+/// - ⛔ **O cortador não doa** (verbo `Subtract`): o resultado é o que sobra do de trás, e o
+///   Illustrator dá ao *Minus Front* o estilo do de trás. A base não tem verbo e conta como quem
+///   não corta.
+/// - ⛔ **Um transparente não doa** (report do dono 25/10, F29: *«operação booleana onde um objeto
+///   é transparente fica com preenchimento bugado até o usuário mudar o fill»*): o de cima sem
+///   preenchimento vestia o resultado de nada.
+/// - O doador dá fill **e** stroke: o resultado veste o visual de UM objecto.
+fn doador<'a>(base: &'a VecPath, folds: &[(&'a VecPath, BoolOp)]) -> &'a VecPath {
+    let mut quem = folds
+        .iter()
+        .rev()
+        .filter(|(_, op)| *op != BoolOp::Subtract)
+        .map(|(p, _)| *p)
+        .chain(std::iter::once(base));
+    let topo = quem.clone().next().unwrap_or(base);
+    quem.find(|p| p.fill.as_ref().is_some_and(visivel)).unwrap_or(topo)
+}
+
+/// A tinta pinta alguma coisa? (alfa 0 em todos os pontos = transparente.)
+fn visivel(paint: &ph2d_vec_scene::Paint) -> bool {
+    use ph2d_vec_scene::Paint;
+    match paint {
+        Paint::Solid(c) => c.a > 0,
+        Paint::Linear { stops, .. } | Paint::Radial { stops, .. } => {
+            stops.iter().any(|s| s.color.a > 0)
+        }
+        Paint::MultiPoint { points } => points.iter().any(|p| p.color.a > 0),
+        Paint::Pattern(_) => true,
+    }
 }
 
 /// Os grupos de volta a um `BezPath` só — a forma que uma operação seguinte consome.

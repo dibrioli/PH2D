@@ -312,6 +312,31 @@ impl PenTool {
         alt: bool,
         snap: &mut dyn FnMut([f64; 2]) -> [f64; 2],
     ) -> PenClick {
+        self.press(scene, p, px_to_world, alt, snap, false)
+    }
+
+    /// A pressão da caneta com a ferramenta **Corte** na mão: o clique só desenha a LÂMINA — nunca
+    /// agarra um nó, reabre uma ponta, insere sobre um segmento ou emenda a lâmina noutro caminho
+    /// (dono 25/10, F29: *«não consigo cortar nada com ela»* — o clique sobre a forma editava-a).
+    pub fn on_press_blade(
+        &mut self,
+        scene: &mut VecScene,
+        p: [f64; 2],
+        px_to_world: f64,
+        snap: &mut dyn FnMut([f64; 2]) -> [f64; 2],
+    ) -> PenClick {
+        self.press(scene, p, px_to_world, false, snap, true)
+    }
+
+    fn press(
+        &mut self,
+        scene: &mut VecScene,
+        p: [f64; 2],
+        px_to_world: f64,
+        alt: bool,
+        snap: &mut dyn FnMut([f64; 2]) -> [f64; 2],
+        lamina: bool,
+    ) -> PenClick {
         let close_dist = 12.0 * px_to_world;
         let hit_r = 10.0 * px_to_world;
         let stroke_w = self.style.stroke_w;
@@ -350,7 +375,7 @@ impl PenTool {
             // Clicar sobre o endpoint de OUTRO path aberto FUNDE os dois num só
             // objeto (Enio 2026-07-09) — a via de construir uma forma fechada com
             // várias linhas/arcos/traços.
-            if let Some(click) = self.join_open_path(scene, id, snapped, close_dist) {
+            if !lamina && let Some(click) = self.join_open_path(scene, id, snapped, close_dist) {
                 return click;
             }
             let Some(path) = scene.path_mut(id) else {
@@ -367,18 +392,18 @@ impl PenTool {
         // Parado → CONTINUAR um path aberto pelo seu endpoint tem prioridade: clicar
         // na ponta de uma linha/arco a reativa para seguir desenhando (e, fechando no
         // outro extremo, vira uma forma fechada). Convenção da Pen do Illustrator.
-        if self.reopen_endpoint(scene, p, hit_r) {
+        if !lamina && self.reopen_endpoint(scene, p, hit_r) {
             return PenClick::Grabbed;
         }
         // hit-test para EDITAR um ponto existente. **Nenhum modo agarra alça de raio aqui:** ela
         // saiu do Node e virou o par de ferramentas Fillet / Chamfer (`corner_tool`), então o
         // arredondar/chanfrar quina tem press próprio. (Este comentário dizia *"ela é do modo
         // NODE"* e contradizia o código shipado 35 linhas abaixo — a auditoria do plano 25 o pegou.)
-        if let Some(g) = self.hit_test(scene, p, hit_r) {
+        if !lamina && let Some(g) = self.hit_test(scene, p, hit_r) {
             self.grab_vertex(scene, g, alt);
             return PenClick::Grabbed;
         }
-        if let Some(click) = self.insert_on_selected_segment(scene, p, hit_r) {
+        if !lamina && let Some(click) = self.insert_on_selected_segment(scene, p, hit_r) {
             return click;
         }
 
@@ -683,6 +708,10 @@ fn dist2(a: [f64; 2], b: [f64; 2]) -> f64 {
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+#[path = "blade_tests.rs"]
+mod blade_tests;
 
 /// Gates das ferramentas Fillet / Chamfer (`on_press_corner` + arrasto): arredonda,
 /// chanfra, e transforma um ponto suave em quina primeiro.

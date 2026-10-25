@@ -200,7 +200,7 @@ pub fn reorder(
     // Os meus DESCENDENTES saem da lista de candidatos: eles viajam comigo pela cascata, logo
     // nenhum número os cruza (ver `descendant_count`).
     let kin = descendant_count(&snap, id);
-    let mine = |r: &StackRow| r.dfs > me.dfs && r.dfs <= me.dfs + kin;
+    let mine = |r: &StackRow| r.arvore > me.arvore && r.arvore <= me.arvore + kin;
     let ahead = || rows[i + 1..].iter().filter(|r| !mine(r));
     let behind = || rows[..i].iter().filter(|r| !mine(r));
     let goal = match order {
@@ -292,13 +292,59 @@ pub fn z_order(world: &bevy_ecs::world::World, snap: &HierarchySnapshot) -> Vec<
 
 /// Uma linha da pilha: **as duas chaves e o caminho**.
 ///
-/// O `dfs` é a posição da forma na varredura da Hierarquia — 0 é a primeira linha da lista. Ele é
-/// **intocável por esta porta**: quem o move é o artista, arrastando na Hierarquia.
+/// O `dfs` é a posição da forma na ordem de DESENHO da árvore (o DFS com o filho
+/// `ShowBehindParent` emitido antes do pai); o `arvore` é a linha dela na varredura da Hierarquia,
+/// onde uma sub-árvore é contígua. Os dois são **intocáveis por esta porta**: quem os move é o
+/// artista, arrastando na Hierarquia.
 #[derive(Copy, Clone)]
 struct StackRow {
     z: i32,
     dfs: u32,
+    arvore: u32,
     id: VecPathId,
+}
+
+/// **A ordem de EMISSÃO da árvore**: por nó, `[filhos atrás] [ele] [filhos normais]` — a mesma lei
+/// do `draw_order` da chave de sprites (`ph2d_ecs::sort_key`), que é quem já honra o
+/// `ShowBehindParent`. Devolve, por entrada do snapshot, a posição dela nessa ordem.
+///
+/// ⚠️ É o que dá à tinta do balde (filha do caminho que a cerca) o z do pai **e** o lugar debaixo
+/// do traço dele (F29): um filho comum desenha por cima do pai.
+fn emission_rank(world: &bevy_ecs::world::World, snap: &HierarchySnapshot) -> Vec<u32> {
+    let n = snap.entries.len();
+    let pos: std::collections::BTreeMap<u64, usize> = snap
+        .entries
+        .iter()
+        .enumerate()
+        .map(|(i, e)| (e.entity, i))
+        .collect();
+    let mut kids: Vec<Vec<usize>> = vec![Vec::new(); n];
+    let mut roots = Vec::new();
+    for (i, e) in snap.entries.iter().enumerate() {
+        match e.parent.and_then(|p| pos.get(&p)) {
+            Some(&p) => kids[p].push(i),
+            None => roots.push(i),
+        }
+    }
+    let behind = |i: usize| {
+        world
+            .get::<ph2d_ecs::ShowBehindParent>(Entity::from_bits(snap.entries[i].entity))
+            .is_some()
+    };
+    let mut rank = vec![0u32; n];
+    let mut next = 0u32;
+    let mut stack: Vec<(usize, bool)> = roots.iter().rev().map(|&r| (r, true)).collect();
+    while let Some((i, expand)) = stack.pop() {
+        if !expand {
+            rank[i] = next;
+            next += 1;
+            continue;
+        }
+        stack.extend(kids[i].iter().rev().filter(|&&c| !behind(c)).map(|&c| (c, true)));
+        stack.push((i, false));
+        stack.extend(kids[i].iter().rev().filter(|&&c| behind(c)).map(|&c| (c, true)));
+    }
+    rank
 }
 
 /// **A pilha com as duas chaves à vista**, fundo → topo.
@@ -311,14 +357,17 @@ struct StackRow {
 /// A ordenação é pelo **par** (e não por `sort_by_key` estável sobre o Z): o resultado é o mesmo,
 /// mas a chave que os botões usam para calcular passa a estar escrita onde a ordem é decidida.
 fn keyed_stack(world: &bevy_ecs::world::World, snap: &HierarchySnapshot) -> Vec<StackRow> {
+    let rank = emission_rank(world, snap);
     let mut keyed: Vec<StackRow> = snap
         .entries
         .iter()
-        .filter_map(|e| e.vec_path.map(|p| (e.entity, p)))
         .enumerate()
-        .map(|(dfs, (bits, id))| StackRow {
+        .filter_map(|(i, e)| e.vec_path.map(|p| (rank[i], e.entity, p)))
+        .enumerate()
+        .map(|(arvore, (dfs, bits, id))| StackRow {
             z: ph2d_ecs::effective_z_index(world, Entity::from_bits(bits)),
-            dfs: u32::try_from(dfs).unwrap_or(u32::MAX),
+            dfs,
+            arvore: u32::try_from(arvore).unwrap_or(u32::MAX),
             id,
         })
         .collect();

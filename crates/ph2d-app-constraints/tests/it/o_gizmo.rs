@@ -145,6 +145,63 @@ fn dragging_an_arc_edge_writes_the_card_field_and_the_field_moves_the_arc() {
 /// ⭐⭐ A pega do raio do Limit Distance senta no círculo, do lado OPOSTO ao dono (no limite o dono
 /// está no círculo e a pega roubaria o clique dele); arrastá-la põe a
 /// distância ao alvo.
+/// ⭐⭐ Arrastar a ponta do Max de 170° para −170° ATRAVESSA ±180° pelo arco curto: o Max anda 20°
+/// (a 190°), nunca uma volta para trás (−170°, que o Min ainda aparava a 100°).
+///
+/// **Mutação que deve sangrar:** tirar o `wrap_pi` do ângulo arrastado.
+#[test]
+fn dragging_an_arc_edge_across_180_takes_the_short_way() {
+    let (cam, win) = vista();
+    let mut sim = SimWorld::new();
+    let mut c = Constraints::default();
+    let id = c.push(
+        Kind::Limit(Limit {
+            rot: Some([100f64.to_radians(), 170f64.to_radians()]),
+            ..Limit::default()
+        }),
+        None,
+    );
+    let e = sim.world_mut().spawn((StableId(1), em(0.0, 0.0), c)).id();
+    let b = e.to_bits();
+    let (_, [_, max]) = arco(&sim, b);
+    assert!(gesto(
+        &mut sim,
+        Gesto::Premir,
+        Some(b),
+        (max[0], max[1]),
+        None,
+        &cam,
+        win
+    ));
+    assert_eq!(
+        sim.world()
+            .resource::<Segurando>()
+            .0
+            .map(|s| (s.item, s.parte)),
+        Some((id, Parte::Max))
+    );
+    let a = (-170f64).to_radians();
+    assert!(gesto(
+        &mut sim,
+        Gesto::Mover,
+        Some(b),
+        (0.0, 0.0),
+        Some([2.0 * a.cos(), 2.0 * a.sin()]),
+        &cam,
+        win
+    ));
+    let i = info(&sim, b, 1).unwrap();
+    assert!(
+        (i.rows[0].numeros[1].valor - 190.0).abs() < 1e-3,
+        "o Max ficou {}",
+        i.rows[0].numeros[1].valor
+    );
+    assert!(
+        (i.rows[0].numeros[0].valor - 100.0).abs() < 1e-3,
+        "o Min mexeu"
+    );
+}
+
 #[test]
 fn dragging_the_radius_handle_writes_the_distance() {
     let (cam, win) = vista();

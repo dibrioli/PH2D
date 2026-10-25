@@ -58,7 +58,13 @@ impl Cena {
 
     /// Um quadro do app no quadro `q` da timeline; devolve a pose MUNDIAL da espada.
     fn em(&mut self, q: i64) -> Transform {
-        self.ph.seek_frame(q, self.tl.doc.fps_display);
+        #[expect(clippy::cast_precision_loss, reason = "quadros da cena")]
+        self.em_t(q as f64 / self.tl.doc.fps_display)
+    }
+
+    /// O mesmo no tempo `t` (segundos) — entre quadros, onde a interpolação de uma chave se vê.
+    fn em_t(&mut self, t: f64) -> Transform {
+        self.ph.seek(t);
         apply_from_doc(self.sim.world_mut(), &mut self.tl.doc, self.ph.time());
         quadro(&mut self.sim, &mut self.drive);
         self.drive.settle();
@@ -126,6 +132,12 @@ fn picking_and_dropping_with_auto_key_never_jumps_and_keeps_the_past() {
         "a mão levou a espada: {larga:?}"
     );
     assert_eq!(c.chaves_da_forca(), 4, "f−1 e f ao pegar e ao largar");
+    // A chave de f−1 é um DEGRAU: a meio de 23 e 24 a espada ainda está no chão.
+    let meio = (QUADRO_PEGA as f64 - 0.5) / c.tl.doc.fps_display;
+    assert!(
+        longe(xy(&c.em_t(meio)), pega) < 1e-6,
+        "a força já sobe antes do 24"
+    );
     for _ in 0..2 {
         for &q in &VISITAS {
             let v = xy(&c.em(q));
@@ -206,4 +218,40 @@ fn the_bake_equals_the_live_stack_at_every_frame() {
             "no quadro {q} a pilha ainda age"
         );
     }
+}
+
+fn bits(t: &Transform) -> [u32; 5] {
+    [
+        t.translation.x.to_bits(),
+        t.translation.y.to_bits(),
+        t.rotation.to_bits(),
+        t.scale.x.to_bits(),
+        t.scale.y.to_bits(),
+    ]
+}
+
+/// ⭐ Cozer um TROÇO do meio com a pilha ACTIVA e a meia força (a espada presa à mão a 50 %, sem curva
+/// de pose): a pilha parte da pose AUTORADA (não da viva, que já a leva), a força é 0 só lá dentro,
+/// fora nada muda ao bit, e o último quadro cozido segura até à borda (sem rampa).
+#[test]
+fn baking_a_stretch_with_the_stack_active_keeps_every_frame_and_the_outside() {
+    let mut c = Cena::nova();
+    for q in 0..=QUADRO_PEGA {
+        c.em(q);
+    }
+    c.cartao(E::Forca(c.item, 0.5));
+    let (de, ate, fps) = (30_i32, 40_i32, c.tl.doc.fps_display);
+    let vivas: Vec<[u32; 5]> = (20..=50).map(|q| bits(&c.em(q))).collect();
+    c.em(36);
+    c.ph.set_loop(f64::from(de) / fps, f64::from(ate) / fps);
+    c.cartao(E::Cozer);
+    for (q, viva) in (20..=50).zip(&vivas) {
+        assert_eq!(&bits(&c.em(q)), viva, "no quadro {q} o bake mudou a pose");
+    }
+    let ultima = bits(&c.em(i64::from(ate)));
+    let entre = bits(&c.em_t((f64::from(ate) + 0.5) / fps));
+    assert_eq!(
+        entre, ultima,
+        "entre o {ate} e a borda a pose rampa para a autorada"
+    );
 }

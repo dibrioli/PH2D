@@ -220,6 +220,34 @@ fn a_child_of_picks_up_and_drops_without_a_jump() {
     );
 }
 
+/// O Max escrito ABAIXO do Min sobe ao Min (o espelho do Min que passa do Max): a faixa nunca se
+/// inverte pelo campo do Max.
+///
+/// **Mutação que deve sangrar:** tirar o `.max(r[0])` da escrita do `LIMITE_MAX`.
+#[test]
+fn a_max_written_below_the_min_rises_to_the_min() {
+    use ph2d_constraints::Kind;
+    use ph2d_ecs::canal_constraint::LIMITE_MAX;
+    let mut sim = SimWorld::new();
+    let e = sim
+        .world_mut()
+        .spawn((StableId(2), em(0.0, 0.0, 0.0), Constraints::default()))
+        .id();
+    let b = e.to_bits();
+    assert!(apply_all(&mut sim, &[(b, E::Adicionar(6))]));
+    let id = sim.world().get::<Constraints>(e).unwrap().items[0].id;
+    assert!(apply_all(&mut sim, &[(b, E::Campo(id, LIMITE_MAX, -60.0))]));
+    let c = sim.world().get::<Constraints>(e).unwrap();
+    let Kind::Limit(l) = c.item(id).unwrap().kind else {
+        panic!()
+    };
+    let [lo, hi] = l.rot.unwrap();
+    assert!(
+        (lo + 45f64.to_radians()).abs() < 1e-9 && hi == lo,
+        "o Max desceu abaixo do Min: {lo} {hi}"
+    );
+}
+
 /// ⭐⭐ **Os ajustes de cada tipo** (report do dono 25/10): o cartão mostra-os nas unidades dele e
 /// cada edição chega ao item certo — o Min nunca passa do Max, a distância nunca é negativa, a
 /// opção vai à válida; «Reset Offset» cola o Child Of ao alvo.

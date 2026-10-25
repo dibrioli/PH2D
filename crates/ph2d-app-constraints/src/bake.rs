@@ -106,11 +106,17 @@ fn por_dentro(doc: &TimelineDoc, e: u64, p: PropKind, de: f64, ate: f64) -> Vec<
 
 /// A pose local do dono depois da pilha, no tempo `t` da cena: o quadro da shell (curva → canais →
 /// pilha) sobre um ledger de rascunho.
-fn pose_em(sim: &mut SimWorld, doc: &mut TimelineDoc, dono: Entity, t: f64) -> Option<Transform> {
+fn pose_em(
+    sim: &mut SimWorld,
+    drive: &mut PreviewDrive,
+    doc: &mut TimelineDoc,
+    dono: Entity,
+    t: f64,
+) -> Option<Transform> {
     ph2d_timeline::apply_from_doc(sim.world_mut(), doc, t);
-    let mut drive = PreviewDrive::default();
-    crate::canais::aplicar(sim, &mut drive);
-    ph2d_constraints_ecs::evaluate(sim, &mut drive);
+    crate::canais::aplicar(sim, drive);
+    ph2d_constraints_ecs::evaluate(sim, drive);
+    drive.settle();
     sim.world().get::<Transform>(dono).copied()
 }
 
@@ -158,7 +164,11 @@ pub fn bake(
         return Vec::new();
     }
     #[expect(clippy::cast_possible_truncation, reason = "quadros de uma timeline")]
-    let (de, ate) = ((t0 * fps).ceil() as i64, (t1 * fps).floor() as i64);
+    // A folga: um loop num quadro exacto (30/24 s) volta de `t·fps` a 30,000…04 e o `ceil` saltaria.
+    let (de, ate) = (
+        (t0 * fps - 1e-9).ceil() as i64,
+        (t1 * fps + 1e-9).floor() as i64,
+    );
     if ate < de {
         return Vec::new();
     }
@@ -183,8 +193,10 @@ pub fn bake(
     tempos.sort_by(f64::total_cmp);
     tempos.dedup();
     let mut out = Vec::new();
+    // UM ledger para o laço inteiro: um novo por quadro partiria da pose que o anterior escreveu.
+    let mut drive = PreviewDrive::default();
     for &t in &tempos {
-        if let Some(pose) = pose_em(sim, &mut doc, e, t) {
+        if let Some(pose) = pose_em(sim, &mut drive, &mut doc, e, t) {
             for p in POSE {
                 let v = da_pose(&pose, p);
                 out.push(Escrita::Chave {

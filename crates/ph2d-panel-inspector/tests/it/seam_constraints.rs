@@ -351,3 +351,25 @@ fn o_bake_pede_cozer_e_so_existe_com_itens() {
     assert!(rect_de(&rects, ids::INSP_CONSTRAINT_BAKE).is_none());
     assert!(rect_de(&rects, ids::INSP_CONSTRAINT_ADD).is_some());
 }
+
+/// O despacho também recusa: um clique no id do «Bake» com a pilha VAZIA (um evento que chega sem
+/// o botão pintado — atalho, macro, evento atrasado) não pede `Cozer`.
+///
+/// **Mutação que deve sangrar:** tirar `&& !info.rows.is_empty()` do braço do Bake.
+#[test]
+fn o_bake_com_a_pilha_vazia_nao_pede_nada() {
+    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut state = InspectorState::default();
+    let mut vazia = pilha();
+    vazia.rows.clear();
+    set_current_inspector_constraints(Some(vazia));
+    pinta(&mut host, &mut state);
+    aplica(
+        &mut host,
+        &mut state,
+        vec![WidgetEvent::Click(ids::INSP_CONSTRAINT_BAKE)],
+    );
+    let out = edicoes(host.drained_actions());
+    set_current_inspector_constraints(None);
+    assert!(out.is_empty(), "{out:?}");
+}

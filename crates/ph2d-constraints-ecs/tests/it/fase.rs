@@ -197,6 +197,46 @@ fn whoever_reads_another_runs_after_it() {
     assert_eq!((x_de(&sim, b), x_de(&sim, c)), (10.0, 10.0));
 }
 
+/// A ordem é a TOPOLÓGICA, nem a dos bits crescentes nem a dos decrescentes: a raiz da cadeia é a
+/// entidade do MEIO em bits (lida pelos bits reais, sem depender do alocador) — `baixo` copia o
+/// `meio`, `alto` copia o `baixo`. Por bits crescentes o `baixo` lê o `meio` antes de ele correr;
+/// por decrescentes o `alto` lê o `baixo` antes de ele correr.
+///
+/// **Mutações que devem sangrar:** `ordem` devolver as entidades por bits crescentes · decrescentes.
+#[test]
+fn the_order_is_topological_not_by_bits_either_way() {
+    let mut sim = SimWorld::new();
+    let mut drive = PreviewDrive::default();
+    sim.world_mut().spawn((StableId(1), em(10.0, 0.0, 0.0)));
+    let mut es: Vec<(Entity, u64)> = (0..3u64)
+        .map(|i| {
+            let s = 10 + i;
+            (
+                sim.world_mut()
+                    .spawn((StableId(s), Transform::IDENTITY))
+                    .id(),
+                s,
+            )
+        })
+        .collect();
+    es.sort_by_key(|(e, _)| e.to_bits());
+    let [(baixo, s_baixo), (meio, s_meio), (alto, _)] = es[..] else {
+        unreachable!()
+    };
+    sim.world_mut().entity_mut(meio).insert(copia_local(1, 1.0));
+    sim.world_mut()
+        .entity_mut(baixo)
+        .insert(copia_local(s_meio, 1.0));
+    sim.world_mut()
+        .entity_mut(alto)
+        .insert(copia_local(s_baixo, 1.0));
+    evaluate(&mut sim, &mut drive);
+    assert_eq!(
+        (x_de(&sim, meio), x_de(&sim, baixo), x_de(&sim, alto)),
+        (10.0, 10.0, 10.0)
+    );
+}
+
 #[test]
 fn look_at_without_a_live_target_says_so() {
     let mut sim = SimWorld::new();

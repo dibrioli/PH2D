@@ -137,3 +137,23 @@ Polygon/Spray/Bucket, simetria, Tiled Mode) ∥ **P2** (cor, paleta, inks, Index
 (camadas, 19 blend modes). **O dono escolhe** — pergunte-lhe antes de começar.
 O 1.º passo de cada onda é extrair os vetores de teste do MVP (`docs/Pixel Art/app/tests/*.test.js`)
 para JSON, como o `extrai_linhas_mvp.mjs` fez (do primário), e só depois escrever o código.
+
+## 9. Report do smoke do dono (25/10) — a próxima onda começa AQUI
+
+Foto: [`smoke_P0_2026-10-25.png`](smoke_P0_2026-10-25.png). Três defeitos, nas palavras do dono:
+
+1. *«diferente de img e vectors, não temos dos modos object e draw na barra superior»* — o seletor de modo
+   do topo (Object · Draw/Edit) não oferece os modos do Pixel Sprite como oferece para Imagem e Vetor.
+   Investigar como o seletor publica os modos do tipo activo (`ObjectKind::PixelSprite` com `(Edit)` hoje;
+   o dono chama-lhe **Draw**, como o Painter/Flip — decidir o par certo da tabela D6 e o rótulo).
+2. *«O padrão a seguir para a UI é a mesma do módulo painter: tools na barra lateral esquerda»* — as
+   ferramentas (Pencil/Eraser/Eyedropper/Hand) saem do painel lateral direito e vão para a barra de
+   ferramentas da ESQUERDA, como o Painter. ⚠️ A foto mostra a barra esquerda com as ferramentas do
+   **Vetor** (`tool=Vector` no título) enquanto o Pixel Sprite está em Edit — controlos de outro módulo
+   activos sobre o sprite: ou a barra mostra as do Pixel, ou nenhuma. O painel direito fica com as cores
+   e a paleta (o «color bar» do Aseprite fica à esquerda — confirmar com o padrão do Painter).
+3. *«O zoom está bugado com uma enorme quantidade de mensagens desnecessárias na tela»* — cada degrau da
+   roda empilha um toast «Zoom N %» (`despacho_pixel`/`compose`: `pixel.zoom`). Cura: nenhum toast por
+   degrau (o zoom lê-se no rodapé, onde a casa já mostra `100%`); e conferir porque a foto chega a
+   4000–4800 % (a roda do trackpad manda muitos `PixelDelta` por gesto: um degrau por evento é demais —
+   acumular o delta até um entalhe, como o pan do quadro faz).

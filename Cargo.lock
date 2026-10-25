@@ -5180,6 +5180,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-app-constraints"
+version = "0.0.0"
+dependencies = [
+ "bevy_ecs",
+ "ph2d-app-host",
+ "ph2d-constraints",
+ "ph2d-constraints-ecs",
+ "ph2d-ecs",
+ "ph2d-label-census",
+ "ph2d-preview-drive",
+ "ph2d-render",
+]
+
+[[package]]
 name = "ph2d-app-flip"
 version = "0.0.0"
 dependencies = [
@@ -5486,6 +5500,7 @@ dependencies = [
  "ph2d-app-board",
  "ph2d-app-code",
  "ph2d-app-components",
+ "ph2d-app-constraints",
  "ph2d-app-flip",
  "ph2d-app-game",
  "ph2d-app-host",
@@ -6547,6 +6562,7 @@ dependencies = [
  "ph2d-app-board",
  "ph2d-app-code",
  "ph2d-app-components",
+ "ph2d-app-constraints",
  "ph2d-app-flip",
  "ph2d-app-game",
  "ph2d-app-host",

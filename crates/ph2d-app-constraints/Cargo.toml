@@ -1,0 +1,29 @@
+[package]
+name = "ph2d-app-constraints"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# ⭐ A FAMÍLIA das constraints (plano `docs/BlenderConstraints/01_plano.md` §2.1): o quadro, o cartão
+# do Inspector (lado app), o pick no palco, os gizmos, o bake e o roteador `PH2D_CONSTRAINT_SMOKE`.
+# A lei é da `ph2d-constraints`; a pilha no mundo, da `ph2d-constraints-ecs`.
+[dependencies]
+ph2d-app-host = { path = "../ph2d-app-host" }
+ph2d-constraints = { path = "../ph2d-constraints" }
+ph2d-constraints-ecs = { path = "../ph2d-constraints-ecs" }
+ph2d-ecs = { path = "../ph2d-ecs" }
+ph2d-preview-drive = { path = "../ph2d-preview-drive" }
+# As cenas de smoke: sprites de quadrado e de disco.
+ph2d-render = { path = "../ph2d-render" }
+bevy_ecs = "0.19"
+
+[dev-dependencies]
+ph2d-label-census = { path = "../ph2d-label-census" }
+
+[lints]
+workspace = true

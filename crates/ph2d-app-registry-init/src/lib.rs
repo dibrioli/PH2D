@@ -66,6 +66,8 @@ pub fn register_all_app_families() -> AppFamilyRegistry {
     reg.push(ph2d_app_code::FAMILY);
     #[cfg(feature = "app-components")]
     reg.push(ph2d_app_components::FAMILY);
+    #[cfg(feature = "app-constraints")]
+    reg.push(ph2d_app_constraints::FAMILY);
     #[cfg(feature = "app-flip")]
     reg.push(ph2d_app_flip::FAMILY);
     #[cfg(feature = "app-game")]

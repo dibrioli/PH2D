@@ -199,6 +199,8 @@ ph2d-skeleton-ecs = { path = "../../crates/ph2d-skeleton-ecs" }
 ph2d-light2d-ecs = { path = "../../crates/ph2d-light2d-ecs" }
 # A pilha de constraints (`docs/BlenderConstraints/01_plano.md`): componente, registo e a fase.
 ph2d-constraints-ecs = { path = "../../crates/ph2d-constraints-ecs" }
+# ⭐ A FAMÍLIA das constraints: a shell chama `quadro` (a cena de smoke e a fase).
+ph2d-app-constraints = { path = "../../crates/ph2d-app-constraints" }
 # ⭐ A FAMÍLIA da luz 2D (W3): a composição no quadro — a shell guarda uma `LuzDoQuadro` e chama-a.
 ph2d-app-light2d = { path = "../../crates/ph2d-app-light2d" }
 ph2d-tool-vector = { path = "../../crates/ph2d-tool-vector" }

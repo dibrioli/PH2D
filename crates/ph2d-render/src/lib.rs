@@ -115,7 +115,8 @@ pub mod world_rt;
 
 pub use atlas::{
     ATLAS_DEFAULT_SIZE_PX, AtlasInsertError, AtlasRegion, DEMO_TILE_COUNT, DEMO_TILE_PX,
-    DISC_TILE_KEY, DISC_TILE_PX, FIRST_IMPORT_KEY, TextureAtlas, WHITE_TILE_KEY, disc_tile_pixels,
+    DISC_TILE_KEY, DISC_TILE_PX, FIRST_IMPORT_KEY, HERO_SHEET_CELL_PX, HERO_SHEET_COLS, HERO_SHEET_KEY,
+    HERO_SHEET_ROWS, HERO_SHEET_SOLE_BELOW_CENTRE, HERO_SHEET_TAGS, TextureAtlas, WHITE_TILE_KEY, disc_tile_pixels, hero_sheet_pixels,
 };
 pub use camera::{Camera2d, CameraUniform};
 pub use sink_style::{SinkStyle, StyleReach};

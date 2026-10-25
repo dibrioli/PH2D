@@ -15,6 +15,7 @@ pub(crate) const FAMILIES: &[&[AddEntry]] = &[
     ph2d_app_flip::object_add::ENTRIES,
     ph2d_app_skeleton::object_add::ENTRIES,
     ph2d_app_motion::motion_objeto::object_add::ENTRIES,
+    ph2d_app_game::object_add::ENTRIES,
     ph2d_app_components::object_add::ENTRIES,
     ph2d_app_light2d::object_add::ENTRIES,
     ph2d_app_macros::object_add::ENTRIES,
@@ -55,6 +56,7 @@ impl crate::App {
         else {
             return;
         };
+        let seeds = ph2d_app_physics::physics_seed::COMPONENT_SEEDS;
         let born: Result<Born, String> = if entry == object_add::EMPTY {
             Ok(Born::Entity(
                 ph2d_app_components::object_add::spawn_empty_root(sim, entry.key.tr()),
@@ -63,12 +65,9 @@ impl crate::App {
             // ⭐ O `Ctrl+N` continua a ser o atalho desta entrada (escolha 2 do dono).
             hero.store.open_new_image_dialog();
             Ok(Born::Dialog)
-        } else if let Some(r) = ph2d_app_components::object_add::add(
-            entry,
-            sim,
-            component_registry,
-            ph2d_app_physics::physics_seed::COMPONENT_SEEDS,
-        ) {
+        } else if let Some(r) = ph2d_app_game::object_add::add(entry, sim, component_registry, seeds)
+            .or_else(|| ph2d_app_components::object_add::add(entry, sim, component_registry, seeds))
+        {
             r.map(Born::Entity)
         } else if ph2d_app_vec::object_add::add(entry, &mut self.vec) {
             use ph2d_editor_core::object_mode::{ModeRequest, ObjectMode};

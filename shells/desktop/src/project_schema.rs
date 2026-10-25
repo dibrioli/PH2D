@@ -491,7 +491,19 @@
 /// `project_marcas_tests`. Registos de componentes: `0`.
 ///
 /// ⚠️ **A tripla NÃO vê este degrau** — nem a forma do `FlipDoc` nem a da `VecScene` mudam.
-pub(crate) const PROJECT_SCHEMA: u32 = 193;
+///
+/// # `193 → 194` — **as animações do personagem** (`line/GameEngineFuncional`, N1, 2026-10-25)
+///
+/// UM componente registado novo: `ph2d::physics::CharacterAnimations` (que animação toca em cada
+/// estado do `PlatformPlayer`, `docs/GameEngineFuncional/05_N1_plano.md` §3). ⭐ **COM leitura do
+/// anterior:** a forma do `ProjectFile` não muda, e um `193` não tem o componente — lê-se com o tipo
+/// vivo, no braço do degrau actual. Registos: física `+1`, espelhos `0`.
+///
+/// ⚠️ **A tripla NÃO vê este degrau** — nem a forma do `FlipDoc` nem a da `VecScene` mudam.
+pub(crate) const PROJECT_SCHEMA: u32 = 194;
+
+/// O último degrau sem as animações do personagem — a mesma forma do actual.
+pub(crate) const PROJECT_SCHEMA_SEM_ANIMACOES_DO_PERSONAGEM: u32 = 193;
 
 /// O último degrau em que a opacidade não era canal de estado (as poses diziam sempre `1`).
 pub(crate) const PROJECT_SCHEMA_OPACIDADE_FORA_DOS_ESTADOS: u32 = 191;

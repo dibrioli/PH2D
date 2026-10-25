@@ -246,6 +246,8 @@ impl SimComponent for Collider {}
 mod area;
 /// A lei do valor das linhas da §11 (`Collider::sanitize`, `MassOverride::sanitize`…).
 mod body_law;
+/// As animações do personagem por estado (GameEngineFuncional N1).
+mod character_anim;
 /// ⭐⭐⭐ **VIDA e DANO** (plano 28, W2) — ver o cabeçalho dele.
 mod health;
 mod health_bar;
@@ -271,6 +273,7 @@ mod topdown;
 pub use area::{
     AreaBuoyancy, AreaDrag, AreaEffector, AreaFalloff, AreaForceWorldAxes, AreaFormDrag, AreaTorque,
 };
+pub use character_anim::{CharacterAnimations, CharacterPose};
 pub use health::{Damage, Health, HealthNow, OnHit, RESISTANCES_MAX, Resistance, kind_key};
 pub use health_bar::HealthBar;
 pub use nav::{

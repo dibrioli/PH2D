@@ -87,7 +87,7 @@ impl crate::App {
             return;
         }
         if let Some(cx) = self.components_ctx() {
-            ph2d_app_game::smoke::montar(cx.sim.world_mut(), nivel);
+            ph2d_app_game::smoke::montar(cx.sim, cx.registry, nivel);
         }
         self.timeline.flags.simulate_physics = true;
         self.playhead.rewind();
@@ -97,10 +97,10 @@ impl crate::App {
     /// O condutor do smoke (`PH2D_GAME_SMOKE_DRIVE`): os gestos pelas portas do produto.
     pub(crate) fn game_smoke_drive(&mut self) {
         use ph2d_app_game::smoke::{self as s, Gesto};
-        let Some(stage) = s::conducao().filter(|_| s::armed_level().is_some()) else {
+        let (Some(stage), Some(nivel)) = (s::conducao(), s::armed_level()) else {
             return;
         };
-        match s::gesto_no_quadro(stage, s::proximo_quadro()) {
+        match s::gesto_no_quadro(nivel, stage, s::proximo_quadro()) {
             Some(Gesto::Joga(stage)) => {
                 if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
                     use ph2d_editor_core::action_bus::{EditorAction, TransportCmd};
@@ -108,8 +108,13 @@ impl crate::App {
                     hero.bus.push(EditorAction::Transport(TransportCmd::Play));
                 }
             }
-            Some(Gesto::Direita(desce)) => {
-                let tecla = winit::keyboard::KeyCode::ArrowRight;
+            Some(g @ (Gesto::Direita(_) | Gesto::Salta(_))) => {
+                use winit::keyboard::KeyCode;
+                let Some((seta, desce)) = g.seta() else { return };
+                let tecla = match seta {
+                    s::Seta::Direita => KeyCode::ArrowRight,
+                    s::Seta::Cima => KeyCode::ArrowUp,
+                };
                 if let Some(k) = crate::keymap::winit_to_input_keycode(tecla).map(ph2d_input::Key) {
                     self.input.apply_event(if desce {
                         ph2d_input::Event::KeyDown(k)

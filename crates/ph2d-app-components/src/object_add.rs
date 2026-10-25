@@ -10,13 +10,17 @@ use ph2d_ecs::{Name, SimWorld, Transform};
 use ph2d_editor_core::object_add::{AddEntry, AddGroup};
 
 /// Câmara de jogo.
-pub const CAMERA: AddEntry = AddEntry::new("object_add.game.camera", AddGroup::Game);
+pub const CAMERA: AddEntry = AddEntry::new("object_add.game.camera", AddGroup::Game)
+    .with_tip("object_add.game.camera.tip", crate::object_add_dicas::CAMERA);
 /// Corpo de física.
-pub const BODY: AddEntry = AddEntry::new("object_add.game.body", AddGroup::Game);
+pub const BODY: AddEntry = AddEntry::new("object_add.game.body", AddGroup::Game)
+    .with_tip("object_add.game.body.tip", crate::object_add_dicas::BODY);
 /// Fonte de som.
-pub const SOUND: AddEntry = AddEntry::new("object_add.game.sound", AddGroup::Game);
+pub const SOUND: AddEntry = AddEntry::new("object_add.game.sound", AddGroup::Game)
+    .with_tip("object_add.game.sound.tip", crate::object_add_dicas::SOUND);
 /// Tela de HUD.
-pub const HUD: AddEntry = AddEntry::new("object_add.game.hud", AddGroup::Game);
+pub const HUD: AddEntry = AddEntry::new("object_add.game.hud", AddGroup::Game)
+    .with_tip("object_add.game.hud.tip", crate::object_add_dicas::HUD);
 /// O que esta família põe no menu.
 pub const ENTRIES: &[AddEntry] = &[CAMERA, BODY, SOUND, HUD];
 

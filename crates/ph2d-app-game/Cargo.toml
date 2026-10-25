@@ -14,19 +14,25 @@ authors.workspace = true
 [dependencies]
 # O roteador do smoke (`SmokeRouter`).
 ph2d-app-host = { path = "../ph2d-app-host" }
+# A porta do `+` do Inspector e o vazio na raiz (os objectos do menu Add nascem por elas).
+ph2d-app-components = { path = "../ph2d-app-components" }
 # Os blocos e o jogador de plataforma do nível (`common::slab`, `common::spawn_player`).
 ph2d-app-physics = { path = "../ph2d-app-physics" }
 ph2d-core = { path = "../ph2d-core" }
 ph2d-ecs = { path = "../ph2d-ecs" }
 # Onde o jogo se mostra (`game_stage::GameStage`, a escolha do menu *Run*).
 ph2d-editor-core = { path = "../ph2d-editor-core" }
+# O personagem: o `CharacterAnimations`, a vista do player e os corpos dos objectos do menu Add.
+ph2d-physics-ecs = { path = "../ph2d-physics-ecs" }
 ph2d-render = { path = "../ph2d-render" }
+# As cores das ilustrações das dicas do menu Add.
+ph2d-tokens = { path = "../ph2d-tokens" }
 # As moedas correm um script da biblioteca do projecto.
 ph2d-script = { path = "../ph2d-script" }
 
 [dev-dependencies]
-# O gate da moeda corre a física do jogador como o app (`PhysicsBridge::dispatch`).
-ph2d-physics-ecs = { path = "../ph2d-physics-ecs" }
+# A vista do player nos gates da lei de animação.
+ph2d-platformer = { path = "../ph2d-platformer" }
 
 [lints]
 workspace = true

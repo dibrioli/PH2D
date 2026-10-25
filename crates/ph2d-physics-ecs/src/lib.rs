@@ -80,7 +80,7 @@ pub use bridge::{
 };
 pub use components::{
     AreaBuoyancy, AreaDrag, AreaEffector, AreaFalloff, AreaForceWorldAxes, AreaFormDrag,
-    AreaTorque, BodyKind, Ccd, Collider, ColliderShape, CombineRule, Damage, DampMode,
+    AreaTorque, BodyKind, Ccd, CharacterAnimations, CharacterPose, Collider, ColliderShape, CombineRule, Damage, DampMode,
     DampingOverride, Dominance, GravityScale, Health, HealthBar, HealthNow, InitialVelocity,
     LockPositionX, LockPositionY, LockRotation, MassOverride, MaterialCombine, NavAgent,
     NavCostArea, NavCostAreaNow, NavLink, NavNow, NavRegion, NavRoute, NavTarget, NoWallCling,
@@ -217,6 +217,9 @@ pub fn register_physics_components(reg: &mut ComponentRegistry) {
     reg.register_default::<RopeStops>("ph2d::physics::RopeStops");
     reg.register_default::<JointWorldAnchor>("ph2d::physics::JointWorldAnchor");
     reg.register_default::<PlatformPlayer>("ph2d::physics::PlatformPlayer");
+    // ⭐ GameEngineFuncional N1 — que animação toca em cada estado do personagem. ⚠️ Registado novo
+    // ⇒ `PROJECT_SCHEMA` +1 e os dois espelhos +1.
+    reg.register_default::<CharacterAnimations>("ph2d::physics::CharacterAnimations");
     // ⭐ TOP-20 #13. ⚠️ Componente registado novo ⇒ o `PROJECT_SCHEMA` sobe e os
     // DOIS espelhos (`ph2d-render`, `ph2d-script`) sobem com ele — conte o DELTA.
     reg.register_default::<TopDownPlayer>("ph2d::physics::TopDownPlayer");
@@ -277,7 +280,9 @@ mod tests {
         // passa a **+10**. Dois tipos e UM degrau de `PROJECT_SCHEMA`, como o raio e a vida.
         // ⭐ **+2 (plano 30, W7: `NavCostArea` e `NavLink`)** ⇒ `42 -> 44`, e o delta contra o
         // `main` desta linha é **+2** (o `main` de 02/10 tem 42). Dois tipos e UM degrau.
-        assert_eq!(reg.len(), 44);
+        // ⭐ **+1 (GameEngineFuncional N1: `CharacterAnimations`)** ⇒ `44 -> 45`; delta contra o
+        // merge-base desta linha **+1**. Quem integrar conta o DELTA, nunca o literal.
+        assert_eq!(reg.len(), 45);
         assert!(reg.get_by_name("ph2d::physics::NavCostArea").is_some());
         assert!(reg.get_by_name("ph2d::physics::NavLink").is_some());
         assert!(reg.get_by_name("ph2d::physics::NavRegion").is_some());

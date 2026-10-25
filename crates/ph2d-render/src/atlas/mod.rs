@@ -71,9 +71,13 @@
 
 mod demo;
 mod gpu_ops;
+mod hero_sheet;
 mod region;
 
 pub use region::{AtlasInsertError, AtlasRegion};
+pub use hero_sheet::{
+    HERO_SHEET_CELL_PX, HERO_SHEET_COLS, HERO_SHEET_KEY, HERO_SHEET_ROWS, HERO_SHEET_SOLE_BELOW_CENTRE, HERO_SHEET_TAGS, hero_sheet_pixels,
+};
 
 use demo::make_hsv_tile;
 use gpu_ops::{clear_level0_transparent, create_texture, readback_atlas_texture, upload_region};
@@ -325,7 +329,7 @@ impl TextureAtlas {
     }
 
     /// The reserved tiles a renderer needs before any sprite draws: the
-    /// [`WHITE_TILE_KEY`] square and the [`DISC_TILE_KEY`] disc. Returns the
+    /// [`WHITE_TILE_KEY`] square, the [`DISC_TILE_KEY`] disc and the [`HERO_SHEET_KEY`] sheet. Returns the
     /// white tile's UV rect (see [`Self::insert_white_tile`]).
     pub fn insert_reserved_tiles(
         &mut self,
@@ -334,6 +338,14 @@ impl TextureAtlas {
         let px = disc_tile_pixels(DISC_TILE_PX);
         let bytes: &[u8] = bytemuck::cast_slice(&px);
         self.insert(gpu, DISC_TILE_KEY, DISC_TILE_PX, DISC_TILE_PX, bytes)?;
+        let hero = hero_sheet_pixels();
+        self.insert(
+            gpu,
+            HERO_SHEET_KEY,
+            HERO_SHEET_CELL_PX * HERO_SHEET_COLS,
+            HERO_SHEET_CELL_PX * HERO_SHEET_ROWS,
+            bytemuck::cast_slice(&hero),
+        )?;
         self.insert_white_tile(gpu)
     }
 

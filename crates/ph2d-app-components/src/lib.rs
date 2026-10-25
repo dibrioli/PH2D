@@ -167,6 +167,7 @@ pub mod nav_smoke_porta;
 pub mod nav_smoke_usos;
 /// O vazio e os objectos de JOGO no menu Add de objectos (spec/06 F1).
 pub mod object_add;
+mod object_add_dicas;
 /// O modo do objecto activo, com o tipo pelo marcador (spec/06 F2).
 pub mod object_mode;
 /// ⭐⭐⭐ **A PARALAXE** (plano 24, W1) — um objecto guarda uma fracção do movimento do mundo; a

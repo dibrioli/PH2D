@@ -53,6 +53,9 @@ impl crate::App {
         // ⭐ **O IMPACTO ouve os golpes deste dispatch** (plano 28, W5): a pausa pedida e os números
         // que nascem. Depois do dispatch, que é quem os produz.
         health_bars.impacto.ouve(sim, physics.health_events());
+        if self.playhead.is_playing() {
+            ph2d_app_game::personagem::anima_personagens(sim.world_mut(), physics); // N1: estado → animação
+        }
         let corrida =
             (simulate_physics && self.playhead.is_playing()).then(|| (de, physics.last_stepped()));
         ph2d_app_macros::com(|m| m.fisica_correu(sim, corrida, &self.player_tape));

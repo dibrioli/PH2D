@@ -106,6 +106,11 @@ impl crate::App {
                     tl, &c.fields, &sel, inst, lidos, valor, k,
                 );
             }
+            if intents.is_empty() {
+                intents = ph2d_app_constraints::marcas::clique(
+                    tl, &c.fields, sim, &sel, inst, lidos, valor, k,
+                );
+            }
             if intents.is_empty()
                 && let Some((e, obj)) = camada
             {
@@ -124,6 +129,7 @@ impl crate::App {
                 tl, e, obj, inst, valor,
             ));
         }
+        marcas.extend(ph2d_app_constraints::marcas::marcas(tl, sim, &sel, inst, valor));
         ph2d_editor_core::widget::key_mark::set_key_marks(marcas);
     }
 }

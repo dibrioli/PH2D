@@ -142,6 +142,10 @@ pub const INSP_LIVE_NAV_LINK_GRIP: NodeId = hash_node_id("insp_live_nav_link_gri
 pub const INSP_LIVE_LUZ_SECTION: NodeId = hash_node_id("insp_live_luz_section");
 /// A pega de arrasto da secção LUZ.
 pub const INSP_LIVE_LUZ_GRIP: NodeId = hash_node_id("insp_live_luz_grip");
+/// O cartão CONSTRAINTS (a pilha de constraints).
+pub const INSP_LIVE_CONSTRAINTS_SECTION: NodeId = hash_node_id("insp_live_constraints_section");
+/// A pega do cartão CONSTRAINTS.
+pub const INSP_LIVE_CONSTRAINTS_GRIP: NodeId = hash_node_id("insp_live_constraints_grip");
 /// O cabeçalho dobrável do cartão LIGHT OCCLUDER — o corpo que bloqueia a luz (`BloqueiaLuz`).
 pub const INSP_LIVE_LUZ_OCLUSOR_SECTION: NodeId = hash_node_id("insp_live_luz_oclusor_section");
 /// A pega de arrasto do cartão LIGHT OCCLUDER.

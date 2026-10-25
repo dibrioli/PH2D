@@ -203,6 +203,11 @@ thread_local! {
         std::cell::RefCell<Option<ph2d_editor_core::luz_edits::InspectorLuzInfo>> =
         const { std::cell::RefCell::new(None) };
 
+    /// O snapshot do cartão CONSTRAINTS — a shell escreve-o todo o quadro.
+    static CURRENT_INSPECTOR_CONSTRAINTS:
+        std::cell::RefCell<Option<ph2d_editor_core::constraint_edits::InspectorConstraintsInfo>> =
+        const { std::cell::RefCell::new(None) };
+
     /// ⭐ O snapshot dos cartões do CORPO na luz («Light Occluder» · «Unlit») — a shell escreve-o
     /// todo o quadro.
     static CURRENT_INSPECTOR_CORPO_LUZ:
@@ -372,6 +377,19 @@ pub fn set_current_inspector_luz(info: Option<ph2d_editor_core::luz_edits::Inspe
 
 pub(crate) fn current_inspector_luz() -> Option<ph2d_editor_core::luz_edits::InspectorLuzInfo> {
     CURRENT_INSPECTOR_LUZ.with(|c| c.borrow().clone())
+}
+
+/// O snapshot do cartão CONSTRAINTS — a shell escreve-o todo o quadro (`None` = o objecto não tem
+/// pilha: o cartão não aparece).
+pub fn set_current_inspector_constraints(
+    info: Option<ph2d_editor_core::constraint_edits::InspectorConstraintsInfo>,
+) {
+    CURRENT_INSPECTOR_CONSTRAINTS.with(|c| *c.borrow_mut() = info);
+}
+
+pub(crate) fn current_inspector_constraints()
+-> Option<ph2d_editor_core::constraint_edits::InspectorConstraintsInfo> {
+    CURRENT_INSPECTOR_CONSTRAINTS.with(|c| c.borrow().clone())
 }
 
 /// ⭐ O snapshot dos cartões do CORPO na luz — a shell escreve-o todo o quadro.

@@ -1,0 +1,101 @@
+//! **O vocabulário do cartão CONSTRAINTS** (plano `docs/BlenderConstraints/01_plano.md` §4): o que o
+//! cartão mostra de cada item da pilha ([`InspectorConstraintsInfo`]) e o que ele pede
+//! ([`ConstraintFieldEdit`]). Quem lê o mundo e aplica é `ph2d-app-constraints` (`inspector.rs`); o
+//! painel só pinta e emite.
+
+/// As entradas do menu **+**, na ordem em que aparecem: a chave `ph2d-i18n` do rótulo. O índice é o
+/// que [`ConstraintFieldEdit::Adicionar`] leva e o que [`InspectorConstraintRow::tipo`] diz.
+pub const TIPOS: [&str; 8] = [
+    "panel.inspector.constraint.child_of",
+    "panel.inspector.constraint.copy_location",
+    "panel.inspector.constraint.copy_rotation",
+    "panel.inspector.constraint.copy_scale",
+    "panel.inspector.constraint.copy_transforms",
+    "panel.inspector.constraint.look_at",
+    "panel.inspector.constraint.limit_rotation",
+    "panel.inspector.constraint.limit_distance",
+];
+
+/// Quantas linhas o cartão pinta e edita — o tamanho das tabelas de ids do painel
+/// (`ids/inspector_constraint.rs`), o único recurso que o limita; a pilha em si não tem tecto. Cheio,
+/// o **+** recusa com a frase `panel.inspector.constraint.full`.
+pub const MAX_LINHAS: usize = 32;
+
+/// O que um item faz neste quadro — o espelho, sem ECS, do `ph2d_constraints_ecs::Estado`.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum EstadoDaConstraint {
+    #[default]
+    Activa,
+    Desligada,
+    SemForca,
+    SemAlvo,
+    AlvoSiMesmo,
+    Ciclo,
+    CorpoDinamico,
+    EspacoColapsado,
+}
+
+impl EstadoDaConstraint {
+    /// A chave `ph2d-i18n` da frase que o cartão escreve por baixo do item (`None` = activa: nada a
+    /// dizer).
+    #[must_use]
+    pub fn frase(self) -> Option<&'static str> {
+        Some(match self {
+            Self::Activa => return None,
+            Self::Desligada => "panel.inspector.constraint.state.off",
+            Self::SemForca => "panel.inspector.constraint.state.no_influence",
+            Self::SemAlvo => "panel.inspector.constraint.state.no_target",
+            Self::AlvoSiMesmo => "panel.inspector.constraint.state.self_target",
+            Self::Ciclo => "panel.inspector.constraint.state.cycle",
+            Self::CorpoDinamico => "panel.inspector.constraint.state.dynamic_body",
+            Self::EspacoColapsado => "panel.inspector.constraint.state.collapsed",
+        })
+    }
+
+    /// `true` ⇒ a frase é um ERRO (cor de aviso); `false` ⇒ é só o estado escolhido pelo artista.
+    #[must_use]
+    pub fn erro(self) -> bool {
+        !matches!(self, Self::Activa | Self::Desligada | Self::SemForca)
+    }
+}
+
+/// Uma linha do cartão: um item da pilha, de cima para baixo.
+#[derive(Clone, Debug, PartialEq)]
+pub struct InspectorConstraintRow {
+    /// O `Item::id` — o endereço durável das edições.
+    pub id: u32,
+    /// Índice em [`TIPOS`].
+    pub tipo: u8,
+    /// O nome do alvo (`None` = sem alvo).
+    pub alvo: Option<String>,
+    /// O tipo pede um alvo (o Limit Rotation não pede).
+    pub precisa_alvo: bool,
+    /// A força, `0..=1`.
+    pub forca: f32,
+    pub ligada: bool,
+    pub estado: EstadoDaConstraint,
+    /// O próximo clique no palco escolhe o alvo deste item.
+    pub escolhendo: bool,
+}
+
+/// O snapshot do cartão para a entidade escolhida (`None` = ela não tem pilha: o cartão não aparece).
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct InspectorConstraintsInfo {
+    pub entity_bits: u64,
+    pub rows: Vec<InspectorConstraintRow>,
+    pub selected_count: usize,
+}
+
+/// O que o cartão pede. O item é endereçado pelo `id`, nunca pela posição.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum ConstraintFieldEdit {
+    /// Acrescenta no FIM um item do tipo `TIPOS[i]`.
+    Adicionar(u8),
+    Forca(u32, f32),
+    Ligada(u32, bool),
+    Apagar(u32),
+    /// Sobe (`-1`) ou desce (`+1`) uma posição.
+    Mover(u32, i8),
+    /// Arma o clique no palco que escolhe o alvo (outro clique no mesmo botão desarma).
+    EscolherAlvo(u32),
+}

@@ -2,69 +2,30 @@
 //!
 //! # O defeito que este arquivo existe para não ter
 //!
-//! Até 2026-08-30 o dreno morava no `mod.rs` e era um `if let`:
-//!
-//! ```ignore
-//! for intent in ph2d_panel_authored::drain_intents() {
-//!     if let ph2d_panel_authored::AuthoredIntent::Fired { key } = intent {
-//!         self.signals.publish(ph2d_runtime::Signal::from_control(&key));
-//!     }
-//! }
-//! ```
-//!
-//! As outras QUATRO variantes caíam fora e morriam no fim do quadro. O preço não é *"um intent
-//! perdido"* — é **seis famílias de widget mortas de uma vez**: `Tabs`, `SegmentedAdaptive`,
-//! `RadioGroup` e `Dropdown` publicam [`AuthoredIntent::Choice`]; `TextInput` e `NumberInput`
-//! publicam [`AuthoredIntent::Text`]. O sintoma do artista é o pior que há — *o chip ACENDE*
-//! (quem marca a opção é o `rows::select_in`, no `apply_event`, e ele funciona) *e nada muda*.
-//!
-//! ⚠️ **Esta acusação sobrevive a TODO gate de registo do repo.** O
-//! `architecture_panel_wiring_parity` mede **focalizabilidade** — pintado sem `InteractiveState`
-//! ⇒ morto sob o dedo —, e aqui o widget está registado, focável, vivo sob o rato e com o
-//! handler a existir. Os `seam_*` provam que o clique **chega à ferramenta**, nunca que a escrita
-//! dela chega a um consumidor. *A pergunta que faltava é a terceira: o leitor DECIDE, ou entrega
-//! a alguém que descarta?*
+//! Até 2026-08-30 o dreno era um `if let AuthoredIntent::Fired` no `mod.rs`: as outras QUATRO
+//! variantes morriam no fim do quadro, e com elas seis famílias de widget — `Tabs`,
+//! `SegmentedAdaptive`, `RadioGroup` e `Dropdown` publicam [`AuthoredIntent::Choice`]; `TextInput`
+//! e `NumberInput` publicam [`AuthoredIntent::Text`]. Sintoma: *o chip ACENDE e nada muda*.
+//! ⚠️ Nenhum gate de registo o via (`architecture_panel_wiring_parity` mede focalizabilidade; os
+//! `seam_*` só provam que o clique chega à ferramenta). *A pergunta que faltava: o leitor DECIDE?*
 //!
 //! # ⛔ Um `_ => {}` aqui reproduz o defeito na primeira variante nova
 //!
-//! É por isso que [`signal_name`] é um `match` com **braço NOMEADO para cada variante**,
-//! incluindo as três que ficam deliberadamente caladas — cada uma com o motivo escrito ao lado.
-//! O gate `the_drain_names_every_authored_intent_variant` lê ESTE arquivo e reprova se uma
-//! variante do enum não tiver braço, ou se alguém escrever um curinga.
+//! [`signal_name`] é um `match` com braço NOMEADO para cada variante, incluindo as três caladas
+//! (cada uma com o motivo ao lado). O gate `the_drain_names_every_authored_intent_variant`
+//! reprova variante sem braço ou curinga.
 //!
 //! # A escolha de desenho: o NOME carrega a opção (b), e a origem não ganha carga (a)
 //!
-//! Uma escolha traz um dado que o `Fired` não tem — *qual* opção. Havia duas saídas:
+//! **(a) carga no [`ph2d_runtime::SignalOrigin::Control`]** — ⛔ medida e recusada: contradiz o
+//! ADR-0143 (*"o CONTRATO é o nome — um consumidor nunca precisa perguntar a origem"*), e uma
+//! `String` mataria o `Copy` do enum. (`the_event_core_is_a_leaf` NÃO era o obstáculo: mede só
+//! `[dependencies]`.)
 //!
-//! **(a) dar carga ao [`ph2d_runtime::SignalOrigin::Control`].** ⛔ **Medida e recusada**, por
-//! duas razões que apontam para o mesmo lado:
-//!
-//! 1. **Contradiz o contrato declarado da crate.** O doc do `SignalOrigin` diz, com todas as
-//!    letras: *"o CONTRATO é o nome (ADR-0143) — um consumidor casa numa string e nunca precisa
-//!    perguntar a origem"*. Um consumidor obrigado a ler `origin` para saber QUAL aba foi
-//!    escolhida é um consumidor que passou a perguntar a origem.
-//! 2. **`SignalOrigin` é `Copy`**, e o texto de um campo não é. Para o `Choice` o `index` até
-//!    caberia (`usize` é `Copy`); para o `Text` a carga é uma `String`, e ela mataria o `Copy`
-//!    do enum inteiro — ou seja, a saída (a) nem sequer resolve as duas variantes que sobram.
-//!
-//! ⚠️ **O gate `the_event_core_is_a_leaf` NÃO era o obstáculo** — foi lido: ele mede
-//! `[dependencies]` do manifesto (a crate tem de ser folha), e um campo a mais num enum não
-//! acrescenta dependência nenhuma. *A cerca que decidiu foi outra, e é a do próprio ADR-0143.*
-//!
-//! **(b) o NOME compõe a row com a opção** — adoptada. É literalmente a lei que o `Contact` e a
-//! `Animation` desta casa já seguem: *chegada e saída não se distinguem por um campo,
-//! distinguem-se por serem NOMES diferentes*; *fim e volta idem*. Escolher a aba **Multiply** da
-//! row **Blend** grita `blend/multiply`, e escolher **Screen** grita `blend/screen` — duas
-//! distinções, dois nomes, zero campos novos.
-//!
-//! ⚠️ **A opção é slugificada pela MESMA porta que cunha a chave da row**
-//! ([`crate::ui_panel_spec::key_of`]). Uma segunda derivação daria ao artista um nome que ele não
-//! consegue prever — e o `key_of` mapeia todo carácter não-alfanumérico para `_`, então o
-//! separador `/` **não pode colidir** com nada que ele escreva.
-//!
-//! ⚠️ **(b) resolve o `Choice` e NÃO resolve o `Text`**, e isso está nomeado no braço dele: o
-//! conteúdo de um campo de texto é ARBITRÁRIO, e um nome de sinal que o artista digita não é um
-//! contrato — é um espaço de nomes ilimitado em que cada tecla inventa um sinal novo.
+//! **(b) o NOME compõe a row com a opção** — adoptada, a lei do `Contact`/`Animation`: Multiply
+//! na row Blend grita `blend/multiply`. ⚠️ A opção é slugificada pela MESMA porta da chave da row
+//! ([`crate::ui_panel_spec::key_of`]): todo não-alfanumérico vira `_`, e o `/` não colide.
+//! ⚠️ **(b) NÃO resolve o `Text`**: conteúdo arbitrário não é contrato de nome (nomeado no braço).
 
 use ph2d_panel_authored::AuthoredIntent;
 use ph2d_runtime::{Signal, SignalOutbox};

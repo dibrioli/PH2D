@@ -5188,9 +5188,12 @@ dependencies = [
  "ph2d-constraints",
  "ph2d-constraints-ecs",
  "ph2d-ecs",
+ "ph2d-editor-core",
  "ph2d-label-census",
+ "ph2d-panel-inspector",
  "ph2d-preview-drive",
  "ph2d-render",
+ "ph2d-timeline",
  "serde_json",
 ]
 

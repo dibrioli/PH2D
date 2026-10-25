@@ -101,6 +101,8 @@ pub(crate) struct LiveSnapshots {
     pub luz_info: Option<ph2d_editor_core::luz_edits::InspectorLuzInfo>,
     /// ⭐ Os cartões do CORPO na luz — LIGHT OCCLUDER e UNLIT.
     pub corpo_luz_info: Option<ph2d_editor_core::luz_edits::InspectorCorpoDaLuzInfo>,
+    /// O cartão CONSTRAINTS — a pilha do objecto.
+    pub constraints_info: Option<ph2d_editor_core::constraint_edits::InspectorConstraintsInfo>,
     pub blend_info: Option<ph2d_editor_core::screens::hero::InspectorBlendInfo>,
     pub physics_info: Option<ph2d_editor_core::screens::hero::InspectorPhysicsInfo>,
     pub joint_info: Option<ph2d_editor_core::screens::hero::InspectorJointInfo>,
@@ -162,6 +164,7 @@ impl LiveSnapshots {
         let emitter_info = crate::state_components::current_inspector_emitter();
         let luz_info = crate::state_components::current_inspector_luz();
         let corpo_luz_info = crate::state_components::current_inspector_corpo_luz();
+        let constraints_info = crate::state_components::current_inspector_constraints();
         let tags_info = crate::state::current_inspector_tags();
         let any_section = any_live_section([
             transform_info.is_some(),
@@ -202,6 +205,7 @@ impl LiveSnapshots {
             emitter_info.is_some(),
             luz_info.is_some(),
             corpo_luz_info.is_some(),
+            constraints_info.is_some(),
             tags_info.is_some(),
         ]);
         Self {
@@ -240,6 +244,7 @@ impl LiveSnapshots {
             emitter_info,
             luz_info,
             corpo_luz_info,
+            constraints_info,
             tags_info,
             blend_info,
             physics_info,

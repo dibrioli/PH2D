@@ -30,6 +30,9 @@ mod inspector_shake;
 pub use inspector_shake::*;
 mod inspector_luz;
 pub use inspector_luz::*;
+/// Os ids do cartão CONSTRAINTS — ver o cabeçalho.
+mod inspector_constraint;
+pub use inspector_constraint::*;
 mod inspector_factory;
 /// ⭐ Os ids da secção SCRIPT (TOP-20 #16) — ver o cabeçalho.
 mod inspector_hud;

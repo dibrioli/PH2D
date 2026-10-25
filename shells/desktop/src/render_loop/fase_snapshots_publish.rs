@@ -227,6 +227,10 @@ impl crate::App {
         let (info, corpo, recusa) = luz2d.publicar(hero.view.luz2d, sim.world(), sel);
         ph2d_panel_inspector::set_current_inspector_luz(info);
         ph2d_panel_inspector::set_current_inspector_corpo_luz(corpo);
+        let pilha = sel
+            .0
+            .and_then(|b| ph2d_app_constraints::inspector::info(sim, b, sel.1));
+        ph2d_panel_inspector::set_current_inspector_constraints(pilha);
         if let Some(m) = recusa {
             toasts.push(Toast::warning(m));
         }

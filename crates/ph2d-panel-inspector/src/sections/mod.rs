@@ -68,6 +68,8 @@ pub(crate) mod audio;
 pub(crate) mod camera;
 pub(crate) mod camera_format;
 mod color_tint;
+/// O cartão CONSTRAINTS — a pilha do objecto.
+pub(crate) mod constraint;
 pub(crate) mod counter_watch;
 /// A linha `Emissive` (plano `docs/Sprite_projeto/18` W8) — irmã do `render_source`, que está no
 /// tecto de LOC.

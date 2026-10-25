@@ -82,11 +82,13 @@ impl crate::App {
         evt: PointerEvent,
         menu_open_before: bool,
     ) -> bool {
-        // **O eyedropper de corpo do joint** (§12) — mesma classe de pick modal do
-        // acima, mas independente de ferramenta: armado, o próximo Down no canvas
-        // escolhe o corpo sob o cursor e religa aquela ponta. Precede o
-        // picking/gizmo; nenhum outro objeto precisa estar pré-selecionado.
-        if self.joint_body_pick.is_some()
+        // **O eyedropper do palco** — o corpo de uma junta (§12) ou o alvo de uma constraint:
+        // armado, o próximo Down no canvas escolhe o que está sob o cursor. Precede o gizmo.
+        let constraint = self
+            .gfx
+            .as_ref()
+            .is_some_and(|g| ph2d_app_constraints::inspector::armado(&g.sim));
+        if (self.joint_body_pick.is_some() || constraint)
             && mapped_button == ph2d_host::PointerButton::Primary
             && kind == PointerKind::Down
             && !menu_open_before

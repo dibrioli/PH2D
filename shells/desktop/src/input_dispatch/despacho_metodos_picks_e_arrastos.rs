@@ -62,18 +62,20 @@ impl crate::App {
     /// `set_joint_body`). Consome o press (o guard já filtrou por
     /// `joint_body_pick.is_some()`), então nunca cai no picking/gizmo.
     pub(super) fn joint_body_pick_click(&mut self, sx: f32, sy: f32) {
-        let Some((joint, slot_b)) = self.joint_body_pick else {
-            return;
-        };
         self.any_input_this_frame = true;
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
         let window_size = gfx.scene_window();
         let world_pos = gfx.camera.screen_to_world((sx, sy), window_size);
-        // O sprite mais ao topo sob o cursor que é um CORPO físico e não é a
-        // própria entidade-joint.
-        let target = ph2d_render::pick_sprites_at_world(gfx.present.world_mut(), world_pos)
+        let debaixo = ph2d_render::pick_sprites_at_world(gfx.present.world_mut(), world_pos);
+        let Some((joint, slot_b)) = self.joint_body_pick else {
+            // O alvo de uma constraint (a família recusa o dono e os ciclos).
+            let _ = ph2d_app_constraints::inspector::escolher_alvo(&mut gfx.sim, &debaixo);
+            return;
+        };
+        // O sprite mais ao topo sob o cursor que é um CORPO físico e não é a própria junta.
+        let target = debaixo
             .into_iter()
             .find(|&bits| {
                 bits != joint

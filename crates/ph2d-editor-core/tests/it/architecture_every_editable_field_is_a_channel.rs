@@ -9,7 +9,8 @@
 //! - **canal pelo rótulo** (F27 B2): o nome dela é `TextKey::new("component.field.…")`, um campo do
 //!   catálogo com canal (`ph2d_ecs::canal_componente::chaves_do_rotulo`) — a porta regista-o;
 //! - **canal**: um dos ids dela está numa tabela de canais ([`TABELAS`]: `ph2d_app_vec::marcas`,
-//!   `ph2d_app_components::marcas_inspector`, `ph2d_app_flip::marcas_camada`);
+//!   `ph2d_app_components::marcas_inspector`, `ph2d_app_flip::marcas_camada`,
+//!   `ph2d_app_constraints::marcas`);
 //! - **⛔ não-animável** ou **dívida**: um id (ou prefixo) dela está em [`POR_ID`], a função dela
 //!   em [`POR_FUNCAO`] (o id vem numa variável), ou o ficheiro em [`DIVIDA_FICHEIRO`].
 //!
@@ -99,6 +100,7 @@ const TABELAS: &[&str] = &[
     "ph2d-app-vec/src/marcas_vivos.rs",
     "ph2d-app-components/src/marcas_inspector.rs",
     "ph2d-app-flip/src/marcas_camada.rs",
+    "ph2d-app-constraints/src/marcas.rs",
 ];
 
 /// Os helpers de LINHA de cada painel: recebem o id do chamador e repassam-no a uma porta — a

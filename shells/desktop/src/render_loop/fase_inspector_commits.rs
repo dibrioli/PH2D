@@ -76,6 +76,8 @@ pub(super) struct InspectorIntents {
     /// ⭐⭐⭐ As edições das secções NAV REGION e NAV AGENT (plano 30, W4).
     pub(super) nav_edits: Vec<(u64, ph2d_editor_core::nav_edits::NavFieldEdit)>,
     pub(super) luz_edits: Vec<(u64, ph2d_editor_core::luz_edits::LuzFieldEdit)>,
+    pub(super) constraint_edits:
+        Vec<(u64, ph2d_editor_core::constraint_edits::ConstraintFieldEdit)>,
     /// As edições da secção MOTION INPUT (ciclo 19 do Motion).
     pub(super) motion_input_edits: Vec<(
         u64,
@@ -178,6 +180,7 @@ impl crate::App {
             vida_edits,
             nav_edits,
             luz_edits,
+            constraint_edits,
             motion_input_edits,
             macro_edits,
             tween_edits,
@@ -293,6 +296,7 @@ impl crate::App {
             &vida_edits,
             &nav_edits,
             &luz_edits,
+            &constraint_edits,
             &motion_input_edits,
             &macro_edits,
             &tween_edits,

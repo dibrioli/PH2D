@@ -222,6 +222,8 @@ pub(crate) fn push_optional_sections<'a>(
     sm_state_selected: &'a mut usize,
     sm_trans_selected: &'a mut usize,
     resist_selected: &mut usize,
+    // CONSTRAINTS — a lista dos tipos do «Add Constraint» está aberta.
+    constraint_add_open: bool,
     // ⭐⭐⭐ **A struct do QUADRO, inteira** — e não os dezoito instantâneos desmontados um a um.
     //
     // ⚠️ **Desmontá-la na chamada era uma SEGUNDA CÓPIA dela**, e ela cobrava: o `paint_inspector`
@@ -254,6 +256,16 @@ pub(crate) fn push_optional_sections<'a>(
                 c.scene, c.text, t, c.hit, store, inner_x, inner_w, y, header_h, infos.tags,
             )
         },
+    );
+    // ── TRANSFORM (2) — as CONSTRAINTS (`ph2d::constraints::Constraints`) ──────────────────────
+    crate::sections::constraint::push_constraints_section(
+        plano,
+        store,
+        inner_x,
+        inner_w,
+        header_h,
+        snaps.constraints_info.as_ref(),
+        constraint_add_open,
     );
     // ── RENDERING (4) ─────────────────────────────────────────────────────────────────────────
     plano.push(

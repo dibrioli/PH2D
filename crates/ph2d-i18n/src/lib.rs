@@ -130,6 +130,8 @@ mod inspector_motion_input;
 mod inspector_nav;
 mod inspector_player;
 mod inspector_vida;
+/// As palavras do cartão CONSTRAINTS.
+mod constraints;
 /// ⭐ As palavras da LUZ 2D (W4) — a secção do Inspector e os avisos da luz do quadro.
 mod luz2d;
 /// As MACROS (ADR-0186, W5d): o painel e o nome do clipe.
@@ -564,6 +566,7 @@ fn tr_ingles(key: &str) -> &'static str {
             .or_else(|| inspector_vida::tr(k))
             .or_else(|| inspector_nav::tr(k))
             .or_else(|| luz2d::tr(k))
+            .or_else(|| constraints::tr(k))
             .or_else(|| inspector_motion_input::tr(k))
             .or_else(|| inspector_macro::tr(k))
             .or_else(|| inspector_player::tr(k))

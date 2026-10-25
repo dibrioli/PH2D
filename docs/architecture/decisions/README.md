@@ -205,6 +205,7 @@
 | [0189](0189-a-caneta-chega-pelo-tablet-v2-ao-lado-do-winit.md) | Accepted — o produto (a caneta conduz a UI inteira, a pressão chega a todos os meios… | A caneta chega pelo `zwp_tablet_v2` ao lado do winit, numa crate nossa |
 | [0190](0190-a-macro-e-um-objeto-e-leva-tudo-o-que-usa.md) | Accepted — o PRODUTO é do DONO (23/10, decisões 1–8 em `docs/Macros/16_W18_plano.… | A macro é um OBJECTO e leva tudo o que usa |
 | [0191](0191-o-canal-de-qualquer-propriedade-e-o-catalogo-de-componentes.md) | Accepted — o produto («o Auto Key grava ABSOLUTAMENTE TUDO», 19/10) é ordem do DONO; … | O canal de qualquer propriedade é o catálogo de componentes, e a linha liga-se a ele pelo RÓTULO |
+| [0192](0192-a-pilha-de-constraints-e-um-componente-por-entidade-avaliada-da-pose-autorada.md) | Accepted — o PRODUTO é do DONO; o desenho técnico é delegado (25/10, posição da IK: «descubra o melhor e faça»). | A pilha de constraints é um componente por entidade, avaliada a partir da pose autorada, na ordem da lista |
 
 ---
 

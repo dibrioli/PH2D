@@ -38,7 +38,7 @@ use super::*;
 /// 2026-10-09: a LUZ (Luz 2D, W4). `47` → `48` na integração: o MOTION INPUT (ciclo 19 do Motion).
 /// `48` → `50` em 2026-10-11: LIGHT OCCLUDER e UNLIT (os cartões do corpo na luz). `50` → `51` em
 /// 2026-10-14: a MACRO (ADR-0186, W5d).
-pub const LIVE_SECTIONS: [(NodeId, NodeId); 51] = [
+pub const LIVE_SECTIONS: [(NodeId, NodeId); 52] = [
     (INSP_LIVE_NAME_SECTION, INSP_LIVE_NAME_GRIP),
     (INSP_LIVE_VISIBILITY_SECTION, INSP_LIVE_VISIBILITY_GRIP),
     (INSP_LIVE_TRANSFORM_SECTION, INSP_LIVE_TRANSFORM_GRIP),
@@ -140,6 +140,7 @@ pub const LIVE_SECTIONS: [(NodeId, NodeId); 51] = [
     // que os cartões. Dois e não um: componente = ícone + cartão.
     (INSP_LIVE_LUZ_OCLUSOR_SECTION, INSP_LIVE_LUZ_OCLUSOR_GRIP),
     (INSP_LIVE_LUZ_SEM_LUZ_SECTION, INSP_LIVE_LUZ_SEM_LUZ_GRIP),
+    (INSP_LIVE_CONSTRAINTS_SECTION, INSP_LIVE_CONSTRAINTS_GRIP),
     // A 51.ª — MACRO (ADR-0186, W5d), no mesmo commit que o cartão.
     (INSP_LIVE_MACRO_SECTION, INSP_LIVE_MACRO_GRIP),
 ];

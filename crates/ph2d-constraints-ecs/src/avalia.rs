@@ -30,6 +30,12 @@ pub enum Estado {
     EspacoColapsado,
 }
 
+/// As entidades cuja pose VISTA passa a ser a autorada neste quadro (largar um Child Of sem salto):
+/// a fase não as conduz uma vez, o `PreviewDrive::settle` esquece-as, e o quadro seguinte parte do
+/// que se via. Consumido pela [`evaluate`].
+#[derive(Resource, Default, Debug)]
+pub struct Adotar(pub std::collections::BTreeSet<u64>);
+
 /// O estado de cada item no último quadro, por `(Entity::to_bits, Item::id)`.
 #[derive(Resource, Default, Debug)]
 pub struct Estados(pub BTreeMap<(u64, u32), Estado>);
@@ -127,6 +133,7 @@ fn contexto(
 /// ⭐ **A FASE.** Uma vez por quadro, depois da física e antes do esqueleto. Devolve quantas entidades
 /// a pilha moveu.
 pub fn evaluate(sim: &mut SimWorld, preview: &mut PreviewDrive) -> usize {
+    let adotar = sim.world_mut().remove_resource::<Adotar>().unwrap_or_default().0;
     let (ordem, ciclo) = ordem(sim.world());
     let mut estados = BTreeMap::new();
     let ja = preview.driven_by(Driver::ConstraintPose);
@@ -150,7 +157,7 @@ pub fn evaluate(sim: &mut SimWorld, preview: &mut PreviewDrive) -> usize {
     }
     let idx = indice(sim.world());
     let mut movidas = 0;
-    for e in ordem {
+    for e in ordem.into_iter().filter(|e| !adotar.contains(&e.to_bits())) {
         if avalia_uma(sim, preview, &idx, e, &mut estados) {
             movidas += 1;
         }

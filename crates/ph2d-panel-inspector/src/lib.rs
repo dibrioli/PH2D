@@ -31,6 +31,8 @@ mod event_audio;
 mod event_camera;
 /// ⭐ Os três cliques de COR da sprite — irmão do `event` por CAP de LOC.
 mod event_color_tint;
+/// O cartão CONSTRAINTS.
+mod event_constraint;
 mod event_counter_watch;
 mod event_factory;
 /// ⭐ O registo dos widgets da secção PARTICLES — irmão por CAP de ficheiro.
@@ -119,6 +121,7 @@ mod populate_anchor;
 mod populate_anim;
 mod populate_audio;
 mod populate_camera;
+mod populate_constraint;
 mod populate_counter_watch;
 mod populate_dicas;
 mod populate_factory;
@@ -169,6 +172,7 @@ mod sync;
 /// ⭐ A semente da secção COUNTER WATCH — irmã do `sync_sections` por CAP de ficheiro.
 /// ⛔ Ela **não existia** até 17/09, e o editor mostrava os valores de fábrica do `populate`.
 mod sync_action_trigger;
+mod sync_constraint;
 mod sync_counter_watch;
 mod sync_hud;
 mod sync_luz;
@@ -287,11 +291,11 @@ pub use state_components::{script_object_slot_pick, script_prop_name};
 /// ⭐ As portas dos instantâneos das secções da fila do TOP-20 — ver o cabeçalho do módulo irmão.
 pub use state_components::{
     set_current_inspector_action, set_current_inspector_action_trigger,
-    set_current_inspector_audio, set_current_inspector_camera, set_current_inspector_corpo_luz,
-    set_current_inspector_counter_watch, set_current_inspector_emitter,
-    set_current_inspector_factory, set_current_inspector_hud, set_current_inspector_luz,
-    set_current_inspector_macro, set_current_inspector_motion_input, set_current_inspector_nav,
-    set_current_inspector_parallax, set_current_inspector_particles,
+    set_current_inspector_audio, set_current_inspector_camera, set_current_inspector_constraints,
+    set_current_inspector_corpo_luz, set_current_inspector_counter_watch,
+    set_current_inspector_emitter, set_current_inspector_factory, set_current_inspector_hud,
+    set_current_inspector_luz, set_current_inspector_macro, set_current_inspector_motion_input,
+    set_current_inspector_nav, set_current_inspector_parallax, set_current_inspector_particles,
     set_current_inspector_path_follow, set_current_inspector_projectile, set_current_inspector_ray,
     set_current_inspector_script, set_current_inspector_sequence, set_current_inspector_shake,
     set_current_inspector_statemachine, set_current_inspector_timer, set_current_inspector_topdown,

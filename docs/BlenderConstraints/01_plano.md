@@ -61,7 +61,7 @@ Resumo do [relatório](reports/Constraints%20para%20engine%202D.md); números no
 
 | Pergunta | Porta ÚNICA | Quem NÃO pode responder |
 |---|---|---|
-| «qual é a lei do tipo X?» | `ph2d_constraints::<tipo>::resolve(&Pose2 dono, &Alvos, &Params) -> Pose2` | o nó Motion `look_at` passa a **chamar** `ph2d_constraints::look_at` (hoje a lei é privada em `ph2d-node-motion-look-at/src/lib.rs:390`) — uma lei, dois consumidores |
+| «qual é a lei do tipo X?» | `ph2d_constraints::<tipo>::resolve(&Pose2 dono, &Alvos, &Params) -> Pose2` | o nó Motion `look_at` **não** chama esta lei — medido ([ADR-0192](../architecture/decisions/0192-a-pilha-de-constraints-e-um-componente-por-entidade-avaliada-da-pose-autorada.md) §5): o nó usa atan2 de Rajan em `f32` (≈0,0015 rad, HR-5) com gémeo WGSL elemento a elemento, graus, e alvo==dono → rumo 0 + offset; a constraint usa `atan2` exacto `f64` (paridade com o Blender), radianos, e alvo==dono → dono inalterado. Unificar quebraria o mesmo-bit CPU/GPU ou o oráculo ⇒ duas leis de propósito |
 | «IK de 2 ossos / cadeia» | `ph2d_skeleton::reach` (`reach.rs:411`) | ⛔ a cópia privada em `ph2d-node-rig-ik-2bone/src/lib.rs:96` passa a chamar `reach` (hoje são **duas** leis dos cossenos — a terceira seria a nossa) |
 | «misturar duas poses com força t» | `ph2d_constraints::blend(a, b, t)` — translação lerp, **θ pelo arco curto**, escala log-lerp | nenhum tipo mistura à mão |
 | «onde está a pose MUNDIAL de E agora?» | `ph2d_ecs::transform_inverse::world_transform` (`:124`) + `Transform::inverse_compose` (`:251`) | a fase não lê `GlobalTransform` (é do `PresentWorld`, de um quadro antes) |
@@ -179,7 +179,7 @@ medidos lado a lado com o oráculo.
 
 | Onda | Entrega | Peças |
 |---|---|---|
-| **W1 — a pilha** | cartão Constraints, + menu, alvo por clique, força com Auto Key, pega, estado, gizmos, Bake, undo, gravar; em **objectos** | Child Of · Copy Transform (por canal, Replace/Add) · Look At · Limit (caixa · ângulo · escala · distância) · ADR-0192 · `look_at` do Motion passa a chamar a lei única |
+| **W1 — a pilha** | cartão Constraints, + menu, alvo por clique, força com Auto Key, pega, estado, gizmos, Bake, undo, gravar; em **objectos** | Child Of · Copy Transform (por canal, Replace/Add) · Look At · Limit (caixa · ângulo · escala · distância) · ADR-0192 · `look_at` do Motion fica com a lei própria (ADR-0192 §5) |
 | **W2 — ossos** | a mesma pilha em Pose | IK (2 ossos analítica + cadeia FABRIK, bit de dobra, *Softness*, Stretch) unificada com o `skeleton_goal` · Follow Path (% e distância, orientar pela tangente) · Stretch To com volume · unificação da lei dos 2 ossos |
 | **W3 — poderosas** | movimento secundário e controlo | Spring por canal (determinístico) · Transformation (mapear canal → canal) · Action/Slider (osso dirige clip; Flip troca desenho por ângulo) · Multi-parent ponderado · Pivot · Floor/colar ao contorno · Spline IK · prender a ponto de forma/simulação |
 | **W4 — CAD no vetor** | regras de desenho técnico no editor vetorial, animáveis | id estável por vértice (+1 `VEC_SCENE_SCHEMA_VERSION`) · medir **ezpz** (`kcl-ezpz` 0.2.18, MIT, crates.io) × **fiksi** (`endoli/fiksi`, Apache-2.0, só git) no mesmo processo · coincidente/H/V/paralelo/perpendicular/tangente/igual/simétrico/medida · inferência ao desenhar · cores de graus de liberdade · REF · «apague uma destas» |

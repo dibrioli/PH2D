@@ -11,11 +11,6 @@ use ph2d_ecs::SimWorld;
 
 /// Aplica as oito. `true` = alguma coisa mudou.
 ///
-/// ⚠️ **QUATRO secções mudaram-se para cá** (#13 · #14 · #15 · #16) quando o tecto de 200 LOC da
-/// fase-mãe voltou a estourar, **e é o certo por responsabilidade**: as oito aplicam-se pelo MESMO
-/// gesto — o corpo mora na família e aqui é uma chamada. ⛔ *A cura de um tecto é o CORTE, nunca
-/// uma entrada nova no `FN_OVERAGE_OK`.*
-///
 /// ⚠️ **Os oito tipos de edição são DISTINTOS**, e é isso que torna esta lista segura: uma troca de
 /// posição entre dois argumentos **não compila**. *Uma lista longa de argumentos do MESMO tipo é
 /// onde dois instantâneos trocam de sítio em silêncio.*
@@ -46,6 +41,7 @@ pub(super) fn aplicar(
     vida: &[(u64, ph2d_editor_core::vida_edits::VidaFieldEdit)],
     nav: &[(u64, ph2d_editor_core::nav_edits::NavFieldEdit)],
     luz: &[(u64, ph2d_editor_core::luz_edits::LuzFieldEdit)],
+    pilha: &[(u64, ph2d_editor_core::constraint_edits::ConstraintFieldEdit)],
     motion_input: &[(
         u64,
         ph2d_editor_core::motion_input_edits::MotionInputFieldEdit,
@@ -70,6 +66,7 @@ pub(super) fn aplicar(
         | ph2d_app_components::vida_inspector::apply_all(sim, vida)
         | ph2d_app_components::nav_inspector::apply_all(sim, nav)
         | ph2d_app_light2d::inspector::apply_all(sim, luz)
+        | ph2d_app_constraints::inspector::apply_all(sim, pilha)
         | ph2d_app_components::motion_input_inspector::apply_all(sim, motion_input)
         | ph2d_app_components::macro_inspector::apply_all(sim, macros)
         | ph2d_app_components::tween_inspector::apply_all(sim, tween)

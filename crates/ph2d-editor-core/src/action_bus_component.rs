@@ -74,6 +74,8 @@ pub enum ComponentEdit {
     Nav(crate::nav_edits::NavFieldEdit),
     /// **LUZ** (Luz 2D, W4) — cor, intensidade, tamanho, alcance e tipo da lâmpada.
     Luz(crate::luz_edits::LuzFieldEdit),
+    /// **CONSTRAINTS** — a pilha: acrescentar, força, liga/desliga, apagar, mover, escolher o alvo.
+    Constraint(crate::constraint_edits::ConstraintFieldEdit),
     /// **MOTION INPUT** (ciclo 19 do Motion) — o nome, a fonte e o valor que o grafo lê.
     MotionInput(crate::motion_input_edits::MotionInputFieldEdit),
     /// **MACRO** (ADR-0186, W5d) — o modo em que a trilha do Motion toca.

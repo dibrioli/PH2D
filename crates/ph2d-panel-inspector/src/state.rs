@@ -64,8 +64,7 @@ pub struct InspectorState {
     pub last_anim_row: Option<usize>,
     /// §11 — a (entidade, animação no ecrã) da última pintura: quando muda, a aberta vai para ela.
     pub last_anim_current: Option<(u64, String)>,
-    /// TIMERS — qual timer da lista está aberto no editor. **Estado do painel**, saturado contra
-    /// o tamanho da lista a cada pintura.
+    /// TIMERS — qual timer está aberto no editor. **Estado do painel**, saturado a cada pintura.
     ///
     /// ⚠️ **Aqui a §12 é o precedente, não a §11:** qual timer se edita é um facto da UI. Na §11 a
     /// linha aberta É a animação que toca, que é estado da cena — um `Timers` não tem «o actual».
@@ -83,8 +82,7 @@ pub struct InspectorState {
     pub last_watch_row: Option<usize>,
     /// GATILHO — qual linha da lista está aberta. **Estado do painel**, como as irmãs.
     pub trigger_selected: usize,
-    /// SHAKE EMITTER — qual fonte da lista está aberta. **Estado do painel**, como as irmãs
-    /// (suplente #25).
+    /// SHAKE EMITTER — qual fonte da lista está aberta. **Estado do painel**, como as irmãs (#25).
     pub emitter_selected: usize,
     /// Irmão do [`Self::last_trigger_row`], e pela MESMA razão medida.
     pub last_emitter_row: Option<usize>,
@@ -92,6 +90,8 @@ pub struct InspectorState {
     pub last_shake_sig: Option<u64>,
     /// LUZ — a assinatura do último instantâneo semeado (Luz 2D, W4).
     pub last_luz_sig: Option<u64>,
+    /// CONSTRAINTS — a lista dos tipos do «Add Constraint» está aberta (estado do PAINEL).
+    pub constraint_add_open: bool,
     /// Qual tween está aberto — estado do PAINEL, como o do gatilho (suplente #22).
     ///
     /// ⚠️ **Não vai ao barramento**: um `Tweens` não tem «o tween actual» — os N correm todos ao

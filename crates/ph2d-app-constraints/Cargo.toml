@@ -17,6 +17,11 @@ ph2d-app-host = { path = "../ph2d-app-host" }
 ph2d-constraints = { path = "../ph2d-constraints" }
 ph2d-constraints-ecs = { path = "../ph2d-constraints-ecs" }
 ph2d-ecs = { path = "../ph2d-ecs" }
+# O vocabulário do cartão (`constraint_edits`).
+ph2d-editor-core = { path = "../ph2d-editor-core" }
+# O losango do Auto Key: os ids do cartão e o estado do canal na linha do tempo.
+ph2d-panel-inspector = { path = "../ph2d-panel-inspector" }
+ph2d-timeline = { path = "../ph2d-timeline" }
 ph2d-preview-drive = { path = "../ph2d-preview-drive" }
 # As cenas de smoke: sprites de quadrado e de disco.
 ph2d-render = { path = "../ph2d-render" }

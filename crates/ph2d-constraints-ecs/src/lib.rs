@@ -7,7 +7,7 @@
 mod avalia;
 mod ordem;
 
-pub use avalia::{Estado, Estados, evaluate};
+pub use avalia::{Adotar, Estado, Estados, evaluate};
 pub use ordem::ordem;
 
 use bevy_ecs::component::Component;

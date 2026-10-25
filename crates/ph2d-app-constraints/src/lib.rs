@@ -4,6 +4,8 @@
 //! §2.1). A shell chama [`quadro`] uma vez por quadro, entre o apply da timeline e o esqueleto.
 
 pub mod canais;
+pub mod inspector;
+pub mod marcas;
 pub mod smoke;
 
 use bevy_ecs::prelude::Resource;

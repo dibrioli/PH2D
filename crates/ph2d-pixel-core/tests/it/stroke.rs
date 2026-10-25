@@ -154,3 +154,26 @@ fn a_new_white_sprite_has_an_opaque_background_layer_in_every_mode() {
     assert_eq!(t.layers()[0].name, "Layer 1");
     assert!(t.cel(ids(&t)).is_none(), "transparente = nenhum cel");
 }
+
+#[test]
+fn a_replacing_stroke_only_touches_the_cells_of_the_from_color() {
+    let mut s = sprite(ColorMode::Rgba, Background::Transparent);
+    let (l, f) = ids(&s);
+    let (red, blue, green) = (0xff00_00ffu32, 0xffff_0000u32, 0xff00_ff00u32);
+    let mut h = History::default();
+    let mut a = Stroke::begin(&s, l, f, red, 0, 0);
+    a.to(&s, 9, 0);
+    let op = a.op(&s).expect("op");
+    h.commit(&mut s, op).expect("commit");
+    let b = Stroke::begin(&s, l, f, blue, 4, 0);
+    let op = b.op(&s).expect("op");
+    h.commit(&mut s, op).expect("commit");
+    let mut r = Stroke::begin_replacing(&s, l, f, red, green, 0, 0);
+    r.to(&s, 9, 0);
+    let op = r.op(&s).expect("op");
+    h.commit(&mut s, op).expect("commit");
+    assert_eq!(s.value_at((l, f), 3, 0), green);
+    assert_eq!(s.value_at((l, f), 4, 0), blue, "a célula de outra cor fica");
+    let none = Stroke::begin_replacing(&s, l, f, red, green, 0, 1);
+    assert!(none.op(&s).is_none(), "sem a cor de origem, nada muda");
+}

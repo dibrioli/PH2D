@@ -14,11 +14,15 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 /// As agulhas — cada uma é um pedaço da lei que só a porta pode escrever.
-const AGULHAS: [&str; 6] = [
+const AGULHAS: [&str; 8] = [
     "DROPDOWN_SCROLLBAR_ID",
     "option_rect_in_scrolled(",
     "option_rect_in(",
     "popover_rect_clamped(",
+    // ⭐ A LARGURA da lista (dono 25/10) — só a porta a pergunta; um painel que a medisse à mão
+    // pintaria uma lista que o hit-test não conhece.
+    "popover_rect_fitted(",
+    "list_width(",
     "set_dropdown_popover(",
     "paint_dropdown_popover_scrolled(",
 ];

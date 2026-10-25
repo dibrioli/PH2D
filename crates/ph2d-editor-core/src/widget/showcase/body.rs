@@ -263,9 +263,9 @@ pub fn paint_showcase_body(
         )
         .selected(selected_label)
         .open(true);
-        crate::widget::paint_dropdown_popover(&dd, chip, scene, text_system, theme);
+        let panel = crate::widget::paint_dropdown_popover(&dd, chip, scene, text_system, theme);
         for (i, opt) in dd.options.iter().enumerate() {
-            hit_index.register(opt.id, dd.option_rect(chip, i));
+            hit_index.register(opt.id, dd.option_rect_in(chip, panel, i));
         }
     }
 

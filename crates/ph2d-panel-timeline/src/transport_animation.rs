@@ -138,20 +138,8 @@ pub(crate) fn paint_popover(
     chip: Rect,
 ) {
     let dd = dropdown(snap, true);
-    // A lista diz mais que o chip («Add animation to Inimigo»): ela toma a largura do rótulo
-    // mais largo, e o mesmo rect ancora a pintura, os cliques e o fecho por fora.
-    let text_w = ph2d_editor_core::paint::label_column_width(
-        ctx.text_system,
-        ph2d_tokens::TypeToken::Base.px(),
-        dd.options.iter().map(|o| o.label.as_str()),
-    );
-    let chip = Rect::new(
-        chip.x,
-        chip.y,
-        chip.w
-            .max(ph2d_editor_core::widget::popover_width_for(text_w, true)),
-        chip.h,
-    );
+    // A lista diz mais que o chip («Add animation to Inimigo»): a porta dá-lhe a largura do
+    // rótulo mais largo, e o mesmo rect ancora a pintura, os cliques e o fecho por fora.
     let region = ctx.layout.popover_region();
     paint_dropdown_list(ctx, &dd, chip, region, theme, None);
 }

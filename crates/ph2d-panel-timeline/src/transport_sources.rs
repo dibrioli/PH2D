@@ -11,10 +11,10 @@
 
 use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::panel::{EventOutcome, PaintCtx, PanelHostInternal, paint_dropdown_list};
-use ph2d_editor_core::widget::{Dropdown, DropdownOption, popover_width_for};
+use ph2d_editor_core::widget::{Dropdown, DropdownOption};
 use ph2d_editor_core::zones::Rect;
 use ph2d_timeline::{SCENE, StripSource, TimelineIntent, TimelineViewSnapshot};
-use ph2d_tokens::{Theme, TypeToken};
+use ph2d_tokens::Theme;
 
 use crate::ids::{self, TIMELINE_SOURCE_ROWS, timeline_source_opt};
 use crate::state::{self, TimelinePanelState};
@@ -175,17 +175,6 @@ pub(crate) fn paint_popover(
     )
     .selected(crate::transport_clips::selected_source(snap, view))
     .open(true);
-    let text_w = ph2d_editor_core::paint::label_column_width(
-        ctx.text_system,
-        TypeToken::Base.px(),
-        dd.options.iter().map(|o| o.label.as_str()),
-    );
-    let chip = Rect::new(
-        chip.x,
-        chip.y,
-        chip.w.max(popover_width_for(text_w, true)),
-        chip.h,
-    );
     let region = ctx.layout.popover_region();
     paint_dropdown_list(ctx, &dd, chip, region, theme, None);
 }

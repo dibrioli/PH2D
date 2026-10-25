@@ -127,19 +127,8 @@ pub(crate) fn paint_popover(
     chip: Rect,
     theme: Theme,
 ) {
+    // A largura da lista (o rótulo mais largo) é da porta, não daqui.
     let dd = dropdown(&rows(entries, chosen), chosen, true);
-    let text_w = ph2d_editor_core::paint::label_column_width(
-        ctx.text_system,
-        ph2d_tokens::TypeToken::Base.px(),
-        dd.options.iter().map(|o| o.label.as_str()),
-    );
-    let chip = Rect::new(
-        chip.x,
-        chip.y,
-        chip.w
-            .max(ph2d_editor_core::widget::popover_width_for(text_w, false)),
-        chip.h,
-    );
     let viewport = ctx.viewport;
     paint_dropdown_list(ctx, &dd, chip, viewport, theme, None);
 }

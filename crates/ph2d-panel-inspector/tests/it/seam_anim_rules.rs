@@ -244,3 +244,63 @@ fn sem_corpo_o_menu_when_nao_tem_poses() {
         )]
     );
 }
+
+/// (viii) Report do dono 25/10: num painel ESTREITO a lista do «When» tem a largura dos nomes, não a
+/// do chip — e o clique na parte da opção que antes ficava FORA do chip escolhe-a.
+#[test]
+fn num_painel_estreito_a_lista_do_when_alarga_e_o_clique_fora_do_chip_escolhe() {
+    const ESTREITO: Rect = Rect {
+        x: 0.0,
+        y: 0.0,
+        w: 240.0,
+        h: 2400.0,
+    };
+    let info = with_character(anim(false, false));
+    let j = info
+        .card
+        .when_options()
+        .iter()
+        .position(|o| *o == AnimWhenInfo::Action("down".into()))
+        .expect("«down» é uma opção");
+    let (mut host, mut st) = host_with(info);
+    host.set_dropdown_open(ids::INSP_ANIM_RULE_WHEN[1], true);
+    let rects = host.paint::<InspectorPanel>(&mut st, ESTREITO);
+    let at = |id| {
+        rects
+            .iter()
+            .find(|(n, _)| *n == id)
+            .map(|(_, r)| *r)
+            .unwrap_or_else(|| panic!("{id:?} não foi pintado"))
+    };
+    let chip = at(ids::INSP_ANIM_RULE_WHEN[1]);
+    let band = at(ids::INSP_ANIM_RULE_WHEN_OPT[j]);
+    assert!(
+        band.w > chip.w,
+        "a opção ficou na largura do chip: {} ≤ {}",
+        band.w,
+        chip.w
+    );
+    assert!(
+        band.x >= ESTREITO.x && band.x + band.w <= ESTREITO.x + ESTREITO.w,
+        "a lista saiu do painel: {band:?}"
+    );
+    // Um ponto da banda FORA da faixa do chip — à direita dele, ou à esquerda se a lista recuou.
+    let x = if band.x + band.w > chip.x + chip.w {
+        (chip.x + chip.w + band.x + band.w) * 0.5
+    } else {
+        (band.x + chip.x) * 0.5
+    };
+    let events = host.click_at(x, band.y + band.h * 0.5);
+    for ev in events {
+        let _ = host.apply_panel_event::<InspectorPanel>(&mut st, ev);
+    }
+    let out = host.drained_actions();
+    clear();
+    assert_eq!(
+        edits(&out),
+        [AnimFieldEdit::RuleWhen(
+            1,
+            AnimWhenInfo::Action("down".into())
+        )]
+    );
+}

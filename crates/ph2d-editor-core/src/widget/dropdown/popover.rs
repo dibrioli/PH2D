@@ -17,8 +17,8 @@ pub(crate) fn paint_dropdown_popover<T: Clone + PartialEq>(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
-) {
-    paint_dropdown_popover_in_viewport(dd, chip_rect, None, scene, text_system, theme);
+) -> Rect {
+    paint_dropdown_popover_in_viewport(dd, chip_rect, None, scene, text_system, theme)
 }
 
 /// Variant of [`paint_dropdown_popover`] that flips above when below
@@ -31,9 +31,12 @@ pub(crate) fn paint_dropdown_popover_in_viewport<T: Clone + PartialEq>(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
-) {
+) -> Rect {
+    // ⭐ O rect da lista é a porta da LARGURA ([`Dropdown::popover_rect_fitted`]); devolvido para o
+    // hit-test de quem chama ler o MESMO rect.
+    let panel = dd.popover_rect_fitted(chip_rect, viewport, text_system);
     if !dd.open {
-        return;
+        return panel;
     }
     // Floating popover panel — fully opaque. The theme tokens
     // (`BgElev`, `AccentSoft`, …) carry alpha < 255 on several themes
@@ -41,10 +44,6 @@ pub(crate) fn paint_dropdown_popover_in_viewport<T: Clone + PartialEq>(
     // call was "tire toda transparência da lista do dropdown".
     // `opaque(token)` forces alpha to 255 while keeping the token's
     // RGB so the color still tracks the theme.
-    let panel = match viewport {
-        Some(vp) => dd.popover_rect_clamped(chip_rect, vp),
-        None => dd.popover_rect(chip_rect),
-    };
     paint_popover_frame(scene, panel, theme);
     for (i, opt) in dd.options.iter().enumerate() {
         let r = dd.option_rect_in(chip_rect, panel, i);
@@ -55,6 +54,7 @@ pub(crate) fn paint_dropdown_popover_in_viewport<T: Clone + PartialEq>(
         let row = PopoverRow::of(dd, opt, i, r);
         paint_popover_row_default(scene, text_system, theme, row, opt);
     }
+    panel
 }
 
 /// Resolve `token` against `theme` and force the alpha channel to

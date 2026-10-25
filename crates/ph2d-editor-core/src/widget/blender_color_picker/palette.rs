@@ -139,8 +139,7 @@ pub fn paint_palette_section(
     // Deferred dropdown popover — painted LAST so it occludes the grid, and its option hit rects
     // register LAST so they win the back-to-front HitIndex walk over the swatches beneath.
     if open && !dd.options.is_empty() {
-        let panel = dd.popover_rect_clamped(chip_rect, picker_rect);
-        paint_dropdown_popover_in_viewport(
+        let panel = paint_dropdown_popover_in_viewport(
             &dd,
             chip_rect,
             Some(picker_rect),

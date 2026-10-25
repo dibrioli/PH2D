@@ -148,7 +148,9 @@ fn paint_list<T: Clone + PartialEq>(
     hit_index: &mut HitIndex,
     rows: Option<PopoverRowPainter<'_>>,
 ) -> PaintedPopover {
-    let panel = dd.popover_rect_clamped(chip, region);
+    // ⭐ A largura da lista é a da porta ([`Dropdown::popover_rect_fitted`]); os hits abaixo e o
+    // clique-fora (o `panel` publicado) leem este MESMO rect.
+    let panel = dd.popover_rect_fitted(chip, Some(region), text_system);
     let content_h = dd.content_height(chip.h);
     let visible_h = panel.h;
     let max_scroll = (content_h - visible_h).max(0.0);

@@ -47,6 +47,7 @@ ESPERA="${5:-9}"
 # 1.a e' <saida.png>, as seguintes <saida>_02.png, … — dois instantes de uma cena que corre sem
 # que o arranque (que varia com a carga) mude a distancia entre eles.
 RAJADA="${FOTO_RAJADA:-1}"
+# FOTO_ESCOLHA=head: fotografa a 1.ª janela do app (o editor atrás da janela do jogo), não a última.
 # FOTO_JANELA_A_CADA=1: cada foto da rajada reescolhe a janela (a ÚLTIMA do app) — para um app que
 # abre uma 2.ª janela a meio (a janela do jogo, GameEngineFuncional R0c).
 INTERVALO="${FOTO_INTERVALO:-1}"
@@ -197,7 +198,7 @@ APP=\$!
 janela() {
   for w in \$(xprop -display "\$DISPLAY" -root _NET_CLIENT_LIST | grep -o '0x[0-9a-f]*'); do
     xprop -display "\$DISPLAY" -id "\$w" _NET_WM_PID | grep -qx "_NET_WM_PID(CARDINAL) = \$APP" && echo "\$w"
-  done | tail -1
+  done | ${FOTO_ESCOLHA:-tail} -1
 }
 aceso() {
   [ "\$(magick "\$1" -format '%[fx:maxima>0]' info: 2>/dev/null)" = 1 ]

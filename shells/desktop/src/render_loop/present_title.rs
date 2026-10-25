@@ -26,7 +26,8 @@ impl crate::App {
         } = gfx;
         // Window title carries editor state. Refresh only when state
         // actually changes — winit set_title triggers a platform call.
-        if self.title_dirty {
+        // Com a janela do jogo aberta o host é ela, e o título dela é o do jogo (`janela_do_jogo`).
+        if self.title_dirty && self.undo.janela_do_jogo.is_none() {
             let tool_label = tools.active().map(|t| t.label()).unwrap_or("none");
             let title = format!(
                 "PH2D — {} | sprites={SPRITE_COUNT} | atlas={} ({} assets) \

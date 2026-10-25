@@ -36,10 +36,9 @@ impl crate::App {
         let gfx = self.gfx.as_mut()?;
         let hero = gfx.hero_screen.as_mut()?;
         let stage = hero.view.game_stage;
-        if stage == GameStage::Editor {
-            return None;
-        }
-        hero.view.palco_do_jogo = true;
+        // A janela liga o palco quando ABRIR (`abre_a_janela_do_jogo`): este quadro ainda é desenhado
+        // no editor, e é a imagem com que ele fica parado atrás do jogo.
+        hero.view.palco_do_jogo = stage == GameStage::Fullscreen;
         let antes = VistaAntes {
             camara_do_jogo: self.game_camera_preview,
             camara: gfx.camera,
@@ -167,6 +166,10 @@ impl crate::App {
                 Some((w, host, surface))
             });
         let Some((window, host, surface)) = aberta else {
+            // Joga no editor, e não tenta outra vez a cada quadro.
+            if let Some(v) = self.undo.jogo.foto_mut().and_then(|f| f.vista.as_mut()) {
+                v.stage = GameStage::Editor;
+            }
             gfx.toasts
                 .push(ph2d_editor_core::toast::Toast::info(ph2d_i18n::tr(
                     "shell.janela_do_jogo.no_window",
@@ -185,6 +188,9 @@ impl crate::App {
             editor_host,
             editor_surface,
         });
+        if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
+            hero.view.palco_do_jogo = true;
+        }
         self.on_resized(window.inner_size());
         window.focus_window();
         window.request_redraw();

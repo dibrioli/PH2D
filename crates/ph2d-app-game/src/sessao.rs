@@ -55,6 +55,11 @@ impl<S> Sessao<S> {
         self.foto.as_ref()
     }
 
+    /// A fotografia desta corrida, para a corrigir (o palco que não abriu).
+    pub fn foto_mut(&mut self) -> Option<&mut S> {
+        self.foto.as_mut()
+    }
+
     /// Com o jogo a correr o undo não regista: o que o jogo muda não é do artista.
     #[must_use]
     pub fn a_correr(&self) -> bool {

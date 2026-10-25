@@ -113,3 +113,11 @@ Verde: clippy `-D warnings` de 10 crates; testes por nome de todas as crates toc
 4. N0: sem `disconnect`; o `exit` do Stop lê o mundo sem portas; `attach_script` mantém a recusa em
    objectos do artista.
 5. Fecho da linha (`/pd-linha-fechar`) NÃO corrido: W1 tinha seam test do Hero real e mutações por fazer.
+
+## Smoke do dono (25/10) e curas
+
+| Report | Mecanismo | Cura | Medido |
+|---|---|---|---|
+| *Play in the Editor* não enquadra a câmara no canvas visível («áreas ocultas por trás dos painéis») | a câmara do jogo media a vista pela proporção da JANELA e escrevia-a na câmara do editor, que cobre a janela inteira | `ph2d_app_game::encaixe` (`aspecto` do canvas visível `hero.last_canvas`; `na_janela`: escala pela altura do canvas, centro deslocado) em `fase_game_camera.rs`; o palco *Editor* também liga a câmara do jogo | foto: o herói segue dentro do canvas entre os painéis; testes `encaixe::tests` (2) |
+| *Play in a Window*: o editor atrás «espelha» a janela | o palco ligava-se no quadro do Play, ANTES de a janela abrir: esse quadro (sem painéis, câmara do jogo) era o último do editor | na janela, `palco_do_jogo` só liga em `abre_a_janela_do_jogo`; falhar a abertura joga no editor (sem tentar a cada quadro, `Sessao::foto_mut`); o título do editor não se escreve na janela do jogo | foto da 1.ª janela do app (`FOTO_ESCOLHA=head`): o editor com os painéis atrás do jogo |
+| *Play Fullscreen* | — | — | OK do dono |

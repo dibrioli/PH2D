@@ -25,8 +25,21 @@ impl crate::App {
             surface,
             sim,
             camera,
+            hero_screen,
             ..
         } = FrameGfx::of(gfx);
+        // O canvas VISÍVEL (entre os painéis; a janela inteira no palco): a câmara do jogo mede-se
+        // nele e encaixa-se nele (`ph2d_app_game::encaixe`).
+        let (janela, canvas) = {
+            let w = surface.size();
+            let full = [0.0, 0.0, w.width as f32, w.height as f32];
+            let c = hero_screen.as_ref().map(|h| h.last_canvas);
+            let c = c
+                .filter(|r| r.w > 0.0 && r.h > 0.0)
+                .map_or(full, |r| [r.x, r.y, r.w, r.h]);
+            ([full[2], full[3]], c)
+        };
+        let aspecto = ph2d_app_game::encaixe::aspecto(canvas);
 
         // ⭐ **O herói da cena de smoke da câmera anda AQUI**, imediatamente antes do passe dela —
         // ver o doc do [`ph2d_app_components::camera_2d_smoke`] sobre porque ele é movido pelo TECLADO e não pelo
@@ -76,7 +89,7 @@ impl crate::App {
         );
         let (vista_da_cena, camera_report) = ph2d_app_components::camera_2d::update(
             sim,
-            ph2d_app_components::camera_2d::aspect_of(surface.size()),
+            aspecto,
             report.ticks,
             self.fixed_step.fixed_dt(),
             abanao.offset,
@@ -87,8 +100,10 @@ impl crate::App {
         if self.game_camera_preview
             && let Some(v) = vista_da_cena
         {
-            camera.center = v.center;
-            camera.height_world = v.height_world;
+            let (centro, altura) =
+                ph2d_app_game::encaixe::na_janela(v.center, v.height_world, janela, canvas);
+            camera.center = centro;
+            camera.height_world = altura;
             camera.cull_mask = v.cull_mask;
         }
         // ⭐ O rectângulo que o fora-do-ecrã mede, derivado da MESMA vista que o extract desenha —
@@ -96,10 +111,7 @@ impl crate::App {
         let rect = vista_da_cena.map(|v| {
             (
                 v.center,
-                ph2d_ecs::camera_2d::half_extent(
-                    v.height_world,
-                    ph2d_app_components::camera_2d::aspect_of(surface.size()),
-                ),
+                ph2d_ecs::camera_2d::half_extent(v.height_world, aspecto),
             )
         });
         // ⚠️ **Fala uma vez por MUDANÇA, nunca por quadro** — a mesma lei da linha do som.

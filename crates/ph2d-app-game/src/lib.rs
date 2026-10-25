@@ -2,6 +2,7 @@
 //!
 //! A shell compõe; a lei vive aqui: [`Sessao`] decide quando o documento se fotografa e quando volta.
 
+pub mod encaixe;
 pub mod sessao;
 pub mod smoke;
 

@@ -119,6 +119,28 @@ e o tween 1 perde o relógio. Dois defeitos da mesma família, ambos nos LEITORE
 | `canal_componente::escolhas` lê `View::Toggle(t, f)` como `(off, on)` — a palavra de um canal de caixa sobre enum sai trocada (não é desta onda; mudar troca o sentido de chaves gravadas) | `canal_componente.rs:269` × `property.rs:222` |
 | o nome da linha é por `FieldKey` (sem a entidade): duas cópias com o mesmo id e posições diferentes partilham-no | `ph2d-timeline-persist/src/lib.rs:426` |
 
+### A2 — ⛔ a pilha do Vetor: o desenho do item 7 NÃO CABE na chave (medido 25/10, parado)
+
+- **A chave VETOR não tem onde pôr um `ItemId` de 32 bits.** `FieldKey` = `familia, campo, i, j` (`u16` cada); na pilha o
+  `i` é a entrada e o `j` JÁ está ocupado: paragem e ponto do gradiente (`canais_campos.rs:231-240`, sem tecto — o nº de
+  paragens é ele próprio canal, `OFF_N_PARAGENS`), par do tracejado (`MAX_DASH_PAIRS = 3`), parâmetro do efeito
+  (`MAX_FX_PARAMS = 6`). A LISTA da §A1 cabia porque o membro vai no `campo` e o `i:j` é todo do id (`canal_lista.rs:20`).
+- **Um contador por FORMA (`u16`, cabia no `i`) é o defeito que o `StableIdCounter` existe para impedir:** a timeline tem
+  undo PRÓPRIO (`shells/desktop/src/project.rs:42`), o do canvas rebobinaria o contador da forma e a entrada seguinte
+  herdaria o id de uma chave órfã. ⇒ o id tem de sair do contador do projecto, e por isso não cabe em 16 bits.
+- Opções (decisão da janela principal — é formato de chave, durável): **(a)** empacotar no `i:j` (bit de pilha + id de
+  23 bits + índice de 8 bits: paragens/pontos ≤ 255, id ≤ 8,4 M; `FieldKey::grupo` VETOR passa a ler também o `j` alto);
+  **(b)** campos NOVOS para a pilha, só de membros sem índice, e as paragens/pontos da pilha fora do canal; **(c)** um
+  terceiro eixo na `FieldKey` (toca a forma da chave em todas as famílias).
+- **A timeline no load não vê o mundo** (`ph2d-timeline-persist/src/lib.rs:505`, `install_from_project`; a cura é no
+  `upkeep` do quadro, `:124`, que tem o `World` mas não a `VecScene`) ⇒ a migração `k+1 → ItemId` precisa de um espelho dos
+  ids da pilha no `World` (recurso publicado pelo `ph2d-app-vec`, gémeo de `PosicoesDosItens`).
+- **Mesma família, por medir em código:** os FILTROS da forma também são por posição (`canais_filtros.rs:100,157`,
+  `i` = `VecFilter::ops[i]`). **Contornos:** medido (teste de rascunho) — dois subcaminhos de 4 pontos animados, apaga-se o
+  0: `propagar` = `None` (o nº de pontos de cada `i` não mudou), o contorno `i=1` passa a tocar as chaves do apagado
+  (`10 → 20` em vez de `50 → 100`) e as do `i=2` ficam órfãs. Não curado: a cura natural é a do `propagar` (re-chavear ao
+  apagar um contorno), não um id.
+
 ### B — a CENA é alvo da timeline (gravidade e mundo da física, mesa de som)
 
 Medido (25/10): todo `AnimTarget` vem de `bind(entity, prop)` (`doc.rs:499`); o binding resolve `wire_id → entity` pelo

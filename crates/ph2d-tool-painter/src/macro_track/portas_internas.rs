@@ -54,8 +54,6 @@ pub const INTERNAS: &[&str] = &[
     "pick_wet_tool",
     // A mão do pincel (L2): o cartão Pen chega-lhe pelo `handle_panel_event`.
     "set_mao",
-    // A mão do preset activo: a aplicação do preset e a ponte da biblioteca, nunca o artista.
-    "set_mao_do_preset",
     // O jitter da marca (L4): o cartão Jitter chega-lhe pelo `handle_panel_event`.
     "set_marca",
     "set_marca_secundaria",

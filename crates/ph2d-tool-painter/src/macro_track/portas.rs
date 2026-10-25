@@ -185,6 +185,10 @@ pub const PORTAS: &[Porta] = &[
         "set_device_stamp",
         "o carimbo na placa é da máquina de quem pinta, e o Wet Paint deposita pelo motor de fluido",
     ),
+    a(
+        "set_mao_do_preset",
+        "o alvo do «Reset to brush preset» vem da biblioteca de quem pinta; a macro grava a aplicação do preset, que o re-lembra",
+    ),
 ];
 
 /// As decisões como o núcleo as conta ([`ph2d_macro::undecided`] / [`ph2d_macro::orphans`]).

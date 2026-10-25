@@ -248,6 +248,16 @@ pub fn membro(k: FieldKey) -> Option<&'static str> {
     }
 }
 
+/// Quantas escolhas o campo tem (`View::Options` ou a caixa `View::Toggle`); `None` = não é escolha.
+#[must_use]
+pub fn n_opcoes(k: FieldKey) -> Option<usize> {
+    match resolver(k)?.1.view {
+        View::Options(o) => Some(o.len()),
+        View::Toggle(..) => Some(2),
+        _ => None,
+    }
+}
+
 /// ⭐ **A chave `ph2d-i18n` do rótulo da opção `i`** de um campo de escolhas — a que o `options!`
 /// declara, a mesma que o cartão pinta; um `View::Toggle` (a caixa do cartão) diz ligado/desligado.
 #[must_use]

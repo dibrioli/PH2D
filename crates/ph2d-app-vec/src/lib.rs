@@ -82,6 +82,7 @@ mod autokey_smoke_lado_b;
 mod autokey_smoke_texto;
 mod autokey_smoke_tipos;
 mod autokey_smoke_tudo;
+mod autokey_smoke_vocabulario;
 pub mod bars_publish;
 pub mod eyedropper;
 pub mod tool_keys;
@@ -285,6 +286,9 @@ mod vector_mode_tracejado;
 /// A cena 18 (F12 A): o traço das formas das fotos do dono, para o antes × depois do bico.
 mod vector_mode_tracos;
 mod vector_mode_vestidos;
+#[cfg(test)]
+#[path = "vocabulario_tests.rs"]
+mod vocabulario_tests;
 
 /// A lei do AUTO LAYOUT de uma forma — veio da shell na integracao de 2026-09-20,
 /// por CORTE da catraca `the_shell_only_shrinks` (ADR-0153: o passe publica ONDE as

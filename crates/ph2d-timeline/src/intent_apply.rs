@@ -258,6 +258,7 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
             });
         }
         I::SetKeyValue { target, key, value } => edit(state, |doc, _| {
+            let value = doc.binding(target).map_or(value, |b| b.prop.prende(value));
             if let Some(track) = doc.active_clip_mut().track_mut(target) {
                 track.set_value(key, value);
             }

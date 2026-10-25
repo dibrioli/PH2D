@@ -536,6 +536,7 @@ impl TimelineDoc {
         interp: Interp,
     ) -> (AnimTarget, KeyId) {
         let interp = prop.interp_of(interp);
+        let value = prop.prende(value);
         let target = self.bind(entity, prop);
         let track = self
             .active_clip_mut()
@@ -561,6 +562,7 @@ impl TimelineDoc {
         interp: Interp,
     ) -> (AnimTarget, KeyId) {
         let interp = prop.interp_of(interp);
+        let value = prop.prende(value);
         let target = self.bind(entity, prop);
         let track = self
             .active_clip_mut()

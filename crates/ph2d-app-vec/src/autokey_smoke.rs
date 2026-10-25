@@ -44,6 +44,7 @@ const GRUPO: u8 = 29;
 /// `=32` e `=33`: a cena mora em `ph2d_app_components::autokey_smoke_componentes`; aqui só se
 /// reservam os números.
 const COMPONENTES: u8 = 30;
+const VOCABULARIO: u8 = 31;
 /// O estágio da cena — a do desenho avança-o daqui.
 pub(crate) fn avanca(n: u8) {
     ESTAGIO.store(n, Ordering::Relaxed);
@@ -87,6 +88,7 @@ pub fn step(
                 "30" => TEXTO,
                 "31" => GRUPO,
                 "32" | "33" => COMPONENTES,
+                "34" => VOCABULARIO,
                 // `=16..26`: uma bancada por tipo de junta — `autokey_smoke_tipos`.
                 x => x
                     .parse::<u8>()
@@ -101,6 +103,9 @@ pub fn step(
     };
     if DESENHO.load(Ordering::Relaxed) == COMPONENTES {
         return None;
+    }
+    if DESENHO.load(Ordering::Relaxed) == VOCABULARIO {
+        return crate::autokey_smoke_vocabulario::step(nivel, vec, scene, hero, tl, ph);
     }
     if DESENHO.load(Ordering::Relaxed) == GRUPO {
         return crate::autokey_smoke_grupo::step(nivel, vec, scene, hero, tl, ph);

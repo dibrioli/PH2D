@@ -15,7 +15,7 @@
 //! - **Forma paramétrica** e **texto** vivem no `VecShape` da entidade; `j` = valor / eixo.
 
 use crate::canal::{CampoInfo, Especie};
-use crate::canal_palavra::MISTURAS;
+use crate::canal_palavra::{MISTURAS, MISTURAS_DO_VETOR};
 
 #[path = "canal_vetor_escolhas.rs"]
 mod e;
@@ -304,10 +304,15 @@ pub fn info(campo: u16) -> Option<CampoInfo> {
         TRACO_MARCA_REDONDA => c("canal.vetor.marca_redonda", campo, true),
         PINCEL_ESPACO..PINCEL_ESPELHO => c("canal.vetor.traco_cor", TINTA_TRACO, true),
         PINCEL_ESPELHO => d("canal.vetor.traco_cor", TINTA_TRACO, true, Especie::Ligado),
-        MISTURA => d("canal.vetor.mistura", campo, false, op(MISTURAS)),
+        MISTURA => d("canal.vetor.mistura", campo, false, op(MISTURAS_DO_VETOR)),
         PILHA_LIGADA => d("canal.vetor.pilha_ligada", campo, true, Especie::Ligado),
         PILHA_OPACIDADE => c("canal.vetor.pilha_opacidade", campo, true),
-        PILHA_MISTURA => d("canal.vetor.pilha_mistura", campo, true, op(MISTURAS)),
+        PILHA_MISTURA => d(
+            "canal.vetor.pilha_mistura",
+            campo,
+            true,
+            op(MISTURAS_DO_VETOR),
+        ),
         PILHA_DESLOCA_X | PILHA_DESLOCA_Y => {
             c("canal.vetor.pilha_deslocamento", PILHA_DESLOCA_X, true)
         }
@@ -499,7 +504,9 @@ pub fn membro(campo: u16) -> Option<&'static str> {
         TIPO_VERTICE => "canal.m.tipo_ponto",
         FECHADO => "canal.m.fechado",
         TINTA_PREENCH..TINTA_TRACO => membro_tinta(campo - TINTA_PREENCH)?,
-        TINTA_TRACO..TRACO_LARGURA => membro_tinta(campo - TINTA_TRACO)?,
+        TINTA_TRACO..TRACO_LARGURA if traco_tem(campo - TINTA_TRACO) => {
+            membro_tinta(campo - TINTA_TRACO)?
+        }
         TRACO_TRACEJADO => "canal.m.ligado",
         TRACO_TRACO => "canal.m.traco",
         TRACO_VAO => "canal.m.vao",
@@ -648,7 +655,18 @@ fn membro_tinta(off: u16) -> Option<&'static str> {
     }
 }
 
+/// O traço só tem cor chapada, padrão e pincel: os deslocamentos dos gradientes e do multiponto
+/// são do preenchimento (nenhum traço os lê, F28).
+fn traco_tem(off: u16) -> bool {
+    matches!(off, OFF_EXISTE | OFF_TIPO)
+        || (OFF_SOLIDA..OFF_PARAGEM).contains(&off)
+        || (OFF_PADRAO..TINTA_LARGURA).contains(&off)
+}
+
 fn tinta(off: u16, rotulo: &'static str, grupo: u16) -> Option<CampoInfo> {
+    if grupo == TINTA_TRACO && !traco_tem(off) {
+        return None;
+    }
     match off {
         OFF_EXISTE => Some(d(rotulo, grupo, true, Especie::Ligado)),
         OFF_TIPO if grupo == TINTA_PREENCH => {

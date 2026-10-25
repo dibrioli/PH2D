@@ -367,8 +367,11 @@ pub struct CanaisEscritos {
 }
 
 impl CanaisEscritos {
+    /// O valor chega PRESO ao vocabulário do campo ([`crate::canal_palavra::prende`]): nenhuma curva,
+    /// pilha ou expressão escreve uma escolha que não existe.
     pub fn escrever(&mut self, entidade: u64, k: FieldKey, v: f32) {
-        self.valores.push((entidade, k, v));
+        self.valores
+            .push((entidade, k, crate::canal_palavra::prende(k, v)));
     }
 
     /// O que se mandou escrever neste quadro em `(entidade, k)` — a última escrita, como o dreno a deixa.

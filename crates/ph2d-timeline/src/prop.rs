@@ -307,6 +307,19 @@ impl PropKind {
         }
     }
 
+    /// ⭐ **O valor que uma chave deste canal guarda** — um discreto fica preso ao vocabulário do campo
+    /// (`ph2d_ecs::canal_palavra::prende`, F28): arrastar a chave de um alinhamento para 7,4 guarda
+    /// «Right», e a palavra da chave diz o que o objecto faz.
+    #[must_use]
+    pub fn prende(self, value: ph2d_anim::AnimValue) -> ph2d_anim::AnimValue {
+        match (self, value) {
+            (PropKind::Field(k), ph2d_anim::AnimValue::Float(v)) if self.is_discrete() => {
+                ph2d_anim::AnimValue::Float(ph2d_ecs::canal_palavra::prende(k, v))
+            }
+            _ => value,
+        }
+    }
+
     /// `true` ⇒ o canal é um índice que não se interpola nem se mistura (ADR-0115 R7).
     #[must_use]
     pub fn is_discrete(self) -> bool {

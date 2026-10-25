@@ -55,6 +55,35 @@ pub const MISTURAS: &[&str] = &[
     "blend.mode.clear",
 ];
 
+/// As misturas que uma forma do VETOR desenha: as de [`MISTURAS`] menos as três que o Vello não exprime
+/// (Linear Burn 4, Vivid Light 12, Linear Light 13 — `ph2d_vec_render::blend::offered`, amarrada pelo gate
+/// `o_menu_de_mistura_e_a_palavra_dizem_o_mesmo_modo` do `ph2d-app-vec`). Um buraco não é escolha: o
+/// [`prende`] nunca o escreve.
+pub const MISTURAS_DO_VETOR: &[&str] = &[
+    "blend.mode.normal",
+    "blend.mode.multiply",
+    "blend.mode.darken",
+    "blend.mode.color_burn",
+    "",
+    "blend.mode.lighten",
+    "blend.mode.screen",
+    "blend.mode.color_dodge",
+    "blend.mode.add",
+    "blend.mode.overlay",
+    "blend.mode.soft_light",
+    "blend.mode.hard_light",
+    "",
+    "",
+    "blend.mode.difference",
+    "blend.mode.exclusion",
+    "blend.mode.hue",
+    "blend.mode.saturation",
+    "blend.mode.color",
+    "blend.mode.luminosity",
+    "blend.mode.behind",
+    "blend.mode.clear",
+];
+
 /// `0` desligado, `1` ligado.
 pub const DESLIGADO: &str = "canal.valor.desligado";
 pub const LIGADO: &str = "canal.valor.ligado";
@@ -114,6 +143,46 @@ pub fn palavra(world: &World, entidade: u64, k: FieldKey, v: f32) -> Option<Pala
             .texto(v)
             .map(|s| Palavra::DoArtista(s.to_owned())),
     }
+}
+
+/// ⭐ **O valor que o campo `k` aceita mais perto de `v`** — a porta única do vocabulário (F28): um
+/// contínuo passa intacto; uma escolha cai na mais próxima que tem palavra (`""` é buraco, empate para
+/// baixo); ligado é 0/1; camada, script, texto e modo por irmão são índices inteiros ≥ 0; um
+/// [`Especie::Numero`] passa intacto. Quem a chama: o funil do mundo
+/// ([`crate::canal::CanaisEscritos::escrever`]) e o da chave (`ph2d-timeline`, `AddKey`/`SetKeyValue`).
+#[must_use]
+pub fn prende(k: FieldKey, v: f32) -> f32 {
+    let Some(info) = k.info() else { return v };
+    let inteiro = if v.is_finite() {
+        v.round().max(0.0)
+    } else {
+        0.0
+    };
+    let ate = |n: usize| {
+        inteiro.min(f32::from(
+            u16::try_from(n.saturating_sub(1)).unwrap_or(u16::MAX),
+        ))
+    };
+    match info.especie {
+        // Um número em degrau pode ser fração ou negativo (âncoras da Interface, dominância): só o
+        // escritor da família sabe a faixa.
+        Especie::Continuo | Especie::Numero => v,
+        Especie::Ligado => f32::from(u8::from(v.is_finite() && v >= 0.5)),
+        Especie::Opcoes(chaves) => mais_proxima(chaves, v).unwrap_or(inteiro),
+        Especie::Catalogo => crate::canal_componente::n_opcoes(k).map_or(inteiro, ate),
+        Especie::PorIrmao { .. } | Especie::Camada | Especie::Script | Especie::Texto => inteiro,
+    }
+}
+
+/// O índice da escolha com palavra mais perto de `v` (empate para o menor).
+fn mais_proxima(chaves: &[&str], v: f32) -> Option<f32> {
+    let v = if v.is_finite() { v } else { 0.0 };
+    chaves
+        .iter()
+        .enumerate()
+        .filter(|(_, c)| !c.is_empty())
+        .map(|(i, _)| f32::from(u16::try_from(i).unwrap_or(u16::MAX)))
+        .min_by(|a, b| (a - v).abs().total_cmp(&(b - v).abs()))
 }
 
 /// O índice inteiro que um valor discreto guarda (arredondado como os escritores o leem).

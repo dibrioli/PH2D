@@ -185,3 +185,72 @@ fn um_ficheiro_v20_abre_sem_perda() {
         doc
     );
 }
+
+/// ⭐ **A chave de um discreto guarda uma escolha que existe** (F28; F25 §6 item 7): arrastar a chave do
+/// alinhamento para 7,4 no gráfico guardava 7,4, e a palavra da chave mentia. O contínuo passa intacto.
+///
+/// Mutação que deve sangrar: o `SetKeyValue` sem `prende` (`intent_apply.rs`).
+#[test]
+fn a_chave_de_um_discreto_guarda_uma_escolha() {
+    use ph2d_core::Playhead;
+    use ph2d_timeline::{TimelineIntent as I, TimelineState, apply_intent};
+    let alinha = PropKind::Field(FieldKey::new(familia::VETOR, v::TEXTO_ALINHAMENTO, 0, 0));
+    let mut st = TimelineState::new();
+    let mut ph = Playhead::new(1.0 / 60.0);
+    let valor = |st: &mut TimelineState, prop| {
+        let target = st.doc.bind(7, prop);
+        let track = st.doc.active_clip().track(target).expect("a faixa");
+        track.keys().iter().map(|k| k.value).collect::<Vec<_>>()
+    };
+    for (prop, dado, guardado) in [(alinha, 7.4, 2.0), (PropKind::Field(VERMELHO), 0.37, 0.37)] {
+        apply_intent(
+            &mut st,
+            &mut ph,
+            I::AddKey {
+                entity: 7,
+                prop,
+                t: s(0.0),
+                value: AnimValue::Float(0.0),
+                interp: Interp::Linear,
+            },
+        );
+        let target = st.doc.bind(7, prop);
+        let key = st
+            .doc
+            .active_clip()
+            .track(target)
+            .unwrap()
+            .key_id(0)
+            .unwrap();
+        apply_intent(
+            &mut st,
+            &mut ph,
+            I::SetKeyValue {
+                target,
+                key,
+                value: AnimValue::Float(dado),
+            },
+        );
+        assert_eq!(
+            valor(&mut st, prop),
+            vec![AnimValue::Float(guardado)],
+            "{prop:?}"
+        );
+    }
+    apply_intent(
+        &mut st,
+        &mut ph,
+        I::AddKey {
+            entity: 7,
+            prop: alinha,
+            t: s(1.0),
+            value: AnimValue::Float(0.6),
+            interp: Interp::Linear,
+        },
+    );
+    assert_eq!(
+        valor(&mut st, alinha)[1],
+        AnimValue::Float(1.0),
+        "a chave nova também se prende"
+    );
+}

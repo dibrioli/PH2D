@@ -403,6 +403,8 @@ pub fn prioridade(kk: FieldKey) -> u8 {
 /// canal `f32`: reescrever o `0,4` que se leu gravaria `0,4000000059604645` — o documento mudava
 /// sem ninguém mexer, e uma curva parada sujava-o a cada quadro.
 pub fn escrever(p: &mut VecPath, shape: Option<&mut VecShape>, kk: FieldKey, v: f32) {
+    // Uma escolha fora do vocabulário não chega ao documento (F28): 200 num alinhamento é «Right».
+    let v = ph2d_ecs::canal_palavra::prende(kk, v);
     if ler(p, shape.as_deref(), kk) == Some(v) {
         return;
     }

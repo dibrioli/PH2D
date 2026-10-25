@@ -126,3 +126,53 @@ fn um_codigo_sem_variante_fica_numero() {
         chave("panel.vector.widget.kind.button")
     );
 }
+
+fn vetor(campo: u16) -> FieldKey {
+    FieldKey::new(crate::canal::familia::VETOR, campo, 0, 0)
+}
+
+/// ⭐ **Um valor fora da lista cai na escolha mais próxima que existe** (F28) — o buraco não é escolha,
+/// o empate vai para baixo; o contínuo e o número em degrau (âncora 0,5) passam intactos.
+///
+/// Mutação que deve sangrar: `prende` devolve `v`.
+#[test]
+fn um_valor_fora_da_lista_cai_na_escolha_mais_proxima() {
+    use crate::canal_vetor as v;
+    let casos = [
+        (v::TEXTO_ALINHAMENTO, 200.0, 2.0),
+        (v::TEXTO_ALINHAMENTO, 0.6, 1.0),
+        (v::TEXTO_ALINHAMENTO, -3.0, 0.0),
+        (v::TEXTO_ALINHAMENTO, f32::NAN, 0.0),
+        (v::MISTURA, 4.0, 3.0),
+        (v::MISTURA, 12.0, 11.0),
+        (v::MISTURA, 13.0, 14.0),
+        (v::TINTA_TRACO + v::OFF_TIPO, 2.0, 0.0),
+        (v::TINTA_TRACO + v::OFF_TIPO, 3.0, 4.0),
+        (v::FECHADO, 0.7, 1.0),
+        (v::BLEND_PASSOS, 3.6, 3.6),
+        (v::ANCORA_MIN_X, 0.5, 0.5),
+        (v::PILHA_OPACIDADE, 0.37, 0.37),
+    ];
+    for (campo, dado, esperado) in casos {
+        assert_eq!(
+            prende(vetor(campo), dado),
+            esperado,
+            "campo {campo}, valor {dado}"
+        );
+    }
+    let fonte = canal("component.field.label_fields.1");
+    let n = crate::canal_componente::n_opcoes(fonte).expect("é escolha");
+    assert_eq!(prende(fonte, 99.0), (n - 1) as f32);
+}
+
+/// ⭐ **O que a curva manda escrever chega preso ao vocabulário** — a porta única por onde curva, pilha
+/// e expressão alcançam qualquer família.
+///
+/// Mutação que deve sangrar: `CanaisEscritos::escrever` sem `prende`.
+#[test]
+fn a_curva_so_escreve_escolhas_que_existem() {
+    let mut w = crate::canal::CanaisEscritos::default();
+    let k = vetor(crate::canal_vetor::TEXTO_ALINHAMENTO);
+    w.escrever(7, k, 200.0);
+    assert_eq!(w.drenar(crate::canal::familia::VETOR), vec![(7, k, 2.0)]);
+}

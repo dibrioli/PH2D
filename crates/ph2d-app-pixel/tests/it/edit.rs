@@ -319,8 +319,10 @@ fn the_wheel_walks_the_integer_ladder_around_the_cursor() {
         WINDOW,
         PPM,
         Some(bits),
-        cursor,
-        true,
+        input::Notch {
+            at: cursor,
+            up: true,
+        },
     )
     .expect("zoom");
     assert_eq!(level, ph2d_pixel_render::zoom::step(before, true));

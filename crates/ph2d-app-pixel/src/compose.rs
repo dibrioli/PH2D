@@ -124,8 +124,12 @@ impl PixelApp {
         if dy == 0.0 || !on_canvas {
             return false;
         }
-        let w = (v.window, v.ppm, v.editing);
-        let Some(level) = input::wheel(self, v.world, v.camera, w.0, w.1, w.2, p, dy > 0.0) else {
+        let notch = input::Notch {
+            at: p,
+            up: dy > 0.0,
+        };
+        let Some(level) = input::wheel(self, v.world, v.camera, v.window, v.ppm, v.editing, notch)
+        else {
             return false;
         };
         let n = level.to_string();

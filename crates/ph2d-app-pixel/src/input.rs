@@ -224,6 +224,15 @@ pub fn release(app: &mut PixelApp) -> bool {
     true
 }
 
+/// Um degrau da roda: onde está o cursor e para que lado.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Notch {
+    /// O ponto de ecrã que fica parado.
+    pub at: (f32, f32),
+    /// `true` = aproxima.
+    pub up: bool,
+}
+
 /// A roda sobre o canvas em Edit: o degrau seguinte da escada de zoom inteiro, à volta do cursor.
 pub fn wheel(
     app: &PixelApp,
@@ -232,14 +241,13 @@ pub fn wheel(
     window: WindowSize,
     ppm: f32,
     editing: Option<u64>,
-    p: (f32, f32),
-    up: bool,
+    notch: Notch,
 ) -> Option<u32> {
     let bits = editing?;
     let doc = app.docs.get(&key_of(world, bits)?)?;
     let m = to_screen(world, bits, doc, camera, window, ppm)?;
-    let target = zoom::step(px_per_cell(m), up);
-    set_zoom(world, bits, doc, camera, window, ppm, target, p);
+    let target = zoom::step(px_per_cell(m), notch.up);
+    set_zoom(world, bits, doc, camera, window, ppm, target, notch.at);
     Some(target)
 }
 

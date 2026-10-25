@@ -174,10 +174,7 @@ fn read_sprite(bytes: &[u8]) -> Result<Sprite, CodecError> {
                 if b.len() % 4 != 0 || b.len() > 256 * 4 {
                     return Err(CodecError::Invalid("sprite.palette"));
                 }
-                s.palette = b
-                    .chunks_exact(4)
-                    .map(|c| [c[0], c[1], c[2], c[3]])
-                    .collect();
+                s.palette = b.as_chunks::<4>().0.to_vec();
             }
             5 => {
                 s.transparent = u8::try_from(uint(b)?)

@@ -146,7 +146,10 @@ fn a_new_white_sprite_has_an_opaque_background_layer_in_every_mode() {
         let mut out = Vec::new();
         compose_rgba(&s, f, None, &mut out);
         assert!(
-            out.chunks_exact(4).all(|p| p == [255, 255, 255, 255]),
+            out.as_chunks::<4>()
+                .0
+                .iter()
+                .all(|p| *p == [255, 255, 255, 255]),
             "{mode:?}"
         );
     }

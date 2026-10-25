@@ -10,12 +10,6 @@ use ph2d_tool_painter::{
     StrokeMethod, TextureKind, TextureMapping,
 };
 
-/// Decode a top-of-panel **Preset** popover option id → its preset idx (`0` = Digital, `1` = Watercolor).
-pub(super) fn decode_brush_preset_option(id: NodeId) -> Option<u8> {
-    (0..ph2d_tool_painter::ids::PAINTER_BRUSH_PRESET_COUNT)
-        .find(|&i| ph2d_tool_painter::ids::painter_brush_preset_option_id(i) == id)
-}
-
 /// Decode a Watercolor **Flow** popover option id → its `TextureKind` wire u8 (only the offered ones).
 pub(super) fn decode_flow_kind_option(id: NodeId) -> Option<u8> {
     ph2d_tool_painter::FLOW_KINDS

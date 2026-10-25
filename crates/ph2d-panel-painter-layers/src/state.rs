@@ -91,9 +91,6 @@ thread_local! {
     /// Mirror of [`PENDING_BRUSH_BLEND_DD`] for the Falloff section chip.
     pub(crate) static PENDING_BRUSH_FALLOFF_DD: Cell<Option<(Rect, u8)>> = const { Cell::new(None) };
 
-    /// The open top-of-panel **Preset** dropdown popover: `(chip_rect, current_preset_idx)`.
-    pub(crate) static PENDING_BRUSH_PRESET_DD: Cell<Option<(Rect, u8)>> = const { Cell::new(None) };
-
     /// The open Watercolor **Paper** kind dropdown popover: `(chip_rect, current_kind_u8)`.
     pub(crate) static PENDING_PAPER_KIND_DD: Cell<Option<(Rect, u8)>> = const { Cell::new(None) };
 

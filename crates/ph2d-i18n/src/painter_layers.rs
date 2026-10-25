@@ -246,9 +246,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_layers.brush.color" => "Color",
         // O pincel de PARTIDA de cada meio (Digital Basic / Watercolor Basic): desde a L1 o «Preset» é o
         // navegador dos ficheiros, nos quatro meios, e esta fileira fica por baixo dele com o seu nome.
-        "panel.painter_layers.brush.basic_brush" => "Basic brush",
-        "panel.painter_layers.brush.watercolor_basic" => "Watercolor Basic",
-        "panel.painter_layers.brush.digital_basic" => "Digital Basic",
         "panel.painter_layers.brush.paint_mode" => "Paint Mode",
         "panel.painter_layers.brush.mixing" => "Mixing",
         "panel.painter_layers.brush.layers" => "Layers",

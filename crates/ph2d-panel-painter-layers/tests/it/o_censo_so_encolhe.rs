@@ -115,13 +115,6 @@ fn inertes_com_motivo() -> Vec<Inerte> {
              dela é a ferramenta Erase, que tira tinta do fluido (`wetpaint::modo_da_sessao` → Mix)",
         ));
     }
-    v.push((
-        WetPaint,
-        PAINTER_BRUSH_COMPOSITE_ENABLE,
-        "recusado (medido 2026-10-05, doc 46 §2-8): a soma das quatro ferramentas da água — o piso da \
-         pilha — já é 1,28× a pilha do Digital, e a ordem entre camadas não existe num fluido que \
-         mistura o pigmento",
-    ));
     // O cartão Pen (L2). A rotação do carimbo: o mesmo porquê do Jitter Rotate. (Na Watercolor de fábrica — Shape
     // «Automatic» — ela nem está no cartão: o carimbo redondo dela não a lê, `LinhaDaMao::lida`.)
     for m in [Digital, Impasto] {
@@ -136,12 +129,6 @@ fn inertes_com_motivo() -> Vec<Inerte> {
              por arredondamento — medido pelo gate do esmaecido (20/10, L2)",
         ));
     }
-    v.push((
-        WetPaint,
-        PAINTER_WETPAINT_WET_BLOOM,
-        "age só quando o traço entra na tinta MOLHADA de OUTRA cor numa faixa mais larga que o dab (`trail/molhado.rs`) \
-         — o censo pinta uma cor só. Prova de que age: `wetpaint::tests::os_knobs_do_pincel_no_cartao_chegam_ao_motor_e_mudam_a_tinta`",
-    ));
     v.push((
         WetPaint,
         PAINTER_WETPAINT_TUNING,

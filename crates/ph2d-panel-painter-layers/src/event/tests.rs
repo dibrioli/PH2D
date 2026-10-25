@@ -9,15 +9,14 @@
 //! quem prende o `COUNT` ao número REAL de métodos é o gate irmão em `ph2d-painter-brush`.
 
 use super::decode::{
-    decode_brush_preset_option, decode_shape_follow_option, decode_stroke_method_option,
-    decode_texture_kind_option, decode_texture_mapping_option, decode_texture_ramp_alpha_option,
+    decode_shape_follow_option, decode_stroke_method_option, decode_texture_kind_option,
+    decode_texture_mapping_option, decode_texture_ramp_alpha_option,
 };
 use ph2d_editor_core::ids as core_ids;
 use ph2d_tool_painter::ids::{
-    PAINTER_SHAPE_FOLLOW_MODES, painter_brush_preset_option_id,
-    painter_brush_stroke_method_option_id, painter_brush_texture_kind_option_id,
-    painter_brush_texture_mapping_option_id, painter_brush_texture_ramp_alpha_option_id,
-    painter_shape_follow_option_id,
+    PAINTER_SHAPE_FOLLOW_MODES, painter_brush_stroke_method_option_id,
+    painter_brush_texture_kind_option_id, painter_brush_texture_mapping_option_id,
+    painter_brush_texture_ramp_alpha_option_id, painter_shape_follow_option_id,
 };
 use ph2d_tool_painter::{RampAlphaMode, StrokeMethod, TextureKind, TextureMapping};
 
@@ -38,23 +37,6 @@ fn paper_kind_option_ids_round_trip_and_dont_collide_with_grain() {
             .is_none()
         );
     }
-}
-
-#[test]
-fn every_preset_option_id_round_trips() {
-    // Both presets (Digital = 0, Watercolor = 1) must decode back to themselves.
-    for i in 0u8..ph2d_tool_painter::ids::PAINTER_BRUSH_PRESET_COUNT {
-        assert_eq!(
-            decode_brush_preset_option(painter_brush_preset_option_id(i)),
-            Some(i),
-            "preset option id {i} did not decode back"
-        );
-    }
-    assert_eq!(
-        decode_brush_preset_option(ph2d_tool_painter::ids::PAINTER_BRUSH_PRESET),
-        None,
-        "the chip id is not an option id"
-    );
 }
 
 #[test]

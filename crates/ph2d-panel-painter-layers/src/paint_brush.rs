@@ -21,9 +21,7 @@ use ph2d_editor_core::widget::panel_chrome::PANEL_HEAD_PAD;
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
 use ph2d_tool_painter::LinhaDaFerramenta;
-use ph2d_tool_painter::ids::{
-    painter_brush_blend_option_id, painter_brush_falloff_option_id, painter_brush_preset_option_id,
-};
+use ph2d_tool_painter::ids::{painter_brush_blend_option_id, painter_brush_falloff_option_id};
 use ph2d_tool_painter::{BrushBlend, BrushSettings, Falloff, MAX_BRUSH_BLEND_MODES, MAX_FALLOFF};
 
 // The pre-publish `FALLBACK_BRUSH` snapshot lives in the sibling `brush_fallback` module (file-LOC cap);
@@ -91,15 +89,10 @@ pub(crate) fn paint_brush_body(
             crate::paint_brush_sections::paint_media_row(ctx, theme, x, content_w, y, brush)
         };
         // A fileira «Preset» é o navegador dos presets nos QUATRO meios (W1, L1); no Wet Paint com os
-        // volumes vivos, nos outros com o pincel de partida do meio por baixo.
+        // volumes vivos. (O «Basic brush» de partida saiu a 25/10, dono: o navegador já é o preset.)
         let y = crate::paint_wetpaint_presets::paint_wetpaint_presets(
             ctx, theme, x, content_w, y, brush,
         );
-        let y = if brush.wetpaint {
-            y
-        } else {
-            paint_preset_row(ctx, theme, x, content_w, y, brush)
-        };
         crate::paint_brush_top::paint_checkbox_row(
             ctx,
             theme,
@@ -352,16 +345,6 @@ pub(crate) fn paint_brush_popovers(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme
     crate::paint_wetpaint_presets::paint_wetpaint_presets_popovers(ctx, theme);
     crate::paint_pen::paint_pen_popovers(ctx, theme);
     crate::ponta_linhas::paint_ponta_popovers(ctx, theme);
-    if let Some((chip_rect, cur)) = state::take_pending_brush_preset_dd() {
-        paint_dropdown_popover(
-            ctx,
-            theme,
-            ph2d_tool_painter::ids::PAINTER_BRUSH_PRESET,
-            preset_options(),
-            chip_rect,
-            cur,
-        );
-    }
     if let Some((chip_rect, cur)) = state::take_pending_brush_media_dd() {
         paint_dropdown_popover(
             ctx,
@@ -522,50 +505,6 @@ fn paint_color_swatch_inactive(
 /// The shared scrollable dropdown-popover renderer (moved to its own module for the LOC cap).
 /// Re-exported so the many `crate::paint_brush::paint_dropdown_popover` callers keep resolving.
 pub(crate) use crate::dropdown_popover::paint_dropdown_popover;
-
-/// Paint the top-of-panel **Preset** dropdown row, returning the next `y`. The "current" preset is
-/// inferred from the master watercolor flag (there's no stored preset id — a preset just seeds the whole
-/// `BrushSpec`); selecting one forwards `SelectOption(PAINTER_BRUSH_PRESET, idx)` → `apply_brush_preset`.
-fn paint_preset_row(
-    ctx: &mut PaintCtx,
-    theme: ph2d_tokens::Theme,
-    x: f32,
-    content_w: f32,
-    y: f32,
-    brush: BrushSettings,
-) -> f32 {
-    let preset_idx = u8::from(brush.watercolor); // 0 = Digital, 1 = Watercolor
-    let (ny, preset_open) = crate::paint_brush_rows::paint_dropdown_row(
-        ctx,
-        theme,
-        x,
-        content_w,
-        y,
-        "panel.painter_layers.brush.basic_brush",
-        ph2d_tool_painter::ids::PAINTER_BRUSH_PRESET,
-        preset_idx,
-        preset_name(preset_idx),
-    );
-    if let Some(r) = preset_open {
-        state::set_pending_brush_preset_dd(Some((r, preset_idx)));
-    }
-    ny
-}
-
-/// Display name for a brush-preset index (`0` = Digital, `1` = Watercolor). English UI (HR-15).
-fn preset_name(idx: u8) -> &'static str {
-    match idx {
-        1 => tr("panel.painter_layers.brush.watercolor_basic"),
-        _ => tr("panel.painter_layers.brush.digital_basic"),
-    }
-}
-
-/// The brush presets as `Dropdown` options (value = preset idx, label = display name).
-fn preset_options() -> Vec<DropdownOption<u8>> {
-    (0..ph2d_tool_painter::ids::PAINTER_BRUSH_PRESET_COUNT)
-        .map(|i| DropdownOption::new(painter_brush_preset_option_id(i), i, preset_name(i)))
-        .collect()
-}
 
 /// The 24 brush blend modes as `Dropdown` options (value = wire discriminant,
 /// label = display name).

@@ -333,8 +333,8 @@ const INTERRUPTORES: &[Interruptor] = &[
     },
     Interruptor {
         nome: "Composite off",
-        // A pilha de camadas do traço é do carimbo (Digital, Impasto).
-        meios: &[PaintMedia::Digital, PaintMedia::Impasto],
+        // A pilha de camadas do traço é só do Digital (dono 25/10, `PaintMedia::offers_composite`).
+        meios: &[PaintMedia::Digital],
         controlo: true,
         caso: |_| Caso {
             armar: vec![],
@@ -555,10 +555,6 @@ fn censo() -> Vec<(ph2d_a11y::NodeId, Mora)> {
         (PAINTER_SHAPE_KIND, Aqui("Forma fora de Image")),
         (PAINTER_SHAPE_RAMP_RESET, Aqui("Reset da Shape Color")),
         (PAINTER_SHAPE_FALLOFF_COLOR, Aqui("Falloff Color off")),
-        (
-            PAINTER_BRUSH_PRESET,
-            Portao("ph2d-tool-painter::o_preset_nao_herda"),
-        ),
         (
             PAINTER_SHAPE_TEXTURE_COLOR,
             Fora(

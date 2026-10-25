@@ -1,21 +1,11 @@
 //! Panel-local **brush-section dropdown** deferred-popover stashes (split from [`crate::state`] for the
 //! panel LOC cap, mirroring [`crate::state_ramp`]): the one-open-at-a-time `(chip_rect, value)` slots for
-//! the Preset / Blend / Falloff / Stroke-Method / Jitter-Unit / Texture-Kind / Shape-Kind / Texture-Mapping
+//! the Blend / Falloff / Stroke-Method / Jitter-Unit / Texture-Kind / Shape-Kind / Texture-Mapping
 //! chips. The backing thread-locals live in [`crate::state`] (marked `pub(crate)`); these are thin
 //! set/take wrappers, re-exported from `crate::state` so callers keep using the `state::*` path.
 
 use crate::state;
 use ph2d_editor_core::zones::Rect;
-
-/// Stash the open top-of-panel Preset dropdown for the deferred popover pass.
-pub(crate) fn set_pending_brush_preset_dd(v: Option<(Rect, u8)>) {
-    state::PENDING_BRUSH_PRESET_DD.with(|c| c.set(v));
-}
-
-/// Take (and clear) the pending Preset dropdown for the deferred popover.
-pub(crate) fn take_pending_brush_preset_dd() -> Option<(Rect, u8)> {
-    state::PENDING_BRUSH_PRESET_DD.with(|c| c.take())
-}
 
 /// Stash the open Watercolor Paper kind dropdown for the deferred popover pass.
 pub(crate) fn set_pending_paper_kind_dd(v: Option<(Rect, u8)>) {

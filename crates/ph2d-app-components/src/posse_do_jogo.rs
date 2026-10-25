@@ -12,6 +12,8 @@ pub struct Cena {
     pub a_correr: bool,
     /// A cena está à vista e nada escreve por cima dela: nenhuma aba de documento, nenhum campo de texto.
     pub a_vista: bool,
+    /// O jogo está no palco (janela própria ou ecrã cheio) — [`Tapa::palco`].
+    pub palco: bool,
 }
 
 /// O que pode tapar a cena num instante (a shell preenche; a lei é [`Tapa::a_vista`]).
@@ -36,12 +38,14 @@ impl Tapa {
     }
 }
 
-/// ⭐ **O foco do jogo**: o Play dá-o (qualquer porta — detectado pela SUBIDA do relógio, nunca porta a porta), um
+/// ⭐ **O foco do jogo**: o Play dá-o (qualquer porta — detectado pela SUBIDA do relógio, nunca porta a porta), a
+/// abertura do palco dá-o (é o mesmo gesto, a chegar uns quadros depois: a janela abre depois do quadro do Play), um
 /// clique na cena dá-o, um clique fora tira-o (Godot, `06` §2).
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct FocoDoJogo {
     focado: bool,
     corria: bool,
+    palcava: bool,
     tinha: bool,
     visto: Option<(bool, bool, bool)>,
     /// Os botões cujo premido foi SÓ do jogo: o largar deles também o é (as ferramentas do editor não veem um largar
@@ -58,10 +62,13 @@ impl FocoDoJogo {
 
     /// Uma vez por quadro, ANTES dos leitores do teclado (o jogador e os scripts). Devolve se o jogo tem o teclado.
     pub fn quadro(&mut self, input: &mut InputState, cena: Cena) -> bool {
-        if cena.a_correr && !self.corria {
+        let subiu = cena.a_correr && !self.corria;
+        let abriu = cena.a_correr && cena.palco && !self.palcava;
+        if subiu || abriu {
             self.focado = cena.a_vista;
         }
         self.corria = cena.a_correr;
+        self.palcava = cena.a_correr && cena.palco;
         self.assenta(input, cena);
         self.tinha
     }
@@ -262,10 +269,12 @@ mod tests {
     const CORRE: Cena = Cena {
         a_correr: true,
         a_vista: true,
+        palco: false,
     };
     const PARADA: Cena = Cena {
         a_correr: false,
         a_vista: true,
+        palco: false,
     };
     const SETA: Key = Key(0x25);
 
@@ -297,6 +306,48 @@ mod tests {
         );
     }
 
+    /// ⭐ Report do dono 25/10: com o editor de animações aberto, as teclas só chegavam ao jogo depois de um
+    /// clique na janela dele. O Play sobe com o palco ainda por abrir (a janela abre depois do quadro) e a
+    /// aba tapa a cena nesse quadro; abrir o palco é o mesmo gesto do Play, e dá o foco.
+    #[test]
+    fn abrir_o_palco_da_o_teclado_ao_jogo() {
+        let mut f = FocoDoJogo::default();
+        let mut input = InputState::new();
+        let por_abrir = Cena {
+            a_correr: true,
+            a_vista: false,
+            palco: false,
+        };
+        f.quadro(&mut input, PARADA);
+        f.quadro(&mut input, por_abrir);
+        assert!(!f.tem_o_teclado(por_abrir), "no quadro do Play a aba tapa");
+        let no_palco = Cena {
+            palco: true,
+            ..CORRE
+        };
+        f.quadro(&mut input, no_palco);
+        assert!(
+            f.tem_o_teclado(no_palco),
+            "o palco abriu: o jogo tem o teclado, sem clique"
+        );
+        assert!(
+            !f.premido(&mut input, no_palco, false),
+            "um clique fora tira-o"
+        );
+        f.quadro(&mut input, no_palco);
+        assert!(
+            !f.tem_o_teclado(no_palco),
+            "só a ABERTURA do palco o dá, não cada quadro nele"
+        );
+        f.quadro(&mut input, por_abrir);
+        f.quadro(&mut input, PARADA);
+        f.quadro(&mut input, CORRE);
+        assert!(
+            f.tem_o_teclado(CORRE),
+            "sem aba, o Play no editor continua a dá-lo"
+        );
+    }
+
     #[test]
     fn com_uma_aba_por_cima_o_play_nao_da_o_teclado() {
         let mut f = FocoDoJogo::default();
@@ -304,6 +355,7 @@ mod tests {
         let tapada = Cena {
             a_correr: true,
             a_vista: false,
+            palco: false,
         };
         f.quadro(&mut input, tapada);
         assert!(!f.tem_o_teclado(tapada));
@@ -363,6 +415,7 @@ mod tests {
         let tapada = Cena {
             a_correr: true,
             a_vista: false,
+            palco: false,
         };
         f.quadro(&mut input, tapada);
         assert!(
@@ -433,6 +486,7 @@ mod tests {
         let tapada = Cena {
             a_correr: true,
             a_vista: false,
+            palco: false,
         };
         assert!(!f.premido(&mut input, tapada, true));
     }

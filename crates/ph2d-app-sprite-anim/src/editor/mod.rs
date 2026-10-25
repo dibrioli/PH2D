@@ -264,22 +264,24 @@ pub fn frame(
         .unwrap_or_default();
     let names: Vec<(u64, String)> = wanted.iter().map(|&b| (b, name_of(sim, b))).collect();
     let selection = hero.gizmo.selection;
+    let active = hero.documents.surface_active().filter(|t| {
+        let f = hero.documents.surfaces_mut().get(t.family);
+        f.is_some_and(|f| f.as_any().is::<AnimDocs>())
+    });
     let Some(docs) = hero.documents.surfaces_mut().find_mut::<AnimDocs>() else {
         return;
     };
     for (b, n) in names {
         docs.open(b, n);
     }
-    // Uma aba cuja sprite saiu da cena fecha-se (nada a editar).
-    docs.docs.retain(|d| {
-        sim.world()
-            .get::<ph2d_render::Sprite>(Entity::from_bits(d.entity))
-            .is_some()
-    });
+    let moved = follow_identity(sim.world(), &mut docs.docs);
     let mut look: Vec<u64> = docs.docs.iter().map(|d| d.entity).collect();
     look.extend(selection);
     crate::sheet::refresh(sim.world_mut(), &look, db, atlas);
     for d in &mut docs.docs {
+        if !has_sprite(sim.world(), d.entity) {
+            continue; // à espera do Stop
+        }
         let mut edits: Vec<AnimFieldEdit> = std::mem::take(&mut d.pending);
         edits.reverse();
         while let Some(edit) = edits.pop() {
@@ -311,6 +313,42 @@ pub fn frame(
         }
         d.set_snapshot(snapshot(sim, d.entity));
     }
+    // A aba à frente cuja sprite mudou de bits continua à frente.
+    if let Some(t) = active
+        && let Some(&(_, id)) = moved.iter().find(|(de, _)| *de == t.id)
+    {
+        hero.documents
+            .activate_surface(ph2d_editor_core::doc_surface::SurfaceTab { id, ..t });
+    }
+}
+
+fn has_sprite(w: &ph2d_ecs::World, bits: u64) -> bool {
+    Entity::try_from_bits(bits).is_some_and(|e| w.get::<ph2d_render::Sprite>(e).is_some())
+}
+
+/// ⭐ **A aba segue a sprite pela identidade, não pelos bits** (report do dono 25/10: fechar a janela do
+/// jogo fechava a aba). O restauro do undo — o Stop do jogo, Ctrl+Z — respawna o mundo com bits novos: a
+/// aba passa aos bits que o `StableId` dela tem agora. Uma sprite que a corrida tirou (sobre a cópia) deixa
+/// a aba à espera do Stop; fora da corrida, a aba cuja sprite saiu da cena fecha-se. Devolve `de → para`.
+fn follow_identity(w: &ph2d_ecs::World, docs: &mut Vec<AnimDoc>) -> Vec<(u64, u64)> {
+    let mut moved = Vec::new();
+    for d in docs.iter_mut() {
+        if has_sprite(w, d.entity) {
+            let sid = Entity::try_from_bits(d.entity).and_then(|e| w.get::<ph2d_ecs::StableId>(e));
+            d.stable = sid.map_or(d.stable, |s| s.0);
+            continue;
+        }
+        let back = ph2d_ecs::entity_with_stable_id(w, ph2d_ecs::StableId(d.stable))
+            .map(Entity::to_bits)
+            .filter(|&b| has_sprite(w, b));
+        if let Some(b) = back {
+            moved.push((d.entity, b));
+            d.entity = b;
+        }
+    }
+    let on_copy = ph2d_ecs::run_is_on_copy(w);
+    docs.retain(|d| on_copy || has_sprite(w, d.entity));
+    moved
 }
 
 #[cfg(test)]

@@ -86,6 +86,8 @@ fn hit(r: Rect, x: f32, y: f32) -> bool {
 #[derive(Debug, Default)]
 pub struct AnimDoc {
     pub entity: u64,
+    /// O `StableId` da sprite (`0` = ainda sem): o restauro do undo e o Stop do jogo dão-lhe outros bits.
+    pub stable: u64,
     pub name: String,
     pub snap: EditorSnapshot,
     /// A animação aberta (índice na biblioteca).

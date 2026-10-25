@@ -9,9 +9,10 @@ use winit::keyboard::KeyCode;
 impl crate::App {
     /// A cena corre? Está à vista (nenhuma aba de documento por cima, nenhum campo de texto com o teclado)?
     pub(crate) fn cena_do_jogo(&self) -> Cena {
+        let palco = self.no_palco();
         let a_vista = self.hero_ref().is_some_and(|h| {
             Tapa {
-                palco: self.no_palco(),
+                palco,
                 aba: h.documents.active().is_some() || h.documents.surface_active().is_some(),
                 texto: h.text_entry_focused(),
                 modo: self.menu_aberto() || self.command_palette_open() || self.morph_preview,
@@ -21,6 +22,7 @@ impl crate::App {
         Cena {
             a_correr: self.playhead.is_playing(),
             a_vista,
+            palco,
         }
     }
 

@@ -450,6 +450,99 @@ fn a_aba_fecha_quando_a_sprite_sai_da_cena() {
     assert!(m.docs().tabs().is_empty());
 }
 
+/// O restauro do undo (o Stop do jogo, fechar a janela do jogo, Ctrl+Z) respawna o mundo com bits novos:
+/// a mesma sprite volta com o mesmo `StableId` noutros bits. `tira` = só a tira (uma morte na corrida).
+fn respawna(m: &mut Mesa, tira: bool) -> Option<u64> {
+    let w = m.sim.world_mut();
+    let velha = Entity::from_bits(m.e);
+    let sid = *w.get::<ph2d_ecs::StableId>(velha).expect("com identidade");
+    let lib = w.get::<SpriteAnimations>(velha).cloned().unwrap();
+    w.despawn(velha);
+    (!tira).then(|| {
+        w.spawn((
+            Transform::default(),
+            ph2d_render::Sprite::atlas(ph2d_render::HERO_SHEET_KEY, [1.0, 1.0], [1.0; 4]),
+            SpriteGrid {
+                hframes: 8,
+                vframes: 4,
+                frame: 0,
+            },
+            lib,
+            SpriteAnimator::new("idle"),
+            ph2d_ecs::Name("Hero".into()),
+            sid,
+        ))
+        .id()
+        .to_bits()
+    })
+}
+
+/// ⭐ Report do dono 25/10: fechar a janela do jogo fechava a aba do editor de animações — o Stop repõe
+/// o projecto, a sprite volta noutros bits e a aba (guardada por bits) dava-a por saída da cena.
+#[test]
+fn a_aba_sobrevive_ao_restauro_e_continua_a_frente() {
+    let mut m = Mesa::new();
+    ph2d_ecs::assign_missing_stable_ids(m.sim.world_mut());
+    m.frame();
+    m.hero.documents.follow_surfaces();
+    let fam = m
+        .hero
+        .documents
+        .surface_active()
+        .expect("a aba à frente")
+        .family;
+    let nova = respawna(&mut m, false).unwrap();
+    m.frame();
+    m.hero.documents.follow_surfaces();
+    assert_eq!(m.docs().tabs().len(), 1, "a aba sobrevive ao restauro");
+    assert_eq!(m.docs().docs[0].entity, nova, "e segue a mesma sprite");
+    assert_eq!(
+        m.hero.documents.surface_active(),
+        Some(ph2d_editor_core::doc_surface::SurfaceTab {
+            family: fam,
+            id: nova
+        }),
+        "e continua à frente"
+    );
+}
+
+/// Com o jogo a correr sobre a cópia, uma sprite que a corrida tira (uma morte) não fecha a aba: o Stop
+/// devolve-a.
+#[test]
+fn a_aba_espera_pela_sprite_que_a_corrida_tirou() {
+    let mut m = Mesa::new();
+    ph2d_ecs::assign_missing_stable_ids(m.sim.world_mut());
+    m.frame();
+    m.sim.world_mut().insert_resource(ph2d_ecs::RunOnCopy);
+    let sid = *m
+        .sim
+        .world()
+        .get::<ph2d_ecs::StableId>(Entity::from_bits(m.e))
+        .unwrap();
+    let lib = m
+        .sim
+        .world()
+        .get::<SpriteAnimations>(Entity::from_bits(m.e))
+        .cloned();
+    assert!(respawna(&mut m, true).is_none());
+    m.frame();
+    assert_eq!(m.docs().tabs().len(), 1, "na corrida a aba espera");
+    m.sim.world_mut().remove_resource::<ph2d_ecs::RunOnCopy>();
+    let nova = m
+        .sim
+        .world_mut()
+        .spawn((
+            Transform::default(),
+            ph2d_render::Sprite::atlas(ph2d_render::HERO_SHEET_KEY, [1.0, 1.0], [1.0; 4]),
+            lib.unwrap(),
+            sid,
+        ))
+        .id()
+        .to_bits();
+    m.frame();
+    assert_eq!(m.docs().docs[0].entity, nova, "o Stop devolve-a");
+}
+
 #[test]
 fn largar_uma_folha_abre_o_editor_com_a_proposta_e_uma_imagem_so_nao() {
     let mut sim = SimWorld::new();

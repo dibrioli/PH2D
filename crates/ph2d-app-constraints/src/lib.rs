@@ -3,6 +3,7 @@
 //! [`docs/BlenderConstraints/01_plano.md`](https://github.com/dibrioli/PH2D/blob/main/docs/BlenderConstraints/01_plano.md)
 //! §2.1). A shell chama [`quadro`] uma vez por quadro, entre o apply da timeline e o esqueleto.
 
+pub mod canais;
 pub mod smoke;
 
 use bevy_ecs::prelude::Resource;
@@ -20,7 +21,7 @@ pub const FAMILY: ph2d_app_host::AppFamily = ph2d_app_host::AppFamily {
 struct Encenado;
 
 /// ⭐ **A porta do quadro.** Na primeira chamada encena a cena armada (`PH2D_CONSTRAINT_SMOKE`);
-/// depois avalia a pilha. Devolve quantas entidades a pilha moveu.
+/// depois drena o que a curva mandou ([`canais::aplicar`]) e avalia a pilha. Devolve quantas entidades a pilha moveu.
 pub fn quadro(sim: &mut SimWorld, preview: &mut PreviewDrive) -> usize {
     let w = sim.world_mut();
     if !w.contains_resource::<Encenado>() {
@@ -29,5 +30,6 @@ pub fn quadro(sim: &mut SimWorld, preview: &mut PreviewDrive) -> usize {
             smoke::encenar(w, n);
         }
     }
+    canais::aplicar(sim, preview);
     ph2d_constraints_ecs::evaluate(sim, preview)
 }

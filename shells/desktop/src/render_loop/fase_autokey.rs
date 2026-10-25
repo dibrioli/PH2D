@@ -37,8 +37,7 @@ impl crate::App {
             &self.clip_playhead,
             &self.container_playhead,
         );
-        // ⭐ O que o documento vetorial vale agora, para quem o compara com a curva (plano 35): a
-        // população do autokey e todo objecto que tem um campo animado.
+        // O que cada documento vale agora (plano 35): a população do autokey e todo campo animado.
         let mut publicar = autokey_pass::populacao(hero, &self.skeleton, sim, &self.preview_drive);
         publicar.extend(
             self.timeline
@@ -58,6 +57,7 @@ impl crate::App {
         ph2d_app_physics::canais_junta::publicar(sim, &publicar);
         ph2d_app_physics::canais_corpo::publicar(sim, &publicar);
         ph2d_app_flip::canais_camada::publicar(sim, flip, &publicar);
+        ph2d_app_constraints::canais::publicar(sim, &publicar);
         autokey_pass::run(
             &mut self.timeline,
             autokey_clock,

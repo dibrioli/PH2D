@@ -75,6 +75,7 @@ impl FieldKey {
             familia::FISICA => crate::canal_fisica::membro(self.campo),
             familia::COMPONENTE => crate::canal_componente::membro(self),
             familia::SCRIPT => crate::canal_script::membro(self),
+            familia::CONSTRAINT => crate::canal_constraint::membro(self.campo),
             _ => None,
         }
     }
@@ -228,6 +229,8 @@ pub mod familia {
     /// Uma propriedade que o SCRIPT declara, pelo NOME (`i:j` = o índice dele nos textos) —
     /// `crate::canal_script`.
     pub const SCRIPT: u16 = 7;
+    /// Um item da pilha de constraints (`i:j` = o `Item::id`) — `crate::canal_constraint`.
+    pub const CONSTRAINT: u16 = 8;
 }
 
 /// ⭐ **A porta única de «o que é este campo»** — `None` = endereço que nenhuma família declara (um
@@ -242,6 +245,7 @@ pub fn info(k: FieldKey) -> Option<CampoInfo> {
         familia::FISICA => crate::canal_fisica::info(k.campo),
         familia::COMPONENTE => crate::canal_componente::info(k),
         familia::SCRIPT => crate::canal_script::info(k),
+        familia::CONSTRAINT => crate::canal_constraint::info(k.campo),
         _ => None,
     }
 }

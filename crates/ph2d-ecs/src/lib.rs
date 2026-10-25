@@ -96,6 +96,7 @@ pub mod canal_componente;
 pub mod canal_componente_donos;
 pub mod canal_fisica;
 pub mod canal_flip;
+pub mod canal_constraint;
 pub mod canal_junta;
 pub mod canal_objeto;
 pub mod canal_palavra;

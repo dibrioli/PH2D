@@ -21,6 +21,8 @@ ph2d-preview-drive = { path = "../ph2d-preview-drive" }
 # As cenas de smoke: sprites de quadrado e de disco.
 ph2d-render = { path = "../ph2d-render" }
 bevy_ecs = "0.19"
+# O valor do campo que a curva escreve, pelo ledger `fields` do `PreviewDrive`.
+serde_json = "1"
 
 [dev-dependencies]
 ph2d-label-census = { path = "../ph2d-label-census" }

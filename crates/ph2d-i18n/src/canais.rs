@@ -23,6 +23,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "canal.flip.opacidade" => "Layer Opacity",
         "canal.flip.mistura" => "Layer Blend",
         "canal.flip.profundidade" => "Layer Depth",
+        // Um item da pilha de constraints (`ph2d_ecs::canal_constraint`).
+        "canal.constraint.forca" => "Constraint Influence",
+        "canal.constraint.ligada" => "Constraint Enabled",
         // O corpo de física da §11 (`ph2d_ecs::canal_fisica`).
         "canal.fisica.tipo" => "Body Type",
         "canal.fisica.ccd" => "Continuous Collision",

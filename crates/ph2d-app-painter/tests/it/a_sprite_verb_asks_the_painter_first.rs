@@ -230,7 +230,7 @@ const LEITORES: [(&str, &str); 24] = [
     ),
     (
         "render_loop/fase_macros.rs",
-        "macros: aplicar lê o documento do Painter antes da sprite (`documento_da_imagem`); a gravação do «mundo» lê a sprite ao fechar",
+        "macros: aplicar lê o documento do Painter antes da sprite (`documento_da_imagem`); a gravação do «mundo» leva a tinta por assar ao fechar (`Leitores::por_assar`)",
     ),
 ];
 

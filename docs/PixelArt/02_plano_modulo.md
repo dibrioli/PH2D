@@ -112,6 +112,11 @@ Background, normal, **grupo** (colapsar, blend e opacidade de grupo), **referên
 visível/lock/**solo**, opacidade, **19 blend modes** no shader, renomear, duplicar, Merge Down,
 Flatten, Flatten Visible, Layer via Copy/Cut, Paste as New Layer/Reference. **Gates:** cada blend
 contra uma tabela-fixtura (Pillow/oráculo), grupo pass-through vs isolado. **Smoke 4.**
+> **Medido na P3 (25/10, Trial observado, ADR-0192 §10):** o grupo do Aseprite 1.3.18 é
+> pass-through e **não tem modo nem opacidade** (o diálogo dele só tem o Nome; a tela ignora os do
+> ficheiro) — o «blend e opacidade de grupo» acima não existe no produto de referência. Copy e
+> *Layer via Copy/Cut* pedem selecção (Select All até a P6). *Reference from file* fica para a P9
+> (import). A composição na GPU não entrou: na CPU por janela o traço custa 0,12 ms (512² × 20).
 
 ### P4 — Frames, cels e timeline (estudo §1 Frame, §3)
 Painel **timeline camadas × frames** (Tab mostra/esconde), New Frame / Empty / Duplicate Cels /

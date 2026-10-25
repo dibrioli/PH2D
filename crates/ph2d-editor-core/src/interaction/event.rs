@@ -126,6 +126,9 @@ pub enum PanelRowFamily {
     /// As regras do cartão «Animation» do Inspector (plano GameEngineFuncional 08) — a ordem é das
     /// `AnimRules` do objecto (a de cima ganha).
     AnimRule,
+    /// ⭐ As amostras da paleta do Pixel Art (P2): uma GRELHA — a queda é `Inside(célula)`, e a
+    /// família reordena a paleta sem mudar a imagem.
+    PixelPalette,
 }
 
 impl PanelRowFamily {
@@ -133,7 +136,14 @@ impl PanelRowFamily {
     /// meio em `Before` / `After`.
     #[must_use]
     pub fn aninha(self) -> bool {
-        !matches!(self, Self::PainterPreset | Self::AnimRule)
+        !matches!(self, Self::PainterPreset | Self::AnimRule | Self::PixelPalette)
+    }
+
+    /// As «linhas» são células de uma grelha: o alvo da queda é a célula sob o cursor (x E y), e
+    /// a queda é sempre `Inside` dela.
+    #[must_use]
+    pub fn grelha(self) -> bool {
+        matches!(self, Self::PixelPalette)
     }
 }
 

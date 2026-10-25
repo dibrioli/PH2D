@@ -252,6 +252,18 @@ impl Sprite {
     /// O diálogo New Sprite: uma camada («Background» se o fundo for opaco, senão «Layer 1»), um
     /// frame, a paleta por omissão.
     pub fn new(spec: NewSprite) -> Result<Self, SpriteError> {
+        Self::with_palette(spec, &palette::DEFAULT)
+    }
+
+    /// O mesmo, com a paleta `colors` (a *Default Palette* do artista) desde o nascimento — o fundo
+    /// opaco de um Indexed procura-se NELA. Vazia ou com mais de [`palette::MAX_COLORS`]: a de
+    /// fábrica.
+    pub fn with_palette(spec: NewSprite, colors: &[[u8; 4]]) -> Result<Self, SpriteError> {
+        let colors = if colors.is_empty() || colors.len() > palette::MAX_COLORS {
+            &palette::DEFAULT[..]
+        } else {
+            colors
+        };
         let NewSprite {
             width,
             height,
@@ -265,7 +277,7 @@ impl Sprite {
             width,
             height,
             mode,
-            palette: palette::DEFAULT.to_vec(),
+            palette: colors.to_vec(),
             transparent: 0,
             layers: Vec::new(),
             frames: Vec::new(),

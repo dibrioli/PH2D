@@ -45,7 +45,7 @@ impl Palco {
     fn novo(i: PixelPanelInfo) -> Self {
         let mut p = Self {
             host: MockPanelHost::with_panel::<PixelToolsPanel>(),
-            st: PixelToolsPanelState,
+            st: PixelToolsPanelState::default(),
             rects: Vec::new(),
         };
         set_current_pixel(i);

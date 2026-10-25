@@ -516,3 +516,112 @@ fn edit_color_through_the_shared_picker_is_one_undo_step() {
     assert_eq!(p.sprite().palette()[5], pal5);
     assert_eq!(p.hero.store.widget_color(id), Some(pal5));
 }
+
+/// ⭐ Arrastar uma amostra (ou a selecção) para outra célula reordena a paleta como UM passo, a
+/// imagem composta fica igual ao byte, e a selecção segue as cores.
+#[test]
+fn dragging_a_swatch_reorders_the_palette_as_one_step_and_keeps_the_image() {
+    let mut p = Palco::novo();
+    let (img, pal, antes) = (p.imagem(), p.sprite().palette().to_vec(), p.passos());
+    // A rampa da bola (4..=7) largada sobre a célula 20: o último dela cai lá.
+    p.app.select(BALL_RAMP);
+    p.pede(PixelRequest::DragSwatch { from: 4, to: 20 });
+    assert_eq!(p.passos(), antes + 1, "um passo do desfazer");
+    assert_eq!(p.imagem(), img, "a imagem não muda");
+    let s = p.sprite().palette().to_vec();
+    assert_eq!(&s[17..=20], &pal[4..=7], "o bloco junto, pela ordem dele");
+    assert_eq!(s[4], pal[8], "o que estava depois desliza");
+    assert_eq!(p.app.selection(), (17..=20).collect::<Vec<_>>());
+    assert_eq!(p.app.fg, pal[4], "a amostra arrastada é a cor de frente");
+    assert!(p.app.undo(p.key));
+    assert_eq!(p.sprite().palette(), pal.as_slice());
+
+    // Uma amostra fora da selecção move-se sozinha, para trás.
+    p.app.select([1]);
+    p.pede(PixelRequest::DragSwatch { from: 12, to: 2 });
+    assert_eq!(p.sprite().palette()[2], pal[12]);
+    assert_eq!(p.sprite().palette()[3], pal[2]);
+    assert_eq!(p.app.selection(), vec![2]);
+    assert_eq!(p.imagem(), img);
+    assert_eq!(p.passos(), antes + 1);
+}
+
+#[test]
+fn drag_permutation_lands_like_a_single_swatch_would() {
+    use ph2d_app_pixel::paleta::drag_permutation;
+    use ph2d_pixel_core::palette::move_permutation;
+    for (from, to) in [(0, 5), (5, 0), (3, 3), (7, 9), (9, 0)] {
+        assert_eq!(drag_permutation(10, &[from], to), move_permutation(10, from, to));
+    }
+    assert_eq!(drag_permutation(6, &[1, 3], 5), vec![0, 2, 4, 5, 1, 3]);
+    assert_eq!(drag_permutation(6, &[3, 4], 0), vec![3, 4, 0, 1, 2, 5]);
+    assert_eq!(drag_permutation(4, &[1], 9), vec![0, 1, 2, 3], "fora da paleta: nada");
+}
+
+/// Uma pasta só deste teste (nunca a HOME real).
+fn pasta(nome: &str) -> std::path::PathBuf {
+    let d = std::env::temp_dir().join(format!("ph2d-pixel-{nome}-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&d);
+    d
+}
+
+/// ⭐ *Save Palette as Default*: um Pixel Sprite NOVO nasce com ela (mesmo um Indexed de fundo
+/// branco, que a procura nela), e o *Load Default Palette* carrega-a.
+#[test]
+fn save_as_default_gives_the_next_new_sprite_that_palette() {
+    let mut p = Palco::novo();
+    let dir = pasta("omissao");
+    p.app.paletas = Some(dir.clone());
+    p.pede(PixelRequest::PaletteSize(5));
+    let cinco = p.sprite().palette().to_vec();
+    p.pede(PixelRequest::SaveDefault);
+    assert!(dir.join(ph2d_app_pixel::paleta::DEFAULT_FILE).exists());
+    assert_eq!(p.app.paleta_de_omissao(), cinco);
+
+    let spec = ph2d_pixel_core::NewSprite {
+        mode: ColorMode::Indexed,
+        background: ph2d_pixel_core::Background::White,
+        ..Default::default()
+    };
+    let k = p.app.create(spec).expect("sprite");
+    let s = &p.app.doc(k).expect("doc").sprite;
+    assert_eq!(s.palette(), cinco.as_slice(), "o sprite novo nasce com ela");
+    let mut img = Vec::new();
+    compose_rgba(s, s.frames()[0].id, None, &mut img);
+    let px = [img[0], img[1], img[2], img[3]];
+    assert!(cinco.contains(&px), "o fundo procurou-se na paleta dela: {px:?}");
+
+    p.pede(PixelRequest::PaletteSize(9));
+    p.pede(PixelRequest::DefaultPalette);
+    assert_eq!(p.sprite().palette(), cinco.as_slice(), "o Load Default carrega a gravada");
+
+    // Sem pasta, a de fábrica.
+    p.app.paletas = None;
+    let k = p.app.create(ph2d_pixel_core::NewSprite::default()).expect("sprite");
+    assert_eq!(
+        p.app.doc(k).expect("doc").sprite.palette(),
+        ph2d_pixel_core::palette::DEFAULT.as_slice()
+    );
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// *Save Palette as Preset* grava na pasta (o diálogo abre lá), a lista do painel mostra-a e
+/// carregá-la é UM passo, como o *Load Palette*.
+#[test]
+fn a_saved_preset_is_listed_and_loads_as_one_step() {
+    let mut p = Palco::novo();
+    let dir = pasta("presets");
+    p.app.paletas = Some(dir.clone());
+    assert!(p.quadro().presets.is_empty());
+    let pal = p.sprite().palette().to_vec();
+    ph2d_app_host::modal::responde_o_proximo(dir.join("bola.gpl"));
+    p.pede(PixelRequest::SavePreset);
+    p.pede(PixelRequest::SaveDefault);
+    assert_eq!(p.quadro().presets, vec!["bola".to_owned()], "a de omissão não é uma predefinição");
+    p.pede(PixelRequest::PaletteSize(3));
+    let antes = p.passos();
+    p.pede(PixelRequest::LoadPreset("bola".to_owned()));
+    assert_eq!(p.sprite().palette(), pal.as_slice());
+    assert_eq!(p.passos(), antes + 1);
+    let _ = std::fs::remove_dir_all(&dir);
+}

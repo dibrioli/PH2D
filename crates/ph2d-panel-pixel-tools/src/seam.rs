@@ -7,7 +7,9 @@ use crate::ids;
 use crate::state::with_current;
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::action_bus::EditorAction;
-use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent, WidgetStore};
+use ph2d_editor_core::interaction::{
+    InteractiveState, PanelRowDrop, PanelRowFamily, WidgetEvent, WidgetStore,
+};
 use ph2d_editor_core::panel::{EventOutcome, Panel, PanelHostInternal};
 use ph2d_editor_core::pixel_panel::{PixelOptions, PixelRequest, PixelSelect};
 use ph2d_editor_core::widget::{ButtonState, CheckboxState, CheckboxValue, TextInputState};
@@ -37,7 +39,14 @@ pub(crate) fn populate(store: &mut WidgetStore) {
     let inks = ids::INKS.iter().map(|(_, id)| *id);
     let sorts = ids::SORT_KEYS.iter().map(|(_, id)| *id);
     let acoes = ids::ACTIONS.iter().map(|(id, ..)| *id);
-    let mais = inks.chain(sorts).chain(acoes).chain([ids::COLOR_MODE]);
+    let presets = ids::PRESET_ACTIONS.iter().map(|(id, ..)| *id);
+    let seletores = ids::SELECTORS.iter().map(|(_, id)| *id);
+    let mais = inks
+        .chain(sorts)
+        .chain(acoes)
+        .chain(presets)
+        .chain(seletores)
+        .chain([ids::COLOR_MODE]);
     for id in segmentos.chain(mais) {
         let state = ButtonState::Normal;
         store.register(id, InteractiveState::Button { state });
@@ -76,6 +85,10 @@ pub(crate) fn populate(store: &mut WidgetStore) {
         },
     );
     store.set_number_range(ids::PALETTE_SIZE, 1.0, n, 1.0);
+    // As áreas do seletor de cor: o clique lê a posição do ponteiro contra o rect pintado.
+    for (id, _) in ids::SELECTOR_AREAS {
+        store.register(id, InteractiveState::Plain);
+    }
     // O *Edit color*: um Down abre o seletor partilhado (a família lê-o de volta).
     store.register_picker_swatch(ids::PIXEL_PAL_EDIT);
     store.register(ids::PIXEL_PAL_EDIT, InteractiveState::Plain);
@@ -266,11 +279,90 @@ fn com_segmento(mut o: PixelOptions, id: NodeId) -> Option<PixelOptions> {
     Some(o)
 }
 
-/// O registo POR QUADRO das células da paleta (os ids derivam do índice).
+/// O registo POR QUADRO das células da paleta (os ids derivam do índice) — e elas são as células
+/// arrastáveis da grelha (a família `PixelPalette` do despacho); sem paleta, nenhuma.
 pub(crate) fn register_palette(store: &mut WidgetStore, n: usize) {
     for i in 0..n {
         store.register_if_absent(ids::palette_id(i), InteractiveState::Plain);
     }
+    store.set_panel_row_ids(PanelRowFamily::PixelPalette, (0..n).map(ids::palette_id).collect());
+}
+
+/// O registo POR QUADRO dos botões das predefinições gravadas.
+pub(crate) fn register_presets(store: &mut WidgetStore, n: usize) {
+    for i in 0..n {
+        let state = ButtonState::Normal;
+        store.register_if_absent(ids::preset_id(i), InteractiveState::Button { state });
+    }
+}
+
+/// A célula da paleta deste id.
+fn celula(id: NodeId, n: usize) -> Option<usize> {
+    (0..n).find(|&i| ids::palette_id(i) == id)
+}
+
+/// Uma amostra largada sobre outra célula: a selecção muda-se para lá.
+fn larga(dragged: NodeId, drop: PanelRowDrop) -> Option<PixelRequest> {
+    let PanelRowDrop::Inside(alvo) = drop else {
+        return None;
+    };
+    with_current(|info| {
+        let n = info.palette.len();
+        let (from, to) = (celula(dragged, n)?, celula(alvo, n)?);
+        (info.editing && from != to).then_some(PixelRequest::DragSwatch { from, to })
+    })
+}
+
+/// **Um clique numa área do seletor**: a posição do ponteiro no rect pintado dá a cor (esquerdo =
+/// frente, direito = fundo, que guarda o alfa dele).
+fn escolhe(
+    st: &mut crate::PixelToolsPanelState,
+    host: &dyn PanelHostInternal,
+    id: NodeId,
+) -> Option<PixelRequest> {
+    use crate::seletor;
+    let (k, fundo) = ids::SELECTOR_AREAS.iter().enumerate().find_map(|(k, (a, b))| {
+        if *a == id {
+            Some((k, false))
+        } else if *b == id {
+            Some((k, true))
+        } else {
+            None
+        }
+    })?;
+    let r = st.seletor.rects[k]?;
+    let [px, py] = host.store().last_pointer()?;
+    if r.w <= 0.0 || r.h <= 0.0 {
+        return None;
+    }
+    let u = f64::from((px - r.x) / r.w);
+    let v = f64::from((py - r.y) / r.h);
+    let (modo, fg, bg, editing) = with_current(|i| (i.options.selector, i.fg, i.bg, i.editing));
+    if !editing {
+        return None;
+    }
+    let p = st.seletor.params;
+    let [r0, g0, b0, a0] = fg;
+    let (rgb, alfa, p) = match k {
+        0 => {
+            let p = seletor::no_quadro(modo, p, u, v);
+            (seletor::cor(modo, p), a0, p)
+        }
+        1 => {
+            let p = seletor::na_barra(modo, p, u);
+            (seletor::cor(modo, p), a0, p)
+        }
+        _ => ([r0, g0, b0], seletor::alfa(u), p),
+    };
+    let [r, g, b] = rgb;
+    if fundo {
+        let a = if k == 2 { alfa } else { bg[3] };
+        return Some(PixelRequest::Bg([r, g, b, a]));
+    }
+    let c = [r, g, b, alfa];
+    st.seletor.params = p;
+    st.seletor.de = Some((modo, c));
+    Some(PixelRequest::Fg(c))
 }
 
 /// O pedido de um clique, se o id é deste painel e há sprite em edição.
@@ -291,8 +383,25 @@ fn pedido(id: ph2d_a11y::NodeId, how: PixelSelect) -> Option<PixelRequest> {
         if let Some((k, _)) = ids::SORT_KEYS.iter().find(|(_, b)| *b == id) {
             return Some(PixelRequest::SortKey(*k));
         }
-        if let Some((_, r, _)) = ids::ACTIONS.iter().find(|(b, ..)| *b == id) {
+        if let Some((_, r, _)) = ids::ACTIONS
+            .iter()
+            .chain(&ids::PRESET_ACTIONS)
+            .find(|(b, ..)| *b == id)
+        {
             return Some(r.clone());
+        }
+        if let Some((sel, _)) = ids::SELECTORS.iter().find(|(_, b)| *b == id) {
+            let o = PixelOptions {
+                selector: *sel,
+                ..info.options
+            };
+            return Some(PixelRequest::Options(o));
+        }
+        if let Some(nome) = (0..info.presets.len())
+            .find(|&i| ids::preset_id(i) == id)
+            .map(|i| info.presets[i].clone())
+        {
+            return Some(PixelRequest::LoadPreset(nome));
         }
         info.palette.iter().enumerate().find_map(|(i, c)| {
             if ids::palette_id(i) == id {
@@ -377,6 +486,19 @@ pub(crate) fn apply_event(
             }
             let b = ph2d_editor_core::pixel_panel::PixelBlend::ALL[i];
             let pedido = with_current(|info| info.editing.then_some(PixelRequest::LayerBlend(b)));
+            return empurra(host, pedido);
+        }
+        WidgetEvent::PanelRowReparent {
+            family: PanelRowFamily::PixelPalette,
+            dragged,
+            drop,
+        } => return empurra(host, larga(dragged, drop)),
+        WidgetEvent::Click(id)
+            if ids::SELECTOR_AREAS
+                .iter()
+                .any(|(a, b)| *a == id || *b == id) =>
+        {
+            let pedido = escolhe(st, host, id);
             return empurra(host, pedido);
         }
         WidgetEvent::Click(id) if pedido_camada(id).is_some() => {

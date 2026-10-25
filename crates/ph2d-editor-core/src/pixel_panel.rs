@@ -191,6 +191,43 @@ pub struct PixelOptions {
     pub ink: PixelInk,
     /// `0..=255`: a tolerância do *Replace Color* (por canal RGBA).
     pub replace_tolerance: u8,
+    /// O seletor de cor por baixo da paleta (o menu ≡ da paleta do Aseprite).
+    pub selector: PixelSelector,
+}
+
+/// O seletor de cor abaixo da paleta — os cinco do menu ≡ da paleta do Aseprite 1.3.18, na ordem
+/// dele.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum PixelSelector {
+    /// Quadrado saturação × brilho na matiz actual, barra de matiz.
+    #[default]
+    TintShadeTone,
+    /// Matiz × claridade, barra de saturação.
+    Spectrum,
+    RgbWheel,
+    RybWheel,
+    NormalMap,
+}
+
+impl PixelSelector {
+    pub const ALL: [Self; 5] = [
+        Self::TintShadeTone,
+        Self::Spectrum,
+        Self::RgbWheel,
+        Self::RybWheel,
+        Self::NormalMap,
+    ];
+
+    #[must_use]
+    pub const fn label_key(self) -> &'static str {
+        match self {
+            Self::TintShadeTone => "panel.pixel.selector.tint",
+            Self::Spectrum => "panel.pixel.selector.spectrum",
+            Self::RgbWheel => "panel.pixel.selector.rgb_wheel",
+            Self::RybWheel => "panel.pixel.selector.ryb_wheel",
+            Self::NormalMap => "panel.pixel.selector.normal_map",
+        }
+    }
 }
 
 /// A tinta (*Ink* do Aseprite) no vocabulário do chrome; a família traduz para o núcleo.
@@ -349,6 +386,7 @@ impl Default for PixelOptions {
             tile_y: false,
             ink: PixelInk::Simple,
             replace_tolerance: 0,
+            selector: PixelSelector::TintShadeTone,
         }
     }
 }
@@ -380,6 +418,8 @@ pub struct PixelPanelInfo {
     pub has_clip: bool,
     /// Há selecção (o *Copy* e o *Layer via Copy/Cut* acendem).
     pub has_selection: bool,
+    /// As paletas gravadas com *Save Palette as Preset* (os nomes dos ficheiros, por ordem).
+    pub presets: Vec<String>,
 }
 
 /// Uma linha da lista de camadas.
@@ -539,8 +579,20 @@ pub enum PixelRequest {
     PaletteFromSprite,
     LoadPalette,
     SavePalette,
-    /// *Load Default Palette* (DB32).
+    /// *Load Default Palette*: a gravada por *Save Palette as Default*, ou a DB32 de fábrica.
     DefaultPalette,
+    /// Arrastar a amostra `from` para a célula `to`: a selecção (ou só ela, se não estava
+    /// seleccionada) muda-se para lá; a imagem não muda.
+    DragSwatch {
+        from: usize,
+        to: usize,
+    },
+    /// *Save Palette as Preset*: grava a paleta do sprite na pasta das predefinições.
+    SavePreset,
+    /// *Save Palette as Default*: a paleta com que nasce um Pixel Sprite novo.
+    SaveDefault,
+    /// Carrega a predefinição gravada com este nome (como o *Load Palette*).
+    LoadPreset(String),
     /// *Edit ▸ Replace Color*: a cor de frente vira a de fundo no cel activo.
     ReplaceColor,
     /// Clique no nome: a camada activa.

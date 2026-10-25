@@ -6,7 +6,8 @@
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::pixel_panel::{
-    PixelBrushShape, PixelInk, PixelLayerAction, PixelRequest, PixelSortKey, PixelTool,
+    PixelBrushShape, PixelInk, PixelLayerAction, PixelRequest, PixelSelector, PixelSortKey,
+    PixelTool,
 };
 use ph2d_tool_registry::{hash_node_id, hash_node_id_runtime};
 
@@ -285,3 +286,51 @@ pub const LAYER_ACTIONS: [(NodeId, PixelLayerAction, &str); 16] = [
     (hash_node_id("pixel.layer.select_all"), PixelLayerAction::SelectAll, "panel.pixel.layer.select_all"),
     (hash_node_id("pixel.layer.deselect"), PixelLayerAction::Deselect, "panel.pixel.layer.deselect"),
 ];
+
+// ── o seletor de cor e as predefinições da paleta (P2) ──────────────────────────
+
+/// Os cinco seletores do menu ≡ da paleta (pintar, registar e despachar leem a MESMA tabela).
+pub const SELECTORS: [(PixelSelector, NodeId); 5] = [
+    (PixelSelector::TintShadeTone, hash_node_id("pixel.selector.tint")),
+    (PixelSelector::Spectrum, hash_node_id("pixel.selector.spectrum")),
+    (PixelSelector::RgbWheel, hash_node_id("pixel.selector.rgb_wheel")),
+    (PixelSelector::RybWheel, hash_node_id("pixel.selector.ryb_wheel")),
+    (PixelSelector::NormalMap, hash_node_id("pixel.selector.normal_map")),
+];
+
+/// As três áreas do seletor (quadro, barra do modo, alfa), cada uma com o gémeo do botão direito
+/// (a cor de fundo): `(esquerdo, direito)`.
+pub const SELECTOR_AREAS: [(NodeId, NodeId); 3] = [
+    (
+        hash_node_id("pixel.selector.square"),
+        hash_node_id("pixel.selector.square_bg"),
+    ),
+    (
+        hash_node_id("pixel.selector.bar"),
+        hash_node_id("pixel.selector.bar_bg"),
+    ),
+    (
+        hash_node_id("pixel.selector.alpha"),
+        hash_node_id("pixel.selector.alpha_bg"),
+    ),
+];
+
+/// *Save Palette as Preset* · *Save Palette as Default* (id, pedido, rótulo).
+pub const PRESET_ACTIONS: [(NodeId, PixelRequest, &str); 2] = [
+    (
+        hash_node_id("pixel.palette.save_preset"),
+        PixelRequest::SavePreset,
+        "panel.pixel.save_preset",
+    ),
+    (
+        hash_node_id("pixel.palette.save_default"),
+        PixelRequest::SaveDefault,
+        "panel.pixel.save_default",
+    ),
+];
+
+/// A predefinição `i` da lista (a população é a pasta do artista, sem tecto).
+#[must_use]
+pub fn preset_id(i: usize) -> NodeId {
+    hash_node_id_runtime(&format!("pixel.palette.preset.{i}"))
+}

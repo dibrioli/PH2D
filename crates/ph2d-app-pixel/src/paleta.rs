@@ -18,6 +18,31 @@ use ph2d_pixel_io::palette_file::{self, PaletteFormat};
 
 use crate::PixelApp;
 
+#[path = "paleta_predefinicoes.rs"]
+mod predefinicoes;
+pub use predefinicoes::{DEFAULT_FILE, pasta_do_utilizador};
+
+/// **Mudar o bloco `sel` (índices crescentes) para a célula `to`** (o arrasto na paleta):
+/// `perm[novo] = antigo`. O bloco fica junto, pela ordem dele, e cai como uma amostra só cairia
+/// ([`palette::move_permutation`]): largado à frente do primeiro, o ÚLTIMO fica em `to`; atrás,
+/// o primeiro fica em `to`.
+#[must_use]
+pub fn drag_permutation(size: usize, sel: &[usize], to: usize) -> Vec<usize> {
+    let (Some(&first), true) = (sel.first(), to < size) else {
+        return (0..size).collect();
+    };
+    if sel.iter().any(|&i| i >= size) {
+        return (0..size).collect();
+    }
+    let k = sel.len();
+    let inicio = if to > first { (to + 1).saturating_sub(k) } else { to }.min(size - k);
+    let mut perm: Vec<usize> = (0..size).filter(|i| !sel.contains(i)).collect();
+    for (j, &i) in sel.iter().enumerate() {
+        perm.insert(inicio + j, i);
+    }
+    perm
+}
+
 /// A cor com que *Palette Size* estende a paleta (Aseprite: preto).
 const PRETO: [u8; 4] = [0, 0, 0, 255];
 
@@ -173,7 +198,14 @@ impl PixelApp {
             PixelRequest::PaletteFromSprite => self.do_sprite(key),
             PixelRequest::LoadPalette => self.le(key),
             PixelRequest::SavePalette => self.grava(key),
-            PixelRequest::DefaultPalette => self.poe_paleta(key, palette::DEFAULT.to_vec(), None),
+            PixelRequest::DefaultPalette => {
+                let c = self.paleta_de_omissao();
+                self.poe_paleta(key, c, None);
+            }
+            PixelRequest::DragSwatch { from, to } => self.arrasta(key, from, to),
+            PixelRequest::SavePreset => self.grava_predefinicao_pelo_dialogo(key),
+            PixelRequest::SaveDefault => self.grava_omissao(key),
+            PixelRequest::LoadPreset(nome) => self.carrega_predefinicao(key, &nome),
             PixelRequest::ReplaceColor => self.substitui(key),
             _ => {}
         }
@@ -283,6 +315,33 @@ impl PixelApp {
             self.sel = sel.into_iter().map(anda).collect();
             self.ancora = self.ancora.map(anda);
             self.ultima = self.ultima.map(anda);
+        }
+    }
+
+    /// O arrasto de `from` para `to`: a selecção (ou só `from`, se não estava nela) muda-se para lá,
+    /// UM passo, e continua seleccionada no sítio novo.
+    fn arrasta(&mut self, key: u32, from: usize, to: usize) {
+        let n = self.docs[&key].sprite.palette().len();
+        if from >= n || to >= n {
+            return;
+        }
+        let bloco: Vec<usize> = if self.sel.contains(&from) {
+            self.sel.iter().copied().collect()
+        } else {
+            vec![from]
+        };
+        let perm = drag_permutation(n, &bloco, to);
+        if perm.iter().enumerate().all(|(i, &o)| i == o) {
+            return;
+        }
+        let novo = palette::invert_permutation(&perm);
+        if self.commit(key, Op::Remap { perm }).is_ok() {
+            self.sel = bloco.iter().map(|&i| novo[i]).collect();
+            self.ancora = self.sel.first().copied();
+            self.ultima = Some(novo[from]);
+            if let Some(&c) = self.docs[&key].sprite.palette().get(novo[from]) {
+                self.fg = c;
+            }
         }
     }
 

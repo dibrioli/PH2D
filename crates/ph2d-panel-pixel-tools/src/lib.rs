@@ -16,6 +16,7 @@ pub mod column;
 pub mod ids;
 mod paint;
 mod seam;
+pub mod seletor;
 mod state;
 
 pub use paint::hex;

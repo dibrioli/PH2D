@@ -245,7 +245,7 @@ pub(super) fn dispatch_up<'frame>(
             })
             .unwrap_or(false);
         if !over_self {
-            let drop = find_panel_row_drop(hit_index, store, event.y, drag.dragged, family);
+            let drop = find_panel_row_drop(hit_index, store, (event.x, event.y), drag.dragged, family);
             events.push(WidgetEvent::PanelRowReparent {
                 family,
                 dragged: drag.dragged,

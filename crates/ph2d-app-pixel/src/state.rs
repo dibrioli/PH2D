@@ -116,6 +116,11 @@ pub struct PixelApp {
     pub(crate) clip: Option<ph2d_pixel_core::layers::Clip>,
     /// O Solo em curso: `(chave, camada, a visibilidade de antes)`.
     pub(crate) solo: Option<(u32, LayerId, Vec<(LayerId, bool)>)>,
+    /// A pasta das paletas do artista (*Save as Preset* / *as Default*); `None` = só a de fábrica
+    /// (os testes e os palcos nunca leem a HOME real).
+    pub paletas: Option<std::path::PathBuf>,
+    /// Os nomes das predefinições gravadas, lidos da pasta (`None` = ainda por ler).
+    pub(crate) predefinicoes: Option<Vec<String>>,
 }
 
 impl Default for PixelApp {
@@ -150,16 +155,20 @@ impl Default for PixelApp {
             abre_color_mode: None,
             clip: None,
             solo: None,
+            paletas: None,
+            predefinicoes: None,
         }
     }
 }
 
 impl PixelApp {
-    /// O estado com a cena de smoke de `PH2D_PIXEL_SMOKE` armada.
+    /// O estado da shell: a cena de smoke de `PH2D_PIXEL_SMOKE` armada e as paletas na pasta do
+    /// artista.
     #[must_use]
     pub fn with_armed_smoke() -> Self {
         Self {
             smoke: crate::smoke::armed_level(),
+            paletas: crate::paleta::pasta_do_utilizador(),
             ..Self::default()
         }
     }
@@ -172,7 +181,7 @@ impl PixelApp {
 
     /// Cria um documento e devolve a chave nova (a maior + 1, nunca reciclada nesta sessão).
     pub fn create(&mut self, spec: NewSprite) -> Result<u32, ph2d_pixel_core::SpriteError> {
-        let sprite = Sprite::new(spec)?;
+        let sprite = Sprite::with_palette(spec, &self.paleta_de_omissao())?;
         let key = self.docs.keys().next_back().map_or(1, |k| k + 1);
         let stamp = self.stamp();
         self.docs.insert(key, Doc::new(sprite, stamp));

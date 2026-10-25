@@ -7,7 +7,10 @@ use crate::{PixelToolsPanel, PixelToolsPanelState, ids, seam};
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
-use ph2d_editor_core::paint::{paint_text, paint_text_block, resolve, stroke_rect};
+use ph2d_editor_core::interaction::PanelRowFamily;
+use ph2d_editor_core::paint::{
+    paint_text, paint_text_block, resolve, stroke_rect, stroke_rounded_rect,
+};
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::pixel_panel::{PixelBrushShape, PixelInk, PixelPanelInfo, PixelTool};
 use ph2d_editor_core::property_row;
@@ -24,7 +27,12 @@ use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::{tr, tr_with};
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, StrokeToken, Theme, TypeToken};
-use ph2d_vector::VectorScene;
+use ph2d_vector::{ImageQuality, VectorScene};
+use std::sync::Arc;
+
+/// O lado das imagens do seletor, em células (a escala do ecrã é do rect; vizinho mais próximo,
+/// como o Aseprite as mostra).
+const LADO: u32 = 96;
 
 #[path = "paint_camadas.rs"]
 mod camadas;
@@ -57,6 +65,8 @@ pub(crate) fn paint(st: &mut PixelToolsPanelState, ctx: &mut PaintCtx) {
     );
     let n = with_current(|i| if i.editing { i.palette.len() } else { 0 });
     seam::register_palette(ctx.host.store_mut(), n);
+    let np = with_current(|i| if i.editing { i.presets.len() } else { 0 });
+    seam::register_presets(ctx.host.store_mut(), np);
     with_current(|i| seam::register_layers(ctx.host.store_mut(), &i.layers));
     seam::seed_rename(st, ctx.host.store_mut());
     let renaming = st.rename.map(|(id, _)| id);
@@ -91,6 +101,8 @@ pub(crate) fn paint(st: &mut PixelToolsPanelState, ctx: &mut PaintCtx) {
     );
     let top = area.top();
     let mut blend_aberto = None;
+    let seletor = &mut st.seletor;
+    seletor.rects = [None; 3];
     let content_h = with_current(|info| {
         let (store, hit_index) = ctx.host.store_and_hit_index_mut();
         let mut c = Corpo {
@@ -102,6 +114,7 @@ pub(crate) fn paint(st: &mut PixelToolsPanelState, ctx: &mut PaintCtx) {
             x: inner_x,
             w: inner_w,
             blend_aberto: None,
+            seletor,
         };
         let y = c.tudo(info, renaming, top);
         blend_aberto = c.blend_aberto;
@@ -128,6 +141,7 @@ struct Corpo<'a> {
     w: f32,
     /// O menu do modo aberto: o chip e o modo actual (pinta-se depois, por cima).
     blend_aberto: Option<(Rect, ph2d_editor_core::pixel_panel::PixelBlend)>,
+    seletor: &'a mut crate::state::Seletor,
 }
 
 /// `#RRGGBB` (com `AA` quando a cor não é opaca) — o hex que o Aseprite mostra.
@@ -151,6 +165,7 @@ impl Corpo<'_> {
         let y = self.cores(info, y) + gap;
         let y = self.camadas(info, renaming, y) + gap;
         let y = self.paleta(info, y) + gap;
+        let y = self.seletor(info, y) + gap;
         let y = self.acoes_da_paleta(info, y) + gap;
         self.sprite(y)
     }
@@ -357,6 +372,11 @@ impl Corpo<'_> {
         let gap = Spacing::Xxs.px();
         let cols = (((self.w + gap) / (cell + gap)).floor().max(1.0)) as usize;
         let mut bottom = y;
+        let arrasto = self
+            .store
+            .panel_row_drag()
+            .filter(|(f, d)| *f == PanelRowFamily::PixelPalette && d.active)
+            .map(|(_, d)| d);
         for (i, c) in info.palette.iter().enumerate() {
             #[expect(clippy::cast_precision_loss, reason = "uma paleta, ≤ 256")]
             let (cx, cy) = ((i % cols) as f32, (i / cols) as f32);
@@ -385,6 +405,14 @@ impl Corpo<'_> {
             if info.selected.contains(&i) {
                 let anel = resolve(ColorToken::Accent, self.theme);
                 stroke_rect(self.scene, r, StrokeToken::Thick.px(), anel);
+            }
+            // A célula onde a amostra arrastada vai cair.
+            if let Some(d) = arrasto
+                && d.dragged != id
+                && r.contains(d.cursor_x, d.cursor_y)
+            {
+                let marca = resolve(ColorToken::Text1, self.theme);
+                stroke_rect(self.scene, r, StrokeToken::Heavy.px(), marca);
             }
             self.hit_index
                 .register_with_secondary(id, r, ids::palette_bg_id(i));
@@ -450,7 +478,106 @@ impl Corpo<'_> {
         y = self.botoes(&[asc, desc], y);
         y = self.botoes(&[usadas, do_sprite], y);
         y = self.botoes(&[ler, gravar], y);
-        self.botoes(&[omissao], y)
+        y = self.botoes(&ids::PRESET_ACTIONS, y);
+        y = self.botoes(&[omissao], y);
+        self.predefinicoes(info, y)
+    }
+
+    /// As predefinições gravadas: um botão por paleta (clique = *Load Palette* dela).
+    fn predefinicoes(&mut self, info: &PixelPanelInfo, y: f32) -> f32 {
+        if info.presets.is_empty() {
+            return y;
+        }
+        let mut y = self.linha(tr("panel.pixel.presets"), ColorToken::Text3, y);
+        for (i, nome) in info.presets.iter().enumerate() {
+            let id = ids::preset_id(i);
+            let r = Rect::new(self.x, y, self.w, ROW_H_PX);
+            let b = Button::new(id, nome.as_str()).visual(self.store.button_visual(id));
+            paint_button(&b, r, self.scene, self.text_system, self.theme);
+            self.hit_index.register(id, r);
+            y += ROW_H_PX + ph2d_tokens::control_gap_px();
+        }
+        y
+    }
+
+    /// ⭐ **O seletor de cor abaixo da paleta** (os cinco do menu ≡ do Aseprite): a escolha do modo,
+    /// o quadro (ou disco), a barra do modo e a do alfa, com o anel onde a cor de frente cai.
+    /// Esquerdo = frente, direito = fundo.
+    fn seletor(&mut self, info: &PixelPanelInfo, y: f32) -> f32 {
+        use crate::seletor as sel;
+        let modo = info.options.selector;
+        let nomes: Vec<&str> = ids::SELECTORS.iter().map(|(m, _)| tr(m.label_key())).collect();
+        let sec = Seccao::medida(self.text_system, 1, &[tr("panel.pixel.selector")]);
+        let modos: Vec<(&str, bool, NodeId)> = ids::SELECTORS
+            .iter()
+            .zip(nomes)
+            .map(|(&(m, id), nome)| (nome, m == modo, id))
+            .collect();
+        let mut y = self.escolha(tr("panel.pixel.selector"), &modos, sec, y);
+        let fg = info.fg;
+        let v = &mut *self.seletor;
+        if v.de != Some((modo, fg)) {
+            v.params = sel::de_rgb(modo, [fg[0], fg[1], fg[2]], v.params);
+            v.de = Some((modo, fg));
+        }
+        let p = v.params;
+        let fresca = matches!(&v.cache, Some((m, q, c, _)) if *m == modo && *q == p && *c == fg);
+        if !fresca {
+            let imagens = crate::state::Imagens {
+                quadro: Arc::new(sel::imagem_do_quadro(modo, p, LADO)),
+                barra: Arc::new(sel::imagem_da_barra(modo, p, LADO)),
+                alfa: Arc::new(sel::imagem_do_alfa([fg[0], fg[1], fg[2]], LADO)),
+            };
+            v.cache = Some((modo, p, fg, imagens));
+        }
+        let Some((.., imagens)) = v.cache.clone() else {
+            return y;
+        };
+        let gap = Spacing::Xxs.px();
+        let barra_h = Spacing::Lg.px();
+        let quadro = Rect::new(self.x, y, self.w, self.w);
+        let barra = Rect::new(self.x, quadro.y + quadro.h + gap, self.w, barra_h);
+        let alfa = Rect::new(self.x, barra.y + barra.h + gap, self.w, barra_h);
+        // O alfa pinta-se sobre o xadrez da amostra da casa.
+        let xadrez = ColorSwatch::new(ids::SELECTOR_AREAS[2].0, "", [0; 4]);
+        paint_color_swatch(&xadrez, alfa, self.scene, self.theme);
+        for (img, r, h) in [
+            (&imagens.quadro, quadro, LADO),
+            (&imagens.barra, barra, 1),
+            (&imagens.alfa, alfa, 1),
+        ] {
+            let dest = (
+                f64::from(r.x),
+                f64::from(r.y),
+                f64::from(r.x + r.w),
+                f64::from(r.y + r.h),
+            );
+            self.scene.draw_image_rgba(img, LADO, h, dest, ImageQuality::Low);
+        }
+        let (u, vv) = sel::ponto(modo, p);
+        self.anel(quadro, u, vv);
+        self.anel(barra, sel::ponto_na_barra(modo, p), 0.5);
+        self.anel(alfa, f64::from(fg[3]) / f64::from(u8::MAX), 0.5);
+        for (k, r) in [quadro, barra, alfa].into_iter().enumerate() {
+            let (a, b) = ids::SELECTOR_AREAS[k];
+            self.hit_index.register_with_secondary(a, r, b);
+            self.seletor.rects[k] = Some(r);
+        }
+        y = alfa.y + alfa.h;
+        y
+    }
+
+    /// O anel do marcador em `(u, v)` do rect: escuro por fora, claro por dentro (vê-se em qualquer
+    /// cor).
+    fn anel(&mut self, r: Rect, u: f64, v: f64) {
+        #[expect(clippy::cast_possible_truncation, reason = "uma posição no ecrã")]
+        let (cx, cy) = (r.x + r.w * u as f32, r.y + r.h * v as f32);
+        let raio = Spacing::Xs.px();
+        let anel = Rect::new(cx - raio, cy - raio, raio * 2.0, raio * 2.0);
+        for (cor, largura) in [(ColorToken::Bg0, StrokeToken::Heavy), (ColorToken::Text1, StrokeToken::Thin)] {
+            let c = resolve(cor, self.theme);
+            stroke_rounded_rect(self.scene, anel, raio, largura.px(), c); // FRAME-RAW-OK: o anel do marcador é um círculo, não uma moldura
+        }
     }
 
     /// O sprite: o *Color Mode…* e o *Replace Color* (frente → fundo, com tolerância).

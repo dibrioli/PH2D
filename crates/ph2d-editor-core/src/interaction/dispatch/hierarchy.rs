@@ -170,7 +170,7 @@ pub(super) fn find_hierarchy_drop(
 pub(super) fn find_panel_row_drop(
     hit_index: &HitIndex,
     store: &WidgetStore,
-    cursor_y: f32,
+    (cursor_x, cursor_y): (f32, f32),
     dragged: NodeId,
     family: PanelRowFamily,
 ) -> PanelRowDrop {
@@ -181,6 +181,13 @@ pub(super) fn find_panel_row_drop(
         let top = rect.y;
         let bot = rect.y + rect.h;
         if cursor_y < top || cursor_y >= bot {
+            continue;
+        }
+        // Numa GRELHA as células partilham a faixa: o alvo é a célula sob o cursor, inteira.
+        if family.grelha() {
+            if cursor_x >= rect.x && cursor_x < rect.x + rect.w {
+                return PanelRowDrop::Inside(id);
+            }
             continue;
         }
         let (inside_top, inside_bot) = if family.aninha() {

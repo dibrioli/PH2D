@@ -28,7 +28,7 @@ pub(super) fn route_brush_dropdown_option(
     host: &mut dyn PanelHostInternal,
     id: ph2d_a11y::NodeId,
 ) -> Option<bool> {
-    let routes: [OptionRoute; 34] = [
+    let routes: [OptionRoute; 35] = [
         (
             decode_brush_preset_option,
             ph2d_tool_painter::ids::PAINTER_BRUSH_PRESET,
@@ -120,6 +120,10 @@ pub(super) fn route_brush_dropdown_option(
         (
             crate::paint_pen::decode_rotation_option,
             ph2d_tool_painter::ids::PAINTER_PEN_ROTATION,
+        ),
+        (
+            crate::paint_pen::decode_reset_option,
+            ph2d_tool_painter::ids::PAINTER_PEN_RESET,
         ),
         // Os menus da PONTA (L9/L18).
         (

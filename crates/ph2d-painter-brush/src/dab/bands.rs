@@ -367,10 +367,19 @@ pub(super) fn stamp_band(
             // With Smooth Edges ([`crate::height_film::FilmAa`], BUGS #16) the film at a rim texel is
             // its fractional AREA coverage — every funnel inherits the anti-aliased cut the same way.
             // A capsule composes its sub-dabs at the pass opacity: the dab's own, or — under the
-            // Accumulate cap, where `w` is a RATE toward the ceiling — `1` (`n` rates telescope into one).
+            // Accumulate cap, where `w` is a RATE toward the ceiling — the Flow of ONE sub-dab,
+            // `1 − (1 − flow)^(1/n)` (the step's rate, shared by its `n` sub-dabs): the rates multiply
+            // across capsules exactly as inside one, so the seam between two steps gets no extra pass
+            // (dono 25/10: Continuous + Flow < 1 em contas). Flow 1 ⇒ `1`, the law that shipped.
             // A capsule under a Shape ramp composes its COLOUR over the same sub-dabs
             // ([`super::cor_capsula`], lista 26 A9); `None` ⇒ the colour is read at this pixel below.
-            let c_cap = if mask.is_some() { 1.0 } else { ctx.coverage };
+            let c_cap = match (mask.is_some(), ctx.capsula) {
+                (true, Some(cap)) if ctx.flow < 1.0 => {
+                    1.0 - (1.0 - ctx.flow.max(0.0)).powf(1.0 / cap.n() as f32)
+                }
+                (true, _) => 1.0,
+                (false, _) => ctx.coverage,
+            };
             // A orla em PÍXEIS (J3, `BrushSpec::borda_px`) sob o tecto do traço é ÁREA: o texel pára na fracção que o
             // dab cobre (o tecto da Smooth Edges, BUGS #16) e, na cápsula, no MAIOR sub-dab — a união deles enchia a
             // orla de volta ao duro (`basicos::a_orla_em_pixeis_e_a_mesma_a_40_e_a_200`).
@@ -523,14 +532,28 @@ pub(super) fn stamp_band(
                     Some(m_buf) => {
                         let mi = r * (ctx.stride / 4) + px as usize;
                         let m = f32::from(m_buf[mi]) / 255.0;
-                        let Some(add) = crate::stroke_cover::cover_add(
-                            m,
-                            w,
-                            g,
-                            ctx.tecto,
-                            ctx.flow,
-                            ctx.film_aa.is_some() || orla_area,
-                        ) else {
+                        // The capsule's union already carries its sub-dabs' rate (`c_cap` above):
+                        // `w·c_cap = 1 − Π(1 − c_cap·x_k)`.
+                        let flow = if ctx.capsula.is_some() && !orla_area {
+                            c_cap
+                        } else {
+                            ctx.flow
+                        };
+                        // O Wash pára no MAIOR dab: na cápsula, o maior sub-dab.
+                        let add = if ctx.spec.wash {
+                            let w = if ctx.capsula.is_some() { maior_sub } else { w };
+                            crate::stroke_cover::cover_max(m, w, g, ctx.tecto, ctx.flow)
+                        } else {
+                            crate::stroke_cover::cover_add(
+                                m,
+                                w,
+                                g,
+                                ctx.tecto,
+                                flow,
+                                ctx.film_aa.is_some() || orla_area,
+                            )
+                        };
+                        let Some(add) = add else {
                             continue; // this dab adds nothing here
                         };
                         m_buf[mi] = ((m + add) * 255.0 + 0.5) as u8;

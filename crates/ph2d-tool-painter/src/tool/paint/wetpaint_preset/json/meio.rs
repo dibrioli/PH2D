@@ -56,6 +56,7 @@ pub(super) fn ler(b: &BrushSpec, campo: &str) -> Value {
         "passo_pela_pressao" => json!(b.passo_pela_pressao),
         "parado_s" => num(b.parado_s),
         "tecto_por_dab" => json!(b.tecto_por_dab),
+        "wash" => json!(b.wash),
         // O dual brush (L6): gravado só ARMADO (`pincel_para_json`).
         "dual" => b.dual.map_or(Value::Null, |d| {
             json!({
@@ -151,6 +152,7 @@ pub(super) fn escrever(b: &mut BrushSpec, campo: &str, v: Option<&Value>) {
         // O tecto por dab (J3) só se grava ligado (`pincel_para_json`); o legado `traco.tecto_por_dab`, em
         // `pincel_de_json`.
         "tecto_por_dab" => b.tecto_por_dab = booleano(v, false),
+        "wash" => b.wash = booleano(v, false),
         // Campo ausente = o pincel de `b` (a lei do módulo); campo PRESENTE com uma sub-chave ausente (gravado
         // antes dela, a `opacity` da L2) = a de fábrica dessa sub-chave, nunca a de agora.
         "pen_tilt" if v.is_some() => {

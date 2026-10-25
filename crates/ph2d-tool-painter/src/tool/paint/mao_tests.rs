@@ -163,3 +163,97 @@ fn ler_e_escrever_a_mao_e_a_identidade() {
     }
     assert_eq!((d, t), (d0, t0));
 }
+
+/// ⭐ **O Reset do cartão Pen tem DUAS portas** (dono 25/10): «Reset to default» é o Reset de sempre ao bit (o
+/// `Click` que as macros gravaram); «Reset to brush preset» devolve a mão que o preset activo traz — e uma linha que
+/// ele NÃO lista volta ao neutro, a mesma lei de aplicá-lo. Sem preset, ou noutra gaveta, a segunda não mexe.
+#[test]
+fn o_reset_da_mao_tem_duas_portas() {
+    use super::super::wetpaint_preset::nome_do_meio;
+    use crate::ids::{PAINTER_PEN_RESET, PAINTER_PEN_RESET_NEUTRO, PAINTER_PEN_RESET_PRESET};
+    use ph2d_editor_core::tool::PanelEvent;
+    type T = super::super::super::PainterTool;
+    let opcao = |o: u8| PanelEvent::SelectOption(PAINTER_PEN_RESET, o.to_string());
+    let mexe = |t: &mut T| {
+        for l in LINHAS_DA_MAO {
+            let (lo, hi, _) = l.faixa();
+            t.set_mao(l, lo + (hi - lo) * 0.37);
+        }
+    };
+    let estado = |t: &T| {
+        (
+            t.mao(),
+            t.paint.dynamics,
+            t.paint.brush.pen_tilt,
+            t.paint.wetpaint.knobs,
+        )
+    };
+    // O preset fixa DUAS linhas que os dois meios leem; as outras 21 não lista.
+    let (ps, ts) = (
+        LinhaDaMao::Knob(Knob::PressureSize),
+        LinhaDaMao::Knob(Knob::TiltStart),
+    );
+    for m in [PaintMedia::Digital, PaintMedia::WetPaint] {
+        // A porta do neutro = o Click de sempre, ao bit.
+        let (mut a, mut b) = (T::default(), T::default());
+        for t in [&mut a, &mut b] {
+            t.set_paint_media(m);
+            mexe(t);
+        }
+        a.route_mao_event(&PanelEvent::Click(PAINTER_PEN_RESET));
+        assert!(b.route_mao_event(&opcao(PAINTER_PEN_RESET_NEUTRO)));
+        assert_eq!(estado(&a), estado(&b), "{m:?}: o neutro");
+        assert_eq!(b.mao(), MAO_DE_FABRICA, "{m:?}");
+
+        // Sem preset activo a porta do preset existe e não mexe.
+        let mut t = T::default();
+        t.set_paint_media(m);
+        mexe(&mut t);
+        let antes = estado(&t);
+        assert!(!t.mao_do_preset_disponivel(), "{m:?}");
+        assert!(t.route_mao_event(&opcao(PAINTER_PEN_RESET_PRESET)));
+        assert_eq!(estado(&t), antes, "{m:?}: sem preset nada muda");
+
+        // Com o preset aplicado: a mão dele, e as linhas que ele não lista no neutro.
+        let mut prm = ph2d_brush_presets::Parametros::novo(nome_do_meio(m), "g", "n");
+        prm.engine.insert(ps.chave().to_owned(), 0.5);
+        prm.engine.insert(ts.chave().to_owned(), 20.0);
+        let preset = ph2d_brush_presets::Preset {
+            parametros: prm,
+            origem: ph2d_brush_presets::Origem::Utilizador,
+            miniatura: ph2d_brush_presets::Miniatura {
+                largura: 1,
+                altura: 1,
+                rgba: vec![0; 4],
+            },
+            texturas: Default::default(),
+        };
+        assert!(t.preset_aplicar(&preset).is_ok());
+        assert!(t.mao_do_preset_disponivel(), "{m:?}: aplicar lembra a mão");
+        mexe(&mut t);
+        t.route_mao_event(&opcao(PAINTER_PEN_RESET_PRESET));
+        let mao = t.mao();
+        for (i, l) in LINHAS_DA_MAO.into_iter().enumerate() {
+            if !l.lida_por(m) {
+                continue;
+            }
+            let quer = if l == ps {
+                0.5
+            } else if l == ts {
+                20.0
+            } else {
+                l.omissao()
+            };
+            assert_eq!(mao[i], quer, "{m:?}: {}", l.chave());
+        }
+
+        // Outra gaveta (outro meio): o preset não é o do pincel na mão.
+        t.set_paint_media(PaintMedia::Impasto);
+        assert!(!t.mao_do_preset_disponivel(), "{m:?}: noutra gaveta");
+        // E a ponte que diz «nenhum activo» apaga-a.
+        t.set_paint_media(m);
+        assert!(t.mao_do_preset_disponivel(), "{m:?}: de volta à gaveta");
+        t.set_mao_do_preset(None);
+        assert!(!t.mao_do_preset_disponivel(), "{m:?}: a ponte apagou-a");
+    }
+}

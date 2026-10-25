@@ -326,6 +326,11 @@ impl PainterTool {
         self.paint.brush.accumulate = !self.paint.brush.accumulate;
     }
 
+    /// **Wash** on/off (`BrushSpec::wash`).
+    pub fn toggle_brush_wash(&mut self) {
+        self.paint.brush.wash = !self.paint.brush.wash;
+    }
+
     /// **Style: Solid** — o traço deixa de ser a área varrida pelo pincel e passa a ser a área
     /// CERCADA pelo gesto (o `Style` do Alchemy; plano 38 §1.1).
     ///

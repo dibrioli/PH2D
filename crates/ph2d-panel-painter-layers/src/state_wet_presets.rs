@@ -50,6 +50,17 @@ thread_local! {
     pub(crate) static PENDING_POLICY_DD: Cell<Option<(Rect, u8)>> = const { Cell::new(None) };
     pub(crate) static PENDING_QUICK_DD: Cell<Option<(Rect, usize)>> = const { Cell::new(None) };
     static PREVIEW: RefCell<Option<QuadroDoPreview>> = const { RefCell::new(None) };
+    static MAO_DO_PRESET: Cell<bool> = const { Cell::new(false) };
+}
+
+/// Publica se o preset activo traz uma mão para o «Reset to brush preset» do cartão Pen (a ponte, a cada quadro,
+/// com `PainterTool::mao_do_preset_disponivel`). `false` = a opção pinta-se apagada.
+pub fn set_current_mao_do_preset(v: bool) {
+    MAO_DO_PRESET.with(|c| c.set(v));
+}
+
+pub(crate) fn current_mao_do_preset() -> bool {
+    MAO_DO_PRESET.with(Cell::get)
 }
 
 /// Publica o quadro do preview VIVO do pincel (a ponte, quando o quadro muda): `(rgba, largura, altura)`

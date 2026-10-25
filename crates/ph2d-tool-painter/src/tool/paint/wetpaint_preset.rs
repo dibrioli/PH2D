@@ -133,7 +133,7 @@ const DOS_KNOBS: &str = "a caneta deitada: no Wet Paint são os knobs do pincel 
 const NAO_LIDO: &str = "o Wet Paint não o lê (deposita pela lei do fluido)";
 
 /// Os campos do `BrushSpec` que o preset NÃO leva, e porquê.
-pub const CAMPOS_FORA: [(&str, &str); 76] = [
+pub const CAMPOS_FORA: [(&str, &str); 77] = [
     ("radius_px", VOLUME),
     ("strength", VOLUME),
     ("color", DA_OBRA),
@@ -206,6 +206,7 @@ pub const CAMPOS_FORA: [(&str, &str); 76] = [
     ("airbrush_rate_s", NAO_LIDO),
     ("space_attenuation", NAO_LIDO),
     ("tecto_por_dab", DIGITAL),
+    ("wash", DIGITAL),
     ("borda_px", DIGITAL),
     ("sub_passo_fino", DIGITAL),
     ("passo_pela_pressao", DIGITAL),
@@ -478,6 +479,7 @@ impl PainterTool {
                 .unwrap_or_else(super::wetpaint::largura::LeiDaLargura::de_omissao),
         );
         self.wet_preset_aplicar_volumes(&prm.volumes);
+        self.set_mao_do_preset(Some(prm));
         falhas
     }
 

@@ -225,6 +225,7 @@ impl DualTip {
         s.texture = TextureSettings::default();
         s.taper = crate::taper::Taper::NEUTRAL;
         s.tecto_por_dab = false;
+        s.wash = false;
         s.dual = None;
         s.pixel = crate::PixelTip::Off;
         s.hose = crate::ImageHose::NEUTRA;

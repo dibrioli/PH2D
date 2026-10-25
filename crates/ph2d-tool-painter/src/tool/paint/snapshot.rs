@@ -297,6 +297,7 @@ impl PainterTool {
             space_attenuation: b.space_attenuation,
             continuous_spacing: b.continuous_spacing,
             accumulate: b.accumulate,
+            wash: b.wash,
             style_solid: b.style_solid,
             solid_owns_the_gesture: self.solid_owns_the_gesture(),
             line_kind: b.line_kind.to_wire(),

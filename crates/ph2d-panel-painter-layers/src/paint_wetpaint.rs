@@ -162,12 +162,15 @@ pub(crate) fn paint_wetpaint_section(
                 2,
             ),
         ];
-        // A borracha da água não pousa: o Pigment, o Pickup e o pó do pincel saem (`DepositoMolhado`).
+        // A borracha da água não pousa: o Pigment, o Pickup, o pó do pincel e os knobs que só agem a cada dab de tinta
+        // (Wet bloom, Tip pickup) saem (`DepositoMolhado`).
         let pousa = brush.le(ph2d_tool_painter::LinhaDaFerramenta::DepositoMolhado);
         let do_deposito = [
             ph2d_tool_painter::ids::PAINTER_WETPAINT_PIGMENT,
             ph2d_tool_painter::ids::PAINTER_WETPAINT_PICKUP,
             ph2d_tool_painter::ids::PAINTER_WETPAINT_DUST,
+            ph2d_tool_painter::ids::PAINTER_WETPAINT_WET_BLOOM,
+            ph2d_tool_painter::ids::PAINTER_WETPAINT_TIP_PICKUP,
         ];
         for (label, id, value, min, max, step, decimals) in rows {
             if !pousa && do_deposito.contains(&id) {
@@ -185,6 +188,10 @@ pub(crate) fn paint_wetpaint_section(
             "panel.painter_layers.wetpaint.capillary",
             "panel.painter_layers.wetpaint.brake",
             "panel.painter_layers.wetpaint.dust",
+            "panel.painter_wet_cartao.backrun",
+            "panel.painter_wet_cartao.granulation",
+            "panel.painter_wet_cartao.wet_bloom",
+            "panel.painter_wet_cartao.tip_pickup",
         ];
         for (label, (id, v, min, max, step)) in nomes.into_iter().zip(k.knobs_no_cartao()) {
             if !pousa && do_deposito.contains(&id) {

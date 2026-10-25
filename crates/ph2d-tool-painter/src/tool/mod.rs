@@ -334,6 +334,8 @@ pub struct PainterTool {
     /// Segundos (pelos `dt` do [`Tool::on_tick`]) desde o último `Up` na tela; `None` = nenhum ainda. A
     /// idade da água do tutorial ([`PainterTool::segundos_desde_o_ultimo_up`]).
     desde_o_ultimo_up: Option<f64>,
+    /// A mão do preset activo — o alvo do «Reset to brush preset» do cartão Pen ([`paint::mao::MaoDoPreset`]).
+    mao_do_preset: Option<paint::mao::MaoDoPreset>,
 }
 
 /// Which arm the last preview drain ([`PainterTool::take_preview_arc`]) took. A `PH2D_PAINT_PERF`
@@ -426,6 +428,7 @@ impl Default for PainterTool {
             macro_gravacao: None,
             macro_por_cima: None,
             desde_o_ultimo_up: None,
+            mao_do_preset: None,
         }
     }
 }

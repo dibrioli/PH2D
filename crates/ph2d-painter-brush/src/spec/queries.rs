@@ -413,8 +413,11 @@ impl BrushSpec {
     /// 40 #5) —, the single marks lay no path, and a Spacing already as fine as
     /// [`crate::capsula::SUB_SPACING`] has nothing to fill.
     #[must_use]
+    ///
+    /// ⭐ O **Wash** arma-o também: o máximo de dabs ESPAÇADOS ondula entre eles (cada passagem pousa noutros
+    /// pontos e a volta escurece — a lei reprovada no doc 25 §13.10); o do traço denso é a borda do Falloff.
     pub fn lays_capsules(&self) -> bool {
-        self.continuous_spacing
+        (self.continuous_spacing || (self.wash && !self.accumulate))
             && self.stroke_method.uses_spacing()
             && self.dab_spacing_px() > self.sub_passo_da_capsula(self.clamped_radius())
     }

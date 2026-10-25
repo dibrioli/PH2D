@@ -230,6 +230,7 @@ pub const TODAS: &[Declaracao] = &[
 pub(crate) const BRUSH: &[&str] = &[
     "panel.painter_layers.brush.sync_tools",
     "panel.painter_layers.brush.accumulate",
+    "panel.painter_layers.brush.wash",
     "panel.painter_layers.brush.blend",
     "panel.painter_layers.brush.blend_on_empty",
     "panel.painter_layers.brush.color",
@@ -431,6 +432,10 @@ pub(crate) const WETPAINT_CARTAO: &[&str] = &[
     "panel.painter_layers.wetpaint.capillary",
     "panel.painter_layers.wetpaint.brake",
     "panel.painter_layers.wetpaint.dust",
+    "panel.painter_wet_cartao.backrun",
+    "panel.painter_wet_cartao.granulation",
+    "panel.painter_wet_cartao.wet_bloom",
+    "panel.painter_wet_cartao.tip_pickup",
     "panel.painter_layers.wetpaint.erase_strength",
     "panel.painter_layers.wetpaint.heavy_edge",
     "panel.painter_layers.wetpaint.smooth_edges",
@@ -487,6 +492,10 @@ pub fn nome_da_seccao(chave: &str) -> Option<&str> {
     // A tabela IRMÃ das linhas da ponta (L9/L18/L19, `ph2d_i18n` `painter_ponta`) é uma secção só.
     if chave.starts_with("panel.painter_ponta.") {
         return Some("ponta");
+    }
+    // A tabela IRMÃ dos knobs do motor no cartão Wet Paint (`ph2d_i18n` `painter_wet_cartao`) mora na secção dele.
+    if chave.starts_with("panel.painter_wet_cartao.") {
+        return Some("wetpaint");
     }
     chave
         .strip_prefix("panel.painter_layers.")

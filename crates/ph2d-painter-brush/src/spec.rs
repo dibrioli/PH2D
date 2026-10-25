@@ -154,6 +154,10 @@ pub struct BrushSpec {
     /// a *Opacity* do Krita/Photoshop (o Flow é a taxa). É o tecto do Accumulate desligado (`stroke_cover`) armado
     /// também com a Strength a 1; com o Accumulate ligado os dabs somam por definição e isto não age.
     pub tecto_por_dab: bool,
+    /// ⭐ **Wash** (dono 25/10, o do Krita; só com o Accumulate desligado): o texel do traço pára no MAIOR peso de
+    /// um dab que o cobre — a borda é a do Falloff exacta e o traço nunca escurece a si mesmo; o Flow escala, não
+    /// soma (`stroke_cover::cover_max`). Desligado = a lei da taxa de sempre, ao bit.
+    pub wash: bool,
     /// **Style: Solid** — o gesto ganha a área que ele CERCA, preenchida com cobertura exata por
     /// área ([`crate::solid`]), **além** do traço que a cerca. Um laço fino e solto vira uma mancha
     /// gorda com o contorno do pincel por cima. `false` (o default) é o mundo de sempre, byte a byte.

@@ -1262,6 +1262,63 @@ fn a_fisica_da_agua_do_cartao_chega_ao_motor_e_muda_a_tinta() {
     }
 }
 
+/// **Os knobs do pincel no cartão, ao lado do Tuning** (dono 25/10: os que mais decidem o pincel e o preset ficam no
+/// cartão Wet Paint): Backruns · Granulation · Wet bloom · Tip pickup — cada linha chega ao knob do motor
+/// EXACTA, o Tuning CONTINUA a mostrá-la (o mesmo knob, dois controlos), e cada uma muda a tinta de um traço vermelho
+/// que atravessa um azul ainda molhado (o Wet bloom e o Tip pickup só agem sobre OUTRA tinta) e seca um segundo.
+#[test]
+fn os_knobs_do_pincel_no_cartao_chegam_ao_motor_e_mudam_a_tinta() {
+    use ph2d_editor_core::tool::PanelEvent;
+    use ph2d_wet_paint::tuning::{KNOB_DEFS, Knob, KnobGroup};
+    let pinta = |ajuste: Option<(ph2d_a11y::NodeId, f64)>| {
+        let mut t = tool_in_mode("wetpaint");
+        t.set_wet_relogio_fixo(true);
+        if let Some((id, v)) = ajuste {
+            assert!(t.route_brush_wetpaint_event(&PanelEvent::SetValue(id, v)));
+        }
+        t.paint.brush.color = [0.1, 0.2, 0.8];
+        t.paint.brush_by_mode.fill(t.paint.brush);
+        t.on_canvas_pointer(cp([100.0, 15.0], PointerPhase::Down));
+        for k in 1..=15 {
+            t.on_canvas_pointer(cp([100.0, 15.0 + 6.0 * k as f32], PointerPhase::Move));
+        }
+        t.on_canvas_pointer(cp([100.0, 105.0], PointerPhase::Up));
+        // O vermelho, mais fino que a faixa azul: o Wet bloom só abre a mancha se ela couber mais larga que o dab.
+        t.paint.brush.color = [0.8, 0.1, 0.1];
+        t.paint.brush.radius_px = 4.0;
+        t.paint.brush_by_mode.fill(t.paint.brush);
+        stroke_across(&mut t);
+        for _ in 0..60 {
+            t.on_tick(1000.0 / 60.0);
+        }
+        (t.canvas_rgba.to_vec(), t.wet_knobs())
+    };
+    let (base, _) = pinta(None);
+    for (id, knob, v) in [
+        (crate::ids::PAINTER_WETPAINT_BACKRUN, Knob::ExtBackrun, 1.5),
+        (
+            crate::ids::PAINTER_WETPAINT_GRANULATION,
+            Knob::ExtGranulation,
+            0.9,
+        ),
+        (crate::ids::PAINTER_WETPAINT_WET_BLOOM, Knob::WetOpen, 0.8),
+        (
+            crate::ids::PAINTER_WETPAINT_TIP_PICKUP,
+            Knob::TipReservoir,
+            0.8,
+        ),
+    ] {
+        assert_ne!(
+            KNOB_DEFS[knob as usize].group,
+            KnobGroup::Hidden,
+            "{knob:?} saiu do Tuning — o dono quer os dois controlos"
+        );
+        let (px, k) = pinta(Some((id, v)));
+        assert_eq!(k.get(knob), v, "{knob:?}: o cartão não chegou ao motor");
+        assert!(px != base, "{knob:?}: o cartão chegou e a tinta não mudou");
+    }
+}
+
 // ── Doc 21 (deposit-at-commit) — Stage 0 pins ─────────────────────────────
 
 /// Doc 21 G0a: `wet_owns_the_dabs` is FALSE in every non-wet mode, eraser on

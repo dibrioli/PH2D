@@ -164,6 +164,8 @@ mod paint_engines;
 mod painter_layers;
 /// As linhas da MARCA (L4) e da cor pela mão (L11) do painel Painter — irmã da `painter_layers`.
 mod painter_marca;
+/// O menu do Reset do cartão Pen — irmã da `painter_layers`.
+mod painter_pen;
 mod painter_ponta;
 /// A dica do pino da preview do pincel — irmã da `painter_layers`.
 mod painter_preview;
@@ -173,6 +175,8 @@ mod pixel;
 mod pixel_dialogos;
 /// O PIXEL ART, P6: a selecção, a moldura solta e os menus Select/Edit/Sprite do painel.
 mod pixel_selecao;
+/// Os knobs do motor que o cartão Wet Paint também mostra — irmã da `painter_layers`.
+mod painter_wet_cartao;
 /// ⭐⭐ **A COR, a CURVA, o COMANDO e as RECUSAS da timeline** — quatro motores numa fatia.
 mod quatro_motores;
 /// ⭐ **As strings do painel TAGS** (TOP-20 #9) — irmão de tabela, por assunto.
@@ -188,6 +192,8 @@ mod tool_engines;
 /// ⭐ **O vocabulário do mover de VISTA DE CIMA** (TOP-20 #13) — os três selectores que o
 /// `topdown_edits` declara e o Inspector pinta. Tabela irmã pela lei do assunto (ver [`tags`]).
 mod topdown;
+/// ⭐ **Os grupos avançados do Tuning do Wet Paint** (25/10) — irmã do bloco `panel.wet_tuning.*`.
+mod wet_tuning_avancado;
 
 /// ⭐⭐ **A substituição de MARCADORES** — `tr_with`, a lei que lê um modelo.
 pub mod formato;
@@ -339,7 +345,7 @@ fn tr_ingles(key: &str) -> &'static str {
         "panel.wet_tuning.km_mixing" => "Pigment mixing (K-M)",
         "panel.wet_tuning.km_glaze" => "Glaze layering (K-M)",
         "panel.wet_tuning.note" => {
-            "These two boxes apply to all the paint of the artwork (Kubelka-Munk subtractive color). Brush glaze (Paint) is saved with the brush and acts on top of them: its paint filters the layers below. Further gated extensions (diffusion, backrun, fingering, dry-brush, render extras) ship neutral; see the tuning registry's hidden group."
+            "These two boxes apply to all the paint of the artwork (Kubelka-Munk subtractive color). Brush glaze (Paint) is saved with the brush and acts on top of them: its paint filters the layers below. The advanced groups (Bristles, Stroke, Wet effects, Look) start folded: they are for building new brush presets."
         }
         "panel.wet_tuning.knob.pigmentPerDab" => "Pigment per dab",
         "panel.wet_tuning.knob.paperGate" => "Paper gate",
@@ -570,7 +576,9 @@ fn tr_ingles(key: &str) -> &'static str {
             .or_else(|| painter_layers::tr(k))
             .or_else(|| painter_marca::tr(k))
             .or_else(|| painter_ponta::tr(k))
+            .or_else(|| painter_pen::tr(k))
             .or_else(|| painter_preview::tr(k))
+            .or_else(|| painter_wet_cartao::tr(k))
             .or_else(|| inspector::tr(k))
             .or_else(|| inspector_game::tr(k))
             .or_else(|| inspector_vida::tr(k))
@@ -617,6 +625,7 @@ fn tr_ingles(key: &str) -> &'static str {
             .or_else(|| shell::tr(k))
             .or_else(|| shell_media::tr(k))
             .or_else(|| familias::tr(k))
+            .or_else(|| wet_tuning_avancado::tr(k))
             .unwrap_or_else(|| leak_key(k)),
     }
 }

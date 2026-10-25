@@ -171,6 +171,7 @@ pub const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     space_attenuation: false, // Adjust Strength off by default (Enio 2026-06-24; mirrors BrushSpec::default)
     continuous_spacing: false,
     accumulate: false,
+    wash: false,
     style_solid: false,
     solid_owns_the_gesture: false,
     line_kind: 0,

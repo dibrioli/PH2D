@@ -15,7 +15,11 @@
 use ph2d_label_census::gate::{self, Excecao};
 
 const PREFIX: &str = "panel.wet_tuning.";
-const TABLES: &[&str] = &["crates/ph2d-i18n/src/lib.rs"];
+/// A irmã `wet_tuning_avancado.rs` (25/10) leva os quatro grupos avançados e os 40 knobs deles.
+const TABLES: &[&str] = &[
+    "crates/ph2d-i18n/src/lib.rs",
+    "crates/ph2d-i18n/src/wet_tuning_avancado.rs",
+];
 
 /// ⭐ As excepções, **com o mecanismo** — nunca uma lista aberta.
 const NOT_LANGUAGE: &[Excecao] = &[];

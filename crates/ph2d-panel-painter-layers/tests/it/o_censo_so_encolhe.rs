@@ -138,6 +138,12 @@ fn inertes_com_motivo() -> Vec<Inerte> {
     }
     v.push((
         WetPaint,
+        PAINTER_WETPAINT_WET_BLOOM,
+        "age só quando o traço entra na tinta MOLHADA de OUTRA cor numa faixa mais larga que o dab (`trail/molhado.rs`) \
+         — o censo pinta uma cor só. Prova de que age: `wetpaint::tests::os_knobs_do_pincel_no_cartao_chegam_ao_motor_e_mudam_a_tinta`",
+    ));
+    v.push((
+        WetPaint,
         PAINTER_WETPAINT_TUNING,
         "não-pixel: mostra o painel lateral dos números da água",
     ));

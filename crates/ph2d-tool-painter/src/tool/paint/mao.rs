@@ -400,7 +400,59 @@ pub(crate) fn dinamica_de_json(d: &mut Dynamics, v: &serde_json::Value) {
     }
 }
 
+/// **A mão que o preset ACTIVO traz** — o alvo do «Reset to brush preset» do cartão Pen: o valor de cada linha
+/// no mapa `engine` dele (`None` = não a lista, e ela volta ao neutro) e a gaveta (meio × ferramenta) onde ele é o
+/// activo — noutra gaveta ele não é o preset do pincel na mão.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct MaoDoPreset {
+    gaveta: u8,
+    valores: [Option<f64>; N_LINHAS_DA_MAO],
+}
+
 impl super::PainterTool {
+    /// **Lembra a mão do preset activo** da gaveta de agora (`None` = nenhum). Quem a chama: a aplicação de um
+    /// preset (as duas portas) e a ponte da biblioteca, quando o activo muda sem ser aplicado (gravado por cima,
+    /// apagado, outra gaveta).
+    pub fn set_mao_do_preset(&mut self, p: Option<&ph2d_brush_presets::Parametros>) {
+        self.mao_do_preset = p.zip(self.gaveta_de_presets()).map(|(p, g)| MaoDoPreset {
+            gaveta: g.chave(),
+            valores: LINHAS_DA_MAO.map(|l| p.engine.get(l.chave()).copied()),
+        });
+    }
+
+    /// A mão do preset activo, se ele é o da gaveta de agora e fixa alguma linha que o meio lê.
+    fn mao_do_preset_valida(&self) -> Option<MaoDoPreset> {
+        let m = self.paint_media();
+        let g = self.gaveta_de_presets()?.chave();
+        self.mao_do_preset.filter(|mp| {
+            mp.gaveta == g
+                && LINHAS_DA_MAO
+                    .iter()
+                    .zip(mp.valores)
+                    .any(|(l, v)| v.is_some() && l.lida_por(m))
+        })
+    }
+
+    /// O «Reset to brush preset» tem para onde voltar? (o painel apaga a opção quando não).
+    #[must_use]
+    pub fn mao_do_preset_disponivel(&self) -> bool {
+        self.mao_do_preset_valida().is_some()
+    }
+
+    /// O Reset para o preset: o neutro do meio e, por cima, as linhas que o preset fixa — a mesma lei de
+    /// [`super::PainterTool::preset_aplicar`] (uma linha que ele não lista é a de fábrica). Sem preset, nada muda.
+    fn repor_mao_do_preset(&mut self) {
+        let Some(mp) = self.mao_do_preset_valida() else {
+            return;
+        };
+        self.repor_mao_do_meio();
+        for (l, v) in LINHAS_DA_MAO.into_iter().zip(mp.valores) {
+            if let Some(v) = v {
+                self.set_mao(l, v);
+            }
+        }
+    }
+
     /// O valor de cada linha do cartão Pen no meio de agora (o que o painel mostra).
     #[must_use]
     pub fn mao(&self) -> [f64; N_LINHAS_DA_MAO] {
@@ -480,6 +532,14 @@ impl super::PainterTool {
             }
             PanelEvent::Click(id) if *id == crate::ids::PAINTER_PEN_RESET => {
                 self.repor_mao_do_meio();
+                true
+            }
+            PanelEvent::SelectOption(id, v) if *id == crate::ids::PAINTER_PEN_RESET => {
+                match v.parse::<u8>() {
+                    Ok(crate::ids::PAINTER_PEN_RESET_NEUTRO) => self.repor_mao_do_meio(),
+                    Ok(crate::ids::PAINTER_PEN_RESET_PRESET) => self.repor_mao_do_preset(),
+                    _ => return false,
+                }
                 true
             }
             _ => false,

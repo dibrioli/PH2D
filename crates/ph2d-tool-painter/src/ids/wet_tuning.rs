@@ -49,28 +49,61 @@ pub const WET_TUNING_RESIZE_HANDLE_BL: NodeId = hash_node_id("wet_tuning.resize_
 
 /// Collapsible group headers: Paint · Water · Physics · Tools · Experimental · Relief (o 6.º, append-only:
 /// o índice 4 é o Experimental). O PAPER saiu na W1e, F2 (o papel do Wet Paint é o da secção Paper do
-/// painel); o RELEVO da tinta voltou a 11/10 (dono: «tirou o relevo junto»), sem o papel.
-pub const WET_TUNING_GROUP_HEADERS: [NodeId; 6] = [
+/// painel); o RELEVO da tinta voltou a 11/10 (dono: «tirou o relevo junto»), sem o papel. Os quatro
+/// grupos avançados (25/10: Bristles · Stroke · Wet effects · Look) são os índices 6..10.
+pub const WET_TUNING_GROUP_HEADERS: [NodeId; 10] = [
     hash_node_id("wet_tuning.group_paint"),
     hash_node_id("wet_tuning.group_water"),
     hash_node_id("wet_tuning.group_physics"),
     hash_node_id("wet_tuning.group_tools"),
     hash_node_id("wet_tuning.group_experimental"),
     hash_node_id("wet_tuning.group_relief"),
+    hash_node_id("wet_tuning.group_bristles"),
+    hash_node_id("wet_tuning.group_stroke"),
+    hash_node_id("wet_tuning.group_wet_effects"),
+    hash_node_id("wet_tuning.group_look"),
 ];
 
 /// Os knobs do grupo `Paper` do motor que são RELEVO da tinta, não papel (a secção Relief do Tuning).
 pub const WET_TUNING_RELEVO: [&str; 1] = ["emboss"];
 
 /// Per-group reset buttons (the model's header `resetGroup`), same order as
-/// the four first headers and then Relief (Experimental has no reset — two checkboxes).
-pub const WET_TUNING_GROUP_RESETS: [NodeId; 5] = [
+/// the four first headers, then Relief and the four advanced groups (Experimental has no reset — two
+/// checkboxes). Index `i` resets [`WET_TUNING_RESET_GROUPS`]`[i]`.
+pub const WET_TUNING_GROUP_RESETS: [NodeId; 9] = [
     hash_node_id("wet_tuning.reset_paint"),
     hash_node_id("wet_tuning.reset_water"),
     hash_node_id("wet_tuning.reset_physics"),
     hash_node_id("wet_tuning.reset_tools"),
     hash_node_id("wet_tuning.reset_relief"),
+    hash_node_id("wet_tuning.reset_bristles"),
+    hash_node_id("wet_tuning.reset_stroke"),
+    hash_node_id("wet_tuning.reset_wet_effects"),
+    hash_node_id("wet_tuning.reset_look"),
 ];
+
+/// O grupo do motor que cada [`WET_TUNING_GROUP_RESETS`] repõe — a tabela única que o painel (as
+/// secções) e a ferramenta (o clique) leem.
+pub const WET_TUNING_RESET_GROUPS: [ph2d_wet_paint::tuning::KnobGroup; 9] = {
+    use ph2d_wet_paint::tuning::KnobGroup as G;
+    [
+        G::Paint,
+        G::Water,
+        G::Physics,
+        G::Tools,
+        G::Paper,
+        G::Bristles,
+        G::Stroke,
+        G::WetEffects,
+        G::Look,
+    ]
+};
+
+/// Os grupos avançados (25/10) — nascem DOBRADOS no Tuning: são para quem afina um preset novo.
+pub const WET_TUNING_GRUPOS_AVANCADOS: [ph2d_wet_paint::tuning::KnobGroup; 4] = {
+    use ph2d_wet_paint::tuning::KnobGroup as G;
+    [G::Bristles, G::Stroke, G::WetEffects, G::Look]
+};
 
 /// Experimental: Kubelka–Munk pigment mixing (`sim.km_mixing`).
 pub const WET_TUNING_KM_MIXING: NodeId = hash_node_id("wet_tuning.km_mixing");

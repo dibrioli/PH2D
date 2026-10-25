@@ -9,10 +9,10 @@
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::action_bus::EditorAction;
-use ph2d_editor_core::tool::Tool;
+use ph2d_editor_core::tool::{PanelEvent, Tool};
 use ph2d_editor_core::zones::Rect;
-use ph2d_panel_painter_layers::PainterLayersPanel;
 use ph2d_panel_painter_layers::state::{PainterLayersPanelState, set_current_brush};
+use ph2d_panel_painter_layers::{PainterLayersPanel, set_current_mao_do_preset};
 use ph2d_tool_painter::{LINHAS_DA_MAO, MAO_DE_FABRICA, PaintMedia, PainterTool, ids};
 use ph2d_ui_testkit::MockPanelHost;
 
@@ -175,15 +175,26 @@ fn a_rotacao_alinha_com_as_caixas_do_cartao() {
     }
 }
 
-/// O Reset do cartão devolve a mão de fábrica do meio.
+/// O Reset do cartão é um MENU (dono 25/10): o clique no ícone abre-o sem tocar na mão; «Reset to default» devolve
+/// a mão de fábrica do meio.
 #[test]
 fn o_reset_do_cartao_devolve_a_mao_de_fabrica() {
     for m in [PaintMedia::Digital, PaintMedia::WetPaint] {
         let mut t = no_meio(m);
         digita(&mut t, ids::PAINTER_PEN_FIELDS[0], "0.3");
-        assert_ne!(t.brush_settings().mao, MAO_DE_FABRICA, "{m:?}");
+        let mexida = t.brush_settings().mao;
+        assert_ne!(mexida, MAO_DE_FABRICA, "{m:?}");
         let (mut host, mut st, rects) = novo(&t);
         let r = rect_of(&rects, ids::PAINTER_PEN_RESET).expect("o Reset do cartão");
+        clica(&mut host, &mut st, &mut t, r);
+        assert_eq!(
+            t.brush_settings().mao,
+            mexida,
+            "{m:?}: abrir o menu não repõe"
+        );
+        let rects = painted(&t, &mut host, &mut st);
+        let neutro = ids::painter_pen_reset_option_id(ids::PAINTER_PEN_RESET_NEUTRO);
+        let r = rect_of(&rects, neutro).expect("o menu abriu com «Reset to default»");
         clica(&mut host, &mut st, &mut t, r);
         let mao = t.brush_settings().mao;
         for (i, l) in LINHAS_DA_MAO.into_iter().enumerate() {
@@ -192,6 +203,59 @@ fn o_reset_do_cartao_devolve_a_mao_de_fabrica() {
             }
         }
     }
+}
+
+/// «Reset to brush preset»: sem preset que traga mão a opção não se alcança (pintada apagada, sem alvo de clique);
+/// com ele, o clique despacha a SUA opção ao tool, e o menu fecha.
+#[test]
+fn o_reset_para_o_preset_despacha_a_sua_opcao() {
+    let preset = ids::painter_pen_reset_option_id(ids::PAINTER_PEN_RESET_PRESET);
+    let abre = |disponivel: bool| {
+        let t = no_meio(PaintMedia::Digital);
+        set_current_mao_do_preset(disponivel);
+        let (mut host, mut st, rects) = novo(&t);
+        let r = rect_of(&rects, ids::PAINTER_PEN_RESET).expect("o Reset do cartão");
+        clica(&mut host, &mut st, &mut PainterTool::default(), r);
+        let rects = painted(&t, &mut host, &mut st);
+        (host, st, rects)
+    };
+    let (_, _, rects) = abre(false);
+    assert!(
+        rect_of(
+            &rects,
+            ids::painter_pen_reset_option_id(ids::PAINTER_PEN_RESET_NEUTRO)
+        )
+        .is_some(),
+        "o menu abriu"
+    );
+    assert!(
+        rect_of(&rects, preset).is_none(),
+        "sem preset a opção não tem alvo de clique"
+    );
+    let (mut host, mut st, rects) = abre(true);
+    let r = rect_of(&rects, preset).expect("com preset a opção alcança-se");
+    for ev in host.click_at(r.x + r.w * 0.5, r.y + r.h * 0.5) {
+        host.apply_panel_event::<PainterLayersPanel>(&mut st, ev);
+    }
+    let pedidos: Vec<PanelEvent> = host
+        .drained_actions()
+        .into_iter()
+        .filter_map(|a| match a {
+            EditorAction::ToolPanelEvent(pe) => Some(pe),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(
+        pedidos,
+        vec![PanelEvent::SelectOption(
+            ids::PAINTER_PEN_RESET,
+            ids::PAINTER_PEN_RESET_PRESET.to_string()
+        )],
+        "a opção do preset despacha a sua"
+    );
+    let rects = painted(&no_meio(PaintMedia::Digital), &mut host, &mut st);
+    assert!(rect_of(&rects, preset).is_none(), "o menu fechou");
+    set_current_mao_do_preset(false);
 }
 
 /// O custo de pintar o painel com o cartão Pen ABERTO × fechado, no Digital (o MÍNIMO de 20 pinturas, ms).

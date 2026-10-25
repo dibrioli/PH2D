@@ -125,6 +125,19 @@ fn commands_forward_and_close_is_the_tuning_toggle() {
     );
 }
 
+/// Os quatro grupos AVANÇADOS (25/10) nascem dobrados e os cinco de sempre abertos; um clique abre-os.
+#[test]
+fn os_grupos_avancados_nascem_dobrados() {
+    let (mut host, mut st) = host();
+    for s in rows::SECTIONS {
+        let avancado = ph2d_tool_painter::ids::WET_TUNING_GRUPOS_AVANCADOS.contains(&s.group);
+        assert_eq!(host.store().is_collapsed(s.header), avancado, "{}", s.label);
+    }
+    let bristles = rows::SECTIONS[5].header;
+    let _ = host.apply_panel_event::<WetTuningPanel>(&mut st, WidgetEvent::Click(bristles));
+    assert!(!host.store().is_collapsed(bristles));
+}
+
 /// A header click folds the section LOCALLY (no bus traffic — the shell has
 /// no opinion about which sections are open).
 #[test]
@@ -151,11 +164,16 @@ fn paint_offers_the_table_and_no_paper_row_lives_here() {
     // ⚠️ Alto o bastante para o painel INTEIRO caber: desde a porta da rolagem o clique também é
     // recortado pelo corpo, e medido 2026-09-29 o corpo pede `1333` px contra `766` visíveis a
     // `900` de viewport — as linhas de baixo só passavam porque o registo não era recortado.
-    let viewport = Rect::new(0.0, 0.0, 1600.0, 1800.0);
+    // Os quatro avançados (25/10) nascem dobrados: o gate abre-os para ver as 40 linhas deles — o corpo
+    // inteiro, aberto, passa dos `3 000` px.
+    let viewport = Rect::new(0.0, 0.0, 1600.0, 4400.0);
     let paint_with = |brush: ph2d_tool_painter::BrushSettings| {
         set_current_brush(Some(brush));
         let mut host = MockPanelHost::with_panel::<WetTuningPanel>();
         host.set_panel_visible(WetTuningPanel::ID, true);
+        for s in rows::SECTIONS {
+            host.store_mut().set_collapsed(s.header, false);
+        }
         let mut st = state::WetTuningPanelState;
         host.paint::<WetTuningPanel>(&mut st, viewport)
     };

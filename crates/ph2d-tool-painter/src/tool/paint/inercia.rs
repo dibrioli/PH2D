@@ -63,10 +63,12 @@ pub enum Dependente {
     AtrasoSemVelocidade,
     // A pressão leve e a velocidade só TIRAM dureza (`Dynamics::dureza_da_mao`): com a Hardness 0 não há o que tirar.
     MaciezSemDureza,
+    // O Wash é a lei do Accumulate DESLIGADO (`stroke_cover::cover_max`).
+    WashComAccumulate,
 }
 
 impl Dependente {
-    pub const TODOS: [Dependente; 42] = [
+    pub const TODOS: [Dependente; 43] = [
         Dependente::ForaDaPontaDePixel,
         Dependente::TaperTip,
         Dependente::TaperOpacity,
@@ -109,6 +111,7 @@ impl Dependente {
         Dependente::DualForaDoTraco,
         Dependente::AtrasoSemVelocidade,
         Dependente::MaciezSemDureza,
+        Dependente::WashComAccumulate,
     ];
 
     /// Os ids que o painel pinta para este controlo.
@@ -119,6 +122,7 @@ impl Dependente {
             Dependente::TaperTip => &[ids::PAINTER_TAPER_TIP_START],
             Dependente::TaperOpacity => &[ids::PAINTER_TAPER_OPACITY],
             Dependente::Accumulate => &[ids::PAINTER_BRUSH_ACCUMULATE],
+            Dependente::WashComAccumulate => &[ids::PAINTER_BRUSH_WASH],
             Dependente::SpaceAttenuation => &[ids::PAINTER_BRUSH_SPACE_ATTEN],
             Dependente::JitterUnit => &[ids::PAINTER_BRUSH_JITTER_UNIT],
             Dependente::DashLength => &[
@@ -251,6 +255,7 @@ impl Dependente {
             Dependente::CurvaDoTamanhoSemPressao => "panel.painter_layers.inerte.pressure_size_on",
             Dependente::MaoSemPressao => "panel.painter_layers.inerte.pressure_on",
             Dependente::MaciezSemDureza => "panel.painter_layers.inerte.hardness_above_zero",
+            Dependente::WashComAccumulate => "panel.painter_layers.inerte.accumulate_off",
             Dependente::MarcaSemSpray => "panel.painter_layers.inerte.spray_count_above_one",
             Dependente::OpacidadeNaAguada => "panel.painter_layers.inerte.wash_ignores_dab_opacity",
             Dependente::CorDaMaoSemLeitor => "panel.painter_layers.inerte.color_owned_by_ramp",
@@ -591,6 +596,7 @@ impl PainterTool {
                 !t.active() && t.opacity <= 0.0
             }),
             (Dependente::MaciezSemDureza, !agua && b.hardness <= 0.0),
+            (Dependente::WashComAccumulate, b.accumulate),
             // A Watercolor com a Shape «Automatic» não lê a pegada deitada (`inclinacao_dos_antigos`).
             (
                 Dependente::PegadaDaAutomatica,

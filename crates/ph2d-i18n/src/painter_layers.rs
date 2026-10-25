@@ -52,6 +52,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "Acts when the Shape's Automatic is off"
         }
         "panel.painter_layers.inerte.spray_count_above_one" => "Acts when Count is above 1",
+        "panel.painter_layers.inerte.accumulate_off" => "Acts when Accumulate is off",
         "panel.painter_layers.inerte.hardness_above_zero" => {
             "Acts when Hardness is above 0: it only softens the brush"
         }
@@ -240,6 +241,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_layers.brush.strength" => "Strength",
         "panel.painter_layers.brush.flow" => "Flow",
         "panel.painter_layers.brush.accumulate" => "Accumulate",
+        "panel.painter_layers.brush.wash" => "Wash",
         "panel.painter_layers.brush.blend_on_empty" => "On empty",
         "panel.painter_layers.brush.color" => "Color",
         // O pincel de PARTIDA de cada meio (Digital Basic / Watercolor Basic): desde a L1 o «Preset» é o

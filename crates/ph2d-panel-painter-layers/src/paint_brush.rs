@@ -330,6 +330,17 @@ fn paint_top_basics(
             "panel.painter_layers.brush.accumulate",
             brush.accumulate,
         );
+        // O Wash (25/10): a lei do Accumulate desligado em que o traço pára no maior dab.
+        y = paint_checkbox_row(
+            ctx,
+            theme,
+            x,
+            content_w,
+            y,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_WASH,
+            "panel.painter_layers.brush.wash",
+            brush.wash,
+        );
     }
     y
 }

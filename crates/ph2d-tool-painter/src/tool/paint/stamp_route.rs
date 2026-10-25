@@ -305,6 +305,8 @@ impl PainterTool {
                 || brush.film_aa_wanted(brush.shape.is_active())
                 // O tecto POR DAB (J3): a opacidade da mão é o tecto de cada texel também à Strength 1.
                 || brush.tecto_por_dab
+                // O Wash (25/10): o máximo do traço é a sua lei também à Strength e ao Flow 1.
+                || brush.wash
                 // …e a orla em PÍXEIS (J3): o texel da orla pára na sua ÁREA, como o da Smooth Edges acima.
                 || (brush.borda_px > 0.0 && brush.leis_do_digital()))
     }

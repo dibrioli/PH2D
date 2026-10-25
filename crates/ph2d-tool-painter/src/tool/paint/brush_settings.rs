@@ -94,10 +94,8 @@ pub struct BrushSettings {
     pub selection_edit: bool,
     pub selection_overlay_opacity: f32,
     /// **Deform** (Liquify) mode — the panel shows ONLY the deform section (mode-exclusive, like Selection):
-    /// sub-mode segmented (`0` Push · `1` Twist · `2` Pinch · `3` Wrinkle · `4` Fold · `5` Reconstruct) ·
-    /// Size/Pressure/Distortion/Momentum/Strength (all `0..1`; Strength `0.5`-centred bipolar).
-    /// Distortion/Momentum are hidden in Reconstruct. Deform is confined to the active selection (or the
-    /// whole sprite when none) automatically — no Freeze toggle.
+    /// sub-mode (`0` Push · `1` Twist · `2` Pinch · `3` Wrinkle · `4` Fold · `5` Reconstruct) · the sliders
+    /// (`0..1`; Strength `0.5`-centred). Confined to the active selection (or the whole sprite).
     pub is_deform: bool,
     pub deform_mode: u8,
     pub deform_size_norm: f32,
@@ -252,6 +250,8 @@ pub struct BrushSettings {
     pub continuous_spacing: bool,
     /// **Accumulate** on/off: off (default) caps a stroke at Strength.
     pub accumulate: bool,
+    /// **Wash** (`BrushSpec::wash`): com o Accumulate desligado, o traço pára no maior dab.
+    pub wash: bool,
     /// **Style: Solid** on/off — o checkbox do card Line. Desmarcado (default) o traço é a linha de
     /// sempre; marcado ele é a região CERCADA pelo gesto, e a espessura deixa de entrar.
     pub style_solid: bool,

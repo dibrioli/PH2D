@@ -158,6 +158,9 @@ impl PainterTool {
             PanelEvent::Click(id) if id == crate::ids::PAINTER_BRUSH_ACCUMULATE => {
                 self.toggle_brush_accumulate();
             }
+            PanelEvent::Click(id) if id == crate::ids::PAINTER_BRUSH_WASH => {
+                self.toggle_brush_wash();
+            }
             PanelEvent::Click(id) if id == crate::ids::PAINTER_LINE_SOLID => {
                 self.toggle_style_solid();
             }

@@ -8,8 +8,22 @@ use ph2d_tool_registry::{hash_node_id, hash_node_id_runtime};
 /// O cabeçalho do cartão Pen (secção do corpo que se arrasta). Click dobra.
 pub const PAINTER_PEN_SECTION: NodeId = hash_node_id("painter_brush.pen_section");
 
-/// O Reset do cartão — a mão de fábrica do meio de agora.
+/// O Reset do cartão — um MENU de duas opções ([`PAINTER_PEN_RESET_NEUTRO`] · [`PAINTER_PEN_RESET_PRESET`]):
+/// `SelectOption(este id, "<opção>")`. O `Click` dele (macros de antes do menu) é o neutro.
 pub const PAINTER_PEN_RESET: NodeId = hash_node_id("painter_brush.pen_reset");
+
+/// A opção do Reset que devolve a mão de fábrica do meio de agora (o neutro da app).
+pub const PAINTER_PEN_RESET_NEUTRO: u8 = 0;
+/// A opção do Reset que devolve a mão que o preset activo traz.
+pub const PAINTER_PEN_RESET_PRESET: u8 = 1;
+/// Quantas opções o menu do Reset tem.
+pub const PAINTER_PEN_RESET_COUNT: u8 = 2;
+
+/// A opção `i` do menu do Reset.
+#[must_use]
+pub fn painter_pen_reset_option_id(i: u8) -> NodeId {
+    hash_node_id_runtime(&format!("painter_brush.pen.reset_opt.{i}"))
+}
 
 /// As linhas numéricas do cartão, pela ordem de [`crate::LINHAS_DA_MAO`] — UMA lista para o reencaminhar
 /// do painel (`number_field::is_param_field`), o `populate` e o encaminhamento do tool.

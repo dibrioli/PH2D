@@ -411,6 +411,7 @@ fn register_toggles_and_dropdowns(store: &mut WidgetStore) {
         ph2d_tool_painter::ids::PAINTER_BRUSH_SPACE_ATTEN,
         ph2d_tool_painter::ids::PAINTER_BRUSH_CONTINUOUS_SPACING,
         ph2d_tool_painter::ids::PAINTER_BRUSH_ACCUMULATE,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_WASH,
         // Card Line: o checkbox Solid (sem ele o widget pinta, registra hit e fica MORTO sob o mouse).
         ph2d_tool_painter::ids::PAINTER_LINE_SOLID,
         // Card Line / Sketchy: o checkbox Magnetify.
@@ -458,7 +459,6 @@ fn register_toggles_and_dropdowns(store: &mut WidgetStore) {
         ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RESET,
         ph2d_tool_painter::ids::PAINTER_BRUSH_COLOR_RAMP_RESET,
         ph2d_tool_painter::ids::PAINTER_BRUSH_STROKE_RESET,
-        ph2d_tool_painter::ids::PAINTER_PEN_RESET,
         // Apply / Apply & Keep — bake the open on-canvas shape (Curve/Free Hand/Ellipse/Polygon); Keep
         // retains the editor for re-apply. Routed in the tool's `route_brush_dab_event`.
         ph2d_tool_painter::ids::PAINTER_BRUSH_STROKE_APPLY,
@@ -565,7 +565,11 @@ fn register_toggles_and_dropdowns(store: &mut WidgetStore) {
     .into_iter()
     // O bloco de presets do Wet Painter (W1): Preset · política · os valores rápidos dos volumes.
     .chain(ph2d_tool_painter::ids::PAINTER_WETPAINT_PRESET_DROPDOWNS)
-    .chain([ph2d_tool_painter::ids::PAINTER_PEN_ROTATION])
+    // O cartão Pen: o menu da rotação e o do Reset (neutro · preset, dono 25/10).
+    .chain([
+        ph2d_tool_painter::ids::PAINTER_PEN_ROTATION,
+        ph2d_tool_painter::ids::PAINTER_PEN_RESET,
+    ])
     // Os menus da PONTA (L9/L18): a ponta de píxel, o modo do grão, o controlo da profundidade.
     .chain(
         (0..ph2d_tool_painter::N_LINHAS_DA_PONTA)

@@ -24,7 +24,9 @@ use ph2d_brush_presets::{
 };
 use ph2d_editor_core::toast::{Toast, ToastQueue};
 use ph2d_i18n::{idioma, tr, tr_with};
-use ph2d_panel_painter_layers::{VistaPreset, VistaPresets, set_current_wet_presets};
+use ph2d_panel_painter_layers::{
+    VistaPreset, VistaPresets, set_current_mao_do_preset, set_current_wet_presets,
+};
 use ph2d_tool_painter::{
     Gaveta, MeioDesconhecido, PaintMedia, PainterTool, PedidoPreset, ferramenta_do_preset,
     miniatura_do_preset, motor_do_meio, nome_do_meio,
@@ -419,17 +421,34 @@ pub(crate) fn drive(painter: &mut PainterTool, toasts: &mut ToastQueue) {
     PRESETS.with(|c| {
         let mut c = c.borrow_mut();
         let p = c.get_or_insert_with(|| Presets::abrir(painter, toasts));
+        let mut mudou = false;
         if let Some(pedido) = painter.take_wet_preset_request() {
             p.atender(painter, pedido, toasts);
+            mudou = true;
         }
         if painter.gaveta_de_presets() != p.gaveta {
             p.abrir_meio(painter, toasts);
             p.gaveta = painter.gaveta_de_presets();
             p.gravar_estado(toasts);
             p.publicar();
+            mudou = true;
+        }
+        if mudou {
+            p.lembrar_a_mao_do_ativo(painter);
         }
         set_current_wet_presets(Some(p.vista.clone()));
+        set_current_mao_do_preset(painter.mao_do_preset_disponivel());
     });
+}
+
+impl Presets {
+    /// **A mão do preset activo vai para o tool** — o alvo do «Reset to brush preset» do cartão Pen. Aplicar já a
+    /// lembra; isto cobre o activo que muda SEM ser aplicado (gravado por cima, apagado, outra gaveta).
+    fn lembrar_a_mao_do_ativo(&self, painter: &mut PainterTool) {
+        let ativo = self.ativo(painter);
+        let e = ativo.as_deref().and_then(|r| self.bib.procurar(r));
+        painter.set_mao_do_preset(e.map(|e| &e.preset.parametros));
+    }
 }
 
 #[path = "painter_bridge_presets_biblioteca.rs"]

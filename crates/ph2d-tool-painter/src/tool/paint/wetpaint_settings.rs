@@ -249,7 +249,7 @@ impl WetKnobs {
     /// Os knobs da FÍSICA da água que moram no cartão Wet Paint (saíram do Tuning a 13/10): `(id do
     /// cartão, valor, mín, máx, passo)` — a faixa e o passo da `KNOB_DEFS` do motor, a mesma fonte do Tuning.
     #[must_use]
-    pub fn knobs_no_cartao(&self) -> [(ph2d_a11y::NodeId, f64, f64, f64, f64); 5] {
+    pub fn knobs_no_cartao(&self) -> [(ph2d_a11y::NodeId, f64, f64, f64, f64); 9] {
         KNOBS_NO_CARTAO.map(|(id, knob)| {
             let d = &KNOB_DEFS[knob as usize];
             (id, self.get(knob), d.min, d.max, d.step)
@@ -258,13 +258,23 @@ impl WetKnobs {
 }
 
 /// Os knobs do motor que saíram do Tuning para o cartão: Leveling · Level Clamp · Capillary · Brake (dono 13/10) e
-/// o Brush dust (dono 19/10) — o id do cartão e o knob.
-const KNOBS_NO_CARTAO: [(ph2d_a11y::NodeId, Knob); 5] = [
+/// o Brush dust (dono 19/10) — o id do cartão e o knob. Os quatro de baixo (dono 25/10: os que mais decidem o pincel e
+/// o preset) moram TAMBÉM no Tuning: o mesmo knob, os dois controlos escrevem o mesmo valor. ⛔ O `ExtDryBrush` ficou
+/// de fora: o `dry_gate` do dab é 0 em todo traço do produto (medido 25/10, os 29 presets de fábrica a pressão 1 e
+/// 0,3) — no cartão seria um controlo morto.
+const KNOBS_NO_CARTAO: [(ph2d_a11y::NodeId, Knob); 9] = [
     (crate::ids::PAINTER_WETPAINT_LEVELING, Knob::Leveling),
     (crate::ids::PAINTER_WETPAINT_LEVEL_CLAMP, Knob::LevelClamp),
     (crate::ids::PAINTER_WETPAINT_CAPILLARY, Knob::Capillary),
     (crate::ids::PAINTER_WETPAINT_BRAKE, Knob::Brake),
     (crate::ids::PAINTER_WETPAINT_DUST, Knob::Dust),
+    (crate::ids::PAINTER_WETPAINT_BACKRUN, Knob::ExtBackrun),
+    (
+        crate::ids::PAINTER_WETPAINT_GRANULATION,
+        Knob::ExtGranulation,
+    ),
+    (crate::ids::PAINTER_WETPAINT_WET_BLOOM, Knob::WetOpen),
+    (crate::ids::PAINTER_WETPAINT_TIP_PICKUP, Knob::TipReservoir),
 ];
 
 impl Default for WetKnobs {
@@ -612,14 +622,10 @@ impl PainterTool {
             .iter()
             .position(|g| *g == id)
         {
-            let group = [
-                KnobGroup::Paint,
-                KnobGroup::Water,
-                KnobGroup::Physics,
-                KnobGroup::Tools,
-                KnobGroup::Paper,
-            ][gi];
-            self.paint.wetpaint.knobs.reset_group(group);
+            self.paint
+                .wetpaint
+                .knobs
+                .reset_group(crate::ids::WET_TUNING_RESET_GROUPS[gi]);
             return true;
         }
         if let Some(&(idx, kind)) = wet_tuning_id_map().get(&id)

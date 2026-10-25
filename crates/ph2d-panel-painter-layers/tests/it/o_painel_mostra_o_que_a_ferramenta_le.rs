@@ -90,7 +90,7 @@ const AGUADA: [NodeId; 6] = [
 ];
 
 /// Os ids do que o pincel do Wet Paint pousa.
-const DEPOSITO_MOLHADO: [NodeId; 7] = [
+const DEPOSITO_MOLHADO: [NodeId; 9] = [
     PAINTER_BRUSH_DAB_QUINA,
     PAINTER_WETPAINT_PAPER_VISUAL,
     PAINTER_WETPAINT_WATER,
@@ -98,6 +98,8 @@ const DEPOSITO_MOLHADO: [NodeId; 7] = [
     PAINTER_WETPAINT_PIGMENT,
     PAINTER_WETPAINT_PICKUP,
     PAINTER_WETPAINT_DUST,
+    PAINTER_WETPAINT_WET_BLOOM,
+    PAINTER_WETPAINT_TIP_PICKUP,
 ];
 
 #[test]

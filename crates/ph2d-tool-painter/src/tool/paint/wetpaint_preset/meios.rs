@@ -187,6 +187,7 @@ impl PainterTool {
         self.set_shape_color_estado(&sc);
         self.grain_color_de_json(prm.grain_color.as_ref());
         self.meio_aplicar_volumes(m, &prm.volumes);
+        self.set_mao_do_preset(Some(prm));
         falhas
     }
 

@@ -54,6 +54,10 @@ pub fn populate(store: &mut WidgetStore) {
     for section in rows::SECTIONS {
         button(store, section.header);
         button(store, section.reset);
+        // Os avançados (25/10) nascem dobrados — pela porta que não pisa a escolha do artista.
+        if ph2d_tool_painter::ids::WET_TUNING_GRUPOS_AVANCADOS.contains(&section.group) {
+            store.set_collapsed_if_unchosen(section.header, true);
+        }
     }
     button(store, ph2d_tool_painter::ids::WET_TUNING_GROUP_HEADERS[4]); // Experimental fold
     button(store, ph2d_tool_painter::ids::WET_TUNING_KM_MIXING);

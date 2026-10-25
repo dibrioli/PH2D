@@ -254,6 +254,41 @@ fn tuning_resets_restore_their_own_scope_only() {
     let _ = KnobGroup::Paint; // (vocabulary anchor)
 }
 
+/// Os grupos AVANÇADOS do Tuning (25/10): a linha de um ex-`Hidden` chega aos knobs, e o repor do
+/// grupo Bristles repõe só os fios — nem o Wet effects, nem o Leveling do cartão (que segue `Hidden`).
+#[test]
+fn os_grupos_avancados_do_tuning_chegam_aos_knobs_e_repoem_so_o_seu() {
+    let mut t = wet_tool_fixture();
+    set(
+        &mut t,
+        crate::ids::wet_tuning_slider_id("bristleStreak"),
+        0.4,
+    );
+    set(&mut t, crate::ids::wet_tuning_chip_id("extBackrun"), 1.2);
+    set(&mut t, crate::ids::PAINTER_WETPAINT_LEVELING, 1.8);
+    assert_eq!(t.paint.wetpaint.knobs.get(Knob::BristleStreak), 0.4);
+    assert_eq!(t.paint.wetpaint.knobs.get(Knob::ExtBackrun), 1.2);
+    let i = crate::ids::WET_TUNING_RESET_GROUPS
+        .iter()
+        .position(|g| *g == KnobGroup::Bristles)
+        .expect("Bristles tem repor");
+    click(&mut t, crate::ids::WET_TUNING_GROUP_RESETS[i]);
+    assert_eq!(
+        t.paint.wetpaint.knobs.get(Knob::BristleStreak),
+        KNOB_DEFS[Knob::BristleStreak as usize].default
+    );
+    assert_eq!(
+        t.paint.wetpaint.knobs.get(Knob::ExtBackrun),
+        1.2,
+        "wrong group"
+    );
+    assert_eq!(
+        t.paint.wetpaint.knobs.get(Knob::Leveling),
+        1.8,
+        "o cartão não é do Tuning"
+    );
+}
+
 /// The tilt dial: ring+spoke SetValues drive the sim's vector on the next
 /// tick (ring 8 = scale 2, spoke 0 = +x exact); the toggle flips WITHOUT
 /// losing the direction; touching the dial turns the tilt on.

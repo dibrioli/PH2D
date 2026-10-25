@@ -211,6 +211,8 @@ pub const PAINTER_BRUSH_CONTINUOUS_SPACING: NodeId =
 
 /// "Accumulate" toggle (Blender `BRUSH_ACCUMULATE`): off caps a stroke at Strength. `Click` → toggle.
 pub const PAINTER_BRUSH_ACCUMULATE: NodeId = hash_node_id("painter_brush.accumulate");
+/// **Wash** toggle (`BrushSpec::wash`, só com o Accumulate desligado). `Click` → `toggle_brush_wash`.
+pub const PAINTER_BRUSH_WASH: NodeId = hash_node_id("painter_brush.wash");
 
 /// ⭐ O modo sobre o VAZIO (L7), na linha do Blend (`0`/`1`). `SetValue` → `route_blend_vazio_event`
 /// (`tool/paint/blend_vazio_settings.rs`). O nome do hash é o de antes da secção Rendering sair (24/10): as macros

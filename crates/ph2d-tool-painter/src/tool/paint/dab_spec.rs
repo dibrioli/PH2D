@@ -51,6 +51,7 @@ impl PainterTool {
         // meios: um preset do Digital aplicado antes não as leva à aguada, ao relevo nem ao fluido.
         if self.paint_media() != crate::PaintMedia::Digital {
             brush.tecto_por_dab = false;
+            brush.wash = false;
             brush.borda_px = 0.0;
             brush.sub_passo_fino = false;
             brush.passo_pela_pressao = false;

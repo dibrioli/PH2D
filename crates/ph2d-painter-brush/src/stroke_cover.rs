@@ -65,6 +65,15 @@ pub(crate) fn cover_add(
     }
 }
 
+/// ⭐ **O Wash** (dono 25/10, [`crate::BrushSpec::wash`]): o texel do traço é o MAIOR peso de um dab sobre ele,
+/// `w·g·tecto·flow` — a borda é a do Falloff e o traço nunca escurece a si mesmo; o Flow escala, não soma. `None`
+/// = o texel já está nele.
+#[must_use]
+pub(crate) fn cover_max(m: f32, w: f32, g: f32, tecto: f32, flow: f32) -> Option<f32> {
+    let alvo = (w * g * tecto * flow).min(1.0);
+    (alvo > m).then_some(alvo - m)
+}
+
 /// **A força com que um lote pintou o texel** (W10 das macros, `docs/Macros/08_plano_W10_cobertura.md`):
 /// quem chama o carimbo pode dar-lhe um plano `u16` do tamanho da tela, e cada dab que compõe o texel com
 /// o alfa `a` leva-o a `1 − (1 − f)(1 − a)`. Sob a lei «por cima» (Mix, Erase Alpha, sem pigmento) é a

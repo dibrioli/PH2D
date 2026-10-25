@@ -77,6 +77,7 @@ impl PainterTool {
             macro_gravacao,
             macro_por_cima,
             desde_o_ultimo_up,
+            mao_do_preset,
         } = self;
         if macro_gravacao.is_some() {
             return Err(SemInstantaneo::AGravar);
@@ -141,6 +142,7 @@ impl PainterTool {
             macro_gravacao: None,
             macro_por_cima: *macro_por_cima,
             desde_o_ultimo_up: *desde_o_ultimo_up,
+            mao_do_preset: *mao_do_preset,
         };
         copia.wet_fita_propria();
         Ok(copia)

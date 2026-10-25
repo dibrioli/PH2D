@@ -41,6 +41,7 @@ mod o_pigmento_por_comprimento;
 mod o_po_do_aerografo;
 mod o_preset_nao_herda; // o preset escolhido depois de sujar o pincel é o preset (a família do estado escondido)
 mod o_relevo_dos_fios;
+mod o_wash; // o Wash: o traço pára no maior dab (dono 25/10)
 mod os_fios;
 mod os_outros_meios_nao_mudam;
 mod pinceis_da_ponta;
@@ -50,6 +51,7 @@ mod receitas_de_fabrica;
 mod regua_escada;
 mod regua_midia;
 mod sonda_cartao_pen; // auditoria do cartão Pen (24/10)
+mod sonda_continuo; // o Continuous em contas (dono 25/10)
 mod sonda_custo_no_app;
 mod sonda_etapas;
 mod sonda_falloff_do_traco; // o falloff do traço × o de um dab, e o Accumulate do Glaze Round (24/10)

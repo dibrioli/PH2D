@@ -6,8 +6,9 @@
 //! table for labels/ranges/defaults and writes through [`Tuning::set_by_key`]
 //! (NaN falls back to the default, exactly like the JS free numeric input).
 //!
-//! The `Hidden` group holds the gated extensions of SPEC §17: implemented,
-//! default-neutral, no visible sliders.
+//! The SPEC §17 gated extensions ship default-neutral; since 25/10 the ones that are ART live in the
+//! Tuning's advanced groups (`Bristles` · `Stroke` · `WetEffects` · `Look`). `Hidden` keeps only what
+//! another surface paints (card, Shape) and pure engine calibration.
 
 /// Every calibration knob. Discriminants are indices into [`KNOB_DEFS`] and
 /// the value array — the order below IS the table order.
@@ -116,7 +117,7 @@ pub enum Knob {
     /// O atraso da inclinação lida, em px de caminho (`0` = nenhum; o Rebelle: ~170).
     TiltLag,
     /// **Os fios com física própria** (W2, [`crate::bristles_fios::Fios`]), lidos pelo hospedeiro quando o Shape é
-    /// Bristles; sem painel (W8). A amplitude da pressão de cada fio (`0` = a lei de antes).
+    /// Bristles; no Tuning › Bristles (25/10). A amplitude da pressão de cada fio (`0` = a lei de antes).
     BristlePressure,
     /// O comprimento de caminho (px) em que a pressão de um fio e a oscilação mudam.
     BristleNoiseLength,
@@ -235,8 +236,17 @@ pub enum KnobGroup {
     Physics,
     Tools,
     Paper,
-    /// SPEC §17 gated extensions: no visible sliders, neutral defaults.
+    /// Fora do Tuning: o knob mora noutro sítio (o cartão Wet Paint, a Shape — decisões do dono 11–19/10)
+    /// ou é CALIBRAÇÃO do motor (passo de amostragem, custo, leis de escala com o diâmetro).
     Hidden,
+    /// Os fios com física própria (W2/W3/J4) — lidos quando a Shape é Bristles. Tuning › Bristles (25/10).
+    Bristles,
+    /// Como o traço pousa a tinta: pincel seco, ponta-reservatório, grão da pressão, filme, gota do pó.
+    Stroke,
+    /// O que a água faz depois: difusão, backrun, dedos, granulação, molhado × molhado.
+    WetEffects,
+    /// Só a aparência (render): luz rasante, grão dos vales, brilho molhado, ruído, tom da orla.
+    Look,
 }
 
 /// What a knob write invalidates (the facade acts on it).

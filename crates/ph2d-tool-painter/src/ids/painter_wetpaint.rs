@@ -174,12 +174,24 @@ pub const PAINTER_WETPAINT_BRAKE: NodeId = hash_node_id("painter_brush.wetpaint_
 /// **Brush dust** — o PÓ do pincel, o grão do aerógrafo (knob `dust`; saiu do Tuning a 19/10).
 pub const PAINTER_WETPAINT_DUST: NodeId = hash_node_id("painter_brush.wetpaint_dust");
 
+/// **Backruns** — as couves-flor da água que volta (knob `extBackrun`; também no Tuning, dono 25/10).
+pub const PAINTER_WETPAINT_BACKRUN: NodeId = hash_node_id("painter_brush.wetpaint_backrun");
+
+/// **Granulation** — o pigmento que assenta no grão do papel (knob `extGranulation`; também no Tuning).
+pub const PAINTER_WETPAINT_GRANULATION: NodeId = hash_node_id("painter_brush.wetpaint_granulation");
+
+/// **Wet bloom** — a tinta que abre na água já pousada (knob `wetOpen`; também no Tuning).
+pub const PAINTER_WETPAINT_WET_BLOOM: NodeId = hash_node_id("painter_brush.wetpaint_wet_bloom");
+
+/// **Tip pickup** — o reservatório da ponta que leva a cor de baixo (knob `tipReservoir`; também no Tuning).
+pub const PAINTER_WETPAINT_TIP_PICKUP: NodeId = hash_node_id("painter_brush.wetpaint_tip_pickup");
+
 /// **Erase Strength** — the wet eraser's lift per pass (engine `sliders.erase`, boot `0.4`).
 pub const PAINTER_WETPAINT_ERASE: NodeId = hash_node_id("painter_brush.wetpaint_erase");
 
 /// The Wet Paint **number-field** ids — ONE membership list for the panel's `SetValue` forward
 /// (`number_field::is_param_field`), the populate loop, and the tool's routing match.
-pub const PAINTER_WETPAINT_FIELDS: [NodeId; 18] = [
+pub const PAINTER_WETPAINT_FIELDS: [NodeId; 22] = [
     PAINTER_WETPAINT_GRID,
     PAINTER_WETPAINT_FLOW,
     PAINTER_WETPAINT_WATER,
@@ -193,6 +205,10 @@ pub const PAINTER_WETPAINT_FIELDS: [NodeId; 18] = [
     PAINTER_WETPAINT_CAPILLARY,
     PAINTER_WETPAINT_BRAKE,
     PAINTER_WETPAINT_DUST,
+    PAINTER_WETPAINT_BACKRUN,
+    PAINTER_WETPAINT_GRANULATION,
+    PAINTER_WETPAINT_WET_BLOOM,
+    PAINTER_WETPAINT_TIP_PICKUP,
     PAINTER_WETPAINT_ERASE,
     super::PAINTER_WETPAINT_VOL_SIZE,
     super::PAINTER_WETPAINT_VOL_OPACITY,

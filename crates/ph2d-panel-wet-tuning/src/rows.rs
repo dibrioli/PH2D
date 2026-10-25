@@ -110,9 +110,10 @@ pub struct Section {
 }
 
 /// The knob groups shown, in the model's display order (o PAPER saiu na W1e, F2; o Relief é o grupo
-/// `Paper` do motor reduzido ao relevo da tinta). (Experimental is not a knob group — it is the two K–M
-/// checkboxes, painted after these.)
-pub const SECTIONS: [Section; 5] = [
+/// `Paper` do motor reduzido ao relevo da tinta), e depois os quatro AVANÇADOS (25/10, dono: «os
+/// escondidos do Wet Paint podem mostrar dentro do Tuning»), que nascem dobrados. (Experimental is
+/// not a knob group — it is the two K–M checkboxes, painted after these.)
+pub const SECTIONS: [Section; 9] = [
     Section {
         group: KnobGroup::Paint,
         header: ph2d_tool_painter::ids::WET_TUNING_GROUP_HEADERS[0],
@@ -142,6 +143,30 @@ pub const SECTIONS: [Section; 5] = [
         header: ph2d_tool_painter::ids::WET_TUNING_GROUP_HEADERS[5],
         reset: ph2d_tool_painter::ids::WET_TUNING_GROUP_RESETS[4],
         label: "panel.wet_tuning.group.relief",
+    },
+    Section {
+        group: KnobGroup::Bristles,
+        header: ph2d_tool_painter::ids::WET_TUNING_GROUP_HEADERS[6],
+        reset: ph2d_tool_painter::ids::WET_TUNING_GROUP_RESETS[5],
+        label: "panel.wet_tuning.group.bristles",
+    },
+    Section {
+        group: KnobGroup::Stroke,
+        header: ph2d_tool_painter::ids::WET_TUNING_GROUP_HEADERS[7],
+        reset: ph2d_tool_painter::ids::WET_TUNING_GROUP_RESETS[6],
+        label: "panel.wet_tuning.group.stroke",
+    },
+    Section {
+        group: KnobGroup::WetEffects,
+        header: ph2d_tool_painter::ids::WET_TUNING_GROUP_HEADERS[8],
+        reset: ph2d_tool_painter::ids::WET_TUNING_GROUP_RESETS[7],
+        label: "panel.wet_tuning.group.wet_effects",
+    },
+    Section {
+        group: KnobGroup::Look,
+        header: ph2d_tool_painter::ids::WET_TUNING_GROUP_HEADERS[9],
+        reset: ph2d_tool_painter::ids::WET_TUNING_GROUP_RESETS[8],
+        label: "panel.wet_tuning.group.look",
     },
 ];
 
@@ -190,18 +215,80 @@ mod tests {
     /// Rewet lift — + 1 Relief) — the registry's visible surface, whole. O PAPER (6) saiu
     /// na W1e (F2); do grupo dele só o relevo da tinta (Emboss) voltou, a 11/10. O Spacing saiu
     /// para o Hidden a 11/10 (o do pincel é o do Stroke).
+    /// Mais 40 avançados a 25/10 (dono: os escondidos do Wet Paint vão para o Tuning): 19 Bristles · 7 Stroke
+    /// · 7 Wet effects · 5 Look, e o WaterPush/DryerEdge no Tools (5 → 7).
     #[test]
     fn every_visible_knob_has_a_row() {
-        assert_eq!(rows().len(), 44);
+        assert_eq!(rows().len(), 84);
         for g in [
             (KnobGroup::Paint, 25),
             (KnobGroup::Water, 7),
             (KnobGroup::Physics, 6),
-            (KnobGroup::Tools, 5),
+            (KnobGroup::Tools, 7),
             (KnobGroup::Paper, 1),
+            (KnobGroup::Bristles, 19),
+            (KnobGroup::Stroke, 7),
+            (KnobGroup::WetEffects, 7),
+            (KnobGroup::Look, 5),
         ] {
             let n = rows().iter().filter(|r| r.group == g.0).count();
             assert_eq!(n, g.1, "group {:?} row count", g.0);
+        }
+    }
+
+    /// ⭐ **O que fica FORA do Tuning, e porquê** (25/10) — o censo CONTA o grupo `Hidden` do motor contra
+    /// esta lista: um knob novo nasce aqui (e alguém decide onde mora) ou num grupo à vista.
+    #[test]
+    fn os_escondidos_sao_so_os_de_outra_superficie_ou_de_calibracao() {
+        const NOUTRA_SUPERFICIE: [&str; 10] = [
+            // a Shape › Bristles (plano 27 W2)
+            "felt",
+            "bristleCount",
+            "bristleStrength",
+            "bristleSize",
+            // o Spacing do Stroke manda (dono 11/10)
+            "spacing",
+            // o cartão Wet Paint do Painter (dono 13/10 e 19/10)
+            "leveling",
+            "capillary",
+            "brake",
+            "levelClamp",
+            "dust",
+        ];
+        const CALIBRACAO: [&str; 8] = [
+            // normaliza o pigmento pelo comprimento (o preset diz a que Spacing foi afinado)
+            "pigmentSpacing",
+            // passo, tecto e arredondamento do sub-dab da cápsula: amostragem e custo
+            "capsuleSpacing",
+            "capsuleMaxPx",
+            "capsuleRoundNearest",
+            // leis de ESCALA com o diâmetro, afinadas contra o Rebelle
+            "embossSizeExp",
+            "embossSizeRef",
+            "thinStrokeFade",
+            "thinStrokeRef",
+        ];
+        let hidden: BTreeSet<&str> = KNOB_DEFS
+            .iter()
+            .filter(|d| d.group == KnobGroup::Hidden)
+            .map(|d| d.key)
+            .collect();
+        let lista: BTreeSet<&str> = NOUTRA_SUPERFICIE
+            .iter()
+            .chain(CALIBRACAO.iter())
+            .copied()
+            .collect();
+        assert_eq!(hidden, lista);
+    }
+
+    /// Cada secção repõe o grupo que pinta — a tabela da ferramenta e a do painel são a mesma.
+    #[test]
+    fn o_repor_de_cada_seccao_repoe_o_grupo_dela() {
+        let resets = ph2d_tool_painter::ids::WET_TUNING_GROUP_RESETS;
+        assert_eq!(SECTIONS.len(), resets.len());
+        for s in SECTIONS {
+            let i = resets.iter().position(|r| *r == s.reset).expect("reset");
+            assert_eq!(ph2d_tool_painter::ids::WET_TUNING_RESET_GROUPS[i], s.group);
         }
     }
 }

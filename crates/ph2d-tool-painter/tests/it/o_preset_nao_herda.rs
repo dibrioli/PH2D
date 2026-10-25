@@ -137,45 +137,24 @@ fn difere(a: &[u8], b: &[u8]) -> usize {
     a.chunks(4).zip(b.chunks(4)).filter(|(x, y)| x != y).count() + a.len().abs_diff(b.len())
 }
 
-/// Uma escolha de preset: um ficheiro de fábrica (o navegador, `preset_aplicar`) ou o «Basic» do menu do pincel
-/// (`PAINTER_BRUSH_PRESET`: 0 = Digital, 1 = Watercolor).
-enum Escolha {
-    Ficheiro(PaintMedia, Box<Preset>),
-    Basico(u8),
-}
+/// Uma escolha de preset: um ficheiro de fábrica pela porta do navegador (`preset_aplicar`) — desde 25/10 a única.
+struct Escolha(PaintMedia, Box<Preset>);
 
 impl Escolha {
     fn meio(&self) -> PaintMedia {
-        match self {
-            Escolha::Ficheiro(m, _) => *m,
-            Escolha::Basico(1) => PaintMedia::Watercolor,
-            Escolha::Basico(_) => PaintMedia::Digital,
-        }
+        self.0
     }
 
     fn nome(&self) -> String {
-        match self {
-            Escolha::Ficheiro(_, p) => p.parametros.name.clone(),
-            Escolha::Basico(k) => format!("Basic {k}"),
-        }
+        self.1.parametros.name.clone()
     }
 
     fn aplica(&self, t: &mut PainterTool) {
-        match self {
-            Escolha::Ficheiro(_, p) => {
-                t.preset_aplicar(p).expect("o preset aplica-se");
-            }
-            Escolha::Basico(k) => {
-                t.handle_panel_event(PanelEvent::SelectOption(
-                    ids::PAINTER_BRUSH_PRESET,
-                    k.to_string(),
-                ));
-            }
-        }
+        t.preset_aplicar(&self.1).expect("o preset aplica-se");
     }
 }
 
-/// Um preset de fábrica por meio (o primeiro da biblioteca) e os dois «Basic».
+/// Um preset de fábrica por meio (o primeiro da biblioteca).
 fn escolhas() -> Vec<Escolha> {
     let raiz = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes");
     let bib = Biblioteca::carregar(&raiz, None);
@@ -184,14 +163,13 @@ fn escolhas() -> Vec<Escolha> {
         if let Some(m) = meio_do_preset(&e.preset.parametros.media)
             && !v.iter().any(|x| x.meio() == m)
         {
-            v.push(Escolha::Ficheiro(m, Box::new(e.preset)));
+            v.push(Escolha(m, Box::new(e.preset)));
         }
     }
     assert!(
         v.len() >= 2,
         "a fábrica tem presets de pelo menos dois meios"
     );
-    v.extend([Escolha::Basico(0), Escolha::Basico(1)]);
     v
 }
 

@@ -258,57 +258,6 @@ fn panel_events_drive_watercolor_state() {
     );
 }
 
-/// The Preset dropdown seam: `SelectOption(PAINTER_BRUSH_PRESET, idx)` reconfigures the whole brush.
-/// Watercolor Basic turns the render-path on with the wet_edges knobs; Digital Basic turns it back
-/// off — both PRESERVING the user's colour + radius (a preset is a look, not a what/where reset).
-#[test]
-fn preset_dropdown_reconfigures_the_brush() {
-    let mut t = PainterTool::default();
-    // Give the brush a distinctive colour + size the preset must preserve.
-    t.paint.brush.color = [0.2, 0.6, 0.9];
-    t.paint.brush.radius_px = 40.0;
-
-    // Watercolor Basic (idx 1): render-path on + wet_edges optics.
-    t.handle_panel_event(PanelEvent::SelectOption(
-        crate::ids::PAINTER_BRUSH_PRESET,
-        "1".into(),
-    ));
-    let b = t.brush_settings();
-    assert!(b.watercolor, "Watercolor Basic turns the render-path on");
-    // Desde 23/10 o Watercolor Basic É a Aquarela de fábrica do slot Paint (os números do dono).
-    let fabrica =
-        super::super::PaintState::pinceis_de_fabrica()[super::super::PaintMode::Paint.slot()];
-    assert_eq!(b.edge_gain, fabrica.edge_gain, "factory edge gain");
-    assert_eq!(b.fill, fabrica.fill, "factory fill");
-    assert_eq!(b.depth, fabrica.depth, "factory depth");
-    assert_eq!(b.wet_rewet, fabrica.wet_rewet, "factory rewet");
-    assert_eq!(
-        b.color,
-        [0.2, 0.6, 0.9],
-        "colour preserved across the preset"
-    );
-    assert_eq!(
-        t.paint.brush.radius_px, 40.0,
-        "radius preserved across the preset"
-    );
-    // O papel é o do pincel de fábrica (23/10: o preset deixou de semear o cold-press próprio).
-    assert_eq!(
-        (t.paint.brush.paper.kind, t.paint.brush.paper.mapping),
-        (fabrica.paper.kind, fabrica.paper.mapping),
-        "Paper = the factory brush's"
-    );
-
-    // Digital Basic (idx 0): back to the plain brush, colour + size still preserved.
-    t.handle_panel_event(PanelEvent::SelectOption(
-        crate::ids::PAINTER_BRUSH_PRESET,
-        "0".into(),
-    ));
-    let b = t.brush_settings();
-    assert!(!b.watercolor, "Digital Basic turns the render-path off");
-    assert_eq!(b.color, [0.2, 0.6, 0.9], "colour still preserved");
-    assert_eq!(t.paint.brush.radius_px, 40.0, "radius still preserved");
-}
-
 /// A tagged layer installs into the RIGHT slot: "Use as Paper" → the Paper slot; "Use as Granulation"
 /// → the Granulation slot (Same-as-Paper off, its own map). The two are distinct destinations, not the
 /// same Grain slot (the bug Enio caught).

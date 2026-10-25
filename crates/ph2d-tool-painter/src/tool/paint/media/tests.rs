@@ -176,13 +176,25 @@ fn the_plain_paint_mode_is_not_owned_by_any_medium() {
 /// Paint* over a watercolor brush; and from Impasto it cleared the live slot while `brush_by_mode[Knife]`
 /// kept `impasto = true`, ready to come back on the next tool switch.
 ///
-/// **Mutation that must bleed:** drop the `set_paint_media` tail from `apply_brush_preset`.
+/// Desde 25/10 a única porta de preset é a do navegador (`preset_aplicar`), sobre os ficheiros de fábrica.
+///
+/// **Mutation that must bleed:** drop the `set_paint_media` from `meio_preset_aplicar_corpo`.
 #[test]
 fn a_brush_preset_switches_medium_through_the_same_door() {
+    let de_fabrica = |nome: &str| {
+        let raiz = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes");
+        ph2d_brush_presets::Biblioteca::carregar(&raiz, None)
+            .entradas
+            .into_iter()
+            .find(|e| e.preset.parametros.name == nome)
+            .unwrap_or_else(|| panic!("{nome} de fábrica"))
+            .preset
+    };
+    let (aquarela, digital) = (de_fabrica("Watercolor Basic"), de_fabrica("Hard Round"));
     for from in ALL {
         let mut t = PainterTool::default();
         t.set_paint_media(from);
-        t.apply_brush_preset(1); // "Watercolor Basic"
+        t.preset_aplicar(&aquarela).expect("meio");
         assert_eq!(
             t.paint_media(),
             PaintMedia::Watercolor,
@@ -209,7 +221,7 @@ fn a_brush_preset_switches_medium_through_the_same_door() {
         // Digital Basic is the same law in the other direction.
         let mut t = PainterTool::default();
         t.set_paint_media(from);
-        t.apply_brush_preset(0);
+        t.preset_aplicar(&digital).expect("meio");
         assert_eq!(
             t.paint_media(),
             PaintMedia::Digital,

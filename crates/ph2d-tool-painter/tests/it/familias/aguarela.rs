@@ -301,7 +301,7 @@ pub const EM_ESTUDO: &[Receita] = &[
 
 /// A Aquarela básica (dono, 23/10): o pincel de fábrica do meio — os números do painel dele
 /// (`state_default::aquarela_de_fabrica`), capturados sem nada por cima — o mesmo nome e o mesmo pincel
-/// do «Watercolor Basic» do menu do topo (`apply_brush_preset`).
+/// do preset de fábrica «Watercolor Basic».
 pub const MEIOS: &[ReceitaMeio] = &[ReceitaMeio::aquarela(
     "Watercolor",
     "Basic",

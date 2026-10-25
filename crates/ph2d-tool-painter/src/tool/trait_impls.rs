@@ -277,12 +277,6 @@ impl PainterTool {
                     self.set_brush_texture_param_shown(slot, v as f32);
                 }
             }
-            // ── Preset pick (top of panel): value = preset idx (0 = Digital, 1 = Watercolor). ──
-            PanelEvent::SelectOption(id, value) if id == crate::ids::PAINTER_BRUSH_PRESET => {
-                if let Ok(idx) = value.parse::<u8>() {
-                    self.apply_brush_preset(idx);
-                }
-            }
             // ── Paint Mode pick: value = the `PaintMedia` wire u8. The four media are exclusive, and
             //    `set_paint_media` is the only thing that knows it (2026-07-22). ────────────────────
             // ── Card Line: o TIPO de linha procedural (plano 38 W2). ──────────────────────────

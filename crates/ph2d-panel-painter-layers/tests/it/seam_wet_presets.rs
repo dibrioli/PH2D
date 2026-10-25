@@ -306,10 +306,6 @@ fn fora_do_wet_paint_o_navegador_aparece_sem_os_volumes() {
                 "{meio:?}: volume do Wet fora dele"
             );
         }
-        assert!(
-            rect_of(&rects, ids::PAINTER_BRUSH_PRESET).is_none(),
-            "{meio:?}: o «Basic brush» saiu (dono 25/10): o navegador é o preset"
-        );
     }
 }
 

@@ -182,10 +182,11 @@ fn the_paper_survives_a_change_of_paint_mode() {
 /// porque o artista pegou uma ferramenta.
 ///
 /// **Mutação que tem de sangrar:** tirar o `sync_paper_across_slots()` de qualquer um deles (hoje seis:
-/// o do Mapping saiu com o dropdown, 2026-10-02).
+/// o do Mapping saiu com o dropdown, 2026-10-02). A row do «Preset» saiu com o `apply_brush_preset` (25/10): o
+/// preset de ficheiro não grava o papel (`DA_OBRA`), logo não o escreve.
 #[test]
 fn every_paper_knob_reaches_every_brush_slot() {
-    let knobs: [PaperKnob; 7] = [
+    let knobs: [PaperKnob; 6] = [
         ("Paper kind", |t| {
             t.set_brush_paper_kind(ph2d_painter_brush::TextureKind::PaperRough.to_u8());
         }),
@@ -194,7 +195,6 @@ fn every_paper_knob_reaches_every_brush_slot() {
         ("Paper Offset", |t| t.set_brush_paper_offset(0, 0.25)),
         ("Paper Contrast", |t| t.set_brush_paper_param(0, 0.9)),
         ("Paper reset", |t| t.reset_brush_paper()),
-        ("Preset", |t| t.apply_brush_preset(1)),
     ];
     for (name, turn) in knobs {
         let mut t = blank();

@@ -586,42 +586,6 @@ impl PainterTool {
         self.paint.brush.watercolor = true;
         self.paint.brush.granulation = 0.65; // LITERAL-OK: pronounced mineral-settling granulation
     }
-
-    /// Apply a one-click **brush preset** (the top-of-panel dropdown): `0` = **Digital Basic**, `1` =
-    /// **Watercolor Basic**. Both are the FACTORY brush of the paint slot
-    /// ([`super::PaintState::pinceis_de_fabrica`] — since 23/10 it carries the owner's watercolor numbers, the
-    /// same the factory preset file `Watercolor Basic` records) and PRESERVE the current colour + radius
-    /// (a preset is a look, not a reset of what/where you paint); everything else is set from scratch so
-    /// switching is deterministic. Plain state edit (no undo / pixel touch), like the section resets.
-    ///
-    /// ⚠️ **It finishes by going through the MEDIUM door** (2026-07-22). A preset writes `watercolor`
-    /// straight into the `BrushSpec`, which made it a *second* way to switch medium — and a second door
-    /// does not know the four are exclusive. Measured before the fix: with Wet Paint armed, picking
-    /// "Watercolor Basic" left `watercolor = true` **and** `wetpaint = true`, so the Paint Mode chip read
-    /// *Wet Paint* over a watercolor brush; and from Impasto it cleared the live slot's flag while
-    /// `brush_by_mode[Knife]` kept its own `impasto = true`, ready to resurrect on the next tool switch.
-    /// Routing the tail through `set_paint_media` makes the preset a *look* again, with the medium it
-    /// implies switched by the one thing that owns that question.
-    pub fn apply_brush_preset(&mut self, idx: u8) {
-        self.repoe_o_pincel_fora_do_spec();
-        let cur = self.paint.brush;
-        self.paint.brush = BrushSpec {
-            radius_px: cur.radius_px,
-            color: cur.color,
-            ..super::PaintState::pinceis_de_fabrica()[super::PaintMode::Paint.slot()]
-        };
-        // The medium the preset implies, switched by the one door that knows they are exclusive.
-        // ⚠️ **O preset semeia o PINCEL INTEIRO, e o papel vem dentro dele** — logo ele é o oitavo
-        // escritor do slot e atravessa a mesma porta. Sem isto, escolher um preset punha um papel só
-        // no slot vivo e pegar outra ferramenta o trocava debaixo da obra (o mecanismo medido em
-        // [`Self::sync_paper_across_slots`]).
-        self.sync_paper_across_slots();
-        self.set_paint_media(if idx == 1 {
-            super::PaintMedia::Watercolor
-        } else {
-            super::PaintMedia::Digital
-        });
-    }
 }
 
 #[cfg(test)]

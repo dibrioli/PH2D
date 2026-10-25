@@ -164,7 +164,7 @@ fn watercolor_app_params_incremental_vs_full_ablated(
     let size = 512u32;
     let mut t = PainterTool::default();
     t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
-    // Preset "Watercolor Basic" (watercolor_settings::apply_brush_preset idx 1) + água do smoke.
+    // Preset "Watercolor Basic" (o de antes de 23/10) + água do smoke.
     // Falloff/hardness ficam no default do app (Smooth/0 + watercolor_shape_auto = feather).
     // Gap restante conhecido: pressão fixa 1.0 (o desktop manda pressão real; dynamics.size_pressure
     // encolhe o primeiro dab) — o dump [wet-diag] do app fecha esse resíduo.

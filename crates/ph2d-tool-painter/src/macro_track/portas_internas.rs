@@ -12,7 +12,6 @@ pub const INTERNAS: &[&str] = &[
     "add_raster_layer",
     "add_texture_layer",
     "aplica_o_papel",
-    "apply_brush_preset",
     "apply_mask",
     "apply_mask_scratch",
     "apply_stroke_method_command",
@@ -55,6 +54,8 @@ pub const INTERNAS: &[&str] = &[
     "pick_wet_tool",
     // A mão do pincel (L2): o cartão Pen chega-lhe pelo `handle_panel_event`.
     "set_mao",
+    // A mão do preset activo: a aplicação do preset e a ponte da biblioteca, nunca o artista.
+    "set_mao_do_preset",
     // O jitter da marca (L4): o cartão Jitter chega-lhe pelo `handle_panel_event`.
     "set_marca",
     "set_marca_secundaria",
@@ -342,6 +343,7 @@ pub const INTERNAS: &[&str] = &[
     "toggle_brush_space_attenuation",
     "toggle_brush_texture_rake",
     "toggle_brush_tiling",
+    "toggle_brush_wash",
     "toggle_brush_watercolor",
     "toggle_brush_watercolor_shape_auto",
     "toggle_clone_aligned",

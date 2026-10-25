@@ -262,7 +262,7 @@ impl PainterTool {
         self.paint.brush.impasto = on;
         // ⚠️ The three relief slots are written UNCONDITIONALLY — an early return on "the live flag
         // already matches" would be assuming an invariant instead of establishing one, and a whole-spec
-        // write moves that flag behind this door's back: `apply_brush_preset` replaces `paint.brush`
+        // write moves that flag behind this door's back: a brush preset replaced `paint.brush`
         // outright, so the live `impasto` read false while `brush_by_mode[Knife]` still held `true`,
         // ready to come back on the next tool switch. Caught by a gate, not by reasoning.
         for mode in RELIEF_SLOTS {

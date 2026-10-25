@@ -331,8 +331,8 @@ pub(crate) fn aquarela_neutra(t: &mut PainterTool) {
 }
 
 /// **O «Watercolor Basic» de ANTES de 23/10** (as constantes wet_edges: Spacing 0,05, Edge 3, Ragged
-/// Edge 6, papel cold-press) — desde 23/10 o `apply_brush_preset(1)` dá a fábrica do dono; os portões de
-/// LEI que usavam o preset como fixtura medem este pincel. O corpo é o do `apply_brush_preset` de então.
+/// Edge 6, papel cold-press) — desde 23/10 o «Watercolor Basic» é a fábrica do dono; os portões de
+/// LEI que usavam o preset como fixtura medem este pincel. O corpo é o do preset de então.
 pub(crate) fn watercolor_basic_de_antes(t: &mut PainterTool) {
     use ph2d_painter_brush::{TextureKind, TextureMapping, TextureSettings};
     t.repoe_o_pincel_fora_do_spec();

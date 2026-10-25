@@ -6103,6 +6103,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-constraints"
+version = "0.0.0"
+dependencies = [
+ "ph2d-affine",
+ "ph2d-skeleton",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "ph2d-contact"
 version = "0.0.0"
 dependencies = [

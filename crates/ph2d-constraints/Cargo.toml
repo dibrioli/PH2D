@@ -1,0 +1,23 @@
+[package]
+name = "ph2d-constraints"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# A LEI das constraints 2D, sem ECS e sem mídia (plano: docs/BlenderConstraints/01_plano.md §2).
+# O ângulo (mistura pelo arco curto, limite circular) é do `ph2d-skeleton` — uma lei, um dono.
+[dependencies]
+ph2d-affine = { path = "../ph2d-affine" }
+ph2d-skeleton = { path = "../ph2d-skeleton" }
+serde = { version = "1", features = ["derive"], default-features = false }
+
+[dev-dependencies]
+serde_json = "1"
+
+[lints]
+workspace = true

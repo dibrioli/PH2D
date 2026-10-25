@@ -14,6 +14,28 @@ pub struct Cena {
     pub a_vista: bool,
 }
 
+/// O que pode tapar a cena num instante (a shell preenche; a lei é [`Tapa::a_vista`]).
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub struct Tapa {
+    /// O jogo está no palco (janela própria ou ecrã cheio): o jogo é o que se vê.
+    pub palco: bool,
+    /// Uma aba de documento (Painter, editor de animações, de scripts…) está à frente no editor.
+    pub aba: bool,
+    /// Um campo de texto tem o teclado.
+    pub texto: bool,
+    /// Um modo do editor dono do teclado: a paleta, um menu ou diálogo, a prévia do Morph.
+    pub modo: bool,
+}
+
+impl Tapa {
+    /// ⭐ No palco as abas ficam ATRÁS do jogo e não o tapam (report do dono 25/10: com o editor de
+    /// animações aberto a janela do jogo e o ecrã cheio não recebiam teclas); o texto e os modos tapam sempre.
+    #[must_use]
+    pub fn a_vista(self) -> bool {
+        (self.palco || !self.aba) && !self.texto && !self.modo
+    }
+}
+
 /// ⭐ **O foco do jogo**: o Play dá-o (qualquer porta — detectado pela SUBIDA do relógio, nunca porta a porta), um
 /// clique na cena dá-o, um clique fora tira-o (Godot, `06` §2).
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
@@ -204,6 +226,38 @@ pub fn destino(t: Tecla, jogo_tem: bool, previa: bool) -> Destino {
 mod tests {
     use super::*;
     use ph2d_input::{Event, Key};
+
+    /// ⭐ Report do dono 25/10: no palco uma aba aberta no editor não tapa o jogo; no editor tapa.
+    #[test]
+    fn no_palco_a_aba_aberta_nao_tapa_o_jogo() {
+        let aba = Tapa {
+            aba: true,
+            ..Tapa::default()
+        };
+        assert!(!aba.a_vista(), "no editor a aba tapa a cena");
+        assert!(
+            Tapa { palco: true, ..aba }.a_vista(),
+            "no palco a aba fica atrás do jogo"
+        );
+        for tapa in [
+            Tapa {
+                palco: true,
+                texto: true,
+                ..Tapa::default()
+            },
+            Tapa {
+                palco: true,
+                modo: true,
+                ..Tapa::default()
+            },
+        ] {
+            assert!(
+                !tapa.a_vista(),
+                "{tapa:?}: texto e modos tapam até no palco"
+            );
+        }
+        assert!(Tapa::default().a_vista());
+    }
 
     const CORRE: Cena = Cena {
         a_correr: true,

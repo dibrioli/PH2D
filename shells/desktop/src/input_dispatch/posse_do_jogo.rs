@@ -2,21 +2,22 @@
 //! em [`ph2d_app_components::posse_do_jogo`]; o porquê em `docs/CodeEditor/06_posse_do_teclado.md`.
 
 use super::*;
-use ph2d_app_components::posse_do_jogo::{Cena, Tecla, Transporte};
+use ph2d_app_components::posse_do_jogo::{Cena, Tapa, Tecla, Transporte};
 use ph2d_i18n::tr;
 use winit::keyboard::KeyCode;
 
 impl crate::App {
     /// A cena corre? Está à vista (nenhuma aba de documento por cima, nenhum campo de texto com o teclado)?
     pub(crate) fn cena_do_jogo(&self) -> Cena {
-        // Tapam-na também os modos do editor donos do teclado: a paleta, um menu ou diálogo, a prévia do Morph.
         let a_vista = self.hero_ref().is_some_and(|h| {
-            h.documents.active().is_none()
-                && h.documents.surface_active().is_none()
-                && !h.text_entry_focused()
-        }) && !self.menu_aberto()
-            && !self.command_palette_open()
-            && !self.morph_preview;
+            Tapa {
+                palco: self.no_palco(),
+                aba: h.documents.active().is_some() || h.documents.surface_active().is_some(),
+                texto: h.text_entry_focused(),
+                modo: self.menu_aberto() || self.command_palette_open() || self.morph_preview,
+            }
+            .a_vista()
+        });
         Cena {
             a_correr: self.playhead.is_playing(),
             a_vista,

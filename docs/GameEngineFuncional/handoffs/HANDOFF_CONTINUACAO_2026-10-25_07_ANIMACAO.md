@@ -38,7 +38,7 @@ ainda por fazer** (passos abaixo).
 - **Duas premissas do plano REFUTADAS por medição:** «o dado não muda» (tags são intervalos ⇒ lista irmã) e
   «a folha do herói tem calhas» (não tem; o plano diz «maior divisor», o código é o menor ≥ corridas).
 
-## Commits da onda (base `6bae4ec8ad`, 17)
+## Commits da onda (base `6bae4ec8ad`, 15 + este handoff)
 
 | sha | O quê |
 |---|---|

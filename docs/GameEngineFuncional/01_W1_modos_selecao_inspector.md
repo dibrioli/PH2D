@@ -29,6 +29,24 @@
   troca pelo canvas acontece onde o clique chega ao pick (fora da pegada do Painter, a ferramenta Select do
   vetor/Flip) e sempre pela Hierarquia.
 
+## Estado (24/10, commit `e0334a4b88`) e o que fica ABERTO
+
+- ✅ Lei, portas, nomes, abas por tipo e Inspector à frente; `cargo check --workspace --all-targets` limpo;
+  18 corridas por nome verdes (editor-core object_mode/mode_drive/task_layout/tool_bar · painter
+  paint_mode/image_edit_mode · vec vector_mode · registry-init dos três · hierarchy rows · host-desktop
+  layout/mode_keys · i18n inteira).
+- ⏳ **Pergunta ao dono (produto):** com uma ferramenta de DESENHO na mão (pincel do Flip, caneta do vetor)
+  o clique desenha em qualquer sítio — inclusive por cima de outro objecto (desenhar sobre uma imagem de
+  referência é o uso normal). Medido no código: `flip_wants_canvas` reclama o press antes do pick
+  (`despacho_clique_flip.rs:18`), o vetor idem quando `DrawMode != Select` (`despacho_clique_vetor.rs:123`);
+  o Painter só dentro da pegada (`painter_canvas_down`). Hoje a troca pelo canvas, nesses modos, é pela
+  Hierarquia ou com a ferramenta Select. Opção a oferecer: um gesto próprio (ex. Alt+clique) que escolhe o
+  objecto de cima em qualquer modo.
+- ⏳ Seam test com o Hero REAL (clique numa linha da Hierarquia durante um modo → Object + Inspector à
+  frente) e prova de mutação de `switches`/`reveal_inspector` — no fecho da linha.
+- ⏳ As ~10 cenas de smoke que fazem `bump_panel_z(INSP_PANEL)` à mão podem perder essa linha (a lei agora
+  fá-lo) — limpeza, não defeito.
+
 ## Gates (red-first)
 
 - `object_mode_tests`: `switches` (outro objecto · o próprio · parte de dentro · parte de um modo do tipo ·

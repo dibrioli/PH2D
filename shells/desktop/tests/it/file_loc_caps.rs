@@ -34,8 +34,8 @@ const FILE_OVERAGE_OK: &[(&str, usize, &str)] = &[
     ),
     (
         "main.rs",
-        1034,
-        "a raiz: ~600 linhas de declarações de `mod` e aliases, que não saem sem mudar o caminho de cada módulo — os dispositivos, o undo de imagem e os testes do tema já saíram (`line/loc-caps`). ⭐ 1118 → 1061 em 2026-10-05: os `mod` e os campos do 3D saíram com ele (`line/poda-3d`, ADR-0179). ⭐ 1061 → 1034 em 2026-10-25: o refresh do Flip saiu do `render_frame` (`line/GameEngineFuncional`)",
+        1031,
+        "a raiz: ~600 linhas de declarações de `mod` e aliases, que não saem sem mudar o caminho de cada módulo — os dispositivos, o undo de imagem e os testes do tema já saíram (`line/loc-caps`). ⭐ 1118 → 1061 em 2026-10-05: os `mod` e os campos do 3D saíram com ele (`line/poda-3d`, ADR-0179). ⭐ 1061 → 1034 em 2026-10-25: o refresh do Flip saiu do `render_frame` (`line/GameEngineFuncional`) ⭐ 1034 → 1031 em 2026-10-25: os cinco `cycle_pick_*` viraram UMA `CyclePick` (o `cycle_pick_world` era escrito e nunca lido, e saiu) — e o campo novo `pixel` (ADR-0195) cabe na mesma descida (`line/PixelArt`)",
     ),
 ];
 

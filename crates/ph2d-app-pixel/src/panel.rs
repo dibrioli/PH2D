@@ -9,7 +9,7 @@ use ph2d_editor_core::screens::hero::HeroScreen;
 use crate::PixelApp;
 
 /// O `Panel::ID` da `ph2d-panel-pixel-tools` (a família não vê o painel).
-pub const PANEL_ID: &str = "pixel";
+pub const PANEL_ID: &str = ph2d_editor_core::screens::hero::PANEL_PIXEL;
 
 impl PixelApp {
     /// Um gesto do painel PIXEL (o dreno do barramento); aplica-se no [`frame`] deste quadro.

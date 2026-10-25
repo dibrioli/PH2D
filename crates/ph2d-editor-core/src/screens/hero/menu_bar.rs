@@ -241,7 +241,7 @@ pub const MODULE_TRUTHS: [(NodeId, ModuleTruth); 23] = [
     // O literal é o `Panel::ID` da `ph2d-panel-macros` (W5d).
     (ids::TOPBAR_MACROS, ModuleTruth::Panel("macros")),
     // O literal é o `Panel::ID` da `ph2d-panel-pixel-tools` (ADR-0192).
-    (ids::TOPBAR_PIXEL, ModuleTruth::Panel("pixel")),
+    (ids::TOPBAR_PIXEL, ModuleTruth::Panel(super::PANEL_PIXEL)),
     (ids::TOPBAR_AUDIO_MIXER, ModuleTruth::Panel("audio_mixer")),
     (ids::TOPBAR_AUDIO_EDITOR, ModuleTruth::Panel("audio_editor")),
     (ids::TOPBAR_TOKENS, ModuleTruth::Panel("tokens")),

@@ -547,29 +547,22 @@ fn an_unreadable_animation_refuses_the_whole_file_and_leaves_the_session_alone()
     );
 }
 
-/// **A ARTE DOS PADRÕES no arquivo** (plano 33, W8) — filho (`#[path]`) pelo teto
-/// de LOC do HR-18, e FILHO pela razão exacta do de baixo: as fixtures desta
-/// suíte (`headless_app`, `write_project_art`, `tmp_path`) são as portas dele.
-#[path = "project_pattern_art_tests.rs"]
-mod pattern_art;
-
-/// **Os QUADROS no arquivo** (MiroClone, v185) — filho pela mesma razão: as fixtures são as portas.
+// Cada blob do arquivo num filho (`#[path]`) pelo teto de LOC do HR-18, e FILHO pela razão do `tape`
+// de baixo: as fixtures desta suíte (`headless_app`, `write_project_art`, `tmp_path`) são as portas
+// dele. A arte dos padrões (plano 33, W8) · os quadros (MiroClone, v185) · a macro aplicada · os
+// scripts (CodeEditor T7, v190) · as marcas do artista (Macros W9, v192) · os Pixel Sprites (v194).
 #[path = "project_boards_tests.rs"]
 mod boards;
 #[path = "project_macro_aplicada_tests.rs"]
 mod macro_aplicada;
-
-/// **Os SCRIPTS no arquivo** (CodeEditor T7, v190) — filho pela mesma razão.
-#[path = "project_scripts_tests.rs"]
-mod scripts;
-
-/// **As MARCAS DO ARTISTA no arquivo** (Macros W9, v192) — filho pela mesma razão.
 #[path = "project_marcas_tests.rs"]
 mod marcas;
-
-/// **Os PIXEL SPRITES no arquivo** (ADR-0192, v194) — filho pela mesma razão.
+#[path = "project_pattern_art_tests.rs"]
+mod pattern_art;
 #[path = "project_pixel_tests.rs"]
 mod pixel;
+#[path = "project_scripts_tests.rs"]
+mod scripts;
 
 /// **O que um load faz com a CORRIDA GRAVADA** (W17) — FILHO e não irmão porque as fixtures desta suíte
 /// (`headless_app`, `write_project`, `tmp_path`, `empty_state`) são as portas dele: copiá-las seria um

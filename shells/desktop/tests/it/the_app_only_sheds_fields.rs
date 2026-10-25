@@ -33,7 +33,11 @@
 ///
 /// ⭐ **173 → 172 em 2026-10-13** (`line/motion-value`, ADR-0115 emenda 3): o `last_timeline_keys_mode`
 /// saiu — o loop de cada vista arma-se no `TimelineState::arm_view_loop`.
-const TETO_CAMPOS: usize = 172;
+///
+/// ⭐ **172 → 169 em 2026-10-25** (`line/PixelArt`, ADR-0192): a família Pixel Art precisava do campo
+/// `pixel`; os cinco `cycle_pick_*` do clique no canvas viraram UMA `CyclePick` (e o `cycle_pick_world`,
+/// escrito e nunca lido, saiu) — a catraca desceu três degraus em vez de subir um.
+const TETO_CAMPOS: usize = 169;
 
 const APP_STATE: &str = include_str!("../../src/app_state.rs");
 

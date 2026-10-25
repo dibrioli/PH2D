@@ -20,7 +20,7 @@ pub(super) fn default_panel_visibility() -> std::collections::BTreeMap<&'static 
     // O painel MACROS (W5d) nasce FECHADO: a porta é o *Window → Macros*.
     map.insert("macros", false);
     // O painel PIXEL (ADR-0192) nasce FECHADO: abre ao entrar em Pixel Sprite ▸ Edit.
-    map.insert("pixel", false);
+    map.insert(PANEL_PIXEL, false);
     map
 }
 
@@ -35,6 +35,9 @@ pub const PANEL_MOTION_GRAPH: &str = "motion_graph";
 pub const PANEL_TIMELINE: &str = "timeline";
 /// O painel do MUNDO físico — o cartão do componente *World physics* da Cena ([`crate::hier_rows`]).
 pub const PANEL_PHYSICS: &str = "physics";
+/// O painel PIXEL (ADR-0192) — o `Panel::ID` da `ph2d-panel-pixel-tools`, e a chave que a família
+/// Pixel Art, o botão do chrome e o menu escrevem/leem. Segue o nome da crate (o censo do binário).
+pub const PANEL_PIXEL: &str = "pixel_tools";
 
 /// Canonical `&'static str` for known panel ids — keeps the
 /// visibility HashMap keys stable across calls without leaking.
@@ -51,7 +54,7 @@ pub(super) fn canonical_panel_id(id: &str) -> Option<&'static str> {
         // nome é conhecido.
         "tags" => Some("tags"),
         "macros" => Some("macros"),
-        "pixel" => Some("pixel"),
+        PANEL_PIXEL => Some(PANEL_PIXEL),
         _ => None,
     }
 }

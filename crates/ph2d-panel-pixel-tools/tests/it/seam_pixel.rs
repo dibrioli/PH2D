@@ -134,7 +134,10 @@ fn sem_sprite_em_edicao_nao_ha_controlo_nenhum() {
 fn o_x_fecha_o_painel() {
     let mut p = Palco::novo(info(true));
     let _ = p.carrega(ids::PIXEL_CLOSE);
-    assert!(!p.host.panel_visible("pixel"));
+    assert!(
+        !p.host
+            .panel_visible(ph2d_editor_core::screens::hero::PANEL_PIXEL)
+    );
 }
 
 #[test]

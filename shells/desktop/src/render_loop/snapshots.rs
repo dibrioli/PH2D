@@ -285,6 +285,13 @@ mod skew_gizmo_tests;
 
 /// O passe do gizmo: a poda dos mortos, a view da seleção primária e das extras (o `build_view`), o número do
 /// arrasto e o gizmo de ponto das juntas. Os gates que leem este passe pelo caminho do ficheiro leem-no aqui.
+///
+/// M14.7 B: a seleção que ainda resolve para uma entidade presente (pode ter sido apagada entre
+/// quadros) ganha uma `GizmoView` da bbox no mundo + câmera; seleção vazia limpa a view.
+/// M14.7 (parent-fix): o gizmo lê o `GlobalTransform` do `PresentWorld`, não o `Transform` local do
+/// `SimWorld` — depois de um reparent a sprite desenha-se em `parent.world ∘ local` (o extract lê o
+/// global) e o gizmo fugiria dela pelo deslocamento do pai. O `size` local da `Sprite` continua a vir
+/// do `SimWorld` (o rect de autor), multiplicado pela escala do mundo como no `RenderInstance`.
 #[allow(clippy::too_many_arguments)]
 fn publish_gizmo(
     hero: &mut HeroScreen,
@@ -302,24 +309,6 @@ fn publish_gizmo(
     joint_anchor_snap: Option<[f32; 2]>,
     join_draw_armed: bool,
 ) {
-    // M14.7 B: publish the gizmo's per-frame projection. When
-    // the selection still resolves to a present entity (it can
-    // vanish if the user deleted it between frames) we build a
-    // `GizmoView` from the world-space bbox + camera. Empty
-    // selection → clear the view so the painter skips.
-    //
-    // M14.7 polish (parent-fix): the gizmo MUST read
-    // `GlobalTransform` from PresentWorld — not the entity's
-    // local `Transform` in SimWorld. After a hierarchy reparent
-    // the child's local Transform stays the same but its world
-    // position is now parent.world ∘ local; the sprite renders
-    // at the new world position via the extract path (which
-    // reads GlobalTransform), so the gizmo has to do the same
-    // or it drifts away from the sprite by exactly the parent's
-    // world offset. The Sprite's local `size` is still pulled
-    // from SimWorld — it's the import-time author rect,
-    // multiplied here by the world scale extracted from the
-    // matrix to match the renderer's RenderInstance build.
     // Whether the Pivot transform tool is the active radio selection —
     // captured as a Copy bool so the gizmo-view closure (which can't
     // re-borrow `hero`) can emphasize the pivot dot.
@@ -410,8 +399,7 @@ fn publish_gizmo(
                     pivot_tool_active,
                 );
             }
-            // ADR-0129 Fatia 3: o contentor de um Envelope tem a caixa-união dos filhos (a porta acima
-            // gateia o Envelope: no Node aparece a gaiola).
+            // O Pixel Sprite (ADR-0192): a caixa da grelha à régua do projecto, com o `Transform`.
             if let Some(half) = ph2d_app_pixel::draw::half_extents(bits, gizmo_ppm) {
                 return Some(ph2d_app_vec::vec_gizmo_view::gizmo_view_from(
                     [0.0, 0.0],
@@ -423,6 +411,8 @@ fn publish_gizmo(
                     pivot_tool_active,
                 ));
             }
+            // ADR-0129 Fatia 3: o contentor de um Envelope tem a caixa-união dos filhos (a porta acima
+            // gateia o Envelope: no Node aparece a gaiola).
             let union = ph2d_app_vec::vec_gizmo_view::container_view(
                 sim,
                 vec_scene,

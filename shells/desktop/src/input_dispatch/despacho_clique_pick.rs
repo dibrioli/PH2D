@@ -144,8 +144,8 @@ impl crate::App {
             // surfaced via hero.gizmo.selected_len() at
             // paint time (Fase 0e polish).
             let primary = hero.gizmo.selection;
-            // O ciclo corrente fica atado a ESTA seleção — ver `cycle_pick_selection`.
-            self.cycle_pick_selection = primary;
+            // O ciclo corrente fica atado a ESTA seleção — ver `CyclePick::selection`.
+            self.cycle_pick.selection = primary;
             if let Some(entry) = resolve_live_entry(gfx.hero_live.as_ref(), primary) {
                 hero.selection = Some(ph2d_editor_core::HeroSelection {
                     label: entry.name.clone(),
@@ -446,28 +446,27 @@ impl crate::App {
             // escolher o pai na lista e voltar a clicar no MESMO ponto continuava o
             // ciclo antigo e devolvia o filho outra vez.
             let same_list = !hits.is_empty()
-                && hits == self.cycle_pick_hits
-                && hero.gizmo.selection == self.cycle_pick_selection;
+                && hits == self.cycle_pick.hits
+                && hero.gizmo.selection == self.cycle_pick.selection;
             if so_o_de_cima {
                 self.cycle_pick_hits.clear();
             } else if !same_list {
-                self.cycle_pick_world = Some(world_pos);
-                self.cycle_pick_hits = hits.clone();
-                self.cycle_pick_idx = cycle_start;
-                self.cycle_pick_count = 1;
+                self.cycle_pick.hits = hits.clone();
+                self.cycle_pick.idx = cycle_start;
+                self.cycle_pick.count = 1;
             } else {
-                self.cycle_pick_count = self.cycle_pick_count.saturating_add(1);
-                if self.cycle_pick_count.is_multiple_of(2) {
+                self.cycle_pick.count = self.cycle_pick.count.saturating_add(1);
+                if self.cycle_pick.count.is_multiple_of(2) {
                     // Even count → selection stays.
                 } else if !hits.is_empty() {
-                    self.cycle_pick_idx = (self.cycle_pick_idx + 1) % hits.len();
+                    self.cycle_pick.idx = (self.cycle_pick.idx + 1) % hits.len();
                 }
             }
             // No sprite under the cursor ⇒ None (the old vector-scene fallback retired with ADR-0108).
             let picked = if so_o_de_cima {
                 hits.first().copied()
             } else {
-                hits.get(self.cycle_pick_idx).copied()
+                hits.get(self.cycle_pick.idx).copied()
             };
             self.ramo_gizmo_pick_selecao(evt, picked, world_pos);
         }

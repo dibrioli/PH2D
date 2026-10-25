@@ -99,7 +99,7 @@ fn the_click_dispatch_starts_the_cycle_on_the_selection() {
     // ⚠️ E a segunda metade: mudar de seleção na HIERARQUIA tem de abrir um ciclo NOVO, senão o
     // ciclo antigo sobrevive e devolve o filho outra vez no mesmo ponto.
     assert!(
-        src.contains("hero.gizmo.selection == self.cycle_pick_selection"),
+        src.contains("hero.gizmo.selection == self.cycle_pick.selection"),
         "o ciclo deixou de estar atado a' selecao — escolher o pai na Hierarquia e clicar no mesmo \
          ponto continua o ciclo antigo"
     );

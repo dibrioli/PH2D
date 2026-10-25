@@ -32,7 +32,8 @@ const PREFAB: &str = "a link to a recipe of the project";
 /// projecto apontaria para o objecto errado.
 const SEM_REMAP: &str = "a reference to another object that is not remapped yet";
 
-/// **A tabela**, ordenada pelo nome canónico — a classificação de 24/10 (os 165 do registo do produto; 166 com a cola da W5).
+/// **A tabela**, ordenada pelo nome canónico — a classificação de 24/10 (os 165 do registo do produto; 166 com a cola da W5),
+/// mais o `PixelSprite` (25/10).
 pub const PORTAS: &[(&str, Porta)] = &[
     ("ph2d::constraints::Colas", Recusado(SEM_REMAP)),
     ("ph2d::constraints::Constraints", Recusado(SEM_REMAP)),
@@ -72,6 +73,8 @@ pub const PORTAS: &[(&str, Porta)] = &[
     ("ph2d::ecs::PaintedDoc", SoDaFamilia(Painter)),
     ("ph2d::ecs::ParticleEmitter", Gravado),
     ("ph2d::ecs::PathFollow", Recusado(DO_PROJECTO)),
+    // O documento do Pixel Sprite vive no blob do projecto (ADR-0192); o componente só o nomeia.
+    ("ph2d::ecs::PixelSprite", Recusado(DO_PROJECTO)),
     ("ph2d::ecs::RootOrder", DoAplicar),
     ("ph2d::ecs::ScrollFactor", Gravado),
     ("ph2d::ecs::ScrollLimits", Gravado),

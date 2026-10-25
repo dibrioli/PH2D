@@ -29,13 +29,13 @@ pub struct PixelToolsPanel;
 impl Panel for PixelToolsPanel {
     type State = PixelToolsPanelState;
 
-    const ID: &'static str = "pixel";
+    const ID: &'static str = ph2d_editor_core::screens::hero::PANEL_PIXEL;
     const NODE_ID: NodeId = ph2d_editor_core::ids::PIXEL_PANEL;
     /// Nasce FECHADO: abre ao entrar em Pixel Sprite ▸ Edit (a família escreve a visibilidade) e
     /// pelo *Window → Pixel*.
     const DEFAULT_VISIBLE: bool = false;
     const TITLE: TextKey = TextKey::new("panel.pixel.title");
-    const ICON: ph2d_editor_core::icons::IconId = ph2d_editor_core::icons::IconId::Palette;
+    const ICON: ph2d_editor_core::icons::IconId = ph2d_editor_core::icons::IconId::LayoutGrid;
     const ALLOWED_SLOTS: ph2d_editor_core::screens::slot::SlotSet =
         ph2d_editor_core::screens::slot::SlotSet::SIDES;
     const DEFAULT_SLOT: ph2d_editor_core::screens::slot::Slot =

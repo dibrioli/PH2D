@@ -47,7 +47,7 @@ const SHELL_DRIVEN_PANELS: &[(&str, &str)] = &[
     // visibilidade dele, que é exactamente a forma de falha que este gate existe para pegar.
     ("authored", "panel-authored"),
     // O painel PIXEL (ADR-0192): a família escreve a visibilidade dele ao entrar em Pixel Sprite ▸ Edit.
-    ("pixel", "panel-pixel-tools"),
+    ("pixel_tools", "panel-pixel-tools"),
     // ⚠️ O gate protege contra uma lista esquecida (`[features] default`) com OUTRA lista escrita
     // à mão — então ele só cobre o painel de que alguém lembrou. Medido: com um painel fora do
     // `default` do shell e fora desta lista este gate ficava VERDE (foi o caso do da escultura,

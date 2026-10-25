@@ -440,27 +440,8 @@ pub(crate) struct App {
     /// `frame_ms_ewma`. Surfaced as `BottomHudStats.raw_fps` so the
     /// status bar shows hardware capacity alongside the synced fps.
     pub(crate) frame_cpu_ms_ewma: f32,
-    /// M14.7 polish (19.3): overlap-cycle state for the canvas-pick
-    /// path. Each Primary Down at the same world position increments
-    /// `cycle_count`; on every ODD count we advance `cycle_idx` so
-    /// the user can step DOWN the stack at a fixed cursor location.
-    /// Even counts leave the selection alone (allowing drag without
-    /// re-cycling). Reset when the click moves > 4 px in world space
-    /// or the hit list shape changes.
-    pub(crate) cycle_pick_world: Option<[f32; 2]>,
-    pub(crate) cycle_pick_hits: Vec<u64>,
-    pub(crate) cycle_pick_idx: usize,
-    pub(crate) cycle_pick_count: u32,
-    /// ⭐ **A seleção com que o ciclo corrente foi aberto** (Enio, 2026-08-26).
-    ///
-    /// Sem ela o ciclo sobrevive a uma seleção feita **na Hierarquia**: o artista clicava num
-    /// ponto (a lista fica gravada), escolhia o pai na lista, voltava a clicar no MESMO ponto — a
-    /// lista era a mesma, o ciclo continuava de onde estava, e ele apanhava o filho outra vez. Com
-    /// ela, mudar de seleção por fora abre um ciclo NOVO, que começa no que ele escolheu.
-    ///
-    /// ⚠️ Guardada DEPOIS do clique (é a seleção que ficou), senão o próprio ciclo se invalidaria a
-    /// cada passo e nunca andaria.
-    pub(crate) cycle_pick_selection: Option<u64>,
+    /// O ciclo de sobreposição do clique no canvas (M14.7 19.3): ver [`CyclePick`].
+    pub(crate) cycle_pick: CyclePick,
     /// Mirror of `last_bgremoval_pushed_entity` for the Color
     /// Equalization tool. `Some(bits)` is the entity whose source
     /// RGBA was last pushed into the active `ColorEqualizationTool`
@@ -913,6 +894,20 @@ pub(crate) struct RubberBandState {
     /// existing selection. `false` → resolve replaces the selection
     /// (clearing first).
     pub(crate) add_mode: bool,
+}
+
+/// O ciclo de sobreposição do clique no canvas (M14.7 19.3): cada Primary Down sobre a MESMA lista
+/// de acertos soma `count`; nas contagens ímpares `idx` desce um degrau da pilha, nas pares a seleção
+/// fica (para arrastar sem re-ciclar). Uma lista nova ou outra seleção abrem um ciclo novo.
+#[derive(Debug, Default)]
+pub(crate) struct CyclePick {
+    pub(crate) hits: Vec<u64>,
+    pub(crate) idx: usize,
+    pub(crate) count: u32,
+    /// ⭐ **A seleção com que o ciclo corrente foi aberto** (Enio, 2026-08-26): sem ela, escolher o
+    /// pai na Hierarquia e voltar a clicar no MESMO ponto continuava o ciclo e devolvia o filho.
+    /// ⚠️ Guardada DEPOIS do clique (a seleção que ficou), senão o ciclo invalidava-se a cada passo.
+    pub(crate) selection: Option<u64>,
 }
 
 /// ⭐⭐ Os latches das cenas da família das INSTÂNCIAS — irmão por tecto de LOC.

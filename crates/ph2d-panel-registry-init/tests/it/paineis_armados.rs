@@ -76,7 +76,7 @@ pub const TABELA: &[Armacao] = &[
     // Trocar e a paleta.
     #[cfg(feature = "panel-pixel-tools")]
     Armacao {
-        painel: "pixel",
+        painel: "pixel_tools",
         arma: |_| arma_o_pixel(),
         desarma: desarma_o_pixel,
     },

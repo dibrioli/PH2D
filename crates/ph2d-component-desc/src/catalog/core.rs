@@ -371,15 +371,6 @@ pub const DESCS: &[D] = &[
         &[],
     )
     .hidden(Hidden::Editor),
-    // ⭐ O objecto Pixel Sprite (ADR-0192) — chega com Add ▸ Pixel Sprite, que cria o documento;
-    // anexá-lo pela paleta faria um objecto sem pixels.
-    D::intrinsic(
-        "ph2d::ecs::PixelSprite",
-        "component.pixel_sprite.name",
-        C::Animation,
-        &[],
-    )
-    .hidden(Hidden::Editor),
     // ⚠️ `Editor`: o nome é a IDENTIDADE que as referências duráveis seguem. O script renomeia a
     // correr pela propriedade da corrida `name` (`RunName`, doc CodeEditor 11), nunca por este campo.
     D::intrinsic("ph2d::ecs::Name", "component.name.name", C::Identity, NAME)
@@ -416,6 +407,15 @@ pub const DESCS: &[D] = &[
     )
     .coded("order_in_layer")
     .row_of("ph2d::ecs::Transform"),
+    // ⭐ O objecto Pixel Sprite (ADR-0192) — chega com Add ▸ Pixel Sprite, que cria o documento;
+    // anexá-lo pela paleta faria um objecto sem pixels. ⚠️ Em ordem: o `desc_for` é busca binária.
+    D::intrinsic(
+        "ph2d::ecs::PixelSprite",
+        "component.pixel_sprite.name",
+        C::Animation,
+        &[],
+    )
+    .hidden(Hidden::Editor),
     // ⚠️ Máquina: o editor mantém-no para desempatar raízes (*"não se escolhe um desempate
     // melhor, não se tem empate"*). Um artista que o pusesse à mão estaria a escrever num
     // campo que o próprio editor reescreve no quadro seguinte.

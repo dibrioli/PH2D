@@ -78,10 +78,10 @@ fn centro(r: Rect) -> (f32, f32) {
     (r.x + r.w * 0.5, r.y + r.h * 0.5)
 }
 
-/// ⭐⭐ **Arrastar a pega da Sprite Sheet para cima do Render Source põe-na no topo das três**, e
+/// ⭐⭐ **Arrastar a pega da Color & Tint para cima do Render Source põe-na no topo das três**, e
 /// um clique PARADO na pega não reordena nem dobra nada. *Mutações: tirar o registo da pega no
 /// `begin_section` ⇒ o Down cai no cabeçalho e dobra a secção; o plano a ignorar a ordem ⇒ a
-/// Sprite Sheet continua em baixo; o plano a não devolver o fantasma ⇒ o quadro a meio do arrasto
+/// Color & Tint continua em baixo; o plano a não devolver o fantasma ⇒ o quadro a meio do arrasto
 /// tem a mesma geometria do de depois.*
 #[test]
 fn arrastar_a_pega_poe_a_seccao_onde_se_larga() {
@@ -90,13 +90,13 @@ fn arrastar_a_pega_poe_a_seccao_onde_se_larga() {
     set_current_inspector_sprite(Some(sprite()));
     let r = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
     let render = rect_of(&r, core_ids::INSP_LIVE_RENDER_SECTION);
-    let sheet = rect_of(&r, core_ids::INSP_LIVE_SHEET_SECTION);
-    let pega = rect_of(&r, core_ids::INSP_LIVE_SHEET_GRIP);
+    let sheet = rect_of(&r, core_ids::INSP_LIVE_COLOR_SECTION);
+    let pega = rect_of(&r, core_ids::INSP_LIVE_COLOR_GRIP);
     assert!(
         sheet.y > render.y,
-        "fixtura: a Sprite Sheet comeca por baixo"
+        "fixtura: a Color & Tint comeca por baixo"
     );
-    let dobrada = h.store().is_collapsed(core_ids::INSP_LIVE_SHEET_SECTION);
+    let dobrada = h.store().is_collapsed(core_ids::INSP_LIVE_COLOR_SECTION);
 
     // Um clique PARADO na pega: nada muda.
     let (px, py) = centro(pega);
@@ -107,7 +107,7 @@ fn arrastar_a_pega_poe_a_seccao_onde_se_larga() {
         "um clique parado reordenou"
     );
     assert_eq!(
-        h.store().is_collapsed(core_ids::INSP_LIVE_SHEET_SECTION),
+        h.store().is_collapsed(core_ids::INSP_LIVE_COLOR_SECTION),
         dobrada,
         "o Down na pega caiu no cabecalho e dobrou a seccao"
     );
@@ -132,14 +132,12 @@ fn arrastar_a_pega_poe_a_seccao_onde_se_larga() {
 
     let r = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
     let render = rect_of(&r, core_ids::INSP_LIVE_RENDER_SECTION);
-    let sheet = rect_of(&r, core_ids::INSP_LIVE_SHEET_SECTION);
-    let color = rect_of(&r, core_ids::INSP_LIVE_COLOR_SECTION);
+    let sheet = rect_of(&r, core_ids::INSP_LIVE_COLOR_SECTION);
     set_current_inspector_sprite(None);
     assert!(
-        sheet.y < render.y && render.y < color.y,
-        "a Sprite Sheet nao subiu para o topo das tres: sheet {} · render {} · color {}",
+        sheet.y < render.y,
+        "a Color & Tint nao subiu para cima do Render Source: color {} · render {}",
         sheet.y,
-        render.y,
-        color.y
+        render.y
     );
 }

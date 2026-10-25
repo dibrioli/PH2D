@@ -281,11 +281,7 @@ fn sheet_preview_row(
     )
 }
 
-/// **Espelhar (Flip H / Flip V)** — as duas caixas lado a lado da §4.
-///
-/// ⚠️ **Função irmã por CAP** (200), como a [`sheet_preview_row`] abaixo: com este bloco inline a
-/// [`paint_sprite_sheet_section`] media **212** depois de os rótulos passarem pela tabela — o
-/// `tr("…")` alonga a chamada e o `rustfmt` parte-a. *A cura de um tecto estourado é o CORTE.*
+/// **Espelhar (Flip H / Flip V)** — as duas caixas lado a lado.
 #[allow(clippy::too_many_arguments)]
 fn paint_flip_rows(
     scene: &mut VectorScene,

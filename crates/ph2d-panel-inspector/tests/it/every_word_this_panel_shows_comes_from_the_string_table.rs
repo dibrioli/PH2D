@@ -52,6 +52,8 @@ const TABLES: &[&str] = &[
     "crates/ph2d-i18n/src/inspector_motion_input.rs",
     // A SÉTIMA: a secção MACRO (ADR-0186), pela mesma lei.
     "crates/ph2d-i18n/src/inspector_macro.rs",
+    // A OITAVA: o cartão «Animation» (plano GameEngineFuncional 07), pela mesma lei.
+    "crates/ph2d-i18n/src/anim_card.rs",
 ];
 
 /// ⭐ As excepções, **com o mecanismo** — `(ficheiro relativo a src/, texto exacto, porquê)`.

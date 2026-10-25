@@ -166,11 +166,6 @@ const POR_ID: &[(&str, Classe, &str)] = &[
         "a caixa diz se o marcador `PlayerSignals` EXISTE: estrutura, não valor (a lei do Mask2D)",
     ),
     (
-        "INSP_PLAYER_ANIM",
-        NaoAnimavel,
-        "o interruptor diz se o `CharacterAnimations` EXISTE: estrutura, não valor (a lei do Mask2D)",
-    ),
-    (
         "VECTOR_PENCIL_",
         NaoAnimavel,
         "ajuste da ferramenta Lápis (§8)",
@@ -319,7 +314,7 @@ const POR_FUNCAO: &[(&str, &str, Classe, &[&str], &str)] = &[
     ),
     (
         "ph2d-panel-inspector",
-        "sections/sprite_sheet.rs::paint_sprite_sheet_section",
+        "sections/sprite_pose.rs::number_row",
         Canal,
         &["component.field.sprite_grid.1", "component.field.sprite.10"],
         "o rótulo do catálogo vem da tabela da secção (F27 B2)",
@@ -482,7 +477,7 @@ const POR_FUNCAO: &[(&str, &str, Classe, &[&str], &str)] = &[
     ),
     (
         "ph2d-panel-inspector",
-        "sections/player_anim.rs::state_row",
+        "sections/anim_card.rs::character_rows",
         Canal,
         &[
             "component.field.character_animations.0",
@@ -803,10 +798,18 @@ const POR_FUNCAO: &[(&str, &str, Classe, &[&str], &str)] = &[
     ),
     (
         "ph2d-panel-inspector",
-        "sections/sprite_sheet.rs::sheet_preview_row",
+        "sections/sprite_pose.rs::sheet_preview_row",
         NaoAnimavel,
         &[],
         "mostrar a folha no canvas: estado da vista",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/anim_card.rs::paint_chooser",
+        NaoAnimavel,
+        &[],
+        "«Who Picks» diz se o `CharacterAnimations` EXISTE (e o autoplay de partida): estrutura, não \
+         valor (a lei do Mask2D)",
     ),
     (
         "ph2d-panel-inspector",

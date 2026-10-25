@@ -70,8 +70,8 @@ pub struct InspectorSpriteInfo {
     pub can_reimport: bool,
     /// Logical horizontal flip (mirrors sampled U; survives reparenting).
     ///
-    /// ⚠️ Editável **só na Sprite Sheet** (`sections/sprite_sheet.rs`) — o doc dizia «Render Source
-    /// / Sprite Sheet» e a Render Source não regista id de flip nenhum.
+    /// ⚠️ Editável no fim do Render Source (`sections/sprite_pose.rs`; a secção «Sprite Sheet» saiu no
+    /// plano GameEngineFuncional 07).
     pub flip_x: bool,
     /// Logical vertical flip (mirrors sampled V).
     pub flip_y: bool,

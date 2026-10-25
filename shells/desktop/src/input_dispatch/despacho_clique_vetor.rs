@@ -166,20 +166,15 @@ impl crate::App {
                     return true;
                 }
                 (ph2d_host::PointerButton::Primary, PointerKind::Down) if on_canvas => {
-                    if self.ramo_vetor_premido_modos() {
-                        return true;
-                    }
-                    if self.ramo_vetor_premido_corte_e_balde() {
-                        return true;
-                    }
-                    if self.ramo_vetor_premido_quina() {
-                        return true;
-                    }
-                    if self.ramo_vetor_premido_caneta() {
+                    // ⭐ Sobre um objecto de outro tipo o press fica seguro (o clique curto escolhe-o).
+                    if self.vetor_segura_o_clique() || self.ramo_vetor_premido_cadeia() {
                         return true;
                     }
                 }
                 (ph2d_host::PointerButton::Primary, PointerKind::Up) => {
+                    if self.vetor_clique_curto_escolhe() {
+                        return true;
+                    }
                     // Fim de gesto: as guias de snap não sobrevivem ao Up (o osso, que aqui
                     // morava, saiu para o `ramo_ferramenta_osso`).
                     self.vec_clear_snap_guides();
@@ -198,5 +193,13 @@ impl crate::App {
             }
         }
         false
+    }
+
+    /// Os press da ferramenta vetorial, pela ordem: os modos, o corte e o balde, a quina, a caneta.
+    pub(super) fn ramo_vetor_premido_cadeia(&mut self) -> bool {
+        self.ramo_vetor_premido_modos()
+            || self.ramo_vetor_premido_corte_e_balde()
+            || self.ramo_vetor_premido_quina()
+            || self.ramo_vetor_premido_caneta()
     }
 }

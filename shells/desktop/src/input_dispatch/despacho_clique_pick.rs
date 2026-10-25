@@ -251,12 +251,55 @@ impl crate::App {
     /// 24/10: *«não consigo selecionar a imagem no canvas. Permita com um clique curto»*). Só o de
     /// cima (a lei do modo); escolhê-lo volta a Object (`mode_drive::chosen`).
     pub(super) fn vetor_node_escolhe_outro_tipo(&mut self) {
-        let Some(gfx) = self.gfx.as_mut() else {
+        if let Some(b) = self.vetor_outro_tipo_no_topo() {
+            self.vetor_escolhe_outro_tipo(b);
+        }
+    }
+
+    /// ⭐ **O press de uma ferramenta do vetor sobre um objecto de OUTRO tipo fica seguro**
+    /// (`ph2d_app_vec::short_click`): `true` = segurado, a ferramenta não o vê (ainda).
+    pub(super) fn vetor_segura_o_clique(&mut self) -> bool {
+        let editing_text = self.vec.text_edit.is_some();
+        let pen_drawing = self.vec.pen.is_drawing();
+        let mode = self.vec.draw_config.mode;
+        if !ph2d_app_vec::short_click::may_hold(mode, pen_drawing, editing_text) {
+            return false;
+        }
+        let Some(bits) = self.vetor_outro_tipo_no_topo() else {
+            return false;
+        };
+        let at = self.last_pointer;
+        self.vec.held_press = Some(ph2d_app_vec::short_click::HeldPress { bits, at });
+        true
+    }
+
+    /// O press seguro virou ARRASTO: a ferramenta recebe-o no ponto onde começou e desenha.
+    pub(super) fn vetor_arrasto_solta_o_clique(&mut self) {
+        let Some(held) = self.vec.held_press else {
             return;
         };
-        let Some(hero) = gfx.hero_screen.as_mut() else {
+        if !ph2d_app_vec::short_click::became_a_drag(held, self.last_pointer) {
             return;
+        }
+        self.vec.held_press = None;
+        let now = std::mem::replace(&mut self.last_pointer, held.at);
+        self.ramo_vetor_premido_cadeia();
+        self.last_pointer = now;
+    }
+
+    /// O Up de um press seguro (clique curto): escolhe o objecto. `true` = era um.
+    pub(super) fn vetor_clique_curto_escolhe(&mut self) -> bool {
+        let Some(held) = self.vec.held_press.take() else {
+            return false;
         };
+        self.vetor_escolhe_outro_tipo(held.bits);
+        true
+    }
+
+    /// O objecto de CIMA sob o ponteiro, se não é uma forma vetorial.
+    fn vetor_outro_tipo_no_topo(&mut self) -> Option<u64> {
+        let gfx = self.gfx.as_mut()?;
+        let hero = gfx.hero_screen.as_ref()?;
         let window_size = crate::scene_mapping::janela(hero.view.center_split, gfx.surface.size());
         let mut pw = crate::hover_highlight::PickWorld {
             window_size,
@@ -276,18 +319,22 @@ impl crate::App {
             self.last_pointer,
         );
         let top = &hits[..hits.len().min(1)];
-        if let Some(b) =
-            ph2d_app_vec::vector_mode::another_kind_under(true, top, &self.vec.entities)
-        {
-            ph2d_editor_core::screens::hero::mode_drive::chosen(hero, Some(b), false);
-            // ⚠️ Pela porta que avisa a sincronia: sem ela a caneta vazia apagava a escolha.
-            ph2d_app_vec::vec_selection::choose_other_kind(
-                &mut hero.gizmo,
-                &mut self.vec.pen,
-                &mut self.vec.sel,
-                b,
-            );
-        }
+        ph2d_app_vec::vector_mode::another_kind_under(true, top, &self.vec.entities)
+    }
+
+    /// Escolhe `b` (de outro tipo): o modo volta a Object (`mode_drive::chosen`).
+    fn vetor_escolhe_outro_tipo(&mut self, b: u64) {
+        let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) else {
+            return;
+        };
+        ph2d_editor_core::screens::hero::mode_drive::chosen(hero, Some(b), false);
+        // ⚠️ Pela porta que avisa a sincronia: sem ela a caneta vazia apagava a escolha.
+        ph2d_app_vec::vec_selection::choose_other_kind(
+            &mut hero.gizmo,
+            &mut self.vec.pen,
+            &mut self.vec.sel,
+            b,
+        );
     }
 
     /// O pick de canvas: os hits pela porta única, a ordem (filhos antes, a seleção primeiro) e o ciclo.

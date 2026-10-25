@@ -403,6 +403,9 @@ pub struct VecState {
     /// conteúdo e os glyphs já na cena. `None` = sem cursor de texto ativo.
     pub text_edit: Option<crate::text_edit::VecTextEdit>,
 
+    /// O press seguro sobre um objecto de outro tipo ([`crate::short_click`]).
+    pub held_press: Option<crate::short_click::HeldPress>,
+
     /// ⭐ **O ESTILO de texto corrente** — o que o painel edita e a PRÓXIMA sessão herda.
     /// Um grupo e não oito campos soltos porque o assunto é um só, e porque os valores com
     /// que nasce não são os do `Default` dos tipos (ver [`TextKnobs`]).

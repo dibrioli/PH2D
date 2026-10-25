@@ -169,6 +169,7 @@ pub mod resize_box_edit;
 pub mod selection_sync;
 pub mod shape_build;
 pub mod shape_params;
+pub mod short_click;
 pub mod svg_export;
 pub mod svg_import;
 pub mod symmetry_live;

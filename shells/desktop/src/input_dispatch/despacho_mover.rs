@@ -6,6 +6,8 @@ impl crate::App {
     /// Os arrastos da ferramenta vetorial: a região, o Build, o osso posado, a gaiola, a caneta, o gradiente, a forma,
     /// o lápis, o Width, o conector e as alças (conector, texto, fichas), e a âncora do motion path.
     pub(super) fn ramo_mover_vetor(&mut self) -> bool {
+        // O press seguro sobre outro objecto que vira arrasto vai à ferramenta, e o Move segue.
+        self.vetor_arrasto_solta_o_clique();
         // ADR-0108 Fase 1: o gesto de REGIÃO do modo Node — o canto vivo segue, e o LAÇO grava
         // mais um ponto se andou o bastante. Early-return para não panar / desenhar. No-op parado.
         if let Some(m) = self.vec.marquee.as_mut() {

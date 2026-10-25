@@ -82,6 +82,11 @@ pub fn membro(k: FieldKey) -> Option<&'static str> {
     crate::canal_componente::nome_da_faixa(f, faixa)
 }
 
+/// A posição (1, 2, …) de cada item publicado, por `(entidade, ItemId)` — só para o NOME da linha
+/// do dope-sheet («Duration 2»); ⛔ nunca é identidade. O funil publica-a com os valores.
+#[derive(bevy_ecs::resource::Resource, Debug, Default, Clone, PartialEq, Eq)]
+pub struct PosicoesDosItens(pub BTreeMap<(u64, u32), u16>);
+
 #[cfg(test)]
 #[path = "canal_lista_tests.rs"]
 mod tests;

@@ -74,6 +74,51 @@ Gates (vermelhos por mutação antes):
 | `toda_lista_do_catalogo_tem_codigo` | apaga um código |
 | `o_doc_v23_migra_para_v24` | a migração mantém a posição |
 
+### A1 — ✅ as listas dos COMPONENTES têm identidade (25/10)
+
+Feito (a pilha do Vetor é a A2). Dez listas, não oito: **o gatilho (`SignalOnAction`) também é lista** — o censo achou-o;
+`SpriteAnimations` fica isento com o porquê (as tags são intervalos da folha: o parâmetro da própria animação).
+
+- **`ItemId(u32)`** na folha nova `ph2d-item-id` (o `Tween` vive no `ph2d-tween`, que não vê o ECS), `item` no FIM de cada um dos
+  dez itens. O passe `ph2d_ecs::item_id::assign_missing_item_ids` (`item_id.rs:167`) corre DENTRO do
+  `assign_missing_stable_ids` (`stable_id.rs:237`) — logo em todos os sítios que já o chamam (quadro, gravação, cópia, nome),
+  sem a shell conhecer componente nenhum. Passes por tipo: os oito do `ph2d-ecs` + `item_id::regista` (`:141`) no registo da
+  física (o `Health`).
+- ⛔ **Contradiz o plano (c):** a unicidade é por ENTIDADE, não por projecto. Medido no código: o sync mestre→instância
+  (`ph2d-app-components/src/instance_sync.rs`, cabeçalho: *«compara bytes e escreve só o que difere»*, por quadro) reescreveria
+  os ids da instância com os do mestre e o passe refá-los-ia — um passo de undo por quadro, para sempre. A chave já leva a
+  entidade (o binding), e o contador do projecto nunca desce: um id dado nunca renasce noutro item. A cópia guarda os ids
+  (`copiar_um_objecto_guarda_os_ids_dos_itens`); o repetido DENTRO da entidade é refeito (`item_id.rs:192`).
+- **Formato:** `PROJECT_SCHEMA` **194 → 195** (`project_schema.rs`, a tripla não se mexe). O 194 lê-se com o tipo vivo; todo
+  `<= 194` passa os blobs pela forma congelada (`item_id_v194.rs`, `health_v194.rs`) em `project_load_read.rs:238`. ⚠️ A
+  leitura exige o ÚLTIMO byte (`item_id.rs:107`): a migração `v128` já reescreve a tabela de acções com o tipo VIVO, e o
+  postcard ignora a cauda — sem a leitura exacta duas acções sairiam desalinhadas (`um_blob_ja_na_forma_nova_passa_intacto`).
+- **Família `LISTA = 8`** (não 11: o `canal.rs` já a reservava e o plano dizia 8; 9 e 10 são MUNDO e MESA). O vocabulário mora
+  na folha (`ph2d_component_desc::lista`, `catalog/listas.rs:248`), para o painel calcular a chave sem ver o ECS
+  (`lista::chaves`, `lista.rs:89`). A lei das faixas passou a UMA (`FieldDesc::faixas_de_canal`, a do COMPONENTE). As escolhas
+  dos itens (canal, curva, verbo, aresta, de quem, alvo por…) ganharam `options!`; as setas, as resistências e as âncoras
+  ganharam descritor; `from`/`to` da seta são `Int` (índices, nunca interpolados). `FieldKey::grupo` devolve o terceiro
+  membro em `u32`: o grupo de um item é o `i:j` inteiro (dois timers são dois grupos; x/y da mesma âncora, um).
+- **Funil** `ph2d-app-components/src/canais_lista.rs`, JSON genérico pelo registo (como o COMPONENTE), chamado de dentro de
+  `canais_componente::{publicar, aplicar}` — a shell não cresce por ele. O `FieldDrive` guarda a LISTA inteira. O nome da linha
+  do dope-sheet é a POSIÇÃO de agora («Duration 2», `PosicoesDosItens` → `ph2d-timeline-persist/src/lib.rs:426`), nunca o id.
+- **Losango:** `sections/canal_item::regista` (a porta) em cada fileira; os chips da aresta, da comparação, do verbo e do clip
+  saíram do ponto pintado à mão. Gate: 20 `Divida` → `Canal` (`CANAL_DO_ITEM`); a tag do alvo → `NaoAnimavel` (fiação); o
+  estado INICIAL fica `Divida` com o porquê certo (campo do componente, não item); sai a entrada morta do `sync_counter_watch`.
+
+⚠️ **Medido — o tween e o timer por POSIÇÃO** (`tween.rs:95-107`, `timer.rs:277`): dois timers (1 s, 4 s) a correr, 0,5 s
+depois; dois tweens de opacidade. Antes: `[0.5, 0.4375]`. Apagar o timer 0: `[0.875]` — o tween 0 passa ao relógio de 4 s
+**com o tempo decorrido do timer apagado** (o `TimerRuntime` reconcilia por COMPRIMENTO: o slot 0 fica com o estado do apagado)
+e o tween 1 perde o relógio. Dois defeitos da mesma família, ambos nos LEITORES (`line/GameEngineFuncional`): não curados.
+
+| aberto | onde |
+|---|---|
+| o tween `i` ↔ o timer `i`, e o `TimerRuntime` por posição (acima) | `tween.rs:95`, `timer.rs:277` |
+| a seta aponta estados por ÍNDICE (`from`/`to: u8`): apagar um estado desloca as setas | `state_machine.rs:105` |
+| um `.ph2dmacro` gravado antes do 195 com um destes componentes no mundo: o blob não migra (o `MacroDoc` tem versão própria) | `ph2d-app-macros/src/mundo/grava.rs` |
+| `canal_componente::escolhas` lê `View::Toggle(t, f)` como `(off, on)` — a palavra de um canal de caixa sobre enum sai trocada (não é desta onda; mudar troca o sentido de chaves gravadas) | `canal_componente.rs:269` × `property.rs:222` |
+| o nome da linha é por `FieldKey` (sem a entidade): duas cópias com o mesmo id e posições diferentes partilham-no | `ph2d-timeline-persist/src/lib.rs:426` |
+
 ### B — a CENA é alvo da timeline (gravidade e mundo da física, mesa de som)
 
 Medido (25/10): todo `AnimTarget` vem de `bind(entity, prop)` (`doc.rs:499`); o binding resolve `wire_id → entity` pelo

@@ -177,3 +177,24 @@ fn toda_lista_do_catalogo_publica_os_campos_dos_itens() {
         }
     }
 }
+
+/// O NOME da linha diz a POSIÇÃO de agora (só nome: a chave continua a ser o id).
+#[test]
+fn a_posicao_do_item_acompanha_a_lista() {
+    let reg = registo();
+    let (mut sim, e, ids) = cena();
+    sim.world_mut()
+        .get_mut::<Timers>(e)
+        .expect("timers")
+        .0
+        .remove(0);
+    publicar(
+        &mut sim,
+        &reg,
+        &[e.to_bits()],
+        &mut TextosDosCanais::default(),
+    );
+    let pos = sim.world().resource::<cl::PosicoesDosItens>();
+    assert_eq!(pos.0.get(&(e.to_bits(), ids[2].0)), Some(&2));
+    assert_eq!(pos.0.get(&(e.to_bits(), ids[0].0)), None, "o apagado sai");
+}

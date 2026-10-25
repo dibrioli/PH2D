@@ -24,6 +24,8 @@ ph2d-anim = { path = "../ph2d-anim" }
 # O relógio: a animação em vista troca o clip activo e ressincroniza o loop dele.
 ph2d-core = { path = "../ph2d-core" }
 ph2d-ecs = { path = "../ph2d-ecs" }
+# O rótulo da linha de um campo de item (F30 §A1).
+ph2d-i18n = { path = "../ph2d-i18n" }
 # ⚠️ Invisível enquanto vivia na shell (HOWTO §1.3): a purga pergunta quem ainda pede um clip
 # pelo NOME — os ossos inteligentes (`SmartBone`).
 ph2d-skeleton-ecs = { path = "../ph2d-skeleton-ecs" }

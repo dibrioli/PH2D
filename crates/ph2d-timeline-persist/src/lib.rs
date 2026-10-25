@@ -422,6 +422,17 @@ pub fn publish_object_names(view: &mut ph2d_timeline::TimelineViewSnapshot, worl
             }
         }
     }
+    // Um campo de ITEM (F30 §A1) diz a posição do item na lista («Duration 2»), nunca o id.
+    if let Some(pos) = world.get_resource::<ph2d_ecs::canal_lista::PosicoesDosItens>() {
+        for t in tracks.iter() {
+            if let ph2d_timeline::PropKind::Field(k) = t.prop
+                && let Some(info) = ph2d_ecs::canal_lista::info(k)
+                && let Some(n) = pos.0.get(&(t.entity, ph2d_ecs::canal_lista::item(k).0))
+            {
+                channel_names.insert(k, format!("{} {n}", ph2d_i18n::tr(info.rotulo)));
+            }
+        }
+    }
     // Poda primeiro: um objeto que saiu das tracks (deletado, ou a track foi removida) não
     // pode continuar nomeando bits que o bevy já reciclou para OUTRO objeto.
     object_names.retain(|bits, _| tracks.iter().any(|t| t.entity == *bits));

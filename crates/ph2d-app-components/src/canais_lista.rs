@@ -48,7 +48,18 @@ pub fn campos(
     e: Entity,
     textos: &mut TextosDosCanais,
 ) -> Vec<(FieldKey, f32)> {
+    campos_e_posicoes(reg, w, e, textos).0
+}
+
+/// [`campos`] e a posição (1, 2, …) de cada item na lista dele — só para o nome da linha.
+fn campos_e_posicoes(
+    reg: &ComponentRegistry,
+    w: &World,
+    e: Entity,
+    textos: &mut TextosDosCanais,
+) -> (Vec<(FieldKey, f32)>, Vec<(u32, u16)>) {
     let mut out = Vec::new();
+    let mut posicoes = Vec::new();
     for l in lista::todas() {
         let Some(mut inteiro) = reg
             .get_by_name(l.componente)
@@ -59,11 +70,12 @@ pub fn campos(
         let Some(itens) = itens(l, &mut inteiro) else {
             continue;
         };
-        for item in itens.iter_mut() {
+        for (n, item) in itens.iter_mut().enumerate() {
             let id = id_de(item);
             if id.is_none() {
                 continue;
             }
+            posicoes.push((id.0, u16::try_from(n + 1).unwrap_or(u16::MAX)));
             for f in l.campos {
                 for x in 0..f.faixas_de_canal() {
                     let Some(k) = cl::chave(l.codigo, f.field_id, x, id) else {
@@ -76,7 +88,7 @@ pub fn campos(
             }
         }
     }
-    out
+    (out, posicoes)
 }
 
 /// O valor de UM canal (o eco depois da escrita).
@@ -102,21 +114,28 @@ pub fn publicar(
     entidades: &[u64],
     textos: &mut TextosDosCanais,
 ) {
-    let lotes: Vec<(u64, Vec<(FieldKey, f32)>)> = entidades
+    let lotes: Vec<(u64, (Vec<(FieldKey, f32)>, Vec<(u32, u16)>))> = entidades
         .iter()
         .filter_map(|&b| {
             let e = Entity::try_from_bits(b)?;
             sim.world().get_entity(e).ok()?;
-            Some((b, campos(reg, sim.world(), e, textos)))
+            Some((b, campos_e_posicoes(reg, sim.world(), e, textos)))
         })
         .collect();
+    let mut pos = sim
+        .world_mut()
+        .get_resource_or_insert_with(cl::PosicoesDosItens::default);
+    pos.0.retain(|(b, _), _| !entidades.contains(b));
+    for (b, (_, ps)) in &lotes {
+        pos.0.extend(ps.iter().map(|&(id, n)| ((*b, id), n)));
+    }
     let mut lidos = sim
         .world_mut()
         .get_resource_or_insert_with(CanaisLidos::default);
     for &b in entidades {
         lidos.esquecer(b, LISTA);
     }
-    for (b, valores) in lotes {
+    for (b, (valores, _)) in lotes {
         for (k, v) in valores {
             lidos.publicar(b, k, v);
         }

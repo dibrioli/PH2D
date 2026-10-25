@@ -78,12 +78,18 @@ pub fn skinned_images_of_skeleton(sim: &SimWorld, seed: Entity, index: &BoneInde
 /// primeiro pai não-osso é o que permite pendurar um esqueleto dentro de um grupo sem ele deixar de
 /// ser um esqueleto.
 pub fn chain_to(sim: &SimWorld, bits: u64) -> Vec<Entity> {
+    chain_to_in(sim.world(), bits)
+}
+
+/// [`chain_to`] sobre o `World`.
+#[must_use]
+pub fn chain_to_in(world: &ph2d_ecs::World, bits: u64) -> Vec<Entity> {
     let mut fila = vec![Entity::from_bits(bits)];
     while let Some(&e) = fila.last() {
-        let Some(p) = sim.world().get::<ChildOf>(e).map(ChildOf::parent) else {
+        let Some(p) = world.get::<ChildOf>(e).map(ChildOf::parent) else {
             break;
         };
-        if sim.world().get::<Bone>(p).is_none() {
+        if world.get::<Bone>(p).is_none() {
             break;
         }
         fila.push(p);

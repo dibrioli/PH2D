@@ -514,7 +514,7 @@ pub fn release(
 /// ⚠️ O `pub use` mantém `skin_live::chain_to` a ser `skin_live::chain_to` — ver o cabeçalho dele.
 #[path = "skin_live_navega.rs"]
 mod navega;
-pub use navega::{chain_ends, chain_to, skinned_images_of_skeleton};
+pub use navega::{chain_ends, chain_to, chain_to_in, skinned_images_of_skeleton};
 
 #[path = "skin_live_carrega.rs"]
 mod carrega;

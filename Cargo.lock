@@ -6145,7 +6145,11 @@ dependencies = [
  "ph2d-ecs",
  "ph2d-physics-ecs",
  "ph2d-preview-drive",
+ "ph2d-skeleton",
+ "ph2d-skeleton-ecs",
+ "ph2d-skeleton-live",
  "serde",
+ "serde_json",
 ]
 
 [[package]]

@@ -204,18 +204,7 @@ pub fn press(
 /// há direcção nenhuma, e apontar para lá daria um ângulo arbitrário — o osso saltaria.
 #[must_use]
 pub fn aim_rotation(sim: &SimWorld, bone: Entity, world: [f64; 2]) -> Option<f64> {
-    let pai = sim.world().get::<ChildOf>(bone).map(ChildOf::parent);
-    let pai_mundo = pai.map_or(Xform::IDENTITY, |p| {
-        ph2d_vec_entities::transform::xform_of_transform(
-            ph2d_vec_entities::transform::world_transform(sim, p),
-        )
-    });
-    let inv = pai_mundo.inverse()?;
-    let p = inv.apply(world);
-    let t = sim.world().get::<Transform>(bone)?;
-    let o = [f64::from(t.translation.x), f64::from(t.translation.y)];
-    let d = [p[0] - o[0], p[1] - o[1]];
-    (d[0].hypot(d[1]) >= f64::EPSILON).then(|| d[1].atan2(d[0]))
+    ph2d_skeleton_live::bone::aim_rotation(sim, bone, world)
 }
 
 /// **A selecção do gizmo é um OSSO?** — a porta única da pergunta.

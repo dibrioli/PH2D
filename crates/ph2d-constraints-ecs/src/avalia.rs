@@ -28,6 +28,8 @@ pub enum Estado {
     CorpoDinamico,
     /// O pai (ou o do alvo) tem escala 0: não há espaço local.
     EspacoColapsado,
+    /// A IK é de ossos: o dono não é um.
+    NaoEOsso,
 }
 
 /// As entidades cuja pose VISTA passa a ser a autorada neste quadro (largar um Child Of sem salto):
@@ -72,7 +74,7 @@ fn com_pose(mut t: Transform, p: Pose2) -> Transform {
 
 /// A pose de onde a pilha parte: a AUTORADA. Se o `Transform` é o que a pilha escreveu no quadro
 /// passado, o autorado está no ledger; se outra mão escreveu entretanto, é essa mão.
-fn base(sim: &SimWorld, preview: &PreviewDrive, e: Entity) -> Option<Transform> {
+pub(crate) fn base(sim: &SimWorld, preview: &PreviewDrive, e: Entity) -> Option<Transform> {
     let agora = *sim.world().get::<Transform>(e)?;
     let bits = e.to_bits();
     match (
@@ -86,6 +88,16 @@ fn base(sim: &SimWorld, preview: &PreviewDrive, e: Entity) -> Option<Transform> 
         }
         _ => Some(agora),
     }
+}
+
+/// A pose local do dono para a pose mundial `dono`. Sem mudança, o autorado ao bit: desfazer o pai em
+/// f32 mexeria o último dígito.
+fn local_de(parent: Transform, base_local: Transform, inicial: Pose2, dono: Pose2) -> Transform {
+    if dono == inicial {
+        return base_local;
+    }
+    let mundo = com_pose(Transform::compose(parent, base_local), dono);
+    Transform::inverse_compose(parent, mundo).unwrap_or(base_local)
 }
 
 fn dinamico(sim: &SimWorld, e: Entity) -> bool {
@@ -161,10 +173,12 @@ pub fn evaluate(sim: &mut SimWorld, preview: &mut PreviewDrive) -> usize {
     }
     let idx = indice(sim.world());
     let mut movidas = 0;
+    let mut avaliadas = std::collections::BTreeSet::new();
     for e in ordem.into_iter().filter(|e| !adotar.contains(&e.to_bits())) {
-        if avalia_uma(sim, preview, &idx, e, &mut estados) {
+        if avalia_uma(sim, preview, &idx, e, &mut estados, &avaliadas) {
             movidas += 1;
         }
+        avaliadas.insert(e.to_bits());
     }
     sim.world_mut().insert_resource(Estados(estados));
     movidas
@@ -176,6 +190,7 @@ fn avalia_uma(
     idx: &BTreeMap<StableId, Entity>,
     e: Entity,
     estados: &mut BTreeMap<(u64, u32), Estado>,
+    avaliadas: &std::collections::BTreeSet<u64>,
 ) -> bool {
     let Some(pilha) = sim.world().get::<Constraints>(e).cloned() else {
         return false;
@@ -183,6 +198,8 @@ fn avalia_uma(
     let Some(base_local) = base(sim, preview, e) else {
         return false;
     };
+    // O que está no mundo à entrada — a IK escreve o dono a meio da conta.
+    let agora = *sim.world().get::<Transform>(e).unwrap_or(&base_local);
     let mut marca = |id: u32, s: Estado| {
         estados.insert((e.to_bits(), id), s);
     };
@@ -193,8 +210,7 @@ fn avalia_uma(
         preview.release_to_authored(sim, e, Driver::ConstraintPose);
         return false;
     }
-    let w = sim.world();
-    let parent = parent_world_transform(w, e);
+    let mut parent = parent_world_transform(sim.world(), e);
     let inicial = pose(&Transform::compose(parent, base_local));
     let mut dono = inicial;
     for it in &pilha.items {
@@ -211,6 +227,19 @@ fn avalia_uma(
             marca(it.id, Estado::AlvoSiMesmo);
             continue;
         }
+        if let Kind::Ik(ik) = &it.kind {
+            let local = local_de(parent, base_local, inicial, dono);
+            match crate::ik::avalia(sim, preview, e, local, ik, alvo, it.influence, avaliadas) {
+                Ok(nova) => {
+                    parent = parent_world_transform(sim.world(), e);
+                    dono = pose(&Transform::compose(parent, nova));
+                    marca(it.id, Estado::Activa);
+                }
+                Err(s) => marca(it.id, s),
+            }
+            continue;
+        }
+        let w = sim.world();
         let ctx = Ctx {
             owner: dono,
             parent: pose(&parent),
@@ -224,16 +253,13 @@ fn avalia_uma(
             }
             Ok(_) | Err(Inerte::EspacoColapsado) => marca(it.id, Estado::EspacoColapsado),
             Err(Inerte::SemAlvo) => marca(it.id, Estado::SemAlvo),
+            Err(Inerte::Corrente) => marca(it.id, Estado::NaoEOsso),
         }
     }
-    // Sem mudança, o autorado ao bit: desfazer o pai em f32 mexeria o último dígito.
-    let local = if dono == inicial {
-        base_local
-    } else {
-        let mundo = com_pose(Transform::compose(parent, base_local), dono);
-        Transform::inverse_compose(parent, mundo).unwrap_or(base_local)
-    };
-    let agora = *sim.world().get::<Transform>(e).unwrap_or(&base_local);
+    let local = local_de(parent, base_local, inicial, dono);
+    if let Some(mut t) = sim.world_mut().get_mut::<Transform>(e) {
+        *t = local;
+    }
     if local == base_local {
         // Outra mão (a curva) escreveu o autorado neste quadro: ele já está no mundo, e devolver o
         // do ledger pisá-lo-ia; o `settle` esquece a condução.
@@ -245,9 +271,6 @@ fn avalia_uma(
     if local == agora {
         preview.still_driving(e, Driver::ConstraintPose);
         return false;
-    }
-    if let Some(mut t) = sim.world_mut().get_mut::<Transform>(e) {
-        *t = local;
     }
     preview.driven(
         e,

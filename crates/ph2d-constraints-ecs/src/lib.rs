@@ -5,6 +5,7 @@
 //! se guarda*. A lei de cada tipo é da `ph2d-constraints`.
 
 mod avalia;
+mod ik;
 mod ordem;
 
 pub use avalia::{Adotar, Estado, Estados, evaluate};

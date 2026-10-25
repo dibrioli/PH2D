@@ -78,9 +78,7 @@ pub fn remove_limit(sim: &mut SimWorld, bone: Entity) -> bool {
 /// ⚠️ **Sem [`ph2d_skeleton_ecs::BoneLimit`] ela devolve `rot` AO BIT** — a junta sem limite é a
 /// esmagadora maioria, e ela não paga nada por esta lei existir.
 pub fn limited(sim: &SimWorld, bone: Entity, rot: f64) -> f64 {
-    sim.world()
-        .get::<ph2d_skeleton_ecs::BoneLimit>(bone)
-        .map_or(rot, |l| ph2d_skeleton::clamp_to_limit(rot, l.min, l.max))
+    ph2d_skeleton_live::bone::limited(sim, bone, rot)
 }
 
 /// Quantos segmentos o leque do arco tem por volta inteira.

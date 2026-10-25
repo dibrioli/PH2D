@@ -22,7 +22,13 @@ use ph2d_skeleton_ecs::{Bone, IkGoal};
 /// é a corrente que EXISTE: um número absurdo vindo de um ficheiro é aparado pela árvore, não por
 /// uma constante escolhida.
 pub fn governed(sim: &SimWorld, tip: Entity, chain: u32) -> Vec<Entity> {
-    let toda = crate::skin_live::chain_to(sim, tip.to_bits());
+    governed_in(sim.world(), tip, chain)
+}
+
+/// [`governed`] sobre o `World` (a ordem da pilha não tem o `SimWorld`).
+#[must_use]
+pub fn governed_in(world: &ph2d_ecs::World, tip: Entity, chain: u32) -> Vec<Entity> {
+    let toda = crate::skin_live::chain_to_in(world, tip.to_bits());
     if chain == 0 {
         return toda;
     }

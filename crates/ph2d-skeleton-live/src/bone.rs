@@ -87,3 +87,40 @@ pub fn tip_of(sim: &SimWorld, bits: u64) -> Option<[f64; 2]> {
         .find(|(b, _, _)| *b == bits)
         .map(|(_, _, tip)| tip)
 }
+
+/// ⭐ **A rotação LOCAL que aponta o +X do osso a um ponto do MUNDO** — a porta única do gesto (arrastar
+/// a ponta) e da IK da pilha: os dois dão o mesmo bit.
+///
+/// A lei é a da composição da casa (`Transform::compose`: a rotação do filho SOMA-SE à do pai), que é
+/// a mesma com que o osso se desenha: rumo no mundo − rotação mundial do pai − o ângulo que a escala e
+/// o skew mundiais do osso dão ao eixo +X (π sob um espelho). ⛔ Levar o ponto ao espaço do pai pelo
+/// afim inverso só concorda com isto sob escala uniforme positiva: sob `sx = −1` o osso apontava ao
+/// lado errado e sob escala desigual torto (medido na W2, `bend_side_flips_with_the_mirror`).
+/// `None` com o ponto sobre a origem do osso.
+#[must_use]
+pub fn aim_rotation(sim: &SimWorld, bone: Entity, world: [f64; 2]) -> Option<f64> {
+    let local = *sim.world().get::<Transform>(bone)?;
+    let pai = ph2d_ecs::parent_world_transform(sim.world(), bone);
+    let mundo = Transform::compose(pai, local);
+    let o = [f64::from(mundo.translation.x), f64::from(mundo.translation.y)];
+    let d = [world[0] - o[0], world[1] - o[1]];
+    if d[0].hypot(d[1]) < f64::EPSILON {
+        return None;
+    }
+    let forma = ph2d_vec_entities::transform::xform_of_transform(Transform {
+        translation: ph2d_core::Vec2::new(0.0, 0.0),
+        rotation: 0.0,
+        ..mundo
+    });
+    let [a, b, ..] = forma.0;
+    Some(d[1].atan2(d[0]) - f64::from(pai.rotation) - b.atan2(a))
+}
+
+/// ⭐ **A rotação que o osso pode ter** — a pedida, aparada pelo [`ph2d_skeleton_ecs::BoneLimit`] (o
+/// gesto e a IK); sem limite devolve `rot` ao bit.
+#[must_use]
+pub fn limited(sim: &SimWorld, bone: Entity, rot: f64) -> f64 {
+    sim.world()
+        .get::<ph2d_skeleton_ecs::BoneLimit>(bone)
+        .map_or(rot, |l| ph2d_skeleton::clamp_to_limit(rot, l.min, l.max))
+}

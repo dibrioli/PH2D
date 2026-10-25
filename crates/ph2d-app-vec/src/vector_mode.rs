@@ -378,6 +378,8 @@ impl ModeFamily for Family<'_> {
 /// `=35` (F22): a 25, o Show do Hover a 2 s e o verde escolhido a meio (`vector_mode_gesto`).
 /// `=36` (F22): duas formas com o olho da camada diferente — o olho diz «—» (`vector_mode_olho`).
 /// `=37` (F22b): a 25 com o Hover regravado laranja a 30 % — a opacidade anima (`vector_mode_opaco`).
+/// `=38` (F29): o composto do balde sobre um quadrado, a booleana com transparente e a ④ do Corte
+/// (`vector_mode_composto`).
 pub fn smoke_step(
     vec: &mut VecState,
     scene: &mut ph2d_vec_scene::VecScene,
@@ -597,7 +599,7 @@ pub fn smoke_step(
 }
 
 /// Desenha um traço aberto de dois cliques pela CANETA (o mesmo gesto do artista) e acaba-o.
-fn draw_line(vec: &mut VecState, scene: &mut ph2d_vec_scene::VecScene, a: [f64; 2], b: [f64; 2]) {
+pub(crate) fn draw_line(vec: &mut VecState, scene: &mut ph2d_vec_scene::VecScene, a: [f64; 2], b: [f64; 2]) {
     for p in [a, b] {
         vec.pen.on_press(scene, p, 0.01, false, &mut |q| q);
         vec.pen.on_release();

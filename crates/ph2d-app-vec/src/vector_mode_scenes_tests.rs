@@ -37,6 +37,7 @@ fn antes(s: &str) -> (u8, bool, u8, u8) {
             | "35"
             | "36"
             | "37"
+            | "38"
     ) {
         1
     } else {
@@ -72,6 +73,7 @@ fn antes(s: &str) -> (u8, bool, u8, u8) {
             | "35"
             | "36"
             | "37"
+            | "38"
     );
     let handles = match s {
         "15" => 1,
@@ -97,6 +99,7 @@ fn antes(s: &str) -> (u8, bool, u8, u8) {
         "35" => 21,
         "36" => 22,
         "37" => 23,
+        "38" => 24,
         _ => 0,
     };
     let quick = match s {
@@ -201,4 +204,11 @@ fn as_cenas_35_e_36_comecam_pelas_suas_familias() {
     assert_eq!(handles_first(22), Some(crate::vector_mode_olho::FIRST));
     assert_eq!(of(Some("37")).handles, 23);
     assert_eq!(handles_first(23), Some(crate::vector_mode_interface::FIRST));
+}
+
+/// F29 — a 38 corre o composto, na faixa dele.
+#[test]
+fn a_cena_38_comeca_no_composto() {
+    assert_eq!(of(Some("38")).handles, 24);
+    assert_eq!(handles_first(24), Some(crate::vector_mode_composto::FIRST));
 }

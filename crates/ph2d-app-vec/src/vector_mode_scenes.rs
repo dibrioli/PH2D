@@ -16,7 +16,7 @@ pub(super) struct Scene {
     pub nav: bool,
     /// A cena 14 (F8): enquadrar tudo — `vector_mode_frame`.
     pub frame: bool,
-    /// A família das alças (cenas 15..37) — ver [`handles_first`]; `0` = nenhuma.
+    /// A família das alças (cenas 15..38) — ver [`handles_first`]; `0` = nenhuma.
     pub handles: u8,
     /// A cena 12 (F7, o QuickShape) = `1`; a 13 (F7e, o Edit Shape) = `2`.
     pub quick: u8,
@@ -29,13 +29,13 @@ pub(super) fn of(scene: Option<&str>) -> Scene {
         .and_then(|s| s.parse::<u8>().ok().filter(|n| n.to_string() == s))
         .unwrap_or(0);
     Scene {
-        want: if matches!(n, 6 | 7 | 9..=37) { 1 } else { 9 },
+        want: if matches!(n, 6 | 7 | 9..=38) { 1 } else { 9 },
         weld: n == 7,
-        bars: matches!(n, 9..=37),
+        bars: matches!(n, 9..=38),
         reach: n == 10,
         nav: n == 11,
         frame: n == 14,
-        handles: if (15..=37).contains(&n) { n - 14 } else { 0 },
+        handles: if (15..=38).contains(&n) { n - 14 } else { 0 },
         quick: match n {
             12 => 1,
             13 => 2,
@@ -55,7 +55,7 @@ pub(super) fn of(scene: Option<&str>) -> Scene {
 /// e seguem em `vector_mode_le_a_forma`) · 17 e 18 = a 31 e a 32 (F20, `vector_mode_misto`) · 19 e
 /// 20 = a 33 e a 34 (F21, `vector_mode_cor`) · 21 = a 35 (F22, começa pela 25 e segue em
 /// `vector_mode_gesto`) · 22 = a 36 (F22, `vector_mode_olho`) · 23 = a 37 (F22b, começa pela 25 e
-/// segue em `vector_mode_opaco`).
+/// segue em `vector_mode_opaco`) · 24 = a 38 (F29, `vector_mode_composto`).
 /// `None` = fora da família.
 pub(super) fn handles_first(handles: u8) -> Option<u8> {
     Some(match handles {
@@ -74,6 +74,7 @@ pub(super) fn handles_first(handles: u8) -> Option<u8> {
         17 | 18 => crate::vector_mode_misto::FIRST,
         19 | 20 => crate::vector_mode_cor::FIRST,
         22 => crate::vector_mode_olho::FIRST,
+        24 => crate::vector_mode_composto::FIRST,
         _ => 70,
     })
 }

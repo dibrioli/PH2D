@@ -50,9 +50,12 @@ Leia: CLAUDE.md (§0, §2), project-memory/MEMORY.md e ESTE ficheiro inteiro. De
    - Digital, sem linha: `pigment_espectral` (Ballpoint), `passo_pela_pressao` (Bokeh, Stars), `borda_px` (Hard
      Round 1, Flat 1, Hard Eraser 1, Halftone 3), `tecto_por_dab` (Marker Liner), `sub_passo_fino` (Flat),
      `particle_max_px` (Stars 56).
-   - Wet Paint: 58 knobs no grupo `Hidden` (`ph2d-wet-paint/src/tuning/defs.rs`), ~30 fora do neutro nos presets
-     (`wetOpen`, `tipReservoir`, `pressureGrain`, `levelingOwnStroke`, `strokeFilm`, `dust`, cerdas…).
-     Scripts do censo: `scratchpad/census*.py`.
+   - Wet Paint: ⚠️ o censo contou o grupo `Hidden` (`ph2d-wet-paint/src/tuning/defs.rs`, 58 knobs, ~30 fora do neutro
+     nos presets) SEM cruzar com quem os pinta: o painel Tuning (`ph2d-panel-wet-tuning/src/rows.rs:73` filtra
+     `Hidden`), o cartão Wet Paint do Painter (`wetpaint_settings.rs:669`; vários `Hidden` moram lá por decisão do
+     dono 13/10) e as cerdas na Shape (plano 27 W2). O dono lembrou o Tuning (25/10). REFAZER antes de lhe perguntar:
+     só conta o knob que nenhum dos três pinta E que um preset de fábrica tira do neutro. Scripts:
+     `scratchpad/census*.py`.
 3. **Reset do cartão Pen**: volta ao neutro da app (hoje) ou ao preset?
 
 ## Auditoria do cartão Pen (25/10) — defeitos a corrigir (técnicos, decisão delegada)

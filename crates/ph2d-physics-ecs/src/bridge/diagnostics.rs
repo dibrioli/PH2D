@@ -49,6 +49,14 @@ impl PhysicsBridge {
         self.parts.get(&e).map(|p| p.handle)
     }
 
+    /// A caixa do corpo no solver (`mins`, `maxs`), com a forma ACTUAL — o agachar com corpo baixo
+    /// mede-se aqui (plano 09), não no centro.
+    #[doc(hidden)]
+    #[must_use]
+    pub fn body_extent(&self, e: ph2d_ecs::Entity) -> Option<([f32; 2], [f32; 2])> {
+        self.world.body_aabb(self.bodies.get(&e)?.handle)
+    }
+
     /// Capacity of the main per-frame scratch buffer — the zero-alloc gate
     /// asserts this is stable across steady-state frames (HR-3, capacity
     /// stability rather than a flaky global allocation counter).

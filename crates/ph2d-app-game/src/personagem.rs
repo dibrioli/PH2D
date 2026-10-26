@@ -54,6 +54,8 @@ pub fn acoes_premidas(map: Option<&InputMap>, actions: &ActionState) -> BTreeSet
 /// O que vale neste quadro para UM objecto.
 pub(crate) struct Factos<'a> {
     pub pose: Option<CharacterPose>,
+    /// Agachado (`PlayerView::crouching`) — vale junto com a pose base.
+    pub agachado: bool,
     pub premidas: &'a BTreeSet<String>,
     pub vida: &'a [LifeEvent],
     pub ouvidos: &'a BTreeSet<String>,
@@ -61,6 +63,7 @@ pub(crate) struct Factos<'a> {
 
 fn vale(when: &AnimWhen, f: &Factos) -> bool {
     match when {
+        AnimWhen::Pose(CharacterPose::Crouch) => f.agachado,
         AnimWhen::Pose(p) => f.pose == Some(*p),
         AnimWhen::Action(n) => f.premidas.contains(n),
         AnimWhen::Life(l) => f.vida.contains(l),
@@ -163,6 +166,7 @@ pub fn anima_personagens(
             pose: view
                 .zip(character.as_ref())
                 .map(|(v, c)| CharacterPose::of(v, c.run_from)),
+            agachado: view.is_some_and(|v| v.crouching),
             premidas,
             vida: vida.get(&e).map_or(&[], Vec::as_slice),
             ouvidos: &ouvidos,

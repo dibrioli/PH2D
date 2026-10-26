@@ -20,6 +20,7 @@ const POSE_KEYS: [&str; ph2d_editor_core::screens::hero::ANIM_POSES as usize] = 
     "panel.inspector.anim_card.when_pose_1",
     "panel.inspector.anim_card.when_pose_2",
     "panel.inspector.anim_card.when_pose_3",
+    "panel.inspector.anim_card.when_pose_4",
 ];
 
 /// As chaves dos factos de vida, pela ordem de `LifeEvent::ALL` (o índice de `AnimWhenInfo::Life`).

@@ -430,6 +430,8 @@ impl PlatformPlayer {
                 height: self.crouch_height,
                 speed: self.crouch_speed,
                 walk_off_ledges: self.crouch_walk_off_ledges,
+                // A ponte põe-no a partir do collider (plano 09).
+                body_room: 0.0,
             },
             swim: SwimConfig {
                 speed: self.swim_speed,

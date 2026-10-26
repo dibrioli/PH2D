@@ -328,3 +328,54 @@ fn a_andar_para_a_esquerda_o_boneco_espelha() {
     assert!(vistas.iter().any(|v| v == "run"), "{vistas:?}");
     assert!(flip);
 }
+
+/// Plano 09: no nível 2 o boneco do menu Add agacha — segurando ↓ entra sob o «Low Ceiling» que de pé o
+/// pára; soltando ↓ lá debaixo continua agachado; a andar para fora, levanta.
+#[test]
+fn no_nivel_2_agachado_passa_sob_o_tecto_baixo() {
+    use ph2d_physics_ecs::{PhysicsBridge, PlayerInput};
+    let corre = |passos: &[(u32, f32, bool)]| {
+        let mut sim = SimWorld::new();
+        let jogador = montar(&mut sim, &crate::registo_de_teste(), 2);
+        let mut bridge = PhysicsBridge::new();
+        let mut t = 0_u64;
+        for &(n, drive, down) in passos {
+            for _ in 0..n {
+                bridge.set_player_input(
+                    jogador,
+                    PlayerInput {
+                        drive,
+                        down,
+                        ..PlayerInput::default()
+                    },
+                );
+                t += 1;
+                bridge.dispatch(&mut sim, true, t);
+            }
+        }
+        let x = sim
+            .world()
+            .get::<Transform>(jogador)
+            .expect("pose")
+            .translation
+            .x;
+        let agachado = bridge.player_view(jogador).is_some_and(|v| v.crouching);
+        let topo = bridge.body_extent(jogador).expect("corpo").1[1];
+        (x, agachado, topo)
+    };
+    let (_, c, h) = BLOCOS_2
+        .iter()
+        .find(|b| b.0 == "Low Ceiling")
+        .expect("o tecto");
+    let (fundo, saida) = (c[1] - h[1], c[0] + h[0]);
+    let (x, _, _) = corre(&[(60, 0.0, false), (150, -1.0, false)]);
+    assert!(x > saida, "de pé o tecto pára-o: x = {x}");
+    let (x, agachado, topo) = corre(&[(60, 0.0, false), (150, -1.0, true), (60, 0.0, false)]);
+    assert!(x < saida - 0.5, "agachado entrou: x = {x}");
+    assert!(
+        agachado && topo < fundo,
+        "lá debaixo continua baixo: topo {topo}"
+    );
+    let (x, agachado, _) = corre(&[(60, 0.0, false), (150, -1.0, true), (120, 1.0, false)]);
+    assert!(x > saida + 0.5 && !agachado, "fora, levanta: x = {x}");
+}

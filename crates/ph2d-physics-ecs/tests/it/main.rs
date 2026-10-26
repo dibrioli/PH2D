@@ -137,6 +137,7 @@ mod persistence;
 mod platform_brink;
 mod platform_corner;
 mod platform_crouch;
+mod platform_crouch_body;
 mod platform_crouch_rig;
 mod platform_dash;
 mod platform_dash_rig;

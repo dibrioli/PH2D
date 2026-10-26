@@ -119,6 +119,7 @@ impl PhysicsBridge {
         // motivo que todas as outras listas: perguntar ao mundo quanto coube toma
         // `&self` e escrever a pose toma `&mut self`.
         let mut moves: Vec<KinMove> = Vec::new();
+        let mut reshapes = Vec::new();
         // A SAÍDA deste tique (`W-PlayerOut`, `bridge::player_out`) — colhida
         // pelo mesmo motivo que todas as listas acima: o laço lê `&self` e a
         // tabela toma `&mut self`.
@@ -195,7 +196,7 @@ impl PhysicsBridge {
             if !owner.transmits() {
                 cfg.react = ReactionConfig::OFF;
             }
-            let cfg = cfg;
+            let cfg = probes::with_body_room(cfg, &b.rest);
             // O alcance do sensor é o que a lei considera "no chão", e nem um
             // milímetro além: perguntar mais longe faria o cast achar coisas que
             // a lei descartaria, ao preço de descer mais no BVH.
@@ -500,6 +501,7 @@ impl PhysicsBridge {
                 owner.support(),
             );
             states.push((entity, step.state));
+            reshapes.push(probes::crouch_shape(&cfg, &step.state, b));
             // ── A SAÍDA (`W-PlayerOut`) ──────────────────────────────────────
             // A vista é o estado do tique; os eventos, a diferença contra o
             // anterior. Sem um anterior não há transição a relatar, só uma a
@@ -649,6 +651,7 @@ impl PhysicsBridge {
                 moves,
                 views,
                 events,
+                reshapes,
             },
         );
     }

@@ -78,6 +78,7 @@ struct Mundo {
     vida: Vec<LifeEvent>,
     ouvidos: BTreeSet<String>,
     pose: Option<CharacterPose>,
+    agachado: bool,
 }
 
 impl Mundo {
@@ -87,11 +88,13 @@ impl Mundo {
             vida: Vec::new(),
             ouvidos: BTreeSet::new(),
             pose: Some(CharacterPose::Run),
+            agachado: false,
         }
     }
     fn passo(&self, seguro: &mut Option<Segura>, a: &mut SpriteAnimator) -> Passo {
         let f = Factos {
             pose: self.pose,
+            agachado: self.agachado,
             premidas: &self.premidas,
             vida: &self.vida,
             ouvidos: &self.ouvidos,
@@ -170,9 +173,13 @@ fn as_quatro_derivadas_dao_a_tag_de_cada_pose() {
     let c = CharacterAnimations::default();
     let rules = AnimRules::effective(None, Some(&c)).unwrap();
     let nada = BTreeSet::new();
-    for pose in CharacterPose::ALL {
+    for (pose, agachado) in CharacterPose::DERIVED
+        .into_iter()
+        .flat_map(|p| [(p, false), (p, true)])
+    {
         let f = Factos {
             pose: Some(pose),
+            agachado,
             premidas: &nada,
             vida: &[],
             ouvidos: &nada,
@@ -180,9 +187,34 @@ fn as_quatro_derivadas_dao_a_tag_de_cada_pose() {
         let mut a = SpriteAnimator::new("x");
         assert_eq!(
             decide(&rules.0, &f, &mut None, &a),
-            Passo::Toca(c.tag(pose).to_owned()),
-            "{pose:?}"
+            Passo::Toca(c.tag(pose).expect("nomeada").to_owned()),
+            "{pose:?} agachado={agachado}"
         );
-        a.current = c.tag(pose).to_owned();
+        a.current = c.tag(pose).expect("nomeada").to_owned();
     }
+}
+
+/// Plano 09: «Crouching» por cima das poses ganha enquanto agachado — a pose base continua a valer por
+/// baixo, e levantar devolve-a.
+#[test]
+fn agachado_ganha_e_levantar_devolve_a_pose() {
+    let mut rules = vec![regra(AnimWhen::Pose(CharacterPose::Crouch), "crouch")];
+    rules.extend(AnimRules::of_character(&CharacterAnimations::default()).0);
+    let nada = BTreeSet::new();
+    let f = |agachado| Factos {
+        pose: Some(CharacterPose::Idle),
+        agachado,
+        premidas: &nada,
+        vida: &[],
+        ouvidos: &nada,
+    };
+    let a = SpriteAnimator::new("idle");
+    assert_eq!(
+        decide(&rules, &f(true), &mut None, &a),
+        Passo::Toca("crouch".into())
+    );
+    assert_eq!(
+        decide(&rules, &f(false), &mut None, &a),
+        Passo::Toca("idle".into())
+    );
 }

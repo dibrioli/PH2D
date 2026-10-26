@@ -36,6 +36,13 @@ pub(super) struct PlayerResults {
     pub moves: Vec<KinMove>,
     pub views: Vec<(Entity, ph2d_platformer::PlayerView)>,
     pub events: Vec<(Entity, ph2d_platformer::PlayerEvent)>,
+    /// A forma de cada corpo neste tique (o agachar com corpo baixo, plano 09): receita, forma, offset.
+    pub reshapes: Vec<(
+        rapier2d_handle::Handle,
+        ph2d_physics::BodyDesc,
+        ph2d_physics::ShapeDesc,
+        [f32; 2],
+    )>,
 }
 
 impl PhysicsBridge {
@@ -51,7 +58,12 @@ impl PhysicsBridge {
             moves,
             views,
             events,
+            reshapes,
         } = r;
+        // Antes do `step`: o contacto deste tique já resolve contra a forma nova.
+        for (handle, rest, shape, offset) in reshapes {
+            self.world.reshape_body(handle, &rest, shape, offset);
+        }
         // ⚠️ O estado é gravado para TODO player, inclusive os cujo motor é zero
         // — e isto é **defesa em camadas, não load-bearing HOJE**, medido: pôr o
         // push dentro do guard de motor **sobrevive à suíte inteira**.

@@ -101,6 +101,11 @@ fn o_personagem_tem_capsula_e_as_quatro_animacoes() {
         p.float_height > min,
         "a cápsula ({min}) não cabe acima dos pés"
     );
+    assert!(
+        p.config().crouch.armed(&p.config().ride),
+        "nasce a saber agachar (plano 09)"
+    );
+    assert_eq!(p.crouch_height, AGACHADO);
     let anims = w.get::<CharacterAnimations>(e).expect("ligação");
     assert_eq!(anims, &CharacterAnimations::default());
 }

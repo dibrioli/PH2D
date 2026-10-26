@@ -151,6 +151,9 @@ pub fn build_card_info(world: &World, entity: Entity) -> AnimCardInfo {
     AnimCardInfo {
         chooser,
         has_character_body: world.get::<PlatformPlayer>(entity).is_some(),
+        can_crouch: world
+            .get::<PlatformPlayer>(entity)
+            .is_some_and(|p| p.config().crouch.armed(&p.config().ride)),
         character: character.map(|a| AnimCharacterInfo {
             run_from: a.run_from,
             flip: a.flip,

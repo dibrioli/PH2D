@@ -110,7 +110,7 @@ pub struct AnimCharacterInfo {
 }
 
 /// **A condição de uma regra**, como o cartão a lê (espelho de `ph2d_physics_ecs::AnimWhen`; esta crate
-/// não depende da física — ADR-0029). `Pose`: Parado · A correr · A subir · A cair; `Life`: Levou dano ·
+/// não depende da física — ADR-0029). `Pose`: Parado · A correr · A subir · A cair · Agachado; `Life`: Levou dano ·
 /// Morreu · Curou-se · Esquivou-se — os índices de `CharacterPose::ALL` / `LifeEvent::ALL`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum AnimWhenInfo {
@@ -122,7 +122,9 @@ pub enum AnimWhenInfo {
 
 /// Quantas poses e quantos factos de vida existem (os comprimentos de `CharacterPose::ALL` e
 /// `LifeEvent::ALL`; `the_rule_mirrors_are_the_physics` prende-os).
-pub const ANIM_POSES: u8 = 4;
+pub const ANIM_POSES: u8 = 5;
+/// O índice de «Agachado» (`CharacterPose::Crouch`): só se oferece com o agachar armado.
+pub const ANIM_POSE_CROUCH: u8 = 4;
 pub const ANIM_LIFE_EVENTS: u8 = 4;
 
 /// Uma regra: quando `when` vale, toca `play`.
@@ -138,6 +140,8 @@ pub struct AnimCardInfo {
     pub chooser: AnimChooser,
     /// O objecto tem Platform Player? Sem ele «O personagem» não se oferece (não há estados).
     pub has_character_body: bool,
+    /// O Platform Player sabe agachar (altura agachada autorada)? Sem isso «Crouching» não se oferece.
+    pub can_crouch: bool,
     pub character: Option<AnimCharacterInfo>,
     /// As regras que valem, pela ordem (a de cima ganha) — as gravadas ou as 4 do personagem.
     pub rules: Vec<AnimRuleInfo>,
@@ -159,6 +163,7 @@ impl Default for AnimCardInfo {
         Self {
             chooser: AnimChooser::Me,
             has_character_body: false,
+            can_crouch: false,
             character: None,
             rules: Vec::new(),
             rule_actions: Vec::new(),
@@ -177,7 +182,7 @@ impl AnimCardInfo {
     #[must_use]
     pub fn when_options(&self) -> Vec<AnimWhenInfo> {
         let poses = (0..ANIM_POSES)
-            .filter(|_| self.has_character_body)
+            .filter(|&i| self.has_character_body && (i != ANIM_POSE_CROUCH || self.can_crouch))
             .map(AnimWhenInfo::Pose);
         let keys = self.rule_actions.iter().cloned().map(AnimWhenInfo::Action);
         let life = (0..ANIM_LIFE_EVENTS).map(AnimWhenInfo::Life);

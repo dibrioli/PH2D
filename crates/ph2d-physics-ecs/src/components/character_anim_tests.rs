@@ -54,7 +54,8 @@ fn cada_estado_tem_o_seu_nome() {
         CharacterPose::Fall,
     ]
     .into_iter()
-    .map(|p| a.tag(p))
+    .map(|p| a.tag(p).expect("nomeada"))
     .collect();
     assert_eq!(names, ["idle", "run", "jump", "fall"]);
+    assert_eq!(a.tag(CharacterPose::Crouch), None);
 }

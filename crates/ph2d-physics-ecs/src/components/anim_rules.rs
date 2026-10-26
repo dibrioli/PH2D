@@ -73,11 +73,13 @@ impl AnimRules {
     #[must_use]
     pub fn of_character(c: &CharacterAnimations) -> Self {
         Self(
-            CharacterPose::ALL
+            CharacterPose::DERIVED
                 .iter()
-                .map(|&p| AnimRule {
-                    when: AnimWhen::Pose(p),
-                    play: c.tag(p).to_owned(),
+                .filter_map(|&p| {
+                    Some(AnimRule {
+                        when: AnimWhen::Pose(p),
+                        play: c.tag(p)?.to_owned(),
+                    })
                 })
                 .collect(),
         )

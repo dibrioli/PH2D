@@ -261,12 +261,14 @@ fn arruma(sim: &mut SimWorld, e: Entity, nome: &str, at: [f32; 2], escala: [f32;
 
 /// Os blocos do nível 2 (*Static Body*): o desenho do nível 1 com as plataformas à altura do salto do
 /// boneco de fábrica (sobe ~1,4 m; a baixa tem o topo a 1,1 m, a alta alcança-se da baixa).
-pub const BLOCOS_2: [(&str, [f32; 2], [f32; 2]); 5] = [
+pub const BLOCOS_2: [(&str, [f32; 2], [f32; 2]); 6] = [
     ("Ground Left", [-5.0, -0.5], [7.0, 0.5]),
     ("Ground Right", [11.0, -0.5], [6.0, 0.5]),
     ("Platform Low", [3.5, 0.85], [1.2, 0.25]),
     ("Platform High", [8.5, 2.0], [1.5, 0.25]),
     ("Wall Left", [-12.5, 3.0], [0.5, 4.0]),
+    // Fundo a 0,60 m: de pé (topo 0,80) não cabe, agachado (0,50) passa — plano 09.
+    ("Low Ceiling", [-10.5, 0.85], [1.5, 0.25]),
 ];
 
 /// A parede invisível do fim do nível: centro e meia-extensão no mundo (m).
@@ -409,7 +411,7 @@ fn nivel_2(sim: &mut SimWorld, registry: &ComponentRegistry) -> Entity {
     println!(
         "[game-smoke] =2 o mesmo nível feito SÓ com o menu Add (Add ▸ Game), com a arte do Kenney \
          redesenhada em vetor: chão e plataformas de relva (Static Body), a parede invisível do fim \
-         (Collision Shape dentro do chão), o jogador (Character), as moedas a girar e a bandeira a \
+         (Collision Shape dentro do chão), um tecto baixo à esquerda (segure ↓ para passar agachado), o jogador (Character), as moedas a girar e a bandeira a \
          ondular (Animated Sprite) e o céu (Sprite). Run ▸ Play in a Window: o boneco fica parado, \
          corre, salta e cai — a animação troca sozinha — e as moedas somem ao tocar."
     );

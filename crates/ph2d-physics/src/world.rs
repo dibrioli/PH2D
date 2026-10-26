@@ -42,6 +42,8 @@ pub mod parts;
 pub mod player;
 pub mod pulley;
 pub mod queries;
+/// Trocar a forma de um corpo em jogo (o agachar com corpo baixo).
+pub mod reshape;
 pub mod rope_load;
 pub mod rope_route;
 pub mod sensors;

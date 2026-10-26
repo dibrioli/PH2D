@@ -14,35 +14,36 @@ use rig_fixture::{
 /// O fundo da marquise da fixture — ver o gate que a escolheu.
 const OVERHANG_BOTTOM: f32 = 1.35;
 
+fn top(r: &rig_fixture::Rig) -> f32 {
+    r.bridge.body_extent(r.player).expect("corpo").1[1]
+}
+
 /// **A silhueta baixa exactamente o que foi autorado** — e é isto que o agachar
 /// É, num número.
 ///
-/// ⚠️ **O collider NÃO muda de forma**, e este gate é a prova: o topo do corpo
-/// desce pelo MESMO delta que a perna encurtou (`1,602 → 1,102`, autorado
-/// `0,500`). Se o gesto reescrevesse a cápsula, o delta seria outro — e a
-/// premissa que a W-Compound derrubou (*"um corpo tem exactamente um
-/// collider"*) voltaria a ser perguntada.
-///
-/// ⚠️ **Mutação medida:** ignorar o agachar em `ride_for` deixa o topo em
-/// **1,602** nos dois casos — o botão não faz nada.
+/// ⚠️ **Desde o plano 09 o delta é da FORMA, não da perna:** a cápsula encolhe por cima pelo
+/// autorado (`0,500` cabem nos `0,6` do troço recto) e o centro fica — os pés no sítio. Medido
+/// na caixa do solver ([`ph2d_physics_ecs::PhysicsBridge::body_extent`]), não no centro.
+/// ⚠️ **Mutação medida (W15):** ignorar o agachar deixa o topo igual nos dois casos.
 #[test]
 fn crouching_lowers_the_silhouette_by_the_authored_amount() {
     let mut up = rig(CROUCH_HEIGHT, None);
     up.run(0, 90, walk_right());
-    let (_, uy) = pose(&up.sim);
+    let ut = top(&up);
 
     let mut low = rig(CROUCH_HEIGHT, None);
     low.run(0, 90, crouch_right());
-    let (_, ly) = pose(&low.sim);
+    let lt = top(&low);
 
     let want = FLOAT_HEIGHT - CROUCH_HEIGHT;
-    let got = uy - ly;
+    let got = ut - lt;
     assert!(
         (got - want).abs() < 0.02,
-        "a silhueta baixou {got:.3} m para os {want:.3} autorados \
-         (topo {:.3} -> {:.3})",
-        uy + BODY_HALF,
-        ly + BODY_HALF
+        "a silhueta baixou {got:.3} m para os {want:.3} autorados (topo {ut:.3} -> {lt:.3})"
+    );
+    assert!(
+        (ut - (FLOAT_HEIGHT + BODY_HALF)).abs() < 0.02,
+        "de pé: {ut:.3}"
     );
 }
 
@@ -125,14 +126,20 @@ fn releasing_under_the_overhang_does_not_stand_him_up() {
         x > 5.5,
         "a fixture tem de o pôr DEBAIXO da marquise: x={x:.2}"
     );
-    assert!((y - CROUCH_HEIGHT).abs() < 0.05, "e agachado: y={y:.3}");
+    let _ = y;
+    let low = CROUCH_HEIGHT + BODY_HALF;
+    assert!(
+        (top(&r) - low).abs() < 0.05,
+        "e agachado: topo {:.3}",
+        top(&r)
+    );
 
     // Solta o botão, ainda debaixo dela.
     let t = r.run(t, 60, walk_right());
-    let (_, stuck) = pose(&r.sim);
+    let stuck = top(&r);
     assert!(
-        (stuck - CROUCH_HEIGHT).abs() < 0.05,
-        "sob o teto ele tinha de continuar agachado: y={stuck:.3}"
+        (stuck - low).abs() < 0.05,
+        "sob o teto ele tinha de continuar agachado: topo {stuck:.3}"
     );
 
     // ⚠️ E o outro lado: fora da marquise ele levanta-se. Sem esta metade, um
@@ -141,7 +148,7 @@ fn releasing_under_the_overhang_does_not_stand_him_up() {
     let ot = out.run(0, 260, crouch_right());
     out.player_cfg(|p| p.crouch_height = 0.0);
     out.run(ot, 60, walk_right());
-    let (_, freed) = pose(&out.sim);
+    let freed = top(&out) - BODY_HALF;
     assert!(
         freed > CROUCH_HEIGHT + 0.2,
         "com a capacidade desligada ele tem de voltar a ficar de pe': y={freed:.3}"
@@ -226,12 +233,13 @@ fn a_scrub_across_an_anchor_remembers_that_he_is_crouched() {
         for k in 1..=MID + AFTER {
             r.bridge.dispatch_with_tape(&mut r.sim, true, k, &mut tp);
         }
-        pose(&r.sim)
+        (pose(&r.sim), top(&r))
     };
     assert!(
-        (straight.1 - CROUCH_HEIGHT).abs() < 0.05,
+        (straight.1 - (CROUCH_HEIGHT + BODY_HALF)).abs() < 0.05,
         "a fixture tem de continuar AGACHADA e presa sob a laje: {straight:?}"
     );
+    let (straight, straight_top) = straight;
 
     let mut r = rig(CROUCH_HEIGHT, Some(OVERHANG_BOTTOM));
     let mut tp = tape();
@@ -249,5 +257,11 @@ fn a_scrub_across_an_anchor_remembers_that_he_is_crouched() {
     assert!(
         (straight.0 - scrubbed.0).abs() < 0.02 && (straight.1 - scrubbed.1).abs() < 0.02,
         "o scrub nao reproduziu o agachar: reto {straight:?} contra scrub {scrubbed:?}"
+    );
+    // O `rewind_to` reconstrói o corpo DE PÉ; a forma baixa tem de voltar no tique seguinte.
+    assert!(
+        (straight_top - top(&r)).abs() < 0.02,
+        "o scrub devolveu a forma de pé: {straight_top:.3} contra {:.3}",
+        top(&r)
     );
 }

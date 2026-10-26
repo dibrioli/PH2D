@@ -102,6 +102,17 @@ pub fn crouch_right() -> PlayerInput {
 /// - `overhang_bottom` põe uma laje cuja face de BAIXO fica nessa altura,
 ///   começando em [`OVERHANG_X0`] e indo para a direita.
 pub fn rig(crouch_height: f32, overhang_bottom: Option<f32>) -> Rig {
+    rig_body([0.3, 0.2], FLOAT_HEIGHT, crouch_height, overhang_bottom)
+}
+
+/// O mesmo palco com outra cápsula (`[half_height, radius]`) e outra perna — a do herói de fábrica
+/// para o corpo baixo do plano 09.
+pub fn rig_body(
+    capsule: [f32; 2],
+    float_height: f32,
+    crouch_height: f32,
+    overhang_bottom: Option<f32>,
+) -> Rig {
     let mut sim = SimWorld::new();
     sim.world_mut().spawn((
         Name::new("Floor"),
@@ -149,14 +160,14 @@ pub fn rig(crouch_height: f32, overhang_bottom: Option<f32>) -> Rig {
             },
             Collider {
                 shape: ColliderShape::Capsule {
-                    half_height: 0.3,
-                    radius: 0.2,
+                    half_height: capsule[0],
+                    radius: capsule[1],
                 },
                 ..Collider::default()
             },
             LockRotation,
             PlatformPlayer {
-                float_height: FLOAT_HEIGHT,
+                float_height,
                 // ⚠️ As assistências que não são desta wave ficam FORA do
                 // caminho — sem isto, um número que se mexesse deixaria vários
                 // suspeitos. ⚠️ O `corner_reach` em zero é especialmente
@@ -169,7 +180,7 @@ pub fn rig(crouch_height: f32, overhang_bottom: Option<f32>) -> Rig {
                 crouch_speed: CROUCH_SPEED,
                 ..PlatformPlayer::default()
             },
-            Transform::from_translation(Vec2::new(0.0, FLOAT_HEIGHT)),
+            Transform::from_translation(Vec2::new(0.0, float_height)),
         ))
         .id();
 

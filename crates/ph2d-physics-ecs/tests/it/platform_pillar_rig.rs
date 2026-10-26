@@ -64,8 +64,10 @@ impl Rig {
     pub fn crouch_then_release(&mut self, hold: u64, free: u64) -> (f32, f32) {
         let t = self.run(0, hold, down());
         self.run(t, free, PlayerInput::default());
-        let (x, y) = pose(&self.sim);
-        (y + BODY_HALF, x)
+        let (x, _) = pose(&self.sim);
+        // O topo do corpo no solver: desde o plano 09 o agachar encolhe a forma e o centro fica.
+        let top = self.bridge.body_extent(self.player).expect("corpo").1[1];
+        (top, x)
     }
 }
 

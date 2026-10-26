@@ -74,8 +74,8 @@ pub use corner::{
     ceiling_fact_wanted, corner_escape, corner_nudge, corner_offsets, corner_probe_wanted,
 };
 pub use crouch::{
-    CrouchConfig, CrouchState, Headroom, crouch_step, effective_crouched, headroom_probe_wanted,
-    ride_for, walk_for,
+    CrouchConfig, CrouchState, Headroom, body_shrink, crouch_step, effective_crouched,
+    headroom_probe_wanted, ride_for, walk_for,
 };
 pub use dash::{DashConfig, DashState, DashStep, dash_burst, dash_step};
 pub use descent::{FallConfig, descent_ceiling, descent_motor};

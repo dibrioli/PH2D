@@ -52,9 +52,13 @@ pub const BLOCO: [f32; 2] = [3.0, 0.5];
 /// pouco mais estreita que ele (±0,2 contra ±0,27) porque o raio também tem de pairar numa rampa de 45° à
 /// altura dos pés (`fitted_float`). As pernas desenhadas chegam ao chão.
 pub const CAPSULA: ColliderShape = ColliderShape::Capsule {
-    half_height: 0.15,
+    half_height: CAPSULA_MEIA,
     radius: 0.2,
 };
+const CAPSULA_MEIA: f32 = 0.15;
+/// A altura agachada do personagem (m): a cápsula encolhe o troço recto inteiro (0,30) e o topo desce
+/// de 0,80 para 0,50, com os pés onde a folha os desenha (plano 09).
+pub const AGACHADO: f32 = HERO_SHEET_SOLE_BELOW_CENTRE - 2.0 * CAPSULA_MEIA;
 
 /// A folha do boneco de fábrica, as suas animações e o animador a tocar `idle`.
 fn anima(world: &mut ph2d_ecs::World, e: Entity) -> Result<(), String> {
@@ -133,6 +137,7 @@ pub fn add(
                 .get_mut::<ph2d_physics_ecs::PlatformPlayer>(e)
             {
                 p.float_height = HERO_SHEET_SOLE_BELOW_CENTRE;
+                p.crouch_height = AGACHADO;
             }
         } else {
             world.entity_mut(e).insert(Collider {

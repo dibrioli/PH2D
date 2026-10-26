@@ -304,3 +304,25 @@ fn num_painel_estreito_a_lista_do_when_alarga_e_o_clique_fora_do_chip_escolhe() 
         )]
     );
 }
+
+/// (ix) Plano 09: com o agachar armado o menu «When» oferece «Crouching» e escolhê-la grava essa
+/// condição; sem ele a opção não aparece (seria uma regra que nunca vale).
+#[test]
+fn agachado_so_se_oferece_com_o_agachar_armado() {
+    use ph2d_editor_core::screens::hero::ANIM_POSE_CROUCH;
+    let crouch = AnimWhenInfo::Pose(ANIM_POSE_CROUCH);
+    let mut info = with_character(anim(false, false));
+    info.card.can_crouch = false;
+    assert!(!info.card.when_options().contains(&crouch));
+    info.card.can_crouch = true;
+    let j = info
+        .card
+        .when_options()
+        .iter()
+        .position(|o| *o == crouch)
+        .expect("«Crouching» é uma opção");
+    assert_eq!(
+        edits(&pick_when(info, 0, j)),
+        [AnimFieldEdit::RuleWhen(0, crouch)]
+    );
+}

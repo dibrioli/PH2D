@@ -17,6 +17,7 @@ fn armed() -> CrouchConfig {
         speed: 2.0,
         // A fixture DECLARA a premissa: agachar nao aperta a trava de beirada.
         walk_off_ledges: true,
+        body_room: 0.0,
     }
 }
 
@@ -213,4 +214,36 @@ fn the_probe_is_only_wanted_when_he_is_crouched_and_released() {
 fn clear_sky_is_the_neutral_and_a_ceiling_is_not() {
     assert!(!Headroom::CLEAR.is_blocked());
     assert!(blocked().is_blocked());
+}
+
+/// **A forma encolhe primeiro, a perna desce o resto** (plano 09): com espaço na forma a perna
+/// fica de pé (os pés no sítio); sem ele, a lei W15 inteira; a soma é sempre o `rise`; de pé ou
+/// desarmado nada encolhe.
+#[test]
+fn the_body_shrinks_first_and_the_leg_takes_the_rest() {
+    let r = ride(); // de pé 1,2; agachado 0,6 ⇒ rise 0,6
+    let roomy = CrouchConfig {
+        body_room: 1.0,
+        ..armed()
+    };
+    assert!((body_shrink(&roomy, &r, true) - 0.6).abs() < 1e-6);
+    assert_eq!(ride_for(&roomy, &r, true), r, "a perna não desce");
+    let tight = CrouchConfig {
+        body_room: 0.2,
+        ..armed()
+    };
+    assert!((body_shrink(&tight, &r, true) - 0.2).abs() < 1e-6);
+    let leg = ride_for(&tight, &r, true).float_height;
+    assert!((leg - 0.8).abs() < 1e-6, "a perna desce 0,4: {leg}");
+    assert_eq!(
+        ride_for(&armed(), &r, true).float_height,
+        0.6,
+        "sem forma = W15"
+    );
+    assert_eq!(body_shrink(&roomy, &r, false), 0.0, "de pé");
+    let off = CrouchConfig {
+        height: 0.0,
+        ..roomy
+    };
+    assert_eq!(body_shrink(&off, &r, true), 0.0, "desarmado");
 }

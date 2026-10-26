@@ -393,6 +393,30 @@ pub(super) fn headroom_offset(cfg: &PlayerConfig) -> Option<[f32; 2]> {
     (rise.is_finite() && rise > 0.0).then_some([0.0, rise])
 }
 
+/// O agachar desce primeiro pela forma: quanto ela tem para dar sai do collider do spawn (plano 09).
+pub(super) fn with_body_room(mut cfg: PlayerConfig, rest: &ph2d_physics::BodyDesc) -> PlayerConfig {
+    cfg.crouch.body_room = rest.shape.top_shrink_room();
+    cfg
+}
+
+/// **A forma do corpo neste tique** (plano 09): de pé a do spawn; agachado, encolhida por cima pelo
+/// que a perna não desce ([`ph2d_platformer::body_shrink`]), com a base no mesmo sítio.
+pub(super) fn crouch_shape(
+    cfg: &PlayerConfig,
+    state: &ph2d_platformer::PlayerState,
+    b: &crate::bridge::BodyRef,
+) -> (
+    rapier2d_handle::Handle,
+    ph2d_physics::BodyDesc,
+    ph2d_physics::ShapeDesc,
+    [f32; 2],
+) {
+    let rest = &b.rest;
+    let s = ph2d_platformer::body_shrink(&cfg.crouch, &cfg.ride, state.crouch.crouched);
+    let offset = [rest.offset[0], rest.offset[1] - 0.5 * s];
+    (b.handle, *rest, rest.shape.shrunk_from_top(s), offset)
+}
+
 /// **O perfil do teto acima da cabeça** (W10) — a metade do sensor que este
 /// módulo possui, e nada de política.
 ///

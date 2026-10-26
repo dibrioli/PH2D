@@ -82,6 +82,11 @@ pub struct CrouchConfig {
     /// a [`walk_for`], que já existe exactamente para *"o dia em que um terceiro
     /// termo tiver de encolher"*.
     pub walk_off_ledges: bool,
+    /// **Quanto a FORMA do corpo pode encolher por cima** (m) — não é autorado: a ponte põe-no a
+    /// cada tique a partir do collider (o troço recto da cápsula; zero numa bola). O agachar desce
+    /// primeiro pela forma, com os pés no sítio, e só o resto pela perna (plano 09,
+    /// [`body_shrink`]). Zero = a lei W15 inteira pela perna.
+    pub body_room: f32,
 }
 
 impl CrouchConfig {
@@ -94,6 +99,7 @@ impl CrouchConfig {
         // ⚠️ **`true` = o mundo que já shipava** (ver o doc do campo), e não o
         // `false` do Unreal.
         walk_off_ledges: true,
+        body_room: 0.0,
     };
 
     /// **A capacidade está autorada?**
@@ -116,6 +122,23 @@ impl CrouchConfig {
         } else {
             0.0
         }
+    }
+
+    /// A parte do [`Self::rise`] que a forma entrega (até ao [`Self::body_room`]).
+    #[must_use]
+    pub fn body_drop(&self, ride: &RideConfig) -> f32 {
+        let room = if self.body_room.is_finite() {
+            self.body_room.max(0.0)
+        } else {
+            0.0
+        };
+        self.rise(ride).min(room)
+    }
+
+    /// A parte do [`Self::rise`] que sobra para a perna.
+    #[must_use]
+    pub fn leg_drop(&self, ride: &RideConfig) -> f32 {
+        self.rise(ride) - self.body_drop(ride)
     }
 }
 
@@ -229,12 +252,12 @@ pub fn crouch_step(
 /// que ela encurtou (ver o aviso do módulo).
 #[must_use]
 pub fn ride_for(cfg: &CrouchConfig, ride: &RideConfig, crouched: bool) -> RideConfig {
-    if !crouched || !cfg.armed(ride) {
+    let drop = cfg.leg_drop(ride);
+    if !crouched || !cfg.armed(ride) || drop <= 0.0 {
         return *ride;
     }
-    let drop = ride.float_height - cfg.height;
     RideConfig {
-        float_height: cfg.height,
+        float_height: ride.float_height - drop,
         cling_distance: ride.cling_distance + drop,
         ..*ride
     }
@@ -269,6 +292,19 @@ pub fn walk_for(
         speed: cfg.speed.max(0.0),
         walk_off_ledges: walk.walk_off_ledges && cfg.walk_off_ledges,
         ..*walk
+    }
+}
+
+/// **Quanto a forma do corpo encolhe POR CIMA** neste tique, em metros (plano 09): a parte do
+/// agachar que a forma entrega, com a base no sítio ([`CrouchConfig::body_drop`]). A perna
+/// ([`ride_for`]) desce só o resto, e a soma é sempre o [`CrouchConfig::rise`] — o sensor de tecto
+/// não muda.
+#[must_use]
+pub fn body_shrink(cfg: &CrouchConfig, ride: &RideConfig, crouched: bool) -> f32 {
+    if crouched && cfg.armed(ride) {
+        cfg.body_drop(ride)
+    } else {
+        0.0
     }
 }
 

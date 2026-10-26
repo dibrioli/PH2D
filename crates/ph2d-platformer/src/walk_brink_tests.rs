@@ -229,6 +229,7 @@ fn crouching_can_tighten_the_trava_but_never_loosen_it() {
         height: 0.25,
         speed: 2.0,
         walk_off_ledges: true,
+        body_room: 0.0,
     };
     let crouch_stops = CrouchConfig {
         walk_off_ledges: false,

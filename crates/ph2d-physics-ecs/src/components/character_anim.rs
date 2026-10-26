@@ -48,10 +48,15 @@ pub enum CharacterPose {
     Run,
     Jump,
     Fall,
+    /// Agachado (plano 09). Não é uma pose EXCLUSIVA: [`Self::of`] continua a dar a base
+    /// (parado/a correr…) e esta vale ao mesmo tempo, lida de [`PlayerView::crouching`].
+    Crouch,
 }
 
 impl CharacterPose {
-    pub const ALL: [Self; 4] = [Self::Idle, Self::Run, Self::Jump, Self::Fall];
+    pub const ALL: [Self; 5] = [Self::Idle, Self::Run, Self::Jump, Self::Fall, Self::Crouch];
+    /// As 4 que o [`CharacterAnimations`] nomeia — as regras derivadas de um ficheiro antigo.
+    pub const DERIVED: [Self; 4] = [Self::Idle, Self::Run, Self::Jump, Self::Fall];
 
     /// A lei: no chão corre se a velocidade relativa ao chão passa de `run_from`; no ar (ou numa
     /// rampa íngreme demais para ficar de pé) sobe = salta, desce = cai.
@@ -78,14 +83,15 @@ impl CharacterPose {
 }
 
 impl CharacterAnimations {
-    /// O nome da animação deste estado.
+    /// O nome da animação deste estado; `None` para uma pose que ele não nomeia (agachado).
     #[must_use]
-    pub fn tag(&self, pose: CharacterPose) -> &str {
+    pub fn tag(&self, pose: CharacterPose) -> Option<&str> {
         match pose {
-            CharacterPose::Idle => &self.idle,
-            CharacterPose::Run => &self.run,
-            CharacterPose::Jump => &self.jump,
-            CharacterPose::Fall => &self.fall,
+            CharacterPose::Idle => Some(&self.idle),
+            CharacterPose::Run => Some(&self.run),
+            CharacterPose::Jump => Some(&self.jump),
+            CharacterPose::Fall => Some(&self.fall),
+            CharacterPose::Crouch => None,
         }
     }
 }

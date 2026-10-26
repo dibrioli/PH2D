@@ -23,6 +23,7 @@ fn crouching_cfg() -> PlayerConfig {
             speed: 2.0,
             // A fixture DECLARA a premissa: agachar nao aperta a trava.
             walk_off_ledges: true,
+            body_room: 0.0,
         },
         ..PlayerConfig::STARTING_POINT
     }

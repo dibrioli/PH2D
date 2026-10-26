@@ -18,7 +18,12 @@ use super::shape::{ShapeDesc, capsule_vertices, ellipse_vertices};
 /// Every branch here is byte-neutral at its default, which is what lets each wave
 /// append a collider property without re-simulating existing art.
 pub(super) fn build_collider(desc: &BodyDesc) -> Collider {
-    let shape = match desc.shape {
+    collider_from(shape_builder(desc.shape), desc)
+}
+
+/// The shape alone — what a spawn builds and what [`super::PhysicsWorld::reshape_body`] swaps in.
+pub(super) fn shape_builder(shape: ShapeDesc) -> ColliderBuilder {
+    match shape {
         ShapeDesc::Ball { radius } => ColliderBuilder::ball(radius),
         ShapeDesc::Cuboid { half_x, half_y } => ColliderBuilder::cuboid(half_x, half_y),
         // A true capsule: rapier has it natively, so a uniformly-scaled
@@ -55,7 +60,10 @@ pub(super) fn build_collider(desc: &BodyDesc) -> Collider {
             ColliderBuilder::convex_polyline(pts)
                 .unwrap_or_else(|| ColliderBuilder::ball(rx.max(ry).max(f32::MIN_POSITIVE)))
         }
-    };
+    }
+}
+
+fn collider_from(shape: ColliderBuilder, desc: &BodyDesc) -> Collider {
     // Mass source: an explicit override (`Some(m)` → `.mass(m)`, kg, ignoring
     // density — Unity's manual mass) or auto (`None` → `.density(d)`, mass =
     // density × area, rapier's own default and byte-identical to before this

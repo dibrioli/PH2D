@@ -243,14 +243,7 @@ impl crate::App {
     fn pick_drop_target(&mut self, x: f32, y: f32) -> Option<DropOver> {
         // ⚠️ **A porta ÚNICA de pick** — a mesma que o realce de proveniência e o clique usam.
         let bits = self.pick_hovered_object((x, y))?;
-        let gfx = self.gfx.as_ref()?;
-        let e = ph2d_ecs::Entity::from_bits(bits);
-        // *«Isto mostra pixels?»* — a pergunta que decide se ele pode receber uma imagem.
-        let is_sprite = gfx.sim.world().get::<ph2d_render::Sprite>(e).is_some();
-        Some(DropOver {
-            entity_bits: bits,
-            is_sprite,
-        })
+        Some(DropOver { entity_bits: bits })
     }
 
     /// Executa o que a lei devolveu. ⛔ Sem `_` — uma acção nova tem de vir aqui escolher o que faz.

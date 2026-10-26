@@ -15,8 +15,11 @@
 //! | largo… | …em cima de | e acontece |
 //! |---|---|---|
 //! | um **prefab** | qualquer sítio do canvas | nasce uma cópia **ali** |
-//! | uma **imagem** | uma **sprite** | aquela sprite passa a mostrá-la |
-//! | uma **imagem** | canvas vazio | nasce uma sprite nova ali |
+//! | uma **imagem** | qualquer sítio do canvas | nasce uma sprite nova **ali** |
+//! | uma **imagem** | a ranhura Image do Inspector | aquela sprite passa a mostrá-la |
+//!
+//! ⛔ Uma imagem largada SOBRE uma sprite no canvas não a retextura (dono 26/10, smoke GEF 13): o céu cobre
+//! a vista inteira e engolia toda a queda. Como a Unity: o canvas cria, o Inspector troca.
 //!
 //! ⛔ E **fora do canvas, RECUSA** — visível, nunca silêncio. Largar num sítio que não sabe receber
 //! tem de se ver, senão o artista conclui que funcionou.
@@ -78,16 +81,10 @@ pub enum DropTarget {
     Source,
 }
 
-/// O que o cursor encontrou no canvas, na forma de que a lei precisa.
-///
-/// ⚠️ **É um resumo, e não a entidade**: o que decide é *«isto é uma sprite?»*, não *«qual
-/// componente ela tem?»*. Passar a entidade obrigaria esta lei a consultar o mundo, e ela deixaria
-/// de ser pura.
+/// O que o cursor encontrou no canvas: só a receita de MACRO o usa (aplica-se por cima dele).
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct DropOver {
     pub entity_bits: u64,
-    /// Ela mostra pixels? ⇒ pode receber uma imagem.
-    pub is_sprite: bool,
 }
 
 /// O que fazer. ⛔ Uma variante por EFEITO, não por gesto.
@@ -195,10 +192,8 @@ pub fn resolve(payload: DragPayload, target: DropTarget) -> DropAction {
             DropAction::Filecatalog { payload, catalog }
         }
 
-        // ⭐⭐⭐ **A RANHURA recebe uma IMAGEM, e é a MESMA acção que a queda sobre a sprite no
-        // canvas** (wave B3): o efeito é *«esta sprite passa a mostrar isto»*, e ele não muda por o
-        // gesto ter chegado pelo painel. *Uma segunda acção com o mesmo efeito seria dois sítios a
-        // discordar no dia em que um deles for corrigido.*
+        // ⭐⭐⭐ **A RANHURA recebe uma IMAGEM** (wave B3): é o único gesto de arrastar que troca a imagem de
+        // uma sprite que já existe.
         (DragPayload::Image { asset }, DropTarget::InspectorTexture { entity_bits }) => {
             DropAction::RetextureSprite { entity_bits, asset }
         }
@@ -221,19 +216,8 @@ pub fn resolve(payload: DragPayload, target: DropTarget) -> DropAction {
             }
         }
 
-        (
-            DragPayload::Image { asset },
-            DropTarget::Canvas {
-                over: Some(over), ..
-            },
-        ) if over.is_sprite => DropAction::RetextureSprite {
-            entity_bits: over.entity_bits,
-            asset,
-        },
-
-        // ⚠️ Sobre um objecto que **não** mostra pixels (um grupo, um objecto vazio, uma forma
-        // vetorial), a imagem nasce como sprite nova **no ponto** — e não «entra» no objecto.
-        // Retexturar o que não tem textura seria inventar um `Sprite` que o artista não pediu.
+        // ⭐ No canvas a imagem nasce SEMPRE como sprite nova no ponto, haja o que houver por baixo (ver o doc
+        // do módulo).
         (DragPayload::Image { asset }, DropTarget::Canvas { world, .. }) => {
             DropAction::SpawnImage { asset, world }
         }
@@ -252,17 +236,7 @@ mod tests {
     }
 
     fn sprite(bits: u64) -> Option<DropOver> {
-        Some(DropOver {
-            entity_bits: bits,
-            is_sprite: true,
-        })
-    }
-
-    fn group(bits: u64) -> Option<DropOver> {
-        Some(DropOver {
-            entity_bits: bits,
-            is_sprite: false,
-        })
+        Some(DropOver { entity_bits: bits })
     }
 
     /// ⭐ Um prefab largado no canvas nasce **no ponto**, não com um deslocamento.
@@ -292,15 +266,15 @@ mod tests {
         );
     }
 
-    /// ⭐⭐ **Uma imagem sobre uma sprite RE-TEXTURA aquela sprite** — é a queda que responde
-    /// *«qual objecto?»* com o dedo, que é o que o duplo-clique não consegue fazer.
+    /// ⭐⭐ **Uma imagem sobre uma sprite NASCE ao lado dela** (dono 26/10): o céu de fundo cobre a vista
+    /// inteira, e a regra antiga trocava-lhe a imagem a cada queda.
     #[test]
-    fn an_image_over_a_sprite_retextures_that_sprite() {
+    fn an_image_over_a_sprite_is_born_and_leaves_the_sprite_alone() {
         assert_eq!(
             resolve(DragPayload::Image { asset: [5; 32] }, canvas(sprite(42))),
-            DropAction::RetextureSprite {
-                entity_bits: 42,
-                asset: [5; 32]
+            DropAction::SpawnImage {
+                asset: [5; 32],
+                world: [3.0, 4.0]
             }
         );
     }
@@ -310,19 +284,6 @@ mod tests {
     fn an_image_on_empty_canvas_is_born_there() {
         assert_eq!(
             resolve(DragPayload::Image { asset: [5; 32] }, canvas(None)),
-            DropAction::SpawnImage {
-                asset: [5; 32],
-                world: [3.0, 4.0]
-            }
-        );
-    }
-
-    /// ⚠️ **Sobre um objecto que não mostra pixels, ela também nasce** — retexturar o que não tem
-    /// textura seria inventar um `Sprite` que o artista não pediu.
-    #[test]
-    fn an_image_over_a_non_sprite_is_born_instead_of_entering_it() {
-        assert_eq!(
-            resolve(DragPayload::Image { asset: [5; 32] }, canvas(group(42))),
             DropAction::SpawnImage {
                 asset: [5; 32],
                 world: [3.0, 4.0]
@@ -359,7 +320,7 @@ mod tests {
             DragPayload::Prefab { stable_id: 1 },
             DragPayload::Image { asset: [0; 32] },
         ] {
-            for over in [None, sprite(1), group(1)] {
+            for over in [None, sprite(1)] {
                 assert_ne!(
                     resolve(p, canvas(over)),
                     DropAction::Refuse,
@@ -460,29 +421,15 @@ mod catalog_target_tests {
 mod texture_slot_target_tests {
     use super::*;
 
-    /// ⭐⭐⭐ **Uma IMAGEM na ranhura retextura a sprite que ela descreve** (wave B3) — e é a MESMA
-    /// acção que a queda sobre a sprite no canvas.
-    ///
-    /// ⚠️ **O oráculo é a IGUALDADE das duas**, e não o valor de uma: se um dia elas divergirem, o
-    /// mesmo gesto passa a ter dois significados conforme o sítio por onde chegou.
+    /// ⭐⭐⭐ **Uma IMAGEM na ranhura retextura a sprite que ela descreve** (wave B3) — o único arrastar
+    /// que troca a imagem de uma sprite que já existe.
     #[test]
-    fn an_image_on_the_slot_is_the_same_action_as_on_the_sprite() {
+    fn an_image_on_the_slot_retextures_its_sprite() {
         let asset = [7u8; 32];
         let by_slot = resolve(
             DragPayload::Image { asset },
             DropTarget::InspectorTexture { entity_bits: 42 },
         );
-        let by_canvas = resolve(
-            DragPayload::Image { asset },
-            DropTarget::Canvas {
-                world: [0.0, 0.0],
-                over: Some(DropOver {
-                    entity_bits: 42,
-                    is_sprite: true,
-                }),
-            },
-        );
-        assert_eq!(by_slot, by_canvas);
         assert_eq!(
             by_slot,
             DropAction::RetextureSprite {
@@ -560,10 +507,7 @@ mod texture_slot_target_tests {
             },
             DropTarget::Canvas {
                 world: [0.0, 0.0],
-                over: Some(DropOver {
-                    entity_bits: 3,
-                    is_sprite: true,
-                }),
+                over: Some(DropOver { entity_bits: 3 }),
             },
             DropTarget::InspectorTexture { entity_bits: 3 },
             DropTarget::CatalogRow { catalog: None },

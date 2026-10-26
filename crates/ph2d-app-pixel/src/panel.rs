@@ -109,6 +109,14 @@ pub fn frame(
         hero.panel_visibility.insert(PANEL_ID, app.painel_em_edicao);
         hero.panel_visibility
             .insert(TIMELINE_ID, app.painel_em_edicao);
+        // A banda de baixo é UMA: em Draw a linha do tempo é a do Pixel; a da casa volta ao sair.
+        let casa = ph2d_editor_core::screens::hero::PANEL_TIMELINE;
+        if app.painel_em_edicao {
+            app.timeline_casa = hero.panel_visibility.get(casa).copied();
+            hero.panel_visibility.insert(casa, false);
+        } else if let Some(v) = app.timeline_casa.take() {
+            hero.panel_visibility.insert(casa, v);
+        }
     }
     if std::mem::take(&mut app.alterna_timeline) {
         let on = hero.panel_visibility.get(TIMELINE_ID).copied().unwrap_or(false);

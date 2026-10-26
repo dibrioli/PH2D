@@ -108,6 +108,8 @@ pub struct PixelApp {
     pub onion_on: bool,
     /// O `Tab` pediu mostrar/esconder a linha do tempo (aplica-se no painel, que vê o `hero`).
     pub(crate) alterna_timeline: bool,
+    /// A linha do tempo da casa estava aberta antes do Draw (a banda de baixo volta-lhe ao sair).
+    pub(crate) timeline_casa: Option<bool>,
     /// O instante do quadro anterior (o relógio do tocar).
     pub(crate) relogio: Option<std::time::Instant>,
     /// O enquadramento de entrada que ainda segue a área livre: `(objecto, área, vista posta)`.
@@ -172,6 +174,7 @@ impl Default for PixelApp {
             onion: ph2d_pixel_core::Onion::default(),
             onion_on: false,
             alterna_timeline: false,
+            timeline_casa: None,
             relogio: None,
             fit: None,
             smoke: None,

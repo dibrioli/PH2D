@@ -10,7 +10,7 @@ use ph2d_ecs::SimWorld;
 use ph2d_editor_core::ToastQueue;
 use ph2d_editor_core::object_mode::ObjectMode;
 use ph2d_editor_core::pixel_panel::{PixelFrameAction as A, PixelPanelInfo, PixelRequest};
-use ph2d_editor_core::screens::hero::{HeroScreen, PANEL_PIXEL_TIMELINE};
+use ph2d_editor_core::screens::hero::{HeroScreen, PANEL_PIXEL_TIMELINE, PANEL_TIMELINE};
 use ph2d_pixel_core::{Op, Patch, Purpose, Rect, compose_window};
 use ph2d_render::Camera2d;
 use winit::keyboard::KeyCode;
@@ -169,6 +169,18 @@ fn f3_tab_and_the_draw_edge_drive_the_onion_and_the_timeline_panel() {
     let mut p = Palco::novo();
     let aberto = |p: &Palco| p.hero.panel_visibility.get(PANEL_PIXEL_TIMELINE).copied().unwrap_or(false);
     assert!(aberto(&p), "a linha do tempo abre ao entrar em Draw");
+    let casa = |p: &Palco| p.hero.panel_visibility.get(PANEL_TIMELINE).copied().unwrap_or(false);
+    // o layout do dono: a linha do tempo da casa aberta — em Draw cede a banda, ao sair volta
+    let mut q = Palco::novo();
+    q.hero.gizmo.mode.leave();
+    q.quadro();
+    q.hero.panel_visibility.insert(PANEL_TIMELINE, true);
+    q.hero.gizmo.mode.enter(q.bits, ObjectMode::Draw);
+    q.quadro();
+    assert!(aberto(&q) && !casa(&q), "em Draw a banda é da linha do tempo do Pixel");
+    q.hero.gizmo.mode.leave();
+    q.quadro();
+    assert!(!aberto(&q) && casa(&q), "ao sair do Draw a da casa volta");
     p.tecla(KeyCode::Tab);
     assert!(!aberto(&p), "Tab esconde");
     p.tecla(KeyCode::Tab);

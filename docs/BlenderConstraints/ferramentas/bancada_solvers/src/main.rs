@@ -51,6 +51,9 @@ struct Cena {
     circulos: Vec<Circulo>,
     regras: Vec<Regra>,
     arrasto: Arrasto,
+    /// Cenas «bem»/«conflito» (W4.1): de onde o solver parte; `None` = de `pontos`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    partida: Option<Vec<[f64; 2]>>,
 }
 
 // ───────────────────────── cenas (entradas NOSSAS) ─────────────────────────
@@ -101,6 +104,7 @@ fn escada(dentes: usize) -> Cena {
         fixos: vec![0],
         circulos: vec![],
         regras,
+        partida: None,
     }
 }
 
@@ -161,11 +165,165 @@ fn misto(modulos: usize) -> Cena {
         fixos: vec![0],
         circulos,
         regras,
+        partida: None,
     }
 }
 
 fn cenas() -> Vec<Cena> {
     vec![escada(12), escada(50), escada(200), misto(5), misto(20), misto(80)]
+}
+
+// ───────────────────────── W4.1: cenas de solução ÚNICA e de conflito ─────────────────────────
+
+fn simples(nome: &str, pontos: Vec<[f64; 2]>, fixos: Vec<usize>, circulos: Vec<Circulo>, regras: Vec<Regra>) -> Cena {
+    Cena {
+        nome: nome.into(),
+        arrasto: Arrasto { ponto: 0, caminho: vec![] },
+        pontos,
+        fixos,
+        circulos,
+        regras,
+        partida: None,
+    }
+}
+
+fn retangulo() -> Cena {
+    simples(
+        "bem_retangulo",
+        vec![[100.0, 100.0], [260.0, 100.0], [260.0, 190.0], [100.0, 190.0]],
+        vec![0],
+        vec![],
+        vec![
+            Regra::H { a: 0, b: 1 },
+            Regra::V { a: 1, b: 2 },
+            Regra::H { a: 2, b: 3 },
+            Regra::V { a: 3, b: 0 },
+            Regra::Distancia { a: 0, b: 1, d: 160.0 },
+            Regra::Distancia { a: 1, b: 2, d: 90.0 },
+        ],
+    )
+}
+
+/// Desenhos com 0 graus de liberdade (um de cada lei + um perfil inteiro cotado). Cada um dá dois casos: partir de
+/// uma pose ERRADA (`__partida`) e mudar a 1.ª medida em +10 % (`__medida`, a medida animada da W4.5).
+fn bem_restringidas() -> Vec<Cena> {
+    let th: f64 = 0.4;
+    let (u, nv) = ([th.cos(), th.sin()], [-th.sin(), th.cos()]);
+    let p0 = [50.0, 50.0];
+    let p1 = [p0[0] + 150.0 * u[0], p0[1] + 150.0 * u[1]];
+    let rodado = simples(
+        "bem_rodado",
+        vec![p0, p1, [p1[0] + 80.0 * nv[0], p1[1] + 80.0 * nv[1]], [p0[0] + 80.0 * nv[0], p0[1] + 80.0 * nv[1]]],
+        vec![0, 1],
+        vec![],
+        vec![
+            Regra::Paralelo { a: 0, b: 1, c: 3, d: 2 },
+            Regra::Perpendicular { a: 0, b: 1, c: 1, d: 2 },
+            Regra::Paralelo { a: 1, b: 2, c: 0, d: 3 },
+            Regra::Distancia { a: 1, b: 2, d: 80.0 },
+        ],
+    );
+    let (c, r, a0) = ([200.0, 200.0], 50.0, [60.0, 120.0]);
+    let d = sub(c, a0);
+    let (dd, al) = (dist(c, a0), (r / dist(c, a0)).asin());
+    let dir = [
+        (d[0] * al.cos() - d[1] * al.sin()) / dd,
+        (d[0] * al.sin() + d[1] * al.cos()) / dd,
+    ];
+    let tangente = simples(
+        "bem_tangente",
+        vec![a0, [a0[0] + 220.0 * dir[0], a0[1] + 220.0 * dir[1]], c],
+        vec![0, 2],
+        vec![Circulo { centro: 2, raio: r }],
+        vec![Regra::Tangente { a: 0, b: 1, circulo: 0 }, Regra::Distancia { a: 0, b: 1, d: 220.0 }],
+    );
+    let (sa, sb, sp) = ([100.0, 0.0], [140.0, 200.0], [60.0, 90.0]);
+    let sd = sub(sb, sa);
+    let t = ponto(sub(sp, sa), sd) / ponto(sd, sd);
+    let pe = [sa[0] + t * sd[0], sa[1] + t * sd[1]];
+    let simetrico = simples(
+        "bem_simetrico",
+        vec![sa, sb, sp, [2.0 * pe[0] - sp[0], 2.0 * pe[1] - sp[1]]],
+        vec![0, 1, 2],
+        vec![],
+        vec![Regra::Simetrico { p: 2, q: 3, a: 0, b: 1 }],
+    );
+    let (ca, cb) = ([0.0, 0.0], [300.0, 60.0]);
+    let cp = [0.35 * cb[0], 0.35 * cb[1]];
+    let composto = simples(
+        "bem_composto",
+        vec![ca, cb, cp, cp, [cp[0] - cb[1], cp[1] + cb[0]]],
+        vec![0, 1],
+        vec![],
+        vec![
+            Regra::SobreLinha { p: 2, a: 0, b: 1 },
+            Regra::Distancia { a: 0, b: 2, d: dist(ca, cp) },
+            Regra::Coincidente { a: 3, b: 2 },
+            Regra::Igual { a: 3, b: 4, c: 0, d: 1 },
+            Regra::Perpendicular { a: 3, b: 4, c: 0, d: 1 },
+        ],
+    );
+    // perfil de 12 dentes: H/V em tudo, cada segmento cotado menos os dois que fecham; larguras = a do 1.º dente.
+    let mut perfil = escada(12);
+    perfil.nome = "bem_perfil".into();
+    let n = perfil.pontos.len();
+    perfil.regras.retain(|r| matches!(r, Regra::H { .. } | Regra::V { .. }));
+    for k in 0..n - 2 {
+        let (a, b) = (k, k + 1);
+        let topo = k % 4 == 1 && k / 4 > 0 && k < 4 * 12;
+        perfil.regras.push(if topo {
+            Regra::Igual { a: 1, b: 2, c: a, d: b }
+        } else {
+            Regra::Distancia { a, b, d: dist(perfil.pontos[a], perfil.pontos[b]) }
+        });
+    }
+    perfil.arrasto = Arrasto { ponto: 0, caminho: vec![] };
+
+    let mut out = Vec::new();
+    for base in [retangulo(), rodado, tangente, simetrico, composto, perfil] {
+        let mut errada = base.clone();
+        errada.nome = format!("{}__partida", base.nome);
+        errada.partida = Some(
+            base.pontos
+                .iter()
+                .enumerate()
+                .map(|(i, p)| {
+                    if base.fixos.contains(&i) {
+                        *p
+                    } else {
+                        let f = i as f64;
+                        [p[0] + 3.0 * (1.7 * f + 0.3).sin(), p[1] + 3.0 * (2.3 * f + 0.1).cos()]
+                    }
+                })
+                .collect(),
+        );
+        out.push(errada);
+        let primeira = base.regras.iter().find_map(|r| if let Regra::Distancia { d, .. } = r { Some(*d) } else { None });
+        if let Some(d) = primeira {
+            let mut m = base.clone();
+            m.nome = format!("{}__medida", base.nome);
+            let alvo = m.regras.iter_mut().find(|r| matches!(r, Regra::Distancia { .. })).unwrap();
+            if let Regra::Distancia { d: dm, .. } = alvo {
+                *dm = d * 1.1;
+            }
+            out.push(m);
+        }
+    }
+    let mut redundante = retangulo();
+    redundante.nome = "conflito_redundante".into();
+    redundante.regras.push(Regra::Distancia { a: 2, b: 3, d: 160.0 });
+    let mut inconsistente = retangulo();
+    inconsistente.nome = "conflito_inconsistente".into();
+    inconsistente.regras.push(Regra::Distancia { a: 2, b: 3, d: 170.0 });
+    let hv = simples(
+        "conflito_hv",
+        vec![[0.0, 0.0], [100.0, 0.0]],
+        vec![0],
+        vec![],
+        vec![Regra::H { a: 0, b: 1 }, Regra::V { a: 0, b: 1 }, Regra::Distancia { a: 0, b: 1, d: 100.0 }],
+    );
+    out.extend([redundante, inconsistente, hv]);
+    out
 }
 
 // ───────────────────────── a régua de cumprimento (nossa, a mesma para todos) ─────────────────────────
@@ -279,7 +437,8 @@ mod ez {
     }
 
     impl Ezpz {
-        pub fn novo(c: &Cena) -> Self {
+        /// Pedidos da ezpz para as regras da cena; `origem[k]` = a regra da cena que gerou o pedido k (None = fixo/raio).
+        pub fn monta(c: &Cena) -> (Vec<DatumPoint>, Vec<DatumCircle>, Vec<R>, Vec<Option<usize>>, usize) {
             let mut ids = IdGenerator::default();
             let pts: Vec<DatumPoint> = c.pontos.iter().map(|_| DatumPoint::new(&mut ids)).collect();
             let circs: Vec<DatumCircle> = c
@@ -297,7 +456,8 @@ mod ez {
             for (ci, dc) in c.circulos.iter().zip(&circs) {
                 reqs.push(hp(K::Fixed(dc.radius.id, ci.raio)));
             }
-            for r in &c.regras {
+            let mut origem = vec![None; reqs.len()];
+            for (ir, r) in c.regras.iter().enumerate() {
                 let k = match *r {
                     Regra::H { a, b } => K::Horizontal(seg(&pts, a, b)),
                     Regra::V { a, b } => K::Vertical(seg(&pts, a, b)),
@@ -318,10 +478,41 @@ mod ez {
                     Regra::Coincidente { a, b } => K::PointsCoincident(pts[a], pts[b]),
                 };
                 reqs.push(hp(k));
+                origem.push(Some(ir));
             }
+            (pts, circs, reqs, origem, n)
+        }
+
+        /// Uma resolução a partir de `partida` (sem arrasto): posições, regras que a ezpz declara por cumprir, e o
+        /// número de variáveis sub-restringidas da análise.
+        pub fn uma_vez(c: &Cena, partida: &[[f64; 2]]) -> Result<(Vec<[f64; 2]>, Vec<usize>, usize, Vec<String>), String> {
+            let (pts, circs, reqs, origem, n) = Self::monta(c);
+            let mut v = vec![0.0; n];
+            for (p, x) in pts.iter().zip(partida) {
+                v[p.id_x() as usize] = x[0];
+                v[p.id_y() as usize] = x[1];
+            }
+            for (ci, dc) in c.circulos.iter().zip(&circs) {
+                v[dc.radius.id as usize] = ci.raio;
+            }
+            let g: Vec<_> = v.iter().enumerate().map(|(i, &x)| (i as u32, x)).collect();
+            match kcl_ezpz::solve_analysis(&reqs, g, Config::default()) {
+                Ok(o) => {
+                    let f = o.outcome.final_values();
+                    let pos = pts.iter().map(|p| [f[p.id_x() as usize], f[p.id_y() as usize]]).collect();
+                    let falta = o.outcome.unsatisfied().iter().filter_map(|&k| origem[k]).collect();
+                    let avisos = o.outcome.warnings().iter().map(|w| format!("{w:?}")).collect();
+                    Ok((pos, falta, o.analysis.underconstrained().len(), avisos))
+                }
+                Err(e) => Err(format!("{}", e.error)),
+            }
+        }
+
+        pub fn novo(c: &Cena) -> Self {
+            let (pts, circs, mut reqs, _, n) = Self::monta(c);
             let arrastado = pts[c.arrasto.ponto];
-            reqs.push(hp(K::Fixed(arrastado.id_x(), 0.0)));
-            reqs.push(hp(K::Fixed(arrastado.id_y(), 0.0)));
+            reqs.push(R::highest_priority(K::Fixed(arrastado.id_x(), 0.0)));
+            reqs.push(R::highest_priority(K::Fixed(arrastado.id_y(), 0.0)));
             let mut s = Ezpz { pts, reqs, valores: vec![0.0; n], arrastado, falhas: 0 };
             for (ci, dc) in c.circulos.iter().zip(&circs) {
                 s.valores[dc.radius.id as usize] = ci.raio;
@@ -808,6 +999,38 @@ fn main() {
                 std::fs::write(format!("{}/{}.json", a[2], c.nome), serde_json::to_string_pretty(&c).unwrap()).unwrap();
                 println!("{}: {} pontos, {} regras", c.nome, c.pontos.len(), c.regras.len());
             }
+            for c in bem_restringidas() {
+                let v = c.regras.iter().map(|r| violacao(&c, &c.pontos, r)).fold(0.0, f64::max);
+                let deve_cumprir = !c.nome.ends_with("__medida") && !matches!(c.nome.as_str(), "conflito_inconsistente" | "conflito_hv");
+                assert!(!deve_cumprir || v < 1e-9, "{}: a pose de referência viola uma regra ({v})", c.nome);
+                std::fs::write(format!("{}/{}.json", a[2], c.nome), serde_json::to_string_pretty(&c).unwrap()).unwrap();
+                println!("{}: {} pontos, {} regras", c.nome, c.pontos.len(), c.regras.len());
+            }
+        }
+        // bem <dir> <freecad.json> <saida.json>: a ezpz resolve cada cena W4.1 UMA vez; posições contra as do FreeCAD.
+        Some("bem") => {
+            let fc: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(&a[3]).unwrap()).unwrap();
+            let mut linhas = Vec::new();
+            for c in bem_restringidas() {
+                let partida = c.partida.clone().unwrap_or_else(|| c.pontos.clone());
+                let f = &fc["bem"][&c.nome];
+                let fpos: Option<Vec<[f64; 2]>> = serde_json::from_value(f["posicoes"].clone()).ok();
+                let linha = match ez::Ezpz::uma_vez(&c, &partida) {
+                    Ok((pos, falta, sub_restr, avisos)) => {
+                        let viol = c.regras.iter().map(|r| violacao(&c, &pos, r)).fold(0.0, f64::max);
+                        let delta = fpos.as_ref().map(|fp| fp.iter().zip(&pos).map(|(p, q)| dist(*p, *q)).fold(0.0, f64::max));
+                        serde_json::json!({"cena": c.nome, "violacao_px": viol, "por_cumprir": falta,
+                            "variaveis_sub_restringidas": sub_restr, "avisos": avisos, "delta_freecad_px": delta,
+                            "freecad_dof": f["graus_de_liberdade_livres"], "freecad_redundantes": f["redundantes_regras"],
+                            "freecad_conflitos": f["conflitos_regras"], "freecad_violacao_px": f["violacao_px"]})
+                    }
+                    Err(e) => serde_json::json!({"cena": c.nome, "erro": e, "freecad_dof": f["graus_de_liberdade_livres"],
+                        "freecad_redundantes": f["redundantes_regras"], "freecad_conflitos": f["conflitos_regras"]}),
+                };
+                println!("{linha}");
+                linhas.push(linha);
+            }
+            std::fs::write(&a[4], serde_json::to_string_pretty(&linhas).unwrap()).unwrap();
         }
         Some("mede") => mede(&a[2], &a[3], &a[4], &a[5]),
         // diag <dir> <cena> <variante>: violação na pose de partida (sem arrasto e com o ponto arrastado onde está),

@@ -66,9 +66,11 @@ def violacao(c, x, r):
     raise ValueError(t)
 
 
-def monta(doc, c):
+def monta(doc, c, pos=None):
+    """`pos` = de onde a geometria parte (W4.1: pose errada); os fixos ficam no `pontos` verdadeiro."""
+    pos = pos or c["pontos"]
     sk = doc.addObject("Sketcher::SketchObject", c["nome"])
-    pts = sk.addGeometry([Part.Point(V(p)) for p in c["pontos"]], False)
+    pts = sk.addGeometry([Part.Point(V(p)) for p in pos], False)
     linhas, geo, cons = {}, [], []
 
     def linha(a, b):
@@ -103,9 +105,9 @@ def monta(doc, c):
     partes = []
     for gk in geo:
         if gk[0] == "l":
-            partes.append(Part.LineSegment(V(c["pontos"][gk[1]]), V(c["pontos"][gk[2]])))
+            partes.append(Part.LineSegment(V(pos[gk[1]]), V(pos[gk[2]])))
         else:
-            partes.append(Part.Circle(V(c["pontos"][gk[1]]), App.Vector(0, 0, 1), gk[2]))
+            partes.append(Part.Circle(V(pos[gk[1]]), App.Vector(0, 0, 1), gk[2]))
     ids = sk.addGeometry(partes, False)
     ligar = []
     for gid, gk in zip(ids, geo):
@@ -119,11 +121,30 @@ def monta(doc, c):
         ligar.append(Sketcher.Constraint("DistanceX", pts[i], 1, c["pontos"][i][0]))
         ligar.append(Sketcher.Constraint("DistanceY", pts[i], 1, c["pontos"][i][1]))
     sk.addConstraint(ligar + cons)
-    return sk, pts
+    origem = [None] * len(ligar) + list(range(len(cons)))
+    return sk, pts, origem
+
+
+def bem(doc, c):
+    """W4.1: resolver UMA vez a partir de `partida` (ou da pose de referência); a lista de redundantes e de
+    conflitos do Sketcher (números de restrição a partir de 1) volta traduzida para os índices das NOSSAS regras."""
+    sk, pts, origem = monta(doc, c, c.get("partida"))
+    rc = sk.solve()
+    x = [(sk.getPoint(g, 1).x, sk.getPoint(g, 1).y) for g in pts]
+    traduz = lambda ns: [origem[n - 1] for n in ns]
+    red, con = list(sk.RedundantConstraints), list(sk.ConflictingConstraints)
+    return {
+        "solve": rc,
+        "graus_de_liberdade_livres": sk.DoF,
+        "redundantes": red, "conflitos": con,
+        "redundantes_regras": traduz(red), "conflitos_regras": traduz(con),
+        "violacao_px": max(violacao(c, x, r) for r in c["regras"]),
+        "posicoes": [list(p) for p in x],
+    }
 
 
 def corre(doc, c):
-    sk, pts = monta(doc, c)
+    sk, pts, _ = monta(doc, c)
     rc = sk.solve()
     k = c["arrasto"]["ponto"]
     tempos, pior, amostras = [], 0.0, []
@@ -151,6 +172,19 @@ def corre(doc, c):
 def main():
     d, saida = os.environ["W4_CENAS"], os.environ["W4_SAIDA"]
     doc = App.newDocument("w4")
+    bems = sorted(f[:-5] for f in os.listdir(d) if f.startswith(("bem_", "conflito_")))
+    if os.environ.get("W4_SO_BEM"):  # só as cenas W4.1, por cima da fixture existente (o arrasto leva ~17 min)
+        out = json.load(open(saida))
+        out["cabecalho"]["bem"] = "W4.1: UMA resolução por cena a partir de `partida`; redundantes/conflitos traduzidos para índices de regra (" + time.strftime("%Y-%m-%d") + ")"
+        out["bem"] = {}
+        for nome in bems:
+            txt = open(os.path.join(d, nome + ".json"), "rb").read()
+            out["cabecalho"]["sha256"][nome] = hashlib.sha256(txt).hexdigest()
+            out["bem"][nome] = r = bem(doc, json.loads(txt))
+            print(nome, "solve", r["solve"], "DoF", r["graus_de_liberdade_livres"], "viol %.2e" % r["violacao_px"],
+                  "red", r["redundantes_regras"], "conf", r["conflitos_regras"], flush=True)
+        json.dump(out, open(saida, "w"), indent=1)
+        return
     out = {"cabecalho": {
         "oraculo": "FreeCAD " + ".".join(App.Version()[:3]) + " (freecadcmd, Sketcher/planegcs), LGPL-2.0 — corrido, nunca lido",
         "gerador": "docs/BlenderConstraints/ferramentas/oraculo_freecad.py",

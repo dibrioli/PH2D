@@ -1,7 +1,7 @@
 # W4 — CAD no vetor (26/10/2026)
 
-> Plano: [`01_plano.md`](01_plano.md) §3 (schema do vetor), §5, §7 W4 e o kill-criterion. Estado: **W4.0 medida; o código
-> NÃO abriu** — espera o «sim» do dono à escolha do solver (§1).
+> Plano: [`01_plano.md`](01_plano.md) §3 (schema do vetor), §5, §7 W4 e o kill-criterion. Estado: **W4.0 e W4.1 medidas;
+> o dono disse «pode seguir» (26/10) à ezpz** — o código abre pela W4.2 (§3).
 > Bancada: [`ferramentas/bancada_solvers/`](ferramentas/bancada_solvers/) (`mede.sh`; uma cena por processo) · entradas
 > NOSSAS: [`fixtures/w4_cenas/`](fixtures/w4_cenas/) · oráculo: [`ferramentas/oraculo_freecad.py`](ferramentas/oraculo_freecad.py)
 > → [`fixtures/freecad_1_1_4_sketch_arrasto.json`](fixtures/freecad_1_1_4_sketch_arrasto.json) · números brutos:
@@ -96,6 +96,28 @@ FreeCAD só é gate onde a solução é **única** (§4, cenas bem-restringidas 
   em W4.3 se uma regra «tangente» entre dois segmentos curvos é só isso.
 - A API é sem estado (`solve(regras, palpites, config)`): o sistema remonta-se a cada passo — está DENTRO dos 0,7 ms.
 
+### 1.4 W4.1 — solução ÚNICA e conflito (oráculo antes do código, 26/10)
+
+Cenas `bem_*` (0 graus de liberdade — **contados pelo FreeCAD**, `DoF = 0` em todas): retângulo H/V cotado, retângulo
+rodado por paralelo/perpendicular, recta tangente a um círculo, par simétrico, composto (sobre a recta + coincidente +
+igual + perpendicular) e um perfil de 12 dentes com 98 regras. Cada uma em dois casos: partir de uma pose **errada**
+(±3 px em cada ponto livre, `__partida`) e mudar a 1.ª medida em +10 % (`__medida`, o caso da medida animada). Cenas
+`conflito_*`: uma medida a mais coerente, uma incoerente, e H+V+medida no mesmo segmento. `bancada -- bem` →
+[`reports/w4_medicao/bem.json`](reports/w4_medicao/bem.json); a fixture guarda `bem.<cena>` com posições, `DoF`, e os
+redundantes/conflitos do Sketcher **traduzidos para índices das nossas regras**.
+
+| caso | FreeCAD 1.1.4 | ezpz 0.2.18 |
+|---|---|---|
+| 11 casos de solução única | violação ≤ 1,1e-13 px | violação ≤ 3e-9 px · **Δ posição ≤ 1,1e-8 px** do FreeCAD |
+| `conflito_redundante` (medida a mais, coerente) | `solve = -2`, **redundante = [regra 6]** | cumpre tudo, **não avisa** (sem aviso, sem lista) |
+| `conflito_inconsistente` (+10 px na medida a mais) | `-4`, conflito = **[1, 3, 4, 6]** | `unsatisfied` = **[1, 3, 4, 6]** — a MESMA lista |
+| `conflito_hv` | `-4`, conflito = **[1, 2]** (V e a medida) | `unsatisfied` = **[1, 2]** — a MESMA lista |
+
+⇒ **«apague uma destas»** = a lista `unsatisfied` da ezpz (igual à do FreeCAD nos dois casos). ⇒ **REF** não vem da
+ezpz (a `FreedomAnalysis` só dá variáveis sub-restringidas, não o posto): é um teste de **posto** do jacobiano nosso — a
+regra nova não sobe o posto ⇒ nasce REF — com a álgebra `faer` que a ezpz já traz; oráculo = `redundantes_regras`. ⇒ As
+posições do FreeCAD **são gate** nas 11 cenas de solução única.
+
 ## 2. O lado do vetor (lido no código, 26/10)
 
 - `VecVertex` (`crates/ph2d-vec-scene/src/lib.rs:403`) **não tem id**: é endereçado pelo índice em `VecPath.verts`
@@ -119,7 +141,7 @@ FreeCAD só é gate onde a solução é **única** (§4, cenas bem-restringidas 
 
 | passo | o quê | porta única |
 |---|---|---|
-| **W4.1** oráculo antes do código | cenas **bem-restringidas** (solução única: cada tipo de regra sozinho + um perfil cotado) e cenas de **conflito/sobre-restrição** no FreeCAD (o que ele marca redundante/conflito, `RedundantConstraints`/`ConflictingConstraints`) → fixture com cabeçalho | `oraculo_freecad.py` |
+| ~~**W4.1** oráculo antes do código~~ | **feito 26/10** (§1.4) | `oraculo_freecad.py` (`W4_SO_BEM=1`) |
 | **W4.2** id estável por vértice | `VecVertex.id: u32` + contador por path (nunca reusado); **+1 → `VEC_SCENE_SCHEMA_VERSION = 24`** com leitor do v23 que numera `0..n` pela ordem; cada um dos ~20 sítios: inserir = id novo, partir = id novo, apagar = o id some e as regras que o citam saem no MESMO passo de undo; booleana/substituição inteira = path novo, ids novos, regras do path antigo saem com aviso. **Migra o Copy Point** para (alvo, id do vértice) — fecha também o ABERTO «prender a ponto de forma por índice» da W3 | `ph2d_vec_scene::VecPath::vert_by_id` (nova) |
 | **W4.3** a crate do solver | `ph2d-vec-constraints` (NOVA, pura): `RegraCad` (coincidente, H, V, paralelo, perpendicular, tangente recta↔círculo, igual, simétrico, medida de distância/ângulo/raio) por (path, id de vértice); tradução para `kcl_ezpz` (`=0.2.18`); arrasto = `Fixed` do ponto agarrado + palpite da solução anterior; `estado()` = livre/definido/conflito/REF; mede o custo de compilação da família `faer` | `ph2d_vec_constraints::resolve(&VecPath, &[RegraCad], arrasto) -> Resultado` |
 | **W4.4** no editor | onde guardar: as regras viajam no documento do vetor (`VecScene`, mesmo degrau 24); o arrasto chama `resolve` em `pen_drag.rs`/grab **depois** do snap (o snap dá o alvo, o solver o resto); inferência = a guia que estava acesa ao largar cria a regra; cores por token (zero hex); medida a mais nasce REF; conflito lista as regras de `estado()`; análise fora do fio do quadro; undo = 1 passo por gesto | `ph2d-app-vec` (nada na shell) |
@@ -136,7 +158,7 @@ FreeCAD só é gate onde a solução é **única** (§4, cenas bem-restringidas 
 | `a_v23_scene_opens_with_ids_in_order` | bytes v23 gravados ⇒ ids `0..n`, ida e volta v24 | W4.2 |
 | `copy_point_follows_its_vertex_after_an_insert_before_it` | hoje **vermelho** (índice) | W4.2 |
 | `each_vertex_mutation_site_keeps_or_assigns_ids` | censo dos ~20 sítios (§2), um caso por sítio | W4.2 |
-| `an_extra_dimension_is_born_ref` · `a_conflict_lists_the_rules_involved` | cenas de conflito da W4.1 (o que o FreeCAD marca) | W4.4 |
+| `an_extra_dimension_is_born_ref` (teste de posto) · `a_conflict_lists_the_rules_involved` (`unsatisfied`) | `conflito_*` da W4.1: REF = [6]; conflito = [1,3,4,6] e [1,2] | W4.4 |
 | seam `draw_with_a_guide_creates_the_rule` (`ph2d-ui-testkit`) | caneta com a guia H acesa ⇒ regra H gravada, undo 1 passo | W4.4 |
 | `an_animated_dimension_plays_and_scrubs_to_the_same_bit` | medida com 3 chaves, quadros 0→40→12→40 | W4.5 |
 | prova de mutação | tirar o `Fixed` do arrastado / a migração / o REF ⇒ o gate certo sangra | fecho |

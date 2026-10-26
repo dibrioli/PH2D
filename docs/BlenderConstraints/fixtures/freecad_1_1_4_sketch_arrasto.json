@@ -11,8 +11,23 @@
    "escada_802": "78da04be2818a3dd0ef67d0796b214c628ba41ea15904e87a03685bf69fa1654",
    "misto_50": "a7c18875f932aa7052f01e7276dccf2e84968537c57f1c079ed1ffc388b5be7b",
    "misto_200": "6e66c55fcea8f28c5e5dc088ed2d77c6adeeecdc8103a9a09ce92ee723ac4081",
-   "misto_800": "78068954e4359c7efd901676383cc98eef824dd8222a5ebdf5f37a2aa974efcf"
-  }
+   "misto_800": "78068954e4359c7efd901676383cc98eef824dd8222a5ebdf5f37a2aa974efcf",
+   "bem_composto__medida": "f9445ac26718996621c858221e9275304be23bfbc5f9a6bf9e13214a436ad66d",
+   "bem_composto__partida": "0de5f1e76270d11cc89592491660af5f8df1f3b81f8f7c571bd90da55cec36c5",
+   "bem_perfil__medida": "52c4df47a476ba7a6d72e4563ab0d6e9ea08448e8013e0f427934e76f33d1003",
+   "bem_perfil__partida": "83681e3894e7d59b692b5b78edc104494f14099496523922948576d5ef67b5d5",
+   "bem_retangulo__medida": "dc61057d4babe69f78f055e28852a08d13a87dbb5eb95f9b36a8b4a915619e75",
+   "bem_retangulo__partida": "f09c3c4e3bf0bf43f2ebf2fc64f30fca61204169293a6c4a312234a8412d39b8",
+   "bem_rodado__medida": "0b2fee1ef1c0e73eda6882598cd28d99b3d6d8c9fad6cf08165653166de4c238",
+   "bem_rodado__partida": "9b91f88b0dec3807fff641bf1720935321d5535bb701e219e4a7cd675fc627d7",
+   "bem_simetrico__partida": "3c5d8541b46f62269ef1ef01e2c95f1a0a4341111f6d4973c693c1fcea2ab99a",
+   "bem_tangente__medida": "97dd723ff0c3dcfd89e9d1098af363891dfce964e22b203e2ef5ed55b9b2474d",
+   "bem_tangente__partida": "ac803f47b2a4ecaf8beda32d2011b4935e19b057cca1bab67e8293152e277fce",
+   "conflito_hv": "9ba808587c1e2b691ae017f75425d338af35c41f4fe173f2110516a7c957720c",
+   "conflito_inconsistente": "ef55b9f8e2f59dfb0397025ec83be020985567131547b030245a664e3762cef0",
+   "conflito_redundante": "e327eda1b2171b8b546c9be461d3e1d1b45bef32b79481149e30cd9fdad49629"
+  },
+  "bem": "W4.1: UMA resolu\u00e7\u00e3o por cena a partir de `partida`; redundantes/conflitos traduzidos para \u00edndices de regra (2026-10-26)"
  },
  "cenas": {
   "escada_50": {
@@ -34162,6 +34177,766 @@
       2749.66687550005,
       2115.3037626354494
      ]
+    ]
+   ]
+  }
+ },
+ "bem": {
+  "bem_composto__medida": {
+   "solve": 0,
+   "graus_de_liberdade_livres": 0,
+   "redundantes": [],
+   "conflitos": [],
+   "redundantes_regras": [],
+   "conflitos_regras": [],
+   "violacao_px": 5.684341886080802e-14,
+   "posicoes": [
+    [
+     0.0,
+     0.0
+    ],
+    [
+     300.0,
+     60.0
+    ],
+    [
+     115.5,
+     23.099999999999998
+    ],
+    [
+     115.5,
+     23.099999999999998
+    ],
+    [
+     55.49999999999999,
+     323.09999999999997
+    ]
+   ]
+  },
+  "bem_composto__partida": {
+   "solve": 0,
+   "graus_de_liberdade_livres": 0,
+   "redundantes": [],
+   "conflitos": [],
+   "redundantes_regras": [],
+   "conflitos_regras": [],
+   "violacao_px": 1.4210854715202004e-14,
+   "posicoes": [
+    [
+     0.0,
+     0.0
+    ],
+    [
+     300.0,
+     60.0
+    ],
+    [
+     104.99999999999999,
+     20.999999999999996
+    ],
+    [
+     104.99999999999999,
+     20.999999999999996
+    ],
+    [
+     44.99999999999999,
+     321.0
+    ]
+   ]
+  },
+  "bem_perfil__medida": {
+   "solve": 0,
+   "graus_de_liberdade_livres": 0,
+   "redundantes": [],
+   "conflitos": [],
+   "redundantes_regras": [],
+   "conflitos_regras": [],
+   "violacao_px": 0.0,
+   "posicoes": [
+    [
+     0.0,
+     0.0
+    ],
+    [
+     0.0,
+     66.0
+    ],
+    [
+     20.0,
+     66.0
+    ],
+    [
+     20.0,
+     5.999999999999998
+    ],
+    [
+     40.0,
+     5.999999999999998
+    ],
+    [
+     40.0,
+     92.0
+    ],
+    [
+     60.0,
+     92.0
+    ],
+    [
+     60.0,
+     6.000000000000006
+    ],
+    [
+     80.0,
+     6.000000000000006
+    ],
+    [
+     80.0,
+     118.0
+    ],
+    [
+     100.0,
+     118.0
+    ],
+    [
+     100.0,
+     6.0
+    ],
+    [
+     120.0,
+     6.0
+    ],
+    [
+     120.0,
+     79.0
+    ],
+    [
+     140.0,
+     79.0
+    ],
+    [
+     140.0,
+     6.0
+    ],
+    [
+     160.0,
+     6.0
+    ],
+    [
+     160.0,
+     105.0
+    ],
+    [
+     180.0,
+     105.0
+    ],
+    [
+     180.0,
+     6.0
+    ],
+    [
+     200.0,
+     6.0
+    ],
+    [
+     200.0,
+     66.0
+    ],
+    [
+     220.0,
+     66.0
+    ],
+    [
+     220.0,
+     6.0
+    ],
+    [
+     240.0,
+     6.0
+    ],
+    [
+     240.0,
+     92.0
+    ],
+    [
+     260.0,
+     92.0
+    ],
+    [
+     260.0,
+     6.0
+    ],
+    [
+     280.0,
+     6.0
+    ],
+    [
+     280.0,
+     118.0
+    ],
+    [
+     300.0,
+     118.0
+    ],
+    [
+     300.0,
+     6.0
+    ],
+    [
+     320.0,
+     6.0
+    ],
+    [
+     320.0,
+     79.0
+    ],
+    [
+     340.0,
+     79.0
+    ],
+    [
+     340.0,
+     6.0
+    ],
+    [
+     360.0,
+     6.0
+    ],
+    [
+     360.0,
+     105.0
+    ],
+    [
+     380.0,
+     105.0
+    ],
+    [
+     380.0,
+     6.0
+    ],
+    [
+     400.0,
+     6.0
+    ],
+    [
+     400.0,
+     66.0
+    ],
+    [
+     420.0,
+     66.0
+    ],
+    [
+     420.0,
+     6.0
+    ],
+    [
+     440.0,
+     6.0
+    ],
+    [
+     440.0,
+     92.0
+    ],
+    [
+     460.0,
+     92.0
+    ],
+    [
+     460.0,
+     6.0
+    ],
+    [
+     460.0,
+     -24.0
+    ],
+    [
+     0.0,
+     -24.0
+    ]
+   ]
+  },
+  "bem_perfil__partida": {
+   "solve": 0,
+   "graus_de_liberdade_livres": 0,
+   "redundantes": [],
+   "conflitos": [],
+   "redundantes_regras": [],
+   "conflitos_regras": [],
+   "violacao_px": 0.0,
+   "posicoes": [
+    [
+     -8.616456496792942e-27,
+     0.0
+    ],
+    [
+     -8.616456496792942e-27,
+     60.0
+    ],
+    [
+     20.0,
+     60.0
+    ],
+    [
+     20.0,
+     -1.8041124150158794e-16
+    ],
+    [
+     40.0,
+     -1.8041124150158794e-16
+    ],
+    [
+     40.0,
+     86.0
+    ],
+    [
+     60.0,
+     86.0
+    ],
+    [
+     60.0,
+     -3.733124920302089e-15
+    ],
+    [
+     80.0,
+     -3.733124920302089e-15
+    ],
+    [
+     80.0,
+     112.0
+    ],
+    [
+     100.0,
+     112.0
+    ],
+    [
+     100.0,
+     4.85722573273506e-16
+    ],
+    [
+     120.0,
+     4.85722573273506e-16
+    ],
+    [
+     120.0,
+     73.0
+    ],
+    [
+     140.0,
+     73.0
+    ],
+    [
+     140.0,
+     5.592748486549226e-15
+    ],
+    [
+     160.0,
+     5.592748486549226e-15
+    ],
+    [
+     160.0,
+     99.0
+    ],
+    [
+     180.0,
+     99.0
+    ],
+    [
+     180.0,
+     8.187894806610529e-16
+    ],
+    [
+     200.0,
+     8.187894806610529e-16
+    ],
+    [
+     200.0,
+     60.0
+    ],
+    [
+     220.0,
+     60.0
+    ],
+    [
+     220.0,
+     1.3739009929736312e-15
+    ],
+    [
+     240.0,
+     1.3739009929736312e-15
+    ],
+    [
+     240.0,
+     86.0
+    ],
+    [
+     260.0,
+     86.0
+    ],
+    [
+     260.0,
+     5.648259637780484e-15
+    ],
+    [
+     280.0,
+     5.648259637780484e-15
+    ],
+    [
+     280.0,
+     112.0
+    ],
+    [
+     300.0,
+     112.0
+    ],
+    [
+     300.0,
+     3.8441472227646045e-15
+    ],
+    [
+     320.0,
+     3.8441472227646045e-15
+    ],
+    [
+     320.0,
+     73.0
+    ],
+    [
+     340.0,
+     73.0
+    ],
+    [
+     340.0,
+     -7.355227538141662e-16
+    ],
+    [
+     360.0,
+     -7.355227538141662e-16
+    ],
+    [
+     360.0,
+     99.0
+    ],
+    [
+     380.0,
+     99.0
+    ],
+    [
+     380.0,
+     5.967448757360216e-16
+    ],
+    [
+     400.0,
+     5.967448757360216e-16
+    ],
+    [
+     400.0,
+     60.0
+    ],
+    [
+     420.0,
+     60.0
+    ],
+    [
+     420.0,
+     -3.066991105526995e-15
+    ],
+    [
+     440.0,
+     -3.066991105526995e-15
+    ],
+    [
+     440.0,
+     86.0
+    ],
+    [
+     460.0,
+     86.0
+    ],
+    [
+     460.0,
+     -1.249000902703301e-16
+    ],
+    [
+     460.0,
+     -30.0
+    ],
+    [
+     -8.616456496792942e-27,
+     -30.0
+    ]
+   ]
+  },
+  "bem_retangulo__medida": {
+   "solve": 0,
+   "graus_de_liberdade_livres": 0,
+   "redundantes": [],
+   "conflitos": [],
+   "redundantes_regras": [],
+   "conflitos_regras": [],
+   "violacao_px": 0.0,
+   "posicoes": [
+    [
+     100.0,
+     100.0
+    ],
+    [
+     276.0,
+     100.0
+    ],
+    [
+     276.0,
+     190.0
+    ],
+    [
+     100.0,
+     190.0
+    ]
+   ]
+  },
+  "bem_retangulo__partida": {
+   "solve": 0,
+   "graus_de_liberdade_livres": 0,
+   "redundantes": [],
+   "conflitos": [],
+   "redundantes_regras": [],
+   "conflitos_regras": [],
+   "violacao_px": 0.0,
+   "posicoes": [
+    [
+     100.0,
+     100.0
+    ],
+    [
+     260.0,
+     100.0
+    ],
+    [
+     260.0,
+     190.0
+    ],
+    [
+     100.0,
+     190.0
+    ]
+   ]
+  },
+  "bem_rodado__medida": {
+   "solve": 0,
+   "graus_de_liberdade_livres": 0,
+   "redundantes": [],
+   "conflitos": [],
+   "redundantes_regras": [],
+   "conflitos_regras": [],
+   "violacao_px": 1.4210854715202004e-14,
+   "posicoes": [
+    [
+     50.0,
+     50.0
+    ],
+    [
+     188.15914910043276,
+     108.41275134629757
+    ],
+    [
+     153.89033497727152,
+     189.46611881855145
+    ],
+    [
+     15.731185876838751,
+     131.05336747225388
+    ]
+   ]
+  },
+  "bem_rodado__partida": {
+   "solve": 0,
+   "graus_de_liberdade_livres": 0,
+   "redundantes": [],
+   "conflitos": [],
+   "redundantes_regras": [],
+   "conflitos_regras": [],
+   "violacao_px": 2.425319204727809e-14,
+   "posicoes": [
+    [
+     50.0,
+     50.0
+    ],
+    [
+     188.15914910043276,
+     108.41275134629757
+    ],
+    [
+     157.0056817157407,
+     182.0976308665284
+    ],
+    [
+     18.846532615307968,
+     123.68487952023081
+    ]
+   ]
+  },
+  "bem_simetrico__partida": {
+   "solve": 0,
+   "graus_de_liberdade_livres": 0,
+   "redundantes": [],
+   "conflitos": [],
+   "redundantes_regras": [],
+   "conflitos_regras": [],
+   "violacao_px": 3.1776437161565096e-14,
+   "posicoes": [
+    [
+     100.0,
+     0.0
+    ],
+    [
+     140.0,
+     200.0
+    ],
+    [
+     60.0,
+     90.0
+    ],
+    [
+     171.53846153846152,
+     67.6923076923077
+    ]
+   ]
+  },
+  "bem_tangente__medida": {
+   "solve": 0,
+   "graus_de_liberdade_livres": 0,
+   "redundantes": [],
+   "conflitos": [],
+   "redundantes_regras": [],
+   "conflitos_regras": [],
+   "violacao_px": 2.842170943040401e-14,
+   "posicoes": [
+    [
+     60.0,
+     120.0
+    ],
+    [
+     222.5271404629576,
+     299.30122312169004
+    ],
+    [
+     200.0,
+     200.0
+    ]
+   ]
+  },
+  "bem_tangente__partida": {
+   "solve": 0,
+   "graus_de_liberdade_livres": 0,
+   "redundantes": [],
+   "conflitos": [],
+   "redundantes_regras": [],
+   "conflitos_regras": [],
+   "violacao_px": 1.1368683772161603e-13,
+   "posicoes": [
+    [
+     60.0,
+     120.0
+    ],
+    [
+     207.75194587541583,
+     283.0011119288092
+    ],
+    [
+     200.0,
+     200.0
+    ]
+   ]
+  },
+  "conflito_hv": {
+   "solve": -4,
+   "graus_de_liberdade_livres": -1,
+   "redundantes": [],
+   "conflitos": [
+    4,
+    5
+   ],
+   "redundantes_regras": [],
+   "conflitos_regras": [
+    1,
+    2
+   ],
+   "violacao_px": 100.0,
+   "posicoes": [
+    [
+     0.0,
+     0.0
+    ],
+    [
+     100.0,
+     0.0
+    ]
+   ]
+  },
+  "conflito_inconsistente": {
+   "solve": -4,
+   "graus_de_liberdade_livres": -1,
+   "redundantes": [],
+   "conflitos": [
+    4,
+    6,
+    7,
+    9
+   ],
+   "redundantes_regras": [],
+   "conflitos_regras": [
+    1,
+    3,
+    4,
+    6
+   ],
+   "violacao_px": 10.0,
+   "posicoes": [
+    [
+     100.0,
+     100.0
+    ],
+    [
+     260.0,
+     100.0
+    ],
+    [
+     260.0,
+     190.0
+    ],
+    [
+     100.0,
+     190.0
+    ]
+   ]
+  },
+  "conflito_redundante": {
+   "solve": -2,
+   "graus_de_liberdade_livres": 0,
+   "redundantes": [
+    9
+   ],
+   "conflitos": [],
+   "redundantes_regras": [
+    6
+   ],
+   "conflitos_regras": [],
+   "violacao_px": 0.0,
+   "posicoes": [
+    [
+     100.0,
+     100.0
+    ],
+    [
+     260.0,
+     100.0
+    ],
+    [
+     260.0,
+     190.0
+    ],
+    [
+     100.0,
+     190.0
     ]
    ]
   }

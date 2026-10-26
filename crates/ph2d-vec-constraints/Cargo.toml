@@ -1,0 +1,22 @@
+[package]
+name = "ph2d-vec-constraints"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# O solver das regras de desenho técnico do vetor (W4.3, docs/BlenderConstraints/04_W4_cad.md §3.2): puro, sem ECS.
+# A ezpz foi escolhida por medição (§1, §1.1 recusas); versão exacta porque o gate compara ao FreeCAD a 1e-6.
+[dependencies]
+kcl-ezpz = "=0.2.18"
+ph2d-vec-scene = { path = "../ph2d-vec-scene" }
+
+[dev-dependencies]
+serde_json = "1"
+
+[lints]
+workspace = true

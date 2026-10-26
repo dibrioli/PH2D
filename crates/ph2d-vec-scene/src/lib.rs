@@ -517,6 +517,8 @@ pub struct VecPath {
 /// O id estável por vértice (W4.2).
 pub mod vert_id;
 pub use vert_id::VertId;
+/// As regras de desenho técnico sobre `(path, VertId)` (W4.3).
+pub mod cad;
 
 /// ⭐ **A versão do wire-format e a escada dela** — módulo irmão pelo tecto de LOC (o corte é por
 /// responsabilidade: aqui o MODELO, ali o número que diz que bytes ele escreve).

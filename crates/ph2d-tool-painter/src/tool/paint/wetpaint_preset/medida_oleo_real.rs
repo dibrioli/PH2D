@@ -218,6 +218,13 @@ fn pinta_folha_com(t: &mut PainterTool, b: &Biblioteca) {
         assert!(erros.is_empty(), "{erros:?}");
         t.set_brush_size_px(tr.diametro / 2.0);
         t.set_brush_color_srgb8(tr.cor);
+        // `PH2D_OLEO_FACA_H3=1`: as facas com a lâmina H3 (W0b), o fio ATRAVÉS da marcha de cada traço.
+        if tr.rotulo.starts_with("faca") && std::env::var("PH2D_OLEO_FACA_H3").is_ok_and(|v| v == "1") {
+            lamina(t);
+            t.paint.wetpaint.knobs.set(Knob::Leveling, 0.0);
+            let vertical = (tr.b[1] - tr.a[1]).abs() > (tr.b[0] - tr.a[0]).abs();
+            t.set_brush_dab_angle(if vertical { 0.0 } else { 90.0 });
+        }
         // O passo de 3 px do tracos.py.
         let n = ((tr.b[0] - tr.a[0]).hypot(tr.b[1] - tr.a[1]) / 3.0).ceil() as u32;
         t.on_canvas_pointer(ponto(tr.a, PointerPhase::Down));

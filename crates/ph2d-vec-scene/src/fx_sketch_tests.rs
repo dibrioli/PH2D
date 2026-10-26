@@ -3,6 +3,7 @@
 
 use super::*;
 use crate::VecPath;
+use crate::VertexKind;
 use crate::effect::{FxCtx, PathEffect};
 
 const R: f64 = 60.0;

@@ -2,6 +2,7 @@
 //! **a mesma forma, autorada com mais âncoras, tem de ondular igual.**
 
 use super::*;
+use crate::VertexKind;
 use crate::arclen::arclen;
 use crate::corner_live::segment;
 
@@ -153,6 +154,20 @@ fn fnv(mut h: u64, x: u64) -> u64 {
 /// ⇒ **4 de 20 vértices**, até **1/3 da amplitude** — visível, e exactamente nos quatro sítios
 /// onde `B'` se anulava. Os outros três casos desta fixtura são curvas suaves e saem **byte a
 /// byte** iguais; o gate que o afirma é `only_the_cornered_case_moved_when_the_tangent_cure_landed`.
+///
+/// # E RE-PINADO (2026-10-26, F33) — a quina de entrada no modo Smooth
+///
+/// A reamostragem passou para a porta partilhada `crate::fx_resample` (Warp, Twist, Zig Zag,
+/// Sketch). A/B contra o emissor anterior, os seis casos desta fixtura × Smooth on/off: **cinco
+/// byte a byte iguais**; só `open_corner` Smooth mudou, e só nos dois vértices que são QUINAS:
+///
+/// | vértice | alça de entrada antes | depois | tipo |
+/// |---|---|---|---|
+/// | `[6]` | `32,8 · −2,22` (ao longo da SAÍDA) | `30,58 · 0,00` (ao longo da CHEGADA) | Smooth → Corner |
+/// | `[11]` | `38,89 · 30,00` (ao longo da SAÍDA) | `40,00 · 28,89` (ao longo da CHEGADA) | Smooth → Corner |
+///
+/// A alça de entrada que seguia a tangente de SAÍDA fazia o segmento que chega à quina recuar
+/// (o «gancho» que o Bevel desenhava como vinco — `docs/UI_New_and_Simple/F33_plano.md`).
 #[test]
 fn the_zigzag_is_byte_identical_across_the_arc_walker_extraction() {
     let cases: [(Vec<VecVertex>, bool, ZigZagSpec); 4] = [
@@ -200,9 +215,10 @@ fn the_zigzag_is_byte_identical_across_the_arc_walker_extraction() {
     }
     // Medida em 2026-07-22, ANTES da extração do walker (commit 5bc175013); RE-PINADA em
     // 2026-07-23 pela troca da inversa de arco (ADR-0141) e em **2026-08-30** pela cura da
-    // tangente numa ponta degenerada — ver as duas secções acima.
+    // tangente numa ponta degenerada, e em **2026-10-26** (F33) pela quina no modo Smooth — ver as
+    // secções acima.
     assert_eq!(
-        h, 0xbb93_4936_dbf6_7405,
+        h, 0xbf1f_87a8_34c2_a532,
         "o desenho do Zig Zag mudou (impressao digital {h:#018x})"
     );
 }

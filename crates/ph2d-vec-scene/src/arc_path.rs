@@ -128,6 +128,32 @@ impl ArcPath {
             .collect()
     }
 
+    /// **A âncora `i` com as DUAS tangentes unitárias**: `(ponto, a que chega, a que sai)`. Numa
+    /// quina elas diferem, e é o que o [`Self::frame_at`] não pode dizer (ele dá um lado só).
+    ///
+    /// `i` vai de `0` a `segs` (num aberto, `segs` é a ponta final). Numa PONTA de aberto o lado
+    /// que falta copia o que existe. Uma cúspide sem direção dá `[0, 0]`, como no `frame_at`.
+    #[must_use]
+    pub fn anchor_sides(&self, i: usize) -> ([f64; 2], [f64; 2], [f64; 2]) {
+        let n = self.segs.len();
+        let zero = [0.0, 0.0];
+        let sai = (i < n).then(|| tangent_at(&self.segs[i], 0.0).unwrap_or(zero));
+        let chega = if i > 0 {
+            Some(tangent_at(&self.segs[(i - 1).min(n - 1)], 1.0).unwrap_or(zero))
+        } else if self.closed {
+            Some(tangent_at(&self.segs[n - 1], 1.0).unwrap_or(zero))
+        } else {
+            None
+        };
+        let ponto = if i < n {
+            self.segs[i][0]
+        } else {
+            self.segs[n - 1][3]
+        };
+        let chega = chega.or(sai).unwrap_or(zero);
+        (ponto, chega, sai.unwrap_or(chega))
+    }
+
     /// Onde o comprimento `s` cai: o **ponto** e a **tangente unitária** ali.
     ///
     /// `s` fora de `[0, total]` satura nas pontas (o [`inv_arclen`] já o faz por segmento), o que

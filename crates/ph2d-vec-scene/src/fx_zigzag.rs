@@ -42,9 +42,10 @@
 //! a curva deslocada**, aproximando-a melhor). As **cristas** — o que se vê — continuam a ser
 //! função só da geometria, e é isso que o gate afirma.
 
+use crate::VecVertex;
 use crate::arc_path::ArcPath;
 use crate::fx_falloff::Falloff;
-use crate::{VecVertex, VertexKind};
+use crate::fx_resample;
 
 /// Abaixo desta amplitude (em unidades de mundo) o efeito é o ponto neutro.
 const EPS: f64 = 1e-12;
@@ -180,54 +181,22 @@ pub fn zigzag_contour(
     let step = total / count as f64;
 
     // A GRADE das cristas. Fechado dá a volta (`count` pontos); aberto tem as duas pontas como
-    // amostras próprias, daí o `+ 1`.
+    // amostras próprias, daí o `+ 1`. ...e a UNIÃO com as âncoras que chegaram
+    // ([`fx_resample::amostras`]): é ela que faz o efeito COMPOR — um pico do zigzag anterior é
+    // uma âncora, logo é amostrado onde está em vez de ser saltado.
     let grid_n = if closed { count } else { count + 1 };
-    let mut at: Vec<f64> = Vec::with_capacity(grid_n + n + 1);
-    for k in 0..grid_n {
-        #[allow(clippy::cast_precision_loss)]
-        at.push((k as f64 * step).min(total));
-    }
-    // ...e a UNIÃO com as âncoras que chegaram. É esta linha que faz o efeito COMPOR: um pico
-    // do zigzag anterior é uma âncora, logo é amostrado onde está em vez de ser saltado.
-    at.extend_from_slice(ap.anchor_arcs());
-    if !closed {
-        at.push(total);
-    }
-    at.sort_by(f64::total_cmp);
-    let merge = total * MERGE_FRACTION;
-    at.dedup_by(|a, b| (*a - *b).abs() <= merge);
-    at.truncate(MAX_SAMPLES);
-    let m = at.len();
-    if m < 2 {
+    #[allow(clippy::cast_precision_loss)]
+    let grade = (0..grid_n).map(|k| (k as f64 * step).min(total));
+    let at = fx_resample::amostras(&ap, grade, total * MERGE_FRACTION, MAX_SAMPLES);
+    if at.len() < 2 {
         return (verts.to_vec(), closed);
     }
 
-    // O braço de uma alça é um terço do vão ATÉ o vizinho — na grade uniforme isto é `step/3`
-    // (byte-idêntico ao que era), e numa lista com âncoras extras cada alça encolhe para o vão
-    // que de facto tem. Numa ponta livre o vão espelha o do outro lado.
-    let gap = |k: usize, forward: bool| -> f64 {
-        let wrap = at[0] + total - at[m - 1];
-        if forward {
-            if k + 1 < m {
-                at[k + 1] - at[k]
-            } else if closed {
-                wrap
-            } else {
-                at[k] - at[k - 1]
-            }
-        } else if k > 0 {
-            at[k] - at[k - 1]
-        } else if closed {
-            wrap
-        } else {
-            at[1] - at[0]
-        }
-    };
-
     let mut state = spec.rough_seed.unwrap_or(0);
-    let mut out = Vec::with_capacity(m);
-    for (k, &s) in at.iter().enumerate() {
-        let (point, tangent) = ap.frame_at(s);
+    let mut out = Vec::with_capacity(at.len());
+    for (k, a) in at.iter().enumerate() {
+        let s = a.s;
+        let (point, t_chega, tangent) = fx_resample::lados(&ap, a);
         // A normal é a tangente rodada um quarto de volta — troca de eixo e sinal, sem
         // transcendental (HR-5). Numa cúspide não há direção: o ponto entra sem deslocamento,
         // em vez de ser DESCARTADO — descartar tirava uma crista da conta em silêncio.
@@ -245,31 +214,17 @@ pub fn zigzag_contour(
             normal[0].mul_add(lift, point[0]),
             normal[1].mul_add(lift, point[1]),
         ];
-        // Suave: as alças acompanham a TANGENTE do caminho original naquele ponto — é a
-        // construção que faz uma sequência de amostras reproduzir uma curva lisa em vez de
-        // uma poligonal arredondada a olho.
-        let (back, fwd) = if spec.smooth {
-            (gap(k, false) / 3.0, gap(k, true) / 3.0)
+        // Suave: as alças acompanham a TANGENTE do caminho original naquele ponto — dos DOIS lados
+        // numa quina de entrada — com o vão de cada lado / 3 (o vértice de Hermite partilhado).
+        out.push(if spec.smooth {
+            fx_resample::vertice(
+                anchor,
+                t_chega,
+                tangent,
+                fx_resample::vaos(&at, k, closed, total),
+            )
         } else {
-            (0.0, 0.0)
-        };
-        out.push(VecVertex {
-            anchor,
-            in_handle: [
-                tangent[0].mul_add(-back, anchor[0]),
-                tangent[1].mul_add(-back, anchor[1]),
-            ],
-            out_handle: [
-                tangent[0].mul_add(fwd, anchor[0]),
-                tangent[1].mul_add(fwd, anchor[1]),
-            ],
-            kind: if spec.smooth {
-                VertexKind::Smooth
-            } else {
-                VertexKind::Corner
-            },
-            corner_radius: 0.0,
-            id: crate::VertId::NOVO,
+            VecVertex::corner(anchor)
         });
     }
     (out, closed)

@@ -18,8 +18,8 @@
 //! Um warp é um campo não-afim; aplicá-lo só às âncoras faz o *lowpoly* que matou o Twist (a saga
 //! no cabeçalho de [`crate::fx_warp`]). A cura é a MESMA do [`crate::fx_zigzag`]: reamostrar o
 //! caminho denso por comprimento de arco — **união com as âncoras de entrada**, para as quinas
-//! sobreviverem exatas — e deslocar cada amostra. As alças saem de **Catmull-Rom** sobre os pontos
-//! DEFORMADOS, então a poligonal densa lê como uma curva lisa. Esse esqueleto é [`resample_displace`],
+//! sobreviverem exatas — e deslocar cada amostra. As alças são a tangente TRANSPORTADA pelo campo,
+//! de cada lado (quina fica quina), com o vão de cada lado. Esse esqueleto é [`resample_displace`],
 //! partilhado com quem mais aproxima um campo não-afim.
 //!
 //! ⚠️ **O Twist voltou** — mora no módulo irmão [`crate::fx_twist`], e RIDA ESTE esqueleto
@@ -28,10 +28,11 @@
 //! não um palpite — a reamostragem densa é condição necessária, não prova de que basta. A prova é a
 //! folha de contacto (`tests/fx_look.rs`) sobre uma forma COM QUINAS, o caso de falha documentado.
 
+use crate::VecVertex;
 use crate::arc_path::ArcPath;
 use crate::effect::FxCtx;
 use crate::fx_falloff::Falloff;
-use crate::{VecVertex, VertexKind};
+use crate::fx_resample;
 
 /// Abaixo desta dobra (fração) o efeito é o ponto neutro.
 const EPS: f64 = 1e-12;
@@ -47,6 +48,10 @@ const MAX_SAMPLES: usize = 4096;
 
 /// Duas amostras mais próximas do que esta fração do caminho são o mesmo sítio (a segunda cai).
 const MERGE_FRACTION: f64 = 1e-6;
+
+/// O passo da diferença central do campo, em fração do arco: o erro de truncatura cai com `h²` e
+/// o de arredondamento sobe com `1/h`; `1e-6` do arco fica abaixo dos dois a ~`1e-9` relativo.
+const JACOBIAN_STEP: f64 = 1e-6;
 
 /// **Os estilos de Warp vêm do CATÁLOGO ÚNICO** [`ph2d_warp_style::WarpStyle`] — a MESMA lista que
 /// os presets do Envelope, para os dois não divergirem (Enio 2026-07-25). O efeito usa o estilo como
@@ -153,11 +158,14 @@ pub fn warp_contour(
 /// duas respostas à mesma pergunta (*"como se reamostra um caminho sem o facetar?"*), e divergiriam
 /// no primeiro fix.
 ///
-/// A grade uniforme por arco + a UNIÃO com as âncoras de entrada (as quinas sobrevivem exatas) é o
-/// mesmo padrão do Zig Zag — sem ela, reamostrar seria amostrar mais grosso que a curva. Cada
-/// amostra é `lerp(original, deslocada, w(original))`, com o `w` do Falloff avaliado na posição
-/// ANTES do deslocamento, então `w = 0` reconstrói a curva de entrada. As alças saem de Catmull-Rom
-/// sobre os pontos DESLOCADOS.
+/// A grade uniforme por arco ∪ as âncoras vem do [`crate::fx_resample`]. Cada amostra é
+/// `lerp(original, deslocada, w(original))`, com o `w` do Falloff avaliado na posição ANTES do
+/// deslocamento, então `w = 0` reconstrói a curva de entrada.
+///
+/// ⭐ **As alças são a tangente TRANSPORTADA pelo campo** (`J·t`, diferença central do mapa
+/// inteiro, peso incluído), de cada lado da âncora, × o vão desse lado / 3. Era Catmull-Rom sobre
+/// os pontos deslocados, e isso comia as quinas e fazia laços entre amostras coladas — os vincos
+/// do Bevel (F33, `docs/UI_New_and_Simple/F33_plano.md`).
 ///
 /// Devolve `None` quando não há geometria a reamostrar — o CHAMADOR devolve a entrada intacta.
 /// Ele também verifica o seu próprio ponto neutro e a sua própria degenerescência ANTES de chamar;
@@ -179,73 +187,42 @@ pub(crate) fn resample_displace(
     let grid_n = if closed { SAMPLES } else { SAMPLES + 1 };
     #[allow(clippy::cast_precision_loss)]
     let step = total / SAMPLES as f64;
-    let mut at: Vec<f64> = (0..grid_n)
-        .map(|k| {
-            #[allow(clippy::cast_precision_loss)]
-            let s = k as f64 * step;
-            s.min(total)
-        })
-        .collect();
-    at.extend_from_slice(ap.anchor_arcs());
-    if !closed {
-        at.push(total);
-    }
-    at.sort_by(f64::total_cmp);
-    let merge = total * MERGE_FRACTION;
-    at.dedup_by(|a, b| (*a - *b).abs() <= merge);
-    at.truncate(MAX_SAMPLES);
+    #[allow(clippy::cast_precision_loss)]
+    let grade = (0..grid_n).map(|k| (k as f64 * step).min(total));
+    let at = fx_resample::amostras(&ap, grade, total * MERGE_FRACTION, MAX_SAMPLES);
     if at.len() < 2 {
         return None;
     }
-    let pts: Vec<[f64; 2]> = at
-        .iter()
-        .map(|&s| {
-            let orig = ap.frame_at(s).0;
-            let d = displace(orig);
-            // `w` na posição ORIGINAL (antes do deslocamento) — é onde o Falloff diz quanta força
-            // há *naquele sítio* da forma. `w = 0` deixa a amostra na curva de entrada.
-            let w = falloff.map_or(1.0, |f| f.eval(orig));
-            [
-                (d[0] - orig[0]).mul_add(w, orig[0]),
-                (d[1] - orig[1]).mul_add(w, orig[1]),
-            ]
-        })
-        .collect();
-    Some(catmull_rom_verts(&pts, closed))
-}
-
-/// Vértices lisos (C¹) que passam por `pts`, com alças de **Catmull-Rom** (tensão 0): a alça de
-/// um ponto aponta ao longo do vetor entre os vizinhos, um sexto dele. É o que faz a poligonal
-/// densa dos warps ler como curva em vez de facetas.
-fn catmull_rom_verts(pts: &[[f64; 2]], closed: bool) -> Vec<VecVertex> {
-    let n = pts.len();
-    (0..n)
-        .map(|k| {
-            let prev = if k > 0 {
-                pts[k - 1]
-            } else if closed {
-                pts[n - 1]
-            } else {
-                pts[0]
-            };
-            let next = if k + 1 < n {
-                pts[k + 1]
-            } else if closed {
-                pts[0]
-            } else {
-                pts[n - 1]
-            };
-            let t = [(next[0] - prev[0]) / 6.0, (next[1] - prev[1]) / 6.0];
-            VecVertex {
-                anchor: pts[k],
-                in_handle: [pts[k][0] - t[0], pts[k][1] - t[1]],
-                out_handle: [pts[k][0] + t[0], pts[k][1] + t[1]],
-                kind: VertexKind::Smooth,
-                corner_radius: 0.0,
-                id: crate::VertId::NOVO,
-            }
-        })
-        .collect()
+    // O mapa inteiro: `w` na posição ORIGINAL (antes do deslocamento) — é onde o Falloff diz quanta
+    // força há *naquele sítio* da forma. `w = 0` deixa a amostra na curva de entrada.
+    let mapa = |p: [f64; 2]| -> [f64; 2] {
+        let d = displace(p);
+        let w = falloff.map_or(1.0, |f| f.eval(p));
+        [
+            (d[0] - p[0]).mul_add(w, p[0]),
+            (d[1] - p[1]).mul_add(w, p[1]),
+        ]
+    };
+    let h = total * JACOBIAN_STEP;
+    let transporta = |p: [f64; 2], t: [f64; 2]| -> [f64; 2] {
+        let a = mapa([t[0].mul_add(h, p[0]), t[1].mul_add(h, p[1])]);
+        let b = mapa([t[0].mul_add(-h, p[0]), t[1].mul_add(-h, p[1])]);
+        [(a[0] - b[0]) / (2.0 * h), (a[1] - b[1]) / (2.0 * h)]
+    };
+    Some(
+        at.iter()
+            .enumerate()
+            .map(|(k, a)| {
+                let (p, t_chega, t_sai) = fx_resample::lados(&ap, a);
+                fx_resample::vertice(
+                    mapa(p),
+                    transporta(p, t_chega),
+                    transporta(p, t_sai),
+                    fx_resample::vaos(&at, k, closed, total),
+                )
+            })
+            .collect(),
+    )
 }
 
 #[cfg(test)]

@@ -29,7 +29,8 @@
 use crate::arc_path::ArcPath;
 use crate::compound::Contour;
 use crate::fx_falloff::Falloff;
-use crate::{VecPath, VecVertex, VertexKind};
+use crate::fx_resample;
+use crate::{VecPath, VecVertex};
 
 /// Abaixo desta amplitude (em unidades de mundo, após a percentagem) o efeito é o ponto neutro.
 const EPS: f64 = 1e-12;
@@ -50,6 +51,9 @@ const MAX_PASSES: usize = 12;
 /// Quantas amostras densas por offset de ruído — o suficiente para o wobble ler liso entre os
 /// offsets sem virar poligonal a olho.
 const SAMPLES_PER_DETAIL: usize = 6;
+
+/// Duas amostras mais próximas do que esta fração do caminho são o mesmo sítio.
+const MERGE_FRACTION: f64 = 1e-6;
 
 /// **Os parâmetros do Sketch.** Neutro em `roughness == 0`.
 #[derive(Copy, Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
@@ -144,8 +148,8 @@ fn noise_at(table: &[f64], u: f64, closed: bool) -> f64 {
     smooth_lerp(table[i0], table[i1], frac)
 }
 
-/// **Uma passada de um contorno.** Devolve os vértices (Smooth, com alças na tangente) ou `None`
-/// se o contorno não tem arco (grau ou cúspide total).
+/// **Uma passada de um contorno.** Devolve os vértices (alças na tangente, quina nas quinas de
+/// entrada) ou `None` se o contorno não tem arco (grau ou cúspide total).
 fn sketch_pass(
     ap: &ArcPath,
     total: f64,
@@ -163,36 +167,30 @@ fn sketch_pass(
     let n = if closed { count } else { count + 1 };
     #[allow(clippy::cast_precision_loss)]
     let step = total / count as f64;
-    let mut out = Vec::with_capacity(n);
-    for k in 0..n {
-        #[allow(clippy::cast_precision_loss)]
-        let s = (k as f64 * step).min(total);
-        let (point, tangent) = ap.frame_at(s);
+    // ∪ as âncoras: sem elas a quina caía entre duas amostras e o segmento que a atravessava recuava
+    // (F33, o vinco do Bevel).
+    #[allow(clippy::cast_precision_loss)]
+    let grade = (0..n).map(|k| (k as f64 * step).min(total));
+    let at = fx_resample::amostras(ap, grade, total * MERGE_FRACTION, MAX_SAMPLES);
+    let mut out = Vec::with_capacity(at.len());
+    for (k, a) in at.iter().enumerate() {
+        let (point, t_chega, tangent) = fx_resample::lados(ap, a);
         let normal = [-tangent[1], tangent[0]];
-        let u = s / total;
+        let u = a.s / total;
         let w = falloff.map_or(1.0, |f| f.eval(point));
         let lift = noise_at(table, u, closed) * amplitude * w;
         let anchor = [
             normal[0].mul_add(lift, point[0]),
             normal[1].mul_add(lift, point[1]),
         ];
-        // Alças na tangente (um terço do passo, como o Zig Zag suave) ⇒ a sequência de amostras
-        // reproduz uma curva lisa em vez de uma poligonal arredondada a olho.
-        let arm = step / 3.0;
-        out.push(VecVertex {
+        // Alças na tangente, cada uma com o SEU vão / 3 (o vértice de Hermite partilhado) ⇒ a
+        // sequência de amostras reproduz uma curva lisa em vez de uma poligonal arredondada a olho.
+        out.push(fx_resample::vertice(
             anchor,
-            in_handle: [
-                tangent[0].mul_add(-arm, anchor[0]),
-                tangent[1].mul_add(-arm, anchor[1]),
-            ],
-            out_handle: [
-                tangent[0].mul_add(arm, anchor[0]),
-                tangent[1].mul_add(arm, anchor[1]),
-            ],
-            kind: VertexKind::Smooth,
-            corner_radius: 0.0,
-            id: crate::VertId::NOVO,
-        });
+            t_chega,
+            tangent,
+            fx_resample::vaos(&at, k, closed, total),
+        ));
     }
     Some(out)
 }

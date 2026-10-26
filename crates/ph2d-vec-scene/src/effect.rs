@@ -548,3 +548,7 @@ mod accessors_surface;
 #[cfg(test)]
 #[path = "effect_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "effect_geometry_tests.rs"]
+mod geometry_tests;

@@ -273,8 +273,9 @@ fn the_warp_is_resampling_independent() {
     }
 }
 
-/// **A saída é lisa** (`Smooth`), e um contorno fechado continua fechado. Sem alças de
-/// Catmull-Rom a poligonal densa leria como facetas.
+/// **A saída é lisa ENTRE as quinas e as quinas continuam quinas** (F33): o quadrado sai com as
+/// suas 4 quinas e todo o resto `Smooth`. Antes isto exigia tudo `Smooth` — e era esse o defeito:
+/// a quina virava uma volta apertada que o Bevel desenhava como vinco.
 #[test]
 fn the_warp_output_is_smooth_and_stays_closed() {
     let out = warp(WarpStyle::Wave, 40.0);
@@ -283,8 +284,9 @@ fn the_warp_output_is_smooth_and_stays_closed() {
         "a silhueta warpada é reamostrada densa, veio {}",
         out.len()
     );
-    assert!(
-        out.iter().all(|v| v.kind == crate::VertexKind::Smooth),
-        "os vértices do warp têm de ser lisos"
-    );
+    let quinas = out
+        .iter()
+        .filter(|v| v.kind == crate::VertexKind::Corner)
+        .count();
+    assert_eq!(quinas, 4, "as 4 quinas do quadrado, e só elas");
 }

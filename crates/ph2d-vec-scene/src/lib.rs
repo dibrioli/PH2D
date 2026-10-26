@@ -191,6 +191,8 @@ pub mod effect;
 pub mod dash_fit;
 pub mod fx_trim;
 
+/// A reamostragem partilhada dos efeitos que reconstroem a curva (F33).
+pub(crate) mod fx_resample;
 /// **Zig Zag / Roughen** — o 2º efeito da pilha, e a prova de que a espinha (ADR-0132) faz o
 /// próximo custar pouco. Módulo irmão de `fx_trim`.
 pub mod fx_zigzag;

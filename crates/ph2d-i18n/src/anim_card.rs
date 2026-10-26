@@ -48,6 +48,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.anim_card.when_pose_2" => "Going up",
         "panel.inspector.anim_card.when_pose_3" => "Falling",
         "panel.inspector.anim_card.when_pose_4" => "Crouching",
+        "panel.inspector.anim_card.when_pose_5" => "Crouch-walking",
         "panel.inspector.anim_card.when_life_0" => "Took damage",
         "panel.inspector.anim_card.when_life_1" => "Died",
         "panel.inspector.anim_card.when_life_2" => "Got healed",

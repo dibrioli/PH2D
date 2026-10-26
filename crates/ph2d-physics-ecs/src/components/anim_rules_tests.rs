@@ -7,7 +7,7 @@ fn sem_regras_gravadas_o_personagem_da_as_quatro() {
         jump: "salto".into(),
         ..CharacterAnimations::default()
     };
-    let r = AnimRules::effective(None, Some(&c)).expect("regras");
+    let r = AnimRules::effective(None, Some(&c), |_| false).expect("regras");
     let pares: Vec<_> =
         r.0.iter()
             .map(|r| (r.when.clone(), r.play.as_str()))
@@ -21,12 +21,45 @@ fn sem_regras_gravadas_o_personagem_da_as_quatro() {
             (AnimWhen::Pose(CharacterPose::Fall), "fall"),
         ]
     );
-    assert_eq!(AnimRules::effective(None, None), None);
+    assert_eq!(AnimRules::effective(None, None, |_| true), None);
     let gravadas = AnimRules(vec![]);
     assert_eq!(
-        AnimRules::effective(Some(&gravadas), Some(&c)),
+        AnimRules::effective(Some(&gravadas), Some(&c), |_| true),
         Some(gravadas)
     );
+}
+
+/// ⭐ Plano 10: as do agachar entram no TOPO só se a tag de convenção existe — a andar agachado por cima de
+/// agachado — e um objecto sem elas (todo ficheiro antigo) dá as 4, bit a bit.
+#[test]
+fn as_do_agachar_so_entram_com_a_sua_tag() {
+    let c = CharacterAnimations::default();
+    let quatro = AnimRules::of_character(&c);
+    assert_eq!(quatro.0.len(), 4);
+    assert_eq!(AnimRules::of_character_with(&c, |n| n == "salto"), quatro);
+    let whens = |r: AnimRules| -> Vec<(AnimWhen, String)> {
+        r.0.into_iter().map(|r| (r.when, r.play)).collect()
+    };
+    let seis = whens(AnimRules::of_character_with(&c, |n| {
+        n == "crouch" || n == "crouch_walk"
+    }));
+    assert_eq!(
+        seis[..2],
+        [
+            (
+                AnimWhen::Pose(CharacterPose::CrouchWalk),
+                "crouch_walk".into()
+            ),
+            (AnimWhen::Pose(CharacterPose::Crouch), "crouch".into()),
+        ]
+    );
+    assert_eq!(seis[2..], whens(quatro.clone())[..]);
+    let so_agachado = whens(AnimRules::of_character_with(&c, |n| n == "crouch"));
+    assert_eq!(
+        so_agachado[0],
+        (AnimWhen::Pose(CharacterPose::Crouch), "crouch".into())
+    );
+    assert_eq!(so_agachado.len(), 5);
 }
 
 #[test]

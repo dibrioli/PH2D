@@ -88,7 +88,8 @@ pub use components::{
     OnHit, OneWayPlatform, PlatformLift, PlatformPlayer, PlayerMode, PlayerSignals,
     ProjectileMotion, PulleyWheel, RESISTANCES_MAX, RayHit, RaySensor, RaySignals, Resistance,
     RigidBody, RopeStops, SignalOnHit, SignalOnLeave, SignalTagFilter, TopDownPlayer, WalkSurface,
-    WestonAxle, WrapSide, kind_key, reseat_mounted_axle, reseat_wheel_geometry, rope_joint_of,
+    WestonAxle, WrapSide, anim_target, kind_key, reseat_mounted_axle, reseat_wheel_geometry,
+    rope_joint_of,
 };
 pub use interaction::{
     HoldMode, InteractionSettings, InteractionTool, MAX_ATTRACT_FORCE, MAX_BLAST_IMPULSE,

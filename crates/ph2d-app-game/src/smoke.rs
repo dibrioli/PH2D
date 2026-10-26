@@ -214,18 +214,10 @@ pub fn montar(sim: &mut SimWorld, registry: &ComponentRegistry, nivel: u32) -> E
         2 => nivel_2(sim, registry),
         3 => {
             let jogador = nivel_2(sim, registry);
-            let mut regras = vec![ph2d_physics_ecs::AnimRule {
-                when: ph2d_physics_ecs::AnimWhen::Pose(ph2d_physics_ecs::CharacterPose::Crouch),
-                play: "fall".into(),
-            }];
-            regras.extend(ph2d_physics_ecs::AnimRules::of_character(&Default::default()).0);
-            sim.world_mut()
-                .entity_mut(jogador)
-                .insert(ph2d_physics_ecs::AnimRules(regras));
             println!(
-                "[game-smoke] =3 o nível 2 com a regra «Crouching → fall» no topo (não há desenho de \
-                 agachar): com ↓ e ← o boneco entra agachado sob o tecto baixo da esquerda, solta ↓ \
-                 lá debaixo e continua baixo, e ao sair para a direita levanta."
+                "[game-smoke] =3 o nível 2 com o condutor do agachar (plano 10): com ↓ e ← o boneco \
+                 anda agachado («crouch_walk») sob o tecto baixo da esquerda, solta ↓ lá debaixo e \
+                 continua baixo («crouch»), e ao sair para a direita levanta."
             );
             jogador
         }

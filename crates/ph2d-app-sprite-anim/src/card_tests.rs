@@ -319,3 +319,31 @@ fn o_cartao_sabe_se_o_personagem_agacha() {
     }
     assert!(info(&sim, e).card.can_crouch);
 }
+
+/// ⭐ Os espelhos do cartão são os da física: o menu «When» conta tantas poses e factos de vida quantos a
+/// física tem, os índices do agachar apontam para as suas poses, e toda condição vai e volta igual — uma
+/// pose nova sem o espelho ficaria fora do menu sem ninguém ver.
+#[test]
+fn the_rule_mirrors_are_the_physics() {
+    use ph2d_editor_core::screens::hero::{
+        ANIM_LIFE_EVENTS, ANIM_POSE_CROUCH, ANIM_POSE_CROUCH_WALK, ANIM_POSES,
+    };
+    use ph2d_physics_ecs::CharacterPose;
+    assert_eq!(usize::from(ANIM_POSES), CharacterPose::ALL.len());
+    assert_eq!(usize::from(ANIM_LIFE_EVENTS), LifeEvent::ALL.len());
+    assert_eq!(
+        CharacterPose::ALL[usize::from(ANIM_POSE_CROUCH)],
+        CharacterPose::Crouch
+    );
+    assert_eq!(
+        CharacterPose::ALL[usize::from(ANIM_POSE_CROUCH_WALK)],
+        CharacterPose::CrouchWalk
+    );
+    let todas = CharacterPose::ALL
+        .map(AnimWhen::Pose)
+        .into_iter()
+        .chain(LifeEvent::ALL.map(AnimWhen::Life));
+    for w in todas {
+        assert_eq!(crate::card::when_of(&crate::card::when_info(&w)), Some(w));
+    }
+}

@@ -51,12 +51,35 @@ pub enum CharacterPose {
     /// Agachado (plano 09). Não é uma pose EXCLUSIVA: [`Self::of`] continua a dar a base
     /// (parado/a correr…) e esta vale ao mesmo tempo, lida de [`PlayerView::crouching`].
     Crouch,
+    /// Agachado E a correr (plano 10) — o «a andar agachado».
+    CrouchWalk,
 }
 
 impl CharacterPose {
-    pub const ALL: [Self; 5] = [Self::Idle, Self::Run, Self::Jump, Self::Fall, Self::Crouch];
+    pub const ALL: [Self; 6] = [
+        Self::Idle,
+        Self::Run,
+        Self::Jump,
+        Self::Fall,
+        Self::Crouch,
+        Self::CrouchWalk,
+    ];
     /// As 4 que o [`CharacterAnimations`] nomeia — as regras derivadas de um ficheiro antigo.
     pub const DERIVED: [Self; 4] = [Self::Idle, Self::Run, Self::Jump, Self::Fall];
+    /// As do agachar, pela ordem das regras derivadas (a de cima ganha): cada uma só entra se o objecto
+    /// tem a tag de [`Self::conventional_tag`].
+    pub const CROUCH_DERIVED: [Self; 2] = [Self::CrouchWalk, Self::Crouch];
+
+    /// A tag que a regra derivada desta pose toca por CONVENÇÃO — só as do agachar, que o
+    /// [`CharacterAnimations`] não nomeia (as da folha de fábrica, `ph2d_render::HERO_SHEET_TAGS`).
+    #[must_use]
+    pub const fn conventional_tag(self) -> Option<&'static str> {
+        match self {
+            Self::Crouch => Some("crouch"),
+            Self::CrouchWalk => Some("crouch_walk"),
+            Self::Idle | Self::Run | Self::Jump | Self::Fall => None,
+        }
+    }
 
     /// A lei: no chão corre se a velocidade relativa ao chão passa de `run_from`; no ar (ou numa
     /// rampa íngreme demais para ficar de pé) sobe = salta, desce = cai.
@@ -91,7 +114,7 @@ impl CharacterAnimations {
             CharacterPose::Run => Some(&self.run),
             CharacterPose::Jump => Some(&self.jump),
             CharacterPose::Fall => Some(&self.fall),
-            CharacterPose::Crouch => None,
+            CharacterPose::Crouch | CharacterPose::CrouchWalk => None,
         }
     }
 }

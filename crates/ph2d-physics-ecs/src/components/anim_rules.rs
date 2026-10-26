@@ -6,6 +6,7 @@
 //! ([`AnimRules::of_character`]) — um ficheiro antigo abre e toca igual sem migrar nada.
 
 use bevy_ecs::prelude::Component;
+use ph2d_ecs::{Children, Entity, SpriteAnimations, SpriteAnimator, World};
 use serde::{Deserialize, Serialize};
 
 use super::{CharacterAnimations, CharacterPose};
@@ -72,26 +73,55 @@ impl AnimRules {
     /// As 4 regras de um `CharacterAnimations` (parado · a correr · a subir · a cair).
     #[must_use]
     pub fn of_character(c: &CharacterAnimations) -> Self {
+        Self::of_character_with(c, |_| false)
+    }
+
+    /// As regras derivadas de um objecto cujas animações respondem a `has_tag`: no topo as do agachar
+    /// ([`CharacterPose::CROUCH_DERIVED`]) cuja tag de convenção existe, depois as 4. Sem essas tags
+    /// (todo ficheiro antigo) ⇒ exactamente [`Self::of_character`].
+    #[must_use]
+    pub fn of_character_with(c: &CharacterAnimations, has_tag: impl Fn(&str) -> bool) -> Self {
+        let crouch = CharacterPose::CROUCH_DERIVED.iter().filter_map(|&p| {
+            let tag = p.conventional_tag().filter(|t| has_tag(t))?;
+            Some((p, tag))
+        });
+        let base = CharacterPose::DERIVED
+            .iter()
+            .filter_map(|&p| Some((p, c.tag(p)?)));
         Self(
-            CharacterPose::DERIVED
-                .iter()
-                .filter_map(|&p| {
-                    Some(AnimRule {
-                        when: AnimWhen::Pose(p),
-                        play: c.tag(p)?.to_owned(),
-                    })
+            crouch
+                .chain(base)
+                .map(|(p, tag)| AnimRule {
+                    when: AnimWhen::Pose(p),
+                    play: tag.to_owned(),
                 })
                 .collect(),
         )
     }
 
-    /// As regras que valem: as gravadas, senão as derivadas do personagem. `None` = sem regras.
+    /// As regras que valem: as gravadas, senão as derivadas do personagem (`has_tag` = as animações do
+    /// objecto que anima). `None` = sem regras.
     #[must_use]
     pub fn effective(
         rules: Option<&Self>,
         character: Option<&CharacterAnimations>,
+        has_tag: impl Fn(&str) -> bool,
     ) -> Option<Self> {
-        rules.cloned().or_else(|| character.map(Self::of_character))
+        rules
+            .cloned()
+            .or_else(|| character.map(|c| Self::of_character_with(c, has_tag)))
+    }
+
+    /// ⭐ As regras que valem no objecto `e`: as gravadas, senão as derivadas do seu personagem com as tags
+    /// do objecto que ANIMA ([`anim_target`]) — a mesma resposta para o cartão e para o jogo.
+    #[must_use]
+    pub fn of_entity(world: &World, e: Entity) -> Option<Self> {
+        let tags = anim_target(world, e).and_then(|t| world.get::<SpriteAnimations>(t));
+        Self::effective(
+            world.get::<Self>(e),
+            world.get::<CharacterAnimations>(e),
+            |name| tags.is_some_and(|l| l.get(name).is_some()),
+        )
     }
 
     /// Renomear uma animação leva as regras que a tocam. Devolve se alguma mudou.
@@ -105,6 +135,20 @@ impl AnimRules {
         }
         moved
     }
+}
+
+/// Quem tem o animador que o objecto `e` conduz: o próprio ou, se ele não tem, o 1.º filho que tem (a imagem
+/// pode ser uma peça dentro do corpo, como na Godot).
+#[must_use]
+pub fn anim_target(world: &World, e: Entity) -> Option<Entity> {
+    if world.get::<SpriteAnimator>(e).is_some() {
+        return Some(e);
+    }
+    world
+        .get::<Children>(e)?
+        .iter()
+        .copied()
+        .find(|c| world.get::<SpriteAnimator>(*c).is_some())
 }
 
 #[cfg(test)]

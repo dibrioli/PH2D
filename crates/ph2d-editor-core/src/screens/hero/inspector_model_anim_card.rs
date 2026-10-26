@@ -122,9 +122,11 @@ pub enum AnimWhenInfo {
 
 /// Quantas poses e quantos factos de vida existem (os comprimentos de `CharacterPose::ALL` e
 /// `LifeEvent::ALL`; `the_rule_mirrors_are_the_physics` prende-os).
-pub const ANIM_POSES: u8 = 5;
+pub const ANIM_POSES: u8 = 6;
 /// O índice de «Agachado» (`CharacterPose::Crouch`): só se oferece com o agachar armado.
 pub const ANIM_POSE_CROUCH: u8 = 4;
+/// O índice de «A andar agachado» (`CharacterPose::CrouchWalk`): idem.
+pub const ANIM_POSE_CROUCH_WALK: u8 = 5;
 pub const ANIM_LIFE_EVENTS: u8 = 4;
 
 /// Uma regra: quando `when` vale, toca `play`.
@@ -182,7 +184,10 @@ impl AnimCardInfo {
     #[must_use]
     pub fn when_options(&self) -> Vec<AnimWhenInfo> {
         let poses = (0..ANIM_POSES)
-            .filter(|&i| self.has_character_body && (i != ANIM_POSE_CROUCH || self.can_crouch))
+            .filter(|&i| {
+                self.has_character_body
+                    && (self.can_crouch || (i != ANIM_POSE_CROUCH && i != ANIM_POSE_CROUCH_WALK))
+            })
             .map(AnimWhenInfo::Pose);
         let keys = self.rule_actions.iter().cloned().map(AnimWhenInfo::Action);
         let life = (0..ANIM_LIFE_EVENTS).map(AnimWhenInfo::Life);

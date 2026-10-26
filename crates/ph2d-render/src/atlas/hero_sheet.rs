@@ -1,7 +1,7 @@
 //! ⭐ **O boneco de fábrica** — a folha do *Character* e do *Animated Sprite* do menu Add: o boneco verde de
 //! capacete do Kenney Pixel Platformer em vetor plano (`docs/GameEngineFuncional/06_arte_vetorial_plano.md`),
-//! 4 linhas (parado · correr · saltar · cair) × 8 células, cada desenho na pose e no tempo da referência do
-//! Blender (`docs/GameEngineFuncional/ferramentas/boneco_poses.json`). O SVG é [`super::fabrica::HERO_ART`];
+//! 4 linhas (parado · correr · saltar · cair; agachado e a andar agachado nas células livres) × 8 células,
+//! cada desenho na pose e no tempo da referência do Blender (`docs/GameEngineFuncional/ferramentas/boneco_poses.json`). O SVG é [`super::fabrica::HERO_ART`];
 //! o boneco olha para a DIREITA (`facing = +1`).
 
 use ph2d_color::SrgbRgba;
@@ -12,7 +12,7 @@ pub const HERO_SHEET_KEY: u32 = u32::MAX - 2;
 pub const HERO_SHEET_CELL_PX: u32 = 192;
 /// Células por linha (a animação mais longa, correr).
 pub const HERO_SHEET_COLS: u32 = 8;
-/// Linhas (uma por animação).
+/// Linhas.
 pub const HERO_SHEET_ROWS: u32 = 4;
 
 const _: () =
@@ -33,8 +33,10 @@ pub struct HeroTag {
     pub once: bool,
 }
 
-/// As animações, por linha — os tempos são os da referência do Blender (30 q/s).
-pub const HERO_SHEET_TAGS: [HeroTag; 4] = [
+/// As animações — os tempos são os da referência do Blender (30 q/s). As 4 primeiras começam cada uma na sua
+/// linha; `crouch` e `crouch_walk` (plano 10) ocupam as células que `jump` e `fall` deixam livres, para a grelha
+/// gravada nos ficheiros (8 × 4) não mudar.
+pub const HERO_SHEET_TAGS: [HeroTag; 6] = [
     HeroTag {
         name: "idle",
         from: 0,
@@ -61,6 +63,20 @@ pub const HERO_SHEET_TAGS: [HeroTag; 4] = [
         from: 24,
         to: 27,
         per_frame_ms: &[100; 4],
+        once: false,
+    },
+    HeroTag {
+        name: "crouch",
+        from: 20,
+        to: 23,
+        per_frame_ms: &[200; 4],
+        once: false,
+    },
+    HeroTag {
+        name: "crouch_walk",
+        from: 28,
+        to: 31,
+        per_frame_ms: &[133; 4],
         once: false,
     },
 ];

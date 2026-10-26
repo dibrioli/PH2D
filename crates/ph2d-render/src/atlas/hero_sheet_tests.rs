@@ -18,8 +18,13 @@ fn cell_alpha(px: &[SrgbRgba], w: usize, row: u32, col: u32) -> Vec<u8> {
 }
 
 fn usada(row: u32, col: u32) -> bool {
-    let tag = &HERO_SHEET_TAGS[row as usize];
-    (tag.from..=tag.to).contains(&(row * HERO_SHEET_COLS + col))
+    HERO_SHEET_TAGS
+        .iter()
+        .any(|t| (t.from..=t.to).contains(&(row * HERO_SHEET_COLS + col)))
+}
+
+fn celula(i: u32) -> (u32, u32) {
+    (i / HERO_SHEET_COLS, i % HERO_SHEET_COLS)
 }
 
 /// A linha mais baixa com cobertura de uma célula, em texels a partir do topo.
@@ -75,16 +80,27 @@ fn cada_celula_tem_margem_transparente() {
     }
 }
 
-/// Uma tag por linha, a começar na 1.ª célula, com um tempo por célula.
+/// As 4 de sempre começam cada uma na 1.ª célula da sua linha; toda tag fica numa linha só, nenhuma pisa
+/// outra, e tem um tempo por célula.
 #[test]
 fn as_tags_sao_as_linhas() {
-    for (i, tag) in HERO_SHEET_TAGS.iter().enumerate() {
+    for (i, tag) in HERO_SHEET_TAGS[..4].iter().enumerate() {
         assert_eq!(tag.from, i as u32 * HERO_SHEET_COLS, "{}", tag.name);
+    }
+    for (i, tag) in HERO_SHEET_TAGS.iter().enumerate() {
         assert!(
-            tag.to >= tag.from && tag.to < tag.from + HERO_SHEET_COLS,
+            tag.to >= tag.from && celula(tag.to).0 == celula(tag.from).0,
             "{}",
             tag.name
         );
+        for outra in &HERO_SHEET_TAGS[i + 1..] {
+            assert!(
+                tag.to < outra.from || outra.to < tag.from,
+                "{} pisa {}",
+                tag.name,
+                outra.name
+            );
+        }
         assert_eq!(
             tag.per_frame_ms.len() as u32,
             tag.to - tag.from + 1,
@@ -122,25 +138,28 @@ fn os_tempos_sao_os_da_referencia_do_blender() {
 fn cada_animacao_mexe() {
     let (px, w) = sheet();
     for tag in HERO_SHEET_TAGS {
-        let row = tag.from / HERO_SHEET_COLS;
-        let a0 = cell_alpha(&px, w, row, 0);
-        let differ = (1..=tag.to - tag.from).any(|c| cell_alpha(&px, w, row, c) != a0);
+        let (row, col) = celula(tag.from);
+        let a0 = cell_alpha(&px, w, row, col);
+        let differ = (1..=tag.to - tag.from).any(|c| cell_alpha(&px, w, row, col + c) != a0);
         assert!(differ, "{} tem as células todas iguais", tag.name);
     }
 }
 
 /// A sola declarada é a do desenho (o personagem paira a esta altura — um número errado põe-no a flutuar ou
-/// a afundar): parado, os pés estão nela em TODA célula; a correr, o pé de apoio pousa nela e nenhum desce
-/// abaixo dela.
+/// a afundar): parado, agachado e a andar agachado, os pés estão nela em TODA célula; a correr, o pé de apoio
+/// pousa nela e nenhum desce abaixo dela.
 #[test]
 fn a_sola_declarada_e_a_do_desenho() {
     let (px, w) = sheet();
     let n = HERO_SHEET_CELL_PX as usize;
     let sola = 0.5 * n as f32 + HERO_SHEET_SOLE_BELOW_CENTRE * n as f32;
-    for tag in &HERO_SHEET_TAGS[..2] {
-        let row = tag.from / HERO_SHEET_COLS;
+    for tag in HERO_SHEET_TAGS
+        .iter()
+        .filter(|t| t.name != "jump" && t.name != "fall")
+    {
+        let (row, col) = celula(tag.from);
         let baixos: Vec<f32> = (0..=tag.to - tag.from)
-            .map(|c| baixo(&cell_alpha(&px, w, row, c)) as f32 + 1.0)
+            .map(|c| baixo(&cell_alpha(&px, w, row, col + c)) as f32 + 1.0)
             .collect();
         for (c, b) in baixos.iter().enumerate() {
             assert!(
@@ -148,10 +167,11 @@ fn a_sola_declarada_e_a_do_desenho() {
                 "{} {c}: afunda — sola no texel {b}, a declarada {sola}",
                 tag.name
             );
-            if tag.name == "idle" {
+            if tag.name != "run" {
                 assert!(
                     (b - sola).abs() <= 1.5,
-                    "idle {c}: sola no texel {b}, a declarada {sola}"
+                    "{} {c}: sola no texel {b}, a declarada {sola}",
+                    tag.name
                 );
             }
         }
@@ -162,6 +182,38 @@ fn a_sola_declarada_e_a_do_desenho() {
             tag.name
         );
     }
+}
+
+/// As células das 4 tags de antes do agachar (idle 0–5 · run 8–15 · jump 16–19 · fall 24–27) — fixas aqui, não
+/// lidas de `HERO_SHEET_TAGS`, para a régua não andar com a folha.
+const CELULAS_ANTIGAS: [(u32, u32); 4] = [(0, 5), (8, 15), (16, 19), (24, 27)];
+/// FNV-1a 64 dos texels RGBA dessas 22 células, medido ANTES da arte de agachar (plano 10, 25/10).
+const HASH_ANTIGO: u64 = 0x075f_757e_4fa1_596a;
+
+/// ⭐ **Um ficheiro antigo vê a mesma folha** (plano 10): o agachar entrou em células que estavam vazias, e
+/// cada texel das 22 células que as tags de antes usam é o mesmo de antes.
+#[test]
+fn as_celulas_antigas_sao_as_de_antes() {
+    let (px, w) = sheet();
+    let n = HERO_SHEET_CELL_PX as usize;
+    let mut h: u64 = 0xcbf2_9ce4_8422_2325;
+    for (from, to) in CELULAS_ANTIGAS {
+        for i in from..=to {
+            let (row, col) = (
+                (i / HERO_SHEET_COLS) as usize,
+                (i % HERO_SHEET_COLS) as usize,
+            );
+            for y in 0..n {
+                for x in 0..n {
+                    let p = px[(row * n + y) * w + col * n + x];
+                    for b in [p.r(), p.g(), p.b(), p.a()] {
+                        h = (h ^ u64::from(b)).wrapping_mul(0x0100_0000_01b3);
+                    }
+                }
+            }
+        }
+    }
+    assert_eq!(h, HASH_ANTIGO, "hash medido {h:#018x}");
 }
 
 /// `PH2D_HERO_SHEET_RGBA=<ficheiro>` grava a folha em RGBA cru (para a olhar; não é um gate).

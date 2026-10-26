@@ -58,12 +58,9 @@ pub fn when_of(w: &AnimWhenInfo) -> Option<AnimWhen> {
     })
 }
 
-/// As regras que valem neste objecto (gravadas, ou as 4 do personagem).
+/// As regras que valem neste objecto (gravadas, ou as derivadas do personagem).
 fn rules_of(world: &World, entity: Entity) -> Option<AnimRules> {
-    AnimRules::effective(
-        world.get::<AnimRules>(entity),
-        world.get::<CharacterAnimations>(entity),
-    )
+    AnimRules::of_entity(world, entity)
 }
 
 /// Os nomes de sinal que o projecto já autorou (animações, vida, contactos, raios) e os das regras,

@@ -4,7 +4,8 @@ brancos com pupila, sem contorno.
 
     python3 -I docs/GameEngineFuncional/ferramentas/arte_svg.py <poses.json do boneco_blender.py> <pasta de saída>
 
-Escreve `boneco.svg` (a folha 8 × 4: parado · correr · saltar · cair, cada desenho na pose que o Blender deu),
+Escreve `boneco.svg` (a folha 8 × 4: parado · correr · saltar · cair, e agachado · a andar agachado nas células
+livres das linhas 2 e 3, cada desenho na pose que o Blender deu),
 `chao.svg`, `plataforma.svg`, `terra.svg` (azulejos que repetem sem costura), `moeda.svg` (6 × 1, a girar) e
 `bandeira.svg` (4 × 1, a ondular). Só `fill` e caminhos absolutos — nada de `transform`, `stroke`, `opacity` ou
 `clipPath` —, para o SVG abrir no PH2D como vetor editável e rasterizar igual em qualquer leitor.
@@ -40,7 +41,9 @@ P = {
 }
 
 COLS, ROWS, CEL = 8, 4, 100.0  # a folha do boneco, em unidades do SVG por célula
-LINHAS = ["idle", "run", "jump", "fall"]
+# Onde cada ciclo começa na folha (linha, coluna). O agachar (plano 10) ocupa as células que jump e fall
+# deixam livres: a grelha gravada nos ficheiros (8 × 4) não muda.
+POSICOES = [("idle", 0, 0), ("run", 1, 0), ("jump", 2, 0), ("fall", 3, 0), ("crouch", 2, 4), ("crouch_walk", 3, 4)]
 
 
 def f(v):
@@ -138,8 +141,9 @@ def boneco(poses):
     m = cab["medidas"]
     perna_r = m["perna_r"]
     corpo = []
-    for row, nome in enumerate(LINHAS):
-        for col, d in enumerate(poses["ciclos"][nome]["desenhos"]):
+    for nome, row, col0 in POSICOES:
+        for i, d in enumerate(poses["ciclos"][nome]["desenhos"]):
+            col = col0 + i
             ox, oy = col * CEL, row * CEL
 
             def mundo(p, ox=ox, oy=oy):
@@ -150,7 +154,7 @@ def boneco(poses):
                 return lambda p: para((a * p[0] + c * p[1] + e, b * p[0] + dd * p[1] + ff))
 
             tronco, cabeca = afim(d["tronco"]), afim(d["cabeca"])
-            g = [f'<g id="{nome}_{col}">']
+            g = [f'<g id="{nome}_{i}">']
             pe = d["pernas"]
             g.append(capsula(*map(mundo, pe["l"][0:2]), perna_r * CEL).svg(lambda p: p, P["verde_escuro"]))
             g.append(capsula(*map(mundo, pe["l"][1:3]), perna_r * CEL).svg(lambda p: p, P["verde_escuro"]))
@@ -172,7 +176,7 @@ def boneco(poses):
             g.append(elipse(-0.075, 0.232, 0.016, 0.016).svg(cabeca, P["branco"]))
             g.append("</g>")
             corpo.extend(g)
-    return svg(COLS * CEL, ROWS * CEL, corpo, "boneco de fábrica 8×4 (idle·run·jump·fall)")
+    return svg(COLS * CEL, ROWS * CEL, corpo, "boneco de fábrica 8×4 (idle·run·jump·fall · crouch·crouch_walk)")
 
 
 # ---------------------------------------------------------------- o cenário (y para BAIXO, unidades = SVG)

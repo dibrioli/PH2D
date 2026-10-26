@@ -171,7 +171,7 @@ fn levar_dano_segura_a_animacao_ate_ao_fim_da_volta() {
 #[test]
 fn as_quatro_derivadas_dao_a_tag_de_cada_pose() {
     let c = CharacterAnimations::default();
-    let rules = AnimRules::effective(None, Some(&c)).unwrap();
+    let rules = AnimRules::effective(None, Some(&c), |_| false).unwrap();
     let nada = BTreeSet::new();
     for (pose, agachado) in CharacterPose::DERIVED
         .into_iter()
@@ -191,6 +191,39 @@ fn as_quatro_derivadas_dao_a_tag_de_cada_pose() {
             "{pose:?} agachado={agachado}"
         );
         a.current = c.tag(pose).expect("nomeada").to_owned();
+    }
+}
+
+/// Plano 10: com as tags do agachar (a folha de fábrica) as derivadas tocam «crouch_walk» a andar agachado,
+/// «crouch» parado agachado, e levantar devolve as de pé.
+#[test]
+fn as_derivadas_com_o_agachar_tocam_as_celulas_dele() {
+    let c = CharacterAnimations::default();
+    let tags: Vec<&str> = ph2d_render::HERO_SHEET_TAGS
+        .iter()
+        .map(|t| t.name)
+        .collect();
+    let rules = AnimRules::effective(None, Some(&c), |n| tags.contains(&n)).unwrap();
+    let nada = BTreeSet::new();
+    let a = SpriteAnimator::new("idle");
+    for (pose, agachado, tag) in [
+        (CharacterPose::Run, true, "crouch_walk"),
+        (CharacterPose::Idle, true, "crouch"),
+        (CharacterPose::Run, false, "run"),
+        (CharacterPose::Idle, false, "idle"),
+    ] {
+        let f = Factos {
+            pose: Some(pose),
+            agachado,
+            premidas: &nada,
+            vida: &[],
+            ouvidos: &nada,
+        };
+        assert_eq!(
+            decide(&rules.0, &f, &mut None, &a),
+            Passo::Toca(tag.into()),
+            "{pose:?} agachado={agachado}"
+        );
     }
 }
 

@@ -77,3 +77,7 @@ do dono, não da linha.
 - **Veredito do smoke N1 do dono — POR RECEBER** (menu Add com as 5 peças + dicas ilustradas; nível 2;
   Auto Animate no Inspector). Handoff de continuação da N1 só depois dele.
 - R1 (vista dupla ao vivo), View ▸ Focus mode morto na UI nova, sem `ph2d.disconnect`, fecho da linha.
+
+**Agachar (plano 10, 25/10):** `crouch` (4 × 200 ms) e `crouch_walk` (4 × 133 ms) nas células livres 20–23 e
+28–31 (grelha 8 × 4 igual, ficheiros antigos com os mesmos texels — hash das 22 células antigas em gate);
+parâmetros novos do rig `neck` e `pe(x, alto)`, neutros = os de sempre. Ver [10](10_arte_de_agachar_plano.md).

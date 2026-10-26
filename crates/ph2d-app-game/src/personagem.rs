@@ -7,7 +7,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use ph2d_ecs::{Children, Entity, Resource, SpriteAnimator, World};
+use ph2d_ecs::{Entity, Has, Resource, SpriteAnimator, World};
 use ph2d_input::{ActionState, Input, InputMap};
 use ph2d_physics_ecs::{
     AnimRule, AnimRules, AnimWhen, CharacterAnimations, CharacterPose, LifeEvent, PhysicsBridge,
@@ -17,14 +17,7 @@ use ph2d_runtime::{SignalOutbox, SignalReader};
 
 /// Quem tem o animador que este objecto conduz.
 fn alvo(world: &World, e: Entity) -> Option<Entity> {
-    if world.get::<SpriteAnimator>(e).is_some() {
-        return Some(e);
-    }
-    world
-        .get::<Children>(e)?
-        .iter()
-        .copied()
-        .find(|c| world.get::<SpriteAnimator>(*c).is_some())
+    ph2d_physics_ecs::anim_target(world, e)
 }
 
 /// A troca de estado: a animação nova começa do início e TOCA — uma tag de uma vez só (saltar) que acabou
@@ -64,6 +57,9 @@ pub(crate) struct Factos<'a> {
 fn vale(when: &AnimWhen, f: &Factos) -> bool {
     match when {
         AnimWhen::Pose(CharacterPose::Crouch) => f.agachado,
+        AnimWhen::Pose(CharacterPose::CrouchWalk) => {
+            f.agachado && f.pose == Some(CharacterPose::Run)
+        }
         AnimWhen::Pose(p) => f.pose == Some(*p),
         AnimWhen::Action(n) => f.premidas.contains(n),
         AnimWhen::Life(l) => f.vida.contains(l),
@@ -150,10 +146,17 @@ pub fn anima_personagens(
             vida.entry(h.target).or_default().push(l);
         }
     }
-    let mut q = world.query::<(Entity, Option<&AnimRules>, Option<&CharacterAnimations>)>();
-    let objectos: Vec<(Entity, AnimRules, Option<CharacterAnimations>)> = q
+    let mut q = world.query::<(Entity, Has<AnimRules>, Has<CharacterAnimations>)>();
+    let ids: Vec<Entity> = q
         .iter(world)
-        .filter_map(|(e, r, c)| Some((e, AnimRules::effective(r, c)?, c.cloned())))
+        .filter_map(|(e, r, c)| (r || c).then_some(e))
+        .collect();
+    let objectos: Vec<(Entity, AnimRules, Option<CharacterAnimations>)> = ids
+        .into_iter()
+        .filter_map(|e| {
+            let rules = AnimRules::of_entity(world, e)?;
+            Some((e, rules, world.get::<CharacterAnimations>(e).cloned()))
+        })
         .collect();
     let vivos: BTreeSet<Entity> = objectos.iter().map(|(e, ..)| *e).collect();
     em_curso.seguras.retain(|e, _| vivos.contains(e));

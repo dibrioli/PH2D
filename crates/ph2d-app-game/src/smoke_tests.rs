@@ -381,9 +381,9 @@ fn no_nivel_2_agachado_passa_sob_o_tecto_baixo() {
     assert!(x > saida + 0.5 && !agachado, "fora, levanta: x = {x}");
 }
 
-/// ⭐ Nível 3 (plano 09), pelo horário do condutor e pela ponte das regras: agachado sob o tecto toca a
-/// regra de cima («Crouching → fall»); soltar ↓ lá debaixo continua; a sair para a direita levanta e a
-/// regra larga.
+/// ⭐ Nível 3 (planos 09–10), pelo horário do condutor e pelas regras DERIVADAS do Add (sem regra à mão):
+/// a andar agachado toca «crouch_walk»; parado sob o tecto, «crouch» (soltar ↓ lá debaixo continua);
+/// a sair para a direita levanta e volta ao de pé.
 #[test]
 fn o_nivel_3_agacha_sob_o_tecto_e_a_regra_toca() {
     use ph2d_physics_ecs::{PhysicsBridge, PlayerInput};
@@ -433,13 +433,111 @@ fn o_nivel_3_agacha_sob_o_tecto_e_a_regra_toca() {
         leituras.push((tick + 60, a.current.clone(), x));
     }
     let em = |q: u32| leituras.iter().find(|l| l.0 == q).expect("quadro").clone();
+    let (_, a_andar, x) = em(200);
+    assert_eq!(a_andar, "crouch_walk", "a andar agachado: x = {x}");
     let (_, debaixo, x) = em(320);
     assert_eq!(
-        debaixo, "fall",
+        debaixo, "crouch",
         "solto ↓ debaixo do tecto continua agachado: x = {x}"
     );
     assert!(x < -9.5, "e está debaixo dele: x = {x}");
     let (_, fora, x) = em(470);
-    assert_ne!(fora, "fall", "fora do tecto levantou: x = {x}");
+    assert_eq!(fora, "idle", "fora do tecto levantou e parou: x = {x}");
     assert!(x > -9.0, "saiu: x = {x}");
+}
+
+/// ⭐ **O topo do DESENHO agachado é o do CORPO agachado** (plano 10), medido na física do nível 2: o boneco do
+/// Add, parado, agachado ou de pé; o topo do corpo (`body_extent`) contra a linha mais alta de cada célula
+/// da tag, os dois acima do centro da sprite (1 × 1 m). CONTROLO na mesma régua: `idle` contra o corpo de pé.
+#[test]
+fn o_desenho_agachado_tem_o_topo_do_corpo() {
+    use ph2d_physics_ecs::{PhysicsBridge, PlayerInput};
+    use ph2d_render::{HERO_SHEET_CELL_PX, HERO_SHEET_COLS, HERO_SHEET_TAGS, hero_sheet_pixels};
+    let n = HERO_SHEET_CELL_PX as usize;
+    let w = n * HERO_SHEET_COLS as usize;
+    let px = hero_sheet_pixels();
+    let topo_da_celula = |i: u32| -> f32 {
+        let (row, col) = (
+            (i / HERO_SHEET_COLS) as usize,
+            (i % HERO_SHEET_COLS) as usize,
+        );
+        let y = (0..n)
+            .find(|y| (0..n).any(|x| px[(row * n + y) * w + col * n + x].a() > 64))
+            .expect("desenho");
+        0.5 - y as f32 / n as f32
+    };
+    let corpo = |down: bool| -> f32 {
+        let mut sim = SimWorld::new();
+        let jogador = montar(&mut sim, &crate::registo_de_teste(), 2);
+        let mut bridge = PhysicsBridge::new();
+        for t in 1..=120_u64 {
+            bridge.set_player_input(
+                jogador,
+                PlayerInput {
+                    down,
+                    ..PlayerInput::default()
+                },
+            );
+            bridge.dispatch(&mut sim, true, t);
+        }
+        let centro = sim
+            .world()
+            .get::<Transform>(jogador)
+            .expect("pose")
+            .translation
+            .y;
+        assert_eq!(
+            bridge.player_view(jogador).is_some_and(|v| v.crouching),
+            down
+        );
+        bridge.body_extent(jogador).expect("corpo").1[1] - centro
+    };
+    let (de_pe, agachado) = (corpo(false), corpo(true));
+    assert!(
+        de_pe - agachado > 0.25,
+        "o corpo baixou: {de_pe} → {agachado}"
+    );
+    for (tag, alvo) in [
+        ("idle", de_pe),
+        ("crouch", agachado),
+        ("crouch_walk", agachado),
+    ] {
+        let t = HERO_SHEET_TAGS
+            .iter()
+            .find(|t| t.name == tag)
+            .expect("tag da folha");
+        for i in t.from..=t.to {
+            let topo = topo_da_celula(i);
+            assert!(
+                (topo - alvo).abs() <= 0.03,
+                "{tag} célula {i}: o desenho chega a {topo:.3} m, o corpo a {alvo:.3} m"
+            );
+        }
+    }
+}
+
+/// Plano 10: o Character do menu traz as tags do agachar, e as regras que valem nele (o cartão e o jogo
+/// leem a mesma porta) são as 6 — sem nada gravado.
+#[test]
+fn o_personagem_do_menu_deriva_as_seis_regras() {
+    use ph2d_physics_ecs::{AnimRules, AnimWhen, CharacterPose};
+    let mut sim = SimWorld::new();
+    let jogador = montar(&mut sim, &crate::registo_de_teste(), 2);
+    assert!(
+        sim.world().get::<AnimRules>(jogador).is_none(),
+        "nada gravado"
+    );
+    let r = AnimRules::of_entity(sim.world(), jogador).expect("regras");
+    let whens: Vec<_> =
+        r.0.iter()
+            .map(|r| (r.when.clone(), r.play.as_str()))
+            .collect();
+    assert_eq!(whens.len(), 6);
+    assert_eq!(
+        whens[..2],
+        [
+            (AnimWhen::Pose(CharacterPose::CrouchWalk), "crouch_walk"),
+            (AnimWhen::Pose(CharacterPose::Crouch), "crouch"),
+        ]
+    );
 }

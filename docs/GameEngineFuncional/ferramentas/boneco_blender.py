@@ -44,8 +44,8 @@ VIDRO = (0xBE, 0xDE, 0xF1)
 # Os ciclos: chaves (quadro, pose) e os quadros que viram desenhos da folha. Pose: anca (dz, inclinação para a
 # frente em graus), tronco (sx, sz), cabeça (graus), pernas (coxa para a frente, joelho dobrado) — R é a perna
 # do lado da câmara.
-def pose(dz=0.0, lean=0.0, sx=1.0, sz=1.0, head=0.0, r=(0.0, 0.0), l=(0.0, 0.0)):
-    return dict(dz=dz, lean=lean, sx=sx, sz=sz, head=head, r=r, l=l)
+def pose(dz=0.0, lean=0.0, sx=1.0, sz=1.0, head=0.0, r=(0.0, 0.0), l=(0.0, 0.0), neck=0.0):
+    return dict(dz=dz, lean=lean, sx=sx, sz=sz, head=head, r=r, l=l, neck=neck)
 
 
 def espelho(p):
@@ -54,13 +54,13 @@ def espelho(p):
     return q
 
 
-def pe(x):
-    """Perna de APOIO: o pé plantado no chão em `x` (as coxa e canela saem do IK de dois ossos)."""
-    return ("pe", x)
+def pe(x, alto=0.0):
+    """Perna de APOIO: o pé em `x`, plantado no chão (ou `alto` acima dele) — coxa e canela saem do IK de dois ossos."""
+    return ("pe", x, alto)
 
 
-def ik(dz, x):
-    h = ANCA_Z + dz - PERNA_R
+def ik(dz, x, alto=0.0):
+    h = ANCA_Z + dz - PERNA_R - alto
     d = min(math.hypot(x, h), COXA + CANELA - 1e-6)
     base = math.degrees(math.atan2(x, h))
     meio = math.degrees(math.acos(d / (COXA + CANELA)))
@@ -71,6 +71,10 @@ CONTACTO = pose(dz=-0.016, lean=5, head=-2, r=pe(0.07), l=(-32, 40))
 BAIXO = pose(dz=-0.040, lean=6, sx=1.05, sz=0.94, head=1, r=pe(0.025), l=(-14, 76))
 PASSAGEM = pose(dz=-0.006, lean=5, head=2, r=pe(-0.045), l=(28, 96))
 CIMA = pose(dz=0.030, lean=4, sx=0.97, sz=1.05, head=0, r=(-36, 6), l=(46, 46))
+
+AGACHADO = pose(dz=-0.082, lean=6, sx=1.12, sz=0.80, head=-2, neck=-0.14, r=pe(0.06), l=pe(-0.05))
+ARRASTA = pose(dz=-0.084, lean=8, sx=1.12, sz=0.80, head=-2, neck=-0.14, r=pe(0.07), l=pe(-0.06))
+ARRASTA_PASSA = pose(dz=-0.078, lean=8, sx=1.10, sz=0.80, head=0, neck=-0.14, r=pe(0.0), l=pe(0.0, 0.03))
 
 CICLOS = {
     # Respirar: 1 s, seis desenhos.
@@ -122,6 +126,31 @@ CICLOS = {
         ],
         desenhos=[0, 3, 6, 9],
         fim=12,
+        repete=True,
+    ),
+    # Agachado (plano 10): a anca desce, a cabeça afunda no tronco e o corpo achata até o topo do capacete
+    # ficar a ~0,50 da sola (o corpo agachado); os pés não saem da linha. Respira devagar.
+    "crouch": dict(
+        chaves=[
+            (0, AGACHADO),
+            (12, pose(dz=-0.086, lean=6, sx=1.14, sz=0.78, head=-3, neck=-0.14, r=pe(0.06), l=pe(-0.05))),
+            (24, AGACHADO),
+        ],
+        desenhos=[0, 6, 12, 18],
+        fim=24,
+        repete=True,
+    ),
+    # A andar agachado: dois passos arrastados (o pé de trás sobe pouco e passa por baixo), sem quase subir.
+    "crouch_walk": dict(
+        chaves=[
+            (0, ARRASTA),
+            (4, ARRASTA_PASSA),
+            (8, espelho(ARRASTA)),
+            (12, espelho(ARRASTA_PASSA)),
+            (16, ARRASTA),
+        ],
+        desenhos=[0, 4, 8, 12],
+        fim=16,
         repete=True,
     ),
 }
@@ -187,10 +216,11 @@ def aplica(r, p):
     r["anca"].location = (0, 0, ANCA_Z + p["dz"])
     r["anca"].rotation_euler = (0, math.radians(p["lean"]), 0)
     r["tronco"].scale = (p["sx"], 1, p["sz"])
+    r["cabeca"].location = (0, 0, CABECA_PIVO + p["neck"])
     r["cabeca"].rotation_euler = (0, math.radians(p["head"]), 0)
     for lado in ("r", "l"):
         perna = p[lado]
-        frente, joelho = ik(p["dz"], perna[1]) if perna[0] == "pe" else perna
+        frente, joelho = ik(p["dz"], *perna[1:]) if perna[0] == "pe" else perna
         coxa, canela, _ = r["pernas"][lado]
         # rotação +Y leva o topo para +X e o pé para -X: a coxa à frente é negativa (medida contra a
         # vertical do MUNDO, por isso desfaz a inclinação da anca), o joelho dobra para trás.

@@ -326,3 +326,24 @@ fn agachado_so_se_oferece_com_o_agachar_armado() {
         [AnimFieldEdit::RuleWhen(0, crouch)]
     );
 }
+
+/// (x) Plano 10: «Crouch-walking» segue a mesma porta — só com o agachar armado, e grava a sua condição.
+#[test]
+fn a_andar_agachado_so_se_oferece_com_o_agachar_armado() {
+    use ph2d_editor_core::screens::hero::ANIM_POSE_CROUCH_WALK;
+    let walk = AnimWhenInfo::Pose(ANIM_POSE_CROUCH_WALK);
+    let mut info = with_character(anim(false, false));
+    info.card.can_crouch = false;
+    assert!(!info.card.when_options().contains(&walk));
+    info.card.can_crouch = true;
+    let j = info
+        .card
+        .when_options()
+        .iter()
+        .position(|o| *o == walk)
+        .expect("«Crouch-walking» é uma opção");
+    assert_eq!(
+        edits(&pick_when(info, 0, j)),
+        [AnimFieldEdit::RuleWhen(0, walk)]
+    );
+}

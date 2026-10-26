@@ -257,7 +257,15 @@ pub(crate) fn plano(e: &Entrada<'_>, text: &mut TextSystem) -> Plano {
             ],
             _ => Vec::new(),
         };
-        for (m, n) in sitios {
+        // O selo de um lado pousa para DENTRO da forma (a cota do mesmo lado vai para fora — nunca se tapam).
+        let dentro_de = r.lei.dono().and_then(|d| centro_do(d, scene, view, xf, cam));
+        for (m, mut n) in sitios {
+            if let Some(cc) = dentro_de
+                && !matches!(r.lei, Lei::Coincidente(..) | Lei::Fixo(..))
+                && n[0] * (cc[0] - m[0]) + n[1] * (cc[1] - m[1]) < 0.0
+            {
+                n = esc(n, -1.0);
+            }
             let base = add(m, esc(n, fora + lado_px * 0.5));
             #[expect(clippy::cast_possible_truncation, reason = "célula de ecrã para empilhar")]
             let k = ((base[0] / lado_px).round() as i64, (base[1] / lado_px).round() as i64);

@@ -386,4 +386,4 @@ pub fn escape(vec: &mut VecState) -> bool {
 
 #[cfg(test)]
 #[path = "cad_tool_tests.rs"]
-mod tests;
+pub(crate) mod tests;

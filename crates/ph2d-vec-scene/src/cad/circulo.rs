@@ -39,10 +39,57 @@ pub fn circulo_de(path: &VecPath, xf: Xform) -> Option<([f64; 2], f64)> {
         }
         for h in [v.in_handle, v.out_handle] {
             let t = sub(xf.apply(h), *p);
+            // Uma alça RECOLHIDA é um canto: um retângulo tem os quatro cantos no mesmo raio e não é um círculo.
+            if t[0].hypot(t[1]) <= tol {
+                return None;
+            }
             if (t[0] * raio[0] + t[1] * raio[1]).abs() > tol * t[0].hypot(t[1]).max(1.0) {
                 return None;
             }
         }
     }
     Some((c, r))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::circulo_de;
+    use crate::{VecPath, VecVertex, Xform};
+
+    fn fechado(verts: Vec<VecVertex>) -> VecPath {
+        VecPath {
+            verts,
+            closed: true,
+            ..VecPath::default()
+        }
+    }
+
+    /// Os quatro cantos de um retângulo estão no mesmo raio; as alças recolhidas dizem que são cantos (W4.6: a
+    /// tool Regras lia o retângulo como círculo e os lados dele sumiam).
+    #[test]
+    fn a_rectangle_is_not_a_circle() {
+        let r = fechado(
+            [[0.0, 0.0], [2.0, 0.0], [2.0, 1.0], [0.0, 1.0]]
+                .into_iter()
+                .map(VecVertex::corner)
+                .collect(),
+        );
+        assert_eq!(circulo_de(&r, Xform::IDENTITY), None);
+        // Controlo: o círculo de quatro arcos (alças tangentes, k = 4/3·(√2 − 1)).
+        let k = 4.0 / 3.0 * (std::f64::consts::SQRT_2 - 1.0);
+        let c = fechado(
+            [[1.0, 0.0], [0.0, 1.0], [-1.0, 0.0], [0.0, -1.0]]
+                .into_iter()
+                .map(|p| {
+                    let t = [-p[1] * k, p[0] * k];
+                    let mut v = VecVertex::corner(p);
+                    v.in_handle = [p[0] - t[0], p[1] - t[1]];
+                    v.out_handle = [p[0] + t[0], p[1] + t[1]];
+                    v
+                })
+                .collect(),
+        );
+        let (centro, raio) = circulo_de(&c, Xform::IDENTITY).expect("o círculo");
+        assert!(centro[0].abs() < 1e-12 && centro[1].abs() < 1e-12 && (raio - 1.0).abs() < 1e-12);
+    }
 }

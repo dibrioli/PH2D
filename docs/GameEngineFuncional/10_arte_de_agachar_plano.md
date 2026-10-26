@@ -60,3 +60,21 @@ Sem campo gravado novo ⇒ **sem degrau de `PROJECT_SCHEMA`**; sem componente no
 ## Fora desta onda
 
 Agachar no ar · rastejar · transição animada de levantar/baixar.
+
+## Feito (25/10) — `5244f105e8`, smoke do dono por fazer
+
+- **Medido na construção:** a 1.ª pose (anca −0,112, `neck` −0,10) pôs o joelho da perna de trás no chão — a
+  ponta redonda dele 2 texels abaixo da sola em `crouch_walk` 0 e 2 (o IK com a anca baixa demais). Cura: anca
+  −0,082 e `neck` −0,14 (o topo fica igual). Final: sola no texel 183 em todas as células (= `idle`), topo
+  `crouch` 0,492–0,507 m e `crouch_walk` 0,502–0,507 m acima da sola (corpo agachado 0,50; `idle` 0,773–0,809
+  contra 0,80 de pé).
+- Hash das 22 células antigas `0x075f757e4fa1596a` (medido antes; verde depois). Poses e grupos SVG antigos
+  byte a byte iguais (o Blender refaz a referência sem mudar um byte).
+- Gate do espelho `the_rule_mirrors_are_the_physics`: o comentário de `ANIM_POSES` citava-o e ele NÃO existia
+  (nada prendia o menu às poses da física) — criado em `app-sprite-anim/card_tests.rs`.
+- Prova de mutação 6/6 sangra (filtro da tag · CrouchWalk sem «a correr» · `of_entity` sem tags · menu sem a
+  porta do agachar · tags sobrepostas · corpo agachado mais alto que o desenho).
+- Fotos (app real, `PH2D_GAME_SMOKE=3`, condutor `window`, 1600×900): [`fotos_10/`](handoffs/fotos_10/).
+  ⚠️ O capacete achatado (±0,30) pinta ~3 cm por cima da parede ao encostar: o desenho é mais largo que a
+  cápsula (raio 0,2) — já era assim de pé (±0,27); não é desta onda.
+- Suíte de impacto não corrida (ordem do dono 23/10: só antes da integração).

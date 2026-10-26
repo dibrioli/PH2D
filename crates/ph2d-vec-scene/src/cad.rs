@@ -39,11 +39,24 @@ pub enum Lei {
     Fixo(PontoCad, [f64; 2]),
 }
 
+/// O id durável de uma regra na cena — o endereço da medida animada (`ph2d_ecs::canal_cad`): o índice em
+/// `regras` parte ao apagar. Monotónico por cena (`VecScene::next_regra`), nunca reusado.
+#[derive(
+    Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize,
+)]
+pub struct RegraId(pub u32);
+
+impl RegraId {
+    /// «Ainda sem id» — o que [`RegraCad::nova`] dá; o próximo assentamento atribui.
+    pub const NOVO: Self = Self(0);
+}
+
 /// Uma regra do documento. `referencia` = REF: só mostra a medida, não manda na geometria.
 #[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct RegraCad {
     pub lei: Lei,
     pub referencia: bool,
+    pub id: RegraId,
 }
 
 impl RegraCad {
@@ -52,6 +65,7 @@ impl RegraCad {
         Self {
             lei,
             referencia: false,
+            id: RegraId::NOVO,
         }
     }
 }
@@ -77,6 +91,31 @@ impl Lei {
     }
 }
 
+impl Lei {
+    /// A medida de uma lei que a tem (px; o ângulo em radianos) — o valor que a curva anima.
+    #[must_use]
+    pub const fn medida(&self) -> Option<f64> {
+        match *self {
+            Self::Distancia(_, _, d) | Self::Angulo(_, _, d) | Self::Raio(_, d) => Some(d),
+            _ => None,
+        }
+    }
+
+    /// O irmão mutável de [`Self::medida`].
+    pub const fn medida_mut(&mut self) -> Option<&mut f64> {
+        match self {
+            Self::Distancia(_, _, d) | Self::Angulo(_, _, d) | Self::Raio(_, d) => Some(d),
+            _ => None,
+        }
+    }
+
+    /// O path que é DONO da regra: o do primeiro ponto citado (a entidade que leva a curva da medida).
+    #[must_use]
+    pub fn dono(&self) -> Option<VecPathId> {
+        self.pontos().first().map(|p| p.path())
+    }
+}
+
 impl PontoCad {
     #[must_use]
     pub const fn path(self) -> VecPathId {
@@ -94,6 +133,37 @@ impl VecScene {
 
     pub fn regras_mut(&mut self) -> &mut Vec<RegraCad> {
         &mut self.regras
+    }
+
+    /// A regra de id `id`.
+    #[must_use]
+    pub fn regra(&self, id: RegraId) -> Option<&RegraCad> {
+        (id != RegraId::NOVO).then(|| self.regras.iter().find(|r| r.id == id))?
+    }
+
+    /// O irmão mutável de [`Self::regra`].
+    pub fn regra_mut(&mut self, id: RegraId) -> Option<&mut RegraCad> {
+        (id != RegraId::NOVO).then(|| self.regras.iter_mut().find(|r| r.id == id))?
+    }
+
+    /// Poda ([`Self::poda_regras`]) e dá id a toda regra sem um ou com um repetido (uma cópia), pela
+    /// ordem; idempotente — a lei do [`VecPath::normaliza_ids`].
+    pub(crate) fn assenta_regras(&mut self) -> bool {
+        let mut mudou = self.poda_regras();
+        let maior = self.regras.iter().map(|r| r.id.0).max().unwrap_or(0);
+        let mut proximo = self.next_regra.max(maior + 1);
+        let mut vistos = std::collections::HashSet::with_capacity(self.regras.len());
+        for r in &mut self.regras {
+            if r.id == RegraId::NOVO || !vistos.insert(r.id) {
+                r.id = RegraId(proximo);
+                vistos.insert(r.id);
+                proximo += 1;
+                mudou = true;
+            }
+        }
+        mudou |= self.next_regra != proximo;
+        self.next_regra = proximo;
+        mudou
     }
 
     /// Tira as regras que citam um ponto que já não existe (vértice apagado, path apagado). Corre no
@@ -129,6 +199,7 @@ struct VecSceneV24 {
     paths: Vec<VecPath>,
     next_id: VecPathId,
     regras: Vec<RegraCad>,
+    next_regra: u32,
 }
 
 impl<'de> Deserialize<'de> for VecScene {
@@ -139,6 +210,7 @@ impl<'de> Deserialize<'de> for VecScene {
                 paths: o.paths,
                 next_id: o.next_id,
                 regras: Vec::new(),
+                next_regra: 0,
             })
         } else {
             let o = VecSceneV24::deserialize(d)?;
@@ -146,6 +218,7 @@ impl<'de> Deserialize<'de> for VecScene {
                 paths: o.paths,
                 next_id: o.next_id,
                 regras: o.regras,
+                next_regra: o.next_regra,
             })
         }
     }

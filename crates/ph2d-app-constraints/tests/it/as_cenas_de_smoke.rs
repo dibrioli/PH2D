@@ -187,7 +187,7 @@ fn outside_pushes_the_pupil_to_the_edge_whenever_the_ball_is_inside() {
         t.translation.x = x;
         t.translation.y = y;
         for _ in 0..3 {
-            ph2d_app_constraints::quadro(sim, &ph2d_vec_scene::VecScene::new(), drive, None);
+            ph2d_app_constraints::quadro(sim, &mut ph2d_vec_scene::VecScene::new(), drive, None);
             drive.settle();
         }
         let p = mundo(sim, pupila).translation;
@@ -229,7 +229,7 @@ fn the_arm_scene_turns_the_hand_below_the_ik() {
     let rodador = chamada(&mut sim, "Rodador");
     let passo = |sim: &mut SimWorld, drive: &mut PreviewDrive| {
         for _ in 0..3 {
-            ph2d_app_constraints::quadro(sim, &ph2d_vec_scene::VecScene::new(), drive, None);
+            ph2d_app_constraints::quadro(sim, &mut ph2d_vec_scene::VecScene::new(), drive, None);
             drive.settle();
         }
     };

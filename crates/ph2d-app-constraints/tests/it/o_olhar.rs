@@ -33,7 +33,7 @@ fn the_frame_turns_a_one_bone_ik_into_a_look_at() {
         sim.world_mut().entity_mut(e).insert(c);
     }
     let mut preview = PreviewDrive::default();
-    ph2d_app_constraints::quadro(&mut sim, &VecScene::new(), &mut preview, None);
+    ph2d_app_constraints::quadro(&mut sim, &mut VecScene::new(), &mut preview, None);
     let kind = |e| sim.world().get::<Constraints>(e).unwrap().items[0].kind;
     assert_eq!(kind(osso), Kind::LookAt(LookAt { offset: 0.25 }));
     assert_eq!(

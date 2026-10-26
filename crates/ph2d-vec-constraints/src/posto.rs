@@ -15,7 +15,7 @@ const TOL_POSTO: f64 = 1e-8;
 
 #[derive(Copy, Clone)]
 pub(crate) struct D {
-    v: f64,
+    pub(crate) v: f64,
     d: [f64; N],
 }
 

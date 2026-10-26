@@ -15,6 +15,7 @@ pub mod relogio;
 pub mod smoke;
 pub mod smoke_antena;
 pub mod smoke_pega;
+pub mod smoke_regua;
 
 use bevy_ecs::prelude::Resource;
 use ph2d_ecs::SimWorld;
@@ -36,7 +37,7 @@ struct Encenado;
 /// incluída. Corre DEPOIS do osso inteligente (a pose de base). Devolve quantas entidades a pilha moveu.
 pub fn quadro(
     sim: &mut SimWorld,
-    cena: &ph2d_vec_scene::VecScene,
+    cena: &mut ph2d_vec_scene::VecScene,
     preview: &mut PreviewDrive,
     relogio: Option<relogio::Relogio<'_>>,
 ) -> usize {
@@ -47,6 +48,7 @@ pub fn quadro(
             smoke::encenar(w, n);
         }
     }
+    smoke_regua::semear_se_pedida(sim, cena);
     // Um `IkGoal` de antes da W2 (ficheiro, prefab, colagem) vira o item IK, e a IK de 1 osso o Look
     // At, antes de avaliar.
     ph2d_constraints_ecs::converter_ik_goals(sim.world_mut());

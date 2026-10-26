@@ -51,7 +51,7 @@ fn copy_point_follows_its_vertex_after_an_insert_before_it() {
         .spawn((StableId(3), Transform::IDENTITY, c2))
         .id();
     let mut drive = PreviewDrive::default();
-    ph2d_app_constraints::quadro(&mut sim, &cena, &mut drive, None);
+    ph2d_app_constraints::quadro(&mut sim, &mut cena, &mut drive, None);
     assert_eq!(em(&sim, dono), [4.0, 0.0]);
     assert_eq!(
         em(&sim, dono2),
@@ -65,7 +65,7 @@ fn copy_point_follows_its_vertex_after_an_insert_before_it() {
         .verts
         .insert(0, VecVertex::corner([-5.0, 0.0]));
     cena.normaliza_ids();
-    ph2d_app_constraints::quadro(&mut sim, &cena, &mut drive, None);
+    ph2d_app_constraints::quadro(&mut sim, &mut cena, &mut drive, None);
     assert_eq!(em(&sim, dono), [4.0, 0.0], "o mesmo ponto, pelo id");
     assert_eq!(
         cena.path(caminho).unwrap().verts[1].anchor,
@@ -77,7 +77,7 @@ fn copy_point_follows_its_vertex_after_an_insert_before_it() {
     let p = cena.path_mut(caminho).unwrap();
     let i = p.verts.iter().position(|v| v.id == canto).unwrap();
     p.verts.remove(i);
-    ph2d_app_constraints::quadro(&mut sim, &cena, &mut drive, None);
+    ph2d_app_constraints::quadro(&mut sim, &mut cena, &mut drive, None);
     assert_eq!(
         sim.world().resource::<Estados>().of(dono, item),
         Some(Estado::SemAlvo)

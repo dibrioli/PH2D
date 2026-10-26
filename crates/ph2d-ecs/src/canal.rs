@@ -76,6 +76,7 @@ impl FieldKey {
             familia::COMPONENTE => crate::canal_componente::membro(self),
             familia::SCRIPT => crate::canal_script::membro(self),
             familia::CONSTRAINT => crate::canal_constraint::membro(self.campo),
+            familia::CAD => crate::canal_cad::membro(self.campo),
             _ => None,
         }
     }
@@ -231,6 +232,8 @@ pub mod familia {
     pub const SCRIPT: u16 = 7;
     /// Um item da pilha de constraints (`i:j` = o `Item::id`) — `crate::canal_constraint`.
     pub const CONSTRAINT: u16 = 8;
+    /// Uma regra de desenho técnico do vetor (`VecScene.regras`, `i:j` = o `RegraId`) — `crate::canal_cad`.
+    pub const CAD: u16 = 9;
 }
 
 /// ⭐ **A porta única de «o que é este campo»** — `None` = endereço que nenhuma família declara (um
@@ -246,6 +249,7 @@ pub fn info(k: FieldKey) -> Option<CampoInfo> {
         familia::COMPONENTE => crate::canal_componente::info(k),
         familia::SCRIPT => crate::canal_script::info(k),
         familia::CONSTRAINT => crate::canal_constraint::info(k.campo),
+        familia::CAD => crate::canal_cad::info(k.campo),
         _ => None,
     }
 }

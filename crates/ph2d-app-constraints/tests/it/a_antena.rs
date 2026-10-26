@@ -72,7 +72,7 @@ impl Cena {
         };
         quadro(
             &mut self.sim,
-            &ph2d_vec_scene::VecScene::new(),
+            &mut ph2d_vec_scene::VecScene::new(),
             &mut self.drive,
             Some(relogio),
         );

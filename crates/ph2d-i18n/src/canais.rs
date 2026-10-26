@@ -61,6 +61,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "canal.constraint.duracao" => "Spring Duration",
         "canal.constraint.ressalto" => "Spring Bounce",
         "canal.constraint.mola" => "Spring Channels",
+        // A medida de uma regra de desenho técnico do vetor (`ph2d_ecs::canal_cad`).
+        "canal.cad.medida" => "Dimension",
         // O corpo de física da §11 (`ph2d_ecs::canal_fisica`).
         "canal.fisica.tipo" => "Body Type",
         "canal.fisica.ccd" => "Continuous Collision",

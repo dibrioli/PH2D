@@ -124,8 +124,8 @@ fn a_rule_the_drawing_already_implies_is_not_added_and_an_extra_dimension_is_bor
     assert_eq!(
         junta_regra(&mut scene, &xf, diagonal),
         Some(RegraCad {
-            lei: diagonal,
-            referencia: true
+            referencia: true,
+            ..RegraCad::nova(diagonal)
         })
     );
     // A mesma medida de trás para a frente é repetida, não uma 2.ª REF.

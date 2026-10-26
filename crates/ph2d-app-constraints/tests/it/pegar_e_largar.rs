@@ -68,7 +68,7 @@ impl Cena {
         apply_from_doc(self.sim.world_mut(), &mut self.tl.doc, self.ph.time());
         quadro(
             &mut self.sim,
-            &ph2d_vec_scene::VecScene::new(),
+            &mut ph2d_vec_scene::VecScene::new(),
             &mut self.drive,
             Some(ph2d_app_constraints::relogio::Relogio {
                 doc: &self.tl.doc,

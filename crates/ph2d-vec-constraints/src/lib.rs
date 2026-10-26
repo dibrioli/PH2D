@@ -412,6 +412,39 @@ pub fn estado(folha: &Folha<'_>, regras: &[RegraCad]) -> Estado {
     }
 }
 
+/// ⭐ **A régua do cumprimento**: o maior |resíduo| das regras que mandam (as REF não) na pose da folha — px numa
+/// distância, numa posição ou num raio, radianos num ângulo. Uma regra cujo ponto a folha não tem não conta.
+#[must_use]
+pub fn violacao(folha: &Folha<'_>, regras: &[RegraCad]) -> f64 {
+    let ponto = |p: PontoCad| match p {
+        PontoCad::Vert(..) => folha.vert(p),
+        PontoCad::Centro(c) => folha.circulo(c).map(|(c, _)| c),
+    };
+    let valor = |v: &posto::Var| match *v {
+        posto::Var::X(p) => ponto(p).map_or(f64::NAN, |q| q[0]),
+        posto::Var::Y(p) => ponto(p).map_or(f64::NAN, |q| q[1]),
+        posto::Var::Raio(c) => folha.circulo(c).map_or(f64::NAN, |(_, r)| r),
+    };
+    let mut pior = 0.0_f64;
+    for r in regras.iter().filter(|r| !r.referencia) {
+        let (_, res) = posto::residuos(&r.lei, &valor);
+        let mut v: Vec<f64> = res.iter().map(|d| d.v).collect();
+        match r.lei {
+            Lei::Distancia(_, _, alvo) | Lei::Raio(_, alvo) => v[0] -= alvo,
+            Lei::Angulo(_, _, alvo) => {
+                v[0] = (v[0] - alvo + std::f64::consts::PI).rem_euclid(std::f64::consts::TAU)
+                    - std::f64::consts::PI;
+            }
+            Lei::Fixo(_, xy) => (0..2).for_each(|k| v[k] -= xy[k]),
+            _ => {}
+        }
+        if v.iter().all(|x| x.is_finite()) {
+            pior = v.iter().fold(pior, |m, x| m.max(x.abs()));
+        }
+    }
+    pior
+}
+
 /// `nova` não sobe o posto das `regras` na pose da folha ⇒ é a mais (o editor dá-lhe REF, se for medida). O teste de
 /// posto sem a análise da ezpz: barato o bastante para correr quando uma guia acende.
 #[must_use]

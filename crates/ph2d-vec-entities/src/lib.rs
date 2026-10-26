@@ -40,6 +40,7 @@
 pub mod entities;
 pub mod entity_map;
 pub mod filter;
+pub mod medida;
 pub mod morph_set;
 pub mod receita;
 pub mod transform;

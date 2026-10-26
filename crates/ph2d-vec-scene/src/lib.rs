@@ -570,6 +570,8 @@ pub struct VecScene {
     next_id: VecPathId,
     /// As regras de CAD ([`cad`]); o `Deserialize` lê o v23 sem elas.
     regras: Vec<cad::RegraCad>,
+    /// O próximo [`cad::RegraId`] (nunca reusado).
+    next_regra: u32,
 }
 
 impl VecScene {

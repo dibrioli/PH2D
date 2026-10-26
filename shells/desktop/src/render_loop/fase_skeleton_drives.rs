@@ -34,7 +34,7 @@ impl crate::App {
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
-        let sim = &mut gfx.sim;
+        let (sim, cena) = (&mut gfx.sim, &mut gfx.vec_scene);
         crate::skeleton_smart::drive(sim, &self.timeline.doc, &mut self.preview_drive);
         let relogios = [
             &self.playhead,
@@ -42,7 +42,7 @@ impl crate::App {
             &self.container_playhead,
         ];
         let relogio = ph2d_app_constraints::relogio::Relogio::da_vista(&self.timeline, relogios);
-        ph2d_app_constraints::quadro(sim, &gfx.vec_scene, &mut self.preview_drive, Some(relogio));
+        ph2d_app_constraints::quadro(sim, cena, &mut self.preview_drive, Some(relogio));
         ph2d_app_constraints::smoke::abrir_escolhido(sim.world_mut(), gfx.hero_screen.as_mut());
     }
 }

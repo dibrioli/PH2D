@@ -5,7 +5,6 @@
 
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::interaction::WidgetEvent;
-use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::pixel_panel::{
     PixelOptions, PixelPanelInfo, PixelRequest, PixelTool, PixelTransformField, PixelTransformInfo,
 };

@@ -118,7 +118,9 @@ fn the_wheel_edges_are_smooth_not_stairs() {
     let lado = 256;
     let px = imagem_do_quadro(S::RgbWheel, P, lado);
     let meios = px
-        .chunks_exact(4)
+        .as_chunks::<4>()
+        .0
+        .iter()
         .filter(|p| p[3] > 0 && p[3] < 255)
         .count();
     assert!(

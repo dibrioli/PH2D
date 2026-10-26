@@ -65,6 +65,9 @@ impl Doc {
     }
 }
 
+/// O Solo em curso: `(chave, camada, a visibilidade de antes)`.
+pub(crate) type Solo = (u32, LayerId, Vec<(LayerId, bool)>);
+
 /// O gesto em curso e o objecto onde corre.
 pub(crate) struct Gesture {
     pub(crate) entity: u64,
@@ -156,7 +159,7 @@ pub struct PixelApp {
     /// O diálogo do Pixel a abrir no próximo [`crate::panel::frame`] (lá há o `hero`).
     pub(crate) abre_dialogo: Option<ph2d_editor_core::pixel_panel::PixelDialogKind>,
     /// O Solo em curso: `(chave, camada, a visibilidade de antes)`.
-    pub(crate) solo: Option<(u32, LayerId, Vec<(LayerId, bool)>)>,
+    pub(crate) solo: Option<Solo>,
     /// A pasta das paletas do artista (*Save as Preset* / *as Default*); `None` = só a de fábrica
     /// (os testes e os palcos nunca leem a HOME real).
     pub paletas: Option<std::path::PathBuf>,

@@ -680,7 +680,7 @@ fn the_sprite_menu_and_its_dialogs_reach_the_document() {
         m.count(),
         (0..266 * 130)
             .filter(|i| {
-                let (x, y) = ((i % 266) as i32, (i / 266) as i32);
+                let (x, y) = (i % 266, i / 266);
                 p.rgba(x, y) == cena::WAND_COLOR
             })
             .count()
@@ -762,14 +762,18 @@ impl Palco {
     /// O ponto de ecrã do CANTO `(x, y)` das células (não o centro).
     fn canto(&self, x: f64, y: f64) -> (f32, f32) {
         let d = self.app.doc(self.key).expect("doc");
-        let m = input::to_screen(self.sim.world(), self.bits, d, &self.cam, WINDOW, PPM).expect("afim");
+        let m =
+            input::to_screen(self.sim.world(), self.bits, d, &self.cam, WINDOW, PPM).expect("afim");
         let p = m * ph2d_vector::Point::new(x, y);
         (p.x as f32, p.y as f32)
     }
 
     fn arrasta_ecra(&mut self, a: (f32, f32), b: (f32, f32), m: Mods) {
         let c = canvas(&self.sim, &self.cam, self.bits);
-        assert_eq!(input::press(&mut self.app, &c, a, Button::Primary, m), Press::Done);
+        assert_eq!(
+            input::press(&mut self.app, &c, a, Button::Primary, m),
+            Press::Done
+        );
         assert!(input::moved(&mut self.app, &c, b, m));
         let _ = input::release(&mut self.app);
         self.quadro();
@@ -779,7 +783,12 @@ impl Palco {
 #[test]
 fn the_handles_scale_rotate_and_the_inside_moves_the_floating_frame() {
     let mut p = Palco::limpo();
-    let r = Rect::new(cena::ORIGINAL_AT.0, cena::ORIGINAL_AT.1, cena::FIGURE, cena::FIGURE);
+    let r = Rect::new(
+        cena::ORIGINAL_AT.0,
+        cena::ORIGINAL_AT.1,
+        cena::FIGURE,
+        cena::FIGURE,
+    );
     p.ferramenta(Tool::RectMarquee);
     p.arrasta((r.x, r.y), (r.x + 13, r.y + 13), Mods::default());
     p.tecla(KeyCode::KeyT, true, false);
@@ -806,7 +815,10 @@ fn the_handles_scale_rotate_and_the_inside_moves_the_floating_frame() {
     let b = p.canto(c.0 - 10.0, c.1 + 12.0);
     p.arrasta_ecra(a, b, SHIFT);
     let t = p.quadro().transform.expect("solta");
-    assert!(t.angle != 0 && t.angle % 15 == 0, "giro com Shift em degraus de 15°: {t:?}");
+    assert!(
+        t.angle != 0 && t.angle % 15 == 0,
+        "giro com Shift em degraus de 15°: {t:?}"
+    );
     // dentro move, e o Enter assenta UM passo
     p.tecla(KeyCode::Escape, false, false);
     p.tecla(KeyCode::KeyT, true, false);

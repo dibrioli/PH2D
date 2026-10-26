@@ -190,7 +190,7 @@ fn painting_on_the_locked_layer_is_refused_and_says_why() {
     let _ = input::release(&mut p.app);
     p.quadro();
     assert_eq!(p.janela(LOCKED_BOX), antes, "nada pintou");
-    assert!(p.toasts.len() > 0, "e disse porquê");
+    assert!(!p.toasts.is_empty(), "e disse porquê");
 }
 
 #[test]

@@ -4,7 +4,6 @@
 
 use ph2d_editor_core::pixel_panel::{PixelFrameAction, PixelLayerAction, PixelRequest};
 use ph2d_host::WindowSize;
-use ph2d_pixel_core::raster::Cell;
 use ph2d_pixel_core::{Paint, Sample, Stroke, pick};
 use ph2d_pixel_render::{cell_at, image_to_world, px_per_cell};
 use ph2d_render::Camera2d;

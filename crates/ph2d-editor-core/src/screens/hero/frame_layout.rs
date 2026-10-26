@@ -18,24 +18,7 @@ pub(super) fn frame_layout(
     text_system: &mut ph2d_text::TextSystem,
 ) -> HeroLayout {
     if hero.view.palco_do_jogo {
-        // O palco do jogo: o canvas é a janela inteira — as bandas a zero e nenhuma coluna.
-        return HeroLayout::for_viewport_bands(
-            viewport,
-            false,
-            crate::screens::layout::ChromeBands {
-                rail_w: 0.0,
-                top_bar_h: 0.0,
-                left_dock_w: 0.0,
-                right_dock_w: 0.0,
-                tool_bar_h: 0.0,
-                bottom_dock_h: 0.0,
-            },
-            crate::screens::layout::CenterSplit::None,
-            crate::screens::layout::DockSides {
-                left: false,
-                right: false,
-            },
-        );
+        return palco(viewport);
     }
     // Rail width follows the user's Themes-menu rail-button-size
     // preset (Small / Medium / Large; default Small). Switching size
@@ -156,4 +139,44 @@ pub(super) fn frame_layout(
         layout.move_tool_bar_to_bottom();
     }
     layout
+}
+
+/// O palco do jogo: o canvas é a janela inteira — as bandas a zero, nenhuma coluna e nenhuma costura de doca
+/// (as docas fechadas reservam [`crate::screens::dock_seam::DOCK_SEAM_PX`] de cada lado para as reabrir; no
+/// palco não há doca, e a reserva deixava a câmara do jogo medir um canvas 12 px mais estreito que a janela
+/// que mostra — 6 px de mundo além dos limites de cada lado, plano 11 do GameEngineFuncional).
+fn palco(viewport: Rect) -> HeroLayout {
+    let mut layout = HeroLayout::for_viewport_bands(
+        viewport,
+        false,
+        crate::screens::layout::ChromeBands {
+            rail_w: 0.0,
+            top_bar_h: 0.0,
+            left_dock_w: 0.0,
+            right_dock_w: 0.0,
+            tool_bar_h: 0.0,
+            bottom_dock_h: 0.0,
+        },
+        crate::screens::layout::CenterSplit::None,
+        crate::screens::layout::DockSides {
+            left: false,
+            right: false,
+        },
+    );
+    layout.draw_area = viewport;
+    layout
+}
+
+#[cfg(test)]
+mod tests {
+    /// No palco a área de desenho é a janela inteira, ao pixel.
+    #[test]
+    fn no_palco_o_canvas_e_a_janela_inteira() {
+        let janela = super::Rect::new(0.0, 0.0, 1600.0, 872.0);
+        let l = super::palco(janela);
+        assert_eq!(
+            [l.draw_area.x, l.draw_area.y, l.draw_area.w, l.draw_area.h],
+            [0.0, 0.0, 1600.0, 872.0]
+        );
+    }
 }

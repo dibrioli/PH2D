@@ -1,0 +1,29 @@
+gilrs: initialized; no gamepads connected yet
+audio: Default Audio Device @ 48000 Hz, 2 ch, F32
+PH2D desktop shell starting (close window or Cmd+Q to exit)…
+[ph2d-gpu] surface present mode: Fifo
+[   346ms] M6: real atlas composed from ./assets/sprites (16 assets cached)
+[   382ms] live hero mode (cena vazia; a Hierarquia mostra o que VOCE criar)
+[   382ms] M7: ScriptHost initialized (placeholder script loaded)
+[ph2d] theme = dark
+[   399ms] M11: VelloPass initialized (1024×768 intermediate)
+[   404ms] M14.5: RT pipeline ready (game_rt Rgba16Float HDR + AgX tonemap + compositor)
+[   425ms] PR 8: tool registry built (14 manifests, installed in editor)
+[   465ms] ADR-0054 W0.T6: imageio registries built (16 importer(s), 16 exporter(s))
+[   470ms] lifecycle: Foreground
+[   470ms] resize: 1024x768 @ 1.00x scale
+[game-smoke] =2 o mesmo nível feito SÓ com o menu Add (Add ▸ Game), com a arte do Kenney redesenhada em vetor: chão e plataformas de relva (Static Body), a parede invisível do fim (Collision Shape dentro do chão), um tecto baixo à esquerda (segure ↓ para passar agachado), o jogador (Character), as moedas a girar e a bandeira a ondular (Animated Sprite), o céu parado (Sprite com Parallax 0) e, ao longe, as nuvens e os montes (Background Layer), que andam mais devagar que o chão quando a câmara segue o jogador. Run ▸ Play in a Window: o boneco fica parado, corre, salta e cai — a animação troca sozinha — e as moedas somem ao tocar.
+[ph2d-gpu] surface present mode → Immediate
+[   487ms] resize: 1600x872 @ 1.00x scale
+warn: dropped 0.333s of sim time (max_substeps cap)
+[ph2d-gpu] surface present mode → Fifo
+[jogo] Play: documento 17f19988326f18a0
+[ph2d-gpu] surface present mode: Fifo
+[ph2d-gpu] surface present mode → Immediate
+[  1337ms] resize: 1280x720 @ 1.00x scale
+[  1378ms] resize: 1600x872 @ 1.00x scale
+[ph2d-gpu] surface present mode → Fifo
+[jogo] Stop: documento 17f19988326f18a0 · igual ao do Play: true
+[ph2d-gpu] surface present mode → Immediate
+[  7981ms] resize: 1600x872 @ 1.00x scale
+[ph2d-gpu] surface present mode → Fifo

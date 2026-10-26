@@ -46,9 +46,7 @@ pub mod panel_ids;
 pub(crate) mod text_style_rows;
 /// ⭐ A tabela `id da linha ⇄ tema` do menu de tema (as duas famílias).
 pub mod theme_menu;
-pub use panel_ids::{
-    PANEL_MOTION_GRAPH, PANEL_PHYSICS, PANEL_PIXEL, PANEL_PIXEL_TIMELINE, PANEL_TIMELINE,
-};
+pub use panel_ids::*;
 pub mod left_rail;
 pub mod painter_column;
 pub mod pre_populate;

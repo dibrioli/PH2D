@@ -90,6 +90,29 @@ projecto, como se desfaz, como se desenha, e por onde a entrada chega.
     a medição da cena a pedir (o plano punha-a aqui). Copy e *Layer via Copy/Cut* pedem selecção, como
     no Trial: até a P6 a selecção é só *Select All* (`Doc::selected_all`).
 
+11. **Emenda 25/10 (onda P4 — frames, cels e linha do tempo).** O `Cel` ganha `opacity`, `z` e
+    `link`: a opacidade efectiva é `mul(camada, cel)`; a ordem de desenho das camadas de imagem
+    (achatadas; o índice conta as escondidas) é `(índice + z, z)`; um cel ligado partilha a IMAGEM,
+    a POSIÇÃO e a OPACIDADE do dono (o cel não ligado da mesma camada) e só o `z` é dele. Toda
+    mudança da linha do tempo é UM `Op::Frames { frames, cels, tags }`; as leis dos cels valem no
+    estado FINAL de cada op (`check_cels`, também nas camadas e no documento inteiro): o dono só
+    fica sem células se houver ligado a ele (apagar tudo num ligado esvazia a imagem, não a tira).
+    As acções do menu Frame são construtores puros em `ph2d_pixel_core::frames`; as tags vivem por
+    POSIÇÃO (inserir empurra/cresce, apagar encolhe e tira a de um frame, mover não mexe — a lei do
+    MVP); a camada *continuous* faz o New Frame ligar. O tocar (`play.rs`) é a máquina medida: fora
+    de tag para a frente com volta ao 0; dentro, passadas (Ping-pong alterna sem repetir a ponta),
+    `repeat` N sai para `to + 1`, 0 fica para sempre; o relógio é do host. O papel vegetal compõe
+    os frames vizinhos em Normal com `max(0, base − step·(d − 1))` (68/28, um de cada lado) POR
+    TRÁS do frame inteiro (um fundo opaco noutra camada esconde-os — `on_camadas.ase`) e a tinta
+    vermelha/azul pelo brilho Rec.709. Formato `PH2DPIXEL` 1.2 (cel 8 opacidade, 9 z, 10 dono; Tag;
+    camada bit 6 continuous). **Leis medidas no Trial observado** (`trial_ase_quadros.py`,
+    fixtura `oracle_trial_frames.json`): `co_*` 7/7, `z_*` 10/10, papel vegetal 4 variantes 6 144/6 144,
+    17 sequências tocadas (vídeo a 50 q/s). O Trial SEPARA ao abrir dois cels ligados cujo ficheiro
+    lhes dá posição/opacidade diferentes (`lk_*`) — isso é a importação (P9). A vista recompõe por
+    frame e guarda cada frame composto por versão (256 MiB de RAM); a composição cheia vai em
+    faixas paralelas (512² × 20: 123 → 16,7 ms) e a GPU continua por medir pedir (a placa só ganha
+    a partir de ~1024² com muitas camadas: 65 ms na primeira passada).
+
 ## Alternativas recusadas
 
 | Alternativa | Porque não |
@@ -101,6 +124,9 @@ projecto, como se desfaz, como se desenha, e por onde a entrada chega.
 | Grupo ISOLADO (compor os filhos sobre transparente e misturar com o modo/opacidade do grupo) | Medido no Trial: 1 663–1 979 de 6 144 células certas; pass-through dá 6 144/6 144 (P3). |
 | Opacidade de camada em Indexed como cobertura Bayer 8×8 (a lei do MVP) | O Trial mistura em RGB: 6 144/6 144; voltar à paleta mais próxima acerta 183–189 (P3). |
 | `clip` (máscara da camada de baixo, a do MVP) | O Aseprite não a tem (grupos); fica fora (P3). |
+| Cel ligado com posição/opacidade próprias (o que o `.ase` permite escrever) | O Trial desliga-os ao abrir (`lk_*.ase`): a ligação do produto partilha imagem, posição e opacidade; só o `z` é do cel (P4). |
+| Ids de imagem partilhada (`ImageId`) alocados no `apply` | O refazer daria outro id e o documento deixaria de voltar ao byte; o dono é o próprio cel não ligado (P4). |
+| Composição na GPU para tocar | Medido: com a imagem de cada frame guardada o tocar não recompõe, e a cheia em faixas cabe num quadro até 512² × 20 (P4). |
 | Fila única do editor com um passo por traço | Possível por diff, mas o custo do diff e a semântica do Aseprite (o desfazer é do sprite) apontam para fila própria. |
 
 ## Consequências

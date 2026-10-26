@@ -126,6 +126,12 @@ vermelho/azul), Playback (velocidades, Play Once, Rewind on Stop), Preview flutu
 Frame Rate, Reverse Frames. **Gates:** cel linkado editado muda todos; playback determinístico
 (relógio do host passado ao core). **Smoke 5.**
 
+> **Feito na P4 (25/10, ADR-0192 §11):** frames com duração, cels com opacidade/z/ligação, a
+> linha do tempo (painel `pixel_timeline`, Tab), New/Empty/Duplicate Linked/Delete/mover/Reverse,
+> continuous, navegação, papel vegetal (F3, vermelho/azul), Enter toca — e, a pedido do dono, as
+> tags com as 4 direcções e as passadas (a sequência medida no Trial). Ficam para a P5: subtags,
+> grupos de tags, *Play Subtags & Repetitions* como opção, Preview flutuante, velocidades.
+
 ### P5 — Tags e playback avançado (estudo §3 Tags)
 Tags com nome/cor/intervalo, direção **Forward/Reverse/Ping-pong/Ping-pong Reverse**, **repeat**,
 subtags e grupos de tags, Play Subtags & Repetitions, Jump to First/Last in Tag, Set Loop Section.

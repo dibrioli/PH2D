@@ -182,6 +182,30 @@ posições do FreeCAD **são gate** nas 11 cenas de solução única.
   troca para `{ vert: VertId }` SEM migração; o recurso `Pontos` (`ph2d-app-constraints/src/lib.rs:89`) passa a
   `(VertId, âncora)` e cobre também os `subpaths`; id que sumiu ⇒ `Estado::SemAlvo`.
 
+### 3.2 W4.3 — decisões tomadas lendo o código (26/10, antes do código)
+
+- **O «círculo» é um PATH cuja GEOMETRIA é um círculo**, reconhecido pelos vértices e não pela receita: fechado, sem
+  `subpaths`, ≥ 3 âncoras à mesma distância do circuncentro das três primeiras e cada alça tangente (⟂ ao raio) — é o
+  que `shapes::ellipse(c, r, r)` e o `ellipse_sweep` de volta inteira (`round.rs:99`, 4 vértices `Smooth`) cozinham, e
+  continua a sê-lo depois de *Convert to Curves* (a receita some, a geometria fica) e de uma rotação. **Porquê não a
+  receita** (`VecShape::Param { kind: Ellipse, w == h }`, `shape_live.rs:36`): ela mora no ECS, que a crate pura não
+  vê, e mente depois de um Convert; **porquê não elipse**: a ezpz não tem elipse — `Tangente`/`Raio` sobre uma elipse
+  (`rx ≠ ry`, ou um afim de escala não-uniforme) ⇒ a regra fica **`SemAlvo`** (a cor diz porquê), nunca uma
+  aproximação calada. Arco (Pie/sweep parcial) fica fora: a W4 dá recta↔círculo (§3).
+- **Datum = centro + raio, os dois VARIÁVEIS** (`DatumCircle`), endereçados por `Ponto::Centro(path)` — o centro
+  entra em qualquer regra de ponto (coincidente, medida, fixo), como o ponto do centro no Sketcher; `Raio` é a regra
+  que o prende. **Escrever de volta:** cada vértice do círculo (âncora e alças) vai por
+  `c' + (r'/r)·(p − c)` — guarda os ids, os `kind`, a fase da rotação e as alças KAPPA; actualizar a receita
+  (`w = h = 2r'`, o `Transform`) é do editor (W4.4, `ph2d-app-vec`).
+- **A porta é uma FOLHA de vários paths**, não um `&VecPath`: uma regra endereça `(VecPathId, VertId)` e a tangente
+  liga uma recta de um path ao círculo de OUTRO. `Folha = [(&VecPath, Xform local→folha)]` (as formas vivas são
+  centradas no local 0 com o centro no `Transform`, `shape_live.rs:43`); o resultado volta ao local pelo inverso do
+  afim. Assinatura: `ph2d_vec_constraints::resolve(&Folha, &[RegraCad], Option<Arrasto>, palpite) -> Resultado`.
+- **Alças acompanham a âncora** pelo mesmo delta local (o vértice move-se rígido; a forma da curva fica).
+- **REF = posto do jacobiano NOSSO** (o da ezpz é `pub(crate)`, `constraints.rs:87,737`): resíduos assinados escritos
+  uma vez, genéricos sobre um número dual (derivada exacta, sem diferenças finitas), posto por SVD da `faer` (a
+  mesma `0.23` que a ezpz traz) em ordem de nascimento — a regra que não sobe o posto é REF.
+
 ## 4. Gates red-first
 
 | gate | fenómeno na fixture | passo |

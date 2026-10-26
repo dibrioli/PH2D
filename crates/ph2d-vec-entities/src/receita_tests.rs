@@ -104,7 +104,20 @@ fn a_live_circle_as_cooked_is_left_alone() {
     let antes = (scene.clone(), sim.world().get::<Transform>(e).copied());
     assenta_circulos_vivos(&mut sim, &mut scene, &map, &[]);
     assert!((scene.clone(), sim.world().get::<Transform>(e).copied()) == antes);
-    assert!(scene.path(id).is_some());
+
+    // Um resto de arredondamento abaixo da folga (o que o recook e o `f32` deixam) também não é escrito.
+    let ids: Vec<_> = scene.path(id).unwrap().verts.iter().map(|v| v.id).collect();
+    let mut quase: VecPath = ellipse([3e-6, -2e-6], 5.0 + 1e-6, 5.0 + 1e-6);
+    for (v, i) in quase.verts.iter_mut().zip(&ids) {
+        v.id = *i;
+    }
+    scene.path_mut(id).unwrap().verts = quase.verts;
+    let antes = (scene.clone(), sim.world().get::<Transform>(e).copied());
+    assenta_circulos_vivos(&mut sim, &mut scene, &map, &[]);
+    assert!(
+        (scene.clone(), sim.world().get::<Transform>(e).copied()) == antes,
+        "dentro da folga: nenhuma escrita"
+    );
 }
 
 /// Longe da origem o centro só assenta até ao passo do `f32` do `Transform`: o passe tem de ser ponto fixo LÁ também.

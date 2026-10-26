@@ -43,7 +43,7 @@ invisível no fundo escuro). (2) «transição inteligente nos extremos do laço
 
 ## Superfície de colisão (para o integrador; contadores = delta)
 
-Append em partilhados: `Kind` (+7 ao fim; `PontoDeForma` à parte), `Estado::SemClip`, `Unidade::Segundos`, `TIPOS` 11→18,
+Append em partilhados: `Kind` (+7 ao fim: Pivot, Floor, Transformation, SplineIk, PontoDeForma, Action, Spring), `Estado::SemClip`, `Unidade::Segundos`, `TIPOS` 11→18,
 `MAX_NUMEROS`/`ESCOLHAS`/`OPCOES` →5 (ids `insp_constraint_*` novos), `canal_constraint` 19..37, recurso `Accoes`,
 `ph2d_app_constraints::quadro(.., Option<Relogio>)` (1 chamador na shell: `fase_skeleton_drives.rs:45`).
 Outra linha pode pegar os mesmos números de canal ou de `Kind` ⇒ recontar no merge (`schema-recount.py`; os canais lêem-se do código).

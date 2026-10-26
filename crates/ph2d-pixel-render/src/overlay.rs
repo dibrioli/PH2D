@@ -1,16 +1,14 @@
 //! **A selecção por cima da arte** (P6): as formigas a marchar pela borda da máscara (as arestas
-//! das células, em células do documento) e a moldura de uma transformação solta com as alças.
+//! das células, em células do documento). A moldura solta é o gizmo do sprite da casa (P6b).
 //! Cores: o núcleo claro e o anel escuro do Draw — o fundo é a arte, não o chrome.
 
 use ph2d_pixel_core::selection::Mask;
 use ph2d_vector::{Affine, BezPath, Point, Stroke as Pen, VectorScene};
 
-use crate::view::{CURSOR_CORE, HALO, HALO_PX, stroke_halo};
+use crate::view::{CURSOR_CORE, HALO, HALO_PX};
 
 /// O comprimento de cada traço (e de cada vão) das formigas, em píxeis de ECRÃ.
 pub const ANTS_DASH_PX: f64 = 4.0; // LITERAL-PX-OK: padrão das formigas do Aseprite, em píxeis de ecrã
-/// O lado de uma alça da moldura, em píxeis de ECRÃ.
-pub const HANDLE_PX: f64 = 6.0; // LITERAL-PX-OK: alça da moldura de transformação, em píxeis de ecrã
 
 /// Um segmento de aresta entre cantos de células `((x0, y0), (x1, y1))`.
 pub type Edge = ((i32, i32), (i32, i32));
@@ -80,36 +78,6 @@ pub fn draw_marching_ants(
     );
     let dash = Pen::new(nucleo).with_dashes(phase_px, [ANTS_DASH_PX, ANTS_DASH_PX]);
     s.stroke(&dash, Affine::IDENTITY, CURSOR_CORE, None, &path);
-}
-
-/// **A moldura solta** já em ECRÃ: o quadrilátero, as alças (quadrados de [`HANDLE_PX`]) e o pivô.
-pub fn draw_transform_frame(
-    scene: &mut VectorScene,
-    quad: [Point; 4],
-    handles: &[Point],
-    pivot: Point,
-    width_px: f64,
-) {
-    let mut path = BezPath::new();
-    path.move_to(quad[0]);
-    for p in &quad[1..] {
-        path.line_to(*p);
-    }
-    path.close_path();
-    let half = HANDLE_PX * 0.5;
-    for p in handles {
-        path.move_to(Point::new(p.x - half, p.y - half));
-        path.line_to(Point::new(p.x + half, p.y - half));
-        path.line_to(Point::new(p.x + half, p.y + half));
-        path.line_to(Point::new(p.x - half, p.y + half));
-        path.close_path();
-    }
-    // O pivô: uma cruz.
-    path.move_to(Point::new(pivot.x - HANDLE_PX, pivot.y));
-    path.line_to(Point::new(pivot.x + HANDLE_PX, pivot.y));
-    path.move_to(Point::new(pivot.x, pivot.y - HANDLE_PX));
-    path.line_to(Point::new(pivot.x, pivot.y + HANDLE_PX));
-    stroke_halo(scene, &path, width_px, CURSOR_CORE);
 }
 
 #[cfg(test)]

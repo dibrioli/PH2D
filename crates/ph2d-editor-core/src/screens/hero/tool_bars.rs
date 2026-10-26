@@ -17,7 +17,7 @@ use crate::paint::paint_icon;
 use crate::screens::hero::HeroScreen;
 use crate::zones::Rect;
 use ph2d_i18n::tr;
-use ph2d_tokens::{StrokeToken, Theme};
+use ph2d_tokens::{Spacing, StrokeToken, Theme};
 use ph2d_vector::VectorScene;
 
 /// O grupo do chrome que fecha a ④: fixar (aceso quando fixada).
@@ -162,12 +162,41 @@ pub fn paint(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene) {
         }
     }
     for (b, r) in all {
-        face(hero, scene, theme, &b, r);
+        let more = bars.grouped.contains(&b.id);
+        face(hero, scene, theme, &b, r, more);
         hero.store.set_tooltip(b.id, b.label);
     }
 }
 
-fn face(hero: &mut HeroScreen, scene: &mut VectorScene, theme: Theme, b: &BarButton, r: Rect) {
+/// ⭐ **O triângulo de «há mais aqui»** no canto de baixo à direita de um botão de grupo
+/// ([`ToolBars::grouped`]): o sinal do Photoshop e do Aseprite de que o botão guarda outras
+/// ferramentas.
+fn more_mark(scene: &mut VectorScene, r: Rect, fg: ph2d_vector::Color) {
+    let (inset, side) = (Spacing::Xxs.px(), Spacing::Sm.px());
+    let (x1, y1) = (f64::from(r.x + r.w - inset), f64::from(r.y + r.h - inset));
+    let side = f64::from(side);
+    let mut path = ph2d_vector::BezPath::new();
+    path.move_to((x1, y1 - side));
+    path.line_to((x1, y1));
+    path.line_to((x1 - side, y1));
+    path.close_path();
+    scene.inner_mut().fill(
+        ph2d_vector::Fill::NonZero,
+        ph2d_vector::Affine::IDENTITY,
+        &ph2d_vector::Brush::Solid(fg),
+        None,
+        &path,
+    );
+}
+
+fn face(
+    hero: &mut HeroScreen,
+    scene: &mut VectorScene,
+    theme: Theme,
+    b: &BarButton,
+    r: Rect,
+    more: bool,
+) {
     let fg = paint_button(
         scene,
         &mut hero.hit_index,
@@ -182,6 +211,9 @@ fn face(hero: &mut HeroScreen, scene: &mut VectorScene, theme: Theme, b: &BarBut
     );
     let steady = hero.motion.reduced_motion();
     super::flash::ring_if_home(scene, &hero.store, steady, theme, b.id, r);
+    if more {
+        more_mark(scene, r, fg);
+    }
     match &b.face {
         BarFace::Icon(icon) => paint_icon(
             scene,

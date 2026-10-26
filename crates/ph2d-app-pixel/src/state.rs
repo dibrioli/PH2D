@@ -158,6 +158,9 @@ pub struct PixelApp {
     pub(crate) formigas_ms: u64,
     /// O diálogo do Pixel a abrir no próximo [`crate::panel::frame`] (lá há o `hero`).
     pub(crate) abre_dialogo: Option<ph2d_editor_core::pixel_panel::PixelDialogKind>,
+    /// O botão de grupo das selecções: a última usada (a cara dele) e se as quatro estão abertas.
+    pub(crate) marquee: Tool,
+    pub(crate) marquee_open: bool,
     /// O Solo em curso: `(chave, camada, a visibilidade de antes)`.
     pub(crate) solo: Option<Solo>,
     /// A pasta das paletas do artista (*Save as Preset* / *as Default*); `None` = só a de fábrica
@@ -208,6 +211,8 @@ impl Default for PixelApp {
             solta: None,
             formigas_ms: 0,
             abre_dialogo: None,
+            marquee: Tool::RectMarquee,
+            marquee_open: false,
             solo: None,
             paletas: None,
             predefinicoes: None,

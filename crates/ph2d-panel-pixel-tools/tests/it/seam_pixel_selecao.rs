@@ -214,15 +214,56 @@ fn sem_selecao_copia_ou_reselect_os_botoes_que_os_pedem_nao_se_pintam() {
     }
 }
 
+/// P6b (smoke do dono 26/10): as quatro selecções num botão de grupo com o triângulo — a cara é a
+/// última usada, e o flyout aberto tem as quatro com o atalho; a varinha, o Move e o Transform
+/// seguem soltos, com os ícones deles.
 #[test]
 fn as_ferramentas_de_selecao_estao_na_coluna_com_o_atalho() {
-    let col = ph2d_panel_pixel_tools::column::column(&info(PixelTool::MagicWand, false));
+    use ph2d_editor_core::icons::IconId;
+    use ph2d_editor_core::interaction::BarFace;
+    let mut i = info(PixelTool::MagicWand, false);
+    i.marquee = PixelTool::Lasso;
+    let col = ph2d_panel_pixel_tools::column::column(&i);
     let sel: Vec<_> = col[0].iter().map(|b| (b.id, b.on)).collect();
-    let quer: Vec<_> = ids::TOOLS[..6]
-        .iter()
-        .map(|(t, id)| (*id, *t == PixelTool::MagicWand))
-        .collect();
+    let quer = [
+        (ids::PIXEL_SELECT_GROUP, false),
+        (ids::TOOLS[4].1, true),
+        (ids::TOOLS[5].1, false),
+        (ids::TOOLS[6].1, false),
+    ];
     assert_eq!(sel, quer);
-    assert!(col[0][0].label.contains("(M)"), "{}", col[0][0].label);
-    assert!(col[0][3].label.contains("Shift+Q"), "{}", col[0][3].label);
+    assert!(
+        col[0][0].label.contains("(Q)"),
+        "a cara é a última: {}",
+        col[0][0].label
+    );
+    assert_eq!(col[0][0].face, BarFace::Icon(IconId::MarqueeLasso));
+    assert_eq!(col[0][1].face, BarFace::Icon(IconId::WandSparkles));
+    assert_eq!(col[0][2].face, BarFace::Icon(IconId::Move));
+    assert_eq!(col[0][3].face, BarFace::Icon(IconId::Transform));
+    // Com uma das quatro na mão o botão de grupo acende.
+    i.tool = PixelTool::PolygonLasso;
+    let col = ph2d_panel_pixel_tools::column::column(&i);
+    assert!(col[0][0].on);
+    // O triângulo e o flyout.
+    let fechado = ph2d_panel_pixel_tools::column::bars(&i);
+    assert_eq!(fechado.grouped, [ids::PIXEL_SELECT_GROUP]);
+    assert!(fechado.flyout.is_none());
+    i.marquee_open = true;
+    let bars = ph2d_panel_pixel_tools::column::bars(&i);
+    let (ancora, quatro) = bars.flyout.expect("aberto");
+    assert_eq!(ancora, ids::PIXEL_SELECT_GROUP);
+    let ids4: Vec<_> = quatro.iter().map(|b| b.id).collect();
+    assert_eq!(
+        ids4,
+        ids::TOOLS[..4]
+            .iter()
+            .map(|(_, id)| *id)
+            .collect::<Vec<_>>()
+    );
+    assert!(
+        quatro[3].on && quatro[3].label.contains("Shift+Q"),
+        "{}",
+        quatro[3].label
+    );
 }

@@ -6,8 +6,8 @@
 
 use crate::ids;
 use ph2d_editor_core::icons::IconId;
-use ph2d_editor_core::interaction::{BarButton, BarFace, BarFamily};
-use ph2d_editor_core::pixel_panel::{PixelInk, PixelPanelInfo, PixelTool};
+use ph2d_editor_core::interaction::{BarButton, BarFace, BarFamily, ToolBars};
+use ph2d_editor_core::pixel_panel::{PixelInk, PixelPanelInfo, PixelShape, PixelTool};
 use ph2d_i18n::{tr, tr_with};
 
 /// O ícone de cada ferramenta.
@@ -15,11 +15,12 @@ use ph2d_i18n::{tr, tr_with};
 pub const fn icon(t: PixelTool) -> IconId {
     match t {
         PixelTool::RectMarquee => IconId::MarqueeBox,
-        PixelTool::EllipseMarquee => IconId::Circle,
+        PixelTool::EllipseMarquee => IconId::CircleDashed,
         PixelTool::Lasso => IconId::MarqueeLasso,
         PixelTool::PolygonLasso => IconId::VectorPen,
-        PixelTool::MagicWand => IconId::Mask,
-        PixelTool::Move => IconId::Transform,
+        PixelTool::MagicWand => IconId::WandSparkles,
+        PixelTool::Move => IconId::Move,
+        PixelTool::Transform => IconId::Transform,
         PixelTool::Pencil => IconId::VectorPencil,
         PixelTool::Spray => IconId::PixelSpray,
         PixelTool::Eraser => IconId::Erase,
@@ -34,15 +35,45 @@ pub const fn icon(t: PixelTool) -> IconId {
         PixelTool::Contour => IconId::PixelContour,
         PixelTool::Polygon => IconId::Polygon,
         PixelTool::Hand => IconId::Pan,
+        // A cara delas é o CONTORNO do Vector ([`face`]); estes são só o nome do ícone.
+        PixelTool::RegularPolygon | PixelTool::Star => IconId::VectorShape,
     }
+}
+
+/// A cara do botão: o ícone, ou — para as formas do Vector — o contorno que o `cook` do Vector
+/// desenha num quadrado unitário (a lei da barra do Vector: a mesma geometria, nunca um 2.º desenho).
+#[must_use]
+pub fn face(t: PixelTool) -> BarFace {
+    let forma = match t {
+        PixelTool::RegularPolygon => PixelShape::Polygon,
+        PixelTool::Star => PixelShape::Star,
+        _ => return BarFace::Icon(icon(t)),
+    };
+    let k = forma.kind();
+    let path = ph2d_vec_scene::cook(k, [0.0, 0.0], [1.0, 1.0], &k.defaults());
+    let mut bez = ph2d_vector::BezPath::new();
+    let p = |q: [f64; 2]| (q[0], 1.0 - q[1]);
+    for c in ph2d_vec_scene::trim_tool::contours_of(&path) {
+        let Some(first) = c.verts.first() else {
+            continue;
+        };
+        bez.move_to(p(first.anchor));
+        let n = c.verts.len();
+        let arestas = if c.closed { n } else { n - 1 };
+        for i in 0..arestas {
+            let (a, b) = (&c.verts[i], &c.verts[(i + 1) % n]);
+            bez.curve_to(p(a.out_handle), p(b.in_handle), p(b.anchor));
+        }
+        if c.closed {
+            bez.close_path();
+        }
+    }
+    BarFace::Outline(bez)
 }
 
 /// O nome com o atalho: «Pencil (B)».
 fn nome(t: PixelTool) -> String {
-    tr_with(
-        "pixel.tool_switched",
-        &[("tool", &tr(t.label_key())), ("key", &t.shortcut_label())],
-    )
+    t.named()
 }
 
 /// Uma amostra cheia (o anel é o «traço» do vetor; aqui frente e fundo são duas cores iguais em
@@ -61,6 +92,39 @@ fn amostra(id: ph2d_a11y::NodeId, rgba: [u8; 4], key: &str) -> BarButton {
     }
 }
 
+/// O botão de uma ferramenta.
+fn botao(info: &PixelPanelInfo, t: PixelTool, id: ph2d_a11y::NodeId) -> BarButton {
+    BarButton {
+        id,
+        face: face(t),
+        label: nome(t),
+        on: t == info.tool,
+        family: BarFamily::Draw,
+    }
+}
+
+/// ⭐ **As barras do Pixel em Draw**: a coluna, o flyout das quatro selecções quando aberto (o botão
+/// de grupo guarda-as, dono 26/10) e a dica do rodapé.
+#[must_use]
+pub fn bars(info: &PixelPanelInfo) -> ToolBars {
+    let column = column(info);
+    let flyout = (info.editing && info.marquee_open).then(|| {
+        let quatro = PixelTool::MARQUEES
+            .iter()
+            .filter_map(|t| ids::TOOLS.iter().find(|(u, _)| u == t))
+            .map(|&(t, id)| botao(info, t, id))
+            .collect();
+        (ids::PIXEL_SELECT_GROUP, quatro)
+    });
+    ToolBars {
+        column,
+        flyout,
+        grouped: vec![ids::PIXEL_SELECT_GROUP],
+        hint: hint(info),
+        ..ToolBars::default()
+    }
+}
+
 /// **Os grupos da coluna** — vazio sem sprite em Draw (nenhum controlo morto).
 #[must_use]
 pub fn column(info: &PixelPanelInfo) -> Vec<Vec<BarButton>> {
@@ -68,22 +132,26 @@ pub fn column(info: &PixelPanelInfo) -> Vec<Vec<BarButton>> {
         return Vec::new();
     }
     // Quatro grupos, como a barra do Aseprite: a selecção (e o Move), o que pinta à mão, as
-    // formas, a vista.
+    // formas, a vista. As quatro selecções moram num botão de grupo com a cara da última usada.
     let grupo = |de: PixelTool, ate: PixelTool| {
         ids::TOOLS
             .iter()
             .skip_while(|(t, _)| *t != de)
             .take_while(|(t, _)| *t != ate)
-            .map(|&(t, id)| BarButton {
-                id,
-                face: BarFace::Icon(icon(t)),
-                label: nome(t),
-                on: t == info.tool,
-                family: BarFamily::Draw,
-            })
+            .filter(|(t, _)| !t.is_marquee())
+            .map(|&(t, id)| botao(info, t, id))
             .collect::<Vec<_>>()
     };
-    let selecao = grupo(PixelTool::RectMarquee, PixelTool::Pencil);
+    let marquee = if info.marquee.is_marquee() {
+        info.marquee
+    } else {
+        PixelTool::RectMarquee
+    };
+    let mut selecao = vec![BarButton {
+        on: info.tool.is_marquee(),
+        ..botao(info, marquee, ids::PIXEL_SELECT_GROUP)
+    }];
+    selecao.extend(grupo(PixelTool::RectMarquee, PixelTool::Pencil));
     let mao = grupo(PixelTool::Pencil, PixelTool::Line);
     let formas = grupo(PixelTool::Line, PixelTool::Hand);
     let vista = grupo(PixelTool::Hand, PixelTool::RectMarquee);
@@ -115,6 +183,7 @@ pub fn hint(info: &PixelPanelInfo) -> String {
         PixelTool::PolygonLasso => "pixel.hint.polygon_lasso",
         PixelTool::MagicWand => "pixel.hint.magic_wand",
         PixelTool::Move => "pixel.hint.move",
+        PixelTool::Transform => "pixel.hint.transform",
         PixelTool::Pencil => "pixel.hint.pencil",
         PixelTool::Spray => "pixel.hint.spray",
         PixelTool::Eraser => "pixel.hint.eraser",
@@ -126,6 +195,7 @@ pub fn hint(info: &PixelPanelInfo) -> String {
         PixelTool::Ellipse | PixelTool::FilledEllipse => "pixel.hint.ellipse",
         PixelTool::Contour => "pixel.hint.contour",
         PixelTool::Polygon => "pixel.hint.polygon",
+        PixelTool::RegularPolygon | PixelTool::Star => "pixel.hint.shape",
         PixelTool::Hand => "pixel.hint.hand",
     };
     tr_with(key, &[("tool", &nome(info.tool))])

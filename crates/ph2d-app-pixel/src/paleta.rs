@@ -173,6 +173,7 @@ impl PixelApp {
         let handled = !matches!(
             r,
             PixelRequest::Tool(_)
+                | PixelRequest::MarqueeGroup
                 | PixelRequest::Fg(_)
                 | PixelRequest::Bg(_)
                 | PixelRequest::Swap

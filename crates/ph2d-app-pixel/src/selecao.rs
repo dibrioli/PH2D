@@ -269,13 +269,7 @@ fn pede(app: &mut PixelApp, r: PixelRequest) -> KeyAnswer {
 
 fn ferramenta(app: &mut PixelApp, t: Tool) -> KeyAnswer {
     crate::input::set_tool(app, t);
-    KeyAnswer::Toast(ph2d_i18n::tr_with(
-        "pixel.tool_switched",
-        &[
-            ("tool", &ph2d_i18n::tr(t.label_key())),
-            ("key", &t.shortcut_label()),
-        ],
-    ))
+    KeyAnswer::Toast(t.named())
 }
 
 /// **As teclas da P6** (os atalhos do Aseprite dos menus Select/Edit/Sprite e das ferramentas de

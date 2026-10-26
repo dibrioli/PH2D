@@ -19,6 +19,11 @@ ph2d-i18n        = { path = "../ph2d-i18n" }
 ph2d-tool-registry = { path = "../ph2d-tool-registry" }
 ph2d-text        = { path = "../ph2d-text" }
 ph2d-vector      = { path = "../ph2d-vector" }
+# As formas do Vector no Pixel (P6b): o catálogo dos campos e a chave da string de cada rótulo
+# (`ph2d-tool-vector::shapes`) e o contorno das caras da coluna (`ph2d-vec-scene::cook`) — a MESMA
+# tabela que o painel do Vector lê, nunca uma cópia.
+ph2d-tool-vector = { path = "../ph2d-tool-vector" }
+ph2d-vec-scene = { path = "../ph2d-vec-scene" }
 
 [dev-dependencies]
 ph2d-host = { path = "../ph2d-host" }

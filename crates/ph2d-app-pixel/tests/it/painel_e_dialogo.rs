@@ -142,7 +142,7 @@ fn o_painel_abre_no_edit_fecha_ao_sair_e_leva_a_paleta() {
 /// o zoom; ao sair, só as SUAS barras se limpam.
 #[test]
 fn o_seletor_oferece_object_e_draw_e_a_coluna_em_draw_e_a_do_pixel() {
-    use ph2d_editor_core::interaction::{BarButton, BarFace, BarFamily};
+    use ph2d_editor_core::interaction::{BarButton, BarFace, BarFamily, ToolBars};
     use ph2d_editor_core::screens::hero::mode_drive::{self, ModeFamily};
     let mut hero = HeroScreen::new(ph2d_editor_core::NodeId(1));
     let (mut sim, mut app) = (SimWorld::new(), PixelApp::default());
@@ -195,12 +195,12 @@ fn o_seletor_oferece_object_e_draw_e_a_coluna_em_draw_e_a_do_pixel() {
         on: true,
         family: BarFamily::Draw,
     };
-    panel::publish_bars(
-        &app,
-        &mut hero,
-        vec![vec![botao.clone()]],
-        "dica".to_owned(),
-    );
+    let barras = ToolBars {
+        column: vec![vec![botao.clone()]],
+        hint: "dica".to_owned(),
+        ..ToolBars::default()
+    };
+    panel::publish_bars(&app, &mut hero, barras);
     let bars = hero.store.tool_bars().expect("a coluna do Pixel");
     assert!(bars.pixel_rail && bars.is_family_column());
     assert_eq!(bars.column, vec![vec![botao]]);
@@ -216,7 +216,7 @@ fn o_seletor_oferece_object_e_draw_e_a_coluna_em_draw_e_a_do_pixel() {
     let _ = hero.gizmo.mode.leave();
     hero.gizmo.selection = Some(bits);
     let _ = panel::frame(&mut app, sim.world(), &mut hero, &mut avisos());
-    panel::publish_bars(&app, &mut hero, Vec::new(), String::new());
+    panel::publish_bars(&app, &mut hero, ToolBars::default());
     assert!(
         hero.store.tool_bars().is_none(),
         "sair do Draw deixou a coluna"

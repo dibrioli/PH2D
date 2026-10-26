@@ -174,6 +174,22 @@ pub fn paint_sprite_gizmo(
     paint_sprite_gizmo_with(scene, view, theme, hit_index, true);
 }
 
+/// ⭐ **A alça do gizmo de sprite sob o ponto de ecrã `(x, y)`** — a de [`paint_sprite_gizmo_with`]
+/// por ELE próprio (os mesmos rects, a mesma ordem): para quem tem o próprio despacho do ponteiro
+/// (o Pixel Art, ADR-0192 §12) e não regista no `HitIndex` do chrome.
+#[must_use]
+pub fn sprite_gizmo_hit_at(view: &GizmoView, body: bool, x: f32, y: f32) -> Option<NodeId> {
+    let mut hits = HitIndex::new();
+    paint_sprite_gizmo_with(
+        &mut VectorScene::new(),
+        view,
+        Theme::default(),
+        &mut hits,
+        body,
+    );
+    hits.hit(x, y)
+}
+
 /// [`paint_sprite_gizmo`] com o CORPO opcional: `body = false` (F10, o modo Forma da ferramenta
 /// vetorial) não pinta nem regista o miolo (`GIZMO_BBOX_INTERIOR`) nem o pivô — só o contorno, as
 /// alças de escala e as zonas de rotação. O miolo continua canvas: o press nele desenha.

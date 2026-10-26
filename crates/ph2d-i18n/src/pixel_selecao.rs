@@ -10,6 +10,17 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "pixel.tool.polygon_lasso" => "Polygonal Lasso",
         "pixel.tool.magic_wand" => "Magic Wand",
         "pixel.tool.move" => "Move",
+        "pixel.tool.transform" => "Transform",
+        "pixel.tool.regular_polygon" => "Regular Polygon",
+        "pixel.tool.star" => "Star",
+        "pixel.hint.shape" => {
+            "{tool}: drag the box · Shift keeps it square · its options (sides, corners, fillet) are in the Pixel panel"
+        }
+        "panel.pixel.shape_options" => "Shape",
+        "panel.pixel.shape_fill" => "Fill",
+        "pixel.hint.transform" => {
+            "{tool}: drag a corner or side to scale · drag just outside a corner to rotate · drag inside to move · Enter applies, Esc cancels"
+        }
         "pixel.hint.marquee" => {
             "{tool}: drag to select · a click deselects · Shift adds, Alt+Shift subtracts, Ctrl+Shift intersects"
         }

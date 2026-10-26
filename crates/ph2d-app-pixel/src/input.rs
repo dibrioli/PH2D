@@ -135,8 +135,16 @@ pub fn press(app: &mut PixelApp, c: &Canvas<'_>, p: (f32, f32), button: Button, 
         return Press::Done;
     };
     // P6: a moldura solta apanha o premir primeiro; Move (ou Ctrl com uma de selecção) levanta.
-    if let Some(r) = crate::solta::press(app, c, bits, key, p, m) {
+    if let Some(r) = crate::solta::press(app, c, bits, key, p) {
         return r;
+    }
+    // A ferramenta Transform sem moldura levanta (a selecção, ou o cel inteiro) e o premir segue
+    // para o gizmo.
+    if app.tool == Tool::Transform {
+        if app.levanta(key) {
+            return crate::solta::press(app, c, bits, key, p).unwrap_or(Press::Done);
+        }
+        return Press::Done;
     }
     let sel = app.tool.selects();
     if app.tool == Tool::Move || (sel && m.ctrl && !m.shift) {
@@ -196,7 +204,8 @@ pub fn press(app: &mut PixelApp, c: &Canvas<'_>, p: (f32, f32), button: Button, 
         | Tool::Lasso
         | Tool::PolygonLasso
         | Tool::MagicWand
-        | Tool::Move => return Press::Done,
+        | Tool::Move
+        | Tool::Transform => return Press::Done,
         Tool::Eyedropper => {
             if let Some(v) = pick(s, frame, x, y, Sample::AllLayers) {
                 let rgba = s.rgba_of_value(v);
@@ -241,7 +250,9 @@ pub fn press(app: &mut PixelApp, c: &Canvas<'_>, p: (f32, f32), button: Button, 
         | Tool::Rectangle
         | Tool::FilledRectangle
         | Tool::Ellipse
-        | Tool::FilledEllipse => {
+        | Tool::FilledEllipse
+        | Tool::RegularPolygon
+        | Tool::Star => {
             let kind = Kind::Box { from: at, to: at };
             let mut st = Stroke::new(layer, frame, value, paint);
             crate::gesture::reshape(&mut st, s, tool, &kind, &options, m);
@@ -481,6 +492,10 @@ pub(crate) fn set_tool(app: &mut PixelApp, t: Tool) {
         app.laco = None;
     }
     app.tool = t;
+    if t.is_marquee() {
+        app.marquee = t;
+    }
+    app.marquee_open = false;
 }
 
 /// Larga o gesto sem gravar (`Esc`).
@@ -547,13 +562,7 @@ pub fn key(
     }
     let tool = |app: &mut PixelApp, t: Tool| {
         set_tool(app, t);
-        KeyAnswer::Toast(ph2d_i18n::tr_with(
-            "pixel.tool_switched",
-            &[
-                ("tool", &ph2d_i18n::tr(t.label_key())),
-                ("key", &t.shortcut_label()),
-            ],
-        ))
+        KeyAnswer::Toast(t.named())
     };
     Some(match (code, ctrl, shift) {
         (KeyCode::KeyB, false, false) => tool(app, Tool::Pencil),

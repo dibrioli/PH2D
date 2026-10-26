@@ -615,7 +615,7 @@ fn smoke_1_stages_a_face_in_four_undo_steps_and_asks_for_edit() {
         Some((bits, ObjectMode::Draw))
     );
     assert!(
-        !ph2d_app_pixel::smoke::stage(&mut app, &mut sim, 10, spawn_root),
+        !ph2d_app_pixel::smoke::stage(&mut app, &mut sim, 11, spawn_root),
         "nível sem cena"
     );
 }

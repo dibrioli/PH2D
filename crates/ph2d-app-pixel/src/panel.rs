@@ -4,12 +4,12 @@
 //! manda). A coluna da esquerda ([`publish_bars`]) e as amostras de cor dela também passam aqui.
 
 use ph2d_editor_core::NodeId;
-use ph2d_editor_core::interaction::{BarButton, ToolBars, WidgetStore};
+use ph2d_editor_core::interaction::{ToolBars, WidgetStore};
 use ph2d_editor_core::pixel_panel::{NewSpriteMode, PixelPanelInfo, PixelRequest};
 use ph2d_editor_core::screens::hero::HeroScreen;
 use ph2d_editor_core::{Toast, ToastQueue};
 
-use crate::PixelApp;
+use crate::{PixelApp, Tool};
 
 /// O `Panel::ID` da `ph2d-panel-pixel-tools` (a família não vê o painel).
 pub const PANEL_ID: &str = ph2d_editor_core::screens::hero::PANEL_PIXEL;
@@ -36,7 +36,21 @@ impl PixelApp {
             return;
         }
         match r {
-            PixelRequest::Tool(t) => crate::input::set_tool(self, t),
+            PixelRequest::Tool(t) => {
+                crate::input::set_tool(self, t);
+                if t == Tool::Transform
+                    && let Some(key) = self.chave
+                    && !self.levanta(key)
+                {
+                    self.recusa("pixel.select.refuse.nothing");
+                }
+            }
+            // A última usada na mão; o mesmo clique abre (ou fecha) as quatro.
+            PixelRequest::MarqueeGroup => {
+                let aberto = self.marquee_open;
+                crate::input::set_tool(self, self.marquee);
+                self.marquee_open = !aberto;
+            }
             PixelRequest::Options(o) => self.options = o,
             PixelRequest::Fg(c) => self.fg = c,
             PixelRequest::Bg(c) => self.bg = c,
@@ -186,6 +200,8 @@ pub fn frame(
             .map(crate::solta::Solta::info),
         can_reselect: doc.is_some_and(|d| d.sprite.last_mask().is_some()),
         presets: app.predefinicoes().to_vec(),
+        marquee: app.marquee,
+        marquee_open: app.marquee_open,
     }
 }
 
@@ -204,24 +220,17 @@ fn sync_swatch(store: &mut WidgetStore, id: NodeId, cor: &mut [u8; 4], semeada: 
 /// ⭐ **A coluna da esquerda em Draw** (dono 25/10: as ferramentas à esquerda, como no Painter):
 /// publica as barras do Pixel com os grupos que o painel compõe e a dica dele, e o zoom no rodapé;
 /// fora do Draw limpa só as SUAS. A marca `pixel_rail` guarda o seletor de modo na fila de cima.
-pub fn publish_bars(
-    app: &PixelApp,
-    hero: &mut HeroScreen,
-    column: Vec<Vec<BarButton>>,
-    hint: String,
-) {
-    if app.painel_em_edicao && !column.is_empty() {
+pub fn publish_bars(app: &PixelApp, hero: &mut HeroScreen, bars: ToolBars) {
+    if app.painel_em_edicao && !bars.column.is_empty() {
         let readout = app
             .zoom
             .map(|n| ph2d_i18n::tr_with("pixel.zoom", &[("n", &n.to_string())]))
             .into_iter()
             .collect();
         hero.store.set_tool_bars(Some(ToolBars {
-            column,
-            hint,
             readout,
             pixel_rail: true,
-            ..ToolBars::default()
+            ..bars
         }));
     } else if hero.store.tool_bars().is_some_and(|b| b.pixel_rail) {
         hero.store.set_tool_bars(None);

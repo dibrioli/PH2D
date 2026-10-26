@@ -15,11 +15,8 @@ impl crate::App {
         ph2d_panel_pixel_timeline::set_current_pixel(info.clone());
         #[cfg(feature = "panel-pixel-tools")]
         {
-            let (column, hint) = (
-                ph2d_panel_pixel_tools::column::column(&info),
-                ph2d_panel_pixel_tools::column::hint(&info),
-            );
-            ph2d_app_pixel::panel::publish_bars(&self.pixel, hero, column, hint);
+            let bars = ph2d_panel_pixel_tools::column::bars(&info);
+            ph2d_app_pixel::panel::publish_bars(&self.pixel, hero, bars);
             ph2d_panel_pixel_tools::set_current_pixel(info);
         }
         #[cfg(not(feature = "panel-pixel-tools"))]

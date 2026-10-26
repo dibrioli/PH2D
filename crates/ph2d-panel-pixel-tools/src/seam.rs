@@ -13,21 +13,17 @@ use ph2d_editor_core::interaction::{
 use ph2d_editor_core::panel::{EventOutcome, Panel, PanelHostInternal};
 use ph2d_editor_core::pixel_panel::{PixelOptions, PixelRequest, PixelSelect};
 use ph2d_editor_core::widget::{ButtonState, CheckboxState, CheckboxValue, TextInputState};
-use ph2d_i18n::{tr, tr_with};
+use ph2d_i18n::tr;
 
 pub(crate) fn populate(store: &mut WidgetStore) {
     let botoes = ids::TOOLS.iter().map(|(_, id)| *id);
-    for id in botoes.chain([ids::PIXEL_CLOSE, ids::PIXEL_SWAP]) {
+    for id in botoes.chain([ids::PIXEL_CLOSE, ids::PIXEL_SWAP, ids::PIXEL_SELECT_GROUP]) {
         let state = ButtonState::Normal;
         store.register(id, InteractiveState::Button { state });
     }
     // O tooltip diz o atalho: «Pencil (B)».
     for (t, id) in ids::TOOLS {
-        let dica = tr_with(
-            "pixel.tool_switched",
-            &[("tool", &tr(t.label_key())), ("key", &t.shortcut_label())],
-        );
-        store.set_tooltip(id, dica);
+        store.set_tooltip(id, t.named());
     }
     store.set_tooltip(ids::PIXEL_SWAP, tr("panel.pixel.swap_tip"));
     // As amostras da coluna abrem o seletor partilhado num Down — marcadas AQUI, porque a coluna as
@@ -86,6 +82,7 @@ pub(crate) fn populate(store: &mut WidgetStore) {
     );
     store.set_number_range(ids::PALETTE_SIZE, 1.0, n, 1.0);
     crate::seam_selecao::populate(store);
+    crate::seam_formas::populate(store);
     // As áreas do seletor de cor: o clique lê a posição do ponteiro contra o rect pintado.
     for (id, _) in ids::SELECTOR_AREAS {
         store.register(id, InteractiveState::Plain);
@@ -206,7 +203,6 @@ pub(crate) fn numero(o: &PixelOptions, id: NodeId) -> f64 {
     match id {
         ids::SIZE => f64::from(o.size),
         ids::ANGLE => f64::from(o.angle),
-        ids::CORNER => f64::from(o.corner_radius),
         ids::TOLERANCE => f64::from(o.tolerance),
         ids::SPRAY_WIDTH => f64::from(o.spray_width),
         ids::REPLACE_TOLERANCE => f64::from(o.replace_tolerance),
@@ -236,7 +232,6 @@ fn com_numero(mut o: PixelOptions, id: NodeId, v: f64) -> PixelOptions {
     match id {
         ids::SIZE => o.size = u,
         ids::ANGLE => o.angle = i,
-        ids::CORNER => o.corner_radius = u,
         ids::TOLERANCE => o.tolerance = u8::try_from(u).unwrap_or(u8::MAX),
         ids::SPRAY_WIDTH => o.spray_width = u,
         ids::SPRAY_SPEED => o.spray_speed = u,
@@ -259,6 +254,7 @@ pub(crate) fn caixa(o: &mut PixelOptions, id: NodeId) -> Option<&mut bool> {
         ids::SYM_D2 => &mut o.sym_d2,
         ids::TILE_X => &mut o.tile_x,
         ids::TILE_Y => &mut o.tile_y,
+        crate::seam_formas::SHAPE_FILL => &mut o.shape_fill,
         _ => return None,
     })
 }
@@ -280,7 +276,10 @@ fn com_segmento(mut o: PixelOptions, id: NodeId) -> Option<PixelOptions> {
         ids::SAMPLE_VISIBLE => o.sample_visible = true,
         ids::WAND_CONNECT_4 => o.wand_eight = false,
         ids::WAND_CONNECT_8 => o.wand_eight = true,
-        _ => return crate::seam_selecao::com_segmento(o, id),
+        _ => {
+            return crate::seam_selecao::com_segmento(o, id)
+                .or_else(|| crate::seam_formas::com_opcao(o, id));
+        }
     }
     Some(o)
 }
@@ -330,6 +329,9 @@ fn pedido(id: ph2d_a11y::NodeId, how: PixelSelect) -> Option<PixelRequest> {
         }
         if let Some((t, _)) = ids::TOOLS.iter().find(|(_, b)| *b == id) {
             return Some(PixelRequest::Tool(*t));
+        }
+        if id == ids::PIXEL_SELECT_GROUP {
+            return Some(PixelRequest::MarqueeGroup);
         }
         if id == ids::PIXEL_SWAP {
             return Some(PixelRequest::Swap);
@@ -481,6 +483,14 @@ pub(crate) fn apply_event(
                 let v = v?;
                 info.editing
                     .then(|| PixelRequest::Options(com_numero(info.options, id, v)))
+            });
+            return empurra(host, pedido);
+        }
+        WidgetEvent::ValueChanged(id) if crate::seam_formas::is_field(id) => {
+            let v = host.store().number_value(id);
+            let pedido = with_current(|info| {
+                let o = crate::seam_formas::com_numero(info.options, id, v?)?;
+                info.editing.then_some(PixelRequest::Options(o))
             });
             return empurra(host, pedido);
         }

@@ -108,6 +108,7 @@ pub enum IconId {
     ChevronRight,
     ChevronUp,
     Circle,
+    CircleDashed,
     Clone,
     Close,
     Cmd,
@@ -194,6 +195,7 @@ pub enum IconId {
     MoreHorizontal,
     MoreVertical,
     MotionNodes,
+    Move,
     Open,
     Padding,
     Painter,
@@ -287,6 +289,7 @@ pub enum IconId {
     Volume2,
     VolumeX,
     Vote,
+    WandSparkles,
     Warning,
     Zen,
 }

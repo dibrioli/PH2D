@@ -120,15 +120,19 @@ fn a_coluna_tem_todas_as_ferramentas_em_quatro_grupos_e_as_duas_cores() {
     assert_eq!(col.len(), 5, "selecção · à mão · formas · vista · cores");
     assert_eq!(
         col[0].len(),
-        6,
-        "Marquee ×2, Lasso ×2, Magic Wand, Move (P6)"
+        4,
+        "o botão das quatro selecções, Magic Wand, Move, Transform (P6b)"
     );
     assert_eq!(col[1].len(), 5, "Pencil, Spray, Eraser, Eyedropper, Bucket");
     assert_eq!(col[3].len(), 1, "Hand");
     let ferr: Vec<_> = col[..4].iter().flatten().map(|b| (b.id, b.on)).collect();
-    let quer: Vec<_> = ids::TOOLS
-        .iter()
-        .map(|(t, id)| (*id, *t == PixelTool::Eyedropper))
+    let quer: Vec<_> = std::iter::once((ids::PIXEL_SELECT_GROUP, false))
+        .chain(
+            ids::TOOLS
+                .iter()
+                .filter(|(t, _)| !t.is_marquee())
+                .map(|(t, id)| (*id, *t == PixelTool::Eyedropper)),
+        )
         .collect();
     assert_eq!(ferr, quer);
     let cores: Vec<_> = col[4].iter().map(|b| (b.id, b.face.clone())).collect();

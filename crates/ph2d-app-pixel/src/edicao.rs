@@ -114,6 +114,7 @@ pub fn assenta_antes(r: &PixelRequest) -> bool {
     !matches!(
         r,
         PixelRequest::Tool(_)
+            | PixelRequest::MarqueeGroup
             | PixelRequest::Options(_)
             | PixelRequest::Fg(_)
             | PixelRequest::Bg(_)
@@ -148,6 +149,7 @@ impl PixelApp {
     fn edita(&mut self, key: u32, a: E) {
         match a {
             E::Transform => {
+                crate::input::set_tool(self, crate::Tool::Transform);
                 if !self.levanta(key) {
                     self.recusa("pixel.select.refuse.nothing");
                 }

@@ -2,12 +2,12 @@
 //! gesto acaba. Toda forma é redesenhada INTEIRA a cada movimento sobre o mesmo [`Stroke`], que a
 //! vista mostra por cima do documento e que vira UM passo do desfazer ao acabar.
 
+use ph2d_editor_core::pixel_panel::PixelShape;
 use ph2d_pixel_core::brush::{Brush, BrushShape};
 use ph2d_pixel_core::fill::{Bucket, BucketSample};
 use ph2d_pixel_core::ink::Ink;
 use ph2d_pixel_core::raster::{
-    Cell, curve_path, ellipse_cells, ellipse_filled_cells, line_cells, polygon_cells,
-    rounded_rect_cells, snap_pixel_angle, square_box,
+    Cell, curve_path, line_cells, polygon_cells, snap_pixel_angle, square_box,
 };
 use ph2d_pixel_core::symmetry::{Mirrors, Symmetry, Tiling};
 use ph2d_pixel_core::{Paint, Sprite, Stroke};
@@ -176,27 +176,18 @@ pub(crate) fn reshape(
                     Vec::new(),
                 )
             }
-            Tool::Rectangle | Tool::FilledRectangle => {
-                let (a, b) = boxed(*from, *to, m);
-                let r = o.corner_radius;
-                let filled = tool == Tool::FilledRectangle;
-                let out = collect(|cb| rounded_rect_cells(a.0, a.1, b.0, b.1, r, false, cb));
-                let inner = if filled {
-                    collect(|cb| rounded_rect_cells(a.0, a.1, b.0, b.1, r, true, cb))
-                } else {
-                    Vec::new()
-                };
-                (out, inner)
-            }
+            // As formas do Vector (P6b): a do catálogo com os valores do painel.
             _ => {
-                let (a, b) = boxed(*from, *to, m);
-                let out = collect(|cb| ellipse_cells(a.0, a.1, b.0, b.1, cb));
-                let inner = if tool == Tool::FilledEllipse {
-                    collect(|cb| ellipse_filled_cells(a.0, a.1, b.0, b.1, cb))
-                } else {
-                    Vec::new()
+                let Some(forma) = PixelShape::of_tool(tool) else {
+                    return;
                 };
-                (out, inner)
+                let (a, b) = boxed(*from, *to, m);
+                let cheia = match tool {
+                    Tool::FilledRectangle | Tool::FilledEllipse => true,
+                    Tool::RegularPolygon | Tool::Star => o.shape_fill,
+                    _ => false,
+                };
+                crate::formas::cells(forma, &o.shapes.get(forma), a, b, cheia)
             }
         },
         Kind::Curve { from, to, ctrl } => {

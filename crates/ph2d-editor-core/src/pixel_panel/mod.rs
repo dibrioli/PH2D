@@ -5,7 +5,10 @@
 mod layers;
 mod new_sprite;
 mod selection;
+mod shapes;
 mod timeline;
+
+pub use shapes::{PixelShape, PixelShapeValues, PixelShapes};
 
 pub use layers::*;
 pub use new_sprite::*;
@@ -17,13 +20,15 @@ pub use timeline::*;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum PixelTool {
     /// Selecção (P6): Rectangular Marquee `M`, Elliptical `Shift+M`, Lasso `Q`, Polygonal Lasso
-    /// `Shift+Q`, Magic Wand `W`; Move `V` arrasta as células seleccionadas.
+    /// `Shift+Q` (as quatro num botão de grupo), Magic Wand `W`; Move `V` arrasta as células
+    /// seleccionadas; Transform `Ctrl+T` levanta-as no gizmo do sprite.
     RectMarquee,
     EllipseMarquee,
     Lasso,
     PolygonLasso,
     MagicWand,
     Move,
+    Transform,
     #[default]
     Pencil,
     Spray,
@@ -37,6 +42,9 @@ pub enum PixelTool {
     FilledRectangle,
     Ellipse,
     FilledEllipse,
+    /// As formas do Vector (P6b): polígono regular e estrela, com os campos do catálogo dele.
+    RegularPolygon,
+    Star,
     /// Traço livre que FECHA e enche ao largar.
     Contour,
     /// Vértices por clique; fecha e enche.
@@ -47,13 +55,14 @@ pub enum PixelTool {
 
 impl PixelTool {
     /// Todas, na ordem da coluna.
-    pub const ALL: [Self; 20] = [
+    pub const ALL: [Self; 23] = [
         Self::RectMarquee,
         Self::EllipseMarquee,
         Self::Lasso,
         Self::PolygonLasso,
         Self::MagicWand,
         Self::Move,
+        Self::Transform,
         Self::Pencil,
         Self::Spray,
         Self::Eraser,
@@ -65,6 +74,8 @@ impl PixelTool {
         Self::FilledRectangle,
         Self::Ellipse,
         Self::FilledEllipse,
+        Self::RegularPolygon,
+        Self::Star,
         Self::Contour,
         Self::Polygon,
         Self::Hand,
@@ -80,6 +91,7 @@ impl PixelTool {
             Self::PolygonLasso => "pixel.tool.polygon_lasso",
             Self::MagicWand => "pixel.tool.magic_wand",
             Self::Move => "pixel.tool.move",
+            Self::Transform => "pixel.tool.transform",
             Self::Pencil => "pixel.tool.pencil",
             Self::Spray => "pixel.tool.spray",
             Self::Eraser => "pixel.tool.eraser",
@@ -91,6 +103,8 @@ impl PixelTool {
             Self::FilledRectangle => "pixel.tool.filled_rectangle",
             Self::Ellipse => "pixel.tool.ellipse",
             Self::FilledEllipse => "pixel.tool.filled_ellipse",
+            Self::RegularPolygon => "pixel.tool.regular_polygon",
+            Self::Star => "pixel.tool.star",
             Self::Contour => "pixel.tool.contour",
             Self::Polygon => "pixel.tool.polygon",
             Self::Hand => "pixel.tool.hand",
@@ -105,6 +119,7 @@ impl PixelTool {
             Self::Lasso | Self::PolygonLasso => "Q",
             Self::MagicWand => "W",
             Self::Move => "V",
+            Self::Transform => "T",
             Self::Pencil | Self::Spray => "B",
             Self::Eraser => "E",
             Self::Eyedropper => "I",
@@ -113,6 +128,8 @@ impl PixelTool {
             Self::Rectangle | Self::FilledRectangle | Self::Ellipse | Self::FilledEllipse => "U",
             Self::Contour | Self::Polygon => "D",
             Self::Hand => "H",
+            // O Aseprite não as tem: sem atalho.
+            Self::RegularPolygon | Self::Star => "",
         }
     }
 
@@ -134,11 +151,26 @@ impl PixelTool {
     /// O atalho como o artista o lê: «B», «Shift+B».
     #[must_use]
     pub fn shortcut_label(self) -> String {
-        if self.shifted() {
+        if self == Self::Transform {
+            ph2d_i18n::tr_with("pixel.shortcut_ctrl", &[("key", &self.shortcut())])
+        } else if self.shifted() {
             ph2d_i18n::tr_with("pixel.shortcut_shift", &[("key", &self.shortcut())])
         } else {
             self.shortcut().to_owned()
         }
+    }
+
+    /// O nome com o atalho, «Pencil (B)»; a que não tem atalho, só o nome.
+    #[must_use]
+    pub fn named(self) -> String {
+        let nome = ph2d_i18n::tr(self.label_key());
+        if self.shortcut().is_empty() {
+            return nome.to_owned();
+        }
+        ph2d_i18n::tr_with(
+            "pixel.tool_switched",
+            &[("tool", &nome), ("key", &self.shortcut_label())],
+        )
     }
 
     /// Deposita com o pincel (tamanho/forma/ângulo valem para ela).
@@ -155,6 +187,8 @@ impl PixelTool {
                 | Self::FilledRectangle
                 | Self::Ellipse
                 | Self::FilledEllipse
+                | Self::RegularPolygon
+                | Self::Star
                 | Self::Contour
                 | Self::Polygon
         )
@@ -164,6 +198,23 @@ impl PixelTool {
     #[must_use]
     pub const fn paints(self) -> bool {
         self.uses_brush() || matches!(self, Self::Bucket)
+    }
+
+    /// As quatro que partilham o botão de grupo da coluna (marquee, elipse, laço, polígono).
+    pub const MARQUEES: [Self; 4] = [
+        Self::RectMarquee,
+        Self::EllipseMarquee,
+        Self::Lasso,
+        Self::PolygonLasso,
+    ];
+
+    /// Mora no botão de grupo das selecções.
+    #[must_use]
+    pub const fn is_marquee(self) -> bool {
+        matches!(
+            self,
+            Self::RectMarquee | Self::EllipseMarquee | Self::Lasso | Self::PolygonLasso
+        )
     }
 
     /// Constrói a selecção (marquee, laços, varinha).
@@ -219,8 +270,10 @@ pub struct PixelOptions {
     pub angle: i32,
     /// Só com pincel de 1 (Aseprite).
     pub pixel_perfect: bool,
-    /// O raio do canto do retângulo (Aseprite 1.3.17).
-    pub corner_radius: u32,
+    /// P6b: os valores das formas do Vector (o raio do canto do retângulo é o 1.º campo dele, o do
+    /// Aseprite 1.3.17) e se o polígono e a estrela enchem.
+    pub shapes: PixelShapes,
+    pub shape_fill: bool,
     /// `0..=255` (balde).
     pub tolerance: u8,
     pub contiguous: bool,
@@ -432,7 +485,8 @@ impl Default for PixelOptions {
             size: 1,
             angle: 0,
             pixel_perfect: false,
-            corner_radius: 0,
+            shapes: PixelShapes::default(),
+            shape_fill: false,
             tolerance: 0,
             contiguous: true,
             eight: false,
@@ -500,12 +554,17 @@ pub struct PixelPanelInfo {
     pub size: (u32, u32),
     pub transform: Option<PixelTransformInfo>,
     pub can_reselect: bool,
+    /// P6b: a selecção que o botão de grupo mostra (a última usada) e se as quatro estão abertas.
+    pub marquee: PixelTool,
+    pub marquee_open: bool,
 }
 
 /// Um gesto do painel PIXEL (`EditorAction::Pixel`).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PixelRequest {
     Tool(PixelTool),
+    /// O botão de grupo das selecções: a última usada na mão, e as quatro abrem/fecham.
+    MarqueeGroup,
     Fg([u8; 4]),
     Bg([u8; 4]),
     /// Troca frente e fundo (o `X` do Aseprite).

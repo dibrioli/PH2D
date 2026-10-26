@@ -80,6 +80,9 @@ pub struct ToolBars {
     pub column: Vec<Vec<BarButton>>,
     /// ① o flyout aberto: o id do botão da coluna que o abre, e a grelha dele.
     pub flyout: Option<(NodeId, Vec<BarButton>)>,
+    /// ① os botões da coluna que guardam MAIS ferramentas (abrem um flyout): o pintor marca-os com
+    /// o triângulo no canto de baixo (Photoshop, Aseprite). Opt-in por botão.
+    pub grouped: Vec<NodeId>,
     /// ② o que entra na fila ANTES dos chips do gizmo — a prioridade mais alta (sai por último).
     pub row_lead: Vec<ToolRailEntry>,
     /// ② o que entra DEPOIS dos chips do gizmo e antes dos pulldowns da área.

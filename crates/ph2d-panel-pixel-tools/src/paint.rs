@@ -36,6 +36,8 @@ const LADO: u32 = 256;
 
 #[path = "paint_camadas.rs"]
 mod camadas;
+#[path = "paint_formas.rs"]
+mod formas;
 #[path = "paint_paleta.rs"]
 mod paleta;
 #[path = "paint_selecao.rs"]
@@ -92,7 +94,8 @@ pub(crate) fn paint(st: &mut PixelToolsPanelState, ctx: &mut PaintCtx) {
     let tamanho = (ids::PALETTE_SIZE, cores as f64);
     let numeros = ids::NUMBERS
         .iter()
-        .map(|(id, _)| (*id, seam::numero(&opcoes, *id)));
+        .map(|(id, _)| (*id, seam::numero(&opcoes, *id)))
+        .chain(crate::seam_formas::numeros(&opcoes));
     let opacidade = (ids::LAYER_OPACITY, f64::from(opacidade));
     let campos = moldura.into_iter().flat_map(|t| {
         ids::XFORM_FIELDS
@@ -209,7 +212,6 @@ impl Corpo<'_> {
             tr("panel.pixel.shape"),
             tr("panel.pixel.size"),
             tr("panel.pixel.angle"),
-            tr("panel.pixel.corner"),
             tr("panel.pixel.tolerance"),
             tr("panel.pixel.connectivity"),
             tr("panel.pixel.sample"),
@@ -218,6 +220,7 @@ impl Corpo<'_> {
             tr(selecao::NOMES[0]),
             tr(selecao::NOMES[2]),
         ];
+        let nomes: Vec<&str> = nomes.into_iter().chain(formas::nomes()).collect();
         let sec = Seccao::medida(self.text_system, 1, &nomes);
         let mut y = self.opcoes_selecao(info, sec, y);
         if t.uses_brush() {
@@ -246,9 +249,7 @@ impl Corpo<'_> {
                 );
             }
         }
-        if matches!(t, PixelTool::Rectangle | PixelTool::FilledRectangle) {
-            y = self.campo(tr("panel.pixel.corner"), ids::CORNER, sec, y);
-        }
+        y = self.opcoes_forma(info, sec, y);
         if t == PixelTool::Spray {
             y = self.campo(tr("panel.pixel.spray_width"), ids::SPRAY_WIDTH, sec, y);
             y = self.campo(tr("panel.pixel.spray_speed"), ids::SPRAY_SPEED, sec, y);

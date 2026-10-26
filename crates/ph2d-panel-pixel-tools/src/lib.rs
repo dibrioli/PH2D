@@ -16,12 +16,17 @@ pub mod column;
 pub mod ids;
 mod paint;
 mod seam;
+mod seam_formas;
 mod seam_selecao;
 mod seam_seletor;
 pub mod seletor;
 mod state;
 
 pub use paint::hex;
+pub use seam_formas::{
+    SHAPE_FILL, desc as shape_desc, field_id as shape_field_id, option_id as shape_option_id,
+    nome as shape_field_name, set_field_names,
+};
 pub use state::{PixelToolsPanelState, current_pixel, set_current_pixel};
 
 use ph2d_a11y::NodeId;

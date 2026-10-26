@@ -27,6 +27,8 @@ ph2d-render = { path = "../ph2d-render" }
 ph2d-tokens = { path = "../ph2d-tokens" }
 ph2d-unique-name = { path = "../ph2d-unique-name" }
 ph2d-vector = { path = "../ph2d-vector" }
+# As formas do Vector no Pixel (P6b): o `cook` do catálogo — a mesma porta do editor vetorial.
+ph2d-vec-scene = { path = "../ph2d-vec-scene" }
 winit = "0.30"
 # O diálogo de ficheiro do Load/Save Palette (pela porta `ph2d_app_host::modal`).
 rfd = "0.17"

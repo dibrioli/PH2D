@@ -221,6 +221,7 @@ const ALL_ICONS: &[IconId] = &[
     IconId::ChevronRight,
     IconId::ChevronUp,
     IconId::Circle,
+    IconId::CircleDashed,
     IconId::Clone,
     IconId::Close,
     IconId::Cmd,
@@ -297,6 +298,7 @@ const ALL_ICONS: &[IconId] = &[
     IconId::MoreHorizontal,
     IconId::MoreVertical,
     IconId::MotionNodes,
+    IconId::Move,
     IconId::Open,
     IconId::Padding,
     IconId::Painter,
@@ -389,6 +391,7 @@ const ALL_ICONS: &[IconId] = &[
     IconId::Volume2,
     IconId::VolumeX,
     IconId::Vote,
+    IconId::WandSparkles,
     IconId::Warning,
     IconId::Zen,
 ];

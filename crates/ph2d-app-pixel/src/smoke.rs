@@ -28,16 +28,21 @@
 //! 9 — P6, a selecção e a transformação que SE VÊEM ([`crate::smoke_selecao`]): retângulo, elipse,
 //! laço e varinha com as formigas, o traço que só pinta dentro, Fast × RotSprite a 30°, espelho,
 //! Shift com volta, Nearest × Bilinear.
+//! 10 — P6b, as quatro correcções do smoke da P6 ([`crate::smoke_formas`]): o ícone da varinha, as
+//! selecções num botão com triângulo, o gizmo do sprite com giro e a ferramenta Transform, e as
+//! formas do Vector (fillet, pizza, hexágono, estrela) em células.
 
 use ph2d_ecs::SimWorld;
 use ph2d_pixel_core::{NewSprite, Paint, Stroke};
 
 use crate::PixelApp;
-use ph2d_editor_core::pixel_panel::{ColorModeChoice, NewSpriteMode, PixelDither, PixelToGray};
+use ph2d_editor_core::pixel_panel::{
+    ColorModeChoice, NewSpriteMode, PixelDither, PixelShape, PixelToGray,
+};
 
 pub const ROUTERS: &[ph2d_app_host::SmokeRouter] = &[ph2d_app_host::SmokeRouter {
     env: "PH2D_PIXEL_SMOKE",
-    max_level: 9,
+    max_level: 10,
 }];
 
 /// O nível armado em `PH2D_PIXEL_SMOKE`.
@@ -100,6 +105,7 @@ pub fn stage(
         7 => crate::smoke_camadas::stage(app, sim, spawn_root).is_some(),
         8 => crate::smoke_quadros::stage(app, sim, spawn_root).is_some(),
         9 => crate::smoke_selecao::stage(app, sim, spawn_root).is_some(),
+        10 => crate::smoke_formas::stage(app, sim, spawn_root).is_some(),
         _ => false,
     }
 }
@@ -132,13 +138,19 @@ fn stage_house(
     let Some(key) = crate::input::key_of(sim.world(), bits) else {
         return false;
     };
-    app.options.corner_radius = 2;
+    app.options.shapes.set(
+        PixelShape::Rectangle,
+        app.options.shapes.get(PixelShape::Rectangle).with(0, 2.0),
+    );
     for (tool, pts, color) in HOUSE {
         if !draw_shape(app, key, tool, pts, color) {
             return false;
         }
     }
-    app.options.corner_radius = 0;
+    app.options.shapes.set(
+        PixelShape::Rectangle,
+        app.options.shapes.get(PixelShape::Rectangle).with(0, 0.0),
+    );
     app.tool = crate::Tool::Rectangle;
     app.fg = [0, 0, 0, 255];
     app.bg = [255, 255, 255, 255];

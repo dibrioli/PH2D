@@ -3,6 +3,7 @@
 mod every_word_this_panel_shows_comes_from_the_string_table;
 mod seam_pixel;
 mod seam_pixel_cor;
+mod seam_pixel_formas;
 mod seam_pixel_selecao;
 mod seletor_arrasto;
 mod seletor_leis;

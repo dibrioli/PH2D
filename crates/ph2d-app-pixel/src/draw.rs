@@ -8,7 +8,7 @@ use ph2d_editor_core::paint::resolve;
 use ph2d_host::WindowSize;
 use ph2d_pixel_render::{
     CURSOR_CORE, draw_border, draw_cell_cursor, draw_marching_ants, draw_pixel_grid,
-    draw_symmetry_axes, draw_transform_frame, mask_edges, px_per_cell,
+    draw_symmetry_axes, mask_edges, px_per_cell,
 };
 use ph2d_render::Camera2d;
 use ph2d_tokens::{ColorToken, Theme};
@@ -165,7 +165,14 @@ pub fn draw(
                 LINE_PX,
             );
         }
-        selecao(app, key, m, previa.and_then(|(_, mk)| mk), scene);
+        selecao(
+            app,
+            key,
+            m,
+            previa.and_then(|(_, mk)| mk),
+            (theme, window),
+            scene,
+        );
         let Some(doc) = app.docs.get(&key) else {
             continue;
         };
@@ -189,6 +196,7 @@ fn selecao(
     key: u32,
     m: ph2d_vector::Affine,
     mascara_solta: Option<ph2d_pixel_core::selection::Mask>,
+    (theme, window): (Theme, WindowSize),
     scene: &mut VectorScene,
 ) {
     let fase =
@@ -210,7 +218,15 @@ fn selecao(
         draw_marching_ants(scene, &mask_edges(&mk), m, fase, LINE_PX);
     }
     if let Some(so) = solta {
-        let (alcas, pivo) = so.handles(m);
-        draw_transform_frame(scene, so.quad(m), &alcas, pivo, LINE_PX);
+        #[expect(clippy::cast_precision_loss, reason = "tamanho de janela")]
+        let janela = (window.width as f32, window.height as f32);
+        let view = so.gizmo(m, janela, so.cursor);
+        ph2d_editor_core::gizmo::paint_sprite_gizmo_with(
+            scene,
+            &view,
+            theme,
+            &mut ph2d_editor_core::interaction::HitIndex::new(),
+            true,
+        );
     }
 }

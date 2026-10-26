@@ -22,8 +22,11 @@ pub use ph2d_editor_core::ids::{PIXEL_BG, PIXEL_FG};
 /// **Trocar** frente e fundo (o `X` do Aseprite).
 pub const PIXEL_SWAP: NodeId = hash_node_id("pixel.swap");
 
+/// O botão de grupo das quatro selecções (a cara é a última usada; o clique abre o flyout).
+pub const PIXEL_SELECT_GROUP: NodeId = hash_node_id("pixel.tool.select_group");
+
 /// As ferramentas, na ordem da coluna: pintar, registar e despachar leem a MESMA tabela.
-pub const TOOLS: [(PixelTool, NodeId); 20] = [
+pub const TOOLS: [(PixelTool, NodeId); 23] = [
     (
         PixelTool::RectMarquee,
         hash_node_id("pixel.tool.rect_marquee"),
@@ -39,6 +42,7 @@ pub const TOOLS: [(PixelTool, NodeId); 20] = [
     ),
     (PixelTool::MagicWand, hash_node_id("pixel.tool.magic_wand")),
     (PixelTool::Move, hash_node_id("pixel.tool.move")),
+    (PixelTool::Transform, hash_node_id("pixel.tool.transform")),
     (PixelTool::Pencil, hash_node_id("pixel.tool.pencil")),
     (PixelTool::Spray, hash_node_id("pixel.tool.spray")),
     (PixelTool::Eraser, hash_node_id("pixel.tool.eraser")),
@@ -56,6 +60,11 @@ pub const TOOLS: [(PixelTool, NodeId); 20] = [
         PixelTool::FilledEllipse,
         hash_node_id("pixel.tool.filled_ellipse"),
     ),
+    (
+        PixelTool::RegularPolygon,
+        hash_node_id("pixel.tool.regular_polygon"),
+    ),
+    (PixelTool::Star, hash_node_id("pixel.tool.star")),
     (PixelTool::Contour, hash_node_id("pixel.tool.contour")),
     (PixelTool::Polygon, hash_node_id("pixel.tool.polygon")),
     (PixelTool::Hand, hash_node_id("pixel.tool.hand")),
@@ -77,7 +86,6 @@ pub const SHAPES: [(PixelBrushShape, NodeId); 3] = [
 /// Os campos numéricos das opções.
 pub const SIZE: NodeId = hash_node_id("pixel.opt.size");
 pub const ANGLE: NodeId = hash_node_id("pixel.opt.angle");
-pub const CORNER: NodeId = hash_node_id("pixel.opt.corner");
 pub const TOLERANCE: NodeId = hash_node_id("pixel.opt.tolerance");
 pub const SPRAY_WIDTH: NodeId = hash_node_id("pixel.opt.spray_width");
 pub const SPRAY_SPEED: NodeId = hash_node_id("pixel.opt.spray_speed");
@@ -99,7 +107,7 @@ pub const SAMPLE_LAYER: NodeId = hash_node_id("pixel.opt.sample_layer");
 pub const SAMPLE_VISIBLE: NodeId = hash_node_id("pixel.opt.sample_visible");
 
 /// Os campos numéricos: id, faixa `(min, max, passo)`.
-pub const NUMBERS: [(NodeId, (f64, f64, f64)); 8] = [
+pub const NUMBERS: [(NodeId, (f64, f64, f64)); 7] = [
     (
         SIZE,
         (
@@ -109,7 +117,6 @@ pub const NUMBERS: [(NodeId, (f64, f64, f64)); 8] = [
         ),
     ),
     (ANGLE, (-180.0, 180.0, 1.0)), // LITERAL-PX-OK: faixa do valor no Aseprite (domínio do campo, não medida de desenho)
-    (CORNER, (0.0, 64.0, 1.0)), // LITERAL-PX-OK: faixa do valor no Aseprite (domínio do campo, não medida de desenho)
     (TOLERANCE, (0.0, 255.0, 1.0)), // LITERAL-PX-OK: byte de cor/opacidade 0..=255 (normalização sRGB)
     (SPRAY_WIDTH, (1.0, 64.0, 1.0)), // LITERAL-PX-OK: faixa do valor no Aseprite (domínio do campo, não medida de desenho)
     (SPRAY_SPEED, (1.0, 128.0, 1.0)), // LITERAL-PX-OK: faixa do valor no Aseprite (domínio do campo, não medida de desenho)

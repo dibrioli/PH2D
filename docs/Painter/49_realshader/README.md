@@ -48,11 +48,129 @@ Mapa UI → `settings.ini` (lido no ficheiro do dono depois de ele mexer nos sli
 | M7 | SoftShadows OFF (`B_base`) | fendas quase iguais (`(0,50,121)`); mediana mais clara `(98,197,249)`; brilhos >250: 3,7 % → 9,1 % | **o escuro das fendas vem do SHADER (M2), não da sombra**; a sombra escurece o meio-tom e apaga brilhos de cristas à sombra |
 | M8 | Environment 1 / Legacy vs 2 | 1 e Legacy: superfície mais lisa e vidrada, fendas mais claras (`(0,63,130)`, `(0,70,138)`); 2: micro-relevo nítido | o ambiente muda a **leitura do micro-relevo** — o 2 é o que o dono fotografou |
 | M9 | Bordas da espátula vertical (`A_borda`) | lado esquerdo aceso, lado direito escuro + sombra no papel à direita; fio de luz no topo da crista | luz de cima-esquerda; a crista tem *rim light* do ambiente |
-| M10 | Luz `84°` (`C_base`) vs `42°` (`A_base`) | `84°`: sombra no papel `12 · 0` (1 passo); fenda `(0,70,141)`, mediana `(94,191,245)` · `42°`: `39 · 14 · 5 · 1` | luz mais baixa ⇒ sombra mais LONGA e fendas mais fundas: é obstrução ao longo da direcção da luz sobre o campo de altura (marcha de raio), não um desfoque fixo. `15°` não capturado (a sessão falhou duas vezes) — fica para W0 |
+| M10 | Luz `84°` (`C_base`) vs `42°` (`A_base`) | `84°`: sombra no papel `12 · 0` (1 passo); fenda `(0,70,141)`, mediana `(94,191,245)` · `42°`: `39 · 14 · 5 · 1` | luz mais baixa ⇒ sombra mais LONGA e fendas mais fundas: é obstrução ao longo da direcção da luz sobre o campo de altura (marcha de raio), não um desfoque fixo. `15°`: **não existe no Rebelle** — o mínimo é 42° e 15° derruba o app (W0(b), §2b) |
 | M11 | `mat_oilShadows=0` (`H_base`) | estatística da *Knife Textured* idêntica à de `A_base` ao dígito | sem efeito visível com SoftShadows ligado (o slider da UI manda) |
 
 Capturas: [`capturas/`](capturas/) (`A_*` = mesma pintura com parâmetros ao vivo; `B..G` = reaberturas
 com `settings.ini` diferente; `*_textura.png`/`*_borda.png` = crops ampliados).
+
+## 2b. W0 — medir antes de limitar (26/10)
+
+### W0(a) — custo do passe na placa
+
+Sonda `crates/ph2d-render/examples/mede_oleo_real.rs` (shader de protótipo inline, fiel em CUSTO, não em
+aspecto): Sobel 3×3 + AO por horizonte (`N` direcções × `K` passos LINEARES de 1 px, `textureLoad` do
+texel mais próximo) + sombra macia (`K` passos na direcção da luz, penumbra `min(c·Δh/t)`); `N`, `K` e o
+modo são `override` do WGSL, as 16 variantes no MESMO processo, aquecidas, 7 rondas intercaladas de
+blocos de 10 dispatches, relógio = timestamps da placa. Campo: 5 cristas até 14 px + ruído, 0–20 px.
+
+```
+bash scripts/ph2d-run.sh env PH2D_GPU=1 __GL_SHADER_DISK_CACHE=0 cargo run --profile smoke -p ph2d-render --example mede_oleo_real
+bash scripts/ph2d-run.sh env VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.json VK_DRIVER_FILES=/usr/share/vulkan/icd.d/radeon_icd.json \
+  __EGL_VENDOR_LIBRARY_FILENAMES=/usr/share/glvnd/egl_vendor.d/50_mesa.json __GLX_VENDOR_LIBRARY_NAME=mesa \
+  cargo run --profile smoke -p ph2d-render --example mede_oleo_real
+```
+
+ms de placa por dispatch, **mínimo (mediana)**, tela inteira. RTX = `NVIDIA GeForce RTX 5060 Ti` (Vulkan,
+615.78.08) · Radeon = `RADV RAPHAEL_MENDOCINO` (iGPU do Ryzen 9 9950X, Mesa 26.2.5). loadavg 4,8→4,3
+(Radeon), ~6,0 (RTX; mínimo = mediana, a carga não mexeu no número).
+
+| variante | RTX 1080p | RTX 4K | Radeon 1080p | Radeon 4K |
+|---|---|---|---|---|
+| só cópia (mesmas bindings) | 0,025 (0,025) | 0,112 (0,113) | 0,255 (0,257) | 1,032 (1,039) |
+| `ImpastoLightPass` de hoje (4 lâmpadas) | 0,123 (0,123) | 0,462 (0,463) | 3,029 (3,040) | 12,211 (12,273) |
+| K=8 N=4 | 0,217 (0,217) | 0,841 (0,880) | 5,716 (5,729) | 22,736 (22,780) |
+| K=8 N=8 | 0,365 (0,395) | 1,427 (1,475) | 9,693 (9,698) | 38,702 (38,716) |
+| K=16 N=4 | 0,406 (0,424) | 1,635 (1,645) | 10,670 (10,675) | 42,727 (42,782) |
+| K=16 N=8 | 0,830 (0,874) | 3,384 (3,389) | 18,411 (18,419) | 74,032 (74,115) |
+| K=32 N=4 | 0,901 (0,927) | 3,671 (3,690) | 21,081 (21,104) | 82,962 (83,025) |
+| K=32 N=8 | 1,653 (1,657) | 6,585 (6,614) | 36,539 (36,559) | 144,886 (144,908) |
+
+**Leitura.** O custo é linear em `K·(N+1)` amostras e 4K ≈ 4× 1080p. Na RTX o caso mais caro (K=32 N=8,
+4K, tela INTEIRA) cabe em 6,6 ms — **o tecto de `K`/`N` não é da RTX**, é da Radeon (20–25× mais lenta:
+K=8 N=4 a 1080p já são 5,7 ms). ⇒ `K`, `N` não são constantes: são knobs de qualidade cujo tecto se
+escolhe por placa (recurso = ms de placa por quadro, só na região suja). Limite inferior: amostragem
+nearest; marcha bilinear/sub-pixel (se W3/W4 a pedirem) mede-se de novo.
+
+### W0(c) — escala de altura do Wet Paint
+
+Sonda `crates/ph2d-tool-painter/src/tool/paint/wetpaint_preset/medida_oleo_real.rs` (dois `#[ignore]` que
+imprimem): `bash scripts/ph2d-run.sh cargo test -p ph2d-tool-painter --profile smoke --lib medida_oleo_real_altura -- --ignored --nocapture`.
+As 8 pinceladas de `ferramentas/tracos.py` (1200×800, pressão 1, passo 3 px), 1 px de tela = 1 célula.
+
+⛔ **O Wet Paint não tem espátula.** Só 3 presets de fábrica têm relevo (todos com altura de fios 0,75):
+`Oil/Dabber/Dabber` (emboss 0,5), `Oil/Flat/Filbert` (0,4), `Oil/Bristle/Oil Bristle` (0,6). As facas
+foram pintadas com o Dabber. O Rebelle tem 10 (`Oil/Knife`: Smooth, Smooth 2, Smooth 3, Textured, Oily,
+Dry, Dry 2, Grainy, Soft, Stain) ⇒ **as espátulas do Wet Paint entram nesta linha** (plano, W0b).
+
+| pincelada (preset) | massa `sett+susp` p50/p90/p99/max | `altura` p50/p90/p99/max (px) | \|emboss\| p50/p99/max | tecto ±40 morde |
+|---|---|---|---|---|
+| faca H azul (Dabber) | 2589/3853/4642/6004 | 0,16/0,63/0,84/1,10 | 3,6/16,0/27,8 | 0 % |
+| faca V azul (Dabber) | 2591/3804/4575/6026 | 0,15/0,59/0,82/1,07 | 2,3/10,9/19,6 | 0 % |
+| oily azul (Filbert) | 2106/2901/3187/4518 | 0,32/0,88/1,12/1,22 | 1,4/8,4/12,8 | 0 % |
+| thick azul (Oil Bristle) | 3572/5575/7178/9226 | 0,15/0,84/1,09/1,23 | 5,1/17,8/24,4 | 0 % |
+| faca H branca / escura | ≈ a azul | ≈ a azul | ≈ 3,7/16,5/28,9 | 0 % |
+
+Perfil à direita da faca vertical (Dabber, y=240): a massa cai de ~4 000 a 0 em **~15 px sem degrau**; a
+`altura` dos fios é ASSINADA e pequena (±1,3 px) e passa ~6 px além da tinta. **Leitura:** hoje não há
+borda de espessura (o «degrau» que faz a sombra do Rebelle, M6/M9); a massa e os fios contribuem ~igual
+para o emboss, e o tecto ±40 nunca é atingido — o «teto de contraste» de §3 item 4 não é o tecto, é o
+ganho (`0,008`, `LUZ=20`).
+
+### W0(b) — sombra × altitude da luz no Rebelle
+
+Sessões `ferramentas/sessao.sh L<alt> raytracer_lightAltitude=<alt> raytracer_shadows=10` (ecrã real, RTX,
+autorização do dono 26/10), régua `ferramentas/regua_sombra.py` (escurecimento do papel à direita da
+espátula vertical, mediana de ~350 linhas, contra o papel a +100..+120 px; passos de 5 px de ECRÃ =
+4,3 px de tela). Capturas recortadas na folha: `capturas/L25|L35|L42|L60_base.jpg`.
+
+| altitude (`settings.ini`) | sombra no papel por passo de 5 px de ecrã | leitura |
+|---|---|---|
+| SoftShadows OFF (`B_base`) | `5,2 · 0` | o fio de borda (antialias), não é sombra — é o zero da régua |
+| 84° (`C_base`) | `19,6 · 1,8 · 0` | |
+| 60° (`L60`) | `33,3 · 7,6 · 0,8 · 0` | |
+| 42° (`L42`; `A_base` dá `85,5 · 20,8 · 7,6 · 2,1`) | `50,5 · 16,8 · 6,4 · 1,4 · 0` | |
+| 35° (`L35`) · 25° (`L25`) | **idêntico ao 42° à décima** | o Rebelle **trava em 42°** |
+| 15° (`L15`) | — | o Rebelle **morre** na 1.ª pincelada (4/4 corridas, log pára em `SET_RANDOM_SEED`) |
+
+⛔ **42° é o MÍNIMO do Rebelle**: o slider *Shadow Altitude* 10 (o que o dono usou) já é o fundo da
+escala; abaixo o valor é ignorado (25° e 35° saem iguais ao 42° na espátula; a tela só difere na
+cúpula, que não se reproduz entre aberturas — M11), e 15° derruba o app. **M10 a 15° não existe no
+oráculo**: abaixo de 42° a lei é NOSSA (física: comprimento ∝ `cot(alt)`), sem régua do Rebelle — vantagem
+declarada, como a direcção.
+
+**A espessura que a sombra implica.** O comprimento visível (até ~1 nível de cinza) é ~20 px de ecrã
+(≈17 px de tela) a 42° e ~12 px de ecrã (≈10 px de tela) a 60°; `h ≈ L·tan(alt)` dá **≈ 15–17 px de
+tela** nas duas, com `impasto_depth 8`. O decaimento a 42° é de ~4,4 px de tela por e-fold no 1.º passo e
+~2,8 no 2.º (mais duro na ponta: é o fim do degrau, não um desfoque). O nosso campo de hoje: a massa da
+faca (Dabber) tem p50 ≈ 2 600 e os fios ±1,3 px (W0(c)) ⇒ **ponto de partida da escala: ~0,006 px de
+relevo por unidade de massa a «profundidade 8»**, a ajustar pela régua M6 em W4 — não é constante final.
+
+### W0(b′) — a folha das 10 espátulas (`F42`)
+
+`ferramentas/tracos_facas.py` (uma pincelada horizontal de 450 px por espátula, tamanho 90, azul
+`(20,150,230)`, pressão 1, luz 42°, sombra 10) e régua `ferramentas/regua_facas.py capturas/F42_base.jpg`.
+Coluna da esquerda: Smooth, Smooth 2, Smooth 3, Textured, Oily; direita: Dry, Dry 2, Grainy, Soft, Stain.
+
+| espátula | largura (px tela) | cobertura % | fenda RGB | mediana RGB | razão fenda/mediana G, B | sombra por baixo /5 px de ecrã |
+|---|---|---|---|---|---|---|
+| Knife Smooth | 19 | 99 | (1,51,145) | (29,154,233) | 0,34 · 0,63 | 36 · 9,0 · 1,2 · 0 |
+| Knife Smooth 2 | 91 | 100 | (1,39,115) | (27,154,233) | 0,25 · 0,49 | 81 · 31 · 15 · 7,2 · 3,2 · 0,6 |
+| Knife Smooth 3 | 88 | 99 | (3,33,106) | (41,159,233) | 0,21 · 0,46 | 126 · 75 · 43 · 27 · 18 · 12 (orla clara por baixo, não só sombra) |
+| Knife Textured | 87 | 99 | (13,119,187) | (90,184,240) | 0,65 · 0,78 | 6,2 · 0 |
+| Knife Oily | 5 | 92 | (6,84,139) | (89,183,240) | 0,46 · 0,58 | 17,9 · 1,1 · 0 |
+| Knife Dry | 33 | 94 | (1,101,182) | (26,149,222) | 0,68 · 0,82 | 18,7 · 11 · 7,2 · 4,6 · 2,4 · 0,6 |
+| Knife Dry 2 | 32 | 88 | (22,147,224) | (66,176,242) | 0,84 · 0,93 | 0,8 · 0 |
+| Knife Grainy | 87 | 86 | (2,31,108) | (68,160,220) | 0,20 · 0,49 | 73 · 32 · 17 · 10 · 6,0 · 3,6 |
+| Knife Soft | 15 | 99 | (1,63,143) | (24,150,227) | 0,42 · 0,63 | 26 · 11,4 · 4,4 · 1,2 · 0 |
+| Knife Stain | 85 | 48 | (2,16,94) | (34,129,198) | 0,13 · 0,48 | 59 · 24 · 12,4 · 6,4 · 3,2 · 1,4 |
+
+**Leitura (para W0b).** No mesmo tamanho 90, a largura vai de **5 px (Oily) a 91 px (Smooth 2)**: o
+tamanho não é a largura da lâmina, cada preset tem a sua. A espessura também varia: Smooth 2/3, Grainy
+e Stain fazem sombra longa (tinta alta) e fenda funda (verde `0,13–0,25`, a lei M1/M2); Textured, Dry e
+Dry 2 quase sem sombra e com fenda rasa (`0,65–0,84`). ⚠️ A *Knife Textured* a tamanho 90 sai RASA
+(`0,65`), ao contrário da mesma faca a 120 nas capturas `A_*` (`0,24`, M1): a altura da tinta depende do
+tamanho — medir em W0b antes de copiar a forma (máscara da régua inclui a fenda escura; corrigida 26/10).
 
 ## 3. O que o PH2D tem hoje
 

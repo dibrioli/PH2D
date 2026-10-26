@@ -1,0 +1,5 @@
+out/
+settings.ini.dono
+t.jsonl
+t_facas.jsonl
+__pycache__/

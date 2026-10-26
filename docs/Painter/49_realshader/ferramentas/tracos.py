@@ -26,4 +26,5 @@ pts = [(320 + 30 * math.cos(t / 6) * (1 - t / 80), 660 + 30 * math.sin(t / 6) * 
 traco("Flat/Thick", AZ, pts, 70, 2)
 traco("Knife/Knife Textured", AZ, [(700, 560), (1150, 560)], 120)
 traco("Flat/Flat Oily", ES, [(850, 720), (1150, 720)], 100)
-for e in E: print(json.dumps(e))
+if __name__ == "__main__":
+    for e in E: print(json.dumps(e))

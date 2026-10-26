@@ -24,6 +24,8 @@ mod corpo_da_agua_tests;
 mod ferramentas;
 pub(in crate::tool::paint) mod json;
 #[cfg(test)]
+mod medida_oleo_real;
+#[cfg(test)]
 mod medida_preview;
 mod meios;
 mod miniatura;

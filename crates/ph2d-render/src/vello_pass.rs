@@ -110,7 +110,9 @@ impl VelloPass {
             return;
         }
         // Sob recusa de memória o tamanho fica por cumprir (ver `GameRt::ensure_size`, F35 §2).
-        let ((tex, view), falta) = ph2d_gpu::memoria::sob_escopo_de_memoria(&gpu.device, || create_intermediate(&gpu.device, size));
+        let ((tex, view), falta) = ph2d_gpu::memoria::sob_escopo_de_memoria(&gpu.device, || {
+            create_intermediate(&gpu.device, size)
+        });
         self.intermediate = tex;
         self.intermediate_view = view;
         self.last_size = if falta.is_some() { (0, 0) } else { size };

@@ -44,7 +44,9 @@ impl crate::App {
                 // título é o único sítio do app que responde *«que projeto é este?»*, e a resposta
                 // dela era «M5+M6+M7+M11+M12 demo» — verdade sobre o binário, e sobre nada que o
                 // artista tenha aberto.
-                ph2d_editor_core::aviso_da_placa::prefixo_do_titulo(ph2d_gpu::memoria::sem_memoria()),
+                ph2d_editor_core::aviso_da_placa::prefixo_do_titulo(
+                    ph2d_gpu::memoria::sem_memoria()
+                ),
                 crate::project_io::title_name(self.project_path.as_deref()),
                 if *atlas_is_real { "PNG" } else { "dummy" },
                 asset_db.len_assets(),

@@ -55,7 +55,8 @@ impl WorldRt {
             return;
         }
         // Sob recusa de memória o tamanho fica por cumprir (ver `GameRt::ensure_size`, F35 §2).
-        let ((t, b, s), falta) = ph2d_gpu::memoria::sob_escopo_de_memoria(&gpu.device, || create(&gpu.device, size));
+        let ((t, b, s), falta) =
+            ph2d_gpu::memoria::sob_escopo_de_memoria(&gpu.device, || create(&gpu.device, size));
         self.texture = t;
         self.blend_view = b;
         self.sample_view = s;

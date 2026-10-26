@@ -57,7 +57,9 @@ fn a_renderer_rebuilt_after_out_of_memory_still_draws_the_registered_textures() 
     let img = vp.register_texture(vermelha(&gpu));
     let mut cena = vello::Scene::new();
     cena.draw_image(
-        ImageBrush::new(img).with_quality(ImageQuality::Low).as_ref(),
+        ImageBrush::new(img)
+            .with_quality(ImageQuality::Low)
+            .as_ref(),
         Affine::translate((16.0, 16.0)),
     );
     let vermelho_em = |px: &[u8]| {
@@ -67,7 +69,9 @@ fn a_renderer_rebuilt_after_out_of_memory_still_draws_the_registered_textures() 
     let antes = vp.render_and_readback(&gpu, &cena, tela).expect("render");
     assert_eq!(vermelho_em(&antes), [255, 0, 0, 255], "antes da falta");
     vp.finge_falta_de_memoria();
-    let depois = vp.render_and_readback(&gpu, &cena, tela).expect("render refeito");
+    let depois = vp
+        .render_and_readback(&gpu, &cena, tela)
+        .expect("render refeito");
     assert!(
         vp.refazer_em.is_none() && vp.refeitos == 1,
         "a entrega depois da falta devia refazer o renderer UMA vez e sair sã ({} refeitos)",
@@ -100,7 +104,9 @@ fn sonda_da_placa_cheia() {
     let img = vp.register_texture(vermelha(&gpu));
     let mut cena = vello::Scene::new();
     cena.draw_image(
-        ImageBrush::new(img).with_quality(ImageQuality::Low).as_ref(),
+        ImageBrush::new(img)
+            .with_quality(ImageQuality::Low)
+            .as_ref(),
         Affine::translate((16.0, 16.0)),
     );
     // O lastro: blocos de 64 MiB até a placa recusar (no máximo 32 GiB).
@@ -138,10 +144,17 @@ fn sonda_da_placa_cheia() {
         "[f35-cheia] cheia: {} · repetida: {} · faltas anotadas: {} · depois de libertar: {} \
          (refeitos {}) em {:?}",
         if dito { "Err (dito)" } else { "Ok" },
-        if segunda.is_ok() { "Ok (calada)" } else { "Err" },
+        if segunda.is_ok() {
+            "Ok (calada)"
+        } else {
+            "Err"
+        },
         ph2d_gpu::memoria::VIGIA.faltas() - faltas0,
         match &depois {
-            Ok(px) => format!("pixel {:?}", &px[((30 * 64 + 30) * 4)..((30 * 64 + 30) * 4 + 4)]),
+            Ok(px) => format!(
+                "pixel {:?}",
+                &px[((30 * 64 + 30) * 4)..((30 * 64 + 30) * 4 + 4)]
+            ),
             Err(e) => e.clone(),
         },
         vp.refeitos,

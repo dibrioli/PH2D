@@ -5,8 +5,8 @@
 //! Estado do processo (um app, um dispositivo): «sem memória» = a última recusa foi há menos de
 //! [`JANELA_MS`]. Quem recupera deixa de recusar, e o estado volta sozinho.
 
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::OnceLock;
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::time::Instant;
 
 /// Quanto tempo depois da última recusa a placa ainda conta como «sem memória»: maior que a espera
@@ -104,7 +104,11 @@ pub fn sem_memoria_mudou() -> Option<bool> {
     if let Some(sem) = mudou {
         eprintln!(
             "[gpu-memoria] {} ({} recusas desde o arranque)",
-            if sem { "a placa ficou SEM memória" } else { "a placa voltou a ter memória" },
+            if sem {
+                "a placa ficou SEM memória"
+            } else {
+                "a placa voltou a ter memória"
+            },
             VIGIA.faltas()
         );
     }
@@ -151,7 +155,11 @@ mod tests {
         assert!(v.sem_memoria_em(2_600 + JANELA_MS - 2));
         assert_eq!(v.mudou_em(2_600 + JANELA_MS - 2), None);
         assert_eq!(v.geracao(), 0, "a geração só sobe no FIM do episódio");
-        assert_eq!(v.mudou_em(2_600 + JANELA_MS), Some(false), "o fim do episódio");
+        assert_eq!(
+            v.mudou_em(2_600 + JANELA_MS),
+            Some(false),
+            "o fim do episódio"
+        );
         assert_eq!(v.geracao(), 1);
         assert_eq!(v.mudou_em(2_600 + JANELA_MS + 1_000), None);
         assert_eq!(v.faltas(), 6);

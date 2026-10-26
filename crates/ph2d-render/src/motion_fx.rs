@@ -411,19 +411,21 @@ impl MotionFx {
             return;
         }
         // Sob recusa de memória o tamanho fica por cumprir (ver `GameRt::ensure_size`, F35 §2).
-        let (t, falta) = ph2d_gpu::memoria::sob_escopo_de_memoria(&gpu.device, || build_targets(
-            gpu,
-            &Shared {
-                bgl: &self.bgl,
-                sampler: &self.sampler,
-                u_prefilter: &self.u_prefilter,
-                u_up: &self.u_up,
-                u_composite: &self.u_composite,
-                lut: &self.lut,
-                dirt: &self.dirt_fallback.view,
-            },
-            size,
-        ));
+        let (t, falta) = ph2d_gpu::memoria::sob_escopo_de_memoria(&gpu.device, || {
+            build_targets(
+                gpu,
+                &Shared {
+                    bgl: &self.bgl,
+                    sampler: &self.sampler,
+                    u_prefilter: &self.u_prefilter,
+                    u_up: &self.u_up,
+                    u_composite: &self.u_composite,
+                    lut: &self.lut,
+                    dirt: &self.dirt_fallback.view,
+                },
+                size,
+            )
+        });
         self.rt = t.rt;
         self.mips = t.mips;
         self.u_down = t.u_down;

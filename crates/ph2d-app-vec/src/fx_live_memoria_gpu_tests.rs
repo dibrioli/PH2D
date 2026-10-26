@@ -80,7 +80,12 @@ impl Banco {
             &mut alvo,
         );
         self.principal
-            .render_to_intermediate(&self.gpu, alvo.inner(), tela, ph2d_vector::Color::TRANSPARENT)
+            .render_to_intermediate(
+                &self.gpu,
+                alvo.inner(),
+                tela,
+                ph2d_vector::Color::TRANSPARENT,
+            )
             .expect("render");
         let _ = self.gpu.device.poll(wgpu::PollType::wait_indefinitely());
     }
@@ -281,7 +286,9 @@ fn fx_memoria_sonda_do_preco() {
         pilha = pilha.min(t.elapsed().as_secs_f64() * 1e3);
         drop(s);
     }
-    eprintln!("[f35-preco] VelloPass::new {vello:.1} ms · FxStackPass::new {pilha:.1} ms (mínimo de 7)");
+    eprintln!(
+        "[f35-preco] VelloPass::new {vello:.1} ms · FxStackPass::new {pilha:.1} ms (mínimo de 7)"
+    );
 }
 
 /// **G16 (placa) — o fim de um episódio sem memória REFAZ as texturas do FX.** Uma textura criada
@@ -308,7 +315,10 @@ fn the_end_of_an_out_of_memory_episode_rebuilds_the_fx_textures() {
     let _ = v.mudou_em(10 * ph2d_gpu::memoria::JANELA_MS);
     assert_eq!(v.geracao(), g0 + 1, "o episódio devia ter acabado");
     b.quadro(abertura);
-    let depois = b.fx.textura_de(id).cloned().expect("textura da nuvem depois");
+    let depois =
+        b.fx.textura_de(id)
+            .cloned()
+            .expect("textura da nuvem depois");
     assert!(
         antes != depois && b.fx.images().len() == 1,
         "o fim do episódio não refez a textura do FX (a mesma: {})",

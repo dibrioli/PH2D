@@ -49,7 +49,8 @@ impl GameRt {
         }
         // Criada sob recusa de memória, é inválida: o tamanho fica por cumprir e o próximo
         // `ensure_size` (o fim do episódio, F35 §2) refá-la.
-        let ((tex, view), falta) = ph2d_gpu::memoria::sob_escopo_de_memoria(&gpu.device, || create(&gpu.device, size));
+        let ((tex, view), falta) =
+            ph2d_gpu::memoria::sob_escopo_de_memoria(&gpu.device, || create(&gpu.device, size));
         self.texture = tex;
         self.view = view;
         self.size = if falta.is_some() { (0, 0) } else { size };

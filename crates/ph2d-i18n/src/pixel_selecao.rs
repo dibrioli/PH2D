@@ -1,0 +1,93 @@
+//! **As palavras do PIXEL ART, P6** (ADR-0192): as ferramentas de selecção, a moldura solta e os
+//! menus Select, Edit e Sprite do painel PIXEL — os nomes do Aseprite.
+
+/// A tradução de uma chave daqui, ou `None`.
+pub(crate) fn tr(key: &str) -> Option<&'static str> {
+    Some(match key {
+        "pixel.tool.rect_marquee" => "Rectangular Marquee",
+        "pixel.tool.ellipse_marquee" => "Elliptical Marquee",
+        "pixel.tool.lasso" => "Lasso",
+        "pixel.tool.polygon_lasso" => "Polygonal Lasso",
+        "pixel.tool.magic_wand" => "Magic Wand",
+        "pixel.tool.move" => "Move",
+        "pixel.hint.marquee" => {
+            "{tool}: drag to select · a click deselects · Shift adds, Alt+Shift subtracts, Ctrl+Shift intersects"
+        }
+        "pixel.hint.lasso" => {
+            "{tool}: draw around the area to select · Shift adds, Alt+Shift subtracts"
+        }
+        "pixel.hint.polygon_lasso" => {
+            "{tool}: click each corner · click the last corner again or press Enter to close"
+        }
+        "pixel.hint.magic_wand" => {
+            "{tool}: click a color to select it · Tolerance in the Pixel panel"
+        }
+        "pixel.hint.move" => {
+            "{tool}: drag the selection to move its pixels · Enter applies, Esc cancels"
+        }
+        "panel.pixel.selection" => "Selection",
+        "panel.pixel.select.mode" => "Mode",
+        "panel.pixel.select.replace" => "Replace",
+        "panel.pixel.select.add" => "Add",
+        "panel.pixel.select.subtract" => "Subtract",
+        "panel.pixel.select.intersect" => "Intersect",
+        "panel.pixel.select.mods_hint" => {
+            "Shift adds · Alt+Shift subtracts · Ctrl+Shift intersects · Ctrl drags the pixels"
+        }
+        "panel.pixel.wand.tolerance" => "Tolerance",
+        "panel.pixel.resample" => "Rotation",
+        "panel.pixel.resample.fast" => "Fast",
+        "panel.pixel.resample.rotsprite" => "RotSprite",
+        "panel.pixel.transform" => "Transform",
+        "panel.pixel.transform_hint" => {
+            "Drag the handles to scale, outside a corner to rotate, Ctrl on a side to skew · Enter applies"
+        }
+        "panel.pixel.xform.x" => "X",
+        "panel.pixel.xform.y" => "Y",
+        "panel.pixel.xform.w" => "Width",
+        "panel.pixel.xform.h" => "Height",
+        "panel.pixel.xform.angle" => "Angle",
+        "panel.pixel.xform.skew" => "Skew",
+        "panel.pixel.select" => "Select",
+        "panel.pixel.select.all" => "All",
+        "panel.pixel.select.deselect" => "Deselect",
+        "panel.pixel.select.reselect" => "Reselect",
+        "panel.pixel.select.inverse" => "Inverse",
+        "panel.pixel.select.color_range" => "Color Range…",
+        "panel.pixel.select.expand" => "Expand…",
+        "panel.pixel.select.contract" => "Contract…",
+        "panel.pixel.select.border" => "Border…",
+        "panel.pixel.edit" => "Edit",
+        "panel.pixel.edit.copy" => "Copy",
+        "panel.pixel.edit.cut" => "Cut",
+        "panel.pixel.edit.copy_merged" => "Copy Merged",
+        "panel.pixel.edit.paste" => "Paste",
+        "panel.pixel.edit.clear" => "Delete",
+        "panel.pixel.edit.transform" => "Transform",
+        "panel.pixel.edit.flip_h" => "Flip H",
+        "panel.pixel.edit.flip_v" => "Flip V",
+        "panel.pixel.edit.rotate180" => "Rotate 180",
+        "panel.pixel.edit.rotate_cw" => "Rotate 90 CW",
+        "panel.pixel.edit.rotate_ccw" => "Rotate 90 CCW",
+        "panel.pixel.edit.shift_left" => "Shift Left",
+        "panel.pixel.edit.shift_right" => "Shift Right",
+        "panel.pixel.edit.shift_up" => "Shift Up",
+        "panel.pixel.edit.shift_down" => "Shift Down",
+        "panel.pixel.edit.apply" => "Apply",
+        "panel.pixel.edit.cancel" => "Cancel",
+        "panel.pixel.sprite.canvas_size" => "Canvas Size…",
+        "panel.pixel.sprite.sprite_size" => "Sprite Size…",
+        "panel.pixel.sprite.rotate180" => "Canvas 180",
+        "panel.pixel.sprite.rotate_cw" => "Canvas 90 CW",
+        "panel.pixel.sprite.rotate_ccw" => "Canvas 90 CCW",
+        "panel.pixel.sprite.flip_h" => "Flip Canvas H",
+        "panel.pixel.sprite.flip_v" => "Flip Canvas V",
+        "panel.pixel.sprite.crop" => "Crop",
+        "panel.pixel.sprite.trim" => "Trim",
+        "pixel.select.refuse.none" => "This needs a selection",
+        "pixel.select.refuse.nothing" => "Nothing to transform here",
+        "pixel.edit.refuse.clipboard" => "Nothing copied yet",
+        "pixel.sprite.refuse.trim" => "Nothing to trim",
+        _ => return None,
+    })
+}

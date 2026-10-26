@@ -184,12 +184,8 @@ impl PixelApp {
             u32::try_from(now.duration_since(t).as_millis()).unwrap_or(u32::MAX)
         });
         self.tick(dt);
-        let whole = ph2d_editor_core::zones::Rect::new(
-            0.0,
-            0.0,
-            window.width as f32,
-            window.height as f32,
-        );
+        let whole =
+            ph2d_editor_core::zones::Rect::new(0.0, 0.0, window.width as f32, window.height as f32);
         let (r, _) = ph2d_app_host::canvas_area::frame_target(hero, whole);
         let area = ph2d_render::camera_frame::Area {
             x: r.x,
@@ -231,7 +227,9 @@ pub fn dialog_open(store: &WidgetStore) -> bool {
     store.context_menu().is_some_and(|r| {
         matches!(
             r.kind,
-            ContextMenuKind::NewSpriteDialog | ContextMenuKind::PixelColorModeDialog
+            ContextMenuKind::NewSpriteDialog
+                | ContextMenuKind::PixelColorModeDialog
+                | ContextMenuKind::PixelEditDialog
         )
     })
 }

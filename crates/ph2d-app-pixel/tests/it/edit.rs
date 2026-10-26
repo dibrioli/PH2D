@@ -198,14 +198,41 @@ fn entering_draw_frames_the_sprite_in_the_free_area_and_follows_it_until_the_art
         let (ax, ay) = (f64::from(a.x + a.w * 0.5), f64::from(a.y + a.h * 0.5));
         (c.x - ax).abs() <= f64::from(z) && (c.y - ay).abs() <= f64::from(z)
     };
-    app.frame_in(&mut sim, &mut cam, WINDOW, PPM, Some(bits), whole, spawn_root);
-    app.frame_in(&mut sim, &mut cam, WINDOW, PPM, Some(bits), docked, spawn_root);
+    app.frame_in(
+        &mut sim,
+        &mut cam,
+        WINDOW,
+        PPM,
+        Some(bits),
+        whole,
+        spawn_root,
+    );
+    app.frame_in(
+        &mut sim,
+        &mut cam,
+        WINDOW,
+        PPM,
+        Some(bits),
+        docked,
+        spawn_root,
+    );
     let (c, z) = on_screen(&app, &sim, &cam, bits);
-    assert!(near(c, docked, z), "centro {c:?} fora da área livre {docked:?}");
+    assert!(
+        near(c, docked, z),
+        "centro {c:?} fora da área livre {docked:?}"
+    );
     assert_eq!(z, ph2d_pixel_render::zoom::fit(32, 32, 252.0, 324.0));
     cam.center[0] += 3.0;
     let moved = cam.view();
-    app.frame_in(&mut sim, &mut cam, WINDOW, PPM, Some(bits), whole, spawn_root);
+    app.frame_in(
+        &mut sim,
+        &mut cam,
+        WINDOW,
+        PPM,
+        Some(bits),
+        whole,
+        spawn_root,
+    );
     assert_eq!(cam.view(), moved, "a vista do artista não se refaz");
 }
 
@@ -588,7 +615,7 @@ fn smoke_1_stages_a_face_in_four_undo_steps_and_asks_for_edit() {
         Some((bits, ObjectMode::Draw))
     );
     assert!(
-        !ph2d_app_pixel::smoke::stage(&mut app, &mut sim, 9, spawn_root),
+        !ph2d_app_pixel::smoke::stage(&mut app, &mut sim, 10, spawn_root),
         "nível sem cena"
     );
 }

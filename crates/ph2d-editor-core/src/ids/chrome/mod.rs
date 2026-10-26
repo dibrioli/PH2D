@@ -38,6 +38,8 @@ mod painter_fill;
 mod physics;
 /// Os ids do Pixel Art no chrome: o painel PIXEL e o diálogo New Sprite (ADR-0192).
 mod pixel;
+/// Os quatro diálogos do Pixel P6 (Color Range, Modify, Canvas Size, Sprite Size).
+mod pixel_edit;
 /// **Os ids da BARRA DO MODO de edição de receita** — chrome do canvas, não de um painel.
 mod prefab;
 mod rail;
@@ -70,6 +72,7 @@ pub use painter::*;
 pub use painter_fill::*;
 pub use physics::*;
 pub use pixel::*;
+pub use pixel_edit::*;
 pub use prefab::*;
 pub use rail::*;
 pub use rail_painter::*;

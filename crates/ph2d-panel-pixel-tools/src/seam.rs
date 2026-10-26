@@ -85,6 +85,7 @@ pub(crate) fn populate(store: &mut WidgetStore) {
         },
     );
     store.set_number_range(ids::PALETTE_SIZE, 1.0, n, 1.0);
+    crate::seam_selecao::populate(store);
     // As áreas do seletor de cor: o clique lê a posição do ponteiro contra o rect pintado.
     for (id, _) in ids::SELECTOR_AREAS {
         store.register(id, InteractiveState::Plain);
@@ -209,6 +210,7 @@ pub(crate) fn numero(o: &PixelOptions, id: NodeId) -> f64 {
         ids::TOLERANCE => f64::from(o.tolerance),
         ids::SPRAY_WIDTH => f64::from(o.spray_width),
         ids::REPLACE_TOLERANCE => f64::from(o.replace_tolerance),
+        ids::WAND_TOLERANCE => f64::from(o.wand_tolerance),
         _ => f64::from(o.spray_speed),
     }
 }
@@ -239,6 +241,7 @@ fn com_numero(mut o: PixelOptions, id: NodeId, v: f64) -> PixelOptions {
         ids::SPRAY_WIDTH => o.spray_width = u,
         ids::SPRAY_SPEED => o.spray_speed = u,
         ids::REPLACE_TOLERANCE => o.replace_tolerance = u8::try_from(u).unwrap_or(u8::MAX),
+        ids::WAND_TOLERANCE => o.wand_tolerance = u8::try_from(u).unwrap_or(u8::MAX),
         _ => {}
     }
     o
@@ -249,6 +252,7 @@ pub(crate) fn caixa(o: &mut PixelOptions, id: NodeId) -> Option<&mut bool> {
     Some(match id {
         ids::PIXEL_PERFECT => &mut o.pixel_perfect,
         ids::CONTIGUOUS => &mut o.contiguous,
+        ids::WAND_CONTIGUOUS => &mut o.wand_contiguous,
         ids::SYM_H => &mut o.sym_h,
         ids::SYM_V => &mut o.sym_v,
         ids::SYM_D1 => &mut o.sym_d1,
@@ -274,7 +278,9 @@ fn com_segmento(mut o: PixelOptions, id: NodeId) -> Option<PixelOptions> {
         ids::CONNECT_8 => o.eight = true,
         ids::SAMPLE_LAYER => o.sample_visible = false,
         ids::SAMPLE_VISIBLE => o.sample_visible = true,
-        _ => return None,
+        ids::WAND_CONNECT_4 => o.wand_eight = false,
+        ids::WAND_CONNECT_8 => o.wand_eight = true,
+        _ => return crate::seam_selecao::com_segmento(o, id),
     }
     Some(o)
 }
@@ -316,91 +322,6 @@ fn larga(dragged: NodeId, drop: PanelRowDrop) -> Option<PixelRequest> {
     })
 }
 
-/// **Um clique numa área do seletor**: a posição do ponteiro no rect pintado dá a cor (esquerdo =
-/// frente, direito = fundo, que guarda o alfa dele).
-/// **O arrasto no seletor** (smoke do dono 25/10: «os sliders da roda não arrastam, apenas
-/// clicam»): com o botão premido sobre o quadro ou uma barra, a cada quadro em que o ponteiro se
-/// moveu a cor de frente segue-o — a mesma conta do clique, fora do rect presa à borda.
-pub(crate) fn arrasta_seletor(
-    st: &mut crate::PixelToolsPanelState,
-    host: &mut dyn PanelHostInternal,
-) {
-    let activo = host.store().active_id();
-    let Some(id) = activo.filter(|a| ids::SELECTOR_AREAS.iter().any(|(p, _)| p == a)) else {
-        st.seletor.arrasto = None;
-        return;
-    };
-    let ponto = host.store().last_pointer();
-    if ponto.is_none() || ponto == st.seletor.arrasto {
-        return;
-    }
-    st.seletor.arrasto = ponto;
-    if let Some(r) = escolhe(st, host, id) {
-        host.bus_mut().push(EditorAction::Pixel(r));
-    }
-}
-
-/// Quantas cores mandadas o seletor reconhece como suas (o atraso do instantâneo é de um quadro;
-/// a folga cobre um arrasto rápido com vários quadros entre o pedido e o instantâneo).
-const MANDADAS: usize = 8;
-
-fn escolhe(
-    st: &mut crate::PixelToolsPanelState,
-    host: &dyn PanelHostInternal,
-    id: NodeId,
-) -> Option<PixelRequest> {
-    use crate::seletor;
-    let (k, fundo) = ids::SELECTOR_AREAS
-        .iter()
-        .enumerate()
-        .find_map(|(k, (a, b))| {
-            if *a == id {
-                Some((k, false))
-            } else if *b == id {
-                Some((k, true))
-            } else {
-                None
-            }
-        })?;
-    let r = st.seletor.rects[k]?;
-    let [px, py] = host.store().last_pointer()?;
-    if r.w <= 0.0 || r.h <= 0.0 {
-        return None;
-    }
-    let u = f64::from((px - r.x) / r.w).clamp(0.0, 1.0);
-    let v = f64::from((py - r.y) / r.h).clamp(0.0, 1.0);
-    let (modo, fg, bg, editing) = with_current(|i| (i.options.selector, i.fg, i.bg, i.editing));
-    if !editing {
-        return None;
-    }
-    let p = st.seletor.params;
-    let [r0, g0, b0, a0] = fg;
-    let (rgb, alfa, p) = match k {
-        0 => {
-            let p = seletor::no_quadro(modo, p, u, v);
-            (seletor::cor(modo, p), a0, p)
-        }
-        1 => {
-            let p = seletor::na_barra(modo, p, u);
-            (seletor::cor(modo, p), a0, p)
-        }
-        _ => ([r0, g0, b0], seletor::alfa(u), p),
-    };
-    let [r, g, b] = rgb;
-    if fundo {
-        let a = if k == 2 { alfa } else { bg[3] };
-        return Some(PixelRequest::Bg([r, g, b, a]));
-    }
-    let c = [r, g, b, alfa];
-    st.seletor.params = p;
-    st.seletor.de = Some((modo, c));
-    let m = &mut st.seletor.mandadas;
-    m.push(c);
-    let excesso = m.len().saturating_sub(MANDADAS);
-    m.drain(..excesso);
-    Some(PixelRequest::Fg(c))
-}
-
 /// O pedido de um clique, se o id é deste painel e há sprite em edição.
 fn pedido(id: ph2d_a11y::NodeId, how: PixelSelect) -> Option<PixelRequest> {
     with_current(|info| {
@@ -422,6 +343,9 @@ fn pedido(id: ph2d_a11y::NodeId, how: PixelSelect) -> Option<PixelRequest> {
         if let Some((_, r, _)) = ids::ACTIONS
             .iter()
             .chain(&ids::PRESET_ACTIONS)
+            .chain(&ids::SELECT_ACTIONS)
+            .chain(&ids::EDIT_ACTIONS)
+            .chain(&ids::SPRITE_ACTIONS)
             .find(|(b, ..)| *b == id)
         {
             return Some(r.clone());
@@ -534,7 +458,7 @@ pub(crate) fn apply_event(
                 .iter()
                 .any(|(a, b)| *a == id || *b == id) =>
         {
-            let pedido = escolhe(st, host, id);
+            let pedido = crate::seam_seletor::escolhe(st, host, id);
             return empurra(host, pedido);
         }
         WidgetEvent::Click(id) if pedido_camada(id).is_some() => {
@@ -559,6 +483,10 @@ pub(crate) fn apply_event(
                     .then(|| PixelRequest::Options(com_numero(info.options, id, v)))
             });
             return empurra(host, pedido);
+        }
+        WidgetEvent::ValueChanged(id) if ids::XFORM_FIELDS.iter().any(|(_, n, _)| *n == id) => {
+            let v = host.store().number_value(id);
+            return empurra(host, crate::seam_selecao::campo_da_moldura(id, v));
         }
         WidgetEvent::ValueChanged(id) if id == ids::PALETTE_SIZE => {
             let v = host.store().number_value(id);
@@ -598,7 +526,10 @@ pub(crate) fn apply_event(
     empurra(host, pedido(id, how))
 }
 
-fn empurra(host: &mut dyn PanelHostInternal, pedido: Option<PixelRequest>) -> EventOutcome {
+pub(crate) fn empurra(
+    host: &mut dyn PanelHostInternal,
+    pedido: Option<PixelRequest>,
+) -> EventOutcome {
     match pedido {
         Some(r) => {
             host.bus_mut().push(EditorAction::Pixel(r));

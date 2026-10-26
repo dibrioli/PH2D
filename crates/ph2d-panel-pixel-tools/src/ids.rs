@@ -11,6 +11,10 @@ use ph2d_editor_core::pixel_panel::{
 };
 use ph2d_tool_registry::{hash_node_id, hash_node_id_runtime};
 
+#[path = "ids_selecao.rs"]
+mod selecao;
+pub use selecao::*;
+
 /// O `×` do cabeçalho.
 pub const PIXEL_CLOSE: NodeId = hash_node_id("pixel.close");
 /// As amostras de frente e de fundo: o chrome conhece-as (a família lê o seletor por elas).
@@ -19,7 +23,22 @@ pub use ph2d_editor_core::ids::{PIXEL_BG, PIXEL_FG};
 pub const PIXEL_SWAP: NodeId = hash_node_id("pixel.swap");
 
 /// As ferramentas, na ordem da coluna: pintar, registar e despachar leem a MESMA tabela.
-pub const TOOLS: [(PixelTool, NodeId); 14] = [
+pub const TOOLS: [(PixelTool, NodeId); 20] = [
+    (
+        PixelTool::RectMarquee,
+        hash_node_id("pixel.tool.rect_marquee"),
+    ),
+    (
+        PixelTool::EllipseMarquee,
+        hash_node_id("pixel.tool.ellipse_marquee"),
+    ),
+    (PixelTool::Lasso, hash_node_id("pixel.tool.lasso")),
+    (
+        PixelTool::PolygonLasso,
+        hash_node_id("pixel.tool.polygon_lasso"),
+    ),
+    (PixelTool::MagicWand, hash_node_id("pixel.tool.magic_wand")),
+    (PixelTool::Move, hash_node_id("pixel.tool.move")),
     (PixelTool::Pencil, hash_node_id("pixel.tool.pencil")),
     (PixelTool::Spray, hash_node_id("pixel.tool.spray")),
     (PixelTool::Eraser, hash_node_id("pixel.tool.eraser")),
@@ -80,7 +99,7 @@ pub const SAMPLE_LAYER: NodeId = hash_node_id("pixel.opt.sample_layer");
 pub const SAMPLE_VISIBLE: NodeId = hash_node_id("pixel.opt.sample_visible");
 
 /// Os campos numéricos: id, faixa `(min, max, passo)`.
-pub const NUMBERS: [(NodeId, (f64, f64, f64)); 7] = [
+pub const NUMBERS: [(NodeId, (f64, f64, f64)); 8] = [
     (
         SIZE,
         (
@@ -95,10 +114,12 @@ pub const NUMBERS: [(NodeId, (f64, f64, f64)); 7] = [
     (SPRAY_WIDTH, (1.0, 64.0, 1.0)), // LITERAL-PX-OK: faixa do valor no Aseprite (domínio do campo, não medida de desenho)
     (SPRAY_SPEED, (1.0, 128.0, 1.0)), // LITERAL-PX-OK: faixa do valor no Aseprite (domínio do campo, não medida de desenho)
     (REPLACE_TOLERANCE, (0.0, 255.0, 1.0)), // LITERAL-PX-OK: byte de cor/opacidade 0..=255 (normalização sRGB)
+    (WAND_TOLERANCE, (0.0, 255.0, 1.0)), // LITERAL-PX-OK: byte de cor/opacidade 0..=255 (normalização sRGB)
 ];
 
 /// As caixas de marcar.
-pub const CHECKS: [NodeId; 8] = [
+pub const CHECKS: [NodeId; 9] = [
+    WAND_CONTIGUOUS,
     PIXEL_PERFECT,
     CONTIGUOUS,
     SYM_H,
@@ -110,7 +131,14 @@ pub const CHECKS: [NodeId; 8] = [
 ];
 
 /// Os segmentos que não são a forma.
-pub const SEGMENTS: [NodeId; 4] = [CONNECT_4, CONNECT_8, SAMPLE_LAYER, SAMPLE_VISIBLE];
+pub const SEGMENTS: [NodeId; 6] = [
+    CONNECT_4,
+    CONNECT_8,
+    SAMPLE_LAYER,
+    SAMPLE_VISIBLE,
+    WAND_CONNECT_4,
+    WAND_CONNECT_8,
+];
 
 /// **A célula `i` da paleta** — o clique esquerdo (cor de frente). A população é a paleta, sem tecto.
 #[must_use]
@@ -245,7 +273,7 @@ pub fn blend_option_id(i: usize) -> NodeId {
 }
 
 /// Os botões do menu Layer: o id, a acção e o rótulo, nas filas em que se pintam.
-pub const LAYER_ACTIONS: [(NodeId, PixelLayerAction, &str); 16] = [
+pub const LAYER_ACTIONS: [(NodeId, PixelLayerAction, &str); 13] = [
     (
         hash_node_id("pixel.layer.new"),
         PixelLayerAction::NewLayer,
@@ -302,11 +330,6 @@ pub const LAYER_ACTIONS: [(NodeId, PixelLayerAction, &str); 16] = [
         "panel.pixel.layer.via_cut",
     ),
     (
-        hash_node_id("pixel.layer.copy"),
-        PixelLayerAction::Copy,
-        "panel.pixel.layer.copy",
-    ),
-    (
         hash_node_id("pixel.layer.paste"),
         PixelLayerAction::PasteAsLayer,
         "panel.pixel.layer.paste",
@@ -315,16 +338,6 @@ pub const LAYER_ACTIONS: [(NodeId, PixelLayerAction, &str); 16] = [
         hash_node_id("pixel.layer.paste_reference"),
         PixelLayerAction::PasteAsReference,
         "panel.pixel.layer.paste_reference",
-    ),
-    (
-        hash_node_id("pixel.layer.select_all"),
-        PixelLayerAction::SelectAll,
-        "panel.pixel.layer.select_all",
-    ),
-    (
-        hash_node_id("pixel.layer.deselect"),
-        PixelLayerAction::Deselect,
-        "panel.pixel.layer.deselect",
     ),
 ];
 

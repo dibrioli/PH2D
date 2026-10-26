@@ -42,21 +42,13 @@ impl Corpo<'_> {
         y = self.botoes(&fila(4, 5), y);
         y = self.botoes(&fila(6, 7), y);
         y = self.botoes(&[(a[8].0, a[8].2)], y);
-        // A cópia precisa de selecção (o Aseprite desliga Copy e via Copy/Cut sem ela): sem selecção
-        // os botões não se pintam (nenhum controlo morto).
-        let sel = if info.has_selection {
-            "panel.pixel.layer.selection_all"
-        } else {
-            "panel.pixel.layer.selection_none"
-        };
-        y = self.linha(tr(sel), ColorToken::Text3, y);
-        y = self.botoes(&fila(14, 15), y);
+        // *via Copy/Cut* pedem selecção (o Aseprite desliga-os sem ela): sem selecção os botões não
+        // se pintam (nenhum controlo morto). O Copy e o Select vivem nas secções Edit e Select.
         if info.has_selection {
             y = self.botoes(&fila(9, 10), y);
-            y = self.botoes(&[(a[11].0, a[11].2)], y);
         }
         if info.has_clip {
-            y = self.botoes(&fila(12, 13), y);
+            y = self.botoes(&fila(11, 12), y);
         }
         y
     }

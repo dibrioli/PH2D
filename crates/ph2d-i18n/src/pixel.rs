@@ -231,10 +231,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "pixel.layer.refuse.selection" => {
             "Select first (Select All, Ctrl+A): copying needs a selection"
         }
-        "panel.pixel.layer.select_all" => "Select All",
-        "panel.pixel.layer.deselect" => "Deselect",
-        "panel.pixel.layer.selection_all" => "Selection: the whole sprite",
-        "panel.pixel.layer.selection_none" => "No selection",
         "panel.pixel.layers" => "Layers",
         "panel.pixel.layer.properties" => "Active layer",
         "panel.pixel.layer.opacity" => "Opacity",
@@ -255,7 +251,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.pixel.layer.flatten_visible" => "Flatten Visible",
         "panel.pixel.layer.via_copy" => "Layer via Copy",
         "panel.pixel.layer.via_cut" => "Layer via Cut",
-        "panel.pixel.layer.copy" => "Copy",
         "panel.pixel.layer.paste" => "Paste as New Layer",
         "panel.pixel.layer.paste_reference" => "Paste as Reference",
         "panel.pixel.layer.group_mode" => {

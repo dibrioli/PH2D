@@ -58,6 +58,9 @@ impl PixelApp {
         }
         self.reconcile(sim);
         if editing.is_none() {
+            // Sair do Draw assenta as células levantadas (o Aseprite larga-as antes de mudar).
+            self.assenta();
+            self.laco = None;
             self.gesture = None;
             self.hover = None;
             self.space = false;
@@ -167,7 +170,16 @@ impl PixelApp {
             return;
         };
         let center = (window.width as f32 * 0.5, window.height as f32 * 0.5);
-        set_zoom(world, bits, doc, camera, window, ppm, zoom::nearest(px_per_cell(m)), center);
+        set_zoom(
+            world,
+            bits,
+            doc,
+            camera,
+            window,
+            ppm,
+            zoom::nearest(px_per_cell(m)),
+            center,
+        );
     }
 
     /// O *Fit Screen*: o sprite no centro de `area` (px da janela) com o maior degrau inteiro que
@@ -190,7 +202,10 @@ impl PixelApp {
             camera.center = [tr.translation.x, tr.translation.y];
         }
         let mid = (area.x + area.w * 0.5, area.y + area.h * 0.5);
-        let here = camera.screen_to_world((window.width as f32 * 0.5, window.height as f32 * 0.5), window);
+        let here = camera.screen_to_world(
+            (window.width as f32 * 0.5, window.height as f32 * 0.5),
+            window,
+        );
         let there = camera.screen_to_world(mid, window);
         camera.center[0] += here[0] - there[0];
         camera.center[1] += here[1] - there[1];

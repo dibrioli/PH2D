@@ -176,6 +176,9 @@ pub fn paint_context_menu_overlay(
         ContextMenuKind::PixelColorModeDialog => {
             Some(super::context_menu_dialogs::paint_color_mode_dialog)
         }
+        ContextMenuKind::PixelEditDialog => {
+            Some(super::context_menu_dialogs::paint_pixel_edit_dialog)
+        }
         _ => None,
     };
     if let Some(paint_dialog) = dialog {

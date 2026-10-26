@@ -76,7 +76,7 @@ fn every_aseprite_shortcut_picks_its_tool_and_the_same_key_toggles_the_filled_on
         key(&mut app, &sim, bits, code, shift);
         assert_eq!(app.tool, want, "{code:?} shift={shift}");
     }
-    assert_eq!(Tool::ALL.len(), 14);
+    assert_eq!(Tool::ALL.len(), 20, "14 de desenho + 6 de selecção (P6)");
     assert_eq!(PIXEL_MAX_BRUSH, ph2d_pixel_core::brush::MAX_BRUSH);
 }
 

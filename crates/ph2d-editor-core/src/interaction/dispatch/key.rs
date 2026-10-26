@@ -461,7 +461,7 @@ pub fn graph_key_for(keycode: u32, cmd: bool, alt: bool) -> Option<GraphKey> {
     })
 }
 
-/// **Os diálogos New Sprite e Color Mode têm o Enter e o Esc** (Aseprite): Enter = OK — o campo que se estava a
+/// **Os diálogos New Sprite, Color Mode e os quatro do Pixel P6 têm o Enter e o Esc** (Aseprite): Enter = OK — o campo que se estava a
 /// escrever entra primeiro —, Esc = Cancel, esteja o foco onde estiver dentro dele.
 fn new_sprite_dialog_key<'a>(
     store: &mut WidgetStore,
@@ -470,7 +470,10 @@ fn new_sprite_dialog_key<'a>(
 ) -> bool {
     use crate::interaction::ContextMenuKind as K;
     let kind = store.context_menu().map(|r| r.kind);
-    let open = matches!(kind, Some(K::NewSpriteDialog | K::PixelColorModeDialog));
+    let open = matches!(
+        kind,
+        Some(K::NewSpriteDialog | K::PixelColorModeDialog | K::PixelEditDialog)
+    );
     if !open || !matches!(keycode, KEY_ENTER | KEY_ESCAPE) {
         return false;
     }
@@ -479,6 +482,10 @@ fn new_sprite_dialog_key<'a>(
             && matches!(store.get(id), Some(InteractiveState::NumberInput { .. }))
         {
             commit_number_buffer(store, id, events, true);
+            // Os irmãos do campo (bordas, %, Lock Ratio) refazem-se ANTES do OK, que lê já.
+            if kind == Some(K::PixelEditDialog) {
+                store.pixel_edit_value_changed(id);
+            }
         }
         reset_focused_visual_state(store, id);
         store.set_focus(None);
@@ -486,6 +493,8 @@ fn new_sprite_dialog_key<'a>(
     }
     if keycode == KEY_ENTER && kind == Some(K::PixelColorModeDialog) {
         store.request_color_mode();
+    } else if keycode == KEY_ENTER && kind == Some(K::PixelEditDialog) {
+        store.request_pixel_edit();
     } else if keycode == KEY_ENTER {
         store.request_new_sprite();
     } else {

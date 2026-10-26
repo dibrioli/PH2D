@@ -71,6 +71,7 @@ mod onion_modal;
 mod palette_rename;
 mod physics_toggle;
 mod pixel_color_mode;
+mod pixel_edit;
 mod pixel_toggle;
 mod prefab_bar;
 mod radius;
@@ -190,6 +191,7 @@ pub fn dispatch_all(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         || sheet_size::apply(hero, event)
         || new_sprite::apply(hero, event)
         || pixel_color_mode::apply(hero, event)
+        || pixel_edit::apply(hero, event)
         || fill_modal::apply(hero, event)
         || onion_modal::apply(hero, event)
         || input_map::apply(hero, event)

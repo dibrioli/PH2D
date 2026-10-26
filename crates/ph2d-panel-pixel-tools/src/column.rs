@@ -14,6 +14,12 @@ use ph2d_i18n::{tr, tr_with};
 #[must_use]
 pub const fn icon(t: PixelTool) -> IconId {
     match t {
+        PixelTool::RectMarquee => IconId::MarqueeBox,
+        PixelTool::EllipseMarquee => IconId::Circle,
+        PixelTool::Lasso => IconId::MarqueeLasso,
+        PixelTool::PolygonLasso => IconId::VectorPen,
+        PixelTool::MagicWand => IconId::Mask,
+        PixelTool::Move => IconId::Transform,
         PixelTool::Pencil => IconId::VectorPencil,
         PixelTool::Spray => IconId::PixelSpray,
         PixelTool::Eraser => IconId::Erase,
@@ -61,7 +67,8 @@ pub fn column(info: &PixelPanelInfo) -> Vec<Vec<BarButton>> {
     if !info.editing {
         return Vec::new();
     }
-    // Três grupos, como a barra do Aseprite: o que pinta à mão, as formas, a vista.
+    // Quatro grupos, como a barra do Aseprite: a selecção (e o Move), o que pinta à mão, as
+    // formas, a vista.
     let grupo = |de: PixelTool, ate: PixelTool| {
         ids::TOOLS
             .iter()
@@ -76,9 +83,10 @@ pub fn column(info: &PixelPanelInfo) -> Vec<Vec<BarButton>> {
             })
             .collect::<Vec<_>>()
     };
+    let selecao = grupo(PixelTool::RectMarquee, PixelTool::Pencil);
     let mao = grupo(PixelTool::Pencil, PixelTool::Line);
     let formas = grupo(PixelTool::Line, PixelTool::Hand);
-    let vista = grupo(PixelTool::Hand, PixelTool::Pencil);
+    let vista = grupo(PixelTool::Hand, PixelTool::RectMarquee);
     let cores = vec![
         amostra(ids::PIXEL_FG, info.fg, "panel.pixel.fg"),
         amostra(ids::PIXEL_BG, info.bg, "panel.pixel.bg"),
@@ -90,7 +98,7 @@ pub fn column(info: &PixelPanelInfo) -> Vec<Vec<BarButton>> {
             family: BarFamily::Neutral,
         },
     ];
-    vec![mao, formas, vista, cores]
+    vec![selecao, mao, formas, vista, cores]
 }
 
 /// ⑤ A dica do rodapé: a ferramenta na mão, o que o arrasto faz.
@@ -102,6 +110,11 @@ pub fn hint(info: &PixelPanelInfo) -> String {
         && info.tool != PixelTool::Eraser;
     let key = match info.tool {
         _ if shading => "pixel.hint.shading",
+        PixelTool::RectMarquee | PixelTool::EllipseMarquee => "pixel.hint.marquee",
+        PixelTool::Lasso => "pixel.hint.lasso",
+        PixelTool::PolygonLasso => "pixel.hint.polygon_lasso",
+        PixelTool::MagicWand => "pixel.hint.magic_wand",
+        PixelTool::Move => "pixel.hint.move",
         PixelTool::Pencil => "pixel.hint.pencil",
         PixelTool::Spray => "pixel.hint.spray",
         PixelTool::Eraser => "pixel.hint.eraser",

@@ -2,13 +2,13 @@
 //! teclado (os atalhos do Aseprite). Cada função devolve `true` quando CONSUMIU o evento — a shell
 //! não o passa a mais ninguém.
 
+use ph2d_editor_core::pixel_panel::{PixelFrameAction, PixelLayerAction, PixelRequest};
 use ph2d_host::WindowSize;
 use ph2d_pixel_core::raster::Cell;
 use ph2d_pixel_core::{Paint, Sample, Stroke, pick};
 use ph2d_pixel_render::{cell_at, image_to_world, px_per_cell};
 use ph2d_render::Camera2d;
 use ph2d_vector::{Affine, Point};
-use ph2d_editor_core::pixel_panel::{PixelFrameAction, PixelLayerAction, PixelRequest};
 use winit::keyboard::KeyCode;
 
 use crate::gesture::{Kind, Mods};
@@ -135,7 +135,18 @@ pub fn press(app: &mut PixelApp, c: &Canvas<'_>, p: (f32, f32), button: Button, 
     let Some((x, y)) = cell(app, c, bits, key, p) else {
         return Press::Done;
     };
-    if continue_pending(app, key, (x, y)) {
+    // P6: a moldura solta apanha o premir primeiro; Move (ou Ctrl com uma de selecção) levanta.
+    if let Some(r) = crate::solta::press(app, c, bits, key, p, m) {
+        return r;
+    }
+    let sel = app.tool.selects();
+    if app.tool == Tool::Move || (sel && m.ctrl && !m.shift) {
+        return crate::solta::press_move(app, c, bits, key, p, (x, y));
+    }
+    if sel && !(m.alt && !m.shift) && crate::selecao::press(app, key, (x, y), m) {
+        return Press::Done;
+    }
+    if crate::gesture::continue_pending(app, key, (x, y)) {
         return Press::Done;
     }
     let tool = if m.alt { Tool::Eyedropper } else { app.tool };
@@ -180,6 +191,13 @@ pub fn press(app: &mut PixelApp, c: &Canvas<'_>, p: (f32, f32), button: Button, 
     let at = (x, y);
     let (stroke, kind) = match tool {
         Tool::Hand => return Press::Pan,
+        // A selecção e o Move já responderam acima (o Alt sozinho com elas é o conta-gotas).
+        Tool::RectMarquee
+        | Tool::EllipseMarquee
+        | Tool::Lasso
+        | Tool::PolygonLasso
+        | Tool::MagicWand
+        | Tool::Move => return Press::Done,
         Tool::Eyedropper => {
             if let Some(v) = pick(s, frame, x, y, Sample::AllLayers) {
                 let rgba = s.rgba_of_value(v);
@@ -270,51 +288,6 @@ pub fn press(app: &mut PixelApp, c: &Canvas<'_>, p: (f32, f32), button: Button, 
     Press::Done
 }
 
-/// Um premir sobre um gesto que continua com o botão solto: a curva fixa o controlo (o largar
-/// acaba-a); o polígono põe um vértice — sobre o PRIMEIRO, fecha. `true` = foi isso.
-fn continue_pending(app: &mut PixelApp, key: u32, at: Cell) -> bool {
-    let (tool, options) = (app.tool, app.options);
-    let stamp = app.stamp();
-    let Some(g) = app.gesture.as_mut().filter(|g| g.key == key) else {
-        return false;
-    };
-    match &mut g.kind {
-        Kind::Curve { ctrl, .. } if ctrl.is_some() => {
-            *ctrl = Some(at);
-        }
-        Kind::Polygon(pts) => {
-            let first = pts[0];
-            let len = pts.len();
-            if at == first && len > 3 {
-                pts.pop();
-            } else {
-                pts[len - 1] = at;
-                pts.push(at);
-            }
-        }
-        _ => return false,
-    }
-    g.held = true;
-    g.cursor = at;
-    let closed = matches!(&g.kind, Kind::Polygon(pts) if pts.last() != Some(&at));
-    if let Some(doc) = app.docs.get_mut(&key) {
-        let kind = g.kind.clone();
-        crate::gesture::reshape(
-            &mut g.stroke,
-            &doc.sprite,
-            tool,
-            &kind,
-            &options,
-            Mods::default(),
-        );
-        doc.stamp = stamp;
-    }
-    if closed {
-        finish(app);
-    }
-    true
-}
-
 /// O que a borracha deixa: transparente; na camada Background, a cor de fundo (Aseprite).
 fn erase_value(s: &ph2d_pixel_core::Sprite, layer: ph2d_pixel_core::LayerId, bg: [u8; 4]) -> u32 {
     if s.layer(layer).is_some_and(|l| l.background) {
@@ -326,6 +299,18 @@ fn erase_value(s: &ph2d_pixel_core::Sprite, layer: ph2d_pixel_core::LayerId, bg:
 
 /// Mover. Com um gesto em curso, ele continua (consumido); sem gesto, só a célula sob o cursor.
 pub fn moved(app: &mut PixelApp, c: &Canvas<'_>, p: (f32, f32), m: Mods) -> bool {
+    if crate::solta::moved(app, c, p, m) {
+        return true;
+    }
+    if app.laco.is_some() {
+        let at = c.editing.and_then(|bits| {
+            let key = key_of(c.world, bits)?;
+            let xy = cell(app, c, bits, key, p)?;
+            app.hover = Some((bits, xy));
+            Some(xy)
+        });
+        return crate::selecao::moved(app, at);
+    }
     let Some((bits, key)) = app.gesture.as_ref().map(|g| (g.entity, g.key)) else {
         app.hover = c.editing.and_then(|bits| {
             let key = key_of(c.world, bits)?;
@@ -429,6 +414,9 @@ pub fn release_pan(
 /// Largar: o gesto acaba e vira UM passo do desfazer do sprite — salvo a curva no 1.º tempo
 /// (passa ao controlo) e o polígono (espera o próximo vértice).
 pub fn release(app: &mut PixelApp) -> bool {
+    if crate::solta::release(app) || crate::selecao::release(app) {
+        return true;
+    }
     let Some(g) = app.gesture.as_mut() else {
         return false;
     };
@@ -491,6 +479,7 @@ pub(crate) fn finish(app: &mut PixelApp) {
 pub(crate) fn set_tool(app: &mut PixelApp, t: Tool) {
     if app.tool != t {
         finish(app);
+        app.laco = None;
     }
     app.tool = t;
 }
@@ -552,6 +541,11 @@ pub fn key(
 ) -> Option<KeyAnswer> {
     let bits = editing?;
     let key = key_of(world, bits)?;
+    if !app.stroking()
+        && let Some(a) = crate::selecao::key(app, key, code, ctrl, shift)
+    {
+        return Some(a);
+    }
     let tool = |app: &mut PixelApp, t: Tool| {
         set_tool(app, t);
         KeyAnswer::Toast(ph2d_i18n::tr_with(
@@ -613,14 +607,11 @@ pub fn key(
                 .to_owned(),
             )
         }
-        // O menu Layer/Select/Edit do Aseprite: Shift+N, Ctrl+J, Ctrl+Shift+J, Shift+X, Ctrl+A,
-        // Ctrl+D, Ctrl+C (o Alt+Shift+N do grupo não chega aqui: a shell não passa o Alt).
+        // O menu Layer do Aseprite: Shift+N, Ctrl+J, Ctrl+Shift+J, Shift+X (o Alt+Shift+N do grupo
+        // não chega aqui: a shell não passa o Alt). Select/Edit/Sprite: `crate::selecao::key`.
         (KeyCode::KeyN, false, true) => camada(app, PixelLayerAction::NewLayer),
         (KeyCode::KeyJ, true, false) => camada(app, PixelLayerAction::ViaCopy),
         (KeyCode::KeyJ, true, true) => camada(app, PixelLayerAction::ViaCut),
-        (KeyCode::KeyA, true, false) => camada(app, PixelLayerAction::SelectAll),
-        (KeyCode::KeyD, true, false) => camada(app, PixelLayerAction::Deselect),
-        (KeyCode::KeyC, true, false) => camada(app, PixelLayerAction::Copy),
         (KeyCode::KeyX, false, true) => {
             let id = app.docs.get(&key).map(|d| d.layer.0);
             if let Some(id) = id {
@@ -646,7 +637,9 @@ pub fn key(
         (KeyCode::ArrowRight, false, false) => quadro(app, PixelFrameAction::Next),
         (KeyCode::Home, false, false) => quadro(app, PixelFrameAction::First),
         (KeyCode::End, false, false) => quadro(app, PixelFrameAction::Last),
-        (KeyCode::Enter | KeyCode::NumpadEnter, false, false) => quadro(app, PixelFrameAction::Play),
+        (KeyCode::Enter | KeyCode::NumpadEnter, false, false) => {
+            quadro(app, PixelFrameAction::Play)
+        }
         (KeyCode::F3, false, false) => quadro(app, PixelFrameAction::Onion),
         (KeyCode::Tab, false, false) => {
             app.alterna_timeline = true;

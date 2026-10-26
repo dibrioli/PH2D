@@ -3,7 +3,10 @@
 use ph2d_label_census::gate::{self, Excecao};
 
 const PREFIX: &str = "panel.pixel.";
-const TABLES: &[&str] = &["crates/ph2d-i18n/src/pixel.rs"];
+const TABLES: &[&str] = &[
+    "crates/ph2d-i18n/src/pixel.rs",
+    "crates/ph2d-i18n/src/pixel_selecao.rs",
+];
 
 /// ⭐ As excepções, **com o mecanismo** — nunca uma lista aberta.
 const NOT_LANGUAGE: &[Excecao] = &[];

@@ -18,6 +18,8 @@ use ph2d_a11y::NodeId;
 mod color_mode_ops;
 #[path = "new_sprite_ops.rs"]
 mod new_sprite_ops;
+#[path = "pixel_edit_ops.rs"]
+mod pixel_edit_ops;
 
 impl WidgetStore {
     /// Drain the pending clipboard-copy text (set by a Cmd+C / Cmd+X

@@ -463,3 +463,6 @@ pub(super) use new_sprite::paint_new_sprite_dialog;
 #[path = "context_menu_color_mode.rs"]
 mod color_mode;
 pub(super) use color_mode::paint_color_mode_dialog;
+#[path = "context_menu_pixel_edit.rs"]
+mod pixel_edit;
+pub(super) use pixel_edit::paint_pixel_edit_dialog;

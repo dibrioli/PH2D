@@ -139,8 +139,12 @@ impl PixelApp {
                 }
                 None
             }
-            PixelRequest::LayerVisible(id) => layers::edit(s, LayerId(*id), |l| l.visible = !l.visible),
-            PixelRequest::LayerLocked(id) => layers::edit(s, LayerId(*id), |l| l.locked = !l.locked),
+            PixelRequest::LayerVisible(id) => {
+                layers::edit(s, LayerId(*id), |l| l.visible = !l.visible)
+            }
+            PixelRequest::LayerLocked(id) => {
+                layers::edit(s, LayerId(*id), |l| l.locked = !l.locked)
+            }
             PixelRequest::LayerCollapsed(id) => layers::edit(s, LayerId(*id), |l| {
                 if let LayerKind::Group { collapsed } = &mut l.kind {
                     *collapsed = !*collapsed;
@@ -154,22 +158,21 @@ impl PixelApp {
                     .then(|| layers::edit(s, LayerId(*id), |l| name.clone_into(&mut l.name)))
                     .flatten()
             }
-            PixelRequest::LayerAction(PixelLayerAction::SelectAll | PixelLayerAction::Deselect) => {
-                doc.selected_all = matches!(r, PixelRequest::LayerAction(PixelLayerAction::SelectAll));
-                None
-            }
-            PixelRequest::LayerAction(
-                a @ (PixelLayerAction::ViaCopy | PixelLayerAction::ViaCut | PixelLayerAction::Copy),
-            ) if !doc.selected_all => {
-                let _ = a;
-                self.avisos
-                    .push((true, ph2d_i18n::tr("pixel.layer.refuse.selection").to_owned()));
+            PixelRequest::LayerAction(PixelLayerAction::ViaCopy | PixelLayerAction::ViaCut)
+                if s.mask().is_none() =>
+            {
+                self.avisos.push((
+                    true,
+                    ph2d_i18n::tr("pixel.layer.refuse.selection").to_owned(),
+                ));
                 None
             }
             PixelRequest::LayerAction(a) => {
-                let (op, nova) = acao(s, *a, active, frame, &mut self.clip);
+                let bg = s.value_of_rgba(self.bg);
+                let clip = self.clip.as_ref().map(|p| &p.clip);
+                let (op, nova) = acao(s, *a, active, frame, clip, bg);
                 novo_activo = nova;
-                if op.is_none() && *a != PixelLayerAction::Copy {
+                if op.is_none() {
                     self.avisos
                         .push((true, ph2d_i18n::tr("pixel.layer.refuse.action").to_owned()));
                 }
@@ -246,7 +249,8 @@ fn acao(
     a: PixelLayerAction,
     active: LayerId,
     frame: ph2d_pixel_core::FrameId,
-    clip: &mut Option<layers::Clip>,
+    clip: Option<&layers::Clip>,
+    bg: u32,
 ) -> (Option<Op>, Option<LayerId>) {
     let par = |r: Option<(Op, LayerId)>| match r {
         Some((op, id)) => (Some(op), Some(id)),
@@ -262,7 +266,8 @@ fn acao(
         }
         PixelLayerAction::Duplicate => par(layers::duplicate(s, active)),
         PixelLayerAction::MoveUp => {
-            let op = sibling(s, active, true).and_then(|t| layers::move_to(s, active, Place::Above(t)));
+            let op =
+                sibling(s, active, true).and_then(|t| layers::move_to(s, active, Place::Above(t)));
             (op, None)
         }
         PixelLayerAction::MoveDown => {
@@ -286,21 +291,62 @@ fn acao(
             });
             (op, flat)
         }
-        PixelLayerAction::SelectAll | PixelLayerAction::Deselect => (None, None),
-        PixelLayerAction::ViaCopy | PixelLayerAction::ViaCut => {
-            let cut = a == PixelLayerAction::ViaCut;
-            par(layers::via(s, active, frame, s.bounds(), cut))
-        }
-        PixelLayerAction::Copy => {
-            *clip = layers::copy(s, (active, frame), s.bounds());
-            (None, None)
-        }
+        PixelLayerAction::ViaCopy | PixelLayerAction::ViaCut => par(via_selection(
+            s,
+            active,
+            frame,
+            a == PixelLayerAction::ViaCut,
+            bg,
+        )),
         PixelLayerAction::PasteAsLayer | PixelLayerAction::PasteAsReference => {
             let reference = a == PixelLayerAction::PasteAsReference;
-            match clip.as_ref() {
+            match clip {
                 Some(c) => par(layers::paste_as_new(s, active, frame, c, reference)),
                 None => (None, None),
             }
         }
     }
+}
+
+/// *Layer via Copy/Cut* com a selecção de VERDADE (P6): só as células seleccionadas vão para a
+/// camada nova (as outras ficam transparentes nela); no Cut o original perde-as (Background: a cor
+/// de fundo). UM passo — o Cut é um lote (camada nova + buraco), os dois contra o estado de antes.
+fn via_selection(
+    s: &mut Sprite,
+    active: LayerId,
+    frame: ph2d_pixel_core::FrameId,
+    cut: bool,
+    bg: u32,
+) -> Option<(Op, LayerId)> {
+    use ph2d_pixel_core::transform::{Floating, Image, lift, stamp};
+    if s.layer(active)?.is_group() {
+        return None;
+    }
+    let key = (active, frame);
+    let m = s.mask()?.clone();
+    let f = lift(s, key, Some(&m))?;
+    let clip = layers::Clip {
+        mode: s.mode(),
+        palette: s.palette().to_vec(),
+        transparent: s.transparent_index(),
+        rect: f.rect(),
+        data: f.image.data,
+    };
+    let buraco = if cut {
+        let nada = Floating {
+            x: 0,
+            y: 0,
+            image: Image::new(0, 0, s.mode().bpp(), s.transparent_value()),
+            keep: Vec::new(),
+        };
+        stamp(s, key, &nada, Some(&m), None, bg)
+    } else {
+        None
+    };
+    let (op, id) = layers::paste_as_new(s, active, frame, &clip, false)?;
+    let op = match buraco {
+        Some(b) => Op::Batch(vec![b, op]),
+        None => op,
+    };
+    Some((op, id))
 }

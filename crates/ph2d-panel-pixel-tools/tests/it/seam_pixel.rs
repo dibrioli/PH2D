@@ -109,24 +109,29 @@ fn cada_ferramenta_da_coluna_chega_ao_barramento() {
     }
 }
 
-/// A coluna: as quatro ferramentas (a da mão acesa) e as duas amostras com o trocar; sem sprite em
-/// Draw, nada.
+/// A coluna: as ferramentas em quatro grupos (a da mão acesa) e as duas amostras com o trocar; sem
+/// sprite em Draw, nada.
 #[test]
-fn a_coluna_tem_todas_as_ferramentas_em_tres_grupos_e_as_duas_cores() {
+fn a_coluna_tem_todas_as_ferramentas_em_quatro_grupos_e_as_duas_cores() {
     use ph2d_editor_core::interaction::BarFace;
     let mut i = info(true);
     i.tool = PixelTool::Eyedropper;
     let col = ph2d_panel_pixel_tools::column::column(&i);
-    assert_eq!(col.len(), 4, "à mão · formas · vista · cores");
-    assert_eq!(col[0].len(), 5, "Pencil, Spray, Eraser, Eyedropper, Bucket");
-    assert_eq!(col[2].len(), 1, "Hand");
-    let ferr: Vec<_> = col[..3].iter().flatten().map(|b| (b.id, b.on)).collect();
+    assert_eq!(col.len(), 5, "selecção · à mão · formas · vista · cores");
+    assert_eq!(
+        col[0].len(),
+        6,
+        "Marquee ×2, Lasso ×2, Magic Wand, Move (P6)"
+    );
+    assert_eq!(col[1].len(), 5, "Pencil, Spray, Eraser, Eyedropper, Bucket");
+    assert_eq!(col[3].len(), 1, "Hand");
+    let ferr: Vec<_> = col[..4].iter().flatten().map(|b| (b.id, b.on)).collect();
     let quer: Vec<_> = ids::TOOLS
         .iter()
         .map(|(t, id)| (*id, *t == PixelTool::Eyedropper))
         .collect();
     assert_eq!(ferr, quer);
-    let cores: Vec<_> = col[3].iter().map(|b| (b.id, b.face.clone())).collect();
+    let cores: Vec<_> = col[4].iter().map(|b| (b.id, b.face.clone())).collect();
     assert!(
         matches!(cores[0], (id, BarFace::Swatch { rgba: Some(c), ring: false, .. }) if id == ids::PIXEL_FG && c == i.fg)
     );

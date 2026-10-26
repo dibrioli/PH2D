@@ -25,8 +25,6 @@ pub struct Doc {
     pub axis2: Option<(i32, i32)>,
     /// O último ponto do último traço livre (o `Shift`+clique do Aseprite traça a reta dali).
     pub(crate) last_point: Option<(i32, i32)>,
-    /// *Select ▸ All*: o sprite inteiro está seleccionado (a selecção mínima até a P6).
-    pub selected_all: bool,
     /// A animação a tocar (o frame activo segue-a).
     pub(crate) play: Option<ph2d_pixel_core::play::Play>,
 }
@@ -45,7 +43,6 @@ impl Doc {
             fresh: true,
             axis2: None,
             last_point: None,
-            selected_all: false,
             play: None,
         }
     }
@@ -114,7 +111,11 @@ pub struct PixelApp {
     pub(crate) relogio: Option<std::time::Instant>,
     /// O enquadramento de entrada que ainda segue a área livre: `(objecto, área, vista posta)`.
     /// Cai quando o artista mexe na vista, começa um gesto ou sai do Draw.
-    pub(crate) fit: Option<(u64, ph2d_render::camera_frame::Area, ph2d_render::camera_frame::View)>,
+    pub(crate) fit: Option<(
+        u64,
+        ph2d_render::camera_frame::Area,
+        ph2d_render::camera_frame::View,
+    )>,
     /// A cena de smoke armada por `PH2D_PIXEL_SMOKE`, encenada no primeiro quadro.
     pub(crate) smoke: Option<u32>,
     /// Os pedidos do painel PIXEL deste quadro, aplicados no [`crate::panel::frame`].
@@ -145,7 +146,15 @@ pub struct PixelApp {
     /// smoke 5, para a foto).
     pub(crate) abre_color_mode: Option<ph2d_editor_core::pixel_panel::ColorModeChoice>,
     /// A imagem copiada (Edit ▸ Copy), de qualquer sprite.
-    pub(crate) clip: Option<ph2d_pixel_core::layers::Clip>,
+    pub(crate) clip: Option<crate::edicao::Prancheta>,
+    /// O gesto de selecção em curso (marquee, laços).
+    pub(crate) laco: Option<crate::selecao::Laco>,
+    /// A moldura solta (Ctrl+T, Move, Paste): as células levantadas até ao Enter/Esc.
+    pub(crate) solta: Option<crate::solta::Solta>,
+    /// O relógio das formigas, em ms (o do host, como o tocar).
+    pub(crate) formigas_ms: u64,
+    /// O diálogo do Pixel a abrir no próximo [`crate::panel::frame`] (lá há o `hero`).
+    pub(crate) abre_dialogo: Option<ph2d_editor_core::pixel_panel::PixelDialogKind>,
     /// O Solo em curso: `(chave, camada, a visibilidade de antes)`.
     pub(crate) solo: Option<(u32, LayerId, Vec<(LayerId, bool)>)>,
     /// A pasta das paletas do artista (*Save as Preset* / *as Default*); `None` = só a de fábrica
@@ -192,6 +201,10 @@ impl Default for PixelApp {
             avisos: Vec::new(),
             abre_color_mode: None,
             clip: None,
+            laco: None,
+            solta: None,
+            formigas_ms: 0,
+            abre_dialogo: None,
             solo: None,
             paletas: None,
             predefinicoes: None,
@@ -260,6 +273,10 @@ impl PixelApp {
     }
 
     fn step(&mut self, key: u32, redo: bool) -> bool {
+        // A moldura solta e o laço em curso valem para o documento de agora: desfazer larga-os
+        // sem os assentar (o Ctrl+Z do Aseprite com células levantadas).
+        self.solta = self.solta.take().filter(|s| s.key != key);
+        self.laco = self.laco.take().filter(|l| l.key != key);
         let stamp = self.stamp();
         let Some(doc) = self.docs.get_mut(&key) else {
             return false;
@@ -287,5 +304,11 @@ impl PixelApp {
     #[must_use]
     pub fn stroking(&self) -> bool {
         self.gesture.is_some()
+    }
+
+    /// Há uma moldura solta (células levantadas à espera do Enter/Esc).
+    #[must_use]
+    pub fn floating(&self) -> bool {
+        self.solta.is_some()
     }
 }

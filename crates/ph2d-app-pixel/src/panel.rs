@@ -24,7 +24,15 @@ impl PixelApp {
 
     /// Aplica um gesto do painel (os da paleta e da cor vão ao documento em Draw).
     pub fn aplica(&mut self, r: PixelRequest) {
-        if self.aplica_camada(&r) || self.aplica_quadro(&r) || self.aplica_paleta(r.clone()) {
+        if crate::edicao::assenta_antes(&r) {
+            self.assenta();
+        }
+        if self.aplica_selecao(&r)
+            || self.aplica_edicao(&r)
+            || self.aplica_camada(&r)
+            || self.aplica_quadro(&r)
+            || self.aplica_paleta(r.clone())
+        {
             return;
         }
         match r {
@@ -76,6 +84,15 @@ pub fn frame(
         s.set_color_mode_dither(c.dither);
         s.set_color_mode_gray(c.gray);
     }
+    if let Some(c) = hero.store.take_pixel_edit_request() {
+        app.aplica_dialogo(c);
+    }
+    if let Some(kind) = app.abre_dialogo.take()
+        && let Some(doc) = app.chave.and_then(|k| app.docs.get(&k))
+    {
+        let size = (doc.sprite.width(), doc.sprite.height());
+        hero.store.open_pixel_edit_dialog(kind, size);
+    }
     app.sincroniza_edicao(&mut hero.store, app.chave);
     for (erro, texto) in app.take_avisos() {
         let _ = toasts.push(if erro {
@@ -119,7 +136,11 @@ pub fn frame(
         }
     }
     if std::mem::take(&mut app.alterna_timeline) {
-        let on = hero.panel_visibility.get(TIMELINE_ID).copied().unwrap_or(false);
+        let on = hero
+            .panel_visibility
+            .get(TIMELINE_ID)
+            .copied()
+            .unwrap_or(false);
         hero.panel_visibility.insert(TIMELINE_ID, !on);
     }
     let doc = app.chave.and_then(|k| app.doc(k));
@@ -128,9 +149,13 @@ pub fn frame(
         crate::paleta::modo(d.sprite.mode())
     });
     let n = palette.as_ref().map_or(0, Vec::len);
-    let layers = doc.map(|d| crate::camadas::rows(&d.sprite)).unwrap_or_default();
+    let layers = doc
+        .map(|d| crate::camadas::rows(&d.sprite))
+        .unwrap_or_default();
     let active_layer = doc.map(|d| d.layer.0);
-    let (frames, cels, tags) = doc.map(|d| crate::quadros::timeline(&d.sprite)).unwrap_or_default();
+    let (frames, cels, tags) = doc
+        .map(|d| crate::quadros::timeline(&d.sprite))
+        .unwrap_or_default();
     PixelPanelInfo {
         frames,
         active_frame: doc.map(|d| d.frame.0),
@@ -152,7 +177,14 @@ pub fn frame(
         layers,
         active_layer,
         has_clip: app.clip.is_some(),
-        has_selection: doc.is_some_and(|d| d.selected_all),
+        has_selection: doc.is_some_and(|d| d.sprite.mask().is_some()),
+        size: doc.map_or((0, 0), |d| (d.sprite.width(), d.sprite.height())),
+        transform: app
+            .solta
+            .as_ref()
+            .filter(|s| Some(s.key) == app.chave)
+            .map(crate::solta::Solta::info),
+        can_reselect: doc.is_some_and(|d| d.sprite.last_mask().is_some()),
         presets: app.predefinicoes().to_vec(),
     }
 }

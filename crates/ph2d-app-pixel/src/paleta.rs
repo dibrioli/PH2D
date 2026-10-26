@@ -35,7 +35,12 @@ pub fn drag_permutation(size: usize, sel: &[usize], to: usize) -> Vec<usize> {
         return (0..size).collect();
     }
     let k = sel.len();
-    let inicio = if to > first { (to + 1).saturating_sub(k) } else { to }.min(size - k);
+    let inicio = if to > first {
+        (to + 1).saturating_sub(k)
+    } else {
+        to
+    }
+    .min(size - k);
     let mut perm: Vec<usize> = (0..size).filter(|i| !sel.contains(i)).collect();
     for (j, &i) in sel.iter().enumerate() {
         perm.insert(inicio + j, i);
@@ -505,7 +510,8 @@ impl PixelApp {
         for y in caixa.y..caixa.y + caixa.h as i32 {
             for x in caixa.x..caixa.x + caixa.w as i32 {
                 let v = s.value_at(ck, x, y);
-                if v != para && igual(v) {
+                // Com selecção, só dentro dela (Aseprite).
+                if v != para && igual(v) && s.in_selection(x, y) {
                     celulas.push((x, y));
                 }
             }

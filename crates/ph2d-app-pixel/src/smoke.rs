@@ -25,6 +25,9 @@
 //! escondida, trancada, referência e grupo.
 //! 8 — P4, os frames que SE VÊEM ([`crate::smoke_quadros`]): 16 frames, 4 tags (uma por direcção,
 //! com passadas), o frame que segura, o z, o cel a 50 %, o chão ligado e o papel vegetal.
+//! 9 — P6, a selecção e a transformação que SE VÊEM ([`crate::smoke_selecao`]): retângulo, elipse,
+//! laço e varinha com as formigas, o traço que só pinta dentro, Fast × RotSprite a 30°, espelho,
+//! Shift com volta, Nearest × Bilinear.
 
 use ph2d_ecs::SimWorld;
 use ph2d_pixel_core::{NewSprite, Paint, Stroke};
@@ -34,7 +37,7 @@ use ph2d_editor_core::pixel_panel::{ColorModeChoice, NewSpriteMode, PixelDither,
 
 pub const ROUTERS: &[ph2d_app_host::SmokeRouter] = &[ph2d_app_host::SmokeRouter {
     env: "PH2D_PIXEL_SMOKE",
-    max_level: 7,
+    max_level: 9,
 }];
 
 /// O nível armado em `PH2D_PIXEL_SMOKE`.
@@ -96,6 +99,7 @@ pub fn stage(
         }),
         7 => crate::smoke_camadas::stage(app, sim, spawn_root).is_some(),
         8 => crate::smoke_quadros::stage(app, sim, spawn_root).is_some(),
+        9 => crate::smoke_selecao::stage(app, sim, spawn_root).is_some(),
         _ => false,
     }
 }

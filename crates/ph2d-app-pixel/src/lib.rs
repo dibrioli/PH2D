@@ -13,6 +13,7 @@
 pub mod camadas;
 pub mod compose;
 pub mod draw;
+pub mod edicao;
 mod frame;
 mod gesture;
 pub mod input;
@@ -21,10 +22,13 @@ pub mod object_add;
 pub mod paleta;
 pub mod panel;
 pub mod persist;
+pub mod quadros;
+pub mod selecao;
 pub mod smoke;
 pub mod smoke_camadas;
 pub mod smoke_quadros;
-pub mod quadros;
+pub mod smoke_selecao;
+pub mod solta;
 mod state;
 
 pub use state::{Doc, Options, PixelApp, Tool};

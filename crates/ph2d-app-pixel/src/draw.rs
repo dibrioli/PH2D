@@ -7,7 +7,8 @@
 use ph2d_editor_core::paint::resolve;
 use ph2d_host::WindowSize;
 use ph2d_pixel_render::{
-    CURSOR_CORE, draw_border, draw_cell_cursor, draw_pixel_grid, draw_symmetry_axes, px_per_cell,
+    CURSOR_CORE, draw_border, draw_cell_cursor, draw_marching_ants, draw_pixel_grid,
+    draw_symmetry_axes, draw_transform_frame, mask_edges, px_per_cell,
 };
 use ph2d_render::Camera2d;
 use ph2d_tokens::{ColorToken, Theme};
@@ -86,11 +87,14 @@ pub fn draw(
         if ph2d_ecs::visibility::is_hidden_in_tree(world, entity) {
             continue;
         }
+        // A moldura solta mostra-se como o traço do seu assentar (o mesmo op).
+        let previa = app.previa(key);
         let pending = app
             .gesture
             .as_ref()
             .filter(|g| g.key == key)
-            .map(|g| g.stroke.clone());
+            .map(|g| g.stroke.clone())
+            .or_else(|| previa.as_ref().map(|(s, _)| s.clone()));
         let Some(doc) = app.docs.get_mut(&key) else {
             continue;
         };
@@ -103,8 +107,13 @@ pub fn draw(
         let Some(doc) = app.docs.get_mut(&key) else {
             continue;
         };
-        doc.view
-            .refresh_with(&doc.sprite, doc.frame, pending.as_ref(), doc.stamp, onion.as_ref());
+        doc.view.refresh_with(
+            &doc.sprite,
+            doc.frame,
+            pending.as_ref(),
+            doc.stamp,
+            onion.as_ref(),
+        );
         let o = app.options;
         if edit && (o.tile_x || o.tile_y) {
             // O Tiled Mode mostra as vizinhas: o desenho que sai por um lado entra pelo outro.
@@ -156,6 +165,10 @@ pub fn draw(
                 LINE_PX,
             );
         }
+        selecao(app, key, m, previa.and_then(|(_, mk)| mk), scene);
+        let Some(doc) = app.docs.get(&key) else {
+            continue;
+        };
         if let Some((hb, cell)) = app.hover
             && hb == bits
             && doc.sprite.bounds().contains(cell.0, cell.1)
@@ -164,4 +177,40 @@ pub fn draw(
         }
     }
     DRAWN.with(|d| *d.borrow_mut() = drawn);
+}
+
+/// Quantos ms as formigas levam a andar um píxel de ecrã (escolha visual: o passo do Aseprite).
+const ANTS_STEP_MS: u64 = 60;
+
+/// **A selecção por cima da arte** (P6): as formigas da máscara (a da moldura solta quando há
+/// uma), as do laço em curso, e a moldura com as alças.
+fn selecao(
+    app: &PixelApp,
+    key: u32,
+    m: ph2d_vector::Affine,
+    mascara_solta: Option<ph2d_pixel_core::selection::Mask>,
+    scene: &mut VectorScene,
+) {
+    let fase =
+        ((app.formigas_ms / ANTS_STEP_MS) % (2.0 * ph2d_pixel_render::ANTS_DASH_PX) as u64) as f64;
+    let Some(s) = app.docs.get(&key).map(|d| &d.sprite) else {
+        return;
+    };
+    let solta = app.solta.as_ref().filter(|so| so.key == key);
+    let mascara = match solta {
+        Some(_) => mascara_solta,
+        None => s.mask().cloned(),
+    };
+    if let Some(mk) = &mascara {
+        draw_marching_ants(scene, &mask_edges(mk), m, fase, LINE_PX);
+    }
+    if let Some(l) = app.laco.as_ref().filter(|l| l.key == key)
+        && let Some(mk) = crate::selecao::preview(l, s.width(), s.height())
+    {
+        draw_marching_ants(scene, &mask_edges(&mk), m, fase, LINE_PX);
+    }
+    if let Some(so) = solta {
+        let (alcas, pivo) = so.handles(m);
+        draw_transform_frame(scene, so.quad(m), &alcas, pivo, LINE_PX);
+    }
 }

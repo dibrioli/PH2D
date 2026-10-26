@@ -125,15 +125,10 @@ pub enum PixelLayerAction {
     MergeDown,
     Flatten,
     FlattenVisible,
-    /// *Layer via Copy* / *via Cut* (sem selecção: o cel inteiro do frame).
+    /// *Layer via Copy* / *via Cut*: as células seleccionadas numa camada nova (pedem selecção,
+    /// como no Aseprite). O Copy e o Select All/Deselect são os menus Edit e Select (P6).
     ViaCopy,
     ViaCut,
-    /// *Edit ▸ Copy* do cel activo.
-    Copy,
     PasteAsLayer,
     PasteAsReference,
-    /// *Select ▸ All* / *Deselect* — a selecção mínima até a P6 trazer o laço e o retângulo (o
-    /// Aseprite só copia e faz *via Copy/Cut* com selecção).
-    SelectAll,
-    Deselect,
 }

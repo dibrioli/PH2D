@@ -169,6 +169,10 @@ mod painter_ponta;
 mod painter_preview;
 /// O PIXEL ART (ADR-0192): o menu Add, as ferramentas e os avisos da família.
 mod pixel;
+/// O PIXEL ART, P6: os diálogos Color Range, Modify, Canvas Size e Sprite Size.
+mod pixel_dialogos;
+/// O PIXEL ART, P6: a selecção, a moldura solta e os menus Select/Edit/Sprite do painel.
+mod pixel_selecao;
 /// ⭐⭐ **A COR, a CURVA, o COMANDO e as RECUSAS da timeline** — quatro motores numa fatia.
 mod quatro_motores;
 /// ⭐ **As strings do painel TAGS** (TOP-20 #9) — irmão de tabela, por assunto.
@@ -574,6 +578,8 @@ fn tr_ingles(key: &str) -> &'static str {
             .or_else(|| luz2d::tr(k))
             .or_else(|| constraints::tr(k))
             .or_else(|| pixel::tr(k))
+            .or_else(|| pixel_selecao::tr(k))
+            .or_else(|| pixel_dialogos::tr(k))
             .or_else(|| inspector_motion_input::tr(k))
             .or_else(|| inspector_macro::tr(k))
             .or_else(|| inspector_player::tr(k))

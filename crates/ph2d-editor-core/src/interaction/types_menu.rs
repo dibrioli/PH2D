@@ -236,6 +236,10 @@ pub enum ContextMenuKind {
     /// **O diálogo Color Mode** do Pixel Art (Sprite ▸ Color Mode ▸ More Options): o alvo, o dither
     /// (Indexed) ou o método de cinza (Grayscale), OK/Cancel; o OK arma o pedido que a família drena.
     PixelColorModeDialog,
+    /// **Os quatro diálogos do Pixel P6** (Color Range, Modify, Canvas Size, Sprite Size) — um só
+    /// variante; `WidgetStore::pixel_edit_dialog().kind` diz qual. O OK arma o pedido que a família
+    /// drena (`take_pixel_edit_request`); fora, Esc ou Cancel não armam nada.
+    PixelEditDialog,
     /// Right-clicked on a Painter brush Falloff curve control point. Menu offers
     /// the two handle types — Vector (sharp corner) / Auto (smooth). No payload:
     /// the secondary-click already selected the point; the chrome handler routes
@@ -456,6 +460,7 @@ impl ContextMenuKind {
         Self::SheetSizeDialog,
         Self::NewSpriteDialog,
         Self::PixelColorModeDialog,
+        Self::PixelEditDialog,
         Self::FalloffPointHandle,
         Self::CurvePointHandle,
         Self::MotionPathAnchor { target: 0, i: 0 },

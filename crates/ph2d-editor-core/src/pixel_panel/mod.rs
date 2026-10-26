@@ -4,16 +4,26 @@
 
 mod layers;
 mod new_sprite;
+mod selection;
 mod timeline;
 
 pub use layers::*;
 pub use new_sprite::*;
+pub use selection::*;
 pub use timeline::*;
 
 /// A ferramenta na mão — as do Aseprite, na ordem da barra dele. A família reexporta-a como `Tool`
 /// (um dono).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum PixelTool {
+    /// Selecção (P6): Rectangular Marquee `M`, Elliptical `Shift+M`, Lasso `Q`, Polygonal Lasso
+    /// `Shift+Q`, Magic Wand `W`; Move `V` arrasta as células seleccionadas.
+    RectMarquee,
+    EllipseMarquee,
+    Lasso,
+    PolygonLasso,
+    MagicWand,
+    Move,
     #[default]
     Pencil,
     Spray,
@@ -37,7 +47,13 @@ pub enum PixelTool {
 
 impl PixelTool {
     /// Todas, na ordem da coluna.
-    pub const ALL: [Self; 14] = [
+    pub const ALL: [Self; 20] = [
+        Self::RectMarquee,
+        Self::EllipseMarquee,
+        Self::Lasso,
+        Self::PolygonLasso,
+        Self::MagicWand,
+        Self::Move,
         Self::Pencil,
         Self::Spray,
         Self::Eraser,
@@ -58,6 +74,12 @@ impl PixelTool {
     #[must_use]
     pub const fn label_key(self) -> &'static str {
         match self {
+            Self::RectMarquee => "pixel.tool.rect_marquee",
+            Self::EllipseMarquee => "pixel.tool.ellipse_marquee",
+            Self::Lasso => "pixel.tool.lasso",
+            Self::PolygonLasso => "pixel.tool.polygon_lasso",
+            Self::MagicWand => "pixel.tool.magic_wand",
+            Self::Move => "pixel.tool.move",
             Self::Pencil => "pixel.tool.pencil",
             Self::Spray => "pixel.tool.spray",
             Self::Eraser => "pixel.tool.eraser",
@@ -79,6 +101,10 @@ impl PixelTool {
     #[must_use]
     pub const fn shortcut(self) -> &'static str {
         match self {
+            Self::RectMarquee | Self::EllipseMarquee => "M",
+            Self::Lasso | Self::PolygonLasso => "Q",
+            Self::MagicWand => "W",
+            Self::Move => "V",
             Self::Pencil | Self::Spray => "B",
             Self::Eraser => "E",
             Self::Eyedropper => "I",
@@ -95,7 +121,13 @@ impl PixelTool {
     pub const fn shifted(self) -> bool {
         matches!(
             self,
-            Self::Spray | Self::Curve | Self::Ellipse | Self::FilledEllipse | Self::Polygon
+            Self::Spray
+                | Self::Curve
+                | Self::Ellipse
+                | Self::FilledEllipse
+                | Self::Polygon
+                | Self::EllipseMarquee
+                | Self::PolygonLasso
         )
     }
 
@@ -132,6 +164,19 @@ impl PixelTool {
     #[must_use]
     pub const fn paints(self) -> bool {
         self.uses_brush() || matches!(self, Self::Bucket)
+    }
+
+    /// Constrói a selecção (marquee, laços, varinha).
+    #[must_use]
+    pub const fn selects(self) -> bool {
+        matches!(
+            self,
+            Self::RectMarquee
+                | Self::EllipseMarquee
+                | Self::Lasso
+                | Self::PolygonLasso
+                | Self::MagicWand
+        )
     }
 }
 
@@ -201,6 +246,13 @@ pub struct PixelOptions {
     pub replace_tolerance: u8,
     /// O seletor de cor por baixo da paleta (o menu ≡ da paleta do Aseprite).
     pub selector: PixelSelector,
+    /// P6: o modo das ferramentas de selecção, a varinha (tolerância `0..=255`, contígua, 8-conectada)
+    /// e a amostragem da moldura solta.
+    pub select_mode: PixelSelectMode,
+    pub wand_tolerance: u8,
+    pub wand_contiguous: bool,
+    pub wand_eight: bool,
+    pub resample: PixelResample,
 }
 
 /// O seletor de cor abaixo da paleta — os cinco do menu ≡ da paleta do Aseprite 1.3.18, na ordem
@@ -368,6 +420,7 @@ pub struct ColorModeDialog {
 pub struct PixelDialogs {
     pub(crate) new_sprite: NewSpriteDialog,
     pub(crate) color_mode: ColorModeDialog,
+    pub(crate) edit: PixelEditDialog,
 }
 
 impl Default for PixelOptions {
@@ -395,6 +448,11 @@ impl Default for PixelOptions {
             ink: PixelInk::Simple,
             replace_tolerance: 0,
             selector: PixelSelector::TintShadeTone,
+            select_mode: PixelSelectMode::Replace,
+            wand_tolerance: 0,
+            wand_contiguous: true,
+            wand_eight: false,
+            resample: PixelResample::Fast,
         }
     }
 }
@@ -437,6 +495,11 @@ pub struct PixelPanelInfo {
     pub playing: bool,
     pub onion: bool,
     pub onion_tint: bool,
+    /// P6: o tamanho do sprite (os diálogos abrem com ele), a moldura solta (os seus campos só
+    /// existem com células levantadas) e se há o que o Reselect devolve.
+    pub size: (u32, u32),
+    pub transform: Option<PixelTransformInfo>,
+    pub can_reselect: bool,
 }
 
 /// Um gesto do painel PIXEL (`EditorAction::Pixel`).
@@ -536,4 +599,12 @@ pub enum PixelRequest {
         name: String,
     },
     TagDelete(usize),
+    /// P6: os menus Select, Edit e Sprite, e um campo da moldura solta.
+    Select(PixelSelectAction),
+    Edit(PixelEditAction),
+    Sprite(PixelSpriteAction),
+    TransformField {
+        field: PixelTransformField,
+        value: i32,
+    },
 }

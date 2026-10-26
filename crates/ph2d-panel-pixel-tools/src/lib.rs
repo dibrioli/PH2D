@@ -16,6 +16,8 @@ pub mod column;
 pub mod ids;
 mod paint;
 mod seam;
+mod seam_selecao;
+mod seam_seletor;
 pub mod seletor;
 mod state;
 

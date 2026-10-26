@@ -38,6 +38,8 @@ const LADO: u32 = 256;
 mod camadas;
 #[path = "paint_paleta.rs"]
 mod paleta;
+#[path = "paint_selecao.rs"]
+mod selecao;
 
 pub(crate) fn paint(st: &mut PixelToolsPanelState, ctx: &mut PaintCtx) {
     if !ctx.host.panel_visible(PixelToolsPanel::ID) {
@@ -69,11 +71,12 @@ pub(crate) fn paint(st: &mut PixelToolsPanelState, ctx: &mut PaintCtx) {
     seam::register_palette(ctx.host.store_mut(), n);
     let np = with_current(|i| if i.editing { i.presets.len() } else { 0 });
     seam::register_presets(ctx.host.store_mut(), np);
-    seam::arrasta_seletor(st, ctx.host);
+    crate::seam_seletor::arrasta_seletor(st, ctx.host);
     with_current(|i| seam::register_layers(ctx.host.store_mut(), &i.layers));
     seam::seed_rename(st, ctx.host.store_mut());
     let renaming = st.rename.map(|(id, _)| id);
     // Os campos mostram o MODELO (o instantâneo); a edição em curso de um campo com foco fica.
+    let moldura = with_current(|i| i.transform);
     let (opcoes, cores, opacidade) = with_current(|i| {
         let activa = i
             .active_layer
@@ -91,7 +94,12 @@ pub(crate) fn paint(st: &mut PixelToolsPanelState, ctx: &mut PaintCtx) {
         .iter()
         .map(|(id, _)| (*id, seam::numero(&opcoes, *id)));
     let opacidade = (ids::LAYER_OPACITY, f64::from(opacidade));
-    for (id, v) in numeros.chain([tamanho, opacidade]) {
+    let campos = moldura.into_iter().flat_map(|t| {
+        ids::XFORM_FIELDS
+            .iter()
+            .map(move |(f, id, _)| (*id, f64::from(t.get(*f))))
+    });
+    for (id, v) in numeros.chain([tamanho, opacidade]).chain(campos) {
         if store.number_value(id) != Some(v) {
             store.set_number_value(id, v);
         }
@@ -183,12 +191,14 @@ impl Corpo<'_> {
         }
         let gap = ph2d_tokens::control_gap_px();
         let y = self.opcoes(info, y) + gap;
+        let y = self.moldura(info, y) + gap;
         let y = self.cores(info, y) + gap;
         let y = self.camadas(info, renaming, y) + gap;
         let y = self.paleta(info, y) + gap;
         let y = self.seletor(info, y) + gap;
         let y = self.acoes_da_paleta(info, y) + gap;
-        self.sprite(y)
+        let y = self.menus_selecao(info, y) + gap;
+        self.sprite(info, y)
     }
 
     /// ⭐ **As opções da ferramenta na mão** (a barra de contexto do Aseprite): o pincel, o canto do
@@ -205,9 +215,12 @@ impl Corpo<'_> {
             tr("panel.pixel.sample"),
             tr("panel.pixel.spray_width"),
             tr("panel.pixel.spray_speed"),
+            tr(selecao::NOMES[0]),
+            tr(selecao::NOMES[1]),
+            tr(selecao::NOMES[3]),
         ];
         let sec = Seccao::medida(self.text_system, 1, &nomes);
-        let mut y = y;
+        let mut y = self.opcoes_selecao(info, sec, y);
         if t.uses_brush() {
             y = self.linha(tr("panel.pixel.brush"), ColorToken::Text3, y);
             let formas: Vec<(&str, bool, NodeId)> = ids::SHAPES
@@ -387,7 +400,7 @@ impl Corpo<'_> {
     }
 
     /// O sprite: o *Color Mode…* e o *Replace Color* (frente → fundo, com tolerância).
-    fn sprite(&mut self, y: f32) -> f32 {
+    fn sprite(&mut self, info: &PixelPanelInfo, y: f32) -> f32 {
         let sec = Seccao::medida(self.text_system, 1, &[tr("panel.pixel.replace_tolerance")]);
         let mut y = self.linha(tr("panel.pixel.sprite"), ColorToken::Text3, y);
         let r = Rect::new(self.x, y, self.w, ROW_H_PX);
@@ -396,6 +409,7 @@ impl Corpo<'_> {
         paint_button(&b, r, self.scene, self.text_system, self.theme);
         self.hit_index.register(ids::COLOR_MODE, r);
         y += ROW_H_PX + ph2d_tokens::control_gap_px();
+        y = self.menu_sprite(info, y);
         y = self.linha(tr("panel.pixel.replace"), ColorToken::Text3, y);
         y = self.bloco(tr("panel.pixel.replace_hint"), ColorToken::Text3, y);
         y = self.campo(

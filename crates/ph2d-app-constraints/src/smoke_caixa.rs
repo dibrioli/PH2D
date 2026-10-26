@@ -64,7 +64,7 @@ pub fn semear(cena: &mut VecScene) -> Caixa {
             VecVertex::corner([dobradica[0] + LARGURA * a.cos(), dobradica[1] + LARGURA * a.sin()]),
         ],
         closed: false,
-        stroke: Some(StrokeSpec::new(Rgba8::new(120, 80, 40, 255), 6.0)),
+        stroke: Some(StrokeSpec::new(Rgba8::new(120, 80, 40, 255), 0.06)),
         ..VecPath::default()
     });
     let c = |i: u32| PontoCad::Vert(corpo, VertId(i));

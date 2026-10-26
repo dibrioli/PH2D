@@ -226,6 +226,7 @@ pub(crate) fn smooth_corner(a: P, v: P, b: P, r: f64, s: f64) -> Option<Vec<VecV
         out_handle: p1a,
         kind: VertexKind::Corner,
         corner_radius: 0.0,
+        id: crate::VertId::NOVO,
     });
     if arc <= ARC_EPS {
         // `s = 1`: o arco sumiu — as duas asas se encontram na bissetriz, num vértice SÓ
@@ -237,6 +238,7 @@ pub(crate) fn smooth_corner(a: P, v: P, b: P, r: f64, s: f64) -> Option<Vec<VecV
             out_handle: qb,
             kind: VertexKind::Corner,
             corner_radius: 0.0,
+            id: crate::VertId::NOVO,
         });
     } else {
         // O arco remanescente pela MESMA porta do filete puro: alçapão `(4/3)·tan(arco/4)·r` (a
@@ -250,6 +252,7 @@ pub(crate) fn smooth_corner(a: P, v: P, b: P, r: f64, s: f64) -> Option<Vec<VecV
             out_handle: arco.out1,
             kind: VertexKind::Corner,
             corner_radius: 0.0,
+            id: crate::VertId::NOVO,
         });
         out.extend(arco.mid);
         out.push(VecVertex {
@@ -258,6 +261,7 @@ pub(crate) fn smooth_corner(a: P, v: P, b: P, r: f64, s: f64) -> Option<Vec<VecV
             out_handle: qb,
             kind: VertexKind::Corner,
             corner_radius: 0.0,
+            id: crate::VertId::NOVO,
         });
     }
     out.push(VecVertex {
@@ -266,6 +270,7 @@ pub(crate) fn smooth_corner(a: P, v: P, b: P, r: f64, s: f64) -> Option<Vec<VecV
         out_handle: p0b,
         kind: VertexKind::Corner,
         corner_radius: 0.0,
+        id: crate::VertId::NOVO,
     });
     Some(out)
 }

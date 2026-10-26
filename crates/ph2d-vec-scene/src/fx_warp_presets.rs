@@ -242,6 +242,7 @@ fn catmull_rom_verts(pts: &[[f64; 2]], closed: bool) -> Vec<VecVertex> {
                 out_handle: [pts[k][0] + t[0], pts[k][1] + t[1]],
                 kind: VertexKind::Smooth,
                 corner_radius: 0.0,
+                id: crate::VertId::NOVO,
             }
         })
         .collect()

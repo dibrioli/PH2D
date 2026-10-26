@@ -75,6 +75,7 @@ fn reflect_vert(v: &VecVertex, ax: Axis) -> VecVertex {
         out_handle: ax.reflect(v.out_handle),
         kind: v.kind,
         corner_radius: v.corner_radius,
+        id: v.id,
     }
 }
 
@@ -95,6 +96,7 @@ fn rotate_vert(v: &VecVertex, c: [f64; 2], r: [f64; 2]) -> VecVertex {
         out_handle: rotate_about(v.out_handle, c, r),
         kind: v.kind,
         corner_radius: v.corner_radius,
+        id: v.id,
     }
 }
 

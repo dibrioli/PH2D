@@ -16,6 +16,7 @@ fn v(x: f64, y: f64) -> VecVertex {
         out_handle: [x + 0.5, y + 0.2],
         kind: VertexKind::Smooth,
         corner_radius: 0.0,
+        id: crate::VertId::NOVO,
     }
 }
 
@@ -60,7 +61,9 @@ fn a_closed_contour_opens_at_the_cut_and_the_seam_vertex_appears_twice() {
 fn the_seam_carries_both_handles_so_re_closing_restores_the_curve() {
     let mut scene = VecScene::default();
     let original = closed_square();
-    let id = scene.push_path(original.clone());
+    let id = scene.push_path(original);
+    // O original COMO A CENA O GUARDA (já numerado pelo `push_path`).
+    let original = scene.path(id).unwrap().clone();
     scene.cut_path_at_vertex(id, 2).unwrap();
 
     let p = &scene.paths()[0];
@@ -257,6 +260,7 @@ fn sharp_square() -> VecPath {
         out_handle: [x, y],
         kind: VertexKind::Corner,
         corner_radius: 0.0,
+        id: crate::VertId::NOVO,
     };
     VecPath {
         verts: vec![
@@ -326,6 +330,7 @@ fn a_blade_finds_both_crossings_of_a_single_curved_segment() {
                 out_handle: [0.0, 1.0],
                 kind: VertexKind::Corner,
                 corner_radius: 0.0,
+                id: crate::VertId::NOVO,
             },
             VecVertex {
                 anchor: [4.0, 0.0],
@@ -333,6 +338,7 @@ fn a_blade_finds_both_crossings_of_a_single_curved_segment() {
                 out_handle: [4.0, 0.0],
                 kind: VertexKind::Corner,
                 corner_radius: 0.0,
+                id: crate::VertId::NOVO,
             },
         ],
         closed: false,

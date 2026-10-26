@@ -269,6 +269,7 @@ pub fn zigzag_contour(
                 VertexKind::Corner
             },
             corner_radius: 0.0,
+            id: crate::VertId::NOVO,
         });
     }
     (out, closed)

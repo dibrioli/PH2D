@@ -199,6 +199,7 @@ fn shaped(center: [f64; 2], rx: f64, ry: f64, s: &PolyStar) -> VecPath {
                 out_handle: to_world([p[0] + out_h[i][0], p[1] + out_h[i][1]]),
                 kind: VertexKind::Corner,
                 corner_radius: radius_of(i),
+                id: crate::VertId::NOVO,
             }
         })
         .collect();

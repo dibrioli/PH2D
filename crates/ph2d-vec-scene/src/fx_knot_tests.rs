@@ -40,6 +40,7 @@ fn circle() -> VecPath {
                 out_handle: [p[i][0] + t[i][0], p[i][1] + t[i][1]],
                 kind: crate::VertexKind::Smooth,
                 corner_radius: 0.0,
+                id: crate::VertId::NOVO,
             })
             .collect(),
         closed: true,

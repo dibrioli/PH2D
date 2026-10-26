@@ -109,6 +109,7 @@ pub fn bloat_contour(
                 // fator dela. Os dois fatores divergem, e escolher o das alças poria o raio a
                 // crescer enquanto a quina que ele arredonda encolhe.
                 corner_radius: v.corner_radius * ka.abs(),
+                id: v.id,
             }
         })
         .collect();

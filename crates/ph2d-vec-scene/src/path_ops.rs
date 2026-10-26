@@ -223,6 +223,7 @@ impl VecScene {
             out_handle: inv_dst.apply(src_xf.apply(v.out_handle)),
             kind: v.kind,
             corner_radius: v.corner_radius * r_scale,
+            id: v.id,
         };
         let mut mapped: Vec<VecVertex> = src_path.verts.iter().map(&para_dst).collect();
         // ⭐⭐⭐ **OS OUTROS CONTORNOS DE `src` VIAJAM** — e antes de 2026-09-02 EVAPORAVAM.

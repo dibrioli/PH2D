@@ -115,6 +115,7 @@ fn um_blend_assimetrico_nao_e_partido() {
             out_handle: [-6.0, 6.0],
             kind: VertexKind::Corner,
             corner_radius: 0.0,
+            id: crate::VertId::NOVO,
         },
         VecVertex {
             anchor: [0.0, 0.0],
@@ -122,6 +123,7 @@ fn um_blend_assimetrico_nao_e_partido() {
             out_handle: [0.0, 0.0],
             kind: VertexKind::Corner,
             corner_radius: 1.5,
+            id: crate::VertId::NOVO,
         },
         VecVertex::corner([-10.0, -1.0]),
     ];

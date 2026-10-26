@@ -115,6 +115,7 @@ fn rounded_corner(a: [f64; 2], v: [f64; 2], b: [f64; 2], r: f64) -> Option<Vec<V
         out_handle: f.out1,
         kind: VertexKind::Corner,
         corner_radius: 0.0,
+        id: crate::VertId::NOVO,
     }];
     out.extend(f.mid);
     out.push(VecVertex {
@@ -123,6 +124,7 @@ fn rounded_corner(a: [f64; 2], v: [f64; 2], b: [f64; 2], r: f64) -> Option<Vec<V
         out_handle: p_out,
         kind: VertexKind::Corner,
         corner_radius: 0.0,
+        id: crate::VertId::NOVO,
     });
     Some(out)
 }
@@ -202,6 +204,7 @@ pub(crate) fn circular_fillet(
             out_handle: [m[0] + e[0] * h, m[1] + e[1] * h],
             kind: VertexKind::Smooth,
             corner_radius: 0.0,
+            id: crate::VertId::NOVO,
         }),
         in2: [p_out[0] - t_out[0] * h, p_out[1] - t_out[1] * h],
     }

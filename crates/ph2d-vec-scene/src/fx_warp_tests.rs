@@ -46,6 +46,7 @@ fn the_bloat_moves_anchors_and_handles_in_opposite_directions() {
         out_handle: [c.center[0] + 10.0, c.center[1] + 4.0],
         kind: crate::VertexKind::Smooth,
         corner_radius: 0.0,
+        id: crate::VertId::NOVO,
     };
     let r = |p: [f64; 2]| (p[0] - c.center[0]).hypot(p[1] - c.center[1]);
     let (a0, h0) = (r(v.anchor), r(v.out_handle));

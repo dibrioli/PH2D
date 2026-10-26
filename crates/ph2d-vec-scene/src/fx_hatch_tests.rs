@@ -209,6 +209,7 @@ fn probe_hatch_smoke() {
             out_handle: [pc[i][0] + t[i][0], pc[i][1] + t[i][1]],
             kind: crate::VertexKind::Smooth,
             corner_radius: 0.0,
+            id: crate::VertId::NOVO,
         })
         .collect();
     let p = VecPath {

@@ -191,6 +191,7 @@ fn sketch_pass(
             ],
             kind: VertexKind::Smooth,
             corner_radius: 0.0,
+            id: crate::VertId::NOVO,
         });
     }
     Some(out)

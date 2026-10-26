@@ -344,6 +344,7 @@ fn fillet(a: [f64; 2], v: [f64; 2], b: [f64; 2], round: f64) -> Option<(VecVerte
             out_handle: [p_in[0] - ua[0] * h, p_in[1] - ua[1] * h],
             kind: VertexKind::Corner,
             corner_radius: 0.0,
+            id: crate::VertId::NOVO,
         },
         VecVertex {
             anchor: p_out,
@@ -351,6 +352,7 @@ fn fillet(a: [f64; 2], v: [f64; 2], b: [f64; 2], round: f64) -> Option<(VecVerte
             out_handle: p_out,
             kind: VertexKind::Corner,
             corner_radius: 0.0,
+            id: crate::VertId::NOVO,
         },
     ))
 }

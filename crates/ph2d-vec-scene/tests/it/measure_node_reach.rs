@@ -18,6 +18,7 @@ fn arc3() -> VecPath {
         out_handle: o,
         kind: VertexKind::Smooth,
         corner_radius: 0.0,
+        id: ph2d_vec_scene::VertId::NOVO,
     };
     VecPath {
         verts: vec![

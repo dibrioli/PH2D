@@ -173,6 +173,7 @@ fn a_corner_between_two_real_curves_rounds_and_leaves_tangent_to_both_sides() {
             out_handle: [3.0, 7.0],
             kind: VertexKind::Corner,
             corner_radius: 1.5,
+            id: crate::VertId::NOVO,
         },
         VecVertex {
             anchor: [5.0, 0.0],
@@ -180,6 +181,7 @@ fn a_corner_between_two_real_curves_rounds_and_leaves_tangent_to_both_sides() {
             out_handle: [3.0, -3.0],
             kind: VertexKind::Corner,
             corner_radius: 0.0,
+            id: crate::VertId::NOVO,
         },
         VecVertex {
             anchor: [-5.0, 0.0],
@@ -187,6 +189,7 @@ fn a_corner_between_two_real_curves_rounds_and_leaves_tangent_to_both_sides() {
             out_handle: [-5.0, 5.0],
             kind: VertexKind::Corner,
             corner_radius: 0.0,
+            id: crate::VertId::NOVO,
         },
     ];
     let out = round_authored_corners(&verts, true).expect("o bico é curva-curva");
@@ -259,6 +262,7 @@ fn the_setback_is_measured_along_the_curve_not_across_the_chord() {
             out_handle: [-8.0, 9.0], // barriga pra cima
             kind: VertexKind::Corner,
             corner_radius: 0.0,
+            id: crate::VertId::NOVO,
         },
         VecVertex {
             anchor: [0.0, 0.0],
@@ -266,6 +270,7 @@ fn the_setback_is_measured_along_the_curve_not_across_the_chord() {
             out_handle: [0.0, 0.0],
             kind: VertexKind::Corner,
             corner_radius: 2.0,
+            id: crate::VertId::NOVO,
         },
         VecVertex::corner([10.0, 0.0]),
     ];
@@ -416,6 +421,7 @@ fn absurd_radii_on_a_curved_path_stay_finite() {
                     out_handle: [bulge, bulge],
                     kind: VertexKind::Corner,
                     corner_radius: r,
+                    id: crate::VertId::NOVO,
                 },
                 VecVertex {
                     anchor: [4.0, 0.0],
@@ -423,6 +429,7 @@ fn absurd_radii_on_a_curved_path_stay_finite() {
                     out_handle: [4.0 + bulge, -bulge],
                     kind: VertexKind::Corner,
                     corner_radius: r,
+                    id: crate::VertId::NOVO,
                 },
                 VecVertex {
                     anchor: [2.0, 3.0],
@@ -430,6 +437,7 @@ fn absurd_radii_on_a_curved_path_stay_finite() {
                     out_handle: [2.0 - bulge, 3.0],
                     kind: VertexKind::Corner,
                     corner_radius: r,
+                    id: crate::VertId::NOVO,
                 },
             ];
             let out = round_authored_corners(&verts, true)

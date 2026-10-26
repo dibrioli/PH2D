@@ -57,7 +57,7 @@ fn the_v22_scope_reads_the_old_layout_and_closes() {
         align: StrokeAlign::Inner,
     })
     .unwrap();
-    let s: StrokeSpec = with_stroke_layout_v22(|| postcard::from_bytes(&antigo)).unwrap();
+    let s: StrokeSpec = with_wire_layout(22, || postcard::from_bytes(&antigo)).unwrap();
     assert_eq!(s.dash, Some(DashPattern::single(2.0, 1.5)));
     assert_eq!((s.marker_scale_start, s.marker_scale_end), (1.7, 1.7));
     assert_eq!(

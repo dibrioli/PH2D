@@ -31,6 +31,7 @@ fn circle(r: f64) -> ArcPath {
             out_handle: [p[i][0] + tang[i][0], p[i][1] + tang[i][1]],
             kind: VertexKind::Smooth,
             corner_radius: 0.0,
+            id: crate::VertId::NOVO,
         })
         .collect();
     ArcPath::from_contour(&verts, true).expect("círculo")

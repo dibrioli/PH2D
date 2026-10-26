@@ -87,7 +87,12 @@
 /// (gate `stroke_v22_fixture`, sobre bytes gravados pelo código v22). ⚠️ O piso de um elemento do
 /// tracejado subiu na mesma wave (`MIN_DASH_FRACTION`): um vão `0` antigo mede `0,1 %` da largura em
 /// vez de `2e-16` — invisível, e o que faz o PONTO do «traço-ponto» existir.
-pub const VEC_SCENE_SCHEMA_VERSION: u32 = 23;
+/// v24: o [`crate::VecVertex`] ganhou `id: VertId` e o [`crate::VecPath`] `next_vert`, os dois no FIM
+/// (W4.2, `line/BlenderConstraints`) — o endereço estável de um vértice para as regras de CAD e o Copy
+/// Point. Lê o v23 e o v22 ([`crate::with_wire_layout`]): um path antigo abre numerado `1..=n` pela
+/// ordem `verts` → `subpaths` (gate `vec_v23_fixture`, sobre bytes gravados pelo código v23).
+pub const VEC_SCENE_SCHEMA_VERSION: u32 = 24;
 
-/// O degrau anterior — o único que ainda se lê ([`crate::VecScene::from_bytes`]).
+/// Os degraus anteriores que ainda se leem ([`crate::VecScene::from_bytes`]).
 pub(crate) const VEC_SCENE_SCHEMA_V22: u32 = 22;
+pub(crate) const VEC_SCENE_SCHEMA_V23: u32 = 23;

@@ -21,6 +21,7 @@ fn circle() -> Vec<VecVertex> {
             out_handle: [p[i][0] + tang[i][0], p[i][1] + tang[i][1]],
             kind: VertexKind::Smooth,
             corner_radius: 0.0,
+            id: crate::VertId::NOVO,
         })
         .collect()
 }
@@ -171,6 +172,7 @@ fn closest_arc_finds_the_nearest_point_off_the_curve() {
             out_handle: [20.0, 0.0],
             kind: VertexKind::Smooth,
             corner_radius: 0.0,
+            id: crate::VertId::NOVO,
         },
         VecVertex {
             anchor: [40.0, 30.0],
@@ -178,6 +180,7 @@ fn closest_arc_finds_the_nearest_point_off_the_curve() {
             out_handle: [60.0, 30.0],
             kind: VertexKind::Smooth,
             corner_radius: 0.0,
+            id: crate::VertId::NOVO,
         },
         VecVertex {
             anchor: [80.0, -30.0],
@@ -185,6 +188,7 @@ fn closest_arc_finds_the_nearest_point_off_the_curve() {
             out_handle: [100.0, -30.0],
             kind: VertexKind::Smooth,
             corner_radius: 0.0,
+            id: crate::VertId::NOVO,
         },
         VecVertex {
             anchor: [120.0, 0.0],
@@ -192,6 +196,7 @@ fn closest_arc_finds_the_nearest_point_off_the_curve() {
             out_handle: [140.0, 0.0],
             kind: VertexKind::Smooth,
             corner_radius: 0.0,
+            id: crate::VertId::NOVO,
         },
     ];
     let ap = ArcPath::from_contour(&s_wave, false).expect("onda");

@@ -99,6 +99,9 @@ impl VecPath {
             // apagaria a pilha — e o sintoma seria **reescrever o texto de uma forma com dois
             // contornos devolvê-la com um só**, sem erro nenhum.
             paints: _,
+            // O contador é do path que FICA (monotónico); um id da fonte acima dele sobe-o no
+            // próximo `normaliza_ids`.
+            next_vert: _,
         } = next;
         self.verts = verts;
         self.closed = closed;
@@ -137,6 +140,9 @@ impl VecPath {
             opacity: _,
             blend: _,
             paints: _,
+            // O contador é do path que FICA (monotónico); um id da fonte acima dele sobe-o no
+            // próximo `normaliza_ids`.
+            next_vert: _,
         } = next;
         self.verts = verts;
         self.closed = closed;

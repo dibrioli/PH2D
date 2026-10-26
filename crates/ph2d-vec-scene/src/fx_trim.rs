@@ -203,6 +203,7 @@ pub(crate) fn rebuild(
         out_handle: cut[0][1],
         kind: kind_at(&pieces[0], true),
         corner_radius: 0.0,
+        id: crate::VertId::NOVO,
     });
     for w in 0..cut.len() - 1 {
         out.push(VecVertex {
@@ -211,6 +212,7 @@ pub(crate) fn rebuild(
             out_handle: cut[w + 1][1],
             kind: kind_at(&pieces[w], false),
             corner_radius: 0.0,
+            id: crate::VertId::NOVO,
         });
     }
     let last = cut.len() - 1;
@@ -220,6 +222,7 @@ pub(crate) fn rebuild(
         out_handle: cut[last][3], // ponta
         kind: kind_at(&pieces[last], false),
         corner_radius: 0.0,
+        id: crate::VertId::NOVO,
     });
     out
 }

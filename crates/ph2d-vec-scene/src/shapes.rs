@@ -250,6 +250,7 @@ pub fn rounded_rect(a: [f64; 2], b: [f64; 2], radius: f64) -> VecPath {
         out_handle: out_h,
         kind: VertexKind::Corner,
         corner_radius: 0.0,
+        id: crate::VertId::NOVO,
     };
     let verts = vec![
         // v1: fim do arco sup-esq, início da aresta de cima.
@@ -405,6 +406,7 @@ fn demo_curve() -> VecPath {
                 out_handle: p(-40.0, -280.0),
                 kind: VertexKind::Corner,
                 corner_radius: 0.0,
+                id: crate::VertId::NOVO,
             },
             VecVertex {
                 anchor: p(160.0, -150.0),
@@ -412,6 +414,7 @@ fn demo_curve() -> VecPath {
                 out_handle: p(160.0, -150.0),
                 kind: VertexKind::Corner,
                 corner_radius: 0.0,
+                id: crate::VertId::NOVO,
             },
         ],
         closed: false,

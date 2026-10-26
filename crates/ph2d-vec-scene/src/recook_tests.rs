@@ -41,6 +41,7 @@ fn authored() -> VecPath {
         // é o que deixa o gate da sobrevivência ver a diferença entre «sobreviveu» e «leu o
         // vazio de `next`».
         paints: vec![segundo_traco()],
+        next_vert: 0,
     }
 }
 
@@ -67,6 +68,7 @@ fn freshly_cooked() -> VecPath {
         opacity: crate::Opacity::default(),
         blend: ph2d_blend_mode::BlendMode::default(),
         paints: Vec::new(),
+        next_vert: 0,
     }
 }
 

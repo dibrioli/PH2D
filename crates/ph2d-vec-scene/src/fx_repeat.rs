@@ -276,6 +276,7 @@ fn map_vert(v: &VecVertex, m: Affine) -> VecVertex {
         // intacto. Um parâmetro de escala teria de multiplicá-lo aqui — a mesma conversão que
         // o raio do gradiente radial já faz.
         corner_radius: v.corner_radius,
+        id: v.id,
     }
 }
 

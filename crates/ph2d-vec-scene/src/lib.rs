@@ -312,10 +312,10 @@ mod dash_pattern;
 /// as suas conversões ao lado dos seus tipos.
 mod stroke_style;
 pub use dash_pattern::{DashLengths, DashPattern, MAX_DASH_PAIRS};
-/// A leitura do `StrokeSpec` por versão — o âmbito v22 (F16c).
+/// A leitura por versão — o âmbito do fio (F16c, W4.2).
 mod stroke_wire;
 pub use brush_stroke::{brush_along_path, brush_copies, brush_height, brush_spans};
-pub use stroke_wire::{StrokeLayoutV22, with_stroke_layout_v22};
+pub use stroke_wire::{WireLayout, with_wire_layout};
 
 pub use stroke_style::{
     BrushStroke, LineCap, LineJoin, MIN_DASH_FRACTION, MITER_LIMIT, OffsetSide, StrokeAlign,
@@ -399,7 +399,7 @@ pub enum VertexKind {
 
 /// Vértice cúbico: âncora + dois handles, em coordenadas **absolutas** de
 /// world-space (como o `CubicVertex` do Rive — cada ponto é skinado à parte).
-#[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, PartialEq, Serialize)]
 pub struct VecVertex {
     pub anchor: [f64; 2],
     pub in_handle: [f64; 2],
@@ -428,31 +428,12 @@ pub struct VecVertex {
     /// Escolher o sinal aqui (em vez de um campo novo) não muda o schema, e as operações que
     /// já escalam o raio por um fator positivo (transform, warp) preservam o estilo de graça.
     pub corner_radius: f64,
+    /// **O id estável** (v24, W4.2) — no FIM, pela escada posicional. [`VertId::NOVO`] até ao próximo
+    /// [`VecPath::normaliza_ids`]. Construtores e leitura por versão: [`vert_id`].
+    pub id: VertId,
 }
 
 impl VecVertex {
-    /// Vértice de quina reto: handles coincidentes com a âncora (sem curvatura).
-    pub fn corner(anchor: [f64; 2]) -> Self {
-        Self {
-            anchor,
-            in_handle: anchor,
-            out_handle: anchor,
-            kind: VertexKind::Corner,
-            corner_radius: 0.0,
-        }
-    }
-
-    /// Vértice suave com handles absolutos explícitos.
-    pub fn smooth(anchor: [f64; 2], in_handle: [f64; 2], out_handle: [f64; 2]) -> Self {
-        Self {
-            anchor,
-            in_handle,
-            out_handle,
-            kind: VertexKind::Smooth,
-            corner_radius: 0.0,
-        }
-    }
-
     // A convenção de SINAL do `corner_radius` (magnitude = tamanho · sinal = estilo) mora nos
     // acessores `corner_size`/`is_chamfer`/`set_corner_size`/`set_chamfer` em `corner_live`, ao
     // lado do cozimento que os consome (teto de LOC deste arquivo).
@@ -471,7 +452,7 @@ pub type VecPathId = u64;
 ///
 /// **Não** carrega nome, visibilidade, trava nem pai: isso é da entidade ECS que o
 /// representa na Hierarquia (ADR-0110). Aqui só geometria e estilo.
-#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Serialize)]
 pub struct VecPath {
     pub id: VecPathId,
     pub verts: Vec<VecVertex>,
@@ -529,7 +510,13 @@ pub struct VecPath {
     /// ⚠️ **No fim da struct, como manda a escada** — e depois do `blend`, que é o campo que a v19
     /// apendou.
     pub paints: Vec<paint_stack::PaintEntry>,
+    /// O próximo [`VertId`] deste path (v24, no FIM) — monotónico, nunca reusado.
+    pub next_vert: u32,
 }
+
+/// O id estável por vértice (W4.2).
+pub mod vert_id;
+pub use vert_id::VertId;
 
 /// ⭐ **A versão do wire-format e a escada dela** — módulo irmão pelo tecto de LOC (o corte é por
 /// responsabilidade: aqui o MODELO, ali o número que diz que bytes ele escreve).
@@ -601,6 +588,7 @@ impl VecScene {
     /// Adiciona um path (o `id` recebido é sobrescrito pelo próximo id da cena)
     /// e devolve o id atribuído.
     pub fn push_path(&mut self, mut path: VecPath) -> VecPathId {
+        path.normaliza_ids();
         let id = self.next_id;
         self.next_id += 1;
         path.id = id;
@@ -650,6 +638,11 @@ impl VecScene {
         Some(self.push_path(clone))
     }
 
+    /// Dá ids a todo vértice ainda sem um, em todos os paths ([`VecPath::normaliza_ids`]).
+    pub fn normaliza_ids(&mut self) -> bool {
+        self.paths.iter_mut().fold(false, |m, p| p.normaliza_ids() | m)
+    }
+
     /// Reordena o path `id` na pilha de render ([`ZOrder`]). Devolve `true` se a
     /// posição mudou (`false` se o id sumiu ou já estava no extremo pedido).
     pub fn reorder_path(&mut self, id: VecPathId, order: ZOrder) -> bool {
@@ -676,14 +669,16 @@ impl VecScene {
         postcard::to_allocvec(&(VEC_SCENE_SCHEMA_VERSION, self)).map_err(|e| e.to_string())
     }
 
-    /// Desserializa uma cena salva por [`Self::to_bytes`]; rejeita schema alheio. Um v22 lê-se
-    /// pela forma antiga do traço ([`with_stroke_layout_v22`]) e volta igual.
+    /// Desserializa uma cena salva por [`Self::to_bytes`]; rejeita schema alheio. Um v22/v23 lê-se
+    /// pela forma da sua versão ([`with_wire_layout`]) e volta igual, com ids `1..=n` por path.
     pub fn from_bytes(bytes: &[u8]) -> Result<Self, String> {
         let (ver, _) = postcard::take_from_bytes::<u32>(bytes).map_err(|e| e.to_string())?;
         let read = || postcard::from_bytes::<(u32, VecScene)>(bytes).map_err(|e| e.to_string());
         match ver {
             VEC_SCENE_SCHEMA_VERSION => read().map(|(_, s)| s),
-            schema::VEC_SCENE_SCHEMA_V22 => with_stroke_layout_v22(read).map(|(_, s)| s),
+            schema::VEC_SCENE_SCHEMA_V22 | schema::VEC_SCENE_SCHEMA_V23 => {
+                with_wire_layout(ver, read).map(|(_, s)| s)
+            }
             _ => Err(format!(
                 "versão de schema {ver} != {VEC_SCENE_SCHEMA_VERSION}"
             )),

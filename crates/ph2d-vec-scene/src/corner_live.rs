@@ -185,6 +185,7 @@ pub fn round_authored_corners_styled(
                     out_handle: out1,
                     kind: VertexKind::Corner,
                     corner_radius: 0.0,
+                    id: crate::VertId::NOVO,
                 });
                 out.extend(mid);
                 out.push(VecVertex {
@@ -193,6 +194,7 @@ pub fn round_authored_corners_styled(
                     out_handle: b[1],
                     kind: VertexKind::Corner,
                     corner_radius: 0.0,
+                    id: crate::VertId::NOVO,
                 });
             }
             // Vértice cru: a âncora e o `kind` são os da FONTE; os handles saem dos
@@ -205,6 +207,7 @@ pub fn round_authored_corners_styled(
                     out_handle: out_seg.map_or(v.out_handle, |b| b[1]),
                     kind: v.kind,
                     corner_radius: 0.0,
+                    id: v.id,
                 });
             }
         }

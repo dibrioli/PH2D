@@ -10,6 +10,7 @@ fn v(x: f64, y: f64) -> VecVertex {
         out_handle: [x, y],
         kind: VertexKind::Corner,
         corner_radius: 0.0,
+        id: crate::VertId::NOVO,
     }
 }
 
@@ -141,6 +142,7 @@ fn moving_an_endpoint_carries_its_handles() {
         out_handle: [12.0, 11.0],
         kind: crate::VertexKind::Smooth,
         corner_radius: 0.0,
+        id: crate::VertId::NOVO,
     };
     mover_ponta(&mut v, [20.0, 30.0]);
     assert_eq!(v.anchor, [20.0, 30.0]);

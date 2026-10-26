@@ -89,6 +89,7 @@ pub(crate) fn link(
                 out_handle: third(c, p_out),
                 kind: VertexKind::Corner,
                 corner_radius: 0.0,
+                id: crate::VertId::NOVO,
             };
             (third(p_in, c), vec![notch], third(p_out, c))
         }

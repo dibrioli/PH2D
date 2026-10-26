@@ -51,6 +51,7 @@ impl VecScene {
                 out_handle: v.anchor,
                 kind: VertexKind::Corner,
                 corner_radius: 0.0,
+                id: v.id,
             };
             if *v != flat {
                 *v = flat;
@@ -176,6 +177,7 @@ fn smooth_contour(verts: &mut [VecVertex], closed: bool) -> bool {
             ],
             kind: VertexKind::Smooth,
             corner_radius: 0.0,
+            id: v.id,
         };
         if *v != updated {
             *v = updated;

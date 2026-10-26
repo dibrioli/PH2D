@@ -1,17 +1,16 @@
-//! **O `StrokeSpec` lê-se pela VERSÃO de quem o gravou** (F16c, v22 → v23).
+//! **O fio lê-se pela VERSÃO de quem o gravou** (F16c v22 → v23 · W4.2 v23 → v24).
 //!
-//! O postcard é posicional: ler bytes v22 com o tipo v23 não erra, lê lixo bem-formado. E o
-//! `StrokeSpec` vive no FUNDO de três documentos — a `VecScene` (dentro do `ProjectFile`), os
-//! `ObjectPose` dos estados de UI, e os blobs de `VecPath` que o Envelope e a pele dos ossos
-//! guardam dentro de componentes. Congelar uma cópia de cada um custaria centenas de linhas por
-//! um campo; ⇒ só o `StrokeSpec` tem forma antiga ([`StrokeSpecV22`]), e quem conhece a versão do
-//! ficheiro abre um âmbito ([`with_stroke_layout_v22`]) em que todo `StrokeSpec` desserializado
-//! nesta thread usa essa forma.
+//! O postcard é posicional: ler bytes antigos com o tipo vivo não erra, lê lixo bem-formado. O
+//! `StrokeSpec` e o `VecVertex`/`VecPath` vivem no FUNDO de três documentos — a `VecScene` (dentro do
+//! `ProjectFile`), os `ObjectPose` dos estados de UI, e os blobs de `VecPath` que o Envelope e a pele
+//! dos ossos guardam dentro de componentes. ⇒ só esses tipos têm forma antiga, e quem conhece a versão
+//! do ficheiro abre um âmbito ([`with_wire_layout`]) com a `VEC_SCENE_SCHEMA_VERSION` dos bytes: todo
+//! tipo desserializado nesta thread lê a forma dessa versão (v22 = traço e geometria antigos · v23 =
+//! geometria sem ids, [`crate::vert_id`]).
 //!
 //! ⚠️ **O âmbito é da THREAD e só vale durante a chamada.** Um blob guardado e descodificado mais
 //! tarde (o `source` do Envelope e da pele) fica fora dele — por isso o load de um ficheiro antigo
-//! REGRAVA esses blobs na forma nova, uma vez, em vez de os deixar à espera de um leitor que já não
-//! sabe a versão.
+//! REGRAVA esses blobs na forma nova, uma vez. Âmbitos aninhados valem pelo MAIS ANTIGO.
 
 use std::cell::Cell;
 
@@ -20,36 +19,51 @@ use serde::{Deserialize, Deserializer};
 use crate::{DashPattern, LineCap, LineJoin, Marker, StrokeAlign, StrokePaint, StrokeSpec};
 
 thread_local! {
-    static V22: Cell<u32> = const { Cell::new(0) };
+    /// A versão dos bytes em leitura; `0` = a forma viva.
+    static LAYOUT: Cell<u32> = const { Cell::new(0) };
 }
 
-/// Corre `f` a ler todo [`StrokeSpec`] na forma do `VEC_SCENE_SCHEMA_VERSION` 22 (um par de
-/// tracejado, um tamanho de ponta). Reentrante; o âmbito fecha mesmo num `panic`.
-pub fn with_stroke_layout_v22<T>(f: impl FnOnce() -> T) -> T {
-    let _v22 = StrokeLayoutV22::enter();
+/// Corre `f` a ler na forma da `VEC_SCENE_SCHEMA_VERSION` `ver`. Reentrante; fecha mesmo num `panic`.
+pub fn with_wire_layout<T>(ver: u32, f: impl FnOnce() -> T) -> T {
+    let _g = WireLayout::enter(ver);
     f()
 }
 
 /// O mesmo âmbito como GUARDA — para um leitor cujo corpo tem `return`s pelo meio (o do
 /// `.ph2dproj`): o âmbito dura até o guarda cair.
 #[must_use = "o âmbito fecha quando o guarda cai"]
-pub struct StrokeLayoutV22(());
+pub struct WireLayout {
+    anterior: u32,
+}
 
-impl StrokeLayoutV22 {
-    pub fn enter() -> Self {
-        V22.with(|c| c.set(c.get() + 1));
-        Self(())
+impl WireLayout {
+    pub fn enter(ver: u32) -> Self {
+        let anterior = LAYOUT.with(|c| {
+            let a = c.get();
+            c.set(if a == 0 { ver } else { a.min(ver) });
+            a
+        });
+        Self { anterior }
     }
 }
 
-impl Drop for StrokeLayoutV22 {
+impl Drop for WireLayout {
     fn drop(&mut self) {
-        V22.with(|c| c.set(c.get() - 1));
+        LAYOUT.with(|c| c.set(self.anterior));
     }
+}
+
+fn reading_at_most(ver: u32) -> bool {
+    LAYOUT.with(|c| (1..=ver).contains(&c.get()))
 }
 
 fn reading_v22() -> bool {
-    V22.with(|c| c.get() > 0)
+    reading_at_most(crate::schema::VEC_SCENE_SCHEMA_V22)
+}
+
+/// A geometria sem id por vértice (`<= 23`).
+pub(crate) fn reading_geometry_v23() -> bool {
+    reading_at_most(crate::schema::VEC_SCENE_SCHEMA_V23)
 }
 
 /// A forma v22, campo a campo — ⛔ congelada: mudá-la deixa de ler ficheiros reais.

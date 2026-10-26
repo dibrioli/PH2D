@@ -264,6 +264,7 @@ fn map_vert(v: &VecVertex, frame: &GlyphFrame, rot: Rotor, center: [f64; 2]) -> 
         out_handle: m(v.out_handle),
         kind: v.kind,
         corner_radius: v.corner_radius,
+        id: v.id,
     }
 }
 

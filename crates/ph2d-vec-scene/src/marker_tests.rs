@@ -565,6 +565,7 @@ fn the_trim_cuts_the_curve_itself_at_any_handle_angle() {
                 out_handle: [4.0, 0.0],
                 kind: VertexKind::Smooth,
                 corner_radius: 0.0,
+                id: crate::VertId::NOVO,
             },
             VecVertex {
                 anchor: [10.0, 0.0],
@@ -572,6 +573,7 @@ fn the_trim_cuts_the_curve_itself_at_any_handle_angle() {
                 out_handle: [10.0, 0.0],
                 kind: VertexKind::Smooth,
                 corner_radius: 0.0,
+                id: crate::VertId::NOVO,
             },
         ],
         closed: false,
@@ -630,6 +632,7 @@ fn a_recuo_que_atravessa_segmentos_consome_arco_e_nao_cordas() {
         out_handle: o,
         kind: VertexKind::Smooth,
         corner_radius: 0.0,
+        id: crate::VertId::NOVO,
     };
     let p = VecPath {
         verts: vec![

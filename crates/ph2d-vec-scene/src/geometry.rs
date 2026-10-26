@@ -263,6 +263,7 @@ pub fn split_segment(path: &mut VecPath, seg: usize, t: f64) -> Option<usize> {
                 out_handle: r1,
                 kind: VertexKind::Smooth,
                 corner_radius: 0.0,
+                id: crate::VertId::NOVO,
             },
         );
     }

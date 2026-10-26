@@ -12,6 +12,7 @@ fn v(x: f64, y: f64) -> VecVertex {
         out_handle: [x, y],
         kind: VertexKind::Corner,
         corner_radius: 0.0,
+        id: crate::VertId::NOVO,
     }
 }
 
@@ -28,6 +29,7 @@ fn path_of(verts: Vec<VecVertex>, closed: bool) -> VecPath {
         opacity: crate::Opacity::default(),
         blend: ph2d_blend_mode::BlendMode::default(),
         paints: Vec::new(),
+        next_vert: 0,
     }
 }
 

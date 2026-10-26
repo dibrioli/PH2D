@@ -135,3 +135,40 @@ fn a_coluna_do_valor_escreve_a_palavra_da_escolha() {
     );
     assert_eq!(diz(PropKind::Opacity, 0.5), crate::tracks_value::text(0.5));
 }
+
+/// ⭐ **Um comprimento lê-se na unidade do PROJECTO** (smoke do dono, W4.6): a medida de uma regra de desenho vale
+/// metros no canal, e a row mostrava `0.80` ao lado do «80 px» do canvas. Um ângulo leva o grau; um campo sem
+/// unidade fica como era.
+///
+/// Mutação que deve sangrar: o braço `Unidade::Comprimento` → `text(v)`.
+#[test]
+fn a_length_channel_shows_in_the_project_unit() {
+    use ph2d_ecs::canal_cad::{ANGULO, MEDIDA, chave};
+    use ph2d_editor_core::project::ProjectSettings;
+    use ph2d_timeline::{AnimTarget, Extrap, PropKind, TrackValues, TrackView};
+    let row = |prop| TrackView {
+        target: AnimTarget::new(11),
+        prop,
+        entity: 7,
+        missing: false,
+        keys: Vec::new(),
+        buffer_ghost: None,
+        pre: Extrap::default(),
+        post: Extrap::default(),
+        expr: None,
+    };
+    let projecto = ProjectSettings {
+        pixels_per_meter: 100.0,
+        ..ProjectSettings::default()
+    };
+    let u = crate::tracks_value::Unidades::of(&projecto);
+    let diz = |prop, v| {
+        let t = [row(prop)];
+        let mut values = TrackValues::default();
+        values.publish(&t, |_, _| Some(v));
+        crate::tracks_value::valor_da_row(&values, &t[0], v, u)
+    };
+    assert_eq!(diz(PropKind::Field(chave(MEDIDA, 4)), 0.8), "80 px");
+    assert_eq!(diz(PropKind::Field(chave(ANGULO, 4)), 45.0), "45°");
+    assert_eq!(diz(PropKind::Opacity, 0.5), crate::tracks_value::text(0.5));
+}

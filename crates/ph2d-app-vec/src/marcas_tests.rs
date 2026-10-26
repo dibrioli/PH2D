@@ -7,6 +7,7 @@ const E: u64 = 7;
 const SEM: Contexto = Contexto {
     aberta: None,
     camadas: 0,
+    regra: None,
 };
 const R: u16 = v::TINTA_PREENCH + v::OFF_SOLIDA;
 const SOLO: Instante = Instante {
@@ -147,6 +148,7 @@ fn o_campo_da_camada_aberta_mostra_a_entrada_aberta() {
     let aberta = |k| Contexto {
         aberta: Some(k),
         camadas: 2,
+        regra: None,
     };
     assert_eq!(
         canal_do_campo(painel::VECTOR_PAINT_OPACITY, aberta(0)),
@@ -189,6 +191,7 @@ fn o_losango_da_camada_aberta_segue_a_entrada() {
     let ctx = |k| Contexto {
         aberta: Some(k),
         camadas: 2,
+        regra: None,
     };
     let m = marcas(&d, ctx(1), &[E], em(0.0), na_curva);
     assert_eq!(m[&painel::VECTOR_PAINT_OPACITY], KeyMark::Chave);
@@ -209,6 +212,7 @@ fn os_campos_sem_coluna_mostram_o_canal_deles() {
     let ctx = Contexto {
         aberta: Some(1),
         camadas: 2,
+        regra: None,
     };
     assert_eq!(
         canal_do_campo(painel::VECTOR_OBJ_BLEND, SEM),

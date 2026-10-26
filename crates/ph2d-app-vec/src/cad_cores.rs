@@ -81,15 +81,4 @@ impl CadCores {
         }
         None
     }
-
-    /// Espera a análise que está a correr (os gates; o quadro nunca chama isto).
-    #[cfg(test)]
-    pub(crate) fn espera(&self) {
-        let mut i = self.interno.lock().unwrap_or_else(PoisonError::into_inner);
-        if let Some((k, h)) = i.correndo.take()
-            && let Ok(e) = h.join()
-        {
-            i.pronto = Some((k, Arc::new(e)));
-        }
-    }
 }

@@ -274,6 +274,27 @@ fn existe(scene: &VecScene, a: &Alvo) -> bool {
     }
 }
 
+thread_local! {
+    /// O canal da cota escolhida (o losango do chip da ② lê-o: `marcas::Contexto::do_painel`).
+    static CANAL: std::cell::Cell<Option<ph2d_timeline::PropKind>> = const { std::cell::Cell::new(None) };
+}
+
+/// O canal da medida de uma regra (o `canal_cad` dela, `j` = o id).
+#[must_use]
+pub fn canal_da_regra(lei: &Lei, id: RegraId) -> Option<ph2d_timeline::PropKind> {
+    lei.medida()?;
+    Some(ph2d_timeline::PropKind::Field(ph2d_ecs::canal_cad::chave(
+        ph2d_ecs::canal_cad::MEDIDA,
+        id.0,
+    )))
+}
+
+/// O canal da cota escolhida neste quadro (`None` = nenhuma, ou fora da tool).
+#[must_use]
+pub fn canal_da_escolhida() -> Option<ph2d_timeline::PropKind> {
+    CANAL.with(std::cell::Cell::get)
+}
+
 /// ⭐ **Um quadro da tool**: drena os pedidos da barra, larga o que deixou de existir (undo, um ponto apagado),
 /// acha o hover pelo último plano e publica a ④/② (a vista, a semente do número, o foco pedido pelo clique).
 pub fn frame(scene: &mut VecScene, vec: &mut VecState, xf: &VecXforms, hero: &mut HeroScreen) {
@@ -299,6 +320,13 @@ pub fn frame(scene: &mut VecScene, vec: &mut VecState, xf: &VecXforms, hero: &mu
             .and_then(|pl| pl.acerta([f64::from(p[0]), f64::from(p[1])]))
     });
     let regra = t.regra.and_then(|id| scene.regra(id).copied());
+    CANAL.with(|c| {
+        c.set(
+            regra
+                .filter(|r| ativa && !r.referencia)
+                .and_then(|r| canal_da_regra(&r.lei, r.id)),
+        );
+    });
     if let Some(r) = regra
         && let Some(v) = u.no_ecra(&r.lei)
     {

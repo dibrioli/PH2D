@@ -2,7 +2,6 @@
 //! os nós do EDIT SHAPE (F7e). Saíram da shell (`fase_vector_edit_overlay`), que é composição.
 
 use crate::state::VecState;
-use ph2d_text::TextSystem;
 use ph2d_tokens::Theme;
 use ph2d_vec_scene::{VecPathId, VecScene, VecViewState, VecXforms};
 use ph2d_vector::{Affine, VectorScene};

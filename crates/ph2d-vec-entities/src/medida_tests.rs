@@ -69,3 +69,35 @@ fn the_capture_sees_the_authored_drawing_and_an_artist_edit_becomes_it() {
     cond.settle();
     assert!(cond.is_empty());
 }
+
+/// ⭐ O ângulo tem o SEU campo (`canal_cad::ANGULO`): a timeline sabe que o número são graus, e não um comprimento
+/// em metros. Uma `Lei::Angulo` publica em `ANGULO` e uma escrita nesse canal chega à regra; a distância fica em
+/// `MEDIDA`; e uma escrita no campo ERRADO não é dela.
+#[test]
+fn an_angle_measure_rides_its_own_field() {
+    use ph2d_ecs::canal_cad::ANGULO;
+    let (mut sim, mut scene, id, distancia, e) = cena();
+    let v = |i| PontoCad::Vert(id, VertId(i));
+    scene.regras_mut().push(RegraCad::nova(Lei::Angulo(
+        SegCad(v(1), v(2)),
+        SegCad(v(2), v(3)),
+        std::f64::consts::FRAC_PI_2,
+    )));
+    scene.normaliza_ids();
+    let angulo = scene.regras()[4].id;
+    let lei = |r: RegraId| scene.regra(r).unwrap().lei.clone();
+    assert_eq!(chave_da(&lei(angulo), angulo), Some(chave(ANGULO, angulo.0)));
+    assert_eq!(chave_da(&lei(distancia), distancia), Some(chave(MEDIDA, distancia.0)));
+    assert_eq!(chave_da(&scene.regras()[0].lei.clone(), scene.regras()[0].id), None);
+    let publicadas = campos(&scene, id);
+    assert!(publicadas.contains(&(chave(ANGULO, angulo.0), 90.0)), "{publicadas:?}");
+    assert!(publicadas.contains(&(chave(MEDIDA, distancia.0), 40.0)), "{publicadas:?}");
+    assert!(
+        !aplicar(&mut sim, &mut scene, vec![(e, chave(MEDIDA, angulo.0), 30.0)], &mut ConducaoCad::default()),
+        "uma escrita em MEDIDA não é de um ângulo"
+    );
+    let mut cond = ConducaoCad::default();
+    aplicar(&mut sim, &mut scene, vec![(e, chave(ANGULO, angulo.0), 60.0)], &mut cond);
+    let m = scene.regra(angulo).and_then(|r| r.lei.medida()).unwrap();
+    assert!((m - 60f64.to_radians()).abs() < 1e-9, "a escrita em ANGULO chega à regra: {m}");
+}

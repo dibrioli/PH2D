@@ -282,6 +282,8 @@ fn derivado(id: NodeId) -> Option<PropKind> {
 pub struct Contexto {
     pub aberta: Option<usize>,
     pub camadas: usize,
+    /// A cota escolhida na tool Regras (W4.6): o canal do número dela na ②.
+    pub regra: Option<PropKind>,
 }
 
 impl Contexto {
@@ -292,6 +294,7 @@ impl Contexto {
         Self {
             aberta: ph2d_panel_vector::state::open_layer_index().filter(|&k| k < camadas),
             camadas,
+            regra: crate::cad_tool::canal_da_escolhida(),
         }
     }
 }
@@ -308,6 +311,11 @@ pub fn canal_do_campo(id: NodeId, ctx: Contexto) -> Vec<PropKind> {
     }
     if let Some(g) = derivado(id) {
         return vec![g];
+    }
+    if id == ph2d_panel_vector::state_cad::VECTOR_CAD_VALUE
+        && let Some(p) = ctx.regra
+    {
+        return vec![p];
     }
     if let Some(k) = ctx.aberta
         && let Some(&(_, c)) = DA_CAMADA_ABERTA.iter().find(|(x, _)| *x == id)
@@ -345,6 +353,10 @@ fn ids(ctx: Contexto) -> impl Iterator<Item = NodeId> {
                 .map(|&(id, _)| id),
         )
         .chain(derivados().iter().map(|&(id, _)| id))
+        .chain(
+            ctx.regra
+                .map(|_| ph2d_panel_vector::state_cad::VECTOR_CAD_VALUE),
+        )
         .chain((0..ctx.camadas).flat_map(|k| {
             [
                 painel::vector_paint_swatch_id(k),

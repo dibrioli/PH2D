@@ -10,12 +10,15 @@
 
 use crate::canal::{CampoInfo, Especie, FieldKey, familia::CAD};
 
-/// A medida da regra: METROS (o mundo) numa distância e num raio, GRAUS num ângulo — como o `canal_constraint::DISTANCIA`;
-/// o Inspector mostra-a no px/metros e graus/radianos do projecto.
+/// A medida de uma distância ou de um raio, em METROS (o mundo); a timeline e o Inspector mostram-na no px/metros
+/// do projecto ([`crate::canal::Unidade::Comprimento`]).
 pub const MEDIDA: u16 = 1;
+/// A medida de um ângulo, em GRAUS — campo próprio para que quem lê o canal saiba que número é
+/// ([`crate::canal::Unidade::Angulo`]).
+pub const ANGULO: u16 = 2;
 
 /// Todo campo declarado.
-pub const CAMPOS: [u16; 1] = [MEDIDA];
+pub const CAMPOS: [u16; 2] = [MEDIDA, ANGULO];
 
 /// A chave do campo `campo` da regra de id `regra`.
 #[must_use]
@@ -33,10 +36,15 @@ pub const fn regra_de(k: FieldKey) -> u32 {
 /// O que o campo é.
 #[must_use]
 pub fn info(campo: u16) -> Option<CampoInfo> {
-    (campo == MEDIDA).then_some(CampoInfo {
-        rotulo: "canal.cad.medida",
+    let rotulo = match campo {
+        MEDIDA => "canal.cad.medida",
+        ANGULO => "canal.cad.angulo",
+        _ => return None,
+    };
+    Some(CampoInfo {
+        rotulo,
         especie: Especie::Continuo,
-        grupo: MEDIDA,
+        grupo: campo,
         por_i: true,
     })
 }

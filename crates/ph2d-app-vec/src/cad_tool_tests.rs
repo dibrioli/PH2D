@@ -228,3 +228,44 @@ fn leaving_the_tool_drops_the_choice() {
     assert!(m.vec.cad_tool.escolha.is_empty());
     assert_eq!(state_cad::cad_vista(), CadVista::default());
 }
+
+/// ⭐ De ponta a ponta: com o Auto Key armado, escrever o número da cota grava a chave no canal `CAD` da regra (o
+/// diff do canal publicado — a porta que a shell usa, `autokey_campos`). Os cantos que a cota moveu gravam-se também
+/// (o grupo da forma mudou: a lei do dono, «o Auto Key grava tudo»).
+#[test]
+fn typing_a_dimension_with_autokey_records_a_key() {
+    use ph2d_ecs::{CanaisLidos, FieldKey, VecPathRef};
+    use std::collections::BTreeMap;
+    let mut m = mesa();
+    let (a, b) = (m.v(1), m.v(2));
+    m.scene.regras_mut().extend([
+        ph2d_vec_scene::cad::RegraCad::nova(Lei::Fixo(a, [0.0, 0.0])),
+        ph2d_vec_scene::cad::RegraCad::nova(Lei::Horizontal(SegCad(a, b))),
+        ph2d_vec_scene::cad::RegraCad::nova(Lei::Distancia(a, b, 2.0)),
+    ]);
+    m.scene.normaliza_ids();
+    let r = m.scene.regras()[2];
+    let mut sim = SimWorld::new();
+    let e = sim.world_mut().spawn(VecPathRef(m.path)).id().to_bits();
+    let doc = ph2d_timeline::TimelineDoc::new();
+    let mut cond = crate::canais::ConducaoVetor::default();
+    let lidos = |sim: &SimWorld| -> Vec<(FieldKey, f32)> {
+        sim.world().get_resource::<CanaisLidos>().unwrap().campos(e).collect()
+    };
+    let _ = crate::canais::aplicar(&mut sim, &mut m.scene, &mut cond);
+    crate::canais::publicar(&mut sim, &m.scene, &cond, &[e]);
+    let base: BTreeMap<FieldKey, f32> = lidos(&sim).into_iter().collect();
+    m.vec.cad_tool.regra = Some(r.id);
+    let u = Unidades::of(&m.hero);
+    state_cad::pede(PedidoCad::Medida(u.comprimento.value(3.0)));
+    m.quadro();
+    let _ = crate::canais::aplicar(&mut sim, &mut m.scene, &mut cond);
+    crate::canais::publicar(&mut sim, &m.scene, &cond, &[e]);
+    let plan = ph2d_timeline::autokey_campos(&doc, e, 0.0, &lidos(&sim), &base, true, false);
+    let canal = canal_da_regra(&r.lei, r.id).expect("a medida tem canal");
+    assert!(
+        plan.keys.iter().any(|(p, v)| *p == canal && (*v - 3.0).abs() < 1e-5),
+        "a chave da cota não foi gravada: {:?}",
+        plan.keys
+    );
+}

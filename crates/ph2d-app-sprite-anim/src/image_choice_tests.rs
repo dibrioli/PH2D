@@ -237,3 +237,22 @@ fn uma_imagem_so_individual_leva_o_nome_dos_pixels() {
     );
     assert!(w.get::<SpritePixels>(e).is_none());
 }
+
+/// Lei 1 (Godot/Unity): a ESCALA fica — uma sprite a 2× o nativo da imagem antiga fica a 2× o nativo da nova.
+#[test]
+fn uma_sprite_ampliada_continua_ampliada_com_a_imagem_nova() {
+    let mut w = World::new();
+    let e = w
+        .spawn(Sprite::atlas(KEY_IMPORTADA, [2.0, 2.0], BRANCO))
+        .id();
+    choose_image(
+        &mut w,
+        e,
+        Some(imported_facts(100, 100, PPM)),
+        ImageSource::Atlas {
+            key: KEY_IMPORTADA + 1,
+        },
+        imported_facts(50, 25, PPM),
+    );
+    assert!(perto(w.get::<Sprite>(e).unwrap().size, [1.0, 0.5]));
+}

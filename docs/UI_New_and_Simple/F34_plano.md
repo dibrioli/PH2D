@@ -92,6 +92,37 @@ Segmentos semeados a 64×: 28–30 na borda, **1** no centro (era 1024).
 | G4 `the_field_is_seeded_only_by_the_segments_that_reach_the_window` | sem `retain` · sem o segmento que sobra | vermelho · vermelho |
 | G5 (placa) `every_visible_pixel_of_a_clipped_job_is_the_pixel_of_the_whole_job` | `round` de volta | vermelho (6/255) |
 
+## 6 — Smoke do dono (26/10): «com o máximo de zoom ainda pisca» (MEDIDO e curado)
+
+O zoom máximo da câmera é ~21× o de abertura (`Camera2d::ZOOM_MIN_HEIGHT_WORLD = 0,5`). Parada, a
+cena 41 a essa escala está estável: nenhuma recozedura nem falha (foto + `PH2D_FX_PERF`). **O piscar é do
+GESTO.** Com o recorte, o tamanho do job muda a CADA quadro de um pan ou zoom. O `ensure_output`
+trocava a textura (um novo `register_texture` no Vello, e a velha só sai no quadro seguinte), e o atlas
+de imagens do Vello 0.10 (`vello_encoding/image_cache.rs`: começa em 1024 e tem tecto de 8192, com
+despejo só de entradas paradas há 2 gerações) deixava de alocar a imagem nova: `xy = None`, e a imagem
+**não é desenhada naquele quadro**.
+
+Sonda `fx_zoom_sonda_do_piscar` (o padrão de registo do `FxLive`, 120 quadros, quadros SEM a imagem):
+
+| tamanho | trocando a cada px | em degraus de 256 |
+|---|---|---|
+| fixo 2100×1900 | 0 | 0 |
+| +1/quadro desde 1311×1059 | 0 | 0 |
+| +1/quadro desde 2100×1900 | **30** | 0 |
+| +8/quadro desde 2100×1900 | **36** | 2 |
+| +8/quadro desde 3000×2600 | **46** | 2 |
+
+No máximo zoom a margem da pilha (o Bevel e a sombra em pixels) cresce, e o job passa de ~2 000 px. Os
+degraus sozinhos não zeram: cada troca de degrau ainda perde 1 quadro. ⇒ **a textura de saída tem
+CAPACIDADE** (`fx_live::capacidade`: degrau de 64 abaixo de 1024 e de 256 acima; `serve`: troca só se não
+cabe ou se sobra mais que o dobro), e a `FxImage` ganha `texels`: o `dispatch` desenha a imagem na escala
+do conteúdo, recortada a `rect`.
+
+Gates: **G6** `a_gesture_at_max_zoom_almost_never_swaps_the_output_texture` (zoom de 32× a 64× e pan de
+300 px, 60 quadros cada, ≤ 3 trocas; mutação `serve = igual` → vermelho) · **G7** (placa)
+`a_texture_larger_than_its_content_draws_only_the_content` (512² com lixo vermelho fora do canto 300×200;
+mutação «ignora os texels» → vermelho).
+
 ## ⛔ Recusas MEDIDAS
 
 - **Alargar o que o campo LÊ pela cadeia de saltos do JFA** (`2^n − 1`, até ~2× a banda). Foi escrito

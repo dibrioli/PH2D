@@ -228,6 +228,7 @@ impl FxLive {
                     // Clone do handle estável = MESMO id de Blob (o slot de atlas do Vello).
                     image: StableImage::from_image_data(pfx.image.clone()),
                     rect,
+                    texels: (pfx.key.w, pfx.key.h),
                 },
             );
         }
@@ -431,11 +432,12 @@ impl FxLive {
 
     /// (Re)aloca a textura de saída de uma forma e mantém o id ESTÁVEL no renderer principal.
     fn ensure_output(&mut self, gpu: &GpuContext, vello_pass: &mut VelloPass, job: &Job) {
-        if matches!(self.paths.get(&job.id), Some(p) if p.key.w == job.key.w && p.key.h == job.key.h)
+        let (w, h) = (job.key.w, job.key.h);
+        if matches!(self.paths.get(&job.id), Some(p) if serve(p.tex.width(), w) && serve(p.tex.height(), h))
         {
             return;
         }
-        let tex = make_output_texture(gpu, job.key.w, job.key.h);
+        let tex = make_output_texture(gpu, capacidade(w), capacidade(h));
         match self.paths.get_mut(&job.id) {
             // Resize: RE-registra (id novo com as dims certas) e agenda o desregistro do antigo.
             // ⚠️ `override_image` só troca a textura e NÃO atualiza width/height da `ImageData` —
@@ -539,4 +541,21 @@ mod tests;
 #[allow(clippy::cast_precision_loss)]
 fn w_f32(v: u32) -> f32 {
     v as f32
+}
+
+/// **A capacidade da textura de saída para um lado de `v` texels.** Trocar a textura re-regista-a
+/// no Vello, e com o tamanho a mudar a cada quadro de um gesto (o recorte à vista, F34) ~¼ dos
+/// quadros saíam SEM a imagem a partir de ~2 000 px (sonda `fx_zoom_sonda_do_piscar`). Em degraus,
+/// e a textura só se troca quando o conteúdo não cabe ou cabe com folga de mais (`serve`).
+pub(crate) fn capacidade(v: u32) -> u32 {
+    let degrau = if v >= 1024 { 256 } else { 64 };
+    v.div_ceil(degrau)
+        .saturating_mul(degrau)
+        .min(MAX_FX_SIDE)
+        .max(v)
+}
+
+/// A textura de lado `cap` serve um conteúdo de `v`: cabe, e não sobra mais que o dobro.
+pub(crate) fn serve(cap: u32, v: u32) -> bool {
+    v <= cap && cap <= capacidade(v.saturating_mul(2))
 }

@@ -229,6 +229,43 @@ fn the_field_is_seeded_only_by_the_segments_that_reach_the_window() {
     );
 }
 
+/// **G6 — um GESTO no zoom máximo quase não troca a textura de saída.** Cada troca re-regista a
+/// imagem no Vello, e trocá-la a cada quadro tirava-a do atlas em ~¼ dos quadros a partir de
+/// ~2 000 px: o piscar do smoke F34 (sonda `fx_zoom_sonda_do_piscar`). Um zoom de 32× a 64× em 60
+/// quadros e um pan de 300 px na borda, contando as trocas pela lei do `ensure_output`.
+#[test]
+fn a_gesture_at_max_zoom_almost_never_swaps_the_output_texture() {
+    use crate::fx_live::{capacidade, serve};
+    let c = cena(FxOp::BEVEL);
+    let trocas = |quadros: Vec<Affine>| {
+        let mut cap: Option<(u32, u32)> = None;
+        let mut n = 0;
+        for cam in quadros {
+            let job = c.job(cam, VIEW).expect("job");
+            let (w, h) = (job.key.w, job.key.h);
+            if !cap.is_some_and(|(cw, ch)| serve(cw, w) && serve(ch, h)) {
+                cap = Some((capacidade(w), capacidade(h)));
+                n += 1;
+            }
+        }
+        n
+    };
+    let zoom = trocas(
+        (0..60)
+            .map(|q| camera(32.0 * 2f64.powf(f64::from(q) / 59.0), CENTRO, 0.0))
+            .collect(),
+    );
+    let pan = trocas(
+        (0..60)
+            .map(|q| camera(64.0, BORDA, f64::from(q) * 5.0))
+            .collect(),
+    );
+    assert!(
+        zoom <= 3 && pan <= 3,
+        "trocas de textura: zoom {zoom}, pan {pan} em 60 quadros"
+    );
+}
+
 /// **A sonda** — imprime a tabela do plano §1 (cobertura, texels, segmentos).
 /// `cargo test -p ph2d-app-vec --lib fx_zoom_regua -- --ignored --nocapture`.
 #[test]

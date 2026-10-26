@@ -251,3 +251,157 @@ fn fx_zoom_regua_ms_na_placa() {
         }
     }
 }
+
+/// **A sonda do piscar** (smoke F34 do dono: *«com o máximo de zoom ainda pisca»*). Repete o padrão de
+/// registo do `FxLive` no renderer principal — textura nova quando o TAMANHO muda, a velha desregistada
+/// no quadro seguinte — e conta os quadros em que a imagem NÃO chega à tela. `passo` = quanto o lado
+/// cresce por quadro (0 = tamanho fixo, o controlo).
+fn quadros_sem_imagem(
+    gpu: &ph2d_gpu::GpuContext,
+    lado: (u32, u32),
+    passo: u32,
+    quadros: u32,
+    degrau: u32,
+) -> u32 {
+    use ph2d_render::VelloPass;
+    use ph2d_vector::{ImageQuality, StableImage, VectorScene};
+    let tela = (1930u32, 1040u32);
+    let fmt = wgpu::TextureFormat::Rgba8Unorm;
+    let mut principal = VelloPass::new(gpu, fmt, tela).expect("vello");
+    let mut atual: Option<(ph2d_vector::ImageData, (u32, u32))> = None;
+    let mut pendentes = Vec::new();
+    let mut faltas = 0;
+    for q in 0..quadros {
+        for img in pendentes.drain(..) {
+            principal.unregister_texture(img);
+        }
+        let sobe = |v: u32| v.div_ceil(degrau) * degrau;
+        let (w, h) = (sobe(lado.0 + q * passo), sobe(lado.1 + q * passo));
+        if atual.as_ref().is_none_or(|(_, s)| *s != (w, h)) {
+            let t = tex(gpu, w, h);
+            upload(gpu, &t, w, h, &vec![255u8; (w * h * 4) as usize]);
+            let novo = principal.register_texture(t);
+            if let Some((velho, _)) = atual.replace((novo, (w, h))) {
+                pendentes.push(velho);
+            }
+        }
+        let img = &atual.as_ref().expect("imagem").0;
+        principal.mark_texture_dirty(img);
+        let mut cena = VectorScene::new();
+        let rect = (0.0, 0.0, f64::from(w), f64::from(h));
+        cena.draw_stable_image(
+            &StableImage::from_image_data(img.clone()),
+            rect,
+            ImageQuality::Medium,
+        );
+        principal
+            .render_to_intermediate(gpu, cena.inner(), tela, ph2d_vector::Color::TRANSPARENT)
+            .expect("render");
+        let px = readback(gpu, principal.intermediate_texture(), tela.0, tela.1);
+        let o = ((tela.1 / 2 * tela.0 + tela.0 / 2) * 4) as usize;
+        if px[o + 3] < 250 {
+            faltas += 1;
+        }
+    }
+    faltas
+}
+
+#[test]
+#[ignore = "needs a real GPU device; sonda F34 (o piscar)"]
+fn fx_zoom_sonda_do_piscar() {
+    let Some(gpu) = gpu() else {
+        return;
+    };
+    for degrau in [1, 256] {
+        for (nome, lado, passo) in [
+            ("fixo 2100x1900", (2100, 1900), 0),
+            ("cresce 1/quadro desde 1311x1059", (1311, 1059), 1),
+            ("cresce 1/quadro desde 2100x1900", (2100, 1900), 1),
+            ("cresce 8/quadro desde 2100x1900", (2100, 1900), 8),
+            ("cresce 8/quadro desde 3000x2600", (3000, 2600), 8),
+        ] {
+            let f = quadros_sem_imagem(&gpu, lado, passo, 120, degrau);
+            eprintln!("[fx-piscar] degrau {degrau:>3} · {nome}: {f} de 120 quadros sem a imagem");
+        }
+    }
+}
+
+/// **G7 (placa) — uma textura MAIOR que o conteúdo desenha só o conteúdo.** A capacidade (G6) deixa
+/// texels velhos fora dos `texels`; o `dispatch` tem de os recortar e manter a escala 1:1 do canto.
+/// Fixtura: 512² com o canto 300×200 BRANCO e o resto VERMELHO (o lixo), para `rect` 300×200.
+#[test]
+#[ignore = "needs a real GPU device; run with --ignored on the GPU lane"]
+fn a_texture_larger_than_its_content_draws_only_the_content() {
+    use ph2d_render::VelloPass;
+    use ph2d_vec_render::{FxImage, FxImages};
+    use ph2d_vector::{StableImage, VectorScene};
+    let Some(gpu) = gpu() else {
+        return;
+    };
+    let c = cena(FxOp::BEVEL);
+    let (cap, conteudo) = (512u32, (300u32, 200u32));
+    let mut bytes = vec![0u8; (cap * cap * 4) as usize];
+    for y in 0..cap {
+        for x in 0..cap {
+            let o = ((y * cap + x) * 4) as usize;
+            let cor = if x < conteudo.0 && y < conteudo.1 {
+                [255, 255, 255, 255]
+            } else {
+                [255, 0, 0, 255]
+            };
+            bytes[o..o + 4].copy_from_slice(&cor);
+        }
+    }
+    let t = tex(&gpu, cap, cap);
+    upload(&gpu, &t, cap, cap, &bytes);
+    let tela = (640u32, 480u32);
+    let mut principal = VelloPass::new(&gpu, wgpu::TextureFormat::Rgba8Unorm, tela).expect("vello");
+    let image = StableImage::from_image_data(principal.register_texture(t));
+    let mut fx = FxImages::new();
+    let rect = (100.0, 100.0, 400.0, 300.0);
+    fx.insert(
+        c.id,
+        FxImage {
+            image,
+            rect,
+            texels: conteudo,
+        },
+    );
+    let mut alvo = VectorScene::new();
+    ph2d_vec_render::dispatch(
+        &c.scene,
+        &ph2d_vec_scene::VecViewState::default(),
+        &c.xf,
+        &c.live,
+        &fx,
+        &ph2d_vec_render::WidgetSkins::new(),
+        &ph2d_vec_render::PatternTiles::new(),
+        &ph2d_vec_render::BrushArts::new(),
+        &ph2d_vec_render::DilatedPaints::new(),
+        Affine::IDENTITY,
+        &mut alvo,
+    );
+    principal
+        .render_to_intermediate(&gpu, alvo.inner(), tela, ph2d_vector::Color::TRANSPARENT)
+        .expect("render");
+    let px = readback(&gpu, principal.intermediate_texture(), tela.0, tela.1);
+    let em = |x: u32, y: u32| {
+        let o = ((y * tela.0 + x) * 4) as usize;
+        [px[o], px[o + 1], px[o + 2], px[o + 3]]
+    };
+    for (x, y) in [(110, 110), (395, 295), (250, 200)] {
+        assert_eq!(
+            em(x, y),
+            [255, 255, 255, 255],
+            "dentro do rect em ({x},{y}) não é o conteúdo"
+        );
+    }
+    for (x, y) in [(450, 150), (200, 350), (430, 330)] {
+        assert_eq!(
+            em(x, y)[3],
+            0,
+            "fora do rect em ({x},{y}) apareceu a textura: {:?}",
+            em(x, y)
+        );
+    }
+}

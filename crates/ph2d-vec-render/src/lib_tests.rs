@@ -268,6 +268,7 @@ fn one_pixel_image() -> FxImage {
         image: ph2d_vector::StableImage::from_rgba(std::sync::Arc::new(vec![0u8; 4]), 1, 1)
             .expect("1x1 image"),
         rect: (0.0, 0.0, 1.0, 1.0),
+        texels: (1, 1),
     }
 }
 

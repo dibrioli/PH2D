@@ -209,6 +209,7 @@ fn a_filtered_object_layers_over_the_images_box() {
             image: ph2d_vector::StableImage::from_rgba(std::sync::Arc::new(vec![0u8; 4]), 1, 1)
                 .expect("1x1"),
             rect: halo,
+            texels: (1, 1),
         },
     );
     let com = super::layer_rect(&scene, &xf, &live, &fx, id, Affine::IDENTITY).expect("com imagem");

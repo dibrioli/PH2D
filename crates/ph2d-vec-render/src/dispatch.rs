@@ -262,5 +262,18 @@ fn outline_on_screen(
 /// overlay de Background-Removal).
 fn draw_fx_image(img: &FxImage, target: &mut VectorScene) {
     // Id de Blob estável ⇒ o Vello reusa a textura do atlas (sem re-upload por frame).
-    target.draw_stable_image(&img.image, img.rect, ph2d_vector::ImageQuality::Medium);
+    let q = ph2d_vector::ImageQuality::Medium;
+    let (iw, ih) = (img.image.width(), img.image.height());
+    if img.texels == (iw, ih) {
+        target.draw_stable_image(&img.image, img.rect, q);
+        return;
+    }
+    // Só os `texels` do canto levam conteúdo: a imagem inteira na mesma escala, recortada a `rect`.
+    let (x0, y0, x1, y1) = img.rect;
+    let sx = (x1 - x0) / f64::from(img.texels.0.max(1));
+    let sy = (y1 - y0) / f64::from(img.texels.1.max(1));
+    let inteira = (x0, y0, x0 + f64::from(iw) * sx, y0 + f64::from(ih) * sy);
+    target.push_clip(&ph2d_vector::Rect::new(x0, y0, x1, y1));
+    target.draw_stable_image(&img.image, inteira, q);
+    target.pop_layer();
 }

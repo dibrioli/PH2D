@@ -205,6 +205,10 @@ pub struct FxImage {
     /// O retângulo de destino em pixels de TELA (`x0,y0,x1,y1`) — o shell já cruzou a câmera e
     /// somou a margem do blur (e o deslocamento da sombra).
     pub rect: (f64, f64, f64, f64),
+    /// Quantos texels da imagem (a partir do canto) levam o conteúdo que vai a `rect`. A textura
+    /// pode ser MAIOR (a capacidade do produtor): trocá-la de tamanho a cada quadro de um gesto
+    /// tirava-a do atlas do Vello em ~¼ dos quadros — o piscar medido na F34.
+    pub texels: (u32, u32),
 }
 
 /// **O LADRILHO ASSADO de um padrão** neste quadro — runtime-only, como a [`FxImage`].

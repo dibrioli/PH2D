@@ -44,6 +44,10 @@ fn the_colours_come_from_an_analysis_off_the_frame_thread_only_when_the_structur
     assert!(cores.ve(&scene, &xf).is_none());
     cores.espera();
     assert_eq!(cores.ve(&scene, &xf).expect("chegou").regras.len(), 4);
+
+    // Mudar uma medida sem mudar quantas regras há também é estrutura.
+    scene.regras_mut()[3] = RegraCad::nova(Lei::Distancia(v(r, 1), v(r, 2), 12.0));
+    assert!(cores.ve(&scene, &xf).is_none(), "a cor da medida antiga");
 }
 
 #[test]

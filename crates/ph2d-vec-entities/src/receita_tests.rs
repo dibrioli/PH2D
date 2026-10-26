@@ -54,8 +54,18 @@ fn a_live_circle_the_solver_moved_gets_its_recipe_and_transform_back() {
     scene.path_mut(id).unwrap().verts = movido.verts;
     let visto = mundo(&scene, &sim, e, id);
 
+    let receita = sim.world().get::<VecShape>(e).cloned();
+    let pose = sim.world().get::<Transform>(e).copied();
     assenta_circulos_vivos(&mut sim, &mut scene, &map, &[id]);
     assert_eq!(mundo(&scene, &sim, e, id), visto, "em gesto: nada muda");
+    assert!(
+        sim.world().get::<VecShape>(e).cloned() == receita,
+        "em gesto: a receita fica"
+    );
+    assert!(
+        sim.world().get::<Transform>(e).copied() == pose,
+        "em gesto: o Transform fica"
+    );
 
     assenta_circulos_vivos(&mut sim, &mut scene, &map, &[]);
     let Some(VecShape::Param { w, h, .. }) = sim.world().get::<VecShape>(e).cloned() else {
@@ -95,4 +105,26 @@ fn a_live_circle_as_cooked_is_left_alone() {
     assenta_circulos_vivos(&mut sim, &mut scene, &map, &[]);
     assert!((scene.clone(), sim.world().get::<Transform>(e).copied()) == antes);
     assert!(scene.path(id).is_some());
+}
+
+/// Longe da origem o centro só assenta até ao passo do `f32` do `Transform`: o passe tem de ser ponto fixo LÁ também.
+#[test]
+fn a_live_circle_far_from_the_origin_settles_once() {
+    let (mut sim, mut scene, map, id, e) = circulo_vivo();
+    if let Some(mut t) = sim.world_mut().get_mut::<Transform>(e) {
+        t.translation = ph2d_core::Vec2::new(12_345.678, -65_432.1);
+    }
+    let ids: Vec<_> = scene.path(id).unwrap().verts.iter().map(|v| v.id).collect();
+    let mut movido: VecPath = ellipse([0.37, -0.81], 6.3, 6.3);
+    for (v, i) in movido.verts.iter_mut().zip(&ids) {
+        v.id = *i;
+    }
+    scene.path_mut(id).unwrap().verts = movido.verts;
+    assenta_circulos_vivos(&mut sim, &mut scene, &map, &[]);
+    let fixo = (scene.clone(), sim.world().get::<Transform>(e).copied());
+    assenta_circulos_vivos(&mut sim, &mut scene, &map, &[]);
+    assert!(
+        (scene.clone(), sim.world().get::<Transform>(e).copied()) == fixo,
+        "o 2.º quadro re-escreveu: cada quadro seria um passo de undo"
+    );
 }

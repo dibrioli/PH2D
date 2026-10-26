@@ -4,18 +4,17 @@
 
 use std::collections::BTreeSet;
 
-use ph2d_vec_constraints::{Arrasto, Folha, Solucao, a_mais, resolve};
+use ph2d_vec_constraints::{Arrasto, Folha, a_mais, resolve};
 use ph2d_vec_scene::cad::{Lei, PontoCad, RegraCad, SegCad};
 use ph2d_vec_scene::{VecPathId, VecScene, VecXforms, xform_of};
 
 use super::{Part, PenClick, PenTool};
 use crate::snap::{SnapResult, SnapSource};
 
-/// O estado de UM gesto: o palpite do passo anterior, os paths que o solver escreveu e as regras que a guia acesa
+/// O estado de UM gesto: os paths que o solver escreveu e as regras que a guia acesa
 /// juntou (as últimas da cena, trocadas a cada passo enquanto a guia muda).
 #[derive(Clone, Debug, Default)]
 pub(crate) struct CadGesto {
-    palpite: Option<Solucao>,
     paths: Vec<VecPathId>,
     inferidas: Vec<RegraCad>,
     leis: Vec<Lei>,
@@ -135,17 +134,13 @@ impl PenTool {
             .flat_map(|r| r.lei.pontos())
             .map(PontoCad::path)
             .collect();
+        // Sem palpite: a cena É o passo anterior (cada passo já escreveu a sua solução nela).
         let res = {
             let folha = Folha::new(
                 ids.iter()
                     .filter_map(|&id| scene.path(id).map(|p| (p, self.xf(id)))),
             );
-            resolve(
-                &folha,
-                regras,
-                Some(Arrasto { ponto: m, alvo }),
-                self.cad.palpite.as_ref(),
-            )
+            resolve(&folha, regras, Some(Arrasto { ponto: m, alvo }), None)
         };
         for &id in &ids {
             let xf = self.xf(id);
@@ -154,7 +149,6 @@ impl PenTool {
             }
         }
         self.cad.paths = ids.into_iter().collect();
-        self.cad.palpite = Some(res.solucao);
     }
 }
 
@@ -184,6 +178,9 @@ fn mesma(a: &Lei, b: &Lei) -> bool {
             s == t || s == troca(t)
         }
         (Lei::Coincidente(p, q), Lei::Coincidente(u, v)) => (p, q) == (u, v) || (p, q) == (v, u),
+        (Lei::Distancia(p, q, d), Lei::Distancia(u, v, e)) => {
+            d == e && ((p, q) == (u, v) || (p, q) == (v, u))
+        }
         _ => a == b,
     }
 }

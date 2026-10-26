@@ -128,6 +128,16 @@ fn a_rule_the_drawing_already_implies_is_not_added_and_an_extra_dimension_is_bor
             referencia: true
         })
     );
+    // A mesma medida de trás para a frente é repetida, não uma 2.ª REF.
+    let n = scene.regras().len();
+    assert_eq!(
+        junta_regra(&mut scene, &xf, Lei::Distancia(v(r, 2), v(r, 1), 10.0)),
+        None
+    );
+    assert_eq!(scene.regras().len(), n);
+    // Uma lei geométrica que o desenho já impõe, sem ser cópia de nenhuma: as H fazem as arestas paralelas.
+    let paralelas = Lei::Paralelo(SegCad(v(r, 1), v(r, 2)), SegCad(v(r, 4), v(r, 3)));
+    assert_eq!(junta_regra(&mut scene, &xf, paralelas), None);
     // Uma lei geométrica a mais não entra: as duas H já fazem a 3.ª.
     let n = scene.regras().len();
     assert_eq!(

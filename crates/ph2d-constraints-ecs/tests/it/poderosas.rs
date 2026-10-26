@@ -245,6 +245,24 @@ fn a_spring_rewinds_to_the_same_bit() {
             "quadro {f}"
         );
     }
+    // Entre quadros (o ecrã a 60 Hz sobre 24 q/s): a mistura dos dois quadros, ao bit em qualquer ordem.
+    let mut tocar = Simulador::default();
+    let entre: Vec<[f64; 3]> = (0..=100)
+        .map(|i| tocar.atraso_em(f64::from(i) * 0.4, &mola, 24.0, &mut salto))
+        .collect();
+    assert!(
+        entre[13..=50].windows(2).all(|w| w[0] != w[1]),
+        "com o corpo a andar (quadros 5–20) o atraso muda a cada imagem"
+    );
+    let mut saltar = Simulador::default();
+    for i in [77, 3, 50, 49, 100, 12] {
+        let got = saltar.atraso_em(f64::from(i) * 0.4, &mola, 24.0, &mut salto);
+        assert_eq!(
+            got.map(f64::to_bits),
+            entre[i as usize].map(f64::to_bits),
+            "q {i}"
+        );
+    }
     // Editar a animação invalida o que já se calculou: a resposta segue a entrada NOVA.
     let mut parado = |_| [0.0; 3];
     assert_eq!(arrastar.atraso(33, &mola, 24.0, &mut parado), [0.0; 3]);

@@ -6,14 +6,13 @@
 //! | 2 | **Olho** — arraste a BOLA vermelha: a SETA aponta para ela (Look At) e a PUPILA corre atrás dela (Copy Location) sem sair do olho (Limit Distance, por baixo na pilha) |
 //! | 3 | **Ponteiros** — os dois autorados a 170°: o de cima tem limite −45°…45° e pára na borda MAIS PERTO (45°); o de baixo copia a rotação da GUIA (−170°) a 50 % e fica a 180° (o arco curto, não 0°) |
 //! | 4 | **Braço** — a IK de 2 ossos persegue a BOLA e o Copy Rotation abaixo dela roda a mão com o RODADOR |
-//! | 5 | **Antena** — o CORPO vai e volta (curva da timeline); a PONTA tem uma Spring e fica para trás, balança e assenta; a HASTE estica do corpo até à ponta (Stretch To). Tocar e arrastar o tempo dão a MESMA pose |
+//! | 5 | **Antena** — o CORPO vai e volta (curva da timeline, acelera e trava); a PONTA tem uma Spring e fica para trás, balança e assenta, presa ao comprimento da antena (Limit Distance, Surface); a HASTE olha a ponta (Look At). Tocar e arrastar o tempo dão a MESMA pose |
 
 use bevy_ecs::entity::Entity;
 use bevy_ecs::prelude::Resource;
 use bevy_ecs::world::World;
 use ph2d_constraints::{
     Canais, ChildOf, CopyTransform, Distance, DistanceMode, Ik, Kind, Limit, LookAt, Space, Spring,
-    StretchTo,
 };
 use ph2d_constraints_ecs::Constraints;
 use ph2d_ecs::{GlobalTransform, Name, Transform, assign_missing_stable_ids, stable_id_of};
@@ -413,7 +412,8 @@ pub const CORPO: [(i64, f32, f32); 5] = [
 ];
 
 /// Cena 5 — **Antena.** A curva do corpo é da timeline: a cena conduzida ([`crate::smoke_antena`])
-/// grava-a. Abre com a ponta escolhida.
+/// grava-a. A PONTA tem a mola e, por baixo dela na pilha, um Limit Distance (Surface) à BASE: a
+/// antena não estica, dobra. A HASTE olha a ponta. Abre com a ponta escolhida.
 fn antena(world: &mut World) -> Entity {
     let (_, x, y) = CORPO[0];
     let corpo = peca(
@@ -439,6 +439,14 @@ fn antena(world: &mut World) -> Entity {
     let mut t = Transform::IDENTITY;
     t.translation.x = BASE_NO_CORPO[0];
     t.translation.y = BASE_NO_CORPO[1];
+    let base = world
+        .spawn((
+            Name::new("Base"),
+            t,
+            GlobalTransform::from_transform(t),
+            ph2d_ecs::ChildOf(corpo),
+        ))
+        .id();
     t.rotation = 90f32.to_radians();
     let haste = world
         .spawn((
@@ -458,15 +466,23 @@ fn antena(world: &mut World) -> Entity {
         [0.2, 0.2, 0.25, 1.0],
     );
     let mola = Spring {
-        duracao: 0.6,
-        ressalto: 0.6,
+        duracao: 0.7,
+        ressalto: 0.45,
         ..Spring::default()
     };
-    pilha(world, ponta, &[(Kind::Spring(mola), None, 1.0)]);
-    let estica = StretchTo {
-        rest: f64::from(comprimento),
-        ..StretchTo::default()
-    };
-    pilha(world, haste, &[(Kind::StretchTo(estica), Some(ponta), 1.0)]);
+    let comprida = Kind::Distance(Distance {
+        distance: f64::from(comprimento),
+        mode: DistanceMode::Surface,
+    });
+    pilha(
+        world,
+        ponta,
+        &[(Kind::Spring(mola), None, 1.0), (comprida, Some(base), 1.0)],
+    );
+    pilha(
+        world,
+        haste,
+        &[(Kind::LookAt(LookAt::default()), Some(ponta), 1.0)],
+    );
     ponta
 }

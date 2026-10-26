@@ -5,7 +5,7 @@
 use bevy_ecs::entity::Entity;
 use ph2d_app_constraints::quadro;
 use ph2d_app_constraints::relogio::Relogio;
-use ph2d_app_constraints::smoke::{self, CORPO, PONTA_NO_CORPO};
+use ph2d_app_constraints::smoke::{self, BASE_NO_CORPO, CORPO, PONTA_NO_CORPO};
 use ph2d_app_constraints::smoke_antena::chaves_do_corpo;
 use ph2d_constraints_ecs::{Constraints, Estado, Estados};
 use ph2d_core::Playhead;
@@ -57,7 +57,11 @@ impl Cena {
     /// Um quadro do app no quadro `q`: devolve a ponta e o corpo no mundo.
     fn em(&mut self, q: i64) -> ([f32; 2], [f32; 2]) {
         #[expect(clippy::cast_precision_loss, reason = "quadros da cena")]
-        let t = q as f64 / self.tl.doc.fps_display;
+        self.em_t(q as f64 / self.tl.doc.fps_display)
+    }
+
+    /// O mesmo no instante `t` (segundos) — o ecrã desenha a 60 Hz, entre os quadros da timeline.
+    fn em_t(&mut self, t: f64) -> ([f32; 2], [f32; 2]) {
         apply_from_doc(self.sim.world_mut(), &mut self.tl.doc, t);
         let relogio = Relogio {
             doc: &self.tl.doc,
@@ -97,6 +101,12 @@ fn a_cena_5_toca_e_arrasta_igual() {
         "a mola assenta: {}",
         atraso(tocar[72])
     );
+    // A antena dobra, não estica: a ponta fica sempre ao comprimento dela da base.
+    let comprimento = PONTA_NO_CORPO[1] - BASE_NO_CORPO[1];
+    for &(p, k) in &tocar {
+        let d = (p[0] - k[0] - BASE_NO_CORPO[0]).hypot(p[1] - k[1] - BASE_NO_CORPO[1]);
+        assert!((d - comprimento).abs() < 1e-4, "a antena esticou: {d}");
+    }
     let estados = c.sim.world().resource::<Estados>();
     for e in [c.ponta, c.haste] {
         let id = c.sim.world().get::<Constraints>(e).unwrap().items[0].id;
@@ -110,6 +120,52 @@ fn a_cena_5_toca_e_arrasta_igual() {
             tocar[q as usize].0.map(f32::to_bits),
             "quadro {q}: {got:?} ≠ {:?}",
             tocar[q as usize]
+        );
+    }
+}
+
+/// ⭐ O ecrã desenha a 60 Hz e a timeline tem 24 quadros por segundo: entre dois quadros o corpo anda
+/// (a curva lê o instante contínuo) e o atraso da mola tem de andar com ele — parado entre quadros, a
+/// ponta treme colada ao corpo e salta no quadro seguinte (report do dono 25/10: «não é fluido»).
+#[test]
+fn a_ponta_anda_a_cada_imagem_do_ecra() {
+    let mut c = Cena::nova();
+    let atraso = |(p, k): ([f32; 2], [f32; 2])| [p[0] - k[0], p[1] - k[1]];
+    #[expect(clippy::cast_precision_loss, reason = "imagens do ecrã")]
+    let amostras: Vec<[f32; 2]> = (0..=120)
+        .map(|i| atraso(c.em_t(f64::from(i) / 60.0)))
+        .collect();
+    let parado = amostras.windows(2).filter(|w| w[0] == w[1]).count();
+    assert_eq!(parado, 0, "o atraso fica parado em {parado} de 120 imagens");
+    // Entre quadros também: arrastar a um instante do meio dá o bit de tocar.
+    for i in [97, 13, 50, 7, 120] {
+        let got = atraso(c.em_t(f64::from(i) / 60.0));
+        assert_eq!(
+            got.map(f32::to_bits),
+            amostras[i as usize].map(f32::to_bits),
+            "imagem {i}"
+        );
+    }
+}
+
+/// A haste vai da base à ponta: a ponta DESENHADA da arte (centro + meio comprimento no rumo da
+/// haste) cai na bola, a cada quadro.
+#[test]
+fn a_haste_chega_a_ponta() {
+    let mut c = Cena::nova();
+    let arte = achar(&mut c.sim, "Haste (arte)");
+    let comprimento = PONTA_NO_CORPO[1] - BASE_NO_CORPO[1];
+    for q in [0, 6, 12, 30, 60] {
+        let (p, _) = c.em(q);
+        let a = world_transform(c.sim.world(), arte).unwrap();
+        let (s, co) = a.rotation.sin_cos();
+        let fim = [
+            a.translation.x + co * comprimento / 2.0,
+            a.translation.y + s * comprimento / 2.0,
+        ];
+        assert!(
+            (fim[0] - p[0]).hypot(fim[1] - p[1]) < 1e-3,
+            "quadro {q}: a haste acaba em {fim:?}, a ponta está em {p:?} (arte {a:?})"
         );
     }
 }

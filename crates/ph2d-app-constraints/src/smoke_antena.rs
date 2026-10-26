@@ -8,13 +8,16 @@ use ph2d_core::Playhead;
 use ph2d_ecs::{Name, SimWorld};
 use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::screens::hero::HeroScreen;
-use ph2d_timeline::{AnimValue, Interp, PropKind, TimelineIntent, TimelineState};
+use ph2d_timeline::{
+    AnimValue, Easing, EasingFamily, EasingMode, Interp, PropKind, TimelineIntent, TimelineState,
+};
 
 use crate::smoke::CORPO;
 
 static FEITA: AtomicBool = AtomicBool::new(false);
 
-/// As chaves da curva do corpo ([`CORPO`]), lineares.
+/// As chaves da curva do corpo ([`CORPO`]), a acelerar e a travar (cúbica entrada-saída): um corpo
+/// real não muda de sentido de uma vez.
 #[must_use]
 pub fn chaves_do_corpo(corpo: u64, fps: f64) -> Vec<TimelineIntent> {
     #[expect(clippy::cast_possible_truncation, reason = "fps inteiros")]
@@ -28,7 +31,7 @@ pub fn chaves_do_corpo(corpo: u64, fps: f64) -> Vec<TimelineIntent> {
                     prop,
                     t: RationalTime::from_frame(q, fps),
                     value: AnimValue::Float(v),
-                    interp: Interp::Linear,
+                    interp: Interp::Eased(Easing::new(EasingFamily::Cubic, EasingMode::InOut)),
                 }
             })
         })

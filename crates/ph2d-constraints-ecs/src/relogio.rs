@@ -35,6 +35,9 @@ struct Passo {
 #[derive(Clone, Debug, Default)]
 pub struct Simulador {
     ultimo: Option<(i64, Passo)>,
+    /// O quadro antes do [`Self::ultimo`] quando se chegou a ele por um passo — a outra ponta da
+    /// mistura entre quadros ([`Self::atraso_em`]).
+    previo: Option<(i64, Passo)>,
     pontos: BTreeMap<i64, Passo>,
     chave: Option<[u64; 3]>,
 }
@@ -70,6 +73,9 @@ impl Simulador {
         );
         let (tension, friction) = physics_of(MODE_TIME, 0.0, 0.0, d, b);
         while k < f {
+            if k + 1 == f {
+                self.previo = Some((k, s));
+            }
             k += 1;
             s = um_passo(s, entrada(k), tension, friction, dt);
             if k % STRIDE == 0 {
@@ -77,11 +83,40 @@ impl Simulador {
             }
         }
         self.ultimo = Some((f, s));
-        let e = s.entrada;
+        desvio(s)
+    }
+
+    /// ⭐ O atraso no instante CONTÍNUO `q` (em quadros): o ecrã desenha entre os quadros da timeline e
+    /// a curva lê o instante contínuo — a mola anda com ela, a mistura linear dos quadros `⌊q⌋` e
+    /// `⌊q⌋ + 1`. Função de `q` só: tocar e arrastar dão o mesmo bit.
+    pub fn atraso_em(
+        &mut self,
+        q: f64,
+        mola: &Spring,
+        fps: f64,
+        entrada: &mut dyn FnMut(i64) -> [f64; 3],
+    ) -> [f64; 3] {
+        let q = if q.is_finite() { q.max(0.0) } else { 0.0 };
+        #[expect(clippy::cast_possible_truncation, reason = "um quadro cabe em i64")]
+        let k = q.floor() as i64;
+        #[expect(clippy::cast_precision_loss, reason = "um quadro")]
+        let u = q - k as f64;
+        if u == 0.0 {
+            return self.atraso(k, mola, fps, entrada);
+        }
+        let b = self.atraso(k + 1, mola, fps, entrada);
+        let a = match self.previo {
+            Some((p, s)) if p == k && entrada(k) == s.entrada => desvio(s),
+            _ => {
+                let a = self.atraso(k, mola, fps, entrada);
+                let _ = self.atraso(k + 1, mola, fps, entrada);
+                a
+            }
+        };
         [
-            f64::from(s.valor[0]) - e[0],
-            f64::from(s.valor[1]) - e[1],
-            wrap_pi(f64::from(s.valor[2]) - e[2]),
+            a[0] + (b[0] - a[0]) * u,
+            a[1] + (b[1] - a[1]) * u,
+            a[2] + wrap_pi(b[2] - a[2]) * u,
         ]
     }
 
@@ -111,6 +146,16 @@ impl Simulador {
         self.pontos.insert(0, s);
         (0, s)
     }
+}
+
+/// O atraso de um estado: estado − entrada.
+fn desvio(s: Passo) -> [f64; 3] {
+    let e = s.entrada;
+    [
+        f64::from(s.valor[0]) - e[0],
+        f64::from(s.valor[1]) - e[1],
+        wrap_pi(f64::from(s.valor[2]) - e[2]),
+    ]
 }
 
 #[expect(clippy::cast_possible_truncation, reason = "a lei da mola é f32")]

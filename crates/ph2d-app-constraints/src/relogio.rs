@@ -30,13 +30,6 @@ impl<'a> Relogio<'a> {
             t: tl.view_clock().pick(e, c, k).time(),
         }
     }
-
-    /// O quadro do instante, no fps do documento.
-    #[must_use]
-    #[expect(clippy::cast_possible_truncation, reason = "um quadro cabe em i64")]
-    pub fn quadro(&self) -> i64 {
-        (self.t * self.doc.fps_display + 1e-6).floor() as i64
-    }
 }
 
 /// Os itens `(dono, item, tipo)` da cena.
@@ -110,7 +103,7 @@ pub(crate) fn preparar(sim: &mut SimWorld, relogio: Relogio<'_>) {
                 })
             };
             let sim = molas.sims.entry((dono, id)).or_default();
-            let atraso = sim.atraso(relogio.quadro(), &mola, fps, &mut entrada);
+            let atraso = sim.atraso_em(relogio.t * fps, &mola, fps, &mut entrada);
             molas.atrasos.insert((dono, id), atraso);
         }
     }

@@ -412,19 +412,34 @@ pub fn estado(folha: &Folha<'_>, regras: &[RegraCad]) -> Estado {
     }
 }
 
-/// ⭐ **A régua do cumprimento**: o maior |resíduo| das regras que mandam (as REF não) na pose da folha — px numa
-/// distância, numa posição ou num raio, radianos num ângulo. Uma regra cujo ponto a folha não tem não conta.
-#[must_use]
-pub fn violacao(folha: &Folha<'_>, regras: &[RegraCad]) -> f64 {
+fn valor_na_folha(folha: &Folha<'_>, v: &posto::Var) -> f64 {
     let ponto = |p: PontoCad| match p {
         PontoCad::Vert(..) => folha.vert(p),
         PontoCad::Centro(c) => folha.circulo(c).map(|(c, _)| c),
     };
-    let valor = |v: &posto::Var| match *v {
+    match *v {
         posto::Var::X(p) => ponto(p).map_or(f64::NAN, |q| q[0]),
         posto::Var::Y(p) => ponto(p).map_or(f64::NAN, |q| q[1]),
         posto::Var::Raio(c) => folha.circulo(c).map_or(f64::NAN, |(_, r)| r),
-    };
+    }
+}
+
+/// A medida que a folha TEM agora para uma lei de medida (px numa distância e num raio, radianos num ângulo — a
+/// convenção do resíduo, a mesma da [`violacao`]): o valor com que uma cota nasce, para juntá-la não mexer no
+/// desenho. `None` = a lei não é medida, ou a folha não tem um dos pontos.
+#[must_use]
+pub fn medida_na_folha(folha: &Folha<'_>, lei: &Lei) -> Option<f64> {
+    lei.medida()?;
+    let (_, res) = posto::residuos(lei, &|v: &posto::Var| valor_na_folha(folha, v));
+    let v = res.first()?.v;
+    v.is_finite().then_some(v)
+}
+
+/// ⭐ **A régua do cumprimento**: o maior |resíduo| das regras que mandam (as REF não) na pose da folha — px numa
+/// distância, numa posição ou num raio, radianos num ângulo. Uma regra cujo ponto a folha não tem não conta.
+#[must_use]
+pub fn violacao(folha: &Folha<'_>, regras: &[RegraCad]) -> f64 {
+    let valor = |v: &posto::Var| valor_na_folha(folha, v);
     let mut pior = 0.0_f64;
     for r in regras.iter().filter(|r| !r.referencia) {
         let (_, res) = posto::residuos(&r.lei, &valor);

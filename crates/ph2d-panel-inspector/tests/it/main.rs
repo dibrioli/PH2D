@@ -66,7 +66,6 @@ mod seam_anim_rules;
 mod seam_anim_this_frame;
 mod seam_apply_ladder;
 mod seam_image_use;
-mod seam_cad;
 mod seam_constraints;
 mod seam_joint;
 mod seam_luz;

@@ -148,7 +148,7 @@ impl VecScene {
 
     /// Poda ([`Self::poda_regras`]) e dá id a toda regra sem um ou com um repetido (uma cópia), pela
     /// ordem; idempotente — a lei do [`VecPath::normaliza_ids`].
-    pub(crate) fn assenta_regras(&mut self) -> bool {
+    pub fn assenta_regras(&mut self) -> bool {
         let mut mudou = self.poda_regras();
         let maior = self.regras.iter().map(|r| r.id.0).max().unwrap_or(0);
         let mut proximo = self.next_regra.max(maior + 1);

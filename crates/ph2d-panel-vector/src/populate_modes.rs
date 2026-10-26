@@ -59,6 +59,9 @@ pub(super) fn mode_buttons(store: &mut WidgetStore) {
     // ⭐ **Osso** (estudo 42 item 5) — o 17º pill, e a MESMA linha pela mesma razão. Ela faltou na
     // 1ª escrita desta wave também, e quem a apanhou foi o `seam_bone` — que nasceu com a wave
     // exactamente porque o bug #29 mostrou que nenhum outro gate a vê.
+    // **Regras** (W4.6): o pill e os botões das regras da ④ e o número da cota na ②.
+    button(store, ph2d_tool_vector::ids::VECTOR_MODE_RULES);
+    crate::state_cad::populate(store);
 }
 
 /// **REGISTA os widgets das SETAS do Morph** (plano 32 W4) — o pool inteiro, de antemão.

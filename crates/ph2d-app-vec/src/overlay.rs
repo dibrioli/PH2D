@@ -49,6 +49,9 @@ pub struct VecOverlayPlan {
     /// ferramenta, e NUNCA no Select. Se há uma forma com alças (e o latch do catálogo apagado) é
     /// o [`crate::shape_handles_live::view`] que decide.
     pub shape_handles: bool,
+    /// **As regras de desenho** (W4.6): a cor das formas com regras e as cotas em todo modo; os selos e os alvos
+    /// com a tool Regras na mão (quem o decide é `cad_tool_plano::draw`).
+    pub cad: bool,
     // NOTA: o antigo `corner_handles` (a alça de raio na bissetriz, só no Node) foi REMOVIDO — o
     // arredondar/chanfrar quina virou o par de ferramentas Fillet / Chamfer (o gesto de
     // clicar-e-arrastar sobre a quina). A consolidação que o Enio pediu.
@@ -70,11 +73,18 @@ pub fn vec_overlay_plan(vector_active: bool, mode: DrawMode) -> VecOverlayPlan {
         // ⚠️ **O Balde entra na lista dos que NÃO mostram nós** (plano 40), ao lado do Shape
         // Builder e pela mesma razão: ele aponta uma REGIÃO, e as âncoras das linhas que a cercam
         // são ruído por cima do realce que interessa — a face acesa.
+        // ⚠️ As **Regras** também ficam de fora: o alvo é QUALQUER ponto ou lado (a tool desenha os dela), e as
+        // âncoras e alças do seleccionado por cima dos selos só competem pelo clique.
         edit: vector_active
             && !matches!(
                 mode,
-                DrawMode::Select | DrawMode::Build | DrawMode::PickBlend | DrawMode::Bucket
+                DrawMode::Select
+                    | DrawMode::Build
+                    | DrawMode::PickBlend
+                    | DrawMode::Bucket
+                    | DrawMode::Rules
             ),
+        cad: vector_active,
         snap_guides: vector_active,
         // Node-only (mesma razão de modo do `edit`, mais estreita). Se a seleção é um envelope é
         // `envelope_gesture::view` que resolve — aqui é só a política de MODO.

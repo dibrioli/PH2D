@@ -11,6 +11,12 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
     Some(match key {
         // ph2d-migrar-texto:begin
         "panel.vector.mode.eyedropper" => "Eyedropper",
+        "panel.vector.mode.rules" => "Rules",
+        "panel.vector.hint.rules" => {
+            "Click points or sides, then a rule \u{00b7} click a number to type it \u{00b7} Delete: remove the chosen rule"
+        }
+        "panel.vector.cad.value" => "Value",
+        "panel.vector.cad.delete" => "Delete rule",
         "panel.vector.hint.select" => {
             "Click: pick \u{00b7} Shift+click: add \u{00b7} Drag: move, scale or rotate"
         }

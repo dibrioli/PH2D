@@ -76,8 +76,6 @@ pub enum ComponentEdit {
     Luz(crate::luz_edits::LuzFieldEdit),
     /// **CONSTRAINTS** — a pilha: acrescentar, força, liga/desliga, apagar, mover, escolher o alvo.
     Constraint(crate::constraint_edits::ConstraintFieldEdit),
-    /// **DRAWING RULES** — a medida de uma regra de CAD do vetor, ou apagá-la.
-    Cad(crate::cad_edits::CadFieldEdit),
     /// **MOTION INPUT** (ciclo 19 do Motion) — o nome, a fonte e o valor que o grafo lê.
     MotionInput(crate::motion_input_edits::MotionInputFieldEdit),
     /// **MACRO** (ADR-0186, W5d) — o modo em que a trilha do Motion toca.

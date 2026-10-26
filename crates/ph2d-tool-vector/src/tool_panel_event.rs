@@ -202,6 +202,9 @@ impl VectorTool {
             PanelEvent::Click(id) if id == crate::ids::VECTOR_MODE_CHAMFER => {
                 self.mode = DrawMode::Chamfer;
             }
+            PanelEvent::Click(id) if id == crate::ids::VECTOR_MODE_RULES => {
+                self.mode = DrawMode::Rules;
+            }
             // Stroke cap / join segmented rows + Dash slider. These are Style →
             // restyle the selected path (mirror of colour/width).
             PanelEvent::Click(id) if id == crate::ids::VECTOR_ALIGN_CENTRE => {
@@ -311,6 +314,7 @@ mod tests {
             (crate::ids::VECTOR_MODE_CUT, DrawMode::Cut),
             (crate::ids::VECTOR_MODE_FRAME, DrawMode::Frame),
             (crate::ids::VECTOR_MODE_EYEDROPPER, DrawMode::Eyedropper),
+            (crate::ids::VECTOR_MODE_RULES, DrawMode::Rules),
         ];
         for &(id, esperado) in pills {
             // ⚠️ Parte de OUTRO modo, senão o teste ficaria verde sobre um braço que não existe.

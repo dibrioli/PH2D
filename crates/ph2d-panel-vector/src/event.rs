@@ -182,6 +182,9 @@ pub(crate) fn apply_event(
     if let Some(consumed) = track_slider_event(host, ev) {
         return EventOutcome::from_bool(consumed);
     }
+    if crate::state_cad::evento(host.store(), ev) {
+        return EventOutcome::Consumed;
+    }
     // ② F16: uma linha de uma lista da barra fecha a lista; o verbo dela corre abaixo, como no painel.
     if let WidgetEvent::Click(id) = ev {
         if crate::bars::toggle_list(host.store_mut(), id) {

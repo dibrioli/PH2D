@@ -28,8 +28,6 @@ mod event_action_trigger;
 mod event_anchor;
 mod event_anim;
 mod event_audio;
-/// A secção DRAWING RULES (as regras de CAD do vetor).
-mod event_cad;
 mod event_camera;
 /// ⭐ Os três cliques de COR da sprite — irmão do `event` por CAP de LOC.
 mod event_color_tint;
@@ -122,7 +120,6 @@ mod populate_action_trigger;
 mod populate_anchor;
 mod populate_anim;
 mod populate_audio;
-mod populate_cad;
 mod populate_camera;
 mod populate_constraint;
 mod populate_counter_watch;
@@ -175,7 +172,6 @@ mod sync;
 /// ⭐ A semente da secção COUNTER WATCH — irmã do `sync_sections` por CAP de ficheiro.
 /// ⛔ Ela **não existia** até 17/09, e o editor mostrava os valores de fábrica do `populate`.
 mod sync_action_trigger;
-mod sync_cad;
 mod sync_constraint;
 mod sync_counter_watch;
 mod sync_hud;
@@ -291,7 +287,7 @@ pub use state::{
     set_current_inspector_visibility_section, set_current_inspector_wheel, set_current_tag_tree,
 };
 pub use state::{probe_current_instance, probe_current_properties, texture_slot_pick};
-pub use state_components::{script_object_slot_pick, script_prop_name, set_current_inspector_cad};
+pub use state_components::{script_object_slot_pick, script_prop_name};
 /// ⭐ As portas dos instantâneos das secções da fila do TOP-20 — ver o cabeçalho do módulo irmão.
 pub use state_components::{
     set_current_inspector_action, set_current_inspector_action_trigger,

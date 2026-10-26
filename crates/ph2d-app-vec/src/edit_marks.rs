@@ -21,8 +21,7 @@ pub fn node_overlay_selected(vec: &VecState) -> Option<VecPathId> {
 /// nó»* — e ele não tinha como ver: duas pontas coincidentes e duas a um pixel pintam o mesmo
 /// quadrado). A LEI é a do arrasto (`welded_nodes`); aqui só o que se vê — um caminho escondido não
 /// mostra marca —, pela MESMA projecção do overlay (`overlay_transform`). Depois, os nós do Edit
-/// Shape, em mundo pela câmara. Por cima, as regras de CAD ([`crate::cad_marks`]) com a ficha do conflito.
-#[allow(clippy::too_many_arguments)]
+/// Shape, em mundo pela câmara. (As regras de CAD são da tool Regras: [`crate::cad_tool_plano::draw`].)
 pub fn draw(
     vec: &VecState,
     vec_scene: &VecScene,
@@ -30,7 +29,6 @@ pub fn draw(
     vec_xf: &VecXforms,
     cam_affine: Affine,
     theme: Theme,
-    text_system: &mut TextSystem,
     target: &mut VectorScene,
 ) {
     let marcas: Vec<[f64; 2]> = vec
@@ -48,8 +46,4 @@ pub fn draw(
     ph2d_vec_render::draw_weld_marks(&marcas, theme, target);
     let (nodes, grabbed) = vec.pencil.shape_edit_nodes();
     ph2d_vec_render::draw_shape_nodes(&nodes, grabbed, cam_affine, theme, target);
-    if let Some(e) = vec.cad_cores.ve(vec_scene, vec_xf) {
-        let plano = crate::cad_marks::plano(vec_scene, vec_view, vec_xf, cam_affine, &e);
-        crate::cad_marks::pinta(&plano, theme, text_system, target);
-    }
 }

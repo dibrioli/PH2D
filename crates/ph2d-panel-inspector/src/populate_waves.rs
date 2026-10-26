@@ -40,7 +40,6 @@ pub(crate) fn populate_das_waves(store: &mut WidgetStore) {
     super::populate_shake::populate_shake(store);
     super::populate_luz::populate_luz(store);
     super::populate_constraint::populate_constraint(store);
-    super::populate_cad::populate_cad(store);
     super::populate_script::populate_script(store);
     super::populate_topdown::populate_topdown(store);
 }

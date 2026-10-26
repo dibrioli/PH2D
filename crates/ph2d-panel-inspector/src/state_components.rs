@@ -203,11 +203,6 @@ thread_local! {
         std::cell::RefCell<Option<ph2d_editor_core::luz_edits::InspectorLuzInfo>> =
         const { std::cell::RefCell::new(None) };
 
-    /// O snapshot da secção DRAWING RULES — o `ph2d-app-vec` escreve-o todo o quadro.
-    static CURRENT_INSPECTOR_CAD:
-        std::cell::RefCell<Option<ph2d_editor_core::cad_edits::InspectorCadInfo>> =
-        const { std::cell::RefCell::new(None) };
-
     /// O snapshot do cartão CONSTRAINTS — a shell escreve-o todo o quadro.
     static CURRENT_INSPECTOR_CONSTRAINTS:
         std::cell::RefCell<Option<ph2d_editor_core::constraint_edits::InspectorConstraintsInfo>> =
@@ -395,16 +390,6 @@ pub fn set_current_inspector_constraints(
 pub(crate) fn current_inspector_constraints()
 -> Option<ph2d_editor_core::constraint_edits::InspectorConstraintsInfo> {
     CURRENT_INSPECTOR_CONSTRAINTS.with(|c| c.borrow().clone())
-}
-
-/// O snapshot da secção DRAWING RULES — o `ph2d-app-vec` escreve-o todo o quadro (`None` = o path não é
-/// dono de regra nenhuma: a secção não aparece).
-pub fn set_current_inspector_cad(info: Option<ph2d_editor_core::cad_edits::InspectorCadInfo>) {
-    CURRENT_INSPECTOR_CAD.with(|c| *c.borrow_mut() = info);
-}
-
-pub(crate) fn current_inspector_cad() -> Option<ph2d_editor_core::cad_edits::InspectorCadInfo> {
-    CURRENT_INSPECTOR_CAD.with(|c| c.borrow().clone())
 }
 
 /// ⭐ O snapshot dos cartões do CORPO na luz — a shell escreve-o todo o quadro.

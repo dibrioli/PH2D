@@ -176,6 +176,8 @@ pub mod populate;
 mod section_scope;
 mod shape_focus;
 pub mod state;
+/// A tool Regras (W4.6): os botões das regras, o número da cota e a fila dos pedidos.
+pub mod state_cad;
 /// O que a shell OBSERVOU sobre a simetria da seleção — irmão de `state` (teto de LOC).
 pub mod state_symmetry;
 

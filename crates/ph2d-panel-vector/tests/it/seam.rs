@@ -29,7 +29,7 @@ use ph2d_ui_testkit::MockPanelHost;
 
 /// Forward every drained `ToolPanelEvent` into the tool (what the shell does
 /// each frame). Returns whether at least one was forwarded.
-fn drain_into_tool(host: &mut MockPanelHost, tool: &mut VectorTool) -> bool {
+pub(crate) fn drain_into_tool(host: &mut MockPanelHost, tool: &mut VectorTool) -> bool {
     let mut forwarded = false;
     for action in host.drained_actions() {
         if let EditorAction::ToolPanelEvent(pe) = action {

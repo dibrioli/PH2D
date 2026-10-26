@@ -145,8 +145,6 @@ pub fn step(
     );
     hero.set_panel_visible("timeline", true);
     hero.set_panel_visible("inspector", true);
-    hero.store
-        .set_collapsed(ph2d_editor_core::ids::INSP_LIVE_CAD_SECTION, false);
     hero.gizmo.selection = Some(e.to_bits());
     let fim = f64::from(MEDIDA[MEDIDA.len() - 1].0) / fps;
     for keys in [true, false] {

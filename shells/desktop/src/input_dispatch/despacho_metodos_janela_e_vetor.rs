@@ -360,18 +360,10 @@ impl crate::App {
         self.vec.pen.nudge(&mut gfx.vec_scene, dx, dy)
     }
 
-    /// ADR-0108 Fase 1: Delete/Backspace no modo vetorial — prioriza apagar o
-    /// VÉRTICE selecionado (edição de nó); sem vértice selecionado (ex.: resultado
-    /// de booleana), apaga o PATH inteiro.
+    /// Delete/Backspace no vetor: a cadeia é da crate (`ph2d_app_vec::apaga::delete`).
     pub(crate) fn vec_delete_selected_vertex_or_path(&mut self) -> bool {
-        if self.vec.pen.selected_vert().is_some()
-            && let Some(gfx) = self.gfx.as_mut()
-            && apply_vec_delete_vertex(&mut gfx.vec_scene, &mut self.vec.pen)
-        {
-            eprintln!("[ph2d-vec] vértice apagado");
-            return true;
-        }
-        self.vec_delete_selected()
+        let gfx = self.gfx.as_mut();
+        gfx.is_some_and(|g| ph2d_app_vec::apaga::delete(&mut self.vec, &mut g.vec_scene))
     }
 
     /// ADR-0108 Fase 1: apaga o path selecionado (fallback do Delete sem vértice).
@@ -521,23 +513,8 @@ impl crate::App {
     /// Apaga TODA a seleção de objeto (um grupo some inteiro) e limpa os grupos
     /// que ficaram sem membro. ONE undo step.
     pub(super) fn vec_delete_selected(&mut self) -> bool {
-        let sel = self.vec.pen.selected_paths().to_vec();
-        if sel.is_empty() {
-            return false;
-        }
-        let Some(gfx) = self.gfx.as_mut() else {
-            return false;
-        };
-        let mut any = false;
-        for id in &sel {
-            any |= gfx.vec_scene.remove_path(*id);
-        }
-        if !any {
-            return false;
-        }
-        self.vec.pen.clear();
-        eprintln!("[ph2d-vec] {} path(s) apagado(s)", sel.len());
-        true
+        let gfx = self.gfx.as_mut();
+        gfx.is_some_and(|g| ph2d_app_vec::apaga::paths(&mut self.vec, &mut g.vec_scene))
     }
 
     /// ADR-0108 cutover: is the Vector drawing tool the active tool? Gates the

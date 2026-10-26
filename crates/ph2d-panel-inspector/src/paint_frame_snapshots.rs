@@ -103,9 +103,6 @@ pub(crate) struct LiveSnapshots {
     pub corpo_luz_info: Option<ph2d_editor_core::luz_edits::InspectorCorpoDaLuzInfo>,
     /// O cartão CONSTRAINTS — a pilha do objecto.
     pub constraints_info: Option<ph2d_editor_core::constraint_edits::InspectorConstraintsInfo>,
-    /// A secção DRAWING RULES — as regras de CAD do path. ⚠️ Fora do `any_section`: um path tem
-    /// `Transform`, logo já está representado.
-    pub cad_info: Option<ph2d_editor_core::cad_edits::InspectorCadInfo>,
     pub blend_info: Option<ph2d_editor_core::screens::hero::InspectorBlendInfo>,
     pub physics_info: Option<ph2d_editor_core::screens::hero::InspectorPhysicsInfo>,
     pub joint_info: Option<ph2d_editor_core::screens::hero::InspectorJointInfo>,
@@ -248,7 +245,6 @@ impl LiveSnapshots {
             luz_info,
             corpo_luz_info,
             constraints_info,
-            cad_info: crate::state_components::current_inspector_cad(),
             tags_info,
             blend_info,
             physics_info,

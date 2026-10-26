@@ -555,6 +555,9 @@ pub const VECTOR_MODE_PENCIL: NodeId = hash_node_id("vector.mode.pencil");
 /// apontando-a no canvas.
 pub const VECTOR_MODE_WIDTH: NodeId = hash_node_id("vector.mode.width");
 
+/// **Regras** (W4.6) — as regras de desenho: escolher pontos/lados e prendê-los.
+pub const VECTOR_MODE_RULES: NodeId = hash_node_id("vector.mode.rules");
+
 // ── A TINTA DO TRAÇO (plano 35, wave D) ────────────────────────────────────────
 //
 // ⚠️ **Um `segmented` e não um checkbox**, pela MESMA lei que escolheu o checkbox acima, aplicada ao

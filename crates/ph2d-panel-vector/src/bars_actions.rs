@@ -11,7 +11,8 @@ use ph2d_tool_vector::ids;
 
 /// As ferramentas de clique PRECISO sobre a arte: com uma delas na mão a barra ④ não aparece — a
 /// barra pousa junto da seleção, e ali ela roubaria o clique que a ferramenta existe para dar.
-const PRECISE: [DrawMode; 10] = [
+const PRECISE: [DrawMode; 11] = [
+    DrawMode::Rules,
     DrawMode::Cut,
     DrawMode::Trim,
     DrawMode::Bucket,

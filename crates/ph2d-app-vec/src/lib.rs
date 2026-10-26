@@ -206,10 +206,14 @@ pub mod width_grab;
 // ficheiros desta família a escrever `ph2d_app_vec::entity_map::…`, byte a byte como antes.
 pub use ph2d_vec_entities::entity_map;
 /// As marcas por cima dos nós: a do nó soldado e os nós do Edit Shape (F7e).
+/// O Delete do vetor (a regra escolhida, o vértice, os paths).
+pub mod apaga;
 pub mod cad_cores;
-/// A secção DRAWING RULES do Inspector: o instantâneo e as edições (W4.5).
-pub mod cad_inspector;
-mod cad_marks;
+/// A tool Regras (W4.6): a escolha, as regras possíveis, o quadro, o press, o Delete.
+pub mod cad_tool;
+mod cad_tool_pinta;
+/// Os gizmos das regras: o plano (o que se pinta é o que se acerta) e o desenho.
+pub mod cad_tool_plano;
 pub mod edit_marks;
 /// ⚠️ **Atrás da mesma feature que a guardava na shell** — a pré-visualização de fonte
 /// usa `ph2d_panel_vector::FontPreview`, logo ela não existe num build sem painel vectorial.

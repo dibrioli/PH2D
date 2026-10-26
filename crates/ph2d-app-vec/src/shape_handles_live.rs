@@ -627,6 +627,10 @@ pub mod on {
         px_to_world: f64,
         now_ns: u128,
     ) -> bool {
+        // A tool Regras (W4.6) recebe o press por esta porta, que a shell chama em todo modo.
+        if vec.draw_config.mode == ph2d_tool_vector::DrawMode::Rules {
+            return crate::cad_tool::press(vec, w);
+        }
         let (input, world) = split(vec, sim, scene);
         input.press(world, w, px_to_world, now_ns)
     }
@@ -646,6 +650,9 @@ pub mod on {
 
     /// [`super::ShapeHandleInput::escape`].
     pub fn escape(vec: &mut VecState, sim: &mut SimWorld, scene: &mut VecScene) -> bool {
+        if vec.draw_config.mode == ph2d_tool_vector::DrawMode::Rules {
+            return crate::cad_tool::escape(vec);
+        }
         let (input, world) = split(vec, sim, scene);
         input.escape(world)
     }

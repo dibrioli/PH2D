@@ -224,7 +224,6 @@ impl crate::App {
                 ComponentEdit::Nav(e) => pd.nav_edits.push((entity_bits, e)),
                 ComponentEdit::Luz(e) => pd.luz_edits.push((entity_bits, e)),
                 ComponentEdit::Constraint(e) => pd.constraint_edits.push((entity_bits, e)),
-                ComponentEdit::Cad(e) => ph2d_app_vec::cad_inspector::pede(e),
                 ComponentEdit::MotionInput(e) => pd.motion_input_edits.push((entity_bits, e)),
                 ComponentEdit::Macro(e) => pd.macro_edits.push((entity_bits, e)),
                 ComponentEdit::Tween(e) => pd.tween_edits.push((entity_bits, e)),

@@ -39,7 +39,7 @@ use std::cell::Cell;
 
 /// ① **A coluna**, por família — a forma de cada ferramenta é o ícone dela, a cor é a família.
 /// `(modo, id, ícone, família, chave do nome)`.
-pub const TOOLS: [(DrawMode, NodeId, IconId, BarFamily, &str); 17] = [
+pub const TOOLS: [(DrawMode, NodeId, IconId, BarFamily, &str); 18] = [
     (
         DrawMode::Select,
         ids::VECTOR_MODE_SELECT,
@@ -109,6 +109,13 @@ pub const TOOLS: [(DrawMode, NodeId, IconId, BarFamily, &str); 17] = [
         IconId::VectorFrame,
         BarFamily::Build,
         "panel.vector.mode.frame",
+    ),
+    (
+        DrawMode::Rules,
+        ids::VECTOR_MODE_RULES,
+        IconId::VectorRules,
+        BarFamily::Build,
+        "panel.vector.mode.rules",
     ),
     (
         DrawMode::Cut,
@@ -208,6 +215,7 @@ pub fn hint_key(mode: DrawMode) -> &'static str {
         DrawMode::Cut => "panel.vector.hint.cut",
         DrawMode::Frame => "panel.vector.hint.frame",
         DrawMode::Eyedropper => "panel.vector.hint.eyedropper",
+        DrawMode::Rules => "panel.vector.hint.rules",
     }
 }
 
@@ -385,7 +393,11 @@ pub fn tool_bars(store: &WidgetStore, selection: Option<Rect>, readout: Vec<Stri
     let mut row_lead = control::control_chips(&snap, store);
     row_lead.extend(fields);
     // Os parâmetros da forma em foco (F9) são campos: à frente, num grupo que o separador nomeia.
-    let shape = shape_chips(&snap, store);
+    let rules = snap.mode == DrawMode::Rules;
+    let mut shape = shape_chips(&snap, store);
+    if rules {
+        shape.extend(crate::state_cad::chips());
+    }
     if !shape.is_empty() {
         row_lead.push(ToolRailEntry::Divider);
         row_lead.extend(shape);
@@ -404,9 +416,17 @@ pub fn tool_bars(store: &WidgetStore, selection: Option<Rect>, readout: Vec<Stri
             .then(|| (ids::VECTOR_MODE_SHAPE, shape_flyout(&snap))),
         row_lead,
         row_tail: sym_chips,
-        actions: actions(snap.mode, sel),
+        actions: if rules {
+            crate::state_cad::acoes()
+        } else {
+            actions(snap.mode, sel)
+        },
         actions_below: actions_below(snap.mode, sel),
-        selection,
+        selection: if rules {
+            crate::state_cad::cad_vista().ancora
+        } else {
+            selection
+        },
         hint: tr(hint_key_for(&snap)).to_owned(),
         readout,
         // O 2.º indicador da vista de interface (NN/g): o 1.º é o interruptor aceso.

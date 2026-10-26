@@ -199,6 +199,19 @@ pub(super) fn push_mirrored_slider_event<'a>(
     }
 }
 
+/// ⭐ **Foca uma caixa numérica a partir de um gesto FORA do painel** (o clique no número de uma cota no canvas,
+/// W4.6): o mesmo estado que o clique na própria caixa deixa — foco, buffer a partir do valor e tudo seleccionado,
+/// para o 1.º dígito substituir. `false` = o id não é uma caixa numérica registada.
+pub fn focus_number_field(store: &mut WidgetStore, id: ph2d_a11y::NodeId) -> bool {
+    if !matches!(store.get(id), Some(InteractiveState::NumberInput { .. })) {
+        return false;
+    }
+    store.set_focus(Some(id));
+    init_number_buffer(store, id);
+    select_all_in_text_widget(store, id);
+    true
+}
+
 pub(super) fn init_number_buffer(store: &mut WidgetStore, id: ph2d_a11y::NodeId) {
     // BlenderColorPicker channel chip: seed `value` from the parent
     // picker's current channel value (the chip's stored `value` is

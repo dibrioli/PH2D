@@ -50,7 +50,7 @@ impl crate::App {
                     cam_affine,
                     vector_scene,
                 );
-                // ⭐⭐⭐ O anel do nó SOLDADO (plano 39), os nós do Edit Shape (F7e) e as regras de CAD (W4.4).
+                // ⭐⭐⭐ O anel do nó SOLDADO (plano 39) e os nós do Edit Shape (F7e).
                 ph2d_app_vec::edit_marks::draw(
                     &self.vec,
                     vec_scene,
@@ -58,10 +58,24 @@ impl crate::App {
                     &vec_xf,
                     cam_affine,
                     hero.theme,
-                    text_system,
                     vector_scene,
                 );
             }
+        }
+        // As regras de desenho (W4.6): a cor das formas e as cotas; os selos com a tool Regras.
+        if overlay.cad {
+            ph2d_app_vec::cad_tool_plano::draw(
+                &self.vec,
+                vec_scene,
+                &vec_view,
+                &vec_xf,
+                cam_affine,
+                hero,
+                text_system,
+                vector_scene,
+            );
+        }
+        if overlay.edit {
             // NOTA: as alças de raio de quina já não se desenham (viraram Fillet / Chamfer); a exclusão de forma
             // VIVA (`crate::corner_handles::has_derived_verts`) segue: o press dessas ferramentas consulta-a.
             // A gaiola do **Envelope** (ADR-0129): os 4 cantos que o Node arrasta para

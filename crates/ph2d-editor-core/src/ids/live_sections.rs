@@ -37,8 +37,9 @@ use super::*;
 /// ⚠️ `48` → `47` em 2026-10-05: a secção LIVE MESH saiu com o 3D (ADR-0179). `46` → `47` em
 /// 2026-10-09: a LUZ (Luz 2D, W4). `47` → `48` na integração: o MOTION INPUT (ciclo 19 do Motion).
 /// `48` → `50` em 2026-10-11: LIGHT OCCLUDER e UNLIT (os cartões do corpo na luz). `50` → `51` em
-/// 2026-10-14: a MACRO (ADR-0186, W5d). `52` → `53` em 2026-10-26: DRAWING RULES (W4.5).
-pub const LIVE_SECTIONS: [(NodeId, NodeId); 53] = [
+/// 2026-10-14: a MACRO (ADR-0186, W5d). `52` → `53` → `52` em 2026-10-26: DRAWING RULES
+/// entrou (W4.5) e saiu (W4.6: o dono recusou-a; as regras são a tool Rules).
+pub const LIVE_SECTIONS: [(NodeId, NodeId); 52] = [
     (INSP_LIVE_NAME_SECTION, INSP_LIVE_NAME_GRIP),
     (INSP_LIVE_VISIBILITY_SECTION, INSP_LIVE_VISIBILITY_GRIP),
     (INSP_LIVE_TRANSFORM_SECTION, INSP_LIVE_TRANSFORM_GRIP),
@@ -143,8 +144,6 @@ pub const LIVE_SECTIONS: [(NodeId, NodeId); 53] = [
     (INSP_LIVE_CONSTRAINTS_SECTION, INSP_LIVE_CONSTRAINTS_GRIP),
     // A 51.ª — MACRO (ADR-0186, W5d), no mesmo commit que o cartão.
     (INSP_LIVE_MACRO_SECTION, INSP_LIVE_MACRO_GRIP),
-    // A 53.ª — DRAWING RULES (as regras de CAD do vetor, W4.5), no mesmo commit que a secção.
-    (INSP_LIVE_CAD_SECTION, INSP_LIVE_CAD_GRIP),
 ];
 
 /// Só os cabeçalhos — **projeção** de [`LIVE_SECTIONS`], nunca uma segunda lista.

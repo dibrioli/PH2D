@@ -134,6 +134,11 @@ pub enum DrawMode {
     /// preenchimento e o traço DELE para a ferramenta (o que se desenha a seguir) e para os
     /// caminhos seleccionados — o *Eyedropper* do Illustrator, que copia a aparência inteira.
     Eyedropper,
+    /// ⭐ **Regras** (W4.6, `docs/BlenderConstraints/04_W4_cad.md` §3.7): clicar 1–2 pontos, lados ou um círculo e
+    /// escolher na barra a regra que os prende (Vertical, Horizontal, Coincident, Equal, Fixed, Distance, Angle,
+    /// Radius); os selos e as cotas desenham-se no canvas e escolhem-se ali. É um modo pela razão do Width: os
+    /// selos e as cotas competiriam com as âncoras do Node pelo mesmo clique.
+    Rules,
 }
 
 impl DrawMode {
@@ -165,6 +170,7 @@ impl DrawMode {
         Self::Cut,
         Self::Frame,
         Self::Eyedropper,
+        Self::Rules,
     ];
 
     /// **A forma que ESTE modo desenha** — `None` quando o gesto não produz forma nenhuma.
@@ -282,10 +288,11 @@ mod all_tests {
                 | DrawMode::Bucket
                 | DrawMode::Cut
                 | DrawMode::Frame
-                | DrawMode::Eyedropper => 1,
+                | DrawMode::Eyedropper
+                | DrawMode::Rules => 1,
             };
         }
-        assert_eq!(vistos, 17, "o vocabulario mudou — reveja quem o itera");
+        assert_eq!(vistos, 18, "o vocabulario mudou — reveja quem o itera");
         // …e sem repetidos: uma variante duplicada na lista faria todo censo medi-la duas vezes.
         let mut ordenada: Vec<String> = DrawMode::ALL.iter().map(|m| format!("{m:?}")).collect();
         ordenada.sort();

@@ -7,7 +7,10 @@ Plano: [`11_camara_e_parallax_plano.md`](../11_camara_e_parallax_plano.md) (o §
 
 ## Estado
 
-**Smoke do dono: POR RECEBER.** Fotos: [`fotos_11/`](fotos_11/) (`nivel_2_02.png` início com o fundo;
+**Smoke do dono: OK (26/10)** — «Boa ideia criar objetos como Background Layer». **Report do dono no mesmo
+smoke (decide a PRÓXIMA onda, antes do J5):** não dá para mudar a imagem da sprite da camada (a Godot e a
+Unity dão); vale igual para o Player/Animated Sprite (a folha), e para o conteúdo do Flip, do Vector e do Pixel
+(linha paralela) — memória `project_image_is_a_project_asset_reference_2026_10_26`. Fotos: [`fotos_11/`](fotos_11/) (`nivel_2_02.png` início com o fundo;
 `nivel_2_03.png` câmara parada no fim do nível com o chão até à borda; a última é o editor depois do Stop, as
 camadas na pose autorada).
 

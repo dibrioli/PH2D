@@ -143,7 +143,7 @@ posições do FreeCAD **são gate** nas 11 cenas de solução única.
 |---|---|---|
 | ~~**W4.1** oráculo antes do código~~ | **feito 26/10** (§1.4) | `oraculo_freecad.py` (`W4_SO_BEM=1`) |
 | **W4.2** id estável por vértice | `VecVertex.id: u32` + contador por path (nunca reusado); **+1 → `VEC_SCENE_SCHEMA_VERSION = 24`** com leitor do v23 que numera `0..n` pela ordem; cada um dos ~20 sítios: inserir = id novo, partir = id novo, apagar = o id some e as regras que o citam saem no MESMO passo de undo; booleana/substituição inteira = path novo, ids novos, regras do path antigo saem com aviso. **Migra o Copy Point** para (alvo, id do vértice) — fecha também o ABERTO «prender a ponto de forma por índice» da W3 | `ph2d_vec_scene::VecPath::vert_by_id` (nova) |
-| **W4.3** a crate do solver | `ph2d-vec-constraints` (NOVA, pura): `RegraCad` (coincidente, H, V, paralelo, perpendicular, tangente recta↔círculo, igual, simétrico, medida de distância/ângulo/raio) por (path, id de vértice); tradução para `kcl_ezpz` (`=0.2.18`); arrasto = `Fixed` do ponto agarrado + palpite da solução anterior; `estado()` = livre/definido/conflito/REF; mede o custo de compilação da família `faer` | `ph2d_vec_constraints::resolve(&VecPath, &[RegraCad], arrasto) -> Resultado` |
+| **W4.3** a crate do solver | `ph2d-vec-constraints` (NOVA, pura): `RegraCad` (coincidente, H, V, paralelo, perpendicular, tangente recta↔círculo, igual, simétrico, medida de distância/ângulo/raio) por (path, id de vértice); tradução para `kcl_ezpz` (`=0.2.18`); arrasto = `Fixed` do ponto agarrado + palpite da solução anterior; `estado()` = livre/definido/conflito/REF; mede o custo de compilação da família `faer` — **feito 26/10** (§3.3) | `ph2d_vec_constraints::resolve(&Folha, &[RegraCad], Option<Arrasto>, palpite) -> Resultado` |
 | **W4.4** no editor | onde guardar: as regras viajam no documento do vetor (`VecScene`, mesmo degrau 24); o arrasto chama `resolve` em `pen_drag.rs`/grab **depois** do snap (o snap dá o alvo, o solver o resto); inferência = a guia que estava acesa ao largar cria a regra; cores por token (zero hex); medida a mais nasce REF; conflito lista as regras de `estado()`; análise fora do fio do quadro; undo = 1 passo por gesto | `ph2d-app-vec` (nada na shell) |
 | **W4.5** medida animada + cena 6 | a medida é um canal da família `CONSTRAINT = 8` (`campo` = valor, `i:j` = id do item); a pose resolvida parte SEMPRE do desenho AUTORADO em cada quadro (não do quadro anterior) ⇒ tocar = arrastar a timeline ao bit; chaves pela porta `ph2d_app_constraints::chaves::gravar` | `ph2d_vec_constraints::resolve` |
 
@@ -203,26 +203,44 @@ posições do FreeCAD **são gate** nas 11 cenas de solução única.
   afim. Assinatura: `ph2d_vec_constraints::resolve(&Folha, &[RegraCad], Option<Arrasto>, palpite) -> Resultado`.
 - **Alças acompanham a âncora** pelo mesmo delta local (o vértice move-se rígido; a forma da curva fica).
 - **REF = posto do jacobiano NOSSO** (o da ezpz é `pub(crate)`, `constraints.rs:87,737`): resíduos assinados escritos
-  uma vez, genéricos sobre um número dual (derivada exacta, sem diferenças finitas), posto por SVD da `faer` (a
-  mesma `0.23` que a ezpz traz) em ordem de nascimento — a regra que não sobe o posto é REF.
+  uma vez, genéricos sobre um número dual (derivada exacta, sem diferenças finitas), posto em ordem de nascimento —
+  a regra que não sobe o posto é REF. **Mudou no código:** Gram–Schmidt modificado 2× linha a linha
+  (`posto.rs`), e não a `faer`: a QR de Householder SEM pivô inventa uma direcção numa coluna dependente e estraga
+  o teste das seguintes; a pivotada responde «que posto», não «qual regra, por ordem». A crate não depende da `faer`.
+
+### 3.3 W4.3 feita (26/10)
+
+- `ph2d_vec_scene::cad` (o MODELO: `PontoCad` = `Vert(path, VertId)` | `Centro(path)`, `SegCad`, `Lei`, `RegraCad
+  { lei, referencia }`) — mora na cena porque a W4.4 grava as regras na `VecScene`; o solver em `ph2d-vec-constraints`.
+- Lei acrescentada ao §3: **`Fixo(ponto, xy)`** (o «bloquear» do Sketcher; as cenas da W4.0/W4.1 têm um em todas).
+- Arrasto impossível (o agarrado está preso): o cursor desce para prioridade 1 e nenhuma regra parte — gate
+  `dragging_a_fixed_point_breaks_no_rule`. Um vértice de um path citado como círculo não é ponto solto (`SemAlvo`).
+- **Custo da família `faer`** (via `kcl-ezpz`, perfil `smoke`, `target` limpo, `loadavg` ~22 em 32 núcleos — teto
+  pessimista): `ph2d-vec-scene` 4,4 s · **+ `ph2d-vec-constraints` com a árvore da ezpz 23,4 s**; `check` 25 s. Hoje
+  nada da app depende dela; entra no caminho do `ph2d-app-vec` na W4.4 (re-medir lá o caminho crítico).
+- **Mutação: 13/13 sangram** (1.ª ronda 8/13; sobreviventes M4 simétrico sem o 2.º resíduo, M9 palpite ignorado, M10
+  sem a tangência das alças, M11 vértice de círculo como ponto solto, M12 sem a queda de prioridade → um gate cada,
+  `5ce85c725f`, cada um visto vermelho sob a sua mutação).
+- ⚠️ Não medido: o custo por passo de `resolve` (remonta o sistema a cada chamada). Mede-se na W4.4 no app, o pior
+  passo do arrasto (o §5 pede-o antes da mensagem do smoke).
 
 ## 4. Gates red-first
 
 | gate | fenómeno na fixture | passo |
 |---|---|---|
-| `a_well_constrained_sketch_lands_where_freecad_puts_it` | cenas de solução única da W4.1, posições ao 1e-6 | W4.3 |
-| `the_drag_keeps_every_rule_at_every_step` | `w4_cenas` escada 202 e misto 200, 60 passos, 1e-4 px | W4.3 |
-| `the_drag_is_deterministic` | o mesmo arrasto 2× ⇒ o mesmo bit | W4.3 |
+| `a_well_constrained_sketch_lands_where_freecad_puts_it` | cenas de solução única da W4.1, posições ao 1e-6 | W4.3 ✓ |
+| `the_drag_keeps_every_rule_at_every_step` | `w4_cenas` escada 202 e misto 200, 60 passos, 1e-4 px | W4.3 ✓ |
+| `the_drag_is_deterministic` | o mesmo arrasto 2× ⇒ o mesmo bit | W4.3 ✓ |
 | `a_vertex_keeps_its_id_when_a_neighbour_is_deleted` | apagar o 3.º de 10: os outros ids iguais; a regra no 5.º continua no mesmo ponto | W4.2 ✓ |
 | `a_v23_scene_opens_with_ids_in_order` | bytes v23 gravados ⇒ ids `1..=n` (`verts` → `subpaths`), ida e volta v24 | W4.2 ✓ |
 | `a_v194_project_opens_with_vertex_ids_in_order` | `.ph2dproj` gravado pelo código v194 (cena + geometria de uma pose) | W4.2 ✓ |
 | `a_v23_{envelope_child,skin}_source_is_rewritten_with_ids` | blobs v23 do Envelope e da pele regravados vivos | W4.2 ✓ |
 | `copy_point_follows_its_vertex_after_an_insert_before_it` | inserir antes · ponto de buraco · apagar ⇒ `SemAlvo` | W4.2 ✓ |
 | `each_vertex_mutation_site_keeps_or_assigns_ids` | censo dos ~20 sítios (§2), um caso por sítio | W4.2 |
-| `an_extra_dimension_is_born_ref` (teste de posto) · `a_conflict_lists_the_rules_involved` (`unsatisfied`) | `conflito_*` da W4.1: REF = [6]; conflito = [1,3,4,6] e [1,2] | W4.4 |
+| `an_extra_dimension_is_born_ref` (teste de posto) · `a_conflict_lists_the_rules_involved` (`unsatisfied`) | `conflito_*` da W4.1: REF = [6]; conflito = [1,3,4,6] e [1,2] | W4.3 ✓ (o «nasce REF» no editor é W4.4) |
 | seam `draw_with_a_guide_creates_the_rule` (`ph2d-ui-testkit`) | caneta com a guia H acesa ⇒ regra H gravada, undo 1 passo | W4.4 |
 | `an_animated_dimension_plays_and_scrubs_to_the_same_bit` | medida com 3 chaves, quadros 0→40→12→40 | W4.5 |
-| prova de mutação | tirar o `Fixed` do arrastado / a migração / o REF ⇒ o gate certo sangra | fecho |
+| prova de mutação | tirar o `Fixed` do arrastado / a migração / o REF ⇒ o gate certo sangra | W4.3 ✓ 13/13 (§3.3); a migração e a W4.4/4.5 no fecho |
 
 A velocidade **não** vira teste (relógio sob carga mente): reconfere-se com `mede.sh` no fecho da onda, a tabela ao lado.
 

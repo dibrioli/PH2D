@@ -17,8 +17,8 @@ use ph2d_editor_core::widget::panel_chrome::{
     panel_close_button_rect,
 };
 use ph2d_editor_core::widget::{
-    Button, GroupCell, GroupPos, IconButtonStyle, IconGlyph, paint_button,
-    paint_icon_button_in_group, segment_rects_for,
+    Button, GroupCell, GroupPos, IconButtonStyle, IconGlyph, paint_icon_button_in_group,
+    segment_rects_for,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
@@ -53,18 +53,33 @@ pub(crate) fn paint(st: &mut PixelTimelinePanelState, ctx: &mut PaintCtx) {
     event::seed_renames(st, ctx.host.store_mut());
     espelha_campos(ctx, &info);
 
-    let top = rect.y + PANEL_TITLE_BASELINE + title_size + Spacing::Sm.px();
+    // ⭐ A barra mora na linha do TÍTULO, à direita dele (a banda de fábrica tem 240 px: cada linha
+    // de barra a menos é uma camada a mais à vista); só o que não cabe desce para a linha seguinte.
+    let title_bottom = rect.y + PANEL_TITLE_BASELINE + title_size;
     let inner = Rect::new(
         rect.x + PANEL_HEAD_PAD,
-        top,
+        rect.y,
         (rect.w - PANEL_HEAD_PAD * 2.0).max(0.0),
-        (rect.y + rect.h - top - PANEL_HEAD_PAD).max(0.0),
+        // Em baixo só o vão pequeno: a banda de fábrica (240 px) mostra assim o cabeçalho, as tags
+        // e QUATRO camadas (medido na cena 8 a 1930×1040: as filas começam 102 px abaixo do topo
+        // do painel e o passo é 25 px; com o PANEL_HEAD_PAD em baixo cabiam três e meia).
+        (rect.h - Spacing::Sm.px()).max(0.0),
     );
     ctx.scene.push_clip(&rect_to_vello(inner));
     ctx.host.hit_index_mut().push_clip(inner);
     st.direction_open = None;
     if info.editing {
-        let y = barra(ctx, &info, inner) + ph2d_tokens::control_gap_px();
+        let titulo_w = ctx
+            .text_system
+            .prefix_width(PixelTimelinePanel::TITLE.tr(), title_size);
+        let linha = Rect::new(
+            inner.x + titulo_w + Spacing::Lg.px(),
+            rect.y + PANEL_TITLE_BASELINE + (title_size - ROW_H_PX) * 0.5,
+            (inner.w - titulo_w - Spacing::Lg.px() - PANEL_HEADER_CLOSE_RESERVE).max(0.0),
+            ROW_H_PX,
+        );
+        let fundo = barra(ctx, &info, linha, inner);
+        let y = fundo.max(title_bottom) + Spacing::Sm.px();
         let body = Rect::new(inner.x, y, inner.w, (inner.y + inner.h - y).max(0.0));
         let gap = Spacing::Md.px();
         // As propriedades: até três colunas de painel (Frame · Cel · Tag) na metade da banda.
@@ -80,7 +95,7 @@ pub(crate) fn paint(st: &mut PixelTimelinePanelState, ctx: &mut PaintCtx) {
             ctx.scene,
             tr("panel.pixel.timeline.empty"),
             inner.x,
-            inner.y + (ROW_H_PX - TypeToken::Sm.px()) * 0.5,
+            title_bottom + Spacing::Sm.px() + (ROW_H_PX - TypeToken::Sm.px()) * 0.5,
             TypeToken::Sm.px(),
             inner.w.max(1.0),
             resolve(ColorToken::Text3, theme),
@@ -131,49 +146,65 @@ fn espelha_campos(ctx: &mut PaintCtx, info: &PixelPanelInfo) {
     }
 }
 
-/// **A barra**: navegar e tocar (ícones), o papel vegetal (dois interruptores) e o menu Frame em
-/// grupos — cada grupo uma fileira da porta, os grupos separados pelo vão; um grupo que não cabe
-/// na linha desce para a seguinte (nunca transborda). Devolve o fundo dela.
-fn barra(ctx: &mut PaintCtx, info: &PixelPanelInfo, inner: Rect) -> f32 {
+/// **A barra**: navegar e tocar, o menu Frame (ícones com a dica do nome) e o papel vegetal (dois
+/// interruptores com palavra) — cada grupo encostado, os grupos separados pelo vão. Começa em
+/// `linha` (a linha do título); um grupo que não cabe desce para uma linha inteira de `inner`
+/// (nunca transborda). Devolve o fundo da última linha.
+fn barra(ctx: &mut PaintCtx, info: &PixelPanelInfo, linha: Rect, inner: Rect) -> f32 {
     let theme = ctx.host.theme();
     let (h, gap) = (ROW_H_PX, Spacing::Md.px());
-    let (mut x, mut y) = (inner.x, inner.y);
-    let quebra = |x: &mut f32, y: &mut f32, w: f32| {
-        if *x > inner.x && *x + w > inner.x + inner.w {
+    let (mut x, mut y, mut fim) = (linha.x, linha.y, linha.x + linha.w);
+    let mut quebra = |x: &mut f32, y: &mut f32, w: f32| {
+        if *x + w > fim {
             *x = inner.x;
-            *y += h + ph2d_tokens::control_gap_px();
+            *y += ph2d_tokens::row_pitch_px();
+            fim = inner.x + inner.w;
         }
     };
-    // Os ícones são quadrados (a altura da linha), encostados como um grupo.
-    let n = ids::TRANSPORT.len();
-    for (i, (a, id, icon, _)) in ids::TRANSPORT.iter().enumerate() {
-        #[expect(clippy::cast_precision_loss, reason = "cinco botões")]
-        let r = Rect::new(x + i as f32 * h, y, h, h);
-        let cell = GroupCell {
-            col: GroupPos::of(i, n),
-            row: GroupPos::Only,
-        };
+    let transporte = ids::TRANSPORT.iter().map(|(a, id, icon, _)| {
         let icon = if *a == PixelFrameAction::Play && info.playing {
             IconId::Stop
         } else {
             *icon
         };
-        let visual = ctx.host.store().button_visual(*id);
-        let glyph = IconGlyph::Builtin(icon);
-        paint_icon_button_in_group(
-            r,
-            glyph,
-            IconButtonStyle::Compact,
-            visual,
-            cell,
-            ctx.scene,
-            theme,
+        (*id, icon)
+    });
+    let mut grupos: Vec<Vec<(ph2d_a11y::NodeId, IconId)>> = vec![transporte.collect()];
+    for g in ids::ACTION_GROUPS {
+        grupos.push(
+            g.iter()
+                .map(|&i| (ids::ACTIONS[i].1, ids::ACTIONS[i].2))
+                .collect(),
         );
-        ctx.host.hit_index_mut().register(*id, r);
     }
-    #[expect(clippy::cast_precision_loss, reason = "cinco botões")]
-    let fila_w = n as f32 * h;
-    x += fila_w + gap;
+    for grupo in grupos {
+        let n = grupo.len();
+        #[expect(clippy::cast_precision_loss, reason = "≤ cinco botões")]
+        let w = n as f32 * h;
+        quebra(&mut x, &mut y, w);
+        // Os ícones são quadrados (a altura da linha), encostados como um grupo.
+        for (i, (id, icon)) in grupo.into_iter().enumerate() {
+            #[expect(clippy::cast_precision_loss, reason = "≤ cinco botões")]
+            let r = Rect::new(x + i as f32 * h, y, h, h);
+            let cell = GroupCell {
+                col: GroupPos::of(i, n),
+                row: GroupPos::Only,
+            };
+            let visual = ctx.host.store().button_visual(id);
+            let glyph = IconGlyph::Builtin(icon);
+            paint_icon_button_in_group(
+                r,
+                glyph,
+                IconButtonStyle::Compact,
+                visual,
+                cell,
+                ctx.scene,
+                theme,
+            );
+            ctx.host.hit_index_mut().register(id, r);
+        }
+        x += w + gap;
+    }
 
     let font = Button::label_font_px();
     let labels: Vec<&str> = ids::TOGGLES.iter().map(|(.., k)| tr(k)).collect();
@@ -200,49 +231,7 @@ fn barra(ctx: &mut PaintCtx, info: &PixelPanelInfo, inner: Rect) -> f32 {
         );
         ctx.host.hit_index_mut().register(*id, r);
     }
-    x += w + gap;
-
-    // O menu Frame: cada botão com a largura da SUA palavra (o peso e o respiro do botão), os de um
-    // grupo encostados.
-    for grupo in ids::ACTION_GROUPS {
-        let pecas: Vec<(ph2d_a11y::NodeId, &str, f32)> = grupo
-            .iter()
-            .map(|&i| {
-                let (_, id, k) = ids::ACTIONS[i];
-                let label = tr(k);
-                (id, label, largura_do_botao(ctx, id, label))
-            })
-            .collect();
-        let w: f32 = pecas.iter().map(|p| p.2).sum();
-        quebra(&mut x, &mut y, w);
-        let n = pecas.len();
-        for (i, (id, label, bw)) in pecas.into_iter().enumerate() {
-            let r = Rect::new(x, y, bw, h);
-            let cell = GroupCell {
-                col: GroupPos::of(i, n),
-                row: GroupPos::Only,
-            };
-            let b = Button::new(id, label)
-                .in_group(cell)
-                .visual(ctx.host.store().button_visual(id));
-            paint_button(&b, r, ctx.scene, ctx.text_system, theme);
-            ctx.host.hit_index_mut().register(id, r);
-            x += bw;
-        }
-        x += gap;
-    }
     y + h
-}
-
-/// A largura em que um botão pinta a sua palavra inteira: o texto no peso do botão mais o respiro
-/// dele dos dois lados (e nunca menos do que a lei da reticência pede).
-fn largura_do_botao(ctx: &mut PaintCtx, id: ph2d_a11y::NodeId, label: &str) -> f32 {
-    let font = Button::label_font_px();
-    let t = ctx
-        .text_system
-        .prefix_width_weighted(label, font, ph2d_text::FontWeight::MEDIUM);
-    let pad = Button::new(id, label).padding();
-    rect_for_label(t).max(t + pad * 2.0)
 }
 
 /// A largura natural de uma fileira de rótulos (a soma das larguras que a porta lhes daria).

@@ -30,8 +30,9 @@ pub(crate) fn populate(store: &mut WidgetStore) {
     for (_, id, _) in ids::TOGGLES {
         botao(store, id);
     }
-    for (_, id, _) in ids::ACTIONS {
+    for (_, id, _, dica) in ids::ACTIONS {
         botao(store, id);
+        store.set_tooltip(id, tr(dica));
     }
     botao(store, ids::TAG_DELETE);
     for (id, (min, max, step)) in ids::NUMBERS {
@@ -145,7 +146,7 @@ fn pedido(id: NodeId) -> Option<PixelRequest> {
         let acoes = ids::TRANSPORT.iter().map(|(a, b, ..)| (*a, *b));
         let acoes = acoes
             .chain(ids::TOGGLES.iter().map(|(a, b, _)| (*a, *b)))
-            .chain(ids::ACTIONS.iter().map(|(a, b, _)| (*a, *b)));
+            .chain(ids::ACTIONS.iter().map(|(a, b, ..)| (*a, *b)));
         for (a, b) in acoes {
             if b == id {
                 return Some(PixelRequest::FrameAction(a));

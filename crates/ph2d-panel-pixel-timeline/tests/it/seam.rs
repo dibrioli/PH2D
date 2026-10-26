@@ -162,7 +162,8 @@ fn a_barra_e_a_coluna_das_camadas_chegam_ao_barramento() {
             PixelRequest::FrameAction(a),
         );
     }
-    for (a, id, _) in ids::TOGGLES.iter().copied().chain(ids::ACTIONS) {
+    let acoes = ids::ACTIONS.iter().map(|(a, id, ..)| (*a, *id));
+    for (a, id) in ids::TOGGLES.iter().map(|(a, id, _)| (*a, *id)).chain(acoes) {
         so(
             &Palco::novo(info()).carrega(id),
             PixelRequest::FrameAction(a),
@@ -211,4 +212,30 @@ fn sem_sprite_em_edicao_nao_ha_pedido() {
     let p = Palco::novo(i);
     assert!(p.rect(ids::cell_id(2, 10)).is_none());
     assert!(p.rect(ids::TRANSPORT[0].1).is_none());
+}
+
+/// Camadas a mais do que a banda ROLAM com a roda (nunca recortadas em silêncio): depois da roda a
+/// última camada fica à vista e a primeira subiu.
+#[test]
+fn as_filas_a_mais_rolam_com_a_roda() {
+    let mut i = info();
+    i.layers = (1..=12).rev().map(|id| camada(id, "Layer")).collect();
+    let mut p = Palco::novo(i);
+    let antes = p
+        .rect(ids::layer_widget_id(12, PixelLayerWidget::Row))
+        .expect("a 1.ª camada");
+    assert!(
+        p.rect(ids::layer_widget_id(1, PixelLayerWidget::Row))
+            .is_none(),
+        "a banda de fábrica não cabe doze camadas — o teste não mede a rolagem"
+    );
+    let _ = p
+        .host
+        .wheel_at(antes.x + antes.w * 0.5, antes.y + antes.h * 0.5, -2000.0);
+    p.rects = p.host.paint::<PixelTimelinePanel>(&mut p.st, VIEWPORT);
+    let depois = p.rect(ids::layer_widget_id(1, PixelLayerWidget::Row));
+    assert!(
+        depois.is_some(),
+        "a última camada nunca chegou à vista depois da roda"
+    );
 }

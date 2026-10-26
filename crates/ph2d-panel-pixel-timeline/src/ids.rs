@@ -61,56 +61,68 @@ pub const TOGGLES: [(A, NodeId, &str); 2] = [
     ),
 ];
 
-/// O menu Frame (e o do Cel e das Tags) na barra, em grupos: a acção, o id e o rótulo.
-pub const ACTIONS: [(A, NodeId, &str); 10] = [
+/// O menu Frame (e o do Cel e das Tags) na barra, em ícones compactos com a dica do nome do
+/// Aseprite: a acção, o id, o ícone e a chave da dica. ⚠️ Ícones e não palavras: a banda de fábrica
+/// tem 240 px, e dez palavras ocupavam duas linhas dela (smoke da cena 8, 25/10).
+pub const ACTIONS: [(A, NodeId, IconId, &str); 10] = [
     (
         A::NewFrame,
         hash_node_id("pixel_timeline.new_frame"),
+        IconId::Duplicate,
         "panel.pixel.timeline.new_frame",
     ),
     (
         A::NewEmptyFrame,
         hash_node_id("pixel_timeline.new_empty_frame"),
+        IconId::Plus,
         "panel.pixel.timeline.new_empty_frame",
     ),
     (
         A::DuplicateLinked,
         hash_node_id("pixel_timeline.duplicate_linked"),
+        IconId::Clone,
         "panel.pixel.timeline.duplicate_linked",
     ),
     (
         A::Delete,
         hash_node_id("pixel_timeline.delete_frame"),
+        IconId::Trash,
         "panel.pixel.timeline.delete_frame",
     ),
     (
         A::MoveLeft,
         hash_node_id("pixel_timeline.move_left"),
+        IconId::ArrangeBackward,
         "panel.pixel.timeline.move_left",
     ),
     (
         A::MoveRight,
         hash_node_id("pixel_timeline.move_right"),
+        IconId::ArrangeForward,
         "panel.pixel.timeline.move_right",
     ),
     (
         A::Reverse,
         hash_node_id("pixel_timeline.reverse"),
+        IconId::FlipH,
         "panel.pixel.timeline.reverse",
     ),
     (
         A::LinkPrevious,
         hash_node_id("pixel_timeline.link_previous"),
+        IconId::Link,
         "panel.pixel.timeline.link_previous",
     ),
     (
         A::Unlink,
         hash_node_id("pixel_timeline.unlink"),
+        IconId::Unlink,
         "panel.pixel.timeline.unlink",
     ),
     (
         A::NewTag,
         hash_node_id("pixel_timeline.new_tag"),
+        IconId::Tag,
         "panel.pixel.timeline.new_tag",
     ),
 ];

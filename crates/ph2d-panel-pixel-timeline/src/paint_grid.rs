@@ -28,6 +28,8 @@ struct Grelha {
     end: usize,
     tags_y: f32,
     head_y: f32,
+    /// O topo do corpo que rola, e onde a primeira fila cai depois da rolagem.
+    top: f32,
     rows_y: f32,
     bottom: f32,
 }
@@ -83,13 +85,14 @@ pub(crate) fn paint(
     let tags_y = area.y;
     let head_y = tags_y + ROW_H_PX;
     let rows_y = head_y + ROW_H_PX + TypeToken::Xs.px() + Spacing::Xs.px();
-    let g = Grelha {
+    let mut g = Grelha {
         gx,
         col_w,
         first: st.first_col,
         end: (st.first_col + cabem).min(n),
         tags_y,
         head_y,
+        top: rows_y,
         rows_y,
         bottom: area.y + area.h,
     };
@@ -102,6 +105,21 @@ pub(crate) fn paint(
     for (i, t) in info.tags.iter().enumerate() {
         tag(ctx, &g, i, t, rename_tag == Some(i));
     }
+    ctx.host.hit_index_mut().pop_clip();
+    ctx.scene.pop_layer();
+
+    // ⭐ As FILAS rolam (a roda sobre o painel, ou a barra): camadas a mais do que a banda nunca
+    // ficam recortadas em silêncio. Cabeçalhos e tags ficam fixos por cima.
+    let corpo = Rect::new(area.x, g.top, area.w, (g.bottom - g.top).max(0.0));
+    let rolagem = ph2d_editor_core::panel::scroll_area::open(
+        ctx,
+        ph2d_editor_core::ids::PIXEL_TIMELINE_PANEL,
+        ph2d_editor_core::widget::PIXEL_TIMELINE_SCROLLBAR_ID,
+        corpo,
+    );
+    g.rows_y = rolagem.top();
+    ctx.scene.push_clip(&rect_to_vello(colunas));
+    ctx.host.hit_index_mut().push_clip(colunas);
     celulas(ctx, info, &g);
     ctx.host.hit_index_mut().pop_clip();
     ctx.scene.pop_layer();
@@ -109,9 +127,6 @@ pub(crate) fn paint(
     // A coluna das camadas, alinhada às filas da grelha.
     let theme = ctx.host.theme();
     let renaming = st.rename_layer.map(|(id, _)| id);
-    let col = Rect::new(area.x, g.rows_y, layers_w, (g.bottom - g.rows_y).max(0.0));
-    ctx.scene.push_clip(&rect_to_vello(col));
-    ctx.host.hit_index_mut().push_clip(col);
     let (store, hit_index) = ctx.host.store_and_hit_index_mut();
     let mut p = LayerRowPainter {
         scene: &mut *ctx.scene,
@@ -128,23 +143,21 @@ pub(crate) fn paint(
             ids::layer_widget_id(row.id, w)
         });
     }
-    ctx.host.hit_index_mut().pop_clip();
-    ctx.scene.pop_layer();
+    #[expect(clippy::cast_precision_loss, reason = "o número de camadas")]
+    let alto = info.layers.len() as f32 * ph2d_tokens::row_pitch_px();
+    ph2d_editor_core::panel::scroll_area::close(rolagem, ctx, alto);
 }
 
 /// Os números dos frames (1-based) e a duração de cada um por baixo; o activo aceso.
 fn cabecalhos(ctx: &mut PaintCtx, info: &PixelPanelInfo, g: &Grelha, duracoes: &[String]) {
     let theme = ctx.host.theme();
     let radius = ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px());
-    let alto = g.rows_y - g.head_y;
+    let alto = g.top - g.head_y;
     for c in g.first..g.end {
         let f = info.frames[c];
         let r = Rect::new(g.x(c), g.head_y, g.col_w, alto);
         if info.active_frame == Some(f.id) {
             fill_rounded_rect(ctx.scene, r, radius, resolve(ColorToken::AccentSoft, theme));
-            // A coluna do activo, por baixo dos cels.
-            let coluna = Rect::new(r.x, g.rows_y, r.w, (g.bottom - g.rows_y).max(0.0));
-            fill_rounded_rect(ctx.scene, coluna, radius, resolve(ColorToken::Bg2, theme));
         }
         let numero = (c + 1).to_string();
         centrado(
@@ -277,6 +290,11 @@ fn celulas(ctx: &mut PaintCtx, info: &PixelPanelInfo, g: &Grelha) {
     let h = ROW_H_PX;
     let d = h * 0.5;
     let radius = ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px());
+    // A coluna do activo, por baixo dos cels (fixa: não rola).
+    if let Some(c) = event::activo(info).filter(|c| (g.first..g.end).contains(c)) {
+        let coluna = Rect::new(g.x(c), g.top, g.col_w, (g.bottom - g.top).max(0.0));
+        fill_rounded_rect(ctx.scene, coluna, radius, resolve(ColorToken::Bg2, theme));
+    }
     let mut y = g.rows_y;
     for row in &info.layers {
         if y >= g.bottom {
@@ -326,25 +344,15 @@ fn ponto(ctx: &mut PaintCtx, r: Rect, cel: Option<&PixelCel>) {
     let d = r.h * 0.5;
     let dot = |d: f32| Rect::new(r.x + (r.w - d) * 0.5, r.y + (r.h - d) * 0.5, d, d);
     let traco = StrokeToken::Default.px();
+    // O ponto oco É a marca (o frame sem cel, o cel de imagem vazia), não uma moldura.
     let Some(c) = cel else {
-        let d = d * 0.5;
-        stroke_rounded_rect(
-            ctx.scene,
-            dot(d),
-            d * 0.5,
-            traco,
-            resolve(ColorToken::Border, theme),
-        ); // FRAME-RAW-OK: o ponto oco É a marca do frame sem cel (Aseprite)
+        let (d, cor) = (d * 0.5, resolve(ColorToken::Border, theme));
+        stroke_rounded_rect(ctx.scene, dot(d), d * 0.5, traco, cor); // FRAME-RAW-OK: marca
         return;
     };
     if c.empty {
-        stroke_rounded_rect(
-            ctx.scene,
-            dot(d),
-            d * 0.5,
-            traco,
-            resolve(ColorToken::Text2, theme),
-        ); // FRAME-RAW-OK: o ponto oco É o cel de imagem vazia (Aseprite)
+        let cor = resolve(ColorToken::Text2, theme);
+        stroke_rounded_rect(ctx.scene, dot(d), d * 0.5, traco, cor); // FRAME-RAW-OK: marca
     } else {
         let cor = if c.opacity == u8::MAX {
             ColorToken::Text1

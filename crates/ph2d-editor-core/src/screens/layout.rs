@@ -593,6 +593,10 @@ impl HeroLayout {
         // ⭐ **A DIVISÓRIA também é vertical** (Enio, 2026-09-07: *«entre os painéis e a timeline
         //    há espaços»*): a área acaba uma divisória ANTES da faixa, não colada a ela.
         self.draw_area.h = (strip.y - ph2d_tokens::area_gap_px() - self.draw_area.y).max(0.0);
+        // ⭐ A pílula do rodapé flutua sobre o DESENHO, nunca sobre a faixa: ela nascia no fundo da
+        // janela e cobria as filas da faixa (smoke da linha do tempo do Pixel, cena 8, 25/10).
+        let hud_y = self.draw_area.y + self.draw_area.h - HUD_BOTTOM_PAD - self.bottom_hud.h;
+        self.bottom_hud.y = self.bottom_hud.y.min(hud_y);
     }
 
     /// F5 (D10 decisão 2): a fila ② passa para BAIXO da área — a mesma faixa e a mesma altura, a

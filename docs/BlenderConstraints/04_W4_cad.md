@@ -348,6 +348,59 @@ mostra/prende alças).
 5. Abertos herdados: régua da timeline mostra a medida em METROS (o Inspector em px); Auto Key ao escrever a medida não
    provado de ponta a ponta; W4.4: juntar regra a 200 pontos 17–33 ms.
 
+### 3.7 W4.6 — o desenho (lido no código 26/10, ANTES do código)
+
+**Onde a tool entra (a coluna ① do Vetor, não o `left_rail` do editor):** `DrawMode::Rules` (`ph2d-tool-vector`
+`params_mode.rs`) + id `VECTOR_MODE_RULES` (`ids/vector.rs`) + `tool_panel_event.rs` (clique → modo) + a tabela `TOOLS`
+de `ph2d-panel-vector/src/bars.rs` (família `Build`, ícone novo `IconId::VectorRules` = `docs/design/icons/vector-rules.svg`,
+desenho ORIGINAL — não há Lucide local) + `hint_key` + `populate_modes.rs` (registo: o `wiring_parity`) + i18n
+`panel.vector.mode.rules` / `panel.vector.hint.rules`. Sem tecla (o Illustrator não a tem; o `R` é do Rotate). Entra no
+`PRECISE` da ④ (a ④ dos verbos de caminho roubaria o clique).
+
+**Os gizmos e o clique moram numa crate, a shell paga ZERO linha nova** (a catraca está a 1 de folga):
+- `ph2d-app-vec/src/cad_tool.rs` (estado `CadTool` no `VecState`: a ESCOLHA de 1–2 alvos `Alvo::{Ponto, Lado, Circulo}`,
+  a regra escolhida, o hover, o último PLANO desenhado) + `cad_tool_plano.rs` (o plano em px de ECRÃ: selos, cotas, cor
+  dos lados, e os rects de acerto — **o rect que se pinta é o que se acerta**, uma lista) + `cad_tool_pinta.rs`.
+- **Clique / Esc:** pelas portas que a shell JÁ chama em todo modo — `shape_handles_live::on::press` e `on::escape`
+  desviam para o `cad_tool` com `DrawMode::Rules` (consome todo press no canvas, como o Trim: o vazio limpa a escolha).
+- **Desenho:** `edit_marks::draw` (já chamado) troca o `cad_marks::pinta` pelo plano novo: SELOS só com a tool activa,
+  COTAS sempre; o `cad_marks` sai inteiro (recusado no smoke).
+- **Quadro:** a linha da shell que chamava `cad_inspector::frame` passa a chamar `cad_tool::frame` (hover pelo
+  `last_pointer`, dreno dos pedidos, semente do número, publicação da ④/②); a do barramento (`ComponentEdit::Cad`)
+  sai com a secção.
+- **Delete:** o `vec_delete_selected_vertex_or_path` + `vec_delete_selected` da shell MUDAM-SE para a crate
+  (`ph2d_app_vec::apaga`) com a regra escolhida à frente — a shell encolhe (a cura é mover).
+
+**Criar à mão:** clicar ponto/lado/círculo junta-o à escolha (máx. 2; um 3.º recomeça). A ④ (âncora = a caixa da escolha
+no ecrã) mostra SÓ as regras possíveis — 1 lado: Horizontal, Vertical, Distance · 2 lados: Equal, Angle (Paralelo/
+Perpendicular ficam de fora: não estão na lista do dono) · 1 ponto: Fixed · 2 pontos: Coincident, Horizontal, Vertical,
+Distance · 1 círculo: Radius. A medida nasce com o valor ACTUAL (juntar não mexe no desenho; o `junta_regra` decide REF/
+recusa). Botão → fila do painel (`ph2d-panel-vector` `state_cad.rs`, como os `PEDIDOS` da secção) → `cad_tool::frame` →
+`junta_regra`. Ícones dos 8 botões = os glifos dos selos (o botão e o selo são o MESMO desenho).
+
+**Cota e número:** clicar o número escolhe a regra e foca o chip numérico da ② (`ToolRailEntry::Number`, semente
+one-shot ao escolher, como os campos da forma); escrever → `Medida` → o mesmo `aplica` que a secção usava (px/graus do
+projecto → mundo/radianos; REF não se escreve) → o diff do canal `CAD` grava a chave com o Auto Key armado. O losango
+do chip mapeia para `PropKind::Field(CAD, MEDIDA, regra)` (`marcas.rs`, tabela dinâmica).
+
+**Cor da forma:** sobre cada lado citado, livre = `Info`, definido = `Text1`, conflito = `Danger` (SolidWorks: azul/preto/
+vermelho); a análise é a do `CadCores` (fora da thread do quadro). Hover = os alvos da regra em `Selection`; escolha em
+`Accent`.
+
+**Inspector:** a secção DRAWING RULES sai INTEIRA (ids, populate/event/sync/paint, `cad_edits`, `LIVE_SECTIONS`, i18n,
+`seam_cad`) — o dono não a quer como superfície; um resumo não ensina nada que a tool não mostre.
+
+**Cena 7 «Caixa com tampa»** (`ph2d-app-constraints`, `max_level` 6 → 7): corpo retângulo (2 H, 2 V, `Fixed` no canto,
+largura e altura = 2 cotas), tampa = um lado preso na dobradiça (`Coincident`), `Equal` à largura, `Angle` animado 0° →
+110° → 0° (quadros 0/24/48). ~10 regras, todas à vista. Abre com a tool Rules na mão.
+
+**Gates red-first (por nome):** `the_rules_tool_sits_in_the_left_column` · `a_choice_offers_only_the_rules_it_allows` ·
+`a_rule_made_by_hand_goes_through_junta_regra_and_keeps_the_drawing` (seam: press real nos lados → botão → regra) ·
+`clicking_a_dimension_number_selects_it_and_typing_moves_the_drawing` · `delete_removes_the_chosen_rule_in_one_step` ·
+`badges_only_with_the_tool_dimensions_always` · `the_hit_rect_is_the_painted_rect` · `hover_lights_what_the_rule_binds`
+· `the_shape_colour_says_free_defined_conflict` · `typing_a_dimension_with_autokey_records_a_key` · a unidade da
+timeline (px) · `the_lid_opens_and_scrubs_to_the_same_bit`.
+
 ## 4. Gates red-first
 
 | gate | fenómeno na fixture | passo |

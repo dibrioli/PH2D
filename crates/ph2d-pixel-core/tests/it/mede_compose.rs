@@ -7,7 +7,7 @@ use ph2d_pixel_core::{NewSprite, Op, Patch, Purpose, Rect, Sprite, apply, compos
 #[test]
 #[ignore = "medida, não lei"]
 fn mede_compose() {
-    for (lado, n) in [(256u32, 8usize), (512, 20), (1024, 20), (2048, 8)] {
+    for (lado, n) in [(64u32, 5usize), (256, 8), (512, 20), (1024, 20), (2048, 8)] {
         let mut s = Sprite::new(NewSprite { width: lado, height: lado, ..NewSprite::default() }).expect("s");
         let mut top = s.layers()[0].id;
         for i in 0..n {
@@ -35,6 +35,22 @@ fn mede_compose() {
             std::hint::black_box(compose_window(&s, f, None, Rect::new(10, 10, 16, 16), Purpose::View));
             pincel = pincel.min(t.elapsed().as_secs_f64() * 1e3);
         }
-        println!("MEDE {lado}x{lado} {n} camadas: cheio {best:.2} ms · janela 16x16 {pincel:.4} ms");
+        let fatias = std::thread::available_parallelism().map_or(1, |n| n.get() / 2).max(1) as u32;
+        let mut faixas = f64::MAX;
+        for _ in 0..5 {
+            let t = std::time::Instant::now();
+            std::thread::scope(|sc| {
+                let alto = lado.div_ceil(fatias);
+                for k in 0..fatias {
+                    let y = k * alto;
+                    if y >= lado { break; }
+                    let r = Rect::new(0, y as i32, lado, alto.min(lado - y));
+                    let s = &s;
+                    sc.spawn(move || std::hint::black_box(compose_window(s, f, None, r, Purpose::View)));
+                }
+            });
+            faixas = faixas.min(t.elapsed().as_secs_f64() * 1e3);
+        }
+        println!("MEDE {lado}x{lado} {n} camadas: cheio {best:.2} ms · {fatias} faixas {faixas:.2} ms · janela 16x16 {pincel:.4} ms");
     }
 }

@@ -6,4 +6,5 @@ mod every_word_this_family_shows_comes_from_the_string_table;
 mod o_caminho;
 mod o_cartao;
 mod o_gizmo;
+mod o_olhar;
 mod pegar_e_largar;

@@ -1,15 +1,15 @@
 //! ⭐ **ESPELHAR UM RAMO** — a porta que o verbo *Mirror Branch* chama: a lei é a
 //! [`ph2d_skeleton_live::espelho::espelha`], e aqui sai da cópia o que aquela crate não conhece — o
-//! **item IK**, que nomeia o alvo do ORIGINAL (duas correntes a puxar o mesmo losango).
+//! **âncora** (IK ou Look At), que nomeia o alvo do ORIGINAL (duas correntes a puxar o mesmo losango).
 
 use ph2d_ecs::{Entity, SimWorld, scene::ComponentRegistry};
 
-/// Espelha o ramo de `osso` e devolve a raiz da cópia; os ossos copiados não levam item IK.
+/// Espelha o ramo de `osso` e devolve a raiz da cópia; os ossos copiados não levam âncora.
 pub fn espelha(sim: &mut SimWorld, registry: &ComponentRegistry, osso: Entity) -> Option<Entity> {
     let copia = ph2d_skeleton_live::espelho::espelha(sim, registry, osso)?;
     let mut pilha = vec![copia];
     while let Some(e) = pilha.pop() {
-        ph2d_constraints_ecs::tirar_ik(sim.world_mut(), e);
+        ph2d_constraints_ecs::tirar_ancora(sim.world_mut(), e);
         if let Some(f) = sim.world().get::<ph2d_ecs::Children>(e) {
             pilha.extend(f.iter().copied());
         }

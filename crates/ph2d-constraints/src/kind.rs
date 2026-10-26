@@ -94,7 +94,9 @@ pub struct CopyTransform {
     pub offset: Pose2,
 }
 
-/// Aponta o eixo +X ao alvo — os três «track» do Blender são este no plano (oráculo `apontar_3_tipos`).
+/// Aponta o eixo +X DESENHADO ao alvo — os três «track» do Blender são este no plano (oráculo
+/// `apontar_3_tipos`). A fase avalia-o pela mira da casa (`ph2d-constraints-ecs`, `olha`), que é esta
+/// lei mais o limite de junta e a mistura no local.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct LookAt {
     pub offset: f64,
@@ -206,7 +208,7 @@ impl Kind {
             Self::LookAt(l) => {
                 let t = ctx.target.ok_or(Inerte::SemAlvo)?;
                 if let Some(aim) = aim(ctx.owner, t) {
-                    l.offset = wrap_pi(ctx.owner.rot - aim);
+                    l.offset = wrap_pi(ctx.owner.rot + eixo(ctx.owner) - aim);
                 }
             }
             Self::Distance(d) => {
@@ -254,7 +256,7 @@ impl Kind {
             Self::LookAt(l) => {
                 let t = ctx.target.ok_or(Inerte::SemAlvo)?;
                 Ok(aim(ctx.owner, t).map_or(ctx.owner, |a| Pose2 {
-                    rot: a + l.offset,
+                    rot: a - eixo(ctx.owner) + l.offset,
                     ..ctx.owner
                 }))
             }
@@ -298,6 +300,12 @@ impl Kind {
 fn aim(owner: Pose2, target: Pose2) -> Option<f64> {
     let (dx, dy) = (target.x - owner.x, target.y - owner.y);
     (dx != 0.0 || dy != 0.0).then(|| dy.atan2(dx))
+}
+
+/// O ângulo que a escala dá ao eixo +X desenhado: π sob um espelho em X (pose de herança TRS, como a
+/// do `Transform` da casa; uma pose vinda de um afim leva o espelho em `sy` e dá 0).
+fn eixo(p: Pose2) -> f64 {
+    0.0_f64.atan2(p.sx)
 }
 
 fn ratio(a: f64, b: f64) -> f64 {

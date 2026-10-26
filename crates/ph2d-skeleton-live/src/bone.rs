@@ -100,7 +100,17 @@ pub fn tip_of(sim: &SimWorld, bits: u64) -> Option<[f64; 2]> {
 #[must_use]
 pub fn aim_rotation(sim: &SimWorld, bone: Entity, world: [f64; 2]) -> Option<f64> {
     let local = *sim.world().get::<Transform>(bone)?;
-    let pai = ph2d_ecs::parent_world_transform(sim.world(), bone);
+    aim_rotation_under(
+        ph2d_ecs::parent_world_transform(sim.world(), bone),
+        local,
+        world,
+    )
+}
+
+/// [`aim_rotation`] de uma entidade com pose `local` sob o pai `pai` (mundo) — para quem tem a pose a
+/// meio de uma conta (a pilha de constraints) e não no mundo.
+#[must_use]
+pub fn aim_rotation_under(pai: Transform, local: Transform, world: [f64; 2]) -> Option<f64> {
     let mundo = Transform::compose(pai, local);
     let o = [
         f64::from(mundo.translation.x),

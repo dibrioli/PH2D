@@ -52,12 +52,7 @@ impl crate::App {
                 ),
             }
         }
-        // ⭐⭐⭐ **APONTAR** — a mesma âncora do irmão acima, com a corrente em UM.
-        //
-        // ⚠️ **Dois verbos e um motor, e isso está MEDIDO**
-        // (`ph2d_app_skeleton::goal::sonda_do_apontar_tests`): a lei do alcance com a corrente
-        // resolvida em UM já apontava com erro `0,000000°`. *O que faltava era o nome* — e a lente
-        // do painel, que ali esconde os dois knobs que a medição diz serem inertes.
+        // ⭐⭐⭐ **APONTAR** — um item Look At (a porta única de «olhar»; a IK começa nos 2 ossos).
         if pending_look_at {
             match crate::skeleton_goal::add_look_at(sim, osso) {
                 Some(_) => eprintln!(

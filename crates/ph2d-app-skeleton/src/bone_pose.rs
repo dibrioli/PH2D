@@ -54,7 +54,7 @@ pub fn pose(
         // que ele arrasta passa a ser o objecto AUTORADO, que é o que o documento guarda — e é o
         // modelo do Blender e do Spine, onde um osso sob restrição não se posa à mão.
         BonePart::Tip => {
-            if ph2d_constraints_ecs::ik_de(sim.world(), bone).is_some() {
+            if ph2d_constraints_ecs::ancora_de(sim.world(), bone).is_some() {
                 crate::goal::drag_anchor(sim, bone, world)
             } else {
                 reach_chain(sim, bone, world)

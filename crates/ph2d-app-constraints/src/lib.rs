@@ -43,8 +43,10 @@ pub fn quadro(
             smoke::encenar(w, n);
         }
     }
-    // Um `IkGoal` de antes da W2 (ficheiro, prefab, colagem) vira o item IK antes de avaliar.
+    // Um `IkGoal` de antes da W2 (ficheiro, prefab, colagem) vira o item IK, e a IK de 1 osso o Look
+    // At, antes de avaliar.
     ph2d_constraints_ecs::converter_ik_goals(sim.world_mut());
+    ph2d_constraints_ecs::converter_ik_de_um_osso(sim.world_mut());
     canais::aplicar(sim, preview);
     caminhos(sim, cena);
     ph2d_constraints_ecs::evaluate(sim, preview)

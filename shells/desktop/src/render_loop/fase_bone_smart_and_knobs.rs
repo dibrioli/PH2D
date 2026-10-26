@@ -2,6 +2,7 @@
 //! IK, e os controlos que nasceram mudos (OBRA 2 da `line/render-loop`, 2026-09-13).
 
 use super::*;
+use ph2d_constraints_ecs::Ancora;
 use ph2d_i18n::{tr, tr_with};
 
 /// ⭐ **Qual dos quatro números da ÂNCORA o campo escreveu.**
@@ -170,26 +171,27 @@ impl crate::App {
             _ => None,
         };
         if let Some((qual, v)) = pending_ik_knob {
-            ph2d_constraints_ecs::com_ik(sim.world_mut(), osso, |it, g| match qual {
+            ph2d_constraints_ecs::com_ancora(sim.world_mut(), osso, |it, a| match (qual, a) {
                 // ⛔ `0..1` é a faixa da LEI, não uma escolha: fora dela o `blend_angle`
                 // satura nos extremos, e um campo que aceita `7` mentiria sobre o efeito.
-                IkKnob::Mix => it.influence = v.clamp(0.0, 1.0),
+                (IkKnob::Mix, _) => it.influence = v.clamp(0.0, 1.0),
                 // ⛔ Piso em zero e SEM tecto: a suavidade é uma fracção do alcance, e o
                 // `softened_distance` já a apara pelo próprio alcance — §0.0, o limite é do
                 // recurso e não um palpite.
-                IkKnob::Softness => g.softness = v.max(0.0),
+                (IkKnob::Softness, Ancora::Ik(g)) => g.softness = v.max(0.0),
                 // ⛔ Idem: quem apara a corrente é a ARVORE, no passe.
                 #[expect(
                     clippy::cast_possible_truncation,
                     clippy::cast_sign_loss,
                     reason = "o campo é f64 e a contagem de ossos é u32; o piso em 0 já corre acima"
                 )]
-                IkKnob::Chain => g.chain = v.max(0.0) as u32,
+                (IkKnob::Chain, Ancora::Ik(g)) => g.chain = v.max(0.0) as u32,
                 // ⭐⭐ **GRAUS na tela, RADIANOS no documento** — a mesma lei do limite da junta, e
                 // a conversão vive aqui, num sítio só. ⛔ **Sem piso nem tecto:** um desvio é um
                 // arco e dar a volta inteira é legítimo (apontar «para trás» é `180`), e a lei do
                 // `wrap_pi` a jusante já o normaliza — §0.0, um limite tem de nomear um recurso.
-                IkKnob::Offset => g.offset = v.to_radians(),
+                (IkKnob::Offset, a) => a.set_desvio(v.to_radians()),
+                (IkKnob::Softness | IkKnob::Chain, Ancora::LookAt(_)) => {}
             });
             ph2d_constraints_ecs::com_ik(sim.world_mut(), osso, |_, g| {
                 g.bend = lado_novo.unwrap_or(g.bend);

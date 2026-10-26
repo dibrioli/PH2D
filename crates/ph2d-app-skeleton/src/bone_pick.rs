@@ -329,7 +329,7 @@ pub fn hover(
     // ancorado o desenho põe o losango na âncora e a alça foi já apanhada acima, então repetir aqui
     // daria duas respostas para o mesmo dedo.
     if ph2d_skeleton_live::skin_live::chain_ends(sim).contains(&bone)
-        && ph2d_constraints_ecs::ik_de(sim.world(), Entity::from_bits(bone)).is_none()
+        && ph2d_constraints_ecs::ancora_de(sim.world(), Entity::from_bits(bone)).is_none()
         && let Some(pts) = corpo(sim, bone)
     {
         let b = *pts.last().expect("a polilinha tem ao menos dois nos");

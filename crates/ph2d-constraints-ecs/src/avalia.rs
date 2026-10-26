@@ -311,6 +311,25 @@ fn avalia_uma(
             }
             continue;
         }
+        if let Kind::LookAt(l) = &it.kind {
+            let Some(t) = alvo.and_then(|t| world_transform(sim.world(), t)) else {
+                marca(it.id, Estado::SemAlvo);
+                continue;
+            };
+            let ponto = [f64::from(t.translation.x), f64::from(t.translation.y)];
+            let local = local_de(parent, base_local, inicial, dono);
+            let nova = crate::ik::olha(
+                sim,
+                e,
+                (parent, local),
+                ponto,
+                l.offset,
+                it.influence.min(1.0),
+            );
+            dono = pose(&Transform::compose(parent, nova));
+            marca(it.id, Estado::Activa);
+            continue;
+        }
         let w = sim.world();
         let caminho = match (&it.kind, alvo, it.target) {
             (Kind::FollowPath(_), Some(a), Some(s)) => caminho_no_mundo(sim, a, s),

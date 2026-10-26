@@ -132,12 +132,16 @@ pub(crate) fn campos_da_ancora() -> Option<Vec<(ph2d_a11y::NodeId, &'static str,
             softness,
         ));
     }
-    campos.push((
-        ids::VECTOR_BONE_IK_CHAIN,
-        tr("panel.vector.bone.ik.chain"),
-        CHAIN_STEP,
-        chain,
-    ));
+    // ⛔ O apontar não tem corrente: um osso que olha é um Look At, e a IK começa nos 2 ossos
+    // (decisão do dono 25/10, `docs/BlenderConstraints/03_W3_poderosas.md` §1).
+    if aponta.is_none() {
+        campos.push((
+            ids::VECTOR_BONE_IK_CHAIN,
+            tr("panel.vector.bone.ik.chain"),
+            CHAIN_STEP,
+            chain,
+        ));
+    }
     // ⚠️ **Depois da corrente**, e a ordem diz o que ele é: o desvio só existe porque a corrente
     // resolve a UM — ler *«de quanto está rodado»* antes de saber *«de que corrente»* é ler a
     // resposta antes da pergunta (a mesma lei que já põe o lado da dobra depois do `Chain`).

@@ -5,10 +5,10 @@ use std::collections::BTreeSet;
 
 use bevy_ecs::entity::Entity;
 use ph2d_constraints::{Ik, solve_chain};
-use ph2d_ecs::{ChildOf, SimWorld, Transform, world_transform};
+use ph2d_ecs::{ChildOf, SimWorld, Transform, parent_world_transform, world_transform};
 use ph2d_preview_drive::{Driven, Driver, PreviewDrive};
 use ph2d_skeleton_ecs::Bone;
-use ph2d_skeleton_live::bone::{aim_rotation, limited};
+use ph2d_skeleton_live::bone::{aim_rotation_under, limited};
 use ph2d_skeleton_live::goal::{aponta_com, governed, joints_of};
 
 use crate::Estado;
@@ -94,11 +94,10 @@ pub(crate) fn avalia(
     let mix = forca.clamp(0.0, 1.0);
     let mut dono = local_e;
     for (i, &(c, agora, partida)) in vistas.iter().enumerate() {
-        let mut nova = partida;
-        if let Some(rot) = aim_rotation(sim, c, mira[i + 1]) {
-            let rot = ph2d_skeleton::blend_angle(f64::from(partida.rotation), rot + desvio, mix);
-            nova.rotation = f32_de(limited(sim, c, rot));
-        }
+        // Um osso só OLHA: mira o próprio alvo (a porta do Look At), não a ponta que o alcance pôs.
+        let ponto = if vistas.len() == 1 { goal } else { mira[i + 1] };
+        let pai = parent_world_transform(sim.world(), c);
+        let mut nova = olha(sim, c, (pai, partida), ponto, desvio, mix);
         if i == 0 && k > 1.0 {
             nova.scale.x = f32_de(f64::from(partida.scale.x) * k.powf(mix));
         }
@@ -114,6 +113,26 @@ pub(crate) fn avalia(
         avaliadas.insert(c.to_bits());
     }
     Ok(dono)
+}
+
+/// ⭐ **Olhar para o alvo** — a lei do Look At na fase, objecto ou osso, e a da IK em cada osso da
+/// corrente: o eixo +X DESENHADO aponta a `alvo` (a mira da casa, certa sob espelho e escala), mais o
+/// desvio, misturado pelo ângulo no local e aparado pelo limite de junta. Devolve a pose local nova;
+/// com o alvo sobre a origem, a de entrada.
+pub(crate) fn olha(
+    sim: &SimWorld,
+    e: Entity,
+    (pai, local): (Transform, Transform),
+    alvo: [f64; 2],
+    desvio: f64,
+    forca: f64,
+) -> Transform {
+    let mut nova = local;
+    if let Some(rot) = aim_rotation_under(pai, local, alvo) {
+        let rot = ph2d_skeleton::blend_angle(f64::from(local.rotation), rot + desvio, forca);
+        nova.rotation = f32_de(limited(sim, e, rot));
+    }
+    nova
 }
 
 /// Declara ao ledger o que a IK escreveu num osso da corrente (o dono é escrito pela pilha).

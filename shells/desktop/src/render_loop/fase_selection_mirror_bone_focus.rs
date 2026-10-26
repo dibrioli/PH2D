@@ -198,41 +198,11 @@ impl crate::App {
     }
 }
 
-/// ⭐ **A ÂNCORA DE IK no painel** — os três números, o lado escolhido e o lado que o `Auto` deriva.
-///
-/// ⚠️ **Ela saiu da fase por TECTO DE LOC** (`208` contra `200`, 2026-09-18) e o corte é por
-/// RESPONSABILIDADE: a fase espelha *o osso em foco*, e a âncora é um assunto com quatro
-/// publicadores próprios. ⛔ Nunca por uma entrada nova no `FN_OVERAGE_OK`, que só desce.
+/// A âncora do osso em foco no painel — a conta é da família (`goal::ancora_no_painel`).
 fn publica_a_ancora(sim: &ph2d_ecs::SimWorld, osso_em_foco: Option<u64>) {
-    ph2d_panel_skeleton::set_current_bone_ik(osso_em_foco.and_then(|b| {
-        ph2d_constraints_ecs::ik_de(sim.world(), ph2d_ecs::Entity::from_bits(b))
-            .map(|(_, it, g)| (it.influence, g.softness, f64::from(g.chain), g.bend))
-    }));
-    // ⭐⭐⭐ **ESTA ÂNCORA APONTA, E COM QUE DESVIO** — a wave do *Look At* (2026-09-19).
-    //
-    // ⚠️ **A porta é a MESMA que o solver lê** (`goal::aponta`): o painel esconde a *Softness* e o
-    // *Bend* exactamente onde o solver os ignora, e pinta o desvio exactamente onde ele o lê. ⛔ Com
-    // duas respostas, o painel prometeria um controlo inerte no primeiro ajuste.
-    //
-    // ⚠️ **GRAUS**, porque é o que o campo mostra — a conversão vive aqui e no dreno, e em mais
-    // lado nenhum.
-    ph2d_panel_skeleton::set_current_bone_aim(osso_em_foco.and_then(|b| {
-        let e = ph2d_ecs::Entity::from_bits(b);
-        crate::skeleton_goal::aponta(sim, e)
-            .then(|| ph2d_constraints_ecs::ik_de(sim.world(), e))
-            .flatten()
-            .map(|(_, _, g)| g.offset.to_degrees())
-    }));
-    // ⭐⭐⭐ **E QUE LADO O `Auto` ESTÁ A DERIVAR** (report do dono, 2026-09-18). A porta é a
-    // MESMA que o solver usa (`goal::side_for_chain`) — uma segunda resposta a *«de que lado a
-    // pose está?»* divergiria da que de facto governa a corrente, e o chip mentiria.
-    //
-    // ⚠️ **O índice e não a variante**, para o painel não depender da crate da lei: é a mesma
-    // forma do `set_current_bone_ik`, duas linhas acima.
-    ph2d_panel_skeleton::set_current_bone_ik_auto_side(osso_em_foco.and_then(|b| {
-        let e = ph2d_ecs::Entity::from_bits(b);
-        let (_, _, g) = ph2d_constraints_ecs::ik_de(sim.world(), e)?;
-        let lado = ph2d_skeleton_live::goal::side_for_chain(sim, e, g.chain);
-        ph2d_skeleton::BendSide::ALL.iter().position(|s| *s == lado)
-    }));
+    let a =
+        crate::skeleton_goal::ancora_no_painel(sim, osso_em_foco.map(ph2d_ecs::Entity::from_bits));
+    ph2d_panel_skeleton::set_current_bone_ik(a.ik);
+    ph2d_panel_skeleton::set_current_bone_aim(a.aim);
+    ph2d_panel_skeleton::set_current_bone_ik_auto_side(a.auto_side);
 }

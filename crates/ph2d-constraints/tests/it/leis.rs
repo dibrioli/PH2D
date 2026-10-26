@@ -117,3 +117,41 @@ fn local_copy_reads_the_targets_own_parent() {
     });
     perto(apply(&k, &c, 1.0).unwrap(), at(1.0, 0.0, 15.0, 1.0, 1.0));
 }
+
+/// «Manter desvio» sob um dono espelhado (herança TRS: `sx < 0`) não move nada, e o Look At aponta a
+/// frente DESENHADA (`rot + π`) ao alvo.
+#[test]
+fn look_at_keeps_and_faces_under_a_mirror() {
+    let dono = Pose2 {
+        x: 1.0,
+        y: 0.5,
+        rot: 0.3,
+        sx: -1.0,
+        sy: 1.0,
+    };
+    let alvo = Pose2 {
+        x: -2.0,
+        y: 3.0,
+        ..Pose2::IDENTITY
+    };
+    let c = Ctx {
+        owner: dono,
+        parent: Pose2::IDENTITY,
+        target: Some(alvo),
+        target_parent: Pose2::IDENTITY,
+    };
+    let r = apply(&Kind::LookAt(LookAt::default()), &c, 1.0).unwrap();
+    let frente = r.rot + std::f64::consts::PI;
+    let quer = (3.0_f64 - 0.5).atan2(-2.0 - 1.0);
+    assert!(
+        ph2d_constraints::wrap_pi(frente - quer).abs() < 1e-12,
+        "{frente} ≠ {quer}"
+    );
+    let mut k = Kind::LookAt(LookAt::default());
+    k.keep_current(&c).unwrap();
+    let mantido = apply(&k, &c, 1.0).unwrap();
+    assert!(
+        ph2d_constraints::wrap_pi(mantido.rot - dono.rot).abs() < 1e-12,
+        "{mantido:?}"
+    );
+}

@@ -405,9 +405,8 @@ fn ik_rows(r: &mut RowCtx, y: f32) -> f32 {
         // corrente que **ALCANÇA** o alvo (o membro, dois ossos), *Look At* dá um osso que
         // **APONTA** para ele (o olhar, a cabeça, o canhão de uma torre).
         //
-        // ⚠️ **Não são dois motores** — a medição está na `sonda_do_apontar_tests`: a mesma lei do
-        // alcance, com a corrente resolvida em UM, já apontava com erro `0,000000°`. *O que faltava
-        // era o nome.*
+        // ⚠️ Desde 25/10 são dois ITENS da pilha: *Look At* nasce um `Kind::LookAt` (a porta única
+        // de «olhar», objectos e ossos) e a IK começa nos 2 ossos.
         let y = r.action_button(ids::VECTOR_BONE_IK_ADD, tr("panel.vector.bone.ik.add"), y);
         return r.action_button(ids::VECTOR_BONE_LOOK_AT, tr("panel.vector.bone.look_at"), y);
     };

@@ -344,21 +344,34 @@ fn an_old_ik_goal_becomes_the_ik_item() {
     let mut drive = PreviewDrive::default();
     let (b1, b2) = braco_recto(&mut sim);
     sim.world_mut().spawn((StableId(10), em(1.2, 0.9, 0.0)));
-    sim.world_mut().entity_mut(b2).insert(ph2d_skeleton_ecs::IkGoal {
-        target: StableId(10),
-        chain: 2,
-        mix: 0.75,
-        softness: 0.1,
-        bend: BendSide::Cw,
-        offset: 0.0,
-    });
+    sim.world_mut()
+        .entity_mut(b2)
+        .insert(ph2d_skeleton_ecs::IkGoal {
+            target: StableId(10),
+            chain: 2,
+            mix: 0.75,
+            softness: 0.1,
+            bend: BendSide::Cw,
+            offset: 0.0,
+        });
     assert_eq!(ph2d_constraints_ecs::converter_ik_goals(sim.world_mut()), 1);
     assert!(sim.world().get::<ph2d_skeleton_ecs::IkGoal>(b2).is_none());
     let (_, it, ik) = ph2d_constraints_ecs::ik_de(sim.world(), b2).expect("o item IK");
     assert_eq!((it.target, it.influence), (Some(StableId(10)), 0.75));
-    assert_eq!((ik.chain, ik.softness, ik.bend, ik.stretch), (2, 0.1, BendSide::Cw, false));
-    assert_eq!(ph2d_constraints_ecs::converter_ik_goals(sim.world_mut()), 0, "idempotente");
+    assert_eq!(
+        (ik.chain, ik.softness, ik.bend, ik.stretch),
+        (2, 0.1, BendSide::Cw, false)
+    );
+    assert_eq!(
+        ph2d_constraints_ecs::converter_ik_goals(sim.world_mut()),
+        0,
+        "idempotente"
+    );
     let antes = mundo(&sim, b1);
     quadro(&mut sim, &mut drive);
-    assert_ne!(mundo(&sim, b1), antes, "a corrente obedece ao item convertido");
+    assert_ne!(
+        mundo(&sim, b1),
+        antes,
+        "a corrente obedece ao item convertido"
+    );
 }

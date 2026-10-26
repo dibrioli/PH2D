@@ -1262,6 +1262,10 @@ fn a_ancora_que_aponta_esconde_o_que_a_medicao_diz_ser_inerte() {
         "a suavidade ou o lado ficaram numa ancora que APONTA: medido, os dois movem o osso ZERO ali"
     );
     assert!(
+        !pintado(ids::VECTOR_BONE_IK_CHAIN),
+        "o IK Chain ficou numa ancora que APONTA: ela e' um Look At, e a IK comeca nos 2 ossos"
+    );
+    assert!(
         pintado(ids::VECTOR_BONE_IK_MIX),
         "a MISTURA sumiu: ela e' o unico dos tres que continua a mandar, e sem ela o apontar nao se \
          desliga"

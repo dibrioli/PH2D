@@ -220,7 +220,7 @@ impl crate::App {
         };
         let w = gfx.sim.world();
         (
-            ph2d_constraints_ecs::iks(w).len(),
+            ph2d_constraints_ecs::ancoras(w).len(),
             w.iter_entities()
                 .filter(|e| e.contains::<ph2d_skeleton_ecs::IkTarget>())
                 .count(),
@@ -241,7 +241,7 @@ impl crate::App {
             .iter_entities()
             .find(|e| {
                 e.contains::<ph2d_skeleton_ecs::Bone>()
-                    && ph2d_constraints_ecs::ik_de(gfx.sim.world(), e.id()).is_none()
+                    && ph2d_constraints_ecs::ancora_de(gfx.sim.world(), e.id()).is_none()
             })
             .map(|e| e.id());
         match (alvo, gfx.hero_screen.as_mut()) {

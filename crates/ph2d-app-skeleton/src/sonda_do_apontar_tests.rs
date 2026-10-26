@@ -192,10 +192,18 @@ fn o_desvio_nao_toca_numa_corrente_que_alcanca() {
 fn o_verbo_look_at_nasce_a_apontar() {
     let (mut sim, e) = um_osso();
     let alvo = crate::goal::add_look_at(&mut sim, e).expect("o verbo cria o alvo");
-    assert_eq!(
-        ph2d_constraints_ecs::ik_de(sim.world(), e).map(|(_, _, g)| g.chain),
-        Some(1),
-        "o Look At nasceu com outra corrente: ele e' um Add IK com outro rotulo"
+    // Desde 25/10 (decisão do dono) «olhar» tem uma porta só: o verbo nasce um `Kind::LookAt`, e a
+    // IK começa nos 2 ossos.
+    assert!(
+        matches!(
+            ph2d_constraints_ecs::ancora_de(sim.world(), e),
+            Some((_, _, ph2d_constraints_ecs::Ancora::LookAt(_)))
+        ),
+        "o Look At nasceu como IK: duas portas para «olhar para o alvo»"
+    );
+    assert!(
+        ph2d_constraints_ecs::ik_de(sim.world(), e).is_none(),
+        "o Look At nasceu com um item IK ao lado"
     );
     assert!(
         crate::goal::aponta(&sim, e),

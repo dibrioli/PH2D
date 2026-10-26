@@ -11,7 +11,7 @@
 //! ⚠️ O que a IK escreve nos ossos é PRÉ-VISUALIZAÇÃO (`Driver::ConstraintPose`): o artista autora a
 //! pose do ALVO; a rotação dos ossos governados é derivada dele.
 
-use ph2d_constraints_ecs::{ik_de, iks};
+use ph2d_constraints_ecs::{Ancora, ancora_de, ancoras, iks};
 use ph2d_ecs::{ChildOf, Entity, SimWorld, StableId, Transform};
 
 use ph2d_preview_drive::PreviewDrive;
@@ -32,9 +32,12 @@ fn index(sim: &SimWorld) -> std::collections::BTreeMap<StableId, Entity> {
 /// Varre as IKs da cena (um punhado), não a corrente de cada osso.
 #[must_use]
 pub fn is_governed(sim: &SimWorld, bone: Entity) -> bool {
-    iks(sim.world())
+    ancoras(sim.world())
         .into_iter()
-        .any(|(tip, _, _, ik)| governed(sim, tip, ik.chain).contains(&bone))
+        .any(|(tip, _, _, a)| match a {
+            Ancora::Ik(ik) => governed(sim, tip, ik.chain).contains(&bone),
+            Ancora::LookAt(_) => tip == bone,
+        })
 }
 
 /// ⭐⭐⭐ **A CORRENTE QUE CADA IK GOVERNA, em MUNDO** — as juntas, da raiz da corrente à ponta (report
@@ -61,7 +64,7 @@ pub fn chains(sim: &SimWorld) -> Vec<(u64, Vec<[f64; 2]>)> {
 pub fn anchors(sim: &SimWorld) -> Vec<ph2d_skeleton_render::Goal> {
     // ⚠️ A saída cedo vem ANTES do índice: isto corre no DESENHO de todo quadro, e a cena comum não
     // tem IK nenhuma.
-    let todas = iks(sim.world());
+    let todas = ancoras(sim.world());
     if todas.is_empty() {
         return Vec::new();
     }
@@ -106,11 +109,11 @@ pub fn ring_targets(sim: &SimWorld, criar: bool) -> Vec<u64> {
     }
 }
 
-/// As pontas de corrente SEM item IK.
+/// As pontas de corrente SEM âncora (IK ou Look At).
 pub fn unanchored_ends(sim: &SimWorld) -> Vec<u64> {
     ph2d_skeleton_live::skin_live::chain_ends(sim)
         .into_iter()
-        .filter(|&b| ik_de(sim.world(), Entity::from_bits(b)).is_none())
+        .filter(|&b| ancora_de(sim.world(), Entity::from_bits(b)).is_none())
         .collect()
 }
 
@@ -118,10 +121,10 @@ pub fn unanchored_ends(sim: &SimWorld) -> Vec<u64> {
 /// a ponta. Dois consumidores: o [`drag_anchor`] e a mão do quadro (o apply da timeline não pode
 /// escrever por cima dele enquanto o dedo o move, e o AutoKey cunha-o).
 ///
-/// `None` sem item IK, ou quando o alvo foi apagado.
+/// `None` sem âncora, ou quando o alvo foi apagado.
 #[must_use]
 pub fn target_of(sim: &SimWorld, bone: Entity) -> Option<Entity> {
-    let (_, item, _) = ik_de(sim.world(), bone)?;
+    let (_, item, _) = ancora_de(sim.world(), bone)?;
     index(sim).get(&item.target?).copied()
 }
 
@@ -165,15 +168,17 @@ pub fn drag_anchor(sim: &mut SimWorld, bone: Entity, world: [f64; 2]) -> bool {
 /// *«Remove IK … não funciona plenamente»*): o motor foi DESLIGADO, e o vivo é dele — ver
 /// [`PreviewDrive::release_to_authored`]. O motor da pilha é o `Driver::ConstraintPose`.
 pub fn remove(sim: &mut SimWorld, bone: Entity, preview: &mut PreviewDrive) -> bool {
-    let Some((_, item, ik)) = ik_de(sim.world(), bone) else {
+    let Some((_, item, a)) = ancora_de(sim.world(), bone) else {
         return false;
     };
     // A corrente lê-se ANTES de o item sair.
-    let corrente = governed(sim, bone, ik.chain);
+    let corrente = a
+        .ik()
+        .map_or_else(|| vec![bone], |ik| governed(sim, bone, ik.chain));
     if let Some(alvo) = item.target.and_then(|t| index(sim).get(&t).copied()) {
         let _ = sim.world_mut().despawn(alvo);
     }
-    ph2d_constraints_ecs::tirar_ik(sim.world_mut(), bone);
+    ph2d_constraints_ecs::tirar_ancora(sim.world_mut(), bone);
     for e in corrente {
         preview.release_to_authored(sim, e, ph2d_preview_drive::Driver::ConstraintPose);
     }
@@ -195,6 +200,40 @@ pub fn add_look_at(sim: &mut SimWorld, bone: Entity) -> Option<Entity> {
 #[must_use]
 pub fn aponta(sim: &SimWorld, bone: Entity) -> bool {
     ph2d_constraints_ecs::aponta(sim, bone)
+}
+
+/// O que o painel do esqueleto pinta da âncora de um osso — ver [`ancora_no_painel`].
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct AncoraNoPainel {
+    /// `(força, suavidade, corrente, lado)`; o Look At não tem corrente e só a força se lê.
+    pub ik: Option<(f64, f64, f64, ph2d_skeleton::BendSide)>,
+    /// O desvio em GRAUS (o que o campo mostra), só quando a âncora olha ([`aponta`]).
+    pub aim: Option<f64>,
+    /// O índice em `BendSide::ALL` do lado que o `Auto` deriva — a porta do solver
+    /// (`side_for_chain`), para o chip não mentir (report do dono, 2026-09-18).
+    pub auto_side: Option<usize>,
+}
+
+/// ⭐ **A âncora do osso em foco, como o painel a pinta.** A porta é a MESMA que a fase lê
+/// ([`aponta`], [`ph2d_constraints_ecs::ancora_de`]): o painel esconde a *Softness*, o *Bend* e o
+/// *Chain* exactamente onde o solver os ignora, e pinta o desvio onde ele o lê.
+#[must_use]
+pub fn ancora_no_painel(sim: &SimWorld, bone: Option<Entity>) -> AncoraNoPainel {
+    let Some(e) = bone else {
+        return AncoraNoPainel::default();
+    };
+    let Some((_, it, a)) = ancora_de(sim.world(), e) else {
+        return AncoraNoPainel::default();
+    };
+    let g = a.ik().unwrap_or_default();
+    AncoraNoPainel {
+        ik: Some((it.influence, g.softness, f64::from(g.chain), g.bend)),
+        aim: aponta(sim, e).then(|| a.desvio().to_degrees()),
+        auto_side: a.ik().and_then(|g| {
+            let lado = ph2d_skeleton_live::goal::side_for_chain(sim, e, g.chain);
+            ph2d_skeleton::BendSide::ALL.iter().position(|s| *s == lado)
+        }),
+    }
 }
 
 /// **A corrente que esta IK governa** — delegação para [`ph2d_skeleton_live::goal::governed`].

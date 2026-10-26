@@ -134,10 +134,17 @@ fn medida_oleo_real_folha_png() {
             }
         }
         let mut ppm = format!("P6\n{gw} {gh}\n255\n").into_bytes();
-        for p in px.chunks_exact(4) {
+        for (k, p) in px.chunks_exact(4).enumerate() {
             let a = u32::from(p[3]);
+            // O papel recebe a sombra do Óleo Real como no composite do produto (o plano `sombra`).
+            let papel = if com_oleo && a == 0 {
+                let s = ph2d_wet_paint::oleo_real::sombra_no_papel(&o, &campo, k % gw + 1, k / gw + 1);
+                (255.0 * (1.0 - s)).round() as u32
+            } else {
+                255
+            };
             for c in 0..3 {
-                ppm.push(((u32::from(p[c]) * a + 255 * (255 - a)) / 255) as u8);
+                ppm.push(((u32::from(p[c]) * a + papel * (255 - a)) / 255) as u8);
             }
         }
         let f = dir.join(format!("{nome}.ppm"));

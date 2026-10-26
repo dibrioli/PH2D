@@ -52,8 +52,8 @@ fn a_fenda_satura_no_tom_da_tinta_m2() {
 
 #[test]
 fn a_sombra_cai_do_lado_contrario_a_luz_e_chega_ao_papel() {
-    // Um bloco alto no meio; a luz vem do topo-esquerda (225°).
-    let g = grade(|x, y| if (24..=40).contains(&x) && (24..=40).contains(&y) { 3000.0 } else { 0.0 });
+    // Um bloco alto no meio (≈ 18 px de relevo à escala de fábrica); a luz vem do topo-esquerda (225°).
+    let g = grade(|x, y| if (24..=40).contains(&x) && (24..=40).contains(&y) { 12_000.0 } else { 0.0 });
     let o = OleoReal::default();
     let c = campo(&g, &o);
     let atras = sombra_no_papel(&o, &c, 43, 43);

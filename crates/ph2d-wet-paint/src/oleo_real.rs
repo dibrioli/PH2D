@@ -61,7 +61,8 @@ pub struct Afinacao {
     pub k_fenda: f64,
     /// A luz do céu (não projecta sombra): o fundo até onde a sombra escurece.
     pub ceu: f64,
-    /// Dureza da penumbra (marcha tipo SDF): maior = sombra mais dura.
+    /// Largura da penumbra, em tangente de elevação: a luz vai de cheia a nada quando o horizonte sobe
+    /// `penumbra` acima da elevação dela. Maior = sombra mais macia.
     pub penumbra: f64,
     /// Rugosidade (GGX) e intensidade do brilho.
     pub rugosidade: f64,
@@ -71,7 +72,10 @@ pub struct Afinacao {
 impl Default for Afinacao {
     fn default() -> Self {
         Self {
-            px_por_massa: 0.006,
+            // Régua M6 (`regua_sombra.py`, faca vertical H3, 42°): 0,0015 + penumbra 0,6 dá 53·35·6 → com
+            // raio 3: 42·18·0,8 contra o Rebelle 51·12·3; 0,002 já salta para 66·55·32 (a parede passa de
+            // 4,5 a 6 px). O 0,006 de W0 (sombra ÷ tan) era a altura da CÚPULA do Rebelle, não do planalto.
+            px_por_massa: 0.0015,
             raio_suave: 3,
             grao: 0.15,
             fios: 1.0,
@@ -82,7 +86,7 @@ impl Default for Afinacao {
             s_fenda: 0.25,
             k_fenda: 2.1,
             ceu: 0.6,
-            penumbra: 4.0,
+            penumbra: 0.6,
             rugosidade: 0.28,
             brilho_max: 1.6,
         }
@@ -241,16 +245,17 @@ fn luz_directa(o: &OleoReal, campo: &CampoAltura, x: isize, y: isize, h0: f64) -
     let l = para_a_luz(o);
     let lxy = libm::hypot(l[0], l[1]).max(1e-9);
     let (dx, dy) = (l[0] / lxy, l[1] / lxy);
+    // O horizonte na direcção da luz (tangente da elevação do obstáculo mais alto visto daqui); a luz
+    // apaga-se ao longo de `penumbra` (em tangente) abaixo da elevação dela. Em papel livre o horizonte
+    // é 0 e a luz é cheia — a forma `k·folga/t` limitava-a a `k·tan(alt)` também no papel livre.
     let sobe = libm::tan(o.altitude);
-    let mut luz = 1.0f64;
+    let mut horizonte = f64::NEG_INFINITY;
     for t in 1..=PASSOS_SOMBRA {
         let t = t as f64;
         let q = campo.at(x + libm::round(dx * t) as isize, y + libm::round(dy * t) as isize);
-        luz = luz.min((o.af.penumbra * (h0 + sobe * t - q) / t).clamp(0.0, 1.0));
-        if luz <= 0.0 {
-            break;
-        }
+        horizonte = horizonte.max((q - h0) / t);
     }
+    let luz = ((sobe - horizonte) / o.af.penumbra.max(1e-6)).clamp(0.0, 1.0);
     1.0 - o.sombra * (1.0 - luz)
 }
 

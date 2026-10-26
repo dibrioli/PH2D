@@ -105,7 +105,11 @@ fn o_instantaneo_leva_as_regras_do_dono_com_o_canal() {
     let i = info(&sim, &scene, &cores, &xf, e).expect("o path é dono de regras");
     assert_eq!(i.entity_bits, e);
     assert_eq!(i.rows.len(), 4, "a regra do OUTRO path não é desta secção");
-    let d = &i.rows[3];
+    let d = &i.rows[0];
+    assert!(
+        i.rows[1..].iter().all(|r| r.medida.is_none()),
+        "a medida vem antes do resto: a secção corta a partir do fim"
+    );
     assert_eq!(d.nome, "app.vec.cad.lei.distancia");
     assert_eq!(d.medida, Some(40.0));
     let k = chave(MEDIDA, d.id);

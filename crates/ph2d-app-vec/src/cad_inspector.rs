@@ -64,7 +64,9 @@ fn estado(r: &RegraCad, e: Option<EstadoRegra>) -> EstadoDaRegra {
     }
 }
 
-/// O instantâneo da secção para a entidade `bits`: as regras cujo dono é o path dela, pela ordem do documento.
+/// O instantâneo da secção para a entidade `bits`: as regras cujo dono é o path dela — as em conflito primeiro (é
+/// de lá que o artista apaga uma), depois as medidas (o que se escreve e anima), depois o resto, cada grupo pela ordem
+/// do documento: a secção mostra no máximo `MAX_REGRAS` e o que fica de fora é o que menos se mexe.
 /// `None` = não é um path, ou não é dono de regra nenhuma (a secção não aparece). Uma regra ainda sem id (nasceu
 /// neste quadro) espera o assentamento.
 #[must_use]
@@ -83,7 +85,7 @@ pub fn info(
         return None;
     }
     let analise = cores.ve(scene, xf);
-    let rows: Vec<InspectorRegraRow> = scene
+    let mut rows: Vec<InspectorRegraRow> = scene
         .regras()
         .iter()
         .enumerate()
@@ -101,6 +103,11 @@ pub fn info(
             }
         })
         .collect();
+    rows.sort_by_key(|r| match r.estado {
+        EstadoDaRegra::Conflito => 0,
+        _ if r.medida.is_some() => 1,
+        _ => 2,
+    });
     (!rows.is_empty()).then_some(InspectorCadInfo {
         entity_bits: bits,
         rows,

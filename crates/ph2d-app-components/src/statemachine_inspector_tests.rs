@@ -177,7 +177,11 @@ fn o_estado_corrente_vem_do_vivo() {
 #[test]
 fn apagar_um_estado_anterior_recua_o_inicial() {
     let (mut sim, bits) = cena();
-    assert!(apply_statemachine_edit(sim.world_mut(), bits, &E::Initial(2)));
+    assert!(apply_statemachine_edit(
+        sim.world_mut(),
+        bits,
+        &E::Initial(2)
+    ));
     assert!(apply_statemachine_edit(
         sim.world_mut(),
         bits,

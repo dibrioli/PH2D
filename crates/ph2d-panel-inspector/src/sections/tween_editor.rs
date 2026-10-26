@@ -155,7 +155,6 @@ fn relogio(
     w: f32,
     y: f32,
     row: &InspectorTweenRow,
-    slot: usize,
 ) -> f32 {
     let mut cur_y = super::rows::aviso(
         scene,
@@ -468,7 +467,6 @@ pub(super) fn editor(
             w,
             cur_y,
             row,
-            slot,
         );
     }
     let canal = Canal::from_tag(row.canal);

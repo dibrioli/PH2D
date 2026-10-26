@@ -181,6 +181,9 @@ mod tests {
         assert!(l.tira_a_base(false, true), "a cena mexeu sem ninguém tocar");
         assert!(l.tira_a_base(false, true), "e continua a ser base");
         assert!(!l.tira_a_base(false, false), "a 1.ª entrada é passo");
-        assert!(!l.tira_a_base(false, true), "depois dela o quieto já não é base");
+        assert!(
+            !l.tira_a_base(false, true),
+            "depois dela o quieto já não é base"
+        );
     }
 }

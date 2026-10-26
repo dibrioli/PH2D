@@ -17,7 +17,11 @@ fn quadros(tl: &mut TimelineState, sim: &mut SimWorld) {
 /// (`None` = a família ainda não publicou a forma).
 fn reaberto(tintas: Option<&[u32]>) -> TimelineState {
     let mut sim = SimWorld::new();
-    let e = sim.world_mut().spawn((ph2d_ecs::Transform::IDENTITY, Name::new("forma"))).id().to_bits();
+    let e = sim
+        .world_mut()
+        .spawn((ph2d_ecs::Transform::IDENTITY, Name::new("forma")))
+        .id()
+        .to_bits();
     let mut tl = TimelineState::new();
     for (t, x) in [(0.0, 1.0), (1.0, 2.0)] {
         tl.doc.insert_key(
@@ -43,7 +47,10 @@ fn reaberto(tintas: Option<&[u32]>) -> TimelineState {
 }
 
 fn tem(tl: &TimelineState) -> bool {
-    tl.doc.bindings().iter().any(|b| b.prop == PropKind::Field(K))
+    tl.doc
+        .bindings()
+        .iter()
+        .any(|b| b.prop == PropKind::Field(K))
 }
 
 #[test]
@@ -57,12 +64,18 @@ fn o_item_que_o_ficheiro_trouxe_e_ja_nao_existe_sai_no_load() {
 fn o_item_vivo_fica_e_a_decisao_acaba() {
     let tl = reaberto(Some(&[10, 20]));
     assert!(tem(&tl));
-    assert!(!tl.itens_por_decidir, "nada fica por decidir: a lei da sessão volta");
+    assert!(
+        !tl.itens_por_decidir,
+        "nada fica por decidir: a lei da sessão volta"
+    );
 }
 
 #[test]
 fn sem_espelho_da_forma_espera() {
     let tl = reaberto(None);
     assert!(tem(&tl), "sem a família publicar, não se decide");
-    assert!(tl.itens_por_decidir, "e a decisão fica para o quadro em que ela publicar");
+    assert!(
+        tl.itens_por_decidir,
+        "e a decisão fica para o quadro em que ela publicar"
+    );
 }

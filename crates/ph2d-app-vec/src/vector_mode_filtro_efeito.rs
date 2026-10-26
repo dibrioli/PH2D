@@ -123,7 +123,12 @@ pub fn step(
     eprintln!(
         "[cena 40] {} nuvens com Bevel + Drop Shadow ({postos} filtros): sem efeito, {}",
         ids.len(),
-        EFEITOS.iter().flatten().copied().collect::<Vec<_>>().join(", ")
+        EFEITOS
+            .iter()
+            .flatten()
+            .copied()
+            .collect::<Vec<_>>()
+            .join(", ")
     );
     Some(9)
 }

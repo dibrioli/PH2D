@@ -116,7 +116,12 @@ fn polilinhas(p: &VecPath, xf: impl Fn([f64; 2]) -> [f64; 2]) -> Vec<Vec<[f64; 2
         let mut poly = vec![xf(v[0].anchor)];
         for i in 0..v.len() {
             let (a, b) = (&v[i], &v[(i + 1) % v.len()]);
-            let c = [xf(a.anchor), xf(a.out_handle), xf(b.in_handle), xf(b.anchor)];
+            let c = [
+                xf(a.anchor),
+                xf(a.out_handle),
+                xf(b.in_handle),
+                xf(b.anchor),
+            ];
             let hull = (1..4)
                 .map(|k| (c[k][0] - c[k - 1][0]).hypot(c[k][1] - c[k - 1][1]))
                 .sum::<f64>();
@@ -140,7 +145,14 @@ fn segmentos(polys: &[Vec<[f64; 2]>]) -> Vec<[f32; 4]> {
         .iter()
         .flat_map(|p| p.windows(2))
         .filter(|w| w[0] != w[1])
-        .map(|w| [w[0][0] as f32, w[0][1] as f32, w[1][0] as f32, w[1][1] as f32])
+        .map(|w| {
+            [
+                w[0][0] as f32,
+                w[0][1] as f32,
+                w[1][0] as f32,
+                w[1][1] as f32,
+            ]
+        })
         .collect()
 }
 
@@ -172,7 +184,10 @@ fn rasteriza(gpu: &ph2d_gpu::GpuContext, polys: &[Vec<[f64; 2]>]) -> ph2d_render
 /// O pé de cada texel na curva (o ponto mais próximo) e a distância, por grelha de baldes.
 fn pes(segs: &[[f32; 4]]) -> Vec<([f64; 2], f64)> {
     const C: f64 = 8.0;
-    let (gw, gh) = ((f64::from(W) / C).ceil() as usize, (f64::from(H) / C).ceil() as usize);
+    let (gw, gh) = (
+        (f64::from(W) / C).ceil() as usize,
+        (f64::from(H) / C).ceil() as usize,
+    );
     let mut baldes: Vec<Vec<usize>> = vec![Vec::new(); gw * gh];
     for (i, s) in segs.iter().enumerate() {
         let (x0, x1) = (f64::from(s[0].min(s[2])), f64::from(s[0].max(s[2])));
@@ -199,7 +214,8 @@ fn pes(segs: &[[f32; 4]]) -> Vec<([f64; 2], f64)> {
                         let a = [f64::from(s[0]), f64::from(s[1])];
                         let d = [f64::from(s[2]) - a[0], f64::from(s[3]) - a[1]];
                         let l2 = d[0] * d[0] + d[1] * d[1];
-                        let t = (((p[0] - a[0]) * d[0] + (p[1] - a[1]) * d[1]) / l2).clamp(0.0, 1.0);
+                        let t =
+                            (((p[0] - a[0]) * d[0] + (p[1] - a[1]) * d[1]) / l2).clamp(0.0, 1.0);
                         let q = [a[0] + t * d[0], a[1] + t * d[1]];
                         let dist = (p[0] - q[0]).hypot(p[1] - q[1]);
                         if dist < melhor.1 {
@@ -232,15 +248,51 @@ fn filtros() -> Vec<Filtro> {
         o
     };
     vec![
-        Filtro { nome: "Bevel", op: com(op(FxOp::BEVEL, 12.0, preto), [-8.0, 8.0]), dentro: true },
-        Filtro { nome: "Inner Shadow", op: com(op(FxOp::INNER_SHADOW, 8.0, preto), [4.0, 4.0]), dentro: true },
-        Filtro { nome: "Inner Glow", op: com(op(FxOp::INNER_GLOW, 8.0, branco), [0.0, 0.0]), dentro: true },
-        Filtro { nome: "Feather", op: com(op(FxOp::FEATHER, 8.0, preto), [0.0, 0.0]), dentro: true },
-        Filtro { nome: "Color Overlay", op: com(op(FxOp::COLOR_OVERLAY, 0.0, branco), [0.0, 0.0]), dentro: true },
-        Filtro { nome: "Outer Glow", op: com(op(FxOp::GLOW, 10.0, branco), [0.0, 0.0]), dentro: false },
-        Filtro { nome: "Drop Shadow", op: com(op(FxOp::DROP_SHADOW, 6.0, preto), [0.0, 0.0]), dentro: false },
-        Filtro { nome: "Outline", op: com(op(FxOp::OUTLINE, 6.0, preto), [0.0, 0.0]), dentro: false },
-        Filtro { nome: "Blur", op: com(op(FxOp::BLUR, 4.0, preto), [0.0, 0.0]), dentro: false },
+        Filtro {
+            nome: "Bevel",
+            op: com(op(FxOp::BEVEL, 12.0, preto), [-8.0, 8.0]),
+            dentro: true,
+        },
+        Filtro {
+            nome: "Inner Shadow",
+            op: com(op(FxOp::INNER_SHADOW, 8.0, preto), [4.0, 4.0]),
+            dentro: true,
+        },
+        Filtro {
+            nome: "Inner Glow",
+            op: com(op(FxOp::INNER_GLOW, 8.0, branco), [0.0, 0.0]),
+            dentro: true,
+        },
+        Filtro {
+            nome: "Feather",
+            op: com(op(FxOp::FEATHER, 8.0, preto), [0.0, 0.0]),
+            dentro: true,
+        },
+        Filtro {
+            nome: "Color Overlay",
+            op: com(op(FxOp::COLOR_OVERLAY, 0.0, branco), [0.0, 0.0]),
+            dentro: true,
+        },
+        Filtro {
+            nome: "Outer Glow",
+            op: com(op(FxOp::GLOW, 10.0, branco), [0.0, 0.0]),
+            dentro: false,
+        },
+        Filtro {
+            nome: "Drop Shadow",
+            op: com(op(FxOp::DROP_SHADOW, 6.0, preto), [0.0, 0.0]),
+            dentro: false,
+        },
+        Filtro {
+            nome: "Outline",
+            op: com(op(FxOp::OUTLINE, 6.0, preto), [0.0, 0.0]),
+            dentro: false,
+        },
+        Filtro {
+            nome: "Blur",
+            op: com(op(FxOp::BLUR, 4.0, preto), [0.0, 0.0]),
+            dentro: false,
+        },
     ]
 }
 
@@ -369,7 +421,15 @@ fn fx_efeito_sob_filtro_sonda() {
             let pe = pes(&segs);
             let mut linha = format!("[f33] {forma_nome:6} {efeito_nome:16}");
             for (fi, f) in filtros().iter().enumerate() {
-                pass.run(&gpu, fonte.intermediate_texture(), &dst, W, H, &[f.op.clone()], &segs);
+                pass.run(
+                    &gpu,
+                    fonte.intermediate_texture(),
+                    &dst,
+                    W,
+                    H,
+                    std::slice::from_ref(&f.op),
+                    &segs,
+                );
                 let px = readback(&gpu, &dst, W, H);
                 let banda = f64::from(f.op.sigma_px.max(4.0)) + 2.0;
                 let (n, m) = vincos(&px, &cob, &pe, f.dentro, banda);
@@ -379,10 +439,14 @@ fn fx_efeito_sob_filtro_sonda() {
                 } else if gate && n > 0 && !por_desenho(pilha) {
                     falhas.push(format!("{forma_nome}/{efeito_nome}/{}: {n} vincos (salto {m:.0}, sem efeito {:.0})", f.nome, base[fi]));
                 }
-                if let Some(d) = &dir {
-                    if f.nome == "Bevel" {
-                        ppm(d, &format!("{forma_nome}_{}", efeito_nome.replace([' ', '&'], "_")), &px);
-                    }
+                if let Some(d) = &dir
+                    && f.nome == "Bevel"
+                {
+                    ppm(
+                        d,
+                        &format!("{forma_nome}_{}", efeito_nome.replace([' ', '&'], "_")),
+                        &px,
+                    );
                 }
             }
             eprintln!("{linha}");

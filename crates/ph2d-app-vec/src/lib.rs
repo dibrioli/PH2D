@@ -269,10 +269,10 @@ mod vector_mode_controle;
 mod vector_mode_cor;
 /// A cena 16 (F10; F12): a estrela pelas alças e a fila de ⇕ da lateral.
 mod vector_mode_estrela;
-/// A cena 39 (F30 §E): o fio do caminho com a Caneta a meio, traço de largura 0.
-mod vector_mode_fio;
 /// A cena 40 (F33): seis Nuvens com Bevel + Drop Shadow, uma por efeito que reconstrói a curva.
 mod vector_mode_filtro_efeito;
+/// A cena 39 (F30 §E): o fio do caminho com a Caneta a meio, traço de largura 0.
+mod vector_mode_fio;
 mod vector_mode_gesto;
 /// A cena 15 (F9): as alças das formas arrastadas pelo press e o arrasto da shell.
 mod vector_mode_handles;

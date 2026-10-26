@@ -172,7 +172,11 @@ fn desloca_no_vale(forma: &str, e: &PathEffect) -> bool {
 #[test]
 fn no_effect_folds_a_segment_back() {
     let mut falhas = Vec::new();
-    for (nome, forma) in [("nuvem", nuvem()), ("nuvem do app", nuvem_do_app()), ("círculo", circulo())] {
+    for (nome, forma) in [
+        ("nuvem", nuvem()),
+        ("nuvem do app", nuvem_do_app()),
+        ("círculo", circulo()),
+    ] {
         assert_eq!(recuos(&forma), 0, "a fonte ({nome}) não recua");
         for k in 0..PathEffect::KINDS.len() {
             let Some(e) = ajustado(k) else { continue };
@@ -239,7 +243,10 @@ fn a_continuous_deformer_keeps_every_corner() {
     let fonte_app = quinas(&app);
     assert!(fonte_app > 0, "a Nuvem do app tem vales em quina");
     for nome in ["Flag", "Wave", "Twist"] {
-        let e = PathEffect::KINDS.iter().position(|n| *n == nome).and_then(ajustado);
+        let e = PathEffect::KINDS
+            .iter()
+            .position(|n| *n == nome)
+            .and_then(ajustado);
         let q = quinas(&cozido(&app, &[e.expect("efeito")]));
         if q < fonte_app {
             falhas.push(format!("Nuvem do app + {nome}: {q}/{fonte_app}"));
@@ -253,7 +260,11 @@ fn a_continuous_deformer_keeps_every_corner() {
 #[test]
 fn a_smooth_vertex_out_of_an_effect_is_g1() {
     let mut falhas = Vec::new();
-    for (nome, forma) in [("nuvem", nuvem()), ("nuvem do app", nuvem_do_app()), ("círculo", circulo())] {
+    for (nome, forma) in [
+        ("nuvem", nuvem()),
+        ("nuvem do app", nuvem_do_app()),
+        ("círculo", circulo()),
+    ] {
         for k in 0..PathEffect::KINDS.len() {
             let Some(e) = ajustado(k) else { continue };
             if matches!(e, PathEffect::Falloff(_)) || e_bloat(&e) {
@@ -280,4 +291,3 @@ fn a_smooth_vertex_out_of_an_effect_is_g1() {
     }
     assert!(falhas.is_empty(), "Smooth com tangente partida: {falhas:?}");
 }
-

@@ -5,11 +5,11 @@
 use crate::state::VecState;
 use crate::{
     vector_mode_alinhar as alinhar, vector_mode_composto as composto,
-    vector_mode_controle as controle, vector_mode_cor as cor, vector_mode_filtro_efeito as filtro_efeito,
-    vector_mode_fio as fio,
-    vector_mode_gesto as gesto, vector_mode_interface as interface,
-    vector_mode_le_a_forma as le_a_forma, vector_mode_misto as misto, vector_mode_olho as olho,
-    vector_mode_opaco as opaco, vector_mode_quinas as quinas, vector_mode_tracejado as tracejado,
+    vector_mode_controle as controle, vector_mode_cor as cor,
+    vector_mode_filtro_efeito as filtro_efeito, vector_mode_fio as fio, vector_mode_gesto as gesto,
+    vector_mode_interface as interface, vector_mode_le_a_forma as le_a_forma,
+    vector_mode_misto as misto, vector_mode_olho as olho, vector_mode_opaco as opaco,
+    vector_mode_quinas as quinas, vector_mode_tracejado as tracejado,
     vector_mode_vestidos as vestidos,
 };
 use ph2d_ecs::SimWorld;

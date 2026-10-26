@@ -757,3 +757,65 @@ fn the_canvas_size_dialog_anchor_law_is_the_cores() {
         }
     }
 }
+
+impl Palco {
+    /// O ponto de ecrã do CANTO `(x, y)` das células (não o centro).
+    fn canto(&self, x: f64, y: f64) -> (f32, f32) {
+        let d = self.app.doc(self.key).expect("doc");
+        let m = input::to_screen(self.sim.world(), self.bits, d, &self.cam, WINDOW, PPM).expect("afim");
+        let p = m * ph2d_vector::Point::new(x, y);
+        (p.x as f32, p.y as f32)
+    }
+
+    fn arrasta_ecra(&mut self, a: (f32, f32), b: (f32, f32), m: Mods) {
+        let c = canvas(&self.sim, &self.cam, self.bits);
+        assert_eq!(input::press(&mut self.app, &c, a, Button::Primary, m), Press::Done);
+        assert!(input::moved(&mut self.app, &c, b, m));
+        let _ = input::release(&mut self.app);
+        self.quadro();
+    }
+}
+
+#[test]
+fn the_handles_scale_rotate_and_the_inside_moves_the_floating_frame() {
+    let mut p = Palco::limpo();
+    let r = Rect::new(cena::ORIGINAL_AT.0, cena::ORIGINAL_AT.1, cena::FIGURE, cena::FIGURE);
+    p.ferramenta(Tool::RectMarquee);
+    p.arrasta((r.x, r.y), (r.x + 13, r.y + 13), Mods::default());
+    p.tecla(KeyCode::KeyT, true, false);
+    let (x1, y1) = (f64::from(r.x + 14), f64::from(r.y + 14));
+    // a alça ↘ arrastada 7 células: 21 × 21
+    let a = p.canto(x1, y1);
+    let b = p.canto(x1 + 7.0, y1 + 7.0);
+    p.arrasta_ecra(a, b, Mods::default());
+    let t = p.quadro().transform.expect("solta");
+    assert_eq!((t.w, t.h, t.angle), (21, 21, 0), "{t:?}");
+    // a alça → com Shift guarda a proporção
+    let a = p.canto(x1 + 7.0, f64::from(r.y) + 10.5);
+    let b = p.canto(x1 + 14.0, f64::from(r.y) + 10.5);
+    p.arrasta_ecra(a, b, SHIFT);
+    let t = p.quadro().transform.expect("solta");
+    assert_eq!(t.w, t.h, "Shift guarda a proporção: {t:?}");
+    // fora de um canto gira (Shift: degraus de 15°)
+    p.tecla(KeyCode::Escape, false, false);
+    p.tecla(KeyCode::KeyT, true, false);
+    let c = (f64::from(r.x) + 7.0, f64::from(r.y) + 7.0);
+    // 12 px de ecrã para fora do canto ↘: além da alça (6 px), dentro da zona de giro (24 px)
+    let k = p.canto(x1, y1);
+    let a = (k.0 + 12.0, k.1 + 12.0);
+    let b = p.canto(c.0 - 10.0, c.1 + 12.0);
+    p.arrasta_ecra(a, b, SHIFT);
+    let t = p.quadro().transform.expect("solta");
+    assert!(t.angle != 0 && t.angle % 15 == 0, "giro com Shift em degraus de 15°: {t:?}");
+    // dentro move, e o Enter assenta UM passo
+    p.tecla(KeyCode::Escape, false, false);
+    p.tecla(KeyCode::KeyT, true, false);
+    let n = p.passos();
+    let a = p.canto(f64::from(r.x) + 3.5, f64::from(r.y) + 3.5);
+    let b = p.canto(f64::from(r.x) + 13.5, f64::from(r.y) + 3.5);
+    p.arrasta_ecra(a, b, Mods::default());
+    let t = p.quadro().transform.expect("solta");
+    assert_eq!((t.x, t.y), (r.x + 10, r.y));
+    p.tecla(KeyCode::Enter, false, false);
+    assert_eq!(p.passos(), n + 1);
+}

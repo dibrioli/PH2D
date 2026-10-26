@@ -638,13 +638,6 @@ impl VecScene {
         Some(self.push_path(clone))
     }
 
-    /// Dá ids a todo vértice ainda sem um, em todos os paths ([`VecPath::normaliza_ids`]).
-    pub fn normaliza_ids(&mut self) -> bool {
-        self.paths
-            .iter_mut()
-            .fold(false, |m, p| p.normaliza_ids() | m)
-    }
-
     /// Reordena o path `id` na pilha de render ([`ZOrder`]). Devolve `true` se a
     /// posição mudou (`false` se o id sumiu ou já estava no extremo pedido).
     pub fn reorder_path(&mut self, id: VecPathId, order: ZOrder) -> bool {

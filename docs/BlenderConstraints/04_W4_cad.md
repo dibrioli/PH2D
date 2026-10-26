@@ -147,7 +147,14 @@ posições do FreeCAD **são gate** nas 11 cenas de solução única.
 | **W4.4** no editor | onde guardar: as regras viajam no documento do vetor (`VecScene`, mesmo degrau 24); o arrasto chama `resolve` em `pen_drag.rs`/grab **depois** do snap (o snap dá o alvo, o solver o resto); inferência = a guia que estava acesa ao largar cria a regra; cores por token (zero hex); medida a mais nasce REF; conflito lista as regras de `estado()`; análise fora do fio do quadro; undo = 1 passo por gesto | `ph2d-app-vec` (nada na shell) |
 | **W4.5** medida animada + cena 6 | a medida é um canal da família `CONSTRAINT = 8` (`campo` = valor, `i:j` = id do item); a pose resolvida parte SEMPRE do desenho AUTORADO em cada quadro (não do quadro anterior) ⇒ tocar = arrastar a timeline ao bit; chaves pela porta `ph2d_app_constraints::chaves::gravar` | `ph2d_vec_constraints::resolve` |
 
-### 3.1 W4.2 em detalhe (desenhado 26/10, lido no código — o código ainda NÃO abriu)
+### 3.1 W4.2 em detalhe (desenhado 26/10; **feito 26/10** — o que mudou no caminho vai em negrito)
+
+- **Feito:** `VertId` + `next_vert` (`ph2d-vec-scene/src/vert_id.rs`); o âmbito do `stroke_wire` generalizou-se de «é v22» para
+  **a versão dos bytes** (`WireLayout::enter(ver)` / `with_wire_layout`, aninhados valem o MAIS ANTIGO) — um só âmbito, e não um
+  `GeometryLayoutV23` irmão; o projeto escolhe-o por `fio_do_projeto(ver)` (`22` até ao `189`, `23` até ao `194`) e os blobs por
+  `migra_fio(mundo, fio)` (era `migra_traco_v22`). `PROJECT_SCHEMA 195`, `VEC_SCENE 24`, tripla `(195, 13, 24)`. Literais: nas
+  crates, `id: v.id` onde transformam UM vértice-fonte (afim, espelho, solda, achatar/suavizar, junção de B em A no `vec-edit`) e
+  `NOVO` na geometria nova; na shell, `VecVertex::with_handles` (−42 linhas).
 
 - **Onde mora o id:** `pub id: VertId` **dentro** do `VecVertex`, apendado ao FIM (postcard posicional) — a mesma lei do
   `corner_radius` (`ph2d-vec-scene/src/lib.rs:405-427`): inserir, apagar, inverter, soldar e partir levam-no de graça,
@@ -182,9 +189,11 @@ posições do FreeCAD **são gate** nas 11 cenas de solução única.
 | `a_well_constrained_sketch_lands_where_freecad_puts_it` | cenas de solução única da W4.1, posições ao 1e-6 | W4.3 |
 | `the_drag_keeps_every_rule_at_every_step` | `w4_cenas` escada 202 e misto 200, 60 passos, 1e-4 px | W4.3 |
 | `the_drag_is_deterministic` | o mesmo arrasto 2× ⇒ o mesmo bit | W4.3 |
-| `a_vertex_keeps_its_id_when_a_neighbour_is_deleted` | apagar o 3.º de 10: os outros ids iguais; a regra no 5.º continua no mesmo ponto | W4.2 |
-| `a_v23_scene_opens_with_ids_in_order` | bytes v23 gravados ⇒ ids `0..n`, ida e volta v24 | W4.2 |
-| `copy_point_follows_its_vertex_after_an_insert_before_it` | hoje **vermelho** (índice) | W4.2 |
+| `a_vertex_keeps_its_id_when_a_neighbour_is_deleted` | apagar o 3.º de 10: os outros ids iguais; a regra no 5.º continua no mesmo ponto | W4.2 ✓ |
+| `a_v23_scene_opens_with_ids_in_order` | bytes v23 gravados ⇒ ids `1..=n` (`verts` → `subpaths`), ida e volta v24 | W4.2 ✓ |
+| `a_v194_project_opens_with_vertex_ids_in_order` | `.ph2dproj` gravado pelo código v194 (cena + geometria de uma pose) | W4.2 ✓ |
+| `a_v23_{envelope_child,skin}_source_is_rewritten_with_ids` | blobs v23 do Envelope e da pele regravados vivos | W4.2 ✓ |
+| `copy_point_follows_its_vertex_after_an_insert_before_it` | inserir antes · ponto de buraco · apagar ⇒ `SemAlvo` | W4.2 ✓ |
 | `each_vertex_mutation_site_keeps_or_assigns_ids` | censo dos ~20 sítios (§2), um caso por sítio | W4.2 |
 | `an_extra_dimension_is_born_ref` (teste de posto) · `a_conflict_lists_the_rules_involved` (`unsatisfied`) | `conflito_*` da W4.1: REF = [6]; conflito = [1,3,4,6] e [1,2] | W4.4 |
 | seam `draw_with_a_guide_creates_the_rule` (`ph2d-ui-testkit`) | caneta com a guia H acesa ⇒ regra H gravada, undo 1 passo | W4.4 |

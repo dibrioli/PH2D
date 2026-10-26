@@ -11,7 +11,7 @@ use std::collections::HashSet;
 use serde::{Deserialize, Deserializer, Serialize};
 
 use crate::{
-    Contour, FillRule, Opacity, Paint, StrokeSpec, VecPath, VecPathId, VecVertex, VertexKind,
+    Contour, FillRule, Opacity, Paint, StrokeSpec, VecPath, VecPathId, VecScene, VecVertex, VertexKind,
     effect, paint_stack, stroke_wire::reading_geometry_v23,
 };
 
@@ -91,6 +91,30 @@ impl VecPath {
         mudou
     }
 
+    /// Um vértice [`VertId::NOVO`] herda o id que o MESMO lugar (contorno e índice) tinha em `anterior`,
+    /// se esse id não está em uso neste path; depois [`Self::normaliza_ids`]. Uma forma re-gerada com a
+    /// mesma topologia (forma viva, envelope, conector) guarda os ids — e o undo não vê mudança —, e uma
+    /// inserção ganha id novo, porque os vizinhos deslocados ainda usam os deles.
+    pub fn normaliza_ids_desde(&mut self, anterior: &Self) -> bool {
+        let mut usados: HashSet<VertId> = std::iter::once(&self.verts)
+            .chain(self.subpaths.iter().map(|c| &c.verts))
+            .flatten()
+            .map(|v| v.id)
+            .collect();
+        let antes = std::iter::once(&anterior.verts).chain(anterior.subpaths.iter().map(|c| &c.verts));
+        let agora = std::iter::once(&mut self.verts).chain(self.subpaths.iter_mut().map(|c| &mut c.verts));
+        let mut mudou = false;
+        for (agora, antes) in agora.zip(antes) {
+            for (v, a) in agora.iter_mut().zip(antes) {
+                if v.id == VertId::NOVO && a.id != VertId::NOVO && usados.insert(a.id) {
+                    v.id = a.id;
+                    mudou = true;
+                }
+            }
+        }
+        self.normaliza_ids() | mudou
+    }
+
     /// O vértice de id `id`, no contorno primário ou num `subpath`.
     #[must_use]
     pub fn vert_by_id(&self, id: VertId) -> Option<&VecVertex> {
@@ -112,6 +136,25 @@ impl VecPath {
             .iter_mut()
             .chain(self.subpaths.iter_mut().flat_map(|c| &mut c.verts))
             .find(|v| v.id == id)
+    }
+}
+
+impl VecScene {
+    /// Dá ids a todo vértice ainda sem um, em todos os paths ([`VecPath::normaliza_ids`]).
+    pub fn normaliza_ids(&mut self) -> bool {
+        self.paths.iter_mut().fold(false, |m, p| p.normaliza_ids() | m)
+    }
+
+    /// [`Self::normaliza_ids`] herdando pela posição os ids de `anterior` (a última fotografia do undo,
+    /// [`VecPath::normaliza_ids_desde`]); um path que não estava lá só se normaliza.
+    pub fn normaliza_ids_desde(&mut self, anterior: Option<&Self>) -> bool {
+        self.paths.iter_mut().fold(false, |m, p| {
+            let mudou = match anterior.and_then(|a| a.path(p.id)) {
+                Some(a) => p.normaliza_ids_desde(a),
+                None => p.normaliza_ids(),
+            };
+            mudou | m
+        })
     }
 }
 

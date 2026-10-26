@@ -61,12 +61,14 @@ use crate::app_state::App;
 /// quadro — logo não há projecção para fechar.
 impl App {
     pub(crate) fn settle_tree_before_capture(&mut self) {
+        let anterior = self.undo_baseline.as_ref().map(|b| std::sync::Arc::clone(&b.vec));
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
         ph2d_vec_entities::entities::sync(&mut gfx.sim, &mut gfx.vec_scene, &mut self.vec.entities);
-        // Todo vértice criado neste quadro ganha o seu `VertId` antes do passo de undo (W4.2).
-        gfx.vec_scene.normaliza_ids();
+        // Todo vértice criado neste quadro ganha o seu `VertId` antes do passo de undo; uma forma
+        // re-gerada herda os da fotografia anterior pela posição (W4.2).
+        gfx.vec_scene.normaliza_ids_desde(anterior.as_deref());
         // ⭐⭐ **A ponte do FLIP, ao lado da vectorial** (censo `every_document_to_tree_bridge_is_in_the_net`,
         // 2026-09-08). Ela é o irmão exacto — bidireccional, mesma latência — e estava fora da rede:
         // apagar um objecto Flip pela Hierarquia deixava o documento com ele até ao quadro seguinte.

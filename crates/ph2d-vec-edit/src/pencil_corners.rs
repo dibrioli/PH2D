@@ -61,6 +61,7 @@ pub(crate) fn fit_with(
                 *join = VecVertex {
                     in_handle: join.in_handle,
                     out_handle: first.out_handle,
+                    id: join.id,
                     ..VecVertex::corner(join.anchor)
                 };
                 out.extend_from_slice(&piece[1..]);

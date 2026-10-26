@@ -19,4 +19,5 @@ mod measure_trim_on_shapes;
 mod node_reach;
 mod stroke_v22_fixture;
 mod vec_v23_fixture;
+mod vertex_ids_through_edits;
 mod which_shapes_close;

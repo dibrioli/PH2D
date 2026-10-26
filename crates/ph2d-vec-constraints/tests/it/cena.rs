@@ -2,8 +2,6 @@
 //! e regras por `(path, VertId)`, e a régua de cumprimento da bancada (`bancada_solvers/src/main.rs` `violacao`),
 //! escrita aqui à parte do solver de propósito: quem mede não é quem resolve.
 
-use std::collections::BTreeMap;
-
 use ph2d_vec_constraints::{Folha, Solucao, orienta_tangente};
 use ph2d_vec_scene::cad::{Lei, PontoCad, RegraCad, SegCad};
 use ph2d_vec_scene::{VecPath, VecPathId, VecVertex, Xform, ellipse};
@@ -14,7 +12,10 @@ const PATH: VecPathId = 1;
 const CIRCULO0: VecPathId = 10;
 
 pub fn le(nome: &str) -> Value {
-    let p = format!("{}/../../docs/BlenderConstraints/fixtures/w4_cenas/{nome}.json", env!("CARGO_MANIFEST_DIR"));
+    let p = format!(
+        "{}/../../docs/BlenderConstraints/fixtures/w4_cenas/{nome}.json",
+        env!("CARGO_MANIFEST_DIR")
+    );
     serde_json::from_str(&std::fs::read_to_string(&p).expect(&p)).expect("a cena é JSON")
 }
 
@@ -43,7 +44,11 @@ impl Cena {
 
     /// `partida` ausente = parte de `pontos` (a convenção da bancada).
     pub fn pose(&self, chave: &str) -> Vec<[f64; 2]> {
-        let v = if self.json[chave].is_null() { &self.json["pontos"] } else { &self.json[chave] };
+        let v = if self.json[chave].is_null() {
+            &self.json["pontos"]
+        } else {
+            &self.json[chave]
+        };
         v.as_array().expect(chave).iter().map(xy).collect()
     }
 
@@ -53,12 +58,18 @@ impl Cena {
     }
 
     pub fn posicoes(&self, s: &Solucao) -> Vec<[f64; 2]> {
-        self.ponto.iter().map(|p| s.ponto(*p).expect("todo ponto da cena é variável")).collect()
+        self.ponto
+            .iter()
+            .map(|p| s.ponto(*p).expect("todo ponto da cena é variável"))
+            .collect()
     }
 }
 
 fn constroi_paths(pose: &[[f64; 2]], circulo_de: &[usize], raios: &[f64]) -> Vec<VecPath> {
-    let mut solto = VecPath { id: PATH, ..VecPath::default() };
+    let mut solto = VecPath {
+        id: PATH,
+        ..VecPath::default()
+    };
     for (i, p) in pose.iter().enumerate() {
         if !circulo_de.contains(&i) {
             solto.verts.push(VecVertex::corner(*p));
@@ -77,10 +88,18 @@ fn constroi_paths(pose: &[[f64; 2]], circulo_de: &[usize], raios: &[f64]) -> Vec
 
 pub fn cena(nome: &str) -> Cena {
     let json = le(nome);
-    let pontos: Vec<[f64; 2]> = json["pontos"].as_array().expect("pontos").iter().map(xy).collect();
+    let pontos: Vec<[f64; 2]> = json["pontos"]
+        .as_array()
+        .expect("pontos")
+        .iter()
+        .map(xy)
+        .collect();
     let circs = json["circulos"].as_array().expect("circulos");
     let circulo_de: Vec<usize> = circs.iter().map(|c| u(c, "centro")).collect();
-    let raios: Vec<f64> = circs.iter().map(|c| c["raio"].as_f64().expect("raio")).collect();
+    let raios: Vec<f64> = circs
+        .iter()
+        .map(|c| c["raio"].as_f64().expect("raio"))
+        .collect();
     let paths = constroi_paths(&pontos, &circulo_de, &raios);
     let mut ponto = Vec::with_capacity(pontos.len());
     let mut solto = paths[0].verts.iter();
@@ -100,13 +119,19 @@ pub fn cena(nome: &str) -> Cena {
             "v" => Lei::Vertical(seg(n("a"), n("b"))),
             "paralelo" => Lei::Paralelo(seg(n("a"), n("b")), seg(n("c"), n("d"))),
             "perpendicular" => Lei::Perpendicular(seg(n("a"), n("b")), seg(n("c"), n("d"))),
-            "distancia" => Lei::Distancia(ponto[n("a")], ponto[n("b")], r["d"].as_f64().expect("d")),
+            "distancia" => {
+                Lei::Distancia(ponto[n("a")], ponto[n("b")], r["d"].as_f64().expect("d"))
+            }
             "igual" => Lei::Igual(seg(n("a"), n("b")), seg(n("c"), n("d"))),
             "sobre_linha" => Lei::SobreRecta(ponto[n("p")], seg(n("a"), n("b"))),
             "simetrico" => Lei::Simetrico(ponto[n("p")], ponto[n("q")], seg(n("a"), n("b"))),
             "tangente" => {
                 let c = CIRCULO0 + n("circulo") as u64;
-                Lei::Tangente(orienta_tangente(&folha, seg(n("a"), n("b")), c).expect("a tangente cumpre na pose"), c)
+                Lei::Tangente(
+                    orienta_tangente(&folha, seg(n("a"), n("b")), c)
+                        .expect("a tangente cumpre na pose"),
+                    c,
+                )
             }
             "coincidente" => Lei::Coincidente(ponto[n("a")], ponto[n("b")]),
             t => panic!("regra {t} sem tradução"),
@@ -120,7 +145,14 @@ pub fn cena(nome: &str) -> Cena {
     for (k, &r) in raios.iter().enumerate() {
         regras.push(RegraCad::nova(Lei::Raio(CIRCULO0 + k as u64, r)));
     }
-    Cena { json, paths, ponto, regras, raios, circulo_de }
+    Cena {
+        json,
+        paths,
+        ponto,
+        regras,
+        raios,
+        circulo_de,
+    }
 }
 
 fn dist(a: [f64; 2], b: [f64; 2]) -> f64 {
@@ -145,9 +177,13 @@ pub fn violacao(c: &Cena, x: &[[f64; 2]], r: &Value) -> f64 {
     match r["t"].as_str().expect("t") {
         "h" => (x[n("a")][1] - x[n("b")][1]).abs(),
         "v" => (x[n("a")][0] - x[n("b")][0]).abs(),
-        "paralelo" => cruz(sub(x[n("b")], x[n("a")]), sub(x[n("d")], x[n("c")])).abs() / dist(x[n("c")], x[n("d")]),
+        "paralelo" => {
+            cruz(sub(x[n("b")], x[n("a")]), sub(x[n("d")], x[n("c")])).abs()
+                / dist(x[n("c")], x[n("d")])
+        }
         "perpendicular" => {
-            escalar(sub(x[n("b")], x[n("a")]), sub(x[n("d")], x[n("c")])).abs() / dist(x[n("c")], x[n("d")])
+            escalar(sub(x[n("b")], x[n("a")]), sub(x[n("d")], x[n("c")])).abs()
+                / dist(x[n("c")], x[n("d")])
         }
         "distancia" => (dist(x[n("a")], x[n("b")]) - r["d"].as_f64().expect("d")).abs(),
         "igual" => (dist(x[n("a")], x[n("b")]) - dist(x[n("c")], x[n("d")])).abs(),
@@ -179,10 +215,10 @@ pub fn pior(c: &Cena, x: &[[f64; 2]], alvo: Option<(usize, [f64; 2])>) -> f64 {
         .map(|i| dist(x[i], pontos[i]))
         .fold(0.0, f64::max);
     let arr = alvo.map_or(0.0, |(i, a)| dist(x[i], a));
-    c.json["regras"].as_array().expect("regras").iter().map(|r| violacao(c, x, r)).fold(fixos.max(arr), f64::max)
-}
-
-/// Índice da cena → posição, para quem compara com a fixture.
-pub fn indice(c: &Cena) -> BTreeMap<PontoCad, usize> {
-    c.ponto.iter().enumerate().map(|(i, p)| (*p, i)).collect()
+    c.json["regras"]
+        .as_array()
+        .expect("regras")
+        .iter()
+        .map(|r| violacao(c, x, r))
+        .fold(fixos.max(arr), f64::max)
 }

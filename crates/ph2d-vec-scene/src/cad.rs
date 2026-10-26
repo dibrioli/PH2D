@@ -46,6 +46,9 @@ pub struct RegraCad {
 impl RegraCad {
     #[must_use]
     pub const fn nova(lei: Lei) -> Self {
-        Self { lei, referencia: false }
+        Self {
+            lei,
+            referencia: false,
+        }
     }
 }

@@ -525,22 +525,24 @@ impl PenTool {
         })?;
         // Vértices de B em MUNDO, na ordem de junção.
         let xf_b = self.xf(bid);
+        // O vértice inteiro pelo afim (id e `kind` intactos). O raio é um COMPRIMENTO no espaço local:
+        // B sobe para o mundo e desce para o local de A, e o raio escala com a geometria nos dois.
+        let pelo = |xf: ph2d_vec_scene::Xform| {
+            move |v: &VecVertex| VecVertex {
+                anchor: xf.apply(v.anchor),
+                in_handle: xf.apply(v.in_handle),
+                out_handle: xf.apply(v.out_handle),
+                corner_radius: v.corner_radius * xf.mean_scale(),
+                ..*v
+            }
+        };
         let mut b_world: Vec<VecVertex> = scene
             .paths()
             .iter()
             .find(|pp| pp.id == bid)?
             .verts
             .iter()
-            .map(|v| VecVertex {
-                anchor: xf_b.apply(v.anchor),
-                in_handle: xf_b.apply(v.in_handle),
-                out_handle: xf_b.apply(v.out_handle),
-                kind: v.kind,
-                // O raio é um COMPRIMENTO no espaço local, e aqui B sobe para o mundo:
-                // escala com a geometria (e desce de novo para o local de A, abaixo).
-                corner_radius: v.corner_radius * xf_b.mean_scale(),
-                id: v.id,
-            })
+            .map(pelo(xf_b))
             .collect();
         if !b_first {
             // Tocou o ÚLTIMO de B → percorre B de trás pra frente; in/out trocam de
@@ -563,18 +565,7 @@ impl PenTool {
                 pp.subpaths
                     .iter()
                     .map(|c| ph2d_vec_scene::Contour {
-                        verts: c
-                            .verts
-                            .iter()
-                            .map(|v| VecVertex {
-                                anchor: xf_b.apply(v.anchor),
-                                in_handle: xf_b.apply(v.in_handle),
-                                out_handle: xf_b.apply(v.out_handle),
-                                kind: v.kind,
-                                corner_radius: v.corner_radius * xf_b.mean_scale(),
-                                id: v.id,
-                            })
-                            .collect(),
+                        verts: c.verts.iter().map(pelo(xf_b)).collect(),
                         closed: c.closed,
                     })
                     .collect()
@@ -582,14 +573,7 @@ impl PenTool {
             .unwrap_or_default();
         let inv_a = self.xf(active).inverse()?;
         let a = scene.path_mut(active)?;
-        let para_a = |v: &VecVertex| VecVertex {
-            anchor: inv_a.apply(v.anchor),
-            in_handle: inv_a.apply(v.in_handle),
-            out_handle: inv_a.apply(v.out_handle),
-            kind: v.kind,
-            corner_radius: v.corner_radius * inv_a.mean_scale(),
-            id: v.id,
-        };
+        let para_a = pelo(inv_a);
         for v in &b_world {
             a.verts.push(para_a(v));
         }

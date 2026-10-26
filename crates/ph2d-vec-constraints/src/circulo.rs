@@ -16,7 +16,10 @@ fn circuncentro(a: [f64; 2], b: [f64; 2], c: [f64; 2]) -> Option<[f64; 2]> {
         return None;
     }
     let (uu, vv) = (u[0] * u[0] + u[1] * u[1], v[0] * v[0] + v[1] * v[1]);
-    Some([a[0] + (v[1] * uu - u[1] * vv) / d, a[1] + (u[0] * vv - v[0] * uu) / d])
+    Some([
+        a[0] + (v[1] * uu - u[1] * vv) / d,
+        a[1] + (u[0] * vv - v[0] * uu) / d,
+    ])
 }
 
 /// Centro e raio na FOLHA, se o path é um círculo depois do afim (uma escala não-uniforme dá elipse ⇒ `None`).

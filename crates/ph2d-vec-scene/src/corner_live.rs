@@ -179,23 +179,19 @@ pub fn round_authored_corners_styled(
                 } else {
                     crate::corner_style::link(kind, p_in, t_in, p_out, t_out)
                 };
-                out.push(VecVertex {
-                    anchor: p_in,
-                    in_handle: a[2],
-                    out_handle: out1,
-                    kind: VertexKind::Corner,
-                    corner_radius: 0.0,
-                    id: crate::VertId::NOVO,
-                });
+                out.push(VecVertex::with_handles(
+                    p_in,
+                    a[2],
+                    out1,
+                    VertexKind::Corner,
+                ));
                 out.extend(mid);
-                out.push(VecVertex {
-                    anchor: p_out,
-                    in_handle: in2,
-                    out_handle: b[1],
-                    kind: VertexKind::Corner,
-                    corner_radius: 0.0,
-                    id: crate::VertId::NOVO,
-                });
+                out.push(VecVertex::with_handles(
+                    p_out,
+                    in2,
+                    b[1],
+                    VertexKind::Corner,
+                ));
             }
             // Vértice cru: a âncora e o `kind` são os da FONTE; os handles saem dos
             // pedaços (que o vizinho pode ter encurtado). Sem vizinho, o handle da fonte.

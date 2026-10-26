@@ -5,8 +5,8 @@
 
 use std::ops::{Add, Div, Mul, Neg, Sub};
 
-use ph2d_vec_scene::cad::{Lei, PontoCad, SegCad};
 use ph2d_vec_scene::VecPathId;
+use ph2d_vec_scene::cad::{Lei, PontoCad, SegCad};
 
 /// Quatro pontos (8 variáveis) é o máximo de uma regra.
 const N: usize = 8;
@@ -29,7 +29,10 @@ impl D {
         Self { v, d }
     }
     fn map(self, v: f64, dv: f64) -> Self {
-        Self { v, d: self.d.map(|x| x * dv) }
+        Self {
+            v,
+            d: self.d.map(|x| x * dv),
+        }
     }
     fn sqrt(self) -> Self {
         let s = self.v.sqrt();
@@ -41,7 +44,10 @@ impl D {
         for (i, di) in d.iter_mut().enumerate() {
             *di = (x.v * self.d[i] - self.v * x.d[i]) / q;
         }
-        Self { v: self.v.atan2(x.v), d }
+        Self {
+            v: self.v.atan2(x.v),
+            d,
+        }
     }
 }
 
@@ -115,7 +121,10 @@ pub(crate) fn residuos(lei: &Lei, valor: &dyn Fn(&Var) -> f64) -> (Vec<Var>, Vec
         let i = vars.len();
         vars.push(Var::X(p));
         vars.push(Var::Y(p));
-        [D::var(valor(&vars[i]), i), D::var(valor(&vars[i + 1]), i + 1)]
+        [
+            D::var(valor(&vars[i]), i),
+            D::var(valor(&vars[i + 1]), i + 1),
+        ]
     };
     let seg = |s: SegCad, vars: &mut Vec<Var>| -> P {
         let a = ponto(s.0, vars);
@@ -146,7 +155,10 @@ pub(crate) fn residuos(lei: &Lei, valor: &dyn Fn(&Var) -> f64) -> (Vec<Var>, Vec
             let (p, q) = (ponto(p, &mut vars), ponto(q, &mut vars));
             let (a, b) = (ponto(s.0, &mut vars), ponto(s.1, &mut vars));
             let meio = [(p[0] + q[0]) * D::k(0.5), (p[1] + q[1]) * D::k(0.5)];
-            vec![cruz(menos(b, a), menos(meio, a)), escalar(menos(q, p), menos(b, a))]
+            vec![
+                cruz(menos(b, a), menos(meio, a)),
+                escalar(menos(q, p), menos(b, a)),
+            ]
         }
         Lei::Tangente(s, c) => {
             let (a, b) = (ponto(s.0, &mut vars), ponto(s.1, &mut vars));
@@ -209,7 +221,12 @@ impl Posto {
 }
 
 /// As linhas densas (sobre `n` variáveis globais) dos resíduos de uma regra.
-pub(crate) fn linhas(vars: &[Var], res: &[D], n: usize, global: &dyn Fn(&Var) -> usize) -> Vec<Vec<f64>> {
+pub(crate) fn linhas(
+    vars: &[Var],
+    res: &[D],
+    n: usize,
+    global: &dyn Fn(&Var) -> usize,
+) -> Vec<Vec<f64>> {
     res.iter()
         .map(|r| {
             let mut l = vec![0.0; n];

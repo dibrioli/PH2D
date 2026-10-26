@@ -11,8 +11,8 @@ use std::collections::HashSet;
 use serde::{Deserialize, Deserializer, Serialize};
 
 use crate::{
-    Contour, FillRule, Opacity, Paint, StrokeSpec, VecPath, VecPathId, VecScene, VecVertex, VertexKind,
-    effect, paint_stack, stroke_wire::reading_geometry_v23,
+    Contour, FillRule, Opacity, Paint, StrokeSpec, VecPath, VecPathId, VecScene, VecVertex,
+    VertexKind, effect, paint_stack, stroke_wire::reading_geometry_v23,
 };
 
 /// Id de um vértice dentro do seu path (os contornos de `subpaths` partilham o espaço). Monotónico
@@ -101,8 +101,10 @@ impl VecPath {
             .flatten()
             .map(|v| v.id)
             .collect();
-        let antes = std::iter::once(&anterior.verts).chain(anterior.subpaths.iter().map(|c| &c.verts));
-        let agora = std::iter::once(&mut self.verts).chain(self.subpaths.iter_mut().map(|c| &mut c.verts));
+        let antes =
+            std::iter::once(&anterior.verts).chain(anterior.subpaths.iter().map(|c| &c.verts));
+        let agora =
+            std::iter::once(&mut self.verts).chain(self.subpaths.iter_mut().map(|c| &mut c.verts));
         let mut mudou = false;
         for (agora, antes) in agora.zip(antes) {
             for (v, a) in agora.iter_mut().zip(antes) {
@@ -142,7 +144,9 @@ impl VecPath {
 impl VecScene {
     /// Dá ids a todo vértice ainda sem um, em todos os paths ([`VecPath::normaliza_ids`]).
     pub fn normaliza_ids(&mut self) -> bool {
-        self.paths.iter_mut().fold(false, |m, p| p.normaliza_ids() | m)
+        self.paths
+            .iter_mut()
+            .fold(false, |m, p| p.normaliza_ids() | m)
     }
 
     /// [`Self::normaliza_ids`] herdando pela posição os ids de `anterior` (a última fotografia do undo,

@@ -24,11 +24,15 @@ pub struct Folha<'a> {
 
 impl<'a> Folha<'a> {
     pub fn new(paths: impl IntoIterator<Item = (&'a VecPath, Xform)>) -> Self {
-        Self { paths: paths.into_iter().map(|(p, x)| (p.id, (p, x))).collect() }
+        Self {
+            paths: paths.into_iter().map(|(p, x)| (p.id, (p, x))).collect(),
+        }
     }
 
     fn vert(&self, p: PontoCad) -> Option<[f64; 2]> {
-        let PontoCad::Vert(id, v) = p else { return None };
+        let PontoCad::Vert(id, v) = p else {
+            return None;
+        };
         let (path, xf) = self.paths.get(&id)?;
         Some(xf.apply(path.vert_by_id(v)?.anchor))
     }
@@ -60,9 +64,13 @@ impl Solucao {
     pub fn da_folha(folha: &Folha<'_>) -> Self {
         let mut s = Self::default();
         for (&id, (path, xf)) in &folha.paths {
-            let todos = path.verts.iter().chain(path.subpaths.iter().flat_map(|c| &c.verts));
+            let todos = path
+                .verts
+                .iter()
+                .chain(path.subpaths.iter().flat_map(|c| &c.verts));
             for v in todos {
-                s.pontos.insert(PontoCad::Vert(id, v.id), xf.apply(v.anchor));
+                s.pontos
+                    .insert(PontoCad::Vert(id, v.id), xf.apply(v.anchor));
             }
             if let Some((c, r)) = circulo_de(path, *xf) {
                 s.pontos.insert(PontoCad::Centro(id), c);
@@ -86,14 +94,23 @@ impl Solucao {
     /// duas alças pelo mesmo delta; um círculo resolvido re-escala à volta do centro novo, guardando ids e `kind`.
     /// `false` = nada dele foi resolvido (ou o afim não tem inverso).
     pub fn aplica(&self, path: &mut VecPath, xf: Xform) -> bool {
-        let Some(inv) = xf.inverse() else { return false };
+        let Some(inv) = xf.inverse() else {
+            return false;
+        };
         let id = path.id;
-        let circulo = match (circulo_de(path, xf), self.ponto(PontoCad::Centro(id)), self.raio(id)) {
+        let circulo = match (
+            circulo_de(path, xf),
+            self.ponto(PontoCad::Centro(id)),
+            self.raio(id),
+        ) {
             (Some((c0, r0)), Some(c1), Some(r1)) => Some((c0, r0, c1, r1)),
             _ => None,
         };
         let mut mexeu = false;
-        let verts = path.verts.iter_mut().chain(path.subpaths.iter_mut().flat_map(|c| &mut c.verts));
+        let verts = path
+            .verts
+            .iter_mut()
+            .chain(path.subpaths.iter_mut().flat_map(|c| &mut c.verts));
         for v in verts {
             if let Some((c0, r0, c1, r1)) = circulo {
                 let k = r1 / r0;
@@ -154,9 +171,10 @@ fn pontos_da(lei: &Lei) -> Vec<PontoCad> {
     match *lei {
         Lei::Coincidente(a, b) | Lei::Distancia(a, b, _) => vec![a, b],
         Lei::Horizontal(t) | Lei::Vertical(t) => s(t).to_vec(),
-        Lei::Paralelo(t, u) | Lei::Perpendicular(t, u) | Lei::Igual(t, u) | Lei::Angulo(t, u, _) => {
-            [s(t), s(u)].concat()
-        }
+        Lei::Paralelo(t, u)
+        | Lei::Perpendicular(t, u)
+        | Lei::Igual(t, u)
+        | Lei::Angulo(t, u, _) => [s(t), s(u)].concat(),
         Lei::Tangente(t, c) => vec![t.0, t.1, PontoCad::Centro(c)],
         Lei::Simetrico(p, q, t) => vec![p, q, t.0, t.1],
         Lei::SobreRecta(p, t) => vec![p, t.0, t.1],
@@ -177,7 +195,12 @@ struct Sistema {
 }
 
 impl Sistema {
-    fn monta(folha: &Folha<'_>, regras: &[RegraCad], arrasto: Option<Arrasto>, palpite: Option<&Solucao>) -> Self {
+    fn monta(
+        folha: &Folha<'_>,
+        regras: &[RegraCad],
+        arrasto: Option<Arrasto>,
+        palpite: Option<&Solucao>,
+    ) -> Self {
         // Um path citado como círculo é um datum: os vértices dele não são pontos soltos.
         let circulos: BTreeMap<VecPathId, ([f64; 2], f64)> = regras
             .iter()
@@ -206,7 +229,10 @@ impl Sistema {
             citados.insert(a.ponto);
         }
         let mut ids = IdGenerator::default();
-        let pts: BTreeMap<PontoCad, DatumPoint> = citados.iter().map(|&p| (p, DatumPoint::new(&mut ids))).collect();
+        let pts: BTreeMap<PontoCad, DatumPoint> = citados
+            .iter()
+            .map(|&p| (p, DatumPoint::new(&mut ids)))
+            .collect();
         let usados: BTreeSet<VecPathId> = citados
             .iter()
             .filter_map(|p| match *p {
@@ -214,8 +240,10 @@ impl Sistema {
                 PontoCad::Vert(..) => None,
             })
             .collect();
-        let raios: BTreeMap<VecPathId, DatumDistance> =
-            usados.iter().map(|&c| (c, DatumDistance::new(ids.next_id()))).collect();
+        let raios: BTreeMap<VecPathId, DatumDistance> = usados
+            .iter()
+            .map(|&c| (c, DatumDistance::new(ids.next_id())))
+            .collect();
         let mut valores = vec![0.0; ids.next_id() as usize];
         for (p, d) in &pts {
             let x = palpite
@@ -233,7 +261,10 @@ impl Sistema {
         }
 
         let seg = |s: SegCad| DatumLineSegment::new(pts[&s.0], pts[&s.1]);
-        let circ = |c: VecPathId| DatumCircle { center: pts[&PontoCad::Centro(c)], radius: raios[&c] };
+        let circ = |c: VecPathId| DatumCircle {
+            center: pts[&PontoCad::Centro(c)],
+            radius: raios[&c],
+        };
         let (mut reqs, mut origem) = (Vec::new(), Vec::new());
         for &i in &ativas {
             let ks = match regras[i].lei {
@@ -241,9 +272,15 @@ impl Sistema {
                 Lei::Horizontal(s) => vec![K::Horizontal(seg(s))],
                 Lei::Vertical(s) => vec![K::Vertical(seg(s))],
                 Lei::Paralelo(s, t) => vec![K::LinesAtAngle(seg(s), seg(t), AngleKind::Parallel)],
-                Lei::Perpendicular(s, t) => vec![K::LinesAtAngle(seg(s), seg(t), AngleKind::Perpendicular)],
+                Lei::Perpendicular(s, t) => {
+                    vec![K::LinesAtAngle(seg(s), seg(t), AngleKind::Perpendicular)]
+                }
                 Lei::Angulo(s, t, a) => {
-                    vec![K::LinesAtAngle(seg(s), seg(t), AngleKind::Other(Angle::from_radians(a)))]
+                    vec![K::LinesAtAngle(
+                        seg(s),
+                        seg(t),
+                        AngleKind::Other(Angle::from_radians(a)),
+                    )]
                 }
                 Lei::Tangente(s, c) => vec![K::LineTangentToCircle(seg(s), circ(c))],
                 Lei::Igual(s, t) => vec![K::LinesEqualLength(seg(s), seg(t))],
@@ -251,7 +288,10 @@ impl Sistema {
                 Lei::SobreRecta(p, s) => vec![K::PointLineDistance(pts[&p], seg(s), 0.0)],
                 Lei::Distancia(a, b, d) => vec![K::Distance(pts[&a], pts[&b], d)],
                 Lei::Raio(c, r) => vec![K::CircleRadius(circ(c), r)],
-                Lei::Fixo(p, x) => vec![K::Fixed(pts[&p].id_x(), x[0]), K::Fixed(pts[&p].id_y(), x[1])],
+                Lei::Fixo(p, x) => vec![
+                    K::Fixed(pts[&p].id_x(), x[0]),
+                    K::Fixed(pts[&p].id_y(), x[1]),
+                ],
             };
             for k in ks {
                 reqs.push(R::highest_priority(k));
@@ -267,7 +307,15 @@ impl Sistema {
             valores[d.id_x() as usize] = a.alvo[0];
             valores[d.id_y() as usize] = a.alvo[1];
         }
-        Self { pts, raios, valores, reqs, origem, ativas, sem_alvo }
+        Self {
+            pts,
+            raios,
+            valores,
+            reqs,
+            origem,
+            ativas,
+            sem_alvo,
+        }
     }
 
     fn palpites(&self) -> Vec<(u32, f64)> {
@@ -276,8 +324,16 @@ impl Sistema {
 
     fn solucao(&self, f: &[f64]) -> Solucao {
         Solucao {
-            pontos: self.pts.iter().map(|(p, d)| (*p, [f[d.id_x() as usize], f[d.id_y() as usize]])).collect(),
-            raios: self.raios.iter().map(|(c, d)| (*c, f[d.id as usize])).collect(),
+            pontos: self
+                .pts
+                .iter()
+                .map(|(p, d)| (*p, [f[d.id_x() as usize], f[d.id_y() as usize]]))
+                .collect(),
+            raios: self
+                .raios
+                .iter()
+                .map(|(c, d)| (*c, f[d.id as usize]))
+                .collect(),
         }
     }
 
@@ -291,7 +347,12 @@ impl Sistema {
 /// anterior (o arrasto) ou `None` = partir do desenho. Um arrasto impossível (o ponto está preso) não quebra regra:
 /// o cursor perde a prioridade e o ponto fica onde as regras deixam.
 #[must_use]
-pub fn resolve(folha: &Folha<'_>, regras: &[RegraCad], arrasto: Option<Arrasto>, palpite: Option<&Solucao>) -> Resultado {
+pub fn resolve(
+    folha: &Folha<'_>,
+    regras: &[RegraCad],
+    arrasto: Option<Arrasto>,
+    palpite: Option<&Solucao>,
+) -> Resultado {
     let mut s = Sistema::monta(folha, regras, arrasto, palpite);
     let mut saida = kcl_ezpz::solve(&s.reqs, s.palpites(), Config::default());
     if arrasto.is_some() && saida.as_ref().map_or(true, |o| !o.is_satisfied()) {
@@ -304,8 +365,16 @@ pub fn resolve(folha: &Folha<'_>, regras: &[RegraCad], arrasto: Option<Arrasto>,
         saida = kcl_ezpz::solve(&s.reqs, s.palpites(), Config::default());
     }
     match saida {
-        Ok(o) => Resultado { solucao: s.solucao(o.final_values()), falta: s.falta(o.unsatisfied()), sem_alvo: s.sem_alvo },
-        Err(_) => Resultado { solucao: s.solucao(&s.valores), falta: s.ativas.clone(), sem_alvo: s.sem_alvo },
+        Ok(o) => Resultado {
+            solucao: s.solucao(o.final_values()),
+            falta: s.falta(o.unsatisfied()),
+            sem_alvo: s.sem_alvo,
+        },
+        Err(_) => Resultado {
+            solucao: s.solucao(&s.valores),
+            falta: s.ativas.clone(),
+            sem_alvo: s.sem_alvo,
+        },
     }
 }
 
@@ -314,14 +383,25 @@ pub fn resolve(folha: &Folha<'_>, regras: &[RegraCad], arrasto: Option<Arrasto>,
 #[must_use]
 pub fn estado(folha: &Folha<'_>, regras: &[RegraCad]) -> Estado {
     let s = Sistema::monta(folha, regras, None, None);
-    let mut cor: Vec<EstadoRegra> =
-        regras.iter().map(|r| if r.referencia { EstadoRegra::Ref } else { EstadoRegra::Ok }).collect();
+    let mut cor: Vec<EstadoRegra> = regras
+        .iter()
+        .map(|r| {
+            if r.referencia {
+                EstadoRegra::Ref
+            } else {
+                EstadoRegra::Ok
+            }
+        })
+        .collect();
     for &i in &s.sem_alvo {
         cor[i] = EstadoRegra::SemAlvo;
     }
     let mut pontos = BTreeMap::new();
     match kcl_ezpz::solve_analysis(&s.reqs, s.palpites(), Config::default()) {
-        Err(_) => s.ativas.iter().for_each(|&i| cor[i] = EstadoRegra::Conflito),
+        Err(_) => s
+            .ativas
+            .iter()
+            .for_each(|&i| cor[i] = EstadoRegra::Conflito),
         Ok(o) => {
             let falta = s.falta(o.outcome.unsatisfied());
             falta.iter().for_each(|&i| cor[i] = EstadoRegra::Conflito);
@@ -333,11 +413,21 @@ pub fn estado(folha: &Folha<'_>, regras: &[RegraCad]) -> Estado {
             let livres: BTreeSet<u32> = o.analysis.underconstrained().iter().copied().collect();
             for (p, d) in &s.pts {
                 let livre = livres.contains(&d.id_x()) || livres.contains(&d.id_y());
-                pontos.insert(*p, if livre { Liberdade::Livre } else { Liberdade::Definido });
+                pontos.insert(
+                    *p,
+                    if livre {
+                        Liberdade::Livre
+                    } else {
+                        Liberdade::Definido
+                    },
+                );
             }
         }
     }
-    Estado { regras: cor, pontos }
+    Estado {
+        regras: cor,
+        pontos,
+    }
 }
 
 fn redundantes(s: &Sistema, regras: &[RegraCad], f: &[f64]) -> Vec<usize> {

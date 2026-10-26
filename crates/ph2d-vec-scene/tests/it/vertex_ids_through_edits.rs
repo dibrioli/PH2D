@@ -3,8 +3,8 @@
 //! da booleana vivem lá (`each_vertex_mutation_site_keeps_or_assigns_ids_*`).
 
 use ph2d_vec_scene::{
-    FlipAxis, Rotate90, VecPath, VecPathId, VecScene, VecVertex, VecXforms, VertId, dissolve_vertex,
-    split_segment,
+    FlipAxis, Rotate90, VecPath, VecPathId, VecScene, VecVertex, VecXforms, VertId,
+    dissolve_vertex, split_segment,
 };
 
 fn cena(n: usize, closed: bool) -> (VecScene, VecPathId) {
@@ -66,14 +66,21 @@ fn each_vertex_mutation_site_keeps_or_assigns_ids() {
     let (mut c, id) = cena(12, true);
     assert!(c.simplify_path(id));
     let ficou = ids(c.path(id).unwrap());
-    assert!(ficou.len() < 12 && ficou.windows(2).all(|w| w[0] < w[1]), "{ficou:?}");
+    assert!(
+        ficou.len() < 12 && ficou.windows(2).all(|w| w[0] < w[1]),
+        "{ficou:?}"
+    );
 
     // Partir um contorno FECHADO: abre, e a cópia da costura ganha id novo no assentamento.
     let (mut c, id) = cena(4, true);
     assert!(c.cut_path_at_vertex(id, 2).unwrap().opened);
     c.normaliza_ids();
     let p = c.path(id).unwrap();
-    assert_eq!(ids(p), [3, 4, 1, 2, 5], "a costura duplicada é a 2.ª ocorrência");
+    assert_eq!(
+        ids(p),
+        [3, 4, 1, 2, 5],
+        "a costura duplicada é a 2.ª ocorrência"
+    );
     sem_repetidos(p);
 
     // Partir um contorno ABERTO: a 2.ª metade é um path NOVO que leva os ids dela.
@@ -123,7 +130,13 @@ fn a_regenerated_shape_inherits_its_ids_and_an_insert_does_not_steal_one() {
         closed: true,
         ..VecPath::default()
     });
-    assert!(c.path(id).unwrap().verts.iter().all(|v| v.id == VertId::NOVO));
+    assert!(
+        c.path(id)
+            .unwrap()
+            .verts
+            .iter()
+            .all(|v| v.id == VertId::NOVO)
+    );
     c.normaliza_ids_desde(Some(&antes));
     assert_eq!(ids(c.path(id).unwrap()), [1, 2, 3, 4, 5]);
     assert_eq!(c.path(id).unwrap().next_vert, 6, "nada consumido");
@@ -138,7 +151,13 @@ fn a_regenerated_shape_inherits_its_ids_and_an_insert_does_not_steal_one() {
 
     // ⛔ CONTROLO: sem a fotografia anterior, a forma re-gerada ganharia ids NOVOS.
     let (mut c, id) = cena(3, true);
-    let v: Vec<VecVertex> = c.path(id).unwrap().verts.iter().map(|v| VecVertex::corner(v.anchor)).collect();
+    let v: Vec<VecVertex> = c
+        .path(id)
+        .unwrap()
+        .verts
+        .iter()
+        .map(|v| VecVertex::corner(v.anchor))
+        .collect();
     c.path_mut(id).unwrap().verts = v;
     c.normaliza_ids_desde(None);
     assert_eq!(ids(c.path(id).unwrap()), [4, 5, 6]);

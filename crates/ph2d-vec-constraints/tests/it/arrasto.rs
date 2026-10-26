@@ -62,3 +62,70 @@ fn the_drag_is_deterministic() {
         );
     }
 }
+
+mod dois_pontos {
+    use ph2d_vec_constraints::{Arrasto, Folha, Solucao, resolve};
+    use ph2d_vec_scene::cad::{Lei, PontoCad, RegraCad, SegCad};
+    use ph2d_vec_scene::{VecPath, VecVertex, VertId, Xform};
+
+    const A: PontoCad = PontoCad::Vert(1, VertId(1));
+    const B: PontoCad = PontoCad::Vert(1, VertId(2));
+
+    fn path(b: [f64; 2]) -> VecPath {
+        let mut p = VecPath {
+            id: 1,
+            verts: vec![VecVertex::corner([0.0, 0.0]), VecVertex::corner(b)],
+            ..VecPath::default()
+        };
+        p.normaliza_ids();
+        p
+    }
+
+    #[test]
+    fn the_previous_step_picks_the_branch_not_the_drawing() {
+        let desenho = path([10.0, 0.0]);
+        let regras = [
+            RegraCad::nova(Lei::Fixo(A, [0.0, 0.0])),
+            RegraCad::nova(Lei::Distancia(A, B, 10.0)),
+        ];
+        let antes = path([-9.0, 1.0]);
+        let palpite = Solucao::da_folha(&Folha::new([(&antes, Xform::IDENTITY)]));
+        let r = resolve(
+            &Folha::new([(&desenho, Xform::IDENTITY)]),
+            &regras,
+            None,
+            Some(&palpite),
+        );
+        let b = r.solucao.ponto(B).expect("B");
+        assert!(
+            r.falta.is_empty() && b[0] < -9.0,
+            "B saltou para o ramo do desenho: {b:?}"
+        );
+    }
+
+    #[test]
+    fn dragging_a_fixed_point_breaks_no_rule() {
+        let desenho = path([10.0, 0.0]);
+        let regras = [
+            RegraCad::nova(Lei::Fixo(A, [0.0, 0.0])),
+            RegraCad::nova(Lei::Horizontal(SegCad(A, B))),
+        ];
+        let arrasto = Arrasto {
+            ponto: A,
+            alvo: [50.0, 50.0],
+        };
+        let r = resolve(
+            &Folha::new([(&desenho, Xform::IDENTITY)]),
+            &regras,
+            Some(arrasto),
+            None,
+        );
+        assert!(
+            r.falta.is_empty(),
+            "o cursor não manda mais que a regra: {:?}",
+            r.falta
+        );
+        let a = r.solucao.ponto(A).expect("A");
+        assert!(a[0].hypot(a[1]) <= 1e-6, "A preso fica onde está: {a:?}");
+    }
+}

@@ -88,3 +88,25 @@ fn an_underconstrained_point_is_free() {
         "a escada é sub-restringida"
     );
 }
+
+#[test]
+fn symmetry_already_makes_the_pair_perpendicular_to_the_axis() {
+    use ph2d_vec_constraints::Folha;
+    use ph2d_vec_scene::cad::{Lei, PontoCad, RegraCad, SegCad};
+    use ph2d_vec_scene::{VecPath, VecVertex, VertId, Xform};
+    let mut p = VecPath {
+        id: 1,
+        verts: [[0.0, 0.0], [0.0, 10.0], [-3.0, 4.0], [3.0, 4.0]]
+            .map(VecVertex::corner)
+            .to_vec(),
+        ..VecPath::default()
+    };
+    p.normaliza_ids();
+    let v = |i| PontoCad::Vert(1, VertId(i));
+    let regras = [
+        RegraCad::nova(Lei::Simetrico(v(3), v(4), SegCad(v(1), v(2)))),
+        RegraCad::nova(Lei::Perpendicular(SegCad(v(3), v(4)), SegCad(v(1), v(2)))),
+    ];
+    let e = estado(&Folha::new([(&p, Xform::IDENTITY)]), &regras);
+    assert_eq!(e.regras, vec![EstadoRegra::Ok, EstadoRegra::Redundante]);
+}

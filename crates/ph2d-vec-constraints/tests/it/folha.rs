@@ -132,3 +132,33 @@ fn a_rule_on_an_ellipse_or_a_missing_vertex_has_no_target() {
         vec![EstadoRegra::SemAlvo, EstadoRegra::SemAlvo, EstadoRegra::Ok]
     );
 }
+
+#[test]
+fn a_path_whose_handle_leaves_the_tangent_is_not_a_circle() {
+    let mut c = ellipse([0.0, 0.0], 20.0, 20.0);
+    c.id = 2;
+    c.normaliza_ids();
+    assert!(ph2d_vec_constraints::circulo_de(&c, Xform::IDENTITY).is_some());
+    c.verts[0].out_handle[0] += 3.0;
+    assert!(ph2d_vec_constraints::circulo_de(&c, Xform::IDENTITY).is_none());
+    let regras = [RegraCad::nova(Lei::Raio(2, 5.0))];
+    let r = resolve(&Folha::new([(&c, Xform::IDENTITY)]), &regras, None, None);
+    assert_eq!(r.sem_alvo, vec![0]);
+}
+
+#[test]
+fn a_vertex_of_a_path_used_as_a_circle_is_not_a_loose_point() {
+    let mut c = ellipse([0.0, 0.0], 20.0, 20.0);
+    c.id = 2;
+    c.normaliza_ids();
+    let regras = [
+        RegraCad::nova(Lei::Fixo(PontoCad::Vert(2, VertId(1)), [20.0, 0.0])),
+        RegraCad::nova(Lei::Raio(2, 30.0)),
+    ];
+    let r = resolve(&Folha::new([(&c, Xform::IDENTITY)]), &regras, None, None);
+    assert_eq!(
+        r.sem_alvo,
+        vec![0],
+        "o vértice de um círculo é do datum, não um ponto solto"
+    );
+}

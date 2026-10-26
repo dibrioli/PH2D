@@ -21,6 +21,8 @@ pub(super) fn default_panel_visibility() -> std::collections::BTreeMap<&'static 
     map.insert("macros", false);
     // O painel PIXEL (ADR-0192) nasce FECHADO: abre ao entrar em Pixel Sprite ▸ Edit.
     map.insert(PANEL_PIXEL, false);
+    // A linha do tempo do Pixel (P4) também: abre e fecha com o Draw, como o PIXEL.
+    map.insert(PANEL_PIXEL_TIMELINE, false);
     map
 }
 
@@ -38,6 +40,8 @@ pub const PANEL_PHYSICS: &str = "physics";
 /// O painel PIXEL (ADR-0192) — o `Panel::ID` da `ph2d-panel-pixel-tools`, e a chave que a família
 /// Pixel Art, o botão do chrome e o menu escrevem/leem. Segue o nome da crate (o censo do binário).
 pub const PANEL_PIXEL: &str = "pixel_tools";
+/// A linha do tempo do Pixel (camadas × frames, P4) — o `Panel::ID` da `ph2d-panel-pixel-timeline`.
+pub const PANEL_PIXEL_TIMELINE: &str = "pixel_timeline";
 
 /// Canonical `&'static str` for known panel ids — keeps the
 /// visibility HashMap keys stable across calls without leaking.
@@ -55,6 +59,7 @@ pub(super) fn canonical_panel_id(id: &str) -> Option<&'static str> {
         "tags" => Some("tags"),
         "macros" => Some("macros"),
         PANEL_PIXEL => Some(PANEL_PIXEL),
+        PANEL_PIXEL_TIMELINE => Some(PANEL_PIXEL_TIMELINE),
         _ => None,
     }
 }

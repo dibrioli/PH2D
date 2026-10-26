@@ -12,6 +12,9 @@ use ph2d_tool_registry::hash_node_id;
 /// `Sprite.size` against the current `ProjectSettings.pixels_per_meter`.
 pub const INSP_RENDER_SOURCE_REIMPORT: NodeId = hash_node_id("insp_render_source_reimport");
 
+/// ⭐ «Make it Animated» — o botão do aviso «imagem animada num bloco que repete» (plano GEF 13 D5).
+pub const INSP_IMAGE_MAKE_ANIMATED: NodeId = hash_node_id("insp_image_make_animated");
+
 /// W2 Sprite Inspector v2: logical Flip H / Flip V checkboxes in the
 /// Render Source section. Toggling dispatches an
 /// `EditorAction::InspectorSpriteEdit` with `SpriteFieldEdit::FlipX/FlipY`.

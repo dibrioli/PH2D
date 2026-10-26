@@ -8,7 +8,8 @@
 //! - A textura sobe uma vez por imagem ([`upload`], na fase do quadro que tem o renderer) e vive até
 //!   ao fim da corrida: o rebobinar devolve-as todas. O tecto é a própria biblioteca — uma textura por
 //!   imagem DISTINTA que um script nomeou nessa corrida, `w × h × 4` bytes (+⅓ das mips) cada.
-//! - O quad continua do tamanho autorado (`Sprite.size`), como o largar de uma imagem no editor.
+//! - ⭐ A MESMA lei da troca no editor (plano GEF 13 D6): quem chama o [`upload`] dá a [`OverrideLaw`] — a
+//!   célula do atlas (sem subir cópia), o tamanho e o corte da imagem. Sem lei, a imagem inteira no quad autorado.
 
 use crate::asset_index_build::texture_of;
 use bevy_ecs::prelude::{Component, World};
@@ -24,14 +25,38 @@ use std::collections::BTreeMap;
 /// O nome da propriedade (`ph2d_script::api_table::RUNTIME_PROPERTIES`).
 pub const NAME: &str = "sprite.image";
 
-/// ⭐ A imagem que um script pôs nesta sprite. `texture_id == 0` = ainda por subir.
-#[derive(Component, Clone, Copy, Debug, PartialEq, Eq)]
+/// ⭐ A imagem que um script pôs nesta sprite. Por resolver = sem textura própria e sem célula do atlas.
+#[derive(Component, Clone, Copy, Debug, PartialEq)]
 pub struct ImageOverride {
     pub asset: AssetId,
     pub texture_id: u32,
     pub premultiplied: bool,
     pub dims: (u32, u32),
+    /// O que a lei da troca decidiu para esta sprite (`None` = a imagem inteira, no quad autorado).
+    pub law: Option<OverrideLaw>,
 }
+
+impl ImageOverride {
+    /// Pronta a desenhar: subida, ou numa célula do atlas.
+    #[must_use]
+    pub fn ready(&self) -> bool {
+        self.texture_id != 0 || self.law.is_some_and(|l| l.atlas_key.is_some())
+    }
+}
+
+/// ⭐ A decisão da porta da troca (`ph2d_app_sprite_anim::image_choice::override_law`) para um override.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct OverrideLaw {
+    /// A célula do atlas que já tem a imagem — sem cópia.
+    pub atlas_key: Option<u32>,
+    /// O tamanho do quad (a escala do objecto fica, o tamanho segue a imagem).
+    pub size: [f32; 2],
+    /// O corte da imagem e a célula a mostrar.
+    pub grid: SpriteGrid,
+}
+
+/// Quem decide a lei de um override: o mundo, a sprite, a imagem.
+pub type Decide<'a> = dyn FnMut(&World, Entity, AssetId) -> Option<OverrideLaw> + 'a;
 
 /// Os nomes da biblioteca que o script vê neste quadro — calculados só se um script os pedir.
 pub struct ImageLibrary<'a> {
@@ -159,6 +184,7 @@ pub(crate) fn set(
                 texture_id: 0,
                 premultiplied: false,
                 dims: (0, 0),
+                law: None,
             });
         }
         Some(_) => {}
@@ -166,9 +192,8 @@ pub(crate) fn set(
     Ok(())
 }
 
-/// ⭐ O que a sprite desenha: o override (já subido) pinta a imagem INTEIRA — sem região, sem a célula
-/// da grelha nem a folha aberta. Sob a pré-visualização de uma ferramenta (`previewing`), a
-/// ferramenta ganha.
+/// ⭐ O que a sprite desenha: o override pronto pinta a imagem pela lei dele (a célula do corte da imagem), sem
+/// região nem a folha aberta. Sob a pré-visualização de uma ferramenta (`previewing`), a ferramenta ganha.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct SpriteCut {
     pub image: Option<ImageOverride>,
@@ -182,7 +207,7 @@ pub struct SpriteCut {
 pub fn cut(world: &World, entity: Entity, previewing: bool) -> SpriteCut {
     let image = world
         .get::<ImageOverride>(entity)
-        .filter(|o| o.texture_id != 0 && !previewing)
+        .filter(|o| o.ready() && !previewing)
         .copied();
     let authored = image.is_none();
     let sheet_grid = world
@@ -195,7 +220,10 @@ pub fn cut(world: &World, entity: Entity, previewing: bool) -> SpriteCut {
             .get::<SpriteRegion>(entity)
             .copied()
             .filter(|_| authored),
-        grid: sheet_grid.unwrap_or(SpriteGrid::SINGLE),
+        grid: match image {
+            Some(o) => o.law.map_or(SpriteGrid::SINGLE, |l| l.grid),
+            None => sheet_grid.unwrap_or(SpriteGrid::SINGLE),
+        },
         sheet_grid,
     }
 }
@@ -211,9 +239,27 @@ thread_local! {
     static TEXTURES: RefCell<Textures> = RefCell::new(Textures::default());
 }
 
-/// ⭐ **Uma vez por quadro, antes do extract**: devolve as texturas de uma corrida que acabou e sobe as
-/// imagens que um script acabou de pôr (uma vez por imagem).
-pub fn upload(renderer: &mut SpriteRenderer, db: &AssetDb, sim: &mut SimWorld) {
+/// ⭐ **Uma vez por quadro, antes do extract**: devolve as texturas de uma corrida que acabou, decide a lei de
+/// cada imagem que um script acabou de pôr e sobe as que não estão no atlas (uma vez por imagem).
+pub fn upload(
+    renderer: &mut SpriteRenderer,
+    db: &AssetDb,
+    sim: &mut SimWorld,
+    decide: &mut Decide<'_>,
+) {
+    let w = sim.world_mut();
+    let por_decidir: Vec<(Entity, AssetId)> = w
+        .query::<(Entity, &ImageOverride)>()
+        .iter(w)
+        .filter(|(_, o)| o.law.is_none() && o.texture_id == 0)
+        .map(|(e, o)| (e, o.asset))
+        .collect();
+    for (e, asset) in por_decidir {
+        let law = decide(w, e, asset);
+        if let Some(mut o) = w.get_mut::<ImageOverride>(e) {
+            o.law = law;
+        }
+    }
     TEXTURES.with(|t| {
         let mut t = t.borrow_mut();
         if std::mem::take(&mut t.release) {
@@ -224,7 +270,7 @@ pub fn upload(renderer: &mut SpriteRenderer, db: &AssetDb, sim: &mut SimWorld) {
         let w = sim.world_mut();
         let mut q = w.query::<&mut ImageOverride>();
         for mut o in q.iter_mut(w) {
-            if o.texture_id != 0 {
+            if o.ready() {
                 continue;
             }
             let up = match t.by_asset.get(&o.asset) {

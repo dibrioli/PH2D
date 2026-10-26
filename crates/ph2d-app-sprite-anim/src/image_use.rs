@@ -2,12 +2,16 @@
 //! D4/D5): parada · repetida (bloco, fundo) · animada. O Inspector mostra só os campos do uso; uma imagem
 //! animada num bloco que repete é um conflito que o PH2D diz (a Unity corta em silêncio).
 
-use crate::image_choice::ImageFacts;
+use crate::image_choice::{ImageFacts, library_facts};
+use ph2d_app_components::asset_index_build::texture_of;
+use ph2d_asset::{AssetDb, AssetId};
 use ph2d_ecs::{
     AnimationTag, Entity, RepeatMode, ScrollRepeat, SpriteAnimations, SpriteAnimator, SpriteGrid,
-    TextureRepeat, UvTransform, World,
+    SpritePixels, TextureRepeat, UvTransform, World,
 };
+use ph2d_editor_core::InspectorImageUse;
 use ph2d_render::Sprite;
+use std::collections::BTreeMap;
 
 /// Para que serve a imagem neste objecto.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -109,6 +113,92 @@ pub fn make_animated(world: &mut World, e: Entity, facts: ImageFacts) -> bool {
         animator,
     ));
     true
+}
+
+/// A imagem da biblioteca que `e` mostra e os factos dela (o corte dos utilizadores incluído).
+fn shown_facts(
+    world: &World,
+    e: Entity,
+    db: &AssetDb,
+    atlas: &BTreeMap<u32, AssetId>,
+    ppm: f32,
+) -> Option<ImageFacts> {
+    let id = texture_of(world.get::<SpritePixels>(e), world.get::<Sprite>(e), atlas)?;
+    library_facts(world, id, db, atlas, ppm)
+}
+
+/// ⭐ O que o Inspector publica de `e` (plano GEF 13 D4): o uso e quantas células tem a imagem (sem imagem da
+/// biblioteca — uma pintura, um recorte — conta a grelha do objecto).
+#[must_use]
+pub fn inspector_use(
+    world: &World,
+    e: Entity,
+    db: &AssetDb,
+    atlas: &BTreeMap<u32, AssetId>,
+    ppm: f32,
+) -> (InspectorImageUse, u32) {
+    let uso = match image_use(world, e) {
+        Some(ImageUse::Animated) => InspectorImageUse::Animated,
+        Some(ImageUse::Repeated) => InspectorImageUse::Repeated,
+        _ => InspectorImageUse::Still,
+    };
+    let n = match shown_facts(world, e, db, atlas, ppm) {
+        Some(f) => cells(f),
+        None => world
+            .get::<SpriteGrid>(e)
+            .map_or(1, |g| g.hframes.max(1) * g.vframes.max(1)),
+    };
+    (uso, n)
+}
+
+/// [`make_animated`] com os factos da imagem que `e` mostra — o braço do botão do Inspector.
+pub fn make_shown_image_animated(
+    world: &mut World,
+    e: Entity,
+    db: &AssetDb,
+    atlas: &BTreeMap<u32, AssetId>,
+    ppm: f32,
+) -> bool {
+    shown_facts(world, e, db, atlas, ppm).is_some_and(|f| make_animated(world, e, f))
+}
+
+/// ⭐ **O corte é da IMAGEM** (plano GEF 13 D3, o *importer* da Unity): depois de editar colunas/linhas em `e`,
+/// todo objecto que mostra a MESMA imagem (a mesma célula do atlas, ou os mesmos píxeis próprios) passa ao
+/// mesmo corte; a célula de cada um fica dentro da grelha. Devolve quantos mudaram.
+pub fn recut_users(world: &mut World, e: Entity) -> usize {
+    let Some(s) = world.get::<Sprite>(e).copied() else {
+        return 0;
+    };
+    let g = world.get::<SpriteGrid>(e).copied().unwrap_or(SpriteGrid::SINGLE);
+    let px = world.get::<SpritePixels>(e).copied();
+    let mut q = world.query::<(Entity, &Sprite, Option<&SpritePixels>, Option<&SpriteGrid>)>();
+    let outros: Vec<(Entity, u32)> = q
+        .iter(world)
+        .filter(|(o, os, opx, _)| {
+            *o != e
+                && match (px, opx) {
+                    (Some(a), Some(b)) => a == **b,
+                    (None, None) => {
+                        matches!(s.source, ph2d_render::SpriteSource::Atlas { .. })
+                            && os.source == s.source
+                    }
+                    _ => false,
+                }
+        })
+        .filter(|(_, _, _, og)| {
+            og.map_or((1, 1), |x| (x.hframes, x.vframes)) != (g.hframes, g.vframes)
+        })
+        .map(|(o, _, _, og)| (o, og.map_or(0, |x| x.frame)))
+        .collect();
+    let n = (g.hframes.max(1) * g.vframes.max(1)).max(1);
+    for (o, frame) in &outros {
+        world.entity_mut(*o).insert(SpriteGrid {
+            hframes: g.hframes,
+            vframes: g.vframes,
+            frame: (*frame).min(n - 1),
+        });
+    }
+    outros.len()
 }
 
 #[cfg(test)]

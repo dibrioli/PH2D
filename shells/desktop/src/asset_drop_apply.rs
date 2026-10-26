@@ -94,6 +94,31 @@ impl crate::App {
         }
     }
 
+    /// ⭐ **Make it Animated** — o botão do aviso «imagem animada num bloco» (plano GEF 13 D5).
+    pub(crate) fn make_image_animated(&mut self, entity_bits: u64) {
+        let Some(gfx) = self.gfx.as_mut() else {
+            return;
+        };
+        let ppm = gfx
+            .hero_screen
+            .as_ref()
+            .map_or(ph2d_editor_core::project::DEFAULT_PIXELS_PER_METER, |h| {
+                h.project.pixels_per_meter
+            });
+        let feito = ph2d_app_sprite_anim::image_use::make_shown_image_animated(
+            gfx.sim.world_mut(),
+            ph2d_ecs::Entity::from_bits(entity_bits),
+            &gfx.asset_db,
+            &gfx.atlas_asset_map,
+            ppm,
+        );
+        gfx.toasts.push(if feito {
+            ph2d_editor_core::Toast::success(tr("shell.asset_drop_apply.now_animated"))
+        } else {
+            ph2d_editor_core::Toast::warning(tr("shell.asset_drop_apply.could_not_animate"))
+        });
+    }
+
     /// **Nasce uma sprite nova, com esta imagem, no ponto.**
     pub(super) fn drop_spawn_image(&mut self, asset: [u8; 32], world: [f32; 2]) {
         let Some(img) = self.image_of(asset) else {

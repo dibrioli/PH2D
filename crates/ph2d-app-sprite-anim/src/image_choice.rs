@@ -159,8 +159,8 @@ pub fn factory_facts(art: &ph2d_render::FactoryArt) -> ImageFacts {
 /// ⭐ O corte de uma imagem importada é o que os objectos que a mostram levam (plano GEF 13 D3: re-cortar num
 /// re-corta todos, como no *importer* da Unity) — o primeiro, pela ordem do mundo, com mais de uma célula.
 #[must_use]
-pub fn cut_of_users(world: &mut World, id: AssetId, atlas: &BTreeMap<u32, AssetId>) -> Option<Slicing> {
-    let mut q = world.query::<(Option<&SpritePixels>, &Sprite, &SpriteGrid)>();
+pub fn cut_of_users(world: &World, id: AssetId, atlas: &BTreeMap<u32, AssetId>) -> Option<Slicing> {
+    let mut q = world.try_query::<(Option<&SpritePixels>, &Sprite, &SpriteGrid)>()?;
     q.iter(world)
         .filter(|(_, _, g)| g.hframes.max(1) * g.vframes.max(1) > 1)
         .find(|(px, s, _)| {
@@ -209,7 +209,7 @@ pub fn image_facts(
 /// [`image_facts`] com o corte que os utilizadores de uma importada levam ([`cut_of_users`]).
 #[must_use]
 pub fn library_facts(
-    world: &mut World,
+    world: &World,
     id: AssetId,
     db: &AssetDb,
     atlas: &BTreeMap<u32, AssetId>,
@@ -242,7 +242,7 @@ pub fn choose_library_image(
     id: AssetId,
 ) -> Result<(), String> {
     let no_image = || ph2d_i18n::tr("app.sprite_anim.image_choice.not_an_image").to_owned();
-    let new = library_facts(sim.world_mut(), id, db, atlas, ppm).ok_or_else(no_image)?;
+    let new = library_facts(sim.world(), id, db, atlas, ppm).ok_or_else(no_image)?;
     let w = sim.world();
     let old = ph2d_app_components::asset_index_build::texture_of(
         w.get::<SpritePixels>(e),
@@ -267,6 +267,65 @@ pub fn choose_library_image(
     } else {
         Err(ph2d_i18n::tr("app.sprite_anim.image_choice.not_a_sprite").to_owned())
     }
+}
+
+/// ⭐ **A porta do SCRIPT** (`sprite.image`, plano GEF 13 D6): a MESMA lei sobre uma cópia da sprite `e`, sem
+/// tocar no documento — o override da corrida leva a célula do atlas, o tamanho e o corte que a troca no editor
+/// daria. Num objecto que repete o tamanho fica o autorado (o ladrilho não viaja no override).
+#[must_use]
+pub fn override_law(
+    world: &World,
+    e: Entity,
+    id: AssetId,
+    db: &AssetDb,
+    atlas: &BTreeMap<u32, AssetId>,
+    ppm: f32,
+) -> Option<ph2d_app_components::script_image::OverrideLaw> {
+    let new = library_facts(world, id, db, atlas, ppm)?;
+    let sprite = *world.get::<Sprite>(e)?;
+    let old = ph2d_app_components::asset_index_build::texture_of(
+        world.get::<SpritePixels>(e),
+        Some(&sprite),
+        atlas,
+    )
+    .and_then(|old| image_facts(old, db, atlas, ppm));
+    let mut copia = World::new();
+    let c = copia.spawn(sprite).id();
+    let mut ce = copia.entity_mut(c);
+    if let Some(g) = world.get::<SpriteGrid>(e) {
+        ce.insert(*g);
+    }
+    if let Some(a) = world.get::<SpriteAnimations>(e) {
+        ce.insert(a.clone());
+    }
+    if let Some(r) = world.get::<ScrollRepeat>(e) {
+        ce.insert(*r);
+    }
+    if let Some(u) = world.get::<UvTransform>(e) {
+        ce.insert(*u);
+    }
+    if let Some(r) = world.get::<TextureRepeat>(e) {
+        ce.insert(*r);
+    }
+    let atlas_key = atlas.iter().find(|(_, a)| **a == id).map(|(k, _)| *k);
+    let source = match atlas_key {
+        Some(key) => ImageSource::Atlas { key },
+        None => ImageSource::Individual {
+            texture_id: 0,
+            pixels: id,
+        },
+    };
+    choose_image(&mut copia, c, old, source, new);
+    let repete = crate::image_use::image_use(world, e) == Some(crate::image_use::ImageUse::Repeated);
+    Some(ph2d_app_components::script_image::OverrideLaw {
+        atlas_key,
+        size: if repete {
+            sprite.size
+        } else {
+            copia.get::<Sprite>(c)?.size
+        },
+        grid: copia.get::<SpriteGrid>(c).copied().unwrap_or(SpriteGrid::SINGLE),
+    })
 }
 
 /// ⭐ **Uma sprite nova com a imagem `id` da biblioteca, no ponto `at`** — a queda no canvas. Uma sprite parada

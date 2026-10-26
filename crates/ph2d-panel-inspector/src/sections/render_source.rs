@@ -154,23 +154,18 @@ pub(crate) fn paint_render_source_section(
         w,
         cur_y,
     );
-    if crate::state::current_inspector_anim().is_none() {
-        let sec = super::sprite_pose::seccao(text_system);
-        cur_y = super::sprite_pose::paint_sheet_grid_rows(
-            scene,
-            text_system,
-            theme,
-            hit_index,
-            store,
-            x,
-            w,
-            cur_y,
-            info.hframes,
-            info.vframes,
-            true,
-            sec,
-        );
-    }
+    // ⭐ Os quadros só onde o USO os pede (plano GEF 13 D4).
+    cur_y = super::image_use_rows::paint_image_use_rows(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        cur_y,
+        info,
+    );
     let btn_rect = ph2d_editor_core::property_row::caixa_do_botao(
         text_system,
         x,

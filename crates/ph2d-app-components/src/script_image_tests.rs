@@ -182,6 +182,7 @@ fn o_extract_desenha_a_imagem_inteira_so_depois_de_subida() {
         texture_id: 0,
         premultiplied: false,
         dims: (0, 0),
+        law: None,
     };
     let e = w.spawn((grelha, regiao, o)).id();
     let autorada = cut(&w, e, false);

@@ -152,6 +152,13 @@ pub(super) fn sprite_info(
         let emissive = emissive_of(world, entity);
         // A grelha e a janela desta sprite (ADR-0164 F1 passo 6).
         let grid = grid_of(world, entity);
+        let (image_use, image_cells) = ph2d_app_sprite_anim::image_use::inspector_use(
+            world,
+            entity,
+            asset_db,
+            atlas_asset_map,
+            hero.project.pixels_per_meter,
+        );
         let region = world.get::<ph2d_ecs::SpriteRegion>(entity).copied();
         let mut mixed = if inspector_selection.len() > 1 {
             compute_sprite_mixed(world, inspector_selection, bits)
@@ -305,6 +312,8 @@ pub(super) fn sprite_info(
             hframes: grid.hframes,
             vframes: grid.vframes,
             frame: grid.frame,
+            image_use,
+            image_cells,
             tint: sprite.tint,
             self_tint: sprite.self_tint,
             per_corner_tint: corner_tint_of(world, entity),

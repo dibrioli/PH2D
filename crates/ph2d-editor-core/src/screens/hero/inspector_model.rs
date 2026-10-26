@@ -88,6 +88,11 @@ pub struct InspectorSpriteInfo {
     pub vframes: u32,
     /// Active sheet frame index (`< hframes*vframes`).
     pub frame: u32,
+    /// ⭐ **Para que serve a imagem neste objecto** (plano GEF 13 D4): o painel mostra só os campos do uso.
+    pub image_use: InspectorImageUse,
+    /// Quantas células tem a IMAGEM (o corte é dela, plano GEF 13 D3) — `> 1` num bloco que repete é o aviso
+    /// «Make it Animated».
+    pub image_cells: u32,
     /// Inherited modulate (`Sprite::tint`, cascades to children).
     /// Linear RGBA `[0, 1]`. Edited via the Color & Tint section's
     /// Tint swatch (W2.T2.7); renders today via `RenderInstance.tint`.
@@ -387,6 +392,18 @@ pub enum VisibilityFieldEdit {
     RectY(f32),
     RectW(f32),
     RectH(f32),
+}
+
+/// ⭐ O USO da imagem num objecto (plano GEF 13 D4; a lei é `ph2d_app_sprite_anim::image_use`).
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
+pub enum InspectorImageUse {
+    /// Uma imagem (ou uma célula dela) parada: o corte da imagem e a célula a mostrar.
+    #[default]
+    Still,
+    /// A imagem repete-se (bloco, fundo): nenhum campo de quadros.
+    Repeated,
+    /// As células tocam: o cartão Animation mostra a grelha.
+    Animated,
 }
 
 /// Mirror of `ph2d_render::SpriteSource` that doesn't depend on

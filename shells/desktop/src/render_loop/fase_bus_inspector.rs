@@ -355,6 +355,9 @@ impl crate::App {
             EditorAction::ChooseImage { entity_bits, asset } => {
                 pd.choose_image = Some((entity_bits, asset));
             }
+            EditorAction::MakeImageAnimated { entity_bits } => {
+                pd.make_image_animated = Some(entity_bits);
+            }
             // ⭐⭐⭐ **Aplicar uma peça ACRESCENTADA** (F5.11). ⚠️ **ADIADO como o irmão
             // abaixo, e pela mesma família de razões:** ela precisa do registo de
             // componentes e dos documentos possuídos (a peça pode ser uma forma vetorial),

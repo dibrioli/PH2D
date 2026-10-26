@@ -111,6 +111,8 @@ fn sprite() -> InspectorSpriteInfo {
         tint_fill: false,
         hframes: 1,
         vframes: 1,
+        image_use: ph2d_editor_core::InspectorImageUse::Still,
+        image_cells: 1,
         frame: 0,
         tint: [1.0; 4],
         self_tint: [1.0; 4],

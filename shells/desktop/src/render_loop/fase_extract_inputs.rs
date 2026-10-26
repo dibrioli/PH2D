@@ -46,6 +46,7 @@ impl crate::App {
             atlas_asset_map: atlas,
             component_registry: reg,
             physics,
+            hero_screen,
             ..
         } = FrameGfx::of(gfx);
         painter_macros.segue(sim.world_mut());
@@ -90,8 +91,14 @@ impl crate::App {
                 painter_macros.reescreve(painter, &mut le, &mut escreve, &mut porta);
             }
         }
-        // A imagem que um script pôs (`sprite.image`) sobe antes do extract.
-        ph2d_app_components::script_image::upload(renderer, asset_db, sim);
+        // A imagem que um script pôs (`sprite.image`): a MESMA lei da troca, e sobe antes do extract.
+        let ppm = hero_screen.as_ref().map_or(
+            ph2d_editor_core::project::DEFAULT_PIXELS_PER_METER,
+            |h| h.project.pixels_per_meter,
+        );
+        ph2d_app_components::script_image::upload(renderer, asset_db, sim, &mut |w, e, id| {
+            ph2d_app_sprite_anim::image_choice::override_law(w, e, id, asset_db, atlas, ppm)
+        });
         let gravada = ph2d_app_macros::com(|m| m.sprite_gravada());
         use crate::hero_intents::texture_edit::read_sprite_straight as reta;
         // PRECISION-READONLY: a imagem atual (o Painter ligado, senão a sprite) só se compara (W7).

@@ -75,6 +75,7 @@ mod seam_physics;
 mod seam_player;
 mod seam_precision;
 mod seam_properties;
+mod seam_image_use;
 mod seam_render_source;
 mod seam_shake;
 mod seam_texture_slot;

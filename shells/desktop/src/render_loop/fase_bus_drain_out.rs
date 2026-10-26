@@ -552,6 +552,7 @@ pub(in crate::render_loop) struct DrainOut {
     // O seletor de imagem e a escolha dele (plano GEF 12).
     pub(in crate::render_loop) open_image_picker: Option<u64>,
     pub(in crate::render_loop) choose_image: Option<(u64, [u8; 32])>,
+    pub(in crate::render_loop) make_image_animated: Option<u64>,
     // ⭐ O pedido de renomear o VALOR de uma propriedade — `(receita, chave, valor)`.
     // ⭐ A entidade cujo campo de nome fechou neste quadro.
     pub(in crate::render_loop) physics_edits: Vec<(u64, ph2d_editor_core::PhysicsFieldEdit)>,

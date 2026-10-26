@@ -196,6 +196,10 @@ fn a_mesma_imagem_pelas_portas_todas() {
     for key in [PLATFORM_TILE_KEY, FLAG_SHEET_KEY, ph2d_render::HILLS_TILE_KEY, ph2d_render::FIRST_IMPORT_KEY] {
         let id = b.de(key);
         let mut sim = SimWorld::new();
+        // O script decide sobre a sprite ANTES da troca (o override não toca no documento).
+        let pelo_script = parada(&mut sim);
+        let lei = crate::image_choice::override_law(sim.world(), pelo_script, id, &b.db, &b.atlas, PPM)
+            .expect("script");
         let pela_linha = parada(&mut sim);
         choose_library_image(&mut sim, &mut sem_placa, &b.db, &b.atlas, PPM, pela_linha, id)
             .expect("linha");
@@ -211,6 +215,16 @@ fn a_mesma_imagem_pelas_portas_todas() {
             )
         };
         assert_eq!(ver(pela_linha), ver(pelo_canvas), "chave {key}");
+        let s = w.get::<Sprite>(pela_linha).unwrap();
+        assert_eq!(
+            (Some(SpriteSource::Atlas { key: lei.atlas_key.expect("no atlas") }), lei.size, lei.grid),
+            (
+                Some(s.source),
+                s.size,
+                w.get::<SpriteGrid>(pela_linha).copied().unwrap_or(SpriteGrid::SINGLE)
+            ),
+            "script, chave {key}"
+        );
     }
 }
 
@@ -250,4 +264,41 @@ fn um_bloco_gravado_antes_abre_com_o_mesmo_desenho() {
             assert_eq!(tira[o..o + 4], imagem[n..n + 4], "({x},{y})");
         }
     }
+}
+
+/// ⭐ O corte é da IMAGEM (plano GEF 13 D3): editar colunas/linhas num objecto re-corta todos os que mostram a
+/// mesma imagem — e a imagem nova que cai noutro objecto já vem cortada.
+#[test]
+fn re_cortar_um_re_corta_todos_os_que_mostram_a_imagem() {
+    let b = biblioteca();
+    let id = b.de(ph2d_render::FIRST_IMPORT_KEY);
+    let mut sim = SimWorld::new();
+    let um = parada(&mut sim);
+    let outro = parada(&mut sim);
+    let controlo = parada(&mut sim);
+    for e in [um, outro] {
+        choose_library_image(&mut sim, &mut sem_placa, &b.db, &b.atlas, PPM, e, id).expect("escolhe");
+    }
+    let quatro = SpriteGrid {
+        hframes: 4,
+        vframes: 2,
+        frame: 0,
+    };
+    sim.world_mut().entity_mut(um).insert(quatro);
+    assert_eq!(recut_users(sim.world_mut(), um), 1);
+    let w = sim.world();
+    assert_eq!(w.get::<SpriteGrid>(outro).copied(), Some(quatro));
+    assert!(w.get::<SpriteGrid>(controlo).is_none(), "o quadrado branco não mostra a imagem");
+    // A porta já sabe o corte: um terceiro objecto recebe a imagem cortada.
+    let novo = place_library_image(&mut sim, &mut sem_placa, &b.db, &b.atlas, PPM, [0.0; 2], "n", id)
+        .expect("larga");
+    let g = sim.world().get::<SpriteGrid>(novo).copied().expect("cortada");
+    assert_eq!((g.hframes, g.vframes), (4, 2));
+    assert_eq!(b.factos(id).slicing, None, "a biblioteca sozinha não guarda o corte (D3)");
+    assert_eq!(
+        crate::image_choice::library_facts(sim.world(), id, &b.db, &b.atlas, PPM)
+            .and_then(|f| f.slicing)
+            .map(|s| s.grid),
+        Some([4, 2])
+    );
 }

@@ -554,6 +554,12 @@ fn populate_render_strategy(store: &mut WidgetStore) {
             state: ButtonState::Normal,
         },
     );
+    store.register(
+        crate::ids::INSP_IMAGE_MAKE_ANIMATED,
+        InteractiveState::Button {
+            state: ButtonState::Normal,
+        },
+    );
 }
 
 fn populate_visibility_editor(store: &mut WidgetStore) {

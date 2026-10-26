@@ -65,10 +65,17 @@ pub(super) fn sprite(
     // other instance field (transform, size, anchor,
     // tint, z) is identical so the override paints the
     // SAME quad the source sprite would have.
-    // A imagem que um script pôs a correr (`sprite.image`): inteira, sem região nem grelha.
+    // A imagem que um script pôs a correr (`sprite.image`): pela lei da troca (plano GEF 13 D6), sem região.
     let cut = script_image::cut(sim, sim_entity, override_for_entity.is_some());
+    let law = cut.image.and_then(|s| s.law);
     let (atlas_uv, texture_id, premultiplied_flag) = if let Some(ov) = override_for_entity {
         ([0.0, 0.0, 1.0, 1.0], ov.texture_id, ov.premultiplied)
+    } else if let Some(key) = law.and_then(|l| l.atlas_key) {
+        (
+            atlas.region_uv(key),
+            ph2d_render::RenderInstance::ATLAS_TEXTURE_ID,
+            false,
+        )
     } else if let Some(s) = cut.image {
         ([0.0, 0.0, 1.0, 1.0], s.texture_id, s.premultiplied)
     } else {
@@ -85,6 +92,7 @@ pub(super) fn sprite(
     let quad_size = override_for_entity
         .and(cut.sheet_grid)
         .and_then(|g| crate::render_loop::sim_extract_sheet::unfolded_quad(spr, g))
+        .or(law.map(|l| l.size))
         .unwrap_or(spr.size);
     let quad_anchor = spr.resolve_anchor(pixels_per_meter);
     // Record this sprite for the sort pipeline; `z_order`
@@ -114,7 +122,11 @@ pub(super) fn sprite(
         }
         ph2d_render::SpriteSource::CookedTexture { .. } => renderer.cooked().dims(texture_id),
     };
-    let src_dims = cut.image.map_or(src_dims, |s| Some(s.dims));
+    let src_dims = match (law.and_then(|l| l.atlas_key), cut.image) {
+        (Some(key), _) => atlas.region_px(key),
+        (None, Some(s)) => Some(s.dims),
+        (None, None) => src_dims,
+    };
     // ADR-0164 F1 passo 6: janela e grelha são componentes; ausentes = a
     // textura inteira e uma célula, que é o que os campos v4 significavam.
     let (region, grid) = (cut.region, cut.grid);

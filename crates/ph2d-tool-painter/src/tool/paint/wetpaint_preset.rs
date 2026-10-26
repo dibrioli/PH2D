@@ -19,6 +19,8 @@ use std::collections::BTreeMap;
 /// `pigmentPerDab` de cada preset, dono 10/10: «o correto para clarear não seria usar pigment?»).
 pub const OPACIDADE_DE_FABRICA: f32 = 1.0;
 
+#[cfg(test)]
+mod corpo_da_agua_tests;
 mod ferramentas;
 pub(in crate::tool::paint) mod json;
 #[cfg(test)]
@@ -448,12 +450,12 @@ impl PainterTool {
                 l.limpa(v),
             );
         }
-        // Uma ferramenta da água (dono 25/10) escreve só os knobs dela e os da mão: os outros (o papel, as cerdas
-        // do motor, a física) são do Pincel da água, que ela partilha. O corpo (pincel, máscaras, mão, tamanho,
+        // Uma ferramenta da água (dono 25/10) escreve só o CORPO dela (os knobs que o leitor dela lê) e os da mão: a
+        // tela (a física, o papel, os efeitos da água) é partilhada. O corpo (pincel, máscaras, mão, knobs, tamanho,
         // largura) vai ao slot dela.
         let da_agua = ferramenta_do_preset(prm).ferramenta_da_agua();
         if let Some(t) = da_agua {
-            for knob in WetKnobs::so_da_ferramenta(t).chain(super::mao::knobs_da_mao()) {
+            for knob in WetKnobs::do_corpo(t).chain(super::mao::knobs_da_mao()) {
                 self.paint.wetpaint.knobs.set(knob, k.get(knob));
             }
             // A largura prometida é do corpo (cada ferramenta tem a sua, `switch_brush_slot`).

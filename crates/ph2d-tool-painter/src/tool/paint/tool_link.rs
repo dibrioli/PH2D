@@ -39,6 +39,12 @@ impl PainterTool {
         for k in super::mao::knobs_da_mao() {
             w.knobs.knobs[k as usize] = w.knobs_por_slot[new][k as usize];
         }
+        // …e o corpo de uma ferramenta da água, na ida e na volta (os outros slots partilham-no, como antes).
+        if [old, new].iter().any(|s| *s >= super::WET_TOOL_SLOT0) {
+            for k in super::WetKnobs::dos_corpos() {
+                w.knobs.knobs[k as usize] = w.knobs_por_slot[new][k as usize];
+            }
+        }
         // Falloff provenance for the freshly loaded brush: any value the arming TABLE can install
         // (factory Smooth + Smoother/Sphere/Pow4) is presumed armable, so re-entering a mode keeps
         // its verbs re-armable; anything else in a slot is presumed the artist's. The ambiguity —

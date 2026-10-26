@@ -462,9 +462,11 @@ fn faixa_da_ferramenta(t: &mut PainterTool, cena: &CenaDoPreview, x0: f32, x1: f
     );
     let (forca, knobs) = (t.paint.brush.strength, t.paint.wetpaint.knobs);
     let (fluxo, soma) = (t.paint.brush.flow, t.paint.brush.accumulate);
+    let grao = t.paint.brush.texture.kind;
     // A faixa é tinta CHEIA (a força da borracha macia, o pigmento da aguarela da ferramenta, o fluxo da velatura de um
-    // efeito, a pintariam pálida).
+    // efeito, a pintariam pálida) — e sem o grão do pincel (o grão preso à tela morde à Strength 1 desde 25/10).
     t.paint.brush.strength = 1.0;
+    t.paint.brush.texture.kind = ph2d_painter_brush::TextureKind::None;
     (t.paint.brush.flow, t.paint.brush.accumulate) = (1.0, false);
     // No Wet: os knobs do pincel SEM preset (o Wet Round: as cerdas dele), com pigmento e água de tinta de corpo.
     t.paint.wetpaint.knobs = WetKnobs::DEFAULT;
@@ -496,6 +498,7 @@ fn faixa_da_ferramenta(t: &mut PainterTool, cena: &CenaDoPreview, x0: f32, x1: f
     t.on_canvas_pointer(ponto([x1, cy], 1.0, PointerPhase::Up));
     t.paint.brush.radius_px = raio;
     t.paint.brush.strength = forca;
+    t.paint.brush.texture.kind = grao;
     (t.paint.brush.flow, t.paint.brush.accumulate) = (fluxo, soma);
     t.paint.wetpaint.knobs = knobs;
     t.paint.brush.blend = blend;

@@ -280,7 +280,74 @@ impl WetKnobs {
             .filter(move |(_, _, t, _)| *t == tool)
             .map(|&(_, knob, ..)| knob)
     }
+
+    /// O CORPO de `tool`: os knobs dela e os do pincel que o leitor dela lê ([`CORPO_DA_AGUA`]) — o que um preset
+    /// dela escreve e o slot dela guarda.
+    pub(crate) fn do_corpo(tool: WetTool) -> impl Iterator<Item = Knob> {
+        let corpo = CORPO_DA_AGUA
+            .iter()
+            .find(|(t, _)| *t == tool)
+            .map_or(&[][..], |(_, k)| *k);
+        Self::so_da_ferramenta(tool).chain(corpo.iter().copied())
+    }
+
+    /// Os knobs que trocam com o slot de uma ferramenta da água: o corpo de TODAS (cada slot guarda o seu).
+    pub(crate) fn dos_corpos() -> impl Iterator<Item = Knob> {
+        let mut todos: Vec<Knob> = WetTool::DO_TRILHO
+            .into_iter()
+            .flat_map(Self::do_corpo)
+            .collect();
+        todos.sort_by_key(|k| *k as usize);
+        todos.dedup();
+        todos.into_iter()
+    }
 }
+
+/// O corpo de cada ferramenta da água fora os knobs dela: os do pincel que mudam o traço dela e não a tela parada
+/// (medido, `corpo_da_agua_tests::o_corpo_de_cada_ferramenta_da_agua_e_o_que_ela_le`). A física da tela (Leveling,
+/// Capillary, Brake, Level Clamp, os efeitos da água) muda o traço dela também, mas muda a tela sem ela: é partilhada.
+pub(crate) const CORPO_DA_AGUA: [(WetTool, &[Knob]); 5] = [
+    (
+        WetTool::Smear,
+        &[CERDAS[0], CERDAS[1], CERDAS[2], CERDAS[3], CERDAS[4], CERDAS[5]],
+    ),
+    (
+        WetTool::Blend,
+        &[
+            CERDAS[0],
+            CERDAS[1],
+            CERDAS[2],
+            CERDAS[3],
+            CERDAS[4],
+            CERDAS[5],
+            Knob::PaperGate,
+            Knob::Spacing,
+            Knob::GateSaturation,
+        ],
+    ),
+    (
+        WetTool::Wet,
+        &[CERDAS[0], CERDAS[1], CERDAS[2], CERDAS[3], CERDAS[4], CERDAS[5], Knob::WaterPush],
+    ),
+    (
+        WetTool::Dry,
+        &[CERDAS[0], CERDAS[1], CERDAS[2], CERDAS[3], CERDAS[4], CERDAS[5], Knob::DryerEdge],
+    ),
+    (
+        WetTool::Blow,
+        &[CERDAS[0], CERDAS[1], CERDAS[2], CERDAS[3], CERDAS[4], CERDAS[5]],
+    ),
+];
+
+/// O carimbo de cerdas e a tinta que ele leva: o que as cinco lêem.
+const CERDAS: [Knob; 6] = [
+    Knob::Felt,
+    Knob::BristleCount,
+    Knob::BristleStrength,
+    Knob::BristleSize,
+    Knob::Intensity,
+    Knob::CapsuleSpacing,
+];
 
 /// Os knobs de cada ferramenta da água: o id do cartão, o knob, a ferramenta que o lê e o rótulo.
 const KNOBS_DA_FERRAMENTA: [(ph2d_a11y::NodeId, Knob, WetTool, &str); 5] = [

@@ -53,7 +53,11 @@ fn copy_point_follows_its_vertex_after_an_insert_before_it() {
     let mut drive = PreviewDrive::default();
     ph2d_app_constraints::quadro(&mut sim, &cena, &mut drive, None);
     assert_eq!(em(&sim, dono), [4.0, 0.0]);
-    assert_eq!(em(&sim, dono2), [2.0, 2.0], "o ponto de um buraco também prende");
+    assert_eq!(
+        em(&sim, dono2),
+        [2.0, 2.0],
+        "o ponto de um buraco também prende"
+    );
 
     // Um ponto novo ANTES do alvo (o que a caneta faz) — o gancho do undo dá-lhe id.
     cena.path_mut(caminho)

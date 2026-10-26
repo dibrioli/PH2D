@@ -64,7 +64,11 @@ fn a_repeated_id_keeps_the_first_and_a_foreign_id_raises_the_counter() {
     p.verts[9].id = VertId(50);
     p.normaliza_ids();
     assert_eq!(p.verts[3].id, VertId(4), "o 1.º fica");
-    assert_eq!(p.verts[4].id, VertId(51), "o duplicado ganha o seguinte ao 50");
+    assert_eq!(
+        p.verts[4].id,
+        VertId(51),
+        "o duplicado ganha o seguinte ao 50"
+    );
     assert_eq!(p.verts[9].id, VertId(50));
     assert_eq!(p.next_vert, 52);
 }
@@ -89,7 +93,10 @@ fn a_vertex_keeps_its_id_when_a_neighbour_is_deleted() {
     esperado.remove(2);
     assert_eq!(depois, esperado);
     assert_eq!(p.vert_by_id(quinto.0).unwrap().anchor, quinto.1);
-    assert_ne!(p.verts[4].anchor, quinto.1, "⛔ CONTROLO: o índice 4 já é outro ponto");
+    assert_ne!(
+        p.verts[4].anchor, quinto.1,
+        "⛔ CONTROLO: o índice 4 já é outro ponto"
+    );
     assert!(p.vert_by_id(ids[2]).is_none(), "o apagado sumiu");
     assert!(p.vert_by_id(VertId::NOVO).is_none());
 }

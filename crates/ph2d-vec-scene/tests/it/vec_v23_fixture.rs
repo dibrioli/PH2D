@@ -31,7 +31,11 @@ fn a_v23_scene_opens_with_ids_in_order() {
         .chain(&caixa.subpaths[0].verts)
         .map(|v| v.id.0)
         .collect();
-    assert_eq!(ids, (1..=7).collect::<Vec<_>>(), "o buraco continua a numeração");
+    assert_eq!(
+        ids,
+        (1..=7).collect::<Vec<_>>(),
+        "o buraco continua a numeração"
+    );
     assert_eq!(caixa.subpaths[0].verts[2].anchor, [20.0, 25.0]);
     assert_eq!(caixa.fill_rule, FillRule::EvenOdd);
     assert!(caixa.vert_by_id(VertId(6)).is_some());

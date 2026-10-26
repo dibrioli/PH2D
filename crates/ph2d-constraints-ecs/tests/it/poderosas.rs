@@ -5,13 +5,13 @@ use bevy_ecs::entity::Entity;
 use std::sync::Arc;
 
 use ph2d_constraints::{Action, Ajuste, Canais, Kind, PontoDeForma, SplineIk, Spring};
-use ph2d_vec_scene::VertId;
 use ph2d_constraints_ecs::{
     Accoes, Caminhos, Constraints, Estado, Estados, Laco, Molas, Pontos, Simulador, evaluate,
 };
 use ph2d_ecs::{ChildOf, SimWorld, StableId, Transform, world_transform};
 use ph2d_preview_drive::PreviewDrive;
 use ph2d_skeleton_ecs::Bone;
+use ph2d_vec_scene::VertId;
 
 const FIXTURE: &str =
     include_str!("../../../../docs/BlenderConstraints/fixtures/blender_5_2_3_constraints_2d.json");

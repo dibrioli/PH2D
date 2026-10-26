@@ -389,7 +389,9 @@ pub fn escrever(k: &mut Kind, campo: u16, v: f32) -> bool {
             clippy::cast_sign_loss,
             reason = "≥ 0, arredondado"
         )]
-        (Kind::PontoDeForma(p), PONTO) => p.vert = ph2d_vec_scene::VertId(v.round().max(0.0) as u32),
+        (Kind::PontoDeForma(p), PONTO) => {
+            p.vert = ph2d_vec_scene::VertId(v.round().max(0.0) as u32)
+        }
         (Kind::Action(a), DE) => a.canal = CANAIS_DO_TIPO[opcao(5)],
         (Kind::Action(a), DE_MIN) => a.faixa[0] = do_cartao(a.canal, v),
         (Kind::Action(a), DE_MAX) => a.faixa[1] = do_cartao(a.canal, v),

@@ -509,13 +509,12 @@ pub fn migra_fio(mundo: &mut ph2d_ecs::scene::WorldSnapshot, fio: u32) -> usize 
         };
         let mut mudou = false;
         for filho in &mut env.children {
-            let fonte =
-                ph2d_vec_scene::with_wire_layout(fio, || {
-                    match postcard::take_from_bytes::<VecPath>(&filho.source) {
-                        Ok((p, [])) => Some(p),
-                        _ => None,
-                    }
-                });
+            let fonte = ph2d_vec_scene::with_wire_layout(fio, || {
+                match postcard::take_from_bytes::<VecPath>(&filho.source) {
+                    Ok((p, [])) => Some(p),
+                    _ => None,
+                }
+            });
             if let Some(bytes) = fonte.and_then(|p| postcard::to_allocvec(&p).ok()) {
                 mudou |= bytes != filho.source;
                 filho.source = bytes;

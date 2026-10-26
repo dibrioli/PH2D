@@ -17,7 +17,9 @@ use crate::{
 
 /// Id de um vértice dentro do seu path (os contornos de `subpaths` partilham o espaço). Monotónico
 /// por path, nunca reusado (`VecPath::next_vert`).
-#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(
+    Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize,
+)]
 pub struct VertId(pub u32);
 
 impl VertId {
@@ -59,7 +61,11 @@ impl VecPath {
     /// `verts` → `subpaths`; um id vindo de fora acima do contador sobe-o. Idempotente; devolve se
     /// mudou algo.
     pub fn normaliza_ids(&mut self) -> bool {
-        let todos = || self.verts.iter().chain(self.subpaths.iter().flat_map(|c| &c.verts));
+        let todos = || {
+            self.verts
+                .iter()
+                .chain(self.subpaths.iter().flat_map(|c| &c.verts))
+        };
         let maior = todos().map(|v| v.id.0).max().unwrap_or(0);
         let mut mudou = false;
         if self.next_vert <= maior {
@@ -68,8 +74,8 @@ impl VecPath {
         }
         let mut proximo = self.next_vert.max(1);
         let mut vistos = HashSet::with_capacity(self.verts.len());
-        let contornos = std::iter::once(&mut self.verts)
-            .chain(self.subpaths.iter_mut().map(|c| &mut c.verts));
+        let contornos =
+            std::iter::once(&mut self.verts).chain(self.subpaths.iter_mut().map(|c| &mut c.verts));
         for verts in contornos {
             for v in verts {
                 if v.id == VertId::NOVO || !vistos.insert(v.id) {

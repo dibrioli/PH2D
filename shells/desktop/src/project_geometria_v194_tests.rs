@@ -38,7 +38,10 @@ fn a_v194_project_opens_with_vertex_ids_in_order() {
     let [estado] = file.state.ui_states.get(caixa.id) else {
         panic!("um estado no hospedeiro");
     };
-    let g = estado.objects[0].geometry.as_ref().expect("a pose tem geometria");
+    let g = estado.objects[0]
+        .geometry
+        .as_ref()
+        .expect("a pose tem geometria");
     assert_eq!(ids(&g.verts), (1..=10).collect::<Vec<_>>());
     assert_eq!(g.verts[6].in_handle, [57.0, -2.0]);
 }

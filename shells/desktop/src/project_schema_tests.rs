@@ -317,7 +317,9 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // `marcas_do_artista: Vec<u8>` no fim do `ProjectFile`. A tripla NÃO vê este degrau.
         // ⚠️ **`194` em 2026-10-25** (`line/GameEngineFuncional`, N1) — o `CharacterAnimations`
         // REGISTADO (física `+1`, espelhos `0`); o `193` lê-se com o tipo vivo. A tripla NÃO vê este degrau.
-        (194, 13, 23),
+        // ⚠️ **`195` em 2026-10-26** (`line/GameEngineFuncional`, plano 14) — o `TiledDraw` REGISTADO (ECS
+        // `+1`, espelhos `0`); `194`/`193` lêem-se com o tipo vivo. A tripla NÃO vê este degrau.
+        (195, 13, 23),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

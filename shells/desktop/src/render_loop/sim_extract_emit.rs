@@ -401,13 +401,9 @@ fn style(
     // W3.T3.11: per-node filter (→ sampler) + repeat (→ shader
     // wrap, in flip_uv) + UV tiling, resolved up the ChildOf chain.
     let rfilter = resolve_texture_filter(sim, sim_entity, default_filter);
-    let rrepeat = resolve_texture_repeat(sim, sim_entity, default_repeat);
+    let rrepeat = ph2d_ecs::resolve_draw_repeat(sim, sim_entity, default_repeat);
     let sampling = ph2d_render::RenderInstance::pack_sampling(rfilter as u8, rrepeat as u8);
-    let uv_xform = sim
-        .get::<UvTransform>(sim_entity)
-        .map_or(ph2d_render::RenderInstance::IDENTITY_UV_XFORM, |t| {
-            [t.scale[0], t.scale[1], t.offset[0], t.offset[1]]
-        });
+    let uv_xform = ph2d_ecs::resolve_uv_xform(sim, sim_entity, spr.size);
     // Sprite-Inspector-v2 v4 channel collapse (W1.T1.8/T1.10,
     // anatomia §4.2/§4.3): `self_tint × tint × Π(ancestor.tint)`.
     // The per-sprite `collapsed_tint` (self_tint × tint) lives +

@@ -87,6 +87,8 @@ const SPRITE_GRID: &[FieldDesc] = &[
     f(3, "component.field.sprite_grid.3", K::Int).named("frame"),
 ];
 
+const TILED_DRAW: &[FieldDesc] = &[f(1, "component.field.tiled_draw.1", K::Vec2).named("tile")];
+
 const SPRITE_REGION: &[FieldDesc] = &[
     f(1, "component.field.sprite_region.1", K::Vec4).named_as("region", "rect"),
     f(2, "component.field.sprite_region.2", K::Toggle).named("filter_clip"),
@@ -248,6 +250,15 @@ pub const DESCS: &[D] = &[
         SPRITE_GRID,
     )
     .coded("sprite_grid")
+    .row_of("ph2d::render::Sprite"),
+    // ⇒ a porta é a linha Draw Mode de Texture & Atlas (plano GEF 14): ausente = Simple.
+    D::intrinsic(
+        "ph2d::ecs::TiledDraw",
+        "component.tiled_draw.name",
+        C::Image,
+        TILED_DRAW,
+    )
+    .coded("tiled_draw")
     .row_of("ph2d::render::Sprite"),
     // Os pixels editados desta sprite (`project_sprite_pixels.rs`): identidade de CONTEÚDO,
     // posta pelo funil de commit das oito ferramentas de imagem. O artista não a anexa.

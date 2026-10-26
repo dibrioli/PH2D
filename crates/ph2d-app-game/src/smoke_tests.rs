@@ -173,32 +173,46 @@ fn o_nivel_2_nasce_so_pelo_menu() {
         w.get::<PlatformPlayer>(jogador).is_some()
             && w.get::<CharacterAnimations>(jogador).is_some()
     );
-    // A arte de fábrica: cada bloco repete o azulejo do seu papel ao tamanho dele; as moedas giram e a
-    // bandeira ondula; o céu fica atrás de tudo.
+    // A arte de fábrica: cada bloco é o azulejo do seu papel em Tiled, escala 1, o tamanho do bloco e a caixa
+    // do collider igual ao desenho (plano GEF 14 D6); as moedas giram e a bandeira ondula; o céu fica atrás.
     for (nome, _, h) in BLOCOS_2.iter() {
         let e = por_nome[*nome];
-        let key = w.get::<Sprite>(e).map(|s| s.source);
-        let uv = w.get::<ph2d_ecs::UvTransform>(e).expect(nome).scale;
+        let s = *w.get::<Sprite>(e).expect(nome);
         let (art, alto) = match *nome {
             "Platform Low" | "Platform High" => (ph2d_render::PLATFORM_TILE, 0.5),
             "Wall Left" => (ph2d_render::DIRT_TILE, 1.0),
             _ => (ph2d_render::GROUND_TILE, 1.0),
         };
         assert_eq!(
-            key,
-            Some(ph2d_render::SpriteSource::Atlas { key: art.key }),
+            s.source,
+            ph2d_render::SpriteSource::Atlas { key: art.key },
             "{nome}"
         );
-        assert_eq!(uv, [2.0 * h[0], 2.0 * h[1] / alto], "{nome}");
+        assert_eq!(s.size, [2.0 * h[0], 2.0 * h[1]], "{nome}");
+        let escala = w.get::<Transform>(e).expect(nome).scale;
+        assert_eq!([escala.x, escala.y], [1.0, 1.0], "{nome}");
+        assert_eq!(
+            w.get::<ph2d_ecs::TiledDraw>(e).map(|t| t.tile),
+            Some([1.0, alto]),
+            "{nome}"
+        );
+        assert_eq!(
+            w.get::<ph2d_physics_ecs::Collider>(e).map(|c| c.shape),
+            Some(ph2d_physics_ecs::ColliderShape::Cuboid {
+                half_x: h[0],
+                half_y: h[1]
+            }),
+            "{nome}"
+        );
+        assert!(
+            w.get::<ph2d_ecs::UvTransform>(e).is_none()
+                && w.get::<ph2d_ecs::TextureRepeat>(e).is_none(),
+            "{nome}: o Sampling fica intocado"
+        );
         // O azulejo é UMA imagem; a cópia do meio é do atlas (plano GEF 13 D1).
         assert!(
             w.get::<ph2d_ecs::SpriteGrid>(e).is_none(),
             "{nome} tem quadros"
-        );
-        assert_eq!(
-            w.get::<ph2d_ecs::TextureRepeat>(e).map(|r| r.0),
-            Some(ph2d_ecs::RepeatMode::Enabled),
-            "{nome}"
         );
     }
     for (nome, art, tag) in [

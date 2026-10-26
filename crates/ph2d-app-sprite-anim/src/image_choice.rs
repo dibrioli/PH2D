@@ -7,7 +7,7 @@
 use ph2d_asset::{AssetDb, AssetId};
 use ph2d_ecs::{
     Entity, RepeatMode, ScrollRepeat, SimWorld, SpriteAnimations, SpriteGrid, SpritePixels,
-    SpriteRegion, SpriteSheetRef, TextureRepeat, UvTransform, World,
+    SpriteRegion, SpriteSheetRef, TextureRepeat, TiledDraw, UvTransform, World,
 };
 use ph2d_render::{Sprite, SpriteRenderer, SpriteSource};
 use std::collections::BTreeMap;
@@ -80,11 +80,23 @@ pub fn choose_image(
         _ => [1.0, 1.0],
     };
     let mut size = [new_cell[0] * escala[0], new_cell[1] * escala[1]];
-    let repeats = matches!(
-        world.get::<TextureRepeat>(e),
-        Some(TextureRepeat(RepeatMode::Enabled | RepeatMode::Mirror))
-    );
+    let tiled = world.get::<TiledDraw>(e).copied();
+    let repeats = tiled.is_some()
+        || matches!(
+            world.get::<TextureRepeat>(e),
+            Some(TextureRepeat(RepeatMode::Enabled | RepeatMode::Mirror))
+        );
     let mut ent = world.entity_mut(e);
+    if let Some(t) = tiled {
+        // Lei 5 (plano GEF 14 D4): o ladrilho de um Tiled é uma célula da imagem nova, à escala que tinha.
+        let k: [f32; 2] = std::array::from_fn(|i| match old_cell {
+            Some(c) if c[i] > 0.0 => t.tile[i] / c[i],
+            _ => 1.0,
+        });
+        ent.insert(TiledDraw {
+            tile: [new_cell[0] * k[0], new_cell[1] * k[1]],
+        });
+    }
     // O recorte da imagem antiga (região, folha empacotada à mão) não descreve a nova.
     ent.remove::<(SpriteRegion, SpriteSheetRef)>();
     if let Some(tile_antigo) = ent.get::<ScrollRepeat>().map(|r| r.tile) {
@@ -364,6 +376,19 @@ pub fn place_library_image(
     if let Err(err) = choose_library_image(sim, acquire, db, atlas, ppm, e, id) {
         sim.world_mut().despawn(e);
         return Err(err);
+    }
+    // Um azulejo de fábrica nasce Tiled (plano GEF 14 D4): o mesmo tipo de objecto dos blocos do nível.
+    let azulejo = atlas
+        .iter()
+        .find(|(_, a)| **a == id)
+        .is_some_and(|(key, _)| {
+            ph2d_render::FACTORY_ART
+                .iter()
+                .any(|art| art.key == *key && art.tile)
+        });
+    let w = sim.world_mut();
+    if let Some(size) = w.get::<Sprite>(e).map(|s| s.size).filter(|_| azulejo) {
+        w.entity_mut(e).insert(TiledDraw { tile: size });
     }
     Ok(e)
 }

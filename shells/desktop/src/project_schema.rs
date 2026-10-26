@@ -500,7 +500,18 @@
 /// vivo, no braço do degrau actual. Registos: física `+1`, espelhos `0`.
 ///
 /// ⚠️ **A tripla NÃO vê este degrau** — nem a forma do `FlipDoc` nem a da `VecScene` mudam.
-pub(crate) const PROJECT_SCHEMA: u32 = 194;
+///
+/// # `194 → 195` — **o Draw Mode Tiled** (`line/GameEngineFuncional`, plano 14, 2026-10-26)
+///
+/// UM componente registado novo: `ph2d::ecs::TiledDraw` (a sprite enche o seu tamanho com ladrilhos da
+/// imagem, `docs/GameEngineFuncional/14_tiled_com_tamanho_plano.md`). ⭐ **COM leitura dos anteriores:** a
+/// forma do `ProjectFile` não muda; um `194`/`193` lê-se com o tipo vivo. Registos: ecs `+1`.
+///
+/// ⚠️ **A tripla NÃO vê este degrau** — nem a forma do `FlipDoc` nem a da `VecScene` mudam.
+pub(crate) const PROJECT_SCHEMA: u32 = 195;
+
+/// O último degrau sem o `TiledDraw` — a mesma forma do actual.
+pub(crate) const PROJECT_SCHEMA_SEM_TILED_DRAW: u32 = 194;
 
 /// O último degrau sem as animações do personagem — a mesma forma do actual.
 pub(crate) const PROJECT_SCHEMA_SEM_ANIMACOES_DO_PERSONAGEM: u32 = 193;

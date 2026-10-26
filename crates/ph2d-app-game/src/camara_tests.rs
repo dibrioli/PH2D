@@ -243,7 +243,7 @@ fn a_camada_de_fundo_do_menu_nasce_pronta() {
         [lado[0] * crate::object_add::CAMADA_LADRILHOS, lado[1]]
     );
     assert_eq!(
-        w.get::<UvTransform>(e).map(|u| u.scale),
+        w.get::<ph2d_ecs::UvTransform>(e).map(|u| u.scale),
         Some([crate::object_add::CAMADA_LADRILHOS, 1.0])
     );
     assert!(

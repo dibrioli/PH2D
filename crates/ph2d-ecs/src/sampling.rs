@@ -125,6 +125,37 @@ impl Default for UvTransform {
     }
 }
 
+/// ⭐ **O *Draw Mode Tiled* da Unity** (plano `docs/GameEngineFuncional/14_tiled_com_tamanho_plano.md`): a sprite
+/// desenha a sua imagem em ladrilhos de `tile` metros até encher `Sprite::size`, sem esticar — a largura do
+/// bloco é o tamanho, e a escala fica 1. `tile` é o tamanho nativo de uma célula da imagem, escrito pela porta
+/// da imagem. Ausente = a sprite de sempre.
+#[derive(Component, Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct TiledDraw {
+    pub tile: [f32; 2],
+}
+
+impl TiledDraw {
+    /// Quantos ladrilhos cabem em `size` (o `UvTransform::scale` que o desenho usa); um `tile` nulo ou não
+    /// finito conta como um ladrilho que enche o eixo.
+    #[must_use]
+    pub fn repeats(&self, size: [f32; 2]) -> [f32; 2] {
+        std::array::from_fn(|i| {
+            let t = self.tile[i];
+            if t.is_finite() && t > 0.0 && size[i].is_finite() {
+                size[i].abs() / t
+            } else {
+                1.0
+            }
+        })
+    }
+}
+
+impl Default for TiledDraw {
+    fn default() -> Self {
+        Self { tile: [1.0, 1.0] }
+    }
+}
+
 impl FilterMode {
     /// Resolve `self` against an inherited value: a concrete mode wins;
     /// `Inherit` defers to `inherited`. Used by the extract's
@@ -208,6 +239,37 @@ pub fn resolve_texture_filter(
         node = world.get::<ChildOf>(n).map(|c| c.parent());
     }
     project_default
+}
+
+/// ⭐ **O UV que o desenho usa** (`[scale.x, scale.y, offset.x, offset.y]`): o [`UvTransform`], ou — numa
+/// sprite [`TiledDraw`] — as repetições que cabem em `size`, com o offset do `UvTransform`.
+#[must_use]
+pub fn resolve_uv_xform(world: &World, entity: Entity, size: [f32; 2]) -> [f32; 4] {
+    let uv = world
+        .get::<UvTransform>(entity)
+        .copied()
+        .unwrap_or_default();
+    let scale = world
+        .get::<TiledDraw>(entity)
+        .map_or(uv.scale, |t| t.repeats(size));
+    [scale[0], scale[1], uv.offset[0], uv.offset[1]]
+}
+
+/// O repeat de uma sprite [`TiledDraw`]: o próprio `Mirror` fica; tudo o resto repete (um ladrilho que não
+/// repetisse esticaria a primeira célula). Fora do Tiled, [`resolve_texture_repeat`].
+#[must_use]
+pub fn resolve_draw_repeat(
+    world: &World,
+    entity: Entity,
+    project_default: RepeatMode,
+) -> RepeatMode {
+    if world.get::<TiledDraw>(entity).is_none() {
+        return resolve_texture_repeat(world, entity, project_default);
+    }
+    match world.get::<TextureRepeat>(entity) {
+        Some(TextureRepeat(RepeatMode::Mirror)) => RepeatMode::Mirror,
+        _ => RepeatMode::Enabled,
+    }
 }
 
 /// Resolve the effective [`RepeatMode`] for `entity` (mirror of

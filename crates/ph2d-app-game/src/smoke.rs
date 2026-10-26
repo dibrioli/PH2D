@@ -15,9 +15,8 @@
 use ph2d_core::Vec2;
 use ph2d_ecs::scene::ComponentRegistry;
 use ph2d_ecs::{
-    AnimationTag, CameraFollow, CameraLimits, ChildOf, Entity, GameCamera, Name, RepeatMode,
-    ScrollFactor, SimWorld, SpriteAnimations, SpriteAnimator, SpriteGrid, TextureRepeat, Transform,
-    UvTransform, ZIndexOverride,
+    AnimationTag, CameraFollow, CameraLimits, ChildOf, Entity, GameCamera, Name, ScrollFactor,
+    SimWorld, SpriteAnimations, SpriteAnimator, SpriteGrid, TiledDraw, Transform, ZIndexOverride,
 };
 use ph2d_editor_core::game_stage::GameStage;
 use ph2d_render::{
@@ -476,8 +475,9 @@ pub fn autorada(no_mundo: [f32; 2], k: f32) -> [f32; 2] {
     ]
 }
 
-/// Veste um bloco com o azulejo de fábrica do seu papel, repetido ao tamanho do bloco (o que o artista faz
-/// no Inspector: a imagem, *Repeat* e a escala do UV).
+/// Veste um bloco com o azulejo de fábrica do seu papel em *Tiled* ao tamanho do bloco, escala 1 e a caixa do
+/// collider igual ao desenho (plano GEF 14 D6: o que o artista faz no Inspector — a imagem, Draw Mode Tiled e
+/// a Largura/Altura).
 fn azulejo(sim: &mut SimWorld, e: Entity, nome: &str, meia: [f32; 2]) {
     let art = match nome {
         "Platform Low" | "Platform High" => PLATFORM_TILE,
@@ -486,14 +486,23 @@ fn azulejo(sim: &mut SimWorld, e: Entity, nome: &str, meia: [f32; 2]) {
     };
     let [cw, ch] = art.cell_px();
     let lado_m = [1.0, ch as f32 / cw as f32];
-    sim.world_mut().entity_mut(e).insert((
-        Sprite::atlas(art.key, crate::object_add::BLOCO, [1.0; 4]),
-        UvTransform {
-            scale: [2.0 * meia[0] / lado_m[0], 2.0 * meia[1] / lado_m[1]],
-            offset: [0.0, 0.0],
-        },
-        TextureRepeat(RepeatMode::Enabled),
+    let w = sim.world_mut();
+    w.entity_mut(e).insert((
+        Sprite::atlas(art.key, [2.0 * meia[0], 2.0 * meia[1]], [1.0; 4]),
+        TiledDraw { tile: lado_m },
     ));
+    caixa(w, e, meia);
+}
+
+/// A caixa do collider de `e` com meia-extensão `meia` (m).
+fn caixa(w: &mut ph2d_ecs::World, e: Entity, meia: [f32; 2]) {
+    use ph2d_physics_ecs::{Collider, ColliderShape};
+    if let Some(mut c) = w.get_mut::<Collider>(e) {
+        c.shape = ColliderShape::Cuboid {
+            half_x: meia[0],
+            half_y: meia[1],
+        };
+    }
 }
 
 /// Troca a folha de um *Animated Sprite* por uma folha de fábrica de uma linha, a tocar em laço.
@@ -518,37 +527,30 @@ fn folha(sim: &mut SimWorld, e: Entity, art: FactoryArt, tag: &str, ms: u32) {
 
 /// O nível 2 — ver o cabeçalho do módulo.
 fn nivel_2(sim: &mut SimWorld, registry: &ComponentRegistry) -> Entity {
-    use crate::object_add::{
-        ANIMATED_SPRITE, BLOCO, CHARACTER, COLLISION_SHAPE, SPRITE, STATIC_BODY,
-    };
+    use crate::object_add::{ANIMATED_SPRITE, CHARACTER, COLLISION_SHAPE, SPRITE, STATIC_BODY};
     let mut chao_direito = None;
     for (nome, c, h) in BLOCOS_2 {
         let e = do_menu(sim, registry, STATIC_BODY);
-        arruma(
-            sim,
-            e,
-            nome,
-            c,
-            [2.0 * h[0] / BLOCO[0], 2.0 * h[1] / BLOCO[1]],
-        );
+        arruma(sim, e, nome, c, [1.0, 1.0]);
         azulejo(sim, e, nome, h);
         if nome == "Ground Right" {
             chao_direito = Some((e, c, h));
         }
     }
-    // A parede do fim: uma forma DENTRO do chão — a pose local desfaz a escala do pai.
-    let (chao, c, h) = chao_direito.expect("o chão da direita");
-    let escala = [2.0 * h[0] / BLOCO[0], 2.0 * h[1] / BLOCO[1]];
+    // A parede do fim: uma forma DENTRO do chão, de escala 1 — o tamanho é a caixa do collider.
+    let (chao, c, _) = chao_direito.expect("o chão da direita");
     let parede = do_menu(sim, registry, COLLISION_SHAPE);
-    let ([px, py], [hx, hy]) = PAREDE_INVISIVEL;
+    let ([px, py], meia) = PAREDE_INVISIVEL;
     arruma(
         sim,
         parede,
         "Invisible Wall",
-        [(px - c[0]) / escala[0], (py - c[1]) / escala[1]],
-        [2.0 * hx / escala[0], 2.0 * hy / escala[1]],
+        [px - c[0], py - c[1]],
+        [1.0, 1.0],
     );
-    sim.world_mut().entity_mut(parede).insert(ChildOf(chao));
+    let w = sim.world_mut();
+    caixa(w, parede, meia);
+    w.entity_mut(parede).insert(ChildOf(chao));
     // O céu é uma Sprite com a Parallax a 0 (parada no ecrã); as nuvens e os montes são Background Layers.
     let ceu = do_menu(sim, registry, SPRITE);
     arruma(sim, ceu, "Sky", [0.0, 0.0], CEU_TAMANHO);

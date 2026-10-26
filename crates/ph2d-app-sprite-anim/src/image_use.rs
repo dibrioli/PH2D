@@ -7,7 +7,7 @@ use ph2d_app_components::asset_index_build::texture_of;
 use ph2d_asset::{AssetDb, AssetId};
 use ph2d_ecs::{
     AnimationTag, Entity, RepeatMode, ScrollRepeat, SpriteAnimations, SpriteAnimator, SpriteGrid,
-    SpritePixels, TextureRepeat, UvTransform, World,
+    SpritePixels, TextureRepeat, TiledDraw, UvTransform, World,
 };
 use ph2d_editor_core::InspectorImageUse;
 use ph2d_render::Sprite;
@@ -32,6 +32,7 @@ pub fn image_use(world: &World, e: Entity) -> Option<ImageUse> {
         return Some(ImageUse::Animated);
     }
     let repete = world.get::<ScrollRepeat>(e).is_some()
+        || world.get::<TiledDraw>(e).is_some()
         || matches!(
             world.get::<TextureRepeat>(e),
             Some(TextureRepeat(RepeatMode::Enabled | RepeatMode::Mirror))
@@ -83,7 +84,9 @@ pub fn make_animated(world: &mut World, e: Entity, facts: ImageFacts) -> bool {
     let Some(sprite) = world.get::<Sprite>(e).copied() else {
         return false;
     };
+    let tiled = world.get::<TiledDraw>(e).map(|t| t.tile[0]);
     let ladrilho = match (world.get::<ScrollRepeat>(e), world.get::<UvTransform>(e)) {
+        _ if tiled.is_some_and(|t| t > 0.0) => tiled.unwrap_or(1.0),
         (Some(r), _) if r.tile[0] > 0.0 => r.tile[0],
         (_, Some(uv)) if uv.scale[0] > 0.0 => sprite.size[0] / uv.scale[0],
         _ => sprite.size[0],
@@ -104,7 +107,7 @@ pub fn make_animated(world: &mut World, e: Entity, facts: ImageFacts) -> bool {
     let mut animator = SpriteAnimator::new(LOOP_TAG);
     animator.autoplay = true;
     let mut ent = world.entity_mut(e);
-    ent.remove::<(TextureRepeat, UvTransform, ScrollRepeat)>();
+    ent.remove::<(TextureRepeat, UvTransform, ScrollRepeat, TiledDraw)>();
     ent.insert((
         Sprite {
             size: [celula[0] * escala, celula[1] * escala],

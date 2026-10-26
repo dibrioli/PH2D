@@ -245,7 +245,9 @@ fn register_ecs_components_populates_registry() {
     //   Quem integrar conta o DELTA, nunca o literal.
     // ⚠️ **2026-10-25: `108` -> `110`, delta +2** -- `SpriteAnimFrames` + `SpriteAnimCursor` (a lista de
     //   quadros, line/GameEngineFuncional plano 07). Quem integrar conta o DELTA, nunca o literal.
-    assert_eq!(reg.len(), 110);
+    // ⚠️ **2026-10-26: `110` -> `111`, delta +1** -- o `TiledDraw` (o Draw Mode Tiled, line/GameEngineFuncional
+    //   plano 14). Quem integrar conta o DELTA, nunca o literal.
+    assert_eq!(reg.len(), 111);
     assert!(reg.get_by_name("ph2d::ecs::VecObject").is_none());
     assert!(reg.get_by_name("ph2d::ecs::MotionGenerator").is_some());
     assert!(reg.get_by_name("ph2d::ecs::WeaponFire").is_some());

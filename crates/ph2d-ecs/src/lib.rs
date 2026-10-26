@@ -226,8 +226,8 @@ pub use path_follow::{PathFollow, Percurso};
 pub use present::{PresentComponent, PresentWorld};
 pub use root_order::{RootOrder, assign_missing_root_order};
 pub use sampling::{
-    FilterMode, RepeatMode, TextureFilter, TextureRepeat, UvTransform, resolve_texture_filter,
-    resolve_texture_repeat,
+    FilterMode, RepeatMode, TextureFilter, TextureRepeat, TiledDraw, UvTransform,
+    resolve_draw_repeat, resolve_texture_filter, resolve_texture_repeat, resolve_uv_xform,
 };
 pub use scroll_factor::ScrollFactor;
 pub use scroll_limits::{ScrollLimits, confina_eixo, meia_da_camada};

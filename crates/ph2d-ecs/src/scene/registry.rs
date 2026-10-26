@@ -341,6 +341,7 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     reg.register_default::<crate::VisibilityLayer>("ph2d::ecs::VisibilityLayer");
     reg.register_default::<crate::OnScreenEnabler>("ph2d::ecs::OnScreenEnabler");
     reg.register_default::<crate::UvTransform>("ph2d::ecs::UvTransform");
+    reg.register_default::<crate::TiledDraw>("ph2d::ecs::TiledDraw");
     reg.register_default::<crate::BlendMode>("ph2d::ecs::BlendMode");
     // A sprite como FONTE DE LUZ (plano `docs/Sprite_projeto/18` W8). Opcional: sem o componente o
     // quadro é byte-idêntico, e um projeto antigo carrega sem ele — mas quem o autorou tem de o

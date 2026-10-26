@@ -95,6 +95,7 @@ pub const PORTAS: &[(&str, Porta)] = &[
     ("ph2d::ecs::Tags", Recusado(DO_PROJECTO)),
     ("ph2d::ecs::TextureFilter", Gravado),
     ("ph2d::ecs::TextureRepeat", Gravado),
+    ("ph2d::ecs::TiledDraw", Gravado),
     ("ph2d::ecs::Timers", Gravado),
     ("ph2d::ecs::TopLevel", Gravado),
     ("ph2d::ecs::Transform", ForaDaRaiz),

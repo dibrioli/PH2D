@@ -131,7 +131,12 @@ fn largar_platform_no_canvas_e_a_mesma_imagem() {
     assert_eq!(s.size, PLATFORM_TILE.native_m());
     assert!(w.get::<SpritePixels>(e).is_none(), "copiou os píxeis");
     assert_eq!(celulas(w.get::<SpriteGrid>(e)), 1);
-    assert_eq!(image_use(w, e), Some(ImageUse::Still));
+    // Um azulejo nasce Tiled de um ladrilho: o mesmo tipo da Platform Low (plano GEF 14 D4).
+    assert_eq!(
+        w.get::<ph2d_ecs::TiledDraw>(e).map(|t| t.tile),
+        Some(PLATFORM_TILE.native_m())
+    );
+    assert_eq!(image_use(w, e), Some(ImageUse::Repeated));
     assert_eq!(
         w.get::<Name>(e).map(Name::as_str),
         Some("Platform"),

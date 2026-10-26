@@ -55,6 +55,7 @@ pub(crate) const LEIS: &[(&str, Lei)] = &[
     ("ph2d::ecs::Tags", None),
     ("ph2d::ecs::TextureFilter", None),
     ("ph2d::ecs::TextureRepeat", None),
+    ("ph2d::ecs::TiledDraw", None),
     ("ph2d::ecs::UvTransform", None),
     ("ph2d::ecs::Visibility", None),
     ("ph2d::ecs::VisibilityLayer", None),

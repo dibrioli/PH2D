@@ -66,3 +66,15 @@ parede invisível filha do chão recalcula-se sem a escala do pai).
 Platform Low: Scale 1,1 · Draw Mode Tiled · Width 2,4. Mudar Width para 4 ⇒ a plataforma cresce, a imagem
 repete (não estica) e o boneco anda por cima da parte nova. Arrastar «Platform» para a tela ⇒ objecto Tiled
 1 × 0,5; Width 2,4 ⇒ igual à Platform Low. Fotografado.
+
+## Feito (26/10)
+
+- **Lei da queda (`6c3e8b1011`):** `asset_drop::resolve` (app-components) — imagem no canvas = `SpawnImage` SEMPRE; `DropOver` perdeu `is_sprite`; a escolha da shell (`asset_drag_wire`) simplificou. Retexturar só pela ranhura Image do Inspector. Origem: a «Platform» largada caía no Sky (40×16 por escala, parallax 0) e retexturava-o.
+- **D1/D2 (`2db59d42b2`):** `ph2d-ecs` `TiledDraw{tile}` + `resolve_uv_xform` (repeats = size/tile, offset do UvTransform mantido) + `resolve_draw_repeat` (o Mirror próprio fica); usado por `sim_extract_emit::style`. Registo 110→111; `PROJECT_SCHEMA` 194→195, 194/193 lidos pelo tipo vivo (braço em `project_load_read.rs`, `PROJECT_SCHEMA_SEM_TILED_DRAW`).
+- **D4:** `image_choice` Lei 5 (escolher imagem numa Tiled guarda o tamanho; tile = célula nova × razão antiga); `place_library_image` de azulejo de fábrica (`FactoryArt.tile`) nasce Tiled; `image_use` Tiled = Repeated; `make_animated` tira `TiledDraw`.
+- **D6:** níveis 2+: blocos com Sprite 2·meia, escala 1, `TiledDraw`, Collider Cuboid = meia; Invisible Wall escala 1 com collider caixa.
+- **D3/D5 (`8ccdb31a1a`):** editor-core `InspectorDraw{Fixed,Simple,Tiled{size}}`, `ImageUseEdit{MakeAnimated,Tiled(bool),Width,Height}` (`EditorAction::ImageUseEdit` substitui `MakeImageAnimated`); sprite-anim `tiled.rs` (`draw_of`, `set_tiled`, `set_tiled_side` MIN 0,01 m; Cuboid que media size/2 segue, o feito à mão fica); panel-inspector `event_image_use.rs` + `paint_draw_rows` (caixa Tiled, Width/Height).
+- **Catálogo/canais:** `TiledDraw` em `catalog/core.rs`, campo `tile` escondido NoCard; `INSP_IMAGE_TILED` NaoAnimavel.
+- **Gates verdes, por nome:** asset_drop (15), smoke::tests (12), camara_tests (3), image_use (6), image_choice (13), registry (6), project_schema (1), `tiled::` (4), seam_image_use (4), catálogo ordenado, losango/canal. clippy `-D warnings` em 10 crates e fmt limpos. Mutação: desligar o collider-segue pôs `largura_leva_o_collider_automatico` vermelho; restaurado.
+- **Fotos:** [`handoffs/fotos_14/`](handoffs/fotos_14/) `nivel_4_{baixa,larga,largada}.png` (`PH2D_GAME_SMOKE=4 PH2D_GAME_SMOKE_FOTO=baixa|larga|largada`).
+- **Smoke do dono: POR FAZER.** Handoff: [`HANDOFF_CONTINUACAO_2026-10-26_14_TILED.md`](handoffs/HANDOFF_CONTINUACAO_2026-10-26_14_TILED.md).

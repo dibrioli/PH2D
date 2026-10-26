@@ -70,6 +70,7 @@ impl From<TweenV194> for ph2d_tween::Tween {
             ao_acabar: t.ao_acabar,
             ciclo: t.ciclo,
             item: N,
+            relogio: N,
         }
     }
 }

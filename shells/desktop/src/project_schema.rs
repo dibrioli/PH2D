@@ -592,7 +592,22 @@
 /// ficheiro `<= 205` lê-se dentro do âmbito `ph2d_vec_scene::PilhaLayoutV23` (ids `NONE`, atribuídos pelo
 /// `ids_da_pilha` no 1.º quadro); as formas dentro do Envelope e da pele regravam-se no load. Gate:
 /// `o_projeto_195_le_a_pilha_do_vetor_sem_ids`.
-pub(crate) const PROJECT_SCHEMA: u32 = 206;
+///
+/// # `206 → 207` — **o relógio e os filtros dos estados por identidade** (`line/UIUX`, F32, 2026-10-25)
+///
+/// `Tween::relogio` e `PathFollow::relogio_item` (o `ItemId` do timer) no fim: apagar um timer
+/// anterior não troca o relógio de ninguém (`docs/UI_New_and_Simple/F32_plano.md` §1). ⭐ **COM
+/// migração:** os blobs `<= 206` passam pela forma congelada (`ph2d_ecs::item_id_v196`, via
+/// `ph2d_ecs::item_id::migra`), e o passe dos ids fixa o relógio pela posição. No MESMO degrau
+/// (§2): `ObjectPose::filter_ids` no fim de cada pose de estado de UI — os `<= 206` lêem-se no
+/// âmbito `ph2d_ui_state::PoseLayoutV196` (ids vazios ⇒ a posição manda). Gate:
+/// `o_projeto_196_le_os_relogios_e_as_poses_sem_ids`. Registos de componentes: `0`.
+///
+/// ⚠️ **A tripla NÃO vê este degrau** — nem a forma do `FlipDoc` nem a da `VecScene` mudam.
+pub(crate) const PROJECT_SCHEMA: u32 = 207;
+
+/// O último degrau com o relógio dos tweens/seguidores e os filtros das poses por POSIÇÃO (F32).
+pub(crate) const PROJECT_SCHEMA_RELOGIO_POR_POSICAO: u32 = 206;
 
 /// O último degrau em que os itens das listas não tinham `item` (F30 §A1).
 pub(crate) const PROJECT_SCHEMA_ITENS_SEM_ID: u32 = 204;

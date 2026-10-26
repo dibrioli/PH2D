@@ -77,9 +77,47 @@ pub struct PathFollow {
     /// O `h_offset` do Godot. A normal é a tangente rodada um quarto de volta, logo o sinal diz o
     /// lado.
     pub lado: f32,
+    /// O [`crate::ItemId`] do timer escolhido — manda sobre o [`Self::relogio`], que é só a escolha
+    /// do painel até o passe dos ids a fixar (F32 §4: apagar um timer anterior não troca o relógio).
+    pub relogio_item: crate::ItemId,
 }
 
 impl SimComponent for PathFollow {}
+
+/// ⭐ **A posição do timer que faz `pf` andar** — a porta única (a ponte e o Inspector).
+#[must_use]
+pub fn timer_de(pf: &PathFollow, timers: &crate::Timers) -> Option<usize> {
+    if pf.relogio_item.is_none() {
+        let i = usize::from(pf.relogio);
+        return (i < timers.0.len()).then_some(i);
+    }
+    timers.0.iter().position(|t| t.item == pf.relogio_item)
+}
+
+/// Fixa pelo id o relógio de todo seguidor que ainda não o tem, e põe o [`PathFollow::relogio`] na
+/// posição de hoje do timer dele (o passe dos ids). Devolve se mexeu.
+pub fn adopta_relogios(world: &mut bevy_ecs::world::World) -> bool {
+    let mut q = world.query::<(&mut PathFollow, &crate::Timers)>();
+    let mut mexeu = false;
+    for (mut pf, timers) in q.iter_mut(world) {
+        if pf.relogio_item.is_none() {
+            if let Some(t) = timers
+                .0
+                .get(usize::from(pf.relogio))
+                .filter(|t| !t.item.is_none())
+            {
+                pf.relogio_item = t.item;
+                mexeu = true;
+            }
+        } else if let Some(p) = timer_de(&pf, timers).and_then(|p| u8::try_from(p).ok())
+            && p != pf.relogio
+        {
+            pf.relogio = p;
+            mexeu = true;
+        }
+    }
+    mexeu
+}
 
 impl Default for PathFollow {
     fn default() -> Self {
@@ -96,6 +134,7 @@ impl Default for PathFollow {
             alinha: true,
             angulo: 0.0,
             lado: 0.0,
+            relogio_item: crate::ItemId::NONE,
         }
     }
 }
@@ -151,7 +190,9 @@ pub fn a_seguir(world: &mut bevy_ecs::world::World) -> Vec<Percurso> {
         if pf.caminho.is_empty() {
             continue;
         }
-        let i = usize::from(pf.relogio);
+        let Some(i) = timer_de(pf, cfg) else {
+            continue;
+        };
         let (Some(timer), Some(estado)) = (cfg.0.get(i), rt.0.get(i)) else {
             continue;
         };

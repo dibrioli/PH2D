@@ -29,8 +29,8 @@ pub fn build_tween_info(
     let e = Entity::from_bits(entity_bits);
     let tweens = world.get::<Tweens>(e)?;
     // ⭐⭐⭐ **A DURAÇÃO de cada relógio** — a coluna que não vem do componente, e que responde à
-    // pergunta do dono no smoke de 19/09: *«onde selecciono o tempo?»*. ⚠️ Ela é lida por ÍNDICE,
-    // que é a lei do módulo: o tween `i` corre no timer `i`.
+    // pergunta do dono no smoke de 19/09: *«onde selecciono o tempo?»*. Lida pelo relógio DO tween
+    // (`ph2d_ecs::tween::timer_do`).
     let relogios = world.get::<Timers>(e);
     let tem_sprite = world.get::<Sprite>(e).is_some();
     Some(InspectorTweenInfo {
@@ -41,7 +41,11 @@ pub fn build_tween_info(
             .enumerate()
             .map(|(i, t)| InspectorTweenRow {
                 item: t.item.0,
-                relogio_item: relogios.and_then(|r| r.0.get(i)).map_or(0, |r| r.item.0),
+                relogio_item: relogio(relogios, t, i).map_or(0, |r| r.item.0),
+                relogio_pos: relogios
+                    .and_then(|ts| ph2d_ecs::tween::timer_do(t, i, ts))
+                    .and_then(|p| u8::try_from(p).ok())
+                    .unwrap_or(u8::try_from(i).unwrap_or(u8::MAX)),
                 canal: t.canal.tag(),
                 de: t.de,
                 para: t.para,
@@ -49,9 +53,9 @@ pub fn build_tween_info(
                 modo: modo_tag(t.easing.mode),
                 ao_acabar: t.ao_acabar.tag(),
                 ciclo: t.ciclo.tag(),
-                duracao_us: relogio(relogios, i).map(|t| t.duration_us),
-                repeat: relogio(relogios, i).is_some_and(|t| t.repeat),
-                autostart: relogio(relogios, i).is_some_and(|t| t.autostart),
+                duracao_us: relogio(relogios, t, i).map(|t| t.duration_us),
+                repeat: relogio(relogios, t, i).is_some_and(|t| t.repeat),
+                autostart: relogio(relogios, t, i).is_some_and(|t| t.autostart),
             })
             .collect(),
         tem_sprite,
@@ -59,13 +63,13 @@ pub fn build_tween_info(
     })
 }
 
-/// ⭐ **O relógio do índice `i`** — a porta que a lei do módulo exige (*o tween `i` corre no timer
-/// `i`*), lida pelas TRÊS colunas do relógio.
+/// ⭐ **O relógio do tween `t` (posição `i`)**, lido pelas colunas do relógio.
 ///
 /// ⚠️ **Escrita três vezes, ela seria três oportunidades de uma delas ler `first()`** — que é
 /// exactamente a mutação que a W7 pôs a sangrar.
-fn relogio(timers: Option<&Timers>, i: usize) -> Option<&ph2d_ecs::Timer> {
-    timers.and_then(|ts| ts.0.get(i))
+fn relogio<'a>(timers: Option<&'a Timers>, t: &Tween, i: usize) -> Option<&'a ph2d_ecs::Timer> {
+    let ts = timers?;
+    ts.0.get(ph2d_ecs::tween::timer_do(t, i, ts)?)
 }
 
 /// ⚠️ **A tag de uma família é a POSIÇÃO no `ALL` dela**, e a tradução vive aqui e em mais lado
@@ -174,13 +178,18 @@ pub fn apply_tween_edit(world: &mut World, entity_bits: u64, edit: &TweenFieldEd
         TweenFieldEdit::Preset(i, tag) => {
             let p = ph2d_tween::Preset::from_tag(*tag);
             let mexeu = campo(&mut tweens, *i, |t| {
-                let novo = p.tween();
+                let novo = ph2d_tween::Tween {
+                    item: t.item,
+                    relogio: t.relogio,
+                    ..p.tween()
+                };
                 if *t == novo {
                     return false;
                 }
                 *t = novo;
                 true
             });
+            let dono = tweens.0.get(*i as usize).copied();
             // ⚠️ **O `Tweens` tem de estar LARGADO antes de pegar no `Timers`** — dois `get_mut`
             // vivos sobre o mesmo `World` não compilam, e é o compilador a dizer que são dois
             // componentes. ⛔ **E isso NÃO se escreve com um `drop`**: um `Option<Mut<_>>` não tem
@@ -190,7 +199,8 @@ pub fn apply_tween_edit(world: &mut World, entity_bits: u64, edit: &TweenFieldEd
             let relogio = world
                 .get_mut::<ph2d_ecs::Timers>(e)
                 .and_then(|mut ts| {
-                    let t = ts.0.get_mut(*i as usize)?;
+                    let j = ph2d_ecs::tween::timer_do(&dono?, *i as usize, &ts)?;
+                    let t = ts.0.get_mut(j)?;
                     (t.duration_us != p.duracao_us()).then(|| {
                         t.duration_us = p.duracao_us();
                     })

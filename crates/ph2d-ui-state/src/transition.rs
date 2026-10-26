@@ -366,6 +366,7 @@ impl Transition {
                         } else {
                             from.morph_shape
                         },
+                        filter_ids: mix_filter_ids(&from.filter_ids, &to.filter_ids),
                     };
                     // ⚠️ E a forma que sai do `Plan` recebe a tinta da POSE, não a que o `Plan`
                     // interpolou por conta: se o objeto sai auto-consistente daqui, ninguém a
@@ -480,4 +481,19 @@ fn mix_width(
     let empty = ph2d_stroke_width::WidthStops::default();
     let m = a.unwrap_or(&empty).mix(b.unwrap_or(&empty), t);
     (!m.is_uniform()).then_some(m)
+}
+/// O id de cada degrau do meio de uma transição — o do destino, senão o da partida (os degraus
+/// alinham-se por ÍNDICE, [`ph2d_fx_op::mix_stacks`]). `NONE` só onde nenhum lado o conhece.
+fn mix_filter_ids(
+    from: &[ph2d_item_id::ItemId],
+    to: &[ph2d_item_id::ItemId],
+) -> Vec<ph2d_item_id::ItemId> {
+    (0..from.len().max(to.len()))
+        .map(|i| {
+            (to.get(i).copied())
+                .filter(|x| !x.is_none())
+                .or_else(|| from.get(i).copied())
+                .unwrap_or(ph2d_item_id::ItemId::NONE)
+        })
+        .collect()
 }

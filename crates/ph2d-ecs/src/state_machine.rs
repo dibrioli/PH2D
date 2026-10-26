@@ -157,7 +157,10 @@ pub fn born(m: &StateMachine) -> StateMachineRuntime {
     StateMachineRuntime {
         current,
         started: false,
-        item: m.states.get(current as usize).map_or_else(Default::default, |s| s.item),
+        item: m
+            .states
+            .get(current as usize)
+            .map_or_else(Default::default, |s| s.item),
     }
 }
 

@@ -70,6 +70,7 @@ pub mod image_use_memory;
 pub mod instantiate;
 pub mod item_id;
 mod item_id_v194;
+mod item_id_v196;
 /// ⭐⭐⭐ **O CICLO DE VIDA** — os itens #12 do TOP-20 (`Lifetime`, `DestroyOutside`) e o marcador
 /// [`lifetime::Spawned`], que é a lei *«o que nasce numa corrida não é documento»*.
 pub mod lifetime;

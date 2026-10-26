@@ -194,3 +194,36 @@ fn um_tween_e_uma_cutscene_no_mesmo_objecto_partilham_o_relogio() {
         corridas[0].t
     );
 }
+
+/// F32 §4: o passe dos ids fixa o relógio de cada tween pelo id do timer da mesma posição; apagar o
+/// timer 0 deixa o tween 0 sem relógio (inerte) e o tween 1 no B — antes, o tween 0 corria no B.
+#[test]
+fn apagar_o_timer_0_nao_troca_o_relogio_de_ninguem() {
+    let tweens = vec![fade(), Tween::linear(Canal::ScaleX, 1.0, 2.0)];
+    let (mut w, e) = cena(tweens, 2);
+    crate::item_id::assign_missing_item_ids(&mut w);
+    let ids: Vec<_> = w
+        .get::<Timers>(e)
+        .unwrap()
+        .0
+        .iter()
+        .map(|t| t.item)
+        .collect();
+    let rel: Vec<_> = w
+        .get::<Tweens>(e)
+        .unwrap()
+        .0
+        .iter()
+        .map(|t| t.relogio)
+        .collect();
+    assert_eq!(rel, ids, "cada tween fixou o timer da sua posição");
+    w.get_mut::<Timers>(e).unwrap().0.remove(0);
+    crate::timer::reconcile_timers(&mut w);
+    for s in &mut w.get_mut::<TimerRuntime>(e).unwrap().0 {
+        s.running = true;
+        s.elapsed_us = 500_000;
+    }
+    let fora = a_escrever(&mut w);
+    assert_eq!(fora.len(), 1, "só o tween do B escreve: {fora:?}");
+    assert_eq!(fora[0].canal, Canal::ScaleX);
+}

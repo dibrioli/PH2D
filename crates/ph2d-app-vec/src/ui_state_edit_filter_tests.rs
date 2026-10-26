@@ -100,3 +100,39 @@ fn an_empty_stack_removes_the_component_but_a_neutral_one_does_not() {
         "um degrau NEUTRO nao e' uma pilha vazia -- e' o quadro do meio da animacao"
     );
 }
+
+/// F32 §2: o Glow que só o Hover tem volta com o MESMO id a cada entrada (a chave de animação dele
+/// não fica órfã), e reordenar entre estados leva o id com o filtro.
+#[test]
+fn o_filtro_so_de_um_estado_volta_com_o_mesmo_id() {
+    use ph2d_ecs::item_id::ComItens;
+    use ph2d_ecs::{FxOp, ItemId, VecFilter};
+
+    let (mut sim, mut scene, map, host) = scene_with_one_shape();
+    let he = Entity::from_bits(map[&host]);
+    let mut f = VecFilter::from_ops(vec![FxOp::new(FxOp::BLUR)]);
+    f.com_ids(&[ItemId(1)]);
+    sim.world_mut().entity_mut(he).insert(f.clone());
+    let default = capture(&sim, &scene, &map, host);
+    f.push(FxOp::new(FxOp::GLOW));
+    f.com_ids(&[ItemId(1), ItemId(2)]);
+    f.move_down(0);
+    sim.world_mut().entity_mut(he).insert(f);
+    let hover = capture(&sim, &scene, &map, host);
+
+    let ids = |sim: &SimWorld| {
+        sim.world()
+            .get::<VecFilter>(he)
+            .expect("pilha")
+            .ids()
+            .to_vec()
+    };
+    install(&mut sim, &mut scene, &map, &default);
+    assert_eq!(ids(&sim), vec![ItemId(1)]);
+    install(&mut sim, &mut scene, &map, &hover);
+    assert_eq!(
+        ids(&sim),
+        vec![ItemId(2), ItemId(1)],
+        "o Glow volta com o 2, à frente do Blur"
+    );
+}

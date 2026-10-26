@@ -657,3 +657,57 @@ fn a_filter_travels_between_states_even_when_added_after_the_fact() {
         "a chegada e' o valor autorado"
     );
 }
+
+/// F32 §2: o meio de uma transição leva o id de cada degrau — o do destino, senão o da partida —, e
+/// a chave do filtro que só o Hover tem segue-o enquanto ele cresce.
+#[test]
+fn o_meio_da_transicao_leva_o_id_de_cada_filtro() {
+    use ph2d_fx_op::FxOp;
+    use ph2d_item_id::ItemId;
+    let plain = ObjectPose {
+        geometry: Some(rect(3)),
+        filters: vec![FxOp::new(FxOp::BLUR)],
+        filter_ids: vec![ItemId(1)],
+        ..posed(3)
+    };
+    let hover = ObjectPose {
+        filters: vec![FxOp::new(FxOp::BLUR), FxOp::new(FxOp::GLOW)],
+        filter_ids: vec![ItemId(1), ItemId(2)],
+        ..plain.clone()
+    };
+    let tr = Transition::new(std::slice::from_ref(&plain), std::slice::from_ref(&hover));
+    assert_eq!(tr.at(0.5)[0].filter_ids, vec![ItemId(1), ItemId(2)]);
+    let volta = Transition::new(std::slice::from_ref(&hover), std::slice::from_ref(&plain));
+    assert_eq!(
+        volta.at(0.5)[0].filter_ids,
+        vec![ItemId(1), ItemId(2)],
+        "o que sai leva o seu"
+    );
+}
+
+/// F32 §2: uma pose gravada até ao `PROJECT_SCHEMA` 196 (sem `filter_ids`, o último campo) lê-se no
+/// âmbito `PoseLayoutV196` sem comer os bytes de quem vem a seguir.
+#[test]
+fn a_pose_196_le_se_no_ambito_sem_os_ids() {
+    use ph2d_fx_op::FxOp;
+    let p = ObjectPose {
+        filters: vec![FxOp::new(FxOp::BLUR)],
+        ..ObjectPose::new(3)
+    };
+    let mut v196 = postcard::to_allocvec(&p).expect("grava");
+    assert_eq!(v196.pop(), Some(0), "o vec vazio de ids é um byte 0 no fim");
+    {
+        let _v = crate::PoseLayoutV196::enter();
+        assert_eq!(
+            postcard::to_allocvec(&p).expect("grava"),
+            v196,
+            "no âmbito grava-se a 196"
+        );
+    }
+    v196.extend(postcard::to_allocvec(&7u32).expect("cauda"));
+    let lido = {
+        let _v = crate::PoseLayoutV196::enter();
+        postcard::from_bytes::<(ObjectPose, u32)>(&v196).expect("lê no âmbito")
+    };
+    assert_eq!(lido, (p, 7));
+}

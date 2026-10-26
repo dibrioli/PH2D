@@ -44,6 +44,7 @@ fn linha() -> InspectorTweenRow {
     InspectorTweenRow {
         item: Default::default(),
         relogio_item: Default::default(),
+        relogio_pos: Default::default(),
         canal: ph2d_tween::Canal::Opacity.tag(),
         de: [1.0, 0.0, 0.0, 0.0],
         para: [0.0, 0.0, 0.0, 0.0],
@@ -242,6 +243,9 @@ fn duas_linhas() -> InspectorTweenInfo {
     segunda.repeat = false;
     segunda.autostart = false;
     segunda.duracao_us = Some(1_500_000);
+    // F32 §4: o relógio da 2.ª linha é o timer da posição 2 (um timer anterior saiu) — as caixas
+    // escrevem nele, não no índice da linha.
+    segunda.relogio_pos = 2;
     InspectorTweenInfo {
         entity_bits: ENTITY,
         rows: vec![linha(), segunda],
@@ -291,12 +295,12 @@ fn os_tres_controlos_do_relogio_chegam_a_porta_dos_timers() {
     for (id, esperado, nome) in [
         (
             ids::INSP_TWEEN_REPEAT,
-            TimerFieldEdit::Repeat(1, true),
+            TimerFieldEdit::Repeat(2, true),
             "repeat",
         ),
         (
             ids::INSP_TWEEN_AUTOSTART,
-            TimerFieldEdit::Autostart(1, true),
+            TimerFieldEdit::Autostart(2, true),
             "autostart",
         ),
     ] {
@@ -341,7 +345,7 @@ fn os_tres_controlos_do_relogio_chegam_a_porta_dos_timers() {
         acoes,
         [EditorAction::InspectorTimerEdit {
             entity_bits: ENTITY,
-            edit: TimerFieldEdit::DurationSecs(1, 2.5),
+            edit: TimerFieldEdit::DurationSecs(2, 2.5),
         }],
         "a duracao da seccao TWEEN nao chegou a` porta dos TIMERS com o INDICE da linha aberta"
     );

@@ -277,9 +277,16 @@ fn o_estado_corrente_segue_o_item_quando_um_anterior_sai() {
     assert_eq!((rt.current, rt.item), (2, crate::ItemId(12)), "na Aberta");
     m.states.remove(0);
     assert!(reconcile(&m, &mut rt));
-    assert_eq!(m.states[rt.current as usize].name, "Aberta", "continua na Aberta");
+    assert_eq!(
+        m.states[rt.current as usize].name, "Aberta",
+        "continua na Aberta"
+    );
     assert!(rt.started, "não renasceu");
     m.states.remove(1);
     assert!(reconcile(&m, &mut rt));
-    assert_eq!((rt.current, rt.started), (0, false), "o corrente saiu: renasce no inicial");
+    assert_eq!(
+        (rt.current, rt.started),
+        (0, false),
+        "o corrente saiu: renasce no inicial"
+    );
 }

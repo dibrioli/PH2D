@@ -1093,6 +1093,7 @@ fn arma_o_top20() {
         rows: vec![InspectorTweenRow {
             item: 102,
             relogio_item: 101,
+            relogio_pos: 0,
             canal: 1,
             de: [0.0, 0.0, 0.0, 1.0],
             para: [1.0, 0.0, 0.0, 1.0],

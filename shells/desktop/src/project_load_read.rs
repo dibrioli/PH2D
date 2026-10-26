@@ -57,6 +57,8 @@ impl crate::App {
         // ⭐ **Até ao `205` as entradas da pilha do Vetor não tinham id** (F31 §B1, `VEC_SCENE` v25).
         let sem_ids = ver <= crate::project_schema::PROJECT_SCHEMA_FILTROS_SEM_ID;
         let _pilha_v23 = sem_ids.then(ph2d_vec_scene::PilhaLayoutV23::enter);
+        let por_posicao = ver <= crate::project_schema::PROJECT_SCHEMA_RELOGIO_POR_POSICAO;
+        let _pose_v196 = por_posicao.then(ph2d_ui_state::PoseLayoutV196::enter);
         let (mut file, migrated_counter) = match ver {
             // ⭐ **193 → … → 197: as animações do personagem, o `TiledDraw`, a memória do uso da imagem, o
             // `ImageRegion`** — um componente novo cada, a mesma forma; falta-lhes o `jogo` (198): o `0` do `Vec` vazio.
@@ -67,9 +69,10 @@ impl crate::App {
             | crate::project_schema::PROJECT_SCHEMA_SEM_REGION
             | crate::project_schema::PROJECT_SCHEMA_SEM_MEMORIA_DO_USO
             | crate::project_schema::PROJECT_SCHEMA_SEM_TILED_DRAW
-            | crate::project_schema::PROJECT_SCHEMA_SEM_ANIMACOES_DO_PERSONAGEM => {
-                (le_com_o_tipo_vivo(&[&bytes[..], falta].concat(), path)?, None)
-            }
+            | crate::project_schema::PROJECT_SCHEMA_SEM_ANIMACOES_DO_PERSONAGEM => (
+                le_com_o_tipo_vivo(&[&bytes[..], falta_no_fim(ver)].concat(), path)?,
+                None,
+            ),
             // ⛔ Um v97 e um v98 são RECUSADOS (sem tipo congelado não há forma honesta de os ler): o
             // porquê, verbatim, em `docs/archive/project-schema/bracos_97_e_98_recusados.md`.
             // ⭐⭐⭐ **128 → 129: as TAGS** (TOP-20 #9). Duas coisas mudaram e nenhuma é aditiva no
@@ -122,7 +125,8 @@ impl crate::App {
             // tem a mesma forma; só o SIGNIFICADO da opacidade nas poses mudou (abaixo).
             // ⭐ **203 → 204: a mesa de som** (F30 §B2): mais um `Vec` vazio no fim — um `0` a mais.
             192 | crate::project_schema::PROJECT_SCHEMA_OPACIDADE_FORA_DOS_ESTADOS => {
-                match postcard::from_bytes::<(u32, ProjectFile)>(&[&bytes[..], &[0, 0, 0]].concat()) {
+                match postcard::from_bytes::<(u32, ProjectFile)>(&[&bytes[..], &[0, 0, 0]].concat())
+                {
                     Ok((_, f)) => (f, None),
                     Err(e) => {
                         eprintln!("[proj] v{ver} ilegivel: {e}");
@@ -198,18 +202,22 @@ impl crate::App {
     }
 }
 
-/// Os bytes lidos com o tipo VIVO (`None` = ilegível, dito no terminal).
-fn le_com_o_tipo_vivo(bytes: &[u8], path: &str) -> Option<ProjectFile> {
-    // ⭐ do `204` (a `mesa` já lá está) para cima os bytes são os do tipo vivo; do `198` ao `203`
-    // falta-lhes a `mesa` (um `0`); abaixo falta-lhes também o `jogo` (outro). Os itens (F30 §A1,
-    // `205`) migram em `migra_depois_de_ler`: a forma do ficheiro é a mesma.
-    let falta: &[u8] = if ver > crate::project_schema::PROJECT_SCHEMA_SEM_MESA {
+/// Os `0` do `Vec` vazio que faltam ao fim de um ficheiro `ver` lido com o tipo vivo: do `204` (a `mesa` já lá
+/// está) para cima nenhum; do `198` ao `203` falta-lhe a `mesa`; abaixo falta-lhe também o `jogo`. Os itens
+/// (F30 §A1, `205`), os filtros e a pilha (`206`) e os relógios (`207`) migram em `migra_depois_de_ler`: a forma
+/// do ficheiro é a mesma.
+fn falta_no_fim(ver: u32) -> &'static [u8] {
+    if ver > crate::project_schema::PROJECT_SCHEMA_SEM_MESA {
         &[]
     } else if ver >= crate::project_schema::PROJECT_SCHEMA_SEM_CONSTRAINTS {
         &[0]
     } else {
         &[0, 0]
-    };
+    }
+}
+
+/// Os bytes lidos com o tipo VIVO (`None` = ilegível, dito no terminal).
+fn le_com_o_tipo_vivo(bytes: &[u8], path: &str) -> Option<ProjectFile> {
     match postcard::from_bytes::<(u32, ProjectFile)>(bytes) {
         Ok((_, f)) => Some(f),
         Err(e) => {
@@ -230,8 +238,8 @@ fn migra_depois_de_ler(file: &mut ProjectFile, ver: u32, fio: Option<u32>) {
         );
         eprintln!("[proj] v{ver}: {n} pose(s) de estado com a opacidade da forma");
     }
-    // Os itens das listas (`<= 204`) e os filtros da forma (`<= 205`): cada componente pela sua.
-    if ver <= crate::project_schema::PROJECT_SCHEMA_FILTROS_SEM_ID {
+    // Os itens das listas (`<= 204`), os filtros da forma (`<= 205`) e os relógios (`<= 206`).
+    if ver <= crate::project_schema::PROJECT_SCHEMA_RELOGIO_POR_POSICAO {
         let m = ph2d_ecs::item_id::migra(&mut file.state.world, ver);
         eprintln!(
             "[proj] v{ver}: {} lista(s) de itens migrada(s), {} ilegivel(eis)",

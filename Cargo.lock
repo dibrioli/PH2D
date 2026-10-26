@@ -10330,6 +10330,7 @@ version = "0.0.0"
 dependencies = [
  "ph2d-anim",
  "ph2d-fx-op",
+ "ph2d-item-id",
  "ph2d-spring",
  "ph2d-stroke-width",
  "ph2d-vec-blend",

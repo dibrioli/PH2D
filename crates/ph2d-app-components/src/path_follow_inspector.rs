@@ -24,7 +24,10 @@ pub fn build_path_follow_info(
 ) -> Option<InspectorPathFollowInfo> {
     let e = Entity::from_bits(entity_bits);
     let pf = world.get::<PathFollow>(e)?.clone();
-    let i = usize::from(pf.relogio);
+    let i = world
+        .get::<Timers>(e)
+        .and_then(|ts| ph2d_ecs::path_follow::timer_de(&pf, ts))
+        .unwrap_or(usize::from(pf.relogio));
     // ⚠️ **As três colunas do relógio são COPIADAS aqui**, e não lidas por referência mais abaixo: a
     // busca por nome pede `&mut World` (ver o `resolve`), e um empréstimo imutável vivo ao lado
     // dela não compila. *O compilador impõe a ordem que a leitura já queria.*
@@ -49,7 +52,7 @@ pub fn build_path_follow_info(
         caminho: pf.caminho,
         nome_existe,
         nome_tem_forma,
-        relogio: pf.relogio,
+        relogio: u8::try_from(i).unwrap_or(pf.relogio),
         relogio_item,
         relogios: n_relogios,
         duracao_us,
@@ -127,7 +130,9 @@ pub fn apply_path_follow_edit(
             if pf.relogio == n {
                 return false;
             }
+            // A escolha nova: o passe dos ids fixa-lhe o id no mesmo quadro.
             pf.relogio = n;
+            pf.relogio_item = ph2d_ecs::ItemId::NONE;
         }
         PathFollowFieldEdit::Ciclo(t) => {
             let Some(&c) = ph2d_tween::Ciclo::ALL.get(usize::from(*t)) else {

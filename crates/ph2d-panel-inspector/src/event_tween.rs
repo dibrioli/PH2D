@@ -112,8 +112,8 @@ pub(crate) fn apply_tween_event(
         return false;
     }
 
-    // ⭐⭐⭐ **AS DUAS CAIXAS DO RELÓGIO** — elas escrevem no `Timers[i]`, pela porta que a secção
-    // TIMERS já usa.
+    // ⭐⭐⭐ **AS DUAS CAIXAS DO RELÓGIO** — elas escrevem no timer do tween (`relogio_pos`, F32 §4),
+    // pela porta que a secção TIMERS já usa.
     //
     // ⚠️⚠️ **Uma caixa emite `Toggled`, NUNCA `Click`**, e é o gate de costura que o diz: a 1.ª
     // redacção pôs os dois braços dentro do ramo do clique e eles ficaram **inalcançáveis**, com o
@@ -126,11 +126,15 @@ pub(crate) fn apply_tween_event(
         && let Some(r) = info.rows.get(aberto)
     {
         if id == crate::ids::INSP_TWEEN_REPEAT {
-            relogio(host, bits, TimerFieldEdit::Repeat(i, !r.repeat));
+            relogio(host, bits, TimerFieldEdit::Repeat(r.relogio_pos, !r.repeat));
             return true;
         }
         if id == crate::ids::INSP_TWEEN_AUTOSTART {
-            relogio(host, bits, TimerFieldEdit::Autostart(i, !r.autostart));
+            relogio(
+                host,
+                bits,
+                TimerFieldEdit::Autostart(r.relogio_pos, !r.autostart),
+            );
             return true;
         }
     }
@@ -157,8 +161,10 @@ pub(crate) fn apply_tween_event(
         }
         // ⭐⭐⭐ **A DURAÇÃO do relógio deste tween** — em SEGUNDOS, como a da secção TIMERS, e pela
         // MESMA variante: quem satura no `TIMER_MAX_US` continua a ser a shell, num sítio só.
-        if id == crate::ids::INSP_TWEEN_DURACAO {
-            relogio(host, bits, TimerFieldEdit::DurationSecs(i, f));
+        if id == crate::ids::INSP_TWEEN_DURACAO
+            && let Some(r) = info.rows.get(aberto)
+        {
+            relogio(host, bits, TimerFieldEdit::DurationSecs(r.relogio_pos, f));
             return true;
         }
     }

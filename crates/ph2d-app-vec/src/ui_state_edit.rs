@@ -152,10 +152,10 @@ pub fn capture(sim: &SimWorld, scene: &VecScene, map: &VecEntityMap, id: VecPath
         // aqui. Sem esta linha a pose nasce sempre vazia de filtros e o `install` apagaria o blur
         // do artista no primeiro Show: um produtor que falta não dá erro nenhum, ele só perde o
         // canal em silêncio (é o que aconteceu com a `geometry` por uma wave inteira).
-        pose.filters = sim
+        (pose.filters, pose.filter_ids) = sim
             .world()
             .get::<VecFilter>(e)
-            .map(|f| f.ops().to_vec())
+            .map(|f| (f.ops().to_vec(), f.ids().to_vec()))
             .unwrap_or_default();
         // **O VERBO PRÓPRIO** desta forma dentro da booleana viva. ⚠️ A ausência do componente
         // grava-se como `None`, que é o mesmo *"herda o do grupo"* que ele significa no mundo —
@@ -275,10 +275,12 @@ pub fn install(sim: &mut SimWorld, scene: &mut VecScene, map: &VecEntityMap, pos
             if pose.filters.is_empty() {
                 em.remove::<VecFilter>();
             } else if let Some(mut f) = em.get_mut::<VecFilter>() {
-                // Os ids ficam (a chave de animação é o id): a pose é POR POSIÇÃO.
-                f.troca_ops(&pose.filters);
+                // Os ids da pose (F32 §2): a chave de cada filtro segue-o entre estados.
+                f.troca_pares(&pose.filters, &pose.filter_ids);
             } else {
-                em.insert(VecFilter::from_ops(pose.filters.clone()));
+                let mut f = VecFilter::default();
+                f.troca_pares(&pose.filters, &pose.filter_ids);
+                em.insert(f);
             }
             // **O VERBO PRÓPRIO.** ⚠️ `None` REMOVE o componente, e é a mesma lei do filtro e do
             // `VecOffset`: um documento não acumula relações inertes. Aqui ela tem um segundo

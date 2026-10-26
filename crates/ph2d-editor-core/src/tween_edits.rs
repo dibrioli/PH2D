@@ -43,6 +43,8 @@ pub struct InspectorTweenRow {
     pub item: u32,
     /// O `ItemId` do timer que é o relógio deste tween (`0` = sem relógio).
     pub relogio_item: u32,
+    /// A POSIÇÃO desse timer na lista (F32 §4): é para ela que as caixas do relógio escrevem.
+    pub relogio_pos: u8,
 }
 
 /// O que o Inspector mostra da secção TWEEN.
@@ -161,6 +163,7 @@ mod tests {
         InspectorTweenRow {
             item: Default::default(),
             relogio_item: Default::default(),
+            relogio_pos: Default::default(),
             canal: ph2d_tween::Canal::Opacity.tag(),
             de: [1.0, 0.0, 0.0, 0.0],
             para: [0.0, 0.0, 0.0, 0.0],

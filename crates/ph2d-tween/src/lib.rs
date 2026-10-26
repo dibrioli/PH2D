@@ -220,6 +220,9 @@ pub struct Tween {
     pub ciclo: Ciclo,
     /// A identidade do item (F30 §A1): a chave de animação dos campos dele. `0` = por atribuir.
     pub item: ph2d_item_id::ItemId,
+    /// O [`ph2d_item_id::ItemId`] do timer que é o relógio dele — `0` = o timer na mesma posição,
+    /// até o passe dos ids o fixar (F32 §4: apagar um timer anterior não troca o relógio).
+    pub relogio: ph2d_item_id::ItemId,
 }
 
 impl Default for Tween {
@@ -243,6 +246,7 @@ impl Tween {
             ao_acabar: AoAcabar::Hold,
             ciclo: Ciclo::Reinicia,
             item: ph2d_item_id::ItemId::NONE,
+            relogio: ph2d_item_id::ItemId::NONE,
         }
     }
 
@@ -257,6 +261,7 @@ impl Tween {
             ao_acabar: AoAcabar::Rewind,
             ciclo: Ciclo::Reinicia,
             item: ph2d_item_id::ItemId::NONE,
+            relogio: ph2d_item_id::ItemId::NONE,
         }
     }
 }

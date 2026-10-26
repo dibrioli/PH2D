@@ -210,3 +210,28 @@ fn o_valor_de_fabrica_alinha_com_o_caminho() {
     assert!(PathFollow::default().alinha);
     assert_eq!(PathFollow::default().angulo, 0.0);
 }
+
+/// F32 §4: o seguidor fica no timer que escolheu quando um anterior sai, e o `relogio` do painel
+/// passa à posição de hoje.
+#[test]
+fn apagar_um_timer_anterior_nao_troca_o_relogio_do_seguidor() {
+    let (mut w, e) = cena(
+        PathFollow {
+            relogio: 1,
+            ..trilho()
+        },
+        2,
+    );
+    crate::item_id::assign_missing_item_ids(&mut w);
+    let b = w.get::<Timers>(e).unwrap().0[1].item;
+    assert_eq!(w.get::<PathFollow>(e).unwrap().relogio_item, b);
+    w.get_mut::<Timers>(e).unwrap().0.remove(0);
+    crate::item_id::assign_missing_item_ids(&mut w);
+    let pf = w.get::<PathFollow>(e).unwrap();
+    assert_eq!(
+        (pf.relogio, pf.relogio_item),
+        (0, b),
+        "o B, agora na posição 0"
+    );
+    assert_eq!(timer_de(pf, w.get::<Timers>(e).unwrap()), Some(0));
+}

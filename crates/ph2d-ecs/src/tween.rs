@@ -14,16 +14,15 @@
 //! sem uma entrada nova no censo. É o mesmo que o emissor de partículas (#18) mediu para si
 //! próprio: *as vivas são função pura do playhead ⇒ scrub e replay de graça.*
 //!
-//! # ⚠️ O RELÓGIO é o timer do MESMO ÍNDICE
+//! # ⚠️ O RELÓGIO é o timer do item [`Tween::relogio`](ph2d_tween::Tween::relogio)
 //!
-//! O tween `i` corre no timer `i`. É **a mesma lei** que liga o [`Timers`](crate::Timers) ao
-//! [`TimerRuntime`](crate::TimerRuntime), e o doc dela já a escreve: *«o índice casa, e é isso que
-//! os liga — não um nome. Um nome ligaria dois vectores por uma string que o artista pode editar a
-//! meio, e o relógio saltaria de timer.»*
+//! O tween nasce no timer da MESMA posição e o passe dos ids fixa-o pelo id ([`adopta_relogios`]):
+//! apagar um timer anterior não troca o relógio de ninguém (F32 §4). Nunca por nome — o artista
+//! edita-o a meio. A porta única é [`timer_do`].
 //!
-//! ⛔ **E é por isso que o [`TWEENS_MAX`] é DERIVADO** e não escolhido: um tween depois do último
-//! timer não tem relógio, logo é **inerte** — e um modelo que aceita o que não pode correr produz
-//! estado inalcançável, que é a lei que o `ANIM_TAGS_MAX` desta casa já escreve.
+//! ⛔ **E é por isso que o [`TWEENS_MAX`] é DERIVADO** e não escolhido: um tween sem timer não tem
+//! relógio, logo é **inerte** — e um modelo que aceita o que não pode correr produz estado
+//! inalcançável, que é a lei que o `ANIM_TAGS_MAX` desta casa já escreve.
 //!
 //! ⚠️ **Um tween no índice `0` PARTILHA o relógio com um [`SequencePlayer`](crate::SequencePlayer)**
 //! no mesmo objecto, que também toma o primeiro. É **a leitura certa** — *a cutscene e o tween
@@ -52,6 +51,39 @@ pub const TWEENS_MAX: usize = crate::TIMERS_MAX;
 pub struct Tweens(pub Vec<Tween>);
 
 impl SimComponent for Tweens {}
+
+/// ⭐ **A posição do timer que é o relógio do tween `i`** — a porta única (a ponte, o Inspector, o
+/// preset). Sem o id fixado ainda, o da mesma posição.
+#[must_use]
+pub fn timer_do(t: &Tween, i: usize, timers: &crate::Timers) -> Option<usize> {
+    if t.relogio.is_none() {
+        return (i < timers.0.len()).then_some(i);
+    }
+    timers.0.iter().position(|x| x.item == t.relogio)
+}
+
+/// ⭐ **Fixa pelo id o relógio de todo tween que ainda não o tem** — o timer da mesma posição, já com
+/// id. Corre no passe dos ids ([`crate::item_id::assign_missing_item_ids`]), no MESMO quadro da
+/// edição e antes da captura do undo. Devolve se mexeu.
+pub fn adopta_relogios(world: &mut bevy_ecs::world::World) -> bool {
+    let mut q = world.query::<(&mut Tweens, &crate::Timers)>();
+    let mut mexeu = false;
+    for (mut tweens, timers) in q.iter_mut(world) {
+        let falta = |(i, t): (usize, &Tween)| {
+            t.relogio.is_none() && timers.0.get(i).is_some_and(|x| !x.item.is_none())
+        };
+        if !tweens.0.iter().enumerate().any(falta) {
+            continue;
+        }
+        for (i, t) in tweens.0.iter_mut().enumerate() {
+            if let Some(x) = timers.0.get(i).filter(|_| t.relogio.is_none()) {
+                t.relogio = x.item;
+            }
+        }
+        mexeu = true;
+    }
+    mexeu
+}
 
 /// **O relógio, como a lei do [`ph2d_tween`] o vê** — a porta que traduz, e a ÚNICA.
 ///
@@ -85,8 +117,8 @@ pub struct Escrita {
 /// ⚠️ **Ausente da lista = não escreve**, e é isso que faz o objecto voltar à pose e à cor da cena
 /// sem uma linha de código a repô-las — a lei do `em_corrida` do #19, palavra por palavra.
 ///
-/// ⚠️ **Um tween sem timer no mesmo índice sai da lista**, e ⛔ *não* cai no timer `0`: correr no
-/// relógio errado lê-se como um defeito do motor, e não como uma lista curta.
+/// ⚠️ **Um tween sem o seu timer sai da lista**, e ⛔ *não* cai no timer `0`: correr no relógio
+/// errado lê-se como um defeito do motor, e não como uma lista curta.
 ///
 /// ⚠️ `query` e não `try_query`: aqui o mundo é `&mut`, logo a consulta regista os componentes que
 /// ainda não viu — a armadilha que a `tagged` pagou (um mundo que nunca viu um componente responde
@@ -102,7 +134,10 @@ pub fn a_escrever(world: &mut bevy_ecs::world::World) -> Vec<Escrita> {
     let mut fora = Vec::new();
     for (entity, tweens, cfg, rt) in q.iter(world) {
         for (i, t) in tweens.0.iter().enumerate() {
-            let (Some(timer), Some(estado)) = (cfg.0.get(i), rt.0.get(i)) else {
+            let Some(j) = timer_do(t, i, cfg) else {
+                continue;
+            };
+            let (Some(timer), Some(estado)) = (cfg.0.get(j), rt.0.get(j)) else {
                 continue;
             };
             if let Some(valor) = ph2d_tween::valor(t, relogio_de(timer, estado)) {

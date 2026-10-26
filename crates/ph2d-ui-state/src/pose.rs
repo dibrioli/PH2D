@@ -2,6 +2,7 @@
 
 use crate::role::StateRole;
 use ph2d_fx_op::FxOp;
+use ph2d_item_id::ItemId;
 use ph2d_stroke_width::WidthStops;
 use ph2d_vec_scene::{Paint, StrokeSpec, VecPath, VecPathId};
 use serde::{Deserialize, Serialize};
@@ -128,6 +129,14 @@ pub struct ObjectPose {
     /// dizer que *não* é «herda»). Uma pose gravada sobre um objecto que ainda não era um conjunto
     /// não pode passar a mandá-lo para a primeira forma no dia em que ele virar um.
     pub morph_shape: Option<VecPathId>,
+    /// **O id de cada degrau de [`Self::filters`]** (F32 §2), na mesma ordem: o install põe-nos na
+    /// forma com os valores, e a chave de animação de um filtro só deste estado sobrevive a sair e
+    /// voltar. Mais curto (pose gravada até ao `PROJECT_SCHEMA` 196) ⇒ a posição manda nesse degrau.
+    #[serde(
+        serialize_with = "crate::pose_wire::grava_filter_ids",
+        deserialize_with = "crate::pose_wire::filter_ids"
+    )]
+    pub filter_ids: Vec<ItemId>,
 }
 
 impl ObjectPose {
@@ -148,6 +157,7 @@ impl ObjectPose {
             bool_op: None,
             bool_group_op: None,
             morph_shape: None,
+            filter_ids: Vec::new(),
         }
     }
 

@@ -166,7 +166,7 @@ fn relogio(
         y,
         &tr_with(
             "panel.inspector.tween.clock_is_timer",
-            &[("n", &(slot + 1))],
+            &[("n", &(usize::from(row.relogio_pos) + 1))],
         ),
         ColorToken::Text3,
     );

@@ -123,3 +123,70 @@ fn o_projeto_195_le_a_pilha_do_vetor_sem_ids() {
         "o passe é que dá os ids"
     );
 }
+
+/// ⭐ **Um projecto v196 lê os relógios e as poses sem ids** (F32, degrau `197`): o `Tweens` e o
+/// `PathFollow` na forma de então (o tipo vivo sem o último campo) e a pose de estado gravada no
+/// âmbito `PoseLayoutV196` abrem com o relógio por atribuir e os filtros da pose sem ids.
+#[test]
+fn o_projeto_196_le_os_relogios_e_as_poses_sem_ids() {
+    let sem_o_ultimo = |mut b: Vec<u8>| {
+        assert_eq!(b.pop(), Some(0), "o id NONE do fim é um byte 0");
+        b
+    };
+    let tweens = ph2d_ecs::Tweens(vec![Default::default()]);
+    let seguidor = ph2d_ecs::PathFollow {
+        relogio: 1,
+        ..ph2d_ecs::PathFollow::default()
+    };
+    let blob = |nome: &str, data: Vec<u8>| ph2d_asset::ComponentBlob {
+        type_id: ph2d_ecs::scene::registry::stable_type_id(nome),
+        data,
+    };
+    let mut scene = VecScene::new();
+    let id = scene.push_path(rectangle([0.0, 0.0], [1.0, 1.0]));
+    let mut states = ph2d_ui_state::StateSets::default();
+    let mut st = ph2d_ui_state::UiState::new(ph2d_ui_state::StateRole::Default);
+    st.objects = vec![ph2d_ui_state::ObjectPose {
+        filters: vec![ph2d_ecs::FxOp::new(ph2d_ecs::FxOp::BLUR)],
+        ..ph2d_ui_state::ObjectPose::new(id)
+    }];
+    states.set(id, st);
+    let mut f = bare_file(ProjectState {
+        vec: std::sync::Arc::new(scene),
+        ui_states: states,
+        ..empty_state()
+    });
+    f.state
+        .world
+        .entities
+        .push(std::sync::Arc::new(ph2d_ecs::scene::EntitySnapshotRow {
+            id: ph2d_ecs::StableId(7),
+            components: vec![
+                blob(
+                    "ph2d::ecs::Tweens",
+                    sem_o_ultimo(postcard::to_allocvec(&tweens).expect("t")),
+                ),
+                blob(
+                    "ph2d::ecs::PathFollow",
+                    sem_o_ultimo(postcard::to_allocvec(&seguidor).expect("p")),
+                ),
+            ],
+            parent: None,
+        }));
+    let bytes = {
+        let _v196 = ph2d_ui_state::PoseLayoutV196::enter();
+        postcard::to_allocvec(&(196u32, &f)).expect("serializa")
+    };
+    let path = tmp_path("relogios_v196");
+    std::fs::write(&path, bytes).expect("grava");
+    let lido = headless_app().read_project_file(&path.to_string_lossy());
+    let _ = std::fs::remove_file(&path);
+    let (back, _) = lido.expect("um v196 é aceite");
+    let c = &back.state.world.entities[0].components;
+    let t: ph2d_ecs::Tweens = postcard::from_bytes(&c[0].data).expect("forma nova");
+    assert_eq!(t, tweens, "o mesmo tween, relógio por atribuir");
+    let p: ph2d_ecs::PathFollow = postcard::from_bytes(&c[1].data).expect("forma nova");
+    assert_eq!(p, seguidor);
+    let pose = &back.state.ui_states.get(id)[0].objects[0];
+    assert_eq!((pose.filters.len(), pose.filter_ids.len()), (1, 0));
+}

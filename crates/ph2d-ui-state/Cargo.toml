@@ -35,6 +35,9 @@ ph2d-stroke-width = { path = "../ph2d-stroke-width" }
 # (`ph2d-ecs::VecFilter`) —, então a pose tem de o carregar por si. Sem isto um blur ou um
 # glow seria o único efeito do editor que não pode diferir entre Default e Hover.
 ph2d-fx-op = { path = "../ph2d-fx-op" }
+# A identidade de cada filtro na pose (F32 §2): a chave de animação dele sobrevive a sair e voltar ao
+# estado e a reordenar entre estados.
+ph2d-item-id = { path = "../ph2d-item-id" }
 # A MOLA. Vive numa folha própria desde 2026-08-12 (o chrome do app também a usa) e é
 # RE-EXPORTADA daqui, para nenhum consumidor desta crate mudar.
 ph2d-spring = { path = "../ph2d-spring" }

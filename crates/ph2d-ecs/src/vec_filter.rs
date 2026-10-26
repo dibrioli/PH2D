@@ -133,15 +133,22 @@ impl VecFilter {
         Some(self.ops.remove(row))
     }
 
-    /// Põe os valores de `ops` POR POSIÇÃO (a pose de um estado de UI): a posição que fica guarda
-    /// o id; a que sobra sai com o dele; a que entra nasce por atribuir. Sem mudança, nada se escreve.
-    pub fn troca_ops(&mut self, ops: &[FxOp]) {
-        if self.ops.as_slice() == ops {
+    /// Põe a pilha de uma pose de estado de UI: os valores e o id de cada degrau (F32 §2). Um degrau
+    /// sem id na pose (pose gravada até ao `PROJECT_SCHEMA` 196) guarda o id da posição; o que entra
+    /// sem nenhum espera o passe. Sem mudança, nada se escreve.
+    pub fn troca_pares(&mut self, ops: &[FxOp], ids: &[ItemId]) {
+        let novos = (0..ops.len()).map(|i| {
+            (ids.get(i).copied())
+                .filter(|x| !x.is_none())
+                .or_else(|| self.ids.get(i).copied())
+                .unwrap_or(ItemId::NONE)
+        });
+        if self.ops.as_slice() == ops && novos.clone().eq(self.ids.iter().copied()) {
             return;
         }
+        self.ids = novos.collect();
         self.ops.clear();
         self.ops.extend_from_slice(ops);
-        self.ids.resize(ops.len(), ItemId::NONE);
     }
 
     /// Quantos degraus.
@@ -244,11 +251,29 @@ mod tests {
         let mut pose = f.ops().to_vec();
         pose[1].radius = 9.0;
         pose.push(FxOp::new(FxOp::BEVEL));
-        f.troca_ops(&pose);
+        f.troca_pares(&pose, &[]);
         assert_eq!(f.ops(), pose.as_slice());
         assert_eq!(f.ids(), &[ItemId(3), ItemId(4), ItemId::NONE]);
-        f.troca_ops(&pose[..1]);
+        f.troca_pares(&pose[..1], &[]);
         assert_eq!(f.ids(), &[ItemId(3)]);
+    }
+
+    /// F32 §2: com os ids da pose, a chave de cada filtro segue-o — reordenar entre estados leva-a, e
+    /// o filtro só de um estado volta com o MESMO id.
+    #[test]
+    fn a_pose_com_ids_poe_cada_filtro_com_o_seu_id() {
+        let mut f = stack(&[FxOp::BLUR]);
+        f.troca_pares(
+            &[FxOp::new(FxOp::GLOW), FxOp::new(FxOp::BLUR)],
+            &[ItemId(4), ItemId(3)],
+        );
+        assert_eq!(f.ids(), &[ItemId(4), ItemId(3)]);
+        f.troca_pares(&[FxOp::new(FxOp::BLUR)], &[ItemId(3)]);
+        f.troca_pares(
+            &[FxOp::new(FxOp::GLOW), FxOp::new(FxOp::BLUR)],
+            &[ItemId(4), ItemId(3)],
+        );
+        assert_eq!(f.ids(), &[ItemId(4), ItemId(3)], "o Glow volta com o 4");
     }
 
     /// O teto é respondido pela pilha, não contado no chamador.

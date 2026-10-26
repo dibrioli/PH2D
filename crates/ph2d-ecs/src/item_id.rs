@@ -62,6 +62,8 @@ pub struct Passe {
     escrever: fn(&mut World, Entity, &[ItemId]),
     /// Os bytes da forma sem ids, na forma de agora.
     legado: fn(&[u8]) -> Legado,
+    /// Os bytes já estão na forma de agora (lidos até ao último byte)?
+    atual: fn(&[u8]) -> bool,
     /// O último `PROJECT_SCHEMA` gravado na forma sem ids.
     pub ate: u32,
 }
@@ -84,9 +86,14 @@ impl Passe {
             ler: ler::<T>,
             escrever: escrever::<T>,
             legado: legado::<T, L>,
+            atual: atual::<T>,
             ate,
         }
     }
+}
+
+fn atual<T: DeserializeOwned>(b: &[u8]) -> bool {
+    inteiro::<T>(b).is_some()
 }
 
 fn ler<T: ComItens>(w: &mut World) -> Vec<(Entity, Vec<ItemId>)> {
@@ -100,7 +107,71 @@ fn escrever<T: ComItens>(w: &mut World, e: Entity, ids: &[ItemId]) {
     }
 }
 
-/// O que um blob é para o degrau `194 → 195`.
+/// Um degrau de FORMA de um componente: a forma gravada até ao `PROJECT_SCHEMA` `ate` e a conversão
+/// para a de agora. Os [`Passe`] trazem o deles; [`degraus`] junta os que não dão ids (F32 §4).
+#[derive(Clone, Copy)]
+pub struct Degrau {
+    pub canonical: &'static str,
+    legado: fn(&[u8]) -> Legado,
+    atual: fn(&[u8]) -> bool,
+    pub ate: u32,
+}
+
+impl Degrau {
+    /// O degrau de `T`, com `L` = a forma gravada até ao `PROJECT_SCHEMA` `ate`.
+    #[must_use]
+    pub fn de<T: Serialize + DeserializeOwned, L: DeserializeOwned + Into<T>>(
+        canonical: &'static str,
+        ate: u32,
+    ) -> Self {
+        Self {
+            canonical,
+            legado: legado::<T, L>,
+            atual: atual::<T>,
+            ate,
+        }
+    }
+}
+
+/// Todos os degraus de forma, por ordem de `ate` (um componente pode subir vários seguidos).
+#[must_use]
+pub fn degraus() -> Vec<Degrau> {
+    use crate::item_id_v196 as v;
+    let mut d: Vec<Degrau> = (passes().into_iter())
+        .map(|p| Degrau {
+            canonical: p.canonical,
+            legado: p.legado,
+            atual: p.atual,
+            ate: p.ate,
+        })
+        .chain([
+            Degrau::de::<crate::Tweens, v::TweensV196>("ph2d::ecs::Tweens", 206),
+            Degrau::de::<crate::PathFollow, v::PathFollowV196>("ph2d::ecs::PathFollow", 206),
+        ])
+        .collect();
+    d.sort_by_key(|x| x.ate);
+    d
+}
+
+/// ⭐ **Os bytes de um componente gravado noutra forma, na forma de agora** — sem versão: cada forma
+/// reconhece-se a si própria (lê-se até ao último byte). `None` = já na de agora, ou ilegível. A
+/// porta das macros (`.ph2dmacro` gravado antes de um degrau, F32 §5).
+#[must_use]
+pub fn migra_blob(canonical: &str, bytes: &[u8]) -> Option<Vec<u8>> {
+    let ds: Vec<Degrau> = (degraus().into_iter())
+        .filter(|d| d.canonical == canonical)
+        .collect();
+    // Sem versão, a forma de agora tem precedência: um blob em dia nunca se relê como antigo.
+    if ds.first().is_none_or(|d| (d.atual)(bytes)) {
+        return None;
+    }
+    ds.iter().find_map(|d| match (d.legado)(bytes) {
+        Legado::Migrado(b) => Some(b),
+        _ => None,
+    })
+}
+
+/// O que um blob é para um degrau de forma.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Legado {
     /// Lido na forma v194 (até ao último byte), e aqui na de agora.
@@ -119,7 +190,7 @@ fn inteiro<X: DeserializeOwned>(b: &[u8]) -> Option<X> {
     }
 }
 
-fn legado<T: ComItens, L: DeserializeOwned + Into<T>>(b: &[u8]) -> Legado {
+fn legado<T: Serialize + DeserializeOwned, L: DeserializeOwned + Into<T>>(b: &[u8]) -> Legado {
     if let Some(l) = inteiro::<L>(b) {
         let t: T = l.into();
         return postcard::to_allocvec(&t).map_or(Legado::Ilegivel, Legado::Migrado);
@@ -220,7 +291,9 @@ pub fn assign_missing_item_ids(world: &mut World) -> bool {
         }
     }
     world.insert_resource(contador);
-    mudou
+    // Os ids que acabaram de nascer fixam o relógio dos tweens no mesmo passe (F32 §4).
+    let tweens = crate::tween::adopta_relogios(world);
+    crate::path_follow::adopta_relogios(world) || tweens || mudou
 }
 
 /// O que a migração dos itens fez.
@@ -240,25 +313,32 @@ pub fn migra_v194(world: &mut crate::scene::WorldSnapshot) -> MigracaoV194 {
 /// `ver` ou além (`ver <= Passe::ate`) passa os blobs à forma com ids (`NONE`) — o `204 → 205`
 /// das listas da F30 e o `205 → 206` do `VecFilter` (F31 §B2).
 pub fn migra(world: &mut crate::scene::WorldSnapshot, ver: u32) -> MigracaoV194 {
-    let passes: Vec<(u64, Passe)> = (passes().into_iter())
-        .filter(|p| ver <= p.ate)
-        .map(|p| (stable_type_id(p.canonical), p))
+    let degraus: Vec<(u64, Degrau)> = (degraus().into_iter())
+        .filter(|d| ver <= d.ate)
+        .map(|d| (stable_type_id(d.canonical), d))
         .collect();
     let mut m = MigracaoV194::default();
     for row in &mut world.entities {
         for slot in 0..row.components.len() {
             let id = row.components[slot].type_id;
-            let Some((_, p)) = passes.iter().find(|(t, _)| *t == id) else {
-                continue;
-            };
-            match (p.legado)(&row.components[slot].data) {
-                Legado::Migrado(novo) => {
-                    std::sync::Arc::make_mut(row).components[slot].data = novo;
-                    m.migrados += 1;
+            // Do degrau mais antigo: cada forma converte direto para a de agora, e a 1.ª que lê serve.
+            let mut ilegivel = false;
+            for (_, d) in degraus.iter().filter(|(t, _)| *t == id) {
+                match (d.legado)(&row.components[slot].data) {
+                    Legado::Migrado(novo) => {
+                        std::sync::Arc::make_mut(row).components[slot].data = novo;
+                        m.migrados += 1;
+                        ilegivel = false;
+                        break;
+                    }
+                    Legado::JaNovo => {
+                        ilegivel = false;
+                        break;
+                    }
+                    Legado::Ilegivel => ilegivel = true,
                 }
-                Legado::JaNovo => {}
-                Legado::Ilegivel => m.ilegiveis += 1,
             }
+            m.ilegiveis += usize::from(ilegivel);
         }
     }
     m

@@ -167,7 +167,7 @@ impl PixelApp {
 }
 
 impl PixelApp {
-    /// O [`PixelApp::frame`] com a régua e o Draw lidos do `hero`.
+    /// O [`PixelApp::frame_in`] com a régua, o Draw e a área livre do desenho lidos do `hero`.
     pub fn frame_of(
         &mut self,
         sim: &mut ph2d_ecs::SimWorld,
@@ -178,7 +178,20 @@ impl PixelApp {
     ) {
         let editing = crate::mode::editing(sim.world(), hero);
         let ppm = hero.project.pixels_per_meter;
-        self.frame(sim, camera, window, ppm, editing, spawn_root);
+        let whole = ph2d_editor_core::zones::Rect::new(
+            0.0,
+            0.0,
+            window.width as f32,
+            window.height as f32,
+        );
+        let (r, _) = ph2d_app_host::canvas_area::frame_target(hero, whole);
+        let area = ph2d_render::camera_frame::Area {
+            x: r.x,
+            y: r.y,
+            w: r.w,
+            h: r.h,
+        };
+        self.frame_in(sim, camera, window, ppm, editing, area, spawn_root);
     }
 
     /// O [`crate::draw::draw`] com a régua, o Draw e o tema lidos do `hero`.

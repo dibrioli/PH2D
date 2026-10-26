@@ -6,13 +6,14 @@ use ph2d_host::WindowSize;
 use ph2d_pixel_core::NewSprite;
 use ph2d_pixel_render::{px_per_cell, zoom};
 use ph2d_render::Camera2d;
+use ph2d_render::camera_frame::Area;
 
 use crate::PixelApp;
 use crate::input::{set_zoom, to_screen};
 use crate::mode::sprites;
 use crate::state::Doc;
 
-/// Parte da janela que um sprite novo ocupa ao abrir (o *Fit Screen* com margem).
+/// Parte da área livre do desenho que um sprite novo ocupa ao abrir (o *Fit Screen* com margem).
 const FIT_FRACTION: f64 = 0.6;
 
 impl PixelApp {
@@ -28,6 +29,28 @@ impl PixelApp {
         editing: Option<u64>,
         spawn_root: impl FnOnce(&mut SimWorld, &str) -> u64,
     ) {
+        let whole = Area {
+            x: 0.0,
+            y: 0.0,
+            w: window.width as f32,
+            h: window.height as f32,
+        };
+        self.frame_in(sim, camera, window, ppm, editing, whole, spawn_root);
+    }
+
+    /// O [`PixelApp::frame`] com a área livre do desenho (`area`, px da janela): é nela que um
+    /// sprite novo se enquadra.
+    #[allow(clippy::too_many_arguments)]
+    pub fn frame_in(
+        &mut self,
+        sim: &mut SimWorld,
+        camera: &mut Camera2d,
+        window: WindowSize,
+        ppm: f32,
+        editing: Option<u64>,
+        area: Area,
+        spawn_root: impl FnOnce(&mut SimWorld, &str) -> u64,
+    ) {
         if let Some(level) = self.smoke.take()
             && !crate::smoke::stage(self, sim, level, spawn_root)
         {
@@ -39,11 +62,18 @@ impl PixelApp {
             self.hover = None;
             self.space = false;
             self.panning = false;
+            self.fit = None;
         }
         if editing != self.was_editing
             && let Some(bits) = editing
         {
-            self.frame_on_entry(sim.world(), camera, window, ppm, bits);
+            self.frame_on_entry(sim.world(), camera, window, ppm, bits, area);
+        } else if let (Some(bits), Some((of, at, view))) = (editing, self.fit) {
+            if of != bits || camera.view() != view || self.gesture.is_some() {
+                self.fit = None;
+            } else if at != area {
+                self.fit_in(sim.world(), camera, window, ppm, bits, area);
+            }
         }
         self.was_editing = editing;
         self.spray_tick();
@@ -111,8 +141,8 @@ impl PixelApp {
         }
     }
 
-    /// Ao entrar em Draw: um sprite novo enquadra-se (centro e o maior zoom inteiro que cabe); um
-    /// já aberto antes só prende o zoom ao degrau inteiro mais próximo.
+    /// Ao entrar em Draw: um sprite novo enquadra-se na área livre ([`Self::fit_in`]); um já aberto
+    /// antes só prende o zoom ao degrau inteiro mais próximo.
     fn frame_on_entry(
         &mut self,
         world: &ph2d_ecs::World,
@@ -120,34 +150,57 @@ impl PixelApp {
         window: WindowSize,
         ppm: f32,
         bits: u64,
+        area: Area,
     ) {
+        self.fit = None;
         let Some(key) = crate::input::key_of(world, bits) else {
             return;
         };
         let Some(doc) = self.docs.get_mut(&key) else {
             return;
         };
-        let center = (window.width as f32 * 0.5, window.height as f32 * 0.5);
-        let target = if doc.fresh {
-            if let Some(e) = ph2d_ecs::Entity::try_from_bits(bits)
-                && let Some(tr) = ph2d_ecs::world_transform(world, e)
-            {
-                camera.center = [tr.translation.x, tr.translation.y];
-            }
-            zoom::fit(
-                doc.sprite.width(),
-                doc.sprite.height(),
-                f64::from(window.width) * FIT_FRACTION,
-                f64::from(window.height) * FIT_FRACTION,
-            )
-        } else {
-            let Some(m) = to_screen(world, bits, doc, camera, window, ppm) else {
-                return;
-            };
-            zoom::nearest(px_per_cell(m))
+        if std::mem::take(&mut doc.fresh) {
+            self.fit_in(world, camera, window, ppm, bits, area);
+            return;
+        }
+        let Some(m) = to_screen(world, bits, doc, camera, window, ppm) else {
+            return;
         };
-        doc.fresh = false;
-        let doc = &self.docs[&key];
-        set_zoom(world, bits, doc, camera, window, ppm, target, center);
+        let center = (window.width as f32 * 0.5, window.height as f32 * 0.5);
+        set_zoom(world, bits, doc, camera, window, ppm, zoom::nearest(px_per_cell(m)), center);
+    }
+
+    /// O *Fit Screen*: o sprite no centro de `area` (px da janela) com o maior degrau inteiro que
+    /// cabe em [`FIT_FRACTION`] dela. Fica a seguir a área (`self.fit`) até o artista mexer.
+    fn fit_in(
+        &mut self,
+        world: &ph2d_ecs::World,
+        camera: &mut Camera2d,
+        window: WindowSize,
+        ppm: f32,
+        bits: u64,
+        area: Area,
+    ) {
+        let Some(doc) = crate::input::key_of(world, bits).and_then(|k| self.docs.get(&k)) else {
+            return;
+        };
+        if let Some(e) = ph2d_ecs::Entity::try_from_bits(bits)
+            && let Some(tr) = ph2d_ecs::world_transform(world, e)
+        {
+            camera.center = [tr.translation.x, tr.translation.y];
+        }
+        let mid = (area.x + area.w * 0.5, area.y + area.h * 0.5);
+        let here = camera.screen_to_world((window.width as f32 * 0.5, window.height as f32 * 0.5), window);
+        let there = camera.screen_to_world(mid, window);
+        camera.center[0] += here[0] - there[0];
+        camera.center[1] += here[1] - there[1];
+        let target = zoom::fit(
+            doc.sprite.width(),
+            doc.sprite.height(),
+            f64::from(area.w) * FIT_FRACTION,
+            f64::from(area.h) * FIT_FRACTION,
+        );
+        set_zoom(world, bits, doc, camera, window, ppm, target, mid);
+        self.fit = Some((bits, area, camera.view()));
     }
 }

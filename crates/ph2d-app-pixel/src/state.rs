@@ -83,6 +83,9 @@ pub struct PixelApp {
     pub(crate) wants_edit: Option<u64>,
     /// O objecto em Draw no quadro anterior (para enquadrar à entrada).
     pub(crate) was_editing: Option<u64>,
+    /// O enquadramento de entrada que ainda segue a área livre: `(objecto, área, vista posta)`.
+    /// Cai quando o artista mexe na vista, começa um gesto ou sai do Draw.
+    pub(crate) fit: Option<(u64, ph2d_render::camera_frame::Area, ph2d_render::camera_frame::View)>,
     /// A cena de smoke armada por `PH2D_PIXEL_SMOKE`, encenada no primeiro quadro.
     pub(crate) smoke: Option<u32>,
     /// Os pedidos do painel PIXEL deste quadro, aplicados no [`crate::panel::frame`].
@@ -139,6 +142,7 @@ impl Default for PixelApp {
             next_stamp: 1,
             wants_edit: None,
             was_editing: None,
+            fit: None,
             smoke: None,
             pedidos: Vec::new(),
             painel_em_edicao: false,

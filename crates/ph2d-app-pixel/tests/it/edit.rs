@@ -160,6 +160,55 @@ fn entering_edit_frames_the_sprite_at_an_integer_zoom_with_cells_on_whole_pixels
     );
 }
 
+/// O centro do sprite no ecrã e o degrau de zoom.
+fn on_screen(app: &PixelApp, sim: &SimWorld, cam: &Camera2d, bits: u64) -> (Point, u32) {
+    let key = input::key_of(sim.world(), bits).expect("marcador");
+    let doc = app.doc(key).expect("doc");
+    let m = input::to_screen(sim.world(), bits, doc, cam, WINDOW, PPM).expect("afim");
+    let (w, h) = (doc.sprite.width(), doc.sprite.height());
+    let c = m * Point::new(f64::from(w) * 0.5, f64::from(h) * 0.5);
+    (c, ph2d_pixel_render::px_per_cell(m).round() as u32)
+}
+
+/// Com a dock do dono (a área livre é só a esquerda da janela) o sprite enquadra-se NELA; o painel
+/// que abre ao entrar em Draw muda a área no quadro seguinte e o enquadramento acompanha-a até o
+/// artista mexer na vista.
+#[test]
+fn entering_draw_frames_the_sprite_in_the_free_area_and_follows_it_until_the_artist_moves() {
+    use ph2d_render::camera_frame::Area;
+    let mut app = PixelApp::default();
+    let mut sim = SimWorld::new();
+    let bits = object_add::add(object_add::PIXEL_SPRITE, &mut sim, &mut app, spawn_root)
+        .expect("é desta família")
+        .expect("nasce");
+    let mut cam = Camera2d::default();
+    let whole = Area {
+        x: 0.0,
+        y: 0.0,
+        w: 800.0,
+        h: 600.0,
+    };
+    let docked = Area {
+        x: 40.0,
+        y: 30.0,
+        w: 420.0,
+        h: 540.0,
+    };
+    let near = |c: Point, a: Area, z: u32| {
+        let (ax, ay) = (f64::from(a.x + a.w * 0.5), f64::from(a.y + a.h * 0.5));
+        (c.x - ax).abs() <= f64::from(z) && (c.y - ay).abs() <= f64::from(z)
+    };
+    app.frame_in(&mut sim, &mut cam, WINDOW, PPM, Some(bits), whole, spawn_root);
+    app.frame_in(&mut sim, &mut cam, WINDOW, PPM, Some(bits), docked, spawn_root);
+    let (c, z) = on_screen(&app, &sim, &cam, bits);
+    assert!(near(c, docked, z), "centro {c:?} fora da área livre {docked:?}");
+    assert_eq!(z, ph2d_pixel_render::zoom::fit(32, 32, 252.0, 324.0));
+    cam.center[0] += 3.0;
+    let moved = cam.view();
+    app.frame_in(&mut sim, &mut cam, WINDOW, PPM, Some(bits), whole, spawn_root);
+    assert_eq!(cam.view(), moved, "a vista do artista não se refaz");
+}
+
 #[test]
 fn a_drag_paints_a_line_as_one_undo_step_and_ctrl_z_takes_it_back() {
     let (mut app, sim, cam, bits) = born();

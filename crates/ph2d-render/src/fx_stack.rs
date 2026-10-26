@@ -667,6 +667,17 @@ impl FxStackPass {
         let need = (total_slots as u64) * UNIFORM_STRIDE;
         crate::fx_stack_res::ensure_uniform(gpu, &mut self.globals, &mut self.globals_cap, need);
     }
+
+    /// O lado das texturas de trabalho que a pilha segura entre corridas (4 × `Rgba16Float`).
+    #[must_use]
+    pub fn work_size(&self) -> Option<(u32, u32)> {
+        self.work.as_ref().map(|t| (t[0].w, t[0].h))
+    }
+
+    /// Solta as texturas de trabalho; a próxima corrida recria-as do tamanho que pedir (F35).
+    pub fn release_work(&mut self) {
+        self.work = None;
+    }
 }
 
 #[cfg(test)]

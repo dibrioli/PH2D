@@ -577,35 +577,12 @@ fn fx_zoom_sonda_de_uma_troca() {
 fn the_scene_41_cloud_never_blinks_on_the_owners_screen() {
     use ph2d_render::{Camera2d, VelloPass};
     use ph2d_vec_render::{BrushArts, DilatedPaints, PatternTiles, WidgetSkins};
-    use ph2d_vec_scene::{ShapeKind, VecViewState};
+    use ph2d_vec_scene::VecViewState;
     use ph2d_vector::VectorScene;
     let Some(gpu) = gpu() else {
         return;
     };
-    let mut vec = crate::state::VecState::default();
-    let mut scene = ph2d_vec_scene::VecScene::new();
-    crate::vector_mode::draw_shape(&mut vec, &mut scene, ShapeKind::Cloud, [-57.0, 0.0], 60.0);
-    let id = scene.paths().first().expect("nuvem").id;
-    // Como a cena 41: verde opaco, sem traço.
-    let p = scene.path_mut(id).expect("nuvem");
-    p.fill = Some(ph2d_vec_scene::Paint::solid(ph2d_vec_scene::Rgba8::new(
-        120, 190, 100, 255,
-    )));
-    p.stroke = None;
-    let mut sim = ph2d_ecs::SimWorld::default();
-    let mut map = ph2d_vec_entities::entities::VecEntityMap::new();
-    let e = sim
-        .world_mut()
-        .spawn((
-            ph2d_ecs::Transform::IDENTITY,
-            ph2d_ecs::Name::new("Bevel"),
-            ph2d_ecs::VecPathRef(id),
-        ))
-        .id();
-    map.insert(id, e.to_bits());
-    // O filtro da cena com o Bevel a Depth 1,4 — o do dono (smoke F34: «para ver o defeito»).
-    let filtro = super::filtro_com_depth(1.4);
-    crate::fx_live::set_filter(&mut sim, &map, &[id], Some(filtro));
+    let (scene, sim, map, id) = nuvem_da_cena_41();
     let janela = ph2d_host::WindowSize {
         width: 2560,
         height: 1080,
@@ -709,4 +686,42 @@ fn the_scene_41_cloud_never_blinks_on_the_owners_screen() {
         faltas.is_empty(),
         "quadros sem a nuvem (quadro, altura, alfa): {faltas:?}"
     );
+}
+
+/// A Nuvem da cena 41 (120 m, verde opaco, sem traço) com o filtro dela e o Bevel a Depth 1,4 — o do
+/// dono (smoke F34: «para ver o defeito»).
+pub(super) fn nuvem_da_cena_41() -> (
+    ph2d_vec_scene::VecScene,
+    ph2d_ecs::SimWorld,
+    ph2d_vec_entities::entities::VecEntityMap,
+    ph2d_vec_scene::VecPathId,
+) {
+    let mut vec = crate::state::VecState::default();
+    let mut scene = ph2d_vec_scene::VecScene::new();
+    crate::vector_mode::draw_shape(
+        &mut vec,
+        &mut scene,
+        ph2d_vec_scene::ShapeKind::Cloud,
+        [-57.0, 0.0],
+        60.0,
+    );
+    let id = scene.paths().first().expect("nuvem").id;
+    let p = scene.path_mut(id).expect("nuvem");
+    p.fill = Some(ph2d_vec_scene::Paint::solid(ph2d_vec_scene::Rgba8::new(
+        120, 190, 100, 255,
+    )));
+    p.stroke = None;
+    let mut sim = ph2d_ecs::SimWorld::default();
+    let mut map = ph2d_vec_entities::entities::VecEntityMap::new();
+    let e = sim
+        .world_mut()
+        .spawn((
+            ph2d_ecs::Transform::IDENTITY,
+            ph2d_ecs::Name::new("Bevel"),
+            ph2d_ecs::VecPathRef(id),
+        ))
+        .id();
+    map.insert(id, e.to_bits());
+    crate::fx_live::set_filter(&mut sim, &map, &[id], Some(super::filtro_com_depth(1.4)));
+    (scene, sim, map, id)
 }

@@ -268,6 +268,37 @@ fn a_gesture_at_max_zoom_almost_never_swaps_the_output_texture() {
     );
 }
 
+/// **G12 — a lei de soltar (F35 §1).** O que o zoom extremo alocou SOBRA quando a vista volta à de
+/// abertura; o que a vista de agora pede (arredondado pela `capacidade`) nunca sobra; sem forma
+/// filtrada tudo sobra.
+#[test]
+fn what_the_extreme_zoom_allocated_is_left_over_back_at_the_opening_view() {
+    use crate::fx_live::{capacidade, sobra};
+    let c = cena(FxOp::BEVEL);
+    let lados = |cam| {
+        let job = c.job(cam, VIEW).expect("job");
+        (job.key.w, job.key.h)
+    };
+    let abertura = lados(camera(1.0, CENTRO, 0.0));
+    let extremo = lados(camera(64.0, BORDA, 0.0));
+    let cap = |(w, h): (u32, u32)| (capacidade(w), capacidade(h));
+    assert!(
+        sobra(extremo, abertura),
+        "o zoom extremo {extremo:?} não sobra na abertura {abertura:?}"
+    );
+    assert!(
+        !sobra(abertura, abertura) && !sobra(cap(abertura), abertura),
+        "o que a abertura {abertura:?} pede não pode sobrar"
+    );
+    assert!(sobra((1, 1), (0, 0)) && !sobra((0, 0), (0, 0)));
+    // Um lado só basta: a sombra larga do pan na borda alarga a janela num eixo.
+    let (w, h) = cap(abertura);
+    assert!(
+        sobra((extremo.0.max(w + 1), h), abertura) && sobra((w, extremo.1.max(h + 1)), abertura),
+        "um lado que passa da capacidade sobra"
+    );
+}
+
 /// O filtro da cena 41 com o Bevel a `depth` (o dono: «para ver o defeito, Depth 1.4»).
 fn filtro_com_depth(depth: f32) -> VecFilter {
     let mut ops = crate::vector_mode_filtro_efeito::filtro().ops().to_vec();
@@ -379,6 +410,9 @@ fn fx_zoom_regua_cobertura() {
 
 #[path = "fx_live_zoom_gpu_tests.rs"]
 mod gpu;
+
+#[path = "fx_live_memoria_gpu_tests.rs"]
+mod memoria;
 
 /// Sonda: o alcance de cada degrau do filtro da cena 41, por zoom real da câmera (`k` px/m).
 #[test]

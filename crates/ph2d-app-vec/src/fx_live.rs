@@ -97,7 +97,15 @@ pub struct FxLive {
     pending_unregister: Vec<ImageData>,
     /// Contador só de diagnóstico (`PH2D_FX_PERF`).
     dbg_frames: u64,
+    /// Quadros seguidos sem nada a re-cozer — ao chegar a [`QUADROS_PARADOS`] solta o que sobra.
+    parado: u32,
+    /// O maior lote que o renderer do `scratch` já rasterizou: o pool interno do Vello guarda-o.
+    pico_lote: (u32, u32),
 }
+
+/// Quadros parados até soltar o que sobra (F35 §1): a roda contínua re-coze a < 200 ms (≤ 29 quadros a
+/// 144 Hz); 120 = 0,8 s a 144 Hz, 2 s a 60 Hz.
+pub(crate) const QUADROS_PARADOS: u32 = 120;
 
 impl FxLive {
     /// As imagens de FX deste frame — o que o [`ph2d_vec_render::dispatch`] injeta no z das formas.
@@ -167,6 +175,15 @@ impl FxLive {
                 miss.push(jobs.len());
             }
             jobs.push(job);
+        }
+
+        self.parado = if miss.is_empty() {
+            self.parado.saturating_add(1)
+        } else {
+            0
+        };
+        if self.parado == QUADROS_PARADOS {
+            self.solta_o_que_sobra(&jobs);
         }
 
         // 2ª varredura — o ATLAS. Zero formas a re-cozinhar = zero renders: uma cena parada não
@@ -330,6 +347,7 @@ impl FxLive {
         }
 
         // 2. UM render — o número que esta wave existe para levar a um.
+        self.pico_lote = (self.pico_lote.0.max(batch.w), self.pico_lote.1.max(batch.h));
         let scratch = match self.scratch.as_mut() {
             Some(p) => p,
             None => match VelloPass::new(gpu, surface_format, (batch.w, batch.h)) {
@@ -505,6 +523,58 @@ impl FxLive {
             self.pending_unregister.push(pfx.image);
         }
     }
+
+    /// Solta o transitório da cozedura que SOBRA face ao que os `jobs` desta vista pedem (F35 §1): as
+    /// texturas de trabalho, a `saida` e o renderer do scratch (com o pool do Vello). A próxima
+    /// cozedura recria-os do tamanho que pedir; as texturas registadas não se tocam.
+    fn solta_o_que_sobra(&mut self, jobs: &[Job]) {
+        let preciso = jobs
+            .iter()
+            .fold((0, 0), |(w, h), j| (w.max(j.key.w), h.max(j.key.h)));
+        let lote = crate::fx_atlas::pack(
+            &jobs.iter().map(|j| (j.key.w, j.key.h)).collect::<Vec<_>>(),
+            MAX_FX_SIDE,
+        )
+        .iter()
+        .fold((0, 0), |(w, h), b| (w.max(b.w), h.max(b.h)));
+        if let Some(stack) = self.stack.as_mut()
+            && stack.work_size().is_some_and(|t| sobra(t, preciso))
+        {
+            stack.release_work();
+        }
+        if self
+            .saida
+            .as_ref()
+            .is_some_and(|t| sobra((t.width(), t.height()), preciso))
+        {
+            self.saida = None;
+        }
+        if self.scratch.is_some() && sobra(self.pico_lote, lote) {
+            self.scratch = None;
+            self.pico_lote = (0, 0);
+        }
+    }
+
+    /// Os bytes de placa que o FX segura entre quadros: `[trabalho da pilha, saída, mostradas]` (o
+    /// pool do Vello do scratch não se vê daqui; o seu pico é [`Self::pico_lote`]).
+    pub fn gpu_bytes(&self) -> [u64; 3] {
+        let rgba8 = |t: &wgpu::Texture| 4 * u64::from(t.width()) * u64::from(t.height());
+        let work = self.stack.as_ref().and_then(FxStackPass::work_size);
+        [
+            work.map_or(0, |(w, h)| 4 * 8 * u64::from(w) * u64::from(h)),
+            self.saida.as_ref().map_or(0, rgba8),
+            self.paths.values().map(|p| rgba8(&p.tex)).sum(),
+        ]
+    }
+
+    /// O maior lote rasterizado pelo renderer do scratch vivo (`(0, 0)` = solto).
+    pub fn pico_lote(&self) -> (u32, u32) {
+        if self.scratch.is_some() {
+            self.pico_lote
+        } else {
+            (0, 0)
+        }
+    }
 }
 
 /// A pilha de `id`, se houver. Porta única: o cozimento e o publish para o painel perguntam AQUI.
@@ -588,6 +658,12 @@ pub(crate) fn capacidade(v: u32) -> u32 {
 /// A textura de lado `cap` serve um conteúdo de `v`: cabe, e não sobra mais que o dobro.
 pub(crate) fn serve(cap: u32, v: u32) -> bool {
     v <= cap && cap <= capacidade(v.saturating_mul(2))
+}
+
+/// O recurso de lados `cap` SOBRA para um pedido de `preciso`: um dos lados passa da `capacidade` do
+/// pedido. Sem a folga do `serve` — parado, o gesto acabou. Nada pedido (`0`) = tudo sobra.
+pub(crate) fn sobra(cap: (u32, u32), preciso: (u32, u32)) -> bool {
+    cap.0 > capacidade(preciso.0) || cap.1 > capacidade(preciso.1)
 }
 
 /// A textura REGISTADA de uma forma: só recebe cópias (a pilha escreve na `saida`), e o Vello copia-a

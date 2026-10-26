@@ -13,8 +13,8 @@ use ph2d_ecs::{
 use ph2d_editor_core::object_add::{AddEntry, AddGroup};
 use ph2d_physics_ecs::{BodyKind, CharacterAnimations, Collider, ColliderShape, RigidBody};
 use ph2d_render::{
-    FactoryArt, HERO_SHEET_COLS, HERO_SHEET_KEY, HERO_SHEET_ROWS,
-    HERO_SHEET_SOLE_BELOW_CENTRE, HERO_SHEET_TAGS, HILLS_TILE, Sprite, WHITE_TILE_KEY,
+    FactoryArt, HERO_SHEET_COLS, HERO_SHEET_KEY, HERO_SHEET_ROWS, HERO_SHEET_SOLE_BELOW_CENTRE,
+    HERO_SHEET_TAGS, HILLS_TILE, Sprite, WHITE_TILE_KEY,
 };
 
 /// Uma imagem.

@@ -59,17 +59,7 @@ impl crate::App {
         // correctamente as quatro.
         //
         if let Some(bits) = open_image_picker {
-            let name = sim
-                .world()
-                .get::<ph2d_ecs::Name>(ph2d_ecs::Entity::from_bits(bits))
-                .map(|n| n.0.clone())
-                .unwrap_or_default();
-            ph2d_panel_asset_browser::choose_image_for(bits, name);
-            <_ as ph2d_editor_core::panel::PanelHostInternal>::set_panel_visible(
-                hero,
-                ph2d_panel_asset_browser::PANEL_ID,
-                true,
-            );
+            abre_o_seletor(hero, sim, bits);
         }
         // ⭐⭐⭐ **APLICAR num degrau da escada** (ADR-0164 / F5, critério 4).
         //
@@ -222,4 +212,19 @@ impl crate::App {
             }
         }
     }
+}
+
+/// ⭐ O seletor de imagem para a sprite `bits` (plano GEF 12): o navegador abre com esse alvo.
+fn abre_o_seletor(hero: &mut ph2d_editor_core::screens::HeroScreen, sim: &SimWorld, bits: u64) {
+    let name = sim
+        .world()
+        .get::<ph2d_ecs::Name>(ph2d_ecs::Entity::from_bits(bits))
+        .map(|n| n.0.clone())
+        .unwrap_or_default();
+    ph2d_panel_asset_browser::choose_image_for(bits, name);
+    <_ as ph2d_editor_core::panel::PanelHostInternal>::set_panel_visible(
+        hero,
+        ph2d_panel_asset_browser::PANEL_ID,
+        true,
+    );
 }

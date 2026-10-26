@@ -69,12 +69,21 @@ fn host() -> (MockPanelHost, InspectorState) {
     let mut host = MockPanelHost::with_panel::<InspectorPanel>();
     let mut state = InspectorState::default();
     set_current_inspector_sprite(Some(sprite()));
+    // A ranhura mora na linha *Image*, por baixo de *Visible* (plano GEF 12).
+    ph2d_panel_inspector::set_current_inspector_visibility(Some(
+        ph2d_editor_core::screens::hero::InspectorVisibilityInfo {
+            entity_bits: ENTITY,
+            visible: true,
+            mixed: false,
+        },
+    ));
     let _ = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
     (host, state)
 }
 
 fn clear() {
     set_current_inspector_sprite(None);
+    ph2d_panel_inspector::set_current_inspector_visibility(None);
 }
 
 /// ⭐⭐⭐ **A ranhura é PINTADA e está no hit-index** — sem isto a queda nunca a encontra.

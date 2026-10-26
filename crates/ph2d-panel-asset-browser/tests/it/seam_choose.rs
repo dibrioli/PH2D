@@ -24,8 +24,14 @@ fn publish() {
         AssetRef::Component { stable_id: 9 },
         "a house",
     ));
-    ix.push(AssetEntry::new(AssetRef::Texture { asset: [1; 32] }, "hills"));
-    ix.push(AssetEntry::new(AssetRef::Texture { asset: [2; 32] }, "sunset"));
+    ix.push(AssetEntry::new(
+        AssetRef::Texture { asset: [1; 32] },
+        "hills",
+    ));
+    ix.push(AssetEntry::new(
+        AssetRef::Texture { asset: [2; 32] },
+        "sunset",
+    ));
     ph2d_panel_asset_browser::set_current_index(ix);
 }
 
@@ -51,7 +57,11 @@ fn aberto_a_escolher() -> (MockPanelHost, AssetBrowserState) {
 fn o_seletor_so_oferece_imagens_e_um_clique_escolhe_para_a_sprite() {
     let (mut host, mut st) = aberto_a_escolher();
     let cartoes = painted();
-    assert_eq!(cartoes.len(), 2, "o seletor ofereceu o que não é imagem: {cartoes:?}");
+    assert_eq!(
+        cartoes.len(),
+        2,
+        "o seletor ofereceu o que não é imagem: {cartoes:?}"
+    );
     assert!(
         cartoes
             .iter()

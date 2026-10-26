@@ -176,24 +176,7 @@ pub(super) fn publish(
     // its thread-local snapshot setters do).
     #[cfg(feature = "panel-inspector")]
     {
-        ph2d_panel_inspector::slot_image::set_current_slot_image(hero.gizmo.selection.and_then(
-            |b| {
-                let e = ph2d_ecs::Entity::from_bits(b);
-                let (name, t) = ph2d_app_components::asset_index_build::image_card(
-                    sim,
-                    asset_db,
-                    atlas_asset_map,
-                    e,
-                )?;
-                Some(ph2d_panel_inspector::slot_image::SlotImage {
-                    entity_bits: b,
-                    name,
-                    rgba: t.rgba,
-                    w: t.w,
-                    h: t.h,
-                })
-            },
-        ));
+        publish_slot_image(hero, sim, asset_db, atlas_asset_map);
         ph2d_panel_inspector::set_current_inspector_sprite(inspector_sprite);
         ph2d_panel_inspector::set_current_inspector_ordering(inspector_ordering);
         ph2d_panel_inspector::set_current_inspector_sampling(inspector_sampling);
@@ -581,4 +564,26 @@ fn identity(hero: &HeroScreen, sim: &SimWorld, inspector_selection: &[u64]) -> I
         inspector_visibility,
         inspector_name,
     }
+}
+
+/// ⭐ A imagem da linha *Image* do Inspector (plano GEF 12): miniatura e nome da sprite seleccionada.
+#[cfg(feature = "panel-inspector")]
+fn publish_slot_image(
+    hero: &HeroScreen,
+    sim: &mut SimWorld,
+    asset_db: &AssetDb,
+    atlas_asset_map: &BTreeMap<u32, AssetId>,
+) {
+    ph2d_panel_inspector::slot_image::set_current_slot_image(hero.gizmo.selection.and_then(|b| {
+        let e = ph2d_ecs::Entity::from_bits(b);
+        let (name, t) =
+            ph2d_app_components::asset_index_build::image_card(sim, asset_db, atlas_asset_map, e)?;
+        Some(ph2d_panel_inspector::slot_image::SlotImage {
+            entity_bits: b,
+            name,
+            rgba: t.rgba,
+            w: t.w,
+            h: t.h,
+        })
+    }));
 }

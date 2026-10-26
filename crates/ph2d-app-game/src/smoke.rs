@@ -32,8 +32,14 @@ pub const CENAS: u32 = 4;
 /// A cena 4 (plano 12): o nível 2 com duas imagens na biblioteca do projecto para trocar pelo Inspector — a
 /// folha do herói azul e os montes ao pôr do sol (`docs/GameEngineFuncional/ferramentas/arte_trocar.py`).
 pub const IMAGENS_4: [&str; 2] = [
-    concat!(env!("CARGO_MANIFEST_DIR"), "/../../docs/GameEngineFuncional/arte/heroi_azul.png"),
-    concat!(env!("CARGO_MANIFEST_DIR"), "/../../docs/GameEngineFuncional/arte/montes_por_do_sol.png"),
+    concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../docs/GameEngineFuncional/arte/heroi_azul.png"
+    ),
+    concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../docs/GameEngineFuncional/arte/montes_por_do_sol.png"
+    ),
 ];
 
 /// As imagens que a cena `nivel` traz para a biblioteca.
@@ -57,6 +63,26 @@ pub fn foto() -> Option<Foto> {
         "trocado" => Some(Foto::Trocado),
         _ => None,
     }
+}
+
+/// O que a foto pede, já resolvido no mundo: `(sprite, imagem)` a escolher, e quem fica seleccionado / com o
+/// seletor aberto (`None` = nada a fazer). `ids` são as imagens da cena pela ordem de [`IMAGENS_4`].
+#[must_use]
+pub fn plano_da_foto(
+    sim: &mut SimWorld,
+    ids: &[[u8; 32]],
+) -> Option<(Foto, Vec<(u64, [u8; 32])>, u64)> {
+    let foto = foto()?;
+    let [heroi, montes] = ids else {
+        return None;
+    };
+    let hills = por_nome(sim, CAMADAS_2[1].0)?.to_bits();
+    let player = por_nome(sim, "Player")?.to_bits();
+    let escolhas = match foto {
+        Foto::Seletor => Vec::new(),
+        Foto::Trocado => vec![(hills, *montes), (player, *heroi)],
+    };
+    Some((foto, escolhas, hills))
 }
 
 /// O objecto da raiz com este nome.

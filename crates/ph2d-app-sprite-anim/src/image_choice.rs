@@ -5,12 +5,12 @@
 //! quatro regras e o oráculo (Godot 4.7.2, `ferramentas/textura_godot.gd`) estão no plano.
 
 use ph2d_asset::{AssetDb, AssetId};
-use std::collections::BTreeMap;
 use ph2d_ecs::{
     Entity, RepeatMode, ScrollRepeat, SimWorld, SpriteAnimations, SpriteGrid, SpritePixels,
     SpriteRegion, SpriteSheetRef, TextureRepeat, UvTransform, World,
 };
 use ph2d_render::{Sprite, SpriteRenderer, SpriteSource};
+use std::collections::BTreeMap;
 
 /// O corte de uma imagem em quadros: `[colunas, linhas]` e a célula que um objecto SEM animação mostra
 /// (a do meio de um azulejo de fábrica).

@@ -150,7 +150,9 @@ fn a_folha_nova_do_heroi_mantem_as_animacoes_por_intervalo() {
         &mut w,
         e,
         Some(folha),
-        ImageSource::Atlas { key: HERO_SHEET_KEY },
+        ImageSource::Atlas {
+            key: HERO_SHEET_KEY,
+        },
         factory_facts(&HERO_ART),
     );
     assert!(perto(w.get::<Sprite>(e).unwrap().size, [1.0, 1.0]));
@@ -160,7 +162,9 @@ fn a_folha_nova_do_heroi_mantem_as_animacoes_por_intervalo() {
 #[test]
 fn uma_sprite_nova_mostra_a_imagem_ao_tamanho_nativo() {
     let mut w = World::new();
-    let e = w.spawn(Sprite::atlas(WHITE_TILE_KEY, [1.0, 1.0], BRANCO)).id();
+    let e = w
+        .spawn(Sprite::atlas(WHITE_TILE_KEY, [1.0, 1.0], BRANCO))
+        .id();
     choose_image(
         &mut w,
         e,
@@ -203,7 +207,9 @@ fn um_bloco_que_repete_guarda_o_tamanho_e_as_repeticoes() {
 #[test]
 fn uma_imagem_so_individual_leva_o_nome_dos_pixels() {
     let mut w = World::new();
-    let e = w.spawn(Sprite::atlas(WHITE_TILE_KEY, [1.0, 1.0], BRANCO)).id();
+    let e = w
+        .spawn(Sprite::atlas(WHITE_TILE_KEY, [1.0, 1.0], BRANCO))
+        .id();
     let id = AssetId::from_digest([9; 32]);
     choose_image(
         &mut w,

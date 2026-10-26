@@ -53,7 +53,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "asset.factory.hills" => "Hills",
         // ⭐ O seletor de imagem (plano GEF 12): o navegador com um alvo.
         "panel.asset_browser.pick.choose_for" => "Choose the image for \u{201c}{name}\u{201d}",
-        "panel.asset_browser.pick.cancel" => "Cancel",
         _ => return None,
     })
 }

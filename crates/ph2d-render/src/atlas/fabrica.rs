@@ -42,8 +42,7 @@ impl FactoryArt {
     /// O lado (m) de uma célula no tamanho nativo.
     #[must_use]
     pub fn native_m(&self) -> [f32; 2] {
-        self.cell_px()
-            .map(|v| v as f32 / self.texels_per_m as f32)
+        self.cell_px().map(|v| v as f32 / self.texels_per_m as f32)
     }
 }
 

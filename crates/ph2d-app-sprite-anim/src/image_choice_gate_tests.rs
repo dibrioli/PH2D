@@ -73,8 +73,14 @@ fn texel(sim: &SimWorld, e: Entity, b: &Biblioteca, quv: [f32; 2]) -> [u8; 4] {
     .expect("a sprite mostra uma imagem da biblioteca");
     let asset = b.db.get(&id).expect("no db");
     let (iw, ih, px) = asset.image_rgba8().expect("imagem");
-    let g = w.get::<SpriteGrid>(e).copied().unwrap_or(SpriteGrid::SINGLE);
-    let uv = w.get::<UvTransform>(e).copied().unwrap_or(UvTransform::IDENTITY);
+    let g = w
+        .get::<SpriteGrid>(e)
+        .copied()
+        .unwrap_or(SpriteGrid::SINGLE);
+    let uv = w
+        .get::<UvTransform>(e)
+        .copied()
+        .unwrap_or(UvTransform::IDENTITY);
     let (cw, ch) = (iw / g.hframes, ih / g.vframes);
     let (cx, cy) = (g.frame % g.hframes, g.frame / g.hframes);
     let u = (quv[0] * uv.scale[0] + uv.offset[0]).fract();
@@ -188,11 +194,8 @@ fn o_ladrilho_de_fabrica_e_o_de_antes() {
 #[test]
 fn a_fabrica_entra_na_biblioteca_e_fica_fora_do_ficheiro() {
     let b = biblioteca();
-    let gravadas: Vec<u32> = b
-        .atlas
-        .keys()
-        .copied()
-        .filter(|k| !ph2d_app_components::factory_images::is_factory_key(*k))
+    let gravadas: Vec<u32> = ph2d_app_components::factory_images::saved_by_project(&b.atlas)
+        .map(|(k, _)| k)
         .collect();
     assert_eq!(gravadas, vec![ph2d_render::FIRST_IMPORT_KEY]);
     assert_eq!(b.atlas.len(), ph2d_render::FACTORY_ART.len() + 1);
@@ -212,10 +215,9 @@ const HEROI_AZUL: &str = concat!(
 #[test]
 fn a_folha_nova_do_player_mantem_as_animacoes() {
     let b = biblioteca();
-    let azul = b
-        .db
-        .load_png_path(std::path::Path::new(HEROI_AZUL))
-        .expect("abre");
+    let azul =
+        b.db.load_png_path(std::path::Path::new(HEROI_AZUL))
+            .expect("abre");
     let mut atlas = b.atlas.clone();
     atlas.insert(ph2d_render::FIRST_IMPORT_KEY + 1, azul);
     let b = Biblioteca { atlas, ..b };

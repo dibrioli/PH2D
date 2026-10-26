@@ -318,7 +318,10 @@ pub(crate) fn build(
     // importada cuja sprite se apagou) — é o que o seletor oferece (plano GEF 12, o *Project* da Unity).
     for id in atlas_assets.values() {
         if !live.contains(id) && !remembered.is_forgotten(id) {
-            remembered.remember(*id, texture_entry(db, *id, String::new(), swatches, &mut budget));
+            remembered.remember(
+                *id,
+                texture_entry(db, *id, String::new(), swatches, &mut budget),
+            );
         }
     }
     // ⭐ O nome ÚNICO, o mesmo que o script escreve (`sprite.image`, doc CodeEditor 08 d4).

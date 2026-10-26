@@ -208,34 +208,29 @@ impl crate::App {
                 Err(e) => eprintln!("[game-smoke] {path}: {e}"),
             }
         }
-        let (Some(foto), [heroi, montes]) = (ph2d_app_game::smoke::foto(), ids.as_slice()) else {
+        let ids: Vec<[u8; 32]> = ids.iter().map(|i| *i.as_bytes()).collect();
+        let Some((foto, escolhas, alvo)) = ph2d_app_game::smoke::plano_da_foto(&mut gfx.sim, &ids)
+        else {
             return;
         };
-        let (heroi, montes) = (*heroi.as_bytes(), *montes.as_bytes());
-        let mut alvo =
-            |nome| ph2d_app_game::smoke::por_nome(&mut gfx.sim, nome).map(ph2d_ecs::Entity::to_bits);
-        let (Some(hills), Some(player)) = (alvo("Hills"), alvo("Player")) else {
-            return;
-        };
-        match foto {
-            ph2d_app_game::smoke::Foto::Seletor => {
-                if let Some(hero) = gfx.hero_screen.as_mut() {
-                    hero.gizmo.replace_selection(Some(hills));
-                    ph2d_panel_asset_browser::choose_image_for(hills, "Hills".into());
-                    <_ as ph2d_editor_core::panel::PanelHostInternal>::set_panel_visible(
-                        hero,
-                        ph2d_panel_asset_browser::PANEL_ID,
-                        true,
-                    );
-                }
-            }
-            ph2d_app_game::smoke::Foto::Trocado => {
-                self.choose_image(hills, montes);
-                self.choose_image(player, heroi);
-                if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
-                    hero.gizmo.replace_selection(Some(hills));
-                }
-            }
+        if foto == ph2d_app_game::smoke::Foto::Seletor
+            && let Some(hero) = gfx.hero_screen.as_mut()
+        {
+            ph2d_panel_asset_browser::choose_image_for(
+                alvo,
+                ph2d_app_game::smoke::CAMADAS_2[1].0.into(),
+            );
+            <_ as ph2d_editor_core::panel::PanelHostInternal>::set_panel_visible(
+                hero,
+                ph2d_panel_asset_browser::PANEL_ID,
+                true,
+            );
+        }
+        for (bits, asset) in escolhas {
+            self.choose_image(bits, asset);
+        }
+        if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
+            hero.gizmo.replace_selection(Some(alvo));
         }
     }
 }

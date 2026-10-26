@@ -6,6 +6,7 @@
 //! Nenhuma delas escreve nada, logo a ordem nova de avaliação não se observa (OBRA 3 da `line/render-bodies`).
 
 use super::*;
+use ph2d_app_sprite_anim::editor::frame as anim_editor;
 
 /// As leituras da física que esta fase passa ao `publish` — fase-filha, num ficheiro irmão (por `#[path]`, para o
 /// `render_loop/mod.rs` não crescer acima do tecto dele).
@@ -87,16 +88,9 @@ impl crate::App {
             tools.active().map(|t| t.id()) == Some(ph2d_editor_core::ToolId::new("vector"));
         let caixa = ph2d_app_vec::overlay::object_box(vector, self.vec.draw_config.mode);
         hero.gizmo.handles_only = caixa == ph2d_app_vec::overlay::ObjectBox::HandlesOnly;
-        // ⭐ O EDITOR DE ANIMAÇÕES (a família, plano GameEngineFuncional 07) — ANTES dos snapshots: ele
-        // descodifica as folhas que o cartão Animation também mostra.
-        ph2d_app_sprite_anim::editor::frame(
-            sim,
-            hero,
-            asset_db,
-            atlas_asset_map,
-            component_registry,
-            toasts,
-        );
+        // ⭐ O editor de animações (plano GEF 07), ANTES dos snapshots: descodifica as folhas do cartão.
+        let (db, at, reg) = (&*asset_db, &*atlas_asset_map, &*component_registry);
+        anim_editor(sim, hero, db, at, reg, toasts);
         // A publicação dos snapshots (`snapshots.rs`, HR-8 / ADR-0021: o paint só lê o HeroScreen).
         snapshots::publish(
             hero,

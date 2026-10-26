@@ -79,3 +79,15 @@ resultado — a referência do atlas quando a imagem lá está (sem subir cópia
 
 Platform High sem «H Frames»; Image ← Flag ⇒ aviso + Make it Animated ⇒ a bandeira ondula; arrastar «Platform» dos
 Assets para o canvas ⇒ um azulejo igual ao das plataformas, *Atlas*, 1 × 0,5 m. Fotografado.
+
+## Feito (26/10)
+
+- Os 3 defeitos do dono fechados, red-first (`f0ddde51ba`) e curados por `44f12e22e5` + `7842d8e721`; fotos em `handoffs/fotos_13/` (`289e20993f`).
+- (a) O azulejo de fábrica é UMA imagem (`TextureAtlas::insert_wrapped`: o atlas envolve-a, `region()` = a cópia do meio); ficheiros antigos abrem com o mesmo texel, sem degrau de schema.
+- (b) Largar «Platform» no canvas = `place_library_image`: a mesma imagem e o mesmo nome dos blocos, Atlas, sem copiar píxeis.
+- (c) Inspector por USO (`image_use`: Still/Repeated/Animated): aviso «This image has N frames…» + **Make it Animated** só onde repete; H/V Frames só onde a imagem se mostra inteira.
+- O corte de uma imagem importada vive nos objectos que a mostram; recortar um recorta todos (D3, sem campo gravado).
+- O script `sprite.image` obedece à mesma lei (`override_law`); num objecto que repete mantém tamanho e UV (ABERTO).
+- Gates: `image_use::gate_tests` (6), render `a_regiao_do_azulejo_e_a_celula_do_meio` (com mutação) e `…o_atlas_a_envolve`, `seam_image_use` (2); fixturas da onda 12 actualizadas.
+- Shell +82 LOC líquidas (dentro da folga); clippy e fmt limpos nas 9 crates; suíte de impacto fica para o integrador.
+- Smoke do dono POR FAZER. Tudo o resto — superfície de merge, prova, ABERTO: [handoff](handoffs/HANDOFF_CONTINUACAO_2026-10-26_13_ISOLAMENTO_POR_USO.md).

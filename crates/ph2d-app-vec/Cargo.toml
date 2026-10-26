@@ -55,6 +55,7 @@ ph2d-component-desc = { path = "../ph2d-component-desc" }
 ph2d-text = { path = "../ph2d-text" }
 ph2d-tokens = { path = "../ph2d-tokens" }
 ph2d-vec-edit = { path = "../ph2d-vec-edit" }
+ph2d-vec-constraints = { path = "../ph2d-vec-constraints" }
 ph2d-vec-envelope = { path = "../ph2d-vec-envelope" }
 # ⚠️ **Era `dev-` e deixou de o ser na integração de 2026-09-17**, quando o `vec_gizmo_view` veio
 # da shell: ele converte o raio de acerto em píxeis de ECRÃ, logo o produto lê a `WindowSize`.

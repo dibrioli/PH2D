@@ -20,6 +20,7 @@ impl crate::App {
             vector_scene,
             vec_scene,
             hero_screen,
+            text_system,
             ..
         } = FrameGfx::of(gfx);
         // O bloco do quadro só chama esta fase com o `HeroScreen` vivo.
@@ -49,7 +50,7 @@ impl crate::App {
                     cam_affine,
                     vector_scene,
                 );
-                // ⭐⭐⭐ O anel do nó SOLDADO (plano 39) e os nós do Edit Shape (F7e).
+                // ⭐⭐⭐ O anel do nó SOLDADO (plano 39), os nós do Edit Shape (F7e) e as regras de CAD (W4.4).
                 ph2d_app_vec::edit_marks::draw(
                     &self.vec,
                     vec_scene,
@@ -57,13 +58,12 @@ impl crate::App {
                     &vec_xf,
                     cam_affine,
                     hero.theme,
+                    text_system,
                     vector_scene,
                 );
             }
-            // NOTA: as alças de raio de quina (Live Corners) não são mais desenhadas — o
-            // arredondar/chanfrar quina virou o par de ferramentas Fillet / Chamfer (o gesto de
-            // clicar-e-arrastar). A exclusão de forma VIVA (`crate::corner_handles::has_derived_verts`)
-            // segue viva: é o que o press dessas ferramentas consulta no `input_dispatch`.
+            // NOTA: as alças de raio de quina já não se desenham (viraram Fillet / Chamfer); a exclusão de forma
+            // VIVA (`crate::corner_handles::has_derived_verts`) segue: o press dessas ferramentas consulta-a.
             // A gaiola do **Envelope** (ADR-0129): os 4 cantos que o Node arrasta para
             // deformar as formas que a gaiola contém. Alça PRÓPRIA (não o gizmo de sprite,
             // §3.3), desenhada só quando a seleção do gizmo é de fato um envelope — o flag de

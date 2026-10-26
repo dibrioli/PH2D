@@ -399,6 +399,9 @@ pub struct VecState {
     /// Smart guides to draw this frame (cleared at Up / when nothing snapped).
     pub snap_guides: Vec<ph2d_vec_render::Guide>,
 
+    /// As cores das regras de CAD (W4.4): a análise corre fora do fio do quadro, só quando a estrutura muda.
+    pub cad_cores: crate::cad_cores::CadCores,
+
     /// Edição de texto em curso (modo `DrawMode::Text`): o ponto de inserção, o
     /// conteúdo e os glyphs já na cena. `None` = sem cursor de texto ativo.
     pub text_edit: Option<crate::text_edit::VecTextEdit>,

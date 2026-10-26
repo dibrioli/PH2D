@@ -87,3 +87,28 @@ fn the_wheel_edges_are_smooth_not_stairs() {
     let cheio = cor(S::NormalMap, no_quadro(S::NormalMap, P, 0.0, 0.5));
     assert!(c != cheio, "o primeiro píxel do disco mistura com o fundo: {c:?}");
 }
+
+#[test]
+fn rebuilding_from_its_own_color_never_drifts_in_any_mode() {
+    use ph2d_panel_pixel_tools::seletor::de_rgb;
+    // smoke do dono 25/10: arrastar na roda Normal Map escurecia sozinho — a cor reconstruída a
+    // cada quadro perdia brilho. 50 voltas cor → parâmetros → cor têm de dar a MESMA cor.
+    for m in [S::TintShadeTone, S::Spectrum, S::RgbWheel, S::RybWheel, S::NormalMap] {
+        for (u, v) in [(0.3, 0.4), (0.8, 0.5), (0.5, 0.1), (0.62, 0.77)] {
+            let p0 = no_quadro(m, P, u, v);
+            let c0 = cor(m, p0);
+            // a 1.ª volta parte de parâmetros alheios: o arredondamento a u8 pode dar ±1
+            let mut p = de_rgb(m, c0, Params { a: 0.1, b: 0.2, c: 0.3 });
+            let c1 = cor(m, p);
+            assert!(c1.iter().zip(c0).all(|(a, b)| a.abs_diff(b) <= 1), "{m:?}: {c1:?} × {c0:?}");
+            for _ in 0..50 {
+                p = de_rgb(m, cor(m, p), p);
+            }
+            assert_eq!(cor(m, p), c1, "{m:?} em ({u},{v}) andou");
+        }
+    }
+    // e uma cor de FORA (o conta-gotas) no Normal Map reconstrói o brilho cheio, não o maior canal
+    let c = cor(S::NormalMap, no_quadro(S::NormalMap, P, 0.8, 0.5));
+    let p = de_rgb(S::NormalMap, c, Params { a: 0.5, b: 0.5, c: 0.2 });
+    assert!((p.c - 1.0).abs() < 0.02, "brilho reconstruído {}", p.c);
+}

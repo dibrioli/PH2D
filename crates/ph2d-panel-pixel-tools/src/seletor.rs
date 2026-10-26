@@ -262,6 +262,11 @@ pub fn ponto_na_barra(m: PixelSelector, p: Params) -> f64 {
 /// **Os parâmetros de uma cor que chegou por fora**; o que a cor não diz fica como em `antes`.
 #[must_use]
 pub fn de_rgb(m: PixelSelector, c: [u8; 3], antes: Params) -> Params {
+    // A cor que os parâmetros de antes já dão devolve-os iguais: sem isto o arrasto realimentava a
+    // reconstrução e a roda Normal Map escurecia a cada quadro (smoke do dono 25/10).
+    if cor(m, antes) == c {
+        return antes;
+    }
     let f = unit(c);
     match m {
         PixelSelector::TintShadeTone | PixelSelector::RgbWheel => {
@@ -282,7 +287,15 @@ pub fn de_rgb(m: PixelSelector, c: [u8; 3], antes: Params) -> Params {
         }
         PixelSelector::RybWheel => ryb_de_rgb(f, antes),
         PixelSelector::NormalMap => {
-            let v = f[0].max(f[1]).max(f[2]);
+            // cor = (n·0,5 + 0,5)·brilho com |n| = 1: o brilho é a raiz de 4Σf²·s² − 4Σf·s + 2 = 0
+            // em s = 1/brilho (a maior; a outra dá brilho > 1). Sem raiz real, o maior canal.
+            let (sf, sf2) = (f.iter().sum::<f64>(), f.iter().map(|x| x * x).sum::<f64>());
+            let disc = 16.0 * sf * sf - 32.0 * sf2;
+            let v = if sf2 > 0.0 && disc >= 0.0 {
+                (8.0 * sf2 / (4.0 * sf + disc.sqrt())).min(1.0)
+            } else {
+                f[0].max(f[1]).max(f[2])
+            };
             if v <= 0.0 {
                 return Params { c: 0.0, ..antes };
             }

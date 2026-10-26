@@ -52,6 +52,12 @@ Antecessor: [08](08_regras_de_animacao_plano.md) · [handoff 08](handoffs/HANDOF
    `0,80 → 0,40`) e `speed 2 m/s` (de pé `6`). Nível 2 ganha um **tecto baixo** «Low Ceiling» junto à parede da
    esquerda (fundo a `0,55 m`: de pé não cabe, agachado cabe). Sem arte de agachar: o smoke usa uma tag existente.
 
+**Corrigido na construção:** a «perna desce primeiro» deu um defeito medido — perna até a base da cápsula tocar o
+chão + forma a encolher pelo resto ⇒ o corpo encosta no chão e o atrito prende-o (agachado o herói ficou em
+x = 0,02 m em 300 tiques). Cura (lei do Unreal): **a FORMA encolhe primeiro** (por cima, base no sítio), a perna só
+desce o que a forma não der (`body_room`, `body_drop = min(rise, body_room)`, `leg_drop = rise − body_drop`);
+`body_room = 0` ⇒ lei W15 bit a bit.
+
 ## Gates
 
 - Lei: `body_shrink` (zero acima do piso, cresce abaixo, tecto da forma, desarmado = 0).
@@ -65,3 +71,5 @@ Antecessor: [08](08_regras_de_animacao_plano.md) · [handoff 08](handoffs/HANDOF
 ## Fora desta onda
 
 Arte de agachar (plano 06) · rastejar com animação própria · agachar no ar.
+
+**Feito (25/10):** abaixar com corpo baixo — a forma encolhe por cima, a perna fica com o resto, pose Crouching nas regras, Add ▸ Character agachável, «Low Ceiling» no nível 2 e smoke `PH2D_GAME_SMOKE=3`; ver [handoff](handoffs/HANDOFF_CONTINUACAO_2026-10-25_09_ABAIXAR.md); smoke do dono por fazer.

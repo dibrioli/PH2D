@@ -98,7 +98,7 @@ fn quadro(c: &mut Cena, armed: bool, mao: impl FnOnce(&mut VecScene, u64)) {
     );
     let _ = ph2d_app_vec::canais::aplicar(&mut c.sim, &mut c.scene, &mut c.cond);
     mao(&mut c.scene, c.id);
-    ph2d_app_vec::canais::publicar(&mut c.sim, &c.scene, &[c.e]);
+    ph2d_app_vec::canais::publicar(&mut c.sim, &c.scene, &c.cond, &[c.e]);
     let mundo = super::super::timeline_bridge::Mundo::com_vetor(c.sim.world(), &c.scene);
     let samples = vec![(c.e, sample_pose(mundo, c.e))];
     c.ak.campos = samples

@@ -44,7 +44,7 @@ impl crate::App {
         publicar.extend(ph2d_app_flip::marcas_camada::alvo(&self.flip_state, flip).map(|a| a.0));
         publicar.sort_unstable();
         publicar.dedup();
-        ph2d_app_vec::canais::publicar(sim, vec_scene, &publicar);
+        ph2d_app_vec::canais::publicar(sim, vec_scene, &self.vec.conducao, &publicar);
         ph2d_app_components::canais_objeto::publicar(sim, &publicar);
         ph2d_app_components::canais_componente::publicar(sim, component_registry, &publicar);
         ph2d_app_physics::canais_junta::publicar(sim, &publicar);

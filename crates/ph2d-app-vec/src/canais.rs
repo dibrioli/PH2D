@@ -2,14 +2,16 @@
 //! [`crate::canais_campos`]: [`publicar`] o que o documento vale em `CanaisLidos`, [`aplicar`] o que
 //! a curva mandou em `CanaisEscritos` (com o eco da quantização), e a [`ConducaoVetor`]: a lei do
 //! `ph2d_preview_drive` para o documento vetorial — **o que a curva escreve a tocar é
-//! pré-visualização**, o undo e o save fotografam o AUTORADO; parado, a curva vira documento.
+//! pré-visualização**, o undo e o save fotografam o AUTORADO; parado, a curva vira documento. A família `CAD` (a
+//! medida animada, W4.5) drena-se aqui também: o documento é o mesmo ([`ph2d_vec_entities::medida`]).
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use ph2d_ecs::canal::familia::VETOR;
+use ph2d_ecs::canal::familia::{CAD, VETOR};
 use ph2d_ecs::{
     CanaisEscritos, CanaisLidos, Entity, FieldKey, SimWorld, TextosDosCanais, VecPathRef, VecShape,
 };
+use ph2d_vec_entities::medida::{self, CadVivo, ConducaoCad};
 use ph2d_vec_scene::{VecPath, VecPathId, VecScene};
 
 use crate::canais_campos::{campos, escrever, ler, prioridade};
@@ -92,8 +94,9 @@ fn devolver_forma(sim: &mut SimWorld, scene: &mut VecScene, e: u64, id: u64, sh:
     }
 }
 
-/// ⭐ **Publica o que o documento de cada entidade vale AGORA** (através do eco).
-pub fn publicar(sim: &mut SimWorld, scene: &VecScene, entidades: &[u64]) {
+/// ⭐ **Publica o que o documento de cada entidade vale AGORA** (através do eco). Um path que a medida animada está
+/// a mover publica o desenho AUTORADO: o que o solver mostra não é o artista a mexer (o Auto Key não o grava).
+pub fn publicar(sim: &mut SimWorld, scene: &VecScene, conducao: &ConducaoVetor, entidades: &[u64]) {
     let mut t = tirar_textos(sim);
     let mut lotes: Vec<(u64, Vec<(FieldKey, f32)>)> = Vec::with_capacity(entidades.len());
     for &e in entidades {
@@ -103,7 +106,7 @@ pub fn publicar(sim: &mut SimWorld, scene: &VecScene, entidades: &[u64]) {
         let mut valores: Vec<(FieldKey, f32)> = Vec::new();
         let mut alvo = Alvo::default();
         if let Some((id, shape)) = caminho(sim, e)
-            && let Some(p) = scene.path(id)
+            && let Some(p) = conducao.cad.path(id).or_else(|| scene.path(id))
         {
             alvo = Alvo {
                 caminho: true,
@@ -120,6 +123,7 @@ pub fn publicar(sim: &mut SimWorld, scene: &VecScene, entidades: &[u64]) {
                     valores.push((kk, v));
                 }
             }
+            valores.extend(medida::campos(scene, id));
         }
         for kk in entidade::campos(sim, ent, alvo) {
             if let Some(v) = entidade::ler(sim, ent, kk, &mut t) {
@@ -134,6 +138,7 @@ pub fn publicar(sim: &mut SimWorld, scene: &VecScene, entidades: &[u64]) {
         .get_resource_or_insert_with(CanaisLidos::default);
     for (e, valores) in lotes {
         lidos.esquecer(e, VETOR);
+        lidos.esquecer(e, CAD);
         for (kk, v) in valores {
             lidos.publicar(e, kk, v);
         }
@@ -150,8 +155,24 @@ pub struct Aplicado {
     pub textos: Vec<(VecPathId, Entity)>,
 }
 
-/// ⭐ **Aplica ao documento o que a curva mandou neste quadro** e regista o eco.
+/// ⭐ **Aplica ao documento o que a curva mandou neste quadro** e regista o eco: os campos do vetor e, depois
+/// deles, as medidas animadas (a folha resolve-se a partir do autorado, [`medida::aplicar`]).
 pub fn aplicar(sim: &mut SimWorld, scene: &mut VecScene, conducao: &mut ConducaoVetor) -> Aplicado {
+    let cad = sim
+        .world_mut()
+        .get_resource_mut::<CanaisEscritos>()
+        .map(|mut w| w.drenar(CAD))
+        .unwrap_or_default();
+    let mut feito = aplicar_vetor(sim, scene, conducao);
+    feito.mudou |= medida::aplicar(sim, scene, cad, &mut conducao.cad);
+    feito
+}
+
+fn aplicar_vetor(
+    sim: &mut SimWorld,
+    scene: &mut VecScene,
+    conducao: &mut ConducaoVetor,
+) -> Aplicado {
     let mut feito = Aplicado::default();
     let Some(mut escritas) = sim
         .world_mut()
@@ -219,6 +240,15 @@ pub fn aplicar(sim: &mut SimWorld, scene: &mut VecScene, conducao: &mut Conducao
 pub struct ConducaoVetor {
     autorado: BTreeMap<(u64, FieldKey), f32>,
     neste_quadro: BTreeSet<(u64, FieldKey)>,
+    /// O desenho que a medida animada está a mover.
+    cad: ConducaoCad,
+}
+
+/// O vivo que [`ConducaoVetor::substituir`] tirou, para [`ConducaoVetor::repor`].
+#[derive(Debug, Default, Clone, PartialEq)]
+pub struct Vivo {
+    campos: Vec<(u64, FieldKey, f32)>,
+    cad: CadVivo,
 }
 
 impl ConducaoVetor {
@@ -232,31 +262,31 @@ impl ConducaoVetor {
     pub fn settle(&mut self) {
         let neste = std::mem::take(&mut self.neste_quadro);
         self.autorado.retain(|k, _| neste.contains(k));
+        self.cad.settle();
     }
 
     #[must_use]
     pub fn is_empty(&self) -> bool {
-        self.autorado.is_empty()
+        self.autorado.is_empty() && self.cad.is_empty()
     }
 
-    /// Repõe o AUTORADO no documento para a fotografia; devolve o vivo para [`Self::repor`].
-    pub fn substituir(
-        &self,
-        sim: &mut SimWorld,
-        scene: &mut VecScene,
-    ) -> Vec<(u64, FieldKey, f32)> {
-        let vivo = self.valores(sim, scene);
+    /// Repõe o AUTORADO no documento para a fotografia (o desenho da medida animada primeiro, os campos por cima);
+    /// devolve o vivo para [`Self::repor`].
+    pub fn substituir(&self, sim: &mut SimWorld, scene: &mut VecScene) -> Vivo {
+        let cad = self.cad.substituir(scene);
+        let campos = self.valores(sim, scene);
         self.escrever_todos(
             sim,
             scene,
             self.autorado.iter().map(|(&(e, kk), &v)| (e, kk, v)),
         );
-        vivo
+        Vivo { campos, cad }
     }
 
-    /// Devolve o vivo que [`Self::substituir`] tirou.
-    pub fn repor(&self, sim: &mut SimWorld, scene: &mut VecScene, vivo: Vec<(u64, FieldKey, f32)>) {
-        self.escrever_todos(sim, scene, vivo.into_iter());
+    /// Devolve o vivo que [`Self::substituir`] tirou (na ordem inversa).
+    pub fn repor(&self, sim: &mut SimWorld, scene: &mut VecScene, vivo: Vivo) {
+        self.escrever_todos(sim, scene, vivo.campos.into_iter());
+        ConducaoCad::repor(scene, vivo.cad);
     }
 
     fn valores(&self, sim: &mut SimWorld, scene: &VecScene) -> Vec<(u64, FieldKey, f32)> {

@@ -55,7 +55,7 @@ fn quadro(
 ) {
     apply_from_doc(sim.world_mut(), doc, t);
     let _ = aplicar(sim, scene, cond);
-    publicar(sim, scene, &[e]);
+    publicar(sim, scene, cond, &[e]);
 }
 
 /// ⭐⭐ **A curva chega ao desenho e a meio não há chave fantasma.** O vermelho a 0,5 s vale 127,5 na
@@ -93,7 +93,7 @@ fn a_mao_no_traco_vira_chave_do_traco() {
         .as_mut()
         .unwrap()
         .width = 20.0;
-    publicar(&mut sim, &scene, &[e]);
+    publicar(&mut sim, &scene, &ConducaoVetor::default(), &[e]);
     let plan = autokey_campos(&doc, e, 0.5, &lidos(&sim, e), &base, true, false);
     assert_eq!(
         plan.keys,
@@ -156,7 +156,7 @@ fn os_efeitos_vivos_publicam_se_e_a_curva_os_conduz() {
         );
     }
     let mut cond = ConducaoVetor::default();
-    publicar(&mut sim, &scene, &[e]);
+    publicar(&mut sim, &scene, &cond, &[e]);
     let l = lidos(&sim, e);
     assert!(
         l.contains(&(k(c::CONTORNO_PASSOS, 0, 0), 3.0)),
@@ -230,7 +230,7 @@ fn o_bloco_2_publica_e_a_curva_conduz_cada_dono() {
             );
         }
     }
-    publicar(&mut sim, &scene, &[e, contentor]);
+    publicar(&mut sim, &scene, &ConducaoVetor::default(), &[e, contentor]);
     let l = lidos(&sim, e);
     assert!(l.contains(&(escala, 1.0)), "o pincel não foi publicado");
     assert!(
@@ -269,4 +269,62 @@ fn o_bloco_2_publica_e_a_curva_conduz_cada_dono() {
         sim.world().get_resource::<TextosDosCanais>().is_some(),
         "a tabela dos textos volta ao mundo"
     );
+}
+
+/// ⭐ A medida animada passa pela porta do quadro do vetor (a que a shell chama): a curva da família `CAD` estica o
+/// desenho, e o documento publicado é o AUTORADO — os cantos que o solver move não são o artista a mexer (o Auto
+/// Key não os grava) — com a medida da curva.
+#[test]
+fn a_dimension_curve_moves_the_drawing_but_the_document_publishes_the_authored_corners() {
+    use ph2d_ecs::canal_cad::{MEDIDA, chave};
+    use ph2d_vec_scene::VertId;
+    use ph2d_vec_scene::cad::{Lei, PontoCad, RegraCad, SegCad};
+    let mut scene = VecScene::new();
+    let id = scene.push_path(VecPath {
+        verts: [[0.0, 0.0], [30.0, 0.0], [30.0, 40.0]]
+            .into_iter()
+            .map(VecVertex::corner)
+            .collect(),
+        ..VecPath::default()
+    });
+    let v = |i| PontoCad::Vert(id, VertId(i));
+    *scene.regras_mut() = vec![
+        RegraCad::nova(Lei::Fixo(v(1), [0.0, 0.0])),
+        RegraCad::nova(Lei::Horizontal(SegCad(v(1), v(2)))),
+        RegraCad::nova(Lei::Vertical(SegCad(v(2), v(3)))),
+        RegraCad::nova(Lei::Distancia(v(2), v(3), 40.0)),
+    ];
+    scene.normaliza_ids();
+    let kk = chave(MEDIDA, scene.regras()[3].id.0);
+    let mut sim = SimWorld::new();
+    let e = sim.world_mut().spawn(VecPathRef(id)).id().to_bits();
+    let mut doc = TimelineDoc::new();
+    let s = RationalTime::from_seconds;
+    for (t, m) in [(0.0, 40.0), (1.0, 70.0)] {
+        doc.insert_key(
+            e,
+            PropKind::Field(kk),
+            s(t),
+            AnimValue::Float(m),
+            Interp::Linear,
+        );
+    }
+    let mut cond = ConducaoVetor::default();
+    quadro(&mut sim, &mut scene, &mut doc, &mut cond, e, 1.0);
+    assert!((scene.path(id).unwrap().verts[2].anchor[1] - 70.0).abs() < 1e-6);
+    let l = lidos(&sim, e);
+    let y3 = l
+        .iter()
+        .find(|(k, _)| k.campo == c::ANCORA_Y && k.j == 2)
+        .map(|&(_, y)| y);
+    assert_eq!(y3, Some(40.0), "o canto publicado é o autorado");
+    assert!(l.contains(&(kk, 70.0)), "a medida publicada é a da curva");
+    let vivo = cond.substituir(&mut sim, &mut scene);
+    assert_eq!(
+        scene.path(id).unwrap().verts[2].anchor[1],
+        40.0,
+        "o undo fotografa o autorado"
+    );
+    cond.repor(&mut sim, &mut scene, vivo);
+    assert!((scene.path(id).unwrap().verts[2].anchor[1] - 70.0).abs() < 1e-6);
 }

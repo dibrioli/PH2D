@@ -43,6 +43,9 @@ pub struct Stroke {
     /// A rampa do Shading (valores no modo do sprite) e o sentido (+1 / −1).
     ramp: Vec<u32>,
     dir: i8,
+    /// Valores PRONTOS por célula (a pré-visualização de uma moldura solta, [`Self::with_values`]):
+    /// a tinta não entra e a selecção não corta — o valor é o que o assentar vai escrever.
+    fixed: BTreeMap<Cell, u32>,
 }
 
 impl Stroke {
@@ -63,7 +66,22 @@ impl Stroke {
             rng: SplitMix32::new(0),
             ramp: Vec::new(),
             dir: 1,
+            fixed: BTreeMap::new(),
         }
+    }
+
+    /// Um gesto com o valor de CADA célula já decidido (a pré-visualização de uma moldura solta:
+    /// os valores que o op de assentar escreve). O [`Self::op`] dele escreve-os tal e qual.
+    #[must_use]
+    pub fn with_values(
+        layer: LayerId,
+        frame: FrameId,
+        values: impl IntoIterator<Item = (Cell, u32)>,
+    ) -> Self {
+        let mut s = Self::new(layer, frame, 0, Paint::default());
+        s.fixed = values.into_iter().collect();
+        s.cells = s.fixed.keys().map(|&c| (c, 1)).collect();
+        s
     }
 
     /// A rampa e o sentido do Shading (botão esquerdo = +1, direito = −1).
@@ -224,6 +242,9 @@ impl Stroke {
     }
 
     fn ink_value(&self, sprite: &Sprite, x: i32, y: i32) -> u32 {
+        if let Some(&v) = self.fixed.get(&(x, y)) {
+            return v;
+        }
         let dest = sprite.value_at((self.layer, self.frame), x, y);
         ink::apply(
             sprite,

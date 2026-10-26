@@ -3,7 +3,9 @@
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
-use ph2d_pixel_core::{FrameId, Onion, Purpose, Rect, Sprite, Stroke, compose_window, compose_with_onion};
+use ph2d_pixel_core::{
+    FrameId, Onion, Purpose, Rect, Sprite, Stroke, compose_window, compose_with_onion,
+};
 use ph2d_vector::{
     Affine, BezPath, Color, ImageQuality, Point, StableImage, Stroke as Pen, VectorScene,
 };
@@ -157,7 +159,13 @@ impl SpriteImage {
 }
 
 /// A janela `region` composta (com o papel vegetal, se houver).
-fn window(sprite: &Sprite, frame: FrameId, pending: Option<&Stroke>, region: Rect, onion: Option<&Onion>) -> Vec<u8> {
+fn window(
+    sprite: &Sprite,
+    frame: FrameId,
+    pending: Option<&Stroke>,
+    region: Rect,
+    onion: Option<&Onion>,
+) -> Vec<u8> {
     match onion {
         Some(o) => compose_with_onion(sprite, frame, pending, region, o, None),
         None => compose_window(sprite, frame, pending, region, Purpose::View),
@@ -399,15 +407,15 @@ pub fn draw_symmetry_axes(
 pub const CURSOR_CORE: Color = Color::new([1.0, 1.0, 1.0, 1.0]); // LITERAL-COLOR-OK: núcleo claro do cursor sobre a arte (invariante ao tema)
 /// O anel escuro por fora de todo traço do Draw: com o núcleo claro, um dos dois contrasta com
 /// qualquer cor por baixo (dono 25/10: o cursor sumia sobre uma cor parecida).
-const HALO: Color = Color::new([0.0, 0.0, 0.0, 0.85]); // LITERAL-COLOR-OK: anel de contraste sobre a arte (invariante ao tema)
+pub(crate) const HALO: Color = Color::new([0.0, 0.0, 0.0, 0.85]); // LITERAL-COLOR-OK: anel de contraste sobre a arte (invariante ao tema)
 /// Quanto o anel sai de cada lado do núcleo, em píxeis de ECRÃ.
-const HALO_PX: f64 = 1.0; // LITERAL-PX-OK: espessura do anel de contraste, em píxeis de ecrã
+pub(crate) const HALO_PX: f64 = 1.0; // LITERAL-PX-OK: espessura do anel de contraste, em píxeis de ecrã
 
 /// O traço com o anel escuro por baixo e o núcleo `core` por cima. As arestas das células caem em
 /// píxeis INTEIROS do ecrã (o zoom do Draw alinha-as), e só uma largura PAR centrada numa aresta
 /// cobre píxeis inteiros — com 1 px o núcleo espalhava-se a 50 % por dois píxeis e virava cinzento
 /// sobre o anel. ⇒ núcleo `2 × width_px`, anel `HALO_PX` de cada lado.
-fn stroke_halo(scene: &mut VectorScene, path: &BezPath, width_px: f64, core: Color) {
+pub(crate) fn stroke_halo(scene: &mut VectorScene, path: &BezPath, width_px: f64, core: Color) {
     let nucleo = 2.0 * width_px;
     let s = scene.inner_mut();
     let anel = Pen::new(nucleo + 2.0 * HALO_PX);
@@ -438,7 +446,14 @@ mod tests {
         let f = s.frames()[0].id;
         let mut img = SpriteImage::default();
         img.refresh(&s, f, None, 1);
-        let mut st = Stroke::begin(&s, top, f, s.value_of_rgba([200, 40, 90, 255]), Paint::default(), (2, 2));
+        let mut st = Stroke::begin(
+            &s,
+            top,
+            f,
+            s.value_of_rgba([200, 40, 90, 255]),
+            Paint::default(),
+            (2, 2),
+        );
         let full = |s: &Sprite, p: Option<&Stroke>| {
             let mut out = Vec::new();
             compose_rgba(s, f, p, &mut out);
@@ -464,17 +479,43 @@ mod tests {
     fn bands_onion_and_the_frame_cache_give_the_bytes_of_the_single_compose() {
         use ph2d_pixel_core::frames::{self, NewFrame};
         use ph2d_pixel_core::{Onion, Op, Patch, Rect, compose_with_onion};
-        let mut s = Sprite::new(NewSprite { width: 37, height: 29, ..NewSprite::default() }).expect("s");
+        let mut s = Sprite::new(NewSprite {
+            width: 37,
+            height: 29,
+            ..NewSprite::default()
+        })
+        .expect("s");
         let l = s.layers()[0].id;
         let f0 = s.frames()[0].id;
         let r = s.bounds();
-        let px: Vec<u8> = (0..r.area()).flat_map(|k| [(k * 7) as u8, (k * 3) as u8, 90, (k * 11) as u8]).collect();
-        apply(&mut s, Op::Patch(Patch { layer: l, frame: f0, bbox: Some(r), rect: r, pixels: px })).expect("p");
+        let px: Vec<u8> = (0..r.area())
+            .flat_map(|k| [(k * 7) as u8, (k * 3) as u8, 90, (k * 11) as u8])
+            .collect();
+        apply(
+            &mut s,
+            Op::Patch(Patch {
+                layer: l,
+                frame: f0,
+                bbox: Some(r),
+                rect: r,
+                pixels: px,
+            }),
+        )
+        .expect("p");
         let (op, f1) = frames::new_frame(&mut s, f0, NewFrame::Empty).expect("f");
         apply(&mut s, op).expect("f");
         let one = Rect::new(3, 3, 1, 1);
-        apply(&mut s, Op::Patch(Patch { layer: l, frame: f1, bbox: Some(one), rect: one, pixels: vec![9, 9, 9, 255] }))
-            .expect("p");
+        apply(
+            &mut s,
+            Op::Patch(Patch {
+                layer: l,
+                frame: f1,
+                bbox: Some(one),
+                rect: one,
+                pixels: vec![9, 9, 9, 255],
+            }),
+        )
+        .expect("p");
         let full = |s: &Sprite, f| {
             let mut out = Vec::new();
             compose_rgba(s, f, None, &mut out);
@@ -487,11 +528,27 @@ mod tests {
         assert_eq!(img.scratch, full(&s, f1), "faixas, frame 1");
         img.refresh(&s, f0, None, 1);
         assert_eq!(img.scratch, full(&s, f0), "a imagem guardada do frame 0");
-        let o = Onion { tint: true, ..Onion::default() };
+        let o = Onion {
+            tint: true,
+            ..Onion::default()
+        };
         img.refresh_with(&s, f1, None, 1, Some(&o));
-        assert_eq!(img.scratch, compose_with_onion(&s, f1, None, s.bounds(), &o, None), "papel vegetal");
-        apply(&mut s, Op::Patch(Patch { layer: l, frame: f0, bbox: Some(r), rect: one, pixels: vec![1, 2, 3, 255] }))
-            .expect("p");
+        assert_eq!(
+            img.scratch,
+            compose_with_onion(&s, f1, None, s.bounds(), &o, None),
+            "papel vegetal"
+        );
+        apply(
+            &mut s,
+            Op::Patch(Patch {
+                layer: l,
+                frame: f0,
+                bbox: Some(r),
+                rect: one,
+                pixels: vec![1, 2, 3, 255],
+            }),
+        )
+        .expect("p");
         img.refresh(&s, f0, None, 2);
         assert_eq!(img.scratch, full(&s, f0), "outra versão recompõe");
     }

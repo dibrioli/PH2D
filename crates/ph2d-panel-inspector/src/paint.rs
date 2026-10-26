@@ -357,6 +357,8 @@ pub(crate) fn visibility_body(
         inner_w,
         y,
     );
+    // ⭐ A imagem da sprite, sempre à vista (plano GEF 12: o campo *Sprite* da Unity).
+    yy = sections::paint_image_row(scene, text_system, theme, hit_index, inner_x, inner_w, yy);
     // W3 §8: the optional-component controls (layer mask / clip / mask / on-screen) sit directly
     // below the Visible toggle.
     if let Some(vis) = current_inspector_visibility_section() {

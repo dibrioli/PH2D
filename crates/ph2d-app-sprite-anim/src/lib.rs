@@ -3,6 +3,7 @@
 
 pub mod card;
 pub mod editor;
+pub mod image_choice;
 pub mod inspector;
 pub mod sheet;
 pub mod tick;

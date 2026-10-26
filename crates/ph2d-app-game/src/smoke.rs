@@ -27,7 +27,45 @@ use ph2d_render::{
 use ph2d_script::{LuauScript, ProjectScripts};
 use std::sync::OnceLock;
 
-pub const CENAS: u32 = 3;
+pub const CENAS: u32 = 4;
+
+/// A cena 4 (plano 12): o nível 2 com duas imagens na biblioteca do projecto para trocar pelo Inspector — a
+/// folha do herói azul e os montes ao pôr do sol (`docs/GameEngineFuncional/ferramentas/arte_trocar.py`).
+pub const IMAGENS_4: [&str; 2] = [
+    concat!(env!("CARGO_MANIFEST_DIR"), "/../../docs/GameEngineFuncional/arte/heroi_azul.png"),
+    concat!(env!("CARGO_MANIFEST_DIR"), "/../../docs/GameEngineFuncional/arte/montes_por_do_sol.png"),
+];
+
+/// As imagens que a cena `nivel` traz para a biblioteca.
+#[must_use]
+pub fn imagens_da_cena(nivel: u32) -> &'static [&'static str] {
+    if nivel == 4 { &IMAGENS_4 } else { &[] }
+}
+
+/// O instante que a foto do plano 12 quer (`PH2D_GAME_SMOKE_FOTO`): o seletor aberto sobre os montes, ou as
+/// duas imagens já trocadas. A mão do dono faz o mesmo pelo Inspector; a tela virtual não recebe cliques.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Foto {
+    Seletor,
+    Trocado,
+}
+
+#[must_use]
+pub fn foto() -> Option<Foto> {
+    match std::env::var("PH2D_GAME_SMOKE_FOTO").ok()?.trim() {
+        "seletor" => Some(Foto::Seletor),
+        "trocado" => Some(Foto::Trocado),
+        _ => None,
+    }
+}
+
+/// O objecto da raiz com este nome.
+#[must_use]
+pub fn por_nome(sim: &mut SimWorld, nome: &str) -> Option<Entity> {
+    let w = sim.world_mut();
+    let mut q = w.query::<(Entity, &ph2d_ecs::Name)>();
+    q.iter(w).find(|(_, n)| n.0 == nome).map(|(e, _)| e)
+}
 
 pub const ROUTERS: &[ph2d_app_host::SmokeRouter] = &[ph2d_app_host::SmokeRouter {
     env: "PH2D_GAME_SMOKE",
@@ -120,7 +158,7 @@ pub fn conducao() -> Option<GameStage> {
 #[must_use]
 pub fn gesto_no_quadro(nivel: u32, stage: GameStage, quadro: u32) -> Option<Gesto> {
     let horario: &[(u32, Gesto)] = match nivel {
-        2 => &HORARIO_2,
+        2 | 4 => &HORARIO_2,
         3 => &HORARIO_3,
         _ => &HORARIO_1,
     };
@@ -218,6 +256,14 @@ pub fn montar(sim: &mut SimWorld, registry: &ComponentRegistry, nivel: u32) -> E
                 "[game-smoke] =3 o nível 2 com o condutor do agachar (plano 10): com ↓ e ← o boneco \
                  anda agachado («crouch_walk») sob o tecto baixo da esquerda, solta ↓ lá debaixo e \
                  continua baixo («crouch»), e ao sair para a direita levanta."
+            );
+            jogador
+        }
+        4 => {
+            let jogador = nivel_2(sim, registry);
+            println!(
+                "[game-smoke] =4 o nível 2 com «heroi_azul» e «montes_por_do_sol» na biblioteca (plano 12): \
+                 escolha a imagem dos montes e a folha do Player pela ranhura Image do Inspector."
             );
             jogador
         }

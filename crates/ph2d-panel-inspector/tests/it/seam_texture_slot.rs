@@ -165,9 +165,10 @@ fn clicking_the_texture_slot_opens_the_library() {
     assert!(
         sent.iter().any(|a| matches!(
             a,
-            ph2d_editor_core::action_bus::EditorAction::OpenAssetBrowser
+            ph2d_editor_core::action_bus::EditorAction::OpenImagePicker { entity_bits }
+                if *entity_bits == ENTITY
         )),
-        "carregar na ranhura nao abriu a biblioteca: {sent:?}"
+        "carregar na ranhura nao abriu o seletor para esta sprite: {sent:?}"
     );
     clear();
 }

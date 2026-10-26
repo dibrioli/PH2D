@@ -108,6 +108,12 @@ pub(crate) fn library(
             ids.entry(*id).or_insert(None);
         }
     }
+    // A fábrica chama-se pelo nome dela, nunca pelo do 1.º objecto que a usa (plano GEF 12).
+    for (id, name) in crate::factory_images::names(atlas_assets) {
+        if let Some(n) = ids.get_mut(&id) {
+            *n = Some(name);
+        }
+    }
     unique(&paths_of(db), &ids)
 }
 

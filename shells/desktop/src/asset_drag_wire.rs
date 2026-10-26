@@ -276,7 +276,7 @@ impl crate::App {
             }
             DropAction::SetScriptObject { .. } => {} // `object_drag::write_code` já o fez
             DropAction::RetextureSprite { entity_bits, asset } => {
-                self.drop_retexture(entity_bits, asset);
+                self.choose_image(entity_bits, asset);
             }
             DropAction::SpawnImage { asset, world } => {
                 self.drop_spawn_image(asset, world);

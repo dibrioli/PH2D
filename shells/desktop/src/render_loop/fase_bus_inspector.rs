@@ -349,8 +349,11 @@ impl crate::App {
             // **abre**, nunca alterna: o gesto é *«mostra-me o que cabe aqui»*, e
             // fechar um painel que o artista acabou de pedir seria responder ao
             // contrário.
-            EditorAction::OpenAssetBrowser => {
-                pd.open_asset_browser = true;
+            EditorAction::OpenImagePicker { entity_bits } => {
+                pd.open_image_picker = Some(entity_bits);
+            }
+            EditorAction::ChooseImage { entity_bits, asset } => {
+                pd.choose_image = Some((entity_bits, asset));
             }
             // ⭐⭐⭐ **Aplicar uma peça ACRESCENTADA** (F5.11). ⚠️ **ADIADO como o irmão
             // abaixo, e pela mesma família de razões:** ela precisa do registo de

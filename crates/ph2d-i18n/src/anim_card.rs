@@ -73,6 +73,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.anim_card.own_times" => "\u{2022} some frames have their own time",
         "panel.inspector.anim_card.repeat_count" => "Repeat count",
         "panel.inspector.anim_card.advanced" => "Advanced",
+        // A troca de imagem (plano GEF 12).
+        "app.sprite_anim.image_choice.not_an_image" => "That asset is not an image",
+        "app.sprite_anim.image_choice.not_a_sprite" => "This object has no image to change",
         _ => return None,
     })
 }

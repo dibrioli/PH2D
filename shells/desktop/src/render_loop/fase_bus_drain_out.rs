@@ -549,7 +549,9 @@ pub(in crate::render_loop) struct DrainOut {
     // ⚠️ **ADIADO pela razão da irmã de cima**: o verbo precisa do **eco** e dos documentos
     // possuídos, e aqui dentro o `self` já está emprestado.
     pub(in crate::render_loop) apply_to_level: Option<(u64, u64)>,
-    pub(in crate::render_loop) open_asset_browser: bool,
+    // O seletor de imagem e a escolha dele (plano GEF 12).
+    pub(in crate::render_loop) open_image_picker: Option<u64>,
+    pub(in crate::render_loop) choose_image: Option<(u64, [u8; 32])>,
     // ⭐ O pedido de renomear o VALOR de uma propriedade — `(receita, chave, valor)`.
     // ⭐ A entidade cujo campo de nome fechou neste quadro.
     pub(in crate::render_loop) physics_edits: Vec<(u64, ph2d_editor_core::PhysicsFieldEdit)>,

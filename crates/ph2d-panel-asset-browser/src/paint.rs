@@ -97,8 +97,11 @@ pub(crate) fn paint(state: &mut AssetBrowserState, ctx: &mut PaintCtx) {
         // ⛔ **E a sub-região da coluna de catálogos** — a coluna colapsada já a limpava, o painel
         // fechado não: a roda continuaria a ser comida no sítio onde a coluna esteve.
         crate::paint_catalog::forget_region(ctx.host.store_mut());
+        // Fechar o painel desiste do seletor.
+        state.choosing = None;
         return;
     }
+    crate::paint_choose::take_request(state, ctx);
     let base = match state.rect {
         Some(r) => r,
         None => {
@@ -152,6 +155,7 @@ pub(crate) fn paint(state: &mut AssetBrowserState, ctx: &mut PaintCtx) {
     // ⭐⭐ A faixa da pergunta de relação (D9) empurra **a grade** para baixo quando existe, e
     // devolve o mesmo `y` quando não — ver o cabeçalho do [`crate::paint_related`].
     let body_top = crate::paint_related::paint(state, ctx, rect, controls_bottom, col_w);
+    let body_top = crate::paint_choose::paint(state, ctx, rect, body_top, col_w);
     paint_grid(state, ctx, rect, body_top, col_w);
 }
 
@@ -345,7 +349,12 @@ fn paint_grid(
             .text(ids::ASSET_SEARCH)
             .unwrap_or_default()
             .to_string(),
-        kind: state.kind,
+        // O seletor só oferece imagens.
+        kind: if state.choosing.is_some() {
+            Some(ph2d_asset_index::AssetKind::Texture)
+        } else {
+            state.kind
+        },
         // ⭐⭐ **O escopo do catálogo escolhido, expandido no quadro** — ele e os descendentes.
         catalog: crate::paint_catalog::scope_of(state.pick),
         sort: state.sort,

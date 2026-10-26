@@ -195,6 +195,15 @@ pub struct AssetBrowserState {
     /// seguinte e a célula que abriu o menu passa a desenhar outro asset — guardar o índice faria
     /// a faixa dizer um nome e a grade responder por outro.
     pub related: Option<(ph2d_asset_index::AssetRef, ph2d_asset_index::Relation)>,
+    /// ⭐ O seletor de imagem (plano GEF 12): para que objecto se escolhe. `None` = navegar.
+    pub choosing: Option<Choosing>,
+}
+
+/// O alvo do seletor: a sprite e o nome que a faixa mostra.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Choosing {
+    pub entity_bits: u64,
+    pub name: String,
 }
 
 /// O campo de renomear aberto: **quem**, e se o buffer já foi semeado.
@@ -229,6 +238,7 @@ impl Default for AssetBrowserState {
             pick: CatalogPick::All,
             renaming: None,
             related: None,
+            choosing: None,
         }
     }
 }

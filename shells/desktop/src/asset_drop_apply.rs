@@ -4,8 +4,8 @@
 //! isto é o braço. Uma decisão dentro do braço seria uma decisão sem gate.
 //!
 //! ⚠️ **E cada acção passa pela PORTA que já existe**, nunca por uma segunda:
-//! - re-texturar → [`crate::hero_intents::texture_edit::commit_edited_texture`], o funil das oito
-//!   ferramentas de imagem (ele sobe os pixels, interna o `AssetId` e re-aponta a sprite);
+//! - re-texturar → [`ph2d_app_sprite_anim::image_choice::choose_library_image`], a porta da escolha de
+//!   imagem (referência, plano GEF 12);
 //! - nascer uma sprite → [`crate::image_import::spawn_sprite`], a mesma do import de ficheiro;
 //! - pôr um prefab → o mesmo `instance_verbs::drain(Verb::Place, …)` do duplo-clique e da
 //!   Hierarquia. O que a queda acrescenta é **onde**.
@@ -38,48 +38,49 @@ impl crate::App {
         })
     }
 
-    /// **A sprite passa a mostrar esta imagem.**
+    /// **A sprite passa a mostrar esta imagem** — a queda na ranhura e o seletor (plano GEF 12).
     ///
-    /// ⚠️ **O TAMANHO não muda**, e é uma escolha: re-texturar não é redimensionar. Trocar a
-    /// imagem de um objecto posto na cena e vê-lo saltar de tamanho é perder a composição.
-    pub(super) fn drop_retexture(&mut self, entity_bits: u64, asset: [u8; 32]) {
-        let Some(img) = self.image_of(asset) else {
-            self.toast_drop_failed();
-            return;
-        };
+    /// ⚠️ Pela porta [`ph2d_app_sprite_anim::image_choice::choose_library_image`]: REFERENCIA a imagem da
+    /// biblioteca (nunca copia píxeis) e a escala do objecto fica — o tamanho segue a imagem, como na Unity
+    /// e na Godot (medido, `docs/GameEngineFuncional/ferramentas/textura_godot.gd`).
+    pub(crate) fn choose_image(&mut self, entity_bits: u64, asset: [u8; 32]) {
+        let img = self.image_of(asset);
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
-        let e = ph2d_ecs::Entity::from_bits(entity_bits);
-        let Some(size) = gfx
-            .sim
-            .world()
-            .get::<ph2d_render::Sprite>(e)
-            .map(|s| s.size)
-        else {
-            return;
-        };
-        let mut toasts = std::mem::take(&mut gfx.toasts);
-        let r = crate::hero_intents::texture_edit::commit_edited_texture(
-            e,
+        let ppm = gfx
+            .hero_screen
+            .as_ref()
+            .map_or(ph2d_editor_core::project::DEFAULT_PIXELS_PER_METER, |h| {
+                h.project.pixels_per_meter
+            })
+            .max(crate::EPS_PIXELS_PER_METER);
+        let renderer = &mut gfx.renderer;
+        let r = ph2d_app_sprite_anim::image_choice::choose_library_image(
             &mut gfx.sim,
-            &mut gfx.renderer,
+            &mut |w, h, px| {
+                renderer
+                    .acquire_individual(w, h, px)
+                    .map_err(|e| e.to_string())
+            },
             &gfx.asset_db,
-            &img,
-            size,
-            &mut toasts,
+            &gfx.atlas_asset_map,
+            ppm,
+            ph2d_ecs::Entity::from_bits(entity_bits),
+            AssetId::from_digest(asset),
         );
-        gfx.toasts = toasts;
         match r {
-            Ok(_) => {
+            Ok(()) => {
                 // Uma folha largada propõe colunas × linhas no editor de animações (plano GEF 07).
-                ph2d_app_sprite_anim::editor::propose_after_drop(
-                    &mut gfx.sim,
-                    entity_bits,
-                    &img.pixels,
-                    img.width,
-                    img.height,
-                );
+                if let Some(img) = img {
+                    ph2d_app_sprite_anim::editor::propose_after_drop(
+                        &mut gfx.sim,
+                        entity_bits,
+                        &img.pixels,
+                        img.width,
+                        img.height,
+                    );
+                }
                 gfx.toasts.push(ph2d_editor_core::Toast::success(tr(
                     "shell.asset_drop_apply.texture_applied",
                 )));
@@ -183,6 +184,58 @@ impl crate::App {
             gfx.toasts.push(ph2d_editor_core::Toast::warning(tr(
                 "shell.asset_drop_apply.could_not_place_that",
             )));
+        }
+    }
+}
+
+impl crate::App {
+    /// A cena 4 do jogo (plano GEF 12): as imagens dela entram na biblioteca; `PH2D_GAME_SMOKE_FOTO` conduz
+    /// o instante que a foto quer (o seletor sobre os montes, ou as duas imagens trocadas).
+    pub(crate) fn troca_de_imagem_do_smoke(&mut self, nivel: u32) {
+        let Some(gfx) = self.gfx.as_mut() else {
+            return;
+        };
+        let mut ids = Vec::new();
+        for path in ph2d_app_game::smoke::imagens_da_cena(nivel) {
+            match ph2d_app_sprite_anim::image_choice::bring_into_library(
+                &gfx.asset_db,
+                &mut gfx.renderer,
+                &mut gfx.next_import_cell,
+                &mut gfx.atlas_asset_map,
+                std::path::Path::new(path),
+            ) {
+                Ok(id) => ids.push(id),
+                Err(e) => eprintln!("[game-smoke] {path}: {e}"),
+            }
+        }
+        let (Some(foto), [heroi, montes]) = (ph2d_app_game::smoke::foto(), ids.as_slice()) else {
+            return;
+        };
+        let (heroi, montes) = (*heroi.as_bytes(), *montes.as_bytes());
+        let mut alvo =
+            |nome| ph2d_app_game::smoke::por_nome(&mut gfx.sim, nome).map(ph2d_ecs::Entity::to_bits);
+        let (Some(hills), Some(player)) = (alvo("Hills"), alvo("Player")) else {
+            return;
+        };
+        match foto {
+            ph2d_app_game::smoke::Foto::Seletor => {
+                if let Some(hero) = gfx.hero_screen.as_mut() {
+                    hero.gizmo.replace_selection(Some(hills));
+                    ph2d_panel_asset_browser::choose_image_for(hills, "Hills".into());
+                    <_ as ph2d_editor_core::panel::PanelHostInternal>::set_panel_visible(
+                        hero,
+                        ph2d_panel_asset_browser::PANEL_ID,
+                        true,
+                    );
+                }
+            }
+            ph2d_app_game::smoke::Foto::Trocado => {
+                self.choose_image(hills, montes);
+                self.choose_image(player, heroi);
+                if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
+                    hero.gizmo.replace_selection(Some(hills));
+                }
+            }
         }
     }
 }

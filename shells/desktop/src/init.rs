@@ -145,6 +145,9 @@ pub(crate) fn build_initial_state(
     let flip_compose =
         ph2d_flip_render::FlipCompose::new(&surface.gpu().device, ph2d_render::GameRt::FORMAT);
 
+    // A arte de fábrica é imagem da biblioteca (plano GEF 12).
+    let mut atlas_asset_map = BTreeMap::new();
+    ph2d_app_components::factory_images::register(&asset_db, &mut atlas_asset_map);
     let gfx = AppGfx {
         surface,
         cursor_shown: Default::default(),
@@ -239,7 +242,7 @@ pub(crate) fn build_initial_state(
         next_sheet_id: 0,
         next_painted_doc: 1, // 0 fica livre como "nenhum"
         painter_reata: Default::default(),
-        atlas_asset_map: BTreeMap::new(),
+        atlas_asset_map,
         catalogs: ph2d_asset_index::CatalogTree::new(),
         library_cache: crate::project_library::LibraryCache::default(),
         tags: ph2d_tags::TagTree::new(),

@@ -58,6 +58,12 @@ pub(crate) fn populate(store: &mut WidgetStore) {
             state: ButtonState::Normal,
         },
     );
+    store.register(
+        ids::ASSET_CHOOSE_CANCEL,
+        InteractiveState::Button {
+            state: ButtonState::Normal,
+        },
+    );
     for id in ids::ASSET_KIND.iter().take(ids::ASSET_KIND_FILTERS) {
         store.register(
             *id,

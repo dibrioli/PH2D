@@ -22,6 +22,10 @@ impl crate::App {
         };
         let mut out = Vec::new();
         for (&key, asset_id) in &gfx.atlas_asset_map {
+            // A fábrica vem do programa, não do ficheiro (plano GEF 12).
+            if ph2d_app_components::factory_images::is_factory_key(key) {
+                continue;
+            }
             // PRECISION-BYPASS: caminho de ESCRITA — não passa pela porta `Asset::image_rgba8`, e
             // é deliberado (plano `docs/Sprite_projeto/18`, auditoria da W2).
             //

@@ -38,6 +38,9 @@ pub const ASSET_SEARCH: NodeId = hash_node_id("asset_browser.search");
 /// filtro que só um menu liga tem de trazer o próprio interruptor de desligar.*
 pub const ASSET_RELATED_CLEAR: NodeId = hash_node_id("asset_browser.related.clear");
 
+/// O `✕` da faixa do seletor de imagem (plano GEF 12): desiste de escolher.
+pub const ASSET_CHOOSE_CANCEL: NodeId = hash_node_id("asset_browser.choose.cancel");
+
 /// O slider do tamanho do cartão (plano 07 D3 — **um slider, não presets**, que é o
 /// `thumbnail_size_slider` do Godot).
 pub const ASSET_SIZE: NodeId = hash_node_id("asset_browser.size");

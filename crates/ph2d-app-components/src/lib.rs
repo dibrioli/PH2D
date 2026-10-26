@@ -73,6 +73,8 @@ pub mod asset_card_verbs;
 pub mod asset_catalog_verbs;
 pub mod asset_drop;
 pub mod asset_index_build;
+/// ⭐ A arte de fábrica como imagem da biblioteca (plano GEF 12).
+pub mod factory_images;
 pub mod object_drag;
 pub mod property_drag;
 // ⛔⛔ **A ponte do SOM DE CENA FICOU na shell, e a razão é um GATE:** ela precisa do

@@ -496,9 +496,13 @@ pub enum EditorAction {
     /// Porquê e cada uma delas: [`HierRequest`].
     Hierarchy(HierRequest),
 
-    /// ⭐⭐ **Mostrar a biblioteca** — *«o que é que eu posso pôr aqui?»*, o clique na ranhura da
-    /// textura. Porquê: `crates/ph2d-panel-inspector/src/populate.rs`.
-    OpenAssetBrowser,
+    /// ⭐⭐ **O seletor de imagem** — *«o que é que eu posso pôr aqui?»*, o clique na ranhura da imagem
+    /// de `entity_bits`: o navegador abre com esse alvo (plano GEF 12). Porquê:
+    /// `crates/ph2d-panel-inspector/src/populate.rs`.
+    OpenImagePicker { entity_bits: u64 },
+    /// ⭐ **A sprite `entity_bits` passa a mostrar a imagem `asset`** (blake3) — a escolha do seletor; a
+    /// queda na ranhura chega à MESMA porta.
+    ChooseImage { entity_bits: u64, asset: [u8; 32] },
 
     InspectorSwapVariant {
         root_bits: u64,

@@ -35,6 +35,8 @@ mod paint;
 /// ⭐⭐ A COLUNA DE CATÁLOGOS (wave A3) — irmão por assunto do [`paint`].
 mod paint_catalog;
 mod paint_catalog_rename;
+/// ⭐ O SELETOR DE IMAGEM (plano GEF 12) — este painel com um alvo.
+mod paint_choose;
 /// ⭐⭐ A faixa da pergunta de relação (D9) — irmã por assunto do [`paint`], ver o cabeçalho de lá.
 pub mod paint_related;
 /// ⭐⭐ A miniatura de um cartão e o memo de textura que ela obriga — irmão por assunto do
@@ -48,6 +50,7 @@ pub mod state;
 pub const PANEL_ID: &str = "asset_browser";
 
 pub use paint::{default_rect, probe_query};
+pub use paint_choose::choose_image_for;
 pub use state::{
     AssetBrowserState, CELL_DEFAULT_PX, CELL_MAX_PX, CELL_MIN_PX, CatalogPick, CatalogRename,
     catalog_row_pick, last_content_h, last_visible_h, payload_at, probe_catalogs,

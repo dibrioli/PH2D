@@ -42,6 +42,18 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.asset_browser.related.what_name_uses" => "What \u{201c}{name}\u{201d} uses",
         "panel.asset_browser.related.what_uses_name" => "What uses \u{201c}{name}\u{201d}",
         // ph2d-migrar-texto:end
+        // ⭐ As imagens de fábrica na biblioteca (plano GEF 12) — o nome que o seletor mostra e busca.
+        "asset.factory.hero" => "Hero",
+        "asset.factory.ground" => "Ground",
+        "asset.factory.platform" => "Platform",
+        "asset.factory.dirt" => "Dirt",
+        "asset.factory.coin" => "Coin",
+        "asset.factory.flag" => "Flag",
+        "asset.factory.clouds" => "Clouds",
+        "asset.factory.hills" => "Hills",
+        // ⭐ O seletor de imagem (plano GEF 12): o navegador com um alvo.
+        "panel.asset_browser.pick.choose_for" => "Choose the image for \u{201c}{name}\u{201d}",
+        "panel.asset_browser.pick.cancel" => "Cancel",
         _ => return None,
     })
 }

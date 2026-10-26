@@ -8,5 +8,6 @@
 
 mod every_word_this_panel_shows_comes_from_the_string_table;
 mod seam;
+mod seam_choose;
 mod seam_related;
 mod the_card_shows_the_canvas_behind_the_thumbnail;

@@ -13,7 +13,7 @@ use ph2d_ecs::{
 use ph2d_editor_core::object_add::{AddEntry, AddGroup};
 use ph2d_physics_ecs::{BodyKind, CharacterAnimations, Collider, ColliderShape, RigidBody};
 use ph2d_render::{
-    BACKGROUND_TEXELS_PER_M, FactoryArt, HERO_SHEET_COLS, HERO_SHEET_KEY, HERO_SHEET_ROWS,
+    FactoryArt, HERO_SHEET_COLS, HERO_SHEET_KEY, HERO_SHEET_ROWS,
     HERO_SHEET_SOLE_BELOW_CENTRE, HERO_SHEET_TAGS, HILLS_TILE, Sprite, WHITE_TILE_KEY,
 };
 
@@ -79,8 +79,7 @@ pub const CAMADA_LADRILHOS: f32 = 4.0;
 /// O lado (m) de um ladrilho do fundo.
 #[must_use]
 pub fn ladrilho_m(art: FactoryArt) -> [f32; 2] {
-    art.cell_px()
-        .map(|v| v as f32 / BACKGROUND_TEXELS_PER_M as f32)
+    art.native_m()
 }
 
 /// ⭐ Veste `e` como camada de fundo com o azulejo `art` repetido `ladrilhos` vezes na horizontal e a fracção

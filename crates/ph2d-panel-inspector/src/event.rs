@@ -192,7 +192,12 @@ fn texture_slot_click(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool
     if ev != WidgetEvent::Click(ids::INSP_RENDER_TEXTURE_SLOT) {
         return false;
     }
-    host.bus_mut().push(EditorAction::OpenAssetBrowser);
+    let Some(sprite) = crate::state::current_inspector_sprite() else {
+        return false;
+    };
+    host.bus_mut().push(EditorAction::OpenImagePicker {
+        entity_bits: sprite.entity_bits,
+    });
     true
 }
 

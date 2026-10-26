@@ -59,6 +59,8 @@ thread_local! {
     /// A cache viva da sessão. Ela é `thread_local` e não um campo do `App` porque a chave é o
     /// **conteúdo** — ela não pertence a um projecto, a uma cena nem a um quadro, e sobrevive
     /// correctamente a um `Open Project` (os bytes iguais dão a mesma cor).
+    /// O nome da última imagem da ranhura do Inspector ([`image_card`]).
+    static CARD_NAME: RefCell<Option<(AssetId, String)>> = const { RefCell::new(None) };
     static SWATCHES: std::cell::RefCell<CardArt> = const {
         std::cell::RefCell::new(CardArt::EMPTY)
     };
@@ -312,6 +314,13 @@ pub(crate) fn build(
     // ⛔ E a memória é **união, nunca subtracção AUTOMÁTICA**: o que entrou fica até alguém o mandar
     // sair. ⭐ A porta de o mandar sair é o [`forget_texture`], e ela nasceu do report seguinte do
     // Enio — *«uma sprite que foi deletada do canvas não consegui deletar do painel»*.
+    // ⭐ O que o projecto trouxe está na biblioteca mesmo sem ninguém a usar (a fábrica, uma imagem
+    // importada cuja sprite se apagou) — é o que o seletor oferece (plano GEF 12, o *Project* da Unity).
+    for id in atlas_assets.values() {
+        if !live.contains(id) && !remembered.is_forgotten(id) {
+            remembered.remember(*id, texture_entry(db, *id, String::new(), swatches, &mut budget));
+        }
+    }
     // ⭐ O nome ÚNICO, o mesmo que o script escreve (`sprite.image`, doc CodeEditor 08 d4).
     let names = crate::library_names::library(sim, db, atlas_assets, remembered);
     for entry in remembered.entries(&live) {
@@ -329,6 +338,38 @@ pub(crate) fn build(
     }
 
     index
+}
+
+/// ⭐ **A imagem da biblioteca que `e` mostra: o nome e a miniatura** — a ranhura do Inspector (plano GEF 12).
+/// Pelas mesmas portas do cartão do navegador ([`texture_of`], o nome único, a miniatura com cache).
+pub fn image_card(
+    sim: &mut SimWorld,
+    db: &AssetDb,
+    atlas_assets: &BTreeMap<u32, AssetId>,
+    e: Entity,
+) -> Option<(String, ph2d_asset_index::Thumb)> {
+    let w = sim.world();
+    let id = texture_of(
+        w.get::<SpritePixels>(e),
+        w.get::<ph2d_render::Sprite>(e),
+        atlas_assets,
+    )?;
+    let mut budget = THUMB_BUDGET_PX;
+    let thumb = SWATCHES.with(|sw| thumb_for(db, id, &mut sw.borrow_mut(), &mut budget))?;
+    // O nome é a biblioteca inteira a ordenar: só se recalcula quando a imagem muda.
+    let name = CARD_NAME.with(|c| {
+        if let Some((cached, n)) = c.borrow().as_ref()
+            && *cached == id
+        {
+            return n.clone();
+        }
+        let n = crate::library_names::session_library(sim, db, atlas_assets)
+            .remove(&id)
+            .unwrap_or_default();
+        *c.borrow_mut() = Some((id, n.clone()));
+        n
+    });
+    Some((name, thumb))
 }
 
 /// ⭐⭐⭐ **TIRAR UMA TEXTURA DA BIBLIOTECA** — a porta que a memória declarava não existir.
@@ -518,7 +559,7 @@ fn texture_entry(
 /// ⚠️ **UMA porta, dois leitores** — o índice (*«que assets existem?»*) e o
 /// [`crate::asset_card_verbs::users_of`] (*«quem usa isto?»*). A 1.ª versão respondia a segunda
 /// pergunta com a metade errada, e o *Select users* numa imagem importada devolvia **zero**.
-pub(crate) fn texture_of(
+pub fn texture_of(
     pixels: Option<&SpritePixels>,
     sprite: Option<&ph2d_render::Sprite>,
     atlas_assets: &BTreeMap<u32, AssetId>,

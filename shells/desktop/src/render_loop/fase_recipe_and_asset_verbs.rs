@@ -10,12 +10,16 @@ pub(super) struct RecipeVerbIntents {
     pub(super) swap_variant: Option<(u64, u64)>,
     pub(super) apply_added: Option<u64>,
     pub(super) apply_to_level: Option<(u64, u64)>,
-    pub(super) open_asset_browser: bool,
+    pub(super) open_image_picker: Option<u64>,
+    pub(super) choose_image: Option<(u64, [u8; 32])>,
 }
 
 impl crate::App {
     /// Ver o cabeçalho do módulo.
     pub(super) fn fase_recipe_and_asset_verbs(&mut self, intents: RecipeVerbIntents) {
+        if let Some((entity_bits, asset)) = intents.choose_image {
+            self.choose_image(entity_bits, asset);
+        }
         // O `gfx` re-derivado; os guardas do quadro já correram na `fase_chrome_clock`.
         let Some(gfx) = self.gfx.as_mut() else {
             return;
@@ -38,7 +42,8 @@ impl crate::App {
             swap_variant,
             apply_added,
             apply_to_level,
-            open_asset_browser,
+            open_image_picker,
+            ..
         } = intents;
         // ⭐⭐⭐ **A troca de VARIANTE, aplicada** (ADR-0164 / F5, critério 2).
         //
@@ -53,7 +58,13 @@ impl crate::App {
         // olhar — e ele tentou pelo nome da cópia quatro vezes, com o modelo a ignorá-lo
         // correctamente as quatro.
         //
-        if open_asset_browser {
+        if let Some(bits) = open_image_picker {
+            let name = sim
+                .world()
+                .get::<ph2d_ecs::Name>(ph2d_ecs::Entity::from_bits(bits))
+                .map(|n| n.0.clone())
+                .unwrap_or_default();
+            ph2d_panel_asset_browser::choose_image_for(bits, name);
             <_ as ph2d_editor_core::panel::PanelHostInternal>::set_panel_visible(
                 hero,
                 ph2d_panel_asset_browser::PANEL_ID,

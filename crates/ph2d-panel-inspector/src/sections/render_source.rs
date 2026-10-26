@@ -412,45 +412,22 @@ fn paint_provenance(
         STORAGE_LABEL.tr(),
         sec,
     );
+    // ⭐ O FACTO de onde vêm os píxeis. ⚠️ A ranhura (o ALVO de escolher/largar) subiu para a linha
+    // *Image* do topo (plano GEF 12, `sections/image_row.rs`): no fundo de uma secção fechada o dono não a
+    // achava, e a Unity põe o campo *Sprite* em primeiro.
     let slot = linha.control;
-    // ⭐ Raio e moldura pela porta do TEMA: o slot é plano num tema moderno.
-    let slot_radius = ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px());
-    fill_rounded_rect(scene, slot, slot_radius, resolve(ColorToken::Bg2, theme));
-    ph2d_editor_core::paint::stroke_frame(
-        scene,
-        slot,
-        slot_radius,
-        theme,
-        ph2d_tokens::visuals::Feel::Rest,
-        SLOT_BORDER_PX,
-        resolve(ColorToken::Border, theme),
-    );
-    // ⭐⭐⭐ **O BALÃO** — ordem do dono, 2026-09-19: *«encurtar · balão ao passar o rato»*.
-    //
-    // ⛔ Com a linha a falar a língua da casa o valor deixou de ter a largura do painel e passou a
-    //    ter a da coluna do controlo (`112 px` no encaixe do dono) ⇒ um nome de folha comprido
-    //    (`Hand-packed · hero · idle_0`) passa a ser cortado. *O nome da folha é texto do ARTISTA:
-    //    encurtá-lo não é uma saída*, e a lei da casa para isso é o balão.
-    //
-    // ⚠️ **O âmbito é a porta, e não uma segunda lista:** quem decide o corte é a lei da reticência
-    //    ([`ph2d_editor_core::text_elide`]), e ela só sabe ONDE o texto caiu se o pintor lho disser.
     ph2d_editor_core::text_elide::balao::na_area(slot, || {
         paint_text(
             text_system,
             scene,
             &detail,
-            slot.x + Spacing::Xs.px(),
+            slot.x,
             slot.y + (slot.h - label_font) * 0.5,
             label_font,
-            (slot.w - Spacing::Xs.px() * 2.0).max(0.0),
+            slot.w.max(0.0),
             resolve(ColorToken::Text1, theme),
         );
     });
-    // ⭐⭐⭐ **É AQUI que ela vira alvo.** O `HitIndex` é a porta única de *«o que está debaixo do
-    // cursor»*, e é ela que dá de graça o recorte do corpo e a oclusão por um painel de cima.
-    // ⛔ Sem `populate`: quem consome este id é o caminho da QUEDA, não o de clique — a mesma
-    // classe das *swatches* do picker, e o `HIT_PARITY_ALLOW` nomeia-a.
-    hit_index.register(ids::INSP_RENDER_TEXTURE_SLOT, slot);
     let mut cur_y = y + ROW_H_PX + row_gap;
     // ⚠️ **O TAMANHO de origem fica ao lado da ranhura**, e não numa função irmã: as duas são a
     // mesma pergunta — *de onde vêm estes pixels, e que tamanho tinham* —, e separá-las custou ao

@@ -35,6 +35,27 @@ pub(crate) fn apply_event(
         // paleta de comandos) chegaria a eles.
         _ if !host.panel_visible(AssetBrowserPanel::ID) => EventOutcome::Ignored,
 
+        // ── ⭐ O seletor de imagem (plano GEF 12): um clique numa imagem escolhe-a e fecha ──────
+        WidgetEvent::Click(id) if id == ids::ASSET_CHOOSE_CANCEL => {
+            state.choosing = None;
+            host.set_panel_visible(AssetBrowserPanel::ID, false);
+            EventOutcome::Consumed
+        }
+        WidgetEvent::Click(id) if state.choosing.is_some() && cell_target_of(id).is_some() => {
+            let Some(AssetRef::Texture { asset }) = cell_target_of(id) else {
+                return EventOutcome::Ignored;
+            };
+            let Some(c) = state.choosing.take() else {
+                return EventOutcome::Ignored;
+            };
+            host.bus_mut().push(EditorAction::ChooseImage {
+                entity_bits: c.entity_bits,
+                asset,
+            });
+            host.set_panel_visible(AssetBrowserPanel::ID, false);
+            EventOutcome::Consumed
+        }
+
         // ── O filtro de família ────────────────────────────────────────────────────────────────
         WidgetEvent::Click(id) if chip_index(&ids::ASSET_KIND, id).is_some() => {
             let i = chip_index(&ids::ASSET_KIND, id).unwrap_or(0);

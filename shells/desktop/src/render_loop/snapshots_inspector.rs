@@ -176,6 +176,24 @@ pub(super) fn publish(
     // its thread-local snapshot setters do).
     #[cfg(feature = "panel-inspector")]
     {
+        ph2d_panel_inspector::slot_image::set_current_slot_image(hero.gizmo.selection.and_then(
+            |b| {
+                let e = ph2d_ecs::Entity::from_bits(b);
+                let (name, t) = ph2d_app_components::asset_index_build::image_card(
+                    sim,
+                    asset_db,
+                    atlas_asset_map,
+                    e,
+                )?;
+                Some(ph2d_panel_inspector::slot_image::SlotImage {
+                    entity_bits: b,
+                    name,
+                    rgba: t.rgba,
+                    w: t.w,
+                    h: t.h,
+                })
+            },
+        ));
         ph2d_panel_inspector::set_current_inspector_sprite(inspector_sprite);
         ph2d_panel_inspector::set_current_inspector_ordering(inspector_ordering);
         ph2d_panel_inspector::set_current_inspector_sampling(inspector_sampling);

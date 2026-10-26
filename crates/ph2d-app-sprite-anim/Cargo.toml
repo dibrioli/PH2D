@@ -34,6 +34,8 @@ ph2d-vector = { path = "../ph2d-vector" }
 bevy_ecs = "0.19"
 
 [dev-dependencies]
+# Os gates da troca de imagem (plano GEF 12) gravam e repõem o mundo com o catálogo do produto.
+ph2d-app-components = { path = "../ph2d-app-components", features = ["test-support"] }
 ph2d-a11y = { path = "../ph2d-a11y" }
 ph2d-preview-drive = { path = "../ph2d-preview-drive", features = ["test-support"] }
 

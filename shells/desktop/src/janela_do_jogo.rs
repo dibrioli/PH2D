@@ -88,12 +88,13 @@ impl crate::App {
         }
         if let Some(cx) = self.components_ctx() {
             let jogador = ph2d_app_game::smoke::montar(cx.sim, cx.registry, nivel).to_bits();
-            if let Some(hero) = cx.hero_screen.filter(|_| nivel == 2) {
+            if let Some(hero) = cx.hero_screen.filter(|_| matches!(nivel, 2 | 4)) {
                 hero.gizmo.replace_selection(Some(jogador)); // o Inspector abre no personagem
                 hero.store
                     .set_collapsed(ph2d_editor_core::ids::INSP_LIVE_PLAYER_SECTION, false);
             }
         }
+        self.troca_de_imagem_do_smoke(nivel);
         self.timeline.flags.simulate_physics = true;
         self.playhead.rewind();
         self.playhead.pause();

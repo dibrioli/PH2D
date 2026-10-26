@@ -326,6 +326,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "Material: Default \u{00b7} shader runtime pending"
         }
         "panel.inspector.render_source.storage" => "Storage",
+        // ⭐ A linha da imagem no topo do Inspector (plano GEF 12).
+        "panel.inspector.image" => "Image",
+        "panel.inspector.image.none" => "None \u{2014} click to choose",
         "panel.inspector.render_source.source" => "Source",
         "panel.inspector.ordering.background" => "Background",
         "panel.inspector.ordering.midground" => "Midground",

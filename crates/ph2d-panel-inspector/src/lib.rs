@@ -155,6 +155,8 @@ mod populate_waves;
 mod populate_weapon;
 mod reveal;
 mod sections;
+/// ⭐ A imagem que a ranhura mostra (plano GEF 12).
+pub mod slot_image;
 pub mod state;
 /// ⭐ Os instantâneos das secções da fila do TOP-20 — irmão do [`state`] por CAP de LOC.
 /// Ver o cabeçalho dele.

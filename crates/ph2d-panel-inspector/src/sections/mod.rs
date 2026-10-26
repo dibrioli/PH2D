@@ -174,6 +174,8 @@ mod wheel;
 
 pub(crate) use color_tint::paint_color_tint_section;
 pub(crate) use identity::{paint_entity_name_row, paint_visibility_row};
+mod image_row;
+pub(crate) use image_row::paint_image_row;
 pub(crate) use joint::paint_joint_section;
 pub use joint::paste_label;
 pub(crate) use material_blend::paint_material_blend_section;

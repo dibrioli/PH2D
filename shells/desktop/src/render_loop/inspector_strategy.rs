@@ -449,7 +449,9 @@ fn release_atlas_key_if_unused(
     renderer: &mut SpriteRenderer,
     atlas_asset_map: &mut BTreeMap<u32, AssetId>,
 ) {
-    if sprites_referencing_atlas_key(sim, key) > 0 {
+    if sprites_referencing_atlas_key(sim, key) > 0
+        || ph2d_app_components::factory_images::is_factory_key(key)
+    {
         return;
     }
     renderer.remove_atlas_sprite(key);

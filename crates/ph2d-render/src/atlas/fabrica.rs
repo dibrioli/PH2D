@@ -16,10 +16,14 @@ use std::sync::OnceLock;
 #[derive(Clone, Copy, Debug)]
 pub struct FactoryArt {
     pub key: u32,
+    /// O nome que a biblioteca mostra (chave `ph2d-i18n`).
+    pub name: &'static str,
     pub svg: &'static [u8],
     pub px: [u32; 2],
     pub grid: [u32; 2],
     pub tile: bool,
+    /// Texels de uma célula por metro do mundo — o tamanho NATIVO da imagem (plano 12, lei 1).
+    pub texels_per_m: u32,
 }
 
 impl FactoryArt {
@@ -33,6 +37,13 @@ impl FactoryArt {
     #[must_use]
     pub const fn middle_frame(&self) -> u32 {
         self.grid[1] / 2 * self.grid[0] + self.grid[0] / 2
+    }
+
+    /// O lado (m) de uma célula no tamanho nativo.
+    #[must_use]
+    pub fn native_m(&self) -> [f32; 2] {
+        self.cell_px()
+            .map(|v| v as f32 / self.texels_per_m as f32)
     }
 }
 
@@ -56,6 +67,7 @@ const _: () = assert!(HILLS_TILE_KEY > super::FIRST_IMPORT_KEY);
 /// A folha do boneco (8 × 4; ver [`super::hero_sheet`]).
 pub const HERO_ART: FactoryArt = FactoryArt {
     key: super::HERO_SHEET_KEY,
+    name: "asset.factory.hero",
     svg: include_bytes!("fabrica/boneco.svg"),
     px: [
         super::HERO_SHEET_CELL_PX * super::HERO_SHEET_COLS,
@@ -63,60 +75,75 @@ pub const HERO_ART: FactoryArt = FactoryArt {
     ],
     grid: [super::HERO_SHEET_COLS, super::HERO_SHEET_ROWS],
     tile: false,
+    texels_per_m: super::HERO_SHEET_CELL_PX,
 };
 /// O chão e a plataforma repetem só na horizontal: as cópias vão lado a lado (por cima e por baixo a borda é
 /// mesmo a do bloco).
 pub const GROUND_TILE: FactoryArt = FactoryArt {
     key: GROUND_TILE_KEY,
+    name: "asset.factory.ground",
     svg: include_bytes!("fabrica/chao.svg"),
     px: [768, 256],
     grid: [3, 1],
     tile: true,
+    texels_per_m: 256,
 };
 pub const PLATFORM_TILE: FactoryArt = FactoryArt {
     key: PLATFORM_TILE_KEY,
+    name: "asset.factory.platform",
     svg: include_bytes!("fabrica/plataforma.svg"),
     px: [768, 128],
     grid: [3, 1],
     tile: true,
+    texels_per_m: 256,
 };
 pub const DIRT_TILE: FactoryArt = FactoryArt {
     key: DIRT_TILE_KEY,
+    name: "asset.factory.dirt",
     svg: include_bytes!("fabrica/terra.svg"),
     px: [768, 768],
     grid: [3, 3],
     tile: true,
+    texels_per_m: 256,
 };
 pub const COIN_SHEET: FactoryArt = FactoryArt {
     key: COIN_SHEET_KEY,
+    name: "asset.factory.coin",
     svg: include_bytes!("fabrica/moeda.svg"),
     px: [768, 128],
     grid: [6, 1],
     tile: false,
+    texels_per_m: 256,
 };
 pub const FLAG_SHEET: FactoryArt = FactoryArt {
     key: FLAG_SHEET_KEY,
+    name: "asset.factory.flag",
     svg: include_bytes!("fabrica/bandeira.svg"),
     px: [512, 256],
     grid: [4, 1],
     tile: false,
+    texels_per_m: 128,
 };
 /// Texels por metro dos azulejos do fundo (fica atrás e anda devagar: metade do chão chega).
 pub const BACKGROUND_TEXELS_PER_M: u32 = 128;
 const B: u32 = BACKGROUND_TEXELS_PER_M;
 pub const CLOUDS_TILE: FactoryArt = FactoryArt {
     key: CLOUDS_TILE_KEY,
+    name: "asset.factory.clouds",
     svg: include_bytes!("fabrica/nuvens.svg"),
     px: [3 * 8 * B, 2 * B],
     grid: [3, 1],
     tile: true,
+    texels_per_m: B,
 };
 pub const HILLS_TILE: FactoryArt = FactoryArt {
     key: HILLS_TILE_KEY,
+    name: "asset.factory.hills",
     svg: include_bytes!("fabrica/montes.svg"),
     px: [3 * 8 * B, 6 * B],
     grid: [3, 1],
     tile: true,
+    texels_per_m: B,
 };
 
 /// Toda a arte de fábrica, na ordem em que entra no atlas. ⚠️ Arte nova entra no FIM (gate

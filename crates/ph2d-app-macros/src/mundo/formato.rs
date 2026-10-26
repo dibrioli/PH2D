@@ -130,6 +130,20 @@ fn le<'a, T: Deserialize<'a>>(b: &'a [u8]) -> Result<T, ErroDeLeitura> {
     postcard::from_bytes(resto).map_err(|_| ErroDeLeitura::Bytes)
 }
 
+/// ⭐ Os bytes de um componente gravados antes de um degrau de forma passam à de agora (F32 §5): a
+/// macro guarda a forma do registo do dia em que gravou, e o `PROJECT_SCHEMA` não a acompanha.
+fn em_dia(nome: &str, bytes: &mut Vec<u8>) {
+    if let Some(b) = ph2d_ecs::item_id::migra_blob(nome, bytes) {
+        *bytes = b;
+    }
+}
+
+fn linha_em_dia(l: &mut Linha) {
+    for c in &mut l.componentes {
+        em_dia(&c.nome, &mut c.bytes);
+    }
+}
+
 impl Inicial {
     #[must_use]
     pub fn escreve(&self) -> Vec<u8> {
@@ -139,7 +153,9 @@ impl Inicial {
     /// # Errors
     /// [`ErroDeLeitura`].
     pub fn le(b: &[u8]) -> Result<Self, ErroDeLeitura> {
-        le(b)
+        let mut i: Self = le(b)?;
+        i.linhas.iter_mut().for_each(linha_em_dia);
+        Ok(i)
     }
 }
 
@@ -152,6 +168,26 @@ impl Evento {
     /// # Errors
     /// [`ErroDeLeitura`].
     pub fn le(b: &[u8]) -> Result<Self, ErroDeLeitura> {
-        le(b)
+        let mut e: Self = le(b)?;
+        if let Evento::Passo { mudancas, .. } = &mut e {
+            for m in mudancas {
+                match m {
+                    Mudanca::Nasce(l) => linha_em_dia(l),
+                    Mudanca::Muda { componentes, .. } => {
+                        for (nome, b) in componentes.iter_mut() {
+                            if let Some(b) = b {
+                                em_dia(nome, b);
+                            }
+                        }
+                    }
+                    Mudanca::Morre(_) => {}
+                }
+            }
+        }
+        Ok(e)
     }
 }
+
+#[cfg(test)]
+#[path = "formato_tests.rs"]
+mod tests;

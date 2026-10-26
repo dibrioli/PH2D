@@ -314,3 +314,30 @@ fn o_vec_filter_195_migra_para_a_forma_com_ids() {
         "e um ficheiro mais antigo também"
     );
 }
+
+/// F32 §5: sem versão (a macro), um blob que já está na forma de agora nunca se relê como antigo —
+/// medido: estes dois timers de agora também se lêem até ao último byte na forma 194 (o `item` 2
+/// do primeiro vira o comprimento do nome do segundo), e a «migração» trocar-lhes-ia os dados.
+#[test]
+fn sem_versao_a_forma_de_agora_tem_precedencia() {
+    let agora = crate::Timers(vec![
+        crate::Timer {
+            item: ItemId(2),
+            ..crate::Timer::default()
+        },
+        crate::Timer {
+            name: String::new(),
+            duration_us: 0,
+            repeat: false,
+            autostart: false,
+            signal: String::new(),
+            item: ItemId::NONE,
+        },
+    ]);
+    let b = postcard::to_allocvec(&agora).expect("grava");
+    assert!(
+        inteiro::<crate::item_id_v194::TimersV194>(&b).is_some(),
+        "a colisão existe (senão este gate não mede nada)"
+    );
+    assert_eq!(migra_blob("ph2d::ecs::Timers", &b), None);
+}

@@ -164,8 +164,7 @@ pub fn cut_of_users(world: &World, id: AssetId, atlas: &BTreeMap<u32, AssetId>) 
     q.iter(world)
         .filter(|(_, _, g)| g.hframes.max(1) * g.vframes.max(1) > 1)
         .find(|(px, s, _)| {
-            ph2d_app_components::asset_index_build::texture_of(*px, Some(*s), atlas)
-                == Some(id)
+            ph2d_app_components::asset_index_build::texture_of(*px, Some(*s), atlas) == Some(id)
         })
         .map(|(_, _, g)| Slicing {
             grid: [g.hframes.max(1), g.vframes.max(1)],
@@ -216,9 +215,9 @@ pub fn library_facts(
     ppm: f32,
 ) -> Option<ImageFacts> {
     let mut f = image_facts(id, db, atlas, ppm)?;
-    let fabrica = atlas.iter().any(|(k, a)| {
-        *a == id && ph2d_app_components::factory_images::is_factory_key(*k)
-    });
+    let fabrica = atlas
+        .iter()
+        .any(|(k, a)| *a == id && ph2d_app_components::factory_images::is_factory_key(*k));
     if f.slicing.is_none() && !fabrica {
         f.slicing = cut_of_users(world, id, atlas);
     }
@@ -316,7 +315,8 @@ pub fn override_law(
         },
     };
     choose_image(&mut copia, c, old, source, new);
-    let repete = crate::image_use::image_use(world, e) == Some(crate::image_use::ImageUse::Repeated);
+    let repete =
+        crate::image_use::image_use(world, e) == Some(crate::image_use::ImageUse::Repeated);
     Some(ph2d_app_components::script_image::OverrideLaw {
         atlas_key,
         size: if repete {
@@ -324,7 +324,10 @@ pub fn override_law(
         } else {
             copia.get::<Sprite>(c)?.size
         },
-        grid: copia.get::<SpriteGrid>(c).copied().unwrap_or(SpriteGrid::SINGLE),
+        grid: copia
+            .get::<SpriteGrid>(c)
+            .copied()
+            .unwrap_or(SpriteGrid::SINGLE),
     })
 }
 
@@ -344,6 +347,10 @@ pub fn place_library_image(
     base: &str,
     id: AssetId,
 ) -> Result<Entity, String> {
+    // O objecto chama-se como a imagem na biblioteca (a Unity faz o mesmo); `base` se ela não tem nome.
+    let nome = ph2d_app_components::library_names::session_library(sim, db, atlas)
+        .remove(&id)
+        .unwrap_or_else(|| base.to_owned());
     let (_, bits) = ph2d_image_import::spawn_sprite(
         sim,
         ph2d_image_import::PackedSource::Atlas {
@@ -351,7 +358,7 @@ pub fn place_library_image(
         },
         ph2d_core::Vec2::new(at[0], at[1]),
         [1.0, 1.0],
-        base,
+        &nome,
     );
     let e = Entity::from_bits(bits);
     if let Err(err) = choose_library_image(sim, acquire, db, atlas, ppm, e, id) {

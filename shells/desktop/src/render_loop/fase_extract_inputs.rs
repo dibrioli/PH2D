@@ -92,10 +92,11 @@ impl crate::App {
             }
         }
         // A imagem que um script pôs (`sprite.image`): a MESMA lei da troca, e sobe antes do extract.
-        let ppm = hero_screen.as_ref().map_or(
-            ph2d_editor_core::project::DEFAULT_PIXELS_PER_METER,
-            |h| h.project.pixels_per_meter,
-        );
+        let ppm = hero_screen
+            .as_ref()
+            .map_or(ph2d_editor_core::project::DEFAULT_PIXELS_PER_METER, |h| {
+                h.project.pixels_per_meter
+            });
         ph2d_app_components::script_image::upload(renderer, asset_db, sim, &mut |w, e, id| {
             ph2d_app_sprite_anim::image_choice::override_law(w, e, id, asset_db, atlas, ppm)
         });

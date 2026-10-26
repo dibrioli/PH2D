@@ -990,8 +990,6 @@ impl ApplicationHandler for App {
 // OUTRA vez seriam duas respostas à mesma pergunta, e a que envelhece é a que o artista vê.
 pub(crate) use ph2d_image_import::EPS_PIXELS_PER_METER;
 
-pub(crate) use ph2d_image_import::MIN_SPRITE_SIZE;
-
 /// Query the live cursor position relative to `window` in physical
 /// pixels (top-left origin). Returns `None` if the platform path
 /// fails; callers fall back to a cached value.

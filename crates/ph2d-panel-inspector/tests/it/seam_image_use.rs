@@ -39,9 +39,21 @@ fn cada_uso_pinta_so_os_seus_campos() {
     let quadros = [INSP_SPRITE_HFRAMES, INSP_SPRITE_VFRAMES, INSP_SPRITE_FRAME];
     for (uso, cells, grelha, querem, botao) in [
         // Parada de uma célula: o corte da imagem, sem a célula a escolher.
-        (InspectorImageUse::Still, 1, [1, 1], [true, true, false], false),
+        (
+            InspectorImageUse::Still,
+            1,
+            [1, 1],
+            [true, true, false],
+            false,
+        ),
         // Parada de uma folha: o corte e a célula.
-        (InspectorImageUse::Still, 4, [4, 1], [true, true, true], false),
+        (
+            InspectorImageUse::Still,
+            4,
+            [4, 1],
+            [true, true, true],
+            false,
+        ),
         // O bloco de fábrica (Platform High): nada de quadros.
         (InspectorImageUse::Repeated, 1, [1, 1], [false; 3], false),
         // A bandeira num bloco: nada de quadros, o aviso e o botão.
@@ -53,7 +65,11 @@ fn cada_uso_pinta_so_os_seus_campos() {
         for (id, quer) in quadros.iter().zip(querem) {
             assert_eq!(ids.contains(id), quer, "{uso:?} {cells} células: {id:?}");
         }
-        assert_eq!(ids.contains(&INSP_IMAGE_MAKE_ANIMATED), botao, "{uso:?} {cells}");
+        assert_eq!(
+            ids.contains(&INSP_IMAGE_MAKE_ANIMATED),
+            botao,
+            "{uso:?} {cells}"
+        );
     }
 }
 

@@ -540,6 +540,8 @@ fn populate_render_strategy(store: &mut WidgetStore) {
     for id in [
         crate::ids::INSP_RENDER_FORMAT_RGBA8,
         crate::ids::INSP_RENDER_FORMAT_RGBA16,
+        crate::ids::INSP_RENDER_SOURCE_REIMPORT,
+        crate::ids::INSP_IMAGE_MAKE_ANIMATED,
     ] {
         store.register(
             id,
@@ -548,18 +550,6 @@ fn populate_render_strategy(store: &mut WidgetStore) {
             },
         );
     }
-    store.register(
-        crate::ids::INSP_RENDER_SOURCE_REIMPORT,
-        InteractiveState::Button {
-            state: ButtonState::Normal,
-        },
-    );
-    store.register(
-        crate::ids::INSP_IMAGE_MAKE_ANIMATED,
-        InteractiveState::Button {
-            state: ButtonState::Normal,
-        },
-    );
 }
 
 fn populate_visibility_editor(store: &mut WidgetStore) {

@@ -6,9 +6,7 @@ use crate::image_choice::{choose_library_image, image_facts, place_library_image
 use ph2d_app_components::test_support::registo;
 use ph2d_asset::{AssetDb, AssetId};
 use ph2d_ecs::scene::{WorldSnapshot, snapshot_to_world, world_to_snapshot};
-use ph2d_ecs::{
-    Name, SimWorld, SpriteAnimator, SpriteGrid, SpritePixels, UvTransform,
-};
+use ph2d_ecs::{Name, SimWorld, SpriteAnimator, SpriteGrid, SpritePixels, UvTransform};
 use ph2d_render::{FLAG_SHEET_KEY, PLATFORM_TILE, PLATFORM_TILE_KEY, SpriteSource, WHITE_TILE_KEY};
 use std::collections::BTreeMap;
 
@@ -83,7 +81,9 @@ fn o_bloco_de_fabrica_e_um_azulejo_sem_quadros() {
         [1, 1],
         "a imagem da plataforma tem quadros"
     );
-    let dims = b.db.get(&b.de(PLATFORM_TILE_KEY)).and_then(|a| a.image_dimensions());
+    let dims =
+        b.db.get(&b.de(PLATFORM_TILE_KEY))
+            .and_then(|a| a.image_dimensions());
     assert_eq!(
         dims,
         Some((PLATFORM_TILE.cell_px()[0], PLATFORM_TILE.cell_px()[1])),
@@ -95,7 +95,11 @@ fn o_bloco_de_fabrica_e_um_azulejo_sem_quadros() {
         let e = por_nome(&mut sim, "Platform High");
         let w = sim.world();
         assert_eq!(image_use(w, e), Some(ImageUse::Repeated), "nível {n}");
-        assert_eq!(celulas(w.get::<SpriteGrid>(e)), 1, "nível {n}: quadros no bloco");
+        assert_eq!(
+            celulas(w.get::<SpriteGrid>(e)),
+            1,
+            "nível {n}: quadros no bloco"
+        );
         assert_eq!(conflict(w, e, plataforma), None, "nível {n}");
     }
 }
@@ -118,11 +122,21 @@ fn largar_platform_no_canvas_e_a_mesma_imagem() {
     .expect("a queda dá uma sprite");
     let w = sim.world();
     let s = w.get::<Sprite>(e).expect("sprite");
-    assert_eq!(s.source, SpriteSource::Atlas { key: PLATFORM_TILE_KEY });
+    assert_eq!(
+        s.source,
+        SpriteSource::Atlas {
+            key: PLATFORM_TILE_KEY
+        }
+    );
     assert_eq!(s.size, PLATFORM_TILE.native_m());
     assert!(w.get::<SpritePixels>(e).is_none(), "copiou os píxeis");
     assert_eq!(celulas(w.get::<SpriteGrid>(e)), 1);
     assert_eq!(image_use(w, e), Some(ImageUse::Still));
+    assert_eq!(
+        w.get::<Name>(e).map(Name::as_str),
+        Some("Platform"),
+        "o nome da imagem"
+    );
 }
 
 fn instantaneo(sim: &mut SimWorld) -> WorldSnapshot {
@@ -160,7 +174,10 @@ fn a_bandeira_num_bloco_avisa_e_fica_animada() {
     assert_eq!((tag.from, tag.to), (0, 3));
     let anim = w.get::<SpriteAnimator>(e).expect("animador");
     assert!(anim.autoplay && anim.current == tag.name);
-    assert!(w.get::<TextureRepeat>(e).is_none_or(|r| r.0 == RepeatMode::Disabled));
+    assert!(
+        w.get::<TextureRepeat>(e)
+            .is_none_or(|r| r.0 == RepeatMode::Disabled)
+    );
     assert!(w.get::<UvTransform>(e).is_none() && w.get::<ScrollRepeat>(e).is_none());
     // A bandeira inteira, de pé: uma célula (1 × 2 m) à escala do ladrilho do bloco (1 m de largo).
     assert_eq!(w.get::<Sprite>(e).unwrap().size, [1.0, 2.0]);
@@ -193,19 +210,41 @@ fn parada(sim: &mut SimWorld) -> Entity {
 #[test]
 fn a_mesma_imagem_pelas_portas_todas() {
     let b = biblioteca();
-    for key in [PLATFORM_TILE_KEY, FLAG_SHEET_KEY, ph2d_render::HILLS_TILE_KEY, ph2d_render::FIRST_IMPORT_KEY] {
+    for key in [
+        PLATFORM_TILE_KEY,
+        FLAG_SHEET_KEY,
+        ph2d_render::HILLS_TILE_KEY,
+        ph2d_render::FIRST_IMPORT_KEY,
+    ] {
         let id = b.de(key);
         let mut sim = SimWorld::new();
         // O script decide sobre a sprite ANTES da troca (o override não toca no documento).
         let pelo_script = parada(&mut sim);
-        let lei = crate::image_choice::override_law(sim.world(), pelo_script, id, &b.db, &b.atlas, PPM)
-            .expect("script");
+        let lei =
+            crate::image_choice::override_law(sim.world(), pelo_script, id, &b.db, &b.atlas, PPM)
+                .expect("script");
         let pela_linha = parada(&mut sim);
-        choose_library_image(&mut sim, &mut sem_placa, &b.db, &b.atlas, PPM, pela_linha, id)
-            .expect("linha");
-        let pelo_canvas =
-            place_library_image(&mut sim, &mut sem_placa, &b.db, &b.atlas, PPM, [0.0; 2], "x", id)
-                .expect("canvas");
+        choose_library_image(
+            &mut sim,
+            &mut sem_placa,
+            &b.db,
+            &b.atlas,
+            PPM,
+            pela_linha,
+            id,
+        )
+        .expect("linha");
+        let pelo_canvas = place_library_image(
+            &mut sim,
+            &mut sem_placa,
+            &b.db,
+            &b.atlas,
+            PPM,
+            [0.0; 2],
+            "x",
+            id,
+        )
+        .expect("canvas");
         let w = sim.world();
         let ver = |e| {
             (
@@ -217,11 +256,19 @@ fn a_mesma_imagem_pelas_portas_todas() {
         assert_eq!(ver(pela_linha), ver(pelo_canvas), "chave {key}");
         let s = w.get::<Sprite>(pela_linha).unwrap();
         assert_eq!(
-            (Some(SpriteSource::Atlas { key: lei.atlas_key.expect("no atlas") }), lei.size, lei.grid),
+            (
+                Some(SpriteSource::Atlas {
+                    key: lei.atlas_key.expect("no atlas")
+                }),
+                lei.size,
+                lei.grid
+            ),
             (
                 Some(s.source),
                 s.size,
-                w.get::<SpriteGrid>(pela_linha).copied().unwrap_or(SpriteGrid::SINGLE)
+                w.get::<SpriteGrid>(pela_linha)
+                    .copied()
+                    .unwrap_or(SpriteGrid::SINGLE)
             ),
             "script, chave {key}"
         );
@@ -252,7 +299,10 @@ fn um_bloco_gravado_antes_abre_com_o_mesmo_desenho() {
     let b2 = por_nome(&mut aberto, "Platform High");
     let g2 = por_nome(&mut aberto, "Goal");
     assert!(aberto.world().get::<SpriteGrid>(b2).is_none());
-    assert_eq!(aberto.world().get::<SpriteGrid>(g2).copied(), grelha_da_bandeira);
+    assert_eq!(
+        aberto.world().get::<SpriteGrid>(g2).copied(),
+        grelha_da_bandeira
+    );
     // O texel: a cópia do meio da tira de antes é a imagem de hoje, ponto a ponto.
     let tira = ph2d_render::factory_pixels(&PLATFORM_TILE);
     let imagem = ph2d_render::factory_image(&PLATFORM_TILE);
@@ -277,7 +327,8 @@ fn re_cortar_um_re_corta_todos_os_que_mostram_a_imagem() {
     let outro = parada(&mut sim);
     let controlo = parada(&mut sim);
     for e in [um, outro] {
-        choose_library_image(&mut sim, &mut sem_placa, &b.db, &b.atlas, PPM, e, id).expect("escolhe");
+        choose_library_image(&mut sim, &mut sem_placa, &b.db, &b.atlas, PPM, e, id)
+            .expect("escolhe");
     }
     let quatro = SpriteGrid {
         hframes: 4,
@@ -288,13 +339,33 @@ fn re_cortar_um_re_corta_todos_os_que_mostram_a_imagem() {
     assert_eq!(recut_users(sim.world_mut(), um), 1);
     let w = sim.world();
     assert_eq!(w.get::<SpriteGrid>(outro).copied(), Some(quatro));
-    assert!(w.get::<SpriteGrid>(controlo).is_none(), "o quadrado branco não mostra a imagem");
+    assert!(
+        w.get::<SpriteGrid>(controlo).is_none(),
+        "o quadrado branco não mostra a imagem"
+    );
     // A porta já sabe o corte: um terceiro objecto recebe a imagem cortada.
-    let novo = place_library_image(&mut sim, &mut sem_placa, &b.db, &b.atlas, PPM, [0.0; 2], "n", id)
-        .expect("larga");
-    let g = sim.world().get::<SpriteGrid>(novo).copied().expect("cortada");
+    let novo = place_library_image(
+        &mut sim,
+        &mut sem_placa,
+        &b.db,
+        &b.atlas,
+        PPM,
+        [0.0; 2],
+        "n",
+        id,
+    )
+    .expect("larga");
+    let g = sim
+        .world()
+        .get::<SpriteGrid>(novo)
+        .copied()
+        .expect("cortada");
     assert_eq!((g.hframes, g.vframes), (4, 2));
-    assert_eq!(b.factos(id).slicing, None, "a biblioteca sozinha não guarda o corte (D3)");
+    assert_eq!(
+        b.factos(id).slicing,
+        None,
+        "a biblioteca sozinha não guarda o corte (D3)"
+    );
     assert_eq!(
         crate::image_choice::library_facts(sim.world(), id, &b.db, &b.atlas, PPM)
             .and_then(|f| f.slicing)

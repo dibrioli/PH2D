@@ -299,7 +299,10 @@ pub(super) fn apply_sprite_edits(
                     )));
                     dirty = true;
                 } else if target == SpriteEditTarget::Grid
-                    && !matches!(edit, ph2d_editor_core::screens::hero::SpriteFieldEdit::Frame(_))
+                    && !matches!(
+                        edit,
+                        ph2d_editor_core::screens::hero::SpriteFieldEdit::Frame(_)
+                    )
                 {
                     // O corte é da IMAGEM: todos os que a mostram passam a ele (plano GEF 13 D3).
                     ph2d_app_sprite_anim::image_use::recut_users(sim.world_mut(), entity);

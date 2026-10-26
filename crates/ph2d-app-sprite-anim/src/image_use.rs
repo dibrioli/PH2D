@@ -53,7 +53,9 @@ pub enum ImageConflict {
 /// Quantas células tem a imagem.
 #[must_use]
 pub fn cells(facts: ImageFacts) -> u32 {
-    facts.slicing.map_or(1, |s| s.grid[0].max(1) * s.grid[1].max(1))
+    facts
+        .slicing
+        .map_or(1, |s| s.grid[0].max(1) * s.grid[1].max(1))
 }
 
 /// O conflito de `e` com a imagem `facts` que ele mostra.
@@ -90,7 +92,11 @@ pub fn make_animated(world: &mut World, e: Entity, facts: ImageFacts) -> bool {
         facts.native_m[0] / slicing.grid[0].max(1) as f32,
         facts.native_m[1] / slicing.grid[1].max(1) as f32,
     ];
-    let escala = if celula[0] > 0.0 { ladrilho / celula[0] } else { 1.0 };
+    let escala = if celula[0] > 0.0 {
+        ladrilho / celula[0]
+    } else {
+        1.0
+    };
     let mut tags = SpriteAnimations::new();
     if tags.insert(AnimationTag::new(LOOP_TAG, 0, n - 1)).is_err() {
         return false;
@@ -169,7 +175,10 @@ pub fn recut_users(world: &mut World, e: Entity) -> usize {
     let Some(s) = world.get::<Sprite>(e).copied() else {
         return 0;
     };
-    let g = world.get::<SpriteGrid>(e).copied().unwrap_or(SpriteGrid::SINGLE);
+    let g = world
+        .get::<SpriteGrid>(e)
+        .copied()
+        .unwrap_or(SpriteGrid::SINGLE);
     let px = world.get::<SpritePixels>(e).copied();
     let mut q = world.query::<(Entity, &Sprite, Option<&SpritePixels>, Option<&SpriteGrid>)>();
     let outros: Vec<(Entity, u32)> = q

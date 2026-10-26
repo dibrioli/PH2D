@@ -246,7 +246,10 @@ fn a_camada_de_fundo_do_menu_nasce_pronta() {
         w.get::<UvTransform>(e).map(|u| u.scale),
         Some([crate::object_add::CAMADA_LADRILHOS, 1.0])
     );
-    assert!(w.get::<SpriteGrid>(e).is_none(), "o azulejo não tem quadros (plano GEF 13 D1)");
+    assert!(
+        w.get::<SpriteGrid>(e).is_none(),
+        "o azulejo não tem quadros (plano GEF 13 D1)"
+    );
     assert_eq!(w.get::<ZIndexOverride>(e).map(|z| z.0), Some(-1));
     assert!(
         crate::object_add::BACKGROUND_LAYER

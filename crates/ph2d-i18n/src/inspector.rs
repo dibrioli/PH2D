@@ -329,9 +329,13 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // ⭐ A linha da imagem no topo do Inspector (plano GEF 12).
         "panel.inspector.image" => "Image",
         "panel.inspector.image.none" => "None \u{2014} click to choose",
-        "panel.inspector.image.animated_in_block" => "This image has {n} frames, but this object repeats it \u{2014} only the first one shows.",
+        "panel.inspector.image.animated_in_block" => {
+            "This image has {n} frames, but this object repeats it \u{2014} only the first one shows."
+        }
         "panel.inspector.image.make_animated" => "Make it Animated",
-        "panel.inspector.image.cut_of_the_image" => "Frames of the image \u{2014} every object that shows it uses the same.",
+        "panel.inspector.image.cut_of_the_image" => {
+            "Frames of the image \u{2014} every object that shows it uses the same."
+        }
         "panel.inspector.render_source.source" => "Source",
         "panel.inspector.ordering.background" => "Background",
         "panel.inspector.ordering.midground" => "Midground",

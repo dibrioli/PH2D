@@ -530,8 +530,16 @@ fn a_regiao_do_azulejo_e_a_celula_do_meio() {
             for x in 0..w {
                 let e = imagem[((y * w + x) * 4) as usize];
                 assert_eq!(at(r.x + x, r.y + y), e, "a imagem em ({x},{y})");
-                assert_eq!(at(r.x - w + x, r.y + y), e, "a cópia da esquerda em ({x},{y})");
-                assert_eq!(at(r.x + w + x, r.y + y), e, "a cópia da direita em ({x},{y})");
+                assert_eq!(
+                    at(r.x - w + x, r.y + y),
+                    e,
+                    "a cópia da esquerda em ({x},{y})"
+                );
+                assert_eq!(
+                    at(r.x + w + x, r.y + y),
+                    e,
+                    "a cópia da direita em ({x},{y})"
+                );
             }
         }
     };

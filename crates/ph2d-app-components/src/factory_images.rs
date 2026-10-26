@@ -36,7 +36,11 @@ pub fn is_factory_key(key: u32) -> bool {
 /// (`SpriteGrid` = `art.grid`, a célula do meio); hoje a região da chave JÁ é a cópia do meio. Tira essa grelha
 /// de toda sprite de azulejo de fábrica e devolve quantas mudaram. Idempotente; as folhas animadas ficam.
 pub fn forget_extrusion_grids(world: &mut ph2d_ecs::World) -> usize {
-    let mut q = world.query::<(ph2d_ecs::Entity, &ph2d_render::Sprite, &ph2d_ecs::SpriteGrid)>();
+    let mut q = world.query::<(
+        ph2d_ecs::Entity,
+        &ph2d_render::Sprite,
+        &ph2d_ecs::SpriteGrid,
+    )>();
     let antigas: Vec<ph2d_ecs::Entity> = q
         .iter(world)
         .filter(|(_, s, g)| match s.source {

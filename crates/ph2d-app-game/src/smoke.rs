@@ -48,12 +48,18 @@ pub fn imagens_da_cena(nivel: u32) -> &'static [&'static str] {
     if nivel == 4 { &IMAGENS_4 } else { &[] }
 }
 
-/// O instante que a foto do plano 12 quer (`PH2D_GAME_SMOKE_FOTO`): o seletor aberto sobre os montes, ou as
-/// duas imagens já trocadas. A mão do dono faz o mesmo pelo Inspector; a tela virtual não recebe cliques.
+/// O instante que a foto quer (`PH2D_GAME_SMOKE_FOTO`). A mão do dono faz o mesmo pelo Inspector e pelos Assets;
+/// a tela virtual não recebe cliques. Plano 12: o seletor aberto sobre os montes, ou as duas imagens trocadas.
+/// Plano 13: o bloco Platform High (sem quadros), com a bandeira (o aviso), já animada, e a «Platform» largada
+/// no canvas.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Foto {
     Seletor,
     Trocado,
+    Bloco,
+    Bandeira,
+    Animada,
+    Largada,
 }
 
 #[must_use]
@@ -61,29 +67,85 @@ pub fn foto() -> Option<Foto> {
     match std::env::var("PH2D_GAME_SMOKE_FOTO").ok()?.trim() {
         "seletor" => Some(Foto::Seletor),
         "trocado" => Some(Foto::Trocado),
+        "bloco" => Some(Foto::Bloco),
+        "bandeira" => Some(Foto::Bandeira),
+        "animada" => Some(Foto::Animada),
+        "largada" => Some(Foto::Largada),
         _ => None,
     }
 }
 
-/// O que a foto pede, já resolvido no mundo: `(sprite, imagem)` a escolher, e quem fica seleccionado / com o
-/// seletor aberto (`None` = nada a fazer). `ids` são as imagens da cena pela ordem de [`IMAGENS_4`].
+/// Onde a foto «largada» põe a «Platform»: entre as duas plataformas do nível 2, à altura da alta.
+pub const ONDE_LARGA: [f32; 2] = [6.0, 3.0];
+
+/// O centro da vista nas fotos do plano 13: a plataforma alta e o sítio da queda (m).
+pub const CENTRO_DAS_FOTOS_13: [f32; 2] = [7.0, 2.0];
+
+impl Foto {
+    /// Uma foto do plano 13 (o bloco à vista e a secção Texture & Atlas aberta).
+    #[must_use]
+    pub const fn do_plano_13(self) -> bool {
+        matches!(
+            self,
+            Self::Bloco | Self::Bandeira | Self::Animada | Self::Largada
+        )
+    }
+}
+
+/// O que a foto pede, já resolvido no mundo — os gestos que o shell executa pelas MESMAS portas da mão.
+#[derive(Clone, Debug, PartialEq)]
+pub struct PlanoDaFoto {
+    pub foto: Foto,
+    /// `(sprite, imagem)` a escolher (a linha Image).
+    pub escolhas: Vec<(u64, [u8; 32])>,
+    /// A sprite a tornar animada (o botão «Make it Animated»).
+    pub anima: Option<u64>,
+    /// A imagem a largar no canvas, e onde (a queda dos Assets).
+    pub larga: Option<([u8; 32], [f32; 2])>,
+    /// Quem fica seleccionado (ou com o seletor aberto).
+    pub alvo: u64,
+}
+
+/// `ids` são as imagens da cena pela ordem de [`IMAGENS_4`]; `fabrica` dá a imagem de fábrica de uma chave.
 #[must_use]
-pub fn plano_da_foto(sim: &mut SimWorld, ids: &[[u8; 32]]) -> Option<PlanoDaFoto> {
+pub fn plano_da_foto(
+    sim: &mut SimWorld,
+    ids: &[[u8; 32]],
+    fabrica: &dyn Fn(u32) -> Option<[u8; 32]>,
+) -> Option<PlanoDaFoto> {
     let foto = foto()?;
     let [heroi, montes] = ids else {
         return None;
     };
     let hills = por_nome(sim, CAMADAS_2[1].0)?.to_bits();
     let player = por_nome(sim, "Player")?.to_bits();
-    let escolhas = match foto {
-        Foto::Seletor => Vec::new(),
-        Foto::Trocado => vec![(hills, *montes), (player, *heroi)],
+    let alta = por_nome(sim, "Platform High")?.to_bits();
+    let bandeira = fabrica(ph2d_render::FLAG_SHEET_KEY)?;
+    let mut plano = PlanoDaFoto {
+        foto,
+        escolhas: Vec::new(),
+        anima: None,
+        larga: None,
+        alvo: alta,
     };
-    Some((foto, escolhas, hills))
+    match foto {
+        Foto::Seletor => plano.alvo = hills,
+        Foto::Trocado => {
+            plano.escolhas = vec![(hills, *montes), (player, *heroi)];
+            plano.alvo = hills;
+        }
+        Foto::Bloco => {}
+        Foto::Bandeira => plano.escolhas = vec![(alta, bandeira)],
+        Foto::Animada => {
+            plano.escolhas = vec![(alta, bandeira)];
+            plano.anima = Some(alta);
+        }
+        Foto::Largada => {
+            plano.larga = Some((fabrica(ph2d_render::PLATFORM_TILE_KEY)?, ONDE_LARGA));
+        }
+    }
+    Some(plano)
 }
-
-/// `(o instante, as escolhas (sprite, imagem), o objecto seleccionado)`.
-pub type PlanoDaFoto = (Foto, Vec<(u64, [u8; 32])>, u64);
 
 /// O objecto da raiz com este nome.
 #[must_use]

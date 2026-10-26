@@ -205,7 +205,8 @@ pub fn factory_pixels(art: &FactoryArt) -> &'static [u8] {
     if !art.tile {
         return factory_image(art);
     }
-    CACHE[indice(art)].get_or_init(|| super::wrap_image(factory_image(art), art.cell_px(), art.grid))
+    CACHE[indice(art)]
+        .get_or_init(|| super::wrap_image(factory_image(art), art.cell_px(), art.grid))
 }
 
 #[cfg(test)]

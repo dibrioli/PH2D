@@ -228,11 +228,20 @@ impl crate::App {
             }
         }
         let ids: Vec<[u8; 32]> = ids.iter().map(|i| *i.as_bytes()).collect();
-        let Some((foto, escolhas, alvo)) = ph2d_app_game::smoke::plano_da_foto(&mut gfx.sim, &ids)
-        else {
+        let mapa = gfx.atlas_asset_map.clone();
+        let fabrica = |k: u32| mapa.get(&k).map(|a| *a.as_bytes());
+        let Some(plano) = ph2d_app_game::smoke::plano_da_foto(&mut gfx.sim, &ids, &fabrica) else {
             return;
         };
-        if foto == ph2d_app_game::smoke::Foto::Seletor
+        let alvo = plano.alvo;
+        if plano.foto.do_plano_13()
+            && let Some(hero) = gfx.hero_screen.as_mut()
+        {
+            gfx.camera.center = ph2d_app_game::smoke::CENTRO_DAS_FOTOS_13;
+            hero.store
+                .set_collapsed(ph2d_editor_core::ids::INSP_LIVE_RENDER_SECTION, false);
+        }
+        if plano.foto == ph2d_app_game::smoke::Foto::Seletor
             && let Some(hero) = gfx.hero_screen.as_mut()
         {
             ph2d_panel_asset_browser::choose_image_for(
@@ -245,8 +254,16 @@ impl crate::App {
                 true,
             );
         }
-        for (bits, asset) in escolhas {
+        for (bits, asset) in plano.escolhas {
             self.choose_image(bits, asset);
+        }
+        if let Some(bits) = plano.anima {
+            self.make_image_animated(bits);
+        }
+        if let Some((asset, at)) = plano.larga {
+            // A queda seleciona a sprite que nasce.
+            self.drop_spawn_image(asset, at);
+            return;
         }
         if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
             hero.gizmo.replace_selection(Some(alvo));

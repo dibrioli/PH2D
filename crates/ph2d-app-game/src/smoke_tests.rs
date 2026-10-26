@@ -191,7 +191,10 @@ fn o_nivel_2_nasce_so_pelo_menu() {
         );
         assert_eq!(uv, [2.0 * h[0], 2.0 * h[1] / alto], "{nome}");
         // O azulejo é UMA imagem; a cópia do meio é do atlas (plano GEF 13 D1).
-        assert!(w.get::<ph2d_ecs::SpriteGrid>(e).is_none(), "{nome} tem quadros");
+        assert!(
+            w.get::<ph2d_ecs::SpriteGrid>(e).is_none(),
+            "{nome} tem quadros"
+        );
         assert_eq!(
             w.get::<ph2d_ecs::TextureRepeat>(e).map(|r| r.0),
             Some(ph2d_ecs::RepeatMode::Enabled),

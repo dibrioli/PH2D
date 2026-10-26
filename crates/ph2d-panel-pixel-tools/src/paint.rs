@@ -537,13 +537,33 @@ impl Corpo<'_> {
         let gap = Spacing::Xxs.px();
         let barra_h = Spacing::Lg.px();
         let quadro = Rect::new(self.x, y, self.w, self.w);
+        // As rodas não encostam nas laterais do quadrado (smoke do dono 25/10: ≥ 2 px de folga): o
+        // disco pinta-se num quadrado recuado; o Normal map enche o de fora com o fundo dele.
+        let folga = if sel::e_disco(modo) { Spacing::Xs.px() } else { 0.0 };
+        let disco = Rect::new(
+            quadro.x + folga,
+            quadro.y + folga,
+            quadro.w - folga * 2.0,
+            quadro.h - folga * 2.0,
+        );
+        if modo == ph2d_editor_core::pixel_panel::PixelSelector::NormalMap {
+            let [r, g, b] = sel::NORMAL_FUNDO;
+            let fundo = Arc::new(vec![r, g, b, u8::MAX]);
+            let dest = (
+                f64::from(quadro.x),
+                f64::from(quadro.y),
+                f64::from(quadro.x + quadro.w),
+                f64::from(quadro.y + quadro.h),
+            );
+            self.scene.draw_image_rgba(&fundo, 1, 1, dest, ImageQuality::Low);
+        }
         let barra = Rect::new(self.x, quadro.y + quadro.h + gap, self.w, barra_h);
         let alfa = Rect::new(self.x, barra.y + barra.h + gap, self.w, barra_h);
         // O alfa pinta-se sobre o xadrez da amostra da casa.
         let xadrez = ColorSwatch::new(ids::SELECTOR_AREAS[2].0, "", [0; 4]);
         paint_color_swatch(&xadrez, alfa, self.scene, self.theme);
         for (img, r, h) in [
-            (&imagens.quadro, quadro, LADO),
+            (&imagens.quadro, disco, LADO),
             (&imagens.barra, barra, 1),
             (&imagens.alfa, alfa, 1),
         ] {
@@ -556,13 +576,14 @@ impl Corpo<'_> {
             self.scene.draw_image_rgba(img, LADO, h, dest, ImageQuality::Medium);
         }
         let (u, vv) = sel::ponto(modo, p);
-        self.anel(quadro, u, vv);
+        self.anel(disco, u, vv);
         self.anel(barra, sel::ponto_na_barra(modo, p), 0.5);
         self.anel(alfa, f64::from(fg[3]) / f64::from(u8::MAX), 0.5);
-        for (k, r) in [quadro, barra, alfa].into_iter().enumerate() {
+        // O alvo do clique é o quadrado inteiro; a conta da cor é a do disco (a folga prende à borda).
+        for (k, (alvo, conta)) in [(quadro, disco), (barra, barra), (alfa, alfa)].into_iter().enumerate() {
             let (a, b) = ids::SELECTOR_AREAS[k];
-            self.hit_index.register_with_secondary(a, r, b);
-            self.seletor.rects[k] = Some(r);
+            self.hit_index.register_with_secondary(a, alvo, b);
+            self.seletor.rects[k] = Some(conta);
         }
         y = alfa.y + alfa.h;
         y

@@ -1,3 +1,4 @@
+mod affine_parity;
 mod blend_oracle;
 mod codec;
 mod color_laws;
@@ -12,5 +13,10 @@ mod layer_laws;
 mod layer_parity;
 mod line_parity;
 mod mede_compose;
+mod mede_rotacao;
 mod pure_core;
+mod selection_laws;
+mod selection_oracle;
+mod selection_parity;
 mod stroke;
+mod transform_oracle;

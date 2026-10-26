@@ -148,6 +148,8 @@ pub fn installed_registry() -> Option<&'static registry::Registry> {
 
 /// ⭐⭐⭐ **O vocabulário da CUTSCENE** (TOP-20 #19) — o que o painel mostra de um `SequencePlayer`.
 pub mod action_trigger_edits;
+/// O vocabulário da secção DRAWING RULES (as regras de CAD do vetor) — ver o cabeçalho dele.
+pub mod cad_edits;
 /// O vocabulário do cartão CONSTRAINTS — ver o cabeçalho dele.
 pub mod constraint_edits;
 pub mod counter_watch_edits;

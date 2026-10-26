@@ -38,7 +38,12 @@ fn cor_da_regra(e: EstadoRegra) -> Option<ColorToken> {
 }
 
 fn nome(lei: &Lei) -> String {
-    ph2d_i18n::tr(match lei {
+    ph2d_i18n::tr(chave_do_nome(lei)).to_string()
+}
+
+/// A chave `ph2d-i18n` do nome de uma lei — a mesma no canvas e no Inspector (`cad_inspector`).
+pub(crate) const fn chave_do_nome(lei: &Lei) -> &'static str {
+    match lei {
         Lei::Coincidente(..) => "app.vec.cad.lei.coincidente",
         Lei::Horizontal(..) => "app.vec.cad.lei.horizontal",
         Lei::Vertical(..) => "app.vec.cad.lei.vertical",
@@ -52,8 +57,7 @@ fn nome(lei: &Lei) -> String {
         Lei::Angulo(..) => "app.vec.cad.lei.angulo",
         Lei::Raio(..) => "app.vec.cad.lei.raio",
         Lei::Fixo(..) => "app.vec.cad.lei.fixo",
-    })
-    .to_string()
+    }
 }
 
 /// O plano das marcas: a geometria de AGORA (o arrasto mexe-a a cada quadro), as cores da última análise.

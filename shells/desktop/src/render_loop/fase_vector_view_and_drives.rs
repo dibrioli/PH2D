@@ -57,6 +57,7 @@ impl crate::App {
         // ADR-0111 — cada path tem `Transform`. A geometria dele é LOCAL; este é
         // o afim que a leva ao mundo (a cadeia de pais inclusa).
         let mut vec_xf = ph2d_vec_entities::transform::build(sim, &self.vec.entities);
+        ph2d_app_vec::cad_inspector::frame(sim, vec_scene, &self.vec, &vec_xf, hero);
         // **Conectores, 2ª metade:** a geometria é uma função pura da RELAÇÃO — re-cozida
         // aqui, todo frame, sobre os afins DESTE frame. É o que faz a linha SEGUIR a
         // forma que o gizmo acabou de mover.

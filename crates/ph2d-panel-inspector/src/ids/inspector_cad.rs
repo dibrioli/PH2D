@@ -1,0 +1,78 @@
+//! **Os ids da secção DRAWING RULES** (as regras de CAD do vetor, W4.5). Cada tabela tem `MAX_REGRAS` entradas:
+//! a posição na tabela é a posição da linha no instantâneo, e o despacho traduz essa posição para o `RegraId`.
+
+use ph2d_a11y::NodeId;
+use ph2d_editor_core::cad_edits::MAX_REGRAS;
+use ph2d_tool_registry::hash_node_id;
+
+/// O «×» de cada linha: tira a regra do documento.
+pub const INSP_CAD_APAGAR: [NodeId; MAX_REGRAS] = [
+    hash_node_id("insp_cad_apagar_00"),
+    hash_node_id("insp_cad_apagar_01"),
+    hash_node_id("insp_cad_apagar_02"),
+    hash_node_id("insp_cad_apagar_03"),
+    hash_node_id("insp_cad_apagar_04"),
+    hash_node_id("insp_cad_apagar_05"),
+    hash_node_id("insp_cad_apagar_06"),
+    hash_node_id("insp_cad_apagar_07"),
+    hash_node_id("insp_cad_apagar_08"),
+    hash_node_id("insp_cad_apagar_09"),
+    hash_node_id("insp_cad_apagar_10"),
+    hash_node_id("insp_cad_apagar_11"),
+    hash_node_id("insp_cad_apagar_12"),
+    hash_node_id("insp_cad_apagar_13"),
+    hash_node_id("insp_cad_apagar_14"),
+    hash_node_id("insp_cad_apagar_15"),
+    hash_node_id("insp_cad_apagar_16"),
+    hash_node_id("insp_cad_apagar_17"),
+    hash_node_id("insp_cad_apagar_18"),
+    hash_node_id("insp_cad_apagar_19"),
+    hash_node_id("insp_cad_apagar_20"),
+    hash_node_id("insp_cad_apagar_21"),
+    hash_node_id("insp_cad_apagar_22"),
+    hash_node_id("insp_cad_apagar_23"),
+    hash_node_id("insp_cad_apagar_24"),
+    hash_node_id("insp_cad_apagar_25"),
+    hash_node_id("insp_cad_apagar_26"),
+    hash_node_id("insp_cad_apagar_27"),
+    hash_node_id("insp_cad_apagar_28"),
+    hash_node_id("insp_cad_apagar_29"),
+    hash_node_id("insp_cad_apagar_30"),
+    hash_node_id("insp_cad_apagar_31"),
+];
+
+/// A medida de cada linha (distância, ângulo, raio).
+pub const INSP_CAD_MEDIDA: [NodeId; MAX_REGRAS] = [
+    hash_node_id("insp_cad_medida_00"),
+    hash_node_id("insp_cad_medida_01"),
+    hash_node_id("insp_cad_medida_02"),
+    hash_node_id("insp_cad_medida_03"),
+    hash_node_id("insp_cad_medida_04"),
+    hash_node_id("insp_cad_medida_05"),
+    hash_node_id("insp_cad_medida_06"),
+    hash_node_id("insp_cad_medida_07"),
+    hash_node_id("insp_cad_medida_08"),
+    hash_node_id("insp_cad_medida_09"),
+    hash_node_id("insp_cad_medida_10"),
+    hash_node_id("insp_cad_medida_11"),
+    hash_node_id("insp_cad_medida_12"),
+    hash_node_id("insp_cad_medida_13"),
+    hash_node_id("insp_cad_medida_14"),
+    hash_node_id("insp_cad_medida_15"),
+    hash_node_id("insp_cad_medida_16"),
+    hash_node_id("insp_cad_medida_17"),
+    hash_node_id("insp_cad_medida_18"),
+    hash_node_id("insp_cad_medida_19"),
+    hash_node_id("insp_cad_medida_20"),
+    hash_node_id("insp_cad_medida_21"),
+    hash_node_id("insp_cad_medida_22"),
+    hash_node_id("insp_cad_medida_23"),
+    hash_node_id("insp_cad_medida_24"),
+    hash_node_id("insp_cad_medida_25"),
+    hash_node_id("insp_cad_medida_26"),
+    hash_node_id("insp_cad_medida_27"),
+    hash_node_id("insp_cad_medida_28"),
+    hash_node_id("insp_cad_medida_29"),
+    hash_node_id("insp_cad_medida_30"),
+    hash_node_id("insp_cad_medida_31"),
+];

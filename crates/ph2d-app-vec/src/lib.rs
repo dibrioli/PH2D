@@ -207,6 +207,8 @@ pub mod width_grab;
 pub use ph2d_vec_entities::entity_map;
 /// As marcas por cima dos nós: a do nó soldado e os nós do Edit Shape (F7e).
 pub mod cad_cores;
+/// A secção DRAWING RULES do Inspector: o instantâneo e as edições (W4.5).
+pub mod cad_inspector;
 mod cad_marks;
 pub mod edit_marks;
 /// ⚠️ **Atrás da mesma feature que a guardava na shell** — a pré-visualização de fonte

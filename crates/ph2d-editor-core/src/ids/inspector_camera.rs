@@ -162,5 +162,9 @@ pub const INSP_LIVE_MOTION_INPUT_GRIP: NodeId = hash_node_id("insp_live_motion_i
 pub const INSP_LIVE_MACRO_SECTION: NodeId = hash_node_id("insp_live_macro_section");
 /// A pega de arrasto da secção MACRO.
 pub const INSP_LIVE_MACRO_GRIP: NodeId = hash_node_id("insp_live_macro_grip");
+/// O cabeçalho dobrável da secção DRAWING RULES — as regras de CAD cujo dono é o path (W4.5).
+pub const INSP_LIVE_CAD_SECTION: NodeId = hash_node_id("insp_live_cad_section");
+/// A pega de arrasto da secção DRAWING RULES.
+pub const INSP_LIVE_CAD_GRIP: NodeId = hash_node_id("insp_live_cad_grip");
 /// Quantas opções o segmentado do ONDE tem — a porta que o painel lê para repartir a largura.
 pub const INSP_FACTORY_WHERE_LEN: usize = 3;

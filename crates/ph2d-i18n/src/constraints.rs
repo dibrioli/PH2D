@@ -2,7 +2,8 @@
 //! `docs/BlenderConstraints/01_plano.md` §4). Os nomes dos tipos são os do Blender: o artista que vem
 //! de lá reconhece-os.
 
-/// A tradução de uma chave `panel.inspector.constraint.*`, ou `None` se ela não é daqui.
+/// A tradução de uma chave `panel.inspector.constraint.*` (e `panel.inspector.cad.*`, a secção das regras de
+/// desenho), ou `None` se ela não é daqui.
 pub(crate) fn tr(key: &str) -> Option<&'static str> {
     Some(match key {
         "panel.inspector.constraint.child_of" => "Child Of",
@@ -113,6 +114,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.constraint.state.collapsed" => "A parent has scale 0",
         "panel.inspector.constraint.state.not_a_bone" => "IK works on bones: select a bone in Pose",
         "panel.inspector.constraint.state.no_clip" => "The object has no clip with this number",
+        "panel.inspector.cad.title" => "Drawing Rules",
+        "panel.inspector.cad.delete" => "×",
+        "panel.inspector.cad.value" => "Value",
+        "panel.inspector.cad.more" => "{n} more rules are not listed here.",
         _ => return None,
     })
 }

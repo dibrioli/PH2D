@@ -787,6 +787,13 @@ const POR_FUNCAO: &[(&str, &str, Classe, &[&str], &str)] = &[
     ),
     (
         "ph2d-panel-inspector",
+        "sections/cad.rs::linha",
+        Canal,
+        &["regista_canal"],
+        "a medida de uma regra de CAD do vetor: o instantâneo traz a chave (família CAD, pelo `RegraId`) e a `linha` regista-a (W4.5)",
+    ),
+    (
+        "ph2d-panel-inspector",
         "event_vida.rs::apply_vida_event",
         NaoAnimavel,
         &[],

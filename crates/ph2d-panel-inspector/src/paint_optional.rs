@@ -267,6 +267,15 @@ pub(crate) fn push_optional_sections<'a>(
         snaps.constraints_info.as_ref(),
         constraint_add_open,
     );
+    // ── VETOR — as DRAWING RULES do path (as regras de CAD, W4.5) ─────────────────────────────
+    crate::sections::cad::push_cad_section(
+        plano,
+        store,
+        inner_x,
+        inner_w,
+        header_h,
+        snaps.cad_info.as_ref(),
+    );
     // ── RENDERING (4) ─────────────────────────────────────────────────────────────────────────
     plano.push(
         ph2d_editor_core::ids::INSP_LIVE_PARTICLES_SECTION,

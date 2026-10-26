@@ -113,6 +113,10 @@ pub(crate) fn apply_event(
     if crate::event_constraint::apply_constraint_event(state, host, ev) {
         return EventOutcome::Consumed;
     }
+    // DRAWING RULES — sem estado de painel: a lista é a do documento.
+    if crate::event_cad::apply_cad_event(host, ev) {
+        return EventOutcome::Consumed;
+    }
     // ⭐ A LUZ (Luz 2D, W4) — sem estado de painel: um objeto tem UMA luz.
     if crate::event_luz::apply_luz_event(host, ev) {
         return EventOutcome::Consumed;

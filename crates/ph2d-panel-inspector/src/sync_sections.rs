@@ -113,6 +113,7 @@ pub(crate) fn sync_new_sections(
     crate::sync_luz::sync(host, inspector_state, entity_changed);
     crate::sync_luz::sync_corpo(host);
     crate::sync_constraint::sync(host);
+    crate::sync_cad::sync(host);
     // ⭐⭐⭐ **As DUAS que faltavam** (auditoria de 2026-09-10). ⛔ Sem elas o painel mostrava os
     // valores de PARTIDA do `populate` — nunca os do objecto —, e trocar de objecto deixava os
     // números do anterior no ecrã. ⚠️ Elas não têm LINHA aberta (um objecto tem um som e uma

@@ -65,6 +65,8 @@ pub(crate) mod anim_rows;
 pub(crate) mod anim_rules;
 /// ⭐⭐⭐ O SOM de um objecto (TOP-20 #4) — a fonte e as orelhas.
 pub(crate) mod audio;
+/// A secção DRAWING RULES — as regras de CAD do path (W4.5).
+pub(crate) mod cad;
 pub(crate) mod camera;
 pub(crate) mod camera_format;
 mod color_tint;

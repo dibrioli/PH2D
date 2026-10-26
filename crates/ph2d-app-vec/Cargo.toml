@@ -132,6 +132,8 @@ ph2d-render = { path = "../ph2d-render" }
 ph2d-vector = { path = "../ph2d-vector" }
 ph2d-vector-font = { path = "../ph2d-vector-font" }
 ph2d-panel-vector = { path = "../ph2d-panel-vector" }
+# A secção DRAWING RULES do Inspector: o vetor escreve o instantâneo dela (`cad_inspector.rs`).
+ph2d-panel-inspector = { path = "../ph2d-panel-inspector" }
 # As fontes (a família que o artista escolhe) moram na folha `ph2d-system-fonts` (auditoria A1, 2026-09-12).
 ph2d-system-fonts = { path = "../ph2d-system-fonts" }
 # O `TextAlign` da sessão de texto (`text_edit.rs`, A9 2026-09-12) mora com o layout que o lê.

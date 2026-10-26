@@ -33,6 +33,9 @@ pub use inspector_luz::*;
 /// Os ids do cartão CONSTRAINTS — ver o cabeçalho.
 mod inspector_constraint;
 pub use inspector_constraint::*;
+/// Os ids da secção DRAWING RULES — ver o cabeçalho.
+mod inspector_cad;
+pub use inspector_cad::*;
 mod inspector_factory;
 /// ⭐ Os ids da secção SCRIPT (TOP-20 #16) — ver o cabeçalho.
 mod inspector_hud;

@@ -5957,6 +5957,7 @@ dependencies = [
  "ph2d-painter-brush",
  "ph2d-painter-effects",
  "ph2d-panel-authored",
+ "ph2d-panel-inspector",
  "ph2d-panel-vector",
  "ph2d-physics-ecs",
  "ph2d-poly2d",

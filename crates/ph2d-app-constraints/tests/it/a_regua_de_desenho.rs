@@ -74,11 +74,19 @@ impl Cena {
         )
     }
 
+    fn y(&self, i: u32) -> f64 {
+        self.path().vert_by_id(VertId(i + 1)).unwrap().anchor[1]
+    }
+
     /// A altura do dente do meio, medida nos cantos (não na regra).
     fn altura(&self) -> f64 {
         let meio = 4 * (smoke_regua::DENTES / 2);
-        let y = |i: u32| self.path().vert_by_id(VertId(i + 1)).unwrap().anchor[1];
-        y(meio + 1) - y(meio)
+        self.y(meio + 1) - self.y(meio)
+    }
+
+    /// O pé do dente do meio (o chão das folgas): a cena ensina que o dente estica para CIMA.
+    fn pe(&self) -> f64 {
+        self.y(4 * (smoke_regua::DENTES / 2))
     }
 }
 
@@ -89,6 +97,11 @@ fn an_animated_dimension_plays_and_scrubs_to_the_same_bit() {
     let tocado: Vec<Vec<u64>> = (0..=48)
         .map(|q| {
             let pose = a.em(q);
+            assert!(
+                a.pe().abs() <= TOL,
+                "quadro {q}: o pé afundou para {}",
+                a.pe()
+            );
             assert!(
                 a.violacao() <= TOL,
                 "quadro {q}: violação {:e}",

@@ -1,6 +1,6 @@
 //! **A cena 6 — «Régua de desenho»** (`PH2D_CONSTRAINT_SMOKE=6`, `docs/BlenderConstraints/04_W4_cad.md` §5): um
 //! perfil de [`DENTES`] dentes no documento vetorial, H/V em todo lado, os topos e as folgas iguais, o canto de
-//! baixo à esquerda preso, e a ALTURA do dente do meio animada ([`MEDIDA`]). O gate que toca e arrasta o tempo é
+//! baixo à esquerda e o chão das folgas presos, e a ALTURA do dente do meio animada ([`MEDIDA`]). O gate que toca e arrasta o tempo é
 //! `an_animated_dimension_plays_and_scrubs_to_the_same_bit` (as mesmas chaves, [`chaves_da_medida`]).
 
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -80,6 +80,11 @@ pub fn semear(cena: &mut VecScene) -> Regua {
     regras.extend((1..DENTES).map(|k| RegraCad::nova(Lei::Igual(lado(1), lado(4 * k + 1)))));
     regras.extend((1..DENTES - 1).map(|k| RegraCad::nova(Lei::Igual(lado(3), lado(4 * k + 3)))));
     regras.push(RegraCad::nova(Lei::Fixo(v(0), cantos[0])));
+    // O chão: as folgas todas ao nível da primeira, e ela presa — o dente estica para CIMA, não afunda o pé.
+    regras.push(RegraCad::nova(Lei::Fixo(v(3), cantos[3])));
+    regras.extend(
+        (1..DENTES - 1).map(|k| RegraCad::nova(Lei::Horizontal(SegCad(v(3), v(4 * k + 3))))),
+    );
     // A altura do dente do meio: do pé (a folga à esquerda dele) ao topo.
     let meio = 4 * (DENTES / 2);
     regras.push(RegraCad::nova(Lei::Distancia(v(meio), v(meio + 1), ALTURA)));

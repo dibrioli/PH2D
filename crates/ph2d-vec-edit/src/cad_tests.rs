@@ -180,3 +180,28 @@ fn a_drag_keeps_only_the_guide_lit_at_release() {
         &[RegraCad::nova(Lei::Vertical(SegCad(v(a, 2), v(b, 1))))]
     );
 }
+
+/// O teste de posto só olha a componente ligada à regra nova: outra forma com as suas regras não muda a resposta.
+#[test]
+fn another_shape_with_its_own_rules_does_not_change_the_rank_answer() {
+    let (mut scene, r) = retangulo_preso();
+    let s = scene.push_path(rectangle([50.0, 50.0], [60.0, 58.0]));
+    scene.regras_mut().extend([
+        RegraCad::nova(Lei::Horizontal(SegCad(v(s, 1), v(s, 2)))),
+        RegraCad::nova(Lei::Fixo(v(s, 1), [50.0, 50.0])),
+    ]);
+    let xf = VecXforms::default();
+    junta_regra(&mut scene, &xf, Lei::Distancia(v(r, 1), v(r, 2), 10.0));
+    junta_regra(&mut scene, &xf, Lei::Distancia(v(r, 2), v(r, 3), 5.0));
+    let diagonal = Lei::Distancia(v(r, 1), v(r, 3), 125f64.sqrt());
+    assert_eq!(
+        junta_regra(&mut scene, &xf, diagonal).map(|g| g.referencia),
+        Some(true)
+    );
+    let outra = Lei::Vertical(SegCad(v(s, 2), v(s, 3)));
+    assert_eq!(
+        junta_regra(&mut scene, &xf, outra),
+        Some(RegraCad::nova(outra)),
+        "a outra forma ainda tem liberdade"
+    );
+}

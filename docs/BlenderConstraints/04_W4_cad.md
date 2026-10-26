@@ -222,7 +222,57 @@ posições do FreeCAD **são gate** nas 11 cenas de solução única.
   sem a tangência das alças, M11 vértice de círculo como ponto solto, M12 sem a queda de prioridade → um gate cada,
   `5ce85c725f`, cada um visto vermelho sob a sua mutação).
 - ⚠️ Não medido: o custo por passo de `resolve` (remonta o sistema a cada chamada). Mede-se na W4.4 no app, o pior
-  passo do arrasto (o §5 pede-o antes da mensagem do smoke).
+  passo do arrasto (o §5 pede-o antes da mensagem do smoke). → medido na §3.4.
+
+### 3.4 W4.4 feita (26/10)
+
+- **Onde moram:** `VecScene.regras` no FIM, degrau 24 (o v23 lê `vec![]`, `Deserialize` à mão em `cad.rs`, o padrão do
+  `VecPath`). **Apagar um vértice ou um path tira as regras que o citam** em `VecScene::normaliza_ids_desde` — o
+  assentamento dos ids que já corre antes de TODA captura de undo (`vec_tree_settle`) ⇒ mesmo passo, zero linha na
+  shell (`VecScene::poda_regras`; um `Centro` só pede o path: o que deixou de ser círculo fica `SemAlvo`, não sai).
+  `Lei::pontos()` = a porta única dos pontos citados (o solver largou a cópia `pontos_da`).
+- **A guia diz QUAL vértice:** `SnapTargets.donos` (paralelo a `points`; o índice além do fim — os sprites — não tem
+  dono) e `SnapAxis.dono`. Inferência (`ph2d-vec-edit/src/cad.rs` `leis_da_guia`): os dois eixos no MESMO vértice =
+  coincidente; eixo X partilhado = vertical; Y = horizontal; grade, régua e curva não citam vértice.
+- **A caneta:** `on_press_encaixe`/`on_drag_encaixe` embrulham as portas de sempre (a shell só trocou o nome e a
+  closure devolve o `SnapResult`: +0 linhas). O vértice POSICIONADO ganha a regra no press; no arrasto de âncora, depois
+  do snap, `resolve` sobre a folha dos paths citados (`Xform` publicado, palpite = o passo anterior) e `aplica`; a regra
+  da guia é provisória no fim de `regras` e troca a cada passo — fica a do último passo (gate
+  `a_drag_keeps_only_the_guide_lit_at_release`). Undo: o botão premido suprime a captura ⇒ um passo por gesto.
+- **`junta_regra`** = a porta única de juntar: repetida (H/V/coincidente lidas nos dois sentidos) não entra; a mais pelo
+  posto (`ph2d_vec_constraints::a_mais`, só o teste de posto, sem a análise da ezpz; gate contra a fixture do FreeCAD
+  `the_rank_test_of_one_new_rule_agrees_with_the_oracle`): **medida nasce REF**, lei geométrica não entra.
+- **Círculo vivo:** `ph2d_vec_entities::receita::assenta_circulos_vivos`, dentro do `settle_origins` — um
+  `VecShape::Param` elipse `w = h` cuja geometria saiu do centro/diâmetro (só o solver a escreve assim; o Node congela a
+  receita antes) ⇒ `Transform` ao centro e receita `2r`; ponto fixo (folga `1e-4·r + 1e-6·|centro|`, acima do `f32`).
+  `gesture_paths` inclui `PenTool::cad_em_gesto()` (o `Xform` que a caneta leu vale até soltar). `resize_recipe` mudou-se
+  para `ph2d-vec-entities` (o `ph2d-app-vec` re-exporta: uma cópia) e `circulo_de` para `ph2d_vec_scene::cad`.
+- **Cores e conflito:** `ph2d_app_vec::cad_cores` corre `estado()` numa thread, só quando a ESTRUTURA muda (regras +
+  ids dos vértices citados; posições fora da chave), uma de cada vez; o quadro nunca espera e nunca pinta a cor de
+  outra estrutura. `cad_marks`: traço por regra (`Info` ok · `Text3` REF · `Warn` redundante · `Danger` conflito),
+  losango por ponto (`Accent` livre · `Success` definido) e a ficha **«Conflict — delete one of: …»** com o nome de
+  cada regra (`app.vec.cad.*`). `edit_marks::draw` recebe o `TextSystem` (shell +2 −2).
+- ⚠️ **`ph2d-ui-testkit` não conduz o canvas** (só painéis): o seam `draw_with_a_guide_creates_the_rule` vive em
+  `ph2d-vec-edit` com o MESMO snap que a shell corre (`collect_targets` + `snap`), e a ligação da shell é o gate de
+  texto `the_pen_press_and_drag_take_the_snap_result` (`shells/desktop/tests/it`).
+
+**Medido no editor** (`cad_medida_tests.rs`, perfil `smoke`, caneta × `resolve` cru intercalados, 7 rodadas, mínimo ·
+mediana em ms; **`loadavg` 43 em 32 núcleos** — outras linhas a compilar: teto pessimista, o «A × B» vale pela
+intercalação):
+
+| cena | caneta (`on_drag_encaixe`) | `resolve` cru | juntar uma regra (posto) | análise das cores (`estado`) |
+|---|---|---|---|---|
+| escada 202 | **1,306** · 1,454 | 1,305 · 1,506 | 17,3 · 19,6 | 43,5 · 46,5 |
+| misto 200 | **1,526** · 1,788 | 1,444 · 1,486 | 33,1 · 34,8 | 45,6 · 51,1 |
+
+⇒ o editor não acrescenta custo ao solver (≤ 0,08 ms); **kill-criterion < 2 ms PASSA** mesmo a load 43 (a W4.0 mediu
+0,68–0,81 ms do `resolve` a load 11–18). A análise das cores (~45 ms) está fora do quadro, como desenhado. ⚠️ **Aberto:**
+juntar uma regra corre no quadro em que a guia ACENDE (só quando a guia muda) e custa 17–33 ms a 200 pontos — o
+Gram–Schmidt do posto (`r²n`). **Feito:** o teste só olha a COMPONENTE ligada à regra nova (linhas de componentes
+disjuntas são ortogonais — exacto; gate `another_shape_with_its_own_rules_does_not_change_the_rank_answer`) ⇒ várias
+formas pequenas custam a sua, não a soma. **Aberto:** UMA componente de 200 pontos (as duas cenas medidas) continua a
+17–33 ms; a cura desenhada é a base do posto em cache pela análise que já corre fora do quadro (a regra nova projecta
+contra ela: `O(r·n)`) — exige publicar essa base na caneta.
 
 ## 4. Gates red-first
 
@@ -238,7 +288,11 @@ posições do FreeCAD **são gate** nas 11 cenas de solução única.
 | `copy_point_follows_its_vertex_after_an_insert_before_it` | inserir antes · ponto de buraco · apagar ⇒ `SemAlvo` | W4.2 ✓ |
 | `each_vertex_mutation_site_keeps_or_assigns_ids` | censo dos ~20 sítios (§2), um caso por sítio | W4.2 |
 | `an_extra_dimension_is_born_ref` (teste de posto) · `a_conflict_lists_the_rules_involved` (`unsatisfied`) | `conflito_*` da W4.1: REF = [6]; conflito = [1,3,4,6] e [1,2] | W4.3 ✓ (o «nasce REF» no editor é W4.4) |
-| seam `draw_with_a_guide_creates_the_rule` (`ph2d-ui-testkit`) | caneta com a guia H acesa ⇒ regra H gravada, undo 1 passo | W4.4 |
+| seam `draw_with_a_guide_creates_the_rule` (em `ph2d-vec-edit`, com o snap da shell — o testkit não conduz o canvas) · `a_drag_keeps_only_the_guide_lit_at_release` · `the_pen_press_and_drag_take_the_snap_result` (shell) | caneta com a guia H acesa ⇒ regra H gravada; no arrasto fica a guia do soltar | W4.4 ✓ |
+| `deleting_a_vertex_drops_the_rules_that_cite_it_when_ids_settle` · `deleting_a_path_drops_every_rule_that_cites_it` · `a_scene_with_rules_round_trips` | a regra sai no assentamento que precede o undo; o v23 abre sem regras | W4.4 ✓ |
+| `dragging_a_corner_keeps_the_rectangle` · `a_rule_the_drawing_already_implies_is_not_added_and_an_extra_dimension_is_born_ref` · `the_rank_test_of_one_new_rule_agrees_with_the_oracle` | o arrasto pela caneta obedece; a diagonal de um retângulo definido nasce REF; a H implícita não entra | W4.4 ✓ |
+| `a_live_circle_the_solver_moved_gets_its_recipe_and_transform_back` (+ controlo) | receita `2r`, `Transform` no centro, a forma não se move, ponto fixo | W4.4 ✓ |
+| `the_colours_come_from_an_analysis_off_the_frame_thread_only_when_the_structure_changes` · `a_conflict_writes_which_rules_to_delete` (+ controlo) | a análise só pela estrutura; a ficha nomeia as regras em conflito | W4.4 ✓ |
 | `an_animated_dimension_plays_and_scrubs_to_the_same_bit` | medida com 3 chaves, quadros 0→40→12→40 | W4.5 |
 | prova de mutação | tirar o `Fixed` do arrastado / a migração / o REF ⇒ o gate certo sangra | W4.3 ✓ 13/13 (§3.3); a migração e a W4.4/4.5 no fecho |
 

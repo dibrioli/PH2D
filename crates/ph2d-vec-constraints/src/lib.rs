@@ -416,7 +416,25 @@ pub fn estado(folha: &Folha<'_>, regras: &[RegraCad]) -> Estado {
 /// posto sem a análise da ezpz: barato o bastante para correr quando uma guia acende.
 #[must_use]
 pub fn a_mais(folha: &Folha<'_>, regras: &[RegraCad], nova: RegraCad) -> bool {
-    let mut todas = regras.to_vec();
+    // Só a componente ligada à regra nova: as linhas de uma componente disjunta não partilham variável, são
+    // ortogonais e não mudam o posto — o resultado é o mesmo e o custo (`r²n`) cai com o tamanho da componente.
+    let mut ligados: BTreeSet<PontoCad> = nova.lei.pontos().into_iter().collect();
+    let mut fora: Vec<&RegraCad> = regras.iter().collect();
+    loop {
+        let (dentro, resto): (Vec<&RegraCad>, Vec<&RegraCad>) = fora
+            .into_iter()
+            .partition(|r| r.lei.pontos().iter().any(|p| ligados.contains(p)));
+        fora = resto;
+        if dentro.is_empty() {
+            break;
+        }
+        ligados.extend(dentro.iter().flat_map(|r| r.lei.pontos()));
+    }
+    let mut todas: Vec<RegraCad> = regras
+        .iter()
+        .filter(|r| r.lei.pontos().iter().any(|p| ligados.contains(p)))
+        .copied()
+        .collect();
     todas.push(RegraCad {
         referencia: false,
         ..nova

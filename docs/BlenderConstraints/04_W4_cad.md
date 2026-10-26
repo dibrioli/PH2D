@@ -147,6 +147,34 @@ posições do FreeCAD **são gate** nas 11 cenas de solução única.
 | **W4.4** no editor | onde guardar: as regras viajam no documento do vetor (`VecScene`, mesmo degrau 24); o arrasto chama `resolve` em `pen_drag.rs`/grab **depois** do snap (o snap dá o alvo, o solver o resto); inferência = a guia que estava acesa ao largar cria a regra; cores por token (zero hex); medida a mais nasce REF; conflito lista as regras de `estado()`; análise fora do fio do quadro; undo = 1 passo por gesto | `ph2d-app-vec` (nada na shell) |
 | **W4.5** medida animada + cena 6 | a medida é um canal da família `CONSTRAINT = 8` (`campo` = valor, `i:j` = id do item); a pose resolvida parte SEMPRE do desenho AUTORADO em cada quadro (não do quadro anterior) ⇒ tocar = arrastar a timeline ao bit; chaves pela porta `ph2d_app_constraints::chaves::gravar` | `ph2d_vec_constraints::resolve` |
 
+### 3.1 W4.2 em detalhe (desenhado 26/10, lido no código — o código ainda NÃO abriu)
+
+- **Onde mora o id:** `pub id: VertId` **dentro** do `VecVertex`, apendado ao FIM (postcard posicional) — a mesma lei do
+  `corner_radius` (`ph2d-vec-scene/src/lib.rs:405-427`): inserir, apagar, inverter, soldar e partir levam-no de graça,
+  sem tocar nos ~20 sítios do §2. `VertId(u32)`, `VertId::NOVO = 0` = «ainda sem id» (o que todo construtor e literal
+  dá). `VecPath.next_vert: u32` apendado ao FIM do `VecPath` (contador por path, monotónico, nunca reusado; os
+  contornos de `subpaths` partilham o espaço de ids do path).
+- **Quem dá o id:** `VecPath::normaliza_ids()` — dá `next_vert` a cada `NOVO` e à 2.ª ocorrência de um id repetido
+  (um vértice duplicado por uma operação), pela ordem `verts` → `subpaths`; idempotente. `VecScene::normaliza_ids()` em
+  todos. Chamadores: `VecScene::push_path` e o gancho que JÁ corre antes de toda captura de undo —
+  `settle_tree_before_capture` (`shells/desktop/src/vec_tree_settle.rs:63`, chamado de `undo_app.rs:448,538` antes de
+  `capture_project` `:86`): toda edição do vetor vira passo de undo ali (`post_frame_undo`, `undo_app.rs:390`). A
+  `VecScene` é UMA por projeto (`app_state_gfx.rs:158`). Um ficheiro antigo ganha ids `1..n` no 1.º assentamento.
+- **Literais:** ~198 `VecVertex {` em 95 ficheiros (24 na shell). Na shell trocam-se pelos construtores
+  (`VecVertex::corner`/`::smooth` + um `::with_handles(anchor, in, out, kind)` novo) — a shell ENCOLHE e paga a linha do
+  `normaliza_ids` no gancho; nas crates junta-se `id: VertId::NOVO`.
+- **Ler o antigo** (padrão do `stroke_wire.rs`, F16c): âmbito por thread `GeometryLayoutV23` com `Deserialize` à mão do
+  `VecVertex` e do `VecPath` (espelhos V23/V24 + gate `the_live_layout_round_trips`); `VEC_SCENE_SCHEMA_VERSION 23 → 24`;
+  `from_bytes`: v24 vivo · v23 = âmbito geometria · v22 = traço **e** geometria. Projeto: `PROJECT_SCHEMA 194 → 195`
+  (reconta-se na integração), `project_load_read.rs:57` abre o âmbito da geometria para `ver <= 194`, e as fontes
+  guardadas DENTRO de componentes regravam-se no load como o `migra_traco_v22` já faz (`ph2d-app-vec/src/envelope_live.rs:505`,
+  `ph2d-skeleton-live/src/skinned_mesh.rs:205`) — generalizar as duas para o âmbito composto. ⚠️ **1.º passo da W4.2:
+  censo de TODO portador gravado de `VecPath`/`VecVertex`** (poses de UI, `.ph2dmacro`, símbolos, área de transferência
+  e o que mais houver) — cada um precisa de leitor antigo ou de regravação.
+- **Copy Point:** a W1–W3 ainda **não está no main** ⇒ o `PontoDeForma { indice }` (`ph2d-constraints/src/poderosas.rs:127`)
+  troca para `{ vert: VertId }` SEM migração; o recurso `Pontos` (`ph2d-app-constraints/src/lib.rs:89`) passa a
+  `(VertId, âncora)` e cobre também os `subpaths`; id que sumiu ⇒ `Estado::SemAlvo`.
+
 ## 4. Gates red-first
 
 | gate | fenómeno na fixture | passo |

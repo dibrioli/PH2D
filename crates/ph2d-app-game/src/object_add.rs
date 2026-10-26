@@ -94,11 +94,6 @@ pub fn veste_camada(
     let [lw, lh] = ladrilho_m(art);
     world.entity_mut(e).insert((
         Sprite::atlas(art.key, [lw * ladrilhos, lh], BRANCO),
-        SpriteGrid {
-            hframes: art.grid[0],
-            vframes: art.grid[1],
-            frame: art.middle_frame(),
-        },
         UvTransform {
             scale: [ladrilhos, 1.0],
             offset: [0.0, 0.0],

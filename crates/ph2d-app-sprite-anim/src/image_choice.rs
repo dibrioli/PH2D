@@ -146,13 +146,31 @@ fn cell_m(native: [f32; 2], grid: Option<SpriteGrid>) -> [f32; 2] {
 #[must_use]
 pub fn factory_facts(art: &ph2d_render::FactoryArt) -> ImageFacts {
     let cell = art.native_m();
+    let grid = art.frames();
     ImageFacts {
-        native_m: [cell[0] * art.grid[0] as f32, cell[1] * art.grid[1] as f32],
-        slicing: Some(Slicing {
-            grid: art.grid,
-            still_frame: if art.tile { art.middle_frame() } else { 0 },
+        native_m: [cell[0] * grid[0] as f32, cell[1] * grid[1] as f32],
+        slicing: (grid[0] * grid[1] > 1).then_some(Slicing {
+            grid,
+            still_frame: 0,
         }),
     }
+}
+
+/// ⭐ O corte de uma imagem importada é o que os objectos que a mostram levam (plano GEF 13 D3: re-cortar num
+/// re-corta todos, como no *importer* da Unity) — o primeiro, pela ordem do mundo, com mais de uma célula.
+#[must_use]
+pub fn cut_of_users(world: &mut World, id: AssetId, atlas: &BTreeMap<u32, AssetId>) -> Option<Slicing> {
+    let mut q = world.query::<(Option<&SpritePixels>, &Sprite, &SpriteGrid)>();
+    q.iter(world)
+        .filter(|(_, _, g)| g.hframes.max(1) * g.vframes.max(1) > 1)
+        .find(|(px, s, _)| {
+            ph2d_app_components::asset_index_build::texture_of(*px, Some(*s), atlas)
+                == Some(id)
+        })
+        .map(|(_, _, g)| Slicing {
+            grid: [g.hframes.max(1), g.vframes.max(1)],
+            still_frame: 0,
+        })
 }
 
 /// Os factos de uma imagem importada de `w × h` px a `ppm` px por metro (sem corte próprio).
@@ -188,6 +206,25 @@ pub fn image_facts(
     Some(imported_facts(w, h, ppm))
 }
 
+/// [`image_facts`] com o corte que os utilizadores de uma importada levam ([`cut_of_users`]).
+#[must_use]
+pub fn library_facts(
+    world: &mut World,
+    id: AssetId,
+    db: &AssetDb,
+    atlas: &BTreeMap<u32, AssetId>,
+    ppm: f32,
+) -> Option<ImageFacts> {
+    let mut f = image_facts(id, db, atlas, ppm)?;
+    let fabrica = atlas.iter().any(|(k, a)| {
+        *a == id && ph2d_app_components::factory_images::is_factory_key(*k)
+    });
+    if f.slicing.is_none() && !fabrica {
+        f.slicing = cut_of_users(world, id, atlas);
+    }
+    Some(f)
+}
+
 /// ⭐⭐ **A PORTA: a sprite `e` passa a mostrar a imagem `id` da biblioteca** — sem copiar píxeis: a célula do
 /// atlas que já a tem (fábrica ou importada), senão uma textura própria com o nome dos píxeis.
 ///
@@ -205,7 +242,7 @@ pub fn choose_library_image(
     id: AssetId,
 ) -> Result<(), String> {
     let no_image = || ph2d_i18n::tr("app.sprite_anim.image_choice.not_an_image").to_owned();
-    let new = image_facts(id, db, atlas, ppm).ok_or_else(no_image)?;
+    let new = library_facts(sim.world_mut(), id, db, atlas, ppm).ok_or_else(no_image)?;
     let w = sim.world();
     let old = ph2d_app_components::asset_index_build::texture_of(
         w.get::<SpritePixels>(e),
@@ -232,41 +269,37 @@ pub fn choose_library_image(
     }
 }
 
-/// ⭐ **Uma sprite nova com a imagem `id` da biblioteca, no ponto `at`** — a queda no canvas.
+/// ⭐ **Uma sprite nova com a imagem `id` da biblioteca, no ponto `at`** — a queda no canvas. Uma sprite parada
+/// nova e a MESMA porta da troca ([`choose_library_image`]): a referência do atlas, o tamanho nativo de uma célula.
 ///
 /// # Errors
-/// O texto para o artista se `id` não é uma imagem, ou a placa recusa a textura.
+/// O texto para o artista se `id` não é uma imagem, ou a placa recusa a textura (a sprite não fica).
 #[allow(clippy::too_many_arguments)]
 pub fn place_library_image(
     sim: &mut SimWorld,
     acquire: &mut Acquire<'_>,
     db: &AssetDb,
-    _atlas: &BTreeMap<u32, AssetId>,
+    atlas: &BTreeMap<u32, AssetId>,
     ppm: f32,
     at: [f32; 2],
     base: &str,
     id: AssetId,
 ) -> Result<Entity, String> {
-    let no_image = || ph2d_i18n::tr("app.sprite_anim.image_choice.not_an_image").to_owned();
-    let asset = db.get(&id).ok_or_else(no_image)?;
-    let (w, h, px) = asset.image_rgba8().ok_or_else(no_image)?;
-    let texture_id = acquire(w, h, &px)?;
-    let ppm = ppm.max(ph2d_image_import::EPS_PIXELS_PER_METER);
-    let size = [
-        (w as f32 / ppm).max(ph2d_image_import::MIN_SPRITE_SIZE),
-        (h as f32 / ppm).max(ph2d_image_import::MIN_SPRITE_SIZE),
-    ];
     let (_, bits) = ph2d_image_import::spawn_sprite(
         sim,
-        ph2d_image_import::PackedSource::Individual {
-            texture_id,
-            pixels_id: id,
+        ph2d_image_import::PackedSource::Atlas {
+            cell_idx: ph2d_render::WHITE_TILE_KEY,
         },
         ph2d_core::Vec2::new(at[0], at[1]),
-        size,
+        [1.0, 1.0],
         base,
     );
-    Ok(Entity::from_bits(bits))
+    let e = Entity::from_bits(bits);
+    if let Err(err) = choose_library_image(sim, acquire, db, atlas, ppm, e, id) {
+        sim.world_mut().despawn(e);
+        return Err(err);
+    }
+    Ok(e)
 }
 
 /// ⭐ **Traz um ficheiro de imagem para a biblioteca do projecto, sem criar objecto** (o *Import* da Unity):

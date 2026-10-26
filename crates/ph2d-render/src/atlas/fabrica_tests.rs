@@ -137,3 +137,24 @@ fn as_folhas_animadas_tem_margem_e_mexem() {
         }
     }
 }
+
+/// ⭐ Plano GEF 13 D1: a IMAGEM de um azulejo é uma célula, e as cópias do atlas são ela repetida — byte a byte
+/// a tira de antes (o `HASH_DAS_ARTES_ANTIGAS` guarda-a); uma folha animada é a mesma nos dois.
+#[test]
+fn a_imagem_de_um_azulejo_e_uma_celula_e_o_atlas_a_envolve() {
+    for art in &FACTORY_ART {
+        let [w, h] = art.image_px();
+        assert_eq!(factory_image(art).len() as u32, w * h * 4, "{:#x}", art.key);
+        if art.tile {
+            assert_eq!([w, h], art.cell_px());
+            assert_eq!(art.frames(), [1, 1]);
+            assert_eq!(
+                crate::atlas::wrap_image(factory_image(art), [w, h], art.grid),
+                factory_pixels(art)
+            );
+        } else {
+            assert_eq!(art.frames(), art.grid);
+            assert_eq!(factory_image(art), factory_pixels(art));
+        }
+    }
+}

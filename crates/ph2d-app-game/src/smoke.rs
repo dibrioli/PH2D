@@ -426,11 +426,6 @@ fn azulejo(sim: &mut SimWorld, e: Entity, nome: &str, meia: [f32; 2]) {
     let lado_m = [1.0, ch as f32 / cw as f32];
     sim.world_mut().entity_mut(e).insert((
         Sprite::atlas(art.key, crate::object_add::BLOCO, [1.0; 4]),
-        SpriteGrid {
-            hframes: art.grid[0],
-            vframes: art.grid[1],
-            frame: art.middle_frame(),
-        },
         UvTransform {
             scale: [2.0 * meia[0] / lado_m[0], 2.0 * meia[1] / lado_m[1]],
             offset: [0.0, 0.0],

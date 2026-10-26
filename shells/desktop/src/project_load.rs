@@ -251,6 +251,8 @@ impl crate::App {
                 .unwrap_or_default();
             counter.reconcile_at_least(stable_id_seed);
             gfx.sim.world_mut().insert_resource(counter);
+            // Um azulejo de fábrica gravado antes da onda GEF 13 levava a grelha das cópias.
+            ph2d_app_components::factory_images::forget_extrusion_grids(gfx.sim.world_mut());
             // ⭐ **E as referências da física passam a apontar por IDENTIDADE** (ADR-0164 F1).
             //
             // Um ficheiro v95 guarda `body_a = hash(nome)`; a ponte, desde esta wave, resolve

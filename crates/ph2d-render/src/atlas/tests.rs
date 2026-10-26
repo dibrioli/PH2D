@@ -510,3 +510,43 @@ fn the_atlas_counts_its_own_content_writes() {
         "ocupar o slot libertado ESCREVE pixels e tem de mover o relogio"
     );
 }
+
+/// ⭐ Plano GEF 13 D1: a região de uma imagem que repete é a cópia do MEIO, as vizinhas no atlas são a própria
+/// imagem (o fio do mip), e isso sobrevive a um `regrow` cujo `fetch` dá só a imagem (o que a biblioteca guarda).
+#[test]
+fn a_regiao_do_azulejo_e_a_celula_do_meio() {
+    let Some(gpu) = try_headless_gpu() else {
+        return;
+    };
+    let (w, h) = (8u32, 4u32);
+    let imagem: Vec<u8> = (0..w * h).flat_map(|i| [i as u8, 7, 200, 255]).collect();
+    let mut atlas = TextureAtlas::new(&gpu, 256);
+    let vizinhas_sao_a_imagem = |atlas: &TextureAtlas| {
+        let r = atlas.region(9).expect("região");
+        assert_eq!((r.w, r.h), (w, h));
+        let (side, _, px) = atlas.readback_mip(&gpu, 0);
+        let at = |x: u32, y: u32| px[((y * side + x) * 4) as usize];
+        for y in 0..h {
+            for x in 0..w {
+                let e = imagem[((y * w + x) * 4) as usize];
+                assert_eq!(at(r.x + x, r.y + y), e, "a imagem em ({x},{y})");
+                assert_eq!(at(r.x - w + x, r.y + y), e, "a cópia da esquerda em ({x},{y})");
+                assert_eq!(at(r.x + w + x, r.y + y), e, "a cópia da direita em ({x},{y})");
+            }
+        }
+    };
+    let dentro = atlas
+        .insert_wrapped(&gpu, 9, w, h, &imagem, [3, 1])
+        .expect("cabe");
+    assert_eq!(atlas.region(9), Some(dentro));
+    assert_eq!(atlas.region_px(9), Some((w, h)));
+    vizinhas_sao_a_imagem(&atlas);
+    atlas
+        .regrow_inplace(&gpu, 512, |k| (k == 9).then(|| imagem.clone()))
+        .expect("regrow");
+    vizinhas_sao_a_imagem(&atlas);
+    // CONTROLO: uma escrita simples da mesma chave é a imagem inteira, sem cópias.
+    let tira = wrap_image(&imagem, [w, h], [3, 1]);
+    let r = atlas.insert(&gpu, 9, w * 3, h, &tira).expect("cabe");
+    assert_eq!(atlas.region(9), Some(r));
+}

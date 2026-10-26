@@ -89,7 +89,8 @@ fn o_bloco_de_fabrica_e_um_azulejo_sem_quadros() {
         Some((PLATFORM_TILE.cell_px()[0], PLATFORM_TILE.cell_px()[1])),
         "a miniatura da biblioteca mostra as cópias"
     );
-    for n in [1, 2, 4] {
+    // O nível 1 tem blocos de cor, sem imagem; o 2 e o 4 vestem os azulejos de fábrica.
+    for n in [2, 4] {
         let mut sim = nivel(n);
         let e = por_nome(&mut sim, "Platform High");
         let w = sim.world();
@@ -210,5 +211,43 @@ fn a_mesma_imagem_pelas_portas_todas() {
             )
         };
         assert_eq!(ver(pela_linha), ver(pelo_canvas), "chave {key}");
+    }
+}
+
+/// ⭐ Ficheiro antigo igual (plano GEF 13 D2): um bloco gravado com a grelha das cópias abre sem ela e amostra o
+/// MESMO texel (antes a célula do meio da tira, hoje a imagem da chave); a bandeira animada guarda a sua.
+#[test]
+fn um_bloco_gravado_antes_abre_com_o_mesmo_desenho() {
+    let mut sim = nivel(2);
+    let bloco = por_nome(&mut sim, "Platform High");
+    let bandeira = por_nome(&mut sim, "Goal");
+    let antiga = SpriteGrid {
+        hframes: PLATFORM_TILE.grid[0],
+        vframes: PLATFORM_TILE.grid[1],
+        frame: PLATFORM_TILE.middle_frame(),
+    };
+    sim.world_mut().entity_mut(bloco).insert(antiga);
+    let grelha_da_bandeira = sim.world().get::<SpriteGrid>(bandeira).copied();
+    let gravado = instantaneo(&mut sim);
+    let mut aberto = SimWorld::new();
+    snapshot_to_world(aberto.world_mut(), &gravado, &registo_do_jogo()).expect("abre");
+    assert_eq!(
+        ph2d_app_components::factory_images::forget_extrusion_grids(aberto.world_mut()),
+        1
+    );
+    let b2 = por_nome(&mut aberto, "Platform High");
+    let g2 = por_nome(&mut aberto, "Goal");
+    assert!(aberto.world().get::<SpriteGrid>(b2).is_none());
+    assert_eq!(aberto.world().get::<SpriteGrid>(g2).copied(), grelha_da_bandeira);
+    // O texel: a cópia do meio da tira de antes é a imagem de hoje, ponto a ponto.
+    let tira = ph2d_render::factory_pixels(&PLATFORM_TILE);
+    let imagem = ph2d_render::factory_image(&PLATFORM_TILE);
+    let [cw, ch] = PLATFORM_TILE.cell_px();
+    for y in (0..ch).step_by(7) {
+        for x in (0..cw).step_by(5) {
+            let o = ((y * PLATFORM_TILE.px[0] + cw + x) * 4) as usize;
+            let n = ((y * cw + x) * 4) as usize;
+            assert_eq!(tira[o..o + 4], imagem[n..n + 4], "({x},{y})");
+        }
     }
 }

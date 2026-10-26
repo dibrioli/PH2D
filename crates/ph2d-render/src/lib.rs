@@ -121,7 +121,7 @@ pub use atlas::{
     HERO_SHEET_CELL_PX, HERO_SHEET_COLS, HERO_SHEET_KEY, HERO_SHEET_ROWS,
     HERO_SHEET_SOLE_BELOW_CENTRE, HERO_SHEET_TAGS, HILLS_TILE, HILLS_TILE_KEY, HeroTag,
     PLATFORM_TILE, PLATFORM_TILE_KEY, TextureAtlas, WHITE_TILE_KEY, disc_tile_pixels,
-    factory_pixels, hero_sheet_pixels,
+    factory_image, factory_pixels, hero_sheet_pixels, wrap_image,
 };
 pub use camera::{Camera2d, CameraUniform};
 pub use sink_style::{SinkStyle, StyleReach};

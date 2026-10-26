@@ -45,11 +45,6 @@ fn camada(sim: &mut SimWorld, nome: &str) -> Entity {
             Transform::IDENTITY,
             ph2d_ecs::Name::new(nome),
             Sprite::atlas(HILLS_TILE.key, [lw * 4.0, lh], [1.0; 4]),
-            SpriteGrid {
-                hframes: 3,
-                vframes: 1,
-                frame: 1,
-            },
             UvTransform {
                 scale: [4.0, 1.0],
                 offset: [0.0, 0.0],

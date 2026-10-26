@@ -16,11 +16,6 @@ fn camada(world: &mut World) -> Entity {
     world
         .spawn((
             Sprite::atlas(HILLS_TILE.key, [lw * 4.0, lh], BRANCO),
-            SpriteGrid {
-                hframes: 3,
-                vframes: 1,
-                frame: 1,
-            },
             UvTransform {
                 scale: [4.0, 1.0],
                 offset: [0.0, 0.0],
@@ -109,14 +104,8 @@ fn a_camada_volta_aos_montes_de_fabrica_igual() {
     // 33 m de largura ⇒ ⌈33 / 8⌉ = 5 ladrilhos (cobre pelo menos o que cobria).
     assert_eq!(w.get::<UvTransform>(e).unwrap().scale, [5.0, 1.0]);
     assert_eq!(w.get::<ScrollRepeat>(e).unwrap().tile, [8.0, 0.0]);
-    assert_eq!(
-        w.get::<SpriteGrid>(e).copied(),
-        Some(SpriteGrid {
-            hframes: 3,
-            vframes: 1,
-            frame: 1
-        })
-    );
+    // O azulejo de fábrica é UMA imagem (plano GEF 13 D1): nenhuma grelha.
+    assert!(w.get::<SpriteGrid>(e).is_none());
 }
 
 #[test]
@@ -174,9 +163,9 @@ fn uma_sprite_nova_mostra_a_imagem_ao_tamanho_nativo() {
         },
         factory_facts(&HILLS_TILE),
     );
-    // O azulejo de fábrica mostra-se pela célula do meio, a 8 × 6 m.
+    // O azulejo de fábrica é uma imagem de 8 × 6 m, sem quadros (as cópias são do atlas, plano GEF 13 D1).
     assert!(perto(w.get::<Sprite>(e).unwrap().size, [8.0, 6.0]));
-    assert_eq!(w.get::<SpriteGrid>(e).unwrap().frame, 1);
+    assert!(w.get::<SpriteGrid>(e).is_none());
 }
 
 #[test]

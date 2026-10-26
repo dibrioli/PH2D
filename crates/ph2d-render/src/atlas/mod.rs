@@ -79,8 +79,25 @@ pub use fabrica::{
     BACKGROUND_TEXELS_PER_M, CLOUDS_TILE, CLOUDS_TILE_KEY, COIN_FRAME_MS, COIN_SHEET,
     COIN_SHEET_KEY, DIRT_TILE, DIRT_TILE_KEY, FACTORY_ART, FLAG_FRAME_MS, FLAG_SHEET,
     FLAG_SHEET_KEY, FactoryArt, GROUND_TILE, GROUND_TILE_KEY, HERO_ART, HILLS_TILE, HILLS_TILE_KEY,
-    PLATFORM_TILE, PLATFORM_TILE_KEY, factory_pixels,
+    PLATFORM_TILE, PLATFORM_TILE_KEY, factory_image, factory_pixels,
 };
+
+/// A imagem `size` (RGBA8) repetida `copies` (`[colunas, linhas]`) vezes, lado a lado — o que
+/// [`TextureAtlas::insert_wrapped`] guarda à volta de uma imagem que repete.
+#[must_use]
+pub fn wrap_image(rgba: &[u8], size: [u32; 2], copies: [u32; 2]) -> Vec<u8> {
+    let [w, h] = size.map(|v| v as usize);
+    let [cx, cy] = copies.map(|c| c.max(1) as usize);
+    let linha = w * 4;
+    let mut out = Vec::with_capacity(linha * cx * h * cy);
+    for y in 0..h * cy {
+        let fonte = &rgba[(y % h) * linha..(y % h + 1) * linha];
+        for _ in 0..cx {
+            out.extend_from_slice(fonte);
+        }
+    }
+    out
+}
 pub use hero_sheet::{
     HERO_SHEET_CELL_PX, HERO_SHEET_COLS, HERO_SHEET_KEY, HERO_SHEET_ROWS,
     HERO_SHEET_SOLE_BELOW_CENTRE, HERO_SHEET_TAGS, HeroTag, hero_sheet_pixels,
@@ -180,7 +197,13 @@ pub struct TextureAtlas {
     pub sampler: wgpu::Sampler,
     pub size_px: u32,
     packer: rect_packer::DensePacker,
+    /// O lugar EMPACOTADO de cada chave (o que o empacotador e a *free list* contam).
     regions: BTreeMap<u32, AtlasRegion>,
+    /// ⭐ As chaves guardadas ENVOLVIDAS pelas cópias de si mesmas ([`Self::insert_wrapped`]): as cópias
+    /// `[colunas, linhas]` e a região da imagem (a célula do meio) — o que [`Self::region`] responde. É o
+    /// *Extrude Edges* da Unity (plano GEF 13 D1): o mip e o filtro de uma imagem que repete leem a própria
+    /// imagem à volta dela, e o objecto não sabe que as cópias existem.
+    wraps: BTreeMap<u32, ([u32; 2], AtlasRegion)>,
     /// Atlas V2 (M14.4f): free-list of regions made available by
     /// [`Self::remove`] (and by replace-with-different-size, which
     /// would otherwise leak the slot). Indexed by `(width, height)`
@@ -257,6 +280,7 @@ impl TextureAtlas {
             size_px,
             packer: rect_packer::DensePacker::new(size_px as i32, size_px as i32),
             regions: BTreeMap::new(),
+            wraps: BTreeMap::new(),
             free_slots: BTreeMap::new(),
             max_size_px,
             mip_gen: crate::mipgen::MipGenerator::new(gpu, wgpu::TextureFormat::Rgba8UnormSrgb),
@@ -348,9 +372,38 @@ impl TextureAtlas {
         let bytes: &[u8] = bytemuck::cast_slice(&px);
         self.insert(gpu, DISC_TILE_KEY, DISC_TILE_PX, DISC_TILE_PX, bytes)?;
         for art in &FACTORY_ART {
-            self.insert(gpu, art.key, art.px[0], art.px[1], factory_pixels(art))?;
+            let [w, h] = art.image_px();
+            if art.tile {
+                self.insert_wrapped(gpu, art.key, w, h, factory_image(art), art.grid)?;
+            } else {
+                self.insert(gpu, art.key, w, h, factory_image(art))?;
+            }
         }
         self.insert_white_tile(gpu)
+    }
+
+    /// ⭐ Guarda a imagem `w × h` de `key` envolvida pelas cópias de si mesma (`copies` = `[colunas, linhas]`,
+    /// ímpares) e responde por ela a região da cópia do MEIO. Ver [`Self::wraps`].
+    pub fn insert_wrapped(
+        &mut self,
+        gpu: &GpuContext,
+        key: u32,
+        w: u32,
+        h: u32,
+        rgba: &[u8],
+        copies: [u32; 2],
+    ) -> Result<AtlasRegion, AtlasInsertError> {
+        let [cx, cy] = copies.map(|c| c.max(1));
+        let tira = wrap_image(rgba, [w, h], [cx, cy]);
+        let fora = self.insert(gpu, key, w * cx, h * cy, &tira)?;
+        let dentro = AtlasRegion {
+            x: fora.x + w * (cx / 2),
+            y: fora.y + h * (cy / 2),
+            w,
+            h,
+        };
+        self.wraps.insert(key, ([cx, cy], dentro));
+        Ok(dentro)
     }
 
     /// Pack an `(width × height)` source at native resolution into
@@ -392,6 +445,8 @@ impl TextureAtlas {
             width * height * 4,
             rgba.len()
         );
+        // Uma escrita simples é a imagem inteira: deixa de haver cópias à volta.
+        self.wraps.remove(&key);
 
         // Replace path: same key + same size → rewrite pixels in
         // the existing region. M14.4f: when sizes DIFFER we now
@@ -460,6 +515,7 @@ impl TextureAtlas {
     /// when M14.5 introduces prefab/clone semantics that can share
     /// keys.
     pub fn remove(&mut self, key: u32) -> Option<AtlasRegion> {
+        self.wraps.remove(&key);
         let region = self.regions.remove(&key)?;
         self.free_slots
             .entry((region.w, region.h))
@@ -498,6 +554,7 @@ impl TextureAtlas {
     {
         let new_size_px = new_size_px.clamp(self.size_px, self.max_size_px);
         let old_regions = std::mem::take(&mut self.regions);
+        let old_wraps = std::mem::take(&mut self.wraps);
         self.free_slots.clear();
         let (texture, view) = create_texture(&gpu.device, new_size_px);
         clear_level0_transparent(gpu, &texture);
@@ -518,7 +575,15 @@ impl TextureAtlas {
             let Some(rgba) = fetch_pixels(key) else {
                 continue;
             };
-            self.insert(gpu, key, region.w, region.h, &rgba)?;
+            // Uma chave envolvida volta a envolver-se: a biblioteca guarda a imagem, não as cópias.
+            match old_wraps.get(&key) {
+                Some((copies, d)) if rgba.len() as u64 == u64::from(d.w) * u64::from(d.h) * 4 => {
+                    self.insert_wrapped(gpu, key, d.w, d.h, &rgba, *copies)?;
+                }
+                _ => {
+                    self.insert(gpu, key, region.w, region.h, &rgba)?;
+                }
+            }
         }
         Ok(new_size_px)
     }
@@ -531,8 +596,13 @@ impl TextureAtlas {
 
     /// Lookup the reserved region for `key` (returned by an earlier
     /// [`Self::insert`]). `None` when the key was never inserted.
+    ///
+    /// ⚠️ A região da IMAGEM: numa chave envolvida, a cópia do meio ([`Self::insert_wrapped`]).
     pub fn region(&self, key: u32) -> Option<AtlasRegion> {
-        self.regions.get(&key).copied()
+        match self.wraps.get(&key) {
+            Some((_, dentro)) => Some(*dentro),
+            None => self.regions.get(&key).copied(),
+        }
     }
 
     /// Lookup the UV rectangle for `key` (sugar over
@@ -542,7 +612,7 @@ impl TextureAtlas {
     /// — the sprite renders as a 1-texel sample that is visually
     /// inert and easy to spot in screenshots if it ever happens.
     pub fn region_uv(&self, key: u32) -> [f32; 4] {
-        match self.regions.get(&key) {
+        match self.region(key) {
             Some(r) => r.uv(self.size_px),
             None => [0.0, 0.0, 0.0, 0.0],
         }
@@ -553,7 +623,7 @@ impl TextureAtlas {
     /// scaling). `None` for an unknown key. Used by the extract to convert
     /// a sprite's pixel-space `region_rect` into an atlas-UV sub-rect.
     pub fn region_px(&self, key: u32) -> Option<(u32, u32)> {
-        self.regions.get(&key).map(|r| (r.w, r.h))
+        self.region(key).map(|r| (r.w, r.h))
     }
 
     /// Number of reserved regions. Used by tests; not perf-critical.

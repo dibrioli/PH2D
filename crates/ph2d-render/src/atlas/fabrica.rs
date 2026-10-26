@@ -7,12 +7,12 @@
 
 use std::sync::OnceLock;
 
-/// Uma imagem de fábrica: a chave reservada, o SVG, os texels da imagem inteira e a grelha (`[colunas, linhas]`).
+/// Uma imagem de fábrica: a chave reservada, o SVG, os texels no atlas e a grelha (`[colunas, linhas]`).
 ///
-/// ⭐ Um AZULEJO (`tile`) é UM desenho que o SVG dá e a imagem repete em todas as células da grelha; quem o
-/// pinta mostra a célula do MEIO ([`Self::middle_frame`]). Assim o vizinho de cada borda no atlas é o próprio
-/// azulejo, e o mip (que mistura a borda de uma região com o que está ao lado dela no atlas) não traz um fio
-/// transparente a cada repetição.
+/// ⭐ Um AZULEJO (`tile`) é UMA imagem de um desenho ([`Self::image_px`], [`Self::frames`] = 1 × 1); só o ATLAS
+/// a guarda envolvida por cópias de si mesma (`grid` = as cópias, `px` = a tira, a imagem é a do meio —
+/// [`super::TextureAtlas::insert_wrapped`], plano GEF 13 D1). Assim o vizinho de cada borda no atlas é o próprio
+/// azulejo, e o mip não traz um fio transparente a cada repetição — sem o objecto saber das cópias.
 #[derive(Clone, Copy, Debug)]
 pub struct FactoryArt {
     pub key: u32,
@@ -33,10 +33,22 @@ impl FactoryArt {
         [self.px[0] / self.grid[0], self.px[1] / self.grid[1]]
     }
 
-    /// A célula do meio da grelha (a de um azulejo que se pinta).
+    /// A célula do meio da grelha: num azulejo, a cópia que É a imagem.
     #[must_use]
     pub const fn middle_frame(&self) -> u32 {
         self.grid[1] / 2 * self.grid[0] + self.grid[0] / 2
+    }
+
+    /// Os texels da IMAGEM que a biblioteca mostra: um azulejo é uma célula; uma folha, a folha inteira.
+    #[must_use]
+    pub const fn image_px(&self) -> [u32; 2] {
+        if self.tile { self.cell_px() } else { self.px }
+    }
+
+    /// O corte da IMAGEM em quadros (`[colunas, linhas]`): um azulejo é um quadro só.
+    #[must_use]
+    pub const fn frames(&self) -> [u32; 2] {
+        if self.tile { [1, 1] } else { self.grid }
     }
 
     /// O lado (m) de uma célula no tamanho nativo.
@@ -162,36 +174,38 @@ pub const FACTORY_ART: [FactoryArt; 8] = [
 pub const COIN_FRAME_MS: u32 = 80;
 pub const FLAG_FRAME_MS: u32 = 150;
 
-/// ⭐ Os texels RGBA8 (sRGB, alfa reto) de `art` — rasterizados à 1.ª pergunta e guardados.
+fn indice(art: &FactoryArt) -> usize {
+    FACTORY_ART
+        .iter()
+        .position(|a| a.key == art.key)
+        .expect("arte de fábrica registada")
+}
+
+/// ⭐ Os texels RGBA8 (sRGB, alfa reto) da IMAGEM `art` ([`FactoryArt::image_px`]) — o que a biblioteca guarda e
+/// mostra; rasterizados à 1.ª pergunta e guardados.
 ///
 /// # Panics
 /// Se o SVG embebido não abre: é arte do repositório, e o gate `toda_a_arte_rasteriza` prova-a.
 #[must_use]
+pub fn factory_image(art: &FactoryArt) -> &'static [u8] {
+    static CACHE: [OnceLock<Vec<u8>>; FACTORY_ART.len()] =
+        [const { OnceLock::new() }; FACTORY_ART.len()];
+    CACHE[indice(art)].get_or_init(|| {
+        let tree = ph2d_imageio_svg::raster::parse(art.svg).expect("SVG de fábrica");
+        ph2d_imageio_svg::raster::rasterize(&tree, art.image_px()).expect("tamanho não nulo")
+    })
+}
+
+/// Os texels de `art` como o ATLAS os guarda (`art.px`): a imagem, e num azulejo a tira das cópias
+/// ([`super::wrap_image`]).
+#[must_use]
 pub fn factory_pixels(art: &FactoryArt) -> &'static [u8] {
     static CACHE: [OnceLock<Vec<u8>>; FACTORY_ART.len()] =
         [const { OnceLock::new() }; FACTORY_ART.len()];
-    let i = FACTORY_ART
-        .iter()
-        .position(|a| a.key == art.key)
-        .expect("arte de fábrica registada");
-    CACHE[i].get_or_init(|| {
-        let tree = ph2d_imageio_svg::raster::parse(art.svg).expect("SVG de fábrica");
-        if !art.tile {
-            return ph2d_imageio_svg::raster::rasterize(&tree, art.px).expect("tamanho não nulo");
-        }
-        let [cw, ch] = art.cell_px().map(|v| v as usize);
-        let um =
-            ph2d_imageio_svg::raster::rasterize(&tree, art.cell_px()).expect("tamanho não nulo");
-        let w = art.px[0] as usize;
-        let mut px = vec![0; w * art.px[1] as usize * 4];
-        for (y, linha) in px.chunks_exact_mut(w * 4).enumerate() {
-            let fonte = &um[(y % ch) * cw * 4..(y % ch + 1) * cw * 4];
-            for copia in linha.chunks_exact_mut(cw * 4) {
-                copia.copy_from_slice(fonte);
-            }
-        }
-        px
-    })
+    if !art.tile {
+        return factory_image(art);
+    }
+    CACHE[indice(art)].get_or_init(|| super::wrap_image(factory_image(art), art.cell_px(), art.grid))
 }
 
 #[cfg(test)]

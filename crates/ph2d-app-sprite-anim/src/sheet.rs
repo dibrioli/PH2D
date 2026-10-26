@@ -90,8 +90,9 @@ fn decode(key: SheetKey, db: &AssetDb) -> Option<SheetImage> {
     match key {
         SheetKey::Factory(k) => {
             let art = ph2d_render::FACTORY_ART.iter().find(|a| a.key == k)?;
-            let px = ph2d_render::factory_pixels(art);
-            SheetImage::new(Arc::new(px.to_vec()), art.px[0], art.px[1])
+            let px = ph2d_render::factory_image(art);
+            let [w, h] = art.image_px();
+            SheetImage::new(Arc::new(px.to_vec()), w, h)
         }
         SheetKey::Asset(id) => {
             let asset = db.get(&id)?;

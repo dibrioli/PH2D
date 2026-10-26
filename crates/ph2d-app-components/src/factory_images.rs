@@ -13,8 +13,9 @@ use std::collections::BTreeMap;
 /// Mete a arte de fábrica no `db` e no mapa do atlas. Idempotente (o id é o blake3 dos pixels).
 pub fn register(db: &AssetDb, atlas: &mut BTreeMap<u32, AssetId>) {
     for art in &FACTORY_ART {
-        let px = ph2d_render::factory_pixels(art);
-        let id = db.insert_image_rgba8(art.px[0], art.px[1], px.to_vec());
+        // A IMAGEM (um azulejo é um azulejo); as cópias à volta dele são só do atlas (plano GEF 13 D1).
+        let [w, h] = art.image_px();
+        let id = db.insert_image_rgba8(w, h, ph2d_render::factory_image(art).to_vec());
         atlas.insert(art.key, id);
     }
 }
@@ -29,6 +30,27 @@ pub fn art_of_key(key: u32) -> Option<&'static FactoryArt> {
 #[must_use]
 pub fn is_factory_key(key: u32) -> bool {
     art_of_key(key).is_some()
+}
+
+/// ⭐ **Ficheiro antigo** (plano GEF 13 D2): até à onda 13 um objecto dizia «o azulejo» com a grelha das cópias
+/// (`SpriteGrid` = `art.grid`, a célula do meio); hoje a região da chave JÁ é a cópia do meio. Tira essa grelha
+/// de toda sprite de azulejo de fábrica e devolve quantas mudaram. Idempotente; as folhas animadas ficam.
+pub fn forget_extrusion_grids(world: &mut ph2d_ecs::World) -> usize {
+    let mut q = world.query::<(ph2d_ecs::Entity, &ph2d_render::Sprite, &ph2d_ecs::SpriteGrid)>();
+    let antigas: Vec<ph2d_ecs::Entity> = q
+        .iter(world)
+        .filter(|(_, s, g)| match s.source {
+            ph2d_render::SpriteSource::Atlas { key } => art_of_key(key).is_some_and(|a| {
+                a.tile && [g.hframes, g.vframes] == a.grid && g.frame == a.middle_frame()
+            }),
+            _ => false,
+        })
+        .map(|(e, ..)| e)
+        .collect();
+    for e in &antigas {
+        world.entity_mut(*e).remove::<ph2d_ecs::SpriteGrid>();
+    }
+    antigas.len()
 }
 
 /// ⭐ As células cujos píxeis o ficheiro do projecto grava: as que o projecto trouxe, nunca a fábrica.

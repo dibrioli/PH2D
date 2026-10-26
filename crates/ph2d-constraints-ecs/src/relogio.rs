@@ -40,6 +40,10 @@ pub struct Simulador {
     previo: Option<(i64, Passo)>,
     pontos: BTreeMap<i64, Passo>,
     chave: Option<[u64; 3]>,
+    /// Num tempo virtual de laço: o período — o quadro 0 parte da ÓRBITA, não do repouso.
+    periodo: Option<i64>,
+    /// O tempo virtual do laço de agora, por `(de, ate, vaivém)` em quadros.
+    ciclico: Option<((i64, i64, bool), Box<Simulador>)>,
 }
 
 impl Simulador {
@@ -60,11 +64,11 @@ impl Simulador {
         if self.chave != Some(chave) {
             *self = Self {
                 chave: Some(chave),
+                periodo: self.periodo,
                 ..Self::default()
             };
         }
         let f = f.max(0);
-        let (mut k, mut s) = self.partida(f, entrada);
         #[expect(clippy::cast_possible_truncation, reason = "a lei da mola é f32")]
         let (dt, d, b) = (
             (1.0 / fps) as f32,
@@ -72,6 +76,7 @@ impl Simulador {
             mola.ressalto as f32,
         );
         let (tension, friction) = physics_of(MODE_TIME, 0.0, 0.0, d, b);
+        let (mut k, mut s) = self.partida(f, entrada, (tension, friction, dt));
         while k < f {
             if k + 1 == f {
                 self.previo = Some((k, s));
@@ -122,7 +127,12 @@ impl Simulador {
 
     /// De onde re-simular para chegar a `f`: o último quadro (se é `f` ou `f − 1`), senão o
     /// checkpoint válido mais recente ≤ `f`, senão o repouso no quadro 0.
-    fn partida(&mut self, f: i64, entrada: &mut dyn FnMut(i64) -> [f64; 3]) -> (i64, Passo) {
+    fn partida(
+        &mut self,
+        f: i64,
+        entrada: &mut dyn FnMut(i64) -> [f64; 3],
+        lei: (f32, f32, f32),
+    ) -> (i64, Passo) {
         if let Some((u, s)) = self.ultimo
             && (u == f || u + 1 == f)
             && entrada(u) == s.entrada
@@ -136,15 +146,115 @@ impl Simulador {
             // Os de depois dependem deste: todos caem.
             let _ = self.pontos.split_off(&k);
         }
-        let e = entrada(0);
-        #[expect(clippy::cast_possible_truncation, reason = "a lei da mola é f32")]
-        let s = Passo {
-            valor: e.map(|v| v as f32),
-            vel: [0.0; 3],
-            entrada: e,
+        let s = match self.periodo {
+            Some(p) => Self::orbita(p, entrada, lei),
+            None => repouso(entrada(0)),
         };
         self.pontos.insert(0, s);
         (0, s)
+    }
+}
+
+/// O laço do transporte, em quadros: `de..ate`, e se vai e volta (com o sentido de agora).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Laco {
+    pub de: f64,
+    pub ate: f64,
+    pub vaivem: bool,
+    pub para_a_frente: bool,
+}
+
+/// O teto de passos da órbita de um laço, por mudança de laço ou de animação: ~70 min de animação a
+/// 24 q/s. Uma mola de ressalto ≤ 0,9 assenta em poucas voltas; perto do ressalto máximo (0,99) e com
+/// uma duração longa a órbita pode não fechar a 1e-6 dentro dele — fica a última volta (o mesmo bit
+/// sempre), e a costura carrega o resto.
+const MAX_PASSOS_DA_ORBITA: i64 = 100_000;
+
+impl Simulador {
+    /// ⭐ [`Self::atraso_em`] sob o LAÇO do transporte. Fora do laço (ou sem ele), a timeline linear.
+    /// Dentro, a mola corre num tempo VIRTUAL que não volta atrás: em laço o período é `ate − de`; em
+    /// vaivém, a ida e a volta (`2·(ate − de)`), a volta a ler a animação ao contrário — a mola reage,
+    /// para a frente, ao corpo que volta. O quadro 0 do tempo virtual é a ÓRBITA que se repete (a mola
+    /// de um laço tocado há muito tempo): o fim junta-se ao começo sem salto. Função de `(q, laço,
+    /// sentido)` só: tocar e arrastar dão o mesmo bit.
+    pub fn atraso_no_laco(
+        &mut self,
+        q: f64,
+        laco: Option<Laco>,
+        mola: &Spring,
+        fps: f64,
+        entrada: &mut dyn FnMut(i64) -> [f64; 3],
+    ) -> [f64; 3] {
+        #[expect(clippy::cast_possible_truncation, reason = "um quadro cabe em i64")]
+        let quadros = laco
+            .filter(|l| l.de.is_finite() && l.ate.is_finite() && q >= l.de && q <= l.ate)
+            .map(|l| (l, l.de.round() as i64, l.ate.round() as i64))
+            .filter(|&(_, a, b)| b > a);
+        let Some((l, a, b)) = quadros else {
+            return self.atraso_em(q, mola, fps, entrada);
+        };
+        let n = b - a;
+        let p = if l.vaivem { 2 * n } else { n };
+        #[expect(clippy::cast_precision_loss, reason = "quadros")]
+        let (u, nf, pf) = (q - a as f64, n as f64, p as f64);
+        let v = if l.vaivem && !l.para_a_frente {
+            2.0 * nf - u
+        } else {
+            u
+        };
+        let chave = (a, b, l.vaivem);
+        let ciclico = match &mut self.ciclico {
+            Some((c, s)) if *c == chave => s,
+            outro => {
+                *outro = Some((
+                    chave,
+                    Box::new(Self {
+                        periodo: Some(p),
+                        ..Self::default()
+                    }),
+                ));
+                &mut outro.as_mut().expect("acabou de nascer").1
+            }
+        };
+        let mut virtual_ = |k: i64| {
+            let m = k.rem_euclid(p);
+            entrada(a + if m > n { p - m } else { m })
+        };
+        ciclico.atraso_em(v.rem_euclid(pf), mola, fps, &mut virtual_)
+    }
+
+    /// A órbita do laço de período `p`: a mola parte do repouso e corre voltas inteiras até o estado
+    /// no fim de uma volta ser o do começo (1e-6), ou até ao [`MAX_PASSOS_DA_ORBITA`].
+    fn orbita(
+        p: i64,
+        entrada: &mut dyn FnMut(i64) -> [f64; 3],
+        (tension, friction, dt): (f32, f32, f32),
+    ) -> Passo {
+        let ins: Vec<[f64; 3]> = (0..=p).map(&mut *entrada).collect();
+        let mut s = repouso(ins[0]);
+        let mut feitos = 0;
+        while feitos < MAX_PASSOS_DA_ORBITA {
+            let inicio = s;
+            for e in &ins[1..] {
+                s = um_passo(s, *e, tension, friction, dt);
+            }
+            feitos += p;
+            let perto =
+                |a: [f32; 3], b: [f32; 3]| a.iter().zip(b).all(|(x, y)| (x - y).abs() <= 1e-6);
+            if perto(inicio.valor, s.valor) && perto(inicio.vel, s.vel) {
+                break;
+            }
+        }
+        s
+    }
+}
+
+#[expect(clippy::cast_possible_truncation, reason = "a lei da mola é f32")]
+fn repouso(e: [f64; 3]) -> Passo {
+    Passo {
+        valor: e.map(|v| v as f32),
+        vel: [0.0; 3],
+        entrada: e,
     }
 }
 

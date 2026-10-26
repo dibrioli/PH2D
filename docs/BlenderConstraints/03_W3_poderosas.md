@@ -117,6 +117,19 @@ os quadros `⌊q⌋` e `⌊q⌋+1` (o `previo` guarda a outra ponta; continua fu
 por ordem salteada, ao bit). Na cena: o corpo mudava de sentido de uma vez (chaves lineares) e a haste esticava como
 borracha ⇒ chaves cúbicas e comprimento fixo. A haste escura (0,2) era invisível no fundo do palco: amarela, 0,12 m.
 
+**Smoke do dono 25/10 — «nos extremos do laço e do vaivém, uma transição inteligente»** (medido antes): a mola é função
+do quadro na timeline LINEAR, logo no recomeço do laço renascia em repouso — a costura saltava **0,527 m** contra
+**0,022 m** entre duas imagens de dentro (corpo em seno, período 48) — e no vaivém a volta era o filme da ida AO
+CONTRÁRIO (a mola «desbalançava»). Cura (`Simulador::atraso_no_laco`, gates `a_loop_joins_its_end_to_its_start` ·
+`ping_pong_turns_without_a_jump_and_never_runs_backwards` · `a_cena_5_nos_extremos_do_laco`, vistos vermelhos com o tipo a
+cair na timeline linear): dentro do laço do transporte a mola corre num TEMPO VIRTUAL que não volta atrás — período
+`ate − de` em laço, `2·(ate − de)` em vaivém (a volta lê a animação ao contrário e a mola reage-lhe para a frente) — e o
+quadro 0 desse tempo é a ÓRBITA PERIÓDICA (a mola de um laço tocado há muito tempo: voltas inteiras a partir do repouso
+até o fim de uma volta igualar o começo a 1e-6, teto `MAX_PASSOS_DA_ORBITA = 100 000` ≈ 70 min a 24 q/s — só uma mola
+quase sem amortecimento não fecha nele). Continua função de `(q, laço, sentido)`: tocar e arrastar dão o mesmo bit. O
+`Relogio` leva o laço do transporte da vista (`loop_range`, `is_ping_pong`, `is_advancing_forward`). A cena 5 passou a
+um laço de 2 s, que recomeça com a ponta ainda a balançar.
+
 **Medido antes de abrir (o que ficou fora):** Flip «troca desenho por ângulo» — o desenho é uma escolha discreta
 por *hold* (`FlipLayer::drawing_at`), sem canal animável: um Action sobre um Flip não tem o que tocar (fica para quando
 o Flip tiver o canal). Ponto de simulação — o `MotionCookPump` não tem id estável por ponto (só a ordem dos sinks):

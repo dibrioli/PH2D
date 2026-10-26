@@ -73,6 +73,7 @@ impl Cena {
             Some(ph2d_app_constraints::relogio::Relogio {
                 doc: &self.tl.doc,
                 t: self.ph.time(),
+                laco: None,
             }),
         );
         self.drive.settle();

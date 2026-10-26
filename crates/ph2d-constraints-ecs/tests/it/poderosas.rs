@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 use ph2d_constraints::{Action, Ajuste, Canais, Kind, PontoDeForma, SplineIk, Spring};
 use ph2d_constraints_ecs::{
-    Accoes, Caminhos, Constraints, Estado, Estados, Molas, Pontos, Simulador, evaluate,
+    Accoes, Caminhos, Constraints, Estado, Estados, Laco, Molas, Pontos, Simulador, evaluate,
 };
 use ph2d_ecs::{ChildOf, SimWorld, StableId, Transform, world_transform};
 use ph2d_preview_drive::PreviewDrive;
@@ -291,5 +291,88 @@ fn a_spring_adds_its_lag_at_its_place_in_the_stack() {
     assert_eq!(
         (t.translation.x, t.translation.y, t.rotation),
         (1.2, 1.0, 0.0)
+    );
+}
+
+/// Um corpo que nunca pára: vai e volta 3 m num ciclo de 48 quadros (a entrada de 48 é a de 0).
+fn balanco(k: i64) -> [f64; 3] {
+    [
+        3.0 * (std::f64::consts::TAU * k as f64 / 48.0).sin(),
+        0.0,
+        0.0,
+    ]
+}
+
+/// O maior passo do atraso entre duas imagens a 0,2 quadros, longe das pontas do laço.
+fn passo_de_dentro(s: &mut Simulador, laco: Laco, entrada: &mut dyn FnMut(i64) -> [f64; 3]) -> f64 {
+    let mola = Spring::default();
+    let v: Vec<[f64; 3]> = (10..230)
+        .map(|i| s.atraso_no_laco(f64::from(i) * 0.2, Some(laco), &mola, 24.0, &mut *entrada))
+        .collect();
+    v.windows(2)
+        .map(|w| (w[1][0] - w[0][0]).hypot(w[1][1] - w[0][1]))
+        .fold(0.0, f64::max)
+}
+
+/// ⭐ Report do dono 25/10: «no loop e pingpong deveria haver uma transição inteligente nos extremos».
+/// Em LAÇO a mola não renasce em repouso no recomeço: corre a órbita que se repete (a do laço tocado
+/// há muito tempo), e o fim junta-se ao começo como qualquer outro par de imagens.
+#[test]
+fn a_loop_joins_its_end_to_its_start() {
+    let mola = Spring::default();
+    let laco = Laco {
+        de: 0.0,
+        ate: 48.0,
+        vaivem: false,
+        para_a_frente: true,
+    };
+    let mut s = Simulador::default();
+    let dentro = passo_de_dentro(&mut s, laco, &mut balanco);
+    let fim = s.atraso_no_laco(47.8, Some(laco), &mola, 24.0, &mut balanco);
+    let comeco = s.atraso_no_laco(0.0, Some(laco), &mola, 24.0, &mut balanco);
+    let costura = (fim[0] - comeco[0]).hypot(fim[1] - comeco[1]);
+    assert!(
+        costura <= 1.5 * dentro,
+        "a costura do laço salta {costura} m (dentro: {dentro} m por imagem)"
+    );
+    // Arrastar dentro do laço dá o bit de tocar.
+    let mut outro = Simulador::default();
+    for q in [30.4, 0.6, 47.8, 12.2] {
+        let a = outro.atraso_no_laco(q, Some(laco), &mola, 24.0, &mut balanco);
+        let b = s.atraso_no_laco(q, Some(laco), &mola, 24.0, &mut balanco);
+        assert_eq!(a.map(f64::to_bits), b.map(f64::to_bits), "q {q}");
+    }
+}
+
+/// Em VAIVÉM a volta não é o filme da ida ao contrário (uma mola não «desbalança»): ela continua a
+/// reagir, para a frente no tempo, ao corpo que volta — e vira na ponta sem salto.
+#[test]
+fn ping_pong_turns_without_a_jump_and_never_runs_backwards() {
+    let mola = Spring::default();
+    // O corpo vai de 0 a 3 m nos quadros 0–24 e espera até ao 48.
+    let mut ida = |k: i64| {
+        let u = (k as f64 / 24.0).clamp(0.0, 1.0);
+        [3.0 * u * u * (3.0 - 2.0 * u), 0.0, 0.0]
+    };
+    let laco = |para_a_frente| Laco {
+        de: 0.0,
+        ate: 48.0,
+        vaivem: true,
+        para_a_frente,
+    };
+    let mut s = Simulador::default();
+    let dentro = passo_de_dentro(&mut s, laco(true), &mut ida);
+    let antes = s.atraso_no_laco(47.9, Some(laco(true)), &mola, 24.0, &mut ida);
+    let depois = s.atraso_no_laco(47.9, Some(laco(false)), &mola, 24.0, &mut ida);
+    let virada = (antes[0] - depois[0]).hypot(antes[1] - depois[1]);
+    assert!(
+        virada <= 1.5 * dentro,
+        "a virada salta {virada} m (dentro: {dentro})"
+    );
+    let vai = s.atraso_no_laco(6.0, Some(laco(true)), &mola, 24.0, &mut ida);
+    let volta = s.atraso_no_laco(6.0, Some(laco(false)), &mola, 24.0, &mut ida);
+    assert!(
+        (vai[0] - volta[0]).abs() > 1e-3,
+        "na volta a mola repete a ida ao contrário: {vai:?} = {volta:?}"
     );
 }

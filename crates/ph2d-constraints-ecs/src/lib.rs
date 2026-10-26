@@ -19,7 +19,7 @@ pub use ik_item::{
 };
 pub use ik_novo::{add_ik, add_look_at, aponta};
 pub use ordem::ordem;
-pub use relogio::{Accoes, Amostra, Molas, Simulador};
+pub use relogio::{Accoes, Amostra, Laco, Molas, Simulador};
 
 use bevy_ecs::component::Component;
 use ph2d_constraints::Kind;

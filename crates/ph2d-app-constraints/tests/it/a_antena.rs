@@ -7,7 +7,7 @@ use ph2d_app_constraints::quadro;
 use ph2d_app_constraints::relogio::Relogio;
 use ph2d_app_constraints::smoke::{self, BASE_NO_CORPO, CORPO, PONTA_NO_CORPO};
 use ph2d_app_constraints::smoke_antena::chaves_do_corpo;
-use ph2d_constraints_ecs::{Constraints, Estado, Estados};
+use ph2d_constraints_ecs::{Constraints, Estado, Estados, Laco};
 use ph2d_core::Playhead;
 use ph2d_ecs::{Name, SimWorld, world_transform};
 use ph2d_preview_drive::PreviewDrive;
@@ -20,6 +20,7 @@ struct Cena {
     corpo: Entity,
     ponta: Entity,
     haste: Entity,
+    laco: Option<Laco>,
 }
 
 fn achar(sim: &mut SimWorld, nome: &str) -> Entity {
@@ -51,6 +52,7 @@ impl Cena {
             corpo,
             ponta,
             haste,
+            laco: None,
         }
     }
 
@@ -66,6 +68,7 @@ impl Cena {
         let relogio = Relogio {
             doc: &self.tl.doc,
             t,
+            laco: self.laco,
         };
         quadro(
             &mut self.sim,
@@ -165,6 +168,62 @@ fn a_haste_chega_a_ponta() {
         assert!(
             (fim[0] - p[0]).hypot(fim[1] - p[1]) < 1e-3,
             "quadro {q}: a haste acaba em {fim:?}, a ponta está em {p:?} (arte {a:?})"
+        );
+    }
+}
+
+/// ⭐ Report do dono 25/10 — os extremos do laço. A cena 5 em VAIVÉM sobre o laço do smoke (0–72): a
+/// ponta vira na ponta do laço sem salto, a volta não é a ida ao contrário, e em LAÇO o recomeço junta-se
+/// ao fim. Tocar a 60 Hz e arrastar dão o mesmo bit.
+#[test]
+fn a_cena_5_nos_extremos_do_laco() {
+    let laco = |vaivem, para_a_frente| {
+        Some(Laco {
+            de: 0.0,
+            ate: 72.0,
+            vaivem,
+            para_a_frente,
+        })
+    };
+    let mut c = Cena::nova();
+    let atraso = |(p, k): ([f32; 2], [f32; 2])| [p[0] - k[0], p[1] - k[1]];
+    let distancia = |a: [f32; 2], b: [f32; 2]| (a[0] - b[0]).hypot(a[1] - b[1]);
+    // 60 Hz sobre 24 q/s: 2,5 imagens por quadro; 3 s de laço = 180 imagens.
+    let tocar = |c: &mut Cena, vaivem, frente| -> Vec<[f32; 2]> {
+        c.laco = laco(vaivem, frente);
+        (0..=180)
+            .map(|i| atraso(c.em_t(f64::from(i) / 60.0)))
+            .collect()
+    };
+    let ida = tocar(&mut c, true, true);
+    let volta = tocar(&mut c, true, false);
+    let dentro = ida
+        .windows(2)
+        .map(|w| distancia(w[0], w[1]))
+        .fold(0.0, f32::max);
+    // 179: 0,4 quadros antes da ponta na ida, 0,4 depois na volta.
+    let virada = distancia(ida[179], volta[179]);
+    assert!(
+        virada <= 1.5 * dentro,
+        "a virada salta {virada} m (dentro {dentro})"
+    );
+    assert!(
+        distancia(ida[20], volta[20]) > 1e-3,
+        "a volta é a ida ao contrário"
+    );
+    let em_laco = tocar(&mut c, false, true);
+    let costura = distancia(em_laco[179], em_laco[0]);
+    assert!(
+        costura <= 1.5 * dentro,
+        "o recomeço salta {costura} m (dentro {dentro})"
+    );
+    c.laco = laco(false, true);
+    for i in [133, 2, 179, 90] {
+        let got = atraso(c.em_t(f64::from(i) / 60.0));
+        assert_eq!(
+            got.map(f32::to_bits),
+            em_laco[i as usize].map(f32::to_bits),
+            "imagem {i}"
         );
     }
 }

@@ -58,9 +58,10 @@ pub fn step(
     hero.set_panel_visible("inspector", true);
     hero.store
         .set_collapsed(ph2d_editor_core::ids::INSP_LIVE_CONSTRAINTS_SECTION, false);
-    // Em laço até 1 s depois de o corpo parar: no fim a mola já assentou e o recomeço não salta.
+    // Em laço até o corpo voltar ao começo — a ponta ainda balança no recomeço: é o caso que a órbita
+    // do laço resolve (a mola não renasce em repouso).
     #[expect(clippy::cast_precision_loss, reason = "quadros da cena")]
-    let fim = (CORPO[CORPO.len() - 1].0 + 24) as f64 / tl.doc.fps_display;
+    let fim = CORPO[CORPO.len() - 1].0 as f64 / tl.doc.fps_display;
     // O laço é do CLIP, por vista (Keys e Arrange); o transporte espelha-o.
     for keys in [true, false] {
         tl.doc.set_active_loop_for(keys, Some((0.0, fim)));

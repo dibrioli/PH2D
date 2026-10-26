@@ -7,16 +7,18 @@ use std::sync::Arc;
 use bevy_ecs::entity::Entity;
 use ph2d_anim::{AnimValue, AttributeEvaluator, Track};
 use ph2d_constraints::Kind;
-use ph2d_constraints_ecs::{Accoes, Amostra, Constraints, Molas};
+use ph2d_constraints_ecs::{Accoes, Amostra, Constraints, Laco, Molas};
 use ph2d_core::Playhead;
 use ph2d_ecs::SimWorld;
 use ph2d_timeline::TimelineDoc;
 
-/// O relógio do quadro: o documento e o instante da vista (segundos).
+/// O relógio do quadro: o documento, o instante da vista (segundos) e o laço do transporte (em
+/// quadros, com o sentido de agora no vaivém).
 #[derive(Clone, Copy)]
 pub struct Relogio<'a> {
     pub doc: &'a TimelineDoc,
     pub t: f64,
+    pub laco: Option<Laco>,
 }
 
 impl<'a> Relogio<'a> {
@@ -25,9 +27,17 @@ impl<'a> Relogio<'a> {
     #[must_use]
     pub fn da_vista(tl: &'a ph2d_timeline::TimelineState, relogios: [&Playhead; 3]) -> Self {
         let [e, c, k] = relogios;
+        let ph = tl.view_clock().pick(e, c, k);
+        let fps = tl.doc.fps_display;
         Self {
             doc: &tl.doc,
-            t: tl.view_clock().pick(e, c, k).time(),
+            t: ph.time(),
+            laco: ph.loop_range().map(|(de, ate)| Laco {
+                de: de * fps,
+                ate: ate * fps,
+                vaivem: ph.is_ping_pong(),
+                para_a_frente: ph.is_advancing_forward(),
+            }),
         }
     }
 }
@@ -103,7 +113,8 @@ pub(crate) fn preparar(sim: &mut SimWorld, relogio: Relogio<'_>) {
                 })
             };
             let sim = molas.sims.entry((dono, id)).or_default();
-            let atraso = sim.atraso_em(relogio.t * fps, &mola, fps, &mut entrada);
+            let q = relogio.t * fps;
+            let atraso = sim.atraso_no_laco(q, relogio.laco, &mola, fps, &mut entrada);
             molas.atrasos.insert((dono, id), atraso);
         }
     }

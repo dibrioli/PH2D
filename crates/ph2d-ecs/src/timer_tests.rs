@@ -18,6 +18,7 @@ fn one_shot() -> (Timer, TimerState) {
             elapsed_us: 0,
             running: true,
             finished: false,
+            item: Default::default(),
         },
     )
 }
@@ -424,6 +425,43 @@ fn nascer_e_nunca_ter_acabado() {
     let renascido = born(&t);
     assert!(!renascido.finished, "renascer tem de apagar o fim");
     assert_eq!(renascido, born(&t), "nascer e' deterministico");
+}
+
+/// F32 §3: apagar o timer 0 não passa o relógio dele ao vizinho — o slot é do ITEM; e o que o
+/// undo devolve nasce de novo sem tocar no relógio de quem ficou.
+#[test]
+fn apagar_um_timer_anterior_deixa_cada_relogio_com_o_dono() {
+    let t = |n: u32| Timer {
+        duration_us: 1_000,
+        item: crate::ItemId(n),
+        ..Timer::default()
+    };
+    let mut timers = Timers(vec![t(1), t(2)]);
+    let mut rt = TimerRuntime::default();
+    assert!(reconcile(&timers, &mut rt));
+    rt.0[0].running = true;
+    rt.0[0].elapsed_us = 500;
+    timers.0.remove(0);
+    assert!(reconcile(&timers, &mut rt));
+    assert_eq!(rt.0, vec![born(&t(2))], "o B não herda o relógio do A");
+    rt.0[0].elapsed_us = 300;
+    timers.0.insert(0, t(1));
+    assert!(reconcile(&timers, &mut rt));
+    assert_eq!(rt.0[1].elapsed_us, 300, "o B guarda o seu");
+    assert_eq!(rt.0[0], born(&t(1)));
+    assert!(!reconcile(&timers, &mut rt), "em dia: não mexe");
+}
+
+/// O id chega um quadro depois do timer: o slot sem id, no mesmo sítio, adopta-o sem renascer.
+#[test]
+fn o_slot_sem_id_adopta_o_do_seu_timer() {
+    let mut timers = Timers(vec![Timer::default()]);
+    let mut rt = TimerRuntime::default();
+    reconcile(&timers, &mut rt);
+    rt.0[0].elapsed_us = 700;
+    timers.0[0].item = crate::ItemId(5);
+    assert!(reconcile(&timers, &mut rt));
+    assert_eq!((rt.0[0].elapsed_us, rt.0[0].item), (700, crate::ItemId(5)));
 }
 
 /// **A conversão do passo fixo ARREDONDA.**

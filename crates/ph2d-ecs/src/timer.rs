@@ -140,6 +140,8 @@ pub struct TimerState {
     /// e ler isso como um fim faria um objecto pausado saltar para o valor final.
     /// ⚠️ **Um timer que REPETE nunca o levanta** — ele não acaba, por definição.
     pub finished: bool,
+    /// O [`Timer::item`] de quem este slot é: o [`reconcile`] casa por ele, nunca pela posição (F32 §3).
+    pub item: crate::ItemId,
 }
 
 /// **O relógio dos timers de uma entidade** — ⛔ **NÃO registado, de propósito**.
@@ -148,9 +150,8 @@ pub struct TimerState {
 /// um passo** — a lei que a física declara desde sempre (*«components de CONFIG, nunca estado vivo
 /// de solver»*) e que o `SpriteAnimator` paga por ter escolhido o contrário.
 ///
-/// ⚠️ **O índice casa com o do [`Timers`]**, e é isso que os liga — não um nome. Um nome ligaria
-/// dois vectores por uma string que o artista pode editar a meio, e o relógio saltaria de timer.
-/// A ponte reconcilia o comprimento a cada tique (ver `render_loop::timer_tick`).
+/// ⚠️ **O slot é do item** ([`TimerState::item`]), não de um nome nem da posição: um nome é editável
+/// a meio, e a posição muda quando o artista apaga um timer anterior (o relógio passava ao vizinho).
 ///
 /// ⭐⭐⭐ **A AUSÊNCIA de `Serialize`/`Deserialize` é LOAD-BEARING, e foi uma prova de mutação que o
 /// mostrou:** tentar registá-lo não dá um gate vermelho, dá **erro de compilação**
@@ -290,14 +291,21 @@ pub fn advance(timer: &Timer, state: &mut TimerState, dt_us: u64) -> TimerOutcom
 /// ⚠️ **Encolher também é nascimento ao contrário:** truncar deita fora o estado dos slots que já
 /// não existem, senão um timer removido e reposto voltaria a correr a meio.
 pub fn reconcile(timers: &Timers, rt: &mut TimerRuntime) -> bool {
-    let nascidos = rt.0.len();
-    if nascidos == timers.0.len() {
+    if rt.0.len() == timers.0.len() && rt.0.iter().zip(&timers.0).all(|(s, t)| s.item == t.item) {
         return false;
     }
-    rt.0.resize(timers.0.len(), TimerState::default());
-    for (t, s) in timers.0.iter().zip(rt.0.iter_mut()).skip(nascidos) {
-        *s = born(t);
-    }
+    let antes = std::mem::take(&mut rt.0);
+    rt.0 = (timers.0.iter().enumerate())
+        .map(|(i, t)| {
+            let meu = (!t.item.is_none())
+                .then(|| antes.iter().find(|s| s.item == t.item))
+                .flatten();
+            // O id chega um quadro depois do item (o passe): o slot ainda sem id, NO MESMO sítio, é dele.
+            let adoptado = antes.get(i).filter(|s| s.item.is_none());
+            meu.or(adoptado)
+                .map_or_else(|| born(t), |s| TimerState { item: t.item, ..*s })
+        })
+        .collect();
     true
 }
 
@@ -316,6 +324,7 @@ pub fn born(timer: &Timer) -> TimerState {
         // ⚠️ **Nascer é nunca ter acabado** — e é isso que faz o rebobinar devolver um objecto com
         // o *fade* por correr, em vez de um preso no valor final da corrida anterior.
         finished: false,
+        item: timer.item,
     }
 }
 

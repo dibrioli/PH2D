@@ -110,7 +110,9 @@ pub fn apply_statemachine_edit(world: &mut World, bits: u64, edit: &E) -> bool {
                     t.to -= 1;
                 }
             }
-            if m.initial as usize >= m.states.len() {
+            if m.initial > k {
+                m.initial -= 1;
+            } else if m.initial as usize >= m.states.len() {
                 m.initial = 0;
             }
             true

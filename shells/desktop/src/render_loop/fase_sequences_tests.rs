@@ -28,6 +28,7 @@ fn cena(nome: &str, us: u64, a_correr: bool) -> (World, TimelineDoc, Entity) {
                 elapsed_us: us,
                 running: a_correr,
                 finished: false,
+                item: Default::default(),
             }]),
         ))
         .id();

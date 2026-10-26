@@ -171,3 +171,18 @@ fn o_estado_corrente_vem_do_vivo() {
         "depois de um avanco com o `botao`, ele esta' em «A abrir»"
     );
 }
+
+/// F32 §3: apagar um estado ANTERIOR ao inicial recua o inicial com ele — sem isso, o estado
+/// seguinte passava a ser o inicial, em silêncio.
+#[test]
+fn apagar_um_estado_anterior_recua_o_inicial() {
+    let (mut sim, bits) = cena();
+    assert!(apply_statemachine_edit(sim.world_mut(), bits, &E::Initial(2)));
+    assert!(apply_statemachine_edit(
+        sim.world_mut(),
+        bits,
+        &E::RemoveState(0)
+    ));
+    let i = build_statemachine_info(sim.world(), bits, 1, true).unwrap();
+    assert_eq!(i.states[i.initial as usize].name, "Aberta");
+}

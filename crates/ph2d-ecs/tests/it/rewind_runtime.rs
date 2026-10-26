@@ -373,6 +373,7 @@ fn rebobinar_parado_nao_faz_o_cerebro_reanunciar_a_cada_quadro() {
             StateMachineRuntime {
                 current: 0,
                 started: true,
+                item: Default::default(),
             },
         ))
         .id();
@@ -382,6 +383,7 @@ fn rebobinar_parado_nao_faz_o_cerebro_reanunciar_a_cada_quadro() {
             StateMachineRuntime {
                 current: 1,
                 started: true,
+                item: Default::default(),
             },
         ))
         .id();
@@ -395,7 +397,8 @@ fn rebobinar_parado_nao_faz_o_cerebro_reanunciar_a_cada_quadro() {
         rt(&w, saiu),
         StateMachineRuntime {
             current: 0,
-            started: false
+            started: false,
+            item: Default::default(),
         },
         "o que saiu do inicial não renasceu"
     );

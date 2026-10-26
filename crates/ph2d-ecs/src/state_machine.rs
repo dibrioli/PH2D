@@ -140,19 +140,24 @@ pub struct StateMachineRuntime {
     /// A máquina já **entrou** alguma vez? ⚠️ Enquanto for `false`, o próximo avanço anuncia a
     /// entrada no estado inicial — *entrar no inicial é entrar*.
     pub started: bool,
+    /// O [`MachineState::item`] do estado corrente: o [`reconcile`] relocaliza o `current` por ele
+    /// quando o artista apaga um estado anterior com o jogo a correr (F32 §3).
+    pub item: crate::ItemId,
 }
 
 /// **O que um cérebro ACABADO DE NASCER recebe** — a porta, com dois leitores (o
 /// [`reconcile`] e o [`crate::rewind_runtime`]), pela mesma lei que o [`crate::timer::born`].
 #[must_use]
 pub fn born(m: &StateMachine) -> StateMachineRuntime {
+    let current = if (m.initial as usize) < m.states.len() {
+        m.initial
+    } else {
+        0
+    };
     StateMachineRuntime {
-        current: if (m.initial as usize) < m.states.len() {
-            m.initial
-        } else {
-            0
-        },
+        current,
         started: false,
+        item: m.states.get(current as usize).map_or_else(Default::default, |s| s.item),
     }
 }
 
@@ -167,14 +172,26 @@ pub struct Advanced {
 
 /// **Põe o vivo em dia com a config** — o irmão do [`crate::timer::reconcile`].
 ///
-/// ⚠️ Apagar estados pode deixar o `current` a apontar para fora; um índice inválido não é um caso
-/// especial a lembrar em cada leitura, é um estado que **não pode existir**. ⇒ ele recua ao inicial.
-/// Devolve `true` se mexeu.
+/// O `current` segue o ESTADO ([`StateMachineRuntime::item`]), não a posição: apagar um estado
+/// anterior desloca-o, e o vivo relocaliza-se. O estado corrente apagado (ou um índice fora) não é um
+/// caso especial a lembrar em cada leitura: ⇒ o vivo renasce no inicial. Devolve `true` se mexeu.
 pub fn reconcile(m: &StateMachine, rt: &mut StateMachineRuntime) -> bool {
-    if (rt.current as usize) < m.states.len() {
+    let aqui = m.states.get(rt.current as usize).map(|s| s.item);
+    if aqui.is_some_and(|i| i == rt.item) {
         return false;
     }
-    *rt = born(m);
+    // O id chega um quadro depois do estado (o passe): o vivo sem id adopta o do sítio onde está.
+    if let Some(i) = aqui.filter(|_| rt.item.is_none()) {
+        rt.item = i;
+        return true;
+    }
+    let pos = (!rt.item.is_none())
+        .then(|| m.states.iter().position(|s| s.item == rt.item))
+        .flatten();
+    match pos.and_then(|p| u8::try_from(p).ok()) {
+        Some(p) => rt.current = p,
+        None => *rt = born(m),
+    }
     true
 }
 
@@ -229,6 +246,7 @@ pub fn advance(m: &StateMachine, rt: &mut StateMachineRuntime, fired: &[&str]) -
         gasto[i] = true;
         anuncia(&mut out.emitted, &m.states[rt.current as usize].on_exit);
         rt.current = destino;
+        rt.item = m.states[destino as usize].item;
         anuncia(&mut out.emitted, &m.states[rt.current as usize].on_enter);
         out.steps += 1;
     }

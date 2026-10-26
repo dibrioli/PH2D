@@ -247,6 +247,7 @@ fn the_panel_never_touches_the_live_clock() {
             elapsed_us: 700_000,
             running: true,
             finished: false,
+            item: Default::default(),
         }]));
     let antes = sim
         .world()

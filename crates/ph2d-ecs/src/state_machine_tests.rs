@@ -262,3 +262,24 @@ fn um_inicial_fora_de_alcance_nasce_no_primeiro() {
     };
     assert_eq!(born(&m).current, 0);
 }
+
+/// F32 §3: com o jogo a correr, apagar um estado ANTERIOR desloca o corrente; o vivo segue o
+/// ESTADO (o id), e o estado corrente apagado renasce no inicial.
+#[test]
+fn o_estado_corrente_segue_o_item_quando_um_anterior_sai() {
+    let mut m = porta();
+    for (k, s) in m.states.iter_mut().enumerate() {
+        s.item = crate::ItemId(10 + k as u32);
+    }
+    let mut rt = born(&m);
+    advance(&m, &mut rt, &[]);
+    advance(&m, &mut rt, &["botao", "fim"]);
+    assert_eq!((rt.current, rt.item), (2, crate::ItemId(12)), "na Aberta");
+    m.states.remove(0);
+    assert!(reconcile(&m, &mut rt));
+    assert_eq!(m.states[rt.current as usize].name, "Aberta", "continua na Aberta");
+    assert!(rt.started, "não renasceu");
+    m.states.remove(1);
+    assert!(reconcile(&m, &mut rt));
+    assert_eq!((rt.current, rt.started), (0, false), "o corrente saiu: renasce no inicial");
+}

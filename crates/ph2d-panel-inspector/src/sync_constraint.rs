@@ -57,7 +57,7 @@ pub(crate) fn no_ecra(u: Unidade, v: f32, p: &ProjectSettings) -> f64 {
             .display_unit
             .from_meters_f64(f64::from(v), p.pixels_per_meter),
         Unidade::Graus => p.display_angle.from_radians_f64(f64::from(v).to_radians()),
-        Unidade::Porcento => f64::from(v) * 100.0,
+        Unidade::Porcento => f64::from(v) * 100.0, // LITERAL-PX-OK: fracção → por cento (conversão, não UI)
         Unidade::Contagem | Unidade::Segundos => f64::from(v),
     }
 }
@@ -68,7 +68,7 @@ pub(crate) fn do_ecra(u: Unidade, v: f64, p: &ProjectSettings) -> f32 {
     match u {
         Unidade::Metros => p.display_unit.to_meters_f64(v, p.pixels_per_meter) as f32,
         Unidade::Graus => p.display_angle.to_radians_f64(v).to_degrees() as f32,
-        Unidade::Porcento => (v / 100.0) as f32,
+        Unidade::Porcento => (v / 100.0) as f32, // LITERAL-PX-OK: por cento → fracção (conversão, não UI)
         Unidade::Contagem | Unidade::Segundos => v as f32,
     }
 }
@@ -92,6 +92,6 @@ pub(crate) fn unidade_e_passo(u: Unidade) -> (Option<Unit>, f64) {
         }
         Unidade::Porcento => (Some(Unit::Percent), 1.0),
         Unidade::Contagem => (None, 1.0),
-        Unidade::Segundos => (Some(Unit::Seconds), 0.01),
+        Unidade::Segundos => (Some(Unit::Seconds), 0.01), // LITERAL-PX-OK: passo em segundos (centésimo)
     }
 }

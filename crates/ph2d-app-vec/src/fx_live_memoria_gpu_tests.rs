@@ -84,10 +84,6 @@ impl Banco {
             .expect("render");
         let _ = self.gpu.device.poll(wgpu::PollType::wait_indefinitely());
     }
-
-    fn mib(&self) -> [u64; 3] {
-        self.fx.gpu_bytes().map(|b| b >> 20)
-    }
 }
 
 /// A VRAM deste processo segundo o driver (`nvidia-smi`), em MiB — inclui o que o Vello segura.
@@ -286,4 +282,36 @@ fn fx_memoria_sonda_do_preco() {
         drop(s);
     }
     eprintln!("[f35-preco] VelloPass::new {vello:.1} ms · FxStackPass::new {pilha:.1} ms (mínimo de 7)");
+}
+
+/// **G16 (placa) — o fim de um episódio sem memória REFAZ as texturas do FX.** Uma textura criada
+/// sob recusa é inválida para sempre, e o memo nunca mais a re-coze: a forma filtrada ficava fora da
+/// tela depois de a placa voltar (foto F35 §2). Sobe a geração (`ph2d_gpu::memoria`) e confere que a
+/// textura registada da forma é outra, e que a forma continua com imagem.
+#[test]
+#[ignore = "needs a real GPU device; run with --ignored on the GPU lane"]
+fn the_end_of_an_out_of_memory_episode_rebuilds_the_fx_textures() {
+    let Some(mut b) = Banco::novo() else {
+        return;
+    };
+    let id = b.scene.paths().first().expect("nuvem").id;
+    let abertura = Camera2d::new([0.0, 0.0], ABERTURA);
+    for _ in 0..3 {
+        b.quadro(abertura);
+    }
+    let antes = b.fx.textura_de(id).cloned().expect("textura da nuvem");
+    // Um episódio inteiro no vigia do processo: uma recusa e o fim dela.
+    let v = &ph2d_gpu::memoria::VIGIA;
+    let g0 = v.geracao();
+    v.anota_em(0);
+    let _ = v.mudou_em(0);
+    let _ = v.mudou_em(10 * ph2d_gpu::memoria::JANELA_MS);
+    assert_eq!(v.geracao(), g0 + 1, "o episódio devia ter acabado");
+    b.quadro(abertura);
+    let depois = b.fx.textura_de(id).cloned().expect("textura da nuvem depois");
+    assert!(
+        antes != depois && b.fx.images().len() == 1,
+        "o fim do episódio não refez a textura do FX (a mesma: {})",
+        antes == depois
+    );
 }

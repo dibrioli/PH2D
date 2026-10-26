@@ -47,10 +47,12 @@ impl GameRt {
         if size == self.size || size.0 == 0 || size.1 == 0 {
             return;
         }
-        let (tex, view) = create(&gpu.device, size);
+        // Criada sob recusa de memória, é inválida: o tamanho fica por cumprir e o próximo
+        // `ensure_size` (o fim do episódio, F35 §2) refá-la.
+        let ((tex, view), falta) = ph2d_gpu::memoria::sob_escopo_de_memoria(&gpu.device, || create(&gpu.device, size));
         self.texture = tex;
         self.view = view;
-        self.size = size;
+        self.size = if falta.is_some() { (0, 0) } else { size };
     }
 
     pub fn view(&self) -> &wgpu::TextureView {

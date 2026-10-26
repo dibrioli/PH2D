@@ -130,7 +130,8 @@ mod tests {
     /// ⚠️ O gate de GPU mede a cura pela `render_and_readback` → `render_to_intermediate`; a
     /// entrega do ECRÃ (`render`) não tem leitura de volta, e o defeito voltaria por ela sem nenhum
     /// gate o ver. ⇒ o número de `.render_to_texture(` tem de ser o de `scene_for_vello(`, e as duas
-    /// contagens não podem ser zero.
+    /// contagens não podem ser zero. Desde a F35 a entrega é UMA (`VelloPass::entrega`, sob escopo de
+    /// memória) e as duas portas públicas chamam-na.
     ///
     /// ⚠️ É um gate de TEXTO e responde «está escrito», nunca «corre» — a metade «corre» é a de GPU.
     #[test]
@@ -142,9 +143,11 @@ mod tests {
             .join("\n");
         let entregas = fonte.matches(".render_to_texture(").count();
         let portas = fonte.matches("keepalive.scene_for_vello(").count();
+        let chamadas = fonte.matches("self.entrega(gpu, scene, &params)").count();
         assert!(
-            entregas >= 2,
-            "o censo nao achou as entregas ao Vello ({entregas}) — mudou de forma?"
+            entregas >= 1 && chamadas >= 2,
+            "o censo nao achou as entregas ao Vello ({entregas}) nem as duas portas que as chamam \
+             ({chamadas}) — mudou de forma?"
         );
         assert_eq!(
             entregas, portas,

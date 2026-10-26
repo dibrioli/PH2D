@@ -441,6 +441,12 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "shell.vec_text.font_ttf_otf" => "Font (TTF / OTF)",
         "shell.vec_text_object.text" => "Text",
         // ph2d-migrar-texto:end
+        // F35 §2 — a placa sem memória (o título da janela e o toast da volta).
+        "shell.gpu_memory.title" => "Graphics card out of memory",
+        "shell.gpu_memory.out" => {
+            "The graphics card ran out of memory \u{2014} another program may be using it. Close it and the editor draws again."
+        }
+        "shell.gpu_memory.back" => "The graphics card has memory again",
         _ => return None,
     })
 }

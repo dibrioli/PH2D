@@ -54,11 +54,12 @@ impl WorldRt {
         if size == self.size || size.0 == 0 || size.1 == 0 {
             return;
         }
-        let (t, b, s) = create(&gpu.device, size);
+        // Sob recusa de memória o tamanho fica por cumprir (ver `GameRt::ensure_size`, F35 §2).
+        let ((t, b, s), falta) = ph2d_gpu::memoria::sob_escopo_de_memoria(&gpu.device, || create(&gpu.device, size));
         self.texture = t;
         self.blend_view = b;
         self.sample_view = s;
-        self.size = size;
+        self.size = if falta.is_some() { (0, 0) } else { size };
     }
 
     /// A vista onde as faixas se desenham.

@@ -242,11 +242,13 @@ impl FrostPass {
                 })
                 .create_view(&wgpu::TextureViewDescriptor::default())
         };
-        self.half = Some(Half {
+        // Sob recusa de memória fica por fazer: o próximo `ensure_size` refá-lo (F35 §2).
+        let (half, falta) = ph2d_gpu::memoria::sob_escopo_de_memoria(&gpu.device, || Half {
             a: make("ph2d-render frost half A"),
             b: make("ph2d-render frost half B"),
             size: want,
         });
+        self.half = falta.is_none().then_some(half);
     }
 
     /// ⭐⭐⭐ **Borra `view` no lugar** — a textura entra nítida e sai jateada.

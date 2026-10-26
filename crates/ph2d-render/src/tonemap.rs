@@ -244,10 +244,11 @@ impl Tonemap {
         if size == self.output_size || size.0 == 0 || size.1 == 0 {
             return;
         }
-        let (tex, view) = build_ldr_output(gpu, size);
+        // Sob recusa de memória o tamanho fica por cumprir (ver `GameRt::ensure_size`, F35 §2).
+        let ((tex, view), falta) = ph2d_gpu::memoria::sob_escopo_de_memoria(&gpu.device, || build_ldr_output(gpu, size));
         self.output_texture = tex;
         self.output_view = view;
-        self.output_size = size;
+        self.output_size = if falta.is_some() { (0, 0) } else { size };
     }
 
     /// Rebuild the bind group with a new game RT view (called by the

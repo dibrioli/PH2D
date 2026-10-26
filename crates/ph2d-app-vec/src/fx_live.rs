@@ -101,6 +101,9 @@ pub struct FxLive {
     parado: u32,
     /// O maior lote que o renderer do `scratch` já rasterizou: o pool interno do Vello guarda-o.
     pico_lote: (u32, u32),
+    /// A geração da placa (`ph2d_gpu::memoria`) com que estes recursos nasceram: criados sob recusa
+    /// de memória são inválidos para sempre, e o fim do episódio refá-los (F35 §2).
+    geracao: u64,
 }
 
 /// Quadros parados até soltar o que sobra (F35 §1): a roda contínua re-coze a < 200 ms (≤ 29 quadros a
@@ -151,6 +154,12 @@ impl FxLive {
         surface_format: wgpu::TextureFormat,
         vello_pass: &mut VelloPass,
     ) {
+        let geracao = ph2d_gpu::memoria::geracao();
+        if geracao != self.geracao {
+            self.geracao = geracao;
+            self.forget();
+            self.solta_o_que_sobra(&[]);
+        }
         // Desregistra o que morreu (filtro removido, projeto trocado) antes de qualquer coisa.
         for image in self.pending_unregister.drain(..) {
             vello_pass.unregister_texture(image);
@@ -565,6 +574,12 @@ impl FxLive {
             self.saida.as_ref().map_or(0, rgba8),
             self.paths.values().map(|p| rgba8(&p.tex)).sum(),
         ]
+    }
+
+    /// A textura registada da forma `id` (gates: o fim de um episódio sem memória troca-a).
+    #[cfg(test)]
+    pub(crate) fn textura_de(&self, id: VecPathId) -> Option<&wgpu::Texture> {
+        self.paths.get(&id).map(|p| &p.tex)
     }
 
     /// O maior lote rasterizado pelo renderer do scratch vivo (`(0, 0)` = solto).

@@ -193,8 +193,11 @@ fn relata_erros_do_dispositivo(device: &wgpu::Device) {
     use std::sync::atomic::{AtomicU64, Ordering};
     static VISTOS: AtomicU64 = AtomicU64::new(0);
     device.on_uncaptured_error(std::sync::Arc::new(|e: wgpu::Error| {
+        if matches!(e, wgpu::Error::OutOfMemory { .. }) {
+            crate::memoria::anota_falta_de_memoria();
+        }
         let n = VISTOS.fetch_add(1, Ordering::Relaxed) + 1;
-        if n <= 3 || n.e_potencia_de_dez() {
+        if n <= 3 || n.e_potencia_de_dez() || std::env::var_os("PH2D_GPU_ERROS_TODOS").is_some() {
             eprintln!(
                 "[gpu-erro] #{n} — o dispositivo recusou trabalho. Se o ecra' ficou vazio e nao \
                  volta, e' isto:\n[gpu-erro] {e}"

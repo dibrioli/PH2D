@@ -131,7 +131,7 @@ impl Fundo {
     pub(crate) fn copia(
         &mut self,
         gpu: &GpuContext,
-        renderer: &mut vello::Renderer,
+        renderer: &mut crate::VelloPass,
         fonte: &wgpu::TextureView,
         tamanho: (u32, u32),
     ) -> ImageData {
@@ -204,7 +204,7 @@ impl Fundo {
             pass.draw(0..3, 0..1);
         }
         gpu.queue.submit([enc.finish()]);
-        renderer.mark_override_image_dirty(&alvo.imagem);
+        renderer.mark_texture_dirty(&alvo.imagem);
         alvo.imagem.clone()
     }
 }

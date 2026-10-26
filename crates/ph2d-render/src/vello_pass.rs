@@ -37,6 +37,32 @@ pub struct VelloPass {
     keepalive: crate::vello_keepalive::KeepAlive,
     /// ⭐ O MUNDO por baixo da cena — criado no 1.º quadro que o pede. Ver [`crate::vello_fundo`].
     fundo: Option<crate::vello_fundo::Fundo>,
+    /// As texturas registadas, para o renderer REFEITO as herdar com os mesmos ids (F35 §2).
+    registos: std::collections::BTreeMap<u64, (vello::peniko::ImageData, wgpu::Texture)>,
+    /// A placa recusou memória: o pool do Vello guarda buffers INVÁLIDOS e reusa-os para sempre, então
+    /// o renderer é refeito a partir deste instante. `None` = são.
+    refazer_em: Option<std::time::Instant>,
+    /// Este episódio de falta já foi dito ao chamador (um `Err` por episódio, não um por quadro).
+    falta_dita: bool,
+    /// Quantas vezes o renderer foi refeito (diagnóstico e gate).
+    refeitos: u32,
+}
+
+/// O intervalo entre tentativas de refazer o renderer: refazê-lo custa ~6–10 ms
+/// (`fx_memoria_sonda_do_preco`).
+pub const ESPERA_SEM_MEMORIA: std::time::Duration = std::time::Duration::from_millis(500);
+
+fn novo_renderer(device: &wgpu::Device) -> Result<Renderer, String> {
+    Renderer::new(
+        device,
+        RendererOptions {
+            use_cpu: false,
+            antialiasing_support: AaSupport::all(),
+            num_init_threads: None,
+            pipeline_cache: None,
+        },
+    )
+    .map_err(|e| format!("vello::Renderer::new: {e}"))
 }
 
 impl VelloPass {
@@ -48,16 +74,7 @@ impl VelloPass {
         surface_format: wgpu::TextureFormat,
         initial_size: (u32, u32),
     ) -> Result<Self, String> {
-        let renderer = Renderer::new(
-            &gpu.device,
-            RendererOptions {
-                use_cpu: false,
-                antialiasing_support: AaSupport::all(),
-                num_init_threads: None,
-                pipeline_cache: None,
-            },
-        )
-        .map_err(|e| format!("vello::Renderer::new: {e}"))?;
+        let renderer = novo_renderer(&gpu.device)?;
 
         let (intermediate, intermediate_view) = create_intermediate(&gpu.device, initial_size);
         // Pre-multiplied alpha blending: the intermediate texture has
@@ -79,6 +96,10 @@ impl VelloPass {
             surface_format,
             keepalive: crate::vello_keepalive::KeepAlive::new(),
             fundo: None,
+            registos: std::collections::BTreeMap::new(),
+            refazer_em: None,
+            falta_dita: false,
+            refeitos: 0,
         })
     }
 
@@ -88,10 +109,11 @@ impl VelloPass {
         if size == self.last_size || size.0 == 0 || size.1 == 0 {
             return;
         }
-        let (tex, view) = create_intermediate(&gpu.device, size);
+        // Sob recusa de memória o tamanho fica por cumprir (ver `GameRt::ensure_size`, F35 §2).
+        let ((tex, view), falta) = ph2d_gpu::memoria::sob_escopo_de_memoria(&gpu.device, || create_intermediate(&gpu.device, size));
         self.intermediate = tex;
         self.intermediate_view = view;
-        self.last_size = size;
+        self.last_size = if falta.is_some() { (0, 0) } else { size };
     }
 
     pub fn surface_format(&self) -> wgpu::TextureFormat {
@@ -117,7 +139,10 @@ impl VelloPass {
     /// (Vello copies it into its atlas each render). Keep the texture alive; re-blur into it in
     /// place and Vello sees the fresh pixels behind the SAME id (zero atlas-id churn).
     pub fn register_texture(&mut self, texture: wgpu::Texture) -> vello::peniko::ImageData {
-        self.renderer.register_texture(texture)
+        let imagem = self.renderer.register_texture(texture.clone());
+        self.registos
+            .insert(imagem.data.id(), (imagem.clone(), texture));
+        imagem
     }
 
     /// **Diz ao Vello que os pixels desta textura MUDARAM desde o último render.**
@@ -141,7 +166,67 @@ impl VelloPass {
     /// Unregister a texture previously registered via [`Self::register_texture`] (the filter was
     /// removed / the shape deleted) — frees the atlas slot.
     pub fn unregister_texture(&mut self, image: vello::peniko::ImageData) {
+        self.registos.remove(&image.data.id());
         self.renderer.unregister_texture(image);
+    }
+
+    /// **A entrega ao Vello sob escopo de memória** (F35 §2). Uma recusa envenena o pool do renderer
+    /// (o buffer inválido volta ao pool e é reusado em todo quadro: o editor em branco que «não
+    /// recupera até fechar»); daí em diante o renderer é REFEITO de [`ESPERA_SEM_MEMORIA`] em
+    /// [`ESPERA_SEM_MEMORIA`], herdando as texturas registadas. Entre tentativas a intermédia
+    /// guarda o último quadro. Um `Err` por episódio; a recusa vai ao [`ph2d_gpu::memoria`].
+    fn entrega(
+        &mut self,
+        gpu: &GpuContext,
+        scene: &Scene,
+        params: &RenderParams,
+    ) -> Result<(), String> {
+        if let Some(quando) = self.refazer_em {
+            if std::time::Instant::now() < quando {
+                return Ok(());
+            }
+            self.refaz(gpu)?;
+        }
+        let cena = self.keepalive.scene_for_vello(scene);
+        let (renderer, alvo) = (&mut self.renderer, &self.intermediate_view);
+        let (feito, falta) = ph2d_gpu::memoria::sob_escopo_de_memoria(&gpu.device, || {
+            renderer.render_to_texture(&gpu.device, &gpu.queue, cena, alvo, params)
+        });
+        if let Some(e) = falta {
+            self.refazer_em = Some(std::time::Instant::now() + ESPERA_SEM_MEMORIA);
+            if !std::mem::replace(&mut self.falta_dita, true) {
+                return Err(format!("a placa recusou memória ao Vello: {e}"));
+            }
+            return Ok(());
+        }
+        self.refazer_em = None;
+        self.falta_dita = false;
+        feito.map_err(|e| format!("vello render_to_texture: {e}"))
+    }
+
+    /// Um renderer novo (pool vazio), com as texturas registadas nos MESMOS ids.
+    fn refaz(&mut self, gpu: &GpuContext) -> Result<(), String> {
+        let mut novo = novo_renderer(&gpu.device)?;
+        for (imagem, textura) in self.registos.values() {
+            novo.override_image(
+                imagem,
+                Some(wgpu::TexelCopyTextureInfoBase {
+                    texture: textura.clone(),
+                    mip_level: 0,
+                    origin: wgpu::Origin3d::ZERO,
+                    aspect: wgpu::TextureAspect::All,
+                }),
+            );
+        }
+        self.renderer = novo;
+        self.refeitos += 1;
+        Ok(())
+    }
+
+    /// Para testes: finge que a última entrega foi recusada (o renderer será refeito na próxima).
+    #[doc(hidden)]
+    pub fn finge_falta_de_memoria(&mut self) {
+        self.refazer_em = Some(std::time::Instant::now());
     }
 
     /// M14.5: render the Vello `scene` into the intermediate texture
@@ -194,17 +279,9 @@ impl VelloPass {
             // não ser um parâmetro.
             antialiasing_method: AaConfig::Area,
         };
-        // ⛔⛔⛔ Uma cena sem recurso tardio apagaria o atlas do Vello (`vello_keepalive`).
-        let cena = self.keepalive.scene_for_vello(scene);
-        self.renderer
-            .render_to_texture(
-                &gpu.device,
-                &gpu.queue,
-                cena,
-                &self.intermediate_view,
-                &params,
-            )
-            .map_err(|e| format!("vello render_to_texture: {e}"))
+        // ⛔⛔⛔ Uma cena sem recurso tardio apagaria o atlas do Vello (`vello_keepalive`) — a
+        // `entrega` passa por ele.
+        self.entrega(gpu, scene, &params)
     }
 
     /// ⭐⭐⭐ **O mesmo que [`Self::render_to_intermediate`], com o MUNDO por baixo da cena**
@@ -230,7 +307,7 @@ impl VelloPass {
             .fundo
             .take()
             .unwrap_or_else(|| crate::vello_fundo::Fundo::new(gpu));
-        let imagem = fundo.copia(gpu, &mut self.renderer, mundo, self.last_size);
+        let imagem = fundo.copia(gpu, self, mundo, self.last_size);
         crate::vello_fundo::compoe(&mut fundo.composta, imagem, scene);
         let feito = self.render_to_intermediate(gpu, &fundo.composta, size, Color::TRANSPARENT);
         self.fundo = Some(fundo);
@@ -364,17 +441,8 @@ impl VelloPass {
             antialiasing_method: AaConfig::Area,
         };
         // ⛔⛔⛔ A MESMA porta que o `render_to_intermediate` — as duas entregas ao Vello passam
-        // por ela, ou o defeito volta pela que ficou de fora (`vello_keepalive`).
-        let cena = self.keepalive.scene_for_vello(scene);
-        self.renderer
-            .render_to_texture(
-                &gpu.device,
-                &gpu.queue,
-                cena,
-                &self.intermediate_view,
-                &params,
-            )
-            .map_err(|e| format!("vello render_to_texture: {e}"))?;
+        // por ela, ou o defeito volta pela que ficou de fora (`vello_keepalive`, F35 §2).
+        self.entrega(gpu, scene, &params)?;
 
         let mut encoder = gpu
             .device
@@ -417,3 +485,7 @@ fn create_intermediate(
     let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
     (texture, view)
 }
+
+#[cfg(test)]
+#[path = "vello_pass_memoria_tests.rs"]
+mod memoria_tests;

@@ -34,6 +34,7 @@
 
 pub mod action_bus;
 pub mod aquecimento;
+pub mod aviso_da_placa;
 /// Documentos de FAMÍLIA em aba (o editor de scripts) — o trait que a crate da família implementa.
 pub mod doc_surface;
 /// Os documentos do projecto além da cena — os quadros (MiroClone).

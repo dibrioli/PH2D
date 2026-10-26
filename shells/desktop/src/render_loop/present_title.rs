@@ -16,6 +16,7 @@ impl crate::App {
         };
         let AppGfx {
             asset_db,
+            surface,
             atlas_is_real,
             script,
             theme,
@@ -24,18 +25,26 @@ impl crate::App {
             tools,
             ..
         } = gfx;
+        // A placa sem memória avisa no TÍTULO, o único texto que ela não desenha; na volta, um resize
+        // ao mesmo tamanho refaz os alvos da janela que nasceram sob recusa (F35 §2).
+        if let Some(sem) = ph2d_gpu::memoria::sem_memoria_mudou() {
+            toasts.push(ph2d_editor_core::aviso_da_placa::toast(sem));
+            self.title_dirty = true;
+            self.pending_resize = (!sem).then(|| surface.size()).or(self.pending_resize);
+        }
         // Window title carries editor state. Refresh only when state
         // actually changes — winit set_title triggers a platform call.
         // Com a janela do jogo aberta o host é ela, e o título dela é o do jogo (`janela_do_jogo`).
         if self.title_dirty && self.undo.janela_do_jogo.is_none() {
             let tool_label = tools.active().map(|t| t.label()).unwrap_or("none");
             let title = format!(
-                "PH2D — {} | sprites={SPRITE_COUNT} | atlas={} ({} assets) \
+                "{}PH2D — {} | sprites={SPRITE_COUNT} | atlas={} ({} assets) \
                  | script={} | theme={:?} | zen={} | toasts={} | tool={}",
                 // **O NOME DO FICHEIRO**, e não a lista de milestones que morava aqui: a barra de
                 // título é o único sítio do app que responde *«que projeto é este?»*, e a resposta
                 // dela era «M5+M6+M7+M11+M12 demo» — verdade sobre o binário, e sobre nada que o
                 // artista tenha aberto.
+                ph2d_editor_core::aviso_da_placa::prefixo_do_titulo(ph2d_gpu::memoria::sem_memoria()),
                 crate::project_io::title_name(self.project_path.as_deref()),
                 if *atlas_is_real { "PNG" } else { "dummy" },
                 asset_db.len_assets(),
@@ -49,27 +58,9 @@ impl crate::App {
             self.title_dirty = false;
         }
 
-        // Continuous redraw (paired with `ControlFlow::Poll` in main.rs):
-        // the frame is rebuilt every loop iteration regardless of input,
-        // so any per-frame cost shows as ~100% idle CPU and, if a frame
-        // gets heavy, mouse-move stutter (worst over the Hierarchy panel,
-        // which has the most per-frame text).
-        //
-        // IF MOUSE STUTTER RETURNS, look here first:
-        //  1. Per-frame text shaping — mitigated by the shaped-layout
-        //     cache in `ph2d-text/src/system.rs` (`layout_cache`). A new
-        //     uncached text path, or text that changes every frame and
-        //     thrashes the cache, re-introduces the cost. Profile with a
-        //     `PH2D_PROF`-style timer around `paint_hero_screen`.
-        //  2. The continuous redraw + present saturation — the
-        //     user-facing fix is Config → Display → Immediate (a
-        //     non-blocking present mode, see `ph2d-gpu/src/surface.rs`
-        //     `set_present_mode`), which stops `acquire_frame` stalling.
-        //     Default is VSync (`Fifo`) for smooth motion. The deeper
-        //     idle-CPU win (event-driven `ControlFlow::Wait`) stays
-        //     deferred and only pays off once the scene is static (the
-        //     M5 demo bouncing-motion sim animates every frame, so the
-        //     loop is continuous regardless).
+        // Continuous redraw (paired with `ControlFlow::Poll` in main.rs). If mouse stutter returns:
+        // (1) per-frame text shaping (`ph2d-text` `layout_cache`); (2) present saturation —
+        // Config → Display → Immediate (`ph2d-gpu/src/surface.rs` `set_present_mode`).
         host.request_redraw();
     }
 }

@@ -88,7 +88,19 @@ MiB e segura `<segundos>`).
 
 ## 3 — O vermelho da cena 3 do CodeEditor
 
-(a correr sozinho, com o `loadavg` ao lado — depois das curas, para não competir com elas.)
+Corrido SOZINHO (`cargo test --profile ci-test -p ph2d-host-code-scenes --test it
+a_cena_3_conduzida_passo_a_passo`), 3 vezes, 26/10:
+
+| corrida | `loadavg` (1/5/15 min) | resultado |
+|---|---|---|
+| 1 | 31,5 · 20,0 · 16,5 | **vermelho em 30,33 s** — «o roteiro desistiu no passo …» (`a_cena_3_do_editor_conduzida.rs:292`) |
+| 2 | 47,3 · 29,2 · 20,2 | verde, 0,49 s |
+| 3 | 45,5 · 29,1 · 20,2 | verde, 0,49 s |
+
+**Veredito: DEFEITO, não carga** — e do CodeEditor, não desta linha. A assinatura é a da linha já
+registada em [`FLAKES_DE_CARGA.md`](../DevOps/FLAKES_DE_CARGA.md) (a espera de 30 s pela lista do
+`luau-lsp`, perdida; quando passa, 0,5 s), que reproduziu em CALMA (`load` 1–6) no `main` de 24/10. A
+carga alta daqui não a explica (verde a 47 e vermelho a 31). Nada a fazer na `line/UIUX`.
 
 ## Gates (a escrever, cada um visto vermelho por mutação)
 

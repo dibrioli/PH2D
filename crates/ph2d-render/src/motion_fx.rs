@@ -410,7 +410,8 @@ impl MotionFx {
         if size == self.size || size.0 == 0 || size.1 == 0 {
             return;
         }
-        let t = build_targets(
+        // Sob recusa de memória o tamanho fica por cumprir (ver `GameRt::ensure_size`, F35 §2).
+        let (t, falta) = ph2d_gpu::memoria::sob_escopo_de_memoria(&gpu.device, || build_targets(
             gpu,
             &Shared {
                 bgl: &self.bgl,
@@ -422,7 +423,7 @@ impl MotionFx {
                 dirt: &self.dirt_fallback.view,
             },
             size,
-        );
+        ));
         self.rt = t.rt;
         self.mips = t.mips;
         self.u_down = t.u_down;
@@ -430,7 +431,7 @@ impl MotionFx {
         self.bg_down = t.bg_down;
         self.bg_up = t.bg_up;
         self.bg_composite = t.bg_composite;
-        self.size = size;
+        self.size = if falta.is_some() { (0, 0) } else { size };
         // ⚠️ **Os bind groups novos apontam para o FALLBACK**, porque a view do artista é
         // emprestada por quadro e não vive aqui. Esquecer esta linha faria a máscara
         // desaparecer no primeiro redimensionamento e voltar só quando o artista mexesse na

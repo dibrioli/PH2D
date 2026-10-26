@@ -382,6 +382,242 @@ def caso_follow_path():
     return out
 
 
+# ─── Onda 3: poderosas ────────────────────────────────────────────────────────────────────────────
+# ⚠️ O Blender 5.2 NÃO tem mola (Spring) nas constraints, e a Physics do Spine só corre com interface:
+# a lei da mola é a da casa (`ph2d-node-motion-spring::law::passo`) e o gate é o determinismo
+# (`a_spring_rewinds_to_the_same_bit`), ver docs/BlenderConstraints/03_W3_poderosas.md §1.
+
+
+def caso_transformation():
+    """Transformation: um canal do alvo, numa faixa, mapeado para um canal do dono, noutra."""
+    out = {}
+    # posição x do alvo [0, 2] → rotação z do dono [0°, 90°]
+    for extrapola in (False, True):
+        for ax in (-1.0, 0.0, 0.5, 1.0, 2.0, 3.0):
+            limpa()
+            dono = vazio("dono", loc=(1.0, 0.5), rot_deg=10.0)
+            alvo = vazio("alvo", loc=(ax, 0.0))
+            c = dono.constraints.new("TRANSFORM")
+            c.target = alvo
+            c.map_from = "LOCATION"
+            c.from_min_x = 0.0
+            c.from_max_x = 2.0
+            c.map_to = "ROTATION"
+            c.map_to_z_from = "X"
+            c.to_min_z_rot = 0.0
+            c.to_max_z_rot = math.radians(90.0)
+            c.use_motion_extrapolate = extrapola
+            c.mix_mode_rot = "REPLACE"
+            out[f"loc_rot.{'extrapola' if extrapola else 'apara'}.{ax}"] = avalia(dono)
+    # o mesmo, somando à rotação autorada (10°)
+    for ax in (0.5, 1.0):
+        limpa()
+        dono = vazio("dono", loc=(1.0, 0.5), rot_deg=10.0)
+        alvo = vazio("alvo", loc=(ax, 0.0))
+        c = dono.constraints.new("TRANSFORM")
+        c.target = alvo
+        c.map_from = "LOCATION"
+        c.from_min_x = 0.0
+        c.from_max_x = 2.0
+        c.map_to = "ROTATION"
+        c.map_to_z_from = "X"
+        c.to_max_z_rot = math.radians(90.0)
+        c.mix_mode_rot = "ADD"
+        out[f"loc_rot.soma.{ax}"] = avalia(dono)
+    # rotação z do alvo [-90°, 90°] → posição y do dono [0, 3]
+    for ar in (-170.0, -90.0, 0.0, 45.0, 120.0):
+        limpa()
+        dono = vazio("dono", loc=(1.0, 0.5))
+        alvo = vazio("alvo", rot_deg=ar)
+        c = dono.constraints.new("TRANSFORM")
+        c.target = alvo
+        c.map_from = "ROTATION"
+        c.from_min_z_rot = math.radians(-90.0)
+        c.from_max_z_rot = math.radians(90.0)
+        c.map_to = "LOCATION"
+        c.map_to_y_from = "Z"
+        c.to_min_y = 0.0
+        c.to_max_y = 3.0
+        c.mix_mode = "REPLACE"
+        out[f"rot_loc.{ar}"] = avalia(dono)
+    # escala x do alvo [1, 2] → escala y do dono [1, 3]
+    for asx in (0.5, 1.5, 2.0):
+        limpa()
+        dono = vazio("dono")
+        alvo = vazio("alvo", esc=(asx, 1.0))
+        c = dono.constraints.new("TRANSFORM")
+        c.target = alvo
+        c.map_from = "SCALE"
+        c.from_min_x_scale = 1.0
+        c.from_max_x_scale = 2.0
+        c.map_to = "SCALE"
+        c.map_to_y_from = "X"
+        c.to_min_y_scale = 1.0
+        c.to_max_y_scale = 3.0
+        c.mix_mode_scale = "REPLACE"
+        out[f"esc_esc.{asx}"] = avalia(dono)
+    return out
+
+
+def acao_de_teste():
+    """Uma acção de objecto: quadro 1 → x 0, rot 0°; quadro 21 → x 4, rot 90°, interpolação linear."""
+    fonte = vazio("fonte")
+    for quadro, x, r in ((1, 0.0, 0.0), (21, 4.0, 90.0)):
+        fonte.location = (x, 0.0, 0.0)
+        fonte.rotation_euler = (0.0, 0.0, math.radians(r))
+        fonte.keyframe_insert("location", frame=quadro)
+        fonte.keyframe_insert("rotation_euler", frame=quadro)
+    ad = fonte.animation_data
+    acao, slot = ad.action, ad.action_slot
+    from bpy_extras import anim_utils
+
+    for fc in anim_utils.action_get_channelbag_for_slot(acao, slot).fcurves:
+        for k in fc.keyframe_points:
+            k.interpolation = "LINEAR"
+    fonte.animation_data_clear()
+    bpy.data.objects.remove(fonte)
+    return acao, slot
+
+
+def caso_action():
+    """Action: a rotação z do alvo [0°, 90°] escolhe o quadro [1, 21] da acção que o dono toca."""
+    out = {}
+    for ar in (-45.0, 0.0, 45.0, 90.0, 135.0):
+        limpa()
+        acao, slot = acao_de_teste()
+        dono = vazio("dono")
+        alvo = vazio("alvo", rot_deg=ar)
+        c = dono.constraints.new("ACTION")
+        c.target = alvo
+        c.action = acao
+        c.action_slot = slot
+        c.transform_channel = "ROTATION_Z"
+        # ⚠️ Medido 25/10: `min`/`max` de um canal de ROTAÇÃO vão em GRAUS (em radianos a faixa
+        # vira [0°, 1,57°]); o espaço LOCAL de um objecto não lê a rotação dele (dá 0).
+        c.target_space = "WORLD"
+        c.min = 0.0
+        c.max = 90.0
+        c.frame_start = 1
+        c.frame_end = 21
+        out[str(ar)] = avalia(dono)
+    return out
+
+
+def caso_floor():
+    """Floor: o dono não passa o plano do alvo (+Y é cima), com desvio; o tecto; o chão rodado."""
+    out = {}
+    for nome, (dx, dy), eixo, ar, usa_rot in (
+        ("abaixo", (1.0, -1.0), "FLOOR_Y", 0.0, False),
+        ("acima", (1.0, 2.0), "FLOOR_Y", 0.0, False),
+        ("tecto", (1.0, 2.0), "FLOOR_NEGATIVE_Y", 0.0, False),
+        ("rodado", (1.0, -1.0), "FLOOR_Y", 30.0, True),
+        ("rodado_sem_rot", (1.0, -1.0), "FLOOR_Y", 30.0, False),
+    ):
+        limpa()
+        dono = vazio("dono", loc=(dx, dy), rot_deg=15.0)
+        alvo = vazio("alvo", loc=(0.0, 0.0), rot_deg=ar)
+        c = dono.constraints.new("FLOOR")
+        c.target = alvo
+        c.floor_location = eixo
+        c.offset = 0.5
+        c.use_rotation = usa_rot
+        out[nome] = avalia(dono)
+    return out
+
+
+def caso_pivot():
+    """Pivot: a rotação autorada do dono acontece à volta do alvo, não da origem dele."""
+    out = {}
+    for nome, rot in (("noventa", 90.0), ("zero", 0.0), ("menos_45", -45.0)):
+        limpa()
+        dono = vazio("dono", loc=(2.0, 0.0), rot_deg=rot)
+        alvo = vazio("alvo", loc=(1.0, 1.0))
+        c = dono.constraints.new("PIVOT")
+        c.target = alvo
+        c.rotation_range = "ALWAYS_ACTIVE"
+        out[nome] = avalia(dono)
+    return out
+
+
+def caso_armature():
+    """Multi-parent: o dono segue dois ossos com pesos (constraint Armature), com e sem volume."""
+    out = {}
+    for volume in (False, True):
+        for w1 in (0.5, 0.3):
+            limpa()
+            arm = rig([("p1", (0.0, 0.0), (1.0, 0.0), None), ("p2", (0.0, 0.0), (1.0, 0.0), None)])
+            arm.pose.bones["p1"].rotation_mode = "XYZ"
+            arm.pose.bones["p2"].rotation_mode = "XYZ"
+            # Os ossos do Blender têm o comprimento em Y local: rodar em Y local é rodar no plano?
+            # Não — o osso deitado em +X tem o Y local no +X mundial; a rotação no plano é a do X
+            # local... medimos pela pose final, não pelo eixo: roda-se o osso pelo seu Z mundial.
+            arm.pose.bones["p1"].matrix = (
+                __import__("mathutils").Matrix.Rotation(math.radians(90.0), 4, "Z")
+                @ arm.pose.bones["p1"].matrix
+            )
+            bpy.context.view_layer.update()
+            dono = vazio("dono", loc=(2.0, 0.0))
+            c = dono.constraints.new("ARMATURE")
+            for nome, w in (("p1", w1), ("p2", 1.0 - w1)):
+                t = c.targets.new()
+                t.target = arm
+                t.subtarget = nome
+                t.weight = w
+            c.use_deform_preserve_volume = volume
+            out[f"{'volume' if volume else 'linear'}.{w1}"] = avalia(dono)
+    return out
+
+
+def caso_spline_ik():
+    """Spline IK: 3 ossos de 1 sobre uma curva mais comprida; o modo de escala decide o comprimento."""
+    out = {}
+    for forma in ("recta", "meio_circulo", "curta"):
+        for modo in ("NONE", "BONE_ORIGINAL", "FIT_CURVE"):
+            limpa()
+            arm = rig(
+                [
+                    ("s1", (0.0, 0.0), (1.0, 0.0), None),
+                    ("s2", (1.0, 0.0), (2.0, 0.0), "s1"),
+                    ("s3", (2.0, 0.0), (3.0, 0.0), "s2"),
+                ]
+            )
+            if forma == "recta":
+                cam = caminho_poly([(0.0, 1.0), (5.0, 1.0)])
+            elif forma == "curta":
+                cam = caminho_poly([(0.0, 1.0), (1.0, 1.0), (1.0, 2.0)])
+            else:
+                cam = caminho_bezier_meio_circulo(2.0)
+            c = arm.pose.bones["s3"].constraints.new("SPLINE_IK")
+            c.target = cam
+            c.chain_count = 3
+            c.use_even_divisions = False
+            c.use_chain_offset = False
+            c.y_scale_mode = modo
+            c.xz_scale_mode = "NONE"
+            c.use_curve_radius = False
+            out[f"{forma}.{modo}"] = {n: osso2d(arm, n) for n in ("s1", "s2", "s3")}
+    return out
+
+
+def caso_vertice():
+    """Prender a um ponto de uma forma: Copy Location com um grupo de um vértice só."""
+    limpa()
+    me = bpy.data.meshes.new("forma")
+    me.from_pydata([(0.0, 0.0, 0.0), (1.0, 0.5, 0.0), (0.0, 1.0, 0.0)], [], [(0, 1, 2)])
+    forma = bpy.data.objects.new("forma", me)
+    bpy.context.scene.collection.objects.link(forma)
+    forma.location = (3.0, -1.0, 0.0)
+    forma.rotation_euler = (0.0, 0.0, math.radians(30.0))
+    forma.scale = (2.0, 2.0, 1.0)
+    g = forma.vertex_groups.new(name="v")
+    g.add([1], 1.0, "REPLACE")
+    dono = vazio("dono")
+    c = dono.constraints.new("COPY_LOCATION")
+    c.target = forma
+    c.subtarget = "v"
+    return {"vertice_local": [1.0, 0.5], "dono": avalia(dono)}
+
+
 def main():
     saida = sys.argv[sys.argv.index("--") + 1]
     dados = {
@@ -403,6 +639,13 @@ def main():
         "ik_cadeia_3": caso_ik_cadeia(),
         "stretch_to": caso_stretch_to(),
         "follow_path": caso_follow_path(),
+        "transformation": caso_transformation(),
+        "action": caso_action(),
+        "floor": caso_floor(),
+        "pivot": caso_pivot(),
+        "armature": caso_armature(),
+        "spline_ik": caso_spline_ik(),
+        "vertice": caso_vertice(),
     }
     with open(saida, "w", encoding="utf-8") as f:
         json.dump(dados, f, indent=1, ensure_ascii=False)

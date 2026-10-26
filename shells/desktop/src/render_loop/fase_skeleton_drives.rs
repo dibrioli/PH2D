@@ -42,6 +42,7 @@ impl crate::App {
             && let Some(hero) = gfx.hero_screen.as_mut()
         {
             hero.panel_visibility.insert("inspector", true);
+            hero.store.set_collapsed(ph2d_editor_core::ids::INSP_LIVE_CONSTRAINTS_SECTION, false);
             hero.gizmo.selection = Some(b);
         }
     }

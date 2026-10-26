@@ -141,6 +141,11 @@ const LINHAS: &[(&str, &str)] = &[
 /// A classe de uma chamada por um dos seus ids — exacto, ou PREFIXO quando acaba em `_`.
 const POR_ID: &[(&str, Classe, &str)] = &[
     (
+        "INSP_IMAGE_TILED",
+        NaoAnimavel,
+        "a caixa diz se o `TiledDraw` EXISTE (acrescentar/tirar é estrutura); a Largura/Altura é o `Sprite.size` (plano GEF 14)",
+    ),
+    (
         "INSP_SCRIPT_SOURCE",
         Canal,
         "o mesmo canal que o seletor `INSP_SCRIPT_PICK` (o `ScriptId`), que leva o losango: um canal, um losango; o caminho por importar não é valor de canal (F27 F)",

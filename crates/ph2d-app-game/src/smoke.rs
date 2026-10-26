@@ -50,7 +50,7 @@ pub fn imagens_da_cena(nivel: u32) -> &'static [&'static str] {
 /// O instante que a foto quer (`PH2D_GAME_SMOKE_FOTO`). A mão do dono faz o mesmo pelo Inspector e pelos Assets;
 /// a tela virtual não recebe cliques. Plano 12: o seletor aberto sobre os montes, ou as duas imagens trocadas.
 /// Plano 13: o bloco Platform High (sem quadros), com a bandeira (o aviso), já animada, e a «Platform» largada
-/// no canvas.
+/// no canvas (sobre o céu). Plano 14: a Platform Low em Tiled, e com Width 4.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Foto {
     Seletor,
@@ -59,6 +59,8 @@ pub enum Foto {
     Bandeira,
     Animada,
     Largada,
+    Baixa,
+    Larga,
 }
 
 #[must_use]
@@ -70,6 +72,8 @@ pub fn foto() -> Option<Foto> {
         "bandeira" => Some(Foto::Bandeira),
         "animada" => Some(Foto::Animada),
         "largada" => Some(Foto::Largada),
+        "baixa" => Some(Foto::Baixa),
+        "larga" => Some(Foto::Larga),
         _ => None,
     }
 }
@@ -81,13 +85,10 @@ pub const ONDE_LARGA: [f32; 2] = [6.0, 3.0];
 pub const CENTRO_DAS_FOTOS_13: [f32; 2] = [7.0, 2.0];
 
 impl Foto {
-    /// Uma foto do plano 13 (o bloco à vista e a secção Texture & Atlas aberta).
+    /// Uma foto dos planos 13/14 (o bloco à vista e a secção Texture & Atlas aberta).
     #[must_use]
     pub const fn do_plano_13(self) -> bool {
-        matches!(
-            self,
-            Self::Bloco | Self::Bandeira | Self::Animada | Self::Largada
-        )
+        !matches!(self, Self::Seletor | Self::Trocado)
     }
 }
 
@@ -97,10 +98,10 @@ pub struct PlanoDaFoto {
     pub foto: Foto,
     /// `(sprite, imagem)` a escolher (a linha Image).
     pub escolhas: Vec<(u64, [u8; 32])>,
-    /// A sprite a tornar animada (o botão «Make it Animated»).
-    pub anima: Option<u64>,
-    /// A imagem a largar no canvas, e onde (a queda dos Assets).
-    pub larga: Option<([u8; 32], [f32; 2])>,
+    /// As edições do uso da imagem (Make it Animated, Tiled, Width/Height), pela ordem.
+    pub edicoes: Vec<(u64, ph2d_editor_core::ImageUseEdit)>,
+    /// A imagem a largar no canvas, onde, e o objecto por baixo da mão (a queda dos Assets, pela lei da queda).
+    pub larga: Option<([u8; 32], [f32; 2], Option<u64>)>,
     /// Quem fica seleccionado (ou com o seletor aberto).
     pub alvo: u64,
 }
@@ -119,11 +120,13 @@ pub fn plano_da_foto(
     let hills = por_nome(sim, CAMADAS_2[1].0)?.to_bits();
     let player = por_nome(sim, "Player")?.to_bits();
     let alta = por_nome(sim, "Platform High")?.to_bits();
+    let baixa = por_nome(sim, "Platform Low")?.to_bits();
+    let ceu = por_nome(sim, "Sky").map(Entity::to_bits);
     let bandeira = fabrica(ph2d_render::FLAG_SHEET_KEY)?;
     let mut plano = PlanoDaFoto {
         foto,
         escolhas: Vec::new(),
-        anima: None,
+        edicoes: Vec::new(),
         larga: None,
         alvo: alta,
     };
@@ -137,10 +140,15 @@ pub fn plano_da_foto(
         Foto::Bandeira => plano.escolhas = vec![(alta, bandeira)],
         Foto::Animada => {
             plano.escolhas = vec![(alta, bandeira)];
-            plano.anima = Some(alta);
+            plano.edicoes = vec![(alta, ph2d_editor_core::ImageUseEdit::MakeAnimated)];
         }
         Foto::Largada => {
-            plano.larga = Some((fabrica(ph2d_render::PLATFORM_TILE_KEY)?, ONDE_LARGA));
+            plano.larga = Some((fabrica(ph2d_render::PLATFORM_TILE_KEY)?, ONDE_LARGA, ceu));
+        }
+        Foto::Baixa => plano.alvo = baixa,
+        Foto::Larga => {
+            plano.edicoes = vec![(baixa, ph2d_editor_core::ImageUseEdit::Width(4.0))];
+            plano.alvo = baixa;
         }
     }
     Some(plano)

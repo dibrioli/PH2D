@@ -14,6 +14,13 @@ pub const INSP_RENDER_SOURCE_REIMPORT: NodeId = hash_node_id("insp_render_source
 
 /// ⭐ «Make it Animated» — o botão do aviso «imagem animada num bloco que repete» (plano GEF 13 D5).
 pub const INSP_IMAGE_MAKE_ANIMATED: NodeId = hash_node_id("insp_image_make_animated");
+/// A caixa **Tiled** de Texture & Atlas (plano GEF 14 D5).
+pub const INSP_IMAGE_TILED: NodeId = hash_node_id("insp_image_tiled");
+/// **Width / Height** (m) de uma sprite Tiled, `[x, y]`.
+pub const INSP_IMAGE_TILED_SIZE: [NodeId; 2] = [
+    hash_node_id("insp_image_tiled_w"),
+    hash_node_id("insp_image_tiled_h"),
+];
 
 /// W2 Sprite Inspector v2: logical Flip H / Flip V checkboxes in the
 /// Render Source section. Toggling dispatches an

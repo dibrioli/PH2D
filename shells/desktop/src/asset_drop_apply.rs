@@ -94,8 +94,12 @@ impl crate::App {
         }
     }
 
-    /// ⭐ **Make it Animated** — o botão do aviso «imagem animada num bloco» (plano GEF 13 D5).
-    pub(crate) fn make_image_animated(&mut self, entity_bits: u64) {
+    /// ⭐ **Uma edição do uso da imagem** — Make it Animated, Tiled, Width/Height (planos GEF 13 D5, 14 D5).
+    pub(crate) fn image_use_edit(
+        &mut self,
+        entity_bits: u64,
+        edit: ph2d_editor_core::ImageUseEdit,
+    ) {
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
@@ -105,13 +109,17 @@ impl crate::App {
             .map_or(ph2d_editor_core::project::DEFAULT_PIXELS_PER_METER, |h| {
                 h.project.pixels_per_meter
             });
-        let feito = ph2d_app_sprite_anim::image_use::make_shown_image_animated(
+        let feito = ph2d_app_sprite_anim::image_use::apply_edit(
             gfx.sim.world_mut(),
             ph2d_ecs::Entity::from_bits(entity_bits),
             &gfx.asset_db,
             &gfx.atlas_asset_map,
             ppm,
+            edit,
         );
+        if edit != ph2d_editor_core::ImageUseEdit::MakeAnimated {
+            return;
+        }
         gfx.toasts.push(if feito {
             ph2d_editor_core::Toast::success(tr("shell.asset_drop_apply.now_animated"))
         } else {
@@ -257,12 +265,17 @@ impl crate::App {
         for (bits, asset) in plano.escolhas {
             self.choose_image(bits, asset);
         }
-        if let Some(bits) = plano.anima {
-            self.make_image_animated(bits);
+        for (bits, edit) in plano.edicoes {
+            self.image_use_edit(bits, edit);
         }
-        if let Some((asset, at)) = plano.larga {
-            // A queda seleciona a sprite que nasce.
-            self.drop_spawn_image(asset, at);
+        if let Some((asset, world, over)) = plano.larga {
+            // Pela lei da queda, com o objecto por baixo (o céu); a queda seleciona a sprite que nasce.
+            let payload = ph2d_editor_core::interaction::drag_payload::DragPayload::Image { asset };
+            let over =
+                over.map(|entity_bits| ph2d_app_components::asset_drop::DropOver { entity_bits });
+            let target = ph2d_app_components::asset_drop::DropTarget::Canvas { world, over };
+            let action = ph2d_app_components::asset_drop::resolve(payload, target);
+            self.perform_drop(action, payload);
             return;
         }
         if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {

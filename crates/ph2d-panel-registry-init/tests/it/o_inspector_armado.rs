@@ -160,6 +160,7 @@ pub fn arma_tudo() {
         vframes: 2,
         image_use: ph2d_editor_core::InspectorImageUse::Still,
         image_cells: 1,
+        draw: ph2d_editor_core::InspectorDraw::Fixed,
         frame: 1,
         tint: [1.0, 1.0, 1.0, 1.0],
         self_tint: [1.0, 1.0, 1.0, 1.0],

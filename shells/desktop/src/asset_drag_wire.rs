@@ -247,7 +247,7 @@ impl crate::App {
     }
 
     /// Executa o que a lei devolveu. ⛔ Sem `_` — uma acção nova tem de vir aqui escolher o que faz.
-    fn perform_drop(&mut self, action: DropAction, payload: DragPayload) {
+    pub(crate) fn perform_drop(&mut self, action: DropAction, payload: DragPayload) {
         match action {
             // ⭐ Desistir não diz nada — ver a lei.
             DropAction::Cancel | DropAction::WriteCode => {}

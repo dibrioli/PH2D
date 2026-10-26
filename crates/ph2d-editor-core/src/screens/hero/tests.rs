@@ -946,6 +946,7 @@ fn strategy_click_resets_button_state_to_normal() {
         vframes: 1,
         image_use: crate::InspectorImageUse::Still,
         image_cells: 1,
+        draw: crate::InspectorDraw::Fixed,
         frame: 0,
         tint: [1.0, 1.0, 1.0, 1.0],
         self_tint: [1.0, 1.0, 1.0, 1.0],

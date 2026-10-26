@@ -333,6 +333,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "This image has {n} frames, but this object repeats it \u{2014} only the first one shows."
         }
         "panel.inspector.image.make_animated" => "Make it Animated",
+        "panel.inspector.image.tiled" => "Tiled",
+        "panel.inspector.image.width_m" => "Width",
+        "panel.inspector.image.height_m" => "Height",
         "panel.inspector.image.cut_of_the_image" => {
             "Frames of the image \u{2014} every object that shows it uses the same."
         }

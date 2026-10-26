@@ -22,6 +22,7 @@ pub(super) fn paint_image_use_rows(
     if crate::state::current_inspector_anim().is_some() {
         return y;
     }
+    let y = paint_draw_rows(scene, text_system, theme, hit_index, store, x, w, y, info);
     match info.image_use {
         InspectorImageUse::Animated => y,
         InspectorImageUse::Repeated if info.image_cells > 1 => {
@@ -75,4 +76,60 @@ pub(super) fn paint_image_use_rows(
             )
         }
     }
+}
+
+/// ⭐ A caixa **Tiled** e, ligada, **Width / Height** (plano GEF 14 D5). Nada onde não há Draw Mode a escolher.
+#[allow(clippy::too_many_arguments)]
+fn paint_draw_rows(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+    info: &InspectorSpriteInfo,
+) -> f32 {
+    use ph2d_editor_core::InspectorDraw;
+    const NOMES: [&str; 3] = [
+        "panel.inspector.image.tiled",
+        "panel.inspector.image.width_m",
+        "panel.inspector.image.height_m",
+    ];
+    if info.draw == InspectorDraw::Fixed {
+        return y;
+    }
+    let tiled = matches!(info.draw, InspectorDraw::Tiled { .. });
+    let sec = ph2d_editor_core::property_row::Seccao::medida(text_system, 1, &NOMES.map(tr));
+    let mut y = ph2d_editor_core::property_row::paint_check_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        y,
+        (ids::INSP_IMAGE_TILED, TextKey::new(NOMES[0]), tiled),
+        sec,
+    );
+    if tiled {
+        for (id, nome) in ids::INSP_IMAGE_TILED_SIZE.into_iter().zip(&NOMES[1..]) {
+            y = super::sprite_pose::number_row(
+                scene,
+                text_system,
+                theme,
+                hit_index,
+                store,
+                x,
+                w,
+                y,
+                sec,
+                TextKey::new(nome).into(),
+                id,
+            );
+        }
+    }
+    y
 }

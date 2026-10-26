@@ -152,7 +152,7 @@ pub(super) fn sprite_info(
         let emissive = emissive_of(world, entity);
         // A grelha e a janela desta sprite (ADR-0164 F1 passo 6).
         let grid = grid_of(world, entity);
-        let (image_use, image_cells) = ph2d_app_sprite_anim::image_use::inspector_use(
+        let (image_use, image_cells, draw) = ph2d_app_sprite_anim::image_use::inspector_use(
             world,
             entity,
             asset_db,
@@ -314,6 +314,7 @@ pub(super) fn sprite_info(
             frame: grid.frame,
             image_use,
             image_cells,
+            draw,
             tint: sprite.tint,
             self_tint: sprite.self_tint,
             per_corner_tint: corner_tint_of(world, entity),

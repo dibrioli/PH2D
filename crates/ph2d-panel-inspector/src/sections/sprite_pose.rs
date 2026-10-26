@@ -48,7 +48,7 @@ pub(crate) fn seccao(text_system: &mut TextSystem) -> ph2d_editor_core::property
 /// cell (clamps `hframes`/`vframes >= 1`, `frame < cells` at commit).
 /// Uma linha de número com o seu losango (a forma de todas as linhas desta página).
 #[allow(clippy::too_many_arguments)]
-fn number_row(
+pub(super) fn number_row(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,

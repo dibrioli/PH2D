@@ -35,6 +35,7 @@ mod event_counter_watch;
 mod event_factory;
 /// ⭐ O registo dos widgets da secção PARTICLES — irmão por CAP de ficheiro.
 mod event_hud;
+mod event_image_use;
 /// ⭐⭐ **Os cliques do CARTÃO de instância** — irmão por assunto do `event`.
 mod event_instance;
 mod event_joint;

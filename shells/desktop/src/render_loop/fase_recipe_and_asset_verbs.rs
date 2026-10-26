@@ -12,7 +12,7 @@ pub(super) struct RecipeVerbIntents {
     pub(super) apply_to_level: Option<(u64, u64)>,
     pub(super) open_image_picker: Option<u64>,
     pub(super) choose_image: Option<(u64, [u8; 32])>,
-    pub(super) make_image_animated: Option<u64>,
+    pub(super) image_use_edit: Option<(u64, ph2d_editor_core::ImageUseEdit)>,
 }
 
 impl crate::App {
@@ -21,8 +21,8 @@ impl crate::App {
         if let Some((entity_bits, asset)) = intents.choose_image {
             self.choose_image(entity_bits, asset);
         }
-        if let Some(entity_bits) = intents.make_image_animated {
-            self.make_image_animated(entity_bits);
+        if let Some((entity_bits, edit)) = intents.image_use_edit {
+            self.image_use_edit(entity_bits, edit);
         }
         // O `gfx` re-derivado; os guardas do quadro já correram na `fase_chrome_clock`.
         let Some(gfx) = self.gfx.as_mut() else {

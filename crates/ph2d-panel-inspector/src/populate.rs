@@ -16,6 +16,7 @@ use ph2d_editor_core::widget::{
 };
 
 pub fn populate(store: &mut WidgetStore) {
+    crate::event_image_use::populate(store);
     // ⭐ O `+` do cabeçalho — a UMA porta de anexar um componente (ADR-0166 / F3).
     // ⚠️ Sem esta linha o botão PINTA e não recebe estado: ele fica morto sob o ponteiro, que é
     // o defeito que a costura da booleana do vetor pagou duas vezes ([27 §8] do Vector Module).
@@ -541,7 +542,6 @@ fn populate_render_strategy(store: &mut WidgetStore) {
         crate::ids::INSP_RENDER_FORMAT_RGBA8,
         crate::ids::INSP_RENDER_FORMAT_RGBA16,
         crate::ids::INSP_RENDER_SOURCE_REIMPORT,
-        crate::ids::INSP_IMAGE_MAKE_ANIMATED,
     ] {
         store.register(
             id,

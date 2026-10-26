@@ -19,8 +19,8 @@ use crate::{Velocity, WORLD_HALF};
 use ph2d_ecs::sort_key::{SortInput, SortScratch, compute_sort_ranks_into};
 use ph2d_ecs::{
     ChildOf, ClipChildren, ClipMode, Entity, FilterMode, Mask2D, MaskInteraction, MaskMode,
-    PresentWorld, RepeatMode, SimRef, SimWorld, Transform, TransformPropagationState, UvTransform,
-    WorklistBuf, World, propagate_transforms, resolve_texture_filter, resolve_texture_repeat,
+    PresentWorld, RepeatMode, SimRef, SimWorld, Transform, TransformPropagationState, WorklistBuf,
+    World, propagate_transforms, resolve_texture_filter,
 };
 use ph2d_render::{RenderInstance, Sprite, SpriteRenderer};
 

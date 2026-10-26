@@ -9,7 +9,7 @@ use ph2d_ecs::{
     AnimationTag, Entity, RepeatMode, ScrollRepeat, SpriteAnimations, SpriteAnimator, SpriteGrid,
     SpritePixels, TextureRepeat, TiledDraw, UvTransform, World,
 };
-use ph2d_editor_core::InspectorImageUse;
+use ph2d_editor_core::{ImageUseEdit, InspectorDraw, InspectorImageUse};
 use ph2d_render::Sprite;
 use std::collections::BTreeMap;
 
@@ -145,7 +145,7 @@ pub fn inspector_use(
     db: &AssetDb,
     atlas: &BTreeMap<u32, AssetId>,
     ppm: f32,
-) -> (InspectorImageUse, u32) {
+) -> (InspectorImageUse, u32, InspectorDraw) {
     let uso = match image_use(world, e) {
         Some(ImageUse::Animated) => InspectorImageUse::Animated,
         Some(ImageUse::Repeated) => InspectorImageUse::Repeated,
@@ -157,18 +157,26 @@ pub fn inspector_use(
             .get::<SpriteGrid>(e)
             .map_or(1, |g| g.hframes.max(1) * g.vframes.max(1)),
     };
-    (uso, n)
+    (uso, n, crate::tiled::draw_of(world, e))
 }
 
-/// [`make_animated`] com os factos da imagem que `e` mostra — o braço do botão do Inspector.
-pub fn make_shown_image_animated(
+/// ⭐ **Uma edição do uso da imagem que `e` mostra** — os controlos de Texture & Atlas (Make it Animated,
+/// Tiled, Width/Height). `false` se nada mudou.
+pub fn apply_edit(
     world: &mut World,
     e: Entity,
     db: &AssetDb,
     atlas: &BTreeMap<u32, AssetId>,
     ppm: f32,
+    edit: ImageUseEdit,
 ) -> bool {
-    shown_facts(world, e, db, atlas, ppm).is_some_and(|f| make_animated(world, e, f))
+    let facts = shown_facts(world, e, db, atlas, ppm);
+    match edit {
+        ImageUseEdit::MakeAnimated => facts.is_some_and(|f| make_animated(world, e, f)),
+        ImageUseEdit::Tiled(on) => crate::tiled::set_tiled(world, e, facts, on),
+        ImageUseEdit::Width(m) => crate::tiled::set_tiled_side(world, e, 0, m),
+        ImageUseEdit::Height(m) => crate::tiled::set_tiled_side(world, e, 1, m),
+    }
 }
 
 /// ⭐ **O corte é da IMAGEM** (plano GEF 13 D3, o *importer* da Unity): depois de editar colunas/linhas em `e`,

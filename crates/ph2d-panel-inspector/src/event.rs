@@ -266,6 +266,7 @@ const SINGLE_ID_CLICKS: &[fn(&mut dyn PanelHostInternal, WidgetEvent) -> bool] =
     crate::event_instance::apply_added_click,
     crate::event_instance::apply_level_click,
     texture_slot_click,
+    crate::event_image_use::event,
 ];
 
 fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
@@ -308,18 +309,6 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
         && info.can_reimport
     {
         host.bus_mut().push(EditorAction::Reimport {
-            entity_bits: info.entity_bits,
-        });
-        return true;
-    }
-    // Plano GEF 13 D5 — «Make it Animated», só onde o aviso se pinta (uso repetido, imagem com células).
-    if let WidgetEvent::Click(id) = ev
-        && id == ids::INSP_IMAGE_MAKE_ANIMATED
-        && let Some(info) = state::current_inspector_sprite()
-        && info.image_use == ph2d_editor_core::InspectorImageUse::Repeated
-        && info.image_cells > 1
-    {
-        host.bus_mut().push(EditorAction::MakeImageAnimated {
             entity_bits: info.entity_bits,
         });
         return true;

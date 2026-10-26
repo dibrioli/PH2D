@@ -392,6 +392,7 @@ fn sync_sprite_fields(
     // descer de facto — 223 → ~178, e a tolerância deixa de ter objeto.
     crate::sync_sprite_value::sync_sprite_sliders(host, sp, focus, drag);
     crate::sync_tint_swatches::sync_tint_swatches(host, sp);
+    crate::event_image_use::sync(host, sp);
 }
 
 /// **Uma amostra de cor cujo selector está preso à selecção ACTUAL** — as 6 da Sprite (Tinta,

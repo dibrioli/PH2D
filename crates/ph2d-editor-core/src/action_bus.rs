@@ -508,10 +508,11 @@ pub enum EditorAction {
         entity_bits: u64,
         asset: [u8; 32],
     },
-    /// ⭐ **Make it Animated** (plano GEF 13 D5): a sprite `entity_bits` mostra uma imagem com várias células
-    /// num bloco que repete — passa a tocá-las em laço. O botão do aviso do Inspector.
-    MakeImageAnimated {
+    /// ⭐ **Uma edição do uso da imagem** da sprite `entity_bits` (planos GEF 13 D5 e 14 D5): Make it Animated,
+    /// Tiled, Width/Height.
+    ImageUseEdit {
         entity_bits: u64,
+        edit: crate::ImageUseEdit,
     },
 
     InspectorSwapVariant {

@@ -37,7 +37,7 @@ impl crate::App {
             apply_to_level: take(&mut pd.apply_to_level),
             open_image_picker: take(&mut pd.open_image_picker),
             choose_image: take(&mut pd.choose_image),
-            make_image_animated: take(&mut pd.make_image_animated),
+            image_use_edit: take(&mut pd.image_use_edit),
         });
         self.fase_hierarchy_dispatch(
             fase_hierarchy_dispatch::HierarchyIntents {

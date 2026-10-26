@@ -93,6 +93,8 @@ pub struct InspectorSpriteInfo {
     /// Quantas células tem a IMAGEM (o corte é dela, plano GEF 13 D3) — `> 1` num bloco que repete é o aviso
     /// «Make it Animated».
     pub image_cells: u32,
+    /// O Draw Mode (plano GEF 14 D5).
+    pub draw: InspectorDraw,
     /// Inherited modulate (`Sprite::tint`, cascades to children).
     /// Linear RGBA `[0, 1]`. Edited via the Color & Tint section's
     /// Tint swatch (W2.T2.7); renders today via `RenderInstance.tint`.
@@ -404,6 +406,32 @@ pub enum InspectorImageUse {
     Repeated,
     /// As células tocam: o cartão Animation mostra a grelha.
     Animated,
+}
+
+/// ⭐ Como a sprite enche o seu tamanho (plano GEF 14 D5): a linha **Tiled** e, ligada, Width/Height.
+#[derive(Copy, Clone, Debug, Default, PartialEq)]
+pub enum InspectorDraw {
+    /// Sem escolha de Draw Mode (uma camada de fundo, uma sprite animada): a linha não aparece.
+    #[default]
+    Fixed,
+    /// A imagem estica até ao tamanho.
+    Simple,
+    /// A imagem repete-se em ladrilhos até encher `size` (m).
+    Tiled { size: [f32; 2] },
+}
+
+/// ⭐ **Uma edição do USO da imagem** (planos GEF 13 D5 e 14 D5): o que os controlos de Texture & Atlas pedem
+/// além do corte.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum ImageUseEdit {
+    /// O botão **Make it Animated** do aviso «imagem animada num bloco».
+    MakeAnimated,
+    /// A caixa **Tiled**.
+    Tiled(bool),
+    /// **Width** (m) de uma sprite Tiled.
+    Width(f32),
+    /// **Height** (m) de uma sprite Tiled.
+    Height(f32),
 }
 
 /// Mirror of `ph2d_render::SpriteSource` that doesn't depend on

@@ -212,6 +212,9 @@ const TEXTURE_FILTER: &[FieldDesc] = &[f(1, "component.field.texture_filter.1", 
         "lin_mip" => 4 @ "panel.inspector.sampling.lin_plus_mip",
         "lin_aniso" => 6 @ "panel.inspector.sampling.lin_plus_aniso",
     ])];
+
+const TILED_DRAW: &[FieldDesc] = &[f(1, "component.field.tiled_draw.1", K::Vec2).keyed("tile")];
+
 const TEXTURE_REPEAT: &[FieldDesc] = &[f(1, "component.field.texture_repeat.1", K::Enum)
     .named_as("texture_repeat", WHOLE)
     .viewed(crate::options![
@@ -485,6 +488,17 @@ pub const DESCS: &[D] = &[
     )
     .coded("texture_repeat")
     .row_of("ph2d::render::Sprite"),
+    // ⇒ a porta é a caixa Tiled de Texture & Atlas (plano GEF 14): ausente = Simple. O ladrilho é a célula da
+    // imagem, escrito pela porta da imagem — nenhum cartão o mostra.
+    D::intrinsic(
+        "ph2d::ecs::TiledDraw",
+        "component.tiled_draw.name",
+        C::Image,
+        TILED_DRAW,
+    )
+    .coded("tiled_draw")
+    .row_of("ph2d::render::Sprite")
+    .hiding(&[("tile", Hidden::NoCard)]),
     // ⇒ a porta é §7 Ordering.
     D::intrinsic(
         "ph2d::ecs::TopLevel",

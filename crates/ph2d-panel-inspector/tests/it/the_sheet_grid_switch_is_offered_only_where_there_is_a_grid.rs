@@ -56,6 +56,7 @@ fn painted_with_grid(hf: u32, vf: u32) -> (MockPanelHost, Vec<(ph2d_a11y::NodeId
         vframes: vf,
         image_use: ph2d_editor_core::InspectorImageUse::Still,
         image_cells: 1,
+        draw: ph2d_editor_core::InspectorDraw::Fixed,
         frame: 0,
         tint: [1.0; 4],
         self_tint: [1.0; 4],

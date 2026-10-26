@@ -3,14 +3,15 @@
 //! «Platform High mostra H Frames 3»); uma imagem animada num bloco avisa e o botão pede «Make it Animated».
 
 use crate::seam_render_source::atlas_sprite;
-use ph2d_editor_core::InspectorImageUse;
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::{EventOutcome, Panel};
 use ph2d_editor_core::screens::hero::InspectorSpriteInfo;
 use ph2d_editor_core::zones::Rect;
+use ph2d_editor_core::{ImageUseEdit, InspectorDraw, InspectorImageUse};
 use ph2d_panel_inspector::ids::{
-    INSP_IMAGE_MAKE_ANIMATED, INSP_SPRITE_FRAME, INSP_SPRITE_HFRAMES, INSP_SPRITE_VFRAMES,
+    INSP_IMAGE_MAKE_ANIMATED, INSP_IMAGE_TILED, INSP_IMAGE_TILED_SIZE, INSP_SPRITE_FRAME,
+    INSP_SPRITE_HFRAMES, INSP_SPRITE_VFRAMES,
 };
 use ph2d_panel_inspector::{InspectorPanel, InspectorState, set_current_inspector_sprite};
 use ph2d_ui_testkit::MockPanelHost;
@@ -86,12 +87,79 @@ fn make_it_animated_pede_a_accao_so_onde_o_aviso_existe() {
     assert!(clica(&mut host, &mut state));
     assert_eq!(
         host.drained_actions(),
-        vec![EditorAction::MakeImageAnimated {
-            entity_bits: atlas_sprite(true).entity_bits
+        vec![EditorAction::ImageUseEdit {
+            entity_bits: atlas_sprite(true).entity_bits,
+            edit: ImageUseEdit::MakeAnimated
         }]
     );
     // CONTROLO: sem o aviso (parada), o mesmo id não age.
     let (mut host, mut state, _) = pintado(com(InspectorImageUse::Still, 4, [4, 1]));
     clica(&mut host, &mut state);
     assert!(host.drained_actions().is_empty());
+}
+
+/// ⭐ Plano GEF 14 D5: a caixa Tiled só onde há Draw Mode a escolher; Width/Height só com ela ligada.
+#[test]
+fn tiled_pinta_a_caixa_e_o_tamanho_so_onde_cabem() {
+    for (draw, caixa, tamanho) in [
+        (InspectorDraw::Fixed, false, false),
+        (InspectorDraw::Simple, true, false),
+        (InspectorDraw::Tiled { size: [2.4, 0.5] }, true, true),
+    ] {
+        let info = InspectorSpriteInfo {
+            draw,
+            ..com(InspectorImageUse::Repeated, 1, [1, 1])
+        };
+        let (_, _, ids) = pintado(info);
+        assert_eq!(ids.contains(&INSP_IMAGE_TILED), caixa, "{draw:?}");
+        for id in INSP_IMAGE_TILED_SIZE {
+            assert_eq!(ids.contains(&id), tamanho, "{draw:?}");
+        }
+    }
+}
+
+/// ⭐ A caixa e a Largura chegam ao barramento como `ImageUseEdit`.
+#[test]
+fn tiled_e_largura_pedem_a_accao() {
+    let bits = atlas_sprite(true).entity_bits;
+    let info = InspectorSpriteInfo {
+        draw: InspectorDraw::Simple,
+        ..com(InspectorImageUse::Still, 1, [1, 1])
+    };
+    let (mut host, mut state, _) = pintado(info);
+    // O clique do host vira o valor da caixa e emite `Toggled` (o despachador genérico).
+    host.set_checkbox_value(
+        INSP_IMAGE_TILED,
+        ph2d_editor_core::widget::CheckboxValue::Checked,
+    );
+    InspectorPanel::apply_event(
+        &mut state,
+        &mut host,
+        WidgetEvent::Toggled(INSP_IMAGE_TILED),
+    );
+    assert_eq!(
+        host.drained_actions(),
+        vec![EditorAction::ImageUseEdit {
+            entity_bits: bits,
+            edit: ImageUseEdit::Tiled(true)
+        }]
+    );
+    let info = InspectorSpriteInfo {
+        draw: InspectorDraw::Tiled { size: [2.4, 0.5] },
+        ..com(InspectorImageUse::Repeated, 1, [1, 1])
+    };
+    let (mut host, mut state, _) = pintado(info);
+    host.set_number_value(INSP_IMAGE_TILED_SIZE[0], 4.0);
+    InspectorPanel::apply_event(
+        &mut state,
+        &mut host,
+        WidgetEvent::ValueChanged(INSP_IMAGE_TILED_SIZE[0]),
+    );
+    assert_eq!(
+        host.drained_actions(),
+        vec![EditorAction::ImageUseEdit {
+            entity_bits: bits,
+            edit: ImageUseEdit::Width(4.0)
+        }]
+    );
 }

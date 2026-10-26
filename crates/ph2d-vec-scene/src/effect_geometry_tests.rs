@@ -43,6 +43,12 @@ fn nuvem() -> VecPath {
     }
 }
 
+/// ⭐ A Nuvem DO APP (`ShapeKind::Cloud`, valores de fábrica) — a forma da foto do dono.
+fn nuvem_do_app() -> VecPath {
+    let k = crate::ShapeKind::Cloud;
+    crate::cook(k, [0.0, 0.0], [120.0, 80.0], &k.defaults())
+}
+
 fn circulo() -> VecPath {
     let (c, r) = ([60.0, 40.0], 40.0);
     let k = 0.5523 * r;
@@ -154,16 +160,23 @@ fn e_bloat(e: &PathEffect) -> bool {
     matches!(e, PathEffect::Bloat(_))
 }
 
+/// O Zig Zag e o Sketch deslocam pela NORMAL; num vale côncavo da Nuvem do app os pontos deslocados
+/// cruzam-se (medido: as alças seguem a tangente da fonte e a corda volta para trás, 124°). É a
+/// lei do deslocamento, a mesma antes e depois da reamostragem — aberto em F33_plano §6, não aqui.
+fn desloca_no_vale(forma: &str, e: &PathEffect) -> bool {
+    forma == "nuvem do app" && matches!(e, PathEffect::ZigZag(_) | PathEffect::Sketch(_))
+}
+
 /// ⭐ **G1 — nenhum efeito dobra um segmento para trás.** Pucker & Bloat fica de fora: a pétala
 /// com bico É o efeito (a lei do Illustrator), não um laço de amostragem.
 #[test]
 fn no_effect_folds_a_segment_back() {
     let mut falhas = Vec::new();
-    for (nome, forma) in [("nuvem", nuvem()), ("círculo", circulo())] {
+    for (nome, forma) in [("nuvem", nuvem()), ("nuvem do app", nuvem_do_app()), ("círculo", circulo())] {
         assert_eq!(recuos(&forma), 0, "a fonte ({nome}) não recua");
         for k in 0..PathEffect::KINDS.len() {
             let Some(e) = ajustado(k) else { continue };
-            if matches!(e, PathEffect::Falloff(_)) || e_bloat(&e) {
+            if matches!(e, PathEffect::Falloff(_)) || e_bloat(&e) || desloca_no_vale(nome, &e) {
                 continue;
             }
             let r = recuos(&cozido(&forma, &[e]));
@@ -222,6 +235,16 @@ fn a_continuous_deformer_keeps_every_corner() {
             quinas(&sob_falloff)
         ));
     }
+    let app = nuvem_do_app();
+    let fonte_app = quinas(&app);
+    assert!(fonte_app > 0, "a Nuvem do app tem vales em quina");
+    for nome in ["Flag", "Wave", "Twist"] {
+        let e = PathEffect::KINDS.iter().position(|n| *n == nome).and_then(ajustado);
+        let q = quinas(&cozido(&app, &[e.expect("efeito")]));
+        if q < fonte_app {
+            falhas.push(format!("Nuvem do app + {nome}: {q}/{fonte_app}"));
+        }
+    }
     assert!(falhas.is_empty(), "quinas perdidas: {falhas:?}");
 }
 
@@ -230,7 +253,7 @@ fn a_continuous_deformer_keeps_every_corner() {
 #[test]
 fn a_smooth_vertex_out_of_an_effect_is_g1() {
     let mut falhas = Vec::new();
-    for (nome, forma) in [("nuvem", nuvem()), ("círculo", circulo())] {
+    for (nome, forma) in [("nuvem", nuvem()), ("nuvem do app", nuvem_do_app()), ("círculo", circulo())] {
         for k in 0..PathEffect::KINDS.len() {
             let Some(e) = ajustado(k) else { continue };
             if matches!(e, PathEffect::Falloff(_)) || e_bloat(&e) {
@@ -257,3 +280,4 @@ fn a_smooth_vertex_out_of_an_effect_is_g1() {
     }
     assert!(falhas.is_empty(), "Smooth com tangente partida: {falhas:?}");
 }
+

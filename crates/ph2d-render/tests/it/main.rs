@@ -17,6 +17,7 @@ mod blend_mode_regression;
 mod bloom_wgsl_valid;
 mod camera_screen_to_world;
 mod clip_children_regression;
+mod fx_efeito_sob_filtro_gpu;
 mod fx_look_probe;
 mod fx_scene_scale_cost;
 mod fx_stack_adjust_gpu;

@@ -39,6 +39,7 @@ fn antes(s: &str) -> (u8, bool, u8, u8) {
             | "37"
             | "38"
             | "39"
+            | "40"
     ) {
         1
     } else {
@@ -76,6 +77,7 @@ fn antes(s: &str) -> (u8, bool, u8, u8) {
             | "37"
             | "38"
             | "39"
+            | "40"
     );
     let handles = match s {
         "15" => 1,
@@ -103,6 +105,7 @@ fn antes(s: &str) -> (u8, bool, u8, u8) {
         "37" => 23,
         "38" => 24,
         "39" => 25,
+        "40" => 26,
         _ => 0,
     };
     let quick = match s {
@@ -214,4 +217,14 @@ fn as_cenas_35_e_36_comecam_pelas_suas_familias() {
 fn a_cena_38_comeca_no_composto() {
     assert_eq!(of(Some("38")).handles, 24);
     assert_eq!(handles_first(24), Some(crate::vector_mode_composto::FIRST));
+}
+
+/// F33 — a 40 corre as seis Nuvens (filtros × efeitos), na faixa dela.
+#[test]
+fn a_cena_40_comeca_nas_nuvens() {
+    assert_eq!(of(Some("40")).handles, 26);
+    assert_eq!(
+        handles_first(26),
+        Some(crate::vector_mode_filtro_efeito::FIRST)
+    );
 }

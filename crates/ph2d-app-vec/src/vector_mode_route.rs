@@ -1,11 +1,12 @@
-//! **O roteador das famílias de estágio das cenas 21..=39** — irmão do [`crate::vector_mode`] pelo
+//! **O roteador das famílias de estágio das cenas 21..=40** — irmão do [`crate::vector_mode`] pelo
 //! teto de 700 LOC. Cada família declara a sua faixa (`FIRST..=LAST`); `h` é a cena dentro da
 //! família das alças (`scenes::handles_first`).
 
 use crate::state::VecState;
 use crate::{
     vector_mode_alinhar as alinhar, vector_mode_composto as composto,
-    vector_mode_controle as controle, vector_mode_cor as cor, vector_mode_fio as fio,
+    vector_mode_controle as controle, vector_mode_cor as cor, vector_mode_filtro_efeito as filtro_efeito,
+    vector_mode_fio as fio,
     vector_mode_gesto as gesto, vector_mode_interface as interface,
     vector_mode_le_a_forma as le_a_forma, vector_mode_misto as misto, vector_mode_olho as olho,
     vector_mode_opaco as opaco, vector_mode_quinas as quinas, vector_mode_tracejado as tracejado,
@@ -15,7 +16,7 @@ use ph2d_ecs::SimWorld;
 use ph2d_editor_core::screens::hero::HeroScreen;
 
 /// As faixas de estágio destas famílias — o teste das faixas lê a MESMA lista.
-pub(crate) const FAIXAS: [(u8, u8); 14] = [
+pub(crate) const FAIXAS: [(u8, u8); 15] = [
     (alinhar::FIRST, alinhar::LAST),
     (tracejado::FIRST, tracejado::LAST),
     (interface::FIRST, interface::LAST),
@@ -30,6 +31,7 @@ pub(crate) const FAIXAS: [(u8, u8); 14] = [
     (opaco::FIRST, opaco::LAST),
     (composto::FIRST, composto::LAST),
     (fio::FIRST, fio::LAST),
+    (filtro_efeito::FIRST, filtro_efeito::LAST),
 ];
 
 /// O estágio `s` é de uma destas famílias?
@@ -72,6 +74,7 @@ pub(super) fn step(
         opaco::FIRST..=opaco::LAST => opaco::step(s, vec, scene, hero),
         composto::FIRST..=composto::LAST => composto::step(vec, scene, sim, hero),
         fio::FIRST..=fio::LAST => fio::step(s, vec, scene, hero),
+        filtro_efeito::FIRST..=filtro_efeito::LAST => filtro_efeito::step(vec, scene, sim, hero),
         _ => None,
     }
 }

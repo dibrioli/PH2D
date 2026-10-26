@@ -51,6 +51,14 @@ recuos e 0 quinas** — o defeito não é do Flag, é do esqueleto:
    alças para o outro). Os «recuos» medidos são a dobra da pétala. **Não é defeito da família**;
    mede-se à parte na imagem e não se cura sem decisão do dono.
 
+⭐ **Na Nuvem DO APP (`ShapeKind::Cloud`, a forma da foto), código antigo:** Flag/Wave/Twist comem as
+**11** quinas dos vales (0/11) e fazem 6–12 segmentos que recuam. **Com a cura: 0 recuos, 11/11.**
+
+5. Zig Zag e Sketch na Nuvem do app ainda dobram (1 e 3 segmentos) — e **não é da reamostragem**:
+   medido, as alças seguem a tangente da fonte e a CORDA volta para trás (124°): os pontos
+   deslocados pela NORMAL cruzam-se num vale côncavo (o «rabo de andorinha» de um contorno
+   deslocado). Os mesmos pontos antes e depois. Fica em §6.
+
 ## 3 — A cura (uma família, um bloco)
 
 Uma porta partilhada de REAMOSTRAGEM (`fx_resample.rs`, na `ph2d-vec-scene`), usada por Warp, Twist,
@@ -87,6 +95,20 @@ Drop Shadow (o par do dono). Com `PH2D_FX_DUMP` a saída de cada filtro é grava
 o efeito ligado contra a mesma forma sem ele. Antes × depois da cura; os outros filtros de
 distância por troca do filtro da cena.
 
+### Resultado (26/10)
+
+A régua de VINCOS (salto entre vizinhos na mesma isolinha e na mesma folha) **não separa** o antes
+do depois — o laço de um vale é um gancho escuro, não um salto, e uma quina preservada vinca por
+direito. Fica como SONDA (`ph2d-render/tests/it/fx_efeito_sob_filtro_gpu.rs`, tabela par a par
+de 18 efeitos × 9 filtros × 3 enquadramentos). O oráculo é a FOTO, à escala do dono (nuvem com
+~1 600 px): [antes · depois · sem efeito](handoffs/img_F33/vale_flag_antes_depois_controlo.png) — o
+gancho do vale some e a quina fica igual à da forma sem efeito. Os gates são os da geometria (§4).
+
 ## 6 — Fora desta onda
+
+- **Zig Zag / Sketch num vale côncavo** (§2.5): deslocar pela normal cruza os pontos. Curar é mudar
+  a LEI do efeito (limitar a amplitude pelo raio local, ou o modo do Illustrator) — decisão de
+  desenho, com o produto de referência a correr como oráculo.
+- **Pucker & Bloat**: as pétalas com bico são o efeito (§2.4).
 
 Os abertos 2–4 do handoff F32 §6 (pose dos estados por índice; chave sobre `from`/`to`; F31/F30).

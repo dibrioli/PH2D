@@ -129,6 +129,10 @@ ph2d-painter-effects = { path = "../ph2d-painter-effects" }
 # `draw_stable_image_transformed`), e não por um espelho do encoding. Sem ciclo: a
 # `ph2d-vector` depende só do `vello` e de folhas.
 ph2d-vector = { path = "../ph2d-vector" }
+# F33: a régua filtros × efeitos (`fx_efeito_sob_filtro_gpu.rs`) cozinha a forma pela pilha de
+# efeitos CANÓNICA (`ph2d_vec_scene::effect::run_stack`) em vez de a re-implementar. Sem ciclo: a
+# `ph2d-vec-scene` não depende da `ph2d-render`.
+ph2d-vec-scene = { path = "../ph2d-vec-scene" }
 
 [[bench]]
 name = "sprites_upload_144b_vs_72b"

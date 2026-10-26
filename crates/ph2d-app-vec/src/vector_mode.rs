@@ -381,6 +381,7 @@ impl ModeFamily for Family<'_> {
 /// `=38` (F29): o composto do balde sobre um quadrado, a booleana com transparente e a ④ do Corte
 /// (`vector_mode_composto`).
 /// `=39` (F30 §E): a Caneta a meio de um caminho de largura 0 — só o fio (`vector_mode_fio`).
+/// `=40` (F33): seis Nuvens com Bevel + Drop Shadow, uma por efeito (`vector_mode_filtro_efeito`).
 pub fn smoke_step(
     vec: &mut VecState,
     scene: &mut ph2d_vec_scene::VecScene,

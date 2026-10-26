@@ -178,6 +178,8 @@ pub struct Layer {
     pub locked: bool,
     /// Camada de referência (Aseprite: New Reference Layer): vê-se, não se exporta nem funde.
     pub reference: bool,
+    /// Camada *continuous* (Layer Properties): o New Frame liga os cels dela em vez de copiar.
+    pub continuous: bool,
     pub opacity: u8,
     pub blend: crate::blend::BlendMode,
     pub kind: LayerKind,
@@ -196,6 +198,7 @@ impl Layer {
             background: false,
             locked: false,
             reference: false,
+            continuous: false,
             opacity: 255,
             blend: crate::blend::BlendMode::Normal,
             kind: LayerKind::Image,
@@ -217,11 +220,99 @@ pub struct Frame {
 }
 
 /// A imagem de uma camada num frame: `bbox` em células do sprite; fora dela é transparente.
+///
+/// **Cel ligado** (`link = Some(f)`): a imagem, a posição e a opacidade são as do cel `(camada, f)`
+/// — o DONO, que não é ligado —, e só o `z` é dele (medido no Trial, `lk_*.ase`: o Aseprite separa
+/// dois cels cujo ficheiro lhes dá posição ou opacidade diferentes, e liga-os com `z` diferente).
+/// O cel ligado guarda `bbox` vazia e `data` vazio. O dono de cels ligados pode ter a imagem vazia.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Cel {
     pub bbox: Rect,
     /// `bbox.area() * bpp` bytes, linha a linha.
     pub data: Vec<u8>,
+    /// A opacidade do cel; a efectiva é `mul(camada, cel)` (Trial `co_*.ase`, 7/7 exactos).
+    pub opacity: u8,
+    /// Desloca o cel na ordem das camadas: a chave de desenho é `(índice + z, z)` (Trial `z_*.ase`).
+    pub z: i16,
+    pub link: Option<FrameId>,
+}
+
+impl Cel {
+    /// Um cel dono, opaco, sem deslocamento.
+    #[must_use]
+    pub fn image(bbox: Rect, data: Vec<u8>) -> Self {
+        Self {
+            bbox,
+            data,
+            opacity: 255,
+            z: 0,
+            link: None,
+        }
+    }
+
+    /// Um cel ligado ao dono do frame `owner`.
+    #[must_use]
+    pub fn linked(owner: FrameId, z: i16) -> Self {
+        Self {
+            bbox: Rect::default(),
+            data: Vec::new(),
+            opacity: 255,
+            z,
+            link: Some(owner),
+        }
+    }
+}
+
+/// A direcção de uma tag (ids do `.ase`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Direction {
+    #[default]
+    Forward,
+    Reverse,
+    PingPong,
+    PingPongReverse,
+}
+
+impl Direction {
+    pub const ALL: [Direction; 4] = [
+        Direction::Forward,
+        Direction::Reverse,
+        Direction::PingPong,
+        Direction::PingPongReverse,
+    ];
+
+    #[must_use]
+    pub const fn code(self) -> u8 {
+        match self {
+            Direction::Forward => 0,
+            Direction::Reverse => 1,
+            Direction::PingPong => 2,
+            Direction::PingPongReverse => 3,
+        }
+    }
+
+    #[must_use]
+    pub const fn from_code(c: u8) -> Option<Self> {
+        match c {
+            0 => Some(Direction::Forward),
+            1 => Some(Direction::Reverse),
+            2 => Some(Direction::PingPong),
+            3 => Some(Direction::PingPongReverse),
+            _ => None,
+        }
+    }
+}
+
+/// Uma tag de animação: o trecho `from..=to` (POSIÇÕES na linha do tempo — inserir/apagar um frame
+/// mexe nelas, mover não), a direcção e as passadas (`repeat` 0 = para sempre).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Tag {
+    pub name: String,
+    pub from: u32,
+    pub to: u32,
+    pub direction: Direction,
+    pub repeat: u16,
+    pub color: [u8; 4],
 }
 
 /// Erros de construção/validação.
@@ -242,6 +333,7 @@ pub struct Sprite {
     pub(crate) layers: Vec<Layer>,
     pub(crate) frames: Vec<Frame>,
     pub(crate) cels: BTreeMap<CelKey, Cel>,
+    pub(crate) tags: Vec<Tag>,
     pub(crate) next_id: u32,
 }
 
@@ -282,6 +374,7 @@ impl Sprite {
             layers: Vec::new(),
             frames: Vec::new(),
             cels: BTreeMap::new(),
+            tags: Vec::new(),
             next_id: 1,
         };
         let opaque = background != Background::Transparent;
@@ -309,7 +402,7 @@ impl Sprite {
                 s.push_value(&mut data, v);
             }
             s.cels
-                .insert((LayerId(layer), FrameId(frame)), Cel { bbox, data });
+                .insert((LayerId(layer), FrameId(frame)), Cel::image(bbox, data));
         }
         Ok(s)
     }
@@ -350,8 +443,53 @@ impl Sprite {
         &self.frames
     }
     #[must_use]
+    pub fn tags(&self) -> &[Tag] {
+        &self.tags
+    }
+    /// A posição do frame `id` na linha do tempo.
+    #[must_use]
+    pub fn frame_index(&self, id: FrameId) -> Option<usize> {
+        self.frames.iter().position(|f| f.id == id)
+    }
+    /// A IMAGEM do cel `key` (a do dono, se for ligado): caixa, bytes e opacidade.
+    #[must_use]
     pub fn cel(&self, key: CelKey) -> Option<&Cel> {
+        let c = self.cels.get(&key)?;
+        match c.link {
+            Some(f) => self.cels.get(&(key.0, f)),
+            None => Some(c),
+        }
+    }
+    /// O cel `key` tal como está guardado (um ligado é só `link` e `z`).
+    #[must_use]
+    pub fn entry(&self, key: CelKey) -> Option<&Cel> {
         self.cels.get(&key)
+    }
+    /// Todos os cels guardados, por chave.
+    pub fn entries(&self) -> impl Iterator<Item = (&CelKey, &Cel)> {
+        self.cels.iter()
+    }
+    /// A chave do dono da imagem de `key` (ela própria, se não for ligado).
+    #[must_use]
+    pub fn owner(&self, key: CelKey) -> CelKey {
+        match self.cels.get(&key).and_then(|c| c.link) {
+            Some(f) => (key.0, f),
+            None => key,
+        }
+    }
+    /// Os frames cujos cels da camada partilham a imagem de `key` (ele incluído), na ordem da linha
+    /// do tempo; vazio se não houver cel.
+    #[must_use]
+    pub fn linked_frames(&self, key: CelKey) -> Vec<FrameId> {
+        if !self.cels.contains_key(&key) {
+            return Vec::new();
+        }
+        let o = self.owner(key);
+        self.frames
+            .iter()
+            .map(|f| f.id)
+            .filter(|&f| self.cels.contains_key(&(key.0, f)) && self.owner((key.0, f)) == o)
+            .collect()
     }
     #[must_use]
     pub fn layer(&self, id: LayerId) -> Option<&Layer> {
@@ -447,7 +585,7 @@ impl Sprite {
     /// O valor da célula `(x, y)` do cel `key` (transparente fora do cel / sem cel).
     #[must_use]
     pub fn value_at(&self, key: CelKey, x: i32, y: i32) -> u32 {
-        let Some(cel) = self.cels.get(&key) else {
+        let Some(cel) = self.cel(key) else {
             return self.transparent_value();
         };
         if !cel.bbox.contains(x, y) {

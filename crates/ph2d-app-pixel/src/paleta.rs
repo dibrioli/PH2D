@@ -113,15 +113,11 @@ pub fn conversao(c: ColorModeChoice) -> (ColorMode, Convert) {
     (mode, Convert { dither, to_gray })
 }
 
-/// Os cels do sprite, por camada e frame.
+/// Os cels guardados do sprite (um ligado não tem bytes: a imagem é a do dono).
 fn cels(
     s: &Sprite,
 ) -> impl Iterator<Item = ((ph2d_pixel_core::LayerId, ph2d_pixel_core::FrameId), &Cel)> {
-    s.frames().iter().flat_map(move |f| {
-        s.layers()
-            .iter()
-            .filter_map(move |l| s.cel((l.id, f.id)).map(|c| ((l.id, f.id), c)))
-    })
+    s.entries().map(|(k, c)| (*k, c))
 }
 
 /// Os índices que alguma célula usa (Indexed), em ordem de primeira aparição.
@@ -378,7 +374,7 @@ impl PixelApp {
             let cels = cels(s)
                 .map(|(k, c)| {
                     let data = c.data.iter().map(|&v| mapa[usize::from(v)]).collect();
-                    (k, Cel { bbox: c.bbox, data })
+                    (k, Cel { data, ..c.clone() })
                 })
                 .collect();
             let w = Whole {

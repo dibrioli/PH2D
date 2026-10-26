@@ -6,12 +6,15 @@
 //! Library  : 1 Entry* (repetido)
 //! Entry    : 1 chave (varint) · 2 Sprite (registo)
 //! Sprite   : 1 largura · 2 altura · 3 modo · 4 paleta (n×4 bytes) · 5 transparente · 6 Layer*
-//!            · 7 Frame* · 8 Cel* · 9 próximo id                       (inteiros em varint)
+//!            · 7 Frame* · 8 Cel* · 9 próximo id · 10 Tag*                (inteiros em varint)
 //! Layer    : 1 id · 2 nome (utf8) · 3 bandeiras (bit0 visível, bit1 background, bit2 trancada,
-//!            bit3 referência, bit4 grupo, bit5 grupo recolhido) · 4 opacidade (sem = 255)
+//!            bit3 referência, bit4 grupo, bit5 grupo recolhido, bit6 continuous [1.2]) · 4 opacidade (sem = 255)
 //!            · 5 modo de mistura (id do `.ase`, sem = Normal) · 6 pai (id; sem = raiz)   [1.1]
 //! Frame    : 1 id · 2 duração ms
 //! Cel      : 1 camada · 2 frame · 3 x (zigzag) · 4 y (zigzag) · 5 w · 6 h · 7 bytes
+//!            · 8 opacidade (sem = 255) · 9 z (zigzag, sem = 0) · 10 frame do dono (ligado)  [1.2]
+//! Tag      : 1 nome · 2 de · 3 até (posições) · 4 direcção (id do `.ase`) · 5 passadas
+//!            · 6 cor (4 bytes)                                                       [1.2]
 //! ```
 //! Dentro da mesma MAJOR uma etiqueta desconhecida SALTA-SE (o molde `.riv` que o `ph2d-macro`
 //! segue); MAJOR diferente recusa-se. A escrita é em ordem fixa ⇒ o mesmo documento dá os
@@ -21,12 +24,12 @@ use std::collections::BTreeMap;
 
 use crate::blend::BlendMode;
 use crate::sprite::{
-    Cel, ColorMode, Frame, FrameId, Layer, LayerId, LayerKind, MAX_SIDE, Rect, Sprite,
+    Cel, ColorMode, Direction, Frame, FrameId, Layer, LayerId, LayerKind, MAX_SIDE, Rect, Sprite, Tag,
 };
 
 pub const MAGIC: &[u8; 9] = b"PH2DPIXEL";
 pub const MAJOR: u16 = 1;
-pub const MINOR: u16 = 1;
+pub const MINOR: u16 = 2;
 
 /// Ficheiro recusado; nunca um documento meio lido.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -134,7 +137,8 @@ fn sprite_record(s: &Sprite) -> Vec<u8> {
                 | (u64::from(l.locked) << 2)
                 | (u64::from(l.reference) << 3)
                 | (u64::from(group) << 4)
-                | (u64::from(collapsed) << 5),
+                | (u64::from(collapsed) << 5)
+                | (u64::from(l.continuous) << 6),
         );
         if l.opacity != 255 {
             put_uint(&mut b, 4, u64::from(l.opacity));
@@ -164,10 +168,30 @@ fn sprite_record(s: &Sprite) -> Vec<u8> {
         put_uint(&mut b, 5, u64::from(c.bbox.w));
         put_uint(&mut b, 6, u64::from(c.bbox.h));
         put_field(&mut b, 7, &c.data);
+        if c.opacity != 255 {
+            put_uint(&mut b, 8, u64::from(c.opacity));
+        }
+        if c.z != 0 {
+            put_uint(&mut b, 9, zigzag(i32::from(c.z)));
+        }
+        if let Some(o) = c.link {
+            put_uint(&mut b, 10, u64::from(o.0));
+        }
         b.push(0);
         put_field(&mut r, 8, &b);
     }
     put_uint(&mut r, 9, u64::from(s.next_id));
+    for t in &s.tags {
+        let mut b = Vec::new();
+        put_field(&mut b, 1, t.name.as_bytes());
+        put_uint(&mut b, 2, u64::from(t.from));
+        put_uint(&mut b, 3, u64::from(t.to));
+        put_uint(&mut b, 4, u64::from(t.direction.code()));
+        put_uint(&mut b, 5, u64::from(t.repeat));
+        put_field(&mut b, 6, &t.color);
+        b.push(0);
+        put_field(&mut r, 10, &b);
+    }
     r.push(0);
     r
 }
@@ -182,6 +206,7 @@ fn read_sprite(bytes: &[u8]) -> Result<Sprite, CodecError> {
         layers: Vec::new(),
         frames: Vec::new(),
         cels: BTreeMap::new(),
+        tags: Vec::new(),
         next_id: 0,
     };
     let mut raw_cels = Vec::new();
@@ -218,6 +243,7 @@ fn read_sprite(bytes: &[u8]) -> Result<Sprite, CodecError> {
                             l.background = f & 2 != 0;
                             l.locked = f & 4 != 0;
                             l.reference = f & 8 != 0;
+                            l.continuous = f & 64 != 0;
                             if f & 16 != 0 {
                                 l.kind = LayerKind::Group {
                                     collapsed: f & 32 != 0,
@@ -255,7 +281,8 @@ fn read_sprite(bytes: &[u8]) -> Result<Sprite, CodecError> {
                 s.frames.push(f);
             }
             8 => {
-                let (mut l, mut f, mut r, mut data) = (0, 0, Rect::default(), Vec::new());
+                let (mut l, mut f, mut r) = (0, 0, Rect::default());
+                let mut cel = Cel::image(Rect::default(), Vec::new());
                 for (t, v) in Fields::new(b)? {
                     match t {
                         1 => l = u32_of(v, "cel.layer")?,
@@ -264,13 +291,59 @@ fn read_sprite(bytes: &[u8]) -> Result<Sprite, CodecError> {
                         4 => r.y = unzigzag(uint(v)?)?,
                         5 => r.w = u32_of(v, "cel.w")?,
                         6 => r.h = u32_of(v, "cel.h")?,
-                        7 => data = v.to_vec(),
+                        7 => cel.data = v.to_vec(),
+                        8 => {
+                            cel.opacity = u8::try_from(uint(v)?)
+                                .map_err(|_| CodecError::Invalid("cel.opacity"))?;
+                        }
+                        9 => {
+                            cel.z = i16::try_from(unzigzag(uint(v)?)?)
+                                .map_err(|_| CodecError::Invalid("cel.z"))?;
+                        }
+                        10 => cel.link = Some(FrameId(u32_of(v, "cel.link")?)),
                         _ => {}
                     }
                 }
-                raw_cels.push(((LayerId(l), FrameId(f)), Cel { bbox: r, data }));
+                cel.bbox = r;
+                raw_cels.push(((LayerId(l), FrameId(f)), cel));
             }
             9 => s.next_id = u32_of(b, "sprite.next_id")?,
+            10 => {
+                let mut tag = Tag {
+                    name: String::new(),
+                    from: 0,
+                    to: 0,
+                    direction: Direction::Forward,
+                    repeat: 0,
+                    color: [0, 0, 0, 255],
+                };
+                for (t, v) in Fields::new(b)? {
+                    match t {
+                        1 => {
+                            tag.name = String::from_utf8(v.to_vec())
+                                .map_err(|_| CodecError::Invalid("tag.name"))?;
+                        }
+                        2 => tag.from = u32_of(v, "tag.from")?,
+                        3 => tag.to = u32_of(v, "tag.to")?,
+                        4 => {
+                            tag.direction = u8::try_from(uint(v)?)
+                                .ok()
+                                .and_then(Direction::from_code)
+                                .ok_or(CodecError::Invalid("tag.direction"))?;
+                        }
+                        5 => {
+                            tag.repeat = u16::try_from(uint(v)?)
+                                .map_err(|_| CodecError::Invalid("tag.repeat"))?;
+                        }
+                        6 => {
+                            tag.color = <[u8; 4]>::try_from(v)
+                                .map_err(|_| CodecError::Invalid("tag.color"))?;
+                        }
+                        _ => {}
+                    }
+                }
+                s.tags.push(tag);
+            }
             _ => {}
         }
     }
@@ -297,14 +370,12 @@ fn validate(s: &mut Sprite, raw_cels: Vec<((LayerId, FrameId), Cel)>) -> Result<
         }
     }
     crate::op::check_layers(&s.layers, s.next_id).map_err(|_| CodecError::Invalid("layers"))?;
-    let bpp = s.mode.bpp();
-    for (key, cel) in raw_cels {
-        if s.layer(key.0).is_none_or(Layer::is_group) || !s.frames.iter().any(|f| f.id == key.1) {
-            return Err(CodecError::Invalid("cel.key"));
-        }
-        if cel.bbox.is_empty() || cel.data.len() != cel.bbox.area() * bpp {
-            return Err(CodecError::Invalid("cel.data"));
-        }
+    crate::op::check_frames(&s.frames, &s.tags, s.next_id)
+        .map_err(|_| CodecError::Invalid("frames/tags"))?;
+    let all: Vec<_> = raw_cels.into_iter().map(|(k, c)| (k, Some(c))).collect();
+    crate::op::check_cels(s, &s.layers, &s.frames, &all, true, s.mode.bpp())
+        .map_err(|_| CodecError::Invalid("cel"))?;
+    for (key, cel) in all.into_iter().filter_map(|(k, c)| Some((k, c?))) {
         if s.cels.insert(key, cel).is_some() {
             return Err(CodecError::Invalid("cel.key repeated"));
         }

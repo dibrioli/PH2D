@@ -115,6 +115,15 @@ for f, ms in enumerate((100, 300, 600, 200)):
     frames.append((ms, ch))
 write('tg_dur.ase', frames); ARQS.append('tg_dur.ase')
 
+# ── cel ligado: o chunk do ligado traz posicao, opacidade e z proprios — partilha-os ou nao? ────────
+def linked(index, frame, opacity, z, x, y):
+    return chunk(0x2005, struct.pack('<HhhBHh5x', index, x, y, opacity, 1, z) + struct.pack('<H', frame))
+for nome, (op, z, x, y) in {'lk_op': (128, 0, 0, 0), 'lk_pos': (255, 0, 10, 5), 'lk_z': (255, -1, 0, 0)}.items():
+    n = f'{nome}.ase'
+    write(n, [(100, [profile(), layer('back'), layer('src'), cel(0, BACK), cel(1, SRC['A'])]),
+              (100, [cel(0, BACK), linked(1, 0, op, z, x, y)])])
+    ARQS.append(n)
+
 json.dump({'w': W, 'h': H, 'back': BACK, 'src': SRC, 'co': CO, 'z': ZS, 'onion': ONION,
            'solidas': SOLIDAS, 'files': ARQS}, open(os.path.join(D, 'entradas.json'), 'w'))
 print(len(ARQS), 'ficheiros')

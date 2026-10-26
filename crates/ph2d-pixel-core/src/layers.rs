@@ -131,7 +131,7 @@ fn cels_of(s: &Sprite, ids: &[LayerId]) -> Vec<(CelKey, Option<Cel>)> {
     s.frames()
         .iter()
         .flat_map(|f| ids.iter().map(move |&l| (l, f.id)))
-        .filter(|k| s.cel(*k).is_some())
+        .filter(|k| s.entry(*k).is_some())
         .map(|k| (k, None))
         .collect()
 }
@@ -208,7 +208,7 @@ pub fn duplicate(s: &mut Sprite, id: LayerId) -> Option<(Op, LayerId)> {
             l.name = format!("{} Copy", l.name);
         }
         for f in s.frames() {
-            if let Some(c) = s.cel((old, f.id)) {
+            if let Some(c) = s.entry((old, f.id)) {
                 cels.push(((l.id, f.id), Some(c.clone())));
             }
         }
@@ -237,7 +237,7 @@ fn cel_from_rgba(s: &Sprite, r: Rect, rgba: &[u8]) -> Cel {
         let v = s.value_of_rgba([px[0], px[1], px[2], px[3]]);
         data.extend_from_slice(&v.to_le_bytes()[..s.mode().bpp()]);
     }
-    Cel { bbox: r, data }
+    Cel::image(r, data)
 }
 
 /// Layer ▸ Merge Down: a camada mistura-se (com o seu modo e opacidade) sobre a vizinha de baixo,
@@ -257,14 +257,27 @@ pub fn merge_down(s: &Sprite, id: LayerId) -> Option<Op> {
     for f in s.frames() {
         let (kt, kb) = ((top.id, f.id), (below.id, f.id));
         let area = match (s.cel(kt), s.cel(kb)) {
-            (None, _) => continue,
+            (None, _) => {
+                // Um ligado de baixo que fica: vira cópia, o dono dele pode ser refeito noutro frame.
+                if let Some(e) = s.entry(kb).filter(|e| e.link.is_some())
+                    && let Some(img) = s.cel(kb)
+                {
+                    cels.push((kb, Some(Cel { z: e.z, link: None, ..img.clone() })));
+                }
+                continue;
+            }
             (Some(t), None) => t.bbox,
             (Some(t), Some(b)) => t.bbox.union(b.bbox),
         }
         .intersect(s.bounds());
         let src = rgba_rect(s, kt, area);
         let mut dst = rgba_rect(s, kb, area);
-        let opacity = if top.visible { top.opacity } else { 0 };
+        let cel_op = s.cel(kt).map_or(255, |c| c.opacity);
+        let opacity = if top.visible {
+            crate::blend::mul(u32::from(top.opacity), u32::from(cel_op)) as u8
+        } else {
+            0
+        };
         for (d, t) in dst.chunks_exact_mut(4).zip(src.chunks_exact(4)) {
             let px = blend(
                 top.blend,
@@ -274,7 +287,11 @@ pub fn merge_down(s: &Sprite, id: LayerId) -> Option<Op> {
             );
             d.copy_from_slice(&px);
         }
-        cels.push((kb, Some(cel_from_rgba(s, area, &dst))));
+        let mut merged = cel_from_rgba(s, area, &dst);
+        if let (Some(b), Some(e)) = (s.cel(kb), s.entry(kb)) {
+            (merged.opacity, merged.z) = (b.opacity, e.z);
+        }
+        cels.push((kb, Some(merged)));
     }
     let layers = s
         .layers()
@@ -354,10 +371,7 @@ pub fn via(s: &mut Sprite, id: LayerId, frame: FrameId, r: Rect, cut: bool) -> O
     let layer = Layer::image(new, fresh_name(s, "Layer"));
     let mut cels = vec![(
         (new, frame),
-        Some(Cel {
-            bbox,
-            data: s.read_rect(key, bbox),
-        }),
+        Some(Cel::image(bbox, s.read_rect(key, bbox))),
     )];
     if cut {
         let old = s.cel(key)?;
@@ -375,7 +389,7 @@ pub fn via(s: &mut Sprite, id: LayerId, frame: FrameId, r: Rect, cut: bool) -> O
                     hole.data[i..i + bpp].copy_from_slice(&t[..bpp]);
                 }
             }
-            cels.push((key, Some(hole)));
+            cels.push((s.owner(key), Some(hole)));
         }
     }
     let layers = insert_at(s.layers().to_vec(), vec![layer], Place::Above(id))?;
@@ -433,7 +447,7 @@ pub fn paste_as_new(
     let mut layer = Layer::image(id, fresh_name(s, "Layer"));
     layer.reference = reference;
     let layers = insert_at(s.layers().to_vec(), vec![layer], Place::Above(above))?;
-    Some((set(layers, vec![((id, frame), Some(Cel { bbox, data }))]), id))
+    Some((set(layers, vec![((id, frame), Some(Cel::image(bbox, data)))]), id))
 }
 
 fn clip_rgba(c: &Clip, b: &[u8]) -> [u8; 4] {

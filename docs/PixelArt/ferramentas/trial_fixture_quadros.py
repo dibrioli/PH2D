@@ -1,13 +1,14 @@
 """Grava a fixtura oracle_trial_frames.json a partir de entradas.json + lido.json + onion_*.json
 (trial_quadros.py). uso: python3 -I trial_fixture_quadros.py <dir> <saida.json> [N]
-Guarda as N primeiras celulas (por omissao 768 = 8 linhas de 96) dos casos de tela, em hex RGB(A), e a
+Guarda as N primeiras celulas (por omissao 768 = 8 linhas de 96) dos casos de tela (o papel vegetal inteiro), em hex RGB(A), e a
 sequencia de quadros tocada (o 1.o passo e o quadro de partida, mostrado antes do Enter)."""
 import json, os, sys
 D, OUT = sys.argv[1], sys.argv[2]
 N = int(sys.argv[3]) if len(sys.argv) > 3 else 768
 E = json.load(open(os.path.join(D, 'entradas.json')))
 L = json.load(open(os.path.join(D, 'lido.json')))
-hx = lambda px: ''.join(f'{v:02x}' for p in px[:N] for v in p)
+W, H = E['w'], E['h']
+hx = lambda px, n=N: ''.join(f'{v:02x}' for p in px[:n] for v in p)
 SOL = [tuple(c) for c in E['solidas']]
 DIRS = {'fwd': 0, 'rev': 1, 'pp': 2, 'ppr': 3}
 
@@ -18,7 +19,7 @@ for v, f, ini in (('defpos', 'on_faixa.ase', {}), ('pos1', 'on_faixa.ase', {'pos
                   ('tint', 'on_vazio.ase', {'type': 1, 'prev_frames': 2, 'next_frames': 2}),
                   ('clamp', 'on_vazio.ase', {'opacity_base': 50, 'opacity_step': 60, 'prev_frames': 2, 'next_frames': 2})):
     o = json.load(open(os.path.join(D, f'onion_{v}.json')))[f]
-    onion[v] = {'file': f, 'ini': ini, 'off_rgb': hx(o['off']), 'on_rgb': hx(o['on'])}
+    onion[v] = {'file': f, 'ini': ini, 'off_rgb': hx(o['off'], W * H), 'on_rgb': hx(o['on'], W * H)}
 play = []
 for n in sorted(k for k in L if k.startswith('tg_')):
     runs = L[n]['runs']
@@ -38,7 +39,7 @@ json.dump({
     'note': 'cel opacity = mul(layer, cel); cels ordered by (layer index + z, z); onion skin = Normal with '
             'max(0, base - step*(d-1)), behind by default, red/blue tint = Rec.709 luma v -> ((255+v)/2, v/2, v/2) '
             'and its mirror; the onion off/on reads are of frame 2 (the checker shows where nothing is drawn)',
-    'n': N, 'w': E['w'],
+    'n': N, 'w': E['w'], 'h': E['h'],
     'back': hx(E['back']), 'src': {k: hx(v) for k, v in E['src'].items()},
     'onion_colors': E['onion'],
     'cel': cel, 'z': z, 'onion': onion, 'play': play,

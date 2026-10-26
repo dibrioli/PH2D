@@ -3,7 +3,7 @@
 use std::collections::BTreeMap;
 
 use crate::palette::{MAX_COLORS, invert_permutation, is_permutation};
-use crate::sprite::{Cel, CelKey, ColorMode, FrameId, Layer, LayerId, Rect, Sprite};
+use crate::sprite::{Cel, CelKey, ColorMode, Frame, FrameId, Layer, LayerId, Rect, Sprite, Tag};
 
 /// Uma mutação do documento. O catálogo cresce por onda; cada variante tem inverso exato.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -25,6 +25,18 @@ pub enum Op {
     /// A lista de camadas inteira e os cels que mudam com ela (nova, apagar, mover, propriedades,
     /// duplicar, Merge Down, Flatten…). O inverso é a lista de antes e esses cels como estavam.
     Layers(Box<LayerSet>),
+    /// A lista de frames inteira, os cels que mudam com ela e as tags (novo, apagar, mover,
+    /// duração, propriedades e ligação de cels, tags). O inverso é o estado de antes.
+    Frames(Box<FrameSet>),
+}
+
+/// O que [`Op::Frames`] põe no sprite: `frames` e `tags` substituem as listas; cada `(chave, cel)`
+/// de `cels` põe (`Some`) ou tira (`None`) esse cel.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FrameSet {
+    pub frames: Vec<Frame>,
+    pub cels: Vec<(CelKey, Option<Cel>)>,
+    pub tags: Vec<Tag>,
 }
 
 /// O que [`Op::Layers`] põe no sprite: `layers` substitui a lista; cada `(chave, cel)` de `cels`
@@ -78,6 +90,8 @@ pub enum OpError {
     BadCel(CelKey),
     /// A lista de camadas viola uma lei da árvore (o campo diz qual).
     BadLayers(&'static str),
+    /// A lista de frames ou de tags viola uma lei (o campo diz qual).
+    BadFrames(&'static str),
 }
 
 impl Op {
@@ -91,6 +105,14 @@ impl Op {
             Op::Layers(l) => {
                 l.layers.len() * std::mem::size_of::<Layer>()
                     + l.cels
+                        .iter()
+                        .map(|(_, c)| c.as_ref().map_or(0, |c| c.data.len()) + 32)
+                        .sum::<usize>()
+            }
+            Op::Frames(f) => {
+                f.frames.len() * std::mem::size_of::<Frame>()
+                    + f.tags.len() * std::mem::size_of::<Tag>()
+                    + f.cels
                         .iter()
                         .map(|(_, c)| c.as_ref().map_or(0, |c| c.data.len()) + 32)
                         .sum::<usize>()
@@ -130,7 +152,100 @@ pub fn apply(sprite: &mut Sprite, op: Op) -> Result<Op, OpError> {
         }),
         Op::Whole(w) => apply_whole(sprite, *w).map(|w| Op::Whole(Box::new(w))),
         Op::Layers(l) => apply_layers(sprite, *l).map(|l| Op::Layers(Box::new(l))),
+        Op::Frames(f) => apply_frames(sprite, *f).map(|f| Op::Frames(Box::new(f))),
     }
+}
+
+/// As leis dos cels no estado FINAL de um op (`changes` por cima de `s.cels`, ou no lugar dele se
+/// `replace`): camada de imagem e frame existentes; o dono tem os bytes da caixa e só fica vazio
+/// se houver ligado a ele; o ligado não tem bytes e aponta para um dono da mesma camada.
+pub(crate) fn check_cels(
+    s: &Sprite,
+    layers: &[Layer],
+    frames: &[Frame],
+    changes: &[(CelKey, Option<Cel>)],
+    replace: bool,
+    bpp: usize,
+) -> Result<(), OpError> {
+    let mut fin: BTreeMap<CelKey, &Cel> = if replace {
+        BTreeMap::new()
+    } else {
+        s.cels.iter().map(|(k, c)| (*k, c)).collect()
+    };
+    for (k, c) in changes {
+        match c {
+            Some(c) => fin.insert(*k, c),
+            None => fin.remove(k),
+        };
+    }
+    let image = |id: LayerId| layers.iter().any(|l| l.id == id && !l.is_group());
+    for (&k, c) in &fin {
+        if !image(k.0) || !frames.iter().any(|f| f.id == k.1) {
+            return Err(OpError::BadCel(k));
+        }
+        match c.link {
+            Some(f) => {
+                let ok = f != k.1
+                    && c.data.is_empty()
+                    && c.bbox.is_empty()
+                    && fin.get(&(k.0, f)).is_some_and(|o| o.link.is_none());
+                if !ok {
+                    return Err(OpError::BadCel(k));
+                }
+            }
+            None => {
+                let empty_ok = c.bbox.is_empty()
+                    && fin.iter().any(|(o, x)| o.0 == k.0 && x.link == Some(k.1));
+                if c.data.len() != c.bbox.area() * bpp || (c.bbox.is_empty() && !empty_ok) {
+                    return Err(OpError::BadCel(k));
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+/// As leis da linha do tempo: pelo menos um frame; ids únicos e já emitidos; cada tag dentro dela.
+pub(crate) fn check_frames(frames: &[Frame], tags: &[Tag], next_id: u32) -> Result<(), OpError> {
+    let bad = OpError::BadFrames;
+    if frames.is_empty() {
+        return Err(bad("no frame"));
+    }
+    let mut seen = std::collections::BTreeSet::new();
+    for f in frames {
+        if f.id.0 == 0 || f.id.0 >= next_id || !seen.insert(f.id) {
+            return Err(bad("frame.id"));
+        }
+    }
+    let n = frames.len() as u32;
+    if tags.iter().any(|t| t.from > t.to || t.to >= n) {
+        return Err(bad("tag.range"));
+    }
+    Ok(())
+}
+
+fn put_cels(s: &mut Sprite, cels: Vec<(CelKey, Option<Cel>)>) -> Vec<(CelKey, Option<Cel>)> {
+    let mut before = Vec::with_capacity(cels.len());
+    for (key, cel) in cels {
+        let old = match cel {
+            Some(c) => s.cels.insert(key, c),
+            None => s.cels.remove(&key),
+        };
+        before.push((key, old));
+    }
+    before.reverse();
+    before
+}
+
+fn apply_frames(s: &mut Sprite, set: FrameSet) -> Result<FrameSet, OpError> {
+    check_frames(&set.frames, &set.tags, s.next_id)?;
+    check_cels(s, &s.layers, &set.frames, &set.cels, false, s.mode.bpp())?;
+    let cels = put_cels(s, set.cels);
+    Ok(FrameSet {
+        frames: std::mem::replace(&mut s.frames, set.frames),
+        cels,
+        tags: std::mem::replace(&mut s.tags, set.tags),
+    })
 }
 
 /// As leis da árvore de camadas: ids únicos e já emitidos; pai existe, é grupo e vem de uma
@@ -167,34 +282,12 @@ pub(crate) fn check_layers(layers: &[Layer], next_id: u32) -> Result<(), OpError
 
 fn apply_layers(s: &mut Sprite, set: LayerSet) -> Result<LayerSet, OpError> {
     check_layers(&set.layers, s.next_id)?;
-    let bpp = s.mode.bpp();
-    let image = |id: LayerId| set.layers.iter().any(|l| l.id == id && !l.is_group());
-    for (key, cel) in &set.cels {
-        if let Some(c) = cel
-            && (!image(key.0)
-                || !s.frames.iter().any(|f| f.id == key.1)
-                || c.data.len() != c.bbox.area() * bpp)
-        {
-            return Err(OpError::BadCel(*key));
-        }
-    }
     // Nenhum cel pode ficar órfão: o de uma camada que sai (ou vira grupo) tem de vir em `cels`.
-    let touched: std::collections::BTreeSet<CelKey> = set.cels.iter().map(|(k, _)| *k).collect();
-    if let Some(k) = s.cels.keys().find(|k| !touched.contains(k) && !image(k.0)) {
-        return Err(OpError::BadCel(*k));
-    }
-    let mut before = Vec::with_capacity(set.cels.len());
-    for (key, cel) in set.cels {
-        let old = match cel {
-            Some(c) => s.cels.insert(key, c),
-            None => s.cels.remove(&key),
-        };
-        before.push((key, old));
-    }
-    before.reverse();
+    check_cels(s, &set.layers, &s.frames, &set.cels, false, s.mode.bpp())?;
+    let cels = put_cels(s, set.cels);
     Ok(LayerSet {
         layers: std::mem::replace(&mut s.layers, set.layers),
-        cels: before,
+        cels,
     })
 }
 
@@ -224,12 +317,8 @@ fn apply_whole(s: &mut Sprite, w: Whole) -> Result<Whole, OpError> {
     {
         return Err(OpError::BadPalette);
     }
-    for (&key, cel) in &w.cels {
-        let known = s.layer(key.0).is_some() && s.frames.iter().any(|f| f.id == key.1);
-        if !known || cel.data.len() != cel.bbox.area() * w.mode.bpp() {
-            return Err(OpError::BadCel(key));
-        }
-    }
+    let all: Vec<(CelKey, Option<Cel>)> = w.cels.iter().map(|(k, c)| (*k, Some(c.clone()))).collect();
+    check_cels(s, &s.layers, &s.frames, &all, true, w.mode.bpp())?;
     Ok(Whole {
         mode: std::mem::replace(&mut s.mode, w.mode),
         palette: std::mem::replace(&mut s.palette, w.palette),
@@ -253,7 +342,8 @@ fn apply_patch(s: &mut Sprite, p: Patch) -> Result<Patch, OpError> {
             got: p.pixels.len(),
         });
     }
-    let key: CelKey = (p.layer, p.frame);
+    // O traço num cel ligado pinta a imagem do dono: todos os ligados a vêem.
+    let key: CelKey = s.owner((p.layer, p.frame));
     let inverse = Patch {
         layer: p.layer,
         frame: p.frame,
@@ -261,8 +351,18 @@ fn apply_patch(s: &mut Sprite, p: Patch) -> Result<Patch, OpError> {
         rect: p.rect,
         pixels: s.read_rect(key, p.rect),
     };
+    let held = s.cels.iter().any(|(k, c)| k.0 == key.0 && c.link == Some(key.1));
     let Some(bbox) = p.bbox.filter(|b| !b.is_empty()) else {
-        s.cels.remove(&key);
+        match s.cels.get_mut(&key) {
+            // Com ligados, a imagem fica vazia em vez de sair (eles continuam a apontar para ela).
+            Some(c) if held => {
+                c.bbox = Rect::default();
+                c.data.clear();
+            }
+            _ => {
+                s.cels.remove(&key);
+            }
+        }
         return Ok(inverse);
     };
     let transparent = s.transparent_value().to_le_bytes();
@@ -292,6 +392,10 @@ fn apply_patch(s: &mut Sprite, p: Patch) -> Result<Patch, OpError> {
             data[dst..dst + bpp].copy_from_slice(&p.pixels[src..src + bpp]);
         }
     }
-    s.cels.insert(key, Cel { bbox, data });
+    let mut cel = Cel::image(bbox, data);
+    if let Some(o) = &old {
+        (cel.opacity, cel.z) = (o.opacity, o.z);
+    }
+    s.cels.insert(key, cel);
     Ok(inverse)
 }

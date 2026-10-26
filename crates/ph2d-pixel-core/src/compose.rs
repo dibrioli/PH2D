@@ -62,7 +62,122 @@ pub fn compose_window(
         region,
         purpose,
     }
-    .children(None, &mut buf);
+    .draw(&mut buf);
+    buf
+}
+
+/// O papel vegetal (Aseprite: *Onion Skin*). Por omissão o do Trial 1.3.18: um antes e um depois,
+/// opacidade 68 a descer 28 por frame, por TRÁS do frame, sem tinta.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Onion {
+    pub prev: u32,
+    pub next: u32,
+    pub base: u8,
+    pub step: u8,
+    /// A tinta vermelha (antes) / azul (depois).
+    pub tint: bool,
+    /// Por cima do frame em vez de por trás.
+    pub front: bool,
+}
+
+impl Default for Onion {
+    fn default() -> Self {
+        Self {
+            prev: 1,
+            next: 1,
+            base: 68,
+            step: 28,
+            tint: false,
+            front: false,
+        }
+    }
+}
+
+/// Um fantasma: o frame, a opacidade e se é dos de antes (tinta vermelha) ou de depois (azul).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Ghost {
+    pub frame: FrameId,
+    pub opacity: u8,
+    pub before: bool,
+}
+
+/// Os fantasmas do frame `frame`, do mais longe para o mais perto: a opacidade do frame à
+/// distância `d` é `max(0, base − step·(d − 1))` (Trial `on_*.ase`); os de opacidade 0 não entram.
+#[must_use]
+pub fn ghosts(sprite: &Sprite, frame: FrameId, onion: &Onion) -> Vec<Ghost> {
+    let Some(i) = sprite.frame_index(frame) else {
+        return Vec::new();
+    };
+    let op = |d: u32| {
+        (i32::from(onion.base) - i32::from(onion.step) * (d as i32 - 1)).clamp(0, 255) as u8
+    };
+    let mut out = Vec::new();
+    for (side, reach) in [(true, onion.prev), (false, onion.next)] {
+        for d in (1..=reach).rev() {
+            let j = if side { i.checked_sub(d as usize) } else { Some(i + d as usize) };
+            let Some(f) = j.and_then(|j| sprite.frames().get(j)) else {
+                continue;
+            };
+            let opacity = op(d);
+            if opacity > 0 {
+                out.push(Ghost {
+                    frame: f.id,
+                    opacity,
+                    before: side,
+                });
+            }
+        }
+    }
+    out
+}
+
+/// A tinta do papel vegetal: o cinza pelo brilho Rec.709 `v` e depois `((255+v)/2, v/2, v/2)`
+/// para os de antes, o espelho azul para os de depois (Trial, 6 144/6 144).
+#[must_use]
+pub fn onion_tint(c: [u8; 4], before: bool) -> [u8; 4] {
+    let v = (u32::from(c[0]) * 2126 + u32::from(c[1]) * 7152 + u32::from(c[2]) * 722) / 10000;
+    let (hi, lo) = (((255 + v) / 2) as u8, (v / 2) as u8);
+    if before { [hi, lo, lo, c[3]] } else { [lo, lo, hi, c[3]] }
+}
+
+/// A vista de um frame com o papel vegetal: a janela `region` sobre `under` (os bytes já lá; `None`
+/// = transparente), os fantasmas por trás ou por cima do frame, misturados em Normal.
+#[must_use]
+pub fn compose_with_onion(
+    sprite: &Sprite,
+    frame: FrameId,
+    pending: Option<&Stroke>,
+    region: Rect,
+    onion: &Onion,
+    under: Option<&[u8]>,
+) -> Vec<u8> {
+    let mut buf = under.map_or_else(|| vec![0u8; region.area() * 4], <[u8]>::to_vec);
+    let ctx = Ctx {
+        sprite,
+        frame,
+        pending,
+        region,
+        purpose: Purpose::View,
+    };
+    if onion.front {
+        ctx.draw(&mut buf);
+    }
+    for g in ghosts(sprite, frame, onion) {
+        let px = compose_window(sprite, g.frame, None, region, Purpose::View);
+        for (d, s) in buf.chunks_exact_mut(4).zip(px.chunks_exact(4)) {
+            if s[3] == 0 {
+                continue;
+            }
+            let mut src = [s[0], s[1], s[2], s[3]];
+            if onion.tint {
+                src = onion_tint(src, g.before);
+            }
+            d.copy_from_slice(&blend(BlendMode::Normal, [d[0], d[1], d[2], d[3]], src, g.opacity));
+        }
+    }
+    if !onion.front {
+        ctx.draw(&mut buf);
+    }
     buf
 }
 
@@ -75,17 +190,36 @@ struct Ctx<'a> {
 }
 
 impl Ctx<'_> {
-    /// Compõe os filhos de `parent`, de baixo para cima, sobre `buf` (a janela `region`).
-    fn children(&self, parent: Option<LayerId>, buf: &mut [u8]) {
-        for layer in self.sprite.layers().iter().filter(|l| l.parent == parent) {
-            if !layer.visible || (layer.reference && self.purpose == Purpose::Export) {
-                continue;
+    /// As camadas de imagem de baixo para cima pela ordem dos cels deste frame.
+    fn draw(&self, buf: &mut [u8]) {
+        let mut flat = Vec::new();
+        self.flatten(None, true, &mut flat);
+        let z = |l: &Layer| self.sprite.entry((l.id, self.frame)).map_or(0, |c| i32::from(c.z));
+        let mut keyed: Vec<_> = flat
+            .into_iter()
+            .enumerate()
+            .map(|(i, (l, shown))| ((i as i32 + z(l), z(l)), l, shown))
+            .collect();
+        // Chave `(índice + z, z)`, estável (Trial `z_*.ase`, 10/10 exactos).
+        keyed.sort_by_key(|(k, _, _)| *k);
+        for (_, layer, shown) in keyed {
+            if shown {
+                self.image(layer, buf);
             }
+        }
+    }
+
+    /// As camadas de imagem da árvore em ordem de desenho, com «vê-se». O grupo é PASS-THROUGH: os
+    /// filhos misturam-se direto com o que está por baixo, e o modo do grupo não entra (Trial,
+    /// g*/gm*.ase: 6 144/6 144 por modo). O índice conta as escondidas (esconder não reordena).
+    fn flatten<'a>(&'a self, parent: Option<LayerId>, shown: bool, out: &mut Vec<(&'a Layer, bool)>) {
+        for layer in self.sprite.layers().iter().filter(|l| l.parent == parent) {
+            let me = shown
+                && layer.visible
+                && !(layer.reference && self.purpose == Purpose::Export);
             match layer.kind {
-                LayerKind::Image => self.image(layer, buf),
-                // O grupo é PASS-THROUGH: os filhos misturam-se direto com o que está por baixo, e o
-                // modo do grupo não entra (Trial, g*/gm*.ase: 6 144/6 144 por modo).
-                LayerKind::Group { .. } => self.children(Some(layer.id), buf),
+                LayerKind::Image => out.push((layer, me)),
+                LayerKind::Group { .. } => self.flatten(Some(layer.id), me, out),
             }
         }
     }
@@ -110,8 +244,12 @@ impl Ctx<'_> {
         let lut: Option<Vec<[u8; 4]>> = (s.mode() == ColorMode::Indexed)
             .then(|| (0..=255u32).map(|v| s.rgba_of_value(v)).collect());
         let srect = stroke.map(Stroke::rect);
+        // A opacidade efectiva é `mul(camada, cel)` (Trial `co_*.ase`).
+        let opacity = cel.map_or(layer.opacity, |c| {
+            crate::blend::mul(u32::from(layer.opacity), u32::from(c.opacity)) as u8
+        });
         // O caminho rápido (medido: o Normal opaco é a maioria das células) copia em vez de misturar.
-        let copia = layer.blend == BlendMode::Normal && layer.opacity == 255;
+        let copia = layer.blend == BlendMode::Normal && opacity == 255;
         for y in area.y..area.y + area.h as i32 {
             let linha = cel.filter(|c| y >= c.bbox.y && y < c.bbox.y + c.bbox.h as i32);
             for x in area.x..area.x + area.w as i32 {
@@ -141,7 +279,7 @@ impl Ctx<'_> {
                     continue;
                 }
                 let dst = [buf[i], buf[i + 1], buf[i + 2], buf[i + 3]];
-                buf[i..i + 4].copy_from_slice(&blend(layer.blend, dst, src, layer.opacity));
+                buf[i..i + 4].copy_from_slice(&blend(layer.blend, dst, src, opacity));
             }
         }
     }

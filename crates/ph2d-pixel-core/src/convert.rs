@@ -83,6 +83,10 @@ pub fn convert(sprite: &Sprite, mode: ColorMode, opt: Convert) -> Option<Whole> 
     }
     let mut cels = BTreeMap::new();
     for (&key, cel) in &sprite.cels {
+        if cel.link.is_some() {
+            cels.insert(key, cel.clone());
+            continue;
+        }
         let background = sprite.layer(key.0).is_some_and(|l| l.background);
         let rgba: Vec<[u8; 4]> = cel
             .data
@@ -100,13 +104,7 @@ pub fn convert(sprite: &Sprite, mode: ColorMode, opt: Convert) -> Option<Whole> 
                 to_indexed(&mut m, &rgba, cel, opt.dither)
             }
         };
-        cels.insert(
-            key,
-            Cel {
-                bbox: cel.bbox,
-                data,
-            },
-        );
+        cels.insert(key, Cel { data, ..cel.clone() });
     }
     Some(Whole {
         mode,

@@ -1,6 +1,7 @@
 """Driver da P4: abre cada .ase de trial_ase_quadros.py no Aseprite Trial (Xvfb :78) e le a tela.
 uso: python3 -I trial_quadros.py <dir> [ficheiro ...]
   co_*, z_*  o composto do quadro 0 (centro de cada celula a 400 % = 8 px de tela);
+  lk_*       o quadro 1 (o cel ligado ao do quadro 0);
   on_*       o quadro 2 com o papel vegetal desligado (o xadrez) e ligado (F3), mais o .ini do teste;
   tg_*       Enter (tocar) a partir do quadro 1 e um video de 14 s do centro do canvas (ffmpeg
              x11grab, 50 q/s) -> a sequencia de cores com a duracao de cada uma.
@@ -62,6 +63,15 @@ def ler(nome):
     fecha()
     return out
 
+def ler_f1(nome):
+    abre(nome)
+    a = shot(os.path.join(D, nome.replace('.ase', '_f0.png')))
+    o = origem(a, nome)
+    xdo('key', 'Home'); xdo('key', 'Right'); time.sleep(0.6)
+    out = celulas(shot(os.path.join(D, nome.replace('.ase', '_f1.png'))), o)
+    fecha()
+    return out
+
 def ler_onion(nome):
     abre(nome)
     a = shot(os.path.join(D, nome.replace('.ase', '_f0.png')))
@@ -105,7 +115,9 @@ def ler_tocar(nome):
 out_p = os.path.join(D, 'lido.json')
 out = json.load(open(out_p)) if os.path.exists(out_p) else {}
 for n in FILES:
-    if n.startswith('on_'):
+    if n.startswith('lk_'):
+        out[n] = ler_f1(n)
+    elif n.startswith('on_'):
         out[n] = ler_onion(n)
     elif n.startswith('tg_'):
         out[n] = ler_tocar(n)

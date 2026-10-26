@@ -254,6 +254,32 @@ pub fn info(k: FieldKey) -> Option<CampoInfo> {
     }
 }
 
+/// A grandeza que o valor de um campo é, para quem o MOSTRA — a timeline formata pela unidade do projecto.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum Unidade {
+    /// O número nu.
+    Nenhuma,
+    /// Metros de mundo (o artista lê-os em px ou metros).
+    Comprimento,
+    /// Graus (o artista lê-os em graus ou radianos).
+    Angulo,
+}
+
+/// ⭐ **A unidade de exibição do campo** — derivada aqui, numa porta, e não escrita em cada [`CampoInfo`]. Só
+/// entra o que o publicador entrega cru em mundo: as coordenadas do vértice do vetor (âncora e alças) e as
+/// medidas do CAD.
+#[must_use]
+pub fn unidade(k: FieldKey) -> Unidade {
+    use crate::{canal_cad as cad, canal_vetor as vet};
+    match (k.familia, k.campo) {
+        (familia::CAD, cad::MEDIDA) | (familia::VETOR, vet::ANCORA_X..=vet::SAIDA_Y) => {
+            Unidade::Comprimento
+        }
+        (familia::CAD, cad::ANGULO) => Unidade::Angulo,
+        _ => Unidade::Nenhuma,
+    }
+}
+
 /// **O que o documento de cada família vale AGORA**, por `(entidade, campo)` — publicado pela família
 /// antes de quem o lê (o autokey, o `rest` da timeline, o losango do painel).
 ///

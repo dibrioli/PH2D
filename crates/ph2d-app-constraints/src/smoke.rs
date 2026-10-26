@@ -8,6 +8,7 @@
 //! | 4 | **Braço** — a IK de 2 ossos persegue a BOLA e o Copy Rotation abaixo dela roda a mão com o RODADOR |
 //! | 5 | **Antena** — o CORPO vai e volta (curva da timeline, acelera e trava); a PONTA tem uma Spring e fica para trás, balança e assenta, presa ao comprimento da antena (Limit Distance, Surface); a HASTE olha a ponta (Look At). Tocar e arrastar o tempo dão a MESMA pose |
 //! | 6 | **Régua de desenho** — um perfil de dentes no VETOR com regras de desenho técnico (H/V, topos e folgas iguais, um canto preso): no modo Edit arraste um canto e o resto obedece; dê Play e a ALTURA do dente do meio estica e volta sem desfazer as outras regras (a medida animada, `smoke_regua`) |
+//! | 7 | **Caixa com tampa** — abre no Edit com a tool **Rules** na mão: o corpo e a tampa com dez regras, cada uma à vista (selos `|` `—` `=1` 🔒 ⊙, cotas da largura, da altura e do ângulo); o Play abre e fecha a tampa pelo ÂNGULO animado (`smoke_caixa`) |
 
 use bevy_ecs::entity::Entity;
 use bevy_ecs::prelude::Resource;
@@ -22,7 +23,7 @@ use ph2d_render::{DISC_TILE_KEY, Sprite, WHITE_TILE_KEY};
 /// O roteador desta família — o maior nível que [`encenar`] responde.
 pub const ROUTERS: &[ph2d_app_host::SmokeRouter] = &[ph2d_app_host::SmokeRouter {
     env: "PH2D_CONSTRAINT_SMOKE",
-    max_level: 6,
+    max_level: 7,
 }];
 
 /// O raio do olho da cena 2 e a folga da pupila dentro dele (o número que a sonda mede).
@@ -49,6 +50,10 @@ pub fn encenar(world: &mut World, nivel: u32) -> bool {
         world.insert_resource(crate::smoke_regua::Semear);
         return true;
     }
+    if nivel == 7 {
+        world.insert_resource(crate::smoke_caixa::Semear);
+        return true;
+    }
     let sujeito = match nivel {
         1 => mao_e_espada(world),
         2 => olho(world),
@@ -72,6 +77,7 @@ pub fn passo(
     crate::smoke_pega::step(sim, hero, tl, ph)
         .or_else(|| crate::smoke_antena::step(sim, hero, tl, ph))
         .or_else(|| crate::smoke_regua::step(sim, hero, tl, ph))
+        .or_else(|| crate::smoke_caixa::step(sim, hero, tl, ph))
 }
 
 /// A cena abre com o sujeito escolhido e o cartão Constraints à vista — uma vez só.

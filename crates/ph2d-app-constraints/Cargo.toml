@@ -40,6 +40,10 @@ bevy_ecs = "0.19"
 # O valor do campo que a curva escreve, pelo ledger `fields` do `PreviewDrive`.
 serde_json = "1"
 
+# A cena 7 (W4.6): a chave do ângulo (`medida::chave_da`) e a tool Regras na mão.
+ph2d-vec-entities = { path = "../ph2d-vec-entities" }
+ph2d-tool-vector = { path = "../ph2d-tool-vector" }
+
 [dev-dependencies]
 ph2d-label-census = { path = "../ph2d-label-census" }
 # A cena 6 (a medida animada): a porta do quadro do vetor e a régua do cumprimento.

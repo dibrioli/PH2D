@@ -9,7 +9,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use ph2d_ecs::canal_cad::{MEDIDA, chave, regra_de};
+use ph2d_ecs::canal_cad::{ANGULO, MEDIDA, chave, regra_de};
 use ph2d_ecs::{CanaisLidos, Entity, FieldKey, SimWorld, VecPathRef};
 use ph2d_vec_constraints::{Folha, resolve};
 use ph2d_vec_scene::cad::{Lei, PontoCad, RegraId};
@@ -28,6 +28,19 @@ pub fn no_canal(lei: &Lei) -> Option<f32> {
     Some(v as f32)
 }
 
+/// ⭐ **A porta única do canal de uma regra**: `None` se a lei não é medida; [`ANGULO`] num ângulo (graus),
+/// [`MEDIDA`] numa distância ou raio (metros) — a timeline formata cada um pela sua unidade.
+#[must_use]
+pub fn chave_da(lei: &Lei, id: RegraId) -> Option<FieldKey> {
+    lei.medida()?;
+    let campo = if matches!(lei, Lei::Angulo(..)) {
+        ANGULO
+    } else {
+        MEDIDA
+    };
+    Some(chave(campo, id.0))
+}
+
 fn do_canal(lei: &Lei, v: f32) -> f64 {
     let v = f64::from(v);
     if matches!(lei, Lei::Angulo(..)) {
@@ -44,7 +57,7 @@ pub fn campos(scene: &VecScene, path: VecPathId) -> Vec<(FieldKey, f32)> {
         .regras()
         .iter()
         .filter(|r| r.lei.dono() == Some(path))
-        .filter_map(|r| Some((chave(MEDIDA, r.id.0), no_canal(&r.lei)?)))
+        .filter_map(|r| Some((chave_da(&r.lei, r.id)?, no_canal(&r.lei)?)))
         .collect()
 }
 
@@ -146,8 +159,7 @@ pub fn aplicar(
     for (e, k, v) in escritas {
         let id = RegraId(regra_de(k));
         if let Some(r) = scene.regra(id)
-            && k.campo == MEDIDA
-            && r.lei.medida().is_some()
+            && chave_da(&r.lei, id) == Some(k)
         {
             pedidas.insert(id, do_canal(&r.lei, v));
             ecos.push((e, k, v));

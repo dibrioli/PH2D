@@ -279,14 +279,10 @@ thread_local! {
     static CANAL: std::cell::Cell<Option<ph2d_timeline::PropKind>> = const { std::cell::Cell::new(None) };
 }
 
-/// O canal da medida de uma regra (o `canal_cad` dela, `j` = o id).
+/// O canal da medida de uma regra — a porta única da família CAD (`medida::chave_da`).
 #[must_use]
 pub fn canal_da_regra(lei: &Lei, id: RegraId) -> Option<ph2d_timeline::PropKind> {
-    lei.medida()?;
-    Some(ph2d_timeline::PropKind::Field(ph2d_ecs::canal_cad::chave(
-        ph2d_ecs::canal_cad::MEDIDA,
-        id.0,
-    )))
+    ph2d_vec_entities::medida::chave_da(lei, id).map(ph2d_timeline::PropKind::Field)
 }
 
 /// O canal da cota escolhida neste quadro (`None` = nenhuma, ou fora da tool).

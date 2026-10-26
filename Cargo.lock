@@ -5539,6 +5539,7 @@ dependencies = [
  "ph2d-skeleton-live",
  "ph2d-timeline",
  "ph2d-tokens",
+ "ph2d-tool-vector",
  "ph2d-vec-constraints",
  "ph2d-vec-edit",
  "ph2d-vec-entities",

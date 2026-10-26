@@ -95,6 +95,7 @@ pub(crate) fn paint_track(
         label_w,
         &band,
         track.prop.nomeia(),
+        (!state.speed_view).then_some(track.prop),
     );
     if track.keys.is_empty() {
         return;
@@ -195,7 +196,8 @@ fn drawn_extent_of(band_rect: &Rect, view: TimeView, track: &TrackView) -> Optio
 /// The inset background + border, and the fitted range's min/max labels in the
 /// label column (P6: no ambiguous spec — the vertical scale is always readable).
 /// `texto` ⇒ a escala não se escreve: o eixo de um canal que nomeia são índices, não uma grandeza
-/// (a palavra vai junto de cada chave).
+/// (a palavra vai junto de cada chave). `grandeza` = o canal cujos VALORES a escala mostra (`None` na vista de
+/// velocidade): um comprimento ou um ângulo escreve-se na unidade do projecto, como a coluna do valor.
 fn paint_frame(
     ctx: &mut PaintCtx,
     theme: Theme,
@@ -203,6 +205,7 @@ fn paint_frame(
     label_w: f32,
     band: &Band,
     texto: bool,
+    grandeza: Option<ph2d_timeline::PropKind>,
 ) {
     // ⭐ Raio e moldura pela porta do TEMA: a banda é plana num tema moderno.
     let band_radius = ph2d_editor_core::paint::frame_radius(theme, Radius::Xs.px());
@@ -228,6 +231,7 @@ fn paint_frame(
     let x = row.x + Spacing::Xs.px();
     let w = (label_w - Spacing::Xs.px() * 2.0).max(0.0);
     let color = resolve(ColorToken::Text3, theme);
+    let u = crate::tracks_value::Unidades::of(ctx.host.project());
     for (v, y) in [
         (band.v_max, band_rect.y),
         (band.v_min, band_rect.y + band_rect.h - font),
@@ -235,7 +239,9 @@ fn paint_frame(
         paint_text(
             ctx.text_system,
             ctx.scene,
-            &format!("{v:.2}"),
+            &grandeza
+                .and_then(|p| crate::tracks_value::com_unidade(p, v, u))
+                .unwrap_or_else(|| format!("{v:.2}")),
             x,
             y,
             font,

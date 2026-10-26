@@ -126,7 +126,12 @@ fn a_coluna_do_valor_escreve_a_palavra_da_escolha() {
         let t = [row(prop)];
         let mut values = TrackValues::default();
         values.publish_com_mundo(&t, Some(&mundo), |_, _| Some(v));
-        crate::tracks_value::valor_da_row(&values, &t[0], v)
+        crate::tracks_value::valor_da_row(
+            &values,
+            &t[0],
+            v,
+            crate::tracks_value::Unidades::of(&ph2d_editor_core::project::ProjectSettings::default()),
+        )
     };
     assert_eq!(diz(canal("component.field.label_fields.1"), 3.0), "Tag");
     assert_eq!(

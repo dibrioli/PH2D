@@ -20,7 +20,9 @@
 use ph2d_editor_core::paint::paint_text_elided;
 use ph2d_editor_core::paint::resolve;
 use ph2d_editor_core::panel::PaintCtx;
-use ph2d_timeline::{TimelineViewSnapshot, TrackView};
+use ph2d_editor_core::project::ProjectSettings;
+use ph2d_editor_core::{DisplayAngle, LengthDisplay};
+use ph2d_timeline::{PropKind, TimelineViewSnapshot, TrackView};
 use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, Theme, TypeToken};
 
 /// A fatia reservada ao número, no fim da coluna de nomes.
@@ -57,16 +59,62 @@ pub(crate) fn fits(name_w: f32) -> bool {
 /// `±3,14`).
 /// ⭐ **O texto da coluna do valor**: um canal discreto vale um índice, e escreve-se a PALAVRA que ele
 /// nomeia, nunca o índice (o texto «nenhum» fica vazio); o resto é o número (F27 F).
+/// Um comprimento ou um ângulo leva a unidade do projecto ([`com_unidade`]).
 pub(crate) fn valor_da_row(
     values: &ph2d_timeline::TrackValues,
     track: &TrackView,
     v: f32,
+    u: Unidades,
 ) -> String {
     match values.palavra(track.target.get(), v) {
         Some(p) => dita(p).to_owned(),
         None if track.prop.is_text() => String::new(),
-        None => text(v),
+        None => com_unidade(track.prop, f64::from(v), u).unwrap_or_else(|| text(v)),
     }
+}
+
+/// As unidades em que o artista lê: o comprimento e o ângulo do projecto (as mesmas do canvas e do Inspector).
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub(crate) struct Unidades {
+    comprimento: LengthDisplay,
+    angulo: DisplayAngle,
+}
+
+impl Unidades {
+    pub(crate) fn of(p: &ProjectSettings) -> Self {
+        Self {
+            comprimento: LengthDisplay::of(p),
+            angulo: p.display_angle,
+        }
+    }
+}
+
+/// ⭐ **O valor de um canal com grandeza** ([`ph2d_ecs::canal::unidade`]), na unidade do projecto e com o sufixo:
+/// o canal guarda metros num comprimento e graus num ângulo. `None` = número nu (quem chama formata como sempre).
+pub(crate) fn com_unidade(prop: PropKind, v: f64, u: Unidades) -> Option<String> {
+    use ph2d_ecs::canal::{Unidade, unidade};
+    let PropKind::Field(k) = prop else {
+        return None;
+    };
+    // O grau cola-se ao número e o radiano já traz o espaço; o comprimento leva-o.
+    let (n, espaco, sufixo) = match unidade(k) {
+        Unidade::Nenhuma => return None,
+        Unidade::Comprimento => (u.comprimento.value(v), " ", u.comprimento.suffix()),
+        Unidade::Angulo => (u.angulo.from_radians_f64(v.to_radians()), "", u.angulo.suffix()),
+    };
+    #[expect(clippy::cast_possible_truncation, reason = "a fatia mostra f32")]
+    Some(format!("{}{espaco}{sufixo}", curto(n as f32)))
+}
+
+/// [`text`] sem zeros à direita — a unidade ocupa a fatia que eles levavam.
+fn curto(v: f32) -> String {
+    let s = text(v);
+    let s = if s.contains('.') {
+        s.trim_end_matches('0').trim_end_matches('.')
+    } else {
+        &s
+    };
+    if s == "-0" { "0".to_owned() } else { s.to_owned() }
 }
 
 /// O que uma palavra diz no ecrã: a chave pela tabela de strings, o nome do artista como está.
@@ -134,7 +182,7 @@ pub(crate) fn paint_name_and_value(
     let Some(v) = snap.values.get(track.target.get()).filter(|_| mostra) else {
         return;
     };
-    let valor = valor_da_row(&snap.values, track, v);
+    let valor = valor_da_row(&snap.values, track, v, Unidades::of(ctx.host.project()));
     let font = TypeToken::Xs.px();
     paint_text_elided(
         ctx.text_system,

@@ -3,6 +3,7 @@
 mod a_antena;
 mod a_forca_animada;
 mod a_regua_de_desenho;
+mod a_caixa_com_tampa; // W4.6: a cena 7 — o ângulo animado da tampa
 mod as_cenas_de_smoke;
 mod every_word_this_family_shows_comes_from_the_string_table;
 mod medida_regua;

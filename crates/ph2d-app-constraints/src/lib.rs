@@ -15,6 +15,7 @@ pub mod relogio;
 pub mod smoke;
 pub mod smoke_antena;
 pub mod smoke_pega;
+pub mod smoke_caixa;
 pub mod smoke_regua;
 
 use bevy_ecs::prelude::Resource;
@@ -49,6 +50,7 @@ pub fn quadro(
         }
     }
     smoke_regua::semear_se_pedida(sim, cena);
+    smoke_caixa::semear_se_pedida(sim, cena);
     // Um `IkGoal` de antes da W2 (ficheiro, prefab, colagem) vira o item IK, e a IK de 1 osso o Look
     // At, antes de avaliar.
     ph2d_constraints_ecs::converter_ik_goals(sim.world_mut());

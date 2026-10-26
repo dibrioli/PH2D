@@ -68,10 +68,7 @@ pub fn foto() -> Option<Foto> {
 /// O que a foto pede, já resolvido no mundo: `(sprite, imagem)` a escolher, e quem fica seleccionado / com o
 /// seletor aberto (`None` = nada a fazer). `ids` são as imagens da cena pela ordem de [`IMAGENS_4`].
 #[must_use]
-pub fn plano_da_foto(
-    sim: &mut SimWorld,
-    ids: &[[u8; 32]],
-) -> Option<(Foto, Vec<(u64, [u8; 32])>, u64)> {
+pub fn plano_da_foto(sim: &mut SimWorld, ids: &[[u8; 32]]) -> Option<PlanoDaFoto> {
     let foto = foto()?;
     let [heroi, montes] = ids else {
         return None;
@@ -84,6 +81,9 @@ pub fn plano_da_foto(
     };
     Some((foto, escolhas, hills))
 }
+
+/// `(o instante, as escolhas (sprite, imagem), o objecto seleccionado)`.
+pub type PlanoDaFoto = (Foto, Vec<(u64, [u8; 32])>, u64);
 
 /// O objecto da raiz com este nome.
 #[must_use]

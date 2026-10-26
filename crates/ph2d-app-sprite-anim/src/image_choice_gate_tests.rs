@@ -144,13 +144,11 @@ fn a_troca_sobrevive_a_gravar_e_abrir() {
     let mut aberto = SimWorld::new();
     let rows = snapshot_to_world(aberto.world_mut(), &snap, &r).expect("abre");
     let e = rows[0];
-    for (a, z) in [(hills, e)] {
-        let (wa, wz) = (sim.world(), aberto.world());
-        assert_eq!(wa.get::<Sprite>(a), wz.get::<Sprite>(z));
-        assert_eq!(wa.get::<UvTransform>(a), wz.get::<UvTransform>(z));
-        assert_eq!(wa.get::<ScrollRepeat>(a), wz.get::<ScrollRepeat>(z));
-        assert_eq!(wa.get::<SpriteGrid>(a), wz.get::<SpriteGrid>(z));
-    }
+    let (wa, wz) = (sim.world(), aberto.world());
+    assert_eq!(wa.get::<Sprite>(hills), wz.get::<Sprite>(e));
+    assert_eq!(wa.get::<UvTransform>(hills), wz.get::<UvTransform>(e));
+    assert_eq!(wa.get::<ScrollRepeat>(hills), wz.get::<ScrollRepeat>(e));
+    assert_eq!(wa.get::<SpriteGrid>(hills), wz.get::<SpriteGrid>(e));
     assert!(perto(
         texel(&aberto, e, &b, [0.5, 0.95]),
         texel(&sim, hills, &b, [0.5, 0.95])

@@ -165,6 +165,9 @@ pub fn imported_facts(w: u32, h: u32, ppm: f32) -> ImageFacts {
     }
 }
 
+/// Sobe uma textura própria (`w`, `h`, RGBA8) e devolve o id dela.
+pub type Acquire<'a> = dyn FnMut(u32, u32, &[u8]) -> Result<u32, String> + 'a;
+
 /// Os factos de uma imagem da biblioteca: a fábrica pela chave, as outras pelos píxeis e o `ppm` do projecto.
 fn facts_of(
     id: AssetId,
@@ -192,7 +195,7 @@ fn facts_of(
 /// O texto para o artista se `id` não é uma imagem, `e` não é uma sprite, ou a placa recusa a textura.
 pub fn choose_library_image(
     sim: &mut SimWorld,
-    acquire: &mut dyn FnMut(u32, u32, &[u8]) -> Result<u32, String>,
+    acquire: &mut Acquire<'_>,
     db: &AssetDb,
     atlas: &BTreeMap<u32, AssetId>,
     ppm: f32,

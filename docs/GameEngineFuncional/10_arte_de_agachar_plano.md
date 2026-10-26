@@ -61,7 +61,7 @@ Sem campo gravado novo ⇒ **sem degrau de `PROJECT_SCHEMA`**; sem componente no
 
 Agachar no ar · rastejar · transição animada de levantar/baixar.
 
-## Feito (25/10) — `5244f105e8`, smoke do dono por fazer
+## Feito (25/10) — `5244f105e8`, smoke do dono OK
 
 - **Medido na construção:** a 1.ª pose (anca −0,112, `neck` −0,10) pôs o joelho da perna de trás no chão — a
   ponta redonda dele 2 texels abaixo da sola em `crouch_walk` 0 e 2 (o IK com a anca baixa demais). Cura: anca

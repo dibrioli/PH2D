@@ -127,3 +127,11 @@ Smoke do dono das três coisas (Frames/s, teclado no palco, regras); depois o qu
   widget/chrome sync (`illustration`/`sheet_cell` no `PUB_MODULE_OVERRIDE` do gerador; dois testes movidos
   de pasta); galeria mostra `Illustration`, `sheet_cell` com opt-out (sem pixels de folha).
 - Smoke build: 2.ª corrida `Finished smoke in 0.27s`. Suíte de impacto continua do integrador.
+
+## Smoke da rodada 2: OK (dono, 25/10). PRÓXIMO: «abaixar» com corpo baixo
+
+A regra «Key held: down → crouch» já troca a animação; falta o CORPO: enquanto agachado, a cápsula do
+`PlatformPlayer` baixa (não passa sob tecto baixo ⇒ não levanta), anda mais devagar, e a pose
+`Crouch` entra nas condições das regras (append-only em `CharacterPose`/`AnimWhenInfo::Pose`). Medir
+primeiro: `ph2d-platformer` (lei do player, `PlayerView`, se já há crouch), o `down` no
+`player_input`, e a arte de fábrica (há células de agachar na folha do herói? senão plano 06).

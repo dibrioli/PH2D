@@ -41,6 +41,7 @@ pub mod entities;
 pub mod entity_map;
 pub mod filter;
 pub mod morph_set;
+pub mod receita;
 pub mod transform;
 
 pub use entities::zorder;

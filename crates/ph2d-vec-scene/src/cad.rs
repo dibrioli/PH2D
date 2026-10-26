@@ -5,6 +5,9 @@ use serde::{Deserialize, Deserializer, Serialize};
 
 use crate::{VecPath, VecPathId, VecScene, VertId};
 
+mod circulo;
+pub use circulo::circulo_de;
+
 /// Um ponto de uma regra: um vértice de um path, ou o centro de um path que é um círculo.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub enum PontoCad {

@@ -183,9 +183,11 @@ pub fn gesture_paths(
     shape: &ph2d_vec_edit::ShapeTool,
     pencil: &ph2d_vec_edit::Pencil,
 ) -> Vec<ph2d_vec_scene::VecPathId> {
+    // Os paths que o solver de CAD escreve neste arrasto também: o `Xform` que a caneta leu tem de valer até soltar.
     [pen.active_path(), shape.active_path(), pencil.active_path()]
         .into_iter()
         .flatten()
+        .chain(pen.cad_em_gesto().iter().copied())
         .collect()
 }
 
@@ -238,6 +240,7 @@ pub fn settle_origins(
     map: &crate::entities::VecEntityMap,
     drawing: &[ph2d_vec_scene::VecPathId],
 ) {
+    crate::receita::assenta_circulos_vivos(sim, scene, map, drawing);
     let pending: Vec<(ph2d_vec_scene::VecPathId, Entity)> = map
         .iter()
         .filter(|(id, _)| !drawing.contains(id))

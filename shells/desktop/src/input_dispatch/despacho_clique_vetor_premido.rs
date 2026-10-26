@@ -36,7 +36,7 @@ impl crate::App {
                     let h = hero.as_mut()?;
                     crate::vec_snap::ask_grid(&mut h.grid.snap_state, q)
                 };
-                ph2d_vec_edit::snap::snap(&[p], &targets, cfg, Some(&mut grid)).apply(p)
+                ph2d_vec_edit::snap::snap(&[p], &targets, cfg, Some(&mut grid))
             };
             let node_mode = self.vec.draw_config.mode == ph2d_tool_vector::DrawMode::Node;
             let mut node_missed = false;
@@ -105,7 +105,7 @@ impl crate::App {
                     }
                 }
                 None => {
-                    let click = self.vec.pen.on_press(
+                    let click = self.vec.pen.on_press_encaixe(
                         &mut gfx.vec_scene,
                         [w[0] as f64, w[1] as f64],
                         px_to_world,
@@ -124,9 +124,9 @@ impl crate::App {
                     }
                 }
                 Some(kind) => {
-                    // A ferramenta de forma não faz hit-test: o canto pode
-                    // ser encaixado antes de entrar.
-                    let p = snap([w[0] as f64, w[1] as f64]);
+                    // A forma não faz hit-test: o canto encaixa antes de entrar.
+                    let q = [w[0] as f64, w[1] as f64];
+                    let p = snap(q).apply(q);
                     // Os parâmetros cruzam a fronteira de unidade AQUI: a
                     // tool os guarda como o usuário os digita (px nos
                     // raios), a geometria só fala mundo.

@@ -4,7 +4,6 @@
 
 #![forbid(unsafe_code)]
 
-mod circulo;
 mod posto;
 
 use std::collections::{BTreeMap, BTreeSet};
@@ -15,7 +14,7 @@ use kcl_ezpz::{Config, Constraint as K, ConstraintRequest as R, IdGenerator};
 use ph2d_vec_scene::cad::{Lei, PontoCad, RegraCad, SegCad};
 use ph2d_vec_scene::{VecPath, VecPathId, Xform};
 
-pub use circulo::circulo_de;
+pub use ph2d_vec_scene::cad::circulo_de;
 
 /// Os paths que as regras endereçam, cada um com o seu afim local → folha.
 pub struct Folha<'a> {

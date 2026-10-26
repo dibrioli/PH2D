@@ -1,6 +1,6 @@
 //! O círculo é GEOMETRIA (§3.2): fechado, sem contornos extra, ≥ 3 âncoras no mesmo raio e cada alça tangente.
 
-use ph2d_vec_scene::{VecPath, Xform};
+use crate::{VecPath, Xform};
 
 /// Folga relativa ao raio: o cozimento usa trigonometria, e a escrita de volta é `c + k·(p − c)`.
 const TOL_REL: f64 = 1e-7;

@@ -67,28 +67,7 @@ pub fn recook_shape(shape: &VecShape) -> Option<VecPath> {
 /// ⚠️ **O sinal é preservado**, e não é detalhe: a reta guarda a DIREÇÃO em `w`/`h`
 /// ([`recook_shape`]), então tomar o módulo aqui viraria uma reta ao contrário no primeiro
 /// re-cook.
-pub fn resize_recipe(sim: &mut SimWorld, entity: Entity, w: f64, h: f64) -> bool {
-    let Some(VecShape::Param {
-        kind,
-        w: w0,
-        h: h0,
-        values,
-    }) = sim.world().get::<VecShape>(entity).cloned()
-    else {
-        return false;
-    };
-    let next = VecShape::Param {
-        kind,
-        w: w0.signum() * w.abs(),
-        h: h0.signum() * h.abs(),
-        values,
-    };
-    if let Ok(mut e) = sim.world_mut().get_entity_mut(entity) {
-        e.insert(next);
-        return true;
-    }
-    false
-}
+pub use ph2d_vec_entities::receita::resize_recipe;
 
 /// Substitui a GEOMETRIA do path `id` pela forma re-cozida (centrada), preservando id e
 /// estilo (fill/stroke). `true` se re-cozinhou.

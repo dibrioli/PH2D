@@ -61,7 +61,7 @@ use crate::app_state::App;
 /// quadro — logo não há projecção para fechar.
 impl App {
     pub(crate) fn settle_tree_before_capture(&mut self) {
-        let anterior = self.undo_baseline.as_ref().map(|b| std::sync::Arc::clone(&b.vec));
+        let anterior = self.undo_baseline.as_ref().map(|b| b.vec.clone());
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };

@@ -308,12 +308,12 @@ impl crate::App {
             };
             let r = ph2d_vec_edit::snap::snap(&[p], &targets, cfg, Some(&mut grid));
             guides = crate::vec_snap::guides_of(&r);
-            r.apply(p)
+            r
         };
         let consumed =
             self.vec
                 .pen
-                .on_drag(&mut gfx.vec_scene, [w[0] as f64, w[1] as f64], &mut snap);
+                .on_drag_encaixe(&mut gfx.vec_scene, [w[0] as f64, w[1] as f64], &mut snap);
         self.vec.snap_targets = targets;
         self.vec.snap_guides = guides;
         consumed

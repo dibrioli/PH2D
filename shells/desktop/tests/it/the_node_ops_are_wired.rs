@@ -123,7 +123,7 @@ fn the_cut_mode_draws_with_the_pen_and_owns_no_press_branch() {
         "o modo Corte ganhou um ramo de press proprio -- ele deixaria de desenhar pela caneta"
     );
     // E o press da caneta ARMA a adoção da lâmina.
-    let pen = at(&DISPATCH, "let click = self.vec.pen.on_press(");
+    let pen = at(&DISPATCH, "let click = self.vec.pen.on_press_encaixe(");
     let window = &DISPATCH[pen..at(&DISPATCH[pen..], "Some(kind) => {") + pen];
     for (needle, why) in [
         ("DrawMode::Cut", "a adocao nao e' gateada no modo Corte"),

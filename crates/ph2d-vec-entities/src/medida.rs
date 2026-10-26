@@ -15,7 +15,7 @@ use ph2d_vec_constraints::{Folha, resolve};
 use ph2d_vec_scene::cad::{Lei, PontoCad, RegraId};
 use ph2d_vec_scene::{VecPath, VecPathId, VecScene, VecXforms, xform_of};
 
-/// O valor que o canal mostra (graus num ângulo; px no resto).
+/// O valor que o canal guarda (graus num ângulo; metros — a unidade do mundo — no resto).
 #[must_use]
 pub fn no_canal(lei: &Lei) -> Option<f32> {
     let m = lei.medida()?;

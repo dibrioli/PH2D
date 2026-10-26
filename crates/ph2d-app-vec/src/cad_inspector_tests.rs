@@ -33,29 +33,35 @@ fn folha<'a>(scene: &'a VecScene, xf: &VecXforms, id: VecPathId) -> Folha<'a> {
     Folha::new(scene.path(id).map(|p| (p, xform_of(xf, id))))
 }
 
-/// ⭐⭐ Escrever `55` na distância: a folha re-resolve, toda regra cumpre-se e os cantos medem `55`.
+/// ⭐⭐ Escrever `55` (ou `1.5`: os 150 px que o painel converte a 100 px/m) na distância: a folha re-resolve, toda
+/// regra cumpre-se e os cantos medem o escrito — o canal e a folha falam a MESMA unidade (o mundo, metros).
 ///
 /// **Mutações que devem sangrar:** não re-resolver (os cantos ficam a `40`) · resolver sem o afim (a medida
 /// sai na escala local) · escrever na regra errada.
 #[test]
 fn escrever_a_medida_re_resolve_a_folha_a_partir_do_desenho() {
-    let (mut scene, xf, id) = cena();
-    let dist = scene.regras()[3].id.0;
-    assert!(aplica(&mut scene, &xf, CadFieldEdit::Medida(dist, 55.0)));
-    assert_eq!(scene.regras()[3].lei.medida(), Some(55.0));
-    let f = folha(&scene, &xf, id);
-    let pior = violacao(&f, scene.regras());
-    assert!(pior <= 1e-6, "uma regra ficou por cumprir: {pior}");
-    let canto = |i| {
-        let p = scene
-            .path(id)
-            .and_then(|p| p.vert_by_id(VertId(i)))
-            .expect("o canto");
-        xform_of(&xf, id).apply(p.anchor)
-    };
-    let (a, b) = (canto(2), canto(3));
-    let medida = (b[0] - a[0]).hypot(b[1] - a[1]);
-    assert!((medida - 55.0).abs() <= 1e-6, "os cantos medem {medida}");
+    for alvo in [55.0_f32, 1.5] {
+        let (mut scene, xf, id) = cena();
+        let dist = scene.regras()[3].id.0;
+        assert!(aplica(&mut scene, &xf, CadFieldEdit::Medida(dist, alvo)));
+        assert_eq!(scene.regras()[3].lei.medida(), Some(f64::from(alvo)));
+        let f = folha(&scene, &xf, id);
+        let pior = violacao(&f, scene.regras());
+        assert!(pior <= 1e-6, "uma regra ficou por cumprir: {pior}");
+        let canto = |i| {
+            let p = scene
+                .path(id)
+                .and_then(|p| p.vert_by_id(VertId(i)))
+                .expect("o canto");
+            xform_of(&xf, id).apply(p.anchor)
+        };
+        let (a, b) = (canto(2), canto(3));
+        let medida = (b[0] - a[0]).hypot(b[1] - a[1]);
+        assert!(
+            (medida - f64::from(alvo)).abs() <= 1e-6,
+            "os cantos medem {medida}, escreveu-se {alvo}"
+        );
+    }
 }
 
 /// ⭐ Uma REF não se escreve: só mostra a medida.

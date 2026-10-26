@@ -32,14 +32,15 @@ fn regra(id: u32, nome: &'static str, medida: Option<f32>, referencia: bool) -> 
     }
 }
 
-/// Três linhas: uma horizontal (sem medida, id `7`), uma distância (`42`) e uma distância REF (`5`).
+/// Três linhas: uma horizontal (sem medida, id `7`), uma distância de 1,24 m (`42`) e uma distância REF (`5`).
+/// O canal fala METROS (graus num ângulo); o ecrã, o que o projecto escolheu.
 fn regras() -> InspectorCadInfo {
     InspectorCadInfo {
         entity_bits: ENTITY,
         rows: vec![
             regra(7, "app.vec.cad.lei.horizontal", None, false),
-            regra(42, "app.vec.cad.lei.distancia", Some(120.0), false),
-            regra(5, "app.vec.cad.lei.distancia", Some(80.0), true),
+            regra(42, "app.vec.cad.lei.distancia", Some(1.24), false),
+            regra(5, "app.vec.cad.lei.distancia", Some(0.8), true),
         ],
     }
 }
@@ -110,16 +111,86 @@ fn escrever_a_medida_manda_o_valor_com_o_id_da_regra() {
         "uma REF só mostra a medida: um campo ali mentiria"
     );
     assert!(rect_de(&rects, ids::INSP_CAD_MEDIDA[1]).is_some());
-    assert_eq!(
-        host.store().number_value(ids::INSP_CAD_MEDIDA[1]),
-        Some(120.0),
-        "o campo mostra a medida do documento"
-    );
     let evs = host.type_into_number(ids::INSP_CAD_MEDIDA[1], "150");
     aplica(&mut host, &mut state, evs);
     let e = edicoes(host.drained_actions());
     set_current_inspector_cad(None);
-    assert_eq!(e.last(), Some(&E::Medida(42, 150.0)), "{e:?}");
+    assert!(
+        matches!(e.last(), Some(&E::Medida(42, v)) if (v - 1.5).abs() < 1e-6),
+        "150 px a 100 px/m são 1,5 m: {e:?}"
+    );
+}
+
+/// Mostra a medida de `info` com o projecto em `unidade`/`angulo` a 100 px/m, escreve `texto` no campo da linha
+/// `k` e devolve `(o que o campo mostrou, as edições)`.
+fn mostra_e_escreve(
+    info: InspectorCadInfo,
+    unidade: ph2d_editor_core::project::DisplayUnit,
+    angulo: ph2d_editor_core::project::DisplayAngle,
+    k: usize,
+    texto: &str,
+) -> (Option<f64>, Vec<E>) {
+    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut state = InspectorState::default();
+    host.project_mut().display_unit = unidade;
+    host.project_mut().pixels_per_meter = 100.0;
+    host.project_mut().display_angle = angulo;
+    set_current_inspector_cad(Some(info));
+    pinta(&mut host, &mut state);
+    let mostrado = host.store().number_value(ids::INSP_CAD_MEDIDA[k]);
+    let evs = host.type_into_number(ids::INSP_CAD_MEDIDA[k], texto);
+    aplica(&mut host, &mut state, evs);
+    let e = edicoes(host.drained_actions());
+    set_current_inspector_cad(None);
+    (mostrado, e)
+}
+
+/// ⭐⭐ **A medida obedece ao px/metros e graus/radianos do projecto** (o defeito da cena 6: o dente de ~124 px
+/// lia «1.239 px»). Em px, 1,24 m mostra 124 e o 150 escrito volta 1,5 m; em metros mostra 1,24 e o 1,5 volta
+/// 1,5; um ângulo de 90° em radianos mostra π/2 e o 1 escrito volta 57,3°.
+///
+/// **Mutações que devem sangrar:** semear o número do canal sem converter · emitir o escrito sem converter.
+#[test]
+fn a_medida_obedece_a_px_metros_e_graus_radianos_do_projecto() {
+    use ph2d_editor_core::project::{DisplayAngle, DisplayUnit};
+    let perto = |m: Option<f64>, v: f64| m.is_some_and(|m| (m - v).abs() < 1e-4);
+    let (m, e) = mostra_e_escreve(
+        regras(),
+        DisplayUnit::Pixels,
+        DisplayAngle::Degrees,
+        1,
+        "150",
+    );
+    assert!(perto(m, 124.0), "em px, 1,24 m mostrou {m:?}");
+    assert!(
+        matches!(e.last(), Some(&E::Medida(42, v)) if (v - 1.5).abs() < 1e-6),
+        "{e:?}"
+    );
+    let (m, e) = mostra_e_escreve(
+        regras(),
+        DisplayUnit::Meters,
+        DisplayAngle::Degrees,
+        1,
+        "1.5",
+    );
+    assert!(perto(m, 1.24), "em metros, 1,24 m mostrou {m:?}");
+    assert!(
+        matches!(e.last(), Some(&E::Medida(42, v)) if (v - 1.5).abs() < 1e-6),
+        "{e:?}"
+    );
+    let mut info = regras();
+    info.rows[1].nome = "app.vec.cad.lei.angulo";
+    info.rows[1].graus = true;
+    info.rows[1].medida = Some(90.0);
+    let (m, e) = mostra_e_escreve(info, DisplayUnit::Pixels, DisplayAngle::Radians, 1, "1");
+    assert!(
+        perto(m, std::f64::consts::FRAC_PI_2),
+        "90° em radianos mostrou {m:?}"
+    );
+    assert!(
+        matches!(e.last(), Some(&E::Medida(42, v)) if (v - 57.29578).abs() < 1e-3),
+        "{e:?}"
+    );
 }
 
 /// ⭐ Sem regras do path, a secção não aparece.

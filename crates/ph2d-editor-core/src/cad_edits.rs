@@ -25,7 +25,8 @@ pub struct InspectorRegraRow {
     /// A chave `ph2d-i18n` do nome da lei (`app.vec.cad.lei.*`).
     pub nome: &'static str,
     pub estado: EstadoDaRegra,
-    /// A medida na unidade do canal (px; GRAUS num ângulo) — `None` = a lei não tem medida.
+    /// A medida na unidade do canal (metros; GRAUS num ângulo) — `None` = a lei não tem medida. O painel
+    /// converte para o px/metros e graus/radianos do projecto.
     pub medida: Option<f32>,
     /// A medida é um ângulo.
     pub graus: bool,
@@ -46,7 +47,7 @@ pub struct InspectorCadInfo {
 /// O que a secção pede. A regra é endereçada pelo `RegraId`, nunca pela posição.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum CadFieldEdit {
-    /// A medida nova, na unidade do canal (px; graus num ângulo): a folha re-resolve a partir do desenho.
+    /// A medida nova, na unidade do canal (metros; graus num ângulo): a folha re-resolve a partir do desenho.
     Medida(u32, f32),
     /// Tira a regra do documento (a cura do «Conflict — delete one of: …»).
     Apagar(u32),

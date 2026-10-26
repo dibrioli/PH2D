@@ -41,9 +41,10 @@ pub(crate) fn apply_cad_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent)
             if r.referencia || r.medida.is_none() {
                 return false;
             }
-            #[expect(clippy::cast_possible_truncation, reason = "o canal é f32")]
-            let v = host.store().number_value(id).unwrap_or(0.0) as f32;
-            E::Medida(r.id, v)
+            // O escrito está na unidade do projecto; o canal fala metros/graus.
+            let v = host.store().number_value(id).unwrap_or(0.0);
+            let u = crate::sync_cad::unidade(r);
+            E::Medida(r.id, crate::sync_constraint::do_ecra(u, v, host.project()))
         }
         _ => return false,
     };

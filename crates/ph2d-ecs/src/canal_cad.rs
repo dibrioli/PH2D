@@ -10,7 +10,8 @@
 
 use crate::canal::{CampoInfo, Especie, FieldKey, familia::CAD};
 
-/// A medida da regra: px numa distância e num raio, GRAUS num ângulo (a unidade que o artista lê).
+/// A medida da regra: METROS (o mundo) numa distância e num raio, GRAUS num ângulo — como o `canal_constraint::DISTANCIA`;
+/// o Inspector mostra-a no px/metros e graus/radianos do projecto.
 pub const MEDIDA: u16 = 1;
 
 /// Todo campo declarado.

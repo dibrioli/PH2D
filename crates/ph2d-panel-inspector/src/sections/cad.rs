@@ -8,7 +8,7 @@ use crate::plano::{Plano, emoldurada};
 use ph2d_editor_core::cad_edits::{EstadoDaRegra, InspectorCadInfo, InspectorRegraRow, MAX_REGRAS};
 use ph2d_editor_core::interaction::format_number;
 use ph2d_editor_core::property_row::{Seccao, paint_label_row};
-use ph2d_editor_core::widget::key_mark;
+use ph2d_editor_core::widget::{Unit, key_mark};
 use ph2d_i18n::{TextKey, tr, tr_with};
 
 /// A cor do nome — a lei do `cad_marks` do vetor (o «ok» é texto normal: a marca azul é do canvas).
@@ -75,7 +75,7 @@ fn linha(
     let Some(v) = row.medida else {
         return y;
     };
-    let (unit, step) = crate::sync_cad::unidade_e_passo(row.graus);
+    let (unit, step) = crate::sync_constraint::unidade_e_passo(crate::sync_cad::unidade(row));
     let chave = TextKey::new("panel.inspector.cad.value");
     if row.referencia {
         let l = paint_label_row(
@@ -93,7 +93,11 @@ fn linha(
         paint_text(
             text_system,
             scene,
-            &format!("{} {}", format_number(f64::from(v)), unit.suffix()),
+            &format!(
+                "{} {}",
+                format_number(crate::sync_cad::no_ecra_pintado(row, v)),
+                unit.map_or("", Unit::suffix)
+            ),
             l.control.x,
             l.control.y + (l.control.h - font) * 0.5,
             font,
@@ -116,7 +120,7 @@ fn linha(
         chave,
         id,
         step,
-        Some(unit),
+        unit,
         seccao,
     )
     .0

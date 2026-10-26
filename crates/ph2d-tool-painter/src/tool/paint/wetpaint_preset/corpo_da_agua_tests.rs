@@ -6,8 +6,8 @@
 use super::super::wetpaint_settings::WetTool;
 use crate::WetKnobs;
 use crate::tool::PainterTool;
-use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase, RasterEditTool};
 use ph2d_editor_core::Tool as _;
+use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase, RasterEditTool};
 use ph2d_wet_paint::tuning::{KNOB_DEFS, Knob, KnobGroup};
 
 const LADO: u32 = 160;
@@ -78,7 +78,11 @@ fn ensaio(tool: WetTool, mexe: Option<(Knob, f64)>, traca: bool) -> Vec<u8> {
 fn da_tela(g: KnobGroup) -> bool {
     matches!(
         g,
-        KnobGroup::Water | KnobGroup::Physics | KnobGroup::Paper | KnobGroup::WetEffects | KnobGroup::Look
+        KnobGroup::Water
+            | KnobGroup::Physics
+            | KnobGroup::Paper
+            | KnobGroup::WetEffects
+            | KnobGroup::Look
     )
 }
 
@@ -132,7 +136,11 @@ fn o_corpo_de_cada_ferramenta_da_agua_e_o_que_ela_le() {
     for tool in WetTool::DO_TRILHO {
         let i0 = casos.iter().position(|c| *c == (tool, None, true)).unwrap();
         let q0 = i0 + 2;
-        assert_eq!(difere(&r[i0], &r[i0 + 1]), 0, "{tool:?}: a base não se repete");
+        assert_eq!(
+            difere(&r[i0], &r[i0 + 1]),
+            0,
+            "{tool:?}: a base não se repete"
+        );
         let mut corpo: Vec<Knob> = Vec::new();
         let mut da_tela_medida = false;
         for (i, c) in casos.iter().enumerate() {
@@ -160,5 +168,62 @@ fn o_corpo_de_cada_ferramenta_da_agua_e_o_que_ela_le() {
             }
         }
     }
+    assert!(falhas.is_empty(), "{falhas:#?}");
+}
+
+/// ⭐ **O preset de uma ferramenta da água chega à ferramenta** (o defeito da janela 13: o Blender Soft perdia o felt
+/// 0,2 e misturava em riscas): com o Pincel da água pintado por outro preset, cada preset de fábrica de uma ferramenta
+/// da água deixa na mão cada knob do corpo dela que ele grava — e continua lá depois de ir ao Pincel e voltar.
+#[test]
+fn o_preset_de_uma_ferramenta_da_agua_chega_a_ela() {
+    let raiz = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes");
+    let b = ph2d_brush_presets::Biblioteca::carregar(&raiz, None);
+    let de = |nome: &str| {
+        &b.entradas
+            .iter()
+            .find(|e| e.preset.parametros.name == nome)
+            .unwrap()
+            .preset
+    };
+    let mut falhas = Vec::new();
+    let mut vistos = 0;
+    for e in &b.entradas {
+        let prm = &e.preset.parametros;
+        let Some(tool) = super::ferramenta_do_preset(prm).ferramenta_da_agua() else {
+            continue;
+        };
+        let gravados: Vec<(Knob, f64)> = WetKnobs::do_corpo(tool)
+            .filter_map(|k| {
+                let def = &KNOB_DEFS[k as usize];
+                prm.engine
+                    .get(def.key)
+                    .map(|v| (k, *v))
+                    .filter(|(_, v)| *v != def.default)
+            })
+            .collect();
+        vistos += gravados.len();
+        let mut t = PainterTool::default();
+        t.preset_aplicar(de("Ink Brush")).unwrap();
+        t.preset_aplicar(&e.preset).unwrap();
+        for volta in ["aplicado", "depois do Pincel"] {
+            if volta != "aplicado" {
+                t.set_paint_tool_mode("wet_paint");
+                t.set_paint_tool_mode(tool.fio());
+            }
+            for (k, v) in &gravados {
+                let vivo = t.paint.wetpaint.knobs.get(*k);
+                if vivo != *v {
+                    falhas.push(format!(
+                        "{} ({volta}): {k:?} {vivo}, o preset grava {v}",
+                        prm.name
+                    ));
+                }
+            }
+        }
+    }
+    assert!(
+        vistos > 0,
+        "nenhum preset da água grava um knob do corpo fora da omissão"
+    );
     assert!(falhas.is_empty(), "{falhas:#?}");
 }

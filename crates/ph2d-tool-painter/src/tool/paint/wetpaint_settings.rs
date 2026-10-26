@@ -309,7 +309,9 @@ impl WetKnobs {
 pub(crate) const CORPO_DA_AGUA: [(WetTool, &[Knob]); 5] = [
     (
         WetTool::Smear,
-        &[CERDAS[0], CERDAS[1], CERDAS[2], CERDAS[3], CERDAS[4], CERDAS[5]],
+        &[
+            CERDAS[0], CERDAS[1], CERDAS[2], CERDAS[3], CERDAS[4], CERDAS[5],
+        ],
     ),
     (
         WetTool::Blend,
@@ -327,15 +329,33 @@ pub(crate) const CORPO_DA_AGUA: [(WetTool, &[Knob]); 5] = [
     ),
     (
         WetTool::Wet,
-        &[CERDAS[0], CERDAS[1], CERDAS[2], CERDAS[3], CERDAS[4], CERDAS[5], Knob::WaterPush],
+        &[
+            CERDAS[0],
+            CERDAS[1],
+            CERDAS[2],
+            CERDAS[3],
+            CERDAS[4],
+            CERDAS[5],
+            Knob::WaterPush,
+        ],
     ),
     (
         WetTool::Dry,
-        &[CERDAS[0], CERDAS[1], CERDAS[2], CERDAS[3], CERDAS[4], CERDAS[5], Knob::DryerEdge],
+        &[
+            CERDAS[0],
+            CERDAS[1],
+            CERDAS[2],
+            CERDAS[3],
+            CERDAS[4],
+            CERDAS[5],
+            Knob::DryerEdge,
+        ],
     ),
     (
         WetTool::Blow,
-        &[CERDAS[0], CERDAS[1], CERDAS[2], CERDAS[3], CERDAS[4], CERDAS[5]],
+        &[
+            CERDAS[0], CERDAS[1], CERDAS[2], CERDAS[3], CERDAS[4], CERDAS[5],
+        ],
     ),
 ];
 

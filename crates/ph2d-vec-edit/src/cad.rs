@@ -226,3 +226,7 @@ pub fn junta_regra(scene: &mut VecScene, xforms: &VecXforms, lei: Lei) -> Option
 #[cfg(test)]
 #[path = "cad_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "cad_medida_tests.rs"]
+mod medida;

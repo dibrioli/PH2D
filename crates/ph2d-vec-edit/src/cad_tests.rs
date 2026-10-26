@@ -163,7 +163,7 @@ fn a_drag_keeps_only_the_guide_lit_at_release() {
     };
     let skip = pen.dragging_anchors().expect("âncora agarrada");
     let alvos = collect_targets(&scene, &VecXforms::default(), &[], &skip, false);
-    let mut arrasta = |pen: &mut PenTool, scene: &mut VecScene, p: [f64; 2]| {
+    let arrasta = |pen: &mut PenTool, scene: &mut VecScene, p: [f64; 2]| {
         pen.on_drag_encaixe(scene, p, &mut |q| snap(&[q], &alvos, cfg, None))
     };
     arrasta(&mut pen, &mut scene, [120.0, 0.3]);

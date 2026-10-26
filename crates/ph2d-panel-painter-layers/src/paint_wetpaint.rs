@@ -377,16 +377,18 @@ fn paint_display_toggles(
         2,
     );
     // Live Water (W1g) — a água corre com o traço; desligada de fábrica (o custo está na dica).
-    y = crate::paint_brush_top::paint_checkbox_row(
-        ctx,
-        theme,
-        x,
-        content_w,
-        y,
-        ph2d_tool_painter::ids::PAINTER_WETPAINT_LIVE_WATER,
-        "panel.painter_layers.wetpaint.live_water",
-        brush.wet_live_water,
-    );
+    if brush.le(ph2d_tool_painter::LinhaDaFerramenta::AguaViva) {
+        y = crate::paint_brush_top::paint_checkbox_row(
+            ctx,
+            theme,
+            x,
+            content_w,
+            y,
+            ph2d_tool_painter::ids::PAINTER_WETPAINT_LIVE_WATER,
+            "panel.painter_layers.wetpaint.live_water",
+            brush.wet_live_water,
+        );
+    }
     // Tuning — opens the side panel with the engine's full knob table.
     y = crate::paint_brush_top::paint_checkbox_row(
         ctx,

@@ -89,6 +89,16 @@ pub enum LinhaDaFerramenta {
     /// o lêem; a Borracha, a Máscara e a Escultura sim (medido 24/10, `o_flow_a_vista_e_o_flow_que_age`). O meio
     /// também decide: [`BrushSettings::le_o_flow`].
     Flow,
+    /// A silhueta do carimbo: na Shape o Falloff, a Hardness, a textura e o que dela depende; o Shape Tone; no Jitter
+    /// o que só uma ponta não redonda vê (Roundness, Rotation, Angle per stroke, Flip X/Y). As ferramentas da água
+    /// carimbam o redondo delas e lêem só o Taper, o Flatten e o giro (`o_carimbo_das_ferramentas_da_agua`, 25/10).
+    Forma,
+    /// A orientação pelo gesto: o Follow da Shape e o menu Dab rotation do cartão Pen.
+    Orientacao,
+    /// O Speed → Opacity do cartão Pen.
+    OpacidadePelaVelocidade,
+    /// O Live Water do Wet Paint (a água corre com o traço aberto).
+    AguaViva,
 }
 
 use FerramentaDoPincel as F;
@@ -100,20 +110,21 @@ const SEM_COR: [L; 4] = [L::Blend, L::Cor, L::Randomize, L::Composite];
 /// A cura: sem cor e sem Flow.
 const CURA: [L; 5] = [L::Blend, L::Cor, L::Randomize, L::Composite, L::Flow];
 
-/// As ferramentas da água não pousam cor nem tinta; o Water do topo só a Wet lê (lido pelo censo
-/// `cada_ferramenta_da_agua_so_ve_o_que_le`).
+/// As ferramentas da água não pousam cor nem tinta nem lêem a forma; o Water do topo só a Wet lê, e o Blow sopra pelo
+/// gesto: sem rotação, sem opacidade, a água já corre (lido pelo censo `cada_ferramenta_da_agua_so_ve_o_que_le`).
+/// O Per-Layer Color sai com a [`L::Forma`] (mora na parte da Shape que a textura arma).
 const DA_AGUA: [L; 11] = [
     L::Blend,
     L::Cor,
     L::Randomize,
     L::Composite,
     L::Solido,
-    L::CorPorCamada,
     L::TracoComoCamada,
     L::Aguada,
     L::Preview,
     L::DepositoMolhado,
     L::Flow,
+    L::Forma,
 ];
 const DA_AGUA_SEM_AGUA: [L; 12] = [
     L::Blend,
@@ -121,13 +132,30 @@ const DA_AGUA_SEM_AGUA: [L; 12] = [
     L::Randomize,
     L::Composite,
     L::Solido,
-    L::CorPorCamada,
     L::TracoComoCamada,
     L::Aguada,
     L::Preview,
     L::DepositoMolhado,
     L::Flow,
+    L::Forma,
     L::AguaDoVolume,
+];
+const SOPRO: [L; 15] = [
+    L::Blend,
+    L::Cor,
+    L::Randomize,
+    L::Composite,
+    L::Solido,
+    L::TracoComoCamada,
+    L::Aguada,
+    L::Preview,
+    L::DepositoMolhado,
+    L::Flow,
+    L::Forma,
+    L::AguaDoVolume,
+    L::Orientacao,
+    L::OpacidadePelaVelocidade,
+    L::AguaViva,
 ];
 
 /// ⭐ A tabela.
@@ -213,7 +241,7 @@ pub const NAO_LE: [(FerramentaDoPincel, &[LinhaDaFerramenta]); 14] = [
     (F::BlendMolhado, &DA_AGUA_SEM_AGUA),
     (F::Molhar, &DA_AGUA),
     (F::Secar, &DA_AGUA_SEM_AGUA),
-    (F::Soprar, &DA_AGUA_SEM_AGUA),
+    (F::Soprar, &SOPRO),
 ];
 
 impl BrushSettings {

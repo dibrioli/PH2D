@@ -65,6 +65,13 @@ pub(crate) fn paint_shape_section(
     let Some(fold) = fold else {
         return y;
     };
+    // A ferramenta que carimba o redondo dela lê só o Taper, o Flatten e o giro, e a orientação.
+    if !brush.le(ph2d_tool_painter::LinhaDaFerramenta::Forma) {
+        y = crate::paint_taper::paint_taper_section(ctx, theme, x, content_w, y, brush);
+        y = crate::paint_shape_dab::paint_shape_dab_gizmo(ctx, theme, x, content_w, y, brush);
+        y = paint_shape_follow(ctx, theme, x, content_w, y, brush);
+        return end_fold(ctx, fold, y);
+    }
     // ── Watercolor "Automatic" (doc 13 #1): in watercolor mode the stamp defaults to the built-in
     //    feather silhouette — the section's items don't apply, so they HIDE behind the checked box.
     //    Unchecking opens them AND routes them into the watercolor coverage stamp (the tool also
@@ -292,6 +299,9 @@ fn paint_shape_follow(
     mut y: f32,
     brush: BrushSettings,
 ) -> f32 {
+    if !brush.le(ph2d_tool_painter::LinhaDaFerramenta::Orientacao) {
+        return y;
+    }
     // Follow (Off / Rake / Flow — how the silhouette relates to the stroke), then Angle BELOW it. Flow lays
     // the pattern in the stroke's arc-length frame so its lines stay parallel through curves (Enio
     // 2026-07-19); Rake rotates each stamp to the tangent; Off uses the fixed Angle.

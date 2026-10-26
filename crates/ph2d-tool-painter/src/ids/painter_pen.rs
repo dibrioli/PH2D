@@ -56,6 +56,9 @@ pub const PAINTER_PEN_FIELDS: [NodeId; 23] = [
 /// A linha da rotação do carimbo é um MENU (None · Follow · Pen tilt), não um número: o id da linha 8.
 pub const PAINTER_PEN_ROTATION: NodeId = PAINTER_PEN_FIELDS[8];
 
+/// A linha Speed → Opacity (a 17).
+pub const PAINTER_PEN_SPEED_OPACITY: NodeId = PAINTER_PEN_FIELDS[17];
+
 /// Quantas opções o menu da rotação tem (`DabRotation`: None · FollowTrajectory · PenTilt).
 pub const PAINTER_PEN_ROTATION_COUNT: u8 = 3;
 

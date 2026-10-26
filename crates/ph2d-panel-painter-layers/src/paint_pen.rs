@@ -113,7 +113,9 @@ pub(crate) fn paint_pen_section(
     let meio = PaintMedia::from_u8(brush.media);
     let sec = crate::seccoes::seccao_da_chave(ctx.text_system, ROTULOS[0]);
     for (i, l) in LINHAS_DA_MAO.into_iter().enumerate() {
-        if !l.lida(meio, brush.watercolor_shape_auto) {
+        if !l.lida(meio, brush.watercolor_shape_auto)
+            || !le_a_linha(&brush, ids::PAINTER_PEN_FIELDS[i])
+        {
             continue;
         }
         if ids::PAINTER_PEN_FIELDS[i] == ids::PAINTER_PEN_ROTATION {
@@ -139,6 +141,18 @@ pub(crate) fn paint_pen_section(
         );
     }
     end_fold(ctx, fold, y)
+}
+
+/// A ferramenta na mão lê a linha `id` do cartão? (Só duas dependem dela.)
+fn le_a_linha(brush: &BrushSettings, id: ph2d_a11y::NodeId) -> bool {
+    use ph2d_tool_painter::LinhaDaFerramenta as L;
+    if id == ids::PAINTER_PEN_ROTATION {
+        brush.le(L::Orientacao)
+    } else if id == ids::PAINTER_PEN_SPEED_OPACITY {
+        brush.le(L::OpacidadePelaVelocidade)
+    } else {
+        true
+    }
 }
 
 /// A rotação do carimbo como um menu (o índice do knob: 0 None · 1 Follow · 2 Pen tilt).

@@ -167,7 +167,7 @@ pub(crate) fn declara_aparencia(
     //    HIDDEN while Per-Layer Color owns the colour per layer (the ramp is nullified). In every
     //    medium — the Wet Paint deposit takes it per cell (prompt 41). ──
     plano.seccao(pids::PAINTER_SHAPE_RAMP_SECTION, move |ctx, theme, y| {
-        if fora && !brush.shape_per_layer_color {
+        if fora && !brush.shape_per_layer_color && brush.le(LinhaDaFerramenta::Forma) {
             crate::paint_shape_ramp::paint_shape_ramp_section(ctx, theme, x, content_w, y, brush)
         } else {
             y

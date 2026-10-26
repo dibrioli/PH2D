@@ -77,8 +77,38 @@ fn ids_da(l: LinhaDaFerramenta) -> &'static [NodeId] {
         LinhaDaFerramenta::Aguada => &AGUADA,
         LinhaDaFerramenta::DepositoMolhado => &DEPOSITO_MOLHADO,
         LinhaDaFerramenta::AguaDoVolume => &[PAINTER_WETPAINT_WATER],
+        LinhaDaFerramenta::Forma => &FORMA,
+        LinhaDaFerramenta::Orientacao => &[PAINTER_SHAPE_FOLLOW, PAINTER_PEN_ROTATION],
+        LinhaDaFerramenta::OpacidadePelaVelocidade => &[PAINTER_PEN_SPEED_OPACITY],
+        LinhaDaFerramenta::AguaViva => &[PAINTER_WETPAINT_LIVE_WATER],
     }
 }
+
+/// Os ids da silhueta do carimbo: o Falloff, a Hardness, a textura da Shape e o que dela depende, o Shape Tone, e as
+/// fileiras de giro e de espelho do Jitter.
+const FORMA: [NodeId; 21] = [
+    PAINTER_BRUSH_FALLOFF,
+    PAINTER_BRUSH_HARDNESS,
+    PAINTER_SHAPE_KIND,
+    PAINTER_SHAPE_SIZE_X,
+    PAINTER_SHAPE_SIZE_Y,
+    PAINTER_SHAPE_ANGLE,
+    PAINTER_SHAPE_OFFSET_X,
+    PAINTER_SHAPE_OFFSET_Y,
+    PAINTER_SHAPE_ALPHA_FROM_IMAGE,
+    PAINTER_SHAPE_PER_LAYER_COLOR,
+    PAINTER_SHAPE_RAMP_ENABLE,
+    PAINTER_BRUSH_JITTER_ROTATE,
+    PAINTER_BRUSH_JITTER_ROTATE_CHIP,
+    PAINTER_MARCA_FIELDS[2],
+    PAINTER_MARCA_FIELDS[3],
+    PAINTER_MARCA_FIELDS[4],
+    PAINTER_MARCA_FIELDS[5],
+    PAINTER_MARCA_CHIPS[2],
+    PAINTER_MARCA_CHIPS[3],
+    PAINTER_MARCA_CHIPS[4],
+    PAINTER_MARCA_CHIPS[5],
+];
 
 /// Os ids da aguada: a secção Watercolor (cabeça e linhas), o «Automatic» da Shape e o «Same as Paper» do Grain.
 const AGUADA: [NodeId; 6] = [
@@ -401,6 +431,13 @@ fn bancada_da_agua(fio: &str, no_pincel: &Gesto, bake: bool) -> Bancada {
     b
 }
 
+/// À vista das ferramentas da água, inerte nesta bancada (o carimbo de fábrica não é achatado) e com razão: o giro da
+/// pega e o Reset da Shape (que repõe o Flatten e o giro) agem nelas com o carimbo achatado
+/// (`o_carimbo_das_ferramentas_da_agua`).
+fn inerte_da_agua_com_motivo(id: NodeId) -> bool {
+    id == PAINTER_SHAPE_RESET || id == painter_brush_dab_handle_id(1)
+}
+
 fn ensaio_da_agua(fio: &str, no_pincel: &Gesto, na_ferramenta: &Gesto, bake: bool) -> Vec<u8> {
     let mut b = bancada_da_agua(fio, no_pincel, bake);
     b.aplica(
@@ -479,6 +516,9 @@ fn cada_ferramenta_da_agua_so_ve_o_que_le() {
                 continue;
             }
             let n = nome(&nomes, id);
+            if inerte_da_agua_com_motivo(id) {
+                continue;
+            }
             if !pincel.iter().any(|p| chave(p) == Some(id)) {
                 falhas.push(format!("{fio}: «{n}» só ela mostra e é inerte"));
             } else if em_paralelo(&gs_dele, |g| age_no_pincel(g)).contains(&true) {
@@ -502,10 +542,19 @@ fn cada_ferramenta_da_agua_so_ve_o_que_le() {
                 diferenca(&base, &ensaio_da_agua(fio, g, &Gesto::Nenhum, false)).0,
             )
         });
-        let mut vivo: BTreeMap<NodeId, bool> = BTreeMap::new();
+        // O controlo é POR LINHA: viva se algum id dela age no Pincel (uma linha junta ids que só agem num estado
+        // que a bancada não arma — o Square tip, o Per-Layer Color).
+        let mut vivo: BTreeMap<String, bool> = BTreeMap::new();
         for (g, (no_pincel, na_ferramenta)) in gs.iter().zip(r) {
             let id = chave(g).unwrap_or(NodeId(0));
-            *vivo.entry(id).or_default() |= no_pincel;
+            let linhas = NAO_LE
+                .iter()
+                .filter(|(h, _)| *h == f)
+                .flat_map(|(_, ls)| ls.iter())
+                .filter(|l| ids_da(**l).contains(&id));
+            for l in linhas {
+                *vivo.entry(format!("{l:?}")).or_default() |= no_pincel;
+            }
             if na_ferramenta > 0 {
                 falhas.push(format!(
                     "{fio}: «{}» está escondida e muda {na_ferramenta} texels",
@@ -514,15 +563,120 @@ fn cada_ferramenta_da_agua_so_ve_o_que_le() {
             }
             medidas += 1;
         }
-        for (id, v) in vivo {
+        for (l, v) in vivo {
             if !v {
                 falhas.push(format!(
-                    "{fio}: controlo — «{}» não age nem no Pincel da água",
-                    nome(&nomes, id)
+                    "{fio}: controlo — a linha {l} não age nem no Pincel da água"
                 ));
             }
         }
     }
     assert!(medidas >= 5 * 20, "controlo: só {medidas} gestos medidos");
+    assert!(falhas.is_empty(), "{falhas:#?}");
+}
+
+/// ⭐ **O carimbo das ferramentas da água** (25/10): o que o censo acima não alcança — a bancada dele usa uma ponta de
+/// imagem, que esconde o Falloff e a Hardness, e não achata o carimbo, onde girar um redondo não mostra nada. Aqui,
+/// sem ponta de imagem e sobre as riscas molhadas, cada controlo age na ferramenta ⟺ a tabela diz que ela o lê; o
+/// Flatten e o giro (com o carimbo achatado) agem em todas — por isso a Shape delas os mostra, com o Taper, e o
+/// Reset da Shape fica (repõe os dois). O controlo: no Pincel da água cada um age.
+#[test]
+fn o_carimbo_das_ferramentas_da_agua() {
+    type Mexe = fn(&mut ph2d_tool_painter::PainterTool);
+    // `(nome, achatado, linha que o lê — `None` = todas —, gesto)`.
+    let variantes: [(&str, bool, Option<LinhaDaFerramenta>, Mexe); 8] = [
+        ("Falloff", false, Some(LinhaDaFerramenta::Forma), |t| {
+            t.set_brush_falloff(3)
+        }),
+        ("Hardness", false, Some(LinhaDaFerramenta::Forma), |t| {
+            t.set_brush_hardness(0.1);
+        }),
+        ("Flatten", false, None, |t| t.set_brush_dab_flatten(0.6)),
+        ("o giro da pega", true, None, |t| {
+            t.set_brush_dab_angle(60.0)
+        }),
+        ("Follow", true, Some(LinhaDaFerramenta::Orientacao), |t| {
+            t.set_brush_shape_follow(1);
+        }),
+        (
+            "Dab rotation",
+            true,
+            Some(LinhaDaFerramenta::Orientacao),
+            |t| {
+                t.set_mao(ph2d_tool_painter::LINHAS_DA_MAO[8], 1.0);
+            },
+        ),
+        (
+            "Speed → Opacity",
+            false,
+            Some(LinhaDaFerramenta::OpacidadePelaVelocidade),
+            |t| {
+                t.set_mao(ph2d_tool_painter::LINHAS_DA_MAO[17], 1.0);
+            },
+        ),
+        (
+            "Live Water",
+            false,
+            Some(LinhaDaFerramenta::AguaViva),
+            |t| t.set_wet_agua_viva(true),
+        ),
+    ];
+    let bancada = |fio: &str| {
+        let mut b = bancada_com(
+            "eraser",
+            &[Gesto::Clique(PAINTER_BRUSH_SYNC)],
+            &Gesto::Nenhum,
+        );
+        b.tool.set_paint_media(PaintMedia::WetPaint);
+        b.no_modo("wet_paint");
+        super::censo_ferramenta_x_linha::riscas(&mut b);
+        b.no_modo(fio);
+        b
+    };
+    let fios: Vec<&str> = std::iter::once("wet_paint")
+        .chain(DA_AGUA.iter().map(|(f, _)| *f))
+        .collect();
+    // `(fio, None)` a base, `(fio, Some(true))` a base achatada, `(fio, Some(false))` a base de novo (o ruído).
+    let mut casos: Vec<(&str, Result<usize, Option<bool>>)> = Vec::new();
+    for fio in &fios {
+        casos.extend((0..variantes.len()).map(|i| (*fio, Ok(i))));
+        casos.extend([None, Some(true), Some(false)].map(|e| (*fio, Err(e))));
+    }
+    let r = em_paralelo(&casos, |(fio, caso)| {
+        let mut b = bancada(fio);
+        match caso {
+            Ok(i) => {
+                let (_, achata, _, f) = variantes[*i];
+                if achata {
+                    b.tool.set_brush_dab_flatten(0.6);
+                }
+                f(&mut b.tool);
+            }
+            Err(Some(true)) => b.tool.set_brush_dab_flatten(0.6),
+            Err(_) => {}
+        }
+        risca(&mut b.tool)
+    });
+    let em = |fio: &str, caso: Result<usize, Option<bool>>| {
+        &r[casos.iter().position(|c| *c == (fio, caso)).unwrap()]
+    };
+    let mut falhas = Vec::new();
+    for fio in &fios {
+        let lei = bancada(fio).tool.brush_settings();
+        let ruido = diferenca(em(fio, Err(None)), em(fio, Err(Some(false)))).0;
+        assert_eq!(ruido, 0, "{fio}: a base não se repete");
+        for (i, (n, achata, linha, _)) in variantes.iter().enumerate() {
+            let base = em(fio, Err(if *achata { Some(true) } else { None }));
+            let age = diferenca(base, em(fio, Ok(i))).0 > 0;
+            let le = linha.is_none_or(|l| lei.le(l));
+            if age != le {
+                falhas.push(format!(
+                    "{fio}: «{n}» {} e a tabela diz que {}",
+                    if age { "age" } else { "não age" },
+                    if le { "a lê" } else { "não a lê" }
+                ));
+            }
+        }
+    }
     assert!(falhas.is_empty(), "{falhas:#?}");
 }

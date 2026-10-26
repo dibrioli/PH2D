@@ -87,6 +87,29 @@ pub(crate) const FILEIRAS_DO_JITTER: [Fileira; 14] = [
     Fileira::Marca(LinhaDaMarca::Opacity),
 ];
 
+/// As fileiras que a ferramenta na mão lê, pela ordem da tela — o pintor e a altura do cartão contam as mesmas.
+pub(crate) fn fileiras(b: &BrushSettings) -> impl Iterator<Item = Fileira> {
+    let forma = b.le(ph2d_tool_painter::LinhaDaFerramenta::Forma);
+    FILEIRAS_DO_JITTER
+        .into_iter()
+        .filter(move |f| forma || !da_forma(*f))
+}
+
+/// A fileira só se vê numa ponta que não é redonda.
+fn da_forma(f: Fileira) -> bool {
+    match f {
+        Fileira::Pincel { slider, .. } => slider == ids::PAINTER_BRUSH_JITTER_ROTATE,
+        Fileira::Marca(l) => matches!(
+            l,
+            LinhaDaMarca::Roundness
+                | LinhaDaMarca::AnglePerStroke
+                | LinhaDaMarca::FlipX
+                | LinhaDaMarca::FlipY
+        ),
+        Fileira::Unidade => false,
+    }
+}
+
 /// O Position: a pista é `0..1` nas DUAS unidades (View projeta os px absolutos sobre `0..MAX`).
 fn pista_da_posicao(b: &BrushSettings) -> f32 {
     if b.jitter_unit == JitterUnit::View.to_u8() {
@@ -141,7 +164,7 @@ pub(crate) fn paint_fileiras(
     mut y: f32,
     brush: &BrushSettings,
 ) -> f32 {
-    for f in FILEIRAS_DO_JITTER {
+    for f in fileiras(brush) {
         y = match f {
             Fileira::Unidade => {
                 let (ny, open) = paint_dropdown_row(

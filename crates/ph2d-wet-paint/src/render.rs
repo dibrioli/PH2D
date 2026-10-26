@@ -364,6 +364,38 @@ pub fn render_pigment_row_visual(
     x1: usize,
     out: &mut [u8],
 ) {
+    pigment_row(p, layers, visual, None, cy, x0, x1, out);
+}
+
+/// [`render_pigment_row_visual`] com o **Óleo Real** ([`crate::oleo_real`]): a óptica da altura substitui o
+/// emboss cinza (que fica a zero), sobre a cor final da célula. `campo` cobre a região pedida mais
+/// [`crate::oleo_real::MARGEM`].
+#[allow(clippy::too_many_arguments)]
+pub fn render_pigment_row_oleo(
+    p: Option<&Params>,
+    layers: &[RenderLayer<'_>],
+    visual: PigmentVisual,
+    oleo: &crate::oleo_real::OleoReal,
+    campo: &crate::oleo_real::CampoAltura,
+    cy: usize,
+    x0: usize,
+    x1: usize,
+    out: &mut [u8],
+) {
+    pigment_row(p, layers, visual, Some((oleo, campo)), cy, x0, x1, out);
+}
+
+#[allow(clippy::too_many_arguments)]
+fn pigment_row(
+    p: Option<&Params>,
+    layers: &[RenderLayer<'_>],
+    visual: PigmentVisual,
+    oleo: Option<(&crate::oleo_real::OleoReal, &crate::oleo_real::CampoAltura)>,
+    cy: usize,
+    x0: usize,
+    x1: usize,
+    out: &mut [u8],
+) {
     let g0 = layers[0].grid;
     let s = g0.s;
     let paper_on = visual.paper && p.is_some();
@@ -389,7 +421,7 @@ pub fn render_pigment_row_visual(
     {
         let mut i = x0 + cy * s;
         let mut o = (x0 - 1) * 4;
-        for _cx in x0..=x1 {
+        for cx in x0..=x1 {
             // Accumulate premultiplied, then unpremultiply at the end.
             let (mut pr, mut pg, mut pb, mut pa) = (0.0f64, 0.0f64, 0.0f64, 0.0f64);
             for layer in layers.iter().filter(|l| l.visible) {
@@ -409,7 +441,7 @@ pub fn render_pigment_row_visual(
                     a_s,
                     a_f,
                 );
-                let emboss_k = if com_relevo { lg.relevo[i] as f64 } else { 0.0 };
+                let emboss_k = if com_relevo && oleo.is_none() { lg.relevo[i] as f64 } else { 0.0 };
                 if paper_on || emboss_k != 0.0 {
                     // The tooth printed into the pigment — [`render_region`]'s
                     // exact `v`: paper faded by the master toward flat 0.5,
@@ -453,7 +485,13 @@ pub fn render_pigment_row_visual(
                 pb = pb * (1.0 - la) + cb * la;
                 pa += la * (1.0 - pa);
             }
-            if pa > 0.0 {
+            if let (true, Some((ol, campo))) = (pa > 0.0, oleo) {
+                let [r, g, b] = crate::oleo_real::ilumina(ol, campo, cx, cy, [pr / pa, pg / pa, pb / pa]);
+                out[o] = clamp_u8(r);
+                out[o + 1] = clamp_u8(g);
+                out[o + 2] = clamp_u8(b);
+                out[o + 3] = clamp_u8(pa * 255.0);
+            } else if pa > 0.0 {
                 out[o] = clamp_u8(pr / pa);
                 out[o + 1] = clamp_u8(pg / pa);
                 out[o + 2] = clamp_u8(pb / pa);

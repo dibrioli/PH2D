@@ -100,6 +100,9 @@ pub(in crate::tool::paint) struct WetSession {
     /// region render fully overwrites the rect it is asked for, so stale bytes
     /// outside are inert.
     pub(super) pigment: Vec<u8>,
+    /// **A sombra do Óleo Real no papel** (`gw * gh`, `0..255` de escurecimento) onde a célula não tem
+    /// pigmento — VAZIO enquanto o Óleo Real está desligado (quem não o usa não paga).
+    pub(super) sombra: Vec<u8>,
     /// Per-LANE stroke state (one lane per symmetry copy / tile offset,
     /// matched geometrically): last dab centre (the chord source) + the last
     /// fresh-ink colour sent (Randomize change detector). Cleared per stroke.
@@ -275,6 +278,7 @@ impl Clone for WetSession {
             vazio,
             canvas,
             pigment,
+            sombra,
             lanes,
             stroke_open,
             paper_key,
@@ -302,6 +306,7 @@ impl Clone for WetSession {
             vazio: *vazio,
             canvas: Weak::clone(canvas),
             pigment: pigment.clone(),
+            sombra: sombra.clone(),
             lanes: lanes.clone(),
             stroke_open: *stroke_open,
             paper_key: *paper_key,

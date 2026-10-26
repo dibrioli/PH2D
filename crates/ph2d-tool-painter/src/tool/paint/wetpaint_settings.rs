@@ -558,10 +558,12 @@ impl PainterTool {
         w.km_mixing = false;
         w.agua_viva = false;
         w.borda_que_pesa = 0.0;
-        let need_recomposite = w.show_wet || w.paper_visual || w.km_glaze || w.smooth_edges > 0.0;
+        let need_recomposite =
+            w.show_wet || w.paper_visual || w.km_glaze || w.smooth_edges > 0.0 || w.oleo_real.is_some();
         w.show_wet = false;
         w.paper_visual = false;
         w.smooth_edges = 0.0;
+        w.oleo_real = None;
         w.km_glaze = false;
         w.tuning_open = false;
         if need_recomposite {
@@ -586,6 +588,21 @@ impl PainterTool {
     #[must_use]
     pub fn wet_smooth_edges(&self) -> f32 {
         self.paint.wetpaint.smooth_edges
+    }
+
+    /// O **Óleo Real** (doc 49): a óptica do relevo — a fenda na cor da tinta, a sombra que cai também no
+    /// papel, o brilho. `None` = o composite de hoje, ao byte. Mudá-lo recompõe a tela inteira.
+    pub fn set_wet_oleo_real(&mut self, oleo: Option<ph2d_wet_paint::oleo_real::OleoReal>) {
+        if self.paint.wetpaint.oleo_real != oleo {
+            self.paint.wetpaint.oleo_real = oleo;
+            self.wet_recomposite_full();
+        }
+    }
+
+    /// O **Óleo Real** do Wet Paint (`None` = desligado).
+    #[must_use]
+    pub fn wet_oleo_real(&self) -> Option<ph2d_wet_paint::oleo_real::OleoReal> {
+        self.paint.wetpaint.oleo_real
     }
 
     /// A **Live Water** (W1g): a água corre com o traço aberto.

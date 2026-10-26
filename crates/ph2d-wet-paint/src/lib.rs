@@ -38,6 +38,7 @@ pub mod drying;
 pub mod flow;
 pub mod grid;
 pub mod jsmath;
+pub mod oleo_real;
 pub mod opacity;
 pub mod painter;
 pub mod paper;

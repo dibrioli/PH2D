@@ -78,6 +78,7 @@ impl PainterTool {
             // has to survive the write.
             canvas: Arc::downgrade(&self.canvas_rgba),
             pigment: vec![0u8; gw * gh * 4],
+            sombra: Vec::new(),
             lanes: Vec::new(),
             stroke_open: false,
             paper_key: None,

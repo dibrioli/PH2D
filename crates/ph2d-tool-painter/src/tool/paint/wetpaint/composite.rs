@@ -69,6 +69,7 @@ impl PainterTool {
             && camada.is_none_or(|c| !self.vidros.contains_key(&c))
             && self.preview_layer_stack_is_trivial()
             && !self.papel_atravessa_vidro();
+        let oleo = self.paint.wetpaint.oleo_real;
         let Some(sess) = self.paint.wetpaint.session.as_mut() else {
             return;
         };
@@ -90,6 +91,14 @@ impl PainterTool {
                 (x1.max(1) as usize).min(gw),
                 (y1.max(1) as usize).min(gh),
             ),
+        };
+        // Óleo Real: a fenda e a sombra de uma célula leem a tinta à volta — a região cresce pelo alcance.
+        let (cx0, cy0, cx1, cy1) = match &oleo {
+            Some(o) => {
+                let a = ph2d_wet_paint::oleo_real::alcance(o);
+                (cx0.saturating_sub(a).max(1), cy0.saturating_sub(a).max(1), (cx1 + a).min(gw), (cy1 + a).min(gh))
+            }
+            None => (cx0, cy0, cx1, cy1),
         };
         if cx1 < cx0 || cy1 < cy0 || sess.base.len() != w * h * 4 {
             return;
@@ -149,13 +158,49 @@ impl PainterTool {
         // por isso que uma razão maior corta o render de pigmento por `ratio²`
         // — é o mesmo trabalho por célula, e há `ratio²` vezes menos delas.
         let g_stride = gw * 4;
+        let campo = oleo.map(|o| {
+            let grades: Vec<_> = layers.iter().map(|l| (l.grid, l.visible)).collect();
+            let c = ph2d_wet_paint::oleo_real::CampoAltura::de(&grades, &o, usize::from(ratio), cx0, cy0, cx1, cy1);
+            (o, c)
+        });
         sess.pigment[(cy0 - 1) * g_stride..cy1 * g_stride]
             .par_chunks_mut(g_stride)
             .enumerate()
-            .for_each(|(k, row)| {
-                render_pigment_row_visual(Some(&params), &layers, visual, cy0 + k, cx0, cx1, row);
+            .for_each(|(k, row)| match &campo {
+                Some((o, c)) => ph2d_wet_paint::render::render_pigment_row_oleo(
+                    Some(&params),
+                    &layers,
+                    visual,
+                    o,
+                    c,
+                    cy0 + k,
+                    cx0,
+                    cx1,
+                    row,
+                ),
+                None => render_pigment_row_visual(Some(&params), &layers, visual, cy0 + k, cx0, cx1, row),
             });
         drop(layers);
+        // A sombra do Óleo Real no PAPEL: onde a célula não tem pigmento, a luz que a tinta à volta lhe tira.
+        // Fica num plano à parte — o alfa do pigmento continua a ser só cobertura (gates, «há tinta», marca).
+        if let Some((o, c)) = &campo {
+            if sess.sombra.len() != gw * gh {
+                sess.sombra = vec![0u8; gw * gh];
+            }
+            let pig = &sess.pigment;
+            sess.sombra[(cy0 - 1) * gw..cy1 * gw].par_chunks_mut(gw).enumerate().for_each(|(k, row)| {
+                let cy = cy0 + k;
+                for cx in cx0..=cx1 {
+                    row[cx - 1] = if pig[((cy - 1) * gw + cx - 1) * 4 + 3] == 0 {
+                        (ph2d_wet_paint::oleo_real::sombra_no_papel(o, c, cx, cy) * 255.0).round() as u8
+                    } else {
+                        0
+                    };
+                }
+            });
+        } else if !sess.sombra.is_empty() {
+            sess.sombra = Vec::new();
+        }
         // ⚠️ **A FRONTEIRA DO MOTOR.** Tudo acima lê `sess.engine` (as camadas, o
         // `params`, o dirty); tudo abaixo lê `sess.pigment`, `sess.base` e o
         // `canvas` — **e mais nada do motor**, exceto o véu no fim.
@@ -235,7 +280,8 @@ impl PainterTool {
         //
         // A metade da SIM continua serial e assim fica: o engine é port 1:1 com fingerprint pinado e o
         // ADR-0134 declara o solver serial POR SEMÂNTICA — o ADR-0109 é inaplicável lá, de propósito.
-        let (pigment, base) = (&sess.pigment, &sess.base);
+        let (pigment, base, sombra) = (&sess.pigment, &sess.base, &sess.sombra);
+        let rr = usize::from(ratio);
         let modo = sess.blend;
         let base_da_marca = marca.map(|_| Arc::clone(&sess.base));
         let cw = px1 - px0;
@@ -294,6 +340,31 @@ impl PainterTool {
                         Some(sv) => sv.aplica(px, py, dele),
                         None => dele,
                     };
+                    let escuro = if pa <= 0.0 && !sombra.is_empty() && vrow.is_none() {
+                        sombra[(py / rr).min(gh - 1) * gw + (px / rr).min(gw - 1)]
+                    } else {
+                        0
+                    };
+                    if escuro > 0 {
+                        // A sombra do Óleo Real sobre o que está por baixo: preto por cima, com a fracção
+                        // `escuro` — pelas mesmas gates que a tinta (selecção/protecção, alfa preso).
+                        let mut s = f32::from(escuro) / 255.0;
+                        if gate_on {
+                            s *= super::watercolor_accum::splat_keep(gsel, gprot, None, o / 4);
+                        }
+                        let ba = f32::from(base[o + 3]) / 255.0;
+                        let oa = if alock_on { ba } else { s + ba * (1.0 - s) };
+                        for ch in 0..3 {
+                            let bc = f32::from(base[o + ch]);
+                            row[lo + ch] = if oa > 0.0 {
+                                (bc * ba * (1.0 - s) / oa).round().clamp(0.0, 255.0) as u8
+                            } else {
+                                0
+                            };
+                        }
+                        row[lo + 3] = (oa * 255.0).round() as u8;
+                        continue;
+                    }
                     if pa <= 0.0 {
                         // Base verbatim — the gates keep-lerp TOWARD the base, so
                         // they are exact no-ops on this branch.

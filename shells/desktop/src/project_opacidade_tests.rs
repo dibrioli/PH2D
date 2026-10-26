@@ -26,10 +26,8 @@ fn um_v191_abre_com_a_opacidade_da_forma_nas_poses() {
     let vivo = postcard::to_allocvec(&(PROJECT_SCHEMA, &bare_file(state))).expect("serializa");
     for (ver, bytes, esperado) in [(191u32, V191, 0.4f32), (PROJECT_SCHEMA, &vivo[..], 1.0)] {
         let path = tmp_path(&format!("opacidade_v{ver}"));
-        let bytes = {
-            let _v196 = (ver < PROJECT_SCHEMA).then(ph2d_ui_state::PoseLayoutV196::enter);
-            postcard::to_allocvec(&(ver, &bare_file(state.clone()))).expect("serializa")
-        };
+        let _v196 = (ver < PROJECT_SCHEMA).then(ph2d_ui_state::PoseLayoutV196::enter);
+        let bytes = postcard::to_allocvec(&(ver, &bare_file(state.clone()))).expect("serializa");
         std::fs::write(&path, bytes).expect("grava");
         let mut app = headless_app();
         let (file, _) = app

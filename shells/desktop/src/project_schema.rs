@@ -568,42 +568,16 @@
 ///
 /// ⚠️ **A tripla NÃO vê este degrau** — nem a forma do `FlipDoc` nem a da `VecScene` mudam.
 ///
-/// # `204 → 205` — **o item de uma lista tem identidade** (`line/UIUX`, F30 §A1, 2026-10-25)
+/// # `204 → 207` — **a identidade dos itens** (`line/UIUX`, F30 §A1 · F31 §B · F32, 2026-10-25)
 ///
-/// `item: ItemId` no FIM de cada item (timer, tween, estado, seta, regra da vigia, acção, gatilho,
-/// fonte de abanão, âncora, resistência): a chave de animação de um campo de item é o id, não a
-/// posição (`docs/UI_New_and_Simple/F30_plano.md` §A1). ⭐ **COM migração:** a forma do ficheiro
-/// não muda (o `204` lê-se com o tipo vivo); todo ficheiro `<= 204` passa os blobs desses nove
-/// componentes pela forma congelada (`ph2d_ecs::item_id::migra_v194`), e o passe dá ids na ordem
-/// da lista. Gate: `project_itens_tests`. Registos de componentes: `0`.
-///
-/// ⚠️ **A tripla NÃO vê este degrau** — nem a forma do `FlipDoc` nem a da `VecScene` mudam.
-///
-/// # `205 → 206` — **o filtro da forma tem identidade** (`line/UIUX`, F31 §B2, 2026-10-25)
-///
-/// `VecFilter` ganha `ids: Vec<ItemId>` no fim (um por degrau): a chave de animação de um filtro é
-/// o id, não a posição (`docs/UI_New_and_Simple/F31_plano.md` §1 B.2). ⭐ **COM migração:** a forma
-/// do ficheiro não muda (o `205` lê-se com o tipo vivo); todo ficheiro `<= 205` passa o blob do
-/// `VecFilter` pela forma congelada (`ph2d_ecs::vec_filter_v195`, via `ph2d_ecs::item_id::migra`),
-/// e o passe dá ids na ordem da pilha. Gate: `project_itens_tests`. Registos de componentes: `0`.
-///
-/// No MESMO degrau (F31 §B1): cada `PaintEntry`/`FxEntry` da `VecScene` ganha `id: ItemId` no fim
-/// (`VEC_SCENE_SCHEMA_VERSION` `24 → 25` — o `24` é o id por vértice do `199 → 200`) — a tripla VÊ-o. Todo
-/// ficheiro `<= 205` lê-se dentro do âmbito `ph2d_vec_scene::PilhaLayoutV23` (ids `NONE`, atribuídos pelo
-/// `ids_da_pilha` no 1.º quadro); as formas dentro do Envelope e da pele regravam-se no load. Gate:
-/// `o_projeto_195_le_a_pilha_do_vetor_sem_ids`.
-///
-/// # `206 → 207` — **o relógio e os filtros dos estados por identidade** (`line/UIUX`, F32, 2026-10-25)
-///
-/// `Tween::relogio` e `PathFollow::relogio_item` (o `ItemId` do timer) no fim: apagar um timer
-/// anterior não troca o relógio de ninguém (`docs/UI_New_and_Simple/F32_plano.md` §1). ⭐ **COM
-/// migração:** os blobs `<= 206` passam pela forma congelada (`ph2d_ecs::item_id_v196`, via
-/// `ph2d_ecs::item_id::migra`), e o passe dos ids fixa o relógio pela posição. No MESMO degrau
-/// (§2): `ObjectPose::filter_ids` no fim de cada pose de estado de UI — os `<= 206` lêem-se no
-/// âmbito `ph2d_ui_state::PoseLayoutV196` (ids vazios ⇒ a posição manda). Gate:
-/// `o_projeto_196_le_os_relogios_e_as_poses_sem_ids`. Registos de componentes: `0`.
-///
-/// ⚠️ **A tripla NÃO vê este degrau** — nem a forma do `FlipDoc` nem a da `VecScene` mudam.
+/// `205`: `item: ItemId` no fim de cada item das listas de nove componentes. `206`: `VecFilter::ids`
+/// e o `id` de cada entrada da pilha do Vetor (`VecScene` `24 → 25`, a tripla VÊ-o; lê-se no âmbito
+/// `PilhaLayoutV23`; o `24` é o id por vértice do `199 → 200`). `207`: `Tween::relogio`,
+/// `PathFollow::relogio_item` e `ObjectPose::filter_ids` (as poses `<= 206` no âmbito
+/// `ph2d_ui_state::PoseLayoutV196`). ⭐ **COM migração:** a forma do `ProjectFile` não muda; os blobs
+/// passam pelas formas congeladas (`ph2d_ecs::item_id::migra`, um componente pode subir vários degraus)
+/// e o passe dá os ids. Desenho e porquê: `docs/UI_New_and_Simple/F30_plano.md` §A1, `F31_plano.md` §1,
+/// `F32_plano.md` §1. Gates: `project_itens_tests`. Registos de componentes: `0`.
 pub(crate) const PROJECT_SCHEMA: u32 = 207;
 
 /// O último degrau com o relógio dos tweens/seguidores e os filtros das poses por POSIÇÃO (F32).

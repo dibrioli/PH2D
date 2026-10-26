@@ -30,6 +30,12 @@ const FORA: &[Isento] = &[
          `docs/CodeEditor/ferramentas/conduz_posse/corre.sh` lê, e só com `PH2D_POSSE_LOG` — nunca pintadas",
     ),
     (
+        "vida_arena_receitas.rs",
+        "os NOMES dos objectos da arena do smoke `PH2D_VIDA_SMOKE=4` (Salamandra, Morcego, Coracao, \
+         as balas, as fábricas) — `Name` é identidade durável (`stable_name_id`, as fábricas e os \
+         gatilhos acham-nos por ele); vieram da shell com a cena (F31, a catraca da shell)",
+    ),
+    (
         "test_support.rs",
         "os nomes das fixturas do arnês (`Image`, `Rig`, `Arm`) — cena de teste, atrás da feature \
          `test-support`",

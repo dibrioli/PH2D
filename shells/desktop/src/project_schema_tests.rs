@@ -335,14 +335,8 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // ⚠️ **`203` em 2026-10-28** (`line/BlenderConstraints`, W6) — `TimersQuiet` REGISTADO, como a cola; `202` lê-se com o tipo vivo.
         // ⚠️ **`204` em 2026-10-25** (`line/UIUX`, F30 §B2) — a MESA DE SOM: `mesa: Vec<u8>` no fim
         // do `ProjectFile`. A tripla NÃO vê este degrau.
-        // ⚠️ **`205` em 2026-10-25** (`line/UIUX`, F30 §A1) — o ITEM das listas tem identidade:
-        // `item: ItemId` no fim de cada item de nove componentes. A tripla NÃO vê este degrau.
-        // ⚠️ **`206` em 2026-10-25** (`line/UIUX`, F31 §B2) — o FILTRO da forma tem identidade:
-        // `VecFilter::ids` no fim; e (F31 §B1) cada entrada da pilha do Vetor ganha o `id`
-        // (`VecScene` `24 → 25`), no MESMO degrau.
-        // ⚠️ **`207` em 2026-10-25** (`line/UIUX`, F32 §2/§4) — o relógio e os filtros dos estados
-        // por IDENTIDADE: `Tween::relogio`, `PathFollow::relogio_item` e `ObjectPose::filter_ids`
-        // no fim. A tripla NÃO vê este degrau.
+        // ⚠️ **`205`..`207` em 2026-10-25** (`line/UIUX`, F30 §A1 · F31 §B · F32) — a identidade dos
+        // itens (ver a escada); só o `206` muda a tripla (`VecScene` `24 → 25`, o `id` da pilha).
         (207, 13, 25),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."

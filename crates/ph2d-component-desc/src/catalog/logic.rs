@@ -472,7 +472,9 @@ pub const DESCS: &[ComponentDesc] = &[
         PATH_FOLLOW_FIELDS,
         &["ph2d::ecs::Timers"],
     )
-    .coded("path_follow"),
+    .coded("path_follow")
+    // O id do timer escolhido (F32 §4): o painel mostra a escolha pelo `relogio`.
+    .hiding(&[("relogio_item", Hidden::Editor)]),
     // ⭐⭐⭐ **A CUTSCENE** (TOP-20 #19) — este objecto toca um container da timeline.
     //
     // ⭐⭐ **Ele REQUER os `Timers`**, e é o mesmo mecanismo da fábrica: o relógio de corrida JÁ

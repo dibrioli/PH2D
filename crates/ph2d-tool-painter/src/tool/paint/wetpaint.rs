@@ -125,6 +125,9 @@ pub(crate) struct WetPaintState {
     /// **Óleo Real** (doc 49): a óptica do relevo sobre a mancha. `None` de fábrica = o composite de
     /// hoje, ao byte.
     pub(super) oleo_real: Option<ph2d_wet_paint::oleo_real::OleoReal>,
+    /// Os últimos valores dos knobs do **Real Oil** (os do painel): desligar e voltar a ligar a caixa
+    /// devolve-os; ligada, `oleo_real == Some(oleo_real_valores)`.
+    pub(super) oleo_real_valores: ph2d_wet_paint::oleo_real::OleoReal,
     /// **Live Water** (W1g): a água corre com o traço aberto. Desligado de fábrica = a W1f, ao byte.
     pub(super) agua_viva: bool,
     /// **Heavy Edge** (W1g, `0..1`): o pigmento desce mais que a água na tela inclinada. `0` = a W1f, ao byte.
@@ -201,6 +204,7 @@ impl Default for WetPaintState {
             paper_visual: false,
             smooth_edges: 0.0,
             oleo_real: None,
+            oleo_real_valores: ph2d_wet_paint::oleo_real::OleoReal::default(),
             agua_viva: false,
             borda_que_pesa: 0.0,
             opacidade: super::wetpaint_preset::OPACIDADE_DE_FABRICA,

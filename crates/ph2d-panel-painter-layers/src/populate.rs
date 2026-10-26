@@ -142,6 +142,7 @@ fn register_brush_inputs(store: &mut WidgetStore) {
     ])
     .chain(ph2d_tool_painter::ids::PAINTER_WATERCOLOR_FIELDS)
     .chain(ph2d_tool_painter::ids::PAINTER_WETPAINT_FIELDS)
+    .chain(ph2d_tool_painter::ids::PAINTER_WETPAINT_OLEO_FIELDS)
     .chain(ph2d_tool_painter::ids::PAINTER_IMPASTO_FIELDS)
     // O cartão Pen (L2): as linhas numéricas — a da rotação é um menu, registado com os menus.
     .chain(

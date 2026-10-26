@@ -61,6 +61,47 @@ pub const PAINTER_WETPAINT_PAPER_VISUAL: NodeId =
 pub const PAINTER_WETPAINT_SMOOTH_EDGES: NodeId =
     hash_node_id("painter_brush.wetpaint_smooth_edges");
 
+/// **Real Oil** checkbox (Óleo Real, doc 49): a óptica do relevo sobre a mancha (`PainterTool::set_wet_oleo_real`);
+/// desligado de fábrica. Ligado, as cinco linhas de [`PAINTER_WETPAINT_OLEO_FIELDS`] aparecem por baixo.
+pub const PAINTER_WETPAINT_OLEO_REAL: NodeId = hash_node_id("painter_brush.wetpaint_oleo_real");
+/// **Depth** (`OleoReal::profundidade`, `0..3`, `1` = a escala medida em W0).
+pub const PAINTER_WETPAINT_OLEO_PROFUNDIDADE: NodeId =
+    hash_node_id("painter_brush.wetpaint_oleo_profundidade");
+/// **Shadow** (`OleoReal::sombra`, `0..1`).
+pub const PAINTER_WETPAINT_OLEO_SOMBRA: NodeId = hash_node_id("painter_brush.wetpaint_oleo_sombra");
+/// **Gloss** (`OleoReal::brilho`, `0..1`).
+pub const PAINTER_WETPAINT_OLEO_BRILHO: NodeId = hash_node_id("painter_brush.wetpaint_oleo_brilho");
+/// **Light height** em GRAUS (`OleoReal::altitude`, em radianos na ferramenta).
+pub const PAINTER_WETPAINT_OLEO_ALTITUDE: NodeId =
+    hash_node_id("painter_brush.wetpaint_oleo_altitude");
+/// **Light angle** em GRAUS (`OleoReal::azimute`, em radianos na ferramenta; `225°` = topo-esquerda).
+pub const PAINTER_WETPAINT_OLEO_AZIMUTE: NodeId =
+    hash_node_id("painter_brush.wetpaint_oleo_azimute");
+
+/// As linhas numéricas do **Real Oil** — fora de [`PAINTER_WETPAINT_FIELDS`] porque só se pintam com o
+/// Óleo Real ligado (aquela lista é «pintada sempre que armado», com gate). Uma lista para o `SetValue`
+/// do painel, o populate e o encaminhamento da ferramenta.
+pub const PAINTER_WETPAINT_OLEO_FIELDS: [NodeId; 5] = [
+    PAINTER_WETPAINT_OLEO_PROFUNDIDADE,
+    PAINTER_WETPAINT_OLEO_SOMBRA,
+    PAINTER_WETPAINT_OLEO_BRILHO,
+    PAINTER_WETPAINT_OLEO_ALTITUDE,
+    PAINTER_WETPAINT_OLEO_AZIMUTE,
+];
+
+/// As faixas `(min, max)` das linhas de [`PAINTER_WETPAINT_OLEO_FIELDS`], pela MESMA ordem, nas unidades do
+/// painel (os ângulos em GRAUS) — uma lei para o painel que as pinta e a ferramenta que as prende.
+/// ⚠️ **Light height `5..90°`:** o Rebelle não desce de 42° (medido, W0); abaixo é extensão NOSSA e o piso
+/// de 5° é escolha de desenho (a sombra rasante ainda se lê e a marcha dela continua finita). Light
+/// direction dá a volta (`360° = 0°`).
+pub const PAINTER_WETPAINT_OLEO_FAIXAS: [(f64, f64); 5] = [
+    (0.0, 3.0),
+    (0.0, 1.0),
+    (0.0, 1.0),
+    (5.0, 90.0),
+    (0.0, 360.0),
+];
+
 /// **Live Water** checkbox (W1g, dono 10/10): a água corre COM o traço aberto (`Sim::sim_while_painting`).
 /// Desligado de fábrica: a 4096² o pior quadro a pintar sobe de 2–4 ms a 14–45 ms (05 §4b, W1f).
 pub const PAINTER_WETPAINT_LIVE_WATER: NodeId = hash_node_id("painter_brush.wetpaint_live_water");
@@ -75,7 +116,7 @@ pub const PAINTER_WETPAINT_TUNING: NodeId = hash_node_id("painter_brush.wetpaint
 /// The Wet Paint **Click** ids — ONE membership check for the panel's click forward in its
 /// `event.rs` (the allowlist without which a painted, registered checkbox is dead under the
 /// mouse) and for the populate loop.
-pub const PAINTER_WETPAINT_CLICKS: [NodeId; 17] = [
+pub const PAINTER_WETPAINT_CLICKS: [NodeId; 18] = [
     PAINTER_WETPAINT_RESET,
     PAINTER_WETPAINT_TILT_TOGGLE,
     PAINTER_WETPAINT_WETCANVAS,
@@ -84,6 +125,7 @@ pub const PAINTER_WETPAINT_CLICKS: [NodeId; 17] = [
     PAINTER_WETPAINT_SHOWWET,
     PAINTER_WETPAINT_PAPER_VISUAL,
     PAINTER_WETPAINT_LIVE_WATER,
+    PAINTER_WETPAINT_OLEO_REAL,
     PAINTER_WETPAINT_TUNING,
     super::PAINTER_WETPAINT_PRESET_BUTTONS[0],
     super::PAINTER_WETPAINT_PRESET_BUTTONS[1],

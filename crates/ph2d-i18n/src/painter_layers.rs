@@ -670,6 +670,14 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_layers.wetpaint.fast_dry" => "Fast dry",
         "panel.painter_layers.wetpaint.show_wet" => "Show Wet",
         "panel.painter_layers.wetpaint.smooth_edges" => "Smooth Edges",
+        // O Óleo Real (doc 49) — o dono chama-lhe «Óleo Real», «Profundidade», «Sombra», «Brilho», «Altura da
+        // luz», «Direcção da luz» («Light angle»: «Light direction» corta a 220 px).
+        "panel.painter_layers.wetpaint.oleo_real" => "Real Oil",
+        "panel.painter_layers.wetpaint.oleo_depth" => "Depth",
+        "panel.painter_layers.wetpaint.oleo_shadow" => "Shadow",
+        "panel.painter_layers.wetpaint.oleo_gloss" => "Gloss",
+        "panel.painter_layers.wetpaint.oleo_light_height" => "Light height",
+        "panel.painter_layers.wetpaint.oleo_light_direction" => "Light angle",
         "panel.painter_layers.wetpaint.tuning" => "Tuning",
         "panel.painter_layers.wetpaint.grid_size_px" => "Grid Size (px)",
         "panel.painter_layers.wetpaint.flow_grid_x" => "Flow Grid (x)",

@@ -301,6 +301,13 @@ pub const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     wet_show_wet: false,
     wet_paper_visual: false,
     wet_smooth_edges: 0.0,
+    // O Real Oil de fábrica: desligado, com os knobs de `OleoReal::default()` (o look aprovado).
+    wet_oleo_real: false,
+    wet_oleo_profundidade: 1.0,
+    wet_oleo_sombra: 1.0,
+    wet_oleo_brilho: 1.0,
+    wet_oleo_altitude_graus: 42.0,
+    wet_oleo_azimute_graus: 225.0,
     wet_live_water: false,
     wet_heavy_edge: 0.0,
     wet_km_mixing: false,

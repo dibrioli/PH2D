@@ -58,6 +58,8 @@ impl PainterTool {
                 "km_mixing": w.km_mixing,
                 "km_glaze": w.km_glaze,
                 "smooth_edges": w.smooth_edges,
+                "oleo_real": w.oleo_real.is_some(),
+                "oleo_real_valores": oleo_para_json(&w.oleo_real_valores),
                 "show_wet": w.show_wet,
                 "paper_visual": w.paper_visual,
                 "opacidade": w.opacidade,
@@ -155,6 +157,11 @@ impl PainterTool {
         if let Some(x) = wv["smooth_edges"].as_f64() {
             w.smooth_edges = x as f32;
         }
+        // O Óleo Real: os knobs primeiro, a caixa por cima (ligada = `Some` deles); ausente = como está.
+        oleo_de_json(&mut w.oleo_real_valores, &wv["oleo_real_valores"]);
+        if let Some(on) = wv["oleo_real"].as_bool() {
+            w.oleo_real = on.then_some(w.oleo_real_valores);
+        }
         if let Some(x) = wv["opacidade"].as_f64() {
             w.opacidade = x as f32;
         }
@@ -178,7 +185,35 @@ impl PainterTool {
         }
         Ok(())
     }
+}
 
+/// Os knobs do artista do Óleo Real (a `Afinacao` é constante da lei, não vai na macro). Ângulos em radianos.
+fn oleo_para_json(o: &ph2d_wet_paint::oleo_real::OleoReal) -> Value {
+    json!({
+        "profundidade": o.profundidade,
+        "azimute": o.azimute,
+        "altitude": o.altitude,
+        "sombra": o.sombra,
+        "brilho": o.brilho,
+    })
+}
+
+/// O inverso de [`oleo_para_json`]: um campo ausente fica como está.
+fn oleo_de_json(o: &mut ph2d_wet_paint::oleo_real::OleoReal, v: &Value) {
+    for (campo, alvo) in [
+        ("profundidade", &mut o.profundidade),
+        ("azimute", &mut o.azimute),
+        ("altitude", &mut o.altitude),
+        ("sombra", &mut o.sombra),
+        ("brilho", &mut o.brilho),
+    ] {
+        if let Some(x) = v[campo].as_f64() {
+            *alvo = x;
+        }
+    }
+}
+
+impl PainterTool {
     /// A Shape Color de uma macro gravada ANTES do prompt 45 (o preset não a levava; hoje vai no
     /// `Parametros::shape_color`): por cima da que o preset pôs; um campo ausente fica como está.
     fn macro_shape_color_aplica(&mut self, sc: &Value) {

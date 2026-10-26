@@ -339,6 +339,75 @@ fn paint_resolution_readout(
     y + font + ph2d_tokens::control_gap_px()
 }
 
+/// O **Real Oil** (Óleo Real, doc 49): a caixa e, só com ela ligada, as cinco linhas da óptica do relevo —
+/// Depth, Shadow, Gloss e a luz (altura e direcção, em GRAUS). As faixas são as da ferramenta
+/// (`PAINTER_WETPAINT_OLEO_FAIXAS`), uma lei para quem pinta e quem prende.
+fn paint_oleo_real(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    content_w: f32,
+    y: f32,
+    brush: &BrushSettings,
+) -> f32 {
+    use ph2d_tool_painter::ids::{PAINTER_WETPAINT_OLEO_FAIXAS, PAINTER_WETPAINT_OLEO_FIELDS};
+    let mut y = crate::paint_brush_top::paint_checkbox_row(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        ph2d_tool_painter::ids::PAINTER_WETPAINT_OLEO_REAL,
+        "panel.painter_layers.wetpaint.oleo_real",
+        brush.wet_oleo_real,
+    );
+    if !brush.wet_oleo_real {
+        return y;
+    }
+    let linhas = [
+        (
+            "panel.painter_layers.wetpaint.oleo_depth",
+            brush.wet_oleo_profundidade,
+            number_field::FINE_STEP,
+            2,
+        ),
+        (
+            "panel.painter_layers.wetpaint.oleo_shadow",
+            brush.wet_oleo_sombra,
+            number_field::FINE_STEP,
+            2,
+        ),
+        (
+            "panel.painter_layers.wetpaint.oleo_gloss",
+            brush.wet_oleo_brilho,
+            number_field::FINE_STEP,
+            2,
+        ),
+        (
+            "panel.painter_layers.wetpaint.oleo_light_height",
+            brush.wet_oleo_altitude_graus,
+            number_field::ANGLE_STEP,
+            0,
+        ),
+        (
+            "panel.painter_layers.wetpaint.oleo_light_direction",
+            brush.wet_oleo_azimute_graus,
+            number_field::ANGLE_STEP,
+            0,
+        ),
+    ];
+    for (((chave, valor, passo, casas), id), (lo, hi)) in linhas
+        .into_iter()
+        .zip(PAINTER_WETPAINT_OLEO_FIELDS)
+        .zip(PAINTER_WETPAINT_OLEO_FAIXAS)
+    {
+        y = card_row(
+            ctx, theme, x, content_w, y, chave, id, valor, lo as f32, hi as f32, passo, casas,
+        );
+    }
+    y
+}
+
 /// O fim da secção — Show Wet, Smooth Edges (a intensidade, `0..1`), Live Water (W1g) e Tuning. Partida de
 /// [`paint_wetpaint_section`] pelo tecto de 200 LOC de função dos painéis.
 fn paint_display_toggles(
@@ -376,6 +445,7 @@ fn paint_display_toggles(
         number_field::FINE_STEP,
         2,
     );
+    y = paint_oleo_real(ctx, theme, x, content_w, y, brush);
     // Live Water (W1g) — a água corre com o traço; desligada de fábrica (o custo está na dica).
     if brush.le(ph2d_tool_painter::LinhaDaFerramenta::AguaViva) {
         y = crate::paint_brush_top::paint_checkbox_row(

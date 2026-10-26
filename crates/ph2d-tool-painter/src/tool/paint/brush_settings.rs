@@ -491,6 +491,15 @@ pub struct BrushSettings {
     pub wet_paper_visual: bool,
     /// Smooth Edges do Wet Paint — a intensidade (`0..1`) do meio-tom na silhueta (a lei do Watercolor).
     pub wet_smooth_edges: f32,
+    /// **Real Oil** (Óleo Real, doc 49): a caixa ligada.
+    pub wet_oleo_real: bool,
+    /// Os knobs do Real Oil nas unidades do painel (os últimos valores, ligada ou não a caixa):
+    /// Depth `0..3`, Shadow `0..1`, Gloss `0..1`, Light height e Light angle em GRAUS.
+    pub wet_oleo_profundidade: f32,
+    pub wet_oleo_sombra: f32,
+    pub wet_oleo_brilho: f32,
+    pub wet_oleo_altitude_graus: f32,
+    pub wet_oleo_azimute_graus: f32,
     /// **Live Water** (W1g): a água corre com o traço aberto.
     pub wet_live_water: bool,
     /// **Heavy Edge** (W1g, `0..1`): o pigmento pesa na orla de baixo da tela inclinada.

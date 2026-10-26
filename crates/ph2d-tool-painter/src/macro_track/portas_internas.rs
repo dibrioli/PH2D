@@ -309,6 +309,8 @@ pub const INTERNAS: &[&str] = &[
     "set_wet_flow_ratio",
     "set_wet_grid_ratio",
     "set_wet_largura_crua",
+    "set_wet_oleo_real",
+    "set_wet_oleo_real_ligado",
     "set_wet_preview_intensity",
     "set_wet_relogio_fixo",
     "set_wet_ritmo_de_teste",

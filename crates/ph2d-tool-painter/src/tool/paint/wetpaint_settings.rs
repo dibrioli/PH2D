@@ -558,12 +558,16 @@ impl PainterTool {
         w.km_mixing = false;
         w.agua_viva = false;
         w.borda_que_pesa = 0.0;
-        let need_recomposite =
-            w.show_wet || w.paper_visual || w.km_glaze || w.smooth_edges > 0.0 || w.oleo_real.is_some();
+        let need_recomposite = w.show_wet
+            || w.paper_visual
+            || w.km_glaze
+            || w.smooth_edges > 0.0
+            || w.oleo_real.is_some();
         w.show_wet = false;
         w.paper_visual = false;
         w.smooth_edges = 0.0;
         w.oleo_real = None;
+        w.oleo_real_valores = ph2d_wet_paint::oleo_real::OleoReal::default();
         w.km_glaze = false;
         w.tuning_open = false;
         if need_recomposite {
@@ -593,6 +597,9 @@ impl PainterTool {
     /// O **Óleo Real** (doc 49): a óptica do relevo — a fenda na cor da tinta, a sombra que cai também no
     /// papel, o brilho. `None` = o composite de hoje, ao byte. Mudá-lo recompõe a tela inteira.
     pub fn set_wet_oleo_real(&mut self, oleo: Option<ph2d_wet_paint::oleo_real::OleoReal>) {
+        if let Some(o) = oleo {
+            self.paint.wetpaint.oleo_real_valores = o;
+        }
         if self.paint.wetpaint.oleo_real != oleo {
             self.paint.wetpaint.oleo_real = oleo;
             self.wet_recomposite_full();
@@ -603,6 +610,48 @@ impl PainterTool {
     #[must_use]
     pub fn wet_oleo_real(&self) -> Option<ph2d_wet_paint::oleo_real::OleoReal> {
         self.paint.wetpaint.oleo_real
+    }
+
+    /// A caixa **Real Oil**: ligada = `Some` dos últimos valores dos knobs (os de fábrica na primeira vez),
+    /// desligada = `None` — os valores ficam guardados para a próxima vez.
+    pub fn set_wet_oleo_real_ligado(&mut self, ligado: bool) {
+        let o = ligado.then_some(self.paint.wetpaint.oleo_real_valores);
+        self.set_wet_oleo_real(o);
+    }
+
+    /// Os últimos valores dos knobs do **Real Oil** (os do painel, ligada ou não a caixa).
+    #[must_use]
+    pub fn wet_oleo_real_valores(&self) -> ph2d_wet_paint::oleo_real::OleoReal {
+        self.paint.wetpaint.oleo_real_valores
+    }
+
+    /// Uma linha do **Real Oil** (`PAINTER_WETPAINT_OLEO_FIELDS`), nas unidades do painel — os ângulos em
+    /// GRAUS. Guarda o valor e, com a caixa ligada, recompõe. `false` = o id não é dela; NaN = sem efeito.
+    ///
+    /// As faixas são as de `PAINTER_WETPAINT_OLEO_FAIXAS` (o porquê do piso de 5° da luz está lá); a
+    /// direcção da luz dá a volta em vez de se prender.
+    fn set_wet_oleo_knob(&mut self, id: ph2d_a11y::NodeId, v: f64) -> bool {
+        let ids = crate::ids::PAINTER_WETPAINT_OLEO_FIELDS;
+        let Some(k) = ids.iter().position(|i| *i == id) else {
+            return false;
+        };
+        if v.is_nan() {
+            return true;
+        }
+        let (lo, hi) = crate::ids::PAINTER_WETPAINT_OLEO_FAIXAS[k];
+        let mut o = self.paint.wetpaint.oleo_real_valores;
+        match k {
+            0 => o.profundidade = v.clamp(lo, hi),
+            1 => o.sombra = v.clamp(lo, hi),
+            2 => o.brilho = v.clamp(lo, hi),
+            3 => o.altitude = v.clamp(lo, hi).to_radians(),
+            _ => o.azimute = v.rem_euclid(hi).to_radians(),
+        }
+        self.paint.wetpaint.oleo_real_valores = o;
+        if self.paint.wetpaint.oleo_real.is_some() {
+            self.set_wet_oleo_real(Some(o));
+        }
+        true
     }
 
     /// A **Live Water** (W1g): a água corre com o traço aberto.
@@ -716,6 +765,9 @@ impl PainterTool {
             self.set_wet_borda_que_pesa(v);
             return true;
         }
+        if self.set_wet_oleo_knob(id, v) {
+            return true;
+        }
         let w = &mut self.paint.wetpaint;
         let k = &mut w.knobs;
         match id {
@@ -792,6 +844,10 @@ impl PainterTool {
                 // A Texture on Paint da secção Paper (W1e, F2).
                 self.paint.wetpaint.paper_visual = !self.paint.wetpaint.paper_visual;
                 self.wet_recomposite_full();
+                true
+            }
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_WETPAINT_OLEO_REAL => {
+                self.set_wet_oleo_real_ligado(self.paint.wetpaint.oleo_real.is_none());
                 true
             }
             PanelEvent::Click(id) if *id == crate::ids::PAINTER_WETPAINT_LIVE_WATER => {

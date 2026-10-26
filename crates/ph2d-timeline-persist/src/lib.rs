@@ -51,6 +51,7 @@ use ph2d_ecs::{Entity, Name, StableId, TextosDosCanais, World};
 
 mod animation;
 mod migra_vetor;
+mod purga_itens;
 pub use animation::{copy_animations, follow_selection, publish_animation_header};
 use ph2d_timeline::{
     TimelineState, WireId, refresh_and_heal_bindings, resolve_entities, stamp_wire_ids,
@@ -219,6 +220,7 @@ pub fn upkeep(timeline: &mut TimelineState, world: &mut World) -> bool {
         .map(|(e, sb)| (e, sb.clip.clone()))
         .collect();
     let reset = purge_the_dead(timeline, &by_wire, (&*world, &ossos));
+    purga_itens::decide(timeline, world);
     // ⭐ Depois da purga e da ressurreição: os bits publicados são os DESTE quadro.
     publica_os_nomes(&timeline.doc, world);
     reset
@@ -534,6 +536,7 @@ pub fn install_from_project(bytes: &[u8]) -> Result<TimelineState, String> {
     // `Entity::try_from_bits`: o `from_bits(0)` **entra em pânico**. O apply do frame seguinte
     // faria isso com cada binding recém-carregada, e o Ctrl+O virava um crash.
     resolve_entities(&mut timeline.doc, |_| None);
+    timeline.itens_por_decidir = true;
     // **Um projeto LEGADO (salvo antes do padrão de 4 s) abre com 4 s + véu, não com Dur 0**
     // (Enio, 2026-07-28: *"deixe a duração em 4 seg e o véu visível mesmo sem nenhum clip na
     // timeline"*). Se o documento carregado não tem NENHUMA duração autorada — nem no clip 0,

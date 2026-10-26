@@ -246,6 +246,9 @@ pub struct TimelineState {
     /// CENA, em qualquer aba — cada objecto a Animação dele, o Arrange (ou o clipe da Cena) e as
     /// cutscenes. Sessão ([`crate::take_runtime`]).
     pub runtime: bool,
+    /// Acabou de chegar do ficheiro e há bindings de item por decidir: o item que já não existe sai
+    /// (nenhum undo o pode devolver). Sessão; só o load a liga (F32 §1).
+    pub itens_por_decidir: bool,
 }
 
 impl TimelineState {

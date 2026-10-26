@@ -3,6 +3,7 @@
 use std::collections::BTreeMap;
 
 use crate::palette;
+use crate::selection::Mask;
 
 /// O maior lado de um sprite: o `WORD` de largura/altura do cabeçalho `.ase` (spec pública do
 /// formato) — o recurso é o FORMATO de intercâmbio, não a memória.
@@ -335,6 +336,10 @@ pub struct Sprite {
     pub(crate) cels: BTreeMap<CelKey, Cel>,
     pub(crate) tags: Vec<Tag>,
     pub(crate) next_id: u32,
+    /// A selecção (Aseprite: estado do DOCUMENTO, desfaz-se; não se grava no `PH2DPIXEL`).
+    pub(crate) mask: Option<Mask>,
+    /// A última selecção desfeita por Deselect (Select ▸ Reselect).
+    pub(crate) last_mask: Option<Mask>,
 }
 
 /// A duração por omissão de um frame novo (Aseprite: Frame Properties, 100 ms).
@@ -376,6 +381,8 @@ impl Sprite {
             cels: BTreeMap::new(),
             tags: Vec::new(),
             next_id: 1,
+            mask: None,
+            last_mask: None,
         };
         let opaque = background != Background::Transparent;
         let layer = s.alloc_id();
@@ -512,6 +519,22 @@ impl Sprite {
     /// e o desfazer não os devolve: o refazer reata os cels pelo MESMO id).
     pub fn reserve_id(&mut self) -> u32 {
         self.alloc_id()
+    }
+
+    /// A selecção activa (`None` = nada seleccionado).
+    #[must_use]
+    pub fn mask(&self) -> Option<&Mask> {
+        self.mask.as_ref()
+    }
+    /// A selecção que o Reselect devolve.
+    #[must_use]
+    pub fn last_mask(&self) -> Option<&Mask> {
+        self.last_mask.as_ref()
+    }
+    /// A célula pode ser escrita pela selecção: sem selecção tudo pode; com ela, só o que ela cobre.
+    #[must_use]
+    pub fn in_selection(&self, x: i32, y: i32) -> bool {
+        self.mask.as_ref().is_none_or(|m| m.get(x, y))
     }
 
     /// O retângulo do sprite inteiro.

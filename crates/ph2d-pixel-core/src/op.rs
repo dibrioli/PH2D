@@ -3,7 +3,10 @@
 use std::collections::BTreeMap;
 
 use crate::palette::{MAX_COLORS, invert_permutation, is_permutation};
-use crate::sprite::{Cel, CelKey, ColorMode, Frame, FrameId, Layer, LayerId, Rect, Sprite, Tag};
+use crate::selection::Mask;
+use crate::sprite::{
+    Cel, CelKey, ColorMode, Frame, FrameId, Layer, LayerId, MAX_SIDE, Rect, Sprite, Tag,
+};
 
 /// Uma mutação do documento. O catálogo cresce por onda; cada variante tem inverso exato.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -28,6 +31,31 @@ pub enum Op {
     /// A lista de frames inteira, os cels que mudam com ela e as tags (novo, apagar, mover,
     /// duração, propriedades e ligação de cels, tags). O inverso é o estado de antes.
     Frames(Box<FrameSet>),
+    /// A selecção e a do Reselect (P6). O inverso é o par de antes.
+    Mask(Box<MaskSet>),
+    /// O tamanho do sprite, todos os cels e a selecção de uma vez (Canvas/Sprite Size, Rotate e
+    /// Flip Canvas, Crop, Trim). O inverso é o estado de antes.
+    Canvas(Box<CanvasSet>),
+    /// Vários ops como UM passo (uma transformação assentada: as células e a selecção). Aplica-se
+    /// em ordem; se um falha, os já aplicados desfazem-se e o documento fica intacto.
+    Batch(Vec<Op>),
+}
+
+/// O que [`Op::Mask`] põe no sprite (cada máscara com o tamanho do sprite).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MaskSet {
+    pub mask: Option<Mask>,
+    pub last: Option<Mask>,
+}
+
+/// O que [`Op::Canvas`] põe no sprite: `cels` substitui todos os cels.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CanvasSet {
+    pub width: u32,
+    pub height: u32,
+    pub cels: BTreeMap<CelKey, Cel>,
+    pub mask: Option<Mask>,
+    pub last: Option<Mask>,
 }
 
 /// O que [`Op::Frames`] põe no sprite: `frames` e `tags` substituem as listas; cada `(chave, cel)`
@@ -92,6 +120,10 @@ pub enum OpError {
     BadLayers(&'static str),
     /// A lista de frames ou de tags viola uma lei (o campo diz qual).
     BadFrames(&'static str),
+    /// Uma máscara com tamanho diferente do sprite.
+    BadMask,
+    /// Largura/altura fora de `1..=MAX_SIDE`.
+    BadSize,
 }
 
 impl Op {
@@ -122,6 +154,14 @@ impl Op {
                     + w.cels.values().map(|c| c.data.len() + 32).sum::<usize>()
                     + std::mem::size_of::<Whole>()
             }
+            Op::Mask(m) => mask_bytes(&m.mask) + mask_bytes(&m.last),
+            Op::Canvas(c) => {
+                c.cels.values().map(|c| c.data.len() + 32).sum::<usize>()
+                    + mask_bytes(&c.mask)
+                    + mask_bytes(&c.last)
+                    + std::mem::size_of::<CanvasSet>()
+            }
+            Op::Batch(v) => v.iter().map(Op::bytes).sum::<usize>(),
         }
     }
 }
@@ -153,7 +193,68 @@ pub fn apply(sprite: &mut Sprite, op: Op) -> Result<Op, OpError> {
         Op::Whole(w) => apply_whole(sprite, *w).map(|w| Op::Whole(Box::new(w))),
         Op::Layers(l) => apply_layers(sprite, *l).map(|l| Op::Layers(Box::new(l))),
         Op::Frames(f) => apply_frames(sprite, *f).map(|f| Op::Frames(Box::new(f))),
+        Op::Mask(m) => apply_mask(sprite, *m).map(|m| Op::Mask(Box::new(m))),
+        Op::Canvas(c) => apply_canvas(sprite, *c).map(|c| Op::Canvas(Box::new(c))),
+        Op::Batch(ops) => apply_batch(sprite, ops).map(Op::Batch),
     }
+}
+
+fn mask_bytes(m: &Option<Mask>) -> usize {
+    m.as_ref()
+        .map_or(0, |m| m.width() as usize * m.height() as usize)
+        + 16
+}
+
+fn mask_fits(m: &Option<Mask>, w: u32, h: u32) -> bool {
+    m.as_ref().is_none_or(|m| m.width() == w && m.height() == h)
+}
+
+fn apply_mask(s: &mut Sprite, m: MaskSet) -> Result<MaskSet, OpError> {
+    if !mask_fits(&m.mask, s.width, s.height) || !mask_fits(&m.last, s.width, s.height) {
+        return Err(OpError::BadMask);
+    }
+    Ok(MaskSet {
+        mask: std::mem::replace(&mut s.mask, m.mask),
+        last: std::mem::replace(&mut s.last_mask, m.last),
+    })
+}
+
+fn apply_canvas(s: &mut Sprite, c: CanvasSet) -> Result<CanvasSet, OpError> {
+    let (w, h) = (c.width, c.height);
+    if w == 0 || h == 0 || w > MAX_SIDE || h > MAX_SIDE {
+        return Err(OpError::BadSize);
+    }
+    if !mask_fits(&c.mask, w, h) || !mask_fits(&c.last, w, h) {
+        return Err(OpError::BadMask);
+    }
+    let all: Vec<(CelKey, Option<Cel>)> =
+        c.cels.iter().map(|(k, c)| (*k, Some(c.clone()))).collect();
+    check_cels(s, &s.layers, &s.frames, &all, true, s.mode.bpp())?;
+    Ok(CanvasSet {
+        width: std::mem::replace(&mut s.width, w),
+        height: std::mem::replace(&mut s.height, h),
+        cels: std::mem::replace(&mut s.cels, c.cels),
+        mask: std::mem::replace(&mut s.mask, c.mask),
+        last: std::mem::replace(&mut s.last_mask, c.last),
+    })
+}
+
+fn apply_batch(s: &mut Sprite, ops: Vec<Op>) -> Result<Vec<Op>, OpError> {
+    let mut done: Vec<Op> = Vec::with_capacity(ops.len());
+    for op in ops {
+        match apply(s, op) {
+            Ok(inv) => done.push(inv),
+            Err(e) => {
+                // Os inversos que o próprio `apply` deu não falham.
+                for inv in done.into_iter().rev() {
+                    let _ = apply(s, inv);
+                }
+                return Err(e);
+            }
+        }
+    }
+    done.reverse();
+    Ok(done)
 }
 
 /// As leis dos cels no estado FINAL de um op (`changes` por cima de `s.cels`, ou no lugar dele se

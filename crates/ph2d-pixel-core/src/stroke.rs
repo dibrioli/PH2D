@@ -179,9 +179,12 @@ impl Stroke {
         self.last = at;
     }
 
+    /// O funil de toda célula que o gesto toca: a selecção e a troca de cor (borracha direita).
     fn accepts(&self, sprite: &Sprite, x: i32, y: i32) -> bool {
-        self.only
-            .is_none_or(|from| sprite.value_at((self.layer, self.frame), x, y) == from)
+        sprite.in_selection(x, y)
+            && self
+                .only
+                .is_none_or(|from| sprite.value_at((self.layer, self.frame), x, y) == from)
     }
 
     fn deposit(&mut self, sprite: &Sprite, c: Cell, plain: bool, delta: i32) {

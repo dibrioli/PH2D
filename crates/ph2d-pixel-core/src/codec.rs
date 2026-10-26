@@ -209,6 +209,8 @@ fn read_sprite(bytes: &[u8]) -> Result<Sprite, CodecError> {
         cels: BTreeMap::new(),
         tags: Vec::new(),
         next_id: 0,
+        mask: None,
+        last_mask: None,
     };
     let mut raw_cels = Vec::new();
     for (tag, b) in Fields::new(bytes)? {

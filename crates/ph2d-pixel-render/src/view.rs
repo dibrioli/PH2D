@@ -1,8 +1,9 @@
 //! O sprite, o xadrez, a grelha e o mapa ecrã↔célula.
 
+use std::collections::BTreeMap;
 use std::sync::Arc;
 
-use ph2d_pixel_core::{FrameId, Sprite, Stroke, compose_rgba};
+use ph2d_pixel_core::{FrameId, Onion, Purpose, Rect, Sprite, Stroke, compose_window, compose_with_onion};
 use ph2d_vector::{
     Affine, BezPath, Color, ImageQuality, Point, StableImage, Stroke as Pen, VectorScene,
 };
@@ -16,11 +17,15 @@ pub const CHECKER_CELLS: u32 = 16;
 const CHECKER_LIGHT: [u8; 4] = [204, 204, 204, 255]; // LITERAL-COLOR-OK: casa clara do xadrez de transparência (invariante ao tema)
 const CHECKER_DARK: [u8; 4] = [153, 153, 153, 255]; // LITERAL-COLOR-OK: casa escura do xadrez de transparência (invariante ao tema)
 
-/// A imagem composta de um sprite, refeita só quando o `stamp` de quem a pede muda (um id estável
-/// por versão: o atlas do Vello reusa-a entre quadros).
+/// O que a RAM guarda de frames já compostos para o tocar não recompor (o recurso é a RAM; além
+/// disto um frame recompõe-se, ~65 ms em 1024² × 20 camadas nas faixas — `mede_compose`).
+const FRAME_CACHE_BYTES: usize = 256 << 20;
+
+/// A imagem composta de um sprite, refeita só quando a versão (`stamp`), o frame ou o papel vegetal
+/// mudam (um id estável por imagem: o atlas do Vello reusa-a entre quadros).
 #[derive(Default)]
 pub struct SpriteImage {
-    stamp: Option<u64>,
+    key: Option<(u64, FrameId, Option<Onion>)>,
     image: Option<StableImage>,
     checker: Option<(u32, u32, StableImage)>,
     scratch: Vec<u8>,
@@ -29,10 +34,14 @@ pub struct SpriteImage {
     pending_rect: Option<ph2d_pixel_core::Rect>,
     /// O traço acabou e o documento ficou nesta versão: ela só difere da imagem na janela dele.
     settled: Option<u64>,
+    /// Os frames desta versão já compostos (sem papel vegetal): navegar e tocar não recompõem.
+    frames: BTreeMap<FrameId, (Arc<Vec<u8>>, StableImage)>,
+    frames_stamp: Option<u64>,
+    frames_bytes: usize,
 }
 
 impl SpriteImage {
-    /// Recompõe se `stamp` mudou. `pending` é o traço em curso.
+    /// Recompõe se `stamp` ou `frame` mudaram. `pending` é o traço em curso.
     pub fn refresh(
         &mut self,
         sprite: &Sprite,
@@ -40,44 +49,66 @@ impl SpriteImage {
         pending: Option<&Stroke>,
         stamp: u64,
     ) {
-        if self.stamp == Some(stamp) && self.image.is_some() {
+        self.refresh_with(sprite, frame, pending, stamp, None);
+    }
+
+    /// O [`Self::refresh`] com o papel vegetal (`None` = desligado).
+    pub fn refresh_with(
+        &mut self,
+        sprite: &Sprite,
+        frame: FrameId,
+        pending: Option<&Stroke>,
+        stamp: u64,
+        onion: Option<&Onion>,
+    ) {
+        let key = (stamp, frame, onion.copied());
+        if self.key == Some(key) && self.image.is_some() {
             return;
         }
-        let cheio = sprite.width() as usize * sprite.height() as usize * 4;
+        if self.frames_stamp != Some(stamp) {
+            self.frames.clear();
+            self.frames_bytes = 0;
+            self.frames_stamp = Some(stamp);
+        }
+        let same_view = self.key.is_some_and(|(_, f, o)| f == frame && o == key.2);
+        let (w, h) = (sprite.width(), sprite.height());
+        let cheio = w as usize * h as usize * 4;
         let cur = pending.map(Stroke::rect);
+        let assentou = self.settled.take() == Some(stamp);
+        if pending.is_none()
+            && onion.is_none()
+            && !(assentou && same_view)
+            && let Some((px, img)) = self.frames.get(&frame)
+        {
+            self.scratch.clone_from(px);
+            self.image = Some(img.clone());
+            (self.pending_rect, self.key) = (None, Some(key));
+            return;
+        }
         // Durante um traço o documento não muda: só a janela do traço (a de antes ∪ a de agora, a
         // forma pode encolher) se recompõe. Medido: 512² × 20 camadas cheio ≫ a janela de um pincel.
-        let assentou = self.settled.take() == Some(stamp);
+        let pronto = same_view && self.scratch.len() == cheio && self.image.is_some();
         match (self.pending_rect, cur) {
-            (Some(a), None) if assentou && self.scratch.len() == cheio && self.image.is_some() => {
-                ph2d_pixel_core::compose_region(
-                    sprite,
-                    frame,
-                    None,
-                    a,
-                    ph2d_pixel_core::Purpose::View,
-                    &mut self.scratch,
-                );
+            (Some(a), None) if assentou && pronto => {
+                region_into(sprite, frame, None, a, onion, &mut self.scratch);
             }
-            (Some(a), Some(b)) if self.scratch.len() == cheio && self.image.is_some() => {
-                ph2d_pixel_core::compose_region(
-                    sprite,
-                    frame,
-                    pending,
-                    a.union(b),
-                    ph2d_pixel_core::Purpose::View,
-                    &mut self.scratch,
-                );
+            (Some(a), Some(b)) if pronto => {
+                region_into(sprite, frame, pending, a.union(b), onion, &mut self.scratch);
             }
-            _ => compose_rgba(sprite, frame, pending, &mut self.scratch),
+            _ => self.scratch = compose_bands(sprite, frame, pending, onion),
         }
         self.pending_rect = cur;
-        self.image = StableImage::from_rgba(
-            Arc::new(self.scratch.clone()),
-            sprite.width(),
-            sprite.height(),
-        );
-        self.stamp = Some(stamp);
+        let px = Arc::new(self.scratch.clone());
+        self.image = StableImage::from_rgba(Arc::clone(&px), w, h);
+        if pending.is_none()
+            && onion.is_none()
+            && let Some(img) = &self.image
+            && self.frames_bytes + cheio <= FRAME_CACHE_BYTES
+        {
+            self.frames_bytes += cheio;
+            self.frames.insert(frame, (px, img.clone()));
+        }
+        self.key = Some(key);
     }
 
     /// O traço em curso acabou (gravado ou largado) e o documento está na versão `stamp`: a próxima
@@ -123,6 +154,65 @@ impl SpriteImage {
         }
         draw_checker(scene, self.checker.as_ref().map(|c| &c.2), w, h, to_screen);
     }
+}
+
+/// A janela `region` composta (com o papel vegetal, se houver).
+fn window(sprite: &Sprite, frame: FrameId, pending: Option<&Stroke>, region: Rect, onion: Option<&Onion>) -> Vec<u8> {
+    match onion {
+        Some(o) => compose_with_onion(sprite, frame, pending, region, o, None),
+        None => compose_window(sprite, frame, pending, region, Purpose::View),
+    }
+}
+
+/// Recompõe `region` dentro de `out` (o sprite inteiro).
+fn region_into(
+    sprite: &Sprite,
+    frame: FrameId,
+    pending: Option<&Stroke>,
+    region: Rect,
+    onion: Option<&Onion>,
+    out: &mut [u8],
+) {
+    let region = region.intersect(sprite.bounds());
+    if region.is_empty() {
+        return;
+    }
+    let buf = window(sprite, frame, pending, region, onion);
+    let (w, rw) = (sprite.width() as usize, region.w as usize * 4);
+    for (y, row) in buf.chunks_exact(rw).enumerate() {
+        let o = ((region.y as usize + y) * w + region.x as usize) * 4;
+        out[o..o + rw].copy_from_slice(row);
+    }
+}
+
+/// A composição cheia em faixas de linhas, uma por núcleo da fatia da linha (metade dos da
+/// máquina). Medido (`mede_compose`, load ~6): 512² × 20 camadas 123 ms num núcleo, 16,7 ms em 8.
+#[must_use]
+pub fn compose_bands(
+    sprite: &Sprite,
+    frame: FrameId,
+    pending: Option<&Stroke>,
+    onion: Option<&Onion>,
+) -> Vec<u8> {
+    let (w, h) = (sprite.width(), sprite.height());
+    let n = std::thread::available_parallelism().map_or(1, |n| (n.get() / 2).max(1)) as u32;
+    let alto = h.div_ceil(n.min(h));
+    let bands: Vec<Rect> = (0..h.div_ceil(alto))
+        .map(|k| Rect::new(0, (k * alto) as i32, w, alto.min(h - k * alto)))
+        .collect();
+    if bands.len() == 1 {
+        return window(sprite, frame, pending, bands[0], onion);
+    }
+    let parts: Vec<Vec<u8>> = std::thread::scope(|sc| {
+        let hs: Vec<_> = bands
+            .iter()
+            .map(|&r| sc.spawn(move || window(sprite, frame, pending, r, onion)))
+            .collect();
+        hs.into_iter()
+            .map(|h| h.join().unwrap_or_else(|e| std::panic::resume_unwind(e)))
+            .collect()
+    });
+    parts.concat()
 }
 
 /// O xadrez `img` (uma célula por casa) recortado ao canvas `w × h`.
@@ -366,5 +456,43 @@ mod tests {
         img.settle(stamp);
         img.refresh(&s, f, None, stamp);
         assert_eq!(img.scratch, full(&s, None), "o traço gravado");
+    }
+
+    /// As faixas, o papel vegetal e a imagem guardada de cada frame dão os bytes da composição
+    /// de uma vez; uma edição (outra versão) nunca mostra a imagem guardada de antes.
+    #[test]
+    fn bands_onion_and_the_frame_cache_give_the_bytes_of_the_single_compose() {
+        use ph2d_pixel_core::frames::{self, NewFrame};
+        use ph2d_pixel_core::{Onion, Op, Patch, Rect, compose_with_onion};
+        let mut s = Sprite::new(NewSprite { width: 37, height: 29, ..NewSprite::default() }).expect("s");
+        let l = s.layers()[0].id;
+        let f0 = s.frames()[0].id;
+        let r = s.bounds();
+        let px: Vec<u8> = (0..r.area()).flat_map(|k| [(k * 7) as u8, (k * 3) as u8, 90, (k * 11) as u8]).collect();
+        apply(&mut s, Op::Patch(Patch { layer: l, frame: f0, bbox: Some(r), rect: r, pixels: px })).expect("p");
+        let (op, f1) = frames::new_frame(&mut s, f0, NewFrame::Empty).expect("f");
+        apply(&mut s, op).expect("f");
+        let one = Rect::new(3, 3, 1, 1);
+        apply(&mut s, Op::Patch(Patch { layer: l, frame: f1, bbox: Some(one), rect: one, pixels: vec![9, 9, 9, 255] }))
+            .expect("p");
+        let full = |s: &Sprite, f| {
+            let mut out = Vec::new();
+            compose_rgba(s, f, None, &mut out);
+            out
+        };
+        let mut img = SpriteImage::default();
+        img.refresh(&s, f0, None, 1);
+        assert_eq!(img.scratch, full(&s, f0), "faixas, frame 0");
+        img.refresh(&s, f1, None, 1);
+        assert_eq!(img.scratch, full(&s, f1), "faixas, frame 1");
+        img.refresh(&s, f0, None, 1);
+        assert_eq!(img.scratch, full(&s, f0), "a imagem guardada do frame 0");
+        let o = Onion { tint: true, ..Onion::default() };
+        img.refresh_with(&s, f1, None, 1, Some(&o));
+        assert_eq!(img.scratch, compose_with_onion(&s, f1, None, s.bounds(), &o, None), "papel vegetal");
+        apply(&mut s, Op::Patch(Patch { layer: l, frame: f0, bbox: Some(r), rect: one, pixels: vec![1, 2, 3, 255] }))
+            .expect("p");
+        img.refresh(&s, f0, None, 2);
+        assert_eq!(img.scratch, full(&s, f0), "outra versão recompõe");
     }
 }

@@ -436,9 +436,6 @@ fn imagem_da_ferramenta(
     use ph2d_editor_core::tool::RasterEditTool;
     let base = super::midias_de_fabrica::de_fabrica(base_da_ferramenta(modo));
     let escala = if crua { (raio / 500.0).max(1.0) } else { 1.0 };
-    // A tela e o traço de `traco_recto_alto` (a mesma altura, o mesmo gesto), com a base antes e o traço da ferramenta
-    // só num dos dois lados.
-    let w = super::sonda_gestos::W;
     // A cena é a do raio do MOTOR (o mesmo nas duas leis): com a promessa, o da tabela do preset; crua, o pedido. Sem
     // isto a base (que acompanha o tamanho) saía outra na tabela e na promessa, e a largura medida também.
     let motor = if crua {
@@ -446,22 +443,40 @@ fn imagem_da_ferramenta(
     } else {
         raio_do_motor_da_tabela(&p.parametros.width_table, raio)
     };
-    let h = ((motor * 6.0) as u32 + 80).max(120);
-    let cy = h as f32 * 0.5;
+    // A tela e o traço de `traco_recto_alto` (a mesma altura, o mesmo gesto), com a base antes e o traço da ferramenta
+    // só num dos dois lados: a faixa da base, ao raio 1,5·m (3m de largura), com a orla de baixo em `cy`, e a ferramenta
+    // ao longo dela. O SMEAR arrasta no sentido do traço — ao longo da orla não muda quase nada (a tabela saía ~1 px a
+    // todo o raio, janela 15) —: a faixa dele fica de PÉ (2m de largura, a orla direita em `cx`) e o traço dela ATRAVESSA
+    // a orla para fora; a largura é a do rasto que ele puxa, de novo por coluna.
+    let (w, h, faixa, ferramenta, raio_da_base) = if modo == "Smear" {
+        let (w, h) = ((motor * 4.5) as u32 + 160, (motor * 3.0) as u32 + 120);
+        let (cx, cy) = (80.0 + 2.0 * motor, h as f32 * 0.5);
+        (
+            w,
+            h,
+            [[cx - motor, 20.0], [cx - motor, h as f32 - 20.0]],
+            [[cx - motor, cy], [cx + 1.5 * motor, cy]],
+            motor,
+        )
+    } else {
+        let h = ((motor * 6.0) as u32 + 80).max(120);
+        let cy = h as f32 * 0.5;
+        (
+            super::sonda_gestos::W,
+            h,
+            [[60.0, cy - 1.5 * motor], [940.0, cy - 1.5 * motor]],
+            [[100.0, cy], [900.0, cy]],
+            1.5 * motor,
+        )
+    };
     let pinta = |com_ferramenta: bool| {
         let mut t = PainterTool::default();
         t.set_source(vec![255u8; (w * h * 4) as usize], w, h);
         t.set_wet_relogio_fixo(true);
         assert!(t.wet_preset_aplicar(&direito(&base)).is_empty());
-        // A faixa da base, ao raio 1,5·m (a promessa da base: 3m de largura), com a orla de baixo em `cy`.
-        t.set_brush_size_px(1.5 * motor);
+        t.set_brush_size_px(raio_da_base);
         t.set_brush_color_srgb8([191, 0, 18]);
-        super::sonda_gestos::gesto(
-            &mut t,
-            &[[60.0, cy - 1.5 * motor], [940.0, cy - 1.5 * motor]],
-            3.0,
-            |_| 1.0,
-        );
+        super::sonda_gestos::gesto(&mut t, &faixa, 3.0, |_| 1.0);
         // Pela porta do navegador: ela põe a ferramenta do preset na mão (a interna escreve-o no slot dela e deixa o
         // Pincel na mão — a régua media o traço do Ink Brush).
         assert!(t.preset_aplicar(&direito(p)).unwrap().is_empty());
@@ -470,7 +485,7 @@ fn imagem_da_ferramenta(
         }
         if com_ferramenta {
             t.set_brush_size_px(raio / escala);
-            super::sonda_gestos::gesto(&mut t, &[[100.0, cy], [900.0, cy]], 3.0, |_| 1.0);
+            super::sonda_gestos::gesto(&mut t, &ferramenta, 3.0, |_| 1.0);
         }
         passa_o_tempo(&mut t, QUADROS_DA_LEI, r);
         t.run_full().0

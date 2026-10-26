@@ -28,22 +28,29 @@ const CENTROS: [[f64; 2]; 6] = [
     [0.0, -1.2],
     [2.4, -1.2],
 ];
-/// Os efeitos, pela tabela do produto (`PathEffect::KINDS`); `None` = o controlo.
-const EFEITOS: [Option<&str>; 6] = [
-    None,
-    Some("Flag"),
-    Some("Wave"),
-    Some("Twist"),
-    Some("Zig Zag"),
-    Some("Sketch"),
-];
+/// Os efeitos, pelo TIPO (o nome que a cena mostra é o do próprio efeito); `None` = o controlo.
+fn efeitos() -> [Option<PathEffect>; 6] {
+    use ph2d_vec_scene::fx_warp_presets::{WarpSpec, WarpStyle};
+    [
+        None,
+        Some(PathEffect::Warp(WarpSpec::new(WarpStyle::Flag))),
+        Some(PathEffect::Warp(WarpSpec::new(WarpStyle::Wave))),
+        Some(PathEffect::Twist(ph2d_vec_scene::fx_twist::TwistSpec::new())),
+        Some(PathEffect::ZigZag(
+            ph2d_vec_scene::fx_zigzag::ZigZagSpec::default(),
+        )),
+        Some(PathEffect::Sketch(
+            ph2d_vec_scene::fx_sketch::SketchSpec::default(),
+        )),
+    ]
+}
+/// A do Flag fica selecionada no fim, com a pilha dela no painel.
+const SELECIONADA: usize = 1;
 
 static PASSO: AtomicU8 = AtomicU8::new(0);
 
-/// O efeito `nome` com os números da cena (no Flag, os da foto do dono).
-fn efeito(nome: &str) -> Option<PathEffect> {
-    let k = PathEffect::KINDS.iter().position(|n| *n == nome)?;
-    let mut e = PathEffect::from_kind(k)?;
+/// O efeito com os números da cena (no Flag, os da foto do dono).
+fn ajustado(mut e: PathEffect) -> PathEffect {
     let nomes: Vec<&str> = e.params().iter().map(|p| p.name).collect();
     for (i, n) in nomes.iter().enumerate() {
         let v = match *n {
@@ -60,7 +67,7 @@ fn efeito(nome: &str) -> Option<PathEffect> {
         };
         e.set(i, v);
     }
-    Some(e)
+    e
 }
 
 /// O Bevel + Drop Shadow da foto do dono (Depth 0.04 · luz 0.01/0.10 · sombra 0.04, 0.02/−0.09, 60 %).
@@ -101,34 +108,28 @@ pub fn step(
         return None;
     }
     let ids: Vec<VecPathId> = vec.entities.keys().copied().collect();
-    let mut flag = None;
-    for (&id, nome) in ids.iter().zip(EFEITOS) {
+    let mut rotulos = Vec::new();
+    for (&id, efeito) in ids.iter().zip(efeitos()) {
         let p = scene.path_mut(id)?;
         p.fill = Some(Paint::solid(VERDE));
         p.stroke = None;
-        p.effects = nome
-            .and_then(efeito)
-            .map(|e| vec![FxEntry::new(e)])
+        let rotulo = efeito
+            .as_ref()
+            .map_or(FxOp::spec(FxOp::BEVEL).name, PathEffect::label);
+        p.effects = efeito
+            .map(|e| vec![FxEntry::new(ajustado(e))])
             .unwrap_or_default();
-        let rotulo = nome.unwrap_or(FxOp::spec(FxOp::BEVEL).name);
         sim.world_mut()
             .entity_mut(ph2d_ecs::Entity::from_bits(*vec.entities.get(&id)?))
             .insert(Name::new(rotulo));
-        if nome == Some("Flag") {
-            flag = Some(id);
-        }
+        rotulos.push(rotulo);
     }
     let postos = ph2d_vec_entities::filter::set_filter(sim, &vec.entities, &ids, Some(filtro()));
-    vec.pen.select_many(&[flag?]);
+    vec.pen.select_many(&[*ids.get(SELECIONADA)?]);
     eprintln!(
-        "[cena 40] {} nuvens com Bevel + Drop Shadow ({postos} filtros): sem efeito, {}",
+        "[cena 40] {} nuvens com Bevel + Drop Shadow ({postos} filtros): {}",
         ids.len(),
-        EFEITOS
-            .iter()
-            .flatten()
-            .copied()
-            .collect::<Vec<_>>()
-            .join(", ")
+        rotulos.join(", ")
     );
     Some(9)
 }

@@ -18,7 +18,7 @@ Ver §3.4. Em uma linha: `VecScene.regras` + poda no assentamento dos ids · `Sn
 REF, geométrica a mais não entra) · `ph2d_vec_entities::receita` (círculo vivo assenta receita + `Transform`) ·
 `ph2d_app_vec::cad_cores`/`cad_marks` (cores fora do quadro, ficha «Conflict — delete one of: …»).
 Mutação: 1.ª ronda 12/18 (+M12 sobrevive por desenho: só perf); M7 era equivalente (o palpite saiu do `CadGesto`); M10,
-M11, M15, M16, M17 ganharam o caso em `04b255bd81` — **re-prova destes 5: ver o fim deste ficheiro**.
+M11, M15, M16, M17 ganharam o caso (`04b255bd81` + o commit do M16) e **re-provados: 5/5 sangram**. Total **17/18** (M12 = só perf, exacto).
 
 ## Portões por nome (verde no fim da W4.4)
 

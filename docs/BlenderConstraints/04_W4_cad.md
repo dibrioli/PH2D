@@ -294,7 +294,7 @@ contra ela: `O(r·n)`) — exige publicar essa base na caneta.
 | `a_live_circle_the_solver_moved_gets_its_recipe_and_transform_back` (+ controlo) | receita `2r`, `Transform` no centro, a forma não se move, ponto fixo | W4.4 ✓ |
 | `the_colours_come_from_an_analysis_off_the_frame_thread_only_when_the_structure_changes` · `a_conflict_writes_which_rules_to_delete` (+ controlo) | a análise só pela estrutura; a ficha nomeia as regras em conflito | W4.4 ✓ |
 | `an_animated_dimension_plays_and_scrubs_to_the_same_bit` | medida com 3 chaves, quadros 0→40→12→40 | W4.5 |
-| prova de mutação | tirar o `Fixed` do arrastado / a migração / o REF ⇒ o gate certo sangra | W4.3 ✓ 13/13 (§3.3); a migração e a W4.4/4.5 no fecho |
+| prova de mutação | tirar o `Fixed` do arrastado / a migração / o REF ⇒ o gate certo sangra | W4.3 ✓ 13/13 (§3.3); W4.4 ✓ 17/18 (M12 = só perf, exacto; M7 era equivalente e o palpite saiu) |
 
 A velocidade **não** vira teste (relógio sob carga mente): reconfere-se com `mede.sh` no fecho da onda, a tabela ao lado.
 

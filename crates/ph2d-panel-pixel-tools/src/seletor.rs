@@ -341,17 +341,27 @@ pub fn imagem_do_quadro(m: PixelSelector, p: Params, lado: u32) -> Vec<u8> {
     for y in 0..lado {
         for x in 0..lado {
             let (u, v) = ((f64::from(x) + 0.5) / n, (f64::from(y) + 0.5) / n);
-            if e_disco(m) && !dentro_do_disco(u, v) {
-                if m == PixelSelector::NormalMap {
-                    out.extend_from_slice(&NORMAL_FUNDO);
-                    out.push(u8::MAX);
-                } else {
-                    out.extend_from_slice(&[0; 4]);
-                }
+            if !e_disco(m) {
+                out.extend_from_slice(&cor(m, no_quadro(m, p, u, v)));
+                out.push(u8::MAX);
                 continue;
             }
-            out.extend_from_slice(&cor(m, no_quadro(m, p, u, v)));
-            out.push(u8::MAX);
+            // A borda do disco SUAVE: a cobertura é a distância à borda em píxeis da imagem
+            // (meio píxel para cada lado), misturada com o fundo do modo.
+            let raio = ((u - 0.5) * 2.0).hypot((0.5 - v) * 2.0);
+            let cob = ((1.0 - raio) * n * 0.5 + 0.5).clamp(0.0, 1.0);
+            let dentro = if raio <= 1.0 { (u, v) } else { ((u - 0.5) / raio + 0.5, (v - 0.5) / raio + 0.5) };
+            let c = cor(m, no_quadro(m, p, dentro.0, dentro.1));
+            if m == PixelSelector::NormalMap {
+                let mistura = |k: usize| {
+                    let (a, b) = (f64::from(c[k]), f64::from(NORMAL_FUNDO[k]));
+                    byte((b + (a - b) * cob) / 255.0)
+                };
+                out.extend_from_slice(&[mistura(0), mistura(1), mistura(2), u8::MAX]);
+            } else {
+                out.extend_from_slice(&c);
+                out.push(byte(cob));
+            }
         }
     }
     out

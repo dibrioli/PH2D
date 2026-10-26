@@ -30,9 +30,9 @@ use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, StrokeToken, Theme, TypeToken};
 use ph2d_vector::{ImageQuality, VectorScene};
 use std::sync::Arc;
 
-/// O lado das imagens do seletor, em células (a escala do ecrã é do rect; vizinho mais próximo,
-/// como o Aseprite as mostra).
-const LADO: u32 = 96;
+/// O lado das imagens do seletor, em píxeis da imagem: 256 e amostragem suave (smoke do dono 25/10:
+/// a 96 em vizinho mais próximo a borda da roda saía em escada).
+const LADO: u32 = 256;
 
 #[path = "paint_camadas.rs"]
 mod camadas;
@@ -67,6 +67,7 @@ pub(crate) fn paint(st: &mut PixelToolsPanelState, ctx: &mut PaintCtx) {
     seam::register_palette(ctx.host.store_mut(), n);
     let np = with_current(|i| if i.editing { i.presets.len() } else { 0 });
     seam::register_presets(ctx.host.store_mut(), np);
+    seam::arrasta_seletor(st, ctx.host);
     with_current(|i| seam::register_layers(ctx.host.store_mut(), &i.layers));
     seam::seed_rename(st, ctx.host.store_mut());
     let renaming = st.rename.map(|(id, _)| id);
@@ -552,7 +553,7 @@ impl Corpo<'_> {
                 f64::from(r.x + r.w),
                 f64::from(r.y + r.h),
             );
-            self.scene.draw_image_rgba(img, LADO, h, dest, ImageQuality::Low);
+            self.scene.draw_image_rgba(img, LADO, h, dest, ImageQuality::Medium);
         }
         let (u, vv) = sel::ponto(modo, p);
         self.anel(quadro, u, vv);

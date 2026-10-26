@@ -64,3 +64,26 @@ fn the_marker_falls_where_the_click_was() {
         }
     }
 }
+
+#[test]
+fn the_wheel_edges_are_smooth_not_stairs() {
+    use ph2d_panel_pixel_tools::seletor::imagem_do_quadro;
+    // smoke do dono 25/10: «a roda de cor ficou com bordas pixeladas»
+    let lado = 256;
+    let px = imagem_do_quadro(S::RgbWheel, P, lado);
+    let meios = px.chunks_exact(4).filter(|p| p[3] > 0 && p[3] < 255).count();
+    assert!(meios > 200, "a borda da roda RGB tem de ter alfa intermédio: {meios}");
+    let nm = imagem_do_quadro(S::NormalMap, P, lado);
+    let linha = (lado / 2) as usize;
+    let fundo = NORMAL_FUNDO;
+    let borda: Vec<[u8; 3]> = (0..lado as usize)
+        .map(|x| {
+            let i = (linha * lado as usize + x) * 4;
+            [nm[i], nm[i + 1], nm[i + 2]]
+        })
+        .collect();
+    let primeiro = borda.iter().position(|c| *c != fundo).expect("o disco");
+    let c = borda[primeiro];
+    let cheio = cor(S::NormalMap, no_quadro(S::NormalMap, P, 0.0, 0.5));
+    assert!(c != cheio, "o primeiro píxel do disco mistura com o fundo: {c:?}");
+}

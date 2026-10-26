@@ -24,6 +24,8 @@ pub(crate) struct Seletor {
     pub(crate) cache: Option<(PixelSelector, crate::seletor::Params, [u8; 4], Imagens)>,
     /// Os rects pintados neste quadro: quadro, barra, alfa.
     pub(crate) rects: [Option<Rect>; 3],
+    /// O último ponto do arrasto em curso (premido sobre o seletor): a cor segue o ponteiro.
+    pub(crate) arrasto: Option<[f32; 2]>,
 }
 
 #[derive(Clone, Debug)]

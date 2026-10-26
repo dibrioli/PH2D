@@ -168,8 +168,10 @@ pub fn imported_facts(w: u32, h: u32, ppm: f32) -> ImageFacts {
 /// Sobe uma textura própria (`w`, `h`, RGBA8) e devolve o id dela.
 pub type Acquire<'a> = dyn FnMut(u32, u32, &[u8]) -> Result<u32, String> + 'a;
 
-/// Os factos de uma imagem da biblioteca: a fábrica pela chave, as outras pelos píxeis e o `ppm` do projecto.
-fn facts_of(
+/// ⭐ Os factos de uma imagem da biblioteca — a UMA consulta (plano GEF 13 D3): a fábrica pela chave, as outras
+/// pelos píxeis e o `ppm` do projecto.
+#[must_use]
+pub fn image_facts(
     id: AssetId,
     db: &AssetDb,
     atlas: &BTreeMap<u32, AssetId>,
@@ -203,14 +205,14 @@ pub fn choose_library_image(
     id: AssetId,
 ) -> Result<(), String> {
     let no_image = || ph2d_i18n::tr("app.sprite_anim.image_choice.not_an_image").to_owned();
-    let new = facts_of(id, db, atlas, ppm).ok_or_else(no_image)?;
+    let new = image_facts(id, db, atlas, ppm).ok_or_else(no_image)?;
     let w = sim.world();
     let old = ph2d_app_components::asset_index_build::texture_of(
         w.get::<SpritePixels>(e),
         w.get::<Sprite>(e),
         atlas,
     )
-    .and_then(|old| facts_of(old, db, atlas, ppm));
+    .and_then(|old| image_facts(old, db, atlas, ppm));
     let source = match atlas.iter().find(|(_, a)| **a == id) {
         Some((key, _)) => ImageSource::Atlas { key: *key },
         None => {
@@ -228,6 +230,43 @@ pub fn choose_library_image(
     } else {
         Err(ph2d_i18n::tr("app.sprite_anim.image_choice.not_a_sprite").to_owned())
     }
+}
+
+/// ⭐ **Uma sprite nova com a imagem `id` da biblioteca, no ponto `at`** — a queda no canvas.
+///
+/// # Errors
+/// O texto para o artista se `id` não é uma imagem, ou a placa recusa a textura.
+#[allow(clippy::too_many_arguments)]
+pub fn place_library_image(
+    sim: &mut SimWorld,
+    acquire: &mut Acquire<'_>,
+    db: &AssetDb,
+    _atlas: &BTreeMap<u32, AssetId>,
+    ppm: f32,
+    at: [f32; 2],
+    base: &str,
+    id: AssetId,
+) -> Result<Entity, String> {
+    let no_image = || ph2d_i18n::tr("app.sprite_anim.image_choice.not_an_image").to_owned();
+    let asset = db.get(&id).ok_or_else(no_image)?;
+    let (w, h, px) = asset.image_rgba8().ok_or_else(no_image)?;
+    let texture_id = acquire(w, h, &px)?;
+    let ppm = ppm.max(ph2d_image_import::EPS_PIXELS_PER_METER);
+    let size = [
+        (w as f32 / ppm).max(ph2d_image_import::MIN_SPRITE_SIZE),
+        (h as f32 / ppm).max(ph2d_image_import::MIN_SPRITE_SIZE),
+    ];
+    let (_, bits) = ph2d_image_import::spawn_sprite(
+        sim,
+        ph2d_image_import::PackedSource::Individual {
+            texture_id,
+            pixels_id: id,
+        },
+        ph2d_core::Vec2::new(at[0], at[1]),
+        size,
+        base,
+    );
+    Ok(Entity::from_bits(bits))
 }
 
 /// ⭐ **Traz um ficheiro de imagem para a biblioteca do projecto, sem criar objecto** (o *Import* da Unity):

@@ -103,38 +103,32 @@ impl crate::App {
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
-        let Ok(texture_id) = gfx
-            .renderer
-            .acquire_individual(img.width, img.height, &img.pixels)
-        else {
-            self.toast_drop_failed();
-            return;
-        };
-        // ⚠️ **Os dois travões que toda conversão px→mundo deste shell aplica** — e a 1.ª versão
-        // desta era a **única** de oito que não os aplicava. Um `ppm` a zero dá tamanho `inf`; um
-        // `ppm` grande com uma imagem pequena dá uma sprite abaixo do mínimo que o resto do código
-        // assume não poder existir.
         let ppm = gfx
             .hero_screen
             .as_ref()
             .map_or(ph2d_editor_core::project::DEFAULT_PIXELS_PER_METER, |h| {
                 h.project.pixels_per_meter
-            })
-            .max(crate::EPS_PIXELS_PER_METER);
-        let world_size = [
-            (img.width as f32 / ppm).max(crate::MIN_SPRITE_SIZE),
-            (img.height as f32 / ppm).max(crate::MIN_SPRITE_SIZE),
-        ];
-        let (_, bits) = crate::image_import::spawn_sprite(
+            });
+        let renderer = &mut gfx.renderer;
+        let placed = ph2d_app_sprite_anim::image_choice::place_library_image(
             &mut gfx.sim,
-            crate::image_import::PackedSource::Individual {
-                texture_id,
-                pixels_id: AssetId::from_digest(asset),
+            &mut |w, h, px| {
+                renderer
+                    .acquire_individual(w, h, px)
+                    .map_err(|e| e.to_string())
             },
-            ph2d_core::Vec2::new(world[0], world[1]),
-            world_size,
+            &gfx.asset_db,
+            &gfx.atlas_asset_map,
+            ppm,
+            world,
             tr("shell.asset_drop_apply.image"),
+            AssetId::from_digest(asset),
         );
+        let Ok(e) = placed else {
+            self.toast_drop_failed();
+            return;
+        };
+        let bits = e.to_bits();
         if let Some(hero) = gfx.hero_screen.as_mut() {
             hero.gizmo.replace_selection(Some(bits));
         }

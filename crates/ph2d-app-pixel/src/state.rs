@@ -27,6 +27,8 @@ pub struct Doc {
     pub(crate) last_point: Option<(i32, i32)>,
     /// *Select ▸ All*: o sprite inteiro está seleccionado (a selecção mínima até a P6).
     pub selected_all: bool,
+    /// A animação a tocar (o frame activo segue-a).
+    pub(crate) play: Option<ph2d_pixel_core::play::Play>,
 }
 
 impl Doc {
@@ -44,6 +46,24 @@ impl Doc {
             axis2: None,
             last_point: None,
             selected_all: false,
+            play: None,
+        }
+    }
+
+    /// O frame activo continua a existir depois de um passo (apagar, desfazer um New Frame): senão,
+    /// o da posição em que estava (ou o último).
+    pub(crate) fn sane_frame(&mut self, was: Option<usize>) {
+        if self.sprite.frame_index(self.frame).is_none() {
+            let n = self.sprite.frames().len();
+            let i = was.unwrap_or(0).min(n.saturating_sub(1));
+            if let Some(f) = self.sprite.frames().get(i) {
+                self.frame = f.id;
+            }
+        }
+        if let Some(p) = &self.play
+            && p.index >= self.sprite.frames().len()
+        {
+            self.play = None;
         }
     }
 }
@@ -83,6 +103,13 @@ pub struct PixelApp {
     pub(crate) wants_edit: Option<u64>,
     /// O objecto em Draw no quadro anterior (para enquadrar à entrada).
     pub(crate) was_editing: Option<u64>,
+    /// O papel vegetal (as opções do Trial por omissão) e se está ligado (F3).
+    pub onion: ph2d_pixel_core::Onion,
+    pub onion_on: bool,
+    /// O `Tab` pediu mostrar/esconder a linha do tempo (aplica-se no painel, que vê o `hero`).
+    pub(crate) alterna_timeline: bool,
+    /// O instante do quadro anterior (o relógio do tocar).
+    pub(crate) relogio: Option<std::time::Instant>,
     /// O enquadramento de entrada que ainda segue a área livre: `(objecto, área, vista posta)`.
     /// Cai quando o artista mexe na vista, começa um gesto ou sai do Draw.
     pub(crate) fit: Option<(u64, ph2d_render::camera_frame::Area, ph2d_render::camera_frame::View)>,
@@ -142,6 +169,10 @@ impl Default for PixelApp {
             next_stamp: 1,
             wants_edit: None,
             was_editing: None,
+            onion: ph2d_pixel_core::Onion::default(),
+            onion_on: false,
+            alterna_timeline: false,
+            relogio: None,
             fit: None,
             smoke: None,
             pedidos: Vec::new(),
@@ -208,8 +239,10 @@ impl PixelApp {
         let Some(doc) = self.docs.get_mut(&key) else {
             return Ok(());
         };
+        let was = doc.sprite.frame_index(doc.frame);
         doc.history.commit(&mut doc.sprite, op)?;
         doc.stamp = stamp;
+        doc.sane_frame(was);
         Ok(())
     }
 
@@ -228,6 +261,7 @@ impl PixelApp {
         let Some(doc) = self.docs.get_mut(&key) else {
             return false;
         };
+        let was = doc.sprite.frame_index(doc.frame);
         let done = if redo {
             doc.history.redo(&mut doc.sprite)
         } else {
@@ -235,6 +269,7 @@ impl PixelApp {
         };
         if done {
             doc.stamp = stamp;
+            doc.sane_frame(was);
         }
         done
     }

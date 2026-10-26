@@ -23,6 +23,8 @@
 //! 6 — a cena 4 já convertida para Indexed com Ordered 4×4 (um passo do desfazer), para a foto.
 //! 7 — P3, as camadas que SE VÊEM ([`crate::smoke_camadas`]): os 19 modos lado a lado, opacidade,
 //! escondida, trancada, referência e grupo.
+//! 8 — P4, os frames que SE VÊEM ([`crate::smoke_quadros`]): 16 frames, 4 tags (uma por direcção,
+//! com passadas), o frame que segura, o z, o cel a 50 %, o chão ligado e o papel vegetal.
 
 use ph2d_ecs::SimWorld;
 use ph2d_pixel_core::{NewSprite, Paint, Stroke};
@@ -93,6 +95,7 @@ pub fn stage(
             app.docs[&key].sprite.mode() == ph2d_pixel_core::ColorMode::Indexed
         }),
         7 => crate::smoke_camadas::stage(app, sim, spawn_root).is_some(),
+        8 => crate::smoke_quadros::stage(app, sim, spawn_root).is_some(),
         _ => false,
     }
 }

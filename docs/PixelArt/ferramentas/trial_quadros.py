@@ -76,7 +76,10 @@ def ler_onion(nome):
     abre(nome)
     a = shot(os.path.join(D, nome.replace('.ase', '_f0.png')))
     o = origem(a, nome)
-    xdo('key', 'Home'); xdo('key', 'Right'); xdo('key', 'Right'); time.sleep(0.6)
+    xdo('key', 'Home'); xdo('key', 'Right')
+    if nome != 'on_camadas.ase':
+        xdo('key', 'Right')   # o activo e o do meio: o 2 de 5 (on_camadas tem 3)
+    time.sleep(0.6)
     sem = celulas(shot(os.path.join(D, nome.replace('.ase', '_off.png'))), o)
     xdo('key', 'F3'); time.sleep(0.8)
     com = celulas(shot(os.path.join(D, nome.replace('.ase', '_on.png'))), o)

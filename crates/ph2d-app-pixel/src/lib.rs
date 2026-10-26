@@ -23,6 +23,8 @@ pub mod panel;
 pub mod persist;
 pub mod smoke;
 pub mod smoke_camadas;
+pub mod smoke_quadros;
+pub mod quadros;
 mod state;
 
 pub use state::{Doc, Options, PixelApp, Tool};

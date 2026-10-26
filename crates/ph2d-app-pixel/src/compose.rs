@@ -178,6 +178,12 @@ impl PixelApp {
     ) {
         let editing = crate::mode::editing(sim.world(), hero);
         let ppm = hero.project.pixels_per_meter;
+        // O relógio do tocar: os ms reais desde o quadro anterior (o núcleo não lê relógio).
+        let now = std::time::Instant::now();
+        let dt = self.relogio.replace(now).map_or(0, |t| {
+            u32::try_from(now.duration_since(t).as_millis()).unwrap_or(u32::MAX)
+        });
+        self.tick(dt);
         let whole = ph2d_editor_core::zones::Rect::new(
             0.0,
             0.0,

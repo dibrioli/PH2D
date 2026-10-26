@@ -13,6 +13,8 @@ use crate::PixelApp;
 
 /// O `Panel::ID` da `ph2d-panel-pixel-tools` (a família não vê o painel).
 pub const PANEL_ID: &str = ph2d_editor_core::screens::hero::PANEL_PIXEL;
+/// O `Panel::ID` da `ph2d-panel-pixel-timeline` (abre e fecha com o PIXEL; o `Tab` alterna-o).
+pub const TIMELINE_ID: &str = ph2d_editor_core::screens::hero::PANEL_PIXEL_TIMELINE;
 
 impl PixelApp {
     /// Um gesto do painel PIXEL (o dreno do barramento); aplica-se no [`frame`] deste quadro.
@@ -22,7 +24,7 @@ impl PixelApp {
 
     /// Aplica um gesto do painel (os da paleta e da cor vão ao documento em Draw).
     pub fn aplica(&mut self, r: PixelRequest) {
-        if self.aplica_camada(&r) || self.aplica_paleta(r.clone()) {
+        if self.aplica_camada(&r) || self.aplica_quadro(&r) || self.aplica_paleta(r.clone()) {
             return;
         }
         match r {
@@ -105,6 +107,12 @@ pub fn frame(
     if editing.is_some() != app.painel_em_edicao {
         app.painel_em_edicao = editing.is_some();
         hero.panel_visibility.insert(PANEL_ID, app.painel_em_edicao);
+        hero.panel_visibility
+            .insert(TIMELINE_ID, app.painel_em_edicao);
+    }
+    if std::mem::take(&mut app.alterna_timeline) {
+        let on = hero.panel_visibility.get(TIMELINE_ID).copied().unwrap_or(false);
+        hero.panel_visibility.insert(TIMELINE_ID, !on);
     }
     let doc = app.chave.and_then(|k| app.doc(k));
     let palette = doc.map(|d| d.sprite.palette().to_vec());
@@ -114,7 +122,15 @@ pub fn frame(
     let n = palette.as_ref().map_or(0, Vec::len);
     let layers = doc.map(|d| crate::camadas::rows(&d.sprite)).unwrap_or_default();
     let active_layer = doc.map(|d| d.layer.0);
+    let (frames, cels, tags) = doc.map(|d| crate::quadros::timeline(&d.sprite)).unwrap_or_default();
     PixelPanelInfo {
+        frames,
+        active_frame: doc.map(|d| d.frame.0),
+        cels,
+        tags,
+        playing: doc.is_some_and(|d| d.play.is_some()),
+        onion: app.onion_on,
+        onion_tint: app.onion.tint,
         editing: palette.is_some(),
         tool: app.tool,
         fg: app.fg,

@@ -8,7 +8,7 @@ use ph2d_pixel_core::{Paint, Sample, Stroke, pick};
 use ph2d_pixel_render::{cell_at, image_to_world, px_per_cell};
 use ph2d_render::Camera2d;
 use ph2d_vector::{Affine, Point};
-use ph2d_editor_core::pixel_panel::{PixelLayerAction, PixelRequest};
+use ph2d_editor_core::pixel_panel::{PixelFrameAction, PixelLayerAction, PixelRequest};
 use winit::keyboard::KeyCode;
 
 use crate::gesture::{Kind, Mods};
@@ -642,6 +642,21 @@ pub fn key(
                 KeyAnswer::Toast(ph2d_i18n::tr("pixel.nothing_to_redo").to_owned())
             }
         }
+        (KeyCode::ArrowLeft, false, false) => quadro(app, PixelFrameAction::Previous),
+        (KeyCode::ArrowRight, false, false) => quadro(app, PixelFrameAction::Next),
+        (KeyCode::Home, false, false) => quadro(app, PixelFrameAction::First),
+        (KeyCode::End, false, false) => quadro(app, PixelFrameAction::Last),
+        (KeyCode::Enter | KeyCode::NumpadEnter, false, false) => quadro(app, PixelFrameAction::Play),
+        (KeyCode::F3, false, false) => quadro(app, PixelFrameAction::Onion),
+        (KeyCode::Tab, false, false) => {
+            app.alterna_timeline = true;
+            KeyAnswer::Quiet
+        }
         _ => return None,
     })
+}
+
+fn quadro(app: &mut PixelApp, a: PixelFrameAction) -> KeyAnswer {
+    app.pede(PixelRequest::FrameAction(a));
+    KeyAnswer::Quiet
 }

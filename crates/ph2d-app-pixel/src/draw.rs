@@ -98,9 +98,13 @@ pub fn draw(
             continue;
         };
         let (w, h) = (doc.sprite.width(), doc.sprite.height());
-        doc.view
-            .refresh(&doc.sprite, doc.frame, pending.as_ref(), doc.stamp);
         let edit = editing == Some(bits);
+        let onion = app.onion_view(key, edit);
+        let Some(doc) = app.docs.get_mut(&key) else {
+            continue;
+        };
+        doc.view
+            .refresh_with(&doc.sprite, doc.frame, pending.as_ref(), doc.stamp, onion.as_ref());
         let o = app.options;
         if edit && (o.tile_x || o.tile_y) {
             // O Tiled Mode mostra as vizinhas: o desenho que sai por um lado entra pelo outro.

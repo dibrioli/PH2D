@@ -2,7 +2,10 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::{Ctx, FollowPath, Ik, Inerte, Pose2, StretchTo, clamp_to_limit, wrap_pi};
+use crate::{
+    Action, Ctx, Floor, FollowPath, Ik, Inerte, Pivot, PontoDeForma, Pose2, SplineIk, Spring,
+    StretchTo, Transformation, clamp_to_limit, wrap_pi,
+};
 
 /// Em que referencial se lêem e escrevem os canais.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -165,12 +168,20 @@ pub enum Kind {
     Ik(Ik),
     StretchTo(StretchTo),
     FollowPath(FollowPath),
+    Pivot(Pivot),
+    Floor(Floor),
+    Transformation(Transformation),
+    SplineIk(SplineIk),
+    PontoDeForma(PontoDeForma),
+    Action(Action),
+    Spring(Spring),
 }
 
 impl Kind {
     #[must_use]
     pub fn needs_target(&self) -> bool {
-        !matches!(self, Self::Limit(_))
+        // O Pivot mostra o alvo mas não o exige: sem ele, o pivô é o dono + o desvio.
+        !matches!(self, Self::Limit(_) | Self::Spring(_))
     }
 
     /// Ao NASCER (e ao trocar de alvo), o tipo guarda a pose actual em vez de saltar? O Child Of
@@ -219,7 +230,16 @@ impl Kind {
                 let t = ctx.target.ok_or(Inerte::SemAlvo)?;
                 st.rest = (ctx.owner.x - t.x).hypot(ctx.owner.y - t.y);
             }
-            Self::Limit(_) | Self::Ik(_) | Self::FollowPath(_) => {}
+            Self::Limit(_)
+            | Self::Ik(_)
+            | Self::FollowPath(_)
+            | Self::Pivot(_)
+            | Self::Floor(_)
+            | Self::Transformation(_)
+            | Self::SplineIk(_)
+            | Self::PontoDeForma(_)
+            | Self::Action(_)
+            | Self::Spring(_) => {}
         }
         Ok(())
     }
@@ -239,7 +259,19 @@ impl Kind {
     /// corrente inteira e é avaliada pela fase (`ph2d-constraints-ecs`).
     pub fn resolve_with(&self, ctx: &Ctx, path: Option<&[[f64; 2]]>) -> Result<Pose2, Inerte> {
         match self {
-            Self::Ik(_) => Err(Inerte::Corrente),
+            Self::Ik(_) | Self::SplineIk(_) => Err(Inerte::Corrente),
+            Self::Action(_) | Self::Spring(_) => Err(Inerte::Relogio),
+            Self::Pivot(p) => Ok(p.resolve(ctx)),
+            Self::Floor(f) => f.resolve(ctx),
+            Self::Transformation(t) => t.resolve(ctx),
+            Self::PontoDeForma(_) => {
+                let t = ctx.target.ok_or(Inerte::SemAlvo)?;
+                Ok(Pose2 {
+                    x: t.x,
+                    y: t.y,
+                    ..ctx.owner
+                })
+            }
             Self::StretchTo(st) => st.resolve(ctx),
             Self::FollowPath(f) => f.resolve(ctx.owner, path),
             Self::ChildOf(c) => {
@@ -319,7 +351,7 @@ fn in_space(space: Space, world: Pose2, parent: Pose2) -> Result<Pose2, Inerte> 
     }
 }
 
-fn back_to_world(space: Space, p: Pose2, parent: Pose2) -> Pose2 {
+pub(crate) fn back_to_world(space: Space, p: Pose2, parent: Pose2) -> Pose2 {
     match space {
         Space::World => p,
         Space::Local => p.under(parent),
@@ -327,7 +359,7 @@ fn back_to_world(space: Space, p: Pose2, parent: Pose2) -> Pose2 {
 }
 
 /// O dono e o alvo no espaço da cópia.
-fn copy_frames(space: Space, ctx: &Ctx) -> Result<(Pose2, Pose2), Inerte> {
+pub(crate) fn copy_frames(space: Space, ctx: &Ctx) -> Result<(Pose2, Pose2), Inerte> {
     let t = ctx.target.ok_or(Inerte::SemAlvo)?;
     Ok((
         in_space(space, ctx.owner, ctx.parent)?,

@@ -5,12 +5,15 @@
 //! | 1 | **Mão e espada** — a MÃO passa (curva da timeline); no 24 pega a ESPADA do chão (Child Of, força 0→1 com o Auto Key), no 48 larga-a noutro sítio; nem pegar nem largar salta, e o antes do 24 continua no chão (as chaves de compensação, `compensa`) |
 //! | 2 | **Olho** — arraste a BOLA vermelha: a SETA aponta para ela (Look At) e a PUPILA corre atrás dela (Copy Location) sem sair do olho (Limit Distance, por baixo na pilha) |
 //! | 3 | **Ponteiros** — os dois autorados a 170°: o de cima tem limite −45°…45° e pára na borda MAIS PERTO (45°); o de baixo copia a rotação da GUIA (−170°) a 50 % e fica a 180° (o arco curto, não 0°) |
+//! | 4 | **Braço** — a IK de 2 ossos persegue a BOLA e o Copy Rotation abaixo dela roda a mão com o RODADOR |
+//! | 5 | **Antena** — o CORPO vai e volta (curva da timeline); a PONTA tem uma Spring e fica para trás, balança e assenta; a HASTE estica do corpo até à ponta (Stretch To). Tocar e arrastar o tempo dão a MESMA pose |
 
 use bevy_ecs::entity::Entity;
 use bevy_ecs::prelude::Resource;
 use bevy_ecs::world::World;
 use ph2d_constraints::{
-    Canais, ChildOf, CopyTransform, Distance, DistanceMode, Ik, Kind, Limit, LookAt, Space,
+    Canais, ChildOf, CopyTransform, Distance, DistanceMode, Ik, Kind, Limit, LookAt, Space, Spring,
+    StretchTo,
 };
 use ph2d_constraints_ecs::Constraints;
 use ph2d_ecs::{GlobalTransform, Name, Transform, assign_missing_stable_ids, stable_id_of};
@@ -19,7 +22,7 @@ use ph2d_render::{DISC_TILE_KEY, Sprite, WHITE_TILE_KEY};
 /// O roteador desta família — o maior nível que [`encenar`] responde.
 pub const ROUTERS: &[ph2d_app_host::SmokeRouter] = &[ph2d_app_host::SmokeRouter {
     env: "PH2D_CONSTRAINT_SMOKE",
-    max_level: 4,
+    max_level: 5,
 }];
 
 /// O raio do olho da cena 2 e a folga da pupila dentro dele (o número que a sonda mede).
@@ -46,10 +49,38 @@ pub fn encenar(world: &mut World, nivel: u32) -> bool {
         2 => olho(world),
         3 => ponteiros(world),
         4 => braco(world),
+        5 => antena(world),
         _ => return false,
     };
     world.insert_resource(Escolher(sujeito.to_bits()));
     true
+}
+
+/// ⭐ Um passo da cena conduzida armada (a 1 pega a espada, a 5 grava a curva do corpo e toca); devolve
+/// a linha do relatório. Inerte sem `PH2D_CONSTRAINT_SMOKE`.
+pub fn passo(
+    sim: &mut ph2d_ecs::SimWorld,
+    hero: &mut ph2d_editor_core::screens::hero::HeroScreen,
+    tl: &mut ph2d_timeline::TimelineState,
+    ph: &mut ph2d_core::Playhead,
+) -> Option<String> {
+    crate::smoke_pega::step(sim, hero, tl, ph)
+        .or_else(|| crate::smoke_antena::step(sim, hero, tl, ph))
+}
+
+/// A cena abre com o sujeito escolhido e o cartão Constraints à vista — uma vez só.
+pub fn abrir_escolhido(
+    world: &mut World,
+    hero: Option<&mut ph2d_editor_core::screens::hero::HeroScreen>,
+) {
+    if let Some(b) = escolhido(world)
+        && let Some(hero) = hero
+    {
+        hero.panel_visibility.insert("inspector", true);
+        hero.store
+            .set_collapsed(ph2d_editor_core::ids::INSP_LIVE_CONSTRAINTS_SECTION, false);
+        hero.gizmo.selection = Some(b);
+    }
 }
 
 /// O objecto que a cena pediu escolhido — uma vez só.
@@ -367,4 +398,75 @@ fn braco(world: &mut World) -> Entity {
         ],
     );
     antebraco
+}
+
+/// Cena 5: onde a ponta e a base da haste ficam no CORPO (local), e o comprimento da haste.
+pub const PONTA_NO_CORPO: [f32; 2] = [0.0, 2.2];
+pub const BASE_NO_CORPO: [f32; 2] = [0.0, 0.5];
+/// Cena 5: as poses do CORPO por quadro — `(quadro, x, y)`: vai à direita, volta, e pára no 48.
+pub const CORPO: [(i64, f32, f32); 5] = [
+    (0, -3.0, -1.0),
+    (12, 0.0, -0.4),
+    (24, 3.0, -1.0),
+    (36, 0.0, -0.4),
+    (48, -3.0, -1.0),
+];
+
+/// Cena 5 — **Antena.** A curva do corpo é da timeline: a cena conduzida ([`crate::smoke_antena`])
+/// grava-a. Abre com a ponta escolhida.
+fn antena(world: &mut World) -> Entity {
+    let (_, x, y) = CORPO[0];
+    let corpo = peca(
+        world,
+        "Corpo",
+        WHITE_TILE_KEY,
+        [x, y],
+        0.0,
+        [1.2, 1.0],
+        [0.3, 0.55, 0.85, 1.0],
+    );
+    let ponta = peca(
+        world,
+        "Ponta",
+        DISC_TILE_KEY,
+        PONTA_NO_CORPO,
+        0.0,
+        [0.4, 0.4],
+        [0.95, 0.35, 0.2, 1.0],
+    );
+    world.entity_mut(ponta).insert(ph2d_ecs::ChildOf(corpo));
+    let comprimento = PONTA_NO_CORPO[1] - BASE_NO_CORPO[1];
+    let mut t = Transform::IDENTITY;
+    t.translation.x = BASE_NO_CORPO[0];
+    t.translation.y = BASE_NO_CORPO[1];
+    t.rotation = 90f32.to_radians();
+    let haste = world
+        .spawn((
+            Name::new("Haste"),
+            t,
+            GlobalTransform::from_transform(t),
+            ph2d_ecs::ChildOf(corpo),
+        ))
+        .id();
+    arte(
+        world,
+        haste,
+        "Haste (arte)",
+        WHITE_TILE_KEY,
+        [comprimento / 2.0, 0.0],
+        [comprimento, 0.08],
+        [0.2, 0.2, 0.25, 1.0],
+    );
+    let mola = Spring {
+        duracao: 0.6,
+        ressalto: 0.6,
+        ..Spring::default()
+    };
+    pilha(world, ponta, &[(Kind::Spring(mola), None, 1.0)]);
+    let estica = StretchTo {
+        rest: f64::from(comprimento),
+        ..StretchTo::default()
+    };
+    pilha(world, haste, &[(Kind::StretchTo(estica), Some(ponta), 1.0)]);
+    ponta
 }

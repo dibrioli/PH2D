@@ -4,7 +4,8 @@
 use bevy_ecs::entity::Entity;
 use bevy_ecs::prelude::Resource;
 use ph2d_constraints::{
-    Canais, ChildOf, CopyTransform, Distance, FollowPath, Ik, Kind, Limit, LookAt, Space, StretchTo,
+    Action, Canais, ChildOf, CopyTransform, Distance, Floor, FollowPath, Ik, Kind, Limit, LookAt,
+    Pivot, PontoDeForma, Space, SplineIk, Spring, StretchTo, Transformation,
 };
 use ph2d_constraints_ecs::{Adotar, Constraints, Estado, Estados, bind_on_create, ordem};
 use ph2d_ecs::{Name, SimWorld, Transform, entity_with_stable_id, stable_id_of, world_transform};
@@ -36,6 +37,13 @@ pub fn tipo_de(k: &Kind) -> u8 {
         Kind::Ik(_) => 8,
         Kind::StretchTo(_) => 9,
         Kind::FollowPath(_) => 10,
+        Kind::Pivot(_) => 11,
+        Kind::Floor(_) => 12,
+        Kind::Transformation(_) => 13,
+        Kind::SplineIk(_) => 14,
+        Kind::PontoDeForma(_) => 15,
+        Kind::Action(_) => 16,
+        Kind::Spring(_) => 17,
     }
 }
 
@@ -76,6 +84,13 @@ fn novo(sim: &SimWorld, e: Entity, i: u8) -> Option<Kind> {
         }),
         9 => Kind::StretchTo(StretchTo::default()),
         10 => Kind::FollowPath(FollowPath::default()),
+        11 => Kind::Pivot(Pivot::default()),
+        12 => Kind::Floor(Floor::default()),
+        13 => Kind::Transformation(Transformation::default()),
+        14 => Kind::SplineIk(SplineIk::default()),
+        15 => Kind::PontoDeForma(PontoDeForma::default()),
+        16 => Kind::Action(Action::default()),
+        17 => Kind::Spring(Spring::default()),
         _ => return None,
     })
 }
@@ -91,6 +106,7 @@ fn estado(e: Estado) -> EstadoDaConstraint {
         Estado::CorpoDinamico => EstadoDaConstraint::CorpoDinamico,
         Estado::EspacoColapsado => EstadoDaConstraint::EspacoColapsado,
         Estado::NaoEOsso => EstadoDaConstraint::NaoEOsso,
+        Estado::SemClip => EstadoDaConstraint::SemClip,
     }
 }
 

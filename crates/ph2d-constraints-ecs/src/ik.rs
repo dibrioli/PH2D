@@ -15,7 +15,7 @@ use crate::Estado;
 use crate::avalia::base;
 
 /// `alvo` está na corrente ou debaixo dela: mover a corrente moveria o alvo.
-fn realimenta(sim: &SimWorld, alvo: Entity, corrente: &[Entity]) -> bool {
+pub(crate) fn realimenta(sim: &SimWorld, alvo: Entity, corrente: &[Entity]) -> bool {
     let mut x = Some(alvo);
     let mut guarda = 0;
     while let Some(a) = x {
@@ -35,7 +35,7 @@ fn realimenta(sim: &SimWorld, alvo: Entity, corrente: &[Entity]) -> bool {
     clippy::cast_possible_truncation,
     reason = "o `Transform` da casa é f32"
 )]
-fn f32_de(v: f64) -> f32 {
+pub(crate) fn f32_de(v: f64) -> f32 {
     v as f32
 }
 
@@ -136,7 +136,7 @@ pub(crate) fn olha(
 }
 
 /// Declara ao ledger o que a IK escreveu num osso da corrente (o dono é escrito pela pilha).
-fn escreve(
+pub(crate) fn escreve(
     sim: &mut SimWorld,
     preview: &mut PreviewDrive,
     c: Entity,
@@ -189,9 +189,14 @@ pub(crate) fn correntes(world: &ph2d_ecs::World, e: Entity, c: &crate::Constrain
     }
     let mut out = Vec::new();
     for it in c.items.iter().filter(|i| i.enabled && i.influence > 0.0) {
-        if let ph2d_constraints::Kind::Ik(ik) = it.kind {
+        let chain = match it.kind {
+            ph2d_constraints::Kind::Ik(ik) => ik.chain,
+            ph2d_constraints::Kind::SplineIk(sp) => sp.chain,
+            _ => continue,
+        };
+        {
             out.extend(
-                ph2d_skeleton_live::goal::governed_in(world, e, ik.chain)
+                ph2d_skeleton_live::goal::governed_in(world, e, chain)
                     .into_iter()
                     .filter(|&x| x != e),
             );

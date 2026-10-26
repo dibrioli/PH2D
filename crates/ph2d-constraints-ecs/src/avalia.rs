@@ -30,6 +30,8 @@ pub enum Estado {
     EspacoColapsado,
     /// A IK é de ossos: o dono não é um.
     NaoEOsso,
+    /// O Action pede um clip que a animação do dono não tem.
+    SemClip,
 }
 
 /// Guarda das passagens de IKs acopladas por quadro. Medido (doc W2 §2): a mudança cai ~40× por
@@ -56,6 +58,11 @@ pub struct Adotar(pub std::collections::BTreeSet<u64>);
 /// vectorial é a família). A fase leva-a ao mundo com o afim do alvo NA HORA, depois da pilha dele.
 #[derive(Resource, Default, Debug)]
 pub struct Caminhos(pub BTreeMap<StableId, Vec<[f32; 2]>>);
+
+/// Os vértices AUTORADOS (locais) de cada forma que um ponto de forma prende, por `StableId` (quem os
+/// lê da cena vectorial é a família).
+#[derive(Resource, Default, Debug)]
+pub struct Pontos(pub BTreeMap<StableId, Vec<[f64; 2]>>);
 
 /// O estado de cada item no último quadro, por `(Entity::to_bits, Item::id)`.
 #[derive(Resource, Default, Debug)]
@@ -109,6 +116,38 @@ pub(crate) fn base(sim: &SimWorld, preview: &PreviewDrive, e: Entity) -> Option<
     }
 }
 
+/// ⭐ Corre `f` com a cena AUTORADA: cada entidade que a pilha conduz volta, durante `f`, à pose de
+/// onde a pilha parte ([`base`]) — quem lê a pose animada (a entrada da mola) não lê o que a pilha
+/// escreveu no quadro passado.
+pub fn com_autorado<R>(
+    sim: &mut SimWorld,
+    preview: &PreviewDrive,
+    f: impl FnOnce(&mut SimWorld) -> R,
+) -> R {
+    let trocas: Vec<(Entity, Transform, Transform)> = preview
+        .driven_by(Driver::ConstraintPose)
+        .into_iter()
+        .filter_map(|e| {
+            let agora = *sim.world().get::<Transform>(e)?;
+            Some((e, agora, base(sim, preview, e)?))
+        })
+        .filter(|(_, agora, autorada)| agora != autorada)
+        .collect();
+    let poe = |sim: &mut SimWorld, e: Entity, t: Transform| {
+        if let Some(mut x) = sim.world_mut().get_mut::<Transform>(e) {
+            *x = t;
+        }
+    };
+    for &(e, _, autorada) in &trocas {
+        poe(sim, e, autorada);
+    }
+    let r = f(sim);
+    for &(e, agora, _) in &trocas {
+        poe(sim, e, agora);
+    }
+    r
+}
+
 /// A pose local do dono para a pose mundial `dono`. Sem mudança, o autorado ao bit: desfazer o pai em
 /// f32 mexeria o último dígito.
 fn local_de(parent: Transform, base_local: Transform, inicial: Pose2, dono: Pose2) -> Transform {
@@ -120,7 +159,11 @@ fn local_de(parent: Transform, base_local: Transform, inicial: Pose2, dono: Pose
 }
 
 /// A poligonal da forma `alvo`, no mundo de agora.
-fn caminho_no_mundo(sim: &SimWorld, alvo: Entity, id: StableId) -> Option<Vec<[f64; 2]>> {
+pub(crate) fn caminho_no_mundo(
+    sim: &SimWorld,
+    alvo: Entity,
+    id: StableId,
+) -> Option<Vec<[f64; 2]>> {
     let local = sim.world().get_resource::<Caminhos>()?.0.get(&id)?;
     let x = ph2d_vec_entities::transform::xform_of_transform(
         ph2d_vec_entities::transform::world_transform(sim, alvo),
@@ -131,6 +174,60 @@ fn caminho_no_mundo(sim: &SimWorld, alvo: Entity, id: StableId) -> Option<Vec<[f
             .map(|p| x.apply([f64::from(p[0]), f64::from(p[1])]))
             .collect(),
     )
+}
+
+/// O vértice autorado `indice` da forma `alvo`, no mundo de agora (`None` se a forma não o tem).
+fn ponto_no_mundo(sim: &SimWorld, alvo: Entity, id: StableId, indice: u32) -> Option<Pose2> {
+    let local = *sim
+        .world()
+        .get_resource::<Pontos>()?
+        .0
+        .get(&id)?
+        .get(usize::try_from(indice).ok()?)?;
+    let x = ph2d_vec_entities::transform::xform_of_transform(
+        ph2d_vec_entities::transform::world_transform(sim, alvo),
+    );
+    let [px, py] = x.apply(local);
+    Some(Pose2 {
+        x: px,
+        y: py,
+        ..Pose2::IDENTITY
+    })
+}
+
+/// A pose mundial que o clip do Action dá ao dono no instante que o alvo pede: os canais que o clip
+/// anima sobre a pose LOCAL de agora.
+#[expect(
+    clippy::cast_possible_truncation,
+    reason = "o `Transform` da casa é f32"
+)]
+fn accao(
+    sim: &SimWorld,
+    e: Entity,
+    a: &ph2d_constraints::Action,
+    alvo: Option<Entity>,
+    (parent, mut local): (Transform, Transform),
+) -> Result<Pose2, Estado> {
+    let t = alvo
+        .and_then(|t| world_transform(sim.world(), t))
+        .ok_or(Estado::SemAlvo)?;
+    let amostra = sim
+        .world()
+        .get_resource::<crate::Accoes>()
+        .and_then(|m| m.0.get(&(e.to_bits(), a.clip)))
+        .ok_or(Estado::SemClip)?;
+    let [x, y, rot, sx, sy] = amostra(a.tempo(pose(&t)));
+    let poe = |v: Option<f64>, campo: &mut f32| {
+        if let Some(v) = v {
+            *campo = v as f32;
+        }
+    };
+    poe(x, &mut local.translation.x);
+    poe(y, &mut local.translation.y);
+    poe(rot, &mut local.rotation);
+    poe(sx, &mut local.scale.x);
+    poe(sy, &mut local.scale.y);
+    Ok(pose(&Transform::compose(parent, local)))
 }
 
 fn dinamico(sim: &SimWorld, e: Entity) -> bool {
@@ -311,6 +408,46 @@ fn avalia_uma(
             }
             continue;
         }
+        if let Kind::Spring(sp) = &it.kind {
+            let atraso = sim
+                .world()
+                .get_resource::<crate::Molas>()
+                .and_then(|m| m.atrasos.get(&(e.to_bits(), it.id)).copied())
+                .unwrap_or_default();
+            dono = sp.aplica(dono, atraso, it.influence);
+            marca(it.id, Estado::Activa);
+            continue;
+        }
+        if let Kind::Action(a) = &it.kind {
+            match accao(
+                sim,
+                e,
+                a,
+                alvo,
+                (parent, local_de(parent, base_local, inicial, dono)),
+            ) {
+                Ok(p) => {
+                    dono = ph2d_constraints::blend(dono, p, it.influence.min(1.0));
+                    marca(it.id, Estado::Activa);
+                }
+                Err(s) => marca(it.id, s),
+            }
+            continue;
+        }
+        if let Kind::SplineIk(sp) = &it.kind {
+            let local = local_de(parent, base_local, inicial, dono);
+            let alvo = alvo.zip(it.target);
+            match crate::curva::avalia(sim, preview, e, local, (sp, alvo, it.influence), avaliadas)
+            {
+                Ok(nova) => {
+                    parent = parent_world_transform(sim.world(), e);
+                    dono = pose(&Transform::compose(parent, nova));
+                    marca(it.id, Estado::Activa);
+                }
+                Err(s) => marca(it.id, s),
+            }
+            continue;
+        }
         if let Kind::LookAt(l) = &it.kind {
             let Some(t) = alvo.and_then(|t| world_transform(sim.world(), t)) else {
                 marca(it.id, Estado::SemAlvo);
@@ -338,7 +475,10 @@ fn avalia_uma(
         let ctx = Ctx {
             owner: dono,
             parent: pose(&parent),
-            target: alvo.and_then(|t| world_transform(w, t)).map(|t| pose(&t)),
+            target: match (&it.kind, alvo, it.target) {
+                (Kind::PontoDeForma(p), Some(a), Some(s)) => ponto_no_mundo(sim, a, s, p.indice),
+                _ => alvo.and_then(|t| world_transform(w, t)).map(|t| pose(&t)),
+            },
             target_parent: alvo.map_or(Pose2::IDENTITY, |t| pose(&parent_world_transform(w, t))),
         };
         match ph2d_constraints::apply_with(
@@ -354,6 +494,7 @@ fn avalia_uma(
             Ok(_) | Err(Inerte::EspacoColapsado) => marca(it.id, Estado::EspacoColapsado),
             Err(Inerte::SemAlvo) => marca(it.id, Estado::SemAlvo),
             Err(Inerte::Corrente) => marca(it.id, Estado::NaoEOsso),
+            Err(Inerte::Relogio) => marca(it.id, Estado::SemClip),
         }
     }
     let local = local_de(parent, base_local, inicial, dono);

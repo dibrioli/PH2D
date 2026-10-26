@@ -14,6 +14,7 @@ authors.workspace = true
 [dependencies]
 ph2d-constraints = { path = "../ph2d-constraints" }
 ph2d-ecs = { path = "../ph2d-ecs" }
+ph2d-node-motion-spring = { path = "../ph2d-node-motion-spring" }
 ph2d-physics-ecs = { path = "../ph2d-physics-ecs" }
 ph2d-preview-drive = { path = "../ph2d-preview-drive" }
 ph2d-skeleton = { path = "../ph2d-skeleton" }

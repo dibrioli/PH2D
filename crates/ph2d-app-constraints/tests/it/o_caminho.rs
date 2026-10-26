@@ -59,7 +59,7 @@ fn follow_path_walks_the_drawn_shape_where_it_is() {
         .spawn((StableId(2), Transform::IDENTITY, c))
         .id();
     let mut drive = PreviewDrive::default();
-    ph2d_app_constraints::quadro(&mut sim, &cena, &mut drive);
+    ph2d_app_constraints::quadro(&mut sim, &cena, &mut drive, None);
     drive.settle();
     // Local (1,75; 0) a 0° ⇒ rodado 90° e levado a (10, 5).
     perto(
@@ -78,7 +78,7 @@ fn follow_path_walks_the_drawn_shape_where_it_is() {
             ..FollowPath::default()
         });
     }
-    ph2d_app_constraints::quadro(&mut sim, &cena, &mut drive);
+    ph2d_app_constraints::quadro(&mut sim, &cena, &mut drive, None);
     drive.settle();
     perto(
         world_transform(sim.world(), dono).unwrap(),
@@ -92,7 +92,7 @@ fn follow_path_walks_the_drawn_shape_where_it_is() {
         .unwrap()
         .translation
         .x = 0.0;
-    ph2d_app_constraints::quadro(&mut sim, &cena, &mut drive);
+    ph2d_app_constraints::quadro(&mut sim, &cena, &mut drive, None);
     perto(
         world_transform(sim.world(), dono).unwrap(),
         -1.25,

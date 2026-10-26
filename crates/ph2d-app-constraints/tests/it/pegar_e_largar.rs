@@ -70,6 +70,10 @@ impl Cena {
             &mut self.sim,
             &ph2d_vec_scene::VecScene::new(),
             &mut self.drive,
+            Some(ph2d_app_constraints::relogio::Relogio {
+                doc: &self.tl.doc,
+                t: self.ph.time(),
+            }),
         );
         self.drive.settle();
         world_transform(self.sim.world(), self.espada).unwrap()

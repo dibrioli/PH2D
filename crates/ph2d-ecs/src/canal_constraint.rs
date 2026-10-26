@@ -48,6 +48,40 @@ pub const POSICAO: u16 = 16;
 pub const POR: u16 = 17;
 /// Follow Path: rodar para a tangente ([`NAO_SIM`]).
 pub const SEGUE: u16 = 18;
+/// Pivot: o desvio do pivô em x e em y, em metros.
+pub const DESVIO_X: u16 = 19;
+pub const DESVIO_Y: u16 = 20;
+/// Floor: o lado do plano ([`EIXOS`]).
+pub const EIXO: u16 = 21;
+/// Floor: a normal roda com o alvo ([`NAO_SIM`]).
+pub const USA_ROTACAO: u16 = 22;
+/// Transformation e Action: o canal do alvo que se lê ([`CANAIS`]).
+pub const DE: u16 = 23;
+/// Transformation: o canal do dono que se escreve ([`CANAIS`]).
+pub const PARA: u16 = 24;
+/// Transformation e Action: a faixa do canal do alvo (graus, metros ou %, conforme [`DE`]).
+pub const DE_MIN: u16 = 25;
+pub const DE_MAX: u16 = 26;
+/// Transformation: a faixa do canal do dono (conforme [`PARA`]).
+pub const PARA_MIN: u16 = 27;
+pub const PARA_MAX: u16 = 28;
+/// Transformation: fora da faixa continua a recta ([`NAO_SIM`]).
+pub const EXTRAPOLA: u16 = 29;
+/// Spline IK: os ossos mantêm o comprimento ou cobrem a curva ([`AJUSTES`]).
+pub const AJUSTE: u16 = 30;
+/// Copy Point: o índice do vértice da forma.
+pub const PONTO: u16 = 31;
+/// Action: a posição do clip na animação do dono.
+pub const CLIP: u16 = 32;
+/// Action: o instante do clip nas bordas da faixa, em segundos.
+pub const INSTANTE_DE: u16 = 33;
+pub const INSTANTE_ATE: u16 = 34;
+/// Spring: segundos de uma oscilação.
+pub const DURACAO: u16 = 35;
+/// Spring: o ressalto, `0..1`.
+pub const RESSALTO: u16 = 36;
+/// Spring: que canais têm mola ([`MOLAS`]).
+pub const MOLA: u16 = 37;
 
 /// As palavras de [`MODO`], pelo índice.
 pub const MODOS: &[&str] = &[
@@ -89,10 +123,71 @@ pub const PORES: &[&str] = &[
     "panel.inspector.constraint.by.fraction",
     "panel.inspector.constraint.by.distance",
 ];
+/// As palavras de [`EIXO`] (`EixoDoChao`: +Y · −Y · +X · −X).
+pub const EIXOS: &[&str] = &[
+    "panel.inspector.constraint.axis.y",
+    "panel.inspector.constraint.axis.neg_y",
+    "panel.inspector.constraint.axis.x",
+    "panel.inspector.constraint.axis.neg_x",
+];
+/// As palavras de [`DE`] e [`PARA`] (`Canal`: X · Y · Rotation · Scale X · Scale Y).
+pub const CANAIS: &[&str] = &[
+    "panel.inspector.constraint.channel.x",
+    "panel.inspector.constraint.channel.y",
+    "panel.inspector.constraint.channel.rotation",
+    "panel.inspector.constraint.channel.scale_x",
+    "panel.inspector.constraint.channel.scale_y",
+];
+/// As palavras de [`AJUSTE`] (`Ajuste`: Nenhum · Esticar).
+pub const AJUSTES: &[&str] = &[
+    "panel.inspector.constraint.fit.none",
+    "panel.inspector.constraint.fit.curve",
+];
+/// As palavras de [`MOLA`]: posição · rotação · as duas.
+pub const MOLAS: &[&str] = &[
+    "panel.inspector.constraint.spring.location",
+    "panel.inspector.constraint.spring.rotation",
+    "panel.inspector.constraint.spring.both",
+];
 /// Os campos de um item, na ordem do cartão (o tipo diz quais tem).
-pub const CAMPOS: [u16; 18] = [
-    FORCA, LIGADA, LIMITE_MIN, LIMITE_MAX, DISTANCIA, DESVIO, MODO, ESPACO, MISTURA, CORRENTE,
-    SUAVIDADE, DOBRA, ESTICA, REPOUSO, VOLUME, POSICAO, POR, SEGUE,
+pub const CAMPOS: [u16; 37] = [
+    FORCA,
+    LIGADA,
+    LIMITE_MIN,
+    LIMITE_MAX,
+    DISTANCIA,
+    DESVIO,
+    MODO,
+    ESPACO,
+    MISTURA,
+    CORRENTE,
+    SUAVIDADE,
+    DOBRA,
+    ESTICA,
+    REPOUSO,
+    VOLUME,
+    POSICAO,
+    POR,
+    SEGUE,
+    DESVIO_X,
+    DESVIO_Y,
+    EIXO,
+    USA_ROTACAO,
+    DE,
+    PARA,
+    DE_MIN,
+    DE_MAX,
+    PARA_MIN,
+    PARA_MAX,
+    EXTRAPOLA,
+    AJUSTE,
+    PONTO,
+    CLIP,
+    INSTANTE_DE,
+    INSTANTE_ATE,
+    DURACAO,
+    RESSALTO,
+    MOLA,
 ];
 
 /// A chave do campo `campo` do item `item`.
@@ -139,6 +234,33 @@ pub fn info(campo: u16) -> Option<CampoInfo> {
         POSICAO => c("canal.constraint.posicao", campo, Especie::Continuo),
         POR => c("canal.constraint.por", campo, Especie::Opcoes(PORES)),
         SEGUE => c("canal.constraint.segue", campo, Especie::Opcoes(NAO_SIM)),
+        DESVIO_X => c("canal.constraint.desvio_x", campo, Especie::Continuo),
+        DESVIO_Y => c("canal.constraint.desvio_y", campo, Especie::Continuo),
+        EIXO => c("canal.constraint.eixo", campo, Especie::Opcoes(EIXOS)),
+        USA_ROTACAO => c(
+            "canal.constraint.usa_rotacao",
+            campo,
+            Especie::Opcoes(NAO_SIM),
+        ),
+        DE => c("canal.constraint.de", campo, Especie::Opcoes(CANAIS)),
+        PARA => c("canal.constraint.para", campo, Especie::Opcoes(CANAIS)),
+        DE_MIN => c("canal.constraint.de_min", campo, Especie::Continuo),
+        DE_MAX => c("canal.constraint.de_max", campo, Especie::Continuo),
+        PARA_MIN => c("canal.constraint.para_min", campo, Especie::Continuo),
+        PARA_MAX => c("canal.constraint.para_max", campo, Especie::Continuo),
+        EXTRAPOLA => c(
+            "canal.constraint.extrapola",
+            campo,
+            Especie::Opcoes(NAO_SIM),
+        ),
+        AJUSTE => c("canal.constraint.ajuste", campo, Especie::Opcoes(AJUSTES)),
+        PONTO => c("canal.constraint.ponto", campo, Especie::Continuo),
+        CLIP => c("canal.constraint.clip", campo, Especie::Continuo),
+        INSTANTE_DE => c("canal.constraint.instante_de", campo, Especie::Continuo),
+        INSTANTE_ATE => c("canal.constraint.instante_ate", campo, Especie::Continuo),
+        DURACAO => c("canal.constraint.duracao", campo, Especie::Continuo),
+        RESSALTO => c("canal.constraint.ressalto", campo, Especie::Continuo),
+        MOLA => c("canal.constraint.mola", campo, Especie::Opcoes(MOLAS)),
         _ => return None,
     })
 }

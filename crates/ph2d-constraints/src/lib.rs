@@ -11,6 +11,7 @@
 mod caminho;
 mod kind;
 mod ossos;
+mod poderosas;
 
 pub use caminho::{FollowPath, PathBy};
 pub use kind::{
@@ -20,6 +21,10 @@ pub use ossos::{Ik, StretchTo, Volume, bend_in_world, solve_chain, stretch_facto
 use ph2d_affine::Xform;
 pub use ph2d_skeleton::BendSide;
 pub use ph2d_skeleton::{blend_angle, clamp_to_limit, wrap_pi};
+pub use poderosas::{
+    Action, Ajuste, Canal, EixoDoChao, Floor, Pivot, PontoDeForma, SplineIk, Spring,
+    Transformation, lay_on_curve,
+};
 use serde::{Deserialize, Serialize};
 
 /// A pose 2D: translação, rotação (radianos) e escala por eixo. O cisalhamento não entra — a
@@ -93,6 +98,12 @@ impl Pose2 {
         Some(Self::from_xform(self.to_xform().then(&inv)))
     }
 
+    /// O ponto `local` levado pelo afim desta pose.
+    #[must_use]
+    pub fn ponto(self, local: [f64; 2]) -> [f64; 2] {
+        self.to_xform().apply(local)
+    }
+
     #[must_use]
     pub fn is_finite(&self) -> bool {
         [self.x, self.y, self.rot, self.sx, self.sy]
@@ -148,6 +159,8 @@ pub enum Inerte {
     EspacoColapsado,
     /// O tipo escreve uma corrente de ossos, não só o dono: avalia-o a fase.
     Corrente,
+    /// O tipo lê o tempo (um clip, a mola): avalia-o a fase.
+    Relogio,
 }
 
 /// Aplica UMA constraint com força `influence`: `Ok(pose)` ou `Err` com o motivo de não fazer nada.

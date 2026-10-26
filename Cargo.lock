@@ -6149,6 +6149,7 @@ dependencies = [
  "bevy_ecs",
  "ph2d-constraints",
  "ph2d-ecs",
+ "ph2d-node-motion-spring",
  "ph2d-physics-ecs",
  "ph2d-preview-drive",
  "ph2d-skeleton",

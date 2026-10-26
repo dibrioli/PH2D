@@ -5,18 +5,21 @@
 //! se guarda*. A lei de cada tipo é da `ph2d-constraints`.
 
 mod avalia;
+mod curva;
 mod ik;
 pub mod ik_item;
 mod ik_novo;
 mod ordem;
+pub mod relogio;
 
-pub use avalia::{Adotar, Caminhos, Estado, Estados, evaluate};
+pub use avalia::{Adotar, Caminhos, Estado, Estados, Pontos, com_autorado, evaluate};
 pub use ik_item::{
     Ancora, ancora_de, ancoras, com_ancora, com_ik, converter_ik_de_um_osso, converter_ik_goals,
     ik_de, iks, por_ik, tirar_ancora, tirar_ik,
 };
 pub use ik_novo::{add_ik, add_look_at, aponta};
 pub use ordem::ordem;
+pub use relogio::{Accoes, Amostra, Molas, Simulador};
 
 use bevy_ecs::component::Component;
 use ph2d_constraints::Kind;

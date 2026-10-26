@@ -5,7 +5,7 @@
 
 /// As entradas do menu **+**, na ordem em que aparecem: a chave `ph2d-i18n` do rótulo. O índice é o
 /// que [`ConstraintFieldEdit::Adicionar`] leva e o que [`InspectorConstraintRow::tipo`] diz.
-pub const TIPOS: [&str; 11] = [
+pub const TIPOS: [&str; 18] = [
     "panel.inspector.constraint.child_of",
     "panel.inspector.constraint.copy_location",
     "panel.inspector.constraint.copy_rotation",
@@ -17,6 +17,13 @@ pub const TIPOS: [&str; 11] = [
     "panel.inspector.constraint.ik",
     "panel.inspector.constraint.stretch_to",
     "panel.inspector.constraint.follow_path",
+    "panel.inspector.constraint.pivot",
+    "panel.inspector.constraint.floor",
+    "panel.inspector.constraint.transformation",
+    "panel.inspector.constraint.spline_ik",
+    "panel.inspector.constraint.copy_point",
+    "panel.inspector.constraint.action",
+    "panel.inspector.constraint.spring",
 ];
 
 /// Quantas linhas o cartão pinta e edita — o tamanho das tabelas de ids do painel
@@ -25,11 +32,11 @@ pub const TIPOS: [&str; 11] = [
 pub const MAX_LINHAS: usize = 32;
 
 /// Quantos números, escolhas e opções por escolha um item mostra debaixo da força — o tamanho das
-/// tabelas de ids do painel; o tipo mais largo cabe (Limit Rotation: Min, Max e o espaço; IK: o lado
-/// da dobra tem quatro opções).
-pub const MAX_NUMEROS: usize = 2;
-pub const MAX_ESCOLHAS: usize = 2;
-pub const MAX_OPCOES: usize = 4;
+/// tabelas de ids do painel; o tipo mais largo cabe (Action: a faixa, o clip e os dois instantes;
+/// Transformation: os dois canais, a mistura, o extrapolar e o espaço; um canal tem cinco opções).
+pub const MAX_NUMEROS: usize = 5;
+pub const MAX_ESCOLHAS: usize = 5;
+pub const MAX_OPCOES: usize = 5;
 
 /// A unidade em que um número do cartão se lê, se escreve e se anima.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -42,6 +49,8 @@ pub enum Unidade {
     Porcento,
     /// Uma contagem (ossos da corrente), sem sufixo.
     Contagem,
+    /// Segundos (a mola, os instantes do Action).
+    Segundos,
 }
 
 /// Um número de um tipo (Min, Max, Distance, Offset). `campo` = o canal dele
@@ -77,6 +86,7 @@ pub enum EstadoDaConstraint {
     CorpoDinamico,
     EspacoColapsado,
     NaoEOsso,
+    SemClip,
 }
 
 impl EstadoDaConstraint {
@@ -94,6 +104,7 @@ impl EstadoDaConstraint {
             Self::CorpoDinamico => "panel.inspector.constraint.state.dynamic_body",
             Self::EspacoColapsado => "panel.inspector.constraint.state.collapsed",
             Self::NaoEOsso => "panel.inspector.constraint.state.not_a_bone",
+            Self::SemClip => "panel.inspector.constraint.state.no_clip",
         })
     }
 

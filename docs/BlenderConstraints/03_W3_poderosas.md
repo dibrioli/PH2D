@@ -96,6 +96,29 @@ IK é `NaoEOsso` e fica). O losango, o arrasto do alvo, o realce, «governado»,
   `canal_constraint` em append (gate `o_vocabulario_das_constraints_nao_renumera`).
 - Cena 5 (plano §6): antena com Spring sobre um corpo animado; sonda headless play × scrub = 0, foto antes da mensagem.
 
+## 3. Feito (W3.2) — o que o código decidiu e porquê
+
+| Peça | Onde | Gate (nome) | Decisão medida / desvio do §2 |
+|---|---|---|---|
+| Pivot · Floor · Transformation | `ph2d-constraints/src/poderosas.rs` | `pivot_turns_the_owner_around_the_target` · `floor_keeps_the_owner_on_its_side` · `transformation_maps_one_channel_range_to_another` · `transformation_replace_leaves_the_unmapped_channels_alone` (`tests/it/oraculo_w3.rs`, vistos 5/5 vermelhos com o tipo a devolver o dono) | o Pivot gira à volta do alvo pela rotação MUNDIAL do dono; sem alvo, o pivô é o dono + desvio (mostra o «Pick» mas não o exige) |
+| Multi-parent | composição | `multi_parent_is_two_child_of_items` (verde de saída: é composição — a prova é a mutação) | nenhum tipo novo, como decidido |
+| Spline IK | lei `lay_on_curve` (pura) + fase `ph2d-constraints-ecs/src/curva.rs` | `spline_ik_lays_the_chain_on_the_curve` (puro: recta · curta · meio círculo Bézier, os 3 modos; ECS: a corrente `curta` sob um afim da forma, e tirar a pilha devolve o autorado) | a raiz MOVE-SE ao início da curva (como no Blender); o esticar de cada osso divide pelo herdado do pai (`scale.x` herda-se na casa TRS) |
+| Copy Point | `Kind::PontoDeForma { indice }` + recurso `Pontos` (os `verts[i].anchor` AUTORADOS, cheios pela família) | `a_point_of_a_shape_is_a_target` (puro + ECS; índice inexistente ⇒ `SemAlvo`) | ⚠️ tipo próprio, NÃO um sub-alvo no `Item`: o componente grava-se em postcard (sem nomes de campo) — um campo novo no `Item` partia os ficheiros da linha; uma variante em append não |
+| Action | `Kind::Action { canal, faixa, clip, de_t, ate_t }`; o tempo é `ph2d_skeleton::action_time` (a lei do Smart Bone: UMA lei); a amostra é o recurso-porta `Accoes` (`Arc<dyn Fn(t) → canais locais>`), cheio por `ph2d-app-constraints/src/relogio.rs` com as `Track` CLONADAS do clip | `action_picks_the_clip_time_from_the_target_channel` (ECS, os 5 casos `action.*`; sem clip ⇒ `Estado::SemClip`) | o Smart Bone CONTINUA (toca o clip na CENA, escrevendo); o Action toca-o no DONO, sem escrever — perguntas diferentes, lei do tempo partilhada. `clip` = a POSIÇÃO na animação do dono (`clips_of`): o clip não tem id estável (o Smart Bone guarda o NOME) — ⚠️ apagar um clip anterior desloca-o |
+| Spring | `Kind::Spring { canais, duracao, ressalto }`; `Simulador` em `ph2d-constraints-ecs/src/relogio.rs` (`law::passo` do `motion.spring`, `STRIDE = 10`, cada checkpoint guarda a ENTRADA e cai se ela mudou) | `a_spring_rewinds_to_the_same_bit` (0→40→12→40→7→8→9→33 = tocar, ao bit; editar a animação invalida) · `a_spring_adds_its_lag_at_its_place_in_the_stack` · `a_cena_5_toca_e_arrasta_igual` (a sonda da cena 5) | ⭐ a mola persegue a pose ANIMADA (`world_pose_at` — a «cena no quadro», como o `SceneAtTick` da física põe a timeline) e devolve o ATRASO, que a fase soma na posição do item. Assim tocar e arrastar leem a MESMA entrada. A entrada lê-se com a cena AUTORADA (`com_autorado`): sem isso a mola lia o que ela própria escreveu no quadro passado |
+| O tempo no quadro | `quadro(sim, cena, preview, Option<Relogio>)`; `Relogio::da_vista` escolhe o transporte da vista (`ViewClock`) | — | a shell passa os três transportes; a abertura da cena de smoke mudou-se para a família (`smoke::abrir_escolhido`) — shell −2 linhas |
+| Cartão | `TIPOS` 11→18; `MAX_NUMEROS`/`MAX_ESCOLHAS`/`MAX_OPCOES` → 5 (Action: 5 números; Transformation: 5 escolhas; um canal tem 5 opções); canais 19–37 em append; `Unidade::Segundos` | os gates do cartão (verificador) | ids novos para a integração: `insp_constraint_tipo_11..17`, `numero_2..4_*`, `opcao_*_4_*` e `opcao_2..4_*` |
+| Cena 5 | `smoke.rs` `antena` + `smoke_antena.rs` | `a_cena_5_toca_e_arrasta_igual` | Corpo (curva da timeline) · Ponta (Spring) · Haste (Stretch To à ponta) |
+
+**Medido antes de abrir (o que ficou fora):** Flip «troca desenho por ângulo» — o desenho é uma escolha discreta
+por *hold* (`FlipLayer::drawing_at`), sem canal animável: um Action sobre um Flip não tem o que tocar (fica para quando
+o Flip tiver o canal). Ponto de simulação — o `MotionCookPump` não tem id estável por ponto (só a ordem dos sinks):
+prender a um ponto de simulação fica para quando houver o id.
+
+**Aberto, por medir:** a entrada da mola é o `world_pose_at` (o clip ACTIVO): sob a pilha do Arrange ou o Autoplay de
+um dono, a pose que o app mostra sai do `apply_from_doc` e pode diferir. A mola não reage a arrastar o corpo com o gizmo
+parado (a entrada é a animação).
+
 ## 4. Armadilhas
 
 - ⛔ **A prova de mutação da W2 deixou a `ph2d-skeleton-live` compilada com a mira MUTADA em `target/debug`**, e o cargo

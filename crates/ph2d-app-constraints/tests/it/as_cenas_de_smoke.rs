@@ -187,7 +187,7 @@ fn outside_pushes_the_pupil_to_the_edge_whenever_the_ball_is_inside() {
         t.translation.x = x;
         t.translation.y = y;
         for _ in 0..3 {
-            ph2d_app_constraints::quadro(sim, drive);
+            ph2d_app_constraints::quadro(sim, &ph2d_vec_scene::VecScene::new(), drive);
             drive.settle();
         }
         let p = mundo(sim, pupila).translation;
@@ -212,4 +212,57 @@ fn outside_pushes_the_pupil_to_the_edge_whenever_the_ball_is_inside() {
         (px - (0.2 + FOLGA_DA_PUPILA) / 2.0).abs() < 1e-4,
         "meia força ⇒ {px}"
     );
+}
+
+/// Cena 4: o braço com a IK na mão e um Copy Rotation ABAIXO — a mão roda com o Rodador (no Blender o
+/// Copy Rotation some); descer a IK na lista põe a ponta da mão na bola.
+#[test]
+fn the_arm_scene_turns_the_hand_below_the_ik() {
+    use ph2d_app_constraints::inspector::apply_all;
+    use ph2d_app_constraints::smoke::OSSO;
+    use ph2d_constraints_ecs::Constraints;
+    use ph2d_editor_core::constraint_edits::ConstraintFieldEdit as E;
+    let (mut sim, mut drive) = cena(4);
+    let ombro = chamada(&mut sim, "Ombro");
+    let mao = chamada(&mut sim, "Antebraço");
+    let bola = chamada(&mut sim, "Bola");
+    let rodador = chamada(&mut sim, "Rodador");
+    let passo = |sim: &mut SimWorld, drive: &mut PreviewDrive| {
+        for _ in 0..3 {
+            ph2d_app_constraints::quadro(sim, &ph2d_vec_scene::VecScene::new(), drive);
+            drive.settle();
+        }
+    };
+    let longe = |a: Transform, b: Transform| {
+        f64::from((a.translation.x - b.translation.x).hypot(a.translation.y - b.translation.y))
+    };
+    let confere = |sim: &SimWorld| {
+        let (m, r) = (mundo(sim, mao), mundo(sim, rodador));
+        assert!(
+            ph2d_constraints::wrap_pi(f64::from(m.rotation - r.rotation)).abs() < 1e-5,
+            "a mão roda com o Rodador: {} ≠ {}",
+            m.rotation.to_degrees(),
+            r.rotation.to_degrees()
+        );
+        assert!((longe(m, mundo(sim, ombro)) - f64::from(OSSO)).abs() < 1e-4);
+        assert!((longe(m, mundo(sim, bola)) - f64::from(OSSO)).abs() < 1e-4, "o cotovelo é o da IK");
+    };
+    passo(&mut sim, &mut drive);
+    confere(&sim);
+    sim.world_mut().get_mut::<Transform>(bola).unwrap().translation.x = -0.5;
+    sim.world_mut().get_mut::<Transform>(rodador).unwrap().rotation = 30f32.to_radians();
+    passo(&mut sim, &mut drive);
+    confere(&sim);
+    let antes = (mundo(&sim, ombro), mundo(&sim, mao));
+    passo(&mut sim, &mut drive);
+    assert_eq!((mundo(&sim, ombro), mundo(&sim, mao)), antes, "parado, não salta");
+    // Descer a IK: agora ela vence, e a ponta da mão toca a bola.
+    let ik = sim.world().get::<Constraints>(mao).unwrap().items[0].id;
+    apply_all(&mut sim, &[(mao.to_bits(), E::Mover(ik, 1))]);
+    passo(&mut sim, &mut drive);
+    let m = mundo(&sim, mao);
+    let (s, c) = m.rotation.sin_cos();
+    let b = mundo(&sim, bola).translation;
+    let ponta = (m.translation.x + c * OSSO * m.scale.x, m.translation.y + s * OSSO * m.scale.x);
+    assert!((ponta.0 - b.x).abs() < 1e-4 && (ponta.1 - b.y).abs() < 1e-4, "{ponta:?} ≠ {b:?}");
 }

@@ -380,7 +380,7 @@ pub const TIMELINE_ADDPROP_BONE_BEND_OUT_X: NodeId =
 pub const TIMELINE_ADDPROP_BONE_BEND_OUT_Y: NodeId =
     hash_node_id("timeline.addprop.bone_bend_out_y");
 
-/// "+Track" -> **IK Bend Side**: de que lado o joelho dobra (`IkGoal::bend`), animável.
+/// "+Track" -> **IK Bend Side**: de que lado o joelho dobra (o `bend` do item IK), animável.
 ///
 /// ⛔⛔ **Ela está aqui pela lei que a irmã acima escreve**, e que o `Morph` pagou uma vez: um canal
 /// com resolver, rótulo e chave de i18n prontos e **sem esta linha** é um canal que só um teste

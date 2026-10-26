@@ -38,10 +38,7 @@ fn the_bend_side_is_captured_when_the_anchor_is_born() {
     for theta in [0.5_f32, -0.5] {
         let (mut sim, [_, cotovelo]) = braco_dobrado(theta);
         add(&mut sim, cotovelo).expect("a âncora nasce");
-        let g = *sim
-            .world()
-            .get::<IkGoal>(cotovelo)
-            .expect("a âncora foi escrita no osso da ponta");
+        let g = ik_of(&sim, cotovelo);
         assert_ne!(
             g.bend,
             ph2d_skeleton::BendSide::Keep,
@@ -65,7 +62,7 @@ fn a_straight_chain_gives_the_anchor_no_side_to_defend() {
     let (mut sim, [_, cotovelo]) = braco();
     add(&mut sim, cotovelo).expect("a âncora nasce");
     assert_eq!(
-        sim.world().get::<IkGoal>(cotovelo).expect("existe").bend,
+        ik_of(&sim, cotovelo).bend,
         ph2d_skeleton::BendSide::Keep
     );
 }
@@ -145,7 +142,7 @@ fn the_smoke_scene_gives_the_anchor_a_side_to_defend() {
         t.rotation = ARM_ELBOW_BEND;
     }
     add(&mut sim, ponta).expect("a âncora nasce na ponta do braço");
-    let g = *sim.world().get::<IkGoal>(ponta).expect("a âncora existe");
+    let g = ik_of(&sim, ponta);
     assert_ne!(
         g.bend,
         ph2d_skeleton::BendSide::Keep,
@@ -205,14 +202,10 @@ fn a_mixed_chain_survives_a_drag_out_of_reach() {
     let (mut sim, ossos) = zigzag();
     let tip = *ossos.last().expect("a corrente tem ossos");
     add(&mut sim, tip).expect("a âncora nasce");
-    {
-        let mut g = sim
-            .world_mut()
-            .get_mut::<IkGoal>(tip)
-            .expect("a âncora foi escrita");
+    com_ik(&mut sim, tip, |_, g| {
         g.bend = ph2d_skeleton::BendSide::Mixed;
         g.chain = 4;
-    }
+    });
     let autorados = lados(&sim);
     assert!(
         autorados.iter().any(|&s| s > 0.0) && autorados.iter().any(|&s| s < 0.0),
@@ -284,10 +277,10 @@ fn the_smoke_scene_tells_the_three_bend_modes_apart() {
     ] {
         let (mut sim, ponta) = montar();
         add(&mut sim, ponta).expect("a âncora nasce");
-        if let Some(mut g) = sim.world_mut().get_mut::<IkGoal>(ponta) {
+        com_ik(&mut sim, ponta, |_, g| {
             g.bend = modo;
             g.chain = 3;
-        }
+        });
         let mut pv = PreviewDrive::default();
         assert!(drag_anchor(&mut sim, ponta, [-4.0, 5.0]), "a ancora existe");
         solve(&mut sim, &mut pv);

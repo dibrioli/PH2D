@@ -46,7 +46,7 @@ pub(crate) fn avalia(
     ik: &Ik,
     alvo: Option<Entity>,
     forca: f64,
-    avaliadas: &BTreeSet<u64>,
+    avaliadas: &mut BTreeSet<u64>,
 ) -> Result<Transform, Estado> {
     if sim.world().get::<Bone>(e).is_none() {
         return Err(Estado::NaoEOsso);
@@ -105,6 +105,8 @@ pub(crate) fn avalia(
             continue;
         }
         escreve(sim, preview, c, agora, partida, nova);
+        // Escrito neste quadro: a próxima IK que o tem na corrente parte daqui, não do autorado.
+        avaliadas.insert(c.to_bits());
     }
     Ok(dono)
 }
@@ -125,6 +127,31 @@ fn escreve(
     } else {
         preview.driven(c, Driven::ConstraintPose(agora), Driven::ConstraintPose(nova));
     }
+}
+
+/// As entidades de correntes de IK que se SOBREPÕEM (duas IKs a puxar ossos comuns), com as pontas:
+/// a fase repete-as no mesmo quadro até assentarem (`docs/BlenderConstraints/02_W2_ossos.md` §2).
+pub(crate) fn acopladas(world: &ph2d_ecs::World, ordem: &[Entity]) -> BTreeSet<u64> {
+    let correntes: Vec<(u64, BTreeSet<u64>)> = ordem
+        .iter()
+        .filter_map(|&e| {
+            let c = world.get::<crate::Constraints>(e)?;
+            let mut s: BTreeSet<u64> = correntes(world, e, c).iter().map(|x| x.to_bits()).collect();
+            (!s.is_empty()).then(|| {
+                s.insert(e.to_bits());
+                (e.to_bits(), s)
+            })
+        })
+        .collect();
+    let mut out = BTreeSet::new();
+    for (i, (_, a)) in correntes.iter().enumerate() {
+        for (_, b) in &correntes[i + 1..] {
+            if !a.is_disjoint(b) {
+                out.extend(a.iter().chain(b.iter()));
+            }
+        }
+    }
+    out
 }
 
 /// Os ossos que cada item IK activo escreve (a corrente sem a ponta), para a ordem.

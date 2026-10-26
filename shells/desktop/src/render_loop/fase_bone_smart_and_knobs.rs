@@ -18,7 +18,7 @@ pub(super) enum IkKnob {
     Softness,
     Chain,
     /// ⭐⭐⭐ **O DESVIO DO APONTAR**, em GRAUS na tela e radianos no documento — a conversão vive
-    /// no dreno, como a do limite da junta. Ver [`ph2d_skeleton_ecs::IkGoal::offset`].
+    /// no dreno, como a do limite da junta. Ver [`ph2d_constraints::Ik::offset`].
     Offset,
 }
 
@@ -158,10 +158,8 @@ impl crate::App {
             // re-captura: ele lê o lado de cada junta da pose autorada, a cada resolução — uma
             // corrente maior traz juntas novas, e cada uma chega com o seu.
             Some((IkKnob::Chain, v))
-                if sim
-                    .world()
-                    .get::<ph2d_skeleton_ecs::IkGoal>(osso)
-                    .is_none_or(|g| g.bend != ph2d_skeleton::BendSide::Mixed) =>
+                if ph2d_constraints_ecs::ik_de(sim.world(), osso)
+                    .is_none_or(|(_, _, g)| g.bend != ph2d_skeleton::BendSide::Mixed) =>
             {
                 Some(ph2d_skeleton_live::goal::side_for_chain(
                     sim,
@@ -171,13 +169,11 @@ impl crate::App {
             }
             _ => None,
         };
-        if let Some((qual, v)) = pending_ik_knob
-            && let Some(mut g) = sim.world_mut().get_mut::<ph2d_skeleton_ecs::IkGoal>(osso)
-        {
-            match qual {
+        if let Some((qual, v)) = pending_ik_knob {
+            ph2d_constraints_ecs::com_ik(sim.world_mut(), osso, |it, g| match qual {
                 // ⛔ `0..1` é a faixa da LEI, não uma escolha: fora dela o `blend_angle`
                 // satura nos extremos, e um campo que aceita `7` mentiria sobre o efeito.
-                IkKnob::Mix => g.mix = v.clamp(0.0, 1.0),
+                IkKnob::Mix => it.influence = v.clamp(0.0, 1.0),
                 // ⛔ Piso em zero e SEM tecto: a suavidade é uma fracção do alcance, e o
                 // `softened_distance` já a apara pelo próprio alcance — §0.0, o limite é do
                 // recurso e não um palpite.
@@ -194,10 +190,10 @@ impl crate::App {
                 // arco e dar a volta inteira é legítimo (apontar «para trás» é `180`), e a lei do
                 // `wrap_pi` a jusante já o normaliza — §0.0, um limite tem de nomear um recurso.
                 IkKnob::Offset => g.offset = v.to_radians(),
-            }
-            if let Some(lado) = lado_novo {
-                g.bend = lado;
-            }
+            });
+            ph2d_constraints_ecs::com_ik(sim.world_mut(), osso, |_, g| {
+                g.bend = lado_novo.unwrap_or(g.bend);
+            });
         }
         // ⭐⭐⭐ **E O APP DIZ, seja qual for a ordem em que o artista chegou aqui.**
         //

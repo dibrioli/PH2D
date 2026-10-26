@@ -32,11 +32,30 @@ pub enum Estado {
     NaoEOsso,
 }
 
+/// Guarda das passagens de IKs acopladas por quadro. Medido (doc W2 §2): a mudança cai ~40× por
+/// passagem e da 6.ª em diante oscila em 1 ulp — o [`assentou`] pára na 5.ª–6.ª; o tecto só apanha
+/// uma cena que não converge.
+const MAX_PASSAGENS: usize = 64;
+
+/// Nenhuma rotação nem escala mudou mais que 4 ulp do `f32` (o ciclo-limite medido é 1 ulp).
+fn assentou(a: &[Option<Transform>], b: &[Option<Transform>]) -> bool {
+    let perto = |x: f32, y: f32| (x - y).abs() <= 4.0 * f32::EPSILON * x.abs().max(1.0);
+    a.iter().zip(b).all(|(a, b)| match (a, b) {
+        (Some(a), Some(b)) => perto(a.rotation, b.rotation) && perto(a.scale.x, b.scale.x),
+        _ => a == b,
+    })
+}
+
 /// As entidades cuja pose VISTA passa a ser a autorada neste quadro (largar um Child Of sem salto):
 /// a fase não as conduz uma vez, o `PreviewDrive::settle` esquece-as, e o quadro seguinte parte do
 /// que se via. Consumido pela [`evaluate`].
 #[derive(Resource, Default, Debug)]
 pub struct Adotar(pub std::collections::BTreeSet<u64>);
+
+/// A poligonal LOCAL de cada forma que um Follow Path segue, por `StableId` (quem a lê da cena
+/// vectorial é a família). A fase leva-a ao mundo com o afim do alvo NA HORA, depois da pilha dele.
+#[derive(Resource, Default, Debug)]
+pub struct Caminhos(pub BTreeMap<StableId, Vec<[f32; 2]>>);
 
 /// O estado de cada item no último quadro, por `(Entity::to_bits, Item::id)`.
 #[derive(Resource, Default, Debug)]
@@ -98,6 +117,20 @@ fn local_de(parent: Transform, base_local: Transform, inicial: Pose2, dono: Pose
     }
     let mundo = com_pose(Transform::compose(parent, base_local), dono);
     Transform::inverse_compose(parent, mundo).unwrap_or(base_local)
+}
+
+/// A poligonal da forma `alvo`, no mundo de agora.
+fn caminho_no_mundo(sim: &SimWorld, alvo: Entity, id: StableId) -> Option<Vec<[f64; 2]>> {
+    let local = sim.world().get_resource::<Caminhos>()?.0.get(&id)?;
+    let x = ph2d_vec_entities::transform::xform_of_transform(
+        ph2d_vec_entities::transform::world_transform(sim, alvo),
+    );
+    Some(
+        local
+            .iter()
+            .map(|p| x.apply([f64::from(p[0]), f64::from(p[1])]))
+            .collect(),
+    )
 }
 
 fn dinamico(sim: &SimWorld, e: Entity) -> bool {
@@ -180,11 +213,40 @@ pub fn evaluate(sim: &mut SimWorld, preview: &mut PreviewDrive) -> usize {
     let idx = indice(sim.world());
     let mut movidas = 0;
     let mut avaliadas = std::collections::BTreeSet::new();
-    for e in ordem.into_iter().filter(|e| !adotar.contains(&e.to_bits())) {
-        if avalia_uma(sim, preview, &idx, e, &mut estados, &avaliadas) {
+    let ordem: Vec<Entity> = ordem
+        .into_iter()
+        .filter(|e| !adotar.contains(&e.to_bits()))
+        .collect();
+    for &e in &ordem {
+        if avalia_uma(sim, preview, &idx, e, &mut estados, &mut avaliadas) {
             movidas += 1;
         }
         avaliadas.insert(e.to_bits());
+    }
+    // Duas IKs a puxar ossos comuns: repete-se o grupo NESTE quadro até assentar (a cena continua
+    // função do autorado — arrastar a timeline dá o mesmo bit).
+    let grupo = crate::ik::acopladas(sim.world(), &ordem);
+    if !grupo.is_empty() {
+        let pose = |sim: &SimWorld| -> Vec<Option<Transform>> {
+            grupo
+                .iter()
+                .map(|&b| sim.world().get::<Transform>(Entity::from_bits(b)).copied())
+                .collect()
+        };
+        let mut n = 1;
+        while n < MAX_PASSAGENS {
+            let antes = pose(sim);
+            for &e in ordem.iter().filter(|e| grupo.contains(&e.to_bits())) {
+                avalia_uma(sim, preview, &idx, e, &mut estados, &mut avaliadas);
+            }
+            n += 1;
+            if assentou(&antes, &pose(sim)) {
+                break;
+            }
+        }
+        if std::env::var_os("PH2D_CONSTRAINT_LOG").is_some() {
+            eprintln!("[constraints] IKs acopladas: {} passagens", n);
+        }
     }
     sim.world_mut().insert_resource(Estados(estados));
     movidas
@@ -196,7 +258,7 @@ fn avalia_uma(
     idx: &BTreeMap<StableId, Entity>,
     e: Entity,
     estados: &mut BTreeMap<(u64, u32), Estado>,
-    avaliadas: &std::collections::BTreeSet<u64>,
+    avaliadas: &mut std::collections::BTreeSet<u64>,
 ) -> bool {
     let Some(pilha) = sim.world().get::<Constraints>(e).cloned() else {
         return false;
@@ -246,13 +308,17 @@ fn avalia_uma(
             continue;
         }
         let w = sim.world();
+        let caminho = match (&it.kind, alvo, it.target) {
+            (Kind::FollowPath(_), Some(a), Some(s)) => caminho_no_mundo(sim, a, s),
+            _ => None,
+        };
         let ctx = Ctx {
             owner: dono,
             parent: pose(&parent),
             target: alvo.and_then(|t| world_transform(w, t)).map(|t| pose(&t)),
             target_parent: alvo.map_or(Pose2::IDENTITY, |t| pose(&parent_world_transform(w, t))),
         };
-        match ph2d_constraints::apply(&it.kind, &ctx, it.influence.min(1.0)) {
+        match ph2d_constraints::apply_with(&it.kind, &ctx, caminho.as_deref(), it.influence.min(1.0)) {
             Ok(p) if p.is_finite() => {
                 dono = p;
                 marca(it.id, Estado::Activa);

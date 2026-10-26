@@ -41,10 +41,9 @@ pub mod bone_limit;
 pub mod bone_pick;
 pub mod bone_pose;
 pub mod curve_tip;
+/// ⭐ *Mirror Branch* — o espelho do esqueleto, sem a IK do original.
+pub mod espelho;
 pub mod goal;
-/// ⭐ **A pose AUTORADA de uma corrente** — irmão do [`goal`] pelo tecto de LOC, cortado por
-/// responsabilidade: *quem resolve* e *o que o artista desenhou* são duas perguntas.
-mod goal_authored;
 /// ⭐⭐⭐ O que cada NÚMERO do painel significa para um osso — a tradução e a aplicação.
 pub mod knobs;
 pub mod loose;

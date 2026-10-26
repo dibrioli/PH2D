@@ -56,9 +56,8 @@ pub const DESCS: &[D] = &[
         &[],
     )
     .hidden(Hidden::OtherEditor),
-    // ⭐ A ÂNCORA — `intrinsic` pela mesma razão da pele: ela chega com o gesto (*Add IK*), que cria
-    // o ALVO no mesmo passo. Pendurá-la por paleta daria uma restrição sem alvo — inerte, e sem
-    // caminho pelo qual o artista a completasse.
+    // A ÂNCORA de antes da W2 — só a forma gravada (a IK é um item da pilha de constraints e o
+    // ficheiro antigo converte-se no quadro). Fica descrita para o registo, escondida.
     //
     // ⚠️ O rótulo é o nome que as quatro referências usam (*IK*), e não o do tipo.
     D::intrinsic(

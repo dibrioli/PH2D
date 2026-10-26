@@ -60,3 +60,9 @@
   nascer (sem salto de comprimento).
 - **Follow Path** (`Kind::FollowPath { by, value, follow, offset }`): alvo = uma forma; a família dá a poligonal
   em mundo (a mesma porta do `PathFollow`); por fracção ou distância, orientar pela tangente + desvio.
+- **IKs acopladas** (duas IKs a puxar ossos comuns, report do dono 07/09): o goal antigo convergia AO LONGO
+  dos quadros, a partir da pose viva; a IK da pilha parte do autorado em cada quadro, por isso a fase repete
+  o grupo NO MESMO quadro até assentar (`assentou`: ≤ 4 ulp). Medido em
+  `two_anchors_on_one_chain_reach_a_fixed_point` (Δrot máx. por passagem): 9,8e-3 · 2,3e-4 · 5,4e-6 · 2,5e-7
+  · 1,19e-7 (= 1 ulp, ciclo-limite) ⇒ pára na 5.ª–6.ª; guarda `MAX_PASSAGENS = 64` só para cena que não
+  converge.

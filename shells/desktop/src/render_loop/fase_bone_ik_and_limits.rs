@@ -59,7 +59,7 @@ impl crate::App {
         // resolvida em UM já apontava com erro `0,000000°`. *O que faltava era o nome* — e a lente
         // do painel, que ali esconde os dois knobs que a medição diz serem inertes.
         if pending_look_at {
-            match ph2d_skeleton_live::goal::add_look_at(sim, osso) {
+            match crate::skeleton_goal::add_look_at(sim, osso) {
                 Some(_) => eprintln!(
                     "[ph2d-vec] osso: este osso passa a APONTAR para o losango -- arraste-o e o \
                      osso vira-se para ele; o campo `Aim Offset` roda o olhar em relacao ao eixo"
@@ -76,7 +76,7 @@ impl crate::App {
         // que só sabe copiar o que o registo descreve. ⛔ Uma cópia campo a campo aqui esqueceria o
         // primeiro componente novo, em silêncio.
         if pending_bone_mirror {
-            match ph2d_skeleton_live::espelho::espelha(sim, component_registry, osso) {
+            match ph2d_app_skeleton::espelho::espelha(sim, component_registry, osso) {
                 Some(_) => eprintln!(
                     "[ph2d-vec] osso: ramo espelhado -- a copia e' irma do original e os nomes \
                      trocaram de lado; a ancora de IK e o osso inteligente NAO viajam (eles nomeiam \
@@ -90,10 +90,8 @@ impl crate::App {
         if pending_ik_remove {
             crate::skeleton_goal::remove(sim, osso, &mut self.preview_drive);
         }
-        if let Some(lado) = pending_ik_bend
-            && let Some(mut g) = sim.world_mut().get_mut::<ph2d_skeleton_ecs::IkGoal>(osso)
-        {
-            g.bend = lado;
+        if let Some(lado) = pending_ik_bend {
+            ph2d_constraints_ecs::com_ik(sim.world_mut(), osso, |_, g| g.bend = lado);
         }
         // ⭐⭐⭐⭐ **DE ONDE VÊM AS DUAS ALÇAS DE CURVATURA** (F8, 2026-09-16).
         //

@@ -10,7 +10,7 @@ use bevy_ecs::entity::Entity;
 use bevy_ecs::prelude::Resource;
 use bevy_ecs::world::World;
 use ph2d_constraints::{
-    Canais, ChildOf, CopyTransform, Distance, DistanceMode, Kind, Limit, LookAt, Space,
+    Canais, ChildOf, CopyTransform, Distance, DistanceMode, Ik, Kind, Limit, LookAt, Space,
 };
 use ph2d_constraints_ecs::Constraints;
 use ph2d_ecs::{GlobalTransform, Name, Transform, assign_missing_stable_ids, stable_id_of};
@@ -19,7 +19,7 @@ use ph2d_render::{DISC_TILE_KEY, Sprite, WHITE_TILE_KEY};
 /// O roteador desta família — o maior nível que [`encenar`] responde.
 pub const ROUTERS: &[ph2d_app_host::SmokeRouter] = &[ph2d_app_host::SmokeRouter {
     env: "PH2D_CONSTRAINT_SMOKE",
-    max_level: 3,
+    max_level: 4,
 }];
 
 /// O raio do olho da cena 2 e a folga da pupila dentro dele (o número que a sonda mede).
@@ -45,6 +45,7 @@ pub fn encenar(world: &mut World, nivel: u32) -> bool {
         1 => mao_e_espada(world),
         2 => olho(world),
         3 => ponteiros(world),
+        4 => braco(world),
         _ => return false,
     };
     world.insert_resource(Escolher(sujeito.to_bits()));
@@ -250,4 +251,71 @@ fn mao_e_espada(world: &mut World) -> Entity {
         &[(Kind::ChildOf(ChildOf::default()), Some(mao), 0.0)],
     );
     espada
+}
+
+/// Cena 4: o comprimento de cada osso do braço (metros).
+pub const OSSO: f32 = 2.0;
+/// Cena 4: onde a bola (o alvo da IK) e o ponteiro (o Rodador) nascem.
+pub const BOLA: [f32; 2] = [0.8, 1.6];
+pub const RODADOR: ([f32; 2], f32) = ([-3.0, -2.0], -60.0);
+
+fn osso(world: &mut World, nome: &str, cabeca: [f32; 2], rot_deg: f32, pai: Option<Entity>) -> Entity {
+    let mut t = Transform::IDENTITY;
+    t.translation.x = cabeca[0];
+    t.translation.y = cabeca[1];
+    t.rotation = rot_deg.to_radians();
+    let e = world
+        .spawn((
+            Name::new(nome),
+            t,
+            GlobalTransform::from_transform(t),
+            ph2d_skeleton_ecs::Bone {
+                length: f64::from(OSSO),
+                strength: 1.0,
+                ..Default::default()
+            },
+        ))
+        .id();
+    if let Some(p) = pai {
+        world.entity_mut(e).insert(ph2d_ecs::ChildOf(p));
+    }
+    e
+}
+
+/// A arte presa a um osso (filha dele, no espaço dele).
+fn arte(world: &mut World, osso: Entity, nome: &str, tile: u32, centro: [f32; 2], lado: [f32; 2], cor: [f32; 4]) {
+    let e = peca(world, nome, tile, centro, 0.0, lado, cor);
+    world.entity_mut(e).insert(ph2d_ecs::ChildOf(osso));
+}
+
+/// Cena 4 (plano §6): o braço de 2 ossos com a IK na mão e um Copy Rotation ABAIXO dela — a mão roda
+/// com o Rodador (no Blender o Copy Rotation some, `ik_com_copy_rotation_abaixo`). O sujeito é a mão.
+fn braco(world: &mut World) -> Entity {
+    let ombro = osso(world, "Ombro", [-2.0, -1.0], 20.0, None);
+    let antebraco = osso(world, "Antebraço", [OSSO, 0.0], 40.0, Some(ombro));
+    let pele = [0.95, 0.75, 0.6, 1.0];
+    arte(world, ombro, "Braço", WHITE_TILE_KEY, [OSSO / 2.0, 0.0], [OSSO, 0.35], pele);
+    arte(world, antebraco, "Antebraço (arte)", WHITE_TILE_KEY, [OSSO / 2.0, 0.0], [OSSO, 0.3], pele);
+    arte(world, antebraco, "Dedo", WHITE_TILE_KEY, [OSSO + 0.3, 0.0], [0.6, 0.12], [0.85, 0.6, 0.45, 1.0]);
+    let bola = peca(world, "Bola", DISC_TILE_KEY, BOLA, 0.0, [0.45, 0.45], [0.9, 0.15, 0.1, 1.0]);
+    let rodador = peca(
+        world,
+        "Rodador",
+        WHITE_TILE_KEY,
+        RODADOR.0,
+        RODADOR.1,
+        [1.4, 0.18],
+        [0.6, 0.6, 0.6, 1.0],
+    );
+    let copia = Kind::CopyTransform(CopyTransform {
+        canais: Canais::ROTATION,
+        space: Space::World,
+        ..CopyTransform::default()
+    });
+    pilha(
+        world,
+        antebraco,
+        &[(Kind::Ik(Ik::default()), Some(bola), 1.0), (copia, Some(rodador), 1.0)],
+    );
+    antebraco
 }

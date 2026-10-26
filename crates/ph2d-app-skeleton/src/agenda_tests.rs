@@ -36,7 +36,7 @@ fn braco_de_quatro() -> (SimWorld, [Entity; 4]) {
 fn two_anchors_on_one_chain_reach_a_fixed_point() {
     let (mut sim, [_, b1, _, b3]) = braco_de_quatro();
     // ⚠️⚠️ **A DE BAIXO NASCE PRIMEIRO, e isso é a metade que faz a fixtura discriminar.** Sem
-    // agenda a ordem é a dos ARQUÉTIPOS, que segue a ordem em que o `IkGoal` foi inserido — e com a
+    // agenda a ordem é a dos ARQUÉTIPOS, que segue a ordem em que a IK foi inserida — e com a
     // de cima primeiro o resultado calha ser BOM, porque o FABRIK preserva a pose que encontra.
     // *Uma fixtura cuja ordem arbitrária calha ser a certa não testa a ordem.*
     add(&mut sim, b3).expect("a ancora de baixo");
@@ -45,7 +45,7 @@ fn two_anchors_on_one_chain_reach_a_fixed_point() {
     // correntes são `[b0,b1]` e `[b2,b3]` — **disjuntas por acaso**, e a cena converge mesmo sem
     // agenda nenhuma. A 1.ª redacção deste gate passava sob a mutação por isso. *Uma fixtura que
     // não produz o fenómeno devolve verde sobre o defeito.*
-    sim.world_mut().get_mut::<IkGoal>(b3).expect("g").chain = 4;
+    com_ik(&mut sim, b3, |_, g| g.chain = 4);
     drag_anchor(&mut sim, b1, [6.0, 8.0]);
     drag_anchor(&mut sim, b3, [12.0, 22.0]);
     let mut pv = PreviewDrive::default();
@@ -94,78 +94,33 @@ fn two_anchors_on_one_chain_reach_a_fixed_point() {
     );
 }
 
-/// ⭐⭐ **AS CORRENTES SÃO DISJUNTAS** — um osso obedece a UMA âncora.
+/// ⭐⭐⭐ **A POSE NÃO DEPENDE DA ORDEM EM QUE AS ÂNCORAS FORAM CRIADAS** — a propriedade que a
+/// agenda antiga comprava (a ordem dos arquétipos não é estável entre sessões).
 ///
-/// A de baixo é a mais **específica** e reclama primeiro; a de cima fica com o que sobra. ⛔ Sem
-/// isto as duas escrevem a mesma rotação em sequência, todo quadro.
+/// ⚠️ Até à W2 isto media o PLANO da `schedule` (privada, apagada com o `goal::solve`); a pilha
+/// ordena pela hierarquia e desempata por bits do OSSO, e o gate mede agora o que o artista vê: as
+/// duas ordens de criação dão a mesma pose ao bit.
 #[test]
-fn a_bone_obeys_exactly_one_anchor() {
-    let (mut sim, [b0, b1, b2, b3]) = braco_de_quatro();
-    // A de cima pede 2 (b0,b1); a de baixo pede 4 (b0..b3) e, sendo mais funda, reclama primeiro.
-    add(&mut sim, b1).expect("cima");
-    add(&mut sim, b3).expect("baixo");
-    sim.world_mut().get_mut::<IkGoal>(b3).expect("g").chain = 4;
-    let plano = schedule(
-        &sim,
-        vec![
-            (b1, *sim.world().get::<IkGoal>(b1).expect("g")),
-            (b3, *sim.world().get::<IkGoal>(b3).expect("g")),
-        ],
-        false,
-    );
-    let mut vistos: Vec<Entity> = plano.iter().flat_map(|(_, _, c)| c.clone()).collect();
-    let n = vistos.len();
-    vistos.sort();
-    vistos.dedup();
-    assert_eq!(n, vistos.len(), "um osso apareceu em DUAS correntes");
-    // ⭐ A de CIMA reclama primeiro (é a mais rasa) e leva `[b0,b1]`; a de baixo fica com o que
-    // sobra ABAIXO dela. ⛔ Ao contrário, a funda levava a corrente inteira e a de cima ficava
-    // **inerte** — duas âncoras e uma delas sem efeito nenhum.
-    let de_cima = plano.iter().find(|(t, ..)| *t == b1).expect("cima");
-    assert_eq!(de_cima.2, vec![b0, b1], "a mais RASA reclama primeiro");
-    let de_baixo = plano.iter().find(|(t, ..)| *t == b3).expect("baixo");
-    assert_eq!(
-        de_baixo.2,
-        vec![b2, b3],
-        "a funda fica com o que sobra ABAIXO"
-    );
-}
-
-/// ⭐⭐⭐ **O PLANO NÃO DEPENDE DA ORDEM EM QUE AS ÂNCORAS SÃO ENCONTRADAS** — e é ESTA a propriedade
-/// que a agenda compra.
-///
-/// ⛔⛔ **É também a única que discrimina, e descobri-lo custou três fixturas.** As duas primeiras
-/// mediam *convergir* e *alcançar o alvo* — e a cena satisfaz as duas **mesmo sem agenda**, porque
-/// o FABRIK parte da pose que encontra e tende a **preservar** o trabalho da âncora anterior. ⇒ o
-/// defeito do report não é *«a cena não assenta»*: é *«ela assenta numa pose que depende da ordem
-/// dos ARQUÉTIPOS»*, e essa ordem não é estável entre sessões. *Uma fixtura cuja ordem arbitrária
-/// calha ser a certa não testa a ordem.*
-///
-/// ⚠️ O gate compara as **duas permutações** e exige o plano idêntico — a ordem de resolução **e** a
-/// corrente de cada uma. Sem agenda o plano **é** a ordem da entrada, e as duas permutações diferem
-/// por construção.
-#[test]
-fn the_plan_does_not_depend_on_the_order_the_anchors_are_found() {
-    let (mut sim, [b0, b1, b2, b3]) = braco_de_quatro();
-    add(&mut sim, b1).expect("cima");
-    add(&mut sim, b3).expect("baixo");
-    sim.world_mut().get_mut::<IkGoal>(b3).expect("g").chain = 4;
-    let par = |a: Entity, b: Entity| {
-        vec![
-            (a, *sim.world().get::<IkGoal>(a).expect("g")),
-            (b, *sim.world().get::<IkGoal>(b).expect("g")),
-        ]
+fn the_pose_does_not_depend_on_the_order_the_anchors_were_made() {
+    let pose = |primeiro_o_de_baixo: bool| {
+        let (mut sim, [_, b1, _, b3]) = braco_de_quatro();
+        let ordem = if primeiro_o_de_baixo { [b3, b1] } else { [b1, b3] };
+        for e in ordem {
+            add(&mut sim, e).expect("a ancora");
+        }
+        com_ik(&mut sim, b3, |_, g| g.chain = 4);
+        drag_anchor(&mut sim, b1, [6.0, 8.0]);
+        drag_anchor(&mut sim, b3, [12.0, 22.0]);
+        let mut pv = PreviewDrive::default();
+        for _ in 0..30 {
+            solve(&mut sim, &mut pv);
+        }
+        ph2d_skeleton_live::skin_live::bone_segments(&sim)
     };
-    let so_o_essencial = |p: Vec<(Entity, IkGoal, Vec<Entity>)>| {
-        p.into_iter().map(|(t, _, c)| (t, c)).collect::<Vec<_>>()
-    };
-    let numa = so_o_essencial(schedule(&sim, par(b1, b3), false));
-    let noutra = so_o_essencial(schedule(&sim, par(b3, b1), false));
     assert_eq!(
-        numa, noutra,
-        "o plano mudou com a ordem da entrada - a pose passa a depender do arquetipo, e ele nao e' \
-         estavel entre sessoes"
+        pose(true),
+        pose(false),
+        "a pose mudou com a ordem em que as ancoras nasceram - ela passa a depender do arquetipo, \
+         e ele nao e' estavel entre sessoes"
     );
-    // E o plano é o que a lei diz: a rasa primeiro, com o segmento dela; a funda com o resto.
-    assert_eq!(numa, vec![(b1, vec![b0, b1]), (b3, vec![b2, b3])]);
 }

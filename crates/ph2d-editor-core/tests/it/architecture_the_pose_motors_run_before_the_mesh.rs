@@ -69,7 +69,8 @@ fn the_canvas_half_does_not_drive_the_skeleton_a_second_time() {
         "{} deixou de recozinhar a pele vectorial — este gate perdeu o sujeito",
         f.display()
     );
-    for porta in ["skeleton_goal::solve(", "skeleton_smart::drive("] {
+    // A IK (o antigo `skeleton_goal::solve`) é um item da pilha desde a W2: a porta é o `quadro`.
+    for porta in ["ph2d_app_constraints::quadro(", "skeleton_smart::drive("] {
         assert!(
             !src.contains(porta),
             "{} chama `{porta}` outra vez: os motores de pose mudaram-se para a metade da SIMULAÇÃO \

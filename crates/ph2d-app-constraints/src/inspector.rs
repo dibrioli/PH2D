@@ -3,7 +3,9 @@
 
 use bevy_ecs::entity::Entity;
 use bevy_ecs::prelude::Resource;
-use ph2d_constraints::{Canais, ChildOf, CopyTransform, Distance, Kind, Limit, LookAt, Space};
+use ph2d_constraints::{
+    Canais, ChildOf, CopyTransform, Distance, FollowPath, Ik, Kind, Limit, LookAt, Space, StretchTo,
+};
 use ph2d_constraints_ecs::{Adotar, Constraints, Estado, Estados, bind_on_create, ordem};
 use ph2d_ecs::{Name, SimWorld, Transform, entity_with_stable_id, stable_id_of, world_transform};
 use ph2d_editor_core::constraint_edits::{
@@ -31,6 +33,9 @@ pub fn tipo_de(k: &Kind) -> u8 {
         Kind::LookAt(_) => 5,
         Kind::Limit(_) => 6,
         Kind::Distance(_) => 7,
+        Kind::Ik(_) => 8,
+        Kind::StretchTo(_) => 9,
+        Kind::FollowPath(_) => 10,
     }
 }
 
@@ -64,6 +69,13 @@ fn novo(sim: &SimWorld, e: Entity, i: u8) -> Option<Kind> {
             })
         }
         7 => Kind::Distance(Distance::default()),
+        // A IK nasce com o lado em que a corrente já dobra (como o «Add IK» do osso): ligar não vira o joelho.
+        8 => Kind::Ik(Ik {
+            bend: ph2d_skeleton_live::goal::side_for_chain(sim, e, Ik::default().chain),
+            ..Ik::default()
+        }),
+        9 => Kind::StretchTo(StretchTo::default()),
+        10 => Kind::FollowPath(FollowPath::default()),
         _ => return None,
     })
 }
@@ -78,6 +90,7 @@ fn estado(e: Estado) -> EstadoDaConstraint {
         Estado::Ciclo => EstadoDaConstraint::Ciclo,
         Estado::CorpoDinamico => EstadoDaConstraint::CorpoDinamico,
         Estado::EspacoColapsado => EstadoDaConstraint::EspacoColapsado,
+        Estado::NaoEOsso => EstadoDaConstraint::NaoEOsso,
     }
 }
 

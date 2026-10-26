@@ -401,7 +401,7 @@ fn dragging_the_ik_anchor_records_the_anchor() {
     let ponta = ph2d_skeleton_live::bone::create(&mut sim, Some(raiz), [1.0, 0.0], [2.0, 0.0])
         .map(Entity::from_bits)
         .expect("ponta");
-    let alvo = ph2d_skeleton_live::goal::add(&mut sim, ponta).expect("a ancora");
+    let alvo = ph2d_constraints_ecs::add_ik(&mut sim, ponta).expect("a ancora");
     let mut st = TimelineState::new();
     st.flags.auto_key = true;
     // ⚠️ **A aba KEYS é a de omissão do app**, e uma âncora de trajectória é geometria do CLIP: fora

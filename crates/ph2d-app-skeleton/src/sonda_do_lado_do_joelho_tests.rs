@@ -7,7 +7,12 @@
 
 use crate::goal::{braco, osso};
 use ph2d_ecs::{Name, Transform};
-use ph2d_skeleton_ecs::{BendSide, IkGoal};
+use ph2d_skeleton_ecs::BendSide;
+
+/// O item IK de `e`, se existe.
+fn tem_ik(sim: &ph2d_ecs::SimWorld, e: ph2d_ecs::Entity) -> bool {
+    ph2d_constraints_ecs::ik_de(sim.world(), e).is_some()
+}
 
 /// Monta o braço com âncora, põe o alvo onde o dono o arrastaria, e devolve a pose do cotovelo com
 /// o lado pedido.
@@ -18,11 +23,9 @@ fn cotovelo_com(lado: BendSide, alvo_em: [f32; 2]) -> [f32; 2] {
     if let Some(mut t) = sim.world_mut().get_mut::<Transform>(alvo) {
         t.translation = ph2d_core::Vec2::new(alvo_em[0], alvo_em[1]);
     }
-    if let Some(mut g) = sim.world_mut().get_mut::<IkGoal>(cotovelo) {
-        g.bend = lado;
-    }
+    ph2d_constraints_ecs::com_ik(sim.world_mut(), cotovelo, |_, g| g.bend = lado);
     let mut preview = ph2d_preview_drive::PreviewDrive::default();
-    crate::goal::solve(&mut sim, &mut preview);
+    ph2d_constraints_ecs::evaluate(&mut sim, &mut preview);
     // ⛔⛔ **A RÉGUA É A ROTAÇÃO, e a 1.ª redacção media a TRANSLAÇÃO** — o solver escreve ângulos, e
     // a translação de um osso filho é fixa (`(length, 0)` do pai). Ela lia `[10, 0]` nos três lados
     // e acusava o produto pelo report do dono. *Uma régua que mede o campo que a lei não escreve
@@ -48,25 +51,25 @@ fn trocar_o_lado_muda_a_pose_do_cotovelo() {
 
 /// ⚠️ **E a segunda metade do report: o osso que carrega a restrição é a PONTA.**
 ///
-/// ⛔ O chip escreve no `IkGoal` do **osso seleccionado**; se o artista escolher outro osso da
-/// corrente, o `get_mut` devolve `None` e **nada acontece, em silêncio** — que é indistinguível de
+/// ⛔ O chip escreve no item IK do **osso seleccionado**; se o artista escolher outro osso da
+/// corrente, o `com_ik` devolve `false` e **nada acontece, em silêncio** — que é indistinguível de
 /// um chip que não funciona.
 #[test]
 fn so_o_osso_da_ponta_carrega_a_restricao() {
     let (mut sim, [ombro, cotovelo]) = braco();
     crate::goal::add(&mut sim, cotovelo).expect("a ancora nasce na ponta");
     assert!(
-        sim.world().get::<IkGoal>(cotovelo).is_some(),
+        tem_ik(&sim, cotovelo),
         "a ponta nao ficou com a restricao"
     );
     assert!(
-        sim.world().get::<IkGoal>(ombro).is_none(),
+        !tem_ik(&sim, ombro),
         "o PAI tambem ficou com uma restricao: entao o chip funcionaria em qualquer osso, e o \\
          report do dono teria outra causa"
     );
     // ⚠️ E um osso solto da cena, pela mesma razão.
     let solto = osso(&mut sim, "Free", [50.0, 0.0], 10.0, None);
-    assert!(sim.world().get::<IkGoal>(solto).is_none());
+    assert!(!tem_ik(&sim, solto));
     let _ = Name::new("x");
 }
 
@@ -89,13 +92,13 @@ fn braco_em_s(chain: u32, lado: BendSide) -> Vec<f32> {
     }
     ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
     let alvo = crate::goal::add(&mut sim, c).expect("a ancora nasce na ponta");
-    if let Some(mut g) = sim.world_mut().get_mut::<IkGoal>(c) {
+    ph2d_constraints_ecs::com_ik(sim.world_mut(), c, |_, g| {
         g.bend = lado;
         g.chain = chain;
-    }
+    });
     let _ = alvo;
     let mut preview = ph2d_preview_drive::PreviewDrive::default();
-    crate::goal::solve(&mut sim, &mut preview);
+    ph2d_constraints_ecs::evaluate(&mut sim, &mut preview);
     [a, b, c]
         .into_iter()
         .map(|e| sim.world().get::<Transform>(e).map_or(0.0, |t| t.rotation))

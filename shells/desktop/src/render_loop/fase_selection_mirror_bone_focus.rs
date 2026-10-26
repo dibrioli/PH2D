@@ -205,9 +205,8 @@ impl crate::App {
 /// publicadores próprios. ⛔ Nunca por uma entrada nova no `FN_OVERAGE_OK`, que só desce.
 fn publica_a_ancora(sim: &ph2d_ecs::SimWorld, osso_em_foco: Option<u64>) {
     ph2d_panel_skeleton::set_current_bone_ik(osso_em_foco.and_then(|b| {
-        sim.world()
-            .get::<ph2d_skeleton_ecs::IkGoal>(ph2d_ecs::Entity::from_bits(b))
-            .map(|g| (g.mix, g.softness, f64::from(g.chain), g.bend))
+        ph2d_constraints_ecs::ik_de(sim.world(), ph2d_ecs::Entity::from_bits(b))
+            .map(|(_, it, g)| (it.influence, g.softness, f64::from(g.chain), g.bend))
     }));
     // ⭐⭐⭐ **ESTA ÂNCORA APONTA, E COM QUE DESVIO** — a wave do *Look At* (2026-09-19).
     //
@@ -219,10 +218,10 @@ fn publica_a_ancora(sim: &ph2d_ecs::SimWorld, osso_em_foco: Option<u64>) {
     // lado nenhum.
     ph2d_panel_skeleton::set_current_bone_aim(osso_em_foco.and_then(|b| {
         let e = ph2d_ecs::Entity::from_bits(b);
-        ph2d_skeleton_live::goal::aponta(sim, e)
-            .then(|| sim.world().get::<ph2d_skeleton_ecs::IkGoal>(e))
+        crate::skeleton_goal::aponta(sim, e)
+            .then(|| ph2d_constraints_ecs::ik_de(sim.world(), e))
             .flatten()
-            .map(|g| g.offset.to_degrees())
+            .map(|(_, _, g)| g.offset.to_degrees())
     }));
     // ⭐⭐⭐ **E QUE LADO O `Auto` ESTÁ A DERIVAR** (report do dono, 2026-09-18). A porta é a
     // MESMA que o solver usa (`goal::side_for_chain`) — uma segunda resposta a *«de que lado a
@@ -232,7 +231,7 @@ fn publica_a_ancora(sim: &ph2d_ecs::SimWorld, osso_em_foco: Option<u64>) {
     // forma do `set_current_bone_ik`, duas linhas acima.
     ph2d_panel_skeleton::set_current_bone_ik_auto_side(osso_em_foco.and_then(|b| {
         let e = ph2d_ecs::Entity::from_bits(b);
-        let g = sim.world().get::<ph2d_skeleton_ecs::IkGoal>(e)?;
+        let (_, _, g) = ph2d_constraints_ecs::ik_de(sim.world(), e)?;
         let lado = ph2d_skeleton_live::goal::side_for_chain(sim, e, g.chain);
         ph2d_skeleton::BendSide::ALL.iter().position(|s| *s == lado)
     }));

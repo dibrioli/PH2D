@@ -210,10 +210,10 @@ fn corre(p: &mut Palco, v: VerboDoOsso) {
     let [raiz, ponta] = p.ossos;
     match v {
         VerboDoOsso::Espelhar => {
-            ph2d_skeleton_live::espelho::espelha(&mut p.sim, &p.reg, raiz);
+            crate::espelho::espelha(&mut p.sim, &p.reg, raiz);
         }
         VerboDoOsso::Apontar => {
-            ph2d_skeleton_live::goal::add_look_at(&mut p.sim, ponta);
+            crate::goal::add_look_at(&mut p.sim, ponta);
         }
         VerboDoOsso::Prender => {
             ph2d_skeleton_live::skin_live::bind(

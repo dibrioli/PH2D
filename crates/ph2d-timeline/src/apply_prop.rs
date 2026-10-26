@@ -97,23 +97,24 @@ pub(crate) fn write_prop(
     // ⚠️ **A convenção é a do Spine** (`>= 0` ⇒ anti-horário) e o zero cai para o mesmo lado: o
     // empate tem um vencedor DECLARADO, que é o que um bit precisa.
     //
-    // ⛔ **Sem `IkGoal` não se escreve nada**, e a ausência é a resposta certa: uma track sobre um
+    // ⛔ **Sem item IK não se escreve nada**, e a ausência é a resposta certa: uma track sobre um
     // osso que perdeu a restrição não pode inventar uma — *é a mesma cerca que o braço do vector
     // acima tem, e pela mesma razão*.
     #[cfg(feature = "skeleton")]
     if let AnimValue::Float(f) = v
         && prop == PropKind::IkBendSide
-        && let Some(mut g) = world.get_mut::<ph2d_skeleton_ecs::IkGoal>(entity)
+        && ph2d_constraints_ecs::com_ik(world, entity, |_, ik| {
+            ik.bend = if f >= 0.0 {
+                ph2d_skeleton_ecs::BendSide::Ccw
+            } else {
+                ph2d_skeleton_ecs::BendSide::Cw
+            };
+        })
     {
-        g.bend = if f >= 0.0 {
-            ph2d_skeleton_ecs::BendSide::Ccw
-        } else {
-            ph2d_skeleton_ecs::BendSide::Cw
-        };
         return;
     }
     // ⭐ **O RELÓGIO DE UMA MACRO** (ADR-0186). ⛔ Sem `Macro` não se escreve: uma faixa sobre um
-    // objecto sem gravação não inventa um tempo que nenhum tocador lê — a cerca do `IkGoal` acima.
+    // objecto sem gravação não inventa um tempo que nenhum tocador lê — a cerca do item IK acima.
     // `MacroTempo` é runtime, como o `VecDrivenStyle` abaixo; a shell apaga-o antes de cada apply.
     if prop == PropKind::MacroTime {
         if let AnimValue::Float(f) = v
@@ -274,8 +275,8 @@ pub(crate) fn read_prop_kind(world: &World, entity: Entity, prop: PropKind) -> O
     // no documento um estado que a convenção do consumidor (`>= 0`) não sabe ler.
     #[cfg(feature = "skeleton")]
     if prop == PropKind::IkBendSide {
-        return world.get::<ph2d_skeleton_ecs::IkGoal>(entity).map(|g| {
-            if g.bend == ph2d_skeleton_ecs::BendSide::Cw {
+        return ph2d_constraints_ecs::ik_de(world, entity).map(|(_, _, ik)| {
+            if ik.bend == ph2d_skeleton_ecs::BendSide::Cw {
                 -1.0
             } else {
                 1.0

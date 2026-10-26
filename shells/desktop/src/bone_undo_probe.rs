@@ -10,7 +10,7 @@
 //! | medido | resultado |
 //! |---|---|
 //! | a fotografia do undo VÊ a âncora? | **sim** (`parts_that_differ` devolve `["world"]`) |
-//! | o restauro leva-a embora? | **sim** (alvo despawnado, `IkGoal` fora) |
+//! | o restauro leva-a embora? | **sim** (alvo despawnado, item IK fora) |
 //!
 //! ⇒ a máquina do snapshot está sã, e o que falta saber é se o **passo chega a nascer**. Isso
 //! nenhum teste responde: `post_frame_undo` vive na `App`, que segura uma surface de janela real.
@@ -220,9 +220,7 @@ impl crate::App {
         };
         let w = gfx.sim.world();
         (
-            w.iter_entities()
-                .filter(|e| e.contains::<ph2d_skeleton_ecs::IkGoal>())
-                .count(),
+            ph2d_constraints_ecs::iks(w).len(),
             w.iter_entities()
                 .filter(|e| e.contains::<ph2d_skeleton_ecs::IkTarget>())
                 .count(),
@@ -243,7 +241,7 @@ impl crate::App {
             .iter_entities()
             .find(|e| {
                 e.contains::<ph2d_skeleton_ecs::Bone>()
-                    && !e.contains::<ph2d_skeleton_ecs::IkGoal>()
+                    && ph2d_constraints_ecs::ik_de(gfx.sim.world(), e.id()).is_none()
             })
             .map(|e| e.id());
         match (alvo, gfx.hero_screen.as_mut()) {

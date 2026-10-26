@@ -191,28 +191,19 @@ fn a_curvatura_espelha_so_no_eixo_que_inverte() {
     );
 }
 
-/// ⛔⛔ **A ÂNCORA E O OSSO INTELIGENTE NÃO VIAJAM** — os dois nomeiam OUTROS objectos da cena.
+/// ⛔⛔ **O OSSO INTELIGENTE NÃO VIAJA** — ele nomeia OUTRO objecto da cena (a IK também não, e sai
+/// na porta que conhece a pilha: `ph2d_app_skeleton::espelho`, com o gate irmão lá).
 ///
-/// Copiá-los daria duas correntes a puxar o **mesmo losango**: o braço espelhado seguiria a mão do
-/// original, e nada na tela o explicaria.
+/// Copiá-lo daria dois controlos a percorrer a mesma acção, e nada na tela o explicaria.
 #[test]
-fn a_ancora_e_o_osso_inteligente_ficam_para_tras() {
+fn o_osso_inteligente_fica_para_tras() {
     let mut sim = SimWorld::default();
     let raiz = cadeia_dobrada(&mut sim);
-    let ponta = *ordem_da_arvore(&sim, raiz).last().expect("a ponta");
-    sim.world_mut()
-        .entity_mut(ponta)
-        .insert(ph2d_skeleton_ecs::IkGoal::default());
     sim.world_mut()
         .entity_mut(raiz)
         .insert(ph2d_skeleton_ecs::SmartBone::default());
     let copia = espelha(&mut sim, &registo(), raiz).expect("o espelho");
-    let novos = ordem_da_arvore(&sim, copia);
-    for e in &novos {
-        assert!(
-            sim.world().get::<ph2d_skeleton_ecs::IkGoal>(*e).is_none(),
-            "a copia trouxe a ancora: duas correntes a puxar o mesmo losango"
-        );
+    for e in &ordem_da_arvore(&sim, copia) {
         assert!(
             sim.world()
                 .get::<ph2d_skeleton_ecs::SmartBone>(*e)
@@ -220,16 +211,12 @@ fn a_ancora_e_o_osso_inteligente_ficam_para_tras() {
             "a copia trouxe o osso inteligente: dois controlos a percorrer a mesma accao"
         );
     }
-    // ⚠️ **O CONTROLO**: o original continua com os dois — o espelho tira-os da CÓPIA, não do rig.
+    // ⚠️ **O CONTROLO**: o original continua com ele — o espelho tira-o da CÓPIA, não do rig.
     assert!(
         sim.world()
-            .get::<ph2d_skeleton_ecs::IkGoal>(ponta)
-            .is_some()
-            && sim
-                .world()
-                .get::<ph2d_skeleton_ecs::SmartBone>(raiz)
-                .is_some(),
-        "o espelho tirou a ancora ou o controlo do ORIGINAL"
+            .get::<ph2d_skeleton_ecs::SmartBone>(raiz)
+            .is_some(),
+        "o espelho tirou o controlo do ORIGINAL"
     );
 }
 

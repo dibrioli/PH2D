@@ -34,10 +34,16 @@ fn duas_chaves_opostas_trocam_o_lado_do_joelho_no_tempo() {
             Transform::default(),
             Name::new("Cotovelo"),
             ph2d_skeleton_ecs::Bone::default(),
-            ph2d_skeleton_ecs::IkGoal::default(),
         ))
         .id()
         .to_bits();
+    ph2d_constraints_ecs::por_ik(
+        sim.world_mut(),
+        Entity::from_bits(e),
+        ph2d_ecs::StableId::NONE,
+        ph2d_constraints::Ik::default(),
+        1.0,
+    );
 
     let mut st = TimelineState::new();
     let doc = &mut st.doc;
@@ -53,9 +59,9 @@ fn duas_chaves_opostas_trocam_o_lado_do_joelho_no_tempo() {
     }
 
     let lado = |sim: &SimWorld| {
-        sim.world()
-            .get::<ph2d_skeleton_ecs::IkGoal>(Entity::from_bits(e))
+        ph2d_constraints_ecs::ik_de(sim.world(), Entity::from_bits(e))
             .expect("a restricao continua la'")
+            .2
             .bend
     };
 
@@ -64,7 +70,7 @@ fn duas_chaves_opostas_trocam_o_lado_do_joelho_no_tempo() {
         lado(&sim),
         ph2d_skeleton_ecs::BendSide::Ccw,
         "no instante 0 a chave vale +1 e o joelho tinha de estar do lado anti-horario: o canal \
-         nao chegou ao `IkGoal`, e uma track que nao escreve le-se como um joelho que nao obedece"
+         nao chegou ao item IK, e uma track que nao escreve le-se como um joelho que nao obedece"
     );
 
     apply_from_doc(sim.world_mut(), doc, 2.0);
@@ -121,7 +127,7 @@ fn o_canal_resolve_se_do_id_que_o_documento_grava() {
     );
 }
 
-/// ⛔⛔ **SEM `IkGoal` O CANAL NÃO INVENTA UMA RESTRIÇÃO** — a metade negativa, e ela é metade do
+/// ⛔⛔ **SEM ITEM IK O CANAL NÃO INVENTA UMA RESTRIÇÃO** — a metade negativa, e ela é metade do
 /// valor.
 ///
 /// ⚠️ Uma track sobre um osso que perdeu a âncora tem de ser **inerte**, não criar uma: *o
@@ -151,9 +157,7 @@ fn sem_restricao_o_canal_e_inerte() {
     );
     apply_from_doc(sim.world_mut(), doc, 0.0);
     assert!(
-        sim.world()
-            .get::<ph2d_skeleton_ecs::IkGoal>(Entity::from_bits(e))
-            .is_none(),
+        ph2d_constraints_ecs::ik_de(sim.world(), Entity::from_bits(e)).is_none(),
         "o canal CRIOU uma restricao de IK num osso que nao tinha nenhuma — o documento do \
          artista ganhou uma coisa que ele nao autorou"
     );

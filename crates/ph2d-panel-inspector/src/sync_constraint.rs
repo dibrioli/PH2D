@@ -57,6 +57,8 @@ pub(crate) fn no_ecra(u: Unidade, v: f32, p: &ProjectSettings) -> f64 {
             .display_unit
             .from_meters_f64(f64::from(v), p.pixels_per_meter),
         Unidade::Graus => p.display_angle.from_radians_f64(f64::from(v).to_radians()),
+        Unidade::Porcento => f64::from(v) * 100.0,
+        Unidade::Contagem => f64::from(v),
     }
 }
 
@@ -66,16 +68,19 @@ pub(crate) fn do_ecra(u: Unidade, v: f64, p: &ProjectSettings) -> f32 {
     match u {
         Unidade::Metros => p.display_unit.to_meters_f64(v, p.pixels_per_meter) as f32,
         Unidade::Graus => p.display_angle.to_radians_f64(v).to_degrees() as f32,
+        Unidade::Porcento => (v / 100.0) as f32,
+        Unidade::Contagem => v as f32,
     }
 }
 
-/// O sufixo e o passo do arrasto na unidade do ecrã: 1 px ou 0,01 m; um grau na unidade activa.
-pub(crate) fn unidade_e_passo(u: Unidade) -> (Unit, f64) {
+/// O sufixo e o passo do arrasto na unidade do ecrã: 1 px ou 0,01 m; um grau na unidade activa; 1 %;
+/// um osso (sem sufixo).
+pub(crate) fn unidade_e_passo(u: Unidade) -> (Option<Unit>, f64) {
     use ph2d_editor_core::project::{DisplayAngle, DisplayUnit};
     match u {
         Unidade::Metros => match crate::state::current_display_unit() {
-            DisplayUnit::Pixels => (Unit::Px, 1.0),
-            DisplayUnit::Meters => (Unit::Meters, 0.01), // LITERAL-PX-OK: passo em metros
+            DisplayUnit::Pixels => (Some(Unit::Px), 1.0),
+            DisplayUnit::Meters => (Some(Unit::Meters), 0.01), // LITERAL-PX-OK: passo em metros
         },
         Unidade::Graus => {
             let a = crate::state::current_display_angle();
@@ -83,7 +88,9 @@ pub(crate) fn unidade_e_passo(u: Unidade) -> (Unit, f64) {
                 DisplayAngle::Degrees => Unit::Degrees,
                 DisplayAngle::Radians => Unit::Radians,
             };
-            (unit, f64::from(a.from_radians(1.0_f32.to_radians())))
+            (Some(unit), f64::from(a.from_radians(1.0_f32.to_radians())))
         }
+        Unidade::Porcento => (Some(Unit::Percent), 1.0),
+        Unidade::Contagem => (None, 1.0),
     }
 }

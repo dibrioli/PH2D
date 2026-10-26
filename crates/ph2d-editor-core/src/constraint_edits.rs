@@ -5,7 +5,7 @@
 
 /// As entradas do menu **+**, na ordem em que aparecem: a chave `ph2d-i18n` do rótulo. O índice é o
 /// que [`ConstraintFieldEdit::Adicionar`] leva e o que [`InspectorConstraintRow::tipo`] diz.
-pub const TIPOS: [&str; 8] = [
+pub const TIPOS: [&str; 11] = [
     "panel.inspector.constraint.child_of",
     "panel.inspector.constraint.copy_location",
     "panel.inspector.constraint.copy_rotation",
@@ -14,6 +14,9 @@ pub const TIPOS: [&str; 8] = [
     "panel.inspector.constraint.look_at",
     "panel.inspector.constraint.limit_rotation",
     "panel.inspector.constraint.limit_distance",
+    "panel.inspector.constraint.ik",
+    "panel.inspector.constraint.stretch_to",
+    "panel.inspector.constraint.follow_path",
 ];
 
 /// Quantas linhas o cartão pinta e edita — o tamanho das tabelas de ids do painel
@@ -22,10 +25,11 @@ pub const TIPOS: [&str; 8] = [
 pub const MAX_LINHAS: usize = 32;
 
 /// Quantos números, escolhas e opções por escolha um item mostra debaixo da força — o tamanho das
-/// tabelas de ids do painel; o tipo mais largo (Limit Rotation: Min, Max e o espaço) cabe.
+/// tabelas de ids do painel; o tipo mais largo cabe (Limit Rotation: Min, Max e o espaço; IK: o lado
+/// da dobra tem quatro opções).
 pub const MAX_NUMEROS: usize = 2;
 pub const MAX_ESCOLHAS: usize = 2;
-pub const MAX_OPCOES: usize = 3;
+pub const MAX_OPCOES: usize = 4;
 
 /// A unidade em que um número do cartão se lê, se escreve e se anima.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -34,6 +38,10 @@ pub enum Unidade {
     /// A unidade do mundo (a da lâmpada da Luz 2D) — o `Transform` guarda-a; o cartão do
     /// Transform é que a mostra em px.
     Metros,
+    /// Uma fracção `0..=1`, mostrada em %.
+    Porcento,
+    /// Uma contagem (ossos da corrente), sem sufixo.
+    Contagem,
 }
 
 /// Um número de um tipo (Min, Max, Distance, Offset). `campo` = o canal dele
@@ -68,6 +76,7 @@ pub enum EstadoDaConstraint {
     Ciclo,
     CorpoDinamico,
     EspacoColapsado,
+    NaoEOsso,
 }
 
 impl EstadoDaConstraint {
@@ -84,6 +93,7 @@ impl EstadoDaConstraint {
             Self::Ciclo => "panel.inspector.constraint.state.cycle",
             Self::CorpoDinamico => "panel.inspector.constraint.state.dynamic_body",
             Self::EspacoColapsado => "panel.inspector.constraint.state.collapsed",
+            Self::NaoEOsso => "panel.inspector.constraint.state.not_a_bone",
         })
     }
 

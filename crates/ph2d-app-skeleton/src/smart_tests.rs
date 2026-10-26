@@ -505,7 +505,7 @@ fn removing_one_control_does_not_release_what_another_engine_drives() {
 /// gate as enumerar do lado do produto.
 #[test]
 fn a_control_governed_by_an_anchor_is_found_in_any_order() {
-    use ph2d_skeleton_ecs::{Bone, IkGoal};
+    use ph2d_skeleton_ecs::Bone;
     // Uma corrente de dois ossos: a raiz e a ponta (que leva a âncora).
     let mut sim = SimWorld::default();
     let raiz = sim
@@ -549,10 +549,11 @@ fn a_control_governed_by_an_anchor_is_found_in_any_order() {
         governed_controls(&sim).is_empty(),
         "sem ancora nenhuma, o controlo e' livre"
     );
-    sim.world_mut().entity_mut(ponta).insert(IkGoal {
+    let ik = ph2d_constraints::Ik {
         chain: 2,
-        ..IkGoal::default()
-    });
+        ..ph2d_constraints::Ik::default()
+    };
+    ph2d_constraints_ecs::por_ik(sim.world_mut(), ponta, ph2d_ecs::StableId::NONE, ik, 1.0);
     assert_eq!(
         governed_controls(&sim),
         vec![raiz],
@@ -561,16 +562,12 @@ fn a_control_governed_by_an_anchor_is_found_in_any_order() {
     );
 
     // ORDEM B — o `Chain` encolhe e o controlo volta a ser livre; alargar torna-o mudo outra vez.
-    if let Some(mut g) = sim.world_mut().get_mut::<IkGoal>(ponta) {
-        g.chain = 1;
-    }
+    ph2d_constraints_ecs::com_ik(sim.world_mut(), ponta, |_, g| g.chain = 1);
     assert!(
         governed_controls(&sim).is_empty(),
         "com a corrente a parar na ponta, a raiz volta a ser autorada"
     );
-    if let Some(mut g) = sim.world_mut().get_mut::<IkGoal>(ponta) {
-        g.chain = 2;
-    }
+    ph2d_constraints_ecs::com_ik(sim.world_mut(), ponta, |_, g| g.chain = 2);
     assert_eq!(
         governed_controls(&sim),
         vec![raiz],

@@ -141,12 +141,12 @@ pub(crate) fn sample_prop_value<'a>(
         }
         // ⭐ **O LADO DA DOBRA** — a convenção do Spine (`>= 0` ⇒ anti-horário).
         //
-        // ⚠️ **Sem `IkGoal` a amostra é `None` e a tecla `K` recusa**, que é a resposta certa: uma
+        // ⚠️ **Sem item IK a amostra é `None` e a tecla `K` recusa**, que é a resposta certa: uma
         // chave sobre um osso sem restrição gravaria um lado que ninguém resolve. *Uma captura que
         // grava um valor plausível sobre um facto ausente é pior que uma recusa* — a lei que as
         // quatro alças já pagaram com um report do dono, duas linhas acima.
         PropKind::IkBendSide => Float(
-            if world.get::<ph2d_skeleton_ecs::IkGoal>(e)?.bend == ph2d_skeleton_ecs::BendSide::Cw {
+            if ph2d_constraints_ecs::ik_de(world, e)?.2.bend == ph2d_skeleton_ecs::BendSide::Cw {
                 -1.0
             } else {
                 1.0

@@ -22,7 +22,7 @@ pub const LIMITE_MIN: u16 = 3;
 pub const LIMITE_MAX: u16 = 4;
 /// Limit Distance: a distância ao alvo, em metros (a unidade do mundo).
 pub const DISTANCIA: u16 = 5;
-/// Look At: o desvio do eixo, em graus.
+/// Look At, IK de um osso e Follow Path: o desvio do eixo, em graus.
 pub const DESVIO: u16 = 6;
 /// Limit Distance: Inside · Outside · Surface ([`MODOS`]).
 pub const MODO: u16 = 7;
@@ -30,6 +30,24 @@ pub const MODO: u16 = 7;
 pub const ESPACO: u16 = 8;
 /// Copy: Replace · Add ([`MISTURAS`]).
 pub const MISTURA: u16 = 9;
+/// IK: quantos ossos (0 = até à raiz).
+pub const CORRENTE: u16 = 10;
+/// IK: a suavidade, fracção do alcance.
+pub const SUAVIDADE: u16 = 11;
+/// IK: de que lado o joelho dobra ([`DOBRAS`]).
+pub const DOBRA: u16 = 12;
+/// IK: esticar além do alcance ([`NAO_SIM`]).
+pub const ESTICA: u16 = 13;
+/// Stretch To: o comprimento de repouso, em metros.
+pub const REPOUSO: u16 = 14;
+/// Stretch To: a largura ao esticar ([`VOLUMES`]).
+pub const VOLUME: u16 = 15;
+/// Follow Path: onde no caminho (fracção ou metros, conforme [`POR`]).
+pub const POSICAO: u16 = 16;
+/// Follow Path: a posição em fracção ou em distância ([`PORES`]).
+pub const POR: u16 = 17;
+/// Follow Path: rodar para a tangente ([`NAO_SIM`]).
+pub const SEGUE: u16 = 18;
 
 /// As palavras de [`MODO`], pelo índice.
 pub const MODOS: &[&str] = &[
@@ -48,9 +66,33 @@ pub const MISTURAS: &[&str] = &[
     "panel.inspector.constraint.mix.add",
 ];
 
+/// As palavras de [`DOBRA`], pelo índice (`BendSide`: Keep · Ccw · Cw · Mixed).
+pub const DOBRAS: &[&str] = &[
+    "panel.inspector.constraint.bend.auto",
+    "panel.inspector.constraint.bend.ccw",
+    "panel.inspector.constraint.bend.cw",
+    "panel.inspector.constraint.bend.mixed",
+];
+/// As palavras de [`ESTICA`] e [`SEGUE`].
+pub const NAO_SIM: &[&str] = &[
+    "panel.inspector.constraint.no",
+    "panel.inspector.constraint.yes",
+];
+/// As palavras de [`VOLUME`] (`Volume`: Xz · Area · Nenhum).
+pub const VOLUMES: &[&str] = &[
+    "panel.inspector.constraint.volume.xz",
+    "panel.inspector.constraint.volume.area",
+    "panel.inspector.constraint.volume.none",
+];
+/// As palavras de [`POR`] (`PathBy`: Fraction · Distance).
+pub const PORES: &[&str] = &[
+    "panel.inspector.constraint.by.fraction",
+    "panel.inspector.constraint.by.distance",
+];
 /// Os campos de um item, na ordem do cartão (o tipo diz quais tem).
-pub const CAMPOS: [u16; 9] = [
-    FORCA, LIGADA, LIMITE_MIN, LIMITE_MAX, DISTANCIA, DESVIO, MODO, ESPACO, MISTURA,
+pub const CAMPOS: [u16; 18] = [
+    FORCA, LIGADA, LIMITE_MIN, LIMITE_MAX, DISTANCIA, DESVIO, MODO, ESPACO, MISTURA, CORRENTE,
+    SUAVIDADE, DOBRA, ESTICA, REPOUSO, VOLUME, POSICAO, POR, SEGUE,
 ];
 
 /// A chave do campo `campo` do item `item`.
@@ -88,6 +130,15 @@ pub fn info(campo: u16) -> Option<CampoInfo> {
         MODO => c("canal.constraint.modo", campo, Especie::Opcoes(MODOS)),
         ESPACO => c("canal.constraint.espaco", campo, Especie::Opcoes(ESPACOS)),
         MISTURA => c("canal.constraint.mistura", campo, Especie::Opcoes(MISTURAS)),
+        CORRENTE => c("canal.constraint.corrente", campo, Especie::Continuo),
+        SUAVIDADE => c("canal.constraint.suavidade", campo, Especie::Continuo),
+        DOBRA => c("canal.constraint.dobra", campo, Especie::Opcoes(DOBRAS)),
+        ESTICA => c("canal.constraint.estica", campo, Especie::Opcoes(NAO_SIM)),
+        REPOUSO => c("canal.constraint.repouso", campo, Especie::Continuo),
+        VOLUME => c("canal.constraint.volume", campo, Especie::Opcoes(VOLUMES)),
+        POSICAO => c("canal.constraint.posicao", campo, Especie::Continuo),
+        POR => c("canal.constraint.por", campo, Especie::Opcoes(PORES)),
+        SEGUE => c("canal.constraint.segue", campo, Especie::Opcoes(NAO_SIM)),
         _ => return None,
     })
 }

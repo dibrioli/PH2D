@@ -36,7 +36,7 @@ impl crate::App {
         };
         let sim = &mut gfx.sim;
         crate::skeleton_smart::drive(sim, &self.timeline.doc, &mut self.preview_drive);
-        ph2d_app_constraints::quadro(sim, &mut self.preview_drive);
+        ph2d_app_constraints::quadro(sim, &gfx.vec_scene, &mut self.preview_drive);
         // A cena de smoke das constraints abre com o sujeito escolhido e o Inspector à vista.
         if let Some(b) = ph2d_app_constraints::smoke::escolhido(sim.world_mut())
             && let Some(hero) = gfx.hero_screen.as_mut()

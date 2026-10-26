@@ -2,11 +2,12 @@
 //! escrevem», nas unidades do cartão (graus, metros, índice da opção). O cartão ([`crate::inspector`]), o
 //! losango ([`crate::marcas`]) e a curva ([`crate::canais`]) passam todos por aqui.
 
-use ph2d_constraints::{ChildOf, DistanceMode, Kind, Mix, Pose2, Space};
+use ph2d_constraints::{BendSide, ChildOf, DistanceMode, Kind, Mix, PathBy, Pose2, Space, Volume};
 use ph2d_constraints_ecs::Item;
 use ph2d_ecs::canal_constraint::{
-    DESVIO, DISTANCIA, ESPACO, ESPACOS, FORCA, LIGADA, LIMITE_MAX, LIMITE_MIN, MISTURA, MISTURAS,
-    MODO, MODOS,
+    CORRENTE, DESVIO, DISTANCIA, DOBRA, DOBRAS, ESPACO, ESPACOS, ESTICA, FORCA, LIGADA, LIMITE_MAX,
+    LIMITE_MIN, MISTURA, MISTURAS, MODO, MODOS, NAO_SIM, POR, PORES, POSICAO, REPOUSO, SEGUE,
+    SUAVIDADE, VOLUME, VOLUMES,
 };
 use ph2d_editor_core::constraint_edits::{
     AjusteEscolha, AjusteNumero, MAX_ESCOLHAS, MAX_NUMEROS, Unidade,
@@ -19,6 +20,11 @@ pub fn numeros(k: &Kind) -> &'static [u16] {
         Kind::Limit(l) if l.rot.is_some() => &[LIMITE_MIN, LIMITE_MAX],
         Kind::Distance(_) => &[DISTANCIA],
         Kind::LookAt(_) => &[DESVIO],
+        // Com UM osso a IK aponta: o desvio vale e a suavidade não.
+        Kind::Ik(ik) if ik.chain == 1 => &[CORRENTE, DESVIO],
+        Kind::Ik(_) => &[CORRENTE, SUAVIDADE],
+        Kind::StretchTo(_) => &[REPOUSO],
+        Kind::FollowPath(_) => &[POSICAO, DESVIO],
         _ => &[],
     }
 }
@@ -30,6 +36,9 @@ pub fn escolhas(k: &Kind) -> &'static [u16] {
         Kind::Distance(_) => &[MODO],
         Kind::CopyTransform(_) => &[MISTURA, ESPACO],
         Kind::Limit(_) => &[ESPACO],
+        Kind::Ik(_) => &[DOBRA, ESTICA],
+        Kind::StretchTo(_) => &[VOLUME],
+        Kind::FollowPath(_) => &[POR, SEGUE],
         _ => &[],
     }
 }
@@ -48,6 +57,15 @@ fn rotulo(campo: u16) -> &'static str {
         DESVIO => "panel.inspector.constraint.offset",
         MODO => "panel.inspector.constraint.mode",
         ESPACO => "panel.inspector.constraint.space",
+        CORRENTE => "panel.inspector.constraint.chain",
+        SUAVIDADE => "panel.inspector.constraint.softness",
+        DOBRA => "panel.inspector.constraint.bend",
+        ESTICA => "panel.inspector.constraint.stretch",
+        REPOUSO => "panel.inspector.constraint.rest_length",
+        VOLUME => "panel.inspector.constraint.volume",
+        POSICAO => "panel.inspector.constraint.position",
+        POR => "panel.inspector.constraint.by",
+        SEGUE => "panel.inspector.constraint.follow_curve",
         _ => "panel.inspector.constraint.mix",
     }
 }
@@ -56,7 +74,23 @@ fn opcoes(campo: u16) -> &'static [&'static str] {
     match campo {
         MODO => MODOS,
         ESPACO => ESPACOS,
+        DOBRA => DOBRAS,
+        ESTICA | SEGUE => NAO_SIM,
+        VOLUME => VOLUMES,
+        POR => PORES,
         _ => MISTURAS,
+    }
+}
+
+/// A unidade do número `campo` do tipo `k` (a posição do Follow Path segue o «By»).
+fn unidade(k: &Kind, campo: u16) -> Unidade {
+    match (k, campo) {
+        (_, DISTANCIA | REPOUSO) => Unidade::Metros,
+        (_, SUAVIDADE) => Unidade::Porcento,
+        (_, CORRENTE) => Unidade::Contagem,
+        (Kind::FollowPath(f), POSICAO) if f.by == PathBy::Fraction => Unidade::Porcento,
+        (_, POSICAO) => Unidade::Metros,
+        _ => Unidade::Graus,
     }
 }
 
@@ -71,11 +105,7 @@ pub fn ajustes(k: &Kind) -> (Vec<AjusteNumero>, Vec<AjusteEscolha>) {
                 campo,
                 rotulo: rotulo(campo),
                 valor: ler(k, campo)?,
-                unidade: if campo == DISTANCIA {
-                    Unidade::Metros
-                } else {
-                    Unidade::Graus
-                },
+                unidade: unidade(k, campo),
             })
         })
         .collect();
@@ -130,8 +160,32 @@ pub fn ler(k: &Kind, campo: u16) -> Option<f32> {
             Mix::Replace => 0.0,
             Mix::Add => 1.0,
         },
+        (Kind::Ik(ik), CORRENTE) => ik.chain as f32,
+        (Kind::Ik(ik), SUAVIDADE) => ik.softness as f32,
+        (Kind::Ik(ik), DOBRA) => indice(&BendSide::ALL, &ik.bend),
+        (Kind::Ik(ik), ESTICA) => sim(ik.stretch),
+        (Kind::Ik(ik), DESVIO) => graus(ik.offset),
+        (Kind::StretchTo(st), REPOUSO) => st.rest as f32,
+        (Kind::StretchTo(st), VOLUME) => indice(&VOLUMES_DO_TIPO, &st.volume),
+        (Kind::FollowPath(f), POSICAO) => f.value as f32,
+        (Kind::FollowPath(f), POR) => indice(&PORES_DO_TIPO, &f.by),
+        (Kind::FollowPath(f), SEGUE) => sim(f.follow),
+        (Kind::FollowPath(f), DESVIO) => graus(f.offset),
         _ => return None,
     })
+}
+
+/// As opções do tipo pela ordem das palavras ([`VOLUMES`], [`PORES`]).
+const VOLUMES_DO_TIPO: [Volume; 3] = [Volume::Xz, Volume::Area, Volume::Nenhum];
+const PORES_DO_TIPO: [PathBy; 2] = [PathBy::Fraction, PathBy::Distance];
+
+#[expect(clippy::cast_precision_loss, reason = "um índice pequeno")]
+fn indice<T: PartialEq>(todas: &[T], v: &T) -> f32 {
+    todas.iter().position(|x| x == v).unwrap_or(0) as f32
+}
+
+fn sim(b: bool) -> f32 {
+    if b { 1.0 } else { 0.0 }
 }
 
 /// Escreve um campo do TIPO; `true` se mudou. O Min nunca passa do Max (e vice-versa: uma faixa
@@ -174,6 +228,18 @@ pub fn escrever(k: &mut Kind, campo: u16, v: f32) -> bool {
         (Kind::LookAt(l), DESVIO) => l.offset = rad,
         (Kind::CopyTransform(c), ESPACO) => c.space = space(opcao(2)),
         (Kind::CopyTransform(c), MISTURA) => c.mix = [Mix::Replace, Mix::Add][opcao(2)],
+        #[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss, reason = "≥ 0, arredondado")]
+        (Kind::Ik(ik), CORRENTE) => ik.chain = v.round().max(0.0) as u32,
+        (Kind::Ik(ik), SUAVIDADE) => ik.softness = f64::from(v.clamp(0.0, 1.0)),
+        (Kind::Ik(ik), DOBRA) => ik.bend = BendSide::ALL[opcao(BendSide::ALL.len())],
+        (Kind::Ik(ik), ESTICA) => ik.stretch = opcao(2) == 1,
+        (Kind::Ik(ik), DESVIO) => ik.offset = rad,
+        (Kind::StretchTo(st), REPOUSO) => st.rest = f64::from(v.max(0.0)),
+        (Kind::StretchTo(st), VOLUME) => st.volume = VOLUMES_DO_TIPO[opcao(3)],
+        (Kind::FollowPath(f), POSICAO) => f.value = f64::from(v),
+        (Kind::FollowPath(f), POR) => f.by = PORES_DO_TIPO[opcao(2)],
+        (Kind::FollowPath(f), SEGUE) => f.follow = opcao(2) == 1,
+        (Kind::FollowPath(f), DESVIO) => f.offset = rad,
         _ => return false,
     }
     *k != antes
@@ -230,6 +296,17 @@ pub fn chave_no_item(k: &Kind, campo: u16) -> Option<&'static str> {
         (Kind::LookAt(_), DESVIO) => "kind/LookAt/offset",
         (Kind::CopyTransform(_), ESPACO) => "kind/CopyTransform/space",
         (Kind::CopyTransform(_), MISTURA) => "kind/CopyTransform/mix",
+        (Kind::Ik(_), CORRENTE) => "kind/Ik/chain",
+        (Kind::Ik(_), SUAVIDADE) => "kind/Ik/softness",
+        (Kind::Ik(_), DOBRA) => "kind/Ik/bend",
+        (Kind::Ik(_), ESTICA) => "kind/Ik/stretch",
+        (Kind::Ik(_), DESVIO) => "kind/Ik/offset",
+        (Kind::StretchTo(_), REPOUSO) => "kind/StretchTo/rest",
+        (Kind::StretchTo(_), VOLUME) => "kind/StretchTo/volume",
+        (Kind::FollowPath(_), POSICAO) => "kind/FollowPath/value",
+        (Kind::FollowPath(_), POR) => "kind/FollowPath/by",
+        (Kind::FollowPath(_), SEGUE) => "kind/FollowPath/follow",
+        (Kind::FollowPath(_), DESVIO) => "kind/FollowPath/offset",
         _ => return None,
     })
 }

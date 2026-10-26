@@ -160,7 +160,7 @@ pub enum PropKind {
     /// A alça da PONTA, no eixo Y — `Bone::curve.out[1]`. Irmã da [`PropKind::BoneBendOutX`].
     BoneBendOutY = 16,
     /// ⭐⭐⭐ **DE QUE LADO O JOELHO DOBRA, ANIMÁVEL** — o `bendDirection` do Spine
-    /// (`ph2d_skeleton_ecs::IkGoal::bend`), pedido do dono em 2026-09-18.
+    /// (o `bend` do item IK da pilha, `ph2d_constraints_ecs::ik_de`), pedido do dono em 2026-09-18.
     ///
     /// ⛔⛔⛔ **E é um NÚMERO, não um alvo arrastável — há recusa MEDIDA e ela fica de pé.** Em 3D o
     /// triângulo raiz–cotovelo–ponta roda em torno do eixo raiz→ponta, e é esse grau de liberdade
@@ -465,7 +465,7 @@ impl PropKind {
             | PropKind::BoneBendInY
             | PropKind::BoneBendOutX
             | PropKind::BoneBendOutY
-            // ⭐ E o LADO DA DOBRA mora no `IkGoal` da entidade-OSSO da ponta — mesmo resolver.
+            // ⭐ E o LADO DA DOBRA mora no item IK da entidade-OSSO da ponta — mesmo resolver.
             | PropKind::IkBendSide
             // O relógio da macro mora no `MacroTempo` da entidade dona — `crate::apply_prop`.
             | PropKind::MacroTime

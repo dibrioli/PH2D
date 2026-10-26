@@ -16,6 +16,9 @@ authors.workspace = true
 ph2d-app-host = { path = "../ph2d-app-host" }
 ph2d-constraints = { path = "../ph2d-constraints" }
 ph2d-constraints-ecs = { path = "../ph2d-constraints-ecs" }
+ph2d-skeleton-live = { path = "../ph2d-skeleton-live" }
+ph2d-skeleton-ecs = { path = "../ph2d-skeleton-ecs" }
+ph2d-vec-scene = { path = "../ph2d-vec-scene" }
 ph2d-ecs = { path = "../ph2d-ecs" }
 # O vocabulário do cartão (`constraint_edits`).
 ph2d-editor-core = { path = "../ph2d-editor-core" }

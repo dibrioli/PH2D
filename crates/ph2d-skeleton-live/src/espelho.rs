@@ -37,6 +37,8 @@
 //! profunda já aplica aos documentos possuídos.
 //!
 //! ⇒ os dois são **retirados** das cópias, e o artista carrega em *Add IK* / *Look At* no ramo novo.
+//! ⚠️ Esta crate não conhece a pilha de constraints: o osso inteligente sai aqui, o item IK sai no
+//! `ph2d_app_skeleton::espelho::espelha`, que é a porta que o verbo chama.
 
 use ph2d_ecs::{ChildOf, Entity, Name, SimWorld, Transform, scene::ComponentRegistry};
 use ph2d_skeleton_ecs::{Bone, BoneLimit, BoneRest};
@@ -146,11 +148,8 @@ pub fn espelha(sim: &mut SimWorld, registry: &ComponentRegistry, osso: Entity) -
         espelha_o_conteudo(sim, nova);
         remapeia_a_ponta_da_curva(sim, nova, &copia.stable_ids);
         renomeia(sim, nova);
-        // ⛔ **A âncora e o osso inteligente NÃO viajam** — ver o cabeçalho: os dois nomeiam outros
-        // objectos da cena, e duas correntes a puxar o mesmo losango é o defeito que isto evita.
-        sim.world_mut()
-            .entity_mut(nova)
-            .remove::<ph2d_skeleton_ecs::IkGoal>();
+        // ⛔ **O osso inteligente NÃO viaja** — ver o cabeçalho (o item IK tira-o quem conhece a
+        // pilha: `ph2d_app_skeleton::espelho::espelha`).
         sim.world_mut()
             .entity_mut(nova)
             .remove::<ph2d_skeleton_ecs::SmartBone>();

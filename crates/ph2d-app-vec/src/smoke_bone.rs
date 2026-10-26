@@ -555,7 +555,7 @@ pub fn bind(
         .first()
         .and_then(|(_, raiz)| *raiz)
         .map(|raiz| ponta_da_cadeia(sim, raiz))
-        .and_then(|ponta| ph2d_skeleton_live::goal::add(sim, ponta))
+        .and_then(|ponta| ph2d_constraints_ecs::add_ik(sim, ponta))
         .is_some();
     // ⚠️ O lado CAPTURADO sai no log: sem esta linha, um `Auto` capturado por engano (a cena a
     // montar-se recta) lê-se exactamente como a cura a funcionar — até o dono arrastar.
@@ -563,8 +563,8 @@ pub fn bind(
         .first()
         .and_then(|(_, raiz)| *raiz)
         .map(|raiz| ponta_da_cadeia(sim, raiz))
-        .and_then(|ponta| sim.world().get::<ph2d_skeleton_ecs::IkGoal>(ponta))
-        .map_or(ph2d_skeleton::BendSide::Keep, |g| g.bend);
+        .and_then(|ponta| ph2d_constraints_ecs::ik_de(sim.world(), ponta))
+        .map_or(ph2d_skeleton::BendSide::Keep, |(_, _, ik)| ik.bend);
     // ⭐⭐⭐ **A ACÇÃO PRONTA**, para o osso inteligente ter o que percorrer sem o artista ter de
     // gravar uma animação primeiro. A folha roxa sobe ao longo dela.
     //

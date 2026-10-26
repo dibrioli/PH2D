@@ -165,6 +165,8 @@ pub mod arclen {
 /// partilhada pelo Zig Zag e por quem vier (o `arclen` já nomeava a fila: Trim, Repeater, Pattern
 /// Along Path, texto em caminho).
 pub mod arc_path;
+mod world_polyline;
+pub use world_polyline::world_polyline;
 
 /// **O referencial de um glifo que cavalga um caminho** ([`text_path::GlyphFrame`]) — o motor do
 /// texto em caminho. Consome o [`arc_path`] e **não sabe o que é um glifo**: quem conhece fonte,

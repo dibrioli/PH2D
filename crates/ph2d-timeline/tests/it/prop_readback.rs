@@ -391,13 +391,17 @@ fn reading_a_property_back_is_the_inverse_of_writing_it() {
         sim.world_mut()
             .entity_mut(Entity::from_bits(e))
             .insert(ph2d_skeleton_ecs::Bone::default());
-        // Idem para o lado da dobra: sem um `IkGoal` na entidade o braço novo nem escreve nem lê —
+        // Idem para o lado da dobra: sem um item IK na entidade o braço novo nem escreve nem lê —
         // a QUARTA vez que esta mesma linha é escrita, e sempre pela mesma razão. *Uma sonda que
         // não contém o fenómeno acusa o produto por um buraco da fixtura.*
         #[cfg(feature = "skeleton")]
-        sim.world_mut()
-            .entity_mut(Entity::from_bits(e))
-            .insert(ph2d_skeleton_ecs::IkGoal::default());
+        ph2d_constraints_ecs::por_ik(
+            sim.world_mut(),
+            Entity::from_bits(e),
+            ph2d_ecs::StableId::NONE,
+            ph2d_constraints::Ik::default(),
+            1.0,
+        );
         // E o relógio da macro: sem `Macro` na entidade o braço nem escreve nem lê.
         sim.world_mut()
             .entity_mut(Entity::from_bits(e))

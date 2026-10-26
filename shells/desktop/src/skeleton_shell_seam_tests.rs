@@ -16,8 +16,13 @@
 // dependência, logo cada nome é nomeado pelo sítio onde ele de facto vive — e a fixtura `braco`
 // atravessa pela feature `test-support` (HOWTO §2.5).
 use ph2d_app_skeleton::goal::{
-    add, anchors, braco, drag_anchor, governed, osso, remove, solve, unanchored_ends,
+    add, anchors, braco, drag_anchor, governed, osso, remove, unanchored_ends,
 };
+
+/// Um quadro da pilha — desde a W2 a IK (o antigo `goal::solve`) é um item dela.
+fn solve(sim: &mut SimWorld, pv: &mut PreviewDrive) -> usize {
+    ph2d_constraints_ecs::evaluate(sim, pv)
+}
 use ph2d_ecs::SimWorld;
 use ph2d_preview_drive::PreviewDrive;
 
@@ -67,9 +72,7 @@ fn probe_does_the_anchor_cross_the_undo_capture() {
     eprintln!(
         "[probe] depois do restore: alvo vivo? {} · o osso ainda tem ancora? {}",
         sim.world().get_entity(alvo).is_ok(),
-        sim.world()
-            .iter_entities()
-            .any(|er| er.contains::<ph2d_skeleton_ecs::IkGoal>())
+        !ph2d_constraints_ecs::iks(sim.world()).is_empty()
     );
 }
 

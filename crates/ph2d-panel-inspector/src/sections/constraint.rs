@@ -204,7 +204,7 @@ fn ajustes(
             TextKey::new(n.rotulo),
             ids_n[k],
             step,
-            Some(unit),
+            unit,
             seccao,
         )
         .0;

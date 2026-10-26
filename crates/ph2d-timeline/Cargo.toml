@@ -45,7 +45,7 @@ physics = ["dep:ph2d-physics-ecs"]
 # `ph2d-skeleton` — foi medido antes de escrever esta linha, porque a armadilha
 # tem precedente neste módulo (a `ph2d-skeleton-live` não pôde ser a
 # `-ecs` exactamente por um ciclo).
-skeleton = ["dep:ph2d-skeleton-ecs"]
+skeleton = ["dep:ph2d-skeleton-ecs", "dep:ph2d-constraints-ecs"]
 
 [dependencies]
 # bevy_ecs for the #[derive(Component)] on SpriteAnimation (same direct-dep
@@ -87,8 +87,11 @@ ph2d-physics-ecs = { path = "../ph2d-physics-ecs", optional = true }
 # holds the two authored handles of a Bendy Bone.
 # Irmã exata das duas linhas acima — ver o comentário da feature `skeleton`.
 ph2d-skeleton-ecs = { path = "../ph2d-skeleton-ecs", optional = true }
+# O lado da dobra mora no item IK da pilha (W2); sem ciclo: a pilha não depende da timeline.
+ph2d-constraints-ecs = { path = "../ph2d-constraints-ecs", optional = true }
 
 [dev-dependencies]
+ph2d-constraints = { path = "../ph2d-constraints" }
 # JSON round-trip of the document in serde tests.
 serde_json = "1"
 # HR-3 zero-alloc gate for the apply pass (tests/no_alloc_bridge.rs), mirroring

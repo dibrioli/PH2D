@@ -8,6 +8,7 @@
 
 use super::*;
 use crate::goal::braco;
+use super::tests::solve;
 
 /// ⭐⭐⭐ **APAGAR A ÂNCORA DEVOLVE A POSE QUE O ARTISTA AUTOROU** (report do dono, 2026-09-07:
 /// *«Remove IK … não funciona plenamente»*).
@@ -16,7 +17,7 @@ use crate::goal::braco;
 /// corrente ficava dobrada onde ela a tinha posto, sem caminho de volta. E isso contradizia a lei
 /// que este módulo escreveu — *o que a restrição escreve é pré-visualização*.
 ///
-/// ⚠️ **O gate mede a POSE, e não a ausência do componente.** Apagar o `IkGoal` já funcionava; o
+/// ⚠️ **O gate mede a POSE, e não a ausência do item.** Apagar a âncora já funcionava; o
 /// que não funcionava era *plenamente*, e a diferença entre as duas é exactamente a rotação dos
 /// ossos.
 #[test]
@@ -130,7 +131,7 @@ fn posing_a_governed_bone_by_hand_is_not_swallowed_by_the_ledger() {
 /// ⛔⛔ **O irmão do report do dono de 2026-09-09** (*«Remove Smart Bone não devolve o objeto
 /// animado à posição inicial»*), achado ao medir aquele: uma restrição é um condutor
 /// **PERSISTENTE** — ela escreve todo quadro, e o output dela é constante assim que a corrente
-/// assenta. O `solve_one` só declarava condução quando a rotação **mudava**, então a
+/// assenta. O antigo `solve_one` só declarava condução quando a rotação **mudava**, então a
 /// [`ph2d_preview_drive::PreviewDrive::settle`] lia a constância como *«o motor largou»* e promovia
 /// a pose da restrição a **documento**.
 ///

@@ -119,6 +119,7 @@ ph2d-timeline = { path = "../ph2d-timeline" }
 # As três são folhas partilhadas, e as duas primeiras nasceram nesta jornada exactamente para que
 # esta cena pudesse sair da shell.
 ph2d-skeleton-live = { path = "../ph2d-skeleton-live" }
+ph2d-constraints-ecs = { path = "../ph2d-constraints-ecs" }
 # A tabela e a acção da cena do osso moram na folha da cena (auditoria A1, 2026-09-12).
 ph2d-skeleton-demo = { path = "../ph2d-skeleton-demo" }
 ph2d-skeleton-ecs = { path = "../ph2d-skeleton-ecs" }

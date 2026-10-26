@@ -11,6 +11,30 @@ use crate::goal::braco;
 use ph2d_ecs::{ChildOf, Name, RootOrder};
 use ph2d_skeleton_ecs::Bone;
 
+/// Um quadro da pilha — desde a W2 a IK é um item dela (`docs/BlenderConstraints/02_W2_ossos.md`).
+pub(super) fn solve(sim: &mut SimWorld, pv: &mut PreviewDrive) -> usize {
+    ph2d_constraints_ecs::evaluate(sim, pv)
+}
+
+/// Edita o item IK de `e` (que TEM de existir).
+pub(super) fn com_ik(
+    sim: &mut SimWorld,
+    e: Entity,
+    f: impl FnOnce(&mut ph2d_constraints_ecs::Item, &mut ph2d_constraints::Ik),
+) {
+    assert!(
+        ph2d_constraints_ecs::com_ik(sim.world_mut(), e, f),
+        "o osso tem de ter item IK"
+    );
+}
+
+/// O `Ik` do item de `e` (que TEM de existir).
+pub(super) fn ik_of(sim: &SimWorld, e: Entity) -> ph2d_constraints::Ik {
+    ph2d_constraints_ecs::ik_de(sim.world(), e)
+        .expect("o osso tem de ter item IK")
+        .2
+}
+
 /// Onde a ponta da corrente está, em mundo.
 fn ponta(sim: &SimWorld, e: Entity) -> [f64; 2] {
     crate::bone_pick::tip_of(sim, e.to_bits()).expect("o osso existe")
@@ -106,10 +130,7 @@ fn a_mix_of_zero_leaves_the_authored_pose_alone() {
     let (mut sim, [_, cotovelo]) = braco();
     add(&mut sim, cotovelo).expect("a ancora");
     let antes = ph2d_skeleton_live::skin_live::bone_segments(&sim);
-    sim.world_mut()
-        .get_mut::<IkGoal>(cotovelo)
-        .expect("a ancora")
-        .mix = 0.0;
+    com_ik(&mut sim, cotovelo, |it, _| it.influence = 0.0);
     quadro(&mut sim, cotovelo, [4.0, 9.0]);
     assert_eq!(
         antes,
@@ -128,10 +149,7 @@ fn half_a_mix_lands_between_the_two_poses() {
     let angulo = |mix: f64| -> f64 {
         let (mut sim, [ombro, cotovelo]) = braco();
         add(&mut sim, cotovelo).expect("a ancora");
-        sim.world_mut()
-            .get_mut::<IkGoal>(cotovelo)
-            .expect("a ancora")
-            .mix = mix;
+        com_ik(&mut sim, cotovelo, |it, _| it.influence = mix);
         quadro(&mut sim, cotovelo, alvo);
         f64::from(sim.world().get::<Transform>(ombro).expect("t").rotation)
     };
@@ -385,10 +403,7 @@ fn the_drawn_chain_follows_the_chain_number() {
     assert_eq!(crate::goal::chains(&sim).len(), 1, "uma ancora, uma faixa");
     // `n` ossos governados desenham `n + 1` juntas; `0` = até à raiz (os quatro).
     for (chain, juntas) in [(2u32, 3usize), (3, 4), (4, 5), (0, 5)] {
-        sim.world_mut()
-            .get_mut::<ph2d_skeleton_ecs::IkGoal>(d)
-            .expect("a restricao")
-            .chain = chain;
+        com_ik(&mut sim, d, |_, g| g.chain = chain);
         let desenhado = crate::goal::chains(&sim);
         assert_eq!(
             desenhado[0].1.len(),

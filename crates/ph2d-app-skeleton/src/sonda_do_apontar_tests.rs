@@ -29,9 +29,7 @@ fn erro_de_mira(chain: u32, alvo: [f64; 2]) -> f64 {
     let t = crate::goal::add(&mut sim, e).expect("a ancora nasce");
     // A corrente que a sonda quer medir. ⚠️ Escrita no componente, que é o que o campo `IK Chain`
     // do painel escreve — a sonda não inventa um caminho próprio.
-    if let Some(mut g) = sim.world_mut().get_mut::<ph2d_skeleton_ecs::IkGoal>(e) {
-        g.chain = chain;
-    }
+    ph2d_constraints_ecs::com_ik(sim.world_mut(), e, |_, g| g.chain = chain);
     #[expect(
         clippy::cast_possible_truncation,
         reason = "o `Transform` da casa é f32; a geometria do documento é f64"
@@ -40,7 +38,7 @@ fn erro_de_mira(chain: u32, alvo: [f64; 2]) -> f64 {
         tt.translation = ph2d_core::Vec2::new(alvo[0] as f32, alvo[1] as f32);
     }
     let mut pv = ph2d_preview_drive::PreviewDrive::default();
-    crate::goal::solve(&mut sim, &mut pv);
+    ph2d_constraints_ecs::evaluate(&mut sim, &mut pv);
     let ponta = crate::bone_pick::tip_of(&sim, e.to_bits()).expect("o osso existe");
     let querido = alvo[1].atan2(alvo[0]);
     let teve = ponta[1].atan2(ponta[0]);
@@ -98,7 +96,7 @@ fn num_braco_a_corrente_de_dois_nao_e_apontar() {
         tt.translation = ph2d_core::Vec2::new(0.0_f32, 12.0_f32);
     }
     let mut pv = ph2d_preview_drive::PreviewDrive::default();
-    crate::goal::solve(&mut sim, &mut pv);
+    ph2d_constraints_ecs::evaluate(&mut sim, &mut pv);
     let ponta_do_ombro = crate::bone_pick::tip_of(&sim, ombro.to_bits()).expect("o ombro existe");
     let querido = 12.0_f64.atan2(0.0);
     let teve = ponta_do_ombro[1].atan2(ponta_do_ombro[0]);
@@ -125,7 +123,7 @@ fn o_desvio_roda_o_olhar_em_relacao_ao_eixo() {
     let alvo = [0.0, 30.0];
     let sem = pose_apontada(alvo, |_| {});
     for graus in [30.0_f64, -45.0, 180.0] {
-        let com = pose_apontada(alvo, |g| g.offset = graus.to_radians());
+        let com = pose_apontada(alvo, |g| g.ik.offset = graus.to_radians());
         let d = ph2d_skeleton::wrap_pi(f64::from(com) - f64::from(sem)).to_degrees();
         assert!(
             (d - graus).abs() < 1e-3,
@@ -144,10 +142,10 @@ fn o_desvio_roda_o_olhar_em_relacao_ao_eixo() {
 fn com_a_mistura_a_zero_o_desvio_tambem_se_desliga() {
     let alvo = [0.0, 30.0];
     let parada = pose_apontada(alvo, |g| {
-        g.mix = 0.0;
-        g.offset = 60.0_f64.to_radians();
+        g.it.influence = 0.0;
+        g.ik.offset = 60.0_f64.to_radians();
     });
-    let autorada = pose_apontada(alvo, |g| g.mix = 0.0);
+    let autorada = pose_apontada(alvo, |g| g.it.influence = 0.0);
     assert_eq!(
         parada, autorada,
         "com a MISTURA a zero o desvio ainda rodou o osso: ele entra DEPOIS da mistura, e desligar \
@@ -168,17 +166,12 @@ fn o_desvio_nao_toca_numa_corrente_que_alcanca() {
     let mover = |offset: f64| {
         let (mut sim, [_, cotovelo]) = crate::goal::braco();
         let t = crate::goal::add(&mut sim, cotovelo).expect("a ancora nasce");
-        if let Some(mut g) = sim
-            .world_mut()
-            .get_mut::<ph2d_skeleton_ecs::IkGoal>(cotovelo)
-        {
-            g.offset = offset;
-        }
+        ph2d_constraints_ecs::com_ik(sim.world_mut(), cotovelo, |_, g| g.offset = offset);
         if let Some(mut tt) = sim.world_mut().get_mut::<Transform>(t) {
             tt.translation = ph2d_core::Vec2::new(4.0, 9.0);
         }
         let mut pv = ph2d_preview_drive::PreviewDrive::default();
-        crate::goal::solve(&mut sim, &mut pv);
+        ph2d_constraints_ecs::evaluate(&mut sim, &mut pv);
         crate::bone_pick::tip_of(&sim, cotovelo.to_bits()).expect("a ponta")
     };
     let sem = mover(0.0);
@@ -198,16 +191,14 @@ fn o_desvio_nao_toca_numa_corrente_que_alcanca() {
 #[test]
 fn o_verbo_look_at_nasce_a_apontar() {
     let (mut sim, e) = um_osso();
-    let alvo = ph2d_skeleton_live::goal::add_look_at(&mut sim, e).expect("o verbo cria o alvo");
+    let alvo = crate::goal::add_look_at(&mut sim, e).expect("o verbo cria o alvo");
     assert_eq!(
-        sim.world()
-            .get::<ph2d_skeleton_ecs::IkGoal>(e)
-            .map(|g| g.chain),
+        ph2d_constraints_ecs::ik_de(sim.world(), e).map(|(_, _, g)| g.chain),
         Some(1),
         "o Look At nasceu com outra corrente: ele e' um Add IK com outro rotulo"
     );
     assert!(
-        ph2d_skeleton_live::goal::aponta(&sim, e),
+        crate::goal::aponta(&sim, e),
         "a porta diz que esta ancora ALCANCA: o painel esconderia o desvio e o solver ignora'-lo-ia"
     );
     assert!(
@@ -225,9 +216,9 @@ fn o_verbo_look_at_nasce_a_apontar() {
 fn criar_o_apontar_nao_move_nada() {
     let (mut sim, e) = um_osso();
     let antes = ph2d_skeleton_live::skin_live::bone_segments(&sim);
-    ph2d_skeleton_live::goal::add_look_at(&mut sim, e).expect("o verbo");
+    crate::goal::add_look_at(&mut sim, e).expect("o verbo");
     let mut pv = ph2d_preview_drive::PreviewDrive::default();
-    crate::goal::solve(&mut sim, &mut pv);
+    ph2d_constraints_ecs::evaluate(&mut sim, &mut pv);
     assert_eq!(
         antes,
         ph2d_skeleton_live::skin_live::bone_segments(&sim),
@@ -251,20 +242,20 @@ fn criar_o_apontar_nao_move_nada() {
 fn com_a_corrente_em_um_a_suavidade_e_o_lado_sao_inertes_e_a_mistura_nao() {
     let alvo = [0.0, 30.0];
     let base = pose_apontada(alvo, |_| {});
-    let com_suavidade = pose_apontada(alvo, |g| g.softness = 0.9);
+    let com_suavidade = pose_apontada(alvo, |g| g.ik.softness = 0.9);
     assert_eq!(
         base, com_suavidade,
         "a SUAVIDADE moveu o osso com a corrente em UM: ela nao e' inerte, e escondê-la apagaria \
          um controlo vivo"
     );
     for lado in ph2d_skeleton::BendSide::ALL {
-        let com_lado = pose_apontada(alvo, |g| g.bend = lado);
+        let com_lado = pose_apontada(alvo, |g| g.ik.bend = lado);
         assert_eq!(
             base, com_lado,
             "o LADO DA DOBRA ({lado:?}) moveu o osso com a corrente em UM: ele nao e' inerte"
         );
     }
-    let com_mistura = pose_apontada(alvo, |g| g.mix = 0.0);
+    let com_mistura = pose_apontada(alvo, |g| g.it.influence = 0.0);
     assert_ne!(
         base, com_mistura,
         "a MISTURA ficou inerte: ela e' o unico dos tres que continua a mandar, e sem ela o \
@@ -272,14 +263,20 @@ fn com_a_corrente_em_um_a_suavidade_e_o_lado_sao_inertes_e_a_mistura_nao() {
     );
 }
 
+/// O item e o `Ik` que o `afina` mexe (o *Mix* é a força do item).
+struct Afina<'a> {
+    it: &'a mut ph2d_constraints_ecs::Item,
+    ik: &'a mut ph2d_constraints::Ik,
+}
+
 /// A rotação do osso depois de um quadro, com a âncora afinada por `afina`.
-fn pose_apontada(alvo: [f64; 2], afina: impl FnOnce(&mut ph2d_skeleton_ecs::IkGoal)) -> f32 {
+fn pose_apontada(alvo: [f64; 2], afina: impl FnOnce(&mut Afina<'_>)) -> f32 {
     let (mut sim, e) = um_osso();
     let t = crate::goal::add(&mut sim, e).expect("a ancora nasce");
-    if let Some(mut g) = sim.world_mut().get_mut::<ph2d_skeleton_ecs::IkGoal>(e) {
-        g.chain = 1;
-        afina(&mut g);
-    }
+    ph2d_constraints_ecs::com_ik(sim.world_mut(), e, |it, ik| {
+        ik.chain = 1;
+        afina(&mut Afina { it, ik });
+    });
     #[expect(
         clippy::cast_possible_truncation,
         reason = "o `Transform` da casa é f32; a geometria do documento é f64"
@@ -288,6 +285,6 @@ fn pose_apontada(alvo: [f64; 2], afina: impl FnOnce(&mut ph2d_skeleton_ecs::IkGo
         tt.translation = ph2d_core::Vec2::new(alvo[0] as f32, alvo[1] as f32);
     }
     let mut pv = ph2d_preview_drive::PreviewDrive::default();
-    crate::goal::solve(&mut sim, &mut pv);
+    ph2d_constraints_ecs::evaluate(&mut sim, &mut pv);
     sim.world().get::<Transform>(e).expect("Transform").rotation
 }

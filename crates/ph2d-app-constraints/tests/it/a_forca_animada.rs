@@ -84,7 +84,7 @@ fn the_stack_reads_the_curve_in_the_same_frame() {
     let mut drive = PreviewDrive::default();
     escrever(&mut sim, b, chave(LIGADA, primeiro), 0.0);
     escrever(&mut sim, b, chave(FORCA, segundo), 0.5);
-    ph2d_app_constraints::quadro(&mut sim, &mut drive);
+    ph2d_app_constraints::quadro(&mut sim, &ph2d_vec_scene::VecScene::new(), &mut drive);
     assert_eq!(sim.world().get::<Transform>(e).unwrap().translation.x, 5.0);
 }
 
@@ -109,7 +109,7 @@ fn a_curve_drives_a_setting_and_a_save_keeps_the_authored_one() {
     let b = e.to_bits();
     let mut drive = PreviewDrive::default();
     escrever(&mut sim, b, chave(LIMITE_MAX, id), 30.0);
-    ph2d_app_constraints::quadro(&mut sim, &mut drive);
+    ph2d_app_constraints::quadro(&mut sim, &ph2d_vec_scene::VecScene::new(), &mut drive);
     let rot = sim.world().get::<Transform>(e).unwrap().rotation;
     assert!(
         (f64::from(rot) - 30f64.to_radians()).abs() < 1e-6,

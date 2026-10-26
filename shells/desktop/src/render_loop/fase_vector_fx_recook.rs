@@ -91,8 +91,8 @@ impl crate::App {
             &object_of,
             &pose_of,
         );
-        let (sw, sh) =
-            ph2d_app_motion::field_gizmo::scene_window_wh(hero.view.center_split, window_size);
+        // A janela CHEIA: com a divisão do centro armada a cena continua a ser pintada abaixo dela.
+        let (sw, sh) = (window_size.width, window_size.height);
         self.fx_live.recook(
             vec_scene,
             sim,

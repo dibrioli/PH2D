@@ -123,6 +123,24 @@ Gates: **G6** `a_gesture_at_max_zoom_almost_never_swaps_the_output_texture` (zoo
 `a_texture_larger_than_its_content_draws_only_the_content` (512² com lixo vermelho fora do canto 300×200;
 mutação «ignora os texels» → vermelho).
 
+## 7 — Smoke do dono (26/10, 2.ª volta): «ainda pisca e no zoom máximo o objeto é cortado»
+
+- **O corte (MEDIDO na foto do dono e curado):** uma aresta HORIZONTAL a 55 % da altura da tela.
+  0,55 = `CenterSplit::T_DEFAULT`. A shell passava `scene_window_wh(center_split, …)`, que com a divisão
+  do centro armada é só a parte de CIMA, mas a cena vetorial é pintada na janela inteira (a captura do
+  dono mostra o fundo da cena abaixo do corte). ⇒ a vista é a janela CHEIA (`window_size`), que contém
+  sempre o que se vê. Gate **G9** (placa) `the_scene_41_cloud_never_blinks_on_the_owners_screen`: a Nuvem
+  da cena 41 com o filtro da cena, `Camera2d` real a 2560×1080 (o monitor do dono, `kscreen-doctor`), da
+  altura 1 m ao zoom máximo (0,5 m, ~3270×1916 de conteúdo) e um pan lá em cima, numa grelha 5×5 de
+  pontos. Mutação «vista = 55 % de cima» → vermelho.
+- **O piscar (NÃO reproduzido):** no caminho completo fora do app (recook → dispatch → render →
+  readback), com o tamanho a trocar a cada quadro, **0** quadros falham, com ou sem a capacidade (as
+  mutações sobrevivem no G8 e no G9). Uma troca isolada só perde quadros quando a velha e a nova não
+  cabem juntas no atlas de 8192 (`fx_zoom_sonda_de_uma_troca`: só a partir de 4100 → 4356). Diferença
+  conhecida para o app: o renderer principal corre VÁRIAS vezes por quadro (grade, faixas, frost,
+  chrome: `present_bands.rs`, `present_frost.rs`, `present_chrome.rs`), e o atlas despeja o que ficou 2
+  gerações sem uso. Por medir NO APP: `PH2D_FX_PERF=1` passa a dizer cada troca de textura (`[fx-troca]`).
+
 ## ⛔ Recusas MEDIDAS
 
 - **Alargar o que o campo LÊ pela cadeia de saltos do JFA** (`2^n − 1`, até ~2× a banda). Foi escrito

@@ -405,3 +405,272 @@ fn a_texture_larger_than_its_content_draws_only_the_content() {
         );
     }
 }
+
+/// **G8 (placa) — o PRODUTO inteiro num gesto, quadro a quadro**: `FxLive::recook` → `dispatch` → o
+/// render principal → readback, com a câmera a fazer zoom e pan perto do máximo. Conta os quadros em
+/// que um ponto VISÍVEL da forma (dentro dela, longe da borda) sai sem tinta — o piscar do smoke.
+#[test]
+#[ignore = "needs a real GPU device; run with --ignored on the GPU lane"]
+fn a_gesture_never_drops_the_filtered_shape_from_a_frame() {
+    use ph2d_render::VelloPass;
+    use ph2d_vec_render::{BrushArts, DilatedPaints, PatternTiles, WidgetSkins};
+    use ph2d_vec_scene::VecViewState;
+    use ph2d_vector::VectorScene;
+    let Some(gpu) = gpu() else {
+        return;
+    };
+    let bevel = FxOp::new(FxOp::BEVEL);
+    let mut c = cena_op(bevel);
+    let sombra = FxOp::new(FxOp::DROP_SHADOW);
+    crate::fx_live::set_filter(
+        &mut c.sim,
+        &c.map,
+        &[c.id],
+        Some(ph2d_ecs::VecFilter::from_ops(vec![bevel, sombra])),
+    );
+    let tela = (VIEW[2] as u32, VIEW[3] as u32);
+    let fmt = wgpu::TextureFormat::Rgba8Unorm;
+    let mut principal = VelloPass::new(&gpu, fmt, tela).expect("vello");
+    let mut fx = crate::fx_live::FxLive::default();
+    let (view, pats) = (VecViewState::default(), PatternTiles::new());
+    let mut faltas = Vec::new();
+    // 40 quadros de zoom de 32× a 64× no centro, e 40 de pan de 5 px na borda a 64×.
+    let quadros: Vec<(Affine, [u32; 2])> = (0..40)
+        .map(|q| {
+            (
+                camera(32.0 * 2f64.powf(f64::from(q) / 39.0), CENTRO, 0.0),
+                [960, 540],
+            )
+        })
+        .chain((0..40).map(|q| (camera(64.0, BORDA, -f64::from(q) * 5.0), [600, 540])))
+        .collect();
+    for (q, (cam, [x, y])) in quadros.into_iter().enumerate() {
+        fx.recook(
+            &c.scene,
+            &c.sim,
+            &c.map,
+            &c.xf,
+            &c.live,
+            &c.live,
+            &view,
+            &pats,
+            cam,
+            VIEW,
+            &gpu,
+            fmt,
+            &mut principal,
+        );
+        let mut alvo = VectorScene::new();
+        ph2d_vec_render::dispatch(
+            &c.scene,
+            &view,
+            &c.xf,
+            &c.live,
+            fx.images(),
+            &WidgetSkins::new(),
+            &pats,
+            &BrushArts::new(),
+            &DilatedPaints::new(),
+            cam,
+            &mut alvo,
+        );
+        principal
+            .render_to_intermediate(&gpu, alvo.inner(), tela, ph2d_vector::Color::TRANSPARENT)
+            .expect("render");
+        let px = readback(&gpu, principal.intermediate_texture(), tela.0, tela.1);
+        let a = px[((y * tela.0 + x) * 4 + 3) as usize];
+        if a < 250 || fx.images().is_empty() {
+            faltas.push((q, a, fx.images().len()));
+        }
+    }
+    assert!(
+        faltas.is_empty(),
+        "quadros sem a forma (quadro, alfa, imagens): {faltas:?}"
+    );
+}
+
+/// Sonda: UMA troca de textura (10 quadros em `a`, depois 10 em `a + 256`), por tamanho — em que
+/// quadro a imagem falta.
+#[test]
+#[ignore = "needs a real GPU device; sonda F34 (uma troca)"]
+fn fx_zoom_sonda_de_uma_troca() {
+    use ph2d_render::VelloPass;
+    use ph2d_vector::{ImageQuality, StableImage, VectorScene};
+    let Some(gpu) = gpu() else {
+        return;
+    };
+    for a in [1024u32, 1500, 2048, 2100, 2600, 3000, 3600, 4100] {
+        let tela = (1930u32, 1040u32);
+        let mut principal =
+            VelloPass::new(&gpu, wgpu::TextureFormat::Rgba8Unorm, tela).expect("vello");
+        let mut atual: Option<(ph2d_vector::ImageData, u32)> = None;
+        let mut pendentes = Vec::new();
+        let mut faltas = Vec::new();
+        for q in 0..20u32 {
+            for img in pendentes.drain(..) {
+                principal.unregister_texture(img);
+            }
+            let lado = if q < 10 { a } else { a + 256 };
+            if atual.as_ref().is_none_or(|(_, s)| *s != lado) {
+                let t = tex(&gpu, lado, lado);
+                upload(
+                    &gpu,
+                    &t,
+                    lado,
+                    lado,
+                    &vec![255u8; (lado * lado * 4) as usize],
+                );
+                let novo = principal.register_texture(t);
+                if let Some((velho, _)) = atual.replace((novo, lado)) {
+                    pendentes.push(velho);
+                }
+            }
+            let img = &atual.as_ref().expect("img").0;
+            principal.mark_texture_dirty(img);
+            let mut cena = VectorScene::new();
+            let r = (0.0, 0.0, f64::from(lado), f64::from(lado));
+            cena.draw_stable_image(
+                &StableImage::from_image_data(img.clone()),
+                r,
+                ImageQuality::Medium,
+            );
+            principal
+                .render_to_intermediate(&gpu, cena.inner(), tela, ph2d_vector::Color::TRANSPARENT)
+                .expect("render");
+            let px = readback(&gpu, principal.intermediate_texture(), tela.0, tela.1);
+            if px[((500 * tela.0 + 900) * 4 + 3) as usize] < 250 {
+                faltas.push(q);
+            }
+        }
+        eprintln!("[fx-troca] {a} → {}: faltam os quadros {faltas:?}", a + 256);
+    }
+}
+
+/// **G9 (placa) — a CENA 41 nas condições do dono**: a Nuvem de 120 m com o Bevel + Drop Shadow da
+/// cena, a câmera real (`Camera2d`) numa janela de 2560×1080 (o monitor largo do dono), a roda a ir
+/// de 1 m de altura ao zoom máximo (0,5 m) e depois o pan lá em cima. Conta os quadros em que um
+/// ponto de dentro da forma sai sem tinta.
+#[test]
+#[ignore = "needs a real GPU device; run with --ignored on the GPU lane"]
+fn the_scene_41_cloud_never_blinks_on_the_owners_screen() {
+    use ph2d_render::{Camera2d, VelloPass};
+    use ph2d_vec_render::{BrushArts, DilatedPaints, PatternTiles, WidgetSkins};
+    use ph2d_vec_scene::{ShapeKind, VecViewState};
+    use ph2d_vector::VectorScene;
+    let Some(gpu) = gpu() else {
+        return;
+    };
+    let mut vec = crate::state::VecState::default();
+    let mut scene = ph2d_vec_scene::VecScene::new();
+    crate::vector_mode::draw_shape(&mut vec, &mut scene, ShapeKind::Cloud, [-57.0, 0.0], 60.0);
+    let id = scene.paths().first().expect("nuvem").id;
+    // Como a cena 41: verde opaco, sem traço.
+    let p = scene.path_mut(id).expect("nuvem");
+    p.fill = Some(ph2d_vec_scene::Paint::solid(ph2d_vec_scene::Rgba8::new(
+        120, 190, 100, 255,
+    )));
+    p.stroke = None;
+    let mut sim = ph2d_ecs::SimWorld::default();
+    let mut map = ph2d_vec_entities::entities::VecEntityMap::new();
+    let e = sim
+        .world_mut()
+        .spawn((
+            ph2d_ecs::Transform::IDENTITY,
+            ph2d_ecs::Name::new("Bevel"),
+            ph2d_ecs::VecPathRef(id),
+        ))
+        .id();
+    map.insert(id, e.to_bits());
+    let filtro = crate::vector_mode_filtro_efeito::filtro();
+    crate::fx_live::set_filter(&mut sim, &map, &[id], Some(filtro));
+    let janela = ph2d_host::WindowSize {
+        width: 2560,
+        height: 1080,
+    };
+    let tela = (janela.width, janela.height);
+    let vista = [0.0, 0.0, f64::from(tela.0), f64::from(tela.1)];
+    let fmt = wgpu::TextureFormat::Rgba8Unorm;
+    let mut principal = VelloPass::new(&gpu, fmt, tela).expect("vello");
+    let mut fx = crate::fx_live::FxLive::default();
+    let (view, pats) = (VecViewState::default(), PatternTiles::new());
+    let (xf, live) = (
+        ph2d_vec_scene::VecXforms::new(),
+        ph2d_vec_render::LiveGeometry::new(),
+    );
+    // O ponto de prova: o centro da vista, 20 m para dentro da nuvem (a borda está perto de 3 m).
+    let prova = ph2d_vector::Point::new(-20.0, 0.0);
+    let mut camaras = Vec::new();
+    let mut h = 1.0f32;
+    while h > Camera2d::ZOOM_MIN_HEIGHT_WORLD {
+        h = Camera2d::zoomed(h, Camera2d::WHEEL_ZOOM_PER_NOTCH.powf(0.25));
+        camaras.push(Camera2d::new([-20.0, 0.0], h));
+    }
+    for q in 0..40 {
+        camaras.push(Camera2d::new(
+            [-20.0 + 0.01 * q as f32, 0.003 * q as f32],
+            h,
+        ));
+    }
+    let mut faltas = Vec::new();
+    let mut tamanhos = std::collections::BTreeSet::new();
+    for (q, c) in camaras.iter().enumerate() {
+        let cam = c.world_to_screen_affine(janela);
+        fx.recook(
+            &scene,
+            &sim,
+            &map,
+            &xf,
+            &live,
+            &live,
+            &view,
+            &pats,
+            cam,
+            vista,
+            &gpu,
+            fmt,
+            &mut principal,
+        );
+        let mut alvo = VectorScene::new();
+        ph2d_vec_render::dispatch(
+            &scene,
+            &view,
+            &xf,
+            &live,
+            fx.images(),
+            &WidgetSkins::new(),
+            &pats,
+            &BrushArts::new(),
+            &DilatedPaints::new(),
+            cam,
+            &mut alvo,
+        );
+        principal
+            .render_to_intermediate(&gpu, alvo.inner(), tela, ph2d_vector::Color::TRANSPARENT)
+            .expect("render");
+        let px = readback(&gpu, principal.intermediate_texture(), tela.0, tela.1);
+        let p = cam * prova;
+        let (x, y) = (p.x as u32, p.y as u32);
+        // O ponto de prova e uma grelha 5×5 da tela (todos dentro da nuvem: a borda está a 23 m).
+        let a = (0..25)
+            .map(|k| ((k % 5) * (tela.0 - 1) / 4, (k / 5) * (tela.1 - 1) / 4))
+            .chain([(x, y)])
+            .map(|(x, y)| px[((y * tela.0 + x) * 4 + 3) as usize])
+            .min()
+            .unwrap_or(0);
+        if let Some(i) = fx.images().get(&id) {
+            tamanhos.insert(i.texels);
+        }
+        if a < 250 || fx.images().is_empty() {
+            faltas.push((q, c.height_world, a));
+        }
+    }
+    eprintln!(
+        "[g9] {} quadros, {} tamanhos de conteúdo, faltas {faltas:?}",
+        camaras.len(),
+        tamanhos.len()
+    );
+    assert!(
+        faltas.is_empty(),
+        "quadros sem a nuvem (quadro, altura, alfa): {faltas:?}"
+    );
+}

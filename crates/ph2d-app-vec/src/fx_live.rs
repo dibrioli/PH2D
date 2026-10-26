@@ -445,6 +445,13 @@ impl FxLive {
             // no doc; foi o "panic ao abrir" pós-resize). Resize é raro ⇒ churn de id mínimo; o
             // re-cook (comum) não re-registra.
             Some(pfx) => {
+                if std::env::var_os("PH2D_FX_PERF").is_some() {
+                    let (cw, ch) = (tex.width(), tex.height());
+                    eprintln!(
+                        "[fx-troca] {:?}: conteúdo {w}x{h} → textura {cw}x{ch}",
+                        job.id
+                    );
+                }
                 let fresh = vello_pass.register_texture(tex.clone());
                 let old = std::mem::replace(&mut pfx.image, fresh);
                 self.pending_unregister.push(old);

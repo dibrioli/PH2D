@@ -142,3 +142,7 @@ Atalho só para ver sem mãos: `PH2D_GAME_SMOKE=3 PH2D_GAME_SMOKE_DRIVE=window` 
 ## PRÓXIMO
 
 Smoke do dono; depois o que ele pedir (candidato: arte de agachar no plano 06).
+
+## Smoke do dono: OK (25/10)
+
+Os seis passos (agachar sob o tecto, soltar lá debaixo, sair e levantar, Height/Speed no cartão) aprovados. PRÓXIMO: o que o dono pedir; candidato natural = células de agachar na folha do herói (plano 06), para o desenho encolher com o corpo.

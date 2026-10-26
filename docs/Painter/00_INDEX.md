@@ -118,3 +118,4 @@ Novas crates: **`ph2d-painter-brush`** (engine pura) + **`ph2d-panel-painter-bru
 | Doc | O que tem |
 |---|---|
 | **[27_plano_luz_sombra_propria.md](27_plano_luz_sombra_propria.md)** | **A avaliação do "trocar impasto pelo sculpt do Blender" (veredito: NÃO, §1 — a premissa da GPU está invertida) e a lacuna que EXISTE: a tinta não faz sombra em si mesma.** O modelo é `N·L` + wrap + LUT especular, sem sombra projetada e sem AO ⇒ relevo lê como *inclinação*, nunca como *obstrução*. Plano em 5 waves, oráculo = **render-and-look** |
+| **[49_realshader/README.md](49_realshader/README.md)** · [plano](49_realshader/plano.md) | **(26/10) O óleo do Rebelle 8 medido no ecrã real** — RealShader (IBL de fotos), SoftShadows (marcha de raio, sombra no papel), NanoPixel 2 (super-resolução treinada); a fenda é `albedo²` e não cinza (M2); o Wet Paint hoje é um emboss cinza ±40. Plano W0–W6 do «Óleo Real» |

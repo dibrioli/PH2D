@@ -13,6 +13,15 @@ pub struct PixelToolsPanelState {
     pub(crate) seletor: Seletor,
 }
 
+impl PixelToolsPanelState {
+    /// Os parâmetros do seletor de cor — de onde o anel se desenha (para os gates).
+    #[doc(hidden)]
+    #[must_use]
+    pub fn selector_params(&self) -> crate::seletor::Params {
+        self.seletor.params
+    }
+}
+
 /// A vista do seletor de cor: os parâmetros do modo (o que a cor não diz — a matiz de um cinza —
 /// fica aqui), a cor de frente a que eles correspondem, as imagens em cache e onde se pintaram.
 #[derive(Clone, Debug, Default)]
@@ -26,6 +35,9 @@ pub(crate) struct Seletor {
     pub(crate) rects: [Option<Rect>; 3],
     /// O último ponto do arrasto em curso (premido sobre o seletor): a cor segue o ponteiro.
     pub(crate) arrasto: Option<[f32; 2]>,
+    /// As últimas cores que o próprio seletor mandou: o instantâneo chega um quadro atrasado, e
+    /// reconstruir os parâmetros de uma delas fazia o anel tremer (smoke do dono 25/10).
+    pub(crate) mandadas: Vec<[u8; 4]>,
 }
 
 #[derive(Clone, Debug)]

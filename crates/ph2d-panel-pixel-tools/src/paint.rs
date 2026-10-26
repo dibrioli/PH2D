@@ -517,7 +517,12 @@ impl Corpo<'_> {
         let mut y = self.escolha(tr("panel.pixel.selector"), &modos, sec, y);
         let fg = info.fg;
         let v = &mut *self.seletor;
-        if v.de != Some((modo, fg)) {
+        // Uma cor que o seletor mandou NÃO reconstrói os parâmetros (eles são a verdade dela); só
+        // uma cor de fora (paleta, conta-gotas, `X`) ou outro modo os refaz.
+        // e durante o arrasto o seletor manda: nem o quadro do Down (ainda com a cor de fora) refaz.
+        let propria = v.arrasto.is_some()
+            || (v.mandadas.contains(&fg) && v.de.is_some_and(|(m, _)| m == modo));
+        if !propria && v.de != Some((modo, fg)) {
             v.params = sel::de_rgb(modo, [fg[0], fg[1], fg[2]], v.params);
             v.de = Some((modo, fg));
         }
@@ -585,7 +590,22 @@ impl Corpo<'_> {
             self.hit_index.register_with_secondary(a, alvo, b);
             self.seletor.rects[k] = Some(conta);
         }
-        y = alfa.y + alfa.h;
+        // A cor escolhida, à vista (smoke do dono 25/10): a amostra com o xadrez e o hex.
+        let vista = Rect::new(self.x, alfa.y + alfa.h + gap * 2.0, self.w, ROW_H_PX);
+        let amostra = Rect::new(vista.x, vista.y, vista.h * 2.0, vista.h);
+        paint_color_swatch(&ColorSwatch::new(ids::PIXEL_FG, "", fg), amostra, self.scene, self.theme);
+        let tx = amostra.x + amostra.w + Spacing::Sm.px();
+        paint_text(
+            self.text_system,
+            self.scene,
+            &hex(fg),
+            tx,
+            vista.y + (ROW_H_PX - TypeToken::Sm.px()) * 0.5,
+            TypeToken::Sm.px(),
+            (vista.x + vista.w - tx).max(1.0),
+            resolve(ColorToken::Text2, self.theme),
+        );
+        y = vista.y + vista.h;
         y
     }
 

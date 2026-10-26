@@ -334,6 +334,10 @@ pub(crate) fn arrasta_seletor(st: &mut crate::PixelToolsPanelState, host: &mut d
     }
 }
 
+/// Quantas cores mandadas o seletor reconhece como suas (o atraso do instantâneo é de um quadro;
+/// a folga cobre um arrasto rápido com vários quadros entre o pedido e o instantâneo).
+const MANDADAS: usize = 8;
+
 fn escolhe(
     st: &mut crate::PixelToolsPanelState,
     host: &dyn PanelHostInternal,
@@ -381,6 +385,10 @@ fn escolhe(
     let c = [r, g, b, alfa];
     st.seletor.params = p;
     st.seletor.de = Some((modo, c));
+    let m = &mut st.seletor.mandadas;
+    m.push(c);
+    let excesso = m.len().saturating_sub(MANDADAS);
+    m.drain(..excesso);
     Some(PixelRequest::Fg(c))
 }
 

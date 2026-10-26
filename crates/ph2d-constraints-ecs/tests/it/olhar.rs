@@ -154,6 +154,19 @@ fn a_look_at_on_a_bone_is_the_one_bone_ik_to_the_bit() {
     );
 }
 
+/// O limite de junta apara o Look At de um osso: o alvo pede 2,143 rad (medido no §0 do doc W3) e a
+/// rotação fica na borda. Absoluto, não contra a IK — as duas passam pela mesma `olha`.
+#[test]
+fn a_look_at_on_a_bone_stays_inside_the_joint_limit() {
+    let c = CASOS.iter().find(|c| c.limite.is_some()).unwrap();
+    let (min, max) = c.limite.unwrap();
+    let r = f64::from(avalia(c, Kind::LookAt(LookAt::default())).rotation);
+    assert!(
+        (min..=max).contains(&r) && (r - max).abs() < 1e-6,
+        "fora do limite [{min}; {max}]: {r}"
+    );
+}
+
 /// A ponta DESENHADA do osso (a da casa, `skin_live`) fica no rumo do alvo, também sob espelho e escala
 /// desigual — o rumo é o que o artista vê, não a soma das rotações.
 #[test]

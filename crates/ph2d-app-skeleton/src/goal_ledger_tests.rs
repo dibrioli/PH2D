@@ -6,9 +6,9 @@
 //! ⚠️ A fixtura é a **mesma** (`super::tests::braco`) de propósito: dois braços para o mesmo módulo
 //! divergiriam, e o gate que aqui mede o ledger tem de correr sobre a corrente que ali resolve.
 
+use super::tests::solve;
 use super::*;
 use crate::goal::braco;
-use super::tests::solve;
 
 /// ⭐⭐⭐ **APAGAR A ÂNCORA DEVOLVE A POSE QUE O ARTISTA AUTOROU** (report do dono, 2026-09-07:
 /// *«Remove IK … não funciona plenamente»*).

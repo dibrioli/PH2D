@@ -58,14 +58,19 @@ fn caminhos(sim: &mut SimWorld, cena: &ph2d_vec_scene::VecScene) {
     let w = sim.world();
     let mut out = std::collections::BTreeMap::new();
     for c in w.iter_entities().filter_map(|e| e.get::<Constraints>()) {
-        for it in c.items.iter().filter(|i| matches!(i.kind, Kind::FollowPath(_))) {
+        for it in c
+            .items
+            .iter()
+            .filter(|i| matches!(i.kind, Kind::FollowPath(_)))
+        {
             let Some(s) = it.target else { continue };
             let Some(forma) = ph2d_ecs::entity_with_stable_id(w, s)
                 .and_then(|e| w.get::<ph2d_ecs::VecPathRef>(e))
             else {
                 continue;
             };
-            let local = ph2d_vec_scene::world_polyline(cena, forma.0, &ph2d_vec_scene::Xform::IDENTITY);
+            let local =
+                ph2d_vec_scene::world_polyline(cena, forma.0, &ph2d_vec_scene::Xform::IDENTITY);
             out.insert(s, local);
         }
     }

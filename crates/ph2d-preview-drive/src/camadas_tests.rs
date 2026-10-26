@@ -30,7 +30,11 @@ fn quadro(sim: &mut SimWorld, pd: &mut PreviewDrive, e: ph2d_ecs::Entity, baixo:
     }
     let meio = agora(sim, e);
     escreve(sim, e, em(cima));
-    pd.driven(e, Driven::ConstraintPose(meio), Driven::ConstraintPose(em(cima)));
+    pd.driven(
+        e,
+        Driven::ConstraintPose(meio),
+        Driven::ConstraintPose(em(cima)),
+    );
     pd.settle();
 }
 
@@ -44,13 +48,20 @@ fn two_motors_on_one_entity_keep_the_authored_pose() {
     }
     // O de baixo muda de valor: a camada de cima segue-o.
     quadro(&mut sim, &mut pd, e, 5.0, 6.0);
-    assert_eq!(pd.authored(e.to_bits(), Driver::SolverPose), Some(Driven::SolverPose(em(1.0))));
+    assert_eq!(
+        pd.authored(e.to_bits(), Driver::SolverPose),
+        Some(Driven::SolverPose(em(1.0)))
+    );
     assert_eq!(
         pd.authored(e.to_bits(), Driver::ConstraintPose),
         Some(Driven::ConstraintPose(em(5.0)))
     );
     let vivo = pd.substitute(&mut sim);
-    assert_eq!(agora(&sim, e), em(1.0), "gravar a meio do play grava o AUTORADO");
+    assert_eq!(
+        agora(&sim, e),
+        em(1.0),
+        "gravar a meio do play grava o AUTORADO"
+    );
     PreviewDrive::restore(&mut sim, &vivo);
     assert_eq!(agora(&sim, e), em(6.0));
 }
@@ -63,5 +74,8 @@ fn an_artists_edit_under_two_motors_is_still_the_document() {
     quadro(&mut sim, &mut pd, e, 2.0, 3.0);
     escreve(&mut sim, e, em(9.0));
     quadro(&mut sim, &mut pd, e, 2.0, 3.0);
-    assert_eq!(pd.authored(e.to_bits(), Driver::SolverPose), Some(Driven::SolverPose(em(9.0))));
+    assert_eq!(
+        pd.authored(e.to_bits(), Driver::SolverPose),
+        Some(Driven::SolverPose(em(9.0)))
+    );
 }

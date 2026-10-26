@@ -3,8 +3,8 @@
 //! `docs/BlenderConstraints/02_W2_ossos.md` §1 e têm aqui o gate do lado contrário.
 
 use ph2d_constraints::{
-    BendSide, Ctx, FollowPath, Ik, Kind, PathBy, Pose2, StretchTo, Volume, apply_with,
-    solve_chain, stretch_factor, wrap_pi,
+    BendSide, Ctx, FollowPath, Ik, Kind, PathBy, Pose2, StretchTo, Volume, apply_with, solve_chain,
+    stretch_factor, wrap_pi,
 };
 use ph2d_skeleton::bend_side_of;
 use serde_json::Value;
@@ -49,7 +49,10 @@ fn ik_matches_the_blender_two_bone_reach() {
     let o = oraculo();
     for caso in ["perto", "baixo", "fora", "colado"] {
         let v = &o["ik_dois_ossos"][caso];
-        let alvo = [v["alvo"][0].as_f64().unwrap(), v["alvo"][1].as_f64().unwrap()];
+        let alvo = [
+            v["alvo"][0].as_f64().unwrap(),
+            v["alvo"][1].as_f64().unwrap(),
+        ];
         let mut j = braco(1.0);
         let k = solve_chain(&mut j, &[1.0, 1.0], alvo, &Ik::default(), false);
         assert_eq!(k, 1.0, "{caso}: sem stretch não estica");
@@ -74,7 +77,10 @@ fn the_forced_side_is_the_chains_and_flips_with_the_mirror() {
     };
     for caso in ["perto", "baixo", "colado"] {
         let v = &o["ik_dois_ossos"][&format!("espelho.{caso}")];
-        let alvo = [v["alvo"][0].as_f64().unwrap(), v["alvo"][1].as_f64().unwrap()];
+        let alvo = [
+            v["alvo"][0].as_f64().unwrap(),
+            v["alvo"][1].as_f64().unwrap(),
+        ];
         let mut j = braco(-1.0);
         solve_chain(&mut j, &[1.0, 1.0], alvo, &ik, true);
         perto(j[1], ponto(&v["b1"], "cauda"), TOL_IK);
@@ -99,7 +105,16 @@ fn a_chain_of_three_reaches_with_rigid_bones() {
         .map(|w| (w[1][0] - w[0][0]).hypot(w[1][1] - w[0][1]))
         .collect();
     let alvo = [1.0, 1.4];
-    solve_chain(&mut j, &comps, alvo, &Ik { chain: 3, ..Ik::default() }, false);
+    solve_chain(
+        &mut j,
+        &comps,
+        alvo,
+        &Ik {
+            chain: 3,
+            ..Ik::default()
+        },
+        false,
+    );
     perto(j[3], ponto(&v["c3"], "cauda"), 1e-3);
     for (w, c) in j.windows(2).zip(&comps) {
         assert!(((w[1][0] - w[0][0]).hypot(w[1][1] - w[0][1]) - c).abs() < 1e-9);
@@ -115,10 +130,16 @@ fn the_stretch_only_grows_past_the_knee_and_reaches_the_target() {
     };
     // Ao alcance o Blender ENCOLHE o braço (0,631 / 0,952): recusado — aqui nada estica.
     let v = &o["ik_estica"]["perto"];
-    assert!(n(&v["b1"], "comprimento") < 0.7, "a recusa medida continua na fixture");
+    assert!(
+        n(&v["b1"], "comprimento") < 0.7,
+        "a recusa medida continua na fixture"
+    );
     let mut com = braco(1.0);
     let mut sem = braco(1.0);
-    assert_eq!(solve_chain(&mut com, &[1.0, 1.0], [1.2, 0.9], &estica, false), 1.0);
+    assert_eq!(
+        solve_chain(&mut com, &[1.0, 1.0], [1.2, 0.9], &estica, false),
+        1.0
+    );
     solve_chain(&mut sem, &[1.0, 1.0], [1.2, 0.9], &Ik::default(), false);
     assert_eq!(com, sem);
     // Fora do alcance: a ponta chega e a corrente é recta (o Blender dobra-a 3,7° / 32,6°).
@@ -127,7 +148,10 @@ fn the_stretch_only_grows_past_the_knee_and_reaches_the_target() {
     let k = solve_chain(&mut j, &[1.0, 1.0], alvo, &estica, false);
     assert!((k - alvo[0].hypot(alvo[1]) / 2.0).abs() < 1e-12);
     perto(j[2], alvo, 1e-9);
-    let (a1, a2) = ((j[1][1]).atan2(j[1][0]), (j[2][1] - j[1][1]).atan2(j[2][0] - j[1][0]));
+    let (a1, a2) = (
+        (j[1][1]).atan2(j[1][0]),
+        (j[2][1] - j[1][1]).atan2(j[2][0] - j[1][0]),
+    );
     assert!(wrap_pi(a1 - a2).abs() < 1e-9);
     // Com suavidade estica desde o joelho, e é contínuo nele.
     let s = 0.2 * 2.0;
@@ -168,11 +192,22 @@ fn stretch_to_matches_blender_volume() {
             };
             let k = Kind::StretchTo(StretchTo { rest: 1.0, volume });
             let p = apply_with(&k, &ctx, None, 1.0).unwrap();
-            assert!(wrap_pi(p.rot - n(v, "rumo_deg").to_radians()).abs() < TOL, "{nome} {dist}");
+            assert!(
+                wrap_pi(p.rot - n(v, "rumo_deg").to_radians()).abs() < TOL,
+                "{nome} {dist}"
+            );
             assert!((p.sx - n(v, "comprimento")).abs() < TOL, "{nome} {dist}");
             // A largura no plano: o eixo X do osso do Blender (o `fundo` é o Z, fora do plano).
-            let largura = if nome == "VOLUME_Z" { 1.0 } else { n(v, "largura") };
-            assert!((p.sy - largura).abs() < TOL, "{nome} {dist}: {} ≠ {largura}", p.sy);
+            let largura = if nome == "VOLUME_Z" {
+                1.0
+            } else {
+                n(v, "largura")
+            };
+            assert!(
+                (p.sy - largura).abs() < TOL,
+                "{nome} {dist}: {} ≠ {largura}",
+                p.sy
+            );
         }
     }
 }
@@ -197,7 +232,11 @@ fn follow_path_goes_by_arc_length_and_faces_the_tangent() {
     let r = 2.0;
     let k = 0.552_284_749_8 * r;
     let mut meio = bezier([r, 0.0], [r, k], [k, r], [0.0, r], 4096);
-    meio.extend(bezier([0.0, r], [-k, r], [-r, k], [-r, 0.0], 4096).into_iter().skip(1));
+    meio.extend(
+        bezier([0.0, r], [-k, r], [-r, k], [-r, 0.0], 4096)
+            .into_iter()
+            .skip(1),
+    );
     let l = vec![[0.0, 0.0], [4.0, 0.0], [4.0, 3.0]];
     for f in [0.0, 0.25, 0.5, 0.75, 1.0] {
         let fp = Kind::FollowPath(FollowPath {
@@ -214,13 +253,25 @@ fn follow_path_goes_by_arc_length_and_faces_the_tangent() {
         let v = &o["follow_path"][&format!("meio_circulo.{f:?}")];
         let p = apply_with(&fp, &ctx, Some(&meio), 1.0).unwrap();
         perto([p.x, p.y], [n(v, "x"), n(v, "y")], 1e-4);
-        assert!(wrap_pi(p.rot - n(v, "rot_deg").to_radians()).abs() < 2e-3, "{f}: {}", p.rot.to_degrees());
+        assert!(
+            wrap_pi(p.rot - n(v, "rot_deg").to_radians()).abs() < 2e-3,
+            "{f}: {}",
+            p.rot.to_degrees()
+        );
         let v = &o["follow_path"][&format!("L.{f:?}")];
         let p = apply_with(&fp, &ctx, Some(&l), 1.0).unwrap();
         perto([p.x, p.y], [n(v, "x"), n(v, "y")], 1e-6);
         // Num trecho recto o rumo é o do trecho (o Blender roda 19,69° a meio do primeiro: recusado).
-        let rumo = if f < 4.0 / 7.0 { 0.0 } else { 90f64.to_radians() };
-        assert!(wrap_pi(p.rot - rumo).abs() < 1e-12, "L {f}: {}", p.rot.to_degrees());
+        let rumo = if f < 4.0 / 7.0 {
+            0.0
+        } else {
+            90f64.to_radians()
+        };
+        assert!(
+            wrap_pi(p.rot - rumo).abs() < 1e-12,
+            "L {f}: {}",
+            p.rot.to_degrees()
+        );
     }
     // Por distância, e num caminho fechado dá a volta.
     let quadrado = vec![[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0], [0.0, 0.0]];

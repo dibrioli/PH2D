@@ -30,9 +30,8 @@
 //! a compará-los ponto a ponto nos dois verbos.
 
 use crate::bone_pick::{BONE_HIT_PX, hover, tip_of};
-use ph2d_ecs::{ChildOf, Entity, RootOrder, SimWorld, Transform};
+use ph2d_ecs::{ChildOf, Entity, RootOrder, SimWorld};
 use ph2d_skeleton_ecs::Bone;
-use ph2d_vec_scene::Xform;
 
 /// **O que o press do modo Osso DECIDE** — a porta única, para a decisão ser observável.
 ///

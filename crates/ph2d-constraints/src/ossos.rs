@@ -88,7 +88,10 @@ pub fn solve_chain(
     );
     if k > 1.0 {
         for j in juntas.iter_mut().skip(1) {
-            *j = [raiz[0] + (j[0] - raiz[0]) * k, raiz[1] + (j[1] - raiz[1]) * k];
+            *j = [
+                raiz[0] + (j[0] - raiz[0]) * k,
+                raiz[1] + (j[1] - raiz[1]) * k,
+            ];
         }
     }
     k

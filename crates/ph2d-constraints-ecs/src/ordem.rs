@@ -40,8 +40,14 @@ pub fn ordem(world: &World) -> (Vec<Entity>, BTreeSet<Entity>) {
     for &e in com.values() {
         if let Some(c) = world.get::<Constraints>(e) {
             for x in crate::ik::correntes(world, e, c) {
-                correntes.entry(e.to_bits()).or_default().insert(x.to_bits());
-                escrito_por.entry(x.to_bits()).or_default().insert(e.to_bits());
+                correntes
+                    .entry(e.to_bits())
+                    .or_default()
+                    .insert(x.to_bits());
+                escrito_por
+                    .entry(x.to_bits())
+                    .or_default()
+                    .insert(e.to_bits());
             }
         }
     }

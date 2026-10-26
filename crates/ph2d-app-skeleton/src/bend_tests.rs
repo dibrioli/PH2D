@@ -61,10 +61,7 @@ fn the_bend_side_is_captured_when_the_anchor_is_born() {
 fn a_straight_chain_gives_the_anchor_no_side_to_defend() {
     let (mut sim, [_, cotovelo]) = braco();
     add(&mut sim, cotovelo).expect("a âncora nasce");
-    assert_eq!(
-        ik_of(&sim, cotovelo).bend,
-        ph2d_skeleton::BendSide::Keep
-    );
+    assert_eq!(ik_of(&sim, cotovelo).bend, ph2d_skeleton::BendSide::Keep);
 }
 
 /// ⭐⭐⭐ **O DEFEITO DO DONO, DE PONTA A PONTA NO MUNDO** — e é o gate que fecha a wave.

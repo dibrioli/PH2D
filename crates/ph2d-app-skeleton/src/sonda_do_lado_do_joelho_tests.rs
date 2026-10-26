@@ -58,10 +58,7 @@ fn trocar_o_lado_muda_a_pose_do_cotovelo() {
 fn so_o_osso_da_ponta_carrega_a_restricao() {
     let (mut sim, [ombro, cotovelo]) = braco();
     crate::goal::add(&mut sim, cotovelo).expect("a ancora nasce na ponta");
-    assert!(
-        tem_ik(&sim, cotovelo),
-        "a ponta nao ficou com a restricao"
-    );
+    assert!(tem_ik(&sim, cotovelo), "a ponta nao ficou com a restricao");
     assert!(
         !tem_ik(&sim, ombro),
         "o PAI tambem ficou com uma restricao: entao o chip funcionaria em qualquer osso, e o \\

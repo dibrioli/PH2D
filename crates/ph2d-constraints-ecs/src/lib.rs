@@ -11,9 +11,9 @@ mod ik_novo;
 mod ordem;
 
 pub use avalia::{Adotar, Caminhos, Estado, Estados, evaluate};
-pub use ordem::ordem;
 pub use ik_item::{com_ik, converter_ik_goals, ik_de, iks, por_ik, tirar_ik};
 pub use ik_novo::{add_ik, add_look_at, aponta};
+pub use ordem::ordem;
 
 use bevy_ecs::component::Component;
 use ph2d_constraints::Kind;

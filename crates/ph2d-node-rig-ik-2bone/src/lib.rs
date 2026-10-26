@@ -94,7 +94,10 @@ pub const MANIFEST: NodeManifest = NodeManifest {
 /// Returns `(elbow, hand)` in world space. The law is `ph2d_skeleton::reach` — one owner for the
 /// two-bone law (docs/BlenderConstraints/02_W2_ossos.md): `flip` picks the side (`Cw`), the
 /// default is `Ccw`.
-#[expect(clippy::cast_possible_truncation, reason = "the stream is f32; the law is f64")]
+#[expect(
+    clippy::cast_possible_truncation,
+    reason = "the stream is f32; the law is f64"
+)]
 fn solve(root: [f32; 2], l1: f32, l2: f32, goal: [f32; 2], flip: bool) -> ([f32; 2], [f32; 2]) {
     let r = [f64::from(root[0]), f64::from(root[1])];
     let (a, b) = (f64::from(l1), f64::from(l2));
@@ -247,7 +250,11 @@ mod tests {
                     },
                 );
                 let f = |p: [f64; 2]| [p[0] as f32, p[1] as f32];
-                assert_eq!(solve(root, l1, l2, goal, flip), (f(j[1]), f(j[2])), "{goal:?} {flip}");
+                assert_eq!(
+                    solve(root, l1, l2, goal, flip),
+                    (f(j[1]), f(j[2])),
+                    "{goal:?} {flip}"
+                );
             }
         }
     }

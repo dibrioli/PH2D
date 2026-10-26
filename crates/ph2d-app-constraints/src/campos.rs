@@ -228,7 +228,11 @@ pub fn escrever(k: &mut Kind, campo: u16, v: f32) -> bool {
         (Kind::LookAt(l), DESVIO) => l.offset = rad,
         (Kind::CopyTransform(c), ESPACO) => c.space = space(opcao(2)),
         (Kind::CopyTransform(c), MISTURA) => c.mix = [Mix::Replace, Mix::Add][opcao(2)],
-        #[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss, reason = "≥ 0, arredondado")]
+        #[expect(
+            clippy::cast_possible_truncation,
+            clippy::cast_sign_loss,
+            reason = "≥ 0, arredondado"
+        )]
         (Kind::Ik(ik), CORRENTE) => ik.chain = v.round().max(0.0) as u32,
         (Kind::Ik(ik), SUAVIDADE) => ik.softness = f64::from(v.clamp(0.0, 1.0)),
         (Kind::Ik(ik), DOBRA) => ik.bend = BendSide::ALL[opcao(BendSide::ALL.len())],

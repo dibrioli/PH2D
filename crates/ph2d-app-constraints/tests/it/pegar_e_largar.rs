@@ -66,7 +66,11 @@ impl Cena {
     fn em_t(&mut self, t: f64) -> Transform {
         self.ph.seek(t);
         apply_from_doc(self.sim.world_mut(), &mut self.tl.doc, self.ph.time());
-        quadro(&mut self.sim, &ph2d_vec_scene::VecScene::new(), &mut self.drive);
+        quadro(
+            &mut self.sim,
+            &ph2d_vec_scene::VecScene::new(),
+            &mut self.drive,
+        );
         self.drive.settle();
         world_transform(self.sim.world(), self.espada).unwrap()
     }

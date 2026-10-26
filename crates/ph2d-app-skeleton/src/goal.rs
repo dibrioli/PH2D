@@ -71,10 +71,7 @@ pub fn anchors(sim: &SimWorld) -> Vec<ph2d_skeleton_render::Goal> {
         .into_iter()
         .filter_map(|(tip, _, item, _)| {
             let alvo = idx.get(&item.target?).copied()?;
-            let (_, o, ponta) = segs
-                .iter()
-                .copied()
-                .find(|(x, _, _)| *x == tip.to_bits())?;
+            let (_, o, ponta) = segs.iter().copied().find(|(x, _, _)| *x == tip.to_bits())?;
             let a = ph2d_vec_entities::transform::xform_of_transform(
                 ph2d_vec_entities::transform::world_transform(sim, alvo),
             )

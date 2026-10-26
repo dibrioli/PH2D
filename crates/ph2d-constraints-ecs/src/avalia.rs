@@ -194,7 +194,11 @@ pub fn evaluate(sim: &mut SimWorld, preview: &mut PreviewDrive) -> usize {
         .collect();
     for &e in &ordem {
         if let Some(c) = sim.world().get::<Constraints>(e) {
-            com_pilha.extend(crate::ik::correntes(sim.world(), e, c).iter().map(|x| x.to_bits()));
+            com_pilha.extend(
+                crate::ik::correntes(sim.world(), e, c)
+                    .iter()
+                    .map(|x| x.to_bits()),
+            );
         }
     }
     for e in ja {
@@ -297,7 +301,7 @@ fn avalia_uma(
         }
         if let Kind::Ik(ik) = &it.kind {
             let local = local_de(parent, base_local, inicial, dono);
-            match crate::ik::avalia(sim, preview, e, local, ik, alvo, it.influence, avaliadas) {
+            match crate::ik::avalia(sim, preview, e, local, (ik, alvo, it.influence), avaliadas) {
                 Ok(nova) => {
                     parent = parent_world_transform(sim.world(), e);
                     dono = pose(&Transform::compose(parent, nova));
@@ -318,7 +322,12 @@ fn avalia_uma(
             target: alvo.and_then(|t| world_transform(w, t)).map(|t| pose(&t)),
             target_parent: alvo.map_or(Pose2::IDENTITY, |t| pose(&parent_world_transform(w, t))),
         };
-        match ph2d_constraints::apply_with(&it.kind, &ctx, caminho.as_deref(), it.influence.min(1.0)) {
+        match ph2d_constraints::apply_with(
+            &it.kind,
+            &ctx,
+            caminho.as_deref(),
+            it.influence.min(1.0),
+        ) {
             Ok(p) if p.is_finite() => {
                 dono = p;
                 marca(it.id, Estado::Activa);

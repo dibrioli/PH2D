@@ -102,7 +102,10 @@ pub fn aim_rotation(sim: &SimWorld, bone: Entity, world: [f64; 2]) -> Option<f64
     let local = *sim.world().get::<Transform>(bone)?;
     let pai = ph2d_ecs::parent_world_transform(sim.world(), bone);
     let mundo = Transform::compose(pai, local);
-    let o = [f64::from(mundo.translation.x), f64::from(mundo.translation.y)];
+    let o = [
+        f64::from(mundo.translation.x),
+        f64::from(mundo.translation.y),
+    ];
     let d = [world[0] - o[0], world[1] - o[1]];
     if d[0].hypot(d[1]) < f64::EPSILON {
         return None;

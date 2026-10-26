@@ -41,7 +41,10 @@ fn follow_path_walks_the_drawn_shape_where_it_is() {
     pose.translation.x = 10.0;
     pose.translation.y = 5.0;
     pose.rotation = 90f32.to_radians();
-    let forma = sim.world_mut().spawn((StableId(1), pose, VecPathRef(id))).id();
+    let forma = sim
+        .world_mut()
+        .spawn((StableId(1), pose, VecPathRef(id)))
+        .id();
     let mut c = Constraints::default();
     let item = c.push(
         Kind::FollowPath(FollowPath {
@@ -59,7 +62,12 @@ fn follow_path_walks_the_drawn_shape_where_it_is() {
     ph2d_app_constraints::quadro(&mut sim, &cena, &mut drive);
     drive.settle();
     // Local (1,75; 0) a 0° ⇒ rodado 90° e levado a (10, 5).
-    perto(world_transform(sim.world(), dono).unwrap(), 10.0, 6.75, 90.0);
+    perto(
+        world_transform(sim.world(), dono).unwrap(),
+        10.0,
+        6.75,
+        90.0,
+    );
     // Por distância, no segundo trecho: local (4; 1,25) a 90°.
     if let Some(mut c) = sim.world_mut().get_mut::<Constraints>(dono)
         && let Some(it) = c.item_mut(item)
@@ -72,9 +80,23 @@ fn follow_path_walks_the_drawn_shape_where_it_is() {
     }
     ph2d_app_constraints::quadro(&mut sim, &cena, &mut drive);
     drive.settle();
-    perto(world_transform(sim.world(), dono).unwrap(), 8.75, 9.0, 180.0);
+    perto(
+        world_transform(sim.world(), dono).unwrap(),
+        8.75,
+        9.0,
+        180.0,
+    );
     // Mover a forma move o dono no mesmo quadro.
-    sim.world_mut().get_mut::<Transform>(forma).unwrap().translation.x = 0.0;
+    sim.world_mut()
+        .get_mut::<Transform>(forma)
+        .unwrap()
+        .translation
+        .x = 0.0;
     ph2d_app_constraints::quadro(&mut sim, &cena, &mut drive);
-    perto(world_transform(sim.world(), dono).unwrap(), -1.25, 9.0, 180.0);
+    perto(
+        world_transform(sim.world(), dono).unwrap(),
+        -1.25,
+        9.0,
+        180.0,
+    );
 }

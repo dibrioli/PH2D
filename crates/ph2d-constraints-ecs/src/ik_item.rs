@@ -14,10 +14,14 @@ use crate::{Constraints, Item};
 /// O (primeiro) item IK do osso: `(id, item, ik)`.
 #[must_use]
 pub fn ik_de(world: &World, osso: Entity) -> Option<(u32, Item, Ik)> {
-    world.get::<Constraints>(osso)?.items.iter().find_map(|it| match it.kind {
-        Kind::Ik(ik) => Some((it.id, *it, ik)),
-        _ => None,
-    })
+    world
+        .get::<Constraints>(osso)?
+        .items
+        .iter()
+        .find_map(|it| match it.kind {
+            Kind::Ik(ik) => Some((it.id, *it, ik)),
+            _ => None,
+        })
 }
 
 /// Todos os ossos com item IK, por bits (determinístico).

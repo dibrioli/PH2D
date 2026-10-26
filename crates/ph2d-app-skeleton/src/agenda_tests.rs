@@ -104,7 +104,11 @@ fn two_anchors_on_one_chain_reach_a_fixed_point() {
 fn the_pose_does_not_depend_on_the_order_the_anchors_were_made() {
     let pose = |primeiro_o_de_baixo: bool| {
         let (mut sim, [_, b1, _, b3]) = braco_de_quatro();
-        let ordem = if primeiro_o_de_baixo { [b3, b1] } else { [b1, b3] };
+        let ordem = if primeiro_o_de_baixo {
+            [b3, b1]
+        } else {
+            [b1, b3]
+        };
         for e in ordem {
             add(&mut sim, e).expect("a ancora");
         }

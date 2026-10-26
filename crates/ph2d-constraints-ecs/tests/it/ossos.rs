@@ -2,9 +2,7 @@
 //! autorado e respeita o espelho. Fixture: o braço dos casos `ik_*` do oráculo.
 
 use bevy_ecs::entity::Entity;
-use ph2d_constraints::{
-    BendSide, Canais, ChildOf as Filho, CopyTransform, Ik, Kind, Pose2,
-};
+use ph2d_constraints::{BendSide, Canais, ChildOf as Filho, CopyTransform, Ik, Kind, Pose2};
 use ph2d_constraints_ecs::{Constraints, Estado, Estados, evaluate};
 use ph2d_ecs::{ChildOf, SimWorld, StableId, Transform, world_transform};
 use ph2d_preview_drive::PreviewDrive;
@@ -72,7 +70,10 @@ fn oraculo() -> serde_json::Value {
 }
 
 fn ponto(v: &serde_json::Value) -> [f64; 2] {
-    [v["cauda_x"].as_f64().unwrap(), v["cauda_y"].as_f64().unwrap()]
+    [
+        v["cauda_x"].as_f64().unwrap(),
+        v["cauda_y"].as_f64().unwrap(),
+    ]
 }
 
 fn ik(chain: u32) -> Kind {
@@ -124,9 +125,15 @@ fn ik_is_an_ordinary_item_in_the_stack() {
         if ik_primeiro {
             // ⛔ Ao contrário do Blender (onde o Copy Rotation some): a mão RODA para 90°.
             let rot = f64::from(mundo(&sim, b2).rotation);
-            assert!(ph2d_constraints::wrap_pi(rot - 90f64.to_radians()).abs() < 1e-5, "{rot}");
+            assert!(
+                ph2d_constraints::wrap_pi(rot - 90f64.to_radians()).abs() < 1e-5,
+                "{rot}"
+            );
             let longe = cauda(&sim, b2);
-            assert!((longe[0] - 1.2).hypot(longe[1] - 0.9) > 0.1, "a cauda não fica no alvo");
+            assert!(
+                (longe[0] - 1.2).hypot(longe[1] - 0.9) > 0.1,
+                "a cauda não fica no alvo"
+            );
         } else {
             // A IK em baixo vence: a mão chega ao alvo, como no Blender.
             perto(cauda(&sim, b2), ponto(&blender["b2"]), TOL_IK);
@@ -152,15 +159,26 @@ fn braco_dobrado(sim: &mut SimWorld, sx: f32) -> (Entity, Entity, Entity) {
 fn bend_side_flips_with_the_mirror() {
     let o = oraculo();
     let c30 = 30f64.to_radians();
-    let lado =
-        ph2d_skeleton::bend_side_of(&[[0.0, 0.0], [1.0, 0.0], [1.0 + c30.cos(), c30.sin()]], [1.0 + c30.cos(), c30.sin()], 2.0);
+    let lado = ph2d_skeleton::bend_side_of(
+        &[[0.0, 0.0], [1.0, 0.0], [1.0 + c30.cos(), c30.sin()]],
+        [1.0 + c30.cos(), c30.sin()],
+        2.0,
+    );
     assert_ne!(lado, BendSide::Keep);
-    for (sx, caso) in [(1.0f32, "perto"), (-1.0, "espelho.perto"), (1.0, "baixo"), (-1.0, "espelho.baixo")] {
+    for (sx, caso) in [
+        (1.0f32, "perto"),
+        (-1.0, "espelho.perto"),
+        (1.0, "baixo"),
+        (-1.0, "espelho.baixo"),
+    ] {
         let v = &o["ik_dois_ossos"][caso];
         let mut sim = SimWorld::new();
         let mut drive = PreviewDrive::default();
         let (_, b1, b2) = braco_dobrado(&mut sim, sx);
-        let alvo = [v["alvo"][0].as_f64().unwrap(), v["alvo"][1].as_f64().unwrap()];
+        let alvo = [
+            v["alvo"][0].as_f64().unwrap(),
+            v["alvo"][1].as_f64().unwrap(),
+        ];
         #[expect(clippy::cast_possible_truncation, reason = "o Transform é f32")]
         sim.world_mut()
             .spawn((StableId(10), em(alvo[0] as f32, alvo[1] as f32, 0.0)));
@@ -190,7 +208,10 @@ fn a_reader_of_the_chain_runs_after_the_ik() {
     sim.world_mut().spawn((StableId(10), em(1.2, 0.9, 0.0)));
     // O leitor nasce DEPOIS (bits menores — o desempate da ordem corre-o primeiro): sem a aresta da
     // corrente leria o ombro de antes da IK (medido pela mutação M2).
-    let leitor = sim.world_mut().spawn((StableId(30), Transform::IDENTITY)).id();
+    let leitor = sim
+        .world_mut()
+        .spawn((StableId(30), Transform::IDENTITY))
+        .id();
     assert!(leitor.to_bits() < b2.to_bits());
     let mut c = Constraints::default();
     c.push(ik(2), Some(StableId(10)));
@@ -222,8 +243,14 @@ fn a_target_inside_the_chain_is_a_cycle() {
     sim.world_mut().entity_mut(b2).insert(c);
     let antes = (mundo(&sim, b1), mundo(&sim, b2), mundo(&sim, dentro));
     quadro(&mut sim, &mut drive);
-    assert_eq!(sim.world().resource::<Estados>().of(b2, 0), Some(Estado::Ciclo));
-    assert_eq!((mundo(&sim, b1), mundo(&sim, b2), mundo(&sim, dentro)), antes);
+    assert_eq!(
+        sim.world().resource::<Estados>().of(b2, 0),
+        Some(Estado::Ciclo)
+    );
+    assert_eq!(
+        (mundo(&sim, b1), mundo(&sim, b2), mundo(&sim, dentro)),
+        antes
+    );
 }
 
 #[test]
@@ -244,14 +271,26 @@ fn a_half_ik_is_a_function_of_the_authored_pose() {
     }
     // Gravar a meio devolve o autorado da corrente inteira.
     let vivo = drive.substitute(&mut sim);
-    assert_eq!(*sim.world().get::<Transform>(b1).unwrap(), em(0.0, 0.0, 0.0));
-    assert_eq!(*sim.world().get::<Transform>(b2).unwrap(), em(1.0, 0.0, 0.0));
+    assert_eq!(
+        *sim.world().get::<Transform>(b1).unwrap(),
+        em(0.0, 0.0, 0.0)
+    );
+    assert_eq!(
+        *sim.world().get::<Transform>(b2).unwrap(),
+        em(1.0, 0.0, 0.0)
+    );
     PreviewDrive::restore(&mut sim, &vivo);
     // Apagar o item devolve o autorado.
     sim.world_mut().entity_mut(b2).remove::<Constraints>();
     quadro(&mut sim, &mut drive);
-    assert_eq!(*sim.world().get::<Transform>(b1).unwrap(), em(0.0, 0.0, 0.0));
-    assert_eq!(*sim.world().get::<Transform>(b2).unwrap(), em(1.0, 0.0, 0.0));
+    assert_eq!(
+        *sim.world().get::<Transform>(b1).unwrap(),
+        em(0.0, 0.0, 0.0)
+    );
+    assert_eq!(
+        *sim.world().get::<Transform>(b2).unwrap(),
+        em(1.0, 0.0, 0.0)
+    );
 }
 
 #[test]
@@ -261,10 +300,19 @@ fn ik_on_an_object_that_is_not_a_bone_says_so() {
     sim.world_mut().spawn((StableId(10), em(1.2, 0.9, 0.0)));
     let mut c = Constraints::default();
     c.push(ik(2), Some(StableId(10)));
-    let e = sim.world_mut().spawn((StableId(1), Transform::IDENTITY, c)).id();
+    let e = sim
+        .world_mut()
+        .spawn((StableId(1), Transform::IDENTITY, c))
+        .id();
     quadro(&mut sim, &mut drive);
-    assert_eq!(sim.world().resource::<Estados>().of(e, 0), Some(Estado::NaoEOsso));
-    assert_eq!(*sim.world().get::<Transform>(e).unwrap(), Transform::IDENTITY);
+    assert_eq!(
+        sim.world().resource::<Estados>().of(e, 0),
+        Some(Estado::NaoEOsso)
+    );
+    assert_eq!(
+        *sim.world().get::<Transform>(e).unwrap(),
+        Transform::IDENTITY
+    );
 }
 
 #[test]
@@ -287,4 +335,30 @@ fn the_stretch_reaches_a_far_target_by_scaling_the_chain_root() {
     let k = 10f64.sqrt() / 2.0;
     assert!((f64::from(sim.world().get::<Transform>(b1).unwrap().scale.x) - k).abs() < 1e-6);
     assert_eq!(sim.world().get::<Transform>(b2).unwrap().scale.x, 1.0);
+}
+
+/// Um `IkGoal` de um ficheiro anterior à W2 vira o item IK com os mesmos números — e o braço obedece.
+#[test]
+fn an_old_ik_goal_becomes_the_ik_item() {
+    let mut sim = SimWorld::new();
+    let mut drive = PreviewDrive::default();
+    let (b1, b2) = braco_recto(&mut sim);
+    sim.world_mut().spawn((StableId(10), em(1.2, 0.9, 0.0)));
+    sim.world_mut().entity_mut(b2).insert(ph2d_skeleton_ecs::IkGoal {
+        target: StableId(10),
+        chain: 2,
+        mix: 0.75,
+        softness: 0.1,
+        bend: BendSide::Cw,
+        offset: 0.0,
+    });
+    assert_eq!(ph2d_constraints_ecs::converter_ik_goals(sim.world_mut()), 1);
+    assert!(sim.world().get::<ph2d_skeleton_ecs::IkGoal>(b2).is_none());
+    let (_, it, ik) = ph2d_constraints_ecs::ik_de(sim.world(), b2).expect("o item IK");
+    assert_eq!((it.target, it.influence), (Some(StableId(10)), 0.75));
+    assert_eq!((ik.chain, ik.softness, ik.bend, ik.stretch), (2, 0.1, BendSide::Cw, false));
+    assert_eq!(ph2d_constraints_ecs::converter_ik_goals(sim.world_mut()), 0, "idempotente");
+    let antes = mundo(&sim, b1);
+    quadro(&mut sim, &mut drive);
+    assert_ne!(mundo(&sim, b1), antes, "a corrente obedece ao item convertido");
 }

@@ -259,7 +259,13 @@ pub const OSSO: f32 = 2.0;
 pub const BOLA: [f32; 2] = [0.8, 1.6];
 pub const RODADOR: ([f32; 2], f32) = ([-3.0, -2.0], -60.0);
 
-fn osso(world: &mut World, nome: &str, cabeca: [f32; 2], rot_deg: f32, pai: Option<Entity>) -> Entity {
+fn osso(
+    world: &mut World,
+    nome: &str,
+    cabeca: [f32; 2],
+    rot_deg: f32,
+    pai: Option<Entity>,
+) -> Entity {
     let mut t = Transform::IDENTITY;
     t.translation.x = cabeca[0];
     t.translation.y = cabeca[1];
@@ -283,7 +289,15 @@ fn osso(world: &mut World, nome: &str, cabeca: [f32; 2], rot_deg: f32, pai: Opti
 }
 
 /// A arte presa a um osso (filha dele, no espaço dele).
-fn arte(world: &mut World, osso: Entity, nome: &str, tile: u32, centro: [f32; 2], lado: [f32; 2], cor: [f32; 4]) {
+fn arte(
+    world: &mut World,
+    osso: Entity,
+    nome: &str,
+    tile: u32,
+    centro: [f32; 2],
+    lado: [f32; 2],
+    cor: [f32; 4],
+) {
     let e = peca(world, nome, tile, centro, 0.0, lado, cor);
     world.entity_mut(e).insert(ph2d_ecs::ChildOf(osso));
 }
@@ -294,10 +308,42 @@ fn braco(world: &mut World) -> Entity {
     let ombro = osso(world, "Ombro", [-2.0, -1.0], 20.0, None);
     let antebraco = osso(world, "Antebraço", [OSSO, 0.0], 40.0, Some(ombro));
     let pele = [0.95, 0.75, 0.6, 1.0];
-    arte(world, ombro, "Braço", WHITE_TILE_KEY, [OSSO / 2.0, 0.0], [OSSO, 0.35], pele);
-    arte(world, antebraco, "Antebraço (arte)", WHITE_TILE_KEY, [OSSO / 2.0, 0.0], [OSSO, 0.3], pele);
-    arte(world, antebraco, "Dedo", WHITE_TILE_KEY, [OSSO + 0.3, 0.0], [0.6, 0.12], [0.85, 0.6, 0.45, 1.0]);
-    let bola = peca(world, "Bola", DISC_TILE_KEY, BOLA, 0.0, [0.45, 0.45], [0.9, 0.15, 0.1, 1.0]);
+    arte(
+        world,
+        ombro,
+        "Braço",
+        WHITE_TILE_KEY,
+        [OSSO / 2.0, 0.0],
+        [OSSO, 0.35],
+        pele,
+    );
+    arte(
+        world,
+        antebraco,
+        "Antebraço (arte)",
+        WHITE_TILE_KEY,
+        [OSSO / 2.0, 0.0],
+        [OSSO, 0.3],
+        pele,
+    );
+    arte(
+        world,
+        antebraco,
+        "Dedo",
+        WHITE_TILE_KEY,
+        [OSSO + 0.3, 0.0],
+        [0.6, 0.12],
+        [0.85, 0.6, 0.45, 1.0],
+    );
+    let bola = peca(
+        world,
+        "Bola",
+        DISC_TILE_KEY,
+        BOLA,
+        0.0,
+        [0.45, 0.45],
+        [0.9, 0.15, 0.1, 1.0],
+    );
     let rodador = peca(
         world,
         "Rodador",
@@ -315,7 +361,10 @@ fn braco(world: &mut World) -> Entity {
     pilha(
         world,
         antebraco,
-        &[(Kind::Ik(Ik::default()), Some(bola), 1.0), (copia, Some(rodador), 1.0)],
+        &[
+            (Kind::Ik(Ik::default()), Some(bola), 1.0),
+            (copia, Some(rodador), 1.0),
+        ],
     );
     antebraco
 }

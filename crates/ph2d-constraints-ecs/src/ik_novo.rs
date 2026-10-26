@@ -44,5 +44,6 @@ fn nasce(sim: &mut SimWorld, bone: Entity, chain: u32) -> Option<Entity> {
 /// ([`aponta_com`]). Só então o desvio (`offset`) é lido e o painel o mostra.
 #[must_use]
 pub fn aponta(sim: &SimWorld, bone: Entity) -> bool {
-    ik_de(sim.world(), bone).is_some_and(|(_, _, ik)| aponta_com(governed(sim, bone, ik.chain).len()))
+    ik_de(sim.world(), bone)
+        .is_some_and(|(_, _, ik)| aponta_com(governed(sim, bone, ik.chain).len()))
 }

@@ -4,7 +4,7 @@ use super::*;
 use crate::bone_gesture::Pincel;
 // ⚠️ Declarado AQUI e não herdado do pai: a `create` delegou para a folha e o pai deixou de
 // nomear o `Name` no código dele. *Um `use` que só o filho usa é um aviso no pai.*
-use ph2d_ecs::Name;
+use ph2d_ecs::{Name, Transform};
 use ph2d_skeleton_render::BonePart;
 use ph2d_tool_bone::BoneAction;
 

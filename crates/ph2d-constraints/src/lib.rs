@@ -12,13 +12,13 @@ mod caminho;
 mod kind;
 mod ossos;
 
+pub use caminho::{FollowPath, PathBy};
 pub use kind::{
     Canais, ChildOf, CopyTransform, Distance, DistanceMode, Faixa, Kind, Limit, LookAt, Mix, Space,
 };
-pub use caminho::{FollowPath, PathBy};
 pub use ossos::{Ik, StretchTo, Volume, bend_in_world, solve_chain, stretch_factor};
-pub use ph2d_skeleton::BendSide;
 use ph2d_affine::Xform;
+pub use ph2d_skeleton::BendSide;
 pub use ph2d_skeleton::{blend_angle, clamp_to_limit, wrap_pi};
 use serde::{Deserialize, Serialize};
 

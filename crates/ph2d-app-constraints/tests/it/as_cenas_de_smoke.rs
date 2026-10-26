@@ -245,17 +245,31 @@ fn the_arm_scene_turns_the_hand_below_the_ik() {
             r.rotation.to_degrees()
         );
         assert!((longe(m, mundo(sim, ombro)) - f64::from(OSSO)).abs() < 1e-4);
-        assert!((longe(m, mundo(sim, bola)) - f64::from(OSSO)).abs() < 1e-4, "o cotovelo é o da IK");
+        assert!(
+            (longe(m, mundo(sim, bola)) - f64::from(OSSO)).abs() < 1e-4,
+            "o cotovelo é o da IK"
+        );
     };
     passo(&mut sim, &mut drive);
     confere(&sim);
-    sim.world_mut().get_mut::<Transform>(bola).unwrap().translation.x = -0.5;
-    sim.world_mut().get_mut::<Transform>(rodador).unwrap().rotation = 30f32.to_radians();
+    sim.world_mut()
+        .get_mut::<Transform>(bola)
+        .unwrap()
+        .translation
+        .x = -0.5;
+    sim.world_mut()
+        .get_mut::<Transform>(rodador)
+        .unwrap()
+        .rotation = 30f32.to_radians();
     passo(&mut sim, &mut drive);
     confere(&sim);
     let antes = (mundo(&sim, ombro), mundo(&sim, mao));
     passo(&mut sim, &mut drive);
-    assert_eq!((mundo(&sim, ombro), mundo(&sim, mao)), antes, "parado, não salta");
+    assert_eq!(
+        (mundo(&sim, ombro), mundo(&sim, mao)),
+        antes,
+        "parado, não salta"
+    );
     // Descer a IK: agora ela vence, e a ponta da mão toca a bola.
     let ik = sim.world().get::<Constraints>(mao).unwrap().items[0].id;
     apply_all(&mut sim, &[(mao.to_bits(), E::Mover(ik, 1))]);
@@ -263,6 +277,12 @@ fn the_arm_scene_turns_the_hand_below_the_ik() {
     let m = mundo(&sim, mao);
     let (s, c) = m.rotation.sin_cos();
     let b = mundo(&sim, bola).translation;
-    let ponta = (m.translation.x + c * OSSO * m.scale.x, m.translation.y + s * OSSO * m.scale.x);
-    assert!((ponta.0 - b.x).abs() < 1e-4 && (ponta.1 - b.y).abs() < 1e-4, "{ponta:?} ≠ {b:?}");
+    let ponta = (
+        m.translation.x + c * OSSO * m.scale.x,
+        m.translation.y + s * OSSO * m.scale.x,
+    );
+    assert!(
+        (ponta.0 - b.x).abs() < 1e-4 && (ponta.1 - b.y).abs() < 1e-4,
+        "{ponta:?} ≠ {b:?}"
+    );
 }

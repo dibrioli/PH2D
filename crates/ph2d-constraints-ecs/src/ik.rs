@@ -31,7 +31,10 @@ fn realimenta(sim: &SimWorld, alvo: Entity, corrente: &[Entity]) -> bool {
     false
 }
 
-#[expect(clippy::cast_possible_truncation, reason = "o `Transform` da casa é f32")]
+#[expect(
+    clippy::cast_possible_truncation,
+    reason = "o `Transform` da casa é f32"
+)]
 fn f32_de(v: f64) -> f32 {
     v as f32
 }
@@ -43,9 +46,7 @@ pub(crate) fn avalia(
     preview: &mut PreviewDrive,
     e: Entity,
     local_e: Transform,
-    ik: &Ik,
-    alvo: Option<Entity>,
-    forca: f64,
+    (ik, alvo, forca): (&Ik, Option<Entity>, f64),
     avaliadas: &mut BTreeSet<u64>,
 ) -> Result<Transform, Estado> {
     if sim.world().get::<Bone>(e).is_none() {
@@ -85,7 +86,11 @@ pub(crate) fn avalia(
         .iter()
         .map(|j| [r[0] + (j[0] - r[0]) / k, r[1] + (j[1] - r[1]) / k])
         .collect();
-    let desvio = if aponta_com(corrente.len()) { ik.offset } else { 0.0 };
+    let desvio = if aponta_com(corrente.len()) {
+        ik.offset
+    } else {
+        0.0
+    };
     let mix = forca.clamp(0.0, 1.0);
     let mut dono = local_e;
     for (i, &(c, agora, partida)) in vistas.iter().enumerate() {
@@ -125,7 +130,11 @@ fn escreve(
     } else if nova == partida {
         preview.release_to_authored(sim, c, Driver::ConstraintPose);
     } else {
-        preview.driven(c, Driven::ConstraintPose(agora), Driven::ConstraintPose(nova));
+        preview.driven(
+            c,
+            Driven::ConstraintPose(agora),
+            Driven::ConstraintPose(nova),
+        );
     }
 }
 

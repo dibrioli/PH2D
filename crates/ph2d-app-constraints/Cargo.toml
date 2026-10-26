@@ -45,6 +45,7 @@ ph2d-label-census = { path = "../ph2d-label-census" }
 # A cena 6 (a medida animada): a porta do quadro do vetor e a régua do cumprimento.
 ph2d-vec-entities = { path = "../ph2d-vec-entities" }
 ph2d-vec-constraints = { path = "../ph2d-vec-constraints" }
+ph2d-vec-edit = { path = "../ph2d-vec-edit" }
 
 [lints]
 workspace = true

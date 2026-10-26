@@ -462,7 +462,9 @@ fn imagem_da_ferramenta(
             3.0,
             |_| 1.0,
         );
-        assert!(t.wet_preset_aplicar(&direito(p)).is_empty());
+        // Pela porta do navegador: ela põe a ferramenta do preset na mão (a interna escreve-o no slot dela e deixa o
+        // Pincel na mão — a régua media o traço do Ink Brush).
+        assert!(t.preset_aplicar(&direito(p)).unwrap().is_empty());
         if crua {
             t.set_wet_largura_crua(escala);
         }
@@ -898,6 +900,8 @@ fn cada_preset_de_fabrica_volta_ao_byte() {
 #[test]
 fn a_miniatura_de_fabrica_e_a_que_o_motor_pinta_hoje() {
     let mut vistas = Vec::new();
+    // Todas as que mudaram, não só a primeira: o desenho de uma mudança de lei é QUAIS mudaram.
+    let mut mudaram = Vec::new();
     for (rel, b) in ficheiros_de_fabrica() {
         let p = ler(&b).unwrap();
         let hoje = miniatura_do_preset(&p);
@@ -907,15 +911,21 @@ fn a_miniatura_de_fabrica_e_a_que_o_motor_pinta_hoje() {
             .zip(p.miniatura.rgba.chunks(4))
             .filter(|(a, b)| a != b)
             .count();
-        assert!(
-            hoje == p.miniatura,
-            "{rel}: {diferem} px mudaram (fnv {:#018x} → {:#018x}) — o motor mudou de lei. Se foi de \
-             propósito, regere a fábrica (cabeçalho deste ficheiro) e diga-o no handoff",
-            fnv1a(&p.miniatura.rgba),
-            fnv1a(&hoje.rgba)
-        );
+        if hoje != p.miniatura {
+            mudaram.push(format!(
+                "{rel}: {diferem} px mudaram (fnv {:#018x} → {:#018x})",
+                fnv1a(&p.miniatura.rgba),
+                fnv1a(&hoje.rgba)
+            ));
+        }
         vistas.push((rel, hoje.rgba));
     }
+    assert!(
+        mudaram.is_empty(),
+        "o motor mudou de lei. Se foi de propósito, regere a fábrica (cabeçalho deste ficheiro) e diga-o no \
+         handoff:\n{}",
+        mudaram.join("\n")
+    );
     // O leitor DECIDE: dois presets diferentes pintam miniaturas diferentes.
     for (i, (ra, a)) in vistas.iter().enumerate() {
         for (rb, b) in &vistas[i + 1..] {

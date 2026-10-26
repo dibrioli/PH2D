@@ -614,11 +614,26 @@ fn o_po_do_pincel_edita_se_pelo_cartao() {
 
 /// As linhas da ferramenta da água e o fio dela.
 const DA_FERRAMENTA: [(NodeId, &str); 5] = [
-    (ph2d_tool_painter::ids::PAINTER_WETPAINT_SMEAR_STRENGTH, "wet_smear"),
-    (ph2d_tool_painter::ids::PAINTER_WETPAINT_SMEAR_WATER, "wet_smear"),
-    (ph2d_tool_painter::ids::PAINTER_WETPAINT_BLEND_STRENGTH, "wet_blend"),
-    (ph2d_tool_painter::ids::PAINTER_WETPAINT_DRY_ABSORBENCY, "wet_dry"),
-    (ph2d_tool_painter::ids::PAINTER_WETPAINT_BLOW_STRENGTH, "wet_blow"),
+    (
+        ph2d_tool_painter::ids::PAINTER_WETPAINT_SMEAR_STRENGTH,
+        "wet_smear",
+    ),
+    (
+        ph2d_tool_painter::ids::PAINTER_WETPAINT_SMEAR_WATER,
+        "wet_smear",
+    ),
+    (
+        ph2d_tool_painter::ids::PAINTER_WETPAINT_BLEND_STRENGTH,
+        "wet_blend",
+    ),
+    (
+        ph2d_tool_painter::ids::PAINTER_WETPAINT_DRY_ABSORBENCY,
+        "wet_dry",
+    ),
+    (
+        ph2d_tool_painter::ids::PAINTER_WETPAINT_BLOW_STRENGTH,
+        "wet_blow",
+    ),
 ];
 
 /// ⭐ **A linha de cada ferramenta da água só aparece com ela na mão** (dono 25/10: o Inspector por ferramenta; o

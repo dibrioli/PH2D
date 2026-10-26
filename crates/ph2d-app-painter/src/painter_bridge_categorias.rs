@@ -23,7 +23,7 @@ pub(crate) const CATEGORIAS: &[(&str, &[&str])] = &[
     ),
     (
         "app.painter.presets.category.blend_erase",
-        &["Blend", "Eraser"],
+        &["Blend", "Eraser", "Smear"],
     ),
     ("app.painter.presets.category.effects", &["Effects"]),
 ];

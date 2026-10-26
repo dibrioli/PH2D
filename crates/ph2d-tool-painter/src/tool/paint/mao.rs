@@ -375,6 +375,14 @@ fn da_pressao(l: LinhaDaMao) -> bool {
     )
 }
 
+/// Os knobs do Wet Paint que são da MÃO (a caneta e a inclinação): cada ferramenta tem os seus (`switch_brush_slot`).
+pub(crate) fn knobs_da_mao() -> impl Iterator<Item = Knob> {
+    LINHAS_DA_MAO.into_iter().filter_map(|l| match l {
+        LinhaDaMao::Knob(k) => Some(k),
+        _ => None,
+    })
+}
+
 /// A `Dynamics` dos meios antigos pelas chaves das linhas — o que o estado inicial de uma MACRO leva dela (a
 /// `PenTilt` já vai no pincel, `campos_da_macro`).
 pub(crate) fn dinamica_para_json(d: &Dynamics) -> serde_json::Value {

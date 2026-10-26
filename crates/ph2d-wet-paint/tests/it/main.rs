@@ -9,6 +9,7 @@
 #[path = "../util/mod.rs"]
 mod util;
 
+mod a_agua_do_smear;
 mod a_lei_do_glaze;
 mod a_lei_do_po;
 mod a_opacidade_do_dab;

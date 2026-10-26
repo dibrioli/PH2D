@@ -223,7 +223,7 @@ fn o_apagado_na_aguada_molhada_fica_apagado() {
 /// **Mutação que sangra:** tirar o `FollowSemNada` de `authored_spec` (`dab_spec.rs`).
 #[test]
 fn o_follow_sem_lado_nao_muda_a_agua() {
-    use ph2d_editor_core::tool::{PanelEvent, Tool};
+    use ph2d_editor_core::tool::Tool;
     fn quadro(t: &mut PainterTool, u: &mut Option<Vec<u8>>) {
         t.on_tick(1000.0 / 60.0);
         if let Some((px, _, _)) = t.take_preview_arc() {

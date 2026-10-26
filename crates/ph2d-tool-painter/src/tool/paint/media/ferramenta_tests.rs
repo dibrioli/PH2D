@@ -184,7 +184,8 @@ fn o_preset_de_uma_ferramenta_volta_a_ela() {
     }
 }
 
-/// As borrachas de fábrica de antes do campo eram pincéis Erase Alpha: são da Borracha. O Smear do FLUIDO é do Pincel.
+/// As borrachas de fábrica de antes do campo eram pincéis Erase Alpha: são da Borracha. O Smear do FLUIDO é do Smear da
+/// água (dono 25/10: cada ferramenta da água tem a sua gaveta).
 #[test]
 fn os_presets_de_antes_do_campo_acham_a_sua_ferramenta() {
     let mut p = Parametros::novo("Digital", "Hard", "Hard Eraser");
@@ -194,6 +195,8 @@ fn os_presets_de_antes_do_campo_acham_a_sua_ferramenta() {
     assert_eq!(crate::ferramenta_do_preset(&p), F::Borracha);
     let mut w = Parametros::novo("WetPaint", "Blend", "x");
     w.paint_mode = Some("Smear".into());
+    assert_eq!(crate::ferramenta_do_preset(&w), F::SmearMolhado);
+    w.paint_mode = Some("Paint".into());
     assert_eq!(crate::ferramenta_do_preset(&w), F::Pincel);
     let mut d = Parametros::novo("Digital", "Blend", "Blur");
     d.paint_mode = Some("Blur".into());

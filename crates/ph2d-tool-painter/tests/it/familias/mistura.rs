@@ -6,8 +6,33 @@
 use super::prelude::*;
 
 mod motor;
+mod sonda_agua;
 
 pub const WET: &[Receita] = &[];
+
+/// L-1, o «Blender Soft» (a base das ferramentas da água: o resto das receitas delas não é lido — `ferramenta_da_agua`).
+const BLENDER_SOFT: Receita = Receita {
+    meio: "Blend",
+    grupo: "Soft",
+    nome: "Blender Soft",
+    water: 1.0,
+    opacity: 1.0,
+    pigment: 78.0,
+    pickup: 1.0,
+    gate: 0.4,
+    evaporation: 1.0,
+    edge: 12.0,
+    tilt: DIREITA,
+    bristle_size: 2.0,
+    bristle_count: 4000.0,
+    hardness: 0.0,
+    size_px: None,
+    extras: &[("blendForce", 0.5), ("felt", 0.2)],
+    grao: None,
+    achatado: None,
+    pincel: &[],
+    nasce_de: Some("Wet Round"),
+};
 
 /// As FERRAMENTAS do Wet (o modo ao lado da receita, `receitas_de_fabrica::ReceitaFerramenta`).
 pub const WET_FERRAMENTAS: &[ReceitaFerramenta] = &[
@@ -19,29 +44,133 @@ pub const WET_FERRAMENTAS: &[ReceitaFerramenta] = &[
     // contra o Rebelle 131·78·48 · 107·130·183·217, o alcance acima · abaixo 24 · 21 px contra 26 · 23 (a 0,4: 19 · 21,
     // o que os dois revisores da 1.ª prancha viram — «o original sobe mais»; a força 0,8: 25 · 16).
     ReceitaFerramenta {
+        receita: BLENDER_SOFT,
+        modo: "Blend",
+    },
+    // As do Rebelle (N4, dono 25/10: «presets para Smear e Blend»), medidas na cena `sobre` contra `rebelle_bateria/BLEND`
+    // (`sonda_agua`): «Default/Textured» — força ×5 e o toque espalhado 0,35 (a rotação dele não age aqui); a nossa força BAIXA dá a orla
+    // mais alta (0,3: 17 · 0,5: 13 · 1: 9) e o espalhamento abre-a: resto 0,986 · orla 15 · fundo 5 contra 0,986 · 19 · 20.
+    ReceitaFerramenta {
         receita: Receita {
             meio: "Blend",
-            grupo: "Soft",
-            nome: "Blender Soft",
-            water: 1.0,
-            opacity: 1.0,
-            pigment: 78.0,
-            pickup: 1.0,
-            gate: 0.4,
-            evaporation: 1.0,
-            edge: 12.0,
-            tilt: DIREITA,
-            bristle_size: 2.0,
-            bristle_count: 4000.0,
-            hardness: 0.0,
-            size_px: None,
-            extras: &[("blendForce", 0.5), ("felt", 0.2)],
-            grao: None,
-            achatado: None,
-            pincel: &[],
-            nasce_de: Some("Wet Round"),
+            grupo: "Textured",
+            nome: "Blender Textured",
+            extras: &[("blendForce", 0.3), ("felt", 0.2)],
+            pincel: &[("jitter", "0.35")],
+            nasce_de: Some("Blender Soft"),
+            ..BLENDER_SOFT
         },
         modo: "Blend",
+    },
+    // «Default/Dots»: o Textured com o toque menos espalhado (0,125): 0,996 · 17 · 1 contra 0,981 · 19 · 20.
+    ReceitaFerramenta {
+        receita: Receita {
+            meio: "Blend",
+            grupo: "Dots",
+            nome: "Blender Dots",
+            extras: &[("blendForce", 0.3), ("felt", 0.2)],
+            pincel: &[("jitter", "0.125")],
+            nasce_de: Some("Blender Soft"),
+            ..BLENDER_SOFT
+        },
+        modo: "Blend",
+    },
+    // «Default/Hard»: mais denso e a pressão → força 0,8 com piso 0,2 (o do Rebelle); a dureza não age nas ferramentas da
+    // água (o motor usa a delas): 0,996 · 12 · 1 contra 0,955 · 8 · 12.
+    ReceitaFerramenta {
+        receita: Receita {
+            meio: "Blend",
+            grupo: "Hard",
+            nome: "Blender Hard",
+            extras: &[
+                ("blendForce", 0.6),
+                ("felt", 0.2),
+                ("pressureOpacity", 0.8),
+                ("pressureFloor", 0.2),
+            ],
+            nasce_de: Some("Blender Soft"),
+            ..BLENDER_SOFT
+        },
+        modo: "Blend",
+    },
+    // O Smear da água (o SMUDGE do Rebelle), à escala 0,5 da cena: «Default/Soft» — a pressão leva a força, não o tamanho.
+    // O arrasto casa (fundo 110 contra 119); o canal LIMPO do Rebelle (resto 0,09 em 15 px) o motor não abre a nenhuma
+    // escala ou força (o rasto só leva pigmento: a 0,6–0,7 o resto desce a 0,95–0,81, a largura sobe a 12–41).
+    ReceitaFerramenta {
+        receita: Receita {
+            meio: "Smear",
+            grupo: "Soft",
+            nome: "Smear Soft",
+            extras: &[
+                ("smear", 1.0),
+                ("pressureSize", 0.0),
+                ("pressureOpacity", 1.0),
+            ],
+            nasce_de: Some("Blender Soft"),
+            ..BLENDER_SOFT
+        },
+        modo: "Smear",
+    },
+    // «Default/Spikey»: a pressão leva o tamanho (1) e a força (0,7, piso 0,3) — difere do Soft só sob a caneta, como lá.
+    ReceitaFerramenta {
+        receita: Receita {
+            meio: "Smear",
+            grupo: "Spikey",
+            nome: "Smear Spikey",
+            extras: &[
+                ("smear", 1.0),
+                ("pressureSize", 1.0),
+                ("pressureOpacity", 0.7),
+                ("pressureFloor", 0.3),
+            ],
+            nasce_de: Some("Blender Soft"),
+            ..BLENDER_SOFT
+        },
+        modo: "Smear",
+    },
+    // «Default/Flat»: a força do toque 0,95 (o arrasto 81 contra 79); a ponta chata dele não entra — o carimbo das
+    // ferramentas da água é o redondo delas (censo `cada_ferramenta_da_agua_so_ve_o_que_le`: Shape e Marca inertes).
+    ReceitaFerramenta {
+        receita: Receita {
+            meio: "Smear",
+            grupo: "Flat",
+            nome: "Smear Flat",
+            extras: &[
+                ("smear", 0.95),
+                ("pressureSize", 0.3),
+                ("pressureOpacity", 1.0),
+            ],
+            nasce_de: Some("Blender Soft"),
+            ..BLENDER_SOFT
+        },
+        modo: "Smear",
+    },
+    // «Default/Shattered»: o toque espalhado 0,25 (a rotação inteira dele não age aqui); a opacidade aleatória dele (média ~½) é a força
+    // 0,6: o arrasto 18 contra 0 (a 1: 40).
+    ReceitaFerramenta {
+        receita: Receita {
+            meio: "Smear",
+            grupo: "Shattered",
+            nome: "Smear Shattered",
+            extras: &[("smear", 0.6)],
+            pincel: &[("jitter", "0.25")],
+            nasce_de: Some("Blender Soft"),
+            ..BLENDER_SOFT
+        },
+        modo: "Smear",
+    },
+    // NOSSO (dono 25/10: «Smear tem água em seu efeito»): o Smear que MOLHA o rasto (Water 0,9) — dissolve o assente e
+    // abre a tinta (resto 0,59, largura 117 px); o Rebelle não tem.
+    ReceitaFerramenta {
+        receita: Receita {
+            meio: "Smear",
+            grupo: "Wet",
+            nome: "Smear Wet",
+            extras: &[("smear", 1.0), ("smearWater", 0.9)],
+            nasce_de: Some("Blender Soft"),
+            ..BLENDER_SOFT
+        },
+        modo: "Smear",
     },
 ];
 
@@ -267,7 +396,17 @@ const FOTOS: [(&str, &str, Identidade); 5] = [
 ];
 
 /// A escala da ferramenta na cena (a do exame: a largura medida igual à do oráculo; as faixas da base à escala 1).
-const ESCALA_DO_EXAME: [(&str, f64); 1] = [("Blender Soft", 0.45)];
+const ESCALA_DO_EXAME: [(&str, f64); 9] = [
+    ("Blender Soft", 0.45),
+    ("Blender Textured", 0.45),
+    ("Blender Dots", 0.45),
+    ("Blender Hard", 0.45),
+    ("Smear Soft", 0.5),
+    ("Smear Spikey", 0.5),
+    ("Smear Flat", 0.5),
+    ("Smear Shattered", 0.5),
+    ("Smear Wet", 0.5),
+];
 
 /// O que faz a identidade de cada uma.
 const IDENTIDADE: [(&str, &[M]); 5] = [
@@ -283,6 +422,19 @@ const IDENTIDADE: [(&str, &[M]); 5] = [
 
 /// A cena `sobre` (foto A) pintada por `nome` sobre a base do meio dele (`exame_bancada::base_padrao`): os píxeis.
 pub(crate) fn sobre_de(nome: &str, preset: Option<ph2d_brush_presets::Preset>) -> Vec<u8> {
+    let escala = ESCALA_DO_EXAME
+        .iter()
+        .find(|e| e.0 == nome)
+        .map_or(1.0, |e| e.1);
+    sobre_a_escala(nome, preset, escala)
+}
+
+/// [`sobre_de`] com a ferramenta à `escala` dada.
+pub(crate) fn sobre_a_escala(
+    nome: &str,
+    preset: Option<ph2d_brush_presets::Preset>,
+    escala: f64,
+) -> Vec<u8> {
     use crate::exame_bancada::{Fonte, Pincel, base_padrao, bateria, pinceis, pinta_cena};
     let bat = bateria();
     let tela = [0, 1].map(|i| bat["tela"][i].as_u64().unwrap() as u32);
@@ -295,10 +447,6 @@ pub(crate) fn sobre_de(nome: &str, preset: Option<ph2d_brush_presets::Preset>) -
         .unwrap()
         .clone();
     // A ferramenta à escala do exame (os traços depois do `pincel: preset`); as faixas da base ficam.
-    let escala = ESCALA_DO_EXAME
-        .iter()
-        .find(|e| e.0 == nome)
-        .map_or(1.0, |e| e.1);
     let mut da_ferramenta = false;
     for op in sobre["ops"].as_array_mut().unwrap() {
         if op["op"] == "pincel" {
@@ -423,6 +571,98 @@ fn cada_ferramenta_da_mistura_se_reconhece_pela_foto() {
         falhas.extend(falhas_da_identidade(nome, eu));
     }
     assert!(falhas.is_empty(), "{}", falhas.join("\n"));
+}
+
+/// As fotos das ferramentas da água (N4): `rebelle_bateria/{BLEND,SMUDGE}/default_*_sobre_A.png` por `mistura_foto.py`
+/// (o cruzamento 2: a troca de ferramenta das fotos antigas só erra o tamanho do 1.º). O que cada uma MEDE: o Blend o
+/// resto, a orla e o fundo; o Smear o arrasto (o canal limpo do SMUDGE o motor não abre — a receita do Smear Soft) e,
+/// no Shattered, o resto (o dele quase não toca a faixa).
+#[rustfmt::skip]
+const FOTOS_DA_AGUA: [(&str, &str, Identidade, &[M]); 7] = [
+    ("Blender Textured", "BLEND/default_textured", Identidade { resto: 0.986, largura: 0.0, borda: 0.0, fundo: 20.0, orla_v: 19.0 }, &[M::Resto, M::OrlaV, M::Fundo]),
+    ("Blender Dots", "BLEND/default_dots", Identidade { resto: 0.981, largura: 0.0, borda: 0.0, fundo: 20.0, orla_v: 19.0 }, &[M::Resto, M::OrlaV, M::Fundo]),
+    ("Blender Hard", "BLEND/default_hard", Identidade { resto: 0.955, largura: 0.0, borda: 0.0, fundo: 12.0, orla_v: 8.0 }, &[M::Resto, M::OrlaV, M::Fundo]),
+    ("Smear Soft", "SMUDGE/default_soft", Identidade { resto: 0.091, largura: 15.0, borda: 3.5, fundo: 119.0, orla_v: -6.0 }, &[M::Fundo]),
+    ("Smear Spikey", "SMUDGE/default_spikey", Identidade { resto: 0.091, largura: 15.0, borda: 3.5, fundo: 119.0, orla_v: -4.0 }, &[M::Fundo]),
+    ("Smear Flat", "SMUDGE/default_flat", Identidade { resto: 0.091, largura: 13.0, borda: 1.5, fundo: 79.0, orla_v: -4.0 }, &[M::Fundo]),
+    ("Smear Shattered", "SMUDGE/default_shattered", Identidade { resto: 0.996, largura: 0.0, borda: 0.0, fundo: 0.0, orla_v: -1.0 }, &[M::Resto, M::Fundo]),
+];
+
+/// ⭐ **Cada preset das ferramentas da água cai na foto do seu Rebelle** (N4, dono 25/10): na cena `sobre`, cada medida
+/// que a foto dele faz cai na tolerância. E o «Smear Wet» (nosso, o Water do Smear): MOLHA o rasto — dissolve a faixa
+/// que o Smear Soft só arrasta (o resto cai mais de 0,2 abaixo do dele).
+#[test]
+fn cada_preset_da_agua_cai_na_foto_do_seu_rebelle() {
+    let nomes: Vec<&str> = FOTOS_DA_AGUA
+        .iter()
+        .map(|f| f.0)
+        .chain(["Smear Wet"])
+        .collect();
+    let medidas: Vec<(&str, Identidade)> = std::thread::scope(|s| {
+        let hs: Vec<_> = nomes
+            .iter()
+            .map(|&nome| s.spawn(move || (nome, Identidade::de(&sobre_de(nome, None), 1000))))
+            .collect();
+        hs.into_iter().map(|h| h.join().unwrap()).collect()
+    });
+    let de = |n: &str| medidas.iter().find(|m| m.0 == n).unwrap().1;
+    let mut falhas = Vec::new();
+    for (nome, oraculo, foto, ms) in &FOTOS_DA_AGUA {
+        let eu = de(nome);
+        println!("[agua] {nome}: {eu:?}\n       foto {oraculo}: {foto:?}");
+        for &m in *ms {
+            let (v, f) = (m.de(&eu), m.de(foto));
+            if (v - f).abs() > m.tol(f) {
+                falhas.push(format!(
+                    "{nome}: {m:?} {v:.3} fora da foto {f:.3} ± {:.3} ({oraculo})",
+                    m.tol(f)
+                ));
+            }
+        }
+    }
+    let (molhado, soft) = (de("Smear Wet").resto, de("Smear Soft").resto);
+    println!("[agua] Smear Wet: resto {molhado:.3} · Smear Soft {soft:.3}");
+    if molhado > soft - 0.2 {
+        falhas.push(format!(
+            "Smear Wet: resto {molhado:.3} — não dissolve mais que o Smear Soft ({soft:.3})"
+        ));
+    }
+    assert!(falhas.is_empty(), "{}", falhas.join("\n"));
+}
+
+/// ⭐ **Aplicar um preset de uma ferramenta da água não mexe no Pincel** (N4, dono 25/10): com o Pincel da água pintado
+/// por um preset, cada preset de fábrica do Smear e do Blend põe a SUA ferramenta na mão — e, de volta ao Pincel, o
+/// pincel, a mão do traço, os knobs do motor e a largura prometida são os de antes, ao bit.
+#[test]
+fn aplicar_um_preset_da_agua_nao_mexe_no_pincel() {
+    use ph2d_tool_painter::{FerramentaDoPincel as F, PainterTool};
+    let mut falhas = Vec::new();
+    for f in WET_FERRAMENTAS {
+        let nome = f.receita.nome;
+        let mut t = PainterTool::default();
+        t.preset_aplicar(&crate::midias_de_fabrica::de_fabrica("Ink Brush"))
+            .unwrap();
+        let antes = t.retrato_do_pincel_da_agua();
+        t.preset_aplicar(&crate::midias_de_fabrica::de_fabrica(nome))
+            .unwrap();
+        let esperada = if f.modo == "Smear" {
+            F::SmearMolhado
+        } else {
+            F::BlendMolhado
+        };
+        if t.ferramenta_dos_presets() != Some(esperada) {
+            falhas.push(format!(
+                "{nome}: na mão {:?}, não {esperada:?}",
+                t.ferramenta_dos_presets()
+            ));
+        }
+        t.set_paint_tool_mode("wet_paint");
+        let depois = t.retrato_do_pincel_da_agua();
+        if depois != antes {
+            falhas.push(format!("{nome}: o Pincel mudou"));
+        }
+    }
+    assert!(falhas.is_empty(), "{falhas:#?}");
 }
 
 /// **A prova de mutação do portão, permanente** (J4): cada mutação do valor que FAZ a identidade de uma ferramenta — o
@@ -559,9 +799,9 @@ fn a_borracha_dura_de_fabrica_apaga_numa_passada_com_a_caneta() {
     assert!(falhas.is_empty(), "{}", falhas.join("\n"));
 }
 
-/// ⭐ **Cada ferramenta tem a SUA biblioteca de fábrica** (dono 24/10, o padrão do Procreate): os presets de fábrica
-/// cuja ferramenta é a Borracha, o Blur, o Smear ou o Clone são EXACTAMENTE os da lista, e cada um, aplicado, põe essa
-/// ferramenta na mão com o meio Digital.
+/// ⭐ **Cada ferramenta tem a SUA biblioteca de fábrica** (dono 24/10, o padrão do Procreate; as da água, 25/10): os
+/// presets de fábrica cuja ferramenta é a Borracha, o Blur, o Smear, o Clone, o Smear ou o Blend da água são EXACTAMENTE
+/// os da lista, e cada um, aplicado, põe essa ferramenta na mão com o meio dela (Digital, ou o Wet Paint).
 #[test]
 fn cada_ferramenta_tem_os_seus_presets_de_fabrica() {
     use ph2d_tool_painter::{
@@ -569,7 +809,7 @@ fn cada_ferramenta_tem_os_seus_presets_de_fabrica() {
     };
     let raiz = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes");
     let b = ph2d_brush_presets::Biblioteca::carregar(&raiz, None);
-    let esperado: [(F, &[&str]); 4] = [
+    let esperado: [(F, &[&str]); 6] = [
         (
             F::Borracha,
             &["Hard Eraser", "Kneaded Eraser", "Texture Eraser"],
@@ -577,6 +817,25 @@ fn cada_ferramenta_tem_os_seus_presets_de_fabrica() {
         (F::Blur, &["Blur Basic"]),
         (F::Smear, &["Smear Basic"]),
         (F::Clone, &["Clone Basic"]),
+        (
+            F::SmearMolhado,
+            &[
+                "Smear Flat",
+                "Smear Shattered",
+                "Smear Soft",
+                "Smear Spikey",
+                "Smear Wet",
+            ],
+        ),
+        (
+            F::BlendMolhado,
+            &[
+                "Blender Dots",
+                "Blender Hard",
+                "Blender Soft",
+                "Blender Textured",
+            ],
+        ),
     ];
     for (f, nomes) in esperado {
         let mut achados: Vec<&str> = b
@@ -605,12 +864,12 @@ fn cada_ferramenta_tem_os_seus_presets_de_fabrica() {
                 "{}: a ferramenta na mão",
                 e.relativo
             );
-            assert_eq!(
-                t.paint_media(),
-                PaintMedia::Digital,
-                "{}: o meio",
-                e.relativo
-            );
+            let meio = if f.ferramenta_da_agua().is_some() {
+                PaintMedia::WetPaint
+            } else {
+                PaintMedia::Digital
+            };
+            assert_eq!(t.paint_media(), meio, "{}: o meio", e.relativo);
         }
     }
 }

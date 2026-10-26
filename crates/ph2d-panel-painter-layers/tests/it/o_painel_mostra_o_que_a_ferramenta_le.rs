@@ -376,40 +376,33 @@ const DA_AGUA: [(&str, FerramentaDoPincel); 5] = [
     ("wet_blow", FerramentaDoPincel::Soprar),
 ];
 
-/// `(controlo, motivo)`: à vista de uma ferramenta da água, inerte sobre as riscas molhadas, e com razão.
-const INERTES_DA_AGUA: [(NodeId, &str); 3] = [
-    (PAINTER_WETPAINT_SECTION, "a cabeça da secção dobra-a"),
-    (
-        PAINTER_WETPAINT_RESET,
-        "repõe os knobs, que a bancada deixa no de fábrica",
-    ),
-    (
-        PAINTER_WETPAINT_TUNING,
-        "abre o painel lateral dos knobs do motor",
-    ),
-];
-
-/// `no_pincel` aplicado com o Pincel da água na mão, as riscas molhadas com ele, e então a ferramenta `fio`. O gesto
-/// vem ANTES das riscas: alguns (o Blend do pincel) encerram a água viva por lei.
-fn bancada_da_agua(fio: &str, no_pincel: &Gesto) -> Bancada {
+/// O Pincel da água na mão, as riscas MOLHADAS com ele, `no_pincel` ainda com ele — DEPOIS das riscas: mexe nos
+/// ajustes, não na tinta que a ferramenta `fio` vai encontrar — e então a ferramenta. `bake`: a sessão encerrada
+/// antes da ferramenta (sair do Wet Paint é o bake), a base de um gesto que a encerra por lei (o Blend com tinta
+/// viva, `set_blend`).
+fn bancada_da_agua(fio: &str, no_pincel: &Gesto, bake: bool) -> Bancada {
     let mut b = bancada_com("eraser", &ARMAR, &Gesto::Nenhum);
     b.tool.set_paint_media(PaintMedia::WetPaint);
     b.no_modo("wet_paint");
-    b.aplica(
-        no_pincel,
-        &mut super::censo_dos_controlos::Entrega::default(),
-    );
     super::censo_ferramenta_x_linha::riscas(&mut b);
-    b.no_modo(fio);
     assert!(
         b.tool.wet_pigmento().is_some(),
         "{fio}: as riscas não ficaram molhadas"
     );
+    b.aplica(
+        no_pincel,
+        &mut super::censo_dos_controlos::Entrega::default(),
+    );
+    if bake {
+        b.no_modo("blur");
+        b.no_modo("wet_paint");
+    }
+    b.no_modo(fio);
     b
 }
 
-fn ensaio_da_agua(fio: &str, no_pincel: &Gesto, na_ferramenta: &Gesto) -> Vec<u8> {
-    let mut b = bancada_da_agua(fio, no_pincel);
+fn ensaio_da_agua(fio: &str, no_pincel: &Gesto, na_ferramenta: &Gesto, bake: bool) -> Vec<u8> {
+    let mut b = bancada_da_agua(fio, no_pincel, bake);
     b.aplica(
         na_ferramenta,
         &mut super::censo_dos_controlos::Entrega::default(),
@@ -418,19 +411,28 @@ fn ensaio_da_agua(fio: &str, no_pincel: &Gesto, na_ferramenta: &Gesto) -> Vec<u8
 }
 
 /// ⭐⭐ **Cada ferramenta da água só vê o que ela lê** (dono 25/10: *«é necessário configurar o inspector para cada
-/// tipo de tool, escondendo o que não faz parte do uso»*), sobre as riscas MOLHADAS: cada controlo à vista muda o
-/// traço dela ou diz porque não; cada linha que a tabela lhe esconde não está pintada e, mexida com o Pincel da água
-/// na mão, não muda o traço dela — e o controlo: muda o do Pincel (senão o gate mediria o vazio).
+/// tipo de tool, escondendo o que não faz parte do uso»*), sobre as riscas MOLHADAS:
+///
+/// 1. cada controlo à vista muda o traço dela, ou também não age no Pincel da água (o chrome: secções, Reset, Sync)
+///    — o que só ela mostra tem de agir;
+/// 2. cada linha que a tabela lhe esconde não está pintada e, mexida com o Pincel da água na mão, não muda o traço
+///    dela — e o controlo: muda o do Pincel (senão o gate mediria o vazio).
 #[test]
-#[ignore = "em construção (janela 13): os inertes de chrome e as linhas das ferramentas da água — PROMPT_NOVA_JANELA_13"]
 fn cada_ferramenta_da_agua_so_ve_o_que_le() {
     let nomes = nomes();
-    let base_pincel = ensaio_da_agua("wet_paint", &Gesto::Nenhum, &Gesto::Nenhum);
-    let pincel = gestos_da(bancada_da_agua("wet_paint", &Gesto::Nenhum));
+    let pincel = gestos_da(bancada_da_agua("wet_paint", &Gesto::Nenhum, false));
+    let base_pincel = ensaio_da_agua("wet_paint", &Gesto::Nenhum, &Gesto::Nenhum, false);
+    let age_no_pincel = |g: &Gesto| {
+        diferenca(
+            &base_pincel,
+            &ensaio_da_agua("wet_paint", &Gesto::Nenhum, g, false),
+        )
+        .2 > PISO
+    };
     let mut falhas = Vec::new();
     let mut medidas = 0;
     for (fio, f) in DA_AGUA {
-        let b = bancada_da_agua(fio, &Gesto::Nenhum);
+        let b = bancada_da_agua(fio, &Gesto::Nenhum, false);
         assert_eq!(
             b.tool.brush_settings().ferramenta(),
             f,
@@ -450,7 +452,7 @@ fn cada_ferramenta_da_agua_so_ve_o_que_le() {
             }
         }
         let inercias = b.tool.brush_settings().inercias;
-        let base = ensaio_da_agua(fio, &Gesto::Nenhum, &Gesto::Nenhum);
+        let base = ensaio_da_agua(fio, &Gesto::Nenhum, &Gesto::Nenhum, false);
         let gs: Vec<Gesto> = gestos_da(b)
             .into_iter()
             .filter(|g| {
@@ -461,16 +463,28 @@ fn cada_ferramenta_da_agua_so_ve_o_que_le() {
             })
             .collect();
         let agem = em_paralelo(&gs, |g| {
-            diferenca(&base, &ensaio_da_agua(fio, &Gesto::Nenhum, g)).0 > 0
+            diferenca(&base, &ensaio_da_agua(fio, &Gesto::Nenhum, g, false)).0 > 0
         });
-        let mut age: BTreeMap<NodeId, bool> = BTreeMap::new();
+        let mut por_controlo: BTreeMap<NodeId, (bool, Vec<&Gesto>)> = BTreeMap::new();
         for (g, a) in gs.iter().zip(agem) {
-            *age.entry(chave(g).unwrap_or(NodeId(0))).or_default() |= a;
+            let e = por_controlo
+                .entry(chave(g).unwrap_or(NodeId(0)))
+                .or_default();
+            e.0 |= a;
+            e.1.push(g);
             medidas += 1;
         }
-        for (id, a) in age {
-            if !a && !INERTES_DA_AGUA.iter().any(|(i, _)| *i == id) {
-                falhas.push(format!("{fio}: «{}» à vista e inerte", nome(&nomes, id)));
+        for (id, (age, gs_dele)) in por_controlo {
+            if age {
+                continue;
+            }
+            let n = nome(&nomes, id);
+            if !pincel.iter().any(|p| chave(p) == Some(id)) {
+                falhas.push(format!("{fio}: «{n}» só ela mostra e é inerte"));
+            } else if em_paralelo(&gs_dele, |g| age_no_pincel(g)).contains(&true) {
+                falhas.push(format!(
+                    "{fio}: «{n}» está à vista, age no Pincel da água e não nesta ferramenta"
+                ));
             }
         }
         let gs: Vec<&Gesto> = pincel
@@ -478,26 +492,35 @@ fn cada_ferramenta_da_agua_so_ve_o_que_le() {
             .filter(|g| chave(g).is_some_and(|i| escondidas.contains(&i)))
             .collect();
         let r = em_paralelo(&gs, |g| {
+            let bake = bancada_da_agua("wet_paint", g, false)
+                .tool
+                .wet_pigmento()
+                .is_none();
+            let base = ensaio_da_agua(fio, &Gesto::Nenhum, &Gesto::Nenhum, bake);
             (
-                diferenca(
-                    &base_pincel,
-                    &ensaio_da_agua("wet_paint", &Gesto::Nenhum, g),
-                )
-                .0,
-                diferenca(&base, &ensaio_da_agua(fio, g, &Gesto::Nenhum)).0,
+                age_no_pincel(g),
+                diferenca(&base, &ensaio_da_agua(fio, g, &Gesto::Nenhum, false)).0,
             )
         });
+        let mut vivo: BTreeMap<NodeId, bool> = BTreeMap::new();
         for (g, (no_pincel, na_ferramenta)) in gs.iter().zip(r) {
-            let n = nome(&nomes, chave(g).unwrap_or(NodeId(0)));
+            let id = chave(g).unwrap_or(NodeId(0));
+            *vivo.entry(id).or_default() |= no_pincel;
             if na_ferramenta > 0 {
                 falhas.push(format!(
-                    "{fio}: «{n}» está escondida e muda {na_ferramenta} texels"
+                    "{fio}: «{}» está escondida e muda {na_ferramenta} texels",
+                    nome(&nomes, id)
                 ));
             }
-            if no_pincel == 0 {
-                falhas.push(format!("{fio}: controlo — «{n}» não age nem no Pincel"));
-            }
             medidas += 1;
+        }
+        for (id, v) in vivo {
+            if !v {
+                falhas.push(format!(
+                    "{fio}: controlo — «{}» não age nem no Pincel da água",
+                    nome(&nomes, id)
+                ));
+            }
         }
     }
     assert!(medidas >= 5 * 20, "controlo: só {medidas} gestos medidos");

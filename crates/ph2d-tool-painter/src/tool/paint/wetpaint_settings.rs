@@ -272,6 +272,14 @@ impl WetKnobs {
             })
             .collect()
     }
+
+    /// Os knobs que só o leitor de `tool` lê — o que um preset dela escreve (os outros são do Pincel da água).
+    pub(crate) fn so_da_ferramenta(tool: WetTool) -> impl Iterator<Item = Knob> {
+        KNOBS_DA_FERRAMENTA
+            .iter()
+            .filter(move |(_, _, t, _)| *t == tool)
+            .map(|&(_, knob, ..)| knob)
+    }
 }
 
 /// Os knobs de cada ferramenta da água: o id do cartão, o knob, a ferramenta que o lê e o rótulo.

@@ -32,6 +32,13 @@ impl PainterTool {
         self.paint.brush = self.paint.brush_by_mode[new]; // restore the target tool's settings
         self.paint.dynamics_by_slot[old] = self.paint.dynamics; // …e a mão dela
         self.paint.dynamics = self.paint.dynamics_by_slot[new];
+        let w = &mut self.paint.wetpaint; // …a largura prometida e a mão do Wet Paint dela
+        let nova = w.largura_por_slot[new].take();
+        w.largura_por_slot[old] = std::mem::replace(&mut w.largura, nova);
+        w.knobs_por_slot[old] = w.knobs.knobs;
+        for k in super::mao::knobs_da_mao() {
+            w.knobs.knobs[k as usize] = w.knobs_por_slot[new][k as usize];
+        }
         // Falloff provenance for the freshly loaded brush: any value the arming TABLE can install
         // (factory Smooth + Smoother/Sphere/Pow4) is presumed armable, so re-entering a mode keeps
         // its verbs re-armable; anything else in a slot is presumed the artist's. The ambiguity —
@@ -73,6 +80,9 @@ impl PainterTool {
             self.paint.brush_by_mode.fill(current);
             let mao = self.paint.dynamics;
             self.paint.dynamics_by_slot.fill(mao);
+            let w = &mut self.paint.wetpaint;
+            w.largura_por_slot = std::array::from_fn(|_| w.largura.clone());
+            w.knobs_por_slot.fill(w.knobs.knobs);
         }
         // Linking needs no seeding: while linked, a mode switch keeps the live `brush`, so every tool
         // immediately shows this (the checked) panel's settings.

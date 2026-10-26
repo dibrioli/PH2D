@@ -219,6 +219,13 @@ fn curto(v: f32) -> f64 {
     format!("{v}").parse().unwrap_or(f64::from(v))
 }
 
+/// A largura prometida (W2) de `prm`: a lei MEDIDA do preset; um ficheiro sem ela (de antes da W2) usa a do Wet
+/// Round, o pincel de fábrica.
+fn largura_do_preset(prm: &Parametros) -> super::wetpaint::largura::LeiDaLargura {
+    super::wetpaint::largura::LeiDaLargura::de_tabela(&prm.width_table)
+        .unwrap_or_else(super::wetpaint::largura::LeiDaLargura::de_omissao)
+}
+
 /// O índice do botão de cada ferramenta molhada no rádio do painel (`pick_wet_tool`).
 fn indice_da_ferramenta(t: WetTool) -> usize {
     match t {
@@ -426,7 +433,6 @@ impl PainterTool {
         if traz_cerdas && self.paint.brush.shape.kind == TextureKind::None {
             self.paint.brush.shape = k.cerdas_no_shape(self.paint.brush.shape);
         }
-        self.paint.wetpaint.knobs = k;
         // A velocidade (L12), a curva em S, o jitter e o atraso não são knobs do motor: moram na `Dynamics` do pincel,
         // que a mão do Wet herda. Ausente = a de fábrica, nunca a do pincel anterior.
         for l in super::mao::linhas_da_dinamica_do_wet() {
@@ -442,6 +448,33 @@ impl PainterTool {
                 l.limpa(v),
             );
         }
+        // Uma ferramenta da água (dono 25/10) escreve só os knobs dela e os da mão: os outros (o papel, as cerdas
+        // do motor, a física) são do Pincel da água, que ela partilha. O corpo (pincel, máscaras, mão, tamanho,
+        // largura) vai ao slot dela.
+        let da_agua = ferramenta_do_preset(prm).ferramenta_da_agua();
+        if let Some(t) = da_agua {
+            for knob in WetKnobs::so_da_ferramenta(t).chain(super::mao::knobs_da_mao()) {
+                self.paint.wetpaint.knobs.set(knob, k.get(knob));
+            }
+            // A largura prometida é do corpo (cada ferramenta tem a sua, `switch_brush_slot`).
+            self.paint.wetpaint.largura = Some(largura_do_preset(prm));
+            let s = self.brush_settings();
+            let v = Volumes {
+                opacity: prm
+                    .volumes
+                    .opacity
+                    .filter(|_| s.le(crate::LinhaDaFerramenta::DepositoMolhado)),
+                water: prm
+                    .volumes
+                    .water
+                    .filter(|_| s.le(crate::LinhaDaFerramenta::AguaDoVolume)),
+                ..prm.volumes.clone()
+            };
+            self.wet_preset_aplicar_volumes(&v);
+            self.set_mao_do_preset(Some(prm));
+            return falhas;
+        }
+        self.paint.wetpaint.knobs = k;
 
         // A ferramenta do fluido é do Pincel; a Borracha já está na mão (`pegar_a_ferramenta_do_preset`).
         if let Some(m) = prm.paint_mode.as_deref()
@@ -470,12 +503,7 @@ impl PainterTool {
         }
         self.set_shape_color_estado(&sc);
         self.grain_color_de_json(prm.grain_color.as_ref());
-        // A largura prometida (W2): a lei MEDIDA do preset; um ficheiro sem ela (de antes da W2) usa a
-        // do Wet Round, o pincel de fábrica.
-        self.paint.wetpaint.largura = Some(
-            super::wetpaint::largura::LeiDaLargura::de_tabela(&prm.width_table)
-                .unwrap_or_else(super::wetpaint::largura::LeiDaLargura::de_omissao),
-        );
+        self.paint.wetpaint.largura = Some(largura_do_preset(prm));
         self.wet_preset_aplicar_volumes(&prm.volumes);
         self.set_mao_do_preset(Some(prm));
         falhas

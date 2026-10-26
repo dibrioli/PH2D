@@ -202,6 +202,8 @@ fn cada_pasta_de_meio_da_fabrica_tem_categoria() {
 /// ⭐ (i) O navegador agrupa a fábrica por CATEGORIA, na ordem fixa da tabela, cada categoria num bloco
 /// contínuo (um título cada no popover) — e não por pasta: a fábrica tem muito mais pastas que
 /// categorias. Dentro de cada categoria a ordem da biblioteca (a série de lápis pelo grau) não se parte.
+/// A gaveta do Pincel tem todas menos «Blend & Erase»: as borrachas, o Blend e o Smear são das ferramentas
+/// (dono 24/10 e 25/10).
 #[test]
 fn o_navegador_agrupa_por_categoria_na_ordem_fixa() {
     use crate::painter_bridge_categorias::CATEGORIAS;
@@ -213,12 +215,14 @@ fn o_navegador_agrupa_por_categoria_na_ordem_fixa() {
             blocos.push(&v.categoria);
         }
     }
+    let das_ferramentas = rotulo_da_categoria(idioma(), categoria_da_pasta("Blend"));
     let ordem: Vec<&str> = (0..CATEGORIAS.len())
         .map(|i| rotulo_da_categoria(idioma(), i))
+        .filter(|r| *r != das_ferramentas)
         .collect();
     assert_eq!(
         blocos, ordem,
-        "as 11 categorias, cada uma num bloco, na ordem da tabela"
+        "as 10 categorias do Pincel, cada uma num bloco, na ordem da tabela"
     );
     let pastas: BTreeSet<&str> = p
         .bib

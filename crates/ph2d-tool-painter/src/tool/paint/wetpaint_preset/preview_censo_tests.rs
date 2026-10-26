@@ -223,6 +223,14 @@ const WET_FORA_DO_PREVIEW: &[(&str, &str)] = &[
     ),
     ("tuning_open", UI),
     ("relogio_fixo", "o preview corre no relógio fixo dele"),
+    (
+        "largura_por_slot",
+        "a das ferramentas FORA da mão: o preview pinta a da mão (`largura`)",
+    ),
+    (
+        "knobs_por_slot",
+        "os das ferramentas FORA da mão: o preview pinta os da mão (`knobs`)",
+    ),
     ("preset_pedido", UI),
     ("fita", SESSAO),
     ("ritmo", SESSAO),

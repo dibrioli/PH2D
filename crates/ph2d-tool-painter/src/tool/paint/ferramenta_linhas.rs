@@ -30,6 +30,29 @@ pub enum FerramentaDoPincel {
     Soprar,
 }
 
+impl FerramentaDoPincel {
+    /// A ferramenta da água `t` (o Pincel da água é o [`FerramentaDoPincel::Pincel`]).
+    #[must_use]
+    pub fn da_agua(t: crate::WetTool) -> Self {
+        match t {
+            crate::WetTool::Paint => F::Pincel,
+            crate::WetTool::Smear => F::SmearMolhado,
+            crate::WetTool::Blend => F::BlendMolhado,
+            crate::WetTool::Wet => F::Molhar,
+            crate::WetTool::Dry => F::Secar,
+            crate::WetTool::Blow => F::Soprar,
+        }
+    }
+
+    /// A ferramenta da água que esta é (`None` fora das cinco).
+    #[must_use]
+    pub fn ferramenta_da_agua(self) -> Option<crate::WetTool> {
+        crate::WetTool::DO_TRILHO
+            .into_iter()
+            .find(|t| F::da_agua(*t) == self)
+    }
+}
+
 /// Uma linha (ou um bloco) do painel do pincel que depende da ferramenta.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum LinhaDaFerramenta {
@@ -214,14 +237,7 @@ impl BrushSettings {
         } else if self.is_eyedropper {
             F::ContaGotas
         } else if self.wetpaint {
-            match self.wet_tool {
-                crate::WetTool::Paint => F::Pincel,
-                crate::WetTool::Smear => F::SmearMolhado,
-                crate::WetTool::Blend => F::BlendMolhado,
-                crate::WetTool::Wet => F::Molhar,
-                crate::WetTool::Dry => F::Secar,
-                crate::WetTool::Blow => F::Soprar,
-            }
+            F::da_agua(self.wet_tool)
         } else {
             F::Pincel
         }

@@ -419,3 +419,49 @@ fn sync_reflects_a_shape_method_and_leaves_a_non_shape_alone() {
     );
     assert!(!pressed(&hero, ids::PAINTER_RAIL_SHAPES));
 }
+
+/// ⭐ **As ferramentas da água moram no trilho enquanto o meio é o Wet Paint** (dono 25/10: *«as tools como Smear, blend,
+/// wet, dry, blow estão no painel do inspector quando deveriam estar na barra de ferramentas da esquerda»*): com a água
+/// o trilho oferece as cinco no lugar do Smear e do Blur do Digital, cada botão manda o fio dela e o Pincel manda o
+/// pincel da água; o fio publicado acende o botão certo. Sem a água, o contrário.
+#[test]
+fn as_ferramentas_da_agua_moram_no_trilho_com_o_wet_paint() {
+    use super::super::super::left_rail::tool_section;
+    let mut hero = HeroScreen::new(NodeId(1));
+    super::super::super::left_rail::populate(&mut hero.store);
+    let oferece = |hero: &HeroScreen| -> Vec<Aid> {
+        tool_section(&hero.store, true)
+            .iter()
+            .filter_map(|e| e.node_id())
+            .collect()
+    };
+    let digital = oferece(&hero);
+    for (id, _) in ids::PAINTER_RAIL_WET_TOOLS {
+        assert!(!digital.contains(&id), "sem a água o trilho oferece {id:?}");
+    }
+    assert!(
+        digital.contains(&ids::PAINTER_RAIL_SMEAR) && digital.contains(&ids::PAINTER_RAIL_BLUR)
+    );
+    hero.store.set_painter_rail_wet(true);
+    let agua = oferece(&hero);
+    assert!(
+        !agua.contains(&ids::PAINTER_RAIL_SMEAR) && !agua.contains(&ids::PAINTER_RAIL_BLUR),
+        "com a água o trilho ainda oferece o Smear/Blur do Digital"
+    );
+    for (id, fio) in ids::PAINTER_RAIL_WET_TOOLS {
+        assert!(agua.contains(&id), "com a água o trilho não oferece {fio}");
+        assert!(apply(&mut hero, WidgetEvent::Click(id)));
+        assert_eq!(drained_paint_mode(&mut hero).as_deref(), Some(fio));
+        sync_from_mode(&mut hero.store, "brush");
+        sync_from_mode(&mut hero.store, fio);
+        assert!(
+            pressed(&hero, id),
+            "o fio {fio} publicado não acende o botão dele"
+        );
+    }
+    assert!(apply(
+        &mut hero,
+        WidgetEvent::Click(ids::PAINTER_RAIL_BRUSH)
+    ));
+    assert_eq!(drained_paint_mode(&mut hero).as_deref(), Some("wet_paint"));
+}

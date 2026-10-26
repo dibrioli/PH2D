@@ -160,6 +160,10 @@ pub(crate) struct WetPaintState {
     /// **A largura prometida (W2)**: a lei raio do motor → largura do pincel de agora (a do preset; sem
     /// preset, a do Wet Round, que é o pincel de fábrica). `None` = a lei CRUA — só a sonda que a mede.
     pub(super) largura: Option<largura::LeiDaLargura>,
+    /// A [`Self::largura`] de cada slot do pincel (a das ferramentas fora da mão, `switch_brush_slot`).
+    pub(super) largura_por_slot: [Option<largura::LeiDaLargura>; super::SLOT_COUNT],
+    /// Os knobs de cada slot do pincel; só os da mão ([`super::mao::knobs_da_mao`]) voltam com ele.
+    pub(super) knobs_por_slot: [[f64; ph2d_wet_paint::tuning::KNOB_COUNT]; super::SLOT_COUNT],
     /// A fita da macro ([`fita`]) que cada sessão nova herda.
     pub(super) fita: Option<fita::FitaPartilhada>,
     /// O ritmo escrito do worker ([`fita::RitmoDaAgua`]) que cada sessão nova herda — só gates.
@@ -204,6 +208,8 @@ impl Default for WetPaintState {
             relogio_fixo: None,
             preset_pedido: None,
             largura: Some(largura::LeiDaLargura::de_omissao()),
+            largura_por_slot: std::array::from_fn(|_| Some(largura::LeiDaLargura::de_omissao())),
+            knobs_por_slot: [super::WetKnobs::DEFAULT.knobs; super::SLOT_COUNT],
             fita: None,
             ritmo: None,
             composta: None,

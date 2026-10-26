@@ -147,6 +147,16 @@ Paste Special · Crop/Trim · **Canvas Size** e **Sprite Size** (interpolações
 **Gates:** RotSprite@90 == rot90 byte a byte; flip 2× = identidade; pintar fora da seleção = no-op.
 **Smoke 7.** ⇒ **Marco P0–P6.**
 
+> **Feito na P6 (26/10, ADR-0192 §12):** marquee/elipse/laço/polígono/varinha (M, Shift+M, Q,
+> Shift+Q, W) com os 4 modos, All/Deselect/Reselect/Inverse, Color Range, Modify
+> Expand/Contract/Border, Move (V), Transform (Ctrl+T: alças, giro, skew, pivô, campos,
+> Fast/RotSprite), Flip/Rotate/Shift, Copy/Copy Merged/Paste, Canvas Size, Sprite Size, Crop, Trim,
+> Rotate/Flip Canvas, formigas; leis medidas no Trial (367 casos) e MVP (380). Smoke 9 do dono
+> 26/10: OK com 4 correcções (ícone da varinha; selecções num botão com flyout; Transform = gizmo do
+> sprite da casa + ferramenta; formas do Vector com fillet) — P6b. Ficam: Load/Save MSK, Paste as
+> New Sprite, Auto Select Layer, Ctrl+Alt+I; handoff:
+> [P6](handoffs/HANDOFF_CONTINUACAO_line_PixelArt_2026-10-26_P6.md).
+
 ### P7 — Pincéis e dinâmica (estudo §2)
 **New Brush (Ctrl+B)** da seleção, alinhamento do padrão (fonte/destino/pincel), flip/rotate do
 pincel, biblioteca de pincéis, **dinâmica** pressão/velocidade → tamanho/ângulo/gradiente com

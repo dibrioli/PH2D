@@ -112,6 +112,15 @@ projecto, como se desfaz, como se desenha, e por onde a entrada chega.
     frame e guarda cada frame composto por versão (256 MiB de RAM); a composição cheia vai em
     faixas paralelas (512² × 20: 123 → 16,7 ms) e a GPU continua por medir pedir (a placa só ganha
     a partir de ~1024² com muitas camadas: 65 ms na primeira passada).
+12. **Emenda 26/10 (onda P6 — selecção e transformação).** A selecção é estado do documento
+    (`Sprite.mask`/`last_mask`, NÃO gravados: formato 1.2) e muda só por `Op::Mask`; o tamanho por
+    `Op::Canvas`; `Op::Batch` junta os passos de um gesto num desfazer. Pintar recorta por ponto
+    (`Stroke::accepts`). Selecção, edição, `Affine` e Canvas/Sprite Size são funções puras do núcleo,
+    medidas no Trial (367 casos) e no MVP (380): exactas, salvo as **lacunas declaradas** — elipse
+    106/112, bilinear ±1, giro fora de 90° (MVP a 10–29 células do Trial). **Reaberto pelo dono
+    (smoke 26/10):** a moldura do Transform deve ser o gizmo do sprite da casa, com ferramenta na
+    coluna; as 4 selecções num botão com flyout; as formas as do Vector, com fillet (P6b). Ver o
+    [handoff P6](../../PixelArt/handoffs/HANDOFF_CONTINUACAO_line_PixelArt_2026-10-26_P6.md).
 
 ## Alternativas recusadas
 

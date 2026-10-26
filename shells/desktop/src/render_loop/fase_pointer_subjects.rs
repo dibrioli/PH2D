@@ -53,7 +53,11 @@ impl crate::App {
             &self.input,
         );
         let pointer = self.last_pointer;
-        self.hovered_object = self.pick_hovered_object(pointer);
+        // Com o palco aberto o rato é do jogo: nada do editor está debaixo dele (foto do plano 11).
+        let palco = self.no_palco();
+        self.hovered_object = (!palco)
+            .then(|| self.pick_hovered_object(pointer))
+            .flatten();
         // ⭐ **A geometria do contorno é resolvida AQUI, com o objecto.** Ela precisa da
         // `PresentWorld` mutável (a caixa de uma sprite sai de uma query), que o sítio de desenho
         // já não tem — e resolvê-la aqui garante que o que se desenha é o objecto que se escolheu.

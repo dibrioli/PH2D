@@ -321,7 +321,9 @@ pub const MOEDAS_2: [[f32; 2]; 5] = [
 /// O fundo do nível 2 (plano 11): o céu parado no ecrã, maior que a vista mais larga, na cor do céu do fundo
 /// azul do Kenney (`#DFF6F5`).
 pub const CEU_TAMANHO: [f32; 2] = [40.0, 16.0];
-const CEU_COR: [f32; 4] = [223.0 / 255.0, 246.0 / 255.0, 245.0 / 255.0, 1.0];
+/// ⚠️ O tingimento é LINEAR: `#DFF6F5` pela curva sRGB (IEC 61966-2-1). Escrito como `223/255` saía `#F0FBFA`
+/// (medido na foto do plano 11).
+pub const CEU_COR: [f32; 4] = [0.7379, 0.9216, 0.9131, 1.0];
 /// As camadas de fundo: (nome, fracção da câmara que guardam, centro no MUNDO na vista do início, ordem).
 pub const CAMADAS_2: [(&str, f32, [f32; 2], i32); 2] = [
     ("Clouds", 0.15, [-5.9, 5.6], -2),
@@ -470,9 +472,10 @@ fn nivel_2(sim: &mut SimWorld, registry: &ComponentRegistry) -> Entity {
             lookahead: [0.0, 0.0],
             offset: [0.0, 1.0],
         },
+        // Da borda de fora da parede ao fim do chão da direita: a vista nunca mostra o fim do mundo.
         CameraLimits {
             min: [-13.0, -1.0],
-            max: [18.0, 9.0],
+            max: [17.0, 9.0],
         },
     ));
     ph2d_ecs::assign_missing_stable_ids(sim.world_mut());

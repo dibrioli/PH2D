@@ -89,6 +89,28 @@ fn pior_fuga(com_limites: bool) -> f32 {
 /// CONTROLO na mesma régua: sem os limites, o mesmo percurso mostra fora.
 #[test]
 fn a_camara_do_nivel_2_nao_mostra_fora_dos_limites() {
+    // Os limites são as bordas DESENHADAS do nível: a de fora da parede e o fim do chão da direita.
+    let borda = |nome: &str, lado: f32| {
+        let (_, c, m) = BLOCOS_2.iter().find(|b| b.0 == nome).expect(nome);
+        c[0] + lado * m[0]
+    };
+    let mut sim = SimWorld::new();
+    montar(&mut sim, &crate::registo_de_teste(), 2);
+    let camara = por_nome(&mut sim, "Camera");
+    let l = sim
+        .world()
+        .get::<CameraLimits>(camara)
+        .cloned()
+        .expect("limites");
+    assert_eq!(
+        [l.min[0], l.max[0]],
+        [borda("Wall Left", -1.0), borda("Ground Right", 1.0)]
+    );
+    assert_eq!(
+        l.min[1],
+        BLOCOS_2[0].1[1] - BLOCOS_2[0].2[1],
+        "o fundo do chão"
+    );
     let com = pior_fuga(true);
     assert!(com <= 0.0, "um pixel fora dos limites: {com:.4} m");
     let sem = pior_fuga(false);

@@ -73,6 +73,7 @@ mod o_cursor_e_mapeado_pela_banda_da_cena;
 mod o_hud_conduz_a_raiz_antes_de_as_ancoras_a_lerem;
 mod o_lod_da_forma_esta_ligado_a_fase;
 mod o_painel_pinta_todo_o_modelo_aceita;
+mod o_palco_do_jogo_nao_tem_realce_de_hover;
 mod o_perfilador_diz_qual_motor_da_grelha_correu;
 mod o_pincel_de_peso_esta_fiado;
 mod o_ramo_do_hud_pergunta_aos_dois_meios;

@@ -60,7 +60,7 @@ fn fx_live_marks_every_recook_dirty() {
             )
         });
 
-    let recozeduras = conta_em_codigo(&fonte, "stack.run_from(");
+    let recozeduras = conta_em_codigo(&fonte, "stack.run_from_com_origem(");
     let avisos = conta_em_codigo(&fonte, "mark_texture_dirty(");
 
     // A metade JUSTA: uma sonda que casa zero linhas passa sempre e não diz nada.

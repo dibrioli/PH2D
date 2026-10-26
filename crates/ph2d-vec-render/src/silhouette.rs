@@ -65,6 +65,33 @@ pub fn silhouette_segments(
     camera: Affine,
     offset: Affine,
 ) -> Vec<[f32; 4]> {
+    let tudo = [
+        f32::NEG_INFINITY,
+        f32::NEG_INFINITY,
+        f32::INFINITY,
+        f32::INFINITY,
+    ];
+    silhouette_segments_within(scene, xforms, live, sil, id, camera, offset, tudo)
+}
+
+/// O [`silhouette_segments`] só com os segmentos cuja caixa toca `janela` (`[x0, y0, x1, y1]`, em
+/// texel) — a janela do scratch alargada pelo que a pilha LÊ. O campo é `O(texels × segmentos)`, e
+/// num zoom perto quase toda a forma está fora da vista (F34). O teto vale sobre os que ficam.
+///
+/// ⚠️ **Se nenhum alcança a janela, fica UM**: todo segmento está então mais longe que o alcance, logo
+/// o campo satura igual — e a lista vazia mandaria o degrau para o raster, que é outra resposta.
+#[allow(clippy::too_many_arguments)]
+#[must_use]
+pub fn silhouette_segments_within(
+    scene: &VecScene,
+    xforms: &VecXforms,
+    live: &LiveGeometry,
+    sil: &LiveGeometry,
+    id: VecPathId,
+    camera: Affine,
+    offset: Affine,
+    janela: [f32; 4],
+) -> Vec<[f32; 4]> {
     let mut out = Vec::new();
     if let Some(regions) = sil.get(&id) {
         for region in regions {
@@ -82,6 +109,18 @@ pub fn silhouette_segments(
         && !push_path(&mut out, path, offset * path_to_screen(xforms, id, camera))
     {
         return Vec::new();
+    }
+    let um = out.first().copied();
+    out.retain(|&[ax, ay, bx, by]| {
+        ax.max(bx) >= janela[0]
+            && ay.max(by) >= janela[1]
+            && ax.min(bx) <= janela[2]
+            && ay.min(by) <= janela[3]
+    });
+    if out.is_empty()
+        && let Some(s) = um
+    {
+        out.push(s);
     }
     if out.is_empty() || out.len() > MAX_SEGMENTS {
         return Vec::new();

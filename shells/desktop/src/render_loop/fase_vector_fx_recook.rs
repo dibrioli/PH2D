@@ -7,6 +7,7 @@ impl crate::App {
     /// Ver o cabeçalho do módulo.
     pub(super) fn fase_vector_fx_recook(
         &mut self,
+        window_size: ph2d_host::WindowSize,
         vec_view: ph2d_vec_scene::VecViewState,
         vec_xf: ph2d_vec_scene::VecXforms,
         cam_affine: ph2d_vector::Affine,
@@ -33,10 +34,7 @@ impl crate::App {
         } = FrameGfx::of(gfx);
         // O bloco do quadro só chama esta fase com o `HeroScreen` vivo.
         let hero = hero_screen.as_mut()?;
-        // O FX raster por-forma (plano 24 — Blur/Glow/Drop Shadow). O produtor
-        // (`fx_live`) rasteriza a forma isolada num scratch de GPU, lê de volta e borra na CPU,
-        // injetando as imagens no z da forma. Roda DEPOIS de `vec_live` porque honra a geometria
-        // derivada. Sem `VecFilter` na cena o mapa fica vazio = BYTE-IDÊNTICO ao mundo pré-FX.
+        // O FX por-forma (`fx_live`): DEPOIS de `vec_live`, recortado à janela da cena (F34).
         // ⭐ **OS LADRILHOS DE PADRÃO** (plano 33, W4) — assados AQUI, e a posição é a lei:
         // ⛔ **ANTES do `fx_live`**, que os consome. O report do Enio (*"filters anula
         // pattern"*) foi exactamente isto: com o assado depois, a rasterização isolada do FX
@@ -93,6 +91,8 @@ impl crate::App {
             &object_of,
             &pose_of,
         );
+        let (sw, sh) =
+            ph2d_app_motion::field_gizmo::scene_window_wh(hero.view.center_split, window_size);
         self.fx_live.recook(
             vec_scene,
             sim,
@@ -103,6 +103,7 @@ impl crate::App {
             &vec_view,
             self.texture_pattern_live.tiles(),
             cam_affine,
+            [0.0, 0.0, f64::from(sw), f64::from(sh)],
             surface.gpu(),
             surface.format(),
             vello_pass,

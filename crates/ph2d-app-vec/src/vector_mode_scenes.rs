@@ -29,13 +29,13 @@ pub(super) fn of(scene: Option<&str>) -> Scene {
         .and_then(|s| s.parse::<u8>().ok().filter(|n| n.to_string() == s))
         .unwrap_or(0);
     Scene {
-        want: if matches!(n, 6 | 7 | 9..=40) { 1 } else { 9 },
+        want: if matches!(n, 6 | 7 | 9..=41) { 1 } else { 9 },
         weld: n == 7,
-        bars: matches!(n, 9..=40),
+        bars: matches!(n, 9..=41),
         reach: n == 10,
         nav: n == 11,
         frame: n == 14,
-        handles: if (15..=40).contains(&n) { n - 14 } else { 0 },
+        handles: if (15..=41).contains(&n) { n - 14 } else { 0 },
         quick: match n {
             12 => 1,
             13 => 2,
@@ -56,7 +56,8 @@ pub(super) fn of(scene: Option<&str>) -> Scene {
 /// 20 = a 33 e a 34 (F21, `vector_mode_cor`) · 21 = a 35 (F22, começa pela 25 e segue em
 /// `vector_mode_gesto`) · 22 = a 36 (F22, `vector_mode_olho`) · 23 = a 37 (F22b, começa pela 25 e
 /// segue em `vector_mode_opaco`) · 24 = a 38 (F29, `vector_mode_composto`) · 25 = a 39 (F30,
-/// `vector_mode_fio`) · 26 = a 40 (F33, `vector_mode_filtro_efeito`).
+/// `vector_mode_fio`) · 26 = a 40 (F33, `vector_mode_filtro_efeito`) · 27 = a 41 (F34,
+/// `vector_mode_filtro_zoom`).
 /// `None` = fora da família.
 pub(super) fn handles_first(handles: u8) -> Option<u8> {
     Some(match handles {
@@ -78,6 +79,7 @@ pub(super) fn handles_first(handles: u8) -> Option<u8> {
         24 => crate::vector_mode_composto::FIRST,
         25 => crate::vector_mode_fio::FIRST,
         26 => crate::vector_mode_filtro_efeito::FIRST,
+        27 => crate::vector_mode_filtro_zoom::FIRST,
         _ => 70,
     })
 }

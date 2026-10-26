@@ -16,6 +16,9 @@
 //! construção; a razão fica escrita aqui para ninguém o re-escrever achando que prova algo.
 
 use super::job_for;
+
+/// Uma janela que contém toda forma destes gates (o recorte à vista tem os seus, em `fx_live_zoom_tests`).
+const VISTA: [f64; 4] = [-1.0e4, -1.0e4, 1.0e4, 1.0e4];
 use ph2d_ecs::{FxOp, Name, SimWorld, Transform, VecFilter, VecPathRef};
 use ph2d_vec_entities::entities::VecEntityMap;
 use ph2d_vec_render::LiveGeometry;
@@ -85,6 +88,7 @@ fn key_view(
         &sil,
         view,
         Affine::IDENTITY,
+        VISTA,
         id,
     )
     .expect("a forma tem filtro, caixa e pilha nao-vazia")
@@ -255,6 +259,7 @@ fn changing_the_derived_geometry_re_cooks_the_shape() {
             &sil,
             &VecViewState::default(),
             Affine::IDENTITY,
+            VISTA,
             id,
         )
         .expect("a forma tem filtro e caixa")
@@ -364,6 +369,7 @@ fn the_job_carries_the_style_the_key_was_built_from() {
         &sil,
         &view,
         Affine::IDENTITY,
+        VISTA,
         id,
     )
     .expect("a forma tem filtro, caixa e pilha nao-vazia");

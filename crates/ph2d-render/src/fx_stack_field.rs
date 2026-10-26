@@ -192,11 +192,18 @@ fn field_normal(x: i32, y: i32, fallback: vec2<f32>) -> vec2<f32> {
 // `Σ rgb_premultiplicado / Σ alfa`, porque cada termo já vem multiplicado pelo próprio peso. Basta
 // UM vizinho com tinta para a resposta existir, e no ponto de fronteira isso é garantido por
 // construção.
+// **O texel mais perto, igual sob qualquer deslocamento INTEIRO.** O `round` do WGSL leva o meio ao
+// PAR, então um ponto em `.5` escolhia o vizinho conforme a paridade da posição: deslocar a imagem 1 px
+// trocava a cor de um texel de borda (Morphology: 6/255, medido na F34).
+fn arredonda(v: vec2<f32>) -> vec2<f32> {
+    return floor(v + vec2<f32>(0.5));
+}
+
 fn straight_colour(over: vec4<f32>, src: vec2<f32>, off: vec2<f32>) -> vec3<f32> {
     if (over.a > 0.1) {
         return over.rgb / over.a;
     }
-    let b = round(src + off);
+    let b = arredonda(src + off);
     var acc = vec3<f32>(0.0);
     var wsum = 0.0;
     for (var dy = -1; dy <= 1; dy = dy + 1) {
@@ -226,7 +233,7 @@ fn cs_op_field(@builtin(global_invocation_id) id: vec3<u32>) {
     // vector até a fronteira dele é corrigido pela fração — `semente − q`, contínuo em `q`. O lado
     // (dentro/fora) é o alfa INTERPOLADO em `q`. Com deslocamento inteiro, `q` é o texel e nada muda.
     let q = vec2<f32>(f32(id.x), f32(id.y)) - disp;
-    let qi = vec2<i32>(round(q));
+    let qi = vec2<i32>(arredonda(q));
     let sx = qi.x;
     let sy = qi.y;
     let inside = alpha_at(q) > 0.5;

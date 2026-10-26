@@ -27,7 +27,7 @@ use ph2d_vector::{
 /// A silhueta em SEGMENTOS, para o campo de distância dos FX raster (módulo irmão pelo LOC cap,
 /// e ao lado de `draw_path_isolated` de propósito — as duas resolvem o mesmo transform).
 mod silhouette;
-pub use silhouette::{MAX_SEGMENTS, silhouette_segments};
+pub use silhouette::{MAX_SEGMENTS, silhouette_segments, silhouette_segments_within};
 
 /// Gradient rendering (multi-point IDW fill) + on-canvas editing handles live in a
 /// sibling module (LOC cap).

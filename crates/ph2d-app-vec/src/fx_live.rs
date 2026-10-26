@@ -134,6 +134,8 @@ impl FxLive {
         // do desenho). ⚠️ Isto obriga o assado dos padrões a correr ANTES daqui.
         patterns: &ph2d_vec_render::PatternTiles,
         camera: Affine,
+        // A janela da cena em pixels de tela — o job recorta-se a ela (F34, `fx_live_memo::job_for`).
+        vista: [f64; 4],
         gpu: &GpuContext,
         surface_format: wgpu::TextureFormat,
         vello_pass: &mut VelloPass,
@@ -151,8 +153,9 @@ impl FxLive {
         let mut jobs: Vec<Job> = Vec::new();
         let mut miss: Vec<usize> = Vec::new();
         for path in scene.paths() {
-            let Some(job) = job_for(scene, sim, map, xforms, live, sil, view, camera, path.id)
-            else {
+            let Some(job) = job_for(
+                scene, sim, map, xforms, live, sil, view, camera, vista, path.id,
+            ) else {
                 continue;
             };
             // O memo é otimização: re-coza só quando os PIXELS mudam. A pergunta inteira está na
@@ -378,7 +381,9 @@ impl FxLive {
             // re-cook comum não mexe na textura — e era exactamente por isso que a chave antiga
             // atualizava só a pilha.
             pfx.key = job.key.clone();
-            let geom = ph2d_vec_render::silhouette_segments(
+            // Só os segmentos que ALCANÇAM a janela: o campo é `O(texels × segmentos)` (F34).
+            let alcance = ph2d_render::stack_read(&job.key.ops) as f32;
+            let geom = ph2d_vec_render::silhouette_segments_within(
                 scene,
                 xforms,
                 live,
@@ -386,6 +391,12 @@ impl FxLive {
                 job.id,
                 camera,
                 Affine::translate((-job.ex0, -job.ey0)),
+                [
+                    -alcance,
+                    -alcance,
+                    w_f32(job.key.w) + alcance,
+                    w_f32(job.key.h) + alcance,
+                ],
             );
             if std::env::var("PH2D_FX_DIAG").is_ok() {
                 eprintln!(
@@ -405,7 +416,8 @@ impl FxLive {
                 i32::try_from(cell.org[1]).unwrap_or(0),
             ];
             let (w, h) = (job.key.w, job.key.h);
-            stack.run_from(gpu, src, org, &pfx.tex, w, h, &job.key.ops, &geom);
+            let origem = ph2d_render::Origem::Ponto(job.ruido);
+            stack.run_from_com_origem(gpu, src, org, &pfx.tex, w, h, &job.key.ops, &geom, origem);
             // ⛔⛔ **O aviso ao Vello, e ele é obrigatório desde a `vello` 0.10.** O atlas de
             // imagens deixou de ser limpo a cada render: sem esta marca, os pixels que a linha
             // acima acabou de escrever **não chegam à tela** — a forma congela na primeira
@@ -523,3 +535,8 @@ pub use crate::fx_live_resolve::resolve_ops;
 #[cfg(test)]
 #[path = "fx_live_tests.rs"]
 mod tests;
+
+#[allow(clippy::cast_precision_loss)]
+fn w_f32(v: u32) -> f32 {
+    v as f32
+}

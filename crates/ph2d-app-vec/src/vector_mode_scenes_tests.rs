@@ -40,6 +40,7 @@ fn antes(s: &str) -> (u8, bool, u8, u8) {
             | "38"
             | "39"
             | "40"
+            | "41"
     ) {
         1
     } else {
@@ -78,6 +79,7 @@ fn antes(s: &str) -> (u8, bool, u8, u8) {
             | "38"
             | "39"
             | "40"
+            | "41"
     );
     let handles = match s {
         "15" => 1,
@@ -106,6 +108,7 @@ fn antes(s: &str) -> (u8, bool, u8, u8) {
         "38" => 24,
         "39" => 25,
         "40" => 26,
+        "41" => 27,
         _ => 0,
     };
     let quick = match s {
@@ -118,7 +121,7 @@ fn antes(s: &str) -> (u8, bool, u8, u8) {
 
 #[test]
 fn a_tabela_das_cenas_despacha_como_as_listas_de_antes() {
-    let mut escritas: Vec<String> = (0..=40).map(|n| n.to_string()).collect();
+    let mut escritas: Vec<String> = (0..=41).map(|n| n.to_string()).collect();
     escritas.extend(["07", "+7", " 7", "", "abc", "256"].map(String::from));
     for s in &escritas {
         let c = of(Some(s));
@@ -226,5 +229,15 @@ fn a_cena_40_comeca_nas_nuvens() {
     assert_eq!(
         handles_first(26),
         Some(crate::vector_mode_filtro_efeito::FIRST)
+    );
+}
+
+/// F34 — a 41 corre a Nuvem gigante com filtro (zoom perto), na faixa dela.
+#[test]
+fn a_cena_41_comeca_na_nuvem_gigante() {
+    assert_eq!(of(Some("41")).handles, 27);
+    assert_eq!(
+        handles_first(27),
+        Some(crate::vector_mode_filtro_zoom::FIRST)
     );
 }

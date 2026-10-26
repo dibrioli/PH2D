@@ -382,6 +382,7 @@ impl ModeFamily for Family<'_> {
 /// (`vector_mode_composto`).
 /// `=39` (F30 §E): a Caneta a meio de um caminho de largura 0 — só o fio (`vector_mode_fio`).
 /// `=40` (F33): seis Nuvens com Bevel + Drop Shadow, uma por efeito (`vector_mode_filtro_efeito`).
+/// `=41` (F34): uma Nuvem gigante com o mesmo filtro, maior que a textura da placa (`vector_mode_filtro_zoom`).
 pub fn smoke_step(
     vec: &mut VecState,
     scene: &mut ph2d_vec_scene::VecScene,

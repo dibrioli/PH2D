@@ -358,18 +358,25 @@ impl FxStackPass {
         ops: &[FxOpGpu],
         geom: &[[f32; 4]],
     ) {
-        self.run_with(
-            gpu,
-            src,
-            src_org,
-            dst,
-            w,
-            h,
-            ops,
-            geom,
-            false,
-            Origem::Margem,
-        );
+        self.run_from_com_origem(gpu, src, src_org, dst, w, h, ops, geom, Origem::Margem);
+    }
+
+    /// O [`Self::run_from`] com a origem do ruído dita pelo chamador — o Vector, quando o job é
+    /// RECORTADO à vista, ancora-a no canto da FORMA (`Origem::Ponto`), não no da janela.
+    #[allow(clippy::too_many_arguments)]
+    pub fn run_from_com_origem(
+        &mut self,
+        gpu: &GpuContext,
+        src: &wgpu::Texture,
+        src_org: [i32; 2],
+        dst: &wgpu::Texture,
+        w: u32,
+        h: u32,
+        ops: &[FxOpGpu],
+        geom: &[[f32; 4]],
+        origem: Origem<'_>,
+    ) {
+        self.run_with(gpu, src, src_org, dst, w, h, ops, geom, false, origem);
     }
 
     #[allow(clippy::too_many_arguments)]

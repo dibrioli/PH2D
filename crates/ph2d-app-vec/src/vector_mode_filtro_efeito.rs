@@ -71,7 +71,7 @@ fn ajustado(mut e: PathEffect) -> PathEffect {
 }
 
 /// O Bevel + Drop Shadow da foto do dono (Depth 0.04 · luz 0.01/0.10 · sombra 0.04, 0.02/−0.09, 60 %).
-fn filtro() -> VecFilter {
+pub(crate) fn filtro() -> VecFilter {
     let bevel = FxOp {
         radius: 0.04,
         offset: [0.01, 0.10],

@@ -44,7 +44,7 @@
 //! gate afirma que eles estão aqui**. Dizer o contrário seria vender um gate que não pode falhar.
 
 use ph2d_ecs::SimWorld;
-use ph2d_render::{FxOpGpu, stack_reach};
+use ph2d_render::{FxOpGpu, stack_reach, stack_read_por_lado};
 use ph2d_vec_render::LiveGeometry;
 use ph2d_vec_scene::{VecPath, VecPathId, VecScene, VecViewState, VecXforms};
 use ph2d_vector::Affine;
@@ -100,6 +100,9 @@ pub struct FxKey {
     pub ops: Vec<FxOpGpu>,
     pub w: u32,
     pub h: u32,
+    /// Onde a janela recortada começa dentro da caixa inteira da forma (`0,0` sem recorte). Com
+    /// recorte, o pan muda o que está na célula; sem ele, o pan continua fora da chave.
+    pub janela: [i64; 2],
     drawn: FxDrawn,
 }
 
@@ -124,6 +127,9 @@ pub struct Job {
     /// **Fora da chave**: ver o doc do módulo (a translação não muda a arte dentro da célula).
     pub ex0: f64,
     pub ey0: f64,
+    /// A origem do ruído em pixels LOCAIS — o canto da caixa da FORMA, não o da janela, para o
+    /// padrão não andar com o pan quando há recorte. Sem recorte é a `Origem::Margem`.
+    pub ruido: [f32; 2],
 }
 
 /// A resolução por-forma da 1ª varredura: a pilha em pixels, a caixa, o tamanho, e o que é
@@ -149,6 +155,8 @@ pub fn job_for(
     sil: &LiveGeometry,
     view: &VecViewState,
     camera: Affine,
+    // A janela da cena em pixels de tela (`[x0, y0, x1, y1]`) — o que se VÊ (F34).
+    vista: [f64; 4],
     id: VecPathId,
 ) -> Option<Job> {
     let filter = crate::fx_live::spec_of(sim, map, id)?;
@@ -160,10 +168,22 @@ pub fn job_for(
     // A margem é da PILHA INTEIRA (as reaches somam ao longo dela) e assimétrica (uma sombra longa
     // para a direita não paga textura à esquerda). Porta única no passe.
     let (ml, mt, mr, mb) = stack_reach(&ops);
-    let ex0 = (x0 - f64::from(ml)).floor();
-    let ey0 = (y0 - f64::from(mt)).floor();
-    let w = (((x1 + f64::from(mr)).ceil() - ex0).max(1.0) as u32).min(MAX_FX_SIDE);
-    let h = (((y1 + f64::from(mb)).ceil() - ey0).max(1.0) as u32).min(MAX_FX_SIDE);
+    let (fx0, fy0) = ((x0 - f64::from(ml)).floor(), (y0 - f64::from(mt)).floor());
+    let (fx1, fy1) = ((x1 + f64::from(mr)).ceil(), (y1 + f64::from(mb)).ceil());
+    // ⭐ F34: só a parte VISTA, alargada pelo que a pilha LÊ — cada pixel visível lê dentro dela, então
+    // sai igual ao do job inteiro. Sem isto, a 64× o scratch passava do lado da placa e era cortado
+    // pelo canto (a forma sumia) e o campo custava ~234 ms por quadro (`F34_plano.md` §1).
+    let [rl, rt, rr, rb] = stack_read_por_lado(&ops).map(f64::from);
+    let ex0 = fx0.max((vista[0] - rl).floor());
+    let ey0 = fy0.max((vista[1] - rt).floor());
+    let ex1 = fx1.min((vista[2] + rr).ceil());
+    let ey1 = fy1.min((vista[3] + rb).ceil());
+    if ex1 <= ex0 || ey1 <= ey0 {
+        return None;
+    }
+    let w = ((ex1 - ex0) as u32).min(MAX_FX_SIDE);
+    let h = ((ey1 - ey0) as u32).min(MAX_FX_SIDE);
+    let janela = [(ex0 - fx0) as i64, (ey0 - fy0) as i64];
     let screen = ph2d_vec_render::path_to_screen(xforms, id, camera).as_coeffs();
     let cam = camera.as_coeffs();
     // UMA leitura da projecção do quadro, para a chave E para o desenho (ver `Job::bound`).
@@ -175,6 +195,7 @@ pub fn job_for(
             ops,
             w,
             h,
+            janela,
             drawn: FxDrawn {
                 sil: sil.get(&id).cloned(),
                 live: live.get(&id).cloned(),
@@ -189,9 +210,17 @@ pub fn job_for(
         },
         ex0,
         ey0,
+        ruido: [
+            (f64::from(ml) - janela[0] as f64) as f32,
+            (f64::from(mt) - janela[1] as f64) as f32,
+        ],
     })
 }
 
 #[cfg(test)]
 #[path = "fx_live_memo_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "fx_live_zoom_tests.rs"]
+mod zoom_tests;

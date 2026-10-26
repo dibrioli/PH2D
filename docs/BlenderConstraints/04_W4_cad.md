@@ -305,12 +305,48 @@ contra ela: `O(r·n)`) — exige publicar essa base na caneta.
   0→40→12→40 numa cena nova = os mesmos bits. **Visto vermelho** sob a mutação «resolver a partir da cena (o quadro
   anterior)»: «arrastar até 40 ≠ tocar até 40».
 
-**Medido** (`tests/it/medida_regua.rs`, `#[ignore]`, perfil `smoke`, intercalado, 7 rodadas, mínimo · mediana, ms;
-`loadavg` 21 em 32 núcleos):
+- **Depois da 1.ª foto:** o pé do dente afundava (o solver repartia o esticão) ⇒ o chão preso (2.º `Fixo` + H entre as
+  folgas, 33 regras) e o gate exige o pé em 0. A secção do Inspector `DRAWING RULES` (`cad_inspector.rs`, `MAX_REGRAS
+  = 32`) ordena conflito → medidas → resto e mostra a medida em px/graus do projecto (`b8ca424171`).
 
-| cena 6 (20 cantos, 29 regras) | pior passo do arrasto pela caneta (60 passos) | pior quadro da medida animada (49) |
+**Medido** (`tests/it/medida_regua.rs`, `#[ignore]`, perfil `smoke`, intercalado, 7 rodadas, mínimo · mediana, ms):
+
+| cena 6 (20 cantos) | pior passo do arrasto pela caneta (60 passos) | pior quadro da medida animada (49) |
 |---|---|---|
-| ms | **0,053** · 0,097 | **0,046** · 0,094 |
+| 29 regras, `loadavg` 21 | **0,053** · 0,097 | **0,046** · 0,094 |
+| 33 regras, `loadavg` 20 | **0,066** · 0,069 | **0,048** · 0,056 |
+
+### 3.6 ⛔ Smoke do dono 26/10 — o MOTOR passa, a SUPERFÍCIE é recusada
+
+Funcionou (tocar, arrastar a timeline, × e Ctrl+Z), mas: *«Milhões de regras no painel, nomes repetidos, contra
+intuitivo»* · *«não existe nada que possa ser entendido, apenas alguns pontos de cores diferentes»* · **«que seja feito
+de forma muito bem desenhada e explícita como os gizmos das Shapes e por meio de uma nova TOOL na barra lateral
+esquerda, não com um painel no Inspector»** (memória `project_drawing_rules_are_a_tool_with_explicit_gizmos_2026_10_26`).
+
+| recusado (medido no smoke) | porquê |
+|---|---|
+| a lista no Inspector como superfície das regras | 33 linhas, «Vertical» ×10 sem dizer QUAL lado; 1 regra escondida pelo tecto 32 |
+| traço colorido + losango (`cad_marks`) como única marca no canvas | não diz QUE regra é; o dono só viu «pontos de cores diferentes» |
+| criar regra só pela guia da caneta | Equal/Fixed/Distance/Angle/Radius não se criam ⇒ a medida animada fica fora do alcance |
+| cena de smoke com 33 regras | afoga a única coisa nova (a medida) |
+
+Visto na foto do dono e **não** é defeito: o lado esquerdo inclinado = a 1.ª «Vertical» apagada no passo do × (é a do
+lado 0); a ponta curva num topo = alça de Bézier puxada (as regras citam âncoras, não alças — a W4.6 decide se a tool
+mostra/prende alças).
+
+**W4.6 (a fazer) — a tool «Rules»** (o desenho completo abre a próxima janela, red-first):
+1. **Tool nova na barra esquerda do Vetor**, como as das Shapes/QuickShape (`ph2d-app-vec/src/vector_mode*.rs`,
+   `quickshape_frame.rs` — ler com o `explorador` antes): seleccionar 1–2 pontos/lados mostra SÓ as regras possíveis
+   (barra flutuante do mesmo idioma da da imagem); `junta_regra` continua a porta única.
+2. **Gizmos explícitos** desenhados como os das Shapes (tokens, zero hex): selo por regra junto ao lado/ponto (`|` `—`
+   `=`n com o par numerado, ⊙ coincidente, 🔒 fixo), **cota** com setas e o número clicável (escrever valor / chave do
+   Auto Key — o canal `CAD = 9` já existe), hover acende o que a regra liga, clicar escolhe, Delete apaga, cor da
+   FORMA = livre/definida/conflito (convenção SolidWorks/Fusion). Selos só com a tool activa; cotas sempre.
+3. **Inspector**: sai a lista (no máximo um resumo); a secção `INSP_LIVE_CAD_SECTION` não recebe mais investimento.
+4. **Cena de smoke nova** com poucas regras, cada uma visível (proposta: caixa com tampa que abre por ângulo animado);
+   a cena 6 pode ser substituída.
+5. Abertos herdados: régua da timeline mostra a medida em METROS (o Inspector em px); Auto Key ao escrever a medida não
+   provado de ponta a ponta; W4.4: juntar regra a 200 pontos 17–33 ms.
 
 ## 4. Gates red-first
 

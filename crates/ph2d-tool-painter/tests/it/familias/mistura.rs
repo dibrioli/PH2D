@@ -34,6 +34,11 @@ const BLENDER_SOFT: Receita = Receita {
     nasce_de: Some("Wet Round"),
 };
 
+/// O feltro dos Smear: o do Wet Round. O 0,2 do Blender Soft (de onde eles nascem) junta as cerdas e o Smear quase não
+/// arrasta (janela 15, com o corpo a chegar à ferramenta — Smear Soft na cena `sobre`: fundo 59 a 0,2, 110 a 0,03 · 0,
+/// contra o Rebelle 119; Shattered 25 → 17 contra 0).
+const FELTRO_DO_SMEAR: f64 = 0.03;
+
 /// As FERRAMENTAS do Wet (o modo ao lado da receita, `receitas_de_fabrica::ReceitaFerramenta`).
 pub const WET_FERRAMENTAS: &[ReceitaFerramenta] = &[
     // L-1 — o misturador do Rebelle «Blend/Default/Soft»: a ferramenta Blend do Wet (o mesmo modelo: mistura a tinta
@@ -76,14 +81,15 @@ pub const WET_FERRAMENTAS: &[ReceitaFerramenta] = &[
         modo: "Blend",
     },
     // «Default/Hard»: mais denso e a pressão → força 0,8 com piso 0,2 (o do Rebelle); a dureza não age nas ferramentas da
-    // água (o motor usa a delas): 0,996 · 12 · 1 contra 0,955 · 8 · 12.
+    // água (o motor usa a delas). Com o felt 0,2 a chegar à ferramenta (janela 15) a orla sobe: força 0,6 → 14 · 0,8 → 12
+    // · 1 → 11, contra o Rebelle 8 ± 4,6 (resto 0,996 · fundo 3 contra 0,955 · 12).
     ReceitaFerramenta {
         receita: Receita {
             meio: "Blend",
             grupo: "Hard",
             nome: "Blender Hard",
             extras: &[
-                ("blendForce", 0.6),
+                ("blendForce", 1.0),
                 ("felt", 0.2),
                 ("pressureOpacity", 0.8),
                 ("pressureFloor", 0.2),
@@ -105,6 +111,7 @@ pub const WET_FERRAMENTAS: &[ReceitaFerramenta] = &[
                 ("smear", 1.0),
                 ("pressureSize", 0.0),
                 ("pressureOpacity", 1.0),
+                ("felt", FELTRO_DO_SMEAR),
             ],
             nasce_de: Some("Blender Soft"),
             ..BLENDER_SOFT
@@ -122,6 +129,7 @@ pub const WET_FERRAMENTAS: &[ReceitaFerramenta] = &[
                 ("pressureSize", 1.0),
                 ("pressureOpacity", 0.7),
                 ("pressureFloor", 0.3),
+                ("felt", FELTRO_DO_SMEAR),
             ],
             nasce_de: Some("Blender Soft"),
             ..BLENDER_SOFT
@@ -139,6 +147,7 @@ pub const WET_FERRAMENTAS: &[ReceitaFerramenta] = &[
                 ("smear", 0.95),
                 ("pressureSize", 0.3),
                 ("pressureOpacity", 1.0),
+                ("felt", FELTRO_DO_SMEAR),
             ],
             nasce_de: Some("Blender Soft"),
             ..BLENDER_SOFT
@@ -152,7 +161,7 @@ pub const WET_FERRAMENTAS: &[ReceitaFerramenta] = &[
             meio: "Smear",
             grupo: "Shattered",
             nome: "Smear Shattered",
-            extras: &[("smear", 0.6)],
+            extras: &[("smear", 0.6), ("felt", FELTRO_DO_SMEAR)],
             pincel: &[("jitter", "0.25")],
             nasce_de: Some("Blender Soft"),
             ..BLENDER_SOFT
@@ -166,7 +175,11 @@ pub const WET_FERRAMENTAS: &[ReceitaFerramenta] = &[
             meio: "Smear",
             grupo: "Wet",
             nome: "Smear Wet",
-            extras: &[("smear", 1.0), ("smearWater", 0.9)],
+            extras: &[
+                ("smear", 1.0),
+                ("smearWater", 0.9),
+                ("felt", FELTRO_DO_SMEAR),
+            ],
             nasce_de: Some("Blender Soft"),
             ..BLENDER_SOFT
         },

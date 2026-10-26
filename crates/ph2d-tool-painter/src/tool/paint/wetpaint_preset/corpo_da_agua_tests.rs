@@ -12,6 +12,9 @@ use ph2d_wet_paint::tuning::{KNOB_DEFS, Knob, KnobGroup};
 
 const LADO: u32 = 160;
 
+/// `(ferramenta, o knob mexido, com o traço dela)`.
+type Caso = (WetTool, Option<(Knob, f64)>, bool);
+
 fn ponto(pos: [f32; 2], phase: PointerPhase) -> CanvasPointer {
     CanvasPointer {
         pos,
@@ -98,7 +101,7 @@ fn o_corpo_de_cada_ferramenta_da_agua_e_o_que_ela_le() {
         .filter(|d| !da_tela(d.group) && !mao.contains(&d.knob))
         .map(|d| d.knob)
         .collect();
-    let mut casos: Vec<(WetTool, Option<(Knob, f64)>, bool)> = Vec::new();
+    let mut casos: Vec<Caso> = Vec::new();
     for tool in WetTool::DO_TRILHO {
         casos.extend([(tool, None, true), (tool, None, true), (tool, None, false)]);
         for &k in &candidatos {

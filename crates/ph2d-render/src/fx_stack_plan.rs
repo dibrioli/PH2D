@@ -181,7 +181,8 @@ pub fn stack_reach(ops: &[FxOpGpu]) -> (u32, u32, u32, u32) {
 pub fn op_read(op: &FxOpGpu) -> u32 {
     #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
     let px = |v: f32| v.abs().ceil() as u32;
-    let desloca = px(op.offset_px[0]).max(px(op.offset_px[1]));
+    let [ox, oy] = deslocamento(op);
+    let desloca = px(ox).max(px(oy));
     match plan_of(op, true) {
         Plan::Point => 0,
         Plan::Warp => op_reach(op),
@@ -203,12 +204,23 @@ pub fn stack_read(ops: &[FxOpGpu]) -> u32 {
 /// deslocamento zero é o [`op_read`] nos quatro lados.
 #[must_use]
 pub fn op_read_por_lado(op: &FxOpGpu) -> [u32; 4] {
+    op_read_por_lado_com(op, false)
+}
+
+/// O [`op_read_por_lado`] sabendo se o campo terá a GEOMETRIA (`geometria`: os segmentos da silhueta
+/// chegam ao passe). Com ela o Bevel mede o pé exacto por texel e **não lê vizinho nenhum** além da
+/// bilinear do próprio ponto — a banda deixa de ser margem de textura e passa a ser só o recorte dos
+/// segmentos. Medido (F34): Depth 1,4 no zoom máximo pedia ~3 000 px de cada lado, e o job passava do
+/// lado da placa.
+#[must_use]
+pub fn op_read_por_lado_com(op: &FxOpGpu, geometria: bool) -> [u32; 4] {
     #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
     let px = |v: f32| v.abs().ceil() as u32;
     let base = match plan_of(op, true) {
         Plan::Point => return [0; 4],
         Plan::Warp => return [op_reach(op); 4],
         Plan::Blur { .. } => crate::fx_stack_piramide::alcance(op.sigma_px) + 1,
+        Plan::Field { .. } if geometria && op.kind == FxOp::BEVEL => 2,
         Plan::Field { .. } => px(op.sigma_px) + px(op.grow_px) + 2,
     };
     // `(antes, depois)` de um eixo: lê de `−base − ⌈o⌉` a `base − ⌊o⌋`.
@@ -224,15 +236,34 @@ pub fn op_read_por_lado(op: &FxOpGpu) -> [u32; 4] {
             (b - o.floor() as i32).max(0) as u32,
         )
     };
-    let (l, r) = eixo(op.offset_px[0]);
-    let (t, b) = eixo(op.offset_px[1]);
+    let [ox, oy] = deslocamento(op);
+    let (l, r) = eixo(ox);
+    let (t, b) = eixo(oy);
     [l, t, r, b]
+}
+
+/// O deslocamento que o passe APLICA ao ponto amostrado: no Bevel o par de offset é a DIRECÇÃO da luz
+/// e o shader não desloca nada (`fx_stack_field.rs`, `disp`), então ele não é leitura.
+fn deslocamento(op: &FxOpGpu) -> [f32; 2] {
+    if op.kind == FxOp::BEVEL {
+        [0.0, 0.0]
+    } else {
+        op.offset_px
+    }
 }
 
 /// **Quanto a pilha inteira LÊ, por lado** — as leituras somam ao longo dela, lado a lado.
 #[must_use]
 pub fn stack_read_por_lado(ops: &[FxOpGpu]) -> [u32; 4] {
-    ops.iter().map(op_read_por_lado).fold([0; 4], |a, o| {
-        [a[0] + o[0], a[1] + o[1], a[2] + o[2], a[3] + o[3]]
-    })
+    stack_read_por_lado_com(ops, false)
+}
+
+/// O [`stack_read_por_lado`] com a geometria dita ([`op_read_por_lado_com`]).
+#[must_use]
+pub fn stack_read_por_lado_com(ops: &[FxOpGpu], geometria: bool) -> [u32; 4] {
+    ops.iter()
+        .map(|o| op_read_por_lado_com(o, geometria))
+        .fold([0; 4], |a, o| {
+            [a[0] + o[0], a[1] + o[1], a[2] + o[2], a[3] + o[3]]
+        })
 }

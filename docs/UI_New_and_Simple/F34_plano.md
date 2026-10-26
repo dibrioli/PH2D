@@ -141,6 +141,27 @@ mutação «ignora os texels» → vermelho).
   chrome: `present_bands.rs`, `present_frost.rs`, `present_chrome.rs`), e o atlas despeja o que ficou 2
   gerações sem uso. Por medir NO APP: `PH2D_FX_PERF=1` passa a dizer cada troca de textura (`[fx-troca]`).
 
+## 8 — Smoke do dono (26/10, 3.ª volta): «ainda piscando e sumindo perto do zoom mais próximo»
+
+Dica do dono: **Bevel Depth 1,4**. O log dele (`PH2D_FX_PERF=1`, `[fx-troca]`) mostra o conteúdo a
+crescer até **8192×8192** numa janela de ~1300×1070. Medido (`fx_zoom_sonda_do_alcance`): com Depth 1,4
+no zoom máximo (k ≈ 2 140 px/m) o Bevel pedia **~3 000 px de margem de cada lado**. Auditoria
+independente (agente paralelo) confirmou e juntou à família:
+
+| # | defeito | cura | gate (mutação → vermelho) |
+|---|---|---|---|
+| 1 | a margem do Bevel = a banda inteira, mesmo com a GEOMETRIA (o finalize mede o pé exacto e não lê vizinho: `fx_stack_field.rs`, ramo do Bevel) | `op_read_por_lado_com(op, geometria)`: o Bevel com geometria lê 2 texels; o `job_for` recortado achata a silhueta (`Job::geom`) e decide a margem por ela | G10 `a_deep_bevel_with_geometry_does_not_widen_the_window` |
+| 2 | o offset do Bevel (a direcção da LUZ) somava-se à margem como deslocamento | `deslocamento()` = 0 no Bevel, como o shader | `the_bevel_light_is_not_a_read_and_its_band_is_not_a_margin_with_geometry` (ph2d-render) |
+| 3 | a imagem registada no Vello = a janela inteira (com a margem) → > 4096 px, e velha + nova não cabem no atlas de 8192: quadros sem a forma (o piscar); a 8192² nunca cabe (a forma some) | a pilha escreve numa `saida` FORA do Vello; só a parte `mostra` (janela ∩ vista) vai à textura registada | G9 com Depth 1,4 + uma passagem extra do renderer por quadro (como o app): a imagem do atlas ≤ a tela |
+| 4 | acima de 8192 o `.min` cortava pelo fim: a vista saía da janela | `cabe_no_lado`: o excesso sai das margens, a vista fica dentro | G11 `a_window_beyond_the_device_side_keeps_the_view_inside` |
+| 5 | (memória) work textures grow-only até 8192² Rgba16Float (~2 GiB) | limitado por 1 e 4; o encolhimento fica ABERTO | — |
+
+Paridade (G5) com um Bevel FUNDO (σ 320 px): pior diferença **2/255**, em pixels soltos no miolo
+(160–200 px para dentro), com o sinal a alternar, e também com a margem larga. É ruído `f32` da
+referência (coordenadas locais até 3 200), e o gate tolera 2 só nesse caso. A mutação que tirava a
+capacidade (M11) passa a SOBREVIVER no G9: com a imagem do atlas limitada à tela, trocar a textura já
+não falha. A lei da capacidade continua no G6.
+
 ## ⛔ Recusas MEDIDAS
 
 - **Alargar o que o campo LÊ pela cadeia de saltos do JFA** (`2^n − 1`, até ~2× a banda). Foi escrito

@@ -8,6 +8,7 @@
 //! vão deixava passar até a máquina do smoke.
 
 use super::*;
+use crate::fx_stack_plan::op_read_por_lado_com;
 use crate::fx_stack_shader::{FX_STACK_MID_WGSL, FX_STACK_OUT_WGSL, FX_STACK_WGSL};
 use ph2d_ecs::FxOp;
 
@@ -508,4 +509,41 @@ fn the_morphology_only_pays_margin_for_the_direction_that_grows() {
     }
     // E o zero — o neutro — não paga nada.
     assert_eq!(op_reach(&morph_op(0.0)), 0);
+}
+
+/// **No Bevel o offset é a DIRECÇÃO da luz, não um deslocamento** — o shader não desloca o ponto
+/// (`disp = 0` no Bevel), então a margem que a pilha LÊ não pode crescer com ele (auditoria F34 #4).
+/// E com a geometria o Bevel lê só o próprio ponto: a banda deixa de ser margem.
+#[test]
+fn the_bevel_light_is_not_a_read_and_its_band_is_not_a_margin_with_geometry() {
+    let luz = |off: [f32; 2]| {
+        FxOpGpu::resolve(
+            &FxOp {
+                radius: 0.4,
+                offset: off,
+                ..FxOp::new(FxOp::BEVEL)
+            },
+            [100.0, 0.0, 0.0, 100.0],
+        )
+    };
+    assert_eq!(
+        op_read_por_lado(&luz([0.0, 0.0])),
+        op_read_por_lado(&luz([0.3, -0.5]))
+    );
+    assert_eq!(op_read_por_lado_com(&luz([0.3, -0.5]), true), [2; 4]);
+    // A sombra, ao contrário, LÊ em `p − off`: o lado para onde aponta paga-o.
+    let sombra = |off: [f32; 2]| {
+        FxOpGpu::resolve(
+            &FxOp {
+                radius: 0.4,
+                offset: off,
+                ..FxOp::new(FxOp::DROP_SHADOW)
+            },
+            [100.0, 0.0, 0.0, 100.0],
+        )
+    };
+    assert_ne!(
+        op_read_por_lado(&sombra([0.0, 0.0])),
+        op_read_por_lado(&sombra([0.3, -0.5]))
+    );
 }

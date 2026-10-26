@@ -44,7 +44,7 @@
 //! gate afirma que eles estão aqui**. Dizer o contrário seria vender um gate que não pode falhar.
 
 use ph2d_ecs::SimWorld;
-use ph2d_render::{FxOpGpu, stack_reach, stack_read_por_lado};
+use ph2d_render::{FxOpGpu, stack_reach, stack_read_por_lado, stack_read_por_lado_com};
 use ph2d_vec_render::LiveGeometry;
 use ph2d_vec_scene::{VecPath, VecPathId, VecScene, VecViewState, VecXforms};
 use ph2d_vector::Affine;
@@ -103,6 +103,10 @@ pub struct FxKey {
     /// Onde a janela recortada começa dentro da caixa inteira da forma (`0,0` sem recorte). Com
     /// recorte, o pan muda o que está na célula; sem ele, o pan continua fora da chave.
     pub janela: [i64; 2],
+    /// A parte da janela que vai à TELA (`[x0, y0, x1, y1]`, texels locais): a janela inteira sem
+    /// recorte; com ele, só o que a vista mostra — a margem que a pilha LÊ fica no rascunho e nunca
+    /// entra no atlas do Vello (F34 §8).
+    pub mostra: [u32; 4],
     drawn: FxDrawn,
 }
 
@@ -130,6 +134,9 @@ pub struct Job {
     /// A origem do ruído em pixels LOCAIS — o canto da caixa da FORMA, não o da janela, para o
     /// padrão não andar com o pan quando há recorte. Sem recorte é a `Origem::Margem`.
     pub ruido: [f32; 2],
+    /// Os segmentos da silhueta já resolvidos (com recorte, para decidir a margem), em texels a partir
+    /// de `origem`: o `cook_batch` desloca-os para a janela em vez de os achatar outra vez.
+    pub geom: Option<([f64; 2], Vec<[f32; 4]>)>,
 }
 
 /// A resolução por-forma da 1ª varredura: a pilha em pixels, a caixa, o tamanho, e o que é
@@ -171,19 +178,52 @@ pub fn job_for(
     let (fx0, fy0) = ((x0 - f64::from(ml)).floor(), (y0 - f64::from(mt)).floor());
     let (fx1, fy1) = ((x1 + f64::from(mr)).ceil(), (y1 + f64::from(mb)).ceil());
     // ⭐ F34: só a parte VISTA, alargada pelo que a pilha LÊ — cada pixel visível lê dentro dela, então
-    // sai igual ao do job inteiro. Sem isto, a 64× o scratch passava do lado da placa e era cortado
-    // pelo canto (a forma sumia) e o campo custava ~234 ms por quadro (`F34_plano.md` §1).
-    let [rl, rt, rr, rb] = stack_read_por_lado(&ops).map(f64::from);
-    let ex0 = fx0.max((vista[0] - rl).floor());
-    let ey0 = fy0.max((vista[1] - rt).floor());
-    let ex1 = fx1.min((vista[2] + rr).ceil());
-    let ey1 = fy1.min((vista[3] + rb).ceil());
+    // sai igual ao do job inteiro (`F34_plano.md` §1). Com recorte, a margem do Bevel encolhe se houver
+    // GEOMETRIA (§8), e a janela cabe no lado da placa à volta da vista.
+    let caixa = [fx0, fy0, fx1, fy1];
+    let mut e = alarga(caixa, vista, stack_read_por_lado(&ops));
+    let recortada = e != caixa;
+    let mut geom = None;
+    if recortada {
+        let origem = [e[0], e[1]];
+        let corte = [
+            -4.0,
+            -4.0,
+            (e[2] - e[0]) as f32 + 4.0,
+            (e[3] - e[1]) as f32 + 4.0,
+        ];
+        let off = Affine::translate((-origem[0], -origem[1]));
+        let s = ph2d_vec_render::silhouette_segments_within(
+            scene, xforms, live, sil, id, camera, off, corte,
+        );
+        if !s.is_empty() {
+            e = alarga(caixa, vista, stack_read_por_lado_com(&ops, true));
+            geom = Some((origem, s));
+        }
+    }
+    let (ex0, ex1) = cabe_no_lado(e[0], e[2], vista[0], vista[2]);
+    let (ey0, ey1) = cabe_no_lado(e[1], e[3], vista[1], vista[3]);
     if ex1 <= ex0 || ey1 <= ey0 {
         return None;
     }
-    let w = ((ex1 - ex0) as u32).min(MAX_FX_SIDE);
-    let h = ((ey1 - ey0) as u32).min(MAX_FX_SIDE);
+    let w = (ex1 - ex0) as u32;
+    let h = (ey1 - ey0) as u32;
     let janela = [(ex0 - fx0) as i64, (ey0 - fy0) as i64];
+    let mostra = if recortada {
+        let local = |v: f64, a: f64, n: u32| (v - a).clamp(0.0, f64::from(n)) as u32;
+        let m = [
+            local(vista[0].floor(), ex0, w),
+            local(vista[1].floor(), ey0, h),
+            local(vista[2].ceil(), ex0, w),
+            local(vista[3].ceil(), ey0, h),
+        ];
+        if m[2] <= m[0] || m[3] <= m[1] {
+            return None;
+        }
+        m
+    } else {
+        [0, 0, w, h]
+    };
     let screen = ph2d_vec_render::path_to_screen(xforms, id, camera).as_coeffs();
     let cam = camera.as_coeffs();
     // UMA leitura da projecção do quadro, para a chave E para o desenho (ver `Job::bound`).
@@ -196,6 +236,7 @@ pub fn job_for(
             w,
             h,
             janela,
+            mostra,
             drawn: FxDrawn {
                 sil: sil.get(&id).cloned(),
                 live: live.get(&id).cloned(),
@@ -214,7 +255,37 @@ pub fn job_for(
             (f64::from(ml) - janela[0] as f64) as f32,
             (f64::from(mt) - janela[1] as f64) as f32,
         ],
+        geom,
     })
+}
+
+/// A caixa (`[x0, y0, x1, y1]`) recortada à vista alargada por `[l, t, r, b]`.
+fn alarga(caixa: [f64; 4], vista: [f64; 4], [l, t, r, b]: [u32; 4]) -> [f64; 4] {
+    let [l, t, r, b] = [l, t, r, b].map(f64::from);
+    [
+        caixa[0].max((vista[0] - l).floor()),
+        caixa[1].max((vista[1] - t).floor()),
+        caixa[2].min((vista[2] + r).ceil()),
+        caixa[3].min((vista[3] + b).ceil()),
+    ]
+}
+
+/// **Um eixo da janela no lado da placa** (`MAX_FX_SIDE`), sem nunca perder a VISTA: o excesso sai
+/// das duas margens na proporção delas; se a própria vista não cabe, fica o meio dela. Antes o `.min`
+/// cortava pelo fim, e acima de 8192 a vista caía fora da janela — a forma sumia (auditoria F34 #3).
+fn cabe_no_lado(a0: f64, a1: f64, v0: f64, v1: f64) -> (f64, f64) {
+    let max = f64::from(MAX_FX_SIDE);
+    let sobra = a1 - a0 - max;
+    if sobra <= 0.0 {
+        return (a0, a1);
+    }
+    let (antes, depois) = ((v0 - a0).max(0.0), (a1 - v1).max(0.0));
+    if antes + depois < sobra {
+        let meio = ((v0 + v1 - max) / 2.0).floor();
+        return (meio, meio + max);
+    }
+    let corta = (sobra * antes / (antes + depois)).ceil();
+    (a0 + corta, a0 + corta + max)
 }
 
 #[cfg(test)]

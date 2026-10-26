@@ -112,9 +112,10 @@ fn area(a: [f64; 4]) -> f64 {
     (a[2] - a[0]).max(0.0) * (a[3] - a[1]).max(0.0)
 }
 
+/// O que vai à TELA (a parte `mostra` da janela), em pixels de tela.
 fn rect(job: &Job) -> [f64; 4] {
-    let (w, h) = (f64::from(job.key.w), f64::from(job.key.h));
-    [job.ex0, job.ey0, job.ex0 + w, job.ey0 + h]
+    let [x0, y0, x1, y1] = job.key.mostra.map(f64::from);
+    [job.ex0 + x0, job.ey0 + y0, job.ex0 + x1, job.ey0 + y1]
 }
 
 fn kinds() -> impl Iterator<Item = u8> {
@@ -242,7 +243,8 @@ fn a_gesture_at_max_zoom_almost_never_swaps_the_output_texture() {
         let mut n = 0;
         for cam in quadros {
             let job = c.job(cam, VIEW).expect("job");
-            let (w, h) = (job.key.w, job.key.h);
+            let [x0, y0, x1, y1] = job.key.mostra;
+            let (w, h) = (x1 - x0, y1 - y0);
             if !cap.is_some_and(|(cw, ch)| serve(cw, w) && serve(ch, h)) {
                 cap = Some((capacidade(w), capacidade(h)));
                 n += 1;
@@ -263,6 +265,87 @@ fn a_gesture_at_max_zoom_almost_never_swaps_the_output_texture() {
     assert!(
         zoom <= 3 && pan <= 3,
         "trocas de textura: zoom {zoom}, pan {pan} em 60 quadros"
+    );
+}
+
+/// O filtro da cena 41 com o Bevel a `depth` (o dono: «para ver o defeito, Depth 1.4»).
+fn filtro_com_depth(depth: f32) -> VecFilter {
+    let mut ops = crate::vector_mode_filtro_efeito::filtro().ops().to_vec();
+    ops[0].radius = depth;
+    VecFilter::from_ops(ops)
+}
+
+/// A câmera do zoom máximo do app na janela da sonda (`Camera2d::ZOOM_MIN_HEIGHT_WORLD`).
+fn zoom_maximo(foco: [f64; 2]) -> Affine {
+    let k = VIEW[3] / f64::from(ph2d_render::Camera2d::ZOOM_MIN_HEIGHT_WORLD);
+    Affine::translate((VIEW[2] / 2.0, VIEW[3] / 2.0))
+        * Affine::scale(k)
+        * Affine::translate((-foco[0], -foco[1]))
+}
+
+/// **G10 — com o contorno exacto, a margem do Bevel não cresce com o Depth.** O Bevel mede o pé por
+/// texel e não lê vizinho; a banda só escolhe os segmentos. Depth 1,4 no zoom máximo pedia ~3 000 px de
+/// cada lado, e o job passava do lado da placa (o piscar e o sumiço do smoke F34).
+#[test]
+fn a_deep_bevel_with_geometry_does_not_widen_the_window() {
+    let mut c = cena(FxOp::BEVEL);
+    crate::fx_live::set_filter(&mut c.sim, &c.map, &[c.id], Some(filtro_com_depth(1.4)));
+    // Uma nuvem de raio 100 m: no zoom máximo a vista cai inteira dentro dela.
+    let cam = zoom_maximo([R - 1.0, 0.0]);
+    let job = c.job(cam, VIEW).expect("job");
+    let sombra = stack_read_por_lado(&job.key.ops[1..]).map(f64::from);
+    let teto_w = VIEW[2] + sombra[0] + sombra[2] + 8.0;
+    let teto_h = VIEW[3] + sombra[1] + sombra[3] + 8.0;
+    assert!(
+        job.geom.is_some(),
+        "o job recortado devia trazer a geometria"
+    );
+    assert!(
+        f64::from(job.key.w) <= teto_w && f64::from(job.key.h) <= teto_h,
+        "janela {}x{} (o teto, só com a margem da sombra, é {teto_w}x{teto_h})",
+        job.key.w,
+        job.key.h
+    );
+}
+
+/// **G11 — a janela cabe no lado da placa SEM perder a vista.** Uma sombra de borrão enorme no zoom
+/// máximo pede mais que 8192: o excesso sai das margens, e a vista fica inteira dentro da janela.
+/// Antes o `.min` cortava pelo fim, e a vista caía fora (auditoria F34 #3).
+#[test]
+fn a_window_beyond_the_device_side_keeps_the_view_inside() {
+    let mut c = cena(FxOp::DROP_SHADOW);
+    let sombra = FxOp {
+        radius: 2.0,
+        ..FxOp::new(FxOp::DROP_SHADOW)
+    };
+    crate::fx_live::set_filter(
+        &mut c.sim,
+        &c.map,
+        &[c.id],
+        Some(VecFilter::from_ops(vec![sombra])),
+    );
+    let cam = zoom_maximo([R - 1.0, 0.0]);
+    let job = c.job(cam, VIEW).expect("job");
+    let lado = f64::from(super::MAX_FX_SIDE);
+    let janela = [
+        job.ex0,
+        job.ey0,
+        job.ex0 + f64::from(job.key.w),
+        job.ey0 + f64::from(job.key.h),
+    ];
+    assert!(
+        f64::from(job.key.w) <= lado && f64::from(job.key.h) <= lado,
+        "janela {}x{}",
+        job.key.w,
+        job.key.h
+    );
+    let fora =
+        VIEW[0] < janela[0] || VIEW[1] < janela[1] || VIEW[2] > janela[2] || VIEW[3] > janela[3];
+    let visivel = inter(c.caixa(cam), VIEW);
+    let coberta = area(inter(visivel, rect(&job))) / area(visivel);
+    assert!(
+        !fora && coberta >= 1.0 - 1e-9,
+        "a vista {VIEW:?} saiu da janela {janela:?} (cobre {coberta})"
     );
 }
 
@@ -296,3 +379,31 @@ fn fx_zoom_regua_cobertura() {
 
 #[path = "fx_live_zoom_gpu_tests.rs"]
 mod gpu;
+
+/// Sonda: o alcance de cada degrau do filtro da cena 41, por zoom real da câmera (`k` px/m).
+#[test]
+#[ignore = "sonda F34: alcance por degrau"]
+fn fx_zoom_sonda_do_alcance() {
+    let mut f = crate::vector_mode_filtro_efeito::filtro();
+    if let Some(d) = std::env::var("PH2D_F34_DEPTH")
+        .ok()
+        .and_then(|v| v.parse::<f32>().ok())
+    {
+        let mut ops = f.ops().to_vec();
+        ops[0].radius = d;
+        f = ph2d_ecs::VecFilter::from_ops(ops);
+    }
+    for k in [100.0, 500.0, 1000.0, 2140.0, 5000.0] {
+        let ops = crate::fx_live::resolve_ops(&f, Affine::scale(k));
+        for o in &ops {
+            eprintln!(
+                "[alcance] k {k:>6} tipo {:>2} sigma {:>8.1} off {:?} · lê {:?} · espalha {:?}",
+                o.kind,
+                o.sigma_px,
+                o.offset_px,
+                ph2d_render::stack_read_por_lado(std::slice::from_ref(o)),
+                ph2d_render::stack_reach(std::slice::from_ref(o))
+            );
+        }
+    }
+}

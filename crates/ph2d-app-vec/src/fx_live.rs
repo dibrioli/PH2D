@@ -86,6 +86,9 @@ pub struct FxLive {
     scratch: Option<VelloPass>,
     /// O passe da pilha. Build-once.
     stack: Option<FxStackPass>,
+    /// A saída da PILHA, do tamanho da janela (com a margem que ela lê), grow-only e FORA do Vello:
+    /// só a parte `mostra` é copiada para a textura registada de cada forma (F34 §8).
+    saida: Option<wgpu::Texture>,
     /// O despejo de pixels (`PH2D_FX_DUMP`) — a sonda que só o app pode dar.
     dump: crate::fx_dump::FxDump,
     /// Os recursos persistentes por forma (textura de saída + handle estável).
@@ -216,11 +219,12 @@ impl FxLive {
             else {
                 continue;
             };
+            let [mx0, my0, mx1, my1] = pfx.key.mostra;
             let rect = (
-                job.ex0,
-                job.ey0,
-                job.ex0 + f64::from(pfx.key.w),
-                job.ey0 + f64::from(pfx.key.h),
+                job.ex0 + f64::from(mx0),
+                job.ey0 + f64::from(my0),
+                job.ex0 + f64::from(mx1),
+                job.ey0 + f64::from(my1),
             );
             self.live.insert(
                 job.id,
@@ -228,7 +232,7 @@ impl FxLive {
                     // Clone do handle estável = MESMO id de Blob (o slot de atlas do Vello).
                     image: StableImage::from_image_data(pfx.image.clone()),
                     rect,
-                    texels: (pfx.key.w, pfx.key.h),
+                    texels: (mx1 - mx0, my1 - my0),
                 },
             );
         }
@@ -365,6 +369,7 @@ impl FxLive {
             stack,
             paths,
             dump,
+            saida,
             ..
         } = self;
         let src = scratch
@@ -382,23 +387,31 @@ impl FxLive {
             // re-cook comum não mexe na textura — e era exactamente por isso que a chave antiga
             // atualizava só a pilha.
             pfx.key = job.key.clone();
-            // Só os segmentos que ALCANÇAM a janela: o campo é `O(texels × segmentos)` (F34).
-            let alcance = ph2d_render::stack_read(&job.key.ops) as f32;
-            let geom = ph2d_vec_render::silhouette_segments_within(
-                scene,
-                xforms,
-                live,
-                sil,
-                job.id,
-                camera,
-                Affine::translate((-job.ex0, -job.ey0)),
-                [
-                    -alcance,
-                    -alcance,
-                    w_f32(job.key.w) + alcance,
-                    w_f32(job.key.h) + alcance,
-                ],
-            );
+            // Só os segmentos que ALCANÇAM a janela: o campo é `O(texels × segmentos)` (F34). Com
+            // recorte o `job_for` já os achatou (decidem a margem); aqui só se deslocam.
+            let geom = if let Some((o, segs)) = &job.geom {
+                let (dx, dy) = ((o[0] - job.ex0) as f32, (o[1] - job.ey0) as f32);
+                segs.iter()
+                    .map(|&[a, b, c, d]| [a + dx, b + dy, c + dx, d + dy])
+                    .collect()
+            } else {
+                let alcance = ph2d_render::stack_read(&job.key.ops) as f32;
+                ph2d_vec_render::silhouette_segments_within(
+                    scene,
+                    xforms,
+                    live,
+                    sil,
+                    job.id,
+                    camera,
+                    Affine::translate((-job.ex0, -job.ey0)),
+                    [
+                        -alcance,
+                        -alcance,
+                        w_f32(job.key.w) + alcance,
+                        w_f32(job.key.h) + alcance,
+                    ],
+                )
+            };
             if std::env::var("PH2D_FX_DIAG").is_ok() {
                 eprintln!(
                     "[fx-diag] path {:?}: {} segmentos, celula {}x{} em ({},{}) do atlas {}x{}",
@@ -418,26 +431,36 @@ impl FxLive {
             ];
             let (w, h) = (job.key.w, job.key.h);
             let origem = ph2d_render::Origem::Ponto(job.ruido);
-            stack.run_from_com_origem(gpu, src, org, &pfx.tex, w, h, &job.key.ops, &geom, origem);
+            if saida
+                .as_ref()
+                .is_none_or(|t| t.width() < w || t.height() < h)
+            {
+                let (cw, ch) = saida.as_ref().map_or((0, 0), |t| (t.width(), t.height()));
+                *saida = Some(make_output_texture(gpu, cw.max(w), ch.max(h)));
+            }
+            let fora = saida.as_ref().expect("saida garantida");
+            stack.run_from_com_origem(gpu, src, org, fora, w, h, &job.key.ops, &geom, origem);
+            copia_o_que_mostra(gpu, fora, &pfx.tex, job.key.mostra);
             // ⛔⛔ **O aviso ao Vello, e ele é obrigatório desde a `vello` 0.10.** O atlas de
             // imagens deixou de ser limpo a cada render: sem esta marca, os pixels que a linha
             // acima acabou de escrever **não chegam à tela** — a forma congela na primeira
             // cozedura e só refresca quando muda de TAMANHO (aí o `ensure_output` re-regista).
             // Ver [`VelloPass::mark_texture_dirty`]. Gate: `fx_live_marks_every_recook_dirty`.
             vello_pass.mark_texture_dirty(&pfx.image);
-            dump.maybe(gpu, job.id, &pfx.tex, w, h, &job.key.ops, &geom);
+            dump.maybe(gpu, job.id, fora, w, h, &job.key.ops, &geom);
         }
         true
     }
 
     /// (Re)aloca a textura de saída de uma forma e mantém o id ESTÁVEL no renderer principal.
     fn ensure_output(&mut self, gpu: &GpuContext, vello_pass: &mut VelloPass, job: &Job) {
-        let (w, h) = (job.key.w, job.key.h);
+        let [x0, y0, x1, y1] = job.key.mostra;
+        let (w, h) = (x1 - x0, y1 - y0);
         if matches!(self.paths.get(&job.id), Some(p) if serve(p.tex.width(), w) && serve(p.tex.height(), h))
         {
             return;
         }
-        let tex = make_output_texture(gpu, capacidade(w), capacidade(h));
+        let tex = textura_mostrada(gpu, capacidade(w), capacidade(h));
         match self.paths.get_mut(&job.id) {
             // Resize: RE-registra (id novo com as dims certas) e agenda o desregistro do antigo.
             // ⚠️ `override_image` só troca a textura e NÃO atualiza width/height da `ImageData` —
@@ -565,4 +588,53 @@ pub(crate) fn capacidade(v: u32) -> u32 {
 /// A textura de lado `cap` serve um conteúdo de `v`: cabe, e não sobra mais que o dobro.
 pub(crate) fn serve(cap: u32, v: u32) -> bool {
     v <= cap && cap <= capacidade(v.saturating_mul(2))
+}
+
+/// A textura REGISTADA de uma forma: só recebe cópias (a pilha escreve na `saida`), e o Vello copia-a
+/// para o atlas (`COPY_SRC`, `Rgba8Unorm`).
+fn textura_mostrada(gpu: &GpuContext, w: u32, h: u32) -> wgpu::Texture {
+    gpu.device.create_texture(&wgpu::TextureDescriptor {
+        label: Some("ph2d-app-vec fx mostrada"),
+        size: wgpu::Extent3d {
+            width: w.max(1),
+            height: h.max(1),
+            depth_or_array_layers: 1,
+        },
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: wgpu::TextureFormat::Rgba8Unorm,
+        usage: wgpu::TextureUsages::TEXTURE_BINDING
+            | wgpu::TextureUsages::COPY_DST
+            | wgpu::TextureUsages::COPY_SRC,
+        view_formats: &[],
+    })
+}
+
+/// Copia o retângulo `[x0, y0, x1, y1]` da saída da pilha para o canto da textura registada.
+fn copia_o_que_mostra(gpu: &GpuContext, de: &wgpu::Texture, para: &wgpu::Texture, m: [u32; 4]) {
+    let mut enc = gpu
+        .device
+        .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("ph2d-app-vec fx mostra"),
+        });
+    enc.copy_texture_to_texture(
+        wgpu::TexelCopyTextureInfo {
+            texture: de,
+            mip_level: 0,
+            origin: wgpu::Origin3d {
+                x: m[0],
+                y: m[1],
+                z: 0,
+            },
+            aspect: wgpu::TextureAspect::All,
+        },
+        para.as_image_copy(),
+        wgpu::Extent3d {
+            width: m[2] - m[0],
+            height: m[3] - m[1],
+            depth_or_array_layers: 1,
+        },
+    );
+    gpu.queue.submit([enc.finish()]);
 }

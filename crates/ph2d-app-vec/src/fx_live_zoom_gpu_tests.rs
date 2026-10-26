@@ -124,8 +124,16 @@ fn corre(
         &disco(w, h, job.ex0, job.ey0, centro, raio),
     );
     let dst = tex(gpu, w, h);
-    let alc = ph2d_render::stack_read(&job.key.ops) as f32;
-    let geom = c.segs(cam, job, [-alc, -alc, w as f32 + alc, h as f32 + alc]);
+    // Como o `cook_batch`: a geometria que o `job_for` já recortou, ou a de sempre.
+    let geom = if let Some((o, segs)) = job.geom.as_ref() {
+        let (dx, dy) = ((o[0] - job.ex0) as f32, (o[1] - job.ey0) as f32);
+        segs.iter()
+            .map(|&[a, b, c, d]| [a + dx, b + dy, c + dx, d + dy])
+            .collect()
+    } else {
+        let alc = ph2d_render::stack_read(&job.key.ops) as f32;
+        c.segs(cam, job, [-alc, -alc, w as f32 + alc, h as f32 + alc])
+    };
     let origem = Origem::Ponto(job.ruido);
     pass.run_from_com_origem(gpu, &src, [0, 0], &dst, w, h, &job.key.ops, &geom, origem);
     readback(gpu, &dst, w, h)
@@ -157,7 +165,14 @@ fn every_visible_pixel_of_a_clipped_job_is_the_pixel_of_the_whole_job() {
         op.grow = grow;
         op
     };
-    let casos = kinds().map(FxOp::new).chain([larga(1.0), larga(-1.0)]);
+    // E um Bevel FUNDO (σ 320 px a 16×): recortado, ele lê só o próprio ponto (`op_read_por_lado_com`).
+    let fundo = FxOp {
+        radius: 20.0,
+        ..FxOp::new(FxOp::BEVEL)
+    };
+    let casos = kinds()
+        .map(FxOp::new)
+        .chain([larga(1.0), larga(-1.0), fundo]);
     for op in casos {
         let kind = op.kind;
         let c = cena_op(op);
@@ -188,11 +203,18 @@ fn every_visible_pixel_of_a_clipped_job_is_the_pixel_of_the_whole_job() {
                 "[fx-zoom-paridade] tipo {kind:>2}: inteiro {}x{} · recortado {}x{} · pior diferença {pior}",
                 inteiro.key.w, inteiro.key.h, recortado.key.w, recortado.key.h
             );
-            piores.push((kind, recortado.ex0, pior));
+            let fundo = op.radius > 1.0;
+            piores.push((kind, fundo, recortado.ex0, pior));
         }
     }
     // ±1 é a precisão `f32` das coordenadas LOCAIS (as do recorte são menores, logo mais finas).
-    let maus: Vec<_> = piores.iter().filter(|(_, _, p)| *p > 1).collect();
+    // O Bevel FUNDO tolera 2: medido (F34 §8), são pixels soltos no miolo (160–200 px para dentro), com
+    // o sinal a alternar, e aparecem também com a margem larga — ruído `f32` da REFERÊNCIA, cujas
+    // coordenadas locais chegam a 3 200.
+    let maus: Vec<_> = piores
+        .iter()
+        .filter(|(_, fundo, _, p)| *p > if *fundo { 2 } else { 1 })
+        .collect();
     assert!(
         maus.is_empty(),
         "pixels visíveis diferem do job inteiro: {maus:?}"
@@ -581,7 +603,8 @@ fn the_scene_41_cloud_never_blinks_on_the_owners_screen() {
         ))
         .id();
     map.insert(id, e.to_bits());
-    let filtro = crate::vector_mode_filtro_efeito::filtro();
+    // O filtro da cena com o Bevel a Depth 1,4 — o do dono (smoke F34: «para ver o defeito»).
+    let filtro = super::filtro_com_depth(1.4);
     crate::fx_live::set_filter(&mut sim, &map, &[id], Some(filtro));
     let janela = ph2d_host::WindowSize {
         width: 2560,
@@ -644,10 +667,23 @@ fn the_scene_41_cloud_never_blinks_on_the_owners_screen() {
             cam,
             &mut alvo,
         );
+        // Como o app: o renderer principal corre MAIS de uma vez por quadro (a grade, as faixas, o
+        // chrome), e uma passagem sem imagem envelhece as do atlas (auditoria F34).
+        let vazia = VectorScene::new();
+        principal
+            .render_to_intermediate(&gpu, vazia.inner(), tela, ph2d_vector::Color::TRANSPARENT)
+            .expect("render");
         principal
             .render_to_intermediate(&gpu, alvo.inner(), tela, ph2d_vector::Color::TRANSPARENT)
             .expect("render");
         let px = readback(&gpu, principal.intermediate_texture(), tela.0, tela.1);
+        if let Some(i) = fx.images().get(&id) {
+            assert!(
+                i.texels.0 <= tela.0 && i.texels.1 <= tela.1,
+                "a imagem que vai ao atlas ({:?}) passa da tela {tela:?}",
+                i.texels
+            );
+        }
         let p = cam * prova;
         let (x, y) = (p.x as u32, p.y as u32);
         // O ponto de prova e uma grelha 5×5 da tela (todos dentro da nuvem: a borda está a 23 m).

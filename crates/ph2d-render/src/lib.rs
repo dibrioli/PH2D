@@ -140,7 +140,8 @@ pub use compressed_pipeline::{
 pub use cooked_texture::{CookedTextureError, CookedTextureStore};
 pub use frost::{FROST_VEIL_ALPHA, FROST_VEIL_DIM, FrostPass};
 pub use fx_stack::{
-    FxOpGpu, FxStackPass, Origem, retangulo_da_camada, stack_reach, stack_read, stack_read_por_lado,
+    FxOpGpu, FxStackPass, Origem, retangulo_da_camada, stack_reach, stack_read,
+    stack_read_por_lado, stack_read_por_lado_com,
 };
 pub use fx_stack_res::make_output_texture;
 pub use game_rt::GameRt;

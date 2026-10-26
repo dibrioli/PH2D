@@ -274,6 +274,44 @@ formas pequenas custam a sua, não a soma. **Aberto:** UMA componente de 200 pon
 17–33 ms; a cura desenhada é a base do posto em cache pela análise que já corre fora do quadro (a regra nova projecta
 contra ela: `O(r·n)`) — exige publicar essa base na caneta.
 
+### 3.5 W4.5 feita (26/10) — a medida animada
+
+- **Id durável da regra:** `RegraCad.id: RegraId(u32)` + `VecScene.next_regra`, apendados no MESMO degrau 24 (o v23
+  lê `next_regra = 0`); `RegraId::NOVO = 0`. Quem dá é `VecScene::assenta_regras` (poda + ids, a lei do
+  `normaliza_ids`: novo ou repetido ganha o próximo, nunca reusado), no assentamento que já precede todo undo. Gate
+  `a_rule_keeps_its_id_when_an_earlier_rule_is_deleted`. `Lei::medida()`/`medida_mut()`/`dono()` (o path do 1.º ponto).
+- **Família própria `CAD = 9`, e não a `CONSTRAINT = 8`** (o handoff anterior propunha a 8): o `ph2d-app-constraints`
+  drena a 8 INTEIRA (`canais.rs:85`, a escrita sem `Constraints` é largada) e o `publicar` dele faz
+  `esquecer(e, CONSTRAINT)` depois do do vetor (`fase_autokey.rs:47→53`) — a medida seria engolida e apagada. Cada
+  família drena o seu (ADR-0075). `ph2d_ecs::canal_cad`: `MEDIDA = 1`, `i:j` = o `RegraId`, entidade = a do path dono;
+  px, GRAUS num ângulo.
+- **A porta:** `ph2d_vec_entities::medida` (uma `Folha` do layer — as duas famílias podem depender dela; o gate de
+  camadas proíbe `app-vec ↔ app-constraints`): `campos` (publicar), `aplicar` (drena `CAD`, mede em `medida_mut`,
+  resolve com `resolve(folha_AUTORADA, regras, None, None)`, escreve `aplica` sobre cópias do autorado) e a
+  `ConducaoCad` (autorado + medidas autoradas; o que se escreveu; esquece num quadro SEM escrita da curva; uma cena que
+  deixou de ser o que se escreveu = edição do artista = autorado novo). Só re-resolve quando a medida ou o autorado
+  mudam (parado não custa). O `ph2d_app_vec::canais::{aplicar, publicar, ConducaoVetor}` chama-a: zero linha nova na
+  shell (a `ConducaoVetor` leva-a dentro; `substituir` devolve `Vivo`).
+- **Auto Key:** o vetor publica os cantos do AUTORADO para um path que a medida move (explorado: o autokey de um campo
+  NÃO ligado grava quando o valor muda de um quadro para o outro com o Auto Key armado e parado — editar a medida
+  gravaria chaves em todos os cantos). A medida publica-se viva (o eco da curva).
+- **A cena 6** (`smoke_regua.rs`): perfil de 5 dentes, 20 cantos, 29 regras (H/V em todo lado, topos e folgas iguais,
+  um `Fixo`, a altura do dente do meio `0,8 → 1,6 → 0,8` nos quadros 0/24/48, cúbica). `encenar(world, 6)` deixa o
+  recurso `Semear`; o `ph2d_app_constraints::quadro` (agora `&mut VecScene`, shell +0) semeia; o `step` grava as três
+  chaves por `chaves::gravar` (um passo) quando a entidade nasce, escolhe a régua e toca em laço.
+- **Gate** `an_animated_dimension_plays_and_scrubs_to_the_same_bit` (`ph2d-app-constraints/tests/it/a_regua_de_desenho.rs`):
+  49 quadros a tocar, todos com violação ≤ 1e-6 (unidades do mundo = 1e-4 px a 100 px/u; régua nova
+  `ph2d_vec_constraints::violacao`, o resíduo menos o alvo), a altura medida nos CANTOS = a chave em 0/24/48, e
+  0→40→12→40 numa cena nova = os mesmos bits. **Visto vermelho** sob a mutação «resolver a partir da cena (o quadro
+  anterior)»: «arrastar até 40 ≠ tocar até 40».
+
+**Medido** (`tests/it/medida_regua.rs`, `#[ignore]`, perfil `smoke`, intercalado, 7 rodadas, mínimo · mediana, ms;
+`loadavg` 21 em 32 núcleos):
+
+| cena 6 (20 cantos, 29 regras) | pior passo do arrasto pela caneta (60 passos) | pior quadro da medida animada (49) |
+|---|---|---|
+| ms | **0,053** · 0,097 | **0,046** · 0,094 |
+
 ## 4. Gates red-first
 
 | gate | fenómeno na fixture | passo |
@@ -293,7 +331,7 @@ contra ela: `O(r·n)`) — exige publicar essa base na caneta.
 | `dragging_a_corner_keeps_the_rectangle` · `a_rule_the_drawing_already_implies_is_not_added_and_an_extra_dimension_is_born_ref` · `the_rank_test_of_one_new_rule_agrees_with_the_oracle` | o arrasto pela caneta obedece; a diagonal de um retângulo definido nasce REF; a H implícita não entra | W4.4 ✓ |
 | `a_live_circle_the_solver_moved_gets_its_recipe_and_transform_back` (+ controlo) | receita `2r`, `Transform` no centro, a forma não se move, ponto fixo | W4.4 ✓ |
 | `the_colours_come_from_an_analysis_off_the_frame_thread_only_when_the_structure_changes` · `a_conflict_writes_which_rules_to_delete` (+ controlo) | a análise só pela estrutura; a ficha nomeia as regras em conflito | W4.4 ✓ |
-| `an_animated_dimension_plays_and_scrubs_to_the_same_bit` | medida com 3 chaves, quadros 0→40→12→40 | W4.5 |
+| `an_animated_dimension_plays_and_scrubs_to_the_same_bit` · `a_rule_keeps_its_id_when_an_earlier_rule_is_deleted` · `a_dimension_curve_moves_the_drawing_but_the_document_publishes_the_authored_corners` · `the_capture_sees_the_authored_drawing_and_an_artist_edit_becomes_it` | medida com 3 chaves, quadros 0→40→12→40; o id não anda com o índice; o undo vê o autorado | W4.5 ✓ |
 | prova de mutação | tirar o `Fixed` do arrastado / a migração / o REF ⇒ o gate certo sangra | W4.3 ✓ 13/13 (§3.3); W4.4 ✓ 17/18 (M12 = só perf, exacto; M7 era equivalente e o palpite saiu) |
 
 A velocidade **não** vira teste (relógio sob carga mente): reconfere-se com `mede.sh` no fecho da onda, a tabela ao lado.

@@ -1,4 +1,4 @@
-//! **A cena 5 conduzida** (`PH2D_CONSTRAINT_SMOKE=5`): grava a curva do corpo e toca. A sonda que mede
+//! **A cena 5 conduzida** (`PH2D_CONSTRAINT_SMOKE=5`): grava a curva do corpo e toca em laço. A sonda que mede
 //! tocar × arrastar o tempo é o teste `a_cena_5_toca_e_arrasta_igual` (mesmas chaves, [`chaves_do_corpo`]).
 
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -55,6 +55,14 @@ pub fn step(
     hero.set_panel_visible("inspector", true);
     hero.store
         .set_collapsed(ph2d_editor_core::ids::INSP_LIVE_CONSTRAINTS_SECTION, false);
+    // Em laço até 1 s depois de o corpo parar: no fim a mola já assentou e o recomeço não salta.
+    #[expect(clippy::cast_precision_loss, reason = "quadros da cena")]
+    let fim = (CORPO[CORPO.len() - 1].0 + 24) as f64 / tl.doc.fps_display;
+    // O laço é do CLIP, por vista (Keys e Arrange); o transporte espelha-o.
+    for keys in [true, false] {
+        tl.doc.set_active_loop_for(keys, Some((0.0, fim)));
+    }
+    ph.set_loop(0.0, fim);
     ph.seek_frame(0, tl.doc.fps_display);
     ph.play();
     Some("[constraint-smoke] =5 a curva do corpo gravada; a tocar".to_owned())

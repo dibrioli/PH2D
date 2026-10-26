@@ -6138,6 +6138,7 @@ version = "0.0.0"
 dependencies = [
  "ph2d-affine",
  "ph2d-skeleton",
+ "ph2d-vec-scene",
  "serde",
  "serde_json",
 ]
@@ -6156,6 +6157,7 @@ dependencies = [
  "ph2d-skeleton-ecs",
  "ph2d-skeleton-live",
  "ph2d-vec-entities",
+ "ph2d-vec-scene",
  "serde",
  "serde_json",
 ]

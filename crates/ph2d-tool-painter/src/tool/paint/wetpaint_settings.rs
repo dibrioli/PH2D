@@ -255,7 +255,58 @@ impl WetKnobs {
             (id, self.get(knob), d.min, d.max, d.step)
         })
     }
+
+    /// ⭐ **A linha da ferramenta na mão** (dono 25/10, o painel do Rebelle): `(id, chave do rótulo, valor, mín,
+    /// máx, passo)` dos knobs que o leitor de `tool` lê — vazia para o Pincel e o Wet (o Water deles é o do topo).
+    #[must_use]
+    pub fn knobs_da_ferramenta(
+        &self,
+        tool: WetTool,
+    ) -> Vec<(ph2d_a11y::NodeId, &'static str, f64, f64, f64, f64)> {
+        KNOBS_DA_FERRAMENTA
+            .iter()
+            .filter(|(_, _, t, _)| *t == tool)
+            .map(|&(id, knob, _, rotulo)| {
+                let d = &KNOB_DEFS[knob as usize];
+                (id, rotulo, self.get(knob), d.min, d.max, d.step)
+            })
+            .collect()
+    }
 }
+
+/// Os knobs de cada ferramenta da água: o id do cartão, o knob, a ferramenta que o lê e o rótulo.
+const KNOBS_DA_FERRAMENTA: [(ph2d_a11y::NodeId, Knob, WetTool, &str); 5] = [
+    (
+        crate::ids::PAINTER_WETPAINT_SMEAR_STRENGTH,
+        Knob::Smear,
+        WetTool::Smear,
+        "panel.painter_wet_cartao.strength",
+    ),
+    (
+        crate::ids::PAINTER_WETPAINT_SMEAR_WATER,
+        Knob::SmearWater,
+        WetTool::Smear,
+        "panel.painter_wet_cartao.smear_water",
+    ),
+    (
+        crate::ids::PAINTER_WETPAINT_BLEND_STRENGTH,
+        Knob::BlendForce,
+        WetTool::Blend,
+        "panel.painter_wet_cartao.strength",
+    ),
+    (
+        crate::ids::PAINTER_WETPAINT_DRY_ABSORBENCY,
+        Knob::Dryer,
+        WetTool::Dry,
+        "panel.painter_wet_cartao.absorbency",
+    ),
+    (
+        crate::ids::PAINTER_WETPAINT_BLOW_STRENGTH,
+        Knob::Blow,
+        WetTool::Blow,
+        "panel.painter_wet_cartao.strength",
+    ),
+];
 
 /// Os knobs do motor que saíram do Tuning para o cartão: Leveling · Level Clamp · Capillary · Brake (dono 13/10) e
 /// o Brush dust (dono 19/10) — o id do cartão e o knob. Os cinco de baixo (dono 25/10: os que mais decidem o pincel e
@@ -316,6 +367,57 @@ impl WetTool {
     pub(crate) fn uses_lanes(self) -> bool {
         matches!(self, WetTool::Paint | WetTool::Blend)
     }
+
+    /// As ferramentas da água que o trilho oferece (dono 25/10), na ordem do Rebelle.
+    pub const DO_TRILHO: [WetTool; 5] = [
+        WetTool::Blend,
+        WetTool::Smear,
+        WetTool::Wet,
+        WetTool::Dry,
+        WetTool::Blow,
+    ];
+
+    /// ⭐ **O fio do trilho** — o vocabulário de [`PainterTool::set_paint_tool_mode`]. O Pincel da água tem o
+    /// seu (`wet_paint`) para o botão Pincel voltar a ele; o que [`PainterTool::active_paint_mode_id`] devolve
+    /// para ele é `"brush"`.
+    #[must_use]
+    pub fn fio(self) -> &'static str {
+        match self {
+            WetTool::Paint => "wet_paint",
+            WetTool::Smear => "wet_smear",
+            WetTool::Blend => "wet_blend",
+            WetTool::Wet => "wet_water",
+            WetTool::Dry => "wet_dry",
+            WetTool::Blow => "wet_blow",
+        }
+    }
+
+    /// O inverso de [`Self::fio`].
+    #[must_use]
+    pub fn do_fio(fio: &str) -> Option<WetTool> {
+        [
+            WetTool::Paint,
+            WetTool::Smear,
+            WetTool::Blend,
+            WetTool::Wet,
+            WetTool::Dry,
+            WetTool::Blow,
+        ]
+        .into_iter()
+        .find(|t| t.fio() == fio)
+    }
+
+    /// O índice nos slots de pincel da água (o Pincel não tem: usa o do modo `WetPaint`).
+    pub(crate) fn slot_da_agua(self) -> Option<usize> {
+        match self {
+            WetTool::Paint => None,
+            WetTool::Smear => Some(0),
+            WetTool::Blend => Some(1),
+            WetTool::Wet => Some(2),
+            WetTool::Dry => Some(3),
+            WetTool::Blow => Some(4),
+        }
+    }
 }
 
 impl PainterTool {
@@ -347,14 +449,14 @@ impl PainterTool {
     }
 
     /// The section reset — the Watercolor reset's exact semantics: restore
-    /// the knob table, the tool, the tilt and the overlay flags (the reconcile
+    /// the knob table, the tilt and the overlay flags (the reconcile
     /// carries the values into any live session's engine). ⚠️ **The arm
     /// STAYS** (decisão do dono, 2026-10-04: o Reset mantém o meio escolhido —
     /// desarmar levava o pincel ao slot do Digital, doc 45 §2.1).
     pub fn reset_brush_wetpaint(&mut self) {
         let w = &mut self.paint.wetpaint;
+        // A ferramenta fica: ela é a escolha do trilho, e o pincel na mão é o slot dela.
         w.knobs = WetKnobs::default();
-        w.tool = WetTool::default();
         w.tilt_on = true;
         w.tilt_ring = 4;
         w.tilt_spoke = 3;
@@ -419,11 +521,8 @@ impl PainterTool {
         self.paint.wetpaint.knobs
     }
 
-    /// Pick a wet tool by its button index (the model's radio order:
-    /// Paint · Erase · Smear · Blend · Wet · Dry · Blow). Picking USES the
-    /// tool: Erase is the rail eraser's other view (the impasto tool-list
-    /// precedent — two views of one radio), everything else lands on the
-    /// brush wire, which resolves to the fluid while armed.
+    /// Pick a wet tool by its index (Paint · Erase · Smear · Blend · Wet · Dry · Blow) — the door the macros
+    /// and the tests keep; the rail sends the same wires ([`WetTool::fio`]). Erase is the rail eraser.
     pub fn pick_wet_tool(&mut self, index: usize) {
         let tool = match index {
             0 => WetTool::Paint,
@@ -437,8 +536,7 @@ impl PainterTool {
             5 => WetTool::Dry,
             _ => WetTool::Blow,
         };
-        self.paint.wetpaint.tool = tool;
-        self.set_paint_tool_mode("brush");
+        self.set_paint_tool_mode(tool.fio());
     }
 
     /// **A razão da grade do fluido** (1..=30 px por célula) — a porta ÚNICA.
@@ -518,6 +616,9 @@ impl PainterTool {
             x if let Some(&(_, knob)) = KNOBS_NO_CARTAO.iter().find(|(i, _)| *i == x) => {
                 k.set(knob, v);
             }
+            x if let Some(&(_, knob, ..)) = KNOBS_DA_FERRAMENTA.iter().find(|(i, ..)| *i == x) => {
+                k.set(knob, v);
+            }
             x if x == crate::ids::PAINTER_WETPAINT_ERASE => k.erase = v.clamp(0.0, 1.0),
             // The tilt dial's two carriers (the pad converts its 2D drag to
             // ring/spoke and forwards them here). Touching the dial turns
@@ -550,14 +651,6 @@ impl PainterTool {
         match event {
             PanelEvent::Click(id) if *id == crate::ids::PAINTER_WETPAINT_RESET => {
                 self.reset_brush_wetpaint();
-                true
-            }
-            PanelEvent::Click(id) if crate::ids::PAINTER_WETPAINT_TOOL_IDS.contains(id) => {
-                let index = crate::ids::PAINTER_WETPAINT_TOOL_IDS
-                    .iter()
-                    .position(|t| t == id)
-                    .unwrap_or(0);
-                self.pick_wet_tool(index);
                 true
             }
             PanelEvent::Click(id) if *id == crate::ids::PAINTER_WETPAINT_TILT_TOGGLE => {

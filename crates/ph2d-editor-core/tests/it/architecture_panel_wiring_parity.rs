@@ -365,7 +365,7 @@ fn hit_indexed_ids_are_registered() {
 /// |---|---|
 /// | `CEQ_POSTERIZE_LEVELS` | ⛔ `[u32; 7] = [0,2,3,4,6,8,16]` — os NÍVEIS de posterização |
 /// | `CEQ_QUANTIZE_COLORS` | ⛔ `[u32; 8]` — as CONTAGENS de cor |
-/// | `PAINTER_WETPAINT_TOOL_IDS` | ✅ registada por `PAINTER_WETPAINT_CLICKS` (`populate.rs:460`) |
+/// | `PAINTER_WETPAINT_TOOL_IDS` | ✅ registada por `PAINTER_WETPAINT_CLICKS` (`populate.rs:460`; a fileira saiu do painel em 25/10 — as ferramentas da água moram no trilho) |
 /// | `PAINTER_WATERCOLOR_PAPER_PARAMS` | ✅ registada por `PAINTER_WATERCOLOR_FIELDS` (`:147`) |
 /// | `INSP_JOINT_AXIS_GROUP` | ⛔ **nunca chega ao hit index** — ver abaixo |
 ///
@@ -394,7 +394,7 @@ const TABLE_PARITY_PENDING: &[(&str, &str)] = &[
 /// — sem o prefixo `ids::`, porque dentro de uma tabela os membros escrevem-se nus.
 ///
 /// ⚠️ **As duas metades são duas formas de compor uma fileira, e cada uma cobre casos que a outra
-/// não vê**: `PAINTER_WETPAINT_CLICKS` lista `PAINTER_WETPAINT_TOOL_IDS[0..6]` (índice), e
+/// não vê**: `PAINTER_WETPAINT_CLICKS` lista `PAINTER_WETPAINT_PRESET_BUTTONS[0..7]` (índice), e
 /// `PAINTER_BRUSH_SYMMETRY_AXES` lista `PAINTER_BRUSH_SYMMETRY_AXIS_X/_Y/_CUSTOM` (nus). *Ler só
 /// uma delas fabrica metade de uma lista de dívida.*
 fn screaming_members(body: &str) -> (BTreeSet<String>, BTreeSet<String>) {
@@ -469,7 +469,7 @@ fn id_declaration_sources(root: &Path) -> String {
 ///   `[u32; 8]` — os NÍVEIS de posterização e as CONTAGENS de cor, não ids. Elas vivem num módulo
 ///   chamado `ids` e são indexadas ⇒ a sonda acusava-as. *A cura de «registar um `u32` como
 ///   widget» é inexprimível, e uma dívida inexprimível vira allowlist.*
-/// - **`PAINTER_WETPAINT_TOOL_IDS`** e **`PAINTER_WATERCOLOR_PAPER_PARAMS`** são membros de
+/// - **`PAINTER_WETPAINT_PRESET_BUTTONS`** e **`PAINTER_WATERCOLOR_PAPER_PARAMS`** são membros de
 ///   `PAINTER_WETPAINT_CLICKS` e `PAINTER_WATERCOLOR_FIELDS`, e são essas que o `populate.rs`
 ///   percorre (linhas 460 e 147). A fileira **está registada**; o que faltava era a sonda saber
 ///   que uma tabela se regista pela AGREGADORA que a contém.
@@ -645,7 +645,7 @@ fn table_driven_chips_are_registered_too() {
                 continue;
             }
             // ⭐ **Uma tabela regista-se pela AGREGADORA que a contém** (`PAINTER_WETPAINT_CLICKS`
-            // percorrida no populate cobre os `PAINTER_WETPAINT_TOOL_IDS` que a compõem).
+            // percorrida no populate cobre os `PAINTER_WETPAINT_PRESET_BUTTONS` que a compõem).
             let coberta_por_agregadora = inside
                 .get(&table)
                 .is_some_and(|donas| donas.iter().any(|d| registered.contains(d)));

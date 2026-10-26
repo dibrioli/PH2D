@@ -99,24 +99,26 @@ fn paint_volumes(
         SIZE_STEP,
         0,
     );
-    // A borracha da água não pousa água nem tinta: o Water e a Opacity não são dela.
+    // O Water é de quem pousa água (o Pincel e a ferramenta Wet); a Opacity, de quem pousa tinta.
+    if brush.le(ph2d_tool_painter::LinhaDaFerramenta::AguaDoVolume) {
+        y = volume_row(
+            ctx,
+            theme,
+            x,
+            content_w,
+            y,
+            1,
+            "panel.painter_layers.wetpaint.water",
+            ids::PAINTER_WETPAINT_WATER,
+            brush.wet_knobs.water as f32,
+            (0.0, 1.0),
+            number_field::FINE_STEP,
+            2,
+        );
+    }
     if !brush.le(ph2d_tool_painter::LinhaDaFerramenta::DepositoMolhado) {
         return y;
     }
-    y = volume_row(
-        ctx,
-        theme,
-        x,
-        content_w,
-        y,
-        1,
-        "panel.painter_layers.wetpaint.water",
-        ids::PAINTER_WETPAINT_WATER,
-        brush.wet_knobs.water as f32,
-        (0.0, 1.0),
-        number_field::FINE_STEP,
-        2,
-    );
     volume_row(
         ctx,
         theme,

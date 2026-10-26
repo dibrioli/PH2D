@@ -433,6 +433,11 @@ pub fn apply_smear(
     prev_y: f64,
 ) -> Option<TouchedRect> {
     let force = p.k(Knob::Smear);
+    // A água do Smear ([`Knob::SmearWater`]): até ao meio, quanto da água o rasto arrasta; acima, quanto molha.
+    let agua = p.k(Knob::SmearWater);
+    let arrasta_agua = (2.0 * agua).min(1.0);
+    let molha = (2.0 * agua - 1.0).max(0.0);
+    let cap = p.k(Knob::WaterCap);
     let sett_gain = 1.0 - p.k(Knob::ExtStaining);
     let clamp_i = dab.intensity.min(3.0);
     let dx = dab.x - prev_x;
@@ -474,6 +479,8 @@ pub fn apply_smear(
         sett_rgb,
         film,
         vela,
+        wet,
+        paper,
         ..
     } = g;
     for_each_stamp_pixel(
@@ -567,12 +574,16 @@ pub fn apply_smear(
                 }
                 susp[i] = (susp[i] as f64 + (src_mass - susp[i] as f64) * u) as f32;
             }
-            // Water lerps unconditionally (plain bilinear).
+            // Water lerps (plain bilinear), scaled by the Smear's water; above the middle it also wets the trail.
             let src_film = s_f[l00] as f64 * w00
                 + s_f[l10] as f64 * w10
                 + s_f[l01] as f64 * w01
                 + s_f[l11] as f64 * w11;
-            film[i] = (film[i] as f64 + (src_film - film[i] as f64) * u) as f32;
+            film[i] = (film[i] as f64 + (src_film - film[i] as f64) * u * arrasta_agua) as f32;
+            if molha > 0.0 && (film[i] as f64) < cap {
+                film[i] = (film[i] as f64 + (cap - film[i] as f64) * u * molha) as f32;
+                wet[i] = wet_byte_from_paper(paper[i] as f64);
+            }
             // Doc 23 P2 — the settled layer, resisted by staining.
             let u_sett = u * sett_gain;
             if u_sett > 0.0 {

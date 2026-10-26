@@ -38,8 +38,9 @@ pub(super) type RailTool = (NodeId, TextKey, IconId, TextKey);
 /// Painter-mode paint tools, in rail order: `(id, a11y label, icon, vertical
 /// sub-label)`. Replaces the object-mode transform block while the Painter tool
 /// is active. Exclusive radio selection (`chrome/rail_painter_tools.rs`); the
-/// last entry (Shapes) also owns the shape flyout ([`PAINTER_SHAPES`]).
-const PAINTER_TOOLS: [RailTool; 11] = [
+/// last entry (Shapes) also owns the shape flyout ([`PAINTER_SHAPES`]). The water's tools and the Digital
+/// Smear/Blur are never both on the rail ([`no_trilho`]).
+const PAINTER_TOOLS: [RailTool; 16] = [
     (
         ids::PAINTER_RAIL_BRUSH,
         TextKey::new("chrome.rail.brush"),
@@ -57,6 +58,36 @@ const PAINTER_TOOLS: [RailTool; 11] = [
         TextKey::new("chrome.rail.eraser"),
         IconId::Erase,
         TextKey::new("chrome.rail.sub.erase"),
+    ),
+    (
+        ids::PAINTER_RAIL_WET_BLEND,
+        TextKey::new("chrome.rail.wet_blend"),
+        IconId::WetBlend,
+        TextKey::new("chrome.rail.sub.wet_blend"),
+    ),
+    (
+        ids::PAINTER_RAIL_WET_SMEAR,
+        TextKey::new("chrome.rail.wet_smear"),
+        IconId::Smear,
+        TextKey::new("chrome.rail.sub.smear"),
+    ),
+    (
+        ids::PAINTER_RAIL_WET_WATER,
+        TextKey::new("chrome.rail.wet_water"),
+        IconId::WetWater,
+        TextKey::new("chrome.rail.sub.wet_water"),
+    ),
+    (
+        ids::PAINTER_RAIL_WET_DRY,
+        TextKey::new("chrome.rail.wet_dry"),
+        IconId::WetDry,
+        TextKey::new("chrome.rail.sub.wet_dry"),
+    ),
+    (
+        ids::PAINTER_RAIL_WET_BLOW,
+        TextKey::new("chrome.rail.wet_blow"),
+        IconId::WetBlow,
+        TextKey::new("chrome.rail.sub.wet_blow"),
     ),
     (
         ids::PAINTER_RAIL_CLONE,
@@ -383,6 +414,15 @@ pub fn paint_left_rail(
     );
 }
 
+/// ⭐ **O trilho oferece `id` com este meio?** Com o Wet Paint, as ferramentas da água tomam o lugar do Smear
+/// e do Blur do Digital (dono 25/10: elas moravam no Inspector); fora dele, saem.
+#[must_use]
+pub fn no_trilho(id: NodeId, wet: bool) -> bool {
+    let da_agua = ids::PAINTER_RAIL_WET_TOOLS.iter().any(|(w, _)| *w == id);
+    let do_digital = id == ids::PAINTER_RAIL_SMEAR || id == ids::PAINTER_RAIL_BLUR;
+    if wet { !do_digital } else { !da_agua }
+}
+
 /// ⭐⭐ **A SECÇÃO DAS FERRAMENTAS — uma porta com NOME, e não o índice de uma secção.**
 ///
 /// ⛔⛔ **O menu radial pedia-a por `split(Divider).nth(1)`.** Em 2026-08-30 os dois toggles de
@@ -398,7 +438,8 @@ pub fn tool_section(store: &WidgetStore, painter_active: bool) -> Vec<ToolRailEn
     let mut rail_entries: Vec<ToolRailEntry> = Vec::new();
     // Middle section: paint tools in Painter mode, else transform tools.
     if painter_active {
-        for tool in PAINTER_TOOLS {
+        let wet = store.painter_rail_wet();
+        for tool in PAINTER_TOOLS.into_iter().filter(|t| no_trilho(t.0, wet)) {
             // Group buttons adopt their ACTIVE sub-tool's icon/label (Photoshop tool-group style):
             // Shapes → the current stroke shape (generic icon until one is picked); Mask → Mask or
             // Select (defaults to Mask).

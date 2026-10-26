@@ -475,7 +475,6 @@ fn pre_condicoes() -> Vec<Linha> {
         PAINTER_BRUSH_TEXTURE_KIND,
         painter_brush_texture_kind_option_id(1),
     );
-    let ferramenta_wet = |k: usize| PAINTER_WETPAINT_TOOL_IDS[k];
     // Na Aquarela de fábrica «Same as Paper» está ligado e o menu do Grain nem está na tela: desliga-se antes.
     let papel = || vec![Gesto::Clique(PAINTER_WATERCOLOR_GRAN_SAME)];
     for (m, nome, antes, mais) in [
@@ -498,7 +497,7 @@ fn pre_condicoes() -> Vec<Linha> {
             WetPaint,
             "Grain escolhido, tinta molhada na tela e a ferramenta Smear",
             Vec::new(),
-            vec![Gesto::Traco, Gesto::Clique(ferramenta_wet(2))],
+            vec![Gesto::Traco, Gesto::Modo("wet_smear")],
         ),
     ] {
         v.push((
@@ -657,22 +656,21 @@ fn pre_condicoes() -> Vec<Linha> {
             false,
         ));
     }
-    let ferramenta_wet = |k: usize| PAINTER_WETPAINT_TOOL_IDS[k];
     v.push((
         WetPaint,
         "tinta molhada na tela e a ferramenta Erase",
-        vec![Gesto::Traco, Gesto::Clique(ferramenta_wet(1))],
+        vec![Gesto::Traco, Gesto::Modo("eraser")],
         vec![Alvo::Id(PAINTER_WETPAINT_ERASE)],
         false,
     ));
-    for (k, nome) in [
-        (2, "tinta molhada na tela e a ferramenta Smear"),
-        (3, "tinta molhada na tela e a ferramenta Blend"),
+    for (fio, nome) in [
+        ("wet_smear", "tinta molhada na tela e a ferramenta Smear"),
+        ("wet_blend", "tinta molhada na tela e a ferramenta Blend"),
     ] {
         v.push((
             WetPaint,
             nome,
-            vec![Gesto::Traco, Gesto::Clique(ferramenta_wet(k))],
+            vec![Gesto::Traco, Gesto::Modo(fio)],
             vec![Alvo::Id(PAINTER_WETPAINT_PICKUP)],
             false,
         ));

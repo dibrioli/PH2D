@@ -163,12 +163,14 @@ pub(crate) enum Gesto {
     Arrasto(NodeId, f32, f32),
     /// Abrir o menu e clicar na opção `k` de `n`.
     Opcao(NodeId, NodeId, usize, usize),
+    /// Escolher a ferramenta pelo fio do trilho (as da água moram lá desde 25/10).
+    Modo(&'static str),
 }
 
 impl Gesto {
     pub(crate) fn id(&self) -> Option<NodeId> {
         match self {
-            Gesto::Nenhum | Gesto::Traco | Gesto::PontaColorida => None,
+            Gesto::Nenhum | Gesto::Traco | Gesto::PontaColorida | Gesto::Modo(_) => None,
             Gesto::Numero(id, _)
             | Gesto::Slider(id, _)
             | Gesto::Clique(id)
@@ -244,7 +246,7 @@ fn conduz(
 ) -> Vec<WidgetEvent> {
     let rect = |id: NodeId| rects.iter().find(|(i, _)| *i == id).map(|(_, r)| *r);
     match gesto {
-        Gesto::Nenhum | Gesto::Traco | Gesto::PontaColorida => Vec::new(),
+        Gesto::Nenhum | Gesto::Traco | Gesto::PontaColorida | Gesto::Modo(_) => Vec::new(),
         Gesto::Numero(id, v) => {
             // ⚠️ O alvo recalcula-se se o chip JÁ mostra esse valor: um commit igual não emite nada, e
             // o estado do painel que sobrevive entre ensaios no mesmo fio (o stop seleccionado da
@@ -487,6 +489,14 @@ impl Bancada {
 
     /// Um gesto pela porta do ponteiro, dois quadros do app, e o painel re-pintado com o resultado.
     pub(crate) fn aplica(&mut self, gesto: &Gesto, entrega: &mut Entrega) {
+        if let Gesto::Modo(m) = gesto {
+            self.tool
+                .handle_panel_event(ph2d_editor_core::tool::PanelEvent::SelectOption(
+                    ph2d_editor_core::ids::PAINTER_PAINT_MODE,
+                    (*m).to_owned(),
+                ));
+            entrega.ao_tool += 1;
+        }
         let eventos = conduz(&mut self.host, &mut self.st, &self.rects, gesto);
         for ev in eventos {
             let _ = self
@@ -618,6 +628,7 @@ fn tipo_do_gesto(g: &Gesto) -> &'static str {
         Gesto::Clique(..) => "clique",
         Gesto::Arrasto(..) => "arrasto",
         Gesto::Opcao(..) => "opção",
+        Gesto::Modo(..) => "ferramenta",
     }
 }
 

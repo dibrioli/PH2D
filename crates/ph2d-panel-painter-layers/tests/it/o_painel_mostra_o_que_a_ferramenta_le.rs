@@ -76,6 +76,7 @@ fn ids_da(l: LinhaDaFerramenta) -> &'static [NodeId] {
         LinhaDaFerramenta::Preview => &[],
         LinhaDaFerramenta::Aguada => &AGUADA,
         LinhaDaFerramenta::DepositoMolhado => &DEPOSITO_MOLHADO,
+        LinhaDaFerramenta::AguaDoVolume => &[PAINTER_WETPAINT_WATER],
     }
 }
 
@@ -90,10 +91,9 @@ const AGUADA: [NodeId; 6] = [
 ];
 
 /// Os ids do que o pincel do Wet Paint pousa.
-const DEPOSITO_MOLHADO: [NodeId; 9] = [
+const DEPOSITO_MOLHADO: [NodeId; 8] = [
     PAINTER_BRUSH_DAB_QUINA,
     PAINTER_WETPAINT_PAPER_VISUAL,
-    PAINTER_WETPAINT_WATER,
     PAINTER_WETPAINT_VOL_OPACITY,
     PAINTER_WETPAINT_PIGMENT,
     PAINTER_WETPAINT_PICKUP,
@@ -271,7 +271,7 @@ fn a_cor_escondida_nao_muda_a_ferramenta() {
 }
 
 /// `(controlo, motivo)`: à vista da Borracha num meio dela, inerte nas riscas secas E molhadas, e com razão.
-const INERTES_DO_MEIO: [(NodeId, &str); 4] = [
+const INERTES_DO_MEIO: [(NodeId, &str); 3] = [
     (PAINTER_WETPAINT_SECTION, "a cabeça da secção dobra-a"),
     (
         PAINTER_WETPAINT_RESET,
@@ -280,10 +280,6 @@ const INERTES_DO_MEIO: [(NodeId, &str); 4] = [
     (
         PAINTER_WETPAINT_TUNING,
         "abre o painel lateral dos knobs do motor",
-    ),
-    (
-        PAINTER_WETPAINT_TOOL_IDS[1],
-        "o Erase do rádio é a própria Borracha (já escolhido)",
     ),
 ];
 
@@ -329,6 +325,7 @@ fn a_borracha_em_cada_meio_so_ve_o_que_o_meio_lhe_muda() {
         for l in [
             LinhaDaFerramenta::Aguada,
             LinhaDaFerramenta::DepositoMolhado,
+            LinhaDaFerramenta::AguaDoVolume,
         ] {
             for id in ids_da(l) {
                 if ids.contains(id) {
@@ -367,5 +364,142 @@ fn a_borracha_em_cada_meio_so_ve_o_que_o_meio_lhe_muda() {
         medidas >= 20,
         "controlo: só {medidas} gestos do meio medidos"
     );
+    assert!(falhas.is_empty(), "{falhas:#?}");
+}
+
+/// As ferramentas da água, pelo fio do trilho (dono 25/10: moravam no Inspector).
+const DA_AGUA: [(&str, FerramentaDoPincel); 5] = [
+    ("wet_smear", FerramentaDoPincel::SmearMolhado),
+    ("wet_blend", FerramentaDoPincel::BlendMolhado),
+    ("wet_water", FerramentaDoPincel::Molhar),
+    ("wet_dry", FerramentaDoPincel::Secar),
+    ("wet_blow", FerramentaDoPincel::Soprar),
+];
+
+/// `(controlo, motivo)`: à vista de uma ferramenta da água, inerte sobre as riscas molhadas, e com razão.
+const INERTES_DA_AGUA: [(NodeId, &str); 3] = [
+    (PAINTER_WETPAINT_SECTION, "a cabeça da secção dobra-a"),
+    (
+        PAINTER_WETPAINT_RESET,
+        "repõe os knobs, que a bancada deixa no de fábrica",
+    ),
+    (
+        PAINTER_WETPAINT_TUNING,
+        "abre o painel lateral dos knobs do motor",
+    ),
+];
+
+/// `no_pincel` aplicado com o Pincel da água na mão, as riscas molhadas com ele, e então a ferramenta `fio`. O gesto
+/// vem ANTES das riscas: alguns (o Blend do pincel) encerram a água viva por lei.
+fn bancada_da_agua(fio: &str, no_pincel: &Gesto) -> Bancada {
+    let mut b = bancada_com("eraser", &ARMAR, &Gesto::Nenhum);
+    b.tool.set_paint_media(PaintMedia::WetPaint);
+    b.no_modo("wet_paint");
+    b.aplica(
+        no_pincel,
+        &mut super::censo_dos_controlos::Entrega::default(),
+    );
+    super::censo_ferramenta_x_linha::riscas(&mut b);
+    b.no_modo(fio);
+    assert!(
+        b.tool.wet_pigmento().is_some(),
+        "{fio}: as riscas não ficaram molhadas"
+    );
+    b
+}
+
+fn ensaio_da_agua(fio: &str, no_pincel: &Gesto, na_ferramenta: &Gesto) -> Vec<u8> {
+    let mut b = bancada_da_agua(fio, no_pincel);
+    b.aplica(
+        na_ferramenta,
+        &mut super::censo_dos_controlos::Entrega::default(),
+    );
+    risca(&mut b.tool)
+}
+
+/// ⭐⭐ **Cada ferramenta da água só vê o que ela lê** (dono 25/10: *«é necessário configurar o inspector para cada
+/// tipo de tool, escondendo o que não faz parte do uso»*), sobre as riscas MOLHADAS: cada controlo à vista muda o
+/// traço dela ou diz porque não; cada linha que a tabela lhe esconde não está pintada e, mexida com o Pincel da água
+/// na mão, não muda o traço dela — e o controlo: muda o do Pincel (senão o gate mediria o vazio).
+#[test]
+#[ignore = "em construção (janela 13): os inertes de chrome e as linhas das ferramentas da água — PROMPT_NOVA_JANELA_13"]
+fn cada_ferramenta_da_agua_so_ve_o_que_le() {
+    let nomes = nomes();
+    let base_pincel = ensaio_da_agua("wet_paint", &Gesto::Nenhum, &Gesto::Nenhum);
+    let pincel = gestos_da(bancada_da_agua("wet_paint", &Gesto::Nenhum));
+    let mut falhas = Vec::new();
+    let mut medidas = 0;
+    for (fio, f) in DA_AGUA {
+        let b = bancada_da_agua(fio, &Gesto::Nenhum);
+        assert_eq!(
+            b.tool.brush_settings().ferramenta(),
+            f,
+            "{fio}: a ferramenta não ficou na mão"
+        );
+        let escondidas: Vec<NodeId> = NAO_LE
+            .iter()
+            .filter(|(g, _)| *g == f)
+            .flat_map(|(_, ls)| ls.iter().flat_map(|l| ids_da(*l).iter().copied()))
+            .collect();
+        for id in &escondidas {
+            if b.rects().iter().any(|(i, _)| i == id) {
+                falhas.push(format!(
+                    "{fio}: «{}» está escondida e pintada",
+                    nome(&nomes, *id)
+                ));
+            }
+        }
+        let inercias = b.tool.brush_settings().inercias;
+        let base = ensaio_da_agua(fio, &Gesto::Nenhum, &Gesto::Nenhum);
+        let gs: Vec<Gesto> = gestos_da(b)
+            .into_iter()
+            .filter(|g| {
+                [chave(g), g.id()]
+                    .into_iter()
+                    .flatten()
+                    .all(|i| inercias.dica_de(i).is_none())
+            })
+            .collect();
+        let agem = em_paralelo(&gs, |g| {
+            diferenca(&base, &ensaio_da_agua(fio, &Gesto::Nenhum, g)).0 > 0
+        });
+        let mut age: BTreeMap<NodeId, bool> = BTreeMap::new();
+        for (g, a) in gs.iter().zip(agem) {
+            *age.entry(chave(g).unwrap_or(NodeId(0))).or_default() |= a;
+            medidas += 1;
+        }
+        for (id, a) in age {
+            if !a && !INERTES_DA_AGUA.iter().any(|(i, _)| *i == id) {
+                falhas.push(format!("{fio}: «{}» à vista e inerte", nome(&nomes, id)));
+            }
+        }
+        let gs: Vec<&Gesto> = pincel
+            .iter()
+            .filter(|g| chave(g).is_some_and(|i| escondidas.contains(&i)))
+            .collect();
+        let r = em_paralelo(&gs, |g| {
+            (
+                diferenca(
+                    &base_pincel,
+                    &ensaio_da_agua("wet_paint", &Gesto::Nenhum, g),
+                )
+                .0,
+                diferenca(&base, &ensaio_da_agua(fio, g, &Gesto::Nenhum)).0,
+            )
+        });
+        for (g, (no_pincel, na_ferramenta)) in gs.iter().zip(r) {
+            let n = nome(&nomes, chave(g).unwrap_or(NodeId(0)));
+            if na_ferramenta > 0 {
+                falhas.push(format!(
+                    "{fio}: «{n}» está escondida e muda {na_ferramenta} texels"
+                ));
+            }
+            if no_pincel == 0 {
+                falhas.push(format!("{fio}: controlo — «{n}» não age nem no Pincel"));
+            }
+            medidas += 1;
+        }
+    }
+    assert!(medidas >= 5 * 20, "controlo: só {medidas} gestos medidos");
     assert!(falhas.is_empty(), "{falhas:#?}");
 }

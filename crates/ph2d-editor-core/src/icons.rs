@@ -293,6 +293,10 @@ pub enum IconId {
     Vote,
     WandSparkles,
     Warning,
+    WetBlend,
+    WetBlow,
+    WetDry,
+    WetWater,
     Zen,
 }
 

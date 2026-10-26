@@ -256,6 +256,9 @@ pub struct WidgetStore {
     /// Same lifecycle as [`Self::painter_shapes_flyout_open`]; the two are
     /// mutually exclusive (opening one closes the other in dispatch).
     pub(super) painter_mask_flyout_open: bool,
+    /// `true` while the painter's medium is **Wet Paint** (published each frame by the painter bridge): the rail
+    /// swaps the Digital Smear/Blur for the water's tools (dono 25/10).
+    pub(super) painter_rail_wet: bool,
     /// Per-panel Z order — last element paints LAST (= topmost).
     /// Mutated by `bump_panel_z` whenever the user clicks inside a
     /// panel, drags it, or it newly opens (color picker). Painters

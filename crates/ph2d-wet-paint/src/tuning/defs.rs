@@ -157,7 +157,7 @@ pub const KNOB_DEFS: [KnobDef; KNOB_COUNT] = [
     ),
     k(
         Knob::BlendForce,
-        KnobGroup::Paint,
+        KnobGroup::Hidden, // a linha da ferramenta no cartão Wet Paint (dono 25/10)
         "blendForce",
         0.0,
         1.0,
@@ -357,7 +357,7 @@ pub const KNOB_DEFS: [KnobDef; KNOB_COUNT] = [
     ),
     k(
         Knob::Dryer,
-        KnobGroup::Tools,
+        KnobGroup::Hidden, // a linha da ferramenta no cartão Wet Paint (dono 25/10)
         "dryer",
         0.0,
         1.0,
@@ -367,7 +367,7 @@ pub const KNOB_DEFS: [KnobDef; KNOB_COUNT] = [
     ),
     k(
         Knob::Blow,
-        KnobGroup::Tools,
+        KnobGroup::Hidden, // a linha da ferramenta no cartão Wet Paint (dono 25/10)
         "blow",
         0.0,
         1.0,
@@ -377,7 +377,7 @@ pub const KNOB_DEFS: [KnobDef; KNOB_COUNT] = [
     ),
     k(
         Knob::Smear,
-        KnobGroup::Tools,
+        KnobGroup::Hidden, // a linha da ferramenta no cartão Wet Paint (dono 25/10)
         "smear",
         0.0,
         1.0,
@@ -695,4 +695,6 @@ pub const KNOB_DEFS: [KnobDef; KNOB_COUNT] = [
     k(Knob::DryerEdge, KnobGroup::Tools, "dryerEdge", 0.0, 1.0, 0.01, 0.0, None),
     k(Knob::WetOpen, KnobGroup::Hidden, "wetOpen", 0.0, 1.0, 0.01, 0.0, None),
     k(Knob::WetOpenPush, KnobGroup::WetEffects, "wetOpenPush", 0.0, 1.0, 0.01, 0.8, None),
+    // a linha do Smear no cartão Wet Paint (dono 25/10): fora do Tuning
+    k(Knob::SmearWater, KnobGroup::Hidden, "smearWater", 0.0, 1.0, 0.01, 0.5, None),
 ];

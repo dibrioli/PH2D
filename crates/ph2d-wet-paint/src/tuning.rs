@@ -225,9 +225,13 @@ pub enum Knob {
     WetOpen,
     /// … a fracção da tinta de baixo que a mancha EMPURRA para fora dela (só com [`Knob::WetOpen`]).
     WetOpenPush,
+    /// ⭐ **A água do Smear** (dono 25/10): `0,5` = a água de sempre ao bit (o rasto arrasta a água como arrasta o
+    /// pigmento); abaixo arrasta menos (`0` = esfrega a seco); acima molha o rasto até ao [`Knob::WaterCap`] — e o
+    /// pigmento assente dissolve-se pela porta do lift ([`crate::tools::apply_smear`]).
+    SmearWater,
 }
 
-pub const KNOB_COUNT: usize = 107;
+pub const KNOB_COUNT: usize = 108;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum KnobGroup {

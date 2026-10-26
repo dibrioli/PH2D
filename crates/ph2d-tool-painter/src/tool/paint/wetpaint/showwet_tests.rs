@@ -98,7 +98,7 @@ fn painted(media: Media, veil_first: bool) -> Vec<u8> {
                 0.0
             )));
         }
-        Media::WetTool => click(&mut t, crate::ids::PAINTER_WETPAINT_TOOL_IDS[4]),
+        Media::WetTool => t.pick_wet_tool(4),
         Media::Paint => {}
     }
     stroke(&mut t);
@@ -153,7 +153,7 @@ fn the_veil_is_not_vacuously_equal_it_actually_draws() {
             )));
         }
         if let Media::WetTool = media {
-            click(&mut t, crate::ids::PAINTER_WETPAINT_TOOL_IDS[4]);
+            t.pick_wet_tool(4);
         }
         stroke(&mut t);
         let bare = t.canvas_rgba.to_vec();

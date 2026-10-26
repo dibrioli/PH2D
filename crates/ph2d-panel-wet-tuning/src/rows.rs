@@ -218,15 +218,16 @@ mod tests {
     /// Mais 40 avançados a 25/10 (dono: os escondidos do Wet Paint vão para o Tuning): 19 Bristles · 7 Stroke
     /// · 7 Wet effects · 5 Look, e o WaterPush/DryerEdge no Tools (5 → 7). Menos 5 no mesmo dia (dono, R3: o que está
     /// no cartão Wet Paint não se repete aqui): Backruns, Granulation, Pigment diffusion, Wet bloom (Wet effects
-    /// 7 → 3) e Tip pickup (Stroke 7 → 6).
+    /// 7 → 3) e Tip pickup (Stroke 7 → 6). Menos 4 a 25/10 (a linha da ferramenta da água no cartão): Blend force
+    /// (Paint 25 → 24), Dryer, Blow e Smear (Tools 7 → 4).
     #[test]
     fn every_visible_knob_has_a_row() {
-        assert_eq!(rows().len(), 79);
+        assert_eq!(rows().len(), 75);
         for g in [
-            (KnobGroup::Paint, 25),
+            (KnobGroup::Paint, 24),
             (KnobGroup::Water, 7),
             (KnobGroup::Physics, 6),
-            (KnobGroup::Tools, 7),
+            (KnobGroup::Tools, 4),
             (KnobGroup::Paper, 1),
             (KnobGroup::Bristles, 19),
             (KnobGroup::Stroke, 6),
@@ -242,7 +243,7 @@ mod tests {
     /// esta lista: um knob novo nasce aqui (e alguém decide onde mora) ou num grupo à vista.
     #[test]
     fn os_escondidos_sao_so_os_de_outra_superficie_ou_de_calibracao() {
-        const NOUTRA_SUPERFICIE: [&str; 15] = [
+        const NOUTRA_SUPERFICIE: [&str; 20] = [
             // a Shape › Bristles (plano 27 W2)
             "felt",
             "bristleCount",
@@ -262,6 +263,12 @@ mod tests {
             "extDiffusion",
             "wetOpen",
             "tipReservoir",
+            // a linha da ferramenta da água na mão, no cartão Wet Paint (dono 25/10, o painel do Rebelle)
+            "blendForce",
+            "dryer",
+            "blow",
+            "smear",
+            "smearWater",
         ];
         const CALIBRACAO: [&str; 8] = [
             // normaliza o pigmento pelo comprimento (o preset diz a que Spacing foi afinado)

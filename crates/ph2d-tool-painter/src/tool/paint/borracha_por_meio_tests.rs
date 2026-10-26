@@ -254,7 +254,7 @@ fn o_follow_sem_lado_nao_muda_a_agua() {
             let mut u = None;
             traco(&mut t, &mut u, [-8.0, 40.0], [136.0, 40.0]);
             if borracha {
-                t.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_WETPAINT_TOOL_IDS[1]));
+                t.pick_wet_tool(1);
                 assert!(
                     t.paint.eraser,
                     "fixtura: a Borracha da água não está na mão"

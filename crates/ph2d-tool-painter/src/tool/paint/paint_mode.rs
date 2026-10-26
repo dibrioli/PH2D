@@ -73,13 +73,21 @@ pub(crate) const PAINT_MODE_COUNT: usize = 12;
 /// O slot da **Borracha** (dono 24/10): o seu pincel e a sua mão, a seguir aos doze modos — ela pinta no
 /// modo do Pincel (`Paint`, ou `WetPaint` dentro da água) e herdava o slot dele.
 pub(crate) const ERASER_SLOT: usize = PAINT_MODE_COUNT;
-/// Os slots de pincel: um por modo + o da Borracha.
-pub(crate) const SLOT_COUNT: usize = PAINT_MODE_COUNT + 1;
+/// O 1.º dos slots das ferramentas da água (dono 25/10, a lei do Rebelle: cada uma com o seu Size e os seus
+/// presets) — Smear · Blend · Wet · Dry · Blow ([`super::WetTool::slot_da_agua`]), a seguir ao da Borracha.
+pub(crate) const WET_TOOL_SLOT0: usize = ERASER_SLOT + 1;
+/// Os slots de pincel: um por modo, o da Borracha e os cinco da água.
+pub(crate) const SLOT_COUNT: usize = WET_TOOL_SLOT0 + 5;
 
-/// O slot da ferramenta `(modo, borracha)`: a Borracha tem o seu nos dois modos onde ela é uma flag.
-pub(crate) fn slot_da_ferramenta(mode: PaintMode, eraser: bool) -> usize {
+/// O slot da ferramenta `(modo, borracha, ferramenta da água)`: a Borracha tem o seu nos dois modos onde ela é
+/// uma flag; dentro da água cada ferramenta tem o seu (o Pincel fica no do modo).
+pub(crate) fn slot_da_ferramenta(mode: PaintMode, eraser: bool, wet: super::WetTool) -> usize {
     if eraser && matches!(mode, PaintMode::Paint | PaintMode::WetPaint) {
         ERASER_SLOT
+    } else if mode == PaintMode::WetPaint
+        && let Some(k) = wet.slot_da_agua()
+    {
+        WET_TOOL_SLOT0 + k
     } else {
         mode.slot()
     }

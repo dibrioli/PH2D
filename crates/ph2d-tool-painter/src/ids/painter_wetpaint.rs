@@ -22,19 +22,6 @@ pub const PAINTER_WETPAINT_SECTION: NodeId = hash_node_id("painter_brush.wetpain
 /// bakes the live water, since ending the session IS the bake).
 pub const PAINTER_WETPAINT_RESET: NodeId = hash_node_id("painter_brush.wetpaint_reset");
 
-/// The 7 wet tool buttons, in the model's order: Paint · Erase · Smear ·
-/// Blend · Wet · Dry · Blow. Clicking USES the tool (Erase → the eraser
-/// wire; everything else → the brush wire + `WetPaintState.tool`).
-pub const PAINTER_WETPAINT_TOOL_IDS: [NodeId; 7] = [
-    hash_node_id("painter_brush.wetpaint_tool_paint"),
-    hash_node_id("painter_brush.wetpaint_tool_erase"),
-    hash_node_id("painter_brush.wetpaint_tool_smear"),
-    hash_node_id("painter_brush.wetpaint_tool_blend"),
-    hash_node_id("painter_brush.wetpaint_tool_wet"),
-    hash_node_id("painter_brush.wetpaint_tool_dry"),
-    hash_node_id("painter_brush.wetpaint_tool_blow"),
-];
-
 /// The TILT dial (the model's polar pad, 8 rings x 12 spokes): a 2D drag
 /// surface registered as a curve-point widget; the panel converts the drag to
 /// (ring, spoke) and forwards them as `SetValue`s on the two ids below.
@@ -88,15 +75,8 @@ pub const PAINTER_WETPAINT_TUNING: NodeId = hash_node_id("painter_brush.wetpaint
 /// The Wet Paint **Click** ids — ONE membership check for the panel's click forward in its
 /// `event.rs` (the allowlist without which a painted, registered checkbox is dead under the
 /// mouse) and for the populate loop.
-pub const PAINTER_WETPAINT_CLICKS: [NodeId; 24] = [
+pub const PAINTER_WETPAINT_CLICKS: [NodeId; 17] = [
     PAINTER_WETPAINT_RESET,
-    PAINTER_WETPAINT_TOOL_IDS[0],
-    PAINTER_WETPAINT_TOOL_IDS[1],
-    PAINTER_WETPAINT_TOOL_IDS[2],
-    PAINTER_WETPAINT_TOOL_IDS[3],
-    PAINTER_WETPAINT_TOOL_IDS[4],
-    PAINTER_WETPAINT_TOOL_IDS[5],
-    PAINTER_WETPAINT_TOOL_IDS[6],
     PAINTER_WETPAINT_TILT_TOGGLE,
     PAINTER_WETPAINT_WETCANVAS,
     PAINTER_WETPAINT_DRYCANVAS,
@@ -192,9 +172,26 @@ pub const PAINTER_WETPAINT_TIP_PICKUP: NodeId = hash_node_id("painter_brush.wetp
 /// **Erase Strength** — the wet eraser's lift per pass (engine `sliders.erase`, boot `0.4`).
 pub const PAINTER_WETPAINT_ERASE: NodeId = hash_node_id("painter_brush.wetpaint_erase");
 
+// ── A linha da FERRAMENTA da água na mão (dono 25/10; o painel do Rebelle, `smoke_2026-10-24/rebelle_ferramentas`):
+//    o knob que o leitor dela lê, só com ela na mão ─────────────────────────────────────────────────────────────
+/// **Smear › Strength** (knob `smear`).
+pub const PAINTER_WETPAINT_SMEAR_STRENGTH: NodeId =
+    hash_node_id("painter_brush.wetpaint_smear_strength");
+/// **Smear › Water** (knob `smearWater`).
+pub const PAINTER_WETPAINT_SMEAR_WATER: NodeId = hash_node_id("painter_brush.wetpaint_smear_water");
+/// **Blend › Strength** (knob `blendForce`).
+pub const PAINTER_WETPAINT_BLEND_STRENGTH: NodeId =
+    hash_node_id("painter_brush.wetpaint_blend_strength");
+/// **Dry › Absorbency** (knob `dryer`).
+pub const PAINTER_WETPAINT_DRY_ABSORBENCY: NodeId =
+    hash_node_id("painter_brush.wetpaint_dry_absorbency");
+/// **Blow › Strength** (knob `blow`).
+pub const PAINTER_WETPAINT_BLOW_STRENGTH: NodeId =
+    hash_node_id("painter_brush.wetpaint_blow_strength");
+
 /// The Wet Paint **number-field** ids — ONE membership list for the panel's `SetValue` forward
 /// (`number_field::is_param_field`), the populate loop, and the tool's routing match.
-pub const PAINTER_WETPAINT_FIELDS: [NodeId; 23] = [
+pub const PAINTER_WETPAINT_FIELDS: [NodeId; 28] = [
     PAINTER_WETPAINT_GRID,
     PAINTER_WETPAINT_FLOW,
     PAINTER_WETPAINT_WATER,
@@ -214,6 +211,11 @@ pub const PAINTER_WETPAINT_FIELDS: [NodeId; 23] = [
     PAINTER_WETPAINT_WET_BLOOM,
     PAINTER_WETPAINT_TIP_PICKUP,
     PAINTER_WETPAINT_ERASE,
+    PAINTER_WETPAINT_SMEAR_STRENGTH,
+    PAINTER_WETPAINT_SMEAR_WATER,
+    PAINTER_WETPAINT_BLEND_STRENGTH,
+    PAINTER_WETPAINT_DRY_ABSORBENCY,
+    PAINTER_WETPAINT_BLOW_STRENGTH,
     super::PAINTER_WETPAINT_VOL_SIZE,
     super::PAINTER_WETPAINT_VOL_OPACITY,
     PAINTER_WETPAINT_HEAVY_EDGE,

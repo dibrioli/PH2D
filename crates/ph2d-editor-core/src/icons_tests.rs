@@ -394,5 +394,9 @@ const ALL_ICONS: &[IconId] = &[
     IconId::Vote,
     IconId::WandSparkles,
     IconId::Warning,
+    IconId::WetBlend,
+    IconId::WetBlow,
+    IconId::WetDry,
+    IconId::WetWater,
     IconId::Zen,
 ];

@@ -34,6 +34,10 @@ impl PainterTool {
         use super::PaintMode;
         let old_mode = self.paint.paint_mode;
         let old_method = self.paint.brush.stroke_method;
+        // As ferramentas da água (o trilho, dono 25/10): cada fio põe a ferramenta e entra na água (arma).
+        let molhada = super::WetTool::do_fio(mode);
+        let mode = if molhada.is_some() { "wetpaint" } else { mode };
+        let new_wet = molhada.unwrap_or(self.paint.wetpaint.tool);
         let new_mode = match mode {
             "smear" => PaintMode::Smear,
             "blur" => PaintMode::Blur,
@@ -79,7 +83,8 @@ impl PainterTool {
             "eraser" => true,
             _ => false,
         };
-        self.switch_brush_slot(new_mode, new_eraser);
+        self.switch_brush_slot(new_mode, new_eraser, new_wet);
+        self.paint.wetpaint.tool = new_wet;
         // Leaving Deform bakes any live Transform float (committing it as one undo entry) and ends the
         // Reshape session (drops the `pre`/displacement) so a later mode's edits aren't re-warped from a
         // stale baseline; the Reshape pixels are already committed per-stroke.
@@ -203,7 +208,10 @@ impl PainterTool {
             // Wet Paint is the BRUSH's flavour (the checkbox, like
             // Watercolor) — the rail lights Brush, and a momentary
             // capture/restore round-trips through "brush" back into the
-            // fluid because the arm persists.
+            // fluid because the arm persists. As outras ferramentas da água têm o seu fio (o trilho acende-as).
+            PaintMode::WetPaint if self.paint.wetpaint.tool != super::WetTool::Paint => {
+                self.paint.wetpaint.tool.fio()
+            }
             PaintMode::WetPaint => "brush",
             PaintMode::Paint if self.paint.eraser => "eraser",
             PaintMode::Paint => "brush",

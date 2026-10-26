@@ -474,6 +474,8 @@ pub fn dispatch(
             // "Chisel" there enters Sculpt), and a rail that only learned about its own clicks would go
             // on highlighting "Brush" while the artist sculpts — two answers to "which tool am I
             // holding?", with the wrong one on screen. Self-gating: writes only when it actually moved.
+            // O meio decide que ferramentas o trilho oferece (as da água no lugar do Smear/Blur do Digital).
+            hero.store.set_painter_rail_wet(brush_snapshot.wetpaint);
             ph2d_editor_core::screens::hero::chrome::sync_painter_rail_to_mode(
                 &mut hero.store,
                 painter.active_paint_mode_id(),

@@ -25,6 +25,11 @@ const GRUPOS: [&[NodeId]; 3] = [
         ids::PAINTER_RAIL_ERASER,
     ],
     &[
+        ids::PAINTER_RAIL_WET_BLEND,
+        ids::PAINTER_RAIL_WET_SMEAR,
+        ids::PAINTER_RAIL_WET_WATER,
+        ids::PAINTER_RAIL_WET_DRY,
+        ids::PAINTER_RAIL_WET_BLOW,
         ids::PAINTER_RAIL_CLONE,
         ids::PAINTER_RAIL_SMEAR,
         ids::PAINTER_RAIL_BLUR,

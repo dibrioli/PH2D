@@ -62,6 +62,8 @@ impl PaintState {
             ..base
         };
         brush_by_mode[PaintMode::WetPaint.slot()] = wet;
+        // As ferramentas da água nascem do pincel dela; os presets de cada uma dão-lhes a ponta.
+        brush_by_mode[WET_TOOL_SLOT0..WET_TOOL_SLOT0 + 5].fill(wet);
         brush_by_mode[PaintMode::Paint.slot()] = aquarela_de_fabrica(base);
         // A Borracha: a ponta dura do Procreate/Krita (apaga a fundo numa passada; a pressão mexe no
         // tamanho — a mão de fábrica, `Dynamics::default`). Os números da Aquarela, inertes fora dela.

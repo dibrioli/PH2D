@@ -66,42 +66,23 @@ pub(crate) fn paint_wetpaint_section(
     // trust than a second predicate that could drift from it.
     if brush.wetpaint {
         y = paint_resolution_group(ctx, theme, x, content_w, y, brush);
-        // The wet TOOLS (doc 22 — the model's 7-button radio). Two views of
-        // one radio: Erase highlights when the rail's eraser wire is live,
-        // everything else mirrors the authored wet tool.
-        let selected = if brush.eraser {
-            1
-        } else {
-            match brush.wet_tool {
-                ph2d_tool_painter::WetTool::Paint => 0,
-                ph2d_tool_painter::WetTool::Smear => 2,
-                ph2d_tool_painter::WetTool::Blend => 3,
-                ph2d_tool_painter::WetTool::Wet => 4,
-                ph2d_tool_painter::WetTool::Dry => 5,
-                ph2d_tool_painter::WetTool::Blow => 6,
+        // As ferramentas da água moram no trilho da esquerda (dono 25/10); aqui, a linha da que está na mão.
+        if !brush.eraser {
+            for (id, rotulo, v, min, max, step) in
+                brush.wet_knobs.knobs_da_ferramenta(brush.wet_tool)
+            {
+                let decimais = ph2d_tool_painter::Escala {
+                    min: min as f32,
+                    max: max as f32,
+                    step,
+                }
+                .decimals();
+                y = card_row(
+                    ctx, theme, x, content_w, y, rotulo, id, v as f32, min as f32, max as f32,
+                    step, decimais,
+                );
             }
-        };
-        let t = ph2d_tool_painter::ids::PAINTER_WETPAINT_TOOL_IDS;
-        let tool_opts: [(ph2d_a11y::NodeId, String); 7] = [
-            (t[0], tr("panel.painter_layers.wetpaint.paint").into()),
-            (t[1], tr("panel.painter_layers.wetpaint.erase").into()),
-            (t[2], tr("panel.painter_layers.wetpaint.smear").into()),
-            (t[3], tr("panel.painter_layers.wetpaint.blend").into()),
-            (t[4], tr("panel.painter_layers.wetpaint.wet").into()),
-            (t[5], tr("panel.painter_layers.wetpaint.dry").into()),
-            (t[6], tr("panel.painter_layers.wetpaint.blow").into()),
-        ];
-        y = crate::paint_seg_row::seg_row_owned(
-            ctx,
-            theme,
-            x,
-            content_w,
-            y,
-            ph2d_tool_painter::ids::PAINTER_WETPAINT_TOOL_IDS[0],
-            tr("panel.painter_layers.wetpaint.wet_paint_tool"),
-            &tool_opts,
-            selected,
-        );
+        }
         // The TILT dial (the model's polar pad, copied faithfully).
         y = crate::paint_wetpaint_tilt::paint_tilt_card(ctx, theme, x, content_w, y, &brush);
         let k = brush.wet_knobs;

@@ -20,6 +20,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_wet_cartao.tip_pickup_tip" => {
             "Only acts when the brush enters WET paint of another colour: the tip picks it up and carries it along."
         }
+        // A linha da ferramenta da água na mão (dono 25/10, o painel do Rebelle).
+        "panel.painter_wet_cartao.strength" => "Strength",
+        "panel.painter_wet_cartao.smear_water" => "Water",
+        "panel.painter_wet_cartao.absorbency" => "Absorbency",
         _ => return None,
     })
 }

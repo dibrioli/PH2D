@@ -86,6 +86,16 @@ impl WidgetStore {
         self.painter_shapes_flyout_open = open;
     }
 
+    /// `true` while the painter's medium is Wet Paint — the rail offers the water's tools.
+    pub fn painter_rail_wet(&self) -> bool {
+        self.painter_rail_wet
+    }
+
+    /// Publish the painter's medium to the rail (the painter bridge, each frame).
+    pub fn set_painter_rail_wet(&mut self, wet: bool) {
+        self.painter_rail_wet = wet;
+    }
+
     /// `true` while the Painter rail's **Mask** group flyout is open (the column
     /// of Mask + Selection chips to the right of the Mask button).
     pub fn painter_mask_flyout_open(&self) -> bool {

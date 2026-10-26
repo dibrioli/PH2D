@@ -336,7 +336,7 @@ fn the_tilt_dial_drives_the_sim_vector() {
 #[test]
 fn the_wet_tool_lays_water_without_pigment() {
     let mut t = wet_tool_fixture();
-    click(&mut t, crate::ids::PAINTER_WETPAINT_TOOL_IDS[4]);
+    t.pick_wet_tool(4);
     assert_eq!(t.paint.wetpaint.tool, WetTool::Wet);
     stroke(&mut t, 60.0);
     let (film, susp, sett, _) = grid_totals(&t);
@@ -350,11 +350,11 @@ fn the_wet_tool_lays_water_without_pigment() {
 #[test]
 fn the_dry_tool_shrinks_the_film_and_seals() {
     let mut t = wet_tool_fixture();
-    click(&mut t, crate::ids::PAINTER_WETPAINT_TOOL_IDS[4]); // wet first
+    t.pick_wet_tool(4); // wet first
     stroke(&mut t, 60.0);
     let (film_before, ..) = grid_totals(&t);
     assert!(film_before > 0.0);
-    click(&mut t, crate::ids::PAINTER_WETPAINT_TOOL_IDS[5]); // dry
+    t.pick_wet_tool(5); // dry
     stroke(&mut t, 60.0);
     let (film_after, ..) = grid_totals(&t);
     // The dry stamp bites through the sparse bristle TIPS (the felt floor is
@@ -377,7 +377,7 @@ fn the_blow_tool_pushes_the_film() {
     let mut t = wet_tool_fixture();
     stroke(&mut t, 60.0); // paint lays film + pigment
     let (_, _, _, vel_before) = grid_totals(&t);
-    click(&mut t, crate::ids::PAINTER_WETPAINT_TOOL_IDS[6]); // blow
+    t.pick_wet_tool(6); // blow
     stroke(&mut t, 60.0);
     let (_, _, _, vel_after) = grid_totals(&t);
     assert!(
@@ -412,7 +412,7 @@ fn the_smear_tool_drags_pigment_without_adding_any() {
     };
     let (mass_before, com_before) = com_x(&t);
     assert!(mass_before > 0.0, "fixture: the patch must hold pigment");
-    click(&mut t, crate::ids::PAINTER_WETPAINT_TOOL_IDS[2]); // smear
+    t.pick_wet_tool(2); // smear
     // Drag from inside the patch rightward, past its edge.
     t.on_canvas_pointer(cp([50.0, 60.0], PointerPhase::Down));
     for k in 1..=15 {
@@ -490,7 +490,7 @@ fn the_blend_tool_remixes_without_depositing() {
         if m > 0.0 { acc / m } else { 0.0 }
     };
     let probe_before = sett_probe(&t);
-    click(&mut t, crate::ids::PAINTER_WETPAINT_TOOL_IDS[3]); // blend
+    t.pick_wet_tool(3); // blend
     stroke(&mut t, 60.0);
     let (_, susp1, sett1, _) = grid_totals(&t);
     let total0 = susp0 + sett0;
@@ -510,13 +510,13 @@ fn the_blend_tool_remixes_without_depositing() {
 #[test]
 fn erase_pick_is_the_rail_erasers_other_view() {
     let mut t = wet_tool_fixture();
-    click(&mut t, crate::ids::PAINTER_WETPAINT_TOOL_IDS[1]);
+    t.pick_wet_tool(1);
     assert!(t.paint.eraser, "Erase pick must land on the eraser wire");
     assert!(
         t.paint.wetpaint.armed,
         "the ARM survives the tool view swap"
     );
-    click(&mut t, crate::ids::PAINTER_WETPAINT_TOOL_IDS[0]);
+    t.pick_wet_tool(0);
     assert!(!t.paint.eraser);
     assert!(
         matches!(t.paint.paint_mode, PaintMode::WetPaint),
@@ -646,15 +646,15 @@ fn the_tuning_checkbox_flips_the_snapshot() {
     assert!(t.brush_settings().wet_tuning_open);
 }
 
-/// The section reset restores EVERYTHING doc 22 added: knobs, tool, tilt,
-/// flags — and KEEPS the arm (decisão do dono, 2026-10-04: o Reset mantém o
+/// The section reset restores EVERYTHING doc 22 added: knobs, tilt, flags —
+/// and KEEPS the arm and the tool (a ferramenta é escolha do trilho, dono 25/10) (decisão do dono, 2026-10-04: o Reset mantém o
 /// meio escolhido; doc 45 §2.1).
 #[test]
 fn the_section_reset_restores_the_whole_section() {
     let mut t = wet_tool_fixture();
     // O Leveling mora no cartão Wet Paint desde 13/10 (saiu do Tuning): o Reset da secção restaura-o também.
     set(&mut t, crate::ids::PAINTER_WETPAINT_LEVELING, 1.9);
-    click(&mut t, crate::ids::PAINTER_WETPAINT_TOOL_IDS[6]);
+    t.pick_wet_tool(6);
     set(&mut t, crate::ids::PAINTER_WETPAINT_TILT_RING, 8.0);
     click(&mut t, crate::ids::PAINTER_WETPAINT_SHOWWET);
     click(&mut t, crate::ids::PAINTER_WETPAINT_TUNING);
@@ -663,7 +663,11 @@ fn the_section_reset_restores_the_whole_section() {
     let w = &t.paint.wetpaint;
     assert!(w.armed, "o Reset não troca o meio");
     assert_eq!(w.knobs, WetKnobs::DEFAULT);
-    assert_eq!(w.tool, WetTool::Paint);
+    assert_eq!(
+        w.tool,
+        WetTool::Blow,
+        "o Reset não troca a ferramenta na mão"
+    );
     assert!(w.tilt_on);
     assert_eq!((w.tilt_ring, w.tilt_spoke), (4, 3));
     assert!(!w.show_wet && !w.paper_visual && !w.km_mixing && !w.km_glaze);
@@ -707,5 +711,23 @@ fn a_rota_medida_nao_muda_o_wet_com_bloom_e_pickup() {
         for (q, (a, b)) in antes.iter().zip(rota).enumerate() {
             assert!(a == b, "quadro {q}: a rota medida mudou o pigmento");
         }
+    }
+}
+
+/// ⭐ **Trocar de ferramenta DENTRO da água não seca a tinta** (o trilho, dono 25/10): cada ferramenta da água tem o
+/// seu pincel (o slot dela), e a troca de slot não pode encerrar a sessão — a tinta molhada é a matéria das cinco.
+#[test]
+fn trocar_de_ferramenta_da_agua_nao_seca_a_tinta() {
+    let mut t = wet_tool_fixture();
+    t.paint.link_shared_settings = false;
+    stroke(&mut t, 60.0);
+    assert!(t.wet_pigmento().is_some(), "fixture: a tinta molhada");
+    for tool in WetTool::DO_TRILHO.into_iter().chain([WetTool::Paint]) {
+        t.set_paint_tool_mode(tool.fio());
+        assert_eq!(t.paint.wetpaint.tool, tool);
+        assert!(
+            t.wet_pigmento().is_some(),
+            "{tool:?}: a troca secou a tinta molhada"
+        );
     }
 }

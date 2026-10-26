@@ -79,6 +79,28 @@ pub const PAINTER_RAIL_INPAINT: NodeId = hash_node_id("painter_rail.inpaint");
 /// activating it puts the rail in "draw a shape" mode using the current shape.
 pub const PAINTER_RAIL_SHAPES: NodeId = hash_node_id("painter_rail.shapes");
 
+// ── The water's tools (dono 25/10) — only on the rail while the medium is Wet Paint, in place of the
+//    Digital Smear and Blur; the wire of each is its `WetTool::fio` ─────────────────────────────────────
+/// Wet Paint **Blend** (`wet_blend`).
+pub const PAINTER_RAIL_WET_BLEND: NodeId = hash_node_id("painter_rail.wet_blend");
+/// Wet Paint **Smear** (`wet_smear`).
+pub const PAINTER_RAIL_WET_SMEAR: NodeId = hash_node_id("painter_rail.wet_smear");
+/// Wet Paint **Wet** — adds water (`wet_water`).
+pub const PAINTER_RAIL_WET_WATER: NodeId = hash_node_id("painter_rail.wet_water");
+/// Wet Paint **Dry** (`wet_dry`).
+pub const PAINTER_RAIL_WET_DRY: NodeId = hash_node_id("painter_rail.wet_dry");
+/// Wet Paint **Blow** (`wet_blow`).
+pub const PAINTER_RAIL_WET_BLOW: NodeId = hash_node_id("painter_rail.wet_blow");
+
+/// The water's tools on the rail, with their wires, in rail order.
+pub const PAINTER_RAIL_WET_TOOLS: [(NodeId, &str); 5] = [
+    (PAINTER_RAIL_WET_BLEND, "wet_blend"),
+    (PAINTER_RAIL_WET_SMEAR, "wet_smear"),
+    (PAINTER_RAIL_WET_WATER, "wet_water"),
+    (PAINTER_RAIL_WET_DRY, "wet_dry"),
+    (PAINTER_RAIL_WET_BLOW, "wet_blow"),
+];
+
 // ── Shape options (the Shapes flyout: Freehand · Line · Curve · Ellipse ·
 //    Polygon) — a sub-radio; the Pressed one is the current shape ───────────
 /// Free Hand stroke shape.
@@ -102,11 +124,16 @@ pub const PAINTER_PAINT_MODE: NodeId = hash_node_id("painter_rail.paint_mode");
 /// The Painter-mode tool radio group, in rail (paint) order. Exclusive
 /// `ButtonState::Pressed` selection, like the transform tools. The Shapes
 /// button is the last member (it also owns the shape flyout).
-pub const PAINTER_RAIL_TOOL_IDS: [NodeId; 12] = [
+pub const PAINTER_RAIL_TOOL_IDS: [NodeId; 17] = [
     PAINTER_RAIL_BRUSH,
     PAINTER_RAIL_FILL,
     PAINTER_RAIL_EYEDROPPER,
     PAINTER_RAIL_ERASER,
+    PAINTER_RAIL_WET_BLEND,
+    PAINTER_RAIL_WET_SMEAR,
+    PAINTER_RAIL_WET_WATER,
+    PAINTER_RAIL_WET_DRY,
+    PAINTER_RAIL_WET_BLOW,
     PAINTER_RAIL_CLONE,
     PAINTER_RAIL_SMEAR,
     PAINTER_RAIL_BLUR,

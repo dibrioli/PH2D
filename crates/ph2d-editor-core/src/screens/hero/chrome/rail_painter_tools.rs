@@ -26,7 +26,16 @@ use ph2d_a11y::NodeId;
 /// not-yet-wired Shapes maps to "brush". Eyedropper maps to "eyedropper" — the tool arms an on-canvas
 /// colour pick that samples the composite, then reverts to Brush.
 fn push_paint_mode(hero: &mut HeroScreen, tool_id: NodeId) {
-    let mode = if tool_id == ids::PAINTER_RAIL_SMEAR {
+    let da_agua = ids::PAINTER_RAIL_WET_TOOLS
+        .iter()
+        .find(|(id, _)| *id == tool_id)
+        .map(|(_, fio)| *fio);
+    let mode = if let Some(fio) = da_agua {
+        fio
+    } else if tool_id == ids::PAINTER_RAIL_BRUSH && hero.store.painter_rail_wet() {
+        // Com a água, o Pincel é o pincel DELA (larga o Smear/Blend/… da água que estava na mão).
+        "wet_paint"
+    } else if tool_id == ids::PAINTER_RAIL_SMEAR {
         "smear"
     } else if tool_id == ids::PAINTER_RAIL_BLUR {
         "blur"
@@ -78,7 +87,12 @@ fn push_paint_mode(hero: &mut HeroScreen, tool_id: NodeId) {
 /// drift. Modes with no rail button of their own (`fill`, `eyedropper`) leave the radio alone: they are
 /// momentary or unwired, and `reset_to_brush` already owns the Eyedropper's return.
 pub fn sync_from_mode(store: &mut crate::interaction::WidgetStore, mode: &str) {
+    let da_agua = ids::PAINTER_RAIL_WET_TOOLS
+        .iter()
+        .find(|(_, fio)| *fio == mode)
+        .map(|(id, _)| *id);
     let target = match mode {
+        _ if let Some(id) = da_agua => id,
         "smear" => ids::PAINTER_RAIL_SMEAR,
         "blur" => ids::PAINTER_RAIL_BLUR,
         "clone" => ids::PAINTER_RAIL_CLONE,

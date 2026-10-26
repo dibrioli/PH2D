@@ -22,6 +22,12 @@ pub enum FerramentaDoPincel {
     Escultura,
     /// O conta-gotas: lê a cor da tela; o pincel por baixo é o do Pincel.
     ContaGotas,
+    /// As ferramentas da água (o trilho com o Wet Paint, dono 25/10): Smear · Blend · Wet · Dry · Blow.
+    SmearMolhado,
+    BlendMolhado,
+    Molhar,
+    Secar,
+    Soprar,
 }
 
 /// Uma linha (ou um bloco) do painel do pincel que depende da ferramenta.
@@ -50,10 +56,12 @@ pub enum LinhaDaFerramenta {
     /// Quem a lê é a rota óptica (`watercolor_render_active`), que a Borracha não toma: na Watercolor ela apaga
     /// byte a byte como no Digital (medido 24/10, `borracha_por_meio_tests`).
     Aguada,
-    /// O que o pincel do Wet Paint POUSA e como: os volumes Water e Opacity, Pigment, Pickup, o pó do pincel, a ponta
+    /// O que o pincel do Wet Paint POUSA e como: o volume Opacity, Pigment, Pickup, o pó do pincel, a ponta
     /// reta (Square tip), o Tooth e o Texture on Paint do papel. A borracha da água levanta tinta viva e não pousa nada
     /// (censo 24/10, riscas secas e molhadas: `|Δ| = 0`).
     DepositoMolhado,
+    /// O volume Water do Wet Paint: o Pincel e a ferramenta Wet lêem-no (a água que pousam); as outras não.
+    AguaDoVolume,
     /// O Flow (a taxa por dab): as ferramentas que movem tinta que já lá está (Blur, Smear/Faca, Clone) e a cura não
     /// o lêem; a Borracha, a Máscara e a Escultura sim (medido 24/10, `o_flow_a_vista_e_o_flow_que_age`). O meio
     /// também decide: [`BrushSettings::le_o_flow`].
@@ -69,8 +77,38 @@ const SEM_COR: [L; 4] = [L::Blend, L::Cor, L::Randomize, L::Composite];
 /// A cura: sem cor e sem Flow.
 const CURA: [L; 5] = [L::Blend, L::Cor, L::Randomize, L::Composite, L::Flow];
 
+/// As ferramentas da água não pousam cor nem tinta; o Water do topo só a Wet lê (lido pelo censo
+/// `cada_ferramenta_da_agua_so_ve_o_que_le`).
+const DA_AGUA: [L; 11] = [
+    L::Blend,
+    L::Cor,
+    L::Randomize,
+    L::Composite,
+    L::Solido,
+    L::CorPorCamada,
+    L::TracoComoCamada,
+    L::Aguada,
+    L::Preview,
+    L::DepositoMolhado,
+    L::Flow,
+];
+const DA_AGUA_SEM_AGUA: [L; 12] = [
+    L::Blend,
+    L::Cor,
+    L::Randomize,
+    L::Composite,
+    L::Solido,
+    L::CorPorCamada,
+    L::TracoComoCamada,
+    L::Aguada,
+    L::Preview,
+    L::DepositoMolhado,
+    L::Flow,
+    L::AguaDoVolume,
+];
+
 /// ⭐ A tabela.
-pub const NAO_LE: [(FerramentaDoPincel, &[LinhaDaFerramenta]); 9] = [
+pub const NAO_LE: [(FerramentaDoPincel, &[LinhaDaFerramenta]); 14] = [
     (F::Pincel, &[]),
     (
         F::Borracha,
@@ -83,6 +121,7 @@ pub const NAO_LE: [(FerramentaDoPincel, &[LinhaDaFerramenta]); 9] = [
             L::TracoComoCamada,
             L::Aguada,
             L::DepositoMolhado,
+            L::AguaDoVolume,
         ],
     ),
     (
@@ -147,6 +186,11 @@ pub const NAO_LE: [(FerramentaDoPincel, &[LinhaDaFerramenta]); 9] = [
     (F::Escultura, &SEM_COR),
     // Dono 24/10: «sem preview no painel» — a amostra vive ao lado do cursor.
     (F::ContaGotas, &[L::Preview]),
+    (F::SmearMolhado, &DA_AGUA_SEM_AGUA),
+    (F::BlendMolhado, &DA_AGUA_SEM_AGUA),
+    (F::Molhar, &DA_AGUA),
+    (F::Secar, &DA_AGUA_SEM_AGUA),
+    (F::Soprar, &DA_AGUA_SEM_AGUA),
 ];
 
 impl BrushSettings {
@@ -169,6 +213,15 @@ impl BrushSettings {
             F::Borracha
         } else if self.is_eyedropper {
             F::ContaGotas
+        } else if self.wetpaint {
+            match self.wet_tool {
+                crate::WetTool::Paint => F::Pincel,
+                crate::WetTool::Smear => F::SmearMolhado,
+                crate::WetTool::Blend => F::BlendMolhado,
+                crate::WetTool::Wet => F::Molhar,
+                crate::WetTool::Dry => F::Secar,
+                crate::WetTool::Blow => F::Soprar,
+            }
         } else {
             F::Pincel
         }

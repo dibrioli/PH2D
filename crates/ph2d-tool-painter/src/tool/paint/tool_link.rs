@@ -17,9 +17,14 @@ impl PainterTool {
     /// Swap the active brush settings to `new_mode`'s slot (the independent-tools model). No-op when the
     /// settings are LINKED (all modes share the live `brush`) or the mode is unchanged. Saves the current
     /// mode's live edits back to its slot first, then loads the target mode's saved settings.
-    pub(crate) fn switch_brush_slot(&mut self, new_mode: super::PaintMode, new_eraser: bool) {
+    pub(crate) fn switch_brush_slot(
+        &mut self,
+        new_mode: super::PaintMode,
+        new_eraser: bool,
+        new_wet: super::WetTool,
+    ) {
         let old = self.slot_atual();
-        let new = super::slot_da_ferramenta(new_mode, new_eraser);
+        let new = super::slot_da_ferramenta(new_mode, new_eraser, new_wet);
         if self.paint.link_shared_settings || new == old {
             return;
         }
@@ -43,7 +48,11 @@ impl PainterTool {
 
     /// O slot da ferramenta na mão ([`super::slot_da_ferramenta`]).
     pub(crate) fn slot_atual(&self) -> usize {
-        super::slot_da_ferramenta(self.paint.paint_mode, self.paint.eraser)
+        super::slot_da_ferramenta(
+            self.paint.paint_mode,
+            self.paint.eraser,
+            self.paint.wetpaint.tool,
+        )
     }
 
     /// Whether brush settings are currently linked across tools (the "Sync with other tools" checkbox).

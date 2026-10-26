@@ -102,7 +102,11 @@ fn the_knob_rows_are_offered_only_while_armed() {
     let mut wet = PainterTool::default();
     wet.set_wetpaint_armed(true);
     let armed = painted(&wet);
-    for id in ph2d_tool_painter::ids::PAINTER_WETPAINT_FIELDS {
+    // A linha da ferramenta da água na mão tem o gate dela (`a_linha_da_ferramenta_so_aparece_com_ela`).
+    for id in ph2d_tool_painter::ids::PAINTER_WETPAINT_FIELDS
+        .into_iter()
+        .filter(|id| !DA_FERRAMENTA.iter().any(|(i, _)| i == id))
+    {
         assert!(
             has(&armed, id),
             "armed wet mode is missing a curated knob row ({id:?})"
@@ -233,8 +237,7 @@ fn every_doc22_wet_widget_is_offered_only_while_armed() {
     wet.set_wetpaint_armed(true);
     let on = painted(&wet);
     let off = painted(&PainterTool::default());
-    let mut ids: Vec<NodeId> = ph2d_tool_painter::ids::PAINTER_WETPAINT_TOOL_IDS.to_vec();
-    ids.extend([
+    let ids: [NodeId; 8] = [
         ph2d_tool_painter::ids::PAINTER_WETPAINT_TILT_TOGGLE,
         ph2d_tool_painter::ids::PAINTER_WETPAINT_TILT_PAD,
         ph2d_tool_painter::ids::PAINTER_WETPAINT_WETCANVAS,
@@ -243,7 +246,7 @@ fn every_doc22_wet_widget_is_offered_only_while_armed() {
         ph2d_tool_painter::ids::PAINTER_WETPAINT_SHOWWET,
         ph2d_tool_painter::ids::PAINTER_WETPAINT_SMOOTH_EDGES,
         ph2d_tool_painter::ids::PAINTER_WETPAINT_TUNING,
-    ]);
+    ];
     for id in ids {
         assert!(has(&on, id), "armed wet section is missing {id:?}");
         assert!(!has(&off, id), "{id:?} painted for the PLAIN brush");
@@ -380,22 +383,20 @@ fn the_fluid_grid_row_is_the_first_widget_of_the_wet_section() {
         })
         .map(|(_, r)| *r)
         .expect("a row da grade nao e pintada — o slider nao existe na tela");
-    for (i, id) in ph2d_tool_painter::ids::PAINTER_WETPAINT_TOOL_IDS
+    // As ferramentas da água moram no trilho (dono 25/10): o widget seguinte é o dial de inclinação.
+    let tilt = rects
         .iter()
-        .enumerate()
-    {
-        let tool = rects
-            .iter()
-            .find(|(w, r)| w == id && r.w > 0.0 && r.h > 0.0)
-            .map(|(_, r)| *r)
-            .unwrap_or_else(|| panic!("o chip de tool {i} nao e pintado"));
-        assert!(
-            grid.y < tool.y,
-            "a grade (y={:.1}) tem de vir ACIMA do chip de tool {i} (y={:.1})",
-            grid.y,
-            tool.y
-        );
-    }
+        .find(|(w, r)| {
+            *w == ph2d_tool_painter::ids::PAINTER_WETPAINT_TILT_PAD && r.w > 0.0 && r.h > 0.0
+        })
+        .map(|(_, r)| *r)
+        .expect("o dial de inclinacao nao e pintado");
+    assert!(
+        grid.y < tilt.y,
+        "a grade (y={:.1}) tem de vir ACIMA do dial (y={:.1})",
+        grid.y,
+        tilt.y
+    );
 }
 
 /// A row da grade está **viva sob o mouse** (pintada, registrada E focável) — a
@@ -463,18 +464,14 @@ fn the_flow_grid_row_sits_right_under_the_fluid_grid_row() {
         flow.y,
         grid.y
     );
-    for (i, id) in ph2d_tool_painter::ids::PAINTER_WETPAINT_TOOL_IDS
-        .iter()
-        .enumerate()
-    {
-        let tool = find(*id).unwrap_or_else(|| panic!("o chip de tool {i} nao e pintado"));
-        assert!(
-            flow.y < tool.y,
-            "o Flow Grid (y={:.1}) tem de vir ACIMA do chip de tool {i} (y={:.1})",
-            flow.y,
-            tool.y
-        );
-    }
+    let tilt = find(ph2d_tool_painter::ids::PAINTER_WETPAINT_TILT_PAD)
+        .expect("o dial de inclinacao nao e pintado");
+    assert!(
+        flow.y < tilt.y,
+        "o Flow Grid (y={:.1}) tem de vir ACIMA do dial (y={:.1})",
+        flow.y,
+        tilt.y
+    );
 }
 
 /// A row do `Flow Grid` está **viva sob o mouse** — pintada, registrada E
@@ -613,4 +610,41 @@ fn o_po_do_pincel_edita_se_pelo_cartao() {
         )),
         "a edição do Brush dust nunca virou SetValue — pintada, viva e MUDA. drained = {actions:?}"
     );
+}
+
+/// As linhas da ferramenta da água e o fio dela.
+const DA_FERRAMENTA: [(NodeId, &str); 5] = [
+    (ph2d_tool_painter::ids::PAINTER_WETPAINT_SMEAR_STRENGTH, "wet_smear"),
+    (ph2d_tool_painter::ids::PAINTER_WETPAINT_SMEAR_WATER, "wet_smear"),
+    (ph2d_tool_painter::ids::PAINTER_WETPAINT_BLEND_STRENGTH, "wet_blend"),
+    (ph2d_tool_painter::ids::PAINTER_WETPAINT_DRY_ABSORBENCY, "wet_dry"),
+    (ph2d_tool_painter::ids::PAINTER_WETPAINT_BLOW_STRENGTH, "wet_blow"),
+];
+
+/// ⭐ **A linha de cada ferramenta da água só aparece com ela na mão** (dono 25/10: o Inspector por ferramenta; o
+/// painel do Rebelle) — e nunca com o Pincel, a Wet ou a Borracha.
+#[test]
+fn a_linha_da_ferramenta_so_aparece_com_ela() {
+    for fio in [
+        "wet_paint",
+        "wet_smear",
+        "wet_blend",
+        "wet_water",
+        "wet_dry",
+        "wet_blow",
+        "eraser",
+    ] {
+        let mut t = PainterTool::default();
+        t.set_wetpaint_armed(true);
+        t.set_paint_tool_mode(fio);
+        let r = painted(&t);
+        for (id, dono) in DA_FERRAMENTA {
+            assert_eq!(
+                has(&r, id),
+                dono == fio,
+                "{fio}: a linha {id:?} (de {dono}) à vista = {}",
+                has(&r, id)
+            );
+        }
+    }
 }

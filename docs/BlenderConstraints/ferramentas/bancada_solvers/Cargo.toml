@@ -1,0 +1,25 @@
+# Bancada da W4 (fora do workspace): ezpz × fiksi no MESMO processo, intercalados (docs/DevOps/MEDIR_VELOCIDADE.md).
+#   cargo run --release --manifest-path docs/BlenderConstraints/ferramentas/bancada_solvers/Cargo.toml \
+#       --target-dir target/bancada_solvers -- cenas docs/BlenderConstraints/fixtures/w4_cenas
+#   (oráculo) freecadcmd docs/BlenderConstraints/ferramentas/oraculo_freecad.py  — ver o cabeçalho dele
+#   bash docs/BlenderConstraints/ferramentas/bancada_solvers/mede.sh   (uma cena por processo, prazo por cena)
+# O perfil release daqui copia o `smoke` do workspace (codegen-units 16, sem LTO, incremental).
+[package]
+name = "bancada_solvers_w4"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[workspace]
+
+[dependencies]
+kcl-ezpz = "=0.2.18"
+fiksi = { git = "https://github.com/endoli/fiksi", rev = "ff4850546738fb82e95ff27c4db63e924d938473" }
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"
+
+[profile.release]
+codegen-units = 16
+lto = "off"
+incremental = true
+debug = false

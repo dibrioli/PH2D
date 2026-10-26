@@ -1,0 +1,113 @@
+{
+  "cabecalho": {
+    "ezpz": "kcl-ezpz 0.2.18 (crates.io)",
+    "fiksi": "endoli/fiksi @ ff4850546738fb82e95ff27c4db63e924d938473",
+    "gerador": "docs/BlenderConstraints/ferramentas/bancada_solvers",
+    "loadavg_fim": "16.45 14.62 17.33 19/1678 100312",
+    "loadavg_inicio": "16.32 14.57 17.33 17/1631 100216",
+    "o_que": "W4: ezpz × fiksi, arrasto de 60 passos (círculo de 40 px), 7 rodadas intercaladas, resumo = mínimo (mediana ao lado)",
+    "perfil": "release = cópia do smoke do workspace (codegen-units 16, sem LTO)",
+    "tolerancia_px": 0.0001
+  },
+  "cenas": [
+    {
+      "cena": "misto_200",
+      "freecad_pior_passo_ms": 199.90376900386764,
+      "freecad_pior_violacao_px": 4.462962179539656e-7,
+      "pontos": 200,
+      "regras": 198,
+      "variantes": [
+        {
+          "analise_ms_min": 11.914299999999999,
+          "analise_resultado": 396,
+          "desvio_do_freecad_px": 7.217527078555406,
+          "determinista": true,
+          "estrutura_ms_min": 1.9299250000000001,
+          "falhas_declaradas_max": 0,
+          "maior_salto_px": 4.279955879415892,
+          "media_passo_ms_mediana": 0.65075475,
+          "media_passo_ms_min": 0.6332749166666665,
+          "passos_feitos_min": 60,
+          "passos_fora_da_tolerancia_max": 0,
+          "pior_passo_ms_mediana": 0.8258160000000001,
+          "pior_passo_ms_min": 0.8117559999999999,
+          "pior_violacao_px": 1.2860823517257813e-12,
+          "rodadas_medidas": 7,
+          "variante": "ezpz"
+        },
+        {
+          "analise_ms_min": 11.95307,
+          "analise_resultado": 0,
+          "desvio_do_freecad_px": 14.688532419629176,
+          "determinista": true,
+          "estrutura_ms_min": 1.470172,
+          "falhas_declaradas_max": 0,
+          "maior_salto_px": 5.036784889691093,
+          "media_passo_ms_mediana": 1.4335312833333331,
+          "media_passo_ms_min": 1.2992509666666667,
+          "passos_feitos_min": 60,
+          "passos_fora_da_tolerancia_max": 60,
+          "pior_passo_ms_mediana": 1.898814,
+          "pior_passo_ms_min": 1.5092720000000002,
+          "pior_violacao_px": 1.2329775868314292,
+          "rodadas_medidas": 7,
+          "variante": "fiksi_lm"
+        },
+        {
+          "analise_ms_min": null,
+          "analise_resultado": null,
+          "desvio_do_freecad_px": 14.723428902243594,
+          "determinista": false,
+          "estrutura_ms_min": 0.790826,
+          "falhas_declaradas_max": 0,
+          "maior_salto_px": 4.467040345626452,
+          "media_passo_ms_mediana": 0.99185665,
+          "media_passo_ms_min": 0.9497121666666669,
+          "passos_feitos_min": 60,
+          "passos_fora_da_tolerancia_max": 60,
+          "pior_passo_ms_mediana": 1.088508,
+          "pior_passo_ms_min": 0.999078,
+          "pior_violacao_px": 1.7250169292314967,
+          "rodadas_medidas": 7,
+          "variante": "fiksi_lm_passagem_unica"
+        },
+        {
+          "analise_ms_min": null,
+          "analise_resultado": null,
+          "desvio_do_freecad_px": 7.1003857180173595,
+          "determinista": true,
+          "estrutura_ms_min": 0.435894,
+          "falhas_declaradas_max": 0,
+          "maior_salto_px": 5.030300722252641,
+          "media_passo_ms_mediana": 1.398630833333333,
+          "media_passo_ms_min": 1.3269224833333333,
+          "passos_feitos_min": 60,
+          "passos_fora_da_tolerancia_max": 60,
+          "pior_passo_ms_mediana": 1.725763,
+          "pior_passo_ms_min": 1.593502,
+          "pior_violacao_px": 1.2205243189194501,
+          "rodadas_medidas": 7,
+          "variante": "fiksi_lm_sem_perturbar"
+        },
+        {
+          "analise_ms_min": null,
+          "analise_resultado": null,
+          "desvio_do_freecad_px": 7.1003857180172325,
+          "determinista": true,
+          "estrutura_ms_min": 3.163234,
+          "falhas_declaradas_max": 0,
+          "maior_salto_px": 5.030300722252666,
+          "media_passo_ms_mediana": 4.543650350000001,
+          "media_passo_ms_min": 4.1197360000000005,
+          "passos_feitos_min": 60,
+          "passos_fora_da_tolerancia_max": 60,
+          "pior_passo_ms_mediana": 6.5317989999999995,
+          "pior_passo_ms_min": 4.415423,
+          "pior_violacao_px": 1.220524318919433,
+          "rodadas_medidas": 7,
+          "variante": "fiksi_lm_10x"
+        }
+      ]
+    }
+  ]
+}

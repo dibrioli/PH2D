@@ -1,0 +1,77 @@
+{
+  "cabecalho": {
+    "ezpz": "kcl-ezpz 0.2.18 (crates.io)",
+    "fiksi": "endoli/fiksi @ ff4850546738fb82e95ff27c4db63e924d938473",
+    "gerador": "docs/BlenderConstraints/ferramentas/bancada_solvers",
+    "loadavg_fim": "13.50 13.64 17.30 17/1742 97631",
+    "loadavg_inicio": "10.89 13.22 17.25 1/1639 97242",
+    "o_que": "W4: ezpz × fiksi, arrasto de 60 passos (círculo de 40 px), 7 rodadas intercaladas, resumo = mínimo (mediana ao lado)",
+    "perfil": "release = cópia do smoke do workspace (codegen-units 16, sem LTO)",
+    "tolerancia_px": 0.0001
+  },
+  "cenas": [
+    {
+      "cena": "misto_800",
+      "freecad_pior_passo_ms": 15647.710825003742,
+      "freecad_pior_violacao_px": 1.126258447035399e-7,
+      "pontos": 800,
+      "regras": 798,
+      "variantes": [
+        {
+          "analise_ms_min": 572.048677,
+          "analise_resultado": 1596,
+          "desvio_do_freecad_px": 7.563587005502091,
+          "determinista": true,
+          "estrutura_ms_min": 7.586558999999999,
+          "falhas_declaradas_max": 0,
+          "maior_salto_px": 4.209945442079774,
+          "media_passo_ms_mediana": 2.9219990999999994,
+          "media_passo_ms_min": 2.394023533333333,
+          "passos_feitos_min": 60,
+          "passos_fora_da_tolerancia_max": 0,
+          "pior_passo_ms_mediana": 4.438165,
+          "pior_passo_ms_min": 2.5056700000000003,
+          "pior_violacao_px": 6.800221924025274e-12,
+          "rodadas_medidas": 7,
+          "variante": "ezpz"
+        },
+        {
+          "analise_ms_min": 479.426379,
+          "analise_resultado": 0,
+          "desvio_do_freecad_px": 21.918846475322823,
+          "determinista": true,
+          "estrutura_ms_min": 17.687227999999998,
+          "falhas_declaradas_max": 0,
+          "maior_salto_px": 5.759871264104403,
+          "media_passo_ms_mediana": 19.63521579999999,
+          "media_passo_ms_min": 16.71280335,
+          "passos_feitos_min": 60,
+          "passos_fora_da_tolerancia_max": 60,
+          "pior_passo_ms_mediana": 28.603795,
+          "pior_passo_ms_min": 28.175561,
+          "pior_violacao_px": 2.0554093162146474,
+          "rodadas_medidas": 7,
+          "variante": "fiksi_lm"
+        },
+        {
+          "analise_ms_min": null,
+          "analise_resultado": null,
+          "desvio_do_freecad_px": 21.788060470116317,
+          "determinista": false,
+          "estrutura_ms_min": 7.952313000000001,
+          "falhas_declaradas_max": 0,
+          "maior_salto_px": 6.496499402862024,
+          "media_passo_ms_mediana": 10.063199233333334,
+          "media_passo_ms_min": 8.501900766666669,
+          "passos_feitos_min": 60,
+          "passos_fora_da_tolerancia_max": 60,
+          "pior_passo_ms_mediana": 15.040858,
+          "pior_passo_ms_min": 10.756194,
+          "pior_violacao_px": 2.2834262342622518,
+          "rodadas_medidas": 7,
+          "variante": "fiksi_lm_passagem_unica"
+        }
+      ]
+    }
+  ]
+}

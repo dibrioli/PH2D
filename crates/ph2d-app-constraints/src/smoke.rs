@@ -462,8 +462,8 @@ fn antena(world: &mut World) -> Entity {
         "Haste (arte)",
         WHITE_TILE_KEY,
         [comprimento / 2.0, 0.0],
-        [comprimento, 0.08],
-        [0.2, 0.2, 0.25, 1.0],
+        [comprimento, 0.12],
+        [0.95, 0.85, 0.35, 1.0],
     );
     let mola = Spring {
         duracao: 0.7,

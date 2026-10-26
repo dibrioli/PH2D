@@ -108,7 +108,14 @@ IK é `NaoEOsso` e fica). O losango, o arrasto do alvo, o realce, «governado»,
 | Spring | `Kind::Spring { canais, duracao, ressalto }`; `Simulador` em `ph2d-constraints-ecs/src/relogio.rs` (`law::passo` do `motion.spring`, `STRIDE = 10`, cada checkpoint guarda a ENTRADA e cai se ela mudou) | `a_spring_rewinds_to_the_same_bit` (0→40→12→40→7→8→9→33 = tocar, ao bit; editar a animação invalida) · `a_spring_adds_its_lag_at_its_place_in_the_stack` · `a_cena_5_toca_e_arrasta_igual` (a sonda da cena 5) | ⭐ a mola persegue a pose ANIMADA (`world_pose_at` — a «cena no quadro», como o `SceneAtTick` da física põe a timeline) e devolve o ATRASO, que a fase soma na posição do item. Assim tocar e arrastar leem a MESMA entrada. A entrada lê-se com a cena AUTORADA (`com_autorado`): sem isso a mola lia o que ela própria escreveu no quadro passado |
 | O tempo no quadro | `quadro(sim, cena, preview, Option<Relogio>)`; `Relogio::da_vista` escolhe o transporte da vista (`ViewClock`) | — | a shell passa os três transportes; a abertura da cena de smoke mudou-se para a família (`smoke::abrir_escolhido`) — shell −2 linhas |
 | Cartão | `TIPOS` 11→18; `MAX_NUMEROS`/`MAX_ESCOLHAS`/`MAX_OPCOES` → 5 (Action: 5 números; Transformation: 5 escolhas; um canal tem 5 opções); canais 19–37 em append; `Unidade::Segundos` | os gates do cartão (verificador) | ids novos para a integração: `insp_constraint_tipo_11..17`, `numero_2..4_*`, `opcao_*_4_*` e `opcao_2..4_*` |
-| Cena 5 | `smoke.rs` `antena` + `smoke_antena.rs` | `a_cena_5_toca_e_arrasta_igual` | Corpo (curva da timeline) · Ponta (Spring) · Haste (Stretch To à ponta) |
+| Cena 5 | `smoke.rs` `antena` + `smoke_antena.rs` | `a_cena_5_toca_e_arrasta_igual` · `a_ponta_anda_a_cada_imagem_do_ecra` · `a_haste_chega_a_ponta` | Corpo (curva da timeline, cúbica entrada-saída) · Ponta (Spring + Limit Distance Surface à Base: a antena DOBRA, não estica) · Haste (Look At à ponta), em laço de 3 s |
+
+**Smoke do dono 25/10 — «o movimento da ponta não é fluido»** (medido antes de mexer): o ecrã desenha a 60 Hz e a curva
+lê o instante CONTÍNUO, mas a mola andava por QUADRO (24 q/s) — o atraso ficava parado em **56 de 120** imagens e saltava
+no quadro seguinte (gate `a_ponta_anda_a_cada_imagem_do_ecra`, visto vermelho). Cura na lei: `Simulador::atraso_em(q)` mistura
+os quadros `⌊q⌋` e `⌊q⌋+1` (o `previo` guarda a outra ponta; continua função de `q` só — o gate compara instantes do meio
+por ordem salteada, ao bit). Na cena: o corpo mudava de sentido de uma vez (chaves lineares) e a haste esticava como
+borracha ⇒ chaves cúbicas e comprimento fixo. A haste escura (0,2) era invisível no fundo do palco: amarela, 0,12 m.
 
 **Medido antes de abrir (o que ficou fora):** Flip «troca desenho por ângulo» — o desenho é uma escolha discreta
 por *hold* (`FlipLayer::drawing_at`), sem canal animável: um Action sobre um Flip não tem o que tocar (fica para quando

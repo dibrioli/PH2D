@@ -166,23 +166,6 @@ pub struct Estado {
     pub pontos: BTreeMap<PontoCad, Liberdade>,
 }
 
-fn pontos_da(lei: &Lei) -> Vec<PontoCad> {
-    let s = |s: SegCad| [s.0, s.1];
-    match *lei {
-        Lei::Coincidente(a, b) | Lei::Distancia(a, b, _) => vec![a, b],
-        Lei::Horizontal(t) | Lei::Vertical(t) => s(t).to_vec(),
-        Lei::Paralelo(t, u)
-        | Lei::Perpendicular(t, u)
-        | Lei::Igual(t, u)
-        | Lei::Angulo(t, u, _) => [s(t), s(u)].concat(),
-        Lei::Tangente(t, c) => vec![t.0, t.1, PontoCad::Centro(c)],
-        Lei::Simetrico(p, q, t) => vec![p, q, t.0, t.1],
-        Lei::SobreRecta(p, t) => vec![p, t.0, t.1],
-        Lei::Raio(c, _) => vec![PontoCad::Centro(c)],
-        Lei::Fixo(p, _) => vec![p],
-    }
-}
-
 /// O sistema da ezpz montado a partir da folha: um `DatumPoint` por ponto citado, um raio por círculo.
 struct Sistema {
     pts: BTreeMap<PontoCad, DatumPoint>,
@@ -204,7 +187,7 @@ impl Sistema {
         // Um path citado como círculo é um datum: os vértices dele não são pontos soltos.
         let circulos: BTreeMap<VecPathId, ([f64; 2], f64)> = regras
             .iter()
-            .flat_map(|r| pontos_da(&r.lei))
+            .flat_map(|r| r.lei.pontos())
             .filter_map(|p| match p {
                 PontoCad::Centro(c) => folha.circulo(c).map(|g| (c, g)),
                 PontoCad::Vert(..) => None,
@@ -217,7 +200,7 @@ impl Sistema {
         let (mut ativas, mut sem_alvo) = (Vec::new(), Vec::new());
         let mut citados = BTreeSet::new();
         for (i, r) in regras.iter().enumerate() {
-            let ps = pontos_da(&r.lei);
+            let ps = r.lei.pontos();
             if !ps.iter().all(existe) {
                 sem_alvo.push(i);
             } else if !r.referencia {

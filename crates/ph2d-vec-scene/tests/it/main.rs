@@ -9,6 +9,7 @@
 #[path = "../look/mod.rs"]
 mod look;
 
+mod cad_regras;
 mod fx_look;
 mod hex_probe;
 mod measure_corner_on_arcs;

@@ -1,9 +1,9 @@
 //! As regras de desenho técnico (W4, `docs/BlenderConstraints/04_W4_cad.md` §3.2): o MODELO, que viaja no
 //! documento; quem as resolve é `ph2d-vec-constraints`. Endereçam pontos por `(path, VertId)`, nunca por índice.
 
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 
-use crate::{VecPathId, VertId};
+use crate::{VecPath, VecPathId, VecScene, VertId};
 
 /// Um ponto de uma regra: um vértice de um path, ou o centro de um path que é um círculo.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -49,6 +49,101 @@ impl RegraCad {
         Self {
             lei,
             referencia: false,
+        }
+    }
+}
+
+impl Lei {
+    /// Todo ponto que a lei cita; um círculo citado (tangente, raio) conta como o seu `Centro`.
+    #[must_use]
+    pub fn pontos(&self) -> Vec<PontoCad> {
+        let seg = |s: &SegCad| [s.0, s.1];
+        match self {
+            Self::Coincidente(a, b) | Self::Distancia(a, b, _) => vec![*a, *b],
+            Self::Horizontal(s) | Self::Vertical(s) => seg(s).to_vec(),
+            Self::Paralelo(s, t)
+            | Self::Perpendicular(s, t)
+            | Self::Igual(s, t)
+            | Self::Angulo(s, t, _) => [seg(s), seg(t)].concat(),
+            Self::Tangente(s, c) => vec![s.0, s.1, PontoCad::Centro(*c)],
+            Self::Simetrico(a, b, s) => vec![*a, *b, s.0, s.1],
+            Self::SobreRecta(a, s) => vec![*a, s.0, s.1],
+            Self::Raio(c, _) => vec![PontoCad::Centro(*c)],
+            Self::Fixo(a, _) => vec![*a],
+        }
+    }
+}
+
+impl PontoCad {
+    #[must_use]
+    pub const fn path(self) -> VecPathId {
+        match self {
+            Self::Vert(p, _) | Self::Centro(p) => p,
+        }
+    }
+}
+
+impl VecScene {
+    #[must_use]
+    pub fn regras(&self) -> &[RegraCad] {
+        &self.regras
+    }
+
+    pub fn regras_mut(&mut self) -> &mut Vec<RegraCad> {
+        &mut self.regras
+    }
+
+    /// Tira as regras que citam um ponto que já não existe (vértice apagado, path apagado). Corre no
+    /// assentamento dos ids ([`VecScene::normaliza_ids_desde`]), que precede toda captura de undo ⇒ a regra sai no
+    /// MESMO passo que o ponto. Um `Centro` só pede o path: um path que deixou de ser círculo fica `SemAlvo`.
+    pub(crate) fn poda_regras(&mut self) -> bool {
+        let existe = |p: PontoCad, path: Option<&VecPath>| match (p, path) {
+            (PontoCad::Vert(_, v), Some(path)) => path.vert_by_id(v).is_some(),
+            (PontoCad::Centro(_), Some(_)) => true,
+            (_, None) => false,
+        };
+        let antes = self.regras.len();
+        let paths = &self.paths;
+        self.regras.retain(|r| {
+            r.lei
+                .pontos()
+                .into_iter()
+                .all(|p| existe(p, paths.iter().find(|q| q.id == p.path())))
+        });
+        self.regras.len() != antes
+    }
+}
+
+/// A `VecScene` v23 — ⛔ congelada: mudá-la deixa de ler ficheiros reais.
+#[derive(Deserialize)]
+struct VecSceneV23 {
+    paths: Vec<VecPath>,
+    next_id: VecPathId,
+}
+
+#[derive(Deserialize)]
+struct VecSceneV24 {
+    paths: Vec<VecPath>,
+    next_id: VecPathId,
+    regras: Vec<RegraCad>,
+}
+
+impl<'de> Deserialize<'de> for VecScene {
+    fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        if crate::stroke_wire::reading_geometry_v23() {
+            let o = VecSceneV23::deserialize(d)?;
+            Ok(Self {
+                paths: o.paths,
+                next_id: o.next_id,
+                regras: Vec::new(),
+            })
+        } else {
+            let o = VecSceneV24::deserialize(d)?;
+            Ok(Self {
+                paths: o.paths,
+                next_id: o.next_id,
+                regras: o.regras,
+            })
         }
     }
 }

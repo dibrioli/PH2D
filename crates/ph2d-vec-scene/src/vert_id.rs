@@ -144,21 +144,25 @@ impl VecPath {
 impl VecScene {
     /// Dá ids a todo vértice ainda sem um, em todos os paths ([`VecPath::normaliza_ids`]).
     pub fn normaliza_ids(&mut self) -> bool {
-        self.paths
+        let mudou = self
+            .paths
             .iter_mut()
-            .fold(false, |m, p| p.normaliza_ids() | m)
+            .fold(false, |m, p| p.normaliza_ids() | m);
+        self.poda_regras() | mudou
     }
 
     /// [`Self::normaliza_ids`] herdando pela posição os ids de `anterior` (a última fotografia do undo,
-    /// [`VecPath::normaliza_ids_desde`]); um path que não estava lá só se normaliza.
+    /// [`VecPath::normaliza_ids_desde`]); um path que não estava lá só se normaliza. Tira as regras de CAD que
+    /// citam um ponto que sumiu ([`VecScene::poda_regras`]).
     pub fn normaliza_ids_desde(&mut self, anterior: Option<&Self>) -> bool {
-        self.paths.iter_mut().fold(false, |m, p| {
+        let mudou = self.paths.iter_mut().fold(false, |m, p| {
             let mudou = match anterior.and_then(|a| a.path(p.id)) {
                 Some(a) => p.normaliza_ids_desde(a),
                 None => p.normaliza_ids(),
             };
             mudou | m
-        })
+        });
+        self.poda_regras() | mudou
     }
 }
 

@@ -562,12 +562,14 @@ pub enum Rotate90 {
 
 /// Cena vetorial — o documento editor-first. `PartialEq` para o undo detectar
 /// mudança real (só vira passo de histórico se a cena mudou de fato).
-#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Serialize)]
 pub struct VecScene {
     /// A pilha de z (fundo → topo). É uma **projeção** da árvore da Hierarquia,
     /// re-sincronizada pela shell — ver [`VecScene::reorder_to`] (ADR-0110).
     paths: Vec<VecPath>,
     next_id: VecPathId,
+    /// As regras de CAD ([`cad`]); o `Deserialize` lê o v23 sem elas.
+    regras: Vec<cad::RegraCad>,
 }
 
 impl VecScene {

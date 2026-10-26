@@ -131,7 +131,6 @@ fn a_cena_5_toca_e_arrasta_igual() {
 fn a_ponta_anda_a_cada_imagem_do_ecra() {
     let mut c = Cena::nova();
     let atraso = |(p, k): ([f32; 2], [f32; 2])| [p[0] - k[0], p[1] - k[1]];
-    #[expect(clippy::cast_precision_loss, reason = "imagens do ecrã")]
     let amostras: Vec<[f32; 2]> = (0..=120)
         .map(|i| atraso(c.em_t(f64::from(i) / 60.0)))
         .collect();

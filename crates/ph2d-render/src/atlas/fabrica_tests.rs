@@ -18,22 +18,24 @@ fn toda_a_arte_rasteriza() {
 }
 
 /// ⭐ Os azulejos REPETEM sem costura: a 1.ª coluna de texels é a vizinha da última (o desenho é periódico),
-/// e são opacos de ponta a ponta — um buraco na borda vira um risco no chão a cada metro.
+/// e os do chão são opacos de ponta a ponta — um buraco na borda vira um risco no chão a cada metro (os do
+/// fundo têm céu transparente por cima).
 #[test]
 fn os_azulejos_repetem_sem_costura() {
-    for (art, vertical) in [
-        (GROUND_TILE, false),
-        (PLATFORM_TILE, false),
-        (DIRT_TILE, true),
+    for (art, vertical, opaco) in [
+        (GROUND_TILE, false, true),
+        (PLATFORM_TILE, false, true),
+        (DIRT_TILE, true, true),
+        (CLOUDS_TILE, false, false),
+        (HILLS_TILE, false, false),
     ] {
         let px = factory_pixels(&art);
         let [w, h] = art.px;
         let at = |x: u32, y: u32| &px[((y * w + x) * 4) as usize..((y * w + x) * 4 + 4) as usize];
         let perto = |a: &[u8], b: &[u8]| a.iter().zip(b).all(|(p, q)| p.abs_diff(*q) <= 40);
         for y in 0..h {
-            assert_eq!(
-                at(0, y)[3],
-                255,
+            assert!(
+                !opaco || at(0, y)[3] == 255,
                 "{:#x} buraco na borda esquerda em y={y}",
                 art.key
             );
@@ -77,6 +79,31 @@ fn um_azulejo_repete_o_mesmo_desenho_em_cada_celula() {
             }
         }
     }
+}
+
+/// FNV-1a das chaves e dos texels das 6 artes de antes do plano 11, pela ordem do atlas — medido ANTES da arte
+/// do fundo (`docs/GameEngineFuncional/11_camara_e_parallax_plano.md`).
+const HASH_DAS_ARTES_ANTIGAS: u64 = 0xea58_a1ac_470a_2c84;
+
+/// ⭐ **Ficheiro antigo igual:** a arte nova entra no FIM e as 6 de antes ficam com a chave, o lugar e os texels.
+#[test]
+fn as_artes_antigas_sao_as_de_antes() {
+    let antigas = [
+        HERO_ART.key,
+        GROUND_TILE_KEY,
+        PLATFORM_TILE_KEY,
+        DIRT_TILE_KEY,
+        COIN_SHEET_KEY,
+        FLAG_SHEET_KEY,
+    ];
+    let mut h: u64 = 0xcbf2_9ce4_8422_2325;
+    for (art, chave) in FACTORY_ART.iter().zip(antigas) {
+        assert_eq!(art.key, chave, "a ordem do atlas mudou");
+        for b in art.key.to_le_bytes().iter().chain(factory_pixels(art)) {
+            h = (h ^ u64::from(*b)).wrapping_mul(0x0100_0000_01b3);
+        }
+    }
+    assert_eq!(h, HASH_DAS_ARTES_ANTIGAS, "hash medido {h:#018x}");
 }
 
 /// A moeda e a bandeira deixam 2 texels transparentes entre células vizinhas, e cada célula muda (anima).

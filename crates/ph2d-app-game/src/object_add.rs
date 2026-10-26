@@ -6,12 +6,15 @@
 
 use ph2d_app_components::component_seed::SeedTable;
 use ph2d_ecs::scene::ComponentRegistry;
-use ph2d_ecs::{Entity, SimWorld, SpriteAnimations, SpriteAnimator, SpriteGrid};
+use ph2d_ecs::{
+    Entity, RepeatMode, ScrollFactor, ScrollRepeat, SimWorld, SpriteAnimations, SpriteAnimator,
+    SpriteGrid, TextureRepeat, UvTransform, ZIndexOverride,
+};
 use ph2d_editor_core::object_add::{AddEntry, AddGroup};
 use ph2d_physics_ecs::{BodyKind, CharacterAnimations, Collider, ColliderShape, RigidBody};
 use ph2d_render::{
-    HERO_SHEET_COLS, HERO_SHEET_KEY, HERO_SHEET_ROWS, HERO_SHEET_SOLE_BELOW_CENTRE,
-    HERO_SHEET_TAGS, Sprite, WHITE_TILE_KEY,
+    BACKGROUND_TEXELS_PER_M, FactoryArt, HERO_SHEET_COLS, HERO_SHEET_KEY, HERO_SHEET_ROWS,
+    HERO_SHEET_SOLE_BELOW_CENTRE, HERO_SHEET_TAGS, HILLS_TILE, Sprite, WHITE_TILE_KEY,
 };
 
 /// Uma imagem.
@@ -35,6 +38,12 @@ pub const COLLISION_SHAPE: AddEntry =
         "object_add.game.collision_shape.tip",
         crate::dicas::COLLISION_SHAPE,
     );
+/// Uma camada de fundo que fica para trás quando a câmara anda (parallax) — plano 11.
+pub const BACKGROUND_LAYER: AddEntry =
+    AddEntry::new("object_add.game.background_layer", AddGroup::Game).with_tip(
+        "object_add.game.background_layer.tip",
+        crate::dicas::BACKGROUND_LAYER,
+    );
 /// O que esta família põe no menu, na ordem do modal.
 pub const ENTRIES: &[AddEntry] = &[
     SPRITE,
@@ -42,6 +51,7 @@ pub const ENTRIES: &[AddEntry] = &[
     STATIC_BODY,
     CHARACTER,
     COLLISION_SHAPE,
+    BACKGROUND_LAYER,
 ];
 
 const BRANCO: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
@@ -59,6 +69,46 @@ const CAPSULA_MEIA: f32 = 0.15;
 /// A altura agachada do personagem (m): a cápsula encolhe o troço recto inteiro (0,30) e o topo desce
 /// de 0,80 para 0,50, com os pés onde a folha os desenha (plano 09).
 pub const AGACHADO: f32 = HERO_SHEET_SOLE_BELOW_CENTRE - 2.0 * CAPSULA_MEIA;
+
+/// A camada de fundo nasce com os montes ao longe: guarda 0,4 do movimento da câmara e desenha-se atrás do mundo.
+pub const CAMADA_K: f32 = 0.4;
+/// Quantos ladrilhos a sprite da camada desenha lado a lado — a vista mais larga (21:9 a 8 m ≈ 19 m) mais
+/// um ladrilho de 8 m, para a repetição nunca deixar a borda à vista.
+pub const CAMADA_LADRILHOS: f32 = 4.0;
+
+/// O lado (m) de um ladrilho do fundo.
+#[must_use]
+pub fn ladrilho_m(art: FactoryArt) -> [f32; 2] {
+    art.cell_px()
+        .map(|v| v as f32 / BACKGROUND_TEXELS_PER_M as f32)
+}
+
+/// ⭐ Veste `e` como camada de fundo com o azulejo `art` repetido `ladrilhos` vezes na horizontal e a fracção
+/// `k` da câmara (o que o artista faz no Inspector: a imagem, *Repeat*, a escala do UV e a secção Parallax).
+pub fn veste_camada(
+    world: &mut ph2d_ecs::World,
+    e: Entity,
+    art: FactoryArt,
+    ladrilhos: f32,
+    k: f32,
+) {
+    let [lw, lh] = ladrilho_m(art);
+    world.entity_mut(e).insert((
+        Sprite::atlas(art.key, [lw * ladrilhos, lh], BRANCO),
+        SpriteGrid {
+            hframes: art.grid[0],
+            vframes: art.grid[1],
+            frame: art.middle_frame(),
+        },
+        UvTransform {
+            scale: [ladrilhos, 1.0],
+            offset: [0.0, 0.0],
+        },
+        TextureRepeat(RepeatMode::Enabled),
+        ScrollFactor { k: [k, k] },
+        ScrollRepeat { tile: [lw, 0.0] },
+    ));
+}
 
 /// A folha do boneco de fábrica, as suas animações e o animador a tocar `idle`.
 fn anima(world: &mut ph2d_ecs::World, e: Entity) -> Result<(), String> {
@@ -120,6 +170,9 @@ pub fn add(
                 },
             ));
             attach(sim, "ph2d::physics::Collider")?;
+        } else if entry == BACKGROUND_LAYER {
+            veste_camada(world, e, HILLS_TILE, CAMADA_LADRILHOS, CAMADA_K);
+            world.entity_mut(e).insert(ZIndexOverride(-1));
         } else if entry == CHARACTER {
             anima(world, e)?;
             world.entity_mut(e).insert((

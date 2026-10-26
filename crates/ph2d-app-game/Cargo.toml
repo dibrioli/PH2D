@@ -40,6 +40,8 @@ ph2d-script = { path = "../ph2d-script" }
 ph2d-platformer = { path = "../ph2d-platformer" }
 # A arte de fábrica abre como vetor editável (`arte_tests.rs`).
 ph2d-vec-svg = { path = "../ph2d-vec-svg" }
+# O ledger que a ponte da paralaxe pede, nos gates do fundo do nível 2 (`camara_tests.rs`).
+ph2d-preview-drive = { path = "../ph2d-preview-drive" }
 
 [lints]
 workspace = true

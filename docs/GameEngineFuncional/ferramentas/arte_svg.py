@@ -7,7 +7,7 @@ brancos com pupila, sem contorno.
 Escreve `boneco.svg` (a folha 8 × 4: parado · correr · saltar · cair, e agachado · a andar agachado nas células
 livres das linhas 2 e 3, cada desenho na pose que o Blender deu),
 `chao.svg`, `plataforma.svg`, `terra.svg` (azulejos que repetem sem costura), `moeda.svg` (6 × 1, a girar) e
-`bandeira.svg` (4 × 1, a ondular). Só `fill` e caminhos absolutos — nada de `transform`, `stroke`, `opacity` ou
+`bandeira.svg` (4 × 1, a ondular), e o fundo do plano 11: `nuvens.svg` e `montes.svg` (repetem na horizontal). Só `fill` e caminhos absolutos — nada de `transform`, `stroke`, `opacity` ou
 `clipPath` —, para o SVG abrir no PH2D como vetor editável e rasterizar igual em qualquer leitor.
 """
 
@@ -38,6 +38,12 @@ P = {
     "bandeira_escura": "#DD442C",
     "mastro": "#959AB1",
     "mastro_claro": "#DCE1E7",
+    # O fundo azul do pacote (`tilemap-backgrounds`, plano 11): céu, nuvens e montes ao longe.
+    "ceu": "#DFF6F5",
+    "nuvem": "#FFFFFF",
+    "nuvem_sombra": "#EEF9F8",
+    "montes": "#C2E3E8",
+    "montes_escuro": "#ACD5DD",
 }
 
 COLS, ROWS, CEL = 8, 4, 100.0  # a folha do boneco, em unidades do SVG por célula
@@ -270,6 +276,72 @@ def bandeira():
     return svg(400, 200, corpo, "bandeira 4×1 (a ondular)")
 
 
+# ---------------------------------------------------------------- o fundo (plano 11)
+# 50 unidades = 1 m. Cada peça repete na horizontal: o que passa uma borda é desenhado outra vez do outro lado.
+FUNDO_W = 400.0
+
+
+def repetida(cx, desenha):
+    """`desenha(x)` em `cx` e, se a forma se aproxima de uma borda, também uma largura ao lado."""
+    out = [desenha(cx)]
+    if cx < 60:
+        out.append(desenha(cx + FUNDO_W))
+    if cx > FUNDO_W - 60:
+        out.append(desenha(cx - FUNDO_W))
+    return out
+
+
+# (x, y, raio) dos tufos de cima e de baixo de uma faixa de nuvens com 2 m de altura (100 unidades).
+TUFOS = [(0, 50, 28), (52, 42, 32), (110, 50, 26), (160, 40, 36), (214, 48, 28), (262, 42, 32),
+         (318, 50, 25), (364, 44, 29)]
+TUFOS_BAIXO = [(30, 70, 17), (122, 70, 24), (206, 70, 15), (290, 70, 21), (368, 70, 16)]
+
+
+def nuvens():
+    """A faixa de nuvens: a sombra é a mesma silhueta 6 unidades abaixo, num tom mais escuro."""
+    def silhueta(dy, cor):
+        corpo = [retangulo(0, 46 + dy, FUNDO_W, 72 + dy, cor)]
+        for (x, y, r) in TUFOS + TUFOS_BAIXO:
+            corpo += repetida(x, lambda cx, y=y, r=r: elipse(cx, y + dy, r, r).svg(ident, cor))
+        return corpo
+    return svg(FUNDO_W, 100, silhueta(6, P["nuvem_sombra"]) + silhueta(0, P["nuvem"]),
+               "nuvens 8×2 m (repete na horizontal)")
+
+
+def cume(x, y0, a, fase):
+    """A linha dos montes em `x` (y para baixo): uma e duas ondas por largura ⇒ repete sem costura."""
+    t = 2 * math.pi * x / FUNDO_W
+    return y0 + a * math.cos(t + fase) + a * 0.45 * math.cos(2 * t + 1.7 * fase)
+
+
+def monte(y0, a, fase, cor, h):
+    n = 80
+    cam = Caminho().m((0, h))
+    for i in range(n + 1):
+        x = FUNDO_W * i / n
+        cam.l((x, cume(x, y0, a, fase)))
+    cam.l((FUNDO_W, h))
+    return cam.z().svg(ident, cor)
+
+
+def montes():
+    """Os montes ao longe (8 × 6 m): a serra de trás, a fila da frente num tom mais escuro e três árvores de
+    silhueta no cume; o corpo desce cheio até à borda de baixo (o céu nunca se vê por baixo dele)."""
+    h = 300.0
+    corpo = [monte(62, 16, 0.0, P["montes"], h)]
+    for (x, tipo) in [(92, "redonda"), (124, "redonda"), (286, "pinheiro")]:
+        base = cume(x, 62, 16, 0.0) + 4
+        if tipo == "redonda":
+            corpo.append(retangulo(x - 3, base - 26, x + 3, base, P["montes"]))
+            corpo.append(elipse(x, base - 36, 15, 17).svg(ident, P["montes"]))
+        else:
+            cam = Caminho().m((x, base - 52)).l((x + 15, base - 10)).l((x - 15, base - 10)).z()
+            corpo.append(cam.svg(ident, P["montes"]))
+            corpo.append(retangulo(x - 3, base - 12, x + 3, base, P["montes"]))
+    corpo.append(monte(104, 12, 2.2, P["montes_escuro"], h))
+    return svg(FUNDO_W, h, corpo, "montes ao longe 8×6 m (repete na horizontal)")
+
+
 def main():
     poses = json.load(open(sys.argv[1]))
     out = sys.argv[2]
@@ -281,6 +353,8 @@ def main():
         "terra.svg": svg(100, 100, azulejo(100, com_relva=False), "terra 1×1 m (repete nos dois eixos)"),
         "moeda.svg": moeda(),
         "bandeira.svg": bandeira(),
+        "nuvens.svg": nuvens(),
+        "montes.svg": montes(),
     }
     for nome, txt in arte.items():
         with open(os.path.join(out, nome), "w") as fh:

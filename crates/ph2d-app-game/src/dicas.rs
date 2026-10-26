@@ -152,3 +152,33 @@ pub const COLLISION_SHAPE: &[Mark] = &[
         arrow: true,
     },
 ];
+
+/// Os montes ao longe andam pouco (seta curta) enquanto o boneco e o chão passam (seta longa).
+const PERTO: [Mark; 2] = boneco(0.78, 0.62);
+pub const BACKGROUND_LAYER: &[Mark] = &[
+    Mark::Disc {
+        c: [0.2, 0.74],
+        r: 0.34,
+        fill: C::Info,
+    },
+    Mark::Disc {
+        c: [0.5, 0.8],
+        r: 0.26,
+        fill: C::Info,
+    },
+    CHAO,
+    PERTO[0],
+    PERTO[1],
+    Mark::Line {
+        a: [0.14, 0.22],
+        b: [0.26, 0.22],
+        stroke: C::Text1,
+        arrow: true,
+    },
+    Mark::Line {
+        a: [0.56, 0.22],
+        b: [0.94, 0.22],
+        stroke: C::Text1,
+        arrow: true,
+    },
+];

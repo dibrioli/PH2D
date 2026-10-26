@@ -16,13 +16,13 @@ use ph2d_core::Vec2;
 use ph2d_ecs::scene::ComponentRegistry;
 use ph2d_ecs::{
     AnimationTag, CameraFollow, CameraLimits, ChildOf, Entity, GameCamera, Name, RepeatMode,
-    SimWorld, SpriteAnimations, SpriteAnimator, SpriteGrid, TextureRepeat, Transform, UvTransform,
-    ZIndexOverride,
+    ScrollFactor, SimWorld, SpriteAnimations, SpriteAnimator, SpriteGrid, TextureRepeat, Transform,
+    UvTransform, ZIndexOverride,
 };
 use ph2d_editor_core::game_stage::GameStage;
 use ph2d_render::{
-    COIN_FRAME_MS, COIN_SHEET, DIRT_TILE, FLAG_FRAME_MS, FLAG_SHEET, FactoryArt, GROUND_TILE,
-    PLATFORM_TILE, Sprite, WHITE_TILE_KEY,
+    CLOUDS_TILE, COIN_FRAME_MS, COIN_SHEET, DIRT_TILE, FLAG_FRAME_MS, FLAG_SHEET, FactoryArt,
+    GROUND_TILE, HILLS_TILE, PLATFORM_TILE, Sprite, WHITE_TILE_KEY,
 };
 use ph2d_script::{LuauScript, ProjectScripts};
 use std::sync::OnceLock;
@@ -318,9 +318,27 @@ pub const MOEDAS_2: [[f32; 2]; 5] = [
     [13.5, 0.6],
 ];
 
-/// O céu do nível 2 (centro, tamanho em m) e a cor do fundo do pacote do Kenney (`#C2E3E8`).
-const CEU: ([f32; 2], [f32; 2]) = ([2.5, 4.0], [40.0, 16.0]);
-const CEU_COR: [f32; 4] = [194.0 / 255.0, 227.0 / 255.0, 232.0 / 255.0, 1.0];
+/// O fundo do nível 2 (plano 11): o céu parado no ecrã, maior que a vista mais larga, na cor do céu do fundo
+/// azul do Kenney (`#DFF6F5`).
+pub const CEU_TAMANHO: [f32; 2] = [40.0, 16.0];
+const CEU_COR: [f32; 4] = [223.0 / 255.0, 246.0 / 255.0, 245.0 / 255.0, 1.0];
+/// As camadas de fundo: (nome, fracção da câmara que guardam, centro no MUNDO na vista do início, ordem).
+pub const CAMADAS_2: [(&str, f32, [f32; 2], i32); 2] = [
+    ("Clouds", 0.15, [-5.9, 5.6], -2),
+    ("Hills", crate::object_add::CAMADA_K, [-5.9, 0.44], -1),
+];
+/// O centro da câmara quando o nível começa (o jogador em `[-8, 1,5]` encostado ao limite da esquerda, 16:9).
+pub const CENTRO_DO_INICIO: [f32; 2] = [-5.9, 3.0];
+
+/// A pose AUTORADA que põe uma camada com fracção `k` em `no_mundo` quando a câmara está em
+/// [`CENTRO_DO_INICIO`] (a ponte desloca-a de `centro·(1 − k)`).
+#[must_use]
+pub fn autorada(no_mundo: [f32; 2], k: f32) -> [f32; 2] {
+    [
+        no_mundo[0] - CENTRO_DO_INICIO[0] * (1.0 - k),
+        no_mundo[1] - CENTRO_DO_INICIO[1] * (1.0 - k),
+    ]
+}
 
 /// Veste um bloco com o azulejo de fábrica do seu papel, repetido ao tamanho do bloco (o que o artista faz
 /// no Inspector: a imagem, *Repeat* e a escala do UV).
@@ -400,11 +418,26 @@ fn nivel_2(sim: &mut SimWorld, registry: &ComponentRegistry) -> Entity {
         [2.0 * hx / escala[0], 2.0 * hy / escala[1]],
     );
     sim.world_mut().entity_mut(parede).insert(ChildOf(chao));
+    // O céu é uma Sprite com a Parallax a 0 (parada no ecrã); as nuvens e os montes são Background Layers.
     let ceu = do_menu(sim, registry, SPRITE);
-    arruma(sim, ceu, "Sky", CEU.0, CEU.1);
-    sim.world_mut().entity_mut(ceu).insert(ZIndexOverride(-1));
+    arruma(sim, ceu, "Sky", [0.0, 0.0], CEU_TAMANHO);
+    sim.world_mut()
+        .entity_mut(ceu)
+        .insert((ZIndexOverride(-3), ScrollFactor { k: [0.0, 0.0] }));
     if let Some(mut s) = sim.world_mut().get_mut::<Sprite>(ceu) {
         s.tint = CEU_COR;
+    }
+    for (nome, k, no_mundo, ordem) in CAMADAS_2 {
+        let e = do_menu(sim, registry, crate::object_add::BACKGROUND_LAYER);
+        arruma(sim, e, nome, autorada(no_mundo, k), [1.0, 1.0]);
+        let art = if nome == "Clouds" {
+            CLOUDS_TILE
+        } else {
+            HILLS_TILE
+        };
+        let w = sim.world_mut();
+        crate::object_add::veste_camada(w, e, art, crate::object_add::CAMADA_LADRILHOS, k);
+        w.entity_mut(e).insert(ZIndexOverride(ordem));
     }
     let meta = do_menu(sim, registry, ANIMATED_SPRITE);
     arruma(sim, meta, "Goal", [15.5, 1.0], [1.0, 2.0]);
@@ -447,7 +480,8 @@ fn nivel_2(sim: &mut SimWorld, registry: &ComponentRegistry) -> Entity {
         "[game-smoke] =2 o mesmo nível feito SÓ com o menu Add (Add ▸ Game), com a arte do Kenney \
          redesenhada em vetor: chão e plataformas de relva (Static Body), a parede invisível do fim \
          (Collision Shape dentro do chão), um tecto baixo à esquerda (segure ↓ para passar agachado), o jogador (Character), as moedas a girar e a bandeira a \
-         ondular (Animated Sprite) e o céu (Sprite). Run ▸ Play in a Window: o boneco fica parado, \
+         ondular (Animated Sprite), o céu parado (Sprite com Parallax 0) e, ao longe, as nuvens e os \
+         montes (Background Layer), que andam mais devagar que o chão quando a câmara segue o jogador. Run ▸ Play in a Window: o boneco fica parado, \
          corre, salta e cai — a animação troca sozinha — e as moedas somem ao tocar."
     );
     jogador
@@ -456,3 +490,7 @@ fn nivel_2(sim: &mut SimWorld, registry: &ComponentRegistry) -> Entity {
 #[cfg(test)]
 #[path = "smoke_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "camara_tests.rs"]
+mod camara_tests;

@@ -228,8 +228,22 @@ fn o_nivel_2_nasce_so_pelo_menu() {
     assert_eq!(
         w.get::<ph2d_ecs::ZIndexOverride>(por_nome["Sky"])
             .map(|z| z.0),
-        Some(-1)
+        Some(-3)
     );
+    // O fundo (plano 11): o céu atrás de tudo, depois as nuvens, depois os montes; cada um com a sua fracção.
+    for (nome, k, ordem) in [("Sky", 0.0, -3), ("Clouds", 0.15, -2), ("Hills", 0.4, -1)] {
+        let e = por_nome[nome];
+        assert_eq!(
+            w.get::<ph2d_ecs::ScrollFactor>(e).map(|f| f.k),
+            Some([k, k]),
+            "{nome}"
+        );
+        assert_eq!(
+            w.get::<ph2d_ecs::ZIndexOverride>(e).map(|z| z.0),
+            Some(ordem),
+            "{nome}"
+        );
+    }
     assert!(
         w.get::<CameraFollow>(por_nome["Camera"])
             .is_some_and(|f| f.target == "Player")

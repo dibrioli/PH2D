@@ -15,6 +15,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "object_add.game.static_body" => "Static Body",
         "object_add.game.character" => "Character",
         "object_add.game.collision_shape" => "Collision Shape",
+        "object_add.game.background_layer" => "Background Layer",
         // As dicas ilustradas do menu (05_N1_plano.md §4): o que o objecto é, para que serve.
         "object_add.game.sprite.tip" => {
             "Shows a picture in the game world. Move, scale and tint it like any object. It does not collide or move by itself \u{2014} use it for scenery, signs and decorations."
@@ -30,6 +31,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         "object_add.game.collision_shape.tip" => {
             "An invisible shape that things bump into. Drag it inside a Static Body or a Character to give that body one more shape: an invisible wall at the end of a level, a ledge, a wider hit area."
+        }
+        "object_add.game.background_layer.tip" => {
+            "Scenery far away: sky, clouds, hills. When the camera moves it stays behind and moves more slowly than the level, which makes the world look deep. Set how far away it is in the Inspector (Parallax) \u{2014} 0 stays still on the screen, 1 moves with the level. It repeats sideways, so it never ends."
         }
         "object_add.game.camera.tip" => {
             "The game\u{2019}s view: what the player sees when the game runs. Add Camera Follow to make it follow a character, and Camera Limits to keep it inside the level."

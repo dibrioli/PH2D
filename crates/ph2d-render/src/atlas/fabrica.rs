@@ -46,8 +46,12 @@ pub const DIRT_TILE_KEY: u32 = u32::MAX - 5;
 pub const COIN_SHEET_KEY: u32 = u32::MAX - 6;
 /// A bandeira a ondular: 4 × 1 células de 1 × 2 m.
 pub const FLAG_SHEET_KEY: u32 = u32::MAX - 7;
+/// A faixa de nuvens do fundo (plano 11): 8 × 2 m, repete na horizontal.
+pub const CLOUDS_TILE_KEY: u32 = u32::MAX - 8;
+/// Os montes ao longe do fundo (plano 11): 8 × 6 m, repete na horizontal.
+pub const HILLS_TILE_KEY: u32 = u32::MAX - 9;
 
-const _: () = assert!(FLAG_SHEET_KEY > super::FIRST_IMPORT_KEY);
+const _: () = assert!(HILLS_TILE_KEY > super::FIRST_IMPORT_KEY);
 
 /// A folha do boneco (8 × 4; ver [`super::hero_sheet`]).
 pub const HERO_ART: FactoryArt = FactoryArt {
@@ -97,15 +101,35 @@ pub const FLAG_SHEET: FactoryArt = FactoryArt {
     grid: [4, 1],
     tile: false,
 };
+/// Texels por metro dos azulejos do fundo (fica atrás e anda devagar: metade do chão chega).
+pub const BACKGROUND_TEXELS_PER_M: u32 = 128;
+const B: u32 = BACKGROUND_TEXELS_PER_M;
+pub const CLOUDS_TILE: FactoryArt = FactoryArt {
+    key: CLOUDS_TILE_KEY,
+    svg: include_bytes!("fabrica/nuvens.svg"),
+    px: [3 * 8 * B, 2 * B],
+    grid: [3, 1],
+    tile: true,
+};
+pub const HILLS_TILE: FactoryArt = FactoryArt {
+    key: HILLS_TILE_KEY,
+    svg: include_bytes!("fabrica/montes.svg"),
+    px: [3 * 8 * B, 6 * B],
+    grid: [3, 1],
+    tile: true,
+};
 
-/// Toda a arte de fábrica, na ordem em que entra no atlas.
-pub const FACTORY_ART: [FactoryArt; 6] = [
+/// Toda a arte de fábrica, na ordem em que entra no atlas. ⚠️ Arte nova entra no FIM (gate
+/// `as_artes_antigas_sao_as_de_antes`).
+pub const FACTORY_ART: [FactoryArt; 8] = [
     HERO_ART,
     GROUND_TILE,
     PLATFORM_TILE,
     DIRT_TILE,
     COIN_SHEET,
     FLAG_SHEET,
+    CLOUDS_TILE,
+    HILLS_TILE,
 ];
 
 /// Milissegundos por célula da moeda e da bandeira (laços uniformes).
@@ -118,7 +142,8 @@ pub const FLAG_FRAME_MS: u32 = 150;
 /// Se o SVG embebido não abre: é arte do repositório, e o gate `toda_a_arte_rasteriza` prova-a.
 #[must_use]
 pub fn factory_pixels(art: &FactoryArt) -> &'static [u8] {
-    static CACHE: [OnceLock<Vec<u8>>; FACTORY_ART.len()] = [const { OnceLock::new() }; 6];
+    static CACHE: [OnceLock<Vec<u8>>; FACTORY_ART.len()] =
+        [const { OnceLock::new() }; FACTORY_ART.len()];
     let i = FACTORY_ART
         .iter()
         .position(|a| a.key == art.key)

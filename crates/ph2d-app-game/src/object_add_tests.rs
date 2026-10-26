@@ -34,6 +34,7 @@ fn cada_objecto_nasce_com_o_seu_conjunto() {
             "object_add.game.static_body" => (true, false, Some(BodyKind::Static), true, false),
             "object_add.game.character" => (true, true, Some(BodyKind::Dynamic), true, true),
             "object_add.game.collision_shape" => (false, false, None, true, false),
+            "object_add.game.background_layer" => (true, false, None, false, false),
             other => panic!("entrada sem conjunto esperado: {other}"),
         };
         assert_eq!(tem, esperado, "{}", entry.key.key());

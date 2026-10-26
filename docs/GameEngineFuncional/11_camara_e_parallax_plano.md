@@ -79,3 +79,25 @@ câmara pára e não mostra nada de fora. Fotografado antes de mandar.
 
 `ScrollMotion` (as nuvens a derivar sozinhas) existe e fica para o artista; parallax vertical diferente do
 horizontal; a lei do `offset` da `GameCamera` (igual à da Godot).
+
+## Feito (25/10)
+
+Handoff: [`HANDOFF_CONTINUACAO_2026-10-25_11_CAMARA_E_PARALLAX.md`](handoffs/HANDOFF_CONTINUACAO_2026-10-25_11_CAMARA_E_PARALLAX.md).
+Commits `c924e11ea8` · `b9a7299402` · `970a66f3f1`. Smoke do dono: por receber.
+
+- **Medido:** câmara e paralaxe já existiam; o oráculo Godot 4.7.2 deu a mesma lei (`offset` soma depois dos
+  limites: cima −1100 vs −1000, direita 2100 vs 2000). Lei intocada; só faltava a arte e o nível usá-la.
+- **Arte:** `nuvens.svg` 8×2 m e `montes.svg` 8×6 m; `FACTORY_ART` 6 → 8, chaves `u32::MAX-8/-9`; as 6 antigas
+  byte a byte iguais (FNV-1a `0xea58a1ac470a2c84`).
+- **Nível 2:** Sky parado (-3), Clouds k 0,15 (-2), Hills k 0,4 (-1); Background Layer no Add (`ENTRIES` 6).
+- **Cor do céu:** o tingimento é LINEAR — `223/255` saía `#F0FBFA`; `[0.7379, 0.9216, 0.9131]` dá `#DFF6F5`.
+- **Fim do nível:** `CameraLimits` max x 18 → 17 (o chão acaba em 17).
+- **Defeito 1 (foto):** fio azul de 2 px atravessava o jogo = hover do editor desenhado no palco
+  (`fase_pointer_subjects` sem `no_palco()`); +4 linhas na shell.
+- **Defeito 2 (foto):** a costura das docas (`DOCK_SEAM_PX` = 6 px por lado) encolhia o canvas para 1588 px
+  numa janela de 1600 ⇒ 6 px de mundo além dos limites; `frame_layout::palco` põe `draw_area = viewport`.
+- **Gates:** `a_camara_do_nivel_2_nao_mostra_fora_dos_limites` (3 proporções, controlo sem limites foge > 1 m),
+  `o_fundo_anda_a_fraccao_autorada_e_cobre_a_vista`, `as_artes_antigas_sao_as_de_antes`,
+  `no_palco_o_canvas_e_a_janela_inteira`, `o_palco_do_jogo_nao_tem_realce_de_hover`. **Mutação 11/11 sangra.**
+- **Aberto:** editor fora do Play mostra as camadas na pose autorada; Background Layer escalada desalinha a
+  repetição; `CameraLimits` do nível 1 (max x 18) não medido.

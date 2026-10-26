@@ -48,6 +48,7 @@ const SHELL_DRIVEN_PANELS: &[(&str, &str)] = &[
     ("authored", "panel-authored"),
     // O painel PIXEL (ADR-0192): a família escreve a visibilidade dele ao entrar em Pixel Sprite ▸ Edit.
     ("pixel_tools", "panel-pixel-tools"),
+    ("pixel_timeline", "panel-pixel-timeline"),
     // ⚠️ O gate protege contra uma lista esquecida (`[features] default`) com OUTRA lista escrita
     // à mão — então ele só cobre o painel de que alguém lembrou. Medido: com um painel fora do
     // `default` do shell e fora desta lista este gate ficava VERDE (foi o caso do da escultura,
@@ -68,6 +69,7 @@ fn enabled(feature: &str) -> bool {
         "panel-tokens" => cfg!(feature = "panel-tokens"),
         "panel-authored" => cfg!(feature = "panel-authored"),
         "panel-pixel-tools" => cfg!(feature = "panel-pixel-tools"),
+        "panel-pixel-timeline" => cfg!(feature = "panel-pixel-timeline"),
         other => panic!("unknown feature in SHELL_DRIVEN_PANELS: {other}"),
     }
 }

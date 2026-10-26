@@ -10,6 +10,9 @@ impl crate::App {
         };
         let (pixel, world) = (&mut self.pixel, g.sim.world());
         let info = ph2d_app_pixel::panel::frame(pixel, world, hero, &mut g.toasts);
+        // A linha do tempo do Pixel lê o MESMO instantâneo.
+        #[cfg(feature = "panel-pixel-timeline")]
+        ph2d_panel_pixel_timeline::set_current_pixel(info.clone());
         #[cfg(feature = "panel-pixel-tools")]
         {
             let (column, hint) = (

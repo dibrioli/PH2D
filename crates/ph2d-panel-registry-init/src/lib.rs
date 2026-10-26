@@ -80,6 +80,10 @@ pub fn build_typed_registry() -> ph2d_editor_core::panel::PanelRegistry {
     >());
     #[cfg(feature = "panel-physics")]
     reg.push(ErasedPanel::new::<ph2d_panel_physics::PhysicsPanel>());
+    #[cfg(feature = "panel-pixel-timeline")]
+    reg.push(ErasedPanel::new::<
+        ph2d_panel_pixel_timeline::PixelTimelinePanel,
+    >());
     #[cfg(feature = "panel-pixel-tools")]
     reg.push(ErasedPanel::new::<ph2d_panel_pixel_tools::PixelToolsPanel>());
     #[cfg(feature = "panel-skeleton")]
@@ -161,6 +165,11 @@ mod tests {
         }
         // O painel PIXEL (ADR-0192).
         #[cfg(feature = "panel-pixel-tools")]
+        {
+            n += 1;
+        }
+        // A linha do tempo do Pixel (P4).
+        #[cfg(feature = "panel-pixel-timeline")]
         {
             n += 1;
         }

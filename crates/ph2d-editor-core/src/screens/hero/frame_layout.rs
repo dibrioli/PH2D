@@ -127,7 +127,12 @@ pub(super) fn frame_layout(
     // 132 px do fundo e a tira ocupava 240, deixando **147 528 px²** de painel por cima do
     // desenho. *Reservar a geometria que um painel declarava, em vez da que ele pinta, é reservar
     // o sítio errado com toda a confiança.*
-    if hero.is_panel_visible(super::PANEL_TIMELINE) || hero.is_panel_visible("flip_frames") {
+    // A linha do tempo do Pixel (P4) declara o mesmo encaixe: a mesma banda, a mesma reserva (a
+    // família centra o sprite na área que sobra).
+    if hero.is_panel_visible(super::PANEL_TIMELINE)
+        || hero.is_panel_visible("flip_frames")
+        || hero.is_panel_visible(super::PANEL_PIXEL_TIMELINE)
+    {
         layout.reserve_bottom_strip(layout.timeline);
     }
     // ⭐⭐ **E as ABAS saem do encaixe, por último.** Depois da docagem do timeline e das faixas do

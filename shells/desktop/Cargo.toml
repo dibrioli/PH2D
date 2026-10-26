@@ -301,6 +301,7 @@ ph2d-panel-skeleton = { path = "../../crates/ph2d-panel-skeleton", optional = tr
 ph2d-panel-tags = { path = "../../crates/ph2d-panel-tags", optional = true }
 ph2d-panel-macros = { path = "../../crates/ph2d-panel-macros", optional = true }
 ph2d-panel-pixel-tools = { path = "../../crates/ph2d-panel-pixel-tools", optional = true }
+ph2d-panel-pixel-timeline = { path = "../../crates/ph2d-panel-pixel-timeline", optional = true }
 # Painter layers panel — typed panel listing the LayerStack (thumb + name +
 # visibility + opacity + blend) + adjustment-layer editors. Right-docked
 # (Inspector slot takeover) when the Painter (layers + effects) tool is active.
@@ -530,6 +531,7 @@ default = [
     "panel-tags",
     "panel-macros",
     "panel-pixel-tools",
+    "panel-pixel-timeline",
     "panel-flip",
     "panel-flip-frames",
     "panel-audio-mixer",
@@ -586,6 +588,7 @@ panel-macros         = ["ph2d-panel-registry-init/panel-macros", "dep:ph2d-panel
 # O painel PIXEL (ADR-0192): a shell publica-lhe o instantâneo (`set_current_pixel`) e drena os
 # gestos pelo barramento até à `ph2d-app-pixel`.
 panel-pixel-tools    = ["ph2d-panel-registry-init/panel-pixel-tools", "dep:ph2d-panel-pixel-tools"]
+panel-pixel-timeline = ["ph2d-panel-registry-init/panel-pixel-timeline", "dep:ph2d-panel-pixel-timeline"]
 # Flip Style panel + its render_loop bridge (`flip_bridge` publishes the style +
 # layers snapshots via `ph2d_panel_flip::set_current_flip_*` + reads the OKLCH
 # picker back into the tool), so the shell needs the direct dep too.

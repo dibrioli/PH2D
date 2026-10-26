@@ -222,31 +222,8 @@ pub const ACTIONS: [(NodeId, PixelRequest, &str); 10] = [
 
 // ── as camadas (P3) ───────────────────────────────────────────────────────────
 
-/// As partes de uma linha da lista de camadas.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum LayerWidget {
-    /// O nome: clique = activa, duplo clique = renomear.
-    Row,
-    Eye,
-    Lock,
-    Solo,
-    /// O triângulo do grupo.
-    Collapse,
-}
-
-impl LayerWidget {
-    pub const ALL: [Self; 5] = [Self::Row, Self::Eye, Self::Lock, Self::Solo, Self::Collapse];
-
-    const fn tag(self) -> &'static str {
-        match self {
-            Self::Row => "row",
-            Self::Eye => "eye",
-            Self::Lock => "lock",
-            Self::Solo => "solo",
-            Self::Collapse => "collapse",
-        }
-    }
-}
+/// As partes de uma linha da lista de camadas (a pintura é partilhada com a linha do tempo).
+pub use ph2d_editor_core::pixel_layer_row::PixelLayerWidget as LayerWidget;
 
 /// O id da parte `w` da linha da camada `layer` (a população é a lista, sem tecto).
 #[must_use]

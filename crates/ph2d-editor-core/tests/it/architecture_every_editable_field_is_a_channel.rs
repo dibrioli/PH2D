@@ -1419,6 +1419,13 @@ const DIVIDA_CRATE: &[(&str, Classe, &str)] = &[
         "as camadas e ajustes do Painter (§A.7)",
     ),
     (
+        "ph2d-panel-pixel-timeline",
+        NaoAnimavel,
+        "a linha do tempo do Pixel Sprite (duração do frame, opacidade e z do cel, direcção e \
+         repetições da tag): o DOCUMENTO do sprite, que é ele próprio a animação — cada edição é \
+         um passo do desfazer do sprite, não um valor da cena no tempo",
+    ),
+    (
         "ph2d-panel-bgremoval",
         NaoAnimavel,
         "parâmetro de uma ferramenta de imagem",

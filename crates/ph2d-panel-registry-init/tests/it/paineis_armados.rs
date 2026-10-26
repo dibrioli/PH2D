@@ -80,6 +80,13 @@ pub const TABELA: &[Armacao] = &[
         arma: |_| arma_o_pixel(),
         desarma: desarma_o_pixel,
     },
+    // A linha do tempo do Pixel (P4) com duas camadas × três frames, um par ligado e uma tag.
+    #[cfg(feature = "panel-pixel-timeline")]
+    Armacao {
+        painel: "pixel_timeline",
+        arma: |_| arma_a_linha_do_tempo(),
+        desarma: desarma_a_linha_do_tempo,
+    },
     // ⛔⛔ **O painel de params do Motion SAIU do app** (`line/motion-value`, ordem do dono de
     //    2026-09-17: os params vivem NO CARTÃO). A armação dele vivia aqui e mediu as `828`
     //    entradas do catálogo de params por largura — ⚠️ e essa medição **perdeu a superfície**,
@@ -298,6 +305,61 @@ fn arma_o_pixel() {
 #[cfg(feature = "panel-pixel-tools")]
 fn desarma_o_pixel() {
     ph2d_panel_pixel_tools::set_current_pixel(
+        ph2d_editor_core::pixel_panel::PixelPanelInfo::default(),
+    );
+}
+
+/// Um Pixel Sprite em Draw com frames, cels ligados e uma tag (a linha do tempo armada).
+#[cfg(feature = "panel-pixel-timeline")]
+fn arma_a_linha_do_tempo() {
+    use ph2d_editor_core::pixel_panel::{
+        PixelCel, PixelDirection, PixelFrameCol, PixelLayerRow, PixelPanelInfo, PixelTagInfo,
+    };
+    let camada = |id: u32, name: &str| PixelLayerRow {
+        id,
+        name: name.to_owned(),
+        depth: 0,
+        group: false,
+        collapsed: false,
+        visible: true,
+        locked: false,
+        reference: false,
+        background: false,
+        opacity: 255,
+        blend: Default::default(),
+    };
+    let cel = |layer: u32, frame: u32, owner: u32| PixelCel {
+        layer,
+        frame,
+        owner,
+        opacity: 255,
+        z: 0,
+        empty: false,
+    };
+    ph2d_panel_pixel_timeline::set_current_pixel(PixelPanelInfo {
+        editing: true,
+        layers: vec![camada(2, "Ink"), camada(1, "Background")],
+        active_layer: Some(2),
+        frames: (1..=3)
+            .map(|id| PixelFrameCol { id, duration_ms: 100 * id })
+            .collect(),
+        active_frame: Some(1),
+        cels: vec![cel(2, 1, 1), cel(2, 2, 1), cel(1, 1, 1), cel(1, 3, 3)],
+        tags: vec![PixelTagInfo {
+            name: "walk".to_owned(),
+            from: 0,
+            to: 1,
+            direction: PixelDirection::PingPong,
+            repeat: 2,
+            color: [200, 60, 60, 255],
+        }],
+        ..Default::default()
+    });
+}
+
+#[cfg(feature = "panel-pixel-timeline")]
+fn desarma_a_linha_do_tempo() {
+    ph2d_panel_pixel_timeline::set_current_pixel(
         ph2d_editor_core::pixel_panel::PixelPanelInfo::default(),
     );
 }

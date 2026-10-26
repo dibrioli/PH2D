@@ -46,6 +46,8 @@ pub const PANEL_Z_ORDER_FALLBACK: &[ph2d_a11y::NodeId] = &[
     ids::MACROS_PANEL,
     // O painel PIXEL (`ph2d-panel-pixel-tools`, ADR-0192): abre no Pixel Sprite ▸ Edit.
     ids::PIXEL_PANEL,
+    // A linha do tempo do Pixel (`ph2d-panel-pixel-timeline`, P4): a banda de baixo em Draw.
+    ids::PIXEL_TIMELINE_PANEL,
     // Flip tool Style panel (ADR-0114 W2 docked `ph2d-panel-flip`): docks
     // over the inspector slot while the `flip` tool is active (bridge-driven
     // visibility). Its `paint()` no-ops when hidden, so this is inert

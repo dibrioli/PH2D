@@ -1210,6 +1210,11 @@ const PAINEIS_COM_ID_DERIVADO: &[(&str, &str)] = &[
         "authored.opt.{key}.{index} · authored.row.{key}",
     ),
     (
+        "pixel_timeline",
+        "ph2d_panel_pixel_timeline::ids — um cabeçalho por frame, uma célula por cel, uma barra por \
+         tag, as partes de cada camada e as opções da direcção",
+    ),
+    (
         "tokens",
         "tokens_link_id(row) — o elo, uma vez por linha da tabela de cor",
     ),

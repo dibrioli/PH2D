@@ -8,6 +8,8 @@ use crate::pixel_panel::{NewSpriteBackground, NewSpriteMode, PixelDither, PixelT
 use ph2d_a11y::NodeId;
 
 pub const PIXEL_PANEL: NodeId = hash_node_id("pixel.panel");
+/// O rect da linha do tempo do Pixel (camadas × frames, P4) — a banda de baixo.
+pub const PIXEL_TIMELINE_PANEL: NodeId = hash_node_id("pixel_timeline.panel");
 
 /// A linha *Pixel* do menu *Window*.
 pub const TOPBAR_PIXEL: NodeId = hash_node_id("topbar_pixel");

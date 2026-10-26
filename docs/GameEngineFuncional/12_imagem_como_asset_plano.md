@@ -142,3 +142,15 @@ Fotografado antes de mandar.
 
 O *Sprite Editor* (cortar uma imagem importada em quadros no asset, à Unity) — hoje o corte de uma folha nova
 continua a ser proposto pelo editor de animações (`propose_after_drop`); J5 (moedas).
+
+## Feito (26/10)
+
+Commits `edae891143` (feat), `1cd765fe6d`, `782479a6f9`, `4bff90d680`. Handoff:
+[`HANDOFF_CONTINUACAO_2026-10-26_12_IMAGEM_COMO_ASSET.md`](handoffs/HANDOFF_CONTINUACAO_2026-10-26_12_IMAGEM_COMO_ASSET.md).
+
+- Porta única `choose_image`/`choose_library_image` (sprite-anim `image_choice.rs`, 13 gates); seletor no
+  navegador de assets (2 seams); linha «Image» no Inspector (4 seams); as 8 imagens de fábrica na biblioteca,
+  fora do ficheiro. Mutação 12/12 sangra. Sem degrau de `PROJECT_SCHEMA`. Shell +~94 LOC líquidas.
+- `CENAS` 3 → 4 (cena 4 = nível 2 + `heroi_azul` + `montes_por_do_sol`); fotos em `handoffs/fotos_12/`.
+- Fora desta entrega: 12b (Flip, Vector), Sprite Editor. Smoke do dono: por fazer. Suíte de impacto: 3 vermelhos
+  fora da onda (ver handoff).

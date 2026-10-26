@@ -93,7 +93,9 @@ impl Caso {
     fn rgb(&self) -> Vec<u8> {
         let mut out = Vec::new();
         compose_rgba(&self.s, self.s.frames()[0].id, None, &mut out);
-        out.chunks_exact(4)
+        out.as_chunks::<4>()
+            .0
+            .iter()
             .flat_map(|p| [p[0], p[1], p[2]])
             .collect()
     }
@@ -164,10 +166,7 @@ fn every_blend_group_and_indexed_case_matches_the_trial_screen() {
             let o = num(rest);
             let mut k = Caso::new(w, h, ColorMode::Indexed);
             let pal = unhex(f["pal"].as_str().expect("pal"));
-            let colors: Vec<[u8; 4]> = pal
-                .chunks_exact(4)
-                .map(|p| [p[0], p[1], p[2], p[3]])
-                .collect();
+            let colors: Vec<[u8; 4]> = pal.as_chunks::<4>().0.to_vec();
             apply(
                 &mut k.s,
                 Op::Palette {
@@ -184,8 +183,10 @@ fn every_blend_group_and_indexed_case_matches_the_trial_screen() {
             panic!("caso desconhecido {nome}");
         };
         let erros = got
-            .chunks_exact(3)
-            .zip(want.chunks_exact(3))
+            .as_chunks::<3>()
+            .0
+            .iter()
+            .zip(want.as_chunks::<3>().0)
             .filter(|(a, b)| a != b)
             .count();
         assert_eq!(

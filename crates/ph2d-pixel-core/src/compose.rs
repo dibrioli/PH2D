@@ -172,7 +172,12 @@ pub fn compose_with_onion(
     }
     for g in ghosts(sprite, frame, onion) {
         let px = compose_window(sprite, g.frame, None, region, Purpose::View);
-        for (d, s) in buf.chunks_exact_mut(4).zip(px.chunks_exact(4)) {
+        for (d, s) in buf
+            .as_chunks_mut::<4>()
+            .0
+            .iter_mut()
+            .zip(px.as_chunks::<4>().0)
+        {
             if s[3] == 0 {
                 continue;
             }
@@ -180,12 +185,7 @@ pub fn compose_with_onion(
             if onion.tint {
                 src = onion_tint(src, g.before);
             }
-            d.copy_from_slice(&blend(
-                BlendMode::Normal,
-                [d[0], d[1], d[2], d[3]],
-                src,
-                g.opacity,
-            ));
+            *d = blend(BlendMode::Normal, *d, src, g.opacity);
         }
     }
     if !onion.front {

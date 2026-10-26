@@ -34,9 +34,7 @@ fn key(s: &Sprite) -> (ph2d_pixel_core::LayerId, FrameId) {
 fn composed(s: &Sprite) -> Vec<[u8; 4]> {
     let mut out = Vec::new();
     compose_rgba(s, s.frames()[0].id, None, &mut out);
-    out.chunks_exact(4)
-        .map(|p| [p[0], p[1], p[2], p[3]])
-        .collect()
+    out.as_chunks::<4>().0.to_vec()
 }
 
 fn ids(c: &Value) -> Vec<Vec<i64>> {
@@ -377,7 +375,9 @@ fn crop_to_the_selection_bounds_and_trim_match_the_trial() {
             .map(|r| {
                 let b = unhex(r.as_str().expect("r"));
                 Value::String(
-                    b.chunks_exact(4)
+                    b.as_chunks::<4>()
+                        .0
+                        .iter()
                         .map(|p| {
                             if p[3] == 0 {
                                 "0000ffff".to_owned()

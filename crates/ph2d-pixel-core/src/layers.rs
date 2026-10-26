@@ -237,7 +237,7 @@ fn rgba_rect(s: &Sprite, key: CelKey, r: Rect) -> Vec<u8> {
 /// RGBA → um cel no modo do sprite.
 fn cel_from_rgba(s: &Sprite, r: Rect, rgba: &[u8]) -> Cel {
     let mut data = Vec::with_capacity(r.area() * s.mode().bpp());
-    for px in rgba.chunks_exact(4) {
+    for px in rgba.as_chunks::<4>().0 {
         let v = s.value_of_rgba([px[0], px[1], px[2], px[3]]);
         data.extend_from_slice(&v.to_le_bytes()[..s.mode().bpp()]);
     }
@@ -289,7 +289,12 @@ pub fn merge_down(s: &Sprite, id: LayerId) -> Option<Op> {
         } else {
             0
         };
-        for (d, t) in dst.chunks_exact_mut(4).zip(src.chunks_exact(4)) {
+        for (d, t) in dst
+            .as_chunks_mut::<4>()
+            .0
+            .iter_mut()
+            .zip(src.as_chunks::<4>().0)
+        {
             let px = blend(
                 top.blend,
                 [d[0], d[1], d[2], d[3]],
@@ -346,7 +351,7 @@ pub fn flatten(s: &mut Sprite, visible_only: bool) -> Option<Op> {
     let mut cels = cels_of(s, &merged);
     for f in s.frames() {
         let rgba = compose_window(&view, f.id, None, s.bounds(), Purpose::Export);
-        if rgba.chunks_exact(4).any(|p| p[3] != 0) {
+        if rgba.as_chunks::<4>().0.iter().any(|p| p[3] != 0) {
             cels.push(((flat.id, f.id), Some(cel_from_rgba(s, s.bounds(), &rgba))));
         }
     }

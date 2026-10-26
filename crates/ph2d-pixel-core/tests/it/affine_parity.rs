@@ -123,11 +123,9 @@ fn decompose_compose_settle_drag_and_fields_match_the_mvp() {
         };
         let (dt, dp) = t.drag(
             pivot(&c["pivot"]),
-            w,
-            h,
+            (w, h),
             handle(c["handle"].as_str().expect("h")),
-            point(&c["from"]),
-            point(&c["to"]),
+            (point(&c["from"]), point(&c["to"])),
             opt,
         );
         same_affine(&dt, &c["drag"]["t"], &format!("{k} drag {}", c["handle"]));

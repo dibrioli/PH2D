@@ -338,16 +338,15 @@ impl Affine {
         out
     }
 
-    /// **Um arrasto**: tudo é DELTA desde a matriz e o pivô de PARTIDA. Devolve `(matriz, pivô)`.
+    /// **Um arrasto** de `from` a `to`: tudo é DELTA desde a matriz e o pivô de PARTIDA. Devolve
+    /// `(matriz, pivô)`.
     #[must_use]
     pub fn drag(
         &self,
         pivot: Pivot,
-        w: u32,
-        h: u32,
+        (w, h): (u32, u32),
         handle: Handle,
-        from: Point,
-        to: Point,
+        (from, to): (Point, Point),
         opt: DragOpts,
     ) -> (Affine, Pivot) {
         let same = (*self, pivot);

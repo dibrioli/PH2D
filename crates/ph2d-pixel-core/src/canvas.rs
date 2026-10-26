@@ -172,7 +172,9 @@ pub fn sprite_size(s: &Sprite, w: u32, h: u32, method: SizeMethod) -> Option<Op>
     remap(s, w, h, |c, _| match method {
         SizeMethod::Nearest => resize_nearest(c, w, h),
         SizeMethod::Bilinear => from_rgba(s, &resize_bilinear(&to_rgba(s, c), w, h)),
-        SizeMethod::RotSprite if w % sw == 0 && h % sh == 0 => resize_nearest(c, w, h),
+        SizeMethod::RotSprite if w.is_multiple_of(sw) && h.is_multiple_of(sh) => {
+            resize_nearest(c, w, h)
+        }
         SizeMethod::RotSprite => {
             let a = Affine {
                 a: f64::from(w) / f64::from(sw),

@@ -32,7 +32,7 @@ fn sprite(mode: ColorMode) -> Sprite {
     for i in 0..r.area() as u32 {
         let v = match mode {
             ColorMode::Rgba => u32::from_le_bytes([(i * 37) as u8, (i * 11) as u8, 3, 255]),
-            ColorMode::Gray => (i * 29) % 256 | 0xff00,
+            ColorMode::Gray => ((i * 29) % 256) | 0xff00,
             ColorMode::Indexed => 1 + (i * 7 + i * i / 3) % 20,
         };
         pixels.extend_from_slice(&v.to_le_bytes()[..bpp]);

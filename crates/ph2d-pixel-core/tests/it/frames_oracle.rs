@@ -62,7 +62,9 @@ fn pinta(s: &mut Sprite, layer: LayerId, frame: FrameId, bytes: Vec<u8>) {
 fn rgb(s: &Sprite, frame: FrameId) -> Vec<u8> {
     let mut out = Vec::new();
     compose_rgba(s, frame, None, &mut out);
-    out.chunks_exact(4)
+    out.as_chunks::<4>()
+        .0
+        .iter()
         .flat_map(|p| [p[0], p[1], p[2]])
         .collect()
 }

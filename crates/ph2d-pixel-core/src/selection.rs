@@ -417,9 +417,7 @@ fn sampled(s: &Sprite, key: CelKey, sample: BucketSample) -> Vec<[u8; 4]> {
         BucketSample::Visible => {
             let mut out = Vec::new();
             compose_rgba(s, key.1, None, &mut out);
-            out.chunks_exact(4)
-                .map(|p| [p[0], p[1], p[2], p[3]])
-                .collect()
+            out.as_chunks::<4>().0.to_vec()
         }
     }
 }

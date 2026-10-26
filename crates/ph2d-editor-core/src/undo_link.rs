@@ -57,6 +57,9 @@ pub struct UndoLinks {
     /// Cena de smoke → shell: ela mexeu no documento sem entrada; a base do undo re-tira-se no
     /// próximo quadro QUIETO, sem passo (senão o 1.º gesto do dono desfaz a cena inteira).
     pub rearmar: bool,
+    /// Já houve entrada do artista nesta sessão? Antes dela todo quadro quieto re-tira a base: o
+    /// boot, o load e toda cena de smoke são o documento de partida, nunca um passo (F32 §6).
+    pub houve_entrada: bool,
 }
 
 impl UndoLinks {
@@ -116,7 +119,8 @@ impl UndoLinks {
     /// A shell: (re)tira-se a base do undo agora, sem passo? `sem_base` = ainda não há nenhuma;
     /// `quieto` = sem entrada nem gesto neste quadro (o pedido espera por um quieto).
     pub fn tira_a_base(&mut self, sem_base: bool, quieto: bool) -> bool {
-        sem_base || (quieto && std::mem::take(&mut self.rearmar))
+        self.houve_entrada |= !quieto;
+        sem_base || (quieto && (std::mem::take(&mut self.rearmar) || !self.houve_entrada))
     }
 
     /// O elo está vivo do lado global (ou ainda à espera de nascer lá)?
@@ -157,12 +161,26 @@ mod tests {
     /// quadro quieto e uma vez só (senão o 1.º gesto do dono desfaz a cena inteira).
     #[test]
     fn a_cena_de_smoke_rearma_a_base_do_undo_no_quadro_quieto() {
-        let mut l = UndoLinks::default();
+        let mut l = UndoLinks {
+            houve_entrada: true,
+            ..UndoLinks::default()
+        };
         assert!(l.tira_a_base(true, false), "sem base, tira-se sempre");
         assert!(!l.tira_a_base(false, true), "sem pedido, a base fica");
         l.rearmar = true;
         assert!(!l.tira_a_base(false, false), "com entrada, espera");
         assert!(l.tira_a_base(false, true), "quieto, re-tira");
         assert!(!l.tira_a_base(false, true), "uma vez só");
+    }
+
+    /// F32 §6: antes da 1.ª entrada do artista todo quadro quieto é base (as ~30 cenas que montam
+    /// por comandos ao longo de quadros); depois dela, só o pedido explícito.
+    #[test]
+    fn antes_da_primeira_entrada_todo_quadro_quieto_e_base() {
+        let mut l = UndoLinks::default();
+        assert!(l.tira_a_base(false, true), "a cena mexeu sem ninguém tocar");
+        assert!(l.tira_a_base(false, true), "e continua a ser base");
+        assert!(!l.tira_a_base(false, false), "a 1.ª entrada é passo");
+        assert!(!l.tira_a_base(false, true), "depois dela o quieto já não é base");
     }
 }

@@ -9,7 +9,10 @@ fn every_rules_widget_is_registered() {
         .into_iter()
         .chain([VECTOR_CAD_DELETE, VECTOR_CAD_VALUE])
     {
-        assert!(store.get(id).is_some(), "um widget da tool Regras ficou por registar");
+        assert!(
+            store.get(id).is_some(),
+            "um widget da tool Regras ficou por registar"
+        );
     }
     for p in Possivel::ALL {
         assert_eq!(Possivel::de_id(p.id()), Some(p));

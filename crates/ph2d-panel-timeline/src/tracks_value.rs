@@ -100,7 +100,11 @@ pub(crate) fn com_unidade(prop: PropKind, v: f64, u: Unidades) -> Option<String>
     let (n, espaco, sufixo) = match unidade(k) {
         Unidade::Nenhuma => return None,
         Unidade::Comprimento => (u.comprimento.value(v), " ", u.comprimento.suffix()),
-        Unidade::Angulo => (u.angulo.from_radians_f64(v.to_radians()), "", u.angulo.suffix()),
+        Unidade::Angulo => (
+            u.angulo.from_radians_f64(v.to_radians()),
+            "",
+            u.angulo.suffix(),
+        ),
     };
     #[expect(clippy::cast_possible_truncation, reason = "a fatia mostra f32")]
     Some(format!("{}{espaco}{sufixo}", curto(n as f32)))
@@ -114,7 +118,11 @@ fn curto(v: f32) -> String {
     } else {
         &s
     };
-    if s == "-0" { "0".to_owned() } else { s.to_owned() }
+    if s == "-0" {
+        "0".to_owned()
+    } else {
+        s.to_owned()
+    }
 }
 
 /// O que uma palavra diz no ecrã: a chave pela tabela de strings, o nome do artista como está.

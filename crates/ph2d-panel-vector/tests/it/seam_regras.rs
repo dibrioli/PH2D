@@ -38,7 +38,11 @@ fn the_rules_tool_sits_in_the_left_column() {
         &mut panel_state,
         WidgetEvent::Click(ph2d_tool_vector::ids::VECTOR_MODE_RULES),
     );
-    assert_eq!(outcome, EventOutcome::Consumed, "o pill Rules morre no painel");
+    assert_eq!(
+        outcome,
+        EventOutcome::Consumed,
+        "o pill Rules morre no painel"
+    );
     crate::seam::drain_into_tool(&mut host, &mut tool);
     assert_eq!(tool.mode(), DrawMode::Rules, "o clique não chegou à tool");
 }
@@ -62,7 +66,11 @@ fn a_choice_offers_only_the_rules_it_allows_and_a_click_becomes_a_request() {
     for p in [Possivel::Igual, Possivel::Angulo] {
         let outcome =
             host.apply_panel_event::<VectorPanel>(&mut panel_state, WidgetEvent::Click(p.id()));
-        assert_eq!(outcome, EventOutcome::Consumed, "o botão {p:?} morre no painel");
+        assert_eq!(
+            outcome,
+            EventOutcome::Consumed,
+            "o botão {p:?} morre no painel"
+        );
     }
     assert_eq!(
         state_cad::drena(),
@@ -95,7 +103,10 @@ fn a_chosen_dimension_shows_its_number_and_the_typed_value_becomes_a_request() {
         (Possivel::Vertical, false, false),
     ] {
         state_cad::set_cad_vista(CadVista {
-            escolhida: Some(Escolhida { tipo: Some(tipo), referencia }),
+            escolhida: Some(Escolhida {
+                tipo: Some(tipo),
+                referencia,
+            }),
             ..CadVista::default()
         });
         assert_eq!(tem_numero(&host), esperado, "{tipo:?} REF={referencia}");

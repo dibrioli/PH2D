@@ -61,7 +61,10 @@ pub fn semear(cena: &mut VecScene) -> Caixa {
     let tampa = cena.push_path(VecPath {
         verts: vec![
             VecVertex::corner(dobradica),
-            VecVertex::corner([dobradica[0] + LARGURA * a.cos(), dobradica[1] + LARGURA * a.sin()]),
+            VecVertex::corner([
+                dobradica[0] + LARGURA * a.cos(),
+                dobradica[1] + LARGURA * a.sin(),
+            ]),
         ],
         closed: false,
         stroke: Some(StrokeSpec::new(Rgba8::new(120, 80, 40, 255), 0.06)),
@@ -83,12 +86,15 @@ pub fn semear(cena: &mut VecScene) -> Caixa {
         Lei::Igual(lado_da_tampa, topo),
         Lei::Angulo(topo, lado_da_tampa, a),
     ];
-    cena.regras_mut().extend(regras.into_iter().map(RegraCad::nova));
+    cena.regras_mut()
+        .extend(regras.into_iter().map(RegraCad::nova));
     cena.normaliza_ids();
     let (angulo, lei) = cena
         .regras()
         .last()
-        .map_or((RegraId::NOVO, Lei::Angulo(topo, lado_da_tampa, a)), |r| (r.id, r.lei));
+        .map_or((RegraId::NOVO, Lei::Angulo(topo, lado_da_tampa, a)), |r| {
+            (r.id, r.lei)
+        });
     Caixa {
         corpo,
         tampa,
@@ -145,8 +151,9 @@ pub fn step(
         0 => {
             FASE.store(1, Ordering::Relaxed);
             hero.gizmo.replace_selection(Some(e.to_bits()));
-            hero.bus
-                .push(EditorAction::ObjectMode(ModeRequest::Enter(ObjectMode::Edit)));
+            hero.bus.push(EditorAction::ObjectMode(ModeRequest::Enter(
+                ObjectMode::Edit,
+            )));
             None
         }
         1 => {
@@ -170,7 +177,10 @@ pub fn step(
             ph.set_loop(0.0, fim);
             ph.seek_frame(0, fps);
             ph.play();
-            Some("[constraint-smoke] =7 a caixa com tampa: Edit + Regras, a tampa a abrir".to_owned())
+            Some(
+                "[constraint-smoke] =7 a caixa com tampa: Edit + Regras, a tampa a abrir"
+                    .to_owned(),
+            )
         }
         _ => None,
     }

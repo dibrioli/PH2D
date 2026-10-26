@@ -88,7 +88,14 @@ impl Mesa {
     }
     /// O press no ponto do MUNDO `w`, pela porta que a shell chama.
     pub fn clica(&mut self, w: [f64; 2]) -> bool {
-        crate::shape_handles_live::on::press(&mut self.vec, &mut self.sim, &mut self.scene, w, 0.01, 0)
+        crate::shape_handles_live::on::press(
+            &mut self.vec,
+            &mut self.sim,
+            &mut self.scene,
+            w,
+            0.01,
+            0,
+        )
     }
     pub fn quadro(&mut self) {
         frame(&mut self.scene, &mut self.vec, &self.xf, &mut self.hero);
@@ -108,7 +115,10 @@ fn a_choice_offers_only_the_rules_it_allows() {
         Alvo::Ponto(m.v(1)),
         Alvo::Circulo(m.path),
     );
-    assert_eq!(possiveis(&[l]), vec![P::Horizontal, P::Vertical, P::Distancia]);
+    assert_eq!(
+        possiveis(&[l]),
+        vec![P::Horizontal, P::Vertical, P::Distancia]
+    );
     assert_eq!(possiveis(&[l, l]), vec![P::Igual, P::Angulo]);
     assert_eq!(possiveis(&[p]), vec![P::Fixo]);
     assert_eq!(
@@ -116,7 +126,10 @@ fn a_choice_offers_only_the_rules_it_allows() {
         vec![P::Coincidente, P::Horizontal, P::Vertical, P::Distancia]
     );
     assert_eq!(possiveis(&[c]), vec![P::Raio]);
-    assert!(possiveis(&[p, l]).is_empty(), "ponto + lado não está na lista do dono");
+    assert!(
+        possiveis(&[p, l]).is_empty(),
+        "ponto + lado não está na lista do dono"
+    );
     assert!(possiveis(&[]).is_empty());
 }
 
@@ -132,7 +145,11 @@ fn a_rule_made_by_hand_goes_through_junta_regra_and_keeps_the_drawing() {
     m.quadro();
     assert_eq!(
         state_cad::cad_vista().possiveis,
-        vec![Possivel::Horizontal, Possivel::Vertical, Possivel::Distancia]
+        vec![
+            Possivel::Horizontal,
+            Possivel::Vertical,
+            Possivel::Distancia
+        ]
     );
     state_cad::pede(PedidoCad::Junta(Possivel::Vertical));
     m.quadro();
@@ -145,7 +162,10 @@ fn a_rule_made_by_hand_goes_through_junta_regra_and_keeps_the_drawing() {
         m.pos(4),
         m.pos(1)
     );
-    assert!(m.vec.cad_tool.escolha.is_empty(), "a escolha fica para trás");
+    assert!(
+        m.vec.cad_tool.escolha.is_empty(),
+        "a escolha fica para trás"
+    );
     // A cota nasce com o que o desenho mede: juntar não mexe em nada.
     m.desenha(true);
     let antes: Vec<[f64; 2]> = (1..=4).map(|i| m.pos(i)).collect();
@@ -184,10 +204,18 @@ fn clicking_a_dimension_number_selects_it_and_typing_moves_the_drawing() {
         ]
     };
     m.clica(numero);
-    assert_eq!(m.vec.cad_tool.regra, Some(id), "o número não escolheu a cota");
+    assert_eq!(
+        m.vec.cad_tool.regra,
+        Some(id),
+        "o número não escolheu a cota"
+    );
     m.quadro();
     let u = Unidades::of(&m.hero);
-    assert_eq!(m.hero.store.focus_id(), Some(VECTOR_CAD_VALUE), "o chip não ganhou o foco");
+    assert_eq!(
+        m.hero.store.focus_id(),
+        Some(VECTOR_CAD_VALUE),
+        "o chip não ganhou o foco"
+    );
     assert_eq!(
         m.hero.store.number_value(VECTOR_CAD_VALUE),
         Some(u.comprimento.value(2.0)),
@@ -195,8 +223,16 @@ fn clicking_a_dimension_number_selects_it_and_typing_moves_the_drawing() {
     );
     state_cad::pede(PedidoCad::Medida(u.comprimento.value(3.0)));
     m.quadro();
-    assert!((m.pos(2)[0] - 3.0).abs() < 1e-6, "escrever 3 não esticou o lado: {:?}", m.pos(2));
-    assert!(m.pos(1)[0].abs() < 1e-6 && m.pos(1)[1].abs() < 1e-6, "o ponto preso andou: {:?}", m.pos(1));
+    assert!(
+        (m.pos(2)[0] - 3.0).abs() < 1e-6,
+        "escrever 3 não esticou o lado: {:?}",
+        m.pos(2)
+    );
+    assert!(
+        m.pos(1)[0].abs() < 1e-6 && m.pos(1)[1].abs() < 1e-6,
+        "o ponto preso andou: {:?}",
+        m.pos(1)
+    );
 }
 
 /// O Delete com uma regra escolhida apaga SÓ a regra (o desenho fica); sem regra escolhida, o Delete é o de sempre.
@@ -211,7 +247,10 @@ fn delete_removes_the_chosen_rule_in_one_step() {
     m.vec.cad_tool.regra = Some(m.scene.regras()[0].id);
     assert!(crate::apaga::delete(&mut m.vec, &mut m.scene));
     assert!(m.scene.regras().is_empty(), "a regra ficou");
-    assert!(m.scene.path(m.path).is_some(), "o Delete levou a forma junto");
+    assert!(
+        m.scene.path(m.path).is_some(),
+        "o Delete levou a forma junto"
+    );
     assert!(m.vec.cad_tool.regra.is_none());
     // Controlo: sem regra escolhida e nada seleccionado, o Delete da tool não consome.
     assert!(!crate::apaga::delete(&mut m.vec, &mut m.scene));
@@ -250,7 +289,11 @@ fn typing_a_dimension_with_autokey_records_a_key() {
     let doc = ph2d_timeline::TimelineDoc::new();
     let mut cond = crate::canais::ConducaoVetor::default();
     let lidos = |sim: &SimWorld| -> Vec<(FieldKey, f32)> {
-        sim.world().get_resource::<CanaisLidos>().unwrap().campos(e).collect()
+        sim.world()
+            .get_resource::<CanaisLidos>()
+            .unwrap()
+            .campos(e)
+            .collect()
     };
     let _ = crate::canais::aplicar(&mut sim, &mut m.scene, &mut cond);
     crate::canais::publicar(&mut sim, &m.scene, &cond, &[e]);
@@ -264,7 +307,9 @@ fn typing_a_dimension_with_autokey_records_a_key() {
     let plan = ph2d_timeline::autokey_campos(&doc, e, 0.0, &lidos(&sim), &base, true, false);
     let canal = canal_da_regra(&r.lei, r.id).expect("a medida tem canal");
     assert!(
-        plan.keys.iter().any(|(p, v)| *p == canal && (*v - 3.0).abs() < 1e-5),
+        plan.keys
+            .iter()
+            .any(|(p, v)| *p == canal && (*v - 3.0).abs() < 1e-5),
         "a chave da cota não foi gravada: {:?}",
         plan.keys
     );

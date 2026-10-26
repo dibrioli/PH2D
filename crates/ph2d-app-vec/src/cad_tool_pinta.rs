@@ -33,16 +33,24 @@ fn linha(target: &mut VectorScene, pts: &[[f64; 2]], w: f64, cor: ColorToken, th
             l.line_to(Point::new(q[0], q[1]));
         }
     }
-    target
-        .inner_mut()
-        .stroke(&Stroke::new(w), Affine::IDENTITY, &pincel(cor, theme), None, &l);
+    target.inner_mut().stroke(
+        &Stroke::new(w),
+        Affine::IDENTITY,
+        &pincel(cor, theme),
+        None,
+        &l,
+    );
 }
 
 fn disco(target: &mut VectorScene, c: [f64; 2], r: f64, cor: ColorToken, theme: Theme) {
     let circ = ph2d_vector::Circle::new(Point::new(c[0], c[1]), r);
-    target
-        .inner_mut()
-        .fill(ph2d_vector::Fill::NonZero, Affine::IDENTITY, &pincel(cor, theme), None, &circ);
+    target.inner_mut().fill(
+        ph2d_vector::Fill::NonZero,
+        Affine::IDENTITY,
+        &pincel(cor, theme),
+        None,
+        &circ,
+    );
 }
 
 /// A ponta de uma seta em `p`, a apontar para `d` (unitário).
@@ -52,12 +60,22 @@ fn seta(target: &mut VectorScene, p: [f64; 2], d: [f64; 2], cor: ColorToken, the
     let base = [p[0] - d[0] * l, p[1] - d[1] * l];
     let mut s = BezPath::new();
     s.move_to(Point::new(p[0], p[1]));
-    s.line_to(Point::new(base[0] + n[0] * l * 0.5, base[1] + n[1] * l * 0.5));
-    s.line_to(Point::new(base[0] - n[0] * l * 0.5, base[1] - n[1] * l * 0.5));
+    s.line_to(Point::new(
+        base[0] + n[0] * l * 0.5,
+        base[1] + n[1] * l * 0.5,
+    ));
+    s.line_to(Point::new(
+        base[0] - n[0] * l * 0.5,
+        base[1] - n[1] * l * 0.5,
+    ));
     s.close_path();
-    target
-        .inner_mut()
-        .fill(ph2d_vector::Fill::NonZero, Affine::IDENTITY, &pincel(cor, theme), None, &s);
+    target.inner_mut().fill(
+        ph2d_vector::Fill::NonZero,
+        Affine::IDENTITY,
+        &pincel(cor, theme),
+        None,
+        &s,
+    );
 }
 
 /// Acende os pontos de ecrã `pts` (um par = um lado; um só = um ponto).
@@ -88,7 +106,12 @@ pub(crate) fn pinta(
     // O hover sobre um alvo, a escolha (pontos como disco; um lado inteiro).
     let alvo = |a: &Alvo| -> Vec<[f64; 2]> {
         match a {
-            Alvo::Ponto(x) => p.pontos.iter().filter(|(y, _)| y == x).map(|(_, q)| *q).collect(),
+            Alvo::Ponto(x) => p
+                .pontos
+                .iter()
+                .filter(|(y, _)| y == x)
+                .map(|(_, q)| *q)
+                .collect(),
             Alvo::Lado(s) => p
                 .segmentos
                 .iter()
@@ -150,13 +173,24 @@ pub(crate) fn pinta(
         }
     }
     for s in &p.selos {
-        fill_rounded_rect(target, s.rect, CHIP_RADIUS_PX, resolve(ColorToken::Bg1, theme));
+        fill_rounded_rect(
+            target,
+            s.rect,
+            CHIP_RADIUS_PX,
+            resolve(ColorToken::Bg1, theme),
+        );
         let borda = if Some(s.regra) == quente {
             ColorToken::Selection
         } else {
             s.cor
         };
-        stroke_rounded_rect(target, s.rect, CHIP_RADIUS_PX, GLIFO_PX, resolve(borda, theme));
+        stroke_rounded_rect(
+            target,
+            s.rect,
+            CHIP_RADIUS_PX,
+            GLIFO_PX,
+            resolve(borda, theme),
+        );
         let glifo = ph2d_editor_core::zones::Rect::new(s.rect.x, s.rect.y, s.rect.h, s.rect.h);
         paint_icon(target, s.icon, glifo, resolve(s.cor, theme), GLIFO_PX);
         if let Some(n) = s.par {

@@ -14,7 +14,9 @@ use std::collections::BTreeSet;
 use ph2d_editor_core::HeroScreen;
 use ph2d_editor_core::LengthDisplay;
 use ph2d_editor_core::zones::Rect;
-use ph2d_panel_vector::state_cad::{self, CadVista, Escolhida, PedidoCad, Possivel, VECTOR_CAD_VALUE};
+use ph2d_panel_vector::state_cad::{
+    self, CadVista, Escolhida, PedidoCad, Possivel, VECTOR_CAD_VALUE,
+};
 use ph2d_tool_vector::DrawMode;
 use ph2d_vec_constraints::{Folha, medida_na_folha, resolve};
 use ph2d_vec_scene::cad::{Lei, PontoCad, RegraId, SegCad};
@@ -183,7 +185,11 @@ impl Unidades {
             Lei::Angulo(..) => self.angulo.suffix(),
             _ => self.comprimento.suffix(),
         };
-        let raio = if matches!(lei, Lei::Raio(..)) { "R " } else { "" };
+        let raio = if matches!(lei, Lei::Raio(..)) {
+            "R "
+        } else {
+            ""
+        };
         Some(format!("{raio}{} {sufixo}", arredonda(v)).replace(" °", "°"))
     }
 
@@ -224,7 +230,11 @@ pub fn aplica(
             resolve_a_folha(scene, xf);
             t.escolha.clear();
             // A nova é a última (o assentamento deu-lhe o id); escolhida, a cota foca-se para escrever.
-            t.regra = scene.regras().last().filter(|r| r.lei == nova.lei).map(|r| r.id);
+            t.regra = scene
+                .regras()
+                .last()
+                .filter(|r| r.lei == nova.lei)
+                .map(|r| r.id);
             t.focar = nova.lei.medida().is_some() && !nova.referencia;
             true
         }

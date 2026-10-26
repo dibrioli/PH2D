@@ -86,18 +86,46 @@ fn an_angle_measure_rides_its_own_field() {
     scene.normaliza_ids();
     let angulo = scene.regras()[4].id;
     let lei = |r: RegraId| scene.regra(r).unwrap().lei.clone();
-    assert_eq!(chave_da(&lei(angulo), angulo), Some(chave(ANGULO, angulo.0)));
-    assert_eq!(chave_da(&lei(distancia), distancia), Some(chave(MEDIDA, distancia.0)));
-    assert_eq!(chave_da(&scene.regras()[0].lei.clone(), scene.regras()[0].id), None);
+    assert_eq!(
+        chave_da(&lei(angulo), angulo),
+        Some(chave(ANGULO, angulo.0))
+    );
+    assert_eq!(
+        chave_da(&lei(distancia), distancia),
+        Some(chave(MEDIDA, distancia.0))
+    );
+    assert_eq!(
+        chave_da(&scene.regras()[0].lei.clone(), scene.regras()[0].id),
+        None
+    );
     let publicadas = campos(&scene, id);
-    assert!(publicadas.contains(&(chave(ANGULO, angulo.0), 90.0)), "{publicadas:?}");
-    assert!(publicadas.contains(&(chave(MEDIDA, distancia.0), 40.0)), "{publicadas:?}");
     assert!(
-        !aplicar(&mut sim, &mut scene, vec![(e, chave(MEDIDA, angulo.0), 30.0)], &mut ConducaoCad::default()),
+        publicadas.contains(&(chave(ANGULO, angulo.0), 90.0)),
+        "{publicadas:?}"
+    );
+    assert!(
+        publicadas.contains(&(chave(MEDIDA, distancia.0), 40.0)),
+        "{publicadas:?}"
+    );
+    assert!(
+        !aplicar(
+            &mut sim,
+            &mut scene,
+            vec![(e, chave(MEDIDA, angulo.0), 30.0)],
+            &mut ConducaoCad::default()
+        ),
         "uma escrita em MEDIDA não é de um ângulo"
     );
     let mut cond = ConducaoCad::default();
-    aplicar(&mut sim, &mut scene, vec![(e, chave(ANGULO, angulo.0), 60.0)], &mut cond);
+    aplicar(
+        &mut sim,
+        &mut scene,
+        vec![(e, chave(ANGULO, angulo.0), 60.0)],
+        &mut cond,
+    );
     let m = scene.regra(angulo).and_then(|r| r.lei.medida()).unwrap();
-    assert!((m - 60f64.to_radians()).abs() < 1e-9, "a escrita em ANGULO chega à regra: {m}");
+    assert!(
+        (m - 60f64.to_radians()).abs() < 1e-9,
+        "a escrita em ANGULO chega à regra: {m}"
+    );
 }

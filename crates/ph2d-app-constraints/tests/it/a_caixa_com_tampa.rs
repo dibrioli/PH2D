@@ -25,7 +25,11 @@ fn cena() -> Cena {
     let mut scene = VecScene::new();
     let caixa = smoke_caixa::semear(&mut scene);
     let mut sim = SimWorld::new();
-    let e = sim.world_mut().spawn(VecPathRef(caixa.corpo)).id().to_bits();
+    let e = sim
+        .world_mut()
+        .spawn(VecPathRef(caixa.corpo))
+        .id()
+        .to_bits();
     sim.world_mut().spawn(VecPathRef(caixa.tampa));
     let mut tl = TimelineState::default();
     let fps = tl.doc.fps_display;
@@ -61,7 +65,12 @@ impl Cena {
         self.cond.settle();
         [self.caixa.corpo, self.caixa.tampa]
             .iter()
-            .flat_map(|&id| self.path(id).verts.iter().flat_map(|v| v.anchor.map(f64::to_bits)))
+            .flat_map(|&id| {
+                self.path(id)
+                    .verts
+                    .iter()
+                    .flat_map(|v| v.anchor.map(f64::to_bits))
+            })
             .collect()
     }
     fn violacao(&self) -> f64 {
@@ -87,13 +96,26 @@ fn the_lid_opens_and_scrubs_to_the_same_bit() {
     let tocado: Vec<Vec<u64>> = (0..=48)
         .map(|q| {
             let pose = a.em(q);
-            assert!(a.violacao() <= TOL, "quadro {q}: violação {:e}", a.violacao());
-            let mexeu = a.path(a.caixa.corpo).verts.iter().zip(&corpo.verts).map(|(x, y)| {
-                (x.anchor[0] - y.anchor[0]).hypot(x.anchor[1] - y.anchor[1])
-            });
-            assert!(mexeu.fold(0.0, f64::max) <= TOL, "quadro {q}: o corpo mexeu-se");
+            assert!(
+                a.violacao() <= TOL,
+                "quadro {q}: violação {:e}",
+                a.violacao()
+            );
+            let mexeu = a
+                .path(a.caixa.corpo)
+                .verts
+                .iter()
+                .zip(&corpo.verts)
+                .map(|(x, y)| (x.anchor[0] - y.anchor[0]).hypot(x.anchor[1] - y.anchor[1]));
+            assert!(
+                mexeu.fold(0.0, f64::max) <= TOL,
+                "quadro {q}: o corpo mexeu-se"
+            );
             let (h, canto) = (a.p(a.caixa.tampa, 1), a.p(a.caixa.corpo, 4));
-            assert!((h[0] - canto[0]).hypot(h[1] - canto[1]) <= TOL, "quadro {q}: a dobradiça saiu do canto");
+            assert!(
+                (h[0] - canto[0]).hypot(h[1] - canto[1]) <= TOL,
+                "quadro {q}: a dobradiça saiu do canto"
+            );
             pose
         })
         .collect();
@@ -108,6 +130,10 @@ fn the_lid_opens_and_scrubs_to_the_same_bit() {
     assert_ne!(tocado[0], tocado[24], "controlo: o ângulo mexe a tampa");
     let mut b = cena();
     for q in [0, 40, 12, 40] {
-        assert_eq!(b.em(q), tocado[q as usize], "arrastar até {q} ≠ tocar até {q}");
+        assert_eq!(
+            b.em(q),
+            tocado[q as usize],
+            "arrastar até {q} ≠ tocar até {q}"
+        );
     }
 }

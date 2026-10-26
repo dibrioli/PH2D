@@ -214,12 +214,10 @@ pub(crate) fn evento(store: &WidgetStore, ev: WidgetEvent) -> bool {
             Some(p) => pede(PedidoCad::Junta(p)),
             None => return false,
         },
-        WidgetEvent::ValueChanged(id) if id == VECTOR_CAD_VALUE => {
-            match store.number_value(id) {
-                Some(v) => pede(PedidoCad::Medida(v)),
-                None => return false,
-            }
-        }
+        WidgetEvent::ValueChanged(id) if id == VECTOR_CAD_VALUE => match store.number_value(id) {
+            Some(v) => pede(PedidoCad::Medida(v)),
+            None => return false,
+        },
         _ => return false,
     }
     true

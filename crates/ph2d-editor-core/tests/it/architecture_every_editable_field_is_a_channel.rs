@@ -338,7 +338,7 @@ const POR_FUNCAO: &[(&str, &str, Classe, &[&str], &str)] = &[
         "ph2d-panel-vector",
         "state_cad.rs::chips",
         Canal,
-        &[],
+        &["VECTOR_CAD_VALUE"],
         "o número da cota ESCOLHIDA: o canal é o `canal_cad` da regra escolhida (j = o `RegraId`), resolvido por \
          `ph2d_app_vec::marcas::canal_do_campo` pelo `Contexto.regra` (W4.6)",
     ),

@@ -14,8 +14,8 @@ pub mod marcas;
 pub mod relogio;
 pub mod smoke;
 pub mod smoke_antena;
-pub mod smoke_pega;
 pub mod smoke_caixa;
+pub mod smoke_pega;
 pub mod smoke_regua;
 
 use bevy_ecs::prelude::Resource;

@@ -25,16 +25,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "app.vec.svg_import.read" => "read: {e}",
         // ph2d-migrar-texto:end
         // As regras de CAD (W4.4, `ph2d_app_vec::cad_marks`): a ficha do conflito e o nome de cada lei.
-        "app.vec.cad.conflito" => "Conflict — delete one of: {regras}",
         "app.vec.cad.lei.coincidente" => "Coincident",
         "app.vec.cad.lei.horizontal" => "Horizontal",
         "app.vec.cad.lei.vertical" => "Vertical",
-        "app.vec.cad.lei.paralelo" => "Parallel",
-        "app.vec.cad.lei.perpendicular" => "Perpendicular",
-        "app.vec.cad.lei.tangente" => "Tangent",
         "app.vec.cad.lei.igual" => "Equal",
-        "app.vec.cad.lei.simetrico" => "Symmetric",
-        "app.vec.cad.lei.sobre_recta" => "On Line",
         "app.vec.cad.lei.distancia" => "Distance",
         "app.vec.cad.lei.angulo" => "Angle",
         "app.vec.cad.lei.raio" => "Radius",

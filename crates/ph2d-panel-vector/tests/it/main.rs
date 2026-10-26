@@ -22,7 +22,6 @@ mod o_losango_do_chip_da_barra;
 mod popover_band;
 mod probe_gutters;
 mod seam;
-mod seam_regras; // W4.6: a tool Regras — a coluna ①, a ④ das regras possíveis e o número da cota
 mod seam_anchors;
 mod seam_bool;
 mod seam_bucket;
@@ -40,6 +39,7 @@ mod seam_morph_states;
 mod seam_node_xy;
 mod seam_paint_stack;
 mod seam_pencil_knobs;
+mod seam_regras; // W4.6: a tool Regras — a coluna ①, a ④ das regras possíveis e o número da cota
 mod seam_resize_box;
 mod seam_signals;
 mod seam_spring;

@@ -130,7 +130,9 @@ fn a_coluna_do_valor_escreve_a_palavra_da_escolha() {
             &values,
             &t[0],
             v,
-            crate::tracks_value::Unidades::of(&ph2d_editor_core::project::ProjectSettings::default()),
+            crate::tracks_value::Unidades::of(
+                &ph2d_editor_core::project::ProjectSettings::default(),
+            ),
         )
     };
     assert_eq!(diz(canal("component.field.label_fields.1"), 3.0), "Tag");

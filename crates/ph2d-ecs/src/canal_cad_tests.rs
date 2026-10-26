@@ -28,9 +28,19 @@ fn each_field_says_its_display_unit() {
     use crate::canal::{Unidade, unidade};
     assert_eq!(unidade(chave(MEDIDA, 3)), Unidade::Comprimento);
     assert_eq!(unidade(chave(ANGULO, 3)), Unidade::Angulo);
-    assert!(chave(ANGULO, 3).info().is_some_and(|i| i.rotulo == "canal.cad.angulo"));
+    assert!(
+        chave(ANGULO, 3)
+            .info()
+            .is_some_and(|i| i.rotulo == "canal.cad.angulo")
+    );
     let vetor = |campo| FieldKey::new(familia::VETOR, campo, 0, 0);
-    assert_eq!(unidade(vetor(crate::canal_vetor::ANCORA_X)), Unidade::Comprimento);
-    assert_eq!(unidade(vetor(crate::canal_vetor::FECHADO)), Unidade::Nenhuma);
+    assert_eq!(
+        unidade(vetor(crate::canal_vetor::ANCORA_X)),
+        Unidade::Comprimento
+    );
+    assert_eq!(
+        unidade(vetor(crate::canal_vetor::FECHADO)),
+        Unidade::Nenhuma
+    );
     assert_eq!(unidade(chave(99, 3)), Unidade::Nenhuma);
 }

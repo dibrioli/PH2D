@@ -7,8 +7,7 @@ use super::*;
 use ph2d_editor_core::pixel_panel::PixelResample;
 
 /// Os rótulos das opções da P6 (a coluna medida das propriedades).
-pub(super) const NOMES: [&str; 4] = [
-    "panel.pixel.select.mode",
+pub(super) const NOMES: [&str; 3] = [
     "panel.pixel.wand.tolerance",
     "panel.pixel.connectivity",
     "panel.pixel.resample",
@@ -32,14 +31,26 @@ impl Corpo<'_> {
         let (o, t) = (info.options, info.tool);
         let mut y = y;
         if t.selects() {
-            y = self.linha(tr("panel.pixel.selection"), ColorToken::Text3, y);
-            // Dois a dois: os quatro nomes inteiros não cabem numa fila no degrau estreito.
+            y = self.linha(tr("panel.pixel.select.mode"), ColorToken::Text3, y);
+            // Dois a dois e sem rótulo (a largura toda): os quatro nomes inteiros não cabem numa
+            // fila no degrau estreito, e um rótulo numa só das filas desalinhava-as (foto 26/10).
             let modos: Vec<(&str, bool, NodeId)> = ids::SELECT_MODES
                 .iter()
                 .map(|&(m, id)| (tr(m.label_key()), m == o.select_mode, id))
                 .collect();
-            y = self.escolha(tr("panel.pixel.select.mode"), &modos[..2], sec, y);
-            y = self.escolha("", &modos[2..], sec, y);
+            for par in modos.chunks(2) {
+                let r = Rect::new(self.x, y, self.w, ROW_H_PX);
+                let h = ph2d_editor_core::widget::panel_chrome::paint_segmented_group_adaptive(
+                    r,
+                    par,
+                    self.scene,
+                    self.text_system,
+                    self.theme,
+                    self.store,
+                    self.hit_index,
+                );
+                y += h.max(ROW_H_PX) + ph2d_tokens::control_gap_px();
+            }
             y = self.bloco(tr("panel.pixel.select.mods_hint"), ColorToken::Text3, y);
         }
         if t == PixelTool::MagicWand {

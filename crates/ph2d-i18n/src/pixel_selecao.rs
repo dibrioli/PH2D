@@ -25,8 +25,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "pixel.hint.move" => {
             "{tool}: drag the selection to move its pixels · Enter applies, Esc cancels"
         }
-        "panel.pixel.selection" => "Selection",
-        "panel.pixel.select.mode" => "Mode",
+        "panel.pixel.select.mode" => "Selection mode",
         "panel.pixel.select.replace" => "Replace",
         "panel.pixel.select.add" => "Add",
         "panel.pixel.select.subtract" => "Subtract",

@@ -216,8 +216,7 @@ impl Corpo<'_> {
             tr("panel.pixel.spray_width"),
             tr("panel.pixel.spray_speed"),
             tr(selecao::NOMES[0]),
-            tr(selecao::NOMES[1]),
-            tr(selecao::NOMES[3]),
+            tr(selecao::NOMES[2]),
         ];
         let sec = Seccao::medida(self.text_system, 1, &nomes);
         let mut y = self.opcoes_selecao(info, sec, y);

@@ -11,7 +11,7 @@
 > um doc descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**93 arquivos** · **1** citados pelo `CLAUDE.md` (marcados **◆**) · **93** são handoffs (registro **morto**).
+**97 arquivos** · **1** citados pelo `CLAUDE.md` (marcados **◆**) · **97** são handoffs (registro **morto**).
 
 | Data | | Arquivo | Papel | Assunto |
 |---|---|---|---|---|
@@ -108,6 +108,10 @@
 | 2026-10-24 | ◆ | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-24_F27.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-24_F27.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-24 — F27 (todo campo do Inspector é um canal; a palavra de uma es… |
 | 2026-10-25 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-25_F29.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-25_F29.md) | ⚠️ handoff (morto) | HANDOFF DE CONTINUAÇÃO — `line/UIUX`, 25/10 — F29: o composto do balde tem um z só, a booleana veste a cor, o … |
 | 2026-10-25 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-25_F30.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-25_F30.md) | ⚠️ handoff (morto) | HANDOFF DE CONTINUAÇÃO — `line/UIUX`, 25/10 — F30: a lista FORA do Auto Key — itens com identidade, a Cena e a… |
+| 2026-10-25 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-25_F31.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-25_F31.md) | ⚠️ handoff (morto) | HANDOFF de CONTINUAÇÃO — line/UIUX, onda F31 (25/10): a identidade das camadas do Vetor |
+| 2026-10-26 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-26_F32.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-26_F32.md) | ⚠️ handoff (morto) | HANDOFF de continuação — line/UIUX, onda F32 (26/10) — smoke do dono OK |
+| 2026-10-26 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-26_F33.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-26_F33.md) | ⚠️ handoff (morto) | HANDOFF de continuação — line/UIUX, onda F33 (filtros × efeitos), 26/10 |
+| 2026-10-26 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-26_F34.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-26_F34.md) | ⚠️ handoff (morto) | HANDOFF de continuação — line/UIUX, onda F34 (zoom perto numa forma com filtro), 26/10 |
 
 ---
 

@@ -9,6 +9,8 @@
 //!   Shape* dentro do chão, o jogador é um *Character* (o boneco anima-se pelo estado: parado, correr,
 //!   saltar, cair), as moedas e a bandeira são *Animated Sprite* e o céu é um *Sprite*. A arte é a de
 //!   fábrica (`ph2d_render::FACTORY_ART`, plano 06): os blocos repetem o azulejo pelo `UvTransform`.
+//! - **3** (plano 09): o nível 2 com a regra «Crouching → fall» no topo e o condutor a agachar sob o
+//!   «Low Ceiling» (← e ↓), a soltar ↓ lá debaixo e a sair para a direita.
 
 use ph2d_core::Vec2;
 use ph2d_ecs::scene::ComponentRegistry;
@@ -25,7 +27,7 @@ use ph2d_render::{
 use ph2d_script::{LuauScript, ProjectScripts};
 use std::sync::OnceLock;
 
-pub const CENAS: u32 = 2;
+pub const CENAS: u32 = 3;
 
 pub const ROUTERS: &[ph2d_app_host::SmokeRouter] = &[ph2d_app_host::SmokeRouter {
     env: "PH2D_GAME_SMOKE",
@@ -65,13 +67,20 @@ pub enum Gesto {
     /// A seta para cima (saltar), premida ou largada.
     Salta(bool),
     Para,
+    /// A seta para a esquerda, premida ou largada.
+    Esquerda(bool),
+    /// A seta para baixo (agachar), premida ou largada.
+    Abaixa(bool),
 }
 
 /// A seta que um gesto prime ou larga.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+/// ⚠️ A shell indexa as teclas pela ordem destas variantes (`janela_do_jogo.rs`): append-only.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Seta {
     Direita,
     Cima,
+    Esquerda,
+    Baixo,
 }
 
 impl Gesto {
@@ -81,6 +90,8 @@ impl Gesto {
         match self {
             Gesto::Direita(d) => Some((Seta::Direita, d)),
             Gesto::Salta(d) => Some((Seta::Cima, d)),
+            Gesto::Esquerda(d) => Some((Seta::Esquerda, d)),
+            Gesto::Abaixa(d) => Some((Seta::Baixo, d)),
             _ => None,
         }
     }
@@ -108,7 +119,11 @@ pub fn conducao() -> Option<GameStage> {
 /// quatro animações por esta ordem.
 #[must_use]
 pub fn gesto_no_quadro(nivel: u32, stage: GameStage, quadro: u32) -> Option<Gesto> {
-    let horario: &[(u32, Gesto)] = if nivel == 2 { &HORARIO_2 } else { &HORARIO_1 };
+    let horario: &[(u32, Gesto)] = match nivel {
+        2 => &HORARIO_2,
+        3 => &HORARIO_3,
+        _ => &HORARIO_1,
+    };
     match quadro {
         60 => Some(Gesto::Joga(stage)),
         _ => horario.iter().find(|(q, _)| *q == quadro).map(|(_, g)| *g),
@@ -127,6 +142,17 @@ pub const HORARIO_2: [(u32, Gesto); 5] = [
     (QUADRO_DO_SALTO, Gesto::Salta(true)),
     (QUADRO_DO_SALTO + 12, Gesto::Salta(false)),
     (330, Gesto::Direita(false)),
+    (480, Gesto::Para),
+];
+/// O nível 3: ← e ↓ até à parede (sob o tecto baixo), solta ↓ lá debaixo (continua agachado), sai para
+/// a direita (levanta) e pára.
+pub const HORARIO_3: [(u32, Gesto); 7] = [
+    (120, Gesto::Esquerda(true)),
+    (125, Gesto::Abaixa(true)),
+    (240, Gesto::Esquerda(false)),
+    (250, Gesto::Abaixa(false)),
+    (330, Gesto::Direita(true)),
+    (420, Gesto::Direita(false)),
     (480, Gesto::Para),
 ];
 /// Onde o salto do nível 2 sai (afinado pelo gate `o_nivel_2_anda_salta_cai_e_anima`).
@@ -186,6 +212,23 @@ const META: [f32; 4] = [0.30, 0.80, 0.40, 1.0];
 pub fn montar(sim: &mut SimWorld, registry: &ComponentRegistry, nivel: u32) -> Entity {
     match nivel {
         2 => nivel_2(sim, registry),
+        3 => {
+            let jogador = nivel_2(sim, registry);
+            let mut regras = vec![ph2d_physics_ecs::AnimRule {
+                when: ph2d_physics_ecs::AnimWhen::Pose(ph2d_physics_ecs::CharacterPose::Crouch),
+                play: "fall".into(),
+            }];
+            regras.extend(ph2d_physics_ecs::AnimRules::of_character(&Default::default()).0);
+            sim.world_mut()
+                .entity_mut(jogador)
+                .insert(ph2d_physics_ecs::AnimRules(regras));
+            println!(
+                "[game-smoke] =3 o nível 2 com a regra «Crouching → fall» no topo (não há desenho de \
+                 agachar): com ↓ e ← o boneco entra agachado sob o tecto baixo da esquerda, solta ↓ \
+                 lá debaixo e continua baixo, e ao sair para a direita levanta."
+            );
+            jogador
+        }
         _ => nivel_1(sim.world_mut()),
     }
 }

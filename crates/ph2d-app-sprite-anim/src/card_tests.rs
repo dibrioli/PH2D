@@ -304,3 +304,18 @@ fn o_tique_toca_a_lista_na_ordem_clicada() {
     }
     assert_eq!(seen, [5, 2, 7, 5]);
 }
+
+/// Plano 09: o cartão só oferece «Crouching» a um Platform Player que sabe agachar.
+#[test]
+fn o_cartao_sabe_se_o_personagem_agacha() {
+    let mut sim = SimWorld::new();
+    let e = character(&mut sim);
+    assert!(
+        !info(&sim, e).card.can_crouch,
+        "de fábrica o agachar nasce desligado"
+    );
+    if let Some(mut p) = sim.world_mut().get_mut::<PlatformPlayer>(e) {
+        p.crouch_height = 0.5 * p.float_height;
+    }
+    assert!(info(&sim, e).card.can_crouch);
+}

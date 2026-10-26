@@ -113,15 +113,14 @@ impl crate::App {
                     hero.bus.push(EditorAction::Transport(TransportCmd::Play));
                 }
             }
-            Some(g @ (Gesto::Direita(_) | Gesto::Salta(_))) => {
+            Some(Gesto::Para) => self.jogo_para(),
+            Some(g) => {
                 use winit::keyboard::KeyCode;
                 let Some((seta, desce)) = g.seta() else {
                     return;
                 };
-                let tecla = match seta {
-                    s::Seta::Direita => KeyCode::ArrowRight,
-                    s::Seta::Cima => KeyCode::ArrowUp,
-                };
+                #[rustfmt::skip] // pela ordem das variantes de `Seta`
+                let tecla = [KeyCode::ArrowRight, KeyCode::ArrowUp, KeyCode::ArrowLeft, KeyCode::ArrowDown][seta as usize];
                 if let Some(k) = crate::keymap::winit_to_input_keycode(tecla).map(ph2d_input::Key) {
                     self.input.apply_event(if desce {
                         ph2d_input::Event::KeyDown(k)
@@ -130,7 +129,6 @@ impl crate::App {
                     });
                 }
             }
-            Some(Gesto::Para) => self.jogo_para(),
             None => {}
         }
     }

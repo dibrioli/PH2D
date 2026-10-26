@@ -5,7 +5,8 @@ fn o_nivel_le_se_pela_porta_e_fora_da_faixa_e_inerte() {
     let com = |v: &'static str| move |k: &str| (k == "PH2D_GAME_SMOKE").then(|| v.to_owned());
     assert_eq!(armed_level_in(com("1")), Some(1));
     assert_eq!(armed_level_in(com("2")), Some(2));
-    assert_eq!(armed_level_in(com("3")), None);
+    assert_eq!(armed_level_in(com("3")), Some(3));
+    assert_eq!(armed_level_in(com("4")), None);
     assert_eq!(armed_level_in(com("x")), None);
     assert_eq!(armed_level_in(|_| None), None);
 }
@@ -378,4 +379,67 @@ fn no_nivel_2_agachado_passa_sob_o_tecto_baixo() {
     );
     let (x, agachado, _) = corre(&[(60, 0.0, false), (150, -1.0, true), (120, 1.0, false)]);
     assert!(x > saida + 0.5 && !agachado, "fora, levanta: x = {x}");
+}
+
+/// ⭐ Nível 3 (plano 09), pelo horário do condutor e pela ponte das regras: agachado sob o tecto toca a
+/// regra de cima («Crouching → fall»); soltar ↓ lá debaixo continua; a sair para a direita levanta e a
+/// regra larga.
+#[test]
+fn o_nivel_3_agacha_sob_o_tecto_e_a_regra_toca() {
+    use ph2d_physics_ecs::{PhysicsBridge, PlayerInput};
+    let mut sim = SimWorld::new();
+    let jogador = montar(&mut sim, &crate::registo_de_teste(), 3);
+    let mut bridge = PhysicsBridge::new();
+    let mut premidas = std::collections::BTreeSet::new();
+    let mut leituras = Vec::new();
+    for tick in 1..=420_u32 {
+        if let Some((seta, desce)) =
+            gesto_no_quadro(3, GameStage::Window, tick + 60).and_then(Gesto::seta)
+        {
+            if desce {
+                premidas.insert(seta);
+            } else {
+                premidas.remove(&seta);
+            }
+        }
+        let tem = |s| premidas.contains(&s);
+        let drive =
+            f32::from(u8::from(tem(Seta::Direita))) - f32::from(u8::from(tem(Seta::Esquerda)));
+        bridge.set_player_input(
+            jogador,
+            PlayerInput {
+                drive,
+                down: tem(Seta::Baixo),
+                ..PlayerInput::default()
+            },
+        );
+        bridge.dispatch(&mut sim, true, u64::from(tick));
+        crate::personagem::anima_personagens(
+            sim.world_mut(),
+            &bridge,
+            &Default::default(),
+            &ph2d_runtime::SignalOutbox::new(),
+        );
+        let a = sim
+            .world()
+            .get::<ph2d_ecs::SpriteAnimator>(jogador)
+            .expect("animador");
+        let x = sim
+            .world()
+            .get::<Transform>(jogador)
+            .expect("pose")
+            .translation
+            .x;
+        leituras.push((tick + 60, a.current.clone(), x));
+    }
+    let em = |q: u32| leituras.iter().find(|l| l.0 == q).expect("quadro").clone();
+    let (_, debaixo, x) = em(320);
+    assert_eq!(
+        debaixo, "fall",
+        "solto ↓ debaixo do tecto continua agachado: x = {x}"
+    );
+    assert!(x < -9.5, "e está debaixo dele: x = {x}");
+    let (_, fora, x) = em(470);
+    assert_ne!(fora, "fall", "fora do tecto levantou: x = {x}");
+    assert!(x > -9.0, "saiu: x = {x}");
 }

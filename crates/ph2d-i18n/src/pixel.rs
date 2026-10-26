@@ -197,7 +197,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.pixel.color_mode" => "Color Mode…",
         "panel.pixel.replace" => "Replace Color",
         "panel.pixel.replace_tolerance" => "Tolerance",
-        "panel.pixel.replace_apply" => "Replace foreground with background",
+        "panel.pixel.replace_apply" => "Replace",
+        "panel.pixel.replace_hint" => {
+            "Every pixel of the foreground color becomes the background color."
+        }
         "pixel.color_mode.title" => "Color Mode",
         "pixel.color_mode.target" => "Convert to",
         "pixel.color_mode.dithering" => "Dithering",
@@ -225,7 +228,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "pixel.layer.refuse.locked" => "This layer is locked: unlock it to paint",
         "pixel.layer.refuse.hidden" => "This layer is hidden: show it to paint",
         "pixel.layer.refuse.action" => "That layer action does not apply here",
-        "pixel.layer.refuse.selection" => "Select first (Select All, Ctrl+A): copying needs a selection",
+        "pixel.layer.refuse.selection" => {
+            "Select first (Select All, Ctrl+A): copying needs a selection"
+        }
         "panel.pixel.layer.select_all" => "Select All",
         "panel.pixel.layer.deselect" => "Deselect",
         "panel.pixel.layer.selection_all" => "Selection: the whole sprite",
@@ -253,7 +258,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.pixel.layer.copy" => "Copy",
         "panel.pixel.layer.paste" => "Paste as New Layer",
         "panel.pixel.layer.paste_reference" => "Paste as Reference",
-        "panel.pixel.layer.group_mode" => "A group has only a name: its layers show with their own mode and opacity",
+        "panel.pixel.layer.group_mode" => {
+            "A group has only a name: its layers show with their own mode and opacity"
+        }
         "panel.pixel.blend.normal" => "Normal",
         "panel.pixel.blend.multiply" => "Multiply",
         "panel.pixel.blend.screen" => "Screen",

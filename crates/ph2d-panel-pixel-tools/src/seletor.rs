@@ -33,7 +33,7 @@ impl Default for Params {
 }
 
 /// A rotação dos discos: a matiz 0 (vermelho) cai a −30° do eixo `+x`, o verde (120°) em cima.
-const RODA_OFFSET: f64 = 30.0 / 360.0;
+const RODA_OFFSET: f64 = 30.0 / 360.0; // LITERAL-PX-OK: matemática de matiz HSV (sextantes, 360°)
 
 fn byte(x: f64) -> u8 {
     #[expect(
@@ -41,7 +41,7 @@ fn byte(x: f64) -> u8 {
         clippy::cast_sign_loss,
         reason = "presa a 0..=255 antes da conversão"
     )]
-    let b = (x * 255.0).round().clamp(0.0, 255.0) as u8;
+    let b = (x * 255.0).round().clamp(0.0, 255.0) as u8; // LITERAL-PX-OK: byte de cor/opacidade 0..=255 (normalização sRGB)
     b
 }
 
@@ -50,13 +50,13 @@ fn rgb8(c: [f64; 3]) -> [u8; 3] {
 }
 
 fn unit(c: [u8; 3]) -> [f64; 3] {
-    c.map(|x| f64::from(x) / 255.0)
+    c.map(|x| f64::from(x) / 255.0) // LITERAL-PX-OK: byte de cor/opacidade 0..=255 (normalização sRGB)
 }
 
 /// HSV → RGB, tudo em `0..=1` (a matiz em fracção de volta).
 #[must_use]
 pub fn hsv_to_rgb(h: f64, s: f64, v: f64) -> [f64; 3] {
-    let h = h.rem_euclid(1.0) * 6.0;
+    let h = h.rem_euclid(1.0) * 6.0; // LITERAL-PX-OK: matemática de matiz HSV (sextantes, 360°)
     let c = v * s;
     let x = c * (1.0 - (h % 2.0 - 1.0).abs());
     let m = v - c;
@@ -82,13 +82,13 @@ pub fn rgb_to_hsv(c: [f64; 3]) -> (Option<f64>, Option<f64>, f64) {
     let s = (max > 0.0).then(|| d / max);
     let h = (d > 0.0).then(|| {
         let h = if max == r {
-            ((g - b) / d).rem_euclid(6.0)
+            ((g - b) / d).rem_euclid(6.0) // LITERAL-PX-OK: matemática de matiz HSV (sextantes, 360°)
         } else if max == g {
             (b - r) / d + 2.0
         } else {
-            (r - g) / d + 4.0
+            (r - g) / d + 4.0 // LITERAL-PX-OK: matemática de matiz HSV (sextantes, 360°)
         };
-        h / 6.0
+        h / 6.0 // LITERAL-PX-OK: matemática de matiz HSV (sextantes, 360°)
     });
     (h, s, max)
 }
@@ -117,14 +117,14 @@ pub fn rgb_to_hsl(c: [f64; 3]) -> (Option<f64>, Option<f64>, f64) {
 pub fn ryb_to_rgb([r, y, b]: [f64; 3]) -> [f64; 3] {
     // Os cantos (r, y, b) ∈ {0, 1}³, pela ordem do índice `r·4 + y·2 + b`.
     const CANTOS: [[f64; 3]; 8] = [
-        [1.0, 1.0, 1.0],   // branco
-        [0.163, 0.373, 0.6], // azul
-        [1.0, 1.0, 0.0],   // amarelo
-        [0.0, 0.66, 0.2],  // verde
-        [1.0, 0.0, 0.0],   // vermelho
-        [0.5, 0.0, 0.5],   // violeta
-        [1.0, 0.5, 0.0],   // laranja
-        [0.2, 0.094, 0.0], // preto
+        [1.0, 1.0, 1.0],     // branco
+        [0.163, 0.373, 0.6], // azul — LITERAL-PX-OK: canto do cubo RYB de Gossett & Chen (tabela publicada)
+        [1.0, 1.0, 0.0],     // amarelo
+        [0.0, 0.66, 0.2], // verde — LITERAL-PX-OK: canto do cubo RYB de Gossett & Chen (tabela publicada)
+        [1.0, 0.0, 0.0],  // vermelho
+        [0.5, 0.0, 0.5],  // violeta
+        [1.0, 0.5, 0.0],  // laranja
+        [0.2, 0.094, 0.0], // preto — LITERAL-PX-OK: canto do cubo RYB de Gossett & Chen (tabela publicada)
     ];
     let mut out = [0.0; 3];
     for (i, canto) in CANTOS.iter().enumerate() {
@@ -198,7 +198,11 @@ pub fn cor(m: PixelSelector, p: Params) -> [u8; 3] {
 pub fn no_quadro(m: PixelSelector, p: Params, u: f64, v: f64) -> Params {
     let (u, v) = (u.clamp(0.0, 1.0), v.clamp(0.0, 1.0));
     match m {
-        PixelSelector::TintShadeTone => Params { b: u, c: 1.0 - v, ..p },
+        PixelSelector::TintShadeTone => Params {
+            b: u,
+            c: 1.0 - v,
+            ..p
+        },
         PixelSelector::Spectrum => Params {
             a: u,
             c: 1.0 - v,
@@ -290,9 +294,9 @@ pub fn de_rgb(m: PixelSelector, c: [u8; 3], antes: Params) -> Params {
             // cor = (n·0,5 + 0,5)·brilho com |n| = 1: o brilho é a raiz de 4Σf²·s² − 4Σf·s + 2 = 0
             // em s = 1/brilho (a maior; a outra dá brilho > 1). Sem raiz real, o maior canal.
             let (sf, sf2) = (f.iter().sum::<f64>(), f.iter().map(|x| x * x).sum::<f64>());
-            let disc = 16.0 * sf * sf - 32.0 * sf2;
+            let disc = 16.0 * sf * sf - 32.0 * sf2; // LITERAL-PX-OK: coeficientes da raiz do brilho do mapa de normais (4Σf²s² − 4Σfs + 2 = 0)
             let v = if sf2 > 0.0 && disc >= 0.0 {
-                (8.0 * sf2 / (4.0 * sf + disc.sqrt())).min(1.0)
+                (8.0 * sf2 / (4.0 * sf + disc.sqrt())).min(1.0) // LITERAL-PX-OK: coeficientes da raiz do brilho do mapa de normais (4Σf²s² − 4Σfs + 2 = 0)
             } else {
                 f[0].max(f[1]).max(f[2])
             };
@@ -363,12 +367,16 @@ pub fn imagem_do_quadro(m: PixelSelector, p: Params, lado: u32) -> Vec<u8> {
             // (meio píxel para cada lado), misturada com o fundo do modo.
             let raio = ((u - 0.5) * 2.0).hypot((0.5 - v) * 2.0);
             let cob = ((1.0 - raio) * n * 0.5 + 0.5).clamp(0.0, 1.0);
-            let dentro = if raio <= 1.0 { (u, v) } else { ((u - 0.5) / raio + 0.5, (v - 0.5) / raio + 0.5) };
+            let dentro = if raio <= 1.0 {
+                (u, v)
+            } else {
+                ((u - 0.5) / raio + 0.5, (v - 0.5) / raio + 0.5)
+            };
             let c = cor(m, no_quadro(m, p, dentro.0, dentro.1));
             if m == PixelSelector::NormalMap {
                 let mistura = |k: usize| {
                     let (a, b) = (f64::from(c[k]), f64::from(NORMAL_FUNDO[k]));
-                    byte((b + (a - b) * cob) / 255.0)
+                    byte((b + (a - b) * cob) / 255.0) // LITERAL-PX-OK: byte de cor/opacidade 0..=255 (normalização sRGB)
                 };
                 out.extend_from_slice(&[mistura(0), mistura(1), mistura(2), u8::MAX]);
             } else {

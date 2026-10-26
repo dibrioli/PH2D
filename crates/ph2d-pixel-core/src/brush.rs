@@ -136,9 +136,10 @@ impl SplitMix32 {
     }
 }
 
-/// O hash de duas coordenadas (MVP `hash3`) — a semente do spray a partir da célula onde começou.
+/// A semente do spray a partir da célula onde começou (o `hash3` do MVP — outra lei que a do
+/// `ph2d_motion_kit::hash3`; só o nome coincidia).
 #[must_use]
-pub fn hash3(seed: u32, a: i32, b: i32) -> u32 {
+pub fn spray_seed(seed: u32, a: i32, b: i32) -> u32 {
     let mut x = seed ^ (a as u32).wrapping_mul(0x27d4_eb2d) ^ (b as u32).wrapping_mul(0x1656_67b1);
     x ^= x >> 15;
     x = x.wrapping_mul(0x85eb_ca6b);

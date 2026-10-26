@@ -89,12 +89,12 @@ pub const NUMBERS: [(NodeId, (f64, f64, f64)); 7] = [
             1.0,
         ),
     ),
-    (ANGLE, (-180.0, 180.0, 1.0)),
-    (CORNER, (0.0, 64.0, 1.0)),
-    (TOLERANCE, (0.0, 255.0, 1.0)),
-    (SPRAY_WIDTH, (1.0, 64.0, 1.0)),
-    (SPRAY_SPEED, (1.0, 128.0, 1.0)),
-    (REPLACE_TOLERANCE, (0.0, 255.0, 1.0)),
+    (ANGLE, (-180.0, 180.0, 1.0)), // LITERAL-PX-OK: faixa do valor no Aseprite (domínio do campo, não medida de desenho)
+    (CORNER, (0.0, 64.0, 1.0)), // LITERAL-PX-OK: faixa do valor no Aseprite (domínio do campo, não medida de desenho)
+    (TOLERANCE, (0.0, 255.0, 1.0)), // LITERAL-PX-OK: byte de cor/opacidade 0..=255 (normalização sRGB)
+    (SPRAY_WIDTH, (1.0, 64.0, 1.0)), // LITERAL-PX-OK: faixa do valor no Aseprite (domínio do campo, não medida de desenho)
+    (SPRAY_SPEED, (1.0, 128.0, 1.0)), // LITERAL-PX-OK: faixa do valor no Aseprite (domínio do campo, não medida de desenho)
+    (REPLACE_TOLERANCE, (0.0, 255.0, 1.0)), // LITERAL-PX-OK: byte de cor/opacidade 0..=255 (normalização sRGB)
 ];
 
 /// As caixas de marcar.
@@ -246,33 +246,112 @@ pub fn blend_option_id(i: usize) -> NodeId {
 
 /// Os botões do menu Layer: o id, a acção e o rótulo, nas filas em que se pintam.
 pub const LAYER_ACTIONS: [(NodeId, PixelLayerAction, &str); 16] = [
-    (hash_node_id("pixel.layer.new"), PixelLayerAction::NewLayer, "panel.pixel.layer.new"),
-    (hash_node_id("pixel.layer.new_group"), PixelLayerAction::NewGroup, "panel.pixel.layer.new_group"),
-    (hash_node_id("pixel.layer.duplicate"), PixelLayerAction::Duplicate, "panel.pixel.layer.duplicate"),
-    (hash_node_id("pixel.layer.delete"), PixelLayerAction::Delete, "panel.pixel.layer.delete"),
-    (hash_node_id("pixel.layer.up"), PixelLayerAction::MoveUp, "panel.pixel.layer.up"),
-    (hash_node_id("pixel.layer.down"), PixelLayerAction::MoveDown, "panel.pixel.layer.down"),
-    (hash_node_id("pixel.layer.merge_down"), PixelLayerAction::MergeDown, "panel.pixel.layer.merge_down"),
-    (hash_node_id("pixel.layer.flatten"), PixelLayerAction::Flatten, "panel.pixel.layer.flatten"),
-    (hash_node_id("pixel.layer.flatten_visible"), PixelLayerAction::FlattenVisible, "panel.pixel.layer.flatten_visible"),
-    (hash_node_id("pixel.layer.via_copy"), PixelLayerAction::ViaCopy, "panel.pixel.layer.via_copy"),
-    (hash_node_id("pixel.layer.via_cut"), PixelLayerAction::ViaCut, "panel.pixel.layer.via_cut"),
-    (hash_node_id("pixel.layer.copy"), PixelLayerAction::Copy, "panel.pixel.layer.copy"),
-    (hash_node_id("pixel.layer.paste"), PixelLayerAction::PasteAsLayer, "panel.pixel.layer.paste"),
-    (hash_node_id("pixel.layer.paste_reference"), PixelLayerAction::PasteAsReference, "panel.pixel.layer.paste_reference"),
-    (hash_node_id("pixel.layer.select_all"), PixelLayerAction::SelectAll, "panel.pixel.layer.select_all"),
-    (hash_node_id("pixel.layer.deselect"), PixelLayerAction::Deselect, "panel.pixel.layer.deselect"),
+    (
+        hash_node_id("pixel.layer.new"),
+        PixelLayerAction::NewLayer,
+        "panel.pixel.layer.new",
+    ),
+    (
+        hash_node_id("pixel.layer.new_group"),
+        PixelLayerAction::NewGroup,
+        "panel.pixel.layer.new_group",
+    ),
+    (
+        hash_node_id("pixel.layer.duplicate"),
+        PixelLayerAction::Duplicate,
+        "panel.pixel.layer.duplicate",
+    ),
+    (
+        hash_node_id("pixel.layer.delete"),
+        PixelLayerAction::Delete,
+        "panel.pixel.layer.delete",
+    ),
+    (
+        hash_node_id("pixel.layer.up"),
+        PixelLayerAction::MoveUp,
+        "panel.pixel.layer.up",
+    ),
+    (
+        hash_node_id("pixel.layer.down"),
+        PixelLayerAction::MoveDown,
+        "panel.pixel.layer.down",
+    ),
+    (
+        hash_node_id("pixel.layer.merge_down"),
+        PixelLayerAction::MergeDown,
+        "panel.pixel.layer.merge_down",
+    ),
+    (
+        hash_node_id("pixel.layer.flatten"),
+        PixelLayerAction::Flatten,
+        "panel.pixel.layer.flatten",
+    ),
+    (
+        hash_node_id("pixel.layer.flatten_visible"),
+        PixelLayerAction::FlattenVisible,
+        "panel.pixel.layer.flatten_visible",
+    ),
+    (
+        hash_node_id("pixel.layer.via_copy"),
+        PixelLayerAction::ViaCopy,
+        "panel.pixel.layer.via_copy",
+    ),
+    (
+        hash_node_id("pixel.layer.via_cut"),
+        PixelLayerAction::ViaCut,
+        "panel.pixel.layer.via_cut",
+    ),
+    (
+        hash_node_id("pixel.layer.copy"),
+        PixelLayerAction::Copy,
+        "panel.pixel.layer.copy",
+    ),
+    (
+        hash_node_id("pixel.layer.paste"),
+        PixelLayerAction::PasteAsLayer,
+        "panel.pixel.layer.paste",
+    ),
+    (
+        hash_node_id("pixel.layer.paste_reference"),
+        PixelLayerAction::PasteAsReference,
+        "panel.pixel.layer.paste_reference",
+    ),
+    (
+        hash_node_id("pixel.layer.select_all"),
+        PixelLayerAction::SelectAll,
+        "panel.pixel.layer.select_all",
+    ),
+    (
+        hash_node_id("pixel.layer.deselect"),
+        PixelLayerAction::Deselect,
+        "panel.pixel.layer.deselect",
+    ),
 ];
 
 // ── o seletor de cor e as predefinições da paleta (P2) ──────────────────────────
 
 /// Os cinco seletores do menu ≡ da paleta (pintar, registar e despachar leem a MESMA tabela).
 pub const SELECTORS: [(PixelSelector, NodeId); 5] = [
-    (PixelSelector::TintShadeTone, hash_node_id("pixel.selector.tint")),
-    (PixelSelector::Spectrum, hash_node_id("pixel.selector.spectrum")),
-    (PixelSelector::RgbWheel, hash_node_id("pixel.selector.rgb_wheel")),
-    (PixelSelector::RybWheel, hash_node_id("pixel.selector.ryb_wheel")),
-    (PixelSelector::NormalMap, hash_node_id("pixel.selector.normal_map")),
+    (
+        PixelSelector::TintShadeTone,
+        hash_node_id("pixel.selector.tint"),
+    ),
+    (
+        PixelSelector::Spectrum,
+        hash_node_id("pixel.selector.spectrum"),
+    ),
+    (
+        PixelSelector::RgbWheel,
+        hash_node_id("pixel.selector.rgb_wheel"),
+    ),
+    (
+        PixelSelector::RybWheel,
+        hash_node_id("pixel.selector.ryb_wheel"),
+    ),
+    (
+        PixelSelector::NormalMap,
+        hash_node_id("pixel.selector.normal_map"),
+    ),
 ];
 
 /// As três áreas do seletor (quadro, barra do modo, alfa), cada uma com o gémeo do botão direito

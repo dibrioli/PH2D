@@ -101,14 +101,14 @@ pub(crate) fn populate(store: &mut WidgetStore) {
         ids::LAYER_OPACITY,
         InteractiveState::NumberInput {
             state: TextInputState::Normal,
-            value: 255.0,
+            value: 255.0, // LITERAL-PX-OK: byte de cor/opacidade 0..=255 (normalização sRGB)
             buffer: "255".to_owned(),
             caret: 0,
-            last_committed: 255.0,
+            last_committed: 255.0, // LITERAL-PX-OK: byte de cor/opacidade 0..=255 (normalização sRGB)
             selection_anchor: None,
         },
     );
-    store.set_number_range(ids::LAYER_OPACITY, 0.0, 255.0, 1.0);
+    store.set_number_range(ids::LAYER_OPACITY, 0.0, 255.0, 1.0); // LITERAL-PX-OK: byte de cor/opacidade 0..=255 (normalização sRGB)
     store.register(
         ids::LAYER_BLEND,
         InteractiveState::Dropdown {
@@ -228,7 +228,7 @@ fn com_numero(mut o: PixelOptions, id: NodeId, v: f64) -> PixelOptions {
         reason = "presa à faixa do campo antes da conversão"
     )]
     let (u, i) = {
-        let r = v.round().clamp(min, max);
+        let r = ph2d_editor_core::math::safe_clamp_f64(v.round(), min, max);
         (r as u32, r as i32)
     };
     match id {
@@ -285,7 +285,10 @@ pub(crate) fn register_palette(store: &mut WidgetStore, n: usize) {
     for i in 0..n {
         store.register_if_absent(ids::palette_id(i), InteractiveState::Plain);
     }
-    store.set_panel_row_ids(PanelRowFamily::PixelPalette, (0..n).map(ids::palette_id).collect());
+    store.set_panel_row_ids(
+        PanelRowFamily::PixelPalette,
+        (0..n).map(ids::palette_id).collect(),
+    );
 }
 
 /// O registo POR QUADRO dos botões das predefinições gravadas.
@@ -318,7 +321,10 @@ fn larga(dragged: NodeId, drop: PanelRowDrop) -> Option<PixelRequest> {
 /// **O arrasto no seletor** (smoke do dono 25/10: «os sliders da roda não arrastam, apenas
 /// clicam»): com o botão premido sobre o quadro ou uma barra, a cada quadro em que o ponteiro se
 /// moveu a cor de frente segue-o — a mesma conta do clique, fora do rect presa à borda.
-pub(crate) fn arrasta_seletor(st: &mut crate::PixelToolsPanelState, host: &mut dyn PanelHostInternal) {
+pub(crate) fn arrasta_seletor(
+    st: &mut crate::PixelToolsPanelState,
+    host: &mut dyn PanelHostInternal,
+) {
     let activo = host.store().active_id();
     let Some(id) = activo.filter(|a| ids::SELECTOR_AREAS.iter().any(|(p, _)| p == a)) else {
         st.seletor.arrasto = None;
@@ -344,15 +350,18 @@ fn escolhe(
     id: NodeId,
 ) -> Option<PixelRequest> {
     use crate::seletor;
-    let (k, fundo) = ids::SELECTOR_AREAS.iter().enumerate().find_map(|(k, (a, b))| {
-        if *a == id {
-            Some((k, false))
-        } else if *b == id {
-            Some((k, true))
-        } else {
-            None
-        }
-    })?;
+    let (k, fundo) = ids::SELECTOR_AREAS
+        .iter()
+        .enumerate()
+        .find_map(|(k, (a, b))| {
+            if *a == id {
+                Some((k, false))
+            } else if *b == id {
+                Some((k, true))
+            } else {
+                None
+            }
+        })?;
     let r = st.seletor.rects[k]?;
     let [px, py] = host.store().last_pointer()?;
     if r.w <= 0.0 || r.h <= 0.0 {
@@ -490,7 +499,7 @@ pub(crate) fn apply_event(
                 clippy::cast_sign_loss,
                 reason = "presa a 0..=255 antes da conversão"
             )]
-            let pedido = v.map(|v| PixelRequest::LayerOpacity(v.round().clamp(0.0, 255.0) as u8));
+            let pedido = v.map(|v| PixelRequest::LayerOpacity(v.round().clamp(0.0, 255.0) as u8)); // LITERAL-PX-OK: byte de cor/opacidade 0..=255 (normalização sRGB)
             let pedido = pedido.filter(|_| with_current(|i| i.editing));
             return empurra(host, pedido);
         }
@@ -560,7 +569,7 @@ pub(crate) fn apply_event(
                     clippy::cast_sign_loss,
                     reason = "presa a 1..=256 antes da conversão"
                 )]
-                let n = v.round().clamp(1.0, MAX_COLORS) as u16;
+                let n = v.round().clamp(1.0, MAX_COLORS) as u16; // CLAMP-OK: limites constantes e v finito (filtrado acima)
                 info.editing.then_some(PixelRequest::PaletteSize(n))
             });
             return empurra(host, pedido);

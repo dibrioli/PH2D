@@ -8,7 +8,12 @@ use ph2d_host::{PointerButton, PointerEvent, PointerKind, PointerSource};
 use ph2d_panel_pixel_tools::{PixelToolsPanel, PixelToolsPanelState, ids, set_current_pixel};
 use ph2d_ui_testkit::MockPanelHost;
 
-const VIEWPORT: Rect = Rect { x: 0.0, y: 0.0, w: 320.0, h: 4000.0 };
+const VIEWPORT: Rect = Rect {
+    x: 0.0,
+    y: 0.0,
+    w: 320.0,
+    h: 4000.0,
+};
 
 fn ev(kind: PointerKind, x: f32, y: f32, t: u128) -> PointerEvent {
     PointerEvent {
@@ -33,7 +38,11 @@ fn fgs(a: &[EditorAction]) -> Vec<[u8; 4]> {
 
 #[test]
 fn holding_and_moving_on_every_selector_part_follows_the_pointer_before_the_release() {
-    for modo in [PixelSelector::TintShadeTone, PixelSelector::RgbWheel, PixelSelector::NormalMap] {
+    for modo in [
+        PixelSelector::TintShadeTone,
+        PixelSelector::RgbWheel,
+        PixelSelector::NormalMap,
+    ] {
         for (k, (area, _)) in ids::SELECTOR_AREAS.iter().enumerate() {
             let mut host = MockPanelHost::with_panel::<PixelToolsPanel>();
             let mut st = PixelToolsPanelState::default();
@@ -48,7 +57,11 @@ fn holding_and_moving_on_every_selector_part_follows_the_pointer_before_the_rele
             info.options.selector = modo;
             set_current_pixel(info);
             let rects = host.paint::<PixelToolsPanel>(&mut st, VIEWPORT);
-            let r = rects.iter().find(|(n, _)| n == area).map(|(_, r)| *r).expect("pintado");
+            let r = rects
+                .iter()
+                .find(|(n, _)| n == area)
+                .map(|(_, r)| *r)
+                .expect("pintado");
             let (y, x0, x1) = (r.y + r.h * 0.5, r.x + r.w * 0.3, r.x + r.w * 0.8);
             let _ = host.dispatch_pointer_event(ev(PointerKind::Down, x0, y, 1));
             let _ = host.paint::<PixelToolsPanel>(&mut st, VIEWPORT);
@@ -56,8 +69,15 @@ fn holding_and_moving_on_every_selector_part_follows_the_pointer_before_the_rele
             let _ = host.dispatch_pointer_event(ev(PointerKind::Move, x1, y, 2));
             let _ = host.paint::<PixelToolsPanel>(&mut st, VIEWPORT);
             let depois = fgs(&host.drained_actions());
-            assert!(!depois.is_empty(), "{modo:?} parte {k}: mover premido não mudou a cor");
-            assert_ne!(antes.last(), depois.last(), "{modo:?} parte {k}: a cor não seguiu o ponteiro");
+            assert!(
+                !depois.is_empty(),
+                "{modo:?} parte {k}: mover premido não mudou a cor"
+            );
+            assert_ne!(
+                antes.last(),
+                depois.last(),
+                "{modo:?} parte {k}: a cor não seguiu o ponteiro"
+            );
         }
     }
 }
@@ -82,7 +102,11 @@ fn matiz(c: [u8; 4]) -> Option<f64> {
 #[test]
 fn dragging_the_brightness_bar_keeps_the_wheel_hue_with_a_lagging_snapshot() {
     // smoke do dono 25/10: «arrastar o slider que escurece deixa o seletor da roda vibrando»
-    for modo in [PixelSelector::RgbWheel, PixelSelector::RybWheel, PixelSelector::NormalMap] {
+    for modo in [
+        PixelSelector::RgbWheel,
+        PixelSelector::RybWheel,
+        PixelSelector::NormalMap,
+    ] {
         let mut host = MockPanelHost::with_panel::<PixelToolsPanel>();
         let mut st = PixelToolsPanelState::default();
         let mut info = PixelPanelInfo {
@@ -96,7 +120,11 @@ fn dragging_the_brightness_bar_keeps_the_wheel_hue_with_a_lagging_snapshot() {
         info.options.selector = modo;
         set_current_pixel(info.clone());
         let rects = host.paint::<PixelToolsPanel>(&mut st, VIEWPORT);
-        let r = rects.iter().find(|(n, _)| *n == ids::SELECTOR_AREAS[1].0).map(|(_, r)| *r).expect("barra");
+        let r = rects
+            .iter()
+            .find(|(n, _)| *n == ids::SELECTOR_AREAS[1].0)
+            .map(|(_, r)| *r)
+            .expect("barra");
         let y = r.y + r.h * 0.5;
         let _ = host.dispatch_pointer_event(ev(PointerKind::Down, r.x + r.w * 0.95, y, 1));
         let _ = host.paint::<PixelToolsPanel>(&mut st, VIEWPORT);
@@ -126,7 +154,10 @@ fn dragging_the_brightness_bar_keeps_the_wheel_hue_with_a_lagging_snapshot() {
             assert!(
                 (p.a - p0.a).abs() < 1e-9 && (p.b - p0.b).abs() < 1e-9,
                 "{modo:?}: o anel da roda saltou ({:.4},{:.4}) → ({:.4},{:.4})",
-                p0.a, p0.b, p.a, p.b
+                p0.a,
+                p0.b,
+                p.a,
+                p.b
             );
         }
         // e o anel da barra só anda para onde o ponteiro anda (para a esquerda): nunca volta atrás
@@ -134,9 +165,15 @@ fn dragging_the_brightness_bar_keeps_the_wheel_hue_with_a_lagging_snapshot() {
             brilhos.windows(2).all(|w| w[1] <= w[0] + 1e-9),
             "{modo:?}: o anel da barra vibrou {brilhos:?}"
         );
-        let hs: Vec<f64> = mandadas.iter().filter(|c| c[0].max(c[1]).max(c[2]) > 12).filter_map(|&c| matiz(c)).collect();
+        let hs: Vec<f64> = mandadas
+            .iter()
+            .filter(|c| c[0].max(c[1]).max(c[2]) > 12)
+            .filter_map(|&c| matiz(c))
+            .collect();
         assert!(hs.len() > 10, "{modo:?}: a barra mandou cores");
-        let (mn, mx) = hs.iter().fold((f64::MAX, f64::MIN), |(a, b), &h| (a.min(h), b.max(h)));
+        let (mn, mx) = hs
+            .iter()
+            .fold((f64::MAX, f64::MIN), |(a, b), &h| (a.min(h), b.max(h)));
         assert!(mx - mn < 6.0, "{modo:?}: a matiz tremeu {mn:.1}..{mx:.1}");
         // e o raio do anel (a saturação) também não pode saltar
         let ss: Vec<f64> = mandadas
@@ -147,7 +184,12 @@ fn dragging_the_brightness_bar_keeps_the_wheel_hue_with_a_lagging_snapshot() {
                 f64::from(mx - mn) / f64::from(mx)
             })
             .collect();
-        let (smn, smx) = ss.iter().fold((f64::MAX, f64::MIN), |(a, b), &s| (a.min(s), b.max(s)));
-        assert!(smx - smn < 0.08, "{modo:?}: a saturação tremeu {smn:.3}..{smx:.3}");
+        let (smn, smx) = ss
+            .iter()
+            .fold((f64::MAX, f64::MIN), |(a, b), &s| (a.min(s), b.max(s)));
+        assert!(
+            smx - smn < 0.08,
+            "{modo:?}: a saturação tremeu {smn:.3}..{smx:.3}"
+        );
     }
 }

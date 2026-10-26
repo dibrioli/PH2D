@@ -112,7 +112,11 @@ pub fn insert(
 
 /// Os cels a pôr para que nenhum ligado fique a apontar para um dono que SAI: o primeiro ligado
 /// que fica (na ordem da linha do tempo) recebe a imagem e os outros passam a apontar para ele.
-fn rehome(s: &Sprite, gone: &dyn Fn(CelKey) -> bool, order: &[FrameId]) -> Vec<(CelKey, Option<Cel>)> {
+fn rehome(
+    s: &Sprite,
+    gone: &dyn Fn(CelKey) -> bool,
+    order: &[FrameId],
+) -> Vec<(CelKey, Option<Cel>)> {
     let mut out = Vec::new();
     for (&key, c) in s.entries().filter(|(k, c)| c.link.is_none() && gone(**k)) {
         let heirs: Vec<FrameId> = order
@@ -123,9 +127,18 @@ fn rehome(s: &Sprite, gone: &dyn Fn(CelKey) -> bool, order: &[FrameId]) -> Vec<(
                 !gone(k) && s.entry(k).is_some_and(|e| e.link == Some(key.1))
             })
             .collect();
-        let Some((&first, rest)) = heirs.split_first() else { continue };
+        let Some((&first, rest)) = heirs.split_first() else {
+            continue;
+        };
         let z = s.entry((key.0, first)).map_or(0, |e| e.z);
-        out.push(((key.0, first), Some(Cel { z, link: None, ..c.clone() })));
+        out.push((
+            (key.0, first),
+            Some(Cel {
+                z,
+                link: None,
+                ..c.clone()
+            }),
+        ));
         for &f in rest {
             let z = s.entry((key.0, f)).map_or(0, |e| e.z);
             out.push(((key.0, f), Some(Cel::linked(first, z))));
@@ -141,7 +154,12 @@ pub fn delete(s: &Sprite, ids: &[FrameId]) -> Option<Op> {
     if !s.frames().iter().any(|f| gone_f(f.id)) || s.frames().iter().all(|f| gone_f(f.id)) {
         return None;
     }
-    let frames: Vec<Frame> = s.frames().iter().filter(|f| !gone_f(f.id)).copied().collect();
+    let frames: Vec<Frame> = s
+        .frames()
+        .iter()
+        .filter(|f| !gone_f(f.id))
+        .copied()
+        .collect();
     let order: Vec<FrameId> = frames.iter().map(|f| f.id).collect();
     let mut cels: Vec<(CelKey, Option<Cel>)> = s
         .entries()
@@ -150,7 +168,11 @@ pub fn delete(s: &Sprite, ids: &[FrameId]) -> Option<Op> {
         .collect();
     cels.extend(rehome(s, &|k: CelKey| gone_f(k.1), &order));
     let mut tags = s.tags().to_vec();
-    let mut positions: Vec<u32> = ids.iter().filter_map(|&f| s.frame_index(f)).map(|i| i as u32).collect();
+    let mut positions: Vec<u32> = ids
+        .iter()
+        .filter_map(|&f| s.frame_index(f))
+        .map(|i| i as u32)
+        .collect();
     positions.sort_unstable();
     for &i in positions.iter().rev() {
         tags = tags_after_delete(&tags, i);
@@ -205,7 +227,13 @@ pub fn set_cel(s: &Sprite, key: CelKey, opacity: Option<u8>, z: Option<i16>) -> 
         let ok = s.owner(key);
         let img = s.entry(ok)?;
         if img.opacity != o {
-            cels.push((ok, Some(Cel { opacity: o, ..img.clone() })));
+            cels.push((
+                ok,
+                Some(Cel {
+                    opacity: o,
+                    ..img.clone()
+                }),
+            ));
         }
     }
     if let Some(z) = z {
@@ -236,7 +264,8 @@ pub fn link(s: &Sprite, layer: LayerId, frames: &[FrameId]) -> Option<Op> {
     let owner = s.owner((layer, first));
     let mut cels = Vec::new();
     for (&k, e) in s.entries().filter(|(k, _)| k.0 == layer && k.1 != owner.1) {
-        let joins = rest.contains(&k.1) || e.link.is_some_and(|o| o != owner.1 && rest.contains(&o));
+        let joins =
+            rest.contains(&k.1) || e.link.is_some_and(|o| o != owner.1 && rest.contains(&o));
         if joins && e.link != Some(owner.1) {
             cels.push((k, Some(Cel::linked(owner.1, e.z))));
         }
@@ -250,7 +279,14 @@ pub fn unlink(s: &Sprite, key: CelKey) -> Option<Op> {
     let e = s.entry(key)?;
     let order: Vec<FrameId> = s.frames().iter().map(|f| f.id).collect();
     let cels = if e.link.is_some() {
-        vec![(key, Some(Cel { z: e.z, link: None, ..s.cel(key)?.clone() }))]
+        vec![(
+            key,
+            Some(Cel {
+                z: e.z,
+                link: None,
+                ..s.cel(key)?.clone()
+            }),
+        )]
     } else {
         let mut v = rehome(s, &|k: CelKey| k == key, &order);
         if v.is_empty() {

@@ -95,11 +95,19 @@ impl Play {
             let (from, to) = (t.from as usize, t.to as usize);
             let end = if self.forward { to } else { from };
             if self.index != end {
-                self.index = if self.forward { self.index + 1 } else { self.index - 1 };
+                self.index = if self.forward {
+                    self.index + 1
+                } else {
+                    self.index - 1
+                };
                 return;
             }
             self.passes += 1;
-            let repeat = if t.repeat == 0 && self.opt.once { 1 } else { u32::from(t.repeat) };
+            let repeat = if t.repeat == 0 && self.opt.once {
+                1
+            } else {
+                u32::from(t.repeat)
+            };
             if repeat != 0 && self.passes >= repeat {
                 self.tag = None;
                 if to + 1 >= n && self.opt.once {
@@ -109,7 +117,10 @@ impl Play {
                 self.enter(s, if to + 1 >= n { 0 } else { to + 1 });
                 return;
             }
-            let ping = matches!(t.direction, Direction::PingPong | Direction::PingPongReverse);
+            let ping = matches!(
+                t.direction,
+                Direction::PingPong | Direction::PingPongReverse
+            );
             if ping {
                 self.forward = !self.forward;
                 self.index = if self.forward {
@@ -144,7 +155,11 @@ impl Play {
             self.tag = Some(ti);
             self.passes = 0;
             self.forward = first_forward(t.direction);
-            self.index = if self.forward { t.from as usize } else { t.to as usize };
+            self.index = if self.forward {
+                t.from as usize
+            } else {
+                t.to as usize
+            };
         }
     }
 }

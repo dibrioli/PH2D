@@ -1426,6 +1426,14 @@ const DIVIDA_CRATE: &[(&str, Classe, &str)] = &[
          um passo do desfazer do sprite, não um valor da cena no tempo",
     ),
     (
+        "ph2d-panel-pixel-tools",
+        NaoAnimavel,
+        "o painel PIXEL: opções da ferramenta (tamanho, ângulo, tolerância, spray, tinta), a paleta \
+         e as propriedades da camada do Pixel Sprite (nome, opacidade, modo) — o DOCUMENTO do \
+         sprite, cuja animação são os próprios frames; cada edição é um passo do desfazer do \
+         sprite, não um valor da cena no tempo (irmão do `ph2d-panel-pixel-timeline`)",
+    ),
+    (
         "ph2d-panel-bgremoval",
         NaoAnimavel,
         "parâmetro de uma ferramenta de imagem",

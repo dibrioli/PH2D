@@ -24,7 +24,8 @@ use std::collections::BTreeMap;
 
 use crate::blend::BlendMode;
 use crate::sprite::{
-    Cel, ColorMode, Direction, Frame, FrameId, Layer, LayerId, LayerKind, MAX_SIDE, Rect, Sprite, Tag,
+    Cel, ColorMode, Direction, Frame, FrameId, Layer, LayerId, LayerKind, MAX_SIDE, Rect, Sprite,
+    Tag,
 };
 
 pub const MAGIC: &[u8; 9] = b"PH2DPIXEL";

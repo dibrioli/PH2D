@@ -8,7 +8,8 @@
 
 use ph2d_pixel_core::layers::{self, Place};
 use ph2d_pixel_core::{
-    Background, ColorMode, History, LayerId, NewSprite, Op, Patch, Rect, Sample, Sprite, apply, pick,
+    Background, ColorMode, History, LayerId, NewSprite, Op, Patch, Rect, Sample, Sprite, apply,
+    pick,
 };
 use serde_json::Value;
 
@@ -32,7 +33,14 @@ fn sprite_of(c: &Value) -> Sprite {
     .expect("sprite");
     let t = n(&c["transparent"]) as u8;
     let colors = s.palette().to_vec();
-    apply(&mut s, Op::Palette { colors, transparent: t }).expect("paleta");
+    apply(
+        &mut s,
+        Op::Palette {
+            colors,
+            transparent: t,
+        },
+    )
+    .expect("paleta");
     let fl = c["layers"].as_array().expect("layers");
     let mut ids = vec![s.layers()[0].id];
     for _ in 1..fl.len() {
@@ -48,12 +56,15 @@ fn sprite_of(c: &Value) -> Sprite {
             apply(&mut s, op).expect("vis");
         }
         if let Some(cells) = l["cells"].as_array() {
-            let pixels: Vec<u8> = cells
-                .iter()
-                .map(|v| n(v) as u8)
-                .collect();
+            let pixels: Vec<u8> = cells.iter().map(|v| n(v) as u8).collect();
             let r = Rect::new(0, 0, w, h);
-            let p = Patch { layer: *id, frame: s.frames()[0].id, bbox: Some(r), rect: r, pixels };
+            let p = Patch {
+                layer: *id,
+                frame: s.frames()[0].id,
+                bbox: Some(r),
+                rect: r,
+                pixels,
+            };
             apply(&mut s, Op::Patch(p)).expect("patch");
         }
     }
@@ -86,7 +97,10 @@ fn the_top_visible_opaque_cell_wins_as_in_the_mvp() {
         }
         comparados += 1;
     }
-    assert!(comparados >= 20, "a fixtura tem de dar pilhas comparáveis: {comparados}");
+    assert!(
+        comparados >= 20,
+        "a fixtura tem de dar pilhas comparáveis: {comparados}"
+    );
 }
 
 /// A estrutura comparável: `(id do MVP, visível, opacidade, trancada)` por camada, de baixo para cima.
@@ -131,7 +145,8 @@ fn layer_ops_undo_and_redo_match_the_mvp_structure() {
         .expect("sprite");
         let mut h = History::default();
         let mut map = vec![(1u32, s.layers()[0].id)];
-        let ours = |mvp: u32, map: &[(u32, LayerId)]| map.iter().find(|(m, _)| *m == mvp).expect("id").1;
+        let ours =
+            |mvp: u32, map: &[(u32, LayerId)]| map.iter().find(|(m, _)| *m == mvp).expect("id").1;
         for step in seq["steps"].as_array().expect("steps") {
             let op = match step["op"].as_str().expect("op") {
                 "insert" => {
@@ -151,7 +166,10 @@ fn layer_ops_undo_and_redo_match_the_mvp_structure() {
                         Place::Into(_) => unreachable!(),
                     };
                     ls.insert(at, new);
-                    Op::Layers(Box::new(ph2d_pixel_core::LayerSet { layers: ls, cels: Vec::new() }))
+                    Op::Layers(Box::new(ph2d_pixel_core::LayerSet {
+                        layers: ls,
+                        cels: Vec::new(),
+                    }))
                 }
                 "delete" => layers::delete(&s, ours(n(&step["id"]), &map)).expect("apaga"),
                 "move" => {
@@ -159,7 +177,10 @@ fn layer_ops_undo_and_redo_match_the_mvp_structure() {
                     let mut ls = s.layers().to_vec();
                     let l = ls.remove(from);
                     ls.insert(to, l);
-                    Op::Layers(Box::new(ph2d_pixel_core::LayerSet { layers: ls, cels: Vec::new() }))
+                    Op::Layers(Box::new(ph2d_pixel_core::LayerSet {
+                        layers: ls,
+                        cels: Vec::new(),
+                    }))
                 }
                 _ => {
                     let id = ours(n(&step["id"]), &map);
@@ -178,7 +199,10 @@ fn layer_ops_undo_and_redo_match_the_mvp_structure() {
                     if let Some(nm) = p["name"].as_str() {
                         nm.clone_into(&mut l.name);
                     }
-                    Op::Layers(Box::new(ph2d_pixel_core::LayerSet { layers: ls, cels: Vec::new() }))
+                    Op::Layers(Box::new(ph2d_pixel_core::LayerSet {
+                        layers: ls,
+                        cels: Vec::new(),
+                    }))
                 }
             };
             h.commit(&mut s, op).expect("commit");
@@ -198,7 +222,10 @@ fn layer_ops_undo_and_redo_match_the_mvp_structure() {
 #[test]
 fn deleting_the_last_image_layer_is_refused_as_in_the_mvp() {
     let f = fx();
-    assert!(f["limits"]["delete_last"].as_str().is_some(), "o MVP recusa");
+    assert!(
+        f["limits"]["delete_last"].as_str().is_some(),
+        "o MVP recusa"
+    );
     let s = Sprite::new(NewSprite::default()).expect("sprite");
     assert!(layers::delete(&s, s.layers()[0].id).is_none());
 }

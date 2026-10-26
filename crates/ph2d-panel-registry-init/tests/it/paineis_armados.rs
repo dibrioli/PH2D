@@ -341,7 +341,10 @@ fn arma_a_linha_do_tempo() {
         layers: vec![camada(2, "Ink"), camada(1, "Background")],
         active_layer: Some(2),
         frames: (1..=3)
-            .map(|id| PixelFrameCol { id, duration_ms: 100 * id })
+            .map(|id| PixelFrameCol {
+                id,
+                duration_ms: 100 * id,
+            })
             .collect(),
         active_frame: Some(1),
         cels: vec![cel(2, 1, 1), cel(2, 2, 1), cel(1, 1, 1), cel(1, 3, 3)],

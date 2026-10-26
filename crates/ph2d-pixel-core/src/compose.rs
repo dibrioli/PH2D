@@ -114,7 +114,11 @@ pub fn ghosts(sprite: &Sprite, frame: FrameId, onion: &Onion) -> Vec<Ghost> {
     let mut out = Vec::new();
     for (side, reach) in [(true, onion.prev), (false, onion.next)] {
         for d in (1..=reach).rev() {
-            let j = if side { i.checked_sub(d as usize) } else { Some(i + d as usize) };
+            let j = if side {
+                i.checked_sub(d as usize)
+            } else {
+                Some(i + d as usize)
+            };
             let Some(f) = j.and_then(|j| sprite.frames().get(j)) else {
                 continue;
             };
@@ -137,7 +141,11 @@ pub fn ghosts(sprite: &Sprite, frame: FrameId, onion: &Onion) -> Vec<Ghost> {
 pub fn onion_tint(c: [u8; 4], before: bool) -> [u8; 4] {
     let v = (u32::from(c[0]) * 2126 + u32::from(c[1]) * 7152 + u32::from(c[2]) * 722) / 10000;
     let (hi, lo) = (((255 + v) / 2) as u8, (v / 2) as u8);
-    if before { [hi, lo, lo, c[3]] } else { [lo, lo, hi, c[3]] }
+    if before {
+        [hi, lo, lo, c[3]]
+    } else {
+        [lo, lo, hi, c[3]]
+    }
 }
 
 /// A vista de um frame com o papel vegetal: a janela `region` sobre `under` (os bytes já lá; `None`
@@ -172,7 +180,12 @@ pub fn compose_with_onion(
             if onion.tint {
                 src = onion_tint(src, g.before);
             }
-            d.copy_from_slice(&blend(BlendMode::Normal, [d[0], d[1], d[2], d[3]], src, g.opacity));
+            d.copy_from_slice(&blend(
+                BlendMode::Normal,
+                [d[0], d[1], d[2], d[3]],
+                src,
+                g.opacity,
+            ));
         }
     }
     if !onion.front {
@@ -194,7 +207,11 @@ impl Ctx<'_> {
     fn draw(&self, buf: &mut [u8]) {
         let mut flat = Vec::new();
         self.flatten(None, true, &mut flat);
-        let z = |l: &Layer| self.sprite.entry((l.id, self.frame)).map_or(0, |c| i32::from(c.z));
+        let z = |l: &Layer| {
+            self.sprite
+                .entry((l.id, self.frame))
+                .map_or(0, |c| i32::from(c.z))
+        };
         let mut keyed: Vec<_> = flat
             .into_iter()
             .enumerate()
@@ -212,11 +229,15 @@ impl Ctx<'_> {
     /// As camadas de imagem da árvore em ordem de desenho, com «vê-se». O grupo é PASS-THROUGH: os
     /// filhos misturam-se direto com o que está por baixo, e o modo do grupo não entra (Trial,
     /// g*/gm*.ase: 6 144/6 144 por modo). O índice conta as escondidas (esconder não reordena).
-    fn flatten<'a>(&'a self, parent: Option<LayerId>, shown: bool, out: &mut Vec<(&'a Layer, bool)>) {
+    fn flatten<'a>(
+        &'a self,
+        parent: Option<LayerId>,
+        shown: bool,
+        out: &mut Vec<(&'a Layer, bool)>,
+    ) {
         for layer in self.sprite.layers().iter().filter(|l| l.parent == parent) {
-            let me = shown
-                && layer.visible
-                && !(layer.reference && self.purpose == Purpose::Export);
+            let me =
+                shown && layer.visible && !(layer.reference && self.purpose == Purpose::Export);
             match layer.kind {
                 LayerKind::Image => out.push((layer, me)),
                 LayerKind::Group { .. } => self.flatten(Some(layer.id), me, out),

@@ -44,7 +44,13 @@ fn snap(s: &Sprite, back: &BTreeMap<FrameId, u64>) -> Snap {
     let l = s.layers()[0].id;
     s.frames()
         .iter()
-        .map(|f| (back[&f.id], u64::from(f.duration_ms), u64::from(s.value_at((l, f.id), 0, 0))))
+        .map(|f| {
+            (
+                back[&f.id],
+                u64::from(f.duration_ms),
+                u64::from(s.value_at((l, f.id), 0, 0)),
+            )
+        })
         .collect()
 }
 
@@ -64,7 +70,17 @@ fn frame_ops_undo_and_redo_reproduce_the_mvp_timeline_step_by_step() {
         let l = s.layers()[0].id;
         let r = Rect::new(0, 0, 1, 1);
         let frame = s.frames()[0].id;
-        apply(&mut s, Op::Patch(Patch { layer: l, frame, bbox: Some(r), rect: r, pixels: vec![1] })).expect("marca");
+        apply(
+            &mut s,
+            Op::Patch(Patch {
+                layer: l,
+                frame,
+                bbox: Some(r),
+                rect: r,
+                pixels: vec![1],
+            }),
+        )
+        .expect("marca");
         let mut to: BTreeMap<u64, FrameId> = BTreeMap::from([(1, s.frames()[0].id)]);
         let mut back: BTreeMap<FrameId, u64> = BTreeMap::from([(s.frames()[0].id, 1)]);
         let mut h = History::default();
@@ -73,9 +89,19 @@ fn frame_ops_undo_and_redo_reproduce_the_mvp_timeline_step_by_step() {
             let op = match st["op"].as_str().expect("op") {
                 "insert" => {
                     let src = st["copy_of"].as_u64().map_or(s.frames()[0].id, |c| to[&c]);
-                    let kind = if st["copy_of"].is_null() { NewFrame::Empty } else { NewFrame::Copy };
-                    let (op, id) =
-                        frames::insert(&mut s, n(&st["index"]) as usize, src, kind, n(&st["ms"]) as u32).expect("insere");
+                    let kind = if st["copy_of"].is_null() {
+                        NewFrame::Empty
+                    } else {
+                        NewFrame::Copy
+                    };
+                    let (op, id) = frames::insert(
+                        &mut s,
+                        n(&st["index"]) as usize,
+                        src,
+                        kind,
+                        n(&st["ms"]) as u32,
+                    )
+                    .expect("insere");
                     to.insert(n(&st["id"]), id);
                     back.insert(id, n(&st["id"]));
                     Some(op)
@@ -91,14 +117,23 @@ fn frame_ops_undo_and_redo_reproduce_the_mvp_timeline_step_by_step() {
             if let Some(op) = op {
                 h.commit(&mut s, op).expect("commit");
             }
-            assert_eq!(snap(&s, &back), mvp_snap(&st["after"]), "caso {k}, passo {st}");
+            assert_eq!(
+                snap(&s, &back),
+                mvp_snap(&st["after"]),
+                "caso {k}, passo {st}"
+            );
             states.push(snap(&s, &back));
         }
         let mut undos = Vec::new();
         while h.undo(&mut s) {
             undos.push(snap(&s, &back));
         }
-        let mvp_undos: Vec<Snap> = case["undos"].as_array().expect("u").iter().map(mvp_snap).collect();
+        let mvp_undos: Vec<Snap> = case["undos"]
+            .as_array()
+            .expect("u")
+            .iter()
+            .map(mvp_snap)
+            .collect();
         let mut want = vec![states.last().cloned().expect("fim")];
         want.extend(mvp_undos);
         let mut got = vec![states.last().cloned().expect("fim")];
@@ -114,8 +149,14 @@ fn frame_ops_undo_and_redo_reproduce_the_mvp_timeline_step_by_step() {
     }
     assert!(f["frame_limits"]["delete_last"].is_string());
     let s = indexed(1, 1);
-    assert!(frames::delete(&s, &[s.frames()[0].id]).is_none(), "o último frame não se apaga");
-    assert_eq!(u64::from(s.frames()[0].duration_ms), n(&f["frame_limits"]["default_ms"]));
+    assert!(
+        frames::delete(&s, &[s.frames()[0].id]).is_none(),
+        "o último frame não se apaga"
+    );
+    assert_eq!(
+        u64::from(s.frames()[0].duration_ms),
+        n(&f["frame_limits"]["default_ms"])
+    );
 }
 
 fn timeline(ms: &[u32]) -> Sprite {
@@ -139,7 +180,12 @@ fn playback_without_tags_shows_the_frame_the_mvp_shows_at_each_instant() {
     let f = fx();
     let mut vistos = 0;
     for c in f["playback"].as_array().expect("pb") {
-        let ms: Vec<u32> = c["ms"].as_array().expect("ms").iter().map(|v| n(v) as u32).collect();
+        let ms: Vec<u32> = c["ms"]
+            .as_array()
+            .expect("ms")
+            .iter()
+            .map(|v| n(v) as u32)
+            .collect();
         let s = timeline(&ms);
         for (key, once) in [("loop", false), ("once", true)] {
             for tv in c[key].as_array().expect("tv") {
@@ -163,7 +209,11 @@ fn one_cycle_of_each_tag_direction_is_the_mvp_play_order() {
     for c in f["play_order"].as_array().expect("po") {
         let (from, to) = (n(&c["from"]) as u32, n(&c["to"]) as u32);
         let mut s = timeline(&vec![100; to as usize + 2]);
-        { let op = frames::new_tag(&s, "t", from, to).expect("tag"); apply(&mut s, op) }.expect("tag");
+        {
+            let op = frames::new_tag(&s, "t", from, to).expect("tag");
+            apply(&mut s, op)
+        }
+        .expect("tag");
         let d = match c["direction"].as_str().expect("d") {
             "forward" => Direction::Forward,
             "reverse" => Direction::Reverse,
@@ -173,8 +223,17 @@ fn one_cycle_of_each_tag_direction_is_the_mvp_play_order() {
         if let Some(op) = frames::edit_tag(&s, 0, |t| t.direction = d) {
             apply(&mut s, op).expect("dir");
         }
-        let want: Vec<usize> = c["order"].as_array().expect("o").iter().map(|v| n(v) as usize).collect();
-        let start = if matches!(d, Direction::Forward | Direction::PingPong) { from } else { to };
+        let want: Vec<usize> = c["order"]
+            .as_array()
+            .expect("o")
+            .iter()
+            .map(|v| n(v) as usize)
+            .collect();
+        let start = if matches!(d, Direction::Forward | Direction::PingPong) {
+            from
+        } else {
+            to
+        };
         let mut p = Play::start(&s, start as usize, PlayOptions::default());
         let mut got = vec![p.index];
         while got.len() < want.len() * 2 {
@@ -190,15 +249,27 @@ fn one_cycle_of_each_tag_direction_is_the_mvp_play_order() {
 fn tags_follow_frame_insert_delete_move_and_undo_as_in_the_mvp() {
     let f = fx();
     let tags = |s: &Sprite| -> Vec<(String, u64, u64)> {
-        s.tags().iter().map(|t| (t.name.clone(), u64::from(t.from), u64::from(t.to))).collect()
+        s.tags()
+            .iter()
+            .map(|t| (t.name.clone(), u64::from(t.from), u64::from(t.to)))
+            .collect()
     };
     let mvp = |v: &Value| -> Vec<(String, u64, u64)> {
-        v.as_array().expect("t").iter().map(|t| (n(&t["id"]).to_string(), n(&t["from"]), n(&t["to"]))).collect()
+        v.as_array()
+            .expect("t")
+            .iter()
+            .map(|t| (n(&t["id"]).to_string(), n(&t["from"]), n(&t["to"])))
+            .collect()
     };
     for (k, c) in f["tag_ops"].as_array().expect("to").iter().enumerate() {
         let mut s = timeline(&vec![100; n(&c["frames"]) as usize]);
         for t in c["tags"].as_array().expect("tags") {
-            let op = frames::new_tag(&s, &n(&t["id"]).to_string(), n(&t["from"]) as u32, n(&t["to"]) as u32);
+            let op = frames::new_tag(
+                &s,
+                &n(&t["id"]).to_string(),
+                n(&t["from"]) as u32,
+                n(&t["to"]) as u32,
+            );
             apply(&mut s, op.expect("tag")).expect("tag");
         }
         let mut h = History::default();
@@ -207,10 +278,15 @@ fn tags_follow_frame_insert_delete_move_and_undo_as_in_the_mvp() {
             let op = match st["op"].as_str().expect("op") {
                 "insert" => {
                     let src = s.frames()[0].id;
-                    frames::insert(&mut s, n(&st["index"]) as usize, src, NewFrame::Empty, 100).map(|(o, _)| o)
+                    frames::insert(&mut s, n(&st["index"]) as usize, src, NewFrame::Empty, 100)
+                        .map(|(o, _)| o)
                 }
                 "delete" => frames::delete(&s, &[s.frames()[n(&st["index"]) as usize].id]),
-                _ => frames::move_to(&s, s.frames()[n(&st["from"]) as usize].id, n(&st["to"]) as usize),
+                _ => frames::move_to(
+                    &s,
+                    s.frames()[n(&st["from"]) as usize].id,
+                    n(&st["to"]) as usize,
+                ),
             };
             if let Some(op) = op {
                 h.commit(&mut s, op).expect("commit");

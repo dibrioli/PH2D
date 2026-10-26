@@ -25,7 +25,13 @@ fn fill(s: &mut Sprite, l: LayerId, r: Rect, rgba: [u8; 4]) {
     let bpp = s.mode().bpp();
     let pixels = (0..r.area()).flat_map(|_| v[..bpp].to_vec()).collect();
     let bbox = s.cel((l, frame(s))).map_or(r, |c| c.bbox.union(r));
-    let p = Patch { layer: l, frame: frame(s), bbox: Some(bbox), rect: r, pixels };
+    let p = Patch {
+        layer: l,
+        frame: frame(s),
+        bbox: Some(bbox),
+        rect: r,
+        pixels,
+    };
     apply(s, Op::Patch(p)).expect("patch");
 }
 
@@ -71,30 +77,60 @@ fn every_layer_action_is_one_step_whose_undo_restores_the_bytes() {
     let (s0, [bg, a, g, b, c]) = cena();
     type Acao = Box<dyn Fn(&mut Sprite) -> Option<Op>>;
     let acoes: Vec<(&str, Acao)> = vec![
-        ("new layer", Box::new(move |s| layers::new_layer(s, a).map(|r| r.0))),
-        ("new group", Box::new(move |s| layers::new_group(s, c).map(|r| r.0))),
+        (
+            "new layer",
+            Box::new(move |s| layers::new_layer(s, a).map(|r| r.0)),
+        ),
+        (
+            "new group",
+            Box::new(move |s| layers::new_group(s, c).map(|r| r.0)),
+        ),
         ("delete group", Box::new(move |s| layers::delete(s, g))),
-        ("rename", Box::new(move |s| layers::edit(s, a, |l| "x".clone_into(&mut l.name)))),
-        ("move", Box::new(move |s| layers::move_to(s, a, Place::Above(g)))),
-        ("move out", Box::new(move |s| layers::move_to(s, c, Place::Above(g)))),
-        ("duplicate group", Box::new(move |s| layers::duplicate(s, g).map(|r| r.0))),
+        (
+            "rename",
+            Box::new(move |s| layers::edit(s, a, |l| "x".clone_into(&mut l.name))),
+        ),
+        (
+            "move",
+            Box::new(move |s| layers::move_to(s, a, Place::Above(g))),
+        ),
+        (
+            "move out",
+            Box::new(move |s| layers::move_to(s, c, Place::Above(g))),
+        ),
+        (
+            "duplicate group",
+            Box::new(move |s| layers::duplicate(s, g).map(|r| r.0)),
+        ),
         ("merge down", Box::new(move |s| layers::merge_down(s, a))),
-        ("merge in group", Box::new(move |s| layers::merge_down(s, c))),
+        (
+            "merge in group",
+            Box::new(move |s| layers::merge_down(s, c)),
+        ),
         ("flatten", Box::new(|s| layers::flatten(s, false))),
         ("flatten visible", Box::new(|s| layers::flatten(s, true))),
-        ("via copy", Box::new(move |s| {
-            let f = frame(s);
-            layers::via(s, a, f, Rect::new(1, 1, 3, 2), false).map(|r| r.0)
-        })),
-        ("via cut", Box::new(move |s| {
-            let f = frame(s);
-            layers::via(s, b, f, Rect::new(0, 0, 4, 4), true).map(|r| r.0)
-        })),
-        ("paste", Box::new(move |s| {
-            let f = frame(s);
-            let clip = layers::copy(s, (a, f), s.bounds())?;
-            layers::paste_as_new(s, c, f, &clip, true).map(|r| r.0)
-        })),
+        (
+            "via copy",
+            Box::new(move |s| {
+                let f = frame(s);
+                layers::via(s, a, f, Rect::new(1, 1, 3, 2), false).map(|r| r.0)
+            }),
+        ),
+        (
+            "via cut",
+            Box::new(move |s| {
+                let f = frame(s);
+                layers::via(s, b, f, Rect::new(0, 0, 4, 4), true).map(|r| r.0)
+            }),
+        ),
+        (
+            "paste",
+            Box::new(move |s| {
+                let f = frame(s);
+                let clip = layers::copy(s, (a, f), s.bounds())?;
+                layers::paste_as_new(s, c, f, &clip, true).map(|r| r.0)
+            }),
+        ),
     ];
     let _ = bg;
     for (nome, acao) in acoes {
@@ -102,7 +138,8 @@ fn every_layer_action_is_one_step_whose_undo_restores_the_bytes() {
         let mut h = History::default();
         let op = acao(&mut s).unwrap_or_else(|| panic!("{nome}: a acção aplica-se"));
         let antes = bytes(&s);
-        h.commit(&mut s, op).unwrap_or_else(|e| panic!("{nome}: {e:?}"));
+        h.commit(&mut s, op)
+            .unwrap_or_else(|e| panic!("{nome}: {e:?}"));
         assert_ne!(bytes(&s), antes, "{nome}: mudou algo");
         let depois = bytes(&s);
         assert!(h.undo(&mut s), "{nome}");
@@ -152,7 +189,10 @@ fn a_group_passes_its_layers_through_and_its_mode_is_not_used() {
     let mut escondido = s0.clone();
     let op = layers::edit(&escondido, g, |l| l.visible = false).expect("olho");
     apply(&mut escondido, op).expect("olho");
-    assert!(!escondido.is_shown(c), "o grupo escondido esconde os filhos");
+    assert!(
+        !escondido.is_shown(c),
+        "o grupo escondido esconde os filhos"
+    );
     assert_ne!(image(&escondido), want);
 }
 
@@ -169,7 +209,10 @@ fn a_reference_layer_shows_but_is_not_exported_nor_flattened() {
     assert_ne!(ver, exp, "a vista mostra a referência; a exportação não");
     let op = layers::flatten(&mut s, false).expect("flatten");
     apply(&mut s, op).expect("flatten");
-    assert!(s.layer(r).is_some_and(|l| l.reference), "a referência fica de fora");
+    assert!(
+        s.layer(r).is_some_and(|l| l.reference),
+        "a referência fica de fora"
+    );
 }
 
 #[test]
@@ -197,16 +240,34 @@ fn the_tree_refuses_what_would_break_it() {
         let mut ls = s.layers().to_vec();
         f(&mut ls);
         let mut t = s.clone();
-        apply(&mut t, Op::Layers(Box::new(LayerSet { layers: ls, cels: Vec::new() })))
+        apply(
+            &mut t,
+            Op::Layers(Box::new(LayerSet {
+                layers: ls,
+                cels: Vec::new(),
+            })),
+        )
     };
     let pai = |ls: &mut Vec<Layer>, id: LayerId, p: Option<LayerId>| {
         ls.iter_mut().find(|l| l.id == id).expect("l").parent = p;
     };
-    assert!(matches!(tenta(&|ls| pai(ls, g, Some(g))), Err(OpError::BadLayers(_))), "ciclo");
-    assert!(matches!(tenta(&|ls| pai(ls, b, Some(a))), Err(OpError::BadLayers(_))), "pai sem ser grupo");
-    assert!(matches!(tenta(&|ls| ls.swap(0, 1)), Err(OpError::BadLayers(_))), "Background no fundo");
     assert!(
-        matches!(tenta(&|ls| ls.retain(|l| l.id != a)), Err(OpError::BadCel(_))),
+        matches!(tenta(&|ls| pai(ls, g, Some(g))), Err(OpError::BadLayers(_))),
+        "ciclo"
+    );
+    assert!(
+        matches!(tenta(&|ls| pai(ls, b, Some(a))), Err(OpError::BadLayers(_))),
+        "pai sem ser grupo"
+    );
+    assert!(
+        matches!(tenta(&|ls| ls.swap(0, 1)), Err(OpError::BadLayers(_))),
+        "Background no fundo"
+    );
+    assert!(
+        matches!(
+            tenta(&|ls| ls.retain(|l| l.id != a)),
+            Err(OpError::BadCel(_))
+        ),
         "tirar uma camada sem os cels dela deixaria cels órfãos"
     );
     let mut t = s.clone();
@@ -218,9 +279,18 @@ fn the_tree_refuses_what_would_break_it() {
             cels: vec![((g, frame(&s)), cel)],
         })),
     );
-    assert!(matches!(r, Err(OpError::BadCel(_))), "um grupo não tem cels");
-    assert!(layers::move_to(&s, bg, Place::Above(a)).is_none(), "a Background não sai do fundo");
-    assert!(layers::move_to(&s, g, Place::Into(g)).is_none(), "um grupo não entra em si");
+    assert!(
+        matches!(r, Err(OpError::BadCel(_))),
+        "um grupo não tem cels"
+    );
+    assert!(
+        layers::move_to(&s, bg, Place::Above(a)).is_none(),
+        "a Background não sai do fundo"
+    );
+    assert!(
+        layers::move_to(&s, g, Place::Into(g)).is_none(),
+        "um grupo não entra em si"
+    );
 }
 
 #[test]
@@ -240,5 +310,9 @@ fn paste_between_modes_goes_through_the_color() {
     let (op, id) = layers::paste_as_new(&mut idx, top, fi, &clip, false).expect("cola");
     apply(&mut idx, op).expect("cola");
     let v = idx.value_at((id, fi), 0, 0);
-    assert_eq!(v, idx.value_of_rgba([200, 30, 40, 160]), "a cor mais próxima da paleta");
+    assert_eq!(
+        v,
+        idx.value_of_rgba([200, 30, 40, 160]),
+        "a cor mais próxima da paleta"
+    );
 }

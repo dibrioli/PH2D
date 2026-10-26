@@ -43,7 +43,11 @@ fn subtree(layers: &[Layer], id: LayerId) -> Vec<LayerId> {
         out.extend(layers.iter().filter(|l| l.parent == Some(p)).map(|l| l.id));
         i += 1;
     }
-    layers.iter().map(|l| l.id).filter(|x| out.contains(x)).collect()
+    layers
+        .iter()
+        .map(|l| l.id)
+        .filter(|x| out.contains(x))
+        .collect()
 }
 
 fn index(layers: &[Layer], id: LayerId) -> Option<usize> {
@@ -262,7 +266,14 @@ pub fn merge_down(s: &Sprite, id: LayerId) -> Option<Op> {
                 if let Some(e) = s.entry(kb).filter(|e| e.link.is_some())
                     && let Some(img) = s.cel(kb)
                 {
-                    cels.push((kb, Some(Cel { z: e.z, link: None, ..img.clone() })));
+                    cels.push((
+                        kb,
+                        Some(Cel {
+                            z: e.z,
+                            link: None,
+                            ..img.clone()
+                        }),
+                    ));
                 }
                 continue;
             }
@@ -314,7 +325,10 @@ pub fn flatten(s: &mut Sprite, visible_only: bool) -> Option<Op> {
     if merged.is_empty() {
         return None;
     }
-    let background = s.layers().first().filter(|l| l.background && merged.contains(&l.id));
+    let background = s
+        .layers()
+        .first()
+        .filter(|l| l.background && merged.contains(&l.id));
     let mut flat = match background {
         Some(b) => b.clone(),
         None => Layer::image(LayerId(s.reserve_id()), "Flattened"),
@@ -356,7 +370,13 @@ pub fn flatten(s: &mut Sprite, visible_only: bool) -> Option<Op> {
 
 /// Layer ▸ New ▸ Layer via Copy / Layer via Cut: o retângulo `r` da camada `id` no frame vai para
 /// uma camada nova logo acima; em Cut, o original fica com o buraco (a cor transparente).
-pub fn via(s: &mut Sprite, id: LayerId, frame: FrameId, r: Rect, cut: bool) -> Option<(Op, LayerId)> {
+pub fn via(
+    s: &mut Sprite,
+    id: LayerId,
+    frame: FrameId,
+    r: Rect,
+    cut: bool,
+) -> Option<(Op, LayerId)> {
     let src = s.layer(id)?;
     if src.is_group() {
         return None;
@@ -369,10 +389,7 @@ pub fn via(s: &mut Sprite, id: LayerId, frame: FrameId, r: Rect, cut: bool) -> O
     }
     let new = LayerId(s.reserve_id());
     let layer = Layer::image(new, fresh_name(s, "Layer"));
-    let mut cels = vec![(
-        (new, frame),
-        Some(Cel::image(bbox, s.read_rect(key, bbox))),
-    )];
+    let mut cels = vec![((new, frame), Some(Cel::image(bbox, s.read_rect(key, bbox))))];
     if cut {
         let old = s.cel(key)?;
         let mut hole = old.clone();
@@ -447,7 +464,10 @@ pub fn paste_as_new(
     let mut layer = Layer::image(id, fresh_name(s, "Layer"));
     layer.reference = reference;
     let layers = insert_at(s.layers().to_vec(), vec![layer], Place::Above(above))?;
-    Some((set(layers, vec![((id, frame), Some(Cel::image(bbox, data)))]), id))
+    Some((
+        set(layers, vec![((id, frame), Some(Cel::image(bbox, data)))]),
+        id,
+    ))
 }
 
 fn clip_rgba(c: &Clip, b: &[u8]) -> [u8; 4] {

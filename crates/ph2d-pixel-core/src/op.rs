@@ -194,8 +194,8 @@ pub(crate) fn check_cels(
                 }
             }
             None => {
-                let empty_ok = c.bbox.is_empty()
-                    && fin.iter().any(|(o, x)| o.0 == k.0 && x.link == Some(k.1));
+                let empty_ok =
+                    c.bbox.is_empty() && fin.iter().any(|(o, x)| o.0 == k.0 && x.link == Some(k.1));
                 if c.data.len() != c.bbox.area() * bpp || (c.bbox.is_empty() && !empty_ok) {
                     return Err(OpError::BadCel(k));
                 }
@@ -266,7 +266,10 @@ pub(crate) fn check_layers(layers: &[Layer], next_id: u32) -> Result<(), OpError
         let mut p = l.parent;
         let mut hops = 0;
         while let Some(id) = p {
-            let g = layers.iter().find(|x| x.id == id).ok_or(bad("layer.parent"))?;
+            let g = layers
+                .iter()
+                .find(|x| x.id == id)
+                .ok_or(bad("layer.parent"))?;
             if !g.is_group() || hops > layers.len() {
                 return Err(bad("layer.parent"));
             }
@@ -317,7 +320,8 @@ fn apply_whole(s: &mut Sprite, w: Whole) -> Result<Whole, OpError> {
     {
         return Err(OpError::BadPalette);
     }
-    let all: Vec<(CelKey, Option<Cel>)> = w.cels.iter().map(|(k, c)| (*k, Some(c.clone()))).collect();
+    let all: Vec<(CelKey, Option<Cel>)> =
+        w.cels.iter().map(|(k, c)| (*k, Some(c.clone()))).collect();
     check_cels(s, &s.layers, &s.frames, &all, true, w.mode.bpp())?;
     Ok(Whole {
         mode: std::mem::replace(&mut s.mode, w.mode),
@@ -351,7 +355,10 @@ fn apply_patch(s: &mut Sprite, p: Patch) -> Result<Patch, OpError> {
         rect: p.rect,
         pixels: s.read_rect(key, p.rect),
     };
-    let held = s.cels.iter().any(|(k, c)| k.0 == key.0 && c.link == Some(key.1));
+    let held = s
+        .cels
+        .iter()
+        .any(|(k, c)| k.0 == key.0 && c.link == Some(key.1));
     let Some(bbox) = p.bbox.filter(|b| !b.is_empty()) else {
         match s.cels.get_mut(&key) {
             // Com ligados, a imagem fica vazia em vez de sair (eles continuam a apontar para ela).

@@ -4,7 +4,7 @@
 
 use std::collections::BTreeMap;
 
-use crate::brush::{Brush, SplitMix32, hash3};
+use crate::brush::{Brush, SplitMix32, spray_seed};
 use crate::fill::{Bucket, bucket_cells};
 use crate::ink::{self, Ink};
 use crate::op::{Op, Patch};
@@ -107,7 +107,7 @@ impl Stroke {
 
     fn start(&mut self, sprite: &Sprite, x: i32, y: i32) {
         self.last = (x, y);
-        self.rng = SplitMix32::new(hash3(0, x, y));
+        self.rng = SplitMix32::new(spray_seed(0, x, y));
         self.point(sprite, x, y);
     }
 

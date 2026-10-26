@@ -46,13 +46,25 @@ fn camada(s: &mut Sprite, above: Option<LayerId>) -> LayerId {
 
 fn pinta(s: &mut Sprite, layer: LayerId, frame: FrameId, bytes: Vec<u8>) {
     let r = Rect::new(0, 0, s.width(), s.height());
-    apply(s, Op::Patch(Patch { layer, frame, bbox: Some(r), rect: r, pixels: bytes })).expect("patch");
+    apply(
+        s,
+        Op::Patch(Patch {
+            layer,
+            frame,
+            bbox: Some(r),
+            rect: r,
+            pixels: bytes,
+        }),
+    )
+    .expect("patch");
 }
 
 fn rgb(s: &Sprite, frame: FrameId) -> Vec<u8> {
     let mut out = Vec::new();
     compose_rgba(s, frame, None, &mut out);
-    out.chunks_exact(4).flat_map(|p| [p[0], p[1], p[2]]).collect()
+    out.chunks_exact(4)
+        .flat_map(|p| [p[0], p[1], p[2]])
+        .collect()
 }
 
 fn dims(f: &Value) -> (u32, u32) {
@@ -64,11 +76,17 @@ fn dims(f: &Value) -> (u32, u32) {
 fn the_cel_opacity_multiplies_the_layer_opacity_as_on_the_trial_screen() {
     let f = fx();
     let (w, h) = dims(&f);
-    let (back, src) = (unhex(f["back"].as_str().expect("b")), unhex(f["src"]["A"].as_str().expect("a")));
+    let (back, src) = (
+        unhex(f["back"].as_str().expect("b")),
+        unhex(f["src"]["A"].as_str().expect("a")),
+    );
     let casos = f["cel"].as_array().expect("cel");
     assert_eq!(casos.len(), 7);
     for c in casos {
-        let (lo, co) = (c["layer"].as_u64().expect("l") as u8, c["cel"].as_u64().expect("c") as u8);
+        let (lo, co) = (
+            c["layer"].as_u64().expect("l") as u8,
+            c["cel"].as_u64().expect("c") as u8,
+        );
         let mut s = sprite(w, h);
         let fr = s.frames()[0].id;
         let b = camada(&mut s, None);
@@ -82,7 +100,11 @@ fn the_cel_opacity_multiplies_the_layer_opacity_as_on_the_trial_screen() {
             apply(&mut s, op).expect("cel");
         }
         let want = unhex(c["screen_rgb"].as_str().expect("rgb"));
-        let bad = rgb(&s, fr).chunks(3).zip(want.chunks(3)).filter(|(a, b)| a != b).count();
+        let bad = rgb(&s, fr)
+            .chunks(3)
+            .zip(want.chunks(3))
+            .filter(|(a, b)| a != b)
+            .count();
         assert_eq!(bad, 0, "camada {lo} × cel {co}: {bad} células diferentes");
     }
 }
@@ -103,7 +125,12 @@ fn cels_draw_by_layer_index_plus_z_then_z_as_on_the_trial_screen() {
         let mut ids = Vec::new();
         for (k, name) in ["A", "B", "C"].iter().enumerate() {
             top = camada(&mut s, Some(top));
-            pinta(&mut s, top, fr, unhex(f["src"][name].as_str().expect("src")));
+            pinta(
+                &mut s,
+                top,
+                fr,
+                unhex(f["src"][name].as_str().expect("src")),
+            );
             let z = zs[k].as_i64().expect("z") as i16;
             if let Some(op) = frames::set_cel(&s, (top, fr), None, Some(z)) {
                 apply(&mut s, op).expect("z");
@@ -111,7 +138,11 @@ fn cels_draw_by_layer_index_plus_z_then_z_as_on_the_trial_screen() {
             ids.push(top);
         }
         let want = unhex(c["screen_rgb"].as_str().expect("rgb"));
-        let bad = rgb(&s, fr).chunks(3).zip(want.chunks(3)).filter(|(a, b)| a != b).count();
+        let bad = rgb(&s, fr)
+            .chunks(3)
+            .zip(want.chunks(3))
+            .filter(|(a, b)| a != b)
+            .count();
         assert_eq!(bad, 0, "{}: {bad} células diferentes", c["name"]);
     }
 }
@@ -134,7 +165,13 @@ fn onion_sprite(f: &Value, w: u32, h: u32, faixa: bool) -> (Sprite, Vec<FrameId>
         let mut px = Vec::new();
         for y in 0..h {
             for x in 0..w {
-                let a = if x / (w / 4) != q { 0 } else if y < h / 2 { 255 } else { 128 };
+                let a = if x / (w / 4) != q {
+                    0
+                } else if y < h / 2 {
+                    255
+                } else {
+                    128
+                };
                 px.extend_from_slice(&[c[0], c[1], c[2], a]);
             }
         }
@@ -142,7 +179,13 @@ fn onion_sprite(f: &Value, w: u32, h: u32, faixa: bool) -> (Sprite, Vec<FrameId>
     }
     if faixa {
         let px = (0..w * h)
-            .flat_map(|i| if i / w < 8 { [128, 128, 128, 255] } else { [0, 0, 0, 0] })
+            .flat_map(|i| {
+                if i / w < 8 {
+                    [128, 128, 128, 255]
+                } else {
+                    [0, 0, 0, 0]
+                }
+            })
             .collect();
         pinta(&mut s, l, ids[2], px);
     }
@@ -152,7 +195,10 @@ fn onion_sprite(f: &Value, w: u32, h: u32, faixa: bool) -> (Sprite, Vec<FrameId>
 #[test]
 fn the_onion_skin_matches_the_trial_in_position_fade_and_red_blue_tint() {
     let f = fx();
-    let (w, h) = (f["w"].as_u64().expect("w") as u32, f["h"].as_u64().expect("h") as u32);
+    let (w, h) = (
+        f["w"].as_u64().expect("w") as u32,
+        f["h"].as_u64().expect("h") as u32,
+    );
     let mut vistos = 0;
     for (nome, v) in f["onion"].as_object().expect("onion") {
         let ini = &v["ini"];
@@ -169,7 +215,10 @@ fn the_onion_skin_matches_the_trial_in_position_fade_and_red_blue_tint() {
         let (s, ids) = onion_sprite(&f, w, h, faixa);
         let off = unhex(v["off_rgb"].as_str().expect("off"));
         // A leitura sem papel vegetal é o xadrez (e a faixa, que é opaca): o destino opaco.
-        let under: Vec<u8> = off.chunks(3).flat_map(|p| [p[0], p[1], p[2], 255]).collect();
+        let under: Vec<u8> = off
+            .chunks(3)
+            .flat_map(|p| [p[0], p[1], p[2], 255])
+            .collect();
         let under = if faixa {
             // por baixo da faixa está o xadrez do Trial; ela é opaca e por isso não se lê — o
             // xadrez de 16 células cinza 128/192 (Trial: Checked size 16×16)
@@ -179,7 +228,11 @@ fn the_onion_skin_matches_the_trial_in_position_fade_and_red_blue_tint() {
                 .flat_map(|(i, p)| {
                     let (x, y) = (i as u32 % w, i as u32 / w);
                     if y < 8 {
-                        let c = if ((x / 16) + (y / 16)) % 2 == 0 { 128 } else { 192 };
+                        let c = if ((x / 16) + (y / 16)) % 2 == 0 {
+                            128
+                        } else {
+                            192
+                        };
                         [c, c, c, 255]
                     } else {
                         [p[0], p[1], p[2], 255]
@@ -208,7 +261,12 @@ fn playback_steps_through_tags_passes_and_exits_as_the_trial_played_them() {
     let casos = f["play"].as_array().expect("play");
     assert_eq!(casos.len(), 17);
     for c in casos {
-        let durs: Vec<u32> = c["durations"].as_array().expect("d").iter().map(|v| v.as_u64().expect("ms") as u32).collect();
+        let durs: Vec<u32> = c["durations"]
+            .as_array()
+            .expect("d")
+            .iter()
+            .map(|v| v.as_u64().expect("ms") as u32)
+            .collect();
         let mut s = sprite(4, 4);
         let mut ids = vec![s.frames()[0].id];
         for _ in 1..durs.len() {
@@ -224,7 +282,12 @@ fn playback_steps_through_tags_passes_and_exits_as_the_trial_played_them() {
         }
         if let Some(t) = c["tag"].as_object() {
             let n = |k: &str| t[k].as_u64().expect("n");
-            { let op = frames::new_tag(&s, "walk", n("from") as u32, n("to") as u32).expect("tag"); apply(&mut s, op) }.expect("tag");
+            {
+                let op =
+                    frames::new_tag(&s, "walk", n("from") as u32, n("to") as u32).expect("tag");
+                apply(&mut s, op)
+            }
+            .expect("tag");
             let op = frames::edit_tag(&s, 0, |x| {
                 x.direction = Direction::from_code(n("direction") as u8).expect("dir");
                 x.repeat = n("repeat") as u16;
@@ -233,8 +296,17 @@ fn playback_steps_through_tags_passes_and_exits_as_the_trial_played_them() {
                 apply(&mut s, op).expect("props");
             }
         }
-        let want: Vec<usize> = c["frames"].as_array().expect("f").iter().map(|v| v.as_u64().expect("i") as usize).collect();
-        let mut p = Play::start(&s, c["start"].as_u64().expect("s") as usize, PlayOptions::default());
+        let want: Vec<usize> = c["frames"]
+            .as_array()
+            .expect("f")
+            .iter()
+            .map(|v| v.as_u64().expect("i") as usize)
+            .collect();
+        let mut p = Play::start(
+            &s,
+            c["start"].as_u64().expect("s") as usize,
+            PlayOptions::default(),
+        );
         let mut got = vec![p.index];
         while got.len() < want.len() {
             p.step(&s);
@@ -245,7 +317,12 @@ fn playback_steps_through_tags_passes_and_exits_as_the_trial_played_them() {
         for (k, ms) in c["ms"].as_array().expect("ms").iter().enumerate() {
             let d = durs[want[k + 1]] as i64;
             let m = ms.as_i64().expect("ms");
-            assert!((m - d).abs() <= 20, "{}: frame {} durou {m} ms, devia {d}", c["file"], want[k + 1]);
+            assert!(
+                (m - d).abs() <= 20,
+                "{}: frame {} durou {m} ms, devia {d}",
+                c["file"],
+                want[k + 1]
+            );
         }
     }
 }

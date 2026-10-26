@@ -21,7 +21,12 @@ impl Corpo<'_> {
     pub(super) fn camadas(&mut self, info: &PixelPanelInfo, renaming: Option<u32>, y: f32) -> f32 {
         let mut y = self.linha(tr("panel.pixel.layers"), ColorToken::Text3, y);
         for row in &info.layers {
-            y = self.linha_camada(row, info.active_layer == Some(row.id), renaming == Some(row.id), y);
+            y = self.linha_camada(
+                row,
+                info.active_layer == Some(row.id),
+                renaming == Some(row.id),
+                y,
+            );
         }
         y += ph2d_tokens::control_gap_px();
         if let Some(row) = info
@@ -32,11 +37,11 @@ impl Corpo<'_> {
         }
         let a = ids::LAYER_ACTIONS;
         let fila = |i: usize, j: usize| [(a[i].0, a[i].2), (a[j].0, a[j].2)];
-        y = self.botoes_camada(&fila(0, 1), y);
-        y = self.botoes_camada(&fila(2, 3), y);
-        y = self.botoes_camada(&fila(4, 5), y);
-        y = self.botoes_camada(&fila(6, 7), y);
-        y = self.botoes_camada(&[(a[8].0, a[8].2)], y);
+        y = self.botoes(&fila(0, 1), y);
+        y = self.botoes(&fila(2, 3), y);
+        y = self.botoes(&fila(4, 5), y);
+        y = self.botoes(&fila(6, 7), y);
+        y = self.botoes(&[(a[8].0, a[8].2)], y);
         // A cópia precisa de selecção (o Aseprite desliga Copy e via Copy/Cut sem ela): sem selecção
         // os botões não se pintam (nenhum controlo morto).
         let sel = if info.has_selection {
@@ -45,13 +50,13 @@ impl Corpo<'_> {
             "panel.pixel.layer.selection_none"
         };
         y = self.linha(tr(sel), ColorToken::Text3, y);
-        y = self.botoes_camada(&fila(14, 15), y);
+        y = self.botoes(&fila(14, 15), y);
         if info.has_selection {
-            y = self.botoes_camada(&fila(9, 10), y);
-            y = self.botoes_camada(&[(a[11].0, a[11].2)], y);
+            y = self.botoes(&fila(9, 10), y);
+            y = self.botoes(&[(a[11].0, a[11].2)], y);
         }
         if info.has_clip {
-            y = self.botoes_camada(&fila(12, 13), y);
+            y = self.botoes(&fila(12, 13), y);
         }
         y
     }
@@ -65,12 +70,17 @@ impl Corpo<'_> {
             theme: self.theme,
         };
         let rename = renaming.then_some(ids::LAYER_RENAME);
-        p.paint(row, (self.x, y, self.w), active, rename, &|w| ids::layer_widget_id(row.id, w))
+        p.paint(row, (self.x, y, self.w), active, rename, &|w| {
+            ids::layer_widget_id(row.id, w)
+        })
     }
 
     /// O modo e a opacidade da activa; o grupo não tem modo próprio (passa os filhos como estão).
     fn propriedades(&mut self, row: &PixelLayerRow, y: f32) -> f32 {
-        let nomes = [tr("panel.pixel.layer.mode"), tr("panel.pixel.layer.opacity")];
+        let nomes = [
+            tr("panel.pixel.layer.mode"),
+            tr("panel.pixel.layer.opacity"),
+        ];
         let sec = Seccao::medida(self.text_system, 1, &nomes);
         let mut y = self.linha(
             &format!("{} · {}", tr("panel.pixel.layer.properties"), row.name),
@@ -106,20 +116,5 @@ impl Corpo<'_> {
         }
         y += ROW_H_PX + ph2d_tokens::control_gap_px();
         self.campo(tr("panel.pixel.layer.opacity"), ids::LAYER_OPACITY, sec, y)
-    }
-
-    fn botoes_camada(&mut self, fila: &[(ph2d_a11y::NodeId, &str)], y: f32) -> f32 {
-        let gap = Spacing::Xs.px();
-        #[expect(clippy::cast_precision_loss, reason = "≤ 2 botões")]
-        let n = fila.len() as f32;
-        let bw = ((self.w - gap * (n - 1.0)) / n).max(1.0);
-        for (i, (id, key)) in fila.iter().enumerate() {
-            #[expect(clippy::cast_precision_loss, reason = "≤ 2 botões")]
-            let r = Rect::new(self.x + i as f32 * (bw + gap), y, bw, ROW_H_PX);
-            let b = Button::new(*id, tr(key)).visual(self.store.button_visual(*id));
-            paint_button(&b, r, self.scene, self.text_system, self.theme);
-            self.hit_index.register(*id, r);
-        }
-        y + ROW_H_PX + ph2d_tokens::control_gap_px()
     }
 }

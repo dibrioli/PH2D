@@ -7,7 +7,8 @@
 use ph2d_pixel_core::blend::BlendMode;
 use ph2d_pixel_core::layers::{self, Place};
 use ph2d_pixel_core::{
-    Background, ColorMode, LayerId, LayerKind, NewSprite, Op, Patch, Rect, Sprite, apply, compose_rgba,
+    Background, ColorMode, LayerId, LayerKind, NewSprite, Op, Patch, Rect, Sprite, apply,
+    compose_rgba,
 };
 use serde_json::Value;
 
@@ -57,7 +58,13 @@ impl Caso {
         assert_eq!(pixels.len(), r.area() * self.mode.bpp());
         apply(
             &mut self.s,
-            Op::Patch(Patch { layer: id, frame, bbox: Some(r), rect: r, pixels }),
+            Op::Patch(Patch {
+                layer: id,
+                frame,
+                bbox: Some(r),
+                rect: r,
+                pixels,
+            }),
         )
         .expect("patch");
         id
@@ -86,7 +93,9 @@ impl Caso {
     fn rgb(&self) -> Vec<u8> {
         let mut out = Vec::new();
         compose_rgba(&self.s, self.s.frames()[0].id, None, &mut out);
-        out.chunks_exact(4).flat_map(|p| [p[0], p[1], p[2]]).collect()
+        out.chunks_exact(4)
+            .flat_map(|p| [p[0], p[1], p[2]])
+            .collect()
     }
 }
 
@@ -119,7 +128,10 @@ fn every_blend_group_and_indexed_case_matches_the_trial_screen() {
             let s = k.camada(Some(g), &src);
             k.entra(s, g);
             grupos += 1;
-            assert!(matches!(k.s.layer(g).map(|l| l.kind), Some(LayerKind::Group { .. })));
+            assert!(matches!(
+                k.s.layer(g).map(|l| l.kind),
+                Some(LayerKind::Group { .. })
+            ));
             k.rgb()
         } else if let Some(rest) = stem.strip_prefix('g') {
             // g{MM}: o grupo Normal com [meio Normal, fonte MM]
@@ -152,8 +164,18 @@ fn every_blend_group_and_indexed_case_matches_the_trial_screen() {
             let o = num(rest);
             let mut k = Caso::new(w, h, ColorMode::Indexed);
             let pal = unhex(f["pal"].as_str().expect("pal"));
-            let colors: Vec<[u8; 4]> = pal.chunks_exact(4).map(|p| [p[0], p[1], p[2], p[3]]).collect();
-            apply(&mut k.s, Op::Palette { colors, transparent: 0 }).expect("paleta");
+            let colors: Vec<[u8; 4]> = pal
+                .chunks_exact(4)
+                .map(|p| [p[0], p[1], p[2], p[3]])
+                .collect();
+            apply(
+                &mut k.s,
+                Op::Palette {
+                    colors,
+                    transparent: 0,
+                },
+            )
+            .expect("paleta");
             let b = k.camada(None, &unhex(f["ib"].as_str().expect("ib")));
             let s = k.camada(Some(b), &unhex(f["is"].as_str().expect("is")));
             k.props(s, 0, o);
@@ -166,7 +188,11 @@ fn every_blend_group_and_indexed_case_matches_the_trial_screen() {
             .zip(want.chunks_exact(3))
             .filter(|(a, b)| a != b)
             .count();
-        assert_eq!(erros, 0, "{nome}: {erros} de {} células diferem da tela do Trial", n);
+        assert_eq!(
+            erros, 0,
+            "{nome}: {erros} de {} células diferem da tela do Trial",
+            n
+        );
     }
     assert_eq!(grupos, 19 + 18 + 3, "os casos de grupo");
 }

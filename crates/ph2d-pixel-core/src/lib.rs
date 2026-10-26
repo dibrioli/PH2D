@@ -28,13 +28,13 @@ pub mod symmetry;
 
 pub use codec::{CodecError, MAJOR, MINOR};
 pub use compose::{
-    Ghost, Onion, Purpose, Sample, compose_region, compose_rgba, compose_window, compose_with_onion, ghosts,
-    onion_tint, pick,
+    Ghost, Onion, Purpose, Sample, compose_region, compose_rgba, compose_window,
+    compose_with_onion, ghosts, onion_tint, pick,
 };
 pub use history::{DEFAULT_CAP_BYTES, History};
 pub use op::{FrameSet, LayerSet, Op, OpError, Patch, Whole, apply};
 pub use sprite::{
-    Background, Cel, CelKey, ColorMode, Direction, Frame, FrameId, Layer, LayerId, LayerKind, MAX_SIDE,
-    NewSprite, Rect, Sprite, SpriteError, Tag,
+    Background, Cel, CelKey, ColorMode, Direction, Frame, FrameId, Layer, LayerId, LayerKind,
+    MAX_SIDE, NewSprite, Rect, Sprite, SpriteError, Tag,
 };
 pub use stroke::{Paint, Stroke};

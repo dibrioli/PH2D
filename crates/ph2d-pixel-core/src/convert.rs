@@ -104,7 +104,13 @@ pub fn convert(sprite: &Sprite, mode: ColorMode, opt: Convert) -> Option<Whole> 
                 to_indexed(&mut m, &rgba, cel, opt.dither)
             }
         };
-        cels.insert(key, Cel { data, ..cel.clone() });
+        cels.insert(
+            key,
+            Cel {
+                data,
+                ..cel.clone()
+            },
+        );
     }
     Some(Whole {
         mode,

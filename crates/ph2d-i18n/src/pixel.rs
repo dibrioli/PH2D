@@ -112,7 +112,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.pixel.shape.line" => "Line",
         "panel.pixel.size" => "Size",
         "panel.pixel.angle" => "Angle",
-        "panel.pixel.pixel_perfect" => "Pixel-perfect",
+        "panel.pixel.pixel_perfect" => "Perfect",
         "panel.pixel.corner" => "Corner radius",
         "panel.pixel.spray_width" => "Spray width",
         "panel.pixel.spray_speed" => "Spray speed",

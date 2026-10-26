@@ -5,6 +5,7 @@ use bevy_ecs::entity::Entity;
 use std::sync::Arc;
 
 use ph2d_constraints::{Action, Ajuste, Canais, Kind, PontoDeForma, SplineIk, Spring};
+use ph2d_vec_scene::VertId;
 use ph2d_constraints_ecs::{
     Accoes, Caminhos, Constraints, Estado, Estados, Laco, Molas, Pontos, Simulador, evaluate,
 };
@@ -117,15 +118,23 @@ fn a_point_of_a_shape_is_a_target() {
     forma.scale.y = 2.0;
     sim.world_mut().spawn((StableId(20), forma));
     sim.world_mut().insert_resource(Pontos(
-        [(StableId(20), vec![[0.0, 0.0], [1.0, 0.5], [0.0, 1.0]])].into(),
+        [(
+            StableId(20),
+            [[0.0, 0.0], [1.0, 0.5], [0.0, 1.0]]
+                .into_iter()
+                .zip(1..)
+                .map(|(p, i)| (VertId(i), p))
+                .collect(),
+        )]
+        .into(),
     ));
     let mut c = Constraints::default();
     let bom = c.push(
-        Kind::PontoDeForma(PontoDeForma { indice: 1 }),
+        Kind::PontoDeForma(PontoDeForma { vert: VertId(2) }),
         Some(StableId(20)),
     );
     let fora = c.push(
-        Kind::PontoDeForma(PontoDeForma { indice: 9 }),
+        Kind::PontoDeForma(PontoDeForma { vert: VertId(9) }),
         Some(StableId(20)),
     );
     c.item_mut(fora).unwrap().enabled = false;

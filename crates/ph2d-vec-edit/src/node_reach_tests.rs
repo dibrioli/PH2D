@@ -147,6 +147,7 @@ fn deleting_a_selected_node_refits_its_neighbours() {
         out_handle: [o[0] * S, o[1] * S],
         kind: VertexKind::Smooth,
         corner_radius: 0.0,
+        id: ph2d_vec_scene::VertId::NOVO,
     };
     let id = scene.push_path(VecPath {
         verts: vec![

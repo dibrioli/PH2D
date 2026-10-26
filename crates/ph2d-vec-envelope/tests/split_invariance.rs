@@ -112,6 +112,7 @@ fn concat(mut a: VecPath, b: VecPath) -> VecPath {
         out_handle: first.out_handle,
         kind: VertexKind::Corner,
         corner_radius: 0.0,
+        id: ph2d_vec_scene::VertId::NOVO,
     });
     a.verts.extend(it);
     a
@@ -126,6 +127,7 @@ fn path_of(c: CubicBez) -> VecPath {
             out_handle: [c.p1.x, c.p1.y],
             kind: VertexKind::Corner,
             corner_radius: 0.0,
+            id: ph2d_vec_scene::VertId::NOVO,
         },
         VecVertex {
             anchor: [c.p3.x, c.p3.y],
@@ -133,6 +135,7 @@ fn path_of(c: CubicBez) -> VecPath {
             out_handle: [c.p3.x, c.p3.y],
             kind: VertexKind::Corner,
             corner_radius: 0.0,
+            id: ph2d_vec_scene::VertId::NOVO,
         },
     ];
     VecPath {

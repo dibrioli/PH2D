@@ -40,13 +40,7 @@ use ph2d_vec_scene::{Rgba8, StrokeSpec, VecPath, VecVertex, VertexKind};
 
 /// Um vértice suave: âncora e as duas alças, em coordenadas de mundo.
 fn c(a: [f64; 2], i: [f64; 2], o: [f64; 2]) -> VecVertex {
-    VecVertex {
-        anchor: a,
-        in_handle: i,
-        out_handle: o,
-        kind: VertexKind::Smooth,
-        corner_radius: 0.0,
-    }
+    VecVertex::with_handles(a, i, o, VertexKind::Smooth)
 }
 
 fn curva(verts: Vec<VecVertex>) -> VecPath {

@@ -15,7 +15,7 @@ const CENA_V22: &[u8] =
 fn seta_v22() -> Vec<u8> {
     let corpo = &CENA_V22[2..];
     assert_eq!(&CENA_V22[..2], &[22, 3], "versão 22, três formas");
-    let resto = ph2d_vec_scene::with_stroke_layout_v22(|| {
+    let resto = ph2d_vec_scene::with_wire_layout(22, || {
         postcard::take_from_bytes::<VecPath>(corpo)
             .expect("a forma 0 lê-se na forma v22")
             .1
@@ -53,7 +53,7 @@ fn an_envelope_child_source_is_rewritten_in_the_new_layout() {
         ph2d_ecs::VEC_ENVELOPE_TYPE_NAME,
         postcard::to_allocvec(&env).unwrap(),
     );
-    assert_eq!(crate::envelope_live::migra_traco_v22(&mut w), 1);
+    assert_eq!(crate::envelope_live::migra_fio(&mut w, 22), 1);
     let env: ph2d_ecs::VecEnvelope =
         postcard::from_bytes(&w.entities[0].components[0].data).expect("o envelope lê-se");
     let fonte: VecPath = postcard::from_bytes(&env.children[0].source).expect("a fonte lê-se VIVA");
@@ -71,7 +71,7 @@ fn a_skin_source_is_rewritten_in_the_new_layout() {
         ph2d_skeleton_ecs::SKIN_TYPE_NAME,
         postcard::to_allocvec(&skin).unwrap(),
     );
-    assert_eq!(ph2d_skeleton_live::skinned_mesh::migra_traco_v22(&mut w), 1);
+    assert_eq!(ph2d_skeleton_live::skinned_mesh::migra_fio(&mut w, 22), 1);
     let skin: ph2d_skeleton_ecs::SkinBind =
         postcard::from_bytes(&w.entities[0].components[0].data).expect("a pele lê-se");
     let g = ph2d_skeleton_live::skinned_mesh::le(&skin.source).expect("a fonte lê-se VIVA");
@@ -80,4 +80,64 @@ fn a_skin_source_is_rewritten_in_the_new_layout() {
         (g.pesos.as_slice(), g.efeitos_cozidos),
         (&[0.25, 0.75][..], true)
     );
+}
+
+const CENA_V23: &[u8] =
+    include_bytes!("../../ph2d-vec-scene/tests/it/fixtures/vec_scene_v23_geometria.bin");
+
+/// Os bytes v23 da 1.ª forma da cena da W4.2 («dentes», 10 vértices, sem id).
+fn dentes_v23() -> Vec<u8> {
+    let corpo = &CENA_V23[2..];
+    assert_eq!(&CENA_V23[..2], &[23, 2], "versão 23, duas formas");
+    let resto = ph2d_vec_scene::with_wire_layout(23, || {
+        postcard::take_from_bytes::<VecPath>(corpo)
+            .expect("a forma 0 lê-se na forma v23")
+            .1
+    });
+    corpo[..corpo.len() - resto.len()].to_vec()
+}
+
+fn assert_dentes(p: &VecPath) {
+    let ids: Vec<u32> = p.verts.iter().map(|v| v.id.0).collect();
+    assert_eq!(ids, (1..=10).collect::<Vec<_>>(), "abre numerada");
+    assert_eq!(p.verts[3].corner_radius, 2.5);
+}
+
+/// ⭐ W4.2: a fonte v23 de um envelope (geometria sem id) regrava-se VIVA e numerada.
+#[test]
+fn a_v23_envelope_child_source_is_rewritten_with_ids() {
+    let filho = ph2d_ecs::VecEnvelopeChild {
+        path: 7,
+        source: dentes_v23(),
+    };
+    assert!(
+        postcard::from_bytes::<VecPath>(&filho.source).map_or(true, |p| p.verts.len() != 10),
+        "⛔ CONTROLO: a fonte v23 NÃO se lê com a forma viva"
+    );
+    let env = ph2d_ecs::VecEnvelope::at_rest(vec![filho], [[0.0; 2]; 4], [[[0.0; 2]; 2]; 4]);
+    let mut w = mundo_com(
+        ph2d_ecs::VEC_ENVELOPE_TYPE_NAME,
+        postcard::to_allocvec(&env).unwrap(),
+    );
+    assert_eq!(crate::envelope_live::migra_fio(&mut w, 23), 1);
+    let env: ph2d_ecs::VecEnvelope =
+        postcard::from_bytes(&w.entities[0].components[0].data).expect("o envelope lê-se");
+    let fonte: VecPath = postcard::from_bytes(&env.children[0].source).expect("a fonte lê-se VIVA");
+    assert_dentes(&fonte);
+}
+
+#[test]
+fn a_v23_skin_source_is_rewritten_with_ids() {
+    let mut fonte = dentes_v23();
+    fonte.extend(postcard::to_allocvec(&(vec![0.5_f64], None::<u8>, false)).unwrap());
+    let skin = ph2d_skeleton_ecs::SkinBind::new(fonte, Vec::new());
+    let mut w = mundo_com(
+        ph2d_skeleton_ecs::SKIN_TYPE_NAME,
+        postcard::to_allocvec(&skin).unwrap(),
+    );
+    assert_eq!(ph2d_skeleton_live::skinned_mesh::migra_fio(&mut w, 23), 1);
+    let skin: ph2d_skeleton_ecs::SkinBind =
+        postcard::from_bytes(&w.entities[0].components[0].data).expect("a pele lê-se");
+    let g = ph2d_skeleton_live::skinned_mesh::le(&skin.source).expect("a fonte lê-se VIVA");
+    assert_dentes(&g.path);
 }

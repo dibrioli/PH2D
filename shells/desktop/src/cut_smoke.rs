@@ -20,13 +20,7 @@ use ph2d_vec_scene::{Rgba8, StrokeSpec, VecPath, VecVertex, VertexKind};
 const STROKE_W: f64 = 0.05;
 
 fn vertex(a: [f64; 2]) -> VecVertex {
-    VecVertex {
-        anchor: a,
-        in_handle: a,
-        out_handle: a,
-        kind: VertexKind::Corner,
-        corner_radius: 0.0,
-    }
+    VecVertex::with_handles(a, a, a, VertexKind::Corner)
 }
 
 fn poly(pts: &[[f64; 2]], closed: bool, rgb: [u8; 3]) -> VecPath {

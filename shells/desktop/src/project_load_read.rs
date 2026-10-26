@@ -49,23 +49,24 @@ impl crate::App {
                 return None;
             }
         };
-        // ⭐ **Até ao `189` o `StrokeSpec` tinha outra forma** (F16c, `VEC_SCENE` v22): todo ficheiro
-        // anterior lê-se dentro do âmbito que a declara — o `189` com o tipo VIVO, porque o resto do
-        // ficheiro não mudou. Ver `ph2d_vec_scene::stroke_wire`. ⚠️ É `<= 189` e NÃO `< PROJECT_SCHEMA`:
-        // o `190` já grava o traço novo (só lhe falta o campo `scripts`, degrau `191`).
-        let antigo = ver <= crate::project_schema::PROJECT_SCHEMA_TRACO_V22;
-        let _traco_v22 = antigo.then(ph2d_vec_scene::StrokeLayoutV22::enter);
+        // ⭐ **O vetor de um ficheiro antigo lê-se pela forma do FIO dele** (F16c `22` até ao `189`;
+        // W4.2 `23` até ao `199`): todo `VecPath` e `StrokeSpec` dentro do âmbito usa essa forma, e o
+        // resto do ficheiro, o tipo do braço. Ver `ph2d_vec_scene::stroke_wire`.
+        let fio = crate::project_schema::fio_do_projeto(ver);
+        let _fio = fio.map(ph2d_vec_scene::WireLayout::enter);
         let (mut file, migrated_counter) = match ver {
             // ⭐ **193 → … → 197: as animações do personagem, o `TiledDraw`, a memória do uso da imagem, o
             // `ImageRegion`** — um componente novo cada, a mesma forma; falta-lhes o `jogo` (198): o `0` do `Vec` vazio.
             PROJECT_SCHEMA
+            | crate::project_schema::PROJECT_SCHEMA_GEOMETRIA_V23
             | crate::project_schema::PROJECT_SCHEMA_SEM_CONSTRAINTS
             | crate::project_schema::PROJECT_SCHEMA_SEM_FORMATO_DO_JOGO
             | crate::project_schema::PROJECT_SCHEMA_SEM_REGION
             | crate::project_schema::PROJECT_SCHEMA_SEM_MEMORIA_DO_USO
             | crate::project_schema::PROJECT_SCHEMA_SEM_TILED_DRAW
             | crate::project_schema::PROJECT_SCHEMA_SEM_ANIMACOES_DO_PERSONAGEM => {
-                let falta: &[u8] = if ver == PROJECT_SCHEMA || ver == crate::project_schema::PROJECT_SCHEMA_SEM_CONSTRAINTS {
+                // ⭐ do `198` (o `jogo` já lá está) para cima os bytes são os do tipo vivo; abaixo falta-lhes o `0`.
+                let falta: &[u8] = if ver >= crate::project_schema::PROJECT_SCHEMA_SEM_CONSTRAINTS {
                     &[]
                 } else {
                     &[0]
@@ -200,13 +201,13 @@ impl crate::App {
                 return None;
             }
         };
-        migra_depois_de_ler(&mut file, ver, antigo);
+        migra_depois_de_ler(&mut file, ver, fio);
         Some((file, migrated_counter))
     }
 }
 
-/// A migração de CONTEÚDO depois de o ficheiro lido (a opacidade das poses; o traço v22).
-fn migra_depois_de_ler(file: &mut ProjectFile, ver: u32, antigo: bool) {
+/// A migração de CONTEÚDO depois de o ficheiro lido (a opacidade das poses; o fio antigo do vetor).
+fn migra_depois_de_ler(file: &mut ProjectFile, ver: u32, fio: Option<u32>) {
     // ⭐ **Até ao `191` a opacidade não era canal de estado** (F22b): cada pose gravada recebe a
     // da forma, e o Show desses projetos continua a não a mexer.
     if ver <= crate::project_schema::PROJECT_SCHEMA_OPACIDADE_FORA_DOS_ESTADOS {
@@ -216,12 +217,12 @@ fn migra_depois_de_ler(file: &mut ProjectFile, ver: u32, antigo: bool) {
         );
         eprintln!("[proj] v{ver}: {n} pose(s) de estado com a opacidade da forma");
     }
-    if antigo {
+    if let Some(fio) = fio {
         // As formas guardadas DENTRO de componentes (Envelope, pele) são lidas mais tarde, fora
-        // deste âmbito ⇒ regravam-se agora na forma nova.
+        // deste âmbito ⇒ regravam-se agora na forma viva.
         let w = &mut file.state.world;
-        let n = ph2d_app_vec::envelope_live::migra_traco_v22(w)
-            + ph2d_skeleton_live::skinned_mesh::migra_traco_v22(w);
-        eprintln!("[proj] v{ver}: traço v22 lido; {n} envelope(s)/pele(s) regravado(s)");
+        let n = ph2d_app_vec::envelope_live::migra_fio(w, fio)
+            + ph2d_skeleton_live::skinned_mesh::migra_fio(w, fio);
+        eprintln!("[proj] v{ver}: vetor v{fio} lido; {n} envelope(s)/pele(s) regravado(s)");
     }
 }

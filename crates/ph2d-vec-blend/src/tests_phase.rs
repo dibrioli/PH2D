@@ -361,6 +361,7 @@ fn extra_anchors_on_a_straight_edge_do_not_change_the_correspondence() {
                 out_handle: at,
                 kind: VertexKind::Corner,
                 corner_radius: 0.0,
+                id: ph2d_vec_scene::VertId::NOVO,
             });
         }
         verts.extend_from_slice(&a.verts[1..]);

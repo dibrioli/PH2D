@@ -141,6 +141,7 @@ fn desenha(
                 out_handle: p,
                 kind: VertexKind::Corner,
                 corner_radius: 0.0,
+                id: ph2d_vec_scene::VertId::NOVO,
             })
             .collect(),
         closed: true,

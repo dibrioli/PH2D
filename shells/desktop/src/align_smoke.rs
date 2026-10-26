@@ -37,13 +37,7 @@ const SIDE: f64 = 1.4;
 const TRIO_X: [f64; 3] = [-2.6, 0.0, 2.6];
 
 fn vertex(a: [f64; 2]) -> VecVertex {
-    VecVertex {
-        anchor: a,
-        in_handle: a,
-        out_handle: a,
-        kind: VertexKind::Corner,
-        corner_radius: 0.0,
-    }
+    VecVertex::with_handles(a, a, a, VertexKind::Corner)
 }
 
 fn stroke(rgb: [u8; 3]) -> StrokeSpec {

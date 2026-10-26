@@ -23,12 +23,13 @@ const STROKE_W: f64 = 0.05;
 /// cúbica alcança o ápice e o refit degrada honestamente para a corda — o artista veria a curva
 /// achatar e concluiria que a preservação não funciona (ver o gate `node_reach.rs`).
 fn arc(dy: f64, rgb: [u8; 3]) -> VecPath {
-    let v = |a: [f64; 2], i: [f64; 2], o: [f64; 2]| VecVertex {
-        anchor: [a[0] * S, a[1] * S + dy],
-        in_handle: [i[0] * S, i[1] * S + dy],
-        out_handle: [o[0] * S, o[1] * S + dy],
-        kind: VertexKind::Smooth,
-        corner_radius: 0.0,
+    let v = |a: [f64; 2], i: [f64; 2], o: [f64; 2]| {
+        VecVertex::with_handles(
+            [a[0] * S, a[1] * S + dy],
+            [i[0] * S, i[1] * S + dy],
+            [o[0] * S, o[1] * S + dy],
+            VertexKind::Smooth,
+        )
     };
     let mut p = VecPath {
         verts: vec![

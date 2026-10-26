@@ -71,6 +71,7 @@ fn pista() -> VecPath {
                 out_handle: [-RAIO, K],
                 kind: VertexKind::Smooth,
                 corner_radius: 0.0,
+                id: ph2d_vec_scene::VertId::NOVO,
             },
             VecVertex {
                 anchor: [0.0, RAIO],
@@ -78,6 +79,7 @@ fn pista() -> VecPath {
                 out_handle: [K, RAIO],
                 kind: VertexKind::Smooth,
                 corner_radius: 0.0,
+                id: ph2d_vec_scene::VertId::NOVO,
             },
             VecVertex {
                 anchor: [RAIO, 0.0],
@@ -85,6 +87,7 @@ fn pista() -> VecPath {
                 out_handle: [RAIO, 0.0],
                 kind: VertexKind::Smooth,
                 corner_radius: 0.0,
+                id: ph2d_vec_scene::VertId::NOVO,
             },
         ],
         closed: false,

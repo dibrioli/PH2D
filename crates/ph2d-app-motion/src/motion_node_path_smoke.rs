@@ -35,6 +35,7 @@ fn s_curve() -> ph2d_vec_scene::VecPath {
         out_handle: o,
         kind: VertexKind::Smooth,
         corner_radius: 0.0,
+        id: ph2d_vec_scene::VertId::NOVO,
     };
     VecPath {
         verts: vec![
@@ -151,6 +152,7 @@ fn straight(len: f64, y: f64) -> ph2d_vec_scene::VecPath {
         out_handle: [x, y],
         kind: VertexKind::Corner,
         corner_radius: 0.0,
+        id: ph2d_vec_scene::VertId::NOVO,
     };
     VecPath {
         verts: vec![v(-4.0), v(-4.0 + len)],

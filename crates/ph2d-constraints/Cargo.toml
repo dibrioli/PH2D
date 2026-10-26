@@ -14,6 +14,7 @@ authors.workspace = true
 [dependencies]
 ph2d-affine = { path = "../ph2d-affine" }
 ph2d-skeleton = { path = "../ph2d-skeleton" }
+ph2d-vec-scene = { path = "../ph2d-vec-scene" }
 serde = { version = "1", features = ["derive"], default-features = false }
 
 [dev-dependencies]

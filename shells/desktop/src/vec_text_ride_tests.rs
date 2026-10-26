@@ -36,20 +36,8 @@ fn params(text: &str) -> VecTextParams {
 fn arc_verts(r: f64) -> Vec<VecVertex> {
     const K: f64 = 0.552_284_749_830_793_4;
     vec![
-        VecVertex {
-            anchor: [r, 0.0],
-            in_handle: [r, -K * r],
-            out_handle: [r, K * r],
-            kind: VertexKind::Smooth,
-            corner_radius: 0.0,
-        },
-        VecVertex {
-            anchor: [0.0, r],
-            in_handle: [K * r, r],
-            out_handle: [-K * r, r],
-            kind: VertexKind::Smooth,
-            corner_radius: 0.0,
-        },
+        VecVertex::with_handles([r, 0.0], [r, -K * r], [r, K * r], VertexKind::Smooth),
+        VecVertex::with_handles([0.0, r], [K * r, r], [-K * r, r], VertexKind::Smooth),
     ]
 }
 

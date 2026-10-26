@@ -352,6 +352,7 @@ fn verts_from(segs: &[CubicBez], closed: bool) -> Vec<VecVertex> {
             out_handle: xy(out_handle),
             kind: VertexKind::Corner,
             corner_radius: 0.0,
+            id: ph2d_vec_scene::VertId::NOVO,
         });
     }
     if !closed && let Some(last) = segs.last() {
@@ -362,6 +363,7 @@ fn verts_from(segs: &[CubicBez], closed: bool) -> Vec<VecVertex> {
             out_handle: xy(last.p3),
             kind: VertexKind::Corner,
             corner_radius: 0.0,
+            id: ph2d_vec_scene::VertId::NOVO,
         });
     }
     verts

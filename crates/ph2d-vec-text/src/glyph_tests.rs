@@ -54,6 +54,7 @@ fn circle_path(r: f64) -> ArcPath {
             out_handle: [p[i][0] + t[i][0], p[i][1] + t[i][1]],
             kind: ph2d_vec_scene::VertexKind::Smooth,
             corner_radius: 0.0,
+            id: ph2d_vec_scene::VertId::NOVO,
         })
         .collect();
     ArcPath::from_contour(&verts, true).expect("círculo")
@@ -70,6 +71,7 @@ fn quarter_arc(r: f64) -> ArcPath {
         out_handle: [r, K * r],
         kind: ph2d_vec_scene::VertexKind::Smooth,
         corner_radius: 0.0,
+        id: ph2d_vec_scene::VertId::NOVO,
     };
     let b = VecVertex {
         anchor: [0.0, r],
@@ -77,6 +79,7 @@ fn quarter_arc(r: f64) -> ArcPath {
         out_handle: [-K * r, r],
         kind: ph2d_vec_scene::VertexKind::Smooth,
         corner_radius: 0.0,
+        id: ph2d_vec_scene::VertId::NOVO,
     };
     ArcPath::from_contour(&[a, b], false).expect("arco")
 }

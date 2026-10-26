@@ -8,4 +8,5 @@ mod o_caminho;
 mod o_cartao;
 mod o_gizmo;
 mod o_olhar;
+mod o_ponto;
 mod pegar_e_largar;

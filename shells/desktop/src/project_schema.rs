@@ -538,7 +538,20 @@
 ///
 /// `Constraints` REGISTADO (`ph2d-constraints-ecs`, ECS e espelhos `0`): um binário v198 descartaria a
 /// pilha. A forma do `ProjectFile` não muda: o `198` lê-se com o tipo vivo. A tripla NÃO vê este degrau.
-pub(crate) const PROJECT_SCHEMA: u32 = 199;
+///
+/// # `199 → 200` — **o id estável por VÉRTICE** (`line/BlenderConstraints`, W4.2, 2026-10-26)
+///
+/// `VecVertex.id: VertId` e `VecPath.next_vert` no FIM (`VEC_SCENE_SCHEMA_VERSION` `23 → 24`): o endereço
+/// das regras de CAD e do Copy Point. ⭐ **COM leitura dos anteriores, sem tipo congelado:** o leitor
+/// abre o âmbito `ph2d_vec_scene::WireLayout` com a versão do fio do ficheiro (`fio_do_projeto`: `22`
+/// até ao `189`, `23` até ao `199`) e um path antigo abre numerado `1..=n`; as formas guardadas dentro
+/// do Envelope e da pele regravam-se no load (`migra_fio`). Gate sobre BYTES gravados pelo código v23:
+/// `vec_v23_fixture` (cena) e `a_v23_*_source_is_rewritten_with_ids` (blobs). Registos de componentes:
+/// `0`. ⚠️ **A tripla VÊ este degrau** — a forma da `VecScene` muda.
+pub(crate) const PROJECT_SCHEMA: u32 = 200;
+
+/// O último degrau cuja geometria do vetor é a v23 (vértices sem id).
+pub(crate) const PROJECT_SCHEMA_GEOMETRIA_V23: u32 = 199;
 
 /// O último degrau sem a pilha de constraints (a mesma forma de ficheiro).
 pub(crate) const PROJECT_SCHEMA_SEM_CONSTRAINTS: u32 = 198;
@@ -563,3 +576,14 @@ pub(crate) const PROJECT_SCHEMA_OPACIDADE_FORA_DOS_ESTADOS: u32 = 191;
 
 /// O degrau anterior ao tracejado em pares — o último cuja forma do `StrokeSpec` é a v22.
 pub(crate) const PROJECT_SCHEMA_TRACO_V22: u32 = 189;
+
+/// A `VEC_SCENE_SCHEMA_VERSION` com que um projecto de versão `ver` gravou o vetor, quando é antiga.
+pub(crate) fn fio_do_projeto(ver: u32) -> Option<u32> {
+    if ver <= PROJECT_SCHEMA_TRACO_V22 {
+        Some(22)
+    } else if ver <= PROJECT_SCHEMA_GEOMETRIA_V23 {
+        Some(23)
+    } else {
+        None
+    }
+}

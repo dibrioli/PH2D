@@ -238,6 +238,7 @@ pub fn rebuild(pts: &[[Point; 3]], start: Point, closed: bool) -> Vec<VecVertex>
             // A quina foi COZIDA na deformação; um raio sobrevivente re-arredondaria o já
             // arredondado. Mesma regra da booleana (ADR-0121 §4).
             corner_radius: 0.0,
+            id: ph2d_vec_scene::VertId::NOVO,
         });
         pending_in = Some(*p2);
         anchor = *p3;
@@ -248,6 +249,7 @@ pub fn rebuild(pts: &[[Point; 3]], start: Point, closed: bool) -> Vec<VecVertex>
                 out_handle: [anchor.x, anchor.y],
                 kind: VertexKind::Corner,
                 corner_radius: 0.0,
+                id: ph2d_vec_scene::VertId::NOVO,
             });
         }
     }

@@ -14,6 +14,7 @@ fn v(x: f64, y: f64) -> VecVertex {
         out_handle: [x, y],
         kind: VertexKind::Corner,
         corner_radius: 0.0,
+        id: ph2d_vec_scene::VertId::NOVO,
     }
 }
 
@@ -30,6 +31,7 @@ fn circulo(r: f64) -> (Vec<VecVertex>, bool) {
             out_handle: [p[i][0] + t[i][0], p[i][1] + t[i][1]],
             kind: VertexKind::Smooth,
             corner_radius: 0.0,
+            id: ph2d_vec_scene::VertId::NOVO,
         });
     }
     (out, true)

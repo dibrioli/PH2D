@@ -10,6 +10,7 @@ fn v(x: f64, y: f64) -> VecVertex {
         out_handle: [x, y],
         kind: VertexKind::Corner,
         corner_radius: 0.0,
+        id: ph2d_vec_scene::VertId::NOVO,
     }
 }
 
@@ -261,6 +262,7 @@ fn two_different_curves_between_the_same_nodes_are_a_lens() {
                 out_handle: [-20.0, k],
                 kind: VertexKind::Smooth,
                 corner_radius: 0.0,
+                id: ph2d_vec_scene::VertId::NOVO,
             },
             VecVertex {
                 anchor: [50.0, 0.0],
@@ -268,6 +270,7 @@ fn two_different_curves_between_the_same_nodes_are_a_lens() {
                 out_handle: [50.0, 0.0],
                 kind: VertexKind::Smooth,
                 corner_radius: 0.0,
+                id: ph2d_vec_scene::VertId::NOVO,
             },
         ]
     };
@@ -364,6 +367,7 @@ fn an_endpoint_a_hair_off_the_wall_still_closes_the_pocket() {
                 out_handle: [ax + 60.0, -40.0],
                 kind: VertexKind::Smooth,
                 corner_radius: 0.0,
+                id: ph2d_vec_scene::VertId::NOVO,
             },
             VecVertex {
                 anchor: [180.0, 0.0],
@@ -371,6 +375,7 @@ fn an_endpoint_a_hair_off_the_wall_still_closes_the_pocket() {
                 out_handle: [180.0, 40.0],
                 kind: VertexKind::Smooth,
                 corner_radius: 0.0,
+                id: ph2d_vec_scene::VertId::NOVO,
             },
             VecVertex {
                 anchor: [ax, 50.0],
@@ -378,6 +383,7 @@ fn an_endpoint_a_hair_off_the_wall_still_closes_the_pocket() {
                 out_handle: [ax, 50.0],
                 kind: VertexKind::Smooth,
                 corner_radius: 0.0,
+                id: ph2d_vec_scene::VertId::NOVO,
             },
         ]
     };
@@ -625,6 +631,7 @@ fn circulo(r: f64) -> (Vec<VecVertex>, bool) {
             out_handle: [p[i][0] + t[i][0], p[i][1] + t[i][1]],
             kind: VertexKind::Smooth,
             corner_radius: 0.0,
+            id: ph2d_vec_scene::VertId::NOVO,
         });
     }
     (out, true)

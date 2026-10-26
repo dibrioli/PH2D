@@ -86,6 +86,7 @@ fn arco() -> Vec<VecVertex> {
             out_handle: [-2.0, K],
             kind: VertexKind::Smooth,
             corner_radius: 0.0,
+            id: ph2d_vec_scene::VertId::NOVO,
         },
         VecVertex {
             anchor: [0.0, 2.0],
@@ -93,6 +94,7 @@ fn arco() -> Vec<VecVertex> {
             out_handle: [K, 2.0],
             kind: VertexKind::Smooth,
             corner_radius: 0.0,
+            id: ph2d_vec_scene::VertId::NOVO,
         },
         VecVertex {
             anchor: [2.0, 0.0],
@@ -100,6 +102,7 @@ fn arco() -> Vec<VecVertex> {
             out_handle: [2.0, 0.0],
             kind: VertexKind::Smooth,
             corner_radius: 0.0,
+            id: ph2d_vec_scene::VertId::NOVO,
         },
     ]
 }

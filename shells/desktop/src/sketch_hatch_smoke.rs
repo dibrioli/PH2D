@@ -45,12 +45,13 @@ fn disc(c: [f64; 2], r: f64, fill: [u8; 3]) -> VecPath {
     let p = [[r, 0.0], [0.0, r], [-r, 0.0], [0.0, -r]];
     let t = [[0.0, K * r], [-K * r, 0.0], [0.0, -K * r], [K * r, 0.0]];
     let verts = (0..4)
-        .map(|i| VecVertex {
-            anchor: [c[0] + p[i][0], c[1] + p[i][1]],
-            in_handle: [c[0] + p[i][0] - t[i][0], c[1] + p[i][1] - t[i][1]],
-            out_handle: [c[0] + p[i][0] + t[i][0], c[1] + p[i][1] + t[i][1]],
-            kind: ph2d_vec_scene::VertexKind::Smooth,
-            corner_radius: 0.0,
+        .map(|i| {
+            VecVertex::with_handles(
+                [c[0] + p[i][0], c[1] + p[i][1]],
+                [c[0] + p[i][0] - t[i][0], c[1] + p[i][1] - t[i][1]],
+                [c[0] + p[i][0] + t[i][0], c[1] + p[i][1] + t[i][1]],
+                ph2d_vec_scene::VertexKind::Smooth,
+            )
         })
         .collect();
     VecPath {

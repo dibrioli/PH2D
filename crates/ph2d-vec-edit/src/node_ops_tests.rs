@@ -10,6 +10,7 @@ fn v(x: f64, y: f64) -> VecVertex {
         out_handle: [x + 0.5, y + 0.2],
         kind: VertexKind::Corner,
         corner_radius: 0.0,
+        id: ph2d_vec_scene::VertId::NOVO,
     }
 }
 

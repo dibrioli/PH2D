@@ -466,6 +466,7 @@ fn smooth(anchor: [f64; 2], in_h: [f64; 2], out_h: [f64; 2]) -> VecVertex {
         // Sem raio: a booleana comeu a geometria já COZIDA, então o arredondamento já
         // está ASSADO nestes vértices. Carregar o raio adiante o aplicaria duas vezes.
         corner_radius: 0.0,
+        id: ph2d_vec_scene::VertId::NOVO,
     }
 }
 

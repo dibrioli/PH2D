@@ -59,10 +59,10 @@ pub struct Adotar(pub std::collections::BTreeSet<u64>);
 #[derive(Resource, Default, Debug)]
 pub struct Caminhos(pub BTreeMap<StableId, Vec<[f32; 2]>>);
 
-/// Os vértices AUTORADOS (locais) de cada forma que um ponto de forma prende, por `StableId` (quem os
-/// lê da cena vectorial é a família).
+/// Os vértices AUTORADOS (locais, com o id; contornos e `subpaths`) de cada forma que um ponto de
+/// forma prende, por `StableId` (quem os lê da cena vectorial é a família).
 #[derive(Resource, Default, Debug)]
-pub struct Pontos(pub BTreeMap<StableId, Vec<[f64; 2]>>);
+pub struct Pontos(pub BTreeMap<StableId, Vec<(ph2d_vec_scene::VertId, [f64; 2])>>);
 
 /// O estado de cada item no último quadro, por `(Entity::to_bits, Item::id)`.
 #[derive(Resource, Default, Debug)]
@@ -176,14 +176,20 @@ pub(crate) fn caminho_no_mundo(
     )
 }
 
-/// O vértice autorado `indice` da forma `alvo`, no mundo de agora (`None` se a forma não o tem).
-fn ponto_no_mundo(sim: &SimWorld, alvo: Entity, id: StableId, indice: u32) -> Option<Pose2> {
-    let local = *sim
+/// O vértice autorado `vert` da forma `alvo`, no mundo de agora (`None` se a forma não o tem).
+fn ponto_no_mundo(
+    sim: &SimWorld,
+    alvo: Entity,
+    id: StableId,
+    vert: ph2d_vec_scene::VertId,
+) -> Option<Pose2> {
+    let (_, local) = *sim
         .world()
         .get_resource::<Pontos>()?
         .0
         .get(&id)?
-        .get(usize::try_from(indice).ok()?)?;
+        .iter()
+        .find(|(v, _)| *v == vert)?;
     let x = ph2d_vec_entities::transform::xform_of_transform(
         ph2d_vec_entities::transform::world_transform(sim, alvo),
     );
@@ -476,7 +482,7 @@ fn avalia_uma(
             owner: dono,
             parent: pose(&parent),
             target: match (&it.kind, alvo, it.target) {
-                (Kind::PontoDeForma(p), Some(a), Some(s)) => ponto_no_mundo(sim, a, s, p.indice),
+                (Kind::PontoDeForma(p), Some(a), Some(s)) => ponto_no_mundo(sim, a, s, p.vert),
                 _ => alvo.and_then(|t| world_transform(w, t)).map(|t| pose(&t)),
             },
             target_parent: alvo.map_or(Pose2::IDENTITY, |t| pose(&parent_world_transform(w, t))),

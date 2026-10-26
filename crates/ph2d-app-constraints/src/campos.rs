@@ -261,7 +261,7 @@ pub fn ler(k: &Kind, campo: u16) -> Option<f32> {
         (Kind::Transformation(t), ESPACO) => espaco(t.space),
         (Kind::SplineIk(sp), CORRENTE) => sp.chain as f32,
         (Kind::SplineIk(sp), AJUSTE) => indice(&AJUSTES_DO_TIPO, &sp.ajuste),
-        (Kind::PontoDeForma(p), PONTO) => p.indice as f32,
+        (Kind::PontoDeForma(p), PONTO) => p.vert.0 as f32,
         (Kind::Action(a), DE) => indice(&CANAIS_DO_TIPO, &a.canal),
         (Kind::Action(a), DE_MIN) => no_cartao(a.canal, a.faixa[0]),
         (Kind::Action(a), DE_MAX) => no_cartao(a.canal, a.faixa[1]),
@@ -389,7 +389,7 @@ pub fn escrever(k: &mut Kind, campo: u16, v: f32) -> bool {
             clippy::cast_sign_loss,
             reason = "≥ 0, arredondado"
         )]
-        (Kind::PontoDeForma(p), PONTO) => p.indice = v.round().max(0.0) as u32,
+        (Kind::PontoDeForma(p), PONTO) => p.vert = ph2d_vec_scene::VertId(v.round().max(0.0) as u32),
         (Kind::Action(a), DE) => a.canal = CANAIS_DO_TIPO[opcao(5)],
         (Kind::Action(a), DE_MIN) => a.faixa[0] = do_cartao(a.canal, v),
         (Kind::Action(a), DE_MAX) => a.faixa[1] = do_cartao(a.canal, v),
@@ -487,7 +487,7 @@ pub fn chave_no_item(k: &Kind, campo: u16) -> Option<&'static str> {
         (Kind::Transformation(_), ESPACO) => "kind/Transformation/space",
         (Kind::SplineIk(_), CORRENTE) => "kind/SplineIk/chain",
         (Kind::SplineIk(_), AJUSTE) => "kind/SplineIk/ajuste",
-        (Kind::PontoDeForma(_), PONTO) => "kind/PontoDeForma/indice",
+        (Kind::PontoDeForma(_), PONTO) => "kind/PontoDeForma/vert",
         (Kind::Action(_), DE) => "kind/Action/canal",
         (Kind::Action(_), DE_MIN) => "kind/Action/faixa[0]",
         (Kind::Action(_), DE_MAX) => "kind/Action/faixa[1]",

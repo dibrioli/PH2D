@@ -35,6 +35,7 @@ pub fn contornos_de(d: &str) -> Vec<(Vec<VecVertex>, bool)> {
                     out_handle: [p.x, p.y],
                     kind: VertexKind::Corner,
                     corner_radius: 0.0,
+                    id: ph2d_vec_scene::VertId::NOVO,
                 });
             }
             PathEl::CurveTo(c1, c2, p) => {
@@ -47,6 +48,7 @@ pub fn contornos_de(d: &str) -> Vec<(Vec<VecVertex>, bool)> {
                     out_handle: [p.x, p.y],
                     kind: VertexKind::Corner,
                     corner_radius: 0.0,
+                    id: ph2d_vec_scene::VertId::NOVO,
                 });
             }
             PathEl::ClosePath => fecha = true,
@@ -61,6 +63,7 @@ pub fn contornos_de(d: &str) -> Vec<(Vec<VecVertex>, bool)> {
                     out_handle: [p.x, p.y],
                     kind: VertexKind::Corner,
                     corner_radius: 0.0,
+                    id: ph2d_vec_scene::VertId::NOVO,
                 });
             }
             PathEl::QuadTo(..) => unreachable!("o exportador so' escreve cubicas"),

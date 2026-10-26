@@ -161,12 +161,8 @@ fn layout() -> TextLayout {
 /// Uma onda em S larga — duas dobras em sentidos opostos, que é onde um referencial preso
 /// ao ângulo médio (em vez de à tangente local) se denuncia.
 fn wave_contour() -> Vec<VecVertex> {
-    let pt = |x: f64, y: f64, hx: f64| VecVertex {
-        anchor: [x, y],
-        in_handle: [x - hx, y],
-        out_handle: [x + hx, y],
-        kind: VertexKind::Smooth,
-        corner_radius: 0.0,
+    let pt = |x: f64, y: f64, hx: f64| {
+        VecVertex::with_handles([x, y], [x - hx, y], [x + hx, y], VertexKind::Smooth)
     };
     vec![
         pt(-3.2, 0.0, 0.9),
@@ -188,12 +184,13 @@ fn circle_contour(c: [f64; 2], r: f64) -> Vec<VecVertex> {
     ];
     let t = [[0.0, K * r], [-K * r, 0.0], [0.0, -K * r], [K * r, 0.0]];
     (0..4)
-        .map(|i| VecVertex {
-            anchor: p[i],
-            in_handle: [p[i][0] - t[i][0], p[i][1] - t[i][1]],
-            out_handle: [p[i][0] + t[i][0], p[i][1] + t[i][1]],
-            kind: VertexKind::Smooth,
-            corner_radius: 0.0,
+        .map(|i| {
+            VecVertex::with_handles(
+                p[i],
+                [p[i][0] - t[i][0], p[i][1] - t[i][1]],
+                [p[i][0] + t[i][0], p[i][1] + t[i][1]],
+                VertexKind::Smooth,
+            )
         })
         .collect()
 }
@@ -274,13 +271,7 @@ mod perf {
             .map(|i| {
                 let x = i as f64 * 0.7;
                 let y = if i % 2 == 0 { 0.6 } else { -0.6 };
-                VecVertex {
-                    anchor: [x, y],
-                    in_handle: [x - 0.25, y],
-                    out_handle: [x + 0.25, y],
-                    kind: VertexKind::Smooth,
-                    corner_radius: 0.0,
-                }
+                VecVertex::with_handles([x, y], [x - 0.25, y], [x + 0.25, y], VertexKind::Smooth)
             })
             .collect()
     }

@@ -295,7 +295,9 @@ fn a_point_of_a_shape_is_a_target() {
         sy: 2.0,
     };
     let [x, y] = forma.ponto(local);
-    let k = Kind::PontoDeForma(PontoDeForma { indice: 1 });
+    let k = Kind::PontoDeForma(PontoDeForma {
+        vert: ph2d_vec_scene::VertId(2),
+    });
     let alvo = Pose2 {
         x,
         y,

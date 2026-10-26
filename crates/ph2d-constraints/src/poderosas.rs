@@ -121,11 +121,12 @@ impl Default for SplineIk {
     }
 }
 
-/// Copy Location de um vértice AUTORADO da forma alvo (o índice; o id estável da W4 migra-o). A fase
-/// põe no alvo o ponto já no mundo.
+/// Copy Location de um vértice AUTORADO da forma alvo, pelo id estável (W4.2): inserir ou apagar um
+/// vizinho não o troca de ponto; o id que sumiu deixa a regra sem alvo. A fase põe no alvo o ponto já
+/// no mundo.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PontoDeForma {
-    pub indice: u32,
+    pub vert: ph2d_vec_scene::VertId,
 }
 
 impl Pivot {

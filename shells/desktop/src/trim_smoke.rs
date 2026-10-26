@@ -21,13 +21,7 @@ use ph2d_vec_scene::{Rgba8, StrokeSpec, VecPath, VecVertex, VertexKind};
 
 /// Uma quina em `(x, y)` — alças coincidentes com a âncora ⇒ o segmento é uma RETA.
 fn v(x: f64, y: f64) -> VecVertex {
-    VecVertex {
-        anchor: [x, y],
-        in_handle: [x, y],
-        out_handle: [x, y],
-        kind: VertexKind::Corner,
-        corner_radius: 0.0,
-    }
+    VecVertex::with_handles([x, y], [x, y], [x, y], VertexKind::Corner)
 }
 
 fn linha(verts: Vec<VecVertex>, closed: bool) -> VecPath {

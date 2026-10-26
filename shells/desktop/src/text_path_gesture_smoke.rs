@@ -141,12 +141,8 @@ fn arm(app: &mut crate::App) {
 
 /// Um arco largo e raso, aberto, da esquerda para a direita.
 fn arc() -> Vec<VecVertex> {
-    let pt = |x: f64, y: f64, hx: f64| VecVertex {
-        anchor: [x, y],
-        in_handle: [x - hx, y],
-        out_handle: [x + hx, y],
-        kind: VertexKind::Smooth,
-        corner_radius: 0.0,
+    let pt = |x: f64, y: f64, hx: f64| {
+        VecVertex::with_handles([x, y], [x - hx, y], [x + hx, y], VertexKind::Smooth)
     };
     vec![pt(-3.4, 0.0, 1.1), pt(0.0, 1.7, 1.4), pt(3.4, 0.0, 1.1)]
 }

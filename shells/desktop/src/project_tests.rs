@@ -598,3 +598,7 @@ mod tape;
 /// (`headless_app`, `tmp_path`) são as portas dele.
 #[path = "project_traco_v189_tests.rs"]
 mod traco_v189;
+
+/// **Um projecto v194 abre com a geometria numerada** (W4.2) — filho pela mesma razão.
+#[path = "project_geometria_v194_tests.rs"]
+mod geometria_v194;

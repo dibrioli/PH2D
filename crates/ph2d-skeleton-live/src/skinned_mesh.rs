@@ -193,14 +193,14 @@ impl SkinnedPath {
     }
 }
 
-/// ⭐ **Os binds de um ficheiro anterior ao v23 do traço, regravados na forma nova** (F16c) — o
-/// `VecPath` dentro do `SkinBind::source` traz o `StrokeSpec` v22, e o leitor de cada quadro já não
-/// sabe a versão do ficheiro. Devolve quantos binds mudaram.
+/// ⭐ **Os binds de um ficheiro de fio antigo, regravados na forma viva** (F16c v22 · W4.2 v23) — o
+/// `VecPath` dentro do `SkinBind::source` vem na forma da `VEC_SCENE_SCHEMA_VERSION` `fio`, e o leitor
+/// de cada quadro já não sabe a versão do ficheiro. Devolve quantos binds mudaram.
 ///
 /// ⚠️ Lê com **consumo EXACTO** (`take_from_bytes` sem sobra), as três formas pela ordem da
 /// [`le`]: a fonte de uma IMAGEM é uma `SkinnedMesh` e não pode ser tomada por um caminho — o que
 /// não se lê exactamente fica como estava.
-pub fn migra_traco_v22(mundo: &mut ph2d_ecs::scene::WorldSnapshot) -> usize {
+pub fn migra_fio(mundo: &mut ph2d_ecs::scene::WorldSnapshot, fio: u32) -> usize {
     fn exacto<'a, T: serde::Deserialize<'a>>(b: &'a [u8]) -> Option<T> {
         match postcard::take_from_bytes::<T>(b) {
             Ok((v, [])) => Some(v),
@@ -208,7 +208,7 @@ pub fn migra_traco_v22(mundo: &mut ph2d_ecs::scene::WorldSnapshot) -> usize {
         }
     }
     let caminho = |b: &[u8]| -> Option<SkinnedPath> {
-        ph2d_vec_scene::with_stroke_layout_v22(|| {
+        ph2d_vec_scene::with_wire_layout(fio, || {
             exacto::<SkinnedPath>(b)
                 .or_else(|| {
                     exacto::<SkinnedPathV2>(b).map(|v2| SkinnedPath {

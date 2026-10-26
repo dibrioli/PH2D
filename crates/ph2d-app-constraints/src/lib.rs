@@ -88,7 +88,8 @@ fn caminhos(sim: &mut SimWorld, cena: &ph2d_vec_scene::VecScene) {
                 }
                 Kind::PontoDeForma(_) => {
                     if let Some(p) = cena.paths().iter().find(|p| p.id == forma.0) {
-                        pontos.insert(s, p.verts.iter().map(|v| v.anchor).collect());
+                        let todos = p.verts.iter().chain(p.subpaths.iter().flat_map(|c| &c.verts));
+                        pontos.insert(s, todos.map(|v| (v.id, v.anchor)).collect());
                     }
                 }
                 _ => {}

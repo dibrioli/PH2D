@@ -16,6 +16,7 @@ fn v(anchor: [f64; 2], inh: [f64; 2], outh: [f64; 2], kind: VertexKind) -> VecVe
         out_handle: outh,
         kind,
         corner_radius: 0.0,
+        id: ph2d_vec_scene::VertId::NOVO,
     }
 }
 

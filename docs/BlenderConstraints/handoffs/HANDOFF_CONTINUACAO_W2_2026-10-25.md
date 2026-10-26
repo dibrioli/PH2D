@@ -13,7 +13,7 @@ o cartão · `f7c0901059` fecho (fmt/clippy, gate da conversão). Binário `targ
 Shell: encolheu 8 linhas na onda (catraca `the_shell_only_shrinks` verde). `PROJECT_SCHEMA` continua 194 (Kind cresce ao
 FIM do enum; o `IkGoal` continua registado para ler ficheiros antigos).
 
-## Smoke do dono (cena 4) — por fazer
+## Smoke do dono (cena 4) — **OK** (25/10)
 
 1. `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-BlenderConstraints && PH2D_CONSTRAINT_SMOKE=4 ./target/smoke/ph2d-host-desktop`
 2. Abre com o braço (dois ossos cor de pele), a bola vermelha (alvo da IK) e o ponteiro cinzento «Rodador». O osso
@@ -64,8 +64,12 @@ reaplicados: vermelhos. Ronda 2: M10 sem repetir o grupo · M11 osso escrito nã
 
 ## Falta / aberto
 
-1. Smoke do dono da cena 4.
-2. A IK de 1 osso (Look At do esqueleto) e o `Kind::LookAt` são dois conceitos no menu — unificar ou esconder um (decidir).
+1. ~~Smoke do dono da cena 4~~ — **OK** (25/10). A W2 está fechada.
+2. **DECIDIDO 25/10** (o dono pediu «veja como os grandes apps fazem»; Spine/Rive usam IK de 1 osso, Blender/Godot/Unity
+   separam Look At de IK, e o PH2D restringe objectos E ossos como estes): **Look At é a única porta de «olhar para o alvo»**
+   (objectos e ossos, com desvio); **IK a partir de 2 ossos**; o botão *Look At* do painel do esqueleto cria um `Kind::LookAt`;
+   a IK `chain = 1` gravada converte-se em Look At ao abrir. Medir antes se `LookAt` num osso dá o bit da IK de 1 osso (mira
+   da casa, limite de junta, mistura pelo ângulo) — se não, a lei do Look At no osso passa pela `aim_rotation`. 1.º item da W3.
 3. Os abertos do W1d (2–7) continuam.
 4. Próxima onda: **W3** (Spring determinístico, Transformation, Action/Slider, Multi-parent, Pivot, Floor, Spline IK) — plano §7.
 

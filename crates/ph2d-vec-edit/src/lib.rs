@@ -61,6 +61,8 @@ pub use snap::{SnapConfig, SnapResult, SnapSource, SnapTargets, bbox_key_points,
 /// A alça do **raio de quina** (Live Corners) — módulo irmão (LOC cap).
 pub mod corner_handle;
 
+/// O CAD na caneta (W4.4): o solver no arrasto e a regra da guia acesa — módulo irmão (LOC cap).
+mod cad;
 /// **O press das ferramentas Fillet / Chamfer** (`on_press_corner`) — módulo irmão (LOC cap).
 /// Bloco `impl PenTool` inerente; move e release reusam o caminho do pen.
 mod corner_tool;
@@ -70,6 +72,7 @@ mod node_hit;
 /// **O arrasto** de um ponto agarrado (âncora / handle bézier / alça de raio) — módulo
 /// irmão (LOC cap). Bloco `impl PenTool` inerente; a API pública não muda.
 mod pen_drag;
+pub use cad::junta_regra;
 use ph2d_vec_scene::{Paint, VecPath, VecPathId, VecScene, VecVertex, VertexKind};
 
 /// Resultado de uma pressão do Pen (para o shell logar/reagir se quiser).
@@ -192,6 +195,7 @@ pub struct PenTool {
     /// que o documento guarda é local.** A conversão mora só na fronteira, nos
     /// helpers abaixo — nenhum cálculo de geometria muda.
     xforms: ph2d_vec_scene::VecXforms,
+    cad: cad::CadGesto,
 }
 
 impl PenTool {
@@ -441,6 +445,7 @@ impl PenTool {
         let was = self.dragging || self.grab.is_some();
         self.dragging = false;
         self.grab = None;
+        self.cad_solta();
         was
     }
 

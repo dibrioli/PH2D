@@ -18,6 +18,8 @@ ph2d-vec-scene = { path = "../ph2d-vec-scene" }
 # não para uma tradução: a guia entra na lista de alvos como o documento a guarda, então não há
 # um segundo `{axis, pos}` aqui para divergir do que o arquivo carrega.
 ph2d-guides = { path = "../ph2d-guides" }
+# O solver das regras de CAD (W4.4): o arrasto de âncora resolve-as depois do snap.
+ph2d-vec-constraints = { path = "../ph2d-vec-constraints" }
 
 [dev-dependencies]
 # ⚠️ **Só o gate de paridade do port de Hobby** (`src/hobby_tests.rs`): o solver original vive na

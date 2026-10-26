@@ -1,7 +1,7 @@
 //! Cores do CAD contra o FreeCAD (W4.1 §1.4): uma medida a mais coerente é REDUNDANTE (o editor fá-la nascer REF);
 //! uma incoerente lista as regras em conflito — a MESMA lista que o Sketcher dá.
 
-use ph2d_vec_constraints::{EstadoRegra, Liberdade, estado};
+use ph2d_vec_constraints::{EstadoRegra, Liberdade, a_mais, estado};
 use serde_json::Value;
 
 use crate::cena::{Cena, cena};
@@ -51,6 +51,27 @@ fn an_extra_dimension_is_born_ref() {
         e.pontos.values().all(|l| *l == Liberdade::Definido),
         "o retângulo cotado fica todo definido"
     );
+}
+
+/// O teste do editor ao juntar UMA regra (sem a análise da ezpz) dá a MESMA resposta que a fixture: só a 6 é a mais.
+#[test]
+fn the_rank_test_of_one_new_rule_agrees_with_the_oracle() {
+    let o: Value = serde_json::from_str(FIXTURE).expect("JSON");
+    assert_eq!(
+        lista(&o["bem"]["conflito_redundante"]["redundantes_regras"]),
+        vec![6]
+    );
+    let c = cena("conflito_redundante");
+    let (antes, fixos) = (&c.regras[..6], &c.regras[7..]);
+    let base: Vec<_> = fixos.iter().chain(antes).copied().collect();
+    assert!(a_mais(&c.folha(), &base, c.regras[6]), "a medida a mais");
+    for k in 0..6 {
+        let sem_k: Vec<_> = base.iter().copied().filter(|r| *r != c.regras[k]).collect();
+        assert!(
+            !a_mais(&c.folha(), &sem_k, c.regras[k]),
+            "a regra {k} sobe o posto"
+        );
+    }
 }
 
 #[test]

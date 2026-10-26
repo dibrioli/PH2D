@@ -10342,6 +10342,7 @@ version = "0.0.0"
 dependencies = [
  "glam 0.30.10",
  "ph2d-guides",
+ "ph2d-vec-constraints",
  "ph2d-vec-scene",
  "ph2d-vector-doc",
  "serde_json",

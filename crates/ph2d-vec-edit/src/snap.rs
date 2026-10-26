@@ -48,8 +48,9 @@
 //! de deslocamento e escolher a incidental seria a ferramenta descartando a decisão explícita.
 
 use ph2d_guides::Guide;
+use ph2d_vec_scene::cad::PontoCad;
 use ph2d_vec_scene::curve_probe::{CubicSeg, crossings_near, nearest_on_segs, world_segs};
-use ph2d_vec_scene::{VecPathId, VecScene};
+use ph2d_vec_scene::{VecPathId, VecScene, VertId};
 
 /// Configuração de snap. `threshold` em **world-units** (o shell divide o limiar
 /// em pixels pelo zoom). A grade tem o raio de magnetismo dela e não usa isto.
@@ -100,6 +101,9 @@ pub type GridSnapFn<'a> = &'a mut dyn FnMut([f64; 2]) -> Option<[f64; 2]>;
 pub struct SnapTargets {
     /// Alvos de ALINHAMENTO (1-D por eixo): âncoras e pontos-chave de bbox.
     pub points: Vec<[f64; 2]>,
+    /// O vértice dono de `points[i]` (uma âncora de forma); `None` num ponto de bbox, e um índice além do fim
+    /// (pontos anexados depois, como os dos sprites) não tem dono. É o que faz uma guia acesa virar regra de CAD.
+    pub donos: Vec<Option<PontoCad>>,
     /// A geometria, em MUNDO, para as reivindicações de POSIÇÃO. Guardada como segmentos
     /// cúbicos e não como `VecPath` clonada: a projeção nunca lê estilo nem efeitos, e esta
     /// lista é reconstruída por gesto.
@@ -146,6 +150,8 @@ pub struct SnapAxis {
     pub target: [f64; 2],
     /// De onde veio.
     pub from: SnapSource,
+    /// O vértice do alvo, num encaixe [`SnapSource::Shape`] numa âncora ([`SnapTargets::donos`]).
+    pub dono: Option<PontoCad>,
 }
 
 impl SnapAxis {
@@ -224,6 +230,7 @@ pub fn collect_targets(
     curves: bool,
 ) -> SnapTargets {
     let mut points = Vec::new();
+    let mut donos = Vec::new();
     let mut segs = Vec::new();
     for path in scene.paths() {
         if skip_paths.contains(&path.id) {
@@ -237,6 +244,7 @@ pub fn collect_targets(
                 deformed = true;
             } else {
                 points.push(xf.apply(v.anchor));
+                donos.push((v.id != VertId::NOVO).then_some(PontoCad::Vert(path.id, v.id)));
             }
         }
         if deformed {
@@ -249,6 +257,7 @@ pub fn collect_targets(
             // dá um quadrilátero, e os pontos dele seguem sendo os cantos/meios).
             for kp in bbox_key_points(lo, hi) {
                 points.push(xf.apply(kp));
+                donos.push(None);
             }
         }
         if curves {
@@ -260,6 +269,7 @@ pub fn collect_targets(
     // padrão dos pontos-chave dos sprites.
     SnapTargets {
         points,
+        donos,
         segs,
         guides: Vec::new(),
     }
@@ -354,6 +364,7 @@ pub fn snap(
                     source: s,
                     target: g,
                     from: SnapSource::Grid,
+                    dono: None,
                 })
             };
             (gx, gy) = (axis(0), axis(1));
@@ -364,7 +375,7 @@ pub fn snap(
     let (mut px, mut py) = (None, None);
     if cfg.to_points && cfg.threshold > 0.0 {
         for &s in sources {
-            for &t in &targets.points {
+            for (i, &t) in targets.points.iter().enumerate() {
                 for axis in 0..2 {
                     let delta = t[axis] - s[axis];
                     if delta.abs() > cfg.threshold {
@@ -377,6 +388,7 @@ pub fn snap(
                             source: s,
                             target: t,
                             from: SnapSource::Shape,
+                            dono: targets.donos.get(i).copied().flatten(),
                         });
                     }
                 }
@@ -407,6 +419,7 @@ pub fn snap(
                         source: s,
                         target,
                         from: SnapSource::Guide,
+                        dono: None,
                     });
                 }
             }
@@ -433,6 +446,7 @@ pub fn snap(
                 source: s,
                 target: t,
                 from,
+                dono: None,
             })
         };
         return SnapResult {

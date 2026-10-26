@@ -243,6 +243,7 @@ mod tests {
                 source: [9.5, 100.0],
                 target: [10.0, 20.0],
                 from: SnapSource::Shape,
+                dono: None,
             }),
             y: None,
         };
@@ -264,12 +265,14 @@ mod tests {
                 source: [9.0, 5.0],
                 target: [10.0, 50.0],
                 from: SnapSource::Shape,
+                dono: None,
             }),
             y: Some(SnapAxis {
                 delta: -2.0,
                 source: [9.0, 5.0],
                 target: [80.0, 3.0],
                 from: SnapSource::Shape,
+                dono: None,
             }),
         };
         let g = guides_of(&r);
@@ -288,6 +291,7 @@ mod tests {
             source: [9.6, 20.4],
             target: [10.0, 20.0],
             from: SnapSource::Grid,
+            dono: None,
         };
         let r = SnapResult {
             x: Some(lattice),
@@ -313,12 +317,14 @@ mod tests {
                 source: [9.8, 20.4],
                 target: [9.5, 99.0],
                 from: SnapSource::Shape,
+                dono: None,
             }),
             y: Some(SnapAxis {
                 delta: -0.4,
                 source: [9.8, 20.4],
                 target: [10.0, 20.0],
                 from: SnapSource::Grid,
+                dono: None,
             }),
         };
         let g = guides_of(&r);

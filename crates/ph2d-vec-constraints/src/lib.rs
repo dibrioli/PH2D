@@ -413,6 +413,20 @@ pub fn estado(folha: &Folha<'_>, regras: &[RegraCad]) -> Estado {
     }
 }
 
+/// `nova` não sobe o posto das `regras` na pose da folha ⇒ é a mais (o editor dá-lhe REF, se for medida). O teste de
+/// posto sem a análise da ezpz: barato o bastante para correr quando uma guia acende.
+#[must_use]
+pub fn a_mais(folha: &Folha<'_>, regras: &[RegraCad], nova: RegraCad) -> bool {
+    let mut todas = regras.to_vec();
+    todas.push(RegraCad {
+        referencia: false,
+        ..nova
+    });
+    let n = todas.len() - 1;
+    let s = Sistema::monta(folha, &todas, None, None);
+    s.ativas.contains(&n) && redundantes(&s, &todas, &s.valores).contains(&n)
+}
+
 fn redundantes(s: &Sistema, regras: &[RegraCad], f: &[f64]) -> Vec<usize> {
     let valor = |v: &posto::Var| match *v {
         posto::Var::X(p) => f[s.pts[&p].id_x() as usize],

@@ -67,3 +67,13 @@ O smoke do dono da cena 12; depois o que ele pedir. Fotos de fábrica e com `HOM
 `pan_anchor`. Agora seguem o idioma da `solta`: só um arrasto consome o mover; o largar só quando o
 premir foi da forma (`g.held`, marcado em `input::press`). Teste
 `viva::with_a_live_shape_a_move_or_release_without_a_drag_goes_on_to_the_middle_button_pan`.
+
+## Veredito do smoke (dono, 27/10): **OK**
+
+Cena 12 aprovada (com o pan do meio corrigido em `0b6bf9c529`). Pedido seguinte do dono, palavra por
+palavra: *«Traga todas as outras shapes presentes em vector para pixel mantendo os mesmos gizmos
+maravilhosos»* — é a onda **P6e**: o `PixelShape` (hoje 4: Rectangle→`RoundRect`, Ellipse, Polygon,
+Star) passa a cobrir TODO o catálogo `ph2d_vec_scene::ShapeKind` que o Vector oferece ao artista
+(espiral, linha, arco, pizza, segmento, setas, fluxograma, balões, símbolos…), cada uma VIVA com a
+caixa do gizmo do sprite e as alças da lei `ph2d_tool_vector::shape_handles` — o mesmo caminho da
+P6d (`viva.rs`, `formas::cook_local`/`cells_mapped`), sem cópia por forma.

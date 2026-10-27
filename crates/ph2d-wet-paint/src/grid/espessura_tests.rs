@@ -63,3 +63,34 @@ fn nivelar_desce_abaixo_da_massa_sem_mudar_a_massa() {
     nivela(&mut h, i, 100.0);
     assert!(h.espessura.is_empty());
 }
+
+/// ⛔ **O vale nivelado SOMA a tinta que lhe chega** (BUG do smoke 27/10): a célula quase sem massa (o vale do grão)
+/// nivelada à média dos vizinhos fica com a altura deles; a massa que lhe chega depois (o assentar) SOMA-SE à
+/// espessura — como factor multiplicava-se (`2000 ÷ 2 × 102 = 102 000`), e a média do dab seguinte ia a ∞. Na tinta
+/// que cobre, a lei de sempre: a massa que sai leva a espessura na mesma proporção.
+#[test]
+fn o_vale_nivelado_soma_a_tinta_que_lhe_chega() {
+    let mut g = grade();
+    let vale = g.s * 4 + 4;
+    g.sett[vale] = 2.0;
+    nivela(&mut g, vale, 2000.0);
+    assert!((em(&g, vale) - 2000.0).abs() < 1e-3);
+    g.susp[vale] = 100.0;
+    assert!(
+        (em(&g, vale) - 2100.0).abs() < 1e-3,
+        "o vale: {}",
+        em(&g, vale)
+    );
+    assert!(factor(&g, vale) < 21.0);
+    // A tinta que cobre: o factor de sempre (a metade da massa leva a metade da espessura).
+    let cheia = g.s * 5 + 5;
+    g.sett[cheia] = 3000.0;
+    fixa(&mut g, cheia, 6000.0);
+    assert!((factor(&g, cheia) - 2.0).abs() < 1e-6);
+    g.sett[cheia] = 1500.0;
+    assert!((em(&g, cheia) - 3000.0).abs() < 1e-3);
+    // Sem massa, sem espessura.
+    g.sett[vale] = 0.0;
+    g.susp[vale] = 0.0;
+    assert_eq!(em(&g, vale), 0.0);
+}

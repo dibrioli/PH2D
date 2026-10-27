@@ -109,3 +109,69 @@ rotuladas da ronda final `pranchas/W3_Knife_<slug>.jpg` · cegas e chaves `pranc
 · réguas `exames/knife_<slug>_W3r{1,2}_regua.{txt,json}`. Bancada de trabalho (variantes, âncoras, ferramentas
 `pinta.sh`/`mk.py`/`refina.py`): scratchpad `p_knife/`. Rondas: 2 revisores `sonnet` (um por ronda, as 6 juntas;
 na R2 Smooth, Smooth 2, Textured e Dry 2 entraram como controlo, sem mudança).
+
+## BUG do smoke 27/10 — Knife Textured sobreposta (artefactos a partir do 2.º traço)
+
+**Sintoma (fotos do dono, papel com grão):** degraus, manchas ciano, placas de sombra, «lâminas» deslocadas e bordas
+duplas no 2.º e 3.º traço sobrepostos; pequenos cortes verticais claros já no 1.º.
+
+**Reprodução** — sonda `sonda_knife_textured_sobreposta` (`crates/ph2d-tool-painter/src/tool/paint/wetpaint/lamina_sobreposta_tests.rs`):
+o preset de fábrica a raio 45, três diagonais sobrepostas (pressão 0,25→0,9→0,3), papel Cold + Relief 0,6, Óleo Real
+ligado; régua da espessura no miolo (degrau entre vizinhas ÷ a mediana, cortes, factor) e da foto. Variantes no MESMO
+processo: `knifeLevel` 0, `knifeRidge` 0, papel liso, sem a marca K7 / sem a crista K6 (render), Smooth 3, Oily, Stain.
+
+**Mecanismo medido:** a espessura guardava-se como FACTOR `espessura ÷ massa`. A lâmina que nivela
+(`lamina::nivelar`, K3a) leva cada célula com tinta à média sob a lâmina — também o VALE do grão (massa ~10, onde o
+portão do papel/da textura quase não pousou): factor ~10² (**`kmax` 1,2·10² e 1 161 células > 4 já no 1.º traço**). A
+massa que chega DEPOIS a essa célula (o assentar, a água) multiplicava-se pelo factor; a média do dab seguinte apanhava-a,
+subia a altura de toda a lâmina, e o ciclo fechava: **factor ∞ no 2.º traço**, espessura 10¹¹–10²¹ × a mediana, foto em
+placas negras (a prancha). O papel com grão é a fonte dos vales (sem grão — «liso», o papel sem desenho ao acaso por
+célula — também explode: 5,7·10¹⁶ no 2.º).
+
+**A/B (mesmo processo):** `knifeLevel` 0 (= a faca da W2 sem nível) **não tem** o defeito (factor 1, degrau p99 0,22–0,29);
+`knifeRidge` 0 ao bit igual à fábrica (o rebordo não entra); tirar a marca K7 ou a crista K6 só no render não muda as
+fotos; Knife Smooth 3 e Oily (as facas antigas, sem nível) sobrepostas 3× não explodem (factor ≤ 2,5 do tecto do
+depósito). ⇒ o defeito é K3a × a representação da espessura, não K6/K7/K8.
+
+**Cura (round 2, `grid/espessura.rs`):** abaixo da massa que COBRE (`MASSA_QUE_COBRE` = 499,5, a profundidade óptica da
+opacidade do motor `1 − 0,998^m`) o excesso de espessura é ABSOLUTO: `espessura = m + (k − 1)·max(m, 499,5)`. Na tinta
+que cobre é o factor de sempre (a massa que sai leva a espessura na mesma proporção; o tecto de 3000 do depósito ao bit);
+no vale a tinta que chega SOMA-SE. O planalto da K3a fica (o gate `a_faca_nivela_a_tinta_em_pe_num_planalto_…` verde).
+
+| 3 traços, Knife Textured, papel com grão | degrau p99 / máx (÷ mediana) | espessura máx ÷ mediana | foto: escuros | grad p99 |
+|---|---|---|---|---|
+| antes | 2,9·10⁹ / 1,3·10¹¹ (2.º: NaN) | ∞ | placa negra | — |
+| **depois** | **0,34 / 0,79** | **1,7** | 0,0105 | 50,6 |
+| `knifeLevel` 0 (≈ W2) | 0,22 / 0,61 | 1,0 | 0 | 43,0 |
+| Knife Smooth 3 (aprovada) | 0,25 / 0,72 | 1,3 | 0,0109 | 52,1 |
+
+**⛔ Recusas MEDIDAS (não reconstruir):**
+
+| variante | o que deu |
+|---|---|
+| A — tecto `k ≤ max(k antes, 1)` (a lâmina só raspa) | sem explosão, mas sem planalto: a média do dab desce a cada passada (T med 930 → 595) e as colunas da lâmina fixa ficam em degrau (p99 1,7); reprova `a_faca_nivela_…_planalto` |
+| A + altura CORRIDA da lâmina ao longo do traço (média dos dabs filtrada pelo caminho, um comprimento de lâmina) | pior: catraca para baixo (T med 478, p99 2,5) |
+| C — puxar e pesar a média pela cobertura α(m), factor solto | `kmax` 6 → 9 → 23 por traço: a multiplicação continua, só mais devagar |
+
+**Gates:** `tres_tracos_sobrepostos_da_faca_textured_ficam_no_planalto` (tool-painter, o preset de fábrica, 3 traços,
+papel com grão: espessura ≤ 4 × a mediana, degrau ≤ 2 × a mediana) e `o_vale_nivelado_soma_a_tinta_que_lhe_chega`
+(wet-paint). Ambos VERMELHOS com a lei de antes — a mutação `max(m, MASSA_QUE_COBRE)` → `m` É a lei de antes e reprova
+os dois; verdes com a cura. Neutralidade verde por nome: `a_miniatura_de_fabrica_e_a_que_o_motor_pinta_hoje` (nenhuma
+miniatura muda — nada a regerar), `a_faca_so_com_o_nivel_nivela`, `a_tinta_que_nao_nivela_apaga_a_marca_pela_massa`,
+`a_parede_nivelada_fica_viva`, os testes `lamina`/`espessura`/`nivelado` do wet-paint, o módulo `oleo_acrilica`.
+
+**Folha:** `pranchas/BUG_knife_textured_sobreposta.jpg` (antes | depois | Rebelle; 1/2/3 traços). Rebelle fotografado
+pela porta WebSocket (o mesmo gesto ×1,7 no documento de arranque, papel RH00 com grão):
+`fixtures/rebelle_bateria/OIL_AND_ACRYLIC/knife_knife_textured_tres_sobrepostos_{1,2,3}.png`.
+
+**O que fica (não é este mecanismo — está igual com `knifeLevel` 0, logo na W2):**
+- os **cortes verticais finos** do 1.º traço: é a textura `Noise` Tiled 60×2 do preset (riscas verticais presas à tela)
+  a fechar o depósito em 1–2 colunas até ~0 na borda (medido: colunas a 0,6× dos vizinhos, a 0 na borda de baixo); como
+  é presa à tela, ficam nos MESMOS sítios em todos os traços (as fotos do dono confirmam). O Rebelle tem riscas mais
+  pálidas mas não furos. Cura = afinar a textura do preset (ronda de pincel, com régua contra o Rebelle).
+- manchas claras no miolo (o brilho em tinta fina sobre o relevo do papel) e as bordas em terraço das sobreposições (o
+  Rebelle também deixa degrau nas pontas, mais macio) — com o «relevo sem pigmento nas bordas» que corre em paralelo
+  em `oleo_real.rs`.
+
+**Veredito:** o preset FICA na fábrica — os artefactos terríveis (2.º/3.º traço) eram este mecanismo e somem; o que resta
+está ao nível da Knife Smooth 3 aprovada.

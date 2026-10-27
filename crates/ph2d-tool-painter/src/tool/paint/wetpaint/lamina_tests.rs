@@ -482,3 +482,6 @@ fn medida_e4_lamina_folha() {
     }
     std::fs::write(dir.join("altura.pgm"), pgm).expect("grava");
 }
+
+#[path = "lamina_sobreposta_tests.rs"]
+mod sobreposta;

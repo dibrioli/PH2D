@@ -445,8 +445,9 @@ fn paint_oleo_real(
     paint_oleo_material(ctx, theme, x, content_w, y, brush)
 }
 
-/// Os rótulos das 8 linhas do material (nomes do Blender), pela ordem de `MaterialCartao::CAMPOS`.
-const MATERIAL: [&str; 8] = [
+/// Os rótulos das 8 linhas do material (nomes do Blender), pela ordem de `MaterialCartao::CAMPOS`; o que não cabe
+/// parte-se em duas linhas ([`crate::duas_linhas`]).
+pub(crate) const MATERIAL: [&str; 8] = [
     "panel.painter_layers.wetpaint.oleo_metallic",
     "panel.painter_layers.wetpaint.oleo_roughness",
     "panel.painter_layers.wetpaint.oleo_ior_level",

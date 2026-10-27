@@ -21,8 +21,9 @@ use ph2d_tool_painter::ids::{
     PAINTER_WETPAINT_OLEO_ALCANCE_FENDA, PAINTER_WETPAINT_OLEO_ALTITUDE,
     PAINTER_WETPAINT_OLEO_AMBIENTE, PAINTER_WETPAINT_OLEO_AZIMUTE, PAINTER_WETPAINT_OLEO_BRILHO,
     PAINTER_WETPAINT_OLEO_FAIXAS, PAINTER_WETPAINT_OLEO_FENDA,
-    PAINTER_WETPAINT_OLEO_FORCA_AMBIENTE, PAINTER_WETPAINT_OLEO_MATERIAL, PAINTER_WETPAINT_OLEO_MATERIAL_NEUTRO,
-    PAINTER_WETPAINT_OLEO_PROFUNDIDADE, PAINTER_WETPAINT_OLEO_REAL, PAINTER_WETPAINT_OLEO_SOMBRA,
+    PAINTER_WETPAINT_OLEO_FORCA_AMBIENTE, PAINTER_WETPAINT_OLEO_MATERIAL,
+    PAINTER_WETPAINT_OLEO_MATERIAL_NEUTRO, PAINTER_WETPAINT_OLEO_PROFUNDIDADE,
+    PAINTER_WETPAINT_OLEO_REAL, PAINTER_WETPAINT_OLEO_SOMBRA,
     painter_wetpaint_oleo_ambiente_option_id,
 };
 use ph2d_ui_testkit::MockPanelHost;
@@ -396,4 +397,81 @@ fn o_material_do_cartao_chega_ao_oleo_real_e_sobrevive_a_religar() {
     assert_eq!(tool.wet_oleo_real(), None);
     clica_na_caixa(&mut tool);
     assert_eq!(tool.wet_oleo_real().expect("religado").material, antes);
+}
+
+/// ⭐ **Os nomes do material cabem no mínimo do dock** (W3 K9, [`ph2d_panel_painter_layers::duas_linhas`]): a `220`
+/// o «Coat Roughness» e o «Subsurface Radius» (nomes do Blender, ordem do dono) partem-se em duas linhas em vez de
+/// cortar — nenhum corte os leva —, a caixa deles desce meia fileira e a linha seguinte uma fileira inteira. O
+/// CONTROLO é o «Edge Darkening» da mesma secção, que continua a cortar ali (a régua vê cortes). Sangra se o pintor
+/// deixar de partir: os dois nomes voltam à lista dos cortes.
+#[test]
+fn a_220_os_nomes_do_material_partem_se_em_duas_linhas_e_nao_cortam() {
+    use ph2d_editor_core::screens::layout::{CenterSplit, ChromeBands, DockSides, HeroLayout};
+    use ph2d_editor_core::text_elide::elisao;
+    let mut tool = molhado();
+    tool.set_wet_oleo_real_ligado(true);
+    set_current_brush(Some(tool.brush_settings()));
+    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut st = PainterLayersPanelState;
+    let minimo = ph2d_tokens::PANEL_MIN_W_PX;
+    assert_eq!(
+        minimo, 220.0,
+        "o mínimo do dock mudou — o gate das elisões mede-o a 220"
+    );
+    let bandas = ChromeBands {
+        left_dock_w: minimo,
+        right_dock_w: minimo,
+        ..ChromeBands::DEFAULT
+    };
+    let vp = viewport();
+    let layout =
+        || HeroLayout::for_viewport_bands(vp, false, bandas, CenterSplit::None, DockSides::BOTH);
+    // A coluna é UMA por painel e aprende-se nos quadros anteriores (o testkit aquece dois).
+    for _ in 0..2 {
+        ph2d_editor_core::aquecimento::aquecendo_durante(|| {
+            host.paint_with_layout::<PainterLayersPanel>(&mut st, layout(), vp)
+        });
+    }
+    let (rects, medidos) =
+        elisao::medindo(|| host.paint_with_layout::<PainterLayersPanel>(&mut st, layout(), vp));
+    let cortados: Vec<&str> = medidos
+        .iter()
+        .filter(|m| m.pintado != m.texto)
+        .map(|m| m.texto.as_str())
+        .collect();
+    assert!(
+        cortados.contains(&"Edge Darkening"),
+        "a régua não viu o corte de controlo: {cortados:?}"
+    );
+    for nome in ["Coat Roughness", "Subsurface Radius"] {
+        assert!(
+            !cortados.contains(&nome),
+            "«{nome}» cortado a 220: {cortados:?}"
+        );
+    }
+    let passo = ph2d_tokens::row_pitch_px();
+    let y = |k: usize| {
+        rect_de(&rects, PAINTER_WETPAINT_OLEO_MATERIAL[k])
+            .expect("linha do material")
+            .y
+    };
+    // Coat (3) → Coat Roughness (4) partido: meia fileira até à caixa dele, fileira e meia até à seguinte.
+    assert!(
+        (y(4) - y(3) - 1.5 * passo).abs() < 0.01,
+        "{} {}",
+        y(3),
+        y(4)
+    );
+    assert!(
+        (y(5) - y(4) - 1.5 * passo).abs() < 0.01,
+        "{} {}",
+        y(4),
+        y(5)
+    );
+    assert!(
+        (y(7) - y(6) - 1.5 * passo).abs() < 0.01,
+        "{} {}",
+        y(6),
+        y(7)
+    );
 }

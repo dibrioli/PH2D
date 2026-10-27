@@ -66,6 +66,9 @@ const ELIDEM_POR_LARGURA: &[(f32, usize)] = &[
     //    `245` para cima a escada não muda.
     // ⬇️ **15 → 13 em 2026-10-22 (J5 fecho): os nomes do Pen ficaram no idioma curto dos grandes apps** («Press.
     //    opacity», «Min/Max pressure», «Pressure curve», «Light scatter», «Press. softness») — nenhum corta a `220`.
+    // ⚠️ 27/10 (Óleo Real W3 K9): os nomes do Blender do material (ordem do dono) punham `15` aqui e `2` a `245`
+    //    («Coat Roughness», «Subsurface Radius»); os 13 de cima vêm da base `5a01640d94`. Cura: o nome do material
+    //    que não cabe parte-se em DUAS linhas (`duas_linhas::partido`, a mesma pergunta que o pintor faz).
     (220.0, 13),
     (245.0, 1),
     // Amostra DATADA da largura do dono (lida em 2026-09-14).
@@ -108,14 +111,15 @@ fn elidem_com(ts: &mut TextSystem, painel: f32, declarada: bool) -> Vec<String> 
         // ⭐ A linha dentro de um cartão de técnica recua `Sm` de cada lado — a mesma conta do
         //    `card::card_frame`, que é quem a pinta.
         let linha_do_cartao = linha - 2.0 * Spacing::Sm.px();
-        let soltos: Vec<&str> = d.chaves.iter().map(|k| ph2d_i18n::tr(k)).collect();
-        let no_cartao: Vec<&str> = d.cartao.iter().map(|k| ph2d_i18n::tr(k)).collect();
+        let soltos: Vec<(&str, &str)> = d.chaves.iter().map(|k| (*k, ph2d_i18n::tr(k))).collect();
+        let no_cartao: Vec<(&str, &str)> =
+            d.cartao.iter().map(|k| (*k, ph2d_i18n::tr(k))).collect();
         // ⚠️ A coluna é UMA para as duas listas — o produto mede-a sobre as duas.
         let mais_largo = declarada.then(|| {
             soltos
                 .iter()
                 .chain(&no_cartao)
-                .map(|t| ts.prefix_width(t, fonte))
+                .map(|(_, t)| ts.prefix_width(t, fonte))
                 .fold(0.0_f32, f32::max)
         });
         // ⚠️ **O `control_need` é o da SECÇÃO** — `campos` caixas ao piso, com os vãos —, que é
@@ -131,8 +135,11 @@ fn elidem_com(ts: &mut TextSystem, painel: f32, declarada: bool) -> Vec<String> 
                 mais_largo,
                 Some(precisa),
             );
-            for t in rotulos {
-                if ts.prefix_width(t, fonte) > col {
+            for &(chave, t) in rotulos {
+                // ⭐ O nome do material do Real Oil que não cabe pinta-se em DUAS linhas (W3 K9): corta só se
+                //    nem partido cabe — a mesma pergunta que o pintor faz.
+                let partido = ph2d_panel_painter_layers::duas_linhas::partido(ts, chave, t, col);
+                if ts.prefix_width(t, fonte) > col && partido.is_none() {
                     out.push(format!("[{}] {t}", d.nome));
                 }
             }

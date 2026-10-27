@@ -118,6 +118,8 @@ mod populate_wetpaint; // a secção Wet Paint do populate (o tecto de 600 LOC)
 mod preview_pino; // o pino que fixa a preview viva no topo da vista Brush
 /// As secções que pintam linhas de marcar, e os rótulos de cada uma (a coluna do nome sai daqui).
 pub mod seccoes;
+/// O nome do material do Real Oil que não cabe parte-se em duas linhas (W3 K9).
+pub mod duas_linhas;
 pub mod state;
 mod state_dropdowns;
 mod state_ramp;

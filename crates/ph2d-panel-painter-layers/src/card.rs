@@ -131,19 +131,54 @@ pub(crate) fn card_row(
     decimals: usize,
 ) -> f32 {
     let seccao = crate::seccoes::seccao_da_chave(ctx.text_system, chave);
-    number_field::paint_num_row(
-        ctx,
-        theme,
+    let nome = tr(chave);
+    // O nome que não cabe e se parte ([`crate::duas_linhas`]): duas linhas na coluna, a caixa ao meio delas.
+    let rotulo = ph2d_editor_core::widget::colunas_da_linha(
         x,
         content_w,
         y,
-        tr(chave),
-        id,
-        value,
-        min,
-        max,
-        step,
-        decimals,
-        seccao,
+        ph2d_tokens::ROW_H_PX,
+        seccao.com_pelo_menos(1).com_o_nome(ctx.text_system, nome),
+    )
+    .label;
+    if let Some((cima, baixo)) = crate::duas_linhas::partido(ctx.text_system, chave, nome, rotulo.w)
+    {
+        let passo = ph2d_tokens::row_pitch_px();
+        let fonte = TypeToken::Sm.px();
+        let cor = resolve(ColorToken::Text2, theme);
+        let area = Rect::new(x, y, content_w, 2.0 * passo);
+        crate::esmaecer::talvez_esmaecido(ctx, theme, area, &[id], |ctx| {
+            for (k, t) in [cima, baixo].into_iter().enumerate() {
+                ph2d_editor_core::widget::paint_property_label(
+                    ctx.text_system,
+                    ctx.scene,
+                    t,
+                    rotulo.x,
+                    y + passo * k as f32 + (rotulo.h - fonte) * 0.5,
+                    fonte,
+                    rotulo.w,
+                    cor,
+                );
+            }
+        });
+        number_field::paint_num_row(
+            ctx,
+            theme,
+            x,
+            content_w,
+            y + passo * 0.5,
+            "",
+            id,
+            value,
+            min,
+            max,
+            step,
+            decimals,
+            seccao,
+        );
+        return y + 2.0 * passo;
+    }
+    number_field::paint_num_row(
+        ctx, theme, x, content_w, y, nome, id, value, min, max, step, decimals, seccao,
     )
 }

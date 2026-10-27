@@ -1,0 +1,1487 @@
+{
+ "cabecalho": {
+  "oraculo": "FreeCAD 1.1.4 Assembly (freecadcmd, OndselSolver/MbD), LGPL \u2014 corrido, nunca lido",
+  "gerador": "docs/BlenderConstraints/ferramentas/oraculo_freecad_assembly.py",
+  "unidades": "poses [x, y, graus]; pontos de pino em coordenadas locais do corpo",
+  "juntas": "pino = Revolute (eixo Z), rigida = Fixed; condutor = GroundedJoint na pose dada",
+  "palpite": "cada corpo come\u00e7a na pose autorada do caso (o mesmo palpite do nosso solver)",
+  "codigo": "AssemblyObject.solve(): 0 ok, -3 conflito, -4 sobre-restrito, -1 erro do solver \u2014 MEDIDO: d\u00e1 0 num la\u00e7o que n\u00e3o fecha; quem decide \u00e9 o residuo",
+  "residuo": "maior dist\u00e2ncia no mundo entre os dois pontos de cada junta, depois do solve",
+  "data": "2026-10-27"
+ },
+ "casos": [
+  {
+   "nome": "cadeia_dois_pinos",
+   "corpos": [
+    {
+     "nome": "p1",
+     "pontos": [
+      [
+       0,
+       0
+      ],
+      [
+       2,
+       0
+      ]
+     ],
+     "autorada": [
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "nome": "p2",
+     "pontos": [
+      [
+       0,
+       0
+      ],
+      [
+       2,
+       0
+      ]
+     ],
+     "autorada": [
+      2,
+      0,
+      0
+     ]
+    },
+    {
+     "nome": "p3",
+     "pontos": [
+      [
+       0,
+       0
+      ],
+      [
+       2,
+       0
+      ]
+     ],
+     "autorada": [
+      4,
+      0,
+      0
+     ]
+    }
+   ],
+   "juntas": [
+    {
+     "tipo": "pino",
+     "a": "p1",
+     "ia": 1,
+     "b": "p2",
+     "ib": 0
+    },
+    {
+     "tipo": "pino",
+     "a": "p2",
+     "ia": 1,
+     "b": "p3",
+     "ib": 0
+    }
+   ],
+   "condutores": {
+    "p1": [
+     0,
+     0,
+     30
+    ]
+   },
+   "freecad": {
+    "codigo": 0,
+    "residuo": 4.47545209131181e-16,
+    "poses": {
+     "p1": [
+      0.0,
+      0.0,
+      29.999999999999996
+     ],
+     "p2": [
+      1.7320508075688774,
+      0.9999999999999999,
+      -23.410504541969868
+     ],
+     "p3": [
+      3.5674144028188843,
+      0.20536771193779996,
+      0.0
+     ]
+    }
+   }
+  },
+  {
+   "nome": "rigida",
+   "corpos": [
+    {
+     "nome": "a",
+     "pontos": [
+      [
+       1,
+       0.5
+      ]
+     ],
+     "autorada": [
+      1,
+      2,
+      0
+     ]
+    },
+    {
+     "nome": "b",
+     "pontos": [
+      [
+       0,
+       0
+      ]
+     ],
+     "autorada": [
+      2,
+      2.5,
+      0
+     ]
+    }
+   ],
+   "juntas": [
+    {
+     "tipo": "rigida",
+     "a": "a",
+     "ia": 0,
+     "b": "b",
+     "ib": 0
+    }
+   ],
+   "condutores": {
+    "a": [
+     3,
+     -1,
+     40
+    ]
+   },
+   "freecad": {
+    "codigo": 0,
+    "residuo": 0.0,
+    "poses": {
+     "a": [
+      3.0,
+      -1.0,
+      40.0
+     ],
+     "b": [
+      3.4446506382757085,
+      0.025809831246028425,
+      40.0
+     ]
+    }
+   }
+  },
+  {
+   "nome": "quadrilatero_manivela_0",
+   "corpos": [
+    {
+     "nome": "chao",
+     "pontos": [
+      [
+       0,
+       0
+      ],
+      [
+       4.0,
+       0
+      ]
+     ],
+     "autorada": [
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "nome": "manivela",
+     "pontos": [
+      [
+       0,
+       0
+      ],
+      [
+       1.0,
+       0
+      ]
+     ],
+     "autorada": [
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "nome": "biela",
+     "pontos": [
+      [
+       0,
+       0
+      ],
+      [
+       3.5,
+       0
+      ]
+     ],
+     "autorada": [
+      1.0,
+      0.0,
+      54.31466528734796
+     ]
+    },
+    {
+     "nome": "balancim",
+     "pontos": [
+      [
+       0,
+       0
+      ],
+      [
+       3.0,
+       0
+      ]
+     ],
+     "autorada": [
+      4.0,
+      0,
+      108.6293305746959
+     ]
+    }
+   ],
+   "juntas": [
+    {
+     "tipo": "pino",
+     "a": "chao",
+     "ia": 0,
+     "b": "manivela",
+     "ib": 0
+    },
+    {
+     "tipo": "pino",
+     "a": "manivela",
+     "ia": 1,
+     "b": "biela",
+     "ib": 0
+    },
+    {
+     "tipo": "pino",
+     "a": "biela",
+     "ia": 1,
+     "b": "balancim",
+     "ib": 1
+    },
+    {
+     "tipo": "pino",
+     "a": "chao",
+     "ia": 1,
+     "b": "balancim",
+     "ib": 0
+    }
+   ],
+   "condutores": {
+    "chao": [
+     0,
+     0,
+     0
+    ],
+    "manivela": [
+     0,
+     0,
+     0
+    ]
+   },
+   "freecad": {
+    "codigo": 0,
+    "residuo": 4.440892098500626e-16,
+    "poses": {
+     "chao": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "manivela": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "biela": [
+      1.0,
+      1.366458262376593e-33,
+      54.31466528734794
+     ],
+     "balancim": [
+      4.0,
+      -1.86624804977893e-33,
+      108.6293305746959
+     ]
+    }
+   }
+  },
+  {
+   "nome": "quadrilatero_manivela_30",
+   "corpos": [
+    {
+     "nome": "chao",
+     "pontos": [
+      [
+       0,
+       0
+      ],
+      [
+       4.0,
+       0
+      ]
+     ],
+     "autorada": [
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "nome": "manivela",
+     "pontos": [
+      [
+       0,
+       0
+      ],
+      [
+       1.0,
+       0
+      ]
+     ],
+     "autorada": [
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "nome": "biela",
+     "pontos": [
+      [
+       0,
+       0
+      ],
+      [
+       3.5,
+       0
+      ]
+     ],
+     "autorada": [
+      1.0,
+      0.0,
+      54.31466528734796
+     ]
+    },
+    {
+     "nome": "balancim",
+     "pontos": [
+      [
+       0,
+       0
+      ],
+      [
+       3.0,
+       0
+      ]
+     ],
+     "autorada": [
+      4.0,
+      0,
+      108.6293305746959
+     ]
+    }
+   ],
+   "juntas": [
+    {
+     "tipo": "pino",
+     "a": "chao",
+     "ia": 0,
+     "b": "manivela",
+     "ib": 0
+    },
+    {
+     "tipo": "pino",
+     "a": "manivela",
+     "ia": 1,
+     "b": "biela",
+     "ib": 0
+    },
+    {
+     "tipo": "pino",
+     "a": "biela",
+     "ia": 1,
+     "b": "balancim",
+     "ib": 1
+    },
+    {
+     "tipo": "pino",
+     "a": "chao",
+     "ia": 1,
+     "b": "balancim",
+     "ib": 0
+    }
+   ],
+   "condutores": {
+    "chao": [
+     0,
+     0,
+     0
+    ],
+    "manivela": [
+     0,
+     0,
+     30
+    ]
+   },
+   "freecad": {
+    "codigo": 0,
+    "residuo": 1.2560739669470201e-15,
+    "poses": {
+     "chao": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "manivela": [
+      0.0,
+      0.0,
+      29.999999999999996
+     ],
+     "biela": [
+      0.8660254037844387,
+      0.49999999999999994,
+      44.08915720897985
+     ],
+     "balancim": [
+      4.0,
+      0.0,
+      101.92848040796599
+     ]
+    }
+   }
+  },
+  {
+   "nome": "quadrilatero_manivela_60",
+   "corpos": [
+    {
+     "nome": "chao",
+     "pontos": [
+      [
+       0,
+       0
+      ],
+      [
+       4.0,
+       0
+      ]
+     ],
+     "autorada": [
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "nome": "manivela",
+     "pontos": [
+      [
+       0,
+       0
+      ],
+      [
+       1.0,
+       0
+      ]
+     ],
+     "autorada": [
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "nome": "biela",
+     "pontos": [
+      [
+       0,
+       0
+      ],
+      [
+       3.5,
+       0
+      ]
+     ],
+     "autorada": [
+      1.0,
+      0.0,
+      54.31466528734796
+     ]
+    },
+    {
+     "nome": "balancim",
+     "pontos": [
+      [
+       0,
+       0
+      ],
+      [
+       3.0,
+       0
+      ]
+     ],
+     "autorada": [
+      4.0,
+      0,
+      108.6293305746959
+     ]
+    }
+   ],
+   "juntas": [
+    {
+     "tipo": "pino",
+     "a": "chao",
+     "ia": 0,
+     "b": "manivela",
+     "ib": 0
+    },
+    {
+     "tipo": "pino",
+     "a": "manivela",
+     "ia": 1,
+     "b": "biela",
+     "ib": 0
+    },
+    {
+     "tipo": "pino",
+     "a": "biela",
+     "ia": 1,
+     "b": "balancim",
+     "ib": 1
+    },
+    {
+     "tipo": "pino",
+     "a": "chao",
+     "ia": 1,
+     "b": "balancim",
+     "ib": 0
+    }
+   ],
+   "condutores": {
+    "chao": [
+     0,
+     0,
+     0
+    ],
+    "manivela": [
+     0,
+     0,
+     60
+    ]
+   },
+   "freecad": {
+    "codigo": 0,
+    "residuo": 4.440892098500626e-16,
+    "poses": {
+     "chao": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "manivela": [
+      0.0,
+      0.0,
+      59.99999999999999
+     ],
+     "biela": [
+      0.5000000000000002,
+      0.8660254037844386,
+      36.022723330118325
+     ],
+     "balancim": [
+      4.0,
+      1.4444474582904269e-34,
+      102.89032693082044
+     ]
+    }
+   }
+  },
+  {
+   "nome": "quadrilatero_manivela_90",
+   "corpos": [
+    {
+     "nome": "chao",
+     "pontos": [
+      [
+       0,
+       0
+      ],
+      [
+       4.0,
+       0
+      ]
+     ],
+     "autorada": [
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "nome": "manivela",
+     "pontos": [
+      [
+       0,
+       0
+      ],
+      [
+       1.0,
+       0
+      ]
+     ],
+     "autorada": [
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "nome": "biela",
+     "pontos": [
+      [
+       0,
+       0
+      ],
+      [
+       3.5,
+       0
+      ]
+     ],
+     "autorada": [
+      1.0,
+      0.0,
+      54.31466528734796
+     ]
+    },
+    {
+     "nome": "balancim",
+     "pontos": [
+      [
+       0,
+       0
+      ],
+      [
+       3.0,
+       0
+      ]
+     ],
+     "autorada": [
+      4.0,
+      0,
+      108.6293305746959
+     ]
+    }
+   ],
+   "juntas": [
+    {
+     "tipo": "pino",
+     "a": "chao",
+     "ia": 0,
+     "b": "manivela",
+     "ib": 0
+    },
+    {
+     "tipo": "pino",
+     "a": "manivela",
+     "ia": 1,
+     "b": "biela",
+     "ib": 0
+    },
+    {
+     "tipo": "pino",
+     "a": "biela",
+     "ia": 1,
+     "b": "balancim",
+     "ib": 1
+    },
+    {
+     "tipo": "pino",
+     "a": "chao",
+     "ia": 1,
+     "b": "balancim",
+     "ib": 0
+    }
+   ],
+   "condutores": {
+    "chao": [
+     0,
+     0,
+     0
+    ],
+    "manivela": [
+     0,
+     0,
+     90
+    ]
+   },
+   "freecad": {
+    "codigo": 0,
+    "residuo": 3.236876430950492e-37,
+    "poses": {
+     "chao": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "manivela": [
+      0.0,
+      0.0,
+      89.99999999999999
+     ],
+     "biela": [
+      2.220446049250313e-16,
+      1.0,
+      31.40656117534103
+     ],
+     "balancim": [
+      4.0,
+      3.236876430950492e-37,
+      109.73033588491369
+     ]
+    }
+   }
+  },
+  {
+   "nome": "quadrilatero_balancim_0",
+   "corpos": [
+    {
+     "nome": "chao",
+     "pontos": [
+      [
+       0,
+       0
+      ],
+      [
+       4.0,
+       0
+      ]
+     ],
+     "autorada": [
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "nome": "manivela",
+     "pontos": [
+      [
+       0,
+       0
+      ],
+      [
+       1.0,
+       0
+      ]
+     ],
+     "autorada": [
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "nome": "biela",
+     "pontos": [
+      [
+       0,
+       0
+      ],
+      [
+       3.5,
+       0
+      ]
+     ],
+     "autorada": [
+      1.0,
+      0.0,
+      54.31466528734796
+     ]
+    },
+    {
+     "nome": "balancim",
+     "pontos": [
+      [
+       0,
+       0
+      ],
+      [
+       3.0,
+       0
+      ]
+     ],
+     "autorada": [
+      4.0,
+      0,
+      108.6293305746959
+     ]
+    }
+   ],
+   "juntas": [
+    {
+     "tipo": "pino",
+     "a": "chao",
+     "ia": 0,
+     "b": "manivela",
+     "ib": 0
+    },
+    {
+     "tipo": "pino",
+     "a": "manivela",
+     "ia": 1,
+     "b": "biela",
+     "ib": 0
+    },
+    {
+     "tipo": "pino",
+     "a": "biela",
+     "ia": 1,
+     "b": "balancim",
+     "ib": 1
+    },
+    {
+     "tipo": "pino",
+     "a": "chao",
+     "ia": 1,
+     "b": "balancim",
+     "ib": 0
+    }
+   ],
+   "condutores": {
+    "chao": [
+     0,
+     0,
+     0
+    ],
+    "balancim": [
+     4.0,
+     0,
+     108.6293305746959
+    ]
+   },
+   "freecad": {
+    "codigo": 0,
+    "residuo": 4.440892098500626e-16,
+    "poses": {
+     "chao": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "manivela": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "biela": [
+      1.0,
+      3.3314087278954195e-17,
+      54.31466528734794
+     ],
+     "balancim": [
+      4.0,
+      0.0,
+      108.6293305746959
+     ]
+    }
+   }
+  },
+  {
+   "nome": "quadrilatero_balancim_5",
+   "corpos": [
+    {
+     "nome": "chao",
+     "pontos": [
+      [
+       0,
+       0
+      ],
+      [
+       4.0,
+       0
+      ]
+     ],
+     "autorada": [
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "nome": "manivela",
+     "pontos": [
+      [
+       0,
+       0
+      ],
+      [
+       1.0,
+       0
+      ]
+     ],
+     "autorada": [
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "nome": "biela",
+     "pontos": [
+      [
+       0,
+       0
+      ],
+      [
+       3.5,
+       0
+      ]
+     ],
+     "autorada": [
+      1.0,
+      0.0,
+      54.31466528734796
+     ]
+    },
+    {
+     "nome": "balancim",
+     "pontos": [
+      [
+       0,
+       0
+      ],
+      [
+       3.0,
+       0
+      ]
+     ],
+     "autorada": [
+      4.0,
+      0,
+      108.6293305746959
+     ]
+    }
+   ],
+   "juntas": [
+    {
+     "tipo": "pino",
+     "a": "chao",
+     "ia": 0,
+     "b": "manivela",
+     "ib": 0
+    },
+    {
+     "tipo": "pino",
+     "a": "manivela",
+     "ia": 1,
+     "b": "biela",
+     "ib": 0
+    },
+    {
+     "tipo": "pino",
+     "a": "biela",
+     "ia": 1,
+     "b": "balancim",
+     "ib": 1
+    },
+    {
+     "tipo": "pino",
+     "a": "chao",
+     "ia": 1,
+     "b": "balancim",
+     "ib": 0
+    }
+   ],
+   "condutores": {
+    "chao": [
+     0,
+     0,
+     0
+    ],
+    "balancim": [
+     4.0,
+     0,
+     113.6293305746959
+    ]
+   },
+   "freecad": {
+    "codigo": 0,
+    "residuo": 9.930136612989092e-16,
+    "poses": {
+     "chao": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "manivela": [
+      0.0,
+      0.0,
+      -13.731400235945845
+     ],
+     "biela": [
+      0.9714191779179137,
+      -0.2373705558262967,
+      58.55025823301261
+     ],
+     "balancim": [
+      4.0,
+      0.0,
+      113.62933057469589
+     ]
+    }
+   }
+  },
+  {
+   "nome": "quadrilatero_balancim_15",
+   "corpos": [
+    {
+     "nome": "chao",
+     "pontos": [
+      [
+       0,
+       0
+      ],
+      [
+       4.0,
+       0
+      ]
+     ],
+     "autorada": [
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "nome": "manivela",
+     "pontos": [
+      [
+       0,
+       0
+      ],
+      [
+       1.0,
+       0
+      ]
+     ],
+     "autorada": [
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "nome": "biela",
+     "pontos": [
+      [
+       0,
+       0
+      ],
+      [
+       3.5,
+       0
+      ]
+     ],
+     "autorada": [
+      1.0,
+      0.0,
+      54.31466528734796
+     ]
+    },
+    {
+     "nome": "balancim",
+     "pontos": [
+      [
+       0,
+       0
+      ],
+      [
+       3.0,
+       0
+      ]
+     ],
+     "autorada": [
+      4.0,
+      0,
+      108.6293305746959
+     ]
+    }
+   ],
+   "juntas": [
+    {
+     "tipo": "pino",
+     "a": "chao",
+     "ia": 0,
+     "b": "manivela",
+     "ib": 0
+    },
+    {
+     "tipo": "pino",
+     "a": "manivela",
+     "ia": 1,
+     "b": "biela",
+     "ib": 0
+    },
+    {
+     "tipo": "pino",
+     "a": "biela",
+     "ia": 1,
+     "b": "balancim",
+     "ib": 1
+    },
+    {
+     "tipo": "pino",
+     "a": "chao",
+     "ia": 1,
+     "b": "balancim",
+     "ib": 0
+    }
+   ],
+   "condutores": {
+    "chao": [
+     0,
+     0,
+     0
+    ],
+    "balancim": [
+     4.0,
+     0,
+     123.6293305746959
+    ]
+   },
+   "freecad": {
+    "codigo": 0,
+    "residuo": 8.881784197001252e-16,
+    "poses": {
+     "chao": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "manivela": [
+      0.0,
+      0.0,
+      -39.272224772455495
+     ],
+     "biela": [
+      0.7741471623084538,
+      -0.6330056643425623,
+      63.45047433081387
+     ],
+     "balancim": [
+      4.0,
+      0.0,
+      123.62933057469591
+     ]
+    }
+   }
+  },
+  {
+   "nome": "quadrilatero_balancim_25",
+   "corpos": [
+    {
+     "nome": "chao",
+     "pontos": [
+      [
+       0,
+       0
+      ],
+      [
+       4.0,
+       0
+      ]
+     ],
+     "autorada": [
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "nome": "manivela",
+     "pontos": [
+      [
+       0,
+       0
+      ],
+      [
+       1.0,
+       0
+      ]
+     ],
+     "autorada": [
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "nome": "biela",
+     "pontos": [
+      [
+       0,
+       0
+      ],
+      [
+       3.5,
+       0
+      ]
+     ],
+     "autorada": [
+      1.0,
+      0.0,
+      54.31466528734796
+     ]
+    },
+    {
+     "nome": "balancim",
+     "pontos": [
+      [
+       0,
+       0
+      ],
+      [
+       3.0,
+       0
+      ]
+     ],
+     "autorada": [
+      4.0,
+      0,
+      108.6293305746959
+     ]
+    }
+   ],
+   "juntas": [
+    {
+     "tipo": "pino",
+     "a": "chao",
+     "ia": 0,
+     "b": "manivela",
+     "ib": 0
+    },
+    {
+     "tipo": "pino",
+     "a": "manivela",
+     "ia": 1,
+     "b": "biela",
+     "ib": 0
+    },
+    {
+     "tipo": "pino",
+     "a": "biela",
+     "ia": 1,
+     "b": "balancim",
+     "ib": 1
+    },
+    {
+     "tipo": "pino",
+     "a": "chao",
+     "ia": 1,
+     "b": "balancim",
+     "ib": 0
+    }
+   ],
+   "condutores": {
+    "chao": [
+     0,
+     0,
+     0
+    ],
+    "balancim": [
+     4.0,
+     0,
+     133.6293305746959
+    ]
+   },
+   "freecad": {
+    "codigo": 0,
+    "residuo": 4.965068306494546e-16,
+    "poses": {
+     "chao": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "manivela": [
+      0.0,
+      0.0,
+      -70.55033109202499
+     ],
+     "biela": [
+      0.33297867347142435,
+      -0.942934357743534,
+      62.85137510460635
+     ],
+     "balancim": [
+      4.0,
+      0.0,
+      133.6293305746959
+     ]
+    }
+   }
+  },
+  {
+   "nome": "laco_impossivel",
+   "corpos": [
+    {
+     "nome": "chao",
+     "pontos": [
+      [
+       0,
+       0
+      ],
+      [
+       4.0,
+       0
+      ]
+     ],
+     "autorada": [
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "nome": "manivela",
+     "pontos": [
+      [
+       0,
+       0
+      ],
+      [
+       1.0,
+       0
+      ]
+     ],
+     "autorada": [
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "nome": "biela",
+     "pontos": [
+      [
+       0,
+       0
+      ],
+      [
+       1.0,
+       0
+      ]
+     ],
+     "autorada": [
+      1.0,
+      0.0,
+      0.0
+     ]
+    },
+    {
+     "nome": "balancim",
+     "pontos": [
+      [
+       0,
+       0
+      ],
+      [
+       0.5,
+       0
+      ]
+     ],
+     "autorada": [
+      4.0,
+      0,
+      180.0
+     ]
+    }
+   ],
+   "juntas": [
+    {
+     "tipo": "pino",
+     "a": "chao",
+     "ia": 0,
+     "b": "manivela",
+     "ib": 0
+    },
+    {
+     "tipo": "pino",
+     "a": "manivela",
+     "ia": 1,
+     "b": "biela",
+     "ib": 0
+    },
+    {
+     "tipo": "pino",
+     "a": "biela",
+     "ia": 1,
+     "b": "balancim",
+     "ib": 1
+    },
+    {
+     "tipo": "pino",
+     "a": "chao",
+     "ia": 1,
+     "b": "balancim",
+     "ib": 0
+    }
+   ],
+   "condutores": {
+    "chao": [
+     0,
+     0,
+     0
+    ],
+    "manivela": [
+     0,
+     0,
+     30
+    ]
+   },
+   "freecad": {
+    "codigo": 0,
+    "residuo": 1.500139937016927,
+    "poses": {
+     "chao": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "manivela": [
+      0.0,
+      0.0,
+      0.9585372630806651
+     ],
+     "biela": [
+      0.999860062983073,
+      0.01672885087163547,
+      0.0
+     ],
+     "balancim": [
+      2.499860062983073,
+      0.0,
+      180.0
+     ]
+    }
+   }
+  }
+ ]
+}

@@ -96,6 +96,23 @@ fixture `fixtures/freecad_1_1_4_assembly_cola.json` com cabeçalho. Casos:
 
 Comparação **por passo**, tolerância declarada no gate (o FreeCAD é 3D/float; a nossa conta é 2D/f64).
 
+### 3.1 Triagem e corrida (27/10)
+
+- **Licença por artefacto:** `freecad 1.1.4-3` = LGPL-2.0-only (`pacman -Qi`); `libOndselSolver.so.1.0.1` vem
+  dentro dele (`/usr/lib/freecad/lib/`), sem ficheiro LICENSE — os cabeçalhos instalados dizem «Copyright (c) 2023
+  Ondsel, Inc. … See LICENSE file» (o upstream é LGPL-2.1). Copyleft ⇒ **só se corre**, nunca se lê; nenhuma
+  porta permissiva a reaproveitar.
+- **Idioma medido do 1.1:** a referência da junta enraíza-se no COMPONENTE (`[corpo, ["VertexN","VertexN"]]`; com a
+  raiz no Assembly o `getMovingPart` devolve o próprio Assembly e a junta não liga); criar a junta pré-alinha os
+  corpos ⇒ a pose autorada repõe-se DEPOIS, e só então o `GroundedJoint` do condutor.
+- ⛔ **`solve()` devolve 0 num laço que NÃO fecha** (caso 5: resíduo 1,5) e também com o balancim fora do curso
+  (98,6° com curso 101,4°–141,4°, primeira corrida). Quem decide é o **resíduo** gravado por caso, nunca o código.
+- **Caso 1 (cadeia sub-determinada):** o FreeCAD distribui a rotação (p2 −23,4°, p3 0°); a nossa lei (§2.3) é a do
+  animador — cada seguidor mantém a SUA rotação autorada. Diferença de desenho declarada; o gate do oráculo cobre os
+  casos 2–5, que são determinados.
+- Saída: [`fixtures/freecad_1_1_4_assembly_cola.json`](fixtures/freecad_1_1_4_assembly_cola.json) (entradas NOSSAS
+  dentro da fixture, o gate lê-as dali).
+
 ## 4. Gates red-first
 
 | Gate | Prova | Mutação que sangra |

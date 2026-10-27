@@ -66,6 +66,7 @@ pub enum Foto {
     UsoAnimada,
     UsoParada,
     PlayerParado,
+    RepetidaDaParada,
     HeroiAnimado,
 }
 
@@ -83,6 +84,7 @@ pub fn foto() -> Option<Foto> {
         "uso_animada" => Some(Foto::UsoAnimada),
         "uso_parada" => Some(Foto::UsoParada),
         "player_parado" => Some(Foto::PlayerParado),
+        "repetida_da_parada" => Some(Foto::RepetidaDaParada),
         "heroi_animado" => Some(Foto::HeroiAnimado),
         _ => None,
     }
@@ -106,7 +108,11 @@ impl Foto {
     pub const fn do_plano_15(self) -> bool {
         matches!(
             self,
-            Self::UsoAnimada | Self::UsoParada | Self::PlayerParado | Self::HeroiAnimado
+            Self::UsoAnimada
+                | Self::UsoParada
+                | Self::PlayerParado
+                | Self::RepetidaDaParada
+                | Self::HeroiAnimado
         )
     }
 }
@@ -177,6 +183,13 @@ pub fn plano_da_foto(
         Foto::UsoParada => {
             plano.escolhas = vec![(alta, bandeira)];
             plano.edicoes = vec![(alta, uso(ph2d_editor_core::InspectorImageUse::Still))];
+        }
+        Foto::RepetidaDaParada => {
+            plano.escolhas = vec![(alta, bandeira)];
+            plano.edicoes = vec![
+                (alta, uso(ph2d_editor_core::InspectorImageUse::Still)),
+                (alta, uso(ph2d_editor_core::InspectorImageUse::Repeated)),
+            ];
         }
         Foto::HeroiAnimado => {
             plano.escolhas = vec![(alta, *heroi)];

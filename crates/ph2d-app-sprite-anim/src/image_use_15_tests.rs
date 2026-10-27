@@ -284,3 +284,34 @@ fn parada_mostra_a_imagem_inteira() {
         Some([celula[0] * g.hframes as f32, celula[1] * g.vframes as f32])
     );
 }
+
+/// Dono 27/10: «por que em Repeated a imagem ficou quadrada e achatada?» — o ladrilho tem de ser o que o objecto
+/// MOSTRA (a sua grelha), nunca a célula do corte da imagem: uma parada inteira que passa a repetida repete a
+/// imagem inteira, com as proporções dela.
+#[test]
+fn repetida_de_uma_parada_inteira_nao_achata() {
+    let (db, atlas) = biblioteca();
+    let bandeira = atlas[&ph2d_render::FLAG_SHEET_KEY];
+    let factos = crate::image_choice::image_facts(bandeira, &db, &atlas, PPM).expect("factos");
+    let mut sim = SimWorld::new();
+    ph2d_app_game::smoke::montar(&mut sim, &registo(), 4);
+    let e = por_nome(&mut sim, "Platform High");
+    choose_library_image(&mut sim, &mut sem_placa, &db, &atlas, PPM, e, bandeira).expect("escolhe");
+    for to in [InspectorImageUse::Still, InspectorImageUse::Repeated] {
+        usa(&mut sim, e, to);
+    }
+    let w = sim.world();
+    let g = w
+        .get::<SpriteGrid>(e)
+        .copied()
+        .unwrap_or(SpriteGrid::SINGLE);
+    let tile = w.get::<TiledDraw>(e).map(|t| t.tile).expect("Tiled");
+    let quer = [
+        factos.native_m[0] / g.hframes.max(1) as f32,
+        factos.native_m[1] / g.vframes.max(1) as f32,
+    ];
+    assert_eq!(
+        tile, quer,
+        "o ladrilho não é o que o objecto mostra (grelha {g:?})"
+    );
+}

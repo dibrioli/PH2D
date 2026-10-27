@@ -146,3 +146,11 @@ Fotos `player_parado` (Inspector 800 × 400 px; o Player fica fora da vista da f
 bandeiras lado a lado). ⚠️ O «Frame ‹ n / N ›» só aparece agora numa parada ANTIGA que mostra uma célula
 (ficheiros de antes, ou uma queda que nasce numa célula — `place_library_image` com `still_frame`: conferir no
 próximo smoke se uma folha largada no canvas deve nascer inteira).
+
+## Dono 27/10: «por que em Repeated a imagem ficou quadrada e achatada?»
+
+Mecanismo: `tiled::set_tiled` tirava o ladrilho do CORTE DA IMAGEM (`facts.slicing`, a bandeira 4×1 ⇒ 1 × 2 m),
+mas a parada inteira já mostra `SpriteGrid::SINGLE` ⇒ a folha inteira (4 × 2 m) entrava em cada ladrilho de
+uma bandeira. Cura: o ladrilho é o que o objecto MOSTRA (a grelha dele) × nativo. Gate vermelho primeiro:
+`image_use_15_tests::repetida_de_uma_parada_inteira_nao_achata` (era `[1,2]` contra `[4,2]`); `tiled` (4) e
+`image_choice` (13) continuam verdes. Foto `PH2D_GAME_SMOKE_FOTO=repetida_da_parada`.

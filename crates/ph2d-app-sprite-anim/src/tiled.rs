@@ -3,7 +3,8 @@
 
 use crate::image_choice::ImageFacts;
 use ph2d_ecs::{
-    Entity, ScrollRepeat, SpriteAnimations, TextureRepeat, TiledDraw, UvTransform, World,
+    Entity, ScrollRepeat, SpriteAnimations, SpriteGrid, TextureRepeat, TiledDraw, UvTransform,
+    World,
 };
 use ph2d_editor_core::InspectorDraw;
 use ph2d_physics_ecs::{Collider, ColliderShape};
@@ -28,7 +29,7 @@ pub fn draw_of(world: &World, e: Entity) -> InspectorDraw {
     }
 }
 
-/// Liga (`on`) ou desliga o Tiled. Ligar: o ladrilho é UMA célula nativa da imagem `facts` (sem factos, o
+/// Liga (`on`) ou desliga o Tiled. Ligar: o ladrilho é o que o objecto mostra da imagem `facts`, nativo (sem factos, o
 /// tamanho de agora), o tamanho fica, e o *Repeat*/UV à mão saem (o Tiled manda nas repetições). Desligar: a
 /// imagem estica até ao tamanho. `false` se nada mudou.
 pub fn set_tiled(world: &mut World, e: Entity, facts: Option<ImageFacts>, on: bool) -> bool {
@@ -44,8 +45,11 @@ pub fn set_tiled(world: &mut World, e: Entity, facts: Option<ImageFacts>, on: bo
     }
     let mut ent = world.entity_mut(e);
     if on {
+        // O ladrilho é o que o objecto MOSTRA (a grelha dele), nunca a célula do corte da imagem: uma parada
+        // inteira repete a imagem inteira (dono 27/10, «ficou achatada»).
+        let mostra = ent.get::<SpriteGrid>().map(|g| [g.hframes, g.vframes]);
         let tile = facts.map_or(size, |f| {
-            let g = f.slicing.map_or([1, 1], |s| s.grid);
+            let g = mostra.unwrap_or([1, 1]);
             [
                 f.native_m[0] / g[0].max(1) as f32,
                 f.native_m[1] / g[1].max(1) as f32,

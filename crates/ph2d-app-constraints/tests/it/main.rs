@@ -16,4 +16,5 @@ mod o_gizmo;
 mod o_olhar;
 mod o_ponto;
 mod o_valor;
+mod os_comportamentos; // W5.4: os behaviours de um clique
 mod pegar_e_largar;

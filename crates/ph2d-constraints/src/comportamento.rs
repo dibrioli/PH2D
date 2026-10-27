@@ -72,8 +72,10 @@ impl Perfil {
                 ..base
             },
             Self::Orbitar => base,
+            // O atrito máximo da lei do `sim.step`: puxa, passa do alvo uma vez e assenta.
             Self::Atrair => Comportamento {
                 raio: 300.0,
+                amortece: 0.0,
                 ..base
             },
         }

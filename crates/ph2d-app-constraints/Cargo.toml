@@ -57,6 +57,14 @@ ph2d-label-census = { path = "../ph2d-label-census" }
 ph2d-vec-entities = { path = "../ph2d-vec-entities" }
 ph2d-vec-constraints = { path = "../ph2d-vec-constraints" }
 ph2d-vec-edit = { path = "../ph2d-vec-edit" }
+# W5.4: a paridade de cada behaviour com o `eval` do nó do Motion de igual nome.
+ph2d-nodegraph = { path = "../ph2d-nodegraph" }
+ph2d-node-registry = { path = "../ph2d-node-registry" }
+ph2d-node-force-attractor = { path = "../ph2d-node-force-attractor" }
+ph2d-node-motion-falloff = { path = "../ph2d-node-motion-falloff" }
+ph2d-node-motion-oscillator = { path = "../ph2d-node-motion-oscillator" }
+ph2d-node-motion-orbit = { path = "../ph2d-node-motion-orbit" }
+ph2d-node-motion-wiggle = { path = "../ph2d-node-motion-wiggle" }
 
 [lints]
 workspace = true

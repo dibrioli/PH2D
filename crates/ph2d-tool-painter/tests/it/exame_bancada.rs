@@ -282,6 +282,12 @@ fn camada() -> bool {
     std::env::var("PH2D_EXAME_CAMADA").is_ok_and(|v| v == "1")
 }
 
+/// O Wet Paint fotografado com o **Óleo Real** ligado nos valores de fábrica (`PH2D_EXAME_OLEO=1`) — como o Rebelle
+/// com RealShader; sem ela, o composite das 18 aprovações.
+fn oleo_real() -> bool {
+    std::env::var("PH2D_EXAME_OLEO").is_ok_and(|v| v == "1")
+}
+
 /// A escala das faixas da base (`PH2D_EXAME_ESCALA_BASE`; por omissão a do pincel).
 fn escala_base() -> f32 {
     std::env::var("PH2D_EXAME_ESCALA_BASE")
@@ -357,6 +363,9 @@ pub fn pinta_cena_com(
         .flat_map(|_| [papel[0], papel[1], papel[2], alfa])
         .collect();
     t.set_source(fundo, w, h);
+    if oleo_real() {
+        t.set_wet_oleo_real_ligado(true);
+    }
     let mut vistas = 0;
     let mut actual: Option<&Pincel> = None;
     let mut meio = pincel.meio();

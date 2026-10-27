@@ -1106,7 +1106,12 @@ const CARGA_DE_COMANDOS: &[(&str, usize)] = &[
     //    sempre Animated, `image_use::image_use`), e o cartão Animation (GEF 07, aprovado pelo dono) não se
     //    pintava. Com a sprite Animated ele conta os seus 7 comandos (`diag_de_quem_sao_as_entradas_do_inspector`):
     //    a linha da lista, o ▶ da linha, ▶/⏸, ⏮, «Edit Animations…», `+` e `−`. Medido sozinho.
-    ("inspector", 92),
+    // ⬆️ `92 → 100` em 2026-10-29 (integração BlenderConstraints, **DELTA `+8` sobre o `92` do main**; a linha
+    //    mediu `89 → 97` a 27/10, decisão do dono no smoke da W5.3: «deixe como está») — **capacidade nova**: o
+    //    cartão CONSTRAINTS, por item Pick · subir · descer · apagar · Reset Offset, e Bake · Add Constraint ·
+    //    Unglue. Recusadas: a pega de arrasto e o menu «⋯»
+    //    (`docs/BlenderConstraints/handoffs/HANDOFF_CONTINUACAO_W5_3_2026-10-27.md`).
+    ("inspector", 100),
     // ⛔⛔ `110` botões, **`4`** comandos: fechar · importar · exportar · e o *elo*, que é pintado
     //    uma vez por linha por decisão escrita no pintor. O painel é uma LISTA, não uma dívida.
     ("tokens", 4),

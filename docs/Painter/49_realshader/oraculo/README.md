@@ -241,3 +241,37 @@ mesma luz; brilho = só especular, p99 · área > 0,3):
   Jimenez vê mais céu que o arco físico; a 0,6 a lâmpada domina e bate.
 - Oil Bristle: a nossa visibilidade vê mais céu que o Cycles (viés +0,11; os sulcos dos fios).
 - ~~Metallic Materials do Rebelle~~ no cartão (E3-B); Lock Reflectivity é do pincel (E3-A).
+
+## Provas de mutação W2
+
+Protocolo `.claude/commands/pd-mutacao.md`, 27/10, sobre `6a4901531c`. Controlo VERDE antes de mutar: os 9 gates de
+`ph2d-wet-paint` (por nome: `a_fenda_neutra_e_bit_identica_a_de_antes`, `o_material_neutro_e_bit_identico_a_de_antes`,
+`a_fenda_fica_no_tom_da_tinta_e_nunca_preta`, `a_tinta_neutra_nao_aloca_o_campo`, `o_material_mistura_pela_massa`,
+`o_lock_preserva_o_material_pousado`, `o_lock_material_preserva_o_metal_pousado`,
+`sem_pincel_com_material_o_canal_fica_vazio`, `metal_ao_lado_de_tinta_comum_mistura_no_molhado`: 9 passaram) e
+`a_fenda_forte_nao_volta_aos_pontos_pretos_na_cena_do_dono` em `ph2d-tool-painter` (1 passou). Âncoras: cada uma
+casa exatamente 1× antes de mutar; todas as mutações compilaram; árvore restaurada do backup + `touch`, `git diff HEAD`
+vazio nos ficheiros mutados após cada uma.
+
+| # | Lei | Mutação (ficheiro) | Resultado | Quem sangrou |
+|---|---|---|---|---|
+| M1a | fenda | `V/(V+f(1−V))` → `f*1.001` (`oleo_real.rs`) | **SOBREVIVEU** | ninguém (wet-paint 9 verdes, cena do dono verde) |
+| M1b | neutralidade | atalho `if f == 1.0 { return v }` removido | **SOBREVIVEU** | ninguém: `v/(v+(1−v))` dá `v` bit a bit; atalho só poupa custo |
+| M2 | neutralidade | `alcance / ALCANCE_FENDA_MAX` → `/ 23.0` | sangrou | `a_fenda_neutra_e_bit_identica_a_de_antes`, `o_material_neutro_e_bit_identico_a_de_antes` |
+| M3 | neutralidade | `MaterialCelula::NEUTRO.especular` 0,5 → 0,5001 (`material.rs`) | sangrou | os mesmos dois |
+| M4 | neutralidade | ramo do Clássico em `difuso` com ganho `× 0,98` | sangrou | os mesmos dois |
+| M5 | fenda nunca preta | lei `V^f` (`libm::pow(v, f)`) | sangrou | `a_fenda_forte_nao_volta_aos_pontos_pretos_na_cena_do_dono` (só ele; wet-paint verde) |
+| M6 | fenda nunca preta | `FENDA_MAX` 3 → 6 | sangrou | o mesmo (só ele) |
+| M7 | fenda nunca preta | multi-ricochete desligado no Clássico (`ceu * t.vis`) | sangrou | os dois de neutralidade + a cena do dono |
+| M8 | material | `mistura` com `t` → `1−t` (`grid/material.rs`, `pousa`) | sangrou | `o_material_mistura_pela_massa` |
+| M9 | material | `travado` ignora `lockMaterial` (`> 1e9`) | sangrou | `o_lock_material_preserva_o_metal_pousado` (o de unidade `o_lock_preserva…` chama `pousa(trava=true)` e não vê `travado`) |
+| M10 | material | canal alocado sempre (guarda `NEUTRO` desligada) | sangrou | `a_tinta_neutra_nao_aloca_o_campo` |
+
+**9 de 11 sangraram; 2 sobreviveram.**
+
+- M1a: nenhum gate fixa o VALOR da lei `V/(V+f(1−V))` com `f ≠ 1` (`forca_da_fenda` não tem teste directo; a cena do dono
+  só barra pixels pretos e a descida da luminância, que 0,1 % de `f` não move). Falta um gate de valor exacto (ex.
+  `forca_da_fenda(0.5, 2.0) == 1/3`, `(0.2, 3.0)`, monotonia em `f`).
+- M1b: equivalente por projeto (atalho de custo, resultado idêntico).
+- M5/M6 só sangram na cena do dono (`ph2d-tool-painter`); o `a_fenda_fica_no_tom_da_tinta_e_nunca_preta` do wet-paint
+  não os vê.

@@ -83,7 +83,8 @@ impl Sectores {
         for j in 0..m {
             let (a0, a1) = (j as f64 * da, (j + 1) as f64 * da);
             let i1 = (libm::sin(a1).powi(2) - libm::sin(a0).powi(2)) / 2.0;
-            let i2 = ((a1 - libm::sin(a1) * libm::cos(a1)) - (a0 - libm::sin(a0) * libm::cos(a0))) / 2.0;
+            let i2 =
+                ((a1 - libm::sin(a1) * libm::cos(a1)) - (a0 - libm::sin(a0) * libm::cos(a0))) / 2.0;
             for b in 0..k {
                 // A média da cunha centrada na coluna `b` (as pontas pesam meio: largura exacta).
                 let mut t = [0.0f64, 0.0, 0.0, (2 * meia) as f64];

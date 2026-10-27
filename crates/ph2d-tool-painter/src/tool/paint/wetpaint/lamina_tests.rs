@@ -80,7 +80,10 @@ fn a_lamina_que_segue_o_traco_varre_a_mesma_largura_nos_dois_bracos_do_l() {
     let mut segue = faca(true, 0.0);
     traco_em_l(&mut segue);
     let (h, v) = larguras(&segue);
-    assert!(h >= 36, "o braço horizontal da seguidora cobre a lâmina inteira: {h}");
+    assert!(
+        h >= 36,
+        "o braço horizontal da seguidora cobre a lâmina inteira: {h}"
+    );
     assert!(h.abs_diff(v) <= 2, "seguidora: {h} × {v}");
     // A fixa (a 90° na tela) é larga no horizontal e fina no vertical: a rotação é do traço, não do acaso.
     let mut fixa = faca(false, 0.0);
@@ -95,7 +98,10 @@ fn o_rebordo_poe_a_crista_nas_bordas_dos_dois_bracos_e_a_zero_nao_existe() {
     traco_em_l(&mut sem);
     let s = sem.paint.wetpaint.session.as_mut().expect("sessão");
     s.bring_home();
-    assert!(s.engine.active_grid().altura.is_empty(), "rebordo 0 alocou a altura");
+    assert!(
+        s.engine.active_grid().altura.is_empty(),
+        "rebordo 0 alocou a altura"
+    );
 
     let mut com = faca(true, 3.0);
     traco_em_l(&mut com);
@@ -114,24 +120,39 @@ fn o_rebordo_poe_a_crista_nas_bordas_dos_dois_bracos_e_a_zero_nao_existe() {
     let corte_h: Vec<f32> = (0..100).map(|y| alt(100.0, f64::from(y))).collect();
     let corte_v: Vec<f32> = (120..220).map(|x| alt(f64::from(x), 120.0)).collect();
     let mut cristas = Vec::new();
-    for (nome, corte, centro) in [("horizontal", &corte_h, 50usize), ("vertical", &corte_v, 50)] {
+    for (nome, corte, centro) in [
+        ("horizontal", &corte_h, 50usize),
+        ("vertical", &corte_v, 50),
+    ] {
         let max = corte.iter().copied().fold(0.0f32, f32::max);
         let k = corte.iter().position(|&v| v == max).expect("máximo");
         assert!(max > 0.5, "{nome}: crista {max}");
-        assert!(k.abs_diff(centro) >= 15, "{nome}: a crista em {k}, longe da borda (centro {centro})");
-        assert!(corte[centro].abs() < 0.05 * max, "{nome}: miolo {}", corte[centro]);
+        assert!(
+            k.abs_diff(centro) >= 15,
+            "{nome}: a crista em {k}, longe da borda (centro {centro})"
+        );
+        assert!(
+            corte[centro].abs() < 0.05 * max,
+            "{nome}: miolo {}",
+            corte[centro]
+        );
         cristas.push((max, k.abs_diff(centro)));
     }
     // O mesmo rebordo nos dois braços: a altura e a distância ao eixo.
     let ([a, b], [da, db]) = ([cristas[0].0, cristas[1].0], [cristas[0].1, cristas[1].1]);
-    assert!((a - b).abs() < 0.05 * a && da.abs_diff(db) <= 1, "braços: {cristas:?}");
+    assert!(
+        (a - b).abs() < 0.05 * a && da.abs_diff(db) <= 1,
+        "braços: {cristas:?}"
+    );
 }
 
 /// O Óleo Real de fábrica com os `campo=valor,…` de `af` (os campos que o rebordo mede).
 fn oleo_de(af: &str) -> ph2d_wet_paint::oleo_real::OleoReal {
     let mut o = ph2d_wet_paint::oleo_real::OleoReal::default();
     for par in af.split(',').filter(|p| !p.is_empty()) {
-        let (k, v) = par.split_once('=').unwrap_or_else(|| panic!("{par}: campo=valor"));
+        let (k, v) = par
+            .split_once('=')
+            .unwrap_or_else(|| panic!("{par}: campo=valor"));
         let v: f64 = v.parse().unwrap_or_else(|_| panic!("{par}: número"));
         match k {
             "forca_ambiente" => o.forca_ambiente = v,
@@ -150,14 +171,20 @@ fn oleo_de(af: &str) -> ph2d_wet_paint::oleo_real::OleoReal {
 /// na folha F42: por coluna, a luminância (sRGB) mínima no terço de cima da tinta e a máxima no de baixo, ÷ a
 /// mediana do miolo; devolve as medianas das colunas.
 fn contraste_do_rebordo(rgb: &[u8], px: &[u8], gw: usize, ratio: usize) -> (f64, f64) {
-    let lum = |k: usize| 0.2126 * f64::from(rgb[3 * k]) + 0.7152 * f64::from(rgb[3 * k + 1]) + 0.0722 * f64::from(rgb[3 * k + 2]);
+    let lum = |k: usize| {
+        0.2126 * f64::from(rgb[3 * k])
+            + 0.7152 * f64::from(rgb[3 * k + 1])
+            + 0.0722 * f64::from(rgb[3 * k + 2])
+    };
     let mediana = |mut v: Vec<f64>| {
         v.sort_by(f64::total_cmp);
         v[v.len() / 2]
     };
     let (mut topos, mut baixos) = (Vec::new(), Vec::new());
     for x in 120 / ratio..300 / ratio {
-        let linhas: Vec<usize> = (10 / ratio..140 / ratio).filter(|&y| px[4 * (x + y * gw) + 3] > 128).collect();
+        let linhas: Vec<usize> = (10 / ratio..140 / ratio)
+            .filter(|&y| px[4 * (x + y * gw) + 3] > 128)
+            .collect();
         if linhas.len() < 9 {
             continue;
         }
@@ -179,7 +206,8 @@ fn contraste_do_rebordo(rgb: &[u8], px: &[u8], gw: usize, ratio: usize) -> (f64,
 fn medida_e4_lamina_folha() {
     let dir = std::path::PathBuf::from(std::env::var("PH2D_E4_DIR").expect("PH2D_E4_DIR=<pasta>"));
     let raio: f32 = std::env::var("PH2D_E4_RAIO").map_or(28.0, |v| v.parse().expect("raio"));
-    let rebordo: f64 = std::env::var("PH2D_E4_REBORDO").map_or(3.0, |v| v.parse().expect("rebordo"));
+    let rebordo: f64 =
+        std::env::var("PH2D_E4_REBORDO").map_or(3.0, |v| v.parse().expect("rebordo"));
     let (w, h) = (900u32, 760u32);
     let mut t = faca(true, rebordo);
     t.set_source(vec![255u8; (w * h * 4) as usize], w, h);
@@ -192,7 +220,10 @@ fn medida_e4_lamina_folha() {
             let n = ((par[1][0] - par[0][0]).hypot(par[1][1] - par[0][1]) / 2.0).ceil() as u32;
             for k in 1..=n {
                 let f = k as f32 / n as f32;
-                let p = [par[0][0] + (par[1][0] - par[0][0]) * f, par[0][1] + (par[1][1] - par[0][1]) * f];
+                let p = [
+                    par[0][0] + (par[1][0] - par[0][0]) * f,
+                    par[0][1] + (par[1][1] - par[0][1]) * f,
+                ];
                 t.on_canvas_pointer(ponto(p, PointerPhase::Move));
                 t.on_tick(8.0);
             }
@@ -212,15 +243,25 @@ fn medida_e4_lamina_folha() {
     };
     for (y0, r) in [(0.0f32, rebordo), (380.0, 0.0)] {
         t.paint.wetpaint.knobs.set(Knob::KnifeRidge, r);
-        arrasta(&mut t, &[[60.0, y0 + 70.0], [330.0, y0 + 70.0], [330.0, y0 + 340.0]]);
+        arrasta(
+            &mut t,
+            &[[60.0, y0 + 70.0], [330.0, y0 + 70.0], [330.0, y0 + 340.0]],
+        );
         let c = curva(640.0, y0 + 230.0);
         arrasta(&mut t, &c);
     }
     let largura = (0..h).filter(|&y| {
         let i = ((200 + y * w) * 4) as usize;
-        t.canvas_rgba[i..i + 3].iter().map(|&v| 255 - i32::from(v)).sum::<i32>() > 40
+        t.canvas_rgba[i..i + 3]
+            .iter()
+            .map(|&v| 255 - i32::from(v))
+            .sum::<i32>()
+            > 40
     });
-    println!("[e4] raio {raio} rebordo {rebordo}: largura varrida no horizontal {} px", largura.count() / 2);
+    println!(
+        "[e4] raio {raio} rebordo {rebordo}: largura varrida no horizontal {} px",
+        largura.count() / 2
+    );
     let s = t.paint.wetpaint.session.as_mut().expect("sessão");
     s.bring_home();
     let (gw, gh) = s.grid;
@@ -235,7 +276,8 @@ fn medida_e4_lamina_folha() {
             visible: l.visible,
         })
         .collect();
-    let grades: Vec<(&ph2d_wet_paint::grid::Grid, bool)> = camadas.iter().map(|c| (c.grid, c.visible)).collect();
+    let grades: Vec<(&ph2d_wet_paint::grid::Grid, bool)> =
+        camadas.iter().map(|c| (c.grid, c.visible)).collect();
     let visual = ph2d_wet_paint::render::PigmentVisual {
         paper: false,
         relevo: true,
@@ -251,22 +293,40 @@ fn medida_e4_lamina_folha() {
         let mut px = vec![0u8; gw * gh * 4];
         for cy in 1..=gh {
             let linha = &mut px[(cy - 1) * gw * 4..cy * gw * 4];
-            ph2d_wet_paint::render::render_pigment_row_oleo(Some(&params), &camadas, visual, &o, &campo, cy, 1, gw, linha);
+            ph2d_wet_paint::render::render_pigment_row_oleo(
+                Some(&params),
+                &camadas,
+                visual,
+                &o,
+                &campo,
+                cy,
+                1,
+                gw,
+                linha,
+            );
         }
         let mut rgb = Vec::with_capacity(gw * gh * 3);
         for (k, p) in px.as_chunks::<4>().0.iter().enumerate() {
             let a = u32::from(p[3]);
-            let sombra = ph2d_wet_paint::oleo_real::sombra_no_papel(&o, &campo, k % gw + 1, k / gw + 1);
+            let sombra =
+                ph2d_wet_paint::oleo_real::sombra_no_papel(&o, &campo, k % gw + 1, k / gw + 1);
             let papel = (255.0 * (1.0 - sombra)).round() as u32;
             for &c in &p[..3] {
                 rgb.push(((u32::from(c) * a + papel * (255 - a)) / 255) as u8);
             }
         }
         let (topo, baixo) = contraste_do_rebordo(&rgb, &px, gw, ratio);
-        println!("[e4] {:<12} topo {topo:.2} baixo {baixo:.2}  (Rebelle 0,40 / 1,39)", if nome.is_empty() { "fabrica" } else { nome });
+        println!(
+            "[e4] {:<12} topo {topo:.2} baixo {baixo:.2}  (Rebelle 0,40 / 1,39)",
+            if nome.is_empty() { "fabrica" } else { nome }
+        );
         let mut ppm = format!("P6\n{gw} {gh}\n255\n").into_bytes();
         ppm.extend_from_slice(&rgb);
-        let f = if nome.is_empty() { "lamina.ppm".to_owned() } else { format!("lamina_{nome}.ppm") };
+        let f = if nome.is_empty() {
+            "lamina.ppm".to_owned()
+        } else {
+            format!("lamina_{nome}.ppm")
+        };
         std::fs::write(dir.join(f), ppm).expect("grava");
     }
     // A altura do rebordo (cinza: 0 = 128, ±4 px de relevo = ±127), para ver onde a crista ficou.

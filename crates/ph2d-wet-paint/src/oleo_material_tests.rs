@@ -138,7 +138,10 @@ fn o_metal_tira_o_difuso_e_reflecte_a_cor() {
     assert!(b[0] > 4.0 * b_d[0], "F0 0,68 × 0,04: {b:?} × {b_d:?}");
     let out = ilumina_com(&o, &c, 30, 30, VERMELHO, 1.0, &m);
     let neutro = ilumina(&o, &c, 30, 30, VERMELHO, 1.0);
-    assert!(out[1] < neutro[1] + 0.5, "sem difuso o verde não sobe: {out:?} × {neutro:?}");
+    assert!(
+        out[1] < neutro[1] + 0.5,
+        "sem difuso o verde não sobe: {out:?} × {neutro:?}"
+    );
     // Reflectivity escala o F0 do metal.
     let meio = com(MaterialCartao {
         refletividade: 0.5,
@@ -157,7 +160,10 @@ fn o_tint_tinge_o_reflexo_com_a_cor_da_tinta() {
     let a = VERMELHO.map(crate::colorops::transfer::srgb255_to_linear);
     let b0 = brilho_medio(&o, &c, &MaterialCelula::NEUTRO, a);
     let b1 = brilho_medio(&o, &c, &mat(|m| m.tinta_reflexo = 1.0), a);
-    assert!((b0[0] - b0[1]).abs() < 0.2 * b0[0], "sem tint o reflexo é branco: {b0:?}");
+    assert!(
+        (b0[0] - b0[1]).abs() < 0.2 * b0[0],
+        "sem tint o reflexo é branco: {b0:?}"
+    );
     assert!(b1[0] > 3.0 * b1[1], "com tint é vermelho: {b1:?}");
 }
 
@@ -214,7 +220,10 @@ fn a_anisotropia_corre_ao_longo_da_estria() {
     let o = OleoReal::default();
     let c = campo(&g, &o);
     let e = estria(&c, 30, 30).expect("há relevo");
-    assert!(e[0].abs() < 1e-6 && (e[1].abs() - 1.0).abs() < 1e-6, "{e:?}");
+    assert!(
+        e[0].abs() < 1e-6 && (e[1].abs() - 1.0).abs() < 1e-6,
+        "{e:?}"
+    );
     let plano = grade(|_, _| 3000.0);
     assert_eq!(estria(&campo(&plano, &o), 30, 30), None);
     let b0 = brilho_medio(&o, &c, &MaterialCelula::NEUTRO, [0.5; 3]);
@@ -267,7 +276,10 @@ fn strength_scale_e_reflection_map_mexem_no_reflexo_do_ambiente() {
         ..base
     };
     let b2 = brilho_medio(&forte, &c, &MaterialCelula::NEUTRO, [0.5; 3]);
-    assert!((b2[0] / b1[0] - 2.0).abs() < 1e-9, "a lâmpada é 0 com força 1: {b2:?} × {b1:?}");
+    assert!(
+        (b2[0] / b1[0] - 2.0).abs() < 1e-9,
+        "a lâmpada é 0 com força 1: {b2:?} × {b1:?}"
+    );
     let escala = OleoReal {
         material: MaterialCartao {
             escala_mapa: 3.0,
@@ -275,13 +287,19 @@ fn strength_scale_e_reflection_map_mexem_no_reflexo_do_ambiente() {
         },
         ..base
     };
-    assert_ne!(brilho_medio(&escala, &c, &MaterialCelula::NEUTRO, [0.5; 3]), b1);
+    assert_ne!(
+        brilho_medio(&escala, &c, &MaterialCelula::NEUTRO, [0.5; 3]),
+        b1
+    );
     let classico = OleoReal {
         ambiente: Ambiente::Classico,
         sombra: 0.0,
         ..base
     };
-    assert_eq!(brilho_medio(&classico, &c, &MaterialCelula::NEUTRO, [0.5; 3]), [0.0; 3]);
+    assert_eq!(
+        brilho_medio(&classico, &c, &MaterialCelula::NEUTRO, [0.5; 3]),
+        [0.0; 3]
+    );
     let com_mapa = OleoReal {
         material: MaterialCartao {
             mapa_reflexo: Some(Ambiente::Estudio),
@@ -305,7 +323,11 @@ fn o_material_da_camada_chega_ao_sombreado() {
     let i = 30 + 30 * g.s;
     g.material[i] = metal;
     let c = campo(&g, &o);
-    assert!(c.material_em(30, 30).metal > 0.99, "{:?}", c.material_em(30, 30));
+    assert!(
+        c.material_em(30, 30).metal > 0.99,
+        "{:?}",
+        c.material_em(30, 30)
+    );
     assert_eq!(c.material_em(10, 10), MaterialCelula::NEUTRO);
     assert_ne!(
         ilumina(&o, &c, 30, 30, VERMELHO, 1.0),

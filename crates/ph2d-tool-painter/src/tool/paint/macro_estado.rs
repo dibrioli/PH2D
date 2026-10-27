@@ -203,7 +203,10 @@ fn oleo_para_json(o: &ph2d_wet_paint::oleo_real::OleoReal) -> Value {
     });
     // W2 E3-B: o material do cartão (`mat_<campo>`) e o Reflection Map (`0` = o Environment).
     let mat = o.material.valores();
-    for (nome, x) in ph2d_wet_paint::oleo_real::MaterialCartao::CAMPOS.iter().zip(mat) {
+    for (nome, x) in ph2d_wet_paint::oleo_real::MaterialCartao::CAMPOS
+        .iter()
+        .zip(mat)
+    {
         v[format!("mat_{nome}")] = json!(x);
     }
     v["mat_mapa_reflexo"] = json!(o.material.mapa_indice());

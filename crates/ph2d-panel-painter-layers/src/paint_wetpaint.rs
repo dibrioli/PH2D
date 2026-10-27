@@ -417,7 +417,10 @@ fn paint_oleo_real(
     ];
     for (((chave, valor, passo, casas), id), (lo, hi)) in linhas
         .into_iter()
-        .zip(&PAINTER_WETPAINT_OLEO_FIELDS[..ph2d_tool_painter::ids::PAINTER_WETPAINT_OLEO_MATERIAL_DE])
+        .zip(
+            &PAINTER_WETPAINT_OLEO_FIELDS
+                [..ph2d_tool_painter::ids::PAINTER_WETPAINT_OLEO_MATERIAL_DE],
+        )
         .zip(PAINTER_WETPAINT_OLEO_FAIXAS)
     {
         y = card_row(
@@ -469,7 +472,8 @@ fn paint_oleo_material(
     brush: &BrushSettings,
 ) -> f32 {
     use ph2d_tool_painter::ids::{
-        PAINTER_WETPAINT_OLEO_FAIXAS, PAINTER_WETPAINT_OLEO_MATERIAL, PAINTER_WETPAINT_OLEO_MATERIAL_DE,
+        PAINTER_WETPAINT_OLEO_FAIXAS, PAINTER_WETPAINT_OLEO_MATERIAL,
+        PAINTER_WETPAINT_OLEO_MATERIAL_DE,
     };
     let mut y = y;
     for k in 0..MATERIAL.len() {

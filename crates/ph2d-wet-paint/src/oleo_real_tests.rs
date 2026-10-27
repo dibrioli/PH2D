@@ -267,25 +267,24 @@ fn impressao_digital(o: &OleoReal) -> u64 {
 /// [`o_hdri_uniforme_da_o_ganho_um_em_toda_a_celula`] e [`o_papel_ao_pe_da_parede_perde_o_ceu_do_lado_dela`].
 #[test]
 fn a_fenda_neutra_e_bit_identica_a_de_antes() {
-    for (ambiente, antes) in [(Ambiente::Classico, 0xd577_67fb_dd93_1d70u64)] {
-        let o = OleoReal {
+    let (ambiente, antes) = (Ambiente::Classico, 0xd577_67fb_dd93_1d70u64);
+    let o = OleoReal {
+        ambiente,
+        fenda: 1.0,
+        alcance_fenda: ALCANCE_FENDA_MAX,
+        forca_ambiente: FORCA_AMBIENTE_FABRICA,
+        ..OleoReal::default()
+    };
+    assert_eq!(
+        o,
+        OleoReal {
             ambiente,
-            fenda: 1.0,
-            alcance_fenda: ALCANCE_FENDA_MAX,
-            forca_ambiente: FORCA_AMBIENTE_FABRICA,
             ..OleoReal::default()
-        };
-        assert_eq!(
-            o,
-            OleoReal {
-                ambiente,
-                ..OleoReal::default()
-            },
-            "o neutro é o de fábrica"
-        );
-        let d = impressao_digital(&o);
-        assert_eq!(d, antes, "{ambiente:?} {d:#018x}");
-    }
+        },
+        "o neutro é o de fábrica"
+    );
+    let d = impressao_digital(&o);
+    assert_eq!(d, antes, "{ambiente:?} {d:#018x}");
 }
 
 /// O relevo variado da [`impressao_digital`] (cristas, um sulco fundo, um bloco alto e o papel livre).

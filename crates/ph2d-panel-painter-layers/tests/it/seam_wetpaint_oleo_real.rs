@@ -20,9 +20,9 @@ use ph2d_tool_painter::PainterTool;
 use ph2d_tool_painter::ids::{
     PAINTER_WETPAINT_OLEO_ALCANCE_FENDA, PAINTER_WETPAINT_OLEO_ALTITUDE,
     PAINTER_WETPAINT_OLEO_AMBIENTE, PAINTER_WETPAINT_OLEO_AZIMUTE, PAINTER_WETPAINT_OLEO_BRILHO,
-    PAINTER_WETPAINT_OLEO_FAIXAS, PAINTER_WETPAINT_OLEO_FENDA, PAINTER_WETPAINT_OLEO_FORCA_AMBIENTE,
-    PAINTER_WETPAINT_OLEO_MAPA_REFLEXO, PAINTER_WETPAINT_OLEO_MATERIAL,
-    PAINTER_WETPAINT_OLEO_MATERIAL_NEUTRO,
+    PAINTER_WETPAINT_OLEO_FAIXAS, PAINTER_WETPAINT_OLEO_FENDA,
+    PAINTER_WETPAINT_OLEO_FORCA_AMBIENTE, PAINTER_WETPAINT_OLEO_MAPA_REFLEXO,
+    PAINTER_WETPAINT_OLEO_MATERIAL, PAINTER_WETPAINT_OLEO_MATERIAL_NEUTRO,
     PAINTER_WETPAINT_OLEO_PROFUNDIDADE, PAINTER_WETPAINT_OLEO_REAL, PAINTER_WETPAINT_OLEO_SOMBRA,
     painter_wetpaint_oleo_ambiente_option_id, painter_wetpaint_oleo_mapa_reflexo_option_id,
 };
@@ -377,7 +377,10 @@ fn o_material_do_cartao_chega_ao_oleo_real_e_sobrevive_a_religar() {
     let mut tool = molhado();
     clica_na_caixa(&mut tool);
     let f32s = |v: [f64; 12]| v.map(|x| x as f32);
-    assert_eq!(f32s(tool.wet_oleo_real().expect("ligado").material.valores()), neutro);
+    assert_eq!(
+        f32s(tool.wet_oleo_real().expect("ligado").material.valores()),
+        neutro
+    );
     assert_eq!(tool.brush_settings().wet_oleo_material, neutro);
     for (k, &id) in PAINTER_WETPAINT_OLEO_MATERIAL.iter().enumerate() {
         let (lo, hi) = PAINTER_WETPAINT_OLEO_FAIXAS[8 + k];
@@ -411,16 +414,23 @@ fn o_reflection_map_escolhido_no_popover_chega_ao_material() {
     let (_, _, desligado) = pinta(&tool);
     assert!(rect_de(&desligado, PAINTER_WETPAINT_OLEO_MAPA_REFLEXO).is_none());
     clica_na_caixa(&mut tool);
-    assert_eq!(tool.wet_oleo_real().expect("ligado").material.mapa_indice(), 0);
+    assert_eq!(
+        tool.wet_oleo_real().expect("ligado").material.mapa_indice(),
+        0
+    );
     assert_eq!(tool.brush_settings().wet_oleo_mapa_reflexo, 0);
     let (mut host, mut st, rects) = pinta(&tool);
-    let chip = rect_de(&rects, PAINTER_WETPAINT_OLEO_MAPA_REFLEXO).expect("o chip Reflection map pintado");
+    let chip =
+        rect_de(&rects, PAINTER_WETPAINT_OLEO_MAPA_REFLEXO).expect("o chip Reflection map pintado");
     clica_em(&mut host, &mut st, &mut tool, chip);
     set_current_brush(Some(tool.brush_settings()));
     let rects = host.paint::<PainterLayersPanel>(&mut st, viewport());
     let patio = painter_wetpaint_oleo_mapa_reflexo_option_id(PATIO);
     let o = rect_de(&rects, patio).expect("clicar o chip não abriu a opção Courtyard");
     clica_em(&mut host, &mut st, &mut tool, o);
-    assert_eq!(tool.wet_oleo_real().expect("ligado").material.mapa_indice(), PATIO);
+    assert_eq!(
+        tool.wet_oleo_real().expect("ligado").material.mapa_indice(),
+        PATIO
+    );
     assert_eq!(tool.brush_settings().wet_oleo_mapa_reflexo, PATIO);
 }

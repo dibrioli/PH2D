@@ -50,13 +50,31 @@ fn a_lamina_em_l_deixa_o_rebordo_nas_bordas_dos_dois_bracos() {
     arrasta(&mut e, [20.0, 30.0], [90.0, 30.0], h);
     arrasta(&mut e, [90.0, 30.0], [90.0, 110.0], h);
     // Braço horizontal, a meio (x = 50): a crista nas linhas 30 ± 12, o miolo em 30.
-    let (borda_h, miolo_h) = (altura(&e, 50, 18).min(altura(&e, 50, 42)), altura(&e, 50, 30));
+    let (borda_h, miolo_h) = (
+        altura(&e, 50, 18).min(altura(&e, 50, 42)),
+        altura(&e, 50, 30),
+    );
     // Braço vertical, a meio (y = 75): a crista nas colunas 90 ± 12.
-    let (borda_v, miolo_v) = (altura(&e, 78, 75).min(altura(&e, 102, 75)), altura(&e, 90, 75));
-    assert!(borda_h > 0.5 * h as f32, "crista do braço horizontal {borda_h}");
-    assert!(borda_v > 0.5 * h as f32, "crista do braço vertical {borda_v}");
-    assert!(miolo_h.abs() < 1e-6 && miolo_v.abs() < 1e-6, "miolo {miolo_h} {miolo_v}");
-    assert!((borda_h - borda_v).abs() < 0.05 * h as f32, "braços diferentes: {borda_h} × {borda_v}");
+    let (borda_v, miolo_v) = (
+        altura(&e, 78, 75).min(altura(&e, 102, 75)),
+        altura(&e, 90, 75),
+    );
+    assert!(
+        borda_h > 0.5 * h as f32,
+        "crista do braço horizontal {borda_h}"
+    );
+    assert!(
+        borda_v > 0.5 * h as f32,
+        "crista do braço vertical {borda_v}"
+    );
+    assert!(
+        miolo_h.abs() < 1e-6 && miolo_v.abs() < 1e-6,
+        "miolo {miolo_h} {miolo_v}"
+    );
+    assert!(
+        (borda_h - borda_v).abs() < 0.05 * h as f32,
+        "braços diferentes: {borda_h} × {borda_v}"
+    );
     // No braço vertical as células de cima/baixo do eixo (ao longo do traço) não são borda: lisas.
     assert!(altura(&e, 90, 70).abs() < 1e-6);
     // Fora da lâmina nada se escreveu.

@@ -470,7 +470,7 @@ impl PainterTool {
             let memo = (relevo_dab.is_some()
                 || rebordo > 0.0
                 || grain_active && spec.texture.lei.mode.le_a_ponta())
-                .then(|| super::sil_memo::SilMemo::nova(cell_x, cell_y, meia));
+            .then(|| super::sil_memo::SilMemo::nova(cell_x, cell_y, meia));
             let sil = |cx: i32, cy: i32| -> f64 {
                 memo.as_ref()
                     .map_or_else(|| sil(cx, cy), |m| m.ou(cx, cy, sil))

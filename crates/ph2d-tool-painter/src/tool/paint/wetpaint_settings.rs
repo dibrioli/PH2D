@@ -649,9 +649,10 @@ impl PainterTool {
             5 => o.fenda = v.clamp(lo, hi),
             6 => o.alcance_fenda = v.clamp(lo, hi),
             7 => o.forca_ambiente = v.clamp(lo, hi),
-            _ => o
-                .material
-                .poe(k - crate::ids::PAINTER_WETPAINT_OLEO_MATERIAL_DE, v.clamp(lo, hi)),
+            _ => o.material.poe(
+                k - crate::ids::PAINTER_WETPAINT_OLEO_MATERIAL_DE,
+                v.clamp(lo, hi),
+            ),
         }
         self.guarda_oleo_valores(o);
         true

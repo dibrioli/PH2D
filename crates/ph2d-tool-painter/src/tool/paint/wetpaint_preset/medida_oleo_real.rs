@@ -122,6 +122,8 @@ fn medida_oleo_real_oraculo() {
 pub(super) const VERMELHO_DO_DONO: [u8; 3] = [215, 25, 30];
 
 /// Pinta a cena da captura do dono numa tela `OW×OH` (a de [`medida_oleo_real_oraculo`] e do gate da fenda).
+type Pilha = (&'static str, [u8; 3], f32, [[f32; 2]; 2]);
+
 pub(super) fn pinta_cena_do_dono() -> PainterTool {
     let b = biblioteca();
     let mut t = PainterTool::default();
@@ -130,7 +132,7 @@ pub(super) fn pinta_cena_do_dono() -> PainterTool {
     t.set_wet_relogio_fixo(true);
     const VERMELHO: [u8; 3] = VERMELHO_DO_DONO;
     const CLARO: [u8; 3] = [238, 226, 196];
-    let pilhas: [(&str, [u8; 3], f32, [[f32; 2]; 2]); 6] = [
+    let pilhas: [Pilha; 6] = [
         (
             "WetPainter/Oil/Dabber/Dabber.ph2d-brush.png",
             VERMELHO,
@@ -291,7 +293,10 @@ fn grava_folha_com(
     }
     // W2 E3-B: a direcção da ESTRIA (x, y da tela; `0,0` no plano) e a PASSAGEM da película (a luz que chega
     // ao papel), as mesmas do sombreado — o `cycles.py` liga-as à Tangent e à Transmission do Principled.
-    let (mut estria, mut passa) = (Vec::with_capacity(gw * gh * 8), Vec::with_capacity(gw * gh * 4));
+    let (mut estria, mut passa) = (
+        Vec::with_capacity(gw * gh * 8),
+        Vec::with_capacity(gw * gh * 4),
+    );
     for cy in 1..=gh {
         for cx in 1..=gw {
             let (x, y) = (cx as isize, cy as isize);
@@ -429,10 +434,7 @@ fn oleo_do_env() -> ph2d_wet_paint::oleo_real::OleoReal {
 /// O Óleo Real de fábrica com os `campo=valor,…` de `af` (a língua do `PH2D_OLEO_AF`).
 fn oleo_de(af: &str) -> ph2d_wet_paint::oleo_real::OleoReal {
     let mut o = ph2d_wet_paint::oleo_real::OleoReal::default();
-    for par in af
-        .split(',')
-        .filter(|p| !p.is_empty())
-    {
+    for par in af.split(',').filter(|p| !p.is_empty()) {
         let (k, v) = par
             .split_once('=')
             .unwrap_or_else(|| panic!("{par}: campo=valor"));
@@ -472,9 +474,9 @@ fn oleo_de(af: &str) -> ph2d_wet_paint::oleo_real::OleoReal {
             "mat_escala_mapa" => o.material.escala_mapa = v,
             "mat_forca_reflexo" => o.material.forca_reflexo = v,
             "mat_mapa_reflexo" => {
-                o.material.mapa_reflexo = (v as u8)
-                    .checked_sub(1)
-                    .map(|i| ph2d_wet_paint::oleo_real::Ambiente::de_indice(i).expect("mapa 0..=4"));
+                o.material.mapa_reflexo = (v as u8).checked_sub(1).map(|i| {
+                    ph2d_wet_paint::oleo_real::Ambiente::de_indice(i).expect("mapa 0..=4")
+                });
             }
             "penumbra" => af.penumbra = v,
             "rugosidade" => af.rugosidade = v,
@@ -1342,11 +1344,14 @@ fn medida_oleo_real_custo() {
         ..ph2d_wet_paint::material::MaterialCelula::NEUTRO
     };
     let neutro = ph2d_wet_paint::material::MaterialCelula::NEUTRO;
-    let variantes: Vec<(String, Ambiente, ph2d_wet_paint::material::MaterialCelula)> = Ambiente::TODOS
-        .iter()
-        .map(|&a| (format!("{a:?}"), a, neutro))
-        .chain([Ambiente::Classico, Ambiente::Estudio].map(|a| (format!("{a:?}+cheio"), a, cheio)))
-        .collect();
+    let variantes: Vec<(String, Ambiente, ph2d_wet_paint::material::MaterialCelula)> =
+        Ambiente::TODOS
+            .iter()
+            .map(|&a| (format!("{a:?}"), a, neutro))
+            .chain(
+                [Ambiente::Classico, Ambiente::Estudio].map(|a| (format!("{a:?}+cheio"), a, cheio)),
+            )
+            .collect();
     let nv = variantes.len();
     let mut melhor = vec![f64::INFINITY; nv];
     let mut soma = 0.0;
@@ -1370,7 +1375,11 @@ fn medida_oleo_real_custo() {
     }
     println!(
         "[custo] ns/célula (mínimo de 7): {:?} · {soma:.0}",
-        variantes.iter().map(|v| &v.0).zip(melhor).collect::<Vec<_>>()
+        variantes
+            .iter()
+            .map(|v| &v.0)
+            .zip(melhor)
+            .collect::<Vec<_>>()
     );
 }
 
@@ -1506,13 +1515,18 @@ fn a_fenda_forte_nao_volta_aos_pontos_pretos_na_cena_do_dono() {
         let px = render_da_cena(&mut t, &o);
         let (mut n, mut pretos) = (0usize, 0usize);
         for (fim, alb, a) in &px {
-            if f64::from(*a) / 255.0 > 0.9 && lin(f64::from(alb[0])) > 0.4 && lin(f64::from(alb[1])) < 0.05
+            if f64::from(*a) / 255.0 > 0.9
+                && lin(f64::from(alb[0])) > 0.4
+                && lin(f64::from(alb[1])) < 0.05
             {
                 n += 1;
                 pretos += usize::from(fim[0].max(fim[1]).max(fim[2]) < 70);
             }
         }
         let f = 100.0 * pretos as f64 / n as f64;
-        assert!(f <= 0.5, "Estúdio, força {fenda}: {f:.2} % do vermelho abaixo de 70");
+        assert!(
+            f <= 0.5,
+            "Estúdio, força {fenda}: {f:.2} % do vermelho abaixo de 70"
+        );
     }
 }

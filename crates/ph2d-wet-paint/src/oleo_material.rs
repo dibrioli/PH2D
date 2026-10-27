@@ -220,7 +220,14 @@ pub(super) fn base_tangente(n: [f64; 3], e: [f64; 2]) -> ([f64; 3], [f64; 3]) {
 
 /// GGX ANISOTRÓPICO (a convenção do Principled: `aspecto = √(1 − 0,9·an)`, `αt = α/aspecto`,
 /// `αb = α·aspecto`; o lobo alonga-se AO LONGO da tangente).
-pub(super) fn ggx_aniso(a2: f64, an: f64, h: [f64; 3], n: [f64; 3], t: [f64; 3], b: [f64; 3]) -> f64 {
+pub(super) fn ggx_aniso(
+    a2: f64,
+    an: f64,
+    h: [f64; 3],
+    n: [f64; 3],
+    t: [f64; 3],
+    b: [f64; 3],
+) -> f64 {
     let alfa = libm::sqrt(a2);
     let asp = libm::sqrt(1.0 - 0.9 * an.clamp(0.0, 1.0));
     let (at, ab) = (alfa / asp, alfa * asp);

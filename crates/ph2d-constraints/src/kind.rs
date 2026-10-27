@@ -176,13 +176,17 @@ pub enum Kind {
     Action(Action),
     Spring(Spring),
     Valor(crate::Valor),
+    Comportamento(crate::Comportamento),
 }
 
 impl Kind {
     #[must_use]
     pub fn needs_target(&self) -> bool {
         // O Pivot mostra o alvo mas não o exige: sem ele, o pivô é o dono + o desvio.
-        !matches!(self, Self::Limit(_) | Self::Spring(_))
+        match self {
+            Self::Comportamento(c) => c.perfil.precisa_de_alvo(),
+            _ => !matches!(self, Self::Limit(_) | Self::Spring(_)),
+        }
     }
 
     /// Ao NASCER (e ao trocar de alvo), o tipo guarda a pose actual em vez de saltar? O Child Of
@@ -241,7 +245,8 @@ impl Kind {
             | Self::PontoDeForma(_)
             | Self::Action(_)
             | Self::Spring(_)
-            | Self::Valor(_) => {}
+            | Self::Valor(_)
+            | Self::Comportamento(_) => {}
         }
         Ok(())
     }
@@ -262,7 +267,9 @@ impl Kind {
     pub fn resolve_with(&self, ctx: &Ctx, path: Option<&[[f64; 2]]>) -> Result<Pose2, Inerte> {
         match self {
             Self::Ik(_) | Self::SplineIk(_) => Err(Inerte::Corrente),
-            Self::Action(_) | Self::Spring(_) | Self::Valor(_) => Err(Inerte::Relogio),
+            Self::Action(_) | Self::Spring(_) | Self::Valor(_) | Self::Comportamento(_) => {
+                Err(Inerte::Relogio)
+            }
             Self::Pivot(p) => Ok(p.resolve(ctx)),
             Self::Floor(f) => f.resolve(ctx),
             Self::Transformation(t) => t.resolve(ctx),

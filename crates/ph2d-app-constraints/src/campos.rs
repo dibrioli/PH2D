@@ -42,6 +42,7 @@ pub fn numeros(k: &Kind) -> &'static [u16] {
             &[DE_MIN, DE_MAX, PARA_MIN, PARA_MAX, DURACAO, RESSALTO]
         }
         Kind::Valor(_) => &[DE_MIN, DE_MAX, PARA_MIN, PARA_MAX],
+        Kind::Comportamento(c) => crate::campos_comportamento::numeros(c),
         _ => &[],
     }
 }
@@ -62,6 +63,7 @@ pub fn escolhas(k: &Kind) -> &'static [u16] {
         Kind::Action(_) => &[DE],
         Kind::Spring(_) => &[MOLA],
         Kind::Valor(_) => &[MISTURA, EXTRAPOLA, MOLA_LIGADA],
+        Kind::Comportamento(c) => crate::campos_comportamento::escolhas(c),
         _ => &[],
     }
 }
@@ -109,7 +111,7 @@ fn rotulo(campo: u16) -> &'static str {
         RESSALTO => "panel.inspector.constraint.bounce",
         MOLA => "panel.inspector.constraint.spring_channels",
         MOLA_LIGADA => "panel.inspector.constraint.spring_on",
-        _ => "panel.inspector.constraint.mix",
+        c => crate::campos_comportamento::rotulo(c).unwrap_or("panel.inspector.constraint.mix"),
     }
 }
 
@@ -125,13 +127,14 @@ fn opcoes(campo: u16) -> &'static [&'static str] {
         MOLA => MOLAS,
         VOLUME => VOLUMES,
         POR => PORES,
-        _ => MISTURAS,
+        c => crate::campos_comportamento::opcoes(c).unwrap_or(MISTURAS),
     }
 }
 
 /// A unidade do número `campo` do tipo `k` (a posição do Follow Path segue o «By»).
 fn unidade(k: &Kind, campo: u16) -> Unidade {
     match (k, campo) {
+        (Kind::Comportamento(c), campo) => crate::campos_comportamento::unidade(c, campo),
         (Kind::Transformation(t), DE_MIN | DE_MAX) => unidade_do_canal(t.de),
         (Kind::Transformation(t), PARA_MIN | PARA_MAX) => unidade_do_canal(t.para),
         (Kind::Action(a), DE_MIN | DE_MAX) => unidade_do_canal(a.canal),
@@ -319,6 +322,7 @@ pub fn ler(k: &Kind, campo: u16) -> Option<f32> {
         (Kind::Valor(v), MOLA_LIGADA) => sim(v.mola.is_some()),
         (Kind::Valor(v), DURACAO) => v.mola?.duracao as f32,
         (Kind::Valor(v), RESSALTO) => v.mola?.ressalto as f32,
+        (Kind::Comportamento(c), campo) => return crate::campos_comportamento::ler(c, campo),
         _ => return None,
     })
 }
@@ -473,6 +477,11 @@ pub fn escrever(k: &mut Kind, campo: u16, v: f32) -> bool {
             let Some(m) = &mut x.mola else { return false };
             m.ressalto = f64::from(v.clamp(-1.0, 1.0));
         }
+        (Kind::Comportamento(c), campo) => {
+            if !crate::campos_comportamento::escrever(c, campo, v) {
+                return false;
+            }
+        }
         _ => return false,
     }
     *k != antes
@@ -575,6 +584,7 @@ pub fn chave_no_item(k: &Kind, campo: u16) -> Option<&'static str> {
         (Kind::Valor(_), MOLA_LIGADA) => "kind/Valor/mola",
         (Kind::Valor(_), DURACAO) => "kind/Valor/mola/duracao",
         (Kind::Valor(_), RESSALTO) => "kind/Valor/mola/ressalto",
+        (Kind::Comportamento(_), campo) => return crate::campos_comportamento::chave_no_item(campo),
         _ => return None,
     })
 }

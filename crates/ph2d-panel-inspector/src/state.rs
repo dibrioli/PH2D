@@ -90,8 +90,8 @@ pub struct InspectorState {
     pub last_shake_sig: Option<u64>,
     /// LUZ — a assinatura do último instantâneo semeado (Luz 2D, W4).
     pub last_luz_sig: Option<u64>,
-    /// CONSTRAINTS — a lista dos tipos do «Add Constraint» está aberta (estado do PAINEL).
-    pub constraint_add_open: bool,
+    /// CONSTRAINTS — o menu do «Add Constraint» (estado do PAINEL).
+    pub constraint_add: MenuAdd,
     /// Qual tween está aberto — estado do PAINEL, como o do gatilho (suplente #22).
     ///
     /// ⚠️ **Não vai ao barramento**: um `Tweens` não tem «o tween actual» — os N correm todos ao
@@ -598,3 +598,12 @@ mod tint_color_tests {
 mod tags;
 pub(crate) use tags::{current_inspector_tags, current_tag_tree};
 pub use tags::{set_current_inspector_tags, set_current_tag_tree};
+
+/// O menu do «Add Constraint»: fechado, aberto, ou aberto com o submenu dos *Behaviours*.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum MenuAdd {
+    #[default]
+    Fechado,
+    Aberto,
+    Behaviours,
+}

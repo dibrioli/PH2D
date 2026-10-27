@@ -83,7 +83,7 @@ pub(crate) fn paint(inspector_state: &mut state::InspectorState, ctx: &mut Paint
             &mut inspector_state.sm_state_selected,
             &mut inspector_state.sm_trans_selected,
             &mut inspector_state.resist_selected,
-            inspector_state.constraint_add_open,
+            inspector_state.constraint_add,
         );
     }
     state::set_current_display_unit(display_unit, ppm); // keep symmetric with legacy
@@ -159,7 +159,7 @@ fn paint_inspector(
     sm_state_selected: &mut usize,
     sm_trans_selected: &mut usize,
     resist_selected: &mut usize,
-    constraint_add_open: bool,
+    constraint_add: crate::state::MenuAdd,
 ) -> ph2d_editor_core::widget::scroll_area::Pending {
     let crate::paint_body::BodyFrame {
         rect,
@@ -282,7 +282,7 @@ fn paint_inspector(
         sm_state_selected,
         sm_trans_selected,
         resist_selected,
-        constraint_add_open,
+        constraint_add,
         &snaps,
     );
     let mut tela = crate::plano::Tela {

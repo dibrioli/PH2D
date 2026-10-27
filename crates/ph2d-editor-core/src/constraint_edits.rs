@@ -5,7 +5,7 @@
 
 /// As entradas do menu **+**, na ordem em que aparecem: a chave `ph2d-i18n` do rótulo. O índice é o
 /// que [`ConstraintFieldEdit::Adicionar`] leva e o que [`InspectorConstraintRow::tipo`] diz.
-pub const TIPOS: [&str; 21] = [
+pub const TIPOS: [&str; 25] = [
     "panel.inspector.constraint.child_of",
     "panel.inspector.constraint.copy_location",
     "panel.inspector.constraint.copy_rotation",
@@ -27,7 +27,16 @@ pub const TIPOS: [&str; 21] = [
     "panel.inspector.constraint.glue_rigid",
     "panel.inspector.constraint.glue_pin",
     "panel.inspector.constraint.value",
+    // O submenu «Behaviours» (06_W5 §3.2): a ordem é a do `ph2d_constraints::comportamento::Perfil`.
+    "panel.inspector.constraint.behaviour.shake",
+    "panel.inspector.constraint.behaviour.float",
+    "panel.inspector.constraint.behaviour.orbit",
+    "panel.inspector.constraint.behaviour.attract",
 ];
+
+/// O índice em [`TIPOS`] do primeiro *behaviour*: daqui em diante as entradas moram no submenu
+/// «Behaviours» e a posição menos este é a tag do `Perfil`.
+pub const TIPO_BEHAVIOUR: u8 = 21;
 
 /// O índice em [`TIPOS`] da cola **Rígida** (solda): não é item da pilha — arma o clique que escolhe o
 /// OUTRO objecto (`docs/BlenderConstraints/05_W5_diferenciais.md` §2.5).

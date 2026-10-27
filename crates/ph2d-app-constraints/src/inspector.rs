@@ -11,7 +11,7 @@ use ph2d_constraints_ecs::{Adotar, Constraints, Estado, Estados, bind_on_create,
 use ph2d_ecs::{Name, SimWorld, Transform, entity_with_stable_id, stable_id_of, world_transform};
 use ph2d_editor_core::constraint_edits::{
     ConstraintFieldEdit as E, EstadoDaConstraint, InspectorConstraintRow, InspectorConstraintsInfo,
-    MAX_LINHAS, TIPO_COLA_PINO, TIPO_COLA_RIGIDA, TIPOS,
+    MAX_LINHAS, TIPO_BEHAVIOUR, TIPO_COLA_PINO, TIPO_COLA_RIGIDA, TIPOS,
 };
 use ph2d_preview_drive::PreviewDrive;
 
@@ -45,6 +45,7 @@ pub fn tipo_de(k: &Kind) -> u8 {
         Kind::Action(_) => 16,
         Kind::Spring(_) => 17,
         Kind::Valor(_) => 20,
+        Kind::Comportamento(c) => TIPO_BEHAVIOUR + c.perfil.tag(),
     }
 }
 
@@ -93,6 +94,12 @@ fn novo(sim: &SimWorld, e: Entity, i: u8) -> Option<Kind> {
         16 => Kind::Action(Action::default()),
         17 => Kind::Spring(Spring::default()),
         20 => Kind::Valor(ph2d_constraints::Valor::default()),
+        // O clique de um *behaviour*: os números de fábrica do perfil (o molde do CameraShake).
+        i if i >= TIPO_BEHAVIOUR => Kind::Comportamento(
+            ph2d_constraints::comportamento::Perfil::ALL
+                .get(usize::from(i - TIPO_BEHAVIOUR))?
+                .numeros(),
+        ),
         _ => return None,
     })
 }

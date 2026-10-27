@@ -12,7 +12,11 @@ use ph2d_editor_core::widget::{
 pub(crate) fn populate_constraint(store: &mut WidgetStore) {
     super::populate::register_button_ids(
         store,
-        &[ids::INSP_CONSTRAINT_ADD, ids::INSP_CONSTRAINT_BAKE],
+        &[
+            ids::INSP_CONSTRAINT_ADD,
+            ids::INSP_CONSTRAINT_BAKE,
+            ids::INSP_CONSTRAINT_BEHAVIOURS,
+        ],
     );
     super::populate::register_button_ids(store, &ids::INSP_CONSTRAINT_TIPO);
     for tabela in [

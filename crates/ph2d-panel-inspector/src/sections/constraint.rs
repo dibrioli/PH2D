@@ -8,8 +8,9 @@
 
 use super::*;
 use crate::plano::{Plano, emoldurada};
+use crate::state::MenuAdd;
 use ph2d_editor_core::constraint_edits::{
-    InspectorConstraintRow, InspectorConstraintsInfo, Peca, TIPOS,
+    InspectorConstraintRow, InspectorConstraintsInfo, Peca, TIPO_BEHAVIOUR, TIPOS,
 };
 use ph2d_editor_core::property_row::{
     Seccao, abaixo_do_botao, caixa_do_botao, paint_check_row, paint_choice_row, paint_label_row,
@@ -398,7 +399,7 @@ fn acrescentar(
     store: &WidgetStore,
     (x, w, y): (f32, f32, f32),
     i: &InspectorConstraintsInfo,
-    aberta: bool,
+    aberta: crate::state::MenuAdd,
 ) -> f32 {
     let mut y = y;
     if !i.rows.is_empty() {
@@ -433,30 +434,42 @@ fn acrescentar(
     let caixa = caixa_do_botao(text_system, x, w, y, rotulo);
     hit_index.register(id, caixa);
     let botao = Button::new(id, rotulo).kind(ButtonKind::Default);
-    let botao = if aberta {
+    let botao = if aberta != MenuAdd::Fechado {
         botao.state(ButtonState::Pressed)
     } else {
         botao.visual(store.button_visual(id))
     };
     paint_button(&botao, caixa, scene, text_system, theme);
     let mut cur_y = abaixo_do_botao(caixa);
-    if !aberta {
+    if aberta == MenuAdd::Fechado {
         return cur_y;
     }
-    for (&id, chave) in ids::INSP_CONSTRAINT_TIPO.iter().zip(TIPOS) {
-        let rotulo = tr(chave);
+    let mut botao = |id, rotulo: &str, x: f32, w: f32, cur_y: f32, premido: bool| {
         let caixa = caixa_do_botao(text_system, x, w, cur_y, rotulo);
         hit_index.register(id, caixa);
-        paint_button(
-            &Button::new(id, rotulo)
-                .kind(ButtonKind::Default)
-                .visual(store.button_visual(id)),
-            caixa,
-            scene,
-            text_system,
-            theme,
-        );
-        cur_y = abaixo_do_botao(caixa);
+        let b = Button::new(id, rotulo).kind(ButtonKind::Default);
+        let b = if premido {
+            b.state(ButtonState::Pressed)
+        } else {
+            b.visual(store.button_visual(id))
+        };
+        paint_button(&b, caixa, scene, text_system, theme);
+        abaixo_do_botao(caixa)
+    };
+    let (tipos, behaviours) = ids::INSP_CONSTRAINT_TIPO.split_at(usize::from(TIPO_BEHAVIOUR));
+    for (&id, chave) in tipos.iter().zip(TIPOS) {
+        cur_y = botao(id, tr(chave), x, w, cur_y, false);
+    }
+    // O submenu (decisão do dono 27/10): um botão que abre os *behaviours* por baixo, recuados.
+    let sub = aberta == MenuAdd::Behaviours;
+    let id = ids::INSP_CONSTRAINT_BEHAVIOURS;
+    cur_y = botao(id, tr("panel.inspector.constraint.behaviours"), x, w, cur_y, sub);
+    if sub {
+        let recuo = ph2d_tokens::list_indent_px();
+        let chaves = &TIPOS[usize::from(TIPO_BEHAVIOUR)..];
+        for (&id, chave) in behaviours.iter().zip(chaves) {
+            cur_y = botao(id, tr(chave), x + recuo, w - recuo, cur_y, false);
+        }
     }
     cur_y
 }
@@ -473,7 +486,7 @@ pub(crate) fn paint_constraints_section(
     w: f32,
     y: f32,
     i: &InspectorConstraintsInfo,
-    aberta: bool,
+    aberta: crate::state::MenuAdd,
 ) -> f32 {
     let (fold, mut cur_y) = match super::nav::cabecalho(
         scene,
@@ -565,7 +578,7 @@ pub(crate) fn push_constraints_section<'a>(
     inner_w: f32,
     header_h: f32,
     info: Option<&'a InspectorConstraintsInfo>,
-    aberta: bool,
+    aberta: crate::state::MenuAdd,
 ) {
     let Some(info) = info else {
         return;

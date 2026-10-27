@@ -84,6 +84,32 @@ pub const RESSALTO: u16 = 36;
 pub const MOLA: u16 = 37;
 /// Follow Value: com mola ou a seguir no mesmo quadro ([`NAO_SIM`]).
 pub const MOLA_LIGADA: u16 = 38;
+/// *Behaviours* (W5.4): a amplitude do Tremer e do Flutuar (graus em Rotation).
+pub const AMPLITUDE: u16 = 39;
+/// *Behaviours*: ciclos por segundo do Tremer e do Flutuar.
+pub const FREQUENCIA: u16 = 40;
+/// Tremer: a linha do ruído.
+pub const SEMENTE: u16 = 41;
+/// Flutuar: a fase, em ciclos (o mesmo número que a semente do Tremer).
+pub const FASE: u16 = 42;
+/// Orbitar: graus por segundo.
+pub const VELOCIDADE: u16 = 43;
+/// Orbitar: a distância ao pivô sem alvo; Atrair: o alcance.
+pub const RAIO: u16 = 44;
+/// Atrair: a força no centro.
+pub const PUXAO: u16 = 45;
+/// Atrair: a velocidade que fica ao fim de um segundo.
+pub const AMORTECE: u16 = 46;
+/// Tremer e Flutuar: onde mexem ([`ONDES`]).
+pub const ONDE: u16 = 47;
+/// Orbitar: o objecto vira com a volta ([`NAO_SIM`]).
+pub const LEVA_ROTACAO: u16 = 48;
+/// O peso por distância: o raio em que cai a zero.
+pub const PESO_RAIO: u16 = 49;
+/// O peso por distância: a curva ([`CURVAS`]).
+pub const PESO_CURVA: u16 = 50;
+/// O peso por distância: invertido ([`NAO_SIM`]).
+pub const PESO_INVERTE: u16 = 51;
 
 /// As palavras de [`MODO`], pelo índice.
 pub const MODOS: &[&str] = &[
@@ -151,8 +177,22 @@ pub const MOLAS: &[&str] = &[
     "panel.inspector.constraint.spring.rotation",
     "panel.inspector.constraint.spring.both",
 ];
+/// As palavras de [`ONDE`] (`Onde`: XY · X · Y · Rotation).
+pub const ONDES: &[&str] = &[
+    "panel.inspector.constraint.where.xy",
+    "panel.inspector.constraint.channel.x",
+    "panel.inspector.constraint.channel.y",
+    "panel.inspector.constraint.channel.rotation",
+];
+/// As palavras de [`PESO_CURVA`] (as do `motion.falloff`: Linear · Quad · Smooth · Smoother).
+pub const CURVAS: &[&str] = &[
+    "panel.inspector.constraint.curve.linear",
+    "panel.inspector.constraint.curve.quad",
+    "panel.inspector.constraint.curve.smooth",
+    "panel.inspector.constraint.curve.smoother",
+];
 /// Os campos de um item, na ordem do cartão (o tipo diz quais tem).
-pub const CAMPOS: [u16; 38] = [
+pub const CAMPOS: [u16; 51] = [
     FORCA,
     LIGADA,
     LIMITE_MIN,
@@ -191,6 +231,19 @@ pub const CAMPOS: [u16; 38] = [
     RESSALTO,
     MOLA,
     MOLA_LIGADA,
+    AMPLITUDE,
+    FREQUENCIA,
+    SEMENTE,
+    FASE,
+    VELOCIDADE,
+    RAIO,
+    PUXAO,
+    AMORTECE,
+    ONDE,
+    LEVA_ROTACAO,
+    PESO_RAIO,
+    PESO_CURVA,
+    PESO_INVERTE,
 ];
 
 /// A chave do campo `campo` do item `item`.
@@ -266,6 +319,27 @@ pub fn info(campo: u16) -> Option<CampoInfo> {
         MOLA => c("canal.constraint.mola", campo, Especie::Opcoes(MOLAS)),
         MOLA_LIGADA => c(
             "canal.constraint.mola_ligada",
+            campo,
+            Especie::Opcoes(NAO_SIM),
+        ),
+        AMPLITUDE => c("canal.constraint.amplitude", campo, Especie::Continuo),
+        FREQUENCIA => c("canal.constraint.frequencia", campo, Especie::Continuo),
+        SEMENTE => c("canal.constraint.semente", campo, Especie::Continuo),
+        FASE => c("canal.constraint.fase", campo, Especie::Continuo),
+        VELOCIDADE => c("canal.constraint.velocidade", campo, Especie::Continuo),
+        RAIO => c("canal.constraint.raio", campo, Especie::Continuo),
+        PUXAO => c("canal.constraint.puxao", campo, Especie::Continuo),
+        AMORTECE => c("canal.constraint.amortece", campo, Especie::Continuo),
+        ONDE => c("canal.constraint.onde", campo, Especie::Opcoes(ONDES)),
+        LEVA_ROTACAO => c(
+            "canal.constraint.leva_rotacao",
+            campo,
+            Especie::Opcoes(NAO_SIM),
+        ),
+        PESO_RAIO => c("canal.constraint.peso_raio", campo, Especie::Continuo),
+        PESO_CURVA => c("canal.constraint.peso_curva", campo, Especie::Opcoes(CURVAS)),
+        PESO_INVERTE => c(
+            "canal.constraint.peso_inverte",
             campo,
             Especie::Opcoes(NAO_SIM),
         ),

@@ -41,7 +41,14 @@ pub const INSP_CONSTRAINT_TIPO: [NodeId; TIPOS.len()] = [
     hash_node_id("insp_constraint_tipo_18"),
     hash_node_id("insp_constraint_tipo_19"),
     hash_node_id("insp_constraint_tipo_20"),
+    hash_node_id("insp_constraint_tipo_21"),
+    hash_node_id("insp_constraint_tipo_22"),
+    hash_node_id("insp_constraint_tipo_23"),
+    hash_node_id("insp_constraint_tipo_24"),
 ];
+
+/// O «Behaviours ▸» da lista do «Add Constraint» — abre e fecha o submenu dos *behaviours*.
+pub const INSP_CONSTRAINT_BEHAVIOURS: NodeId = hash_node_id("insp_constraint_behaviours");
 
 /// O «Unglue» de cada linha de cola (a posição é a da cola em `InspectorConstraintsInfo::colas`).
 pub const INSP_COLA_DESCOLAR: [NodeId; MAX_LINHAS] = [

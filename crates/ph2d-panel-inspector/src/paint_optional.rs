@@ -222,8 +222,8 @@ pub(crate) fn push_optional_sections<'a>(
     sm_state_selected: &'a mut usize,
     sm_trans_selected: &'a mut usize,
     resist_selected: &mut usize,
-    // CONSTRAINTS — a lista dos tipos do «Add Constraint» está aberta.
-    constraint_add_open: bool,
+    // CONSTRAINTS — o menu do «Add Constraint».
+    constraint_add: crate::state::MenuAdd,
     // ⭐⭐⭐ **A struct do QUADRO, inteira** — e não os dezoito instantâneos desmontados um a um.
     //
     // ⚠️ **Desmontá-la na chamada era uma SEGUNDA CÓPIA dela**, e ela cobrava: o `paint_inspector`
@@ -265,7 +265,7 @@ pub(crate) fn push_optional_sections<'a>(
         inner_w,
         header_h,
         snaps.constraints_info.as_ref(),
-        constraint_add_open,
+        constraint_add,
     );
     // ── RENDERING (4) ─────────────────────────────────────────────────────────────────────────
     plano.push(

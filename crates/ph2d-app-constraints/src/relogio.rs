@@ -119,4 +119,5 @@ pub(crate) fn preparar(sim: &mut SimWorld, relogio: Relogio<'_>) {
         }
     }
     w.insert_resource(molas);
+    crate::comportamento::preparar(sim, relogio);
 }

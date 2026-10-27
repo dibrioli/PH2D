@@ -10,7 +10,7 @@ use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::widget::ButtonState;
 
 use crate::ids;
-use crate::state::InspectorState;
+use crate::state::{InspectorState, MenuAdd};
 
 /// O `Item::id` da linha cujo widget é `id` na `tabela`.
 fn item(
@@ -71,13 +71,24 @@ pub(crate) fn apply_constraint_event(
     };
     let edit = match ev {
         WidgetEvent::Click(id) if id == ids::INSP_CONSTRAINT_ADD => {
-            panel.constraint_add_open = !panel.constraint_add_open;
+            panel.constraint_add = match panel.constraint_add {
+                MenuAdd::Fechado => MenuAdd::Aberto,
+                MenuAdd::Aberto | MenuAdd::Behaviours => MenuAdd::Fechado,
+            };
+            demote(host, id);
+            return true;
+        }
+        WidgetEvent::Click(id) if id == ids::INSP_CONSTRAINT_BEHAVIOURS => {
+            panel.constraint_add = match panel.constraint_add {
+                MenuAdd::Behaviours => MenuAdd::Aberto,
+                MenuAdd::Fechado | MenuAdd::Aberto => MenuAdd::Behaviours,
+            };
             demote(host, id);
             return true;
         }
         WidgetEvent::Click(id) => {
             if let Some(i) = ids::INSP_CONSTRAINT_TIPO.iter().position(|&o| o == id) {
-                panel.constraint_add_open = false;
+                panel.constraint_add = MenuAdd::Fechado;
                 E::Adicionar(u8::try_from(i).unwrap_or(0))
             } else if let Some(r) = item(&info, &ids::INSP_CONSTRAINT_SUBIR, id) {
                 E::Mover(r, -1)

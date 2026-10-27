@@ -453,6 +453,16 @@ fn avalia_uma(
             marca(it.id, Estado::Activa);
             continue;
         }
+        if let Kind::Comportamento(c) = &it.kind {
+            match crate::comportamento::na_pilha(sim, idx, (e, it.id), (c, alvo), dono, it.influence) {
+                Ok(p) => {
+                    dono = p;
+                    marca(it.id, Estado::Activa);
+                }
+                Err(s) => marca(it.id, s),
+            }
+            continue;
+        }
         if let Kind::Valor(v) = &it.kind {
             let saida = sim
                 .world()

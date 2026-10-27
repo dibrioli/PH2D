@@ -6,6 +6,7 @@
 
 mod avalia;
 pub mod cola;
+pub mod comportamento;
 mod curva;
 mod ik;
 pub mod ik_item;
@@ -22,7 +23,8 @@ pub use ik_item::{
 };
 pub use ik_novo::{add_ik, add_look_at, aponta};
 pub use ordem::ordem;
-pub use relogio::{Accoes, Amostra, Laco, Lei, Molas, Simulador, Valores};
+pub use comportamento::Comportamentos;
+pub use relogio::{Accoes, Amostra, Dinamica, Laco, Lei, Molas, Simulador, Valores};
 
 use bevy_ecs::component::Component;
 use ph2d_constraints::Kind;

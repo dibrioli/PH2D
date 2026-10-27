@@ -9,12 +9,14 @@
 //! O ângulo é do `ph2d-skeleton` ([`blend_angle`], [`clamp_to_limit`]): uma lei, um dono.
 
 mod caminho;
+pub mod comportamento;
 mod kind;
 mod ossos;
 mod poderosas;
 mod valor;
 
 pub use caminho::{FollowPath, PathBy};
+pub use comportamento::Comportamento;
 pub use kind::{
     Canais, ChildOf, CopyTransform, Distance, DistanceMode, Faixa, Kind, Limit, LookAt, Mix, Space,
 };

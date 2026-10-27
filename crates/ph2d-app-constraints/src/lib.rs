@@ -5,11 +5,13 @@
 
 pub mod bake;
 pub mod campos;
+pub mod campos_comportamento;
 pub mod canais;
 pub mod cartao_valor;
 pub mod chaves;
 pub mod cola;
 pub mod compensa;
+mod comportamento;
 pub mod gizmo;
 pub mod inspector;
 pub mod marcas;

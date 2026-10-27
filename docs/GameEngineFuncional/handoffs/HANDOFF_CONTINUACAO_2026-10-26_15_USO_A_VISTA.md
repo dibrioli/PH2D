@@ -154,3 +154,20 @@ mas a parada inteira já mostra `SpriteGrid::SINGLE` ⇒ a folha inteira (4 × 2
 uma bandeira. Cura: o ladrilho é o que o objecto MOSTRA (a grelha dele) × nativo. Gate vermelho primeiro:
 `image_use_15_tests::repetida_de_uma_parada_inteira_nao_achata` (era `[1,2]` contra `[4,2]`); `tiled` (4) e
 `image_choice` (13) continuam verdes. Foto `PH2D_GAME_SMOKE_FOTO=repetida_da_parada`.
+
+## Dono 27/10: «mudando entre os modos a imagem ficou gigante… auditoria e corrigir tudo de uma vez»
+
+Mecanismo: cada troca recalculava o tamanho a partir do anterior com uma suposição diferente (Repeated → Animated
+lia o ladrilho como UMA célula, mas uma parada inteira repete a folha toda ⇒ ×8). Cura pela raiz: **o invariante
+é a escala** — `image_use::display_scale(world,e,facts) -> [f32;2]` (por EIXO: o achatamento do artista fica),
+metros no ecrã por metro nativo do que o objecto MOSTRA (grelha; ladrilho Tiled/fundo/UV; senão o tamanho). Cada
+uso deriva o tamanho dela (`show`): parada = imagem inteira × k · animada = célula × k (`make_animated` reescrito
+por cima disto) · repetida = `TiledDraw{tile: o que mostrava × k}`, o tamanho de agora fica. Gate exaustivo
+`nenhuma_troca_de_uso_muda_a_escala`: 5 objectos (Player, Platform Low, Platform High ← Flag, ← heroi, Goal) ×
+27 sequências de 3 trocas — escala igual depois de cada uma, tamanho = o do uso, voltar ao uso de partida
+(≠ Repeated) devolve o tamanho. Apanhou o Goal achatado (1 × 1 de uma célula 1 × 2) ⇒ escala por eixo.
+Mutação (Still com k = 1) ⇒ vermelho; restaurado verde. `tiled_tests::ligar_e_desligar_o_tiled` reescrito: o
+ladrilho é o que se via (UV 3 ⇒ largura/3). Foto `voltas` (Player 100 × 100 depois de Still→Repeated→Animated;
+bandeira normal depois de 4 trocas).
+⚠️ **Decisão do dono por tomar:** Animated → Still → Animated perde as animações do artista (o Player volta só com
+«loop»); o Ctrl+Z devolve-as. Alternativa: guardar as animações escondidas enquanto parada/repetida.

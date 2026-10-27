@@ -67,6 +67,7 @@ pub enum Foto {
     UsoParada,
     PlayerParado,
     RepetidaDaParada,
+    Voltas,
     HeroiAnimado,
 }
 
@@ -85,6 +86,7 @@ pub fn foto() -> Option<Foto> {
         "uso_parada" => Some(Foto::UsoParada),
         "player_parado" => Some(Foto::PlayerParado),
         "repetida_da_parada" => Some(Foto::RepetidaDaParada),
+        "voltas" => Some(Foto::Voltas),
         "heroi_animado" => Some(Foto::HeroiAnimado),
         _ => None,
     }
@@ -112,6 +114,7 @@ impl Foto {
                 | Self::UsoParada
                 | Self::PlayerParado
                 | Self::RepetidaDaParada
+                | Self::Voltas
                 | Self::HeroiAnimado
         )
     }
@@ -190,6 +193,28 @@ pub fn plano_da_foto(
                 (alta, uso(ph2d_editor_core::InspectorImageUse::Still)),
                 (alta, uso(ph2d_editor_core::InspectorImageUse::Repeated)),
             ];
+        }
+        Foto::Voltas => {
+            plano.escolhas = vec![(alta, bandeira)];
+            plano.edicoes = [
+                ph2d_editor_core::InspectorImageUse::Still,
+                ph2d_editor_core::InspectorImageUse::Repeated,
+                ph2d_editor_core::InspectorImageUse::Animated,
+            ]
+            .into_iter()
+            .map(|u| (player, uso(u)))
+            .chain(
+                [
+                    ph2d_editor_core::InspectorImageUse::Still,
+                    ph2d_editor_core::InspectorImageUse::Repeated,
+                    ph2d_editor_core::InspectorImageUse::Animated,
+                    ph2d_editor_core::InspectorImageUse::Still,
+                ]
+                .into_iter()
+                .map(|u| (alta, uso(u))),
+            )
+            .collect();
+            plano.alvo = player;
         }
         Foto::HeroiAnimado => {
             plano.escolhas = vec![(alta, *heroi)];

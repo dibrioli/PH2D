@@ -59,9 +59,8 @@ pub fn cells(facts: ImageFacts) -> u32 {
 pub const LOOP_TAG: &str = "loop";
 
 /// ⭐ **Passar a animada uma imagem com corte** (planos GEF 13 D5 e 15 D3): o objecto deixa de repetir e toca
-/// todas as células da imagem em laço. O tamanho passa a uma célula, à escala de UM ladrilho de antes pela
-/// largura (a imagem não se deforma).
-/// `false` se a imagem tem uma célula só, ou o objecto já anima.
+/// todas as células da imagem em laço; o tamanho é UMA célula à [`display_scale`] de antes (nada cresce nem
+/// encolhe). `false` se a imagem tem uma célula só, ou o objecto já anima.
 pub fn make_animated(world: &mut World, e: Entity, facts: ImageFacts) -> bool {
     let Some(slicing) = facts.slicing else {
         return false;
@@ -70,53 +69,67 @@ pub fn make_animated(world: &mut World, e: Entity, facts: ImageFacts) -> bool {
     if n < 2 || image_use(world, e).is_none_or(|u| u == ImageUse::Animated) {
         return false;
     }
-    let Some(sprite) = world.get::<Sprite>(e).copied() else {
-        return false;
-    };
-    let tiled = world.get::<TiledDraw>(e).map(|t| t.tile[0]);
-    // Uma parada que mostra a imagem INTEIRA (sem corte): a célula fica à escala a que a imagem se via.
-    let inteira = image_use(world, e) == Some(ImageUse::Still)
-        && world
-            .get::<SpriteGrid>(e)
-            .is_none_or(|g| g.hframes.max(1) * g.vframes.max(1) == 1);
-    let ladrilho = match (world.get::<ScrollRepeat>(e), world.get::<UvTransform>(e)) {
-        _ if tiled.is_some_and(|t| t > 0.0) => tiled.unwrap_or(1.0),
-        (Some(r), _) if r.tile[0] > 0.0 => r.tile[0],
-        (_, Some(uv)) if uv.scale[0] > 0.0 => sprite.size[0] / uv.scale[0],
-        _ if inteira => sprite.size[0] / slicing.grid[0].max(1) as f32,
-        _ => sprite.size[0],
-    };
-    let celula = [
-        facts.native_m[0] / slicing.grid[0].max(1) as f32,
-        facts.native_m[1] / slicing.grid[1].max(1) as f32,
-    ];
-    let escala = if celula[0] > 0.0 {
-        ladrilho / celula[0]
-    } else {
-        1.0
-    };
+    let k = display_scale(world, e, facts);
     let mut tags = SpriteAnimations::new();
     if tags.insert(AnimationTag::new(LOOP_TAG, 0, n - 1)).is_err() {
         return false;
     }
     let mut animator = SpriteAnimator::new(LOOP_TAG);
     animator.autoplay = true;
+    let grid = [slicing.grid[0].max(1), slicing.grid[1].max(1)];
+    show(world, e, facts, grid, k);
+    world.entity_mut(e).insert((tags, animator));
+    true
+}
+
+/// ⭐ **A escala a que `e` mostra a imagem** — metros no ecrã por metro nativo, lidos do que ele MOSTRA (a sua
+/// grelha; o ladrilho de um Tiled, de um fundo ou de um UV à mão; senão o tamanho). É o invariante do seletor
+/// «Use» (dono 27/10, «mudando entre os modos a imagem ficou gigante»): cada uso deriva o tamanho dela, e por
+/// isso nenhuma troca, nem uma volta inteira, muda o tamanho a que a imagem se vê.
+#[must_use]
+pub fn display_scale(world: &World, e: Entity, facts: ImageFacts) -> [f32; 2] {
+    let Some(size) = world.get::<Sprite>(e).map(|s| s.size) else {
+        return [1.0; 2];
+    };
+    let g = world
+        .get::<SpriteGrid>(e)
+        .copied()
+        .unwrap_or(SpriteGrid::SINGLE);
+    let grelha = [g.hframes.max(1) as f32, g.vframes.max(1) as f32];
+    let uv = world.get::<UvTransform>(e);
+    // Por EIXO: uma imagem que o artista achatou continua achatada em qualquer uso.
+    std::array::from_fn(|i| {
+        let nativo = facts.native_m[i] / grelha[i];
+        let visto = match (world.get::<TiledDraw>(e), world.get::<ScrollRepeat>(e), uv) {
+            (Some(t), _, _) => t.tile[i],
+            (_, Some(r), _) if r.tile[i] > 0.0 => r.tile[i],
+            (_, _, Some(uv)) if uv.scale[i] > 0.0 => size[i] / uv.scale[i],
+            _ => size[i],
+        };
+        if nativo > 0.0 && visto > 0.0 {
+            visto / nativo
+        } else {
+            1.0
+        }
+    })
+}
+
+/// `e` passa a mostrar a grelha `grid` da imagem `facts`, uma célula à escala `k`, sem repetir.
+fn show(world: &mut World, e: Entity, facts: ImageFacts, grid: [u32; 2], k: [f32; 2]) {
+    let celula = [
+        facts.native_m[0] / grid[0] as f32 * k[0],
+        facts.native_m[1] / grid[1] as f32 * k[1],
+    ];
     let mut ent = world.entity_mut(e);
     ent.remove::<(TextureRepeat, UvTransform, ScrollRepeat, TiledDraw)>();
-    ent.insert((
-        Sprite {
-            size: [celula[0] * escala, celula[1] * escala],
-            ..sprite
-        },
-        SpriteGrid {
-            hframes: slicing.grid[0].max(1),
-            vframes: slicing.grid[1].max(1),
-            frame: 0,
-        },
-        tags,
-        animator,
-    ));
-    true
+    if let Some(mut s) = ent.get_mut::<Sprite>() {
+        s.size = celula;
+    }
+    ent.insert(SpriteGrid {
+        hframes: grid[0],
+        vframes: grid[1],
+        frame: 0,
+    });
 }
 
 /// Tira a animação de `e` (a lista, o animador e o estado de corrida). As regras «quando → animação» ficam:
@@ -164,12 +177,10 @@ fn own_facts(world: &World, e: Entity) -> Option<ImageFacts> {
 fn to_animated(
     world: &mut World,
     e: Entity,
-    facts: Option<ImageFacts>,
+    facts: ImageFacts,
     rgba: Option<(u32, u32, &[u8])>,
 ) -> bool {
-    let Some(mut facts) = facts.or_else(|| own_facts(world, e)) else {
-        return false;
-    };
+    let mut facts = facts;
     if cells(facts) < 2
         && let Some(grid) = rgba.and_then(|(w, h, px)| proposed_grid(px, w, h))
     {
@@ -181,23 +192,19 @@ fn to_animated(
     if cells(facts) >= 2 {
         return make_animated(world, e, facts);
     }
-    let tile = world.get::<TiledDraw>(e).map(|t| t.tile);
-    let mut ent = world.entity_mut(e);
-    if let (Some(tile), Some(mut s)) = (tile, ent.get_mut::<Sprite>()) {
-        s.size = tile;
-    }
-    ent.remove::<(TextureRepeat, UvTransform, TiledDraw)>();
-    ent.insert((
-        SpriteGrid::SINGLE,
-        SpriteAnimations::new(),
-        SpriteAnimator::new(""),
-    ));
+    let k = display_scale(world, e, facts);
+    show(world, e, facts, [1, 1], k);
+    world
+        .entity_mut(e)
+        .insert((SpriteAnimations::new(), SpriteAnimator::new("")));
     true
 }
 
-/// ⭐ **O seletor «Use»** (plano GEF 15 D3): `e` passa a ser usada como `to`. Um passo de desfazer devolve tudo
-/// (as animações, as regras, o Tiled). `false` se já o era, se não é uma sprite, ou se é uma camada de fundo
-/// (`ScrollRepeat`, outra lei: repete sempre). `rgba` é a imagem que ela mostra, para propor a grelha.
+/// ⭐ **O seletor «Use»** (plano GEF 15 D3): `e` passa a ser usada como `to`, à MESMA [`display_scale`] —
+/// parada = a imagem inteira; animada = uma célula; repetida = repete o que mostrava, com o tamanho de agora.
+/// Um passo de desfazer devolve tudo (as animações, as regras, o Tiled). `false` se já o era, se não é uma
+/// sprite, ou se é uma camada de fundo (`ScrollRepeat`, outra lei: repete sempre). `rgba` é a imagem que ela
+/// mostra, para propor a grelha.
 pub fn set_use(
     world: &mut World,
     e: Entity,
@@ -211,38 +218,31 @@ pub fn set_use(
     if cur == to || world.get::<ScrollRepeat>(e).is_some() {
         return false;
     }
+    let Some(facts) = facts.or_else(|| own_facts(world, e)) else {
+        return false;
+    };
     match to {
         ImageUse::Animated => to_animated(world, e, facts, rgba),
-        ImageUse::Repeated => {
+        ImageUse::Still => {
+            let k = display_scale(world, e, facts);
             stop_animating(world, e);
-            crate::tiled::set_tiled(world, e, facts, true);
+            show(world, e, facts, [1, 1], k);
             true
         }
-        ImageUse::Still => {
+        ImageUse::Repeated => {
+            let k = display_scale(world, e, facts);
+            let g = world
+                .get::<SpriteGrid>(e)
+                .copied()
+                .unwrap_or(SpriteGrid::SINGLE);
+            let tile = [
+                facts.native_m[0] / g.hframes.max(1) as f32 * k[0],
+                facts.native_m[1] / g.vframes.max(1) as f32 * k[1],
+            ];
             stop_animating(world, e);
-            // Um bloco que repetia mostra UM ladrilho, à escala a que se via — nunca a imagem esticada ao bloco.
-            let ladrilho = world.get::<TiledDraw>(e).map(|t| t.tile).or_else(|| {
-                let size = world.get::<Sprite>(e)?.size;
-                let uv = world.get::<UvTransform>(e)?;
-                (uv.scale[0] > 0.0 && uv.scale[1] > 0.0)
-                    .then(|| [size[0] / uv.scale[0], size[1] / uv.scale[1]])
-            });
-            let grelha = world.get::<SpriteGrid>(e).copied();
             let mut ent = world.entity_mut(e);
-            if let (Some(tile), Some(mut s)) = (ladrilho, ent.get_mut::<Sprite>()) {
-                s.size = tile;
-            }
-            // ⭐ Parada = a imagem INTEIRA (dono 27/10): um quadro de uma folha cresce à folha, à mesma escala.
-            if let Some(g) = grelha.filter(|g| g.hframes.max(1) * g.vframes.max(1) > 1)
-                && let Some(mut s) = ent.get_mut::<Sprite>()
-            {
-                s.size = [
-                    s.size[0] * g.hframes.max(1) as f32,
-                    s.size[1] * g.vframes.max(1) as f32,
-                ];
-                ent.insert(SpriteGrid::SINGLE);
-            }
-            ent.remove::<(TiledDraw, TextureRepeat, UvTransform)>();
+            ent.remove::<(TextureRepeat, UvTransform)>();
+            ent.insert(TiledDraw { tile });
             true
         }
     }

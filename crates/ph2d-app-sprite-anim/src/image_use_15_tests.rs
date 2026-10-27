@@ -315,3 +315,110 @@ fn repetida_de_uma_parada_inteira_nao_achata() {
         "o ladrilho não é o que o objecto mostra (grelha {g:?})"
     );
 }
+
+/// ⭐⭐ **A auditoria das trocas** (dono 27/10: «mudando entre os modos a imagem ficou gigante… corrigir tudo de
+/// uma vez»). Para cinco objectos e TODA sequência de três trocas: depois de cada uma a escala a que a imagem se
+/// vê é a mesma, e o tamanho é o do uso (parada = a imagem inteira · animada = uma célula · repetida = o
+/// ladrilho do que mostrava); voltar ao uso de partida (que não seja repetida, cujo tamanho é do artista) devolve
+/// o tamanho de partida.
+#[test]
+fn nenhuma_troca_de_uso_muda_a_escala() {
+    let (db, atlas) = biblioteca();
+    let perto = |a: f32, b: f32| (a - b).abs() <= 1e-4 * a.abs().max(b.abs()).max(1.0);
+    let preparar: [(&str, u32, Option<u32>); 5] = [
+        ("Player", 4, None),
+        ("Platform Low", 4, None),
+        ("Platform High", 4, Some(ph2d_render::FLAG_SHEET_KEY)),
+        ("Platform High", 4, Some(HEROI_KEY)),
+        ("Goal", 2, None),
+    ];
+    for (nome, nivel, imagem) in preparar {
+        for a in InspectorImageUse::ALL {
+            for b in InspectorImageUse::ALL {
+                for c in InspectorImageUse::ALL {
+                    let mut sim = SimWorld::new();
+                    ph2d_app_game::smoke::montar(&mut sim, &registo(), nivel);
+                    let e = por_nome(&mut sim, nome);
+                    if let Some(key) = imagem {
+                        choose_library_image(
+                            &mut sim,
+                            &mut sem_placa,
+                            &db,
+                            &atlas,
+                            PPM,
+                            e,
+                            atlas[&key],
+                        )
+                        .expect("escolhe");
+                    }
+                    let factos = |sim: &SimWorld| {
+                        shown_facts(sim.world(), e, &db, &atlas, PPM)
+                            .or_else(|| own_facts(sim.world(), e))
+                            .expect("factos")
+                    };
+                    let f0 = factos(&sim);
+                    let k0 = display_scale(sim.world(), e, f0);
+                    let inicio = image_use(sim.world(), e).expect("uso");
+                    let tamanho0 = sim
+                        .world()
+                        .get::<Sprite>(e)
+                        .map(|s| s.size)
+                        .expect("sprite");
+                    let quem = format!("{nome} {imagem:?}: {inicio:?} → {a:?} → {b:?} → {c:?}");
+                    for to in [a, b, c] {
+                        usa(&mut sim, e, to);
+                        let w = sim.world();
+                        let f = factos(&sim);
+                        let k = display_scale(w, e, f);
+                        assert!(
+                            perto(k[0], k0[0]) && perto(k[1], k0[1]),
+                            "{quem}: escala {k0:?} → {k:?} em {to:?}"
+                        );
+                        let g = w
+                            .get::<SpriteGrid>(e)
+                            .copied()
+                            .unwrap_or(SpriteGrid::SINGLE);
+                        let mostra = [
+                            f.native_m[0] / g.hframes.max(1) as f32 * k0[0],
+                            f.native_m[1] / g.vframes.max(1) as f32 * k0[1],
+                        ];
+                        let size = w.get::<Sprite>(e).map(|s| s.size).expect("sprite");
+                        match image_use(w, e).expect("uso") {
+                            ImageUse::Still => {
+                                assert_eq!(g, SpriteGrid::SINGLE, "{quem}: parada com corte");
+                                assert!(
+                                    perto(size[0], mostra[0]) && perto(size[1], mostra[1]),
+                                    "{quem}: parada {size:?} ≠ {mostra:?}"
+                                );
+                            }
+                            ImageUse::Animated => {
+                                assert!(
+                                    perto(size[0], mostra[0]) && perto(size[1], mostra[1]),
+                                    "{quem}: animada {size:?} ≠ {mostra:?}"
+                                );
+                            }
+                            ImageUse::Repeated => {
+                                let tile = w.get::<TiledDraw>(e).map(|t| t.tile).expect("Tiled");
+                                assert!(
+                                    perto(tile[0], mostra[0]) && perto(tile[1], mostra[1]),
+                                    "{quem}: ladrilho {tile:?} ≠ {mostra:?}"
+                                );
+                            }
+                        }
+                    }
+                    if image_use(sim.world(), e) == Some(inicio) && inicio != ImageUse::Repeated {
+                        let size = sim
+                            .world()
+                            .get::<Sprite>(e)
+                            .map(|s| s.size)
+                            .expect("sprite");
+                        assert!(
+                            perto(size[0], tamanho0[0]) && perto(size[1], tamanho0[1]),
+                            "{quem}: voltou {tamanho0:?} → {size:?}"
+                        );
+                    }
+                }
+            }
+        }
+    }
+}

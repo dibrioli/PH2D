@@ -117,7 +117,7 @@ fn trocar_a_imagem_de_um_tiled_guarda_o_tamanho() {
 }
 
 /// ⭐ Plano 15 D3 (a caixa Tiled da 14 é agora o uso «Repeated»): passar a repetida uma sprite parada põe o
-/// ladrilho de uma célula nativa e guarda o tamanho; voltar a parada estica. O UV à mão sai.
+/// ladrilho do que ela mostrava e guarda o tamanho; voltar a parada estica. O UV à mão sai.
 #[test]
 fn ligar_e_desligar_o_tiled() {
     let mut sim = SimWorld::new();
@@ -148,10 +148,9 @@ fn ligar_e_desligar_o_tiled() {
     assert!(edita(&mut sim, e, repetida()));
     let w = sim.world();
     assert_eq!(w.get::<Sprite>(e).map(|s| s.size), antes);
-    assert_eq!(
-        w.get::<TiledDraw>(e).map(|t| t.tile),
-        Some(PLATFORM_TILE.native_m())
-    );
+    // O ladrilho é o que se VIA (dono 27/10: nenhuma troca muda a escala): três cópias à mão na largura.
+    let [nw, nh] = PLATFORM_TILE.native_m();
+    assert_eq!(w.get::<TiledDraw>(e).map(|t| t.tile), Some([nw / 3.0, nh]));
     assert!(w.get::<UvTransform>(e).is_none() && w.get::<TextureRepeat>(e).is_none());
     assert!(!edita(&mut sim, e, repetida()), "já é repetida");
     assert!(edita(

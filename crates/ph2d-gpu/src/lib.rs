@@ -22,8 +22,8 @@
 pub mod context;
 pub mod frame;
 pub mod memoria;
-pub mod pegada;
 pub mod pass_profiler;
+pub mod pegada;
 pub mod surface;
 pub mod transient;
 pub mod vez;

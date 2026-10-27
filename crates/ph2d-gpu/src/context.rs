@@ -171,7 +171,7 @@ impl GpuContext {
             required_features: compression_features,
             required_limits,
             experimental_features: wgpu::ExperimentalFeatures::default(),
-            memory_hints: wgpu::MemoryHints::Performance,
+            memory_hints: blocos_do_alocador(std::env::var("PH2D_GPU_BLOCOS").ok().as_deref()),
             trace: wgpu::Trace::Off,
         };
         let (device, queue) = crate::memoria::tenta_enquanto_falta_memoria(
@@ -217,6 +217,17 @@ impl GpuContext {
 /// seja `60` linhas por segundo. As três primeiras saem inteiras — é a que interessa — e a partir
 /// daí só as potências de dez, **com a contagem**, que é o que distingue *«aconteceu uma vez»* de
 /// *«está a acontecer em todo quadro»*.
+/// O tamanho dos blocos que o alocador da placa reserva (F37 §3,
+/// `docs/UI_New_and_Simple/F37_plano.md`): 8–64 MiB (`MemoryUsage`) por omissão. Os de 128–256 MiB
+/// (`Performance`) deixavam ~400 MiB reservados e vazios na cena 41 (alocado 365 · reservado 768), e o
+/// tempo do quadro medido é o mesmo com os dois. `PH2D_GPU_BLOCOS=desempenho` volta aos grandes.
+fn blocos_do_alocador(escolha: Option<&str>) -> wgpu::MemoryHints {
+    match escolha {
+        Some("desempenho") => wgpu::MemoryHints::Performance,
+        _ => wgpu::MemoryHints::MemoryUsage,
+    }
+}
+
 fn relata_erros_do_dispositivo(device: &wgpu::Device) {
     use std::sync::atomic::{AtomicU64, Ordering};
     static VISTOS: AtomicU64 = AtomicU64::new(0);
@@ -313,6 +324,23 @@ mod voz_do_dispositivo_tests {
         // representar cada inteiro, e `10^19` não cabe num `u64` (o `checked_mul` tem de parar).
         assert!(!(u64::MAX - 1).e_potencia_de_dez());
         assert!(10_000_000_000_000_000_000u64.e_potencia_de_dez());
+    }
+
+    #[test]
+    fn the_card_allocator_reserves_small_blocks_unless_asked_for_speed() {
+        // G27 (F37 §3): os blocos grandes reservavam ~400 MiB vazios na cena 41.
+        assert!(matches!(
+            super::blocos_do_alocador(None),
+            wgpu::MemoryHints::MemoryUsage
+        ));
+        assert!(matches!(
+            super::blocos_do_alocador(Some("qualquer")),
+            wgpu::MemoryHints::MemoryUsage
+        ));
+        assert!(matches!(
+            super::blocos_do_alocador(Some("desempenho")),
+            wgpu::MemoryHints::Performance
+        ));
     }
 
     /// ⛔⛔ **O produto REGISTA o observador de erros do dispositivo.**

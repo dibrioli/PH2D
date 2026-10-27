@@ -261,3 +261,26 @@ fn parada_de_um_bloco_mostra_um_ladrilho() {
     assert!(usa(&mut sim, e, InspectorImageUse::Still));
     assert_eq!(sim.world().get::<Sprite>(e).map(|s| s.size), Some(tile));
 }
+
+/// Dono 27/10: «Still não deveria mostrar a imagem integral?» — passar a parada mostra a folha INTEIRA (sem corte,
+/// sem quadro a escolher), à escala a que a célula se via.
+#[test]
+fn parada_mostra_a_imagem_inteira() {
+    let mut sim = SimWorld::new();
+    ph2d_app_game::smoke::montar(&mut sim, &registo(), 4);
+    let e = por_nome(&mut sim, "Player");
+    let g = sim.world().get::<SpriteGrid>(e).copied().expect("folha");
+    let celula = sim
+        .world()
+        .get::<Sprite>(e)
+        .map(|s| s.size)
+        .expect("sprite");
+    assert!(g.hframes * g.vframes > 1);
+    assert!(usa(&mut sim, e, InspectorImageUse::Still));
+    let w = sim.world();
+    assert_eq!(w.get::<SpriteGrid>(e).copied(), Some(SpriteGrid::SINGLE));
+    assert_eq!(
+        w.get::<Sprite>(e).map(|s| s.size),
+        Some([celula[0] * g.hframes as f32, celula[1] * g.vframes as f32])
+    );
+}

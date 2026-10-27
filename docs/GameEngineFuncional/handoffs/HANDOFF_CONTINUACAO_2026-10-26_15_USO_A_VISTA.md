@@ -136,3 +136,13 @@ com grelha, a pré-visualização grande do cartão (onda 07) e os ícones da li
 ecrã já anima). (2) «Show Sheet» (a folha no ecrã) é raro — desce ao «Advanced» da Animation. (3) O seletor
 «Use» quebra em duas linhas à largura de fábrica (Still · Repeated / Animated). (4) Numeração 0 (Inspector) ×
 1 (editor de animações).
+
+## Dono 27/10: «Still não deveria mostrar a imagem integral no canvas?» — SIM
+
+`set_use(Still)`: depois do ladrilho, uma folha (grelha > 1) passa a `SpriteGrid::SINGLE` e o tamanho cresce à
+folha inteira (célula × grelha, a mesma escala). Por baixo do Use não fica nada. Gate
+`image_use_15_tests::parada_mostra_a_imagem_inteira` (Player 8×4); o desfazer continua a devolver tudo.
+Fotos `player_parado` (Inspector 800 × 400 px; o Player fica fora da vista da foto) e `uso_parada` (as 4
+bandeiras lado a lado). ⚠️ O «Frame ‹ n / N ›» só aparece agora numa parada ANTIGA que mostra uma célula
+(ficheiros de antes, ou uma queda que nasce numa célula — `place_library_image` com `still_frame`: conferir no
+próximo smoke se uma folha largada no canvas deve nascer inteira).

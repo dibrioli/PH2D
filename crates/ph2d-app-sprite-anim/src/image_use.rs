@@ -227,9 +227,20 @@ pub fn set_use(
                 (uv.scale[0] > 0.0 && uv.scale[1] > 0.0)
                     .then(|| [size[0] / uv.scale[0], size[1] / uv.scale[1]])
             });
+            let grelha = world.get::<SpriteGrid>(e).copied();
             let mut ent = world.entity_mut(e);
             if let (Some(tile), Some(mut s)) = (ladrilho, ent.get_mut::<Sprite>()) {
                 s.size = tile;
+            }
+            // ⭐ Parada = a imagem INTEIRA (dono 27/10): um quadro de uma folha cresce à folha, à mesma escala.
+            if let Some(g) = grelha.filter(|g| g.hframes.max(1) * g.vframes.max(1) > 1)
+                && let Some(mut s) = ent.get_mut::<Sprite>()
+            {
+                s.size = [
+                    s.size[0] * g.hframes.max(1) as f32,
+                    s.size[1] * g.vframes.max(1) as f32,
+                ];
+                ent.insert(SpriteGrid::SINGLE);
             }
             ent.remove::<(TiledDraw, TextureRepeat, UvTransform)>();
             true

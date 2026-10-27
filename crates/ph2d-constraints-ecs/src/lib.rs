@@ -13,6 +13,7 @@ mod ik_novo;
 mod ordem;
 pub mod relogio;
 
+pub use avalia::pose;
 pub use avalia::{Adotar, Caminhos, Estado, Estados, Pontos, com_autorado, evaluate};
 pub use cola::{COLAS_TYPE_NAME, Colas, EstadosDaCola, colar};
 pub use ik_item::{
@@ -21,7 +22,6 @@ pub use ik_item::{
 };
 pub use ik_novo::{add_ik, add_look_at, aponta};
 pub use ordem::ordem;
-pub use avalia::pose;
 pub use relogio::{Accoes, Amostra, Laco, Lei, Molas, Simulador, Valores};
 
 use bevy_ecs::component::Component;

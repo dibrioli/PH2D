@@ -452,5 +452,8 @@ fn a_one_value_spring_is_the_law_step_by_step() {
         );
         pico = pico.max(x);
     }
-    assert!(pico > 270.0, "com ressalto 0,6 a mola passa do alvo (pico {pico})");
+    assert!(
+        pico > 270.0,
+        "com ressalto 0,6 a mola passa do alvo (pico {pico})"
+    );
 }

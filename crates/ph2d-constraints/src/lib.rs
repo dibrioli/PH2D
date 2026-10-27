@@ -22,12 +22,12 @@ pub use ossos::{Ik, StretchTo, Volume, bend_in_world, solve_chain, stretch_facto
 use ph2d_affine::Xform;
 pub use ph2d_skeleton::BendSide;
 pub use ph2d_skeleton::{blend_angle, clamp_to_limit, wrap_pi};
-pub use valor::{Mola, Prop, Valor, faixa};
 pub use poderosas::{
     Action, Ajuste, Canal, EixoDoChao, Floor, Pivot, PontoDeForma, SplineIk, Spring,
     Transformation, lay_on_curve,
 };
 use serde::{Deserialize, Serialize};
+pub use valor::{Mola, Prop, Valor, faixa};
 
 /// A pose 2D: translação, rotação (radianos) e escala por eixo. O cisalhamento não entra — a
 /// composição de uma escala não uniforme rodada perde-o, como no `Transform` sem skew.

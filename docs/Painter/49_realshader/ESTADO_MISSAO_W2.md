@@ -35,5 +35,12 @@
 | Fecho: clippy + fmt | ✅ | `6a4901531c` | 6 crates `--all-targets -D warnings` limpas (2 avisos curados, 0 `#[allow]`); fmt só em ficheiros da onda | — |
 | Fecho: folhas | ✅ | `e013e5b668` | `out/W2_folha.jpg` (hoje · W2 · Cycles + faixa Metallic/Clearcoat), `Pinceis/pranchas/W2_18_presets.jpg` | a faixa Metallic 1 sai vinho escuro com riscas quase pretas nas encostas (o «metal nas encostas» aberto da E3); sem Cycles com material na folha |
 | Fecho: mutação | ✅ | `f0126926a1` + gate M1a | 11 mutações: 9 sangraram; M1a (força `f×1,001`) sobreviveu → gate de valor novo `a_forca_da_fenda_multiplica_as_chances_de_oclusao` (verde, e vermelho sob M1a); M1b (atalho `f==1`) inofensiva por projeto (bit a bit igual) | — |
-| Fecho: largura Oily | em curso | | | |
-| Fecho: build smoke + mensagem | por fazer | | | |
+| Fecho: largura Oily | ✅ | `ea36589f50` | `refina_a_promessa` no gerador insere o ponto medido onde a tabela log de 64 ondula (+1 ponto); Oily r300 614→600; receita 1:1 | `a_largura_e_a_prometida` continua vermelho nas MESMAS 10 linhas da base (Blender Soft/Textured, Smear Shattered/Wet) |
+| Fecho: build smoke | ✅ | — | `cargo build -p ph2d-host-desktop --profile smoke` verde (27/10) | handoff de continuação e prompt seguinte SÓ depois do veredito do smoke do dono |
+
+## Mensagem ao dono (smoke)
+
+Escrita na conversa ao fechar a missão; o smoke é `PH2D_WETPAINT_SMOKE=2 ./target/smoke/ph2d-host-desktop`, cartão
+Real Oil (Crevice, Crevice size, Ambient, Environment, Metallic, Reflectivity, Reflect map, Clearcoat…), Tuning →
+Material, e as facas Knife Smooth 3 · Oily · Grainy · Dry na pasta Oil. Depois do veredito: handoff + prompt seguinte
+(a fila de motor das tabelas acima é a matéria da próxima onda).

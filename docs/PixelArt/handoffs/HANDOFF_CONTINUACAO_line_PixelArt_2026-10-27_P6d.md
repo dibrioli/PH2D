@@ -25,7 +25,7 @@
 
 Texto para o Enio (curto):
 
-1. No terminal: `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-PixelArt && PH2D_PIXEL_SMOKE=12 cargo run --profile smoke -p ph2d-host-desktop` (confirme o nome do binário/comando no smoke da P6c).
+1. No terminal: `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-PixelArt && PH2D_PIXEL_SMOKE=12 ./target/smoke/ph2d-host-desktop` (binário já compilado: a 2.ª `cargo build -p ph2d-host-desktop --profile smoke` deu `Finished … in 0.23s`, zero `Compiling`).
 2. Abre o sprite com a estrela à direita, ainda inclinada, com uma caixa e pontinhas à volta. A ferramenta Estrela já está na mão.
 3. Arraste a ponta de dentro da estrela: a estrela muda na hora. Mude um número no painel «Pixel»: a estrela muda na hora também. Arraste um canto da caixa para esticar e o canto de fora para girar. Segure Shift para girar de 15 em 15 graus.
 4. Carregue Enter: a estrela fica pintada. Ctrl+Z desfaz a estrela toda de uma vez. Desenhe uma forma nova com o rato: ao largar ela NÃO fica pintada, fica com as pontinhas. Clicar fora ou trocar de ferramenta também a pinta. Esc larga a forma sem pintar.

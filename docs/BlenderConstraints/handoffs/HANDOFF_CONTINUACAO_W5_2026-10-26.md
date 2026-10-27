@@ -17,6 +17,30 @@ Tool «Rules» na coluna esquerda, gizmos, cota clicável com Auto Key, cena 7, 
 
 ## Próximo passo
 
+00. ⛔ **PRIMEIRO: os 14 vermelhos da linha** que o `PH2D_SUITE=onda nextest-impacted.sh` achou no fecho da W4.6
+    (26/10, código parado, `HEAD` = o commit deste handoff). Um ÚNICO bloco (§0.10): triagem por mecanismo, cura,
+    re-corrida SÓ por nome. São da LINHA (W1–W4), não do main — a cura é desta janela, não do integrador:
+    - `ph2d-app-components` `o_registo_das_fixturas_e_o_do_produto` — o produto tem `register_constraint_components`,
+      as fixturas não.
+    - `ph2d-app-vec` `envelope_live::tests::the_authored_source_survives_in_each_child` — `VertId(1)` × `VertId(0)`
+      na fonte autorada (W4.2: ids por vértice).
+    - `ph2d-editor-core` `panel_files_under_loc_cap` — `ph2d-panel-inspector/src/ids/inspector_constraint.rs` 1327 LOC
+      (tecto 600: partir/mover, nunca isentar).
+    - `ph2d-editor-core` `changing_the_chain_recaptures_the_bend_side` — `fase_bone_smart_and_knobs.rs` deixou de
+      escrever o `Chain` (o gate perdeu o sujeito: o código mudou-se? seguir a porta, não o caminho).
+    - shell `os_verbos_do_osso_chegam_do_botao_ate_a_lei::{o_campo_do_desvio_chega_ao_componente_em_radianos,
+      o_espelho_pergunta_a_porta_e_nao_reconstroi_a_conta}`.
+    - shell `the_pencil_owns_its_whole_gesture::{the_pencil_press_runs_before_the_pen_and_the_shape,
+      the_scanner_finds_what_it_scans_for}` — «o `input_dispatch` não chama `self.vec.pen.on_press(`» (scanner de
+      texto; ver se a W4.6 — `on::press` desviado para o `cad_tool` — ou a W4.4 moveu a chamada).
+    - shell `project::tests::{marcas::um_v191_e_um_v192_abrem_sem_marcas, opacidade::um_v191_abre_com_a_opacidade_da_forma_nas_poses,
+      scripts::a_v189_…, scripts::a_v190_project_with_a_script_path_imports_it_and_runs}` — ficheiros v189–v192
+      recusados (W4.2: `fio_do_projeto` / degrau 195).
+    - `ph2d-panel-registry-init` `o_inspector_armado::{toda_porta_do_inspector_e_armada, …_desarmada}` —
+      `set_current_inspector_constraints` não entra na varredura de elisões (W1).
+    - Herdados do `main` (do integrador, NÃO curar aqui): `shell_files_respect_hr18_loc_cap`
+      (`despacho_metodos_picks_e_arrastos.rs` 611), `shell_functions_respect_their_ceiling` (`fase_snapshots_publish` 201).
+    Log completo: re-corra `PH2D_SUITE="motivo: re-verificar os vermelhos" bash scripts/nextest-impacted.sh` no fim.
 0. **Fechar os ABERTOS 1–3 e 7 do §3.8 num único bloco** (§0.10 — um plano, um lote de gates): chip ② que re-semeia,
    coluna de nomes da timeline que elide «1234 px», unidade em `CANTO`/`TRACO_LARGURA`/`PARAM_*`, e conferir o gate
    `each_vertex_mutation_site_keeps_or_assigns_ids` (✓ na tabela §4). Red-first, por nome.

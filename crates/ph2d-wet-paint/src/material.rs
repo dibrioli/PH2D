@@ -7,6 +7,9 @@ use crate::oleo_real::MaterialCartao;
 
 /// O raio padrão do Subsurface, em px de tela (o NEUTRO do Subsurface Radius).
 pub const RAIO_SUBSUPERFICIE_PADRAO: f32 = 4.0;
+/// O tecto do Subsurface Radius EFECTIVO, em px de tela. Recurso: o CPU do recompor — a região suja cresce
+/// `3·raio` de cada lado (`oraculo/README.md` §M-SSS).
+pub const RAIO_SUBSUPERFICIE_MAX: f32 = 16.0;
 
 /// Os ajustes do Principled guardados por célula. Todos misturam-se LINEARMENTE pela massa.
 #[derive(Clone, Copy, Debug, PartialEq)]

@@ -1351,6 +1351,37 @@ fn medida_oleo_real_custo() {
             .zip(melhor)
             .collect::<Vec<_>>()
     );
+    // W3 M1: o CAMPO com a Subsurface (a irradiância da região alargada + as duas passagens), na tela inteira e
+    // numa janela de pincelada (64×64 + o alcance), com o raio no padrão, a 16 e sem ela — intercalados.
+    let (mx, my) = (gw / 2, gh / 2);
+    let janelas = [("tela", (1, 1, gw, gh)), ("pincelada", (mx - 32, my - 32, mx + 32, my + 32))];
+    let raios = [("sem", 0.0, 4.0), ("r4", 1.0, 4.0), ("r16", 1.0, 16.0)];
+    let mut melhor = [[f64::INFINITY; 3]; 2];
+    for rodada in 0..5 {
+        for (j, &(_, (x0, y0, x1, y1))) in janelas.iter().enumerate() {
+            for k in 0..3 {
+                let i = (k + rodada) % 3;
+                let mut o = OleoReal::default();
+                o.material.subsuperficie = raios[i].1;
+                o.material.raio_subsuperficie = raios[i].2;
+                let a = ph2d_wet_paint::oleo_real::alcance(&o);
+                let (jx0, jy0) = (x0.saturating_sub(a).max(1), y0.saturating_sub(a).max(1));
+                let (jx1, jy1) = ((x1 + a).min(gw), (y1 + a).min(gh));
+                let t0 = std::time::Instant::now();
+                let c = CampoAltura::de(&grades, &o, usize::from(s.ratio), jx0, jy0, jx1, jy1);
+                soma += c.subsuperficie_em(mx, my)[0];
+                let ns = t0.elapsed().as_nanos() as f64 / ((x1 + 1 - x0) * (y1 + 1 - y0)) as f64;
+                melhor[j][i] = melhor[j][i].min(ns);
+            }
+        }
+    }
+    for (j, (nome, _)) in janelas.iter().enumerate() {
+        println!(
+            "[custo] campo {nome}, ns por célula PEDIDA (mínimo de 5): {:?} · {soma:.0}",
+            raios.iter().map(|r| r.0).zip(melhor[j]).collect::<Vec<_>>()
+        );
+    }
+    println!("[custo] loadavg {}", std::fs::read_to_string("/proc/loadavg").unwrap_or_default());
 }
 
 /// A cor final (sRGB, sobre o papel com a sombra do Óleo Real, como em [`grava_folha`]) e a cor SEM relevo

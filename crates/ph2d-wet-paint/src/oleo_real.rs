@@ -13,7 +13,9 @@ use crate::grid::Grid;
 pub use crate::material::MaterialCelula;
 pub use crate::oleo_ambiente::Ambiente;
 use crate::oleo_ambiente::{CUNHA, Sectores};
-pub use oleo_material::{MaterialCartao, RUGOSIDADE_PADRAO};
+pub use oleo_material::{
+    MaterialCartao, PERFIL_SUBSUPERFICIE, RUGOSIDADE_PADRAO, alcance_subsuperficie,
+};
 
 #[path = "oleo_material.rs"]
 mod oleo_material;
@@ -151,7 +153,13 @@ pub const MARGEM: usize = PASSOS_SOMBRA + 1;
 /// cavidade/sombra de quem a amostra até [`MARGEM`] (+1 do Sobel) — quanto a região suja tem de crescer.
 #[must_use]
 pub fn alcance(o: &OleoReal) -> usize {
-    MARGEM + 2 * o.af.raio_suave + 1
+    // A célula pode ter raio próprio até ao tecto: o alcance do cartão é o do tecto.
+    let sss = if o.material.subsuperficie > 0.0 {
+        oleo_material::alcance_subsuperficie(f64::INFINITY, 1)
+    } else {
+        0
+    };
+    MARGEM + 2 * o.af.raio_suave + 1 + sss
 }
 
 /// O alargamento máximo do lobo (α²) pelo antisserrilhado — o tecto de Kaplanyan 2016 (`0,18`).
@@ -176,6 +184,8 @@ pub struct CampoAltura {
     /// O material que se VÊ em cada célula (W2 E3-B): o de cada camada visível por cima do de baixo, pela
     /// cobertura dela (`Grid::material_da_celula`). Vazio quando nenhuma camada tem material = tudo NEUTRO.
     material: Vec<MaterialCelula>,
+    /// W3 M1: a luz que a Subsurface traz da vizinhança, por canal (`oleo_material::espalha`). Vazio sem ela.
+    sss: Vec<[f32; 3]>,
 }
 
 /// Quem corre as LINHAS de uma passagem do [`CampoAltura`]: `por_linhas(w, a, b, f)` chama `f(y, a_y, b_y)`
@@ -261,8 +271,10 @@ impl CampoAltura {
     ) -> Self {
         let g = camadas[0].0;
         let af = &o.af;
-        // A janela leva a margem da marcha e as duas passagens do desfoque.
-        let m = MARGEM + 2 * af.raio_suave;
+        // A janela leva a margem da marcha e as duas passagens do desfoque (e o alcance da Subsurface).
+        let sss = oleo_material::raio_subsuperficie_max(camadas, o, ratio, (x0, y0, x1, y1))
+            .map(|r| oleo_material::alcance_subsuperficie(r, ratio));
+        let m = MARGEM + 2 * af.raio_suave + sss.unwrap_or(0);
         let (ax0, ay0) = (x0.saturating_sub(m).max(1), y0.saturating_sub(m).max(1));
         let (ax1, ay1) = ((x1 + m).min(g.w), (y1 + m).min(g.h));
         let (w, h) = (ax1 + 1 - ax0, ay1 + 1 - ay0);
@@ -335,7 +347,7 @@ impl CampoAltura {
                 None => s,
             }
         });
-        Self {
+        let mut campo = Self {
             x0: ax0,
             y0: ay0,
             w,
@@ -344,7 +356,23 @@ impl CampoAltura {
             detalhe,
             sombra,
             material,
+            sss: Vec::new(),
+        };
+        if let Some(rr) = sss {
+            campo.sss =
+                oleo_material::espalha(rep, &campo, o, (ratio, rr), (x0, y0, x1, y1), (g.w, g.h));
         }
+        campo
+    }
+
+    /// O que a Subsurface soma ao difuso de cada canal na célula `(x, y)`, antes do peso (`0` sem ela).
+    #[inline]
+    #[must_use]
+    pub fn subsuperficie_em(&self, x: usize, y: usize) -> [f64; 3] {
+        if self.sss.is_empty() {
+            return [0.0; 3];
+        }
+        self.sss[self.idx(x as isize, y as isize)].map(f64::from)
     }
 
     /// O material que se vê na célula `(x, y)` ([`MaterialCelula::NEUTRO`] sem material em camada nenhuma).
@@ -451,6 +479,8 @@ pub struct Termos {
     /// baixo (`1` sem verniz).
     pub metal: f64,
     pub sob_verniz: f64,
+    /// W3 M1: o difuso que a SUBSURFACE soma a cada canal (já com o peso; `0` sem ela).
+    pub sss: [f64; 3],
 }
 
 impl Termos {
@@ -563,6 +593,9 @@ fn cor_dos_termos(o: &OleoReal, t: &Termos, a: [f64; 3], cobertura: f64) -> [f64
     let mut out = [0.0; 3];
     for c in 0..3 {
         let mut base = a[c] * difuso(o, &t, a[c], c);
+        if t.sss[c] != 0.0 {
+            base = a[c] * (difuso(o, &t, a[c], c) + t.sss[c]);
+        }
         if t.metal > 0.0 || t.sob_verniz != 1.0 {
             base = base * (1.0 - t.metal) * t.sob_verniz;
         }
@@ -924,6 +957,7 @@ pub fn termos_com(
             dir,
             metal: 0.0,
             sob_verniz: 1.0,
+            sss: [0.0; 3],
         };
         let d_metal = ggx(a2_amb);
         for c in 0..3 {
@@ -958,6 +992,13 @@ pub fn termos_com(
         dir,
         metal: m.metal,
         sob_verniz,
+        sss: if m.subsuperficie > 0.0 {
+            campo
+                .subsuperficie_em(cx, cy)
+                .map(|s| m.subsuperficie.min(1.0) * s)
+        } else {
+            [0.0; 3]
+        },
     };
     // VELUDO: o sheen branco, mais forte onde a normal foge da vista, à luz que a célula recebe.
     if m.veludo > 0.0 {

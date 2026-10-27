@@ -123,6 +123,148 @@ pub(super) const VELUDO_K0: f64 = 0.031;
 pub(super) const VELUDO_K1: f64 = 0.20;
 pub(super) const VELUDO_P: f64 = 1.83;
 
+/// SUBSURFACE: o raio de cada canal ÷ o Subsurface Radius (o `Radius` de omissão do Principled — o vermelho
+/// espalha-se mais longe; a cor do espalhamento é a da tinta).
+pub const PERFIL_SUBSUPERFICIE: [f64; 3] = [1.0, 0.2, 0.1];
+
+/// O alcance (células) do espalhamento de raio `raio` px a `ratio` px por célula: `3σ` do canal mais largo.
+#[must_use]
+pub fn alcance_subsuperficie(raio: f64, ratio: usize) -> usize {
+    let r = raio.clamp(0.0, f64::from(crate::material::RAIO_SUBSUPERFICIE_MAX));
+    libm::ceil(3.0 * r * PERFIL_SUBSUPERFICIE[0] / ratio.max(1) as f64) as usize
+}
+
+/// O MAIOR raio efectivo (px) da Subsurface que a janela `(x0, y0, x1, y1)` lê — as suas colunas, com as linhas
+/// alargadas pelo alcance do tecto (a 1.ª passagem corre lá com o raio de cada célula) —, `None` sem Subsurface
+/// (nem no cartão nem em célula de camada visível): o alcance do espalhamento é o deste raio, não o do tecto.
+pub(super) fn raio_subsuperficie_max(
+    camadas: &[(&crate::grid::Grid, bool)],
+    o: &super::OleoReal,
+    ratio: usize,
+    (x0, y0, x1, y1): (usize, usize, usize, usize),
+) -> Option<f64> {
+    let k = &o.material;
+    let t = alcance_subsuperficie(f64::INFINITY, ratio);
+    let (y0, y1) = (y0.saturating_sub(t).max(1), (y1 + t).min(camadas[0].0.h));
+    let mut r = (k.subsuperficie > 0.0).then_some(k.raio_subsuperficie);
+    for &(g, v) in camadas {
+        if !v || g.material.is_empty() {
+            continue;
+        }
+        for y in y0..=y1 {
+            for c in &g.material[x0 + y * g.s..=x1 + y * g.s] {
+                if c.subsuperficie > 0.0 || k.subsuperficie > 0.0 {
+                    let e = crate::material::efectivo(c, k).raio_subsuperficie;
+                    r = Some(r.map_or(e, |r: f64| r.max(e)));
+                }
+            }
+        }
+    }
+    r
+}
+
+/// A irradiância relativa da célula (o difuso de uma tinta cinza `0,5`, plano iluminado = 1) — a luz que a
+/// Subsurface espalha: os mesmos termos difusos do [`super::termos_com`].
+fn irradiancia(o: &super::OleoReal, campo: &super::CampoAltura, x: isize, y: isize) -> f64 {
+    let n = super::normal(campo, x, y);
+    let l = super::para_a_luz(o);
+    let luz = super::luz_directa(o, campo, x, y, campo.at_sombra(x, y));
+    let ceu = super::CeuDoMapa::de(o);
+    let escala = super::escala_do_horizonte(o);
+    let (v, dir) = super::visibilidade_e_ceu(campo, x, y, n, escala, ceu.as_ref());
+    let ndl = (n[0] * l[0] + n[1] * l[1] + n[2] * l[2]).max(0.0);
+    super::Termos {
+        vis: super::forca_da_fenda(v, o.fenda),
+        luz,
+        sol: (1.0 - o.forca_ambiente) * (ndl / l[2]) * luz,
+        espec: [0.0; 3],
+        dir,
+        metal: 0.0,
+        sob_verniz: 1.0,
+        sss: [0.0; 3],
+    }
+    .e(o)
+}
+
+/// A média gaussiana de `f(k)` em `k ∈ [lo, hi]` à volta de `c`, de desvio `s` (renormalizada nas bordas).
+fn gauss(c: usize, lo: usize, hi: usize, s: f64, f: impl Fn(usize) -> f64) -> f64 {
+    if s < 0.25 {
+        return f(c);
+    }
+    let r = libm::ceil(3.0 * s) as usize;
+    let k = -0.5 / (s * s);
+    let (mut acc, mut pes) = (0.0, 0.0);
+    for i in c.saturating_sub(r).max(lo)..=(c + r).min(hi) {
+        let d = i as f64 - c as f64;
+        let p = libm::exp(k * d * d);
+        acc += p * f(i);
+        pes += p;
+    }
+    acc / pes
+}
+
+/// **A lei da Subsurface** (W3 M1, `oraculo/README.md` §M-SSS): a luz que ENTRA ao lado e sai aqui — a
+/// irradiância desfocada por canal (gaussiana separável, desvio = o raio efectivo × [`PERFIL_SUBSUPERFICIE`],
+/// à Jimenez com o raio da célula em cada passagem), somada só onde a vizinhança é mais clara (`max(0, B − E)`:
+/// a fenda e a sombra enchem-se da cor da tinta, a encosta iluminada fica — o Cycles, Random Walk). Devolve, por
+/// célula da janela do `campo`, o que se SOMA ao difuso de cada canal antes do peso; zero fora de `(x0..x1,
+/// y0..y1)` e onde a célula não tem Subsurface.
+pub(super) fn espalha(
+    rep: &impl super::Reparte,
+    campo: &super::CampoAltura,
+    o: &super::OleoReal,
+    (ratio, rr): (usize, usize),
+    (x0, y0, x1, y1): (usize, usize, usize, usize),
+    (gw, gh): (usize, usize),
+) -> Vec<[f32; 3]> {
+    let (ex0, ey0) = (x0.saturating_sub(rr).max(1), y0.saturating_sub(rr).max(1));
+    let (ex1, ey1) = ((x1 + rr).min(gw), (y1 + rr).min(gh));
+    let (ew, eh, dw) = (ex1 + 1 - ex0, ey1 + 1 - ey0, x1 + 1 - x0);
+    let mut e = vec![0f64; ew * eh];
+    super::por_linha(rep, ew, &mut e, &|y, linha| {
+        for (x, q) in linha.iter_mut().enumerate() {
+            *q = irradiancia(o, campo, (ex0 + x) as isize, (ey0 + y) as isize);
+        }
+    });
+    let tecto = f64::from(crate::material::RAIO_SUBSUPERFICIE_MAX);
+    let mat = |x: usize, y: usize| {
+        let m = crate::material::efectivo(&campo.material_em(x, y), &o.material);
+        let r = m.raio_subsuperficie.clamp(0.0, tecto) / ratio.max(1) as f64;
+        (m.subsuperficie, PERFIL_SUBSUPERFICIE.map(|p| p * r))
+    };
+    // Passagem 1 (linhas): só as colunas da janela pedida, em todas as linhas que a 2.ª lê.
+    let mut hz = vec![[0f64; 3]; dw * eh];
+    super::por_linha(rep, dw, &mut hz, &|y, linha| {
+        for (x, q) in linha.iter_mut().enumerate() {
+            let (cx, cy) = (x0 + x, ey0 + y);
+            let s = mat(cx, cy).1;
+            for c in 0..3 {
+                q[c] = gauss(cx, ex0, ex1, s[c], |i| e[i - ex0 + y * ew]);
+            }
+        }
+    });
+    let mut out = vec![[0f32; 3]; campo.w * campo.h];
+    super::por_linha(rep, campo.w, &mut out, &|y, linha| {
+        let cy = campo.y0 + y;
+        if cy < y0 || cy > y1 {
+            return;
+        }
+        for cx in x0..=x1 {
+            let (w, s) = mat(cx, cy);
+            if w <= 0.0 {
+                continue;
+            }
+            let e0 = e[cx - ex0 + (cy - ey0) * ew];
+            let q = &mut linha[cx - campo.x0];
+            for c in 0..3 {
+                let b = gauss(cy, ey0, ey1, s[c], |j| hz[cx - x0 + (j - ey0) * dw][c]);
+                q[c] = (b - e0).max(0.0) as f32;
+            }
+        }
+    });
+    out
+}
+
 #[cfg(test)]
 #[path = "oleo_material_tests.rs"]
 mod oleo_material_tests;

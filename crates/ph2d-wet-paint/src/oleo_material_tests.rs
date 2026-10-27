@@ -249,3 +249,92 @@ fn o_material_da_camada_chega_ao_sombreado() {
         ilumina(&o, &c0, 30, 30, VERMELHO, 1.0)
     );
 }
+
+/// Um muro alto de tinta vermelha sobre tinta baixa: a sombra dele cai à direita (luz do topo-esquerda).
+fn muro() -> Grid {
+    grade(|x, _| if (18..=24).contains(&x) { 9000.0 } else { 3000.0 })
+}
+
+fn sat(c: [f64; 3]) -> f64 {
+    let (mx, mn) = (c[0].max(c[1]).max(c[2]), c[0].min(c[1]).min(c[2]));
+    (mx - mn) / mx.max(1e-9)
+}
+
+/// W3 M1 ⭐ **Subsurface 0 = a imagem de antes, bit a bit** — com o raio a 16 no cartão e a 12 nas células de uma
+/// camada (peso 0 em toda a parte), cada célula sai igual à do material NEUTRO.
+#[test]
+fn a_subsuperficie_zero_e_a_imagem_de_antes() {
+    let base = OleoReal::default();
+    let g0 = muro();
+    let mut g1 = muro();
+    for (i, m) in crate::grid::material::garante(&mut g1).iter_mut().enumerate() {
+        if i % g0.s < 40 {
+            m.raio_subsuperficie = 12.0;
+        }
+    }
+    let mut k = MaterialCartao::NEUTRO;
+    k.raio_subsuperficie = 16.0;
+    let o = com(k);
+    let (c0, c1) = (campo(&g0, &base), campo(&g1, &o));
+    for y in 1..=W {
+        for x in 1..=W {
+            assert_eq!(
+                ilumina(&o, &c1, x, y, VERMELHO, 1.0),
+                ilumina(&base, &c0, x, y, VERMELHO, 1.0),
+                "({x}, {y})"
+            );
+        }
+    }
+}
+
+/// W3 M1 ⭐ **A lei da Subsurface** (`oraculo/README.md` §M-SSS, o Cycles Random Walk): a luz que entra ao lado
+/// ENCHE a sombra com a cor da tinta — mais clara e mais SATURADA (o vermelho espalha-se 5× mais longe que o
+/// verde) —; a tinta lisa iluminada longe da sombra fica como estava; e a energia tem TECTO: o que a célula recebe
+/// nunca passa da irradiância mais forte da vizinhança.
+#[test]
+fn a_subsuperficie_enche_a_sombra_com_a_cor_da_tinta_e_a_energia_tem_tecto() {
+    let g = muro();
+    let sem = OleoReal {
+        brilho: 0.0,
+        ..OleoReal::default()
+    };
+    let mut k = MaterialCartao::NEUTRO;
+    k.subsuperficie = 1.0;
+    let com_sss = OleoReal {
+        material: k,
+        ..sem
+    };
+    let (c0, c1) = (campo(&g, &sem), campo(&g, &com_sss));
+    let mut sombra = (0, [0.0; 3], [0.0; 3]);
+    for y in 20..=44 {
+        for x in 25..=34 {
+            if termos(&sem, &c0, x, y).luz < 0.5 {
+                let (a, b) = (ilumina(&sem, &c0, x, y, VERMELHO, 1.0), ilumina(&com_sss, &c1, x, y, VERMELHO, 1.0));
+                sombra.0 += 1;
+                for i in 0..3 {
+                    sombra.1[i] += a[i];
+                    sombra.2[i] += b[i];
+                }
+            }
+        }
+    }
+    assert!(sombra.0 > 20, "a cena não tem sombra: {}", sombra.0);
+    let (a, b) = (sombra.1.map(|v| v / f64::from(sombra.0)), sombra.2.map(|v| v / f64::from(sombra.0)));
+    assert!(b[0] > a[0] + 3.0, "a sombra não se encheu: {a:?} → {b:?}");
+    assert!(sat(b) > sat(a), "a sombra não ficou mais saturada: {a:?} → {b:?}");
+    for (x, y) in [(52, 30), (58, 40), (55, 10)] {
+        let (a, b) = (ilumina(&sem, &c0, x, y, VERMELHO, 1.0), ilumina(&com_sss, &c1, x, y, VERMELHO, 1.0));
+        for i in 0..3 {
+            assert!((a[i] - b[i]).abs() < 0.5, "a tinta lisa iluminada mudou em ({x}, {y}): {a:?} → {b:?}");
+        }
+    }
+    let e = |x, y| termos(&com_sss, &c1, x, y).e(&com_sss);
+    let teto = (1..=W).flat_map(|y| (1..=W).map(move |x| (x, y))).map(|(x, y)| e(x, y)).fold(0.0, f64::max);
+    for y in 1..=W {
+        for x in 1..=W {
+            for s in c1.subsuperficie_em(x, y) {
+                assert!(s + e(x, y) <= teto + 1e-6, "({x}, {y}): {s} + {} > {teto}", e(x, y));
+            }
+        }
+    }
+}

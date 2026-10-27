@@ -58,8 +58,7 @@ pub(super) fn traco(t: &mut PainterTool, k: usize) {
         [600.0 + 8.0 * d, 100.0 + 16.0 * d],
     );
     let n = ((b[0] - a[0]).hypot(b[1] - a[1]) / 6.0).ceil() as usize;
-    let pressao =
-        |f: f32| (0.25 + 0.65 * (f / 0.15).min(1.0)) * ((1.0 - f) / 0.1).min(1.0).max(0.3);
+    let pressao = |f: f32| (0.25 + 0.65 * (f / 0.15).min(1.0)) * ((1.0 - f) / 0.1).clamp(0.3, 1.0);
     let pt = |f: f32, phase| CanvasPointer {
         pos: [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f],
         pressure: pressao(f),
@@ -403,7 +402,11 @@ fn sonda_knife_textured_cortes() {
             if nome == "fabrica" {
                 return;
             }
-            let tex = p.parametros.brush.get_mut("texture").expect("a textura do preset");
+            let tex = p
+                .parametros
+                .brush
+                .get_mut("texture")
+                .expect("a textura do preset");
             tex["params"][0] = serde_json::json!(contraste);
             tex["params"][1] = serde_json::json!(brilho);
             tex["size"][1] = serde_json::json!(alto);
@@ -418,7 +421,9 @@ fn sonda_knife_textured_cortes() {
                 .iter()
                 .map(|&(x, y)| {
                     let i = 3 * ((x - 1) + (y - 1) * TW as usize);
-                    0.2126 * f64::from(f[i]) + 0.7152 * f64::from(f[i + 1]) + 0.0722 * f64::from(f[i + 2])
+                    0.2126 * f64::from(f[i])
+                        + 0.7152 * f64::from(f[i + 1])
+                        + 0.0722 * f64::from(f[i + 2])
                 })
                 .collect();
             lum.sort_by(f64::total_cmp);

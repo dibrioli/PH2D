@@ -1,6 +1,8 @@
 //! **As cores do CAD fora do fio do quadro** (W4.4, `docs/BlenderConstraints/04_W4_cad.md` §1): a análise da ezpz
 //! custa 9–12 ms a 200 pontos e ½ s a 800, então `estado()` corre numa thread e SÓ quando a ESTRUTURA muda (as regras,
-//! ou que vértices os paths citados têm); o quadro pinta a última resposta que chegou.
+//! ou que vértices os paths citados têm); o quadro pinta a última resposta que chegou. Um VALOR que muda (a medida
+//! animada a tocar) pede análise nova, mas as cores da mesma estrutura ficam até ela chegar — sem isto os lados sumiam
+//! em todo quadro de uma regra animada (smoke do dono 27/10, «as linhas piscam»).
 
 use std::sync::{Arc, Mutex, PoisonError};
 use std::thread::JoinHandle;
@@ -23,6 +25,18 @@ struct Interno {
 #[derive(Default)]
 pub struct CadCores {
     interno: Mutex<Interno>,
+}
+
+/// As mesmas regras (id, tipo de lei, pontos, referência) sobre os mesmos vértices — só os valores mudaram.
+fn mesma_estrutura(a: &Chave, b: &Chave) -> bool {
+    a.1 == b.1
+        && a.0.len() == b.0.len()
+        && a.0.iter().zip(&b.0).all(|(x, y)| {
+            x.id == y.id
+                && x.referencia == y.referencia
+                && std::mem::discriminant(&x.lei) == std::mem::discriminant(&y.lei)
+                && x.lei.pontos() == y.lei.pontos()
+        })
 }
 
 fn chave(scene: &VecScene) -> Chave {
@@ -49,8 +63,8 @@ fn chave(scene: &VecScene) -> Chave {
 }
 
 impl CadCores {
-    /// As cores das regras da cena, se já há uma análise da estrutura de AGORA. Pede uma nova quando a estrutura
-    /// mudou e nenhuma está a correr; nunca espera.
+    /// As cores das regras da cena, se já há uma análise da estrutura de AGORA (ainda que de outros valores). Pede
+    /// uma nova quando a chave mudou e nenhuma está a correr; nunca espera.
     pub fn ve(&self, scene: &VecScene, xforms: &VecXforms) -> Option<Arc<Estado>> {
         if scene.regras().is_empty() {
             return None;
@@ -77,8 +91,15 @@ impl CadCores {
             let h = std::thread::spawn(move || {
                 estado(&Folha::new(paths.iter().map(|(p, x)| (p, *x))), &regras)
             });
-            i.correndo = Some((k, h));
+            i.correndo = Some((k.clone(), h));
         }
-        None
+        i.pronto
+            .as_ref()
+            .filter(|(kp, _)| mesma_estrutura(kp, &k))
+            .map(|(_, e)| Arc::clone(e))
     }
 }
+
+#[cfg(test)]
+#[path = "cad_cores_tests.rs"]
+mod tests;

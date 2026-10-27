@@ -10,16 +10,15 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.wet_tuning.group.wet_effects" => "Wet effects",
         "panel.wet_tuning.group.look" => "Look",
         "panel.wet_tuning.group.material" => "Material",
-        // Material — o Principled que o pincel pousa na tinta, por célula (Óleo Real W2 E3).
+        // Material — o Principled simplificado que o pincel pousa na tinta, por célula (W3, nomes do Blender).
         "panel.wet_tuning.knob.metallic" => "Metallic",
-        "panel.wet_tuning.knob.roughnessMul" => "Roughness",
-        "panel.wet_tuning.knob.specular" => "Specular",
-        "panel.wet_tuning.knob.specularTint" => "Reflection takes the paint colour",
-        "panel.wet_tuning.knob.clearcoat" => "Clearcoat",
-        "panel.wet_tuning.knob.clearcoatRoughness" => "Clearcoat roughness",
+        "panel.wet_tuning.knob.roughness" => "Roughness",
+        "panel.wet_tuning.knob.iorLevel" => "IOR Level",
+        "panel.wet_tuning.knob.coat" => "Coat",
+        "panel.wet_tuning.knob.coatRoughness" => "Coat Roughness",
         "panel.wet_tuning.knob.sheen" => "Sheen",
-        "panel.wet_tuning.knob.anisotropy" => "Anisotropy",
-        "panel.wet_tuning.knob.translucency" => "Translucency",
+        "panel.wet_tuning.knob.subsurface" => "Subsurface",
+        "panel.wet_tuning.knob.subsurfaceRadius" => "Subsurface Radius",
         "panel.wet_tuning.knob.lockMaterial" => "Lock material (off · on)",
         "panel.wet_tuning.knob.knifeRidge" => "Knife ridge",
         // Bristles — os fios com física própria (lidos quando a Shape é Bristles).

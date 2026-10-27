@@ -201,7 +201,8 @@ fn oleo_para_json(o: &ph2d_wet_paint::oleo_real::OleoReal) -> Value {
         "forca_ambiente": o.forca_ambiente,
         "ambiente": o.ambiente.indice(),
     });
-    // W2 E3-B: o material do cartão (`mat_<campo>`) e o Reflection Map (`0` = o Environment).
+    // O material do cartão (`mat_<campo>`, valores ABSOLUTOS da W3: `mat_v` 2 distingue-os dos multiplicadores
+    // de antes, que tinham os mesmos nomes).
     let mat = o.material.valores();
     for (nome, x) in ph2d_wet_paint::oleo_real::MaterialCartao::CAMPOS
         .iter()
@@ -209,7 +210,7 @@ fn oleo_para_json(o: &ph2d_wet_paint::oleo_real::OleoReal) -> Value {
     {
         v[format!("mat_{nome}")] = json!(x);
     }
-    v["mat_mapa_reflexo"] = json!(o.material.mapa_indice());
+    v["mat_v"] = json!(MAT_V);
     v
 }
 
@@ -236,22 +237,30 @@ fn oleo_de_json(o: &mut ph2d_wet_paint::oleo_real::OleoReal, v: &Value) {
     {
         o.ambiente = a;
     }
-    for (k, nome) in ph2d_wet_paint::oleo_real::MaterialCartao::CAMPOS
-        .iter()
-        .enumerate()
-    {
-        if let Some(x) = v[format!("mat_{nome}")].as_f64() {
-            o.material.poe(k, x);
+    let Some(obj) = v.as_object() else {
+        return;
+    };
+    if v["mat_v"].as_u64() == Some(MAT_V) {
+        for (k, nome) in ph2d_wet_paint::oleo_real::MaterialCartao::CAMPOS
+            .iter()
+            .enumerate()
+        {
+            if let Some(x) = v[format!("mat_{nome}")].as_f64() {
+                o.material.poe(k, x);
+            }
+        }
+    } else {
+        // O cartão de antes da W3 (leitor tolerante): multiplicadores convertidos, campos que saíram ignorados.
+        for (chave, x) in obj {
+            if let (Some(nome), Some(x)) = (chave.strip_prefix("mat_"), x.as_f64()) {
+                o.material.poe_campo_antigo(nome, x);
+            }
         }
     }
-    if let Some(m) = v["mat_mapa_reflexo"]
-        .as_u64()
-        .and_then(|i| u8::try_from(i).ok())
-        .and_then(ph2d_wet_paint::oleo_real::MaterialCartao::mapa_de_indice)
-    {
-        o.material.mapa_reflexo = m;
-    }
 }
+
+/// A versão do material do cartão na macro: `2` = os 8 valores absolutos da W3.
+const MAT_V: u64 = 2;
 
 impl PainterTool {
     /// A Shape Color de uma macro gravada ANTES do prompt 45 (o preset não a levava; hoje vai no
@@ -291,16 +300,14 @@ mod oleo_json_tests {
         assert_eq!((o.fenda, o.alcance_fenda), (2.5, 9.0));
     }
 
-    /// O material do cartão e o Reflection Map (W2 E3-B) viajam na macro; a macro de antes deles (campos
-    /// ausentes) mantém os valores.
+    /// O material do cartão (os 8 da W3) viaja na macro; a macro sem ele (campos ausentes) mantém os valores.
     #[test]
     fn o_material_do_cartao_viaja_na_macro_e_o_campo_ausente_mantem() {
-        use ph2d_wet_paint::oleo_real::{Ambiente, MaterialCartao};
+        use ph2d_wet_paint::oleo_real::MaterialCartao;
         let mut gravado = OleoReal::default();
         for k in 0..MaterialCartao::CAMPOS.len() {
             gravado.material.poe(k, 0.1 + 0.07 * k as f64);
         }
-        gravado.material.mapa_reflexo = Some(Ambiente::Interior);
         let mut lido = OleoReal::default();
         oleo_de_json(&mut lido, &oleo_para_json(&gravado));
         assert_eq!(lido, gravado);
@@ -310,6 +317,37 @@ mod oleo_json_tests {
         let mut o = gravado;
         oleo_de_json(&mut o, &antigo);
         assert_eq!(o.material, gravado.material);
+    }
+
+    /// ⭐ A macro de ANTES da W3 (sem `mat_v`, multiplicadores e os campos que saíram): o leitor tolerante
+    /// converte Roughness/Specular/Coat rough pelo padrão, Translucency → Subsurface, e ignora o resto.
+    #[test]
+    fn a_macro_de_antes_da_w3_abre_com_o_material_convertido() {
+        use ph2d_wet_paint::oleo_real::{MaterialCartao, RUGOSIDADE_PADRAO};
+        let antigo = serde_json::json!({
+            "mat_metal": 0.3,
+            "mat_refletividade": 1.5,
+            "mat_escala_mapa": 2.0,
+            "mat_forca_reflexo": 1.0,
+            "mat_rugosidade": 2.0,
+            "mat_especular": 1.0,
+            "mat_tinta_reflexo": 0.4,
+            "mat_verniz_rugosidade": 1.0,
+            "mat_anisotropia": 0.5,
+            "mat_translucidez": 0.6,
+            "mat_mapa_reflexo": 2,
+        });
+        let mut o = OleoReal::default();
+        oleo_de_json(&mut o, &antigo);
+        assert_eq!(
+            o.material,
+            MaterialCartao {
+                metal: 0.3,
+                rugosidade: RUGOSIDADE_PADRAO * 2.0,
+                subsuperficie: 0.6,
+                ..MaterialCartao::NEUTRO
+            }
+        );
     }
 
     /// A força do ambiente (W2 E2) viaja na macro; a macro de antes dela (campo ausente) mantém o valor.

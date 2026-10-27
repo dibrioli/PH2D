@@ -283,7 +283,7 @@ fn oleos_das_curas() -> [ph2d_wet_paint::oleo_real::OleoReal; 3] {
                 metal: 0.4,
                 verniz: 0.6,
                 veludo: 0.3,
-                anisotropia: 0.5,
+                subsuperficie: 0.5,
                 ..MaterialCartao::NEUTRO
             },
             ..OleoReal::default()

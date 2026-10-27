@@ -291,25 +291,6 @@ fn grava_folha_com(
     for (nome, v) in ["h_forma", "h_fina", "h_sombra"].iter().zip(&alturas) {
         std::fs::write(dir.join(format!("{nome}.f32")), v).expect("grava");
     }
-    // W2 E3-B: a direcção da ESTRIA (x, y da tela; `0,0` no plano) e a PASSAGEM da película (a luz que chega
-    // ao papel), as mesmas do sombreado — o `cycles.py` liga-as à Tangent e à Transmission do Principled.
-    let (mut estria, mut passa) = (
-        Vec::with_capacity(gw * gh * 8),
-        Vec::with_capacity(gw * gh * 4),
-    );
-    for cy in 1..=gh {
-        for cx in 1..=gw {
-            let (x, y) = (cx as isize, cy as isize);
-            let e = ph2d_wet_paint::oleo_real::estria(&campo, x, y).unwrap_or([0.0; 2]);
-            for v in e {
-                estria.extend_from_slice(&(v as f32).to_le_bytes());
-            }
-            let p = ph2d_wet_paint::oleo_real::passagem(&campo, x, y);
-            passa.extend_from_slice(&(p as f32).to_le_bytes());
-        }
-    }
-    std::fs::write(dir.join("t_estria.f32"), estria).expect("grava");
-    std::fs::write(dir.join("t_passagem.f32"), passa).expect("grava");
     std::fs::write(
         dir.join("oraculo.txt"),
         format!(
@@ -319,7 +300,7 @@ fn grava_folha_com(
             o.altitude.to_degrees(),
             o.forca_ambiente,
             o.af.penumbra,
-            o.af.rugosidade,
+            o.material.rugosidade,
         ),
     )
     .expect("grava");
@@ -460,26 +441,17 @@ fn oleo_de(af: &str) -> ph2d_wet_paint::oleo_real::OleoReal {
             "alcance_fenda" => o.alcance_fenda = v,
             // `ceu` = o nome de antes (o `oraculo.txt` e o `cycles.py` leem-no assim).
             "ceu" | "forca_ambiente" => o.forca_ambiente = v,
-            // W2 E3-B: o material GLOBAL do cartão (`mat_<campo>`; `mapa_reflexo` 0 = o Environment).
-            "mat_metal" => o.material.metal = v,
-            "mat_rugosidade" => o.material.rugosidade = v,
-            "mat_especular" => o.material.especular = v,
-            "mat_tinta_reflexo" => o.material.tinta_reflexo = v,
-            "mat_verniz" => o.material.verniz = v,
-            "mat_verniz_rugosidade" => o.material.verniz_rugosidade = v,
-            "mat_veludo" => o.material.veludo = v,
-            "mat_anisotropia" => o.material.anisotropia = v,
-            "mat_translucidez" => o.material.translucidez = v,
-            "mat_refletividade" => o.material.refletividade = v,
-            "mat_escala_mapa" => o.material.escala_mapa = v,
-            "mat_forca_reflexo" => o.material.forca_reflexo = v,
-            "mat_mapa_reflexo" => {
-                o.material.mapa_reflexo = (v as u8).checked_sub(1).map(|i| {
-                    ph2d_wet_paint::oleo_real::Ambiente::de_indice(i).expect("mapa 0..=4")
-                });
+            // O material GLOBAL do cartão (`mat_<campo>` de `MaterialCartao::CAMPOS`, valores absolutos da W3).
+            m if m.starts_with("mat_") => {
+                let i = ph2d_wet_paint::oleo_real::MaterialCartao::CAMPOS
+                    .iter()
+                    .position(|c| m[4..] == **c)
+                    .unwrap_or_else(|| panic!("{m}: campo do material desconhecido"));
+                o.material.poe(i, v);
             }
             "penumbra" => af.penumbra = v,
-            "rugosidade" => af.rugosidade = v,
+            // A Roughness ABSOLUTA do cartão (antes da W3 era `Afinacao::rugosidade`; o `cycles.py` usa o nome).
+            "rugosidade" => o.material.rugosidade = v,
             "brilho_max" => af.brilho_max = v,
             "antisserrilhado" => af.antisserrilhado = v,
             "antisserrilhado_ambiente" => af.antisserrilhado_ambiente = v,
@@ -1336,11 +1308,9 @@ fn medida_oleo_real_custo() {
     // (todos os lóbulos a meio), intercalados.
     let cheio = ph2d_wet_paint::material::MaterialCelula {
         metal: 0.5,
-        tinta_reflexo: 0.5,
         verniz: 0.5,
         veludo: 0.5,
-        anisotropia: 0.5,
-        translucidez: 0.5,
+        subsuperficie: 0.5,
         ..ph2d_wet_paint::material::MaterialCelula::NEUTRO
     };
     let neutro = ph2d_wet_paint::material::MaterialCelula::NEUTRO;

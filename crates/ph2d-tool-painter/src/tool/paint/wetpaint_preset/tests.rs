@@ -474,14 +474,13 @@ fn capturar_o_aplicado_devolve_o_mesmo_preset() {
 fn o_material_do_pincel_vai_e_volta_pelo_preset() {
     let mexidos = [
         (Knob::Metallic, 1.0),
-        (Knob::RoughnessMul, 0.4),
-        (Knob::Specular, 0.8),
-        (Knob::SpecularTint, 0.3),
-        (Knob::Clearcoat, 0.6),
-        (Knob::ClearcoatRoughness, 0.2),
+        (Knob::Roughness, 0.4),
+        (Knob::IorLevel, 0.8),
+        (Knob::Coat, 0.6),
+        (Knob::CoatRoughness, 0.2),
         (Knob::Sheen, 0.5),
-        (Knob::Anisotropy, 0.7),
-        (Knob::Translucency, 0.25),
+        (Knob::Subsurface, 0.25),
+        (Knob::SubsurfaceRadius, 7.5),
         (Knob::LockMaterial, 1.0),
     ];
     let mut a = ferramenta();
@@ -508,6 +507,45 @@ fn o_material_do_pincel_vai_e_volta_pelo_preset() {
             "{k:?}"
         );
     }
+}
+
+/// ⭐ O preset gravado ANTES da W3 (as chaves velhas do material) abre: `roughnessMul` m → Roughness `0,5·m`,
+/// `translucency` → Subsurface, os renomeados com o mesmo valor, e os que saíram (`specularTint`, `anisotropy`)
+/// ignorados.
+#[test]
+fn o_preset_de_antes_da_w3_abre_com_o_material_convertido() {
+    let a = ferramenta();
+    let base = Parametros::novo(MEIO_DO_PRESET, "Teste", "Antigo");
+    let (mut prm, texturas) = a.wet_preset_capturar(&base);
+    for k in [
+        Knob::Roughness,
+        Knob::IorLevel,
+        Knob::Coat,
+        Knob::CoatRoughness,
+        Knob::Subsurface,
+    ] {
+        prm.engine
+            .remove(ph2d_wet_paint::tuning::KNOB_DEFS[k as usize].key);
+    }
+    for (chave, v) in [
+        ("roughnessMul", 1.4),
+        ("specular", 0.8),
+        ("specularTint", 0.3),
+        ("clearcoat", 0.6),
+        ("clearcoatRoughness", 0.2),
+        ("anisotropy", 0.7),
+        ("translucency", 0.25),
+    ] {
+        prm.engine.insert(chave.to_owned(), v);
+    }
+    let mut b = ferramenta();
+    b.wet_preset_aplicar(&pelo_ficheiro(prm, texturas));
+    let k = &b.paint.wetpaint.knobs;
+    assert_eq!(k.get(Knob::Roughness), 0.5 * 1.4);
+    assert_eq!(k.get(Knob::IorLevel), 0.8);
+    assert_eq!(k.get(Knob::Coat), 0.6);
+    assert_eq!(k.get(Knob::CoatRoughness), 0.2);
+    assert_eq!(k.get(Knob::Subsurface), 0.25);
 }
 
 /// ⭐ A macro leva o pincel INTEIRO (W6c): cada campo do `BrushSpec` vai ao JSON e volta igual. O

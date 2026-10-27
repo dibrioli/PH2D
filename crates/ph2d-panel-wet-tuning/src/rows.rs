@@ -226,10 +226,11 @@ mod tests {
     /// no cartão Wet Paint não se repete aqui): Backruns, Granulation, Pigment diffusion, Wet bloom (Wet effects
     /// 7 → 3) e Tip pickup (Stroke 7 → 6). Menos 4 a 25/10 (a linha da ferramenta da água no cartão): Blend force
     /// (Paint 25 → 24), Dryer, Blow e Smear (Tools 7 → 4). Mais 11 a 27/10 (Óleo Real W2 E3): o rebordo da faca no
-    /// Stroke (6 → 7) e os 10 do Material da tinta (o Principled por célula e o Lock).
+    /// Stroke (6 → 7) e os 10 do Material da tinta (o Principled por célula e o Lock). Menos 1 a
+    /// 27/10 (W3): o Material são os 8 do Principled simplificado e o Lock (10 → 9).
     #[test]
     fn every_visible_knob_has_a_row() {
-        assert_eq!(rows().len(), 86);
+        assert_eq!(rows().len(), 85);
         for g in [
             (KnobGroup::Paint, 24),
             (KnobGroup::Water, 7),
@@ -240,7 +241,7 @@ mod tests {
             (KnobGroup::Stroke, 7),
             (KnobGroup::WetEffects, 3),
             (KnobGroup::Look, 5),
-            (KnobGroup::Material, 10),
+            (KnobGroup::Material, 9),
         ] {
             let n = rows().iter().filter(|r| r.group == g.0).count();
             assert_eq!(n, g.1, "group {:?} row count", g.0);

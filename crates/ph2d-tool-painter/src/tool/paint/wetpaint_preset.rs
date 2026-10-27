@@ -417,6 +417,13 @@ impl PainterTool {
 
         let water = self.paint.wetpaint.knobs.water;
         let mut k = WetKnobs::DEFAULT;
+        // As chaves do material de antes da W3 (`roughnessMul` → Roughness `0,5·m`, `translucency` → Subsurface…);
+        // a chave nova, se também vier, manda.
+        for (chave, &v) in &prm.engine {
+            if let Some((knob, v)) = ph2d_wet_paint::tuning::chave_antiga(chave, v) {
+                k.set(knob, v);
+            }
+        }
         for def in &KNOB_DEFS {
             if let Some(&v) = prm.engine.get(def.key) {
                 k.set(def.knob, v);

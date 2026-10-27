@@ -567,10 +567,7 @@ fn register_toggles_and_dropdowns(store: &mut WidgetStore) {
     // O bloco de presets do Wet Painter (W1): Preset · política · os valores rápidos dos volumes.
     .chain(ph2d_tool_painter::ids::PAINTER_WETPAINT_PRESET_DROPDOWNS)
     // O Environment do cartão Real Oil (W1c).
-    .chain([
-        ph2d_tool_painter::ids::PAINTER_WETPAINT_OLEO_AMBIENTE,
-        ph2d_tool_painter::ids::PAINTER_WETPAINT_OLEO_MAPA_REFLEXO,
-    ])
+    .chain([ph2d_tool_painter::ids::PAINTER_WETPAINT_OLEO_AMBIENTE])
     // O cartão Pen: o menu da rotação e o do Reset (neutro · preset, dono 25/10).
     .chain([
         ph2d_tool_painter::ids::PAINTER_PEN_ROTATION,

@@ -453,18 +453,13 @@ pub(crate) const WETPAINT_CARTAO: &[&str] = &[
     "panel.painter_layers.wetpaint.oleo_environment_light",
     "panel.painter_layers.wetpaint.oleo_environment",
     "panel.painter_layers.wetpaint.oleo_metallic",
-    "panel.painter_layers.wetpaint.oleo_reflection_map",
-    "panel.painter_layers.wetpaint.oleo_reflectivity",
-    "panel.painter_layers.wetpaint.oleo_reflection_scale",
-    "panel.painter_layers.wetpaint.oleo_reflection_strength",
     "panel.painter_layers.wetpaint.oleo_roughness",
-    "panel.painter_layers.wetpaint.oleo_specular",
-    "panel.painter_layers.wetpaint.oleo_reflection_tint",
-    "panel.painter_layers.wetpaint.oleo_clearcoat",
-    "panel.painter_layers.wetpaint.oleo_clearcoat_roughness",
+    "panel.painter_layers.wetpaint.oleo_ior_level",
+    "panel.painter_layers.wetpaint.oleo_coat",
+    "panel.painter_layers.wetpaint.oleo_coat_roughness",
     "panel.painter_layers.wetpaint.oleo_sheen",
-    "panel.painter_layers.wetpaint.oleo_anisotropy",
-    "panel.painter_layers.wetpaint.oleo_translucency",
+    "panel.painter_layers.wetpaint.oleo_subsurface",
+    "panel.painter_layers.wetpaint.oleo_subsurface_radius",
 ];
 
 /// ⭐⭐ **A [`Seccao`] de uma declaração** — medida sobre os rótulos dela, no sistema de texto real.

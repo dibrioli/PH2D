@@ -670,18 +670,6 @@ impl PainterTool {
         true
     }
 
-    /// O **Reflection Map** do Real Oil pelo wire `MaterialCartao::mapa_indice` (`0` = o Environment). Fora
-    /// da faixa = sem efeito (`false`).
-    fn set_wet_oleo_mapa_reflexo_indice(&mut self, i: u8) -> bool {
-        let Some(m) = ph2d_wet_paint::oleo_real::MaterialCartao::mapa_de_indice(i) else {
-            return false;
-        };
-        let mut o = self.paint.wetpaint.oleo_real_valores;
-        o.material.mapa_reflexo = m;
-        self.guarda_oleo_valores(o);
-        true
-    }
-
     /// Os valores novos dos knobs do Real Oil: ficam guardados e, com a caixa ligada, vão à tela.
     fn guarda_oleo_valores(&mut self, o: ph2d_wet_paint::oleo_real::OleoReal) {
         self.paint.wetpaint.oleo_real_valores = o;
@@ -891,12 +879,6 @@ impl PainterTool {
             {
                 v.parse::<u8>()
                     .is_ok_and(|i| self.set_wet_oleo_ambiente_indice(i))
-            }
-            PanelEvent::SelectOption(id, v)
-                if *id == crate::ids::PAINTER_WETPAINT_OLEO_MAPA_REFLEXO =>
-            {
-                v.parse::<u8>()
-                    .is_ok_and(|i| self.set_wet_oleo_mapa_reflexo_indice(i))
             }
             PanelEvent::Click(id) if *id == crate::ids::PAINTER_WETPAINT_LIVE_WATER => {
                 self.set_wet_agua_viva(!self.paint.wetpaint.agua_viva);

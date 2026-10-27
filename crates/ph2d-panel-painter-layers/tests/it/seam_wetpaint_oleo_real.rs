@@ -21,16 +21,15 @@ use ph2d_tool_painter::ids::{
     PAINTER_WETPAINT_OLEO_ALCANCE_FENDA, PAINTER_WETPAINT_OLEO_ALTITUDE,
     PAINTER_WETPAINT_OLEO_AMBIENTE, PAINTER_WETPAINT_OLEO_AZIMUTE, PAINTER_WETPAINT_OLEO_BRILHO,
     PAINTER_WETPAINT_OLEO_FAIXAS, PAINTER_WETPAINT_OLEO_FENDA,
-    PAINTER_WETPAINT_OLEO_FORCA_AMBIENTE, PAINTER_WETPAINT_OLEO_MAPA_REFLEXO,
-    PAINTER_WETPAINT_OLEO_MATERIAL, PAINTER_WETPAINT_OLEO_MATERIAL_NEUTRO,
+    PAINTER_WETPAINT_OLEO_FORCA_AMBIENTE, PAINTER_WETPAINT_OLEO_MATERIAL, PAINTER_WETPAINT_OLEO_MATERIAL_NEUTRO,
     PAINTER_WETPAINT_OLEO_PROFUNDIDADE, PAINTER_WETPAINT_OLEO_REAL, PAINTER_WETPAINT_OLEO_SOMBRA,
-    painter_wetpaint_oleo_ambiente_option_id, painter_wetpaint_oleo_mapa_reflexo_option_id,
+    painter_wetpaint_oleo_ambiente_option_id,
 };
 use ph2d_ui_testkit::MockPanelHost;
 
-/// As vinte linhas por LITERAL (um gate que iterasse a lista sob teste encolheria com ela): as oito da
-/// óptica e as doze do material (W2 E3-B).
-const LINHAS: [NodeId; 20] = [
+/// As dezasseis linhas por LITERAL (um gate que iterasse a lista sob teste encolheria com ela): as oito da
+/// óptica e as oito do material (W3).
+const LINHAS: [NodeId; 16] = [
     PAINTER_WETPAINT_OLEO_PROFUNDIDADE,
     PAINTER_WETPAINT_OLEO_SOMBRA,
     PAINTER_WETPAINT_OLEO_BRILHO,
@@ -47,10 +46,6 @@ const LINHAS: [NodeId; 20] = [
     PAINTER_WETPAINT_OLEO_MATERIAL[5],
     PAINTER_WETPAINT_OLEO_MATERIAL[6],
     PAINTER_WETPAINT_OLEO_MATERIAL[7],
-    PAINTER_WETPAINT_OLEO_MATERIAL[8],
-    PAINTER_WETPAINT_OLEO_MATERIAL[9],
-    PAINTER_WETPAINT_OLEO_MATERIAL[10],
-    PAINTER_WETPAINT_OLEO_MATERIAL[11],
 ];
 
 fn viewport() -> Rect {
@@ -366,7 +361,7 @@ fn a_forca_do_ambiente_chega_ao_oleo_real_e_sobrevive_a_religar() {
     assert_eq!(tool.wet_oleo_real().expect("religado").forca_ambiente, 0.3);
 }
 
-/// ⭐ O **material** do cartão (W2 E3-B): as doze linhas nascem no NEUTRO (`MaterialCartao::NEUTRO` = a imagem
+/// ⭐ O **material** do cartão (W3): as oito linhas nascem no PADRÃO (`MaterialCartao::NEUTRO` = a imagem
 /// de antes), o valor de cada campo chega ao campo dela em `OleoReal::material` (pela ordem de
 /// `MaterialCartao::CAMPOS`), prende-se à faixa, volta ao painel e sobrevive a desligar/religar. Mutações que
 /// sangram: o braço do material no `set_wet_oleo_knob` em falta ou deslocado, o snapshot preso ao neutro, o
@@ -376,7 +371,7 @@ fn o_material_do_cartao_chega_ao_oleo_real_e_sobrevive_a_religar() {
     let neutro = PAINTER_WETPAINT_OLEO_MATERIAL_NEUTRO;
     let mut tool = molhado();
     clica_na_caixa(&mut tool);
-    let f32s = |v: [f64; 12]| v.map(|x| x as f32);
+    let f32s = |v: [f64; 8]| v.map(|x| x as f32);
     assert_eq!(
         f32s(tool.wet_oleo_real().expect("ligado").material.valores()),
         neutro
@@ -393,7 +388,7 @@ fn o_material_do_cartao_chega_ao_oleo_real_e_sobrevive_a_religar() {
             assert_eq!(x as f32, neutro[j], "o {k} mexeu no {j}");
         }
     }
-    let alto = PAINTER_WETPAINT_OLEO_MATERIAL[7];
+    let alto = PAINTER_WETPAINT_OLEO_MATERIAL[3];
     tool.handle_panel_event(PanelEvent::SetValue(alto, 9.0));
     assert_eq!(tool.wet_oleo_real().expect("ligado").material.verniz, 1.0);
     let antes = tool.wet_oleo_real().expect("ligado").material;
@@ -401,36 +396,4 @@ fn o_material_do_cartao_chega_ao_oleo_real_e_sobrevive_a_religar() {
     assert_eq!(tool.wet_oleo_real(), None);
     clica_na_caixa(&mut tool);
     assert_eq!(tool.wet_oleo_real().expect("religado").material, antes);
-}
-
-/// ⭐ O **Reflection Map** (W2 E3-B): o chip só com a caixa ligada, nasce em «Environment» (wire `0` = segue
-/// o Environment), e escolher «Courtyard» no popover pelo ponteiro chega a `material.mapa_reflexo` e volta
-/// ao painel. Mutações que sangram: o chip fora do populate, a rota da opção em falta, o braço
-/// `SelectOption` da ferramenta em falta, o snapshot preso a `0`.
-#[test]
-fn o_reflection_map_escolhido_no_popover_chega_ao_material() {
-    const PATIO: u8 = 3;
-    let mut tool = molhado();
-    let (_, _, desligado) = pinta(&tool);
-    assert!(rect_de(&desligado, PAINTER_WETPAINT_OLEO_MAPA_REFLEXO).is_none());
-    clica_na_caixa(&mut tool);
-    assert_eq!(
-        tool.wet_oleo_real().expect("ligado").material.mapa_indice(),
-        0
-    );
-    assert_eq!(tool.brush_settings().wet_oleo_mapa_reflexo, 0);
-    let (mut host, mut st, rects) = pinta(&tool);
-    let chip =
-        rect_de(&rects, PAINTER_WETPAINT_OLEO_MAPA_REFLEXO).expect("o chip Reflection map pintado");
-    clica_em(&mut host, &mut st, &mut tool, chip);
-    set_current_brush(Some(tool.brush_settings()));
-    let rects = host.paint::<PainterLayersPanel>(&mut st, viewport());
-    let patio = painter_wetpaint_oleo_mapa_reflexo_option_id(PATIO);
-    let o = rect_de(&rects, patio).expect("clicar o chip não abriu a opção Courtyard");
-    clica_em(&mut host, &mut st, &mut tool, o);
-    assert_eq!(
-        tool.wet_oleo_real().expect("ligado").material.mapa_indice(),
-        PATIO
-    );
-    assert_eq!(tool.brush_settings().wet_oleo_mapa_reflexo, PATIO);
 }

@@ -577,15 +577,21 @@ impl PainterTool {
 
     /// A intensidade do **Smooth Edges** do Wet Paint (`0..1`; NaN = `0`): mudá-la recompõe a tela inteira.
     pub fn set_wet_smooth_edges(&mut self, forca: f32) {
+        if self.guarda_smooth_edges(forca) {
+            self.wet_recomposite_full();
+        }
+    }
+
+    /// Guarda o Smooth Edges; `true` = mudou.
+    fn guarda_smooth_edges(&mut self, forca: f32) -> bool {
         let forca = if forca.is_nan() {
             0.0
         } else {
             forca.clamp(0.0, 1.0)
         };
-        if self.paint.wetpaint.smooth_edges != forca {
-            self.paint.wetpaint.smooth_edges = forca;
-            self.wet_recomposite_full();
-        }
+        let muda = self.paint.wetpaint.smooth_edges != forca;
+        self.paint.wetpaint.smooth_edges = forca;
+        muda
     }
 
     /// A intensidade do **Smooth Edges** do Wet Paint (`0` = desligado).
@@ -670,11 +676,14 @@ impl PainterTool {
         true
     }
 
-    /// Os valores novos dos knobs do Real Oil: ficam guardados e, com a caixa ligada, vão à tela.
+    /// Os valores novos dos knobs do Real Oil: ficam guardados e, com a caixa ligada, vão à tela NO QUADRO
+    /// (um arrasto manda um valor por evento do rato — `wetpaint::oleo_no_quadro`).
     fn guarda_oleo_valores(&mut self, o: ph2d_wet_paint::oleo_real::OleoReal) {
-        self.paint.wetpaint.oleo_real_valores = o;
-        if self.paint.wetpaint.oleo_real.is_some() {
-            self.set_wet_oleo_real(Some(o));
+        let w = &mut self.paint.wetpaint;
+        w.oleo_real_valores = o;
+        if w.oleo_real.is_some_and(|v| v != o) {
+            w.oleo_real = Some(o);
+            self.wet_recompoe_no_quadro();
         }
     }
 
@@ -782,7 +791,9 @@ impl PainterTool {
             return true;
         }
         if id == crate::ids::PAINTER_WETPAINT_SMOOTH_EDGES {
-            self.set_wet_smooth_edges(v as f32);
+            if self.guarda_smooth_edges(v as f32) {
+                self.wet_recompoe_no_quadro();
+            }
             return true;
         }
         if id == crate::ids::PAINTER_WETPAINT_HEAVY_EDGE {

@@ -169,6 +169,7 @@ impl PainterTool {
             sess.engine.mark_dirty_full();
             if !hold {
                 self.wetpaint_composite();
+                self.wet_varredura_feita();
             }
         }
     }

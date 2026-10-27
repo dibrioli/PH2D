@@ -176,6 +176,8 @@ pub(crate) struct WetPaintState {
     pub(super) ritmo: Option<fita::RitmoDaAgua>,
     /// O estado da água que a tela mostra (o do último composite da sessão viva) — W14.
     pub(super) composta: Option<fita::MarcaDaAgua>,
+    /// A recomposição que o painel pediu e o tick ainda varre ([`oleo_no_quadro`]).
+    pub(super) varredura: oleo_no_quadro::Varredura,
 }
 
 /// A **Heavy Edge** no `1` do slider, em `Sim::sedimenta` (a fracção por passo por unidade de `|g|`).
@@ -221,6 +223,7 @@ impl Default for WetPaintState {
             fita: None,
             ritmo: None,
             composta: None,
+            varredura: oleo_no_quadro::Varredura::default(),
         }
     }
 }
@@ -482,6 +485,7 @@ impl PainterTool {
             }
             return;
         }
+        self.wet_varre_oleo();
         if let Some(divida) = self.paint.wetpaint.relogio_fixo.as_mut() {
             *divida += f64::from(dt_s) / offthread::STEP_S;
             let passos = divida.floor();
@@ -572,6 +576,9 @@ mod cauda; // a água depois do fim de um clipe (W14)
 pub(super) mod faixas; // as lanes de um traço guardado (W16)
 
 mod composite;
+pub(in crate::tool::paint) mod oleo_no_quadro; // a recomposição do painel corre no tick, em faixas
+#[cfg(test)]
+mod oleo_arrasto_tests; // arrastar um número do Real Oil: uma faixa por quadro, a tela final ao byte
 mod oleo_plano; // o papel liso da sombra do Óleo Real: uma conta por linha, não por célula
 #[cfg(test)]
 pub(in crate::tool::paint) use oleo_plano::{

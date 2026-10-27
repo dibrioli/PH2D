@@ -15,7 +15,11 @@ fn pose(x: f64, y: f64, graus: f64) -> Pose2 {
 }
 
 fn entrada(p: Pose2, condutor: bool) -> Entrada {
-    Entrada { pose: p, condutor }
+    Entrada {
+        pose: p,
+        condutor,
+        cede: false,
+    }
 }
 
 fn dist(p: [f64; 2], q: [f64; 2]) -> f64 {
@@ -281,4 +285,81 @@ fn a_loop_that_does_not_close_is_a_conflict() {
         c.freecad.residuo
     );
     assert_eq!(corre(c).0, Estado::Conflito);
+}
+
+/// O gesto que o mecanismo não deixa (arrastar a manivela presa ao chão com cadeado): a mão CEDE e fica onde as
+/// colas deixam, o mais perto do gesto — nunca um conflito que solta a peça.
+#[test]
+fn a_hand_that_cannot_go_there_yields_to_the_glue() {
+    let f = fixture();
+    let c = f
+        .casos
+        .iter()
+        .find(|c| c.nome == "quadrilatero_manivela_0")
+        .unwrap();
+    let id: BTreeMap<&str, Corpo> = c
+        .corpos
+        .iter()
+        .zip(1..)
+        .map(|(k, i)| (k.nome.as_str(), i))
+        .collect();
+    let corpo = |n: &str| c.corpos.iter().find(|k| k.nome == n).unwrap();
+    let colas: Vec<Cola> = c
+        .juntas
+        .iter()
+        .zip(1..)
+        .map(|(j, n)| Cola {
+            id: n,
+            a: id[j.a.as_str()],
+            b: id[j.b.as_str()],
+            tipo: Tipo::Pino {
+                em_a: corpo(&j.a).pontos[j.ia],
+                em_b: corpo(&j.b).pontos[j.ib],
+            },
+        })
+        .collect();
+    let gesto = pose(0.5, 0.3, 30.0);
+    let corpos = |cede: bool| -> BTreeMap<Corpo, Entrada> {
+        c.corpos
+            .iter()
+            .map(|k| {
+                let e = match k.nome.as_str() {
+                    "chao" => entrada(p3(k.autorada), true),
+                    "manivela" => Entrada {
+                        pose: gesto,
+                        condutor: true,
+                        cede,
+                    },
+                    _ => entrada(p3(k.autorada), false),
+                };
+                (id[k.nome.as_str()], e)
+            })
+            .collect()
+    };
+    assert_eq!(
+        resolve(&colas, &corpos(false)).grupos[0].estado,
+        Estado::Conflito,
+        "controlo: rígida, a mão não cabe"
+    );
+
+    let s = resolve(&colas, &corpos(true));
+    assert_eq!(s.grupos[0].estado, Estado::Definido);
+    for k in &colas {
+        let Tipo::Pino { em_a, em_b } = k.tipo else {
+            unreachable!()
+        };
+        let d = dist(s.poses[&k.a].ponto(em_a), s.poses[&k.b].ponto(em_b));
+        assert!(d <= 1e-6, "pino {} aberto: {d:e}", k.id);
+    }
+    let (chao, manivela) = (s.poses[&id["chao"]], s.poses[&id["manivela"]]);
+    assert_eq!(chao, p3(corpo("chao").autorada), "o cadeado não cede");
+    assert!(
+        manivela.x.hypot(manivela.y) <= 1e-6,
+        "a manivela roda no pino do chão: {manivela:?}"
+    );
+    assert!(
+        manivela.rot > 0.1,
+        "e roda PARA o gesto: {:.3}°",
+        manivela.rot.to_degrees()
+    );
 }

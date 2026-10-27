@@ -208,3 +208,33 @@ fn a_glue_survives_save_and_open() {
     assert_eq!(abertas, gravadas);
     assert_eq!(abertas[0].items.len(), 4);
 }
+
+/// Arrastar a manivela presa ao chão com cadeado: a mão cede, a manivela RODA no pino e o resto segue; nada se solta.
+#[test]
+fn dragging_a_pinned_piece_turns_it_instead_of_tearing_it() {
+    let mut sim = SimWorld::new();
+    let mut drive = PreviewDrive::default();
+    let [chao, manivela, biela, balancim] = quadrilatero(&mut sim);
+    colar(&mut sim, &mut drive);
+    let antes = tf_de(&sim, chao);
+    mexe(&mut sim, manivela, tf(0.4, 0.3, 0.5));
+    colar(&mut sim, &mut drive);
+    assert_eq!(tf_de(&sim, chao), antes, "o cadeado não se mexe");
+    let m = tf_de(&sim, manivela);
+    assert!(
+        m.translation.x.hypot(m.translation.y) < 1e-4,
+        "a manivela fica no pino do chão: {m:?}"
+    );
+    assert!(m.rotation > 0.05, "e roda para o gesto: {}", m.rotation);
+    let ponta = pose(m).ponto([1.0, 0.0]);
+    let b = pose(tf_de(&sim, biela));
+    assert!(
+        (ponta[0] - b.x).hypot(ponta[1] - b.y) < 1e-4,
+        "a biela segue a ponta da manivela"
+    );
+    let r = pose(tf_de(&sim, balancim));
+    assert!(
+        (r.x - 4.0).abs() < 1e-4 && r.y.abs() < 1e-4,
+        "o balancim continua no pino do chão"
+    );
+}

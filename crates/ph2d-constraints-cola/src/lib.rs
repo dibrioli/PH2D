@@ -98,6 +98,9 @@ pub fn local(p: Pose2, mundo: [f64; 2]) -> Option<[f64; 2]> {
 pub struct Entrada {
     pub pose: Pose2,
     pub condutor: bool,
+    /// A MÃO de um gesto: quando o grupo não fecha com ela onde o gesto a pôs (um pino num chão com
+    /// cadeado), ela CEDE — fica onde as colas deixam, o mais perto do gesto (a lei do arrasto da W4).
+    pub cede: bool,
 }
 
 /// O estado de um grupo — a cor do CAD no cartão.

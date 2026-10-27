@@ -123,17 +123,38 @@ pub(crate) fn resolve_grupo(
     colas: &[Cola],
     corpos: &BTreeMap<Corpo, Entrada>,
 ) -> Result<Option<BTreeMap<Corpo, Pose2>>, ()> {
-    let conduz = |c: Corpo| corpos[&c].condutor;
-    let em = solidos(membros, colas, conduz)?;
+    match tenta(membros, colas, corpos, false) {
+        Err(()) if membros.iter().any(|m| corpos[m].condutor && corpos[m].cede) => {
+            tenta(membros, colas, corpos, true)
+        }
+        r => r,
+    }
+}
+
+/// `ceder`: a mão do gesto deixa de ser condutor e vira ALVO de prioridade menor na ezpz.
+fn tenta(
+    membros: &[Corpo],
+    colas: &[Cola],
+    corpos: &BTreeMap<Corpo, Entrada>,
+    ceder: bool,
+) -> Result<Option<BTreeMap<Corpo, Pose2>>, ()> {
+    let mao = |c: Corpo| ceder && corpos[&c].condutor && corpos[&c].cede;
+    let conduz = |c: Corpo| corpos[&c].condutor && !mao(c);
+    let em = solidos(membros, colas, |c| corpos[&c].condutor)?;
 
     let mut fixo: BTreeMap<Corpo, Pose2> = BTreeMap::new();
-    for &m in membros.iter().filter(|&&m| conduz(m)) {
+    let mut alvo: BTreeMap<Corpo, Pose2> = BTreeMap::new();
+    for &m in membros.iter().filter(|&&m| conduz(m) || mao(m)) {
         let (r, rel) = em[&m];
         let p = corpos[&m].pose;
         let pr = match rel {
             None => p,
             Some(rel) => Pose2::IDENTITY.relative_to(rel).ok_or(())?.under(p),
         };
+        if mao(m) {
+            alvo.insert(r, pr);
+            continue;
+        }
         match fixo.get(&r) {
             Some(&q) if !perto(q, pr) => return Err(()),
             Some(_) => {}
@@ -142,6 +163,7 @@ pub(crate) fn resolve_grupo(
             }
         }
     }
+    alvo.retain(|r, _| !fixo.contains_key(r));
     if fixo.is_empty() {
         return Ok(None);
     }
@@ -169,13 +191,22 @@ pub(crate) fn resolve_grupo(
     let raizes: BTreeSet<Corpo> = em.values().map(|v| v.0).collect();
     let mut pose: BTreeMap<Corpo, Pose2> = raizes
         .iter()
-        .map(|&r| (r, fixo.get(&r).copied().unwrap_or(corpos[&r].pose)))
+        .map(|&r| {
+            (
+                r,
+                fixo.get(&r)
+                    .or(alvo.get(&r))
+                    .copied()
+                    .unwrap_or(corpos[&r].pose),
+            )
+        })
         .collect();
-    if fixo.len() == 1 && pins.len() + 1 == raizes.len() {
+    if alvo.is_empty() && fixo.len() == 1 && pins.len() + 1 == raizes.len() {
         let inicio = *fixo.keys().next().ok_or(())?;
         fecho(&mut pose, &pins, inicio);
     } else {
-        pose = ez::resolve(&pose, |c| fixo.contains_key(&c), &pins).ok_or(())?;
+        let fixo_ou_alvo = |c: Corpo| fixo.contains_key(&c) || alvo.contains_key(&c);
+        pose = ez::resolve(&pose, fixo_ou_alvo, |c| alvo.contains_key(&c), &pins).ok_or(())?;
     }
 
     Ok(Some(

@@ -120,7 +120,14 @@ pub fn colar(sim: &mut SimWorld, preview: &mut PreviewDrive) -> usize {
         let pai = parent_world_transform(w, e);
         let condutor = motor || mao || w.get::<Locked>(e).is_some();
         let p = pose(&Transform::compose(pai, base));
-        corpos.insert(s, Entrada { pose: p, condutor });
+        corpos.insert(
+            s,
+            Entrada {
+                pose: p,
+                condutor,
+                cede: mao,
+            },
+        );
         membros.insert(
             s,
             Membro {
@@ -154,7 +161,8 @@ pub fn colar(sim: &mut SimWorld, preview: &mut PreviewDrive) -> usize {
     let mut nova_memoria = BTreeMap::new();
     for (s, m) in &membros {
         let mut doc = m.base;
-        if let Some(&p) = saida.poses.get(s).filter(|_| !corpos[s].condutor) {
+        // O condutor sai com a sua pose ao bit; a mão que CEDEU sai corrigida e reescreve-se também.
+        if let Some(&p) = saida.poses.get(s).filter(|&&p| p != corpos[s].pose) {
             let local = local_de(m.pai, m.base, corpos[s].pose, p);
             if por_motor.contains(s) {
                 conduzidas.insert(m.e);

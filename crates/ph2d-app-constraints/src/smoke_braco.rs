@@ -72,7 +72,7 @@ pub(crate) fn braco_articulado(world: &mut World) -> Entity {
     let b = [a[0] + l * u[0] - h * u[1], a[1] + l * u[1] + h * u[0]];
     // A mão continua o balancim para lá da ponta.
     let dir = [(b[0] - o4[0]) / BALANCIM, (b[1] - o4[1]) / BALANCIM];
-    let ponta = [b[0] + 0.8 * dir[0], b[1] + 0.8 * dir[1]];
+    let ponta = [b[0] + 0.3 * dir[0], b[1] + 0.3 * dir[1]];
 
     let chao = barra(world, "Chão", o2, o4, [0.35, 0.35, 0.38, 1.0]);
     world.entity_mut(chao).insert(Locked);

@@ -27,11 +27,13 @@ struct Quadro {
 pub(crate) fn resolve(
     pose: &BTreeMap<Corpo, Pose2>,
     fixo: impl Fn(Corpo) -> bool,
+    macio: impl Fn(Corpo) -> bool,
     pins: &[Pin],
 ) -> Option<BTreeMap<Corpo, Pose2>> {
     let mut ids = IdGenerator::default();
     let mut palpite: Vec<(u32, f64)> = Vec::new();
     let mut reqs = Vec::new();
+    let mut macias = std::collections::BTreeSet::new();
     let por = |d: DatumPoint, p: [f64; 2], palpite: &mut Vec<(u32, f64)>| {
         palpite.push((d.id_x(), p[0]));
         palpite.push((d.id_y(), p[1]));
@@ -52,8 +54,19 @@ pub(crate) fn resolve(
         for (d, x) in [(q.o, o), (q.u, u), (q.v, v)] {
             por(d, x, &mut palpite);
             if fixo(c) {
-                reqs.push(R::highest_priority(K::Fixed(d.id_x(), x[0])));
-                reqs.push(R::highest_priority(K::Fixed(d.id_y(), x[1])));
+                // A mão que cede perde a prioridade: fica onde as colas deixam (o arrasto da W4).
+                let r = |k| {
+                    if macio(c) {
+                        R::new(k, 1)
+                    } else {
+                        R::highest_priority(k)
+                    }
+                };
+                if macio(c) {
+                    macias.extend([reqs.len(), reqs.len() + 1]);
+                }
+                reqs.push(r(K::Fixed(d.id_x(), x[0])));
+                reqs.push(r(K::Fixed(d.id_y(), x[1])));
             }
         }
         reqs.push(R::highest_priority(K::Distance(q.o, q.u, p.sx.abs())));
@@ -88,7 +101,8 @@ pub(crate) fn resolve(
     }
 
     let saida = kcl_ezpz::solve(&reqs, palpite, Config::default()).ok()?;
-    if !saida.is_satisfied() {
+    // Só a mão que cede pode ficar por cumprir.
+    if saida.unsatisfied().iter().any(|k| !macias.contains(k)) {
         return None;
     }
     let f = saida.final_values();
@@ -96,7 +110,7 @@ pub(crate) fn resolve(
     Some(
         pose.iter()
             .map(|(&c, &p)| {
-                if fixo(c) {
+                if fixo(c) && !macio(c) {
                     return (c, p);
                 }
                 let (o, u) = (em(quadros[&c].o), em(quadros[&c].u));

@@ -18,19 +18,22 @@ use ph2d_panel_painter_layers::PainterLayersPanel;
 use ph2d_panel_painter_layers::state::{PainterLayersPanelState, set_current_brush};
 use ph2d_tool_painter::PainterTool;
 use ph2d_tool_painter::ids::{
-    PAINTER_WETPAINT_OLEO_ALTITUDE, PAINTER_WETPAINT_OLEO_AMBIENTE, PAINTER_WETPAINT_OLEO_AZIMUTE,
-    PAINTER_WETPAINT_OLEO_BRILHO, PAINTER_WETPAINT_OLEO_PROFUNDIDADE, PAINTER_WETPAINT_OLEO_REAL,
+    PAINTER_WETPAINT_OLEO_ALCANCE_FENDA, PAINTER_WETPAINT_OLEO_ALTITUDE,
+    PAINTER_WETPAINT_OLEO_AMBIENTE, PAINTER_WETPAINT_OLEO_AZIMUTE, PAINTER_WETPAINT_OLEO_BRILHO,
+    PAINTER_WETPAINT_OLEO_FENDA, PAINTER_WETPAINT_OLEO_PROFUNDIDADE, PAINTER_WETPAINT_OLEO_REAL,
     PAINTER_WETPAINT_OLEO_SOMBRA, painter_wetpaint_oleo_ambiente_option_id,
 };
 use ph2d_ui_testkit::MockPanelHost;
 
-/// As cinco linhas por LITERAL (um gate que iterasse a lista sob teste encolheria com ela).
-const LINHAS: [NodeId; 5] = [
+/// As sete linhas por LITERAL (um gate que iterasse a lista sob teste encolheria com ela).
+const LINHAS: [NodeId; 7] = [
     PAINTER_WETPAINT_OLEO_PROFUNDIDADE,
     PAINTER_WETPAINT_OLEO_SOMBRA,
     PAINTER_WETPAINT_OLEO_BRILHO,
     PAINTER_WETPAINT_OLEO_ALTITUDE,
     PAINTER_WETPAINT_OLEO_AZIMUTE,
+    PAINTER_WETPAINT_OLEO_FENDA,
+    PAINTER_WETPAINT_OLEO_ALCANCE_FENDA,
 ];
 
 fn viewport() -> Rect {
@@ -247,4 +250,63 @@ fn o_environment_escolhido_no_popover_chega_ao_oleo_real_e_volta_ao_painel() {
         tool.wet_oleo_real().expect("religado").ambiente.indice(),
         INTERIOR
     );
+}
+
+/// ⭐ A **fenda** (W2 E1): Crevice shadow e Crevice reach nascem no neutro (força `1`, alcance `24` = a
+/// imagem de antes), o valor escrito no campo chega a `OleoReal::fenda`/`alcance_fenda`, prende-se às
+/// faixas medidas (`0..3`, `1..24`), volta ao painel e sobrevive a desligar/religar. Mutações que sangram:
+/// o braço `5`/`6` do `set_wet_oleo_knob` trocado, o snapshot preso ao neutro, a faixa em falta.
+#[test]
+fn a_forca_e_o_alcance_da_fenda_chegam_ao_oleo_real_e_sobrevivem_a_religar() {
+    let mut tool = molhado();
+    clica_na_caixa(&mut tool);
+    let o = tool.wet_oleo_real().expect("ligado");
+    assert_eq!(
+        (o.fenda, o.alcance_fenda),
+        (1.0, 24.0),
+        "o neutro é a imagem de antes"
+    );
+    let b = tool.brush_settings();
+    assert_eq!((b.wet_oleo_fenda, b.wet_oleo_alcance_fenda), (1.0, 24.0));
+    // A edição pelo campo: o painel emite `SetValue` (gate acima); a ferramenta recebe-o.
+    tool.handle_panel_event(PanelEvent::SetValue(PAINTER_WETPAINT_OLEO_FENDA, 2.25));
+    tool.handle_panel_event(PanelEvent::SetValue(
+        PAINTER_WETPAINT_OLEO_ALCANCE_FENDA,
+        8.0,
+    ));
+    let o = tool.wet_oleo_real().expect("continua ligado");
+    assert_eq!((o.fenda, o.alcance_fenda), (2.25, 8.0));
+    let b = tool.brush_settings();
+    assert_eq!((b.wet_oleo_fenda, b.wet_oleo_alcance_fenda), (2.25, 8.0));
+    // As faixas: a força não passa do tecto medido, o alcance não desce de uma célula nem passa de 24.
+    tool.handle_panel_event(PanelEvent::SetValue(PAINTER_WETPAINT_OLEO_FENDA, 9.0));
+    tool.handle_panel_event(PanelEvent::SetValue(
+        PAINTER_WETPAINT_OLEO_ALCANCE_FENDA,
+        0.0,
+    ));
+    let o = tool.wet_oleo_real().expect("continua ligado");
+    assert_eq!((o.fenda, o.alcance_fenda), (3.0, 1.0));
+    tool.handle_panel_event(PanelEvent::SetValue(
+        PAINTER_WETPAINT_OLEO_ALCANCE_FENDA,
+        99.0,
+    ));
+    tool.handle_panel_event(PanelEvent::SetValue(PAINTER_WETPAINT_OLEO_FENDA, 0.0));
+    let o = tool.wet_oleo_real().expect("continua ligado");
+    assert_eq!((o.fenda, o.alcance_fenda), (0.0, 24.0));
+    tool.handle_panel_event(PanelEvent::SetValue(PAINTER_WETPAINT_OLEO_FENDA, 1.75));
+    tool.handle_panel_event(PanelEvent::SetValue(
+        PAINTER_WETPAINT_OLEO_ALCANCE_FENDA,
+        12.0,
+    ));
+    // Desligar e religar guarda os dois com os outros knobs.
+    clica_na_caixa(&mut tool);
+    assert_eq!(tool.wet_oleo_real(), None);
+    assert_eq!(
+        tool.brush_settings().wet_oleo_fenda,
+        1.75,
+        "desligado, o painel lê o último valor"
+    );
+    clica_na_caixa(&mut tool);
+    let o = tool.wet_oleo_real().expect("religado");
+    assert_eq!((o.fenda, o.alcance_fenda), (1.75, 12.0));
 }

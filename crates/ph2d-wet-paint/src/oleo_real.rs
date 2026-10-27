@@ -28,6 +28,12 @@ pub struct OleoReal {
     pub brilho: f64,
     /// O céu que a tinta recebe e reflecte, rodado para o lado claro ficar no azimute da luz.
     pub ambiente: Ambiente,
+    /// Força da sombra de FENDA (o céu que a tinta vizinha tapa), `0..=`[`FENDA_MAX`]: `0` = sem, `1` = a
+    /// física (GTAO + multi-ricochete), acima = dramática — pela lei de [`forca_da_fenda`].
+    pub fenda: f64,
+    /// Até que distância (células) uma pincelada tapa o céu da vizinha, `1..=`[`ALCANCE_FENDA_MAX`]: as
+    /// distâncias de [`HORIZONTE`] escalam por `alcance_fenda / ALCANCE_FENDA_MAX` (o custo não muda).
+    pub alcance_fenda: f64,
     /// As constantes da lei, afinadas contra as capturas (não são knobs do artista).
     pub af: Afinacao,
 }
@@ -41,6 +47,8 @@ impl Default for OleoReal {
             sombra: 1.0,
             brilho: 1.0,
             ambiente: Ambiente::default(),
+            fenda: 1.0,
+            alcance_fenda: ALCANCE_FENDA_MAX,
             af: Afinacao::default(),
         }
     }
@@ -103,6 +111,14 @@ pub const PASSOS_SOMBRA: usize = 24;
 /// +0,068 × +0,064); 64 células só ajudam o papel ao pé de paredes altas (a pirâmide de máximos da placa).
 const HORIZONTE: [f64; 9] = [1.0, 2.0, 3.0, 4.0, 6.0, 8.0, 12.0, 16.0, 24.0];
 const FATIAS: usize = 4;
+/// O tecto do [`OleoReal::alcance_fenda`] = o horizonte de fábrica: além dele a amostra sai da
+/// [`MARGEM`] da região suja (a costura no recompor) — mais longe é a pirâmide de máximos da placa
+/// (`oraculo/README.md`, recusa «64 células na CPU»).
+pub const ALCANCE_FENDA_MAX: f64 = HORIZONTE[HORIZONTE.len() - 1];
+const _: () = assert!(ALCANCE_FENDA_MAX < MARGEM as f64);
+/// O tecto do [`OleoReal::fenda`], MEDIDO na cena do dono (`oraculo/README.md` §E1): o último valor em que
+/// a fenda vermelha não tem pixel com `max(R,G,B) < 70` (os pontos pretos da lei M2).
+pub const FENDA_MAX: f64 = 3.0;
 /// A margem (células) que o render de uma região precisa à volta dela.
 pub const MARGEM: usize = PASSOS_SOMBRA + 1;
 /// O ALCANCE (células) de uma mudança de tinta: a célula `c` muda a forma até `2·raio_suave` à volta, e a
@@ -303,6 +319,20 @@ impl Termos {
     }
 }
 
+/// A visibilidade com a FORÇA `f` da fenda: as CHANCES de oclusão `(1−V)/V` multiplicam-se por `f`
+/// (`V' = V / (V + f·(1−V))`). `0` = céu inteiro, `1` = `V` (bit a bit), acima escurece o meio-tom e a fenda
+/// funda devagar: `V^f` levava a fenda vermelha aos pontos pretos já em `f = 2` (`oraculo/README.md` §E1).
+#[must_use]
+pub fn forca_da_fenda(v: f64, f: f64) -> f64 {
+    if f == 1.0 {
+        return v;
+    }
+    if f <= 0.0 || v >= 1.0 {
+        return 1.0;
+    }
+    v / (v + f * (1.0 - v))
+}
+
 /// O multi-ricochete do céu pela cor da tinta (Jimenez 2016): a fenda recebe a luz das paredes da MESMA
 /// tinta e fica no tom dela. Devolve a visibilidade CORRIGIDA (substitui `v`; nunca `v × isto`). Contra o Cycles no vermelho (`oraculo/calibra_ao.py`, 26/10), em V 0,78 ·
 /// 0,70 · 0,56 · 0,47: ganho 1,16 · 1,23 · 1,36 · 1,47 × esta fórmula 1,17 · 1,25 · 1,43 · 1,58.
@@ -383,7 +413,7 @@ fn normal(campo: &CampoAltura, x: isize, y: isize) -> [f64; 3] {
 /// [`FATIAS`] fatias, cada uma com o horizonte dos dois lados nas distâncias [`HORIZONTE`], preso à
 /// horizontal (a tela tapa o chão). Plano aberto = 1. Contra o Cycles (`oraculo/candidatas_ao.py`):
 /// viés p50 +0,03 no Dabber, +0,11 no Oil Bristle (os sulcos dos fios tapam mais do que se vê aqui).
-fn visibilidade(campo: &CampoAltura, x: isize, y: isize, n: [f64; 3]) -> f64 {
+fn visibilidade(campo: &CampoAltura, x: isize, y: isize, n: [f64; 3], escala: f64) -> f64 {
     use core::f64::consts::{FRAC_PI_2, PI};
     let h0 = campo.at_fina(x, y);
     let mut acc = 0.0;
@@ -393,6 +423,7 @@ fn visibilidade(campo: &CampoAltura, x: isize, y: isize, n: [f64; 3]) -> f64 {
         let mut s = [0.0f64; 2];
         for (j, sgn) in [1.0, -1.0].into_iter().enumerate() {
             for r in HORIZONTE {
+                let r = r * escala;
                 let (ox, oy) = (libm::round(sgn * dx * r), libm::round(sgn * dy * r));
                 let d = libm::hypot(ox, oy);
                 if d == 0.0 {
@@ -425,7 +456,14 @@ fn visibilidade(campo: &CampoAltura, x: isize, y: isize, n: [f64; 3]) -> f64 {
 /// A fracção LIVRE do reflexo do ambiente: o horizonte da altura fina na direcção reflectida `r`
 /// (distâncias [`HORIZONTE`]); o lobo de largura `rug` passa de tapado a livre à volta dele. Com a
 /// visibilidade média no lugar disto a fenda reflectia o estúdio: luminância 74 × 47 do Cycles.
-fn reflexo_livre(campo: &CampoAltura, x: isize, y: isize, r: [f64; 3], rug: f64) -> f64 {
+fn reflexo_livre(
+    campo: &CampoAltura,
+    x: isize,
+    y: isize,
+    r: [f64; 3],
+    rug: f64,
+    escala: f64,
+) -> f64 {
     let rxy = libm::hypot(r[0], r[1]);
     if rxy < 1e-6 {
         return 1.0;
@@ -434,6 +472,7 @@ fn reflexo_livre(campo: &CampoAltura, x: isize, y: isize, r: [f64; 3], rug: f64)
     let h0 = campo.at_fina(x, y);
     let mut sen = 0.0f64;
     for d in HORIZONTE {
+        let d = d * escala;
         let (ox, oy) = (libm::round(dx * d), libm::round(dy * d));
         let dist = libm::hypot(ox, oy);
         if dist == 0.0 {
@@ -455,7 +494,8 @@ pub fn sombra_no_papel(o: &OleoReal, campo: &CampoAltura, cx: usize, cy: usize) 
     let tapado = if o.sombra <= 0.0 {
         0.0
     } else {
-        o.sombra * o.af.ceu * (1.0 - visibilidade(campo, x, y, normal(campo, x, y)))
+        let v = visibilidade(campo, x, y, normal(campo, x, y), escala_do_horizonte(o));
+        o.sombra * o.af.ceu * (1.0 - forca_da_fenda(v, o.fenda))
     };
     (directa + tapado).min(1.0)
 }
@@ -470,6 +510,11 @@ fn para_o_mapa(o: &OleoReal, claro: f64, d: [f64; 3]) -> [f64; 3] {
     [b[0] * c - b[1] * s, b[0] * s + b[1] * c, b[2]]
 }
 
+/// O factor das distâncias de [`HORIZONTE`] pelo [`OleoReal::alcance_fenda`] (`1` no de fábrica).
+fn escala_do_horizonte(o: &OleoReal) -> f64 {
+    o.alcance_fenda.clamp(1.0, ALCANCE_FENDA_MAX) / ALCANCE_FENDA_MAX
+}
+
 /// Os [`Termos`] da célula `(cx, cy)`.
 pub fn termos(o: &OleoReal, campo: &CampoAltura, cx: usize, cy: usize) -> Termos {
     let af = &o.af;
@@ -477,7 +522,8 @@ pub fn termos(o: &OleoReal, campo: &CampoAltura, cx: usize, cy: usize) -> Termos
     let n = normal(campo, x, y);
     let l = para_a_luz(o);
     let luz = luz_directa(o, campo, x, y, campo.at_sombra(x, y));
-    let vis = visibilidade(campo, x, y, n);
+    let escala = escala_do_horizonte(o);
+    let vis = forca_da_fenda(visibilidade(campo, x, y, n, escala), o.fenda);
 
     // Difuso da lâmpada relativo: plano iluminado = 1 − céu.
     let ndl = (n[0] * l[0] + n[1] * l[1] + n[2] * l[2]).max(0.0);
@@ -522,7 +568,7 @@ pub fn termos(o: &OleoReal, campo: &CampoAltura, cx: usize, cy: usize) -> Termos
             let ab =
                 F0 * (a004 * -1.04 + (-0.572 * rug + 1.04)) + (a004 * 1.04 + (0.022 * rug - 0.04));
             let pre = m.brilho(para_o_mapa(o, m.claro, r), rug);
-            let livre = reflexo_livre(campo, x, y, r, rug);
+            let livre = reflexo_livre(campo, x, y, r, rug, escala);
             pre.map(|p| lampada + o.brilho * af.ceu * p * ab * livre)
         }
     };

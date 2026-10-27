@@ -102,12 +102,21 @@ fn medida_oleo_real_folha_png() {
 fn medida_oleo_real_oraculo() {
     let dir =
         std::path::PathBuf::from(std::env::var("PH2D_OLEO_PNG").expect("PH2D_OLEO_PNG=<pasta>"));
+    let mut t = pinta_cena_do_dono();
+    grava_folha(&mut t, &dir);
+}
+
+/// A cena da captura do dono (W1c): o vermelho saturado empilhado com Dabber e Oil Bristle e uma pilha clara.
+pub(super) const VERMELHO_DO_DONO: [u8; 3] = [215, 25, 30];
+
+/// Pinta a cena da captura do dono numa tela `OW×OH` (a de [`medida_oleo_real_oraculo`] e do gate da fenda).
+pub(super) fn pinta_cena_do_dono() -> PainterTool {
     let b = biblioteca();
     let mut t = PainterTool::default();
     t.set_source(vec![255u8; (OW * OH * 4) as usize], OW, OH);
     t.set_paint_media(PaintMedia::WetPaint);
     t.set_wet_relogio_fixo(true);
-    const VERMELHO: [u8; 3] = [215, 25, 30];
+    const VERMELHO: [u8; 3] = VERMELHO_DO_DONO;
     const CLARO: [u8; 3] = [238, 226, 196];
     let pilhas: [(&str, [u8; 3], f32, [[f32; 2]; 2]); 6] = [
         (
@@ -170,7 +179,7 @@ fn medida_oleo_real_oraculo() {
             println!("[oraculo] {preset} passagem {} (água {ticks})", k + 1);
         }
     }
-    grava_folha(&mut t, &dir);
+    t
 }
 
 const OW: u32 = 700;
@@ -365,6 +374,8 @@ fn oleo_do_env() -> ph2d_wet_paint::oleo_real::OleoReal {
                 o.ambiente = ph2d_wet_paint::oleo_real::Ambiente::de_indice(v as u8)
                     .unwrap_or_else(|| panic!("ambiente {v}: 0..=3"));
             }
+            "fenda" => o.fenda = v,
+            "alcance_fenda" => o.alcance_fenda = v,
             "ceu" => af.ceu = v,
             "penumbra" => af.penumbra = v,
             "rugosidade" => af.rugosidade = v,
@@ -1241,5 +1252,126 @@ fn medida_oleo_real_custo() {
     println!(
         "[custo] ns/célula (mínimo de 7): {:?} · {soma:.0}",
         Ambiente::TODOS.iter().zip(melhor).collect::<Vec<_>>()
+    );
+}
+
+/// A cor final (sRGB, sobre o papel com a sombra do Óleo Real, como em [`grava_folha`]) e a cor SEM relevo
+/// de cada célula, com a cobertura: `(final, albedo, alfa)`.
+fn render_da_cena(
+    t: &mut PainterTool,
+    o: &ph2d_wet_paint::oleo_real::OleoReal,
+) -> Vec<([u8; 3], [u8; 3], u8)> {
+    let s = t.paint.wetpaint.session.as_mut().expect("sessão");
+    s.bring_home();
+    let (gw, gh) = s.grid;
+    let params = s.engine.sim.gather_params(&s.engine.tuning);
+    let camadas: Vec<ph2d_wet_paint::render::RenderLayer<'_>> = s
+        .engine
+        .layers
+        .iter()
+        .map(|l| ph2d_wet_paint::render::RenderLayer {
+            grid: &l.grid,
+            opacity: l.opacity,
+            visible: l.visible,
+        })
+        .collect();
+    let grades: Vec<(&ph2d_wet_paint::grid::Grid, bool)> =
+        camadas.iter().map(|c| (c.grid, c.visible)).collect();
+    let campo =
+        ph2d_wet_paint::oleo_real::CampoAltura::de(&grades, o, usize::from(s.ratio), 1, 1, gw, gh);
+    let (mut oleo, mut albedo) = (vec![0u8; gw * gh * 4], vec![0u8; gw * gh * 4]);
+    for cy in 1..=gh {
+        let faixa = (cy - 1) * gw * 4..cy * gw * 4;
+        ph2d_wet_paint::render::render_pigment_row_oleo(
+            Some(&params),
+            &camadas,
+            ph2d_wet_paint::render::PigmentVisual {
+                paper: false,
+                relevo: true,
+            },
+            o,
+            &campo,
+            cy,
+            1,
+            gw,
+            &mut oleo[faixa.clone()],
+        );
+        ph2d_wet_paint::render::render_pigment_row_visual(
+            Some(&params),
+            &camadas,
+            ph2d_wet_paint::render::PigmentVisual {
+                paper: false,
+                relevo: false,
+            },
+            cy,
+            1,
+            gw,
+            &mut albedo[faixa],
+        );
+    }
+    let (oleo, albedo) = (oleo.as_chunks::<4>().0, albedo.as_chunks::<4>().0);
+    (0..gw * gh)
+        .map(|k| {
+            let (p, a) = (oleo[k], u32::from(oleo[k][3]));
+            let sombra =
+                ph2d_wet_paint::oleo_real::sombra_no_papel(o, &campo, k % gw + 1, k / gw + 1);
+            let papel = (255.0 * (1.0 - sombra)).round() as u32;
+            let fim = [0, 1, 2].map(|c| ((u32::from(p[c]) * a + papel * (255 - a)) / 255) as u8);
+            (
+                fim,
+                [albedo[k][0], albedo[k][1], albedo[k][2]],
+                albedo[k][3],
+            )
+        })
+        .collect()
+}
+
+/// ⭐ **A fenda forte nunca volta aos pontos pretos** (W2 E1) — a régua de `oraculo/compara.py` §1 sobre a
+/// cena do dono: no vermelho (cobertura > 0,9, albedo linear R > 0,4 e G < 0,05) nenhum pixel tem
+/// `max(R,G,B) < 70` com a força no TECTO da faixa (`FENDA_MAX`); e a força escurece mesmo (a luminância
+/// média do vermelho desce de 1 para o tecto). Mutação vista a sangrar: o tecto subido a 6 (`max` 60, a
+/// medição em `oraculo/README.md` §E1).
+#[test]
+fn a_fenda_forte_nao_volta_aos_pontos_pretos_na_cena_do_dono() {
+    use ph2d_wet_paint::colorops::transfer::srgb255_to_linear as lin;
+    use ph2d_wet_paint::oleo_real::{FENDA_MAX, OleoReal};
+    let mut t = pinta_cena_do_dono();
+    let lum =
+        |c: [u8; 3]| 0.2126 * f64::from(c[0]) + 0.7152 * f64::from(c[1]) + 0.0722 * f64::from(c[2]);
+    let mut medias = Vec::new();
+    for fenda in [1.0, FENDA_MAX] {
+        let o = OleoReal {
+            fenda,
+            ..OleoReal::default()
+        };
+        let px = render_da_cena(&mut t, &o);
+        let vermelho: Vec<[u8; 3]> = px
+            .iter()
+            .filter(|(_, alb, a)| {
+                f64::from(*a) / 255.0 > 0.9
+                    && lin(f64::from(alb[0])) > 0.4
+                    && lin(f64::from(alb[1])) < 0.05
+            })
+            .map(|(fim, _, _)| *fim)
+            .collect();
+        assert!(
+            vermelho.len() > 100_000,
+            "a cena do dono mudou: {} células vermelhas",
+            vermelho.len()
+        );
+        let mais_escuro = vermelho
+            .iter()
+            .map(|c| c[0].max(c[1]).max(c[2]))
+            .min()
+            .expect("vermelho");
+        assert!(
+            mais_escuro >= 70,
+            "força {fenda}: um ponto preto, max(R,G,B) = {mais_escuro}"
+        );
+        medias.push(vermelho.iter().map(|&c| lum(c)).sum::<f64>() / vermelho.len() as f64);
+    }
+    assert!(
+        medias[1] < medias[0] - 1.0,
+        "a força não escurece: {medias:?}"
     );
 }

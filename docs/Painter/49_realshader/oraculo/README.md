@@ -56,6 +56,35 @@ python3 $O/compara.py $O/entrada $O/saida studio_sol10      # Clássico: PH2D_OL
 **Clássico 1 547 ns/célula · Estúdio/Interior/Pátio ≈ 1 870**. O composite reparte as linhas pelo rayon
 (ADR-0109): uma pincelada de ~40 mil células ≈ 75 ms num núcleo, ≈ 5 ms em 16.
 
+## §E1 — Força e alcance da sombra de fenda (W2, 27/10)
+
+`OleoReal::fenda` (Crevice shadow) e `alcance_fenda` (Crevice reach). Lei da força: as CHANCES de oclusão
+`(1−V)/V` multiplicam-se por `f` (`V' = V/(V+f·(1−V))`), antes do multi-ricochete; o alcance escala as
+distâncias do horizonte (`× alcance/24`, as mesmas 9 amostras: o custo não muda). Neutro `1`/`24` = bit a
+bit o de antes (gate `a_fenda_neutra_e_bit_identica_a_de_antes`, impressão digital gravada antes).
+Régua = `compara.py` §1 sobre a cena do dono (`medida_oleo_real_oraculo`, `PH2D_OLEO_AF="fenda=…"`), máscara
+da fenda = o Cycles (`V<0,55`), 177 718 células vermelhas, 37 220 na fenda:
+
+| força | pretos (max<70) no vermelho | min max(R,G,B) | fenda lum p10/p50 | fenda R p50 |
+|---|---|---|---|---|
+| 0 | 0,000 % | 134 | 44 / 54 | 176 |
+| 1 (física) | 0,000 % | 113 | 40 / 49 | 168 |
+| 2 | 0,000 % | 91 | 37 / 45 | 162 |
+| **3 (tecto)** | **0,000 %** | **78** | 35 / 43 | 157 |
+| 4 | 0,000 % | 70 (no limiar) | 33 / 41 | 152 |
+| 6 | 0,005 % | 60 | 29 / 37 | 143 |
+
+- **Tecto da força = 3**: o último com folga sobre o limiar 70 (o 4 toca-o; o 6 volta aos pretos). O gate
+  `a_fenda_forte_nao_volta_aos_pontos_pretos_na_cena_do_dono` pinta a cena e barra `max<70` no tecto.
+- **Tecto do alcance = 24 células**: a amostra mais longe tem de caber na `MARGEM` (25) da região suja do
+  recompor; mais longe é a pirâmide de máximos da placa (recusa abaixo). Alcance 6 com força 1: fenda p50
+  49 → 50 (o horizonte curto vê mais céu); força 3 com alcance 8: 43 → 44.
+- Folha: [`../out/E1_fenda_forca.jpg`](../out/E1_fenda_forca.jpg) (força 0 · 1 · 3).
+
+| Lei recusada | Porque saiu |
+|---|---|
+| `V' = V^f` | simulada sobre os termos gravados: pretos já em `f = 2` (min max 56), 0,10 % em `f = 3` |
+
 ## ⛔ Recusas MEDIDAS
 
 | Tentativa | Porque saiu |

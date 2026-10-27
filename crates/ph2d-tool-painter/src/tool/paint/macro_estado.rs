@@ -196,6 +196,8 @@ fn oleo_para_json(o: &ph2d_wet_paint::oleo_real::OleoReal) -> Value {
         "altitude": o.altitude,
         "sombra": o.sombra,
         "brilho": o.brilho,
+        "fenda": o.fenda,
+        "alcance_fenda": o.alcance_fenda,
         "ambiente": o.ambiente.indice(),
     })
 }
@@ -208,6 +210,8 @@ fn oleo_de_json(o: &mut ph2d_wet_paint::oleo_real::OleoReal, v: &Value) {
         ("altitude", &mut o.altitude),
         ("sombra", &mut o.sombra),
         ("brilho", &mut o.brilho),
+        ("fenda", &mut o.fenda),
+        ("alcance_fenda", &mut o.alcance_fenda),
     ] {
         if let Some(x) = v[campo].as_f64() {
             *alvo = x;
@@ -231,5 +235,32 @@ impl PainterTool {
             e.ler_json(sc);
             self.set_shape_color_estado(&e);
         }
+    }
+}
+
+#[cfg(test)]
+mod oleo_json_tests {
+    use super::{oleo_de_json, oleo_para_json};
+    use ph2d_wet_paint::oleo_real::OleoReal;
+
+    /// A fenda (força e alcance, W2 E1) viaja na macro; uma macro gravada antes dela (campos ausentes)
+    /// deixa os valores como estão.
+    #[test]
+    fn a_fenda_do_oleo_real_viaja_na_macro_e_o_campo_ausente_mantem() {
+        let gravado = OleoReal {
+            fenda: 2.5,
+            alcance_fenda: 9.0,
+            ..OleoReal::default()
+        };
+        let mut lido = OleoReal::default();
+        oleo_de_json(&mut lido, &oleo_para_json(&gravado));
+        assert_eq!(lido, gravado);
+        let mut antigo = oleo_para_json(&OleoReal::default());
+        let obj = antigo.as_object_mut().expect("objecto");
+        obj.remove("fenda");
+        obj.remove("alcance_fenda");
+        let mut o = gravado;
+        oleo_de_json(&mut o, &antigo);
+        assert_eq!((o.fenda, o.alcance_fenda), (2.5, 9.0));
     }
 }

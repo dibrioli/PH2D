@@ -30,6 +30,7 @@ const PAIR_MAX_LEN: usize = 7;
 pub(crate) const FINE_STEP: f64 = 0.01; // LITERAL-PX-OK: NumberInput step (0..1 / offset / depth / params)
 pub(crate) const SIZE_STEP: f64 = 0.1; // LITERAL-PX-OK: NumberInput step (scale)
 pub(crate) const ANGLE_STEP: f64 = 1.0; // LITERAL-PX-OK: NumberInput step (whole degrees)
+pub(crate) const CELL_STEP: f64 = 1.0; // LITERAL-PX-OK: NumberInput step (whole grid cells)
 
 /// Whether `id` is a Grain/Shape param NumberInput field (Angle / Offset / Size / Depth / per-pattern
 /// param) — vs a main brush slider. Drives the panel's number-field `ValueChanged` route (`event.rs`),

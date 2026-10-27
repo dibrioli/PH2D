@@ -678,6 +678,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_layers.wetpaint.oleo_gloss" => "Gloss",
         "panel.painter_layers.wetpaint.oleo_light_height" => "Light height",
         "panel.painter_layers.wetpaint.oleo_light_direction" => "Light angle",
+        "panel.painter_layers.wetpaint.oleo_crevice" => "Crevice shadow",
+        "panel.painter_layers.wetpaint.oleo_crevice_reach" => "Crevice reach",
         "panel.painter_layers.wetpaint.oleo_environment" => "Environment",
         "panel.painter_layers.wetpaint.oleo_env_classic" => "Classic",
         "panel.painter_layers.wetpaint.oleo_env_studio" => "Studio",

@@ -234,3 +234,67 @@ fn o_brilho_da_orla_vai_com_a_cobertura() {
         );
     }
 }
+
+/// Um relevo VARIADO (cristas, um sulco fundo, um bloco alto e o papel livre) e a impressão digital de
+/// tudo o que a óptica devolve nele — termos, cor e sombra no papel, bit a bit.
+fn impressao_digital(o: &OleoReal) -> u64 {
+    let g = grade(|x, y| {
+        let (fx, fy) = (x as f32, y as f32);
+        let ondas = 2500.0 + 1800.0 * (fx * 0.37).sin() * (fy * 0.23).cos();
+        if (30..=32).contains(&x) {
+            0.0
+        } else if (40..=52).contains(&x) && (10..=22).contains(&y) {
+            12_000.0
+        } else if x > 56 {
+            0.0
+        } else {
+            ondas.max(0.0)
+        }
+    });
+    let c = campo(&g, o);
+    let mut h = 0xcbf2_9ce4_8422_2325u64;
+    let mut mistura = |v: f64| {
+        h ^= v.to_bits();
+        h = h.wrapping_mul(0x0100_0000_01b3);
+    };
+    for cy in 2..W {
+        for cx in 2..W {
+            let t = termos(o, &c, cx, cy);
+            for v in [t.vis, t.luz, t.sol, t.espec[0], t.espec[1], t.espec[2]] {
+                mistura(v);
+            }
+            for v in ilumina(o, &c, cx, cy, [215.0, 25.0, 30.0], 1.0) {
+                mistura(v);
+            }
+            mistura(sombra_no_papel(o, &c, cx, cy));
+        }
+    }
+    h
+}
+
+/// ⭐ **Neutro = a imagem de antes** (W2 E1): com a força da fenda `1` e o alcance de fábrica a óptica é BIT
+/// a BIT a de `c3365fb579` (a impressão digital gravada antes dos dois ajustes), no Clássico e no Estúdio.
+#[test]
+fn a_fenda_neutra_e_bit_identica_a_de_antes() {
+    for (ambiente, antes) in [
+        (Ambiente::Classico, 0xd577_67fb_dd93_1d70u64),
+        (Ambiente::Estudio, 0xbdcc_ca7e_7461_db68),
+    ] {
+        let o = OleoReal {
+            ambiente,
+            fenda: 1.0,
+            alcance_fenda: ALCANCE_FENDA_MAX,
+            ..OleoReal::default()
+        };
+        assert_eq!(
+            o,
+            OleoReal {
+                ambiente,
+                ..OleoReal::default()
+            },
+            "o neutro é o de fábrica"
+        );
+        let d = impressao_digital(&o);
+        assert_eq!(d, antes, "{ambiente:?} {d:#018x}");
+    }
+}

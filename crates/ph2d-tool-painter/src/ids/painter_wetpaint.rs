@@ -77,29 +77,39 @@ pub const PAINTER_WETPAINT_OLEO_ALTITUDE: NodeId =
 /// **Light angle** em GRAUS (`OleoReal::azimute`, em radianos na ferramenta; `225°` = topo-esquerda).
 pub const PAINTER_WETPAINT_OLEO_AZIMUTE: NodeId =
     hash_node_id("painter_brush.wetpaint_oleo_azimute");
+/// **Crevice shadow** (`OleoReal::fenda`, `0..FENDA_MAX`, `1` = a física; W2 E1).
+pub const PAINTER_WETPAINT_OLEO_FENDA: NodeId = hash_node_id("painter_brush.wetpaint_oleo_fenda");
+/// **Crevice reach** em CÉLULAS (`OleoReal::alcance_fenda`, `1..ALCANCE_FENDA_MAX`; W2 E1).
+pub const PAINTER_WETPAINT_OLEO_ALCANCE_FENDA: NodeId =
+    hash_node_id("painter_brush.wetpaint_oleo_alcance_fenda");
 
 /// As linhas numéricas do **Real Oil** — fora de [`PAINTER_WETPAINT_FIELDS`] porque só se pintam com o
 /// Óleo Real ligado (aquela lista é «pintada sempre que armado», com gate). Uma lista para o `SetValue`
 /// do painel, o populate e o encaminhamento da ferramenta.
-pub const PAINTER_WETPAINT_OLEO_FIELDS: [NodeId; 5] = [
+pub const PAINTER_WETPAINT_OLEO_FIELDS: [NodeId; 7] = [
     PAINTER_WETPAINT_OLEO_PROFUNDIDADE,
     PAINTER_WETPAINT_OLEO_SOMBRA,
     PAINTER_WETPAINT_OLEO_BRILHO,
     PAINTER_WETPAINT_OLEO_ALTITUDE,
     PAINTER_WETPAINT_OLEO_AZIMUTE,
+    PAINTER_WETPAINT_OLEO_FENDA,
+    PAINTER_WETPAINT_OLEO_ALCANCE_FENDA,
 ];
 
 /// As faixas `(min, max)` das linhas de [`PAINTER_WETPAINT_OLEO_FIELDS`], pela MESMA ordem, nas unidades do
 /// painel (os ângulos em GRAUS) — uma lei para o painel que as pinta e a ferramenta que as prende.
 /// ⚠️ **Light height `5..90°`:** o Rebelle não desce de 42° (medido, W0); abaixo é extensão NOSSA e o piso
 /// de 5° é escolha de desenho (a sombra rasante ainda se lê e a marcha dela continua finita). Light
-/// direction dá a volta (`360° = 0°`).
-pub const PAINTER_WETPAINT_OLEO_FAIXAS: [(f64, f64); 5] = [
+/// direction dá a volta (`360° = 0°`). Crevice shadow e reach: os tectos MEDIDOS em `ph2d_wet_paint::oleo_real`
+/// (`FENDA_MAX`: pontos pretos na cena do dono; `ALCANCE_FENDA_MAX`: a margem da região suja).
+pub const PAINTER_WETPAINT_OLEO_FAIXAS: [(f64, f64); 7] = [
     (0.0, 3.0),
     (0.0, 1.0),
     (0.0, 1.0),
     (5.0, 90.0),
     (0.0, 360.0),
+    (0.0, ph2d_wet_paint::oleo_real::FENDA_MAX),
+    (1.0, ph2d_wet_paint::oleo_real::ALCANCE_FENDA_MAX),
 ];
 
 /// **Environment** chip do **Real Oil** (W1c): o céu que a tinta reflecte (`OleoReal::ambiente`; wire = o

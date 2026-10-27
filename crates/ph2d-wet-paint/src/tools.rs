@@ -15,6 +15,7 @@ use crate::tuning::Knob;
 
 mod bordas; // a frente da água que empurra e a orla do secador — filho por LOC
 pub use bordas::{apply_dry_edge, apply_wet_push};
+mod marca; // o Smear leva a marca do nivelado (K9)
 
 /// Doc 23: the shared active-lift gain — `wetLift · stainingMultiplier`.
 /// Every active rewetter (Wet dissolve, wet Smear, wet Blend) derives its
@@ -457,6 +458,8 @@ pub fn apply_smear(
     let mut s_sett_rgb = vec![[0.0f32; 3]; n];
     // O material (W2 E3) é borrado com a cor, pela mesma amostra pesada pela massa.
     let s_mat = crate::grid::material::recorte(g, r.x0, r.y0, r.x1, r.y1);
+    // A marca do nivelado (K7/K8) viaja como o material; vazia = a sessão nunca nivelou ⇒ nada muda.
+    let s_marca = marca::recorte(g, r.x0, r.y0, r.x1, r.y1);
     for y in r.y0..=r.y1 {
         for x in r.x0..=r.x1 {
             let i = x as usize + y as usize * g.s;
@@ -482,16 +485,19 @@ pub fn apply_smear(
         film,
         vela,
         material,
+        nivelado,
         wet,
         paper,
         ..
     } = g;
     let borra = |m: &mut [crate::material::MaterialCelula],
+                 niv: &mut [f32],
                  i: usize,
                  ls: [usize; 4],
                  ws: [f64; 4],
                  t: f64| {
         crate::grid::material::borra(m, &s_mat, i, ls, ws, t);
+        marca::borra(niv, &s_marca, i, ls, ws, t);
     };
     for_each_stamp_pixel(
         *s,
@@ -581,7 +587,14 @@ pub fn apply_smear(
                         &mut out,
                     );
                     susp_rgb[i] = [out[0] as f32, out[1] as f32, out[2] as f32];
-                    borra(material, i, [l00, l10, l01, l11], [m00, m10, m01, m11], wgt);
+                    borra(
+                        material,
+                        nivelado,
+                        i,
+                        [l00, l10, l01, l11],
+                        [m00, m10, m01, m11],
+                        wgt,
+                    );
                 }
                 susp[i] = (susp[i] as f64 + (src_mass - susp[i] as f64) * u) as f32;
             }
@@ -662,6 +675,7 @@ pub fn apply_smear(
                             sett_rgb[i] = [out[0] as f32, out[1] as f32, out[2] as f32];
                             borra(
                                 material,
+                                nivelado,
                                 i,
                                 [l00, l10, l01, l11],
                                 [sm00, sm10, sm01, sm11],

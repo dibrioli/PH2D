@@ -363,6 +363,19 @@ fn re_cortar_um_re_corta_todos_os_que_mostram_a_imagem() {
         id,
     )
     .expect("larga");
+    // Nasce parada, logo INTEIRA (plano GEF 15, dono 27/10); passada a animada, corta-se pelo corte da imagem.
+    assert!(
+        sim.world().get::<SpriteGrid>(novo).is_none(),
+        "parada inteira"
+    );
+    assert!(apply_edit(
+        sim.world_mut(),
+        novo,
+        &b.db,
+        &b.atlas,
+        PPM,
+        ImageUseEdit::Use(InspectorImageUse::Animated)
+    ));
     let g = sim
         .world()
         .get::<SpriteGrid>(novo)

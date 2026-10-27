@@ -1,11 +1,8 @@
 //! ⭐ **Draw Mode Tiled** ([plano GEF 14](../../../docs/GameEngineFuncional/14_tiled_com_tamanho_plano.md) D3/D5):
-//! ligar/desligar o `TiledDraw` e mudar a Largura/Altura de uma sprite — o collider automático vai junto.
+//! a Largura/Altura de uma sprite que repete — o collider automático vai junto. Ligá-lo é o uso «Repeated»
+//! ([`crate::image_use::set_use`]).
 
-use crate::image_choice::ImageFacts;
-use ph2d_ecs::{
-    Entity, ScrollRepeat, SpriteAnimations, SpriteGrid, TextureRepeat, TiledDraw, UvTransform,
-    World,
-};
+use ph2d_ecs::{Entity, ScrollRepeat, SpriteAnimations, TiledDraw, World};
 use ph2d_editor_core::InspectorDraw;
 use ph2d_physics_ecs::{Collider, ColliderShape};
 use ph2d_render::Sprite;
@@ -27,40 +24,6 @@ pub fn draw_of(world: &World, e: Entity) -> InspectorDraw {
         Some(_) => InspectorDraw::Tiled { size: s.size },
         None => InspectorDraw::Simple,
     }
-}
-
-/// Liga (`on`) ou desliga o Tiled. Ligar: o ladrilho é o que o objecto mostra da imagem `facts`, nativo (sem factos, o
-/// tamanho de agora), o tamanho fica, e o *Repeat*/UV à mão saem (o Tiled manda nas repetições). Desligar: a
-/// imagem estica até ao tamanho. `false` se nada mudou.
-pub fn set_tiled(world: &mut World, e: Entity, facts: Option<ImageFacts>, on: bool) -> bool {
-    if draw_of(world, e) == InspectorDraw::Fixed {
-        return false;
-    }
-    let Some(size) = world.get::<Sprite>(e).map(|s| s.size) else {
-        return false;
-    };
-    let tem = world.get::<TiledDraw>(e).is_some();
-    if tem == on {
-        return false;
-    }
-    let mut ent = world.entity_mut(e);
-    if on {
-        // O ladrilho é o que o objecto MOSTRA (a grelha dele), nunca a célula do corte da imagem: uma parada
-        // inteira repete a imagem inteira (dono 27/10, «ficou achatada»).
-        let mostra = ent.get::<SpriteGrid>().map(|g| [g.hframes, g.vframes]);
-        let tile = facts.map_or(size, |f| {
-            let g = mostra.unwrap_or([1, 1]);
-            [
-                f.native_m[0] / g[0].max(1) as f32,
-                f.native_m[1] / g[1].max(1) as f32,
-            ]
-        });
-        ent.remove::<(TextureRepeat, UvTransform)>();
-        ent.insert(TiledDraw { tile });
-    } else {
-        ent.remove::<TiledDraw>();
-    }
-    true
 }
 
 /// Muda um eixo (`0` = Width, `1` = Height) do tamanho de uma sprite Tiled para `m` metros. Um collider em

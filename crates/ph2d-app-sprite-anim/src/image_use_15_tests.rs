@@ -364,10 +364,6 @@ fn nenhuma_troca_de_uso_muda_a_escala() {
                     for to in [a, b, c] {
                         let de = image_use(sim.world(), e).expect("uso");
                         let antes = completo(&sim, e);
-                        // Sem UV nem ladrilho, o tamanho é exactamente o que se via.
-                        let visto = (antes.2.is_none() && antes.0.5.is_none())
-                            .then(|| antes.0.6.map(|s| s.size))
-                            .flatten();
                         if !usa(&mut sim, e, to) {
                             continue;
                         }
@@ -402,13 +398,8 @@ fn nenhuma_troca_de_uso_muda_a_escala() {
                             assert_eq!(g, SpriteGrid::SINGLE, "{quem}: parada nova com corte");
                         }
                         if agora == ImageUse::Repeated {
-                            // Um ladrilho do que se via (dono 27/10): nada cresce nem encolhe.
-                            if let Some(v) = visto {
-                                assert!(
-                                    perto(size[0], v[0]) && perto(size[1], v[1]),
-                                    "{quem}: a repetida nova {size:?} ≠ o que se via {v:?}"
-                                );
-                            }
+                            // A IMAGEM INTEIRA, nunca uma célula da folha (dono 27/10).
+                            assert_eq!(g, SpriteGrid::SINGLE, "{quem}: repetida com corte");
                             let tile = w.get::<TiledDraw>(e).map(|t| t.tile).expect("Tiled");
                             assert!(
                                 perto(tile[0], mostra[0]) && perto(tile[1], mostra[1]),
@@ -477,11 +468,10 @@ fn cada_uso_guarda_a_sua_configuracao() {
         Some(tile),
         "Repeated nasce 1 × 1"
     );
-    assert_eq!(
-        Some(tile),
-        animada.0.6.map(|s| s.size),
-        "um ladrilho do boneco à vista"
-    );
+    // A imagem INTEIRA à escala do boneco: a folha 8 × 4 células.
+    let celula = animada.0.6.map(|s| s.size).expect("sprite");
+    assert_eq!(tile, [celula[0] * 8.0, celula[1] * 4.0], "a imagem inteira");
+    assert!(w.get::<SpriteGrid>(e).is_none(), "sem corte");
     let (db, atlas) = biblioteca();
     let largura = tile[0] * 4.0;
     assert!(apply_edit(
@@ -577,4 +567,43 @@ fn o_collider_automatico_segue_o_uso() {
     };
     usa(&mut sim, e, InspectorImageUse::Still);
     assert_eq!(caixa(&sim), [18.0, 18.0], "à mão fica");
+}
+
+/// ⭐ Dono 27/10, «por que trata a imagem como uma folha?»: um bloco que REPETE e recebe uma folha (a bandeira,
+/// o herói) repete a imagem INTEIRA — sem corte, com as proporções dela, à escala a que o bloco mostrava a
+/// antiga; o tamanho do bloco fica.
+#[test]
+fn um_bloco_que_repete_recebe_a_imagem_inteira() {
+    let (db, atlas) = biblioteca();
+    for key in [ph2d_render::FLAG_SHEET_KEY, HEROI_KEY] {
+        let mut sim = SimWorld::new();
+        ph2d_app_game::smoke::montar(&mut sim, &registo(), 4);
+        let e = por_nome(&mut sim, "Platform High");
+        let w = sim.world();
+        assert_eq!(image_use(w, e), Some(ImageUse::Repeated), "a premissa");
+        let antes = (
+            w.get::<TiledDraw>(e).map(|t| t.tile).expect("Tiled"),
+            w.get::<Sprite>(e).map(|s| s.size),
+        );
+        choose_library_image(&mut sim, &mut sem_placa, &db, &atlas, PPM, e, atlas[&key])
+            .expect("escolhe");
+        let f = crate::image_choice::image_facts(atlas[&key], &db, &atlas, PPM).expect("factos");
+        let w = sim.world();
+        let tile = w.get::<TiledDraw>(e).map(|t| t.tile).expect("Tiled");
+        assert!(w.get::<SpriteGrid>(e).is_none(), "{key}: corte num bloco");
+        assert_eq!(
+            w.get::<Sprite>(e).map(|s| s.size),
+            antes.1,
+            "{key}: o tamanho"
+        );
+        let velha = ph2d_render::PLATFORM_TILE.native_m();
+        let k = [antes.0[0] / velha[0], antes.0[1] / velha[1]];
+        assert!(
+            (tile[0] - f.native_m[0] * k[0]).abs() < 1e-5
+                && (tile[1] - f.native_m[1] * k[1]).abs() < 1e-5,
+            "{key}: escala {tile:?}"
+        );
+        let (a, b) = (tile[0] / tile[1], f.native_m[0] / f.native_m[1]);
+        assert!((a - b).abs() < 1e-4 * b, "{key}: esticada {a} ≠ {b}");
+    }
 }

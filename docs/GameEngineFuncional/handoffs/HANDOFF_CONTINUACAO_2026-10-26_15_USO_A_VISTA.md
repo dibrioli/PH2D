@@ -215,3 +215,31 @@ Vermelhos herdados que FICAM (os do handoff 14): `o_cartao_pinta_a_chave_do_cata
 Fotos novas (`fotos_15/`): `player_repetido` (Player → Repeated: 100 × 100 px, Width 1 · Height 1),
 `memoria` (Repeated → Width 3 → Animated: as 6 animações de volta), `memoria_repetida` (… → Repeated: Width 3),
 `voltas` refeita.
+
+## Dono 27/10: «Repeated continua errada. Por que trata a imagem como uma folha? Por que 1 × 1 não é a imagem completa?»
+
+Lei decidida: **só uma ANIMADA tem corte; parada e repetida mostram SEMPRE a imagem inteira.** Três sítios a
+tratavam como folha — curados no mesmo bloco:
+
+1. `image_use::fresh(Repeated)`: o ladrilho era a célula à vista ⇒ agora `native × display_scale`, sem
+   `SpriteGrid`; 1 × 1 = a imagem inteira (o Player: 800 × 400 px, Width 8 · Height 4 m).
+2. `image_choice::choose_image` Lei 2: o corte da imagem nova só entra numa ANIMADA (`image_use == Animated`,
+   não só `SpriteAnimations`); parada e repetida ficam sem grelha. Lei 5 (Tiled): o ladrilho é a imagem nova
+   INTEIRA à escala por eixo a que o bloco mostrava a antiga. ⇒ fecha também o ABERTO «uma folha largada no
+   canvas nasce numa célula» (`place_library_image` passa por aqui): nasce inteira.
+3. `editor::propose_after_drop`: o editor de animações só se abre sozinho sobre uma ANIMADA.
+
+Removido `tiled::set_tiled` (zero chamadores, e com a lei da célula). Gates: `nenhuma_troca_de_uso_muda_a_escala`
+exige repetida nova sem corte; `cada_uso_guarda_a_sua_configuracao` exige o ladrilho = folha 8 × 4 células;
+novo `um_bloco_que_repete_recebe_a_imagem_inteira` (bandeira e herói num bloco: sem corte, tamanho do bloco
+igual, ladrilho = imagem × escala de antes); `largar_uma_folha_abre_o_editor…` (parada: não abre; animada:
+abre) e `re_cortar_um_re_corta…` (o objecto largado nasce inteiro e corta-se ao passar a animada) reescritos.
+Mutações vermelhas: repetida da célula (2), o corte de volta num bloco (3); «célula × k» na Lei 5 é mutante
+EQUIVALENTE (sem grelha a célula é a imagem). `sprite-anim` por nome 63 verdes, `the_drag_promises` (shell) 3,
+app-game smoke 15, clippy limpo.
+
+Medido (sonda, removida): a bandeira num bloco 3 × 0,5 m cujo ladrilho era 1 × 0,5 (= nativo) fica com ladrilho
+4 × 2 m ⇒ o bloco mostra a faixa de cima da folha (recorte, à escala verdadeira — o Draw Mode Tiled da Unity).
+⚠️ **Decisão do dono por tomar:** isto, ou encaixar a imagem inteira na altura do bloco (12 bandeiras pequenas).
+Fotos refeitas: `player_repetido`, `memoria_repetida`, `voltas`, `bandeira`, `repetida_da_parada`, `uso_parada`,
+`largada`, `heroi_animado`.

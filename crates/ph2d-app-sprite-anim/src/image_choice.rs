@@ -50,18 +50,17 @@ pub fn choose_image(
     let Some(sprite) = world.get::<Sprite>(e).copied() else {
         return false;
     };
-    let animated = world.get::<SpriteAnimations>(e).is_some();
+    let animated =
+        crate::image_use::image_use(world, e) == Some(crate::image_use::ImageUse::Animated);
     let old_grid = world.get::<SpriteGrid>(e).copied();
-    // Lei 2: o corte é da imagem; senão o objecto animado guarda o seu; senão não há corte.
+    let tiled = world.get::<TiledDraw>(e).copied();
+    // Lei 2: só uma ANIMADA tem corte — o da imagem, senão o seu; parada e repetida mostram a imagem INTEIRA
+    // (plano GEF 15, dono 27/10: «por que trata a imagem como uma folha?»).
     let grid = match (new.slicing, animated, old_grid) {
-        (Some(s), _, _) => Some(SpriteGrid {
+        (Some(s), true, _) => Some(SpriteGrid {
             hframes: s.grid[0].max(1),
             vframes: s.grid[1].max(1),
-            frame: if animated {
-                old_grid.map_or(0, |g| g.frame)
-            } else {
-                s.still_frame
-            },
+            frame: old_grid.map_or(0, |g| g.frame),
         }),
         (None, true, Some(g)) => Some(g),
         _ => None,
@@ -80,7 +79,6 @@ pub fn choose_image(
         _ => [1.0, 1.0],
     };
     let mut size = [new_cell[0] * escala[0], new_cell[1] * escala[1]];
-    let tiled = world.get::<TiledDraw>(e).copied();
     let repeats = tiled.is_some()
         || matches!(
             world.get::<TextureRepeat>(e),
@@ -88,13 +86,14 @@ pub fn choose_image(
         );
     let mut ent = world.entity_mut(e);
     if let Some(t) = tiled {
-        // Lei 5 (plano GEF 14 D4): o ladrilho de um Tiled é uma célula da imagem nova, à escala que tinha.
+        // Lei 5 (planos GEF 14 D4 e 15): o ladrilho de um Tiled é a imagem nova INTEIRA (nunca uma célula da folha),
+        // à escala a que o bloco mostrava a antiga.
         let k: [f32; 2] = std::array::from_fn(|i| match old_cell {
             Some(c) if c[i] > 0.0 => t.tile[i] / c[i],
             _ => 1.0,
         });
         ent.insert(TiledDraw {
-            tile: [new_cell[0] * k[0], new_cell[1] * k[1]],
+            tile: [new.native_m[0] * k[0], new.native_m[1] * k[1]],
         });
     }
     // O recorte da imagem antiga (região, folha empacotada à mão) não descreve a nova.

@@ -4,7 +4,7 @@ use super::*;
 use crate::image_choice::choose_library_image;
 use crate::image_use::{ImageUse, apply_edit, image_use};
 use ph2d_asset::{AssetDb, AssetId};
-use ph2d_ecs::{Name, SimWorld};
+use ph2d_ecs::{Name, SimWorld, TextureRepeat, UvTransform};
 use ph2d_editor_core::ImageUseEdit;
 use ph2d_render::{GROUND_TILE, GROUND_TILE_KEY, PLATFORM_TILE, PLATFORM_TILE_KEY, WHITE_TILE_KEY};
 use std::collections::BTreeMap;

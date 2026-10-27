@@ -41,12 +41,14 @@ pub fn request_open(sim: &mut SimWorld, entity_bits: u64, edit: &AnimFieldEdit) 
     true
 }
 
-/// **Uma imagem acabou de ser largada sobre a sprite `bits` (ou de nascer nela)**: se a transparência
-/// propõe uma grelha de várias células diferente da que a sprite tem, abre o editor dela — a faixa
-/// «Parece C × L — Usar» é a proposta, e o artista confirma (plano 07, «Desenho aprovado» 3).
-/// `rgba` é a imagem reta, `w × h × 4`. Devolve se pediu o editor.
+/// **Uma imagem acabou de ser largada sobre a sprite ANIMADA `bits`**: se a transparência propõe uma
+/// grelha de várias células diferente da que a sprite tem, abre o editor dela — a faixa «Parece C × L —
+/// Usar» é a proposta, e o artista confirma (plano 07, «Desenho aprovado» 3). Parada e repetida mostram a
+/// imagem inteira (plano GEF 15): nada a propor. `rgba` é a imagem reta, `w × h × 4`. Devolve se pediu o editor.
 pub fn propose_after_drop(sim: &mut SimWorld, bits: u64, rgba: &[u8], w: u32, h: u32) -> bool {
-    if rgba.len() != (w as usize) * (h as usize) * 4 {
+    let animada = crate::image_use::image_use(sim.world(), Entity::from_bits(bits))
+        == Some(crate::image_use::ImageUse::Animated);
+    if !animada || rgba.len() != (w as usize) * (h as usize) * 4 {
         return false;
     }
     let alpha: Vec<u8> = rgba.as_chunks::<4>().0.iter().map(|p| p[3]).collect();

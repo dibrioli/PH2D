@@ -564,6 +564,11 @@ fn largar_uma_folha_abre_o_editor_com_a_proposta_e_uma_imagem_so_nao() {
             }
         }
     }
+    // Numa parada nada se propõe: ela mostra a imagem inteira (plano GEF 15, dono 27/10).
+    assert!(!propose_after_drop(&mut sim, e, &rgba, w, h));
+    sim.world_mut()
+        .entity_mut(Entity::from_bits(e))
+        .insert(ph2d_ecs::SpriteAnimations::new());
     assert!(propose_after_drop(&mut sim, e, &rgba, w, h));
     let asked = &sim.world().get_resource::<AnimEditorRequests>().unwrap().0;
     assert_eq!(asked, &[e]);

@@ -156,6 +156,7 @@ Paste Special · Crop/Trim · **Canvas Size** e **Sprite Size** (interpolações
 > sprite da casa + ferramenta; formas do Vector com fillet) — P6b. Ficam: Load/Save MSK, Paste as
 > New Sprite, Auto Select Layer, Ctrl+Alt+I; handoff:
 > [P6](handoffs/HANDOFF_CONTINUACAO_line_PixelArt_2026-10-26_P6.md).
+> **P6b (26/10):** as 4 correcções feitas (ícones, grupo de selecções com flyout, gizmo + ferramenta Transform, formas do Vector; cena 10); o smoke deu 3 novas (laço poligonal, formas num grupo, Move fora) — P6c, cena 11: [P6b](handoffs/HANDOFF_CONTINUACAO_line_PixelArt_2026-10-26_P6b.md).
 
 ### P7 — Pincéis e dinâmica (estudo §2)
 **New Brush (Ctrl+B)** da seleção, alinhamento do padrão (fonte/destino/pincel), flip/rotate do

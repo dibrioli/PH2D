@@ -11,6 +11,7 @@
 //! | 7 | **Caixa com tampa** — abre no Edit com a tool **Rules** na mão: o corpo e a tampa com dez regras, cada uma à vista (selos `|` `—` `=1` 🔒 ⊙, cotas da largura, da altura e do ângulo); o Play abre e fecha a tampa pelo ÂNGULO animado (`smoke_caixa`) |
 //! | 8 | **Braço articulado** — chão com cadeado, manivela, biela e balancim presos por 4 pinos e uma MÃO soldada na ponta: arraste a manivela, o balancim, a mão (`smoke_braco`) |
 //! | 9 | **Mostrador** — a BÓIA sobe e desce (curva da timeline); o PONTEIRO segue a altura dela com mola (Follow Value → rotação) e a LÂMPADA acende com ela (Follow Value → opacidade) (`smoke_mostrador`) |
+//! | 10 | **Recreio** — os *behaviours*: o ÍMAN vai e volta (curva da timeline) e a LIMALHA é atraída por ele (Attract); a MOEDA treme mais quando o íman passa perto (Shake com Weight By); o BALÃO flutua (Float); a LUA orbita o PLANETA (Orbit) (`smoke_recreio`) |
 
 use bevy_ecs::entity::Entity;
 use bevy_ecs::prelude::Resource;
@@ -25,7 +26,7 @@ use ph2d_render::{DISC_TILE_KEY, Sprite, WHITE_TILE_KEY};
 /// O roteador desta família — o maior nível que [`encenar`] responde.
 pub const ROUTERS: &[ph2d_app_host::SmokeRouter] = &[ph2d_app_host::SmokeRouter {
     env: "PH2D_CONSTRAINT_SMOKE",
-    max_level: 9,
+    max_level: 10,
 }];
 
 /// O raio do olho da cena 2 e a folga da pupila dentro dele (o número que a sonda mede).
@@ -64,6 +65,7 @@ pub fn encenar(world: &mut World, nivel: u32) -> bool {
         5 => antena(world),
         8 => crate::smoke_braco::braco_articulado(world),
         9 => crate::smoke_mostrador::mostrador(world),
+        10 => crate::smoke_recreio::recreio(world),
         _ => return false,
     };
     world.insert_resource(Escolher(sujeito.to_bits()));
@@ -83,6 +85,7 @@ pub fn passo(
         .or_else(|| crate::smoke_regua::step(sim, hero, tl, ph))
         .or_else(|| crate::smoke_caixa::step(sim, hero, tl, ph))
         .or_else(|| crate::smoke_mostrador::step(sim, hero, tl, ph))
+        .or_else(|| crate::smoke_recreio::step(sim, hero, tl, ph))
 }
 
 /// A cena abre com o sujeito escolhido e o cartão Constraints à vista — uma vez só.

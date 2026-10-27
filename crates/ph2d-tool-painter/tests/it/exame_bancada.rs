@@ -391,7 +391,15 @@ pub fn pinta_cena_com(
 ) -> (String, Vec<u8>) {
     let mut fases = Fases::default();
     pinta_cena_oleo(
-        pincel, base, cena, tela, papel, foto, camada, oleo(), &mut fases,
+        pincel,
+        base,
+        cena,
+        tela,
+        papel,
+        foto,
+        camada,
+        oleo(),
+        &mut fases,
     )
 }
 
@@ -905,7 +913,11 @@ fn exame_oleo_fases() {
             m.foto
         );
     }
-    let total = |o: Oleo| minimo[variantes.iter().position(|&v| v == o).unwrap()].unwrap().total();
+    let total = |o: Oleo| {
+        minimo[variantes.iter().position(|&v| v == o).unwrap()]
+            .unwrap()
+            .total()
+    };
     println!(
         "[oleo] {} · {nome} foto {foto}: NaFoto ÷ Desligado = {:.2}×",
         pincel.nome,
@@ -968,11 +980,7 @@ fn a_foto_com_oleo_so_na_foto_e_a_de_sempre() {
                 pinta(Oleo::Desligado),
             );
             assert_ne!(sempre, sem, "{cand} foto {foto}: o óleo não mudou a foto");
-            let dif = sempre
-                .iter()
-                .zip(&na_foto)
-                .filter(|(a, b)| a != b)
-                .count();
+            let dif = sempre.iter().zip(&na_foto).filter(|(a, b)| a != b).count();
             assert!(
                 sempre.len() == na_foto.len() && dif == 0,
                 "{cand} foto {foto}: {dif} bytes diferem entre o óleo de sempre e o só na foto"

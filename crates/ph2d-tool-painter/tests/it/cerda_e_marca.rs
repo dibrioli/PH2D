@@ -102,7 +102,10 @@ fn anisotropia_das_pontas(com_grao: bool) -> f64 {
 #[test]
 fn a_ponta_esfarela_pelo_grao() {
     let (fios, grumos) = (anisotropia_das_pontas(false), anisotropia_das_pontas(true));
-    assert!(fios < 0.8, "sem grão a ponta tem de abrir em fios: {fios:.2}");
+    assert!(
+        fios < 0.8,
+        "sem grão a ponta tem de abrir em fios: {fios:.2}"
+    );
     assert!(
         grumos > 0.9,
         "com o grão preso à tela a ponta tem de esfarelar (isotrópica): {grumos:.2} (sem grão {fios:.2})"
@@ -143,7 +146,10 @@ fn o_eixo_atraves_tem_expoente_proprio() {
     let (bx, by) = transicoes(&com(Some(0.0)));
     let (dois, um) = (ay / ax, by / bx);
     println!("y÷x: os dois eixos {dois:.3} · só o 1.º {um:.3} (x {ax} → {bx}, y {ay} → {by})");
-    assert!(um > 1.3 * dois, "y÷x com o 2.º eixo preso aos px {um:.3}, com os dois a crescer {dois:.3}");
+    assert!(
+        um > 1.3 * dois,
+        "y÷x com o 2.º eixo preso aos px {um:.3}, com os dois a crescer {dois:.3}"
+    );
 }
 
 /// ⭐ **A nuvem do spray pousa o pigmento de UM dab** (W3 K5): quatro marcas de `particle` 0,1 do candidato Metallic
@@ -153,16 +159,36 @@ fn o_eixo_atraves_tem_expoente_proprio() {
 fn a_nuvem_do_spray_pousa_o_pigmento_de_um_dab() {
     let mut p = dabber();
     p.parametros.volumes.size_px = Some(96.0);
-    for (k, v) in [("bristleStrength", 0.0), ("felt", 0.05), ("pigmentPerDab", 50.0)] {
+    for (k, v) in [
+        ("bristleStrength", 0.0),
+        ("felt", 0.05),
+        ("pigmentPerDab", 50.0),
+    ] {
         p.parametros.engine.insert(k.into(), v);
     }
     p.parametros.brush.insert("spray_count".into(), json!(4));
-    let mut j = p.parametros.brush.get("dab_jitter").cloned().unwrap_or_else(|| json!({}));
+    let mut j = p
+        .parametros
+        .brush
+        .get("dab_jitter")
+        .cloned()
+        .unwrap_or_else(|| json!({}));
     j["particle"] = json!(0.1);
     j["across"] = json!(1.0);
     p.parametros.brush.insert("dab_jitter".into(), j);
-    let v: Vec<f64> = miniatura_do_preset(&p).rgba.chunks(4).map(tinta).filter(|&t| t > 0.02).collect();
+    let v: Vec<f64> = miniatura_do_preset(&p)
+        .rgba
+        .chunks(4)
+        .map(tinta)
+        .filter(|&t| t > 0.02)
+        .collect();
     let media = v.iter().sum::<f64>() / v.len().max(1) as f64;
-    println!("tinta média dos píxeis da nuvem: {media:.3} ({} píxeis)", v.len());
-    assert!(media > 0.15, "as marcas do spray são discos pálidos: tinta média {media:.3}");
+    println!(
+        "tinta média dos píxeis da nuvem: {media:.3} ({} píxeis)",
+        v.len()
+    );
+    assert!(
+        media > 0.15,
+        "as marcas do spray são discos pálidos: tinta média {media:.3}"
+    );
 }

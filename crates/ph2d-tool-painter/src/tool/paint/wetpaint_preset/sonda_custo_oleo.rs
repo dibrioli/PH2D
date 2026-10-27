@@ -362,8 +362,15 @@ fn a_subsuperficie_do_pincel_recompoe_como_a_tela_inteira() {
     let confere = |t: &mut PainterTool, passo: &str| {
         let viva = t.canvas_rgba.to_vec();
         t.wet_recomposite_full();
-        let difs = viva.iter().zip(t.canvas_rgba.iter()).filter(|(x, y)| x != y).count();
-        assert_eq!(difs, 0, "{passo}: {difs} bytes diferentes da recomposição inteira");
+        let difs = viva
+            .iter()
+            .zip(t.canvas_rgba.iter())
+            .filter(|(x, y)| x != y)
+            .count();
+        assert_eq!(
+            difs, 0,
+            "{passo}: {difs} bytes diferentes da recomposição inteira"
+        );
     };
     traco(&mut t, [20.0, 40.0], [180.0, 60.0], [200, 30, 30]);
     confere(&mut t, "1.º traço");
@@ -373,5 +380,8 @@ fn a_subsuperficie_do_pincel_recompoe_como_a_tela_inteira() {
         t.on_tick(1000.0 / 60.0);
     }
     confere(&mut t, "a água");
-    assert!(t.canvas_rgba.iter().any(|&v| v != 240), "a cena não pintou nada");
+    assert!(
+        t.canvas_rgba.iter().any(|&v| v != 240),
+        "a cena não pintou nada"
+    );
 }

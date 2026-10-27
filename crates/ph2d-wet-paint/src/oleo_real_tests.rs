@@ -817,9 +817,7 @@ fn o_rebote_das_paredes_acende_o_vao_e_nao_a_sombra_de_costas() {
                 0.0
             }
         });
-        for q in &mut g.sett_rgb {
-            *q = cor;
-        }
+        g.sett_rgb.fill(cor);
         g
     };
     let (azul, preto) = (pinta([23.0, 101.0, 179.0]), pinta([0.0; 3]));
@@ -852,7 +850,11 @@ fn o_rebote_das_paredes_acende_o_vao_e_nao_a_sombra_de_costas() {
         acesa > 2.0 * costas,
         "a face de costas para a luz devolve só o céu: acesa {acesa} × costas {costas}"
     );
-    assert!(r(&cp, 26) < 0.1 * vao, "a parede preta não devolve luz: {}", r(&cp, 26));
+    assert!(
+        r(&cp, 26) < 0.1 * vao,
+        "a parede preta não devolve luz: {}",
+        r(&cp, 26)
+    );
     // No papel PLANO (fora das saias da forma, a 8 células de cada bloco) só as paredes contam: a face acesa
     // devolve o sol, a de costas só o céu.
     let (plano_aceso, plano_costas) = (r(&ca, 8), r(&ca, 44));

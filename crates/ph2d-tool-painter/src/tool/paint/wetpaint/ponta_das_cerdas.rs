@@ -79,7 +79,12 @@ impl PontaDasCerdas {
             (f64::from(cy) - self.centro[1]) * self.px_cel,
         ];
         let fio = self.fios.fio_no_ponto(d);
-        self.desloca(sil, cx, cy, FiosNoDab::comprimento_do_fio(fio, self.rho) - 1.0)
+        self.desloca(
+            sil,
+            cx,
+            cy,
+            FiosNoDab::comprimento_do_fio(fio, self.rho) - 1.0,
+        )
     }
 
     /// ⭐ **A ponta que ESFARELA** (W3 K3b, `docs/Painter/Pinceis/W3_K3b_cerda.md`): o desvio de cada célula sai do GRÃO

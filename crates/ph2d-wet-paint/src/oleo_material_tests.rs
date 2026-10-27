@@ -132,7 +132,11 @@ fn o_cartao_antigo_converte_se_pelo_padrao() {
     ] {
         k.poe_campo_antigo(nome, v);
     }
-    assert_eq!(k, MaterialCartao::NEUTRO, "os neutros de antes = o padrão de hoje");
+    assert_eq!(
+        k,
+        MaterialCartao::NEUTRO,
+        "os neutros de antes = o padrão de hoje"
+    );
     k.poe_campo_antigo("rugosidade", 2.0);
     k.poe_campo_antigo("translucidez", 0.4);
     assert_eq!((k.rugosidade, k.subsuperficie), (0.56, 0.4));
@@ -252,7 +256,13 @@ fn o_material_da_camada_chega_ao_sombreado() {
 
 /// Um muro alto de tinta vermelha sobre tinta baixa: a sombra dele cai à direita (luz do topo-esquerda).
 fn muro() -> Grid {
-    grade(|x, _| if (18..=24).contains(&x) { 9000.0 } else { 3000.0 })
+    grade(|x, _| {
+        if (18..=24).contains(&x) {
+            9000.0
+        } else {
+            3000.0
+        }
+    })
 }
 
 fn sat(c: [f64; 3]) -> f64 {
@@ -267,7 +277,10 @@ fn a_subsuperficie_zero_e_a_imagem_de_antes() {
     let base = OleoReal::default();
     let g0 = muro();
     let mut g1 = muro();
-    for (i, m) in crate::grid::material::garante(&mut g1).iter_mut().enumerate() {
+    for (i, m) in crate::grid::material::garante(&mut g1)
+        .iter_mut()
+        .enumerate()
+    {
         if i % g0.s < 40 {
             m.raio_subsuperficie = 12.0;
         }
@@ -300,16 +313,16 @@ fn a_subsuperficie_enche_a_sombra_com_a_cor_da_tinta_e_a_energia_tem_tecto() {
     };
     let mut k = MaterialCartao::NEUTRO;
     k.subsuperficie = 1.0;
-    let com_sss = OleoReal {
-        material: k,
-        ..sem
-    };
+    let com_sss = OleoReal { material: k, ..sem };
     let (c0, c1) = (campo(&g, &sem), campo(&g, &com_sss));
     let mut sombra = (0, [0.0; 3], [0.0; 3]);
     for y in 20..=44 {
         for x in 25..=34 {
             if termos(&sem, &c0, x, y).luz < 0.5 {
-                let (a, b) = (ilumina(&sem, &c0, x, y, VERMELHO, 1.0), ilumina(&com_sss, &c1, x, y, VERMELHO, 1.0));
+                let (a, b) = (
+                    ilumina(&sem, &c0, x, y, VERMELHO, 1.0),
+                    ilumina(&com_sss, &c1, x, y, VERMELHO, 1.0),
+                );
                 sombra.0 += 1;
                 for i in 0..3 {
                     sombra.1[i] += a[i];
@@ -319,21 +332,40 @@ fn a_subsuperficie_enche_a_sombra_com_a_cor_da_tinta_e_a_energia_tem_tecto() {
         }
     }
     assert!(sombra.0 > 20, "a cena não tem sombra: {}", sombra.0);
-    let (a, b) = (sombra.1.map(|v| v / f64::from(sombra.0)), sombra.2.map(|v| v / f64::from(sombra.0)));
+    let (a, b) = (
+        sombra.1.map(|v| v / f64::from(sombra.0)),
+        sombra.2.map(|v| v / f64::from(sombra.0)),
+    );
     assert!(b[0] > a[0] + 3.0, "a sombra não se encheu: {a:?} → {b:?}");
-    assert!(sat(b) > sat(a), "a sombra não ficou mais saturada: {a:?} → {b:?}");
+    assert!(
+        sat(b) > sat(a),
+        "a sombra não ficou mais saturada: {a:?} → {b:?}"
+    );
     for (x, y) in [(52, 30), (58, 40), (55, 10)] {
-        let (a, b) = (ilumina(&sem, &c0, x, y, VERMELHO, 1.0), ilumina(&com_sss, &c1, x, y, VERMELHO, 1.0));
+        let (a, b) = (
+            ilumina(&sem, &c0, x, y, VERMELHO, 1.0),
+            ilumina(&com_sss, &c1, x, y, VERMELHO, 1.0),
+        );
         for i in 0..3 {
-            assert!((a[i] - b[i]).abs() < 0.5, "a tinta lisa iluminada mudou em ({x}, {y}): {a:?} → {b:?}");
+            assert!(
+                (a[i] - b[i]).abs() < 0.5,
+                "a tinta lisa iluminada mudou em ({x}, {y}): {a:?} → {b:?}"
+            );
         }
     }
     let e = |x, y| termos(&com_sss, &c1, x, y).e(&com_sss);
-    let teto = (1..=W).flat_map(|y| (1..=W).map(move |x| (x, y))).map(|(x, y)| e(x, y)).fold(0.0, f64::max);
+    let teto = (1..=W)
+        .flat_map(|y| (1..=W).map(move |x| (x, y)))
+        .map(|(x, y)| e(x, y))
+        .fold(0.0, f64::max);
     for y in 1..=W {
         for x in 1..=W {
             for s in c1.subsuperficie_em(x, y) {
-                assert!(s + e(x, y) <= teto + 1e-6, "({x}, {y}): {s} + {} > {teto}", e(x, y));
+                assert!(
+                    s + e(x, y) <= teto + 1e-6,
+                    "({x}, {y}): {s} + {} > {teto}",
+                    e(x, y)
+                );
             }
         }
     }

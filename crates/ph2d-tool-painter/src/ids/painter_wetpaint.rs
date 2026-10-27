@@ -160,10 +160,7 @@ pub const PAINTER_WETPAINT_OLEO_FAIXAS: [(f64, f64); 16] = [
     (0.0, 1.0),
     (0.0, 1.0),
     (0.0, 1.0),
-    (
-        0.0,
-        ph2d_wet_paint::material::RAIO_SUBSUPERFICIE_MAX as f64,
-    ),
+    (0.0, ph2d_wet_paint::material::RAIO_SUBSUPERFICIE_MAX as f64),
 ];
 
 /// **Environment** chip do **Real Oil** (W1c): o céu que a tinta reflecte (`OleoReal::ambiente`; wire = o

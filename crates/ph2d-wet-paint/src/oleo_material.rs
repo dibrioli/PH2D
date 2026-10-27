@@ -165,7 +165,13 @@ pub(super) fn raio_subsuperficie_max(
 
 /// A irradiância relativa da célula (o difuso de uma tinta cinza `0,5`, plano iluminado = 1) — a luz que a
 /// Subsurface espalha: os mesmos termos difusos do [`super::termos_com`], das peças `lc` da célula.
-fn irradiancia(o: &super::OleoReal, campo: &super::CampoAltura, x: isize, y: isize, lc: &super::LuzCeu) -> f64 {
+fn irradiancia(
+    o: &super::OleoReal,
+    campo: &super::CampoAltura,
+    x: isize,
+    y: isize,
+    lc: &super::LuzCeu,
+) -> f64 {
     let n = super::normal(campo, x, y);
     let l = super::para_a_luz(o);
     let super::LuzCeu { luz, v, dir } = *lc;
@@ -215,7 +221,11 @@ pub(super) fn espalha(
     (ratio, rr): (usize, usize),
     (x0, y0, x1, y1): (usize, usize, usize, usize),
     (gw, gh): (usize, usize),
-) -> (Vec<[f32; 3]>, Vec<super::LuzCeu>, (usize, usize, usize, usize)) {
+) -> (
+    Vec<[f32; 3]>,
+    Vec<super::LuzCeu>,
+    (usize, usize, usize, usize),
+) {
     let (ex0, ey0) = (x0.saturating_sub(rr).max(1), y0.saturating_sub(rr).max(1));
     let (ex1, ey1) = ((x1 + rr).min(gw), (y1 + rr).min(gh));
     let (ew, eh, dw) = (ex1 + 1 - ex0, ey1 + 1 - ey0, x1 + 1 - x0);

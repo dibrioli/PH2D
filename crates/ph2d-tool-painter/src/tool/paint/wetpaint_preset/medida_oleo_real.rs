@@ -1562,7 +1562,12 @@ fn medida_oleo_real_custo() {
         modos.iter().zip(melhor).collect::<Vec<_>>()
     );
     // K10: o mesmo recompor com o rebote das paredes no papel desligado e o de fábrica, Clássico e Estúdio.
-    let modos = ["Clássico sem rebote", "Clássico", "Estúdio sem rebote", "Estúdio"];
+    let modos = [
+        "Clássico sem rebote",
+        "Clássico",
+        "Estúdio sem rebote",
+        "Estúdio",
+    ];
     let mut melhor = [f64::INFINITY; 4];
     for rodada in 0..7 {
         for k in 0..4 {
@@ -1787,6 +1792,9 @@ fn o_papel_nos_vaos_entre_lascas_nao_fica_preto() {
         assert!(n > 500, "a cena mudou: {n} vãos");
         let f = 100.0 * pretos as f64 / n as f64;
         println!("[vãos] {ambiente:?}: {n} vãos, {f:.2} % abaixo de 70");
-        assert!(f <= tecto, "{ambiente:?}: {f:.2} % dos vãos abaixo de 70 (tecto {tecto} %)");
+        assert!(
+            f <= tecto,
+            "{ambiente:?}: {f:.2} % dos vãos abaixo de 70 (tecto {tecto} %)"
+        );
     }
 }

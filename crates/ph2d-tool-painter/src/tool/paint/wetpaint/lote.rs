@@ -169,7 +169,10 @@ pub(super) fn escala_o_grao(t: &mut ph2d_painter_brush::texture::TextureSettings
 /// [`escala_da_textura`] do grão `Tiled`, em qualquer mapeamento (View e Flow incluídos: o tapete nunca seguia o raio).
 /// ⭐ Por EIXO (W3 K5, `docs/Painter/Pinceis/W3_K5.md`): `escala = [u, v]` — o `v` (através do traço, com Flow/Rake) pelo
 /// [`ph2d_wet_paint::tuning::Knob::TextureSizeExpAcross`] ([`escala_atraves`]).
-pub(super) fn escala_as_cerdas(t: &mut ph2d_painter_brush::texture::TextureSettings, escala: [f32; 2]) {
+pub(super) fn escala_as_cerdas(
+    t: &mut ph2d_painter_brush::texture::TextureSettings,
+    escala: [f32; 2],
+) {
     if escala != [1.0, 1.0] && t.kind == ph2d_painter_brush::TextureKind::Bristles {
         t.size = [t.size[0] / escala[0], t.size[1] / escala[1]];
     }
@@ -197,7 +200,9 @@ pub(super) fn escala_atraves(
 /// Cada marca menor que o pincel leva `1 ÷ (n·p²)` do pigmento por célula (a área do dab repartida pelas marcas);
 /// sem spray, ou com marcas do tamanho do pincel, `1`, ao bit. `p` tem o piso de 0,5 px de raio do `dab_from`.
 pub(super) fn pigmento_da_marca(brush: &BrushSpec) -> f32 {
-    let n = brush.spray_count.clamp(1, ph2d_painter_brush::stroke::spray::SPRAY_COUNT_MAX);
+    let n = brush
+        .spray_count
+        .clamp(1, ph2d_painter_brush::stroke::spray::SPRAY_COUNT_MAX);
     let r = brush.clamped_radius();
     let p = brush.dab_jitter.particula_no(brush.spray_count, r);
     if n <= 1 || p >= 1.0 {

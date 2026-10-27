@@ -17,7 +17,10 @@ const EDGE: f32 = 0.025;
 
 /// The `s`-th independent hash of cell `(ix, iy)`.
 fn h(ix: i32, iy: i32, s: i32) -> f32 {
-    hash2(ix.wrapping_add(s.wrapping_mul(1013)), iy.wrapping_sub(s.wrapping_mul(7919)))
+    hash2(
+        ix.wrapping_add(s.wrapping_mul(1013)),
+        iy.wrapping_sub(s.wrapping_mul(7919)),
+    )
 }
 
 /// `k` = `[Size, Elongation, Irregularity, Invert]` (the slots after Contrast / Brightness).
@@ -33,7 +36,11 @@ pub(super) fn flakes(u: f32, v: f32, k: &[f32]) -> f32 {
             }
         }
     }
-    if k.get(3).is_some_and(|&i| i > 0.5) { cover } else { 1.0 - cover }
+    if k.get(3).is_some_and(|&i| i > 0.5) {
+        cover
+    } else {
+        1.0 - cover
+    }
 }
 
 /// The knobs, decoded.
@@ -46,7 +53,11 @@ struct Forma {
 impl Forma {
     fn de(k: &[f32]) -> Self {
         let g = |i: usize| k.get(i).copied().unwrap_or(0.5).clamp(0.0, 1.0);
-        Self { size: g(0), elong: 1.0 + 3.0 * g(1), irr: 0.3 * g(2) }
+        Self {
+            size: g(0),
+            elong: 1.0 + 3.0 * g(1),
+            irr: 0.3 * g(2),
+        }
     }
 
     /// How much the flake of cell `(ix, iy)` covers `(u, v)`, `0..1` (the edge ramp is [`EDGE`]).
@@ -61,7 +72,11 @@ impl Forma {
         }
         let mut d = [2.0 * h(ix, iy, 4) - 1.0, 2.0 * h(ix, iy, 5) - 1.0];
         let n = (d[0] * d[0] + d[1] * d[1]).sqrt();
-        d = if n > 0.05 { [d[0] / n, d[1] / n] } else { [1.0, 0.0] };
+        d = if n > 0.05 {
+            [d[0] / n, d[1] / n]
+        } else {
+            [1.0, 0.0]
+        };
         let q = [p[0] * d[0] + p[1] * d[1], -p[0] * d[1] + p[1] * d[0]];
         // the rectangle's corners (CCW), each pushed by up to `irr` of its half-extents — still convex
         let mut cs = [[a, b], [-a, b], [-a, -b], [a, -b]];

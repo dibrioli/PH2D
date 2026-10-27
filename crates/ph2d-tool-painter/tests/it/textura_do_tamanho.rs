@@ -81,7 +81,11 @@ fn a_marca_pequena_do_spray_pousa() {
     let soma = |p: &Preset| -> f64 { miniatura_do_preset(p).rgba.chunks(4).map(tinta).sum() };
     let mut sem = dabber();
     sem.parametros.volumes.size_px = Some(96.0);
-    for (k, v) in [("bristleStrength", 0.0), ("felt", 0.05), ("pigmentPerDab", 2000.0)] {
+    for (k, v) in [
+        ("bristleStrength", 0.0),
+        ("felt", 0.05),
+        ("pigmentPerDab", 2000.0),
+    ] {
         sem.parametros.engine.insert(k.into(), v);
     }
     let mut com = sem.clone();

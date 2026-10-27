@@ -69,6 +69,10 @@ pub(super) fn parametros(r: &Receita) -> Parametros {
             p.engine.insert("pressureOpacity".to_owned(), 0.0);
             p
         }
+        // Um candidato SEM vizinho (o Oil Bristle, fora da fábrica desde o smoke do dono 27/10): o ficheiro dele.
+        Err(_) if r.nasce_de.is_none() && super::midias_de_fabrica::candidato(r.nome).is_some() => {
+            super::midias_de_fabrica::candidato(r.nome).unwrap().parametros
+        }
         // Os do prompt 53 nascem do ficheiro do vizinho, como a sonda do doc 52 os mediu.
         Err(_) if r.nasce_de.is_some() => {
             let base = r.nasce_de.unwrap();
@@ -919,9 +923,9 @@ fn a_receita_recusa_uma_mao_que_o_meio_nao_le() {
 }
 
 /// Os aprovados cuja marca É o carimbo espaçado (Óleo Real W3, revisão cega): o Dabber 4 (Spacing 0,3 sem o
-/// Continuous — toques soltos de esponja, `W3_P_Dabber.md`) e o Metallic Splats (Spacing 0,25 — o spray de pontos,
-/// `W3_P_Metallic.md`). Com o Spacing 0,1 a marca deles vira faixa contínua: outro pincel.
-const CARIMBOS_ESPACADOS: [&str; 2] = ["Dabber 4", "Metallic Splats"];
+/// Continuous — toques soltos de esponja, `W3_P_Dabber.md`). Com o Spacing 0,1 a marca dele vira faixa contínua: outro
+/// pincel. (O Metallic Splats, 0,25, saiu da fábrica no smoke do dono 27/10 — `EM_ESTUDO_W2`.)
+const CARIMBOS_ESPACADOS: [&str; 1] = ["Dabber 4"];
 
 /// ⭐ **A REGRA do Spacing** (dono 18/10, prompt 51): cada pincel de fábrica do WET PAINT — e o que nasce SEM preset —
 /// leva o Spacing [`SPACING_DA_FABRICA`] com o Continuous ligado. Os outros meios não: a regra é a da cápsula e do
@@ -1019,25 +1023,15 @@ const TOLERANCIA_REL: f32 = 0.02;
 /// a 52 px; 3,8 % a 240). A cura é um grão sem estrutura grande, não a tabela (05 §4b).
 const TOLERANCIA_REL_GRAO: f32 = 0.10;
 
-/// A borda que varia com ONDE o traço cai — e por isso a [`TOLERANCIA_REL_GRAO`]: o slot Grain armado, ou as
-/// PARTÍCULAS espalhadas na largura (`spray_count` > 1 ou `dab_jitter.across` > 0: Metallic Splats, Óleo Real W3 —
-/// cada raio sorteia outros pontos na franja; medido 27/10 na regeração: 58,548 → 103 px e 58,6 → 111 px).
+/// A borda que varia com ONDE o traço cai — e por isso a [`TOLERANCIA_REL_GRAO`]: o slot Grain armado. (As partículas
+/// espalhadas na largura — `spray_count` > 1, `dab_jitter.across` > 0 — só o Metallic Splats as tinha no Wet; saiu da
+/// fábrica no smoke do dono 27/10 e a cláusula com ele.)
 fn borda_ruidosa(p: &Preset) -> bool {
-    let b = &p.parametros.brush;
-    let grao = b
+    p.parametros
+        .brush
         .get("texture")
         .and_then(|t| t.get("kind"))
-        .is_some_and(|k| k != "None");
-    let spray = b
-        .get("spray_count")
-        .and_then(serde_json::Value::as_f64)
-        .is_some_and(|n| n > 1.0);
-    let espalha = b
-        .get("dab_jitter")
-        .and_then(|j| j.get("across"))
-        .and_then(serde_json::Value::as_f64)
-        .is_some_and(|a| a > 0.0);
-    grao || spray || espalha
+        .is_some_and(|k| k != "None")
 }
 
 /// As larguras de `p` nos [`RAIOS_DA_PROMESSA`], com a promessa (`crua = false`) ou sem ela.

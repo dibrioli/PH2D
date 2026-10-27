@@ -48,6 +48,31 @@ pub use preview::{
 };
 pub use preview_borracha::COR_DO_FUNDO_DA_BORRACHA;
 
+/// (Testes) O preset de fábrica `nome` — ou, se saiu da fábrica, o ficheiro do seu candidato em
+/// `docs/Painter/Pinceis/W2_<grupo>_candidatos/` (o Oil Bristle, smoke do dono 27/10: a base de muitas medidas).
+#[cfg(test)]
+pub(in crate::tool::paint) fn de_fabrica_ou_candidato(nome: &str) -> Preset {
+    let raiz = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../");
+    ph2d_brush_presets::Biblioteca::carregar(&raiz.join("assets/brushes"), None)
+        .entradas
+        .into_iter()
+        .find(|e| e.preset.parametros.name == nome)
+        .map(|e| e.preset)
+        .or_else(|| {
+            std::fs::read_dir(raiz.join("docs/Painter/Pinceis"))
+                .ok()?
+                .flatten()
+                .filter(|d| {
+                    let n = d.file_name();
+                    let n = n.to_string_lossy();
+                    n.starts_with("W2_") && n.ends_with("_candidatos")
+                })
+                .find_map(|d| std::fs::read(d.path().join(format!("{nome}.ph2d-brush.png"))).ok())
+                .map(|b| ph2d_brush_presets::ler(&b).expect("o ficheiro do candidato lê-se"))
+        })
+        .unwrap_or_else(|| panic!("o preset {nome:?}: nem na fábrica nem candidato"))
+}
+
 /// O meio-alvo de todo preset desta família (o `media` do JSON).
 pub const MEIO_DO_PRESET: &str = "WetPaint";
 /// A pasta-raiz da família em `assets/brushes/` e em `~/.local/share/ph2d/brushes/`.

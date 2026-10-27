@@ -96,14 +96,8 @@ fn verde(c: [f64; 3]) -> f64 {
 /// soltar nem ao secar — caixa desligada e ligada. Antes da cura: Oil Bristle +17, Express Oil +10.
 #[test]
 fn o_azul_sobre_azul_nao_fica_verde_no_soltar() {
-    let b = super::mistura_wet_drip_tests::biblioteca();
     for nome in ["Oil Bristle", "Express Oil"] {
-        let e = &b
-            .entradas
-            .iter()
-            .find(|e| e.preset.parametros.name == nome)
-            .expect("o pincel de fábrica")
-            .preset;
+        let e = &crate::tool::paint::wetpaint_preset::de_fabrica_ou_candidato(nome);
         for km in [false, true] {
             for par in PARES {
                 let [antes, depois, seco] = cena(e, km, par, 0.1);
@@ -171,13 +165,7 @@ pub(super) fn sem_os_fios(t: &mut PainterTool) {
 /// A tela do Oil Bristle SEM relevo nem fios (o realce do Emboss e a cor de cada fio não são desta régua) com o
 /// claro seco e, se `escuro`, o escuro a `forca` × o pigmento por cima (soltado).
 fn tela(claro: [u8; 3], escuro: Option<([u8; 3], f64)>) -> PainterTool {
-    let b = super::mistura_wet_drip_tests::biblioteca();
-    let e = &b
-        .entradas
-        .iter()
-        .find(|e| e.preset.parametros.name == "Oil Bristle")
-        .expect("o pincel de fábrica")
-        .preset;
+    let e = &crate::tool::paint::wetpaint_preset::de_fabrica_ou_candidato("Oil Bristle");
     let mut t = PainterTool::default();
     t.set_source(vec![255u8; W * H * 4], W as u32, H as u32);
     t.set_paint_tool_mode("wetpaint");

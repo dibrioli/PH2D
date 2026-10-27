@@ -74,3 +74,10 @@ o tom mais perto. `particle` 0,01 = o mesmo tamanho de marca que 0,02 (324): ver
 `W2_Metallic_candidatos/Metallic {Flat,Round,Splats}.ph2d-brush.png` (valores finais; miniatura ainda a da W2) ·
 pranchas rotuladas da ronda final `pranchas/W3_Metallic_{flat,round,splats}.jpg` · folha W2 | W3 | Rebelle | irmão
 (faixa `tamanhos` A) `pranchas/W3_Metallic_folha.jpg`. Rondas: 2 revisores `sonnet` (um por ronda, os 3 presets juntos).
+
+## Smoke do dono 27/10
+
+**Metallic Splats REPROVADO pelo dono** («muito inferior ao do Rebelle, realmente ruim»): saiu da fábrica e voltou a
+candidato — `W2_Metallic_candidatos/Metallic Splats.ph2d-brush.png` (o ficheiro que estava na fábrica) e a receita
+`METALLIC_SPLATS` em `EM_ESTUDO_W2`. Sem ele saem a isenção do Spacing (`CARIMBOS_ESPACADOS` = só o Dabber 4) e a
+cláusula das partículas da `borda_ruidosa()` (só ele a usava no Wet). O Metallic Flat fica.

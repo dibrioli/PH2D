@@ -202,13 +202,19 @@ pub fn pinceis(spec: &str) -> Vec<Pincel> {
                     relativo: s.to_owned(),
                 },
             });
-        } else {
-            let e = bib
-                .entradas
-                .iter()
-                .find(|e| e.preset.parametros.name == s)
-                .unwrap_or_else(|| panic!("o pincel {s:?} não está na biblioteca"));
+        } else if let Some(e) = bib.entradas.iter().find(|e| e.preset.parametros.name == s) {
             v.push(de_entrada(e));
+        } else {
+            // Saiu da fábrica (o Oil Bristle, smoke do dono 27/10): o ficheiro do candidato, pelo nome.
+            let preset = crate::midias_de_fabrica::candidato(s)
+                .unwrap_or_else(|| panic!("o pincel {s:?} não está na biblioteca"));
+            v.push(Pincel {
+                nome: s.to_owned(),
+                fonte: Fonte::Preset {
+                    relativo: format!("candidato/{s}.ph2d-brush.png"),
+                    preset: Box::new(preset),
+                },
+            });
         }
     }
     v

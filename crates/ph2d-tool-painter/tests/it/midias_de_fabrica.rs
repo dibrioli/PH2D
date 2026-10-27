@@ -191,14 +191,34 @@ pub(super) fn raio_da_midia(nome: &str) -> Option<f32> {
     MIDIAS.iter().find(|m| m.preset == nome).map(|m| m.raio)
 }
 
+/// O preset de fábrica `nome` — ou, se saiu da fábrica, o seu ficheiro de candidato ([`candidato`]): o Oil Bristle
+/// (smoke do dono 27/10) continua a base de muitas medidas.
 pub(super) fn de_fabrica(nome: &str) -> Preset {
     let raiz = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes");
     Biblioteca::carregar(&raiz, None)
         .entradas
         .into_iter()
         .find(|e| e.preset.parametros.name == nome)
+        .map(|e| e.preset)
+        .or_else(|| candidato(nome))
         .unwrap_or_else(|| panic!("o preset de fábrica {nome:?}"))
-        .preset
+}
+
+/// O ficheiro `docs/Painter/Pinceis/W2_<grupo>_candidatos/<nome>.ph2d-brush.png` de um preset que saiu (ou ainda não
+/// entrou) na fábrica — `EM_ESTUDO_W2`.
+pub(super) fn candidato(nome: &str) -> Option<Preset> {
+    let docs = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../docs/Painter/Pinceis");
+    std::fs::read_dir(&docs)
+        .ok()?
+        .flatten()
+        .filter(|d| {
+            let n = d.file_name();
+            let n = n.to_string_lossy();
+            n.starts_with("W2_") && n.ends_with("_candidatos")
+        })
+        .map(|d| d.path().join(format!("{nome}.ph2d-brush.png")))
+        .find_map(|f| std::fs::read(f).ok())
+        .map(|b| ph2d_brush_presets::ler(&b).expect("o ficheiro do candidato lê-se"))
 }
 
 /// As tiragens do PÓ em que se medem as pontas e a rampa ([`FamiliaC`]) de um meio com pó (a mediana): numa só a régua

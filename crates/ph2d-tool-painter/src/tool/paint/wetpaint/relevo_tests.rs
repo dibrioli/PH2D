@@ -72,15 +72,7 @@ fn o_emboss_morde_sem_papel_e_nasce_desligado() {
 #[test]
 fn o_relevo_fica_com_a_tinta_ao_trocar_para_um_pincel_sem_relevo() {
     const H2: usize = 160;
-    let b = super::mistura_wet_drip_tests::biblioteca();
-    let preset = |nome: &str| {
-        b.entradas
-            .iter()
-            .find(|e| e.preset.parametros.name == nome)
-            .expect("o pincel de fábrica")
-            .preset
-            .clone()
-    };
+    let preset = crate::tool::paint::wetpaint_preset::de_fabrica_ou_candidato;
     let p = |x: f32, y: f32, phase| CanvasPointer {
         pos: [x, y],
         pressure: 1.0,

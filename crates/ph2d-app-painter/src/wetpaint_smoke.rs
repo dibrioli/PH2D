@@ -133,15 +133,20 @@ pub fn arm_brush_once(painter: &mut ph2d_tool_painter::PainterTool) {
     );
 }
 
-/// O Oil Bristle de fábrica, e o de ONTEM (o mesmo sem o relevo de cada fio, `bristleHeight`).
+/// O Oil Bristle, e o de ONTEM (o mesmo sem o relevo de cada fio, `bristleHeight`). Saiu da fábrica no smoke do
+/// dono 27/10: vem do ficheiro do candidato (`docs/Painter/Pinceis/W2_Bristle_candidatos/`), se a fábrica não o tem.
 #[cfg(feature = "panel-painter-layers")]
 fn oil_bristle() -> Option<(ph2d_brush_presets::Preset, ph2d_brush_presets::Preset)> {
-    let raiz = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes");
-    let hoje = ph2d_brush_presets::Biblioteca::carregar(&raiz, None)
+    let raiz = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let hoje = ph2d_brush_presets::Biblioteca::carregar(&raiz.join("assets/brushes"), None)
         .entradas
         .into_iter()
-        .find(|e| e.preset.parametros.name == "Oil Bristle")?
-        .preset;
+        .find(|e| e.preset.parametros.name == "Oil Bristle")
+        .map(|e| e.preset)
+        .or_else(|| {
+            let f = raiz.join("docs/Painter/Pinceis/W2_Bristle_candidatos/Oil Bristle.ph2d-brush.png");
+            ph2d_brush_presets::ler(&std::fs::read(f).ok()?).ok()
+        })?;
     let mut ontem = hoje.clone();
     ontem.parametros.engine.remove("bristleHeight");
     Some((hoje, ontem))

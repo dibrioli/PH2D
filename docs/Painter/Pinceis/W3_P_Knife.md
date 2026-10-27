@@ -169,6 +169,21 @@ pela porta WebSocket (o mesmo gesto ×1,7 no documento de arranque, papel RH00 c
   a fechar o depósito em 1–2 colunas até ~0 na borda (medido: colunas a 0,6× dos vizinhos, a 0 na borda de baixo); como
   é presa à tela, ficam nos MESMOS sítios em todos os traços (as fotos do dono confirmam). O Rebelle tem riscas mais
   pálidas mas não furos. Cura = afinar a textura do preset (ronda de pincel, com régua contra o Rebelle).
+  ✅ **CURADO (ronda de afinação, 27/10):** Contrast da textura 0,5 → **0,25** (`ESTRIAS_DO_TEXTURED`). Sonda
+  `sonda_knife_textured_cortes` (`lamina_sobreposta_tests.rs`), a mesma cena de 3 traços no papel com grão, variantes
+  pela porta do ficheiro no MESMO processo:
+
+  | variante | cortes 1.º · 2.º · 3.º traço | lum. mediana do miolo (1.º) | p02 (1.º) |
+  |---|---|---|---|
+  | antes (Contrast 0,5) | 6 · 1 · 6 | 104,7 | 82,8 |
+  | **Contrast 0,25 (fábrica)** | **0 · 0 · 0** | 104,3 | 82,6 |
+  | Contrast 0,15 · 0,25 + Brightness 0,6 · 0,25 + Size 60×4 · Contrast 0 · Brightness 1 | 0 · 0 · 0 (a MESMA foto) | 104,3 | 82,6 |
+
+  ⇒ a textura só morde nos MÍNIMOS do ruído: acima do piso (0,25) o depósito satura (pigmento 400) e todas as
+  variantes dão a mesma foto. Os cortes eram esses mínimos (~0), presos à tela. As estrias ao longo do traço ficam (são
+  da lâmina/relevo, não da textura); as do Rebelle continuam mais pálidas — tirar pigmento para as mostrar muda o
+  aprovado, fica fora desta ronda. Gate `tres_tracos_sobrepostos_da_faca_textured_ficam_no_planalto` verde. Prancha
+  antes | depois | Rebelle: [`pranchas/BUG_knife_textured_cortes.jpg`](pranchas/BUG_knife_textured_cortes.jpg).
 - manchas claras no miolo (o brilho em tinta fina sobre o relevo do papel) e as bordas em terraço das sobreposições (o
   Rebelle também deixa degrau nas pontas, mais macio) — com o «relevo sem pigmento nas bordas» que corre em paralelo
   em `oleo_real.rs`.

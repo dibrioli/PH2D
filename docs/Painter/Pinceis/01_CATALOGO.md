@@ -179,7 +179,7 @@ Wine pela entrega C (`02_ORACULOS.md`); até lá «doc.». Motor: **Dg** Digital
 
 | # | Nome nosso | Origem | Oráculo que corre | Identidade | Motor | Razão de uso | Falta | P |
 |---|---|---|---|---|---|---|---|---|
-| G-1 | ✅ Oil Bristle | Pc Old Brush / Oil Paint / Turpentine · CP RealBristle · Kr Bristles-1..3 · MP oil-01-paint | Rb `Oil/Bristle/Bristle Flat` † (sem rotação) · MP `tanda/oil-01-paint` | sulcos de cerda, cor que mistura com a de baixo | WP | o óleo a pincel | CAP-19 | P1 |
+| G-1 | Oil Bristle (fora da fábrica desde o smoke 27/10, §3g) | Pc Old Brush / Oil Paint / Turpentine · CP RealBristle · Kr Bristles-1..3 · MP oil-01-paint | Rb `Oil/Bristle/Bristle Flat` † (sem rotação) · MP `tanda/oil-01-paint` | sulcos de cerda, cor que mistura com a de baixo | WP | o óleo a pincel | CAP-19 | P1 |
 | G-2 | ✅ Acrylic Round | Pc Round Brush / Acrylic · CP Acrylics · MP acrylic-04-paint | Rb `Oil/Round/Round Hard` † · MP `tanda/acrylic-04-paint` | redondo opaco, borda firme, seca rápido | WP | acrílica de cobertura | — (suspeito × G-3) | P1 |
 | G-3 | ✅ Express Oil | Rb Express Oil | Rb `ExpressOil/Round/Hairy` † | óleo rápido e fluido, mistura sem secar | WP | estudos alla prima | — | P1 |
 | G-4 | ✅ Dabber | Rb Dabber · CP Impressionist | Rb `Oil/Dabber/Dabber` † | toques curtos de cerdas | WP | folhagem, impressionismo | — (suspeito × G-1) | P1 |
@@ -349,6 +349,19 @@ Splats ([`W2_Metallic_exame.md`](W2_Metallic_exame.md)).
 **Total: 27 aprovados, fábrica 54** (Wet 38, Digital 16). Ficam curados não aprovados (`EM_ESTUDO_W2`): Knife Smooth ·
 Smooth 2 · Soft · Dry 2; Dabber 2 · 3 · Fan; Metallic Round. Os 13 lado a lado com o Rebelle:
 [`pranchas/W3_presets.jpg`](pranchas/W3_presets.jpg).
+
+## §3g — Smoke do dono 27/10: dois saem da fábrica
+
+- **Metallic Splats** — reprovado pelo dono: «muito inferior ao do Rebelle, realmente ruim». Volta a candidato
+  (`W2_Metallic_candidatos/`, receita em `EM_ESTUDO_W2`); sai também a isenção do Spacing (`CARIMBOS_ESPACADOS`, fica
+  só o Dabber 4) e a cláusula das partículas da `borda_ruidosa()` (só ele a usava no Wet).
+- **Oil Bristle** — tirado «a princípio» (era «ajustado», não aprovado). Candidato em `W2_Bristle_candidatos/` com a
+  receita; continua a base de receitas (`..OIL_BRISTLE`) e de medidas (lidas do ficheiro do candidato). A medição W2 ×
+  W3 × Rebelle com o Óleo Real ligado: [`W3_oil_bristle_W2_x_W3.md`](W3_oil_bristle_W2_x_W3.md).
+- **Knife Textured** (fica): textura `Noise` Contrast 0,5 → 0,25 — sem os cortes verticais do 1.º traço
+  ([`W3_P_Knife.md`](W3_P_Knife.md) §BUG, prancha [`BUG_knife_textured_cortes.jpg`](pranchas/BUG_knife_textured_cortes.jpg)).
+
+**Total: 26 aprovados, fábrica 52** (Wet 36, Digital 16).
 
 ## §4 — Licenças por ARTEFACTO (medido 19/10 nesta máquina)
 

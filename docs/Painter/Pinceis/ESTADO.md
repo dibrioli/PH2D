@@ -32,6 +32,11 @@
   Dabber 2 · 3 · Fan; Metallic Round. Dabber 4 e Metallic Splats saem da regra do Spacing pelo nome
   (`CARIMBOS_ESPACADOS`: a marca deles é o carimbo espaçado). Prancha dos 13: [`pranchas/W3_presets.jpg`](pranchas/W3_presets.jpg).
 
+- **Smoke do dono 27/10** ([`01_CATALOGO §3g`](01_CATALOGO.md)): saem da fábrica o **Metallic Splats** (reprovado: «muito
+  inferior ao do Rebelle») e o **Oil Bristle** («a princípio»; medição W2 × W3 em
+  [`W3_oil_bristle_W2_x_W3.md`](W3_oil_bristle_W2_x_W3.md)) — candidatos com receita (`EM_ESTUDO_W2`). Knife Textured
+  sem os cortes do 1.º traço (Contrast da textura 0,25). **Total: 26 aprovados, fábrica 52** (Wet 36, Digital 16).
+
 ## Decisões de produto (com o porquê)
 
 1. Filbert/Flat Oily/Knife Smooth só voltam com o exame e o Rebelle ao lado; a lâmina do Rebelle é FIXA no eixo do

@@ -13,14 +13,26 @@ pub(super) const TH: u32 = 560;
 /// O preset de fábrica `nome`, a tela do papel, o papel com grão (`papel`: o Cold do painel com o Relief 0,6) e o
 /// Óleo Real ligado desde o início (a tela é a do produto a cada quadro).
 pub(super) fn pincel(nome: &str, papel: bool) -> PainterTool {
+    pincel_com(nome, papel, |_| {})
+}
+
+/// [`pincel`] com o preset mudado por `muda` ANTES de aplicado (a porta do ficheiro: o que a fábrica gravaria).
+pub(super) fn pincel_com(
+    nome: &str,
+    papel: bool,
+    muda: impl Fn(&mut ph2d_brush_presets::Preset),
+) -> PainterTool {
     let raiz = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes");
     let b = ph2d_brush_presets::Biblioteca::carregar(&raiz, None);
-    let p = &b
+    let mut p = b
         .entradas
         .iter()
         .find(|e| e.preset.parametros.name == nome)
         .unwrap_or_else(|| panic!("{nome}: não está na fábrica"))
-        .preset;
+        .preset
+        .clone();
+    muda(&mut p);
+    let p = &p;
     let mut t = PainterTool::default();
     t.set_source(vec![236u8; (TW * TH * 4) as usize], TW, TH);
     t.set_wet_relogio_fixo(true);
@@ -362,5 +374,64 @@ fn tres_tracos_sobrepostos_da_faca_textured_ficam_no_planalto() {
             k + 1,
             r.max
         );
+    }
+}
+
+/// **Sonda (ignorada) — os cortes do 1.º traço da Knife Textured** (`W3_P_Knife.md` §BUG, «o que fica»): a textura
+/// `Noise` 60 × 2 do preset (Contrast 0,5) quase parava a tinta em 1–2 colunas; a fábrica leva 0,25 desde então
+/// (todas as variantes ≤ 0,25 dão 0 cortes e a MESMA foto: a tinta satura acima do piso). As variantes da afinação (Contrast/Brightness = os
+/// `params` 0/1, a escala `size`) no MESMO processo, 1/2/3 traços no papel com grão e o Óleo Real ligado: os cortes
+/// da régua, as fendas claras/escuras e a luminância mediana do miolo; as fotos em `$PH2D_SONDA_OUT/cortes_*`.
+#[test]
+#[ignore = "sonda: os cortes da Knife Textured; corre-se à mão"]
+fn sonda_knife_textured_cortes() {
+    let dir = std::path::PathBuf::from(std::env::var("PH2D_SONDA_OUT").expect("PH2D_SONDA_OUT"));
+    std::fs::create_dir_all(&dir).expect("pasta");
+    let variantes: [(&str, f32, f32, f32); 8] = [
+        ("fabrica", 0.5, 0.5, 2.0),
+        // O preset de antes (Contrast 0,5: 6 cortes no 1.º traço) e dois extremos (a textura só morde nos mínimos).
+        ("antes_c50", 0.5, 0.5, 2.0),
+        ("c00", 0.0, 0.5, 2.0),
+        ("b100", 0.5, 1.0, 2.0),
+        ("c25", 0.25, 0.5, 2.0),
+        ("c15", 0.15, 0.5, 2.0),
+        ("c25b60", 0.25, 0.6, 2.0),
+        ("c25s4", 0.25, 0.5, 4.0),
+    ];
+    for (nome, contraste, brilho, alto) in variantes {
+        let mut t = pincel_com("Knife Textured", true, |p| {
+            if nome == "fabrica" {
+                return;
+            }
+            let tex = p.parametros.brush.get_mut("texture").expect("a textura do preset");
+            tex["params"][0] = serde_json::json!(contraste);
+            tex["params"][1] = serde_json::json!(brilho);
+            tex["size"][1] = serde_json::json!(alto);
+        });
+        for k in 0..3 {
+            traco(&mut t, k);
+            let r = regua(&mut t);
+            let f = foto(&t);
+            let (claros, escuros) = fendas(&f, &r.miolo);
+            let mut lum: Vec<f64> = r
+                .miolo
+                .iter()
+                .map(|&(x, y)| {
+                    let i = 3 * ((x - 1) + (y - 1) * TW as usize);
+                    0.2126 * f64::from(f[i]) + 0.7152 * f64::from(f[i + 1]) + 0.0722 * f64::from(f[i + 2])
+                })
+                .collect();
+            lum.sort_by(f64::total_cmp);
+            let med = lum.get(lum.len() / 2).copied().unwrap_or(0.0);
+            let p02 = lum.get(lum.len() / 50).copied().unwrap_or(0.0);
+            println!(
+                "[cortes] {nome:<8} {} traço(s): cortes {} · claros {claros:.4} · escuros {escuros:.4} · lum med {med:.1} p02 {p02:.1} · tmax {:.2} · degrau máx {:.2}",
+                k + 1,
+                r.cortes,
+                r.tmax,
+                r.max
+            );
+            grava(&dir, &format!("cortes_{nome}_{}", k + 1), &f);
+        }
     }
 }

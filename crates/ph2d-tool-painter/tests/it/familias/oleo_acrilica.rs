@@ -1,4 +1,6 @@
-//! **Família `oleo_acrilica`** — J4, catálogo G (óleo, acrílica): Oil Bristle, Express Oil, Dabber, Filbert, Flat Bristle; as quatro facas aprovadas da W2 do Óleo Real (E4) e os cinco aprovados da W3 (Knife Textured/Stain, Dabber 4, Metallic Flat/Splats).
+//! **Família `oleo_acrilica`** — J4, catálogo G (óleo, acrílica): Express Oil, Dabber, Filbert, Flat Bristle; as quatro facas aprovadas da W2 do Óleo Real (E4) e os quatro aprovados da W3 que ficam (Knife Textured/Stain, Dabber 4, Metallic Flat).
+//! O Oil Bristle e o Metallic Splats saíram da fábrica no smoke do dono 27/10 ([`EM_ESTUDO_W2`]); o Oil Bristle continua
+//! a base de muitas receitas (`..OIL_BRISTLE`, `nasce_de`) e de medidas (o ficheiro do candidato, `de_fabrica`).
 //! A Acrylic Round saiu na 2.ª ronda: fundida no Hard Round (`exames/oleo_acrilica.md`, G-2).
 //! Escreva aqui as receitas e os testes da família; nada fora deste ficheiro (`docs/Painter/Pinceis/04_BANCADA.md` §9).
 
@@ -12,8 +14,6 @@ const PASSO_DOS_OLEOS: f64 = 0.01;
 // e o grão no lugar das cerdas). Cada um medido contra a foto do seu preset-oráculo do Rebelle, seco, à
 // largura dela; o tamanho é o do preset dele. `cada_preset_parece_a_sua_midia` guarda-os.
 pub const WET: &[Receita] = &[
-    // Oil & Acrylic › Bristle Flat: corpo cheio, estrias das cerdas, relevo.
-    OIL_BRISTLE,
     // Express Oil › Hairy: claro e liso, tufos (prompt 23, aceite do dono 12/10). A claridade é POUCO
     // pigmento — com o Spacing 0,01 cada célula leva ~100 carimbos, por isso 60 e não 250; sem água (a água
     // assentava o pouco pigmento nos poros: grão 0,065 → 0,027); cerdas 4 = tufos sem sal.
@@ -71,7 +71,6 @@ pub const WET: &[Receita] = &[
     KNIFE_STAIN,
     DABBER_4,
     METALLIC_FLAT,
-    METALLIC_SPLATS,
 ];
 
 // `dabberc_032` (prompt 53): o Oil Bristle de cerdas largas, mais relevo e a ponta espalhada (jitter) — a esponja.
@@ -364,6 +363,10 @@ pub const EM_ESTUDO: &[Receita] = &[FLAT_BRISTLE, RAKE];
 /// (a bancada lê-o pelo caminho) e a receita aqui o refaz ([`os_candidatos_da_w2_sao_as_suas_receitas`]); nenhum entra
 /// na fábrica (`os_reprovados_do_oleo_nao_estao_na_fabrica`). Porquê de cada um: `W2_Knife_E4.md`, `W2_Dabber_E4.md`,
 /// `W2_Metallic_exame.md` e, com os valores finais da W3, `W3_P_{Knife,Dabber,Metallic}.md`.
+/// Os dois últimos SAÍRAM da fábrica no smoke do dono 27/10 (a receita é a de fábrica, 1:1; o ficheiro é o de fábrica):
+/// - **Metallic Splats** — reprovado pelo dono no smoke 27/10: «muito inferior ao do Rebelle, realmente ruim».
+/// - **Oil Bristle** — o dono tirou-o «a princípio» (aprovado na J4 e na W2 do Óleo Real); a medição W2 × W3 × Rebelle
+///   com o Óleo Real ligado está em `docs/Painter/Pinceis/W3_oil_bristle_W2_x_W3.md`.
 pub const EM_ESTUDO_W2: &[(&str, Receita)] = &[
     (
         "Knife",
@@ -545,6 +548,8 @@ pub const EM_ESTUDO_W2: &[(&str, Receita)] = &[
             ..DABBER
         },
     ),
+    ("Metallic", METALLIC_SPLATS),
+    ("Bristle", OIL_BRISTLE),
 ];
 
 /// O grão das facas curadas na W3 (`Noise` 48 px; o tamanho inteiro, como o ficheiro do candidato o grava).
@@ -559,8 +564,10 @@ const LASCAS_DO_DABBER_3: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Fla
 /// O leque do Fan (a ponta 0,3 × 1 a 90°).
 const LEQUE_DO_FAN: &str = r#"{"angle_deg": 90, "flow": false, "kind": "None", "mapping": "ViewPlane", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [0.3, 1.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
 
-/// O grão de estrias do Knife Textured (`Noise` 60 × 2 px, preso à tela).
-const ESTRIAS_DO_TEXTURED: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Noise", "mapping": "Tiled", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [60.0, 2.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
+/// O grão de estrias do Knife Textured (`Noise` 60 × 2 px, preso à tela). Contrast 0,5 → 0,25 (smoke do dono 27/10,
+/// `W3_P_Knife.md` §BUG «cortes»): a 0,5 os mínimos do ruído (~0) quase paravam a tinta em 1–2 colunas, sempre nos mesmos
+/// sítios; a 0,25 o piso é 0,25 e a tinta satura — 6 → 0 cortes no 1.º traço, a luminância do miolo 104,7 → 104,3.
+const ESTRIAS_DO_TEXTURED: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Noise", "mapping": "Tiled", "offset": [0.0, 0.0], "params": [0.25, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [60.0, 2.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
 
 /// O pó do Metallic Splats (as partículas da `dab_jitter`).
 const POEIRA_DOS_SPLATS: &str = r#"{"across": 0.5, "angle_per_stroke": 0.0, "count": 0.0, "flip_x": 0.0, "flip_y": 0.0, "opacity": 0.8, "particle": 0.02, "po": 3.0, "po_alcance": 0.5, "po_px": 1.5, "po_opacidade": 0.5, "roundness": 0.0}"#;

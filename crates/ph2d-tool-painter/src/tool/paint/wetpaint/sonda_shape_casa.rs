@@ -570,8 +570,6 @@ fn sonda_prancha_passo_wet() {
 #[test]
 #[ignore = "sonda: a prancha do B6 (ponta lisa × cerdas)"]
 fn sonda_prancha_b6_lisa_e_cerdas() {
-    let raiz = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes");
-    let bib = Biblioteca::carregar(&raiz, None);
     let dir = std::env::var("PH2D_SONDA_OUT").expect("PH2D_SONDA_OUT");
     println!("| preset | cerdas | lisa | lisa ÷ cerdas |");
     println!("|---|---:|---:|---:|");
@@ -583,16 +581,12 @@ fn sonda_prancha_b6_lisa_e_cerdas() {
         "Filbert",
         "Oil Bristle",
     ] {
-        let e = bib
-            .entradas
-            .iter()
-            .find(|e| e.relativo.contains(&format!("/{nome}.")))
-            .expect("preset");
+        let preset = crate::tool::paint::wetpaint_preset::de_fabrica_ou_candidato(nome);
         let mut tintas = [0u64; 2];
         for (i, ponta) in ["cerdas", "lisa"].into_iter().enumerate() {
             let mut t = tela(PaintMedia::WetPaint);
-            assert!(t.wet_preset_aplicar(&e.preset).is_empty());
-            t.wet_preset_aplicar_volumes(&e.preset.parametros.volumes);
+            assert!(t.wet_preset_aplicar(&preset).is_empty());
+            t.wet_preset_aplicar_volumes(&preset.parametros.volumes);
             t.paint.wetpaint.tilt_on = false;
             // O azul do Round do Rebelle (`fixtures/rebelle/README.md`, «Pontas texturadas»).
             t.set_brush_color_srgb8([20, 30, 120]);

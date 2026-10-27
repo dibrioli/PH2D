@@ -8,13 +8,7 @@ use ph2d_editor_core::Tool;
 use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase, RasterEditTool};
 
 fn preset(nome: &str, kv: &str) -> ph2d_brush_presets::Preset {
-    let raiz = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes");
-    let mut p = ph2d_brush_presets::Biblioteca::carregar(&raiz, None)
-        .entradas
-        .into_iter()
-        .find(|e| e.preset.parametros.name == nome)
-        .unwrap_or_else(|| panic!("o preset {nome:?}"))
-        .preset;
+    let mut p = crate::midias_de_fabrica::de_fabrica(nome);
     for x in kv.split(',').filter(|x| !x.is_empty()) {
         if let Some(k) = x.strip_prefix('-') {
             p.parametros.engine.remove(k);

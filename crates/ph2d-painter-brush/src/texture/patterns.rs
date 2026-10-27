@@ -9,6 +9,7 @@
 use super::{ImageMask, TextureKind};
 use crate::ramp_alpha::RampAlphaMode;
 
+mod flakes;
 mod layer;
 /// ⚠️ **`pub(crate)` e nao `private`, e a razao esta nos quatro helpers ESCALARES que ele exporta**
 /// (`hash2` · `smoothstep` · `lerp` · `ifloor`): eles respondem perguntas genericas — *hash um ponto
@@ -77,6 +78,7 @@ pub(super) fn sample_kind_t(
         TextureKind::Hexagons => hexagons(u, v, k),
         TextureKind::Scales => scales_t(u, v, k, pu, pv),
         TextureKind::Weave => weave(u, v, k),
+        TextureKind::Flakes => flakes::flakes(u, v, k),
         // Paper presets: pre-baked seamless 256² tooth tiles (GRAN-2 rota 2 — the old on-the-fly
         // generator's spectrum was a low-frequency blotch, ~90-98% of the energy at λ > 32 px,
         // measured by FFT: the direct cause of the "mottled" wash). One bilinear wrap-fetch per

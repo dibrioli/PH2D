@@ -118,14 +118,19 @@ fn tile_coord(
         }
     };
     let (u, v) = (b.u.map(f64::from), b.v.map(f64::from));
-    let sx = f64::from(s.size[0].clamp(TEX_SIZE_MIN, TEX_SIZE_MAX));
-    let sy = f64::from(s.size[1].clamp(TEX_SIZE_MIN, TEX_SIZE_MAX));
+    // O piso do slider (`TEX_SIZE_MIN`) não prende o Size que o HOSPEDEIRO divide pelo tamanho do pincel (W3 K5:
+    // `textureSizeExp[Across]`) — preso, o fio do leque de Size 0,1 não crescia mais. Acima de 0,1, o de sempre.
+    let sx = f64::from(s.size[0].clamp(SIZE_ESCALADO_MIN, TEX_SIZE_MAX));
+    let sy = f64::from(s.size[1].clamp(SIZE_ESCALADO_MIN, TEX_SIZE_MAX));
     let shift = |o: f32, j: f32| (f64::from(o) + f64::from(j)) * UNIT_TEXELS;
     [
         (rel[0] * u[0] + rel[1] * u[1]) * sx + shift(s.offset[0], b.jitter[0]),
         (rel[0] * v[0] + rel[1] * v[1]) * sy + shift(s.offset[1], b.jitter[1]),
     ]
 }
+
+/// O piso do Size das cerdas depois da escala do hospedeiro: só a guarda da divisão (o slider fica em `TEX_SIZE_MIN`).
+const SIZE_ESCALADO_MIN: f32 = 1e-3;
 
 /// The same tile read at a footprint coordinate (`u, v` in footprint units — previews only).
 #[must_use]

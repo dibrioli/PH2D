@@ -72,6 +72,9 @@ pub enum TextureKind {
     /// one generator), shaped by Count · Strength · Size · Felt. A PIXEL law: 1 texel = 1 canvas px from
     /// the dab centre at every brush size ([`Self::samples_in_pixels`]).
     Bristles,
+    /// ⭐ **Flakes** (Óleo Real W3 K5): one angular, elongated (`2–3 : 1`) flake per cell at a random angle — `0` inside,
+    /// `1` outside; under the Subtract grain law the flakes are a dabber's chipped gaps ([`super::patterns`]).
+    Flakes,
 }
 
 impl TextureKind {
@@ -109,6 +112,7 @@ impl TextureKind {
             Self::PaperRough => 27,
             Self::PaperHot => 28,
             Self::Bristles => 29,
+            Self::Flakes => 30,
         }
     }
 
@@ -145,12 +149,13 @@ impl TextureKind {
             27 => Self::PaperRough,
             28 => Self::PaperHot,
             29 => Self::Bristles,
+            30 => Self::Flakes,
             _ => Self::None,
         }
     }
 
     /// Number of selectable kinds (drives the dropdown decode range; includes `None`).
-    pub const COUNT: u8 = 30;
+    pub const COUNT: u8 = 31;
 
     /// English label for the picker (HR-15 / app-UI-english-only).
     #[must_use]
@@ -186,6 +191,7 @@ impl TextureKind {
             Self::PaperRough => "paint_brush.texture_kind.paper_rough",
             Self::PaperHot => "paint_brush.texture_kind.paper_hot",
             Self::Bristles => "paint_brush.texture_kind.bristles",
+            Self::Flakes => "paint_brush.texture_kind.flakes",
         }
     }
 

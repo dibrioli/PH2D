@@ -58,6 +58,29 @@ def alongamento(p):
     return float(np.sqrt(max(ev[1], 1e-9) / max(ev[0], 1e-3)))
 
 
+def solidez(p):
+    """Área ÷ área do invólucro convexo (K5): a lasca ANGULOSA e convexa ≈ 0,8–0,95; a esponja e o rendilhado, baixo."""
+    if len(p) < 6:
+        return 1.0
+    pts = sorted(set(map(tuple, np.concatenate([p + d for d in ((0, 0), (0, 1), (1, 0), (1, 1))]))))
+
+    def cruz(o, a, b):
+        return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+
+    lo, hi = [], []
+    for q in pts:
+        while len(lo) >= 2 and cruz(lo[-2], lo[-1], q) <= 0:
+            lo.pop()
+        lo.append(q)
+    for q in reversed(pts):
+        while len(hi) >= 2 and cruz(hi[-2], hi[-1], q) <= 0:
+            hi.pop()
+        hi.append(q)
+    h = np.array(lo[:-1] + hi[:-1], float)
+    area = 0.5 * abs(np.dot(h[:, 0], np.roll(h[:, 1], 1)) - np.dot(h[:, 1], np.roll(h[:, 0], 1)))
+    return float(len(p) / max(area, 1.0))
+
+
 def anisotropia(m):
     m = m.astype(float)
     ex = np.abs(np.diff(m, axis=1)).mean()
@@ -105,9 +128,11 @@ def main():
             if buracos:
                 ar = np.array([len(b) for b in buracos], float)
                 al = np.array([alongamento(b) for b in buracos])
+                so = np.array([solidez(b) for b in buracos])
                 r[nome] = dict(D=int(D), frac=round(float((~m).mean()), 3),
                                tam_D=round(float(np.sqrt((ar * ar).sum() / ar.sum())) / D, 3),
-                               along=round(float((al * ar).sum() / ar.sum()), 2), n=len(buracos))
+                               along=round(float((al * ar).sum() / ar.sum()), 2),
+                               solidez=round(float((so * ar).sum() / ar.sum()), 2), n=len(buracos))
             else:
                 r[nome] = dict(D=int(D), frac=0.0)
         elif item == "splats":

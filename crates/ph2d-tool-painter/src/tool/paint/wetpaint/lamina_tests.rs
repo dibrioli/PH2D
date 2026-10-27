@@ -146,6 +146,59 @@ fn o_rebordo_poe_a_crista_nas_bordas_dos_dois_bracos_e_a_zero_nao_existe() {
     );
 }
 
+/// ⭐ **A faca SÓ com `knifeLevel` nivela** (W3 K5): a lâmina corria só com rebordo, então uma faca com o nível e sem
+/// rebordo pintava como sem nível. O desvio da espessura no miolo do braço horizontal cai com o nível; e o nível `0`
+/// escrito é a faca de sempre, ao byte (tela e espessura).
+#[test]
+fn a_faca_so_com_o_nivel_nivela() {
+    let corre = |nivel: Option<f64>| {
+        let mut t = faca(true, 0.0);
+        if let Some(n) = nivel {
+            t.paint.wetpaint.knobs.set(Knob::KnifeLevel, n);
+        }
+        // Um toque longe abre a sessão; depois, SULCOS de tinta em pé (1000/4000 por linha) sob o braço horizontal.
+        t.on_canvas_pointer(ponto([200.0, 200.0], PointerPhase::Down));
+        t.on_canvas_pointer(ponto([200.0, 200.0], PointerPhase::Up));
+        {
+            let s = t.paint.wetpaint.session.as_mut().expect("sessão");
+            s.bring_home();
+            let r = usize::from(s.ratio);
+            let g = s.engine.active_grid_mut();
+            for y in 36 / r..64 / r {
+                for x in 1..=g.w {
+                    g.sett[x + y * g.s] = if y % 2 == 0 { 1000.0 } else { 4000.0 };
+                }
+            }
+        }
+        traco_em_l(&mut t);
+        let tela = t.canvas_rgba.clone();
+        let s = t.paint.wetpaint.session.as_mut().expect("sessão");
+        s.bring_home();
+        let ratio = f64::from(s.ratio);
+        let g = s.engine.active_grid();
+        let esp: Vec<f64> = (70..150)
+            .flat_map(|x| (44..57).map(move |y| (x, y)))
+            .map(|(x, y): (i32, i32)| {
+                let (cx, cy) = (
+                    (f64::from(x) / ratio).floor() as usize + 1,
+                    (f64::from(y) / ratio).floor() as usize + 1,
+                );
+                ph2d_wet_paint::grid::espessura::em(g, cx + cy * g.s)
+            })
+            .collect();
+        (tela, esp)
+    };
+    let desvio = |v: &[f64]| {
+        let m = v.iter().sum::<f64>() / v.len() as f64;
+        (v.iter().map(|x| (x - m).powi(2)).sum::<f64>() / v.len() as f64).sqrt() / m.max(1e-9)
+    };
+    let (tela0, esp0) = corre(None);
+    assert_eq!(corre(Some(0.0)), (tela0, esp0.clone()), "nível 0 = a faca de sempre, ao byte");
+    let (_, esp1) = corre(Some(1.0));
+    let (d0, d1) = (desvio(&esp0), desvio(&esp1));
+    assert!(d1 < 0.5 * d0, "o desvio da espessura no miolo: sem nível {d0:.4}, com nível 1 {d1:.4}");
+}
+
 /// O Óleo Real de fábrica com os `campo=valor,…` de `af` (os campos que o rebordo mede).
 fn oleo_de(af: &str) -> ph2d_wet_paint::oleo_real::OleoReal {
     let mut o = ph2d_wet_paint::oleo_real::OleoReal::default();

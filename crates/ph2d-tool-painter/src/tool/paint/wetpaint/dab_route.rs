@@ -172,6 +172,13 @@ impl PainterTool {
             .engine
             .tuning
             .get(ph2d_wet_paint::tuning::Knob::KnifeRidge);
+        // … e a faca que NIVELA (W3 K3a, `knifeLevel`) também passa pela lâmina, com ou sem rebordo.
+        let lamina = rebordo > 0.0
+            || sess
+                .engine
+                .tuning
+                .get(ph2d_wet_paint::tuning::Knob::KnifeLevel)
+                > 0.0;
         // ⭐ O pigmento por COMPRIMENTO (prompt 51, doc 51 §2): cada dab pousa o do caminho desde o dab anterior da
         // lane ÷ o passo a que o pigmento foi afinado. Sem cápsula, nunca mais que um dab (o Spacing largo pontilha).
         let passo_do_pigmento =
@@ -218,6 +225,12 @@ impl PainterTool {
         super::lote::acerta_o_lote(&mut sess.engine, brush, fino);
         let esmaece_fino = super::rota_da_lane::esmaece_fino(&sess.engine, brush);
         let escala_tex = super::lote::escala_da_textura(&sess.engine, brush);
+        let pigmento_da_marca = if marca_do_spray {
+            super::lote::pigmento_da_marca(brush)
+        } else {
+            1.0
+        };
+        let escala_cerdas = [escala_tex, super::lote::escala_atraves(&sess.engine, brush, escala_tex)];
         let sub_dabs: Vec<(usize, u64, Option<f32>, Dab)> = dabs
             .iter()
             .enumerate()
@@ -262,7 +275,7 @@ impl PainterTool {
             // the stroke frame), evaluated per engine cell (cell − 1 = px).
             let mut spec = brush.at_dab(d);
             super::lote::escala_o_grao(&mut spec.texture, escala_tex);
-            super::lote::escala_as_cerdas(&mut spec.shape, escala_tex);
+            super::lote::escala_as_cerdas(&mut spec.shape, escala_cerdas);
             let peso = lane_prev
                 .filter(|_| passo_do_pigmento > 0.0)
                 .map_or(1.0, |_| {
@@ -496,7 +509,7 @@ impl PainterTool {
             // O depósito, o pente e o grão que lê a ponta leem a MESMA silhueta (com a ponta), avaliada UMA vez por célula
             // e guardada no dab ([`super::sil_memo`]), ao byte.
             let memo = (relevo_dab.is_some()
-                || rebordo > 0.0
+                || lamina
                 || grain_active && spec.texture.lei.mode.le_a_ponta())
             .then(|| super::sil_memo::SilMemo::nova(cell_x, cell_y, meia));
             let sil = |cx: i32, cy: i32| -> f64 {
@@ -658,7 +671,8 @@ impl PainterTool {
                         // da lane (peso 1) ficava acima dos seguintes (4 ÷ 4,775 a 190 px) — o disco do 1.º toque.
                         opacidade
                             * f64::from(if filme_liso { fino } else { peso * fino })
-                            * esmaece_fino,
+                            * esmaece_fino
+                            * f64::from(pigmento_da_marca),
                         Some(&sil),
                         grain_arg,
                         padrao_arg,
@@ -678,7 +692,7 @@ impl PainterTool {
                             passos_do_pente,
                         );
                     }
-                    if rebordo > 0.0 {
+                    if lamina {
                         sess.engine.pentear_rebordo(
                             centro_x,
                             centro_y,

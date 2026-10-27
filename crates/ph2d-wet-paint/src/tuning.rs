@@ -265,9 +265,14 @@ pub enum Knob {
     /// lâmina vai para a média dela (o planalto do Rebelle no lugar do tubo e dos sulcos). Só a altura muda. `0` = a
     /// tinta de sempre, ao bit.
     KnifeLevel,
+    /// ⭐ **O expoente da textura ATRAVÉS do traço** (W3 K5, `docs/Painter/Pinceis/W3_K5.md`): o
+    /// [`Knob::TextureSizeExp`] fica no 1.º eixo do Size das cerdas do Shape (X: ao longo do traço com Flow/Rake e
+    /// ângulo 0) e este no 2.º (Y: através) — os fios do leque crescem num eixo sem engrossar no outro. Negativo (o
+    /// default) = o mesmo `γ` nos dois eixos, ao bit.
+    TextureSizeExpAcross,
 }
 
-pub const KNOB_COUNT: usize = 121;
+pub const KNOB_COUNT: usize = 122;
 
 /// O LEITOR TOLERANTE das chaves do material de antes da W3 (preset e macro gravados com elas): `(knob, valor)`
 /// na lei nova, `None` para uma chave que não é antiga. `roughnessMul` m → Roughness `0,5·m` (o neutro `1` → `0,5`,

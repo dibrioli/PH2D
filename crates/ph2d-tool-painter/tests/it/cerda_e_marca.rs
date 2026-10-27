@@ -108,3 +108,61 @@ fn a_ponta_esfarela_pelo_grao() {
         "com o grão preso à tela a ponta tem de esfarelar (isotrópica): {grumos:.2} (sem grão {fios:.2})"
     );
 }
+
+/// As transições tinta↔papel da miniatura ao longo de x e de y.
+fn transicoes(p: &Preset) -> (f64, f64) {
+    let m = miniatura_do_preset(p);
+    let lado = m.largura as usize;
+    let t: Vec<bool> = m.rgba.chunks(4).map(|px| tinta(px) >= 0.25).collect();
+    let (mut ex, mut ey) = (0usize, 0usize);
+    for (i, &v) in t.iter().enumerate() {
+        ex += usize::from(i % lado + 1 < lado && v != t[i + 1]);
+        ey += usize::from(i + lado < t.len() && v != t[i + lado]);
+    }
+    (ex as f64, ey as f64)
+}
+
+/// ⭐ **O expoente ATRAVÉS** (W3 K5, `textureSizeExpAcross`): o 2.º eixo do Size das cerdas cresce pelo seu próprio
+/// expoente. Negativo escrito (o default) = sem a chave, ao byte; a `0` com `γ = 1` no 1.º eixo, o 2.º fica nos px de
+/// tela — as cerdas crescem num eixo só e a razão das transições muda (medida no relatório).
+#[test]
+fn o_eixo_atraves_tem_expoente_proprio() {
+    let com = |atraves: Option<f64>| {
+        let mut p = cerdas(96.0, Some(1.0));
+        if let Some(a) = atraves {
+            p.parametros.engine.insert("textureSizeExpAcross".into(), a);
+        }
+        p
+    };
+    assert_eq!(
+        miniatura_do_preset(&com(Some(-0.01))),
+        miniatura_do_preset(&com(None)),
+        "o expoente através negativo tem de ser o de sempre, ao byte"
+    );
+    let (ax, ay) = transicoes(&com(None));
+    let (bx, by) = transicoes(&com(Some(0.0)));
+    let (dois, um) = (ay / ax, by / bx);
+    println!("y÷x: os dois eixos {dois:.3} · só o 1.º {um:.3} (x {ax} → {bx}, y {ay} → {by})");
+    assert!(um > 1.3 * dois, "y÷x com o 2.º eixo preso aos px {um:.3}, com os dois a crescer {dois:.3}");
+}
+
+/// ⭐ **A nuvem do spray pousa o pigmento de UM dab** (W3 K5): quatro marcas de `particle` 0,1 do candidato Metallic
+/// Splats (pigmento 50, cerdas fracas) eram DISCOS PÁLIDOS — o depósito é por célula e, juntas, pousavam 4 % do
+/// pigmento de um dab. A tinta média dos píxeis da nuvem é a de marcas ESCURAS (o Rebelle), não de um véu.
+#[test]
+fn a_nuvem_do_spray_pousa_o_pigmento_de_um_dab() {
+    let mut p = dabber();
+    p.parametros.volumes.size_px = Some(96.0);
+    for (k, v) in [("bristleStrength", 0.0), ("felt", 0.05), ("pigmentPerDab", 50.0)] {
+        p.parametros.engine.insert(k.into(), v);
+    }
+    p.parametros.brush.insert("spray_count".into(), json!(4));
+    let mut j = p.parametros.brush.get("dab_jitter").cloned().unwrap_or_else(|| json!({}));
+    j["particle"] = json!(0.1);
+    j["across"] = json!(1.0);
+    p.parametros.brush.insert("dab_jitter".into(), j);
+    let v: Vec<f64> = miniatura_do_preset(&p).rgba.chunks(4).map(tinta).filter(|&t| t > 0.02).collect();
+    let media = v.iter().sum::<f64>() / v.len().max(1) as f64;
+    println!("tinta média dos píxeis da nuvem: {media:.3} ({} píxeis)", v.len());
+    assert!(media > 0.15, "as marcas do spray são discos pálidos: tinta média {media:.3}");
+}

@@ -301,4 +301,6 @@ pub const KNOB_DEFS: [KnobDef; KNOB_COUNT] = [
     k(Knob::LockMaterial, KnobGroup::Material, "lockMaterial", 0.0, 1.0, 1.0, 0.0, None),
     // a faca que nivela (W3 K3a): à vista no Tuning › Stroke, ao lado do rebordo
     k(Knob::KnifeLevel, KnobGroup::Stroke, "knifeLevel", 0.0, 1.0, 0.01, 0.0, None),
+    // o expoente através do traço (W3 K5): um passo abaixo de 0 = «o mesmo que o textureSizeExp», o de sempre
+    k(Knob::TextureSizeExpAcross, KnobGroup::Stroke, "textureSizeExpAcross", -0.01, 1.5, 0.01, -0.01, None),
 ];

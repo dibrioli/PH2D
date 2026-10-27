@@ -167,10 +167,44 @@ pub(super) fn escala_o_grao(t: &mut ph2d_painter_brush::texture::TextureSettings
 /// ⭐ **As cerdas do Shape crescem com o pincel** (W3 K3b, `docs/Painter/Pinceis/W3_K3b_cerda.md`): o tipo `Bristles` é
 /// uma lei em PÍXEIS (1 texel = 1 px a todo tamanho), então os fios do leque de 200 px eram os de 40 — o mesmo
 /// [`escala_da_textura`] do grão `Tiled`, em qualquer mapeamento (View e Flow incluídos: o tapete nunca seguia o raio).
-pub(super) fn escala_as_cerdas(t: &mut ph2d_painter_brush::texture::TextureSettings, escala: f32) {
-    if escala != 1.0 && t.kind == ph2d_painter_brush::TextureKind::Bristles {
-        t.size = t.size.map(|s| s / escala);
+/// ⭐ Por EIXO (W3 K5, `docs/Painter/Pinceis/W3_K5.md`): `escala = [u, v]` — o `v` (através do traço, com Flow/Rake) pelo
+/// [`ph2d_wet_paint::tuning::Knob::TextureSizeExpAcross`] ([`escala_atraves`]).
+pub(super) fn escala_as_cerdas(t: &mut ph2d_painter_brush::texture::TextureSettings, escala: [f32; 2]) {
+    if escala != [1.0, 1.0] && t.kind == ph2d_painter_brush::TextureKind::Bristles {
+        t.size = [t.size[0] / escala[0], t.size[1] / escala[1]];
     }
+}
+
+/// O factor das cerdas ATRAVÉS do traço: `(D ÷ ref)^γ⊥` com `γ⊥` = [`ph2d_wet_paint::tuning::Knob::TextureSizeExpAcross`];
+/// negativo (o default) = o `escala` do [`escala_da_textura`], ao bit.
+pub(super) fn escala_atraves(
+    engine: &ph2d_wet_paint::painter::Engine,
+    brush: &BrushSpec,
+    escala: f32,
+) -> f32 {
+    use ph2d_wet_paint::tuning::Knob;
+    let gama = engine.tuning.get(Knob::TextureSizeExpAcross);
+    if gama < 0.0 {
+        return escala;
+    }
+    let d = 2.0 * f64::from(brush.clamped_radius()).max(0.5);
+    (d / engine.tuning.get(Knob::TextureSizeRef).max(1.0)).powf(gama) as f32
+}
+
+/// ⭐ **A nuvem do spray pousa o pigmento de UM dab** (W3 K5, `docs/Painter/Pinceis/W3_K5.md`): o depósito do Wet é
+/// por CÉLULA, então `n` marcas de diâmetro `p·D` pousavam, juntas, só `n·p²` do pigmento de um dab do pincel — com
+/// `particle` 0,1 e 4 marcas, 4 % — e liam-se DISCOS PÁLIDOS a todo tamanho (o Rebelle: pontos pequenos e escuros).
+/// Cada marca menor que o pincel leva `1 ÷ (n·p²)` do pigmento por célula (a área do dab repartida pelas marcas);
+/// sem spray, ou com marcas do tamanho do pincel, `1`, ao bit. `p` tem o piso de 0,5 px de raio do `dab_from`.
+pub(super) fn pigmento_da_marca(brush: &BrushSpec) -> f32 {
+    let n = brush.spray_count.clamp(1, ph2d_painter_brush::stroke::spray::SPRAY_COUNT_MAX);
+    let r = brush.clamped_radius();
+    let p = brush.dab_jitter.particula_no(brush.spray_count, r);
+    if n <= 1 || p >= 1.0 {
+        return 1.0;
+    }
+    let p = p.max(0.5 / r.max(0.5));
+    1.0 / (n as f32 * p * p)
 }
 
 /// A fracção do diâmetro de [`peso_do_passo_fino`] (o diâmetro de referência `1 ÷ (2 · 0,035)` ≈ 29 px). MEDIDA

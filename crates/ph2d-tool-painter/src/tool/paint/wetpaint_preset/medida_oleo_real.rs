@@ -90,6 +90,118 @@ fn medida_oleo_real_folha_png() {
     let dir =
         std::path::PathBuf::from(std::env::var("PH2D_OLEO_PNG").expect("PH2D_OLEO_PNG=<pasta>"));
     let mut t = pinta_folha();
+    grava_folha(&mut t, &dir);
+}
+
+/// **As entradas do oráculo Cycles** (W1c, `49_realshader/oraculo/`): a cena da captura do dono (vermelho
+/// saturado empilhado com Dabber e Oil Bristle, e uma pilha clara) em `$PH2D_OLEO_PNG/` — a folha de
+/// sempre mais a cor SEM relevo (`albedo.ppm`), a cobertura (`cobertura.pgm`) e as três alturas em f32 LE,
+/// células (`h_forma.f32`, `h_fina.f32`, `h_sombra.f32`), descritas em `oraculo.txt`.
+#[test]
+#[ignore = "medicao — corre-se à mão no perfil smoke"]
+fn medida_oleo_real_oraculo() {
+    let dir =
+        std::path::PathBuf::from(std::env::var("PH2D_OLEO_PNG").expect("PH2D_OLEO_PNG=<pasta>"));
+    let b = biblioteca();
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; (OW * OH * 4) as usize], OW, OH);
+    t.set_paint_media(PaintMedia::WetPaint);
+    t.set_wet_relogio_fixo(true);
+    const VERMELHO: [u8; 3] = [215, 25, 30];
+    const CLARO: [u8; 3] = [238, 226, 196];
+    let pilhas: [(&str, [u8; 3], f32, [[f32; 2]; 2]); 6] = [
+        (
+            "WetPainter/Oil/Dabber/Dabber.ph2d-brush.png",
+            VERMELHO,
+            60.0,
+            [[60.0, 120.0], [460.0, 150.0]],
+        ),
+        (
+            "WetPainter/Oil/Dabber/Dabber.ph2d-brush.png",
+            VERMELHO,
+            60.0,
+            [[120.0, 60.0], [300.0, 260.0]],
+        ),
+        (
+            "WetPainter/Oil/Bristle/Oil Bristle.ph2d-brush.png",
+            VERMELHO,
+            55.0,
+            [[40.0, 330.0], [640.0, 290.0]],
+        ),
+        (
+            "WetPainter/Oil/Bristle/Oil Bristle.ph2d-brush.png",
+            VERMELHO,
+            55.0,
+            [[60.0, 400.0], [620.0, 380.0]],
+        ),
+        (
+            "WetPainter/Oil/Dabber/Dabber.ph2d-brush.png",
+            CLARO,
+            55.0,
+            [[500.0, 60.0], [640.0, 220.0]],
+        ),
+        (
+            "WetPainter/Oil/Bristle/Oil Bristle.ph2d-brush.png",
+            CLARO,
+            50.0,
+            [[520.0, 240.0], [660.0, 120.0]],
+        ),
+    ];
+    for (preset, cor, raio, [a, z]) in pilhas {
+        let p = &b
+            .entradas
+            .iter()
+            .find(|e| e.relativo == preset)
+            .unwrap_or_else(|| panic!("preset {preset} não existe"))
+            .preset;
+        let erros = t.wet_preset_aplicar(p);
+        assert!(erros.is_empty(), "{erros:?}");
+        t.set_brush_size_px(raio);
+        t.set_brush_color_srgb8(cor);
+        // Quatro passagens, a 2.ª e a 4.ª de volta e deslocadas: as cristas da captura do dono.
+        for k in 0..4 {
+            let d = 10.0 * (k % 2) as f32;
+            let (a, z) = ([a[0], a[1] + d], [z[0], z[1] + d]);
+            let ticks = if k % 2 == 0 {
+                arrasta(&mut t, a, z)
+            } else {
+                arrasta(&mut t, z, a)
+            };
+            println!("[oraculo] {preset} passagem {} (água {ticks})", k + 1);
+        }
+    }
+    grava_folha(&mut t, &dir);
+}
+
+const OW: u32 = 700;
+const OH: u32 = 460;
+
+/// Uma pincelada de `a` a `z` com o passo de 3 px do `tracos.py`, e espera a água parar.
+fn arrasta(t: &mut PainterTool, a: [f32; 2], z: [f32; 2]) -> u32 {
+    let n = ((z[0] - a[0]).hypot(z[1] - a[1]) / 3.0).ceil() as u32;
+    t.on_canvas_pointer(ponto(a, PointerPhase::Down));
+    for k in 1..=n {
+        let f = k as f32 / n as f32;
+        let pos = [a[0] + (z[0] - a[0]) * f, a[1] + (z[1] - a[1]) * f];
+        t.on_canvas_pointer(ponto(pos, PointerPhase::Move));
+        t.on_tick(8.0);
+    }
+    t.on_canvas_pointer(ponto(z, PointerPhase::Up));
+    let mut ticks = 0;
+    loop {
+        t.on_tick(1000.0 / 60.0);
+        ticks += 1;
+        let s = t.paint.wetpaint.session.as_mut().expect("sessão");
+        s.bring_home();
+        if !s.engine.active_grid().has_fluid || ticks >= 60 * 60 {
+            break;
+        }
+    }
+    ticks
+}
+
+/// A folha em `dir`: `hoje.ppm`, `oleo.ppm`, os termos `t_*.pgm` e as entradas do oráculo.
+fn grava_folha(t: &mut PainterTool, dir: &std::path::Path) {
     let s = t.paint.wetpaint.session.as_mut().expect("sessão");
     s.bring_home();
     let (gw, gh) = s.grid;
@@ -104,17 +216,13 @@ fn medida_oleo_real_folha_png() {
             visible: l.visible,
         })
         .collect();
-    let visual = ph2d_wet_paint::render::PigmentVisual {
-        paper: false,
-        relevo: true,
-    };
     let o = oleo_do_env();
     let grades: Vec<(&ph2d_wet_paint::grid::Grid, bool)> =
         camadas.iter().map(|c| (c.grid, c.visible)).collect();
     let campo =
         ph2d_wet_paint::oleo_real::CampoAltura::de(&grades, &o, usize::from(s.ratio), 1, 1, gw, gh);
     // Os termos em cinza (0..1 → 0..255; `e` e o brilho a ½ de escala), só onde há tinta.
-    let mut termos = [(); 5].map(|()| vec![0u8; gw * gh]);
+    let mut termos = [(); 4].map(|()| vec![0u8; gw * gh]);
     let ativa = s.engine.active_grid();
     for cy in 1..=gh {
         for cx in 1..=gw {
@@ -123,7 +231,8 @@ fn medida_oleo_real_folha_png() {
             }
             let t = ph2d_wet_paint::oleo_real::termos(&o, &campo, cx, cy);
             let k = (cx - 1) + (cy - 1) * gw;
-            for (j, v) in [t.cav, t.luz, t.e * 0.5, t.espec * 0.5, t.ocl]
+            let espec = (t.espec[0] + t.espec[1] + t.espec[2]) / 3.0;
+            for (j, v) in [t.vis, t.luz, t.e(o.af.ceu) * 0.5, espec * 0.5]
                 .into_iter()
                 .enumerate()
             {
@@ -131,15 +240,49 @@ fn medida_oleo_real_folha_png() {
             }
         }
     }
-    for (nome, v) in ["t_cav", "t_luz", "t_e", "t_espec", "t_ocl"]
-        .iter()
-        .zip(&termos)
-    {
+    for (nome, v) in ["t_vis", "t_luz", "t_e", "t_espec"].iter().zip(&termos) {
         let mut pgm = format!("P5\n{gw} {gh}\n255\n").into_bytes();
         pgm.extend_from_slice(v);
         std::fs::write(dir.join(format!("{nome}.pgm")), pgm).expect("grava");
     }
-    for (nome, com_oleo) in [("hoje", false), ("oleo", true)] {
+    // As entradas do oráculo: as três alturas (células) e a cobertura, sobre a grade inteira.
+    let mut alturas = [(); 3].map(|()| Vec::with_capacity(gw * gh * 4));
+    for cy in 1..=gh {
+        for cx in 1..=gw {
+            let (x, y) = (cx as isize, cy as isize);
+            for (j, h) in [campo.at(x, y), campo.at_fina(x, y), campo.at_sombra(x, y)]
+                .into_iter()
+                .enumerate()
+            {
+                alturas[j].extend_from_slice(&(h as f32).to_le_bytes());
+            }
+        }
+    }
+    for (nome, v) in ["h_forma", "h_fina", "h_sombra"].iter().zip(&alturas) {
+        std::fs::write(dir.join(format!("{nome}.f32")), v).expect("grava");
+    }
+    std::fs::write(
+        dir.join("oraculo.txt"),
+        format!(
+            "gw={gw}\ngh={gh}\nratio={}\nazimute_graus={}\naltitude_graus={}\nceu={}\npenumbra={}\nrugosidade={}\n# alturas f32 LE em células, linha a linha a partir do topo; x direita, y baixo\n# {o:?}\n",
+            s.ratio,
+            o.azimute.to_degrees(),
+            o.altitude.to_degrees(),
+            o.af.ceu,
+            o.af.penumbra,
+            o.af.rugosidade,
+        ),
+    )
+    .expect("grava");
+    for (nome, com_oleo, relevo) in [
+        ("hoje", false, true),
+        ("oleo", true, true),
+        ("albedo", false, false),
+    ] {
+        let visual = ph2d_wet_paint::render::PigmentVisual {
+            paper: false,
+            relevo,
+        };
         let mut px = vec![0u8; gw * gh * 4];
         for cy in 1..=gh {
             let linha = &mut px[(cy - 1) * gw * 4..cy * gw * 4];
@@ -185,6 +328,11 @@ fn medida_oleo_real_folha_png() {
         let f = dir.join(format!("{nome}.ppm"));
         std::fs::write(&f, ppm).expect("grava");
         println!("[oleo] {}", f.display());
+        if nome == "albedo" {
+            let mut pgm = format!("P5\n{gw} {gh}\n255\n").into_bytes();
+            pgm.extend(px.as_chunks::<4>().0.iter().map(|p| p[3]));
+            std::fs::write(dir.join("cobertura.pgm"), pgm).expect("grava");
+        }
     }
 }
 
@@ -213,10 +361,10 @@ fn oleo_do_env() -> ph2d_wet_paint::oleo_real::OleoReal {
             "raio_detalhe" => af.raio_detalhe = v as usize,
             "grao" => af.grao = v,
             "fios" => af.fios = v,
-            "limiar_cavidade" => af.limiar_cavidade = v,
-            "fundo_cavidade" => af.fundo_cavidade = v,
-            "s_fenda" => af.s_fenda = v,
-            "k_fenda" => af.k_fenda = v,
+            "ambiente" => {
+                o.ambiente = ph2d_wet_paint::oleo_real::Ambiente::de_indice(v as u8)
+                    .unwrap_or_else(|| panic!("ambiente {v}: 0..=3"));
+            }
             "ceu" => af.ceu = v,
             "penumbra" => af.penumbra = v,
             "rugosidade" => af.rugosidade = v,
@@ -342,29 +490,7 @@ fn pinta_folha_com(t: &mut PainterTool, b: &Biblioteca) {
             let vertical = (tr.b[1] - tr.a[1]).abs() > (tr.b[0] - tr.a[0]).abs();
             t.set_brush_dab_angle(if vertical { 0.0 } else { 90.0 });
         }
-        // O passo de 3 px do tracos.py.
-        let n = ((tr.b[0] - tr.a[0]).hypot(tr.b[1] - tr.a[1]) / 3.0).ceil() as u32;
-        t.on_canvas_pointer(ponto(tr.a, PointerPhase::Down));
-        for k in 1..=n {
-            let f = k as f32 / n as f32;
-            let pos = [
-                tr.a[0] + (tr.b[0] - tr.a[0]) * f,
-                tr.a[1] + (tr.b[1] - tr.a[1]) * f,
-            ];
-            t.on_canvas_pointer(ponto(pos, PointerPhase::Move));
-            t.on_tick(8.0);
-        }
-        t.on_canvas_pointer(ponto(tr.b, PointerPhase::Up));
-        let mut ticks = 0;
-        loop {
-            t.on_tick(1000.0 / 60.0);
-            ticks += 1;
-            let s = t.paint.wetpaint.session.as_mut().expect("sessão");
-            s.bring_home();
-            if !s.engine.active_grid().has_fluid || ticks >= 60 * 60 {
-                break;
-            }
-        }
+        let ticks = arrasta(t, tr.a, tr.b);
         println!(
             "[oleo] {} ({}): água parou após {} ticks",
             tr.rotulo, tr.preset, ticks

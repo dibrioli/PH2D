@@ -1,13 +1,16 @@
 //! **O Óleo Real** (doc 49, [`README`](../../../docs/Painter/49_realshader/README.md) §4): a óptica da
-//! tinta sobre o campo de ALTURA que a tinta já é — em luz linear, normal por Sobel, a fenda que satura no
-//! tom da própria tinta (M2: `fenda = mediana · s · albedoᵏ`), a sombra macia por marcha na direcção da
-//! luz e o brilho somado, separado do volume (M4). Referência em CPU; o passe da placa espelha-a.
+//! tinta sobre o campo de ALTURA que a tinta já é — em luz linear, normal por Sobel, a sombra macia por
+//! marcha na direcção da luz, e (W1c, medida contra o Cycles em [`oraculo/`](../../../docs/Painter/49_realshader/oraculo/))
+//! o céu de um AMBIENTE ([`Ambiente`]) tapado pela visibilidade GTAO com multi-ricochete pela cor da tinta
+//! (a fenda fica no tom, nunca preta), o reflexo desse ambiente e o realce que enche a folga até 1 em vez
+//! de cortar. Referência em CPU; o passe da placa espelha-a.
 //!
-//! Lei de neutralidade: com a cavidade, a sombra e o brilho a zero, a tinta lisa sai com a cor que tinha
+//! Lei de neutralidade: com a sombra e o brilho a zero, a tinta lisa sai com a cor que tinha
 //! (`E_plano = 1`): a claridade continua a ser o pigmento.
 
 use crate::colorops::transfer::{srgb255_of_linear, srgb255_to_linear};
 use crate::grid::Grid;
+pub use crate::oleo_ambiente::Ambiente;
 
 /// Os knobs do Óleo Real. `1.0` em profundidade, sombra e brilho = o look das capturas `A_base`
 /// (Rebelle: impasto 8, SoftShadows 10, Gloss 10, luz 42°).
@@ -23,6 +26,8 @@ pub struct OleoReal {
     pub sombra: f64,
     /// Força do brilho especular, `0..=1` (M4: só o termo somado; nunca o volume).
     pub brilho: f64,
+    /// O céu que a tinta recebe e reflecte, rodado para o lado claro ficar no azimute da luz.
+    pub ambiente: Ambiente,
     /// As constantes da lei, afinadas contra as capturas (não são knobs do artista).
     pub af: Afinacao,
 }
@@ -35,6 +40,7 @@ impl Default for OleoReal {
             altitude: 42f64.to_radians(),
             sombra: 1.0,
             brilho: 1.0,
+            ambiente: Ambiente::default(),
             af: Afinacao::default(),
         }
     }
@@ -59,12 +65,6 @@ pub struct Afinacao {
     pub grao: f64,
     /// Ganho da altura dos fios (`Grid::altura`, px).
     pub fios: f64,
-    /// A faixa da oclusão média (seno do horizonte acima do plano tangente) de «sem fenda» a «fundo».
-    pub limiar_cavidade: f64,
-    pub fundo_cavidade: f64,
-    /// A lei da fenda (M2), em linear: `fenda/mediana = s_fenda · albedo^k_fenda` no fundo da cavidade.
-    pub s_fenda: f64,
-    pub k_fenda: f64,
     /// A luz do céu (não projecta sombra): o fundo até onde a sombra escurece.
     pub ceu: f64,
     /// Largura da penumbra, em tangente de elevação: a luz vai de cheia a nada quando o horizonte sobe
@@ -87,12 +87,6 @@ impl Default for Afinacao {
             raio_detalhe: 1,
             grao: 0.15,
             fios: 1.0,
-            // A oclusão da FORMA na folha `tracos.py` (Dabber/Filbert/Oil Bristle): p50 0,08 · p90 0,19 ·
-            // p98 0,28 — a fenda começa no p90 e chega ao fundo além do p98 (o Rebelle: 2 % mais escuros, M1).
-            limiar_cavidade: 0.15,
-            fundo_cavidade: 0.35,
-            s_fenda: 0.25,
-            k_fenda: 2.1,
             ceu: 0.6,
             penumbra: 0.6,
             rugosidade: 0.28,
@@ -101,11 +95,14 @@ impl Default for Afinacao {
     }
 }
 
-/// Passos da marcha (sombra) e da cavidade, em células; direcções da cavidade. Custo medido em W0(a)
-/// (README §2b): K=24·N=8 cabe na RTX a 4K; na CPU paga-se só na região suja.
+/// Passos da marcha da sombra, em células. Custo medido em W0(a) (README §2b): K=24·N=8 cabe na RTX a
+/// 4K; na CPU paga-se só na região suja.
 pub const PASSOS_SOMBRA: usize = 24;
-pub const PASSOS_CAVIDADE: usize = 8;
-pub const DIRECOES_CAVIDADE: usize = 8;
+/// As distâncias (células) do horizonte da visibilidade, geométricas até à margem; as fatias (cada uma
+/// olha para os dois lados). Contra o Cycles (`oraculo/candidatas_ao.py`, 26/10): 4 fatias = 8 (viés
+/// +0,068 × +0,064); 64 células só ajudam o papel ao pé de paredes altas (a pirâmide de máximos da placa).
+const HORIZONTE: [f64; 9] = [1.0, 2.0, 3.0, 4.0, 6.0, 8.0, 12.0, 16.0, 24.0];
+const FATIAS: usize = 4;
 /// A margem (células) que o render de uma região precisa à volta dela.
 pub const MARGEM: usize = PASSOS_SOMBRA + 1;
 /// O ALCANCE (células) de uma mudança de tinta: a célula `c` muda a forma até `2·raio_suave` à volta, e a
@@ -184,10 +181,7 @@ impl CampoAltura {
         let v = suave.iter().map(|&s| (s * escala) as f32).collect();
         let (massa_d, fios_d) = match af.raio_detalhe {
             0 => (massa.clone(), fios),
-            r => (
-                desfoca(&massa, w, h, r),
-                desfoca(&fios, w, h, r),
-            ),
+            r => (desfoca(&massa, w, h, r), desfoca(&fios, w, h, r)),
         };
         let detalhe = (0..w * h)
             .map(|k| (af.grao * (massa_d[k] - suave[k]) * escala + fios_d[k] * k_fios) as f32)
@@ -225,7 +219,8 @@ impl CampoAltura {
         let (fx, fy) = (libm::floor(x), libm::floor(y));
         let (tx, ty) = (x - fx, y - fy);
         let (ix, iy) = (fx as isize, fy as isize);
-        let l0 = self.at_sombra(ix, iy) + (self.at_sombra(ix + 1, iy) - self.at_sombra(ix, iy)) * tx;
+        let l0 =
+            self.at_sombra(ix, iy) + (self.at_sombra(ix + 1, iy) - self.at_sombra(ix, iy)) * tx;
         let l1 = self.at_sombra(ix, iy + 1)
             + (self.at_sombra(ix + 1, iy + 1) - self.at_sombra(ix, iy + 1)) * tx;
         l0 + (l1 - l0) * ty
@@ -288,16 +283,46 @@ fn para_a_luz(o: &OleoReal) -> [f64; 3] {
     ]
 }
 
-/// Os termos da óptica numa célula, antes da cor: a cavidade `0..1`, a luz directa que chega `0..1`
-/// (1 − sombra), o difuso relativo `e` (plano e iluminado = 1), o brilho somado (linear) e a oclusão
-/// bruta (antes da faixa da cavidade).
+/// Os termos da óptica numa célula, antes da cor: a visibilidade do céu `0..1` (GTAO pelo cosseno; plano
+/// aberto = 1), a luz directa que chega `0..1` (1 − sombra), o difuso da lâmpada (plano iluminado =
+/// `1 − céu`) e o brilho somado por canal (linear; o do AMBIENTE tem a cor dele).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Termos {
-    pub cav: f64,
+    pub vis: f64,
     pub luz: f64,
-    pub e: f64,
-    pub espec: f64,
-    pub ocl: f64,
+    pub sol: f64,
+    pub espec: [f64; 3],
+}
+
+impl Termos {
+    /// O difuso relativo de uma tinta cinza `0,5` (o mapa `t_e` da sonda, comparável ao render cinza do
+    /// Cycles; plano iluminado = 1).
+    #[must_use]
+    pub fn e(&self, ceu: f64) -> f64 {
+        ceu * multi_ricochete(self.vis, 0.5) + self.sol
+    }
+}
+
+/// O multi-ricochete do céu pela cor da tinta (Jimenez 2016): a fenda recebe a luz das paredes da MESMA
+/// tinta e fica no tom dela. Devolve a visibilidade CORRIGIDA (substitui `v`; nunca `v × isto`). Contra o Cycles no vermelho (`oraculo/calibra_ao.py`, 26/10), em V 0,78 ·
+/// 0,70 · 0,56 · 0,47: ganho 1,16 · 1,23 · 1,36 · 1,47 × esta fórmula 1,17 · 1,25 · 1,43 · 1,58.
+#[must_use]
+pub fn multi_ricochete(v: f64, albedo: f64) -> f64 {
+    let a = 2.0404 * albedo - 0.3324;
+    let b = -4.7951 * albedo + 0.6417;
+    let c = 2.7552 * albedo + 0.6903;
+    v.max(((v * a + b) * v + c) * v)
+}
+
+/// O realce enche a FOLGA até 1 em vez de cortar: sem brilho a base fica intacta (neutralidade); o brilho
+/// aproxima-se do branco sem degrau. O Cycles com o HDRI de estúdio põe 23 % da tinta acima de 1.
+#[must_use]
+pub fn rola(base: f64, espec: f64) -> f64 {
+    let folga = 1.0 - base;
+    if folga <= 1e-9 {
+        return base.min(1.0);
+    }
+    1.0 - folga * libm::exp(-espec.max(0.0) / folga)
 }
 
 /// Ilumina a cor `rgb` (sRGB 0..255, sem pré-multiplicar) da célula `(cx, cy)`, de `cobertura` `0..=1`.
@@ -310,19 +335,20 @@ pub fn ilumina(
     rgb: [f64; 3],
     cobertura: f64,
 ) -> [f64; 3] {
-    let mut t = termos(o, campo, cx, cy);
-    t.espec *= cobertura.clamp(0.0, 1.0);
+    let t = termos(o, campo, cx, cy);
+    let cob = cobertura.clamp(0.0, 1.0);
     let mut out = [0.0; 3];
     for c in 0..3 {
         let a = srgb255_to_linear(rgb[c]);
-        let fenda = 1.0 + (o.af.s_fenda * libm::pow(a, o.af.k_fenda) - 1.0) * t.cav;
-        out[c] = srgb255_of_linear((a * t.e * fenda + t.espec).clamp(0.0, 1.0));
+        let base = a * (o.af.ceu * multi_ricochete(t.vis, a) + t.sol);
+        out[c] = srgb255_of_linear(rola(base, t.espec[c] * cob).clamp(0.0, 1.0));
     }
     out
 }
 
 /// A luz directa que chega à célula `(x, y)` de altura `h0`, `0..=1`: marcha para a luz, o raio sobe
-/// `tan(alt)` por célula, penumbra tipo SDF; `sombra` a escala linearmente (M6).
+/// `tan(alt)` por célula; a penumbra é uma faixa de ELEVAÇÃO (um sol com tamanho), por isso alarga-se com
+/// a distância ao obstáculo; `sombra` escala-a linearmente (M6).
 fn luz_directa(o: &OleoReal, campo: &CampoAltura, x: isize, y: isize, h0: f64) -> f64 {
     if o.sombra <= 0.0 {
         return 1.0;
@@ -344,65 +370,124 @@ fn luz_directa(o: &OleoReal, campo: &CampoAltura, x: isize, y: isize, h0: f64) -
     1.0 - o.sombra * (1.0 - luz)
 }
 
+/// A normal da altura FINA na célula `(x, y)` (Sobel 3×3).
+fn normal(campo: &CampoAltura, x: isize, y: isize) -> [f64; 3] {
+    let h = |dx: isize, dy: isize| campo.at_fina(x + dx, y + dy);
+    let fx = (h(1, -1) + 2.0 * h(1, 0) + h(1, 1) - h(-1, -1) - 2.0 * h(-1, 0) - h(-1, 1)) / 8.0;
+    let fy = (h(-1, 1) + 2.0 * h(0, 1) + h(1, 1) - h(-1, -1) - 2.0 * h(0, -1) - h(1, -1)) / 8.0;
+    let inv = 1.0 / libm::sqrt(fx * fx + fy * fy + 1.0);
+    [-fx * inv, -fy * inv, inv]
+}
+
+/// A visibilidade do céu pelo cosseno (GTAO, Jimenez 2016, vista ortográfica +z) sobre a altura FINA:
+/// [`FATIAS`] fatias, cada uma com o horizonte dos dois lados nas distâncias [`HORIZONTE`], preso à
+/// horizontal (a tela tapa o chão). Plano aberto = 1. Contra o Cycles (`oraculo/candidatas_ao.py`):
+/// viés p50 +0,03 no Dabber, +0,11 no Oil Bristle (os sulcos dos fios tapam mais do que se vê aqui).
+fn visibilidade(campo: &CampoAltura, x: isize, y: isize, n: [f64; 3]) -> f64 {
+    use core::f64::consts::{FRAC_PI_2, PI};
+    let h0 = campo.at_fina(x, y);
+    let mut acc = 0.0;
+    for k in 0..FATIAS {
+        let phi = PI * k as f64 / FATIAS as f64;
+        let (dx, dy) = (libm::cos(phi), libm::sin(phi));
+        let mut s = [0.0f64; 2];
+        for (j, sgn) in [1.0, -1.0].into_iter().enumerate() {
+            for r in HORIZONTE {
+                let (ox, oy) = (libm::round(sgn * dx * r), libm::round(sgn * dy * r));
+                let d = libm::hypot(ox, oy);
+                if d == 0.0 {
+                    continue;
+                }
+                let dh = campo.at_fina(x + ox as isize, y + oy as isize) - h0;
+                s[j] = s[j].max(dh / libm::sqrt(dh * dh + d * d));
+            }
+        }
+        // A normal projectada no plano da fatia: o comprimento pesa a fatia, o ângulo `g` mede-se do zénite.
+        let no = -n[0] * dy + n[1] * dx;
+        let np = [n[0] + no * dy, n[1] - no * dx, n[2]];
+        let len = libm::sqrt(np[0] * np[0] + np[1] * np[1] + np[2] * np[2]);
+        if len < 1e-9 {
+            continue;
+        }
+        let lado = np[0] * dx + np[1] * dy;
+        let g = libm::acos((np[2] / len).clamp(-1.0, 1.0)).copysign(lado);
+        let (t1, t2) = (FRAC_PI_2 - libm::asin(s[0]), FRAC_PI_2 - libm::asin(s[1]));
+        let a1 = g + t1.min(FRAC_PI_2 - g);
+        let a2 = g - t2.min(FRAC_PI_2 + g);
+        let (cg, sg) = (libm::cos(g), libm::sin(g));
+        let v = 0.25 * (-libm::cos(2.0 * a1 - g) + cg + 2.0 * a1 * sg)
+            + 0.25 * (-libm::cos(2.0 * a2 - g) + cg + 2.0 * a2 * sg);
+        acc += len * v;
+    }
+    (acc / FATIAS as f64).clamp(0.0, 1.0)
+}
+
+/// A fracção LIVRE do reflexo do ambiente: o horizonte da altura fina na direcção reflectida `r`
+/// (distâncias [`HORIZONTE`]); o lobo de largura `rug` passa de tapado a livre à volta dele. Com a
+/// visibilidade média no lugar disto a fenda reflectia o estúdio: luminância 74 × 47 do Cycles.
+fn reflexo_livre(campo: &CampoAltura, x: isize, y: isize, r: [f64; 3], rug: f64) -> f64 {
+    let rxy = libm::hypot(r[0], r[1]);
+    if rxy < 1e-6 {
+        return 1.0;
+    }
+    let (dx, dy) = (r[0] / rxy, r[1] / rxy);
+    let h0 = campo.at_fina(x, y);
+    let mut sen = 0.0f64;
+    for d in HORIZONTE {
+        let (ox, oy) = (libm::round(dx * d), libm::round(dy * d));
+        let dist = libm::hypot(ox, oy);
+        if dist == 0.0 {
+            continue;
+        }
+        let dh = campo.at_fina(x + ox as isize, y + oy as isize) - h0;
+        sen = sen.max(dh / libm::sqrt(dh * dh + dist * dist));
+    }
+    ((r[2] - sen) / rug.max(0.05) + 0.5).clamp(0.0, 1.0)
+}
+
 /// **A sombra no PAPEL** (M6: cai também fora da tinta): a fracção `0..1` de escurecimento de uma
-/// célula SEM tinta — a luz directa que a tinta à volta lhe tira, `(1 − céu)·(1 − luz)`. Só este termo
-/// chega ao papel (o difuso, a fenda e o brilho são da tinta).
+/// célula SEM tinta — a luz directa que a tinta à volta lhe tira, `(1 − céu)·(1 − luz)`, e o céu que ela
+/// lhe tapa ao pé, `céu·(1 − V)` (o Cycles: visibilidade 0,68 no p5 do papel). O difuso, a fenda e o
+/// brilho são da tinta.
 pub fn sombra_no_papel(o: &OleoReal, campo: &CampoAltura, cx: usize, cy: usize) -> f64 {
     let (x, y) = (cx as isize, cy as isize);
-    (1.0 - o.af.ceu) * (1.0 - luz_directa(o, campo, x, y, campo.at_sombra(x, y)))
+    let directa = (1.0 - o.af.ceu) * (1.0 - luz_directa(o, campo, x, y, campo.at_sombra(x, y)));
+    let tapado = if o.sombra <= 0.0 {
+        0.0
+    } else {
+        o.sombra * o.af.ceu * (1.0 - visibilidade(campo, x, y, normal(campo, x, y)))
+    };
+    (directa + tapado).min(1.0)
+}
+
+/// O ambiente roda-se em torno de z para o lado claro dele ficar no azimute da luz; `d` na moldura da
+/// tela (y para BAIXO) vai para a do mapa (a do Blender, y para cima).
+fn para_o_mapa(o: &OleoReal, claro: f64, d: [f64; 3]) -> [f64; 3] {
+    let l = para_a_luz(o);
+    let rot = claro - libm::atan2(-l[1], l[0]);
+    let (c, s) = (libm::cos(rot), libm::sin(rot));
+    let b = [d[0], -d[1], d[2]];
+    [b[0] * c - b[1] * s, b[0] * s + b[1] * c, b[2]]
 }
 
 /// Os [`Termos`] da célula `(cx, cy)`.
 pub fn termos(o: &OleoReal, campo: &CampoAltura, cx: usize, cy: usize) -> Termos {
     let af = &o.af;
     let (x, y) = (cx as isize, cy as isize);
-    let h0 = campo.at_sombra(x, y);
-    // Sobel 3×3: o da FORMA dá o plano tangente da cavidade; o da altura FINA dá a normal.
-    let sobel = |h: &dyn Fn(isize, isize) -> f64| {
-        let gx = (h(1, -1) + 2.0 * h(1, 0) + h(1, 1) - h(-1, -1) - 2.0 * h(-1, 0) - h(-1, 1)) / 8.0;
-        let gy = (h(-1, 1) + 2.0 * h(0, 1) + h(1, 1) - h(-1, -1) - 2.0 * h(0, -1) - h(1, -1)) / 8.0;
-        (gx, gy)
-    };
-    let (gx, gy) = sobel(&|dx, dy| campo.at(x + dx, y + dy));
-    let (fx, fy) = sobel(&|dx, dy| campo.at_fina(x + dx, y + dy));
-    let inv = 1.0 / libm::sqrt(fx * fx + fy * fy + 1.0);
-    let n = [-fx * inv, -fy * inv, inv];
+    let n = normal(campo, x, y);
     let l = para_a_luz(o);
+    let luz = luz_directa(o, campo, x, y, campo.at_sombra(x, y));
+    let vis = visibilidade(campo, x, y, n);
 
-    let luz = luz_directa(o, campo, x, y, h0);
-    // A cavidade lê a FORMA (a faixa dela foi medida sobre a forma, `Afinacao::limiar_cavidade`): sobre a
-    // altura da sombra cada poro do Dabber virava fenda saturada (folha W1b, raio 1: manchas navy).
-    let h0 = campo.at(x, y);
-
-    // A cavidade: oclusão do horizonte ACIMA DO PLANO TANGENTE (uma encosta não é uma fenda), média de
-    // N direcções × K passos; depois a faixa `limiar..fundo` → 0..1.
-    let sen = |v: f64| v / libm::sqrt(1.0 + v * v);
-    let mut ocl = 0.0f64;
-    for d in 0..DIRECOES_CAVIDADE {
-        let a = core::f64::consts::TAU * d as f64 / DIRECOES_CAVIDADE as f64;
-        let (dx, dy) = (libm::cos(a), libm::sin(a));
-        let tan_t = gx * dx + gy * dy;
-        let mut tan_max = tan_t;
-        for t in 1..=PASSOS_CAVIDADE {
-            let t = t as f64;
-            let q = campo.at(
-                x + libm::round(dx * t) as isize,
-                y + libm::round(dy * t) as isize,
-            );
-            tan_max = tan_max.max((q - h0) / t);
-        }
-        ocl += sen(tan_max) - sen(tan_t);
-    }
-    let ocl = ocl / DIRECOES_CAVIDADE as f64;
-    let cav =
-        ((ocl - af.limiar_cavidade) / (af.fundo_cavidade - af.limiar_cavidade)).clamp(0.0, 1.0);
-
-    // Difuso relativo: plano e iluminado = 1.
+    // Difuso da lâmpada relativo: plano iluminado = 1 − céu.
     let ndl = (n[0] * l[0] + n[1] * l[1] + n[2] * l[2]).max(0.0);
-    let ceu = af.ceu * (0.5 + 0.5 * n[2]);
-    let e = ceu + (1.0 - af.ceu) * (ndl / l[2]) * luz;
+    let sol = (1.0 - af.ceu) * (ndl / l[2]) * luz;
+    // O DIFUSO do céu é uniforme e a visibilidade já tira o que a encosta perde abaixo da horizontal; o
+    // ambiente só entra no BRILHO (o «Environment»/«Reflection Map» do Rebelle). Com o difuso do HDRI a
+    // janela do estúdio entrava nas fendas que as paredes tapam: 1,09 × 0,55 do Cycles (`oraculo/README.md`).
+    let mapa = o.ambiente.mapa();
 
-    // Brilho: GGX + Schlick, vista ortográfica (0,0,1), só da luz directa e só onde ela chega.
+    // Brilho da lâmpada: GGX + Schlick, vista ortográfica (0,0,1), só onde a luz directa chega.
     let hv = [l[0], l[1], l[2] + 1.0];
     let hn = libm::sqrt(hv[0] * hv[0] + hv[1] * hv[1] + hv[2] * hv[2]);
     let ndh = ((n[0] * hv[0] + n[1] * hv[1] + n[2] * hv[2]) / hn).max(0.0);
@@ -412,20 +497,40 @@ pub fn termos(o: &OleoReal, campo: &CampoAltura, cx: usize, cy: usize) -> Termos
     let hxx = hf(1, 0) - 2.0 * hf(0, 0) + hf(-1, 0);
     let hyy = hf(0, 1) - 2.0 * hf(0, 0) + hf(0, -1);
     let hxy = (hf(1, 1) - hf(1, -1) - hf(-1, 1) + hf(-1, -1)) / 4.0;
-    let var = 0.25 * (hxx * hxx + hyy * hyy + 2.0 * hxy * hxy) * inv * inv;
+    let var = 0.25 * (hxx * hxx + hyy * hyy + 2.0 * hxy * hxy) * n[2] * n[2];
     let a2 = af.rugosidade * af.rugosidade * af.rugosidade * af.rugosidade
         + (2.0 * var).min(VARIANCIA_MAX_BRILHO);
     let den = ndh * ndh * (a2 - 1.0) + 1.0;
     let d_ggx = a2 / (core::f64::consts::PI * den * den);
     let vdh = hv[2] / hn;
     let fres = F0 + (1.0 - F0) * libm::pow(1.0 - vdh, 5.0);
-    let espec = o.brilho * af.brilho_max * fres * d_ggx * ndl * luz * (1.0 - cav);
+    let lampada = o.brilho * af.brilho_max * fres * d_ggx * ndl * luz;
+
+    // Brilho do ambiente (split-sum: pré-filtrado × F0·A + B, Karis 2014), tapado pela visibilidade.
+    let espec = match mapa {
+        None => [lampada; 3],
+        Some(m) => {
+            let r = [
+                2.0 * n[2] * n[0],
+                2.0 * n[2] * n[1],
+                2.0 * n[2] * n[2] - 1.0,
+            ];
+            let rug = libm::sqrt(libm::sqrt(a2));
+            let nv = n[2].max(1e-4);
+            let r0 = -rug + 1.0;
+            let a004 = (r0 * r0).min(libm::exp2(-9.28 * nv)) * r0 + (-0.0275 * rug + 0.0425);
+            let ab =
+                F0 * (a004 * -1.04 + (-0.572 * rug + 1.04)) + (a004 * 1.04 + (0.022 * rug - 0.04));
+            let pre = m.brilho(para_o_mapa(o, m.claro, r), rug);
+            let livre = reflexo_livre(campo, x, y, r, rug);
+            pre.map(|p| lampada + o.brilho * af.ceu * p * ab * livre)
+        }
+    };
     Termos {
-        cav,
+        vis,
         luz,
-        e,
+        sol,
         espec,
-        ocl,
     }
 }
 

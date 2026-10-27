@@ -1,0 +1,97 @@
+# Régua W1c (26/10) — compara.py sobre a MESMA tinta; carga ~200 na máquina (só os números de imagem valem, nenhum relógio)
+
+######## W1b(lei × Cycles sol10
+células de tinta 227018 · vermelho 177718 · fenda vermelha (V Cycles<0,55) 37220
+
+## 1. Pontos pretos — a fenda VERMELHA (p10 p50 p90 da luminância sRGB 0..255)
+  PH2D                   fenda: 12.543 40.714 69.457 · R na fenda p50   148 · pixels «pretos» (max<70) no vermelho  4.44 %
+  Cycles céu+sol10       fenda: 39.926 53.739 73.572 · R na fenda p50   165 · pixels «pretos» (max<70) no vermelho  0.00 %
+  Cycles HDRI estúdio    fenda: 35.290 50.552 62.516 · R na fenda p50   179 · pixels «pretos» (max<70) no vermelho  1.18 %
+  Cycles estúdio+sol10   fenda: 36.895 46.673 64.184 · R na fenda p50   167 · pixels «pretos» (max<70) no vermelho  0.01 %
+
+## 2. Rebote — o que os ricochetes acrescentam ao difuso (cinza 0,5): (com − directo)/com
+  sol10        tinta:  0.027  0.111  0.318 · fenda:  0.164  0.306  0.543
+  hdri_studio  tinta:  0.020  0.135  0.518 · fenda:  0.195  0.376  0.727
+
+## 3. Difuso relativo E (plano iluminado = 1): PH2D t_e × Cycles sol10 cinza÷0,5
+  tinta            PH2D  0.409  0.709  1.039 · Cycles  0.445  0.830  1.074 · Cycles só directo  0.303  0.718  1.014
+  fenda V<0,55     PH2D  0.402  0.520  0.906 · Cycles  0.312  0.477  0.887 · Cycles só directo  0.164  0.302  0.738
+  sombra luz<0,5   PH2D  0.378  0.488  0.614 · Cycles  0.372  0.567  0.920 · Cycles só directo  0.230  0.499  0.821
+  correlação PH2D×Cycles na tinta: 0.766
+
+## 4. Brilho (linear, somado): PH2D t_espec × Cycles base preta (p50 p99 p99.9 · área > 0,3)
+  PH2D                    0.000  0.157  0.622 · área>0,3  0.41 %
+  Cycles céu+sol10        0.018  0.154  0.421 · área>0,3  0.29 %
+  Cycles HDRI estúdio     0.004  0.783  2.254 · área>0,3  2.96 %
+  Cycles estúdio+sol10    0.005  0.486  1.375 · área>0,3  2.01 %
+
+## 5. Realce que passa de 1 (fracção de pixels de tinta com algum canal > 1, linear)
+  sol10             2.06 %  · p99.9  1.30
+  hdri_studio      23.04 %  · p99.9  3.21
+  studio_sol10     10.36 %  · p99.9  2.26
+  hdri_interior     2.87 %  · p99.9  1.24
+  hdri_courtyard   12.06 %  · p99.9  2.59
+
+######## W1c-Classico × Cycles sol10
+células de tinta 227018 · vermelho 177718 · fenda vermelha (V Cycles<0,55) 37220
+
+## 1. Pontos pretos — a fenda VERMELHA (p10 p50 p90 da luminância sRGB 0..255)
+  PH2D                   fenda: 38.691 46.966 72.470 · R na fenda p50   168 · pixels «pretos» (max<70) no vermelho  0.00 %
+  Cycles céu+sol10       fenda: 39.926 53.739 73.572 · R na fenda p50   165 · pixels «pretos» (max<70) no vermelho  0.00 %
+  Cycles HDRI estúdio    fenda: 35.290 50.552 62.516 · R na fenda p50   179 · pixels «pretos» (max<70) no vermelho  1.18 %
+  Cycles estúdio+sol10   fenda: 36.895 46.673 64.184 · R na fenda p50   167 · pixels «pretos» (max<70) no vermelho  0.01 %
+
+## 2. Rebote — o que os ricochetes acrescentam ao difuso (cinza 0,5): (com − directo)/com
+  sol10        tinta:  0.027  0.111  0.318 · fenda:  0.164  0.306  0.543
+  hdri_studio  tinta:  0.020  0.135  0.518 · fenda:  0.195  0.376  0.727
+
+## 3. Difuso relativo E (plano iluminado = 1): PH2D t_e × Cycles sol10 cinza÷0,5
+  tinta            PH2D  0.504  0.709  1.047 · Cycles  0.445  0.830  1.074 · Cycles só directo  0.303  0.718  1.014
+  fenda V<0,55     PH2D  0.449  0.528  0.961 · Cycles  0.312  0.477  0.887 · Cycles só directo  0.164  0.302  0.738
+  sombra luz<0,5   PH2D  0.480  0.520  0.598 · Cycles  0.372  0.567  0.920 · Cycles só directo  0.230  0.499  0.821
+  correlação PH2D×Cycles na tinta: 0.788
+
+## 4. Brilho (linear, somado): PH2D t_espec × Cycles base preta (p50 p99 p99.9 · área > 0,3)
+  PH2D                    0.000  0.165  0.638 · área>0,3  0.42 %
+  Cycles céu+sol10        0.018  0.154  0.421 · área>0,3  0.29 %
+  Cycles HDRI estúdio     0.004  0.783  2.254 · área>0,3  2.96 %
+  Cycles estúdio+sol10    0.005  0.486  1.375 · área>0,3  2.01 %
+
+## 5. Realce que passa de 1 (fracção de pixels de tinta com algum canal > 1, linear)
+  sol10             2.06 %  · p99.9  1.30
+  hdri_studio      23.04 %  · p99.9  3.21
+  studio_sol10     10.36 %  · p99.9  2.26
+  hdri_interior     2.87 %  · p99.9  1.24
+  hdri_courtyard   12.06 %  · p99.9  2.59
+
+######## W1c-Estudio × Cycles studio_sol10
+células de tinta 227018 · vermelho 177718 · fenda vermelha (V Cycles<0,55) 37220
+
+## 1. Pontos pretos — a fenda VERMELHA (p10 p50 p90 da luminância sRGB 0..255)
+  PH2D                   fenda: 39.642 48.768 74.345 · R na fenda p50   168 · pixels «pretos» (max<70) no vermelho  0.00 %
+  Cycles céu+sol10       fenda: 39.926 53.739 73.572 · R na fenda p50   165 · pixels «pretos» (max<70) no vermelho  0.00 %
+  Cycles HDRI estúdio    fenda: 35.290 50.552 62.516 · R na fenda p50   179 · pixels «pretos» (max<70) no vermelho  1.18 %
+  Cycles estúdio+sol10   fenda: 36.895 46.673 64.184 · R na fenda p50   167 · pixels «pretos» (max<70) no vermelho  0.01 %
+
+## 2. Rebote — o que os ricochetes acrescentam ao difuso (cinza 0,5): (com − directo)/com
+  sol10        tinta:  0.027  0.111  0.318 · fenda:  0.164  0.306  0.543
+  hdri_studio  tinta:  0.020  0.135  0.518 · fenda:  0.195  0.376  0.727
+
+## 3. Difuso relativo E (plano iluminado = 1): PH2D t_e × Cycles studio_sol10 cinza÷0,5
+  tinta            PH2D  0.504  0.709  1.047 · Cycles  0.485  0.841  1.623 · Cycles só directo  0.296  0.717  1.572
+  fenda V<0,55     PH2D  0.449  0.528  0.961 · Cycles  0.344  0.552  0.828 · Cycles só directo  0.153  0.333  0.617
+  sombra luz<0,5   PH2D  0.480  0.520  0.598 · Cycles  0.427  0.740  1.607 · Cycles só directo  0.230  0.619  1.568
+  correlação PH2D×Cycles na tinta: 0.252
+
+## 4. Brilho (linear, somado): PH2D t_espec × Cycles base preta (p50 p99 p99.9 · área > 0,3)
+  PH2D                    0.000  0.260  0.717 · área>0,3  0.73 %
+  Cycles céu+sol10        0.018  0.154  0.421 · área>0,3  0.29 %
+  Cycles HDRI estúdio     0.004  0.783  2.254 · área>0,3  2.96 %
+  Cycles estúdio+sol10    0.005  0.486  1.375 · área>0,3  2.01 %
+
+## 5. Realce que passa de 1 (fracção de pixels de tinta com algum canal > 1, linear)
+  sol10             2.06 %  · p99.9  1.30
+  hdri_studio      23.04 %  · p99.9  3.21
+  studio_sol10     10.36 %  · p99.9  2.26
+  hdri_interior     2.87 %  · p99.9  1.24
+  hdri_courtyard   12.06 %  · p99.9  2.59

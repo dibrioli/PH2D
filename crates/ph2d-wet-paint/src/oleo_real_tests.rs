@@ -42,30 +42,112 @@ fn a_tinta_lisa_sai_com_a_cor_dela() {
 }
 
 #[test]
-fn a_fenda_satura_no_tom_da_tinta_m2() {
-    // Um sulco fundo de 3 células numa tinta alta: no fundo a cavidade é cheia.
+fn a_tinta_lisa_sai_com_a_cor_dela_em_todo_ambiente() {
+    let g = grade(|_, _| 3000.0);
+    for ambiente in Ambiente::TODOS {
+        let o = OleoReal {
+            brilho: 0.0,
+            ambiente,
+            ..OleoReal::default()
+        };
+        let c = campo(&g, &o);
+        assert!(
+            (termos(&o, &c, 32, 32).vis - 1.0).abs() < 1e-9,
+            "{ambiente:?}"
+        );
+        for rgb in [
+            [215.0, 25.0, 30.0],
+            [240.0, 240.0, 236.0],
+            [30.0, 25.0, 60.0],
+        ] {
+            let out = ilumina(&o, &c, 32, 32, rgb, 1.0);
+            for k in 0..3 {
+                assert!(
+                    (out[k] - rgb[k]).abs() < 0.5,
+                    "{ambiente:?} {rgb:?} → {out:?}"
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn a_fenda_fica_no_tom_da_tinta_e_nunca_preta() {
+    // Um sulco fundo de 3 células numa tinta alta, o vermelho saturado da captura do dono (W1b): o Cycles
+    // sobre a mesma tinta põe o R da fenda em 171 de 255, a lei M2 punha-o em 76 (pontos pretos).
     let g = grade(|x, _| if (31..=33).contains(&x) { 0.0 } else { 6000.0 });
     let o = OleoReal {
         brilho: 0.0,
         sombra: 0.0,
         af: Afinacao {
             raio_suave: 0,
+            raio_detalhe: 0,
             ..Afinacao::default()
         },
         ..OleoReal::default()
     };
     let c = campo(&g, &o);
     let t = termos(&o, &c, 32, 32);
-    assert!(t.cav >= 0.999, "{t:?}");
-    // Com a cavidade cheia, a razão entre canais em linear é (a_i/a_j)^(1+k): a fenda satura no tom.
-    let rgb = [20.0, 150.0, 230.0];
+    assert!(t.vis < 0.5, "o fundo do sulco vê pouco céu: {t:?}");
+    let rgb = [215.0, 25.0, 30.0];
     let out = ilumina(&o, &c, 32, 32, rgb, 1.0);
-    let lin = |v: f64| srgb255_to_linear(v);
-    let medido = lin(out[1]) / lin(out[2]);
-    let lei = libm::pow(lin(rgb[1]) / lin(rgb[2]), 1.0 + o.af.k_fenda);
+    assert!(out[0] > 0.6 * rgb[0], "o vermelho não se apaga: {out:?}");
+    // O multi-ricochete satura: o canal dominante perde menos que os outros.
+    let lin = srgb255_to_linear;
+    let (r, gg) = (lin(out[0]) / lin(rgb[0]), lin(out[1]) / lin(rgb[1]));
+    assert!(r > gg, "R {r} G {gg}");
+}
+
+#[test]
+fn o_multi_ricochete_bate_com_o_cycles() {
+    // `oraculo/calibra_ao.py` (26/10): o ganho do canal R do vermelho sobre a visibilidade, no Cycles.
+    for (v, ganho_cycles) in [
+        (0.777, 1.156),
+        (0.699, 1.228),
+        (0.555, 1.358),
+        (0.466, 1.467),
+    ] {
+        let a = srgb255_to_linear(215.0);
+        let ganho = multi_ricochete(v, a) / v;
+        assert!(
+            (ganho / ganho_cycles - 1.0).abs() < 0.08,
+            "V {v}: {ganho} × Cycles {ganho_cycles}"
+        );
+    }
+}
+
+#[test]
+fn o_realce_enche_a_folga_sem_passar_de_um() {
+    for base in [0.0, 0.2, 0.85, 0.999, 1.0] {
+        assert!((rola(base, 0.0) - base).abs() < 1e-12, "neutro em {base}");
+        let mut antes = base;
+        for k in 1..=40 {
+            let y = rola(base, f64::from(k) * 0.25);
+            assert!(y >= antes && y <= 1.0, "{base} {k}: {y}");
+            antes = y;
+        }
+    }
+    // Pouco brilho soma-se quase inteiro.
+    assert!((rola(0.2, 0.01) - 0.21).abs() < 1e-3);
+}
+
+#[test]
+fn o_ambiente_poe_o_brilho_do_lado_da_luz() {
+    // Duas rampas iguais, uma virada para a luz (topo-esquerda) e outra de costas: com o estúdio o reflexo
+    // do lado claro é maior (o ambiente rodou-se até à luz).
+    let g = grade(|x, _| x as f32 * 300.0);
+    let o = OleoReal {
+        sombra: 0.0,
+        ..OleoReal::default()
+    };
+    let c = campo(&g, &o);
+    let de_frente = termos(&o, &c, 32, 32).espec[1];
+    let g2 = grade(|x, _| (64 - x) as f32 * 300.0);
+    let c2 = campo(&g2, &o);
+    let de_costas = termos(&o, &c2, 32, 32).espec[1];
     assert!(
-        (medido / lei - 1.0).abs() < 0.02,
-        "medido {medido} lei {lei}"
+        de_frente > de_costas,
+        "frente {de_frente} costas {de_costas}"
     );
 }
 
@@ -87,7 +169,15 @@ fn a_sombra_cai_do_lado_contrario_a_luz_e_chega_ao_papel() {
         atras > 0.2,
         "atrás do bloco (baixo-direita) o papel escurece: {atras}"
     );
-    assert!(frente == 0.0, "do lado da luz não: {frente}");
+    // Do lado da luz só o céu que a parede tapa ao pé (W1c): a lâmpada chega inteira.
+    assert!(
+        atras > frente + 0.15 && frente < 0.15,
+        "do lado da luz quase nada: {frente} × atrás {atras}"
+    );
+    assert!(
+        luz_directa(&o, &c, 21, 21, c.at_sombra(21, 21)) == 1.0,
+        "a lâmpada chega inteira à frente"
+    );
     let sem = sombra_no_papel(&OleoReal { sombra: 0.0, ..o }, &c, 43, 43);
     assert!(sem == 0.0, "Sombra 0 = nada no papel: {sem}");
 }

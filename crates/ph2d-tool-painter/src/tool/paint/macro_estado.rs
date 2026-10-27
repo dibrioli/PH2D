@@ -187,7 +187,8 @@ impl PainterTool {
     }
 }
 
-/// Os knobs do artista do Óleo Real (a `Afinacao` é constante da lei, não vai na macro). Ângulos em radianos.
+/// Os knobs do artista do Óleo Real (a `Afinacao` é constante da lei, não vai na macro). Ângulos em radianos;
+/// o `ambiente` é o índice em `Ambiente::TODOS`.
 fn oleo_para_json(o: &ph2d_wet_paint::oleo_real::OleoReal) -> Value {
     json!({
         "profundidade": o.profundidade,
@@ -195,6 +196,7 @@ fn oleo_para_json(o: &ph2d_wet_paint::oleo_real::OleoReal) -> Value {
         "altitude": o.altitude,
         "sombra": o.sombra,
         "brilho": o.brilho,
+        "ambiente": o.ambiente.indice(),
     })
 }
 
@@ -210,6 +212,13 @@ fn oleo_de_json(o: &mut ph2d_wet_paint::oleo_real::OleoReal, v: &Value) {
         if let Some(x) = v[campo].as_f64() {
             *alvo = x;
         }
+    }
+    if let Some(a) = v["ambiente"]
+        .as_u64()
+        .and_then(|i| u8::try_from(i).ok())
+        .and_then(ph2d_wet_paint::oleo_real::Ambiente::de_indice)
+    {
+        o.ambiente = a;
     }
 }
 

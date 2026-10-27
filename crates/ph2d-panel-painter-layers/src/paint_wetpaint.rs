@@ -405,7 +405,66 @@ fn paint_oleo_real(
             ctx, theme, x, content_w, y, chave, id, valor, lo as f32, hi as f32, passo, casas,
         );
     }
+    let cur = brush.wet_oleo_ambiente;
+    let (y, open) = crate::paint_brush_rows::paint_dropdown_row_de_caixa(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        "panel.painter_layers.wetpaint.oleo_environment",
+        ph2d_tool_painter::ids::PAINTER_WETPAINT_OLEO_AMBIENTE,
+        cur,
+        nome_do_ambiente(cur),
+    );
+    if let Some(r) = open {
+        PENDING_AMBIENTE_DD.with(|c| c.set(Some((r, cur))));
+    }
     y
+}
+
+/// Os rótulos do **Environment**, pela ordem de `Ambiente::TODOS` (o wire do chip).
+const AMBIENTES: [&str; ph2d_tool_painter::ids::PAINTER_WETPAINT_OLEO_AMBIENTE_COUNT as usize] = [
+    "panel.painter_layers.wetpaint.oleo_env_classic",
+    "panel.painter_layers.wetpaint.oleo_env_studio",
+    "panel.painter_layers.wetpaint.oleo_env_interior",
+    "panel.painter_layers.wetpaint.oleo_env_courtyard",
+];
+
+fn nome_do_ambiente(i: u8) -> &'static str {
+    tr(AMBIENTES
+        .get(usize::from(i))
+        .copied()
+        .unwrap_or(AMBIENTES[1]))
+}
+
+thread_local! {
+    /// O menu do Environment aberto neste quadro (o chip e o índice de agora), pintado por cima do corpo.
+    static PENDING_AMBIENTE_DD: std::cell::Cell<Option<(ph2d_editor_core::zones::Rect, u8)>> =
+        const { std::cell::Cell::new(None) };
+}
+
+/// O popover do **Environment** (chamado de `paint_brush_popovers`, depois do clip do corpo).
+pub(crate) fn paint_wetpaint_popovers(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme) {
+    if let Some((r, cur)) = PENDING_AMBIENTE_DD.with(std::cell::Cell::take) {
+        let opcoes = (0..ph2d_tool_painter::ids::PAINTER_WETPAINT_OLEO_AMBIENTE_COUNT)
+            .map(|i| {
+                ph2d_editor_core::widget::DropdownOption::new(
+                    ph2d_tool_painter::ids::painter_wetpaint_oleo_ambiente_option_id(i),
+                    i,
+                    nome_do_ambiente(i),
+                )
+            })
+            .collect();
+        crate::dropdown_popover::paint_dropdown_popover(
+            ctx,
+            theme,
+            ph2d_tool_painter::ids::PAINTER_WETPAINT_OLEO_AMBIENTE,
+            opcoes,
+            r,
+            cur,
+        );
+    }
 }
 
 /// O fim da secção — Show Wet, Smooth Edges (a intensidade, `0..1`), Live Water (W1g) e Tuning. Partida de

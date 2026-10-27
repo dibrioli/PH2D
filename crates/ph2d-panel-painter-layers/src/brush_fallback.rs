@@ -308,6 +308,7 @@ pub const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     wet_oleo_brilho: 1.0,
     wet_oleo_altitude_graus: 42.0,
     wet_oleo_azimute_graus: 225.0,
+    wet_oleo_ambiente: 1,
     wet_live_water: false,
     wet_heavy_edge: 0.0,
     wet_km_mixing: false,

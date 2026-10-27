@@ -462,6 +462,7 @@ impl PainterTool {
                 as f32,
             wet_oleo_azimute_graus: self.paint.wetpaint.oleo_real_valores.azimute.to_degrees()
                 as f32,
+            wet_oleo_ambiente: self.paint.wetpaint.oleo_real_valores.ambiente.indice(),
             wet_live_water: self.paint.wetpaint.agua_viva,
             wet_heavy_edge: self.paint.wetpaint.borda_que_pesa as f32,
             wet_km_mixing: self.paint.wetpaint.km_mixing,

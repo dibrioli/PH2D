@@ -11,7 +11,7 @@
 //! carregar.
 
 use ph2d_a11y::NodeId;
-use ph2d_tool_registry::hash_node_id;
+use ph2d_tool_registry::{hash_node_id, hash_node_id_runtime};
 
 /// Collapsible **Wet Paint** section header (ALL-CAPS label + collapse chevron + assignable colour
 /// dot). `mark_collapsible_section`-registered in `crate::populate`.
@@ -101,6 +101,23 @@ pub const PAINTER_WETPAINT_OLEO_FAIXAS: [(f64, f64); 5] = [
     (5.0, 90.0),
     (0.0, 360.0),
 ];
+
+/// **Environment** chip do **Real Oil** (W1c): o céu que a tinta reflecte (`OleoReal::ambiente`; wire = o
+/// índice em `Ambiente::TODOS`). Pintado abaixo de [`PAINTER_WETPAINT_OLEO_FIELDS`], só com a caixa ligada.
+pub const PAINTER_WETPAINT_OLEO_AMBIENTE: NodeId =
+    hash_node_id("painter_brush.wetpaint_oleo_ambiente");
+/// Número de ambientes (`Ambiente::TODOS`).
+pub const PAINTER_WETPAINT_OLEO_AMBIENTE_COUNT: u8 = 4;
+const _: () = assert!(
+    ph2d_wet_paint::oleo_real::Ambiente::TODOS.len()
+        == PAINTER_WETPAINT_OLEO_AMBIENTE_COUNT as usize
+);
+
+/// Opção `i` do popover do **Environment**.
+#[must_use]
+pub fn painter_wetpaint_oleo_ambiente_option_id(i: u8) -> NodeId {
+    hash_node_id_runtime(&format!("painter_brush.wetpaint_oleo_ambiente_opt.{i}"))
+}
 
 /// **Live Water** checkbox (W1g, dono 10/10): a água corre COM o traço aberto (`Sim::sim_while_painting`).
 /// Desligado de fábrica: a 4096² o pior quadro a pintar sobe de 2–4 ms a 14–45 ms (05 §4b, W1f).

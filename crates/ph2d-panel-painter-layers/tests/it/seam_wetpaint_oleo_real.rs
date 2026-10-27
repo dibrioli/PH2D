@@ -18,8 +18,9 @@ use ph2d_panel_painter_layers::PainterLayersPanel;
 use ph2d_panel_painter_layers::state::{PainterLayersPanelState, set_current_brush};
 use ph2d_tool_painter::PainterTool;
 use ph2d_tool_painter::ids::{
-    PAINTER_WETPAINT_OLEO_ALTITUDE, PAINTER_WETPAINT_OLEO_AZIMUTE, PAINTER_WETPAINT_OLEO_BRILHO,
-    PAINTER_WETPAINT_OLEO_PROFUNDIDADE, PAINTER_WETPAINT_OLEO_REAL, PAINTER_WETPAINT_OLEO_SOMBRA,
+    PAINTER_WETPAINT_OLEO_ALTITUDE, PAINTER_WETPAINT_OLEO_AMBIENTE, PAINTER_WETPAINT_OLEO_AZIMUTE,
+    PAINTER_WETPAINT_OLEO_BRILHO, PAINTER_WETPAINT_OLEO_PROFUNDIDADE, PAINTER_WETPAINT_OLEO_REAL,
+    PAINTER_WETPAINT_OLEO_SOMBRA, painter_wetpaint_oleo_ambiente_option_id,
 };
 use ph2d_ui_testkit::MockPanelHost;
 
@@ -183,5 +184,67 @@ fn o_real_oil_liga_com_o_look_aprovado_cada_linha_chega_a_ferramenta_e_desligar_
         tool.wet_oleo_real(),
         Some(o),
         "religar não devolveu os últimos valores"
+    );
+}
+
+/// Os índices em `Ambiente::TODOS` por LITERAL (`Classico, Estudio, Interior, Patio`): o wire do chip.
+const ESTUDIO: u8 = 1;
+const INTERIOR: u8 = 2;
+
+/// O clique REAL no centro de `r` → o painel → o barramento → a ferramenta.
+fn clica_em(
+    host: &mut MockPanelHost,
+    st: &mut PainterLayersPanelState,
+    tool: &mut PainterTool,
+    r: Rect,
+) {
+    for ev in host.click_at(r.x + r.w * 0.5, r.y + r.h * 0.5) {
+        host.apply_panel_event::<PainterLayersPanel>(st, ev);
+    }
+    entrega(host, tool);
+}
+
+/// ⭐ O **Environment** (W1c): o chip só aparece com a caixa ligada, nasce em Studio (índice 1, o
+/// `Ambiente::default()`), e escolher «Interior» no popover pelo ponteiro chega a `OleoReal::ambiente`
+/// e volta ao painel como índice 2. Mutações que sangram: o chip fora do populate (não abre), a rota da
+/// opção em falta (não chega), o braço `SelectOption` da ferramenta em falta, o snapshot preso a um valor.
+#[test]
+fn o_environment_escolhido_no_popover_chega_ao_oleo_real_e_volta_ao_painel() {
+    let mut tool = molhado();
+    let (_, _, desligado) = pinta(&tool);
+    assert!(
+        rect_de(&desligado, PAINTER_WETPAINT_OLEO_AMBIENTE).is_none(),
+        "o Environment pintado com a caixa desligada"
+    );
+    clica_na_caixa(&mut tool);
+    assert_eq!(
+        tool.wet_oleo_real().expect("ligado").ambiente.indice(),
+        ESTUDIO,
+        "o ambiente de fábrica é o Studio"
+    );
+    assert_eq!(tool.brush_settings().wet_oleo_ambiente, ESTUDIO);
+    let (mut host, mut st, rects) = pinta(&tool);
+    let chip = rect_de(&rects, PAINTER_WETPAINT_OLEO_AMBIENTE).expect("o chip Environment pintado");
+    clica_em(&mut host, &mut st, &mut tool, chip);
+    set_current_brush(Some(tool.brush_settings()));
+    let rects = host.paint::<PainterLayersPanel>(&mut st, viewport());
+    let interior = painter_wetpaint_oleo_ambiente_option_id(INTERIOR);
+    let o = rect_de(&rects, interior).expect("clicar o chip não abriu a opção Interior");
+    clica_em(&mut host, &mut st, &mut tool, o);
+    assert_eq!(
+        tool.wet_oleo_real()
+            .expect("continua ligado")
+            .ambiente
+            .indice(),
+        INTERIOR
+    );
+    assert_eq!(tool.wet_oleo_real_valores().ambiente.indice(), INTERIOR);
+    assert_eq!(tool.brush_settings().wet_oleo_ambiente, INTERIOR);
+    // Desligar e religar guarda o ambiente com os outros knobs.
+    clica_na_caixa(&mut tool);
+    clica_na_caixa(&mut tool);
+    assert_eq!(
+        tool.wet_oleo_real().expect("religado").ambiente.indice(),
+        INTERIOR
     );
 }

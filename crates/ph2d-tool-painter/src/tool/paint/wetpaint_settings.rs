@@ -647,11 +647,28 @@ impl PainterTool {
             3 => o.altitude = v.clamp(lo, hi).to_radians(),
             _ => o.azimute = v.rem_euclid(hi).to_radians(),
         }
+        self.guarda_oleo_valores(o);
+        true
+    }
+
+    /// O **Environment** do Real Oil pelo índice em `Ambiente::TODOS` (o wire do chip). Fora da faixa =
+    /// sem efeito (`false`). Guarda-o e, com a caixa ligada, recompõe.
+    fn set_wet_oleo_ambiente_indice(&mut self, i: u8) -> bool {
+        let Some(a) = ph2d_wet_paint::oleo_real::Ambiente::de_indice(i) else {
+            return false;
+        };
+        let mut o = self.paint.wetpaint.oleo_real_valores;
+        o.ambiente = a;
+        self.guarda_oleo_valores(o);
+        true
+    }
+
+    /// Os valores novos dos knobs do Real Oil: ficam guardados e, com a caixa ligada, vão à tela.
+    fn guarda_oleo_valores(&mut self, o: ph2d_wet_paint::oleo_real::OleoReal) {
         self.paint.wetpaint.oleo_real_valores = o;
         if self.paint.wetpaint.oleo_real.is_some() {
             self.set_wet_oleo_real(Some(o));
         }
-        true
     }
 
     /// A **Live Water** (W1g): a água corre com o traço aberto.
@@ -849,6 +866,12 @@ impl PainterTool {
             PanelEvent::Click(id) if *id == crate::ids::PAINTER_WETPAINT_OLEO_REAL => {
                 self.set_wet_oleo_real_ligado(self.paint.wetpaint.oleo_real.is_none());
                 true
+            }
+            PanelEvent::SelectOption(id, v)
+                if *id == crate::ids::PAINTER_WETPAINT_OLEO_AMBIENTE =>
+            {
+                v.parse::<u8>()
+                    .is_ok_and(|i| self.set_wet_oleo_ambiente_indice(i))
             }
             PanelEvent::Click(id) if *id == crate::ids::PAINTER_WETPAINT_LIVE_WATER => {
                 self.set_wet_agua_viva(!self.paint.wetpaint.agua_viva);

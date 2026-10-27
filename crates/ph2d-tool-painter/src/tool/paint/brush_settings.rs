@@ -500,6 +500,8 @@ pub struct BrushSettings {
     pub wet_oleo_brilho: f32,
     pub wet_oleo_altitude_graus: f32,
     pub wet_oleo_azimute_graus: f32,
+    /// O **Environment** do Real Oil: o índice em `Ambiente::TODOS` (`1` = Studio, o de fábrica).
+    pub wet_oleo_ambiente: u8,
     /// **Live Water** (W1g): a água corre com o traço aberto.
     pub wet_live_water: bool,
     /// **Heavy Edge** (W1g, `0..1`): o pigmento pesa na orla de baixo da tela inclinada.

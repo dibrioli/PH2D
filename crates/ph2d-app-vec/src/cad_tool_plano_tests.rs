@@ -161,3 +161,60 @@ fn the_shape_colour_says_free_defined_conflict() {
         "o conflito não pinta o lado"
     );
 }
+
+/// ⭐ Report do dono (26/10, cena 7): numa linha aberta de dois pontos (a tampa) o centro da forma cai no próprio lado,
+/// «selo para dentro, cota para fora» empatava e o «= 1» tapava o número. Nenhum selo tapa um número nem outro selo; a
+/// cota de referência mostra-se entre parênteses.
+#[test]
+fn no_badge_covers_a_number_or_another_badge_and_a_reference_reads_in_parentheses() {
+    let mut m = mesa();
+    let tampa = m.scene.push_path(ph2d_vec_scene::VecPath {
+        verts: [[0.1, 1.0], [1.0, 2.0]]
+            .into_iter()
+            .map(ph2d_vec_scene::VecVertex::corner)
+            .collect(),
+        ..ph2d_vec_scene::VecPath::default()
+    });
+    m.scene.normaliza_ids();
+    let t = |i: usize| PontoCad::Vert(tampa, m.scene.path(tampa).expect("a tampa").verts[i].id);
+    let lado_tampa = SegCad(t(0), t(1));
+    let topo = m.lado(2, 3);
+    regras(
+        &mut m,
+        &[
+            Lei::Igual(topo, lado_tampa),
+            Lei::Distancia(lado_tampa.0, lado_tampa.1, 1.3),
+            Lei::Distancia(topo.0, topo.1, 1.9),
+        ],
+    );
+    m.scene.regras_mut()[1].referencia = true;
+    m.desenha(true);
+    let p = plano_de(&m);
+    let cruza = |a: &Rect, b: &Rect| {
+        a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h
+    };
+    assert_eq!(p.selos.len(), 2, "o Igual tem um selo em cada lado");
+    assert_eq!(p.cotas.len(), 2);
+    for (i, s) in p.selos.iter().enumerate() {
+        for c in &p.cotas {
+            assert!(
+                !cruza(&s.rect, &c.rect),
+                "um selo tapa o número «{}»",
+                c.texto
+            );
+        }
+        for o in &p.selos[..i] {
+            assert!(!cruza(&s.rect, &o.rect), "dois selos um por cima do outro");
+        }
+    }
+    let ref_ = &m.scene.regras()[1];
+    for c in &p.cotas {
+        let entre = c.texto.starts_with('(') && c.texto.ends_with(')');
+        assert_eq!(
+            entre,
+            c.regra == ref_.id,
+            "só a REF vai entre parênteses: «{}»",
+            c.texto
+        );
+    }
+}

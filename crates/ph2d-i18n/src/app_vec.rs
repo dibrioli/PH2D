@@ -24,7 +24,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "app.vec.svg_import.no_drawable_shape" => "no drawable shape",
         "app.vec.svg_import.read" => "read: {e}",
         // ph2d-migrar-texto:end
-        // As regras de CAD (W4.4, `ph2d_app_vec::cad_marks`): a ficha do conflito e o nome de cada lei.
+        // As regras de CAD (`ph2d_app_vec::cad_tool_plano`): o nome de cada lei e a cota de referência (só leitura).
+        "app.vec.cad.referencia" => "({valor})",
         "app.vec.cad.lei.coincidente" => "Coincident",
         "app.vec.cad.lei.horizontal" => "Horizontal",
         "app.vec.cad.lei.vertical" => "Vertical",

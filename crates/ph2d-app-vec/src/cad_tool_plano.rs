@@ -268,7 +268,13 @@ pub(crate) fn plano(e: &Entrada<'_>, text: &mut TextSystem) -> Plano {
         let cor = cor_da_regra(*est, r.referencia);
         let ps: Vec<[f64; 2]> = r.lei.pontos().into_iter().filter_map(ponto).collect();
         plano.ligados.insert(r.id, ps.clone());
-        if let Some(texto) = e.u.texto(&r.lei) {
+        if let Some(valor) = e.u.texto(&r.lei) {
+            // REF: a medida que o desenho já fixa mostra-se entre parênteses, como nos CAD — não se escreve.
+            let texto = if r.referencia {
+                ph2d_i18n::tr_with("app.vec.cad.referencia", &[("valor", &valor)])
+            } else {
+                valor
+            };
             if let Some(c) = cota(&r.lei, &ps, &texto, r.id, cor, e, text) {
                 plano.cotas.push(c);
             }
@@ -304,7 +310,7 @@ pub(crate) fn plano(e: &Entrada<'_>, text: &mut TextSystem) -> Plano {
         for (m, mut n) in sitios {
             if let Some(cc) = dentro_de
                 && !matches!(r.lei, Lei::Coincidente(..) | Lei::Fixo(..))
-                && n[0] * (cc[0] - m[0]) + n[1] * (cc[1] - m[1]) < 0.0
+                && n[0] * (cc[0] - m[0]) + n[1] * (cc[1] - m[1]) < EMPATE_PX
             {
                 n = esc(n, -1.0);
             }
@@ -340,7 +346,54 @@ pub(crate) fn plano(e: &Entrada<'_>, text: &mut TextSystem) -> Plano {
             });
         }
     }
+    desencosta_selos(
+        &mut plano.selos,
+        &plano.cotas,
+        lado_px + f64::from(Spacing::Xxs.px()),
+    );
     plano
+}
+
+/// O centro da forma em cima do próprio lado (um traço aberto de dois pontos): «selo para dentro, cota para fora» empata
+/// e os dois iriam para o mesmo lado. No empate a cota fica do lado da normal e o selo vai para o outro.
+const EMPATE_PX: f64 = 1e-6;
+
+fn cruza(a: &Rect, b: &Rect) -> bool {
+    a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h
+}
+
+fn centro_de(r: &Rect) -> [f64; 2] {
+    [f64::from(r.x + r.w * 0.5), f64::from(r.y + r.h * 0.5)]
+}
+
+/// ⭐ **Nenhum selo tapa um número nem outro selo** (report do dono, 26/10: o «= 1» da tampa tapava a cota nova): o
+/// número é clicável e manda; um selo que ainda bata em alguém afasta-se dele, passo a passo, até ficar livre.
+fn desencosta_selos(selos: &mut [Selo], cotas: &[Cota], passo: f64) {
+    const TENTATIVAS: usize = 8;
+    for i in 0..selos.len() {
+        for _ in 0..TENTATIVAS {
+            let r = selos[i].rect;
+            let Some(outro) = cotas
+                .iter()
+                .map(|c| c.rect)
+                .chain(selos[..i].iter().map(|s| s.rect))
+                .find(|o| cruza(o, &r))
+            else {
+                break;
+            };
+            let d = sub(centro_de(&r), centro_de(&outro));
+            let dir = if d[0].hypot(d[1]) > EMPATE_PX {
+                unit(d)
+            } else {
+                [0.0, -1.0]
+            };
+            #[expect(clippy::cast_possible_truncation, reason = "px de ecrã")]
+            {
+                selos[i].rect.x += (dir[0] * passo) as f32;
+                selos[i].rect.y += (dir[1] * passo) as f32;
+            }
+        }
+    }
 }
 
 /// A cota de uma medida: linhas de extensão + linha com setas + o número (distância); arco + número (ângulo); haste
@@ -371,7 +424,8 @@ fn cota(
         (Lei::Distancia(pa, ..), [a, b]) => {
             let mut n = unit([b[1] - a[1], a[0] - b[0]]);
             if let Some(cc) = centro_do(pa.path(), e.scene, e.view, e.xf, e.cam)
-                && (n[0] * (meio(*a, *b)[0] - cc[0]) + n[1] * (meio(*a, *b)[1] - cc[1])) < 0.0
+                && (n[0] * (meio(*a, *b)[0] - cc[0]) + n[1] * (meio(*a, *b)[1] - cc[1]))
+                    < -EMPATE_PX
             {
                 n = esc(n, -1.0);
             }

@@ -10,6 +10,7 @@ mod every_word_this_family_shows_comes_from_the_string_table;
 mod medida_regua;
 mod o_caminho;
 mod o_cartao;
+mod o_cartao_valor; // W5: o cartão do Follow Value
 mod o_gizmo;
 mod o_olhar;
 mod o_ponto;

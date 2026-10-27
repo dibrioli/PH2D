@@ -35,6 +35,8 @@ mod inspector_constraint;
 pub use inspector_constraint::*;
 mod inspector_constraint_opcao;
 mod inspector_constraint_opcao_b;
+mod inspector_constraint_prop;
+pub use inspector_constraint_prop::{INSP_CONSTRAINT_PROP, INSP_CONSTRAINT_PROP_OPCAO};
 mod inspector_factory;
 /// ⭐ Os ids da secção SCRIPT (TOP-20 #16) — ver o cabeçalho.
 mod inspector_hud;

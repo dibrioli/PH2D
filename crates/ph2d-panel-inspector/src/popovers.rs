@@ -215,6 +215,7 @@ pub(crate) fn paint_deferred_popovers(
 
     // SIGNAL ACTIONS — o ▾ do *Play Clip* (onda 5, item c), na função irmã (tecto de 200 LOC).
     action_clip_popover(scene, text_system, theme, hit_index, store, region);
+    constraint_prop_popover(scene, text_system, theme, hit_index, store, region);
 
     // AUDIO — o seletor do BARRAMENTO, mesmo passe diferido, slot próprio.
     if let Some((sel, chip)) = state_popovers::take_pending_audio_dd()
@@ -366,6 +367,42 @@ fn action_clip_popover(
         )
         .open(true);
         if let Some(i) = nomes.iter().position(|n| *n == row.arg) {
+            dd.select(i);
+        }
+        paint_open_popover(
+            &dd,
+            chip,
+            region,
+            store,
+            scene,
+            text_system,
+            theme,
+            hit_index,
+        );
+    }
+}
+
+/// O ▾ de propriedade do Follow Value (cartão CONSTRAINTS): o `(linha, ▾)` vem no slot e as opções
+/// relêem-se do instantâneo. Quem regista as opções escreve de quem elas são (o clique lê-o).
+fn constraint_prop_popover(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: ph2d_tokens::Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    region: Rect,
+) {
+    let pendente = state_popovers::take_pending_constraint_prop();
+    state_popovers::set_constraint_prop_pintado(pendente.map(|(kj, _)| kj));
+    if let Some(((k, j), chip)) = pendente
+        && let Some(info) = crate::state_components::current_inspector_constraints()
+        && let Some(p) = info.rows.get(k).and_then(|r| r.propriedades.get(j))
+        && let Some(&id) = crate::ids::INSP_CONSTRAINT_PROP
+            .get(j)
+            .and_then(|t| t.get(k))
+    {
+        let mut dd = Dropdown::new(id, "", sections::constraint_valor::opcoes(p)).open(true);
+        if let Some(i) = p.opcoes.iter().position(|o| o.prop == p.valor) {
             dd.select(i);
         }
         paint_open_popover(

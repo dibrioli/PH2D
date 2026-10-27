@@ -4,15 +4,15 @@
 
 use ph2d_constraints::{
     Ajuste, BendSide, Canais, Canal, ChildOf, DistanceMode, EixoDoChao, Kind, Mix, PathBy, Pose2,
-    Space, Volume,
+    Prop, Space, Volume,
 };
 use ph2d_constraints_ecs::Item;
 use ph2d_ecs::canal_constraint::{
     AJUSTE, AJUSTES, CANAIS, CLIP, CORRENTE, DE, DE_MAX, DE_MIN, DESVIO, DESVIO_X, DESVIO_Y,
     DISTANCIA, DOBRA, DOBRAS, DURACAO, EIXO, EIXOS, ESPACO, ESPACOS, ESTICA, EXTRAPOLA, FORCA,
     INSTANTE_ATE, INSTANTE_DE, LIGADA, LIMITE_MAX, LIMITE_MIN, MISTURA, MISTURAS, MODO, MODOS,
-    MOLA, MOLAS, NAO_SIM, PARA, PARA_MAX, PARA_MIN, PONTO, POR, PORES, POSICAO, REPOUSO, RESSALTO,
-    SEGUE, SUAVIDADE, USA_ROTACAO, VOLUME, VOLUMES,
+    MOLA, MOLA_LIGADA, MOLAS, NAO_SIM, PARA, PARA_MAX, PARA_MIN, PONTO, POR, PORES, POSICAO,
+    REPOUSO, RESSALTO, SEGUE, SUAVIDADE, USA_ROTACAO, VOLUME, VOLUMES,
 };
 use ph2d_editor_core::constraint_edits::{
     AjusteEscolha, AjusteNumero, MAX_ESCOLHAS, MAX_NUMEROS, Unidade,
@@ -37,6 +37,11 @@ pub fn numeros(k: &Kind) -> &'static [u16] {
         Kind::PontoDeForma(_) => &[PONTO],
         Kind::Action(_) => &[DE_MIN, DE_MAX, CLIP, INSTANTE_DE, INSTANTE_ATE],
         Kind::Spring(_) => &[DURACAO, RESSALTO],
+        // Duration e Bounce só com mola.
+        Kind::Valor(v) if v.mola.is_some() => {
+            &[DE_MIN, DE_MAX, PARA_MIN, PARA_MAX, DURACAO, RESSALTO]
+        }
+        Kind::Valor(_) => &[DE_MIN, DE_MAX, PARA_MIN, PARA_MAX],
         _ => &[],
     }
 }
@@ -56,6 +61,7 @@ pub fn escolhas(k: &Kind) -> &'static [u16] {
         Kind::SplineIk(_) => &[AJUSTE],
         Kind::Action(_) => &[DE],
         Kind::Spring(_) => &[MOLA],
+        Kind::Valor(_) => &[MISTURA, EXTRAPOLA, MOLA_LIGADA],
         _ => &[],
     }
 }
@@ -102,6 +108,7 @@ fn rotulo(campo: u16) -> &'static str {
         DURACAO => "panel.inspector.constraint.duration",
         RESSALTO => "panel.inspector.constraint.bounce",
         MOLA => "panel.inspector.constraint.spring_channels",
+        MOLA_LIGADA => "panel.inspector.constraint.spring_on",
         _ => "panel.inspector.constraint.mix",
     }
 }
@@ -111,7 +118,7 @@ fn opcoes(campo: u16) -> &'static [&'static str] {
         MODO => MODOS,
         ESPACO => ESPACOS,
         DOBRA => DOBRAS,
-        ESTICA | SEGUE | USA_ROTACAO | EXTRAPOLA => NAO_SIM,
+        ESTICA | SEGUE | USA_ROTACAO | EXTRAPOLA | MOLA_LIGADA => NAO_SIM,
         EIXO => EIXOS,
         DE | PARA => CANAIS,
         AJUSTE => AJUSTES,
@@ -128,6 +135,8 @@ fn unidade(k: &Kind, campo: u16) -> Unidade {
         (Kind::Transformation(t), DE_MIN | DE_MAX) => unidade_do_canal(t.de),
         (Kind::Transformation(t), PARA_MIN | PARA_MAX) => unidade_do_canal(t.para),
         (Kind::Action(a), DE_MIN | DE_MAX) => unidade_do_canal(a.canal),
+        (Kind::Valor(v), DE_MIN | DE_MAX) => unidade_da_prop(v.fonte),
+        (Kind::Valor(v), PARA_MIN | PARA_MAX) => unidade_da_prop(v.destino),
         (Kind::Floor(_), DESVIO) | (_, DESVIO_X | DESVIO_Y) => Unidade::Metros,
         (_, PONTO | CLIP) => Unidade::Contagem,
         (_, INSTANTE_DE | INSTANTE_ATE | DURACAO) => Unidade::Segundos,
@@ -146,6 +155,36 @@ fn unidade_do_canal(c: Canal) -> Unidade {
         Canal::X | Canal::Y => Unidade::Metros,
         Canal::Rot => Unidade::Graus,
         Canal::Sx | Canal::Sy => Unidade::Porcento,
+    }
+}
+
+/// A unidade de uma propriedade do Follow Value: a do canal, ou a da porta dos campos
+/// (`ph2d_ecs::canal::unidade` — o ângulo de um campo já vem em graus).
+fn unidade_da_prop(p: Prop) -> Unidade {
+    use ph2d_ecs::canal::Unidade as U;
+    match p {
+        Prop::Pose(c) => unidade_do_canal(c),
+        Prop::Campo(k) => match ph2d_ecs::canal::unidade(crate::valor::chave(k)) {
+            U::Comprimento => Unidade::Metros,
+            U::Angulo => Unidade::Graus,
+            U::Nenhuma => Unidade::Nenhuma,
+        },
+    }
+}
+
+/// Um valor de uma propriedade na unidade do cartão (só a rotação da pose converte).
+fn no_cartao_prop(p: Prop, v: f64) -> f32 {
+    match p {
+        Prop::Pose(c) => no_cartao(c, v),
+        Prop::Campo(_) => f32_de(v),
+    }
+}
+
+/// O inverso de [`no_cartao_prop`].
+fn do_cartao_prop(p: Prop, v: f32) -> f64 {
+    match p {
+        Prop::Pose(c) => do_cartao(c, v),
+        Prop::Campo(_) => f64::from(v),
     }
 }
 
@@ -271,6 +310,15 @@ pub fn ler(k: &Kind, campo: u16) -> Option<f32> {
         (Kind::Spring(m), DURACAO) => m.duracao as f32,
         (Kind::Spring(m), RESSALTO) => m.ressalto as f32,
         (Kind::Spring(m), MOLA) => indice(&MOLAS_DO_TIPO, &m.canais),
+        (Kind::Valor(v), DE_MIN) => no_cartao_prop(v.fonte, v.de_faixa[0]),
+        (Kind::Valor(v), DE_MAX) => no_cartao_prop(v.fonte, v.de_faixa[1]),
+        (Kind::Valor(v), PARA_MIN) => no_cartao_prop(v.destino, v.para_faixa[0]),
+        (Kind::Valor(v), PARA_MAX) => no_cartao_prop(v.destino, v.para_faixa[1]),
+        (Kind::Valor(v), MISTURA) => indice(&[Mix::Replace, Mix::Add], &v.mix),
+        (Kind::Valor(v), EXTRAPOLA) => sim(v.extrapola),
+        (Kind::Valor(v), MOLA_LIGADA) => sim(v.mola.is_some()),
+        (Kind::Valor(v), DURACAO) => v.mola?.duracao as f32,
+        (Kind::Valor(v), RESSALTO) => v.mola?.ressalto as f32,
         _ => return None,
     })
 }
@@ -284,7 +332,8 @@ const EIXOS_DO_TIPO: [EixoDoChao; 4] = [
     EixoDoChao::MaisX,
     EixoDoChao::MenosX,
 ];
-const CANAIS_DO_TIPO: [Canal; 5] = [Canal::X, Canal::Y, Canal::Rot, Canal::Sx, Canal::Sy];
+pub(crate) const CANAIS_DO_TIPO: [Canal; 5] =
+    [Canal::X, Canal::Y, Canal::Rot, Canal::Sx, Canal::Sy];
 const AJUSTES_DO_TIPO: [Ajuste; 2] = [Ajuste::Nenhum, Ajuste::Esticar];
 const MOLAS_DO_TIPO: [Canais; 3] = [
     Canais::LOCATION,
@@ -406,6 +455,24 @@ pub fn escrever(k: &mut Kind, campo: u16, v: f32) -> bool {
         (Kind::Spring(m), DURACAO) => m.duracao = f64::from(v.max(0.0)),
         (Kind::Spring(m), RESSALTO) => m.ressalto = f64::from(v.clamp(-1.0, 1.0)),
         (Kind::Spring(m), MOLA) => m.canais = MOLAS_DO_TIPO[opcao(3)],
+        (Kind::Valor(x), DE_MIN) => x.de_faixa[0] = do_cartao_prop(x.fonte, v),
+        (Kind::Valor(x), DE_MAX) => x.de_faixa[1] = do_cartao_prop(x.fonte, v),
+        (Kind::Valor(x), PARA_MIN) => x.para_faixa[0] = do_cartao_prop(x.destino, v),
+        (Kind::Valor(x), PARA_MAX) => x.para_faixa[1] = do_cartao_prop(x.destino, v),
+        (Kind::Valor(x), MISTURA) => x.mix = [Mix::Replace, Mix::Add][opcao(2)],
+        (Kind::Valor(x), EXTRAPOLA) => x.extrapola = opcao(2) == 1,
+        // Religar dá a mola de fábrica: a de antes não se guarda (`mola: Option<Mola>`).
+        (Kind::Valor(x), MOLA_LIGADA) => {
+            x.mola = (opcao(2) == 1).then(|| x.mola.unwrap_or_default());
+        }
+        (Kind::Valor(x), DURACAO) => {
+            let Some(m) = &mut x.mola else { return false };
+            m.duracao = f64::from(v.max(0.0));
+        }
+        (Kind::Valor(x), RESSALTO) => {
+            let Some(m) = &mut x.mola else { return false };
+            m.ressalto = f64::from(v.clamp(-1.0, 1.0));
+        }
         _ => return false,
     }
     *k != antes
@@ -499,6 +566,15 @@ pub fn chave_no_item(k: &Kind, campo: u16) -> Option<&'static str> {
         (Kind::Spring(_), DURACAO) => "kind/Spring/duracao",
         (Kind::Spring(_), RESSALTO) => "kind/Spring/ressalto",
         (Kind::Spring(_), MOLA) => "kind/Spring/canais",
+        (Kind::Valor(_), DE_MIN) => "kind/Valor/de_faixa[0]",
+        (Kind::Valor(_), DE_MAX) => "kind/Valor/de_faixa[1]",
+        (Kind::Valor(_), PARA_MIN) => "kind/Valor/para_faixa[0]",
+        (Kind::Valor(_), PARA_MAX) => "kind/Valor/para_faixa[1]",
+        (Kind::Valor(_), MISTURA) => "kind/Valor/mix",
+        (Kind::Valor(_), EXTRAPOLA) => "kind/Valor/extrapola",
+        (Kind::Valor(_), MOLA_LIGADA) => "kind/Valor/mola",
+        (Kind::Valor(_), DURACAO) => "kind/Valor/mola/duracao",
+        (Kind::Valor(_), RESSALTO) => "kind/Valor/mola/ressalto",
         _ => return None,
     })
 }

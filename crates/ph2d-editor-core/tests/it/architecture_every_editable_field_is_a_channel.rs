@@ -358,6 +358,13 @@ const POR_FUNCAO: &[(&str, &str, Classe, &[&str], &str)] = &[
     ),
     (
         "ph2d-panel-inspector",
+        "sections/constraint_valor.rs::propriedade",
+        NaoAnimavel,
+        &[],
+        "o Follow/Drive do Follow Value escolhe o ENDEREÇO de uma propriedade (estrutura do item), não um valor da cena",
+    ),
+    (
+        "ph2d-panel-inspector",
         "sections/ordering.rs::layer_row",
         Canal,
         &["component.field.sorting_layer.1"],

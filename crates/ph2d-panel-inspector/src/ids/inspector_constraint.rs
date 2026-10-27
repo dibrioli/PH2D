@@ -10,6 +10,7 @@ use ph2d_tool_registry::hash_node_id;
 
 use super::inspector_constraint_opcao::{OPCAO_0, OPCAO_1, OPCAO_2};
 use super::inspector_constraint_opcao_b::{OPCAO_3, OPCAO_4};
+use super::inspector_constraint_prop::NUMERO_5;
 
 /// O botão «Add Constraint» — abre e fecha a lista dos tipos.
 pub const INSP_CONSTRAINT_ADD: NodeId = hash_node_id("insp_constraint_add");
@@ -466,6 +467,7 @@ pub const INSP_CONSTRAINT_NUMERO: [[NodeId; MAX_LINHAS]; MAX_NUMEROS] = [
         hash_node_id("insp_constraint_numero_4_30"),
         hash_node_id("insp_constraint_numero_4_31"),
     ],
+    NUMERO_5,
 ];
 
 /// A opção `o` da escolha `j` de cada linha (Mode · Space · Mix): `INSP_CONSTRAINT_OPCAO[j][o][k]`.

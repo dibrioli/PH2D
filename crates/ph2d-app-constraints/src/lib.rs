@@ -6,6 +6,7 @@
 pub mod bake;
 pub mod campos;
 pub mod canais;
+pub mod cartao_valor;
 pub mod chaves;
 pub mod cola;
 pub mod compensa;

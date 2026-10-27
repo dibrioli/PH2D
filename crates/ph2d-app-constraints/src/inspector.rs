@@ -153,6 +153,8 @@ pub fn info(
                 escolhendo: armado == Some((entity_bits, it.id)),
                 numeros,
                 escolhas,
+                propriedades: crate::cartao_valor::propriedades(w, &it.kind, e, alvo),
+                ordem: crate::cartao_valor::ordem(&it.kind),
                 zera_desvio: crate::campos::zera_desvio(&it.kind),
             }
         })
@@ -244,6 +246,11 @@ fn aplicar(sim: &mut SimWorld, e: Entity, edit: E) -> bool {
         E::ZerarDesvio(id) => {
             return muda(sim, e, id, |it| crate::campos::zerar_desvio(&mut it.kind));
         }
+        E::Propriedade(id, campo, p) => {
+            return muda(sim, e, id, |it| {
+                crate::cartao_valor::escrever(&mut it.kind, campo, p)
+            });
+        }
         _ => {}
     }
     let Some(mut c) = sim.world_mut().get_mut::<Constraints>(e) else {
@@ -268,6 +275,7 @@ fn aplicar(sim: &mut SimWorld, e: Entity, edit: E) -> bool {
         | E::EscolherAlvo(_)
         | E::Adicionar(_)
         | E::Campo(..)
+        | E::Propriedade(..)
         | E::ZerarDesvio(_)
         | E::Descolar(..)
         | E::Cozer => return false,

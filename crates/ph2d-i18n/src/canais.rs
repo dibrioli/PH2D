@@ -61,6 +61,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "canal.constraint.duracao" => "Spring Duration",
         "canal.constraint.ressalto" => "Spring Bounce",
         "canal.constraint.mola" => "Spring Channels",
+        "canal.constraint.mola_ligada" => "Follow Value Spring",
         // A medida de uma regra de desenho técnico do vetor (`ph2d_ecs::canal_cad`).
         "canal.cad.medida" => "Dimension",
         "canal.cad.angulo" => "Angle",

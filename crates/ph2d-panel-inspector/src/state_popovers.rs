@@ -152,6 +152,36 @@ thread_local! {
     pub(crate) static PAINTED_POPOVER: std::cell::Cell<
         Option<ph2d_editor_core::widget::PaintedPopover>,
     > = const { std::cell::Cell::new(None) };
+
+    /// CONSTRAINTS (Follow Value): `((linha, ▾), rect do chip)` — as opções relêem-se do
+    /// instantâneo, como as do enum do script.
+    pub(crate) static PENDING_CONSTRAINT_PROP: std::cell::Cell<
+        Option<((usize, usize), ph2d_editor_core::zones::Rect)>,
+    > = const { std::cell::Cell::new(None) };
+
+    /// O `(linha, ▾)` cujas opções estão NA TELA — escrito por quem as regista e lido pelo clique,
+    /// pela razão do [`LINHA_DO_ENUM_PINTADO`] (o `open` já é `false` quando o clique chega).
+    pub(crate) static CONSTRAINT_PROP_PINTADO: std::cell::Cell<Option<(usize, usize)>> =
+        const { std::cell::Cell::new(None) };
+}
+
+pub(crate) fn set_pending_constraint_prop(
+    chip: Option<((usize, usize), ph2d_editor_core::zones::Rect)>,
+) {
+    PENDING_CONSTRAINT_PROP.with(|c| c.set(chip));
+}
+
+pub(crate) fn take_pending_constraint_prop()
+-> Option<((usize, usize), ph2d_editor_core::zones::Rect)> {
+    PENDING_CONSTRAINT_PROP.with(std::cell::Cell::take)
+}
+
+pub(crate) fn constraint_prop_pintado() -> Option<(usize, usize)> {
+    CONSTRAINT_PROP_PINTADO.with(std::cell::Cell::get)
+}
+
+pub(crate) fn set_constraint_prop_pintado(p: Option<(usize, usize)>) {
+    CONSTRAINT_PROP_PINTADO.with(|c| c.set(p));
 }
 
 pub(crate) fn set_pending_ordering_dd(chip: Option<(usize, ph2d_editor_core::zones::Rect)>) {

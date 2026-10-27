@@ -951,6 +951,8 @@ fn arma_o_top20() {
                 ],
                 valor: 0,
             }],
+            propriedades: vec![],
+            ordem: vec![],
             zera_desvio: true,
         }],
         selected_count: selecionados(),

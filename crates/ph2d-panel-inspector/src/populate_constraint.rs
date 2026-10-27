@@ -6,7 +6,7 @@
 use crate::ids;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore, format_number};
 use ph2d_editor_core::widget::{
-    CheckboxState, CheckboxValue, SliderOrientation, SliderState, TextInputState,
+    CheckboxState, CheckboxValue, DropdownState, SliderOrientation, SliderState, TextInputState,
 };
 
 pub(crate) fn populate_constraint(store: &mut WidgetStore) {
@@ -36,6 +36,18 @@ pub(crate) fn populate_constraint(store: &mut WidgetStore) {
     }
     for tabela in ids::INSP_CONSTRAINT_OPCAO.iter().flatten() {
         super::populate::register_button_ids(store, tabela);
+    }
+    // Os ▾ do Follow Value: as opções são BOTÕES, o chip um `Dropdown` (só o `open` mora aqui).
+    super::populate::register_button_ids(store, &ids::INSP_CONSTRAINT_PROP_OPCAO);
+    for &id in ids::INSP_CONSTRAINT_PROP.iter().flatten() {
+        store.register(
+            id,
+            InteractiveState::Dropdown {
+                state: DropdownState::Normal,
+                open: false,
+                selected_index: None,
+            },
+        );
     }
     // A partida é 0; o `sync_constraint` semeia o do documento.
     for &id in ids::INSP_CONSTRAINT_NUMERO.iter().flatten() {

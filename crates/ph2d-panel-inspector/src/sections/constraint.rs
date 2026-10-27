@@ -8,7 +8,9 @@
 
 use super::*;
 use crate::plano::{Plano, emoldurada};
-use ph2d_editor_core::constraint_edits::{InspectorConstraintRow, InspectorConstraintsInfo, TIPOS};
+use ph2d_editor_core::constraint_edits::{
+    InspectorConstraintRow, InspectorConstraintsInfo, Peca, TIPOS,
+};
 use ph2d_editor_core::property_row::{
     Seccao, abaixo_do_botao, caixa_do_botao, paint_check_row, paint_choice_row, paint_label_row,
 };
@@ -190,26 +192,49 @@ fn ajustes(
     seccao: Seccao,
 ) -> f32 {
     let mut cur_y = y;
-    for (n, ids_n) in row.numeros.iter().zip(ids::INSP_CONSTRAINT_NUMERO.iter()) {
-        let (unit, step) = crate::sync_constraint::unidade_e_passo(n.unidade);
-        cur_y = ph2d_editor_core::property_row::paint_field_row(
-            scene,
-            text_system,
-            theme,
-            hit_index,
-            store,
-            x,
-            w,
-            cur_y,
-            TextKey::new(n.rotulo),
-            ids_n[k],
-            step,
-            unit,
-            seccao,
-        )
-        .0;
-    }
-    for (e, ids_e) in row.escolhas.iter().zip(ids::INSP_CONSTRAINT_OPCAO.iter()) {
+    // As peças pela ordem que a família deu (o Follow Value intercala os ▾ com as faixas).
+    for peca in row.pecas() {
+        let (j, n, e) = match peca {
+            Peca::Numero(j) => (usize::from(j), row.numeros.get(usize::from(j)), None),
+            Peca::Escolha(j) => (usize::from(j), None, row.escolhas.get(usize::from(j))),
+            Peca::Propriedade(j) => {
+                if let Some(p) = row.propriedades.get(usize::from(j)) {
+                    cur_y = super::constraint_valor::propriedade(
+                        scene,
+                        text_system,
+                        theme,
+                        (hit_index, store),
+                        (x, w, cur_y),
+                        (k, usize::from(j)),
+                        p,
+                        seccao,
+                    );
+                }
+                continue;
+            }
+        };
+        if let (Some(n), Some(ids_n)) = (n, ids::INSP_CONSTRAINT_NUMERO.get(j)) {
+            let (unit, step) = crate::sync_constraint::unidade_e_passo(n.unidade);
+            cur_y = ph2d_editor_core::property_row::paint_field_row(
+                scene,
+                text_system,
+                theme,
+                hit_index,
+                store,
+                x,
+                w,
+                cur_y,
+                TextKey::new(n.rotulo),
+                ids_n[k],
+                step,
+                unit,
+                seccao,
+            )
+            .0;
+        }
+        let (Some(e), Some(ids_e)) = (e, ids::INSP_CONSTRAINT_OPCAO.get(j)) else {
+            continue;
+        };
         let segmentos: Vec<(&str, bool, NodeId)> = e
             .opcoes
             .iter()

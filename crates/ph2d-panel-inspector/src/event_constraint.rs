@@ -48,6 +48,18 @@ fn opcao(info: &InspectorConstraintsInfo, id: ph2d_a11y::NodeId) -> Option<E> {
         })
 }
 
+/// A edição da opção `id` do ▾ de propriedade aberto: o `(linha, ▾)` é o de quem REGISTOU as opções
+/// (o `open` do chip já é `false` quando o clique chega), a opção pela posição na lista dele.
+fn propriedade(info: &InspectorConstraintsInfo, id: ph2d_a11y::NodeId) -> Option<E> {
+    let i = ids::INSP_CONSTRAINT_PROP_OPCAO
+        .iter()
+        .position(|&o| o == id)?;
+    let (k, j) = crate::state_popovers::constraint_prop_pintado()?;
+    let row = info.rows.get(k)?;
+    let p = row.propriedades.get(j)?;
+    Some(E::Propriedade(row.id, p.campo, p.opcoes.get(i)?.prop))
+}
+
 /// Despacha um evento do cartão **CONSTRAINTS**. `true` = consumido.
 pub(crate) fn apply_constraint_event(
     panel: &mut InspectorState,
@@ -86,6 +98,15 @@ pub(crate) fn apply_constraint_event(
             } else if id == ids::INSP_CONSTRAINT_BAKE && !info.rows.is_empty() {
                 E::Cozer
             } else if let Some(e) = opcao(&info, id) {
+                e
+            } else if let Some(e) = propriedade(&info, id) {
+                if let Some((k, j)) = crate::state_popovers::constraint_prop_pintado()
+                    && let Some(&chip) = ids::INSP_CONSTRAINT_PROP.get(j).and_then(|t| t.get(k))
+                    && let Some(InteractiveState::Dropdown { open, .. }) =
+                        host.store_mut().get_mut(chip)
+                {
+                    *open = false;
+                }
                 e
             } else {
                 return false;

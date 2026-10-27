@@ -5534,6 +5534,7 @@ dependencies = [
  "ph2d-ecs",
  "ph2d-editor-core",
  "ph2d-host",
+ "ph2d-i18n",
  "ph2d-label-census",
  "ph2d-panel-inspector",
  "ph2d-preview-drive",

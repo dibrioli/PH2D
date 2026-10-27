@@ -45,6 +45,8 @@ fn pilha() -> InspectorConstraintsInfo {
                 escolhendo: false,
                 numeros: vec![],
                 escolhas: vec![],
+                propriedades: vec![],
+                ordem: vec![],
                 zera_desvio: true,
             },
             InspectorConstraintRow {
@@ -79,6 +81,8 @@ fn pilha() -> InspectorConstraintsInfo {
                     ],
                     valor: 0,
                 }],
+                propriedades: vec![],
+                ordem: vec![],
                 zera_desvio: false,
             },
         ],
@@ -374,4 +378,106 @@ fn o_bake_com_a_pilha_vazia_nao_pede_nada() {
     let out = edicoes(host.drained_actions());
     set_current_inspector_constraints(None);
     assert!(out.is_empty(), "{out:?}");
+}
+
+/// Uma linha Follow Value (id `9`): Follow com a pose e um campo, Drive com a pose, na ordem do
+/// cartão (Follow, faixa, Drive, faixa).
+fn follow_value() -> InspectorConstraintsInfo {
+    use ph2d_editor_core::constraint_edits::{
+        AjustePropriedade, OpcaoPropriedade, Peca, PropriedadeDoValor as P,
+    };
+    const DE: u16 = 23;
+    const PARA: u16 = 24;
+    let pose = |n: usize| {
+        (0..n)
+            .map(|i| OpcaoPropriedade {
+                prop: P::Canal(u8::try_from(i).unwrap()),
+                rotulo: format!("canal {i}"),
+            })
+            .collect::<Vec<_>>()
+    };
+    let mut follow = pose(5);
+    follow.push(OpcaoPropriedade {
+        prop: P::Campo([2, 11, 0, 0]),
+        rotulo: "campo".into(),
+    });
+    let numero = |campo| AjusteNumero {
+        campo,
+        rotulo: "panel.inspector.constraint.from_min",
+        valor: 0.0,
+        unidade: Unidade::Metros,
+    };
+    let mut i = pilha();
+    i.rows = vec![InspectorConstraintRow {
+        id: 9,
+        tipo: 20,
+        alvo: Some("Mão".into()),
+        precisa_alvo: true,
+        forca: 1.0,
+        ligada: true,
+        estado: EstadoDaConstraint::Activa,
+        escolhendo: false,
+        numeros: vec![numero(25), numero(26), numero(27), numero(28)],
+        escolhas: vec![],
+        propriedades: vec![
+            AjustePropriedade {
+                campo: DE,
+                rotulo: "panel.inspector.constraint.follow",
+                opcoes: follow,
+                valor: P::Canal(1),
+                atual: "canal 1".into(),
+            },
+            AjustePropriedade {
+                campo: PARA,
+                rotulo: "panel.inspector.constraint.drive",
+                opcoes: pose(5),
+                valor: P::Canal(2),
+                atual: "canal 2".into(),
+            },
+        ],
+        ordem: vec![
+            Peca::Propriedade(0),
+            Peca::Numero(0),
+            Peca::Numero(1),
+            Peca::Propriedade(1),
+            Peca::Numero(2),
+            Peca::Numero(3),
+        ],
+        zera_desvio: false,
+    }];
+    i
+}
+
+/// ⭐⭐⭐ **O ▾ Follow do Follow Value**: pinta-se na ordem da família (Follow, faixa, Drive), abre
+/// a lista do alvo, e a 6.ª opção (o campo) manda `Propriedade(9, DE, campo)` e fecha o ▾.
+///
+/// **Mutações que devem sangrar:** tirar o registo das opções do `populate_constraint` · ler a
+/// opção de outra lista (o Drive) · apagar o `constraint_prop_popover` do passe diferido.
+#[test]
+fn the_value_cards_follow_dropdown_writes_the_chosen_property() {
+    use ph2d_editor_core::constraint_edits::PropriedadeDoValor as P;
+    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut state = InspectorState::default();
+    set_current_inspector_constraints(Some(follow_value()));
+    let rects = pinta(&mut host, &mut state);
+    let y = |id| {
+        rect_de(&rects, id)
+            .unwrap_or_else(|| panic!("{id:?} não pintado"))
+            .y
+    };
+    let follow = ids::INSP_CONSTRAINT_PROP[0][0];
+    let drive = ids::INSP_CONSTRAINT_PROP[1][0];
+    assert!(y(follow) < y(ids::INSP_CONSTRAINT_NUMERO[0][0]));
+    assert!(y(ids::INSP_CONSTRAINT_NUMERO[1][0]) < y(drive));
+    assert!(y(drive) < y(ids::INSP_CONSTRAINT_NUMERO[2][0]));
+    assert_eq!(host.dropdown_is_open(follow), Some(false));
+    host.set_dropdown_open(follow, true);
+    let e = clica_em(&mut host, &mut state, ids::INSP_CONSTRAINT_PROP_OPCAO[5]);
+    set_current_inspector_constraints(None);
+    assert_eq!(e, vec![E::Propriedade(9, 23, P::Campo([2, 11, 0, 0]))]);
+    assert_eq!(
+        host.dropdown_is_open(follow),
+        Some(false),
+        "o ▾ ficou aberto"
+    );
 }

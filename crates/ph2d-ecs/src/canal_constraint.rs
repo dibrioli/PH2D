@@ -82,6 +82,8 @@ pub const DURACAO: u16 = 35;
 pub const RESSALTO: u16 = 36;
 /// Spring: que canais têm mola ([`MOLAS`]).
 pub const MOLA: u16 = 37;
+/// Follow Value: com mola ou a seguir no mesmo quadro ([`NAO_SIM`]).
+pub const MOLA_LIGADA: u16 = 38;
 
 /// As palavras de [`MODO`], pelo índice.
 pub const MODOS: &[&str] = &[
@@ -150,7 +152,7 @@ pub const MOLAS: &[&str] = &[
     "panel.inspector.constraint.spring.both",
 ];
 /// Os campos de um item, na ordem do cartão (o tipo diz quais tem).
-pub const CAMPOS: [u16; 37] = [
+pub const CAMPOS: [u16; 38] = [
     FORCA,
     LIGADA,
     LIMITE_MIN,
@@ -188,6 +190,7 @@ pub const CAMPOS: [u16; 37] = [
     DURACAO,
     RESSALTO,
     MOLA,
+    MOLA_LIGADA,
 ];
 
 /// A chave do campo `campo` do item `item`.
@@ -261,6 +264,11 @@ pub fn info(campo: u16) -> Option<CampoInfo> {
         DURACAO => c("canal.constraint.duracao", campo, Especie::Continuo),
         RESSALTO => c("canal.constraint.ressalto", campo, Especie::Continuo),
         MOLA => c("canal.constraint.mola", campo, Especie::Opcoes(MOLAS)),
+        MOLA_LIGADA => c(
+            "canal.constraint.mola_ligada",
+            campo,
+            Especie::Opcoes(NAO_SIM),
+        ),
         _ => return None,
     })
 }

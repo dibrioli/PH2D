@@ -26,6 +26,8 @@ ph2d-ecs = { path = "../ph2d-ecs" }
 ph2d-editor-core = { path = "../ph2d-editor-core" }
 # O losango do Auto Key: os ids do cartão e o estado do canal na linha do tempo.
 ph2d-panel-inspector = { path = "../ph2d-panel-inspector" }
+# Os nomes das propriedades do ▾ do Follow Value (os do dope-sheet), já traduzidos.
+ph2d-i18n = { path = "../ph2d-i18n" }
 ph2d-timeline = { path = "../ph2d-timeline" }
 # O instante da chave de compensação (`compensa`).
 ph2d-anim = { path = "../ph2d-anim" }

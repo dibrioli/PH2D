@@ -41,15 +41,71 @@ pub const TIPO_COLA_PINO: u8 = 19;
 pub const MAX_LINHAS: usize = 32;
 
 /// Quantos números, escolhas e opções por escolha um item mostra debaixo da força — o tamanho das
-/// tabelas de ids do painel; o tipo mais largo cabe (Action: a faixa, o clip e os dois instantes;
-/// Transformation: os dois canais, a mistura, o extrapolar e o espaço; um canal tem cinco opções).
-pub const MAX_NUMEROS: usize = 5;
+/// tabelas de ids do painel; o tipo mais largo cabe (Follow Value com mola: as duas faixas, a duração
+/// e o ressalto; Transformation: os dois canais, a mistura, o extrapolar e o espaço; um canal tem
+/// cinco opções).
+pub const MAX_NUMEROS: usize = 6;
 pub const MAX_ESCOLHAS: usize = 5;
 pub const MAX_OPCOES: usize = 5;
+
+/// Quantas propriedades o ▾ Follow/Drive do Follow Value lista — o tamanho da tabela de ids das
+/// opções do painel (`INSP_CONSTRAINT_PROP_OPCAO`, partilhada: um popover aberto de cada vez). A
+/// lista é a do objecto (`CanaisLidos::campos`) e cresce com ele; medido em 27/10:
+///
+/// | objecto | campos publicados |
+/// |---|---|
+/// | sprite (`canais_objeto::campos`) | 28 |
+/// | forma vetorial de 4 vértices, preenchimento e traço | 59 |
+/// | forma vetorial de 20 vértices | 187 (+8 por vértice) |
+///
+/// 256 cobre as 5 da pose e uma forma até ~28 vértices; a lista vem com os grupos PEQUENOS primeiro,
+/// logo o que passa do tecto são só membros do maior grupo (os pontos de uma forma longa).
+pub const MAX_PROPRIEDADES: usize = 256;
+
+/// O endereço de um número que o Follow Value lê ou escreve — o espelho, sem ECS, do
+/// `ph2d_constraints::Prop`: um canal da pose (índice em `canal_constraint::CANAIS`) ou um campo
+/// animável (`familia`, `campo`, `i`, `j` do `ph2d_ecs::FieldKey`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PropriedadeDoValor {
+    Canal(u8),
+    Campo([u16; 4]),
+}
+
+/// Uma opção do ▾: o endereço e o nome já traduzido (o do dope-sheet).
+#[derive(Clone, Debug, PartialEq)]
+pub struct OpcaoPropriedade {
+    pub prop: PropriedadeDoValor,
+    pub rotulo: String,
+}
+
+/// O ▾ que escolhe uma propriedade de um objecto (o Follow do alvo, o Drive do dono). `campo` =
+/// `canal_constraint::DE` (Follow) ou `PARA` (Drive) — não é canal animável: é um endereço.
+#[derive(Clone, Debug, PartialEq)]
+pub struct AjustePropriedade {
+    pub campo: u16,
+    /// A chave `ph2d-i18n` do nome.
+    pub rotulo: &'static str,
+    /// No máximo [`MAX_PROPRIEDADES`].
+    pub opcoes: Vec<OpcaoPropriedade>,
+    pub valor: PropriedadeDoValor,
+    /// O nome da escolhida — também quando ela não está na lista (o alvo já não a publica).
+    pub atual: String,
+}
+
+/// Uma peça da linha do cartão, pela ordem em que se pinta: o índice em `numeros`, `escolhas` ou
+/// `propriedades` da [`InspectorConstraintRow`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Peca {
+    Numero(u8),
+    Escolha(u8),
+    Propriedade(u8),
+}
 
 /// A unidade em que um número do cartão se lê, se escreve e se anima.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Unidade {
+    /// O número nu de um campo (`ph2d_ecs::canal::Unidade::Nenhuma`): sem sufixo, passo fino.
+    Nenhuma,
     Graus,
     /// A unidade do mundo (a da lâmpada da Luz 2D) — o `Transform` guarda-a; o cartão do
     /// Transform é que a mostra em px.
@@ -147,9 +203,37 @@ pub struct InspectorConstraintRow {
     pub numeros: Vec<AjusteNumero>,
     /// As escolhas do tipo (no máximo [`MAX_ESCOLHAS`], cada uma com até [`MAX_OPCOES`]).
     pub escolhas: Vec<AjusteEscolha>,
+    /// Os ▾ de propriedade (Follow Value: o Follow e o Drive), no máximo 2.
+    pub propriedades: Vec<AjustePropriedade>,
+    /// A ordem das peças; vazia = os números e depois as escolhas ([`Self::pecas`]).
+    pub ordem: Vec<Peca>,
     /// O tipo tem desvio que se pode zerar (o botão «Reset Offset»).
     pub zera_desvio: bool,
 }
+
+impl InspectorConstraintRow {
+    /// As peças pela ordem do cartão.
+    #[must_use]
+    pub fn pecas(&self) -> Vec<Peca> {
+        if !self.ordem.is_empty() {
+            return self.ordem.clone();
+        }
+        #[expect(
+            clippy::cast_possible_truncation,
+            reason = "≤ MAX_NUMEROS/MAX_ESCOLHAS"
+        )]
+        let n = (0..self.numeros.len()).map(|j| Peca::Numero(j as u8));
+        #[expect(
+            clippy::cast_possible_truncation,
+            reason = "≤ MAX_NUMEROS/MAX_ESCOLHAS"
+        )]
+        let e = (0..self.escolhas.len()).map(|j| Peca::Escolha(j as u8));
+        n.chain(e).collect()
+    }
+}
+
+/// Quantos ▾ de propriedade um item mostra (o Follow e o Drive) — o tamanho da tabela dos chips.
+pub const MAX_PROPRIEDADES_POR_ITEM: usize = 2;
 
 /// O estado do grupo de uma cola — o espelho, sem ECS, do `ph2d_constraints_cola::Estado`.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -219,6 +303,8 @@ pub enum ConstraintFieldEdit {
     /// Um ajuste do tipo: `(item, campo, valor)` — o número na unidade do cartão, ou o índice da
     /// opção. `campo` é o de [`AjusteNumero::campo`]/[`AjusteEscolha::campo`].
     Campo(u32, u16, f32),
+    /// Um ▾ de propriedade: `(item, campo, endereço)` — `campo` é o de [`AjustePropriedade::campo`].
+    Propriedade(u32, u16, PropriedadeDoValor),
     /// Zera o desvio: o dono cola-se ao alvo.
     ZerarDesvio(u32),
     /// Coze a pilha INTEIRA do dono no intervalo do transporte (o loop armado, senão a timeline): a

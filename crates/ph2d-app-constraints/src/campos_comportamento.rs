@@ -3,6 +3,9 @@
 
 use ph2d_constraints::comportamento::{Comportamento, Onde, Perfil};
 use ph2d_ecs::canal_constraint::{
+    DURACAO, MOLA_LIGADA, RESSALTO,
+};
+use ph2d_ecs::canal_constraint::{
     AMORTECE, AMPLITUDE, CURVAS, FASE, FREQUENCIA, LEVA_ROTACAO, NAO_SIM, ONDE, ONDES, PESO_CURVA,
     PESO_INVERTE, PESO_RAIO, PUXAO, RAIO, SEMENTE, VELOCIDADE,
 };
@@ -16,8 +19,12 @@ pub fn numeros(c: &Comportamento) -> &'static [u16] {
         (Perfil::Tremer, true) => &[AMPLITUDE, FREQUENCIA, SEMENTE, PESO_RAIO],
         (Perfil::Flutuar, false) => &[AMPLITUDE, FREQUENCIA, FASE],
         (Perfil::Flutuar, true) => &[AMPLITUDE, FREQUENCIA, FASE, PESO_RAIO],
-        (Perfil::Orbitar, false) => &[VELOCIDADE, RAIO],
-        (Perfil::Orbitar, true) => &[VELOCIDADE, RAIO, PESO_RAIO],
+        (Perfil::Orbitar, peso) => match (c.segue.is_some(), peso) {
+            (false, false) => &[VELOCIDADE, RAIO],
+            (false, true) => &[VELOCIDADE, RAIO, PESO_RAIO],
+            (true, false) => &[VELOCIDADE, RAIO, DURACAO, RESSALTO],
+            (true, true) => &[VELOCIDADE, RAIO, DURACAO, RESSALTO, PESO_RAIO],
+        },
         (Perfil::Atrair, false) => &[PUXAO, RAIO, AMORTECE],
         (Perfil::Atrair, true) => &[PUXAO, RAIO, AMORTECE, PESO_RAIO],
     }
@@ -29,8 +36,8 @@ pub fn escolhas(c: &Comportamento) -> &'static [u16] {
     match (c.perfil, c.peso.is_some()) {
         (Perfil::Tremer | Perfil::Flutuar, false) => &[ONDE],
         (Perfil::Tremer | Perfil::Flutuar, true) => &[ONDE, PESO_CURVA, PESO_INVERTE],
-        (Perfil::Orbitar, false) => &[LEVA_ROTACAO],
-        (Perfil::Orbitar, true) => &[LEVA_ROTACAO, PESO_CURVA, PESO_INVERTE],
+        (Perfil::Orbitar, false) => &[LEVA_ROTACAO, MOLA_LIGADA],
+        (Perfil::Orbitar, true) => &[LEVA_ROTACAO, MOLA_LIGADA, PESO_CURVA, PESO_INVERTE],
         (Perfil::Atrair, false) => &[],
         (Perfil::Atrair, true) => &[PESO_CURVA, PESO_INVERTE],
     }
@@ -75,6 +82,8 @@ pub fn unidade(c: &Comportamento, campo: u16) -> Unidade {
         AMPLITUDE if c.onde == Onde::Rot => Unidade::Graus,
         AMPLITUDE | RAIO | PESO_RAIO => Unidade::Metros,
         VELOCIDADE => Unidade::Graus,
+        DURACAO => Unidade::Segundos,
+        RESSALTO => Unidade::Porcento,
         _ => Unidade::Nenhuma,
     }
 }
@@ -107,6 +116,9 @@ pub fn ler(c: &Comportamento, campo: u16) -> Option<f32> {
         PESO_RAIO => c.peso?.raio as f32,
         PESO_CURVA => f32::from(c.peso?.curva),
         PESO_INVERTE => sim(c.peso?.inverte),
+        MOLA_LIGADA => sim(c.segue.is_some()),
+        DURACAO => c.segue?.duracao as f32,
+        RESSALTO => c.segue?.ressalto as f32,
         _ => return None,
     })
 }
@@ -131,6 +143,16 @@ pub fn escrever(c: &mut Comportamento, campo: u16, v: f32) -> bool {
         AMORTECE => c.arrasto = x.max(0.0),
         ONDE => c.onde = ONDES_DO_TIPO[opcao(ONDES_DO_TIPO.len())],
         LEVA_ROTACAO => c.leva_rotacao = opcao(2) == 1,
+        // Religar dá a mola de fábrica (como no Follow Value).
+        MOLA_LIGADA => c.segue = (opcao(2) == 1).then(|| c.segue.unwrap_or_default()),
+        DURACAO => {
+            let Some(m) = &mut c.segue else { return false };
+            m.duracao = x.max(0.0);
+        }
+        RESSALTO => {
+            let Some(m) = &mut c.segue else { return false };
+            m.ressalto = x.clamp(-1.0, 1.0);
+        }
         PESO_RAIO | PESO_CURVA | PESO_INVERTE => {
             let Some(p) = &mut c.peso else { return false };
             match campo {
@@ -161,6 +183,9 @@ pub fn chave_no_item(campo: u16) -> Option<&'static str> {
         PESO_RAIO => "kind/Comportamento/peso/raio",
         PESO_CURVA => "kind/Comportamento/peso/curva",
         PESO_INVERTE => "kind/Comportamento/peso/inverte",
+        MOLA_LIGADA => "kind/Comportamento/segue",
+        DURACAO => "kind/Comportamento/segue/duracao",
+        RESSALTO => "kind/Comportamento/segue/ressalto",
         _ => return None,
     })
 }

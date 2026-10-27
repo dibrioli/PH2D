@@ -19,10 +19,13 @@ use crate::relogio::{Dinamica, Passo, Simulador};
 pub struct Comportamentos {
     /// O instante da vista, em segundos.
     pub t: f64,
-    /// O simulador de cada Atrair, por `(Entity::to_bits, Item::id)`.
+    /// O simulador de cada Atrair (e da mola de cada centro de órbita), por `(Entity::to_bits, Item::id)`.
     pub sims: BTreeMap<(u64, u32), Simulador<2>>,
-    /// O deslocamento de cada Atrair neste quadro.
+    /// O deslocamento de cada Atrair neste quadro, ou o atraso do centro de uma órbita com mola.
     pub deslocamentos: BTreeMap<(u64, u32), [f64; 2]>,
+    /// A pose de um alvo SEM curva (arrastado à mão), no quadro em que mudou — o passado que a mola
+    /// re-simula.
+    pub historia: BTreeMap<(u64, u32), BTreeMap<i64, [f64; 2]>>,
 }
 
 /// O Tremer, na lei do `motion.wiggle` (o resto dos knobs nos defaults do nó).
@@ -287,9 +290,22 @@ pub(crate) fn na_pilha(
     influencia: f64,
 ) -> Result<Pose2, crate::Estado> {
     let w = sim.world();
+    let r = w.get_resource::<Comportamentos>();
+    let atraso = r
+        .and_then(|r| r.deslocamentos.get(&(e.to_bits(), id)).copied())
+        .unwrap_or_default();
+    // Com mola, o centro da órbita é o alvo mais o atraso dela (o dono busca a órbita aos poucos).
     let pivo = alvo
         .and_then(|t| ph2d_ecs::world_transform(w, t))
-        .map(|t| crate::pose(&t));
+        .map(|t| crate::pose(&t))
+        .map(|p| match (c.perfil, c.segue) {
+            (Perfil::Orbitar, Some(_)) => Pose2 {
+                x: p.x + atraso[0],
+                y: p.y + atraso[1],
+                ..p
+            },
+            _ => p,
+        });
     if c.perfil.precisa_de_alvo() && pivo.is_none() {
         return Err(crate::Estado::SemAlvo);
     }
@@ -298,10 +314,6 @@ pub(crate) fn na_pilha(
         .and_then(|p| idx.get(&ph2d_ecs::StableId(p.objecto)))
         .and_then(|&o| ph2d_ecs::world_transform(w, o))
         .map(|t| [f64::from(t.translation.x), f64::from(t.translation.y)]);
-    let r = w.get_resource::<Comportamentos>();
     let t = r.map_or(0.0, |r| r.t);
-    let atrair = r
-        .and_then(|r| r.deslocamentos.get(&(e.to_bits(), id)).copied())
-        .unwrap_or_default();
-    Ok(aplica(c, dono, pivo, peso_em, t, atrair, influencia))
+    Ok(aplica(c, dono, pivo, peso_em, t, atraso, influencia))
 }

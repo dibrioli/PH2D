@@ -63,6 +63,7 @@ impl Perfil {
             arrasto: 6.0,
             pico: 1.0,
             angulo: 0.0,
+            segue: None,
             leva_rotacao: false,
             peso: None,
         };
@@ -156,6 +157,10 @@ pub struct Comportamento {
     /// apanham-se de onde o dono está ao escolher o alvo — a órbita anda com o centro e o raio fica.
     #[serde(default)]
     pub angulo: f64,
+    /// Orbitar: com mola, o centro da órbita persegue o alvo com atraso (os números da Spring) — o
+    /// dono BUSCA a órbita aos poucos quando o centro se move; sem ela, segue-o rígido.
+    #[serde(default)]
+    pub segue: Option<crate::Mola>,
     /// Orbitar: o objecto vira com a volta.
     pub leva_rotacao: bool,
     pub peso: Option<Peso>,

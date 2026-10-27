@@ -514,3 +514,67 @@ fn attracted_filings_run_behind_a_moving_magnet() {
     assert!(frente < 0.05, "à frente do íman: {frente}");
     assert!(atras > 0.2 && atras < 1.0, "atrás dele, perto: {atras}");
 }
+
+/// A distância lua↔planeta ao longo de `quadros`, com o planeta em `x(f)` (à mão, sem curva).
+fn orbita_com_mola(segue: Option<ph2d_constraints::Mola>, x: impl Fn(i64) -> f32) -> Vec<f64> {
+    let or = Comportamento {
+        segue,
+        ..Perfil::Orbitar.numeros()
+    };
+    let (mut sim, _, _) = mundo(1.5, [0.0, 0.0], or, true);
+    let mut drive = PreviewDrive::default();
+    let doc = TimelineDoc::new();
+    let p = ph2d_ecs::entity_with_stable_id(sim.world(), StableId(1)).unwrap();
+    (0..72)
+        .map(|f| {
+            let px = x(f);
+            sim.world_mut().get_mut::<Transform>(p).unwrap().translation.x = px;
+            let l = em(&mut sim, &mut drive, &doc, f as f64 / doc.fps_display).translation;
+            f64::from(l.x - px).hypot(f64::from(l.y))
+        })
+        .collect()
+}
+
+/// ⭐ Pedido do dono 27/10: *«uma segunda opção realista: quando o planeta for movido a lua buscar a
+/// sua órbita progressivamente»*. Com a mola, o planeta salta 2 m (arrastado à mão, a tocar) e a lua
+/// fica para trás e volta à órbita; sem ela, segue-o rígida.
+#[test]
+fn with_the_spring_the_moon_seeks_its_orbit_progressively() {
+    let salta = |f: i64| if f < 24 { 0.0 } else { 2.0 };
+    let rigida = orbita_com_mola(None, salta);
+    assert!(rigida.iter().all(|r| (r - 1.5).abs() < 1.5e-3), "{rigida:?}");
+    let mola = Some(ph2d_constraints::Mola {
+        duracao: 0.5,
+        ressalto: 0.0,
+    });
+    let busca = orbita_com_mola(mola, salta);
+    assert!((busca[23] - 1.5).abs() < 1.5e-3, "antes do salto, na órbita");
+    assert!((busca[24] - 1.5).abs() > 0.5, "no salto fica para trás: {}", busca[24]);
+    assert!((busca[71] - 1.5).abs() < 0.02, "e volta à órbita: {}", busca[71]);
+}
+
+/// A mola do centro, tocada e arrastada, dá o mesmo bit (a história do alvo arrastado à mão).
+#[test]
+fn the_seeking_orbit_scrubs_to_the_same_bit() {
+    let or = Comportamento {
+        segue: Some(ph2d_constraints::Mola::default()),
+        ..Perfil::Orbitar.numeros()
+    };
+    let (mut sim, a, _) = mundo(1.5, [0.0, 0.0], or, true);
+    let mut drive = PreviewDrive::default();
+    let doc = TimelineDoc::new();
+    let fps = doc.fps_display;
+    let p = ph2d_ecs::entity_with_stable_id(sim.world(), StableId(1)).unwrap();
+    let mut tocado = Vec::new();
+    for f in 0..40 {
+        if f == 10 {
+            sim.world_mut().get_mut::<Transform>(p).unwrap().translation.x = 2.0;
+        }
+        tocado.push(em(&mut sim, &mut drive, &doc, f64::from(f) / fps).translation);
+    }
+    for f in [15_usize, 12, 30] {
+        let l = em(&mut sim, &mut drive, &doc, f as f64 / fps).translation;
+        assert_eq!([l.x.to_bits(), l.y.to_bits()], [tocado[f].x.to_bits(), tocado[f].y.to_bits()], "quadro {f}");
+    }
+    let _ = a;
+}

@@ -334,7 +334,7 @@ Visto na foto do dono e **não** é defeito: o lado esquerdo inclinado = a 1.ª 
 lado 0); a ponta curva num topo = alça de Bézier puxada (as regras citam âncoras, não alças — a W4.6 decide se a tool
 mostra/prende alças).
 
-**W4.6 (a fazer) — a tool «Rules»** (o desenho completo abre a próxima janela, red-first):
+**W4.6 (feito 26/10 → §3.7/§3.8) — a tool «Rules»** (o desenho completo abre a próxima janela, red-first):
 1. **Tool nova na barra esquerda do Vetor**, como as das Shapes/QuickShape (`ph2d-app-vec/src/vector_mode*.rs`,
    `quickshape_frame.rs` — ler com o `explorador` antes): seleccionar 1–2 pontos/lados mostra SÓ as regras possíveis
    (barra flutuante do mesmo idioma da da imagem); `junta_regra` continua a porta única.
@@ -401,6 +401,50 @@ largura e altura = 2 cotas), tampa = um lado preso na dobradiça (`Coincident`),
 · `the_shape_colour_says_free_defined_conflict` · `typing_a_dimension_with_autokey_records_a_key` · a unidade da
 timeline (px) · `the_lid_opens_and_scrubs_to_the_same_bit`.
 
+### 3.8 W4.6 — feito (26/10), medido, aberto
+
+**Commits:** `7cccaa982d` doc §3.7 · `865ac64d85` a tool (coluna ①, ④/② e fila no painel `ph2d-panel-vector/src/state_cad.rs`;
+gizmos e press na crate `ph2d-app-vec/src/cad_tool*.rs`; a secção DRAWING RULES do Inspector saiu inteira; o Delete mudou-se
+para `ph2d_app_vec::apaga`) · `889cb60276` gates do canvas (`circulo.rs`: alça recolhida = canto — um retângulo deixava de
+ter lados no plano) · `541fc408f3` losango/canal do número da cota (`marcas::Contexto.regra`) · `bb029132e1` cena 7 «Caixa
+com tampa» (`ph2d-app-constraints/src/smoke_caixa.rs`, `PH2D_CONSTRAINT_SMOKE=7`); a timeline mostra a medida em px e o
+ângulo em graus (`canal_cad::ANGULO = 2`, `canal::unidade`, `medida::chave_da` porta única) · `83788bb61f` traço da tampa em
+unidades do mundo · `abbdcbf555` bateria por nome (chaves i18n órfãs, isenção `POR_FUNCAO` com `VECTOR_CAD_VALUE`, rustfmt) ·
+`055ffe0b28` + `c91abddc83` + `d4c74c0755` report do dono no smoke.
+
+**Report do dono (26/10):** «gravar o quadro com distance e auto key não funcionou». Mecanismo MEDIDO no app real com sonda
+temporária (cena 7 + `PH2D_AUTOKEY_LOG`): o pedido `Medida` que chega à tool grava a chave (quadros 12 e 36 OK para a medida
+do corpo selecionado); a medida da TAMPA (path não selecionado) não gravava — a população do Auto Key
+(`shells/desktop/src/render_loop/autokey_amostra.rs::populacao`) era seleção + mãos, e o diff `autokey_campos` precisa do
+quadro ANTERIOR (base), por isso uma «mão» de um quadro não serve. **Cura:** `ph2d_ecs::AlvosDasFamilias` (o que a tool
+aponta além da seleção; sem a lei da mão — a timeline continua a conduzir), publicado por `ph2d_app_vec::maos::publicar` a
+partir de `CadTool.alvos` (`cad_tool::alvos`: com regra ou escolha na mão, todo path citado por regra + os da escolha),
+lido na `populacao`. Gate `a_chosen_rule_points_the_autokey_at_every_path_the_sheet_can_move` (mutação: alvos vazios ⇒
+vermelho). Provado no app: «Path 1 · Dimension 150 px» com chave no quadro 12.
+
+**Segundo defeito (visto na foto):** numa linha aberta de 2 pontos o centro da forma cai no próprio lado ⇒ «selo dentro,
+cota fora» empatava e o «= 1» tapava o número. **Cura:** `EMPATE_PX` (no empate a cota fica na normal, o selo do outro lado) +
+`desencosta_selos` (nenhum selo cruza um número nem outro selo). A cota REF mostra-se entre parênteses «(200 px)» (i18n
+`app.vec.cad.referencia`): na cena 7 tudo está definido, qualquer medida nova nasce REF e sem chip para escrever, o que
+confundiu o smoke. Gate `no_badge_covers_a_number_or_another_badge_and_a_reference_reads_in_parentheses` (2 mutações ⇒
+vermelho).
+
+O const `SEM` de `autokey_campos_vetor_tests.rs` (shell) não compilava desde `541fc408f3` (faltava `regra: None`) —
+corrigido; `autokey_pass::` 56/56 verdes.
+
+**Números:** shell 189 040 linhas contra tecto 189 041 (folga 1 — a próxima linha da shell tem de MOVER código); cena 7:
+violação ≤ 1e-6 nos 49 quadros, play × scrub = mesmo bit (`the_lid_opens_and_scrubs_to_the_same_bit`). **Smoke do dono: OK
+em 26/10** (depois da cura).
+
+**ABERTO (a próxima janela resolve num bloco, §0.10):**
+1. o chip ② da cota não re-semeia enquanto focado (mostra o valor antigo se a medida mudar por outro caminho);
+2. a coluna de nomes da timeline (40 px) elide «1234 px»;
+3. `CANTO`, `TRACO_LARGURA` e `PARAM_*` sem unidade na timeline;
+4. a ④ não foi fotografada com clique (a sessão virtual não clica);
+5. Auto Key grava também os cantos que a medida mexeu (lei do dono «grava tudo» — não é defeito);
+6. W4.4: juntar regra a 200 pontos 17–33 ms;
+7. o gate `each_vertex_mutation_site_keeps_or_assigns_ids` da W4.2 está sem ✓ na tabela §4 — conferir.
+
 ## 4. Gates red-first
 
 | gate | fenómeno na fixture | passo |
@@ -421,6 +465,9 @@ timeline (px) · `the_lid_opens_and_scrubs_to_the_same_bit`.
 | `a_live_circle_the_solver_moved_gets_its_recipe_and_transform_back` (+ controlo) | receita `2r`, `Transform` no centro, a forma não se move, ponto fixo | W4.4 ✓ |
 | `the_colours_come_from_an_analysis_off_the_frame_thread_only_when_the_structure_changes` · `a_conflict_writes_which_rules_to_delete` (+ controlo) | a análise só pela estrutura; a ficha nomeia as regras em conflito | W4.4 ✓ |
 | `an_animated_dimension_plays_and_scrubs_to_the_same_bit` · `a_rule_keeps_its_id_when_an_earlier_rule_is_deleted` · `a_dimension_curve_moves_the_drawing_but_the_document_publishes_the_authored_corners` · `the_capture_sees_the_authored_drawing_and_an_artist_edit_becomes_it` | medida com 3 chaves, quadros 0→40→12→40; o id não anda com o índice; o undo vê o autorado | W4.5 ✓ |
+| `the_rules_tool_sits_in_the_left_column` · `a_choice_offers_only_the_rules_it_allows` · `a_rule_made_by_hand_goes_through_junta_regra_and_keeps_the_drawing` · `clicking_a_dimension_number_selects_it_and_typing_moves_the_drawing` · `delete_removes_the_chosen_rule_in_one_step` · `typing_a_dimension_with_autokey_records_a_key` | a tool na coluna, só as regras possíveis, a mão passa por `junta_regra`, o número clicável move o desenho, Delete num passo, a medida escrita grava chave | W4.6 ✓ |
+| `badges_only_with_the_tool_dimensions_always` · `the_hit_rect_is_the_painted_rect` · `hover_lights_what_the_rule_binds` · `the_shape_colour_says_free_defined_conflict` · `no_badge_covers_a_number_or_another_badge_and_a_reference_reads_in_parentheses` | gizmos do canvas; nenhum selo tapa número; REF entre parênteses | W4.6 ✓ |
+| `a_chosen_rule_points_the_autokey_at_every_path_the_sheet_can_move` · `the_lid_opens_and_scrubs_to_the_same_bit` | o Auto Key vê o path não selecionado; cena 7 play × scrub = mesmo bit | W4.6 ✓ |
 | prova de mutação | tirar o `Fixed` do arrastado / a migração / o REF ⇒ o gate certo sangra | W4.3 ✓ 13/13 (§3.3); W4.4 ✓ 17/18 (M12 = só perf, exacto; M7 era equivalente e o palpite saiu) |
 
 A velocidade **não** vira teste (relógio sob carga mente): reconfere-se com `mede.sh` no fecho da onda, a tabela ao lado.

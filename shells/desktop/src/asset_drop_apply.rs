@@ -94,7 +94,7 @@ impl crate::App {
         }
     }
 
-    /// ⭐ **Uma edição do uso da imagem** — Make it Animated, Tiled, Width/Height (planos GEF 13 D5, 14 D5).
+    /// ⭐ **Uma edição do uso da imagem** — o seletor «Use» e Width/Height (planos GEF 14 D5, 15 D3).
     pub(crate) fn image_use_edit(
         &mut self,
         entity_bits: u64,
@@ -109,7 +109,7 @@ impl crate::App {
             .map_or(ph2d_editor_core::project::DEFAULT_PIXELS_PER_METER, |h| {
                 h.project.pixels_per_meter
             });
-        let feito = ph2d_app_sprite_anim::image_use::apply_edit(
+        ph2d_app_sprite_anim::image_use::apply_edit(
             gfx.sim.world_mut(),
             ph2d_ecs::Entity::from_bits(entity_bits),
             &gfx.asset_db,
@@ -117,14 +117,6 @@ impl crate::App {
             ppm,
             edit,
         );
-        if edit != ph2d_editor_core::ImageUseEdit::MakeAnimated {
-            return;
-        }
-        gfx.toasts.push(if feito {
-            ph2d_editor_core::Toast::success(tr("shell.asset_drop_apply.now_animated"))
-        } else {
-            ph2d_editor_core::Toast::warning(tr("shell.asset_drop_apply.could_not_animate"))
-        });
     }
 
     /// **Nasce uma sprite nova, com esta imagem, no ponto.**
@@ -246,8 +238,10 @@ impl crate::App {
             && let Some(hero) = gfx.hero_screen.as_mut()
         {
             gfx.camera.center = ph2d_app_game::smoke::CENTRO_DAS_FOTOS_13;
-            hero.store
-                .set_collapsed(ph2d_editor_core::ids::INSP_LIVE_RENDER_SECTION, false);
+            if !plano.foto.do_plano_15() {
+                hero.store
+                    .set_collapsed(ph2d_editor_core::ids::INSP_LIVE_RENDER_SECTION, false);
+            }
         }
         if plano.foto == ph2d_app_game::smoke::Foto::Seletor
             && let Some(hero) = gfx.hero_screen.as_mut()

@@ -1099,7 +1099,9 @@ const CARGA_DE_COMANDOS: &[(&str, usize)] = &[
     // ⬆️ `88 → 89` em 2026-10-14 (Macros, W5d) — **capacidade nova**: o cartão MACRO e o seu
     //    «Edit steps…», que abre o painel MACROS (um comando a sério). O *Playback* é uma ESCOLHA
     //    declarada e não conta. (Somado ao `88` do main, que traz o seletor de scripts do CodeEditor.)
-    ("inspector", 89),
+    // ⬇️ `89 → 85` em 2026-10-26 (GEF 15): saíram o aviso «imagem animada num bloco», o «Make it Animated» e a
+    //    caixa Tiled — o seletor «Use» é UMA escolha declarada no lugar dos três.
+    ("inspector", 85),
     // ⛔⛔ `110` botões, **`4`** comandos: fechar · importar · exportar · e o *elo*, que é pintado
     //    uma vez por linha por decisão escrita no pintor. O painel é uma LISTA, não uma dívida.
     ("tokens", 4),
@@ -2113,7 +2115,12 @@ const ALTURA_DE_ABERTURA: &[(&str, f32)] = &[
     //    dono pediu (*«não temos padding entre cards de seções»*) — `section_gap_px` foi de `8` para
     //    `12`, e cada fronteira de cartão à vista na abertura custa esses `4 px`. ⚠️ A política de
     //    dobra não mudou: continuam abertas só as que já o eram.
-    ("inspector", 831.0),
+    // ⬆️ `831 → 1 052` em 2026-10-26 (GEF 15, ordem do dono: *«tudo à vista logo de cara… já introduz a seção
+    //    Animation»*, plano aprovado «a secção Animation abre ALI»). Medido pelo gate, por partes: `+25` a
+    //    linha Image (GEF 12, que ficou por escrever) · `+48` o seletor «Use» e a miniatura da folha · `+148`
+    //    a Animation a nascer ABERTA sob a Image (com ela recolhida: `904`). ⚠️ Uma secção a nascer aberta é o
+    //    modo de falha que esta régua guarda — esta é decisão do dono, e o smoke dele pode devolvê-la a `904`.
+    ("inspector", 1052.0),
     // ⭐ `2 709 → 1 529`: as quatro secções que chegaram DEPOIS da decisão do dono nascem
     //    recolhidas. ⛔ Ele não cabe, e o que falta é DECISÃO: o `Texture` (`450`) e o `Stroke`
     //    (`368`) são dele, e com tudo recolhido o painel mediria `736`.
@@ -2147,7 +2154,9 @@ const ALTURA_DE_ABERTURA: &[(&str, f32)] = &[
     //    fileira **Flow** à vista abaixo da Strength (ordem do dono 24/10, «Flow à vista»), `ROW_H_PX (25)` exactos.
     //    MEDIDO pela porta deste gate com `le_o_flow()` forçado a falso: volta a `1 545`. ⚠️ Recolher o Brush
     //    esconderia o controlo que o dono pediu.
-    ("painter_layers", 1570.0),
+    // ⬆️ `1 570 → 1 620` em 2026-10-26 (GEF 15): a Animation nasce aberta (`pre_populate`, a mesma decisão do
+    //    Inspector acima); recolhida mede `1 570`.
+    ("painter_layers", 1620.0),
     // ⬆️ `2 866 → 3 091` em 2026-10-10 (MiroClone W11), e NÃO é uma secção a nascer aberta: o painel
     //    é UMA LISTA, uma fileira por `ColorToken::ALL` (sem secções a recolher), e a W11 acrescentou
     //    nove cores (`person-0`…`person-7` + `person-ink`, as das pessoas do quadro ao vivo):

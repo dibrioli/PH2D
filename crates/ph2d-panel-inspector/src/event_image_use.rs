@@ -1,14 +1,15 @@
-//! **Os controlos do USO da imagem** em Texture & Atlas (planos GEF 13 D5 e 14 D5): Make it Animated, a caixa
-//! Tiled e Width/Height — registo, espelho do snapshot e despacho, num sítio só. Irmão do [`crate::event`] pelo
-//! tecto de LOC.
+//! **Os controlos do USO da imagem** sob a linha Image (planos GEF 14 D5 e 15 D1–D3): o seletor «Use», as células
+//! da miniatura da folha e Width/Height — registo, espelho do snapshot e despacho, num sítio só. Irmão do
+//! [`crate::event`] pelo tecto de LOC.
 
 use crate::{ids, state};
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent, WidgetStore};
 use ph2d_editor_core::panel::PanelHostInternal;
-use ph2d_editor_core::widget::{ButtonState, CheckboxState, CheckboxValue, TextInputState};
-use ph2d_editor_core::{ImageUseEdit, InspectorDraw, InspectorImageUse, InspectorSpriteInfo};
-use std::cell::Cell;
+use ph2d_editor_core::widget::{ButtonState, TextInputState};
+use ph2d_editor_core::{
+    ImageUseEdit, InspectorDraw, InspectorImageUse, InspectorSpriteInfo, SpriteFieldEdit,
+};
 
 /// O passo de arrasto de Width/Height (m).
 const PASSO_M: f64 = 0.1;
@@ -18,19 +19,7 @@ const MIN_M: f64 = 0.01;
 const MAX_M: f64 = 1.0e4;
 
 pub(crate) fn populate(store: &mut WidgetStore) {
-    store.register(
-        ids::INSP_IMAGE_MAKE_ANIMATED,
-        InteractiveState::Button {
-            state: ButtonState::Normal,
-        },
-    );
-    store.register(
-        ids::INSP_IMAGE_TILED,
-        InteractiveState::Checkbox {
-            state: CheckboxState::Normal,
-            value: CheckboxValue::Unchecked,
-        },
-    );
+    crate::populate::register_button_ids(store, &ids::INSP_IMAGE_USE);
     for id in ids::INSP_IMAGE_TILED_SIZE {
         store.register(
             id,
@@ -47,23 +36,28 @@ pub(crate) fn populate(store: &mut WidgetStore) {
     }
 }
 
-thread_local! {
-    /// O `(entidade, tiled)` publicado da última vez: a caixa só se re-semeia quando o MUNDO muda (troca de
-    /// objecto, desfazer) — re-semear sempre desfaria o clique antes de o commit chegar ao snapshot.
-    static VISTO: Cell<Option<(u64, bool)>> = const { Cell::new(None) };
+/// Quantas células a folha de `sp` tem (o que a miniatura pinta e regista).
+pub(crate) fn sheet_cells(sp: &InspectorSpriteInfo) -> u32 {
+    sp.hframes.max(1).saturating_mul(sp.vframes.max(1))
+}
+
+/// Uma camada de fundo repete sempre (`ScrollRepeat`, outra lei): o seletor não se lhe oferece.
+pub(crate) fn use_is_fixed(sp: &InspectorSpriteInfo) -> bool {
+    sp.image_use == InspectorImageUse::Repeated && sp.draw == InspectorDraw::Fixed
 }
 
 pub(crate) fn sync(host: &mut dyn PanelHostInternal, sp: &InspectorSpriteInfo) {
-    let tiled = matches!(sp.draw, InspectorDraw::Tiled { .. });
-    if VISTO.with(|v| v.replace(Some((sp.entity_bits, tiled)))) != Some((sp.entity_bits, tiled))
-        && let Some(InteractiveState::Checkbox { value, .. }) =
-            host.store_mut().get_mut(ids::INSP_IMAGE_TILED)
-    {
-        *value = if tiled {
-            CheckboxValue::Checked
-        } else {
-            CheckboxValue::Unchecked
-        };
+    // As células da folha registam-se conforme a grelha da imagem: o recurso é ela, não uma tabela fixa.
+    for i in 0..sheet_cells(sp) {
+        let id = ids::insp_image_cell(i);
+        if host.store().get(id).is_none() {
+            host.store_mut().register(
+                id,
+                InteractiveState::Button {
+                    state: ButtonState::Normal,
+                },
+            );
+        }
     }
     let InspectorDraw::Tiled { size } = sp.draw else {
         return;
@@ -82,22 +76,28 @@ pub(crate) fn event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
     let Some(info) = state::current_inspector_sprite() else {
         return false;
     };
-    let edit = match ev {
-        // Só onde o aviso se pinta (uso repetido, imagem com células).
-        WidgetEvent::Click(id)
-            if id == ids::INSP_IMAGE_MAKE_ANIMATED
-                && info.image_use == InspectorImageUse::Repeated
-                && info.image_cells > 1 =>
-        {
-            ImageUseEdit::MakeAnimated
+    let entity_bits = info.entity_bits;
+    let action = match ev {
+        WidgetEvent::Click(id) if ids::INSP_IMAGE_USE.contains(&id) => {
+            let i = ids::INSP_IMAGE_USE.iter().position(|&o| o == id);
+            let to = i.map_or(info.image_use, |i| InspectorImageUse::ALL[i]);
+            if to == info.image_use || use_is_fixed(&info) {
+                return true;
+            }
+            EditorAction::ImageUseEdit {
+                entity_bits,
+                edit: ImageUseEdit::Use(to),
+            }
         }
-        WidgetEvent::Toggled(id)
-            if id == ids::INSP_IMAGE_TILED && info.draw != InspectorDraw::Fixed =>
-        {
-            ImageUseEdit::Tiled(matches!(
-                host.store().checkbox(id).map(|(_, v)| v),
-                Some(CheckboxValue::Checked)
-            ))
+        // Uma célula da miniatura escolhe o quadro mostrado — só numa imagem parada.
+        WidgetEvent::Click(id) if info.image_use == InspectorImageUse::Still => {
+            let Some(i) = (0..sheet_cells(&info)).find(|&i| ids::insp_image_cell(i) == id) else {
+                return false;
+            };
+            EditorAction::InspectorSpriteEdit {
+                entity_bits,
+                edit: SpriteFieldEdit::Frame(i),
+            }
         }
         WidgetEvent::ValueChanged(id) if matches!(info.draw, InspectorDraw::Tiled { .. }) => {
             let Some(axis) = ids::INSP_IMAGE_TILED_SIZE.iter().position(|&o| o == id) else {
@@ -107,17 +107,17 @@ pub(crate) fn event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
                 return false;
             };
             let m = m as f32;
-            if axis == 0 {
-                ImageUseEdit::Width(m)
-            } else {
-                ImageUseEdit::Height(m)
+            EditorAction::ImageUseEdit {
+                entity_bits,
+                edit: if axis == 0 {
+                    ImageUseEdit::Width(m)
+                } else {
+                    ImageUseEdit::Height(m)
+                },
             }
         }
         _ => return false,
     };
-    host.bus_mut().push(EditorAction::ImageUseEdit {
-        entity_bits: info.entity_bits,
-        edit,
-    });
+    host.bus_mut().push(action);
     true
 }

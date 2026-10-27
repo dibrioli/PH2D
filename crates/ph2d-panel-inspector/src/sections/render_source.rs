@@ -142,8 +142,7 @@ pub(crate) fn paint_render_source_section(
         cur_y,
     );
 
-    // ⭐ O que era a secção «Sprite Sheet» (plano GameEngineFuncional 07 §4): a pose fica na sprite, e
-    // a grelha só aqui quando não há cartão «Animation» que a mostre.
+    // ⭐ O que era a secção «Sprite Sheet» (plano GameEngineFuncional 07 §4): a pose fica na sprite.
     cur_y = super::sprite_pose::paint_sprite_pose_rows(
         scene,
         text_system,
@@ -154,18 +153,7 @@ pub(crate) fn paint_render_source_section(
         w,
         cur_y,
     );
-    // ⭐ Os quadros só onde o USO os pede (plano GEF 13 D4).
-    cur_y = super::image_use_rows::paint_image_use_rows(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        x,
-        w,
-        cur_y,
-        info,
-    );
+    // A grelha e os quadros vivem sob o seletor «Use» da linha Image (plano GEF 15).
     let btn_rect = ph2d_editor_core::property_row::caixa_do_botao(
         text_system,
         x,

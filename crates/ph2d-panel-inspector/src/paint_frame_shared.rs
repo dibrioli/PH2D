@@ -41,6 +41,10 @@ pub(crate) fn push_core_sections<'a>(
     name_present: bool,
     visibility: bool,
     transform: bool,
+    mut anim: Option<(
+        &'a ph2d_editor_core::screens::hero::InspectorAnimInfo,
+        &'a mut usize,
+    )>,
 ) {
     for (presente, id, banda) in [
         (name_present, ids::INSP_LIVE_NAME_SECTION, row_h),
@@ -50,6 +54,12 @@ pub(crate) fn push_core_sections<'a>(
         if !presente {
             continue;
         }
+        // A secção Animation de uma sprite abre sob a linha Image (plano GEF 15 D2), no corpo da Visibility.
+        let anim = if id == ids::INSP_LIVE_VISIBILITY_SECTION {
+            anim.take()
+        } else {
+            None
+        };
         // ⚠️ **O corpo sai de um `match` sobre o ID**, e não de três blocos copiados: as três
         // molduras são idênticas, e o que muda é UMA chamada.
         emoldurada(plano, id, store, inner_x, inner_w, banda, move |c, t, y| {
@@ -58,7 +68,9 @@ pub(crate) fn push_core_sections<'a>(
                     c.scene, c.text, t, c.hit, store, inner_x, inner_w, y,
                 )
             } else if id == ids::INSP_LIVE_VISIBILITY_SECTION {
-                crate::paint::visibility_body(c.scene, c.text, t, c.hit, store, inner_x, inner_w, y)
+                crate::paint::visibility_body(
+                    c.scene, c.text, t, c.hit, store, inner_x, inner_w, y, anim,
+                )
             } else {
                 crate::sections::paint_transform_section(
                     c.scene, c.text, t, c.hit, store, inner_x, inner_w, y,

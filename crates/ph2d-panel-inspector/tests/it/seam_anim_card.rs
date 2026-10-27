@@ -480,16 +480,25 @@ fn o_platform_player_ja_nao_pinta_as_animacoes() {
     }
 }
 
-/// ⛔ **Não há secção «Sprite Sheet»** — e a grelha não se perdeu: numa sprite sem animação ela está
-/// no Render Source; com animação, no cartão «Animation». Uma só vez em cada caso.
+/// ⛔ **Não há secção «Sprite Sheet»** — e a grelha tem UM lugar: sob o seletor «Use», quando a imagem é
+/// animada (plano GEF 15 D2); uma parada escolhe o quadro na miniatura e não mostra o corte.
 #[test]
 fn nao_ha_seccao_sprite_sheet_e_a_grelha_tem_um_so_lugar() {
     for anim_info in [None, Some(anim(false, false))] {
         let with_anim = anim_info.is_some();
         let mut host = MockPanelHost::with_panel::<InspectorPanel>();
         let mut st = InspectorState::default();
+        crate::seam_image_use::publish_visibility(0xABCD_1234);
         ph2d_panel_inspector::set_current_inspector_sprite(Some(
-            crate::seam_render_source::atlas_sprite(false),
+            ph2d_editor_core::screens::hero::InspectorSpriteInfo {
+                entity_bits: 0xABCD_1234,
+                image_use: if with_anim {
+                    ph2d_editor_core::InspectorImageUse::Animated
+                } else {
+                    ph2d_editor_core::InspectorImageUse::Still
+                },
+                ..crate::seam_render_source::atlas_sprite(false)
+            },
         ));
         set_current_inspector_anim(anim_info);
         host.open_all_sections();
@@ -505,7 +514,7 @@ fn nao_ha_seccao_sprite_sheet_e_a_grelha_tem_um_so_lugar() {
         for id in [ids::INSP_SPRITE_HFRAMES, ids::INSP_SPRITE_VFRAMES] {
             assert_eq!(
                 rects.iter().filter(|(n, _)| *n == id).count(),
-                1,
+                usize::from(with_anim),
                 "{id:?} (com animação: {with_anim})"
             );
         }
@@ -535,6 +544,17 @@ fn card_fits_at(w: f32) {
     // (`ColunaDoPainel`), e quem a prende são as fileiras de dois campos das outras secções — o
     // cartão sozinho teria a coluna toda para si e não cortaria nada.
     let (mut host, mut st) = host_with(info);
+    // A grelha vive sob o seletor «Use» de uma sprite animada (plano GEF 15 D2).
+    crate::seam_image_use::publish_visibility(0xABCD_1234);
+    ph2d_panel_inspector::set_current_inspector_sprite(Some(
+        ph2d_editor_core::screens::hero::InspectorSpriteInfo {
+            entity_bits: 0xABCD_1234,
+            image_use: ph2d_editor_core::InspectorImageUse::Animated,
+            hframes: 4,
+            vframes: 2,
+            ..crate::seam_render_source::atlas_sprite(false)
+        },
+    ));
     ph2d_panel_inspector::set_current_inspector_transform(Some(InspectorTransformInfo {
         entity_bits: 0xABCD_1234,
         translation: [2000.0, 800.0],
@@ -555,6 +575,7 @@ fn card_fits_at(w: f32) {
     let dock = Rect { w, ..VIEWPORT };
     let rects = host.paint::<InspectorPanel>(&mut st, dock);
     ph2d_panel_inspector::set_current_inspector_transform(None);
+    ph2d_panel_inspector::set_current_inspector_sprite(None);
     clear();
     let label = ph2d_i18n::tr("panel.inspector.sprite_sheet.show_sheet_on_canvas");
     let seen: Vec<_> = medidos.iter().filter(|m| m.texto == label).collect();

@@ -116,8 +116,8 @@ fn trocar_a_imagem_de_um_tiled_guarda_o_tamanho() {
     assert_eq!(image_use(w, e), Some(ImageUse::Repeated));
 }
 
-/// ⭐ D5: ligar o Tiled numa sprite parada põe o ladrilho de uma célula nativa e guarda o tamanho; desligar
-/// volta a esticar. O *Repeat* e o UV à mão saem (o Tiled manda nas repetições).
+/// ⭐ Plano 15 D3 (a caixa Tiled da 14 é agora o uso «Repeated»): passar a repetida uma sprite parada põe o
+/// ladrilho de uma célula nativa e guarda o tamanho; voltar a parada estica. O UV à mão sai.
 #[test]
 fn ligar_e_desligar_o_tiled() {
     let mut sim = SimWorld::new();
@@ -139,15 +139,13 @@ fn ligar_e_desligar_o_tiled() {
         atlas[&PLATFORM_TILE_KEY],
     )
     .expect("escolha");
-    sim.world_mut().entity_mut(e).insert((
-        TextureRepeat(ph2d_ecs::RepeatMode::Enabled),
-        UvTransform {
-            scale: [3.0, 1.0],
-            offset: [0.0, 0.0],
-        },
-    ));
+    sim.world_mut().entity_mut(e).insert(UvTransform {
+        scale: [3.0, 1.0],
+        offset: [0.0, 0.0],
+    });
     let antes = sim.world().get::<Sprite>(e).map(|s| s.size);
-    assert!(edita(&mut sim, e, ImageUseEdit::Tiled(true)));
+    assert_eq!(image_use(sim.world(), e), Some(ImageUse::Still));
+    assert!(edita(&mut sim, e, repetida()));
     let w = sim.world();
     assert_eq!(w.get::<Sprite>(e).map(|s| s.size), antes);
     assert_eq!(
@@ -155,11 +153,25 @@ fn ligar_e_desligar_o_tiled() {
         Some(PLATFORM_TILE.native_m())
     );
     assert!(w.get::<UvTransform>(e).is_none() && w.get::<TextureRepeat>(e).is_none());
-    assert!(edita(&mut sim, e, ImageUseEdit::Tiled(false)));
+    assert!(!edita(&mut sim, e, repetida()), "já é repetida");
+    assert!(edita(
+        &mut sim,
+        e,
+        ImageUseEdit::Use(ph2d_editor_core::InspectorImageUse::Still)
+    ));
     assert_eq!(draw_of(sim.world(), e), InspectorDraw::Simple);
+    assert_eq!(image_use(sim.world(), e), Some(ImageUse::Still));
     // Uma camada de fundo não oferece Draw Mode.
     sim.world_mut()
         .entity_mut(e)
         .insert(ph2d_ecs::ScrollRepeat { tile: [1.0, 0.0] });
-    assert!(!edita(&mut sim, e, ImageUseEdit::Tiled(true)));
+    assert!(!edita(
+        &mut sim,
+        e,
+        ImageUseEdit::Use(ph2d_editor_core::InspectorImageUse::Animated)
+    ));
+}
+
+fn repetida() -> ImageUseEdit {
+    ImageUseEdit::Use(ph2d_editor_core::InspectorImageUse::Repeated)
 }

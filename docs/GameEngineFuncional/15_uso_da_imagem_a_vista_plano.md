@@ -74,3 +74,11 @@ não é essencial desce para um grupo dobrável fechado.
 
 Player ⇒ Uso Animada, folha com grelha, lista idle/run/jump/fall, regras. Platform Low ⇒ Repetida, Width/Height.
 Bandeira/Coin ⇒ Animada. Arrastar «heroi_azul» para a tela ⇒ Parada, miniatura; escolher Animada ⇒ grelha + loop.
+
+## Feito (26/10)
+
+D1–D4 como desenhados; D5 sem código (o `pre_populate` do editor já nasce com tudo menos a Transform
+recolhido — e agora a Animation, aberta sob a Image). Desvios medidos: a grelha numera a partir de 0 (os campos
+«From/To (cell)» do mesmo cartão); Colunas × Linhas ficam POR BAIXO da miniatura (ao lado não cabem a 300 px);
+«Parada» vinda de um bloco mostra UM ladrilho (a foto da bandeira esticada ao bloco). Detalhe, gates e o que
+ficou aberto: [handoff 15](handoffs/HANDOFF_CONTINUACAO_2026-10-26_15_USO_A_VISTA.md).

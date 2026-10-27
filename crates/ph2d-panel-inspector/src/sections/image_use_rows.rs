@@ -1,14 +1,23 @@
-//! ⭐ **Os campos de quadros POR USO** ([plano GEF 13](../../../../docs/GameEngineFuncional/13_isolamento_por_uso_plano.md)
-//! D4): parada = o corte da imagem e a célula; repetida = nenhum, e o aviso + «Make it Animated» se a imagem tem
-//! várias células; animada = o cartão Animation. Irmão do `render_source.rs` (tecto de LOC).
+//! ⭐ **O uso da imagem à vista** ([plano GEF 15](../../../../docs/GameEngineFuncional/15_uso_da_imagem_a_vista_plano.md)
+//! D1/D2): logo abaixo da linha Image, o seletor «Use» (Still · Repeated · Animated) e, por baixo, só os campos do
+//! uso escolhido — parada: a folha para escolher o quadro; repetida: Width/Height; animada: a folha com o corte e
+//! a secção Animation ali mesmo.
 
 use super::*;
-use ph2d_editor_core::InspectorImageUse;
-use ph2d_i18n::{tr, tr_with};
+use ph2d_editor_core::screens::hero::InspectorAnimInfo;
+use ph2d_editor_core::{InspectorDraw, InspectorImageUse};
+use ph2d_i18n::tr;
 
-/// Pinta o que o uso de `info` pede. Devolve o `y` seguinte.
+const USOS: [&str; 3] = [
+    "panel.inspector.image.use_still",
+    "panel.inspector.image.use_repeated",
+    "panel.inspector.image.use_animated",
+];
+
+/// Pinta o seletor e os campos do uso de `info`; `anim` é a secção Animation (e a animação aberta) de uma sprite
+/// animada. Devolve o `y` seguinte.
 #[allow(clippy::too_many_arguments)]
-pub(super) fn paint_image_use_rows(
+pub(crate) fn paint_image_use(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
@@ -18,49 +27,73 @@ pub(super) fn paint_image_use_rows(
     w: f32,
     y: f32,
     info: &InspectorSpriteInfo,
+    anim: Option<(&InspectorAnimInfo, usize)>,
 ) -> f32 {
-    if crate::state::current_inspector_anim().is_some() {
-        return y;
-    }
-    let y = paint_draw_rows(scene, text_system, theme, hit_index, store, x, w, y, info);
+    let mut y = if crate::event_image_use::use_is_fixed(info) {
+        super::rows::aviso(
+            scene,
+            text_system,
+            theme,
+            x,
+            w,
+            y,
+            tr("panel.inspector.image.use_background"),
+            ColorToken::Text3,
+        )
+    } else {
+        let labels = USOS.map(tr);
+        let selected = InspectorImageUse::ALL
+            .iter()
+            .position(|u| *u == info.image_use)
+            .unwrap_or(0);
+        super::rows::seg_row(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            x,
+            w,
+            y,
+            TextKey::new("panel.inspector.image.use"),
+            ids::INSP_IMAGE_USE_GROUP,
+            &ids::INSP_IMAGE_USE,
+            &labels,
+            selected as u8,
+        )
+    };
     match info.image_use {
-        InspectorImageUse::Animated => y,
-        InspectorImageUse::Repeated if info.image_cells > 1 => {
-            let n = info.image_cells;
-            let y = super::rows::aviso(
+        InspectorImageUse::Still if crate::event_image_use::sheet_cells(info) > 1 => {
+            super::sheet_thumb::paint_sheet_thumb(
                 scene,
                 text_system,
                 theme,
+                hit_index,
                 x,
                 w,
                 y,
-                &tr_with("panel.inspector.image.animated_in_block", &[("n", &n)]),
-                ColorToken::Warn,
-            );
-            let label = tr("panel.inspector.image.make_animated");
-            let rect = ph2d_editor_core::property_row::caixa_do_botao(text_system, x, w, y, label);
-            let id = ids::INSP_IMAGE_MAKE_ANIMATED;
-            hit_index.register(id, rect);
-            let btn = Button::new(id, label)
-                .kind(ButtonKind::Default)
-                .visual(store.button_visual(id));
-            paint_button(&btn, rect, scene, text_system, theme);
-            ph2d_editor_core::property_row::abaixo_do_botao(rect)
+                info,
+                true,
+            )
         }
-        InspectorImageUse::Repeated => y,
-        InspectorImageUse::Still => {
-            let y = super::rows::aviso(
+        InspectorImageUse::Still => y,
+        InspectorImageUse::Repeated => {
+            paint_size_rows(scene, text_system, theme, hit_index, store, x, w, y, info)
+        }
+        InspectorImageUse::Animated => {
+            y = super::sheet_thumb::paint_sheet_thumb(
                 scene,
                 text_system,
                 theme,
+                hit_index,
                 x,
                 w,
                 y,
-                tr("panel.inspector.image.cut_of_the_image"),
-                ColorToken::Text3,
+                info,
+                false,
             );
             let sec = super::sprite_pose::seccao(text_system);
-            super::sprite_pose::paint_sheet_grid_rows(
+            y = super::sprite_pose::paint_sheet_grid_rows(
                 scene,
                 text_system,
                 theme,
@@ -71,16 +104,31 @@ pub(super) fn paint_image_use_rows(
                 y,
                 info.hframes,
                 info.vframes,
-                info.hframes.max(1) * info.vframes.max(1) > 1,
+                false,
                 sec,
-            )
+            );
+            match anim {
+                Some((an, selected)) => super::anim::paint_anim_section(
+                    scene,
+                    text_system,
+                    theme,
+                    hit_index,
+                    store,
+                    x,
+                    w,
+                    y,
+                    an,
+                    selected,
+                ),
+                None => y,
+            }
         }
     }
 }
 
-/// ⭐ A caixa **Tiled** e, ligada, **Width / Height** (plano GEF 14 D5). Nada onde não há Draw Mode a escolher.
+/// **Width / Height** de uma sprite que repete (plano GEF 14 D5): o uso É a caixa Tiled de antes.
 #[allow(clippy::too_many_arguments)]
-fn paint_draw_rows(
+fn paint_size_rows(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
@@ -91,45 +139,29 @@ fn paint_draw_rows(
     y: f32,
     info: &InspectorSpriteInfo,
 ) -> f32 {
-    use ph2d_editor_core::InspectorDraw;
-    const NOMES: [&str; 3] = [
-        "panel.inspector.image.tiled",
+    const NOMES: [&str; 2] = [
         "panel.inspector.image.width_m",
         "panel.inspector.image.height_m",
     ];
-    if info.draw == InspectorDraw::Fixed {
+    if !matches!(info.draw, InspectorDraw::Tiled { .. }) {
         return y;
     }
-    let tiled = matches!(info.draw, InspectorDraw::Tiled { .. });
     let sec = ph2d_editor_core::property_row::Seccao::medida(text_system, 1, &NOMES.map(tr));
-    let mut y = ph2d_editor_core::property_row::paint_check_row(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        x,
-        w,
-        y,
-        (ids::INSP_IMAGE_TILED, TextKey::new(NOMES[0]), tiled),
-        sec,
-    );
-    if tiled {
-        for (id, nome) in ids::INSP_IMAGE_TILED_SIZE.into_iter().zip(&NOMES[1..]) {
-            y = super::sprite_pose::number_row(
-                scene,
-                text_system,
-                theme,
-                hit_index,
-                store,
-                x,
-                w,
-                y,
-                sec,
-                TextKey::new(nome).into(),
-                id,
-            );
-        }
+    let mut y = y;
+    for (id, nome) in ids::INSP_IMAGE_TILED_SIZE.into_iter().zip(NOMES) {
+        y = super::sprite_pose::number_row(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            x,
+            w,
+            y,
+            sec,
+            TextKey::new(nome).into(),
+            id,
+        );
     }
     y
 }

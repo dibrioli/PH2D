@@ -141,9 +141,9 @@ const LINHAS: &[(&str, &str)] = &[
 /// A classe de uma chamada por um dos seus ids — exacto, ou PREFIXO quando acaba em `_`.
 const POR_ID: &[(&str, Classe, &str)] = &[
     (
-        "INSP_IMAGE_TILED",
+        "INSP_IMAGE_USE",
         NaoAnimavel,
-        "a caixa diz se o `TiledDraw` EXISTE (acrescentar/tirar é estrutura); a Largura/Altura é o `Sprite.size` (plano GEF 14)",
+        "o seletor «Use» diz que componentes EXISTEM (animações, `TiledDraw`, repeat): acrescentar/tirar é estrutura, não um valor no tempo (plano GEF 15)",
     ),
     (
         "INSP_SCRIPT_SOURCE",

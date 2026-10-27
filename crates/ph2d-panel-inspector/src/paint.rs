@@ -209,6 +209,14 @@ fn paint_inspector(
     // ⭐⭐⭐ **O PLANO** (2026-09-29): os grupos EMPURRAM as secções deles e o plano pinta-as pela
     //    ordem que o artista escolheu com a pega — ver [`crate::plano`]. A ordem em que os grupos
     //    empurram é a NATURAL (a da paleta), e é ela que uma secção nunca movida segue.
+    // A animação aberta vai para quem pinta a secção Animation: sob a linha Image numa sprite (plano GEF 15),
+    // no cartão dela noutro objecto.
+    let mut sem_cartao = 0usize;
+    let (anim_sob_image, anim_selected) = if snaps.sprite_info.is_some() {
+        (Some(anim_selected), &mut sem_cartao)
+    } else {
+        (None, anim_selected)
+    };
     let mut plano = crate::plano::Plano::new();
     crate::paint_frame_shared::push_core_sections(
         &mut plano,
@@ -220,6 +228,7 @@ fn paint_inspector(
         snaps.name_present,
         snaps.visibility_info.is_some(),
         snaps.transform_info.is_some(),
+        snaps.anim_info.as_ref().zip(anim_sob_image),
     );
     // **As três da SPRITE** — só existem se houver sprite.
     crate::paint_frame_shared::push_sprite_sections(
@@ -346,6 +355,10 @@ pub(crate) fn visibility_body(
     inner_x: f32,
     inner_w: f32,
     y: f32,
+    anim: Option<(
+        &ph2d_editor_core::screens::hero::InspectorAnimInfo,
+        &mut usize,
+    )>,
 ) -> f32 {
     let mut yy = sections::paint_visibility_row(
         scene,
@@ -359,6 +372,25 @@ pub(crate) fn visibility_body(
     );
     // ⭐ A imagem da sprite, sempre à vista (plano GEF 12: o campo *Sprite* da Unity).
     yy = sections::paint_image_row(scene, text_system, theme, hit_index, inner_x, inner_w, yy);
+    // ⭐ E logo abaixo, o USO dela à vista (plano GEF 15 D1).
+    if let Some(info) = crate::state::current_inspector_sprite() {
+        let anim = anim.map(|(an, sel)| {
+            *sel = (*sel).min(an.rows.len().saturating_sub(1));
+            (an, *sel)
+        });
+        yy = sections::image_use_rows::paint_image_use(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            inner_x,
+            inner_w,
+            yy,
+            &info,
+            anim,
+        );
+    }
     // W3 §8: the optional-component controls (layer mask / clip / mask / on-screen) sit directly
     // below the Visible toggle.
     if let Some(vis) = current_inspector_visibility_section() {

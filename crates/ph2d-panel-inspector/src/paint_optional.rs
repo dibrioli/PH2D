@@ -287,7 +287,11 @@ pub(crate) fn push_optional_sections<'a>(
                 inner_w,
                 y,
                 header_h,
-                snaps.anim_info.as_ref(),
+                // Numa sprite a secção abre sob a linha Image (plano GEF 15 D2).
+                snaps
+                    .anim_info
+                    .as_ref()
+                    .filter(|_| snaps.sprite_info.is_none()),
                 anim_selected,
             )
         },

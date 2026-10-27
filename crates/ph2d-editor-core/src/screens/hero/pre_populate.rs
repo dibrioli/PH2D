@@ -692,8 +692,9 @@ pub fn marca_as_gavetas(store: &mut WidgetStore) {
     //    a dobra é uma decisão do ECRÃ DO EDITOR, que o painel não conhece (ele não sabe a altura
     //    da janela). *O painel declara o que tem; quem compõe o editor declara como ele abre.*
     //
-    // ⚠️ **`_if_unchosen`**: a escolha do artista manda, e ela sobrevive à sessão inteira.
+    // ⚠️ `_if_unchosen`: a escolha do artista manda. ⭐ A ANIMATION abre sob a linha Image (plano GEF 15 D2).
+    let aberta = |s| s == ids::INSP_LIVE_TRANSFORM_SECTION || s == ids::INSP_LIVE_ANIM_SECTION;
     for (seccao, _cor) in ids::LIVE_SECTIONS {
-        store.set_collapsed_if_unchosen(seccao, seccao != ids::INSP_LIVE_TRANSFORM_SECTION);
+        store.set_collapsed_if_unchosen(seccao, !aberta(seccao));
     }
 }

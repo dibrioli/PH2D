@@ -483,7 +483,7 @@ pub(crate) fn paint_anim_section(
 
     // ⭐ O CARTÃO (plano GameEngineFuncional 07, desenho aprovado 25/10), de cima para baixo: ver ·
     // a lista · «Playback» · os verbos da biblioteca · «Edit Animations…» · a animação escolhida ·
-    // «Who Picks» · a grelha · «Advanced» (nasce FECHADO). Nada se perdeu do que a §11 tinha.
+    // «Who Picks» · «Advanced» (nasce FECHADO). A folha e o corte vivem acima, sob o seletor «Use» (plano 15).
     cur_y = super::anim_card::paint_preview(scene, x, w, cur_y, info);
     cur_y = super::anim_card::paint_list(
         scene,
@@ -554,20 +554,6 @@ pub(crate) fn paint_anim_section(
         w,
         cur_y,
         info,
-        sec,
-    );
-    cur_y = super::paint_sheet_grid_rows(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        x,
-        w,
-        cur_y,
-        info.card.hframes,
-        info.card.vframes,
-        false,
         sec,
     );
     cur_y = advanced_group(

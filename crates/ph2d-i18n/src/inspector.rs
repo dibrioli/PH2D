@@ -329,16 +329,16 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // ⭐ A linha da imagem no topo do Inspector (plano GEF 12).
         "panel.inspector.image" => "Image",
         "panel.inspector.image.none" => "None \u{2014} click to choose",
-        "panel.inspector.image.animated_in_block" => {
-            "This image has {n} frames, but this object repeats it \u{2014} only the first one shows."
+        // ⭐ O seletor «Use» sob a linha Image (plano GEF 15).
+        "panel.inspector.image.use" => "Use",
+        "panel.inspector.image.use_still" => "Still",
+        "panel.inspector.image.use_repeated" => "Repeated",
+        "panel.inspector.image.use_animated" => "Animated",
+        "panel.inspector.image.use_background" => {
+            "Use: Repeated \u{2014} a background layer always repeats."
         }
-        "panel.inspector.image.make_animated" => "Make it Animated",
-        "panel.inspector.image.tiled" => "Tiled",
         "panel.inspector.image.width_m" => "Width",
         "panel.inspector.image.height_m" => "Height",
-        "panel.inspector.image.cut_of_the_image" => {
-            "Frames of the image \u{2014} every object that shows it uses the same."
-        }
         "panel.inspector.render_source.source" => "Source",
         "panel.inspector.ordering.background" => "Background",
         "panel.inspector.ordering.midground" => "Midground",

@@ -50,7 +50,9 @@ pub fn imagens_da_cena(nivel: u32) -> &'static [&'static str] {
 /// O instante que a foto quer (`PH2D_GAME_SMOKE_FOTO`). A mão do dono faz o mesmo pelo Inspector e pelos Assets;
 /// a tela virtual não recebe cliques. Plano 12: o seletor aberto sobre os montes, ou as duas imagens trocadas.
 /// Plano 13: o bloco Platform High (sem quadros), com a bandeira (o aviso), já animada, e a «Platform» largada
-/// no canvas (sobre o céu). Plano 14: a Platform Low em Tiled, e com Width 4.
+/// no canvas (sobre o céu). Plano 14: a Platform Low em Tiled, e com Width 4. Plano 15 (o seletor «Use»): o
+/// Player animado, a bandeira num bloco passada a parada, e o «heroi_azul» num bloco passado a animado (a grelha
+/// proposta pela transparência).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Foto {
     Seletor,
@@ -61,6 +63,9 @@ pub enum Foto {
     Largada,
     Baixa,
     Larga,
+    UsoAnimada,
+    UsoParada,
+    HeroiAnimado,
 }
 
 #[must_use]
@@ -74,6 +79,9 @@ pub fn foto() -> Option<Foto> {
         "largada" => Some(Foto::Largada),
         "baixa" => Some(Foto::Baixa),
         "larga" => Some(Foto::Larga),
+        "uso_animada" => Some(Foto::UsoAnimada),
+        "uso_parada" => Some(Foto::UsoParada),
+        "heroi_animado" => Some(Foto::HeroiAnimado),
         _ => None,
     }
 }
@@ -89,6 +97,15 @@ impl Foto {
     #[must_use]
     pub const fn do_plano_13(self) -> bool {
         !matches!(self, Self::Seletor | Self::Trocado)
+    }
+
+    /// Uma foto do plano 15: o seletor «Use» à vista, as secções avançadas fechadas como o artista as encontra.
+    #[must_use]
+    pub const fn do_plano_15(self) -> bool {
+        matches!(
+            self,
+            Self::UsoAnimada | Self::UsoParada | Self::HeroiAnimado
+        )
     }
 }
 
@@ -140,7 +157,7 @@ pub fn plano_da_foto(
         Foto::Bandeira => plano.escolhas = vec![(alta, bandeira)],
         Foto::Animada => {
             plano.escolhas = vec![(alta, bandeira)];
-            plano.edicoes = vec![(alta, ph2d_editor_core::ImageUseEdit::MakeAnimated)];
+            plano.edicoes = vec![(alta, uso(ph2d_editor_core::InspectorImageUse::Animated))];
         }
         Foto::Largada => {
             plano.larga = Some((fabrica(ph2d_render::PLATFORM_TILE_KEY)?, ONDE_LARGA, ceu));
@@ -150,8 +167,21 @@ pub fn plano_da_foto(
             plano.edicoes = vec![(baixa, ph2d_editor_core::ImageUseEdit::Width(4.0))];
             plano.alvo = baixa;
         }
+        Foto::UsoAnimada => plano.alvo = player,
+        Foto::UsoParada => {
+            plano.escolhas = vec![(alta, bandeira)];
+            plano.edicoes = vec![(alta, uso(ph2d_editor_core::InspectorImageUse::Still))];
+        }
+        Foto::HeroiAnimado => {
+            plano.escolhas = vec![(alta, *heroi)];
+            plano.edicoes = vec![(alta, uso(ph2d_editor_core::InspectorImageUse::Animated))];
+        }
     }
     Some(plano)
+}
+
+fn uso(u: ph2d_editor_core::InspectorImageUse) -> ph2d_editor_core::ImageUseEdit {
+    ph2d_editor_core::ImageUseEdit::Use(u)
 }
 
 /// O objecto da raiz com este nome.

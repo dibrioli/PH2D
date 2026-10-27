@@ -1,154 +1,259 @@
-//! ⭐ **Os campos de quadros POR USO** (plano GEF 13 D4/D5) — popular → publicar → PINTAR → clicar, o caminho
-//! da shell: uma imagem parada mostra o corte; um bloco que repete não mostra quadros (o defeito do dono:
-//! «Platform High mostra H Frames 3»); uma imagem animada num bloco avisa e o botão pede «Make it Animated».
+//! ⭐ **O uso da imagem à vista** (plano GEF 15) — popular → publicar → PINTAR → clicar, o caminho da shell: sob
+//! a linha Image, o seletor «Use» com os três usos; por baixo só os campos do escolhido (parada: a folha para
+//! clicar o quadro · repetida: Width/Height · animada: a folha com o corte e a secção Animation ali).
 
+use crate::seam_anim::anim;
 use crate::seam_render_source::atlas_sprite;
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::interaction::WidgetEvent;
-use ph2d_editor_core::panel::{EventOutcome, Panel};
-use ph2d_editor_core::screens::hero::InspectorSpriteInfo;
-use ph2d_editor_core::zones::Rect;
-use ph2d_editor_core::{ImageUseEdit, InspectorDraw, InspectorImageUse};
-use ph2d_panel_inspector::ids::{
-    INSP_IMAGE_MAKE_ANIMATED, INSP_IMAGE_TILED, INSP_IMAGE_TILED_SIZE, INSP_SPRITE_FRAME,
-    INSP_SPRITE_HFRAMES, INSP_SPRITE_VFRAMES,
+use ph2d_editor_core::panel::Panel;
+use ph2d_editor_core::screens::hero::{
+    InspectorSpriteInfo, InspectorTransformInfo, InspectorVisibilityInfo,
 };
-use ph2d_panel_inspector::{InspectorPanel, InspectorState, set_current_inspector_sprite};
+use ph2d_editor_core::zones::Rect;
+use ph2d_editor_core::{ImageUseEdit, InspectorDraw, InspectorImageUse, SpriteFieldEdit};
+use ph2d_panel_inspector::ids::{
+    INSP_ANIM_ROW, INSP_IMAGE_TILED_SIZE, INSP_IMAGE_USE, INSP_SPRITE_FRAME, INSP_SPRITE_HFRAMES,
+    INSP_SPRITE_VFRAMES, insp_image_cell,
+};
+use ph2d_panel_inspector::slot_image::{SlotImage, set_current_slot_image};
+use ph2d_panel_inspector::{
+    InspectorPanel, InspectorState, set_current_inspector_anim, set_current_inspector_sprite,
+    set_current_inspector_transform, set_current_inspector_visibility,
+};
 use ph2d_ui_testkit::MockPanelHost;
+use std::sync::Arc;
 
-fn com(uso: InspectorImageUse, cells: u32, grelha: [u32; 2]) -> InspectorSpriteInfo {
+fn com(uso: InspectorImageUse, grelha: [u32; 2], draw: InspectorDraw) -> InspectorSpriteInfo {
     InspectorSpriteInfo {
         image_use: uso,
-        image_cells: cells,
+        image_cells: grelha[0] * grelha[1],
         hframes: grelha[0],
         vframes: grelha[1],
+        frame: 0,
+        draw,
         ..atlas_sprite(true)
     }
 }
 
-fn pintado(info: InspectorSpriteInfo) -> (MockPanelHost, InspectorState, Vec<ph2d_a11y::NodeId>) {
-    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
-    let mut state = InspectorState::default();
-    set_current_inspector_sprite(Some(info));
-    host.settle_section_folds();
-    let rects = host.paint::<InspectorPanel>(&mut state, Rect::new(0.0, 0.0, 320.0, 2000.0));
-    (host, state, rects.into_iter().map(|(id, _)| id).collect())
+/// A Visibility de `bits` — é nela que a linha Image e o seletor «Use» moram.
+pub(crate) fn publish_visibility(bits: u64) {
+    set_current_inspector_visibility(Some(InspectorVisibilityInfo {
+        entity_bits: bits,
+        visible: true,
+        mixed: false,
+    }));
 }
 
+/// Publica a sprite como a shell: a Visibility (onde a linha Image mora), a miniatura da ranhura e, numa
+/// animada, a secção Animation.
+fn publica(info: &InspectorSpriteInfo) {
+    let bits = info.entity_bits;
+    publish_visibility(bits);
+    set_current_slot_image(Some(SlotImage {
+        entity_bits: bits,
+        name: "folha".into(),
+        rgba: Arc::new(vec![255; 64 * 32 * 4]),
+        w: 64,
+        h: 32,
+    }));
+    set_current_inspector_anim((info.image_use == InspectorImageUse::Animated).then(|| {
+        let mut a = anim(true, true);
+        a.entity_bits = bits;
+        a
+    }));
+    set_current_inspector_transform(Some(InspectorTransformInfo {
+        entity_bits: bits,
+        translation: [0.0, 0.0],
+        rotation_rad: 0.0,
+        scale: [1.0, 1.0],
+        skew_rad: [0.0, 0.0],
+    }));
+    set_current_inspector_sprite(Some(info.clone()));
+}
+
+fn pintado(
+    info: &InspectorSpriteInfo,
+) -> (
+    MockPanelHost,
+    InspectorState,
+    Vec<(ph2d_a11y::NodeId, Rect)>,
+) {
+    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut state = InspectorState::default();
+    publica(info);
+    host.settle_section_folds();
+    let rects = host.paint::<InspectorPanel>(&mut state, Rect::new(0.0, 0.0, 320.0, 3000.0));
+    (host, state, rects)
+}
+
+fn tem(rects: &[(ph2d_a11y::NodeId, Rect)], id: ph2d_a11y::NodeId) -> bool {
+    rects.iter().any(|(i, _)| *i == id)
+}
+
+fn y_de(rects: &[(ph2d_a11y::NodeId, Rect)], id: ph2d_a11y::NodeId) -> f32 {
+    rects
+        .iter()
+        .find(|(i, _)| *i == id)
+        .map(|(_, r)| r.y)
+        .unwrap_or_else(|| panic!("{id:?} não pintado"))
+}
+
+/// Gate 1: o seletor pinta os três; cada uso pinta SÓ os seus campos.
 #[test]
 fn cada_uso_pinta_so_os_seus_campos() {
-    let quadros = [INSP_SPRITE_HFRAMES, INSP_SPRITE_VFRAMES, INSP_SPRITE_FRAME];
-    for (uso, cells, grelha, querem, botao) in [
-        // Parada de uma célula: o corte da imagem, sem a célula a escolher.
+    let tiled = InspectorDraw::Tiled { size: [2.4, 0.5] };
+    // (uso, grelha, draw, células clicáveis, Width/Height, corte, Animation)
+    for (uso, grelha, draw, celulas, tamanho, corte, animacao) in [
         (
             InspectorImageUse::Still,
-            1,
             [1, 1],
-            [true, true, false],
+            InspectorDraw::Simple,
+            false,
+            false,
+            false,
             false,
         ),
-        // Parada de uma folha: o corte e a célula.
         (
             InspectorImageUse::Still,
-            4,
             [4, 1],
-            [true, true, true],
+            InspectorDraw::Simple,
+            true,
+            false,
+            false,
             false,
         ),
-        // O bloco de fábrica (Platform High): nada de quadros.
-        (InspectorImageUse::Repeated, 1, [1, 1], [false; 3], false),
-        // A bandeira num bloco: nada de quadros, o aviso e o botão.
-        (InspectorImageUse::Repeated, 4, [4, 1], [false; 3], true),
-        // Animada: a grelha é do cartão Animation.
-        (InspectorImageUse::Animated, 4, [4, 1], [false; 3], false),
+        (
+            InspectorImageUse::Repeated,
+            [1, 1],
+            tiled,
+            false,
+            true,
+            false,
+            false,
+        ),
+        (
+            InspectorImageUse::Animated,
+            [4, 1],
+            InspectorDraw::Fixed,
+            false,
+            false,
+            true,
+            true,
+        ),
     ] {
-        let (_, _, ids) = pintado(com(uso, cells, grelha));
-        for (id, quer) in quadros.iter().zip(querem) {
-            assert_eq!(ids.contains(id), quer, "{uso:?} {cells} células: {id:?}");
+        let (_, _, rects) = pintado(&com(uso, grelha, draw));
+        let quem = format!("{uso:?} {grelha:?}");
+        for id in INSP_IMAGE_USE {
+            assert!(tem(&rects, id), "{quem}: o seletor");
         }
-        assert_eq!(
-            ids.contains(&INSP_IMAGE_MAKE_ANIMATED),
-            botao,
-            "{uso:?} {cells}"
+        assert_eq!(tem(&rects, insp_image_cell(0)), celulas, "{quem}: células");
+        for id in INSP_IMAGE_TILED_SIZE {
+            assert_eq!(tem(&rects, id), tamanho, "{quem}: Width/Height");
+        }
+        for id in [INSP_SPRITE_HFRAMES, INSP_SPRITE_VFRAMES] {
+            assert_eq!(tem(&rects, id), corte, "{quem}: o corte");
+        }
+        assert!(
+            !tem(&rects, INSP_SPRITE_FRAME),
+            "{quem}: o campo Frame saiu"
         );
+        assert_eq!(tem(&rects, INSP_ANIM_ROW[0]), animacao, "{quem}: Animation");
     }
 }
 
-fn clica(host: &mut MockPanelHost, state: &mut InspectorState) -> bool {
-    matches!(
-        InspectorPanel::apply_event(state, host, WidgetEvent::Click(INSP_IMAGE_MAKE_ANIMATED)),
-        EventOutcome::Consumed | EventOutcome::Observed,
-    )
+/// ⭐ D2: a secção Animation abre ALI — logo abaixo do seletor, antes do Transform e de tudo o resto.
+#[test]
+fn a_animation_abre_sob_o_seletor() {
+    let (_, _, rects) = pintado(&com(
+        InspectorImageUse::Animated,
+        [4, 1],
+        InspectorDraw::Fixed,
+    ));
+    let seletor = y_de(&rects, INSP_IMAGE_USE[2]);
+    let lista = y_de(&rects, INSP_ANIM_ROW[0]);
+    let corte = y_de(&rects, INSP_SPRITE_HFRAMES);
+    assert!(
+        seletor < corte && corte < lista,
+        "{seletor} {corte} {lista}"
+    );
+    let transform = y_de(&rects, ph2d_panel_inspector::ids::INSP_TRANSFORM_POS_X);
+    assert!(lista < transform, "a Animation ficou abaixo do Transform");
 }
 
+/// Gate 2: cada clique do seletor chega como `ImageUseEdit::Use`; o uso que já é não pede nada.
 #[test]
-fn make_it_animated_pede_a_accao_so_onde_o_aviso_existe() {
-    let (mut host, mut state, _) = pintado(com(InspectorImageUse::Repeated, 4, [4, 1]));
-    assert!(clica(&mut host, &mut state));
-    assert_eq!(
-        host.drained_actions(),
-        vec![EditorAction::ImageUseEdit {
-            entity_bits: atlas_sprite(true).entity_bits,
-            edit: ImageUseEdit::MakeAnimated
-        }]
-    );
-    // CONTROLO: sem o aviso (parada), o mesmo id não age.
-    let (mut host, mut state, _) = pintado(com(InspectorImageUse::Still, 4, [4, 1]));
-    clica(&mut host, &mut state);
+fn cada_clique_do_seletor_pede_o_uso() {
+    for de in InspectorImageUse::ALL {
+        let info = com(de, [4, 1], InspectorDraw::Simple);
+        for (i, para) in InspectorImageUse::ALL.into_iter().enumerate() {
+            let (mut host, mut state, _) = pintado(&info);
+            InspectorPanel::apply_event(
+                &mut state,
+                &mut host,
+                WidgetEvent::Click(INSP_IMAGE_USE[i]),
+            );
+            let quer = if para == de {
+                vec![]
+            } else {
+                vec![EditorAction::ImageUseEdit {
+                    entity_bits: info.entity_bits,
+                    edit: ImageUseEdit::Use(para),
+                }]
+            };
+            assert_eq!(host.drained_actions(), quer, "{de:?} → {para:?}");
+        }
+    }
+}
+
+/// Uma camada de fundo repete sempre: nada de seletor, e os ids não agem.
+#[test]
+fn a_camada_de_fundo_nao_oferece_o_seletor() {
+    let info = com(InspectorImageUse::Repeated, [1, 1], InspectorDraw::Fixed);
+    let (mut host, mut state, rects) = pintado(&info);
+    assert!(!tem(&rects, INSP_IMAGE_USE[0]));
+    InspectorPanel::apply_event(&mut state, &mut host, WidgetEvent::Click(INSP_IMAGE_USE[2]));
     assert!(host.drained_actions().is_empty());
 }
 
-/// ⭐ Plano GEF 14 D5: a caixa Tiled só onde há Draw Mode a escolher; Width/Height só com ela ligada.
+/// Gate 4: numa parada, clicar a célula 2 da folha mostra o quadro 2; numa animada a folha não escolhe.
 #[test]
-fn tiled_pinta_a_caixa_e_o_tamanho_so_onde_cabem() {
-    for (draw, caixa, tamanho) in [
-        (InspectorDraw::Fixed, false, false),
-        (InspectorDraw::Simple, true, false),
-        (InspectorDraw::Tiled { size: [2.4, 0.5] }, true, true),
-    ] {
-        let info = InspectorSpriteInfo {
-            draw,
-            ..com(InspectorImageUse::Repeated, 1, [1, 1])
-        };
-        let (_, _, ids) = pintado(info);
-        assert_eq!(ids.contains(&INSP_IMAGE_TILED), caixa, "{draw:?}");
-        for id in INSP_IMAGE_TILED_SIZE {
-            assert_eq!(ids.contains(&id), tamanho, "{draw:?}");
-        }
-    }
-}
-
-/// ⭐ A caixa e a Largura chegam ao barramento como `ImageUseEdit`.
-#[test]
-fn tiled_e_largura_pedem_a_accao() {
-    let bits = atlas_sprite(true).entity_bits;
-    let info = InspectorSpriteInfo {
-        draw: InspectorDraw::Simple,
-        ..com(InspectorImageUse::Still, 1, [1, 1])
-    };
-    let (mut host, mut state, _) = pintado(info);
-    // O clique do host vira o valor da caixa e emite `Toggled` (o despachador genérico).
-    host.set_checkbox_value(
-        INSP_IMAGE_TILED,
-        ph2d_editor_core::widget::CheckboxValue::Checked,
-    );
+fn clicar_uma_celula_escolhe_o_quadro() {
+    let info = com(InspectorImageUse::Still, [4, 1], InspectorDraw::Simple);
+    let (mut host, mut state, rects) = pintado(&info);
+    assert!(tem(&rects, insp_image_cell(3)) && !tem(&rects, insp_image_cell(4)));
     InspectorPanel::apply_event(
         &mut state,
         &mut host,
-        WidgetEvent::Toggled(INSP_IMAGE_TILED),
+        WidgetEvent::Click(insp_image_cell(2)),
     );
     assert_eq!(
         host.drained_actions(),
-        vec![EditorAction::ImageUseEdit {
-            entity_bits: bits,
-            edit: ImageUseEdit::Tiled(true)
+        vec![EditorAction::InspectorSpriteEdit {
+            entity_bits: info.entity_bits,
+            edit: SpriteFieldEdit::Frame(2),
         }]
     );
-    let info = InspectorSpriteInfo {
-        draw: InspectorDraw::Tiled { size: [2.4, 0.5] },
-        ..com(InspectorImageUse::Repeated, 1, [1, 1])
-    };
-    let (mut host, mut state, _) = pintado(info);
+    // CONTROLO: o mesmo id numa animada não age.
+    let info = com(InspectorImageUse::Animated, [4, 1], InspectorDraw::Fixed);
+    let (mut host, mut state, _) = pintado(&info);
+    InspectorPanel::apply_event(
+        &mut state,
+        &mut host,
+        WidgetEvent::Click(insp_image_cell(2)),
+    );
+    assert!(host.drained_actions().is_empty());
+}
+
+/// ⭐ A Largura de uma repetida chega ao barramento como `ImageUseEdit`.
+#[test]
+fn largura_pede_a_accao() {
+    let info = com(
+        InspectorImageUse::Repeated,
+        [1, 1],
+        InspectorDraw::Tiled { size: [2.4, 0.5] },
+    );
+    let (mut host, mut state, _) = pintado(&info);
     host.set_number_value(INSP_IMAGE_TILED_SIZE[0], 4.0);
     InspectorPanel::apply_event(
         &mut state,
@@ -158,7 +263,7 @@ fn tiled_e_largura_pedem_a_accao() {
     assert_eq!(
         host.drained_actions(),
         vec![EditorAction::ImageUseEdit {
-            entity_bits: bits,
+            entity_bits: info.entity_bits,
             edit: ImageUseEdit::Width(4.0)
         }]
     );

@@ -175,7 +175,8 @@ mod wheel;
 pub(crate) use color_tint::paint_color_tint_section;
 pub(crate) use identity::{paint_entity_name_row, paint_visibility_row};
 mod image_row;
-mod image_use_rows;
+pub(crate) mod image_use_rows;
+mod sheet_thumb;
 pub(crate) use image_row::paint_image_row;
 pub(crate) use joint::paint_joint_section;
 pub use joint::paste_label;
@@ -190,7 +191,6 @@ pub(crate) use render_source::paint_render_source_section;
 /// a única crate que vê o painel e o `ph2d-render` ao mesmo tempo.
 pub use sampling::FILTER_LABELS;
 pub(crate) use sampling::paint_sampling_section;
-pub(crate) use sprite_pose::paint_sheet_grid_rows;
 pub(crate) use transform::paint_transform_section;
 pub(crate) use visibility::paint_visibility_section;
 pub(crate) use wheel::paint_wheel_section;

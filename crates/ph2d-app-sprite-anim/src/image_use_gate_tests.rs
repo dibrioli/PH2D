@@ -100,7 +100,6 @@ fn o_bloco_de_fabrica_e_um_azulejo_sem_quadros() {
             1,
             "nível {n}: quadros no bloco"
         );
-        assert_eq!(conflict(w, e, plataforma), None, "nível {n}");
     }
 }
 
@@ -154,9 +153,10 @@ fn instantaneo(sim: &mut SimWorld) -> WorldSnapshot {
 }
 
 /// Defeito (c): Image de Platform High ← Flag guardava as proporções do bloco, cortava a bandeira parada e não
-/// havia como a animar. Agora o PH2D diz o conflito e «Make it Animated» dá a bandeira a ondular.
+/// havia como a animar. Agora o seletor «Use» passa-a a «Animated» e a bandeira ondula (plano 15: o aviso saiu,
+/// o conflito é irrepresentável).
 #[test]
-fn a_bandeira_num_bloco_avisa_e_fica_animada() {
+fn a_bandeira_num_bloco_fica_animada() {
     let b = biblioteca();
     let mut sim = nivel(2);
     let e = por_nome(&mut sim, "Platform High");
@@ -165,15 +165,18 @@ fn a_bandeira_num_bloco_avisa_e_fica_animada() {
         .expect("escolhe");
     let factos = b.factos(bandeira);
     assert_eq!(image_use(sim.world(), e), Some(ImageUse::Repeated));
-    assert_eq!(
-        conflict(sim.world(), e, factos),
-        Some(ImageConflict::AnimatedImageRepeated { cells: 4 })
-    );
+    assert_eq!(cells(factos), 4);
     let antes = instantaneo(&mut sim);
-    assert!(make_animated(sim.world_mut(), e, factos));
+    assert!(apply_edit(
+        sim.world_mut(),
+        e,
+        &b.db,
+        &b.atlas,
+        PPM,
+        ImageUseEdit::Use(InspectorImageUse::Animated)
+    ));
     let w = sim.world();
     assert_eq!(image_use(w, e), Some(ImageUse::Animated));
-    assert_eq!(conflict(w, e, factos), None);
     let tags = w.get::<SpriteAnimations>(e).expect("animações");
     let tag = tags.iter().next().expect("uma animação");
     assert_eq!((tag.from, tag.to), (0, 3));

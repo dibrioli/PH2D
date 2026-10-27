@@ -404,8 +404,13 @@ pub enum InspectorImageUse {
     Still,
     /// A imagem repete-se (bloco, fundo): nenhum campo de quadros.
     Repeated,
-    /// As células tocam: o cartão Animation mostra a grelha.
+    /// As células tocam: a secção Animation abre sob o seletor.
     Animated,
+}
+
+impl InspectorImageUse {
+    /// A ordem do seletor «Use».
+    pub const ALL: [Self; 3] = [Self::Still, Self::Repeated, Self::Animated];
 }
 
 /// ⭐ Como a sprite enche o seu tamanho (plano GEF 14 D5): a linha **Tiled** e, ligada, Width/Height.
@@ -420,14 +425,12 @@ pub enum InspectorDraw {
     Tiled { size: [f32; 2] },
 }
 
-/// ⭐ **Uma edição do USO da imagem** (planos GEF 13 D5 e 14 D5): o que os controlos de Texture & Atlas pedem
-/// além do corte.
+/// ⭐ **Uma edição do USO da imagem** (planos GEF 14 D5 e 15 D3): o seletor «Use» sob a linha Image e o
+/// tamanho de uma sprite que repete.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum ImageUseEdit {
-    /// O botão **Make it Animated** do aviso «imagem animada num bloco».
-    MakeAnimated,
-    /// A caixa **Tiled**.
-    Tiled(bool),
+    /// O seletor **Still | Repeated | Animated**.
+    Use(InspectorImageUse),
     /// **Width** (m) de uma sprite Tiled.
     Width(f32),
     /// **Height** (m) de uma sprite Tiled.

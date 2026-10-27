@@ -12,10 +12,23 @@ use ph2d_tool_registry::hash_node_id;
 /// `Sprite.size` against the current `ProjectSettings.pixels_per_meter`.
 pub const INSP_RENDER_SOURCE_REIMPORT: NodeId = hash_node_id("insp_render_source_reimport");
 
-/// ⭐ «Make it Animated» — o botão do aviso «imagem animada num bloco que repete» (plano GEF 13 D5).
-pub const INSP_IMAGE_MAKE_ANIMATED: NodeId = hash_node_id("insp_image_make_animated");
-/// A caixa **Tiled** de Texture & Atlas (plano GEF 14 D5).
-pub const INSP_IMAGE_TILED: NodeId = hash_node_id("insp_image_tiled");
+/// ⭐ O seletor **Use** sob a linha Image (plano GEF 15 D1): o grupo e as três opções, pela ordem de
+/// `InspectorImageUse::ALL`.
+pub const INSP_IMAGE_USE_GROUP: NodeId = hash_node_id("insp_image_use_group");
+pub const INSP_IMAGE_USE: [NodeId; 3] = [
+    hash_node_id("insp_image_use_still"),
+    hash_node_id("insp_image_use_repeated"),
+    hash_node_id("insp_image_use_animated"),
+];
+
+/// A célula `i` da miniatura da folha (plano GEF 15 D2), derivada da semente; o recurso é a grelha da imagem.
+#[must_use]
+pub const fn insp_image_cell(i: u32) -> NodeId {
+    let mut z = hash_node_id("insp_image_cell").0 ^ (i as u64).wrapping_add(1);
+    z = (z ^ (z >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
+    z = (z ^ (z >> 27)).wrapping_mul(0x94d0_49bb_1331_11eb);
+    NodeId(z ^ (z >> 31))
+}
 /// **Width / Height** (m) de uma sprite Tiled, `[x, y]`.
 pub const INSP_IMAGE_TILED_SIZE: [NodeId; 2] = [
     hash_node_id("insp_image_tiled_w"),

@@ -73,8 +73,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "shell.asset_drop_apply.image" => "Image",
         "shell.asset_drop_apply.could_not_apply" => "Could not apply: {e}",
         "shell.asset_drop_apply.texture_applied" => "Texture applied",
-        "shell.asset_drop_apply.now_animated" => "Now it plays the frames of its image",
-        "shell.asset_drop_apply.could_not_animate" => "This image has only one frame",
         "shell.asset_index_build.pieces" => "{n} pieces",
         "shell.asset_index_build.n1_piece" => "1 piece",
         "shell.asset_index_build.component" => "Prefab {stable_id}",

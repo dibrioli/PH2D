@@ -42,6 +42,21 @@ pub fn current_slot_image(entity_bits: u64) -> Option<SlotImage> {
     })
 }
 
+/// A textura estável da miniatura de `img` (a ranhura e a miniatura da folha partilham-na).
+pub(crate) fn stable(img: &SlotImage) -> Option<StableImage> {
+    TEX.with(|t| {
+        let mut t = t.borrow_mut();
+        if let Some((rgba, s)) = t.as_ref()
+            && Arc::ptr_eq(rgba, &img.rgba)
+        {
+            return Some(s.clone());
+        }
+        let s = StableImage::from_rgba(img.rgba.clone(), img.w, img.h)?;
+        *t = Some((img.rgba.clone(), s.clone()));
+        Some(s)
+    })
+}
+
 /// Pinta a miniatura (quadrada à altura da ranhura, aspecto preservado) e o nome. `false` se não há imagem.
 pub(crate) fn paint(
     scene: &mut VectorScene,
@@ -55,18 +70,7 @@ pub(crate) fn paint(
     };
     let inset = Spacing::Xxs.px();
     let side = (slot.h - inset * 2.0).max(0.0);
-    let stable = TEX.with(|t| {
-        let mut t = t.borrow_mut();
-        if let Some((rgba, s)) = t.as_ref()
-            && Arc::ptr_eq(rgba, &img.rgba)
-        {
-            return Some(s.clone());
-        }
-        let s = StableImage::from_rgba(img.rgba.clone(), img.w, img.h)?;
-        *t = Some((img.rgba.clone(), s.clone()));
-        Some(s)
-    });
-    if let Some(s) = stable {
+    if let Some(s) = stable(&img) {
         let (tw, th) = (img.w.max(1) as f32, img.h.max(1) as f32);
         let k = (side / tw).min(side / th);
         let (dw, dh) = (tw * k, th * k);

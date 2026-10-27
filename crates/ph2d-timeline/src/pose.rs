@@ -106,11 +106,18 @@ pub(crate) fn set_transform_field(
 pub fn pose_at(world: &World, doc: &TimelineDoc, entity: u64, clip_t: f64) -> Option<Transform> {
     let e = Entity::try_from_bits(entity)?;
     let mut xf = *world.get::<Transform>(e)?;
+    let mut dela = doc
+        .bindings()
+        .iter()
+        .filter(|b| b.entity == entity && !b.missing && b.prop != PropKind::TimeRemap)
+        .peekable();
+    // Sem binding a pose é a VIVA — e o preâmbulo (o mapa de nomes do mundo inteiro) não se paga:
+    // medido no kill da W5.4, 1 000 Atrair perdiam 45 % do quadro aqui.
+    if dela.peek().is_none() {
+        return Some(xf);
+    }
     let (t_entity, links) = instante(world, doc, entity, clip_t);
-    for b in doc.bindings() {
-        if b.entity != entity || b.missing || b.prop == PropKind::TimeRemap {
-            continue;
-        }
+    for b in dela {
         // A MESMA porta que o apply lê (`solo_source_value`): amostra keyada OU a expressão
         // per-clip sobre ela, para que um fantasma dirigido case com o que o objeto mostra.
         // Track vazia sem expressão devolve `None` (esparsidade) — um binding recém-criado não

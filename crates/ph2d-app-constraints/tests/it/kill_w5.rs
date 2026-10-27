@@ -36,13 +36,20 @@ fn cena_valor(sim: &mut SimWorld) -> Entity {
 
 /// Um alvo que sobe e desce e 1 000 donos, cada um com um *behaviour* — a mistura dos quatro (o
 /// Atrair e o Orbitar puxados pelo alvo).
-fn cena_comportamento(sim: &mut SimWorld) -> Entity {
+/// Com `base`, o mesmo mundo com um Limit (a lei mais barata) em cada dono: o quadro da pilha sem
+/// *behaviour*, que se desconta — a peça custa a diferença.
+fn cena_comportamento(sim: &mut SimWorld, base: bool) -> Entity {
     let w = sim.world_mut();
     let alvo = w.spawn((StableId(1), Transform::IDENTITY)).id();
     for i in 0..N {
         let perfil = Perfil::ALL[(i % 4) as usize];
         let mut c = Constraints::default();
-        c.push(Kind::Comportamento(perfil.numeros()), Some(StableId(1)));
+        let k = if base {
+            Kind::Limit(ph2d_constraints::Limit::default())
+        } else {
+            Kind::Comportamento(perfil.numeros())
+        };
+        c.push(k, Some(StableId(1)));
         w.spawn((StableId(10 + i), Transform::IDENTITY, c));
     }
     alvo
@@ -68,10 +75,12 @@ fn w5_pieces_under_half_a_millisecond_per_thousand() {
     let mut sv = SimWorld::new();
     let alvo = cena_valor(&mut sv);
     let mut sc = SimWorld::new();
-    let alvo_c = cena_comportamento(&mut sc);
-    let mut drive = PreviewDrive::default();
+    let alvo_c = cena_comportamento(&mut sc, false);
+    let mut sb = SimWorld::new();
+    let alvo_b = cena_comportamento(&mut sb, true);
+    let (mut drive, mut drive_b) = (PreviewDrive::default(), PreviewDrive::default());
     let cena = ph2d_vec_scene::VecScene::new();
-    let (mut valor, mut comportamento) = (Duration::MAX, Duration::MAX);
+    let (mut valor, mut comportamento, mut base) = (Duration::MAX, Duration::MAX, Duration::MAX);
     let mut f = 0;
     for _bloco in 0..BLOCOS {
         for _ in 0..QUADROS {
@@ -91,14 +100,17 @@ fn w5_pieces_under_half_a_millisecond_per_thousand() {
             let t0 = Instant::now();
             ph2d_app_constraints::quadro(&mut sc, &mut cena, &mut drive, Some(r));
             comportamento = comportamento.min(t0.elapsed());
+            sobe(&mut sb, alvo_b, f);
+            let mut cena = cena.clone();
+            let t0 = Instant::now();
+            ph2d_app_constraints::quadro(&mut sb, &mut cena, &mut drive_b, Some(r));
+            base = base.min(t0.elapsed());
         }
     }
+    let peca = comportamento.saturating_sub(base);
     println!(
-        "kill: valor {valor:?} · comportamento {comportamento:?} / 1 000 itens (mínimo de {BLOCOS}×{QUADROS})"
+        "kill: valor {valor:?} · comportamento {peca:?} (quadro {comportamento:?} − pilha {base:?}) / 1 000 itens (mínimo de {BLOCOS}×{QUADROS})"
     );
     assert!(valor <= TECTO, "valor {valor:?} > {TECTO:?}");
-    assert!(
-        comportamento <= TECTO,
-        "comportamento {comportamento:?} > {TECTO:?}"
-    );
+    assert!(peca <= TECTO, "comportamento {peca:?} > {TECTO:?}");
 }

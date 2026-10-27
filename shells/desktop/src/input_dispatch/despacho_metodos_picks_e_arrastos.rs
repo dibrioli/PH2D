@@ -71,7 +71,7 @@ impl crate::App {
         let debaixo = ph2d_render::pick_sprites_at_world(gfx.present.world_mut(), world_pos);
         let Some((joint, slot_b)) = self.joint_body_pick else {
             // O alvo de uma constraint (a família recusa o dono e os ciclos).
-            let _ = ph2d_app_constraints::inspector::escolher_alvo(&mut gfx.sim, &debaixo);
+            ph2d_app_constraints::inspector::escolher_alvo(&mut gfx.sim, &debaixo, world_pos);
             return;
         };
         // O sprite mais ao topo sob o cursor que é um CORPO físico e não é a própria junta.

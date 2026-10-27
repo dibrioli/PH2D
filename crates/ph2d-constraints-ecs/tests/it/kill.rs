@@ -19,7 +19,10 @@ const TECTO: Duration = Duration::from_micros(500);
 const BLOCOS: usize = 7;
 const QUADROS: u32 = 40;
 
-#[expect(clippy::cast_possible_truncation, reason = "o `Transform` da casa é f32")]
+#[expect(
+    clippy::cast_possible_truncation,
+    reason = "o `Transform` da casa é f32"
+)]
 fn tf(x: f64, y: f64, rot: f64) -> Transform {
     let mut t = Transform::IDENTITY;
     t.translation.x = x as f32;
@@ -52,11 +55,21 @@ fn cena_cola(sim: &mut SimWorld) -> Vec<Entity> {
         let ox = f64::from(k) * 10.0;
         let a = (3.5f64.powi(2) - 9.0 + 9.0) / 6.0;
         let h = (3.5f64.powi(2) - a * a).sqrt();
-        let ts = [tf(ox, 0.0, 0.0), tf(ox, 0.0, 0.0), tf(ox + 1.0, 0.0, h.atan2(a)), tf(ox + 4.0, 0.0, h.atan2(a - 3.0))];
+        let ts = [
+            tf(ox, 0.0, 0.0),
+            tf(ox, 0.0, 0.0),
+            tf(ox + 1.0, 0.0, h.atan2(a)),
+            tf(ox + 4.0, 0.0, h.atan2(a - 3.0)),
+        ];
         let es: Vec<(Entity, u64)> = ts.iter().map(|&t| novo(sim, t)).collect();
         sim.world_mut().entity_mut(es[0].0).insert(Locked);
         let p: Vec<_> = ts.iter().map(|&t| pose(t)).collect();
-        for (i, j, m) in [(0, 1, [ox, 0.0]), (1, 2, [ox + 1.0, 0.0]), (2, 3, [ox + 1.0 + a, h]), (0, 3, [ox + 4.0, 0.0])] {
+        for (i, j, m) in [
+            (0, 1, [ox, 0.0]),
+            (1, 2, [ox + 1.0, 0.0]),
+            (2, 3, [ox + 1.0 + a, h]),
+            (0, 3, [ox + 4.0, 0.0]),
+        ] {
             colas.push(|n| Cola::pino(n, es[i].1, es[j].1, p[i], p[j], m));
         }
         condutores.push(es[1].0);
@@ -88,7 +101,11 @@ fn cena_pilha(sim: &mut SimWorld) -> Entity {
         let e = sim.world_mut().spawn((StableId(i), tf(0.0, 0.0, 0.0))).id();
         let mut c = Constraints::default();
         for canais in [Canais::LOCATION, Canais::ROTATION] {
-            let k = Kind::CopyTransform(CopyTransform { canais, space: Space::World, ..CopyTransform::default() });
+            let k = Kind::CopyTransform(CopyTransform {
+                canais,
+                space: Space::World,
+                ..CopyTransform::default()
+            });
             c.push(k, Some(StableId(i - 1)));
         }
         sim.world_mut().entity_mut(e).insert(c);
@@ -97,7 +114,10 @@ fn cena_pilha(sim: &mut SimWorld) -> Entity {
 }
 
 /// O condutor anda (como a curva, pelo `PreviewDrive`).
-#[expect(clippy::cast_possible_truncation, reason = "o `Transform` da casa é f32")]
+#[expect(
+    clippy::cast_possible_truncation,
+    reason = "o `Transform` da casa é f32"
+)]
 fn conduz(sim: &mut SimWorld, drive: &mut PreviewDrive, e: Entity, f: u32) {
     let agora = *sim.world().get::<Transform>(e).unwrap();
     let mut novo = agora;
@@ -144,7 +164,9 @@ fn glue_frame_under_half_a_millisecond_per_thousand() {
             }
         }
     }
-    println!("kill: cola {cola:?} / 1 000 objectos · pilha {pilha:?} / 1 000 itens (mínimo de {BLOCOS}×{QUADROS})");
+    println!(
+        "kill: cola {cola:?} / 1 000 objectos · pilha {pilha:?} / 1 000 itens (mínimo de {BLOCOS}×{QUADROS})"
+    );
     assert!(cola <= TECTO, "cola {cola:?} > {TECTO:?}");
     assert!(pilha <= TECTO, "pilha {pilha:?} > {TECTO:?}");
 }

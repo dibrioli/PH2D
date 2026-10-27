@@ -5,7 +5,7 @@
 
 /// As entradas do menu **+**, na ordem em que aparecem: a chave `ph2d-i18n` do rótulo. O índice é o
 /// que [`ConstraintFieldEdit::Adicionar`] leva e o que [`InspectorConstraintRow::tipo`] diz.
-pub const TIPOS: [&str; 18] = [
+pub const TIPOS: [&str; 20] = [
     "panel.inspector.constraint.child_of",
     "panel.inspector.constraint.copy_location",
     "panel.inspector.constraint.copy_rotation",
@@ -24,7 +24,15 @@ pub const TIPOS: [&str; 18] = [
     "panel.inspector.constraint.copy_point",
     "panel.inspector.constraint.action",
     "panel.inspector.constraint.spring",
+    "panel.inspector.constraint.glue_rigid",
+    "panel.inspector.constraint.glue_pin",
 ];
+
+/// O índice em [`TIPOS`] da cola **Rígida** (solda): não é item da pilha — arma o clique que escolhe o
+/// OUTRO objecto (`docs/BlenderConstraints/05_W5_diferenciais.md` §2.5).
+pub const TIPO_COLA_RIGIDA: u8 = 18;
+/// O índice em [`TIPOS`] da cola **Pino**: o clique no outro objecto é também o ponto do pino.
+pub const TIPO_COLA_PINO: u8 = 19;
 
 /// Quantas linhas o cartão pinta e edita — o tamanho das tabelas de ids do painel
 /// (`ids/inspector_constraint.rs`), o único recurso que o limita; a pilha em si não tem tecto. Cheio,
@@ -140,12 +148,57 @@ pub struct InspectorConstraintRow {
     pub zera_desvio: bool,
 }
 
-/// O snapshot do cartão para a entidade escolhida (`None` = ela não tem pilha: o cartão não aparece).
+/// O estado do grupo de uma cola — o espelho, sem ECS, do `ph2d_constraints_cola::Estado`.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum EstadoDaCola {
+    #[default]
+    Definido,
+    Conflito,
+    Parado,
+}
+
+impl EstadoDaCola {
+    /// A chave `ph2d-i18n` da frase debaixo da cola (`None` = nada a dizer). Parado é o repouso de toda cola
+    /// sem condutor: escrevê-lo seria uma frase permanente em cada linha.
+    #[must_use]
+    pub fn frase(self) -> Option<&'static str> {
+        match self {
+            Self::Definido | Self::Parado => None,
+            Self::Conflito => Some("panel.inspector.constraint.glue.state.conflict"),
+        }
+    }
+
+    /// `true` ⇒ a frase é um ERRO (cor de aviso).
+    #[must_use]
+    pub fn erro(self) -> bool {
+        self == Self::Conflito
+    }
+}
+
+/// Uma cola que toca o objecto escolhido — mostrada nos DOIS objectos que ela cola.
+#[derive(Clone, Debug, PartialEq)]
+pub struct InspectorColaRow {
+    /// A entidade que GUARDA a cola (o `a`) — o endereço do «Unglue», com o [`Self::id`].
+    pub dono_bits: u64,
+    pub id: u32,
+    /// `true` = Pino, `false` = Rígida.
+    pub pino: bool,
+    /// O nome do OUTRO objecto, visto do escolhido.
+    pub parceiro: String,
+    pub estado: EstadoDaCola,
+}
+
+/// O snapshot do cartão para a entidade escolhida (`None` = ela não tem pilha nem cola: o cartão não
+/// aparece).
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct InspectorConstraintsInfo {
     pub entity_bits: u64,
     pub rows: Vec<InspectorConstraintRow>,
     pub selected_count: usize,
+    /// As colas que tocam a entidade, as que ela guarda e as que a guardam a ela.
+    pub colas: Vec<InspectorColaRow>,
+    /// Uma cola à espera do clique no outro objecto: `Some(true)` = Pino, `Some(false)` = Rígida.
+    pub cola_armada: Option<bool>,
 }
 
 /// O que o cartão pede. O item é endereçado pelo `id`, nunca pela posição.
@@ -168,4 +221,6 @@ pub enum ConstraintFieldEdit {
     /// Coze a pilha INTEIRA do dono no intervalo do transporte (o loop armado, senão a timeline): a
     /// pose vira chaves e a força de todo item fica 0 lá dentro.
     Cozer,
+    /// Desfaz a cola `id` guardada por `dono_bits` ([`InspectorColaRow::dono_bits`]).
+    Descolar(u64, u32),
 }

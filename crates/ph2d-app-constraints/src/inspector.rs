@@ -11,7 +11,7 @@ use ph2d_constraints_ecs::{Adotar, Constraints, Estado, Estados, bind_on_create,
 use ph2d_ecs::{Name, SimWorld, Transform, entity_with_stable_id, stable_id_of, world_transform};
 use ph2d_editor_core::constraint_edits::{
     ConstraintFieldEdit as E, EstadoDaConstraint, InspectorConstraintRow, InspectorConstraintsInfo,
-    MAX_LINHAS, TIPOS,
+    MAX_LINHAS, TIPO_COLA_PINO, TIPO_COLA_RIGIDA, TIPOS,
 };
 use ph2d_preview_drive::PreviewDrive;
 
@@ -110,7 +110,8 @@ fn estado(e: Estado) -> EstadoDaConstraint {
     }
 }
 
-/// ⭐ O snapshot do cartão. `None` = a entidade não tem pilha (o cartão não aparece).
+/// ⭐ O snapshot do cartão. `None` = a entidade não tem pilha nem cola (o cartão não aparece). A cola
+/// aparece nos DOIS objectos que cola.
 #[must_use]
 pub fn info(
     sim: &SimWorld,
@@ -119,12 +120,19 @@ pub fn info(
 ) -> Option<InspectorConstraintsInfo> {
     let w = sim.world();
     let e = Entity::try_from_bits(entity_bits)?;
-    let c = w.get::<Constraints>(e)?;
+    let colas = crate::cola::linhas(w, e);
+    let cola_armada = crate::cola::armada(w)
+        .filter(|&(d, _)| d == entity_bits)
+        .map(|(_, pino)| pino);
+    let c = w.get::<Constraints>(e);
+    if c.is_none() && colas.is_empty() && cola_armada.is_none() {
+        return None;
+    }
     let estados = w.get_resource::<Estados>();
     let armado = w.get_resource::<AlvoArmado>().and_then(|a| a.0);
     let rows = c
-        .items
         .iter()
+        .flat_map(|c| &c.items)
         .map(|it| {
             let alvo = it.target.and_then(|s| entity_with_stable_id(w, s));
             let (numeros, escolhas) = crate::campos::ajustes(&it.kind);
@@ -150,10 +158,15 @@ pub fn info(
         entity_bits,
         rows,
         selected_count,
+        colas,
+        cola_armada,
     })
 }
 
 fn armar(sim: &mut SimWorld, alvo: Option<(u64, u32)>) {
+    if alvo.is_some() {
+        crate::cola::armar(sim, None);
+    }
     sim.world_mut().insert_resource(AlvoArmado(alvo));
 }
 
@@ -182,6 +195,14 @@ fn aplicar(sim: &mut SimWorld, e: Entity, edit: E) -> bool {
         let ja = sim.world().get_resource::<AlvoArmado>().and_then(|a| a.0);
         armar(sim, (ja != Some((bits, id))).then_some((bits, id)));
         return false;
+    }
+    if let E::Adicionar(i @ (TIPO_COLA_RIGIDA | TIPO_COLA_PINO)) = edit {
+        armar(sim, None);
+        crate::cola::armar(sim, Some((bits, i == TIPO_COLA_PINO)));
+        return false;
+    }
+    if let E::Descolar(dono, id) = edit {
+        return crate::cola::descolar(sim, dono, id);
     }
     if let E::Adicionar(i) = edit {
         let cheio = sim
@@ -245,6 +266,7 @@ fn aplicar(sim: &mut SimWorld, e: Entity, edit: E) -> bool {
         | E::Adicionar(_)
         | E::Campo(..)
         | E::ZerarDesvio(_)
+        | E::Descolar(..)
         | E::Cozer => return false,
     }
     true
@@ -344,12 +366,17 @@ pub fn armado(sim: &SimWorld) -> bool {
     sim.world()
         .get_resource::<AlvoArmado>()
         .is_some_and(|a| a.0.is_some())
+        || crate::cola::armada(sim.world()).is_some()
 }
 
 /// ⭐ **O clique que escolhe o alvo.** `debaixo` = as entidades sob o cursor, a de cima primeiro (o
-/// `pick_sprites_at_world` da shell). O alvo grava-se pelo `StableId`; o Child Of e o Limit Distance
-/// guardam a pose actual (ligar não salta).
-pub fn escolher_alvo(sim: &mut SimWorld, debaixo: &[u64]) -> Escolha {
+/// `pick_sprites_at_world` da shell); `mundo` = o ponto do clique (o do pino). O alvo grava-se pelo
+/// `StableId`; o Child Of e o Limit Distance guardam a pose actual (ligar não salta). A cola armada
+/// vem primeiro ([`crate::cola`]).
+pub fn escolher_alvo(sim: &mut SimWorld, debaixo: &[u64], mundo: [f32; 2]) -> Escolha {
+    if let Some(r) = crate::cola::escolher(sim, debaixo, mundo.map(f64::from)) {
+        return r;
+    }
     let Some((dono_bits, id)) = sim.world().get_resource::<AlvoArmado>().and_then(|a| a.0) else {
         return Escolha::Livre;
     };

@@ -5524,9 +5524,11 @@ name = "ph2d-app-constraints"
 version = "0.0.0"
 dependencies = [
  "bevy_ecs",
+ "ph2d-a11y",
  "ph2d-anim",
  "ph2d-app-host",
  "ph2d-constraints",
+ "ph2d-constraints-cola",
  "ph2d-constraints-ecs",
  "ph2d-core",
  "ph2d-ecs",
@@ -5541,6 +5543,7 @@ dependencies = [
  "ph2d-timeline",
  "ph2d-tokens",
  "ph2d-tool-vector",
+ "ph2d-ui-testkit",
  "ph2d-vec-constraints",
  "ph2d-vec-edit",
  "ph2d-vec-entities",

@@ -32,7 +32,7 @@ pub(crate) fn resolve(
     let mut ids = IdGenerator::default();
     let mut palpite: Vec<(u32, f64)> = Vec::new();
     let mut reqs = Vec::new();
-    let mut por = |d: DatumPoint, p: [f64; 2], palpite: &mut Vec<(u32, f64)>| {
+    let por = |d: DatumPoint, p: [f64; 2], palpite: &mut Vec<(u32, f64)>| {
         palpite.push((d.id_x(), p[0]));
         palpite.push((d.id_y(), p[1]));
     };

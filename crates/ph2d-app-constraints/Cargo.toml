@@ -16,6 +16,8 @@ authors.workspace = true
 ph2d-app-host = { path = "../ph2d-app-host" }
 ph2d-constraints = { path = "../ph2d-constraints" }
 ph2d-constraints-ecs = { path = "../ph2d-constraints-ecs" }
+# A cola (W5): o dado e o `local` do pino.
+ph2d-constraints-cola = { path = "../ph2d-constraints-cola" }
 ph2d-skeleton-live = { path = "../ph2d-skeleton-live" }
 ph2d-skeleton-ecs = { path = "../ph2d-skeleton-ecs" }
 ph2d-vec-scene = { path = "../ph2d-vec-scene" }
@@ -45,6 +47,9 @@ ph2d-vec-entities = { path = "../ph2d-vec-entities" }
 ph2d-tool-vector = { path = "../ph2d-tool-vector" }
 
 [dev-dependencies]
+# A cola pelo caminho real: o clique no cartão do Inspector.
+ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }
+ph2d-a11y = { path = "../ph2d-a11y" }
 ph2d-label-census = { path = "../ph2d-label-census" }
 # A cena 6 (a medida animada): a porta do quadro do vetor e a régua do cumprimento.
 ph2d-vec-entities = { path = "../ph2d-vec-entities" }

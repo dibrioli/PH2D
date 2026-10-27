@@ -477,7 +477,7 @@ pub(crate) fn paint_constraints_section(
             tr("panel.inspector.constraint.space"),
         ],
     );
-    if i.rows.is_empty() {
+    if i.rows.is_empty() && i.colas.is_empty() {
         cur_y = super::rows::aviso(
             scene,
             text_system,
@@ -509,6 +509,15 @@ pub(crate) fn paint_constraints_section(
             seccao,
         );
     }
+    cur_y = super::constraint_cola::colas(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        (x, w, cur_y),
+        i,
+    );
     cur_y = acrescentar(
         scene,
         text_system,

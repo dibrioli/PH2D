@@ -83,6 +83,8 @@ fn pilha() -> InspectorConstraintsInfo {
             },
         ],
         selected_count: 1,
+        colas: vec![],
+        cola_armada: None,
     }
 }
 

@@ -11,7 +11,6 @@ use std::collections::{BTreeMap, BTreeSet};
 use bevy_ecs::component::Component;
 use bevy_ecs::entity::Entity;
 use bevy_ecs::prelude::Resource;
-use ph2d_constraints::Pose2;
 use ph2d_constraints_cola::{Cola, Entrada, Estado as EstadoCola, resolve};
 use ph2d_ecs::canal::familia;
 use ph2d_ecs::{

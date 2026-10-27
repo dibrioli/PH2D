@@ -23,6 +23,16 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.constraint.copy_point" => "Copy Point",
         "panel.inspector.constraint.action" => "Action",
         "panel.inspector.constraint.spring" => "Spring",
+        "panel.inspector.constraint.glue_rigid" => "Glue · Rigid",
+        "panel.inspector.constraint.glue_pin" => "Glue · Pin",
+        "panel.inspector.constraint.glue.rigid_with" => "Glue · Rigid — {name}",
+        "panel.inspector.constraint.glue.pin_with" => "Glue · Pin — {name}",
+        "panel.inspector.constraint.glue.unglue" => "Unglue",
+        "panel.inspector.constraint.glue.state.conflict" => {
+            "Conflict: the glued objects pull different ways"
+        }
+        "panel.inspector.constraint.glue.pick_rigid" => "Click the object to glue to…",
+        "panel.inspector.constraint.glue.pick_pin" => "Click the point on the other object…",
         "panel.inspector.constraint.offset_x" => "Offset X",
         "panel.inspector.constraint.offset_y" => "Offset Y",
         "panel.inspector.constraint.axis" => "Side",

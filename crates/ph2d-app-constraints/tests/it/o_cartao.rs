@@ -33,7 +33,10 @@ fn picking_a_child_of_target_never_jumps_and_then_follows() {
     assert!(apply_all(&mut sim, &[(b, E::Adicionar(0))]));
     assert!(armado(&sim), "o Child Of nasce à espera do alvo");
     let antes = world_transform(sim.world(), espada).unwrap();
-    assert_eq!(escolher_alvo(&mut sim, &[mao.to_bits()]), Escolha::Gravado);
+    assert_eq!(
+        escolher_alvo(&mut sim, &[mao.to_bits()], [0.0, 0.0]),
+        Escolha::Gravado
+    );
     assert!(!armado(&sim));
     quadro(&mut sim, &mut drive);
     let depois = world_transform(sim.world(), espada).unwrap();
@@ -71,17 +74,20 @@ fn the_owner_and_a_cycle_are_refused_and_the_pick_stays_armed() {
         .spawn((StableId(2), em(5.0, 0.0, 0.0), Constraints::default()))
         .id();
     apply_all(&mut sim, &[(a.to_bits(), E::Adicionar(1))]);
-    assert_eq!(escolher_alvo(&mut sim, &[a.to_bits()]), Escolha::Recusado);
+    assert_eq!(
+        escolher_alvo(&mut sim, &[a.to_bits()], [0.0, 0.0]),
+        Escolha::Recusado
+    );
     assert!(armado(&sim));
     assert_eq!(
-        escolher_alvo(&mut sim, &[a.to_bits(), b.to_bits()]),
+        escolher_alvo(&mut sim, &[a.to_bits(), b.to_bits()], [0.0, 0.0]),
         Escolha::Gravado,
         "o de baixo do dono serve"
     );
     apply_all(&mut sim, &[(b.to_bits(), E::Adicionar(1))]);
     let antes = sim.world().get::<Constraints>(b).unwrap().clone();
     assert_eq!(
-        escolher_alvo(&mut sim, &[a.to_bits()]),
+        escolher_alvo(&mut sim, &[a.to_bits()], [0.0, 0.0]),
         Escolha::Recusado,
         "A copia B e B copiaria A"
     );
@@ -91,7 +97,7 @@ fn the_owner_and_a_cycle_are_refused_and_the_pick_stays_armed() {
         antes,
         "a recusa não deixa rasto"
     );
-    assert_eq!(escolher_alvo(&mut sim, &[]), Escolha::Desistiu);
+    assert_eq!(escolher_alvo(&mut sim, &[], [0.0, 0.0]), Escolha::Desistiu);
     assert!(!armado(&sim));
 }
 
@@ -172,7 +178,7 @@ fn a_child_of_picks_up_and_drops_without_a_jump() {
         .id();
     let b = espada.to_bits();
     apply_all(&mut sim, &[(b, E::Adicionar(0))]);
-    escolher_alvo(&mut sim, &[mao.to_bits()]);
+    escolher_alvo(&mut sim, &[mao.to_bits()], [0.0, 0.0]);
     let id = sim.world().get::<Constraints>(espada).unwrap().items[0].id;
     apply_all(&mut sim, &[(b, E::Forca(id, 0.0))]);
     let anda = |sim: &mut SimWorld, drive: &mut PreviewDrive, dx: f32| {
@@ -354,7 +360,7 @@ fn the_settings_of_each_type_reach_the_item() {
     for &id in &ids[..4] {
         apply_all(&mut sim, &[(b, E::Apagar(id))]);
     }
-    escolher_alvo(&mut sim, &[mao.to_bits()]);
+    escolher_alvo(&mut sim, &[mao.to_bits()], [0.0, 0.0]);
     quadro(&mut sim, &mut drive);
     assert!(
         (world_transform(sim.world(), e).unwrap().translation.x).abs() < 1e-4,

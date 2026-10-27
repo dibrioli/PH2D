@@ -25,7 +25,10 @@ const GROSSURA: f32 = 0.18;
 const ORIGEM: [f64; 2] = [-2.0, -1.2];
 
 fn pose(e: Entity, world: &World) -> Pose2 {
-    let t = world.get::<Transform>(e).copied().unwrap_or(Transform::IDENTITY);
+    let t = world
+        .get::<Transform>(e)
+        .copied()
+        .unwrap_or(Transform::IDENTITY);
     Pose2 {
         x: f64::from(t.translation.x),
         y: f64::from(t.translation.y),
@@ -36,12 +39,23 @@ fn pose(e: Entity, world: &World) -> Pose2 {
 }
 
 /// Uma barra entre dois pontos do mundo (o centro dela é a origem do objecto).
-#[expect(clippy::cast_possible_truncation, reason = "o `Transform` da casa é f32")]
+#[expect(
+    clippy::cast_possible_truncation,
+    reason = "o `Transform` da casa é f32"
+)]
 fn barra(world: &mut World, nome: &str, p: [f64; 2], q: [f64; 2], cor: [f32; 4]) -> Entity {
     let centro = [((p[0] + q[0]) / 2.0) as f32, ((p[1] + q[1]) / 2.0) as f32];
     let graus = (q[1] - p[1]).atan2(q[0] - p[0]).to_degrees() as f32;
     let comprimento = (q[0] - p[0]).hypot(q[1] - p[1]) as f32;
-    peca(world, nome, WHITE_TILE_KEY, centro, graus, [comprimento + GROSSURA, GROSSURA], cor)
+    peca(
+        world,
+        nome,
+        WHITE_TILE_KEY,
+        centro,
+        graus,
+        [comprimento + GROSSURA, GROSSURA],
+        cor,
+    )
 }
 
 /// ⭐ Monta a cena 8. Devolve a manivela (o objecto escolhido à abertura).
@@ -65,7 +79,10 @@ pub(crate) fn braco_articulado(world: &mut World) -> Entity {
     let manivela = barra(world, "Manivela", o2, a, [0.9, 0.45, 0.1, 1.0]);
     let biela = barra(world, "Biela", a, b, [0.2, 0.55, 0.9, 1.0]);
     let balancim = barra(world, "Balancim", o4, b, [0.3, 0.75, 0.35, 1.0]);
-    #[expect(clippy::cast_possible_truncation, reason = "o `Transform` da casa é f32")]
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "o `Transform` da casa é f32"
+    )]
     let mao = peca(
         world,
         "Mão",
@@ -79,7 +96,12 @@ pub(crate) fn braco_articulado(world: &mut World) -> Entity {
     assign_missing_stable_ids(world);
     let sid = |e: Entity| stable_id_of(world, e).map_or(0, |s| s.0);
     let p = |e: Entity| pose(e, world);
-    let pinos = [(chao, manivela, o2), (manivela, biela, a), (biela, balancim, b), (chao, balancim, o4)];
+    let pinos = [
+        (chao, manivela, o2),
+        (manivela, biela, a),
+        (biela, balancim, b),
+        (chao, balancim, o4),
+    ];
     let mut colas = Colas::default();
     for (x, y, onde) in pinos {
         let (sx, sy, px, py) = (sid(x), sid(y), p(x), p(y));

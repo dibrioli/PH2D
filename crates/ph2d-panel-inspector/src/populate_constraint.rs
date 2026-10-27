@@ -21,6 +21,7 @@ pub(crate) fn populate_constraint(store: &mut WidgetStore) {
         &ids::INSP_CONSTRAINT_APAGAR,
         &ids::INSP_CONSTRAINT_ALVO,
         &ids::INSP_CONSTRAINT_ZERAR,
+        &ids::INSP_COLA_DESCOLAR,
     ] {
         super::populate::register_button_ids(store, tabela);
     }

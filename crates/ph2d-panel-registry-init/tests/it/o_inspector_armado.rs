@@ -954,6 +954,14 @@ fn arma_o_top20() {
             zera_desvio: true,
         }],
         selected_count: selecionados(),
+        colas: vec![constraint_edits::InspectorColaRow {
+            dono_bits: BITS,
+            id: 3,
+            pino: true,
+            parceiro: "Mão".into(),
+            estado: constraint_edits::EstadoDaCola::Conflito,
+        }],
+        cola_armada: Some(true),
     }));
     // ⭐ Os cartões do CORPO na luz — LIGHT OCCLUDER e UNLIT, os dois.
     insp::set_current_inspector_corpo_luz(Some(

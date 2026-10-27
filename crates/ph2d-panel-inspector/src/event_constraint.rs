@@ -77,6 +77,12 @@ pub(crate) fn apply_constraint_event(
                 E::EscolherAlvo(r)
             } else if let Some(r) = item(&info, &ids::INSP_CONSTRAINT_ZERAR, id) {
                 E::ZerarDesvio(r)
+            } else if let Some(c) = ids::INSP_COLA_DESCOLAR
+                .iter()
+                .position(|&o| o == id)
+                .and_then(|k| info.colas.get(k))
+            {
+                E::Descolar(c.dono_bits, c.id)
             } else if id == ids::INSP_CONSTRAINT_BAKE && !info.rows.is_empty() {
                 E::Cozer
             } else if let Some(e) = opcao(&info, id) {

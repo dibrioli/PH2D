@@ -35,6 +35,8 @@ pub enum Parte {
     Max,
     /// A pega do raio do Limit Distance.
     Raio,
+    /// O ponto de um Pino da cola (`item` = o id da cola, `dono` = o objecto que a guarda).
+    Pino,
 }
 
 /// Uma pega: `(dono, Item::id, parte)`.
@@ -62,6 +64,8 @@ pub enum Peca {
         raio: f32,
         pega: (Pega, [f32; 2]),
     },
+    /// O ponto de um Pino da cola: arrastá-lo move o pino nos DOIS objectos de uma vez.
+    Pino((Pega, [f32; 2])),
 }
 
 /// A pega que a mão segura agora (estado de sessão: premir arma, largar desarma).
@@ -93,8 +97,9 @@ pub fn pecas(
     let Some(e) = sel.and_then(Entity::try_from_bits) else {
         return Vec::new();
     };
+    let mut out = pinos(w, e, camera, window);
     let (Some(c), Some(t)) = (w.get::<Constraints>(e), world_transform(w, e)) else {
-        return Vec::new();
+        return out;
     };
     let o = [f64::from(t.translation.x), f64::from(t.translation.y)];
     let so = tela(camera, window, o);
@@ -102,9 +107,8 @@ pub fn pecas(
     let s1 = tela(camera, window, [o[0] + 1.0, o[1]]);
     let ppm = f64::from((s1[0] - so[0]).hypot(s1[1] - so[1]));
     if !(ppm.is_finite() && ppm > 0.0) {
-        return Vec::new();
+        return out;
     }
-    let mut out = Vec::new();
     for it in c.items.iter().filter(|i| i.enabled) {
         let alvo = it
             .target
@@ -173,6 +177,32 @@ pub fn pecas(
     out
 }
 
+/// Os pinos das colas que tocam `e`, no ponto deles (o do lado `a`).
+fn pinos(w: &World, e: Entity, camera: &Camera2d, window: ph2d_host::WindowSize) -> Vec<Peca> {
+    let Some(s) = ph2d_ecs::stable_id_of(w, e) else {
+        return Vec::new();
+    };
+    let mut out = Vec::new();
+    for (dono, cola) in crate::cola::todas(w) {
+        let ph2d_constraints_cola::Tipo::Pino { em_a, .. } = cola.tipo else {
+            continue;
+        };
+        if !cola.toca(s.0) {
+            continue;
+        }
+        let Some(pa) = crate::cola::pose_mundial(w, cola.a) else {
+            continue;
+        };
+        let pega = Pega {
+            dono: dono.to_bits(),
+            item: cola.id,
+            parte: Parte::Pino,
+        };
+        out.push(Peca::Pino((pega, tela(camera, window, pa.ponto(em_a)))));
+    }
+    out
+}
+
 /// ⭐ **A pega sob o ponteiro** `ponto` (px de tela), a mais próxima.
 #[must_use]
 pub fn pega_em(
@@ -186,7 +216,7 @@ pub fn pega_em(
         .into_iter()
         .flat_map(|p| match p {
             Peca::Arco { pontas, .. } => pontas.to_vec(),
-            Peca::Circulo { pega, .. } => vec![pega],
+            Peca::Circulo { pega, .. } | Peca::Pino(pega) => vec![pega],
             Peca::Linha(..) => Vec::new(),
         })
         .map(|(g, c)| ((ponto.0 - c[0]).hypot(ponto.1 - c[1]), g))
@@ -202,6 +232,9 @@ pub fn arrastar(sim: &mut SimWorld, pega: Pega, mundo: [f64; 2]) -> bool {
     let Some(e) = Entity::try_from_bits(pega.dono) else {
         return false;
     };
+    if pega.parte == Parte::Pino {
+        return crate::cola::mover_pino(sim, e, pega.item, mundo);
+    }
     let w = sim.world();
     let (Some(c), Some(t)) = (w.get::<Constraints>(e), world_transform(w, e)) else {
         return false;
@@ -371,6 +404,16 @@ pub fn desenhar(
                     arco,
                     None,
                     &Circle::new(p(centro), f64::from(raio)),
+                );
+                pega(s, g, c);
+            }
+            Peca::Pino((g, c)) => {
+                s.stroke(
+                    &Stroke::new(1.5),
+                    Affine::IDENTITY,
+                    arco,
+                    None,
+                    &Circle::new(p(c), f64::from(PEGA_PX + FOLGA_PX)),
                 );
                 pega(s, g, c);
             }

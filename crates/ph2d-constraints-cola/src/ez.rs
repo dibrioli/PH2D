@@ -44,7 +44,11 @@ pub(crate) fn resolve(
             u: DatumPoint::new(&mut ids),
             v: DatumPoint::new(&mut ids),
         };
-        let (o, u, v) = (p.ponto([0.0, 0.0]), p.ponto([1.0, 0.0]), p.ponto([0.0, 1.0]));
+        let (o, u, v) = (
+            p.ponto([0.0, 0.0]),
+            p.ponto([1.0, 0.0]),
+            p.ponto([0.0, 1.0]),
+        );
         for (d, x) in [(q.o, o), (q.u, u), (q.v, v)] {
             por(d, x, &mut palpite);
             if fixo(c) {
@@ -61,13 +65,25 @@ pub(crate) fn resolve(
     for pin in pins {
         let d = DatumPoint::new(&mut ids);
         let (pa, pb) = (pose[&pin.a].ponto(pin.qa), pose[&pin.b].ponto(pin.qb));
-        por(d, [(pa[0] + pb[0]) / 2.0, (pa[1] + pb[1]) / 2.0], &mut palpite);
+        por(
+            d,
+            [(pa[0] + pb[0]) / 2.0, (pa[1] + pb[1]) / 2.0],
+            &mut palpite,
+        );
         for (c, q) in [(pin.a, pin.qa), (pin.b, pin.qb)] {
             let (s, f) = (pose[&c], &quadros[&c]);
             let l = [q[0] * s.sx, q[1] * s.sy];
             reqs.push(R::highest_priority(K::Distance(d, f.o, l[0].hypot(l[1]))));
-            reqs.push(R::highest_priority(K::Distance(d, f.u, (l[0] - s.sx).hypot(l[1]))));
-            reqs.push(R::highest_priority(K::Distance(d, f.v, l[0].hypot(l[1] - s.sy))));
+            reqs.push(R::highest_priority(K::Distance(
+                d,
+                f.u,
+                (l[0] - s.sx).hypot(l[1]),
+            )));
+            reqs.push(R::highest_priority(K::Distance(
+                d,
+                f.v,
+                l[0].hypot(l[1] - s.sy),
+            )));
         }
     }
 
@@ -85,7 +101,15 @@ pub(crate) fn resolve(
                 }
                 let (o, u) = (em(quadros[&c].o), em(quadros[&c].u));
                 let rot = (u[1] - o[1]).atan2(u[0] - o[0]);
-                (c, Pose2 { x: o[0], y: o[1], rot, ..p })
+                (
+                    c,
+                    Pose2 {
+                        x: o[0],
+                        y: o[1],
+                        rot,
+                        ..p
+                    },
+                )
             })
             .collect(),
     )

@@ -5,10 +5,19 @@
 
 use crate::{ComponentCategory as C, ComponentDesc, ComponentDesc as D, ObjectKinds as O};
 
-pub const DESCS: &[ComponentDesc] = &[D::authored(
-    "ph2d::constraints::Constraints",
-    "component.constraints.name",
-    C::Transform,
-    O::ANY,
-    &[],
-)];
+pub const DESCS: &[ComponentDesc] = &[
+    // A cola (W5, ADR-0193): máquina — nasce só pelo «Add Constraint ▸ Glue» (pela paleta seria uma lista
+    // vazia, um controlo morto) e mostra-se no cartão das constraints dos DOIS objectos.
+    D::machinery(
+        "ph2d::constraints::Colas",
+        "component.colas.name",
+        C::Transform,
+    ),
+    D::authored(
+        "ph2d::constraints::Constraints",
+        "component.constraints.name",
+        C::Transform,
+        O::ANY,
+        &[],
+    ),
+];

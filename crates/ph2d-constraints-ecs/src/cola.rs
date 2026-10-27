@@ -14,7 +14,9 @@ use bevy_ecs::prelude::Resource;
 use ph2d_constraints::Pose2;
 use ph2d_constraints_cola::{Cola, Entrada, Estado as EstadoCola, resolve};
 use ph2d_ecs::canal::familia;
-use ph2d_ecs::{AlvosDasFamilias, Locked, SimComponent, SimWorld, StableId, Transform, parent_world_transform};
+use ph2d_ecs::{
+    AlvosDasFamilias, Locked, SimComponent, SimWorld, StableId, Transform, parent_world_transform,
+};
 use ph2d_preview_drive::{Driven, Driver, PreviewDrive};
 use serde::{Deserialize, Serialize};
 
@@ -69,7 +71,10 @@ struct Membro {
 /// está no ledger; se outra mão escreveu entretanto, é essa mão (a lei do `avalia::base`).
 fn base(preview: &PreviewDrive, e: Entity, agora: Transform) -> (Transform, bool) {
     let bits = e.to_bits();
-    match (preview.last_written(bits, Driver::ColaPose), preview.authored(bits, Driver::ColaPose)) {
+    match (
+        preview.last_written(bits, Driver::ColaPose),
+        preview.authored(bits, Driver::ColaPose),
+    ) {
         (Some(Driven::ColaPose(w)), Some(Driven::ColaPose(a))) if w == agora => (a, true),
         _ => (agora, false),
     }
@@ -94,14 +99,22 @@ pub fn colar(sim: &mut SimWorld, preview: &mut PreviewDrive) -> usize {
     }
 
     let idx = indice(sim.world());
-    let memoria = sim.world_mut().remove_resource::<Memoria>().unwrap_or_default().0;
+    let memoria = sim
+        .world_mut()
+        .remove_resource::<Memoria>()
+        .unwrap_or_default()
+        .0;
     let mut membros: BTreeMap<u64, Membro> = BTreeMap::new();
     let mut corpos = BTreeMap::new();
     let ids: BTreeSet<u64> = colas.iter().flat_map(|c| [c.a, c.b]).collect();
     for s in ids {
-        let Some(&e) = idx.get(&StableId(s)) else { continue };
+        let Some(&e) = idx.get(&StableId(s)) else {
+            continue;
+        };
         let w = sim.world();
-        let Some(&agora) = w.get::<Transform>(e) else { continue };
+        let Some(&agora) = w.get::<Transform>(e) else {
+            continue;
+        };
         let (base, escrito) = base(preview, e, agora);
         let motor = !escrito && preview.drives_other_than(e.to_bits(), Driver::ColaPose);
         let mao = !motor && memoria.get(&e).is_some_and(|t| *t != base);
@@ -109,14 +122,26 @@ pub fn colar(sim: &mut SimWorld, preview: &mut PreviewDrive) -> usize {
         let condutor = motor || mao || w.get::<Locked>(e).is_some();
         let p = pose(&Transform::compose(pai, base));
         corpos.insert(s, Entrada { pose: p, condutor });
-        membros.insert(s, Membro { e, agora, base, pai, motor });
+        membros.insert(
+            s,
+            Membro {
+                e,
+                agora,
+                base,
+                pai,
+                motor,
+            },
+        );
     }
 
     let saida = resolve(&colas, &corpos);
     let mut estado_de: BTreeMap<u64, EstadoCola> = BTreeMap::new();
     let mut por_motor: BTreeSet<u64> = BTreeSet::new();
     for g in &saida.grupos {
-        let motor = g.membros.iter().any(|m| membros.get(m).is_some_and(|x| x.motor));
+        let motor = g
+            .membros
+            .iter()
+            .any(|m| membros.get(m).is_some_and(|x| x.motor));
         for &m in &g.membros {
             estado_de.insert(m, g.estado);
             if motor && g.estado == EstadoCola::Definido {

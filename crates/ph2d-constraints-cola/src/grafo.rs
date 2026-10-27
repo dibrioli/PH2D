@@ -46,7 +46,10 @@ pub(crate) fn grupos(colas: &[Cola], existe: impl Fn(Corpo) -> bool) -> Vec<Grup
     for m in membros {
         let r = raiz(&mut pai, m);
         por.entry(r)
-            .or_insert_with(|| GrupoBruto { membros: Vec::new(), colas: Vec::new() })
+            .or_insert_with(|| GrupoBruto {
+                membros: Vec::new(),
+                colas: Vec::new(),
+            })
             .membros
             .push(m);
     }
@@ -63,7 +66,11 @@ pub(crate) fn grupos(colas: &[Cola], existe: impl Fn(Corpo) -> bool) -> Vec<Grup
 /// sólido tem um, para que ele e os seus vizinhos directos saiam ao bit. Solda que não fecha ⇒ `Err`.
 type Solidos = BTreeMap<Corpo, (Corpo, Option<Pose2>)>;
 
-fn solidos(membros: &[Corpo], colas: &[Cola], condutor: impl Fn(Corpo) -> bool) -> Result<Solidos, ()> {
+fn solidos(
+    membros: &[Corpo],
+    colas: &[Cola],
+    condutor: impl Fn(Corpo) -> bool,
+) -> Result<Solidos, ()> {
     let mut adj: BTreeMap<Corpo, Vec<(usize, Corpo, Pose2)>> = BTreeMap::new();
     for (i, c) in colas.iter().enumerate() {
         if let Tipo::Rigida { rel } = c.tipo {
@@ -149,7 +156,8 @@ pub(crate) fn resolve_grupo(
             let (a, qa) = na_raiz(c.a, em_a);
             let (b, qb) = na_raiz(c.b, em_b);
             if a == b {
-                if (qa[0] - qb[0]).hypot(qa[1] - qb[1]) > TOL * (1.0 + qa[0].abs().max(qa[1].abs())) {
+                if (qa[0] - qb[0]).hypot(qa[1] - qb[1]) > TOL * (1.0 + qa[0].abs().max(qa[1].abs()))
+                {
                     return Err(());
                 }
                 continue;
@@ -203,7 +211,9 @@ fn fecho(pose: &mut BTreeMap<Corpo, Pose2>, pins: &[Pin], inicio: Corpo) {
                 continue;
             }
             let alvo = pose[&k].ponto(qk);
-            let p = pose.get_mut(&f).expect("todo pino liga duas raízes do grupo");
+            let p = pose
+                .get_mut(&f)
+                .expect("todo pino liga duas raízes do grupo");
             let agora = p.ponto(qf);
             p.x += alvo[0] - agora[0];
             p.y += alvo[1] - agora[1];

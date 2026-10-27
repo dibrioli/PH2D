@@ -41,15 +41,32 @@ impl Cola {
     #[must_use]
     pub fn rigida(id: u32, a: Corpo, b: Corpo, pa: Pose2, pb: Pose2) -> Option<Self> {
         let rel = pb.relative_to(pa)?;
-        Some(Self { id, a, b, tipo: Tipo::Rigida { rel } })
+        Some(Self {
+            id,
+            a,
+            b,
+            tipo: Tipo::Rigida { rel },
+        })
     }
 
     /// Prende `a` e `b` no ponto `mundo` (onde o artista clicou).
     #[must_use]
-    pub fn pino(id: u32, a: Corpo, b: Corpo, pa: Pose2, pb: Pose2, mundo: [f64; 2]) -> Option<Self> {
+    pub fn pino(
+        id: u32,
+        a: Corpo,
+        b: Corpo,
+        pa: Pose2,
+        pb: Pose2,
+        mundo: [f64; 2],
+    ) -> Option<Self> {
         let em_a = local(pa, mundo)?;
         let em_b = local(pb, mundo)?;
-        Some(Self { id, a, b, tipo: Tipo::Pino { em_a, em_b } })
+        Some(Self {
+            id,
+            a,
+            b,
+            tipo: Tipo::Pino { em_a, em_b },
+        })
     }
 
     #[must_use]

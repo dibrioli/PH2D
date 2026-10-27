@@ -548,7 +548,12 @@
 /// do Envelope e da pele regravam-se no load (`migra_fio`). Gate sobre BYTES gravados pelo código v23:
 /// `vec_v23_fixture` (cena) e `a_v23_*_source_is_rewritten_with_ids` (blobs). Registos de componentes:
 /// `0`. ⚠️ **A tripla VÊ este degrau** — a forma da `VecScene` muda.
-pub(crate) const PROJECT_SCHEMA: u32 = 200;
+///
+/// # `200 → 201` — **a COLA entre objectos** (`line/BlenderConstraints`, W5, ADR-0193, 2026-10-27)
+///
+/// `Colas` REGISTADO (`ph2d-constraints-ecs`): um binário v200 descartaria as colas. A forma do
+/// `ProjectFile` não muda: o `200` lê-se com o tipo vivo. A tripla NÃO vê este degrau.
+pub(crate) const PROJECT_SCHEMA: u32 = 201;
 
 /// O último degrau cuja geometria do vetor é a v23 (vértices sem id).
 pub(crate) const PROJECT_SCHEMA_GEOMETRIA_V23: u32 = 199;

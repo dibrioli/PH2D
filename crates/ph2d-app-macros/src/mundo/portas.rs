@@ -32,8 +32,9 @@ const PREFAB: &str = "a link to a recipe of the project";
 /// projecto apontaria para o objecto errado.
 const SEM_REMAP: &str = "a reference to another object that is not remapped yet";
 
-/// **A tabela**, ordenada pelo nome canónico — a classificação de 24/10 (os 165 do registo do produto).
+/// **A tabela**, ordenada pelo nome canónico — a classificação de 24/10 (os 165 do registo do produto; 166 com a cola da W5).
 pub const PORTAS: &[(&str, Porta)] = &[
+    ("ph2d::constraints::Colas", Recusado(SEM_REMAP)),
     ("ph2d::constraints::Constraints", Recusado(SEM_REMAP)),
     ("ph2d::ecs::AnchorMount", Gravado),
     ("ph2d::ecs::AnchorVisibility", Gravado),

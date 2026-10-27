@@ -329,7 +329,9 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // `Constraints` REGISTADO, o `198` lê-se com o tipo vivo. A tripla NÃO vê este degrau.
         // ⚠️ **`200` em 2026-10-26** (`line/BlenderConstraints`, W4.2) — o id por VÉRTICE (`VecScene`
         // `23 → 24`); os `<= 199` leem-se pela forma do fio deles.
-        (200, 13, 24),
+        // ⚠️ **`201` em 2026-10-27** (`line/BlenderConstraints`, W5) — a COLA: `Colas` REGISTADO, o
+        // `200` lê-se com o tipo vivo. A tripla NÃO vê este degrau.
+        (201, 13, 24),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

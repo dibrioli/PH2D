@@ -8,7 +8,10 @@ use ph2d_constraints_ecs::{Colas, colar};
 use ph2d_ecs::{AlvosDasFamilias, Locked, SimWorld, StableId, Transform};
 use ph2d_preview_drive::{Driven, Driver, PreviewDrive};
 
-#[expect(clippy::cast_possible_truncation, reason = "o `Transform` da casa é f32")]
+#[expect(
+    clippy::cast_possible_truncation,
+    reason = "o `Transform` da casa é f32"
+)]
 fn tf(x: f64, y: f64, rot: f64) -> Transform {
     let mut t = Transform::IDENTITY;
     t.translation.x = x as f32;
@@ -47,20 +50,38 @@ fn dragging_either_glued_object_moves_the_other() {
     let a = objeto(&mut sim, 1, ta);
     let b = objeto(&mut sim, 2, tb);
     let cola = Cola::rigida(1, 1, 2, pose(ta), pose(tb)).unwrap();
-    sim.world_mut().entity_mut(a).insert(Colas { items: vec![cola], next_id: 2 });
+    sim.world_mut().entity_mut(a).insert(Colas {
+        items: vec![cola],
+        next_id: 2,
+    });
     colar(&mut sim, &mut drive);
-    assert_eq!((tf_de(&sim, a), tf_de(&sim, b)), (ta, tb), "colar sem gesto não mexe ninguém");
+    assert_eq!(
+        (tf_de(&sim, a), tf_de(&sim, b)),
+        (ta, tb),
+        "colar sem gesto não mexe ninguém"
+    );
 
-    let ph2d_constraints_cola::Tipo::Rigida { rel } = cola.tipo else { unreachable!() };
+    let ph2d_constraints_cola::Tipo::Rigida { rel } = cola.tipo else {
+        unreachable!()
+    };
     for (mao, outro, alvo) in [(a, b, tf(2.0, -1.0, 0.9)), (b, a, tf(-4.0, 2.5, -1.2))] {
         mexe(&mut sim, mao, alvo);
         colar(&mut sim, &mut drive);
         assert_eq!(tf_de(&sim, mao), alvo, "a mão fica onde o gesto a pôs");
         let (pa, pb) = (pose(tf_de(&sim, a)), pose(tf_de(&sim, b)));
         let esperado = rel.under(pa);
-        let erro = (esperado.x - pb.x).abs().max((esperado.y - pb.y).abs()).max((esperado.rot - pb.rot).abs());
-        assert!(erro < 1e-5, "o parceiro {outro:?} seguiu a mão {mao:?} (erro {erro:e})");
-        assert!(drive.driven_by(Driver::ColaPose).is_empty(), "o gesto escreve o DOCUMENTO (um passo de undo)");
+        let erro = (esperado.x - pb.x)
+            .abs()
+            .max((esperado.y - pb.y).abs())
+            .max((esperado.rot - pb.rot).abs());
+        assert!(
+            erro < 1e-5,
+            "o parceiro {outro:?} seguiu a mão {mao:?} (erro {erro:e})"
+        );
+        assert!(
+            drive.driven_by(Driver::ColaPose).is_empty(),
+            "o gesto escreve o DOCUMENTO (um passo de undo)"
+        );
     }
 }
 
@@ -84,15 +105,27 @@ fn quadrilatero(sim: &mut SimWorld) -> [Entity; 4] {
         Cola::pino(3, 3, 4, q[2], q[3], [1.0 + a, h]).unwrap(),
         Cola::pino(4, 1, 4, q[0], q[3], [l_chao, 0.0]).unwrap(),
     ];
-    sim.world_mut().entity_mut(es[0]).insert(Colas { items: colas, next_id: 5 });
+    sim.world_mut().entity_mut(es[0]).insert(Colas {
+        items: colas,
+        next_id: 5,
+    });
     es
 }
 
 /// Um quadro: a curva conduz a manivela (como a timeline, pelo `PreviewDrive`), a cola, e o fim do quadro.
-fn quadro(sim: &mut SimWorld, drive: &mut PreviewDrive, manivela: Entity, f: u32) -> [Transform; 2] {
+fn quadro(
+    sim: &mut SimWorld,
+    drive: &mut PreviewDrive,
+    manivela: Entity,
+    f: u32,
+) -> [Transform; 2] {
     let agora = tf_de(sim, manivela);
     let novo = tf(0.0, 0.0, f64::from(f) * std::f64::consts::TAU / 48.0);
-    drive.driven(manivela, Driven::SolverPose(agora), Driven::SolverPose(novo));
+    drive.driven(
+        manivela,
+        Driven::SolverPose(agora),
+        Driven::SolverPose(novo),
+    );
     mexe(sim, manivela, novo);
     colar(sim, drive);
     drive.settle();
@@ -109,7 +142,9 @@ fn glued_play_and_scrub_are_the_same_bit() {
         let mut drive = PreviewDrive::default();
         let [chao, manivela, ..] = quadrilatero(&mut sim);
         colar(&mut sim, &mut drive);
-        let v = (0..49).map(|f| quadro(&mut sim, &mut drive, manivela, f)).collect();
+        let v = (0..49)
+            .map(|f| quadro(&mut sim, &mut drive, manivela, f))
+            .collect();
         assert_eq!(tf_de(&sim, chao), tf(0.0, 0.0, 0.0), "o cadeado é o chão");
         v
     };
@@ -132,6 +167,44 @@ fn autokey_records_every_glued_partner() {
     colar(&mut sim, &mut drive);
     let alvos: Vec<u64> = sim.world().resource::<AlvosDasFamilias>().todas().collect();
     for e in es {
-        assert!(alvos.contains(&e.to_bits()), "{e:?} fora da população do Auto Key ANTES do gesto");
+        assert!(
+            alvos.contains(&e.to_bits()),
+            "{e:?} fora da população do Auto Key ANTES do gesto"
+        );
     }
+}
+
+#[test]
+fn a_glue_survives_save_and_open() {
+    use ph2d_ecs::scene::{ComponentRegistry, WorldSnapshot, snapshot_to_world, world_to_snapshot};
+    use ph2d_ecs::{TransformPropagationState, WorklistBuf};
+    let mut reg = ComponentRegistry::new();
+    ph2d_ecs::scene::register_ecs_components(&mut reg);
+    ph2d_constraints_ecs::register_constraint_components(&mut reg);
+    let mut sim = SimWorld::new();
+    quadrilatero(&mut sim);
+    let gravadas: Vec<Colas> = sim
+        .world_mut()
+        .query::<&Colas>()
+        .iter(sim.world())
+        .cloned()
+        .collect();
+    let mut snap = WorldSnapshot::new();
+    let (mut st, mut wl) = (
+        TransformPropagationState::new(sim.world_mut()),
+        WorklistBuf::default(),
+    );
+    world_to_snapshot(sim.world_mut(), &mut st, &mut wl, &reg, &mut snap).unwrap();
+    let bytes = postcard::to_allocvec(&snap).unwrap();
+    let lido: WorldSnapshot = postcard::from_bytes(&bytes).unwrap();
+    let mut outro = SimWorld::new();
+    snapshot_to_world(outro.world_mut(), &lido, &reg).unwrap();
+    let abertas: Vec<Colas> = outro
+        .world_mut()
+        .query::<&Colas>()
+        .iter(outro.world())
+        .cloned()
+        .collect();
+    assert_eq!(abertas, gravadas);
+    assert_eq!(abertas[0].items.len(), 4);
 }

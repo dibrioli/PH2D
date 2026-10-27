@@ -86,8 +86,7 @@ sem cena): `ph2d-render atlas` **341 MiB** (8192² com mips, `ATLAS_DEFAULT_SIZE
 
 ## 5 — Superfície de colisão (DELTA) e o que um merge pode partir
 
-- `git diff --stat c3662cd8e4..HEAD` (conferir): F36 sozinha = 52 ficheiros, +2 305 −176 (`git diff --stat
-  9c00f9084e..HEAD`). Alterados: `ph2d-gpu` (`pegada.rs`, `memoria.rs`, `context.rs`), `ph2d-render` (`atlas/`,
+- F36 sozinha (`git diff --shortstat 9c00f9084e..a6dcd5c8ff`, medido): 27 ficheiros, +968 −66. Alterados: `ph2d-gpu` (`pegada.rs`, `memoria.rs`, `context.rs`), `ph2d-render` (`atlas/`,
   `individual*.rs`, `renderer_draw.rs`, `renderer_renasce.rs`, `renasce_tests.rs`), `ph2d-app-painter`
   (`PainterGpuPreview`), `shells/desktop/src/init.rs` (UMA chamada).
 - Um merge parte: (a) novo cache de textura que nasça sem o escopo de memória — não renasce e volta a ser o

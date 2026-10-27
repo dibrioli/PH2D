@@ -125,7 +125,15 @@ pub struct CampoAltura {
 
 impl CampoAltura {
     /// A janela `[x0..=x1]×[y0..=y1]` (células, `1..=W`) alargada pela margem e presa à grade.
-    pub fn de(camadas: &[(&Grid, bool)], o: &OleoReal, ratio: usize, x0: usize, y0: usize, x1: usize, y1: usize) -> Self {
+    pub fn de(
+        camadas: &[(&Grid, bool)],
+        o: &OleoReal,
+        ratio: usize,
+        x0: usize,
+        y0: usize,
+        x1: usize,
+        y1: usize,
+    ) -> Self {
         let g = camadas[0].0;
         let af = &o.af;
         // A janela leva a margem da marcha e as duas passagens do desfoque.
@@ -156,7 +164,14 @@ impl CampoAltura {
         let detalhe = (0..w * h)
             .map(|k| (af.grao * (massa[k] - suave[k]) * escala + fios[k] * k_fios) as f32)
             .collect();
-        Self { x0: ax0, y0: ay0, w, h, v, detalhe }
+        Self {
+            x0: ax0,
+            y0: ay0,
+            w,
+            h,
+            v,
+            detalhe,
+        }
     }
 
     #[inline]
@@ -209,7 +224,11 @@ fn desfoca(v: &[f64], w: usize, h: usize, r: usize) -> Vec<f64> {
 /// O vector unitário PARA a luz (x direita, y baixo, z para fora da tela).
 fn para_a_luz(o: &OleoReal) -> [f64; 3] {
     let c = libm::cos(o.altitude);
-    [c * libm::cos(o.azimute), c * libm::sin(o.azimute), libm::sin(o.altitude)]
+    [
+        c * libm::cos(o.azimute),
+        c * libm::sin(o.azimute),
+        libm::sin(o.altitude),
+    ]
 }
 
 /// Os termos da óptica numa célula, antes da cor: a cavidade `0..1`, a luz directa que chega `0..1`
@@ -252,7 +271,10 @@ fn luz_directa(o: &OleoReal, campo: &CampoAltura, x: isize, y: isize, h0: f64) -
     let mut horizonte = f64::NEG_INFINITY;
     for t in 1..=PASSOS_SOMBRA {
         let t = t as f64;
-        let q = campo.at(x + libm::round(dx * t) as isize, y + libm::round(dy * t) as isize);
+        let q = campo.at(
+            x + libm::round(dx * t) as isize,
+            y + libm::round(dy * t) as isize,
+        );
         horizonte = horizonte.max((q - h0) / t);
     }
     let luz = ((sobe - horizonte) / o.af.penumbra.max(1e-6)).clamp(0.0, 1.0);
@@ -297,13 +319,17 @@ pub fn termos(o: &OleoReal, campo: &CampoAltura, cx: usize, cy: usize) -> Termos
         let mut tan_max = tan_t;
         for t in 1..=PASSOS_CAVIDADE {
             let t = t as f64;
-            let q = campo.at(x + libm::round(dx * t) as isize, y + libm::round(dy * t) as isize);
+            let q = campo.at(
+                x + libm::round(dx * t) as isize,
+                y + libm::round(dy * t) as isize,
+            );
             tan_max = tan_max.max((q - h0) / t);
         }
         ocl += sen(tan_max) - sen(tan_t);
     }
     let ocl = ocl / DIRECOES_CAVIDADE as f64;
-    let cav = ((ocl - af.limiar_cavidade) / (af.fundo_cavidade - af.limiar_cavidade)).clamp(0.0, 1.0);
+    let cav =
+        ((ocl - af.limiar_cavidade) / (af.fundo_cavidade - af.limiar_cavidade)).clamp(0.0, 1.0);
 
     // Difuso relativo: plano e iluminado = 1.
     let ndl = (n[0] * l[0] + n[1] * l[1] + n[2] * l[2]).max(0.0);
@@ -320,7 +346,13 @@ pub fn termos(o: &OleoReal, campo: &CampoAltura, cx: usize, cy: usize) -> Termos
     let vdh = hv[2] / hn;
     let fres = F0 + (1.0 - F0) * libm::pow(1.0 - vdh, 5.0);
     let espec = o.brilho * af.brilho_max * fres * d_ggx * ndl * luz * (1.0 - cav);
-    Termos { cav, luz, e, espec, ocl }
+    Termos {
+        cav,
+        luz,
+        e,
+        espec,
+        ocl,
+    }
 }
 
 #[cfg(test)]

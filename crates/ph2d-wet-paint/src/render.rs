@@ -441,7 +441,11 @@ fn pigment_row(
                     a_s,
                     a_f,
                 );
-                let emboss_k = if com_relevo && oleo.is_none() { lg.relevo[i] as f64 } else { 0.0 };
+                let emboss_k = if com_relevo && oleo.is_none() {
+                    lg.relevo[i] as f64
+                } else {
+                    0.0
+                };
                 if paper_on || emboss_k != 0.0 {
                     // The tooth printed into the pigment — [`render_region`]'s
                     // exact `v`: paper faded by the master toward flat 0.5,
@@ -486,7 +490,8 @@ fn pigment_row(
                 pa += la * (1.0 - pa);
             }
             if let (true, Some((ol, campo))) = (pa > 0.0, oleo) {
-                let [r, g, b] = crate::oleo_real::ilumina(ol, campo, cx, cy, [pr / pa, pg / pa, pb / pa]);
+                let [r, g, b] =
+                    crate::oleo_real::ilumina(ol, campo, cx, cy, [pr / pa, pg / pa, pb / pa]);
                 out[o] = clamp_u8(r);
                 out[o + 1] = clamp_u8(g);
                 out[o + 2] = clamp_u8(b);

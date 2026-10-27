@@ -87,7 +87,8 @@ fn medida_oleo_real_altura_tracos() {
 #[test]
 #[ignore = "medicao — corre-se à mão no perfil smoke"]
 fn medida_oleo_real_folha_png() {
-    let dir = std::path::PathBuf::from(std::env::var("PH2D_OLEO_PNG").expect("PH2D_OLEO_PNG=<pasta>"));
+    let dir =
+        std::path::PathBuf::from(std::env::var("PH2D_OLEO_PNG").expect("PH2D_OLEO_PNG=<pasta>"));
     let mut t = pinta_folha();
     let s = t.paint.wetpaint.session.as_mut().expect("sessão");
     s.bring_home();
@@ -97,12 +98,21 @@ fn medida_oleo_real_folha_png() {
         .engine
         .layers
         .iter()
-        .map(|l| ph2d_wet_paint::render::RenderLayer { grid: &l.grid, opacity: l.opacity, visible: l.visible })
+        .map(|l| ph2d_wet_paint::render::RenderLayer {
+            grid: &l.grid,
+            opacity: l.opacity,
+            visible: l.visible,
+        })
         .collect();
-    let visual = ph2d_wet_paint::render::PigmentVisual { paper: false, relevo: true };
+    let visual = ph2d_wet_paint::render::PigmentVisual {
+        paper: false,
+        relevo: true,
+    };
     let o = oleo_do_env();
-    let grades: Vec<(&ph2d_wet_paint::grid::Grid, bool)> = camadas.iter().map(|c| (c.grid, c.visible)).collect();
-    let campo = ph2d_wet_paint::oleo_real::CampoAltura::de(&grades, &o, usize::from(s.ratio), 1, 1, gw, gh);
+    let grades: Vec<(&ph2d_wet_paint::grid::Grid, bool)> =
+        camadas.iter().map(|c| (c.grid, c.visible)).collect();
+    let campo =
+        ph2d_wet_paint::oleo_real::CampoAltura::de(&grades, &o, usize::from(s.ratio), 1, 1, gw, gh);
     // Os termos em cinza (0..1 → 0..255; `e` e o brilho a ½ de escala), só onde há tinta.
     let mut termos = [(); 5].map(|()| vec![0u8; gw * gh]);
     let ativa = s.engine.active_grid();
@@ -113,12 +123,18 @@ fn medida_oleo_real_folha_png() {
             }
             let t = ph2d_wet_paint::oleo_real::termos(&o, &campo, cx, cy);
             let k = (cx - 1) + (cy - 1) * gw;
-            for (j, v) in [t.cav, t.luz, t.e * 0.5, t.espec * 0.5, t.ocl].into_iter().enumerate() {
+            for (j, v) in [t.cav, t.luz, t.e * 0.5, t.espec * 0.5, t.ocl]
+                .into_iter()
+                .enumerate()
+            {
                 termos[j][k] = (v.clamp(0.0, 1.0) * 254.0) as u8 + 1;
             }
         }
     }
-    for (nome, v) in ["t_cav", "t_luz", "t_e", "t_espec", "t_ocl"].iter().zip(&termos) {
+    for (nome, v) in ["t_cav", "t_luz", "t_e", "t_espec", "t_ocl"]
+        .iter()
+        .zip(&termos)
+    {
         let mut pgm = format!("P5\n{gw} {gh}\n255\n").into_bytes();
         pgm.extend_from_slice(v);
         std::fs::write(dir.join(format!("{nome}.pgm")), pgm).expect("grava");
@@ -128,23 +144,42 @@ fn medida_oleo_real_folha_png() {
         for cy in 1..=gh {
             let linha = &mut px[(cy - 1) * gw * 4..cy * gw * 4];
             if com_oleo {
-                ph2d_wet_paint::render::render_pigment_row_oleo(Some(&params), &camadas, visual, &o, &campo, cy, 1, gw, linha);
+                ph2d_wet_paint::render::render_pigment_row_oleo(
+                    Some(&params),
+                    &camadas,
+                    visual,
+                    &o,
+                    &campo,
+                    cy,
+                    1,
+                    gw,
+                    linha,
+                );
             } else {
-                ph2d_wet_paint::render::render_pigment_row_visual(Some(&params), &camadas, visual, cy, 1, gw, linha);
+                ph2d_wet_paint::render::render_pigment_row_visual(
+                    Some(&params),
+                    &camadas,
+                    visual,
+                    cy,
+                    1,
+                    gw,
+                    linha,
+                );
             }
         }
         let mut ppm = format!("P6\n{gw} {gh}\n255\n").into_bytes();
-        for (k, p) in px.chunks_exact(4).enumerate() {
+        for (k, p) in px.as_chunks::<4>().0.iter().enumerate() {
             let a = u32::from(p[3]);
             // O papel recebe a sombra do Óleo Real como no composite do produto (o plano `sombra`).
             let papel = if com_oleo && a == 0 {
-                let s = ph2d_wet_paint::oleo_real::sombra_no_papel(&o, &campo, k % gw + 1, k / gw + 1);
+                let s =
+                    ph2d_wet_paint::oleo_real::sombra_no_papel(&o, &campo, k % gw + 1, k / gw + 1);
                 (255.0 * (1.0 - s)).round() as u32
             } else {
                 255
             };
-            for c in 0..3 {
-                ppm.push(((u32::from(p[c]) * a + papel * (255 - a)) / 255) as u8);
+            for &v in &p[..3] {
+                ppm.push(((u32::from(v) * a + papel * (255 - a)) / 255) as u8);
             }
         }
         let f = dir.join(format!("{nome}.ppm"));
@@ -156,8 +191,14 @@ fn medida_oleo_real_folha_png() {
 /// O Óleo Real de fábrica com o que `PH2D_OLEO_AF="campo=valor,…"` pedir (knobs em graus para a luz).
 fn oleo_do_env() -> ph2d_wet_paint::oleo_real::OleoReal {
     let mut o = ph2d_wet_paint::oleo_real::OleoReal::default();
-    for par in std::env::var("PH2D_OLEO_AF").unwrap_or_default().split(',').filter(|p| !p.is_empty()) {
-        let (k, v) = par.split_once('=').unwrap_or_else(|| panic!("{par}: campo=valor"));
+    for par in std::env::var("PH2D_OLEO_AF")
+        .unwrap_or_default()
+        .split(',')
+        .filter(|p| !p.is_empty())
+    {
+        let (k, v) = par
+            .split_once('=')
+            .unwrap_or_else(|| panic!("{par}: campo=valor"));
         let v: f64 = v.parse().unwrap_or_else(|_| panic!("{par}: número"));
         let af = &mut o.af;
         match k {
@@ -197,19 +238,84 @@ fn pinta_folha() -> PainterTool {
 
 fn tracos() -> Vec<Traco> {
     let env = |k: &str, d: &str| std::env::var(k).unwrap_or_else(|_| d.to_owned());
-    let faca = env("PH2D_OLEO_FACA", "WetPainter/Oil/Dabber/Dabber.ph2d-brush.png");
+    let faca = env(
+        "PH2D_OLEO_FACA",
+        "WetPainter/Oil/Dabber/Dabber.ph2d-brush.png",
+    );
     let faca_tex = env("PH2D_OLEO_FACA_TEX", &faca);
-    let oily = env("PH2D_OLEO_OILY", "WetPainter/Oil/Flat/Filbert.ph2d-brush.png");
-    let thick = env("PH2D_OLEO_THICK", "WetPainter/Oil/Bristle/Oil Bristle.ph2d-brush.png");
+    let oily = env(
+        "PH2D_OLEO_OILY",
+        "WetPainter/Oil/Flat/Filbert.ph2d-brush.png",
+    );
+    let thick = env(
+        "PH2D_OLEO_THICK",
+        "WetPainter/Oil/Bristle/Oil Bristle.ph2d-brush.png",
+    );
     vec![
-        Traco { rotulo: "faca H azul", preset: faca.clone(), cor: AZ, a: [80.0, 110.0], b: [560.0, 110.0], diametro: 120.0 },
-        Traco { rotulo: "faca V azul", preset: faca.clone(), cor: AZ, a: [700.0, 60.0], b: [700.0, 420.0], diametro: 120.0 },
-        Traco { rotulo: "oily azul", preset: oily.clone(), cor: AZ, a: [850.0, 100.0], b: [1150.0, 100.0], diametro: 100.0 },
-        Traco { rotulo: "thick azul", preset: thick.clone(), cor: AZ, a: [850.0, 260.0], b: [1150.0, 260.0], diametro: 100.0 },
-        Traco { rotulo: "faca H branco", preset: faca.clone(), cor: BR, a: [80.0, 300.0], b: [560.0, 300.0], diametro: 120.0 },
-        Traco { rotulo: "faca H escuro", preset: faca.clone(), cor: ES, a: [80.0, 480.0], b: [560.0, 480.0], diametro: 120.0 },
-        Traco { rotulo: "faca-tex azul", preset: faca_tex.clone(), cor: AZ, a: [700.0, 560.0], b: [1150.0, 560.0], diametro: 120.0 },
-        Traco { rotulo: "oily escuro", preset: oily.clone(), cor: ES, a: [850.0, 720.0], b: [1150.0, 720.0], diametro: 100.0 },
+        Traco {
+            rotulo: "faca H azul",
+            preset: faca.clone(),
+            cor: AZ,
+            a: [80.0, 110.0],
+            b: [560.0, 110.0],
+            diametro: 120.0,
+        },
+        Traco {
+            rotulo: "faca V azul",
+            preset: faca.clone(),
+            cor: AZ,
+            a: [700.0, 60.0],
+            b: [700.0, 420.0],
+            diametro: 120.0,
+        },
+        Traco {
+            rotulo: "oily azul",
+            preset: oily.clone(),
+            cor: AZ,
+            a: [850.0, 100.0],
+            b: [1150.0, 100.0],
+            diametro: 100.0,
+        },
+        Traco {
+            rotulo: "thick azul",
+            preset: thick.clone(),
+            cor: AZ,
+            a: [850.0, 260.0],
+            b: [1150.0, 260.0],
+            diametro: 100.0,
+        },
+        Traco {
+            rotulo: "faca H branco",
+            preset: faca.clone(),
+            cor: BR,
+            a: [80.0, 300.0],
+            b: [560.0, 300.0],
+            diametro: 120.0,
+        },
+        Traco {
+            rotulo: "faca H escuro",
+            preset: faca.clone(),
+            cor: ES,
+            a: [80.0, 480.0],
+            b: [560.0, 480.0],
+            diametro: 120.0,
+        },
+        Traco {
+            rotulo: "faca-tex azul",
+            preset: faca_tex.clone(),
+            cor: AZ,
+            a: [700.0, 560.0],
+            b: [1150.0, 560.0],
+            diametro: 120.0,
+        },
+        Traco {
+            rotulo: "oily escuro",
+            preset: oily.clone(),
+            cor: ES,
+            a: [850.0, 720.0],
+            b: [1150.0, 720.0],
+            diametro: 100.0,
+        },
     ]
 }
 
@@ -226,7 +332,9 @@ fn pinta_folha_com(t: &mut PainterTool, b: &Biblioteca) {
         t.set_brush_size_px(tr.diametro / 2.0);
         t.set_brush_color_srgb8(tr.cor);
         // `PH2D_OLEO_FACA_H3=1`: as facas com a lâmina H3 (W0b), o fio ATRAVÉS da marcha de cada traço.
-        if tr.rotulo.starts_with("faca") && std::env::var("PH2D_OLEO_FACA_H3").is_ok_and(|v| v == "1") {
+        if tr.rotulo.starts_with("faca")
+            && std::env::var("PH2D_OLEO_FACA_H3").is_ok_and(|v| v == "1")
+        {
             lamina(t);
             t.paint.wetpaint.knobs.set(Knob::Leveling, 0.0);
             let vertical = (tr.b[1] - tr.a[1]).abs() > (tr.b[0] - tr.a[0]).abs();
@@ -237,7 +345,10 @@ fn pinta_folha_com(t: &mut PainterTool, b: &Biblioteca) {
         t.on_canvas_pointer(ponto(tr.a, PointerPhase::Down));
         for k in 1..=n {
             let f = k as f32 / n as f32;
-            let pos = [tr.a[0] + (tr.b[0] - tr.a[0]) * f, tr.a[1] + (tr.b[1] - tr.a[1]) * f];
+            let pos = [
+                tr.a[0] + (tr.b[0] - tr.a[0]) * f,
+                tr.a[1] + (tr.b[1] - tr.a[1]) * f,
+            ];
             t.on_canvas_pointer(ponto(pos, PointerPhase::Move));
             t.on_tick(8.0);
         }
@@ -252,7 +363,10 @@ fn pinta_folha_com(t: &mut PainterTool, b: &Biblioteca) {
                 break;
             }
         }
-        println!("[oleo] {} ({}): água parou após {} ticks", tr.rotulo, tr.preset, ticks);
+        println!(
+            "[oleo] {} ({}): água parou após {} ticks",
+            tr.rotulo, tr.preset, ticks
+        );
     }
 }
 
@@ -270,7 +384,13 @@ fn imprime_alturas(t: &mut PainterTool) {
         g.altura.iter().filter(|&&h| h != 0.0).count()
     );
     let m = |i: usize| f64::from(g.sett[i]) + f64::from(g.susp[i]);
-    let h = |i: usize| if tem_altura { f64::from(g.altura[i]) } else { 0.0 };
+    let h = |i: usize| {
+        if tem_altura {
+            f64::from(g.altura[i])
+        } else {
+            0.0
+        }
+    };
     let emb_cru = |i: usize| -> (f64, f64, f64) {
         let k = f64::from(g.relevo[i]);
         let e_m = ((m(i + 1) - m(i - 1)) * 0.5 + (m(i + st) - m(i - st)) * 1.0) * 0.008 * k;
@@ -286,8 +406,23 @@ fn imprime_alturas(t: &mut PainterTool) {
     };
     println!(
         "{:<14} {:>6} | {:>8} {:>8} {:>8} {:>8} | {:>6} {:>6} {:>6} {:>6} | {:>6} {:>6} {:>6} {:>6} | {:>6} {:>6} | {:>6}",
-        "traço", "células", "m p50", "m p90", "m p99", "m max", "h p50", "h p90", "h p99", "h max",
-        "|e|p50", "|e|p90", "|e|p99", "|e|max", "|em|99", "|eh|99", "clamp%"
+        "traço",
+        "células",
+        "m p50",
+        "m p90",
+        "m p99",
+        "m max",
+        "h p50",
+        "h p90",
+        "h p99",
+        "h max",
+        "|e|p50",
+        "|e|p90",
+        "|e|p99",
+        "|e|max",
+        "|em|99",
+        "|eh|99",
+        "clamp%"
     );
     for tr in &tracos() {
         let rad = tr.diametro / 2.0 + 10.0;
@@ -320,11 +455,22 @@ fn imprime_alturas(t: &mut PainterTool) {
         let n = vm.len();
         println!(
             "{:<14} {:>6} | {:>8.1} {:>8.1} {:>8.1} {:>8.1} | {:>6.3} {:>6.3} {:>6.3} {:>6.3} | {:>6.2} {:>6.2} {:>6.2} {:>6.2} | {:>6.2} {:>6.2} | {:>6.2}  relevo p50 {:.3}",
-            tr.rotulo, n,
-            pct(&mut vm, 0.5), pct(&mut vm, 0.9), pct(&mut vm, 0.99), pct(&mut vm, 1.0),
-            pct(&mut vh, 0.5), pct(&mut vh, 0.9), pct(&mut vh, 0.99), pct(&mut vh, 1.0),
-            pct(&mut ve, 0.5), pct(&mut ve, 0.9), pct(&mut ve, 0.99), pct(&mut ve, 1.0),
-            pct(&mut vem, 0.99), pct(&mut veh, 0.99),
+            tr.rotulo,
+            n,
+            pct(&mut vm, 0.5),
+            pct(&mut vm, 0.9),
+            pct(&mut vm, 0.99),
+            pct(&mut vm, 1.0),
+            pct(&mut vh, 0.5),
+            pct(&mut vh, 0.9),
+            pct(&mut vh, 0.99),
+            pct(&mut vh, 1.0),
+            pct(&mut ve, 0.5),
+            pct(&mut ve, 0.9),
+            pct(&mut ve, 0.99),
+            pct(&mut ve, 1.0),
+            pct(&mut vem, 0.99),
+            pct(&mut veh, 0.99),
             100.0 * morde as f64 / n.max(1) as f64,
             pct(&mut relevos, 0.5),
         );
@@ -522,7 +668,16 @@ fn medida_oleo_real_faca_candidatas() {
     let b = biblioteca();
     println!(
         "{:<20} {:>5} {:>7} {:>7} {:>7} {:>8} {:>8} {:>7} {:>6} {:>6}  perfil topo (m/P, passos de 1 célula da borda 10% p/ dentro)",
-        "candidata", "razão", "larg", "rampT", "rampB", "P p50", "ruído", "ruído%", "orlaT", "orlaB"
+        "candidata",
+        "razão",
+        "larg",
+        "rampT",
+        "rampB",
+        "P p50",
+        "ruído",
+        "ruído%",
+        "orlaT",
+        "orlaB"
     );
     for (nome, preset, ajuste) in candidatas() {
         let mut t = PainterTool::default();
@@ -564,7 +719,9 @@ fn medida_oleo_real_faca_candidatas() {
         let (gw, gh) = s.grid;
         let g = s.engine.active_grid();
         let st = g.s;
-        let m = |cx: usize, cy: usize| f64::from(g.sett[cx + cy * st]) + f64::from(g.susp[cx + cy * st]);
+        let m = |cx: usize, cy: usize| {
+            f64::from(g.sett[cx + cy * st]) + f64::from(g.susp[cx + cy * st])
+        };
         // Colunas do meio do traço (px 200..450), em células.
         let c0 = (200.0 / r) as usize + 1;
         let c1 = ((450.0 / r) as usize + 1).min(gw);
@@ -579,7 +736,10 @@ fn medida_oleo_real_faca_candidatas() {
         }
         // O miolo 60 % da faixa (pela largura mediana), centrado no eixo do traço.
         let meia = mediana(larg.clone()) / r * 0.5;
-        let (lo, hi) = ((yc as f64 - 0.6 * meia).ceil() as usize, (yc as f64 + 0.6 * meia).floor() as usize);
+        let (lo, hi) = (
+            (yc as f64 - 0.6 * meia).ceil() as usize,
+            (yc as f64 + 0.6 * meia).floor() as usize,
+        );
         let mut ruido = vec![];
         for cx in c0..c1 {
             for cy in lo.max(2)..=hi.min(gh - 1) {
@@ -601,7 +761,12 @@ fn medida_oleo_real_faca_candidatas() {
             (v.iter().map(|x| (x - mu) * (x - mu)).sum::<f64>() / n).sqrt()
         };
         let por_col: Vec<f64> = (c0..c1)
-            .map(|cx| (lo.max(2)..=hi.min(gh - 1)).map(|cy| m(cx, cy)).sum::<f64>() / (hi + 1 - lo) as f64)
+            .map(|cx| {
+                (lo.max(2)..=hi.min(gh - 1))
+                    .map(|cy| m(cx, cy))
+                    .sum::<f64>()
+                    / (hi + 1 - lo) as f64
+            })
             .collect();
         let por_lin: Vec<f64> = (lo.max(2)..=hi.min(gh - 1))
             .map(|cy| (c0..c1).map(|cx| m(cx, cy)).sum::<f64>() / (c1 - c0) as f64)
@@ -619,7 +784,9 @@ fn medida_oleo_real_faca_candidatas() {
             for (dir, rampa, orla) in [(-1i64, &mut rt, &mut ot), (1i64, &mut rb, &mut ob)] {
                 // A borda: andar do eixo para fora até cair abaixo de 10 %; o 90 % procura-se a partir daí PARA DENTRO
                 // (a última vez que estava acima de 90 % antes da borda), para a orla não confundir.
-                let Some(e10) = cruza(col, i0, dir, 0.1 * plat) else { continue };
+                let Some(e10) = cruza(col, i0, dir, 0.1 * plat) else {
+                    continue;
+                };
                 let k10 = e10.round() as i64;
                 let mut e90 = None;
                 let mut i = k10;
@@ -627,7 +794,11 @@ fn medida_oleo_real_faca_candidatas() {
                     let v = col[i as usize];
                     if v >= 0.9 * plat {
                         let prox = col[(i + dir) as usize];
-                        e90 = Some(i as f64 + dir as f64 * ((v - 0.9 * plat) / (v - prox).max(1e-9)).clamp(0.0, 1.0));
+                        e90 = Some(
+                            i as f64
+                                + dir as f64
+                                    * ((v - 0.9 * plat) / (v - prox).max(1e-9)).clamp(0.0, 1.0),
+                        );
                         break;
                     }
                     i -= dir;
@@ -640,7 +811,11 @@ fn medida_oleo_real_faca_candidatas() {
                     .fold(0.0f64, f64::max);
                 orla.push(mx / plat);
                 if dir == -1 {
-                    perfil_topo.push((0..12).map(|d| col[(k10 + d).clamp(0, col.len() as i64 - 1) as usize] / plat).collect());
+                    perfil_topo.push(
+                        (0..12)
+                            .map(|d| col[(k10 + d).clamp(0, col.len() as i64 - 1) as usize] / plat)
+                            .collect(),
+                    );
                 }
             }
         }
@@ -688,13 +863,19 @@ fn um_traco(t: &mut PainterTool, y: f32) -> u32 {
         let x = AX0 + (AX1 - AX0) * k as f32 / n as f32;
         t.on_canvas_pointer(ponto([x, y], PointerPhase::Move));
         t.on_tick(8.0);
-        if std::env::var("PH2D_OLEO_ACUMULO_TRACO").is_ok() && k % 6 == 0 && (300.0..=420.0).contains(&x) {
+        if std::env::var("PH2D_OLEO_ACUMULO_TRACO").is_ok()
+            && k % 6 == 0
+            && (300.0..=420.0).contains(&x)
+        {
             let s = t.paint.wetpaint.session.as_mut().expect("sessão");
             s.bring_home();
             let r = f32::from(s.ratio);
             let g = s.engine.active_grid();
             let i = ((350.0 / r) as usize + 1) + ((y / r) as usize + 1) * g.s;
-            println!("[traço] x={x:>5.0} célula(350,{y}) sett {:>7.0} susp {:>7.0} film {:>6.2}", g.sett[i], g.susp[i], g.film[i]);
+            println!(
+                "[traço] x={x:>5.0} célula(350,{y}) sett {:>7.0} susp {:>7.0} film {:>6.2}",
+                g.sett[i], g.susp[i], g.film[i]
+            );
         }
     }
     t.on_canvas_pointer(ponto([AX1, y], PointerPhase::Up));
@@ -717,13 +898,21 @@ fn imprime_acumulo(t: &mut PainterTool, rot: &str, passes: usize, yc: f32) {
     s.bring_home();
     let r = f32::from(s.ratio);
     let (gw, gh) = s.grid;
-    let grades: Vec<(&ph2d_wet_paint::grid::Grid, bool)> =
-        s.engine.layers.iter().map(|l| (&l.grid, l.visible)).collect();
+    let grades: Vec<(&ph2d_wet_paint::grid::Grid, bool)> = s
+        .engine
+        .layers
+        .iter()
+        .map(|l| (&l.grid, l.visible))
+        .collect();
     let nl = grades.len();
-    let campo = ph2d_wet_paint::oleo_real::CampoAltura::de(&grades, &o, usize::from(s.ratio), 1, 1, gw, gh);
+    let campo =
+        ph2d_wet_paint::oleo_real::CampoAltura::de(&grades, &o, usize::from(s.ratio), 1, 1, gw, gh);
     let st = grades[0].0.s;
     let (c0, c1) = ((200.0 / r) as usize + 1, ((500.0 / r) as usize + 1).min(gw));
-    let (l0, l1) = (((yc - 15.0) / r) as usize + 1, (((yc + 15.0) / r) as usize + 1).min(gh));
+    let (l0, l1) = (
+        ((yc - 15.0) / r) as usize + 1,
+        (((yc + 15.0) / r) as usize + 1).min(gh),
+    );
     let mut por_camada: Vec<Vec<f64>> = vec![vec![]; nl];
     let (mut tot, mut alt, mut susp, mut horiz) = (vec![], vec![], vec![], vec![]);
     let (mut com_tinta, mut sombra) = (0usize, 0usize);
@@ -761,11 +950,18 @@ fn imprime_acumulo(t: &mut PainterTool, rot: &str, passes: usize, yc: f32) {
     }
     // A sombra própria em TODA a área do traço (não só a faixa central): onde cai?
     let (mut tinta_all, mut sombra_all, mut sombra_borda) = (0usize, 0usize, 0usize);
-    let (b0, b1) = (((yc - 80.0).max(0.0) / r) as usize + 1, (((yc + 130.0) / r) as usize + 1).min(gh));
+    let (b0, b1) = (
+        ((yc - 80.0).max(0.0) / r) as usize + 1,
+        (((yc + 130.0) / r) as usize + 1).min(gh),
+    );
     for cy in b0..=b1 {
         for cx in c0..=c1 {
             let i = cx + cy * st;
-            let m: f64 = grades.iter().filter(|g| g.1).map(|(g, _)| f64::from(g.sett[i]) + f64::from(g.susp[i])).sum();
+            let m: f64 = grades
+                .iter()
+                .filter(|g| g.1)
+                .map(|(g, _)| f64::from(g.sett[i]) + f64::from(g.susp[i]))
+                .sum();
             if m > 0.0 {
                 tinta_all += 1;
                 if ph2d_wet_paint::oleo_real::termos(&o, &campo, cx, cy).luz < 0.9 {
@@ -773,7 +969,12 @@ fn imprime_acumulo(t: &mut PainterTool, rot: &str, passes: usize, yc: f32) {
                     // borda = algum vizinho a ≤ 3 células sem tinta
                     let perto_papel = (-3i64..=3).any(|d| {
                         let j = (cx as i64 + (cy as i64 + d) * st as i64) as usize;
-                        grades.iter().filter(|g| g.1).map(|(g, _)| f64::from(g.sett[j]) + f64::from(g.susp[j])).sum::<f64>() <= 0.0
+                        grades
+                            .iter()
+                            .filter(|g| g.1)
+                            .map(|(g, _)| f64::from(g.sett[j]) + f64::from(g.susp[j]))
+                            .sum::<f64>()
+                            <= 0.0
                     });
                     if perto_papel {
                         sombra_borda += 1;
@@ -788,10 +989,15 @@ fn imprime_acumulo(t: &mut PainterTool, rot: &str, passes: usize, yc: f32) {
         .collect();
     println!(
         "{rot:<26} {passes:>2} r{r} | {:>7.0} {:>7.0} {:>7.0} | susp p50 {:>6.0} | {:>6.3} {:>6.3} {:>6.3} | horiz p50 {:>6.3} p99 {:>6.3} | sombra {:>5.1}% ({com_tinta}) | área {:>5.1}% borda {:>5.1}% de {tinta_all} | camadas {nl} [{}]",
-        pct(&mut tot, 0.5), pct(&mut tot, 0.9), pct(&mut tot, 1.0),
+        pct(&mut tot, 0.5),
+        pct(&mut tot, 0.9),
+        pct(&mut tot, 1.0),
         pct(&mut susp, 0.5),
-        pct(&mut alt, 0.5), pct(&mut alt, 0.9), pct(&mut alt, 1.0),
-        pct(&mut horiz, 0.5), pct(&mut horiz, 0.99),
+        pct(&mut alt, 0.5),
+        pct(&mut alt, 0.9),
+        pct(&mut alt, 1.0),
+        pct(&mut horiz, 0.5),
+        pct(&mut horiz, 0.99),
         100.0 * sombra as f64 / com_tinta.max(1) as f64,
         100.0 * sombra_all as f64 / tinta_all.max(1) as f64,
         100.0 * sombra_borda as f64 / sombra_all.max(1) as f64,
@@ -807,8 +1013,16 @@ fn medida_oleo_real_acumulo() {
         "{:<26} {:>2} | {:>7} {:>7} {:>7} | {:>13} | {:>6} {:>6} {:>6} | sombra própria (luz<0,9) na faixa · área · borda",
         "preset/variante", "n", "m p50", "m p90", "m max", "", "h p50", "h p90", "h max"
     );
-    for preset in ["WetPainter/Oil/Dabber/Dabber.ph2d-brush.png", "WetPainter/Oil/Bristle/Oil Bristle.ph2d-brush.png"] {
-        let p = &b.entradas.iter().find(|e| e.relativo == preset).expect("preset").preset;
+    for preset in [
+        "WetPainter/Oil/Dabber/Dabber.ph2d-brush.png",
+        "WetPainter/Oil/Bristle/Oil Bristle.ph2d-brush.png",
+    ] {
+        let p = &b
+            .entradas
+            .iter()
+            .find(|e| e.relativo == preset)
+            .expect("preset")
+            .preset;
         for dy in [0.0f32, 15.0] {
             let mut t = PainterTool::default();
             t.set_source(vec![255u8; (AW * AH * 4) as usize], AW, AH);
@@ -818,7 +1032,11 @@ fn medida_oleo_real_acumulo() {
             assert!(erros.is_empty(), "{erros:?}");
             t.set_brush_size_px(50.0);
             t.set_brush_color_srgb8(AZ);
-            let nome = preset.rsplit('/').next().unwrap().trim_end_matches(".ph2d-brush.png");
+            let nome = preset
+                .rsplit('/')
+                .next()
+                .unwrap()
+                .trim_end_matches(".ph2d-brush.png");
             let rot = format!("{nome} dy{dy}");
             for k in 0..8usize {
                 let ticks = um_traco(&mut t, AY + dy * k as f32);

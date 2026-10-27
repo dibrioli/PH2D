@@ -96,7 +96,12 @@ impl PainterTool {
         let (cx0, cy0, cx1, cy1) = match &oleo {
             Some(o) => {
                 let a = ph2d_wet_paint::oleo_real::alcance(o);
-                (cx0.saturating_sub(a).max(1), cy0.saturating_sub(a).max(1), (cx1 + a).min(gw), (cy1 + a).min(gh))
+                (
+                    cx0.saturating_sub(a).max(1),
+                    cy0.saturating_sub(a).max(1),
+                    (cx1 + a).min(gw),
+                    (cy1 + a).min(gh),
+                )
             }
             None => (cx0, cy0, cx1, cy1),
         };
@@ -160,7 +165,15 @@ impl PainterTool {
         let g_stride = gw * 4;
         let campo = oleo.map(|o| {
             let grades: Vec<_> = layers.iter().map(|l| (l.grid, l.visible)).collect();
-            let c = ph2d_wet_paint::oleo_real::CampoAltura::de(&grades, &o, usize::from(ratio), cx0, cy0, cx1, cy1);
+            let c = ph2d_wet_paint::oleo_real::CampoAltura::de(
+                &grades,
+                &o,
+                usize::from(ratio),
+                cx0,
+                cy0,
+                cx1,
+                cy1,
+            );
             (o, c)
         });
         sess.pigment[(cy0 - 1) * g_stride..cy1 * g_stride]
@@ -178,7 +191,15 @@ impl PainterTool {
                     cx1,
                     row,
                 ),
-                None => render_pigment_row_visual(Some(&params), &layers, visual, cy0 + k, cx0, cx1, row),
+                None => render_pigment_row_visual(
+                    Some(&params),
+                    &layers,
+                    visual,
+                    cy0 + k,
+                    cx0,
+                    cx1,
+                    row,
+                ),
             });
         drop(layers);
         // A sombra do Óleo Real no PAPEL: onde a célula não tem pigmento, a luz que a tinta à volta lhe tira.
@@ -188,16 +209,20 @@ impl PainterTool {
                 sess.sombra = vec![0u8; gw * gh];
             }
             let pig = &sess.pigment;
-            sess.sombra[(cy0 - 1) * gw..cy1 * gw].par_chunks_mut(gw).enumerate().for_each(|(k, row)| {
-                let cy = cy0 + k;
-                for cx in cx0..=cx1 {
-                    row[cx - 1] = if pig[((cy - 1) * gw + cx - 1) * 4 + 3] == 0 {
-                        (ph2d_wet_paint::oleo_real::sombra_no_papel(o, c, cx, cy) * 255.0).round() as u8
-                    } else {
-                        0
-                    };
-                }
-            });
+            sess.sombra[(cy0 - 1) * gw..cy1 * gw]
+                .par_chunks_mut(gw)
+                .enumerate()
+                .for_each(|(k, row)| {
+                    let cy = cy0 + k;
+                    for cx in cx0..=cx1 {
+                        row[cx - 1] = if pig[((cy - 1) * gw + cx - 1) * 4 + 3] == 0 {
+                            (ph2d_wet_paint::oleo_real::sombra_no_papel(o, c, cx, cy) * 255.0)
+                                .round() as u8
+                        } else {
+                            0
+                        };
+                    }
+                });
         } else if !sess.sombra.is_empty() {
             sess.sombra = Vec::new();
         }

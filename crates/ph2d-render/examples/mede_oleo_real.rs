@@ -103,7 +103,7 @@ enum Variante {
         tela: usize,
     },
     Impasto {
-        pass: ImpastoLightPass,
+        pass: Box<ImpastoLightPass>,
         tela: usize,
     },
 }
@@ -142,10 +142,20 @@ fn campo(w: u32, h: u32) -> Vec<f32> {
     v
 }
 
-fn tex(gpu: &GpuContext, w: u32, h: u32, f: wgpu::TextureFormat, u: wgpu::TextureUsages) -> wgpu::Texture {
+fn tex(
+    gpu: &GpuContext,
+    w: u32,
+    h: u32,
+    f: wgpu::TextureFormat,
+    u: wgpu::TextureUsages,
+) -> wgpu::Texture {
     gpu.device.create_texture(&wgpu::TextureDescriptor {
         label: Some("mede_oleo_real"),
-        size: wgpu::Extent3d { width: w, height: h, depth_or_array_layers: 1 },
+        size: wgpu::Extent3d {
+            width: w,
+            height: h,
+            depth_or_array_layers: 1,
+        },
         mip_level_count: 1,
         sample_count: 1,
         dimension: wgpu::TextureDimension::D2,
@@ -164,13 +174,24 @@ fn sobe(gpu: &GpuContext, t: &wgpu::Texture, bytes: &[u8], linha: u32, w: u32, h
             aspect: wgpu::TextureAspect::All,
         },
         bytes,
-        wgpu::TexelCopyBufferLayout { offset: 0, bytes_per_row: Some(linha), rows_per_image: Some(h) },
-        wgpu::Extent3d { width: w, height: h, depth_or_array_layers: 1 },
+        wgpu::TexelCopyBufferLayout {
+            offset: 0,
+            bytes_per_row: Some(linha),
+            rows_per_image: Some(h),
+        },
+        wgpu::Extent3d {
+            width: w,
+            height: h,
+            depth_or_array_layers: 1,
+        },
     );
 }
 
 fn loadavg() -> String {
-    std::fs::read_to_string("/proc/loadavg").unwrap_or_default().trim().to_string()
+    std::fs::read_to_string("/proc/loadavg")
+        .unwrap_or_default()
+        .trim()
+        .to_string()
 }
 
 fn main() {
@@ -181,16 +202,22 @@ fn main() {
         "placa: {} · {:?} · {:?} · driver {} {}",
         info.name, info.backend, info.device_type, info.driver, info.driver_info
     );
-    if !gpu.device.features().contains(wgpu::Features::TIMESTAMP_QUERY) {
+    if !gpu
+        .device
+        .features()
+        .contains(wgpu::Features::TIMESTAMP_QUERY)
+    {
         eprintln!("⛔ o dispositivo não tem TIMESTAMP_QUERY — sem relógio de placa, nada medido");
         std::process::exit(3);
     }
     let periodo = f64::from(gpu.queue.get_timestamp_period());
 
-    let modulo = gpu.device.create_shader_module(wgpu::ShaderModuleDescriptor {
-        label: Some("mede_oleo_real"),
-        source: wgpu::ShaderSource::Wgsl(WGSL.into()),
-    });
+    let modulo = gpu
+        .device
+        .create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("mede_oleo_real"),
+            source: wgpu::ShaderSource::Wgsl(WGSL.into()),
+        });
     let ent = |binding: u32, ty: wgpu::BindingType| wgpu::BindGroupLayoutEntry {
         binding,
         visibility: wgpu::ShaderStages::COMPUTE,
@@ -202,47 +229,56 @@ fn main() {
         view_dimension: wgpu::TextureViewDimension::D2,
         multisampled: false,
     };
-    let bgl = gpu.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-        label: Some("mede_oleo_real"),
-        entries: &[
-            ent(0, lida),
-            ent(1, lida),
-            ent(
-                2,
-                wgpu::BindingType::StorageTexture {
-                    access: wgpu::StorageTextureAccess::WriteOnly,
-                    format: wgpu::TextureFormat::Rgba8Unorm,
-                    view_dimension: wgpu::TextureViewDimension::D2,
-                },
-            ),
-            ent(
-                3,
-                wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Uniform,
-                    has_dynamic_offset: false,
-                    min_binding_size: None,
-                },
-            ),
-        ],
-    });
-    let layout = gpu.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-        label: Some("mede_oleo_real"),
-        bind_group_layouts: &[Some(&bgl)],
-        immediate_size: 0,
-    });
-    let pipeline = |n: u32, k: u32, modo: u32| {
-        let c = [("N", f64::from(n)), ("K", f64::from(k)), ("MODO", f64::from(modo))];
-        gpu.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+    let bgl = gpu
+        .device
+        .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("mede_oleo_real"),
-            layout: Some(&layout),
-            module: &modulo,
-            entry_point: Some("cs_main"),
-            compilation_options: wgpu::PipelineCompilationOptions {
-                constants: &c,
-                zero_initialize_workgroup_memory: true,
-            },
-            cache: None,
-        })
+            entries: &[
+                ent(0, lida),
+                ent(1, lida),
+                ent(
+                    2,
+                    wgpu::BindingType::StorageTexture {
+                        access: wgpu::StorageTextureAccess::WriteOnly,
+                        format: wgpu::TextureFormat::Rgba8Unorm,
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                    },
+                ),
+                ent(
+                    3,
+                    wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                ),
+            ],
+        });
+    let layout = gpu
+        .device
+        .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("mede_oleo_real"),
+            bind_group_layouts: &[Some(&bgl)],
+            immediate_size: 0,
+        });
+    let pipeline = |n: u32, k: u32, modo: u32| {
+        let c = [
+            ("N", f64::from(n)),
+            ("K", f64::from(k)),
+            ("MODO", f64::from(modo)),
+        ];
+        gpu.device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("mede_oleo_real"),
+                layout: Some(&layout),
+                module: &modulo,
+                entry_point: Some("cs_main"),
+                compilation_options: wgpu::PipelineCompilationOptions {
+                    constants: &c,
+                    zero_initialize_workgroup_memory: true,
+                },
+                cache: None,
+            })
     };
 
     // Luz: azimute 135°, altitude 42° (a do M6), ganho 1; c do cone 4.
@@ -259,11 +295,29 @@ fn main() {
             })
             .collect();
         use wgpu::TextureUsages as TU;
-        let ta = tex(&gpu, w, h, wgpu::TextureFormat::R32Float, TU::TEXTURE_BINDING | TU::COPY_DST);
+        let ta = tex(
+            &gpu,
+            w,
+            h,
+            wgpu::TextureFormat::R32Float,
+            TU::TEXTURE_BINDING | TU::COPY_DST,
+        );
         sobe(&gpu, &ta, bytemuck::cast_slice(&altura), w * 4, w, h);
-        let tb = tex(&gpu, w, h, wgpu::TextureFormat::Rgba8Unorm, TU::TEXTURE_BINDING | TU::COPY_DST);
+        let tb = tex(
+            &gpu,
+            w,
+            h,
+            wgpu::TextureFormat::Rgba8Unorm,
+            TU::TEXTURE_BINDING | TU::COPY_DST,
+        );
         sobe(&gpu, &tb, &albedo, w * 4, w, h);
-        let ts = tex(&gpu, w, h, wgpu::TextureFormat::Rgba8Unorm, TU::STORAGE_BINDING);
+        let ts = tex(
+            &gpu,
+            w,
+            h,
+            wgpu::TextureFormat::Rgba8Unorm,
+            TU::STORAGE_BINDING,
+        );
         let mut un = uni;
         un[4] = w as f32;
         un[5] = h as f32;
@@ -280,27 +334,58 @@ fn main() {
             label: Some("mede_oleo_real"),
             layout: &bgl,
             entries: &[
-                wgpu::BindGroupEntry { binding: 0, resource: wgpu::BindingResource::TextureView(&va) },
-                wgpu::BindGroupEntry { binding: 1, resource: wgpu::BindingResource::TextureView(&vb) },
-                wgpu::BindGroupEntry { binding: 2, resource: wgpu::BindingResource::TextureView(&vs) },
-                wgpu::BindGroupEntry { binding: 3, resource: ub.as_entire_binding() },
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(&va),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::TextureView(&vb),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: wgpu::BindingResource::TextureView(&vs),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: ub.as_entire_binding(),
+                },
             ],
         });
-        telas.push(Tela { w, h, altura, albedo, bg, albedo_tex: tb });
+        telas.push(Tela {
+            w,
+            h,
+            altura,
+            albedo,
+            bg,
+            albedo_tex: tb,
+        });
     }
 
     let mut variantes: Vec<(String, Variante)> = Vec::new();
     for (ti, &(w, h)) in RESOLUCOES.iter().enumerate() {
-        variantes.push((format!("{w}×{h} · só cópia"), Variante::Oleo { pipe: pipeline(1, 1, 0), tela: ti }));
-        variantes.push((format!("{w}×{h} · ImpastoLightPass (4 lâmpadas)"), Variante::Impasto {
-            pass: ImpastoLightPass::new(&gpu),
-            tela: ti,
-        }));
+        variantes.push((
+            format!("{w}×{h} · só cópia"),
+            Variante::Oleo {
+                pipe: pipeline(1, 1, 0),
+                tela: ti,
+            },
+        ));
+        variantes.push((
+            format!("{w}×{h} · ImpastoLightPass (4 lâmpadas)"),
+            Variante::Impasto {
+                pass: Box::new(ImpastoLightPass::new(&gpu)),
+                tela: ti,
+            },
+        ));
         for &k in &KS {
             for &n in &NS {
                 variantes.push((
                     format!("{w}×{h} · K={k} · N={n}"),
-                    Variante::Oleo { pipe: pipeline(n, k, 1), tela: ti },
+                    Variante::Oleo {
+                        pipe: pipeline(n, k, 1),
+                        tela: ti,
+                    },
                 ));
             }
         }
@@ -312,14 +397,22 @@ fn main() {
         .map(|i| {
             let a = i as f32 * 1.57 + 0.6;
             let d = [a.cos() * 0.6, a.sin() * 0.6, 0.53];
-            ImpastoLamp { dir: d, half: [d[0] * 0.5, d[1] * 0.5, 0.86], tint: [0.3; 3] }
+            ImpastoLamp {
+                dir: d,
+                half: [d[0] * 0.5, d[1] * 0.5, 0.86],
+                tint: [0.3; 3],
+            }
         })
         .collect();
     let planos: Vec<(Vec<u8>, Vec<u8>, Vec<u8>)> = telas
         .iter()
         .map(|t| {
             let n = (t.w * t.h) as usize;
-            (vec![255u8; n], [200u8, 128, 0, 0].repeat(n), [0u8; 4].repeat(n))
+            (
+                vec![255u8; n],
+                [200u8, 128, 0, 0].repeat(n),
+                [0u8; 4].repeat(n),
+            )
         })
         .collect();
     let entrada = |ti: usize| {
@@ -384,12 +477,16 @@ fn main() {
                 enc.resolve_query_set(&qs, 0..2 * BLOCO, &resolve, 0);
                 enc.copy_buffer_to_buffer(&resolve, 0, &leitura, 0, u64::from(2 * BLOCO) * 8);
                 gpu.queue.submit([enc.finish()]);
-                leitura.slice(..).map_async(wgpu::MapMode::Read, |r| r.expect("map"));
+                leitura
+                    .slice(..)
+                    .map_async(wgpu::MapMode::Read, |r| r.expect("map"));
                 let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
                 let soma: u64 = {
                     let d = leitura.slice(..).get_mapped_range();
                     let ts: &[u64] = bytemuck::cast_slice(&d);
-                    (0..BLOCO as usize).map(|i| ts[2 * i + 1].saturating_sub(ts[2 * i])).sum()
+                    (0..BLOCO as usize)
+                        .map(|i| ts[2 * i + 1].saturating_sub(ts[2 * i]))
+                        .sum()
                 };
                 leitura.unmap();
                 soma as f64 * periodo / 1e6 / f64::from(BLOCO)
@@ -397,7 +494,8 @@ fn main() {
             Variante::Impasto { pass, tela } => {
                 let ti = *tela;
                 for _ in 0..BLOCO {
-                    pass.run(&gpu, &telas[ti].albedo_tex, &entrada(ti)).expect("impasto run");
+                    pass.run(&gpu, &telas[ti].albedo_tex, &entrada(ti))
+                        .expect("impasto run");
                     ph2d_gpu::pass_profiler::end_frame(&gpu.device, &gpu.queue);
                 }
                 let t = ph2d_gpu::pass_profiler::drain(&gpu.device).expect("profiler");
@@ -426,7 +524,9 @@ fn main() {
     }
     ph2d_gpu::pass_profiler::shutdown();
 
-    println!("\n## Custo de placa por despacho (ms): MÍNIMO de {RODADAS} rodadas (mediana), blocos de {BLOCO}");
+    println!(
+        "\n## Custo de placa por despacho (ms): MÍNIMO de {RODADAS} rodadas (mediana), blocos de {BLOCO}"
+    );
     println!("placa: {} ({:?})", info.name, info.backend);
     println!("| variante | min ms | mediana ms |\n|---|---|---|");
     for (i, (nome, _)) in variantes.iter().enumerate() {

@@ -128,6 +128,16 @@ Comparação **por passo**, tolerância declarada no gate (o FreeCAD é 3D/float
 | `the_glue_card_shows_on_both_objects` | costura do cartão, pelo clique real | — |
 | **kill** `glue_frame_under_half_a_millisecond_per_thousand` | 1 000 objectos colados (cadeia + laços), `--profile smoke`, o MÍNIMO de blocos intercalados | — |
 
+### 4.1 Mutações (27/10)
+
+`ph2d-constraints-cola` (`tests/cola.rs`): produto trocado, seguidor rodado com o condutor e «aceitar o 1.º
+condutor» sangram. ⚠ Duas são **equivalentes** e ficam escritas: (a) baixar a prioridade do `Fixed` do condutor não
+muda nada num sistema consistente (nada compete com ele) — a variante «sem `Fixed` no condutor» sangra o quadrilátero;
+(b) o `is_satisfied()` em `ez.rs` é 2.ª barreira: o laço impossível já sai por `Err` do solver — a variante «`Err`
+vira a pose do palpite» sangra. Mundo (`ph2d-constraints-ecs/tests/it/cola.rs`): «escrever só o arrastado», «palpite
+= quadro anterior» (scrub 0,729 × tocar 0,948 rad no quadro 5), «não publicar `AlvosDasFamilias`» e «o cadeado não é
+chão» — 4/4 sangram. Desenho do mundo: [ADR-0193](../architecture/decisions/0193-a-cola-e-uma-relacao-simetrica-resolvida-por-grupo-antes-da-pilha.md).
+
 O kill-criterion da **pilha** (W1, 0,5 ms / 1 000 itens) **nunca foi medido** (o explorador não achou bancada):
 mede-se na mesma bancada, na mesma rodada (§0.10).
 

@@ -184,9 +184,9 @@ mesma luz; brilho = só especular, p99 · área > 0,3):
   2 137) — ruído; material CHEIO (todos os lóbulos a 0,5) Clássico 1 929 · Estúdio 2 673 (+25 %).
 - **Não medido contra o Cycles** (são do Rebelle, não do Principled): Reflectivity, Map scale, Map strength, o
   Reflect map no Clássico — gates de lei em `oleo_material_tests.rs`.
-- **Lâmina (E4, `knifeRidge`)**: o contraste do rebordo 0,72/1,19 × 0,40/1,39 do Rebelle NÃO foi medido nesta
-  etapa (a sonda `medida_e4_lamina_folha` lê o Óleo Real de fábrica e não aceita variantes; fica para quem a
-  abrir: candidatos `raio_detalhe` 1 → 0 e `fios *= cobre` na borda).
+- **Lâmina (E4, `knifeRidge`)**: medido na E4-presets ([`E4_lamina.md` §Rebordo](../E4_lamina.md)) — `raio_detalhe`
+  e `cobre` mexem pouco; a causa é a crista FORA da altura da sombra (`Afinacao::fios_na_sombra`, fábrica 0) e o
+  chão do ambiente dentro da tinta (Força 0,15 → 0,44 × 0,40). Recusada de fábrica: muda o Oil Bristle.
 
 ## ⛔ Recusas MEDIDAS
 
@@ -197,6 +197,7 @@ mesma luz; brilho = só especular, p99 · área > 0,3):
 | `(0,5+0,5·nz)` junto com a visibilidade | inclinação contada duas vezes: difuso da tinta 0,60 × 0,83 |
 | Reflexo do ambiente × visibilidade média | a fenda reflectia o estúdio: luminância 74 × 47 → horizonte na direcção reflectida (49 × 47) |
 | `V × multi_ricochete(V)` | Jimenez devolve a visibilidade CORRIGIDA, não um ganho (V² escurecia tudo) |
+| Os fios na altura da SOMBRA de fábrica (`fios_na_sombra` 1) | o rebordo da faca 0,89 → 0,74, mas muda os fios do Oil Bristle (neutro bit a bit para quem não tem `knifeRidge`) — fica a alavanca a 0 (E4) |
 | Horizonte de 64 células na CPU | só ajuda o papel ao pé de paredes altas (corr. 0,48 → 0,64); fica para a pirâmide de máximos da placa |
 | Pré-filtrado em resolução maior (64×32 → 256×128) para o brilho do Estúdio | o lobo de 0,28 perto do zénite: p99 0,44 × 0,43 — não era a resolução (E3-B) |
 | Reflexo do ambiente sem a oclusão (`livre = 1`) | p99 0,28 → 0,39 mas p50 0,000 → 0,031 (Cycles 0,004): a oclusão está certa (E3-B) |

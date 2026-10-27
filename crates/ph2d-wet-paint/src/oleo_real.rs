@@ -100,6 +100,11 @@ pub struct Afinacao {
     /// Estúdio em p99 0,26 × 0,48 do Cycles — a `0`: 0,53 × 0,48, área > 0,3 2,12 % × 2,13 %
     /// (`oraculo/README.md` §E3). `1` = o de W1c.
     pub antisserrilhado_ambiente: f64,
+    /// Fracção da altura dos FIOS (`Grid::altura`) que entra na altura da SOMBRA (`0` = só a massa, a de
+    /// fábrica). A alavanca medida do rebordo da faca (`49_realshader/E4_lamina.md` §Rebordo): a `1` a crista
+    /// projecta a banda escura por dentro da borda, mas também a dos fios do Oil Bristle — fica a `0` até a
+    /// crista da lâmina ter campo próprio.
+    pub fios_na_sombra: f64,
 }
 
 impl Default for Afinacao {
@@ -119,6 +124,7 @@ impl Default for Afinacao {
             brilho_max: 1.6,
             antisserrilhado: 1.0,
             antisserrilhado_ambiente: 0.0,
+            fios_na_sombra: 0.0,
         }
     }
 }
@@ -231,6 +237,7 @@ impl CampoAltura {
         let suave = desfoca(&desfoca(&massa, w, h, af.raio_suave), w, h, af.raio_suave);
         let k_fios = af.fios * o.profundidade;
         let v = suave.iter().map(|&s| (s * escala) as f32).collect();
+        let fios_sombra = (af.fios_na_sombra != 0.0).then(|| fios.clone());
         let (massa_d, fios_d) = match af.raio_detalhe {
             0 => (massa.clone(), fios),
             r => (desfoca(&massa, w, h, r), desfoca(&fios, w, h, r)),
@@ -238,7 +245,7 @@ impl CampoAltura {
         let detalhe = (0..w * h)
             .map(|k| (af.grao * (massa_d[k] - suave[k]) * escala + fios_d[k] * k_fios) as f32)
             .collect();
-        let sombra = if af.raio_sombra == 0 {
+        let mut sombra: Vec<f32> = if af.raio_sombra == 0 {
             massa.iter().map(|&m| (m * escala) as f32).collect()
         } else {
             let r = af.raio_sombra;
@@ -247,6 +254,12 @@ impl CampoAltura {
                 .map(|&s| (s * escala) as f32)
                 .collect()
         };
+        if let Some(f) = fios_sombra {
+            let k = k_fios * af.fios_na_sombra;
+            for (s, &q) in sombra.iter_mut().zip(&f) {
+                *s += (q * k) as f32;
+            }
+        }
         Self {
             x0: ax0,
             y0: ay0,

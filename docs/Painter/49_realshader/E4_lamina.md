@@ -48,10 +48,42 @@ A crista satura a ~8 px: acima disso a banda (≈ 3 células) e o pré-filtro do
 lado do Knife Smooth 2 (F42 e bateria). Visto: largura igual nos dois braços e na curva; o rebordo aparece como o
 friso nas duas bordas (ausente em baixo); mais fino e mais fraco que o do Rebelle, sem a textura da tela dele.
 
+## §Rebordo — porque o contraste fica curto (E4-presets, 27/10)
+
+A sonda `medida_e4_lamina_folha` aceita agora `PH2D_OLEO_AF="nome:campo=v,…;…"` (variantes do render sobre a
+MESMA tinta, no mesmo processo) e mede ela própria o contraste (por coluna do braço horizontal: mínimo do terço
+de cima e máximo do de baixo ÷ mediana do miolo, sRGB; esta régua lê a fábrica 0,89/1,29 onde a da E4-motor lia
+0,72/1,19 — o que se compara são as variantes entre si). Raio 27, `knifeRidge` 8:
+
+| variante | topo | baixo |
+|---|---|---|
+| fábrica | 0,89 | 1,29 |
+| `raio_detalhe` 0 | 0,79 | 1,24 |
+| `fios` × 2 | 0,88 | 1,31 |
+| `fios *= cobre` desligado | 0,88 | 1,28 |
+| **`fios_na_sombra` 1** (a crista entra na altura da SOMBRA) | **0,74** | 1,29 |
+| `fios_na_sombra` 1 + Força do ambiente 0,3 | 0,63 | 1,26 |
+| `fios_na_sombra` 1 + Força do ambiente 0,15 | **0,44** | 1,26 |
+| Força do ambiente 0 (sem a crista na sombra) | 0,20 | 1,25 |
+| **Rebelle F42** | **0,40** | **1,39** |
+
+**Causa medida:** (1) a altura dos fios (`Grid::altura`, onde mora a crista) entra só na NORMAL, nunca na marcha
+da luz — a crista não projecta a banda escura de ~6 px que o Rebelle tem por dentro da borda de cima; com ela na
+sombra aparece o declive 98 → 124 em 6 px (Rebelle 51 → 104 em 7); (2) dentro da tinta a sombra só tira a parte
+da lâmpada (`1 − Força do ambiente` = 0,4): o chão é o ambiente; a 0,15 bate (0,44 × 0,40). `raio_detalhe` e
+`cobre` (os candidatos da E3-B) mexem pouco.
+
+**Recusada como cura de fábrica:** `fios_na_sombra` 1 muda também o Oil Bristle (os fios dele moram no mesmo
+campo) — a regra é neutro bit a bit para quem não tem `knifeRidge`. Fica a alavanca `Afinacao::fios_na_sombra`
+(fábrica 0, bit a bit; gates `oleo_real` 26, `oleo_material` 11, `fenda` 2, `seam_wetpaint_oleo_real` 7 verdes).
+A Força do ambiente é controlo do artista (cartão), não da faca.
+
 ## Aberto
 
-- Contraste do rebordo 0,72/1,19 contra 0,40/1,39: é do RENDER (ganho e pré-filtro dos `fios` no Óleo Real, a
-  cobertura na borda) — próximo passo do Óleo Real, não do motor.
+- **Motor (fila):** a crista da lâmina num campo PRÓPRIO (ou bandeira por camada) que o `CampoAltura` soma à
+  altura da sombra — então `fios_na_sombra` só para ela; com a Força do ambiente 0,15 o rebordo dá 0,44/1,26.
+- A banda clara de baixo 1,26–1,29 × 1,39: a luz de fábrica vem de 225° (cima-esquerda); o declive de baixo só
+  recebe a componente vertical dela.
 - O canto do L com a seguidora varre um leque (a lâmina roda 90° num ponto); o Rebelle não o mostra porque as facas
   dele com canto vivo são FIXAS.
 - Sem crista na frente/cauda do traço (a tinta empurrada à frente) — não medido.

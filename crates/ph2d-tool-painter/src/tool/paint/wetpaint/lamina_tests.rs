@@ -127,6 +127,49 @@ fn o_rebordo_poe_a_crista_nas_bordas_dos_dois_bracos_e_a_zero_nao_existe() {
     assert!((a - b).abs() < 0.05 * a && da.abs_diff(db) <= 1, "braços: {cristas:?}");
 }
 
+/// O Óleo Real de fábrica com os `campo=valor,…` de `af` (os campos que o rebordo mede).
+fn oleo_de(af: &str) -> ph2d_wet_paint::oleo_real::OleoReal {
+    let mut o = ph2d_wet_paint::oleo_real::OleoReal::default();
+    for par in af.split(',').filter(|p| !p.is_empty()) {
+        let (k, v) = par.split_once('=').unwrap_or_else(|| panic!("{par}: campo=valor"));
+        let v: f64 = v.parse().unwrap_or_else(|_| panic!("{par}: número"));
+        match k {
+            "forca_ambiente" => o.forca_ambiente = v,
+            "raio_detalhe" => o.af.raio_detalhe = v as usize,
+            "fios" => o.af.fios = v,
+            "fios_na_sombra" => o.af.fios_na_sombra = v,
+            "altitude" => o.altitude = v.to_radians(),
+            "azimute" => o.azimute = v.to_radians(),
+            outro => panic!("{outro}: campo desconhecido"),
+        }
+    }
+    o
+}
+
+/// O contraste do rebordo no braço horizontal do L de cima (tela `y = 70`, `x` 120..300), como a régua da E4 o lê
+/// na folha F42: por coluna, a luminância (sRGB) mínima no terço de cima da tinta e a máxima no de baixo, ÷ a
+/// mediana do miolo; devolve as medianas das colunas.
+fn contraste_do_rebordo(rgb: &[u8], px: &[u8], gw: usize, ratio: usize) -> (f64, f64) {
+    let lum = |k: usize| 0.2126 * f64::from(rgb[3 * k]) + 0.7152 * f64::from(rgb[3 * k + 1]) + 0.0722 * f64::from(rgb[3 * k + 2]);
+    let mediana = |mut v: Vec<f64>| {
+        v.sort_by(f64::total_cmp);
+        v[v.len() / 2]
+    };
+    let (mut topos, mut baixos) = (Vec::new(), Vec::new());
+    for x in 120 / ratio..300 / ratio {
+        let linhas: Vec<usize> = (10 / ratio..140 / ratio).filter(|&y| px[4 * (x + y * gw) + 3] > 128).collect();
+        if linhas.len() < 9 {
+            continue;
+        }
+        let n = linhas.len();
+        let l: Vec<f64> = linhas.iter().map(|&y| lum(x + y * gw)).collect();
+        let miolo = mediana(l[n / 4..3 * n / 4].to_vec());
+        topos.push(l[..n / 3].iter().copied().fold(f64::INFINITY, f64::min) / miolo);
+        baixos.push(l[2 * n / 3..].iter().copied().fold(0.0, f64::max) / miolo);
+    }
+    (mediana(topos), mediana(baixos))
+}
+
 /// **A prova visual da E4** (`docs/Painter/49_realshader/out/E4_lamina.jpg`): o L e uma curva com a lâmina que segue
 /// o traço, em cima COM rebordo e em baixo sem, no Óleo Real de fábrica, em `$PH2D_E4_DIR/lamina.ppm`. Imprime a
 /// largura varrida. Corre-se à mão:
@@ -192,29 +235,40 @@ fn medida_e4_lamina_folha() {
             visible: l.visible,
         })
         .collect();
-    let o = ph2d_wet_paint::oleo_real::OleoReal::default();
     let grades: Vec<(&ph2d_wet_paint::grid::Grid, bool)> = camadas.iter().map(|c| (c.grid, c.visible)).collect();
-    let campo = ph2d_wet_paint::oleo_real::CampoAltura::de(&grades, &o, usize::from(s.ratio), 1, 1, gw, gh);
     let visual = ph2d_wet_paint::render::PigmentVisual {
         paper: false,
         relevo: true,
     };
-    let mut px = vec![0u8; gw * gh * 4];
-    for cy in 1..=gh {
-        let linha = &mut px[(cy - 1) * gw * 4..cy * gw * 4];
-        ph2d_wet_paint::render::render_pigment_row_oleo(Some(&params), &camadas, visual, &o, &campo, cy, 1, gw, linha);
-    }
-    let mut ppm = format!("P6\n{gw} {gh}\n255\n").into_bytes();
-    for (k, p) in px.as_chunks::<4>().0.iter().enumerate() {
-        let a = u32::from(p[3]);
-        let sombra = ph2d_wet_paint::oleo_real::sombra_no_papel(&o, &campo, k % gw + 1, k / gw + 1);
-        let papel = (255.0 * (1.0 - sombra)).round() as u32;
-        for &v in &p[..3] {
-            ppm.push(((u32::from(v) * a + papel * (255 - a)) / 255) as u8);
-        }
-    }
     std::fs::create_dir_all(&dir).expect("pasta");
-    std::fs::write(dir.join("lamina.ppm"), ppm).expect("grava");
+    // `PH2D_OLEO_AF="nome:campo=v,…;nome2:…"` — as variantes do render sobre a MESMA tinta (a vazia = a de fábrica).
+    let variantes = std::env::var("PH2D_OLEO_AF").unwrap_or_default();
+    let ratio = usize::from(s.ratio);
+    for v in std::iter::once("").chain(variantes.split(';').filter(|v| !v.is_empty())) {
+        let (nome, af) = v.split_once(':').unwrap_or((v, ""));
+        let o = oleo_de(af);
+        let campo = ph2d_wet_paint::oleo_real::CampoAltura::de(&grades, &o, ratio, 1, 1, gw, gh);
+        let mut px = vec![0u8; gw * gh * 4];
+        for cy in 1..=gh {
+            let linha = &mut px[(cy - 1) * gw * 4..cy * gw * 4];
+            ph2d_wet_paint::render::render_pigment_row_oleo(Some(&params), &camadas, visual, &o, &campo, cy, 1, gw, linha);
+        }
+        let mut rgb = Vec::with_capacity(gw * gh * 3);
+        for (k, p) in px.as_chunks::<4>().0.iter().enumerate() {
+            let a = u32::from(p[3]);
+            let sombra = ph2d_wet_paint::oleo_real::sombra_no_papel(&o, &campo, k % gw + 1, k / gw + 1);
+            let papel = (255.0 * (1.0 - sombra)).round() as u32;
+            for &c in &p[..3] {
+                rgb.push(((u32::from(c) * a + papel * (255 - a)) / 255) as u8);
+            }
+        }
+        let (topo, baixo) = contraste_do_rebordo(&rgb, &px, gw, ratio);
+        println!("[e4] {:<12} topo {topo:.2} baixo {baixo:.2}  (Rebelle 0,40 / 1,39)", if nome.is_empty() { "fabrica" } else { nome });
+        let mut ppm = format!("P6\n{gw} {gh}\n255\n").into_bytes();
+        ppm.extend_from_slice(&rgb);
+        let f = if nome.is_empty() { "lamina.ppm".to_owned() } else { format!("lamina_{nome}.ppm") };
+        std::fs::write(dir.join(f), ppm).expect("grava");
+    }
     // A altura do rebordo (cinza: 0 = 128, ±4 px de relevo = ±127), para ver onde a crista ficou.
     let g = s.engine.active_grid();
     let mut pgm = format!("P5\n{gw} {gh}\n255\n").into_bytes();

@@ -44,6 +44,28 @@ impl GpuContext {
         instance: wgpu::Instance,
         compatible_surface: Option<&wgpu::Surface<'_>>,
     ) -> Result<Self, GpuError> {
+        Self::new_com_espera(instance, compatible_surface, std::time::Duration::ZERO)
+    }
+
+    /// O [`Self::new`] do EDITOR (F36, smoke do dono 27/10: com a placa cheia o arranque caía em
+    /// `RequestDeviceError … OutOfMemory`): se a placa recusar o dispositivo por falta de memória,
+    /// avisa no terminal, marca o episódio ([`crate::memoria`]) e tenta de novo até `espera_maxima`.
+    pub fn new_esperando_memoria(
+        instance: wgpu::Instance,
+        compatible_surface: Option<&wgpu::Surface<'_>>,
+    ) -> Result<Self, GpuError> {
+        Self::new_com_espera(
+            instance,
+            compatible_surface,
+            crate::memoria::ESPERA_MAXIMA_NO_ARRANQUE,
+        )
+    }
+
+    fn new_com_espera(
+        instance: wgpu::Instance,
+        compatible_surface: Option<&wgpu::Surface<'_>>,
+        espera_maxima: std::time::Duration,
+    ) -> Result<Self, GpuError> {
         let adapter = match crate::vez_da_placa_ou_a_de_testes() {
             crate::Placa::Principal => {
                 pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
@@ -144,15 +166,21 @@ impl GpuContext {
         required_limits.max_storage_buffers_per_shader_stage = required_limits
             .max_storage_buffers_per_shader_stage
             .max(adapter_limits.max_storage_buffers_per_shader_stage);
-        let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
+        let descritor = wgpu::DeviceDescriptor {
             label: Some("ph2d-gpu device"),
             required_features: compression_features,
             required_limits,
             experimental_features: wgpu::ExperimentalFeatures::default(),
             memory_hints: wgpu::MemoryHints::Performance,
             trace: wgpu::Trace::Off,
-        }))
-        .map_err(|e| GpuError::DeviceRequest(format!("{e:?}")))?;
+        };
+        let (device, queue) = crate::memoria::tenta_enquanto_falta_memoria(
+            || pollster::block_on(adapter.request_device(&descritor)).map_err(|e| format!("{e:?}")),
+            crate::memoria::PAUSA_NO_ARRANQUE,
+            espera_maxima,
+            std::thread::sleep,
+        )
+        .map_err(GpuError::DeviceRequest)?;
 
         relata_erros_do_dispositivo(&device);
 

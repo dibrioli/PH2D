@@ -135,9 +135,103 @@ pub fn sob_escopo_de_memoria<R>(
     (r, erro)
 }
 
+/// Quanto o arranque do editor espera, no máximo, que outro programa liberte a placa (o `ollama`
+/// segura um modelo 5 min por omissão).
+pub const ESPERA_MAXIMA_NO_ARRANQUE: std::time::Duration = std::time::Duration::from_secs(600);
+/// De quanto em quanto o arranque volta a pedir o dispositivo.
+pub const PAUSA_NO_ARRANQUE: std::time::Duration = std::time::Duration::from_secs(1);
+
+/// `true` quando a recusa de um pedido à placa é falta de memória (o `Debug` do erro do wgpu).
+#[must_use]
+pub fn e_falta_de_memoria(erro: &str) -> bool {
+    erro.contains("OutOfMemory")
+}
+
+/// Tenta `pede` e, enquanto a placa recusar por FALTA DE MEMÓRIA, avisa uma vez, anota o episódio e
+/// tenta de novo a cada `pausa` até `maximo`. Outro erro (ou `maximo` esgotado) devolve-se na hora.
+pub fn tenta_enquanto_falta_memoria<T>(
+    mut pede: impl FnMut() -> Result<T, String>,
+    pausa: std::time::Duration,
+    maximo: std::time::Duration,
+    mut dorme: impl FnMut(std::time::Duration),
+) -> Result<T, String> {
+    let mut esperado = std::time::Duration::ZERO;
+    loop {
+        match pede() {
+            Ok(v) => return Ok(v),
+            Err(e) if e_falta_de_memoria(&e) && esperado < maximo => {
+                if esperado.is_zero() {
+                    eprintln!(
+                        "[gpu-memoria] a placa recusou memória ao abrir — outro programa a está a usar. \
+                         À espera que a liberte (até {} s; Ctrl+C sai)…",
+                        maximo.as_secs()
+                    );
+                }
+                anota_falta_de_memoria();
+                dorme(pausa);
+                esperado += pausa;
+            }
+            Err(e) => return Err(e),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// **G21 — o arranque espera a placa em vez de cair.** Falta de memória ⇒ tenta de novo (e só
+    /// avisa a 1.ª vez); outro erro ⇒ devolve na hora; esgotado o máximo ⇒ devolve o erro.
+    #[test]
+    fn the_editor_waits_for_the_graphics_card_instead_of_crashing() {
+        const OOM: &str = "RequestDeviceError { inner: Core(Device(OutOfMemory)) }";
+        let s = std::time::Duration::from_secs(1);
+        let mut falhas = 2;
+        let mut dormidas = 0;
+        let r = tenta_enquanto_falta_memoria(
+            || {
+                if falhas > 0 {
+                    falhas -= 1;
+                    Err(OOM.to_string())
+                } else {
+                    Ok(7)
+                }
+            },
+            s,
+            10 * s,
+            |_| dormidas += 1,
+        );
+        assert_eq!(
+            (r, dormidas),
+            (Ok(7), 2),
+            "devia esperar duas vezes e abrir"
+        );
+        let mut tentativas = 0;
+        let r: Result<(), _> = tenta_enquanto_falta_memoria(
+            || {
+                tentativas += 1;
+                Err("RequestDeviceError { inner: Core(Device(Lost)) }".to_string())
+            },
+            s,
+            10 * s,
+            |_| {},
+        );
+        assert!(r.is_err() && tentativas == 1, "outro erro não espera");
+        let mut tentativas = 0;
+        let r: Result<(), _> = tenta_enquanto_falta_memoria(
+            || {
+                tentativas += 1;
+                Err(OOM.to_string())
+            },
+            s,
+            3 * s,
+            |_| {},
+        );
+        assert!(
+            r.is_err() && tentativas == 4,
+            "esgotado o máximo devia desistir ({tentativas})"
+        );
+    }
 
     /// **G14 — o aviso sai uma vez por episódio e o fim dele também.** Uma recusa liga o estado; as
     /// recusas seguintes (o `VelloPass` a tentar de 500 em 500 ms) não o repetem; sem recusa durante

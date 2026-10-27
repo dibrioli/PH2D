@@ -104,7 +104,7 @@ pub(crate) fn build_initial_state(
     let raw_surface = instance
         .create_surface(window.clone())
         .expect("create_surface");
-    let gpu = GpuContext::new(instance, Some(&raw_surface)).expect("GpuContext::new");
+    let gpu = GpuContext::new_esperando_memoria(instance, Some(&raw_surface)).expect("placa");
     // GPU pass profiler (PH2D_FLUID_PROFILE=1): per-pass GPU EXECUTION timings —
     // the `[fluid]`/`[frame]` CPU timers can't see where the GPU itself spends
     // the frame. Inert without the env var / TIMESTAMP_QUERY.

@@ -144,3 +144,20 @@ No caso do dono (o `ollama` com 13,7 GB, **946 MiB livres**):
 - Ambas são uma onda própria (F37), não um remendo no fim desta: (b) atravessa famílias de outras
   linhas e (a) exige mover o tile branco para uma leitura por quadro.
 
+
+## 3 — Smoke do dono 27/10: o ARRANQUE caía com a placa cheia (curado)
+
+O 1.º smoke caiu antes de abrir: `GpuContext::new: DeviceRequest("RequestDeviceError { inner:
+Core(Device(OutOfMemory)) }")` em `shells/desktop/src/init.rs:110` — o pedido do DISPOSITIVO é a
+primeira coisa que a placa pode recusar, e só era feito uma vez.
+
+- Cura: `GpuContext::new_esperando_memoria` (o arranque do editor; a shell troca uma chamada, mesma
+  contagem de linhas) — recusa por falta de memória ⇒ aviso no terminal, episódio anotado
+  (`memoria::anota_falta_de_memoria`: o título e o aviso de volta da F35 aparecem ao abrir) e nova
+  tentativa a cada `PAUSA_NO_ARRANQUE` (1 s) até `ESPERA_MAXIMA_NO_ARRANQUE` (600 s; o `ollama` segura
+  um modelo 5 min por omissão). Outro erro falha na hora. `GpuContext::new` (testes, ferramentas)
+  não muda.
+- Gate G21 `the_editor_waits_for_the_graphics_card_instead_of_crashing` (CPU, `ph2d-gpu`): mutações
+  sem reconhecer a falta, sem nova tentativa e sem teto — as 3 sangraram.
+- No app (`ocupa_a_placa 0 20`, **189 MiB livres**): o editor esperou ~14 s (12 recusas), abriu quando
+  a placa libertou, 0 erros de recurso — `handoffs/img_F36/arranque_com_189MiB_livres_abre.png`.

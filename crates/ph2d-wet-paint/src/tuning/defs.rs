@@ -296,7 +296,9 @@ pub const KNOB_DEFS: [KnobDef; KNOB_COUNT] = [
     k(Knob::CoatRoughness, KnobGroup::Material, "coatRoughness", 0.0, 1.0, 0.01, 0.03, None),
     k(Knob::Sheen, KnobGroup::Material, "sheen", 0.0, 1.0, 0.01, 0.0, None),
     k(Knob::Subsurface, KnobGroup::Material, "subsurface", 0.0, 1.0, 0.01, 0.0, None),
-    // a faixa do raio é provisória (W3 M0): a M1 decide-a MEDINDO contra o Cycles
-    k(Knob::SubsurfaceRadius, KnobGroup::Material, "subsurfaceRadius", 0.0, 64.0, 0.1, 4.0, None),
+    // o tecto é o `RAIO_SUBSUPERFICIE_MAX` (16 px) que a M1 mediu contra o Cycles (`material.rs`)
+    k(Knob::SubsurfaceRadius, KnobGroup::Material, "subsurfaceRadius", 0.0, 16.0, 0.1, 4.0, None),
     k(Knob::LockMaterial, KnobGroup::Material, "lockMaterial", 0.0, 1.0, 1.0, 0.0, None),
+    // a faca que nivela (W3 K3a): à vista no Tuning › Stroke, ao lado do rebordo
+    k(Knob::KnifeLevel, KnobGroup::Stroke, "knifeLevel", 0.0, 1.0, 0.01, 0.0, None),
 ];

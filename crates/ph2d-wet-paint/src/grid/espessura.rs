@@ -7,7 +7,7 @@
 
 use super::Grid;
 
-/// O factor da célula `i` (`1` sem o campo).
+/// O factor da célula `i` (`1` sem o campo; < 1 só onde a faca nivelou, [`nivela`]).
 #[must_use]
 pub fn factor(g: &Grid, i: usize) -> f64 {
     g.espessura.get(i).map_or(1.0, |&k| f64::from(k))
@@ -27,6 +27,24 @@ pub fn fixa(g: &mut Grid, i: usize, t: f64) {
     if g.espessura.is_empty() {
         // A folga é a do arredondamento `f32` da massa: abaixo dela nada foi aparado.
         if k <= 1.0 + 1e-4 {
+            return;
+        }
+        g.espessura = vec![1.0; g.cells];
+    }
+    g.espessura[i] = k as f32;
+}
+
+/// Fixa a espessura da célula `i` em `t` SEM o piso da massa: a lâmina que NIVELA ([`crate::lamina`]) baixa a tinta
+/// em pé abaixo do que a massa pediria (o factor pode ficar < 1 — a cor e a massa não mudam, só a altura). Sem
+/// massa, nada; o campo aloca-se quando o factor sai de 1.
+pub fn nivela(g: &mut Grid, i: usize, t: f64) {
+    let m = f64::from(g.sett[i]) + f64::from(g.susp[i]);
+    if m <= 0.0 {
+        return;
+    }
+    let k = (t / m).max(0.0);
+    if g.espessura.is_empty() {
+        if k == 1.0 {
             return;
         }
         g.espessura = vec![1.0; g.cells];

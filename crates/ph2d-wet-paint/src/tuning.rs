@@ -261,9 +261,13 @@ pub enum Knob {
     /// ⭐ **Lock Reflectivity** (o Rebelle): `1` = pintar sem mudar o material já pousado — o pigmento muda, o material
     /// da célula com tinta fica; no papel limpo pousa o do pincel. `0` = o material mistura-se.
     LockMaterial,
+    /// ⭐ **A faca NIVELA** (W3 K3a, [`crate::lamina::nivelar`]): a fracção, por dab, com que a tinta EM PÉ sob a
+    /// lâmina vai para a média dela (o planalto do Rebelle no lugar do tubo e dos sulcos). Só a altura muda. `0` = a
+    /// tinta de sempre, ao bit.
+    KnifeLevel,
 }
 
-pub const KNOB_COUNT: usize = 120;
+pub const KNOB_COUNT: usize = 121;
 
 /// O LEITOR TOLERANTE das chaves do material de antes da W3 (preset e macro gravados com elas): `(knob, valor)`
 /// na lei nova, `None` para uma chave que não é antiga. `roughnessMul` m → Roughness `0,5·m` (o neutro `1` → `0,5`,

@@ -89,3 +89,67 @@ fn sem_rumo_o_rebordo_nao_toca_a_grade() {
     e.pentear_rebordo(32.0, 32.0, [12.0, 12.0], &sil, [0.0, 0.0], 2.0, 1.0);
     assert!(e.active_grid().altura.is_empty());
 }
+
+/// ⭐ **A crista é o rebordo e SÓ ele** (W3 K3a): a faca penteia o campo próprio [`crate::grid::Grid::crista`] com o
+/// mesmo valor que deixa na `altura` (numa grade sem fios, os dois campos são iguais ao bit) — e o relevo de outro
+/// pincel na `altura` não entra nela.
+#[test]
+fn a_crista_e_o_rebordo_da_lamina_e_so_dele() {
+    let mut e = Engine::new(128, 128);
+    arrasta(&mut e, [20.0, 30.0], [90.0, 30.0], 2.0);
+    arrasta(&mut e, [90.0, 30.0], [90.0, 110.0], 2.0);
+    let g = e.active_grid();
+    assert_eq!(g.crista.len(), g.altura.len());
+    assert!(g.crista == g.altura, "a crista ≠ a altura da lâmina");
+    assert!(crate::grid::crista::em(g, 50 + 18 * g.s) > 1.0);
+    // Os fios de outro pincel (a `altura` escrita fora da lâmina) não acordam o campo da crista.
+    let mut f = Engine::new(64, 64);
+    let s = f.active_grid().s;
+    crate::grid::altura::garante(f.active_grid_mut())[10 + 10 * s] = 1.0;
+    assert!(f.active_grid().crista.is_empty());
+}
+
+/// A massa com SULCOS através do traço (linhas alternadas 1000 / 4000), uma faixa de 64 × 30 em `y` 15..45.
+fn sulcos(e: &mut Engine) {
+    let g = e.active_grid_mut();
+    for y in 15..45 {
+        for x in 1..=g.w {
+            g.sett[x + y * g.s] = if y % 2 == 0 { 1000.0 } else { 4000.0 };
+        }
+    }
+}
+
+fn espessura(e: &Engine, x: usize, y: usize) -> f64 {
+    let g = e.active_grid();
+    crate::grid::espessura::em(g, x + y * g.s)
+}
+
+/// ⭐ **A faca NIVELA** (W3 K3a, `knifeLevel`): arrastada sobre tinta com sulcos, a tinta EM PÉ sob a lâmina vai para
+/// um planalto (os sulcos 1000/4000 somem: dentro de 1 %), a massa (a cor) fica ao bit; a `0` nada muda nem se aloca.
+#[test]
+fn a_faca_nivela_a_tinta_em_pe_num_planalto_sem_mudar_a_massa() {
+    let mut e = Engine::new(64, 64);
+    sulcos(&mut e);
+    let massa: Vec<f32> = e.active_grid().sett.clone();
+    // A `0`: nem o rebordo nem o nivelamento ⇒ a grade de antes.
+    arrasta(&mut e, [6.0, 30.0], [58.0, 30.0], 0.0);
+    assert!(e.active_grid().espessura.is_empty() && e.active_grid().crista.is_empty());
+    e.tuning.set(crate::tuning::Knob::KnifeLevel, 1.0);
+    arrasta(&mut e, [6.0, 30.0], [58.0, 30.0], 0.0);
+    assert_eq!(e.active_grid().sett, massa, "o nivelamento mudou a massa");
+    let corte: Vec<f64> = (20..41).map(|y| espessura(&e, 32, y)).collect();
+    let (lo, hi) = corte
+        .iter()
+        .fold((f64::INFINITY, 0.0f64), |(a, b), &v| (a.min(v), b.max(v)));
+    assert!(hi / lo < 1.01, "sulcos ficaram: {corte:?}");
+    // O planalto é a média da tinta que estava sob a lâmina (as linhas 18..=42: 13 × 1000 e 12 × 4000), não o topo
+    // nem o fundo dos sulcos.
+    let media = (13.0 * 1000.0 + 12.0 * 4000.0) / 25.0;
+    assert!(
+        (corte[10] / media - 1.0).abs() < 0.01,
+        "nível {} × média {media}",
+        corte[10]
+    );
+    // Fora da lâmina (y 15) a tinta fica como estava.
+    assert!((espessura(&e, 32, 15) - 4000.0).abs() < 1e-3);
+}

@@ -25,6 +25,8 @@ pub use scratch::{AdvCell, SolverScratch};
 
 #[path = "grid/altura.rs"]
 pub mod altura;
+#[path = "grid/crista.rs"]
+pub mod crista;
 #[path = "grid/espessura.rs"]
 pub mod espessura;
 #[path = "grid/material.rs"]
@@ -68,6 +70,9 @@ pub struct Grid {
     /// **A ESPESSURA da tinta** (Óleo Real W1b, [`espessura`]): factor ≥ 1 sobre `sett+susp`, o que o tecto do
     /// depósito aparou. VAZIO (= 1) até uma célula passar do tecto.
     pub espessura: Vec<f32>,
+    /// **A CRISTA da lâmina** (W3 K3a, [`crista`]): o rebordo da faca, só dela, para a sombra. VAZIO até a 1.ª faca
+    /// com rebordo.
+    pub crista: Vec<f32>,
     /// **O TRAÇO** que pousou a tinta da célula (J2, [`traco`]): o nivelamento não escoa de um traço para a tinta
     /// molhada de outro. VAZIO até o primeiro pincel com a lei pintar ([`traco::garante`]).
     pub traco: Vec<u32>,
@@ -243,6 +248,7 @@ impl Grid {
             relevo: vec![0.0; n],
             altura: Vec::new(),
             espessura: Vec::new(),
+            crista: Vec::new(),
             traco: Vec::new(),
             vela: vec![0.0; n],
             material: Vec::new(),
@@ -572,6 +578,7 @@ pub struct GridSnapshot {
     pub relevo: Vec<f32>,
     pub altura: Vec<f32>,
     pub espessura: Vec<f32>,
+    pub crista: Vec<f32>,
     pub traco: Vec<u32>,
     pub vela: Vec<f32>,
     pub material: Vec<crate::material::MaterialCelula>,
@@ -609,6 +616,7 @@ pub fn snapshot_grid(g: &Grid) -> GridSnapshot {
         relevo: g.relevo.clone(),
         altura: g.altura.clone(),
         espessura: g.espessura.clone(),
+        crista: g.crista.clone(),
         traco: g.traco.clone(),
         vela: g.vela.clone(),
         material: g.material.clone(),
@@ -640,6 +648,7 @@ pub fn restore_grid(g: &mut Grid, s: &GridSnapshot) -> bool {
     g.relevo.copy_from_slice(&s.relevo);
     g.altura.clone_from(&s.altura);
     g.espessura.clone_from(&s.espessura);
+    g.crista.clone_from(&s.crista);
     g.traco.clone_from(&s.traco);
     g.vela.copy_from_slice(&s.vela);
     g.material.clone_from(&s.material);

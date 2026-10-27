@@ -140,6 +140,7 @@ pub fn clear_canvas(g: &mut Grid) {
     g.relevo.fill(0.0);
     g.altura = Vec::new();
     g.espessura = Vec::new();
+    g.crista = Vec::new();
     g.traco = Vec::new();
     g.vela.fill(0.0);
     g.material = Vec::new();

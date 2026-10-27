@@ -52,3 +52,25 @@ fn sem_o_campo_o_recorte_nao_o_aloca() {
     clear_canvas(&mut g);
     assert!(g.altura.is_empty(), "limpar a folha devolve o campo");
 }
+
+/// A crista da lâmina (W3 K3a) viaja no undo como a altura: o instantâneo, o recorte e a ausência do campo.
+#[test]
+fn a_crista_viaja_no_instantaneo_e_no_recorte() {
+    let mut g = grade();
+    let s = g.s;
+    let vazio = snapshot_grid(&g);
+    let recorte_vazio = snapshot_grid_region(&g, 2, 2, 8, 8).expect("janela");
+    crate::grid::crista::garante(&mut g)[3 * s + 4] = 0.75;
+    let cheio = snapshot_grid(&g);
+    let recorte_cheio = snapshot_grid_region(&g, 2, 2, 8, 8).expect("janela");
+    restore_grid(&mut g, &vazio);
+    assert!(g.crista.is_empty());
+    restore_grid(&mut g, &cheio);
+    assert_eq!(crate::grid::crista::em(&g, 3 * s + 4), 0.75);
+    restore_grid_region(&mut g, &recorte_vazio);
+    assert_eq!(crate::grid::crista::em(&g, 3 * s + 4), 0.0);
+    restore_grid_region(&mut g, &recorte_cheio);
+    assert_eq!(crate::grid::crista::em(&g, 3 * s + 4), 0.75);
+    clear_canvas(&mut g);
+    assert!(g.crista.is_empty());
+}

@@ -21,6 +21,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.wet_tuning.knob.subsurfaceRadius" => "Subsurface Radius",
         "panel.wet_tuning.knob.lockMaterial" => "Lock material (off · on)",
         "panel.wet_tuning.knob.knifeRidge" => "Knife ridge",
+        "panel.wet_tuning.knob.knifeLevel" => "Knife leveling",
         // Bristles — os fios com física própria (lidos quando a Shape é Bristles).
         "panel.wet_tuning.knob.bristlePressure" => "Pressure per bristle",
         "panel.wet_tuning.knob.bristleNoiseLength" => "Pressure change length",

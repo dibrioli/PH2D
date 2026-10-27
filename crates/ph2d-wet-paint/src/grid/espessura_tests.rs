@@ -44,3 +44,22 @@ fn o_recorte_devolve_o_factor_e_a_janela_sem_campo_volta_a_um() {
     restore_grid_region(&mut g, &depois);
     assert!((factor(&g, i) - 2.0).abs() < 1e-6);
 }
+
+/// A faca que nivela baixa a tinta em pé abaixo da massa (factor < 1) sem tocar na massa; na célula sem tinta, nada.
+#[test]
+fn nivelar_desce_abaixo_da_massa_sem_mudar_a_massa() {
+    let mut g = grade();
+    let i = g.s * 4 + 4;
+    g.sett[i] = 3000.0;
+    nivela(&mut g, i, 1500.0);
+    assert!((em(&g, i) - 1500.0).abs() < 1e-3);
+    assert_eq!(g.sett[i], 3000.0);
+    let vazia = g.s * 6 + 6;
+    nivela(&mut g, vazia, 800.0);
+    assert!((factor(&g, vazia) - 1.0).abs() < 1e-12);
+    // Ao factor 1 o campo não se aloca.
+    let mut h = grade();
+    h.sett[i] = 100.0;
+    nivela(&mut h, i, 100.0);
+    assert!(h.espessura.is_empty());
+}

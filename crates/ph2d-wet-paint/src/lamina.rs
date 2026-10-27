@@ -14,6 +14,10 @@
 //! na última [`FAIXA`] (a crista encostada à borda). A meia-largura mede-se na própria silhueta, por isso a lâmina
 //! que gira com o traço (ou fixa e atravessada) dá a crista nas bordas do que ela varre, em qualquer braço do traço.
 //! [`Rebordo::NEUTRO`] (altura `0`) = o hospedeiro nem chama a porta: a tinta de antes, ao bit.
+//!
+//! W3 K3a (`docs/Painter/Pinceis/W3_K3a_faca.md`): a crista vai também para o campo PRÓPRIO
+//! [`crate::grid::Grid::crista`] (a sombra soma-o sem os fios do Oil Bristle), e a faca NIVELA ([`nivelar`], knob
+//! `knifeLevel`, `0` = ao bit): a tinta em pé sob a lâmina vai para a média dela — o planalto no lugar do tubo.
 
 use crate::painter::Engine;
 use crate::par::Rows;
@@ -54,11 +58,16 @@ pub fn normal(rumo: [f64; 2]) -> Option<[f64; 2]> {
 }
 
 impl Engine {
-    /// ⭐ **O rebordo de UM dab**: penteia [`crate::grid::Grid::altura`] sob o dab de centro `(x, y)` (células), na
-    /// caixa de meia-extensão `meia`, para `altura · perfil(u)` (a unidade do campo: px de relevo ÷ px por célula)
-    /// pela cobertura `sil`; `u` mede-se ATRAVÉS de `rumo` (a direcção do traço) contra a meia-largura que a própria
-    /// silhueta tem nessa direcção (as células que ela cobre a metade ou mais, mais meia célula). Sem rumo, nada.
-    /// `passos` = o pente por comprimento ([`crate::bristles_relevo::penteia`]).
+    /// ⭐ **A lâmina de UM dab**: o rebordo e o nivelamento sob o dab de centro `(x, y)` (células), na caixa de
+    /// meia-extensão `meia`, pela cobertura `sil`; `u` mede-se ATRAVÉS de `rumo` (a direcção do traço) contra a
+    /// meia-largura que a própria silhueta tem nessa direcção (as células que ela cobre a metade ou mais, mais meia
+    /// célula). Sem rumo, nada.
+    ///
+    /// - **Rebordo** (`altura` > 0, a unidade de [`crate::grid::Grid::altura`]): penteia a `altura` (a normal) E a
+    ///   [`crate::grid::Grid::crista`] (só a faca: a sombra) para `altura · perfil(u)`; `passos` = o pente por
+    ///   comprimento ([`crate::bristles_relevo::penteia`]).
+    /// - **Nivelamento** (o knob [`crate::tuning::Knob::KnifeLevel`] > 0): a tinta EM PÉ sob a lâmina vai para a
+    ///   média dela ([`nivelar`]).
     #[allow(clippy::too_many_arguments)]
     pub fn pentear_rebordo(
         &mut self,
@@ -73,6 +82,7 @@ impl Engine {
         let Some(n) = normal(rumo) else {
             return;
         };
+        let nivel = self.tuning.get(crate::tuning::Knob::KnifeLevel);
         let (ax, ay) = (meia[0].ceil() as i32 + 1, meia[1].ceil() as i32 + 1);
         let g = &mut self.layers[self.active_layer].grid;
         let (cx, cy) = (x.round() as i32, y.round() as i32);
@@ -97,21 +107,87 @@ impl Engine {
         let s = g.s;
         let (linhas, colunas) = ((y1 - y0 + 1) as usize, (x1 - x0 + 1) as usize);
         let mode = Rows::pick(linhas, colunas, crate::par::MIN_CELLS_PENTE);
-        let campo = crate::grid::altura::garante(g);
-        let faixa = &mut campo[y0 as usize * s..(y1 as usize + 1) * s];
-        crate::par::walk_rows(mode, faixa, s, |k, linha| {
-            let py = y0 + k as i32;
-            for px in x0..=x1 {
-                let w = sil(px, py);
-                if w <= 0.0 {
-                    continue;
+        if altura != 0.0 {
+            let pente = |campo: &mut [f32]| {
+                let faixa = &mut campo[y0 as usize * s..(y1 as usize + 1) * s];
+                crate::par::walk_rows(mode, faixa, s, |k, linha| {
+                    let py = y0 + k as i32;
+                    for px in x0..=x1 {
+                        let w = sil(px, py);
+                        if w <= 0.0 {
+                            continue;
+                        }
+                        let alvo = altura * perfil(atraves(px, py) * inv);
+                        let c = &mut linha[px as usize];
+                        *c = crate::bristles_relevo::penteia(*c, alvo, w, passos);
+                    }
+                });
+            };
+            pente(crate::grid::altura::garante(g));
+            pente(crate::grid::crista::garante(g));
+        }
+        if nivel > 0.0 {
+            nivelar(g, (x0, y0, x1, y1), sil, nivel);
+            // Os sulcos dos fios (o relevo do Shape) também se alisam sob a lâmina: o miolo vai ao perfil do rebordo
+            // (`0` sem ele) pela mesma fracção — o pente do rebordo sozinho fica em equilíbrio com o relevo que o dab
+            // acabou de pentear.
+            if !g.altura.is_empty() {
+                let k = nivel.clamp(0.0, 1.0);
+                for py in y0..=y1 {
+                    for px in x0..=x1 {
+                        let w = sil(px, py).min(1.0);
+                        if w <= 0.0 {
+                            continue;
+                        }
+                        let alvo = altura * perfil(atraves(px, py) * inv);
+                        let c = &mut g.altura[px as usize + py as usize * s];
+                        *c = (f64::from(*c) + (alvo - f64::from(*c)) * k * w) as f32;
+                    }
                 }
-                let alvo = altura * perfil(atraves(px, py) * inv);
-                let c = &mut linha[px as usize];
-                *c = crate::bristles_relevo::penteia(*c, alvo, w, passos);
             }
-        });
+        }
         self.merge_dirty(x0, y0, x1, y1);
+    }
+}
+
+/// ⭐ **A faca NIVELA** (W3 K3a, `docs/Painter/Pinceis/W3_K3a_faca.md` §1): a espessura ([`crate::grid::espessura`])
+/// de cada célula com tinta na caixa `(x0, y0, x1, y1)` vai, pela cobertura `w` da silhueta e a fracção `nivel` por
+/// dab, para a MÉDIA (pesada por `w`) da espessura sob a lâmina — o topo plano do Rebelle no lugar dos sulcos e do
+/// tubo. Só a altura muda (o factor pode ficar < 1, [`crate::grid::espessura::nivela`]): a massa e a cor são as de
+/// antes, ao bit.
+pub fn nivelar(
+    g: &mut crate::grid::Grid,
+    (x0, y0, x1, y1): (i32, i32, i32, i32),
+    sil: crate::brush::CellFn<'_>,
+    nivel: f64,
+) {
+    let s = g.s;
+    let tem_tinta = |g: &crate::grid::Grid, i: usize| g.sett[i] + g.susp[i] > 0.0;
+    let (mut soma, mut peso) = (0.0f64, 0.0f64);
+    for py in y0..=y1 {
+        for px in x0..=x1 {
+            let i = px as usize + py as usize * s;
+            let w = sil(px, py);
+            if w > 0.0 && tem_tinta(g, i) {
+                soma += w * crate::grid::espessura::em(g, i);
+                peso += w;
+            }
+        }
+    }
+    if peso <= 0.0 {
+        return;
+    }
+    let media = soma / peso;
+    let k = nivel.clamp(0.0, 1.0);
+    for py in y0..=y1 {
+        for px in x0..=x1 {
+            let i = px as usize + py as usize * s;
+            let w = sil(px, py);
+            if w > 0.0 && tem_tinta(g, i) {
+                let t = crate::grid::espessura::em(g, i);
+                crate::grid::espessura::nivela(g, i, t + (media - t) * k * w.min(1.0));
+            }
+        }
     }
 }
 

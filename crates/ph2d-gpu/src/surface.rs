@@ -201,6 +201,7 @@ impl SurfaceContext {
     /// Acquire a `FrameTarget` for the current frame. Encapsulates
     /// the entire ADR-0020 protocol.
     pub fn acquire_frame(&mut self) -> Result<FrameTarget, AcquireError> {
+        crate::pegada::relata_se_pedida(&self.gpu.device);
         if self.state == SurfaceState::AwaitingReconfigure {
             return Err(AcquireError::AwaitingReconfigure);
         }

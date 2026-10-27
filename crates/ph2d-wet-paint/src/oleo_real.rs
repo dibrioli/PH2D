@@ -101,11 +101,6 @@ pub struct Afinacao {
     /// Estúdio em p99 0,26 × 0,48 do Cycles — a `0`: 0,53 × 0,48, área > 0,3 2,12 % × 2,13 %
     /// (`oraculo/README.md` §E3). `1` = o de W1c.
     pub antisserrilhado_ambiente: f64,
-    /// Fracção da altura dos FIOS (`Grid::altura`) que entra na altura da SOMBRA (`0` = só a massa, a de
-    /// fábrica). A alavanca medida do rebordo da faca (`49_realshader/E4_lamina.md` §Rebordo): a `1` a crista
-    /// projecta a banda escura por dentro da borda, mas também a dos fios do Oil Bristle — fica a `0` até a
-    /// crista da lâmina ter campo próprio.
-    pub fios_na_sombra: f64,
 }
 
 impl Default for Afinacao {
@@ -124,7 +119,6 @@ impl Default for Afinacao {
             brilho_max: 1.6,
             antisserrilhado: 1.0,
             antisserrilhado_ambiente: 0.0,
-            fios_na_sombra: 0.0,
         }
     }
 }
@@ -377,6 +371,31 @@ impl CampoAltura {
                 fios[x] *= cobre;
             }
         });
+        // A CRISTA da faca (`Grid::crista`, K3a) entra na altura da SOMBRA (K6): projecta a banda escura por dentro
+        // da borda (`49_realshader/E4_lamina.md` §Rebordo). Só dela — os fios do Oil Bristle ficam na normal.
+        let crista = camadas
+            .iter()
+            .any(|&(lg, v)| v && !lg.crista.is_empty())
+            .then(|| {
+                let mut crista = vec![0f64; w * h];
+                por_linha(rep, w, &mut crista, &|y, linha| {
+                    for (x, c) in linha.iter_mut().enumerate() {
+                        let i = (ax0 + x) + (ay0 + y) * g.s;
+                        let mut cobre = 0.0;
+                        for &(lg, visivel) in camadas {
+                            if !visivel {
+                                continue;
+                            }
+                            let m = f64::from(lg.sett[i]) + f64::from(lg.susp[i]);
+                            let k = crate::grid::espessura::factor(lg, i);
+                            *c += f64::from(crate::grid::crista::em(lg, i)) * k;
+                            cobre += crate::opacity::alpha_of_mass(m) * (1.0 - cobre);
+                        }
+                        *c *= cobre;
+                    }
+                });
+                crista
+            });
         let material = if com_material {
             let mut material = vec![MaterialCelula::NEUTRO; w * h];
             por_linha(rep, w, &mut material, &|y, linha| {
@@ -399,7 +418,6 @@ impl CampoAltura {
         let suave = d(&d(&massa, af.raio_suave), af.raio_suave);
         let k_fios = af.fios * o.profundidade;
         let v = plano_f32(rep, w, h, &|k| (suave[k] * escala) as f32);
-        let fios_sombra = (af.fios_na_sombra != 0.0).then(|| fios.clone());
         let (massa_d, fios_d) = match af.raio_detalhe {
             0 => (massa.clone(), fios),
             r => (d(&massa, r), d(&fios, r)),
@@ -411,11 +429,10 @@ impl CampoAltura {
             0 => massa,
             r => d(&d(&massa, r), r),
         };
-        let k_fs = k_fios * af.fios_na_sombra;
         let sombra = plano_f32(rep, w, h, &|k| {
             let s = (alta[k] * escala) as f32;
-            match &fios_sombra {
-                Some(f) => s + (f[k] * k_fs) as f32,
+            match &crista {
+                Some(c) => s + (c[k] * k_fios) as f32,
                 None => s,
             }
         });

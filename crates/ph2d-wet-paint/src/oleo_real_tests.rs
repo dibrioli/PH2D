@@ -200,6 +200,39 @@ fn a_espessura_levanta_o_relevo_que_o_tecto_aparava() {
     );
 }
 
+/// ⭐ **A crista da faca faz sombra** (W3 K6): o rebordo da lâmina ([`Grid::crista`]) entra na altura da SOMBRA e
+/// projecta a banda escura atrás dele, por dentro da tinta (`49_realshader/E4_lamina.md` §Rebordo); os fios de um
+/// pincel de cerdas (a `altura` sem crista) não — a sombra deles fica a de antes ao bit. Mutações que sangram: a
+/// crista fora da sombra, os fios na sombra, a crista sem o `cobre`.
+#[test]
+fn a_crista_da_faca_faz_sombra() {
+    let lisa = grade(|_, _| 3000.0);
+    // O mesmo rebordo (4 px de relevo, 3 células) nos FIOS e na CRISTA de uma faca; luz do topo-esquerda (225°).
+    let mut fios = grade(|_, _| 3000.0);
+    fios.altura = vec![0.0; fios.cells];
+    for y in 1..=W {
+        for x in 30..=32 {
+            fios.altura[x + y * fios.s] = 4.0;
+        }
+    }
+    let mut faca = fios.clone();
+    faca.crista.clone_from(&faca.altura);
+    let o = OleoReal::default();
+    let (c_lisa, c_fios, c_faca) = (campo(&lisa, &o), campo(&fios, &o), campo(&faca, &o));
+    assert!(
+        c_fios.sombra.iter().map(|v| v.to_bits()).eq(c_lisa.sombra.iter().map(|v| v.to_bits())),
+        "os fios entraram na altura da sombra"
+    );
+    let atras = |c: &CampoAltura| termos(&o, c, 34, 32).luz;
+    assert!(atras(&c_fios) == 1.0, "sem crista, atrás dos fios: {}", atras(&c_fios));
+    assert!(atras(&c_faca) < 0.5, "atrás da crista da faca: {}", atras(&c_faca));
+    assert!(termos(&o, &c_faca, 28, 32).luz == 1.0, "do lado da luz");
+    // A crista vai a zero com a cobertura, como os fios: no papel nu não levanta nada.
+    let mut nua = Grid::new(W, W);
+    nua.crista = vec![2.0; nua.cells];
+    assert!(campo(&nua, &o).sombra.iter().all(|&v| v == 0.0), "crista sem tinta");
+}
+
 #[test]
 fn a_crista_projecta_sombra_dentro_da_tinta() {
     // Tinta em toda a parte e uma crista de espessura no meio; a luz vem do topo-esquerda (225°).
@@ -480,11 +513,12 @@ fn o_material_neutro_e_bit_identico_a_de_antes() {
 }
 
 /// O relevo variado com material NÃO neutro (metal num bloco, verniz e veludo numa faixa, IOR Level noutra)
-/// e fios em metade da tela — a cena dos gates das duas curas de custo.
+/// e fios em metade da tela, com a crista de uma faca num quarto — a cena dos gates das duas curas de custo.
 fn relevo_com_material() -> Grid {
     let mut g = relevo_variado();
     g.material = vec![MaterialCelula::NEUTRO; g.sett.len()];
     g.altura = vec![0.0; g.sett.len()];
+    g.crista = vec![0.0; g.sett.len()];
     for y in 1..=W {
         for x in 1..=W {
             let i = x + y * g.s;
@@ -500,6 +534,9 @@ fn relevo_com_material() -> Grid {
             }
             if y > W / 2 {
                 g.altura[i] = 0.3 * ((x as f32) * 0.8).sin();
+                if x > W / 2 {
+                    g.crista[i] = g.altura[i];
+                }
             }
         }
     }
@@ -519,10 +556,6 @@ fn oleos_de_custo() -> [OleoReal; 3] {
             verniz: 0.5,
             rugosidade: 0.4,
             ..MaterialCartao::NEUTRO
-        },
-        af: Afinacao {
-            fios_na_sombra: 0.5,
-            ..OleoReal::default().af
         },
         ..OleoReal::default()
     };

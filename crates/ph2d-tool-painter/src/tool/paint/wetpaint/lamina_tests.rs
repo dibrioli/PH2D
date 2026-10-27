@@ -158,7 +158,6 @@ fn oleo_de(af: &str) -> ph2d_wet_paint::oleo_real::OleoReal {
             "forca_ambiente" => o.forca_ambiente = v,
             "raio_detalhe" => o.af.raio_detalhe = v as usize,
             "fios" => o.af.fios = v,
-            "fios_na_sombra" => o.af.fios_na_sombra = v,
             "altitude" => o.altitude = v.to_radians(),
             "azimute" => o.azimute = v.to_radians(),
             outro => panic!("{outro}: campo desconhecido"),
@@ -310,7 +309,7 @@ fn medida_e4_lamina_folha() {
             let a = u32::from(p[3]);
             let sombra =
                 ph2d_wet_paint::oleo_real::sombra_no_papel(&o, &campo, k % gw + 1, k / gw + 1);
-            let papel = (255.0 * (1.0 - sombra)).round() as u32;
+            let papel = 255 - u32::from(ph2d_wet_paint::oleo_real::sombra_em_u8(sombra));
             for &c in &p[..3] {
                 rgb.push(((u32::from(c) * a + papel * (255 - a)) / 255) as u8);
             }

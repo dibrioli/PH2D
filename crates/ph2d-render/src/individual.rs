@@ -84,6 +84,9 @@ pub struct IndividualTextureEntry {
     /// [`IndividualTextureStore::set_filter_mode`] reconstrói quando esse default muda.
     /// Um `0` cacheado aqui congelaria o default no valor que ele tinha no 1.º desenho.
     pub sampler_bgs: std::collections::BTreeMap<u32, wgpu::BindGroup>,
+    /// `Some` só quando a placa RECUSOU esta textura ao nascer (F36): o conteúdo para a refazer no
+    /// fim do episódio ([`IndividualTextureStore::refaz_recusadas`]).
+    pub(crate) fonte: Option<crate::individual_renasce::FonteRecusada>,
 }
 
 /// Renderer-side cache of individual sprite textures, keyed by a

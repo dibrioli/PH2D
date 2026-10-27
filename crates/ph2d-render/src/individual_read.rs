@@ -152,6 +152,7 @@ impl IndividualTextureStore {
         };
         if entry.width == width && entry.height == height {
             crate::individual_entry::write_pixels(gpu, &entry.texture, width, height, rgba);
+            self.anota_pixels_recusados(id, rgba);
         } else {
             let refcount = entry.refcount;
             let new_entry = crate::individual_entry::create_entry(
@@ -242,6 +243,7 @@ impl IndividualTextureStore {
             height,
             region_rgba,
         );
+        self.anota_regiao_recusada(id, x, y, width, height, region_rgba);
         self.regen_mips(gpu, id);
         Ok(())
     }

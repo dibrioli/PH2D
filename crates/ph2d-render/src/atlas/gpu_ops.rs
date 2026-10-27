@@ -42,11 +42,8 @@ pub(super) fn upload_region(
     );
 }
 
-pub(super) fn create_texture(
-    device: &wgpu::Device,
-    size_px: u32,
-) -> (wgpu::Texture, wgpu::TextureView) {
-    let texture = device.create_texture(&wgpu::TextureDescriptor {
+pub(super) fn create_texture(device: &wgpu::Device, size_px: u32) -> wgpu::Texture {
+    device.create_texture(&wgpu::TextureDescriptor {
         label: Some("ph2d-render atlas"),
         size: wgpu::Extent3d {
             width: size_px,
@@ -67,12 +64,7 @@ pub(super) fn create_texture(
             | wgpu::TextureUsages::COPY_SRC
             | wgpu::TextureUsages::RENDER_ATTACHMENT,
         view_formats: &[],
-    });
-    // The sampled view spans ALL mip levels (default) so the trilinear
-    // sampler can pick the right level; the generator makes its own
-    // single-level views.
-    let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
-    (texture, view)
+    })
 }
 
 /// Clear mip level 0 of `texture` to transparent via a no-draw render

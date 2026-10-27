@@ -57,6 +57,11 @@ pub mod individual;
 /// Como os bytes de uma textura individual viram uma entrada — irmão do [`individual`] pelo
 /// tecto de LOC (plano `docs/Sprite_projeto/18` W2).
 pub(crate) mod individual_entry;
+mod individual_renasce;
+mod renasce;
+#[cfg(test)]
+#[path = "renasce_tests.rs"]
+mod renasce_tests;
 /// **A leitura de volta** de uma textura individual — irmã do [`individual`], que voltou a passar o
 /// tecto de LOC quando o `readback_rgba8` da wave dos 16 bits lá entrou (2026-08-21).
 pub(crate) mod individual_read;

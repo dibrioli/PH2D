@@ -301,3 +301,55 @@ fn com_vidro_sob_papel_de_cor_a_cpu_produz() {
         "sem aguada o papel castanho não tira o documento da GPU"
     );
 }
+
+/// **G20 (F36 §1) — no fim de um episódio sem memória o preview na placa refaz a sessão e o slot e
+/// recompõe a tela, sem esperar uma pincelada.** O que a sessão e o slot criaram sob recusa é inválido;
+/// a fonte são as camadas em CPU. Um quadro parado sem episódio não refaz nada.
+#[test]
+#[ignore = "needs a real GPU device; run with --ignored on the GPU lane"]
+fn the_end_of_an_out_of_memory_episode_recomposes_the_gpu_preview() {
+    let Ok(gpu) = GpuContext::new(GpuContext::default_instance(), None) else {
+        return;
+    };
+    let atlas = ph2d_render::TextureAtlas::new(&gpu, 64);
+    let mut renderer = SpriteRenderer::new(
+        gpu.clone(),
+        ph2d_gpu::TextureFormat::Rgba8UnormSrgb,
+        atlas,
+        16,
+    );
+    let mut t = sculpted_tool();
+    let (mut sessao, mut slot, mut toasts) = (None, None, ToastQueue::default());
+    let mut quadro = |t: &mut PainterTool, sessao: &mut Option<PainterGpuPreview>, slot: &mut _| {
+        try_drive(sessao, &mut renderer, t, Some(1), slot, &mut toasts)
+    };
+    assert!(
+        quadro(&mut t, &mut sessao, &mut slot),
+        "precondição: a tela vai à placa"
+    );
+    let antes = slot
+        .map(|s: PainterPreviewGpu| s.texture_id)
+        .expect("o 1.º quadro cria o slot");
+    let g0 = sessao.as_ref().map(|s| s.geracao).expect("sessão");
+    quadro(&mut t, &mut sessao, &mut slot);
+    assert_eq!(
+        slot.map(|s| s.texture_id),
+        Some(antes),
+        "um quadro parado refez o slot"
+    );
+    let v = &ph2d_gpu::memoria::VIGIA;
+    v.anota_em(0);
+    let _ = v.mudou_em(0);
+    let _ = v.mudou_em(10 * ph2d_gpu::memoria::JANELA_MS);
+    assert!(v.geracao() > g0, "o episódio devia ter acabado");
+    quadro(&mut t, &mut sessao, &mut slot);
+    assert_eq!(
+        sessao.as_ref().map(|s| s.geracao),
+        Some(v.geracao()),
+        "a sessão da placa não se refez no fim do episódio"
+    );
+    assert!(
+        slot.is_some_and(|s| s.texture_id != antes),
+        "o slot do preview não se refez (o quadro sem pincelada não recompôs)"
+    );
+}

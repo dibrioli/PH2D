@@ -74,6 +74,7 @@ mod fabrica;
 mod gpu_ops;
 mod hero_sheet;
 mod region;
+mod renasce;
 
 pub use fabrica::{
     BACKGROUND_TEXELS_PER_M, CLOUDS_TILE, CLOUDS_TILE_KEY, COIN_FRAME_MS, COIN_SHEET,
@@ -109,7 +110,7 @@ pub use hero_sheet::{
 pub use region::{AtlasInsertError, AtlasRegion};
 
 use demo::make_hsv_tile;
-use gpu_ops::{clear_level0_transparent, create_texture, readback_atlas_texture, upload_region};
+use gpu_ops::readback_atlas_texture;
 use ph2d_gpu::GpuContext;
 // BTreeMap (not HashMap): HR-5 / ADR-0022 forbid unordered maps in
 // any path that contributes to a deterministic snapshot. Atlas
@@ -247,6 +248,9 @@ pub struct TextureAtlas {
     /// invalida é o `insert` que vier ocupar aquele slot, e esse passa pelo funil. *Um relógio de
     /// invalidação conta MUDANÇAS DE CONTEÚDO, não mudanças de contabilidade.*
     epoch: u64,
+    /// `Some` enquanto a textura é uma que a placa RECUSOU ao nascer (F36): os bytes de cada região
+    /// viva, para [`Self::refaz_se_recusada`] a refazer no fim do episódio sem memória.
+    fonte: Option<BTreeMap<u32, Vec<u8>>>,
 }
 
 impl TextureAtlas {
@@ -270,11 +274,9 @@ impl TextureAtlas {
         let adapter_cap = gpu.device.limits().max_texture_dimension_2d;
         let max_size_px = adapter_cap.min(8192);
         let size_px = size_px.max(1).min(max_size_px);
-        let (texture, view) = create_texture(&gpu.device, size_px);
-        // Clear to transparent so untouched packing space (and the gap
-        // between regions) downsamples cleanly instead of bleeding stale
-        // garbage into region-edge mips (see module doc §Mipmaps).
-        clear_level0_transparent(gpu, &texture);
+        // The clear (inside `nasce_textura`) keeps untouched packing space transparent so the gap
+        // between regions downsamples cleanly (see module doc §Mipmaps).
+        let (texture, view, recusada) = renasce::nasce_textura(gpu, size_px);
         let sampler =
             crate::create_sprite_sampler(&gpu.device, filter, "ph2d-render atlas sampler");
         let mut atlas = Self {
@@ -289,6 +291,7 @@ impl TextureAtlas {
             max_size_px,
             mip_gen: crate::mipgen::MipGenerator::new(gpu, wgpu::TextureFormat::Rgba8UnormSrgb),
             epoch: 0,
+            fonte: recusada.then(BTreeMap::new),
         };
         // Fill the (transparent) mip chain so the texture is sampleable
         // at any level before the first insert.
@@ -460,7 +463,7 @@ impl TextureAtlas {
         // match a later sprite.
         if let Some(existing) = self.regions.remove(&key) {
             if existing.w == width && existing.h == height {
-                upload_region(gpu, &self.texture, existing, rgba);
+                self.sobe(gpu, key, existing, rgba);
                 self.regions.insert(key, existing);
                 self.regen_mips(gpu);
                 return Ok(existing);
@@ -481,7 +484,7 @@ impl TextureAtlas {
             if bucket.is_empty() {
                 self.free_slots.remove(&(width, height));
             }
-            upload_region(gpu, &self.texture, region, rgba);
+            self.sobe(gpu, key, region, rgba);
             self.regions.insert(key, region);
             self.regen_mips(gpu);
             return Ok(region);
@@ -499,7 +502,7 @@ impl TextureAtlas {
             w: width,
             h: height,
         };
-        upload_region(gpu, &self.texture, region, rgba);
+        self.sobe(gpu, key, region, rgba);
         self.regions.insert(key, region);
         self.regen_mips(gpu);
         Ok(region)
@@ -521,6 +524,9 @@ impl TextureAtlas {
     pub fn remove(&mut self, key: u32) -> Option<AtlasRegion> {
         self.wraps.remove(&key);
         let region = self.regions.remove(&key)?;
+        if let Some(fonte) = &mut self.fonte {
+            fonte.remove(&key);
+        }
         self.free_slots
             .entry((region.w, region.h))
             .or_default()
@@ -560,8 +566,9 @@ impl TextureAtlas {
         let old_regions = std::mem::take(&mut self.regions);
         let old_wraps = std::mem::take(&mut self.wraps);
         self.free_slots.clear();
-        let (texture, view) = create_texture(&gpu.device, new_size_px);
-        clear_level0_transparent(gpu, &texture);
+        // Recusada, os re-inserts abaixo guardam os bytes de cada região (via `sobe`).
+        let (texture, view, recusada) = renasce::nasce_textura(gpu, new_size_px);
+        self.fonte = recusada.then(BTreeMap::new);
         self.texture = texture;
         self.view = view;
         self.size_px = new_size_px;

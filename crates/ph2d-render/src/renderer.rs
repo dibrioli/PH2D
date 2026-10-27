@@ -115,6 +115,8 @@ pub struct SpriteRenderer {
     luz: crate::luz_recebida::GrupoDeLuz,
     /// As entidades da simulação com `NaoRecebeLuz` neste quadro (vazio sem luz).
     sem_luz: std::collections::BTreeSet<ph2d_ecs::Entity>,
+    /// A geração de memória da placa já tratada (F36, `renderer_renasce.rs`).
+    geracao_vista: u64,
 }
 
 /// The `Stencil8` texture + its view + the size it was allocated for.
@@ -214,6 +216,8 @@ impl SpriteRenderer {
             mesh_buffer,
             luz,
             sem_luz: std::collections::BTreeSet::new(),
+            // `MAX`: o 1.º quadro confere (o átlas pode ter nascido recusado antes do renderer).
+            geracao_vista: u64::MAX,
         }
     }
 
@@ -610,6 +614,9 @@ mod draw;
 
 #[path = "renderer_individual.rs"]
 mod individual_facade;
+
+#[path = "renderer_renasce.rs"]
+mod renasce_facade;
 
 /// Walk the sorted instance slice and emit one [`DrawRun`] per maximal
 /// contiguous run of the same `(texture_id, sampling)` pair. Reuses

@@ -241,6 +241,7 @@ impl SpriteRenderer {
         // `true` = desenho da CENA: liga a luz 2D se acesa; `false` = isolado (sempre neutro).
         com_luz: bool,
     ) {
+        self.renasce_do_episodio();
         compute_runs(&self.scratch, &mut self.runs);
         // Ensure a bind group exists for every distinct sampling used by a run
         // (built lazily; one per filter/repeat pair).

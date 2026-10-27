@@ -13,6 +13,7 @@
 use ph2d_gpu::GpuContext;
 
 use crate::individual::{IndividualTextureEntry, IndividualTextureStore};
+use crate::individual_renasce::FonteRecusada;
 
 pub(crate) fn create_entry(
     gpu: &GpuContext,
@@ -30,7 +31,11 @@ pub(crate) fn create_entry(
         height,
         wgpu::TextureFormat::Rgba8UnormSrgb,
     );
+    let mut entry = entry;
     write_pixels(gpu, &entry.texture, width, height, rgba);
+    if entry.fonte.is_some() {
+        entry.fonte = Some(FonteRecusada::Rgba8(rgba.to_vec()));
+    }
     entry
 }
 
@@ -57,27 +62,11 @@ pub(crate) fn create_entry_16(
         height,
         IndividualTextureStore::FORMAT_16,
     );
-    gpu.queue.write_texture(
-        wgpu::TexelCopyTextureInfo {
-            texture: &entry.texture,
-            mip_level: 0,
-            origin: wgpu::Origin3d::ZERO,
-            aspect: wgpu::TextureAspect::All,
-        },
-        bytemuck::cast_slice(halves),
-        wgpu::TexelCopyBufferLayout {
-            offset: 0,
-            // 4 canais × 2 bytes. ⚠️ O `× 4` do caminho de 8 bits aqui daria metade da linha, e o
-            // resultado seria a imagem cortada ao meio na horizontal — não um erro.
-            bytes_per_row: Some(width * 8),
-            rows_per_image: Some(height),
-        },
-        wgpu::Extent3d {
-            width,
-            height,
-            depth_or_array_layers: 1,
-        },
-    );
+    write_pixels_16(gpu, &entry.texture, width, height, halves);
+    let mut entry = entry;
+    if entry.fonte.is_some() {
+        entry.fonte = Some(FonteRecusada::Rgba16(halves.to_vec()));
+    }
     entry
 }
 
@@ -96,24 +85,26 @@ pub(crate) fn create_entry_empty(
     format: wgpu::TextureFormat,
 ) -> IndividualTextureEntry {
     let mip_count = crate::mipgen::mip_levels(width, height);
-    let texture = gpu.device.create_texture(&wgpu::TextureDescriptor {
-        label: Some("ph2d-render individual texture"),
-        size: wgpu::Extent3d {
-            width,
-            height,
-            depth_or_array_layers: 1,
-        },
-        mip_level_count: mip_count,
-        sample_count: 1,
-        dimension: wgpu::TextureDimension::D2,
-        format,
-        // COPY_SRC: `readback()` staging copy (Image Tools edit on Individual sprites). COPY_DST: feeds
-        // `copy_from_texture` (Painter GPU preview blit). RENDER_ATTACHMENT: `MipGenerator` mip blits.
-        usage: wgpu::TextureUsages::TEXTURE_BINDING
-            | wgpu::TextureUsages::COPY_DST
-            | wgpu::TextureUsages::COPY_SRC
-            | wgpu::TextureUsages::RENDER_ATTACHMENT,
-        view_formats: &[],
+    let (texture, recusada) = crate::renasce::nasce_textura(&gpu.device, || {
+        gpu.device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("ph2d-render individual texture"),
+            size: wgpu::Extent3d {
+                width,
+                height,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: mip_count,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format,
+            // COPY_SRC: `readback()` staging copy (Image Tools edit on Individual sprites). COPY_DST: feeds
+            // `copy_from_texture` (Painter GPU preview blit). RENDER_ATTACHMENT: `MipGenerator` mip blits.
+            usage: wgpu::TextureUsages::TEXTURE_BINDING
+                | wgpu::TextureUsages::COPY_DST
+                | wgpu::TextureUsages::COPY_SRC
+                | wgpu::TextureUsages::RENDER_ATTACHMENT,
+            view_formats: &[],
+        })
     });
     // Clear-on-alloc: an EMPTY slot (`acquire_empty`) is sampled before its first fill → else garbage.
     crate::texture_clear::clear_all_mips_transparent(gpu, &texture, mip_count);
@@ -145,6 +136,7 @@ pub(crate) fn create_entry_empty(
         refcount: 1,
         // Nasce vazia e morre com o entry — ver o doc do campo.
         sampler_bgs: std::collections::BTreeMap::new(),
+        fonte: recusada.then_some(FonteRecusada::Vazia),
     }
 }
 
@@ -200,6 +192,37 @@ pub(crate) fn write_pixels_region(
         wgpu::TexelCopyBufferLayout {
             offset: 0,
             bytes_per_row: Some(width * 4),
+            rows_per_image: Some(height),
+        },
+        wgpu::Extent3d {
+            width,
+            height,
+            depth_or_array_layers: 1,
+        },
+    );
+}
+
+/// Escreve o nível 0 de uma textura de 16 bits (`halves` = meio-float linear, 4 por texel).
+pub(crate) fn write_pixels_16(
+    gpu: &GpuContext,
+    texture: &wgpu::Texture,
+    width: u32,
+    height: u32,
+    halves: &[u16],
+) {
+    gpu.queue.write_texture(
+        wgpu::TexelCopyTextureInfo {
+            texture,
+            mip_level: 0,
+            origin: wgpu::Origin3d::ZERO,
+            aspect: wgpu::TextureAspect::All,
+        },
+        bytemuck::cast_slice(halves),
+        wgpu::TexelCopyBufferLayout {
+            offset: 0,
+            // 4 canais × 2 bytes. ⚠️ O `× 4` do caminho de 8 bits aqui daria metade da linha, e o
+            // resultado seria a imagem cortada ao meio na horizontal — não um erro.
+            bytes_per_row: Some(width * 8),
             rows_per_image: Some(height),
         },
         wgpu::Extent3d {

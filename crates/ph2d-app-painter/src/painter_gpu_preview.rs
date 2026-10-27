@@ -43,6 +43,9 @@ pub struct PainterGpuPreview {
     /// is exactly where the CPU pass runs (`runtime::take_preview_arc`: composite, light, overlay).
     light: ImpastoLightPass,
     premul: PreviewPremul,
+    /// A geração de memória da placa em que a sessão nasceu (F36): no fim de um episódio sem memória
+    /// a sessão e o slot refazem-se e a tela recompõe-se inteira (a fonte são as camadas em CPU).
+    geracao: u64,
 }
 
 /// **Constrói a sessão ANTES do primeiro traço precisar dela** (doc 28 §4.8).
@@ -125,6 +128,7 @@ impl PainterGpuPreview {
             compositor: LayerCompositor::new(gpu),
             light: ImpastoLightPass::new(gpu),
             premul: PreviewPremul::new(gpu),
+            geracao: ph2d_gpu::memoria::geracao(),
         }
     }
 }
@@ -185,7 +189,10 @@ pub(super) fn try_drive(
     let Some((ops, adj_luts)) = gpu_eligible(painter) else {
         return false;
     };
-    if painter.take_preview_dirty() {
+    let renasce = session_slot
+        .as_ref()
+        .is_some_and(|s| s.geracao != ph2d_gpu::memoria::geracao());
+    if painter.take_preview_dirty() || renasce {
         let (w, h) = painter.source_size();
         // CPU/hover path: a full recomposite (no live wet envelope) — seed the whole
         // canvas (`seed_full = true`, full slot copy), byte-identical to the old
@@ -284,6 +291,16 @@ pub(super) fn drive(
 ) -> bool {
     if width == 0 || height == 0 {
         return false;
+    }
+    let mut seed_full = seed_full;
+    if session_slot
+        .as_ref()
+        .is_some_and(|s| s.geracao != ph2d_gpu::memoria::geracao())
+    {
+        // Fim de um episódio sem memória: o que a sessão e o slot criaram sob recusa é inválido.
+        *session_slot = None;
+        release_slot(renderer, painter_preview_gpu);
+        seed_full = true;
     }
     let session = session_slot.get_or_insert_with(|| PainterGpuPreview::new(renderer.gpu()));
 

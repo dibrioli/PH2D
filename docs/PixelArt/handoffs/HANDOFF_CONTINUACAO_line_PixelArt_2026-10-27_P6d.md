@@ -59,3 +59,11 @@ Texto para o Enio (curto):
 ## 7. Próximo item
 
 O smoke do dono da cena 12; depois o que ele pedir. Fotos de fábrica e com `HOME=/home/enio` (copiar antes `~/.ph2d/layout.txt`; `nvidia-smi` antes).
+
+## Emenda (pré-smoke, report do dono): o pan do botão do meio
+
+`0b6bf9c529` — com uma forma viva na tela o pan do botão do meio (e o da mão/Espaço) morria:
+`viva::moved` consumia todo movimento e `viva::release` todo largar, e a shell nunca chegava ao
+`pan_anchor`. Agora seguem o idioma da `solta`: só um arrasto consome o mover; o largar só quando o
+premir foi da forma (`g.held`, marcado em `input::press`). Teste
+`viva::with_a_live_shape_a_move_or_release_without_a_drag_goes_on_to_the_middle_button_pan`.

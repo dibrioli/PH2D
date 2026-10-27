@@ -254,7 +254,7 @@ pub fn press(app: &mut PixelApp, c: &Canvas<'_>, p: (f32, f32), button: Button, 
             st.fill(s, at, crate::gesture::bucket(&options));
             (st, Kind::Fill)
         }
-        Tool::Line | Tool::Rectangle | Tool::Ellipse | Tool::RegularPolygon | Tool::Star => {
+        Tool::Line | Tool::Shape(_) => {
             let kind = Kind::Box { from: at, to: at };
             let mut st = Stroke::new(layer, frame, value, paint);
             crate::gesture::reshape(&mut st, s, tool, &kind, &options, m);
@@ -585,8 +585,8 @@ pub fn key(
         (KeyCode::KeyL, false, false) => tool(app, Tool::Line),
         (KeyCode::KeyL, false, true) => tool(app, Tool::Curve),
         // Cheio ou vazio é a caixa «Fill» do painel (P6c), não outra ferramenta.
-        (KeyCode::KeyU, false, false) => tool(app, Tool::Rectangle),
-        (KeyCode::KeyU, false, true) => tool(app, Tool::Ellipse),
+        (KeyCode::KeyU, false, false) => tool(app, Tool::RECTANGLE),
+        (KeyCode::KeyU, false, true) => tool(app, Tool::ELLIPSE),
         (KeyCode::KeyD, false, false) => tool(app, Tool::Contour),
         (KeyCode::KeyD, false, true) => tool(app, Tool::Polygon),
         (KeyCode::KeyH, false, false) => tool(app, Tool::Hand),

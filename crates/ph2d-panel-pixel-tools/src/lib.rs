@@ -25,7 +25,7 @@ mod state;
 pub use paint::hex;
 pub use seam_formas::{
     SHAPE_FILL, desc as shape_desc, field_id as shape_field_id, nome as shape_field_name,
-    option_id as shape_option_id, set_field_names,
+    option_id as shape_option_id, set_field_names, set_shape_names, shape_name,
 };
 pub use state::{PixelToolsPanelState, current_pixel, set_current_pixel};
 

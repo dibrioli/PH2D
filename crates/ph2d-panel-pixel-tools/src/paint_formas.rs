@@ -1,7 +1,7 @@
 //! ⭐ **As opções da forma na mão** (P6b, dono 26/10: *«as formas do Vector, com opções específicas
 //! no painel à direita como fillet»*): os campos do catálogo do Vector, com os nomes dele, por ordem;
-//! as escolhas (o tipo do canto) são segmentos; as quatro têm «Fill» (P6c: no lugar das ferramentas
-//! cheias).
+//! as escolhas (o tipo do canto) são segmentos; as fechadas têm «Fill» (P6c: no lugar das
+//! ferramentas cheias).
 
 use super::*;
 use crate::seam_formas::nome;
@@ -40,6 +40,10 @@ impl Corpo<'_> {
                 }
                 _ => self.campo(nome(f.label), field_id(s, i), sec, y),
             };
+        }
+        // A forma ABERTA do Vector (linha, arco, espiral…) não tem interior: sem «Fill».
+        if !s.kind().is_closed() {
+            return y;
         }
         let fill = (
             SHAPE_FILL,

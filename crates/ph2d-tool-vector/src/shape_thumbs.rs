@@ -1,15 +1,14 @@
 //! O **catálogo de formas** cozido: o contorno de cada forma num quadrado unitário — a cara do
-//! botão dela no flyout da coluna ① do vetor (D10, `docs/UI_New_and_Simple/vetor_nova_ui/`).
+//! botão dela no flyout das formas, do Vector (D10, `docs/UI_New_and_Simple/vetor_nova_ui/`) e do
+//! Pixel (P6e, ADR-0192 §12): uma só cara por forma, nunca um 2.º desenho.
 //!
 //! ⚠️ A forma é cozida pela MESMA porta que o canvas usa (`vec_scene::cook` →
-//! `vec_render::build_bezpath`): um segundo desenho divergiria dela no primeiro ajuste. A grade
-//! de thumbnails e o seletor de categoria que viviam aqui saíram com a secção `Shape` do painel
-//! (D10: o catálogo é o flyout da Forma).
+//! `vec_render::build_bezpath`): um segundo desenho divergiria dela no primeiro ajuste.
 //!
-//! ⚠️ Os 48 `BezPath` são cacheados num `thread_local`: `cook` usa transcendentais, e o flyout
+//! ⚠️ Os `BezPath` são cacheados num `thread_local`: `cook` usa transcendentais, e o flyout
 //! pede-os em todo quadro em que está aberto.
 
-use ph2d_tool_vector::shapes;
+use crate::shapes;
 use ph2d_vec_render::{build_bezpath, build_fill_bezpath, build_lines_bezpath};
 use ph2d_vec_scene::cook;
 use ph2d_vector::{Affine, BezPath, Shape};
@@ -31,7 +30,7 @@ const THUMB_BOX_MAX: [f64; 2] = [1.0, 1.0];
 struct Thumb {
     /// Os contornos FECHADOS — a silhueta preenchível.
     fill: BezPath,
-    /// Os contornos ABERTOS — as linhas de construção (vazio em 40 das 48 formas).
+    /// Os contornos ABERTOS — as linhas de construção (vazio na maioria das formas).
     lines: BezPath,
     /// A bbox da forma INTEIRA (silhueta + linhas): é ela que dita o encaixe na célula,
     /// senão as duas partes sairiam com escalas diferentes e não se alinhariam.
@@ -40,7 +39,7 @@ struct Thumb {
 
 thread_local! {
     /// Os previews do catálogo, cozidos UMA vez por thread (o `cook` chama seno/cosseno;
-    /// 48 formas por frame seria puro desperdício). Indexado pelo índice do catálogo.
+    /// o catálogo inteiro por frame seria puro desperdício). Indexado pelo índice do catálogo.
     static SHAPE_THUMBS: RefCell<Vec<Thumb>> = const { RefCell::new(Vec::new()) };
 }
 
@@ -64,9 +63,9 @@ fn with_thumb<R>(index: usize, f: impl FnOnce(&Thumb) -> R) -> Option<R> {
 }
 
 /// ⭐ **O contorno da forma `index` num quadrado unitário** (`0..1`, y para BAIXO, centrado, escala
-/// uniforme) — a cara do botão dela no flyout da coluna ① (D10). O MESMO cozido do thumbnail: um
+/// uniforme) — a cara do botão dela no flyout das formas. O MESMO cozido do thumbnail: um
 /// segundo desenho da forma divergiria dele no primeiro ajuste.
-pub(crate) fn thumb_outline(index: usize) -> Option<BezPath> {
+pub fn thumb_outline(index: usize) -> Option<BezPath> {
     with_thumb(index, |t| {
         let (w, h) = (t.bbox.width(), t.bbox.height());
         let side = w.max(h);

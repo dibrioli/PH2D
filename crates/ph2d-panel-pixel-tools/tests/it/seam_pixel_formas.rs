@@ -78,14 +78,15 @@ fn every_vector_pixel_field_is_born_at_zero_cells_and_the_rest_at_the_vectors_de
     }
 }
 
+/// P6e: TODA forma do catálogo do Vector, não só as quatro da P6b.
 #[test]
 fn each_shape_shows_the_vector_fields_and_each_reaches_the_options() {
-    for (tool, s) in [
-        (PixelTool::Rectangle, PixelShape::Rectangle),
-        (PixelTool::Ellipse, PixelShape::Ellipse),
-        (PixelTool::RegularPolygon, PixelShape::Polygon),
-        (PixelTool::Star, PixelShape::Star),
-    ] {
+    assert_eq!(
+        PixelShape::ALL.len(),
+        ph2d_tool_vector::shapes::SHAPES.len()
+    );
+    for s in PixelShape::ALL {
+        let tool = PixelTool::Shape(s);
         for (i, f) in shape_desc(s).fields.iter().enumerate() {
             let (mut host, mut st, rects) = pinta(info(tool));
             let achado = |id| rects.iter().find(|(n, _)| *n == id).map(|(_, r)| *r);
@@ -127,21 +128,29 @@ fn each_shape_shows_the_vector_fields_and_each_reaches_the_options() {
     }
 }
 
+/// P6c: o «Fill» é das formas (o Retângulo cheio e a Elipse cheia deixaram de ser ferramentas);
+/// P6e: só das FECHADAS — a aberta do Vector (linha, arco, espiral…) não tem interior.
 #[test]
-fn the_four_shapes_have_fill_and_no_shape_field_paints_without_a_shape() {
-    // P6c: o «Fill» é das quatro (o Retângulo cheio e a Elipse cheia deixaram de ser ferramentas).
-    for tool in [
-        PixelTool::Rectangle,
-        PixelTool::Ellipse,
-        PixelTool::RegularPolygon,
-        PixelTool::Star,
-    ] {
-        let (mut host, mut st, rects) = pinta(info(tool));
+fn the_closed_shapes_have_fill_and_no_shape_field_paints_without_a_shape() {
+    let abertas: Vec<_> = PixelShape::ALL
+        .into_iter()
+        .filter(|s| !s.kind().is_closed())
+        .collect();
+    assert_eq!(abertas.len(), 5, "controlo: as abertas do Vector");
+    for s in abertas {
+        let (_, _, rects) = pinta(info(PixelTool::Shape(s)));
+        assert!(
+            rects.iter().all(|(n, _)| *n != SHAPE_FILL),
+            "{s:?} é aberta: sem Fill"
+        );
+    }
+    for s in PixelShape::ALL.into_iter().filter(|s| s.kind().is_closed()) {
+        let (mut host, mut st, rects) = pinta(info(PixelTool::Shape(s)));
         let r = rects
             .iter()
             .find(|(n, _)| *n == SHAPE_FILL)
             .map(|(_, r)| *r)
-            .expect("Fill");
+            .unwrap_or_else(|| panic!("{s:?}: Fill"));
         let ev = host.click_at(r.x + r.w * 0.5, r.y + r.h * 0.5);
         let quer = PixelOptions {
             shape_fill: true,
@@ -167,7 +176,7 @@ fn the_four_shapes_have_fill_and_no_shape_field_paints_without_a_shape() {
 fn the_hint_teaches_the_handles_while_a_shape_is_live() {
     use ph2d_panel_pixel_tools::column::hint;
     let mut info = PixelPanelInfo {
-        tool: PixelTool::Star,
+        tool: PixelTool::Shape(PixelShape::STAR),
         ..PixelPanelInfo::default()
     };
     let desenhar = hint(&info);
@@ -179,4 +188,32 @@ fn the_hint_teaches_the_handles_while_a_shape_is_live() {
         viva,
         ph2d_i18n::tr_with("pixel.hint.live_shape", &[("tool", &nome)])
     );
+}
+
+/// P6e: o flyout das formas é o catálogo do Vector — as mesmas formas, na MESMA ordem, cada uma com
+/// a cara dela no flyout do Vector (o mesmo contorno cozido).
+#[test]
+fn the_shape_flyout_is_the_vector_catalog_in_its_order_with_its_faces() {
+    use ph2d_editor_core::interaction::BarFace;
+    use ph2d_editor_core::pixel_panel::PixelToolGroup;
+    let mut i = info(PixelTool::RECTANGLE);
+    i.groups.open = Some(PixelToolGroup::Shape);
+    let (_, botoes) = ph2d_panel_pixel_tools::column::bars(&i)
+        .flyout
+        .expect("o flyout das formas");
+    let catalogo = ph2d_tool_vector::shapes::SHAPES;
+    assert_eq!(botoes.len(), catalogo.len());
+    for (k, (b, d)) in botoes.iter().zip(catalogo).enumerate() {
+        let (t, _) = ph2d_panel_pixel_tools::ids::TOOLS
+            .iter()
+            .find(|(_, id)| *id == b.id)
+            .expect("o botão é uma ferramenta");
+        assert_eq!(*t, PixelTool::Shape(PixelShape::new(d.kind)), "{k}");
+        let quer = ph2d_tool_vector::shape_thumbs::thumb_outline(k).expect("a cara do Vector");
+        assert!(
+            matches!(&b.face, BarFace::Outline(p) if p.elements() == quer.elements()),
+            "{:?}: a cara não é a do Vector",
+            d.kind
+        );
+    }
 }

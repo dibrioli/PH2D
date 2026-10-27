@@ -94,7 +94,7 @@ fn so(a: &[EditorAction], r: PixelRequest) {
 /// chega a este painel pelo mesmo `apply_event` (com o painel fechado também) e vira o pedido.
 #[test]
 fn cada_ferramenta_da_coluna_chega_ao_barramento() {
-    for (t, id) in ids::TOOLS {
+    for (t, id) in ids::TOOLS.iter().copied() {
         let mut p = Palco::novo(info(true));
         p.host
             .set_panel_visible(ph2d_editor_core::screens::hero::PANEL_PIXEL, false);
@@ -198,7 +198,7 @@ fn trocar_chega_como_swap() {
 #[test]
 fn sem_sprite_em_edicao_nao_ha_controlo_nenhum() {
     let p = Palco::novo(info(false));
-    for (_, id) in ids::TOOLS {
+    for (_, id) in ids::TOOLS.iter().copied() {
         assert!(p.rect(id).is_none(), "{id:?} pintado sem sprite em edição");
     }
     assert!(p.rect(ids::PIXEL_SWAP).is_none());

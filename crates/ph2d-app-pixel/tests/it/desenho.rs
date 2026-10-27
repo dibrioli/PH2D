@@ -68,10 +68,10 @@ fn every_aseprite_shortcut_picks_its_tool_and_the_same_key_never_switches_to_a_f
         (KeyCode::KeyG, false, Tool::Bucket),
         (KeyCode::KeyL, false, Tool::Line),
         (KeyCode::KeyL, true, Tool::Curve),
-        (KeyCode::KeyU, false, Tool::Rectangle),
-        (KeyCode::KeyU, false, Tool::Rectangle),
-        (KeyCode::KeyU, true, Tool::Ellipse),
-        (KeyCode::KeyU, true, Tool::Ellipse),
+        (KeyCode::KeyU, false, Tool::RECTANGLE),
+        (KeyCode::KeyU, false, Tool::RECTANGLE),
+        (KeyCode::KeyU, true, Tool::ELLIPSE),
+        (KeyCode::KeyU, true, Tool::ELLIPSE),
         (KeyCode::KeyD, false, Tool::Contour),
         (KeyCode::KeyD, true, Tool::Polygon),
         (KeyCode::KeyB, false, Tool::Pencil),
@@ -81,8 +81,9 @@ fn every_aseprite_shortcut_picks_its_tool_and_the_same_key_never_switches_to_a_f
     }
     assert_eq!(
         Tool::ALL.len(),
-        20,
-        "12 de desenho + 5 de selecção + Transform, polígono e estrela (P6c: sem Move nem as cheias)"
+        16 + ph2d_tool_vector::shapes::SHAPES.len(),
+        "10 de desenho + 5 de selecção + Transform (P6c: sem Move nem as cheias) + as formas do \
+         Vector (P6e: o catálogo inteiro)"
     );
     assert_eq!(PIXEL_MAX_BRUSH, ph2d_pixel_core::brush::MAX_BRUSH);
 }
@@ -90,7 +91,7 @@ fn every_aseprite_shortcut_picks_its_tool_and_the_same_key_never_switches_to_a_f
 #[test]
 fn a_rectangle_previews_while_dragging_and_commits_one_undo_step() {
     let (mut app, sim, cam, bits) = born();
-    app.tool = Tool::Rectangle;
+    app.tool = Tool::RECTANGLE;
     press(&mut app, &sim, &cam, bits, (4, 4), Mods::default());
     moved(&mut app, &sim, &cam, bits, (20, 20), Mods::default());
     moved(&mut app, &sim, &cam, bits, (10, 8), Mods::default());
@@ -123,7 +124,7 @@ fn a_rectangle_previews_while_dragging_and_commits_one_undo_step() {
 #[test]
 fn shift_squares_the_shape_and_ctrl_draws_it_from_the_center() {
     let (mut app, sim, cam, bits) = born();
-    app.tool = Tool::Rectangle;
+    app.tool = Tool::RECTANGLE;
     app.options.shape_fill = true;
     let shift = Mods {
         shift: true,
@@ -228,7 +229,7 @@ fn switching_tool_finishes_a_pending_polygon() {
 #[test]
 fn the_bucket_fills_inside_a_closed_rectangle_and_never_leaks() {
     let (mut app, sim, cam, bits) = born();
-    app.tool = Tool::Rectangle;
+    app.tool = Tool::RECTANGLE;
     drag(
         &mut app,
         &sim,
@@ -344,7 +345,7 @@ fn the_smoke_house_is_six_steps_and_its_walls_hold_the_bucket() {
     ));
     let (key, doc) = app.docs().next().expect("o sprite");
     assert_eq!((doc.sprite.width(), doc.sprite.height()), (64, 48));
-    assert_eq!(app.tool, Tool::Rectangle);
+    assert_eq!(app.tool, Tool::RECTANGLE);
     let bits = ph2d_app_pixel::mode::sprites(sim.world())
         .first()
         .map(|(b, _)| *b)

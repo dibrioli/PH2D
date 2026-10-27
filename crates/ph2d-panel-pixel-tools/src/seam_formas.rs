@@ -20,13 +20,30 @@ pub fn set_field_names(f: fn(&'static str) -> &'static str) {
     let _ = NOMES.set(f);
 }
 
+/// A tradução dos NOMES das formas do catálogo (`ph2d_panel_vector::nomes_do_motor::forma`), pela
+/// mesma razão que [`NOMES`].
+static FORMAS: std::sync::OnceLock<fn(&'static str) -> &'static str> = std::sync::OnceLock::new();
+
+/// Injecta a ponte dos nomes das formas: o núcleo do Pixel passa a nomear cada forma pelo Vector.
+pub fn set_shape_names(f: fn(&'static str) -> &'static str) {
+    let _ = FORMAS.set(f);
+    ph2d_editor_core::pixel_panel::set_shape_names(shape_name);
+}
+
+/// O nome da forma `k` como o flyout do Vector o pinta (sem ponte, o rótulo do motor).
+#[must_use]
+pub fn shape_name(k: ph2d_vec_scene::ShapeKind) -> &'static str {
+    let rotulo = SHAPES.iter().find(|d| d.kind == k).map_or("", |d| d.label);
+    FORMAS.get().map_or(rotulo, |f| f(rotulo))
+}
+
 /// O nome a pintar de um rótulo do catálogo (sem ponte, o rótulo do motor).
 #[must_use]
 pub fn nome(rotulo: &'static str) -> &'static str {
     NOMES.get().map_or(rotulo, |f| f(rotulo))
 }
 
-/// A caixa «Fill» do polígono e da estrela.
+/// A caixa «Fill» das formas fechadas.
 pub const SHAPE_FILL: NodeId = hash_node_id("pixel.opt.shape_fill");
 
 /// A linha do catálogo do Vector da forma.
@@ -36,7 +53,7 @@ pub fn desc(s: PixelShape) -> &'static ShapeDesc {
     SHAPES
         .iter()
         .find(|d| d.kind == k)
-        .expect("as quatro formas do Pixel estão no catálogo do Vector")
+        .expect("toda forma do Vector está no catálogo dele")
 }
 
 /// O campo `i` da forma `s` (número), ou a opção `j` dele (uma escolha).

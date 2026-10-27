@@ -9,7 +9,7 @@ mod shapes;
 mod timeline;
 mod tools;
 
-pub use shapes::{PixelShape, PixelShapeValues, PixelShapes};
+pub use shapes::{PixelShape, PixelShapeValues, PixelShapes, SHAPE_COUNT, set_shape_names};
 
 pub use layers::*;
 pub use new_sprite::*;

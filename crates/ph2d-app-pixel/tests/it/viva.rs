@@ -18,16 +18,16 @@ use crate::edit::{PPM, WINDOW, at, born, canvas, spawn_root, value};
 const CLEAR: [u8; 4] = [0, 0, 0, 0];
 const WHITE: [u8; 4] = [255, 255, 255, 255];
 
-struct Mesa {
-    app: PixelApp,
-    sim: SimWorld,
-    cam: Camera2d,
-    bits: u64,
-    key: u32,
+pub(crate) struct Mesa {
+    pub(crate) app: PixelApp,
+    pub(crate) sim: SimWorld,
+    pub(crate) cam: Camera2d,
+    pub(crate) bits: u64,
+    pub(crate) key: u32,
 }
 
 impl Mesa {
-    fn nova() -> Self {
+    pub(crate) fn nova() -> Self {
         let (app, sim, cam, bits) = born();
         let key = input::key_of(sim.world(), bits).expect("marcador");
         Self {
@@ -39,7 +39,7 @@ impl Mesa {
         }
     }
 
-    fn cena(n: u32) -> Self {
+    pub(crate) fn cena(n: u32) -> Self {
         let mut app = PixelApp::default();
         let mut sim = SimWorld::new();
         assert!(ph2d_app_pixel::smoke::stage(
@@ -91,13 +91,13 @@ impl Mesa {
         assert!(input::release(&mut self.app));
     }
 
-    fn desenha(&mut self, tool: Tool, a: (i32, i32), b: (i32, i32)) {
+    pub(crate) fn desenha(&mut self, tool: Tool, a: (i32, i32), b: (i32, i32)) {
         self.app.tool = tool;
         let (pa, pb) = (self.celula(a), self.celula(b));
         self.arrasta(pa, pb);
     }
 
-    fn tecla(&mut self, k: KeyCode) {
+    pub(crate) fn tecla(&mut self, k: KeyCode) {
         let r = input::key(
             &mut self.app,
             self.sim.world(),
@@ -109,7 +109,7 @@ impl Mesa {
         assert!(r.is_some(), "{k:?} é da família");
     }
 
-    fn v(&self, c: (i32, i32)) -> [u8; 4] {
+    pub(crate) fn v(&self, c: (i32, i32)) -> [u8; 4] {
         value(&self.app, &self.sim, self.bits, c.0, c.1)
     }
 
@@ -126,14 +126,14 @@ impl Mesa {
     }
 
     fn raio(&self) -> f64 {
-        self.app.options.shapes.get(PixelShape::Rectangle).get(0)
+        self.app.options.shapes.get(PixelShape::RECTANGLE).get(0)
     }
 }
 
 #[test]
 fn releasing_a_shape_leaves_it_live_and_enter_settles_it_as_one_step() {
     let mut m = Mesa::nova();
-    m.desenha(Tool::Rectangle, (4, 4), (20, 16));
+    m.desenha(Tool::RECTANGLE, (4, 4), (20, 16));
     assert!(
         m.app.live_shape().is_some(),
         "largar não grava: a forma fica viva"
@@ -153,11 +153,11 @@ fn releasing_a_shape_leaves_it_live_and_enter_settles_it_as_one_step() {
 #[test]
 fn a_panel_field_recooks_the_live_shape_at_once() {
     let mut m = Mesa::nova();
-    m.desenha(Tool::Rectangle, (4, 4), (20, 16));
+    m.desenha(Tool::RECTANGLE, (4, 4), (20, 16));
     let mut o = m.app.options;
     o.shapes.set(
-        PixelShape::Rectangle,
-        o.shapes.get(PixelShape::Rectangle).with(0, 4.0),
+        PixelShape::RECTANGLE,
+        o.shapes.get(PixelShape::RECTANGLE).with(0, 4.0),
     );
     o.shape_fill = true;
     m.app.aplica(PixelRequest::Options(Box::new(o)));
@@ -171,7 +171,7 @@ fn a_panel_field_recooks_the_live_shape_at_once() {
 #[test]
 fn the_corner_handle_rounds_the_rectangle_by_the_vector_law_and_a_double_click_resets_it() {
     let mut m = Mesa::nova();
-    m.desenha(Tool::Rectangle, (4, 4), (24, 20));
+    m.desenha(Tool::RECTANGLE, (4, 4), (24, 20));
     assert_eq!(m.raio(), 0.0);
     let alca = m.alca(Glyph::Corner);
     let dentro = m.celula((12, 12));
@@ -195,7 +195,7 @@ fn the_corner_handle_rounds_the_rectangle_by_the_vector_law_and_a_double_click_r
 #[test]
 fn esc_mid_drag_puts_the_field_back_and_esc_again_drops_the_shape() {
     let mut m = Mesa::nova();
-    m.desenha(Tool::Rectangle, (4, 4), (24, 20));
+    m.desenha(Tool::RECTANGLE, (4, 4), (24, 20));
     let alca = m.alca(Glyph::Corner);
     m.press(alca);
     let c = canvas(&m.sim, &m.cam, m.bits);
@@ -214,16 +214,16 @@ fn esc_mid_drag_puts_the_field_back_and_esc_again_drops_the_shape() {
 #[test]
 fn the_box_handle_grows_the_shape_without_stretching_its_corner() {
     let mut m = Mesa::nova();
-    let r = m.app.options.shapes.get(PixelShape::Rectangle).with(0, 2.0);
-    m.app.options.shapes.set(PixelShape::Rectangle, r);
-    m.desenha(Tool::Rectangle, (4, 4), (13, 13));
+    let r = m.app.options.shapes.get(PixelShape::RECTANGLE).with(0, 2.0);
+    m.app.options.shapes.set(PixelShape::RECTANGLE, r);
+    m.desenha(Tool::RECTANGLE, (4, 4), (13, 13));
     // O canto ↘ da caixa (a alça de escala do gizmo do sprite) até ao canto da célula (24, 24).
     let (de, para) = (m.ponto(14.0, 14.0), m.ponto(25.0, 25.0));
     m.arrasta(de, para);
     m.tecla(KeyCode::Enter);
     // O retângulo de raio 2 na caixa 4..=24 — nunca o de 4..=13 esticado.
     let (quer, _) =
-        ph2d_app_pixel::formas::cells(PixelShape::Rectangle, &r, (4, 4), (24, 24), false);
+        ph2d_app_pixel::formas::cells(PixelShape::RECTANGLE, &r, (4, 4), (24, 24), false);
     let quer: std::collections::BTreeSet<_> = quer.into_iter().collect();
     for y in 0..32 {
         for x in 0..32 {
@@ -236,12 +236,12 @@ fn the_box_handle_grows_the_shape_without_stretching_its_corner() {
 #[test]
 fn another_tool_or_a_click_outside_settles_the_live_shape() {
     let mut m = Mesa::nova();
-    m.desenha(Tool::Rectangle, (4, 4), (12, 12));
+    m.desenha(Tool::RECTANGLE, (4, 4), (12, 12));
     m.tecla(KeyCode::KeyB);
     assert!(m.app.live_shape().is_none());
     assert_eq!(m.v((4, 4)), WHITE, "trocar de ferramenta assenta");
-    m.desenha(Tool::Rectangle, (16, 4), (24, 12));
-    m.desenha(Tool::Rectangle, (4, 20), (12, 28));
+    m.desenha(Tool::RECTANGLE, (16, 4), (24, 12));
+    m.desenha(Tool::RECTANGLE, (4, 20), (12, 28));
     assert_eq!(m.v((16, 4)), WHITE, "o clique fora assentou a anterior");
     assert!(m.app.live_shape().is_some(), "e desenhou a próxima, viva");
     assert_eq!(m.v((4, 20)), CLEAR);
@@ -251,9 +251,9 @@ fn another_tool_or_a_click_outside_settles_the_live_shape() {
 fn scene_12_shows_a_live_rotated_star_with_its_handles() {
     use ph2d_app_pixel::smoke_viva::{SETTLED, STAR};
     let mut m = Mesa::cena(12);
-    assert_eq!(m.app.tool, Tool::Star);
+    assert_eq!(m.app.tool, Tool::Shape(PixelShape::STAR));
     let viva = m.app.live_shape().expect("a estrela viva");
-    assert_eq!(viva.forma(), PixelShape::Star);
+    assert_eq!(viva.forma(), PixelShape::STAR);
     let c = canvas(&m.sim, &m.cam, m.bits);
     let alcas = viva::handles_on_screen(&m.app, &c, m.key);
     assert!(
@@ -282,7 +282,7 @@ fn scene_12_shows_a_live_rotated_star_with_its_handles() {
 #[test]
 fn with_a_live_shape_a_move_or_release_without_a_drag_goes_on_to_the_middle_button_pan() {
     let mut m = Mesa::nova();
-    m.desenha(Tool::Rectangle, (4, 4), (20, 16));
+    m.desenha(Tool::RECTANGLE, (4, 4), (20, 16));
     let (forma, antes) = (m.app.live_shape().expect("viva").forma(), m.raio());
     let c = canvas(&m.sim, &m.cam, m.bits);
     for p in [m.celula((30, 30)), m.celula((2, 2)), m.celula((12, 10))] {

@@ -362,7 +362,7 @@ fn shape_flyout(snap: &VectorStyleSnapshot) -> Vec<BarButton> {
         .filter_map(|(i, d)| {
             Some(BarButton {
                 id: ids::vector_shape_id(i),
-                face: BarFace::Outline(crate::shape_outlines::thumb_outline(i)?),
+                face: BarFace::Outline(ph2d_tool_vector::shape_thumbs::thumb_outline(i)?),
                 label: crate::nomes_do_motor::forma(d.label).to_owned(),
                 on: snap.shape == d.kind,
                 family: BarFamily::Draw,

@@ -26,7 +26,7 @@ pub(crate) fn populate(store: &mut WidgetStore) {
         store.register(id, InteractiveState::Button { state });
     }
     // O tooltip diz o atalho: «Pencil (B)».
-    for (t, id) in ids::TOOLS {
+    for &(t, id) in ids::TOOLS.iter() {
         store.set_tooltip(id, t.named());
     }
     store.set_tooltip(ids::PIXEL_SWAP, tr("panel.pixel.swap_tip"));

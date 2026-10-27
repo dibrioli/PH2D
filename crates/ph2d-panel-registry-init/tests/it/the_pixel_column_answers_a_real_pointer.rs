@@ -170,3 +170,33 @@ fn the_pixel_shape_fields_are_named_by_the_vector_panels_bridge() {
         }
     }
 }
+
+/// P6e: cada forma do Pixel chama-se como no flyout do Vector — no botão, no tooltip e no aviso do
+/// atalho (o núcleo nomeia-a pela ponte que o registo injecta).
+#[test]
+fn the_pixel_shapes_are_named_as_in_the_vector_flyout() {
+    let _ = ph2d_panel_registry_init::register_all_panels();
+    for d in ph2d_tool_vector::shapes::SHAPES {
+        let t = PixelTool::Shape(ph2d_editor_core::pixel_panel::PixelShape::new(d.kind));
+        let quer = ph2d_panel_vector::nomes_do_motor::forma(d.label);
+        assert_eq!(t.name(), quer, "{:?}", d.kind);
+        let mut groups = PixelGroups::default();
+        groups.open = Some(PixelToolGroup::Shape);
+        let botao = column::bars(&PixelPanelInfo {
+            editing: true,
+            tool: t,
+            groups,
+            ..PixelPanelInfo::default()
+        })
+        .flyout
+        .and_then(|(_, b)| b.into_iter().find(|b| b.on))
+        .expect("a forma na mão está acesa no flyout");
+        assert_eq!(botao.label, t.named(), "{:?}", d.kind);
+        assert!(
+            botao.label.starts_with(quer),
+            "{:?}: {}",
+            d.kind,
+            botao.label
+        );
+    }
+}

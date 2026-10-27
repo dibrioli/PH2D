@@ -22,21 +22,21 @@ pub const SIZE: (u32, u32) = (128, 80);
 /// As quatro formas: oco e cheio, a mesma ferramenta.
 pub const SHAPES: [crate::smoke_formas::Forma; 4] = [
     (
-        Tool::Rectangle,
+        Tool::RECTANGLE,
         (4, 6),
         (27, 29),
         [70, 110, 220, 255],
         false,
     ),
     (
-        Tool::Rectangle,
+        Tool::RECTANGLE,
         (34, 6),
         (57, 29),
         [70, 110, 220, 255],
         true,
     ),
-    (Tool::Ellipse, (64, 6), (87, 29), [240, 200, 60, 255], false),
-    (Tool::Ellipse, (94, 6), (117, 29), [240, 200, 60, 255], true),
+    (Tool::ELLIPSE, (64, 6), (87, 29), [240, 200, 60, 255], false),
+    (Tool::ELLIPSE, (94, 6), (117, 29), [240, 200, 60, 255], true),
 ];
 /// Onde a figura fica e os vértices da selecção poligonal à volta dela.
 pub const FIGURE_AT: (i32, i32) = (57, 50);
@@ -75,7 +75,7 @@ pub(crate) fn stage(
     app.commit(key, op).ok()?;
     // A elipse na mão com o Fill ligado; a cara das selecções é o laço poligonal; as formas abertas.
     app.groups.chose(Tool::PolygonLasso);
-    crate::input::set_tool(app, Tool::Ellipse);
+    crate::input::set_tool(app, Tool::ELLIPSE);
     app.groups.open = Some(PixelToolGroup::Shape);
     Some(key)
 }

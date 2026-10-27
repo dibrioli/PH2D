@@ -89,6 +89,9 @@ pub fn build_typed_registry() -> ph2d_editor_core::panel::PanelRegistry {
     // As formas do Vector no Pixel (P6b): os nomes dos campos pela ponte do painel do Vector.
     #[cfg(all(feature = "panel-pixel-tools", feature = "panel-vector"))]
     ph2d_panel_pixel_tools::set_field_names(ph2d_panel_vector::nomes_do_motor::campo);
+    // P6e: e os nomes das formas (o flyout, o tooltip e o aviso do atalho).
+    #[cfg(all(feature = "panel-pixel-tools", feature = "panel-vector"))]
+    ph2d_panel_pixel_tools::set_shape_names(ph2d_panel_vector::nomes_do_motor::forma);
     #[cfg(feature = "panel-skeleton")]
     reg.push(ErasedPanel::new::<ph2d_panel_skeleton::SkeletonPanel>());
     #[cfg(feature = "panel-tags")]

@@ -26,21 +26,27 @@ pub type Forma = (Tool, (i32, i32), (i32, i32), [u8; 4], bool);
 /// As quatro formas da cena 10.
 pub const SHAPES: [Forma; 4] = [
     (
-        Tool::Rectangle,
+        Tool::RECTANGLE,
         (4, 4),
         (27, 23),
         [70, 110, 220, 255],
         false,
     ),
-    (Tool::Ellipse, (34, 4), (55, 25), [240, 200, 60, 255], true),
+    (Tool::ELLIPSE, (34, 4), (55, 25), [240, 200, 60, 255], true),
     (
-        Tool::RegularPolygon,
+        Tool::Shape(PixelShape::POLYGON),
         (62, 4),
         (85, 25),
         [60, 170, 90, 255],
         true,
     ),
-    (Tool::Star, (92, 3), (119, 27), [220, 60, 60, 255], true),
+    (
+        Tool::Shape(PixelShape::STAR),
+        (92, 3),
+        (119, 27),
+        [220, 60, 60, 255],
+        true,
+    ),
 ];
 /// Os valores de cada forma (os campos do catálogo do Vector, em células).
 pub const RECT_FILLET: f64 = 6.0;
@@ -60,22 +66,22 @@ pub const ANGLE: i32 = 30;
 pub fn options(app: &mut PixelApp) {
     let sh = &mut app.options.shapes;
     let r = sh
-        .get(PixelShape::Rectangle)
+        .get(PixelShape::RECTANGLE)
         .with(0, RECT_FILLET)
         .with(1, RECT_TR);
-    sh.set(PixelShape::Rectangle, r);
+    sh.set(PixelShape::RECTANGLE, r);
     let e = sh
-        .get(PixelShape::Ellipse)
+        .get(PixelShape::ELLIPSE)
         .with(0, PIE_SWEEP)
         .with(1, PIE_START);
-    sh.set(PixelShape::Ellipse, e);
+    sh.set(PixelShape::ELLIPSE, e);
     let p = sh
-        .get(PixelShape::Polygon)
+        .get(PixelShape::POLYGON)
         .with(0, HEX_SIDES)
         .with(1, HEX_ROUND);
-    sh.set(PixelShape::Polygon, p);
-    let s = sh.get(PixelShape::Star).with(2, STAR_TIP);
-    sh.set(PixelShape::Star, s);
+    sh.set(PixelShape::POLYGON, p);
+    let s = sh.get(PixelShape::STAR).with(2, STAR_TIP);
+    sh.set(PixelShape::STAR, s);
     app.options.shape_fill = true;
 }
 
@@ -123,9 +129,9 @@ pub(crate) fn stage(
     app.campo_da_moldura(PixelTransformField::H, SCALED);
     app.campo_da_moldura(PixelTransformField::Angle, ANGLE);
     // A estrela na mão; o botão das selecções mostra a Elliptical e as quatro abertas.
-    app.tool = Tool::Star;
+    app.tool = Tool::Shape(PixelShape::STAR);
     app.groups.chose(Tool::EllipseMarquee);
-    app.groups.chose(Tool::Star);
+    app.groups.chose(Tool::Shape(PixelShape::STAR));
     app.groups.open = Some(ph2d_editor_core::pixel_panel::PixelToolGroup::Select);
     Some(key)
 }

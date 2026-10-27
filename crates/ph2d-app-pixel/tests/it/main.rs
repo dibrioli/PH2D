@@ -1,4 +1,5 @@
 mod camadas;
+mod catalogo;
 mod desenho;
 mod edit;
 mod formas;

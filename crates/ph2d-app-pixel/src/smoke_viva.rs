@@ -22,13 +22,13 @@ pub const SIZE: (u32, u32) = (128, 80);
 /// As duas formas assentadas.
 pub const SETTLED: [crate::smoke_formas::Forma; 2] = [
     (
-        Tool::Rectangle,
+        Tool::RECTANGLE,
         (4, 6),
         (35, 33),
         [70, 110, 220, 255],
         false,
     ),
-    (Tool::Ellipse, (6, 42), (35, 73), [240, 200, 60, 255], true),
+    (Tool::ELLIPSE, (6, 42), (35, 73), [240, 200, 60, 255], true),
 ];
 /// O raio do canto do retângulo assentado, em células.
 pub const CORNER: f64 = 6.0;
@@ -53,9 +53,9 @@ pub(crate) fn stage(
     let r = app
         .options
         .shapes
-        .get(PixelShape::Rectangle)
+        .get(PixelShape::RECTANGLE)
         .with(0, CORNER);
-    app.options.shapes.set(PixelShape::Rectangle, r);
+    app.options.shapes.set(PixelShape::RECTANGLE, r);
     for (tool, a, b, rgba, fill) in SETTLED {
         app.options.shape_fill = fill;
         crate::smoke_formas::forma(app, key, tool, a, b, rgba)?;
@@ -63,7 +63,7 @@ pub(crate) fn stage(
     // A estrela na mão, viva: o mesmo estado que largar o arrasto dela deixa.
     let (a, b, rgba, giro) = STAR;
     app.options.shape_fill = true;
-    crate::input::set_tool(app, Tool::Star);
+    crate::input::set_tool(app, Tool::Shape(PixelShape::STAR));
     let doc = app.docs.get(&key)?;
     let stroke = Stroke::new(
         doc.layer,
@@ -79,7 +79,7 @@ pub(crate) fn stage(
         held: false,
         cursor: b,
         mods: Mods::default(),
-        viva: Some(Viva::new(PixelShape::Star, a, b).girada(giro)),
+        viva: Some(Viva::new(PixelShape::STAR, a, b).girada(giro)),
     });
     app.reaviva();
     Some(key)

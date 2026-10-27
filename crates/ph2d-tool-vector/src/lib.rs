@@ -47,6 +47,8 @@ pub mod shape_handles;
 /// A cara de cada alça, a etiqueta e o círculo do arrasto (F11).
 pub mod shape_handles_face;
 mod shape_handles_table;
+/// A cara de cada forma do catálogo (o flyout do Vector e o do Pixel).
+pub mod shape_thumbs;
 /// A TRAVESSIA do catálogo (descritor · unidade UI↔mundo · clamp · escolhas) — módulo irmão
 /// de `shapes` (teto de LOC). Re-exportado dali, então quem consome não percebe o corte.
 mod shapes_fields;

@@ -7,7 +7,9 @@
 use crate::ids;
 use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::interaction::{BarButton, BarFace, BarFamily, ToolBars};
-use ph2d_editor_core::pixel_panel::{PixelInk, PixelPanelInfo, PixelShape, PixelTool};
+use ph2d_editor_core::pixel_panel::{
+    PixelInk, PixelPanelInfo, PixelShape, PixelTool, PixelToolGroup,
+};
 use ph2d_i18n::{tr, tr_with};
 
 /// O ícone de cada ferramenta.
@@ -27,45 +29,34 @@ pub const fn icon(t: PixelTool) -> IconId {
         PixelTool::Bucket => IconId::VectorBucket,
         PixelTool::Line => IconId::Line,
         PixelTool::Curve => IconId::PixelCurve,
-        PixelTool::Rectangle => IconId::PixelRect,
-        PixelTool::Ellipse => IconId::PixelEllipse,
         PixelTool::Contour => IconId::PixelContour,
         PixelTool::Polygon => IconId::Polygon,
         PixelTool::Hand => IconId::Pan,
-        // A cara delas é o CONTORNO do Vector ([`face`]); estes são só o nome do ícone.
-        PixelTool::RegularPolygon | PixelTool::Star => IconId::VectorShape,
+        // A cara delas é o CONTORNO do Vector ([`face`]); este é só o nome do ícone.
+        PixelTool::Shape(_) => IconId::VectorShape,
     }
 }
 
-/// A cara do botão: o ícone, ou — para as formas do Vector — o contorno que o `cook` do Vector
-/// desenha num quadrado unitário (a lei da barra do Vector: a mesma geometria, nunca um 2.º desenho).
+/// A cara do botão: o ícone, ou — para uma forma — a cara dela no flyout do Vector
+/// ([`ph2d_tool_vector::shape_thumbs`]: a mesma geometria, nunca um 2.º desenho).
 #[must_use]
 pub fn face(t: PixelTool) -> BarFace {
-    let forma = match t {
-        PixelTool::RegularPolygon => PixelShape::Polygon,
-        PixelTool::Star => PixelShape::Star,
-        _ => return BarFace::Icon(icon(t)),
-    };
-    let k = forma.kind();
-    let path = ph2d_vec_scene::cook(k, [0.0, 0.0], [1.0, 1.0], &k.defaults());
-    let mut bez = ph2d_vector::BezPath::new();
-    let p = |q: [f64; 2]| (q[0], 1.0 - q[1]);
-    for c in ph2d_vec_scene::trim_tool::contours_of(&path) {
-        let Some(first) = c.verts.first() else {
-            continue;
-        };
-        bez.move_to(p(first.anchor));
-        let n = c.verts.len();
-        let arestas = if c.closed { n } else { n - 1 };
-        for i in 0..arestas {
-            let (a, b) = (&c.verts[i], &c.verts[(i + 1) % n]);
-            bez.curve_to(p(a.out_handle), p(b.in_handle), p(b.anchor));
-        }
-        if c.closed {
-            bez.close_path();
-        }
-    }
-    BarFace::Outline(bez)
+    PixelShape::of_tool(t)
+        .and_then(|s| {
+            let i = ph2d_tool_vector::shapes::SHAPES
+                .iter()
+                .position(|d| d.kind == s.kind())?;
+            ph2d_tool_vector::shape_thumbs::thumb_outline(i)
+        })
+        .map_or_else(|| BarFace::Icon(icon(t)), BarFace::Outline)
+}
+
+/// As que moram no botão de grupo `g`, na ordem da coluna (as formas na do catálogo do Vector).
+pub fn members(g: PixelToolGroup) -> impl Iterator<Item = (PixelTool, ph2d_a11y::NodeId)> {
+    ids::TOOLS
+        .iter()
+        .copied()
+        .filter(move |(t, _)| t.group() == Some(g))
 }
 
 /// O nome com o atalho: «Pencil (B)».
@@ -111,12 +102,7 @@ pub fn bars(info: &PixelPanelInfo) -> ToolBars {
         .filter(|_| info.editing)
         .and_then(|g| ids::GROUPS.iter().find(|(h, _)| *h == g))
         .map(|&(g, gid)| {
-            let todas = g
-                .members()
-                .iter()
-                .filter_map(|t| ids::TOOLS.iter().find(|(u, _)| u == t))
-                .map(|&(t, id)| botao(info, t, id))
-                .collect();
+            let todas = members(g).map(|(t, id)| botao(info, t, id)).collect();
             (gid, todas)
         });
     ToolBars {
@@ -137,13 +123,15 @@ pub fn column(info: &PixelPanelInfo) -> Vec<Vec<BarButton>> {
     // Quatro grupos, como a barra do Aseprite: a selecção (e o Transform), o que pinta à mão, as
     // formas, a vista. As de um botão de grupo moram nele, no lugar da 1.ª, com a cara da última.
     let grupo = |de: PixelTool, ate: PixelTool| {
+        let mut vistos = Vec::new();
         ids::TOOLS
             .iter()
             .skip_while(|(t, _)| *t != de)
             .take_while(|(t, _)| *t != ate)
             .filter_map(|&(t, id)| match t.group() {
                 None => Some(botao(info, t, id)),
-                Some(g) if g.members()[0] == t => {
+                Some(g) if !vistos.contains(&g) => {
+                    vistos.push(g);
                     let (_, gid) = ids::GROUPS.iter().find(|(h, _)| *h == g)?;
                     Some(BarButton {
                         on: info.tool.group() == Some(g),
@@ -194,11 +182,11 @@ pub fn hint(info: &PixelPanelInfo) -> String {
         PixelTool::Bucket => "pixel.hint.bucket",
         PixelTool::Line => "pixel.hint.line",
         PixelTool::Curve => "pixel.hint.curve",
-        PixelTool::Rectangle => "pixel.hint.rectangle",
-        PixelTool::Ellipse => "pixel.hint.ellipse",
+        PixelTool::RECTANGLE => "pixel.hint.rectangle",
+        PixelTool::ELLIPSE => "pixel.hint.ellipse",
         PixelTool::Contour => "pixel.hint.contour",
         PixelTool::Polygon => "pixel.hint.polygon",
-        PixelTool::RegularPolygon | PixelTool::Star => "pixel.hint.shape",
+        PixelTool::Shape(_) => "pixel.hint.shape",
         PixelTool::Hand => "pixel.hint.hand",
     };
     tr_with(key, &[("tool", &nome(info.tool))])

@@ -36,6 +36,8 @@
 //! sem o Move (o `V` escolhe o Transform).
 //! 12 — P6d, a forma VIVA ([`crate::smoke_viva`]): uma estrela girada com a caixa do gizmo do sprite
 //! e as alças do Vector, à espera do `Enter`, ao lado de duas formas já assentadas.
+//! 13 — P6e, o catálogo inteiro do Vector ([`crate::smoke_catalogo`]): uma amostra assentada de cada
+//! família (as abertas em traço) e uma engrenagem viva com as alças.
 
 use ph2d_ecs::SimWorld;
 use ph2d_pixel_core::{NewSprite, Paint, Stroke};
@@ -47,7 +49,7 @@ use ph2d_editor_core::pixel_panel::{
 
 pub const ROUTERS: &[ph2d_app_host::SmokeRouter] = &[ph2d_app_host::SmokeRouter {
     env: "PH2D_PIXEL_SMOKE",
-    max_level: 12,
+    max_level: 13,
 }];
 
 /// O nível armado em `PH2D_PIXEL_SMOKE`.
@@ -113,6 +115,7 @@ pub fn stage(
         10 => crate::smoke_formas::stage(app, sim, spawn_root).is_some(),
         11 => crate::smoke_ferramentas::stage(app, sim, spawn_root).is_some(),
         12 => crate::smoke_viva::stage(app, sim, spawn_root).is_some(),
+        13 => crate::smoke_catalogo::stage(app, sim, spawn_root).is_some(),
         _ => false,
     }
 }
@@ -123,15 +126,15 @@ type Peca = (crate::Tool, &'static [(i32, i32)], usize, bool);
 
 pub const HOUSE: [Peca; 6] = [
     (crate::Tool::Line, &[(0, 40), (63, 40)], 12, false),
-    (crate::Tool::Rectangle, &[(14, 22), (40, 40)], 4, false),
+    (crate::Tool::RECTANGLE, &[(14, 22), (40, 40)], 4, false),
     (
         crate::Tool::Polygon,
         &[(11, 22), (27, 9), (43, 22)],
         27,
         false,
     ),
-    (crate::Tool::Rectangle, &[(24, 30), (30, 40)], 3, true),
-    (crate::Tool::Ellipse, &[(50, 3), (59, 12)], 8, true),
+    (crate::Tool::RECTANGLE, &[(24, 30), (30, 40)], 3, true),
+    (crate::Tool::ELLIPSE, &[(50, 3), (59, 12)], 8, true),
     (crate::Tool::Curve, &[(34, 13), (28, 1), (44, 2)], 2, false),
 ];
 
@@ -152,8 +155,8 @@ fn stage_house(
         return false;
     };
     app.options.shapes.set(
-        PixelShape::Rectangle,
-        app.options.shapes.get(PixelShape::Rectangle).with(0, 2.0),
+        PixelShape::RECTANGLE,
+        app.options.shapes.get(PixelShape::RECTANGLE).with(0, 2.0),
     );
     for (tool, pts, color, fill) in HOUSE {
         app.options.shape_fill = fill;
@@ -163,10 +166,10 @@ fn stage_house(
     }
     app.options.shape_fill = false;
     app.options.shapes.set(
-        PixelShape::Rectangle,
-        app.options.shapes.get(PixelShape::Rectangle).with(0, 0.0),
+        PixelShape::RECTANGLE,
+        app.options.shapes.get(PixelShape::RECTANGLE).with(0, 0.0),
     );
-    app.tool = crate::Tool::Rectangle;
+    app.tool = crate::Tool::RECTANGLE;
     app.fg = [0, 0, 0, 255];
     app.bg = [255, 255, 255, 255];
     true

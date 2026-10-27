@@ -2,7 +2,9 @@
 //! ([`ph2d_vec_scene::cook`], a mesma porta que o editor vetorial usa) sobre a caixa do gesto em
 //! células, achatada em vértices de célula inteira; o contorno e o interior são a lei do polígono do
 //! núcleo ([`polygon_cells`]: Bresenham entre vértices, par-ímpar nos centros), com os furos em
-//! par-ímpar entre contornos.
+//! par-ímpar entre contornos. O contorno ABERTO (a linha, o arco, a espiral, as arestas de dentro
+//! do cubo) é só o traço ([`line_path`]); a forma que o Vector não enche
+//! ([`ShapeKind::is_closed`](ph2d_vec_scene::ShapeKind::is_closed)) não tem interior.
 //!
 //! ⚠️ Com os campos NEUTROS o retângulo e a elipse continuam as leis medidas do Pixel
 //! (`rounded_rect_cells` — o canto do Aseprite — e a elipse de Zingl): o desenho aprovado não muda.
@@ -11,7 +13,7 @@ use std::collections::BTreeSet;
 
 use ph2d_editor_core::pixel_panel::{PixelShape, PixelShapeValues};
 use ph2d_pixel_core::raster::{
-    Cell, ellipse_cells, ellipse_filled_cells, polygon_cells, rounded_rect_cells,
+    Cell, ellipse_cells, ellipse_filled_cells, line_path, polygon_cells, rounded_rect_cells,
 };
 use ph2d_vec_scene::{VecPath, VecVertex, cook, trim_tool::contours_of};
 
@@ -39,7 +41,7 @@ pub fn cells(
         [f64::from(b.0), -f64::from(b.1)],
     );
     let path = cook(s.kind(), pa, pb, &v.values());
-    celulas(&path, &|p| [p[0], -p[1]], cheia)
+    celulas(&path, &|p| [p[0], -p[1]], cheia && s.kind().is_closed())
 }
 
 /// A forma `s` cozida na caixa CENTRADA de meia-extensão `half` (o espaço local do Vector: Y para
@@ -59,6 +61,7 @@ pub fn cells_mapped(
     map: &dyn Fn([f64; 2]) -> [f64; 2],
     cheia: bool,
 ) -> (Vec<Cell>, Vec<Cell>) {
+    let cheia = cheia && s.kind().is_closed();
     celulas(&cook_local(s, half, &v.values()), map, cheia)
 }
 
@@ -72,6 +75,11 @@ fn celulas(
     let mut dentro = BTreeSet::new();
     for c in contours_of(path) {
         let pts = achata(&c.verts, c.closed, map);
+        if !c.closed {
+            contorno.extend(pts.windows(2).flat_map(|w| line_path(w[0], w[1])));
+            contorno.extend(pts.first());
+            continue;
+        }
         let (o, i) = polygon_cells(&pts);
         contorno.extend(o);
         // Par-ímpar entre contornos: o furo da rosquinha tira o miolo.
@@ -99,9 +107,11 @@ enum Neutra {
 
 /// A lei medida do Pixel quando os campos não pedem nada que ela não tenha.
 fn neutra(s: PixelShape, v: &PixelShapeValues) -> Option<Neutra> {
-    match s {
+    match s.kind() {
+        // O retângulo do Vector sem canto: o do Aseprite.
+        ph2d_vec_scene::ShapeKind::Rectangle if v.get(0) == 0.0 => Some(Neutra::Retangulo(0)),
         // O raio base é o canto do Aseprite; os desvios, a suavização e o tipo do canto a zero.
-        PixelShape::Rectangle
+        ph2d_vec_scene::ShapeKind::RoundRect
             if (1..6).all(|i| v.get(i) == 0.0) && v.get(0) >= 0.0 && v.get(0).fract() == 0.0 =>
         {
             #[expect(
@@ -113,7 +123,7 @@ fn neutra(s: PixelShape, v: &PixelShapeValues) -> Option<Neutra> {
             Some(Neutra::Retangulo(r))
         }
         // Inteira, sem furo nem cantos.
-        PixelShape::Ellipse
+        ph2d_vec_scene::ShapeKind::Ellipse
             if v.get(0) >= ph2d_vec_scene::FULL_TURN && v.get(2) == 0.0 && v.get(3) == 0.0 =>
         {
             Some(Neutra::Elipse)

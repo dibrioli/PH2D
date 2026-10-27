@@ -6,8 +6,8 @@
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::pixel_panel::{
-    PixelBrushShape, PixelInk, PixelLayerAction, PixelRequest, PixelSelector, PixelSortKey,
-    PixelTool, PixelToolGroup,
+    PixelBrushShape, PixelInk, PixelLayerAction, PixelRequest, PixelSelector, PixelShape,
+    PixelSortKey, PixelTool, PixelToolGroup,
 };
 use ph2d_tool_registry::{hash_node_id, hash_node_id_runtime};
 
@@ -23,7 +23,7 @@ pub use ph2d_editor_core::ids::{PIXEL_BG, PIXEL_FG};
 pub const PIXEL_SWAP: NodeId = hash_node_id("pixel.swap");
 
 /// Os botões de grupo (a cara é a última usada; o clique abre o flyout): as quatro selecções e as
-/// quatro formas.
+/// formas do Vector.
 pub const PIXEL_SELECT_GROUP: NodeId = hash_node_id("pixel.tool.select_group");
 pub const PIXEL_SHAPE_GROUP: NodeId = hash_node_id("pixel.tool.shape_group");
 pub const GROUPS: [(PixelToolGroup, NodeId); 2] = [
@@ -31,41 +31,26 @@ pub const GROUPS: [(PixelToolGroup, NodeId); 2] = [
     (PixelToolGroup::Shape, PIXEL_SHAPE_GROUP),
 ];
 
-/// As ferramentas, na ordem da coluna: pintar, registar e despachar leem a MESMA tabela.
-pub const TOOLS: [(PixelTool, NodeId); 20] = [
-    (
-        PixelTool::RectMarquee,
-        hash_node_id("pixel.tool.rect_marquee"),
-    ),
-    (
-        PixelTool::EllipseMarquee,
-        hash_node_id("pixel.tool.ellipse_marquee"),
-    ),
-    (PixelTool::Lasso, hash_node_id("pixel.tool.lasso")),
-    (
-        PixelTool::PolygonLasso,
-        hash_node_id("pixel.tool.polygon_lasso"),
-    ),
-    (PixelTool::MagicWand, hash_node_id("pixel.tool.magic_wand")),
-    (PixelTool::Transform, hash_node_id("pixel.tool.transform")),
-    (PixelTool::Pencil, hash_node_id("pixel.tool.pencil")),
-    (PixelTool::Spray, hash_node_id("pixel.tool.spray")),
-    (PixelTool::Eraser, hash_node_id("pixel.tool.eraser")),
-    (PixelTool::Eyedropper, hash_node_id("pixel.tool.eyedropper")),
-    (PixelTool::Bucket, hash_node_id("pixel.tool.bucket")),
-    (PixelTool::Line, hash_node_id("pixel.tool.line")),
-    (PixelTool::Curve, hash_node_id("pixel.tool.curve")),
-    (PixelTool::Rectangle, hash_node_id("pixel.tool.rectangle")),
-    (PixelTool::Ellipse, hash_node_id("pixel.tool.ellipse")),
-    (
-        PixelTool::RegularPolygon,
-        hash_node_id("pixel.tool.regular_polygon"),
-    ),
-    (PixelTool::Star, hash_node_id("pixel.tool.star")),
-    (PixelTool::Contour, hash_node_id("pixel.tool.contour")),
-    (PixelTool::Polygon, hash_node_id("pixel.tool.polygon")),
-    (PixelTool::Hand, hash_node_id("pixel.tool.hand")),
-];
+/// As ferramentas, na ordem da coluna: pintar, registar e despachar leem a MESMA tabela. As formas
+/// são as do catálogo do Vector, na ordem dele (a do flyout), cada uma com o id do seu discriminante.
+pub static TOOLS: std::sync::LazyLock<Vec<(PixelTool, NodeId)>> = std::sync::LazyLock::new(|| {
+    let formas = ph2d_tool_vector::shapes::SHAPES.iter().map(|d| {
+        let id = hash_node_id_runtime(&format!("pixel.tool.shape.{}", d.kind.as_u16()));
+        (PixelTool::Shape(PixelShape::new(d.kind)), id)
+    });
+    let simples = |t: PixelTool| (t, hash_node_id_runtime(t.label_key()));
+    let mut v: Vec<_> = PixelTool::ALL
+        .into_iter()
+        .filter(|t| PixelShape::of_tool(*t).is_none())
+        .map(simples)
+        .collect();
+    let curva = v
+        .iter()
+        .position(|(t, _)| *t == PixelTool::Curve)
+        .map_or(v.len(), |i| i + 1);
+    v.splice(curva..curva, formas);
+    v
+});
 
 /// A forma do pincel (os três segmentos).
 pub const SHAPES: [(PixelBrushShape, NodeId); 3] = [

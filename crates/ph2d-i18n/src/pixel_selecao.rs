@@ -10,10 +10,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "pixel.tool.polygon_lasso" => "Polygonal Lasso",
         "pixel.tool.magic_wand" => "Magic Wand",
         "pixel.tool.transform" => "Transform",
-        "pixel.tool.regular_polygon" => "Regular Polygon",
-        "pixel.tool.star" => "Star",
+        // O nome de uma forma é o do Vector; este só vale sem a ponte dele.
+        "pixel.tool.shape" => "Shape",
         "pixel.hint.shape" => {
-            "{tool}: drag the box · Shift keeps it square · Fill and its options (sides, corners, fillet) are in the Pixel panel"
+            "{tool}: drag the box · Shift keeps it square · Fill and its options are in the Pixel panel"
         }
         "pixel.hint.live_shape" => {
             "{tool}: drag a handle or the box to adjust \u{00b7} Shift: 15\u{00b0} steps \u{00b7} Alt: one corner \u{00b7} Double-click: reset \u{00b7} Enter: make it pixels \u{00b7} Esc: drop it \u{00b7} Click outside: draw another"

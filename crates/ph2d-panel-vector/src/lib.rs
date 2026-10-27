@@ -49,8 +49,6 @@ mod icon_dropdown;
 pub mod ids;
 pub mod nomes_do_motor;
 mod paint;
-/// O catálogo de formas: os contornos cozidos que o flyout da coluna ① mostra (D10).
-mod shape_outlines;
 /// A escala dos segmentos da SIMETRIA (o campo vive na fila ②, D10).
 pub(crate) mod symmetry_segments;
 pub mod tool_keys;

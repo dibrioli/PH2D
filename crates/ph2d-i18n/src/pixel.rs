@@ -13,8 +13,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "pixel.tool.bucket" => "Paint Bucket",
         "pixel.tool.line" => "Line",
         "pixel.tool.curve" => "Curve",
-        "pixel.tool.rectangle" => "Rectangle",
-        "pixel.tool.ellipse" => "Ellipse",
         "pixel.tool.contour" => "Contour",
         "pixel.tool.polygon" => "Polygon",
         "pixel.tool_switched" => "{tool} ({key})",

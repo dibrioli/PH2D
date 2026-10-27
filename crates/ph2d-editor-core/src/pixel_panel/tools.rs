@@ -1,6 +1,8 @@
 //! **As ferramentas do Pixel e os botões de grupo da coluna** (a lista, os atalhos, quem mora em
 //! que grupo e o estado deles).
 
+use super::{PixelShape, SHAPE_COUNT};
+
 /// A ferramenta na mão — as do Aseprite, na ordem da barra dele. A família reexporta-a como `Tool`
 /// (um dono).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -23,11 +25,9 @@ pub enum PixelTool {
     Bucket,
     Line,
     Curve,
-    /// As formas do Vector (P6b), num botão de grupo (P6c); cheias pela caixa «Fill» do painel.
-    Rectangle,
-    Ellipse,
-    RegularPolygon,
-    Star,
+    /// Uma forma do Vector (P6b; P6e: o catálogo inteiro), num botão de grupo (P6c); cheia pela
+    /// caixa «Fill» do painel. O retângulo e a elipse são os `U`/`Shift+U` do Aseprite.
+    Shape(PixelShape),
     /// Traço livre que FECHA e enche ao largar.
     Contour,
     /// Vértices por clique; fecha e enche.
@@ -36,30 +36,52 @@ pub enum PixelTool {
     Hand,
 }
 
+/// As ferramentas que não são formas, na ordem da coluna; as formas entram depois da Curva.
+const PLAIN: [PixelTool; 16] = [
+    PixelTool::RectMarquee,
+    PixelTool::EllipseMarquee,
+    PixelTool::Lasso,
+    PixelTool::PolygonLasso,
+    PixelTool::MagicWand,
+    PixelTool::Transform,
+    PixelTool::Pencil,
+    PixelTool::Spray,
+    PixelTool::Eraser,
+    PixelTool::Eyedropper,
+    PixelTool::Bucket,
+    PixelTool::Line,
+    PixelTool::Curve,
+    PixelTool::Contour,
+    PixelTool::Polygon,
+    PixelTool::Hand,
+];
+
+/// Onde as formas entram em [`PixelTool::ALL`]: depois da Curva.
+const SHAPES_AT: usize = 13;
+
 impl PixelTool {
-    /// Todas, na ordem da coluna.
-    pub const ALL: [Self; 20] = [
-        Self::RectMarquee,
-        Self::EllipseMarquee,
-        Self::Lasso,
-        Self::PolygonLasso,
-        Self::MagicWand,
-        Self::Transform,
-        Self::Pencil,
-        Self::Spray,
-        Self::Eraser,
-        Self::Eyedropper,
-        Self::Bucket,
-        Self::Line,
-        Self::Curve,
-        Self::Rectangle,
-        Self::Ellipse,
-        Self::RegularPolygon,
-        Self::Star,
-        Self::Contour,
-        Self::Polygon,
-        Self::Hand,
-    ];
+    /// O retângulo do Aseprite (`U`).
+    pub const RECTANGLE: Self = Self::Shape(PixelShape::RECTANGLE);
+    /// A elipse do Aseprite (`Shift+U`).
+    pub const ELLIPSE: Self = Self::Shape(PixelShape::ELLIPSE);
+
+    /// Todas, na ordem da coluna (as formas na ordem do enum do Vector; a do flyout é a do catálogo
+    /// dele, que o painel lê).
+    pub const ALL: [Self; PLAIN.len() + SHAPE_COUNT] = {
+        let mut out = [Self::Pencil; PLAIN.len() + SHAPE_COUNT];
+        let mut i = 0;
+        while i < out.len() {
+            out[i] = if i < SHAPES_AT {
+                PLAIN[i]
+            } else if i < SHAPES_AT + SHAPE_COUNT {
+                Self::Shape(PixelShape::ALL[i - SHAPES_AT])
+            } else {
+                PLAIN[i - SHAPE_COUNT]
+            };
+            i += 1;
+        }
+        out
+    };
 
     /// A chave i18n do nome.
     #[must_use]
@@ -78,10 +100,8 @@ impl PixelTool {
             Self::Bucket => "pixel.tool.bucket",
             Self::Line => "pixel.tool.line",
             Self::Curve => "pixel.tool.curve",
-            Self::Rectangle => "pixel.tool.rectangle",
-            Self::Ellipse => "pixel.tool.ellipse",
-            Self::RegularPolygon => "pixel.tool.regular_polygon",
-            Self::Star => "pixel.tool.star",
+            // O nome de cada forma é o do Vector ([`PixelShape::name`]).
+            Self::Shape(_) => "pixel.tool.shape",
             Self::Contour => "pixel.tool.contour",
             Self::Polygon => "pixel.tool.polygon",
             Self::Hand => "pixel.tool.hand",
@@ -101,11 +121,11 @@ impl PixelTool {
             Self::Eyedropper => "I",
             Self::Bucket => "G",
             Self::Line | Self::Curve => "L",
-            Self::Rectangle | Self::Ellipse => "U",
+            Self::RECTANGLE | Self::ELLIPSE => "U",
             Self::Contour | Self::Polygon => "D",
             Self::Hand => "H",
             // O Aseprite não as tem: sem atalho.
-            Self::RegularPolygon | Self::Star => "",
+            Self::Shape(_) => "",
         }
     }
 
@@ -116,7 +136,7 @@ impl PixelTool {
             self,
             Self::Spray
                 | Self::Curve
-                | Self::Ellipse
+                | Self::ELLIPSE
                 | Self::Polygon
                 | Self::EllipseMarquee
                 | Self::PolygonLasso
@@ -133,10 +153,19 @@ impl PixelTool {
         }
     }
 
+    /// O nome: o do Aseprite, ou o do Vector para uma forma.
+    #[must_use]
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Shape(s) => s.name(),
+            _ => ph2d_i18n::tr(self.label_key()),
+        }
+    }
+
     /// O nome com o atalho, «Pencil (B)»; a que não tem atalho, só o nome.
     #[must_use]
     pub fn named(self) -> String {
-        let nome = ph2d_i18n::tr(self.label_key());
+        let nome = self.name();
         if self.shortcut().is_empty() {
             return nome.to_owned();
         }
@@ -156,10 +185,7 @@ impl PixelTool {
                 | Self::Eraser
                 | Self::Line
                 | Self::Curve
-                | Self::Rectangle
-                | Self::Ellipse
-                | Self::RegularPolygon
-                | Self::Star
+                | Self::Shape(_)
                 | Self::Contour
                 | Self::Polygon
         )
@@ -178,9 +204,7 @@ impl PixelTool {
             Self::RectMarquee | Self::EllipseMarquee | Self::Lasso | Self::PolygonLasso => {
                 Some(PixelToolGroup::Select)
             }
-            Self::Rectangle | Self::Ellipse | Self::RegularPolygon | Self::Star => {
-                Some(PixelToolGroup::Shape)
-            }
+            Self::Shape(_) => Some(PixelToolGroup::Shape),
             _ => None,
         }
     }
@@ -205,29 +229,19 @@ impl PixelTool {
 pub enum PixelToolGroup {
     /// As quatro selecções (marquee, elipse, laço, laço poligonal).
     Select,
-    /// As quatro formas do Vector (retângulo, elipse, polígono regular, estrela).
+    /// As formas do Vector (o catálogo inteiro, na ordem dele: o painel lê-a).
     Shape,
 }
 
 impl PixelToolGroup {
     pub const ALL: [Self; 2] = [Self::Select, Self::Shape];
 
-    /// As que moram nele, na ordem do flyout (a 1.ª é a cara de fábrica).
+    /// A cara de fábrica do botão.
     #[must_use]
-    pub const fn members(self) -> &'static [PixelTool] {
+    pub const fn first(self) -> PixelTool {
         match self {
-            Self::Select => &[
-                PixelTool::RectMarquee,
-                PixelTool::EllipseMarquee,
-                PixelTool::Lasso,
-                PixelTool::PolygonLasso,
-            ],
-            Self::Shape => &[
-                PixelTool::Rectangle,
-                PixelTool::Ellipse,
-                PixelTool::RegularPolygon,
-                PixelTool::Star,
-            ],
+            Self::Select => PixelTool::RectMarquee,
+            Self::Shape => PixelTool::RECTANGLE,
         }
     }
 
@@ -246,7 +260,7 @@ pub struct PixelGroups {
 impl Default for PixelGroups {
     fn default() -> Self {
         Self {
-            last: PixelToolGroup::ALL.map(|g| g.members()[0]),
+            last: PixelToolGroup::ALL.map(PixelToolGroup::first),
             open: None,
         }
     }

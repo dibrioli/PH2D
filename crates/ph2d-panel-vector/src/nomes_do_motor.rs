@@ -40,7 +40,7 @@ fn pintar(chave: Option<&'static str>, fonte: &'static str) -> &'static str {
 // já o traduz* (`CLAUDE.md` §5.0).
 
 /// As FORMAS do catálogo, traduzido.
-pub(crate) fn forma(fonte: &'static str) -> &'static str {
+pub fn forma(fonte: &'static str) -> &'static str {
     pintar(chave_da_forma(fonte), fonte)
 }
 

@@ -107,10 +107,10 @@ fn scene_11_shows_each_correction() {
     use ph2d_app_pixel::smoke_ferramentas as onze;
     let mut p = Palco::cena(11);
     let i = p.quadro();
-    assert_eq!(i.tool, Tool::Ellipse);
+    assert_eq!(i.tool, Tool::ELLIPSE);
     assert!(i.options.shape_fill, "a caixa Fill ligada no painel");
     assert_eq!(i.groups.face(G::Select), Tool::PolygonLasso);
-    assert_eq!(i.groups.face(G::Shape), Tool::Ellipse);
+    assert_eq!(i.groups.face(G::Shape), Tool::ELLIPSE);
     assert_eq!(i.groups.open, Some(G::Shape));
     assert!(i.has_selection && i.transform.is_none());
     assert!(!Tool::ALL.iter().any(|t| t.label_key() == "pixel.tool.move"));
@@ -136,7 +136,7 @@ fn scene_10_shows_each_correction() {
     let i = p.quadro();
     assert_eq!(
         i.tool,
-        Tool::Star,
+        Tool::Shape(PixelShape::STAR),
         "a estrela na mão: o painel mostra os campos dela"
     );
     assert_eq!(i.groups.face(G::Select), Tool::EllipseMarquee);
@@ -163,9 +163,9 @@ fn scene_10_shows_each_correction() {
 fn neutral_fields_keep_the_measured_pixel_laws() {
     let (a, b) = ((2, 3), (17, 12));
     for r in [0_u32, 2, 5] {
-        let v = PixelShapeValues::defaults(PixelShape::Rectangle).with(0, f64::from(r));
+        let v = PixelShapeValues::defaults(PixelShape::RECTANGLE).with(0, f64::from(r));
         for cheia in [false, true] {
-            let (o, i) = cells(PixelShape::Rectangle, &v, a, b, cheia);
+            let (o, i) = cells(PixelShape::RECTANGLE, &v, a, b, cheia);
             assert_eq!(
                 ordena(o),
                 ordena(col(|cb| rounded_rect_cells(
@@ -182,8 +182,8 @@ fn neutral_fields_keep_the_measured_pixel_laws() {
             assert_eq!(ordena(i), quer, "r={r} cheia={cheia}");
         }
     }
-    let v = PixelShapeValues::defaults(PixelShape::Ellipse);
-    let (o, i) = cells(PixelShape::Ellipse, &v, a, b, true);
+    let v = PixelShapeValues::defaults(PixelShape::ELLIPSE);
+    let (o, i) = cells(PixelShape::ELLIPSE, &v, a, b, true);
     assert_eq!(
         ordena(o),
         ordena(col(|cb| ellipse_cells(a.0, a.1, b.0, b.1, cb)))
@@ -204,32 +204,32 @@ fn the_vector_fields_draw_in_cells() {
             .all(|&(x, y)| (a.0..=b.0).contains(&x) && (a.1..=b.1).contains(&y))
     };
     // Fillet 6 com o canto de cima à direita vivo: o canto (23, 0) é pintado, o (0, 0) não.
-    let v = PixelShapeValues::defaults(PixelShape::Rectangle)
+    let v = PixelShapeValues::defaults(PixelShape::RECTANGLE)
         .with(0, 6.0)
         .with(1, -6.0);
-    let (o, _) = cells(PixelShape::Rectangle, &v, a, b, false);
+    let (o, _) = cells(PixelShape::RECTANGLE, &v, a, b, false);
     assert!(
         dentro(&o) && o.contains(&(23, 0)) && !o.contains(&(0, 0)),
         "{o:?}"
     );
     // A pizza de 270° abre à direita (o corte vai de −45° a 45°): o miolo à direita do centro fica
     // de fora, o da esquerda dentro.
-    let v = PixelShapeValues::defaults(PixelShape::Ellipse)
+    let v = PixelShapeValues::defaults(PixelShape::ELLIPSE)
         .with(0, 270.0)
         .with(1, 45.0);
-    let (o, i) = cells(PixelShape::Ellipse, &v, a, b, true);
+    let (o, i) = cells(PixelShape::ELLIPSE, &v, a, b, true);
     assert!(dentro(&o) && dentro(&i));
     assert!(i.contains(&(5, 12)) && !i.contains(&(19, 12)), "{i:?}");
     // O furo: o centro sai.
-    let v = PixelShapeValues::defaults(PixelShape::Ellipse).with(2, 0.5);
-    let (_, i) = cells(PixelShape::Ellipse, &v, a, b, true);
+    let v = PixelShapeValues::defaults(PixelShape::ELLIPSE).with(2, 0.5);
+    let (_, i) = cells(PixelShape::ELLIPSE, &v, a, b, true);
     assert!(!i.contains(&(12, 12)) && i.contains(&(3, 12)), "{i:?}");
     // O hexágono e a estrela cheios, dentro da caixa; a estrela com uma ponta na linha de cima.
-    let v = PixelShapeValues::defaults(PixelShape::Polygon).with(0, 6.0);
-    let (o, i) = cells(PixelShape::Polygon, &v, a, b, true);
+    let v = PixelShapeValues::defaults(PixelShape::POLYGON).with(0, 6.0);
+    let (o, i) = cells(PixelShape::POLYGON, &v, a, b, true);
     assert!(dentro(&o) && dentro(&i) && !i.is_empty());
-    let v = PixelShapeValues::defaults(PixelShape::Star);
-    let (o, i) = cells(PixelShape::Star, &v, a, b, true);
+    let v = PixelShapeValues::defaults(PixelShape::STAR);
+    let (o, i) = cells(PixelShape::STAR, &v, a, b, true);
     assert!(dentro(&o) && !i.is_empty());
     assert!(
         o.iter().any(|&(x, y)| y == 0 && (10..=13).contains(&x)),
@@ -267,18 +267,18 @@ fn each_group_holds_its_last_tool_and_opens_its_four() {
         "a cara fica a última"
     );
     // As formas: a estrela da cena é a cara; o U troca-a pelo retângulo.
-    assert_eq!(i.groups.face(G::Shape), Tool::Star);
+    assert_eq!(i.groups.face(G::Shape), Tool::Shape(PixelShape::STAR));
     p.pede(PixelRequest::Group(G::Select));
     let i = p.pede(PixelRequest::Group(G::Shape));
     assert_eq!(
         (i.tool, i.groups.open),
-        (Tool::Star, Some(G::Shape)),
+        (Tool::Shape(PixelShape::STAR), Some(G::Shape)),
         "abrir as formas fecha as selecções"
     );
     let i = p.tecla(KeyCode::KeyU, false, true);
     assert_eq!(
         (i.tool, i.groups.face(G::Shape), i.groups.open),
-        (Tool::Ellipse, Tool::Ellipse, None)
+        (Tool::ELLIPSE, Tool::ELLIPSE, None)
     );
     assert_eq!(
         i.groups.face(G::Select),
@@ -292,7 +292,7 @@ fn each_group_holds_its_last_tool_and_opens_its_four() {
 #[test]
 fn the_fill_box_fills_the_rectangle_and_the_ellipse() {
     // Um canto livre da cena 10 (as formas estão em cima, a figura ao meio).
-    for tool in [Tool::Rectangle, Tool::Ellipse] {
+    for tool in [Tool::RECTANGLE, Tool::ELLIPSE] {
         for fill in [false, true] {
             let mut p = Palco::novo();
             p.tecla(KeyCode::Enter, false, false);

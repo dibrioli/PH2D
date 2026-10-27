@@ -1,7 +1,7 @@
 //! O seletor de MODO + as linhas partilhadas (escolha, número, grelha) + as seções de TEXTO.
 //!
 //! Módulo irmão de `paint_sections` (teto de 600 LOC por arquivo de painel). O CATÁLOGO
-//! de formas mora no flyout da coluna ① (D10; os contornos: `shape_outlines`).
+//! de formas mora no flyout da coluna ① (D10; os contornos: `ph2d_tool_vector::shape_thumbs`).
 //!
 //! **Seis modos** (ADR-0112 + o 5º pill da reforma + o **Connect**): **Select** (o gizmo
 //! manda) · **Node** (edita âncoras) · **Pen** (cria) · **Shape** (desenha a forma ATIVA

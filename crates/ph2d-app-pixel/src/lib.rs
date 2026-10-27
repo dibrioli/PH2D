@@ -27,6 +27,7 @@ pub mod quadros;
 pub mod selecao;
 pub mod smoke;
 pub mod smoke_camadas;
+pub mod smoke_catalogo;
 pub mod smoke_ferramentas;
 pub mod smoke_formas;
 pub mod smoke_quadros;

@@ -138,6 +138,16 @@ vira a pose do palpite» sangra. Mundo (`ph2d-constraints-ecs/tests/it/cola.rs`)
 = quadro anterior» (scrub 0,729 × tocar 0,948 rad no quadro 5), «não publicar `AlvosDasFamilias`» e «o cadeado não é
 chão» — 4/4 sangram. Desenho do mundo: [ADR-0193](../architecture/decisions/0193-a-cola-e-uma-relacao-simetrica-resolvida-por-grupo-antes-da-pilha.md).
 
+### 4.2 Kill medido (27/10) — ⛔ ABERTO, os DOIS reprovam ~10×
+
+Bancada `ph2d-constraints-ecs/tests/it/kill.rs` (`#[ignore]`; `--profile smoke`, que herda `release`; 7 blocos × 40
+quadros, cola e pilha intercaladas, o MÍNIMO): **cola 5,30 ms / 1 000 objectos** (100 quadriláteros na ezpz + 60
+cadeias de 10 pinos no fecho) · **pilha 6,18 ms / 1 000 itens** (500 donos × Copy Location + Copy Rotation em
+cadeia). `loadavg` 4,72 → 6,11 (acima de ~5 o relógio vale pouco, mas a distância é de uma ordem). Tecto NÃO mexido.
+Próximo passo: perfilar antes de curar (suspeitos por ler, não medidos: `iter_entities` + `indice()` a cada quadro, o
+`parent_world_transform` por membro, uma `kcl_ezpz::solve` por quadrilátero; na pilha, `ordem()` e clones por
+quadro). A cola não depende disto para o smoke (5 objectos).
+
 O kill-criterion da **pilha** (W1, 0,5 ms / 1 000 itens) **nunca foi medido** (o explorador não achou bancada):
 mede-se na mesma bancada, na mesma rodada (§0.10).
 

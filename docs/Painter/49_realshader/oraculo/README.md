@@ -378,6 +378,62 @@ que a lâmina NIVELOU fora do desfoque largo — precisa de uma marca por célul
 (campo da grade; não é deste agente) e da porta `if rebordo > 0.0 || nivel > 0.0` no `dab_route.rs` (K3a §Aberto).
 A cena `smooth2` fica na sonda para a medir.
 
+## §K7 — A parede nivelada fica viva: a cura LOCAL das paredes do Smooth 2 (W3, 27/10)
+
+Régua: [`parede_regua.py`](parede_regua.py) sobre a cena `PH2D_OLEO_CENA=smooth2` (o perfil TRANSVERSAL, mediana em
+x 150..500: células de cada parede entre 10 % e 90 % do miolo da `h_forma`, larguras da cobertura, a luminância do
+`oleo.ppm`); a sonda grava agora também `nivelado.f32` (a marca) e aceita `PH2D_OLEO_S2_RAIO`, `PH2D_OLEO_S2_BRUSH`
+e `PH2D_OLEO_S2_ENGINE` (`chave=v,…`) para variar o preset. Régua inteira: [`regua_K7.txt`](regua_K7.txt). Folha
+[`../out/K7_folha.jpg`](../out/K7_folha.jpg) (antes | depois | Rebelle; em cima `knifeLevel` 1, em baixo 0,3). «antes»
+= a MESMA árvore com a mutação «marca ignorada na forma», corrida a seguir (a árvore partilhada muda com o K5).
+
+**Lei.** `lamina::nivelar` escreve por célula nivelada a marca `knifeLevel × cobertura da lâmina` (a maior que lá
+passou) no campo novo `Grid::nivelado` (molde da `Grid::crista`: preguiçoso, undo inteiro e por recorte, limpar,
+instantâneo). Em `CampoAltura::de_com`, com alguma camada visível marcada, a massa reparte-se pela marca `mu`: a
+parte por marcar leva o desfoque largo de sempre; a marcada é a espessura média NORMALIZADA pelo peso `mu ×
+cobertura` — `desfoque(massa·mu) ÷ desfoque(peso) · peso` (`forma_viva`). O miolo do planalto fica alisado (o
+mesmo raio, nada de sulcos de célula — a recusa `raio_suave` 1/0 não volta), a forma não sai do planalto e a orla
+fina não é puxada para dentro: a parede é a da COBERTURA. Sem marca em nenhuma camada visível, o caminho de antes.
+
+| Smooth 2 (cena smooth2, tamanho 40) | paredes 10–90 % (cél.) | largura@50 % | miolo (px) | cobertura >50 % |
+|---|---|---|---|---|
+| `knifeLevel` 1 · antes | 9 / 9 | 32 | 8,80 | 32 |
+| `knifeLevel` 1 · 1.ª ronda (normalizada só pela marca) | 0 / 5 (a orla fina de cobertura 0,62 · 0,22 puxava ~6 células para dentro) | 33 | 8,80 | 32 |
+| **`knifeLevel` 1 · depois (peso `mu × cobertura`)** | **2 / 2** | 32 | 8,82 | 32 |
+| `knifeLevel` 0,3 · antes → depois | 8 / 10 → 7 / 9 (a marca 0,3 só tira 30 % do desfoque) | 30 → 31 | 8,80 | 32 |
+| `knifeLevel` 0 · antes → depois | 14 / 11 → 14 / 11 (nada marcado, ao bit: y 0..150 da `h_forma` igual) | 25 | 10,66 | 32 |
+| Rebelle Knife Smooth 2 | ~1–2 px (`255 174 106 … 92 … 69 195 255`) | | | **42** |
+
+**A cena do dono × Cycles: inalterada AO BIT.** Zero células marcadas (`nivelado.f32` 0 de 322 000) e as três alturas
+(`h_forma`, `h_fina`, `h_sombra`) iguais ao bit às de [`entrada/`](entrada/) — as orlas do K6 não mudam (é por isso
+que a lei global ficou recusada e esta, local, entra).
+
+**Gates.** `a_parede_nivelada_fica_viva` (novo: parede ≤ 2 células contra ≥ 6 da forma de sempre, miolo a 1 %, nada
+fora do planalto, a tinta por marcar ao bit, a marca a zero ao bit, a orla fina não puxa o miolo — 1,3 % × 14 % sem
+o peso da cobertura), `a_faca_que_nivela_marca_o_que_nivelou` (lamina), `a_marca_do_nivelado_viaja_no_instantaneo_e_no_recorte`
+(undo). Mutações 6/6 vermelhas (controlo verde): a marca ignorada na forma · a média sem normalizar · a parte presa
+sem o peso · o peso sem a cobertura · a lâmina que não marca · o recorte que não devolve a marca. Verdes:
+`oleo_real::` 32/32 (as impressões, `o_material_neutro_e_bit_identico_a_de_antes`, `a_crista_da_faca_faz_sombra`),
+`lamina::` 6/6, `seam_wetpaint_oleo_real` 6/6, os do óleo do tool-painter 9/10 — o vermelho
+`os_candidatos_da_w2_sao_as_suas_receitas` não toca nesta lei (receitas × candidatos; a árvore tem as edições em curso
+do K5 em `tuning/` e `painter-brush/`).
+
+**Por que o Smooth 2 sai mais estreito (32–33 × 42 px) — VALOR, não motor.** A largura segue o raio do motor e mais
+nada: `dab_flatten` 0 → 33/34, `knifeRidge` 0 → 32/33, `knifeLevel` 0 · 0,3 · 1 → 32 nos três; `PH2D_OLEO_S2_RAIO` 24
+(raio do motor 20,6 pela tabela) → **41**. O motor dá ≈ 2 × raio do motor (16,7 → 33 · 20,6 → 41), e o tamanho 40
+chega ao motor como 16,7 porque a `width_table` do candidato promete 16,7 → 40 (2,4 ×) — a tabela é a do VIZINHO, não
+medida (o próprio gate `os_candidatos_da_w2_sao_as_suas_receitas` o diz). Cura: regerar a `width_table` do Knife
+Smooth 2 com a sonda da fábrica (dará ~20 → 40, e o tamanho 40 → ~41 × Rebelle 42) — é do dono das receitas.
+
+**Aberto (medido, não curado aqui).** (1) A SOMBRA no papel ao pé do planalto: com a parede viva o papel abaixo do
+traço lê-se uma banda chapada (luminância 163 por ≥ 7 px; antes um degradê 227 → 163; o Rebelle ≤ 1 px de sombra e o
+papel a 255) — é a altura do planalto (8,8 px) a tapar o céu do papel (a lei do papel ao pé da parede, K4/E2), não a
+parede; e o papel por cima do traço desce 255 → 250. (2) A marca não se apaga quando outro pincel pinta por cima de
+tinta nivelada: dentro do planalto a média normalizada alisa como a forma de sempre, mas a tinta nova que chega à
+BORDA dele herda a parede viva (precisa de quem pousa tinta — o `dab_route`/`trail` — baixar a marca; não é dos
+ficheiros deste agente). (3) O miolo do Smooth 2 continua com as
+riscas da espessura (`knifeLevel` 1 ainda std ~12, K3a §1) — não é a parede.
+
 ## ⛔ Recusas MEDIDAS
 
 | Tentativa | Porque saiu |

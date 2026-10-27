@@ -395,3 +395,27 @@ fn o_papel_ao_pe_da_parede_perde_o_ceu_do_lado_dela() {
         s(&classico, esq)
     );
 }
+
+/// ⭐ **Material NEUTRO = a imagem de antes** (W2 E3-B): com `MaterialCelula::NEUTRO` em toda a célula e o
+/// cartão no neutro, os QUATRO ambientes são BIT a BIT os de `5464db050b` (impressões gravadas antes do
+/// material entrar no sombreado).
+#[test]
+fn o_material_neutro_e_bit_identico_a_de_antes() {
+    let mut erros = Vec::new();
+    for (ambiente, antes) in [
+        (Ambiente::Classico, 0xd577_67fb_dd93_1d70u64),
+        (Ambiente::Estudio, 0x9f6c_0278_7b71_e6fdu64),
+        (Ambiente::Interior, 0x47f6_a218_9632_b47fu64),
+        (Ambiente::Patio, 0xbb89_005a_1c61_c90du64),
+    ] {
+        let o = OleoReal {
+            ambiente,
+            ..OleoReal::default()
+        };
+        let d = impressao_digital(&o);
+        if d != antes {
+            erros.push(format!("{ambiente:?} {d:#018x}"));
+        }
+    }
+    assert!(erros.is_empty(), "{erros:?}");
+}

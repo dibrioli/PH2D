@@ -289,6 +289,22 @@ fn grava_folha_com(
     for (nome, v) in ["h_forma", "h_fina", "h_sombra"].iter().zip(&alturas) {
         std::fs::write(dir.join(format!("{nome}.f32")), v).expect("grava");
     }
+    // W2 E3-B: a direcção da ESTRIA (x, y da tela; `0,0` no plano) e a PASSAGEM da película (a luz que chega
+    // ao papel), as mesmas do sombreado — o `cycles.py` liga-as à Tangent e à Transmission do Principled.
+    let (mut estria, mut passa) = (Vec::with_capacity(gw * gh * 8), Vec::with_capacity(gw * gh * 4));
+    for cy in 1..=gh {
+        for cx in 1..=gw {
+            let (x, y) = (cx as isize, cy as isize);
+            let e = ph2d_wet_paint::oleo_real::estria(&campo, x, y).unwrap_or([0.0; 2]);
+            for v in e {
+                estria.extend_from_slice(&(v as f32).to_le_bytes());
+            }
+            let p = ph2d_wet_paint::oleo_real::passagem(&campo, x, y);
+            passa.extend_from_slice(&(p as f32).to_le_bytes());
+        }
+    }
+    std::fs::write(dir.join("t_estria.f32"), estria).expect("grava");
+    std::fs::write(dir.join("t_passagem.f32"), passa).expect("grava");
     std::fs::write(
         dir.join("oraculo.txt"),
         format!(
@@ -442,9 +458,29 @@ fn oleo_de(af: &str) -> ph2d_wet_paint::oleo_real::OleoReal {
             "alcance_fenda" => o.alcance_fenda = v,
             // `ceu` = o nome de antes (o `oraculo.txt` e o `cycles.py` leem-no assim).
             "ceu" | "forca_ambiente" => o.forca_ambiente = v,
+            // W2 E3-B: o material GLOBAL do cartão (`mat_<campo>`; `mapa_reflexo` 0 = o Environment).
+            "mat_metal" => o.material.metal = v,
+            "mat_rugosidade" => o.material.rugosidade = v,
+            "mat_especular" => o.material.especular = v,
+            "mat_tinta_reflexo" => o.material.tinta_reflexo = v,
+            "mat_verniz" => o.material.verniz = v,
+            "mat_verniz_rugosidade" => o.material.verniz_rugosidade = v,
+            "mat_veludo" => o.material.veludo = v,
+            "mat_anisotropia" => o.material.anisotropia = v,
+            "mat_translucidez" => o.material.translucidez = v,
+            "mat_refletividade" => o.material.refletividade = v,
+            "mat_escala_mapa" => o.material.escala_mapa = v,
+            "mat_forca_reflexo" => o.material.forca_reflexo = v,
+            "mat_mapa_reflexo" => {
+                o.material.mapa_reflexo = (v as u8)
+                    .checked_sub(1)
+                    .map(|i| ph2d_wet_paint::oleo_real::Ambiente::de_indice(i).expect("mapa 0..=4"));
+            }
             "penumbra" => af.penumbra = v,
             "rugosidade" => af.rugosidade = v,
             "brilho_max" => af.brilho_max = v,
+            "antisserrilhado" => af.antisserrilhado = v,
+            "antisserrilhado_ambiente" => af.antisserrilhado_ambiente = v,
             _ => panic!("{k}: campo desconhecido"),
         }
     }
@@ -1274,7 +1310,7 @@ fn medida_oleo_real_acumulo() {
 #[test]
 #[ignore = "medicao — corre-se à mão no perfil smoke"]
 fn medida_oleo_real_custo() {
-    use ph2d_wet_paint::oleo_real::{Ambiente, CampoAltura, OleoReal, termos};
+    use ph2d_wet_paint::oleo_real::{Ambiente, CampoAltura, OleoReal, termos_com};
     let mut t = pinta_folha();
     let s = t.paint.wetpaint.session.as_mut().expect("sessão");
     s.bring_home();
@@ -1294,29 +1330,47 @@ fn medida_oleo_real_custo() {
         gw,
         gh,
     );
-    let mut melhor = [f64::INFINITY; 4];
+    // W2 E3-B: os quatro ambientes com o material NEUTRO e o Clássico e o Estúdio com um material CHEIO
+    // (todos os lóbulos a meio), intercalados.
+    let cheio = ph2d_wet_paint::material::MaterialCelula {
+        metal: 0.5,
+        tinta_reflexo: 0.5,
+        verniz: 0.5,
+        veludo: 0.5,
+        anisotropia: 0.5,
+        translucidez: 0.5,
+        ..ph2d_wet_paint::material::MaterialCelula::NEUTRO
+    };
+    let neutro = ph2d_wet_paint::material::MaterialCelula::NEUTRO;
+    let variantes: Vec<(String, Ambiente, ph2d_wet_paint::material::MaterialCelula)> = Ambiente::TODOS
+        .iter()
+        .map(|&a| (format!("{a:?}"), a, neutro))
+        .chain([Ambiente::Classico, Ambiente::Estudio].map(|a| (format!("{a:?}+cheio"), a, cheio)))
+        .collect();
+    let nv = variantes.len();
+    let mut melhor = vec![f64::INFINITY; nv];
     let mut soma = 0.0;
     for rodada in 0..7 {
-        for k in 0..4 {
-            let a = Ambiente::TODOS[(k + rodada) % 4];
+        for k in 0..nv {
+            let i = (k + rodada) % nv;
+            let (_, a, m) = &variantes[i];
             let o = OleoReal {
-                ambiente: a,
+                ambiente: *a,
                 ..OleoReal::default()
             };
             let t0 = std::time::Instant::now();
             for cy in (1..=gh).step_by(4) {
                 for cx in (1..=gw).step_by(4) {
-                    soma += termos(&o, &campo, cx, cy).vis;
+                    soma += termos_com(&o, &campo, cx, cy, m, [0.6, 0.1, 0.1]).vis;
                 }
             }
             let ns = t0.elapsed().as_nanos() as f64 / ((gw / 4) * (gh / 4)) as f64;
-            let i = usize::from(a.indice());
             melhor[i] = melhor[i].min(ns);
         }
     }
     println!(
         "[custo] ns/célula (mínimo de 7): {:?} · {soma:.0}",
-        Ambiente::TODOS.iter().zip(melhor).collect::<Vec<_>>()
+        variantes.iter().map(|v| &v.0).zip(melhor).collect::<Vec<_>>()
     );
 }
 

@@ -240,4 +240,138 @@ for luz, modo in VARIANTES:
         im.file_format = "PNG"
         im.color_depth = "8"
         bpy.data.images["Render Result"].save_render(os.path.join(saida, f"{nome}_agx.png"), scene=cena)
+
+# W2 E3-B: os MATERIAIS (`materiais_e3.py`, a mesma lista da sonda) — o Principled com o MESMO valor sobre a
+# MESMA tinta. `PH2D_CYCLES_MAT="a,b"` (ou `todos`) liga-os; cada um grava `mat_<nome>_cor` e `_brilho`.
+# A estria (`t_estria.f32`) vai à Tangent e a passagem da película (`t_passagem.f32`) pesa a Transmission
+# (Thin Wall) sobre um PAPEL branco difuso logo abaixo da tinta.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import materiais_e3  # noqa: E402
+
+MAT_SO = [x for x in os.environ.get("PH2D_CYCLES_MAT", "").split(",") if x]
+if MAT_SO == ["todos"]:
+    MAT_SO = list(materiais_e3.MATERIAIS)
+if MAT_SO:
+    nv = gw * gh
+    est = np.fromfile(os.path.join(entrada, "t_estria.f32"), dtype="<f4").reshape(nv, 2).astype(np.float64)
+    zero = np.hypot(est[:, 0], est[:, 1]) < 1e-6
+    est[zero] = (1.0, 0.0)
+    tang = np.stack([est[:, 0], -est[:, 1], np.zeros(nv)], axis=-1)  # y da tela para baixo
+    at = malha.attributes.new("estria", "FLOAT_VECTOR", "POINT")
+    at.data.foreach_set("vector", tang.astype(np.float32).ravel())
+    pas = np.fromfile(os.path.join(entrada, "t_passagem.f32"), dtype="<f4")
+    ap = malha.attributes.new("passagem", "FLOAT", "POINT")
+    ap.data.foreach_set("value", pas.astype(np.float32))
+    nt = mat.node_tree
+    a_est = nt.nodes.new("ShaderNodeAttribute")
+    a_est.attribute_name = "estria"
+    a_pas = nt.nodes.new("ShaderNodeAttribute")
+    a_pas.attribute_name = "passagem"
+    peso_tr = nt.nodes.new("ShaderNodeMath")
+    peso_tr.operation = "MULTIPLY"
+    nt.links.new(a_pas.outputs["Fac"], peso_tr.inputs[0])
+    tinta_esp = nt.nodes.new("ShaderNodeMix")
+    tinta_esp.data_type = "RGBA"
+    tinta_esp.inputs["A"].default_value = (1.0, 1.0, 1.0, 1.0)
+    nt.links.new(tex.outputs["Color"], tinta_esp.inputs["B"])
+    # O papel: um plano branco difuso logo abaixo do zero da tinta (só aparece pela película translúcida).
+    bpy.ops.mesh.primitive_plane_add(size=1.0)
+    papel = bpy.context.active_object
+    papel.scale = (gw * 2, gh * 2, 1)
+    papel.location = ((gw - 1) / 2, -(gh - 1) / 2, -0.02)
+    mp = bpy.data.materials.new("papel")
+    mp.use_nodes = True
+    mp.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = (1.0, 1.0, 1.0, 1.0)
+    mp.node_tree.nodes["Principled BSDF"].inputs["Specular IOR Level"].default_value = 0.0
+    mp.node_tree.nodes["Principled BSDF"].inputs["Roughness"].default_value = 1.0
+    papel.data.materials.append(mp)
+
+    # O material é da TINTA: cada lóbulo pesa-se pela cobertura (o papel do `albedo` fica dieléctrico — sem
+    # isto o metal1 punha o papel branco a espelho, e o reflexo das encostas via-o).
+    tcob = nt.nodes.new("ShaderNodeTexImage")
+    tcob.image = bpy.data.images.load(os.path.join(entrada, "cobertura.png"))
+    tcob.image.colorspace_settings.name = "Non-Color"
+    tcob.interpolation = "Closest"
+    peso_tr_cob = nt.nodes.new("ShaderNodeMath")
+    peso_tr_cob.operation = "MULTIPLY"
+    nt.links.new(peso_tr.outputs["Value"], peso_tr_cob.inputs[0])
+    nt.links.new(tcob.outputs["Color"], peso_tr_cob.inputs[1])
+    fator_tinta = nt.nodes.new("ShaderNodeMath")
+    fator_tinta.operation = "MULTIPLY"
+    nt.links.new(tcob.outputs["Color"], fator_tinta.inputs[0])
+    nt.links.new(fator_tinta.outputs["Value"], tinta_esp.inputs["Factor"])
+    pesos = {}
+
+    def pesa(entrada_bsdf, valor):
+        if entrada_bsdf not in pesos:
+            no = nt.nodes.new("ShaderNodeMath")
+            no.operation = "MULTIPLY"
+            nt.links.new(tcob.outputs["Color"], no.inputs[0])
+            pesos[entrada_bsdf] = no
+        pesos[entrada_bsdf].inputs[1].default_value = valor
+        liga(pesos[entrada_bsdf].outputs["Value"] if valor > 0 else None, entrada_bsdf)
+        if valor <= 0:
+            bsdf.inputs[entrada_bsdf].default_value = 0.0
+
+    def liga(saida_no, entrada_bsdf):
+        for l in list(nt.links):
+            if l.to_socket == bsdf.inputs[entrada_bsdf]:
+                nt.links.remove(l)
+        if saida_no is not None:
+            nt.links.new(saida_no, bsdf.inputs[entrada_bsdf])
+
+    for nome_m in MAT_SO:
+        m = materiais_e3.MATERIAIS[nome_m]
+        luz_m = materiais_e3.luz(nome_m)
+        ang, com_sol, ceu_v = LUZES[luz_m]
+        sol_d.angle = math.radians(ang)
+        sol_d.energy = forca_sol if com_sol else 0.0
+        for l in list(ceu_nos.links):
+            if l.to_node == fundo and l.to_socket.name == "Color":
+                ceu_nos.links.remove(l)
+        fundo.inputs["Color"].default_value = (ceu, ceu, ceu, 1.0)
+        fundo.inputs["Strength"].default_value = 1.0
+        if ceu_v != "uniforme":
+            amb.image, forca, rot = hdri(ceu_v)
+            mapa.inputs["Rotation"].default_value = (0.0, 0.0, rot)
+            fundo.inputs["Strength"].default_value = forca * (ceu if com_sol else 1.0)
+            ceu_nos.links.new(amb.outputs["Color"], fundo.inputs["Color"])
+        pesa("Metallic", m.get("metal", 0.0))
+        bsdf.inputs["Roughness"].default_value = min(1.0, rug * m.get("rugosidade", 1.0))
+        bsdf.inputs["Specular IOR Level"].default_value = 0.5 * m.get("especular", 1.0)
+        fator_tinta.inputs[1].default_value = m.get("tinta_reflexo", 0.0)
+        liga(tinta_esp.outputs["Result"] if m.get("tinta_reflexo", 0.0) > 0 else None, "Specular Tint")
+        pesa("Coat Weight", m.get("verniz", 0.0))
+        bsdf.inputs["Coat Roughness"].default_value = min(1.0, 0.03 * m.get("verniz_rugosidade", 1.0))
+        pesa("Sheen Weight", m.get("veludo", 0.0))
+        pesa("Anisotropic", m.get("anisotropia", 0.0))
+        liga(a_est.outputs["Vector"] if m.get("anisotropia", 0.0) > 0 else None, "Tangent")
+        peso_tr.inputs[1].default_value = m.get("translucidez", 0.0)
+        liga(peso_tr_cob.outputs["Value"] if m.get("translucidez", 0.0) > 0 else None, "Transmission Weight")
+        bsdf.inputs["Thin Wall"].default_value = m.get("translucidez", 0.0) > 0
+        papel.hide_render = m.get("translucidez", 0.0) <= 0
+        cena.cycles.max_bounces = 12
+        for modo in ("cor", "brilho"):
+            if modo == "cor":
+                liga(tex.outputs["Color"], "Base Color")
+            else:
+                liga(None, "Base Color")
+                bsdf.inputs["Base Color"].default_value = (0.0, 0.0, 0.0, 1.0)
+            cena.view_settings.view_transform = "Standard"
+            cena.view_settings.look = "None"
+            im = r.image_settings
+            if hasattr(im, "media_type"):
+                im.media_type = "IMAGE"
+            im.file_format = "OPEN_EXR"
+            im.color_depth = "32"
+            r.filepath = os.path.join(saida, f"mat_{nome_m}_{modo}.exr")
+            bpy.ops.render.render(write_still=True)
+            print(f"[oraculo] {r.filepath}")
+            if modo == "cor":
+                cena.view_settings.view_transform = "AgX"
+                im.file_format = "PNG"
+                im.color_depth = "8"
+                bpy.data.images["Render Result"].save_render(
+                    os.path.join(saida, f"mat_{nome_m}_cor_agx.png"), scene=cena
+                )
 print("[oraculo] fim")

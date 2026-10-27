@@ -171,3 +171,47 @@ ladrilho é o que se via (UV 3 ⇒ largura/3). Foto `voltas` (Player 100 × 100 
 bandeira normal depois de 4 trocas).
 ⚠️ **Decisão do dono por tomar:** Animated → Still → Animated perde as animações do artista (o Player volta só com
 «loop»); o Ctrl+Z devolve-as. Alternativa: guardar as animações escondidas enquanto parada/repetida.
+
+## Dono 27/10: «Repeated nasce com Width/Height herdados de Animated… cada modo guarda sua própria configuração» — DECIDIDO
+
+A decisão acima foi tomada pelo dono: **cada uso guarda a sua configuração**. Mecanismo do defeito: `set_use`
+apagava o uso que se deixava (`stop_animating`, `show`), e a repetida guardava o tamanho de agora (o da animada).
+Cura (um bloco, auditoria de todos os campos por uso):
+
+- `ph2d_ecs::ImageUseMemory { still, repeated, animated: Option<ImageUseState> }` (ficheiro `image_use_memory.rs`);
+  `ImageUseState { look: Option<ImageUseLook{size, grid, uv, repeat, tiled}>, animations, animator, frames,
+  cursor }`. **Registado** (ecs `111 → 112`) ⇒ viaja no Desfazer e no projecto: **`PROJECT_SCHEMA 195 → 196`**
+  (`PROJECT_SCHEMA_SEM_MEMORIA_DO_USO = 195`, lido com o tipo vivo; tripla `(196, 13, 23)`). Catálogo
+  `machinery` + porta das macros `Gravado` + i18n.
+- `image_use::set_use`: captura o uso que se deixa (`capture`) → guarda-o no seu lugar; o uso de destino, se
+  guardado com aspecto, volta TAL E QUAL (`restore`); senão nasce (`fresh`) à `display_scale` — parada = imagem
+  inteira · animada = célula (proposta pelas calhas) · **repetida = UM ladrilho (1 × 1) do que o objecto mostrava**
+  (de uma animada, a célula à vista: o Player continua 100 × 100). Animações guardadas sem aspecto voltam por
+  cima do uso novo.
+- `image_choice::choose_image` esquece o ASPECTO guardado dos outros usos (`forget_looks`: descrevia a imagem
+  antiga) e guarda as animações.
+- `tiled::follow_auto_collider` (extraído de `set_tiled_side`): o collider em caixa automático segue o tamanho
+  de cada troca de uso; um mudado à mão fica.
+
+Gates (por nome, `ph2d-app-sprite-anim`, 36 verdes): `nenhuma_troca_de_uso_muda_a_escala` reescrito — uso NOVO
+nasce com o tamanho dele (a repetida = o que se via, 1 × 1); uso JÁ usado volta igual em tudo (`completo`: sprite,
+corte, UV, *Repeat*, Tiled, animações, animador, quadros, passo, regras); novos `cada_uso_guarda_a_sua_configuracao`
+(Player: anim nova + tamanho → Repeated 1 × 1 → Width → Animated igual → reaberto do instantâneo igual →
+Repeated com a Width → Still → Animated igual), `trocar_a_imagem_guarda_as_animacoes_e_esquece_o_aspecto`,
+`o_collider_automatico_segue_o_uso`. Mutação 6/6 vermelha (memória ignorada · repetida sem 1 × 1 ·
+`forget_looks` mudo · collider mudo · `restore` sem animação · repetida da folha inteira de uma animada — esta
+passou VERDE na 1.ª versão do gate e a foto mostrou o Player 800 × 400: o gate passou a exigir «a repetida nova
+= o que se via»). Árvore reposta.
+
+Censos que o registo novo toca, verdes: `registry` (ecs), `project_schema` (shell), `every_registered_component_*`
+e `todo_componente_registado_tem_porta_no_mundo` (shell `it`) — **estes dois estavam VERMELHOS por omissões da
+própria linha**: `SpriteAnimFrames`/`SpriteAnimCursor` (onda 07) e `AnimRules` (onda 08) sem descritor nem porta;
+fechados agora (`machinery`, `Gravado`). `smoke.rs` da app-game estava a 712 LOC (tecto 700): as fotos foram para
+`smoke_foto.rs` (re-exportadas, caminhos iguais). Clippy `-D warnings` limpo nas crates tocadas.
+Vermelhos herdados que FICAM (os do handoff 14): `o_cartao_pinta_a_chave_do_catalogo`,
+`o_nome_de_codigo_e_o_rotulo`, `todo_campo_sem_coluna_propria_ganha_a_do_losango`,
+`nenhuma_isencao_sobrevive_ao_codigo_que_a_explicava`.
+
+Fotos novas (`fotos_15/`): `player_repetido` (Player → Repeated: 100 × 100 px, Width 1 · Height 1),
+`memoria` (Repeated → Width 3 → Animated: as 6 animações de volta), `memoria_repetida` (… → Repeated: Width 3),
+`voltas` refeita.

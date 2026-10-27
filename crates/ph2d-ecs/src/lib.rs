@@ -62,6 +62,8 @@ pub mod emissive;
 /// como componente (o idioma delas é `instantiate()` em código).
 pub mod factory;
 pub mod flip_object_ref;
+/// O que cada uso da imagem (Still · Repeated · Animated) guarda enquanto o objecto usa outro.
+pub mod image_use_memory;
 /// ⭐ **A CÓPIA PROFUNDA** (ADR-0164 / F4.2) — a peça de que *Duplicar* e *Instanciar* nascem,
 /// e o elo `InstanceOf`. ⛔ Ela copia bytes; quem remapeia referências é a porta da shell.
 pub mod instantiate;
@@ -204,6 +206,7 @@ pub use motion_generator::{MotionGenerator, MotionTemplate, assign_motion_templa
 pub mod graveyard;
 mod subtree_copies;
 pub use graveyard::{GRAVEYARD_DEPTH, Graveyard};
+pub use image_use_memory::{ImageUseLook, ImageUseMemory, ImageUseState};
 pub use instantiate::{
     DeepCopy, InstanceOf, LinkedArt, ObjectInstance, OrphanOverride, OverrideKey,
     deep_copy_subtree, deep_copy_subtree_many, remap_instance_of,

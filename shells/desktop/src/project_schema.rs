@@ -508,7 +508,18 @@
 /// forma do `ProjectFile` não muda; um `194`/`193` lê-se com o tipo vivo. Registos: ecs `+1`.
 ///
 /// ⚠️ **A tripla NÃO vê este degrau** — nem a forma do `FlipDoc` nem a da `VecScene` mudam.
-pub(crate) const PROJECT_SCHEMA: u32 = 195;
+///
+/// # `195 → 196` — **cada uso da imagem guarda a sua configuração** (`line/GameEngineFuncional`, plano 15, 2026-10-27)
+///
+/// UM componente registado novo: `ph2d::ecs::ImageUseMemory` (o que Still · Repeated · Animated tinham quando o
+/// artista os deixou). ⭐ **COM leitura dos anteriores:** a forma do `ProjectFile` não muda; um `195`/`194`/`193`
+/// lê-se com o tipo vivo. Registos: ecs `+1`.
+///
+/// ⚠️ **A tripla NÃO vê este degrau** — nem a forma do `FlipDoc` nem a da `VecScene` mudam.
+pub(crate) const PROJECT_SCHEMA: u32 = 196;
+
+/// O último degrau sem o `ImageUseMemory` — a mesma forma do actual.
+pub(crate) const PROJECT_SCHEMA_SEM_MEMORIA_DO_USO: u32 = 195;
 
 /// O último degrau sem o `TiledDraw` — a mesma forma do actual.
 pub(crate) const PROJECT_SCHEMA_SEM_TILED_DRAW: u32 = 194;

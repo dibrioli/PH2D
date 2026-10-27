@@ -141,6 +141,13 @@ const fn pr(
 /// [`tests::the_physics_family_offers_one_door_and_not_its_rows`] impede que a segunda entre sem
 /// alguém decidir.
 pub const DESCS: &[D] = &[
+    // ⭐ **A lista de regras «quando → toca»** (GameEngineFuncional 08): as linhas da secção Animation escrevem-na
+    // (`anim_rules::rule_rows`), nenhum cartão a mostra campo a campo e a paleta não a oferece.
+    D::machinery(
+        "ph2d::physics::AnimRules",
+        "component.anim_rules.name",
+        C::Animation,
+    ),
     // As SETE da zona — todas rows do bloco de área da §11, pintadas quando o collider é
     // *Sensor* e escritas pelos `PhysicsFieldEdit::Force*/AreaDrag/AreaDensity/AreaFormDrag/
     // AreaTorque/AreaFalloff/ForceWorldAxes`. ⚠️ Fora de um sensor elas **não têm leitor**: a

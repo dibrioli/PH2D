@@ -78,19 +78,30 @@ pub fn set_tiled_side(world: &mut World, e: Entity, axis: usize, m: f32) -> bool
         return false;
     }
     s.size[axis] = novo;
-    let mut ent = world.entity_mut(e);
-    ent.insert(s);
-    if let Some(mut c) = ent.get_mut::<Collider>()
+    world.entity_mut(e).insert(s);
+    follow_auto_collider(world, e, antes, s.size);
+    true
+}
+
+/// O collider em caixa que media o desenho de `e` com o tamanho `antes` (o automático) passa a medir `depois`; um
+/// que o artista mudou à mão fica.
+pub(crate) fn follow_auto_collider(
+    world: &mut World,
+    e: Entity,
+    antes: [f32; 2],
+    depois: [f32; 2],
+) {
+    if let Some(mut c) = world.get_mut::<Collider>(e)
         && let ColliderShape::Cuboid { half_x, half_y } = c.shape
         && same(half_x, antes[0] * 0.5)
         && same(half_y, antes[1] * 0.5)
+        && antes != depois
     {
         c.shape = ColliderShape::Cuboid {
-            half_x: s.size[0] * 0.5,
-            half_y: s.size[1] * 0.5,
+            half_x: depois[0] * 0.5,
+            half_y: depois[1] * 0.5,
         };
     }
-    true
 }
 
 /// Iguais à precisão de um `f32` que passou por um campo de texto.

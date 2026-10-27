@@ -7,7 +7,7 @@ use crate::image_choice::choose_library_image;
 use ph2d_app_components::test_support::registo;
 use ph2d_ecs::scene::{WorldSnapshot, snapshot_to_world, world_to_snapshot};
 use ph2d_ecs::{Name, SimWorld};
-use ph2d_physics_ecs::{AnimRules, CharacterAnimations};
+use ph2d_physics_ecs::{AnimRules, CharacterAnimations, Collider, ColliderShape};
 use ph2d_render::WHITE_TILE_KEY;
 
 const PPM: f32 = 100.0;
@@ -317,10 +317,10 @@ fn repetida_de_uma_parada_inteira_nao_achata() {
 }
 
 /// ⭐⭐ **A auditoria das trocas** (dono 27/10: «mudando entre os modos a imagem ficou gigante… corrigir tudo de
-/// uma vez»). Para cinco objectos e TODA sequência de três trocas: depois de cada uma a escala a que a imagem se
-/// vê é a mesma, e o tamanho é o do uso (parada = a imagem inteira · animada = uma célula · repetida = o
-/// ladrilho do que mostrava); voltar ao uso de partida (que não seja repetida, cujo tamanho é do artista) devolve
-/// o tamanho de partida.
+/// uma vez»; e «cada modo guarda sua própria configuração»). Para cinco objectos e TODA sequência de três trocas:
+/// a escala a que a imagem se vê nunca muda; um uso NOVO nasce com o tamanho dele (parada = a imagem inteira ·
+/// animada = uma célula · repetida = UM ladrilho, 1 × 1); um uso que JÁ FOI usado volta exactamente como o
+/// artista o deixou (o tamanho, o corte, o ladrilho, as animações, as regras).
 #[test]
 fn nenhuma_troca_de_uso_muda_a_escala() {
     let (db, atlas) = biblioteca();
@@ -356,24 +356,39 @@ fn nenhuma_troca_de_uso_muda_a_escala() {
                             .or_else(|| own_facts(sim.world(), e))
                             .expect("factos")
                     };
-                    let f0 = factos(&sim);
-                    let k0 = display_scale(sim.world(), e, f0);
+                    let k0 = display_scale(sim.world(), e, factos(&sim));
                     let inicio = image_use(sim.world(), e).expect("uso");
-                    let tamanho0 = sim
-                        .world()
-                        .get::<Sprite>(e)
-                        .map(|s| s.size)
-                        .expect("sprite");
                     let quem = format!("{nome} {imagem:?}: {inicio:?} → {a:?} → {b:?} → {c:?}");
+                    // O que cada uso tinha quando foi deixado.
+                    let mut deixados: Vec<(ImageUse, Completo)> = Vec::new();
                     for to in [a, b, c] {
-                        usa(&mut sim, e, to);
+                        let de = image_use(sim.world(), e).expect("uso");
+                        let antes = completo(&sim, e);
+                        // Sem UV nem ladrilho, o tamanho é exactamente o que se via.
+                        let visto = (antes.2.is_none() && antes.0.5.is_none())
+                            .then(|| antes.0.6.map(|s| s.size))
+                            .flatten();
+                        if !usa(&mut sim, e, to) {
+                            continue;
+                        }
+                        deixados.retain(|(u, _)| *u != de);
+                        deixados.push((de, antes));
                         let w = sim.world();
+                        let agora = image_use(w, e).expect("uso");
                         let f = factos(&sim);
                         let k = display_scale(w, e, f);
                         assert!(
                             perto(k[0], k0[0]) && perto(k[1], k0[1]),
                             "{quem}: escala {k0:?} → {k:?} em {to:?}"
                         );
+                        if let Some((_, guardado)) = deixados.iter().find(|(u, _)| *u == agora) {
+                            assert_eq!(
+                                &completo(&sim, e),
+                                guardado,
+                                "{quem}: {agora:?} não voltou como estava"
+                            );
+                            continue;
+                        }
                         let g = w
                             .get::<SpriteGrid>(e)
                             .copied()
@@ -383,42 +398,183 @@ fn nenhuma_troca_de_uso_muda_a_escala() {
                             f.native_m[1] / g.vframes.max(1) as f32 * k0[1],
                         ];
                         let size = w.get::<Sprite>(e).map(|s| s.size).expect("sprite");
-                        match image_use(w, e).expect("uso") {
-                            ImageUse::Still => {
-                                assert_eq!(g, SpriteGrid::SINGLE, "{quem}: parada com corte");
-                                assert!(
-                                    perto(size[0], mostra[0]) && perto(size[1], mostra[1]),
-                                    "{quem}: parada {size:?} ≠ {mostra:?}"
-                                );
-                            }
-                            ImageUse::Animated => {
-                                assert!(
-                                    perto(size[0], mostra[0]) && perto(size[1], mostra[1]),
-                                    "{quem}: animada {size:?} ≠ {mostra:?}"
-                                );
-                            }
-                            ImageUse::Repeated => {
-                                let tile = w.get::<TiledDraw>(e).map(|t| t.tile).expect("Tiled");
-                                assert!(
-                                    perto(tile[0], mostra[0]) && perto(tile[1], mostra[1]),
-                                    "{quem}: ladrilho {tile:?} ≠ {mostra:?}"
-                                );
-                            }
+                        if agora == ImageUse::Still {
+                            assert_eq!(g, SpriteGrid::SINGLE, "{quem}: parada nova com corte");
                         }
-                    }
-                    if image_use(sim.world(), e) == Some(inicio) && inicio != ImageUse::Repeated {
-                        let size = sim
-                            .world()
-                            .get::<Sprite>(e)
-                            .map(|s| s.size)
-                            .expect("sprite");
+                        if agora == ImageUse::Repeated {
+                            // Um ladrilho do que se via (dono 27/10): nada cresce nem encolhe.
+                            if let Some(v) = visto {
+                                assert!(
+                                    perto(size[0], v[0]) && perto(size[1], v[1]),
+                                    "{quem}: a repetida nova {size:?} ≠ o que se via {v:?}"
+                                );
+                            }
+                            let tile = w.get::<TiledDraw>(e).map(|t| t.tile).expect("Tiled");
+                            assert!(
+                                perto(tile[0], mostra[0]) && perto(tile[1], mostra[1]),
+                                "{quem}: ladrilho {tile:?} ≠ {mostra:?}"
+                            );
+                        }
+                        // Os três usos novos: o tamanho é o que mostram (a repetida, UM ladrilho).
                         assert!(
-                            perto(size[0], tamanho0[0]) && perto(size[1], tamanho0[1]),
-                            "{quem}: voltou {tamanho0:?} → {size:?}"
+                            perto(size[0], mostra[0]) && perto(size[1], mostra[1]),
+                            "{quem}: {agora:?} nova {size:?} ≠ {mostra:?}"
                         );
                     }
                 }
             }
         }
     }
+}
+
+/// Tudo o que um uso pode ter: [`Estado`], o corte, o UV, o *Repeat*, os quadros e o passo.
+type Completo = (
+    Estado,
+    Option<SpriteGrid>,
+    Option<UvTransform>,
+    Option<TextureRepeat>,
+    Option<SpriteAnimFrames>,
+    Option<SpriteAnimCursor>,
+);
+
+fn completo(sim: &SimWorld, e: Entity) -> Completo {
+    let w = sim.world();
+    (
+        estado(sim, e),
+        w.get::<SpriteGrid>(e).copied(),
+        w.get::<UvTransform>(e).copied(),
+        w.get::<TextureRepeat>(e).copied(),
+        w.get::<SpriteAnimFrames>(e).cloned(),
+        w.get::<SpriteAnimCursor>(e).copied(),
+    )
+}
+
+/// ⭐⭐ **Dono 27/10: «se voltar para Animated, não perde nada da configuração já realizada».** O Player: o artista
+/// mexe na Animation (uma animação nova, o tamanho), passa a Repeated — que nasce com UM ladrilho, nunca o tamanho
+/// da animada — e muda a Largura; volta a Animated: tudo o que tinha; volta a Repeated: a Largura dele. E a memória
+/// viaja no projecto gravado (reaberto, a volta devolve o mesmo).
+#[test]
+fn cada_uso_guarda_a_sua_configuracao() {
+    let mut sim = SimWorld::new();
+    ph2d_app_game::smoke::montar(&mut sim, &registo(), 4);
+    let e = por_nome(&mut sim, "Player");
+    assert_eq!(image_use(sim.world(), e), Some(ImageUse::Animated));
+    {
+        let mut ent = sim.world_mut().entity_mut(e);
+        let mut tags = ent.get::<SpriteAnimations>().cloned().expect("animações");
+        tags.insert(AnimationTag::new("aceno", 1, 2)).expect("cabe");
+        ent.insert(tags);
+        let mut s = *ent.get::<Sprite>().expect("sprite");
+        s.size = [s.size[0] * 1.5, s.size[1] * 1.5];
+        ent.insert(s);
+    }
+    let animada = completo(&sim, e);
+    assert!(usa(&mut sim, e, InspectorImageUse::Repeated));
+    let w = sim.world();
+    let tile = w.get::<TiledDraw>(e).map(|t| t.tile).expect("Tiled");
+    assert_eq!(
+        w.get::<Sprite>(e).map(|s| s.size),
+        Some(tile),
+        "Repeated nasce 1 × 1"
+    );
+    assert_eq!(
+        Some(tile),
+        animada.0.6.map(|s| s.size),
+        "um ladrilho do boneco à vista"
+    );
+    let (db, atlas) = biblioteca();
+    let largura = tile[0] * 4.0;
+    assert!(apply_edit(
+        sim.world_mut(),
+        e,
+        &db,
+        &atlas,
+        PPM,
+        ImageUseEdit::Width(largura)
+    ));
+    let repetida = completo(&sim, e);
+    assert!(usa(&mut sim, e, InspectorImageUse::Animated));
+    assert_eq!(completo(&sim, e), animada, "a Animated voltou diferente");
+    let gravado = instantaneo(&mut sim);
+    let mut sim = reaberto(&gravado);
+    let e = por_nome(&mut sim, "Player");
+    assert_eq!(completo(&sim, e), animada, "reaberto");
+    assert!(usa(&mut sim, e, InspectorImageUse::Repeated));
+    assert_eq!(completo(&sim, e), repetida, "a Repeated voltou diferente");
+    assert!(usa(&mut sim, e, InspectorImageUse::Still));
+    assert!(usa(&mut sim, e, InspectorImageUse::Animated));
+    assert_eq!(completo(&sim, e), animada, "depois de passar por Still");
+}
+
+/// Trocar a IMAGEM esquece o aspecto que os outros usos guardaram (descrevia a imagem antiga), mas nunca as
+/// animações do artista: voltar a Animated corta a imagem nova e devolve a lista.
+#[test]
+fn trocar_a_imagem_guarda_as_animacoes_e_esquece_o_aspecto() {
+    let (db, atlas) = biblioteca();
+    let mut sim = SimWorld::new();
+    ph2d_app_game::smoke::montar(&mut sim, &registo(), 4);
+    let e = por_nome(&mut sim, "Player");
+    let tags = sim.world().get::<SpriteAnimations>(e).cloned();
+    assert!(usa(&mut sim, e, InspectorImageUse::Still));
+    choose_library_image(
+        &mut sim,
+        &mut sem_placa,
+        &db,
+        &atlas,
+        PPM,
+        e,
+        atlas[&HEROI_KEY],
+    )
+    .expect("escolhe");
+    let memoria = sim
+        .world()
+        .get::<ImageUseMemory>(e)
+        .cloned()
+        .expect("memória");
+    assert!(memoria.animated.as_ref().is_some_and(|m| m.look.is_none()));
+    assert!(usa(&mut sim, e, InspectorImageUse::Animated));
+    let w = sim.world();
+    assert_eq!(w.get::<SpriteAnimations>(e).cloned(), tags);
+    let g = w.get::<SpriteGrid>(e).copied().expect("grelha");
+    assert_eq!((g.hframes, g.vframes), (8, 4), "o corte da imagem nova");
+}
+
+/// O collider automático (a caixa que media o desenho) segue o tamanho de cada uso; um mudado à mão fica.
+#[test]
+fn o_collider_automatico_segue_o_uso() {
+    let mut sim = SimWorld::new();
+    ph2d_app_game::smoke::montar(&mut sim, &registo(), 4);
+    let e = por_nome(&mut sim, "Platform High");
+    let caixa = |sim: &SimWorld| match sim.world().get::<Collider>(e).map(|c| c.shape) {
+        Some(ColliderShape::Cuboid { half_x, half_y }) => [half_x * 2.0, half_y * 2.0],
+        outro => panic!("{outro:?}"),
+    };
+    let size = |sim: &SimWorld| {
+        sim.world()
+            .get::<Sprite>(e)
+            .map(|s| s.size)
+            .expect("sprite")
+    };
+    assert_eq!(caixa(&sim), size(&sim), "a premissa: automático");
+    for to in [
+        InspectorImageUse::Still,
+        InspectorImageUse::Animated,
+        InspectorImageUse::Repeated,
+    ] {
+        usa(&mut sim, e, to);
+        let (c, s) = (caixa(&sim), size(&sim));
+        assert!(
+            (c[0] - s[0]).abs() < 1e-4 && (c[1] - s[1]).abs() < 1e-4,
+            "{to:?}: {c:?} ≠ {s:?}"
+        );
+    }
+    sim.world_mut()
+        .get_mut::<Collider>(e)
+        .expect("collider")
+        .shape = ColliderShape::Cuboid {
+        half_x: 9.0,
+        half_y: 9.0,
+    };
+    usa(&mut sim, e, InspectorImageUse::Still);
+    assert_eq!(caixa(&sim), [18.0, 18.0], "à mão fica");
 }

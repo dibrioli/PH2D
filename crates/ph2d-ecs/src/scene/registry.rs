@@ -558,6 +558,9 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     // campos, pelo postcard posicional: ficheiro antigo não tem o blob e toca o intervalo de sempre.
     reg.register_default::<crate::SpriteAnimFrames>("ph2d::ecs::SpriteAnimFrames");
     reg.register_default::<crate::SpriteAnimCursor>("ph2d::ecs::SpriteAnimCursor");
+    // O que cada uso da imagem guarda enquanto o objecto usa outro (plano GEF 15, dono 27/10): sem o registo o
+    // Desfazer e o projecto reaberto perdiam a configuração do uso que o artista deixou.
+    reg.register_default::<crate::ImageUseMemory>("ph2d::ecs::ImageUseMemory");
     // ⭐⭐⭐ O TIMER (TOP-20 #2, 2026-09-08) -- os timers nomeados de uma entidade. Sem o registro,
     // o artista autora uma duracao, um nome de sinal e o autostart, grava o projeto, reabre, e o
     // objecto volta MUDO: nada some da tela, nada da erro, e o jogo simplesmente deixa de

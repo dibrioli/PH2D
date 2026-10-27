@@ -99,6 +99,10 @@ pub fn choose_image(
     }
     // O recorte da imagem antiga (região, folha empacotada à mão) não descreve a nova.
     ent.remove::<(SpriteRegion, SpriteSheetRef)>();
+    // Nem o aspecto que os outros usos guardaram (plano GEF 15); as animações deles ficam.
+    if let Some(mut m) = ent.get_mut::<ph2d_ecs::ImageUseMemory>() {
+        m.forget_looks();
+    }
     if let Some(tile_antigo) = ent.get::<ScrollRepeat>().map(|r| r.tile) {
         // Lei 3 (Unity *Tiled*): o ladrilho segue a imagem; os ladrilhos cobrem pelo menos a largura antiga.
         let n = (sprite.size[0] / size[0]).ceil().max(1.0);

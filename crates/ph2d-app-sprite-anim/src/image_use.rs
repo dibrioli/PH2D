@@ -7,9 +7,9 @@ use crate::image_choice::{ImageFacts, Slicing, library_facts};
 use ph2d_app_components::asset_index_build::texture_of;
 use ph2d_asset::{AssetDb, AssetId};
 use ph2d_ecs::{
-    AnimationTag, Entity, RepeatMode, ScrollRepeat, SpriteAnimCursor, SpriteAnimFrames,
-    SpriteAnimations, SpriteAnimator, SpriteGrid, SpritePixels, TextureRepeat, TiledDraw,
-    UvTransform, World,
+    AnimationTag, Entity, ImageUseLook, ImageUseMemory, ImageUseState, RepeatMode, ScrollRepeat,
+    SpriteAnimCursor, SpriteAnimFrames, SpriteAnimations, SpriteAnimator, SpriteGrid, SpritePixels,
+    TextureRepeat, TiledDraw, UvTransform, World,
 };
 use ph2d_editor_core::{ImageUseEdit, InspectorDraw, InspectorImageUse};
 use ph2d_render::Sprite;
@@ -200,11 +200,12 @@ fn to_animated(
     true
 }
 
-/// ⭐ **O seletor «Use»** (plano GEF 15 D3): `e` passa a ser usada como `to`, à MESMA [`display_scale`] —
-/// parada = a imagem inteira; animada = uma célula; repetida = repete o que mostrava, com o tamanho de agora.
-/// Um passo de desfazer devolve tudo (as animações, as regras, o Tiled). `false` se já o era, se não é uma
-/// sprite, ou se é uma camada de fundo (`ScrollRepeat`, outra lei: repete sempre). `rgba` é a imagem que ela
-/// mostra, para propor a grelha.
+/// ⭐ **O seletor «Use»** (plano GEF 15 D3): `e` passa a ser usada como `to`. **Cada uso guarda a sua configuração**
+/// (dono 27/10) no [`ImageUseMemory`]: o uso que se deixa fica lá tal e qual, e um uso que já foi usado volta como
+/// estava (o tamanho, o corte, o ladrilho, as animações). Um uso novo nasce à MESMA [`display_scale`]: parada = a
+/// imagem inteira; animada = uma célula; repetida = UM ladrilho (1 × 1) do que o objecto mostrava. O collider automático segue o tamanho.
+/// Um passo de desfazer devolve tudo. `false` se já o era, se não é uma sprite, ou se é uma camada de fundo
+/// (`ScrollRepeat`, outra lei: repete sempre). `rgba` é a imagem que ela mostra, para propor a grelha.
 pub fn set_use(
     world: &mut World,
     e: Entity,
@@ -221,16 +222,119 @@ pub fn set_use(
     let Some(facts) = facts.or_else(|| own_facts(world, e)) else {
         return false;
     };
+    let Some(antes) = world.get::<Sprite>(e).map(|s| s.size) else {
+        return false;
+    };
+    let mut memory = world.get::<ImageUseMemory>(e).cloned().unwrap_or_default();
+    let deixado = capture(world, e);
+    let guardado = slot(&mut memory, to).take();
+    match guardado {
+        Some(ImageUseState {
+            look: Some(look), ..
+        }) => restore(world, e, look, guardado.as_ref()),
+        _ => {
+            if !fresh(world, e, facts, rgba, to) {
+                return false;
+            }
+            if let Some(st) = guardado.as_ref().filter(|s| s.animations.is_some()) {
+                insert_animation(world, e, st);
+            }
+        }
+    }
+    *slot(&mut memory, cur) = Some(deixado);
+    world.entity_mut(e).insert(memory);
+    if let Some(depois) = world.get::<Sprite>(e).map(|s| s.size) {
+        crate::tiled::follow_auto_collider(world, e, antes, depois);
+    }
+    true
+}
+
+/// O lugar do uso `u` na memória.
+fn slot(memory: &mut ImageUseMemory, u: ImageUse) -> &mut Option<ImageUseState> {
+    match u {
+        ImageUse::Still => &mut memory.still,
+        ImageUse::Repeated => &mut memory.repeated,
+        ImageUse::Animated => &mut memory.animated,
+    }
+}
+
+/// O que o uso de agora de `e` tem.
+fn capture(world: &World, e: Entity) -> ImageUseState {
+    ImageUseState {
+        look: world.get::<Sprite>(e).map(|s| ImageUseLook {
+            size: s.size,
+            grid: world.get::<SpriteGrid>(e).copied(),
+            uv: world.get::<UvTransform>(e).copied(),
+            repeat: world.get::<TextureRepeat>(e).copied(),
+            tiled: world.get::<TiledDraw>(e).copied(),
+        }),
+        animations: world.get::<SpriteAnimations>(e).cloned(),
+        animator: world.get::<SpriteAnimator>(e).cloned(),
+        frames: world.get::<SpriteAnimFrames>(e).cloned(),
+        cursor: world.get::<SpriteAnimCursor>(e).copied(),
+    }
+}
+
+/// `e` volta a ter o aspecto `look` e a animação de `state`, tal e qual.
+fn restore(world: &mut World, e: Entity, look: ImageUseLook, state: Option<&ImageUseState>) {
+    stop_animating(world, e);
+    let mut ent = world.entity_mut(e);
+    ent.remove::<(TextureRepeat, UvTransform, TiledDraw, SpriteGrid)>();
+    if let Some(mut s) = ent.get_mut::<Sprite>() {
+        s.size = look.size;
+    }
+    if let Some(g) = look.grid {
+        ent.insert(g);
+    }
+    if let Some(uv) = look.uv {
+        ent.insert(uv);
+    }
+    if let Some(r) = look.repeat {
+        ent.insert(r);
+    }
+    if let Some(t) = look.tiled {
+        ent.insert(t);
+    }
+    if let Some(st) = state {
+        insert_animation(world, e, st);
+    }
+}
+
+/// Põe em `e` a animação guardada em `state` (a lista, o animador, os quadros e o passo), no lugar da de agora.
+fn insert_animation(world: &mut World, e: Entity, state: &ImageUseState) {
+    let mut ent = world.entity_mut(e);
+    if let Some(a) = &state.animations {
+        ent.insert(a.clone());
+    }
+    if let Some(a) = &state.animator {
+        ent.insert(a.clone());
+    }
+    if let Some(f) = &state.frames {
+        ent.insert(f.clone());
+    }
+    if let Some(c) = state.cursor {
+        ent.insert(c);
+    }
+}
+
+/// Um uso que `e` ainda não teve (ou cujo aspecto descrevia outra imagem), à [`display_scale`] de agora.
+fn fresh(
+    world: &mut World,
+    e: Entity,
+    facts: ImageFacts,
+    rgba: Option<(u32, u32, &[u8])>,
+    to: ImageUse,
+) -> bool {
+    let k = display_scale(world, e, facts);
     match to {
         ImageUse::Animated => to_animated(world, e, facts, rgba),
         ImageUse::Still => {
-            let k = display_scale(world, e, facts);
             stop_animating(world, e);
             show(world, e, facts, [1, 1], k);
             true
         }
         ImageUse::Repeated => {
-            let k = display_scale(world, e, facts);
+            // Repete o que o objecto mostra agora (de uma animada, a célula à vista): o tamanho não muda.
             let g = world
                 .get::<SpriteGrid>(e)
                 .copied()
@@ -242,6 +346,9 @@ pub fn set_use(
             stop_animating(world, e);
             let mut ent = world.entity_mut(e);
             ent.remove::<(TextureRepeat, UvTransform)>();
+            if let Some(mut s) = ent.get_mut::<Sprite>() {
+                s.size = tile;
+            }
             ent.insert(TiledDraw { tile });
             true
         }

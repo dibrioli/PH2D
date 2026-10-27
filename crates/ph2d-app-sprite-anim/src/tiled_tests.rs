@@ -117,7 +117,8 @@ fn trocar_a_imagem_de_um_tiled_guarda_o_tamanho() {
 }
 
 /// ⭐ Plano 15 D3 (a caixa Tiled da 14 é agora o uso «Repeated»): passar a repetida uma sprite parada põe o
-/// ladrilho do que ela mostrava e guarda o tamanho; voltar a parada estica. O UV à mão sai.
+/// ladrilho do que ela mostrava e nasce com UM ladrilho (1 × 1, dono 27/10); o UV à mão sai. Voltar a parada
+/// devolve a parada tal e qual (o tamanho e o UV: cada uso guarda a sua configuração).
 #[test]
 fn ligar_e_desligar_o_tiled() {
     let mut sim = SimWorld::new();
@@ -147,10 +148,10 @@ fn ligar_e_desligar_o_tiled() {
     assert_eq!(image_use(sim.world(), e), Some(ImageUse::Still));
     assert!(edita(&mut sim, e, repetida()));
     let w = sim.world();
-    assert_eq!(w.get::<Sprite>(e).map(|s| s.size), antes);
     // O ladrilho é o que se VIA (dono 27/10: nenhuma troca muda a escala): três cópias à mão na largura.
     let [nw, nh] = PLATFORM_TILE.native_m();
     assert_eq!(w.get::<TiledDraw>(e).map(|t| t.tile), Some([nw / 3.0, nh]));
+    assert_eq!(w.get::<Sprite>(e).map(|s| s.size), Some([nw / 3.0, nh]));
     assert!(w.get::<UvTransform>(e).is_none() && w.get::<TextureRepeat>(e).is_none());
     assert!(!edita(&mut sim, e, repetida()), "já é repetida");
     assert!(edita(
@@ -160,6 +161,11 @@ fn ligar_e_desligar_o_tiled() {
     ));
     assert_eq!(draw_of(sim.world(), e), InspectorDraw::Simple);
     assert_eq!(image_use(sim.world(), e), Some(ImageUse::Still));
+    assert_eq!(sim.world().get::<Sprite>(e).map(|s| s.size), antes);
+    assert_eq!(
+        sim.world().get::<UvTransform>(e).map(|u| u.scale),
+        Some([3.0, 1.0])
+    );
     // Uma camada de fundo não oferece Draw Mode.
     sim.world_mut()
         .entity_mut(e)

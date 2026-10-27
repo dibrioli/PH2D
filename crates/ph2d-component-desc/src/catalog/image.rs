@@ -182,6 +182,12 @@ pub const DESCS: &[D] = &[
     )
     .coded("anchor_visibility")
     .row_of("ph2d::ecs::NamedAnchorList"),
+    // O que cada uso da imagem guarda enquanto o objecto usa outro (plano GEF 15): o seletor «Use» escreve-o.
+    D::machinery(
+        "ph2d::ecs::ImageUseMemory",
+        "component.image_use_memory.name",
+        C::Image,
+    ),
     D::authored(
         "ph2d::ecs::NamedAnchorList",
         "component.named_anchor_list.name",
@@ -202,6 +208,18 @@ pub const DESCS: &[D] = &[
         ("tile_modes", Hidden::OwnSection),
         ("centre_tile_mode", Hidden::OwnSection),
     ]),
+    // A lista de quadros de cada animação e o passo dela (plano GEF 07): o editor de animações escreve-os, nenhum
+    // cartão os mostra campo a campo.
+    D::machinery(
+        "ph2d::ecs::SpriteAnimCursor",
+        "component.sprite_anim_cursor.name",
+        C::Animation,
+    ),
+    D::machinery(
+        "ph2d::ecs::SpriteAnimFrames",
+        "component.sprite_anim_frames.name",
+        C::Animation,
+    ),
     D::authored(
         "ph2d::ecs::SpriteAnimations",
         "component.sprite_animations.name",

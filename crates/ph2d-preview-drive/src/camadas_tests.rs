@@ -79,3 +79,73 @@ fn an_artists_edit_under_two_motors_is_still_the_document() {
         Some(Driven::SolverPose(em(9.0)))
     );
 }
+
+/// A consulta por entidade começa no `Driver::PRIMEIRO`: se ele não for o menor, os motores abaixo
+/// dele somem das respostas. O `match` exaustivo obriga quem acrescenta um motor a passar por aqui.
+#[test]
+fn the_first_driver_is_the_least_and_per_entity_queries_see_every_driver() {
+    use Driver as D;
+    let todos = [
+        D::SpriteAnim,
+        D::SolverPose,
+        D::PrefabStage,
+        D::SpriteAlpha,
+        D::MorphT,
+        D::MorphPair,
+        D::JointParams,
+        D::SignalVisibility,
+        D::ScriptPose,
+        D::CanvasPose,
+        D::ParallaxPose,
+        D::TweenPose,
+        D::TweenTint,
+        D::SpriteCor,
+        D::PontaNoMundo,
+        D::Roldana,
+        D::ConstraintPose,
+        D::ColaPose,
+    ];
+    let exaustivo = |d: Driver| match d {
+        D::SpriteAnim
+        | D::SolverPose
+        | D::PrefabStage
+        | D::SpriteAlpha
+        | D::MorphT
+        | D::MorphPair
+        | D::JointParams
+        | D::SignalVisibility
+        | D::ScriptPose
+        | D::CanvasPose
+        | D::ParallaxPose
+        | D::TweenPose
+        | D::TweenTint
+        | D::SpriteCor
+        | D::PontaNoMundo
+        | D::Roldana
+        | D::ConstraintPose
+        | D::ColaPose => (),
+    };
+    todos.iter().copied().for_each(exaustivo);
+    assert!(todos.iter().all(|&d| Driver::PRIMEIRO <= d));
+
+    let mut sim = SimWorld::new();
+    let e = sim.world_mut().spawn(em(0.0)).id();
+    let vizinha = sim.world_mut().spawn(em(0.0)).id();
+    let mut pd = PreviewDrive::default();
+    pd.driven(
+        vizinha,
+        Driven::SolverPose(em(0.0)),
+        Driven::SolverPose(em(1.0)),
+    );
+    assert!(!pd.drives(e.to_bits()));
+    pd.driven(e, Driven::SolverPose(em(0.0)), Driven::SolverPose(em(1.0)));
+    assert!(pd.drives(e.to_bits()));
+    assert!(pd.drives_other_than(e.to_bits(), Driver::ColaPose));
+    assert!(!pd.drives_other_than(e.to_bits(), Driver::SolverPose));
+    pd.driven(e, Driven::ColaPose(em(1.0)), Driven::ColaPose(em(2.0)));
+    assert!(pd.drives_other_than(e.to_bits(), Driver::SolverPose));
+    assert_eq!(
+        pd.drivers_of(e.to_bits()),
+        vec![Driver::SolverPose, Driver::ColaPose]
+    );
+}

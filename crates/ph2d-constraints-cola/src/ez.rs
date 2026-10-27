@@ -114,7 +114,9 @@ pub(crate) fn resolve(
                     return (c, p);
                 }
                 let (o, u) = (em(quadros[&c].o), em(quadros[&c].u));
-                let rot = (u[1] - o[1]).atan2(u[0] - o[0]);
+                // `u − o` é a rotação aplicada a `(sx, 0)`: com `sx < 0` (espelho) aponta para trás.
+                let s = p.sx.signum();
+                let rot = (s * (u[1] - o[1])).atan2(s * (u[0] - o[0]));
                 (
                     c,
                     Pose2 {

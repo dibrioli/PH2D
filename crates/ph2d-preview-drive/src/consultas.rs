@@ -26,7 +26,17 @@ impl PreviewDrive {
     /// ao dono.*
     #[must_use]
     pub fn drives(&self, entity: u64) -> bool {
-        self.memo.keys().any(|(bits, _)| *bits == entity)
+        self.de(entity).next().is_some()
+    }
+
+    /// Os motores desta entidade, pela faixa dela no ledger (sem varrer as outras: a cola pergunta
+    /// por membro, e a varredura era O(n²) — 05_W5 §4.2).
+    fn de(&self, entity: u64) -> impl Iterator<Item = Driver> + '_ {
+        self.memo
+            .range((entity, Driver::PRIMEIRO)..)
+            .map(|(k, _)| *k)
+            .take_while(move |(bits, _)| *bits == entity)
+            .map(|(_, d)| d)
     }
 
     /// ⭐⭐⭐ **O VALOR AUTORADO que este motor deslocou** — o que o documento diz, enquanto a cena
@@ -72,6 +82,15 @@ impl PreviewDrive {
         self.memo.get(&(entity, driver)).map(|e| e.last_written)
     }
 
+    /// O par [`Self::last_written`] e [`Self::authored`] numa descida só — a pergunta de quem parte do autorado
+    /// por entidade e por quadro (a pilha e a cola: mil por quadro, BlenderConstraints 05_W5 §4.2).
+    #[must_use]
+    pub fn written_and_authored(&self, entity: u64, driver: Driver) -> Option<(Driven, Driven)> {
+        self.memo
+            .get(&(entity, driver))
+            .map(|e| (e.last_written, e.authored))
+    }
+
     /// ⭐ **QUE MOTORES conduzem esta entidade agora** — a lista, para quem precisa de a **largar**
     /// e não só de saber que ela existe.
     ///
@@ -85,11 +104,7 @@ impl PreviewDrive {
     #[cfg(any(test, feature = "test-support"))]
     #[must_use]
     pub fn drivers_of(&self, entity: u64) -> Vec<Driver> {
-        self.memo
-            .keys()
-            .filter(|(bits, _)| *bits == entity)
-            .map(|(_, d)| *d)
-            .collect()
+        self.de(entity).collect()
     }
 
     /// ⭐⭐ **QUEM ESTE MOTOR CONDUZ AGORA** — para um motor PERSISTENTE largar quem deixou de
@@ -115,8 +130,6 @@ impl PreviewDrive {
     /// corrompe-o). Auditoria 26, §2.7.
     #[must_use]
     pub fn drives_other_than(&self, entity: u64, driver: Driver) -> bool {
-        self.memo
-            .keys()
-            .any(|(bits, d)| *bits == entity && *d != driver)
+        self.de(entity).any(|d| d != driver)
     }
 }

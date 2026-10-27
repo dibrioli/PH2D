@@ -6,6 +6,7 @@
 
 #![forbid(unsafe_code)]
 
+mod construcao;
 mod ez;
 mod grafo;
 
@@ -131,24 +132,101 @@ pub struct Saida {
 /// ignoradas.
 #[must_use]
 pub fn resolve(colas: &[Cola], corpos: &BTreeMap<Corpo, Entrada>) -> Saida {
-    let mut saida = Saida::default();
-    for g in grafo::grupos(colas, |c| corpos.contains_key(&c)) {
-        let do_grupo: Vec<Cola> = g.colas.iter().map(|&i| colas[i]).collect();
-        let estado = match grafo::resolve_grupo(&g.membros, &do_grupo, corpos) {
-            Ok(Some(poses)) => {
-                saida.poses.extend(poses);
-                Estado::Definido
-            }
-            Ok(None) => Estado::Parado,
+    resolve_com(&mut Cache::default(), colas, corpos)
+}
+
+/// A estrutura de cada grupo (sólidos, pinos nas raízes, a via e a receita) enquanto as colas, os objectos e quem
+/// conduz não mudam. Só depende das entradas: com ou sem ela, o mesmo bit.
+#[derive(Default)]
+pub struct Cache {
+    colas: Vec<Cola>,
+    chaves: Vec<(Corpo, bool, bool)>,
+    rank: BTreeMap<Corpo, usize>,
+    grupos: Vec<Preparado>,
+}
+
+struct Preparado {
+    membros: Vec<Corpo>,
+    colas: Vec<Cola>,
+    ids: Vec<u32>,
+    normal: Result<grafo::Preparo, ()>,
+    /// Há uma mão que pode ceder: o conflito tenta outra vez com ela como alvo.
+    cede: bool,
+}
+
+impl Cache {
+    fn serve(&self, colas: &[Cola], corpos: &BTreeMap<Corpo, Entrada>) -> bool {
+        self.colas == colas
+            && self.chaves.len() == corpos.len()
+            && self
+                .chaves
+                .iter()
+                .zip(corpos)
+                .all(|(&(c, k, d), (&c2, e))| c == c2 && k == e.condutor && d == e.cede)
+    }
+
+    fn refaz(&mut self, colas: &[Cola], corpos: &BTreeMap<Corpo, Entrada>) {
+        self.colas = colas.to_vec();
+        self.chaves = corpos
+            .iter()
+            .map(|(&c, e)| (c, e.condutor, e.cede))
+            .collect();
+        self.rank = corpos.keys().enumerate().map(|(i, &c)| (c, i)).collect();
+        self.grupos = grafo::grupos(colas, |c| corpos.contains_key(&c))
+            .into_iter()
+            .map(|g| {
+                let do_grupo: Vec<Cola> = g.colas.iter().map(|&i| colas[i]).collect();
+                Preparado {
+                    normal: grafo::prepara(&g.membros, &do_grupo, corpos, &self.rank, false),
+                    cede: g
+                        .membros
+                        .iter()
+                        .any(|m| corpos[m].condutor && corpos[m].cede),
+                    ids: do_grupo.iter().map(|c| c.id).collect(),
+                    membros: g.membros,
+                    colas: do_grupo,
+                }
+            })
+            .collect();
+    }
+}
+
+/// [`resolve`] com a estrutura guardada de um quadro para o outro (o passo do mundo).
+#[must_use]
+pub fn resolve_com(cache: &mut Cache, colas: &[Cola], corpos: &BTreeMap<Corpo, Entrada>) -> Saida {
+    if !cache.serve(colas, corpos) {
+        cache.refaz(colas, corpos);
+    }
+    let poses: Vec<Pose2> = corpos.values().map(|e| e.pose).collect();
+    let mut todas = Vec::with_capacity(corpos.len());
+    let mut grupos = Vec::with_capacity(cache.grupos.len());
+    let mut r = grafo::Rascunho::default();
+    for g in &cache.grupos {
+        let feito = match g
+            .normal
+            .as_ref()
+            .map_err(|_| ())
+            .and_then(|p| grafo::executa(p, &poses, &mut r, &mut todas))
+        {
+            Err(()) if g.cede => grafo::prepara(&g.membros, &g.colas, corpos, &cache.rank, true)
+                .and_then(|p| grafo::executa(&p, &poses, &mut r, &mut todas)),
+            x => x,
+        };
+        let estado = match feito {
+            Ok(true) => Estado::Definido,
+            Ok(false) => Estado::Parado,
             Err(()) => Estado::Conflito,
         };
-        saida.grupos.push(Grupo {
-            membros: g.membros,
-            colas: do_grupo.iter().map(|c| c.id).collect(),
+        grupos.push(Grupo {
+            membros: g.membros.clone(),
+            colas: g.ids.clone(),
             estado,
         });
     }
-    saida
+    Saida {
+        poses: todas.into_iter().collect(),
+        grupos,
+    }
 }
 
 /// Duas poses iguais a menos de [`TOL`] (ângulo pelo arco curto).

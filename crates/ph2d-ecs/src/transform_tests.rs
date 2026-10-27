@@ -282,3 +282,22 @@ fn worklist_buf_clear_preserves_capacity() {
     assert_eq!(buf.stack_len(), 0);
     assert_eq!(buf.stack_capacity(), cap_before);
 }
+
+/// O atalho do ângulo zero dá os MESMOS bits que a `libm` (o sinal do zero incluído).
+#[test]
+fn the_zero_angle_shortcut_is_libm_to_the_bit() {
+    for a in [0.0f32, -0.0, 1e-30, -0.7, 3.0] {
+        let (s, c) = crate::transform::sincosf(a);
+        let (ls, lc) = libm::sincosf(a);
+        assert_eq!(
+            (s.to_bits(), c.to_bits()),
+            (ls.to_bits(), lc.to_bits()),
+            "{a}"
+        );
+        assert_eq!(
+            crate::transform::tanf(a).to_bits(),
+            libm::tanf(a).to_bits(),
+            "{a}"
+        );
+    }
+}

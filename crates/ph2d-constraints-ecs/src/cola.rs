@@ -11,16 +11,17 @@ use std::collections::{BTreeMap, BTreeSet};
 use bevy_ecs::component::Component;
 use bevy_ecs::entity::Entity;
 use bevy_ecs::prelude::Resource;
-use ph2d_constraints_cola::{Cola, Entrada, Estado as EstadoCola, resolve};
+use ph2d_constraints_cola::{Cache, Cola, Entrada, Estado as EstadoCola, Pose2, resolve_com};
 use ph2d_ecs::canal::familia;
 use ph2d_ecs::{
-    AlvosDasFamilias, Locked, SimComponent, SimWorld, StableId, Transform, parent_world_transform,
+    AlvosDasFamilias, Locked, SimComponent, SimWorld, StableId, Transform,
+    parent_world_transform_into,
 };
 use ph2d_preview_drive::{Driven, Driver, PreviewDrive};
 use serde::{Deserialize, Serialize};
 
 use crate::avalia::{local_de, pose};
-use crate::ordem::indice;
+use crate::ordem::{cada, indice};
 
 /// O nome gravado do componente.
 pub const COLAS_TYPE_NAME: &str = "ph2d::constraints::Colas";
@@ -58,42 +59,52 @@ pub struct EstadosDaCola(pub BTreeMap<(u64, u32), EstadoCola>);
 #[derive(Resource, Default, Debug)]
 struct Memoria(BTreeMap<Entity, Transform>);
 
+/// A estrutura dos grupos de um quadro para o outro (só depende das entradas: o mesmo bit sem ela).
+#[derive(Resource, Default)]
+struct CacheDaCola(Cache);
+
 struct Membro {
     e: Entity,
     agora: Transform,
     base: Transform,
     pai: Transform,
+    /// A pose mundial de entrada.
+    pose: Pose2,
     motor: bool,
+    estado: Option<EstadoCola>,
+    por_motor: bool,
+}
+
+/// O membro `s` (os membros vão pela ordem do `StableId`).
+fn pos(membros: &[(u64, Membro)], s: u64) -> Option<usize> {
+    membros.binary_search_by_key(&s, |m| m.0).ok()
 }
 
 /// A pose de onde a cola parte: a autorada. Se o `Transform` é o que a cola escreveu no quadro passado, o autorado
 /// está no ledger; se outra mão escreveu entretanto, é essa mão (a lei do `avalia::base`).
 fn base(preview: &PreviewDrive, e: Entity, agora: Transform) -> (Transform, bool) {
     let bits = e.to_bits();
-    match (
-        preview.last_written(bits, Driver::ColaPose),
-        preview.authored(bits, Driver::ColaPose),
-    ) {
-        (Some(Driven::ColaPose(w)), Some(Driven::ColaPose(a))) if w == agora => (a, true),
+    match preview.written_and_authored(bits, Driver::ColaPose) {
+        Some((Driven::ColaPose(w), Driven::ColaPose(a))) if w == agora => (a, true),
         _ => (agora, false),
     }
 }
 
 /// ⭐ **O passo da cola.** Uma vez por quadro, antes de `evaluate`. Devolve quantas entidades moveu.
 pub fn colar(sim: &mut SimWorld, preview: &mut PreviewDrive) -> usize {
-    let colas: Vec<Cola> = sim
-        .world()
-        .iter_entities()
-        .filter_map(|r| r.get::<Colas>())
-        .flat_map(|c| c.items.iter().copied())
+    let colas: Vec<Cola> = cada::<Colas>(sim.world())
+        .into_iter()
+        .flat_map(|(_, c)| c.items.iter().copied())
         .collect();
     let ja: BTreeSet<Entity> = preview.driven_by(Driver::ColaPose).into_iter().collect();
     if colas.is_empty() {
         for e in ja {
             preview.release_to_authored(sim, e, Driver::ColaPose);
         }
-        sim.world_mut().remove_resource::<EstadosDaCola>();
-        sim.world_mut().remove_resource::<Memoria>();
+        let w = sim.world_mut();
+        w.remove_resource::<EstadosDaCola>();
+        w.remove_resource::<Memoria>();
+        w.remove_resource::<CacheDaCola>();
         return 0;
     }
 
@@ -103,69 +114,86 @@ pub fn colar(sim: &mut SimWorld, preview: &mut PreviewDrive) -> usize {
         .remove_resource::<Memoria>()
         .unwrap_or_default()
         .0;
-    let mut membros: BTreeMap<u64, Membro> = BTreeMap::new();
-    let mut corpos = BTreeMap::new();
-    let ids: BTreeSet<u64> = colas.iter().flat_map(|c| [c.a, c.b]).collect();
+    let mut ids: Vec<u64> = colas.iter().flat_map(|c| [c.a, c.b]).collect();
+    ids.sort_unstable();
+    ids.dedup();
+    let mut membros: Vec<(u64, Membro)> = Vec::with_capacity(ids.len());
+    let mut corpos = Vec::with_capacity(ids.len());
+    let mut buf = Vec::new();
+    let w = sim.world();
+    let mut tf = w.try_query::<&Transform>();
+    let cadeado = w.component_id::<Locked>();
     for s in ids {
         let Some(&e) = idx.get(&StableId(s)) else {
             continue;
         };
-        let w = sim.world();
-        let Some(&agora) = w.get::<Transform>(e) else {
+        let Some(&agora) = tf.as_mut().and_then(|q| q.get(w, e).ok()) else {
             continue;
         };
         let (base, escrito) = base(preview, e, agora);
         let motor = !escrito && preview.drives_other_than(e.to_bits(), Driver::ColaPose);
         let mao = !motor && memoria.get(&e).is_some_and(|t| *t != base);
-        let pai = parent_world_transform(w, e);
-        let condutor = motor || mao || w.get::<Locked>(e).is_some();
+        let pai = parent_world_transform_into(w, e, &mut buf);
+        let condutor = motor || mao || cadeado.is_some_and(|id| w.entity(e).contains_id(id));
         let p = pose(&Transform::compose(pai, base));
-        corpos.insert(
+        corpos.push((
             s,
             Entrada {
                 pose: p,
                 condutor,
                 cede: mao,
             },
-        );
-        membros.insert(
+        ));
+        membros.push((
             s,
             Membro {
                 e,
                 agora,
                 base,
                 pai,
+                pose: p,
                 motor,
+                estado: None,
+                por_motor: false,
             },
-        );
+        ));
     }
+    let corpos: BTreeMap<u64, Entrada> = corpos.into_iter().collect();
 
-    let saida = resolve(&colas, &corpos);
-    let mut estado_de: BTreeMap<u64, EstadoCola> = BTreeMap::new();
-    let mut por_motor: BTreeSet<u64> = BTreeSet::new();
+    let mut cache = sim
+        .world_mut()
+        .remove_resource::<CacheDaCola>()
+        .unwrap_or_default();
+    let saida = resolve_com(&mut cache.0, &colas, &corpos);
+    sim.world_mut().insert_resource(cache);
     for g in &saida.grupos {
         let motor = g
             .membros
             .iter()
-            .any(|m| membros.get(m).is_some_and(|x| x.motor));
+            .any(|&m| pos(&membros, m).is_some_and(|i| membros[i].1.motor));
         for &m in &g.membros {
-            estado_de.insert(m, g.estado);
-            if motor && g.estado == EstadoCola::Definido {
-                por_motor.insert(m);
+            if let Some(i) = pos(&membros, m) {
+                membros[i].1.estado = Some(g.estado);
+                membros[i].1.por_motor = motor && g.estado == EstadoCola::Definido;
             }
         }
     }
 
     let mut movidas = 0;
-    let mut conduzidas = BTreeSet::new();
-    let mut nova_memoria = BTreeMap::new();
+    let mut conduzidas = Vec::new();
+    let mut nova_memoria = Vec::with_capacity(membros.len());
+    let mut tf = sim.world_mut().query::<&mut Transform>();
+    // As poses da saída e os membros vão ambos pela ordem do `StableId`: percorrem-se juntos.
+    let mut poses = saida.poses.iter().peekable();
     for (s, m) in &membros {
         let mut doc = m.base;
+        while poses.next_if(|(k, _)| *k < s).is_some() {}
+        let nova = poses.next_if(|(k, _)| *k == s).map(|(_, p)| *p);
         // O condutor sai com a sua pose ao bit; a mão que CEDEU sai corrigida e reescreve-se também.
-        if let Some(&p) = saida.poses.get(s).filter(|&&p| p != corpos[s].pose) {
-            let local = local_de(m.pai, m.base, corpos[s].pose, p);
-            if por_motor.contains(s) {
-                conduzidas.insert(m.e);
+        if let Some(p) = nova.filter(|&p| p != m.pose) {
+            let local = local_de(m.pai, m.base, m.pose, p);
+            if m.por_motor {
+                conduzidas.push(m.e);
                 if local == m.agora {
                     preview.still_driving(m.e, Driver::ColaPose);
                 } else {
@@ -179,27 +207,28 @@ pub fn colar(sim: &mut SimWorld, preview: &mut PreviewDrive) -> usize {
                 }
             }
             if local != m.agora
-                && let Some(mut t) = sim.world_mut().get_mut::<Transform>(m.e)
+                && let Ok(mut t) = tf.get_mut(sim.world_mut(), m.e)
             {
                 *t = local;
             }
         }
         if !m.motor {
-            nova_memoria.insert(m.e, doc);
+            nova_memoria.push((m.e, doc));
         }
     }
+    let conduzidas: BTreeSet<Entity> = conduzidas.into_iter().collect();
     for e in ja.difference(&conduzidas) {
         preview.release_to_authored(sim, *e, Driver::ColaPose);
     }
 
     let estados = colas
         .iter()
-        .filter_map(|c| Some(((c.a, c.id), *estado_de.get(&c.a)?)))
+        .filter_map(|c| Some(((c.a, c.id), membros[pos(&membros, c.a)?].1.estado?)))
         .collect();
-    let alvos: Vec<u64> = membros.values().map(|m| m.e.to_bits()).collect();
+    let alvos: Vec<u64> = membros.iter().map(|(_, m)| m.e.to_bits()).collect();
     let w = sim.world_mut();
     w.insert_resource(EstadosDaCola(estados));
-    w.insert_resource(Memoria(nova_memoria));
+    w.insert_resource(Memoria(nova_memoria.into_iter().collect()));
     w.get_resource_or_insert_with(AlvosDasFamilias::default)
         .publicar(familia::CONSTRAINT, alvos);
     movidas

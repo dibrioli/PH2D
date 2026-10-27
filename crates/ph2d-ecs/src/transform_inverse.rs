@@ -249,15 +249,15 @@ impl Transform {
     #[inline]
     #[must_use]
     pub fn inverse_compose(parent: Self, world: Self) -> Option<Self> {
-        let tan_sx = libm::tanf(parent.skew_x);
-        let tan_sy = libm::tanf(parent.skew_y);
+        let tan_sx = crate::transform::tanf(parent.skew_x);
+        let tan_sy = crate::transform::tanf(parent.skew_y);
         // Shear `[[1, tan_sx], [tan_sy, 1]]` — singular when its determinant
         // vanishes. Not tested against zero here; see the finiteness check
         // below, which covers this and everything else that can go wrong.
         let det = 1.0 - tan_sx * tan_sy;
 
         // `compose` ran: scale → shear → rotate → translate. Undo in reverse.
-        let (sin, cos) = libm::sincosf(parent.rotation);
+        let (sin, cos) = crate::transform::sincosf(parent.rotation);
         let vx = world.translation.x - parent.translation.x;
         let vy = world.translation.y - parent.translation.y;
         // Un-rotate (transpose of a rotation is its inverse).

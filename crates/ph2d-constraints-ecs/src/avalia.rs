@@ -10,7 +10,7 @@ use ph2d_physics_ecs::{BodyKind, RigidBody};
 use ph2d_preview_drive::{Driven, Driver, PreviewDrive};
 
 use crate::Constraints;
-use crate::ordem::{indice, ordem};
+use crate::ordem::{indice, ordem_com};
 
 /// ⭐ **A porta única de «isto faz alguma coisa?»** — o cartão, o gizmo e os gates leem isto.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -103,11 +103,8 @@ fn com_pose(mut t: Transform, p: Pose2) -> Transform {
 pub(crate) fn base(sim: &SimWorld, preview: &PreviewDrive, e: Entity) -> Option<Transform> {
     let agora = *sim.world().get::<Transform>(e)?;
     let bits = e.to_bits();
-    match (
-        preview.last_written(bits, Driver::ConstraintPose),
-        preview.authored(bits, Driver::ConstraintPose),
-    ) {
-        (Some(Driven::ConstraintPose(escrita)), Some(Driven::ConstraintPose(autorada)))
+    match preview.written_and_authored(bits, Driver::ConstraintPose) {
+        Some((Driven::ConstraintPose(escrita), Driven::ConstraintPose(autorada)))
             if escrita == agora =>
         {
             Some(autorada)
@@ -150,7 +147,12 @@ pub fn com_autorado<R>(
 
 /// A pose local do dono para a pose mundial `dono`. Sem mudança, o autorado ao bit: desfazer o pai em
 /// f32 mexeria o último dígito.
-pub(crate) fn local_de(parent: Transform, base_local: Transform, inicial: Pose2, dono: Pose2) -> Transform {
+pub(crate) fn local_de(
+    parent: Transform,
+    base_local: Transform,
+    inicial: Pose2,
+    dono: Pose2,
+) -> Transform {
     if dono == inicial {
         return base_local;
     }
@@ -286,8 +288,10 @@ pub fn evaluate(sim: &mut SimWorld, preview: &mut PreviewDrive) -> usize {
         .remove_resource::<Adotar>()
         .unwrap_or_default()
         .0;
-    let (ordem, ciclo) = ordem(sim.world());
-    let mut estados = BTreeMap::new();
+    let idx = indice(sim.world());
+    let (ordem, ciclo) = ordem_com(sim.world(), &idx);
+    // Montado de uma vez no fim: a última marca de cada item ganha, como o `insert`.
+    let mut estados = Vec::new();
     let ja = preview.driven_by(Driver::ConstraintPose);
     // Quem a pilha conduz: as entidades com pilha e os ossos que uma IK delas escreve.
     let mut com_pilha: std::collections::BTreeSet<u64> = ordem
@@ -312,12 +316,11 @@ pub fn evaluate(sim: &mut SimWorld, preview: &mut PreviewDrive) -> usize {
     for &e in &ciclo {
         if let Some(c) = sim.world().get::<Constraints>(e) {
             for it in &c.items {
-                estados.insert((e.to_bits(), it.id), Estado::Ciclo);
+                estados.push(((e.to_bits(), it.id), Estado::Ciclo));
             }
         }
         preview.release_to_authored(sim, e, Driver::ConstraintPose);
     }
-    let idx = indice(sim.world());
     let mut movidas = 0;
     let mut avaliadas = std::collections::BTreeSet::new();
     let ordem: Vec<Entity> = ordem
@@ -355,8 +358,23 @@ pub fn evaluate(sim: &mut SimWorld, preview: &mut PreviewDrive) -> usize {
             eprintln!("[constraints] IKs acopladas: {} passagens", n);
         }
     }
-    sim.world_mut().insert_resource(Estados(estados));
+    sim.world_mut()
+        .insert_resource(Estados(estados.into_iter().collect()));
     movidas
+}
+
+/// O alvo no mundo e o pai dele, uma vez por pilha: nenhum item genérico escreve no mundo.
+type Visto = Option<(Entity, Option<Transform>, Transform)>;
+
+fn do_alvo(w: &ph2d_ecs::World, visto: &mut Visto, t: Entity) -> (Option<Transform>, Transform) {
+    match *visto {
+        Some((x, m, p)) if x == t => (m, p),
+        _ => {
+            let v = (world_transform(w, t), parent_world_transform(w, t));
+            *visto = Some((t, v.0, v.1));
+            v
+        }
+    }
 }
 
 fn avalia_uma(
@@ -364,7 +382,7 @@ fn avalia_uma(
     preview: &mut PreviewDrive,
     idx: &BTreeMap<StableId, Entity>,
     e: Entity,
-    estados: &mut BTreeMap<(u64, u32), Estado>,
+    estados: &mut Vec<((u64, u32), Estado)>,
     avaliadas: &mut std::collections::BTreeSet<u64>,
 ) -> bool {
     let Some(pilha) = sim.world().get::<Constraints>(e).cloned() else {
@@ -376,7 +394,7 @@ fn avalia_uma(
     // O que está no mundo à entrada — a IK escreve o dono a meio da conta.
     let agora = *sim.world().get::<Transform>(e).unwrap_or(&base_local);
     let mut marca = |id: u32, s: Estado| {
-        estados.insert((e.to_bits(), id), s);
+        estados.push(((e.to_bits(), id), s));
     };
     if dinamico(sim, e) {
         for it in &pilha.items {
@@ -388,6 +406,7 @@ fn avalia_uma(
     let mut parent = parent_world_transform(sim.world(), e);
     let inicial = pose(&Transform::compose(parent, base_local));
     let mut dono = inicial;
+    let mut visto = None;
     for it in &pilha.items {
         if !it.enabled {
             marca(it.id, Estado::Desligada);
@@ -401,6 +420,12 @@ fn avalia_uma(
         if alvo == Some(e) {
             marca(it.id, Estado::AlvoSiMesmo);
             continue;
+        }
+        if matches!(
+            it.kind,
+            Kind::Ik(_) | Kind::SplineIk(_) | Kind::LookAt(_) | Kind::Action(_)
+        ) {
+            visto = None;
         }
         if let Kind::Ik(ik) = &it.kind {
             let local = local_de(parent, base_local, inicial, dono);
@@ -483,9 +508,11 @@ fn avalia_uma(
             parent: pose(&parent),
             target: match (&it.kind, alvo, it.target) {
                 (Kind::PontoDeForma(p), Some(a), Some(s)) => ponto_no_mundo(sim, a, s, p.vert),
-                _ => alvo.and_then(|t| world_transform(w, t)).map(|t| pose(&t)),
+                _ => alvo
+                    .and_then(|t| do_alvo(w, &mut visto, t).0)
+                    .map(|t| pose(&t)),
             },
-            target_parent: alvo.map_or(Pose2::IDENTITY, |t| pose(&parent_world_transform(w, t))),
+            target_parent: alvo.map_or(Pose2::IDENTITY, |t| pose(&do_alvo(w, &mut visto, t).1)),
         };
         match ph2d_constraints::apply_with(
             &it.kind,

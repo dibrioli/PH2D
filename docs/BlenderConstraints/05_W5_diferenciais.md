@@ -138,7 +138,7 @@ vira a pose do palpite» sangra. Mundo (`ph2d-constraints-ecs/tests/it/cola.rs`)
 = quadro anterior» (scrub 0,729 × tocar 0,948 rad no quadro 5), «não publicar `AlvosDasFamilias`» e «o cadeado não é
 chão» — 4/4 sangram. Desenho do mundo: [ADR-0193](../architecture/decisions/0193-a-cola-e-uma-relacao-simetrica-resolvida-por-grupo-antes-da-pilha.md).
 
-### 4.2 Kill medido (27/10) — ⛔ ABERTO, os DOIS reprovam ~10×
+### 4.2 Kill medido (27/10) — ✅ FECHADO na mesma data: cola 0,44 ms, pilha 0,29 ms (§4.3); abaixo, a 1.ª medida
 
 Bancada `ph2d-constraints-ecs/tests/it/kill.rs` (`#[ignore]`; `--profile smoke`, que herda `release`; 7 blocos × 40
 quadros, cola e pilha intercaladas, o MÍNIMO): **cola 5,30 ms / 1 000 objectos** (100 quadriláteros na ezpz + 60
@@ -150,6 +150,33 @@ quadro). A cola não depende disto para o smoke (5 objectos).
 
 O kill-criterion da **pilha** (W1, 0,5 ms / 1 000 itens) **nunca foi medido** (o explorador não achou bancada):
 mede-se na mesma bancada, na mesma rodada (§0.10).
+
+### 4.3 Perfil e curas (27/10)
+
+`perf record` sobre a bancada (`--profile smoke`, `CARGO_PROFILE_SMOKE_STRIP=none`) e depois fases com `Instant` (cópia
+temporária, nunca comitada). Antes: `ordem()` (o laço de Kahn reavaliava todos os nós a cada camada: O(n²) na cadeia
+de 500) era ~33 % das amostras; `PreviewDrive::drives_other_than` varria o ledger inteiro por membro (O(n²), ~12 %);
+faer/ezpz ~25 %. Mínimo de 7×40, `loadavg` ao lado (1 min):
+
+| cura | cola | pilha | load |
+|---|---|---|---|
+| antes | 5,47 ms | 6,29 ms | 16,5 |
+| `ordem` por Kahn com contagem (a mesma ordem por camadas) + ledger por `range` da entidade | 3,69 | 0,53 | 21 |
+| régua e compasso antes da ezpz (`construcao.rs`: díade e corpo por dois pinos) | 1,66 | 0,53 | 26 |
+| a estrutura dos grupos em cache (`Cache`/`resolve_com`; chave = colas + condutor/cede de cada corpo) | 0,88 | 0,58 | 31 |
+| `Vec` pela ordem do `StableId`, arquétipos só com o componente, índice uma vez | 0,52 | 0,50 | 14 |
+| `ordem` em índices densos + alvo do item uma vez por pilha + `sincosf`/`tanf` saltados no zero (ao bit) | 0,48 | 0,28 | 4,4 |
+| `driven` só percorre a camada quando outra mão escreveu; rascunhos reutilizados; `Estados` montados de uma vez | **0,42** | **0,28** | 4,6 |
+| final (3 corridas) | 0,436–0,441 | 0,287–0,291 | 12,3 |
+
+Lei: a construção só responde quando coloca TODOS os corpos e fecha TODOS os pinos; senão é a ezpz (laço que não
+fecha continua conflito dela). Ramo da díade = o mais perto do palpite autorado. Gate
+`the_construction_gives_what_ezpz_gives_around_the_whole_turn`: 292 casos (volta inteira a 7,5°, escala não
+uniforme, espelho, balancim condutor), pior desvio 8,9e-9 (o critério de convergência da ezpz). Ele achou um defeito
+da ezpz: com `sx < 0` a rotação saía 180° ao lado (`u − o` aponta para trás) — corrigido em `ez.rs`. A cache só
+depende das entradas e o caminho sem ela é o mesmo `prepara`+`executa`: quente e frio dão o mesmo bit.
+Resta (fases médias da cola, load 3,5): membros ~136 µs, resolve ~108, saída ~90, fim ~59 — custo por membro em
+`BTreeMap` (índice, ledger, memória) e alocação; nenhum dominante.
 
 ## 5. Cena de smoke 8 — «Braço articulado»
 

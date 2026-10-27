@@ -3,6 +3,7 @@
 
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
+use crate::construcao::{self, PinI};
 use crate::ez::{self, Pin};
 use crate::{Cola, Corpo, Entrada, Pose2, TOL, Tipo, perto};
 
@@ -117,62 +118,90 @@ fn solidos(
     Ok(em)
 }
 
-/// `Ok(None)` = ninguém conduz; `Err` = conflito; senão a pose mundial de cada membro.
-pub(crate) fn resolve_grupo(
-    membros: &[Corpo],
-    colas: &[Cola],
-    corpos: &BTreeMap<Corpo, Entrada>,
-) -> Result<Option<BTreeMap<Corpo, Pose2>>, ()> {
-    match tenta(membros, colas, corpos, false) {
-        Err(()) if membros.iter().any(|m| corpos[m].condutor && corpos[m].cede) => {
-            tenta(membros, colas, corpos, true)
-        }
-        r => r,
-    }
+type P = [f64; 2];
+
+/// Um membro no seu sólido: o índice da raiz e, se não é ela, a pose na raiz com a inversa (`None` = colapsa).
+#[derive(Clone, Copy)]
+struct NoSolido {
+    raiz: usize,
+    rel: Option<(Pose2, Option<Pose2>)>,
+}
+
+enum Via {
+    /// Árvore de pinos com um condutor: `(k, ponto em k, f, ponto em f)` pela ordem da largura.
+    Fecho(Vec<(usize, P, usize, P)>),
+    Construcao(Vec<construcao::Passo>),
+    Ezpz,
+}
+
+/// O que não muda enquanto as colas, os objectos e quem conduz não mudam (05 §4.2) — vai na cache do passo
+/// do mundo; o quadro só faz a conta.
+pub(crate) struct Preparo {
+    membros: Vec<Corpo>,
+    /// A posição de cada membro e de cada raiz nas entradas (por ordem do `Corpo`).
+    ix: Vec<usize>,
+    raiz_ix: Vec<usize>,
+    raizes: Vec<Corpo>,
+    no: Vec<NoSolido>,
+    conduz: Vec<bool>,
+    mao: Vec<bool>,
+    fixa: Vec<bool>,
+    alvo: Vec<bool>,
+    /// Um pino com as duas pontas no mesmo sólido que não coincidem: conflito, se alguém conduz.
+    pino_partido: bool,
+    pins: Vec<PinI>,
+    via: Via,
 }
 
 /// `ceder`: a mão do gesto deixa de ser condutor e vira ALVO de prioridade menor na ezpz.
-fn tenta(
+pub(crate) fn prepara(
     membros: &[Corpo],
     colas: &[Cola],
     corpos: &BTreeMap<Corpo, Entrada>,
+    rank: &BTreeMap<Corpo, usize>,
     ceder: bool,
-) -> Result<Option<BTreeMap<Corpo, Pose2>>, ()> {
-    let mao = |c: Corpo| ceder && corpos[&c].condutor && corpos[&c].cede;
-    let conduz = |c: Corpo| corpos[&c].condutor && !mao(c);
+) -> Result<Preparo, ()> {
+    let mao_c = |c: Corpo| ceder && corpos[&c].condutor && corpos[&c].cede;
     let em = solidos(membros, colas, |c| corpos[&c].condutor)?;
-
-    let mut fixo: BTreeMap<Corpo, Pose2> = BTreeMap::new();
-    let mut alvo: BTreeMap<Corpo, Pose2> = BTreeMap::new();
-    for &m in membros.iter().filter(|&&m| conduz(m) || mao(m)) {
-        let (r, rel) = em[&m];
-        let p = corpos[&m].pose;
-        let pr = match rel {
-            None => p,
-            Some(rel) => Pose2::IDENTITY.relative_to(rel).ok_or(())?.under(p),
-        };
-        if mao(m) {
-            alvo.insert(r, pr);
-            continue;
-        }
-        match fixo.get(&r) {
-            Some(&q) if !perto(q, pr) => return Err(()),
-            Some(_) => {}
-            None => {
-                fixo.insert(r, pr);
-            }
+    let raizes: Vec<Corpo> = em
+        .values()
+        .map(|v| v.0)
+        .collect::<BTreeSet<_>>()
+        .into_iter()
+        .collect();
+    let ri = |c: Corpo| raizes.binary_search(&c).map_err(|_| ());
+    let mut no = Vec::with_capacity(membros.len());
+    for m in membros {
+        let (r, rel) = em[m];
+        no.push(NoSolido {
+            raiz: ri(r)?,
+            rel: rel.map(|rel| (rel, Pose2::IDENTITY.relative_to(rel))),
+        });
+    }
+    let mao: Vec<bool> = membros.iter().map(|&m| mao_c(m)).collect();
+    let conduz: Vec<bool> = membros
+        .iter()
+        .zip(&mao)
+        .map(|(m, &h)| corpos[m].condutor && !h)
+        .collect();
+    let (mut fixa, mut alvo) = (vec![false; raizes.len()], vec![false; raizes.len()]);
+    for (i, n) in no.iter().enumerate() {
+        if conduz[i] {
+            fixa[n.raiz] = true;
+        } else if mao[i] {
+            alvo[n.raiz] = true;
         }
     }
-    alvo.retain(|r, _| !fixo.contains_key(r));
-    if fixo.is_empty() {
-        return Ok(None);
+    for (a, f) in alvo.iter_mut().zip(&fixa) {
+        *a &= !f;
     }
 
-    let na_raiz = |c: Corpo, q: [f64; 2]| {
+    let na_raiz = |c: Corpo, q: P| {
         let (r, rel) = em[&c];
         (r, rel.map_or(q, |p| p.ponto(q)))
     };
     let mut pins = Vec::new();
+    let mut pino_partido = false;
     for c in colas {
         if let Tipo::Pino { em_a, em_b } = c.tipo {
             let (a, qa) = na_raiz(c.a, em_a);
@@ -180,55 +209,166 @@ fn tenta(
             if a == b {
                 if (qa[0] - qb[0]).hypot(qa[1] - qb[1]) > TOL * (1.0 + qa[0].abs().max(qa[1].abs()))
                 {
-                    return Err(());
+                    pino_partido = true;
+                    break;
                 }
                 continue;
             }
-            pins.push(Pin { a, qa, b, qb });
+            pins.push(PinI {
+                a: ri(a)?,
+                qa,
+                b: ri(b)?,
+                qb,
+            });
         }
     }
 
-    let raizes: BTreeSet<Corpo> = em.values().map(|v| v.0).collect();
-    let mut pose: BTreeMap<Corpo, Pose2> = raizes
-        .iter()
-        .map(|&r| {
-            (
-                r,
-                fixo.get(&r)
-                    .or(alvo.get(&r))
-                    .copied()
-                    .unwrap_or(corpos[&r].pose),
-            )
-        })
-        .collect();
-    if alvo.is_empty() && fixo.len() == 1 && pins.len() + 1 == raizes.len() {
-        let inicio = *fixo.keys().next().ok_or(())?;
-        fecho(&mut pose, &pins, inicio);
+    let sem_alvo = !alvo.contains(&true);
+    let n_fixo = fixa.iter().filter(|&&f| f).count();
+    let via = if sem_alvo && n_fixo == 1 && pins.len() + 1 == raizes.len() {
+        let inicio = fixa.iter().position(|&f| f).ok_or(())?;
+        Via::Fecho(ordem_do_fecho(&pins, inicio, raizes.len()))
+    } else if sem_alvo {
+        construcao::receita(&fixa, &pins).map_or(Via::Ezpz, Via::Construcao)
     } else {
-        let fixo_ou_alvo = |c: Corpo| fixo.contains_key(&c) || alvo.contains_key(&c);
-        pose = ez::resolve(&pose, fixo_ou_alvo, |c| alvo.contains_key(&c), &pins).ok_or(())?;
-    }
-
-    Ok(Some(
-        membros
-            .iter()
-            .map(|&m| {
-                let (r, rel) = em[&m];
-                let p = if conduz(m) {
-                    corpos[&m].pose
-                } else {
-                    rel.map_or(pose[&r], |rel| rel.under(pose[&r]))
-                };
-                (m, p)
-            })
-            .collect(),
-    ))
+        Via::Ezpz
+    };
+    Ok(Preparo {
+        membros: membros.to_vec(),
+        ix: membros.iter().map(|m| rank[m]).collect(),
+        raiz_ix: raizes.iter().map(|r| rank[r]).collect(),
+        raizes,
+        no,
+        conduz,
+        mao,
+        fixa,
+        alvo,
+        pino_partido,
+        pins,
+        via,
+    })
 }
 
-/// Árvore de pinos com um condutor: cada seguidor mantém a SUA rotação e escala e translada até o pino coincidir.
-fn fecho(pose: &mut BTreeMap<Corpo, Pose2>, pins: &[Pin], inicio: Corpo) {
-    let mut feito = BTreeSet::from([inicio]);
+/// Os vectores de um grupo, reutilizados de grupo em grupo (a conta é por quadro).
+#[derive(Default)]
+pub(crate) struct Rascunho {
+    fixo: Vec<Option<Pose2>>,
+    alvo: Vec<Option<Pose2>>,
+    pose: Vec<Pose2>,
+    palpite: Vec<Pose2>,
+}
+
+/// `Ok(false)` = ninguém conduz; `Err` = conflito; `Ok(true)` = a pose mundial de cada membro foi para `out`.
+/// `poses`: a de cada entrada, por ordem do `Corpo`.
+pub(crate) fn executa(
+    p: &Preparo,
+    poses: &[Pose2],
+    r: &mut Rascunho,
+    out: &mut Vec<(Corpo, Pose2)>,
+) -> Result<bool, ()> {
+    let n = p.raizes.len();
+    let Rascunho {
+        fixo,
+        alvo,
+        pose,
+        palpite,
+    } = r;
+    fixo.clear();
+    fixo.resize(n, None);
+    alvo.clear();
+    alvo.resize(n, None);
+    for (i, no) in p.no.iter().enumerate() {
+        if !(p.conduz[i] || p.mao[i]) {
+            continue;
+        }
+        let pm = poses[p.ix[i]];
+        let pr = match no.rel {
+            None => pm,
+            Some((_, inv)) => inv.ok_or(())?.under(pm),
+        };
+        if p.mao[i] {
+            alvo[no.raiz] = Some(pr);
+            continue;
+        }
+        match fixo[no.raiz] {
+            Some(q) if !perto(q, pr) => return Err(()),
+            Some(_) => {}
+            None => fixo[no.raiz] = Some(pr),
+        }
+    }
+    if fixo.iter().all(Option::is_none) {
+        return Ok(false);
+    }
+    if p.pino_partido {
+        return Err(());
+    }
+    pose.clear();
+    pose.extend((0..n).map(|r| fixo[r].or(alvo[r]).unwrap_or(poses[p.raiz_ix[r]])));
+    match &p.via {
+        Via::Fecho(passos) => {
+            for &(k, qk, f, qf) in passos {
+                let alvo = pose[k].ponto(qk);
+                let agora = pose[f].ponto(qf);
+                pose[f].x += alvo[0] - agora[0];
+                pose[f].y += alvo[1] - agora[1];
+            }
+        }
+        Via::Construcao(passos) => {
+            palpite.clone_from(pose);
+            if !construcao::executa(passos, pose, &p.pins) {
+                *pose = pela_ezpz(p, palpite)?;
+            }
+        }
+        Via::Ezpz => *pose = pela_ezpz(p, pose)?,
+    }
+    out.extend(
+        p.membros
+            .iter()
+            .zip(&p.no)
+            .enumerate()
+            .map(|(i, (&m, no))| {
+                let q = if p.conduz[i] {
+                    poses[p.ix[i]]
+                } else {
+                    no.rel
+                        .map_or(pose[no.raiz], |(rel, _)| rel.under(pose[no.raiz]))
+                };
+                (m, q)
+            }),
+    );
+    Ok(true)
+}
+
+fn pela_ezpz(p: &Preparo, palpite: &[Pose2]) -> Result<Vec<Pose2>, ()> {
+    let pose: BTreeMap<Corpo, Pose2> = p
+        .raizes
+        .iter()
+        .copied()
+        .zip(palpite.iter().copied())
+        .collect();
+    let i = |c: Corpo| p.raizes.binary_search(&c).unwrap_or(0);
+    let pins: Vec<Pin> = p
+        .pins
+        .iter()
+        .map(|q| Pin {
+            a: p.raizes[q.a],
+            qa: q.qa,
+            b: p.raizes[q.b],
+            qb: q.qb,
+        })
+        .collect();
+    let fixo_ou_alvo = |c: Corpo| p.fixa[i(c)] || p.alvo[i(c)];
+    let saida = ez::resolve(&pose, fixo_ou_alvo, |c| p.alvo[i(c)], &pins).ok_or(())?;
+    Ok(p.raizes.iter().map(|r| saida[r]).collect())
+}
+
+/// Árvore de pinos com um condutor: cada seguidor mantém a SUA rotação e escala e translada até o pino coincidir
+/// — a ordem (largura a partir do condutor) é estrutural.
+fn ordem_do_fecho(pins: &[PinI], inicio: usize, n: usize) -> Vec<(usize, P, usize, P)> {
+    let mut feito = vec![false; n];
+    feito[inicio] = true;
     let mut fila = VecDeque::from([inicio]);
+    let mut passos = Vec::new();
     while let Some(k) = fila.pop_front() {
         for pin in pins {
             let (qk, f, qf) = if pin.a == k {
@@ -238,17 +378,13 @@ fn fecho(pose: &mut BTreeMap<Corpo, Pose2>, pins: &[Pin], inicio: Corpo) {
             } else {
                 continue;
             };
-            if !feito.insert(f) {
+            if feito[f] {
                 continue;
             }
-            let alvo = pose[&k].ponto(qk);
-            let p = pose
-                .get_mut(&f)
-                .expect("todo pino liga duas raízes do grupo");
-            let agora = p.ponto(qf);
-            p.x += alvo[0] - agora[0];
-            p.y += alvo[1] - agora[1];
+            feito[f] = true;
+            passos.push((k, qk, f, qf));
             fila.push_back(f);
         }
     }
+    passos
 }

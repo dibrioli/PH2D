@@ -198,9 +198,9 @@ impl Transform {
             parent.skew_x,
             parent.skew_y
         );
-        let (sin, cos) = libm::sincosf(parent.rotation);
-        let tan_sx = libm::tanf(parent.skew_x);
-        let tan_sy = libm::tanf(parent.skew_y);
+        let (sin, cos) = sincosf(parent.rotation);
+        let tan_sx = tanf(parent.skew_x);
+        let tan_sy = tanf(parent.skew_y);
         // Scale child translation by parent scale (v1 base).
         let s_tx = child.translation.x * parent.scale.x;
         let s_ty = child.translation.y * parent.scale.y;
@@ -328,9 +328,9 @@ impl GlobalTransform {
             t.skew_x,
             t.skew_y
         );
-        let (sin, cos) = libm::sincosf(t.rotation);
-        let tan_sx = libm::tanf(t.skew_x);
-        let tan_sy = libm::tanf(t.skew_y);
+        let (sin, cos) = sincosf(t.rotation);
+        let tan_sx = tanf(t.skew_x);
+        let tan_sy = tanf(t.skew_y);
         let sx = t.scale.x;
         let sy = t.scale.y;
         // v1 base columns (R · S) — kept byte-exact.
@@ -627,3 +627,16 @@ pub fn propagate_transforms_into_present(
 #[cfg(test)]
 #[path = "transform_tests.rs"]
 mod tests;
+
+/// `libm::sincosf` sem a chamada no ângulo zero, ao bit: `sincosf(±0) = (±0, 1)` (a pose sem rotação é o caso
+/// comum, e a pilha e a cola compõem mil por quadro — BlenderConstraints 05_W5 §4.2).
+#[inline]
+pub(crate) fn sincosf(a: f32) -> (f32, f32) {
+    if a == 0.0 { (a, 1.0) } else { libm::sincosf(a) }
+}
+
+/// `libm::tanf` sem a chamada no zero, ao bit: `tanf(±0) = ±0`.
+#[inline]
+pub(crate) fn tanf(a: f32) -> f32 {
+    if a == 0.0 { a } else { libm::tanf(a) }
+}

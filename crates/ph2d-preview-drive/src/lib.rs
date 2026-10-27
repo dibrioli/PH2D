@@ -166,6 +166,11 @@ pub enum Driver {
     ColaPose,
 }
 
+impl Driver {
+    /// A menor pela ordem derivada (a 1.ª declarada): o começo do `range` de uma entidade no ledger.
+    pub(crate) const PRIMEIRO: Self = Self::SpriteAnim;
+}
+
 /// **O FACTO que um motor escreve** — o recorte exacto do componente que é dele, e nada mais.
 ///
 /// ⚠️ **A granularidade é o CAMPO, e tinha de ser.** O `SpriteAnimator` guarda o relógio
@@ -297,27 +302,25 @@ impl PreviewDrive {
     /// uma condução que já acabou, e é a `settle` que precisa de a ver morrer.
     pub fn driven(&mut self, entity: Entity, before: Driven, after: Driven) {
         let key = (entity.to_bits(), after.driver());
-        let camada = self
-            .memo
-            .get(&key)
-            .is_some_and(|e| self.por_cima_de(key, e.last_written, before));
-        match self.memo.get_mut(&key) {
-            None => {
-                self.memo.insert(
-                    key,
-                    Entry {
-                        authored: before,
-                        last_written: after,
-                        seen: true,
-                    },
-                );
+        // A camada só se pergunta quando o motor não encontra o que deixou (a travessia custa).
+        let outra_mao = self.memo.get(&key).is_some_and(|e| {
+            e.last_written != before && !self.por_cima_de(key, e.last_written, before)
+        });
+        match self.memo.entry(key) {
+            std::collections::btree_map::Entry::Vacant(v) => {
+                v.insert(Entry {
+                    authored: before,
+                    last_written: after,
+                    seen: true,
+                });
             }
-            Some(e) => {
+            std::collections::btree_map::Entry::Occupied(o) => {
+                let e = o.into_mut();
                 // ⚠️ **Outra mão escreveu entre os dois quadros.** O que o motor encontrou não é o
                 // que ele deixou ⇒ alguém autorou por cima, e o documento passa a ser essa mão.
                 // Sem esta linha, editar a pose de um corpo a meio de uma corrida (ou o `frame`
                 // por um caminho que não pause) ficaria para sempre por baixo do memo do início.
-                if e.last_written != before && !camada {
+                if outra_mao {
                     e.authored = before;
                 }
                 e.last_written = after;

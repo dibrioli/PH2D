@@ -425,7 +425,7 @@ chega ao motor como 16,7 porque a `width_table` do candidato promete 16,7 → 40
 medida (o próprio gate `os_candidatos_da_w2_sao_as_suas_receitas` o diz). Cura: regerar a `width_table` do Knife
 Smooth 2 com a sonda da fábrica (dará ~20 → 40, e o tamanho 40 → ~41 × Rebelle 42) — é do dono das receitas.
 
-**Aberto (medido, não curado aqui).** (1) A SOMBRA no papel ao pé do planalto: com a parede viva o papel abaixo do
+**Aberto (medido, não curado aqui; (1) e (2) → §K8).** (1) A SOMBRA no papel ao pé do planalto: com a parede viva o papel abaixo do
 traço lê-se uma banda chapada (luminância 163 por ≥ 7 px; antes um degradê 227 → 163; o Rebelle ≤ 1 px de sombra e o
 papel a 255) — é a altura do planalto (8,8 px) a tapar o céu do papel (a lei do papel ao pé da parede, K4/E2), não a
 parede; e o papel por cima do traço desce 255 → 250. (2) A marca não se apaga quando outro pincel pinta por cima de
@@ -433,6 +433,74 @@ tinta nivelada: dentro do planalto a média normalizada alisa como a forma de se
 BORDA dele herda a parede viva (precisa de quem pousa tinta — o `dab_route`/`trail` — baixar a marca; não é dos
 ficheiros deste agente). (3) O miolo do Smooth 2 continua com as
 riscas da espessura (`knifeLevel` 1 ainda std ~12, K3a §1) — não é a parede.
+
+## §K8 — A marca do nivelado apaga-se; a faixa cinza ao pé do planalto (W3, 27/10)
+
+Cenas: `PH2D_OLEO_CENA=travessia` (nova: a `smooth2` e, por cima, um vertical do MESMO Knife Smooth 2 a `knifeLevel` 0,
+cor laranja, x 300, y 150..370) e `smooth2`. Régua do papel: [`papel_regua_k8.py`](papel_regua_k8.py) (o papel por
+baixo do planalto kL 1, nosso × o Cycles da MESMA tinta, com `h_fina` e com `h_sombra` como malha). Folha
+[`../out/K8_folha.jpg`](../out/K8_folha.jpg): em cima a travessia antes | depois | Rebelle Smooth 2 `sobre_A`; em
+baixo o papel: nosso | Cycles `h_sombra` | Cycles `h_fina` | Rebelle recto. «antes» = a mutação M0 (a marca nunca se
+apaga = a lei da K7), corrida na mesma árvore.
+
+**1. A marca apaga-se pela MASSA (ENTROU).** Lei: a tinta de um dab que NÃO nivela (`knifeLevel` 0) chega por nivelar,
+marca 0, e a marca da célula vira a média pela massa — `marca × m_old ÷ (m_old + v)` (a lei do `relevo` e do
+`material::pousa`, no mesmo laço do `transfer_paint`); o arrasto leva-a com a fracção do material; o Blend relaxa-a
+para a média da janela pesada pela massa. A lâmina que nivela não a dilui (a marca é dela, `lamina::nivelar` põe o
+`max`). Sem o campo alocado (nenhuma faca que nivele na sessão) nada corre nem se aloca.
+
+| travessia (vertical kL 0 sobre os planaltos) | marca no planalto kL 1 | altura ao longo do vertical, entrando no planalto (x 300) |
+|---|---|---|
+| antes (K7) | 1,00 em toda a travessia | 10,0 · 8,8 · **7,0 → 20,5** (fosso e parede herdados) … 21,1 · **23,7 → 8,4** |
+| **depois** | 0,18–0,71 (no de 0,3: 0,05–0,25) | 10,3 · 10,8 · 13,0 · 16,1 · 18,3 (rampa) … 18,5 · 15,2 · 13,0 · 11,7 |
+| Rebelle Smooth 2 `sobre_A` | — | o cruzamento plano, sem degrau |
+
+Fora da travessia a marca fica ao bit. **A cena do dono × Cycles: AO BIT** — `oleo.ppm`, `h_forma`, `h_fina`,
+`h_sombra`, `cobertura`, `t_papel`, `albedo` iguais byte a byte aos da mutação M0 (nenhuma célula marcada). As facas de
+fábrica (Smooth 3, Oily, Grainy, Dry) não usam `knifeLevel` ⇒ nunca alocam a marca ⇒ o caminho de antes.
+
+Gates: `a_marca_do_nivelado_dilui_pela_massa_nova` (wet-paint: 0,8 × 300/400 = 0,6; papel limpo → 0; arrasto 0,25;
+sem campo não aloca) e `a_tinta_que_nao_nivela_apaga_a_marca_pela_massa` (tool-painter: travessia 1 → 0,63–0,64,
+fora ao bit, a 2.ª passada da lâmina a 0,5 não baixa a marca 1, sem lâmina nem aloca). Mutações **5/5 vermelhas**
+(controlo verde): M0 a marca nunca se apaga · M1 a lei com `v` no lugar de `m_old` · M2 só o pousar desligado (o
+arrasto sozinho não apaga) · M3 a lâmina dilui a própria marca (sobreviveu à 1.ª versão do gate — a faca de teste tem
+cobertura 0/1 e o `max` repunha; a 2.ª passada a 0,5 apanha-a) · M4 o arrasto ao contrário.
+
+Aberto: na travessia a marca parcial varia célula a célula com a massa que cada uma recebeu (o `v` do dab), e a forma
+mistura as duas partes por ela — o miolo do cruzamento no kL 1 fica mais rugoso (desvio das diferenças vizinhas da
+`h_forma` 0,61 → 2,0 px; nos traços sobre papel 0,6–0,7). Não é a parede herdada; uma marca desfocada pelo raio da
+forma antes de repartir a massa seria a cura a medir.
+
+**2. A faixa cinza por baixo do planalto: MEDIDA, a causa NÃO é a altura nem o alcance da sombra.**
+
+| papel por baixo do kL 1 (linhas 329..345, byte sRGB) | perfil |
+|---|---|
+| nosso (Estúdio) | 163 × 10 · 165 · 198 190 198 192 197 · 241 · 251 |
+| nosso com `knifeRidge` 0 (sem a crista na sombra) | 253 · 171 163 177 189 198 204 209 213 · 231 234 … 251 |
+| Cycles `h_sombra` (a malha da NOSSA sombra), Estúdio | 245 234 228 224 221 216 212 209 206 206 211 222 230 240 246 249 |
+| Cycles `h_fina`, Estúdio | 232 218 214 211 213 222 237 246 249 … |
+| Cycles `h_sombra`, Clássico (sol10) | 196 195 195 … 197 200 208 218 229 238 245 |
+| Rebelle Smooth 2 (recto) | 255 (≤ 1 px) |
+
+- (b) **O alcance está certo**: a umbra da luz directa vai até ~341 nos dois (nosso `luz` 0 até 338, parcial até 343;
+  Cycles `h_sombra` directo ≤ 0,45 até 340). É a geometria: a crista da faca (K6) põe na `h_sombra` uma barbatana de
+  **18,9 px** na linha da borda (planalto 8,8), e é ela que estica a faixa (com `knifeRidge` 0 a umbra encolhe para
+  ~5 linhas e vira degradê; o Cycles com `h_fina` faz o mesmo).
+- O que difere do Cycles é a **PROFUNDIDADE**: o nosso papel na umbra = **0,37** de luz = exactamente o Cycles SÓ
+  DIRECTO (`studio_sol10_cinza_direto` 0,40 · 0,38 · 0,40); o Cycles inteiro dá 0,53–0,66 (cinza) e 0,62–0,91 (cor).
+  Falta a luz INDIRECTA no papel — o aberto da K4 cuja cura simples (Jimenez com o albedo do papel) está recusada
+  porque apaga a sombra do empaste vermelho do dono. Uma cura LOCAL (só onde há marca) não existe: o papel não é
+  marcado, e a umbra é a mesma lei para qualquer parede alta.
+- (a) **A altura não é a causa**: o planalto de 8,8 px é o depósito do candidato (`knifeLevel` 0 dá 10,66 px; o nível só
+  o abaixa); as facas aprovadas têm 3,1 (Smooth 3), 5,0 (Oily), ~10 (Dry) e deixam também uma faixa (Smooth 3: 247 237
+  200 216 220 235; Dry: 219 222 218 220…) — mais clara porque a parede delas é uma rampa larga que não tapa o sol a
+  42°. Os ≤ 1 px do Rebelle pediriam tinta < 0,9 px a 42° de sol: o Rebelle não projecta sombra no papel (K4), a régua
+  do papel é o Cycles. Baixar a tinta do Smooth 2 é VALOR da receita (o dono das receitas), não motor da faca.
+
+Decisão: nada muda na lei do papel nem na altura (a cena do dono fica ao bit por construção). Ficam dois abertos
+nomeados: a luz indirecta no papel com a cor da parede (K4) e a altura da barbatana da crista na sombra quando o traço
+é alto (`× espessura`: 14 px de crista sobre 4,9 na borda do Smooth 2 — medir contra o rebordo do Rebelle F42 antes
+de lhe pôr tecto).
 
 ## ⛔ Recusas MEDIDAS
 
@@ -461,6 +529,8 @@ riscas da espessura (`knifeLevel` 1 ainda std ~12, K3a §1) — não é a parede
 | Metal: o `rola` com JOELHO (linear até 80 % da folga) | o p90 das encostas bate (1,000 × 1,000) mas o meio-tom das paredes sobe (0,37 × 0,16): \|Δ\| sRGB na tinta 0,1123 → 0,1149, correlação 0,765 → 0,748 (K4) |
 | Metal: a vizinha tapada devolve só o CÉU (`a²·difuso` sem o `sol`) | parede 0,34 → 0,31 × 0,16, mas \|Δ\| 0,1123 → 0,1131 e correlação 0,765 → 0,755 (K4) |
 | Paredes vivas GLOBAIS (a forma desfocada só dentro da tinta, `blur(massa)/blur(cob) × cob`) | Smooth 2 a 1/3 células (Rebelle ~2 px), mas a orla da cena do dono × Cycles piora: Estúdio \|Δ\| 23,5 → 26,0, corr 0,881 → 0,855, pontos <40 0,73 → 2,65 % (Cycles 1,13 %); com a cobertura desfocada a parede volta a 3–9 células e a orla continua pior (K6) |
+| A lâmina que nivela também dilui a marca com a tinta que ela própria pousa (mutação M3) | uma 2.ª passada mais fraca (0,5) baixava a marca 1 da 1.ª abaixo da do traço que nivela mais: a marca é da lâmina, o `max` do `nivelar` (K8) |
+| A faixa cinza do Smooth 2 curada pela ALTURA do planalto | as facas aprovadas a 3,1–10 px também deixam a faixa; os ≤ 1 px do Rebelle pediriam < 0,9 px de tinta a 42° — o Rebelle não projecta no papel e a régua do papel é o Cycles, com o qual o ALCANCE bate (K8) |
 | `raio_suave` 1 ou 0 (menos desfoque da forma) | a parede encolhe (4/6 · 1/3) mas o miolo do Smooth 2 mostra os sulcos de célula da espessura (K6, folha) |
 
 ## Fica aberto

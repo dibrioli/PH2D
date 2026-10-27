@@ -235,7 +235,8 @@ fn a_tinta_que_nao_nivela_apaga_a_marca_pela_massa() {
     t.paint.wetpaint.knobs.set(Knob::KnifeLevel, 1.0);
     recto(&mut t, [30.0, 50.0], [170.0, 50.0]);
     let (_, primeira, _) = marca_e_massa(&mut t);
-    // A lâmina que nivela não apaga a própria marca: a 2.ª passada só a mantém ou sobe.
+    // A lâmina que nivela não apaga a marca (nem a de outra mais forte): a 2.ª passada, a 0,5, mantém a 1.
+    t.paint.wetpaint.knobs.set(Knob::KnifeLevel, 0.5);
     recto(&mut t, [30.0, 50.0], [170.0, 50.0]);
     let (r, antes, m_antes) = marca_e_massa(&mut t);
     assert!(

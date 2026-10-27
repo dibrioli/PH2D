@@ -160,6 +160,11 @@ impl PainterTool {
             > 0.0;
         let fios = self.fios_do_pincel();
         let relevo = self.relevo_do_pincel();
+        // O rebordo da lâmina (W2 E4, `ph2d_wet_paint::lamina`): `0` = nem se chama a porta.
+        let rebordo = sess
+            .engine
+            .tuning
+            .get(ph2d_wet_paint::tuning::Knob::KnifeRidge);
         // ⭐ O pigmento por COMPRIMENTO (prompt 51, doc 51 §2): cada dab pousa o do caminho desde o dab anterior da
         // lane ÷ o passo a que o pigmento foi afinado. Sem cápsula, nunca mais que um dab (o Spacing largo pontilha).
         let passo_do_pigmento =
@@ -462,7 +467,9 @@ impl PainterTool {
             };
             // O depósito, o pente e o grão que lê a ponta leem a MESMA silhueta (com a ponta), avaliada UMA vez por célula
             // e guardada no dab ([`super::sil_memo`]), ao byte.
-            let memo = (relevo_dab.is_some() || grain_active && spec.texture.lei.mode.le_a_ponta())
+            let memo = (relevo_dab.is_some()
+                || rebordo > 0.0
+                || grain_active && spec.texture.lei.mode.le_a_ponta())
                 .then(|| super::sil_memo::SilMemo::nova(cell_x, cell_y, meia));
             let sil = |cx: i32, cy: i32| -> f64 {
                 memo.as_ref()
@@ -640,6 +647,17 @@ impl PainterTool {
                             meia,
                             px_cel,
                             &sil,
+                            passos_do_pente,
+                        );
+                    }
+                    if rebordo > 0.0 {
+                        sess.engine.pentear_rebordo(
+                            centro_x,
+                            centro_y,
+                            meia,
+                            &sil,
+                            rumo,
+                            rebordo / px_cel,
                             passos_do_pente,
                         );
                     }

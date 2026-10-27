@@ -229,9 +229,13 @@ pub enum Knob {
     /// pigmento); abaixo arrasta menos (`0` = esfrega a seco); acima molha o rasto até ao [`Knob::WaterCap`] — e o
     /// pigmento assente dissolve-se pela porta do lift ([`crate::tools::apply_smear`]).
     SmearWater,
+    /// ⭐ **O rebordo da lâmina** (Óleo Real W2 E4, [`crate::lamina`]): a altura (px) da crista que a faca arrastada
+    /// deixa nas duas bordas laterais do que varre, com o miolo alisado. `0` = a tinta de sempre, ao bit (o
+    /// hospedeiro nem chama a porta).
+    KnifeRidge,
 }
 
-pub const KNOB_COUNT: usize = 108;
+pub const KNOB_COUNT: usize = 109;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum KnobGroup {

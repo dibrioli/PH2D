@@ -243,7 +243,7 @@ mod tests {
     /// esta lista: um knob novo nasce aqui (e alguém decide onde mora) ou num grupo à vista.
     #[test]
     fn os_escondidos_sao_so_os_de_outra_superficie_ou_de_calibracao() {
-        const NOUTRA_SUPERFICIE: [&str; 20] = [
+        const NOUTRA_SUPERFICIE: [&str; 21] = [
             // a Shape › Bristles (plano 27 W2)
             "felt",
             "bristleCount",
@@ -269,6 +269,8 @@ mod tests {
             "blow",
             "smear",
             "smearWater",
+            // o rebordo da faca (W2 E4): a linha no cartão Wet Paint está por agendar
+            "knifeRidge",
         ];
         const CALIBRACAO: [&str; 8] = [
             // normaliza o pigmento pelo comprimento (o preset diz a que Spacing foi afinado)

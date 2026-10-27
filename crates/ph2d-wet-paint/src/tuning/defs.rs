@@ -697,4 +697,6 @@ pub const KNOB_DEFS: [KnobDef; KNOB_COUNT] = [
     k(Knob::WetOpenPush, KnobGroup::WetEffects, "wetOpenPush", 0.0, 1.0, 0.01, 0.8, None),
     // a linha do Smear no cartão Wet Paint (dono 25/10): fora do Tuning
     k(Knob::SmearWater, KnobGroup::Hidden, "smearWater", 0.0, 1.0, 0.01, 0.5, None),
+    // o rebordo da faca (W2 E4): a linha no cartão Wet Paint está por agendar
+    k(Knob::KnifeRidge, KnobGroup::Hidden, "knifeRidge", 0.0, 16.0, 0.01, 0.0, None),
 ];

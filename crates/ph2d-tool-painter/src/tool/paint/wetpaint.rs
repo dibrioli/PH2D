@@ -611,6 +611,8 @@ mod gota_tests;
 #[cfg(test)]
 mod janela_do_rasto_tests; // a janela do rasto não corta o dab (smoke do dono 16/10)
 #[cfg(test)]
+mod lamina_tests; // a lâmina que gira e o rebordo da faca (Óleo Real W2 E4)
+#[cfg(test)]
 mod lei_b_tests; // plano 27 W3: o padrão do Shape multiplica DEPOIS do portão do papel
 #[cfg(test)]
 mod medida_undo; // o Ctrl+Z com as opções da W1g (dono 10/10)

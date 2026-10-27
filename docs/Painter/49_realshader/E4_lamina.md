@@ -78,6 +78,10 @@ campo) — a regra é neutro bit a bit para quem não tem `knifeRidge`. Fica a a
 (fábrica 0, bit a bit; gates `oleo_real` 26, `oleo_material` 11, `fenda` 2, `seam_wetpaint_oleo_real` 7 verdes).
 A Força do ambiente é controlo do artista (cartão), não da faca.
 
+## Os presets
+
+As 10 facas e o exame: [`../Pinceis/W2_Knife_E4.md`](../Pinceis/W2_Knife_E4.md) (4 na fábrica, 6 curadas-não-aprovadas).
+
 ## Aberto
 
 - **Motor (fila):** a crista da lâmina num campo PRÓPRIO (ou bandeira por camada) que o `CampoAltura` soma à

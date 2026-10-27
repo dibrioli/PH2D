@@ -1,0 +1,48 @@
+{
+ "prancha": "knife_dry_2.png",
+ "linhas": [
+  "gestos_A",
+  "gestos_B",
+  "tamanhos_A",
+  "tamanhos_B",
+  "sobre_A",
+  "sobre_B"
+ ],
+ "chave": {
+  "gestos_A": {
+   "1": "vizinho",
+   "2": "oraculo",
+   "3": "nosso"
+  },
+  "gestos_B": {
+   "1": "vizinho",
+   "2": "oraculo",
+   "3": "nosso"
+  },
+  "tamanhos_A": {
+   "1": "vizinho",
+   "2": "oraculo",
+   "3": "nosso"
+  },
+  "tamanhos_B": {
+   "1": "nosso",
+   "2": "oraculo",
+   "3": "vizinho"
+  },
+  "sobre_A": {
+   "1": "nosso",
+   "2": "oraculo",
+   "3": "vizinho"
+  },
+  "sobre_B": {
+   "1": "nosso",
+   "2": "vizinho",
+   "3": "oraculo"
+  }
+ },
+ "quem": {
+  "oraculo": "knife_knife_dry_2",
+  "nosso": "Knife Dry 2 (escala 1.625)",
+  "vizinho": "Metallic Round (d 1.598, limiar 0.591)"
+ }
+}

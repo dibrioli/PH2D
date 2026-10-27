@@ -1,0 +1,467 @@
+{
+ "smooth": {
+  "e": {
+   "emboss": 0.1,
+   "pressureSizeCurve": 1.0,
+   "pressureSize": 0.4,
+   "paperGate": 0.8,
+   "pigmentPerDab": 600.0
+  },
+  "b": {
+   "texture": {
+    "angle_deg": 0,
+    "flow": false,
+    "kind": "Noise",
+    "mapping": "Tiled",
+    "offset": [
+     0.0,
+     0.0
+    ],
+    "params": [
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5
+    ],
+    "rake": false,
+    "size": [
+     6.0,
+     6.0
+    ],
+    "stencil_angle_deg": 0,
+    "stencil_offset": [
+     0.0,
+     0.0
+    ],
+    "stencil_size": [
+     0.5,
+     0.5
+    ]
+   },
+   "hardness": 0.5,
+   "falloff": "Smooth"
+  }
+ },
+ "smooth_2": {
+  "e": {
+   "emboss": 0.0,
+   "pressureSizeCurve": 1.0,
+   "pressureSize": 0.4
+  },
+  "b": {
+   "dab_quina": 0.5
+  }
+ },
+ "smooth_3": {
+  "e": {
+   "emboss": 0.0,
+   "pressureSizeCurve": 1.0,
+   "pressureSize": 0.4,
+   "paperGate": 1.2,
+   "pigmentPerDab": 600.0,
+   "paperContrast": 2.2
+  },
+  "b": {
+   "texture": {
+    "angle_deg": 0,
+    "flow": false,
+    "kind": "Noise",
+    "mapping": "Tiled",
+    "offset": [
+     0.0,
+     0.0
+    ],
+    "params": [
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5
+    ],
+    "rake": false,
+    "size": [
+     6.0,
+     6.0
+    ],
+    "stencil_angle_deg": 0,
+    "stencil_offset": [
+     0.0,
+     0.0
+    ],
+    "stencil_size": [
+     0.5,
+     0.5
+    ]
+   }
+  }
+ },
+ "textured": {
+  "e": {
+   "emboss": 0.1,
+   "pressureSizeCurve": 1.0,
+   "pigmentPerDab": 400.0,
+   "paperGate": 1.0
+  },
+  "b": {
+   "texture": {
+    "angle_deg": 0,
+    "flow": false,
+    "kind": "Noise",
+    "mapping": "Tiled",
+    "offset": [
+     0.0,
+     0.0
+    ],
+    "params": [
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5
+    ],
+    "rake": false,
+    "size": [
+     60.0,
+     2.0
+    ],
+    "stencil_angle_deg": 0,
+    "stencil_offset": [
+     0.0,
+     0.0
+    ],
+    "stencil_size": [
+     0.5,
+     0.5
+    ]
+   },
+   "dab_quina": 0.5
+  }
+ },
+ "oily": {
+  "e": {
+   "emboss": 0.1,
+   "pressureSizeCurve": 1.0,
+   "pigmentPerDab": 150.0
+  },
+  "b": {
+   "hardness": 0.5,
+   "falloff": "Smooth"
+  }
+ },
+ "stain": {
+  "e": {
+   "emboss": 0.1,
+   "pressureSizeCurve": 1.0,
+   "pigmentPerDab": 600.0,
+   "paperGate": 1.5,
+   "paperContrast": 2.5
+  },
+  "b": {}
+ },
+ "soft": {
+  "e": {
+   "emboss": 0.1,
+   "pressureSizeCurve": 1.0,
+   "pigmentPerDab": 500.0,
+   "paperGate": 1.0
+  },
+  "b": {
+   "shape": {
+    "angle_deg": 0,
+    "flow": false,
+    "kind": "None",
+    "mapping": "ViewPlane",
+    "offset": [
+     0.0,
+     0.0
+    ],
+    "params": [
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5
+    ],
+    "rake": false,
+    "size": [
+     1.0,
+     1.0
+    ],
+    "stencil_angle_deg": 0,
+    "stencil_offset": [
+     0.0,
+     0.0
+    ],
+    "stencil_size": [
+     0.5,
+     0.5
+    ]
+   },
+   "texture": {
+    "angle_deg": 0,
+    "flow": false,
+    "kind": "Noise",
+    "mapping": "Tiled",
+    "offset": [
+     0.0,
+     0.0
+    ],
+    "params": [
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5
+    ],
+    "rake": false,
+    "size": [
+     6.0,
+     6.0
+    ],
+    "stencil_angle_deg": 0,
+    "stencil_offset": [
+     0.0,
+     0.0
+    ],
+    "stencil_size": [
+     0.5,
+     0.5
+    ]
+   },
+   "hardness": 0.3
+  }
+ },
+ "grainy": {
+  "e": {
+   "emboss": 0.1,
+   "pressureSizeCurve": 1.0,
+   "pigmentPerDab": 600.0,
+   "paperGate": 1.2,
+   "paperContrast": 2.0
+  },
+  "b": {
+   "texture": {
+    "angle_deg": 0,
+    "flow": false,
+    "kind": "Clouds",
+    "mapping": "Tiled",
+    "offset": [
+     0.0,
+     0.0
+    ],
+    "params": [
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5
+    ],
+    "rake": false,
+    "size": [
+     20.0,
+     20.0
+    ],
+    "stencil_angle_deg": 0,
+    "stencil_offset": [
+     0.0,
+     0.0
+    ],
+    "stencil_size": [
+     0.5,
+     0.5
+    ]
+   },
+   "shape": {
+    "angle_deg": 0,
+    "flow": false,
+    "kind": "None",
+    "mapping": "ViewPlane",
+    "offset": [
+     0.0,
+     0.0
+    ],
+    "params": [
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5
+    ],
+    "rake": false,
+    "size": [
+     1.0,
+     1.0
+    ],
+    "stencil_angle_deg": 0,
+    "stencil_offset": [
+     0.0,
+     0.0
+    ],
+    "stencil_size": [
+     0.5,
+     0.5
+    ]
+   }
+  }
+ },
+ "dry": {
+  "e": {
+   "emboss": 0.1,
+   "pressureSizeCurve": 1.0,
+   "pigmentPerDab": 400.0,
+   "paperGate": 1.0
+  },
+  "b": {
+   "shape": {
+    "angle_deg": 0,
+    "flow": false,
+    "kind": "None",
+    "mapping": "ViewPlane",
+    "offset": [
+     0.0,
+     0.0
+    ],
+    "params": [
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5
+    ],
+    "rake": false,
+    "size": [
+     1.0,
+     1.0
+    ],
+    "stencil_angle_deg": 0,
+    "stencil_offset": [
+     0.0,
+     0.0
+    ],
+    "stencil_size": [
+     0.5,
+     0.5
+    ]
+   },
+   "hardness": 0.4,
+   "falloff": "Smooth",
+   "texture": {
+    "angle_deg": 0,
+    "flow": false,
+    "kind": "Noise",
+    "mapping": "Tiled",
+    "offset": [
+     0.0,
+     0.0
+    ],
+    "params": [
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5
+    ],
+    "rake": false,
+    "size": [
+     6.0,
+     6.0
+    ],
+    "stencil_angle_deg": 0,
+    "stencil_offset": [
+     0.0,
+     0.0
+    ],
+    "stencil_size": [
+     0.5,
+     0.5
+    ]
+   }
+  }
+ },
+ "dry_2": {
+  "e": {
+   "emboss": 0.1,
+   "pressureSizeCurve": 1.0,
+   "pigmentPerDab": 300.0,
+   "paperGate": 1.2
+  },
+  "b": {
+   "shape": {
+    "angle_deg": 0,
+    "flow": false,
+    "kind": "None",
+    "mapping": "ViewPlane",
+    "offset": [
+     0.0,
+     0.0
+    ],
+    "params": [
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5
+    ],
+    "rake": false,
+    "size": [
+     1.0,
+     1.0
+    ],
+    "stencil_angle_deg": 0,
+    "stencil_offset": [
+     0.0,
+     0.0
+    ],
+    "stencil_size": [
+     0.5,
+     0.5
+    ]
+   },
+   "hardness": 0.4,
+   "falloff": "Smooth",
+   "texture": {
+    "angle_deg": 0,
+    "flow": false,
+    "kind": "Noise",
+    "mapping": "Tiled",
+    "offset": [
+     0.0,
+     0.0
+    ],
+    "params": [
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5
+    ],
+    "rake": false,
+    "size": [
+     6.0,
+     6.0
+    ],
+    "stencil_angle_deg": 0,
+    "stencil_offset": [
+     0.0,
+     0.0
+    ],
+    "stencil_size": [
+     0.5,
+     0.5
+    ]
+   }
+  }
+ }
+}

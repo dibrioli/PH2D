@@ -164,6 +164,15 @@ pub(super) fn escala_o_grao(t: &mut ph2d_painter_brush::texture::TextureSettings
     }
 }
 
+/// ⭐ **As cerdas do Shape crescem com o pincel** (W3 K3b, `docs/Painter/Pinceis/W3_K3b_cerda.md`): o tipo `Bristles` é
+/// uma lei em PÍXEIS (1 texel = 1 px a todo tamanho), então os fios do leque de 200 px eram os de 40 — o mesmo
+/// [`escala_da_textura`] do grão `Tiled`, em qualquer mapeamento (View e Flow incluídos: o tapete nunca seguia o raio).
+pub(super) fn escala_as_cerdas(t: &mut ph2d_painter_brush::texture::TextureSettings, escala: f32) {
+    if escala != 1.0 && t.kind == ph2d_painter_brush::TextureKind::Bristles {
+        t.size = t.size.map(|s| s / escala);
+    }
+}
+
 /// A fracção do diâmetro de [`peso_do_passo_fino`] (o diâmetro de referência `1 ÷ (2 · 0,035)` ≈ 29 px). MEDIDA
 /// (03_MOTORES §7 b): 0,025 (a cápsula, 40 px) repunha tudo mas tirava do vale as mídias afinadas a 17–18 px (Soft
 /// Pastel, Marker Liner, Dabber) e a tabela da largura colapsava a 1–2 px; 0,05 (20 px) deixava 8 pincéis abaixo

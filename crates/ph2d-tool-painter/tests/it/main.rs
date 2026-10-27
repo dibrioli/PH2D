@@ -66,3 +66,4 @@ mod sonda_tilt_do_preset;
 mod sonda_traco_rapido;
 mod sonda_tracos_por_meio;
 mod textura_do_tamanho; // W3 K2: a textura acompanha o tamanho do pincel e a marca do spray pousa
+mod cerda_e_marca; // W3 K3b: as cerdas crescem com o pincel e a ponta esfarela pelo grão

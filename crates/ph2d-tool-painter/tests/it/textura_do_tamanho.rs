@@ -8,7 +8,7 @@ use ph2d_tool_painter::miniatura_do_preset;
 use serde_json::{Value, json};
 use std::path::PathBuf;
 
-fn dabber() -> Preset {
+pub(crate) fn dabber() -> Preset {
     let raiz = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes");
     Biblioteca::carregar(&raiz, None)
         .entradas
@@ -36,13 +36,13 @@ fn com_grao(d: f64, gama: Option<f64>) -> Preset {
 }
 
 /// A tinta de um píxel (`0` = papel branco, `1` = preto).
-fn tinta(px: &[u8]) -> f64 {
+pub(crate) fn tinta(px: &[u8]) -> f64 {
     1.0 - f64::from(u16::from(px[0]) + u16::from(px[1]) + u16::from(px[2])) / 765.0
 }
 
 /// O TAMANHO do grão (px): os píxeis de tinta ÷ as transições tinta↔papel ao longo das linhas — o inverso da
 /// densidade de bordas (a orla do traço entra igual nas duas leis, por isso compara-se a RAZÃO entre tamanhos).
-fn tamanho_do_grao(p: &Preset) -> f64 {
+pub(crate) fn tamanho_do_grao(p: &Preset) -> f64 {
     let m = miniatura_do_preset(p);
     let lado = m.largura as usize;
     let t: Vec<bool> = m.rgba.chunks(4).map(|px| tinta(px) >= 0.25).collect();

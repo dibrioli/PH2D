@@ -78,9 +78,22 @@ impl PontaDasCerdas {
             (f64::from(cx) - self.centro[0]) * self.px_cel,
             (f64::from(cy) - self.centro[1]) * self.px_cel,
         ];
-        let n = self.fios.normal();
         let fio = self.fios.fio_no_ponto(d);
-        let desvio = self.meia * (FiosNoDab::comprimento_do_fio(fio, self.rho) - 1.0);
+        self.desloca(sil, cx, cy, FiosNoDab::comprimento_do_fio(fio, self.rho) - 1.0)
+    }
+
+    /// ⭐ **A ponta que ESFARELA** (W3 K3b, `docs/Painter/Pinceis/W3_K3b_cerda.md`): o desvio de cada célula sai do GRÃO
+    /// preso à tela (`u ∈ [0, 1]`, o `Tiled` do pincel) e não do fio — `ρ·(1 − 2u)`, a mesma faixa do
+    /// [`FiosNoDab::comprimento_do_fio`]. A ponta acaba pelas curvas de nível do grão (grumos, sem fios); o meio do
+    /// traço não muda (deslocar a pegada só mexe nas pontas).
+    pub(super) fn recorta_pelo_grao(&self, sil: CellFn<'_>, cx: i32, cy: i32, u: f64) -> f64 {
+        self.desloca(sil, cx, cy, self.rho * (1.0 - 2.0 * u.clamp(0.0, 1.0)))
+    }
+
+    /// A silhueta lida no ponto deslocado `desvio · meia` ao longo do traço (bilinear sub-célula).
+    fn desloca(&self, sil: CellFn<'_>, cx: i32, cy: i32, desvio: f64) -> f64 {
+        let desvio = self.meia * desvio;
+        let n = self.fios.normal();
         let t = [n[1], -n[0]];
         let q = [
             f64::from(cx) - t[0] * desvio / self.px_cel,

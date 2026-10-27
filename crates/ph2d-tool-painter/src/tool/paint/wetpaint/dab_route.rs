@@ -262,6 +262,7 @@ impl PainterTool {
             // the stroke frame), evaluated per engine cell (cell − 1 = px).
             let mut spec = brush.at_dab(d);
             super::lote::escala_o_grao(&mut spec.texture, escala_tex);
+            super::lote::escala_as_cerdas(&mut spec.shape, escala_tex);
             let peso = lane_prev
                 .filter(|_| passo_do_pigmento > 0.0)
                 .map_or(1.0, |_| {
@@ -469,10 +470,28 @@ impl PainterTool {
                 alc,
                 &sil,
             );
-            let sil = |cx: i32, cy: i32| {
-                ponta
-                    .as_ref()
-                    .map_or_else(|| sil(cx, cy), |p| p.recorta(&sil, cx, cy))
+            // A ponta que ESFARELA (W3 K3b): com um grão PRESO À TELA armado, o desvio de cada célula é o do grão, não o
+            // do fio — a ponta acaba em grumos. Sem grão `Tiled`, a desfiada de sempre, ao bit.
+            let esfarela = grain_basis.as_ref().filter(|_| {
+                spec.texture.mapping == ph2d_painter_brush::texture::TextureMapping::Tiled
+                    && !spec.texture.flow
+            });
+            let grao_img_ponta = grain_image.as_ref();
+            let sil = |cx: i32, cy: i32| match (ponta.as_ref(), esfarela) {
+                (Some(p), Some(gb)) => {
+                    let u = ph2d_painter_brush::texture::sample(
+                        &spec.texture,
+                        gb,
+                        grid_map::cell_center_texel(cx, ratio),
+                        grid_map::cell_center_texel(cy, ratio),
+                        d.center,
+                        d.radius_px,
+                        grao_img_ponta,
+                    );
+                    p.recorta_pelo_grao(&sil, cx, cy, f64::from(u))
+                }
+                (Some(p), None) => p.recorta(&sil, cx, cy),
+                (None, _) => sil(cx, cy),
             };
             // O depósito, o pente e o grão que lê a ponta leem a MESMA silhueta (com a ponta), avaliada UMA vez por célula
             // e guardada no dab ([`super::sil_memo`]), ao byte.

@@ -660,3 +660,58 @@ vazio nos ficheiros mutados após cada uma.
 - M1b: equivalente por projeto (atalho de custo, resultado idêntico).
 - M5/M6 só sangram na cena do dono (`ph2d-tool-painter`); o `a_fenda_fica_no_tom_da_tinta_e_nunca_preta` do wet-paint
   não os vê.
+
+## Provas de mutação W3 (27/10, fecho)
+
+Protocolo `pd-mutacao`: controlo primeiro (os 9 gates VERDES na árvore limpa, cada um com 1 teste corrido), âncora
+casada 1× antes de mutar, mutação que não compila não conta (nenhuma deu exit 2), restauro por cópia dos bytes +
+`touch`, sha256 conferido por mutação. Corrido por nome (`cargo-test-narrow.sh`), cada mutação contra TODOS os gates da
+lei. Gates: **Sub** = `a_subsuperficie_zero_e_a_imagem_de_antes` · `…enche_a_sombra…` · `a_luz_do_ceu_guardada_e_a_de_sempre`
+· `a_subsuperficie_do_pincel_recompoe_como_a_tela_inteira` (tool-painter); **Rug** =
+`o_roughness_do_cartao_no_padrao_e_a_imagem_de_antes` · `o_material_neutro_e_bit_identico_a_de_antes`; **Novos** =
+`a_subsuperficie_e_a_gaussiana_por_canal_do_raio_da_celula` · `o_cartao_combina_o_produto_normalizado_nos_quatro_de_razao`
+(escritos aqui, em `oleo_material_tests.rs`).
+
+| # | Lei | Mutação | Gate que sangrou | Resultado |
+|---|---|---|---|---|
+| S1a | Subsurface | `PERFIL_SUBSUPERFICIE` `[1;0,2;0,1]` → `[1;0,1;0,2]` (G↔B) | só `…gaussiana_por_canal…` | **sobreviveu** aos 4 de antes → gate escrito → sangra |
+| S1c | Subsurface | 2.ª passagem com o σ do canal `2−c` | só `…gaussiana_por_canal…` | **sobreviveu** (a cena `muro` só varia em x) → gate escrito → sangra |
+| S2 | Subsurface | σ com o raio do cartão em vez do da célula | só `…gaussiana_por_canal…` | **sobreviveu** → gate escrito → sangra |
+| S3 | Subsurface | `max(0, B−E)` → `B−E` (tirado, não trocado) | só `…gaussiana_por_canal…` | **sobreviveu** → gate escrito → sangra |
+| S4a | Subsurface | tecto `RAIO_SUBSUPERFICIE_MAX` ignorado no σ | só `…gaussiana_por_canal…` | **sobreviveu** → gate escrito → sangra |
+| S4c | Subsurface | alcance `3σ` → `2σ` | `…do_pincel_recompoe…` (só ele) | sangrou |
+| S5 | Subsurface | raio célula×cartão com `max` em vez do produto normalizado | só `…combina_o_produto_normalizado…` | **sobreviveu** aos 6 de antes → gate escrito → sangra |
+| S6 | Subsurface | `raio_subsuperficie_max`: `r.max(e)` → `r.min(e)` (janela encolhida) | só `…gaussiana_por_canal…` | **sobreviveu** → gate escrito → sangra |
+| R1 | Roughness | `cel·((kv/kn)·(kn/n))` (associatividade) | nenhum | inofensiva por projecto (abaixo) |
+| R2 | Roughness | factores trocados `cel·(kn/n)·(kv/kn)` | nenhum | inofensiva por projecto (abaixo) |
+| R3 | Roughness | `RUGOSIDADE_PADRAO` 0,28 → 0,2800001 | Rug (ambos) | sangrou |
+| R4 | Roughness | neutro da célula 0,5 → 0,4999 | `o_roughness_do_cartao…` (o hash dos 4 ambientes não a vê) | sangrou |
+| R5a | Roughness | `max(cel, kv)` na Roughness | Rug (ambos) + `…produto_normalizado…` | sangrou |
+| R5b | Roughness | `max` no IOR Level | só `…produto_normalizado…` | **sobreviveu** → gate escrito → sangra |
+| R5c | Roughness | `max` na Coat Roughness | só `…produto_normalizado…` | **sobreviveu** → gate escrito → sangra |
+| L1 | Leitor | preset: `translucency` antigo ignorado | `o_preset_de_antes_da_w3…` | sangrou |
+| L2 | Leitor | preset: `roughnessMul` m → m (sem `0,5·`) | `o_preset_de_antes_da_w3…` | sangrou |
+| L3 | Leitor | preset: `specularTint`/`anisotropy` fazem falhar a leitura | `o_preset_de_antes_da_w3…` | sangrou |
+| L4 | Leitor | macro: `rugosidade` k → k (sem `0,28·`) | `a_macro_de_antes_da_w3…` | sangrou |
+| L5 | Leitor | macro: `translucidez` ignorada | `a_macro_de_antes_da_w3…` | sangrou |
+| L6 | Leitor | macro: `anisotropia`/`escala_mapa` fazem falhar a leitura | `a_macro_de_antes_da_w3…` | sangrou |
+| L7 | Leitor | macro: `especular` k → k (sem o neutro `0,5·`) | `a_macro_de_antes_da_w3…` | sangrou |
+
+**22 mutações · 11 sangraram aos gates de antes · 9 sobreviveram e foram curadas com 2 gates novos (todas sangram
+agora) · 2 inofensivas por projecto.** (S4c, R3, R4, R5a e L1–L7 contam entre as 11; S1a S1c S2 S3 S4a S5 S6 R5b R5c são as 9.)
+
+- **Os gates novos** (verdes na árvore limpa, vermelhos sob cada uma das 9): `a_subsuperficie_e_a_gaussiana_por_canal_do_raio_da_celula`
+  recontam à mão (σ `raio × (1; 0,2; 0,1)` literal, duas passagens, `max(0, B−E)`, tecto 16) numa cena que varia em x E
+  em y, com raios de célula 2 / 8 / 30 e uma janela que não é a grade, e comparam com `subsuperficie_em` a 1e-5;
+  `o_cartao_combina_o_produto_normalizado_nos_quatro_de_razao` fixa célula fora do neutro × cartão fora do padrão nos
+  quatro de razão (Roughness, IOR Level, Coat Roughness, Radius).
+- ⚠️ A referência do 1.º usa `efectivo` para o raio da célula: a combinação do cartão não é provada por ele (S5), é
+  provada pelo 2.º.
+- **R1/R2 inofensivas por projecto**: com o cartão no padrão `kv/kn` é `x/x = 1` EXACTO e multiplicar por `1` é a
+  identidade, portanto toda a associatividade/ordem dá os mesmos bits (é o que o contrato «bit a bit» promete); com o
+  cartão fora do padrão a ordem só mexe no último ulp e nada promete bits aí (o `assert_eq!(…, 0.28)` de
+  `o_cartao_combina_pelo_maior…` também passou sob as duas).
+- O gate `o_material_neutro_e_bit_identico_a_de_antes` (hash) não viu R4 (0,5 → 0,4999); vê-a só o de valor
+  `o_roughness_do_cartao…` (sangrar um chega).
+- ⚠️ Antes dos gates novos, 7 das 8 mutações da Subsurface (todas menos S4c) sobreviviam aos quatro gates da lei: a
+  zona-zero e a energia só vêem pesos e tecto numa cena de colunas.

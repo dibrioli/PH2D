@@ -10,7 +10,7 @@ Delegue leitura e verificação.
 
 ## Estado ao abrir
 
-- Árvore limpa em `HEAD_A_PREENCHER` (o commit destes docs; confirme com `git log -1`).
+- Árvore limpa depois de `5d3daa2950` (o commit destes docs; um commit docs-only posterior pode existir, confirme com `git log -3`).
 - W0 feita; W1 em CPU feita e ligada ao Wet Paint (cartão «Real Oil»), mas **rejeitada no olho** pelo dono.
 
 ## Factos que mandam

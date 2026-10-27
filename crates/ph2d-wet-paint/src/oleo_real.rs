@@ -180,6 +180,64 @@ pub struct CampoAltura {
     material: Vec<MaterialCelula>,
 }
 
+/// Quem corre as LINHAS de uma passagem do [`CampoAltura`]: `por_linhas(w, a, b, f)` chama `f(y, a_y, b_y)`
+/// para cada linha `y` de largura `w` de `a` e de `b` (o mesmo comprimento), em qualquer ordem e em qualquer
+/// fio — cada linha só escreve a dela e lê o que a passagem anterior deixou, por isso o campo é o MESMO bit a bit
+/// ([`EmSerie`] aqui; o composite reparte-as pelo rayon, ADR-0109).
+pub trait Reparte {
+    fn por_linhas<A: Send, B: Send>(
+        &self,
+        w: usize,
+        a: &mut [A],
+        b: &mut [B],
+        f: &(dyn Fn(usize, &mut [A], &mut [B]) + Sync),
+    );
+}
+
+/// As linhas uma a uma, por ordem.
+pub struct EmSerie;
+
+impl Reparte for EmSerie {
+    fn por_linhas<A: Send, B: Send>(
+        &self,
+        w: usize,
+        a: &mut [A],
+        b: &mut [B],
+        f: &(dyn Fn(usize, &mut [A], &mut [B]) + Sync),
+    ) {
+        for (y, (la, lb)) in a.chunks_mut(w).zip(b.chunks_mut(w)).enumerate() {
+            f(y, la, lb);
+        }
+    }
+}
+
+/// Uma passagem de UM plano: `f(y, linha)`.
+fn por_linha<T: Send>(
+    rep: &impl Reparte,
+    w: usize,
+    v: &mut [T],
+    f: &(dyn Fn(usize, &mut [T]) + Sync),
+) {
+    let mut nada = vec![(); v.len()];
+    rep.por_linhas(w, v, &mut nada, &|y, l, _| f(y, l));
+}
+
+/// Um plano `f32` de `w×h` célula a célula, `f(k)`.
+fn plano_f32(
+    rep: &impl Reparte,
+    w: usize,
+    h: usize,
+    f: &(dyn Fn(usize) -> f32 + Sync),
+) -> Vec<f32> {
+    let mut v = vec![0f32; w * h];
+    por_linha(rep, w, &mut v, &|y, l| {
+        for (x, q) in l.iter_mut().enumerate() {
+            *q = f(x + y * w);
+        }
+    });
+    v
+}
+
 impl CampoAltura {
     /// A janela `[x0..=x1]×[y0..=y1]` (células, `1..=W`) alargada pela margem e presa à grade.
     pub fn de(
@@ -190,6 +248,18 @@ impl CampoAltura {
         y0: usize,
         x1: usize,
         y1: usize,
+    ) -> Self {
+        Self::de_com(&EmSerie, camadas, o, ratio, (x0, y0, x1, y1))
+    }
+
+    /// [`CampoAltura::de`] com as linhas de cada passagem repartidas por `rep` — o mesmo campo bit a bit
+    /// (gate `o_campo_em_faixas_e_bit_identico_ao_em_serie`).
+    pub fn de_com(
+        rep: &impl Reparte,
+        camadas: &[(&Grid, bool)],
+        o: &OleoReal,
+        ratio: usize,
+        (x0, y0, x1, y1): (usize, usize, usize, usize),
     ) -> Self {
         let g = camadas[0].0;
         let af = &o.af;
@@ -202,12 +272,7 @@ impl CampoAltura {
         let mut massa = vec![0f64; w * h];
         let mut fios = vec![0f64; w * h];
         let com_material = camadas.iter().any(|&(lg, v)| v && !lg.material.is_empty());
-        let mut material = if com_material {
-            vec![MaterialCelula::NEUTRO; w * h]
-        } else {
-            Vec::new()
-        };
-        for y in 0..h {
+        rep.por_linhas(w, &mut massa, &mut fios, &|y, massa, fios| {
             for x in 0..w {
                 let i = (ax0 + x) + (ay0 + y) * g.s;
                 let mut cobre = 0.0;
@@ -217,49 +282,61 @@ impl CampoAltura {
                     }
                     let m = f64::from(lg.sett[i]) + f64::from(lg.susp[i]);
                     let k = crate::grid::espessura::factor(lg, i);
-                    massa[x + y * w] += m * k;
+                    massa[x] += m * k;
                     let alfa = crate::opacity::alpha_of_mass(m);
                     cobre += alfa * (1.0 - cobre);
-                    if com_material && m > 0.0 {
-                        let q = &mut material[x + y * w];
-                        *q = MaterialCelula::mistura(*q, lg.material_da_celula(i), alfa as f32);
-                    }
                     // Os sulcos dos fios fundam-se com a tinta que se empilhou (a amplitude ∝ espessura).
                     if !lg.altura.is_empty() {
-                        fios[x + y * w] += f64::from(lg.altura[i]) * k;
+                        fios[x] += f64::from(lg.altura[i]) * k;
                     }
                 }
                 // Na borda a altura vai a zero com a cobertura: a orla fina não é um degrau.
-                massa[x + y * w] *= cobre;
-                fios[x + y * w] *= cobre;
+                massa[x] *= cobre;
+                fios[x] *= cobre;
             }
-        }
-        let suave = desfoca(&desfoca(&massa, w, h, af.raio_suave), w, h, af.raio_suave);
+        });
+        let material = if com_material {
+            let mut material = vec![MaterialCelula::NEUTRO; w * h];
+            por_linha(rep, w, &mut material, &|y, linha| {
+                for (x, q) in linha.iter_mut().enumerate() {
+                    let i = (ax0 + x) + (ay0 + y) * g.s;
+                    for &(lg, visivel) in camadas {
+                        let m = f64::from(lg.sett[i]) + f64::from(lg.susp[i]);
+                        if visivel && m > 0.0 {
+                            let alfa = crate::opacity::alpha_of_mass(m);
+                            *q = MaterialCelula::mistura(*q, lg.material_da_celula(i), alfa as f32);
+                        }
+                    }
+                }
+            });
+            material
+        } else {
+            Vec::new()
+        };
+        let d = |v: &[f64], r: usize| desfoca(rep, v, w, h, r);
+        let suave = d(&d(&massa, af.raio_suave), af.raio_suave);
         let k_fios = af.fios * o.profundidade;
-        let v = suave.iter().map(|&s| (s * escala) as f32).collect();
+        let v = plano_f32(rep, w, h, &|k| (suave[k] * escala) as f32);
         let fios_sombra = (af.fios_na_sombra != 0.0).then(|| fios.clone());
         let (massa_d, fios_d) = match af.raio_detalhe {
             0 => (massa.clone(), fios),
-            r => (desfoca(&massa, w, h, r), desfoca(&fios, w, h, r)),
+            r => (d(&massa, r), d(&fios, r)),
         };
-        let detalhe = (0..w * h)
-            .map(|k| (af.grao * (massa_d[k] - suave[k]) * escala + fios_d[k] * k_fios) as f32)
-            .collect();
-        let mut sombra: Vec<f32> = if af.raio_sombra == 0 {
-            massa.iter().map(|&m| (m * escala) as f32).collect()
-        } else {
-            let r = af.raio_sombra;
-            desfoca(&desfoca(&massa, w, h, r), w, h, r)
-                .iter()
-                .map(|&s| (s * escala) as f32)
-                .collect()
+        let detalhe = plano_f32(rep, w, h, &|k| {
+            (af.grao * (massa_d[k] - suave[k]) * escala + fios_d[k] * k_fios) as f32
+        });
+        let alta = match af.raio_sombra {
+            0 => massa,
+            r => d(&d(&massa, r), r),
         };
-        if let Some(f) = fios_sombra {
-            let k = k_fios * af.fios_na_sombra;
-            for (s, &q) in sombra.iter_mut().zip(&f) {
-                *s += (q * k) as f32;
+        let k_fs = k_fios * af.fios_na_sombra;
+        let sombra = plano_f32(rep, w, h, &|k| {
+            let s = (alta[k] * escala) as f32;
+            match &fios_sombra {
+                Some(f) => s + (f[k] * k_fs) as f32,
+                None => s,
             }
-        }
+        });
         Self {
             x0: ax0,
             y0: ay0,
@@ -323,29 +400,29 @@ impl CampoAltura {
     }
 }
 
-/// Média móvel separável de raio `r` (caixa `2r+1`), presa às bordas.
-fn desfoca(v: &[f64], w: usize, h: usize, r: usize) -> Vec<f64> {
+/// Média móvel separável de raio `r` (caixa `2r+1`), presa às bordas; cada passagem por linhas de `rep`.
+fn desfoca(rep: &impl Reparte, v: &[f64], w: usize, h: usize, r: usize) -> Vec<f64> {
     let n = (2 * r + 1) as f64;
     let mut tmp = vec![0f64; w * h];
-    for y in 0..h {
-        for x in 0..w {
+    por_linha(rep, w, &mut tmp, &|y, linha| {
+        for (x, q) in linha.iter_mut().enumerate() {
             let mut s = 0.0;
             for k in 0..=2 * r {
                 s += v[(x + k).saturating_sub(r).min(w - 1) + y * w];
             }
-            tmp[x + y * w] = s / n;
+            *q = s / n;
         }
-    }
+    });
     let mut out = vec![0f64; w * h];
-    for y in 0..h {
-        for x in 0..w {
+    por_linha(rep, w, &mut out, &|y, linha| {
+        for (x, q) in linha.iter_mut().enumerate() {
             let mut s = 0.0;
             for k in 0..=2 * r {
                 s += tmp[x + (y + k).saturating_sub(r).min(h - 1) * w];
             }
-            out[x + y * w] = s / n;
+            *q = s / n;
         }
-    }
+    });
     out
 }
 
@@ -462,7 +539,29 @@ pub fn ilumina_com(
     mat: &MaterialCelula,
 ) -> [f64; 3] {
     let a = rgb.map(srgb255_to_linear);
-    let t = termos_com(o, campo, cx, cy, mat, a);
+    cor_dos_termos(o, &termos_com(o, campo, cx, cy, mat, a), a, cobertura)
+}
+
+/// [`ilumina`] e a [`sombra_no_papel`] da mesma célula pintada, com UMA conta dos termos.
+pub fn ilumina_e_sombra(
+    o: &OleoReal,
+    campo: &CampoAltura,
+    cx: usize,
+    cy: usize,
+    rgb: [f64; 3],
+    cobertura: f64,
+) -> ([f64; 3], f64) {
+    let a = rgb.map(srgb255_to_linear);
+    let t = termos_com(o, campo, cx, cy, &campo.material_em(cx, cy), a);
+    (
+        cor_dos_termos(o, &t, a, cobertura),
+        sombra_dos_termos(o, &t),
+    )
+}
+
+/// A cor sRGB `0..255` da tinta de albedo linear `a` e `cobertura` pelos termos `t` da célula.
+fn cor_dos_termos(o: &OleoReal, t: &Termos, a: [f64; 3], cobertura: f64) -> [f64; 3] {
+    let t = *t;
     let cob = cobertura.clamp(0.0, 1.0);
     let mut out = [0.0; 3];
     for c in 0..3 {
@@ -664,9 +763,9 @@ fn reflexo_livre(
 /// brilho são da tinta.
 pub fn sombra_no_papel(o: &OleoReal, campo: &CampoAltura, cx: usize, cy: usize) -> f64 {
     let (x, y) = (cx as isize, cy as isize);
-    let directa = (1.0 - o.forca_ambiente) * (1.0 - luz_directa(o, campo, x, y, campo.at_sombra(x, y)));
-    let tapado = if o.sombra <= 0.0 {
-        0.0
+    let luz = luz_directa(o, campo, x, y, campo.at_sombra(x, y));
+    let (vis, dir) = if o.sombra <= 0.0 {
+        (1.0, None)
     } else {
         let ceu = CeuDoMapa::de(o);
         let (v, dir) = visibilidade_e_ceu(
@@ -677,10 +776,34 @@ pub fn sombra_no_papel(o: &OleoReal, campo: &CampoAltura, cx: usize, cy: usize) 
             escala_do_horizonte(o),
             ceu.as_ref(),
         );
-        let v = forca_da_fenda(v, o.fenda);
+        (forca_da_fenda(v, o.fenda), dir)
+    };
+    sombra_de(o, luz, vis, dir)
+}
+
+/// A [`sombra_no_papel`] de uma célula PINTADA a partir dos [`Termos`] que a cor dela já calculou (a luz
+/// directa, a visibilidade e o ganho do céu são as MESMAS peças): bit a bit a conta por célula, a metade do
+/// custo (gate `a_sombra_dos_termos_e_bit_identica_a_do_papel`).
+#[must_use]
+pub fn sombra_dos_termos(o: &OleoReal, t: &Termos) -> f64 {
+    sombra_de(o, t.luz, t.vis, t.dir)
+}
+
+/// A sombra no papel em `u8` (o plano que o composite guarda): a MESMA conversão nos dois caminhos.
+#[must_use]
+pub fn sombra_em_u8(s: f64) -> u8 {
+    (s * 255.0).round() as u8
+}
+
+/// O fim da [`sombra_no_papel`]: `luz` directa, a visibilidade `vis` já com a força da fenda, e o `dir` do céu.
+fn sombra_de(o: &OleoReal, luz: f64, vis: f64, dir: Option<[f64; 3]>) -> f64 {
+    let directa = (1.0 - o.forca_ambiente) * (1.0 - luz);
+    let tapado = if o.sombra <= 0.0 {
+        0.0
+    } else {
         // Com HDRI o papel recebe o céu do SECTOR que vê: ao pé da parede que tapa a janela, a sombra macia
         // vem do lado dela (a média dos canais: o plano da sombra é um só).
-        let recebe = dir.map_or(v, |d| v * (d[0] + d[1] + d[2]) / 3.0);
+        let recebe = dir.map_or(vis, |d| vis * (d[0] + d[1] + d[2]) / 3.0);
         o.sombra * o.forca_ambiente * (1.0 - recebe)
     };
     (directa + tapado).clamp(0.0, 1.0)
@@ -813,12 +936,9 @@ pub fn termos_com(
         (pre, xa, yb, livre)
     };
     let nr = match tb {
-        Some((_, b)) => oleo_material::normal_dobrada(
-            n,
-            b,
-            m.anisotropia,
-            libm::sqrt(libm::sqrt(a2)),
-        ),
+        Some((_, b)) => {
+            oleo_material::normal_dobrada(n, b, m.anisotropia, libm::sqrt(libm::sqrt(a2)))
+        }
         None => n,
     };
     let a2_amb = rugo * rugo * rugo * rugo + aa_amb;

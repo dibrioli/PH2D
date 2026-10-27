@@ -574,7 +574,9 @@ pub(super) mod faixas; // as lanes de um traço guardado (W16)
 mod composite;
 mod oleo_plano; // o papel liso da sombra do Óleo Real: uma conta por linha, não por célula
 #[cfg(test)]
-pub(in crate::tool::paint) use oleo_plano::desligado as oleo_plano_desligado;
+pub(in crate::tool::paint) use oleo_plano::{
+    curas_desligadas as oleo_curas_desligadas, desligado as oleo_plano_desligado,
+};
 /// O Solid e os fios na água, pela porta da MÁSCARA do motor (doc 46 item 9).
 mod mascara;
 mod smooth_edges; // o Smooth Edges do Watercolor sobre a mancha do Wet Paint (dono 09/10)

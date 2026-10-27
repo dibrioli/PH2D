@@ -79,3 +79,44 @@ pub(in crate::tool::paint) mod desligado {
         D.with(Cell::get)
     }
 }
+
+/// O campo de altura do Óleo Real com as linhas de cada passagem repartidas pelo rayon (ADR-0109: o mesmo map
+/// por linhas do composite): o mesmo campo bit a bit que o em série (gate
+/// `o_campo_em_faixas_e_bit_identico_ao_em_serie` em `ph2d-wet-paint`, e o de ponta a ponta
+/// `as_curas_de_custo_do_oleo_sao_bit_identicas_ao_caminho_antigo`).
+pub(super) struct EmFaixas;
+
+impl ph2d_wet_paint::oleo_real::Reparte for EmFaixas {
+    fn por_linhas<A: Send, B: Send>(
+        &self,
+        w: usize,
+        a: &mut [A],
+        b: &mut [B],
+        f: &(dyn Fn(usize, &mut [A], &mut [B]) + Sync),
+    ) {
+        use rayon::prelude::*;
+        a.par_chunks_mut(w)
+            .zip(b.par_chunks_mut(w))
+            .enumerate()
+            .for_each(|(y, (la, lb))| f(y, la, lb));
+    }
+}
+
+/// As duas curas de custo de 27/10 desligadas (só sob `cfg(test)`): `(sombra da tinta pela conta própria, campo
+/// em série)` — a referência do gate e o «antes» da sonda.
+#[cfg(test)]
+pub(in crate::tool::paint) mod curas_desligadas {
+    use std::cell::Cell;
+
+    thread_local! {
+        static D: Cell<(bool, bool)> = const { Cell::new((false, false)) };
+    }
+
+    pub(in crate::tool::paint) fn set(sombra: bool, campo: bool) {
+        D.with(|c| c.set((sombra, campo)));
+    }
+
+    pub(in crate::tool::paint) fn get() -> (bool, bool) {
+        D.with(Cell::get)
+    }
+}

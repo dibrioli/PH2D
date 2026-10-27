@@ -327,7 +327,11 @@ fn o_hdri_uniforme_da_o_ganho_um_em_toda_a_celula() {
             let n = normal(&c, x, y);
             let (v, d) = visibilidade_e_ceu(&c, x, y, n, 1.0, Some(&ceu));
             let (v0, _) = visibilidade_e_ceu(&c, x, y, n, 1.0, None);
-            assert_eq!(v.to_bits(), v0.to_bits(), "a visibilidade não muda com o céu");
+            assert_eq!(
+                v.to_bits(),
+                v0.to_bits(),
+                "a visibilidade não muda com o céu"
+            );
             if v > 0.02 {
                 for dk in d.expect("com mapa") {
                     pior = pior.max((dk - 1.0).abs());
@@ -355,7 +359,10 @@ fn o_u_da_fatia_e_o_do_mapa() {
                 let b = para_o_mapa(&o, claro, [libm::cos(phi), libm::sin(phi), 0.0]);
                 let u_ref = libm::atan2(b[1], -b[0]) / TAU + 0.5;
                 let dif = (u0 + phi / TAU - u_ref).rem_euclid(1.0);
-                assert!(dif.min(1.0 - dif) < 1e-9, "az {az} claro {claro} φ {phi}: {dif}");
+                assert!(
+                    dif.min(1.0 - dif) < 1e-9,
+                    "az {az} claro {claro} φ {phi}: {dif}"
+                );
             }
         }
     }
@@ -368,7 +375,13 @@ fn o_u_da_fatia_e_o_do_mapa() {
 /// negativo em falta, o `dir` ignorado no papel.
 #[test]
 fn o_papel_ao_pe_da_parede_perde_o_ceu_do_lado_dela() {
-    let g = grade(|x, _| if (30..=34).contains(&x) { 12_000.0 } else { 0.0 });
+    let g = grade(|x, _| {
+        if (30..=34).contains(&x) {
+            12_000.0
+        } else {
+            0.0
+        }
+    });
     let base = OleoReal {
         azimute: 180f64.to_radians(),
         altitude: 89f64.to_radians(),
@@ -381,7 +394,11 @@ fn o_papel_ao_pe_da_parede_perde_o_ceu_do_lado_dela() {
     // O papel PLANO à esquerda da parede (do lado da luz) e à direita, fora das encostas da forma (a altura
     // desfocada vai de 24 a 40). Medido: Clássico 0,089 · 0,090; Estúdio 0,042 · 0,354.
     let (esq, dir) = (20, 43);
-    assert!(s(&classico, dir) > 0.01, "a parede tapa o céu: {}", s(&classico, dir));
+    assert!(
+        s(&classico, dir) > 0.01,
+        "a parede tapa o céu: {}",
+        s(&classico, dir)
+    );
     assert!(
         s(&estudio, dir) > s(&classico, dir) + 0.01,
         "à direita o lado claro está tapado: {} × {}",
@@ -404,10 +421,26 @@ fn o_papel_ao_pe_da_parede_perde_o_ceu_do_lado_dela() {
 fn o_material_neutro_e_bit_identico_a_de_antes() {
     let mut erros = Vec::new();
     for (ambiente, antes, agora) in [
-        (Ambiente::Classico, 0xd577_67fb_dd93_1d70u64, 0xd577_67fb_dd93_1d70u64),
-        (Ambiente::Estudio, 0x9f6c_0278_7b71_e6fdu64, 0xc068_69bd_7caf_a607u64),
-        (Ambiente::Interior, 0x47f6_a218_9632_b47fu64, 0xb01e_6c58_f436_56d4u64),
-        (Ambiente::Patio, 0xbb89_005a_1c61_c90du64, 0x3ae1_6642_c9fd_624eu64),
+        (
+            Ambiente::Classico,
+            0xd577_67fb_dd93_1d70u64,
+            0xd577_67fb_dd93_1d70u64,
+        ),
+        (
+            Ambiente::Estudio,
+            0x9f6c_0278_7b71_e6fdu64,
+            0xc068_69bd_7caf_a607u64,
+        ),
+        (
+            Ambiente::Interior,
+            0x47f6_a218_9632_b47fu64,
+            0xb01e_6c58_f436_56d4u64,
+        ),
+        (
+            Ambiente::Patio,
+            0xbb89_005a_1c61_c90du64,
+            0x3ae1_6642_c9fd_624eu64,
+        ),
     ] {
         let o = OleoReal {
             ambiente,
@@ -428,4 +461,155 @@ fn o_material_neutro_e_bit_identico_a_de_antes() {
         }
     }
     assert!(erros.is_empty(), "{erros:?}");
+}
+
+/// O relevo variado com material NÃO neutro (metal num bloco, verniz e veludo numa faixa, translúcido noutra)
+/// e fios em metade da tela — a cena dos gates das duas curas de custo.
+fn relevo_com_material() -> Grid {
+    let mut g = relevo_variado();
+    g.material = vec![MaterialCelula::NEUTRO; g.sett.len()];
+    g.altura = vec![0.0; g.sett.len()];
+    for y in 1..=W {
+        for x in 1..=W {
+            let i = x + y * g.s;
+            let q = &mut g.material[i];
+            match (x / 12, y / 16) {
+                (0, _) => q.metal = 1.0,
+                (1, 1 | 2) => {
+                    q.verniz = 0.8;
+                    q.veludo = 0.5;
+                }
+                (3, _) => q.translucidez = 0.6,
+                _ => q.rugosidade = 0.4,
+            }
+            if y > W / 2 {
+                g.altura[i] = 0.3 * ((x as f32) * 0.8).sin();
+            }
+        }
+    }
+    g
+}
+
+/// Os óleos dos gates de custo: o Clássico, um HDRI com o cartão a pôr anisotropia e mapa de reflexo, e a
+/// sombra a zero (o ramo sem visibilidade).
+fn oleos_de_custo() -> [OleoReal; 3] {
+    let classico = OleoReal {
+        ambiente: Ambiente::Classico,
+        ..OleoReal::default()
+    };
+    let hdri = OleoReal {
+        ambiente: Ambiente::Interior,
+        material: MaterialCartao {
+            anisotropia: 0.5,
+            mapa_reflexo: Some(Ambiente::Estudio),
+            ..MaterialCartao::NEUTRO
+        },
+        af: Afinacao {
+            fios_na_sombra: 0.5,
+            ..OleoReal::default().af
+        },
+        ..OleoReal::default()
+    };
+    [
+        classico,
+        hdri,
+        OleoReal {
+            sombra: 0.0,
+            ..hdri
+        },
+    ]
+}
+
+/// ⭐ **Cura 1 de custo (27/10): a sombra no papel de uma célula PINTADA sai dos termos da cor dela**, bit a bit a
+/// conta por célula — e a cor é a de [`ilumina`]. Mutações que sangram: a `vis` sem a força da fenda, o `dir`
+/// trocado por `None`, a `luz` de outra célula.
+#[test]
+fn a_sombra_dos_termos_e_bit_identica_a_do_papel() {
+    let g = relevo_com_material();
+    let mut celulas = 0;
+    for o in oleos_de_custo() {
+        let c = campo(&g, &o);
+        for cy in 2..W {
+            for cx in 2..W {
+                let rgb = [215.0, 25.0 + cx as f64, 30.0 + cy as f64];
+                let cob = 0.4 + 0.01 * cx as f64;
+                let (cor, s) = ilumina_e_sombra(&o, &c, cx, cy, rgb, cob);
+                let antes = sombra_no_papel(&o, &c, cx, cy);
+                assert_eq!(
+                    s.to_bits(),
+                    antes.to_bits(),
+                    "{:?} ({cx}, {cy}): {s} × {antes}",
+                    o.ambiente
+                );
+                assert_eq!(
+                    cor.map(f64::to_bits),
+                    ilumina(&o, &c, cx, cy, rgb, cob).map(f64::to_bits),
+                    "{:?} ({cx}, {cy})",
+                    o.ambiente
+                );
+                celulas += usize::from(antes > 0.0);
+            }
+        }
+    }
+    assert!(celulas > 100, "a cena não tem sombra: {celulas}");
+}
+
+/// As linhas em FAIXAS de 5, da última para a primeira, cada faixa no seu fio.
+struct EmFaixasAoContrario;
+
+impl Reparte for EmFaixasAoContrario {
+    fn por_linhas<A: Send, B: Send>(
+        &self,
+        w: usize,
+        a: &mut [A],
+        b: &mut [B],
+        f: &(dyn Fn(usize, &mut [A], &mut [B]) + Sync),
+    ) {
+        const N: usize = 5;
+        std::thread::scope(|s| {
+            let faixas: Vec<_> = a
+                .chunks_mut(w * N)
+                .zip(b.chunks_mut(w * N))
+                .enumerate()
+                .collect();
+            for (j, (fa, fb)) in faixas.into_iter().rev() {
+                s.spawn(move || {
+                    for (k, (la, lb)) in fa.chunks_mut(w).zip(fb.chunks_mut(w)).enumerate().rev() {
+                        f(j * N + k, la, lb);
+                    }
+                });
+            }
+        });
+    }
+}
+
+/// ⭐ **Cura 2 de custo (27/10): o campo de altura em faixas de linhas é o MESMO bit a bit** que o em série —
+/// forma, detalhe, sombra (com fios) e material — numa janela inteira e numa sub-janela presa à borda.
+#[test]
+fn o_campo_em_faixas_e_bit_identico_ao_em_serie() {
+    let g = relevo_com_material();
+    let bits = |v: &[f32]| v.iter().map(|q| q.to_bits()).collect::<Vec<_>>();
+    for o in oleos_de_custo() {
+        for janela in [(1, 1, W, W), (3, 40, 20, W)] {
+            let serie = CampoAltura::de_com(&EmSerie, &[(&g, true)], &o, 2, janela);
+            let faixas = CampoAltura::de_com(&EmFaixasAoContrario, &[(&g, true)], &o, 2, janela);
+            assert_eq!(
+                (serie.x0, serie.y0, serie.w, serie.h),
+                (faixas.x0, faixas.y0, faixas.w, faixas.h)
+            );
+            assert_eq!(bits(&serie.v), bits(&faixas.v), "forma {janela:?}");
+            assert_eq!(
+                bits(&serie.detalhe),
+                bits(&faixas.detalhe),
+                "detalhe {janela:?}"
+            );
+            assert_eq!(
+                bits(&serie.sombra),
+                bits(&faixas.sombra),
+                "sombra {janela:?}"
+            );
+            assert_eq!(serie.material, faixas.material, "material {janela:?}");
+            assert!(!serie.material.is_empty() && serie.v.iter().any(|&q| q != 0.0));
+        }
+    }
 }

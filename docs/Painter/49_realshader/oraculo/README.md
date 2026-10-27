@@ -57,6 +57,28 @@ python3 $O/compara.py $O/entrada $O/saida studio_sol10      # Clássico: PH2D_OL
 **Clássico 1 547 ns/célula · Estúdio/Interior/Pátio ≈ 1 870**. O composite reparte as linhas pelo rayon
 (ADR-0109): uma pincelada de ~40 mil células ≈ 75 ms num núcleo, ≈ 5 ms em 16.
 
+**Curas de custo de 27/10 (bit a bit)** — `sonda_custo_oleo` (cena `gestos` da bancada, 1000×640, Filbert, smoke,
+3 rondas intercaladas no mesmo processo, mínimo; **loadavg 13–26** na corrida: o relógio absoluto vale pouco, a
+razão entre variantes da mesma ronda vale). (1) a sombra no papel das células PINTADAS sai dos `Termos` que a
+cor delas já calculou (`sombra_dos_termos`: a luz directa, a visibilidade e o céu eram contados duas vezes);
+(2) o `CampoAltura` em faixas de linhas que o composite reparte pelo rayon (`CampoAltura::de_com` + `Reparte`;
+cada passagem só escreve a sua linha — a ordem dos floats por célula é a mesma).
+
+| 160 quadros de água (`simula`) | campo | pigmento | sombra | total |
+|---|---|---|---|---|
+| sem óleo | — | 0,14 s | — | 0,55 s |
+| óleo, antes das curas (`af09a9669f`) | 5,3 s | 7,3 s | 14,1 s | 28,0 s |
+| óleo, depois | **1,2 s** | 6,7 s | **8,2 s** | **17,1 s** |
+
+Nos traços (860 composites, dirty pequeno) as duas ficam iguais (4,5 × 4,6 s): ali o custo é o alcance da óptica.
+Tela depois == antes na cena inteira; gates `a_sombra_dos_termos_e_bit_identica_a_do_papel`,
+`o_campo_em_faixas_e_bit_identico_ao_em_serie` (faixas de 5 linhas ao contrário, cada uma no seu fio) e, de
+ponta a ponta, `a_sombra_da_tinta_pelos_termos_e_bit_identica_ao_caminho_antigo` /
+`o_campo_do_oleo_em_faixas_e_bit_identico_ao_caminho_antigo` (Clássico, Interior, Estúdio com metal/verniz/veludo/
+anisotropia) — vermelhos com a visibilidade × 0,999 (1 444 bytes) e com a linha `y − 1` no rayon (29 900 bytes).
+O que fica: a sombra no papel LIVRE de tinta mas a menos de `MARGEM` dela (a orla da caixa molhada) é ainda a
+maior fase; o pigmento com óleo é a óptica inteira por célula.
+
 ## §E1 — Força e alcance da sombra de fenda (W2, 27/10)
 
 `OleoReal::fenda` (Crevice shadow) e `alcance_fenda` (Crevice reach). Lei da força: as CHANCES de oclusão

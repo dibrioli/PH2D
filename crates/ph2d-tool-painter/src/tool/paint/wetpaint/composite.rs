@@ -171,27 +171,70 @@ impl PainterTool {
         let g_stride = gw * 4;
         #[cfg(test)]
         let t_campo = std::time::Instant::now();
+        // As duas curas de custo (27/10, bit a bit): o campo em faixas pelo rayon e a sombra no papel das células
+        // PINTADAS tirada dos termos que a cor delas já calculou ([`super::oleo_plano`]).
+        #[cfg(test)]
+        let (sombra_antiga, campo_em_serie) = super::oleo_plano::curas_desligadas::get();
+        #[cfg(not(test))]
+        let (sombra_antiga, campo_em_serie) = (false, false);
         let campo = oleo.map(|o| {
             let grades: Vec<_> = layers.iter().map(|l| (l.grid, l.visible)).collect();
-            let c = ph2d_wet_paint::oleo_real::CampoAltura::de(
-                &grades,
-                &o,
-                usize::from(ratio),
-                cx0,
-                cy0,
-                cx1,
-                cy1,
-            );
+            let janela = (cx0, cy0, cx1, cy1);
+            let c = if campo_em_serie {
+                ph2d_wet_paint::oleo_real::CampoAltura::de_com(
+                    &ph2d_wet_paint::oleo_real::EmSerie,
+                    &grades,
+                    &o,
+                    usize::from(ratio),
+                    janela,
+                )
+            } else {
+                ph2d_wet_paint::oleo_real::CampoAltura::de_com(
+                    &super::oleo_plano::EmFaixas,
+                    &grades,
+                    &o,
+                    usize::from(ratio),
+                    janela,
+                )
+            };
             (o, c)
         });
         #[cfg(test)]
         contagem::campo(t_campo.elapsed());
+        if campo.is_some() && sess.sombra.len() != gw * gh {
+            sess.sombra = vec![0u8; gw * gh];
+        }
+        // `feita[k·gw + cx − 1]`: a sombra da célula já veio da linha da tinta.
+        let mut feita = if campo.is_some() && !sombra_antiga {
+            vec![false; gw * (cy1 + 1 - cy0)]
+        } else {
+            Vec::new()
+        };
         #[cfg(test)]
         let t_pig = std::time::Instant::now();
-        sess.pigment[(cy0 - 1) * g_stride..cy1 * g_stride]
-            .par_chunks_mut(g_stride)
-            .enumerate()
-            .for_each(|(k, row)| match &campo {
+        let pig_rows = sess.pigment[(cy0 - 1) * g_stride..cy1 * g_stride].par_chunks_mut(g_stride);
+        if let (Some((o, c)), false) = (&campo, feita.is_empty()) {
+            pig_rows
+                .zip(sess.sombra[(cy0 - 1) * gw..cy1 * gw].par_chunks_mut(gw))
+                .zip(feita.par_chunks_mut(gw))
+                .enumerate()
+                .for_each(|(k, ((row, srow), frow))| {
+                    ph2d_wet_paint::render::render_pigment_row_oleo_com_sombra(
+                        Some(&params),
+                        &layers,
+                        visual,
+                        o,
+                        c,
+                        cy0 + k,
+                        cx0,
+                        cx1,
+                        row,
+                        srow,
+                        frow,
+                    );
+                });
+        } else {
+            pig_rows.enumerate().for_each(|(k, row)| match &campo {
                 Some((o, c)) => ph2d_wet_paint::render::render_pigment_row_oleo(
                     Some(&params),
                     &layers,
@@ -213,6 +256,7 @@ impl PainterTool {
                     row,
                 ),
             });
+        }
         drop(layers);
         #[cfg(test)]
         let t_pig = t_pig.elapsed();
@@ -222,9 +266,6 @@ impl PainterTool {
         // que se compõe sobre o papel já sombreado (cortada em «alfa 0» a orla ficava um aro claro entre a
         // tinta e a sombra). Fica num plano à parte — o alfa do pigmento continua a ser só cobertura.
         if let Some((o, c)) = &campo {
-            if sess.sombra.len() != gw * gh {
-                sess.sombra = vec![0u8; gw * gh];
-            }
             // O papel LISO (campo a zero até ao alcance da óptica) dá a mesma sombra em toda a parte: calcula-se
             // uma vez por linha ([`super::oleo_plano`]) — na água parada a região é a caixa molhada inteira.
             #[cfg(test)]
@@ -238,11 +279,16 @@ impl PainterTool {
                 .enumerate()
                 .for_each(|(k, row)| {
                     let cy = cy0 + k;
+                    let feita = feita.get(k * gw..(k + 1) * gw);
                     let mut liso: Option<u8> = None;
                     for cx in cx0..=cx1 {
+                        if feita.is_some_and(|f| f[cx - 1]) {
+                            continue;
+                        }
                         let calcula = || {
-                            (ph2d_wet_paint::oleo_real::sombra_no_papel(o, c, cx, cy) * 255.0)
-                                .round() as u8
+                            ph2d_wet_paint::oleo_real::sombra_em_u8(
+                                ph2d_wet_paint::oleo_real::sombra_no_papel(o, c, cx, cy),
+                            )
                         };
                         row[cx - 1] = if plano.as_ref().is_some_and(|p| p.liso(cx, cy)) {
                             *liso.get_or_insert_with(calcula)

@@ -1,5 +1,6 @@
 //! **O custo de PINTAR com o Óleo Real** (W2, 27/10): a cena `gestos` da bancada (`ferramentas/bateria.json`) sem
-//! óleo, com óleo sem o atalho do papel liso (`wetpaint/oleo_plano.rs`) e com ele, intercaladas, no mesmo
+//! óleo, com óleo ANTES das duas curas de custo (o atalho do papel liso de `wetpaint/oleo_plano.rs` ligado; o
+//! campo em série e a sombra da tinta pela conta própria) e DEPOIS delas, intercaladas, no mesmo
 //! processo. Imprime, por fase (traços × `simula`), o tempo, as chamadas do composite, as células do dirty do
 //! MOTOR e as que o composite renderiza (com o óleo, crescidas pelo alcance), e o tempo do pigmento × o da sombra.
 //! `bash scripts/ph2d-run.sh cargo test -p ph2d-tool-painter --profile smoke --lib sonda_custo_oleo -- --ignored --nocapture`
@@ -7,7 +8,7 @@
 //! `PH2D_SONDA_SIMULA` (quadros da `simula`, 240) · `PH2D_SONDA_RONDAS` (2).
 use crate::PainterTool;
 use crate::tool::paint::wetpaint::composite_contagem as contagem;
-use crate::tool::paint::wetpaint::oleo_plano_desligado;
+use crate::tool::paint::wetpaint::{oleo_curas_desligadas, oleo_plano_desligado};
 use ph2d_brush_presets::Biblioteca;
 use ph2d_editor_core::Tool;
 use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase, RasterEditTool};
@@ -48,8 +49,8 @@ type Fase = (f64, u64, u64, u64, f64, f64, f64);
 
 /// Por fase (traços, `simula`): `(ms, composites, células do motor, células renderizadas, ms pigmento, ms
 /// sombra)`, e a tela final.
-fn corre(preset: &ph2d_brush_presets::Preset, oleo: bool, atalho: bool) -> ([Fase; 2], Vec<u8>) {
-    oleo_plano_desligado::set(!atalho);
+fn corre(preset: &ph2d_brush_presets::Preset, oleo: bool, curas: bool) -> ([Fase; 2], Vec<u8>) {
+    oleo_curas_desligadas::set(!curas, !curas);
     let bat: Value = serde_json::from_slice(
         &std::fs::read(raiz().join("docs/Painter/Pinceis/ferramentas/bateria.json")).unwrap(),
     )
@@ -106,7 +107,7 @@ fn corre(preset: &ph2d_brush_presets::Preset, oleo: bool, atalho: bool) -> ([Fas
         t.on_tick(1000.0 / 60.0);
     }
     fase[1] = fecha(t1);
-    oleo_plano_desligado::set(false);
+    oleo_curas_desligadas::set(false, false);
     (fase, t.canvas_rgba.to_vec())
 }
 
@@ -119,8 +120,8 @@ fn sonda_custo_oleo() {
     let preset = filbert(&b, &nome);
     let variantes = [
         ("sem oleo", false, false),
-        ("oleo sem atalho", true, false),
-        ("oleo com atalho", true, true),
+        ("oleo antes", true, false),
+        ("oleo depois", true, true),
     ];
     let mut melhor = [[f64::INFINITY; 2]; 3];
     let mut telas: Vec<Option<Vec<u8>>> = vec![None; 3];
@@ -152,7 +153,7 @@ fn sonda_custo_oleo() {
         );
     }
     println!(
-        "[sonda] tela com atalho == sem atalho: {}",
+        "[sonda] tela depois == antes das curas: {}",
         telas[1] == telas[2]
     );
 }
@@ -215,4 +216,111 @@ fn o_papel_liso_da_sombra_e_bit_identico_a_conta_por_celula() {
         );
     }
     assert!(sem[0].iter().any(|&v| v != 240), "a cena não pintou nada");
+}
+
+/// A cena das curas de custo: dois traços que se cruzam, a água a correr, um traço por cima e o Apply, com o
+/// óleo `o`; `(sombra da tinta pela conta própria, campo em série)` desligam cada cura.
+fn pinta_oleo(
+    preset: &ph2d_brush_presets::Preset,
+    o: ph2d_wet_paint::oleo_real::OleoReal,
+    antigo: (bool, bool),
+) -> Vec<Vec<u8>> {
+    oleo_curas_desligadas::set(antigo.0, antigo.1);
+    let (w, h) = (200u32, 140u32);
+    let mut t = PainterTool::default();
+    t.set_source(vec![240u8; (w * h * 4) as usize], w, h);
+    t.set_semente_dos_tracos(0);
+    t.set_wet_relogio_fixo(true);
+    assert!(t.preset_aplicar(preset).unwrap().is_empty());
+    t.set_wet_oleo_real(Some(o));
+    t.set_wet_oleo_real_ligado(true);
+    t.set_brush_size_px(14.0);
+    let traco = |t: &mut PainterTool, a: [f32; 2], b: [f32; 2], cor: [u8; 3]| {
+        t.set_brush_color_srgb8(cor);
+        let p = |k: f32, phase| CanvasPointer {
+            pos: [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k],
+            pressure: 0.8,
+            tilt: [0.0, 0.0],
+            phase,
+        };
+        t.on_canvas_pointer(p(0.0, PointerPhase::Down));
+        for i in 1..=30 {
+            t.on_canvas_pointer(p(i as f32 / 30.0, PointerPhase::Move));
+            t.on_tick(8.0);
+        }
+        t.on_canvas_pointer(p(1.0, PointerPhase::Up));
+    };
+    let mut fotos = Vec::new();
+    traco(&mut t, [2.0, 40.0], [190.0, 60.0], [200, 30, 30]);
+    traco(&mut t, [60.0, 130.0], [110.0, 10.0], [30, 60, 200]);
+    fotos.push(t.canvas_rgba.to_vec());
+    for _ in 0..12 {
+        t.on_tick(1000.0 / 60.0);
+    }
+    fotos.push(t.canvas_rgba.to_vec());
+    traco(&mut t, [10.0, 100.0], [190.0, 90.0], [240, 220, 40]);
+    fotos.push(t.canvas_rgba.to_vec());
+    fotos.push(t.run_full().0);
+    oleo_curas_desligadas::set(false, false);
+    fotos
+}
+
+/// O Clássico, um HDRI e um HDRI com o material do cartão NÃO neutro (metal, verniz, veludo, anisotropia).
+fn oleos_das_curas() -> [ph2d_wet_paint::oleo_real::OleoReal; 3] {
+    use ph2d_wet_paint::oleo_real::{Ambiente, MaterialCartao, OleoReal};
+    [
+        OleoReal {
+            ambiente: Ambiente::Classico,
+            ..OleoReal::default()
+        },
+        OleoReal {
+            ambiente: Ambiente::Interior,
+            ..OleoReal::default()
+        },
+        OleoReal {
+            ambiente: Ambiente::Estudio,
+            material: MaterialCartao {
+                metal: 0.4,
+                verniz: 0.6,
+                veludo: 0.3,
+                anisotropia: 0.5,
+                ..MaterialCartao::NEUTRO
+            },
+            ..OleoReal::default()
+        },
+    ]
+}
+
+fn compara_curas(antigo: (bool, bool), nome: &str) {
+    let b = Biblioteca::carregar(&raiz().join("assets/brushes"), None);
+    let preset = filbert(&b, "WetPainter/Oil/Flat/Filbert.ph2d-brush.png");
+    for o in oleos_das_curas() {
+        let (antes, depois) = (
+            pinta_oleo(&preset, o, antigo),
+            pinta_oleo(&preset, o, (false, false)),
+        );
+        for (k, (a, d)) in antes.iter().zip(&depois).enumerate() {
+            let difs = a.iter().zip(d).filter(|(x, y)| x != y).count();
+            assert_eq!(
+                difs, 0,
+                "{nome} {:?} foto {k}: {difs} bytes diferentes",
+                o.ambiente
+            );
+        }
+        assert!(antes[0].iter().any(|&v| v != 240), "a cena não pintou nada");
+    }
+}
+
+/// ⭐ **Cura 1 de custo (27/10): a sombra no papel das células pintadas vem da linha da tinta** — a tela de cada
+/// passo bit a bit a da conta própria por célula, no Clássico, num HDRI e com material não neutro.
+#[test]
+fn a_sombra_da_tinta_pelos_termos_e_bit_identica_ao_caminho_antigo() {
+    compara_curas((true, false), "sombra");
+}
+
+/// ⭐ **Cura 2 de custo (27/10): o campo de altura em faixas pelo rayon** — a tela de cada passo bit a bit a do
+/// campo em série, no Clássico, num HDRI e com material não neutro.
+#[test]
+fn o_campo_do_oleo_em_faixas_e_bit_identico_ao_caminho_antigo() {
+    compara_curas((false, true), "campo");
 }

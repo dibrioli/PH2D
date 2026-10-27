@@ -364,7 +364,7 @@ pub fn render_pigment_row_visual(
     x1: usize,
     out: &mut [u8],
 ) {
-    pigment_row(p, layers, visual, None, cy, x0, x1, out);
+    pigment_row(p, layers, visual, None, cy, x0, x1, out, None);
 }
 
 /// [`render_pigment_row_visual`] com o **Óleo Real** ([`crate::oleo_real`]): a óptica da altura substitui o
@@ -382,7 +382,47 @@ pub fn render_pigment_row_oleo(
     x1: usize,
     out: &mut [u8],
 ) {
-    pigment_row(p, layers, visual, Some((oleo, campo)), cy, x0, x1, out);
+    pigment_row(
+        p,
+        layers,
+        visual,
+        Some((oleo, campo)),
+        cy,
+        x0,
+        x1,
+        out,
+        None,
+    );
+}
+
+/// [`render_pigment_row_oleo`] que escreve também a SOMBRA NO PAPEL de cada célula pintada
+/// ([`crate::oleo_real::sombra_dos_termos`], bit a bit a [`crate::oleo_real::sombra_no_papel`]) em
+/// `sombra[cx - 1]` e marca `feita[cx - 1]`: a cor e a sombra da tinta com UMA conta dos termos.
+#[allow(clippy::too_many_arguments)]
+pub fn render_pigment_row_oleo_com_sombra(
+    p: Option<&Params>,
+    layers: &[RenderLayer<'_>],
+    visual: PigmentVisual,
+    oleo: &crate::oleo_real::OleoReal,
+    campo: &crate::oleo_real::CampoAltura,
+    cy: usize,
+    x0: usize,
+    x1: usize,
+    out: &mut [u8],
+    sombra: &mut [u8],
+    feita: &mut [bool],
+) {
+    pigment_row(
+        p,
+        layers,
+        visual,
+        Some((oleo, campo)),
+        cy,
+        x0,
+        x1,
+        out,
+        Some((sombra, feita)),
+    );
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -395,6 +435,7 @@ fn pigment_row(
     x0: usize,
     x1: usize,
     out: &mut [u8],
+    mut sombra: Option<(&mut [u8], &mut [bool])>,
 ) {
     let g0 = layers[0].grid;
     let s = g0.s;
@@ -490,8 +531,17 @@ fn pigment_row(
                 pa += la * (1.0 - pa);
             }
             if let (true, Some((ol, campo))) = (pa > 0.0, oleo) {
-                let [r, g, b] =
-                    crate::oleo_real::ilumina(ol, campo, cx, cy, [pr / pa, pg / pa, pb / pa], pa);
+                let rgb = [pr / pa, pg / pa, pb / pa];
+                let [r, g, b] = match sombra.as_mut() {
+                    Some((s, f)) => {
+                        let (cor, sm) =
+                            crate::oleo_real::ilumina_e_sombra(ol, campo, cx, cy, rgb, pa);
+                        s[cx - 1] = crate::oleo_real::sombra_em_u8(sm);
+                        f[cx - 1] = true;
+                        cor
+                    }
+                    None => crate::oleo_real::ilumina(ol, campo, cx, cy, rgb, pa),
+                };
                 out[o] = clamp_u8(r);
                 out[o + 1] = clamp_u8(g);
                 out[o + 2] = clamp_u8(b);

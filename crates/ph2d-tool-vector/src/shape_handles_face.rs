@@ -31,6 +31,22 @@ pub fn glyph_of(h: &HandleDesc) -> Glyph {
     }
 }
 
+/// A cara que se PINTA para a cara que a lei DÁ — o render não conhece a lei (o compilador cobra
+/// uma cara nova dos dois lados).
+#[must_use]
+pub fn painted(g: Glyph) -> ph2d_vec_render::HandleFace {
+    use ph2d_vec_render::HandleFace as F;
+    match g {
+        Glyph::Corner => F::Corner,
+        Glyph::Count => F::Count,
+        Glyph::Angle => F::Angle,
+        Glyph::Radius => F::Radius,
+    }
+}
+
+/// Os pontos do círculo tracejado do raio ([`radius_ring`]).
+pub const RING_N: usize = 96;
+
 /// ⭐ **A ETIQUETA do arrasto** — `«Points: 7»`, `«Inner: 0.38»`, `«R: 24 px»` (a ficha cinzenta do
 /// Illustrator ao lado do cursor). `name` traduz o rótulo do campo (a porta dos nomes do painel);
 /// `length` formata um comprimento de MUNDO na unidade do projecto (a da ficha da caixa).

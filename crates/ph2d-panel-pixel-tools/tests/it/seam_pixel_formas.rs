@@ -160,3 +160,23 @@ fn the_four_shapes_have_fill_and_no_shape_field_paints_without_a_shape() {
     }
     assert!(rects.iter().all(|(n, _)| *n != SHAPE_FILL));
 }
+
+/// P6d: com uma forma VIVA a dica do rodapé ensina as alças, o `Enter` e o `Esc`; sem ela, a dica
+/// da forma é a de sempre (controlo).
+#[test]
+fn the_hint_teaches_the_handles_while_a_shape_is_live() {
+    use ph2d_panel_pixel_tools::column::hint;
+    let mut info = PixelPanelInfo {
+        tool: PixelTool::Star,
+        ..PixelPanelInfo::default()
+    };
+    let desenhar = hint(&info);
+    info.live_shape = true;
+    let viva = hint(&info);
+    assert_ne!(desenhar, viva);
+    let nome = desenhar.split(':').next().expect("nome");
+    assert_eq!(
+        viva,
+        ph2d_i18n::tr_with("pixel.hint.live_shape", &[("tool", &nome)])
+    );
+}

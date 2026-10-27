@@ -171,56 +171,75 @@ impl Solta {
         }
     }
 
-    /// ⭐ **O gizmo do sprite sobre a moldura**: a caixa é a fonte (`0..w × 0..h`), o `model` leva-a
-    /// ao ecrã pela matriz da moldura (`to_screen` = imagem → ecrã) e a câmera é o próprio ecrã com Y
-    /// para cima — o pintor da casa projecta `câmera · model` e desfaz a inversão.
+    /// O gizmo do sprite sobre a moldura ([`gizmo_of`]).
     #[must_use]
-    #[expect(
-        clippy::cast_possible_truncation,
-        reason = "píxeis de ecrã para o pintor em f32"
-    )]
     pub fn gizmo(
         &self,
         to_screen: ph2d_vector::Affine,
         window: (f32, f32),
         cursor: Option<(f32, f32)>,
     ) -> GizmoView {
-        let (w, h) = self.size();
-        let o = self.m.apply(0.0, 0.0);
-        let (u, v) = (self.m.apply(1.0, 0.0), self.m.apply(0.0, 1.0));
-        let m = to_screen
-            * ph2d_vector::Affine::new([u.x - o.x, u.y - o.y, v.x - o.x, v.y - o.y, o.x, o.y]);
-        let [a, b, c, d, e, f] = m.as_coeffs();
-        let (ww, wh) = window;
-        let model = [
-            a as f32,
-            -b as f32,
-            c as f32,
-            -d as f32,
-            e as f32,
-            wh - f as f32,
-        ];
-        GizmoView {
-            bbox_min_world: [0.0, 0.0],
-            bbox_max_world: [w as f32, h as f32],
-            rotation: 0.0,
-            camera_center: [ww * 0.5, wh * 0.5],
-            camera_height_world: wh,
-            window_w: ww,
-            window_h: wh,
-            canvas: Rect::new(0.0, 0.0, ww, wh),
-            cursor_screen: cursor,
-            pivot_world: [self.pivot.u as f32, self.pivot.v as f32],
-            pivot_tool_active: false,
-            model,
-        }
+        gizmo_of(self.m, self.size(), self.pivot, to_screen, window, cursor)
     }
 
     /// A alça sob o ponto de ecrã `p` (`None` = fora: o clique assenta) — a do gizmo do sprite.
     #[must_use]
     pub fn hit(&self, view: &GizmoView, p: (f32, f32)) -> Option<Handle> {
-        sprite_gizmo_hit_at(view, true, p.0, p.1).and_then(alca)
+        hit_of(view, p)
     }
+}
+
+/// ⭐ **O gizmo do sprite sobre uma moldura** `m` de fonte `w × h` (a solta e a forma viva): a caixa
+/// é a fonte (`0..w × 0..h`), o `model` leva-a ao ecrã pela matriz (`to_screen` = imagem → ecrã) e a
+/// câmera é o próprio ecrã com Y para cima — o pintor da casa projecta `câmera · model` e desfaz a
+/// inversão.
+#[must_use]
+#[expect(
+    clippy::cast_possible_truncation,
+    reason = "píxeis de ecrã para o pintor em f32"
+)]
+pub fn gizmo_of(
+    m: Affine,
+    (w, h): (u32, u32),
+    pivot: Pivot,
+    to_screen: ph2d_vector::Affine,
+    window: (f32, f32),
+    cursor: Option<(f32, f32)>,
+) -> GizmoView {
+    let o = m.apply(0.0, 0.0);
+    let (u, v) = (m.apply(1.0, 0.0), m.apply(0.0, 1.0));
+    let k = to_screen
+        * ph2d_vector::Affine::new([u.x - o.x, u.y - o.y, v.x - o.x, v.y - o.y, o.x, o.y]);
+    let [a, b, c, d, e, f] = k.as_coeffs();
+    let (ww, wh) = window;
+    let model = [
+        a as f32,
+        -b as f32,
+        c as f32,
+        -d as f32,
+        e as f32,
+        wh - f as f32,
+    ];
+    GizmoView {
+        bbox_min_world: [0.0, 0.0],
+        bbox_max_world: [w as f32, h as f32],
+        rotation: 0.0,
+        camera_center: [ww * 0.5, wh * 0.5],
+        camera_height_world: wh,
+        window_w: ww,
+        window_h: wh,
+        canvas: Rect::new(0.0, 0.0, ww, wh),
+        cursor_screen: cursor,
+        pivot_world: [pivot.u as f32, pivot.v as f32],
+        pivot_tool_active: false,
+        model,
+    }
+}
+
+/// A alça do núcleo sob o ponto de ecrã `p` no gizmo `view` (`None` = fora).
+#[must_use]
+pub fn hit_of(view: &GizmoView, p: (f32, f32)) -> Option<Handle> {
+    sprite_gizmo_hit_at(view, true, p.0, p.1).and_then(alca)
 }
 
 impl PixelApp {
@@ -431,7 +450,17 @@ pub(crate) fn janela(c: &Canvas<'_>) -> (f32, f32) {
     (c.window.width as f32, c.window.height as f32)
 }
 
-fn imagem(screen: ph2d_vector::Affine, p: Point) -> Ponto {
+/// Os modificadores do gizmo do sprite: Shift = proporção e giro em degraus de 15°, Ctrl = a
+/// partir do centro.
+pub(crate) fn drag_opts(m: Mods) -> DragOpts {
+    DragOpts {
+        keep_ratio: m.shift,
+        from_center: m.ctrl,
+        snap: m.shift,
+    }
+}
+
+pub(crate) fn imagem(screen: ph2d_vector::Affine, p: Point) -> Ponto {
     let q = screen.inverse() * p;
     Ponto { x: q.x, y: q.y }
 }
@@ -460,12 +489,7 @@ pub(crate) fn moved(app: &mut PixelApp, c: &Canvas<'_>, p: (f32, f32), m: Mods) 
     };
     let size = so.size();
     if let Some(a) = &so.arrasto {
-        let opt = DragOpts {
-            keep_ratio: m.shift,
-            from_center: m.ctrl,
-            snap: m.shift,
-        };
-        (so.m, so.pivot) = a.m0.drag(a.p0, size, a.handle, (a.from, to), opt);
+        (so.m, so.pivot) = a.m0.drag(a.p0, size, a.handle, (a.from, to), drag_opts(m));
     }
     app.toca(key);
     true

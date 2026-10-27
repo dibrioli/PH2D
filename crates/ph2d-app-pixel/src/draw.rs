@@ -173,6 +173,9 @@ pub fn draw(
             (theme, window),
             scene,
         );
+        #[expect(clippy::cast_precision_loss, reason = "tamanho de janela")]
+        let janela = (window.width as f32, window.height as f32);
+        crate::viva::draw(app, key, m, (theme, janela), scene);
         let Some(doc) = app.docs.get(&key) else {
             continue;
         };

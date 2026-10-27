@@ -78,6 +78,10 @@ pub(crate) struct Gesture {
     pub(crate) held: bool,
     /// A célula do último evento (o `Espaço` desloca a forma por ela).
     pub(crate) cursor: (i32, i32),
+    /// Os modificadores do último movimento (a caixa da forma que nasce viva ao largar).
+    pub(crate) mods: crate::gesture::Mods,
+    /// A forma VIVA (P6d): largado o arrasto, a forma flutua com as alças até assentar.
+    pub(crate) viva: Option<crate::viva::Viva>,
 }
 
 /// **O estado da família Pixel Art.**

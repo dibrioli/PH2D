@@ -138,6 +138,10 @@ pub fn press(app: &mut PixelApp, c: &Canvas<'_>, p: (f32, f32), button: Button, 
     if let Some(r) = crate::solta::press(app, c, bits, key, p) {
         return r;
     }
+    // P6d: as alças da forma viva; fora delas ela assenta e o premir segue.
+    if let Some(r) = crate::viva::press(app, c, key, p) {
+        return r;
+    }
     // A ferramenta Transform sem moldura levanta (a selecção, ou o cel inteiro) e o premir segue
     // para o gizmo.
     if app.tool == Tool::Transform {
@@ -181,6 +185,8 @@ pub fn press(app: &mut PixelApp, c: &Canvas<'_>, p: (f32, f32), button: Button, 
             kind: Kind::Axis { vertical },
             held: true,
             cursor: (x, y),
+            mods: m,
+            viva: None,
         });
         return Press::Done;
     }
@@ -287,6 +293,8 @@ pub fn press(app: &mut PixelApp, c: &Canvas<'_>, p: (f32, f32), button: Button, 
         kind,
         held: true,
         cursor: at,
+        mods: m,
+        viva: None,
     });
     Press::Done
 }
@@ -302,7 +310,7 @@ fn erase_value(s: &ph2d_pixel_core::Sprite, layer: ph2d_pixel_core::LayerId, bg:
 
 /// Mover. Com um gesto em curso, ele continua (consumido); sem gesto, só a célula sob o cursor.
 pub fn moved(app: &mut PixelApp, c: &Canvas<'_>, p: (f32, f32), m: Mods) -> bool {
-    if crate::solta::moved(app, c, p, m) {
+    if crate::solta::moved(app, c, p, m) || crate::viva::moved(app, c, p, m) {
         return true;
     }
     if app.laco.is_some() {
@@ -333,6 +341,7 @@ pub fn moved(app: &mut PixelApp, c: &Canvas<'_>, p: (f32, f32), m: Mods) -> bool
     let at = (x, y);
     let delta = (at.0 - g.cursor.0, at.1 - g.cursor.1);
     g.cursor = at;
+    g.mods = m;
     let s = &doc.sprite;
     match &mut g.kind {
         Kind::Free => g.stroke.to(s, x, y),
@@ -415,9 +424,13 @@ pub fn release_pan(
 }
 
 /// Largar: o gesto acaba e vira UM passo do desfazer do sprite — salvo a curva no 1.º tempo
-/// (passa ao controlo) e o polígono (espera o próximo vértice).
+/// (passa ao controlo), o polígono (espera o próximo vértice) e as formas (P6d: ficam VIVAS até ao
+/// `Enter`).
 pub fn release(app: &mut PixelApp) -> bool {
-    if crate::solta::release(app) || crate::selecao::release(app) {
+    if crate::solta::release(app) || crate::selecao::release(app) || crate::viva::release(app) {
+        return true;
+    }
+    if crate::viva::nasce(app) {
         return true;
     }
     let Some(g) = app.gesture.as_mut() else {
@@ -573,7 +586,9 @@ pub fn key(
             KeyAnswer::Quiet
         }
         (KeyCode::Escape, _, _) if app.stroking() => {
-            cancel(app);
+            if !crate::viva::escape(app) {
+                cancel(app);
+            }
             KeyAnswer::Quiet
         }
         (KeyCode::KeyX, false, false) => {

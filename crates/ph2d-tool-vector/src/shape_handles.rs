@@ -140,6 +140,14 @@ pub struct Mods {
     pub alone: bool,
 }
 
+/// O raio de acerto de uma alça, em px de ecrã: o LADO da alça da caixa
+/// (`ph2d_editor_core::HANDLE_SIZE_PX`) — o mesmo alcance que a mão já conhece.
+pub const HIT_PX: f64 = ph2d_editor_core::HANDLE_SIZE_PX as f64;
+
+/// Onde uma alça estaciona, em px: o círculo de acerto dela encosta no quadrado da alça da caixa
+/// (meio lado + o raio de acerto) — as duas nunca disputam o mesmo ponto.
+pub const PARK_PX: f64 = ph2d_editor_core::HANDLE_SIZE_PX as f64 * 0.5 + HIT_PX;
+
 /// O passo dos ângulos com Shift — o do Inkscape medido (Ctrl: 37° → 30°, `arc_slice`), que é
 /// também o passo de rotação do Illustrator e do nosso gizmo.
 pub const ANGLE_SNAP_DEG: f64 = 15.0;

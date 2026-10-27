@@ -31,8 +31,10 @@ pub mod smoke_ferramentas;
 pub mod smoke_formas;
 pub mod smoke_quadros;
 pub mod smoke_selecao;
+pub mod smoke_viva;
 pub mod solta;
 mod state;
+pub mod viva;
 
 pub use state::{Doc, Options, PixelApp, Tool};
 

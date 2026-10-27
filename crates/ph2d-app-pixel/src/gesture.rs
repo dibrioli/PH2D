@@ -134,18 +134,23 @@ pub(crate) fn bucket(o: &Options) -> Bucket {
     }
 }
 
-/// A caixa `from → to` com os modificadores: `Shift` = quadrado, `Ctrl` = a partir do centro.
-fn boxed(from: Cell, to: Cell, m: Mods) -> (Cell, Cell) {
+/// A caixa `from → to` com os modificadores (`Shift` = quadrado, `Ctrl` = a partir do centro),
+/// ↖ ↘ — a forma viva nasce dela.
+pub(crate) fn boxed(from: Cell, to: Cell, m: Mods) -> (Cell, Cell) {
     let to = if m.shift {
         square_box(from.0, from.1, to.0, to.1)
     } else {
         to
     };
-    if m.ctrl {
-        ((2 * from.0 - to.0, 2 * from.1 - to.1), to)
+    let from = if m.ctrl {
+        (2 * from.0 - to.0, 2 * from.1 - to.1)
     } else {
-        (from, to)
-    }
+        from
+    };
+    (
+        (from.0.min(to.0), from.1.min(to.1)),
+        (from.0.max(to.0), from.1.max(to.1)),
+    )
 }
 
 fn collect(f: impl FnOnce(&mut dyn FnMut(i32, i32))) -> Vec<Cell> {

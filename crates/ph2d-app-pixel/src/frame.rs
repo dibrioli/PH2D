@@ -62,9 +62,14 @@ impl PixelApp {
             // de smoke que levanta antes do 1.º Draw não saiu de lado nenhum.
             if self.was_editing.is_some() {
                 self.assenta();
+                crate::viva::assenta(self);
             }
             self.laco = None;
-            self.gesture = None;
+            // A forma viva da cena de smoke, montada antes do 1.º Draw, também não saiu de lado
+            // nenhum (a de quem SAIU já assentou acima).
+            if self.gesture.as_ref().is_none_or(|g| g.viva.is_none()) {
+                self.gesture = None;
+            }
             self.hover = None;
             self.space = false;
             self.panning = false;

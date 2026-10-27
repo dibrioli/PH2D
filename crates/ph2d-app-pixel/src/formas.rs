@@ -13,7 +13,7 @@ use ph2d_editor_core::pixel_panel::{PixelShape, PixelShapeValues};
 use ph2d_pixel_core::raster::{
     Cell, ellipse_cells, ellipse_filled_cells, polygon_cells, rounded_rect_cells,
 };
-use ph2d_vec_scene::{VecVertex, cook, trim_tool::contours_of};
+use ph2d_vec_scene::{VecPath, VecVertex, cook, trim_tool::contours_of};
 
 /// O passo do achatamento das curvas, em células de corda.
 const PASSO: f64 = 0.5;
@@ -39,10 +39,39 @@ pub fn cells(
         [f64::from(b.0), -f64::from(b.1)],
     );
     let path = cook(s.kind(), pa, pb, &v.values());
+    celulas(&path, &|p| [p[0], -p[1]], cheia)
+}
+
+/// A forma `s` cozida na caixa CENTRADA de meia-extensão `half` (o espaço local do Vector: Y para
+/// cima, em células de centro a centro) — a mesma porta que as alças da forma viva lêem.
+#[must_use]
+pub fn cook_local(s: PixelShape, half: [f64; 2], v: &ph2d_vec_scene::ShapeValues) -> VecPath {
+    cook(s.kind(), [-half[0], -half[1]], half, v)
+}
+
+/// A forma `s` no espaço local ([`cook_local`]) levada por `map` aos CENTROS das células (a forma
+/// viva girada): `(contorno, interior)`.
+#[must_use]
+pub fn cells_mapped(
+    s: PixelShape,
+    v: &PixelShapeValues,
+    half: [f64; 2],
+    map: &dyn Fn([f64; 2]) -> [f64; 2],
+    cheia: bool,
+) -> (Vec<Cell>, Vec<Cell>) {
+    celulas(&cook_local(s, half, &v.values()), map, cheia)
+}
+
+/// Os contornos de `path`, levados por `map` às células: contorno e interior par-ímpar.
+fn celulas(
+    path: &VecPath,
+    map: &dyn Fn([f64; 2]) -> [f64; 2],
+    cheia: bool,
+) -> (Vec<Cell>, Vec<Cell>) {
     let mut contorno = BTreeSet::new();
     let mut dentro = BTreeSet::new();
-    for c in contours_of(&path) {
-        let pts = achata(&c.verts, c.closed);
+    for c in contours_of(path) {
+        let pts = achata(&c.verts, c.closed, map);
         let (o, i) = polygon_cells(&pts);
         contorno.extend(o);
         // Par-ímpar entre contornos: o furo da rosquinha tira o miolo.
@@ -120,16 +149,17 @@ fn collect(f: impl FnOnce(&mut dyn FnMut(i32, i32))) -> Vec<Cell> {
 }
 
 /// Os vértices de célula de um contorno do Vector: cada cúbica amostrada a [`PASSO`] células de
-/// corda, arredondada ao centro da célula, sem repetidos seguidos (Y desfeito).
-fn achata(verts: &[VecVertex], fechado: bool) -> Vec<Cell> {
+/// corda, levada por `map` às células e arredondada ao centro, sem repetidos seguidos.
+fn achata(verts: &[VecVertex], fechado: bool, map: &dyn Fn([f64; 2]) -> [f64; 2]) -> Vec<Cell> {
     let n = verts.len();
     let mut out: Vec<Cell> = Vec::new();
     let mut poe = |p: [f64; 2]| {
+        let q = map(p);
         #[expect(
             clippy::cast_possible_truncation,
             reason = "célula de um sprite (≤ 65535)"
         )]
-        let c = (p[0].round() as i32, (-p[1]).round() as i32);
+        let c = (q[0].round() as i32, q[1].round() as i32);
         if out.last() != Some(&c) {
             out.push(c);
         }

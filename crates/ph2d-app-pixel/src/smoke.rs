@@ -34,6 +34,8 @@
 //! 11 — P6c, as três correcções do smoke da P6b ([`crate::smoke_ferramentas`]): o ícone do laço
 //! poligonal, as formas num botão com triângulo (o «Fill» no painel no lugar das cheias) e a coluna
 //! sem o Move (o `V` escolhe o Transform).
+//! 12 — P6d, a forma VIVA ([`crate::smoke_viva`]): uma estrela girada com a caixa do gizmo do sprite
+//! e as alças do Vector, à espera do `Enter`, ao lado de duas formas já assentadas.
 
 use ph2d_ecs::SimWorld;
 use ph2d_pixel_core::{NewSprite, Paint, Stroke};
@@ -45,7 +47,7 @@ use ph2d_editor_core::pixel_panel::{
 
 pub const ROUTERS: &[ph2d_app_host::SmokeRouter] = &[ph2d_app_host::SmokeRouter {
     env: "PH2D_PIXEL_SMOKE",
-    max_level: 11,
+    max_level: 12,
 }];
 
 /// O nível armado em `PH2D_PIXEL_SMOKE`.
@@ -110,6 +112,7 @@ pub fn stage(
         9 => crate::smoke_selecao::stage(app, sim, spawn_root).is_some(),
         10 => crate::smoke_formas::stage(app, sim, spawn_root).is_some(),
         11 => crate::smoke_ferramentas::stage(app, sim, spawn_root).is_some(),
+        12 => crate::smoke_viva::stage(app, sim, spawn_root).is_some(),
         _ => false,
     }
 }

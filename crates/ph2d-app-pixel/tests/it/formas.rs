@@ -308,6 +308,8 @@ fn the_fill_box_fills_the_rectangle_and_the_ellipse() {
             let _ = input::press(&mut p.app, &c, a, Button::Primary, Mods::default());
             let _ = input::moved(&mut p.app, &c, b, Mods::default());
             let _ = input::release(&mut p.app);
+            // P6d: a forma fica viva; o Enter assenta-a.
+            p.tecla(KeyCode::Enter, false, false);
             let d = p.app.doc(p.key).expect("o sprite");
             let cor = |x, y| {
                 d.sprite

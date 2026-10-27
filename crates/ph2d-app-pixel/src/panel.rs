@@ -26,6 +26,7 @@ impl PixelApp {
     pub fn aplica(&mut self, r: PixelRequest) {
         if crate::edicao::assenta_antes(&r) {
             self.assenta();
+            crate::viva::assenta(self);
         }
         if self.aplica_selecao(&r)
             || self.aplica_edicao(&r)
@@ -51,7 +52,11 @@ impl PixelApp {
                 crate::input::set_tool(self, self.groups.face(g));
                 self.groups.open = (!aberto).then_some(g);
             }
-            PixelRequest::Options(o) => self.options = *o,
+            // P6d: um campo da forma (ou o Fill) re-cozinha a forma viva na hora.
+            PixelRequest::Options(o) => {
+                self.options = *o;
+                self.reaviva();
+            }
             PixelRequest::Fg(c) => self.fg = c,
             PixelRequest::Bg(c) => self.bg = c,
             PixelRequest::Swap => std::mem::swap(&mut self.fg, &mut self.bg),
@@ -201,6 +206,7 @@ pub fn frame(
         can_reselect: doc.is_some_and(|d| d.sprite.last_mask().is_some()),
         presets: app.predefinicoes().to_vec(),
         groups: app.groups,
+        live_shape: app.live_shape().is_some(),
     }
 }
 

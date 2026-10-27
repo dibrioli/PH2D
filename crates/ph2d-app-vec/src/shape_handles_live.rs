@@ -21,13 +21,7 @@ use ph2d_vec_scene::{ShapeKind, ShapeValues, VecPath, VecPathId, VecScene, Xform
 
 use crate::shape_params::{edit_selected_shape, shape_field_target};
 
-/// O raio de acerto de uma alça, em px de ecrã: o LADO da alça da caixa
-/// (`ph2d_editor_core::HANDLE_SIZE_PX`) — o mesmo alcance que a mão já conhece.
-pub const HIT_PX: f64 = ph2d_editor_core::HANDLE_SIZE_PX as f64;
-
-/// Onde uma alça estaciona, em px: o círculo de acerto dela encosta no quadrado da alça da caixa
-/// (meio lado + o raio de acerto) — as duas nunca disputam o mesmo ponto.
-pub const PARK_PX: f64 = ph2d_editor_core::HANDLE_SIZE_PX as f64 * 0.5 + HIT_PX;
+pub use ph2d_tool_vector::shape_handles::{HIT_PX, PARK_PX};
 
 /// ⭐ **De quem são as alças** (F10): o modo da ferramenta e o latch do «armado no catálogo»
 /// (`VecState::shape_armed`) — a MESMA pergunta que os campos fazem.
@@ -190,20 +184,7 @@ pub struct ShapeHandlesView {
     pub ring: Vec<[f64; 2]>,
 }
 
-/// A cara que se PINTA para a cara que a lei DÁ — o render não conhece a lei (o compilador cobra
-/// uma cara nova dos dois lados).
-fn face_of(g: face::Glyph) -> ph2d_vec_render::HandleFace {
-    use ph2d_vec_render::HandleFace as F;
-    match g {
-        face::Glyph::Corner => F::Corner,
-        face::Glyph::Count => F::Count,
-        face::Glyph::Angle => F::Angle,
-        face::Glyph::Radius => F::Radius,
-    }
-}
-
-/// Os pontos do círculo tracejado do raio.
-const RING_N: usize = 96;
+use face::RING_N;
 
 /// As alças da forma seleccionada (fora do `gate`, nenhuma). `grabbed` (o arrasto vivo) manda no
 /// quente; sem ele, a alça sob `hover` (mundo) — a guia aparece ANTES do arrasto, como no Affinity.
@@ -247,7 +228,7 @@ pub fn view(
             hot = Some(points.len());
         }
         points.push(p);
-        faces.push(face_of(face::glyph_of(h)));
+        faces.push(face::painted(face::glyph_of(h)));
         stems.push(
             law::is_arc_angle(h)
                 .then(|| truth(h))

@@ -342,6 +342,8 @@ pub struct PixelPanelInfo {
     pub can_reselect: bool,
     /// P6b/P6c: a cara de cada botão de grupo e o flyout aberto.
     pub groups: PixelGroups,
+    /// P6d: há uma forma VIVA à espera do `Enter` (a dica ensina as alças).
+    pub live_shape: bool,
 }
 
 /// Um gesto do painel PIXEL (`EditorAction::Pixel`).

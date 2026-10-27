@@ -29,6 +29,10 @@ ph2d-unique-name = { path = "../ph2d-unique-name" }
 ph2d-vector = { path = "../ph2d-vector" }
 # As formas do Vector no Pixel (P6b): o `cook` do catálogo — a mesma porta do editor vetorial.
 ph2d-vec-scene = { path = "../ph2d-vec-scene" }
+# A forma VIVA (P6d): a LEI das alças do Vector (só as funções puras de `shape_handles`, nunca o
+# `Tool`) e a pintura delas.
+ph2d-tool-vector = { path = "../ph2d-tool-vector" }
+ph2d-vec-render = { path = "../ph2d-vec-render" }
 winit = "0.30"
 # O diálogo de ficheiro do Load/Save Palette (pela porta `ph2d_app_host::modal`).
 rfd = "0.17"

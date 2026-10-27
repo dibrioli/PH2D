@@ -45,6 +45,10 @@ fn drag(
     press(app, sim, cam, bits, a, m);
     moved(app, sim, cam, bits, b, m);
     assert!(input::release(app));
+    // P6d: a forma fica viva até ao Enter.
+    if app.live_shape().is_some() {
+        key(app, sim, bits, KeyCode::Enter, false);
+    }
 }
 
 fn undo(app: &mut PixelApp, sim: &SimWorld, bits: u64) -> bool {
@@ -93,9 +97,15 @@ fn a_rectangle_previews_while_dragging_and_commits_one_undo_step() {
     assert_eq!(
         value(&app, &sim, bits, 4, 4),
         CLEAR,
-        "o documento só muda ao largar"
+        "o documento não muda a meio do arrasto"
     );
     assert!(input::release(&mut app));
+    assert_eq!(
+        value(&app, &sim, bits, 4, 4),
+        CLEAR,
+        "P6d: largar deixa a forma viva — só o Enter a assenta"
+    );
+    key(&mut app, &sim, bits, KeyCode::Enter, false);
     for c in [(4, 4), (10, 4), (4, 8), (10, 8), (7, 4)] {
         assert_eq!(value(&app, &sim, bits, c.0, c.1), WHITE, "{c:?}");
     }

@@ -50,8 +50,13 @@ impl ModeFamily for Family<'_> {
     fn enter(&mut self, mode: ObjectMode, entity: u64, tools: &mut ToolRegistry) -> bool {
         self.holds(mode, entity, tools)
     }
-    /// Largar o Draw a meio de um traço deixa-o cair (nunca um passo fantasma).
+    /// Largar o Draw a meio de um traço deixa-o cair (nunca um passo fantasma); a forma viva
+    /// assenta (P6d: o artista já a acabou de desenhar).
     fn leave(&mut self, _: ObjectMode, entity: u64, _: &mut ToolRegistry) {
+        let minha = |g: &crate::state::Gesture| g.entity == entity;
+        if self.app.gesture.as_ref().is_some_and(minha) {
+            crate::viva::assenta(&mut self.app);
+        }
         if self
             .app
             .gesture

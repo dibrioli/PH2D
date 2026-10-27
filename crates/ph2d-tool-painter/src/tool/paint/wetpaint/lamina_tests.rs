@@ -199,6 +199,73 @@ fn a_faca_so_com_o_nivel_nivela() {
     assert!(d1 < 0.5 * d0, "o desvio da espessura no miolo: sem nível {d0:.4}, com nível 1 {d1:.4}");
 }
 
+/// Um traço recto de `a` a `b` (passos de 2 px) e o assentar.
+fn recto(t: &mut PainterTool, a: [f32; 2], b: [f32; 2]) {
+    t.on_canvas_pointer(ponto(a, PointerPhase::Down));
+    let n = ((b[0] - a[0]).hypot(b[1] - a[1]) / 2.0).ceil() as usize;
+    for k in 1..=n {
+        let f = k as f32 / n as f32;
+        let p = [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f];
+        t.on_canvas_pointer(ponto(p, PointerPhase::Move));
+        t.on_tick(8.0);
+    }
+    t.on_canvas_pointer(ponto(b, PointerPhase::Up));
+    for _ in 0..30 {
+        t.on_tick(1000.0 / 60.0);
+    }
+}
+
+/// A marca do nivelado e a massa (susp + sett) de cada célula da camada activa.
+fn marca_e_massa(t: &mut PainterTool) -> (usize, Vec<f32>, Vec<f64>) {
+    let s = t.paint.wetpaint.session.as_mut().expect("sessão");
+    s.bring_home();
+    let r = usize::from(s.ratio);
+    let g = s.engine.active_grid();
+    let massa = (0..g.cells).map(|i| f64::from(g.susp[i]) + f64::from(g.sett[i])).collect();
+    (r, g.nivelado.clone(), massa)
+}
+
+/// ⭐ **A marca do nivelado apaga-se pela MASSA** (W3 K8): a faca que nivela (`knifeLevel` 1) marca o braço
+/// horizontal; um traço vertical da MESMA tinta sem nível por cima dele dilui a marca na travessia pela massa que
+/// pousa (a tinta nova chega por nivelar, como o material e o relevo misturam) — fora da travessia, ao bit; a 2.ª
+/// passada da lâmina não baixa a marca dela. Sem lâmina na sessão, a marca nem se aloca.
+#[test]
+fn a_tinta_que_nao_nivela_apaga_a_marca_pela_massa() {
+    let mut t = faca(true, 0.0);
+    t.paint.wetpaint.knobs.set(Knob::KnifeLevel, 1.0);
+    recto(&mut t, [30.0, 50.0], [170.0, 50.0]);
+    let (_, primeira, _) = marca_e_massa(&mut t);
+    // A lâmina que nivela não apaga a própria marca: a 2.ª passada só a mantém ou sobe.
+    recto(&mut t, [30.0, 50.0], [170.0, 50.0]);
+    let (r, antes, m_antes) = marca_e_massa(&mut t);
+    assert!(
+        primeira.iter().zip(&antes).all(|(a, b)| b >= a),
+        "a 2.ª passada da lâmina baixou a marca"
+    );
+    t.paint.wetpaint.knobs.set(Knob::KnifeLevel, 0.0);
+    recto(&mut t, [100.0, 10.0], [100.0, 90.0]);
+    let (_, depois, m_depois) = marca_e_massa(&mut t);
+    let g = t.paint.wetpaint.session.as_ref().expect("sessão").engine.active_grid();
+    let i = |x: usize, y: usize| (x / r + 1) + (y / r + 1) * g.s;
+    // A travessia (x 100, a lâmina em y 50 ± 4): a marca 1 cai pela massa nova (medido 0,63–0,64), sem ir a zero —
+    // a tinta nivelada que lá estava continua lá.
+    for y in [46, 50, 54] {
+        let (a, d) = (antes[i(100, y)], depois[i(100, y)]);
+        assert_eq!(a, 1.0, "a faca marcou ({y})");
+        assert!(d > 0.3 && d < 0.8, "a travessia apaga pela massa ({y}): {a} → {d}");
+    }
+    // Longe da travessia o vertical não pousou nada: a marca ao bit, embora a massa tenha assentado.
+    for x in [40, 60, 140, 160] {
+        assert_eq!(depois[i(x, 50)], antes[i(x, 50)], "fora da travessia ({x})");
+        assert!(m_depois[i(x, 50)] > 0.0 && m_antes[i(x, 50)] > 0.0);
+    }
+    // Sem lâmina que nivele na sessão: a marca nem se aloca.
+    let mut sem = faca(true, 0.0);
+    recto(&mut sem, [30.0, 50.0], [170.0, 50.0]);
+    recto(&mut sem, [100.0, 10.0], [100.0, 90.0]);
+    assert!(marca_e_massa(&mut sem).1.is_empty(), "sem lâmina alocou a marca");
+}
+
 /// O Óleo Real de fábrica com os `campo=valor,…` de `af` (os campos que o rebordo mede).
 fn oleo_de(af: &str) -> ph2d_wet_paint::oleo_real::OleoReal {
     let mut o = ph2d_wet_paint::oleo_real::OleoReal::default();

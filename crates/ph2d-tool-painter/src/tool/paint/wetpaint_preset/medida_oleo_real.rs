@@ -106,9 +106,11 @@ fn medida_oleo_real_oraculo() {
         std::path::PathBuf::from(std::env::var("PH2D_OLEO_PNG").expect("PH2D_OLEO_PNG=<pasta>"));
     // `PH2D_OLEO_CENA=lisos`: os traços LISOS e baixos da bateria (régua do halo, K4).
     // `=smooth2`: o recto do Knife Smooth 2 (candidato W2) com `knifeLevel` 0 · 0,3 · 1 (as paredes, K6).
+    // `=travessia`: a mesma cena e, por cima, um traço vertical do Smooth 2 SEM nível (a marca que se apaga, K8).
     let mut t = match std::env::var("PH2D_OLEO_CENA").as_deref() {
         Ok("lisos") => pinta_cena_lisa(),
         Ok("smooth2") => pinta_cena_smooth2(),
+        Ok("travessia") => pinta_cena_travessia(),
         _ => pinta_cena_do_dono(),
     };
     match std::env::var("PH2D_OLEO_VARIANTES") {
@@ -276,6 +278,17 @@ pub(super) fn pinta_cena_smooth2() -> PainterTool {
         let ticks = arrasta(&mut t, [60.0, y], [560.0, y]);
         println!("[oraculo] Knife Smooth 2 knifeLevel {nivel} (água {ticks})");
     }
+    t
+}
+
+/// K8: a [`pinta_cena_smooth2`] e um vertical do MESMO candidato a `knifeLevel` 0 (x 300, y 250..370) que atravessa
+/// os planaltos de 0,3 e 1 — a tinta por nivelar que chega à borda deles não herda a parede viva.
+fn pinta_cena_travessia() -> PainterTool {
+    let mut t = pinta_cena_smooth2();
+    t.paint.wetpaint.knobs.set(Knob::KnifeLevel, 0.0);
+    t.set_brush_color_srgb8([200, 120, 40]);
+    let ticks = arrasta(&mut t, [300.0, 150.0], [300.0, 370.0]);
+    println!("[oraculo] travessia knifeLevel 0 (água {ticks})");
     t
 }
 

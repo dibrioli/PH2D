@@ -171,3 +171,24 @@ fn a_faca_que_nivela_marca_o_que_nivelou() {
     assert_eq!(marca(32, 15), 0.0, "fora da lâmina");
     assert_eq!(marca(32, 2), 0.0, "a lâmina sobre papel nu");
 }
+
+/// ⭐ **A marca apaga-se pela MASSA** (K8, [`crate::grid::nivelado::dilui`]): 300 de massa nivelada a 0,8 que recebe
+/// 100 de tinta por nivelar fica a `0,8 × 300 ÷ 400`; o papel limpo vai a zero; o arrasto leva a marca na fracção;
+/// sem o campo, nada se aloca.
+#[test]
+fn a_marca_do_nivelado_dilui_pela_massa_nova() {
+    use crate::grid::nivelado::{arrasta, dilui, em, garante};
+    let mut g = crate::grid::Grid::new(16, 12);
+    dilui(&mut g, 40, 300.0, 100.0);
+    arrasta(&mut g, 40, 41, 0.5);
+    assert!(g.nivelado.is_empty(), "sem lâmina alocou a marca");
+    garante(&mut g)[40] = 0.8;
+    g.nivelado[41] = 0.8;
+    dilui(&mut g, 40, 300.0, 100.0);
+    assert!((em(&g, 40) - 0.6).abs() < 1e-6, "{}", em(&g, 40));
+    dilui(&mut g, 41, 0.0, 100.0);
+    assert_eq!(em(&g, 41), 0.0, "papel limpo");
+    g.nivelado[42] = 1.0;
+    arrasta(&mut g, 41, 42, 0.25);
+    assert!((em(&g, 41) - 0.25).abs() < 1e-6, "{}", em(&g, 41));
+}

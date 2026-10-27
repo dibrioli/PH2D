@@ -2,7 +2,7 @@
 
 > Retoma-se DAQUI. Prompt: [`PROMPT_MISSAO_W3_material_motor_presets.md`](PROMPT_MISSAO_W3_material_motor_presets.md).
 > Base: `5a01640d94` (W2 aprovada, tag `backup/oleo-real-W2-2026-10-27`).
-> ⛔ Ordem do dono: no fim de TUDO (fecho + mensagem final), confirmar que nada desta linha corre e `systemctl poweroff`.
+> ⛔ Ordem do dono 27/10 (depois do fecho): **NÃO desligar o PC** — há outros agentes a trabalhar. A ordem de poweroff do prompt foi revogada.
 
 ## Contrato do material (Etapa M) — decidido pela janela ANTES dos agentes
 

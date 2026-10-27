@@ -10,9 +10,11 @@ use std::time::{Duration, Instant};
 use bevy_ecs::entity::Entity;
 use ph2d_app_constraints::relogio::Relogio;
 use ph2d_app_constraints::valor::valores;
+use ph2d_constraints::comportamento::Perfil;
 use ph2d_constraints::{Kind, Valor};
 use ph2d_constraints_ecs::Constraints;
 use ph2d_ecs::{SimWorld, StableId, Transform};
+use ph2d_preview_drive::PreviewDrive;
 use ph2d_timeline::TimelineDoc;
 
 const N: u64 = 1_000;
@@ -27,6 +29,20 @@ fn cena_valor(sim: &mut SimWorld) -> Entity {
     for i in 0..N {
         let mut c = Constraints::default();
         c.push(Kind::Valor(Valor::default()), Some(StableId(1)));
+        w.spawn((StableId(10 + i), Transform::IDENTITY, c));
+    }
+    alvo
+}
+
+/// Um alvo que sobe e desce e 1 000 donos, cada um com um *behaviour* — a mistura dos quatro (o
+/// Atrair e o Orbitar puxados pelo alvo).
+fn cena_comportamento(sim: &mut SimWorld) -> Entity {
+    let w = sim.world_mut();
+    let alvo = w.spawn((StableId(1), Transform::IDENTITY)).id();
+    for i in 0..N {
+        let perfil = Perfil::ALL[(i % 4) as usize];
+        let mut c = Constraints::default();
+        c.push(Kind::Comportamento(perfil.numeros()), Some(StableId(1)));
         w.spawn((StableId(10 + i), Transform::IDENTITY, c));
     }
     alvo
@@ -51,22 +67,38 @@ fn w5_pieces_under_half_a_millisecond_per_thousand() {
     let fps = doc.fps_display;
     let mut sv = SimWorld::new();
     let alvo = cena_valor(&mut sv);
-    let mut valor = Duration::MAX;
+    let mut sc = SimWorld::new();
+    let alvo_c = cena_comportamento(&mut sc);
+    let mut drive = PreviewDrive::default();
+    let cena = ph2d_vec_scene::VecScene::new();
+    let (mut valor, mut comportamento) = (Duration::MAX, Duration::MAX);
     let mut f = 0;
     for _bloco in 0..BLOCOS {
         for _ in 0..QUADROS {
             f += 1;
-            sobe(&mut sv, alvo, f);
             let r = Relogio {
                 doc: &doc,
                 t: f64::from(f) / fps,
                 laco: None,
             };
+            sobe(&mut sv, alvo, f);
             let t0 = Instant::now();
             valores(&mut sv, Some(r));
             valor = valor.min(t0.elapsed());
+            // O quadro INTEIRO da família (preparar + a pilha), não só a lei.
+            sobe(&mut sc, alvo_c, f);
+            let mut cena = cena.clone();
+            let t0 = Instant::now();
+            ph2d_app_constraints::quadro(&mut sc, &mut cena, &mut drive, Some(r));
+            comportamento = comportamento.min(t0.elapsed());
         }
     }
-    println!("kill: valor {valor:?} / 1 000 itens com mola (mínimo de {BLOCOS}×{QUADROS})");
+    println!(
+        "kill: valor {valor:?} · comportamento {comportamento:?} / 1 000 itens (mínimo de {BLOCOS}×{QUADROS})"
+    );
     assert!(valor <= TECTO, "valor {valor:?} > {TECTO:?}");
+    assert!(
+        comportamento <= TECTO,
+        "comportamento {comportamento:?} > {TECTO:?}"
+    );
 }

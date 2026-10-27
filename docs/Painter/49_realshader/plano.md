@@ -50,4 +50,6 @@ Smoke do dono 26/10: «Resultado interessante», mas (a) pixels brancos nas bord
 
 - **W1b 26/10 (noite): itens 1–3 feitos, aprovados no rumo pelo dono** («sombras interessantes entre a tinta! Bom!») — [handoff](HANDOFF_CONTINUACAO_oleo_real_W1b_2026-10-26.md). Itens 4–5 passam para a W1c.
 - **W1c (nova, antes da GPU):** «porque parece Eevee antigo e não Cycles?» — oráculo Blender/Cycles corrido por script sobre o nosso campo; rebote (GTAO multi-ricochete), ambiente (a W2 sobe para aqui), penumbra que cresce com a distância, rolagem dos realces. [Prompt](PROMPT_NOVA_JANELA_W1c.md).
+- **W1c 27/10: aprovada no smoke** («Realmente muito bom»; backup `backup/oleo-real-W1c-2026-10-27`) — [handoff](HANDOFF_CONTINUACAO_oleo_real_W1c_2026-10-27.md).
+- **MISSÃO W2 (autónoma, 27/10):** E1 contraste da fenda · E2 HDRI como meia-esfera (difuso da tinta e do papel) · E3 material Principled por célula (metal, verniz, sheen, anisotropia, translucidez) · E4 18 presets parecidos com o Rebelle (Metallic Flat 3/Round 3/Splats, 5 Dabber, 10 Knife). [Prompt](PROMPT_MISSAO_W2_material_ambiente_pinceis.md).
 - **Ordem restante:** W1 GPU (`ph2d-render`, paridade com a CPU, K/N por placa) → facas H3 → presets Knife Smooth/Textured e lei do rebordo → W2 (IBL de foto nossa/CC0) → W3..W6 como na tabela (W3 absorve o GTAO se o item 4 de W1b o fizer).

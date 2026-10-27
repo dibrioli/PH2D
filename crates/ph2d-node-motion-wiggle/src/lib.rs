@@ -155,6 +155,74 @@ pub const CH_XY: i32 = 4;
 /// pilhas de oitavas nem se tocam.)
 pub const AXIS_ROW_OFFSET: f32 = 7919.5;
 
+/// ⭐ **A lei do nó, pública** (append, W5.4 — `docs/BlenderConstraints/06_W5_resto.md` §3.2): o
+/// `eval` e o *behaviour* «Tremer» de qualquer objecto chamam-na — uma lei, dois chamadores.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Tremor {
+    pub amplitude: f32,
+    pub frequency: f32,
+    pub seed: f32,
+    pub octaves: f32,
+    pub amp_mult: f32,
+    pub loop_len: f32,
+    /// `Some([min, max])` = a régua da FAIXA (`range_mode`) em vez da `amplitude`.
+    pub range: Option<[f32; 2]>,
+}
+
+impl Default for Tremor {
+    fn default() -> Self {
+        Self {
+            amplitude: 1.0,
+            frequency: 0.5,
+            seed: 0.0,
+            octaves: 1.0,
+            amp_mult: 0.5,
+            loop_len: 0.0,
+            range: None,
+        }
+    }
+}
+
+impl Tremor {
+    /// O campo no instante `t` para a linha `i` (o índice do elemento), deslocada de `row_off` (o
+    /// segundo eixo, [`AXIS_ROW_OFFSET`]) — antes da máscara.
+    #[must_use]
+    pub fn sample(&self, t: f32, i: f32, row_off: f32) -> f32 {
+        let spec = ph2d_fbm::Spec {
+            octaves: (self.octaves.round().max(1.0) as u32).min(MAX_OCTAVES),
+            // A lacunaridade fica em 2: o `wiggle()` da referência não a tem, e o
+            // `motion.noise` já a expõe.
+            lacunarity: 2.0,
+            roughness: self.amp_mult,
+            ty: ph2d_fbm::NoiseType::Fbm,
+        };
+        // O tempo WRAPA antes de virar coordenada — a costura mora na folha.
+        let (t_a, t_b, w) = ph2d_fbm::loop_times(t, self.loop_len);
+        // Cada elemento = uma linha de ruído (`i + seed`), rolada pelo tempo no eixo x.
+        let ny = i + self.seed + row_off;
+        let sample = |tt: f32| fbm(tt * self.frequency, ny, spec);
+        // `w == 0` é o caminho de sempre: a 2ª amostra nem é avaliada.
+        let s = if w == 0.0 {
+            sample(t_a)
+        } else {
+            let a = sample(t_a);
+            a + (sample(t_b) - a) * w
+        };
+        // A polaridade é FIXA (`Fbm`, bipolar); a derivação da faixa é a folha do `motion.noise`.
+        match self.range {
+            Some([min, max]) => {
+                let (gain, dc) = ph2d_fbm::gain_offset_for_range(
+                    ph2d_fbm::NoiseType::Fbm.natural_range(),
+                    min,
+                    max,
+                );
+                s * gain + dc
+            }
+            None => s * self.amplitude,
+        }
+    }
+}
+
 struct MotionWiggle;
 
 impl NodeOp for MotionWiggle {
@@ -164,35 +232,16 @@ impl NodeOp for MotionWiggle {
 
     fn eval(&self, ctx: &mut EvalCtx<'_>) {
         let channel = ctx.param("channel").round() as i32;
-        let amplitude = ctx.param("amplitude");
-        let frequency = ctx.param("frequency");
-        let seed = ctx.param("seed");
-        // A FAIXA — a régua alternativa. ⚠️ A polaridade é FIXA aqui (o `ty` deste
-        // nó é sempre `Fbm`, bipolar), mas a derivação é a MESMA folha que o irmão
-        // `motion.noise` usa: uma lei, dois consumidores.
-        let by_range = ctx.param("range_mode") >= 0.5;
-        let (gain, dc) = ph2d_fbm::gain_offset_for_range(
-            ph2d_fbm::NoiseType::Fbm.natural_range(),
-            ctx.param("min"),
-            ctx.param("max"),
-        );
-        let spec = ph2d_fbm::Spec {
-            octaves: (ctx.param("octaves").round().max(1.0) as u32).min(MAX_OCTAVES),
-            // ⚠️ **A lacunaridade fica em 2 e NÃO vira param aqui.** O `wiggle()`
-            // da referência não a tem, e o irmão `motion.noise` já a expõe para
-            // quem quer o campo fractal inteiro — dois nós com o mesmo knob é o
-            // que faz um artista perguntar qual dos dois manda.
-            lacunarity: 2.0,
-            roughness: ctx.param("amp_mult"),
-            ty: ph2d_fbm::NoiseType::Fbm,
+        let lei = Tremor {
+            amplitude: ctx.param("amplitude"),
+            frequency: ctx.param("frequency"),
+            seed: ctx.param("seed"),
+            octaves: ctx.param("octaves"),
+            amp_mult: ctx.param("amp_mult"),
+            loop_len: ctx.param("loop_len"),
+            range: (ctx.param("range_mode") >= 0.5).then(|| [ctx.param("min"), ctx.param("max")]),
         };
-        // ⚠️ **O tempo WRAPA antes de virar coordenada** — a costura mora na folha
-        // (`loop_times`), com o porquê de o peso ser smoothstep e não linear.
-        // ⚠️ Chamada DENTRO do laço agora: o relógio pode ser um campo, e aí cada
-        // elemento fecha o próprio ciclo. Sem porta, os `n` cálculos partem do mesmo
-        // número — byte-idêntico ao que se calculava uma vez.
         let playhead = ctx.playhead() as f32;
-        let loop_len = ctx.param("loop_len");
         let times = scalar_values(ctx.input(1), VALUE_COL);
         let out = {
             let input = ctx.input(0);
@@ -208,26 +257,8 @@ impl NodeOp for MotionWiggle {
             let field = |row_off: f32| -> Vec<f32> {
                 (0..n)
                     .map(|i| {
-                        let (t_a, t_b, w) =
-                            ph2d_fbm::loop_times(clock_at(&times, i, playhead), loop_len);
-                        // Each instance = a distinct noise row (`i + seed`), scrolled
-                        // by time on the x-axis → independent organic wiggle.
-                        let ny = i as f32 + seed + row_off;
-                        let sample = |tt: f32| fbm(tt * frequency, ny, spec);
-                        // `w == 0` é o caminho de sempre: a 2ª amostra nem é avaliada.
-                        let s = if w == 0.0 {
-                            sample(t_a)
-                        } else {
-                            let a = sample(t_a);
-                            a + (sample(t_b) - a) * w
-                        };
-                        // O DC entra ANTES da máscara, como tudo nesta família.
-                        let raw = if by_range {
-                            s * gain + dc
-                        } else {
-                            s * amplitude
-                        };
-                        raw * falloff_at(input, i)
+                        lei.sample(clock_at(&times, i, playhead), i as f32, row_off)
+                            * falloff_at(input, i)
                     })
                     .collect()
             };

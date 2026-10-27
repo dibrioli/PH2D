@@ -136,7 +136,10 @@ fn curve(kind: i32, s: f32) -> f32 {
 /// `shape`: `1` Rect (box), `2` Linear (x wipe), else Circle (disc). Circle/Rect
 /// are `1` inside fading to `0` at `radius`; Linear ramps `0→1` across `±radius`.
 /// `radius <= 0` degenerates to an empty field. `invert` mirrors it to `1 − f`.
-fn field(shape: i32, dx: f32, dy: f32, radius: f32, curve_kind: i32, invert: bool) -> f32 {
+///
+/// ⭐ Pública (append, W5.4): o `eval` e o PESO por distância de um *behaviour* chamam-na.
+#[must_use]
+pub fn field(shape: i32, dx: f32, dy: f32, radius: f32, curve_kind: i32, invert: bool) -> f32 {
     let f = if radius > 0.0 {
         match shape {
             // Rect: Chebyshev (box) distance to the edge.

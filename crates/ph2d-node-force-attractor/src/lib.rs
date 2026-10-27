@@ -174,6 +174,50 @@ fn curve(kind: i32, s: f32) -> f32 {
     }
 }
 
+/// ⭐ **A lei do nó, pública** (append, W5.4 — `docs/BlenderConstraints/06_W5_resto.md` §3.2): a
+/// aceleração de um ponto puxado (ou empurrado) para um alvo. O `eval` e o *behaviour* «Atrair»
+/// (que a integra num simulador de quadros) chamam-na — uma lei, dois chamadores.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Puxao {
+    strength: f32,
+    kind: i32,
+    sign: f32,
+    profile: Profile,
+}
+
+impl Puxao {
+    /// Os params do nó: `strength`, `radius`, `curve`, `repel` e o perfil `[inner, peak, reverse]`.
+    #[must_use]
+    pub fn of(strength: f32, radius: f32, curve: f32, repel: bool, perfil: [f32; 3]) -> Self {
+        let radius = radius.max(DEAD_ZONE);
+        let kind = curve.round() as i32;
+        let [inner, peak, reverse] = perfil;
+        Self {
+            strength,
+            kind,
+            sign: if repel { -1.0 } else { 1.0 },
+            profile: Profile::of(inner, peak, reverse, radius, kind, DEAD_ZONE),
+        }
+    }
+
+    /// A aceleração em `p` para `target`, pesada por `falloff`.
+    #[must_use]
+    pub fn accel(&self, p: [f32; 2], target: [f32; 2], falloff: f32) -> [f32; 2] {
+        let dx = target[0] - p[0];
+        let dy = target[1] - p[1];
+        let d = (dx * dx + dy * dy).sqrt();
+        let Some(s) = self.profile.shape_at(d) else {
+            return [0.0, 0.0];
+        };
+        let w = curve(self.kind, s);
+        // ⚠️ A inversão MULTIPLICA o sinal em vez de o substituir: `repel` vira
+        // tudo, `reverse` vira um pedaço, e os dois compõem sem precedência.
+        let turn = if self.profile.flips(d) { -1.0 } else { 1.0 };
+        let mag = self.strength * w * self.sign * turn * falloff;
+        [(dx / d) * mag, (dy / d) * mag]
+    }
+}
+
 /// O ALVO de um elemento — o ponto para onde ele é puxado, já LIDERADO.
 ///
 /// `None` quando não há alvo nenhum (modo `Stream`, porta vazia): quem chama não soma
@@ -330,17 +374,12 @@ impl NodeOp for ForceAttractor {
         } else {
             (Vec::new(), Vec::new())
         };
-        let strength = ctx.param("strength");
-        let radius = ctx.param("radius").max(DEAD_ZONE);
-        let kind = ctx.param("curve").round() as i32;
-        let sign = if ctx.param("repel") >= 0.5 { -1.0 } else { 1.0 };
-        let profile = Profile::of(
-            ctx.param(INNER),
-            ctx.param(PEAK),
-            ctx.param(REVERSE),
-            radius,
-            kind,
-            DEAD_ZONE,
+        let lei = Puxao::of(
+            ctx.param("strength"),
+            ctx.param("radius"),
+            ctx.param("curve"),
+            ctx.param("repel") >= 0.5,
+            [ctx.param(INNER), ctx.param(PEAK), ctx.param(REVERSE)],
         );
         let out = {
             let input = ctx.input(0);
@@ -358,18 +397,7 @@ impl NodeOp for ForceAttractor {
                 } else {
                     point
                 };
-                let dx = target[0] - p[0];
-                let dy = target[1] - p[1];
-                let d = (dx * dx + dy * dy).sqrt();
-                let Some(s) = profile.shape_at(d) else {
-                    return [0.0, 0.0];
-                };
-                let w = curve(kind, s);
-                // ⚠️ A inversão MULTIPLICA o sinal em vez de o substituir: `repel` vira
-                // tudo, `reverse` vira um pedaço, e os dois compõem sem precedência.
-                let turn = if profile.flips(d) { -1.0 } else { 1.0 };
-                let mag = strength * w * sign * turn * falloff_at(input, i);
-                [(dx / d) * mag, (dy / d) * mag]
+                lei.accel(p, target, falloff_at(input, i))
             });
             add_accel(input, &contrib)
         };

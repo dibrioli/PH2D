@@ -343,6 +343,55 @@ fn cycles_per_second(mode: f32, frequency: f32, bpm: f32) -> f32 {
 // campo: qualquer knob futuro cuja unidade seja *"segundos desde um zero que ninguém vê"*
 // nasce vermelho nele.
 
+/// ⭐ **A lei do nó, pública** (append, W5.4 — `docs/BlenderConstraints/06_W5_resto.md` §3.2): o
+/// `eval` e o *behaviour* «Flutuar» de qualquer objecto chamam-na — uma lei, dois chamadores.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Onda {
+    pub wave: i32,
+    pub amplitude: f32,
+    pub frequency: f32,
+    pub offset: f32,
+    pub phase: f32,
+    pub time_mode: f32,
+    pub bpm: f32,
+    pub pulse_width: f32,
+    /// `Some([min, max])` = a régua da FAIXA (`range_mode`) em vez de `amplitude`/`offset`.
+    pub range: Option<[f32; 2]>,
+}
+
+impl Default for Onda {
+    fn default() -> Self {
+        Self {
+            wave: 0,
+            amplitude: 1.0,
+            frequency: 1.0,
+            offset: 0.0,
+            phase: 0.0,
+            time_mode: 0.0,
+            bpm: 120.0,
+            pulse_width: 0.5,
+            range: None,
+        }
+    }
+}
+
+impl Onda {
+    /// A onda no instante `t`, com a fase extra `stagger` (`i · phase_stagger` no nó), antes da
+    /// máscara. `curve` é a forma desenhada ([`WAVE_CUSTOM`]).
+    #[must_use]
+    pub fn sample(&self, t: f32, stagger: f32, curve: Option<&Curve>) -> f32 {
+        let cps = cycles_per_second(self.time_mode, self.frequency, self.bpm);
+        // A FAIXA: a régua alternativa. Desligada, os dois números são os de sempre.
+        let (amplitude, offset) = match self.range {
+            Some([min, max]) => gain_offset_for_range(natural_range(self.wave), min, max),
+            None => (self.amplitude, self.offset),
+        };
+        let phase = t * cps + stagger + self.phase;
+        // DC `offset` shifts the oscillation centre.
+        waveform(self.wave, phase, self.pulse_width, curve) * amplitude + offset
+    }
+}
+
 struct MotionOscillator;
 
 impl NodeOp for MotionOscillator {
@@ -352,24 +401,19 @@ impl NodeOp for MotionOscillator {
 
     fn eval(&self, ctx: &mut EvalCtx<'_>) {
         let channel = ctx.param("channel").round() as i32;
-        let wave = ctx.param("wave").round() as i32;
         let phase_stagger = ctx.param("phase_stagger");
-        let offset = ctx.param("offset");
-        let phase0 = ctx.param("phase");
         let t = ctx.playhead() as f32;
-        let cps = cycles_per_second(
-            ctx.param("time_mode"),
-            ctx.param("frequency"),
-            ctx.param("bpm"),
-        );
-        // A FAIXA: a régua alternativa. Desligada, os dois números são os de sempre.
-        let (amplitude, offset) = if ctx.param("range_mode") >= 0.5 {
-            gain_offset_for_range(natural_range(wave), ctx.param("min"), ctx.param("max"))
-        } else {
-            (ctx.param("amplitude"), offset)
+        let lei = Onda {
+            wave: ctx.param("wave").round() as i32,
+            amplitude: ctx.param("amplitude"),
+            frequency: ctx.param("frequency"),
+            offset: ctx.param("offset"),
+            phase: ctx.param("phase"),
+            time_mode: ctx.param("time_mode"),
+            bpm: ctx.param("bpm"),
+            pulse_width: ctx.param("pulse_width"),
+            range: (ctx.param("range_mode") >= 0.5).then(|| [ctx.param("min"), ctx.param("max")]),
         };
-        // ⚠️ Lido AQUI e não dentro do laço: ele é uniforme no dispatch inteiro.
-        let pulse_width = ctx.param("pulse_width");
         // A forma DESENHADA (`wave = Custom`). Parseada UMA vez, fora do laço — ela é
         // uniforme no dispatch, como o `pulse_width`, e um parse por elemento seria o
         // custo de uma string por instância.
@@ -387,11 +431,9 @@ impl NodeOp for MotionOscillator {
             // Pure per-instance map → parallel above the threshold (bit-identical,
             // no reduction). GPU/M5 Fase 0.
             let deltas: Vec<f32> = par_build(n, |i| {
-                let phase = clock_at(&times, i, t) * cps + i as f32 * phase_stagger + phase0;
-                // DC `offset` shifts the oscillation centre; the whole
-                // contribution is falloff-masked (like every behaviour).
-                (waveform(wave, phase, pulse_width, curve.as_ref()) * amplitude + offset)
-                    * falloff_at(input, i)
+                let stagger = i as f32 * phase_stagger;
+                // The whole contribution is falloff-masked (like every behaviour).
+                lei.sample(clock_at(&times, i, t), stagger, curve.as_ref()) * falloff_at(input, i)
             });
             apply_channel_delta(input, channel, &deltas)
         };

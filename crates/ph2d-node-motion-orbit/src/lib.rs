@@ -131,6 +131,15 @@ const CARRY_ROTATION: &str = "carry_rotation";
 /// deterministic (HR-5); multiplying by a reciprocal would not be exact.
 const DEG_PER_TURN: f32 = 360.0;
 
+/// ⭐ O ângulo da órbita no instante `t` (graus: `angle + t·speed`) e a sua base `(cos, sin)` —
+/// absoluto, nunca acumulado. Público (append, W5.4): o `eval` e o *behaviour* «Orbitar».
+#[must_use]
+pub fn turn(angle: f32, speed: f32, t: f32) -> (f32, f32, f32) {
+    let theta_deg = angle + t * speed;
+    let (c, s) = cos_sin_cycles(theta_deg / DEG_PER_TURN);
+    (theta_deg, c, s)
+}
+
 /// The multiplicative `falloff` weight for instance `i` (absent → `1.0`).
 fn falloff_at(stream: &Stream, i: usize) -> f32 {
     match stream.get("falloff") {
@@ -142,7 +151,10 @@ fn falloff_at(stream: &Stream, i: usize) -> f32 {
 /// Rotate `p` about `pivot` by the matrix `(c, s)`, then blend from the original
 /// toward the rotated position by `f` (the falloff): `f = 0` keeps `p`, `f = 1`
 /// takes the full orbit.
-fn orbit_point(p: [f32; 2], pivot: [f32; 2], c: f32, s: f32, f: f32) -> [f32; 2] {
+///
+/// ⭐ Pública (append, W5.4): o `eval` e o *behaviour* «Orbitar» chamam-na, com [`turn`].
+#[must_use]
+pub fn orbit_point(p: [f32; 2], pivot: [f32; 2], c: f32, s: f32, f: f32) -> [f32; 2] {
     let dx = p[0] - pivot[0];
     let dy = p[1] - pivot[1];
     let rx = pivot[0] + (c * dx - s * dy);
@@ -286,11 +298,12 @@ impl NodeOp for MotionOrbit {
 
     fn eval(&self, ctx: &mut EvalCtx<'_>) {
         let pivot = [ctx.param("pivot_x"), ctx.param("pivot_y")];
-        let angle = ctx.param("angle");
-        let speed = ctx.param("speed");
-        let theta_deg = angle + ctx.playhead() as f32 * speed;
+        let (theta_deg, c, s) = turn(
+            ctx.param("angle"),
+            ctx.param("speed"),
+            ctx.playhead() as f32,
+        );
         let carry = ctx.param(CARRY_ROTATION) >= 0.5;
-        let (c, s) = cos_sin_cycles(theta_deg / DEG_PER_TURN);
         let out = {
             let input = ctx.input(0);
             let n = input.count();

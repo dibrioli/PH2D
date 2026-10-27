@@ -55,7 +55,7 @@ impl Canal {
         }
     }
 
-    fn set(self, p: &mut Pose2, v: f64) {
+    pub(crate) fn set(self, p: &mut Pose2, v: f64) {
         match self {
             Self::X => p.x = v,
             Self::Y => p.y = v,
@@ -180,15 +180,7 @@ impl Transformation {
             Canal::Rot => wrap_pi(src.rot),
             c => c.of(src),
         };
-        let [a, b] = self.de_faixa;
-        let t = if b == a {
-            if v >= a { 1.0 } else { 0.0 }
-        } else {
-            (v - a) / (b - a)
-        };
-        let t = if self.extrapola { t } else { t.clamp(0.0, 1.0) };
-        let [c, d] = self.para_faixa;
-        let out = c + t * (d - c);
+        let out = crate::faixa(v, self.de_faixa, self.para_faixa, self.extrapola);
         let agora = self.para.of(base);
         let v = match (self.mix, self.para) {
             (Mix::Replace, _) => out,

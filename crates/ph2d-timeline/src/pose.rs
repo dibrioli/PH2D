@@ -106,28 +106,7 @@ pub(crate) fn set_transform_field(
 pub fn pose_at(world: &World, doc: &TimelineDoc, entity: u64, clip_t: f64) -> Option<Transform> {
     let e = Entity::try_from_bits(entity)?;
     let mut xf = *world.get::<Transform>(e)?;
-    // A duração autorada do clip corta o próprio relógio (Enio, 2026-07-23) — o mesmo
-    // corte que o apply faz, senão um fantasma além do fim leria um tempo que o objeto
-    // vivo nunca alcança.
-    let clip_t = doc.clip_cut(doc.active_index(), clip_t);
-    // O relógio da entidade (Time Remap) é o mesmo para todos os bindings dela.
-    let t_entity = remapped_time(doc, entity, clip_t);
-    // **Um `LinkFrame` DEGENERADO** (ADR-0152 W6, §3): os prop-links (`Nome.prop`) resolvem à
-    // pose VIVA da fonte, semeada do mundo. Uma expressão LOCAL (time/wiggle) o ignora e o
-    // fantasma é EXATO; um prop-link entre objetos é APROXIMADO — lê a pose da fonte NESTE
-    // playhead, não no tempo `t_entity` do fantasma, porque o onion não tem o grafo cross-time
-    // (limitação declarada). Semear do mundo pós-apply mantém `pose_at == {apply; read}` para
-    // canal keyado E expressão local, o que o gate de equivalência pina.
-    let mut links = crate::frame_solve::LinkFrame {
-        // ⚠️ A metade BOUND do mapa de nomes: o fantasma recebe `&World` de dentro do
-        // extract, e os prop-links dele já são aproximados por construção (leem a fonte no
-        // playhead vivo, não no tempo do fantasma). Alcançar uma fonte NÃO-bindada exigiria
-        // empurrar `&mut` pelo caminho de render para deixar uma aproximação um pouco
-        // menos aproximada.
-        names: crate::frame_solve::build_names_bound(world, doc),
-        ..Default::default()
-    };
-    crate::frame_solve::seed_links(world, doc, &mut links.links);
+    let (t_entity, links) = instante(world, doc, entity, clip_t);
     for b in doc.bindings() {
         if b.entity != entity || b.missing || b.prop == PropKind::TimeRemap {
             continue;
@@ -156,6 +135,66 @@ pub fn pose_at(world: &World, doc: &TimelineDoc, entity: u64, clip_t: f64) -> Op
         );
     }
     Some(xf)
+}
+
+/// O relógio da entidade no instante `clip_t` (o corte do clip e o Time Remap) e o `LinkFrame` dos
+/// prop-links — o preâmbulo comum do [`pose_at`] e do [`field_at`].
+fn instante(
+    world: &World,
+    doc: &TimelineDoc,
+    entity: u64,
+    clip_t: f64,
+) -> (f64, crate::frame_solve::LinkFrame) {
+    // A duração autorada do clip corta o próprio relógio (Enio, 2026-07-23) — o mesmo
+    // corte que o apply faz, senão um fantasma além do fim leria um tempo que o objeto
+    // vivo nunca alcança.
+    let clip_t = doc.clip_cut(doc.active_index(), clip_t);
+    // O relógio da entidade (Time Remap) é o mesmo para todos os bindings dela.
+    let t_entity = remapped_time(doc, entity, clip_t);
+    // **Um `LinkFrame` DEGENERADO** (ADR-0152 W6, §3): os prop-links (`Nome.prop`) resolvem à
+    // pose VIVA da fonte, semeada do mundo. Uma expressão LOCAL (time/wiggle) o ignora e o
+    // fantasma é EXATO; um prop-link entre objetos é APROXIMADO — lê a pose da fonte NESTE
+    // playhead, não no tempo `t_entity` do fantasma, porque o onion não tem o grafo cross-time
+    // (limitação declarada). Semear do mundo pós-apply mantém `pose_at == {apply; read}` para
+    // canal keyado E expressão local, o que o gate de equivalência pina.
+    let mut links = crate::frame_solve::LinkFrame {
+        // ⚠️ A metade BOUND do mapa de nomes: o fantasma recebe `&World` de dentro do
+        // extract, e os prop-links dele já são aproximados por construção (leem a fonte no
+        // playhead vivo, não no tempo do fantasma). Alcançar uma fonte NÃO-bindada exigiria
+        // empurrar `&mut` pelo caminho de render para deixar uma aproximação um pouco
+        // menos aproximada.
+        names: crate::frame_solve::build_names_bound(world, doc),
+        ..Default::default()
+    };
+    crate::frame_solve::seed_links(world, doc, &mut links.links);
+    (t_entity, links)
+}
+
+/// ⭐ **O valor de UM campo de família num instante** (`PropKind::Field`) — o irmão do [`pose_at`],
+/// pela mesma porta da amostra (`solo_source_value`), sem escrever o mundo. É o que a mola do «Valor»
+/// re-simula ao arrastar a timeline (`docs/BlenderConstraints/06_W5_resto.md` §3.1). `None` = o
+/// campo não é animado (nenhum binding vivo com curva ou expressão).
+#[must_use]
+pub fn field_at(
+    world: &World,
+    doc: &TimelineDoc,
+    entity: u64,
+    k: ph2d_ecs::FieldKey,
+    clip_t: f64,
+) -> Option<f32> {
+    let b = doc
+        .bindings()
+        .iter()
+        .find(|b| b.entity == entity && !b.missing && b.prop == PropKind::Field(k))?;
+    let (t_entity, links) = instante(world, doc, entity, clip_t);
+    crate::stack_eval::solo_source_value(
+        doc,
+        doc.active_index(),
+        b.target,
+        t_entity,
+        b.rest.unwrap_or(0.0),
+        &links,
+    )
 }
 
 /// ⭐⭐⭐ **A pose de MUNDO de uma entidade num instante** — o [`pose_at`] de **cada elo** da cadeia,

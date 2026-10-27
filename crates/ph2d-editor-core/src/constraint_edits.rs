@@ -5,7 +5,7 @@
 
 /// As entradas do menu **+**, na ordem em que aparecem: a chave `ph2d-i18n` do rótulo. O índice é o
 /// que [`ConstraintFieldEdit::Adicionar`] leva e o que [`InspectorConstraintRow::tipo`] diz.
-pub const TIPOS: [&str; 20] = [
+pub const TIPOS: [&str; 21] = [
     "panel.inspector.constraint.child_of",
     "panel.inspector.constraint.copy_location",
     "panel.inspector.constraint.copy_rotation",
@@ -26,6 +26,7 @@ pub const TIPOS: [&str; 20] = [
     "panel.inspector.constraint.spring",
     "panel.inspector.constraint.glue_rigid",
     "panel.inspector.constraint.glue_pin",
+    "panel.inspector.constraint.value",
 ];
 
 /// O índice em [`TIPOS`] da cola **Rígida** (solda): não é item da pilha — arma o clique que escolhe o
@@ -95,6 +96,7 @@ pub enum EstadoDaConstraint {
     EspacoColapsado,
     NaoEOsso,
     SemClip,
+    SemValor,
 }
 
 impl EstadoDaConstraint {
@@ -113,6 +115,7 @@ impl EstadoDaConstraint {
             Self::EspacoColapsado => "panel.inspector.constraint.state.collapsed",
             Self::NaoEOsso => "panel.inspector.constraint.state.not_a_bone",
             Self::SemClip => "panel.inspector.constraint.state.no_clip",
+            Self::SemValor => "panel.inspector.constraint.state.no_value",
         })
     }
 

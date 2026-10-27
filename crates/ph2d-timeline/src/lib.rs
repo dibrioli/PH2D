@@ -130,7 +130,9 @@ pub use path::{MotionPath, PathAnchor, PathSample, TangentKind};
 pub use path_convert::{ConversionReport, PositionKeyMode};
 pub use persist::{refresh_and_heal_bindings, resolve_entities, stamp_wire_ids};
 pub use place_owner::{PLACE_PROPS, PlaceMove, PlaceMoveRefusal, rehome_moved_places};
-pub use pose::{animated_entities, entity_key_times, pose_at, world_pose_at, world_pose_at_into};
+pub use pose::{
+    animated_entities, entity_key_times, field_at, pose_at, world_pose_at, world_pose_at_into,
+};
 pub use prop::{Algebra, PropKind};
 pub use refusal::{ClipRefusal, KeyRefusal, NestRefusal};
 pub use signal::{TimelineSignal, signals_crossed};

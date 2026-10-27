@@ -309,6 +309,17 @@ fn um_passo<const N: usize>(
     n
 }
 
+/// Os «Valor» da cena, por `(Entity::to_bits, Item::id)` (06_W5 §3.1), preparados pela família
+/// antes da pilha: a saída deste quadro já na faixa do destino (a pilha aplica-a na posição do item
+/// quando o destino é a pose); sem saída, a fonte ou o destino não existe.
+#[derive(Resource, Default, Debug)]
+pub struct Valores {
+    pub sims: BTreeMap<(u64, u32), Simulador<1>>,
+    /// A fonte que nenhuma curva anima: o valor que se viu no quadro em que mudou — o scrub relê-o.
+    pub historia: BTreeMap<(u64, u32), BTreeMap<i64, f64>>,
+    pub saidas: BTreeMap<(u64, u32), f64>,
+}
+
 /// As molas da cena, por `(Entity::to_bits, Item::id)`: o simulador de cada uma e o atraso deste
 /// quadro, que a fase soma à pose na posição do item.
 #[derive(Resource, Default, Debug)]

@@ -32,6 +32,8 @@ pub enum Estado {
     NaoEOsso,
     /// O Action pede um clip que a animação do dono não tem.
     SemClip,
+    /// O Valor segue (ou escreve) uma propriedade que o objecto não tem.
+    SemValor,
 }
 
 /// Guarda das passagens de IKs acopladas por quadro. Medido (doc W2 §2): a mudança cai ~40× por
@@ -75,7 +77,9 @@ impl Estados {
     }
 }
 
-pub(crate) fn pose(t: &Transform) -> Pose2 {
+/// A pose da lei (`f64`) de um `Transform` da casa.
+#[must_use]
+pub fn pose(t: &Transform) -> Pose2 {
     Pose2 {
         x: f64::from(t.translation.x),
         y: f64::from(t.translation.y),
@@ -447,6 +451,20 @@ fn avalia_uma(
                 .unwrap_or_default();
             dono = sp.aplica(dono, atraso, it.influence);
             marca(it.id, Estado::Activa);
+            continue;
+        }
+        if let Kind::Valor(v) = &it.kind {
+            let saida = sim
+                .world()
+                .get_resource::<crate::Valores>()
+                .and_then(|m| m.saidas.get(&(e.to_bits(), it.id)).copied());
+            match saida {
+                Some(out) => {
+                    dono = v.na_pose(dono, out, it.influence);
+                    marca(it.id, Estado::Activa);
+                }
+                None => marca(it.id, Estado::SemValor),
+            }
             continue;
         }
         if let Kind::Action(a) = &it.kind {

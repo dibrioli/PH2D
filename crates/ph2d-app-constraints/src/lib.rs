@@ -19,6 +19,7 @@ pub mod smoke_braco;
 pub mod smoke_caixa;
 pub mod smoke_pega;
 pub mod smoke_regua;
+pub mod valor;
 
 use bevy_ecs::prelude::Resource;
 use ph2d_ecs::SimWorld;

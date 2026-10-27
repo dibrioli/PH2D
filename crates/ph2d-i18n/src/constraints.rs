@@ -25,6 +25,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.constraint.spring" => "Spring",
         "panel.inspector.constraint.glue_rigid" => "Glue · Rigid",
         "panel.inspector.constraint.glue_pin" => "Glue · Pin",
+        "panel.inspector.constraint.value" => "Follow Value",
         "panel.inspector.constraint.glue.rigid_with" => "Glue · Rigid — {name}",
         "panel.inspector.constraint.glue.pin_with" => "Glue · Pin — {name}",
         "panel.inspector.constraint.glue.unglue" => "Unglue",
@@ -123,6 +124,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.constraint.state.collapsed" => "A parent has scale 0",
         "panel.inspector.constraint.state.not_a_bone" => "IK works on bones: select a bone in Pose",
         "panel.inspector.constraint.state.no_clip" => "The object has no clip with this number",
+        "panel.inspector.constraint.state.no_value" => "The object has no such property",
         _ => return None,
     })
 }

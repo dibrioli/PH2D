@@ -175,6 +175,7 @@ pub enum Kind {
     PontoDeForma(PontoDeForma),
     Action(Action),
     Spring(Spring),
+    Valor(crate::Valor),
 }
 
 impl Kind {
@@ -239,7 +240,8 @@ impl Kind {
             | Self::SplineIk(_)
             | Self::PontoDeForma(_)
             | Self::Action(_)
-            | Self::Spring(_) => {}
+            | Self::Spring(_)
+            | Self::Valor(_) => {}
         }
         Ok(())
     }
@@ -260,7 +262,7 @@ impl Kind {
     pub fn resolve_with(&self, ctx: &Ctx, path: Option<&[[f64; 2]]>) -> Result<Pose2, Inerte> {
         match self {
             Self::Ik(_) | Self::SplineIk(_) => Err(Inerte::Corrente),
-            Self::Action(_) | Self::Spring(_) => Err(Inerte::Relogio),
+            Self::Action(_) | Self::Spring(_) | Self::Valor(_) => Err(Inerte::Relogio),
             Self::Pivot(p) => Ok(p.resolve(ctx)),
             Self::Floor(f) => f.resolve(ctx),
             Self::Transformation(t) => t.resolve(ctx),

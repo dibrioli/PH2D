@@ -44,6 +44,7 @@ pub fn tipo_de(k: &Kind) -> u8 {
         Kind::PontoDeForma(_) => 15,
         Kind::Action(_) => 16,
         Kind::Spring(_) => 17,
+        Kind::Valor(_) => 20,
     }
 }
 
@@ -91,6 +92,7 @@ fn novo(sim: &SimWorld, e: Entity, i: u8) -> Option<Kind> {
         15 => Kind::PontoDeForma(PontoDeForma::default()),
         16 => Kind::Action(Action::default()),
         17 => Kind::Spring(Spring::default()),
+        20 => Kind::Valor(ph2d_constraints::Valor::default()),
         _ => return None,
     })
 }
@@ -107,6 +109,7 @@ fn estado(e: Estado) -> EstadoDaConstraint {
         Estado::EspacoColapsado => EstadoDaConstraint::EspacoColapsado,
         Estado::NaoEOsso => EstadoDaConstraint::NaoEOsso,
         Estado::SemClip => EstadoDaConstraint::SemClip,
+        Estado::SemValor => EstadoDaConstraint::SemValor,
     }
 }
 

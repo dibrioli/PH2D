@@ -371,6 +371,16 @@ impl CanaisEscritos {
         self.valores.push((entidade, k, v));
     }
 
+    /// O que se mandou escrever neste quadro em `(entidade, k)` — a última escrita, como o dreno a deixa.
+    #[must_use]
+    pub fn valor(&self, entidade: u64, k: FieldKey) -> Option<f32> {
+        self.valores
+            .iter()
+            .rev()
+            .find(|(e, c, _)| *e == entidade && *c == k)
+            .map(|&(_, _, v)| v)
+    }
+
     /// Tira as escritas de UMA família, deixando as outras para quem as drena (o apply poupa
     /// [`MaosDasFamilias`]).
     pub fn drenar(&mut self, familia: u16) -> Vec<(u64, FieldKey, f32)> {

@@ -12,6 +12,7 @@ mod caminho;
 mod kind;
 mod ossos;
 mod poderosas;
+mod valor;
 
 pub use caminho::{FollowPath, PathBy};
 pub use kind::{
@@ -21,6 +22,7 @@ pub use ossos::{Ik, StretchTo, Volume, bend_in_world, solve_chain, stretch_facto
 use ph2d_affine::Xform;
 pub use ph2d_skeleton::BendSide;
 pub use ph2d_skeleton::{blend_angle, clamp_to_limit, wrap_pi};
+pub use valor::{Mola, Prop, Valor, faixa};
 pub use poderosas::{
     Action, Ajuste, Canal, EixoDoChao, Floor, Pivot, PontoDeForma, SplineIk, Spring,
     Transformation, lay_on_curve,
@@ -159,7 +161,7 @@ pub enum Inerte {
     EspacoColapsado,
     /// O tipo escreve uma corrente de ossos, não só o dono: avalia-o a fase.
     Corrente,
-    /// O tipo lê o tempo (um clip, a mola): avalia-o a fase.
+    /// O tipo lê o tempo (um clip, a mola) ou o valor de outro objecto: avalia-o a fase.
     Relogio,
 }
 

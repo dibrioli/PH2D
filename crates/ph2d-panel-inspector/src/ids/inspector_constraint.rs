@@ -39,6 +39,7 @@ pub const INSP_CONSTRAINT_TIPO: [NodeId; TIPOS.len()] = [
     hash_node_id("insp_constraint_tipo_17"),
     hash_node_id("insp_constraint_tipo_18"),
     hash_node_id("insp_constraint_tipo_19"),
+    hash_node_id("insp_constraint_tipo_20"),
 ];
 
 /// O «Unglue» de cada linha de cola (a posição é a da cola em `InspectorConstraintsInfo::colas`).

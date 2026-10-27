@@ -241,10 +241,11 @@ for luz, modo in VARIANTES:
         im.color_depth = "8"
         bpy.data.images["Render Result"].save_render(os.path.join(saida, f"{nome}_agx.png"), scene=cena)
 
-# W2 E3-B: os MATERIAIS (`materiais_e3.py`, a mesma lista da sonda) — o Principled com o MESMO valor sobre a
-# MESMA tinta. `PH2D_CYCLES_MAT="a,b"` (ou `todos`) liga-os; cada um grava `mat_<nome>_cor` e `_brilho`.
-# A estria (`t_estria.f32`) vai à Tangent e a passagem da película (`t_passagem.f32`) pesa a Transmission
-# (Thin Wall) sobre um PAPEL branco difuso logo abaixo da tinta.
+# W3 (27/10): os MATERIAIS (`materiais_e3.py`, a mesma lista da sonda) — o Principled com o MESMO valor ABSOLUTO
+# sobre a MESMA tinta. `PH2D_CYCLES_MAT="a,b"` (ou `todos`) liga-os; cada um grava `mat_<nome>_cor` e `_brilho`.
+# A Subsurface (Random Walk, Radius de omissão (1; 0,2; 0,1), Scale = o raio em células) precisa de um VOLUME:
+# a malha fecha-se por baixo (fundo plano logo abaixo da tinta, paredes na borda) e um PAPEL branco difuso fica
+# por baixo — a luz que atravessa a película fina volta dele.
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import materiais_e3  # noqa: E402
 
@@ -252,33 +253,47 @@ MAT_SO = [x for x in os.environ.get("PH2D_CYCLES_MAT", "").split(",") if x]
 if MAT_SO == ["todos"]:
     MAT_SO = list(materiais_e3.MATERIAIS)
 if MAT_SO:
-    nv = gw * gh
-    est = np.fromfile(os.path.join(entrada, "t_estria.f32"), dtype="<f4").reshape(nv, 2).astype(np.float64)
-    zero = np.hypot(est[:, 0], est[:, 1]) < 1e-6
-    est[zero] = (1.0, 0.0)
-    tang = np.stack([est[:, 0], -est[:, 1], np.zeros(nv)], axis=-1)  # y da tela para baixo
-    at = malha.attributes.new("estria", "FLOAT_VECTOR", "POINT")
-    at.data.foreach_set("vector", tang.astype(np.float32).ravel())
-    pas = np.fromfile(os.path.join(entrada, "t_passagem.f32"), dtype="<f4")
-    ap = malha.attributes.new("passagem", "FLOAT", "POINT")
-    ap.data.foreach_set("value", pas.astype(np.float32))
+    ratio = meta.get("ratio", 1.0)
     nt = mat.node_tree
-    a_est = nt.nodes.new("ShaderNodeAttribute")
-    a_est.attribute_name = "estria"
-    a_pas = nt.nodes.new("ShaderNodeAttribute")
-    a_pas.attribute_name = "passagem"
-    peso_tr = nt.nodes.new("ShaderNodeMath")
-    peso_tr.operation = "MULTIPLY"
-    nt.links.new(a_pas.outputs["Fac"], peso_tr.inputs[0])
-    tinta_esp = nt.nodes.new("ShaderNodeMix")
-    tinta_esp.data_type = "RGBA"
-    tinta_esp.inputs["A"].default_value = (1.0, 1.0, 1.0, 1.0)
-    nt.links.new(tex.outputs["Color"], tinta_esp.inputs["B"])
-    # O papel: um plano branco difuso logo abaixo do zero da tinta (só aparece pela película translúcida).
+    # O fundo do volume: a grelha de baixo plana em `z_fundo`, ligada à de cima pelas paredes da borda.
+    z_fundo = float(h.min()) - 0.0005
+    vb = np.stack([ii, -jj, np.full_like(h, z_fundo)], axis=-1).reshape(-1, 3).astype(np.float64)
+    nv = gw * gh
+    fundo_q = np.stack([v00, v00 + 1, v00 + gw + 1, v00 + gw], axis=-1) + nv
+    borda = (
+        [(x, 0) for x in range(gw - 1)]
+        + [(gw - 1, y) for y in range(gh - 1)]
+        + [(x, gh - 1) for x in range(gw - 1, 0, -1)]
+        + [(0, y) for y in range(gh - 1, 0, -1)]
+    )
+    paredes = []
+    for k in range(len(borda)):
+        (xa, ya), (xb, yb) = borda[k], borda[(k + 1) % len(borda)]
+        a, b = ya * gw + xa, yb * gw + xb
+        paredes.append((a, b, b + nv, a + nv))
+    fechada = bpy.data.meshes.new("tinta_fechada")
+    fechada.from_pydata(
+        np.concatenate([verts, vb]).tolist(), [], quads.tolist() + fundo_q.tolist() + paredes
+    )
+    fechada.update()
+    fechada.shade_smooth()
+    uvf = fechada.uv_layers.new(name="uv")
+    vif = np.empty(len(fechada.loops), dtype=np.int32)
+    fechada.loops.foreach_get("vertex_index", vif)
+    vif = vif % nv
+    uvf.data.foreach_set(
+        "uv", np.stack([((vif % gw) + 0.5) / gw, 1.0 - ((vif // gw) + 0.5) / gh], axis=-1).astype(np.float32).ravel()
+    )
+    fechada.validate()
+    obj.data = fechada
+    obj.data.materials.clear()
+    obj.data.materials.append(mat)
+    bsdf.subsurface_method = "RANDOM_WALK"
+    # O papel: um plano branco difuso logo abaixo do fundo (só aparece pela película fina com Subsurface).
     bpy.ops.mesh.primitive_plane_add(size=1.0)
     papel = bpy.context.active_object
     papel.scale = (gw * 2, gh * 2, 1)
-    papel.location = ((gw - 1) / 2, -(gh - 1) / 2, -0.02)
+    papel.location = ((gw - 1) / 2, -(gh - 1) / 2, z_fundo - 0.01)
     mp = bpy.data.materials.new("papel")
     mp.use_nodes = True
     mp.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = (1.0, 1.0, 1.0, 1.0)
@@ -292,15 +307,14 @@ if MAT_SO:
     tcob.image = bpy.data.images.load(os.path.join(entrada, "cobertura.png"))
     tcob.image.colorspace_settings.name = "Non-Color"
     tcob.interpolation = "Closest"
-    peso_tr_cob = nt.nodes.new("ShaderNodeMath")
-    peso_tr_cob.operation = "MULTIPLY"
-    nt.links.new(peso_tr.outputs["Value"], peso_tr_cob.inputs[0])
-    nt.links.new(tcob.outputs["Color"], peso_tr_cob.inputs[1])
-    fator_tinta = nt.nodes.new("ShaderNodeMath")
-    fator_tinta.operation = "MULTIPLY"
-    nt.links.new(tcob.outputs["Color"], fator_tinta.inputs[0])
-    nt.links.new(fator_tinta.outputs["Value"], tinta_esp.inputs["Factor"])
     pesos = {}
+
+    def liga(saida_no, entrada_bsdf):
+        for l in list(nt.links):
+            if l.to_socket == bsdf.inputs[entrada_bsdf]:
+                nt.links.remove(l)
+        if saida_no is not None:
+            nt.links.new(saida_no, bsdf.inputs[entrada_bsdf])
 
     def pesa(entrada_bsdf, valor):
         if entrada_bsdf not in pesos:
@@ -312,13 +326,6 @@ if MAT_SO:
         liga(pesos[entrada_bsdf].outputs["Value"] if valor > 0 else None, entrada_bsdf)
         if valor <= 0:
             bsdf.inputs[entrada_bsdf].default_value = 0.0
-
-    def liga(saida_no, entrada_bsdf):
-        for l in list(nt.links):
-            if l.to_socket == bsdf.inputs[entrada_bsdf]:
-                nt.links.remove(l)
-        if saida_no is not None:
-            nt.links.new(saida_no, bsdf.inputs[entrada_bsdf])
 
     for nome_m in MAT_SO:
         m = materiais_e3.MATERIAIS[nome_m]
@@ -337,19 +344,16 @@ if MAT_SO:
             fundo.inputs["Strength"].default_value = forca * (ceu if com_sol else 1.0)
             ceu_nos.links.new(amb.outputs["Color"], fundo.inputs["Color"])
         pesa("Metallic", m.get("metal", 0.0))
-        bsdf.inputs["Roughness"].default_value = min(1.0, rug * m.get("rugosidade", 1.0))
-        bsdf.inputs["Specular IOR Level"].default_value = 0.5 * m.get("especular", 1.0)
-        fator_tinta.inputs[1].default_value = m.get("tinta_reflexo", 0.0)
-        liga(tinta_esp.outputs["Result"] if m.get("tinta_reflexo", 0.0) > 0 else None, "Specular Tint")
+        bsdf.inputs["Roughness"].default_value = min(1.0, m.get("rugosidade", rug))
+        bsdf.inputs["Specular IOR Level"].default_value = m.get("nivel_ior", 0.5)
         pesa("Coat Weight", m.get("verniz", 0.0))
-        bsdf.inputs["Coat Roughness"].default_value = min(1.0, 0.03 * m.get("verniz_rugosidade", 1.0))
+        bsdf.inputs["Coat Roughness"].default_value = min(1.0, m.get("verniz_rugosidade", 0.03))
         pesa("Sheen Weight", m.get("veludo", 0.0))
-        pesa("Anisotropic", m.get("anisotropia", 0.0))
-        liga(a_est.outputs["Vector"] if m.get("anisotropia", 0.0) > 0 else None, "Tangent")
-        peso_tr.inputs[1].default_value = m.get("translucidez", 0.0)
-        liga(peso_tr_cob.outputs["Value"] if m.get("translucidez", 0.0) > 0 else None, "Transmission Weight")
-        bsdf.inputs["Thin Wall"].default_value = m.get("translucidez", 0.0) > 0
-        papel.hide_render = m.get("translucidez", 0.0) <= 0
+        sss = m.get("subsuperficie", 0.0)
+        pesa("Subsurface Weight", sss)
+        bsdf.inputs["Subsurface Radius"].default_value = (1.0, 0.2, 0.1)
+        bsdf.inputs["Subsurface Scale"].default_value = m.get("raio_subsuperficie", 4.0) / ratio
+        papel.hide_render = sss <= 0
         cena.cycles.max_bounces = 12
         for modo in ("cor", "brilho"):
             if modo == "cor":

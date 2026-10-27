@@ -210,6 +210,60 @@ mesma luz; brilho = só especular, p99 · área > 0,3):
   e `cobre` mexem pouco; a causa é a crista FORA da altura da sombra (`Afinacao::fios_na_sombra`, fábrica 0) e o
   chão do ambiente dentro da tinta (Força 0,15 → 0,44 × 0,40). Recusada de fábrica: muda o Oil Bristle.
 
+## §M-SSS — A Subsurface (W3 M1, 27/10)
+
+Código: [`oleo_material.rs`](../../../../crates/ph2d-wet-paint/src/oleo_material.rs) (`espalha`, `irradiancia`,
+`raio_subsuperficie_max`), `oleo_real::CampoAltura::subsuperficie_em`, `Termos::sss`. Oráculo: `cycles.py` (W3: os 8
+ABSOLUTOS; a malha FECHA-SE num volume — fundo plano logo abaixo da tinta e paredes na borda — e um papel branco
+fica por baixo; Principled Random Walk, `Subsurface Radius (1; 0,2; 0,1)`, `Scale` = o raio em células),
+`materiais_e3.py` (`sss*`), `compara_e3.py` (secção Subsurface), `sss_regioes.py`, `sss_candidatas.py`. Entrada
+nova `entrada_sss/` (a do 26/10 era de antes da W2). Régua inteira: [`regua_M1_sss.txt`](regua_M1_sss.txt) · folha
+[`../out/M1_sss_folha.jpg`](../out/M1_sss_folha.jpg) (nós | Cycles: neutro, r4, r16; em baixo o zoom).
+
+**A lei** — a luz que ENTRA ao lado e sai aqui: a irradiância cinza `E` (os mesmos termos difusos do sombreado)
+desfocada por canal com uma gaussiana separável de desvio `raio × (1; 0,2; 0,1)` (o raio da célula em cada
+passagem, à Jimenez), e somada ao difuso de cada canal **só onde a vizinhança é mais clara**:
+`difuso_c += peso · max(0, B_c − E)`. A cor do espalhamento é a da tinta (o difuso multiplica o albedo). Tinta lisa:
+`B = E` ⇒ a cor dela. Energia: `E + s ≤ max E` da vizinhança.
+
+**O que o Cycles respondeu** (cena do dono, studio_sol10, Δ do R linear; base Cycles = `sss001_r4`, ver abaixo):
+
+| região (máscara do oráculo) | r1 nós × Cy | r4 nós × Cy | r16 nós × Cy |
+|---|---|---|---|
+| sombra (`E<0,5` do Cycles) | +0,070 × +0,047 | **+0,184 × +0,157** | +0,266 × +0,313 |
+| tinta fina `h<2` | +0,011 × −0,017 | +0,033 × +0,055 | +0,057 × +0,080 |
+| borda `0,1<cob<0,9` | +0,008 × −0,043 | +0,022 × −0,025 | +0,037 × −0,007 |
+| iluminada `E>0,9` | +0,020 × −0,009 | +0,035 × +0,001 | +0,037 × +0,027 |
+| correlação por pixel R·G·B | 0,30 · — · — | 0,50 · 0,23 · 0,04 | 0,54 · 0,45 · 0,30 |
+| rms(Δnós − ΔCy) (Δ=0) | 0,072 (0,068) | **0,098 (0,104)** | **0,118 (0,145)** |
+
+Pelo peso (r4, sombra): 0,25 +0,046 × +0,040 · 0,5 +0,093 × +0,081 · 0,75 +0,139 × +0,120 · 1 +0,184 × +0,157.
+Saturação na sombra r4: nós 0,828 → 0,863 · Cycles 0,833 → 0,888 (mais saturada, como o pedido).
+
+- ⚠️ **A hipótese «bordas luminosas» saiu ERRADA no oráculo**: o Cycles ESCURECE a borda da pincelada com
+  Subsurface (o vermelho que se espalha para o papel perde-se), e a tinta fina só clareia (e satura) com raio ≥ 4.
+  O que a Subsurface faz na cena do dono é **encher a sombra e a fenda com a cor da tinta**.
+- ⚠️ **No Cycles o peso não é linear na borda**: 0,25..0,75 escurecem a borda/tinta fina −0,06..−0,08 e o peso 1
+  clareia-a (+0,06); e o arranjo com o papel visível sobe a imagem ~+0,01 com peso 0,01 (por isso a base do Cycles
+  é `sss001_r4`). Ajustámos o peso 1 (o Subsurface puro) e o peso linear (o Principled documenta a mistura).
+- **Raio padrão 4 px** (fica): r1 quase não faz nada no Cycles (e piora a nossa rms: 0,072 × 0,068); r4 é o
+  primeiro em que a sombra se enche a sério. **Tecto 16 px** (`RAIO_SUBSUPERFICIE_MAX`, efectivo; o knob do
+  pincel e do cartão vão a 16): recurso = **CPU do recompor**. O campo calcula `E` na região suja alargada por
+  `3σ` (o raio REAL da janela; o `alcance` do cartão usa o tecto, a célula pode ter raio próprio):
+
+| `medida_oleo_real_custo` (smoke, loadavg 3–8, mínimo de 5, intercalado) | sem | r4 | r16 |
+|---|---|---|---|
+| campo, tela inteira (ns por célula) | 42 | 2 511 | 3 980 |
+| campo, pincelada 65×65 + alcance (ns por célula pedida) | 372 | 35 586 | 76 237 |
+
+  A 64 px a região da pincelada cresceria `3·64 = 192` células de cada lado (~10× o r16): fora do orçamento de
+  um recompor por evento na CPU — mais longe é o passe da placa (pirâmide), como o horizonte de 64 da fenda.
+  O sombreado por célula (`termos_com`) não muda (Clássico 1 528 · Estúdio 2 132 · cheio 1 802 / 2 535).
+- Gates: `a_subsuperficie_zero_e_a_imagem_de_antes` (raio 16/12 com peso 0 = bit a bit; vermelho com o peso
+  ignorado) · `a_subsuperficie_enche_a_sombra_com_a_cor_da_tinta_e_a_energia_tem_tecto` (vermelho com o núcleo
+  sem normalizar, com `max(0, E − B)` e com o perfil `(1;1;1)`). Neutro da cena do dono: `oleo.ppm` == o de antes.
+- **Metal nas encostas (K4)**: não medido nesta passada (a régua M1 é só Subsurface); fica para a K4.
+
 ## ⛔ Recusas MEDIDAS
 
 | Tentativa | Porque saiu |
@@ -229,8 +283,16 @@ mesma luz; brilho = só especular, p99 · área > 0,3):
 | Metal com o alargamento do dieléctrico na lâmpada | a chapa lisa reflectia o sol inteiro: R 0,18 × 0,05 do Cycles (E3-B) |
 | Translucidez `a²` (ida e volta tingidas, G 1) | o Cycles dá volta/difuso 0,45 no vermelho × 0,31 no verde fino: `a^1,2`, G 0,47 (E3-B) |
 | Sheen `0,05 + 0,5·(1−nz)²` (palpite) | p50 0,134 × 0,068 do Cycles, Δ 0,106 × 0,066 → ajustado (E3-B) |
+| SSS conservadora `E + w·(B − E)` (a irradiância só redistribuída) | a encosta iluminada escurece (r4 −0,080, r16 −0,158 × Cycles +0,023 / +0,059); rms r4 0,122 × 0,108 da `max(0,·)` (M1, base Cycles = neutro) |
+| SSS com a «volta do papel» `w·g·exp(−h/(p·r_c))` (a passagem antiga) | piora a rms em toda a grelha g∈{0,1;0,25;0,5}×p∈{0,5;1;2} (r4 0,1052 → 0,1053..0,1192): o Cycles quase não clareia a tinta fina e escurece a borda (M1) |
+| SSS com perda para o papel `− w·E·(1 − blur(cob))` | borda −0,37 × −0,04 do Cycles (M1) |
+| SSS só com a luz da TINTA (`blur(E·cob)`, ou ÷ `blur(cob)`) | igual à escolhida a ±0,002 de rms; a escolhida não precisa da cobertura no campo (M1) |
 
 ## Fica aberto
+
+- Subsurface (M1): a BORDA sai +0,02..+0,04 onde o Cycles escurece −0,03..−0,06, e a iluminada +0,035 × 0,001 (r4);
+  o peso não-linear do Cycles na borda. Custo: com Subsurface o campo recalcula a irradiância (≈ o sombreado
+  outra vez) — guardá-la para o `termos_com` da mesma célula é a cura óbvia; o passe da placa.
 
 - ~~Brilho do Estúdio mais fraco que o do Cycles~~ curado na E3-B (p99 0,53 × 0,48; área 2,12 % × 2,13 %).
 - Metal nas ENCOSTAS: R p50 0,28 × 0,16 e p90 0,60 × 1,16 do Cycles (falta o reflexo forte da janela; o tapado

@@ -77,13 +77,36 @@ for m in SO:
             f"{'' if rot == 'Cycles' else f' · {corr:+.2f}':<8} | {txt_b}"
         )
 
-# A translucidez POR PASSAGEM (a fracção que chega ao papel): onde ela é 0 o Cycles muda +0,01 com a Thin Wall e
-# o plano do papel por baixo (um desvio do arranjo do oráculo, não do lóbulo) — o lóbulo lê-se nas faixas > 0.
-gh, gw = tinta.shape
-pas = np.fromfile(f"{son}/neutro/t_passagem.f32", dtype="<f4").reshape(gh, gw)
-for m in [x for x in SO if x.startswith("transl")]:
-    base = "neutro_hdri" if materiais_e3.luz(m) == "hdri_studio" else "neutro"
-    dn, dc = nos_lum(m) - nos_lum(base), cy_lum(m) - cy_lum(base)
-    for lo, hi in ((0, 0.001), (0.001, 0.05), (0.05, 0.3), (0.3, 1.01)):
-        k = tinta & (pas >= lo) & (pas < hi)
-        print(f"{m:<14} passagem [{lo},{hi}) n={k.sum():6d}: Δ nós {dn[k].mean():+.4f} · Cycles {dc[k].mean():+.4f}")
+# W3 M1 — a SUBSURFACE por região (máscaras do ORÁCULO: a altura `h_fina.f32` e a cobertura da entrada do
+# Cycles; a sombra pela irradiância do Cycles, `studio_sol10_cinza`, se houver). Base do Cycles = `sss001_r4`
+# (o mesmo arranjo — volume fechado e papel por baixo — com peso 0,01: o papel visível sobe a imagem ~+0,01 sem
+# Subsurface nenhuma); a nossa base = `neutro`. Δ do canal R, saturação (max−min)/max, e correlação por pixel.
+SSS = [m for m in SO if m.startswith("sss") and m != "sss001_r4"]
+if SSS:
+    gh, gw = tinta.shape
+    h = np.fromfile(f"{son}/neutro/h_fina.f32", dtype="<f4").reshape(gh, gw)
+    cob = pnm(f"{son}/neutro/cobertura.pgm") / 255.0
+    lin3 = lambda m: np.clip(lin(pnm(f"{son}/{m}/oleo.ppm")), 0, 1)
+    cy3 = lambda m: np.clip(exr(f"mat_{m}_cor"), 0, 1)
+    sat = lambda c: (c.max(-1) - c.min(-1)) / np.maximum(c.max(-1), 1e-6)
+    mascaras = {"borda": (cob > 0.1) & (cob < 0.9), "fina h<2": tinta & (h < 2), "h 2-8": tinta & (h >= 2) & (h < 8),
+                "grossa": tinta & (h >= 8)}
+    if os.path.exists(f"{sai}/studio_sol10_cinza.exr"):
+        e = exr("studio_sol10_cinza").mean(-1) / 0.5
+        mascaras["sombra E<0,5"] = tinta & (e < 0.5)
+        mascaras["lit E>0,9"] = tinta & (e > 0.9)
+    n0, c0 = lin3("neutro"), cy3("sss001_r4")
+    print(f"\n{'Subsurface':<12} {'região':<13} {'n':>6} | {'ΔR nós':>7} {'ΔR Cy':>7} | {'Δlum nós':>8} {'Δlum Cy':>8} | sat nós · Cycles")
+    for m in SSS:
+        n, c = lin3(m), cy3(m)
+        dn, dc = n - n0, c - c0
+        k = tinta
+        corr = [np.corrcoef(dn[..., i][k], dc[..., i][k])[0, 1] for i in range(3)]
+        rms = np.sqrt(np.mean((dn - dc)[k] ** 2))
+        print(f"{m:<12} corr R G B {corr[0]:+.2f} {corr[1]:+.2f} {corr[2]:+.2f} · rms(Δnós−ΔCy) {rms:.4f} (Δ=0: {np.sqrt(np.mean(dc[k] ** 2)):.4f})")
+        for nome, k in mascaras.items():
+            print(
+                f"{'':<12} {nome:<13} {k.sum():6d} | {dn[..., 0][k].mean():+.4f} {dc[..., 0][k].mean():+.4f} | "
+                f"{(dn @ LUM)[k].mean():+.4f} {(dc @ LUM)[k].mean():+.4f} | {sat(n0)[k].mean():.3f}→{sat(n)[k].mean():.3f} · "
+                f"{sat(c0)[k].mean():.3f}→{sat(c)[k].mean():.3f}"
+            )

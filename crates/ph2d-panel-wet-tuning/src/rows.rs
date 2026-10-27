@@ -113,7 +113,7 @@ pub struct Section {
 /// `Paper` do motor reduzido ao relevo da tinta), e depois os quatro AVANÇADOS (25/10, dono: «os
 /// escondidos do Wet Paint podem mostrar dentro do Tuning»), que nascem dobrados. (Experimental is
 /// not a knob group — it is the two K–M checkboxes, painted after these.)
-pub const SECTIONS: [Section; 9] = [
+pub const SECTIONS: [Section; 10] = [
     Section {
         group: KnobGroup::Paint,
         header: ph2d_tool_painter::ids::WET_TUNING_GROUP_HEADERS[0],
@@ -168,6 +168,12 @@ pub const SECTIONS: [Section; 9] = [
         reset: ph2d_tool_painter::ids::WET_TUNING_GROUP_RESETS[8],
         label: "panel.wet_tuning.group.look",
     },
+    Section {
+        group: KnobGroup::Material,
+        header: ph2d_tool_painter::ids::WET_TUNING_GROUP_HEADERS[10],
+        reset: ph2d_tool_painter::ids::WET_TUNING_GROUP_RESETS[9],
+        label: "panel.wet_tuning.group.material",
+    },
 ];
 
 #[cfg(test)]
@@ -219,10 +225,11 @@ mod tests {
     /// · 7 Wet effects · 5 Look, e o WaterPush/DryerEdge no Tools (5 → 7). Menos 5 no mesmo dia (dono, R3: o que está
     /// no cartão Wet Paint não se repete aqui): Backruns, Granulation, Pigment diffusion, Wet bloom (Wet effects
     /// 7 → 3) e Tip pickup (Stroke 7 → 6). Menos 4 a 25/10 (a linha da ferramenta da água no cartão): Blend force
-    /// (Paint 25 → 24), Dryer, Blow e Smear (Tools 7 → 4).
+    /// (Paint 25 → 24), Dryer, Blow e Smear (Tools 7 → 4). Mais 11 a 27/10 (Óleo Real W2 E3): o rebordo da faca no
+    /// Stroke (6 → 7) e os 10 do Material da tinta (o Principled por célula e o Lock).
     #[test]
     fn every_visible_knob_has_a_row() {
-        assert_eq!(rows().len(), 75);
+        assert_eq!(rows().len(), 86);
         for g in [
             (KnobGroup::Paint, 24),
             (KnobGroup::Water, 7),
@@ -230,9 +237,10 @@ mod tests {
             (KnobGroup::Tools, 4),
             (KnobGroup::Paper, 1),
             (KnobGroup::Bristles, 19),
-            (KnobGroup::Stroke, 6),
+            (KnobGroup::Stroke, 7),
             (KnobGroup::WetEffects, 3),
             (KnobGroup::Look, 5),
+            (KnobGroup::Material, 10),
         ] {
             let n = rows().iter().filter(|r| r.group == g.0).count();
             assert_eq!(n, g.1, "group {:?} row count", g.0);
@@ -243,7 +251,7 @@ mod tests {
     /// esta lista: um knob novo nasce aqui (e alguém decide onde mora) ou num grupo à vista.
     #[test]
     fn os_escondidos_sao_so_os_de_outra_superficie_ou_de_calibracao() {
-        const NOUTRA_SUPERFICIE: [&str; 21] = [
+        const NOUTRA_SUPERFICIE: [&str; 20] = [
             // a Shape › Bristles (plano 27 W2)
             "felt",
             "bristleCount",
@@ -269,8 +277,6 @@ mod tests {
             "blow",
             "smear",
             "smearWater",
-            // o rebordo da faca (W2 E4): a linha no cartão Wet Paint está por agendar
-            "knifeRidge",
         ];
         const CALIBRACAO: [&str; 8] = [
             // normaliza o pigmento pelo comprimento (o preset diz a que Spacing foi afinado)

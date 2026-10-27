@@ -81,13 +81,7 @@ impl Trail {
                 let i = cx as usize + cy as usize * s;
                 // A tinta líquida re-molha a SECA (o reservatório: as cinco tintas do Rebelle misturam-se 15–38 px
                 // antes da faixa seca); os outros pincéis só apanham a molhada (`pickup_assentado` do produto 0).
-                let assentado = if reservatorio > 0.0 {
-                    1.0
-                } else {
-                    p.pickup_assentado
-                };
-                let w_s = alpha_of_mass(g.sett[i] as f64) * assentado;
-                let w_f = alpha_of_mass(g.susp[i] as f64);
+                let (w_s, w_f) = pesos_da_recolha(g, i, assentado(p, reservatorio));
                 let fe = w_s + w_f;
                 if fe <= 0.0 {
                     continue; // blank paper keeps the tip color
@@ -101,11 +95,7 @@ impl Trail {
                 // Com o reservatório, `r` é a fracção da tinta debaixo da ponta que entra nele a cada DAB (a janela
                 // junta `dabs` dabs: o passo não muda a tinta; o `Pickup` do painel acaba em 0,2 por janela — fraco
                 // demais para o borrão das tintas do Rebelle).
-                let k = if reservatorio > 0.0 {
-                    (1.0 - reservatorio * fe.min(1.0)).powi(dabs)
-                } else {
-                    tip_retain + (1.0 - tip_retain) * (1.0 - fe.min(1.0))
-                };
+                let k = retido(fe, reservatorio, dabs, tip_retain);
                 let l = lx as usize;
                 // O reservatório de tinta líquida (`Knob::TipReservoir`): o pigmento apanhado de OUTRA tinta ABSORVE
                 // na da ponta (o produto, Beer–Lambert) — o azul sobre o vermelho escurece, nunca vira roxo; a mesma
@@ -148,8 +138,65 @@ impl Trail {
                 |ly, tr, tg, tb| linha(ly, tr, tg, tb, None),
             );
         }
+        self.ponta_material(g, p, clean, pickup);
         if reservatorio > 0.0 && pickup.is_some() {
             self.mistura_o_reservatorio();
+        }
+    }
+
+    /// O MATERIAL da ponta ([`Trail::mat_ponta`], Óleo Real W2 E3): a auto-limpeza e a recolha da cor, com os MESMOS
+    /// pesos ([`pesos_da_recolha`], [`retido`]), sobre o material de cada célula. Nada (nem aloca) enquanto o pincel
+    /// e a tela são NEUTROS.
+    fn ponta_material(
+        &mut self,
+        g: &Grid,
+        p: &Params,
+        clean: f64,
+        pickup: Option<(i32, i32, i32, i32)>,
+    ) {
+        use crate::material::MaterialCelula as M;
+        let mb = crate::grid::material::do_pincel(p);
+        self.mat_base = mb;
+        let n = (self.size * self.size) as usize;
+        if self.mat_ponta.len() != n {
+            if g.material.is_empty() && mb == M::NEUTRO {
+                return;
+            }
+            self.mat_ponta = vec![mb; n];
+        }
+        if clean > 0.0 {
+            for m in &mut self.mat_ponta {
+                *m = M::mistura(*m, mb, clean as f32);
+            }
+        }
+        let Some((lx0, ly0, lx1, ly1)) = pickup else {
+            return;
+        };
+        let reservatorio = p.k(Knob::TipReservoir);
+        let tip_retain = 1.0 - p.k(Knob::Pickup);
+        let dabs = self.dab_count.max(1) as i32;
+        let (s, w, h) = (g.s, g.w as i32, g.h as i32);
+        for ly in ly0..=ly1 {
+            let cy = self.anchor_y + (ly - self.half);
+            if cy < 2 || cy > h - 1 {
+                continue;
+            }
+            for lx in lx0..=lx1 {
+                let cx = self.anchor_x + (lx - self.half);
+                if cx < 2 || cx > w - 1 {
+                    continue;
+                }
+                let i = cx as usize + cy as usize * s;
+                let (w_s, w_f) = pesos_da_recolha(g, i, assentado(p, reservatorio));
+                let fe = w_s + w_f;
+                if fe <= 0.0 {
+                    continue;
+                }
+                let k = retido(fe, reservatorio, dabs, tip_retain);
+                let l = (lx + ly * self.size) as usize;
+                self.mat_ponta[l] =
+                    M::mistura(self.mat_ponta[l], g.material_da_celula(i), (1.0 - k) as f32);
+            }
         }
     }
 
@@ -178,6 +225,18 @@ impl Trail {
             return;
         }
         let m = soma.map(|v| v / n as f64);
+        let mat = (self.mat_ponta.len() == self.pig.len())
+            .then(|| {
+                let pig = &self.pig;
+                crate::grid::material::media(
+                    self.mat_ponta
+                        .iter()
+                        .zip(pig)
+                        .filter(|(_, v)| **v > 0.0)
+                        .map(|(m, _)| (*m, 1.0)),
+                )
+            })
+            .flatten();
         let puxa = |v: &mut f32, alvo: f64| *v = alvo as f32;
         for ly in self.ly0..=self.ly1 {
             for lx in self.lx0..=self.lx1 {
@@ -189,8 +248,41 @@ impl Trail {
                     if com_limpo {
                         puxa(&mut self.limpo[l], m[3]);
                     }
+                    if let Some(mm) = mat {
+                        self.mat_ponta[l] = mm;
+                    }
                 }
             }
         }
+    }
+}
+
+/// O que a ponta vê da célula `i`: os pesos `(assentado, suspenso)` da cor que ela apanha. A tinta líquida
+/// ([`Knob::TipReservoir`]) re-molha a SECA; os outros pincéis só apanham a molhada (`pickup_assentado`).
+#[inline]
+fn pesos_da_recolha(g: &Grid, i: usize, assentado: f64) -> (f64, f64) {
+    (
+        alpha_of_mass(g.sett[i] as f64) * assentado,
+        alpha_of_mass(g.susp[i] as f64),
+    )
+}
+
+#[inline]
+fn assentado(p: &Params, reservatorio: f64) -> f64 {
+    if reservatorio > 0.0 {
+        1.0
+    } else {
+        p.pickup_assentado
+    }
+}
+
+/// A fracção da ponta que FICA depois da recolha sobre `fe` de tinta: com o reservatório, a fracção por DAB
+/// elevada aos `dabs` da janela; sem ele, o `Pickup` do painel.
+#[inline]
+fn retido(fe: f64, reservatorio: f64, dabs: i32, tip_retain: f64) -> f64 {
+    if reservatorio > 0.0 {
+        (1.0 - reservatorio * fe.min(1.0)).powi(dabs)
+    } else {
+        tip_retain + (1.0 - tip_retain) * (1.0 - fe.min(1.0))
     }
 }

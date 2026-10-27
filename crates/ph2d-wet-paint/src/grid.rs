@@ -27,6 +27,8 @@ pub use scratch::{AdvCell, SolverScratch};
 pub mod altura;
 #[path = "grid/espessura.rs"]
 pub mod espessura;
+#[path = "grid/material.rs"]
+pub mod material;
 #[path = "grid/patch.rs"]
 mod patch;
 #[path = "grid/traco.rs"]
@@ -73,6 +75,9 @@ pub struct Grid {
     /// pousou, pesado pela massa SUSPENSA (como o [`Self::relevo`]: trocar de pincel não muda a tinta da tela).
     /// Lido pela lei do ecrã de cada célula ([`crate::assenta::Ecra::com_vela`]); `0` = a lei da obra.
     pub vela: Vec<f32>,
+    /// **O MATERIAL da tinta** (Óleo Real W2 E3, [`material`]): o Principled que o pincel pousou, pela massa. VAZIO
+    /// (= NEUTRO) até o primeiro pincel com material pintar; lê-se por [`Grid::material_da_celula`].
+    pub material: Vec<crate::material::MaterialCelula>,
     /// **A geometria da grade de FLUXO** (plano 30) — os quatro planos de
     /// velocidade abaixo são dimensionados por ELA, não pela grade fina.
     ///
@@ -203,6 +208,14 @@ pub fn span_window_of(
 }
 
 impl Grid {
+    /// ⭐ O material da tinta da célula `i` (Óleo Real W2 E3) — [`crate::material::MaterialCelula::NEUTRO`] sem o
+    /// campo. A porta que o sombreado lê.
+    #[inline]
+    #[must_use]
+    pub fn material_da_celula(&self, i: usize) -> crate::material::MaterialCelula {
+        self.material.get(i).copied().unwrap_or_default()
+    }
+
     /// A grade com a de fluxo COLADA nela (`rf = 1`) — o motor que sempre
     /// shipou, e o construtor que a suíte de aceitação e o fingerprint usam.
     pub fn new(width: usize, height: usize) -> Self {
@@ -232,6 +245,7 @@ impl Grid {
             espessura: Vec::new(),
             traco: Vec::new(),
             vela: vec![0.0; n],
+            material: Vec::new(),
             flow,
             vel_x: vec![0.0; fn_],
             vel_y: vec![0.0; fn_],
@@ -560,6 +574,7 @@ pub struct GridSnapshot {
     pub espessura: Vec<f32>,
     pub traco: Vec<u32>,
     pub vela: Vec<f32>,
+    pub material: Vec<crate::material::MaterialCelula>,
     pub vel_x: Vec<f32>,
     pub vel_y: Vec<f32>,
     pub wet: Vec<u8>,
@@ -596,6 +611,7 @@ pub fn snapshot_grid(g: &Grid) -> GridSnapshot {
         espessura: g.espessura.clone(),
         traco: g.traco.clone(),
         vela: g.vela.clone(),
+        material: g.material.clone(),
         vel_x: g.vel_x.clone(),
         vel_y: g.vel_y.clone(),
         wet: g.wet.clone(),
@@ -626,6 +642,7 @@ pub fn restore_grid(g: &mut Grid, s: &GridSnapshot) -> bool {
     g.espessura.clone_from(&s.espessura);
     g.traco.clone_from(&s.traco);
     g.vela.copy_from_slice(&s.vela);
+    g.material.clone_from(&s.material);
     g.vel_x.copy_from_slice(&s.vel_x);
     g.vel_y.copy_from_slice(&s.vel_y);
     g.flow_x.fill(0.0);

@@ -138,6 +138,11 @@ pub struct Trail {
     filme: filme::Filme,
     /// O caminho e o levantado do molhado × molhado ([`Knob::WetOpen`]); vazio sem a lei.
     molhado: molhado::Molhado,
+    /// O MATERIAL de cada texel da ponta (Óleo Real W2 E3, [`crate::grid::material`]): o do pincel, sujo do que a
+    /// ponta apanhou da tela pela MESMA lei da cor ([`bico`]). VAZIO enquanto nem o pincel nem a tela têm material.
+    mat_ponta: Vec<crate::material::MaterialCelula>,
+    /// O material limpo do pincel (o alvo da auto-limpeza e o enchimento de um texel novo).
+    mat_base: crate::material::MaterialCelula,
 }
 
 /// Canvas rect touched by a transfer (cell coords, inclusive).
@@ -242,6 +247,8 @@ impl Default for Trail {
             por_assentar_pendente: false,
             filme: filme::Filme::default(),
             molhado: molhado::Molhado::default(),
+            mat_ponta: Vec::new(),
+            mat_base: crate::material::MaterialCelula::NEUTRO,
         }
     }
 }
@@ -255,6 +262,7 @@ impl Trail {
         self.tip_g.fill(color[1] as f32);
         self.tip_b.fill(color[2] as f32);
         self.limpo.fill(1.0);
+        self.mat_ponta.clear();
         self.por_assentar_pendente = true;
         self.base_r = color[0];
         self.base_g = color[1];
@@ -290,6 +298,7 @@ impl Trail {
         self.tip_g.fill(color[1] as f32);
         self.tip_b.fill(color[2] as f32);
         self.limpo.fill(1.0);
+        self.mat_ponta.clear();
     }
 
     /// **A janela cresce para o pincel que chegou** — a lei do [`TRAIL_HALF`] com o raio do PINCEL no

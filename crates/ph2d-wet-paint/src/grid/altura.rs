@@ -26,13 +26,13 @@ pub fn restaura_janela(g: &mut Grid, janela: (i32, i32, i32, i32), linhas: &[f32
 
 /// A restauração de um campo preguiçoso de `n` células (passo `s`): vazio no recorte e na grade = nada; um
 /// campo por alocar aloca-se a `neutro`, e as linhas que faltam no recorte voltam a `neutro`.
-pub(super) fn restaura_campo(
-    campo: &mut Vec<f32>,
+pub(super) fn restaura_campo<T: Copy>(
+    campo: &mut Vec<T>,
     n: usize,
     s: usize,
     (x0, y0, x1, y1): (i32, i32, i32, i32),
-    linhas: &[f32],
-    neutro: f32,
+    linhas: &[T],
+    neutro: T,
 ) {
     if linhas.is_empty() && campo.is_empty() {
         return;

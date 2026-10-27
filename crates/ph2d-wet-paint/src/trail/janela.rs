@@ -12,7 +12,7 @@ use super::{Dab, Trail};
 
 /// Um plano `s0 × s0` recentrado num `s1 × s1` (`d = (s1 − s0) / 2` de margem), o resto em `fill`. Um plano
 /// não alocado (a tinta por célula antes do 1.º dab com cor) fica como está.
-fn recentra(v: &mut Vec<f32>, s0: usize, s1: usize, fill: f32) {
+fn recentra<T: Copy>(v: &mut Vec<T>, s0: usize, s1: usize, fill: T) {
     if v.len() != s0 * s0 {
         return;
     }
@@ -49,6 +49,7 @@ impl Trail {
         ] {
             recentra(plano, s0, s1, fill);
         }
+        recentra(&mut self.mat_ponta, s0, s1, self.mat_base);
         let d = half - self.half;
         if self.lx1 >= self.lx0 {
             self.lx0 += d;

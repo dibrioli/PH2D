@@ -119,6 +119,12 @@ impl Trail {
             crate::grid::traco::garante(g);
         }
         let vela = p.k(Knob::Glaze) as f32;
+        // O MATERIAL da tinta (W2 E3): o da ponta (suja do que apanhou) ou, sem ela, o do pincel; Lock = não muda o pousado.
+        let (mat_pincel, mat_trava) = (
+            crate::grid::material::do_pincel(p),
+            crate::grid::material::travado(p),
+        );
+        let com_ponta = self.mat_ponta.len() == self.pig.len();
         // O FILME do traço (`Knob::StrokeFilm`): a água da célula é a do filme — sem o 2.º gole da célula virgem (o gole
         // dependia de quanto a 1.ª janela lhe trouxe e deixava um arco de água por janela) e sem o tecto de água abaixo.
         let filme = p.k(Knob::StrokeFilm) > 0.0;
@@ -157,6 +163,13 @@ impl Trail {
                     let m_old = g.susp[i] as f64 + g.sett[i] as f64;
                     g.relevo[i] = ((r_old as f64 * m_old + relevo as f64 * v) / (m_old + v)) as f32;
                 }
+                let mat = if com_ponta {
+                    self.mat_ponta[l]
+                } else {
+                    mat_pincel
+                };
+                let m_old = g.susp[i] as f64 + g.sett[i] as f64;
+                crate::grid::material::pousa(g, i, m_old, mat, v, mat_trava);
                 // ⭐ **A ponta SECA** (prompt 35, contra o Rebelle Dry Thin): sem água na ponta e sem água
                 // na célula, o pigmento pousa já ASSENTE — um pastel não se mexe depois do traço (medido: o
                 // suspenso andava 2 passos depois do pen-up). O arrasto abaixo continua do PRESET (`Drag`): o
@@ -311,6 +324,19 @@ impl Trail {
                     let si = sx as usize + sy as usize * s;
                     let had_susp = g.susp[i] > 0.0;
                     let had_sett = g.sett[i] > 0.0;
+                    // O material viaja com a tinta arrastada (W2 E3): a célula vazia toma o de lá; a outra, a fracção.
+                    if !g.material.is_empty() && g.susp[si] + g.sett[si] > 0.0 {
+                        let t = if had_susp || had_sett {
+                            drag as f32
+                        } else {
+                            1.0
+                        };
+                        g.material[i] = crate::material::MaterialCelula::mistura(
+                            g.material[i],
+                            g.material[si],
+                            t,
+                        );
+                    }
                     let espessuras = (!g.espessura.is_empty()).then(|| {
                         use crate::grid::espessura::em;
                         (em(g, i), em(g, si))
@@ -395,6 +421,8 @@ impl Trail {
         let (mut t_r, mut t_g, mut t_b) = (0.0f64, 0.0f64, 0.0f64);
         let mut w_susp = 0.0f64;
         let mut w_sett = 0.0f64;
+        // O material (W2 E3) relaxa para a média da janela pesada pela massa, como a cor.
+        let mut mats: Vec<(crate::material::MaterialCelula, f64)> = Vec::new();
         for ly in self.ly0..=self.ly1 {
             let cy = self.anchor_y + (ly - self.half);
             if cy < 2 || cy > h - 1 {
@@ -426,6 +454,9 @@ impl Trail {
                 t_g += sc[1] as f64 * sett;
                 t_b += sc[2] as f64 * sett;
                 w_sett += sett;
+                if !g.material.is_empty() {
+                    mats.push((g.material[i], susp + sett));
+                }
             }
         }
         if n == 0 {
@@ -443,6 +474,7 @@ impl Trail {
         let b_r = if w_sett > 0.0 { t_r / w_sett } else { 0.0 };
         let b_g = if w_sett > 0.0 { t_g / w_sett } else { 0.0 };
         let b_b = if w_sett > 0.0 { t_b / w_sett } else { 0.0 };
+        let mat_media = crate::grid::material::media(mats);
         // Pass 2: relax every masked cell toward the window mix.
         let mut rx0 = w;
         let mut ry0 = h;
@@ -466,6 +498,10 @@ impl Trail {
                     continue;
                 }
                 let i = cx as usize + cy as usize * s;
+                if let Some(mm) = mat_media {
+                    g.material[i] =
+                        crate::material::MaterialCelula::mistura(g.material[i], mm, a as f32);
+                }
                 if w_susp > 0.0 {
                     let in_c = alpha_of_mass(avg_susp) * a;
                     let res = alpha_of_mass(g.susp[i] as f64) * (1.0 - in_c);

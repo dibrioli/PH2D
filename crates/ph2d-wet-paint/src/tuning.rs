@@ -233,9 +233,33 @@ pub enum Knob {
     /// deixa nas duas bordas laterais do que varre, com o miolo alisado. `0` = a tinta de sempre, ao bit (o
     /// hospedeiro nem chama a porta).
     KnifeRidge,
+    /// ⭐ **O MATERIAL da tinta do pincel** (Óleo Real W2 E3, [`crate::material::MaterialCelula`]): os nove ajustes do
+    /// Principled que o pincel pousa na célula e que se misturam no molhado pela massa ([`crate::grid::material`]).
+    /// Cada default é o do [`crate::material::MaterialCelula::NEUTRO`] — a tinta de sempre, ao bit, e o canal da
+    /// grade fica VAZIO. Metallic: 0 = dieléctrico, 1 = metal.
+    Metallic,
+    /// … o multiplicador da rugosidade do Gloss (1 = a de hoje).
+    RoughnessMul,
+    /// … o Specular do Principled (0,5 = IOR 1,5).
+    Specular,
+    /// … quanto o reflexo dieléctrico toma a cor da tinta.
+    SpecularTint,
+    /// … o verniz por cima da tinta.
+    Clearcoat,
+    /// … a rugosidade do verniz.
+    ClearcoatRoughness,
+    /// … o veludo rasante (Sheen).
+    Sheen,
+    /// … o brilho puxado ao longo da estria.
+    Anisotropy,
+    /// … a luz que atravessa a película fina e volta do papel.
+    Translucency,
+    /// ⭐ **Lock Reflectivity** (o Rebelle): `1` = pintar sem mudar o material já pousado — o pigmento muda, o material
+    /// da célula com tinta fica; no papel limpo pousa o do pincel. `0` = o material mistura-se.
+    LockMaterial,
 }
 
-pub const KNOB_COUNT: usize = 109;
+pub const KNOB_COUNT: usize = 119;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum KnobGroup {
@@ -255,6 +279,8 @@ pub enum KnobGroup {
     WetEffects,
     /// Só a aparência (render): luz rasante, grão dos vales, brilho molhado, ruído, tom da orla.
     Look,
+    /// O material da TINTA do pincel (Óleo Real W2 E3): o Principled por célula e o Lock Reflectivity.
+    Material,
 }
 
 /// What a knob write invalidates (the facade acts on it).

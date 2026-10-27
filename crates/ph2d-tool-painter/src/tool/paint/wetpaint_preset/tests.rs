@@ -468,6 +468,48 @@ fn capturar_o_aplicado_devolve_o_mesmo_preset() {
     assert_eq!(tex2, texturas);
 }
 
+/// ⭐ O material da tinta (Óleo Real W2 E3) vai e volta pelo ficheiro do preset, por NOME; o preset sem as chaves
+/// (os de fábrica de antes) lê o NEUTRO e o Lock desligado.
+#[test]
+fn o_material_do_pincel_vai_e_volta_pelo_preset() {
+    let mexidos = [
+        (Knob::Metallic, 1.0),
+        (Knob::RoughnessMul, 0.4),
+        (Knob::Specular, 0.8),
+        (Knob::SpecularTint, 0.3),
+        (Knob::Clearcoat, 0.6),
+        (Knob::ClearcoatRoughness, 0.2),
+        (Knob::Sheen, 0.5),
+        (Knob::Anisotropy, 0.7),
+        (Knob::Translucency, 0.25),
+        (Knob::LockMaterial, 1.0),
+    ];
+    let mut a = ferramenta();
+    for (k, v) in mexidos {
+        a.paint.wetpaint.knobs.set(k, v);
+    }
+    let base = Parametros::novo(MEIO_DO_PRESET, "Teste", "Metal");
+    let (prm, texturas) = a.wet_preset_capturar(&base);
+    let mut b = ferramenta();
+    b.wet_preset_aplicar(&pelo_ficheiro(prm.clone(), texturas.clone()));
+    for (k, v) in mexidos {
+        assert_eq!(b.paint.wetpaint.knobs.get(k), v, "{k:?}");
+    }
+    let mut sem = prm;
+    for (k, _) in mexidos {
+        sem.engine
+            .remove(ph2d_wet_paint::tuning::KNOB_DEFS[k as usize].key);
+    }
+    b.wet_preset_aplicar(&pelo_ficheiro(sem, texturas));
+    for (k, _) in mexidos {
+        assert_eq!(
+            b.paint.wetpaint.knobs.get(k),
+            ph2d_wet_paint::tuning::KNOB_DEFS[k as usize].default,
+            "{k:?}"
+        );
+    }
+}
+
 /// ⭐ A macro leva o pincel INTEIRO (W6c): cada campo do `BrushSpec` vai ao JSON e volta igual. O
 /// controlo: a fixtura mexe em TODOS (o JSON de cada um difere do de fábrica), senão uma conversão em
 /// falta passava calada pelo valor de `base`.

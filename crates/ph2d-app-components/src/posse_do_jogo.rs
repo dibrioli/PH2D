@@ -118,7 +118,9 @@ impl FocoDoJogo {
             self.do_jogo &= !bit;
             return so;
         }
-        let so = self.premido(input, cena, na_cena);
+        // O botão do meio é a navegação da vista (o pan): o jogo vê-o, mas ele nunca é SÓ do jogo
+        // (report do dono 27/10 — com o Play o pan morria).
+        let so = self.premido(input, cena, na_cena) && botao != ph2d_host::PointerButton::Middle;
         if so {
             self.do_jogo |= bit;
         } else {
@@ -453,6 +455,19 @@ mod tests {
             !f.clique(&mut input, CORRE, Primary, false, true),
             "o premido foi do editor"
         );
+    }
+
+    /// Report do dono 27/10: *«Pan não está funcionando quando a animação está em play»*. O botão do meio
+    /// é a NAVEGAÇÃO da vista (o pan) e fica do editor com o jogo a correr — o jogo vê-o na mesma.
+    #[test]
+    fn o_botao_do_meio_navega_a_vista_com_o_jogo_a_correr() {
+        use ph2d_host::PointerButton::Middle;
+        let mut f = FocoDoJogo::default();
+        let mut input = InputState::new();
+        f.quadro(&mut input, CORRE);
+        assert!(!f.clique(&mut input, CORRE, Middle, true, true), "o pan");
+        assert!(input.mouse.held(ph2d_input::MouseButton::Middle), "e o jogo vê-o");
+        assert!(!f.clique(&mut input, CORRE, Middle, false, true));
     }
 
     #[test]

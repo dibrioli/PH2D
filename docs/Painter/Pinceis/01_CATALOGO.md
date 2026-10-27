@@ -342,6 +342,14 @@ aprovados, fora da fábrica, com a receita em `familias/oleo_acrilica.rs` (`EM_E
 Textured · Stain · Soft · Dry 2; Dabber 2 · 3 · 4 · Fan ([`W2_Dabber_E4.md`](W2_Dabber_E4.md)); Metallic Flat · Round ·
 Splats ([`W2_Metallic_exame.md`](W2_Metallic_exame.md)).
 
+## §3f — Óleo Real W3 P (2026-10-27): facas, Dabber e Metallic
+
+✅ **+5 aprovados** (revisão cega, régua no nível da W2): **Knife Textured · Knife Stain** ([`W3_P_Knife.md`](W3_P_Knife.md)) ·
+**Dabber 4** ([`W3_P_Dabber.md`](W3_P_Dabber.md)) · **Metallic Flat · Metallic Splats** ([`W3_P_Metallic.md`](W3_P_Metallic.md)).
+**Total: 27 aprovados, fábrica 54** (Wet 38, Digital 16). Ficam curados não aprovados (`EM_ESTUDO_W2`): Knife Smooth ·
+Smooth 2 · Soft · Dry 2; Dabber 2 · 3 · Fan; Metallic Round. Os 13 lado a lado com o Rebelle:
+[`pranchas/W3_presets.jpg`](pranchas/W3_presets.jpg).
+
 ## §4 — Licenças por ARTEFACTO (medido 19/10 nesta máquina)
 
 | Artefacto | Versão | Licença (fonte) | O que se pode fazer |

@@ -591,13 +591,7 @@ pub(super) fn tabela_de_largura(p: &Preset) -> Vec<[f64; 2]> {
 /// [`RAIOS_DA_PROMESSA`]; onde passa de ¾ da tolerância, o ponto MEDIDO (raio do motor → largura que o slider deu) entra
 /// na tabela, no seu lugar, e repete-se (≤ 3 rondas). Tabela que já cumpre fica como está.
 fn refina_a_promessa(p: &mut Preset) {
-    let com_grao = p
-        .parametros
-        .brush
-        .get("texture")
-        .and_then(|t| t.get("kind"))
-        .is_some_and(|k| k != "None");
-    let rel = if com_grao {
+    let rel = if borda_ruidosa(p) {
         TOLERANCIA_REL_GRAO
     } else {
         TOLERANCIA_REL
@@ -924,9 +918,15 @@ fn a_receita_recusa_uma_mao_que_o_meio_nao_le() {
     });
 }
 
+/// Os aprovados cuja marca É o carimbo espaçado (Óleo Real W3, revisão cega): o Dabber 4 (Spacing 0,3 sem o
+/// Continuous — toques soltos de esponja, `W3_P_Dabber.md`) e o Metallic Splats (Spacing 0,25 — o spray de pontos,
+/// `W3_P_Metallic.md`). Com o Spacing 0,1 a marca deles vira faixa contínua: outro pincel.
+const CARIMBOS_ESPACADOS: [&str; 2] = ["Dabber 4", "Metallic Splats"];
+
 /// ⭐ **A REGRA do Spacing** (dono 18/10, prompt 51): cada pincel de fábrica do WET PAINT — e o que nasce SEM preset —
 /// leva o Spacing [`SPACING_DA_FABRICA`] com o Continuous ligado. Os outros meios não: a regra é a da cápsula e do
 /// pigmento por comprimento do Wet (o lápis do Digital vive a 0,05).
+/// Fora dela, pelo NOME, só os [`CARIMBOS_ESPACADOS`].
 #[test]
 fn a_regra_do_spacing_da_fabrica() {
     let cumpre = |b: &std::collections::BTreeMap<String, serde_json::Value>| {
@@ -939,6 +939,7 @@ fn a_regra_do_spacing_da_fabrica() {
         .entradas
         .into_iter()
         .filter(|e| e.preset.parametros.media == MEIO_DO_PRESET)
+        .filter(|e| !CARIMBOS_ESPACADOS.contains(&e.preset.parametros.name.as_str()))
         .filter(|e| !cumpre(&e.preset.parametros.brush))
         .map(|e| e.relativo)
         .collect();
@@ -1018,6 +1019,27 @@ const TOLERANCIA_REL: f32 = 0.02;
 /// a 52 px; 3,8 % a 240). A cura é um grão sem estrutura grande, não a tabela (05 §4b).
 const TOLERANCIA_REL_GRAO: f32 = 0.10;
 
+/// A borda que varia com ONDE o traço cai — e por isso a [`TOLERANCIA_REL_GRAO`]: o slot Grain armado, ou as
+/// PARTÍCULAS espalhadas na largura (`spray_count` > 1 ou `dab_jitter.across` > 0: Metallic Splats, Óleo Real W3 —
+/// cada raio sorteia outros pontos na franja; medido 27/10 na regeração: 58,548 → 103 px e 58,6 → 111 px).
+fn borda_ruidosa(p: &Preset) -> bool {
+    let b = &p.parametros.brush;
+    let grao = b
+        .get("texture")
+        .and_then(|t| t.get("kind"))
+        .is_some_and(|k| k != "None");
+    let spray = b
+        .get("spray_count")
+        .and_then(serde_json::Value::as_f64)
+        .is_some_and(|n| n > 1.0);
+    let espalha = b
+        .get("dab_jitter")
+        .and_then(|j| j.get("across"))
+        .and_then(serde_json::Value::as_f64)
+        .is_some_and(|a| a > 0.0);
+    grao || spray || espalha
+}
+
 /// As larguras de `p` nos [`RAIOS_DA_PROMESSA`], com a promessa (`crua = false`) ou sem ela.
 fn larguras_da_promessa(p: &Preset, crua: bool) -> Vec<f32> {
     std::thread::scope(|s| {
@@ -1071,13 +1093,7 @@ fn a_largura_e_a_prometida() {
     });
     for ((rel, _), (p, larguras, crua)) in ficheiros.iter().zip(medidos) {
         println!("[largura] {rel}: {larguras:?} (pedidas {RAIOS_DA_PROMESSA:?} × 2)");
-        let com_grao = p
-            .parametros
-            .brush
-            .get("texture")
-            .and_then(|t| t.get("kind"))
-            .is_some_and(|k| k != "None");
-        let tol = if com_grao {
+        let tol = if borda_ruidosa(&p) {
             TOLERANCIA_REL_GRAO
         } else {
             TOLERANCIA_REL

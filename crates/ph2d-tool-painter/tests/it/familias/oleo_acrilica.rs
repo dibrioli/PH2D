@@ -1,4 +1,4 @@
-//! **Família `oleo_acrilica`** — J4, catálogo G (óleo, acrílica): Oil Bristle, Express Oil, Dabber, Filbert, Flat Bristle; e as quatro facas aprovadas da W2 do Óleo Real (E4).
+//! **Família `oleo_acrilica`** — J4, catálogo G (óleo, acrílica): Oil Bristle, Express Oil, Dabber, Filbert, Flat Bristle; as quatro facas aprovadas da W2 do Óleo Real (E4) e os cinco aprovados da W3 (Knife Textured/Stain, Dabber 4, Metallic Flat/Splats).
 //! A Acrylic Round saiu na 2.ª ronda: fundida no Hard Round (`exames/oleo_acrilica.md`, G-2).
 //! Escreva aqui as receitas e os testes da família; nada fora deste ficheiro (`docs/Painter/Pinceis/04_BANCADA.md` §9).
 
@@ -67,6 +67,11 @@ pub const WET: &[Receita] = &[
     KNIFE_OILY,
     KNIFE_GRAINY,
     KNIFE_DRY,
+    KNIFE_TEXTURED,
+    KNIFE_STAIN,
+    DABBER_4,
+    METALLIC_FLAT,
+    METALLIC_SPLATS,
 ];
 
 // `dabberc_032` (prompt 53): o Oil Bristle de cerdas largas, mais relevo e a ponta espalhada (jitter) — a esponja.
@@ -214,6 +219,132 @@ const KNIFE_DRY: Receita = Receita {
     ..DABBER
 };
 
+// ⭐ Os aprovados da W3 do Óleo Real (`docs/Painter/Pinceis/W3_P_{Knife,Dabber,Metallic}.md`): valores 1:1 do ficheiro
+// que a revisão cega viu (o candidato em `W2_*_candidatos/`).
+const KNIFE_TEXTURED: Receita = Receita {
+    nome: "Knife Textured",
+    pigment: 400.0,
+    gate: 1.0,
+    achatado: Some((0.87, 86)),
+    grao: None,
+    extras: &[
+        ("dabRotation", 0.0),
+        ("knifeRidge", 4.0),
+        ("knifeLevel", 1.0),
+        ("emboss", 0.1),
+        ("bristleHeight", 0.0),
+        ("bristleStrength", 0.0),
+        ("pressureSize", 1.0),
+        ("pressureSizeCurve", 1.5),
+        ("pressureOpacityCurve", 1.0),
+        ("levelingOwnStroke", 1.0),
+    ],
+    pincel: &[
+        ("dab_quina", "0.5"),
+        ("falloff", "\"Constant\""),
+        ("jitter", "0.0"),
+        ("texture", ESTRIAS_DO_TEXTURED),
+    ],
+    ..KNIFE_SMOOTH_3
+};
+
+const KNIFE_STAIN: Receita = Receita {
+    nome: "Knife Stain",
+    pigment: 1200.0,
+    gate: 2.5,
+    grao: None,
+    extras: &[
+        ("dabRotation", 1.0),
+        ("knifeRidge", 0.0),
+        ("emboss", 0.1),
+        ("bristleHeight", 0.0),
+        ("bristleStrength", 0.0),
+        ("paperContrast", 3.0),
+        ("pressureSize", 1.0),
+        ("pressureSizeCurve", 1.5),
+        ("pressureOpacityCurve", 1.0),
+        ("levelingOwnStroke", 1.0),
+    ],
+    pincel: &[
+        ("dab_quina", "1.0"),
+        ("falloff", "\"Constant\""),
+        ("jitter", "0.0"),
+        ("texture", MANCHA_DO_STAIN),
+    ],
+    ..KNIFE_SMOOTH_3
+};
+
+const DABBER_4: Receita = Receita {
+    nome: "Dabber 4",
+    achatado: Some((0.6, 90)),
+    extras: &[("dabRotation", 0.0), ("textureSizeExp", 0.5)],
+    pincel: &[
+        ("jitter", "0.1"),
+        ("spacing", "0.3"),
+        ("continuous_spacing", "false"),
+        ("texture", ESTUQUE_DO_DABBER_4),
+    ],
+    nasce_de: Some("Dabber"),
+    ..DABBER
+};
+
+const METALLIC_FLAT: Receita = Receita {
+    grupo: "Metallic",
+    nome: "Metallic Flat",
+    pigment: 80.0,
+    hardness: 1.0,
+    size_px: Some(40.0),
+    grao: Some(("Noise", 4.0)),
+    extras: &[
+        ("blendForce", 0.3),
+        ("bristleHeight", 0.0),
+        ("bristleLaneWidth", 1.5),
+        ("bristleNoiseSat", 0.05),
+        ("bristlePressure", 0.3),
+        ("bristleStrength", 0.0),
+        ("bristleTipRagged", 0.0),
+        ("coat", 0.3),
+        ("emboss", 0.2),
+        ("metallic", 0.2),
+        ("pressureOpacity", 0.6),
+        ("pressureSize", 0.1),
+        ("roughness", 0.4),
+        ("smear", 0.2),
+    ],
+    pincel: &[("dab_quina", "0.75"), ("grain_depth", "0.3")],
+    nasce_de: Some("Filbert"),
+    ..FILBERT
+};
+
+const METALLIC_SPLATS: Receita = Receita {
+    grupo: "Metallic",
+    nome: "Metallic Splats",
+    pigment: 4.0,
+    size_px: Some(18.0),
+    extras: &[
+        ("bristleStrength", 0.0),
+        ("emboss", 0.2),
+        ("metallic", 1.0),
+        ("pressureOpacity", 0.3),
+        ("pressureSize", 0.0),
+        ("roughness", 0.4),
+    ],
+    pincel: &[
+        ("jitter", "0.3"),
+        ("spacing", "0.25"),
+        ("spray_count", "2"),
+        ("dab_jitter", POEIRA_DOS_SPLATS),
+    ],
+    nasce_de: Some("Dabber"),
+    ..DABBER
+};
+
+/// A mancha do Knife Stain (`Noise` 96 px, params 1 · 0,42).
+const MANCHA_DO_STAIN: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Noise", "mapping": "Tiled", "offset": [0.0, 0.0], "params": [1, 0.42, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [96, 96], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
+
+/// O estuque do Dabber 4 (`Stucci` 180 px, contraste 0,6).
+const ESTUQUE_DO_DABBER_4: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Stucci", "mapping": "Tiled", "offset": [0.0, 0.0], "params": [0.5, 0.6, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [180, 180], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
+
 /// Os REPROVADOS da J4 (`docs/Painter/Pinceis/exames/oleo_acrilica.md`): a receita fica para quem os retomar, sem ficheiro
 /// na fábrica (`os_reprovados_do_oleo_nao_estao_na_fabrica`).
 /// - G-6 Flat Bristle (2.ª ronda: o grão era a capilaridade — `capillary` 0 dá a risca lisa; o 5 px esmaece pela lei
@@ -232,26 +363,33 @@ pub const EM_ESTUDO: &[Receita] = &[FLAT_BRISTLE, RAKE];
 /// Os CURADOS-NÃO-APROVADOS da W2 do Óleo Real (E4): o ficheiro de cada um vive em `docs/Painter/Pinceis/W2_<grupo>_candidatos/`
 /// (a bancada lê-o pelo caminho) e a receita aqui o refaz ([`os_candidatos_da_w2_sao_as_suas_receitas`]); nenhum entra
 /// na fábrica (`os_reprovados_do_oleo_nao_estao_na_fabrica`). Porquê de cada um: `W2_Knife_E4.md`, `W2_Dabber_E4.md`,
-/// `W2_Metallic_exame.md`.
+/// `W2_Metallic_exame.md` e, com os valores finais da W3, `W3_P_{Knife,Dabber,Metallic}.md`.
 pub const EM_ESTUDO_W2: &[(&str, Receita)] = &[
     (
         "Knife",
         Receita {
             nome: "Knife Smooth",
+            pigment: 200.0,
             gate: 0.8,
             hardness: 0.5,
             achatado: Some((0.0, 0)),
-            grao: Some(("Noise", 6.0)),
+            grao: None,
             extras: &[
                 ("dabRotation", 0.0),
-                ("knifeRidge", 3.0),
+                ("knifeRidge", 0.0),
                 ("emboss", 0.1),
+                ("bristleHeight", 0.0),
+                ("bristleStrength", 0.0),
                 ("pressureSize", 0.4),
                 ("pressureSizeCurve", 1.0),
                 ("pressureOpacityCurve", 1.0),
                 ("levelingOwnStroke", 1.0),
             ],
-            pincel: &[("dab_quina", "1.0"), ("jitter", "0.0")],
+            pincel: &[
+                ("dab_quina", "1.0"),
+                ("jitter", "0.0"),
+                ("texture", GRAO_DAS_FACAS_W3),
+            ],
             ..KNIFE_SMOOTH_3
         },
     ),
@@ -264,62 +402,22 @@ pub const EM_ESTUDO_W2: &[(&str, Receita)] = &[
             grao: None,
             extras: &[
                 ("dabRotation", 1.0),
-                ("knifeRidge", 8.0),
-                ("emboss", 0.0),
-                ("pressureSize", 0.4),
-                ("pressureSizeCurve", 1.0),
-                ("pressureOpacityCurve", 1.0),
-                ("levelingOwnStroke", 1.0),
-            ],
-            pincel: &[
-                ("dab_quina", "0.5"),
-                ("falloff", "\"Constant\""),
-                ("jitter", "0.0"),
-            ],
-            ..KNIFE_SMOOTH_3
-        },
-    ),
-    (
-        "Knife",
-        Receita {
-            nome: "Knife Textured",
-            pigment: 400.0,
-            gate: 1.0,
-            achatado: Some((0.87, 86)),
-            grao: None,
-            extras: &[
-                ("dabRotation", 0.0),
-                ("knifeRidge", 4.0),
-                ("emboss", 0.1),
-                ("pressureSize", 0.6),
-                ("pressureSizeCurve", 1.0),
-                ("pressureOpacityCurve", 1.0),
-                ("levelingOwnStroke", 1.0),
-            ],
-            pincel: &[
-                ("dab_quina", "0.5"),
-                ("falloff", "\"Constant\""),
-                ("jitter", "0.0"),
-                ("texture", ESTRIAS_DO_TEXTURED),
-            ],
-            ..KNIFE_SMOOTH_3
-        },
-    ),
-    (
-        "Knife",
-        Receita {
-            nome: "Knife Stain",
-            gate: 1.5,
-            grao: Some(("Noise", 5.0)),
-            extras: &[
-                ("dabRotation", 1.0),
                 ("knifeRidge", 0.0),
-                ("emboss", 0.1),
-                ("paperContrast", 2.5),
-                ("pressureSize", 0.3),
+                ("knifeLevel", 1.0),
+                ("leveling", 1.0),
+                ("levelClamp", 1.0),
+                ("emboss", 0.0),
+                ("bristleHeight", 0.0),
+                ("bristleStrength", 0.0),
+                ("pressureSize", 0.0),
                 ("pressureSizeCurve", 1.0),
                 ("pressureOpacityCurve", 1.0),
                 ("levelingOwnStroke", 1.0),
+            ],
+            pincel: &[
+                ("dab_quina", "0.5"),
+                ("falloff", "\"Constant\""),
+                ("jitter", "0.0"),
             ],
             ..KNIFE_SMOOTH_3
         },
@@ -329,17 +427,25 @@ pub const EM_ESTUDO_W2: &[(&str, Receita)] = &[
         Receita {
             nome: "Knife Soft",
             pigment: 500.0,
-            gate: 1.0,
-            hardness: 0.3,
+            gate: 0.3,
+            hardness: 0.15,
             achatado: Some((0.84, 178)),
+            grao: None,
             extras: &[
                 ("dabRotation", 0.0),
                 ("knifeRidge", 2.0),
                 ("emboss", 0.1),
+                ("bristleHeight", 0.0),
+                ("bristleStrength", 0.0),
                 ("pressureSize", 0.6),
                 ("pressureSizeCurve", 1.0),
                 ("pressureOpacityCurve", 1.0),
                 ("levelingOwnStroke", 1.0),
+            ],
+            pincel: &[
+                ("dab_quina", "1.0"),
+                ("jitter", "0.0"),
+                ("texture", GRAO_DAS_FACAS_W3),
             ],
             ..KNIFE_DRY
         },
@@ -351,15 +457,23 @@ pub const EM_ESTUDO_W2: &[(&str, Receita)] = &[
             pigment: 300.0,
             gate: 1.2,
             achatado: Some((0.79, 10)),
+            grao: None,
             extras: &[
                 ("dabRotation", 0.0),
                 ("knifeRidge", 0.0),
                 ("emboss", 0.1),
                 ("extDryBrush", 0.85),
+                ("bristleHeight", 0.0),
+                ("bristleStrength", 0.0),
                 ("pressureSize", 0.6),
                 ("pressureSizeCurve", 1.0),
                 ("pressureOpacityCurve", 1.0),
                 ("levelingOwnStroke", 1.0),
+            ],
+            pincel: &[
+                ("dab_quina", "1.0"),
+                ("jitter", "0.0"),
+                ("texture", GRAO_DAS_FACAS_W3),
             ],
             ..KNIFE_DRY
         },
@@ -370,7 +484,8 @@ pub const EM_ESTUDO_W2: &[(&str, Receita)] = &[
             nome: "Dabber 2",
             bristle_size: 3.0,
             gate: 0.5,
-            pincel: &[("jitter", "0.6")],
+            extras: &[("bristleHeight", 0.4), ("textureSizeExp", 0.7)],
+            pincel: &[("jitter", "0.6"), ("texture", ESTUQUE_DO_DABBER_2)],
             nasce_de: Some("Dabber"),
             ..DABBER
         },
@@ -381,21 +496,13 @@ pub const EM_ESTUDO_W2: &[(&str, Receita)] = &[
             nome: "Dabber 3",
             bristle_size: 8.0,
             bristle_count: 400.0,
-            grao: Some(("Stucci", 45.0)),
-            extras: &[("bristleLift", 0.8), ("emboss", 0.8), ("felt", 0.0)],
-            pincel: &[("jitter", "0.5")],
-            nasce_de: Some("Dabber"),
-            ..DABBER
-        },
-    ),
-    (
-        "Dabber",
-        Receita {
-            nome: "Dabber 4",
-            grao: Some(("Stucci", 180.0)),
-            achatado: Some((0.6, 90)),
-            extras: &[("dabRotation", 0.0)],
-            pincel: &[("jitter", "0.1")],
+            extras: &[
+                ("bristleLift", 0.8),
+                ("emboss", 0.8),
+                ("felt", 0.0),
+                ("textureSizeExp", 0.7),
+            ],
+            pincel: &[("jitter", "0.5"), ("texture", LASCAS_DO_DABBER_3)],
             nasce_de: Some("Dabber"),
             ..DABBER
         },
@@ -405,42 +512,19 @@ pub const EM_ESTUDO_W2: &[(&str, Receita)] = &[
         Receita {
             nome: "Fan",
             bristle_size: 3.0,
-            pigment: 1000.0,
+            pigment: 2000.0,
             achatado: Some((0.78, 0)),
             extras: &[
                 ("bristleLaneWidth", 3.0),
                 ("bristleRemove", 0.3),
                 ("dabRotation", 0.0),
                 ("emboss", 0.8),
+                ("textureSizeExp", 0.8),
+                ("textureSizeExpAcross", 0.0),
             ],
-            pincel: &[("continuous_spacing", "false"), ("jitter", "0.15")],
+            pincel: &[("jitter", "0.15"), ("shape", LEQUE_DO_FAN)],
             nasce_de: Some("Dabber"),
             ..DABBER
-        },
-    ),
-    (
-        "Metallic",
-        Receita {
-            grupo: "Metallic",
-            nome: "Metallic Flat",
-            pigment: 300.0,
-            size_px: Some(40.0),
-            extras: &[
-                ("bristleHeight", 0.0),
-                ("bristleLaneWidth", 1.5),
-                ("bristleNoiseSat", 0.05),
-                ("bristlePressure", 0.3),
-                ("bristleStrength", 0.1),
-                ("bristleTipRagged", 1.2),
-                ("emboss", 0.2),
-                ("metallic", 0.6),
-                ("pressureOpacity", 0.6),
-                ("pressureSize", 0.1),
-                ("roughness", 0.7),
-            ],
-            pincel: &[("dab_quina", "0.75")],
-            nasce_de: Some("Filbert"),
-            ..FILBERT
         },
     ),
     (
@@ -451,42 +535,35 @@ pub const EM_ESTUDO_W2: &[(&str, Receita)] = &[
             size_px: Some(33.0),
             extras: &[
                 ("bristleHeight", 0.0),
-                ("emboss", 1.5),
-                ("metallic", 0.6),
+                ("emboss", 0.3),
+                ("metallic", 0.3),
                 ("pressureSize", 0.2),
-                ("roughness", 0.7),
+                ("roughness", 0.5),
+                ("textureSizeExp", 0.5),
             ],
-            nasce_de: Some("Dabber"),
-            ..DABBER
-        },
-    ),
-    (
-        "Metallic",
-        Receita {
-            grupo: "Metallic",
-            nome: "Metallic Splats",
-            pigment: 50.0,
-            size_px: Some(18.0),
-            extras: &[
-                ("bristleStrength", 0.0),
-                ("emboss", 0.2),
-                ("metallic", 1.0),
-                ("pressureOpacity", 0.3),
-                ("pressureSize", 0.0),
-                ("roughness", 0.4),
-            ],
-            pincel: &[("jitter", "0.0"), ("dab_jitter", POEIRA_DOS_SPLATS)],
             nasce_de: Some("Dabber"),
             ..DABBER
         },
     ),
 ];
 
+/// O grão das facas curadas na W3 (`Noise` 48 px; o tamanho inteiro, como o ficheiro do candidato o grava).
+const GRAO_DAS_FACAS_W3: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Noise", "mapping": "Tiled", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [48, 48], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
+
+/// O estuque do Dabber 2 (`Stucci` 120 px, contraste 0,55).
+const ESTUQUE_DO_DABBER_2: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Stucci", "mapping": "Tiled", "offset": [0.0, 0.0], "params": [0.5, 0.55, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [120, 120], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
+
+/// As lascas do Dabber 3 (`Flakes` 18 px, lei de profundidade 1).
+const LASCAS_DO_DABBER_3: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Flakes", "lei": {"mode": 1}, "mapping": "Tiled", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.75, 0.3, 0.9, 1.0], "rake": false, "size": [18, 18], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
+
+/// O leque do Fan (a ponta 0,3 × 1 a 90°).
+const LEQUE_DO_FAN: &str = r#"{"angle_deg": 90, "flow": false, "kind": "None", "mapping": "ViewPlane", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [0.3, 1.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
+
 /// O grão de estrias do Knife Textured (`Noise` 60 × 2 px, preso à tela).
 const ESTRIAS_DO_TEXTURED: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Noise", "mapping": "Tiled", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [60.0, 2.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
 
 /// O pó do Metallic Splats (as partículas da `dab_jitter`).
-const POEIRA_DOS_SPLATS: &str = r#"{"across": 0.0, "angle_per_stroke": 0.0, "count": 0.0, "flip_x": 0.0, "flip_y": 0.0, "opacity": 0.0, "particle": 1.0, "po": 3.0, "po_alcance": 0.5, "po_px": 1.5, "po_opacidade": 0.5, "roundness": 0.0}"#;
+const POEIRA_DOS_SPLATS: &str = r#"{"across": 0.5, "angle_per_stroke": 0.0, "count": 0.0, "flip_x": 0.0, "flip_y": 0.0, "opacity": 0.8, "particle": 0.02, "po": 3.0, "po_alcance": 0.5, "po_px": 1.5, "po_opacidade": 0.5, "roundness": 0.0}"#;
 
 /// **G-9 Rake** (J4, contra o Rebelle `Oil/Rake/Rake Sharp`, 108 px): o redondo que SEGUE o traço (38 px em qualquer
 /// direcção) com metade das faixas de cerdas tiradas (`bristleRemove` 0,5, faixas de 2 px) — riscas paralelas nítidas
@@ -992,12 +1069,27 @@ fn os_candidatos_da_w2_sao_as_suas_receitas() {
         let mut p = crate::presets_de_fabrica::parametros(r);
         p.width_table.clone_from(&ficheiro.width_table);
         if p != ficheiro {
-            mudaram.push(r.nome);
+            let engine = p
+                .engine
+                .keys()
+                .chain(ficheiro.engine.keys())
+                .filter(|k| p.engine.get(*k) != ficheiro.engine.get(*k))
+                .map(|k| format!("{k}: {:?} ≠ {:?}", p.engine.get(k), ficheiro.engine.get(k)));
+            let brush = p
+                .brush
+                .keys()
+                .chain(ficheiro.brush.keys())
+                .filter(|k| p.brush.get(*k) != ficheiro.brush.get(*k))
+                .map(|k| format!("{k}: {:?} ≠ {:?}", p.brush.get(k), ficheiro.brush.get(k)));
+            let mut d: Vec<String> = engine.chain(brush).collect();
+            d.dedup();
+            mudaram.push(format!("{}: {}", r.nome, d.join(" · ")));
         }
     }
     assert!(
         mudaram.is_empty(),
-        "a receita não refaz o candidato: {mudaram:?}"
+        "a receita não refaz o candidato (receita ≠ ficheiro):\n{}",
+        mudaram.join("\n")
     );
 }
 

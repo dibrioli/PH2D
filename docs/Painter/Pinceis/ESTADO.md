@@ -25,6 +25,13 @@
   Dry. **Total: 22 aprovados, fábrica 49** (Wet 33, Digital 16). Os 13 curados não aprovados da W2 (6 facas, 4 Dabber,
   3 Metallic) ficam fora da fábrica com a receita (`EM_ESTUDO_W2`).
 
+- **Óleo Real W3 P** (27/10, [`W3_P_Knife.md`](W3_P_Knife.md) · [`W3_P_Dabber.md`](W3_P_Dabber.md) ·
+  [`W3_P_Metallic.md`](W3_P_Metallic.md)): **+5 aprovados** — Knife Textured, Knife Stain, Dabber 4, Metallic Flat,
+  Metallic Splats (`WetPainter/Oil/{Knife,Dabber,Metallic}/`). **Total: 27 aprovados, fábrica 54** (Wet 38, Digital
+  16). Ficam candidatos (`EM_ESTUDO_W2`, receitas com os valores finais da W3): Knife Smooth · Smooth 2 · Soft · Dry 2;
+  Dabber 2 · 3 · Fan; Metallic Round. Dabber 4 e Metallic Splats saem da regra do Spacing pelo nome
+  (`CARIMBOS_ESPACADOS`: a marca deles é o carimbo espaçado). Prancha dos 13: [`pranchas/W3_presets.jpg`](pranchas/W3_presets.jpg).
+
 ## Decisões de produto (com o porquê)
 
 1. Filbert/Flat Oily/Knife Smooth só voltam com o exame e o Rebelle ao lado; a lâmina do Rebelle é FIXA no eixo do

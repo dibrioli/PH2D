@@ -551,11 +551,18 @@ fn drag_permutation_lands_like_a_single_swatch_would() {
     use ph2d_app_pixel::paleta::drag_permutation;
     use ph2d_pixel_core::palette::move_permutation;
     for (from, to) in [(0, 5), (5, 0), (3, 3), (7, 9), (9, 0)] {
-        assert_eq!(drag_permutation(10, &[from], to), move_permutation(10, from, to));
+        assert_eq!(
+            drag_permutation(10, &[from], to),
+            move_permutation(10, from, to)
+        );
     }
     assert_eq!(drag_permutation(6, &[1, 3], 5), vec![0, 2, 4, 5, 1, 3]);
     assert_eq!(drag_permutation(6, &[3, 4], 0), vec![3, 4, 0, 1, 2, 5]);
-    assert_eq!(drag_permutation(4, &[1], 9), vec![0, 1, 2, 3], "fora da paleta: nada");
+    assert_eq!(
+        drag_permutation(4, &[1], 9),
+        vec![0, 1, 2, 3],
+        "fora da paleta: nada"
+    );
 }
 
 /// Uma pasta só deste teste (nunca a HOME real).
@@ -589,15 +596,25 @@ fn save_as_default_gives_the_next_new_sprite_that_palette() {
     let mut img = Vec::new();
     compose_rgba(s, s.frames()[0].id, None, &mut img);
     let px = [img[0], img[1], img[2], img[3]];
-    assert!(cinco.contains(&px), "o fundo procurou-se na paleta dela: {px:?}");
+    assert!(
+        cinco.contains(&px),
+        "o fundo procurou-se na paleta dela: {px:?}"
+    );
 
     p.pede(PixelRequest::PaletteSize(9));
     p.pede(PixelRequest::DefaultPalette);
-    assert_eq!(p.sprite().palette(), cinco.as_slice(), "o Load Default carrega a gravada");
+    assert_eq!(
+        p.sprite().palette(),
+        cinco.as_slice(),
+        "o Load Default carrega a gravada"
+    );
 
     // Sem pasta, a de fábrica.
     p.app.paletas = None;
-    let k = p.app.create(ph2d_pixel_core::NewSprite::default()).expect("sprite");
+    let k = p
+        .app
+        .create(ph2d_pixel_core::NewSprite::default())
+        .expect("sprite");
     assert_eq!(
         p.app.doc(k).expect("doc").sprite.palette(),
         ph2d_pixel_core::palette::DEFAULT.as_slice()
@@ -617,7 +634,11 @@ fn a_saved_preset_is_listed_and_loads_as_one_step() {
     ph2d_app_host::modal::responde_o_proximo(dir.join("bola.gpl"));
     p.pede(PixelRequest::SavePreset);
     p.pede(PixelRequest::SaveDefault);
-    assert_eq!(p.quadro().presets, vec!["bola".to_owned()], "a de omissão não é uma predefinição");
+    assert_eq!(
+        p.quadro().presets,
+        vec!["bola".to_owned()],
+        "a de omissão não é uma predefinição"
+    );
     p.pede(PixelRequest::PaletteSize(3));
     let antes = p.passos();
     p.pede(PixelRequest::LoadPreset("bola".to_owned()));

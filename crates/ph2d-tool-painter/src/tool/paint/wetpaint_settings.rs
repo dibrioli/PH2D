@@ -648,7 +648,10 @@ impl PainterTool {
             4 => o.azimute = v.rem_euclid(hi).to_radians(),
             5 => o.fenda = v.clamp(lo, hi),
             6 => o.alcance_fenda = v.clamp(lo, hi),
-            _ => o.forca_ambiente = v.clamp(lo, hi),
+            7 => o.forca_ambiente = v.clamp(lo, hi),
+            _ => o
+                .material
+                .poe(k - crate::ids::PAINTER_WETPAINT_OLEO_MATERIAL_DE, v.clamp(lo, hi)),
         }
         self.guarda_oleo_valores(o);
         true
@@ -662,6 +665,18 @@ impl PainterTool {
         };
         let mut o = self.paint.wetpaint.oleo_real_valores;
         o.ambiente = a;
+        self.guarda_oleo_valores(o);
+        true
+    }
+
+    /// O **Reflection Map** do Real Oil pelo wire `MaterialCartao::mapa_indice` (`0` = o Environment). Fora
+    /// da faixa = sem efeito (`false`).
+    fn set_wet_oleo_mapa_reflexo_indice(&mut self, i: u8) -> bool {
+        let Some(m) = ph2d_wet_paint::oleo_real::MaterialCartao::mapa_de_indice(i) else {
+            return false;
+        };
+        let mut o = self.paint.wetpaint.oleo_real_valores;
+        o.material.mapa_reflexo = m;
         self.guarda_oleo_valores(o);
         true
     }
@@ -875,6 +890,12 @@ impl PainterTool {
             {
                 v.parse::<u8>()
                     .is_ok_and(|i| self.set_wet_oleo_ambiente_indice(i))
+            }
+            PanelEvent::SelectOption(id, v)
+                if *id == crate::ids::PAINTER_WETPAINT_OLEO_MAPA_REFLEXO =>
+            {
+                v.parse::<u8>()
+                    .is_ok_and(|i| self.set_wet_oleo_mapa_reflexo_indice(i))
             }
             PanelEvent::Click(id) if *id == crate::ids::PAINTER_WETPAINT_LIVE_WATER => {
                 self.set_wet_agua_viva(!self.paint.wetpaint.agua_viva);

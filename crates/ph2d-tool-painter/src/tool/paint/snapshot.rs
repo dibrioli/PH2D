@@ -466,6 +466,14 @@ impl PainterTool {
             wet_oleo_alcance_fenda: self.paint.wetpaint.oleo_real_valores.alcance_fenda as f32,
             wet_oleo_forca_ambiente: self.paint.wetpaint.oleo_real_valores.forca_ambiente as f32,
             wet_oleo_ambiente: self.paint.wetpaint.oleo_real_valores.ambiente.indice(),
+            wet_oleo_material: self
+                .paint
+                .wetpaint
+                .oleo_real_valores
+                .material
+                .valores()
+                .map(|v| v as f32),
+            wet_oleo_mapa_reflexo: self.paint.wetpaint.oleo_real_valores.material.mapa_indice(),
             wet_live_water: self.paint.wetpaint.agua_viva,
             wet_heavy_edge: self.paint.wetpaint.borda_que_pesa as f32,
             wet_km_mixing: self.paint.wetpaint.km_mixing,

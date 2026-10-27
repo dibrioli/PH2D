@@ -314,6 +314,9 @@ pub const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     // `oleo_real::FORCA_AMBIENTE_FABRICA` (a mistura céu × lâmpada de antes da W2 E2).
     wet_oleo_forca_ambiente: 0.6,
     wet_oleo_ambiente: 1,
+    // O material NEUTRO do cartão (W2 E3-B): a imagem de antes.
+    wet_oleo_material: ph2d_tool_painter::ids::PAINTER_WETPAINT_OLEO_MATERIAL_NEUTRO,
+    wet_oleo_mapa_reflexo: 0,
     wet_live_water: false,
     wet_heavy_edge: 0.0,
     wet_km_mixing: false,

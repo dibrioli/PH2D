@@ -62,6 +62,80 @@ impl MaterialCartao {
     };
 }
 
+impl MaterialCartao {
+    /// Os 12 ajustes NUMÉRICOS do cartão, pela ordem da UI (`PAINTER_WETPAINT_OLEO_FIELDS[8..]`) e com os
+    /// nomes da macro: primeiro os do «Metallic Materials» do Rebelle, depois os lóbulos do Principled.
+    pub const CAMPOS: [&'static str; 12] = [
+        "metal",
+        "refletividade",
+        "escala_mapa",
+        "forca_reflexo",
+        "rugosidade",
+        "especular",
+        "tinta_reflexo",
+        "verniz",
+        "verniz_rugosidade",
+        "veludo",
+        "anisotropia",
+        "translucidez",
+    ];
+
+    /// Os valores de [`Self::CAMPOS`], pela mesma ordem.
+    #[must_use]
+    pub const fn valores(&self) -> [f64; 12] {
+        [
+            self.metal,
+            self.refletividade,
+            self.escala_mapa,
+            self.forca_reflexo,
+            self.rugosidade,
+            self.especular,
+            self.tinta_reflexo,
+            self.verniz,
+            self.verniz_rugosidade,
+            self.veludo,
+            self.anisotropia,
+            self.translucidez,
+        ]
+    }
+
+    /// Põe o campo `k` de [`Self::CAMPOS`] (fora da faixa = sem efeito).
+    pub fn poe(&mut self, k: usize, v: f64) {
+        let alvo = match k {
+            0 => &mut self.metal,
+            1 => &mut self.refletividade,
+            2 => &mut self.escala_mapa,
+            3 => &mut self.forca_reflexo,
+            4 => &mut self.rugosidade,
+            5 => &mut self.especular,
+            6 => &mut self.tinta_reflexo,
+            7 => &mut self.verniz,
+            8 => &mut self.verniz_rugosidade,
+            9 => &mut self.veludo,
+            10 => &mut self.anisotropia,
+            11 => &mut self.translucidez,
+            _ => return,
+        };
+        *alvo = v;
+    }
+
+    /// O wire do **Reflection Map**: `0` = o Environment, senão o índice em `Ambiente::TODOS` (o Clássico não
+    /// tem mapa, por isso o `0` é dele).
+    #[must_use]
+    pub fn mapa_indice(&self) -> u8 {
+        self.mapa_reflexo.map_or(0, Ambiente::indice)
+    }
+
+    /// O inverso de [`Self::mapa_indice`] (`None` = fora da faixa).
+    #[must_use]
+    pub fn mapa_de_indice(i: u8) -> Option<Option<Ambiente>> {
+        match i {
+            0 => Some(None),
+            _ => Ambiente::de_indice(i).map(Some),
+        }
+    }
+}
+
 impl Default for MaterialCartao {
     fn default() -> Self {
         Self::NEUTRO

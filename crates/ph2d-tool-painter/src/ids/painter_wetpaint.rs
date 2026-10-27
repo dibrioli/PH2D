@@ -86,11 +86,42 @@ pub const PAINTER_WETPAINT_OLEO_ALCANCE_FENDA: NodeId =
 /// da lâmpada; W2 E2).
 pub const PAINTER_WETPAINT_OLEO_FORCA_AMBIENTE: NodeId =
     hash_node_id("painter_brush.wetpaint_oleo_forca_ambiente");
+/// O **material** GLOBAL do Real Oil (W2 E3-B, `OleoReal::material`, `MaterialCartao::CAMPOS` pela mesma ordem):
+/// Metallic, Reflectivity, Reflection scale, Reflection strength (o «Metallic Materials» do Rebelle) e os
+/// lóbulos do Principled — Roughness, Specular, Reflection tint, Clearcoat, Clearcoat roughness, Sheen,
+/// Anisotropy, Translucency.
+pub const PAINTER_WETPAINT_OLEO_MATERIAL: [NodeId; 12] = [
+    hash_node_id("painter_brush.wetpaint_oleo_mat_metal"),
+    hash_node_id("painter_brush.wetpaint_oleo_mat_refletividade"),
+    hash_node_id("painter_brush.wetpaint_oleo_mat_escala_mapa"),
+    hash_node_id("painter_brush.wetpaint_oleo_mat_forca_reflexo"),
+    hash_node_id("painter_brush.wetpaint_oleo_mat_rugosidade"),
+    hash_node_id("painter_brush.wetpaint_oleo_mat_especular"),
+    hash_node_id("painter_brush.wetpaint_oleo_mat_tinta_reflexo"),
+    hash_node_id("painter_brush.wetpaint_oleo_mat_verniz"),
+    hash_node_id("painter_brush.wetpaint_oleo_mat_verniz_rugosidade"),
+    hash_node_id("painter_brush.wetpaint_oleo_mat_veludo"),
+    hash_node_id("painter_brush.wetpaint_oleo_mat_anisotropia"),
+    hash_node_id("painter_brush.wetpaint_oleo_mat_translucidez"),
+];
+/// O índice da primeira linha do material em [`PAINTER_WETPAINT_OLEO_FIELDS`].
+pub const PAINTER_WETPAINT_OLEO_MATERIAL_DE: usize = 8;
+/// Os valores NEUTROS das linhas do material (`MaterialCartao::NEUTRO`, a imagem de antes), em `f32` do painel.
+pub const PAINTER_WETPAINT_OLEO_MATERIAL_NEUTRO: [f32; 12] = {
+    let v = ph2d_wet_paint::oleo_real::MaterialCartao::NEUTRO.valores();
+    let mut f = [0.0f32; 12];
+    let mut k = 0;
+    while k < 12 {
+        f[k] = v[k] as f32;
+        k += 1;
+    }
+    f
+};
 
 /// As linhas numéricas do **Real Oil** — fora de [`PAINTER_WETPAINT_FIELDS`] porque só se pintam com o
 /// Óleo Real ligado (aquela lista é «pintada sempre que armado», com gate). Uma lista para o `SetValue`
 /// do painel, o populate e o encaminhamento da ferramenta.
-pub const PAINTER_WETPAINT_OLEO_FIELDS: [NodeId; 8] = [
+pub const PAINTER_WETPAINT_OLEO_FIELDS: [NodeId; 20] = [
     PAINTER_WETPAINT_OLEO_PROFUNDIDADE,
     PAINTER_WETPAINT_OLEO_SOMBRA,
     PAINTER_WETPAINT_OLEO_BRILHO,
@@ -99,6 +130,18 @@ pub const PAINTER_WETPAINT_OLEO_FIELDS: [NodeId; 8] = [
     PAINTER_WETPAINT_OLEO_FENDA,
     PAINTER_WETPAINT_OLEO_ALCANCE_FENDA,
     PAINTER_WETPAINT_OLEO_FORCA_AMBIENTE,
+    PAINTER_WETPAINT_OLEO_MATERIAL[0],
+    PAINTER_WETPAINT_OLEO_MATERIAL[1],
+    PAINTER_WETPAINT_OLEO_MATERIAL[2],
+    PAINTER_WETPAINT_OLEO_MATERIAL[3],
+    PAINTER_WETPAINT_OLEO_MATERIAL[4],
+    PAINTER_WETPAINT_OLEO_MATERIAL[5],
+    PAINTER_WETPAINT_OLEO_MATERIAL[6],
+    PAINTER_WETPAINT_OLEO_MATERIAL[7],
+    PAINTER_WETPAINT_OLEO_MATERIAL[8],
+    PAINTER_WETPAINT_OLEO_MATERIAL[9],
+    PAINTER_WETPAINT_OLEO_MATERIAL[10],
+    PAINTER_WETPAINT_OLEO_MATERIAL[11],
 ];
 
 /// As faixas `(min, max)` das linhas de [`PAINTER_WETPAINT_OLEO_FIELDS`], pela MESMA ordem, nas unidades do
@@ -108,7 +151,11 @@ pub const PAINTER_WETPAINT_OLEO_FIELDS: [NodeId; 8] = [
 /// direction dá a volta (`360° = 0°`). Crevice shadow e reach: os tectos MEDIDOS em `ph2d_wet_paint::oleo_real`
 /// (`FENDA_MAX`: pontos pretos na cena do dono; `ALCANCE_FENDA_MAX`: a margem da região suja).
 /// Environment light: uma MISTURA (`0` = só a lâmpada, `1` = só o ambiente), por isso `0..1`.
-pub const PAINTER_WETPAINT_OLEO_FAIXAS: [(f64, f64); 8] = [
+/// O material (W2 E3-B): os PESOS do Principled são `0..1` (a faixa dele); Reflectivity `0..2` (o F0 do
+/// metal prende-se a 1 por canal); os multiplicadores sobem até o produto chegar ao tecto do Principled —
+/// Roughness `× 3,5` (0,28 → 1), Clearcoat roughness `× 33` (0,03 → 1), Specular `× 2` (nível 1, F0 0,08);
+/// Reflection scale `0,25..4` e strength `0..3` são escolha de desenho (o mapa ainda se lê nas pontas).
+pub const PAINTER_WETPAINT_OLEO_FAIXAS: [(f64, f64); 20] = [
     (0.0, 3.0),
     (0.0, 1.0),
     (0.0, 1.0),
@@ -116,6 +163,18 @@ pub const PAINTER_WETPAINT_OLEO_FAIXAS: [(f64, f64); 8] = [
     (0.0, 360.0),
     (0.0, ph2d_wet_paint::oleo_real::FENDA_MAX),
     (1.0, ph2d_wet_paint::oleo_real::ALCANCE_FENDA_MAX),
+    (0.0, 1.0),
+    (0.0, 1.0),
+    (0.0, 2.0),
+    (0.25, 4.0),
+    (0.0, 3.0),
+    (0.1, 3.5),
+    (0.0, 2.0),
+    (0.0, 1.0),
+    (0.0, 1.0),
+    (0.1, 33.0),
+    (0.0, 1.0),
+    (0.0, 1.0),
     (0.0, 1.0),
 ];
 
@@ -129,6 +188,19 @@ const _: () = assert!(
     ph2d_wet_paint::oleo_real::Ambiente::TODOS.len()
         == PAINTER_WETPAINT_OLEO_AMBIENTE_COUNT as usize
 );
+
+/// **Reflection Map** chip do **Real Oil** (W2 E3-B, `MaterialCartao::mapa_reflexo`; wire =
+/// `MaterialCartao::mapa_indice`: `0` = o Environment, `1..=3` = Studio · Interior · Courtyard).
+pub const PAINTER_WETPAINT_OLEO_MAPA_REFLEXO: NodeId =
+    hash_node_id("painter_brush.wetpaint_oleo_mapa_reflexo");
+/// Opções do **Reflection Map** (o `0` + os ambientes com mapa).
+pub const PAINTER_WETPAINT_OLEO_MAPA_REFLEXO_COUNT: u8 = PAINTER_WETPAINT_OLEO_AMBIENTE_COUNT;
+
+/// Opção `i` do popover do **Reflection Map**.
+#[must_use]
+pub fn painter_wetpaint_oleo_mapa_reflexo_option_id(i: u8) -> NodeId {
+    hash_node_id_runtime(&format!("painter_brush.wetpaint_oleo_mapa_reflexo_opt.{i}"))
+}
 
 /// Opção `i` do popover do **Environment**.
 #[must_use]

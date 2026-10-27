@@ -341,8 +341,8 @@ fn paint_resolution_readout(
 
 /// O **Real Oil** (Óleo Real, doc 49): a caixa e, só com ela ligada, as oito linhas da óptica do relevo —
 /// Depth, Shadow, Gloss, a luz (altura e direcção, em GRAUS), a fenda (força e alcance, W2 E1) e a força do
-/// ambiente (W2 E2), por cima do Environment. As faixas são as da ferramenta
-/// (`PAINTER_WETPAINT_OLEO_FAIXAS`), uma lei para quem pinta e quem prende.
+/// ambiente (W2 E2), por cima do Environment; depois o MATERIAL (W2 E3-B, [`paint_oleo_material`]). As
+/// faixas são as da ferramenta (`PAINTER_WETPAINT_OLEO_FAIXAS`), uma lei para quem pinta e quem prende.
 fn paint_oleo_real(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
@@ -417,11 +417,11 @@ fn paint_oleo_real(
     ];
     for (((chave, valor, passo, casas), id), (lo, hi)) in linhas
         .into_iter()
-        .zip(PAINTER_WETPAINT_OLEO_FIELDS)
+        .zip(&PAINTER_WETPAINT_OLEO_FIELDS[..ph2d_tool_painter::ids::PAINTER_WETPAINT_OLEO_MATERIAL_DE])
         .zip(PAINTER_WETPAINT_OLEO_FAIXAS)
     {
         y = card_row(
-            ctx, theme, x, content_w, y, chave, id, valor, lo as f32, hi as f32, passo, casas,
+            ctx, theme, x, content_w, y, chave, *id, valor, lo as f32, hi as f32, passo, casas,
         );
     }
     let cur = brush.wet_oleo_ambiente;
@@ -439,7 +439,83 @@ fn paint_oleo_real(
     if let Some(r) = open {
         PENDING_AMBIENTE_DD.with(|c| c.set(Some((r, cur))));
     }
+    paint_oleo_material(ctx, theme, x, content_w, y, brush)
+}
+
+/// Os rótulos das 12 linhas do material, pela ordem de `MaterialCartao::CAMPOS`.
+const MATERIAL: [&str; 12] = [
+    "panel.painter_layers.wetpaint.oleo_metallic",
+    "panel.painter_layers.wetpaint.oleo_reflectivity",
+    "panel.painter_layers.wetpaint.oleo_reflection_scale",
+    "panel.painter_layers.wetpaint.oleo_reflection_strength",
+    "panel.painter_layers.wetpaint.oleo_roughness",
+    "panel.painter_layers.wetpaint.oleo_specular",
+    "panel.painter_layers.wetpaint.oleo_reflection_tint",
+    "panel.painter_layers.wetpaint.oleo_clearcoat",
+    "panel.painter_layers.wetpaint.oleo_clearcoat_roughness",
+    "panel.painter_layers.wetpaint.oleo_sheen",
+    "panel.painter_layers.wetpaint.oleo_anisotropy",
+    "panel.painter_layers.wetpaint.oleo_translucency",
+];
+
+/// O **material** global do Real Oil (W2 E3-B): as quatro do «Metallic Materials» do Rebelle (Metallic,
+/// Reflectivity, Scale, Strength) com o **Reflection Map** logo a seguir, e os lóbulos do Principled.
+fn paint_oleo_material(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    content_w: f32,
+    y: f32,
+    brush: &BrushSettings,
+) -> f32 {
+    use ph2d_tool_painter::ids::{
+        PAINTER_WETPAINT_OLEO_FAIXAS, PAINTER_WETPAINT_OLEO_MATERIAL, PAINTER_WETPAINT_OLEO_MATERIAL_DE,
+    };
+    let mut y = y;
+    for k in 0..MATERIAL.len() {
+        if k == 4 {
+            let cur = brush.wet_oleo_mapa_reflexo;
+            let (y2, open) = crate::paint_brush_rows::paint_dropdown_row_de_caixa(
+                ctx,
+                theme,
+                x,
+                content_w,
+                y,
+                "panel.painter_layers.wetpaint.oleo_reflection_map",
+                ph2d_tool_painter::ids::PAINTER_WETPAINT_OLEO_MAPA_REFLEXO,
+                cur,
+                nome_do_mapa(cur),
+            );
+            if let Some(r) = open {
+                PENDING_MAPA_DD.with(|c| c.set(Some((r, cur))));
+            }
+            y = y2;
+        }
+        let (lo, hi) = PAINTER_WETPAINT_OLEO_FAIXAS[PAINTER_WETPAINT_OLEO_MATERIAL_DE + k];
+        y = card_row(
+            ctx,
+            theme,
+            x,
+            content_w,
+            y,
+            MATERIAL[k],
+            PAINTER_WETPAINT_OLEO_MATERIAL[k],
+            brush.wet_oleo_material[k],
+            lo as f32,
+            hi as f32,
+            number_field::FINE_STEP,
+            2,
+        );
+    }
     y
+}
+
+/// O rótulo do **Reflection Map** de wire `i` (`0` = o Environment, senão o ambiente desse índice).
+fn nome_do_mapa(i: u8) -> &'static str {
+    match i {
+        0 => tr("panel.painter_layers.wetpaint.oleo_refl_map_environment"),
+        _ => nome_do_ambiente(i),
+    }
 }
 
 /// Os rótulos do **Environment**, pela ordem de `Ambiente::TODOS` (o wire do chip).
@@ -461,6 +537,9 @@ thread_local! {
     /// O menu do Environment aberto neste quadro (o chip e o índice de agora), pintado por cima do corpo.
     static PENDING_AMBIENTE_DD: std::cell::Cell<Option<(ph2d_editor_core::zones::Rect, u8)>> =
         const { std::cell::Cell::new(None) };
+    /// O menu do Reflection Map aberto neste quadro.
+    static PENDING_MAPA_DD: std::cell::Cell<Option<(ph2d_editor_core::zones::Rect, u8)>> =
+        const { std::cell::Cell::new(None) };
 }
 
 /// O popover do **Environment** (chamado de `paint_brush_popovers`, depois do clip do corpo).
@@ -479,6 +558,25 @@ pub(crate) fn paint_wetpaint_popovers(ctx: &mut PaintCtx, theme: ph2d_tokens::Th
             ctx,
             theme,
             ph2d_tool_painter::ids::PAINTER_WETPAINT_OLEO_AMBIENTE,
+            opcoes,
+            r,
+            cur,
+        );
+    }
+    if let Some((r, cur)) = PENDING_MAPA_DD.with(std::cell::Cell::take) {
+        let opcoes = (0..ph2d_tool_painter::ids::PAINTER_WETPAINT_OLEO_MAPA_REFLEXO_COUNT)
+            .map(|i| {
+                ph2d_editor_core::widget::DropdownOption::new(
+                    ph2d_tool_painter::ids::painter_wetpaint_oleo_mapa_reflexo_option_id(i),
+                    i,
+                    nome_do_mapa(i),
+                )
+            })
+            .collect();
+        crate::dropdown_popover::paint_dropdown_popover(
+            ctx,
+            theme,
+            ph2d_tool_painter::ids::PAINTER_WETPAINT_OLEO_MAPA_REFLEXO,
             opcoes,
             r,
             cur,

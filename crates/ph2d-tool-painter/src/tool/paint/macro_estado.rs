@@ -190,7 +190,7 @@ impl PainterTool {
 /// Os knobs do artista do Óleo Real (a `Afinacao` é constante da lei, não vai na macro). Ângulos em radianos;
 /// o `ambiente` é o índice em `Ambiente::TODOS`.
 fn oleo_para_json(o: &ph2d_wet_paint::oleo_real::OleoReal) -> Value {
-    json!({
+    let mut v = json!({
         "profundidade": o.profundidade,
         "azimute": o.azimute,
         "altitude": o.altitude,
@@ -200,7 +200,14 @@ fn oleo_para_json(o: &ph2d_wet_paint::oleo_real::OleoReal) -> Value {
         "alcance_fenda": o.alcance_fenda,
         "forca_ambiente": o.forca_ambiente,
         "ambiente": o.ambiente.indice(),
-    })
+    });
+    // W2 E3-B: o material do cartão (`mat_<campo>`) e o Reflection Map (`0` = o Environment).
+    let mat = o.material.valores();
+    for (nome, x) in ph2d_wet_paint::oleo_real::MaterialCartao::CAMPOS.iter().zip(mat) {
+        v[format!("mat_{nome}")] = json!(x);
+    }
+    v["mat_mapa_reflexo"] = json!(o.material.mapa_indice());
+    v
 }
 
 /// O inverso de [`oleo_para_json`]: um campo ausente fica como está.
@@ -225,6 +232,21 @@ fn oleo_de_json(o: &mut ph2d_wet_paint::oleo_real::OleoReal, v: &Value) {
         .and_then(ph2d_wet_paint::oleo_real::Ambiente::de_indice)
     {
         o.ambiente = a;
+    }
+    for (k, nome) in ph2d_wet_paint::oleo_real::MaterialCartao::CAMPOS
+        .iter()
+        .enumerate()
+    {
+        if let Some(x) = v[format!("mat_{nome}")].as_f64() {
+            o.material.poe(k, x);
+        }
+    }
+    if let Some(m) = v["mat_mapa_reflexo"]
+        .as_u64()
+        .and_then(|i| u8::try_from(i).ok())
+        .and_then(ph2d_wet_paint::oleo_real::MaterialCartao::mapa_de_indice)
+    {
+        o.material.mapa_reflexo = m;
     }
 }
 
@@ -264,6 +286,27 @@ mod oleo_json_tests {
         let mut o = gravado;
         oleo_de_json(&mut o, &antigo);
         assert_eq!((o.fenda, o.alcance_fenda), (2.5, 9.0));
+    }
+
+    /// O material do cartão e o Reflection Map (W2 E3-B) viajam na macro; a macro de antes deles (campos
+    /// ausentes) mantém os valores.
+    #[test]
+    fn o_material_do_cartao_viaja_na_macro_e_o_campo_ausente_mantem() {
+        use ph2d_wet_paint::oleo_real::{Ambiente, MaterialCartao};
+        let mut gravado = OleoReal::default();
+        for k in 0..MaterialCartao::CAMPOS.len() {
+            gravado.material.poe(k, 0.1 + 0.07 * k as f64);
+        }
+        gravado.material.mapa_reflexo = Some(Ambiente::Interior);
+        let mut lido = OleoReal::default();
+        oleo_de_json(&mut lido, &oleo_para_json(&gravado));
+        assert_eq!(lido, gravado);
+        let mut antigo = oleo_para_json(&OleoReal::default());
+        let obj = antigo.as_object_mut().expect("objecto");
+        obj.retain(|k, _| !k.starts_with("mat_"));
+        let mut o = gravado;
+        oleo_de_json(&mut o, &antigo);
+        assert_eq!(o.material, gravado.material);
     }
 
     /// A força do ambiente (W2 E2) viaja na macro; a macro de antes dela (campo ausente) mantém o valor.

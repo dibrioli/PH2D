@@ -1,6 +1,7 @@
 //! ⭐ **As opções da forma na mão** (P6b, dono 26/10: *«as formas do Vector, com opções específicas
 //! no painel à direita como fillet»*): os campos do catálogo do Vector, com os nomes dele, por ordem;
-//! as escolhas (o tipo do canto) são segmentos; o polígono e a estrela têm «Fill».
+//! as escolhas (o tipo do canto) são segmentos; as quatro têm «Fill» (P6c: no lugar das ferramentas
+//! cheias).
 
 use super::*;
 use crate::seam_formas::nome;
@@ -40,14 +41,11 @@ impl Corpo<'_> {
                 _ => self.campo(nome(f.label), field_id(s, i), sec, y),
             };
         }
-        if matches!(s, PixelShape::Polygon | PixelShape::Star) {
-            let fill = (
-                SHAPE_FILL,
-                tr("panel.pixel.shape_fill"),
-                info.options.shape_fill,
-            );
-            y = self.caixas(&[fill], sec, y);
-        }
-        y
+        let fill = (
+            SHAPE_FILL,
+            tr("panel.pixel.shape_fill"),
+            info.options.shape_fill,
+        );
+        self.caixas(&[fill], sec, y)
     }
 }

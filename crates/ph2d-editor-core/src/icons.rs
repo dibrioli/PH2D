@@ -225,6 +225,8 @@ pub enum IconId {
     Play,
     Plus,
     Polygon,
+    /// O laço poligonal do Pixel (P6c): arestas rectas, vértices marcados, o nó do laço.
+    PolygonLasso,
     Prefab,
     Presentation,
     Probe,

@@ -17,7 +17,11 @@ use ph2d_i18n::tr;
 
 pub(crate) fn populate(store: &mut WidgetStore) {
     let botoes = ids::TOOLS.iter().map(|(_, id)| *id);
-    for id in botoes.chain([ids::PIXEL_CLOSE, ids::PIXEL_SWAP, ids::PIXEL_SELECT_GROUP]) {
+    let grupos = ids::GROUPS.iter().map(|(_, id)| *id);
+    for id in botoes
+        .chain(grupos)
+        .chain([ids::PIXEL_CLOSE, ids::PIXEL_SWAP])
+    {
         let state = ButtonState::Normal;
         store.register(id, InteractiveState::Button { state });
     }
@@ -330,8 +334,8 @@ fn pedido(id: ph2d_a11y::NodeId, how: PixelSelect) -> Option<PixelRequest> {
         if let Some((t, _)) = ids::TOOLS.iter().find(|(_, b)| *b == id) {
             return Some(PixelRequest::Tool(*t));
         }
-        if id == ids::PIXEL_SELECT_GROUP {
-            return Some(PixelRequest::MarqueeGroup);
+        if let Some((g, _)) = ids::GROUPS.iter().find(|(_, b)| *b == id) {
+            return Some(PixelRequest::Group(*g));
         }
         if id == ids::PIXEL_SWAP {
             return Some(PixelRequest::Swap);

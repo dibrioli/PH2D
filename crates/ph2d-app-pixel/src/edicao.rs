@@ -114,7 +114,7 @@ pub fn assenta_antes(r: &PixelRequest) -> bool {
     !matches!(
         r,
         PixelRequest::Tool(_)
-            | PixelRequest::MarqueeGroup
+            | PixelRequest::Group(_)
             | PixelRequest::Options(_)
             | PixelRequest::Fg(_)
             | PixelRequest::Bg(_)

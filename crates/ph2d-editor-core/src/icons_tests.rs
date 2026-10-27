@@ -328,6 +328,7 @@ const ALL_ICONS: &[IconId] = &[
     IconId::Play,
     IconId::Plus,
     IconId::Polygon,
+    IconId::PolygonLasso,
     IconId::Prefab,
     IconId::Presentation,
     IconId::Probe,

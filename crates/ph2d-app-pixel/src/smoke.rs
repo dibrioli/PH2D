@@ -3,8 +3,8 @@
 //! 1 — um Pixel Sprite 32 × 32 já em Draw, com uma cara desenhada em QUATRO traços (quatro passos
 //! do desfazer, para o `Ctrl+Z` ter o que mostrar). O dono desenha por cima, desfaz, grava e reabre.
 //! 2 — P1: um Pixel Sprite 64 × 48 em Draw com uma casa feita SÓ com as ferramentas novas, cada
-//! forma um passo do desfazer: paredes (Rectangle), telhado (Polygon), porta (Filled Rectangle de
-//! canto redondo), sol (Filled Ellipse), chão (Line), fumo (Curve). As paredes FECHAM — o balde
+//! forma um passo do desfazer: paredes (Rectangle), telhado (Polygon), porta (Rectangle com Fill, de
+//! canto redondo), sol (Ellipse com Fill), chão (Line), fumo (Curve). As paredes FECHAM — o balde
 //! enche a casa sem vazar —, e a Rectangle fica na mão.
 //! 3 — P2: um Pixel Sprite 64 × 48 INDEXED com a DB32: céu em degradê (seis azuis), chão, e uma bola
 //! laranja sombreada com a rampa 4‥7 da DB32. As quatro amostras da rampa vêm seleccionadas e a tinta
@@ -31,6 +31,9 @@
 //! 10 — P6b, as quatro correcções do smoke da P6 ([`crate::smoke_formas`]): o ícone da varinha, as
 //! selecções num botão com triângulo, o gizmo do sprite com giro e a ferramenta Transform, e as
 //! formas do Vector (fillet, pizza, hexágono, estrela) em células.
+//! 11 — P6c, as três correcções do smoke da P6b ([`crate::smoke_ferramentas`]): o ícone do laço
+//! poligonal, as formas num botão com triângulo (o «Fill» no painel no lugar das cheias) e a coluna
+//! sem o Move (o `V` escolhe o Transform).
 
 use ph2d_ecs::SimWorld;
 use ph2d_pixel_core::{NewSprite, Paint, Stroke};
@@ -42,7 +45,7 @@ use ph2d_editor_core::pixel_panel::{
 
 pub const ROUTERS: &[ph2d_app_host::SmokeRouter] = &[ph2d_app_host::SmokeRouter {
     env: "PH2D_PIXEL_SMOKE",
-    max_level: 10,
+    max_level: 11,
 }];
 
 /// O nível armado em `PH2D_PIXEL_SMOKE`.
@@ -106,20 +109,27 @@ pub fn stage(
         8 => crate::smoke_quadros::stage(app, sim, spawn_root).is_some(),
         9 => crate::smoke_selecao::stage(app, sim, spawn_root).is_some(),
         10 => crate::smoke_formas::stage(app, sim, spawn_root).is_some(),
+        11 => crate::smoke_ferramentas::stage(app, sim, spawn_root).is_some(),
         _ => false,
     }
 }
 
-/// As formas da casa da cena 2: a ferramenta, as células que a definem e a cor (índice da DB32).
-type Peca = (crate::Tool, &'static [(i32, i32)], usize);
+/// As formas da casa da cena 2: a ferramenta, as células que a definem, a cor (índice da DB32) e
+/// a caixa «Fill».
+type Peca = (crate::Tool, &'static [(i32, i32)], usize, bool);
 
 pub const HOUSE: [Peca; 6] = [
-    (crate::Tool::Line, &[(0, 40), (63, 40)], 12),
-    (crate::Tool::Rectangle, &[(14, 22), (40, 40)], 4),
-    (crate::Tool::Polygon, &[(11, 22), (27, 9), (43, 22)], 27),
-    (crate::Tool::FilledRectangle, &[(24, 30), (30, 40)], 3),
-    (crate::Tool::FilledEllipse, &[(50, 3), (59, 12)], 8),
-    (crate::Tool::Curve, &[(34, 13), (28, 1), (44, 2)], 2),
+    (crate::Tool::Line, &[(0, 40), (63, 40)], 12, false),
+    (crate::Tool::Rectangle, &[(14, 22), (40, 40)], 4, false),
+    (
+        crate::Tool::Polygon,
+        &[(11, 22), (27, 9), (43, 22)],
+        27,
+        false,
+    ),
+    (crate::Tool::Rectangle, &[(24, 30), (30, 40)], 3, true),
+    (crate::Tool::Ellipse, &[(50, 3), (59, 12)], 8, true),
+    (crate::Tool::Curve, &[(34, 13), (28, 1), (44, 2)], 2, false),
 ];
 
 fn stage_house(
@@ -142,11 +152,13 @@ fn stage_house(
         PixelShape::Rectangle,
         app.options.shapes.get(PixelShape::Rectangle).with(0, 2.0),
     );
-    for (tool, pts, color) in HOUSE {
+    for (tool, pts, color, fill) in HOUSE {
+        app.options.shape_fill = fill;
         if !draw_shape(app, key, tool, pts, color) {
             return false;
         }
     }
+    app.options.shape_fill = false;
     app.options.shapes.set(
         PixelShape::Rectangle,
         app.options.shapes.get(PixelShape::Rectangle).with(0, 0.0),

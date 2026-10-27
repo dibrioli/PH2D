@@ -34,8 +34,8 @@ impl PixelShape {
     #[must_use]
     pub const fn of_tool(t: PixelTool) -> Option<Self> {
         Some(match t {
-            PixelTool::Rectangle | PixelTool::FilledRectangle => Self::Rectangle,
-            PixelTool::Ellipse | PixelTool::FilledEllipse => Self::Ellipse,
+            PixelTool::Rectangle => Self::Rectangle,
+            PixelTool::Ellipse => Self::Ellipse,
             PixelTool::RegularPolygon => Self::Polygon,
             PixelTool::Star => Self::Star,
             _ => return None,

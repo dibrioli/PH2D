@@ -11,6 +11,7 @@ use ph2d_editor_core::ToastQueue;
 use ph2d_editor_core::object_mode::ObjectMode;
 use ph2d_editor_core::pixel_panel::{
     PixelPanelInfo, PixelRequest, PixelSelectAction as S, PixelShape, PixelShapeValues,
+    PixelToolGroup as G,
 };
 use ph2d_editor_core::screens::hero::HeroScreen;
 use ph2d_pixel_core::raster::{Cell, ellipse_cells, ellipse_filled_cells, rounded_rect_cells};
@@ -31,11 +32,15 @@ struct Palco {
 
 impl Palco {
     fn novo() -> Self {
+        Self::cena(10)
+    }
+
+    fn cena(n: u32) -> Self {
         let mut app = PixelApp::default();
         let mut sim = SimWorld::new();
         assert!(
-            ph2d_app_pixel::smoke::stage(&mut app, &mut sim, 10, spawn_root),
-            "a cena 10 monta-se"
+            ph2d_app_pixel::smoke::stage(&mut app, &mut sim, n, spawn_root),
+            "a cena {n} monta-se"
         );
         let (bits, key) = mode::sprites(sim.world())[0];
         let mut hero = HeroScreen::new(ph2d_editor_core::NodeId(1));
@@ -95,6 +100,36 @@ fn ordena(mut v: Vec<Cell>) -> Vec<Cell> {
     v
 }
 
+/// P6c: a cena 11 mostra as três correcções — a elipse na mão com o Fill, a cara das selecções é o
+/// laço poligonal, o flyout das formas aberto; oco × cheio lado a lado; a selecção poligonal.
+#[test]
+fn scene_11_shows_each_correction() {
+    use ph2d_app_pixel::smoke_ferramentas as onze;
+    let mut p = Palco::cena(11);
+    let i = p.quadro();
+    assert_eq!(i.tool, Tool::Ellipse);
+    assert!(i.options.shape_fill, "a caixa Fill ligada no painel");
+    assert_eq!(i.groups.face(G::Select), Tool::PolygonLasso);
+    assert_eq!(i.groups.face(G::Shape), Tool::Ellipse);
+    assert_eq!(i.groups.open, Some(G::Shape));
+    assert!(i.has_selection && i.transform.is_none());
+    assert!(!Tool::ALL.iter().any(|t| t.label_key() == "pixel.tool.move"));
+    let d = p.app.doc(p.key).expect("o sprite");
+    let rgba = |x, y| {
+        d.sprite
+            .rgba_of_value(d.sprite.value_at((d.layer, d.frame), x, y))
+    };
+    for (tool, a, b, cor, fill) in onze::SHAPES {
+        let meio = ((a.0 + b.0) / 2, (a.1 + b.1) / 2);
+        assert_eq!(rgba(meio.0, a.1), cor, "{tool:?}: a borda de cima");
+        assert_eq!(rgba(meio.0, meio.1) == cor, fill, "{tool:?} fill={fill}");
+    }
+    // `V`: o Transform na mão, a figura levantada no gizmo.
+    let i = p.tecla(KeyCode::KeyV, false, false);
+    assert_eq!(i.tool, Tool::Transform);
+    assert!(i.transform.is_some(), "o V levanta a selecção");
+}
+
 #[test]
 fn scene_10_shows_each_correction() {
     let mut p = Palco::novo();
@@ -104,7 +139,8 @@ fn scene_10_shows_each_correction() {
         Tool::Star,
         "a estrela na mão: o painel mostra os campos dela"
     );
-    assert_eq!((i.marquee, i.marquee_open), (Tool::EllipseMarquee, true));
+    assert_eq!(i.groups.face(G::Select), Tool::EllipseMarquee);
+    assert_eq!(i.groups.open, Some(G::Select));
     let t = i.transform.expect("a figura levantada no gizmo do sprite");
     assert_eq!(t.angle, cena::ANGLE);
     let d = p.app.doc(p.key).expect("o sprite");
@@ -112,7 +148,7 @@ fn scene_10_shows_each_correction() {
         d.sprite
             .rgba_of_value(d.sprite.value_at((d.layer, d.frame), x, y))
     };
-    for (tool, a, b, cor) in cena::SHAPES {
+    for (tool, a, b, cor, _) in cena::SHAPES {
         let pintadas = (a.1..=b.1)
             .flat_map(|y| (a.0..=b.0).map(move |x| (x, y)))
             .filter(|&(x, y)| rgba(x, y) == cor)
@@ -205,23 +241,82 @@ fn the_vector_fields_draw_in_cells() {
     );
 }
 
-/// O botão de grupo: pede a última selecção usada e abre/fecha as quatro; escolher uma (pelo
-/// atalho) fecha-as e passa a ser a cara.
+/// O botão de grupo: pede a última usada do grupo e abre/fecha o flyout; escolher uma (pelo
+/// atalho) fecha-o e passa a ser a cara. P6c: as formas têm o seu, com a mesma lei, e só um flyout
+/// se abre de cada vez.
 #[test]
-fn the_selection_group_holds_the_last_marquee_and_opens_the_four() {
+fn each_group_holds_its_last_tool_and_opens_its_four() {
     let mut p = Palco::novo();
     p.pede(PixelRequest::Tool(Tool::Pencil));
-    let i = p.pede(PixelRequest::MarqueeGroup);
-    assert_eq!((i.tool, i.marquee_open), (Tool::EllipseMarquee, true));
-    let i = p.pede(PixelRequest::MarqueeGroup);
-    assert!(!i.marquee_open, "o mesmo clique fecha");
+    let i = p.pede(PixelRequest::Group(G::Select));
+    assert_eq!(
+        (i.tool, i.groups.open),
+        (Tool::EllipseMarquee, Some(G::Select))
+    );
+    let i = p.pede(PixelRequest::Group(G::Select));
+    assert_eq!(i.groups.open, None, "o mesmo clique fecha");
     let i = p.tecla(KeyCode::KeyQ, false, true);
     assert_eq!(
-        (i.tool, i.marquee, i.marquee_open),
-        (Tool::PolygonLasso, Tool::PolygonLasso, false)
+        (i.tool, i.groups.face(G::Select), i.groups.open),
+        (Tool::PolygonLasso, Tool::PolygonLasso, None)
     );
     let i = p.pede(PixelRequest::Tool(Tool::Pencil));
-    assert_eq!(i.marquee, Tool::PolygonLasso, "a cara fica a última");
+    assert_eq!(
+        i.groups.face(G::Select),
+        Tool::PolygonLasso,
+        "a cara fica a última"
+    );
+    // As formas: a estrela da cena é a cara; o U troca-a pelo retângulo.
+    assert_eq!(i.groups.face(G::Shape), Tool::Star);
+    p.pede(PixelRequest::Group(G::Select));
+    let i = p.pede(PixelRequest::Group(G::Shape));
+    assert_eq!(
+        (i.tool, i.groups.open),
+        (Tool::Star, Some(G::Shape)),
+        "abrir as formas fecha as selecções"
+    );
+    let i = p.tecla(KeyCode::KeyU, false, true);
+    assert_eq!(
+        (i.tool, i.groups.face(G::Shape), i.groups.open),
+        (Tool::Ellipse, Tool::Ellipse, None)
+    );
+    assert_eq!(
+        i.groups.face(G::Select),
+        Tool::PolygonLasso,
+        "cada grupo tem a sua"
+    );
+}
+
+/// P6c: a caixa «Fill» vale para as quatro formas — o retângulo e a elipse enchem com ela (o que o
+/// Retângulo cheio e a Elipse cheia faziam), e sem ela ficam ocas.
+#[test]
+fn the_fill_box_fills_the_rectangle_and_the_ellipse() {
+    // Um canto livre da cena 10 (as formas estão em cima, a figura ao meio).
+    for tool in [Tool::Rectangle, Tool::Ellipse] {
+        for fill in [false, true] {
+            let mut p = Palco::novo();
+            p.tecla(KeyCode::Enter, false, false);
+            p.pede(PixelRequest::Select(S::Deselect));
+            let mut o = p.app.options;
+            o.shape_fill = fill;
+            o.shapes = Default::default();
+            p.pede(PixelRequest::Options(o));
+            p.pede(PixelRequest::Tool(tool));
+            let c = canvas(&p.sim, &p.cam, p.bits);
+            let a = at(&p.app, &p.sim, &p.cam, p.bits, 4, 50);
+            let b = at(&p.app, &p.sim, &p.cam, p.bits, 16, 62);
+            let _ = input::press(&mut p.app, &c, a, Button::Primary, Mods::default());
+            let _ = input::moved(&mut p.app, &c, b, Mods::default());
+            let _ = input::release(&mut p.app);
+            let d = p.app.doc(p.key).expect("o sprite");
+            let cor = |x, y| {
+                d.sprite
+                    .rgba_of_value(d.sprite.value_at((d.layer, d.frame), x, y))[3]
+            };
+            assert_ne!(cor(10, 50), 0, "{tool:?}: o contorno");
+            assert_eq!(cor(10, 56) == 0, !fill, "{tool:?} fill={fill}");
+        }
+    }
 }
 
 /// A ferramenta Transform: o `Ctrl+T` põe-na na mão; com ela, premir sobre o sprite levanta (sem

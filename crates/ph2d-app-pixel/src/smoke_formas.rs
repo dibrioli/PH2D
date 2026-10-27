@@ -20,12 +20,24 @@ use crate::{PixelApp, Tool};
 
 /// O tamanho da cena 10.
 pub const SIZE: (u32, u32) = (128, 80);
-/// As quatro formas: a ferramenta, a caixa (cantos inclusivos) e a cor.
-pub const SHAPES: [(Tool, (i32, i32), (i32, i32), [u8; 4]); 4] = [
-    (Tool::Rectangle, (4, 4), (27, 23), [70, 110, 220, 255]),
-    (Tool::FilledEllipse, (34, 4), (55, 25), [240, 200, 60, 255]),
-    (Tool::RegularPolygon, (62, 4), (85, 25), [60, 170, 90, 255]),
-    (Tool::Star, (92, 3), (119, 27), [220, 60, 60, 255]),
+/// As quatro formas: a ferramenta, a caixa (cantos inclusivos), a cor e a caixa «Fill».
+pub const SHAPES: [(Tool, (i32, i32), (i32, i32), [u8; 4], bool); 4] = [
+    (
+        Tool::Rectangle,
+        (4, 4),
+        (27, 23),
+        [70, 110, 220, 255],
+        false,
+    ),
+    (Tool::Ellipse, (34, 4), (55, 25), [240, 200, 60, 255], true),
+    (
+        Tool::RegularPolygon,
+        (62, 4),
+        (85, 25),
+        [60, 170, 90, 255],
+        true,
+    ),
+    (Tool::Star, (92, 3), (119, 27), [220, 60, 60, 255], true),
 ];
 /// Os valores de cada forma (os campos do catálogo do Vector, em células).
 pub const RECT_FILLET: f64 = 6.0;
@@ -79,7 +91,8 @@ pub(crate) fn stage(
     let bits = crate::object_add::spawn(sim, app, spec, spawn_root).ok()?;
     let key = crate::input::key_of(sim.world(), bits)?;
     options(app);
-    for (tool, a, b, rgba) in SHAPES {
+    for (tool, a, b, rgba, fill) in SHAPES {
+        app.options.shape_fill = fill;
         forma(app, key, tool, a, b, rgba)?;
     }
     // A figura, seleccionada e levantada no gizmo, girada.
@@ -108,13 +121,14 @@ pub(crate) fn stage(
     app.campo_da_moldura(PixelTransformField::Angle, ANGLE);
     // A estrela na mão; o botão das selecções mostra a Elliptical e as quatro abertas.
     app.tool = Tool::Star;
-    app.marquee = Tool::EllipseMarquee;
-    app.marquee_open = true;
+    app.groups.chose(Tool::EllipseMarquee);
+    app.groups.chose(Tool::Star);
+    app.groups.open = Some(ph2d_editor_core::pixel_panel::PixelToolGroup::Select);
     Some(key)
 }
 
 /// Uma forma da cena pela MESMA lei do gesto, como UM passo.
-fn forma(
+pub(crate) fn forma(
     app: &mut PixelApp,
     key: u32,
     tool: Tool,

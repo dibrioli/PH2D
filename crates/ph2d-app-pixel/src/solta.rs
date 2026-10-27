@@ -1,4 +1,5 @@
-//! **A moldura solta** (P6, Edit ▸ Transform `Ctrl+T`, a ferramenta Move `V` e o Paste): as células
+//! **A moldura solta** (P6, a ferramenta Transform `V`/`Ctrl+T`, Ctrl+arrasto com uma selecção e o
+//! Paste): as células
 //! levantadas viajam numa matriz afim com pivô (`ph2d_pixel_core::affine`). O gizmo é o do SPRITE da
 //! casa (dono 26/10, ADR-0192 §12): a mesma pintura, as mesmas alças, as zonas de giro fora dos
 //! cantos e o pivô ([`ph2d_editor_core::gizmo`]); a conta do arrasto é a do núcleo, que assenta em
@@ -389,8 +390,8 @@ pub(crate) fn press(
     Some(Press::Done)
 }
 
-/// A ferramenta Move (ou Ctrl com uma de selecção): levanta e arrasta. Fora da selecção não faz
-/// nada (Aseprite).
+/// Ctrl+arrasto com uma ferramenta de selecção: levanta e arrasta. Fora da selecção não faz nada
+/// (Aseprite).
 pub(crate) fn press_move(
     app: &mut PixelApp,
     c: &Canvas<'_>,

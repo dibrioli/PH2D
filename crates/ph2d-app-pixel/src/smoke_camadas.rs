@@ -30,14 +30,23 @@ pub const BAND_H: u32 = 48;
 #[must_use]
 pub fn stripe_rgba(y: u32) -> [u8; 4] {
     let t = y as f32 / (BAND_H - 1) as f32;
-    let (a, m, b) = ([255.0, 170.0, 60.0], [128.0, 128.0, 128.0], [40.0, 90.0, 230.0]);
+    let (a, m, b) = (
+        [255.0, 170.0, 60.0],
+        [128.0, 128.0, 128.0],
+        [40.0, 90.0, 230.0],
+    );
     let mix = |p: [f32; 3], q: [f32; 3], u: f32| [0, 1, 2].map(|k| p[k] + (q[k] - p[k]) * u);
     let c = if t < 0.5 {
         mix(a, m, t * 2.0)
     } else {
         mix(m, b, t * 2.0 - 1.0)
     };
-    [c[0].round() as u8, c[1].round() as u8, c[2].round() as u8, 255]
+    [
+        c[0].round() as u8,
+        c[1].round() as u8,
+        c[2].round() as u8,
+        255,
+    ]
 }
 
 /// O retângulo da faixa do modo `i` (0 = Normal … 18 = Divide).
@@ -54,7 +63,14 @@ pub const REFERENCE_BOX: Rect = Rect::new(124, 54, 28, 36);
 pub const GROUP_A: Rect = Rect::new(158, 54, 14, 20);
 pub const GROUP_B: Rect = Rect::new(166, 66, 20, 24);
 
-fn put(s: &mut Sprite, key: u32, app: &mut PixelApp, layer: LayerId, r: Rect, f: impl Fn(i32, i32) -> [u8; 4]) -> Option<()> {
+fn put(
+    s: &mut Sprite,
+    key: u32,
+    app: &mut PixelApp,
+    layer: LayerId,
+    r: Rect,
+    f: impl Fn(i32, i32) -> [u8; 4],
+) -> Option<()> {
     let mut pixels = Vec::with_capacity(r.area() * 4);
     for y in r.y..r.y + r.h as i32 {
         for x in r.x..r.x + r.w as i32 {
@@ -64,7 +80,17 @@ fn put(s: &mut Sprite, key: u32, app: &mut PixelApp, layer: LayerId, r: Rect, f:
     let frame = s.frames()[0].id;
     // a caixa do cel cresce: pintar a banda de cima NÃO corta o resto da Background
     let bbox = s.cel((layer, frame)).map_or(r, |c| c.bbox.union(r));
-    app.commit(key, Op::Patch(Patch { layer, frame, bbox: Some(bbox), rect: r, pixels })).ok()?;
+    app.commit(
+        key,
+        Op::Patch(Patch {
+            layer,
+            frame,
+            bbox: Some(bbox),
+            rect: r,
+            pixels,
+        }),
+    )
+    .ok()?;
     *s = app.docs.get(&key)?.sprite.clone();
     Some(())
 }
@@ -84,7 +110,12 @@ fn nova(app: &mut PixelApp, key: u32, above: LayerId, name: &str, group: bool) -
     Some(id)
 }
 
-fn edita(app: &mut PixelApp, key: u32, id: LayerId, f: impl FnOnce(&mut ph2d_pixel_core::Layer)) -> Option<()> {
+fn edita(
+    app: &mut PixelApp,
+    key: u32,
+    id: LayerId,
+    f: impl FnOnce(&mut ph2d_pixel_core::Layer),
+) -> Option<()> {
     // sem mudança (o Normal de uma camada que já é Normal) não há passo
     match layers::edit(&app.docs.get(&key)?.sprite, id, f) {
         Some(op) => app.commit(key, op).ok(),
@@ -110,7 +141,11 @@ fn estrela(r: Rect, x: i32, y: i32) -> [u8; 4] {
     let a = dy.atan2(dx) + std::f32::consts::FRAC_PI_2;
     let k = (a * 5.0 / std::f32::consts::TAU).rem_euclid(1.0);
     let borda = r.w.min(r.h) as f32 / 2.0 * (0.45 + 0.55 * (1.0 - (k - 0.5).abs() * 2.0));
-    if raio <= borda { [250, 220, 40, 255] } else { [0; 4] }
+    if raio <= borda {
+        [250, 220, 40, 255]
+    } else {
+        [0; 4]
+    }
 }
 
 pub(crate) fn stage(
@@ -140,22 +175,34 @@ pub(crate) fn stage(
         let id = nova(app, key, abaixo, nome, false)?;
         entra(app, key, id, grupo)?;
         s = app.docs.get(&key)?.sprite.clone();
-        put(&mut s, key, app, id, stripe_rect(i), |_, y| stripe_rgba(y as u32))?;
+        put(&mut s, key, app, id, stripe_rect(i), |_, y| {
+            stripe_rgba(y as u32)
+        })?;
         edita(app, key, id, |l| l.blend = *m)?;
         abaixo = id;
     }
-    edita(app, key, grupo, |l| l.kind = LayerKind::Group { collapsed: true })?;
+    edita(app, key, grupo, |l| {
+        l.kind = LayerKind::Group { collapsed: true }
+    })?;
     // a banda de baixo
     let opa = nova(app, key, grupo, "Opacity 50%", false)?;
     // azul-escuro a 50 % sobre o branco: a metade lê-se (um branco sobre branco não mostrava nada)
-    put(&mut s, key, app, opa, OPACITY_BOX, |_, _| [20, 40, 160, 255])?;
+    put(&mut s, key, app, opa, OPACITY_BOX, |_, _| {
+        [20, 40, 160, 255]
+    })?;
     edita(app, key, opa, |l| l.opacity = 128)?;
     let esc = nova(app, key, opa, "Hidden star", false)?;
-    put(&mut s, key, app, esc, HIDDEN_STAR, |x, y| estrela(HIDDEN_STAR, x, y))?;
+    put(&mut s, key, app, esc, HIDDEN_STAR, |x, y| {
+        estrela(HIDDEN_STAR, x, y)
+    })?;
     edita(app, key, esc, |l| l.visible = false)?;
     let tr = nova(app, key, esc, "Locked", false)?;
     put(&mut s, key, app, tr, LOCKED_BOX, |x, y| {
-        if (x + y) % 6 < 3 { [200, 60, 60, 255] } else { [120, 30, 30, 255] }
+        if (x + y) % 6 < 3 {
+            [200, 60, 60, 255]
+        } else {
+            [120, 30, 30, 255]
+        }
     })?;
     edita(app, key, tr, |l| l.locked = true)?;
     let rf = nova(app, key, tr, "Reference", false)?;
@@ -169,7 +216,11 @@ pub(crate) fn stage(
     entra(app, key, ga, g2)?;
     put(&mut s, key, app, ga, GROUP_A, |x, y| {
         let (dx, dy) = (x - 165, y - 64);
-        if dx * dx + dy * dy <= 49 { [40, 200, 90, 255] } else { [0; 4] }
+        if dx * dx + dy * dy <= 49 {
+            [40, 200, 90, 255]
+        } else {
+            [0; 4]
+        }
     })?;
     let gb = nova(app, key, ga, "Square", false)?;
     entra(app, key, gb, g2)?;

@@ -120,20 +120,40 @@ fn a_coluna_tem_todas_as_ferramentas_em_quatro_grupos_e_as_duas_cores() {
     assert_eq!(col.len(), 5, "selecção · à mão · formas · vista · cores");
     assert_eq!(
         col[0].len(),
-        4,
-        "o botão das quatro selecções, Magic Wand, Move, Transform (P6b)"
+        3,
+        "o botão das quatro selecções, Magic Wand, Transform (P6c: sem o Move)"
     );
     assert_eq!(col[1].len(), 5, "Pencil, Spray, Eraser, Eyedropper, Bucket");
+    assert_eq!(
+        col[2].len(),
+        5,
+        "Line, Curve, o botão das quatro formas, Contour, Polygon (P6c)"
+    );
     assert_eq!(col[3].len(), 1, "Hand");
     let ferr: Vec<_> = col[..4].iter().flatten().map(|b| (b.id, b.on)).collect();
-    let quer: Vec<_> = std::iter::once((ids::PIXEL_SELECT_GROUP, false))
-        .chain(
-            ids::TOOLS
-                .iter()
-                .filter(|(t, _)| !t.is_marquee())
-                .map(|(t, id)| (*id, *t == PixelTool::Eyedropper)),
-        )
-        .collect();
+    let id = |t: PixelTool| ids::TOOLS.iter().find(|(u, _)| *u == t).map(|(_, i)| *i);
+    let quer: Vec<_> = [
+        Some(ids::PIXEL_SELECT_GROUP),
+        id(PixelTool::MagicWand),
+        id(PixelTool::Transform),
+        id(PixelTool::Pencil),
+        id(PixelTool::Spray),
+        id(PixelTool::Eraser),
+        id(PixelTool::Eyedropper),
+        id(PixelTool::Bucket),
+        id(PixelTool::Line),
+        id(PixelTool::Curve),
+        Some(ids::PIXEL_SHAPE_GROUP),
+        id(PixelTool::Contour),
+        id(PixelTool::Polygon),
+        id(PixelTool::Hand),
+    ]
+    .into_iter()
+    .map(|b| {
+        let b = b.expect("na tabela");
+        (b, id(PixelTool::Eyedropper) == Some(b))
+    })
+    .collect();
     assert_eq!(ferr, quer);
     let cores: Vec<_> = col[4].iter().map(|b| (b.id, b.face.clone())).collect();
     assert!(

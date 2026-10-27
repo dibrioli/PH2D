@@ -301,7 +301,7 @@ fn the_selection_tools_answer_their_aseprite_keys() {
         (KeyCode::KeyQ, false, Tool::Lasso),
         (KeyCode::KeyQ, true, Tool::PolygonLasso),
         (KeyCode::KeyW, false, Tool::MagicWand),
-        (KeyCode::KeyV, false, Tool::Move),
+        (KeyCode::KeyV, false, Tool::Transform),
     ] {
         p.tecla(k, false, shift);
         assert_eq!(p.app.tool, t, "{k:?} shift={shift}");
@@ -523,7 +523,7 @@ fn the_floating_transform_commits_as_one_step_and_esc_or_ctrl_z_drop_it() {
 }
 
 #[test]
-fn the_move_tool_and_ctrl_drag_lift_the_selection_and_enter_drops_it() {
+fn ctrl_drag_and_the_transform_tool_lift_the_selection_and_enter_drops_it() {
     let mut p = Palco::limpo();
     let r = Rect::new(
         cena::ORIGINAL_AT.0,
@@ -552,8 +552,8 @@ fn the_move_tool_and_ctrl_drag_lift_the_selection_and_enter_drops_it() {
         Some(fig.mask(128, 64).offset(3, 0)),
         "a selecção vai com elas"
     );
-    // a ferramenta Move faz o mesmo; um clique fora da moldura assenta
-    p.ferramenta(Tool::Move);
+    // o Transform faz o mesmo (P6c: o Move saiu); um clique fora da moldura assenta
+    p.ferramenta(Tool::Transform);
     p.arrasta((r.x + 5, r.y + 5), (r.x + 5, r.y + 7), Mods::default());
     p.press((120, 5), Mods::default());
     p.release();

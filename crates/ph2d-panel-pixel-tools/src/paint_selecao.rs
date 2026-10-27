@@ -84,7 +84,7 @@ impl Corpo<'_> {
             y = self.escolha(tr("panel.pixel.connectivity"), &conn, sec, y);
         }
         // Com células levantadas a amostragem mora nos campos da moldura (nunca duas vezes).
-        if matches!(t, PixelTool::Move | PixelTool::Transform) && info.transform.is_none() {
+        if t == PixelTool::Transform && info.transform.is_none() {
             y = self.amostragem(o.resample, sec, y);
         }
         y
@@ -113,9 +113,7 @@ impl Corpo<'_> {
         for (f, id, _) in ids::XFORM_FIELDS {
             y = self.campo(tr(f.label_key()), id, sec, y);
         }
-        if info.tool != PixelTool::Move {
-            y = self.amostragem(info.options.resample, sec, y);
-        }
+        y = self.amostragem(info.options.resample, sec, y);
         y = self.bloco(tr("panel.pixel.transform_hint"), ColorToken::Text3, y);
         let a = &ids::EDIT_ACTIONS;
         self.botoes(&[par(a, 16), par(a, 15)], y)

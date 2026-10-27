@@ -294,7 +294,11 @@ pub(crate) fn key(
         (KeyCode::KeyQ, false, false) => ferramenta(app, Tool::Lasso),
         (KeyCode::KeyQ, false, true) => ferramenta(app, Tool::PolygonLasso),
         (KeyCode::KeyW, false, false) => ferramenta(app, Tool::MagicWand),
-        (KeyCode::KeyV, false, false) => ferramenta(app, Tool::Move),
+        // P6c: o `V` do Move do Aseprite escolhe o Transform, como o botão dele (levanta já).
+        (KeyCode::KeyV, false, false) => {
+            app.pede(PixelRequest::Tool(Tool::Transform));
+            KeyAnswer::Toast(Tool::Transform.named())
+        }
         (KeyCode::KeyA, true, false) => pede(app, PixelRequest::Select(S::All)),
         (KeyCode::KeyD, true, false) => pede(app, PixelRequest::Select(S::Deselect)),
         (KeyCode::KeyD, true, true) => pede(app, PixelRequest::Select(S::Reselect)),

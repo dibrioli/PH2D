@@ -48,18 +48,39 @@ pub const FRAME_MS: u32 = 120;
 pub const HOLD_MS: u32 = 480;
 pub const HOLD_INDEX: usize = 3;
 
-fn patch(app: &mut PixelApp, key: u32, layer: LayerId, frame: FrameId, r: Rect, f: impl Fn(i32, i32) -> [u8; 4]) -> Option<()> {
+fn patch(
+    app: &mut PixelApp,
+    key: u32,
+    layer: LayerId,
+    frame: FrameId,
+    r: Rect,
+    f: impl Fn(i32, i32) -> [u8; 4],
+) -> Option<()> {
     let mut pixels = Vec::with_capacity(r.area() * 4);
     for y in r.y..r.y + r.h as i32 {
         for x in r.x..r.x + r.w as i32 {
             pixels.extend_from_slice(&f(x, y));
         }
     }
-    app.commit(key, Op::Patch(Patch { layer, frame, bbox: Some(r), rect: r, pixels })).ok()
+    app.commit(
+        key,
+        Op::Patch(Patch {
+            layer,
+            frame,
+            bbox: Some(r),
+            rect: r,
+            pixels,
+        }),
+    )
+    .ok()
 }
 
 /// Um passo construído sobre o sprite de agora (`None` do construtor = nada a fazer).
-fn passo(app: &mut PixelApp, key: u32, f: impl FnOnce(&mut ph2d_pixel_core::Sprite) -> Option<Op>) -> Option<()> {
+fn passo(
+    app: &mut PixelApp,
+    key: u32,
+    f: impl FnOnce(&mut ph2d_pixel_core::Sprite) -> Option<Op>,
+) -> Option<()> {
     let op = f(&mut app.docs.get_mut(&key)?.sprite);
     match op {
         Some(op) => app.commit(key, op).ok(),
@@ -70,14 +91,20 @@ fn passo(app: &mut PixelApp, key: u32, f: impl FnOnce(&mut ph2d_pixel_core::Spri
 fn camada(app: &mut PixelApp, key: u32, above: LayerId, name: &str) -> Option<LayerId> {
     let (op, id) = layers::new_layer(&mut app.docs.get_mut(&key)?.sprite, above)?;
     app.commit(key, op).ok()?;
-    passo(app, key, |s| layers::edit(s, id, |l| name.clone_into(&mut l.name)))?;
+    passo(app, key, |s| {
+        layers::edit(s, id, |l| name.clone_into(&mut l.name))
+    })?;
     Some(id)
 }
 
 fn bola(c: [u8; 4]) -> impl Fn(i32, i32) -> [u8; 4] {
     move |x, y| {
         let (dx, dy) = (x - BALL_R, y - BALL_R);
-        if dx * dx + dy * dy <= BALL_R * BALL_R { c } else { [0; 4] }
+        if dx * dx + dy * dy <= BALL_R * BALL_R {
+            c
+        } else {
+            [0; 4]
+        }
     }
 }
 
@@ -104,7 +131,11 @@ pub(crate) fn stage(
     })?;
     let f0 = app.docs.get(&key)?.sprite.frames()[0].id;
     patch(app, key, chao, f0, GROUND, |x, y| {
-        if (x + y) % 5 == 0 { [120, 80, 40, 255] } else { [150, 105, 60, 255] }
+        if (x + y) % 5 == 0 {
+            [120, 80, 40, 255]
+        } else {
+            [150, 105, 60, 255]
+        }
     })?;
     let ball = camada(app, key, chao, "Ball")?;
     let pilar = camada(app, key, ball, "Pillar")?;
@@ -112,14 +143,22 @@ pub(crate) fn stage(
     let mut ids = vec![f0];
     for _ in 1..FRAMES {
         let after = *ids.last()?;
-        let (op, id) = frames::new_frame(&mut app.docs.get_mut(&key)?.sprite, after, NewFrame::Copy)?;
+        let (op, id) =
+            frames::new_frame(&mut app.docs.get_mut(&key)?.sprite, after, NewFrame::Copy)?;
         app.commit(key, op).ok()?;
         ids.push(id);
     }
     for (i, &f) in ids.iter().enumerate() {
         let (cx, cy) = ball_center(i % 4);
-        let r = Rect::new(cx - BALL_R, cy - BALL_R, (2 * BALL_R + 1) as u32, (2 * BALL_R + 1) as u32);
-        patch(app, key, ball, f, r, |x, y| bola(COLORS[i / 4])(x - r.x, y - r.y))?;
+        let r = Rect::new(
+            cx - BALL_R,
+            cy - BALL_R,
+            (2 * BALL_R + 1) as u32,
+            (2 * BALL_R + 1) as u32,
+        );
+        patch(app, key, ball, f, r, |x, y| {
+            bola(COLORS[i / 4])(x - r.x, y - r.y)
+        })?;
         match i / 4 {
             1 => passo(app, key, |s| frames::set_cel(s, (ball, f), None, Some(1)))?,
             2 => passo(app, key, |s| frames::set_cel(s, (ball, f), Some(128), None))?,
@@ -127,12 +166,16 @@ pub(crate) fn stage(
         }
     }
     passo(app, key, |s| frames::set_duration(s, &ids, FRAME_MS))?;
-    passo(app, key, |s| frames::set_duration(s, &[ids[HOLD_INDEX]], HOLD_MS))?;
+    passo(app, key, |s| {
+        frames::set_duration(s, &[ids[HOLD_INDEX]], HOLD_MS)
+    })?;
     for (t, &(name, dir, repeat)) in TAGS.iter().enumerate() {
         let from = (t * 4) as u32;
         passo(app, key, |s| frames::new_tag(s, name, from, from + 3))?;
         passo(app, key, |s| {
-            frames::edit_tag(s, t, |x| (x.direction, x.repeat, x.color) = (dir, repeat, COLORS[t]))
+            frames::edit_tag(s, t, |x| {
+                (x.direction, x.repeat, x.color) = (dir, repeat, COLORS[t])
+            })
         })?;
     }
     let doc = app.docs.get_mut(&key)?;

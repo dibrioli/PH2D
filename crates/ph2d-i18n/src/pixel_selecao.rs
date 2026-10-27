@@ -9,12 +9,11 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "pixel.tool.lasso" => "Lasso",
         "pixel.tool.polygon_lasso" => "Polygonal Lasso",
         "pixel.tool.magic_wand" => "Magic Wand",
-        "pixel.tool.move" => "Move",
         "pixel.tool.transform" => "Transform",
         "pixel.tool.regular_polygon" => "Regular Polygon",
         "pixel.tool.star" => "Star",
         "pixel.hint.shape" => {
-            "{tool}: drag the box · Shift keeps it square · its options (sides, corners, fillet) are in the Pixel panel"
+            "{tool}: drag the box · Shift keeps it square · Fill and its options (sides, corners, fillet) are in the Pixel panel"
         }
         "panel.pixel.shape_options" => "Shape",
         "panel.pixel.shape_fill" => "Fill",
@@ -32,9 +31,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         "pixel.hint.magic_wand" => {
             "{tool}: click a color to select it · Tolerance in the Pixel panel"
-        }
-        "pixel.hint.move" => {
-            "{tool}: drag the selection to move its pixels · Enter applies, Esc cancels"
         }
         "panel.pixel.select.mode" => "Selection mode",
         "panel.pixel.select.replace" => "Replace",

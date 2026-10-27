@@ -17,9 +17,8 @@ pub const fn icon(t: PixelTool) -> IconId {
         PixelTool::RectMarquee => IconId::MarqueeBox,
         PixelTool::EllipseMarquee => IconId::CircleDashed,
         PixelTool::Lasso => IconId::MarqueeLasso,
-        PixelTool::PolygonLasso => IconId::VectorPen,
+        PixelTool::PolygonLasso => IconId::PolygonLasso,
         PixelTool::MagicWand => IconId::WandSparkles,
-        PixelTool::Move => IconId::Move,
         PixelTool::Transform => IconId::Transform,
         PixelTool::Pencil => IconId::VectorPencil,
         PixelTool::Spray => IconId::PixelSpray,
@@ -29,9 +28,7 @@ pub const fn icon(t: PixelTool) -> IconId {
         PixelTool::Line => IconId::Line,
         PixelTool::Curve => IconId::PixelCurve,
         PixelTool::Rectangle => IconId::PixelRect,
-        PixelTool::FilledRectangle => IconId::PixelRectFilled,
         PixelTool::Ellipse => IconId::PixelEllipse,
-        PixelTool::FilledEllipse => IconId::PixelEllipseFilled,
         PixelTool::Contour => IconId::PixelContour,
         PixelTool::Polygon => IconId::Polygon,
         PixelTool::Hand => IconId::Pan,
@@ -103,23 +100,29 @@ fn botao(info: &PixelPanelInfo, t: PixelTool, id: ph2d_a11y::NodeId) -> BarButto
     }
 }
 
-/// ⭐ **As barras do Pixel em Draw**: a coluna, o flyout das quatro selecções quando aberto (o botão
-/// de grupo guarda-as, dono 26/10) e a dica do rodapé.
+/// ⭐ **As barras do Pixel em Draw**: a coluna, o flyout do botão de grupo aberto (as selecções ou
+/// as formas, dono 26/10) e a dica do rodapé.
 #[must_use]
 pub fn bars(info: &PixelPanelInfo) -> ToolBars {
     let column = column(info);
-    let flyout = (info.editing && info.marquee_open).then(|| {
-        let quatro = PixelTool::MARQUEES
-            .iter()
-            .filter_map(|t| ids::TOOLS.iter().find(|(u, _)| u == t))
-            .map(|&(t, id)| botao(info, t, id))
-            .collect();
-        (ids::PIXEL_SELECT_GROUP, quatro)
-    });
+    let flyout = info
+        .groups
+        .open
+        .filter(|_| info.editing)
+        .and_then(|g| ids::GROUPS.iter().find(|(h, _)| *h == g))
+        .map(|&(g, gid)| {
+            let todas = g
+                .members()
+                .iter()
+                .filter_map(|t| ids::TOOLS.iter().find(|(u, _)| u == t))
+                .map(|&(t, id)| botao(info, t, id))
+                .collect();
+            (gid, todas)
+        });
     ToolBars {
         column,
         flyout,
-        grouped: vec![ids::PIXEL_SELECT_GROUP],
+        grouped: ids::GROUPS.iter().map(|(_, id)| *id).collect(),
         hint: hint(info),
         ..ToolBars::default()
     }
@@ -131,27 +134,27 @@ pub fn column(info: &PixelPanelInfo) -> Vec<Vec<BarButton>> {
     if !info.editing {
         return Vec::new();
     }
-    // Quatro grupos, como a barra do Aseprite: a selecção (e o Move), o que pinta à mão, as
-    // formas, a vista. As quatro selecções moram num botão de grupo com a cara da última usada.
+    // Quatro grupos, como a barra do Aseprite: a selecção (e o Transform), o que pinta à mão, as
+    // formas, a vista. As de um botão de grupo moram nele, no lugar da 1.ª, com a cara da última.
     let grupo = |de: PixelTool, ate: PixelTool| {
         ids::TOOLS
             .iter()
             .skip_while(|(t, _)| *t != de)
             .take_while(|(t, _)| *t != ate)
-            .filter(|(t, _)| !t.is_marquee())
-            .map(|&(t, id)| botao(info, t, id))
+            .filter_map(|&(t, id)| match t.group() {
+                None => Some(botao(info, t, id)),
+                Some(g) if g.members()[0] == t => {
+                    let (_, gid) = ids::GROUPS.iter().find(|(h, _)| *h == g)?;
+                    Some(BarButton {
+                        on: info.tool.group() == Some(g),
+                        ..botao(info, info.groups.face(g), *gid)
+                    })
+                }
+                Some(_) => None,
+            })
             .collect::<Vec<_>>()
     };
-    let marquee = if info.marquee.is_marquee() {
-        info.marquee
-    } else {
-        PixelTool::RectMarquee
-    };
-    let mut selecao = vec![BarButton {
-        on: info.tool.is_marquee(),
-        ..botao(info, marquee, ids::PIXEL_SELECT_GROUP)
-    }];
-    selecao.extend(grupo(PixelTool::RectMarquee, PixelTool::Pencil));
+    let selecao = grupo(PixelTool::RectMarquee, PixelTool::Pencil);
     let mao = grupo(PixelTool::Pencil, PixelTool::Line);
     let formas = grupo(PixelTool::Line, PixelTool::Hand);
     let vista = grupo(PixelTool::Hand, PixelTool::RectMarquee);
@@ -182,7 +185,6 @@ pub fn hint(info: &PixelPanelInfo) -> String {
         PixelTool::Lasso => "pixel.hint.lasso",
         PixelTool::PolygonLasso => "pixel.hint.polygon_lasso",
         PixelTool::MagicWand => "pixel.hint.magic_wand",
-        PixelTool::Move => "pixel.hint.move",
         PixelTool::Transform => "pixel.hint.transform",
         PixelTool::Pencil => "pixel.hint.pencil",
         PixelTool::Spray => "pixel.hint.spray",
@@ -191,8 +193,8 @@ pub fn hint(info: &PixelPanelInfo) -> String {
         PixelTool::Bucket => "pixel.hint.bucket",
         PixelTool::Line => "pixel.hint.line",
         PixelTool::Curve => "pixel.hint.curve",
-        PixelTool::Rectangle | PixelTool::FilledRectangle => "pixel.hint.rectangle",
-        PixelTool::Ellipse | PixelTool::FilledEllipse => "pixel.hint.ellipse",
+        PixelTool::Rectangle => "pixel.hint.rectangle",
+        PixelTool::Ellipse => "pixel.hint.ellipse",
         PixelTool::Contour => "pixel.hint.contour",
         PixelTool::Polygon => "pixel.hint.polygon",
         PixelTool::RegularPolygon | PixelTool::Star => "pixel.hint.shape",

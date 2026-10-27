@@ -152,15 +152,15 @@ pub struct PixelApp {
     pub(crate) clip: Option<crate::edicao::Prancheta>,
     /// O gesto de selecção em curso (marquee, laços).
     pub(crate) laco: Option<crate::selecao::Laco>,
-    /// A moldura solta (Ctrl+T, Move, Paste): as células levantadas até ao Enter/Esc.
+    /// A moldura solta (Transform, Ctrl+arrasto com uma selecção, Paste): as células levantadas até
+    /// ao Enter/Esc.
     pub(crate) solta: Option<crate::solta::Solta>,
     /// O relógio das formigas, em ms (o do host, como o tocar).
     pub(crate) formigas_ms: u64,
     /// O diálogo do Pixel a abrir no próximo [`crate::panel::frame`] (lá há o `hero`).
     pub(crate) abre_dialogo: Option<ph2d_editor_core::pixel_panel::PixelDialogKind>,
-    /// O botão de grupo das selecções: a última usada (a cara dele) e se as quatro estão abertas.
-    pub(crate) marquee: Tool,
-    pub(crate) marquee_open: bool,
+    /// Os botões de grupo da coluna: a cara de cada um e o flyout aberto.
+    pub(crate) groups: ph2d_editor_core::pixel_panel::PixelGroups,
     /// O Solo em curso: `(chave, camada, a visibilidade de antes)`.
     pub(crate) solo: Option<Solo>,
     /// A pasta das paletas do artista (*Save as Preset* / *as Default*); `None` = só a de fábrica
@@ -211,8 +211,7 @@ impl Default for PixelApp {
             solta: None,
             formigas_ms: 0,
             abre_dialogo: None,
-            marquee: Tool::RectMarquee,
-            marquee_open: false,
+            groups: ph2d_editor_core::pixel_panel::PixelGroups::default(),
             solo: None,
             paletas: None,
             predefinicoes: None,

@@ -45,11 +45,11 @@ impl PixelApp {
                     self.recusa("pixel.select.refuse.nothing");
                 }
             }
-            // A última usada na mão; o mesmo clique abre (ou fecha) as quatro.
-            PixelRequest::MarqueeGroup => {
-                let aberto = self.marquee_open;
-                crate::input::set_tool(self, self.marquee);
-                self.marquee_open = !aberto;
+            // A última usada na mão; o mesmo clique abre (ou fecha) o flyout.
+            PixelRequest::Group(g) => {
+                let aberto = self.groups.open == Some(g);
+                crate::input::set_tool(self, self.groups.face(g));
+                self.groups.open = (!aberto).then_some(g);
             }
             PixelRequest::Options(o) => self.options = o,
             PixelRequest::Fg(c) => self.fg = c,
@@ -200,8 +200,7 @@ pub fn frame(
             .map(crate::solta::Solta::info),
         can_reselect: doc.is_some_and(|d| d.sprite.last_mask().is_some()),
         presets: app.predefinicoes().to_vec(),
-        marquee: app.marquee,
-        marquee_open: app.marquee_open,
+        groups: app.groups,
     }
 }
 

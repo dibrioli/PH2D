@@ -182,12 +182,7 @@ pub(crate) fn reshape(
                     return;
                 };
                 let (a, b) = boxed(*from, *to, m);
-                let cheia = match tool {
-                    Tool::FilledRectangle | Tool::FilledEllipse => true,
-                    Tool::RegularPolygon | Tool::Star => o.shape_fill,
-                    _ => false,
-                };
-                crate::formas::cells(forma, &o.shapes.get(forma), a, b, cheia)
+                crate::formas::cells(forma, &o.shapes.get(forma), a, b, o.shape_fill)
             }
         },
         Kind::Curve { from, to, ctrl } => {

@@ -14,14 +14,11 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "pixel.tool.line" => "Line",
         "pixel.tool.curve" => "Curve",
         "pixel.tool.rectangle" => "Rectangle",
-        "pixel.tool.filled_rectangle" => "Filled Rectangle",
         "pixel.tool.ellipse" => "Ellipse",
-        "pixel.tool.filled_ellipse" => "Filled Ellipse",
         "pixel.tool.contour" => "Contour",
         "pixel.tool.polygon" => "Polygon",
         "pixel.tool_switched" => "{tool} ({key})",
         "pixel.shortcut_shift" => "Shift+{key}",
-        "pixel.shortcut_ctrl" => "Ctrl+{key}",
         "pixel.zoom" => "Zoom {n}00 %",
         "pixel.grid_on" => "Pixel grid on",
         "pixel.grid_off" => "Pixel grid off",
@@ -96,10 +93,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "{tool}: drag the ends, then move to bend and click to finish · Esc cancels"
         }
         "pixel.hint.rectangle" => {
-            "{tool}: drag a box · Shift = square · Ctrl = from the center · Space moves it"
+            "{tool}: drag a box · Shift = square · Ctrl = from the center · Space moves it · Fill and corners in the Pixel panel"
         }
         "pixel.hint.ellipse" => {
-            "{tool}: drag a box · Shift = circle · Ctrl = from the center · Space moves it"
+            "{tool}: drag a box · Shift = circle · Ctrl = from the center · Space moves it · Fill in the Pixel panel"
         }
         "pixel.hint.contour" => "{tool}: draw around an area; releasing closes and fills it",
         "pixel.hint.polygon" => {

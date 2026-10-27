@@ -7,7 +7,7 @@
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::pixel_panel::{
     PixelBrushShape, PixelInk, PixelLayerAction, PixelRequest, PixelSelector, PixelSortKey,
-    PixelTool,
+    PixelTool, PixelToolGroup,
 };
 use ph2d_tool_registry::{hash_node_id, hash_node_id_runtime};
 
@@ -22,11 +22,17 @@ pub use ph2d_editor_core::ids::{PIXEL_BG, PIXEL_FG};
 /// **Trocar** frente e fundo (o `X` do Aseprite).
 pub const PIXEL_SWAP: NodeId = hash_node_id("pixel.swap");
 
-/// O botão de grupo das quatro selecções (a cara é a última usada; o clique abre o flyout).
+/// Os botões de grupo (a cara é a última usada; o clique abre o flyout): as quatro selecções e as
+/// quatro formas.
 pub const PIXEL_SELECT_GROUP: NodeId = hash_node_id("pixel.tool.select_group");
+pub const PIXEL_SHAPE_GROUP: NodeId = hash_node_id("pixel.tool.shape_group");
+pub const GROUPS: [(PixelToolGroup, NodeId); 2] = [
+    (PixelToolGroup::Select, PIXEL_SELECT_GROUP),
+    (PixelToolGroup::Shape, PIXEL_SHAPE_GROUP),
+];
 
 /// As ferramentas, na ordem da coluna: pintar, registar e despachar leem a MESMA tabela.
-pub const TOOLS: [(PixelTool, NodeId); 23] = [
+pub const TOOLS: [(PixelTool, NodeId); 20] = [
     (
         PixelTool::RectMarquee,
         hash_node_id("pixel.tool.rect_marquee"),
@@ -41,7 +47,6 @@ pub const TOOLS: [(PixelTool, NodeId); 23] = [
         hash_node_id("pixel.tool.polygon_lasso"),
     ),
     (PixelTool::MagicWand, hash_node_id("pixel.tool.magic_wand")),
-    (PixelTool::Move, hash_node_id("pixel.tool.move")),
     (PixelTool::Transform, hash_node_id("pixel.tool.transform")),
     (PixelTool::Pencil, hash_node_id("pixel.tool.pencil")),
     (PixelTool::Spray, hash_node_id("pixel.tool.spray")),
@@ -51,15 +56,7 @@ pub const TOOLS: [(PixelTool, NodeId); 23] = [
     (PixelTool::Line, hash_node_id("pixel.tool.line")),
     (PixelTool::Curve, hash_node_id("pixel.tool.curve")),
     (PixelTool::Rectangle, hash_node_id("pixel.tool.rectangle")),
-    (
-        PixelTool::FilledRectangle,
-        hash_node_id("pixel.tool.filled_rectangle"),
-    ),
     (PixelTool::Ellipse, hash_node_id("pixel.tool.ellipse")),
-    (
-        PixelTool::FilledEllipse,
-        hash_node_id("pixel.tool.filled_ellipse"),
-    ),
     (
         PixelTool::RegularPolygon,
         hash_node_id("pixel.tool.regular_polygon"),

@@ -4,13 +4,15 @@
 //! Com todos os painéis registados, a coluna que a família publica é pintada pelo ecrã; um Down+Up
 //! sobre cada ferramenta tem de virar `Click` e chegar ao barramento como o pedido dela — com o
 //! painel PIXEL FECHADO (a coluna não depende dele); cada amostra abre o seletor de cor; e a fila de
-//! cima pinta o seletor de modo. P6b: as quatro selecções moram num botão de grupo — ele pede o
-//! grupo, e as quatro respondem no flyout aberto.
+//! cima pinta o seletor de modo. P6b/P6c: as selecções e as formas moram em botões de grupo — cada
+//! um pede o grupo dele, e as quatro respondem no flyout aberto (um de cada vez).
 
 use bumpalo::Bump;
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::interaction::{AreaMenu, ToolBars, WidgetEvent};
-use ph2d_editor_core::pixel_panel::{PixelPanelInfo, PixelRequest, PixelTool};
+use ph2d_editor_core::pixel_panel::{
+    PixelGroups, PixelPanelInfo, PixelRequest, PixelTool, PixelToolGroup,
+};
 use ph2d_editor_core::screens::hero::float_bar::tool_bars::placed;
 use ph2d_editor_core::screens::hero::{HERO_VIEWPORT_H, HERO_VIEWPORT_W, paint_hero_screen};
 use ph2d_editor_core::zones::Rect;
@@ -50,6 +52,27 @@ fn clica(hero: &mut HeroScreen, r: Rect) -> Vec<WidgetEvent> {
 fn every_tool_and_swatch_of_the_pixel_column_answers_a_real_pointer() {
     let _ = ph2d_panel_registry_init::register_all_panels();
     let mut ts = ph2d_text::TextSystem::without_system_fonts();
+    let mut ferramentas = Vec::new();
+    for g in PixelToolGroup::ALL {
+        clica_tudo(&mut ts, Some(g), &mut ferramentas);
+    }
+    ferramentas.sort_by_key(|t: &PixelTool| PixelTool::ALL.iter().position(|u| u == t));
+    ferramentas.dedup();
+    assert_eq!(
+        ferramentas,
+        PixelTool::ALL,
+        "a coluna (com os flyouts dos grupos) perdeu uma ferramenta"
+    );
+}
+
+/// A coluna com o flyout de `aberto`: cada botão clicado, e as ferramentas que responderam.
+fn clica_tudo(
+    ts: &mut ph2d_text::TextSystem,
+    aberto: Option<PixelToolGroup>,
+    ferramentas: &mut Vec<PixelTool>,
+) {
+    let mut groups = PixelGroups::default();
+    groups.open = aberto;
     let info = PixelPanelInfo {
         editing: true,
         tool: PixelTool::Pencil,
@@ -57,13 +80,12 @@ fn every_tool_and_swatch_of_the_pixel_column_answers_a_real_pointer() {
         bg: [0, 0, 0, 255],
         palette: vec![[1, 2, 3, 255]; 32],
         options: Default::default(),
-        marquee: PixelTool::RectMarquee,
-        marquee_open: true,
+        groups,
         ..Default::default()
     };
     let mut hero = HeroScreen::new(NodeId(1));
     // O 1.º quadro arruma os encaixes; a coluna cai na área do 2.º (o mesmo que o teste do vetor).
-    pinta(&mut hero, &mut ts);
+    pinta(&mut hero, ts);
     hero.panel_visibility
         .insert(ph2d_editor_core::screens::hero::PANEL_PIXEL, false);
     ph2d_panel_pixel_tools::set_current_pixel(info.clone());
@@ -77,7 +99,7 @@ fn every_tool_and_swatch_of_the_pixel_column_answers_a_real_pointer() {
         pixel_rail: true,
         ..column::bars(&info)
     }));
-    pinta(&mut hero, &mut ts);
+    pinta(&mut hero, ts);
     assert!(
         hero.hit_index
             .rect_for(ph2d_editor_core::ids::area_menu_button(0))
@@ -85,7 +107,6 @@ fn every_tool_and_swatch_of_the_pixel_column_answers_a_real_pointer() {
         "o seletor de modo não foi pintado na fila de cima"
     );
     let bars = hero.store.tool_bars().cloned().expect("publicadas");
-    let mut ferramentas = Vec::new();
     for (b, r) in placed(&bars, hero.last_content, false, false) {
         if hero.store.is_picker_swatch(b.id) {
             let _ = clica(&mut hero, r);
@@ -121,8 +142,8 @@ fn every_tool_and_swatch_of_the_pixel_column_answers_a_real_pointer() {
                 _ => None,
             })
             .collect();
-        if b.id == ids::PIXEL_SELECT_GROUP {
-            assert_eq!(pedidos, [PixelRequest::MarqueeGroup]);
+        if let Some((g, _)) = ids::GROUPS.iter().find(|(_, id)| *id == b.id) {
+            assert_eq!(pedidos, [PixelRequest::Group(*g)]);
         } else if let Some((t, _)) = ids::TOOLS.iter().find(|(_, id)| *id == b.id) {
             assert_eq!(pedidos, [PixelRequest::Tool(*t)], "«{}»", b.label);
             ferramentas.push(*t);
@@ -131,13 +152,6 @@ fn every_tool_and_swatch_of_the_pixel_column_answers_a_real_pointer() {
             assert_eq!(pedidos, [PixelRequest::Swap]);
         }
     }
-    let ordem = |t: &PixelTool| PixelTool::ALL.iter().position(|u| u == t);
-    ferramentas.sort_by_key(ordem);
-    assert_eq!(
-        ferramentas,
-        PixelTool::ALL,
-        "a coluna (com o flyout das selecções) perdeu uma ferramenta"
-    );
 }
 
 /// P6b: os campos das formas do Pixel são pintados pela MESMA ponte de nomes do painel do Vector —

@@ -82,7 +82,7 @@ fn every_vector_pixel_field_is_born_at_zero_cells_and_the_rest_at_the_vectors_de
 fn each_shape_shows_the_vector_fields_and_each_reaches_the_options() {
     for (tool, s) in [
         (PixelTool::Rectangle, PixelShape::Rectangle),
-        (PixelTool::FilledEllipse, PixelShape::Ellipse),
+        (PixelTool::Ellipse, PixelShape::Ellipse),
         (PixelTool::RegularPolygon, PixelShape::Polygon),
         (PixelTool::Star, PixelShape::Star),
     ] {
@@ -128,8 +128,14 @@ fn each_shape_shows_the_vector_fields_and_each_reaches_the_options() {
 }
 
 #[test]
-fn the_polygon_and_the_star_have_fill_and_no_shape_field_paints_without_a_shape() {
-    for tool in [PixelTool::RegularPolygon, PixelTool::Star] {
+fn the_four_shapes_have_fill_and_no_shape_field_paints_without_a_shape() {
+    // P6c: o «Fill» é das quatro (o Retângulo cheio e a Elipse cheia deixaram de ser ferramentas).
+    for tool in [
+        PixelTool::Rectangle,
+        PixelTool::Ellipse,
+        PixelTool::RegularPolygon,
+        PixelTool::Star,
+    ] {
         let (mut host, mut st, rects) = pinta(info(tool));
         let r = rects
             .iter()

@@ -134,7 +134,7 @@ pub fn press(app: &mut PixelApp, c: &Canvas<'_>, p: (f32, f32), button: Button, 
     let Some((x, y)) = cell(app, c, bits, key, p) else {
         return Press::Done;
     };
-    // P6: a moldura solta apanha o premir primeiro; Move (ou Ctrl com uma de selecção) levanta.
+    // P6: a moldura solta apanha o premir primeiro; Ctrl com uma de selecção levanta e arrasta.
     if let Some(r) = crate::solta::press(app, c, bits, key, p) {
         return r;
     }
@@ -147,7 +147,7 @@ pub fn press(app: &mut PixelApp, c: &Canvas<'_>, p: (f32, f32), button: Button, 
         return Press::Done;
     }
     let sel = app.tool.selects();
-    if app.tool == Tool::Move || (sel && m.ctrl && !m.shift) {
+    if sel && m.ctrl && !m.shift {
         return crate::solta::press_move(app, c, bits, key, p, (x, y));
     }
     if sel && !(m.alt && !m.shift) && crate::selecao::press(app, key, (x, y), m) {
@@ -198,13 +198,12 @@ pub fn press(app: &mut PixelApp, c: &Canvas<'_>, p: (f32, f32), button: Button, 
     let at = (x, y);
     let (stroke, kind) = match tool {
         Tool::Hand => return Press::Pan,
-        // A selecção e o Move já responderam acima (o Alt sozinho com elas é o conta-gotas).
+        // A selecção e o Transform já responderam acima (o Alt sozinho com elas é o conta-gotas).
         Tool::RectMarquee
         | Tool::EllipseMarquee
         | Tool::Lasso
         | Tool::PolygonLasso
         | Tool::MagicWand
-        | Tool::Move
         | Tool::Transform => return Press::Done,
         Tool::Eyedropper => {
             if let Some(v) = pick(s, frame, x, y, Sample::AllLayers) {
@@ -246,13 +245,7 @@ pub fn press(app: &mut PixelApp, c: &Canvas<'_>, p: (f32, f32), button: Button, 
             st.fill(s, at, crate::gesture::bucket(&options));
             (st, Kind::Fill)
         }
-        Tool::Line
-        | Tool::Rectangle
-        | Tool::FilledRectangle
-        | Tool::Ellipse
-        | Tool::FilledEllipse
-        | Tool::RegularPolygon
-        | Tool::Star => {
+        Tool::Line | Tool::Rectangle | Tool::Ellipse | Tool::RegularPolygon | Tool::Star => {
             let kind = Kind::Box { from: at, to: at };
             let mut st = Stroke::new(layer, frame, value, paint);
             crate::gesture::reshape(&mut st, s, tool, &kind, &options, m);
@@ -492,10 +485,7 @@ pub(crate) fn set_tool(app: &mut PixelApp, t: Tool) {
         app.laco = None;
     }
     app.tool = t;
-    if t.is_marquee() {
-        app.marquee = t;
-    }
-    app.marquee_open = false;
+    app.groups.chose(t);
 }
 
 /// Larga o gesto sem gravar (`Esc`).
@@ -572,23 +562,9 @@ pub fn key(
         (KeyCode::KeyG, false, false) => tool(app, Tool::Bucket),
         (KeyCode::KeyL, false, false) => tool(app, Tool::Line),
         (KeyCode::KeyL, false, true) => tool(app, Tool::Curve),
-        // A mesma tecla de novo alterna a variante cheia (Aseprite).
-        (KeyCode::KeyU, false, false) => {
-            let t = if app.tool == Tool::Rectangle {
-                Tool::FilledRectangle
-            } else {
-                Tool::Rectangle
-            };
-            tool(app, t)
-        }
-        (KeyCode::KeyU, false, true) => {
-            let t = if app.tool == Tool::Ellipse {
-                Tool::FilledEllipse
-            } else {
-                Tool::Ellipse
-            };
-            tool(app, t)
-        }
+        // Cheio ou vazio é a caixa «Fill» do painel (P6c), não outra ferramenta.
+        (KeyCode::KeyU, false, false) => tool(app, Tool::Rectangle),
+        (KeyCode::KeyU, false, true) => tool(app, Tool::Ellipse),
         (KeyCode::KeyD, false, false) => tool(app, Tool::Contour),
         (KeyCode::KeyD, false, true) => tool(app, Tool::Polygon),
         (KeyCode::KeyH, false, false) => tool(app, Tool::Hand),

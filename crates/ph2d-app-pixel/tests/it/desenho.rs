@@ -57,7 +57,7 @@ fn key(app: &mut PixelApp, sim: &SimWorld, bits: u64, code: KeyCode, shift: bool
 }
 
 #[test]
-fn every_aseprite_shortcut_picks_its_tool_and_the_same_key_toggles_the_filled_one() {
+fn every_aseprite_shortcut_picks_its_tool_and_the_same_key_never_switches_to_a_filled_one() {
     let (mut app, sim, _cam, bits) = born();
     for (code, shift, want) in [
         (KeyCode::KeyB, true, Tool::Spray),
@@ -65,10 +65,9 @@ fn every_aseprite_shortcut_picks_its_tool_and_the_same_key_toggles_the_filled_on
         (KeyCode::KeyL, false, Tool::Line),
         (KeyCode::KeyL, true, Tool::Curve),
         (KeyCode::KeyU, false, Tool::Rectangle),
-        (KeyCode::KeyU, false, Tool::FilledRectangle),
         (KeyCode::KeyU, false, Tool::Rectangle),
         (KeyCode::KeyU, true, Tool::Ellipse),
-        (KeyCode::KeyU, true, Tool::FilledEllipse),
+        (KeyCode::KeyU, true, Tool::Ellipse),
         (KeyCode::KeyD, false, Tool::Contour),
         (KeyCode::KeyD, true, Tool::Polygon),
         (KeyCode::KeyB, false, Tool::Pencil),
@@ -78,8 +77,8 @@ fn every_aseprite_shortcut_picks_its_tool_and_the_same_key_toggles_the_filled_on
     }
     assert_eq!(
         Tool::ALL.len(),
-        23,
-        "14 de desenho + 6 de selecção (P6) + Transform, polígono e estrela (P6b)"
+        20,
+        "12 de desenho + 5 de selecção + Transform, polígono e estrela (P6c: sem Move nem as cheias)"
     );
     assert_eq!(PIXEL_MAX_BRUSH, ph2d_pixel_core::brush::MAX_BRUSH);
 }
@@ -114,7 +113,8 @@ fn a_rectangle_previews_while_dragging_and_commits_one_undo_step() {
 #[test]
 fn shift_squares_the_shape_and_ctrl_draws_it_from_the_center() {
     let (mut app, sim, cam, bits) = born();
-    app.tool = Tool::FilledRectangle;
+    app.tool = Tool::Rectangle;
+    app.options.shape_fill = true;
     let shift = Mods {
         shift: true,
         ..Mods::default()

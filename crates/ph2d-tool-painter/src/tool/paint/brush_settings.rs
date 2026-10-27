@@ -503,6 +503,8 @@ pub struct BrushSettings {
     /// **Crevice shadow** (`0..FENDA_MAX`, `1` = a física) e **Crevice reach** (células, `1..24`) do Real Oil.
     pub wet_oleo_fenda: f32,
     pub wet_oleo_alcance_fenda: f32,
+    /// **Environment light** do Real Oil (`0..1`, a parte da luz que vem do ambiente; `0,6` de fábrica).
+    pub wet_oleo_forca_ambiente: f32,
     /// O **Environment** do Real Oil: o índice em `Ambiente::TODOS` (`1` = Studio, o de fábrica).
     pub wet_oleo_ambiente: u8,
     /// **Live Water** (W1g): a água corre com o traço aberto.

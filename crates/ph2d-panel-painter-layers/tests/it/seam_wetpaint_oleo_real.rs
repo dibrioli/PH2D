@@ -20,13 +20,14 @@ use ph2d_tool_painter::PainterTool;
 use ph2d_tool_painter::ids::{
     PAINTER_WETPAINT_OLEO_ALCANCE_FENDA, PAINTER_WETPAINT_OLEO_ALTITUDE,
     PAINTER_WETPAINT_OLEO_AMBIENTE, PAINTER_WETPAINT_OLEO_AZIMUTE, PAINTER_WETPAINT_OLEO_BRILHO,
-    PAINTER_WETPAINT_OLEO_FENDA, PAINTER_WETPAINT_OLEO_PROFUNDIDADE, PAINTER_WETPAINT_OLEO_REAL,
+    PAINTER_WETPAINT_OLEO_FENDA, PAINTER_WETPAINT_OLEO_FORCA_AMBIENTE,
+    PAINTER_WETPAINT_OLEO_PROFUNDIDADE, PAINTER_WETPAINT_OLEO_REAL,
     PAINTER_WETPAINT_OLEO_SOMBRA, painter_wetpaint_oleo_ambiente_option_id,
 };
 use ph2d_ui_testkit::MockPanelHost;
 
-/// As sete linhas por LITERAL (um gate que iterasse a lista sob teste encolheria com ela).
-const LINHAS: [NodeId; 7] = [
+/// As oito linhas por LITERAL (um gate que iterasse a lista sob teste encolheria com ela).
+const LINHAS: [NodeId; 8] = [
     PAINTER_WETPAINT_OLEO_PROFUNDIDADE,
     PAINTER_WETPAINT_OLEO_SOMBRA,
     PAINTER_WETPAINT_OLEO_BRILHO,
@@ -34,6 +35,7 @@ const LINHAS: [NodeId; 7] = [
     PAINTER_WETPAINT_OLEO_AZIMUTE,
     PAINTER_WETPAINT_OLEO_FENDA,
     PAINTER_WETPAINT_OLEO_ALCANCE_FENDA,
+    PAINTER_WETPAINT_OLEO_FORCA_AMBIENTE,
 ];
 
 fn viewport() -> Rect {
@@ -309,4 +311,42 @@ fn a_forca_e_o_alcance_da_fenda_chegam_ao_oleo_real_e_sobrevivem_a_religar() {
     clica_na_caixa(&mut tool);
     let o = tool.wet_oleo_real().expect("religado");
     assert_eq!((o.fenda, o.alcance_fenda), (1.75, 12.0));
+}
+
+/// ⭐ A **força do ambiente** (W2 E2): Environment light nasce na mistura de fábrica (`0,6` = o Clássico de
+/// antes, bit a bit), o valor do campo chega a `OleoReal::forca_ambiente`, prende-se a `0..1` (é uma
+/// mistura), volta ao painel e sobrevive a desligar/religar. Mutações que sangram: o braço `7` do
+/// `set_wet_oleo_knob` em falta, o snapshot preso ao neutro, a faixa aberta.
+#[test]
+fn a_forca_do_ambiente_chega_ao_oleo_real_e_sobrevive_a_religar() {
+    let mut tool = molhado();
+    clica_na_caixa(&mut tool);
+    let o = tool.wet_oleo_real().expect("ligado");
+    assert_eq!(o.forca_ambiente, 0.6, "o neutro é a mistura de antes");
+    assert_eq!(tool.brush_settings().wet_oleo_forca_ambiente, 0.6);
+    tool.handle_panel_event(PanelEvent::SetValue(
+        PAINTER_WETPAINT_OLEO_FORCA_AMBIENTE,
+        0.85,
+    ));
+    assert_eq!(tool.wet_oleo_real().expect("ligado").forca_ambiente, 0.85);
+    assert_eq!(tool.brush_settings().wet_oleo_forca_ambiente, 0.85);
+    tool.handle_panel_event(PanelEvent::SetValue(
+        PAINTER_WETPAINT_OLEO_FORCA_AMBIENTE,
+        4.0,
+    ));
+    assert_eq!(tool.wet_oleo_real().expect("ligado").forca_ambiente, 1.0);
+    tool.handle_panel_event(PanelEvent::SetValue(
+        PAINTER_WETPAINT_OLEO_FORCA_AMBIENTE,
+        -1.0,
+    ));
+    assert_eq!(tool.wet_oleo_real().expect("ligado").forca_ambiente, 0.0);
+    tool.handle_panel_event(PanelEvent::SetValue(
+        PAINTER_WETPAINT_OLEO_FORCA_AMBIENTE,
+        0.3,
+    ));
+    clica_na_caixa(&mut tool);
+    assert_eq!(tool.wet_oleo_real(), None);
+    assert_eq!(tool.brush_settings().wet_oleo_forca_ambiente, 0.3);
+    clica_na_caixa(&mut tool);
+    assert_eq!(tool.wet_oleo_real().expect("religado").forca_ambiente, 0.3);
 }

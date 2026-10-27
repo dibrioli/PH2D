@@ -82,11 +82,15 @@ pub const PAINTER_WETPAINT_OLEO_FENDA: NodeId = hash_node_id("painter_brush.wetp
 /// **Crevice reach** em CÉLULAS (`OleoReal::alcance_fenda`, `1..ALCANCE_FENDA_MAX`; W2 E1).
 pub const PAINTER_WETPAINT_OLEO_ALCANCE_FENDA: NodeId =
     hash_node_id("painter_brush.wetpaint_oleo_alcance_fenda");
+/// **Environment light** (`OleoReal::forca_ambiente`, `0..1`: a parte da luz que vem do ambiente; o resto é
+/// da lâmpada; W2 E2).
+pub const PAINTER_WETPAINT_OLEO_FORCA_AMBIENTE: NodeId =
+    hash_node_id("painter_brush.wetpaint_oleo_forca_ambiente");
 
 /// As linhas numéricas do **Real Oil** — fora de [`PAINTER_WETPAINT_FIELDS`] porque só se pintam com o
 /// Óleo Real ligado (aquela lista é «pintada sempre que armado», com gate). Uma lista para o `SetValue`
 /// do painel, o populate e o encaminhamento da ferramenta.
-pub const PAINTER_WETPAINT_OLEO_FIELDS: [NodeId; 7] = [
+pub const PAINTER_WETPAINT_OLEO_FIELDS: [NodeId; 8] = [
     PAINTER_WETPAINT_OLEO_PROFUNDIDADE,
     PAINTER_WETPAINT_OLEO_SOMBRA,
     PAINTER_WETPAINT_OLEO_BRILHO,
@@ -94,6 +98,7 @@ pub const PAINTER_WETPAINT_OLEO_FIELDS: [NodeId; 7] = [
     PAINTER_WETPAINT_OLEO_AZIMUTE,
     PAINTER_WETPAINT_OLEO_FENDA,
     PAINTER_WETPAINT_OLEO_ALCANCE_FENDA,
+    PAINTER_WETPAINT_OLEO_FORCA_AMBIENTE,
 ];
 
 /// As faixas `(min, max)` das linhas de [`PAINTER_WETPAINT_OLEO_FIELDS`], pela MESMA ordem, nas unidades do
@@ -102,7 +107,8 @@ pub const PAINTER_WETPAINT_OLEO_FIELDS: [NodeId; 7] = [
 /// de 5° é escolha de desenho (a sombra rasante ainda se lê e a marcha dela continua finita). Light
 /// direction dá a volta (`360° = 0°`). Crevice shadow e reach: os tectos MEDIDOS em `ph2d_wet_paint::oleo_real`
 /// (`FENDA_MAX`: pontos pretos na cena do dono; `ALCANCE_FENDA_MAX`: a margem da região suja).
-pub const PAINTER_WETPAINT_OLEO_FAIXAS: [(f64, f64); 7] = [
+/// Environment light: uma MISTURA (`0` = só a lâmpada, `1` = só o ambiente), por isso `0..1`.
+pub const PAINTER_WETPAINT_OLEO_FAIXAS: [(f64, f64); 8] = [
     (0.0, 3.0),
     (0.0, 1.0),
     (0.0, 1.0),
@@ -110,6 +116,7 @@ pub const PAINTER_WETPAINT_OLEO_FAIXAS: [(f64, f64); 7] = [
     (0.0, 360.0),
     (0.0, ph2d_wet_paint::oleo_real::FENDA_MAX),
     (1.0, ph2d_wet_paint::oleo_real::ALCANCE_FENDA_MAX),
+    (0.0, 1.0),
 ];
 
 /// **Environment** chip do **Real Oil** (W1c): o céu que a tinta reflecte (`OleoReal::ambiente`; wire = o

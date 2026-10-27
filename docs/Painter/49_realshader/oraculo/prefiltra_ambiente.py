@@ -3,13 +3,18 @@
     python3 docs/Painter/49_realshader/oraculo/prefiltra_ambiente.py <pasta dos HDRI> <saída>
 
 Fonte: os HDRI que o Blender instala (`studiolights/world/`, CC0, Poly Haven — `license.txt` ao lado).
-Moldura = a do Blender (z para cima; u = atan2(y, −x)/2π + ½, v = elevação/π + ½, linha 0 = zénite).
+Moldura: z para cima; u = atan2(y, −x)/2π + ½, v = elevação/π + ½, linha 0 = zénite. ⚠️ É a do Blender RODADA
+de 180° em z (o Cycles usa u = ½ − atan2(y, x)/2π): no produto não importa (o `claro` sai na mesma moldura), mas
+quem rodar o HDRI no Cycles lê o `claro` pela convenção do Cycles (`cycles.py`, W2 E2).
 A metade de BAIXO do horizonte zera-se (a tela tapa o chão). Escala: a irradiância de um plano virado para
 cima = π (tinta lisa sob o ambiente = o albedo). O cabeçalho leva o azimute do lado claro (pesado pelo
 cosseno) para o produto o rodar até à direcção da luz.
 
-Formato `.amb` (LE): b"PH2DAMB2", u32 w, u32 h, u32 níveis, f32 claro, f32 rug[níveis],
-f32 irr[h/2][w/2][3] (a convolução pelo cosseno: E(n)/π), f32 nível[níveis][h][w][3].
+Formato `.amb` (LE): b"PH2DAMB3", u32 w, u32 h, u32 níveis, f32 claro, f32 rug[níveis],
+f32 irr[h/2][w/2][3] (a convolução pelo cosseno: E(n)/π), f32 nível[níveis][h][w][3],
+u32 cw, u32 ch, f32 radiância[ch][cw][3] (W2 E2: a metade de CIMA, BRUTA — não convolvida —, a mesma
+escala, linha 0 = zénite, ch linhas até ao horizonte: o produto integra-a POR SECTOR de fatia). O `PH2DAMB2`
+é o mesmo sem o bloco da radiância.
 O SH9 saiu: errava 20 % na irradiância do plano com a metade de baixo zerada (medido 26/10).
 """
 
@@ -76,10 +81,13 @@ for nome, arq in AMBIENTES.items():
     cima = (np.clip(np.array([0, 0, 1.0]) @ ds.T, 0, None) * dws) @ src / math.pi
     assert abs(cima.mean() - 1) < 0.02, cima
     with open(f"{saida}/{nome}.amb", "wb") as f:
-        f.write(b"PH2DAMB2")
+        f.write(b"PH2DAMB3")
         f.write(struct.pack("<IIIf", W, H, len(RUG), claro))
         f.write(np.array(RUG, "<f4").tobytes())
         f.write(irr.astype("<f4").tobytes())
         f.write(np.stack(niveis).astype("<f4").tobytes())
+        ceu = src.reshape(64, 128, 3)[:32]
+        f.write(struct.pack("<II", 128, 32))
+        f.write(ceu.astype("<f4").tobytes())
     print(f"{nome}: E_plano bruto {e_plano:.3f} · claro {math.degrees(claro):.0f}° · brilho p50/p99 nível 0 "
           f"{np.percentile(niveis[0].mean(-1), 50):.3f}/{np.percentile(niveis[0].mean(-1), 99):.3f}")

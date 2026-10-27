@@ -450,6 +450,7 @@ pub(crate) const WETPAINT_CARTAO: &[&str] = &[
     "panel.painter_layers.wetpaint.oleo_light_direction",
     "panel.painter_layers.wetpaint.oleo_crevice",
     "panel.painter_layers.wetpaint.oleo_crevice_reach",
+    "panel.painter_layers.wetpaint.oleo_environment_light",
 ];
 
 /// ⭐⭐ **A [`Seccao`] de uma declaração** — medida sobre os rótulos dela, no sistema de texto real.

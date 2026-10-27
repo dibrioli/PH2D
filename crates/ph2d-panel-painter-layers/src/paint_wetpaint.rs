@@ -339,8 +339,9 @@ fn paint_resolution_readout(
     y + font + ph2d_tokens::control_gap_px()
 }
 
-/// O **Real Oil** (Óleo Real, doc 49): a caixa e, só com ela ligada, as sete linhas da óptica do relevo —
-/// Depth, Shadow, Gloss, a luz (altura e direcção, em GRAUS) e a fenda (força e alcance, W2 E1). As faixas são as da ferramenta
+/// O **Real Oil** (Óleo Real, doc 49): a caixa e, só com ela ligada, as oito linhas da óptica do relevo —
+/// Depth, Shadow, Gloss, a luz (altura e direcção, em GRAUS), a fenda (força e alcance, W2 E1) e a força do
+/// ambiente (W2 E2), por cima do Environment. As faixas são as da ferramenta
 /// (`PAINTER_WETPAINT_OLEO_FAIXAS`), uma lei para quem pinta e quem prende.
 fn paint_oleo_real(
     ctx: &mut PaintCtx,
@@ -406,6 +407,12 @@ fn paint_oleo_real(
             brush.wet_oleo_alcance_fenda,
             number_field::CELL_STEP,
             0,
+        ),
+        (
+            "panel.painter_layers.wetpaint.oleo_environment_light",
+            brush.wet_oleo_forca_ambiente,
+            number_field::FINE_STEP,
+            2,
         ),
     ];
     for (((chave, valor, passo, casas), id), (lo, hi)) in linhas

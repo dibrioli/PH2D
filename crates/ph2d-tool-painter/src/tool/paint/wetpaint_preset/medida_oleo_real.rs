@@ -97,13 +97,25 @@ fn medida_oleo_real_folha_png() {
 /// saturado empilhado com Dabber e Oil Bristle, e uma pilha clara) em `$PH2D_OLEO_PNG/` — a folha de
 /// sempre mais a cor SEM relevo (`albedo.ppm`), a cobertura (`cobertura.pgm`) e as três alturas em f32 LE,
 /// células (`h_forma.f32`, `h_fina.f32`, `h_sombra.f32`), descritas em `oraculo.txt`.
+/// `PH2D_OLEO_VARIANTES="nome:campo=v,…;nome2:…"` pinta a cena UMA vez e grava cada variante em
+/// `$PH2D_OLEO_PNG/<nome>/` (o `PH2D_OLEO_AF` de cada uma vem depois do `:`).
 #[test]
 #[ignore = "medicao — corre-se à mão no perfil smoke"]
 fn medida_oleo_real_oraculo() {
     let dir =
         std::path::PathBuf::from(std::env::var("PH2D_OLEO_PNG").expect("PH2D_OLEO_PNG=<pasta>"));
     let mut t = pinta_cena_do_dono();
-    grava_folha(&mut t, &dir);
+    match std::env::var("PH2D_OLEO_VARIANTES") {
+        Ok(vs) => {
+            for v in vs.split(';').filter(|v| !v.is_empty()) {
+                let (nome, af) = v.split_once(':').unwrap_or((v, ""));
+                let d = dir.join(nome);
+                std::fs::create_dir_all(&d).expect("pasta");
+                grava_folha_com(&mut t, &d, oleo_de(af));
+            }
+        }
+        Err(_) => grava_folha(&mut t, &dir),
+    }
 }
 
 /// A cena da captura do dono (W1c): o vermelho saturado empilhado com Dabber e Oil Bristle e uma pilha clara.
@@ -211,6 +223,14 @@ fn arrasta(t: &mut PainterTool, a: [f32; 2], z: [f32; 2]) -> u32 {
 
 /// A folha em `dir`: `hoje.ppm`, `oleo.ppm`, os termos `t_*.pgm` e as entradas do oráculo.
 fn grava_folha(t: &mut PainterTool, dir: &std::path::Path) {
+    grava_folha_com(t, dir, oleo_do_env());
+}
+
+fn grava_folha_com(
+    t: &mut PainterTool,
+    dir: &std::path::Path,
+    o: ph2d_wet_paint::oleo_real::OleoReal,
+) {
     let s = t.paint.wetpaint.session.as_mut().expect("sessão");
     s.bring_home();
     let (gw, gh) = s.grid;
@@ -225,7 +245,6 @@ fn grava_folha(t: &mut PainterTool, dir: &std::path::Path) {
             visible: l.visible,
         })
         .collect();
-    let o = oleo_do_env();
     let grades: Vec<(&ph2d_wet_paint::grid::Grid, bool)> =
         camadas.iter().map(|c| (c.grid, c.visible)).collect();
     let campo =
@@ -241,7 +260,7 @@ fn grava_folha(t: &mut PainterTool, dir: &std::path::Path) {
             let t = ph2d_wet_paint::oleo_real::termos(&o, &campo, cx, cy);
             let k = (cx - 1) + (cy - 1) * gw;
             let espec = (t.espec[0] + t.espec[1] + t.espec[2]) / 3.0;
-            for (j, v) in [t.vis, t.luz, t.e(o.af.ceu) * 0.5, espec * 0.5]
+            for (j, v) in [t.vis, t.luz, t.e(&o) * 0.5, espec * 0.5]
                 .into_iter()
                 .enumerate()
             {
@@ -277,7 +296,7 @@ fn grava_folha(t: &mut PainterTool, dir: &std::path::Path) {
             s.ratio,
             o.azimute.to_degrees(),
             o.altitude.to_degrees(),
-            o.af.ceu,
+            o.forca_ambiente,
             o.af.penumbra,
             o.af.rugosidade,
         ),
@@ -341,15 +360,60 @@ fn grava_folha(t: &mut PainterTool, dir: &std::path::Path) {
             let mut pgm = format!("P5\n{gw} {gh}\n255\n").into_bytes();
             pgm.extend(px.as_chunks::<4>().0.iter().map(|p| p[3]));
             std::fs::write(dir.join("cobertura.pgm"), pgm).expect("grava");
+            grava_antes_da_e2(&o, &campo, &px, gw, dir);
         }
     }
 }
 
+/// `antes_e2.ppm`: a MESMA óptica com o difuso do céu UNIFORME (a lei de antes da W2 E2: o ambiente só no
+/// brilho; o papel sem o sector) — o `ilumina` sobre a cor sem relevo `albedo` (8 bits) com `dir = None`.
+fn grava_antes_da_e2(
+    o: &ph2d_wet_paint::oleo_real::OleoReal,
+    campo: &ph2d_wet_paint::oleo_real::CampoAltura,
+    albedo: &[u8],
+    gw: usize,
+    dir: &std::path::Path,
+) {
+    use ph2d_wet_paint::colorops::transfer::{srgb255_of_linear, srgb255_to_linear};
+    use ph2d_wet_paint::oleo_real::{Ambiente, OleoReal, difuso, rola, sombra_no_papel, termos};
+    let classico = OleoReal {
+        ambiente: Ambiente::Classico,
+        ..*o
+    };
+    let gh = albedo.len() / 4 / gw;
+    let mut ppm = format!("P6\n{gw} {gh}\n255\n").into_bytes();
+    for (k, p) in albedo.as_chunks::<4>().0.iter().enumerate() {
+        let (cx, cy) = (k % gw + 1, k / gw + 1);
+        let a = u32::from(p[3]);
+        let papel = (255.0 * (1.0 - sombra_no_papel(&classico, campo, cx, cy))).round() as u32;
+        let cor = if a > 0 {
+            let mut t = termos(o, campo, cx, cy);
+            t.dir = None;
+            let cob = f64::from(p[3]) / 255.0;
+            [0, 1, 2].map(|c| {
+                let al = srgb255_to_linear(f64::from(p[c]));
+                let v = rola(al * difuso(o, &t, al, c), t.espec[c] * cob).clamp(0.0, 1.0);
+                srgb255_of_linear(v).round().clamp(0.0, 255.0) as u32
+            })
+        } else {
+            [0; 3]
+        };
+        for c in cor {
+            ppm.push(((c * a + papel * (255 - a)) / 255) as u8);
+        }
+    }
+    std::fs::write(dir.join("antes_e2.ppm"), ppm).expect("grava");
+}
+
 /// O Óleo Real de fábrica com o que `PH2D_OLEO_AF="campo=valor,…"` pedir (knobs em graus para a luz).
 fn oleo_do_env() -> ph2d_wet_paint::oleo_real::OleoReal {
+    oleo_de(&std::env::var("PH2D_OLEO_AF").unwrap_or_default())
+}
+
+/// O Óleo Real de fábrica com os `campo=valor,…` de `af` (a língua do `PH2D_OLEO_AF`).
+fn oleo_de(af: &str) -> ph2d_wet_paint::oleo_real::OleoReal {
     let mut o = ph2d_wet_paint::oleo_real::OleoReal::default();
-    for par in std::env::var("PH2D_OLEO_AF")
-        .unwrap_or_default()
+    for par in af
         .split(',')
         .filter(|p| !p.is_empty())
     {
@@ -376,7 +440,8 @@ fn oleo_do_env() -> ph2d_wet_paint::oleo_real::OleoReal {
             }
             "fenda" => o.fenda = v,
             "alcance_fenda" => o.alcance_fenda = v,
-            "ceu" => af.ceu = v,
+            // `ceu` = o nome de antes (o `oraculo.txt` e o `cycles.py` leem-no assim).
+            "ceu" | "forca_ambiente" => o.forca_ambiente = v,
             "penumbra" => af.penumbra = v,
             "rugosidade" => af.rugosidade = v,
             "brilho_max" => af.brilho_max = v,
@@ -1330,11 +1395,14 @@ fn render_da_cena(
 /// cena do dono: no vermelho (cobertura > 0,9, albedo linear R > 0,4 e G < 0,05) nenhum pixel tem
 /// `max(R,G,B) < 70` com a força no TECTO da faixa (`FENDA_MAX`); e a força escurece mesmo (a luminância
 /// média do vermelho desce de 1 para o tecto). Mutação vista a sangrar: o tecto subido a 6 (`max` 60, a
-/// medição em `oraculo/README.md` §E1).
+/// medição em `oraculo/README.md` §E1). A lei da força mede-se no CLÁSSICO (céu uniforme): desde a W2 E2 o
+/// Estúdio tem o lado de costas para a janela ESCURO de verdade — o Cycles com o mesmo estúdio põe 0,30 %
+/// do vermelho abaixo de 70 (o nosso 0,37 % na força 1, 0,02 % no tecto); ali o gate barra a FRACÇÃO
+/// (`≤ 0,5 %`), não o pixel (`oraculo/README.md` §E2).
 #[test]
 fn a_fenda_forte_nao_volta_aos_pontos_pretos_na_cena_do_dono() {
     use ph2d_wet_paint::colorops::transfer::srgb255_to_linear as lin;
-    use ph2d_wet_paint::oleo_real::{FENDA_MAX, OleoReal};
+    use ph2d_wet_paint::oleo_real::{Ambiente, FENDA_MAX, OleoReal};
     let mut t = pinta_cena_do_dono();
     let lum =
         |c: [u8; 3]| 0.2126 * f64::from(c[0]) + 0.7152 * f64::from(c[1]) + 0.0722 * f64::from(c[2]);
@@ -1342,6 +1410,7 @@ fn a_fenda_forte_nao_volta_aos_pontos_pretos_na_cena_do_dono() {
     for fenda in [1.0, FENDA_MAX] {
         let o = OleoReal {
             fenda,
+            ambiente: Ambiente::Classico,
             ..OleoReal::default()
         };
         let px = render_da_cena(&mut t, &o);
@@ -1374,4 +1443,22 @@ fn a_fenda_forte_nao_volta_aos_pontos_pretos_na_cena_do_dono() {
         medias[1] < medias[0] - 1.0,
         "a força não escurece: {medias:?}"
     );
+    for fenda in [1.0, FENDA_MAX] {
+        let o = OleoReal {
+            fenda,
+            ambiente: Ambiente::Estudio,
+            ..OleoReal::default()
+        };
+        let px = render_da_cena(&mut t, &o);
+        let (mut n, mut pretos) = (0usize, 0usize);
+        for (fim, alb, a) in &px {
+            if f64::from(*a) / 255.0 > 0.9 && lin(f64::from(alb[0])) > 0.4 && lin(f64::from(alb[1])) < 0.05
+            {
+                n += 1;
+                pretos += usize::from(fim[0].max(fim[1]).max(fim[2]) < 70);
+            }
+        }
+        let f = 100.0 * pretos as f64 / n as f64;
+        assert!(f <= 0.5, "Estúdio, força {fenda}: {f:.2} % do vermelho abaixo de 70");
+    }
 }

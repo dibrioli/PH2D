@@ -198,6 +198,7 @@ fn oleo_para_json(o: &ph2d_wet_paint::oleo_real::OleoReal) -> Value {
         "brilho": o.brilho,
         "fenda": o.fenda,
         "alcance_fenda": o.alcance_fenda,
+        "forca_ambiente": o.forca_ambiente,
         "ambiente": o.ambiente.indice(),
     })
 }
@@ -212,6 +213,7 @@ fn oleo_de_json(o: &mut ph2d_wet_paint::oleo_real::OleoReal, v: &Value) {
         ("brilho", &mut o.brilho),
         ("fenda", &mut o.fenda),
         ("alcance_fenda", &mut o.alcance_fenda),
+        ("forca_ambiente", &mut o.forca_ambiente),
     ] {
         if let Some(x) = v[campo].as_f64() {
             *alvo = x;
@@ -262,5 +264,23 @@ mod oleo_json_tests {
         let mut o = gravado;
         oleo_de_json(&mut o, &antigo);
         assert_eq!((o.fenda, o.alcance_fenda), (2.5, 9.0));
+    }
+
+    /// A força do ambiente (W2 E2) viaja na macro; a macro de antes dela (campo ausente) mantém o valor.
+    #[test]
+    fn a_forca_do_ambiente_viaja_na_macro_e_o_campo_ausente_mantem() {
+        let gravado = OleoReal {
+            forca_ambiente: 0.85,
+            ..OleoReal::default()
+        };
+        let mut lido = OleoReal::default();
+        oleo_de_json(&mut lido, &oleo_para_json(&gravado));
+        assert_eq!(lido, gravado);
+        let mut antigo = oleo_para_json(&OleoReal::default());
+        let obj = antigo.as_object_mut().expect("objecto");
+        obj.remove("forca_ambiente");
+        let mut o = gravado;
+        oleo_de_json(&mut o, &antigo);
+        assert_eq!(o.forca_ambiente, 0.85);
     }
 }

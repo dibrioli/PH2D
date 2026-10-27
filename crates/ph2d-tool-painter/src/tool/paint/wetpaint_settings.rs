@@ -647,7 +647,8 @@ impl PainterTool {
             3 => o.altitude = v.clamp(lo, hi).to_radians(),
             4 => o.azimute = v.rem_euclid(hi).to_radians(),
             5 => o.fenda = v.clamp(lo, hi),
-            _ => o.alcance_fenda = v.clamp(lo, hi),
+            6 => o.alcance_fenda = v.clamp(lo, hi),
+            _ => o.forca_ambiente = v.clamp(lo, hi),
         }
         self.guarda_oleo_valores(o);
         true

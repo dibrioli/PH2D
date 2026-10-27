@@ -1,0 +1,139 @@
+# Régua E2 (27/10) — o HDRI como meia-esfera: difuso por SECTOR de fatia × Cycles sobre a MESMA tinta (cena do dono)
+# Cycles com a rotação CORRIGIDA (u = ½ − atan2(y,x)/2π); 'classico' = o difuso de antes da E2 em qualquer ambiente
+# (antes da E2 o ambiente só entrava no brilho). Variantes: PH2D_OLEO_VARIANTES, uma pintura, loadavg ~1,4.
+
+## Direcção do lado claro (regressão do difuso na normal, tinta aberta V>0,85)
+PH2D estudio_f1              claro na tela  -131.7°  ganho 0.19
+Cycles hdri_studio           claro na tela  -128.5°  ganho 0.38
+PH2D interior_f1             claro na tela  -103.3°  ganho 0.33
+Cycles hdri_interior         claro na tela  -106.3°  ganho 0.30
+PH2D patio_f1                claro na tela  -145.7°  ganho 1.02
+Cycles hdri_courtyard        claro na tela  -153.9°  ganho 0.99
+
+## Difuso (§3) e papel ao pé das paredes (§3b)
+######## classico × sol10
+  tinta            PH2D  0.504  0.709  1.047 · Cycles  0.445  0.830  1.074 · Cycles só directo  0.303  0.718  1.014
+  fenda V<0,55     PH2D  0.449  0.528  0.961 · Cycles  0.312  0.477  0.887 · Cycles só directo  0.164  0.302  0.738
+  sombra luz<0,5   PH2D  0.480  0.520  0.598 · Cycles  0.372  0.567  0.920 · Cycles só directo  0.230  0.499  0.821
+  correlação PH2D×Cycles na tinta: 0.788
+  PH2D  0.471  0.486  0.945 · Cycles  0.540  0.564  0.990  (p5 p10 p50)
+  correlação no papel: 0.762
+######## classico × studio_sol10
+  tinta            PH2D  0.504  0.709  1.047 · Cycles  0.354  0.980  1.772 · Cycles só directo  0.185  0.843  1.694
+  fenda V<0,55     PH2D  0.449  0.528  0.961 · Cycles  0.243  0.528  1.000 · Cycles só directo  0.075  0.286  0.793
+  sombra luz<0,5   PH2D  0.480  0.520  0.598 · Cycles  0.228  0.670  1.321 · Cycles só directo  0.101  0.496  1.281
+  correlação PH2D×Cycles na tinta: 0.556
+  PH2D  0.471  0.486  0.945 · Cycles  0.379  0.552  1.006  (p5 p10 p50)
+  correlação no papel: 0.311
+######## estudio × studio_sol10
+  tinta            PH2D  0.346  1.055  1.764 · Cycles  0.354  0.980  1.772 · Cycles só directo  0.185  0.843  1.694
+  fenda V<0,55     PH2D  0.181  0.543  1.402 · Cycles  0.243  0.528  1.000 · Cycles só directo  0.075  0.286  0.793
+  sombra luz<0,5   PH2D  0.236  0.732  1.472 · Cycles  0.228  0.670  1.321 · Cycles só directo  0.101  0.496  1.281
+  correlação PH2D×Cycles na tinta: 0.772
+  PH2D  0.459  0.580  0.973 · Cycles  0.379  0.552  1.006  (p5 p10 p50)
+  correlação no papel: 0.678
+######## estudio_m1 × studio_sol10
+  tinta            PH2D  0.323  1.079  1.866 · Cycles  0.354  0.980  1.772 · Cycles só directo  0.185  0.843  1.694
+  fenda V<0,55     PH2D  0.142  0.551  1.496 · Cycles  0.243  0.528  1.000 · Cycles só directo  0.075  0.286  0.793
+  sombra luz<0,5   PH2D  0.197  0.756  1.567 · Cycles  0.228  0.670  1.321 · Cycles só directo  0.101  0.496  1.281
+  correlação PH2D×Cycles na tinta: 0.765
+  PH2D  0.459  0.580  0.973 · Cycles  0.379  0.552  1.006  (p5 p10 p50)
+  correlação no papel: 0.678
+######## estudio_rl1 × studio_sol10
+  tinta            PH2D  0.386  1.079  1.803 · Cycles  0.354  0.980  1.772 · Cycles só directo  0.185  0.843  1.694
+  fenda V<0,55     PH2D  0.220  0.591  1.441 · Cycles  0.243  0.528  1.000 · Cycles só directo  0.075  0.286  0.793
+  sombra luz<0,5   PH2D  0.268  0.772  1.504 · Cycles  0.228  0.670  1.321 · Cycles só directo  0.101  0.496  1.281
+  correlação PH2D×Cycles na tinta: 0.771
+  PH2D  0.459  0.580  0.973 · Cycles  0.379  0.552  1.006  (p5 p10 p50)
+  correlação no papel: 0.678
+######## estudio_f1 × hdri_studio
+  tinta            PH2D  0.496  1.276  2.000 · Cycles  0.437  0.960  2.257 · Cycles só directo  0.243  0.799  2.182
+  fenda V<0,55     PH2D  0.268  0.780  1.953 · Cycles  0.331  0.668  0.971 · Cycles só directo  0.104  0.398  0.676
+  sombra luz<0,5   PH2D  0.386  1.165  2.000 · Cycles  0.316  0.778  2.142 · Cycles só directo  0.140  0.552  2.096
+  correlação PH2D×Cycles na tinta: 0.708
+  PH2D  0.525  0.631  0.973 · Cycles  0.504  0.563  0.974  (p5 p10 p50)
+  correlação no papel: 0.536
+######## classico × interior_sol10
+  tinta            PH2D  0.504  0.709  1.047 · Cycles  0.278  0.817  1.128 · Cycles só directo  0.201  0.713  1.059
+  fenda V<0,55     PH2D  0.449  0.528  0.961 · Cycles  0.254  0.452  0.962 · Cycles só directo  0.120  0.276  0.819
+  sombra luz<0,5   PH2D  0.480  0.520  0.598 · Cycles  0.226  0.430  0.955 · Cycles só directo  0.161  0.324  0.859
+  correlação PH2D×Cycles na tinta: 0.777
+  PH2D  0.471  0.486  0.945 · Cycles  0.324  0.420  0.967  (p5 p10 p50)
+  correlação no papel: 0.766
+######## interior × interior_sol10
+  tinta            PH2D  0.346  0.717  1.118 · Cycles  0.278  0.817  1.128 · Cycles só directo  0.201  0.713  1.059
+  fenda V<0,55     PH2D  0.362  0.520  1.079 · Cycles  0.254  0.452  0.962 · Cycles só directo  0.120  0.276  0.819
+  sombra luz<0,5   PH2D  0.299  0.449  0.661 · Cycles  0.226  0.430  0.955 · Cycles só directo  0.161  0.324  0.859
+  correlação PH2D×Cycles na tinta: 0.833
+  PH2D  0.349  0.384  0.969 · Cycles  0.324  0.420  0.967  (p5 p10 p50)
+  correlação no papel: 0.832
+######## interior_f1 × hdri_interior
+  tinta            PH2D  0.575  0.890  1.071 · Cycles  0.442  0.789  1.025 · Cycles só directo  0.336  0.689  0.972
+  fenda V<0,55     PH2D  0.606  0.811  1.118 · Cycles  0.408  0.572  0.798 · Cycles só directo  0.208  0.418  0.654
+  sombra luz<0,5   PH2D  0.504  0.740  1.039 · Cycles  0.369  0.597  0.884 · Cycles só directo  0.272  0.491  0.809
+  correlação PH2D×Cycles na tinta: 0.766
+  PH2D  0.584  0.639  0.961 · Cycles  0.547  0.630  0.929  (p5 p10 p50)
+  correlação no papel: 0.843
+######## classico × courtyard_sol10
+  tinta            PH2D  0.504  0.709  1.047 · Cycles  0.237  0.830  1.545 · Cycles só directo  0.107  0.699  1.445
+  fenda V<0,55     PH2D  0.449  0.528  0.961 · Cycles  0.104  0.376  1.048 · Cycles só directo  0.036  0.130  0.876
+  sombra luz<0,5   PH2D  0.480  0.520  0.598 · Cycles  0.146  0.436  1.043 · Cycles só directo  0.058  0.346  0.913
+  correlação PH2D×Cycles na tinta: 0.770
+  PH2D  0.471  0.486  0.945 · Cycles  0.239  0.301  1.071  (p5 p10 p50)
+  correlação no papel: 0.672
+######## patio × courtyard_sol10
+  tinta            PH2D  0.228  0.709  1.465 · Cycles  0.237  0.830  1.545 · Cycles só directo  0.107  0.699  1.445
+  fenda V<0,55     PH2D  0.150  0.331  1.307 · Cycles  0.104  0.376  1.048 · Cycles só directo  0.036  0.130  0.876
+  sombra luz<0,5   PH2D  0.181  0.339  0.780 · Cycles  0.146  0.436  1.043 · Cycles só directo  0.058  0.346  0.913
+  correlação PH2D×Cycles na tinta: 0.897
+  PH2D  0.224  0.286  0.976 · Cycles  0.239  0.301  1.071  (p5 p10 p50)
+  correlação no papel: 0.821
+######## patio_f1 × hdri_courtyard
+  tinta            PH2D  0.362  0.835  1.685 · Cycles  0.315  0.819  1.683 · Cycles só directo  0.154  0.737  1.564
+  fenda V<0,55     PH2D  0.252  0.465  1.575 · Cycles  0.163  0.399  1.000 · Cycles só directo  0.062  0.176  0.770
+  sombra luz<0,5   PH2D  0.307  0.559  1.213 · Cycles  0.223  0.576  1.073 · Cycles só directo  0.094  0.463  0.936
+  correlação PH2D×Cycles na tinta: 0.862
+  PH2D  0.369  0.467  0.961 · Cycles  0.391  0.463  1.084  (p5 p10 p50)
+  correlação no papel: 0.814
+
+## Vermelho abaixo de 70 (max RGB) — fracção
+  classico               min max   111 · max<70  0.00 % · p1   142
+  classico_f3            min max    75 · max<70  0.00 % · p1   122
+  estudio                min max    39 · max<70  0.37 % · p1    80
+  estudio_f3             min max    53 · max<70  0.02 % · p1    96
+  estudio_f1             min max    51 · max<70  0.03 % · p1    92
+  interior               min max    95 · max<70  0.00 % · p1   122
+  patio                  min max    67 · max<70  0.00 % · p1    99
+  interior_f1            min max   121 · max<70  0.00 % · p1   154
+  patio_f1               min max    85 · max<70  0.00 % · p1   125
+  Cycles sol10           min max    84 · max<70  0.00 % · p1   128
+  Cycles studio_sol10    min max    12 · max<70  0.30 % · p1    93
+  Cycles hdri_studio     min max    14 · max<70  0.25 % · p1    96
+  Cycles interior_sol10  min max    61 · max<70  0.00 % · p1   114
+  Cycles courtyard_sol10 min max    35 · max<70  0.37 % · p1    79
+  Cycles hdri_interior   min max   111 · max<70  0.00 % · p1   145
+  Cycles hdri_courtyard  min max    48 · max<70  0.07 % · p1    97
+
+## compara.py completo: estudio × studio_sol10 (§1 pontos pretos, §4 brilho, §5 realce)
+## 1. Pontos pretos — a fenda VERMELHA (p10 p50 p90 da luminância sRGB 0..255)
+  PH2D                   fenda: 26.680 49.015 83.209 · R na fenda p50   167 · pixels «pretos» (max<70) no vermelho  0.37 %
+  Cycles céu+sol10       fenda: 39.926 53.739 73.572 · R na fenda p50   165 · pixels «pretos» (max<70) no vermelho  0.00 %
+  Cycles HDRI estúdio    fenda: 36.558 49.589 64.031 · R na fenda p50   178 · pixels «pretos» (max<70) no vermelho  0.25 %
+  Cycles estúdio+sol10   fenda: 30.596 44.950 69.027 · R na fenda p50   165 · pixels «pretos» (max<70) no vermelho  0.30 %
+
+## 2. Rebote — o que os ricochetes acrescentam ao difuso (cinza 0,5): (com − directo)/com
+## 4. Brilho (linear, somado): PH2D t_espec × Cycles base preta (p50 p99 p99.9 · área > 0,3)
+  PH2D                    0.000  0.260  0.717 · área>0,3  0.73 %
+  Cycles céu+sol10        0.018  0.154  0.421 · área>0,3  0.29 %
+  Cycles HDRI estúdio     0.004  0.766  2.176 · área>0,3  3.38 %
+  Cycles estúdio+sol10    0.005  0.482  1.338 · área>0,3  2.13 %
+
+## 5. Realce que passa de 1 (fracção de pixels de tinta com algum canal > 1, linear)
+  sol10             2.06 %  · p99.9  1.30
+  hdri_studio      27.62 %  · p99.9  3.44
+  studio_sol10     18.86 %  · p99.9  2.39
+  hdri_interior     7.91 %  · p99.9  1.34
+  hdri_courtyard   15.14 %  · p99.9  2.18
+
+## Custo (medida_oleo_real_custo, smoke, 1 núcleo, mínimo de 7, loadavg 1,4)
+  Clássico 1 541 ns/célula · Estúdio 2 137 · Interior 2 136 · Pátio 2 143   (antes: 1 547 · ~1 870)

@@ -238,19 +238,7 @@ fn o_brilho_da_orla_vai_com_a_cobertura() {
 /// Um relevo VARIADO (cristas, um sulco fundo, um bloco alto e o papel livre) e a impressão digital de
 /// tudo o que a óptica devolve nele — termos, cor e sombra no papel, bit a bit.
 fn impressao_digital(o: &OleoReal) -> u64 {
-    let g = grade(|x, y| {
-        let (fx, fy) = (x as f32, y as f32);
-        let ondas = 2500.0 + 1800.0 * (fx * 0.37).sin() * (fy * 0.23).cos();
-        if (30..=32).contains(&x) {
-            0.0
-        } else if (40..=52).contains(&x) && (10..=22).contains(&y) {
-            12_000.0
-        } else if x > 56 {
-            0.0
-        } else {
-            ondas.max(0.0)
-        }
-    });
+    let g = relevo_variado();
     let c = campo(&g, o);
     let mut h = 0xcbf2_9ce4_8422_2325u64;
     let mut mistura = |v: f64| {
@@ -272,18 +260,19 @@ fn impressao_digital(o: &OleoReal) -> u64 {
     h
 }
 
-/// ⭐ **Neutro = a imagem de antes** (W2 E1): com a força da fenda `1` e o alcance de fábrica a óptica é BIT
-/// a BIT a de `c3365fb579` (a impressão digital gravada antes dos dois ajustes), no Clássico e no Estúdio.
+/// ⭐ **Neutro = a imagem de antes** (W2 E1 + E2): com a força da fenda `1`, o alcance de fábrica e a força
+/// do ambiente de fábrica, o CLÁSSICO é BIT a BIT o de `c3365fb579` (a impressão digital gravada antes dos
+/// ajustes). O Estúdio saiu daqui na E2 por DESENHO (o difuso passou a vir do sector do HDRI; a impressão
+/// dele em `c3365fb579` era `0xbdcc_ca7e_7461_db68`): as leis dele são as de
+/// [`o_hdri_uniforme_da_o_ganho_um_em_toda_a_celula`] e [`o_papel_ao_pe_da_parede_perde_o_ceu_do_lado_dela`].
 #[test]
 fn a_fenda_neutra_e_bit_identica_a_de_antes() {
-    for (ambiente, antes) in [
-        (Ambiente::Classico, 0xd577_67fb_dd93_1d70u64),
-        (Ambiente::Estudio, 0xbdcc_ca7e_7461_db68),
-    ] {
+    for (ambiente, antes) in [(Ambiente::Classico, 0xd577_67fb_dd93_1d70u64)] {
         let o = OleoReal {
             ambiente,
             fenda: 1.0,
             alcance_fenda: ALCANCE_FENDA_MAX,
+            forca_ambiente: FORCA_AMBIENTE_FABRICA,
             ..OleoReal::default()
         };
         assert_eq!(
@@ -297,4 +286,112 @@ fn a_fenda_neutra_e_bit_identica_a_de_antes() {
         let d = impressao_digital(&o);
         assert_eq!(d, antes, "{ambiente:?} {d:#018x}");
     }
+}
+
+/// O relevo variado da [`impressao_digital`] (cristas, um sulco fundo, um bloco alto e o papel livre).
+fn relevo_variado() -> Grid {
+    grade(|x, y| {
+        let (fx, fy) = (x as f32, y as f32);
+        let ondas = 2500.0 + 1800.0 * (fx * 0.37).sin() * (fy * 0.23).cos();
+        if (30..=32).contains(&x) {
+            0.0
+        } else if (40..=52).contains(&x) && (10..=22).contains(&y) {
+            12_000.0
+        } else if x > 56 {
+            0.0
+        } else {
+            ondas.max(0.0)
+        }
+    })
+}
+
+/// ⭐ **O HDRI UNIFORME é o Clássico** (W2 E2): a integral por sector usa o MESMO arco de cada fatia que a
+/// visibilidade, por isso um céu de radiância constante dá ganho `1` em toda a célula (tinta, fenda, papel) —
+/// a prova de que as somas acumuladas, o lado pelo sinal do arco e a normalização pelo plano aberto estão
+/// certos. Mutações que sangram: o `sinal` do `sinθ·sinγ` trocado, `u + 0,5` em falta no lado negativo
+/// (só com céu não uniforme — ver o gate do lado), `cima` sem o `÷ FATIAS`.
+#[test]
+fn o_hdri_uniforme_da_o_ganho_um_em_toda_a_celula() {
+    let s = Sectores::uniforme();
+    let o = OleoReal::default();
+    let g = relevo_variado();
+    let c = campo(&g, &o);
+    let ceu = CeuDoMapa::novo(&o, 0.3, &s);
+    for k in 0..3 {
+        assert!((ceu.cima[k] - 1.0).abs() < 1e-3, "{:?}", ceu.cima);
+    }
+    let mut pior = 0.0f64;
+    for cy in 2..W {
+        for cx in 2..W {
+            let (x, y) = (cx as isize, cy as isize);
+            let n = normal(&c, x, y);
+            let (v, d) = visibilidade_e_ceu(&c, x, y, n, 1.0, Some(&ceu));
+            let (v0, _) = visibilidade_e_ceu(&c, x, y, n, 1.0, None);
+            assert_eq!(v.to_bits(), v0.to_bits(), "a visibilidade não muda com o céu");
+            if v > 0.02 {
+                for dk in d.expect("com mapa") {
+                    pior = pior.max((dk - 1.0).abs());
+                }
+            }
+        }
+    }
+    assert!(pior < 2e-3, "ganho do céu uniforme ≠ 1: {pior}");
+}
+
+/// O `u` do mapa de uma direcção da tela pela forma fechada de [`u_do_mapa`] é o mesmo que o
+/// [`para_o_mapa`] + a convenção de `Mapa::amostra` (`atan2(y, −x)/2π + ½`).
+#[test]
+fn o_u_da_fatia_e_o_do_mapa() {
+    use core::f64::consts::TAU;
+    for az in [0.0f64, 40.0, 135.0, 225.0, 300.0] {
+        let o = OleoReal {
+            azimute: az.to_radians(),
+            ..OleoReal::default()
+        };
+        for claro in [-2.2, 0.0, 1.3, 2.95] {
+            let u0 = u_do_mapa(&o, claro);
+            for k in 0..16 {
+                let phi = TAU * k as f64 / 16.0;
+                let b = para_o_mapa(&o, claro, [libm::cos(phi), libm::sin(phi), 0.0]);
+                let u_ref = libm::atan2(b[1], -b[0]) / TAU + 0.5;
+                let dif = (u0 + phi / TAU - u_ref).rem_euclid(1.0);
+                assert!(dif.min(1.0 - dif) < 1e-9, "az {az} claro {claro} φ {phi}: {dif}");
+            }
+        }
+    }
+}
+
+/// ⭐ **O papel ao pé da parede perde o céu do LADO dela** (W2 E2): uma parede alta numa tela; o ambiente roda
+/// o lado claro para a luz (esquerda). O papel à DIREITA da parede tem o lado claro tapado — com o Estúdio
+/// escurece mais que com o céu uniforme; o da ESQUERDA tem o lado escuro tapado — escurece menos. A mesma
+/// luz directa nos dois modos (`sombra` só do céu: luz a pino). Mutações que sangram: o `u + 0,5` do lado
+/// negativo em falta, o `dir` ignorado no papel.
+#[test]
+fn o_papel_ao_pe_da_parede_perde_o_ceu_do_lado_dela() {
+    let g = grade(|x, _| if (30..=34).contains(&x) { 12_000.0 } else { 0.0 });
+    let base = OleoReal {
+        azimute: 180f64.to_radians(),
+        altitude: 89f64.to_radians(),
+        ..OleoReal::default()
+    };
+    let c = campo(&g, &base);
+    let com = |ambiente| OleoReal { ambiente, ..base };
+    let (classico, estudio) = (com(Ambiente::Classico), com(Ambiente::Estudio));
+    let s = |o: &OleoReal, x| sombra_no_papel(o, &c, x, 32);
+    // O papel PLANO à esquerda da parede (do lado da luz) e à direita, fora das encostas da forma (a altura
+    // desfocada vai de 24 a 40). Medido: Clássico 0,089 · 0,090; Estúdio 0,042 · 0,354.
+    let (esq, dir) = (20, 43);
+    assert!(s(&classico, dir) > 0.01, "a parede tapa o céu: {}", s(&classico, dir));
+    assert!(
+        s(&estudio, dir) > s(&classico, dir) + 0.01,
+        "à direita o lado claro está tapado: {} × {}",
+        s(&estudio, dir),
+        s(&classico, dir)
+    );
+    assert!(
+        s(&estudio, esq) < s(&classico, esq) - 0.01,
+        "à esquerda só o lado escuro: {} × {}",
+        s(&estudio, esq),
+        s(&classico, esq)
+    );
 }

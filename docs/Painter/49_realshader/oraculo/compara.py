@@ -83,6 +83,20 @@ for rot, m in [("tinta", tinta), ("fenda V<0,55", cava), ("sombra luz<0,5", tint
 c = np.corrcoef(e[tinta], ce[tinta])[0, 1]
 print(f"  correlação PH2D×Cycles na tinta: {c:.3f}")
 
+# W2 E2: o PAPEL ao pé das paredes (cobertura < 0,02 a até 8 células da tinta): a luz que recebe, 1 − sombra
+# (o `oleo.ppm` grava 255·(1 − sombra) no papel branco) × o Cycles cinza÷0,5 sobre a mesma malha.
+perto = np.zeros_like(tinta)
+for dy in range(-8, 9):
+    for dx in range(-8, 9):
+        if dx * dx + dy * dy <= 64:
+            perto |= np.roll(np.roll(tinta, dy, 0), dx, 1)
+papel = (cob < 0.02) & perto
+nosso_papel = nosso.mean(-1) / 255.0
+print(f"\n## 3b. Papel ao pé das paredes ({papel.sum()} células): luz PH2D 1−sombra × Cycles {LUZ} cinza÷0,5")
+print(f"  PH2D {q(nosso_papel, papel, (5, 10, 50))} · Cycles {q(ce, papel, (5, 10, 50))}  (p5 p10 p50)")
+cp = np.corrcoef(nosso_papel[papel], ce[papel])[0, 1]
+print(f"  correlação no papel: {cp:.3f}")
+
 print("\n## 4. Brilho (linear, somado): PH2D t_espec × Cycles base preta (p50 p99 p99.9 · área > 0,3)")
 for rot, b in [
     ("PH2D", espec),

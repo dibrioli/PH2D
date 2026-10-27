@@ -1,7 +1,9 @@
 //! **Os ambientes do Óleo Real** (W1c, [`49_realshader/oraculo/`](../../../docs/Painter/49_realshader/oraculo/)):
 //! o REFLEXO da tinta é o de um HDRI (o «Environment» do Rebelle), não o de uma lâmpada só. Cada `.amb` é um HDRI CC0 do
 //! Blender pré-filtrado por `prefiltra_ambiente.py` (irradiância exacta + brilho GGX em 4 rugosidades),
-//! na moldura do Blender (z para cima), escalado para o plano virado para cima = 1.
+//! na moldura do Blender (z para cima), escalado para o plano virado para cima = 1. W2 E2: o `PH2DAMB3`
+//! traz também a radiância BRUTA da metade de cima, que vira as [`Sectores`] do DIFUSO (o céu visível de
+//! cada fatia do GTAO integrado contra o HDRI).
 
 use std::sync::OnceLock;
 
@@ -50,11 +52,96 @@ pub(crate) struct Mapa {
     niveis: Vec<Vec<[f32; 3]>>,
     /// A irradiância do plano virado para cima, por canal: a escala do brilho (o reflexo não tinge o branco).
     cima: [f64; 3],
+    /// O céu por SECTOR de fatia (`PH2DAMB3`); `None` num `PH2DAMB2` (o difuso fica o céu uniforme).
+    pub(crate) sectores: Option<Sectores>,
+}
+
+/// **O céu por sector** (W2 E2): para cada azimute `u` do mapa (`K` colunas) a radiância média da CUNHA de
+/// azimute de uma fatia (`π/4` = 2π / (2·[`crate::oleo_real`] fatias)), integrada ao longo da elevação
+/// medida do zénite `α` em somas ACUMULADAS `∫₀^α L·sinα·cosα dα` e `∫₀^α L·sin²α dα` (`M+1` nós até ao
+/// horizonte): o termo `cos(α−γ)` da normal projectada na fatia sai em forma fechada
+/// (`cosα·cosγ + sinα·sinγ`), O(1) por lado de fatia. Céu uniforme `L = 1` dá `sin²α/2` e `α/2 − sin2α/4`,
+/// os dois pedaços da integral de Jimenez — por isso o HDRI uniforme reduz-se à visibilidade.
+pub(crate) struct Sectores {
+    k: usize,
+    m: usize,
+    /// `[j·k + b]`, por canal: `(∫ L sinα cosα, ∫ L sin²α)` até ao nó `j` (`α = j·π/(2m)`); o canal `3` é o
+    /// céu UNIFORME `L = 1` pela MESMA interpolação (o denominador do ganho: o erro dela cancela-se).
+    c: Vec<[[f64; 4]; 2]>,
+}
+
+/// A largura (em fracção da volta) da cunha de azimute de cada lado de uma fatia: `FATIAS = 4` ⇒ 8 lados.
+pub(crate) const CUNHA: f64 = 1.0 / 8.0;
+
+impl Sectores {
+    fn de(rad: &[[f32; 3]], k: usize, m: usize) -> Self {
+        use core::f64::consts::FRAC_PI_2;
+        let meia = (CUNHA * k as f64 / 2.0) as usize;
+        assert_eq!(2 * meia, (CUNHA * k as f64) as usize, "ambiente: cunha");
+        let da = FRAC_PI_2 / m as f64;
+        let mut c = vec![[[0.0; 4]; 2]; (m + 1) * k];
+        for j in 0..m {
+            let (a0, a1) = (j as f64 * da, (j + 1) as f64 * da);
+            let i1 = (libm::sin(a1).powi(2) - libm::sin(a0).powi(2)) / 2.0;
+            let i2 = ((a1 - libm::sin(a1) * libm::cos(a1)) - (a0 - libm::sin(a0) * libm::cos(a0))) / 2.0;
+            for b in 0..k {
+                // A média da cunha centrada na coluna `b` (as pontas pesam meio: largura exacta).
+                let mut t = [0.0f64, 0.0, 0.0, (2 * meia) as f64];
+                for d in -(meia as isize)..=meia as isize {
+                    let w = if d.unsigned_abs() == meia { 0.5 } else { 1.0 };
+                    let x = (b as isize + d).rem_euclid(k as isize) as usize;
+                    for (tc, &r) in t.iter_mut().zip(&rad[x + j * k]) {
+                        *tc += w * f64::from(r);
+                    }
+                }
+                let ant = c[b + j * k];
+                let novo = &mut c[b + (j + 1) * k];
+                for ch in 0..4 {
+                    let l = t[ch] / (2 * meia) as f64;
+                    novo[0][ch] = ant[0][ch] + l * i1;
+                    novo[1][ch] = ant[1][ch] + l * i2;
+                }
+            }
+        }
+        Self { k, m, c }
+    }
+
+    /// As duas somas acumuladas no azimute `u` (fracção da volta, a do [`Mapa::amostra`]) até à elevação `α`
+    /// do zénite (`0..=π/2`), bilinear.
+    #[inline]
+    pub(crate) fn ate(&self, u: f64, alfa: f64) -> [[f64; 4]; 2] {
+        let fx = u.rem_euclid(1.0) * self.k as f64 - 0.5;
+        let x0 = libm::floor(fx);
+        let tx = fx - x0;
+        let xa = (x0 as isize).rem_euclid(self.k as isize) as usize;
+        let xb = (xa + 1) % self.k;
+        let fy = (alfa / core::f64::consts::FRAC_PI_2 * self.m as f64).clamp(0.0, self.m as f64);
+        let j0 = (libm::floor(fy) as usize).min(self.m - 1);
+        let ty = fy - j0 as f64;
+        let p = |x: usize, j: usize| &self.c[x + j * self.k];
+        let (p00, p10, p01, p11) = (p(xa, j0), p(xb, j0), p(xa, j0 + 1), p(xb, j0 + 1));
+        let mut out = [[0.0; 4]; 2];
+        for (q, oq) in out.iter_mut().enumerate() {
+            for (ch, o) in oq.iter_mut().enumerate() {
+                let l0 = p00[q][ch] + (p10[q][ch] - p00[q][ch]) * tx;
+                let l1 = p01[q][ch] + (p11[q][ch] - p01[q][ch]) * tx;
+                *o = l0 + (l1 - l0) * ty;
+            }
+        }
+        out
+    }
+
+    /// Um céu UNIFORME de radiância 1 (só para os gates: o HDRI uniforme tem de dar o Clássico).
+    #[cfg(test)]
+    pub(crate) fn uniforme() -> Self {
+        Self::de(&vec![[1.0f32; 3]; 128 * 32], 128, 32)
+    }
 }
 
 impl Mapa {
     fn de(b: &[u8]) -> Self {
-        assert_eq!(&b[..8], b"PH2DAMB2", "ambiente: cabeçalho");
+        let v3 = &b[..8] == b"PH2DAMB3";
+        assert!(v3 || &b[..8] == b"PH2DAMB2", "ambiente: cabeçalho");
         let u = |i: usize| u32::from_le_bytes(b[i..i + 4].try_into().expect("u32")) as usize;
         let f = |i: usize| f64::from(f32::from_le_bytes(b[i..i + 4].try_into().expect("f32")));
         let (w, h, n) = (u(8), u(12), u(16));
@@ -62,15 +149,20 @@ impl Mapa {
         let mut p = 24;
         let rug = (0..n).map(|k| f(p + 4 * k)).collect();
         p += 4 * n;
-        let mut le = |m: usize| {
+        let le = |p: &mut usize, m: usize| {
             let v: Vec<[f32; 3]> = (0..m)
-                .map(|k| [0, 1, 2].map(|c| f(p + 12 * k + 4 * c) as f32))
+                .map(|k| [0, 1, 2].map(|c| f(*p + 12 * k + 4 * c) as f32))
                 .collect();
-            p += 12 * m;
+            *p += 12 * m;
             v
         };
-        let irr = le((w / 2) * (h / 2));
-        let niveis = (0..n).map(|_| le(w * h)).collect();
+        let irr = le(&mut p, (w / 2) * (h / 2));
+        let niveis = (0..n).map(|_| le(&mut p, w * h)).collect();
+        let sectores = v3.then(|| {
+            let (k, m) = (u(p), u(p + 4));
+            p += 8;
+            Sectores::de(&le(&mut p, k * m), k, m)
+        });
         assert_eq!(p, b.len(), "ambiente: tamanho");
         let mut m = Self {
             w,
@@ -80,6 +172,7 @@ impl Mapa {
             irr,
             niveis,
             cima: [1.0; 3],
+            sectores,
         };
         m.cima = m.irradiancia_bruta([0.0, 0.0, 1.0]);
         m

@@ -158,8 +158,12 @@ def hdri(nome_hdri):
     e = float((lum * np.maximum(z, 0) * dw).sum())
     # O azimute do lado mais claro do hemisfério de cima, pesado pelo cosseno: o «sol» do HDRI.
     peso = lum * np.maximum(z, 0) * dw
-    dx = (-np.cos(fi)[None, :] * np.cos(te)[:, None] * peso).sum()
-    dy = (np.sin(fi)[None, :] * np.cos(te)[:, None] * peso).sum()
+    # ⛔ W2 E2: a equirectangular do Cycles é `u = ½ − atan2(y, x)/2π` (kernel `direction_to_equirectangular`).
+    # Até 27/10 este `claro` lia-se com `x = −cos fi, y = sin fi` (a moldura do `prefiltra_ambiente.py`, rodada
+    # de 180°): o HDRI ficava com o lado claro OPOSTO à luz (regressão do difuso na normal: +37° × −135°).
+    fi_b = math.pi - 2 * math.pi * u
+    dx = (np.cos(fi_b)[None, :] * np.cos(te)[:, None] * peso).sum()
+    dy = (np.sin(fi_b)[None, :] * np.cos(te)[:, None] * peso).sum()
     claro = math.atan2(dy, dx)
     alvo = math.atan2(para_luz.y, para_luz.x)
     print(f"[oraculo] {nome_hdri}: E={e:.3f} claro={math.degrees(claro):.0f}° alvo={math.degrees(alvo):.0f}°")
@@ -179,9 +183,23 @@ LUZES = {
     "studio_sol10": (10.0, True, "studio"),
     "hdri_interior": (0.0, False, "interior"),
     "hdri_courtyard": (0.0, False, "courtyard"),
+    # W2 E2: o difuso por sector também no interior e no pátio, puros e com a lâmpada.
+    "interior_sol10": (10.0, True, "interior"),
+    "courtyard_sol10": (10.0, True, "courtyard"),
 }
 MODOS_TODOS = ("cor", "cinza", "cinza_direto", "brilho")
-VARIANTES = [(l, m) for l in LUZES for m in (MODOS_TODOS if l in ("ceu", "sol10", "hdri_studio", "studio_sol10") else ("cor",))]
+TODOS_OS_MODOS = (
+    "ceu", "sol10", "hdri_studio", "studio_sol10", "hdri_interior", "hdri_courtyard", "interior_sol10",
+    "courtyard_sol10",
+)
+# `PH2D_CYCLES_SO="a,b"`: só essas luzes (uma rodada mais curta).
+SO = [x for x in os.environ.get("PH2D_CYCLES_SO", "").split(",") if x]
+VARIANTES = [
+    (l, m)
+    for l in LUZES
+    if not SO or l in SO
+    for m in (MODOS_TODOS if l in TODOS_OS_MODOS else ("cor", "cinza"))
+]
 for luz, modo in VARIANTES:
     ang, com_sol, ceu_v = LUZES[luz]
     nome = f"{luz}_{modo}"

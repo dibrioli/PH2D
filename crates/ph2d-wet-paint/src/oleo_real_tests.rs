@@ -398,23 +398,33 @@ fn o_papel_ao_pe_da_parede_perde_o_ceu_do_lado_dela() {
 
 /// ⭐ **Material NEUTRO = a imagem de antes** (W2 E3-B): com `MaterialCelula::NEUTRO` em toda a célula e o
 /// cartão no neutro, os QUATRO ambientes são BIT a BIT os de `5464db050b` (impressões gravadas antes do
-/// material entrar no sombreado).
+/// material entrar no sombreado) com o alargamento do reflexo do ambiente de W1c (`1`); com o de fábrica
+/// (`0`, a cura do brilho do Estúdio, `oraculo/README.md` §E3) o Clássico não muda e os HDRI são os de agora.
 #[test]
 fn o_material_neutro_e_bit_identico_a_de_antes() {
     let mut erros = Vec::new();
-    for (ambiente, antes) in [
-        (Ambiente::Classico, 0xd577_67fb_dd93_1d70u64),
-        (Ambiente::Estudio, 0x9f6c_0278_7b71_e6fdu64),
-        (Ambiente::Interior, 0x47f6_a218_9632_b47fu64),
-        (Ambiente::Patio, 0xbb89_005a_1c61_c90du64),
+    for (ambiente, antes, agora) in [
+        (Ambiente::Classico, 0xd577_67fb_dd93_1d70u64, 0xd577_67fb_dd93_1d70u64),
+        (Ambiente::Estudio, 0x9f6c_0278_7b71_e6fdu64, 0xc068_69bd_7caf_a607u64),
+        (Ambiente::Interior, 0x47f6_a218_9632_b47fu64, 0xb01e_6c58_f436_56d4u64),
+        (Ambiente::Patio, 0xbb89_005a_1c61_c90du64, 0x3ae1_6642_c9fd_624eu64),
     ] {
         let o = OleoReal {
             ambiente,
             ..OleoReal::default()
         };
-        let d = impressao_digital(&o);
-        if d != antes {
-            erros.push(format!("{ambiente:?} {d:#018x}"));
+        let w1c = OleoReal {
+            af: Afinacao {
+                antisserrilhado_ambiente: 1.0,
+                ..o.af
+            },
+            ..o
+        };
+        for (rot, o, alvo) in [("W1c", w1c, antes), ("fábrica", o, agora)] {
+            let d = impressao_digital(&o);
+            if d != alvo {
+                erros.push(format!("{ambiente:?} {rot} {d:#018x}"));
+            }
         }
     }
     assert!(erros.is_empty(), "{erros:?}");

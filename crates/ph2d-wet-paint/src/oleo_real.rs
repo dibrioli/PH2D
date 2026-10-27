@@ -95,7 +95,10 @@ pub struct Afinacao {
     pub brilho_max: f64,
     /// Ganho do alargamento do lobo pela curvatura dentro da célula (Kaplanyan; `1` = o de W1c).
     pub antisserrilhado: f64,
-    /// O mesmo ganho no reflexo do AMBIENTE (o lobo do pré-filtrado; `1` = o da lâmpada, o de W1c).
+    /// O mesmo ganho no reflexo do AMBIENTE. `0` (W2 E3-B): o pré-filtrado já É um lobo filtrado (o mapa não
+    /// serrilha como o pico analítico da lâmpada); alargá-lo de novo pela curvatura deixava o brilho do
+    /// Estúdio em p99 0,26 × 0,48 do Cycles — a `0`: 0,53 × 0,48, área > 0,3 2,12 % × 2,13 %
+    /// (`oraculo/README.md` §E3). `1` = o de W1c.
     pub antisserrilhado_ambiente: f64,
 }
 
@@ -115,7 +118,7 @@ impl Default for Afinacao {
             rugosidade: 0.28,
             brilho_max: 1.6,
             antisserrilhado: 1.0,
-            antisserrilhado_ambiente: 1.0,
+            antisserrilhado_ambiente: 0.0,
         }
     }
 }

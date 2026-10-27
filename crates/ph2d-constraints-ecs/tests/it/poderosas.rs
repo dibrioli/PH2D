@@ -424,3 +424,33 @@ fn the_pose_spring_is_the_same_bit_after_the_generic_simulator() {
 }
 
 const IMPRESSAO: u64 = 0x40b3_b313_e43b_d8ce;
+
+/// ⭐ A mola de UM valor (o «Valor», 06_W5 §3.1) é a lei do `motion.spring` passo a passo: o estado
+/// parte do repouso e cada quadro é um `passo` com a entrada desse quadro.
+#[test]
+fn a_one_value_spring_is_the_law_step_by_step() {
+    use ph2d_constraints_ecs::Lei;
+    use ph2d_node_motion_spring::law::{MODE_TIME, passo, physics_of};
+    let lei = Lei {
+        duracao: 0.5,
+        ressalto: 0.6,
+        angular: [false],
+    };
+    let (tension, friction) = physics_of(MODE_TIME, 0.0, 0.0, 0.5, 0.6);
+    let dt = (1.0 / 24.0_f64) as f32;
+    let entrada = |k: i64| [if k < 5 { 0.0 } else { 270.0 }];
+    let mut s: Simulador<1> = Simulador::default();
+    let (mut x, mut v, mut pico) = (0.0_f32, 0.0_f32, 0.0_f32);
+    for f in 0..60 {
+        if f > 0 {
+            (x, v) = passo(x, v, entrada(f)[0] as f32, tension, friction, dt);
+        }
+        let got = s.atraso(f, lei, 24.0, &mut |k| entrada(k))[0] + entrada(f)[0];
+        assert!(
+            (got - f64::from(x)).abs() < 1e-9,
+            "quadro {f}: {got} contra a lei {x}"
+        );
+        pico = pico.max(x);
+    }
+    assert!(pico > 270.0, "com ressalto 0,6 a mola passa do alvo (pico {pico})");
+}

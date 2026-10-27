@@ -13,4 +13,5 @@ mod o_cartao;
 mod o_gizmo;
 mod o_olhar;
 mod o_ponto;
+mod o_valor;
 mod pegar_e_largar;

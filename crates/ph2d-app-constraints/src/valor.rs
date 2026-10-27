@@ -32,10 +32,17 @@ fn agora(w: &World, e: Entity, prop: Prop) -> Option<f64> {
     }
 }
 
-/// A fonte de `b` no instante `t` pela curva (`None` = não é animada: vale a história).
+/// A fonte de `b` no instante `t` pela curva (`None` = não é animada: vale a história). A pose só
+/// conta como animada com uma curva de pose: sem ela o `world_pose_at` devolve a pose VIVA.
 fn pela_curva(w: &World, r: &Relogio<'_>, v: &Valor, b: u64, t: f64) -> Option<f64> {
     match v.fonte {
-        Prop::Pose(_) => ph2d_timeline::world_pose_at(w, r.doc, b, t)
+        Prop::Pose(_) => r
+            .doc
+            .bindings()
+            .iter()
+            .any(|x| x.entity == b && !x.missing && x.prop.as_sprite_transform().is_some())
+            .then(|| ph2d_timeline::world_pose_at(w, r.doc, b, t))
+            .flatten()
             .and_then(|p| v.da_pose(pose(&p))),
         Prop::Campo(c) => ph2d_timeline::field_at(w, r.doc, b, chave(c), t).map(f64::from),
     }

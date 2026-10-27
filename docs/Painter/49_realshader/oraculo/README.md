@@ -568,6 +568,102 @@ papel e a orla pintada, `ilumina_e_sombra`), luminância (o plano da sombra é u
   acesa (sinal do `n·l`; sobreviveu à 1.ª versão do gate — o chão dominava a régua, entrou a do papel plano) · M3 a cor da
   parede ignorada · M4 o chão sem a sombra do vizinho.
 
+## §BUG-ressalto — o relevo crescia SEM pigmento nas bordas (smoke do dono 27/10)
+
+Defeito do dono (foto: rectângulo fechado de azul grosso): à volta de toda a borda, por fora e na janela, uma faixa
+BRANCA em relevo e só depois a sombra cinza no papel. Cena nova `PH2D_OLEO_CENA=retangulo` (dois rectângulos fechados:
+Oil Bristle e Knife Oily, 30 px, duas passagens). Réguas: `ressalto.py`/`papel_cy.py`/`vaos.py` do scratchpad, saída em
+[`regua_BUG_ressalto.txt`](regua_BUG_ressalto.txt), sobre exports ISOLADOS da linha (outro agente mexia na árvore).
+Folha [`../out/BUG_ressalto_folha.jpg`](../out/BUG_ressalto_folha.jpg) (antes | depois | Rebelle; a cena do dono com o
+Cycles da malha nova; a linha do §BUG-papel), olhada.
+
+**Mecanismo (medido).** (1) `CampoAltura::de_com` desfoca a massa 2× com `raio_suave` 3 e a FORMA (e o detalhe, e a
+altura da sombra) saía da tinta: no papel sem pigmento, `h_forma` mediana 10,5 · 5,1 · 0,5 a 0–1,5 · 1,5–3 · 3–6
+células (planalto 76), 4 972 células de papel com > 5 % do planalto, alcance p99 4 células. (2) O papel nessa SAIA tinha
+a normal do Sobel inclinada para fora da parede e via o céu inteiro: luminância do papel 255 de 0 a 6 células e a sombra
+(232) só a partir daí — a faixa branca. O mesmo na orla PARCIAL (cobertura < 1): a normal da célula pintada servia ao
+papel por baixo dela (um fio claro). **Onde nasceu:** antes da W3 — a W2 (`backup/oleo-real-W2-2026-10-27`, mesma
+receita) tem a MESMA malha ao bit e o ressalto mais forte (papel 255 · 204, +11 na régua); a K4 (`sombra_em_u8`)
+reduziu o contraste (255 · 232, +3). Nenhum commit da W3 o criou; a K10 não lhe toca.
+
+**Cura.** (a) A altura de cada escala (forma, detalhe, sombra) multiplica-se pela COBERTURA da célula depois do
+desfoque: o desfoque alisa DENTRO da tinta, no papel sem pigmento a altura é 0 e a parede cai no contorno do pigmento
+(o ombro de dentro fica: 4 células no planalto do gate da K7, era ~10 com a saia). Na tinta coberta (cobertura 1) é o
+mesmo ao bit. (b) O PAPEL é plano: célula sem relevo tem a normal do plano; a `sombra_no_papel` usa sempre a normal do
+plano (e não a luz do céu guardada pela Subsurface quando a célula tem relevo); sob a orla parcial a sombra do composite
+é a do papel (`ilumina_e_sombra`, só com cobertura < 1; sob a tinta opaca a dos termos, que não se vê). (c) O rebote
+da K10 passa a ter o papel plano: o «chão inclinado» era a saia e saiu com ela.
+
+| rectângulo Oil Bristle, Estúdio (papel por faixa, células da tinta) | 0–1,5 | 1,5–3 | 3–4,5 | 4,5–6 | 6–10 | ressalto |
+|---|---|---|---|---|---|---|
+| W2 | 255 | 255 | 255 | 249 | 204 | +11 |
+| antes (W3) | 255 | 255 | 255 | 255 | 232 | +3 |
+| **depois** | **226,6** | 231 | 232 | 232 | 232 | **−3** |
+| Rebelle (Flat Thick, Knife Oily) | 251–253 | 255 | 255 | 255 | 255 | 0 (sem sombra) |
+
+× Cycles da MESMA malha (studio_sol10), papel ≤ 8 células da tinta, correlação nós × Cycles: rectângulo 0,412 → **0,673**,
+cena do dono 0,651 → **0,706**. A ORLA (tinta a ≤ 3 células do papel, régua da K6): cena do dono |Δ| 23,5 → 27,4, corr
+0,880 → 0,852, pontos < 40 0,68 → 1,45 % (Cycles da malha nova 0,88 %); rectângulo |Δ| 44,9 → 45,6, corr 0,691 → 0,668.
+**A orla piora contra o Cycles e a cura entra** (decisão do dono, `feedback_the_owners_reference_product_decides_the_law`):
+a recusa da K6 («paredes vivas globais») media a NOSSA malha borrada contra o Cycles da MESMA malha borrada — o Cycles
+confirmava a saia, não a tinta; o produto de referência (Rebelle) não tem relevo nem luz fora do pigmento. (A recusa da
+K6 continua para a média NORMALIZADA `blur(massa)/blur(cob) × cob`, que tira também o ombro de dentro; aqui é
+`blur(massa) × cob`.)
+
+**Os vãos do Dabber 3 (K10) — ficam mais escuros, como o Cycles da malha honesta.** Vãos < 70 no Estúdio: 5,12 % → 35,73 %
+(p10 80 → 57). O Cycles da malha SEM saia: 20,49 % (p10 **52**; com saia era 0,85 %, p10 104): o papel plano no fundo de
+um vão estreito entre lascas grossas está mesmo à sombra. Os nossos 35,7 % × 20,5 % vêm da orla parcial: a malha do
+Cycles faz dela uma cunha de tinta inclinada, para nós é papel plano com ≤ 10 % de tinta (o p10 fica ACIMA do do
+Cycles). Gate `o_papel_nos_vaos_entre_lascas_nao_fica_preto` regravado: tecto 38 % e p10 ≥ 50. O Rebelle (0 %) não
+projecta sombra nenhuma — **aberto para o dono**: se ele quiser os vãos claros, é receita do Dabber 3 (lascas finas) ou
+a luz indirecta do papel (K4/K8), não a saia.
+
+**Gates.** `o_relevo_nao_sai_do_pigmento` (novo: altura 0 nas três escalas em toda célula sem pigmento; a sombra no papel
+ao pé da parede ≥ a de mais longe nos quatro lados de fora e na janela; o papel sob uma orla parcial de cobertura < 0,9,
+também com a Subsurface) — vermelho na árvore antes da cura (papel com relevo). Mutações 9/9 vermelhas: forma, sombra e
+detalhe sem a cobertura (3) · o papel inclinado pelo Sobel · a orla parcial pela sombra dos termos · o papel com a
+normal da célula · a luz guardada lida em célula com relevo (vermelha só depois de o gate ganhar o caso da Subsurface)
+· e as duas do §BUG-papel abaixo. Regravados com a imagem a mudar DE PROPÓSITO (só o papel e a orla; a tinta coberta ao
+bit): as impressões de `o_material_neutro_e_bit_identico_a_de_antes` (8) e `a_fenda_neutra_e_bit_identica_a_de_antes`
+(os valores velhos no comentário); `a_parede_nivelada_fica_viva` (a forma de sempre espalha ≥ 4, era ≥ 6);
+`a_sombra_dos_termos_e_bit_identica_a_do_papel` (sob a orla parcial é a do papel).
+
+| Recusada nesta cura | medida |
+|---|---|
+| R2b: o papel plano na sombra mas o rebote com o «chão inclinado» da K10 sob a orla parcial | vãos 22,56 % (≈ Cycles 20,49) mas volta o fio claro pontilhado entre a tinta e a sombra (papel 0–1,5 células 230 × 226,6; folha do scratchpad `zoom_r2_r2b.png`) — é o mesmo defeito do dono |
+
+## §BUG-papel — o grão do papel aparecia pela tinta grossa (smoke do dono 27/10)
+
+Defeito do dono (papel texturizado creme): «um tipo de Multiply da tinta com o papel… independente da grossura, o papel
+aparece embaixo como se a tinta fosse transparente». Sonda `medida_oleo_real_papel_texturizado` (o documento do
+produto: `abre_a_sprite` em branco = papel + camada vazia; papel Cold, Relief 0 e 0,6; a tela final = composite + a luz
+do relevo `apply_impasto_light`; régua = desvio-padrão da DIFERENÇA de luminância Relief 0,6 − 0, no miolo de massa
+> 3000 e no papel nu).
+
+**A/B Óleo Real ligado × desligado: o mesmo** (Oil Bristle 2,88 × 2,82; papel nu 6,06) ⇒ a causa NÃO é o óleo: é o
+passe do SUBSTRATO (`ReliefFields::height_at`), que SOMAVA o dente do papel à altura da tinta em toda a parte (a
+«aproximação nomeada» da doc 19 §1.2). O campo do óleo não lê o papel; o grão do pigmento (`PaperVisibility`) já some
+acima da massa 3000.
+
+**Cura (fora dos ficheiros do óleo: `tool/paint/relief_fields.rs`, `tool/paint/impasto_light.rs`).** O dente vê-se pela
+parte que a tinta deixa passar: `dente × Π(1 − α·opacidade)` das camadas raster visíveis (a camada activa pela tela
+viva). Tinta opaca enterra-o; tinta fina ou transparente deixa-o ver na proporção — **a transparência continua escolha
+do artista** pelos controlos que já existem (opacidade do pincel, da camada, a aguada). Sem papel do documento (a sprite
+crua É a camada de baixo) a camada de baixo é o papel e não o tapa. Os dois produtores (CPU e o fold da GPU) passam pela
+mesma porta.
+
+| o dente na tinta grossa ÷ no papel nu | antes | depois |
+|---|---|---|
+| Oil Bristle, óleo desligado · ligado | 0,46 · 0,48 | **0,00 · 0,00** |
+| Dabber de fábrica (o gate), desligado · ligado | 0,49 · 0,67 | **0,00 · 0,00** |
+
+Gate `o_dente_do_papel_nao_atravessa_a_tinta_grossa` (≤ 10 % do papel nu; vermelho no export de HEAD, 4,04 × 6,04);
+mutações vermelhas: o dente que não se esconde (a lei de antes) · a opacidade a meio. Verdes por nome: os do
+substrato/papel/impasto/relevo/óleo do `ph2d-tool-painter` (272), `seam_substrate` e `seam_wetpaint_oleo_real`.
+**Aberto:** não há foto do Rebelle sobre papel texturizado na bateria (o papel dela é `EX00 White Simple`) — a lei
+«tinta grossa não mostra o grão» está pelo pedido do dono, sem oráculo corrido; no Digital opaco o dente também se
+enterra agora (o grão do DEPÓSITO, slot Grain, continua) — decisão do dono se quiser o contrário.
+
 ## ⛔ Recusas MEDIDAS
 
 | Tentativa | Porque saiu |
@@ -594,11 +690,11 @@ papel e a orla pintada, `ilumina_e_sombra`), luminância (o plano da sombra é u
 | Papel com o multi-ricochete das paredes (Jimenez com o albedo do papel, `a` 0,5..1) | nos traços lisos o Clássico ficava perfeito (3–6 px luz 0,006 × Cycles −0,014; sombra 0,034 × 0,031), mas na cena do dono apagava a sombra do empaste ALTO (Clássico, lado da sombra 3–6 px 0,010 × Cycles 0,069): as paredes vermelhas não devolvem a luz que um papel branco à volta devolveria (K4) |
 | Metal: o `rola` com JOELHO (linear até 80 % da folga) | o p90 das encostas bate (1,000 × 1,000) mas o meio-tom das paredes sobe (0,37 × 0,16): \|Δ\| sRGB na tinta 0,1123 → 0,1149, correlação 0,765 → 0,748 (K4) |
 | Metal: a vizinha tapada devolve só o CÉU (`a²·difuso` sem o `sol`) | parede 0,34 → 0,31 × 0,16, mas \|Δ\| 0,1123 → 0,1131 e correlação 0,765 → 0,755 (K4) |
-| Paredes vivas GLOBAIS (a forma desfocada só dentro da tinta, `blur(massa)/blur(cob) × cob`) | Smooth 2 a 1/3 células (Rebelle ~2 px), mas a orla da cena do dono × Cycles piora: Estúdio \|Δ\| 23,5 → 26,0, corr 0,881 → 0,855, pontos <40 0,73 → 2,65 % (Cycles 1,13 %); com a cobertura desfocada a parede volta a 3–9 células e a orla continua pior (K6) |
+| Paredes vivas GLOBAIS (a forma desfocada só dentro da tinta, `blur(massa)/blur(cob) × cob`) | Smooth 2 a 1/3 células (Rebelle ~2 px), mas a orla da cena do dono × Cycles piora: Estúdio \|Δ\| 23,5 → 26,0, corr 0,881 → 0,855, pontos <40 0,73 → 2,65 % (Cycles 1,13 %); com a cobertura desfocada a parede volta a 3–9 células e a orla continua pior (K6) — ⚠️ REVISTA no §BUG-ressalto: a régua media a malha borrada contra o Cycles da MESMA malha borrada; o dono pediu o relevo só no pigmento e entrou `blur(massa) × cob` (a normalizada continua recusada) |
 | A lâmina que nivela também dilui a marca com a tinta que ela própria pousa (mutação M3) | uma 2.ª passada mais fraca (0,5) baixava a marca 1 da 1.ª abaixo da do traço que nivela mais: a marca é da lâmina, o `max` do `nivelar` (K8) |
 | A faixa cinza do Smooth 2 curada pela ALTURA do planalto | as facas aprovadas a 3,1–10 px também deixam a faixa; os ≤ 1 px do Rebelle pediriam < 0,9 px de tinta a 42° — o Rebelle não projecta no papel e a régua do papel é o Cycles, com o qual o ALCANCE bate (K8) |
 | `raio_suave` 1 ou 0 (menos desfoque da forma) | a parede encolhe (4/6 · 1/3) mas o miolo do Smooth 2 mostra os sulcos de célula da espessura (K6, folha) |
-| Rebote só das PAREDES (o papel plano, sem o chão inclinado) | vãos do Dabber 3 no Estúdio p10 15 → 46, 20,64 % abaixo de 70 (Cycles 0,30 %): a luz dos vãos vem sobretudo do papel inclinado em frente (K10) |
+| Rebote só das PAREDES (o papel plano, sem o chão inclinado) — ⚠️ REVISTA no §BUG-ressalto: o chão inclinado era a saia da forma; com o relevo só no pigmento os vãos ficam como o Cycles da malha sem saia | vãos do Dabber 3 no Estúdio p10 15 → 46, 20,64 % abaixo de 70 (Cycles 0,30 %): a luz dos vãos vem sobretudo do papel inclinado em frente (K10) |
 | O chão aceso pela luz do PRÓPRIO papel (`1 − s`) | vãos p10 47, 20,37 % abaixo de 70: no vão a encosta da frente está ao sol e esta não (K10) |
 | O chão aceso pela normal dele SEM a sombra dele | vãos 2,33 % (melhor), mas a sombra projectada ao pé de um bloco perde 18 % (o vizinho também está à sombra): o gate de costas falha (K10) |
 | O céu do chão tapado pelo céu que ESTE papel vê | vãos 3,79 → 20,38 % abaixo de 70 e a cena do dono igual ao bit na régua: o fundo do vão tem pouco céu, a encosta em frente não (K10) |

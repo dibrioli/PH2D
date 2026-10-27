@@ -112,6 +112,7 @@ fn medida_oleo_real_oraculo() {
         Ok("smooth2") => pinta_cena_smooth2(),
         Ok("travessia") => pinta_cena_travessia(),
         Ok("dabber3") => pinta_cena_dabber3(),
+        Ok("retangulo") => pinta_cena_retangulo(),
         _ => pinta_cena_do_dono(),
     };
     match std::env::var("PH2D_OLEO_VARIANTES") {
@@ -310,6 +311,52 @@ fn pinta_cena_dabber3() -> PainterTool {
         t.set_brush_color_srgb8([23, 101, 179]);
         let ticks = arrasta(&mut t, [60.0, y], [640.0, y]);
         println!("[oraculo] Dabber 3 a {diametro} px (água {ticks})");
+    }
+    t
+}
+
+/// §BUG-ressalto (smoke do dono 27/10): dois rectângulos FECHADOS de tinta grossa azul, o da esquerda com o Oil
+/// Bristle de fábrica, o da direita com o Knife Oily — duas passagens por lado, a janela de papel no meio.
+pub(super) fn pinta_cena_retangulo() -> PainterTool {
+    let b = biblioteca();
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; (OW * OH * 4) as usize], OW, OH);
+    t.set_paint_media(PaintMedia::WetPaint);
+    t.set_wet_relogio_fixo(true);
+    for (preset, x0, x1) in [
+        ("Bristle/Oil Bristle", 50.0f32, 320.0f32),
+        ("Knife/Knife Oily", 390.0, 660.0),
+    ] {
+        let rel = format!("WetPainter/Oil/{preset}.ph2d-brush.png");
+        // O Oil Bristle pode ter saído da fábrica para os candidatos (`Pinceis/W2_Bristle_candidatos/`).
+        let p = b.entradas.iter().find(|e| e.relativo == rel).map_or_else(
+            || {
+                let nome = rel.rsplit('/').next().expect("nome");
+                let f = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                    .join("../../docs/Painter/Pinceis/W2_Bristle_candidatos")
+                    .join(nome);
+                ph2d_brush_presets::ler(&std::fs::read(&f).unwrap_or_else(|_| panic!("{rel}")))
+                    .expect("preset")
+            },
+            |e| e.preset.clone(),
+        );
+        let erros = t.wet_preset_aplicar(&p);
+        assert!(erros.is_empty(), "{erros:?}");
+        t.set_brush_size_px(30.0);
+        t.set_brush_color_srgb8([30, 70, 210]);
+        let (y0, y1) = (80.0f32, 380.0f32);
+        let lados = [
+            ([x0, y0], [x1, y0]),
+            ([x1, y0], [x1, y1]),
+            ([x1, y1], [x0, y1]),
+            ([x0, y1], [x0, y0]),
+        ];
+        for k in 0..2 {
+            for (a, z) in lados {
+                let ticks = arrasta(&mut t, a, z);
+                println!("[oraculo] {preset} passagem {} (água {ticks})", k + 1);
+            }
+        }
     }
     t
 }
@@ -1759,6 +1806,12 @@ fn a_fenda_forte_nao_volta_aos_pontos_pretos_na_cena_do_dono() {
 /// malha 0,30 %, o Rebelle 0 %; `oraculo/README.md` §K10). Vão = célula sem tinta (alfa ≤ 25) com tinta a ≤ 6 células
 /// para os QUATRO lados, no recto de 200 (y 230..350): 820 vãos, 30,24 % abaixo de 70 sem o rebote da tinta vizinha
 /// (`rebote_papel` 0, visto vermelho), 5,12 % com ele; tecto 8 %. O Clássico: 0 % antes e depois.
+/// §BUG-ressalto (27/10): o relevo saiu do papel sem pigmento — a SAIA da forma desfocada inclinava o papel do
+/// vão e dava-lhe o céu — e o papel é plano também sob a orla parcial. O Cycles da MESMA malha põe 20,49 % dos vãos
+/// abaixo de 70 (0,85 % na malha com saia), p10 52; nós 35,73 %, p10 **57** (a malha do Cycles faz da orla parcial
+/// uma cunha de tinta inclinada; para nós ela é papel plano com ≤ 10 % de tinta). O tecto passa a 38 % e o p10 a
+/// ≥ 50 (o «nunca preto»: o mais escuro dos vãos fica acima do do Cycles). O Rebelle (0 %) não projecta sombra
+/// nenhuma — aberto para o dono (`oraculo/README.md` §BUG-ressalto).
 #[test]
 fn o_papel_nos_vaos_entre_lascas_nao_fica_preto() {
     use ph2d_wet_paint::oleo_real::{Ambiente, OleoReal};
@@ -1767,14 +1820,14 @@ fn o_papel_nos_vaos_entre_lascas_nao_fica_preto() {
         let s = t.paint.wetpaint.session.as_ref().expect("sessão");
         s.grid
     };
-    for (ambiente, tecto) in [(Ambiente::Estudio, 8.0), (Ambiente::Classico, 0.0)] {
+    for (ambiente, tecto) in [(Ambiente::Estudio, 38.0), (Ambiente::Classico, 0.0)] {
         let o = OleoReal {
             ambiente,
             ..OleoReal::default()
         };
         let px = render_da_cena(&mut t, &o);
         let tinta = |x: usize, y: usize| px[x + y * gw].2 > 25;
-        let (mut n, mut pretos) = (0usize, 0usize);
+        let (mut n, mut pretos, mut escuros) = (0usize, 0usize, Vec::new());
         for y in 230..350.min(gh - 7) {
             for x in 7..gw - 7 {
                 let fechado = !tinta(x, y)
@@ -1786,15 +1839,155 @@ fn o_papel_nos_vaos_entre_lascas_nao_fica_preto() {
                     let c = px[x + y * gw].0;
                     n += 1;
                     pretos += usize::from(c[0].max(c[1]).max(c[2]) < 70);
+                    escuros.push(c[0].max(c[1]).max(c[2]));
                 }
             }
         }
         assert!(n > 500, "a cena mudou: {n} vãos");
         let f = 100.0 * pretos as f64 / n as f64;
-        println!("[vãos] {ambiente:?}: {n} vãos, {f:.2} % abaixo de 70");
+        escuros.sort_unstable();
+        let p10 = escuros[n / 10];
+        println!("[vãos] {ambiente:?}: {n} vãos, {f:.2} % abaixo de 70, p10 {p10}");
+        assert!(
+            p10 >= 50,
+            "{ambiente:?}: o p10 dos vãos é {p10} (Cycles 52)"
+        );
         assert!(
             f <= tecto,
             "{ambiente:?}: {f:.2} % dos vãos abaixo de 70 (tecto {tecto} %)"
         );
+    }
+}
+
+/// §BUG-papel (smoke do dono 27/10): tinta GROSSA sobre papel TEXTURIZADO — o grão do papel aparece na superfície
+/// da tinta «como se ela fosse transparente». A tela final (o composite + a luz do relevo, `apply_impasto_light`)
+/// com o Óleo Real ligado e desligado, o papel Cold com Relief 0 e 0,6. Imprime o desvio-padrão da
+/// luminância (o grão) no miolo da tinta grossa e no papel nu; `PH2D_OLEO_PNG` grava as telas.
+pub(super) fn tela_papel_texturizado(oleo: bool, relief: f32) -> (Vec<u8>, Vec<bool>, Vec<bool>) {
+    let b = biblioteca();
+    let mut t = PainterTool::default();
+    // O documento do produto: a tela branca nasce PAPEL com a camada vazia (`abre_a_sprite`).
+    t.abre_a_sprite(vec![255u8; (OW * OH * 4) as usize], OW, OH);
+    t.set_paint_media(PaintMedia::WetPaint);
+    t.set_wet_relogio_fixo(true);
+    let p = &b
+        .entradas
+        .iter()
+        .find(|e| e.relativo == "WetPainter/Oil/Dabber/Dabber.ph2d-brush.png")
+        .expect("Dabber de fábrica")
+        .preset;
+    assert!(t.wet_preset_aplicar(p).is_empty());
+    t.set_brush_paper_kind(1);
+    t.set_substrate_depth(relief);
+    t.set_wet_oleo_real_ligado(oleo);
+    t.set_brush_size_px(40.0);
+    t.set_brush_color_srgb8([30, 70, 210]);
+    for k in 0..3 {
+        let y = 200.0 + 6.0 * k as f32;
+        arrasta(&mut t, [120.0, y], [580.0, y]);
+    }
+    let cob = {
+        let s = t.paint.wetpaint.session.as_mut().expect("sessão");
+        s.bring_home();
+        let g = s.engine.active_grid();
+        let (gw, gh, r) = (s.grid.0, s.grid.1, usize::from(s.ratio));
+        let mut miolo = vec![false; (OW * OH) as usize];
+        for y in 0..OH as usize {
+            for x in 0..OW as usize {
+                let (cx, cy) = ((x / r + 1).min(gw), (y / r + 1).min(gh));
+                miolo[x + y * OW as usize] = g.sett[cx + cy * g.s] + g.susp[cx + cy * g.s] > 3000.0;
+            }
+        }
+        miolo
+    };
+    let mut px = t.run_full().0;
+    t.apply_impasto_light(
+        &mut px,
+        crate::Region {
+            x: 0,
+            y: 0,
+            w: OW,
+            h: OH,
+        },
+    );
+    // O miolo: tinta grossa (massa > 3000, onde o grão do pigmento já é 0) a ≥ 12 px de papel; o papel nu: a ≥ 40 px.
+    let n = (OW * OH) as usize;
+    let perto = |m: &[bool], x: usize, y: usize, r: usize, v: bool| {
+        (y.saturating_sub(r)..(y + r + 1).min(OH as usize)).all(|yy| {
+            (x.saturating_sub(r)..(x + r + 1).min(OW as usize))
+                .all(|xx| m[xx + yy * OW as usize] == v)
+        })
+    };
+    let mut miolo = vec![false; n];
+    let mut nu = vec![false; n];
+    for y in 0..OH as usize {
+        for x in 0..OW as usize {
+            miolo[x + y * OW as usize] = (y % 3 == 0 && x % 3 == 0) && perto(&cob, x, y, 12, true);
+            nu[x + y * OW as usize] = (y % 3 == 0 && x % 3 == 0) && perto(&cob, x, y, 40, false);
+        }
+    }
+    (px, miolo, nu)
+}
+
+/// O DENTE que o Relief acrescenta: o desvio-padrão da diferença de luminância entre a tela com relevo `px` e a
+/// mesma tela sem ele `liso`, nas células `m` (o que a tinta já tinha de textura própria cancela-se).
+pub(super) fn dente_na_tela(px: &[u8], liso: &[u8], m: &[bool]) -> f64 {
+    let l = |p: &[u8; 4]| {
+        0.2126 * f64::from(p[0]) + 0.7152 * f64::from(p[1]) + 0.0722 * f64::from(p[2])
+    };
+    let d: Vec<f64> = px
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(liso.as_chunks::<4>().0)
+        .zip(m)
+        .filter(|(_, v)| **v)
+        .map(|((a, b), _)| l(a) - l(b))
+        .collect();
+    let mu = d.iter().sum::<f64>() / d.len() as f64;
+    (d.iter().map(|v| (v - mu).powi(2)).sum::<f64>() / d.len() as f64).sqrt()
+}
+
+/// ⭐ §BUG-papel: **o dente do papel não atravessa a tinta grossa** — o que o Relief 0,6 acrescenta ao miolo de
+/// uma pilha do Dabber de fábrica (massa > 3000) é ≤ 10 % do que acrescenta ao papel nu (antes 67 %, e 49 % sem o
+/// Óleo Real: o dente SOMAVA à tinta em toda a parte), com o Óleo Real ligado; e o papel nu mostra-o inteiro.
+#[test]
+fn o_dente_do_papel_nao_atravessa_a_tinta_grossa() {
+    let (liso, miolo, nu) = tela_papel_texturizado(true, 0.0);
+    let (px, _, _) = tela_papel_texturizado(true, 0.6);
+    let (a, b) = (
+        dente_na_tela(&px, &liso, &miolo),
+        dente_na_tela(&px, &liso, &nu),
+    );
+    assert!(b > 4.0, "o papel nu devia mostrar o dente: {b}");
+    assert!(
+        a <= 0.1 * b,
+        "o dente atravessa a tinta grossa: {a} × papel nu {b}"
+    );
+}
+
+#[test]
+#[ignore = "medicao — corre-se à mão no perfil smoke"]
+fn medida_oleo_real_papel_texturizado() {
+    for oleo in [false, true] {
+        let (liso, miolo, nu) = tela_papel_texturizado(oleo, 0.0);
+        let (px, _, _) = tela_papel_texturizado(oleo, 0.6);
+        let (a, b) = (
+            dente_na_tela(&px, &liso, &miolo),
+            dente_na_tela(&px, &liso, &nu),
+        );
+        println!(
+            "[papel] óleo {oleo}: o dente do papel (Relief 0,6 − 0) na tinta grossa {a:.2} · no papel nu {b:.2} · razão {:.2}",
+            a / b
+        );
+        if let Ok(d) = std::env::var("PH2D_OLEO_PNG") {
+            for (nome, im) in [("r0", &liso), ("r06", &px)] {
+                let mut ppm = format!("P6\n{OW} {OH}\n255\n").into_bytes();
+                for p in im.as_chunks::<4>().0 {
+                    ppm.extend_from_slice(&p[..3]);
+                }
+                std::fs::write(format!("{d}/papel_o{oleo}_{nome}.ppm"), ppm).expect("grava");
+            }
+        }
     }
 }

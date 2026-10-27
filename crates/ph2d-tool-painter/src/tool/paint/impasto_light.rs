@@ -217,9 +217,42 @@ impl PainterTool {
         if layers.is_empty() && self.substrate().is_none() {
             return None;
         }
+        let substrate = self.substrate();
+        // §BUG-papel: a tinta de cada camada raster visível, para o dente se esconder sob ela. Sem o papel do
+        // documento (`papel` `None`, a sprite crua É a camada de baixo) a camada de BAIXO é o papel: não o tapa.
+        let tinta = if substrate.is_some() {
+            let base = self.papel.is_none().then(|| {
+                self.layers.z_order_bottom_up().into_iter().find(|&id| {
+                    self.layers
+                        .get(id)
+                        .is_some_and(|l| matches!(l.kind, crate::layers::LayerKind::Raster(_)))
+                })
+            });
+            self.layers
+                .z_order_bottom_up()
+                .into_iter()
+                .filter(|&id| self.layers.effectively_visible(id) && !self.layers.is_mask(id))
+                .filter(|&id| base.flatten() != Some(id))
+                .filter_map(|id| {
+                    let l = self.layers.get(id)?;
+                    if !matches!(l.kind, crate::layers::LayerKind::Raster(_)) {
+                        return None;
+                    }
+                    let px: &[u8] = if active == Some(id) {
+                        self.canvas_rgba.as_slice()
+                    } else {
+                        self.images.get(&id)?.rgba8.as_slice()
+                    };
+                    (px.len() == n * 4).then_some((px, l.opacity.clamp(0.0, 1.0)))
+                })
+                .collect()
+        } else {
+            Vec::new()
+        };
         let mut fields = ReliefFields {
             folded: None,
-            substrate: self.substrate(),
+            substrate,
+            tinta,
             layers,
             live_h,
             live_c,

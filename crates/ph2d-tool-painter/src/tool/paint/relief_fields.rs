@@ -54,6 +54,10 @@ pub(super) struct ReliefFields<'a> {
     /// dizia por quê: o port de GPU *"re-implementa a ÓPTICA e deliberadamente não re-implementa o
     /// plumbing"*. Um dente que só existe num dos dois lados é plumbing duplicado.
     pub(super) substrate: Option<super::substrate_relief::Substrate<'a>>,
+    /// §BUG-papel (smoke do dono 27/10): os píxeis RGBA8 de cada camada raster VISÍVEL com a opacidade dela —
+    /// a TINTA que cobre o papel. O dente vê-se pela parte que a tinta deixa passar ([`Self::papel_a_vista`]).
+    /// Vazio sem substrato.
+    pub(super) tinta: Vec<(&'a [u8], f32)>,
     pub(super) width: usize,
     pub(super) height: usize,
 }
@@ -102,10 +106,24 @@ impl ReliefFields<'_> {
             Some(s) => {
                 let cx = x.clamp(0, self.width as i64 - 1);
                 let cy = y.clamp(0, self.height as i64 - 1);
-                h + s.tooth_loads(cx, cy)
+                h + s.tooth_loads(cx, cy) * self.papel_a_vista(i)
             }
             None => h,
         }
+    }
+
+    /// **O papel que a tinta deixa ver** em `i` (`0..1`): `Π(1 − α·opacidade)` das camadas por cima dele. A tinta
+    /// OPACA enterra o dente (o Rebelle, o ArtRage: tinta grossa não mostra o grão); a fina ou transparente — a
+    /// opacidade do pincel, a da camada, a aguada — deixa-o ver na proporção. Antes o dente SOMAVA à tinta em
+    /// toda a parte e o grão aparecia pela tinta grossa «como se fosse transparente» (`oraculo/README.md`
+    /// §BUG-papel).
+    #[inline]
+    fn papel_a_vista(&self, i: usize) -> f32 {
+        let mut deixa = 1.0f32;
+        for &(px, op) in &self.tinta {
+            deixa *= 1.0 - f32::from(px[i * 4 + 3]) / 255.0 * op;
+        }
+        deixa
     }
 
     /// **A PRESENÇA do papel** — `1` quando há substrato, `0` quando não há.

@@ -242,8 +242,9 @@ fn a_parede_nivelada_fica_viva() {
     let o = OleoReal::default();
     let (c0, c1, cz) = (campo(&base, &o), campo(&marcada, &o), campo(&zerada, &o));
     let (antes, depois) = (largura_da_parede(&c0, 19), largura_da_parede(&c1, 19));
+    // §BUG-ressalto: a forma de sempre só alisa o ombro DENTRO da tinta (4 células; eram ~10 com a saia no papel).
     assert!(
-        antes >= 6,
+        antes >= 4,
         "a forma de sempre devia espalhar a parede: {antes}"
     );
     assert!(
@@ -427,7 +428,8 @@ fn a_forca_da_fenda_multiplica_as_chances_de_oclusao() {
 /// [`o_hdri_uniforme_da_o_ganho_um_em_toda_a_celula`] e [`o_papel_ao_pe_da_parede_perde_o_ceu_do_lado_dela`].
 #[test]
 fn a_fenda_neutra_e_bit_identica_a_de_antes() {
-    let (ambiente, antes) = (Ambiente::Classico, 0xd577_67fb_dd93_1d70u64);
+    // §BUG-ressalto: o papel ao pé da tinta mudou por desenho (sem saia; plano) — era `0xd577_67fb_dd93_1d70`.
+    let (ambiente, antes) = (Ambiente::Classico, 0x47c1_f5e4_7399_15f8u64);
     // K10: o rebote da tinta no papel mudou o PAPEL por desenho; desligado, o de antes ao bit.
     let af = Afinacao {
         rebote_papel: 0.0,
@@ -587,25 +589,29 @@ fn o_papel_ao_pe_da_parede_perde_o_ceu_do_lado_dela() {
 fn o_material_neutro_e_bit_identico_a_de_antes() {
     let mut erros = Vec::new();
     for (ambiente, antes, agora) in [
+        // §BUG-ressalto (27/10): regravadas — o relevo sai do papel sem pigmento e o papel é plano; a tinta coberta
+        // é a mesma ao bit; o papel sob a orla parcial é plano. Antes: Clássico `0xd577_67fb_dd93_1d70` (os dois) · Estúdio `0x9f6c_0278_7b71_e6fd` ·
+        // `0xc068_69bd_7caf_a607` · Interior `0x47f6_a218_9632_b47f` · `0xb01e_6c58_f436_56d4` · Pátio
+        // `0xbb89_005a_1c61_c90d` · `0x3ae1_6642_c9fd_624e`.
         (
             Ambiente::Classico,
-            0xd577_67fb_dd93_1d70u64,
-            0xd577_67fb_dd93_1d70u64,
+            0x47c1_f5e4_7399_15f8u64,
+            0x47c1_f5e4_7399_15f8u64,
         ),
         (
             Ambiente::Estudio,
-            0x9f6c_0278_7b71_e6fdu64,
-            0xc068_69bd_7caf_a607u64,
+            0x00f8_7fc3_815d_244bu64,
+            0x75ef_0c73_92b8_506au64,
         ),
         (
             Ambiente::Interior,
-            0x47f6_a218_9632_b47fu64,
-            0xb01e_6c58_f436_56d4u64,
+            0xa2f9_d113_c2ae_d806u64,
+            0x6b3a_c14b_d041_dee3u64,
         ),
         (
             Ambiente::Patio,
-            0xbb89_005a_1c61_c90du64,
-            0x3ae1_6642_c9fd_624eu64,
+            0x598b_2ac4_2f05_c2b9u64,
+            0x537e_b935_9fbb_cc13u64,
         ),
     ] {
         // K10: com o rebote no papel desligado (ele muda só o papel, por desenho).
@@ -691,9 +697,9 @@ fn oleos_de_custo() -> [OleoReal; 3] {
     ]
 }
 
-/// ⭐ **Cura 1 de custo (27/10): a sombra no papel de uma célula PINTADA sai dos termos da cor dela**, bit a bit a
-/// conta por célula — e a cor é a de [`ilumina`]. Mutações que sangram: a `vis` sem a força da fenda, o `dir`
-/// trocado por `None`, a `luz` de outra célula.
+/// ⭐ **Cura 1 de custo (27/10): a sombra no papel de uma célula PINTADA opaca sai dos termos da cor dela**, bit a
+/// bit a conta por célula; sob a orla parcial é a do papel PLANO (§BUG-ressalto) — e a cor é a de [`ilumina`].
+/// Mutações que sangram: a `vis` sem a força da fenda, o `dir` trocado por `None`, a `luz` de outra célula.
 #[test]
 fn a_sombra_dos_termos_e_bit_identica_a_do_papel() {
     let g = relevo_com_material();
@@ -705,7 +711,14 @@ fn a_sombra_dos_termos_e_bit_identica_a_do_papel() {
                 let rgb = [215.0, 25.0 + cx as f64, 30.0 + cy as f64];
                 let cob = 0.4 + 0.01 * cx as f64;
                 let (cor, s) = ilumina_e_sombra(&o, &c, cx, cy, rgb, cob);
-                let antes = sombra_no_papel(&o, &c, cx, cy);
+                // §BUG-ressalto: sob a orla parcial o papel é plano (a do papel); sob a tinta opaca, a dos termos.
+                let antes = if cob < 1.0 {
+                    sombra_no_papel(&o, &c, cx, cy)
+                } else {
+                    let a = rgb.map(srgb255_to_linear);
+                    let t = termos_com(&o, &c, cx, cy, &c.material_em(cx, cy), a);
+                    menos_rebote(&o, &c, cx, cy, sombra_dos_termos(&o, &t))
+                };
                 assert_eq!(
                     s.to_bits(),
                     antes.to_bits(),
@@ -886,4 +899,87 @@ fn o_rebote_das_paredes_acende_o_vao_e_nao_a_sombra_de_costas() {
             s(&sem, &c0, x).to_bits()
         );
     }
+}
+
+/// §BUG-ressalto ⭐ **O relevo nunca sai do pigmento** (smoke do dono 27/10, `oraculo/README.md` §BUG-ressalto): a
+/// forma desfocada fazia uma SAIA de altura ~3–4 células no papel à volta da tinta grossa; o papel na saia,
+/// inclinado para fora, via o céu inteiro (faixa branca em relevo) e a sombra só começava no pé dela. A célula
+/// sem pigmento tem altura 0 nas três escalas, e a sombra no papel é a MAIOR ao pé da parede, nos quatro lados.
+#[test]
+fn o_relevo_nao_sai_do_pigmento() {
+    let g = grade(|x, y| {
+        let fora = (20..=44).contains(&x) && (20..=44).contains(&y);
+        let janela = (27..=37).contains(&x) && (27..=37).contains(&y);
+        if fora && !janela { 12_000.0 } else { 0.0 }
+    });
+    let o = OleoReal::default();
+    let c = campo(&g, &o);
+    for y in 1..=W {
+        for x in 1..=W {
+            if g.sett[x + y * g.s] > 0.0 {
+                continue;
+            }
+            let (xi, yi) = (x as isize, y as isize);
+            let h = [c.at(xi, yi), c.at_fina(xi, yi), c.at_sombra(xi, yi)];
+            assert!(h == [0.0; 3], "papel ({x}, {y}) com relevo {h:?}");
+        }
+    }
+    // A sombra no papel cai a partir do contorno: a célula ao pé da tinta escurece pelo menos tanto como as de
+    // fora (antes: 0 ao pé e a sombra só a 4 células — a faixa branca).
+    let s = |x, y| sombra_no_papel(&o, &c, x, y);
+    for (rot, pe, longe) in [
+        ("fora, esquerda", (19, 32), (15, 32)),
+        ("fora, direita", (45, 32), (49, 32)),
+        ("fora, cima", (32, 19), (32, 15)),
+        ("fora, baixo", (32, 45), (32, 49)),
+        ("janela, esquerda", (27, 32), (30, 32)),
+        ("janela, direita", (37, 32), (34, 32)),
+    ] {
+        let (a, b) = (s(pe.0, pe.1), s(longe.0, longe.1));
+        // Folga de 0,01: no fundo da janela funda as duas já estão na sombra cheia (0,998 · 0,998).
+        assert!(a + 0.01 >= b, "{rot}: ao pé {a} × mais longe {b}");
+    }
+    // Sob a orla PARCIAL (uma coluna de tinta fina ao pé da parede, cobertura < 1) o papel continua plano: a
+    // sombra dele é a do papel ao pé, não a de uma encosta virada para o céu (o fio claro da folha).
+    let mut orla = g.clone();
+    for y in 20..=44 {
+        orla.sett[19 + y * orla.s] = 40.0;
+    }
+    assert!(crate::opacity::alpha_of_mass(40.0) < 0.9);
+    let co = campo(&orla, &o);
+    let (_, sob) = ilumina_e_sombra(
+        &o,
+        &co,
+        19,
+        32,
+        [30.0, 70.0, 210.0],
+        crate::opacity::alpha_of_mass(40.0),
+    );
+    let longe = sombra_no_papel(&o, &co, 15, 32);
+    assert!(
+        sob + 0.01 >= longe,
+        "o papel sob a orla parcial acende-se: {sob} × mais longe {longe}"
+    );
+    // Com a Subsurface a luz do céu de cada célula fica guardada com a normal DELA: o papel sob a orla não a lê.
+    let sss = OleoReal {
+        material: MaterialCartao {
+            subsuperficie: 1.0,
+            raio_subsuperficie: 4.0,
+            ..MaterialCartao::NEUTRO
+        },
+        ..o
+    };
+    let cs = campo(&orla, &sss);
+    let (_, sob) = ilumina_e_sombra(
+        &sss,
+        &cs,
+        19,
+        32,
+        [30.0, 70.0, 210.0],
+        crate::opacity::alpha_of_mass(40.0),
+    );
+    assert!(
+        sob + 0.01 >= sombra_no_papel(&sss, &cs, 15, 32),
+        "com a Subsurface o papel sob a orla acende-se: {sob}"
+    );
 }

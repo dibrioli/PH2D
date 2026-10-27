@@ -337,6 +337,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.image.use_background" => {
             "Use: Repeated \u{2014} a background layer always repeats."
         }
+        "panel.inspector.image.frame" => "Frame",
+        "panel.inspector.image.frame_prev" => "\u{2039}",
+        "panel.inspector.image.frame_next" => "\u{203a}",
+        "panel.inspector.image.frame_of" => "{n} / {total}",
         "panel.inspector.image.width_m" => "Width",
         "panel.inspector.image.height_m" => "Height",
         "panel.inspector.render_source.source" => "Source",

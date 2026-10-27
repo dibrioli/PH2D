@@ -13,8 +13,8 @@ use ph2d_editor_core::screens::hero::{
 use ph2d_editor_core::zones::Rect;
 use ph2d_editor_core::{ImageUseEdit, InspectorDraw, InspectorImageUse, SpriteFieldEdit};
 use ph2d_panel_inspector::ids::{
-    INSP_ANIM_ROW, INSP_IMAGE_TILED_SIZE, INSP_IMAGE_USE, INSP_SPRITE_FRAME, INSP_SPRITE_HFRAMES,
-    INSP_SPRITE_VFRAMES, insp_image_cell,
+    INSP_ANIM_ROW, INSP_IMAGE_FRAME_STEP, INSP_IMAGE_TILED_SIZE, INSP_IMAGE_USE, INSP_SPRITE_FRAME,
+    INSP_SPRITE_HFRAMES, INSP_SPRITE_VFRAMES,
 };
 use ph2d_panel_inspector::slot_image::{SlotImage, set_current_slot_image};
 use ph2d_panel_inspector::{
@@ -147,7 +147,11 @@ fn cada_uso_pinta_so_os_seus_campos() {
         for id in INSP_IMAGE_USE {
             assert!(tem(&rects, id), "{quem}: o seletor");
         }
-        assert_eq!(tem(&rects, insp_image_cell(0)), celulas, "{quem}: células");
+        assert_eq!(
+            tem(&rects, INSP_IMAGE_FRAME_STEP[1]),
+            celulas,
+            "{quem}: ‹ ›"
+        );
         for id in INSP_IMAGE_TILED_SIZE {
             assert_eq!(tem(&rects, id), tamanho, "{quem}: Width/Height");
         }
@@ -216,32 +220,33 @@ fn a_camada_de_fundo_nao_oferece_o_seletor() {
     assert!(host.drained_actions().is_empty());
 }
 
-/// Gate 4: numa parada, clicar a célula 2 da folha mostra o quadro 2; numa animada a folha não escolhe.
+/// Gate 4 (smoke do dono 27/10: uma parada mostra UM quadro, sem a grelha): «›» avança e «‹» recua em roda; numa
+/// animada os mesmos ids não agem.
 #[test]
-fn clicar_uma_celula_escolhe_o_quadro() {
-    let info = com(InspectorImageUse::Still, [4, 1], InspectorDraw::Simple);
-    let (mut host, mut state, rects) = pintado(&info);
-    assert!(tem(&rects, insp_image_cell(3)) && !tem(&rects, insp_image_cell(4)));
-    InspectorPanel::apply_event(
-        &mut state,
-        &mut host,
-        WidgetEvent::Click(insp_image_cell(2)),
-    );
-    assert_eq!(
-        host.drained_actions(),
-        vec![EditorAction::InspectorSpriteEdit {
-            entity_bits: info.entity_bits,
-            edit: SpriteFieldEdit::Frame(2),
-        }]
-    );
-    // CONTROLO: o mesmo id numa animada não age.
+fn as_setas_trocam_o_quadro_de_uma_parada() {
+    let [prev, next] = INSP_IMAGE_FRAME_STEP;
+    for (frame, id, quer) in [(0, next, 1), (3, next, 0), (0, prev, 3), (2, prev, 1)] {
+        let info = InspectorSpriteInfo {
+            frame,
+            ..com(InspectorImageUse::Still, [4, 1], InspectorDraw::Simple)
+        };
+        let (mut host, mut state, rects) = pintado(&info);
+        assert!(tem(&rects, id));
+        InspectorPanel::apply_event(&mut state, &mut host, WidgetEvent::Click(id));
+        assert_eq!(
+            host.drained_actions(),
+            vec![EditorAction::InspectorSpriteEdit {
+                entity_bits: info.entity_bits,
+                edit: SpriteFieldEdit::Frame(quer),
+            }],
+            "{frame} {id:?}"
+        );
+    }
+    // CONTROLO: numa animada as setas nem se pintam nem agem.
     let info = com(InspectorImageUse::Animated, [4, 1], InspectorDraw::Fixed);
-    let (mut host, mut state, _) = pintado(&info);
-    InspectorPanel::apply_event(
-        &mut state,
-        &mut host,
-        WidgetEvent::Click(insp_image_cell(2)),
-    );
+    let (mut host, mut state, rects) = pintado(&info);
+    assert!(!tem(&rects, next));
+    InspectorPanel::apply_event(&mut state, &mut host, WidgetEvent::Click(next));
     assert!(host.drained_actions().is_empty());
 }
 

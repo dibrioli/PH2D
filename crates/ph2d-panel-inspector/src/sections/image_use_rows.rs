@@ -1,6 +1,6 @@
 //! ⭐ **O uso da imagem à vista** ([plano GEF 15](../../../../docs/GameEngineFuncional/15_uso_da_imagem_a_vista_plano.md)
 //! D1/D2): logo abaixo da linha Image, o seletor «Use» (Still · Repeated · Animated) e, por baixo, só os campos do
-//! uso escolhido — parada: a folha para escolher o quadro; repetida: Width/Height; animada: a folha com o corte e
+//! uso escolhido — parada: o quadro no ecrã e «‹ n / N ›»; repetida: Width/Height; animada: a folha com o corte e
 //! a secção Animation ali mesmo.
 
 use super::*;
@@ -64,16 +64,16 @@ pub(crate) fn paint_image_use(
     };
     match info.image_use {
         InspectorImageUse::Still if crate::event_image_use::sheet_cells(info) > 1 => {
-            super::sheet_thumb::paint_sheet_thumb(
+            super::sheet_thumb::paint_still_frame(
                 scene,
                 text_system,
                 theme,
                 hit_index,
+                store,
                 x,
                 w,
                 y,
                 info,
-                true,
             )
         }
         InspectorImageUse::Still => y,
@@ -81,17 +81,7 @@ pub(crate) fn paint_image_use(
             paint_size_rows(scene, text_system, theme, hit_index, store, x, w, y, info)
         }
         InspectorImageUse::Animated => {
-            y = super::sheet_thumb::paint_sheet_thumb(
-                scene,
-                text_system,
-                theme,
-                hit_index,
-                x,
-                w,
-                y,
-                info,
-                false,
-            );
+            y = super::sheet_thumb::paint_sheet_thumb(scene, text_system, theme, x, w, y, info);
             let sec = super::sprite_pose::seccao(text_system);
             y = super::sprite_pose::paint_sheet_grid_rows(
                 scene,

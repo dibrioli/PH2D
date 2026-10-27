@@ -21,14 +21,12 @@ pub const INSP_IMAGE_USE: [NodeId; 3] = [
     hash_node_id("insp_image_use_animated"),
 ];
 
-/// A célula `i` da miniatura da folha (plano GEF 15 D2), derivada da semente; o recurso é a grelha da imagem.
-#[must_use]
-pub const fn insp_image_cell(i: u32) -> NodeId {
-    let mut z = hash_node_id("insp_image_cell").0 ^ (i as u64).wrapping_add(1);
-    z = (z ^ (z >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
-    z = (z ^ (z >> 27)).wrapping_mul(0x94d0_49bb_1331_11eb);
-    NodeId(z ^ (z >> 31))
-}
+/// «‹ ›» do quadro de uma imagem parada numa folha (plano GEF 15, smoke do dono 27/10).
+pub const INSP_IMAGE_FRAME_STEP: [NodeId; 2] = [
+    hash_node_id("insp_image_frame_prev"),
+    hash_node_id("insp_image_frame_next"),
+];
+
 /// **Width / Height** (m) de uma sprite Tiled, `[x, y]`.
 pub const INSP_IMAGE_TILED_SIZE: [NodeId; 2] = [
     hash_node_id("insp_image_tiled_w"),

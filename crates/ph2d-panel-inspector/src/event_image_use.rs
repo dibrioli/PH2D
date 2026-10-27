@@ -6,7 +6,7 @@ use crate::{ids, state};
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent, WidgetStore};
 use ph2d_editor_core::panel::PanelHostInternal;
-use ph2d_editor_core::widget::{ButtonState, TextInputState};
+use ph2d_editor_core::widget::TextInputState;
 use ph2d_editor_core::{
     ImageUseEdit, InspectorDraw, InspectorImageUse, InspectorSpriteInfo, SpriteFieldEdit,
 };
@@ -20,6 +20,7 @@ const MAX_M: f64 = 1.0e4;
 
 pub(crate) fn populate(store: &mut WidgetStore) {
     crate::populate::register_button_ids(store, &ids::INSP_IMAGE_USE);
+    crate::populate::register_button_ids(store, &ids::INSP_IMAGE_FRAME_STEP);
     for id in ids::INSP_IMAGE_TILED_SIZE {
         store.register(
             id,
@@ -36,7 +37,7 @@ pub(crate) fn populate(store: &mut WidgetStore) {
     }
 }
 
-/// Quantas células a folha de `sp` tem (o que a miniatura pinta e regista).
+/// Quantas células a folha de `sp` tem.
 pub(crate) fn sheet_cells(sp: &InspectorSpriteInfo) -> u32 {
     sp.hframes.max(1).saturating_mul(sp.vframes.max(1))
 }
@@ -47,18 +48,6 @@ pub(crate) fn use_is_fixed(sp: &InspectorSpriteInfo) -> bool {
 }
 
 pub(crate) fn sync(host: &mut dyn PanelHostInternal, sp: &InspectorSpriteInfo) {
-    // As células da folha registam-se conforme a grelha da imagem: o recurso é ela, não uma tabela fixa.
-    for i in 0..sheet_cells(sp) {
-        let id = ids::insp_image_cell(i);
-        if host.store().get(id).is_none() {
-            host.store_mut().register(
-                id,
-                InteractiveState::Button {
-                    state: ButtonState::Normal,
-                },
-            );
-        }
-    }
     let InspectorDraw::Tiled { size } = sp.draw else {
         return;
     };
@@ -89,14 +78,21 @@ pub(crate) fn event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
                 edit: ImageUseEdit::Use(to),
             }
         }
-        // Uma célula da miniatura escolhe o quadro mostrado — só numa imagem parada.
-        WidgetEvent::Click(id) if info.image_use == InspectorImageUse::Still => {
-            let Some(i) = (0..sheet_cells(&info)).find(|&i| ids::insp_image_cell(i) == id) else {
-                return false;
+        // «‹ ›» trocam o quadro de uma parada numa folha, em roda.
+        WidgetEvent::Click(id)
+            if ids::INSP_IMAGE_FRAME_STEP.contains(&id)
+                && info.image_use == InspectorImageUse::Still
+                && sheet_cells(&info) > 1 =>
+        {
+            let n = sheet_cells(&info);
+            let passo = if id == ids::INSP_IMAGE_FRAME_STEP[0] {
+                n - 1
+            } else {
+                1
             };
             EditorAction::InspectorSpriteEdit {
                 entity_bits,
-                edit: SpriteFieldEdit::Frame(i),
+                edit: SpriteFieldEdit::Frame((info.frame.min(n - 1) + passo) % n),
             }
         }
         WidgetEvent::ValueChanged(id) if matches!(info.draw, InspectorDraw::Tiled { .. }) => {

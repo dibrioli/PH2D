@@ -121,3 +121,18 @@ ramo `inteira` → `animada_numa_folha_sem_corte…`. Árvore restaurada byte a 
 panel-registry-init, host-desktop, app-sprite-anim; **fmt** aplicado; censos `architecture_panel_loc_cap`,
 `workspace_src_files_under_loc_cap` (o `pre_populate.rs` ficou em 700), `the_shell_only_shrinks`,
 `no_literal_color`, `no_magic_numeric` verdes; `ph2d-i18n` inteira verde (chaves removidas/novas).
+
+## Smoke do dono 27/10 — «em Still ainda aparecem quadros de animação… simplificar ao máximo»
+
+Cura: a Parada numa folha mostra SÓ «Frame ‹ n / N ›» (`sheet_thumb::paint_still_frame`, ids
+`INSP_IMAGE_FRAME_STEP[2]`, em roda, `SpriteFieldEdit::Frame`); numa imagem de uma célula, nada. Saíram a grelha
+clicável da Parada e os ids `insp_image_cell` (e o seu registo dinâmico no `sync`). Uma 1.ª tentativa (o quadro
+grande recortado da miniatura) foi fotografada e RECUSADA: desfocado (a miniatura da ranhura é reduzida) e
+repete o ecrã e a ranhura. Gate: `seam_image_use::as_setas_trocam_o_quadro_de_uma_parada` (4 casos + controlo
+animada). Foto nova `PH2D_GAME_SMOKE_FOTO=player_parado` (`fotos_15/nivel_4_player_parado.png`).
+
+**Auditoria do resto (por decidir com o dono, não mexido):** (1) Animada mostra a figura TRÊS vezes — a folha
+com grelha, a pré-visualização grande do cartão (onda 07) e os ícones da lista; cortar a pré-visualização (o
+ecrã já anima). (2) «Show Sheet» (a folha no ecrã) é raro — desce ao «Advanced» da Animation. (3) O seletor
+«Use» quebra em duas linhas à largura de fábrica (Still · Repeated / Animated). (4) Numeração 0 (Inspector) ×
+1 (editor de animações).

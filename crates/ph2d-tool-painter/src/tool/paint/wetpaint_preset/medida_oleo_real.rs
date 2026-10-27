@@ -105,10 +105,11 @@ fn medida_oleo_real_oraculo() {
     let dir =
         std::path::PathBuf::from(std::env::var("PH2D_OLEO_PNG").expect("PH2D_OLEO_PNG=<pasta>"));
     // `PH2D_OLEO_CENA=lisos`: os traços LISOS e baixos da bateria (régua do halo, K4).
-    let mut t = if std::env::var("PH2D_OLEO_CENA").is_ok_and(|v| v == "lisos") {
-        pinta_cena_lisa()
-    } else {
-        pinta_cena_do_dono()
+    // `=smooth2`: o recto do Knife Smooth 2 (candidato W2) com `knifeLevel` 0 · 0,3 · 1 (as paredes, K6).
+    let mut t = match std::env::var("PH2D_OLEO_CENA").as_deref() {
+        Ok("lisos") => pinta_cena_lisa(),
+        Ok("smooth2") => pinta_cena_smooth2(),
+        _ => pinta_cena_do_dono(),
     };
     match std::env::var("PH2D_OLEO_VARIANTES") {
         Ok(vs) => {
@@ -230,6 +231,29 @@ pub(super) fn pinta_cena_lisa() -> PainterTool {
         t.set_brush_color_srgb8(AZ);
         let ticks = arrasta(&mut t, a, z);
         println!("[oraculo] {preset} (água {ticks})");
+    }
+    t
+}
+
+/// O `recto_lento` da bateria (40 px, passo 3, o azul da bateria) com o Knife Smooth 2 candidato
+/// (`Pinceis/W2_Knife_candidatos/`), a `knifeLevel` 0 · 0,3 · 1 em `y` 90 · 200 · 310 — o perfil transversal das
+/// paredes × o Rebelle (K6).
+pub(super) fn pinta_cena_smooth2() -> PainterTool {
+    let f = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../docs/Painter/Pinceis/W2_Knife_candidatos/Knife Smooth 2.ph2d-brush.png");
+    let p = ph2d_brush_presets::ler(&std::fs::read(&f).expect("preset")).expect("preset");
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; (OW * OH * 4) as usize], OW, OH);
+    t.set_paint_media(PaintMedia::WetPaint);
+    t.set_wet_relogio_fixo(true);
+    for (nivel, y) in [(0.0, 90.0), (0.3, 200.0), (1.0, 310.0)] {
+        let erros = t.wet_preset_aplicar(&p);
+        assert!(erros.is_empty(), "{erros:?}");
+        t.paint.wetpaint.knobs.set(Knob::KnifeLevel, nivel);
+        t.set_brush_size_px(20.0);
+        t.set_brush_color_srgb8([23, 101, 179]);
+        let ticks = arrasta(&mut t, [60.0, y], [560.0, y]);
+        println!("[oraculo] Knife Smooth 2 knifeLevel {nivel} (água {ticks})");
     }
     t
 }

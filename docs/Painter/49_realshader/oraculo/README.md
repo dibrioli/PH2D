@@ -331,6 +331,53 @@ nenhuma ganha (tabela de recusas); o metal fica como estava. O defeito que resta
 - (c) O Subsurface Radius do cartão (`PAINTER_WETPAINT_OLEO_FAIXAS`) vai até `RAIO_SUBSUPERFICIE_MAX` (16), não 64.
   O knob `subsurfaceRadius` do pincel (`tuning/defs.rs`, 0..64) fica para a linha do tuning.
 
+## §K6 — A crista da faca na sombra; as paredes do Smooth 2 (W3, 27/10)
+
+Réguas: a sonda `medida_e4_lamina_folha` (o contraste do rebordo, E4 §Rebordo; raio 27, `knifeRidge` 8, papel
+composto agora por `sombra_em_u8`), a cena nova `PH2D_OLEO_CENA=smooth2` de `medida_oleo_real_oraculo` (o
+`recto_lento` do Knife Smooth 2 candidato a `knifeLevel` 0 · 0,3 · 1; paredes = células da borda da altura a 80 %
+do miolo) e, na cena do dono, `compara.py` + [`orla_regua.py`](orla_regua.py) (a tinta a ≤ 3 células do papel ×
+o Cycles da MESMA malha). Régua inteira: [`regua_K6.txt`](regua_K6.txt). Folha
+[`../out/K6_folha.jpg`](../out/K6_folha.jpg) (antes | depois | Rebelle; em baixo o Smooth 2).
+
+**1. A crista da faca alimenta a sombra (ENTROU).** `CampoAltura::de_com` acumula a `Grid::crista` (× espessura,
+× cobertura, como os fios) e soma-a à altura da SOMBRA (`× fios·profundidade`); sem crista em nenhuma camada
+visível o plano nem se aloca e a sombra é a de antes ao bit. Sai a alavanca `Afinacao::fios_na_sombra`.
+
+| rebordo (topo / baixo, ÷ miolo) | antes | depois | Rebelle F42 |
+|---|---|---|---|
+| luz de fábrica | 0,90 / 1,29 | **0,75 / 1,29** | 0,40 / 1,39 |
+| Força do ambiente 0,15 | 0,56 / 1,26 | **0,46 / 1,26** | 0,40 / 1,39 |
+
+(«antes» = a mesma sonda com a mutação «crista fora da sombra»; os números da E4 lidos com o papel do byte eram
+0,89 e 0,74/0,44.) O resto até ao Rebelle é o chão do ambiente (controlo do artista, E4).
+Gates: `a_crista_da_faca_faz_sombra` (novo; 3/3 mutações vermelhas: crista fora da sombra · fios do Oil Bristle na
+sombra · crista sem o `cobre`), `o_material_neutro_e_bit_identico_a_de_antes` e as impressões (`oleo_real` 31/31),
+`oleo_material`+`fenda` 14/14, os do óleo do tool-painter 9/9, `seam_wetpaint_oleo_real` 6/6. Os gates de custo
+(`relevo_com_material`) levam agora uma crista num quarto da tela no lugar da alavanca a 0,5.
+
+**2. As paredes do Smooth 2 (MEDIDA e RECUSADA).** Onde: a FORMA (`suave` = duas médias de raio `raio_suave` 3 da
+massa × cobertura) espalha a parede ~10 células por lado (a massa nivelada pela faca é um planalto: a `knifeLevel`
+1 com `raio_suave` 0 a parede é 1/3 células). A cura medida: «paredes vivas» — a forma desfocada só DENTRO da tinta
+(`blur(massa)/blur(cob) × cob`), com variantes da cobertura que a corta.
+
+| variante (cena) | Smooth 2 kL 1: paredes (cél.) | orla Estúdio \|Δ\| · corr · <40 (Cycles) | orla Clássico \|Δ\| · corr | tinta corr E/C | papel corr E/C |
+|---|---|---|---|---|---|
+| fábrica (`raio_suave` 3) | 10 / 10 | **23,5 · 0,881** · 0,73 % (0,53 %) | 26,5 · **0,930** | 0,772 / 0,788 | 0,667 / 0,765 |
+| paredes vivas, cobertura crua | **1 / 3** | 26,0 · 0,855 · 2,65 % (1,13 %) | 25,4 · 0,921 | 0,773 / 0,787 | 0,706 / 0,801 |
+| idem, cobertura raio 1 | 3 / 4 | 25,5 · 0,865 · 1,59 % | 27,0 · 0,922 | 0,773 / 0,788 | 0,683 / 0,787 |
+| idem, cobertura raio 2 | 5 / 6 | 24,8 · 0,869 · 0,94 % | 27,3 · 0,922 | 0,773 / 0,788 | 0,678 / 0,779 |
+| metade, raio 1 | 9 / 9 | 24,4 · 0,871 · 1,03 % | 26,7 · 0,924 | 0,773 / 0,788 | 0,671 / 0,773 |
+| `raio_suave` 1 · 0 (sem cura) | 4 / 6 · 1 / 3 | — (o miolo mostra os sulcos de célula) | — | — | — |
+| Rebelle Smooth 2 | ~2 px | | | | |
+
+Decisão: só as variantes que dão a parede do Rebelle (crua, raio 1) a dão, e são as que mais pioram a ORLA da cena
+do dono contra o Cycles (as orlas desfiadas do Oil Bristle ganham degraus de uma célula — pontos escuros 2,65 % ×
+1,13 % do Cycles da mesma malha). Muda todo o óleo ⇒ fica recusada como lei global. A cura certa é LOCAL: as células
+que a lâmina NIVELOU fora do desfoque largo — precisa de uma marca por célula escrita pelo `lamina::nivelar`
+(campo da grade; não é deste agente) e da porta `if rebordo > 0.0 || nivel > 0.0` no `dab_route.rs` (K3a §Aberto).
+A cena `smooth2` fica na sonda para a medir.
+
 ## ⛔ Recusas MEDIDAS
 
 | Tentativa | Porque saiu |
@@ -340,7 +387,7 @@ nenhuma ganha (tabela de recusas); o metal fica como estava. O defeito que resta
 | `(0,5+0,5·nz)` junto com a visibilidade | inclinação contada duas vezes: difuso da tinta 0,60 × 0,83 |
 | Reflexo do ambiente × visibilidade média | a fenda reflectia o estúdio: luminância 74 × 47 → horizonte na direcção reflectida (49 × 47) |
 | `V × multi_ricochete(V)` | Jimenez devolve a visibilidade CORRIGIDA, não um ganho (V² escurecia tudo) |
-| Os fios na altura da SOMBRA de fábrica (`fios_na_sombra` 1) | o rebordo da faca 0,89 → 0,74, mas muda os fios do Oil Bristle (neutro bit a bit para quem não tem `knifeRidge`) — fica a alavanca a 0 (E4) |
+| Os fios na altura da SOMBRA de fábrica (`fios_na_sombra` 1; a crista entrou pelo campo próprio na K6) | o rebordo da faca 0,89 → 0,74, mas muda os fios do Oil Bristle (neutro bit a bit para quem não tem `knifeRidge`) — fica a alavanca a 0 (E4) |
 | Horizonte de 64 células na CPU | só ajuda o papel ao pé de paredes altas (corr. 0,48 → 0,64); fica para a pirâmide de máximos da placa |
 | Pré-filtrado em resolução maior (64×32 → 256×128) para o brilho do Estúdio | o lobo de 0,28 perto do zénite: p99 0,44 × 0,43 — não era a resolução (E3-B) |
 | Reflexo do ambiente sem a oclusão (`livre = 1`) | p99 0,28 → 0,39 mas p50 0,000 → 0,031 (Cycles 0,004): a oclusão está certa (E3-B) |
@@ -357,6 +404,8 @@ nenhuma ganha (tabela de recusas); o metal fica como estava. O defeito que resta
 | Papel com o multi-ricochete das paredes (Jimenez com o albedo do papel, `a` 0,5..1) | nos traços lisos o Clássico ficava perfeito (3–6 px luz 0,006 × Cycles −0,014; sombra 0,034 × 0,031), mas na cena do dono apagava a sombra do empaste ALTO (Clássico, lado da sombra 3–6 px 0,010 × Cycles 0,069): as paredes vermelhas não devolvem a luz que um papel branco à volta devolveria (K4) |
 | Metal: o `rola` com JOELHO (linear até 80 % da folga) | o p90 das encostas bate (1,000 × 1,000) mas o meio-tom das paredes sobe (0,37 × 0,16): \|Δ\| sRGB na tinta 0,1123 → 0,1149, correlação 0,765 → 0,748 (K4) |
 | Metal: a vizinha tapada devolve só o CÉU (`a²·difuso` sem o `sol`) | parede 0,34 → 0,31 × 0,16, mas \|Δ\| 0,1123 → 0,1131 e correlação 0,765 → 0,755 (K4) |
+| Paredes vivas GLOBAIS (a forma desfocada só dentro da tinta, `blur(massa)/blur(cob) × cob`) | Smooth 2 a 1/3 células (Rebelle ~2 px), mas a orla da cena do dono × Cycles piora: Estúdio \|Δ\| 23,5 → 26,0, corr 0,881 → 0,855, pontos <40 0,73 → 2,65 % (Cycles 1,13 %); com a cobertura desfocada a parede volta a 3–9 células e a orla continua pior (K6) |
+| `raio_suave` 1 ou 0 (menos desfoque da forma) | a parede encolhe (4/6 · 1/3) mas o miolo do Smooth 2 mostra os sulcos de célula da espessura (K6, folha) |
 
 ## Fica aberto
 

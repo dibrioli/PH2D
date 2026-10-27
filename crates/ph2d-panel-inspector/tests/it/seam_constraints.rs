@@ -48,6 +48,7 @@ fn pilha() -> InspectorConstraintsInfo {
                 propriedades: vec![],
                 ordem: vec![],
                 zera_desvio: true,
+                peso: None,
             },
             InspectorConstraintRow {
                 id: 42,
@@ -84,6 +85,7 @@ fn pilha() -> InspectorConstraintsInfo {
                 propriedades: vec![],
                 ordem: vec![],
                 zera_desvio: false,
+                peso: None,
             },
         ],
         selected_count: 1,
@@ -444,6 +446,7 @@ fn follow_value() -> InspectorConstraintsInfo {
             Peca::Numero(3),
         ],
         zera_desvio: false,
+        peso: None,
     }];
     i
 }

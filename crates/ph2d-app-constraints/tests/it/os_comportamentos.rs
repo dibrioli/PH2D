@@ -353,3 +353,34 @@ fn a_behaviour_survives_save_and_open() {
     let lido: Constraints = serde_json::from_str(&serde_json::to_string(k).unwrap()).unwrap();
     assert_eq!(&lido, k);
 }
+
+/// ⭐ «Weight By» → clique no objecto: o peso grava-se pelo `StableId` (o raio de fábrica); «Clear»
+/// tira-o. O dono não serve; o vazio desiste.
+#[test]
+fn picking_the_weight_object_writes_it_and_clear_removes_it() {
+    use ph2d_app_constraints::inspector::{Escolha, armado, escolher_alvo, info};
+    let (mut sim, a, id) = mundo(0.0, [50.0, 0.0], de(Perfil::Tremer), false);
+    let b = ph2d_ecs::entity_with_stable_id(sim.world(), StableId(1)).unwrap();
+    let dono = a.to_bits();
+    let linha = |sim: &SimWorld| info(sim, dono, 1).unwrap().rows[0].peso.clone().unwrap();
+    assert_eq!(linha(&sim).nome, None);
+    apply_all(&mut sim, &[(dono, E::EscolherPeso(id))]);
+    assert!(armado(&sim) && linha(&sim).escolhendo);
+    assert_eq!(escolher_alvo(&mut sim, &[dono], [0.0; 2]), Escolha::Recusado);
+    assert_eq!(
+        escolher_alvo(&mut sim, &[dono, b.to_bits()], [0.0; 2]),
+        Escolha::Gravado
+    );
+    assert!(!armado(&sim));
+    let Kind::Comportamento(c) = sim.world().get::<Constraints>(a).unwrap().items[0].kind else {
+        panic!("tipo");
+    };
+    assert_eq!(c.peso.map(|p| p.objecto), Some(1));
+    assert_eq!(c.peso.map(|p| p.raio), Some(150.0));
+    assert!(linha(&sim).nome.is_some());
+    assert!(apply_all(&mut sim, &[(dono, E::LargarPeso(id))]));
+    assert_eq!(linha(&sim).nome, None);
+    apply_all(&mut sim, &[(dono, E::EscolherPeso(id))]);
+    assert_eq!(escolher_alvo(&mut sim, &[], [0.0; 2]), Escolha::Desistiu);
+    assert!(!armado(&sim));
+}

@@ -15,6 +15,7 @@ mod comportamento;
 pub mod gizmo;
 pub mod inspector;
 pub mod marcas;
+mod peso;
 pub mod relogio;
 pub mod smoke;
 pub mod smoke_antena;

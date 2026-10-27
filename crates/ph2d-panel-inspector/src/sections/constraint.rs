@@ -56,7 +56,8 @@ fn fileira(
     fundo + ph2d_tokens::control_gap_px()
 }
 
-/// A linha do ALVO: o nome (ou «None») e, por baixo, «Pick» — premido enquanto escolhe.
+/// A linha do ALVO (ou do objecto do peso): o nome (ou «None») e, por baixo, «Pick» — premido
+/// enquanto escolhe.
 #[allow(clippy::too_many_arguments)]
 fn alvo(
     scene: &mut VectorScene,
@@ -65,7 +66,7 @@ fn alvo(
     hit_index: &mut HitIndex,
     store: &WidgetStore,
     (x, w, y): (f32, f32, f32),
-    row: &InspectorConstraintRow,
+    (rotulo, nome, nada, escolhendo): (&str, Option<&str>, &str, bool),
     id: NodeId,
     seccao: Seccao,
 ) -> f32 {
@@ -77,16 +78,13 @@ fn alvo(
         w,
         y,
         ROW_H_PX,
-        tr("panel.inspector.constraint.target"),
+        tr(rotulo),
         seccao,
     );
     let font = TypeToken::Sm.px();
-    let (nome, cor) = match &row.alvo {
-        Some(n) => (n.as_str(), ColorToken::Text1),
-        None => (
-            tr("panel.inspector.constraint.no_target"),
-            ColorToken::Text3,
-        ),
+    let (nome, cor) = match nome {
+        Some(n) => (n, ColorToken::Text1),
+        None => (tr(nada), ColorToken::Text3),
     };
     paint_text(
         text_system,
@@ -99,7 +97,7 @@ fn alvo(
         resolve(cor, theme),
     );
     let cur_y = y + ph2d_tokens::row_pitch_px();
-    let rotulo = tr(if row.escolhendo {
+    let rotulo = tr(if escolhendo {
         "panel.inspector.constraint.picking"
     } else {
         "panel.inspector.constraint.pick"
@@ -107,7 +105,7 @@ fn alvo(
     let caixa = caixa_do_botao(text_system, x, w, cur_y, rotulo);
     hit_index.register(id, caixa);
     let botao = Button::new(id, rotulo).kind(ButtonKind::Default);
-    let botao = if row.escolhendo {
+    let botao = if escolhendo {
         botao.state(ButtonState::Pressed)
     } else {
         botao.visual(store.button_visual(id))
@@ -350,10 +348,44 @@ fn item(
             hit_index,
             store,
             (x, w, cur_y),
-            row,
+            (
+                "panel.inspector.constraint.target",
+                row.alvo.as_deref(),
+                "panel.inspector.constraint.no_target",
+                row.escolhendo,
+            ),
             ids::INSP_CONSTRAINT_ALVO[k],
             seccao,
         );
+    }
+    if let Some(p) = &row.peso {
+        cur_y = alvo(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            (x, w, cur_y),
+            (
+                "panel.inspector.constraint.weight_by",
+                p.nome.as_deref(),
+                "panel.inspector.constraint.no_weight",
+                p.escolhendo,
+            ),
+            ids::INSP_CONSTRAINT_PESO[k],
+            seccao,
+        );
+        if p.nome.is_some() {
+            let id = ids::INSP_CONSTRAINT_SEM_PESO[k];
+            let rotulo = tr("panel.inspector.constraint.weight_clear");
+            let caixa = caixa_do_botao(text_system, x, w, cur_y, rotulo);
+            hit_index.register(id, caixa);
+            let b = Button::new(id, rotulo)
+                .kind(ButtonKind::Default)
+                .visual(store.button_visual(id));
+            paint_button(&b, caixa, scene, text_system, theme);
+            cur_y = abaixo_do_botao(caixa);
+        }
     }
     cur_y = forca(
         scene,

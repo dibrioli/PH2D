@@ -218,6 +218,17 @@ pub struct InspectorConstraintRow {
     pub ordem: Vec<Peca>,
     /// O tipo tem desvio que se pode zerar (o botão «Reset Offset»).
     pub zera_desvio: bool,
+    /// O peso por distância de um *behaviour* (`None` = o tipo não o tem).
+    pub peso: Option<PesoDaLinha>,
+}
+
+/// A linha «Weight By» de um *behaviour*: o objecto do peso por distância.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct PesoDaLinha {
+    /// O nome do objecto (`None` = sem peso: o *behaviour* vale inteiro).
+    pub nome: Option<String>,
+    /// O próximo clique no palco escolhe o objecto do peso.
+    pub escolhendo: bool,
 }
 
 impl InspectorConstraintRow {
@@ -321,4 +332,8 @@ pub enum ConstraintFieldEdit {
     Cozer,
     /// Desfaz a cola `id` guardada por `dono_bits` ([`InspectorColaRow::dono_bits`]).
     Descolar(u64, u32),
+    /// Arma o clique no palco que escolhe o objecto do peso de um *behaviour* (outro clique desarma).
+    EscolherPeso(u32),
+    /// Tira o peso: o *behaviour* volta a valer inteiro.
+    LargarPeso(u32),
 }

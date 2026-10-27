@@ -163,6 +163,7 @@ pub fn info(
                 propriedades: crate::cartao_valor::propriedades(w, &it.kind, e, alvo),
                 ordem: crate::cartao_valor::ordem(&it.kind),
                 zera_desvio: crate::campos::zera_desvio(&it.kind),
+                peso: crate::peso::linha(w, entity_bits, it),
             }
         })
         .collect();
@@ -175,9 +176,10 @@ pub fn info(
     })
 }
 
-fn armar(sim: &mut SimWorld, alvo: Option<(u64, u32)>) {
+pub(crate) fn armar(sim: &mut SimWorld, alvo: Option<(u64, u32)>) {
     if alvo.is_some() {
         crate::cola::armar(sim, None);
+        sim.world_mut().insert_resource(crate::peso::PesoArmado(None));
     }
     sim.world_mut().insert_resource(AlvoArmado(alvo));
 }
@@ -202,6 +204,13 @@ fn aplicar(sim: &mut SimWorld, e: Entity, edit: E) -> bool {
             .0
             .push(bits);
         return false;
+    }
+    if let E::EscolherPeso(id) = edit {
+        crate::peso::alternar(sim, bits, id);
+        return false;
+    }
+    if let E::LargarPeso(id) = edit {
+        return crate::peso::largar(sim, e, id);
     }
     if let E::EscolherAlvo(id) = edit {
         let ja = sim.world().get_resource::<AlvoArmado>().and_then(|a| a.0);
@@ -285,6 +294,8 @@ fn aplicar(sim: &mut SimWorld, e: Entity, edit: E) -> bool {
         | E::Propriedade(..)
         | E::ZerarDesvio(_)
         | E::Descolar(..)
+        | E::EscolherPeso(_)
+        | E::LargarPeso(_)
         | E::Cozer => return false,
     }
     true
@@ -385,6 +396,7 @@ pub fn armado(sim: &SimWorld) -> bool {
         .get_resource::<AlvoArmado>()
         .is_some_and(|a| a.0.is_some())
         || crate::cola::armada(sim.world()).is_some()
+        || crate::peso::armado(sim.world()).is_some()
 }
 
 /// ⭐ **O clique que escolhe o alvo.** `debaixo` = as entidades sob o cursor, a de cima primeiro (o
@@ -393,6 +405,9 @@ pub fn armado(sim: &SimWorld) -> bool {
 /// vem primeiro ([`crate::cola`]).
 pub fn escolher_alvo(sim: &mut SimWorld, debaixo: &[u64], mundo: [f32; 2]) -> Escolha {
     if let Some(r) = crate::cola::escolher(sim, debaixo, mundo.map(f64::from)) {
+        return r;
+    }
+    if let Some(r) = crate::peso::escolher(sim, debaixo) {
         return r;
     }
     let Some((dono_bits, id)) = sim.world().get_resource::<AlvoArmado>().and_then(|a| a.0) else {

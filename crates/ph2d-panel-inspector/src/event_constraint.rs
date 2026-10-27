@@ -98,6 +98,10 @@ pub(crate) fn apply_constraint_event(
                 E::Apagar(r)
             } else if let Some(r) = item(&info, &ids::INSP_CONSTRAINT_ALVO, id) {
                 E::EscolherAlvo(r)
+            } else if let Some(r) = item(&info, &ids::INSP_CONSTRAINT_PESO, id) {
+                E::EscolherPeso(r)
+            } else if let Some(r) = item(&info, &ids::INSP_CONSTRAINT_SEM_PESO, id) {
+                E::LargarPeso(r)
             } else if let Some(r) = item(&info, &ids::INSP_CONSTRAINT_ZERAR, id) {
                 E::ZerarDesvio(r)
             } else if let Some(c) = ids::INSP_COLA_DESCOLAR

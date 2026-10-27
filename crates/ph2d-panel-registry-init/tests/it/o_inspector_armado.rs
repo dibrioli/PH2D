@@ -954,6 +954,7 @@ fn arma_o_top20() {
             propriedades: vec![],
             ordem: vec![],
             zera_desvio: true,
+            peso: None,
         }],
         selected_count: selecionados(),
         colas: vec![constraint_edits::InspectorColaRow {

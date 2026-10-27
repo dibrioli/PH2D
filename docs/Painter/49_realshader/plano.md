@@ -34,3 +34,18 @@ paralelo a partir de W1.
   ligados (`kscreen-doctor --dpms on`; com DPMS desligado a janela fica `_NET_WM_STATE_HIDDEN` e o
   `import` falha com «missing an image filename»). O trial acaba ~06/11/2026: capturas a mais para as
   réguas de W3/W4 fazem-se ANTES disso.
+
+## Estado 26/10 e correcção do plano
+
+Smoke do dono 26/10: «Resultado interessante», mas (a) pixels brancos nas bordas, (b) sombra de *drop shadow*
+(nenhuma DENTRO da tinta), (c) o relevo não sobe com o acúmulo. Detalhe: [handoff](HANDOFF_CONTINUACAO_oleo_real_W0_W1cpu_2026-10-26.md).
+
+- **Estado:** W0 **feita** · W0b **parcial** (lâmina H3 só na sonda, falta rebordo e presets) · W1 **CPU feita e ligada, rejeitada no olho**; passe de placa por fazer.
+- **Causa de (c), medida:** tecto duro de 3000 por célula em `trail/transfer.rs` (`:268–275`, `:285–288`, `:178–181`): a massa pára na 2.ª passagem; auto-sombra interior 0–2 %. A altura do Rebelle acumula sem tecto ([pesquisa](pesquisa_tecnologia.md)). Logo o campo da W1 não tem o que sombrear.
+- **Nova onda inserida antes de W2:**
+
+| # | Onda | Entrega | Gates |
+|---|---|---|---|
+| **W1b** | **Espessura sem tecto + campo sem suavizar + cobertura** | (1) `Grid::espessura` escrita antes do tecto, levada por arrasto/empurrão/levantar, com undo e gravação (modelo `grid/altura.rs`), `px_por_massa` recalibrado; (2) altura de sombra/oclusão sem suavizar, textura ∝ espessura, rebordo; (3) altura e normais pesadas pela cobertura + especular × cobertura + AA (cura dos pixels brancos); (4) cavidade tipo GTAO com rebote pelo albedo; (5) horizonte com pirâmide de máximos (sombra longa dentro da tinta barata) | `medida_oleo_real_acumulo` cresce com as passagens; neutro ao byte; olho do dono |
+
+- **Ordem restante:** W1 GPU (`ph2d-render`, paridade com a CPU, K/N por placa) → facas H3 → presets Knife Smooth/Textured e lei do rebordo → W2 (IBL de foto nossa/CC0) → W3..W6 como na tabela (W3 absorve o GTAO se o item 4 de W1b o fizer).

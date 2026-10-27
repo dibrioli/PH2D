@@ -6531,6 +6531,7 @@ dependencies = [
  "ph2d-constraints-cola",
  "ph2d-ecs",
  "ph2d-node-force-attractor",
+ "ph2d-node-force-drag",
  "ph2d-node-motion-falloff",
  "ph2d-node-motion-orbit",
  "ph2d-node-motion-oscillator",

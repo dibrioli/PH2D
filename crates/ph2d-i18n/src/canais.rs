@@ -69,7 +69,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "canal.constraint.velocidade" => "Orbit Speed",
         "canal.constraint.raio" => "Behaviour Radius",
         "canal.constraint.puxao" => "Attract Strength",
-        "canal.constraint.amortece" => "Attract Damping",
+        "canal.constraint.amortece" => "Attract Drag",
         "canal.constraint.onde" => "Behaviour Channel",
         "canal.constraint.leva_rotacao" => "Orbit Turns With",
         "canal.constraint.peso_raio" => "Weight Radius",

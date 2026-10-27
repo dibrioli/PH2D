@@ -98,7 +98,7 @@ pub const VELOCIDADE: u16 = 43;
 pub const RAIO: u16 = 44;
 /// Atrair: a força no centro.
 pub const PUXAO: u16 = 45;
-/// Atrair: a velocidade que fica ao fim de um segundo.
+/// Atrair: o travão (o `coefficient` do `force.drag`).
 pub const AMORTECE: u16 = 46;
 /// Tremer e Flutuar: onde mexem ([`ONDES`]).
 pub const ONDE: u16 = 47;

@@ -75,7 +75,6 @@ pub fn unidade(c: &Comportamento, campo: u16) -> Unidade {
         AMPLITUDE if c.onde == Onde::Rot => Unidade::Graus,
         AMPLITUDE | RAIO | PESO_RAIO => Unidade::Metros,
         VELOCIDADE => Unidade::Graus,
-        AMORTECE => Unidade::Porcento,
         _ => Unidade::Nenhuma,
     }
 }
@@ -102,7 +101,7 @@ pub fn ler(c: &Comportamento, campo: u16) -> Option<f32> {
         VELOCIDADE => c.velocidade as f32,
         RAIO => c.raio as f32,
         PUXAO => c.forca as f32,
-        AMORTECE => c.amortece as f32,
+        AMORTECE => c.arrasto as f32,
         ONDE => indice(&ONDES_DO_TIPO, &c.onde),
         LEVA_ROTACAO => sim(c.leva_rotacao),
         PESO_RAIO => c.peso?.raio as f32,
@@ -113,7 +112,7 @@ pub fn ler(c: &Comportamento, campo: u16) -> Option<f32> {
 }
 
 /// Escreve um campo; `false` se não é daqui (ou não há peso para o campo do peso). O valor já vem
-/// finito; os não-negativos aparam em 0 e o atrito em `0..=1`.
+/// finito; os não-negativos aparam em 0.
 pub fn escrever(c: &mut Comportamento, campo: u16, v: f32) -> bool {
     #[expect(
         clippy::cast_possible_truncation,
@@ -129,7 +128,7 @@ pub fn escrever(c: &mut Comportamento, campo: u16, v: f32) -> bool {
         VELOCIDADE => c.velocidade = x,
         RAIO => c.raio = x.max(0.0),
         PUXAO => c.forca = x,
-        AMORTECE => c.amortece = x.clamp(0.0, 1.0),
+        AMORTECE => c.arrasto = x.max(0.0),
         ONDE => c.onde = ONDES_DO_TIPO[opcao(ONDES_DO_TIPO.len())],
         LEVA_ROTACAO => c.leva_rotacao = opcao(2) == 1,
         PESO_RAIO | PESO_CURVA | PESO_INVERTE => {
@@ -156,7 +155,7 @@ pub fn chave_no_item(campo: u16) -> Option<&'static str> {
         VELOCIDADE => "kind/Comportamento/velocidade",
         RAIO => "kind/Comportamento/raio",
         PUXAO => "kind/Comportamento/forca",
-        AMORTECE => "kind/Comportamento/amortece",
+        AMORTECE => "kind/Comportamento/arrasto",
         ONDE => "kind/Comportamento/onde",
         LEVA_ROTACAO => "kind/Comportamento/leva_rotacao",
         PESO_RAIO => "kind/Comportamento/peso/raio",

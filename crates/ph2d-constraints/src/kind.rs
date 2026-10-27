@@ -197,7 +197,7 @@ impl Kind {
         matches!(
             self,
             Self::ChildOf(_) | Self::Distance(_) | Self::StretchTo(_)
-        )
+        ) || matches!(self, Self::Comportamento(c) if c.perfil == crate::comportamento::Perfil::Orbitar)
     }
 
     /// ⭐ **A porta única de «o offset»:** acerta o desvio para que `resolve(ctx) == ctx.owner`.
@@ -234,6 +234,12 @@ impl Kind {
             Self::StretchTo(st) => {
                 let t = ctx.target.ok_or(Inerte::SemAlvo)?;
                 st.rest = (ctx.owner.x - t.x).hypot(ctx.owner.y - t.y);
+            }
+            Self::Comportamento(c) if c.perfil == crate::comportamento::Perfil::Orbitar => {
+                let t = ctx.target.ok_or(Inerte::SemAlvo)?;
+                let (dx, dy) = (ctx.owner.x - t.x, ctx.owner.y - t.y);
+                c.raio = dx.hypot(dy);
+                c.angulo = dy.atan2(dx).to_degrees();
             }
             Self::Limit(_)
             | Self::Ik(_)

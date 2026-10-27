@@ -125,6 +125,14 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
     applicable: None,
 };
 
+/// ⭐ **A lei do nó, pública** (append, W5.4): a aceleração que trava `vel` com o coeficiente `k`
+/// (≥ 0), pesada pelo `falloff` e por eixo. O `eval` e o *behaviour* «Atrair» chamam-na.
+#[must_use]
+pub fn arrasto(vel: [f32; 2], k: f32, falloff: f32, escala: [f32; 2]) -> [f32; 2] {
+    let w = k * falloff;
+    [-vel[0] * w * escala[0], -vel[1] * w * escala[1]]
+}
+
 struct ForceDrag;
 
 impl NodeOp for ForceDrag {
@@ -140,9 +148,7 @@ impl NodeOp for ForceDrag {
             // Pure per-instance map → parallel above the threshold
             // (bit-identical, no reduction). GPU/M5 Fase 0.
             let contrib: Vec<[f32; 2]> = par_build(input.count(), |i| {
-                let vel = vec2_at(input, "vel", i, [0.0, 0.0]);
-                let w = k * falloff_at(input, i);
-                [-vel[0] * w * sx, -vel[1] * w * sy]
+                arrasto(vec2_at(input, "vel", i, [0.0, 0.0]), k, falloff_at(input, i), [sx, sy])
             });
             add_accel(input, &contrib)
         };

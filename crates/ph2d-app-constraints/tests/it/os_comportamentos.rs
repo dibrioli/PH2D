@@ -156,19 +156,22 @@ fn each_behaviour_is_its_motion_node_bit_for_bit() {
         );
         assert_eq!(vec2(&onda, "P")[1], delta(&fl, t)[1], "Flutuar em {t}");
 
-        let or = de(Perfil::Orbitar);
-        let p = [40.0, -12.0];
+        let or = Comportamento {
+            angulo: 33.0,
+            ..de(Perfil::Orbitar)
+        };
         let volta = cozinha(
             "motion.orbit",
             &[
                 ("pivot_x", 5.0),
                 ("pivot_y", 7.0),
+                ("angle", 33.0),
                 ("speed", or.velocidade as f32),
             ],
-            p,
+            [5.0 + or.raio as f32, 7.0],
             t,
         );
-        let (q, _) = orbita(&or, p.map(f64::from), [5.0, 7.0], t, 1.0);
+        let (q, _) = orbita(&or, [5.0, 7.0], t);
         assert_eq!(vec2(&volta, "P"), q, "Orbitar em {t}");
     }
 }
@@ -215,8 +218,10 @@ fn the_attract_force_is_the_attractor_law_bit_for_bit() {
         let s = cozinha(
             "force.attractor",
             &[
-                ("strength", 40.0),
+                ("strength", 400.0),
                 ("radius", 30.0),
+                ("curve", 0.0),
+                ("peak", 1.0),
                 ("target_x", 10.0),
                 ("target_y", 20.0),
             ],
@@ -279,11 +284,8 @@ fn attract_scrubs_to_the_same_bit() {
         .map(|f| em(&mut sim, &mut drive, &doc, f as f64 / fps).translation.x)
         .collect();
     assert_eq!(tocado[0], 0.0, "no quadro 0 parte do repouso");
-    assert!(
-        tocado.iter().any(|x| *x > 4.0),
-        "chega ao alvo e passa: {tocado:?}"
-    );
-    assert!(tocado.iter().all(|x| *x < 8.0), "nunca foge: {tocado:?}");
+    assert!(tocado[39] > 3.9, "chega ao alvo: {tocado:?}");
+    assert!(tocado.iter().all(|x| *x < 4.05), "sem passar dele: {tocado:?}");
     for f in [12, 3, 31] {
         let x = em(&mut sim, &mut drive, &doc, f as f64 / fps).translation.x;
         assert_eq!(x.to_bits(), tocado[f].to_bits(), "quadro {f}");
@@ -414,18 +416,101 @@ fn attract_steps_like_the_sim_step() {
     let lei = Atracao::from(&Perfil::Atrair.numeros());
     let fps = 24.0;
     let dt = (1.0 / fps) as f32;
-    let keep = 1.0 - (1.0 - lei.amortece as f32) * dt;
     let alvo = [4.0_f64, 1.0];
     let (mut v, mut q) = ([0.0_f32; 2], [0.0_f32; 2]);
     let mut sim: Simulador<2> = Simulador::default();
+    // De fábrica, 2 sub-passos: `2·√(400/1)·dt = 1,67` e `k·dt = 1,67` arredondam a 2.
+    let h = dt / 2.0;
     for f in 1..30 {
-        let a = lei.puxao().accel(q, alvo.map(|x| x as f32), 1.0);
-        for c in 0..2 {
-            v[c] = (v[c] + a[c] * dt) * keep;
-            q[c] += v[c] * dt;
+        let k = lei.arrasto as f32;
+        for _ in 0..2 {
+            let a = lei.puxao().accel(q, alvo.map(|x| x as f32), 1.0);
+            for c in 0..2 {
+                v[c] += (a[c] - v[c] * k) * h;
+                q[c] += v[c] * h;
+            }
         }
         let got = sim.corre(f, lei, fps, &mut |_| alvo);
         assert_eq!(got, q.map(f64::from), "quadro {f}");
     }
     let _ = lei.angular();
+}
+
+/// ⭐ Report do dono 27/10: *«quando o planeta se move o raio da órbita aumenta»*. A órbita é RELATIVA
+/// ao centro (como filho dele): o planeta anda e a lua fica ao mesmo raio.
+#[test]
+fn the_orbit_keeps_its_radius_when_the_centre_moves() {
+    let or = Perfil::Orbitar.numeros();
+    let (mut sim, _, _) = mundo(1.5, [0.0, 0.0], or, true);
+    let mut drive = PreviewDrive::default();
+    let doc = TimelineDoc::new();
+    for (k, x) in [0.0_f32, 2.0, 5.0, -3.0].into_iter().enumerate() {
+        let b = ph2d_ecs::entity_with_stable_id(sim.world(), StableId(1)).unwrap();
+        sim.world_mut().get_mut::<Transform>(b).unwrap().translation.x = x;
+        let l = em(&mut sim, &mut drive, &doc, 0.3 * k as f64).translation;
+        let r = f64::from(l.x - x).hypot(f64::from(l.y));
+        assert!((r - or.raio).abs() < or.raio * 1e-3, "centro em {x}: raio {r}");
+    }
+}
+
+/// Escolher o centro apanha o raio e o ângulo de onde a lua está: ligar não a faz saltar.
+#[test]
+fn picking_the_orbit_centre_does_not_move_the_moon() {
+    use ph2d_app_constraints::inspector::{Escolha, escolher_alvo};
+    let mut sim = SimWorld::new();
+    let mut tp = Transform::IDENTITY;
+    tp.translation.x = 1.0;
+    let p = sim.world_mut().spawn((StableId(1), tp)).id();
+    let mut tl = Transform::IDENTITY;
+    tl.translation.x = 1.6;
+    tl.translation.y = 2.3;
+    let a = sim
+        .world_mut()
+        .spawn((StableId(2), tl, Constraints::default()))
+        .id();
+    let i = TIPO_BEHAVIOUR + Perfil::Orbitar.tag();
+    apply_all(&mut sim, &[(a.to_bits(), E::Adicionar(i))]);
+    assert_eq!(escolher_alvo(&mut sim, &[p.to_bits()], [0.0; 2]), Escolha::Gravado);
+    let Kind::Comportamento(c) = sim.world().get::<Constraints>(a).unwrap().items[0].kind else {
+        panic!("tipo");
+    };
+    assert!((c.raio - 0.6_f64.hypot(2.3)).abs() < 1e-6, "{}", c.raio);
+    let mut drive = PreviewDrive::default();
+    let doc = TimelineDoc::new();
+    let l = em(&mut sim, &mut drive, &doc, 0.0).translation;
+    assert!((l.x - 1.6).abs() < 3e-3 && (l.y - 2.3).abs() < 3e-3, "saltou para {l:?}");
+}
+
+/// ⭐ Report do dono 27/10: *«a limalha não corre atrás, parece que corre na frente»*. Na curva do
+/// íman da cena 10, a limalha segue ATRÁS (como o Harmonic do Blender, oráculo 27/10: 0,68 m atrás,
+/// nunca à frente) e nunca se perde.
+#[test]
+fn attracted_filings_run_behind_a_moving_magnet() {
+    let (mut sim, _, _) = mundo(-4.5, [-4.5, -0.8], Perfil::Atrair.numeros(), true);
+    let ima = ph2d_ecs::entity_with_stable_id(sim.world(), StableId(1)).unwrap();
+    let mut tl = ph2d_timeline::TimelineState::default();
+    let mut ph = ph2d_core::Playhead::default();
+    let fps = tl.doc.fps_display;
+    for i in ph2d_app_constraints::smoke_recreio::chaves_do_ima(ima.to_bits(), fps) {
+        ph2d_timeline::apply_intent(&mut tl, &mut ph, i);
+    }
+    let mut drive = PreviewDrive::default();
+    let (mut frente, mut atras, mut antes) = (0.0_f32, 0.0_f32, -4.5_f32);
+    for f in 0..180 {
+        let t = f64::from(f) / fps;
+        let x = ph2d_timeline::world_pose_at(sim.world(), &tl.doc, ima.to_bits(), t)
+            .unwrap()
+            .translation
+            .x;
+        sim.world_mut().get_mut::<Transform>(ima).unwrap().translation.x = x;
+        let l = em(&mut sim, &mut drive, &tl.doc, t).translation;
+        let sentido = (x - antes).signum();
+        antes = x;
+        if sentido != 0.0 && f > 6 {
+            frente = frente.max((l.x - x) * sentido);
+            atras = atras.max((x - l.x) * sentido);
+        }
+    }
+    assert!(frente < 0.05, "à frente do íman: {frente}");
+    assert!(atras > 0.2 && atras < 1.0, "atrás dele, perto: {atras}");
 }

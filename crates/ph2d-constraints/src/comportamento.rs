@@ -60,7 +60,9 @@ impl Perfil {
             velocidade: 90.0,
             raio: 1.5,
             forca: 40.0,
-            amortece: 0.1,
+            arrasto: 6.0,
+            pico: 1.0,
+            angulo: 0.0,
             leva_rotacao: false,
             peso: None,
         };
@@ -76,9 +78,12 @@ impl Perfil {
             // O atrito máximo da lei do `sim.step`: puxa, passa do alvo uma vez e assenta. O alcance é
             // largo: fora dele a força é ZERO e um objecto atirado para lá fica perdido (medido na cena
             // 10 em laço: a limalha saiu do raio de 6 m e congelou a 9,6 m do íman).
+            // Mola (o `peak` a 1 m) com travão crítico `2·√(forca/pico)`: medido na curva do íman da cena
+            // 10 — 0,01 m à frente, 0,74 m atrás, contra 0,68 m atrás do Harmonic do Blender.
             Self::Atrair => Comportamento {
                 raio: 30.0,
-                amortece: 0.0,
+                forca: 400.0,
+                arrasto: 40.0,
                 ..base
             },
         }
@@ -138,8 +143,19 @@ pub struct Comportamento {
     pub raio: f64,
     /// Atrair: m/s² no centro.
     pub forca: f64,
-    /// Atrair: a velocidade que fica ao fim de um segundo (`1` = sem atrito, a do `sim.step`).
-    pub amortece: f64,
+    /// Atrair: o travão (o `coefficient` do `force.drag`, por segundo) — o ar e o atrito que fazem a
+    /// limalha correr ATRÁS do íman e colar-se, em vez de passar e voltar como um pêndulo.
+    #[serde(default)]
+    pub arrasto: f64,
+    /// Atrair: a distância a que o puxão chega ao máximo (o `peak` do `force.attractor`). Até ela o
+    /// puxão CRESCE com a distância — uma mola, o campo Harmonic do Blender (oráculo 27/10: o único
+    /// atrair que não passa do alvo); dela até ao `raio` cai a zero.
+    #[serde(default)]
+    pub pico: f64,
+    /// Orbitar: o ângulo de partida, em graus (o `angle` do `motion.orbit`). Com alvo, ele e o `raio`
+    /// apanham-se de onde o dono está ao escolher o alvo — a órbita anda com o centro e o raio fica.
+    #[serde(default)]
+    pub angulo: f64,
     /// Orbitar: o objecto vira com a volta.
     pub leva_rotacao: bool,
     pub peso: Option<Peso>,

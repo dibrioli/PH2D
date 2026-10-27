@@ -38,7 +38,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.constraint.speed" => "Speed (°/s)",
         "panel.inspector.constraint.radius" => "Radius",
         "panel.inspector.constraint.strength" => "Strength",
-        "panel.inspector.constraint.damping" => "Damping",
+        "panel.inspector.constraint.damping" => "Drag",
         "panel.inspector.constraint.where" => "Channel",
         "panel.inspector.constraint.where.xy" => "X and Y",
         "panel.inspector.constraint.turns_with" => "Turn With Orbit",

@@ -90,20 +90,30 @@ pub fn peso(w: &Peso, p: [f64; 2], o: [f64; 2]) -> f32 {
     )
 }
 
-/// O Orbitar: a posição `p` girada em volta de `pivo` no instante `t`, misturada por `f`, e os graus
-/// da volta (para quem leva a rotação).
+/// O centro da órbita do dono em `dono` sem alvo: a `raio` dele, na direcção oposta ao `angulo` (no
+/// instante 0 o dono está onde foi posto).
 #[must_use]
 #[expect(clippy::cast_possible_truncation, reason = "a lei do nó é f32")]
-pub fn orbita(c: &Comportamento, p: [f64; 2], pivo: [f64; 2], t: f64, f: f32) -> ([f32; 2], f32) {
-    let (graus, cos, sin) = ph2d_node_motion_orbit::turn(0.0, c.velocidade as f32, t as f32);
-    let q = ph2d_node_motion_orbit::orbit_point(
-        [p[0] as f32, p[1] as f32],
-        [pivo[0] as f32, pivo[1] as f32],
-        cos,
-        sin,
-        f,
-    );
-    (q, graus)
+pub fn pivo_sem_alvo(c: &Comportamento, dono: [f64; 2]) -> [f64; 2] {
+    let (_, cos, sin) = ph2d_node_motion_orbit::turn(c.angulo as f32, 0.0, 0.0);
+    [
+        dono[0] - c.raio * f64::from(cos),
+        dono[1] - c.raio * f64::from(sin),
+    ]
+}
+
+/// ⭐ O Orbitar: o ponto a `raio` à direita do `pivo`, girado pela lei do `motion.orbit` (`angle` =
+/// o ângulo de partida, `speed` = a velocidade) — a posição na órbita no instante `t` e os graus da
+/// volta desde a partida. A órbita é RELATIVA ao centro: ele anda e o raio fica.
+#[must_use]
+#[expect(clippy::cast_possible_truncation, reason = "a lei do nó é f32")]
+pub fn orbita(c: &Comportamento, pivo: [f64; 2], t: f64) -> ([f32; 2], f32) {
+    let (graus, cos, sin) =
+        ph2d_node_motion_orbit::turn(c.angulo as f32, c.velocidade as f32, t as f32);
+    let centro = [pivo[0] as f32, pivo[1] as f32];
+    let p = [(pivo[0] + c.raio) as f32, centro[1]];
+    let q = ph2d_node_motion_orbit::orbit_point(p, centro, cos, sin, 1.0);
+    (q, graus - c.angulo as f32)
 }
 
 /// ⭐ **A pose do dono com o *behaviour*** à força `k` (a influência). `pivo` é o alvo (Orbitar,
@@ -132,11 +142,10 @@ pub fn aplica(
             out.rot += f64::from(graus).to_radians() * f;
         }
         Perfil::Orbitar => {
-            let centro = pivo.map_or([dono.x - c.raio, dono.y], |p| [p.x, p.y]);
-            #[expect(clippy::cast_possible_truncation, reason = "a mistura do nó é f32")]
-            let (q, graus) = orbita(c, [dono.x, dono.y], centro, t, f as f32);
-            out.x = f64::from(q[0]);
-            out.y = f64::from(q[1]);
+            let centro = pivo.map_or_else(|| pivo_sem_alvo(c, [dono.x, dono.y]), |p| [p.x, p.y]);
+            let (q, graus) = orbita(c, centro, t);
+            out.x = dono.x + (f64::from(q[0]) - dono.x) * f;
+            out.y = dono.y + (f64::from(q[1]) - dono.y) * f;
             if c.leva_rotacao {
                 out.rot += f64::from(graus).to_radians() * f;
             }
@@ -149,15 +158,38 @@ pub fn aplica(
     out
 }
 
+/// O passo do `sim.step` (o tecto `MAX_DT` dele, 0,03 s).
+const PASSO_MAX: f32 = 0.03;
+/// Tecto de sub-passos por quadro: o do travão de 400/s a 24 q/s (`k·dt` ≈ 17) com folga — cada
+/// sub-passo são duas leis de nó, e o kill da W5 mede o quadro.
+const MAX_SUB_PASSOS: u32 = 32;
+
+/// Quantos sub-passos fazem o quadro `dt` estável: cada um ≤ [`PASSO_MAX`], com `k·h ≤ 1` (o travão
+/// explícito diverge a `k·h > 2` — medido: travão 56 a 24 q/s atirou a limalha a 1e19 m) e
+/// `ω·h ≤ 0,5` na mola (`ω² = forca / pico`).
+#[expect(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    reason = "um número pequeno e positivo"
+)]
+fn sub_passos(dt: f32, k: f32, omega2: f64) -> u32 {
+    let w = omega2.max(0.0).sqrt() as f32;
+    let n = (dt / PASSO_MAX).max(k * dt).max(2.0 * w * dt).ceil();
+    (n as u32).clamp(1, MAX_SUB_PASSOS)
+}
+
 /// ⭐ **O Atrair como [`Dinamica`]**: a entrada é o alvo MENOS a pose animada do dono; o estado é o
 /// deslocamento do dono e a sua velocidade. Um passo: a aceleração da lei do `force.attractor`, depois
-/// o passo semi-implícito do `sim.step` (velocidade, atrito linear, posição com a velocidade NOVA).
+/// o travão do `force.drag` somado, e o passo semi-implícito do `sim.step` (velocidade, posição com a
+/// velocidade NOVA).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Atracao {
     pub forca: f64,
     pub raio: f64,
-    /// A velocidade que fica ao fim de um segundo, `0..=1` (acima de 1 o passo injecta energia).
-    pub amortece: f64,
+    /// O travão do `force.drag` (≥ 0, por segundo).
+    pub arrasto: f64,
+    /// O `peak` do perfil do nó: até ele o puxão cresce com a distância (uma mola).
+    pub pico: f64,
 }
 
 impl From<&Comportamento> for Atracao {
@@ -165,17 +197,25 @@ impl From<&Comportamento> for Atracao {
         Self {
             forca: c.forca,
             raio: c.raio,
-            amortece: c.amortece,
+            arrasto: c.arrasto,
+            pico: c.pico,
         }
     }
 }
 
 impl Atracao {
-    /// A curva Smooth, sem repulsão nem perfil — os defaults do nó.
+    /// A curva LINEAR do nó com o `peak` do perfil: até ao pico o puxão é `forca · d / pico` — uma mola,
+    /// que com o travão crítico segue atrás sem passar à frente (medido na sonda da cena 10).
     #[must_use]
     #[expect(clippy::cast_possible_truncation, reason = "a lei do nó é f32")]
     pub fn puxao(&self) -> Puxao {
-        Puxao::of(self.forca as f32, self.raio as f32, 2.0, false, [0.0; 3])
+        Puxao::of(
+            self.forca as f32,
+            self.raio as f32,
+            0.0,
+            false,
+            [0.0, self.pico as f32, 0.0],
+        )
     }
 }
 
@@ -184,7 +224,7 @@ impl Dinamica<2> for Atracao {
         [
             self.forca.to_bits(),
             self.raio.to_bits(),
-            self.amortece.to_bits(),
+            self.arrasto.to_bits() ^ self.pico.to_bits().rotate_left(1),
         ]
     }
 
@@ -202,13 +242,23 @@ impl Dinamica<2> for Atracao {
 
     #[expect(clippy::cast_possible_truncation, reason = "a lei do nó é f32")]
     fn passo(&self, s: Passo<2>, e: [f64; 2], dt: f32) -> Passo<2> {
-        let a = self.puxao().accel(s.valor, [e[0] as f32, e[1] as f32], 1.0);
-        let keep = 1.0 - (1.0 - self.amortece.clamp(0.0, 1.0) as f32) * dt;
+        let (puxao, k, alvo) = (
+            self.puxao(),
+            self.arrasto.max(0.0) as f32,
+            [e[0] as f32, e[1] as f32],
+        );
+        let n = sub_passos(dt, k, self.forca / self.pico.max(1e-3));
+        #[expect(clippy::cast_precision_loss, reason = "n ≤ MAX_SUB_PASSOS")]
+        let h = dt / n as f32;
         let mut v = s.vel;
         let mut q = s.valor;
-        for c in 0..2 {
-            v[c] = (v[c] + a[c] * dt) * keep;
-            q[c] += v[c] * dt;
+        for _ in 0..n {
+            let puxa = puxao.accel(q, alvo, 1.0);
+            let trava = ph2d_node_force_drag::arrasto(v, k, 1.0, [1.0; 2]);
+            for c in 0..2 {
+                v[c] += (puxa[c] + trava[c]) * h;
+                q[c] += v[c] * h;
+            }
         }
         // Um estado que divergiu fica onde estava (o `sim.step` faz o mesmo).
         if v.iter().chain(&q).all(|x| x.is_finite()) {

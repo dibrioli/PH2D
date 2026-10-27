@@ -16,6 +16,7 @@ ph2d-constraints = { path = "../ph2d-constraints" }
 ph2d-constraints-cola = { path = "../ph2d-constraints-cola" }
 ph2d-ecs = { path = "../ph2d-ecs" }
 ph2d-node-force-attractor = { path = "../ph2d-node-force-attractor" }
+ph2d-node-force-drag = { path = "../ph2d-node-force-drag" }
 ph2d-node-motion-falloff = { path = "../ph2d-node-motion-falloff" }
 ph2d-node-motion-oscillator = { path = "../ph2d-node-motion-oscillator" }
 ph2d-node-motion-orbit = { path = "../ph2d-node-motion-orbit" }

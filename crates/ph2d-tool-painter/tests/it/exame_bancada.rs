@@ -282,10 +282,43 @@ fn camada() -> bool {
     std::env::var("PH2D_EXAME_CAMADA").is_ok_and(|v| v == "1")
 }
 
-/// O Wet Paint fotografado com o **Óleo Real** ligado nos valores de fábrica (`PH2D_EXAME_OLEO=1`) — como o Rebelle
-/// com RealShader; sem ela, o composite das 18 aprovações.
-fn oleo_real() -> bool {
-    std::env::var("PH2D_EXAME_OLEO").is_ok_and(|v| v == "1")
+/// Quando o **Óleo Real** (valores de fábrica) entra na foto — como o Rebelle com RealShader.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Oleo {
+    /// Sem óleo: o composite das 18 aprovações.
+    Desligado,
+    /// Ligado antes do 1.º traço: o produto recompõe o óleo a cada evento e quadro (o caminho do app; 130–600 s
+    /// por foto da bateria).
+    Sempre,
+    /// A tinta sem óleo e a caixa ligada só NA FOTO: ligar recompõe a sessão inteira UMA vez. A mesma foto que
+    /// [`Oleo::Sempre`], ao byte (`a_foto_com_oleo_so_na_foto_e_a_de_sempre`).
+    NaFoto,
+}
+
+/// `PH2D_EXAME_OLEO=1` = [`Oleo::NaFoto`] (a bancada) · `=sempre` = [`Oleo::Sempre`] (o caminho lento, para medir) ·
+/// sem ela, [`Oleo::Desligado`].
+fn oleo() -> Oleo {
+    match std::env::var("PH2D_EXAME_OLEO").as_deref() {
+        Ok("1") => Oleo::NaFoto,
+        Ok("sempre") => Oleo::Sempre,
+        _ => Oleo::Desligado,
+    }
+}
+
+/// O relógio de parede de uma foto por fase (s): os traços (eventos + o tique de cada um), os `simula`, os `seca` e a
+/// foto (o `run_full`, e no [`Oleo::NaFoto`] a recomposição com o óleo).
+#[derive(Clone, Copy, Default, Debug)]
+pub struct Fases {
+    pub traco: f64,
+    pub simula: f64,
+    pub seca: f64,
+    pub foto: f64,
+}
+
+impl Fases {
+    fn total(&self) -> f64 {
+        self.traco + self.simula + self.seca + self.foto
+    }
 }
 
 /// A escala das faixas da base (`PH2D_EXAME_ESCALA_BASE`; por omissão a do pincel).
@@ -356,6 +389,25 @@ pub fn pinta_cena_com(
     foto: usize,
     camada: bool,
 ) -> (String, Vec<u8>) {
+    let mut fases = Fases::default();
+    pinta_cena_oleo(
+        pincel, base, cena, tela, papel, foto, camada, oleo(), &mut fases,
+    )
+}
+
+/// [`pinta_cena_com`] com o [`Oleo`] escolhido e o relógio de cada fase somado em `fases`.
+#[allow(clippy::too_many_arguments)]
+pub fn pinta_cena_oleo(
+    pincel: &Pincel,
+    base: Option<&Pincel>,
+    cena: &Value,
+    tela: [u32; 2],
+    papel: [u8; 3],
+    foto: usize,
+    camada: bool,
+    oleo: Oleo,
+    fases: &mut Fases,
+) -> (String, Vec<u8>) {
     let [w, h] = tela;
     let mut t = PainterTool::default();
     let alfa = if camada { 0 } else { 255 };
@@ -363,7 +415,7 @@ pub fn pinta_cena_com(
         .flat_map(|_| [papel[0], papel[1], papel[2], alfa])
         .collect();
     t.set_source(fundo, w, h);
-    if oleo_real() {
+    if oleo == Oleo::Sempre {
         t.set_wet_oleo_real_ligado(true);
     }
     let mut vistas = 0;
@@ -396,20 +448,32 @@ pub fn pinta_cena_com(
                     escala()
                 };
                 t.set_brush_size_px(op["size_px"].as_f64().unwrap() as f32 * e * 0.5);
+                let t0 = Instant::now();
                 traco(&mut t, op["pts"].as_array().unwrap());
+                fases.traco += t0.elapsed().as_secs_f64();
             }
             "simula" => {
+                let t0 = Instant::now();
                 for _ in 0..op["quadros"].as_u64().unwrap() {
                     t.on_tick(1000.0 / 60.0);
                 }
+                fases.simula += t0.elapsed().as_secs_f64();
             }
             "seca" => {
+                let t0 = Instant::now();
                 seca(&mut t, meio);
                 // O quadro seguinte ao clique: é nele que o produto recompõe a tela.
                 t.on_tick(1000.0 / 60.0);
+                fases.seca += t0.elapsed().as_secs_f64();
             }
             "foto" if vistas == foto => {
-                return (op["nome"].as_str().unwrap().to_owned(), t.run_full().0);
+                let t0 = Instant::now();
+                if oleo == Oleo::NaFoto {
+                    t.set_wet_oleo_real_ligado(true);
+                }
+                let px = t.run_full().0;
+                fases.foto += t0.elapsed().as_secs_f64();
+                return (op["nome"].as_str().unwrap().to_owned(), px);
             }
             "foto" => vistas += 1,
             o => panic!("op da bateria desconhecida: {o}"),
@@ -746,5 +810,173 @@ pub fn base_padrao(meio: PaintMedia, modo: Option<&str>) -> &'static str {
     match meio {
         PaintMedia::Digital => "Hard Round",
         _ => crate::receitas_de_fabrica::base_da_ferramenta(modo.unwrap_or("Paint")),
+    }
+}
+
+/// O `loadavg` de 1 min (a régua do relógio ao lado de cada número).
+fn carga() -> String {
+    std::fs::read_to_string("/proc/loadavg")
+        .unwrap_or_default()
+        .split_whitespace()
+        .next()
+        .unwrap_or("?")
+        .to_owned()
+}
+
+/// **Onde vai o tempo de uma foto com óleo** (a W3 E1): uma foto da bateria nas três variantes do [`Oleo`],
+/// intercaladas no MESMO processo (a ordem roda a cada ronda), relógio por fase, resumo = o MÍNIMO; e as fotos
+/// `Sempre` e `NaFoto` comparadas ao byte. `PH2D_EXAME_PRESETS` (um pincel; «Oil Bristle») · `PH2D_EXAME_CENAS`
+/// (uma cena; «gestos») · `PH2D_EXAME_FOTO` (0) · `PH2D_EXAME_RONDAS` (2) · `PH2D_EXAME_SEM_SEMPRE=1` salta a lenta.
+#[test]
+#[ignore = "bancada do EXAME: mede o custo do óleo por fase; corre-se à mão"]
+fn exame_oleo_fases() {
+    let spec = std::env::var("PH2D_EXAME_PRESETS").unwrap_or_else(|_| "Oil Bristle".into());
+    let pincel = pinceis(&spec).remove(0);
+    let base = pincel
+        .nao_pinta()
+        .then(|| pinceis(base_padrao(pincel.meio(), pincel.modo())).remove(0));
+    let nome = std::env::var("PH2D_EXAME_CENAS").unwrap_or_else(|_| "gestos".into());
+    let foto: usize = std::env::var("PH2D_EXAME_FOTO").map_or(0, |v| v.parse().unwrap());
+    let rondas: usize = std::env::var("PH2D_EXAME_RONDAS").map_or(2, |v| v.parse().unwrap());
+    let sem_sempre = std::env::var("PH2D_EXAME_SEM_SEMPRE").is_ok_and(|v| v == "1");
+    let bat = bateria();
+    let tela = [0, 1].map(|i| bat["tela"][i].as_u64().unwrap() as u32);
+    let papel = [0, 1, 2].map(|i| bat["papel"][i].as_u64().unwrap() as u8);
+    let cena = bat["cenas"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|c| c["nome"] == nome.as_str())
+        .unwrap_or_else(|| panic!("cena {nome}"));
+    let mut variantes = vec![Oleo::Desligado, Oleo::NaFoto];
+    if !sem_sempre {
+        variantes.push(Oleo::Sempre);
+    }
+    let mut minimo: Vec<Option<Fases>> = vec![None; variantes.len()];
+    let mut fotos: Vec<Option<u64>> = vec![None; variantes.len()];
+    for r in 0..rondas {
+        for k in 0..variantes.len() {
+            let i = (k + r) % variantes.len();
+            let mut f = Fases::default();
+            let l0 = carga();
+            let (_, px) = pinta_cena_oleo(
+                &pincel,
+                base.as_ref(),
+                cena,
+                tela,
+                papel,
+                foto,
+                false,
+                variantes[i],
+                &mut f,
+            );
+            println!(
+                "[oleo] ronda {r} {:?}: total {:.2} s · traço {:.2} · simula {:.2} · seca {:.2} · foto {:.2} (load {l0}→{})",
+                variantes[i],
+                f.total(),
+                f.traco,
+                f.simula,
+                f.seca,
+                f.foto,
+                carga()
+            );
+            let h = fnv1a(&px);
+            assert!(
+                fotos[i].is_none_or(|a| a == h),
+                "{:?} não é determinística",
+                variantes[i]
+            );
+            fotos[i] = Some(h);
+            let m = minimo[i].get_or_insert(f);
+            m.traco = m.traco.min(f.traco);
+            m.simula = m.simula.min(f.simula);
+            m.seca = m.seca.min(f.seca);
+            m.foto = m.foto.min(f.foto);
+        }
+    }
+    for (v, m) in variantes.iter().zip(&minimo) {
+        let m = m.unwrap();
+        println!(
+            "[oleo] MÍNIMO {v:?}: total {:.2} s · traço {:.2} · simula {:.2} · seca {:.2} · foto {:.2}",
+            m.total(),
+            m.traco,
+            m.simula,
+            m.seca,
+            m.foto
+        );
+    }
+    let total = |o: Oleo| minimo[variantes.iter().position(|&v| v == o).unwrap()].unwrap().total();
+    println!(
+        "[oleo] {} · {nome} foto {foto}: NaFoto ÷ Desligado = {:.2}×",
+        pincel.nome,
+        total(Oleo::NaFoto) / total(Oleo::Desligado)
+    );
+    if !sem_sempre {
+        assert_eq!(fotos[1], fotos[2], "a foto NaFoto difere da Sempre");
+        println!("[oleo] NaFoto == Sempre ao byte ✓");
+    }
+}
+
+/// Uma cena pequena com o que a bateria faz: o pincel da base, traços, água a correr, o «seca», a troca para o
+/// candidato por cima e as duas fotos (a molhada e a seca).
+fn cena_pequena() -> Value {
+    let linha = |x0: f64, y0: f64, x1: f64, y1: f64, n: usize| {
+        (0..=n)
+            .map(|i| {
+                let t = i as f64 / n as f64;
+                json!([x0 + (x1 - x0) * t, y0 + (y1 - y0) * t, 0.4 + 0.5 * t])
+            })
+            .collect::<Vec<_>>()
+    };
+    json!({"nome": "pequena", "ops": [
+        {"op": "pincel", "quem": "base"},
+        {"op": "cor", "rgb": [40, 70, 160]},
+        {"op": "traco", "size_px": 22, "pts": linha(12.0, 30.0, 148.0, 34.0, 34)},
+        {"op": "simula", "quadros": 20},
+        {"op": "seca"},
+        {"op": "pincel", "quem": "candidato"},
+        {"op": "cor", "rgb": [190, 70, 40]},
+        {"op": "traco", "size_px": 18, "pts": linha(30.0, 10.0, 120.0, 100.0, 30)},
+        {"op": "traco", "size_px": 26, "pts": linha(140.0, 70.0, 20.0, 80.0, 30)},
+        {"op": "simula", "quadros": 30},
+        {"op": "foto", "nome": "A"},
+        {"op": "seca"},
+        {"op": "foto", "nome": "B"},
+    ]})
+}
+
+/// ⛔ **A foto com o óleo composto SÓ NA FOTO é a foto de sempre, ao byte** (a W3 E1): a bancada pinta sem óleo e
+/// liga a caixa na foto — ligar recompõe a sessão inteira uma vez — em vez de o recompor a cada evento e quadro. Um
+/// pincel que pinta e uma ferramenta sobre a base (a troca de pincel a meio), a foto molhada e a seca; e o óleo
+/// MUDA a foto (sem isso, a igualdade passava com o óleo desligado nas duas).
+#[test]
+fn a_foto_com_oleo_so_na_foto_e_a_de_sempre() {
+    let cena = cena_pequena();
+    let (tela, papel) = ([160, 112], [236, 232, 222]);
+    let pares = [("Oil Bristle", None), ("Blender Soft", Some("Oil Bristle"))];
+    for (cand, base) in pares {
+        let p = pinceis(cand).remove(0);
+        let b = base.map(|b| pinceis(b).remove(0));
+        for foto in 0..2 {
+            let pinta = |o: Oleo| {
+                let mut f = Fases::default();
+                pinta_cena_oleo(&p, b.as_ref(), &cena, tela, papel, foto, false, o, &mut f).1
+            };
+            let (sempre, na_foto, sem) = (
+                pinta(Oleo::Sempre),
+                pinta(Oleo::NaFoto),
+                pinta(Oleo::Desligado),
+            );
+            assert_ne!(sempre, sem, "{cand} foto {foto}: o óleo não mudou a foto");
+            let dif = sempre
+                .iter()
+                .zip(&na_foto)
+                .filter(|(a, b)| a != b)
+                .count();
+            assert!(
+                sempre.len() == na_foto.len() && dif == 0,
+                "{cand} foto {foto}: {dif} bytes diferem entre o óleo de sempre e o só na foto"
+            );
+        }
     }
 }

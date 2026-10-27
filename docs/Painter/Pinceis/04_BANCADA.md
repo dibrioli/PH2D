@@ -47,6 +47,13 @@ calibração do limiar precisa deles (§4).
 medida: 5/40/200 → 5/40/200 ± 1 px na biblioteca); `simula N` = N tiques de 60 Hz; `foto` = o `run_full`.
 Relógio da água FIXO e semente 0: a mesma tinta duas vezes (medido: fnv iguais em duas corridas).
 
+**Óleo Real** (`PH2D_EXAME_OLEO=1`, W3 E1, 27/10): a cena pinta-se SEM o óleo e a caixa liga-se NA FOTO — ligar
+recompõe a sessão inteira uma vez —, em vez de o produto o recompor a cada evento e quadro (~1 700 composites por
+foto da bateria; 130–600 s por foto). A mesma foto ao byte: gate `a_foto_com_oleo_so_na_foto_e_a_de_sempre` (pincel e
+ferramenta sobre a base, foto molhada e seca; mutação «não liga na foto» vista vermelha: 43 474 bytes). O caminho lento
+continua por `PH2D_EXAME_OLEO=sempre`; o relógio por fase e as três variantes intercaladas: `exame_oleo_fases`
+(`--ignored`; `PH2D_EXAME_PRESETS`, `PH2D_EXAME_CENAS`, `PH2D_EXAME_FOTO`, `PH2D_EXAME_RONDAS`).
+
 ⚠️ **Uma corrida por FOTO.** O `run_full` é o Apply e LEVA a tela (`trait_impls_raster.rs`: `mem::replace` do
 `canvas_rgba`) — a 2.ª chamada devolvia 0 bytes. A foto B repinta a cena até ao fim; o motor é determinístico.
 

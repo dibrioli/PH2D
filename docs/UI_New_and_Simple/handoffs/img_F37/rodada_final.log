@@ -1,0 +1,8 @@
+ocupa: [ocupa] 13056 MiB ocupados, Some(1029) MiB livres; seguro 200 s
+antes cena41 placa-cheia nvidia=830 erros=283 (pid 2757443)
+depois cena41 placa-cheia nvidia=507 erros=0 (pid 2782525)
+depois cena41 placa-cheia nvidia=507 erros=0 (pid 2784369)
+antes cena41 placa-cheia nvidia=830 erros=287 (pid 2785356)
+depois cena1 placa-cheia nvidia=377 erros=0 (pid 2786948)
+depois cena41 livre nvidia=507 (pid 2787866)
+depois cena1 livre nvidia=377 (pid 2788409)

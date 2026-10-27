@@ -47,18 +47,19 @@ impl Perfil {
         Self::ALL.get(usize::from(tag)).copied().unwrap_or_default()
     }
 
-    /// ⭐ **O clique:** os números de fábrica deste perfil (unidades do mundo: px, graus, s).
+    /// ⭐ **O clique:** os números de fábrica deste perfil (unidades do mundo — metros, como o Motion —,
+    /// graus, segundos).
     #[must_use]
     pub const fn numeros(self) -> Comportamento {
         let base = Comportamento {
             perfil: self,
             onde: Onde::XY,
-            amplitude: 6.0,
-            frequencia: 2.0,
+            amplitude: 0.08,
+            frequencia: 3.0,
             semente: 0.0,
             velocidade: 90.0,
-            raio: 80.0,
-            forca: 900.0,
+            raio: 1.5,
+            forca: 40.0,
             amortece: 0.1,
             leva_rotacao: false,
             peso: None,
@@ -67,18 +68,24 @@ impl Perfil {
             Self::Tremer => base,
             Self::Flutuar => Comportamento {
                 onde: Onde::Y,
-                amplitude: 12.0,
+                amplitude: 0.25,
                 frequencia: 0.5,
                 ..base
             },
             Self::Orbitar => base,
             // O atrito máximo da lei do `sim.step`: puxa, passa do alvo uma vez e assenta.
             Self::Atrair => Comportamento {
-                raio: 300.0,
+                raio: 6.0,
                 amortece: 0.0,
                 ..base
             },
         }
+    }
+
+    /// EXIGE alvo? O Atrair sim; o Orbitar mostra-o mas não o exige (sem ele, o pivô).
+    #[must_use]
+    pub const fn mostra_alvo(self) -> bool {
+        matches!(self, Self::Orbitar | Self::Atrair)
     }
 
     /// Precisa de alvo? O Atrair sim; o Orbitar usa-o se houver (senão o pivô); os outros não.
@@ -117,7 +124,7 @@ pub struct Peso {
 pub struct Comportamento {
     pub perfil: Perfil,
     pub onde: Onde,
-    /// Px (ou graus em [`Onde::Rot`]) — Tremer e Flutuar.
+    /// Metros (ou graus em [`Onde::Rot`]) — Tremer e Flutuar.
     pub amplitude: f64,
     /// Hz — Tremer e Flutuar.
     pub frequencia: f64,
@@ -127,7 +134,7 @@ pub struct Comportamento {
     pub velocidade: f64,
     /// Orbitar sem alvo: a distância ao pivô. Atrair: o alcance da força.
     pub raio: f64,
-    /// Atrair: px/s² no centro.
+    /// Atrair: m/s² no centro.
     pub forca: f64,
     /// Atrair: a velocidade que fica ao fim de um segundo (`1` = sem atrito, a do `sim.step`).
     pub amortece: f64,

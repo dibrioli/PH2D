@@ -184,7 +184,7 @@ impl Kind {
     pub fn needs_target(&self) -> bool {
         // O Pivot mostra o alvo mas não o exige: sem ele, o pivô é o dono + o desvio.
         match self {
-            Self::Comportamento(c) => c.perfil.precisa_de_alvo(),
+            Self::Comportamento(c) => c.perfil.mostra_alvo(),
             _ => !matches!(self, Self::Limit(_) | Self::Spring(_)),
         }
     }

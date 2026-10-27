@@ -102,7 +102,8 @@ fn escalar(s: &Stream, c: &str) -> f32 {
 
 fn de(perfil: Perfil) -> Comportamento {
     Comportamento {
-        semente: 3.0,
+        // Fora da grelha: uma fase inteira de ciclos seria invisível.
+        semente: 3.25,
         ..perfil.numeros()
     }
 }
@@ -112,7 +113,11 @@ fn de(perfil: Perfil) -> Comportamento {
 fn each_behaviour_is_its_motion_node_bit_for_bit() {
     for t in [0.0, 0.37, 1.25, 7.9] {
         let tr = de(Perfil::Tremer);
-        let ruido = [("amplitude", 6.0), ("frequency", 2.0), ("seed", 3.0)];
+        let ruido = [
+            ("amplitude", tr.amplitude as f32),
+            ("frequency", tr.frequencia as f32),
+            ("seed", tr.semente as f32),
+        ];
         let xy = cozinha(
             "motion.wiggle",
             &[ruido.as_slice(), &[("channel", 4.0)]].concat(),
@@ -138,9 +143,9 @@ fn each_behaviour_is_its_motion_node_bit_for_bit() {
             "motion.oscillator",
             &[
                 ("channel", 1.0),
-                ("amplitude", 12.0),
+                ("amplitude", 0.25),
                 ("frequency", 0.5),
-                ("phase", 3.0),
+                ("phase", 3.25),
             ],
             [0.0; 2],
             t,
@@ -151,7 +156,7 @@ fn each_behaviour_is_its_motion_node_bit_for_bit() {
         let p = [40.0, -12.0];
         let volta = cozinha(
             "motion.orbit",
-            &[("pivot_x", 5.0), ("pivot_y", 7.0), ("speed", 90.0)],
+            &[("pivot_x", 5.0), ("pivot_y", 7.0), ("speed", or.velocidade as f32)],
             p,
             t,
         );
@@ -192,12 +197,12 @@ fn the_weight_is_the_falloff_field_bit_for_bit() {
 #[test]
 fn the_attract_force_is_the_attractor_law_bit_for_bit() {
     let lei = Atracao::from(&Perfil::Atrair.numeros());
-    for p in [[0.0, 0.0], [120.0, -30.0], [299.0, 0.0], [400.0, 0.0]] {
+    for p in [[0.0, 0.0], [3.0, -1.5], [15.9, 20.0], [40.0, 0.0]] {
         let s = cozinha(
             "force.attractor",
             &[
-                ("strength", 900.0),
-                ("radius", 300.0),
+                ("strength", 40.0),
+                ("radius", 6.0),
                 ("target_x", 10.0),
                 ("target_y", 20.0),
             ],
@@ -256,7 +261,7 @@ fn a_behaviour_moves_any_object_by_its_node() {
 /// ⭐ O Atrair puxa o dono para o alvo com estado — e arrastar a timeline para trás dá o bit de tocar.
 #[test]
 fn attract_scrubs_to_the_same_bit() {
-    let (mut sim, _, _) = mundo(0.0, [200.0, 0.0], Perfil::Atrair.numeros(), true);
+    let (mut sim, _, _) = mundo(0.0, [4.0, 0.0], Perfil::Atrair.numeros(), true);
     let mut drive = PreviewDrive::default();
     let doc = TimelineDoc::new();
     let fps = doc.fps_display;
@@ -264,8 +269,7 @@ fn attract_scrubs_to_the_same_bit() {
         .map(|f| em(&mut sim, &mut drive, &doc, f as f64 / fps).translation.x)
         .collect();
     assert_eq!(tocado[0], 0.0, "no quadro 0 parte do repouso");
-    assert!(tocado[20] > 20.0, "puxado para o alvo: {}", tocado[20]);
-    assert!(tocado[39] > 150.0, "chega ao alvo: {tocado:?}");
+    assert!(tocado[39] > 3.0, "chega ao alvo: {tocado:?}");
     for f in [12, 3, 31] {
         let x = em(&mut sim, &mut drive, &doc, f as f64 / fps).translation.x;
         assert_eq!(x.to_bits(), tocado[f].to_bits(), "quadro {f}");
@@ -275,7 +279,7 @@ fn attract_scrubs_to_the_same_bit() {
 /// Sem alvo, o Atrair fica inerte com a frase do alvo.
 #[test]
 fn attract_without_a_target_is_inert_with_a_reason() {
-    let (mut sim, a, id) = mundo(0.0, [200.0, 0.0], Perfil::Atrair.numeros(), false);
+    let (mut sim, a, id) = mundo(0.0, [4.0, 0.0], Perfil::Atrair.numeros(), false);
     let mut drive = PreviewDrive::default();
     let doc = TimelineDoc::new();
     let _ = em(&mut sim, &mut drive, &doc, 0.5);
@@ -330,7 +334,7 @@ fn one_click_applies_the_factory_profile() {
         assert_eq!(c.items[0].kind, Kind::Comportamento(perfil.numeros()));
         assert_eq!(
             ph2d_app_constraints::inspector::armado(&sim),
-            perfil == Perfil::Atrair,
+            perfil.mostra_alvo(),
             "{perfil:?}"
         );
     }
@@ -376,11 +380,35 @@ fn picking_the_weight_object_writes_it_and_clear_removes_it() {
         panic!("tipo");
     };
     assert_eq!(c.peso.map(|p| p.objecto), Some(1));
-    assert_eq!(c.peso.map(|p| p.raio), Some(150.0));
+    assert_eq!(c.peso.map(|p| p.raio), Some(2.0));
     assert!(linha(&sim).nome.is_some());
     assert!(apply_all(&mut sim, &[(dono, E::LargarPeso(id))]));
     assert_eq!(linha(&sim).nome, None);
     apply_all(&mut sim, &[(dono, E::EscolherPeso(id))]);
     assert_eq!(escolher_alvo(&mut sim, &[], [0.0; 2]), Escolha::Desistiu);
     assert!(!armado(&sim));
+}
+
+/// O passo do Atrair é o semi-implícito do `sim.step` — velocidade, atrito linear, posição com a
+/// velocidade NOVA —, transcrito à parte para o fixar.
+#[test]
+fn attract_steps_like_the_sim_step() {
+    use ph2d_constraints_ecs::{Dinamica, Simulador};
+    let lei = Atracao::from(&Perfil::Atrair.numeros());
+    let fps = 24.0;
+    let dt = (1.0 / fps) as f32;
+    let keep = 1.0 - (1.0 - lei.amortece as f32) * dt;
+    let alvo = [4.0_f64, 1.0];
+    let (mut v, mut q) = ([0.0_f32; 2], [0.0_f32; 2]);
+    let mut sim: Simulador<2> = Simulador::default();
+    for f in 1..30 {
+        let a = lei.puxao().accel(q, alvo.map(|x| x as f32), 1.0);
+        for c in 0..2 {
+            v[c] = (v[c] + a[c] * dt) * keep;
+            q[c] += v[c] * dt;
+        }
+        let got = sim.corre(f, lei, fps, &mut |_| alvo);
+        assert_eq!(got, q.map(f64::from), "quadro {f}");
+    }
+    let _ = lei.angular();
 }

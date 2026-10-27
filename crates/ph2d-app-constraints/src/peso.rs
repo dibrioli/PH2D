@@ -19,7 +19,7 @@ pub struct PesoArmado(pub Option<(u64, u32)>);
 /// O peso de fábrica ao escolher o objecto: cai de 1 em cima dele a 0 a este raio, Smooth.
 const PESO_NOVO: Peso = Peso {
     objecto: 0,
-    raio: 150.0,
+    raio: 2.0,
     curva: 2,
     inverte: false,
 };

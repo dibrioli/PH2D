@@ -412,3 +412,135 @@ fn a_luz_do_ceu_guardada_e_a_de_sempre() {
         }
     }
 }
+
+/// Referência INDEPENDENTE da média gaussiana renormalizada de `f` em `[lo, hi]` à volta de `c` (desvio `s`).
+fn gauss_ref(c: usize, lo: usize, hi: usize, s: f64, f: &dyn Fn(usize) -> f64) -> f64 {
+    if s < 0.25 {
+        return f(c);
+    }
+    let r = (3.0 * s).ceil() as usize;
+    let (mut acc, mut pes) = (0.0, 0.0);
+    for i in c.saturating_sub(r).max(lo)..=(c + r).min(hi) {
+        let d = i as f64 - c as f64;
+        let p = (-0.5 * d * d / (s * s)).exp();
+        acc += p * f(i);
+        pes += p;
+    }
+    acc / pes
+}
+
+/// W3 fecho ⭐ **A lei da Subsurface em VALOR** (`oraculo/README.md` §M-SSS): numa cena que varia em x e em y, com o
+/// raio PRÓPRIO de cada célula (2 / 8 / 30 → o tecto 16) e uma janela que não é a grade, o que a célula recebe é
+/// `max(0, B_c − E)` com `B_c` a gaussiana separável de desvio `raio × (1; 0,2; 0,1)` (o raio da célula em cada
+/// passagem), contada à mão aqui. Apanha o perfil trocado entre canais (G↔B, ou o desvio da 2.ª passagem com o
+/// canal trocado), o raio do cartão em vez do da célula, o `max(0, ·)` tirado, o tecto ignorado e a janela
+/// encolhida pelo raio MÍNIMO em vez do máximo — o que a zona-zero e a energia (cena só em x) deixavam passar.
+#[test]
+fn a_subsuperficie_e_a_gaussiana_por_canal_do_raio_da_celula() {
+    let mut g = grade(|x, y| {
+        if (26..=34).contains(&x) && (30..=40).contains(&y) {
+            9000.0
+        } else {
+            3000.0
+        }
+    });
+    let s = g.s;
+    for (i, m) in crate::grid::material::garante(&mut g)
+        .iter_mut()
+        .enumerate()
+    {
+        let (x, y) = (i % s, i / s);
+        m.raio_subsuperficie = if (29..=33).contains(&x) && (29..=33).contains(&y) {
+            30.0
+        } else if x <= 40 {
+            2.0
+        } else {
+            8.0
+        };
+    }
+    let mut k = MaterialCartao::NEUTRO;
+    k.subsuperficie = 1.0;
+    let o = com(k);
+    let (x0, y0, x1, y1) = (24, 24, 44, 44);
+    let c = CampoAltura::de(&[(&g, true)], &o, 1, x0, y0, x1, y1);
+    let mut e = vec![0f64; (W + 2) * (W + 2)];
+    for y in 1..=W {
+        for x in 1..=W {
+            let (cx, cy) = (x as isize, y as isize);
+            e[x + y * (W + 2)] = irradiancia(&o, &c, cx, cy, &luz_ceu(&o, &c, cx, cy));
+        }
+    }
+    let sigma = |x: usize, y: usize| {
+        let r = efectivo(&c.material_em(x, y), &o.material)
+            .raio_subsuperficie
+            .clamp(0.0, 16.0);
+        [r * 1.0, r * 0.2, r * 0.1]
+    };
+    let (mut positivas, mut sob_a_media) = (0, 0);
+    for y in y0..=y1 {
+        for x in x0..=x1 {
+            let sg = sigma(x, y);
+            for ch in 0..3 {
+                let b = gauss_ref(y, 1, W, sg[ch], &|j| {
+                    gauss_ref(x, 1, W, sigma(x, j)[ch], &|i| e[i + j * (W + 2)])
+                });
+                let e0 = e[x + y * (W + 2)];
+                let esperado = f64::from((b - e0).max(0.0) as f32);
+                let tem = c.subsuperficie_em(x, y)[ch];
+                assert!(
+                    (tem - esperado).abs() <= 1e-5 * (1.0 + esperado.abs()),
+                    "({x}, {y}) canal {ch}: {tem} × {esperado}"
+                );
+                positivas += usize::from(esperado > 1e-3);
+                sob_a_media += usize::from(b - e0 < -1e-3);
+            }
+        }
+    }
+    assert!(positivas > 100, "a cena não enche nada: {positivas}");
+    assert!(
+        sob_a_media > 30,
+        "a cena não tem célula mais clara que a vizinhança: {sob_a_media}"
+    );
+}
+
+/// W3 fecho ⭐ **A regra do cartão em valor nos quatro de produto** (`célula × cartão / neutro`): com a célula FORA do
+/// neutro e o cartão FORA do padrão, IOR Level, Coat Roughness e Subsurface Radius saem do produto normalizado (o
+/// `max` de dois dá outro número), tal como a Roughness.
+#[test]
+fn o_cartao_combina_o_produto_normalizado_nos_quatro_de_razao() {
+    let cel = mat(|m| {
+        m.rugosidade = 0.25;
+        m.nivel_ior = 0.25;
+        m.verniz_rugosidade = 0.1;
+        m.raio_subsuperficie = 2.0;
+    });
+    let k = MaterialCartao {
+        rugosidade: 0.56,
+        nivel_ior: 0.75,
+        verniz_rugosidade: 0.06,
+        raio_subsuperficie: 8.0,
+        ..MaterialCartao::NEUTRO
+    };
+    let e = efectivo(&cel, &k);
+    let perto = |a: f64, b: f64| (a - b).abs() < 1e-6;
+    assert!(
+        perto(e.rugosidade, 0.28),
+        "0,56 × 0,25 / 0,5: {}",
+        e.rugosidade
+    );
+    assert!(
+        perto(e.nivel_ior, 0.375),
+        "0,75 × 0,25 / 0,5: {}",
+        e.nivel_ior
+    );
+    assert!(
+        perto(e.verniz_rugosidade, 0.2),
+        "0,06 × 0,1 / 0,03: {}",
+        e.verniz_rugosidade
+    );
+    assert!(
+        perto(e.raio_subsuperficie, 4.0),
+        "8 × 2 / 4: {}",
+        e.raio_subsuperficie
+    );
+}

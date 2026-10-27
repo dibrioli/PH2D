@@ -13,5 +13,6 @@ mod o_cartao;
 mod o_gizmo;
 mod o_olhar;
 mod o_ponto;
+mod kill_w5;
 mod o_valor;
 mod pegar_e_largar;

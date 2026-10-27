@@ -53,12 +53,18 @@ fn a_value_follows_another_value_through_the_range() {
     let mut drive = PreviewDrive::default();
     quadro_em(&mut sim, &mut drive, None);
     let rot = sim.world().get::<Transform>(a).unwrap().rotation;
-    assert!((f64::from(rot) - std::f64::consts::FRAC_PI_4).abs() < 1e-6, "{rot}");
+    assert!(
+        (f64::from(rot) - std::f64::consts::FRAC_PI_4).abs() < 1e-6,
+        "{rot}"
+    );
     // Fora da faixa apara (sem extrapolar).
     por_y(&mut sim, 7.0);
     quadro_em(&mut sim, &mut drive, None);
     let rot = sim.world().get::<Transform>(a).unwrap().rotation;
-    assert!((f64::from(rot) - std::f64::consts::FRAC_PI_2).abs() < 1e-6, "{rot}");
+    assert!(
+        (f64::from(rot) - std::f64::consts::FRAC_PI_2).abs() < 1e-6,
+        "{rot}"
+    );
 }
 
 /// O destino é um CAMPO (a força da Spring do próprio dono): chega ao dreno da família no mesmo
@@ -78,7 +84,14 @@ fn a_followed_field_is_a_preview_never_the_document() {
     let mut drive = PreviewDrive::default();
     canais::publicar(&mut sim, &[a.to_bits()]);
     quadro_em(&mut sim, &mut drive, None);
-    let forca = |sim: &SimWorld| sim.world().get::<Constraints>(a).unwrap().item(s).unwrap().influence;
+    let forca = |sim: &SimWorld| {
+        sim.world()
+            .get::<Constraints>(a)
+            .unwrap()
+            .item(s)
+            .unwrap()
+            .influence
+    };
     assert!((forca(&sim) - 0.25).abs() < 1e-6, "{}", forca(&sim));
     let vivo = drive.fields.substitute(&mut sim);
     assert_eq!(forca(&sim), 1.0, "o documento guarda o autorado");
@@ -106,7 +119,15 @@ fn a_springy_value_rides_the_spring_and_scrubs_to_the_same_bit() {
     for f in 0..40 {
         por_y(&mut sim, fonte(f) as f32);
         let t = f as f64 / fps;
-        quadro_em(&mut sim, &mut drive, Some(Relogio { doc: &doc, t, laco: None }));
+        quadro_em(
+            &mut sim,
+            &mut drive,
+            Some(Relogio {
+                doc: &doc,
+                t,
+                laco: None,
+            }),
+        );
         tocado.push(sim.world().get::<Transform>(a).unwrap().rotation);
     }
     let lei = Lei {
@@ -122,10 +143,21 @@ fn a_springy_value_rides_the_spring_and_scrubs_to_the_same_bit() {
         assert_eq!(*got, esperado as f32, "quadro {f}");
     }
     let parado = tocado[39];
-    assert!(tocado.iter().any(|r| *r > parado * 1.01), "a mola passa do alvo");
+    assert!(
+        tocado.iter().any(|r| *r > parado * 1.01),
+        "a mola passa do alvo"
+    );
     // Arrastar para trás, para o quadro 12: o bit de tocar.
     let t = 12.0 / fps;
-    quadro_em(&mut sim, &mut drive, Some(Relogio { doc: &doc, t, laco: None }));
+    quadro_em(
+        &mut sim,
+        &mut drive,
+        Some(Relogio {
+            doc: &doc,
+            t,
+            laco: None,
+        }),
+    );
     let r = sim.world().get::<Transform>(a).unwrap().rotation;
     assert_eq!(r.to_bits(), tocado[12].to_bits());
 }

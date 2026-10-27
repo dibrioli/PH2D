@@ -6,9 +6,9 @@
 use bevy_ecs::entity::Entity;
 use ph2d_constraints::{Kind, Prop, Valor};
 use ph2d_constraints_ecs::{Constraints, Lei, Valores, ordem, pose};
-use ph2d_ecs::{
-    CanaisEscritos, CanaisLidos, FieldKey, SimWorld, World, entity_with_stable_id, world_transform,
-};
+use std::collections::{BTreeMap, BTreeSet};
+
+use ph2d_ecs::{CanaisEscritos, CanaisLidos, FieldKey, SimWorld, StableId, World, world_transform};
 
 use crate::relogio::Relogio;
 
@@ -60,18 +60,32 @@ pub fn valores(sim: &mut SimWorld, relogio: Option<Relogio<'_>>) {
         .into_iter()
         .filter_map(|e| Some((e, w.get::<Constraints>(e)?)))
         .flat_map(|(e, c)| {
-            c.items.iter().filter(|it| it.enabled).filter_map(move |it| match it.kind {
-                Kind::Valor(v) => Some((e, it.id, v, it.target, it.influence)),
-                _ => None,
-            })
+            c.items
+                .iter()
+                .filter(|it| it.enabled)
+                .filter_map(move |it| match it.kind {
+                    Kind::Valor(v) => Some((e, it.id, v, it.target, it.influence)),
+                    _ => None,
+                })
         })
         .collect();
-    vs.sims.retain(|k, _| itens.iter().any(|i| (i.0.to_bits(), i.1) == *k));
-    vs.historia.retain(|k, _| itens.iter().any(|i| (i.0.to_bits(), i.1) == *k));
+    let vivos: BTreeSet<(u64, u32)> = itens.iter().map(|i| (i.0.to_bits(), i.1)).collect();
+    vs.sims.retain(|k, _| vivos.contains(k));
+    vs.historia.retain(|k, _| vivos.contains(k));
+    let alvos: BTreeSet<StableId> = itens.iter().filter_map(|i| i.3).collect();
+    let idx: BTreeMap<StableId, Entity> = if alvos.is_empty() {
+        BTreeMap::new()
+    } else {
+        let mut q = w.query::<(Entity, &StableId)>();
+        q.iter(w)
+            .filter(|(_, s)| alvos.contains(s))
+            .map(|(e, s)| (*s, e))
+            .collect()
+    };
     for (e, id, v, target, influence) in itens {
         let chave_item = (e.to_bits(), id);
         {
-            let Some(alvo) = target.and_then(|s| entity_with_stable_id(w, s)) else {
+            let Some(&alvo) = target.and_then(|s| idx.get(&s)) else {
                 continue;
             };
             let fonte = match v.fonte {

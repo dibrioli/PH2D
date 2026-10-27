@@ -43,12 +43,11 @@ pub(crate) fn apply_event(
             if rows::SECTIONS.iter().any(|s| s.header == id)
                 || id == ph2d_tool_painter::ids::WET_TUNING_GROUP_HEADERS[4] =>
         {
-            seam_reset_button(host, id);
-            // ⚠️ A PORTA ÚNICA — este bloco era `set_collapsed(id, !is_collapsed(id))` escrito à
-            //    mão, que é literalmente o corpo do `toggle_collapsed`. Três cópias privadas da
-            //    mesma pergunta, e a que sabe que uma dobra tem PARTIDA (o `t` de onde ela vem)
-            //    é a porta — pela cópia, a estreia de cada secção destes painéis saltaria.
-            host.store_mut().toggle_collapsed(id);
+            // ⭐⭐ **A dobra já foi feita pelo DESPACHO** (27/10, o molde da Física): o cabeçalho é uma
+            //    secção dobrável da casa (`mark_collapsible_section`, no `populate`), e o `apply_click`
+            //    dobra-a pela porta `toggle_collapsed` ANTES de emitir este `Click`. ⛔ Dobrar outra
+            //    vez aqui desfazia o clique — o braço fica só para CONSUMIR o evento.
+            let _ = host;
             true
         }
         // Per-knob reset / group reset / the PAPER eye / the K–M checkboxes:

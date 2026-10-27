@@ -51,15 +51,19 @@ pub fn populate(store: &mut WidgetStore) {
         store.set_number_range(row.chip, row.min, row.max, row.step);
         button(store, row.reset);
     }
+    // ⭐⭐ **Um cabeçalho é uma secção DOBRÁVEL da casa** (`mark_collapsible_section`), sem estado de
+    //    botão — o cânone da Física (24/09): o `apply_click` do despacho dobra-o e ainda emite o `Click`.
+    //    Registados como `Button`, os onze cabeçalhos liam-se como onze COMANDOS na catraca
+    //    `a_carga_de_comandos_de_um_painel_so_encolhe` (27/10: `26` contra `16`).
     for section in rows::SECTIONS {
-        button(store, section.header);
+        store.mark_collapsible_section(section.header);
         button(store, section.reset);
         // Os avançados (25/10) nascem dobrados — pela porta que não pisa a escolha do artista.
         if ph2d_tool_painter::ids::WET_TUNING_GRUPOS_AVANCADOS.contains(&section.group) {
             store.set_collapsed_if_unchosen(section.header, true);
         }
     }
-    button(store, ph2d_tool_painter::ids::WET_TUNING_GROUP_HEADERS[4]); // Experimental fold
+    store.mark_collapsible_section(crate::plano::EXPERIMENTAL);
     button(store, ph2d_tool_painter::ids::WET_TUNING_KM_MIXING);
     button(store, ph2d_tool_painter::ids::WET_TUNING_KM_GLAZE);
     button(store, ph2d_tool_painter::ids::WET_TUNING_CLOSE);

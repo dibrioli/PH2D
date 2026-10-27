@@ -11,9 +11,9 @@
 //! razão que prende a Máscara do Painter), e nenhum vive dentro de outro. ⚠️ O repor de cada grupo
 //! mora NO cabeçalho e viaja com ele — encostado à esquerda da pega.
 //!
-//! ⚠️ **O painel tem a SUA dobra** (o `event` despacha o clique do título como `toggle_collapsed`),
-//! e ela continua a valer: o livro do quadro regista o título sob o MESMO id da secção, que é o que
-//! o despacho do botão esquerdo lê.
+//! ⚠️ **A dobra é a da CASA** (27/10, o molde da Física): o título é uma secção dobrável
+//! (`mark_collapsible_section`) e o `apply_click` do despacho dobra-a; o livro do quadro regista o
+//! título sob o MESMO id da secção, que é o que o despacho do botão esquerdo lê.
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::panel::PaintCtx;

@@ -134,8 +134,36 @@ fn os_grupos_avancados_nascem_dobrados() {
         assert_eq!(host.store().is_collapsed(s.header), avancado, "{}", s.label);
     }
     let bristles = rows::SECTIONS[5].header;
-    let _ = host.apply_panel_event::<WetTuningPanel>(&mut st, WidgetEvent::Click(bristles));
+    let _ = click_header(&mut host, &mut st, bristles);
     assert!(!host.store().is_collapsed(bristles));
+}
+
+/// ⭐⭐ **O clique vai pelo DESPACHO REAL, no centro do cabeçalho pintado** (27/10, o molde da Física):
+/// o cabeçalho é uma secção dobrável da casa (`mark_collapsible_section`), e quem dobra é o
+/// `apply_click` do despacho, ANTES de emitir o `Click`. Um `Click` empurrado à mão para o painel salta
+/// essa metade e mediria o painel a NÃO dobrar. Devolve o desfecho do `Click` do cabeçalho no painel.
+fn click_header(
+    host: &mut MockPanelHost,
+    st: &mut state::WetTuningPanelState,
+    header: ph2d_a11y::NodeId,
+) -> EventOutcome {
+    set_current_brush(Some(PainterTool::default().brush_settings()));
+    host.set_panel_visible(WetTuningPanel::ID, true);
+    let painted = host.paint::<WetTuningPanel>(st, Rect::new(0.0, 0.0, 1600.0, 4400.0));
+    let r = painted
+        .iter()
+        .rev()
+        .find(|(id, _)| *id == header)
+        .map(|(_, r)| *r)
+        .expect("o cabeçalho não foi pintado");
+    let mut out = EventOutcome::Ignored;
+    for ev in host.click_at(r.x + r.w * 0.5, r.y + r.h * 0.5) {
+        let e = host.apply_panel_event::<WetTuningPanel>(st, ev);
+        if matches!(ev, WidgetEvent::Click(c) if c == header) {
+            out = e;
+        }
+    }
+    out
 }
 
 /// A header click folds the section LOCALLY (no bus traffic — the shell has
@@ -146,7 +174,7 @@ fn a_header_click_folds_locally() {
     let header = rows::SECTIONS[0].header;
     assert!(!host.store().is_collapsed(header));
     assert_eq!(
-        host.apply_panel_event::<WetTuningPanel>(&mut st, WidgetEvent::Click(header)),
+        click_header(&mut host, &mut st, header),
         EventOutcome::Consumed
     );
     assert!(host.store().is_collapsed(header));

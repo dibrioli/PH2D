@@ -1118,7 +1118,11 @@ const CARGA_DE_COMANDOS: &[(&str, usize)] = &[
     // ⛔ **`16`** comandos (eram 17 até a W1e tirar o grupo PAPER, 09/10; 14 → 16 a 11/10, ordem do dono:
     //    o RELEVO da tinta volta como a secção Relief — o reset do Emboss e o do grupo): a fábrica derivada
     //    dele vive noutra crate (`ph2d_tool_painter::ids::wet_tuning_reset_id`) — um *Reset* por botão.
-    ("wet_tuning", 16),
+    // ⬇️ `16 → 15` em 2026-10-27 (Óleo Real W2): os quatro grupos avançados (25/10) e o Material (E3-A)
+    //    tinham levado a conta a `24` e `26` — cada secção nova pagava DOIS (o reset e o CABEÇALHO, registado
+    //    como `Button`). Os onze cabeçalhos passaram a secções dobráveis da casa (`mark_collapsible_section`,
+    //    o molde da Física de 24/09); ficam os dez resets de grupo, o fecho e a coluna dos resets por botão.
+    ("wet_tuning", 15),
     // ⬇️ `49 → 4` em 2026-09-24 (*«Arrumar»* os painéis, depois do Vector): `36` eram as células da
     //    matriz de camadas (um VALOR, hoje declarado composto como a grelha de bits do Inspector) e
     //    `8` os cabeçalhos de secção, registados como `Button` em vez de secções dobráveis da casa.

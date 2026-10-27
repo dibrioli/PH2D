@@ -72,10 +72,10 @@ fn a_renderer_rebuilt_after_out_of_memory_still_draws_the_registered_textures() 
     let depois = vp
         .render_and_readback(&gpu, &cena, tela)
         .expect("render refeito");
+    let (a_refazer, refeitos) = vp.estado_do_renderer();
     assert!(
-        vp.refazer_em.is_none() && vp.refeitos == 1,
-        "a entrega depois da falta devia refazer o renderer UMA vez e sair sã ({} refeitos)",
-        vp.refeitos
+        !a_refazer && refeitos == 1,
+        "a entrega depois da falta devia refazer o renderer UMA vez e sair sã ({refeitos} refeitos)"
     );
     assert_eq!(
         vermelho_em(&depois),
@@ -157,7 +157,7 @@ fn sonda_da_placa_cheia() {
             ),
             Err(e) => e.clone(),
         },
-        vp.refeitos,
+        vp.estado_do_renderer().1,
         t.elapsed()
     );
 }

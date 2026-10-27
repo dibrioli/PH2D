@@ -119,6 +119,7 @@ mod texture_clear;
 pub mod tonemap;
 mod vello_fundo;
 mod vello_keepalive;
+mod vello_partilhado;
 pub mod vello_pass;
 pub mod world_rt;
 

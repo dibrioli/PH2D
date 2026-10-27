@@ -586,6 +586,57 @@ pub(super) fn tabela_de_largura(p: &Preset) -> Vec<[f64; 2]> {
         .collect()
 }
 
+/// **A promessa na ponta da tabela**: a lei crua ONDULA de raio para raio e 64 pontos interpolam a ondulação (Knife
+/// Oily raio 300: o motor 859 entre os pontos 803→573 e 892→616 pintava 614 px por 600, +2,3 %). Mede-se a promessa nos
+/// [`RAIOS_DA_PROMESSA`]; onde passa de ¾ da tolerância, o ponto MEDIDO (raio do motor → largura que o slider deu) entra
+/// na tabela, no seu lugar, e repete-se (≤ 3 rondas). Tabela que já cumpre fica como está.
+fn refina_a_promessa(p: &mut Preset) {
+    let com_grao = p
+        .parametros
+        .brush
+        .get("texture")
+        .and_then(|t| t.get("kind"))
+        .is_some_and(|k| k != "None");
+    let rel = if com_grao {
+        TOLERANCIA_REL_GRAO
+    } else {
+        TOLERANCIA_REL
+    };
+    for _ in 0..3 {
+        let medidas: Vec<(f32, f32, f32)> = std::thread::scope(|s| {
+            let h: Vec<_> = RAIOS_DA_PROMESSA
+                .iter()
+                .map(|&r| {
+                    let p = &*p;
+                    s.spawn(move || {
+                        let motor = raio_do_motor_da_tabela(&p.parametros.width_table, r);
+                        (r, motor, largura_de_com(p, r, false, Relogio::DeUmaVez))
+                    })
+                })
+                .collect();
+            h.into_iter().map(|h| h.join().unwrap()).collect()
+        });
+        let mut mudou = false;
+        for (r, motor, l) in medidas {
+            let pedido = 2.0 * r;
+            if (l - pedido).abs() <= 0.75 * TOLERANCIA_PX.max(rel * pedido) {
+                continue;
+            }
+            let t = &mut p.parametros.width_table;
+            let m = f64::from(motor);
+            if t.iter().any(|&[r0, _]| (r0 - m).abs() < 0.05) {
+                continue;
+            }
+            let k = t.partition_point(|&[r0, _]| r0 < m);
+            t.insert(k, [format!("{motor}").parse().unwrap(), f64::from(l)]);
+            mudou = true;
+        }
+        if !mudou {
+            break;
+        }
+    }
+}
+
 #[test]
 #[ignore = "gerador: escreve assets/brushes/<motor do meio> (PH2D_REGERA_PRESETS=1)"]
 fn gera_os_presets_de_fabrica() {
@@ -632,6 +683,7 @@ fn gera_os_presets_de_fabrica() {
         // `PH2D_REGERA_SO_MINIATURA=1`: a tabela do ficheiro fica (só a miniatura, quando a lei da largura não mudou).
         if std::env::var("PH2D_REGERA_SO_MINIATURA").as_deref() != Ok("1") {
             preset.parametros.width_table = tabela_de_largura(&preset);
+            refina_a_promessa(&mut preset);
         }
         if r.nome == "Wet Round" {
             // A tabela que o motor embute (`wetpaint/largura.rs::LARGURA_DO_WET_ROUND`), já limpa.

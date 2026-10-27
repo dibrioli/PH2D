@@ -61,7 +61,7 @@ fn aplica(
 fn com(s: PixelShape, i: usize, v: f64) -> PixelRequest {
     let mut o = PixelOptions::default();
     o.shapes.set(s, o.shapes.get(s).with(i, v));
-    PixelRequest::Options(o)
+    PixelRequest::Options(Box::new(o))
 }
 
 /// O raio do Vector é de MUNDO: no Pixel todo campo em píxeis nasce a zero (o canto vivo do
@@ -149,7 +149,7 @@ fn the_four_shapes_have_fill_and_no_shape_field_paints_without_a_shape() {
         };
         assert_eq!(
             aplica(&mut host, &mut st, ev),
-            [EditorAction::Pixel(PixelRequest::Options(quer))]
+            [EditorAction::Pixel(PixelRequest::Options(Box::new(quer)))]
         );
     }
     let (_, _, rects) = pinta(info(PixelTool::Pencil));

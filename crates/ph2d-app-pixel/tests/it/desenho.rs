@@ -310,7 +310,7 @@ fn the_spray_keeps_spraying_while_held_and_the_panel_options_reach_the_family() 
     let (mut app, mut sim, mut cam, bits) = born();
     let mut o = app.options;
     o.spray_speed = 4;
-    app.aplica(PixelRequest::Options(o));
+    app.aplica(PixelRequest::Options(Box::new(o)));
     assert_eq!(app.options, o);
     app.tool = Tool::Spray;
     press(&mut app, &sim, &cam, bits, (16, 16), Mods::default());

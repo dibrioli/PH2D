@@ -47,7 +47,7 @@ pub(crate) fn colunas_em(w: f32) -> usize {
         reason = "quantas colunas cabem, ≥ 0"
     )]
     let n = (w / min).floor().max(0.0) as usize;
-    n.max(1).min(COLUNAS)
+    n.clamp(1, COLUNAS)
 }
 
 /// A largura das propriedades com `n` colunas.

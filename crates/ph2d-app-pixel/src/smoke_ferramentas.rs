@@ -19,8 +19,8 @@ use crate::{PixelApp, Tool};
 
 /// O tamanho da cena 11.
 pub const SIZE: (u32, u32) = (128, 80);
-/// As quatro formas: a ferramenta, a caixa (cantos inclusivos), a cor e a caixa «Fill».
-pub const SHAPES: [(Tool, (i32, i32), (i32, i32), [u8; 4], bool); 4] = [
+/// As quatro formas: oco e cheio, a mesma ferramenta.
+pub const SHAPES: [crate::smoke_formas::Forma; 4] = [
     (
         Tool::Rectangle,
         (4, 6),

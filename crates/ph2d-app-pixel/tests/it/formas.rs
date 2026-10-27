@@ -300,7 +300,7 @@ fn the_fill_box_fills_the_rectangle_and_the_ellipse() {
             let mut o = p.app.options;
             o.shape_fill = fill;
             o.shapes = Default::default();
-            p.pede(PixelRequest::Options(o));
+            p.pede(PixelRequest::Options(Box::new(o)));
             p.pede(PixelRequest::Tool(tool));
             let c = canvas(&p.sim, &p.cam, p.bits);
             let a = at(&p.app, &p.sim, &p.cam, p.bits, 4, 50);

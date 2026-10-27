@@ -184,7 +184,7 @@ impl Palco {
     fn opcoes(&mut self, f: impl FnOnce(&mut PixelOptions)) {
         let mut o = self.app.options;
         f(&mut o);
-        self.pede(PixelRequest::Options(o));
+        self.pede(PixelRequest::Options(Box::new(o)));
     }
 
     /// UM passo, e o Ctrl+Z devolve o documento de antes (células E selecção).

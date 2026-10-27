@@ -20,8 +20,11 @@ use crate::{PixelApp, Tool};
 
 /// O tamanho da cena 10.
 pub const SIZE: (u32, u32) = (128, 80);
-/// As quatro formas: a ferramenta, a caixa (cantos inclusivos), a cor e a caixa «Fill».
-pub const SHAPES: [(Tool, (i32, i32), (i32, i32), [u8; 4], bool); 4] = [
+/// Uma forma de cena: a ferramenta, a caixa (cantos inclusivos), a cor e a caixa «Fill».
+pub type Forma = (Tool, (i32, i32), (i32, i32), [u8; 4], bool);
+
+/// As quatro formas da cena 10.
+pub const SHAPES: [Forma; 4] = [
     (
         Tool::Rectangle,
         (4, 4),

@@ -183,7 +183,7 @@ fn the_ink_chosen_in_the_panel_reaches_the_stroke() {
     let mut toasts = ToastQueue::new();
     let mut o = app.options;
     o.ink = PixelInk::LockAlpha;
-    app.pede(PixelRequest::Options(o));
+    app.pede(PixelRequest::Options(Box::new(o)));
     let _ = panel::frame(&mut app, sim.world(), &mut hero, &mut toasts);
     assert_eq!(app.options.ink, PixelInk::LockAlpha);
     let pt = at(&app, &sim, &cam, bits, 3, 3);
@@ -195,7 +195,7 @@ fn the_ink_chosen_in_the_panel_reaches_the_stroke() {
     assert!(input::release(&mut app));
     assert_eq!(crate::edit::value(&app, &sim, bits, 3, 3), [0, 0, 0, 0]);
     o.ink = PixelInk::Simple;
-    app.pede(PixelRequest::Options(o));
+    app.pede(PixelRequest::Options(Box::new(o)));
     let _ = panel::frame(&mut app, sim.world(), &mut hero, &mut toasts);
     let c = canvas(&sim, &cam, bits);
     assert_eq!(

@@ -153,7 +153,7 @@ fn cabecalhos(ctx: &mut PaintCtx, info: &PixelPanelInfo, g: &Grelha, duracoes: &
     let theme = ctx.host.theme();
     let radius = ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px());
     let alto = g.top - g.head_y;
-    for c in g.first..g.end {
+    for (c, duracao) in duracoes.iter().enumerate().take(g.end).skip(g.first) {
         let f = info.frames[c];
         let r = Rect::new(g.x(c), g.head_y, g.col_w, alto);
         if info.active_frame == Some(f.id) {
@@ -174,7 +174,7 @@ fn cabecalhos(ctx: &mut PaintCtx, info: &PixelPanelInfo, g: &Grelha, duracoes: &
         let fonte = TypeToken::Xs;
         centrado(
             ctx,
-            &duracoes[c],
+            duracao,
             r.x,
             y,
             g.col_w,

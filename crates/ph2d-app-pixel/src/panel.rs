@@ -51,7 +51,7 @@ impl PixelApp {
                 crate::input::set_tool(self, self.groups.face(g));
                 self.groups.open = (!aberto).then_some(g);
             }
-            PixelRequest::Options(o) => self.options = o,
+            PixelRequest::Options(o) => self.options = *o,
             PixelRequest::Fg(c) => self.fg = c,
             PixelRequest::Bg(c) => self.bg = c,
             PixelRequest::Swap => std::mem::swap(&mut self.fg, &mut self.bg),

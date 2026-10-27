@@ -355,7 +355,7 @@ pub enum PixelRequest {
     /// Troca frente e fundo (o `X` do Aseprite).
     Swap,
     /// As opções novas, inteiras (o painel escreve o campo que mudou sobre as que leu).
-    Options(PixelOptions),
+    Options(Box<PixelOptions>),
     /// Clique esquerdo na amostra `index`: a cor de frente e a selecção.
     Swatch {
         index: usize,

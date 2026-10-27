@@ -92,7 +92,7 @@ fn cada_tinta_chega_as_opcoes_e_a_borracha_nao_tem_tinta() {
             ink,
             ..PixelOptions::default()
         };
-        so(&p.carrega(id), PixelRequest::Options(quer));
+        so(&p.carrega(id), PixelRequest::Options(Box::new(quer)));
     }
     let p = Palco::novo(info(PixelTool::Bucket));
     assert!(

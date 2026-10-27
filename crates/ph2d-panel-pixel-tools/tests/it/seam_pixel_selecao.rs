@@ -106,7 +106,7 @@ fn os_quatro_modos_da_selecao_chegam_as_opcoes() {
             select_mode: m,
             ..PixelOptions::default()
         };
-        so(&p.carrega(id), PixelRequest::Options(quer));
+        so(&p.carrega(id), PixelRequest::Options(Box::new(quer)));
     }
     let p = Palco::novo(info(PixelTool::Pencil, false));
     for (_, id) in ids::SELECT_MODES {
@@ -123,7 +123,7 @@ fn a_varinha_tem_tolerancia_contigua_e_conectividade() {
     let quer = |f: fn(&mut PixelOptions)| {
         let mut o = PixelOptions::default();
         f(&mut o);
-        PixelRequest::Options(o)
+        PixelRequest::Options(Box::new(o))
     };
     so(
         &p.escreve(ids::WAND_TOLERANCE, "37"),
@@ -153,7 +153,7 @@ fn a_amostragem_fast_e_rotsprite_chega_com_o_transform() {
             resample: r,
             ..PixelOptions::default()
         };
-        so(&p.carrega(id), PixelRequest::Options(quer));
+        so(&p.carrega(id), PixelRequest::Options(Box::new(quer)));
     }
 }
 

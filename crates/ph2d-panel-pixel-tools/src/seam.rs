@@ -341,7 +341,7 @@ fn pedido(id: ph2d_a11y::NodeId, how: PixelSelect) -> Option<PixelRequest> {
             return Some(PixelRequest::Swap);
         }
         if let Some(o) = com_segmento(info.options, id) {
-            return Some(PixelRequest::Options(o));
+            return Some(PixelRequest::Options(Box::new(o)));
         }
         if let Some((k, _)) = ids::SORT_KEYS.iter().find(|(_, b)| *b == id) {
             return Some(PixelRequest::SortKey(*k));
@@ -361,7 +361,7 @@ fn pedido(id: ph2d_a11y::NodeId, how: PixelSelect) -> Option<PixelRequest> {
                 selector: *sel,
                 ..info.options
             };
-            return Some(PixelRequest::Options(o));
+            return Some(PixelRequest::Options(Box::new(o)));
         }
         if let Some(nome) = (0..info.presets.len())
             .find(|&i| ids::preset_id(i) == id)
@@ -477,7 +477,7 @@ pub(crate) fn apply_event(
                 let mut o = info.options;
                 let b = caixa(&mut o, id)?;
                 *b = !*b;
-                info.editing.then_some(PixelRequest::Options(o))
+                info.editing.then_some(PixelRequest::Options(Box::new(o)))
             });
             return empurra(host, pedido);
         }
@@ -486,7 +486,7 @@ pub(crate) fn apply_event(
             let pedido = with_current(|info| {
                 let v = v?;
                 info.editing
-                    .then(|| PixelRequest::Options(com_numero(info.options, id, v)))
+                    .then(|| PixelRequest::Options(Box::new(com_numero(info.options, id, v))))
             });
             return empurra(host, pedido);
         }
@@ -494,7 +494,7 @@ pub(crate) fn apply_event(
             let v = host.store().number_value(id);
             let pedido = with_current(|info| {
                 let o = crate::seam_formas::com_numero(info.options, id, v?)?;
-                info.editing.then_some(PixelRequest::Options(o))
+                info.editing.then_some(PixelRequest::Options(Box::new(o)))
             });
             return empurra(host, pedido);
         }

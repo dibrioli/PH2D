@@ -202,25 +202,22 @@ impl PainterTool {
                 ),
             });
         drop(layers);
-        // A sombra do Óleo Real no PAPEL: onde a célula não tem pigmento, a luz que a tinta à volta lhe tira.
-        // Fica num plano à parte — o alfa do pigmento continua a ser só cobertura (gates, «há tinta», marca).
+        // A sombra do Óleo Real no PAPEL: a luz que a tinta à volta lhe tira — também por BAIXO da orla fina,
+        // que se compõe sobre o papel já sombreado (cortada em «alfa 0» a orla ficava um aro claro entre a
+        // tinta e a sombra). Fica num plano à parte — o alfa do pigmento continua a ser só cobertura.
         if let Some((o, c)) = &campo {
             if sess.sombra.len() != gw * gh {
                 sess.sombra = vec![0u8; gw * gh];
             }
-            let pig = &sess.pigment;
             sess.sombra[(cy0 - 1) * gw..cy1 * gw]
                 .par_chunks_mut(gw)
                 .enumerate()
                 .for_each(|(k, row)| {
                     let cy = cy0 + k;
                     for cx in cx0..=cx1 {
-                        row[cx - 1] = if pig[((cy - 1) * gw + cx - 1) * 4 + 3] == 0 {
-                            (ph2d_wet_paint::oleo_real::sombra_no_papel(o, c, cx, cy) * 255.0)
-                                .round() as u8
-                        } else {
-                            0
-                        };
+                        row[cx - 1] = (ph2d_wet_paint::oleo_real::sombra_no_papel(o, c, cx, cy)
+                            * 255.0)
+                            .round() as u8;
                     }
                 });
         } else if !sess.sombra.is_empty() {
@@ -365,31 +362,41 @@ impl PainterTool {
                         Some(sv) => sv.aplica(px, py, dele),
                         None => dele,
                     };
-                    let escuro = if pa <= 0.0 && !sombra.is_empty() && vrow.is_none() {
+                    let escuro = if !sombra.is_empty() && vrow.is_none() {
                         sombra[(py / rr).min(gh - 1) * gw + (px / rr).min(gw - 1)]
                     } else {
                         0
                     };
-                    if escuro > 0 {
-                        // A sombra do Óleo Real sobre o que está por baixo: preto por cima, com a fracção
-                        // `escuro` — pelas mesmas gates que a tinta (selecção/protecção, alfa preso).
+                    // A sombra do Óleo Real sobre o que está por baixo: preto por cima, com a fracção
+                    // `escuro` — pelas mesmas gates que a tinta (selecção/protecção, alfa preso). Sob a orla
+                    // da tinta ela é o papel sobre o qual o pigmento se compõe.
+                    let sombreada: [u8; 4];
+                    let base_px: &[u8] = if escuro > 0 {
                         let mut s = f32::from(escuro) / 255.0;
                         if gate_on {
                             s *= super::watercolor_accum::splat_keep(gsel, gprot, None, o / 4);
                         }
                         let ba = f32::from(base[o + 3]) / 255.0;
                         let oa = if alock_on { ba } else { s + ba * (1.0 - s) };
+                        let mut b = [0u8; 4];
                         for ch in 0..3 {
                             let bc = f32::from(base[o + ch]);
-                            row[lo + ch] = if oa > 0.0 {
+                            b[ch] = if oa > 0.0 {
                                 (bc * ba * (1.0 - s) / oa).round().clamp(0.0, 255.0) as u8
                             } else {
                                 0
                             };
                         }
-                        row[lo + 3] = (oa * 255.0).round() as u8;
-                        continue;
-                    }
+                        b[3] = (oa * 255.0).round() as u8;
+                        if pa <= 0.0 {
+                            row[lo..lo + 4].copy_from_slice(&b);
+                            continue;
+                        }
+                        sombreada = b;
+                        &sombreada
+                    } else {
+                        &base[o..o + 4]
+                    };
                     if pa <= 0.0 {
                         // Base verbatim — the gates keep-lerp TOWARD the base, so
                         // they are exact no-ops on this branch.
@@ -401,10 +408,10 @@ impl PainterTool {
                     }
                     let mut cobertura = pa;
                     if modo == ph2d_painter_brush::BrushBlend::Mix {
-                        let ba = base[o + 3] as f32 / 255.0;
+                        let ba = base_px[3] as f32 / 255.0;
                         let oa = pa + ba * (1.0 - pa);
                         for ch in 0..3 {
-                            let bc = base[o + ch] as f32;
+                            let bc = base_px[ch] as f32;
                             row[lo + ch] = ((premul[ch] + bc * ba * (1.0 - pa)) / oa).round() as u8;
                         }
                         row[lo + 3] = (oa * 255.0).round() as u8;
@@ -414,10 +421,10 @@ impl PainterTool {
                         let inv = 1.0 / (pa * 255.0);
                         let cor = [premul[0] * inv, premul[1] * inv, premul[2] * inv];
                         let dst = [
-                            f32::from(base[o]) / 255.0,
-                            f32::from(base[o + 1]) / 255.0,
-                            f32::from(base[o + 2]) / 255.0,
-                            f32::from(base[o + 3]) / 255.0,
+                            f32::from(base_px[0]) / 255.0,
+                            f32::from(base_px[1]) / 255.0,
+                            f32::from(base_px[2]) / 255.0,
+                            f32::from(base_px[3]) / 255.0,
                         ];
                         let out = ph2d_painter_brush::blend_over_modo(modo, dst, cor, pa, vazio);
                         for c in 0..4 {

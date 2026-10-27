@@ -491,7 +491,7 @@ fn pigment_row(
             }
             if let (true, Some((ol, campo))) = (pa > 0.0, oleo) {
                 let [r, g, b] =
-                    crate::oleo_real::ilumina(ol, campo, cx, cy, [pr / pa, pg / pa, pb / pa]);
+                    crate::oleo_real::ilumina(ol, campo, cx, cy, [pr / pa, pg / pa, pb / pa], pa);
                 out[o] = clamp_u8(r);
                 out[o + 1] = clamp_u8(g);
                 out[o + 2] = clamp_u8(b);

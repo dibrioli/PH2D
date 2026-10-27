@@ -171,7 +171,7 @@ fn medida_oleo_real_folha_png() {
         for (k, p) in px.as_chunks::<4>().0.iter().enumerate() {
             let a = u32::from(p[3]);
             // O papel recebe a sombra do Óleo Real como no composite do produto (o plano `sombra`).
-            let papel = if com_oleo && a == 0 {
+            let papel = if com_oleo {
                 let s =
                     ph2d_wet_paint::oleo_real::sombra_no_papel(&o, &campo, k % gw + 1, k / gw + 1);
                 (255.0 * (1.0 - s)).round() as u32
@@ -209,6 +209,8 @@ fn oleo_do_env() -> ph2d_wet_paint::oleo_real::OleoReal {
             "brilho" => o.brilho = v,
             "px_por_massa" => af.px_por_massa = v,
             "raio_suave" => af.raio_suave = v as usize,
+            "raio_sombra" => af.raio_sombra = v as usize,
+            "raio_detalhe" => af.raio_detalhe = v as usize,
             "grao" => af.grao = v,
             "fios" => af.fios = v,
             "limiar_cavidade" => af.limiar_cavidade = v,
@@ -893,7 +895,22 @@ fn um_traco(t: &mut PainterTool, y: f32) -> u32 {
 }
 
 fn imprime_acumulo(t: &mut PainterTool, rot: &str, passes: usize, yc: f32) {
-    let o = ph2d_wet_paint::oleo_real::OleoReal::default();
+    // As variantes da altura da SOMBRA no MESMO processo, sobre a MESMA tinta (W1b passo 2).
+    for raio in [3usize, 1, 0] {
+        let mut o = ph2d_wet_paint::oleo_real::OleoReal::default();
+        o.af.raio_sombra = raio;
+        imprime_acumulo_com(t, &format!("{rot} rs{raio}"), passes, yc, &o);
+    }
+}
+
+fn imprime_acumulo_com(
+    t: &mut PainterTool,
+    rot: &str,
+    passes: usize,
+    yc: f32,
+    o: &ph2d_wet_paint::oleo_real::OleoReal,
+) {
+    let o = *o;
     let s = t.paint.wetpaint.session.as_mut().expect("sessão");
     s.bring_home();
     let r = f32::from(s.ratio);
@@ -931,13 +948,13 @@ fn imprime_acumulo(t: &mut PainterTool, rot: &str, passes: usize, yc: f32) {
             }
             tot.push(m);
             susp.push(su);
-            alt.push(campo.at(cx as isize, cy as isize));
+            alt.push(campo.at_sombra(cx as isize, cy as isize));
             let (x, y) = (cx as isize, cy as isize);
             // A subida máxima (células de altura por célula) nos 24 passos para a luz (topo-esquerda).
             let mut sobe = f64::NEG_INFINITY;
             for k in 1..=24isize {
                 let d = (k as f64 * core::f64::consts::FRAC_1_SQRT_2).round() as isize;
-                sobe = sobe.max((campo.at(x - d, y - d) - campo.at(x, y)) / k as f64);
+                sobe = sobe.max((campo.at_sombra(x - d, y - d) - campo.at_sombra(x, y)) / k as f64);
             }
             horiz.push(sobe);
             if m > 0.0 {

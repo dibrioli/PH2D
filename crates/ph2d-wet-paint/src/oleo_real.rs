@@ -49,6 +49,12 @@ pub struct Afinacao {
     pub px_por_massa: f64,
     /// Raio (células) das duas passagens de média que dão a FORMA da pincelada a partir da massa.
     pub raio_suave: usize,
+    /// Raio (células) da altura que faz a SOMBRA projectada (W1b): menor que o da forma, para a crista de uma
+    /// passagem por cima projectar sombra dentro da tinta. A cavidade continua na forma.
+    pub raio_sombra: usize,
+    /// Raio (células) do pré-filtro do DETALHE antes da normal (W1b): o ruído de uma célula (grão e fios)
+    /// derivado pelo Sobel serrilhava as estrias em pente claro/escuro.
+    pub raio_detalhe: usize,
     /// Fracção do grão de célula a célula da massa que fica no relevo (à escala cheia faz uma lixa).
     pub grao: f64,
     /// Ganho da altura dos fios (`Grid::altura`, px).
@@ -77,6 +83,8 @@ impl Default for Afinacao {
             // 4,5 a 6 px). O 0,006 de W0 (sombra ÷ tan) era a altura da CÚPULA do Rebelle, não do planalto.
             px_por_massa: 0.0015,
             raio_suave: 3,
+            raio_sombra: 1,
+            raio_detalhe: 1,
             grao: 0.15,
             fios: 1.0,
             // A oclusão da FORMA na folha `tracos.py` (Dabber/Filbert/Oil Bristle): p50 0,08 · p90 0,19 ·
@@ -107,13 +115,17 @@ pub fn alcance(o: &OleoReal) -> usize {
     MARGEM + 2 * o.af.raio_suave + 1
 }
 
+/// O alargamento máximo do lobo (α²) pelo antisserrilhado — o tecto de Kaplanyan 2016 (`0,18`).
+const VARIANCIA_MAX_BRILHO: f64 = 0.18;
+
 /// `F0` do ligante (dieléctrico).
 const F0: f64 = 0.04;
 
 /// A altura da tinta (px de relevo ÷ px por célula) numa janela de células, de TODAS as camadas
-/// visíveis, em duas escalas: a FORMA (massa suavizada) — que faz a cavidade e a sombra — e o DETALHE
-/// (o grão de célula a célula e os fios) — que só inclina a normal. Com o detalhe na marcha a tinta
-/// inteira lia-se como fenda (folha de 26/10: oclusão em «sal e pimenta», mediana 0,24).
+/// visíveis, pela ESPESSURA ([`crate::grid::espessura`]) pesada pela cobertura, em três escalas: a FORMA
+/// (raio [`Afinacao::raio_suave`]) e o DETALHE (grão e fios) dão a normal; a altura da SOMBRA (raio
+/// [`Afinacao::raio_sombra`]) faz a marcha da luz e a cavidade. Com o detalhe na marcha a tinta inteira
+/// lia-se como fenda (folha de 26/10: oclusão em «sal e pimenta», mediana 0,24).
 pub struct CampoAltura {
     x0: usize,
     y0: usize,
@@ -121,6 +133,7 @@ pub struct CampoAltura {
     h: usize,
     v: Vec<f32>,
     detalhe: Vec<f32>,
+    sombra: Vec<f32>,
 }
 
 impl CampoAltura {
@@ -147,23 +160,47 @@ impl CampoAltura {
         for y in 0..h {
             for x in 0..w {
                 let i = (ax0 + x) + (ay0 + y) * g.s;
+                let mut cobre = 0.0;
                 for &(lg, visivel) in camadas {
                     if !visivel {
                         continue;
                     }
-                    massa[x + y * w] += crate::grid::espessura::em(lg, i);
+                    let m = f64::from(lg.sett[i]) + f64::from(lg.susp[i]);
+                    let k = crate::grid::espessura::factor(lg, i);
+                    massa[x + y * w] += m * k;
+                    cobre += crate::opacity::alpha_of_mass(m) * (1.0 - cobre);
+                    // Os sulcos dos fios fundam-se com a tinta que se empilhou (a amplitude ∝ espessura).
                     if !lg.altura.is_empty() {
-                        fios[x + y * w] += f64::from(lg.altura[i]);
+                        fios[x + y * w] += f64::from(lg.altura[i]) * k;
                     }
                 }
+                // Na borda a altura vai a zero com a cobertura: a orla fina não é um degrau.
+                massa[x + y * w] *= cobre;
+                fios[x + y * w] *= cobre;
             }
         }
         let suave = desfoca(&desfoca(&massa, w, h, af.raio_suave), w, h, af.raio_suave);
         let k_fios = af.fios * o.profundidade;
         let v = suave.iter().map(|&s| (s * escala) as f32).collect();
+        let (massa_d, fios_d) = match af.raio_detalhe {
+            0 => (massa.clone(), fios),
+            r => (
+                desfoca(&massa, w, h, r),
+                desfoca(&fios, w, h, r),
+            ),
+        };
         let detalhe = (0..w * h)
-            .map(|k| (af.grao * (massa[k] - suave[k]) * escala + fios[k] * k_fios) as f32)
+            .map(|k| (af.grao * (massa_d[k] - suave[k]) * escala + fios_d[k] * k_fios) as f32)
             .collect();
+        let sombra = if af.raio_sombra == 0 {
+            massa.iter().map(|&m| (m * escala) as f32).collect()
+        } else {
+            let r = af.raio_sombra;
+            desfoca(&desfoca(&massa, w, h, r), w, h, r)
+                .iter()
+                .map(|&s| (s * escala) as f32)
+                .collect()
+        };
         Self {
             x0: ax0,
             y0: ay0,
@@ -171,7 +208,27 @@ impl CampoAltura {
             h,
             v,
             detalhe,
+            sombra,
         }
+    }
+
+    /// A altura da SOMBRA na célula `(x, y)` (presa à janela): a da marcha da luz.
+    #[inline]
+    pub fn at_sombra(&self, x: isize, y: isize) -> f64 {
+        f64::from(self.sombra[self.idx(x, y)])
+    }
+
+    /// A altura da SOMBRA num ponto qualquer, bilinear: a marcha diagonal pela célula mais próxima
+    /// desenhava em escada a borda de cada estria (o pente da folha W1b).
+    #[inline]
+    fn at_sombra_em(&self, x: f64, y: f64) -> f64 {
+        let (fx, fy) = (libm::floor(x), libm::floor(y));
+        let (tx, ty) = (x - fx, y - fy);
+        let (ix, iy) = (fx as isize, fy as isize);
+        let l0 = self.at_sombra(ix, iy) + (self.at_sombra(ix + 1, iy) - self.at_sombra(ix, iy)) * tx;
+        let l1 = self.at_sombra(ix, iy + 1)
+            + (self.at_sombra(ix + 1, iy + 1) - self.at_sombra(ix, iy + 1)) * tx;
+        l0 + (l1 - l0) * ty
     }
 
     #[inline]
@@ -243,9 +300,18 @@ pub struct Termos {
     pub ocl: f64,
 }
 
-/// Ilumina a cor `rgb` (sRGB 0..255, sem pré-multiplicar) da célula `(cx, cy)`. Devolve sRGB 0..255.
-pub fn ilumina(o: &OleoReal, campo: &CampoAltura, cx: usize, cy: usize, rgb: [f64; 3]) -> [f64; 3] {
-    let t = termos(o, campo, cx, cy);
+/// Ilumina a cor `rgb` (sRGB 0..255, sem pré-multiplicar) da célula `(cx, cy)`, de `cobertura` `0..=1`.
+/// Devolve sRGB 0..255. O brilho é do filme de tinta: na orla fina ele vai com a cobertura.
+pub fn ilumina(
+    o: &OleoReal,
+    campo: &CampoAltura,
+    cx: usize,
+    cy: usize,
+    rgb: [f64; 3],
+    cobertura: f64,
+) -> [f64; 3] {
+    let mut t = termos(o, campo, cx, cy);
+    t.espec *= cobertura.clamp(0.0, 1.0);
     let mut out = [0.0; 3];
     for c in 0..3 {
         let a = srgb255_to_linear(rgb[c]);
@@ -271,10 +337,7 @@ fn luz_directa(o: &OleoReal, campo: &CampoAltura, x: isize, y: isize, h0: f64) -
     let mut horizonte = f64::NEG_INFINITY;
     for t in 1..=PASSOS_SOMBRA {
         let t = t as f64;
-        let q = campo.at(
-            x + libm::round(dx * t) as isize,
-            y + libm::round(dy * t) as isize,
-        );
+        let q = campo.at_sombra_em(x as f64 + dx * t, y as f64 + dy * t);
         horizonte = horizonte.max((q - h0) / t);
     }
     let luz = ((sobe - horizonte) / o.af.penumbra.max(1e-6)).clamp(0.0, 1.0);
@@ -286,14 +349,14 @@ fn luz_directa(o: &OleoReal, campo: &CampoAltura, x: isize, y: isize, h0: f64) -
 /// chega ao papel (o difuso, a fenda e o brilho são da tinta).
 pub fn sombra_no_papel(o: &OleoReal, campo: &CampoAltura, cx: usize, cy: usize) -> f64 {
     let (x, y) = (cx as isize, cy as isize);
-    (1.0 - o.af.ceu) * (1.0 - luz_directa(o, campo, x, y, campo.at(x, y)))
+    (1.0 - o.af.ceu) * (1.0 - luz_directa(o, campo, x, y, campo.at_sombra(x, y)))
 }
 
 /// Os [`Termos`] da célula `(cx, cy)`.
 pub fn termos(o: &OleoReal, campo: &CampoAltura, cx: usize, cy: usize) -> Termos {
     let af = &o.af;
     let (x, y) = (cx as isize, cy as isize);
-    let h0 = campo.at(x, y);
+    let h0 = campo.at_sombra(x, y);
     // Sobel 3×3: o da FORMA dá o plano tangente da cavidade; o da altura FINA dá a normal.
     let sobel = |h: &dyn Fn(isize, isize) -> f64| {
         let gx = (h(1, -1) + 2.0 * h(1, 0) + h(1, 1) - h(-1, -1) - 2.0 * h(-1, 0) - h(-1, 1)) / 8.0;
@@ -307,6 +370,9 @@ pub fn termos(o: &OleoReal, campo: &CampoAltura, cx: usize, cy: usize) -> Termos
     let l = para_a_luz(o);
 
     let luz = luz_directa(o, campo, x, y, h0);
+    // A cavidade lê a FORMA (a faixa dela foi medida sobre a forma, `Afinacao::limiar_cavidade`): sobre a
+    // altura da sombra cada poro do Dabber virava fenda saturada (folha W1b, raio 1: manchas navy).
+    let h0 = campo.at(x, y);
 
     // A cavidade: oclusão do horizonte ACIMA DO PLANO TANGENTE (uma encosta não é uma fenda), média de
     // N direcções × K passos; depois a faixa `limiar..fundo` → 0..1.
@@ -340,7 +406,15 @@ pub fn termos(o: &OleoReal, campo: &CampoAltura, cx: usize, cy: usize) -> Termos
     let hv = [l[0], l[1], l[2] + 1.0];
     let hn = libm::sqrt(hv[0] * hv[0] + hv[1] * hv[1] + hv[2] * hv[2]);
     let ndh = ((n[0] * hv[0] + n[1] * hv[1] + n[2] * hv[2]) / hn).max(0.0);
-    let a2 = af.rugosidade * af.rugosidade * af.rugosidade * af.rugosidade;
+    // Antisserrilhado do brilho (Kaplanyan 2016): o lobo alarga-se pela variação da normal dentro da célula
+    // (a hessiana da altura fina) — numa encosta estreita o pico de GGX saturava em pontos brancos.
+    let hf = |dx: isize, dy: isize| campo.at_fina(x + dx, y + dy);
+    let hxx = hf(1, 0) - 2.0 * hf(0, 0) + hf(-1, 0);
+    let hyy = hf(0, 1) - 2.0 * hf(0, 0) + hf(0, -1);
+    let hxy = (hf(1, 1) - hf(1, -1) - hf(-1, 1) + hf(-1, -1)) / 4.0;
+    let var = 0.25 * (hxx * hxx + hyy * hyy + 2.0 * hxy * hxy) * inv * inv;
+    let a2 = af.rugosidade * af.rugosidade * af.rugosidade * af.rugosidade
+        + (2.0 * var).min(VARIANCIA_MAX_BRILHO);
     let den = ndh * ndh * (a2 - 1.0) + 1.0;
     let d_ggx = a2 / (core::f64::consts::PI * den * den);
     let vdh = hv[2] / hn;

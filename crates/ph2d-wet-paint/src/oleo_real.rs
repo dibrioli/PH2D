@@ -101,6 +101,9 @@ pub struct Afinacao {
     /// Estúdio em p99 0,26 × 0,48 do Cycles — a `0`: 0,53 × 0,48, área > 0,3 2,12 % × 2,13 %
     /// (`oraculo/README.md` §E3). `1` = o de W1c.
     pub antisserrilhado_ambiente: f64,
+    /// K10: o peso do REBOTE de um salto da tinta vizinha no papel ([`rebote_no_papel`]); `0` = sem (a sombra no
+    /// papel de antes, bit a bit), `1` = a física (`oraculo/README.md` §K10).
+    pub rebote_papel: f64,
 }
 
 impl Default for Afinacao {
@@ -119,6 +122,7 @@ impl Default for Afinacao {
             brilho_max: 1.6,
             antisserrilhado: 1.0,
             antisserrilhado_ambiente: 0.0,
+            rebote_papel: 1.0,
         }
     }
 }
@@ -211,6 +215,9 @@ pub struct CampoAltura {
     luz_ceu: Vec<LuzCeu>,
     luz_ceu_janela: (usize, usize, usize, usize),
     luz_ceu_chave: Option<ChaveLuz>,
+    /// K10: a cor LINEAR que cada célula devolve ao papel (a tinta sem luz sobre o papel branco, pela cobertura),
+    /// a do [`rebote_no_papel`]. Vazio sem rebote.
+    albedo: Vec<[f32; 3]>,
 }
 
 /// A luz directa, a visibilidade BRUTA (antes da força da fenda) e o ganho do céu de uma célula.
@@ -441,6 +448,17 @@ impl CampoAltura {
                 None => s,
             }
         });
+        let albedo = if af.rebote_papel > 0.0 && o.sombra > 0.0 {
+            let mut albedo = vec![[1.0f32; 3]; w * h];
+            por_linha(rep, w, &mut albedo, &|y, linha| {
+                for (x, q) in linha.iter_mut().enumerate() {
+                    *q = albedo_da_celula(camadas, (ax0 + x) + (ay0 + y) * g.s);
+                }
+            });
+            albedo
+        } else {
+            Vec::new()
+        };
         let mut campo = Self {
             x0: ax0,
             y0: ay0,
@@ -454,6 +472,7 @@ impl CampoAltura {
             luz_ceu: Vec::new(),
             luz_ceu_janela: (0, 0, 0, 0),
             luz_ceu_chave: None,
+            albedo,
         };
         if let Some(rr) = sss {
             let (sss, luz_ceu, janela) =
@@ -549,6 +568,37 @@ impl CampoAltura {
         let i = self.idx(x, y);
         f64::from(self.v[i]) + f64::from(self.detalhe[i])
     }
+}
+
+/// A cor LINEAR da célula `i` sobre o papel branco: as camadas visíveis por cima umas das outras pela cobertura
+/// (a lei [`crate::assenta::Ecra::Porto`]; o rebote só precisa do tom da parede).
+fn albedo_da_celula(camadas: &[(&Grid, bool)], i: usize) -> [f32; 3] {
+    let (mut p, mut pa) = ([0.0f64; 3], 0.0f64);
+    for &(lg, visivel) in camadas {
+        if !visivel {
+            continue;
+        }
+        let a_s = crate::opacity::alpha_of_mass(f64::from(lg.sett[i]));
+        let a_f = crate::opacity::alpha_of_mass(f64::from(lg.susp[i]));
+        if a_s + a_f * (1.0 - a_s) <= 0.0 {
+            continue;
+        }
+        let (c, la) = crate::assenta::cor_e_alfa(
+            crate::assenta::Ecra::Porto.com_vela(lg.vela[i]),
+            lg.sett_rgb[i].map(f64::from),
+            lg.susp_rgb[i].map(f64::from),
+            a_s,
+            a_f,
+        );
+        for k in 0..3 {
+            p[k] = p[k] * (1.0 - la) + c[k] * la;
+        }
+        pa += la * (1.0 - pa);
+    }
+    if pa <= 0.0 {
+        return [1.0; 3];
+    }
+    p.map(|v| (srgb255_to_linear(v / pa) * pa + (1.0 - pa)) as f32)
 }
 
 /// A marca do nivelamento ([`crate::grid::nivelado`], K7) na janela `(ax0, ay0, w, h)` — a maior das camadas
@@ -761,7 +811,7 @@ pub fn ilumina_e_sombra(
     let t = termos_com(o, campo, cx, cy, &campo.material_em(cx, cy), a);
     (
         cor_dos_termos(o, &t, a, cobertura),
-        sombra_dos_termos(o, &t),
+        menos_rebote(o, campo, cx, cy, sombra_dos_termos(o, &t)),
     )
 }
 
@@ -968,7 +1018,13 @@ pub fn sombra_no_papel(o: &OleoReal, campo: &CampoAltura, cx: usize, cy: usize) 
     if o.sombra > 0.0
         && let Some(lc) = campo.luz_ceu_em(o, x, y)
     {
-        return sombra_de(o, lc.luz, forca_da_fenda(lc.v, o.fenda), lc.dir);
+        return menos_rebote(
+            o,
+            campo,
+            cx,
+            cy,
+            sombra_de(o, lc.luz, forca_da_fenda(lc.v, o.fenda), lc.dir),
+        );
     }
     let luz = luz_directa(o, campo, x, y, campo.at_sombra(x, y));
     let (vis, dir) = if o.sombra <= 0.0 {
@@ -985,7 +1041,101 @@ pub fn sombra_no_papel(o: &OleoReal, campo: &CampoAltura, cx: usize, cy: usize) 
         );
         (forca_da_fenda(v, o.fenda), dir)
     };
-    sombra_de(o, luz, vis, dir)
+    menos_rebote(o, campo, cx, cy, sombra_de(o, luz, vis, dir))
+}
+
+/// A sombra `s` do papel menos o [`rebote_no_papel`] (sem rebote, `s` tal e qual).
+fn menos_rebote(o: &OleoReal, campo: &CampoAltura, cx: usize, cy: usize, s: f64) -> f64 {
+    if campo.albedo.is_empty() || s <= 0.0 {
+        return s;
+    }
+    (s - rebote_no_papel(o, campo, cx, cy)).max(0.0)
+}
+
+/// **O rebote de UM salto da tinta vizinha no papel** (K10, `oraculo/README.md` §K10), em fracção da luz do plano
+/// aceso. Em cada lado de cada fatia do GTAO (a mesma marcha da visibilidade), pelo cosseno da normal do papel:
+/// o arco da horizontal até ao horizonte é a PAREDE, que devolve a cor dela × a luz da FACE virada para o papel
+/// (o céu de uma face vertical, `½`, e o sol que lhe bate, `0` do lado escuro); o arco abaixo da horizontal (o
+/// papel inclinado) é o CHÃO vizinho, aceso pela normal dele. A sombra projectada atrás de um empaste alto
+/// continua escura: a face que ela vê é a de costas para a luz.
+#[must_use]
+pub fn rebote_no_papel(o: &OleoReal, campo: &CampoAltura, cx: usize, cy: usize) -> f64 {
+    use core::f64::consts::{FRAC_PI_2, PI};
+    if campo.albedo.is_empty() || o.sombra <= 0.0 {
+        return 0.0;
+    }
+    let (x, y) = (cx as isize, cy as isize);
+    let h0 = campo.at_fina(x, y);
+    let n = normal(campo, x, y);
+    let l = para_a_luz(o);
+    let forca = o.forca_ambiente;
+    let escala = escala_do_horizonte(o);
+    let lum = |q: (isize, isize)| {
+        let a = campo.albedo[campo.idx(q.0, q.1)];
+        0.2126 * f64::from(a[0]) + 0.7152 * f64::from(a[1]) + 0.0722 * f64::from(a[2])
+    };
+    // `∫₀^a cos(θ − g)·sin θ dθ`: o peso pelo cosseno de um arco da fatia (o da visibilidade).
+    let int = |a: f64, g: f64| 0.25 * (-libm::cos(2.0 * a - g) + libm::cos(g) + 2.0 * a * libm::sin(g));
+    let mut soma = 0.0;
+    for k in 0..FATIAS {
+        let phi = PI * k as f64 / FATIAS as f64;
+        let (dx, dy) = (libm::cos(phi), libm::sin(phi));
+        let no = -n[0] * dy + n[1] * dx;
+        let np = [n[0] + no * dy, n[1] - no * dx, n[2]];
+        let len = libm::sqrt(np[0] * np[0] + np[1] * np[1] + np[2] * np[2]);
+        if len < 1e-9 {
+            continue;
+        }
+        let g = libm::acos((np[2] / len).clamp(-1.0, 1.0)).copysign(np[0] * dx + np[1] * dy);
+        for sgn in [1.0, -1.0] {
+            let gs = sgn * g;
+            // O limite da meia-esfera da normal deste lado (abaixo da horizontal se ela pende para cá).
+            let fim = FRAC_PI_2 + gs;
+            let (mut e, mut parede) = (0.0f64, (x, y));
+            for r in HORIZONTE {
+                let r = r * escala;
+                let (ox, oy) = (libm::round(sgn * dx * r), libm::round(sgn * dy * r));
+                let d = libm::hypot(ox, oy);
+                if d == 0.0 {
+                    continue;
+                }
+                let q = (x + ox as isize, y + oy as isize);
+                let dh = campo.at_fina(q.0, q.1) - h0;
+                let sen = dh / libm::sqrt(dh * dh + d * d);
+                if sen > e {
+                    (e, parede) = (sen, q);
+                }
+            }
+            let mut luz = 0.0;
+            if e > 0.0 {
+                let (a, b) = (FRAC_PI_2 - libm::asin(e), fim.min(FRAC_PI_2));
+                if b > a {
+                    // A face olha de volta para o papel: normal horizontal `−(dx, dy)·sgn`.
+                    let ndl = -(sgn * dx * l[0] + sgn * dy * l[1]);
+                    let face = 0.5 * forca + (1.0 - forca) * ndl.max(0.0) / l[2];
+                    luz += (int(b, gs) - int(a, gs)) * lum(parede) * face;
+                }
+            }
+            // O papel INCLINADO (a saia da forma desfocada) vê abaixo da horizontal o chão vizinho, aceso pela
+            // normal DELE e com a sombra DELE: nos vãos entre lascas a encosta da frente apanha o sol que esta não
+            // vê; na sombra projectada o vizinho também está à sombra. O céu dele é o aberto: tapá-lo pelo céu
+            // deste papel apagava o vão (§K10, recusa).
+            if fim > FRAC_PI_2 {
+                let q = (x + libm::round(sgn * dx) as isize, y + libm::round(sgn * dy) as isize);
+                let m = normal(campo, q.0, q.1);
+                let ndl = (m[0] * l[0] + m[1] * l[1] + m[2] * l[2]).max(0.0);
+                let sol = if ndl > 0.0 {
+                    ndl * luz_directa(o, campo, q.0, q.1, campo.at_sombra(q.0, q.1))
+                } else {
+                    0.0
+                };
+                let chao = forca * 0.5 * (1.0 + m[2]) + (1.0 - forca) * sol / l[2];
+                luz += (int(fim, gs) - int(FRAC_PI_2, gs)) * lum(q) * chao;
+            }
+            soma += len * luz;
+        }
+    }
+    o.sombra * o.af.rebote_papel * soma / FATIAS as f64
 }
 
 /// A [`sombra_no_papel`] de uma célula PINTADA a partir dos [`Termos`] que a cor dela já calculou (a luz

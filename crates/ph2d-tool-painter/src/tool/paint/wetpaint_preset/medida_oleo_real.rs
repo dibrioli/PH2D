@@ -111,6 +111,7 @@ fn medida_oleo_real_oraculo() {
         Ok("lisos") => pinta_cena_lisa(),
         Ok("smooth2") => pinta_cena_smooth2(),
         Ok("travessia") => pinta_cena_travessia(),
+        Ok("dabber3") => pinta_cena_dabber3(),
         _ => pinta_cena_do_dono(),
     };
     match std::env::var("PH2D_OLEO_VARIANTES") {
@@ -289,6 +290,27 @@ fn pinta_cena_travessia() -> PainterTool {
     t.set_brush_color_srgb8([200, 120, 40]);
     let ticks = arrasta(&mut t, [300.0, 150.0], [300.0, 370.0]);
     println!("[oraculo] travessia knifeLevel 0 (água {ticks})");
+    t
+}
+
+/// K10: o candidato Dabber 3 (`Pinceis/W2_Dabber_candidatos/`) no recto da prancha a 40 e a 200 px (× a escala
+/// 0,673 da bancada), o azul da bateria — os vãos de papel entre as lascas grossas.
+fn pinta_cena_dabber3() -> PainterTool {
+    let f = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../docs/Painter/Pinceis/W2_Dabber_candidatos/Dabber 3.ph2d-brush.png");
+    let p = ph2d_brush_presets::ler(&std::fs::read(&f).expect("preset")).expect("preset");
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; (OW * OH * 4) as usize], OW, OH);
+    t.set_paint_media(PaintMedia::WetPaint);
+    t.set_wet_relogio_fixo(true);
+    for (diametro, y) in [(40.0f32, 90.0), (200.0, 290.0)] {
+        let erros = t.wet_preset_aplicar(&p);
+        assert!(erros.is_empty(), "{erros:?}");
+        t.set_brush_size_px(diametro * 0.673 / 2.0);
+        t.set_brush_color_srgb8([23, 101, 179]);
+        let ticks = arrasta(&mut t, [60.0, y], [640.0, y]);
+        println!("[oraculo] Dabber 3 a {diametro} px (água {ticks})");
+    }
     t
 }
 
@@ -571,6 +593,8 @@ fn oleo_de(af: &str) -> ph2d_wet_paint::oleo_real::OleoReal {
                 o.material.poe(i, v);
             }
             "penumbra" => af.penumbra = v,
+            // K10: o rebote da tinta vizinha no papel (`0` = a sombra de antes).
+            "rebote_papel" => af.rebote_papel = v,
             // A Roughness ABSOLUTA do cartão (antes da W3 era `Afinacao::rugosidade`; o `cycles.py` usa o nome).
             "rugosidade" => o.material.rugosidade = v,
             "brilho_max" => af.brilho_max = v,
@@ -1537,6 +1561,40 @@ fn medida_oleo_real_custo() {
         "[custo] recompor da pincelada 65², ns por célula (mínimo de 5): {:?} · {soma:.0}",
         modos.iter().zip(melhor).collect::<Vec<_>>()
     );
+    // K10: o mesmo recompor com o rebote das paredes no papel desligado e o de fábrica, Clássico e Estúdio.
+    let modos = ["Clássico sem rebote", "Clássico", "Estúdio sem rebote", "Estúdio"];
+    let mut melhor = [f64::INFINITY; 4];
+    for rodada in 0..7 {
+        for k in 0..4 {
+            let i = (k + rodada) % 4;
+            let mut o = OleoReal {
+                ambiente: if i < 2 {
+                    Ambiente::Classico
+                } else {
+                    Ambiente::Estudio
+                },
+                ..OleoReal::default()
+            };
+            if i % 2 == 0 {
+                o.af.rebote_papel = 0.0;
+            }
+            let t0 = std::time::Instant::now();
+            let c = CampoAltura::de(&grades, &o, usize::from(s.ratio), x0, y0, x1, y1);
+            for cy in y0..=y1 {
+                for cx in x0..=x1 {
+                    let m = c.material_em(cx, cy);
+                    soma += termos_com(&o, &c, cx, cy, &m, [0.6, 0.1, 0.1]).vis;
+                    soma += ph2d_wet_paint::oleo_real::sombra_no_papel(&o, &c, cx, cy);
+                }
+            }
+            let ns = t0.elapsed().as_nanos() as f64 / ((x1 + 1 - x0) * (y1 + 1 - y0)) as f64;
+            melhor[i] = melhor[i].min(ns);
+        }
+    }
+    println!(
+        "[custo] K10 recompor 65² com/sem rebote, ns por célula (mínimo de 7): {:?} · {soma:.0}",
+        modos.iter().zip(melhor).collect::<Vec<_>>()
+    );
     println!(
         "[custo] loadavg {}",
         std::fs::read_to_string("/proc/loadavg").unwrap_or_default()
@@ -1688,5 +1746,47 @@ fn a_fenda_forte_nao_volta_aos_pontos_pretos_na_cena_do_dono() {
             f <= 0.5,
             "Estúdio, força {fenda}: {f:.2} % do vermelho abaixo de 70"
         );
+    }
+}
+
+/// ⭐ **K10: o papel nos VÃOS entre lascas nunca fica preto** — a régua da E1 (`max(R,G,B) < 70`) estendida ao
+/// PAPEL, que lhe escapava: no Dabber 3 a 200 px o Estúdio punha 21,75 % dos vãos abaixo de 70 (o Cycles da mesma
+/// malha 0,30 %, o Rebelle 0 %; `oraculo/README.md` §K10). Vão = célula sem tinta (alfa ≤ 25) com tinta a ≤ 6 células
+/// para os QUATRO lados, no recto de 200 (y 230..350): 820 vãos, 30,24 % abaixo de 70 sem o rebote da tinta vizinha
+/// (`rebote_papel` 0, visto vermelho), 5,12 % com ele; tecto 8 %. O Clássico: 0 % antes e depois.
+#[test]
+fn o_papel_nos_vaos_entre_lascas_nao_fica_preto() {
+    use ph2d_wet_paint::oleo_real::{Ambiente, OleoReal};
+    let mut t = pinta_cena_dabber3();
+    let (gw, gh) = {
+        let s = t.paint.wetpaint.session.as_ref().expect("sessão");
+        s.grid
+    };
+    for (ambiente, tecto) in [(Ambiente::Estudio, 8.0), (Ambiente::Classico, 0.0)] {
+        let o = OleoReal {
+            ambiente,
+            ..OleoReal::default()
+        };
+        let px = render_da_cena(&mut t, &o);
+        let tinta = |x: usize, y: usize| px[x + y * gw].2 > 25;
+        let (mut n, mut pretos) = (0usize, 0usize);
+        for y in 230..350.min(gh - 7) {
+            for x in 7..gw - 7 {
+                let fechado = !tinta(x, y)
+                    && (1..=6).any(|d| tinta(x - d, y))
+                    && (1..=6).any(|d| tinta(x + d, y))
+                    && (1..=6).any(|d| tinta(x, y - d))
+                    && (1..=6).any(|d| tinta(x, y + d));
+                if fechado {
+                    let c = px[x + y * gw].0;
+                    n += 1;
+                    pretos += usize::from(c[0].max(c[1]).max(c[2]) < 70);
+                }
+            }
+        }
+        assert!(n > 500, "a cena mudou: {n} vãos");
+        let f = 100.0 * pretos as f64 / n as f64;
+        println!("[vãos] {ambiente:?}: {n} vãos, {f:.2} % abaixo de 70");
+        assert!(f <= tecto, "{ambiente:?}: {f:.2} % dos vãos abaixo de 70 (tecto {tecto} %)");
     }
 }

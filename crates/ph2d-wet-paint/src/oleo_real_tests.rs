@@ -428,17 +428,24 @@ fn a_forca_da_fenda_multiplica_as_chances_de_oclusao() {
 #[test]
 fn a_fenda_neutra_e_bit_identica_a_de_antes() {
     let (ambiente, antes) = (Ambiente::Classico, 0xd577_67fb_dd93_1d70u64);
+    // K10: o rebote da tinta no papel mudou o PAPEL por desenho; desligado, o de antes ao bit.
+    let af = Afinacao {
+        rebote_papel: 0.0,
+        ..Afinacao::default()
+    };
     let o = OleoReal {
         ambiente,
         fenda: 1.0,
         alcance_fenda: ALCANCE_FENDA_MAX,
         forca_ambiente: FORCA_AMBIENTE_FABRICA,
+        af,
         ..OleoReal::default()
     };
     assert_eq!(
         o,
         OleoReal {
             ambiente,
+            af,
             ..OleoReal::default()
         },
         "o neutro é o de fábrica"
@@ -601,8 +608,13 @@ fn o_material_neutro_e_bit_identico_a_de_antes() {
             0x3ae1_6642_c9fd_624eu64,
         ),
     ] {
+        // K10: com o rebote no papel desligado (ele muda só o papel, por desenho).
         let o = OleoReal {
             ambiente,
+            af: Afinacao {
+                rebote_papel: 0.0,
+                ..Afinacao::default()
+            },
             ..OleoReal::default()
         };
         let w1c = OleoReal {
@@ -787,6 +799,89 @@ fn a_sombra_no_papel_tira_a_luz_linear_e_nao_o_byte() {
             (luz - (1.0 - s)).abs() <= 0.005,
             "s {s}: o papel recebe {luz} em vez de {}",
             1.0 - s
+        );
+    }
+}
+
+/// K10 ⭐ **O rebote das paredes no papel** (`oraculo/README.md` §K10): o papel entre duas paredes acesas recebe a
+/// luz delas, na COR delas (parede preta não devolve nada); a sombra projectada atrás de um bloco alto vê a face de
+/// COSTAS para a luz e recebe só o céu dela (a sombra do empaste alto do dono não se apaga, K4); o papel sem tinta a
+/// alcance e o rebote a `0` ficam ao bit.
+#[test]
+fn o_rebote_das_paredes_acende_o_vao_e_nao_a_sombra_de_costas() {
+    let pinta = |cor: [f32; 3]| {
+        let mut g = grade(|x, _| {
+            if (16..=24).contains(&x) || (28..=36).contains(&x) {
+                12_000.0
+            } else {
+                0.0
+            }
+        });
+        for q in &mut g.sett_rgb {
+            *q = cor;
+        }
+        g
+    };
+    let (azul, preto) = (pinta([23.0, 101.0, 179.0]), pinta([0.0; 3]));
+    // A luz vem da ESQUERDA (x−): a face direita do 2.º bloco (x 36) está de costas para ela.
+    let com = OleoReal {
+        azimute: 180f64.to_radians(),
+        ambiente: Ambiente::Classico,
+        ..OleoReal::default()
+    };
+    let sem = OleoReal {
+        af: Afinacao {
+            rebote_papel: 0.0,
+            ..com.af
+        },
+        ..com
+    };
+    let (ca, cp, c0) = (campo(&azul, &com), campo(&preto, &com), campo(&azul, &sem));
+    let s = |o: &OleoReal, c: &CampoAltura, x| sombra_no_papel(o, c, x, 32);
+    let r = |c: &CampoAltura, x| rebote_no_papel(&com, c, x, 32);
+    // O vão (x 26) e o papel ao pé da face de costas (x 40) e da face acesa (x 12), a mesma distância.
+    let (vao, costas, acesa) = (r(&ca, 26), r(&ca, 40), r(&ca, 12));
+    assert!(vao > 0.005, "o vão recebe a luz das paredes: {vao}");
+    assert!(
+        s(&com, &ca, 26) < s(&sem, &c0, 26),
+        "o vão fica mais claro: {} × {}",
+        s(&com, &ca, 26),
+        s(&sem, &c0, 26)
+    );
+    assert!(
+        acesa > 2.0 * costas,
+        "a face de costas para a luz devolve só o céu: acesa {acesa} × costas {costas}"
+    );
+    assert!(r(&cp, 26) < 0.1 * vao, "a parede preta não devolve luz: {}", r(&cp, 26));
+    // No papel PLANO (fora das saias da forma, a 8 células de cada bloco) só as paredes contam: a face acesa
+    // devolve o sol, a de costas só o céu.
+    let (plano_aceso, plano_costas) = (r(&ca, 8), r(&ca, 44));
+    assert!(
+        plano_aceso > 1.5 * plano_costas && plano_costas > 0.0,
+        "papel plano: face acesa {plano_aceso} × de costas {plano_costas}"
+    );
+    // Só o PAPEL muda: a cor da tinta é a mesma ao bit.
+    for x in [16, 20, 30, 36] {
+        assert_eq!(
+            ilumina(&com, &ca, x, 32, [23.0, 101.0, 179.0], 1.0).map(f64::to_bits),
+            ilumina(&sem, &c0, x, 32, [23.0, 101.0, 179.0], 1.0).map(f64::to_bits)
+        );
+    }
+    // Sem tinta a alcance (só um bloco no canto, x ≥ 60) e com o rebote a 0: ao bit.
+    let canto = grade(|x, y| if x >= 60 && y >= 60 { 12_000.0 } else { 0.0 });
+    let (cc, cc0) = (campo(&canto, &com), campo(&canto, &sem));
+    for x in [5, 20, 30] {
+        assert_eq!(rebote_no_papel(&com, &cc, x, 10), 0.0, "x {x}");
+        assert_eq!(
+            sombra_no_papel(&com, &cc, x, 10).to_bits(),
+            sombra_no_papel(&sem, &cc0, x, 10).to_bits(),
+            "x {x}"
+        );
+    }
+    for x in [12, 26, 40] {
+        assert_eq!(
+            sombra_no_papel(&sem, &campo(&azul, &sem), x, 32).to_bits(),
+            s(&sem, &c0, x).to_bits()
         );
     }
 }

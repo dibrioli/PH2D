@@ -502,6 +502,72 @@ nomeados: a luz indirecta no papel com a cor da parede (K4) e a altura da barbat
 é alto (`× espessura`: 14 px de crista sobre 4,9 na borda do Smooth 2 — medir contra o rebordo do Rebelle F42 antes
 de lhe pôr tecto).
 
+## §K10 — A luz indirecta no papel: o rebote de um salto da tinta vizinha (W3, 27/10)
+
+Cenas novas da sonda: `PH2D_OLEO_CENA=dabber3` (o candidato Dabber 3 no recto a 40 e a 200 px × 0,673, azul) e as de
+antes (`travessia`, `dono`, `lisos`); cada cena pinta-se UMA vez e grava as variantes da lei do papel sobre a MESMA tinta
+(`PH2D_OLEO_VARIANTES`, chave nova `rebote_papel` no `PH2D_OLEO_AF`). Cycles da mesma malha (`h_fina`, `sol10` e
+`studio_sol10`; `cor`, `cinza`, `cinza_direto`). Régua: [`rebote_regua.py`](rebote_regua.py) (vãos = papel no casco
+fechado r 6 do recto de 200; a faixa da K8; as faixas da `halo_regua.py`) → [`regua_K10.txt`](regua_K10.txt) (as 6
+variantes) e [`regua_K10_final.txt`](regua_K10_final.txt) (antes × depois na mesma tinta). Folha
+[`../out/K10_folha.jpg`](../out/K10_folha.jpg) ([`folha_k10.py`](folha_k10.py): antes | depois | Cycles ÷ papel | Rebelle).
+
+**Causa medida, caso a caso** (luz do papel ÷ papel longe, p10/p50; `t_papel` da sonda × Cycles por passe):
+
+| caso | nosso (antes) | Cycles SÓ directo | Cycles GI cinza · cor | o que falta |
+|---|---|---|---|---|
+| (a) vãos do Dabber 3, Estúdio | 0,00 / 0,48 | 0,00 / 0,53 | 0,15 / 0,68 · 0,15 / 0,71 | o INDIRECTO (+0,15): o directo do Cycles também é preto no fundo do vão (a janela do estúdio tapada: ganho do sector p10 0,01) |
+| (a) idem, Clássico | 0,39 / 0,48 | 0,25 / 0,63 | 0,43 / 0,78 · 0,46 / 0,78 | o indirecto (+0,2) |
+| (b) sob o planalto (K8), Estúdio | 0,36 / 0,37 | 0,36 / 0,50 | 0,51 / 0,66 · 0,61 / 0,77 | o DIRECTO do HDRI (+0,13) **e** o indirecto (+0,16) |
+| (c) lisos, lado da sombra 3–6 px, Clássico | 0,59 / 0,83 | 0,88 / 0,95 | 0,90 / 0,97 · 0,91 / 0,97 | o DIRECTO: a nossa sombra projectada é mais funda (Cycles com a NOSSA `h_sombra` como malha, directo: p50 0,053 × nosso 0,161) — a penumbra/crista, não o rebote |
+
+- No Cycles `cor` ≈ `cinza` nos vãos apesar das paredes azuis (albedo lum. 0,13 × 0,5): o que devolve a luz é sobretudo
+  o PAPEL inclinado (a saia da forma desfocada: no vão a malha é um V de papel) e as faces acesas das lascas.
+
+**Lei (ENTROU)** — [`rebote_no_papel`](../../../../crates/ph2d-wet-paint/src/oleo_real.rs): em cada lado de cada fatia do
+GTAO (a mesma marcha da visibilidade), pelo cosseno da normal do papel (`∫cos(θ−g)·sinθ`): o arco da horizontal até ao
+horizonte é a PAREDE, que devolve a cor dela (o `albedo` do campo: as camadas sobre o papel branco, `Ecra::Porto`) × a
+luz da FACE virada para o papel (`½·força` de céu + o sol `n_face·l/l_z`, zero do lado escuro); o arco abaixo da
+horizontal (papel inclinado) é o CHÃO vizinho, com a cor dele, o céu aberto `½(1+n_z)` e o sol pela normal dele **com a
+sombra dele** (a marcha da luz no vizinho). A sombra do papel perde o rebote (`s − r`, ≥ 0), nos dois caminhos (o
+papel e a orla pintada, `ilumina_e_sombra`), luminância (o plano da sombra é um só). `Afinacao::rebote_papel` `1`
+(física); `0` = a sombra de antes ao bit. Só o PAPEL muda (a cor da tinta é a mesma ao bit).
+
+| régua (Estúdio · Clássico) | antes | **depois** | Cycles GI | Rebelle |
+|---|---|---|---|---|
+| (a) vãos: byte p10 · p50 | 15 · 184 · 167 · 183 | **89 · 200 · 181 · 203** | 109 · 219 · 181 · 229 | 237 · 253 |
+| (a) vãos com `max(R,G,B) < 70` (a régua da E1) | **21,75 %** · 0 % | **3,79 %** · 0 % | 0,30 % · 0 % | 0 % |
+| (b) faixa da K8, tinta da K8 (linhas 329–338, byte) | 163 · 169–195 | 166–182 · 182–199 | 211–231 · 197–216 | 255 |
+| (c) lisos, lado da LUZ 1–3 · 3–6 px, Clássico | 0,070 · 0,027 | **0,021 · 0,018** | −0,031 · −0,014 | 0 |
+| (c) lisos, lado da sombra 3–6 px, Estúdio · Clássico | 0,239 · 0,169 | 0,232 · 0,161 | 0,154 · 0,031 | 0 |
+| **dono**, lado da sombra 3–6 px, Estúdio · Clássico | 0,104 · 0,044 | **0,095 · 0,035** | 0,101 · 0,069 | — |
+| **dono**, sombra 1–3 · 12–24 px, Clássico | 0,078 · 0,000 | 0,044 · 0,000 | 0,091 · 0,059 | — |
+
+- **A cena do dono (régua da K4): a sombra do empaste alto fica.** No Estúdio (o ambiente de fábrica) a 3–6 px 0,104 →
+  0,095 × Cycles 0,101; no Clássico 0,044 → 0,035 (a lei recusada na K4 dava 0,010). A face que a sombra vê é a de
+  costas para a luz (gate). O que se perde (−0,009 a 3–6, −0,034 a 1–3 px no Clássico) é o chão inclinado aceso ao pé.
+- **(a) — o Cycles e o Rebelle discordam, e decide-se assim:** a física (o Cycles) põe o fundo do vão estreito escuro
+  mas NUNCA preto (p10 109); a lei acerta-a (3,79 % × 0,30 % abaixo de 70). O papel BRANCO nos buracos do Rebelle é
+  o PINCEL dele (lascas finas, sem relevo que tape a luz: ele não projecta no papel, K4): é matéria da receita do Dabber
+  3 (a altura das lascas, `Pinceis/W3_P_Dabber.md`), não da lei da luz — a luz fica a do Cycles.
+- **(b) — o rebote é só metade:** +3..+19 bytes; a outra metade é o DIRECTO do Estúdio (o nosso ganho do sector
+  0,78 × o que o Cycles vê) e a barbatana da crista na sombra (K8). ⚠️ A K9 mudou a tinta da `travessia` (a cena de agora
+  tem o planalto noutra linha: `regua_K10_final.txt`); a linha da tabela é a da tinta da K8 (`regua_K10.txt`).
+- **(c) — o halo do lado da LUZ era o indirecto (curado: 0,070 → 0,021); o do lado da SOMBRA é a penumbra** (o directo:
+  Cycles com a nossa `h_sombra` 0,053 × nós 0,161) — aberto abaixo.
+- **Custo** (`medida_oleo_real_custo`, recompor 65² = campo + termos + papel, smoke, 1 núcleo, mínimo de 7 intercalado,
+  loadavg 1,5): Clássico 3 111 → **4 420** ns/célula (1,42×), Estúdio 3 932 → **4 841** (1,23×) — o plano do `albedo`, as 8
+  marchas do horizonte e, no chão inclinado, a marcha da luz do vizinho. Abaixo dos 2× (o critério da E2); o tecto é o
+  passe da placa.
+- Gates: `o_rebote_das_paredes_acende_o_vao_e_nao_a_sombra_de_costas` (wet-paint: o vão clareia, face acesa > 1,5× a de
+  costas no papel plano, parede preta não devolve, sem tinta a alcance e com `rebote_papel` 0 ao bit, a cor da tinta
+  ao bit) e `o_papel_nos_vaos_entre_lascas_nao_fica_preto` (tool-painter, a régua da E1 estendida ao PAPEL nos vãos do
+  Dabber 3 a 200: 820 vãos, 30,24 % → 5,12 %, tecto 8 % no Estúdio, 0 % no Clássico). As impressões neutras
+  (`a_fenda_neutra…`, `o_material_neutro…`) passam a fixar a óptica com `rebote_papel` 0 (o papel muda por desenho).
+  Mutações **4/4 vermelhas** (controlo verde): M1 o rebote desligado de fábrica (os dois gates) · M2 a face de costas
+  acesa (sinal do `n·l`; sobreviveu à 1.ª versão do gate — o chão dominava a régua, entrou a do papel plano) · M3 a cor da
+  parede ignorada · M4 o chão sem a sombra do vizinho.
+
 ## ⛔ Recusas MEDIDAS
 
 | Tentativa | Porque saiu |
@@ -532,15 +598,24 @@ de lhe pôr tecto).
 | A lâmina que nivela também dilui a marca com a tinta que ela própria pousa (mutação M3) | uma 2.ª passada mais fraca (0,5) baixava a marca 1 da 1.ª abaixo da do traço que nivela mais: a marca é da lâmina, o `max` do `nivelar` (K8) |
 | A faixa cinza do Smooth 2 curada pela ALTURA do planalto | as facas aprovadas a 3,1–10 px também deixam a faixa; os ≤ 1 px do Rebelle pediriam < 0,9 px de tinta a 42° — o Rebelle não projecta no papel e a régua do papel é o Cycles, com o qual o ALCANCE bate (K8) |
 | `raio_suave` 1 ou 0 (menos desfoque da forma) | a parede encolhe (4/6 · 1/3) mas o miolo do Smooth 2 mostra os sulcos de célula da espessura (K6, folha) |
+| Rebote só das PAREDES (o papel plano, sem o chão inclinado) | vãos do Dabber 3 no Estúdio p10 15 → 46, 20,64 % abaixo de 70 (Cycles 0,30 %): a luz dos vãos vem sobretudo do papel inclinado em frente (K10) |
+| O chão aceso pela luz do PRÓPRIO papel (`1 − s`) | vãos p10 47, 20,37 % abaixo de 70: no vão a encosta da frente está ao sol e esta não (K10) |
+| O chão aceso pela normal dele SEM a sombra dele | vãos 2,33 % (melhor), mas a sombra projectada ao pé de um bloco perde 18 % (o vizinho também está à sombra): o gate de costas falha (K10) |
+| O céu do chão tapado pelo céu que ESTE papel vê | vãos 3,79 → 20,38 % abaixo de 70 e a cena do dono igual ao bit na régua: o fundo do vão tem pouco céu, a encosta em frente não (K10) |
 
 ## Fica aberto
 
 - Subsurface (M1): a BORDA sai +0,02..+0,04 onde o Cycles escurece −0,03..−0,06, e a iluminada +0,035 × 0,001 (r4);
   o peso não-linear do Cycles na borda. ~~Custo: a irradiância 2×~~ curado na K4 (guardada para o sombreado).
 - Sombra projectada LONGA no papel ao pé do empaste alto (K4): Cycles 12–24 px 0,276 (Estúdio) · 0,059 (Clássico) ×
-  nós 0,000 — a marcha da luz e o sector do HDRI não a fazem; o Rebelle também não a tem nos traços lisos.
-- Papel no Clássico ao pé de traço liso +0,03 (3–6 px) × Cycles −0,014: a luz que a parede ILUMINADA devolve ao papel
-  (precisa da cor da parede; o ricochete com o albedo do papel foi recusado, K4).
+  nós 0,000 — a marcha da luz e o sector do HDRI não a fazem; o Rebelle também não a tem nos traços lisos. O rebote
+  (K10) não lhe toca (0,000 antes e depois).
+- ~~Papel no Clássico ao pé de traço liso +0,03 (3–6 px) × Cycles −0,014~~ — o lado da LUZ curado na K10 (1–3 px 0,070 →
+  0,021). Fica o lado da SOMBRA: a nossa penumbra/crista escurece 3–6 px 0,161 × Cycles 0,031 (com a NOSSA `h_sombra`
+  como malha o Cycles dá 0,053 de directo): a lei da penumbra, não o rebote (K10).
+- Vãos do Dabber 3 no Estúdio: 3,79 % abaixo de 70 × Cycles 0,30 %; o rebote é cinza (o plano da sombra é um só) — o
+  Cycles tinge-o de azul. O branco dos buracos do Rebelle é receita do pincel (altura das lascas), não luz (K10).
+- Faixa sob o planalto no Estúdio: o directo do HDRI (ganho do sector) fica 0,13 abaixo do Cycles (K10, caso b).
 
 - ~~Brilho do Estúdio mais fraco que o do Cycles~~ curado na E3-B (p99 0,53 × 0,48; área 2,12 % × 2,13 %).
 - Metal nas PAREDES: meio-tom R p50 0,34 × 0,16 do Cycles (as encostas batem no cru; o «p90 0,60 × 1,16» era a

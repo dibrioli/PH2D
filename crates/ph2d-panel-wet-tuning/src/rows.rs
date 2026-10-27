@@ -227,10 +227,11 @@ mod tests {
     /// 7 → 3) e Tip pickup (Stroke 7 → 6). Menos 4 a 25/10 (a linha da ferramenta da água no cartão): Blend force
     /// (Paint 25 → 24), Dryer, Blow e Smear (Tools 7 → 4). Mais 11 a 27/10 (Óleo Real W2 E3): o rebordo da faca no
     /// Stroke (6 → 7) e os 10 do Material da tinta (o Principled por célula e o Lock). Menos 1 a
-    /// 27/10 (W3): o Material são os 8 do Principled simplificado e o Lock (10 → 9).
+    /// 27/10 (W3): o Material são os 8 do Principled simplificado e o Lock (10 → 9). Mais 2 a 27/10 (W3 K2): a textura
+    /// que acompanha o tamanho do pincel (expoente e diâmetro de referência) no Stroke (7 → 9).
     #[test]
     fn every_visible_knob_has_a_row() {
-        assert_eq!(rows().len(), 85);
+        assert_eq!(rows().len(), 87);
         for g in [
             (KnobGroup::Paint, 24),
             (KnobGroup::Water, 7),
@@ -238,7 +239,7 @@ mod tests {
             (KnobGroup::Tools, 4),
             (KnobGroup::Paper, 1),
             (KnobGroup::Bristles, 19),
-            (KnobGroup::Stroke, 7),
+            (KnobGroup::Stroke, 9),
             (KnobGroup::WetEffects, 3),
             (KnobGroup::Look, 5),
             (KnobGroup::Material, 9),

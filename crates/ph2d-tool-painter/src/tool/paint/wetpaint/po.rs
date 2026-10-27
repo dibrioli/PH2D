@@ -34,7 +34,9 @@ impl PainterTool {
         opacidade_da_pressao: Option<f32>,
         strength: f32,
     ) {
-        let j = self.paint.brush.dab_jitter;
+        let mut j = self.paint.brush.dab_jitter;
+        // O grão cresce com o pincel (W3 K2, `lote::escala_da_textura`): `γ = 0` = o `po_px` de sempre, ao bit.
+        j.po_px *= super::lote::escala_da_textura(&sess.engine, brush);
         if j.po <= 0.0
             || !brush.stroke_method.allows_jitter()
             || self.paint.eraser

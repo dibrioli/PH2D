@@ -285,6 +285,9 @@ pub const KNOB_DEFS: [KnobDef; KNOB_COUNT] = [
     k(Knob::SmearWater, KnobGroup::Hidden, "smearWater", 0.0, 1.0, 0.01, 0.5, None),
     // o rebordo da faca (W2 E4): à vista no Tuning › Stroke (E3-A)
     k(Knob::KnifeRidge, KnobGroup::Stroke, "knifeRidge", 0.0, 16.0, 0.01, 0.0, None),
+    // a textura que acompanha o tamanho do pincel (W3 K2): `γ = 0` = a de sempre; ref = o EmbossSizeRef de fábrica
+    k(Knob::TextureSizeExp, KnobGroup::Stroke, "textureSizeExp", 0.0, 1.5, 0.01, 0.0, None),
+    k(Knob::TextureSizeRef, KnobGroup::Stroke, "textureSizeRef", 1.0, 1000.0, 0.5, 41.0, None),
     // o material da tinta (W2 E3): os defaults são os do `MaterialCelula::NEUTRO` (gate `o_neutro_do_material_…`)
     k(Knob::Metallic, KnobGroup::Material, "metallic", 0.0, 1.0, 0.01, 0.0, None),
     k(Knob::Roughness, KnobGroup::Material, "roughness", 0.0, 1.0, 0.01, 0.5, None),

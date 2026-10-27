@@ -233,6 +233,12 @@ pub enum Knob {
     /// deixa nas duas bordas laterais do que varre, com o miolo alisado. `0` = a tinta de sempre, ao bit (o
     /// hospedeiro nem chama a porta).
     KnifeRidge,
+    /// ⭐ **A textura acompanha o TAMANHO do pincel** (W3 K2, `docs/Painter/Pinceis/W3_K2_textura.md`): o grão `Tiled`
+    /// e o pó do pincel crescem `(D ÷ ref)^γ`, com `D` o diâmetro do PINCEL (o do traço, sem a pressão: um grão preso à
+    /// tela não pode re-fasear a cada oscilação). `0` = a textura em px de tela de sempre, ao bit (o hospedeiro nem a lê).
+    TextureSizeExp,
+    /// … o diâmetro (px) a que a textura tem o tamanho autorado.
+    TextureSizeRef,
     /// ⭐ **O MATERIAL da tinta do pincel** ([`crate::material::MaterialCelula`]): os 8 controlos do Principled
     /// SIMPLIFICADO (W3, nomes do Blender) que o pincel pousa na célula e que se misturam no molhado pela massa
     /// ([`crate::grid::material`]). Cada default é o do [`crate::material::MaterialCelula::NEUTRO`] — a tinta de
@@ -257,7 +263,7 @@ pub enum Knob {
     LockMaterial,
 }
 
-pub const KNOB_COUNT: usize = 118;
+pub const KNOB_COUNT: usize = 120;
 
 /// O LEITOR TOLERANTE das chaves do material de antes da W3 (preset e macro gravados com elas): `(knob, valor)`
 /// na lei nova, `None` para uma chave que não é antiga. `roughnessMul` m → Roughness `0,5·m` (o neutro `1` → `0,5`,

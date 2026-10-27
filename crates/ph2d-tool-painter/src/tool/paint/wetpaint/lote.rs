@@ -139,6 +139,31 @@ pub(super) fn acerta_o_lote(
     };
 }
 
+/// ⭐ **A textura acompanha o TAMANHO do pincel** (W3 K2, `docs/Painter/Pinceis/W3_K2_textura.md`): o factor
+/// `(D ÷ ref)^γ` ([`ph2d_wet_paint::tuning::Knob::TextureSizeExp`]) por que crescem o grão `Tiled` e o pó solto, com `D`
+/// o diâmetro do PINCEL (o do traço: o grão preso à tela re-faseava a cada oscilação da pressão). `γ = 0` = `1`, ao bit.
+pub(super) fn escala_da_textura(
+    engine: &ph2d_wet_paint::painter::Engine,
+    brush: &BrushSpec,
+) -> f32 {
+    use ph2d_wet_paint::tuning::Knob;
+    let gama = engine.tuning.get(Knob::TextureSizeExp);
+    if gama > 0.0 {
+        let d = 2.0 * f64::from(brush.clamped_radius()).max(0.5);
+        (d / engine.tuning.get(Knob::TextureSizeRef).max(1.0)).powf(gama) as f32
+    } else {
+        1.0
+    }
+}
+
+/// O grão do dab sob [`escala_da_textura`]: só o mapeamento `Tiled` (preso à tela) — o View/Random já é relativo ao
+/// dab, o Flow ao traço e o Stencil ao gizmo. O `Size` MULTIPLICA a coordenada, logo dividi-lo cresce o padrão.
+pub(super) fn escala_o_grao(t: &mut ph2d_painter_brush::texture::TextureSettings, escala: f32) {
+    if escala != 1.0 && t.mapping == ph2d_painter_brush::texture::TextureMapping::Tiled && !t.flow {
+        t.size = t.size.map(|s| s / escala);
+    }
+}
+
 /// A fracção do diâmetro de [`peso_do_passo_fino`] (o diâmetro de referência `1 ÷ (2 · 0,035)` ≈ 29 px). MEDIDA
 /// (03_MOTORES §7 b): 0,025 (a cápsula, 40 px) repunha tudo mas tirava do vale as mídias afinadas a 17–18 px (Soft
 /// Pastel, Marker Liner, Dabber) e a tabela da largura colapsava a 1–2 px; 0,05 (20 px) deixava 8 pincéis abaixo

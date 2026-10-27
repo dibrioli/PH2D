@@ -153,6 +153,13 @@ impl PainterTool {
         // `texv`, que hoje vinha do tapete do próprio motor) — a silhueta fica o contorno da ponta. Um Shape
         // que não é Bristles não tem cerdas: a ponta é LISA (`texv = 1`, D4).
         let cerdas = brush.shape.kind == ph2d_painter_brush::TextureKind::Bristles;
+        // ⭐ A marca MENOR do spray é um respingo liso, não um pedaço do tapete de cerdas (W3 K2): o tapete é ~94 % feltro
+        // perto de zero e, cortado ao tamanho da marca, o portão do papel comia-a inteira — `spray_count` 10 com `particle`
+        // 0,1 pousava 54 de tinta contra 4 719 do pincel sem spray (`docs/Painter/Pinceis/W3_K2_textura.md`).
+        let marca_do_spray = brush
+            .dab_jitter
+            .particula_no(brush.spray_count, brush.clamped_radius())
+            < 1.0;
         let filme_liso = sess
             .engine
             .tuning
@@ -210,6 +217,7 @@ impl PainterTool {
         let fino = super::lote::peso_do_passo_fino(brush, ratio);
         super::lote::acerta_o_lote(&mut sess.engine, brush, fino);
         let esmaece_fino = super::rota_da_lane::esmaece_fino(&sess.engine, brush);
+        let escala_tex = super::lote::escala_da_textura(&sess.engine, brush);
         let sub_dabs: Vec<(usize, u64, Option<f32>, Dab)> = dabs
             .iter()
             .enumerate()
@@ -252,7 +260,8 @@ impl PainterTool {
             // Per-dab silhouette closure — the impasto walk's exact recipe
             // (spec at the dab's radius → rotor → footprint → Shape basis in
             // the stroke frame), evaluated per engine cell (cell − 1 = px).
-            let spec = brush.at_dab(d);
+            let mut spec = brush.at_dab(d);
+            super::lote::escala_o_grao(&mut spec.texture, escala_tex);
             let peso = lane_prev
                 .filter(|_| passo_do_pigmento > 0.0)
                 .map_or(1.0, |_| {
@@ -551,7 +560,7 @@ impl PainterTool {
             // Com o FILME do traço (`Knob::StrokeFilm`, J4 aguarela) o tapete fica de fora: a lavagem é lisa.
             let cerdas_sb = shape_basis
                 .as_ref()
-                .filter(|_| cerdas && grain.is_none() && !filme_liso);
+                .filter(|_| cerdas && grain.is_none() && !filme_liso && !marca_do_spray);
             let cerdas_fn = cerdas_sb.map(|sb| {
                 let forma = &spec_ref.shape;
                 let px_por_celula = f64::from(ratio);

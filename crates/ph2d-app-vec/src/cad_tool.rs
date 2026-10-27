@@ -368,7 +368,9 @@ pub fn frame(scene: &mut VecScene, vec: &mut VecState, xf: &VecXforms, hero: &mu
         && let Some(v) = u.no_ecra(&r.lei)
     {
         let marca = (r.id, v.to_bits());
-        if ecoa || t.semeada.map(|s| s.0) != Some(r.id) {
+        // A medida mudou por outro caminho (scrub, undo): o chip re-semeia; o que o artista digita fica
+        // (`set_number_value` só re-semeia um campo focado que ninguém tocou).
+        if ecoa || t.semeada != Some(marca) {
             hero.store.set_number_value(VECTOR_CAD_VALUE, v);
             t.semeada = Some(marca);
         }

@@ -1,6 +1,8 @@
 //! ⭐ **Cada operação que mexe em vértices guarda o id de quem sobrevive e dá id novo a quem nasce**
-//! (W4.2, `docs/BlenderConstraints/04_W4_cad.md` §2). Um caso por sítio desta crate; os do `vec-edit` e
-//! da booleana vivem lá (`each_vertex_mutation_site_keeps_or_assigns_ids_*`).
+//! (W4.2, `docs/BlenderConstraints/04_W4_cad.md` §2). Um caso por operação desta crate. Os sítios de fora (o
+//! `vec-edit`, a booleana, as formas vivas) não têm caso próprio: a porta que os cobre é o assentar do undo
+//! (`VecScene::normaliza_ids_desde`, `shells/desktop/src/vec_tree_settle.rs`), que herda pela posição e numera
+//! quem nasce — um sítio que esquece os ids perde a herança, nunca fica sem id.
 
 use ph2d_vec_scene::{
     FlipAxis, Rotate90, VecPath, VecPathId, VecScene, VecVertex, VecXforms, VertId,

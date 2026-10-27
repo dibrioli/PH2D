@@ -42,5 +42,19 @@ fn each_field_says_its_display_unit() {
         unidade(vetor(crate::canal_vetor::FECHADO)),
         Unidade::Nenhuma
     );
+    // W4.6 ABERTO 3: o canto, a largura do traço e a caixa paramétrica são mundo; o tracejado (múltiplo da
+    // largura) e o valor paramétrico (grandeza do tipo) ficam nus.
+    use crate::canal_vetor as v;
+    for c in [
+        v::CANTO,
+        v::TRACO_LARGURA,
+        v::PARAM_LARGURA,
+        v::PARAM_ALTURA,
+    ] {
+        assert_eq!(unidade(vetor(c)), Unidade::Comprimento, "campo {c}");
+    }
+    for c in [v::TRACO_TRACO, v::TRACO_VAO, v::PARAM_VALOR] {
+        assert_eq!(unidade(vetor(c)), Unidade::Nenhuma, "campo {c}");
+    }
     assert_eq!(unidade(chave(99, 3)), Unidade::Nenhuma);
 }

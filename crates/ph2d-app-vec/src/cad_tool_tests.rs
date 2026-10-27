@@ -235,6 +235,33 @@ fn clicking_a_dimension_number_selects_it_and_typing_moves_the_drawing() {
     );
 }
 
+/// W4.6 ABERTO 1: com o chip focado e sem digitar, uma medida que muda por outro caminho (scrub, undo) re-semeia o
+/// chip. Mutação que deve sangrar: voltar a comparar só o id da regra semeada.
+#[test]
+fn a_focused_untouched_chip_follows_a_measure_changed_elsewhere() {
+    let mut m = mesa();
+    let (a, b) = (m.v(1), m.v(2));
+    m.scene
+        .regras_mut()
+        .push(ph2d_vec_scene::cad::RegraCad::nova(Lei::Distancia(
+            a, b, 2.0,
+        )));
+    m.scene.normaliza_ids();
+    m.vec.cad_tool.regra = Some(m.scene.regras()[0].id);
+    m.vec.cad_tool.focar = true;
+    m.quadro();
+    assert_eq!(m.hero.store.focus_id(), Some(VECTOR_CAD_VALUE));
+    m.scene.regras_mut()[0].lei = Lei::Distancia(a, b, 2.5);
+    m.quadro();
+    let u = Unidades::of(&m.hero);
+    let (_, _, buf, _, _) = m.hero.store.number_input(VECTOR_CAD_VALUE).expect("o chip");
+    assert_eq!(
+        buf,
+        ph2d_editor_core::interaction::format_number(u.comprimento.value(2.5)),
+        "o chip focado mostra a medida antiga"
+    );
+}
+
 /// O Delete com uma regra escolhida apaga SÓ a regra (o desenho fica); sem regra escolhida, o Delete é o de sempre.
 #[test]
 fn delete_removes_the_chosen_rule_in_one_step() {

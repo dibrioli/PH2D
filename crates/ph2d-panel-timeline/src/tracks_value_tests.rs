@@ -176,6 +176,22 @@ fn a_length_channel_shows_in_the_project_unit() {
         crate::tracks_value::valor_da_row(&values, &t[0], v, u)
     };
     assert_eq!(diz(PropKind::Field(chave(MEDIDA, 4)), 0.8), "80 px");
+    // W4.6 ABERTO 2: a unidade divide a fatia — a precisão cede, depois o espaço; nunca `1234 p…`.
+    // Mutação que deve sangrar: `resta` sem descontar o sufixo.
+    for (m, lido) in [
+        (12.34, "1234px"),
+        (0.12345, "12 px"),
+        (0.015, "1.5 px"),
+        (-1.5, "-150px"),
+    ] {
+        let s = diz(PropKind::Field(chave(MEDIDA, 4)), m);
+        assert_eq!(s, lido);
+        assert!(
+            s.chars().count() <= 6,
+            "`{s}` não cabe na fatia de {VALUE_W} px"
+        );
+    }
+    assert_eq!(diz(PropKind::Field(chave(ANGULO, 4)), -123.25), "-123°");
     assert_eq!(diz(PropKind::Field(chave(ANGULO, 4)), 45.0), "45°");
     assert_eq!(diz(PropKind::Opacity, 0.5), crate::tracks_value::text(0.5));
 }

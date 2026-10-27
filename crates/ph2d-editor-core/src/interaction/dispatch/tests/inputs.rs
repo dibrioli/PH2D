@@ -155,6 +155,26 @@ fn number_input_set_value_preserves_buffer_when_focused() {
     assert_eq!(buf, "1.2");
 }
 
+/// W4.6 ABERTO 1 (`docs/BlenderConstraints/04_W4_cad.md` §3.8): focado e SEM digitar, o campo segue o valor
+/// que mudou por outro caminho (scrub, undo) — e continua todo selecionado para o 1.º dígito substituir.
+/// Mutação que deve sangrar: `if !focused || intocado` → `if !focused`.
+#[test]
+fn number_input_set_value_reseeds_an_untouched_focused_buffer() {
+    let mut store = make_number_store(0.0);
+    assert!(crate::interaction::dispatch::focus_number_field(
+        &mut store,
+        NodeId(1)
+    ));
+    store.set_number_value(NodeId(1), 9.5);
+    let (_, value, buf, _, _) = store.number_input(NodeId(1)).unwrap();
+    assert!((value - 9.5).abs() < 1e-9);
+    assert_eq!(buf, "9.500");
+    let arena = Bump::new();
+    let _ = dispatch_text_input(&mut store, '3', &arena);
+    let (_, _, buf, _, _) = store.number_input(NodeId(1)).unwrap();
+    assert_eq!(buf, "3", "o 1.º dígito substitui o valor re-semeado");
+}
+
 #[test]
 fn slider_drag_propagates_to_linked_number_input() {
     let mut store = WidgetStore::with_capacity(8);

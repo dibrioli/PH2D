@@ -37,6 +37,9 @@ use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, Theme, TypeToken};
 /// continua a lê-lo inteiro.
 pub(crate) const VALUE_W: f32 = 40.0; // LITERAL-PX-OK: 6 digits at TypeToken::Xs (11px)
 
+/// Os caracteres que [`VALUE_W`] leva — o orçamento do número com a unidade ([`com_unidade`]).
+const VALUE_CHARS: usize = 6;
+
 /// **Há espaço para o número sem comer o nome?** — a coluna é arrastável e o piso dela
 /// ([`crate::geom`]) deixa-a chegar a 56 px, onde um número apagaria metade do nome.
 ///
@@ -106,13 +109,28 @@ pub(crate) fn com_unidade(prop: PropKind, v: f64, u: Unidades) -> Option<String>
             u.angulo.suffix(),
         ),
     };
+    // A unidade divide a MESMA fatia: a precisão cede primeiro, depois o espaço (`1234px`, nunca `1234 p…`).
     #[expect(clippy::cast_possible_truncation, reason = "a fatia mostra f32")]
-    Some(format!("{}{espaco}{sufixo}", curto(n as f32)))
+    let n = n as f32;
+    let resta = |e: &str| VALUE_CHARS.saturating_sub(e.chars().count() + sufixo.chars().count());
+    let (num, e) = [espaco, ""]
+        .into_iter()
+        .find_map(|e| cabe(n, resta(e)).map(|s| (s, e)))
+        .unwrap_or_else(|| (curto(n, 0), ""));
+    Some(format!("{num}{e}{sufixo}"))
 }
 
-/// [`text`] sem zeros à direita — a unidade ocupa a fatia que eles levavam.
-fn curto(v: f32) -> String {
-    let s = text(v);
+/// O número com até duas casas que cabe em `largura` caracteres, sem zeros à direita.
+fn cabe(v: f32, largura: usize) -> Option<String> {
+    (0..=2)
+        .rev()
+        .map(|casas| curto(v, casas))
+        .find(|s| s.chars().count() <= largura)
+}
+
+/// `v` com `casas` decimais e sem zeros à direita.
+fn curto(v: f32, casas: usize) -> String {
+    let s = format!("{v:.casas$}");
     let s = if s.contains('.') {
         s.trim_end_matches('0').trim_end_matches('.')
     } else {

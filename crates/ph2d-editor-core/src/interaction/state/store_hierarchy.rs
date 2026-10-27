@@ -429,7 +429,8 @@ impl WidgetStore {
     /// Mutate a NumberInput's committed value programmatically (e.g.
     /// from a linked Slider drag). Re-syncs the buffer to the new
     /// formatted value when the input is **not** focused; if it is
-    /// focused, the user's edit is preserved.
+    /// focused, the user's edit is preserved — a focused buffer the user has
+    /// not touched (still the formatted old value) re-seeds, all selected.
     pub fn set_number_value(&mut self, id: NodeId, new_value: f64) {
         let focused = self.focus_id == Some(id);
         // Audit re-pass fix: while a drag-slider is actively
@@ -445,18 +446,25 @@ impl WidgetStore {
         if let Some(InteractiveState::NumberInput {
             value,
             buffer,
+            caret,
             last_committed,
+            selection_anchor,
             ..
         }) = self.states.get_mut(&id)
         {
+            let intocado = focused && *buffer == format_number(*value);
             *value = new_value;
             if !dragging_this {
                 *last_committed = new_value;
             }
-            if !focused {
+            if !focused || intocado {
                 buffer.clear();
                 use std::fmt::Write;
                 let _ = write!(buffer, "{}", format_number(new_value));
+            }
+            if intocado {
+                *selection_anchor = Some(0);
+                *caret = buffer.len();
             }
         }
     }

@@ -266,15 +266,22 @@ pub enum Unidade {
 }
 
 /// ⭐ **A unidade de exibição do campo** — derivada aqui, numa porta, e não escrita em cada [`CampoInfo`]. Só
-/// entra o que o publicador entrega cru em mundo: as coordenadas do vértice do vetor (âncora e alças) e as
-/// medidas do CAD.
+/// entra o que o publicador entrega cru em mundo: as coordenadas do vértice do vetor (âncora e alças), o raio do
+/// canto (o sinal é o estilo), a largura do traço, a caixa da forma paramétrica e as medidas do CAD. O tracejado
+/// é múltiplo da largura, e o `PARAM_VALOR` muda de grandeza com o tipo da forma: ficam nus.
 #[must_use]
 pub fn unidade(k: FieldKey) -> Unidade {
     use crate::{canal_cad as cad, canal_vetor as vet};
     match (k.familia, k.campo) {
-        (familia::CAD, cad::MEDIDA) | (familia::VETOR, vet::ANCORA_X..=vet::SAIDA_Y) => {
-            Unidade::Comprimento
-        }
+        (familia::CAD, cad::MEDIDA)
+        | (
+            familia::VETOR,
+            vet::ANCORA_X..=vet::SAIDA_Y
+            | vet::CANTO
+            | vet::TRACO_LARGURA
+            | vet::PARAM_LARGURA
+            | vet::PARAM_ALTURA,
+        ) => Unidade::Comprimento,
         (familia::CAD, cad::ANGULO) => Unidade::Angulo,
         _ => Unidade::Nenhuma,
     }

@@ -200,6 +200,98 @@ fn a_espessura_levanta_o_relevo_que_o_tecto_aparava() {
     );
 }
 
+/// A largura (células) da parede de cima de um planalto na coluna `x`: as células entre 10 % e 90 % do miolo `y=32`.
+fn largura_da_parede(c: &CampoAltura, x: isize) -> usize {
+    let topo = c.at(x, 32);
+    (1..32)
+        .filter(|&y| {
+            let f = c.at(x, y) / topo;
+            (0.1..=0.9).contains(&f)
+        })
+        .count()
+}
+
+/// ⭐ **A parede nivelada fica viva** (W3 K7): o planalto que a faca NIVELOU ([`Grid::nivelado`]) sai do desfoque
+/// largo da forma — a parede cai em ≤ 2 células (o Rebelle Knife Smooth 2: ~2 px) contra as ~10 da forma de sempre
+/// —, o miolo fica à altura dele, e a tinta por marcar longe do planalto é a de antes AO BIT (a marca toda a zero
+/// também). Mutações que sangram: a marca ignorada na forma · a média sem normalizar · a parte presa sem o `mu`.
+#[test]
+fn a_parede_nivelada_fica_viva() {
+    // Um planalto (x 8..=30, y 20..=44) e, longe dele, uma faixa de outra tinta (x 50..=60) sem marca.
+    let tinta = |x: usize, y: usize| (8..=30).contains(&x) && (20..=44).contains(&y);
+    let outra = |x: usize, y: usize| (50..=60).contains(&x) && (20..=44).contains(&y);
+    let base = grade(|x, y| {
+        if tinta(x, y) || outra(x, y) {
+            3000.0
+        } else {
+            0.0
+        }
+    });
+    let mut marcada = base.clone();
+    let mut zerada = base.clone();
+    crate::grid::nivelado::garante(&mut zerada);
+    let s = marcada.s;
+    let mu = crate::grid::nivelado::garante(&mut marcada);
+    for y in 1..=W {
+        for x in 1..=W {
+            if tinta(x, y) {
+                mu[x + y * s] = 1.0;
+            }
+        }
+    }
+    let o = OleoReal::default();
+    let (c0, c1, cz) = (campo(&base, &o), campo(&marcada, &o), campo(&zerada, &o));
+    let (antes, depois) = (largura_da_parede(&c0, 19), largura_da_parede(&c1, 19));
+    assert!(
+        antes >= 6,
+        "a forma de sempre devia espalhar a parede: {antes}"
+    );
+    assert!(
+        depois <= 2,
+        "a parede nivelada espalhou-se: {depois} células"
+    );
+    assert!(
+        (c1.at(19, 32) / c0.at(19, 32) - 1.0).abs() < 0.01,
+        "o miolo do planalto mudou: {} × {}",
+        c1.at(19, 32),
+        c0.at(19, 32)
+    );
+    // Fora do planalto a parede não sobe: a 2 células do último marcado, nada.
+    assert!(
+        c1.at(19, 17) < 1e-6 * c1.at(19, 32),
+        "o planalto vazou: {}",
+        c1.at(19, 17)
+    );
+    let bits = |c: &CampoAltura, x: isize| -> Vec<u64> {
+        (1..=W as isize).map(|y| c.at(x, y).to_bits()).collect()
+    };
+    assert_eq!(bits(&c1, 55), bits(&c0, 55), "a tinta por marcar mudou");
+    assert!(
+        cz.v.iter()
+            .map(|v| v.to_bits())
+            .eq(c0.v.iter().map(|v| v.to_bits())),
+        "a marca a zero mudou a forma"
+    );
+    // A orla FINA do planalto (as duas últimas linhas a pouca tinta, cobertura < 1, como a borda do Smooth 2) não
+    // puxa o miolo para baixo: a média pesa pela cobertura (1,3 %; pesada só pela marca, 14 %) — a parede é a da orla,
+    // não uma rampa para dentro.
+    let mut fina = marcada.clone();
+    for y in 43..=44 {
+        for x in 8..=30 {
+            fina.sett[x + y * s] = 40.0;
+        }
+    }
+    let cf = campo(&fina, &o);
+    let cobre = crate::opacity::alpha_of_mass(40.0);
+    assert!(cobre < 0.9, "a orla de teste devia ser fina: {cobre}");
+    assert!(
+        (cf.at(19, 40) / cf.at(19, 32) - 1.0).abs() < 0.03,
+        "a orla fina puxou o miolo: {} × {} (cobertura da orla {cobre})",
+        cf.at(19, 40),
+        cf.at(19, 32)
+    );
+}
+
 /// ⭐ **A crista da faca faz sombra** (W3 K6): o rebordo da lâmina ([`Grid::crista`]) entra na altura da SOMBRA e
 /// projecta a banda escura atrás dele, por dentro da tinta (`49_realshader/E4_lamina.md` §Rebordo); os fios de um
 /// pincel de cerdas (a `altura` sem crista) não — a sombra deles fica a de antes ao bit. Mutações que sangram: a
@@ -220,17 +312,32 @@ fn a_crista_da_faca_faz_sombra() {
     let o = OleoReal::default();
     let (c_lisa, c_fios, c_faca) = (campo(&lisa, &o), campo(&fios, &o), campo(&faca, &o));
     assert!(
-        c_fios.sombra.iter().map(|v| v.to_bits()).eq(c_lisa.sombra.iter().map(|v| v.to_bits())),
+        c_fios
+            .sombra
+            .iter()
+            .map(|v| v.to_bits())
+            .eq(c_lisa.sombra.iter().map(|v| v.to_bits())),
         "os fios entraram na altura da sombra"
     );
     let atras = |c: &CampoAltura| termos(&o, c, 34, 32).luz;
-    assert!(atras(&c_fios) == 1.0, "sem crista, atrás dos fios: {}", atras(&c_fios));
-    assert!(atras(&c_faca) < 0.5, "atrás da crista da faca: {}", atras(&c_faca));
+    assert!(
+        atras(&c_fios) == 1.0,
+        "sem crista, atrás dos fios: {}",
+        atras(&c_fios)
+    );
+    assert!(
+        atras(&c_faca) < 0.5,
+        "atrás da crista da faca: {}",
+        atras(&c_faca)
+    );
     assert!(termos(&o, &c_faca, 28, 32).luz == 1.0, "do lado da luz");
     // A crista vai a zero com a cobertura, como os fios: no papel nu não levanta nada.
     let mut nua = Grid::new(W, W);
     nua.crista = vec![2.0; nua.cells];
-    assert!(campo(&nua, &o).sombra.iter().all(|&v| v == 0.0), "crista sem tinta");
+    assert!(
+        campo(&nua, &o).sombra.iter().all(|&v| v == 0.0),
+        "crista sem tinta"
+    );
 }
 
 #[test]
@@ -305,7 +412,10 @@ fn a_forca_da_fenda_multiplica_as_chances_de_oclusao() {
         for f in [0.25, 0.5, 2.0, 3.0] {
             let w = forca_da_fenda(v, f);
             let chances = |x: f64| x / (1.0 - x);
-            assert!((chances(w) - chances(v) / f).abs() < 1e-12, "v {v} f {f}: {w}");
+            assert!(
+                (chances(w) - chances(v) / f).abs() < 1e-12,
+                "v {v} f {f}: {w}"
+            );
         }
     }
 }
@@ -680,4 +790,3 @@ fn a_sombra_no_papel_tira_a_luz_linear_e_nao_o_byte() {
         );
     }
 }
-

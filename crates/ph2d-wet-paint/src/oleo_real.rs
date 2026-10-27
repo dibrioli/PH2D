@@ -415,7 +415,12 @@ impl CampoAltura {
             Vec::new()
         };
         let d = |v: &[f64], r: usize| desfoca(rep, v, w, h, r);
-        let suave = d(&d(&massa, af.raio_suave), af.raio_suave);
+        let suave = match marca_do_nivelado(rep, camadas, (ax0, ay0, w, h)) {
+            Some((mu, peso)) => {
+                forma_viva(&massa, (&mu, &peso), &|v| d(&d(v, af.raio_suave), af.raio_suave))
+            }
+            None => d(&d(&massa, af.raio_suave), af.raio_suave),
+        };
         let k_fios = af.fios * o.profundidade;
         let v = plano_f32(rep, w, h, &|k| (suave[k] * escala) as f32);
         let (massa_d, fios_d) = match af.raio_detalhe {
@@ -544,6 +549,60 @@ impl CampoAltura {
         let i = self.idx(x, y);
         f64::from(self.v[i]) + f64::from(self.detalhe[i])
     }
+}
+
+/// A marca do nivelamento ([`crate::grid::nivelado`], K7) na janela `(ax0, ay0, w, h)` — a maior das camadas
+/// visíveis — e o PESO dela, `marca × cobertura`. `None` quando nenhuma a tem: a forma de antes, ao bit.
+fn marca_do_nivelado(
+    rep: &impl Reparte,
+    camadas: &[(&Grid, bool)],
+    (ax0, ay0, w, h): (usize, usize, usize, usize),
+) -> Option<(Vec<f64>, Vec<f64>)> {
+    if !camadas.iter().any(|&(lg, v)| v && !lg.nivelado.is_empty()) {
+        return None;
+    }
+    let s = camadas[0].0.s;
+    let (mut mu, mut peso) = (vec![0f64; w * h], vec![0f64; w * h]);
+    rep.por_linhas(w, &mut mu, &mut peso, &|y, mu, peso| {
+        for x in 0..w {
+            let i = (ax0 + x) + (ay0 + y) * s;
+            let mut cobre = 0.0;
+            for &(lg, visivel) in camadas {
+                if visivel {
+                    mu[x] = mu[x].max(f64::from(crate::grid::nivelado::em(lg, i)));
+                    let m = f64::from(lg.sett[i]) + f64::from(lg.susp[i]);
+                    cobre += crate::opacity::alpha_of_mass(m) * (1.0 - cobre);
+                }
+            }
+            peso[x] = mu[x] * cobre;
+        }
+    });
+    Some((mu, peso))
+}
+
+/// ⭐ **A parede nivelada fica viva** (W3 K7, `49_realshader/oraculo/README.md` §K7): a massa (já `× cobertura`)
+/// reparte-se pela marca `mu`. A parte por marcar leva o desfoque largo de sempre (`desfoque`); a marcada é a
+/// ESPESSURA média normalizada pelo peso `mu × cobertura` — `desfoque(massa·mu) ÷ desfoque(peso) · peso` —, que alisa
+/// o miolo do planalto sem o espalhar para fora dele nem puxar para dentro a orla fina: a parede é a da cobertura
+/// (1–2 células, o Rebelle ~2 px) em vez das ~10 do desfoque largo.
+fn forma_viva(
+    massa: &[f64],
+    (mu, peso): (&[f64], &[f64]),
+    desfoque: &dyn Fn(&[f64]) -> Vec<f64>,
+) -> Vec<f64> {
+    let livre: Vec<f64> = massa.iter().zip(mu).map(|(m, u)| m * (1.0 - u)).collect();
+    let presa: Vec<f64> = massa.iter().zip(mu).map(|(m, u)| m * u).collect();
+    let (livre, presa, suporte) = (desfoque(&livre), desfoque(&presa), desfoque(peso));
+    (0..massa.len())
+        .map(|k| {
+            let viva = if suporte[k] > 1e-9 {
+                presa[k] / suporte[k] * peso[k]
+            } else {
+                0.0
+            };
+            livre[k] + viva
+        })
+        .collect()
 }
 
 /// Média móvel separável de raio `r` (caixa `2r+1`), presa às bordas; cada passagem por linhas de `rep`.

@@ -154,7 +154,7 @@ impl Engine {
 /// de cada célula com tinta na caixa `(x0, y0, x1, y1)` vai, pela cobertura `w` da silhueta e a fracção `nivel` por
 /// dab, para a MÉDIA (pesada por `w`) da espessura sob a lâmina — o topo plano do Rebelle no lugar dos sulcos e do
 /// tubo. Só a altura muda (o factor pode ficar < 1, [`crate::grid::espessura::nivela`]): a massa e a cor são as de
-/// antes, ao bit.
+/// antes, ao bit. Cada célula nivelada guarda a marca `nivel × w` ([`crate::grid::nivelado`], K7).
 pub fn nivelar(
     g: &mut crate::grid::Grid,
     (x0, y0, x1, y1): (i32, i32, i32, i32),
@@ -186,6 +186,9 @@ pub fn nivelar(
             if w > 0.0 && tem_tinta(g, i) {
                 let t = crate::grid::espessura::em(g, i);
                 crate::grid::espessura::nivela(g, i, t + (media - t) * k * w.min(1.0));
+                // A marca (K7): a forma do Óleo Real poupa esta célula ao desfoque largo.
+                let marca = &mut crate::grid::nivelado::garante(g)[i];
+                *marca = marca.max((k * w.min(1.0)) as f32);
             }
         }
     }

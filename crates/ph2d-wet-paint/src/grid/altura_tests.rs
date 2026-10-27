@@ -74,3 +74,26 @@ fn a_crista_viaja_no_instantaneo_e_no_recorte() {
     clear_canvas(&mut g);
     assert!(g.crista.is_empty());
 }
+
+/// A marca do nivelamento (W3 K7) viaja no undo como a crista: o instantâneo, o recorte e a ausência do campo.
+#[test]
+fn a_marca_do_nivelado_viaja_no_instantaneo_e_no_recorte() {
+    use crate::grid::nivelado::{em, garante};
+    let mut g = grade();
+    let s = g.s;
+    let vazio = snapshot_grid(&g);
+    let recorte_vazio = snapshot_grid_region(&g, 2, 2, 8, 8).expect("janela");
+    garante(&mut g)[3 * s + 4] = 0.5;
+    let cheio = snapshot_grid(&g);
+    let recorte_cheio = snapshot_grid_region(&g, 2, 2, 8, 8).expect("janela");
+    restore_grid(&mut g, &vazio);
+    assert!(g.nivelado.is_empty());
+    restore_grid(&mut g, &cheio);
+    assert_eq!(em(&g, 3 * s + 4), 0.5);
+    restore_grid_region(&mut g, &recorte_vazio);
+    assert_eq!(em(&g, 3 * s + 4), 0.0);
+    restore_grid_region(&mut g, &recorte_cheio);
+    assert_eq!(em(&g, 3 * s + 4), 0.5);
+    clear_canvas(&mut g);
+    assert!(g.nivelado.is_empty());
+}

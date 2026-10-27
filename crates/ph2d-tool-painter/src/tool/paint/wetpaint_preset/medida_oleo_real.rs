@@ -241,7 +241,26 @@ pub(super) fn pinta_cena_lisa() -> PainterTool {
 pub(super) fn pinta_cena_smooth2() -> PainterTool {
     let f = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../../docs/Painter/Pinceis/W2_Knife_candidatos/Knife Smooth 2.ph2d-brush.png");
-    let p = ph2d_brush_presets::ler(&std::fs::read(&f).expect("preset")).expect("preset");
+    let mut p = ph2d_brush_presets::ler(&std::fs::read(&f).expect("preset")).expect("preset");
+    // K7 (a largura × o Rebelle): `PH2D_OLEO_S2_BRUSH="dab_flatten=0,…"` e `PH2D_OLEO_S2_ENGINE="knifeRidge=0,…"`
+    // mudam o preset antes de pintar.
+    for (var, motor) in [("PH2D_OLEO_S2_BRUSH", false), ("PH2D_OLEO_S2_ENGINE", true)] {
+        for kv in std::env::var(var)
+            .unwrap_or_default()
+            .split(',')
+            .filter(|s| !s.is_empty())
+        {
+            let (k, v) = kv.split_once('=').expect("chave=valor");
+            let v: f64 = v.parse().expect("número");
+            if motor {
+                p.parametros.engine.insert(k.to_owned(), v);
+            } else {
+                p.parametros
+                    .brush
+                    .insert(k.to_owned(), serde_json::json!(v));
+            }
+        }
+    }
     let mut t = PainterTool::default();
     t.set_source(vec![255u8; (OW * OH * 4) as usize], OW, OH);
     t.set_paint_media(PaintMedia::WetPaint);
@@ -250,7 +269,9 @@ pub(super) fn pinta_cena_smooth2() -> PainterTool {
         let erros = t.wet_preset_aplicar(&p);
         assert!(erros.is_empty(), "{erros:?}");
         t.paint.wetpaint.knobs.set(Knob::KnifeLevel, nivel);
-        t.set_brush_size_px(20.0);
+        t.set_brush_size_px(
+            std::env::var("PH2D_OLEO_S2_RAIO").map_or(20.0, |v| v.parse().expect("raio")),
+        );
         t.set_brush_color_srgb8([23, 101, 179]);
         let ticks = arrasta(&mut t, [60.0, y], [560.0, y]);
         println!("[oraculo] Knife Smooth 2 knifeLevel {nivel} (água {ticks})");
@@ -363,6 +384,15 @@ fn grava_folha_com(
             }
         }
     }
+    // K7: a marca do nivelamento da camada activa (f32 LE, células; zeros sem o campo).
+    let mut marca = Vec::with_capacity(gw * gh * 4);
+    for cy in 1..=gh {
+        for cx in 1..=gw {
+            let m = ph2d_wet_paint::grid::nivelado::em(ativa, cx + cy * ativa.s);
+            marca.extend_from_slice(&m.to_le_bytes());
+        }
+    }
+    std::fs::write(dir.join("nivelado.f32"), marca).expect("grava");
     for (nome, v) in ["h_forma", "h_fina", "h_sombra"].iter().zip(&alturas) {
         std::fs::write(dir.join(format!("{nome}.f32")), v).expect("grava");
     }
@@ -1432,7 +1462,10 @@ fn medida_oleo_real_custo() {
     // W3 M1: o CAMPO com a Subsurface (a irradiância da região alargada + as duas passagens), na tela inteira e
     // numa janela de pincelada (64×64 + o alcance), com o raio no padrão, a 16 e sem ela — intercalados.
     let (mx, my) = (gw / 2, gh / 2);
-    let janelas = [("tela", (1, 1, gw, gh)), ("pincelada", (mx - 32, my - 32, mx + 32, my + 32))];
+    let janelas = [
+        ("tela", (1, 1, gw, gh)),
+        ("pincelada", (mx - 32, my - 32, mx + 32, my + 32)),
+    ];
     let raios = [("sem", 0.0, 4.0), ("r4", 1.0, 4.0), ("r16", 1.0, 16.0)];
     let mut melhor = [[f64::INFINITY; 3]; 2];
     for rodada in 0..5 {
@@ -1491,7 +1524,10 @@ fn medida_oleo_real_custo() {
         "[custo] recompor da pincelada 65², ns por célula (mínimo de 5): {:?} · {soma:.0}",
         modos.iter().zip(melhor).collect::<Vec<_>>()
     );
-    println!("[custo] loadavg {}", std::fs::read_to_string("/proc/loadavg").unwrap_or_default());
+    println!(
+        "[custo] loadavg {}",
+        std::fs::read_to_string("/proc/loadavg").unwrap_or_default()
+    );
 }
 
 /// A cor final (sRGB, sobre o papel com a sombra do Óleo Real, como em [`grava_folha`]) e a cor SEM relevo

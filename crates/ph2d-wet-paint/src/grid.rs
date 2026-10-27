@@ -27,6 +27,8 @@ pub use scratch::{AdvCell, SolverScratch};
 pub mod altura;
 #[path = "grid/crista.rs"]
 pub mod crista;
+#[path = "grid/nivelado.rs"]
+pub mod nivelado;
 #[path = "grid/espessura.rs"]
 pub mod espessura;
 #[path = "grid/material.rs"]
@@ -73,6 +75,9 @@ pub struct Grid {
     /// **A CRISTA da lâmina** (W3 K3a, [`crista`]): o rebordo da faca, só dela, para a sombra. VAZIO até a 1.ª faca
     /// com rebordo.
     pub crista: Vec<f32>,
+    /// **A MARCA do nivelamento** (W3 K7, [`nivelado`]): quanto a lâmina nivelou a célula (`0..=1`); a forma do Óleo
+    /// Real poupa-a ao desfoque largo. VAZIO até a 1.ª faca que nivela.
+    pub nivelado: Vec<f32>,
     /// **O TRAÇO** que pousou a tinta da célula (J2, [`traco`]): o nivelamento não escoa de um traço para a tinta
     /// molhada de outro. VAZIO até o primeiro pincel com a lei pintar ([`traco::garante`]).
     pub traco: Vec<u32>,
@@ -249,6 +254,7 @@ impl Grid {
             altura: Vec::new(),
             espessura: Vec::new(),
             crista: Vec::new(),
+            nivelado: Vec::new(),
             traco: Vec::new(),
             vela: vec![0.0; n],
             material: Vec::new(),
@@ -579,6 +585,7 @@ pub struct GridSnapshot {
     pub altura: Vec<f32>,
     pub espessura: Vec<f32>,
     pub crista: Vec<f32>,
+    pub nivelado: Vec<f32>,
     pub traco: Vec<u32>,
     pub vela: Vec<f32>,
     pub material: Vec<crate::material::MaterialCelula>,
@@ -617,6 +624,7 @@ pub fn snapshot_grid(g: &Grid) -> GridSnapshot {
         altura: g.altura.clone(),
         espessura: g.espessura.clone(),
         crista: g.crista.clone(),
+        nivelado: g.nivelado.clone(),
         traco: g.traco.clone(),
         vela: g.vela.clone(),
         material: g.material.clone(),
@@ -649,6 +657,7 @@ pub fn restore_grid(g: &mut Grid, s: &GridSnapshot) -> bool {
     g.altura.clone_from(&s.altura);
     g.espessura.clone_from(&s.espessura);
     g.crista.clone_from(&s.crista);
+    g.nivelado.clone_from(&s.nivelado);
     g.traco.clone_from(&s.traco);
     g.vela.copy_from_slice(&s.vela);
     g.material.clone_from(&s.material);

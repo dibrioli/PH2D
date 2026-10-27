@@ -153,3 +153,21 @@ fn a_faca_nivela_a_tinta_em_pe_num_planalto_sem_mudar_a_massa() {
     // Fora da lâmina (y 15) a tinta fica como estava.
     assert!((espessura(&e, 32, 15) - 4000.0).abs() < 1e-3);
 }
+
+/// A faca que nivela MARCA as células que nivelou ([`crate::grid::nivelado`], K7): `knifeLevel × cobertura` sob a
+/// lâmina onde há tinta; o papel nu e fora da lâmina ficam a zero; a `0` o campo nem se aloca.
+#[test]
+fn a_faca_que_nivela_marca_o_que_nivelou() {
+    let mut e = Engine::new(64, 64);
+    sulcos(&mut e);
+    arrasta(&mut e, [6.0, 30.0], [58.0, 30.0], 0.0);
+    assert!(e.active_grid().nivelado.is_empty(), "a 0 alocou a marca");
+    e.tuning.set(crate::tuning::Knob::KnifeLevel, 0.5);
+    arrasta(&mut e, [6.0, 2.0], [58.0, 2.0], 0.0);
+    arrasta(&mut e, [6.0, 30.0], [58.0, 30.0], 0.0);
+    let g = e.active_grid();
+    let marca = |x: usize, y: usize| crate::grid::nivelado::em(g, x + y * g.s);
+    assert_eq!(marca(32, 30), 0.5, "o miolo da lâmina");
+    assert_eq!(marca(32, 15), 0.0, "fora da lâmina");
+    assert_eq!(marca(32, 2), 0.0, "a lâmina sobre papel nu");
+}

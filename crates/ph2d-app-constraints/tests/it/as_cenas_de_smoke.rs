@@ -337,3 +337,56 @@ fn the_dial_scene_points_the_needle_by_the_float_and_lights_the_lamp() {
         let _ = sim.world_mut().remove_resource::<CanaisEscritos>();
     }
 }
+
+/// ⭐ Cena 10 (os *behaviours*): longe do íman a moeda fica quieta e por cima dela treme; a lua roda o
+/// planeta à mesma distância e vira; o balão sai do sítio; a limalha anda para o íman.
+#[test]
+fn the_playground_scene_moves_each_piece_by_its_behaviour() {
+    use ph2d_app_constraints::relogio::Relogio;
+    use ph2d_app_constraints::smoke_recreio::{IMA, IMA_Y, MOEDA};
+    let (mut sim, mut drive) = cena(10);
+    let ima = chamada(&mut sim, "Íman");
+    let (moeda, balao) = (chamada(&mut sim, "Moeda"), chamada(&mut sim, "Balão"));
+    let (lua, planeta) = (chamada(&mut sim, "Lua"), chamada(&mut sim, "Planeta"));
+    let limalha = chamada(&mut sim, "Limalha");
+    let doc = ph2d_timeline::TimelineDoc::new();
+    let mut passo = |sim: &mut SimWorld, x: f32, t: f64| {
+        sim.world_mut()
+            .get_mut::<Transform>(ima)
+            .unwrap()
+            .translation
+            .x = x;
+        let r = Relogio {
+            doc: &doc,
+            t,
+            laco: None,
+        };
+        ph2d_app_constraints::quadro(
+            sim,
+            &mut ph2d_vec_scene::VecScene::new(),
+            &mut drive,
+            Some(r),
+        );
+    };
+    passo(&mut sim, IMA[0].1, 0.3);
+    let m = mundo(&sim, moeda).translation;
+    assert_eq!([m.x, m.y], MOEDA, "longe do íman a moeda não treme");
+    passo(&mut sim, MOEDA[0], 0.3);
+    let m = mundo(&sim, moeda).translation;
+    assert_ne!([m.x, m.y], MOEDA, "o íman por baixo: treme");
+    assert!(IMA_Y < MOEDA[1]);
+    let (l, p) = (mundo(&sim, lua), mundo(&sim, planeta));
+    let r = (l.translation.x - p.translation.x).hypot(l.translation.y - p.translation.y);
+    // O seno do `motion.orbit` é a parábola corrigida (~0,09 %): o raio oscila dentro disso.
+    assert!((r - 1.5).abs() < 1.5 * 1e-3, "a lua fica à distância: {r}");
+    assert!(l.rotation.abs() > 0.1, "e vira com a volta");
+    assert_ne!(mundo(&sim, balao).translation.y, 1.5, "o balão flutua");
+    let antes = mundo(&sim, limalha).translation.x;
+    for f in 1..30 {
+        passo(&mut sim, 3.0, f64::from(f) / doc.fps_display);
+    }
+    assert!(
+        mundo(&sim, limalha).translation.x > antes + 0.5,
+        "a limalha vai para o íman"
+    );
+}

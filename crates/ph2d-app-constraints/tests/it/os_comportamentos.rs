@@ -136,7 +136,11 @@ fn each_behaviour_is_its_motion_node_bit_for_bit() {
             onde: Onde::Rot,
             ..tr
         };
-        assert_eq!(escalar(&rot, "rot"), delta(&tr_rot, t)[2], "Tremer rot em {t}");
+        assert_eq!(
+            escalar(&rot, "rot"),
+            delta(&tr_rot, t)[2],
+            "Tremer rot em {t}"
+        );
 
         let fl = de(Perfil::Flutuar);
         let onda = cozinha(
@@ -156,7 +160,11 @@ fn each_behaviour_is_its_motion_node_bit_for_bit() {
         let p = [40.0, -12.0];
         let volta = cozinha(
             "motion.orbit",
-            &[("pivot_x", 5.0), ("pivot_y", 7.0), ("speed", or.velocidade as f32)],
+            &[
+                ("pivot_x", 5.0),
+                ("pivot_y", 7.0),
+                ("speed", or.velocidade as f32),
+            ],
             p,
             t,
         );
@@ -233,11 +241,7 @@ fn mundo(x: f32, b: [f32; 2], c: Comportamento, alvo: bool) -> (SimWorld, Entity
 }
 
 fn em(sim: &mut SimWorld, drive: &mut PreviewDrive, doc: &TimelineDoc, t: f64) -> Transform {
-    let r = Relogio {
-        doc,
-        t,
-        laco: None,
-    };
+    let r = Relogio { doc, t, laco: None };
     quadro(sim, &mut ph2d_vec_scene::VecScene::new(), drive, Some(r));
     let w = sim.world();
     let a = ph2d_ecs::entity_with_stable_id(w, StableId(2)).unwrap();
@@ -370,7 +374,10 @@ fn picking_the_weight_object_writes_it_and_clear_removes_it() {
     assert_eq!(linha(&sim).nome, None);
     apply_all(&mut sim, &[(dono, E::EscolherPeso(id))]);
     assert!(armado(&sim) && linha(&sim).escolhendo);
-    assert_eq!(escolher_alvo(&mut sim, &[dono], [0.0; 2]), Escolha::Recusado);
+    assert_eq!(
+        escolher_alvo(&mut sim, &[dono], [0.0; 2]),
+        Escolha::Recusado
+    );
     assert_eq!(
         escolher_alvo(&mut sim, &[dono, b.to_bits()], [0.0; 2]),
         Escolha::Gravado

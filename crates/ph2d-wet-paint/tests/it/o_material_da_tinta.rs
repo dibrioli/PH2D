@@ -21,7 +21,7 @@ fn traco(e: &mut Engine, y: f64, cor: [f64; 3]) {
 
 fn metal_no_pincel(e: &mut Engine, metal: f64) {
     e.set_knob(Knob::Metallic, metal);
-    e.set_knob(Knob::RoughnessMul, if metal > 0.0 { 0.4 } else { 1.0 });
+    e.set_knob(Knob::Roughness, if metal > 0.0 { 0.2 } else { 0.5 });
 }
 
 /// As células com tinta na faixa `y0..=y1` (coordenadas da grade): o índice de cada.

@@ -8,7 +8,7 @@ use super::*;
 fn metal() -> MaterialCelula {
     MaterialCelula {
         metal: 1.0,
-        rugosidade: 0.5,
+        rugosidade: 0.25,
         ..MaterialCelula::NEUTRO
     }
 }
@@ -31,7 +31,7 @@ fn o_material_mistura_pela_massa() {
     pousa(&mut g, 41, 300.0, metal(), 100.0, false);
     let m = g.material_da_celula(41);
     assert!((m.metal - 0.25).abs() < 1e-6, "{m:?}");
-    assert!((m.rugosidade - 0.875).abs() < 1e-6, "{m:?}");
+    assert!((m.rugosidade - 0.4375).abs() < 1e-6, "{m:?}");
 }
 
 /// ⭐ Lock Reflectivity: a célula com tinta guarda o seu material; o papel limpo recebe o do pincel.
@@ -94,27 +94,24 @@ fn o_neutro_do_material_e_o_default_dos_knobs() {
     assert_eq!(
         [
             d(Knob::Metallic),
-            d(Knob::RoughnessMul),
-            d(Knob::Specular),
-            d(Knob::SpecularTint),
-            d(Knob::Clearcoat)
+            d(Knob::Roughness),
+            d(Knob::IorLevel),
+            d(Knob::Coat),
+            d(Knob::CoatRoughness),
+            d(Knob::Sheen),
+            d(Knob::Subsurface),
+            d(Knob::SubsurfaceRadius)
         ],
         [
             n.metal,
             n.rugosidade,
-            n.especular,
-            n.tinta_reflexo,
-            n.verniz
+            n.nivel_ior,
+            n.verniz,
+            n.verniz_rugosidade,
+            n.veludo,
+            n.subsuperficie,
+            n.raio_subsuperficie
         ]
-    );
-    assert_eq!(
-        [
-            d(Knob::ClearcoatRoughness),
-            d(Knob::Sheen),
-            d(Knob::Anisotropy),
-            d(Knob::Translucency)
-        ],
-        [n.verniz_rugosidade, n.veludo, n.anisotropia, n.translucidez]
     );
     assert_eq!(d(Knob::LockMaterial), 0.0);
 }

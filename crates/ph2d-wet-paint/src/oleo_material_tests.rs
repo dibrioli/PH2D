@@ -4,6 +4,7 @@
 
 use super::super::*;
 use super::*;
+use crate::material::efectivo;
 
 const W: usize = 64;
 
@@ -57,54 +58,89 @@ fn brilho_medio(o: &OleoReal, c: &CampoAltura, m: &MaterialCelula, a: [f64; 3]) 
     s.map(|v| v / n)
 }
 
-/// ⭐ A regra do cartão: os aditivos tomam o MAIOR (o cartão põe verniz em toda a tinta; a célula metálica
-/// continua metálica), os de neutro ≠ 0 multiplicam-se.
+/// ⭐ A regra do cartão: os de neutro 0 tomam o MAIOR (o cartão põe verniz em toda a tinta; a célula metálica
+/// continua metálica); os outros `cartão × célula / neutro` — célula NEUTRA ⇒ o cartão, cartão no padrão ⇒ a célula.
 #[test]
-fn o_cartao_combina_pelo_maior_e_pelo_produto() {
+fn o_cartao_combina_pelo_maior_e_pela_razao_do_neutro() {
     let cel = mat(|m| {
         m.metal = 1.0;
-        m.rugosidade = 0.5;
+        m.rugosidade = 0.25;
         m.verniz = 0.2;
+        m.subsuperficie = 0.3;
     });
     let k = MaterialCartao {
         verniz: 0.7,
-        rugosidade: 2.0,
-        especular: 1.5,
+        rugosidade: 0.56,
+        nivel_ior: 0.75,
         ..MaterialCartao::NEUTRO
     };
     let e = efectivo(&cel, &k);
     assert_eq!(e.metal, 1.0, "o cartão a 0 não tira o metal da célula");
-    assert_eq!(e.verniz, f64::from(0.7f32).max(0.7), "o maior dos dois");
-    assert_eq!(e.rugosidade, 1.0, "0,5 × 2");
-    assert_eq!(e.especular, 0.75, "0,5 × 1,5");
+    assert_eq!(e.verniz, 0.7, "o maior dos dois");
+    assert_eq!(e.subsuperficie, f64::from(0.3f32));
+    assert_eq!(e.rugosidade, 0.28, "0,56 × 0,25 / 0,5");
+    assert_eq!(e.nivel_ior, 0.75, "0,75 × 0,5 / 0,5");
+    // Célula NEUTRA ⇒ o cartão.
+    let so_cartao = efectivo(&MaterialCelula::NEUTRO, &k);
+    assert_eq!((so_cartao.rugosidade, so_cartao.nivel_ior), (0.56, 0.75));
     let n = efectivo(&MaterialCelula::NEUTRO, &MaterialCartao::NEUTRO);
-    assert_eq!((n.metal, n.rugosidade, n.especular), (0.0, 1.0, 0.5));
+    assert_eq!(
+        (n.metal, n.rugosidade, n.nivel_ior, n.subsuperficie),
+        (0.0, RUGOSIDADE_PADRAO, 0.5, 0.0)
+    );
 }
 
-/// ⭐ Roughness MULTIPLICA a do Gloss: o material a `0,5` é a afinação com metade da rugosidade, bit a bit.
+/// ⭐⭐ **A Roughness do cartão no PADRÃO é a imagem de antes** (W3 M0): a lei de antes era `0,28 × m` (a
+/// `Afinacao::rugosidade` × o `roughnessMul` m do pincel × o cartão `1`); hoje a célula guarda `0,5·m` e o cartão
+/// `0,28`. A conta nova dá o MESMO f64 bit a bit para os `m` dos presets (e o neutro), e o termo do brilho também.
 #[test]
-fn a_rugosidade_do_material_multiplica_a_do_gloss() {
+fn o_roughness_do_cartao_no_padrao_e_a_imagem_de_antes() {
+    for m in [0.0f64, 0.4, 0.5, 0.8, 1.0, 1.4, 2.0, 0.37, 1.93] {
+        let antes = RUGOSIDADE_PADRAO * (f64::from(m as f32) * 1.0);
+        let cel = mat(|c| c.rugosidade = (0.5 * m) as f32);
+        let agora = efectivo(&cel, &MaterialCartao::NEUTRO).rugosidade;
+        assert_eq!(agora.to_bits(), antes.to_bits(), "m = {m}");
+    }
+    // E no sombreado: a Roughness da célula a `0,25` = o cartão a `0,14` com a célula neutra, bit a bit.
     let g = estrias();
     let o = OleoReal::default();
     let c = campo(&g, &o);
-    let metade = OleoReal {
-        af: Afinacao {
-            rugosidade: o.af.rugosidade * 0.5,
-            ..o.af
-        },
-        ..o
-    };
-    let m = mat(|m| m.rugosidade = 0.5);
+    let cartao = com(MaterialCartao {
+        rugosidade: 0.14,
+        ..MaterialCartao::NEUTRO
+    });
+    let m = mat(|m| m.rugosidade = 0.25);
     for (x, y) in [(20, 20), (33, 31), (40, 12)] {
         let a = termos_com(&o, &c, x, y, &m, [0.5; 3]);
-        let b = termos(&metade, &c, x, y);
+        let b = termos(&cartao, &c, x, y);
         assert_eq!(a.espec, b.espec, "({x},{y})");
     }
 }
 
-/// ⭐ Specular `0` = IOR 1: nenhum reflexo, nem na borda (o Principled a `0` dá preto — `oraculo` §E3).
+/// ⭐ O leitor tolerante do cartão de antes da W3: os multiplicadores viram valores absolutos pelo padrão, a
+/// Translucency vira Subsurface, e os campos que saíram não mexem em nada.
 #[test]
-fn o_specular_zero_nao_reflecte_nada() {
+fn o_cartao_antigo_converte_se_pelo_padrao() {
+    let mut k = MaterialCartao::NEUTRO;
+    for (nome, v) in [
+        ("rugosidade", 1.0),
+        ("especular", 1.0),
+        ("verniz_rugosidade", 1.0),
+        ("refletividade", 2.0),
+        ("anisotropia", 0.5),
+        ("mapa_reflexo", 2.0),
+    ] {
+        k.poe_campo_antigo(nome, v);
+    }
+    assert_eq!(k, MaterialCartao::NEUTRO, "os neutros de antes = o padrão de hoje");
+    k.poe_campo_antigo("rugosidade", 2.0);
+    k.poe_campo_antigo("translucidez", 0.4);
+    assert_eq!((k.rugosidade, k.subsuperficie), (0.56, 0.4));
+}
+
+/// ⭐ IOR Level `0` = IOR 1: nenhum reflexo, nem na borda (o Principled a `0` dá preto — `oraculo` §E3).
+#[test]
+fn o_ior_level_zero_nao_reflecte_nada() {
     let g = estrias();
     for ambiente in Ambiente::TODOS {
         let o = OleoReal {
@@ -112,9 +148,9 @@ fn o_specular_zero_nao_reflecte_nada() {
             ..OleoReal::default()
         };
         let c = campo(&g, &o);
-        let m = mat(|m| m.especular = 0.0);
+        let m = mat(|m| m.nivel_ior = 0.0);
         assert_eq!(brilho_medio(&o, &c, &m, [0.5; 3]), [0.0; 3], "{ambiente:?}");
-        let dobro = mat(|m| m.especular = 1.0);
+        let dobro = mat(|m| m.nivel_ior = 1.0);
         let b0 = brilho_medio(&o, &c, &MaterialCelula::NEUTRO, [0.5; 3]);
         let b2 = brilho_medio(&o, &c, &dobro, [0.5; 3]);
         assert!(b2[0] > 1.5 * b0[0], "{ambiente:?}: {b2:?} × {b0:?}");
@@ -142,29 +178,6 @@ fn o_metal_tira_o_difuso_e_reflecte_a_cor() {
         out[1] < neutro[1] + 0.5,
         "sem difuso o verde não sobe: {out:?} × {neutro:?}"
     );
-    // Reflectivity escala o F0 do metal.
-    let meio = com(MaterialCartao {
-        refletividade: 0.5,
-        ..MaterialCartao::NEUTRO
-    });
-    let bm = brilho_medio(&meio, &c, &m, a);
-    assert!(bm[0] < 0.75 * b[0], "{bm:?} × {b:?}");
-}
-
-/// ⭐ Tint: o reflexo dieléctrico toma a cor da tinta (o F90 continua branco).
-#[test]
-fn o_tint_tinge_o_reflexo_com_a_cor_da_tinta() {
-    let g = estrias();
-    let o = OleoReal::default();
-    let c = campo(&g, &o);
-    let a = VERMELHO.map(crate::colorops::transfer::srgb255_to_linear);
-    let b0 = brilho_medio(&o, &c, &MaterialCelula::NEUTRO, a);
-    let b1 = brilho_medio(&o, &c, &mat(|m| m.tinta_reflexo = 1.0), a);
-    assert!(
-        (b0[0] - b0[1]).abs() < 0.2 * b0[0],
-        "sem tint o reflexo é branco: {b0:?}"
-    );
-    assert!(b1[0] > 3.0 * b1[1], "com tint é vermelho: {b1:?}");
 }
 
 /// ⭐ Verniz: um lobo liso por cima (mais brilho) e a camada de baixo recebe o que o Fresnel dele deixa.
@@ -210,104 +223,6 @@ fn o_veludo_cresce_onde_a_normal_foge_da_vista() {
     let encosta = veludo(1.0, 0.4, 1.0);
     assert!((encosta / 0.108 - 1.0).abs() < 0.15, "{encosta}");
     assert_eq!(veludo(0.0, 0.3, 1.0), 0.0);
-}
-
-/// ⭐ Anisotropia: a estria corre AO LONGO do sulco (perpendicular ao gradiente) e o brilho alonga-se nela:
-/// com estrias verticais a direcção é `(0, ±1)`, e o lobo anisotrópico muda o brilho.
-#[test]
-fn a_anisotropia_corre_ao_longo_da_estria() {
-    let g = estrias();
-    let o = OleoReal::default();
-    let c = campo(&g, &o);
-    let e = estria(&c, 30, 30).expect("há relevo");
-    assert!(
-        e[0].abs() < 1e-6 && (e[1].abs() - 1.0).abs() < 1e-6,
-        "{e:?}"
-    );
-    let plano = grade(|_, _| 3000.0);
-    assert_eq!(estria(&campo(&plano, &o), 30, 30), None);
-    let b0 = brilho_medio(&o, &c, &MaterialCelula::NEUTRO, [0.5; 3]);
-    let b1 = brilho_medio(&o, &c, &mat(|m| m.anisotropia = 0.8), [0.5; 3]);
-    assert!((b1[0] - b0[0]).abs() > 1e-4 * b0[0], "{b1:?} × {b0:?}");
-}
-
-/// ⭐ Translucidez: a película FINA deixa passar e volta do papel; a grossa não (bit a bit a de sem).
-#[test]
-fn a_pelicula_fina_deixa_passar_e_a_grossa_nao() {
-    let o = OleoReal {
-        brilho: 0.0,
-        ..OleoReal::default()
-    };
-    let m = mat(|m| m.translucidez = 1.0);
-    let grossa = grade(|_, _| 60_000.0);
-    let cg = campo(&grossa, &o);
-    assert!(passagem(&cg, 32, 32) < 1e-6);
-    assert_eq!(
-        ilumina_com(&o, &cg, 32, 32, VERMELHO, 1.0, &m).map(f64::round),
-        ilumina(&o, &cg, 32, 32, VERMELHO, 1.0).map(f64::round)
-    );
-    let fina = grade(|_, _| 150.0);
-    let cf = campo(&fina, &o);
-    let p = passagem(&cf, 32, 32);
-    assert!(p > 0.5, "{p}");
-    let t = termos_com(&o, &cf, 32, 32, &m, [0.5; 3]);
-    assert!((t.translucida - p).abs() < 1e-12);
-    let out = ilumina_com(&o, &cf, 32, 32, VERMELHO, 1.0, &m);
-    let sem = ilumina(&o, &cf, 32, 32, VERMELHO, 1.0);
-    assert_ne!(out, sem);
-}
-
-/// ⭐ Strength e Scale do cartão: o reflexo do ambiente escala com a Strength; Scale ≠ 1 muda-o; o
-/// Reflection Map põe reflexo no Clássico.
-#[test]
-fn strength_scale_e_reflection_map_mexem_no_reflexo_do_ambiente() {
-    let g = estrias();
-    let base = OleoReal {
-        forca_ambiente: 1.0,
-        ..OleoReal::default()
-    };
-    let c = campo(&g, &base);
-    let b1 = brilho_medio(&base, &c, &MaterialCelula::NEUTRO, [0.5; 3]);
-    let forte = OleoReal {
-        material: MaterialCartao {
-            forca_reflexo: 2.0,
-            ..MaterialCartao::NEUTRO
-        },
-        ..base
-    };
-    let b2 = brilho_medio(&forte, &c, &MaterialCelula::NEUTRO, [0.5; 3]);
-    assert!(
-        (b2[0] / b1[0] - 2.0).abs() < 1e-9,
-        "a lâmpada é 0 com força 1: {b2:?} × {b1:?}"
-    );
-    let escala = OleoReal {
-        material: MaterialCartao {
-            escala_mapa: 3.0,
-            ..MaterialCartao::NEUTRO
-        },
-        ..base
-    };
-    assert_ne!(
-        brilho_medio(&escala, &c, &MaterialCelula::NEUTRO, [0.5; 3]),
-        b1
-    );
-    let classico = OleoReal {
-        ambiente: Ambiente::Classico,
-        sombra: 0.0,
-        ..base
-    };
-    assert_eq!(
-        brilho_medio(&classico, &c, &MaterialCelula::NEUTRO, [0.5; 3]),
-        [0.0; 3]
-    );
-    let com_mapa = OleoReal {
-        material: MaterialCartao {
-            mapa_reflexo: Some(Ambiente::Estudio),
-            ..MaterialCartao::NEUTRO
-        },
-        ..classico
-    };
-    assert!(brilho_medio(&com_mapa, &c, &MaterialCelula::NEUTRO, [0.5; 3])[0] > 0.0);
 }
 
 /// ⭐ A porta do grid: o material que a camada pousou chega ao sombreado pelo [`CampoAltura`]; sem material

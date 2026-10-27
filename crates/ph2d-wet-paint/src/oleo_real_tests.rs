@@ -479,7 +479,7 @@ fn o_material_neutro_e_bit_identico_a_de_antes() {
     assert!(erros.is_empty(), "{erros:?}");
 }
 
-/// O relevo variado com material NÃO neutro (metal num bloco, verniz e veludo numa faixa, translúcido noutra)
+/// O relevo variado com material NÃO neutro (metal num bloco, verniz e veludo numa faixa, IOR Level noutra)
 /// e fios em metade da tela — a cena dos gates das duas curas de custo.
 fn relevo_com_material() -> Grid {
     let mut g = relevo_variado();
@@ -495,8 +495,8 @@ fn relevo_com_material() -> Grid {
                     q.verniz = 0.8;
                     q.veludo = 0.5;
                 }
-                (3, _) => q.translucidez = 0.6,
-                _ => q.rugosidade = 0.4,
+                (3, _) => q.nivel_ior = 0.8,
+                _ => q.rugosidade = 0.2,
             }
             if y > W / 2 {
                 g.altura[i] = 0.3 * ((x as f32) * 0.8).sin();
@@ -506,7 +506,7 @@ fn relevo_com_material() -> Grid {
     g
 }
 
-/// Os óleos dos gates de custo: o Clássico, um HDRI com o cartão a pôr anisotropia e mapa de reflexo, e a
+/// Os óleos dos gates de custo: o Clássico, um HDRI com o cartão a pôr verniz e Roughness, e a
 /// sombra a zero (o ramo sem visibilidade).
 fn oleos_de_custo() -> [OleoReal; 3] {
     let classico = OleoReal {
@@ -516,8 +516,8 @@ fn oleos_de_custo() -> [OleoReal; 3] {
     let hdri = OleoReal {
         ambiente: Ambiente::Interior,
         material: MaterialCartao {
-            anisotropia: 0.5,
-            mapa_reflexo: Some(Ambiente::Estudio),
+            verniz: 0.5,
+            rugosidade: 0.4,
             ..MaterialCartao::NEUTRO
         },
         af: Afinacao {

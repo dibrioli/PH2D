@@ -287,13 +287,13 @@ pub const KNOB_DEFS: [KnobDef; KNOB_COUNT] = [
     k(Knob::KnifeRidge, KnobGroup::Stroke, "knifeRidge", 0.0, 16.0, 0.01, 0.0, None),
     // o material da tinta (W2 E3): os defaults são os do `MaterialCelula::NEUTRO` (gate `o_neutro_do_material_…`)
     k(Knob::Metallic, KnobGroup::Material, "metallic", 0.0, 1.0, 0.01, 0.0, None),
-    k(Knob::RoughnessMul, KnobGroup::Material, "roughnessMul", 0.0, 4.0, 0.01, 1.0, None),
-    k(Knob::Specular, KnobGroup::Material, "specular", 0.0, 1.0, 0.01, 0.5, None),
-    k(Knob::SpecularTint, KnobGroup::Material, "specularTint", 0.0, 1.0, 0.01, 0.0, None),
-    k(Knob::Clearcoat, KnobGroup::Material, "clearcoat", 0.0, 1.0, 0.01, 0.0, None),
-    k(Knob::ClearcoatRoughness, KnobGroup::Material, "clearcoatRoughness", 0.0, 1.0, 0.01, 0.03, None),
+    k(Knob::Roughness, KnobGroup::Material, "roughness", 0.0, 1.0, 0.01, 0.5, None),
+    k(Knob::IorLevel, KnobGroup::Material, "iorLevel", 0.0, 1.0, 0.01, 0.5, None),
+    k(Knob::Coat, KnobGroup::Material, "coat", 0.0, 1.0, 0.01, 0.0, None),
+    k(Knob::CoatRoughness, KnobGroup::Material, "coatRoughness", 0.0, 1.0, 0.01, 0.03, None),
     k(Knob::Sheen, KnobGroup::Material, "sheen", 0.0, 1.0, 0.01, 0.0, None),
-    k(Knob::Anisotropy, KnobGroup::Material, "anisotropy", 0.0, 1.0, 0.01, 0.0, None),
-    k(Knob::Translucency, KnobGroup::Material, "translucency", 0.0, 1.0, 0.01, 0.0, None),
+    k(Knob::Subsurface, KnobGroup::Material, "subsurface", 0.0, 1.0, 0.01, 0.0, None),
+    // a faixa do raio é provisória (W3 M0): a M1 decide-a MEDINDO contra o Cycles
+    k(Knob::SubsurfaceRadius, KnobGroup::Material, "subsurfaceRadius", 0.0, 64.0, 0.1, 4.0, None),
     k(Knob::LockMaterial, KnobGroup::Material, "lockMaterial", 0.0, 1.0, 1.0, 0.0, None),
 ];

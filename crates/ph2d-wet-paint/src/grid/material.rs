@@ -1,5 +1,5 @@
 //! O campo PREGUIÇOSO [`Grid::material`] (Óleo Real W2 E3): o [`MaterialCelula`] da tinta de cada célula. VAZIO
-//! (= [`MaterialCelula::NEUTRO`] em toda a parte) até o primeiro pincel com material ≠ NEUTRO pintar — 36 B por
+//! (= [`MaterialCelula::NEUTRO`] em toda a parte) até o primeiro pincel com material ≠ NEUTRO pintar — 32 B por
 //! célula para quem nunca o usa seria a maior grade do motor. Mistura-se pela massa como o [`Grid::relevo`]; a
 //! ponta que pega tinta leva-o ([`crate::trail::Trail`]); o arrasto, o Smear e o Blend levam-no com a cor.
 //! A advecção do fluxo NÃO o move (como o relevo e o glaze: o material é da tinta POUSADA).
@@ -17,20 +17,19 @@ pub fn garante(g: &mut Grid) -> &mut [MaterialCelula] {
     &mut g.material
 }
 
-/// O material que o pincel pousa: os nove knobs do grupo Material ([`Knob::Metallic`]…).
+/// O material que o pincel pousa: os 8 knobs do grupo Material ([`Knob::Metallic`]…).
 #[must_use]
 pub fn do_pincel(p: &Params) -> MaterialCelula {
     let k = |kn: Knob| p.k(kn) as f32;
     MaterialCelula {
         metal: k(Knob::Metallic),
-        rugosidade: k(Knob::RoughnessMul),
-        especular: k(Knob::Specular),
-        tinta_reflexo: k(Knob::SpecularTint),
-        verniz: k(Knob::Clearcoat),
-        verniz_rugosidade: k(Knob::ClearcoatRoughness),
+        rugosidade: k(Knob::Roughness),
+        nivel_ior: k(Knob::IorLevel),
+        verniz: k(Knob::Coat),
+        verniz_rugosidade: k(Knob::CoatRoughness),
         veludo: k(Knob::Sheen),
-        anisotropia: k(Knob::Anisotropy),
-        translucidez: k(Knob::Translucency),
+        subsuperficie: k(Knob::Subsurface),
+        raio_subsuperficie: k(Knob::SubsurfaceRadius),
     }
 }
 

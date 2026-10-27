@@ -13,7 +13,7 @@ use crate::grid::Grid;
 pub use crate::material::MaterialCelula;
 pub use crate::oleo_ambiente::Ambiente;
 use crate::oleo_ambiente::{CUNHA, Sectores};
-pub use oleo_material::{ESPESSURA_TRANSLUCIDA, MaterialCartao, estria, passagem};
+pub use oleo_material::{MaterialCartao, RUGOSIDADE_PADRAO};
 
 #[path = "oleo_material.rs"]
 mod oleo_material;
@@ -90,8 +90,7 @@ pub struct Afinacao {
     /// Largura da penumbra, em tangente de elevação: a luz vai de cheia a nada quando o horizonte sobe
     /// `penumbra` acima da elevação dela. Maior = sombra mais macia.
     pub penumbra: f64,
-    /// Rugosidade (GGX) e intensidade do brilho.
-    pub rugosidade: f64,
+    /// Intensidade do brilho (a rugosidade é a Roughness do material, [`MaterialCartao::rugosidade`]).
     pub brilho_max: f64,
     /// Ganho do alargamento do lobo pela curvatura dentro da célula (Kaplanyan; `1` = o de W1c).
     pub antisserrilhado: f64,
@@ -120,7 +119,6 @@ impl Default for Afinacao {
             grao: 0.15,
             fios: 1.0,
             penumbra: 0.6,
-            rugosidade: 0.28,
             brilho_max: 1.6,
             antisserrilhado: 1.0,
             antisserrilhado_ambiente: 0.0,
@@ -450,10 +448,9 @@ pub struct Termos {
     /// Clássico (céu uniforme).
     pub dir: Option<[f64; 3]>,
     /// W2 E3-B: o peso do METAL (o difuso vai com `1 − metal`), o que o VERNIZ deixa passar à camada de
-    /// baixo (`1` sem verniz) e a fracção TRANSLÚCIDA (a luz que atravessa a película e volta do papel).
+    /// baixo (`1` sem verniz).
     pub metal: f64,
     pub sob_verniz: f64,
-    pub translucida: f64,
 }
 
 impl Termos {
@@ -566,15 +563,8 @@ fn cor_dos_termos(o: &OleoReal, t: &Termos, a: [f64; 3], cobertura: f64) -> [f64
     let mut out = [0.0; 3];
     for c in 0..3 {
         let mut base = a[c] * difuso(o, &t, a[c], c);
-        if t.metal > 0.0 || t.sob_verniz != 1.0 || t.translucida > 0.0 {
-            // A película translúcida: o que atravessa volta do papel branco tingido pela tinta na ida e na
-            // volta (`a^k`), com o céu e a lâmpada que o papel recebe (o difuso do branco).
-            let volta = oleo_material::TRANSLUCIDA_G
-                * libm::pow(a[c], oleo_material::TRANSLUCIDA_K)
-                * difuso(o, &t, 1.0, c);
-            base = (base * (1.0 - t.translucida) + volta * t.translucida)
-                * (1.0 - t.metal)
-                * t.sob_verniz;
+        if t.metal > 0.0 || t.sob_verniz != 1.0 {
+            base = base * (1.0 - t.metal) * t.sob_verniz;
         }
         out[c] = srgb255_of_linear(rola(base, t.espec[c] * cob).clamp(0.0, 1.0));
     }
@@ -840,8 +830,7 @@ pub fn termos_com(
     a: [f64; 3],
 ) -> Termos {
     let af = &o.af;
-    let m = oleo_material::efectivo(mat, &o.material);
-    let k = &o.material;
+    let m = crate::material::efectivo(mat, &o.material);
     let (x, y) = (cx as isize, cy as isize);
     let n = normal(campo, x, y);
     let l = para_a_luz(o);
@@ -869,45 +858,33 @@ pub fn termos_com(
     let hyy = hf(0, 1) - 2.0 * hf(0, 0) + hf(0, -1);
     let hxy = (hf(1, 1) - hf(1, -1) - hf(-1, 1) + hf(-1, -1)) / 4.0;
     let var = 0.25 * (hxx * hxx + hyy * hyy + 2.0 * hxy * hxy) * n[2] * n[2];
-    // W2 E3-B: a rugosidade que o Gloss dá × a do material (neutro `× 1`, bit a bit).
+    // A Roughness ABSOLUTA do material (célula ∘ cartão; no neutro a `RUGOSIDADE_PADRAO`, bit a bit).
     let aa = (2.0 * var * af.antisserrilhado).min(VARIANCIA_MAX_BRILHO);
     let aa_amb = (2.0 * var * af.antisserrilhado_ambiente).min(VARIANCIA_MAX_BRILHO);
-    let rugo = af.rugosidade * m.rugosidade;
+    let rugo = m.rugosidade;
     let a2 = rugo * rugo * rugo * rugo + aa;
-    let hu = [hv[0] / hn, hv[1] / hn, hv[2] / hn];
-    // Anisotropia: o lobo alonga-se ao longo da ESTRIA (a perpendicular ao gradiente do relevo).
-    let tb = if m.anisotropia > 0.0 {
-        estria(campo, x, y).map(|e| oleo_material::base_tangente(n, e))
-    } else {
-        None
-    };
     let ggx = |a2: f64| {
         let den = ndh * ndh * (a2 - 1.0) + 1.0;
         a2 / (core::f64::consts::PI * den * den)
     };
-    let d_ggx = match tb {
-        Some((t, b)) => oleo_material::ggx_aniso(a2, m.anisotropia, hu, n, t, b),
-        None => ggx(a2),
-    };
+    let d_ggx = ggx(a2);
     let vdh = hv[2] / hn;
     let p5 = libm::pow(1.0 - vdh, 5.0);
-    // O F0 dieléctrico: Specular `0,5` = IOR 1,5 (`F0 = 0,08·s`), tingido pela cor da tinta (o F90 é branco).
-    let f0d = F0 * (m.especular / 0.5);
-    // Specular abaixo de `0,5` apaga também a BORDA (o Principled a `0` não reflecte nada: IOR 1).
-    let borda = (m.especular / 0.5).min(1.0);
-    let f0 = [0, 1, 2].map(|c| f0d * (1.0 + (a[c] - 1.0) * m.tinta_reflexo));
+    // O F0 dieléctrico: IOR Level `0,5` = IOR 1,5 (`F0 = 0,08·s`; o F90 é branco).
+    let f0d = F0 * (m.nivel_ior / 0.5);
+    // IOR Level abaixo de `0,5` apaga também a BORDA (o Principled a `0` não reflecte nada: IOR 1).
+    let borda = (m.nivel_ior / 0.5).min(1.0);
     // O brilho da lâmpada vai com a parte dela na mistura (`1` na de fábrica, bit a bit).
     let mistura = (1.0 - forca) / (1.0 - FORCA_AMBIENTE_FABRICA);
     let lampada_de = |f0: f64, borda: f64, d: f64| {
         let fres = f0 + (1.0 - f0) * p5 * borda;
         o.brilho * af.brilho_max * fres * d * ndl * luz * mistura
     };
-    let lampada = f0.map(|f| lampada_de(f, borda, d_ggx));
+    let lampada = [lampada_de(f0d, borda, d_ggx); 3];
 
-    // Brilho do ambiente (split-sum: pré-filtrado × F0·A + B, Karis 2014), tapado pela visibilidade. O
-    // Reflection Map do cartão troca o mapa; sem mapa (Clássico) o metal e o verniz reflectem o céu uniforme.
-    let mapa = k.mapa_reflexo.unwrap_or(o.ambiente).mapa();
-    let fr = k.forca_reflexo;
+    // Brilho do ambiente (split-sum: pré-filtrado × F0·A + B, Karis 2014), tapado pela visibilidade. Sem mapa
+    // (Clássico) o metal e o verniz reflectem o céu uniforme.
+    let mapa = o.ambiente.mapa();
     // `(pré-filtrado por canal, A, B, fracção livre)` do lobo de rugosidade `a2` com a normal `nr`.
     let ambiente_de = |a2: f64, nr: [f64; 3]| {
         let r = [
@@ -921,36 +898,20 @@ pub fn termos_com(
         let a004 = (r0 * r0).min(libm::exp2(-9.28 * nv)) * r0 + (-0.0275 * rug + 0.0425);
         let xa = a004 * -1.04 + (-0.572 * rug + 1.04);
         let yb = a004 * 1.04 + (0.022 * rug - 0.04);
-        let pre = mapa.map_or([1.0; 3], |mp| {
-            let s = k.escala_mapa;
-            let rm = if s == 1.0 {
-                r
-            } else {
-                let (u, v) = (r[0] * s, r[1] * s);
-                let l = libm::sqrt(u * u + v * v + r[2] * r[2]).max(1e-12);
-                [u / l, v / l, r[2] / l]
-            };
-            mp.brilho(para_o_mapa(o, mp.claro, rm), rug)
-        });
+        let pre = mapa.map_or([1.0; 3], |mp| mp.brilho(para_o_mapa(o, mp.claro, r), rug));
         let livre = reflexo_livre(campo, x, y, r, rug, escala);
         (pre, xa, yb, livre)
     };
-    let nr = match tb {
-        Some((_, b)) => {
-            oleo_material::normal_dobrada(n, b, m.anisotropia, libm::sqrt(libm::sqrt(a2)))
-        }
-        None => n,
-    };
     let a2_amb = rugo * rugo * rugo * rugo + aa_amb;
-    let base = (mapa.is_some() || m.metal > 0.0).then(|| ambiente_de(a2_amb, nr));
+    let base = (mapa.is_some() || m.metal > 0.0).then(|| ambiente_de(a2_amb, n));
     let mut espec = match (mapa, base) {
         (Some(_), Some((pre, xa, yb, livre))) => [0, 1, 2].map(|c| {
-            let ab = f0[c] * xa + yb * borda;
-            lampada[c] + o.brilho * forca * pre[c] * ab * livre * fr
+            let ab = f0d * xa + yb * borda;
+            lampada[c] + o.brilho * forca * pre[c] * ab * livre
         }),
         _ => lampada,
     };
-    // METAL: F0 = a cor da tinta (× Reflectivity), sem difuso. O que a parede vizinha TAPA no reflexo não é
+    // METAL: F0 = a cor da tinta, sem difuso. O que a parede vizinha TAPA no reflexo não é
     // preto: é a tinta dela (a mesma tinta: o difuso dela, ou o que ela reflecte com o F0 dela se é metal,
     // `a·difuso·mix(1, a, metal)`). O lobo da lâmpada do metal alarga-se como o do AMBIENTE (o alargamento
     // pela curvatura do dieléctrico punha o sol em toda a chapa lisa: R 0,18 × 0,05 do Cycles) — §E3.
@@ -963,18 +924,14 @@ pub fn termos_com(
             dir,
             metal: 0.0,
             sob_verniz: 1.0,
-            translucida: 0.0,
         };
-        let d_metal = match tb {
-            Some((t, b)) => oleo_material::ggx_aniso(a2_amb, m.anisotropia, hu, n, t, b),
-            None => ggx(a2_amb),
-        };
+        let d_metal = ggx(a2_amb);
         for c in 0..3 {
-            let f0m = (a[c] * k.refletividade).clamp(0.0, 1.0);
+            let f0m = a[c].clamp(0.0, 1.0);
             let ab = f0m * xa + yb;
             let viz = a[c] * difuso(o, &sem_brilho, a[c], c) * (1.0 + (a[c] - 1.0) * m.metal);
             let em = lampada_de(f0m, 1.0, d_metal)
-                + o.brilho * (forca * pre[c] * livre * fr + (1.0 - livre) * viz) * ab;
+                + o.brilho * (forca * pre[c] * livre + (1.0 - livre) * viz) * ab;
             espec[c] = (1.0 - m.metal) * espec[c] + m.metal * em;
         }
     }
@@ -989,7 +946,7 @@ pub fn termos_com(
         sob_verniz = 1.0 - m.verniz * fv;
         let lv = lampada_de(F0, 1.0, ggx(a2c));
         for c in 0..3 {
-            let ev = lv + o.brilho * forca * pre[c] * (F0 * xa + yb) * livre * fr;
+            let ev = lv + o.brilho * forca * pre[c] * (F0 * xa + yb) * livre;
             espec[c] = espec[c] * sob_verniz + m.verniz * ev;
         }
     }
@@ -1001,11 +958,6 @@ pub fn termos_com(
         dir,
         metal: m.metal,
         sob_verniz,
-        translucida: if m.translucidez > 0.0 {
-            m.translucidez * passagem(campo, x, y)
-        } else {
-            0.0
-        },
     };
     // VELUDO: o sheen branco, mais forte onde a normal foge da vista, à luz que a célula recebe.
     if m.veludo > 0.0 {

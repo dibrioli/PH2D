@@ -233,33 +233,47 @@ pub enum Knob {
     /// deixa nas duas bordas laterais do que varre, com o miolo alisado. `0` = a tinta de sempre, ao bit (o
     /// hospedeiro nem chama a porta).
     KnifeRidge,
-    /// ⭐ **O MATERIAL da tinta do pincel** (Óleo Real W2 E3, [`crate::material::MaterialCelula`]): os nove ajustes do
-    /// Principled que o pincel pousa na célula e que se misturam no molhado pela massa ([`crate::grid::material`]).
-    /// Cada default é o do [`crate::material::MaterialCelula::NEUTRO`] — a tinta de sempre, ao bit, e o canal da
-    /// grade fica VAZIO. Metallic: 0 = dieléctrico, 1 = metal.
+    /// ⭐ **O MATERIAL da tinta do pincel** ([`crate::material::MaterialCelula`]): os 8 controlos do Principled
+    /// SIMPLIFICADO (W3, nomes do Blender) que o pincel pousa na célula e que se misturam no molhado pela massa
+    /// ([`crate::grid::material`]). Cada default é o do [`crate::material::MaterialCelula::NEUTRO`] — a tinta de
+    /// sempre, ao bit, e o canal da grade fica VAZIO. Metallic: 0 = dieléctrico, 1 = metal.
     Metallic,
-    /// … o multiplicador da rugosidade do Gloss (1 = a de hoje).
-    RoughnessMul,
-    /// … o Specular do Principled (0,5 = IOR 1,5).
-    Specular,
-    /// … quanto o reflexo dieléctrico toma a cor da tinta.
-    SpecularTint,
-    /// … o verniz por cima da tinta.
-    Clearcoat,
-    /// … a rugosidade do verniz.
-    ClearcoatRoughness,
-    /// … o veludo rasante (Sheen).
+    /// … Roughness ABSOLUTA (`0,5` = a do cartão; o `roughnessMul` m antigo ↔ `0,5·m`, [`chave_antiga`]).
+    Roughness,
+    /// … IOR Level (o Specular do Blender 4; `0,5` = IOR 1,5).
+    IorLevel,
+    /// … Coat (o verniz por cima da tinta).
+    Coat,
+    /// … Coat Roughness.
+    CoatRoughness,
+    /// … Sheen (o veludo rasante).
     Sheen,
-    /// … o brilho puxado ao longo da estria.
-    Anisotropy,
-    /// … a luz que atravessa a película fina e volta do papel.
-    Translucency,
+    /// … Subsurface (o peso).
+    Subsurface,
+    /// … Subsurface Radius (px de tela).
+    SubsurfaceRadius,
     /// ⭐ **Lock Reflectivity** (o Rebelle): `1` = pintar sem mudar o material já pousado — o pigmento muda, o material
     /// da célula com tinta fica; no papel limpo pousa o do pincel. `0` = o material mistura-se.
     LockMaterial,
 }
 
-pub const KNOB_COUNT: usize = 119;
+pub const KNOB_COUNT: usize = 118;
+
+/// O LEITOR TOLERANTE das chaves do material de antes da W3 (preset e macro gravados com elas): `(knob, valor)`
+/// na lei nova, `None` para uma chave que não é antiga. `roughnessMul` m → Roughness `0,5·m` (o neutro `1` → `0,5`,
+/// ao bit); `translucency` → Subsurface com o mesmo peso; `specular`/`clearcoat`/`clearcoatRoughness` só mudam
+/// de nome. As que saíram (`specularTint`, `anisotropy`) são ignoradas como qualquer chave desconhecida.
+#[must_use]
+pub fn chave_antiga(key: &str, v: f64) -> Option<(Knob, f64)> {
+    Some(match key {
+        "roughnessMul" => (Knob::Roughness, 0.5 * v),
+        "specular" => (Knob::IorLevel, v),
+        "clearcoat" => (Knob::Coat, v),
+        "clearcoatRoughness" => (Knob::CoatRoughness, v),
+        "translucency" => (Knob::Subsurface, v),
+        _ => return None,
+    })
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum KnobGroup {

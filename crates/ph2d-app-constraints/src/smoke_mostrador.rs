@@ -82,7 +82,7 @@ pub(crate) fn mostrador(world: &mut World) -> Entity {
         para_faixa: PONTEIRO_GRAUS.map(f64::to_radians),
         mola: Some(Mola {
             duracao: 0.6,
-            ressalto: 0.6,
+            ressalto: 0.4,
         }),
         ..Valor::default()
     };

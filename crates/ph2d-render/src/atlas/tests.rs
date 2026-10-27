@@ -46,7 +46,8 @@ fn insert_packs_multiple_arbitrary_sizes() {
             .insert(&gpu, i as u32, w, h, &rgba)
             .expect("insert ok");
     }
-    assert_eq!(atlas.region_count(), sizes.len());
+    // + the white tile, born at the origin (F37).
+    assert_eq!(atlas.region_count(), sizes.len() + 1);
     // No two regions overlap — Skyline guarantee but pin it here
     // so a future packer swap stays honest.
     let collected: Vec<AtlasRegion> = (0..sizes.len() as u32)
@@ -79,9 +80,14 @@ fn insert_returns_full_when_packer_exhausted() {
         return;
     };
     let mut atlas = TextureAtlas::new(&gpu, 128);
-    // First 128×128 fills the atlas; second fails.
-    let rgba = vec![0u8; (128 * 128 * 4) as usize];
-    atlas.insert(&gpu, 0, 128, 128, &rgba).unwrap();
+    // The white tile holds [0,64)²; a 64×128 column and a 64×64 square fill
+    // the rest, then a third 64×64 fails.
+    atlas
+        .insert(&gpu, 0, 64, 128, &vec![0u8; (64 * 128 * 4) as usize])
+        .unwrap();
+    atlas
+        .insert(&gpu, 2, 64, 64, &vec![0u8; (64 * 64 * 4) as usize])
+        .unwrap();
     let err = atlas.insert(&gpu, 1, 64, 64, &vec![0u8; (64 * 64 * 4) as usize]);
     assert!(matches!(err, Err(AtlasInsertError::AtlasFull { .. })));
 }
@@ -99,7 +105,7 @@ fn replace_same_size_succeeds_without_repack() {
     let rgba_b = vec![0xBBu8; (64 * 64 * 4) as usize];
     let region_b = atlas.insert(&gpu, 7, 64, 64, &rgba_b).unwrap();
     assert_eq!(region_a, region_b);
-    assert_eq!(atlas.region_count(), 1);
+    assert_eq!(atlas.region_count(), 2, "the sprite + the white tile");
 }
 
 #[test]
@@ -108,7 +114,11 @@ fn dummy_atlas_seeds_16_demo_keys() {
         return;
     };
     let atlas = TextureAtlas::dummy(&gpu);
-    assert_eq!(atlas.region_count(), DEMO_TILE_COUNT as usize);
+    assert_eq!(atlas.region_count(), DEMO_TILE_COUNT as usize + 1);
+    let white = atlas
+        .region(WHITE_TILE_KEY)
+        .expect("born with the white tile");
+    assert_eq!((white.x, white.y), (0, 0), "the white tile owns the origin");
     for i in 0..DEMO_TILE_COUNT {
         let region = atlas.region(i).unwrap_or_else(|| panic!("missing key {i}"));
         assert_eq!(region.w, DEMO_TILE_PX);
@@ -129,7 +139,7 @@ fn remove_returns_region_and_pushes_into_free_list() {
     assert_eq!(atlas.free_slot_count(), 0);
     let removed = atlas.remove(7).expect("region present");
     assert_eq!(removed, region);
-    assert_eq!(atlas.region_count(), 0);
+    assert_eq!(atlas.region_count(), 1, "only the white tile");
     assert_eq!(atlas.free_slot_count(), 1);
 }
 
@@ -200,67 +210,6 @@ fn replace_with_different_size_releases_old_slot() {
     assert_eq!(atlas.free_slot_count(), 1);
 }
 
-#[test]
-fn regrow_inplace_doubles_size_and_preserves_regions() {
-    let Some(gpu) = try_headless_gpu() else {
-        return;
-    };
-    let mut atlas = TextureAtlas::new(&gpu, 256);
-    let rgba = vec![0u8; (64 * 64 * 4) as usize];
-    atlas.insert(&gpu, 0, 64, 64, &rgba).unwrap();
-    atlas.insert(&gpu, 1, 64, 64, &rgba).unwrap();
-    // Fake fetch_pixels — just return zero buffers of the right
-    // size. Real callers route through AssetDb.
-    let new = atlas
-        .regrow_inplace(&gpu, 512, |_key| Some(vec![0u8; 64 * 64 * 4]))
-        .unwrap();
-    assert_eq!(new, 512);
-    assert_eq!(atlas.size_px, 512);
-    assert_eq!(atlas.region_count(), 2);
-    assert!(atlas.region(0).is_some());
-    assert!(atlas.region(1).is_some());
-    // Free-list cleared on regrow — old freed slots can't be
-    // mapped onto the new skyline without overlap risk.
-    assert_eq!(atlas.free_slot_count(), 0);
-}
-
-#[test]
-fn regrow_inplace_caps_at_max_size_px() {
-    let Some(gpu) = try_headless_gpu() else {
-        return;
-    };
-    let mut atlas = TextureAtlas::new(&gpu, 256);
-    let cap = atlas.max_size_px();
-    let actual = atlas
-        .regrow_inplace(&gpu, cap * 4, |_key| Some(Vec::new()))
-        .unwrap();
-    assert_eq!(actual, cap, "regrow capped at max_size_px");
-}
-
-#[test]
-fn regrow_inplace_drops_regions_whose_fetcher_returns_none() {
-    let Some(gpu) = try_headless_gpu() else {
-        return;
-    };
-    let mut atlas = TextureAtlas::new(&gpu, 256);
-    let rgba = vec![0u8; (32 * 32 * 4) as usize];
-    atlas.insert(&gpu, 1, 32, 32, &rgba).unwrap();
-    atlas.insert(&gpu, 2, 32, 32, &rgba).unwrap();
-    // fetcher returns pixels only for key 1; key 2 should drop.
-    atlas
-        .regrow_inplace(&gpu, 512, |key| {
-            if key == 1 {
-                Some(vec![0u8; 32 * 32 * 4])
-            } else {
-                None
-            }
-        })
-        .unwrap();
-    assert_eq!(atlas.region_count(), 1);
-    assert!(atlas.region(1).is_some());
-    assert!(atlas.region(2).is_none());
-}
-
 // ── Phase 2: atlas mip chain ────────────────────────────────────
 
 #[test]
@@ -276,9 +225,9 @@ fn atlas_texture_has_full_mip_chain() {
 #[test]
 fn atlas_mip_chain_downsamples_region_in_linear_light() {
     // Phase 2 mirror of the individual store's linear-light mip test.
-    // The first insert into a fresh atlas packs at (0,0), so a 8×8
-    // half-white/half-black region's mip-3 footprint collapses to the
-    // single texel (0,0) of the 32² level — the LINEAR average of
+    // The first insert packs beside the white tile, at an 8-aligned x, so
+    // a 8×8 half-white/half-black region's mip-3 footprint collapses to a
+    // single texel of the 32² level — the LINEAR average of
     // white+black ≈ 188 (0.5 linear → sRGB), NOT the naïve sRGB-byte
     // midpoint 128. That gap is the whole point: averaging sRGB bytes
     // directly is the classic too-dark downsample bug.
@@ -300,20 +249,21 @@ fn atlas_mip_chain_downsamples_region_in_linear_light() {
     }
     let region = atlas.insert(&gpu, 0, w, h, &rgba).expect("insert");
     assert_eq!(
-        (region.x, region.y),
+        (region.x % 8, region.y),
         (0, 0),
-        "first insert must pack at the origin for this test's mip math"
+        "the region must sit on the mip-3 grid for this test's math"
     );
 
     let (mw, mh, level3) = atlas.readback_mip(&gpu, 3);
     assert_eq!((mw, mh), (32, 32), "256² → mip 3 is 32²");
-    let r = level3[0]; // texel (0,0) = average of the [0,8)² region
+    let t = ((region.x / 8) * 4) as usize; // the texel = average of the 8×8 region
+    let r = level3[t];
     assert!(
         (180..=196).contains(&r),
         "atlas mip-3 texel(0,0) must be the LINEAR avg of white+black ≈ 188, got {r} \
              (128 would mean a wrong sRGB-space average)"
     );
-    assert_eq!(level3[3], 255, "opaque region stays opaque in its mip");
+    assert_eq!(level3[t + 3], 255, "opaque region stays opaque in its mip");
 }
 
 #[test]
@@ -326,8 +276,8 @@ fn atlas_untouched_space_is_transparent_in_mips() {
         return;
     };
     let mut atlas = TextureAtlas::new(&gpu, 256);
-    // A single small opaque region; with the Skyline packer it lands
-    // at (0,0), so probe a DEEP mip whose origin texel still aggregates
+    // A single small opaque region; the Skyline packer puts it beside
+    // the white tile on the top row, so probe a DEEP mip whose origin texel still aggregates
     // only transparent cleared space beyond the tiny region.
     let rgba = vec![255u8; (4 * 4 * 4) as usize];
     atlas.insert(&gpu, 0, 4, 4, &rgba).expect("insert");
@@ -344,25 +294,20 @@ fn atlas_untouched_space_is_transparent_in_mips() {
 }
 
 #[test]
-fn region_uv_recomputes_against_new_size_after_regrow() {
+fn region_uv_recomputes_against_new_size_after_growing() {
     let Some(gpu) = try_headless_gpu() else {
         return;
     };
     let mut atlas = TextureAtlas::new(&gpu, 256);
     let rgba = vec![0u8; (128 * 128 * 4) as usize];
-    atlas.insert(&gpu, 0, 128, 128, &rgba).unwrap();
+    let region = atlas.insert(&gpu, 0, 128, 128, &rgba).unwrap();
     let uv_before = atlas.region_uv(0);
-    atlas
-        .regrow_inplace(&gpu, 512, |_key| Some(vec![0u8; 128 * 128 * 4]))
-        .unwrap();
+    atlas.cresce(&gpu, 512).unwrap();
+    // Same pixel rect (growing copies in place); the UV divides by 512 now.
+    assert_eq!(atlas.region(0), Some(region));
     let uv_after = atlas.region_uv(0);
-    // Same region placement (Skyline picks (0,0) deterministically
-    // for the first insert) so x/y stay zero; but the UV math
-    // divides by the new `size_px = 512`, halving the
-    // normalized width compared to the old `size_px = 256`.
-    assert!(uv_before[2] > uv_after[2], "UV must shrink post-regrow");
-    // Half-texel inset → (128 - 0.5) / 512 ≈ 0.2490.
-    let expected = (128.0_f32 - 0.5) / 512.0;
+    assert!(uv_before[2] > uv_after[2], "UV must shrink after growing");
+    let expected = (region.x as f32 + 128.0 - 0.5) / 512.0;
     assert!(
         (uv_after[2] - expected).abs() < 1e-4,
         "uv1 = {}",
@@ -435,7 +380,8 @@ fn white_tile_is_opaque_white_and_never_collides_with_import_keys() {
     // (plano 30 §25, A) The disc comes with it, at its own side.
     let disc = atlas.region(DISC_TILE_KEY).expect("the disc is registered");
     assert_eq!((disc.w, disc.h), (DISC_TILE_PX, DISC_TILE_PX));
-    // A real, non-degenerate UV rect (region_uv returns zeros for a missing key).
+    // A real, non-degenerate UV rect that holds at every atlas size (F37).
+    assert_eq!(uv, WHITE_TILE_UV);
     assert!(
         uv[2] > uv[0] && uv[3] > uv[1],
         "white tile has a real uv rect"
@@ -549,9 +495,7 @@ fn a_regiao_do_azulejo_e_a_celula_do_meio() {
     assert_eq!(atlas.region(9), Some(dentro));
     assert_eq!(atlas.region_px(9), Some((w, h)));
     vizinhas_sao_a_imagem(&atlas);
-    atlas
-        .regrow_inplace(&gpu, 512, |k| (k == 9).then(|| imagem.clone()))
-        .expect("regrow");
+    atlas.cresce(&gpu, 512).expect("cresce");
     vizinhas_sao_a_imagem(&atlas);
     // CONTROLO: uma escrita simples da mesma chave é a imagem inteira, sem cópias.
     let tira = wrap_image(bytemuck::cast_slice(&imagem), [w, h], [3, 1]);

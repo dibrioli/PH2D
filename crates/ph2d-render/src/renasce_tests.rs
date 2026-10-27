@@ -31,7 +31,8 @@ fn an_atlas_refused_at_birth_comes_back_with_its_sprites_after_the_episode() {
         "um átlas são não se refaz"
     );
     forca_recusas(1);
-    let mut atlas = TextureAtlas::new(&gpu, 64);
+    // 128: the white tile takes [0,64)² from birth (F37).
+    let mut atlas = TextureAtlas::new(&gpu, 128);
     assert!(atlas.recusada(), "a recusa no nascimento não foi vista");
     let regiao = atlas
         .insert(&gpu, 7, 16, 16, &padrao(16, 1))

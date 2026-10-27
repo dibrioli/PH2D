@@ -1,11 +1,11 @@
 // ── public limits ───────────────────────────────────────────────────
 
 /// Largest texture edge accepted, in pixels. Matches `ph2d-render`'s
-/// atlas cap ([`ATLAS_DEFAULT_SIZE_PX`] = 8192) and the PNG / JPEG
+/// atlas cap ([`ATLAS_MAX_SIZE_PX`] = 8192) and the PNG / JPEG
 /// limits in `ph2d-asset::loader`. Anything larger is almost certainly
 /// a malformed or hostile file.
 ///
-/// [`ATLAS_DEFAULT_SIZE_PX`]: ../ph2d_render/atlas/constant.ATLAS_DEFAULT_SIZE_PX.html
+/// [`ATLAS_MAX_SIZE_PX`]: ../ph2d_render/atlas/constant.ATLAS_MAX_SIZE_PX.html
 pub const MAX_DIMENSION: u32 = 8192;
 
 /// Cap on the sum of every mip level's bytes after parsing. KTX2 is a

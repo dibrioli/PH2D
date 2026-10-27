@@ -44,9 +44,11 @@
 //!
 //! ## Growth
 //!
-//! v1 returns [`AtlasInsertError::AtlasFull`] on overflow and surfaces
-//! it as a toast at the import site. Atlas regrow (re-pack everything
-//! into a 2×-larger texture) is a follow-up — see the plan §Backlog.
+//! The atlas is born at [`ATLAS_DEFAULT_SIZE_PX`] and doubles IN PLACE up to
+//! [`ATLAS_MAX_SIZE_PX`] ([`TextureAtlas::insert_crescendo`], `cresce.rs`): every
+//! region keeps its pixel rect, only the normalized UV changes (readers resolve it
+//! per frame). The white tile sits at the origin from birth, so its
+//! [`WHITE_TILE_UV`] never changes.
 //!
 //! ## Mipmaps (2026-06-18 minification fix, Phase 2)
 //!
@@ -69,6 +71,7 @@
 //! canvas + a few imports with soft/transparent borders) is the benign
 //! one.
 
+mod cresce;
 mod demo;
 mod fabrica;
 mod gpu_ops;
@@ -121,13 +124,14 @@ use ph2d_gpu::GpuContext;
 // map is dwarfed by the GPU work that follows the lookup.
 use std::collections::BTreeMap;
 
-/// Default side length for new atlases (square, RGBA8). 8192 ×
-/// 8192 = 256 MiB of GPU memory — enough for several 4K sprites
-/// (3840 × 2160 ≈ 8 MiB each) plus the usual HD-2D mix, and exactly
-/// at the wgpu Default tier's `max_texture_dimension_2d = 8192`
-/// limit on every backend we target. Smaller atlases force regrow
-/// on the first 4K import.
-pub const ATLAS_DEFAULT_SIZE_PX: u32 = 8192;
+/// Side an atlas is BORN with (square, RGBA8 + mips ≈ 21 MiB). It grows in place up to
+/// [`ATLAS_MAX_SIZE_PX`] when content arrives. Pre-allocating the maximum cost 341 MiB of the
+/// card for 16 demo tiles (F36 §2 table; F37 §1 measured the drop).
+pub const ATLAS_DEFAULT_SIZE_PX: u32 = 2048;
+
+/// Largest side the atlas grows to — the wgpu Default tier's `max_texture_dimension_2d`
+/// on every backend we target (8192² RGBA8 + mips ≈ 341 MiB).
+pub const ATLAS_MAX_SIZE_PX: u32 = 8192;
 
 /// Pixel side length of each tile in the demo HSV atlas. Used by
 /// [`TextureAtlas::dummy`] only; arbitrary-sized sprites can live
@@ -155,6 +159,16 @@ pub const FIRST_IMPORT_KEY: u32 = 16;
 /// it, or the artist's authored colour comes out multiplied by whatever image
 /// happened to sit at the fallback tile.
 pub const WHITE_TILE_KEY: u32 = u32::MAX;
+
+/// UV of the white tile that holds at EVERY atlas size: the tile is born at the
+/// origin, and `[0, 0, k, k]` with `k = ½ tile / max side` stays inside its 64 px for
+/// any side ≤ [`ATLAS_MAX_SIZE_PX`] (the clamp-to-edge sampler keeps the `0` edge white).
+/// Callers that cache it (Motion, particles, health bars, the macro track) stay right
+/// when the atlas grows.
+pub const WHITE_TILE_UV: [f32; 4] = {
+    let k = (DEMO_TILE_PX / 2) as f32 / ATLAS_MAX_SIZE_PX as f32;
+    [0.0, 0.0, k, k]
+};
 
 // Compile-time guard on the sentinel: it must sit past every key the demo seeds
 // and every key the importer can allocate, or the white tile would be silently
@@ -215,7 +229,7 @@ pub struct TextureAtlas {
     /// so an `insert` of matching dimensions can reuse a slot without
     /// touching the Skyline packer. BTreeMap (not HashMap) per HR-5.
     free_slots: BTreeMap<(u32, u32), Vec<AtlasRegion>>,
-    /// Hard cap for [`Self::regrow_inplace`]. Read from
+    /// Hard cap for [`Self::cresce`]. Read from
     /// `gpu.device.limits().max_texture_dimension_2d` at construction
     /// so weaker adapters (mobile/WebGL) don't try to allocate
     /// textures their hardware refuses. Capped at 8192 even when the
@@ -240,7 +254,7 @@ pub struct TextureAtlas {
     /// invalidado por **mudança**, e só o dono da textura sabe quando ela muda.
     ///
     /// ⚠️ Incrementado no [`Self::regen_mips`], que é o funil por onde **toda** escrita de
-    /// conteúdo passa (o `insert`, a substituição dentro dele e o `regrow_inplace`) — pendurá-lo
+    /// conteúdo passa (o `insert`, a substituição dentro dele e o `cresce`) — pendurá-lo
     /// em cada mutador seria a lista que envelhece no seguinte.
     ///
     /// ⛔ **O [`Self::remove`] NÃO o move, e está certo**: ele devolve o slot à *free list* e
@@ -272,7 +286,7 @@ impl TextureAtlas {
     /// [`ImageFilterMode`]: crate::ImageFilterMode
     pub fn with_filter(gpu: &GpuContext, size_px: u32, filter: crate::ImageFilterMode) -> Self {
         let adapter_cap = gpu.device.limits().max_texture_dimension_2d;
-        let max_size_px = adapter_cap.min(8192);
+        let max_size_px = adapter_cap.min(ATLAS_MAX_SIZE_PX);
         let size_px = size_px.max(1).min(max_size_px);
         // The clear (inside `nasce_textura`) keeps untouched packing space transparent so the gap
         // between regions downsamples cleanly (see module doc §Mipmaps).
@@ -293,9 +307,12 @@ impl TextureAtlas {
             epoch: 0,
             fonte: recusada.then(BTreeMap::new),
         };
-        // Fill the (transparent) mip chain so the texture is sampleable
-        // at any level before the first insert.
-        atlas.regen_mips(gpu);
+        // The white tile takes the origin before anything else ([`WHITE_TILE_UV`]); its
+        // insert also fills the (transparent) mip chain. An atlas too small for it only
+        // gets the mip chain.
+        if atlas.insert_white_tile(gpu).is_err() {
+            atlas.regen_mips(gpu);
+        }
         atlas
     }
 
@@ -319,7 +336,7 @@ impl TextureAtlas {
         self.epoch
     }
 
-    /// Maximum side length [`Self::regrow_inplace`] will allow.
+    /// Maximum side length [`Self::cresce`] will allow.
     /// Caller-visible so the shell can pre-emptively refuse imports
     /// larger than this without waiting for the atlas to fail.
     pub fn max_size_px(&self) -> u32 {
@@ -364,7 +381,13 @@ impl TextureAtlas {
     fn insert_white_tile(&mut self, gpu: &GpuContext) -> Result<[f32; 4], AtlasInsertError> {
         let px = vec![0xff; (DEMO_TILE_PX * DEMO_TILE_PX * 4) as usize];
         self.insert(gpu, WHITE_TILE_KEY, DEMO_TILE_PX, DEMO_TILE_PX, &px)
-            .map(|r| r.uv(self.size_px))
+            .map(|r| {
+                if (r.x, r.y) == (0, 0) {
+                    WHITE_TILE_UV
+                } else {
+                    r.uv(self.size_px)
+                }
+            })
     }
 
     /// The reserved tiles a renderer needs before any sprite draws: the
@@ -377,13 +400,13 @@ impl TextureAtlas {
     ) -> Result<[f32; 4], AtlasInsertError> {
         let px = disc_tile_pixels(DISC_TILE_PX);
         let bytes: &[u8] = bytemuck::cast_slice(&px);
-        self.insert(gpu, DISC_TILE_KEY, DISC_TILE_PX, DISC_TILE_PX, bytes)?;
+        self.insert_crescendo(gpu, DISC_TILE_KEY, DISC_TILE_PX, DISC_TILE_PX, bytes)?;
         for art in &FACTORY_ART {
             let [w, h] = art.image_px();
             if art.tile {
                 self.insert_wrapped(gpu, art.key, w, h, factory_image(art), art.grid)?;
             } else {
-                self.insert(gpu, art.key, w, h, factory_image(art))?;
+                self.insert_crescendo(gpu, art.key, w, h, factory_image(art))?;
             }
         }
         self.insert_white_tile(gpu)
@@ -402,7 +425,7 @@ impl TextureAtlas {
     ) -> Result<AtlasRegion, AtlasInsertError> {
         let [cx, cy] = copies.map(|c| c.max(1));
         let tira = wrap_image(bytemuck::cast_slice(rgba), [w, h], [cx, cy]);
-        let fora = self.insert(gpu, key, w * cx, h * cy, bytemuck::cast_slice(&tira))?;
+        let fora = self.insert_crescendo(gpu, key, w * cx, h * cy, bytemuck::cast_slice(&tira))?;
         let dentro = AtlasRegion {
             x: fora.x + w * (cx / 2),
             y: fora.y + h * (cy / 2),
@@ -532,71 +555,6 @@ impl TextureAtlas {
             .or_default()
             .push(region);
         Some(region)
-    }
-
-    /// Re-pack into a fresh texture of `new_size_px × new_size_px`,
-    /// preserving every currently-reserved region. `new_size_px` is
-    /// clamped to `[self.size_px, self.max_size_px]`.
-    ///
-    /// `fetch_pixels(key) -> Option<Vec<u8>>` is called for each
-    /// surviving region to re-upload its pixel data. The closure is
-    /// the caller's responsibility because the atlas itself does not
-    /// cache the source bytes (they live in [`ph2d_asset::AssetDb`]
-    /// or — for demo HSV tiles — are regeneratable from the key
-    /// index). Returning `None` drops the region from the new atlas.
-    ///
-    /// Free-list is cleared (old freed slots can't be remapped onto
-    /// the new packer's skyline; they'd produce phantom overlaps).
-    /// New regions inherit the keys they had pre-regrow so callers
-    /// (sprites, render instances) don't need to update.
-    ///
-    /// Returns the new atlas-internal `size_px`. Errors only when a
-    /// surviving region exceeds the new size (which can happen if
-    /// the caller passes a smaller size).
-    pub fn regrow_inplace<F>(
-        &mut self,
-        gpu: &GpuContext,
-        new_size_px: u32,
-        fetch_pixels: F,
-    ) -> Result<u32, AtlasInsertError>
-    where
-        F: Fn(u32) -> Option<Vec<u8>>,
-    {
-        let new_size_px = new_size_px.clamp(self.size_px, self.max_size_px);
-        let old_regions = std::mem::take(&mut self.regions);
-        let old_wraps = std::mem::take(&mut self.wraps);
-        self.free_slots.clear();
-        // Recusada, os re-inserts abaixo guardam os bytes de cada região (via `sobe`).
-        let (texture, view, recusada) = renasce::nasce_textura(gpu, new_size_px);
-        self.fonte = recusada.then(BTreeMap::new);
-        self.texture = texture;
-        self.view = view;
-        self.size_px = new_size_px;
-        self.packer = rect_packer::DensePacker::new(new_size_px as i32, new_size_px as i32);
-        // Define the (transparent) mip chain up front; each re-insert
-        // below regenerates it, but an empty regrow still leaves a
-        // sampleable chain.
-        self.regen_mips(gpu);
-        // Re-insert in BTreeMap key order so re-pack is deterministic
-        // even when the underlying packer is sensitive to insert
-        // sequence (HR-5: identical input → identical layout across
-        // runs of the same session, and across machines via blake3
-        // hash invariants).
-        for (key, region) in old_regions {
-            let Some(rgba) = fetch_pixels(key) else {
-                continue;
-            };
-            // Uma chave envolvida volta a envolver-se: a biblioteca guarda a imagem, não as cópias.
-            match old_wraps.get(&key) {
-                Some((copies, d)) if rgba.len() as u64 == u64::from(d.w) * u64::from(d.h) * 4 => {
-                    self.insert_wrapped(gpu, key, d.w, d.h, &rgba, *copies)?;
-                }
-                _ => {
-                    self.insert(gpu, key, region.w, region.h, &rgba)?;
-                }
-            }
-        }
-        Ok(new_size_px)
     }
 
     /// Free-list size (for tests + diagnostics). Number of regions

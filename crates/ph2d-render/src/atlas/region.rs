@@ -58,6 +58,9 @@ pub enum AtlasInsertError {
     /// Source dimensions exceed the atlas's hard size (i.e. would
     /// never fit even into an empty atlas).
     SourceTooLarge { width: u32, height: u32, atlas: u32 },
+    /// The card refused the texture of side `size` the atlas needed to grow into
+    /// (F37); the atlas stays as it was.
+    SemMemoria { size: u32 },
 }
 
 impl std::fmt::Display for AtlasInsertError {
@@ -71,6 +74,9 @@ impl std::fmt::Display for AtlasInsertError {
                 height,
                 atlas,
             } => write!(f, "source {width}×{height} exceeds atlas {atlas}×{atlas}"),
+            Self::SemMemoria { size } => {
+                write!(f, "the graphics card refused a {size}×{size} atlas")
+            }
         }
     }
 }

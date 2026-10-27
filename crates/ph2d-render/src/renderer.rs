@@ -411,13 +411,13 @@ impl SpriteRenderer {
 
     /// Insert a freshly-decoded source image into the renderer's
     /// atlas at native resolution, returning the packed region on
-    /// success. Wraps [`TextureAtlas::insert`] so callers (the
-    /// image-import path in `shells/desktop`) don't need to thread
-    /// the [`GpuContext`] themselves.
+    /// success. The atlas grows in place when the source does not fit
+    /// ([`TextureAtlas::insert_crescendo`], F37) and the material bind
+    /// group follows the new texture.
     ///
     /// `rgba` must be tightly-packed `width * height * 4` bytes.
-    /// Errors when the source is bigger than the atlas, or when
-    /// the packer's skyline is exhausted. See
+    /// Errors when the source exceeds `max_size_px`, the atlas is full
+    /// at its cap, or the card refused the bigger texture. See
     /// [`AtlasInsertError`](crate::atlas::AtlasInsertError).
     pub fn insert_atlas_sprite(
         &mut self,
@@ -426,56 +426,31 @@ impl SpriteRenderer {
         height: u32,
         rgba: &[u8],
     ) -> Result<crate::atlas::AtlasRegion, crate::atlas::AtlasInsertError> {
-        self.atlas.insert(&self.gpu, key, width, height, rgba)
+        let lado = self.atlas.size_px;
+        let feito = self
+            .atlas
+            .insert_crescendo(&self.gpu, key, width, height, rgba);
+        if self.atlas.size_px != lado {
+            self.rebuild_material_bind_group();
+        }
+        feito
     }
 
-    /// Atlas V2 (M14.4f): insert with automatic regrow on
-    /// `AtlasFull`. The atlas doubles its texture (capped at
-    /// `atlas.max_size_px()`), re-packs every existing region using
-    /// `fetch_pixels(key)` to recover the source bytes, rebuilds the
-    /// material bind group to point at the new texture, then retries
-    /// the original insert.
-    ///
-    /// `fetch_pixels` is the caller's hook into wherever it stores
-    /// the asset source bytes (typically `AssetDb::get(asset_id) →
-    /// Asset::ImageRgba8 { pixels, ... }`). Returning `None` for a
-    /// key drops that region from the post-regrow atlas; surviving
-    /// keys keep their old indices so render instances need no
-    /// patching.
-    ///
-    /// Errors when the atlas is already at its cap, or when the
-    /// caller's source dimensions exceed `max_size_px`.
+    /// [`Self::insert_atlas_sprite`] under its Atlas V2 name. Growing now copies the
+    /// atlas on the card (every region keeps its pixels), so `_fetch_pixels` is no longer
+    /// called; it stays in the signature for the callers of other lines (F37 §1).
     pub fn insert_atlas_sprite_with_regrow<F>(
         &mut self,
         key: u32,
         width: u32,
         height: u32,
         rgba: &[u8],
-        fetch_pixels: F,
+        _fetch_pixels: F,
     ) -> Result<crate::atlas::AtlasRegion, crate::atlas::AtlasInsertError>
     where
         F: Fn(u32) -> Option<Vec<u8>>,
     {
-        match self.atlas.insert(&self.gpu, key, width, height, rgba) {
-            Ok(region) => Ok(region),
-            Err(crate::atlas::AtlasInsertError::AtlasFull { .. }) => {
-                let cap = self.atlas.max_size_px();
-                let target = (self.atlas.size_px.saturating_mul(2)).min(cap);
-                if target <= self.atlas.size_px {
-                    // Already at cap — surface the original error so
-                    // the shell can toast something actionable.
-                    return Err(crate::atlas::AtlasInsertError::AtlasFull { width, height });
-                }
-                self.atlas.regrow_inplace(&self.gpu, target, fetch_pixels)?;
-                self.rebuild_material_bind_group();
-                // Retry — pure path now (no further regrow needed at
-                // this granularity; the source that triggered full
-                // necessarily fits in a 2× atlas if it fit pre-regrow
-                // at all).
-                self.atlas.insert(&self.gpu, key, width, height, rgba)
-            }
-            Err(other) => Err(other),
-        }
+        self.insert_atlas_sprite(key, width, height, rgba)
     }
 
     /// Release `key`'s atlas slot back into the free-list. The next

@@ -125,3 +125,26 @@ fn compute_runs_atlas_constant() {
     assert_eq!(runs[0].texture_id, RenderInstance::ATLAS_TEXTURE_ID);
     assert_eq!(runs[0].texture_id, 0);
 }
+
+/// **G24 — o renderer de sprites cresce o átlas e refaz o grupo do material**, senão desenharia da
+/// textura velha (pequena) com as UVs do lado novo.
+#[test]
+#[ignore = "needs a real GPU device; run with --ignored on the GPU lane"]
+fn the_sprite_renderer_grows_its_atlas_and_rebinds_the_material() {
+    let Ok(gpu) = GpuContext::new(GpuContext::default_instance(), None) else {
+        return;
+    };
+    let atlas = TextureAtlas::new(&gpu, 256);
+    let mut r = SpriteRenderer::new(gpu, wgpu::TextureFormat::Rgba8UnormSrgb, atlas, 16);
+    let grupo = r.material_bind_group.clone();
+    r.insert_atlas_sprite(1, 64, 64, &[7u8; 64 * 64 * 4])
+        .expect("cabe");
+    assert!(r.material_bind_group == grupo, "refez o grupo sem crescer");
+    r.insert_atlas_sprite(2, 512, 512, &vec![9u8; 512 * 512 * 4])
+        .expect("cresce");
+    assert_eq!(r.atlas().size_px, 1024);
+    assert!(
+        r.material_bind_group != grupo,
+        "o grupo do material ficou na textura velha"
+    );
+}

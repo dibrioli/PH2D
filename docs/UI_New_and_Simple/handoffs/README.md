@@ -112,6 +112,7 @@
 | 2026-10-26 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-26_F32.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-26_F32.md) | ⚠️ handoff (morto) | HANDOFF de continuação — line/UIUX, onda F32 (26/10) — smoke do dono OK |
 | 2026-10-26 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-26_F33.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-26_F33.md) | ⚠️ handoff (morto) | HANDOFF de continuação — line/UIUX, onda F33 (filtros × efeitos), 26/10 |
 | 2026-10-26 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-26_F34.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-26_F34.md) | ⚠️ handoff (morto) | HANDOFF de continuação — line/UIUX, onda F34 (zoom perto numa forma com filtro), 26/10 |
+| 2026-10-26 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-26_F35.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-26_F35.md) | ⚠️ handoff (morto) | HANDOFF de continuação — line/UIUX, onda F35 (memória da placa: o FX devolve; placa cheia avisa e volta), 26/10 |
 
 ---
 

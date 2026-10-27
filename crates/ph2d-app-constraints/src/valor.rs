@@ -8,7 +8,11 @@ use ph2d_constraints::{Kind, Prop, Valor};
 use ph2d_constraints_ecs::{Constraints, Lei, Valores, ordem, pose};
 use std::collections::{BTreeMap, BTreeSet};
 
-use ph2d_ecs::{CanaisEscritos, CanaisLidos, FieldKey, SimWorld, StableId, World, world_transform};
+use ph2d_ecs::canal::familia::CONSTRAINT;
+use ph2d_ecs::{
+    CanaisEscritos, CanaisLidos, FieldKey, LeitoresDosCanais, SimWorld, StableId, World,
+    world_transform,
+};
 
 use crate::relogio::Relogio;
 
@@ -73,6 +77,7 @@ pub fn valores(sim: &mut SimWorld, relogio: Option<Relogio<'_>>) {
     vs.sims.retain(|k, _| vivos.contains(k));
     vs.historia.retain(|k, _| vivos.contains(k));
     let alvos: BTreeSet<StableId> = itens.iter().filter_map(|i| i.3).collect();
+    let mut lidos = Vec::new();
     let idx: BTreeMap<StableId, Entity> = if alvos.is_empty() {
         BTreeMap::new()
     } else {
@@ -88,6 +93,12 @@ pub fn valores(sim: &mut SimWorld, relogio: Option<Relogio<'_>>) {
             let Some(&alvo) = target.and_then(|s| idx.get(&s)) else {
                 continue;
             };
+            if matches!(v.fonte, Prop::Campo(_)) {
+                lidos.push(alvo.to_bits());
+            }
+            if matches!(v.destino, Prop::Campo(_)) {
+                lidos.push(e.to_bits());
+            }
             let fonte = match v.fonte {
                 Prop::Pose(_) => world_transform(w, alvo).and_then(|t| v.da_pose(pose(&t))),
                 p => agora(w, alvo, p),
@@ -148,4 +159,6 @@ pub fn valores(sim: &mut SimWorld, relogio: Option<Relogio<'_>>) {
         }
     }
     w.insert_resource(vs);
+    w.get_resource_or_insert_with(LeitoresDosCanais::default)
+        .publicar(CONSTRAINT, lidos);
 }

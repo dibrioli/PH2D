@@ -40,6 +40,9 @@ impl crate::App {
                 .filter(|b| matches!(b.prop, ph2d_timeline::PropKind::Field(_)))
                 .map(|b| b.entity),
         );
+        if let Some(l) = sim.world().get_resource::<ph2d_ecs::LeitoresDosCanais>() {
+            publicar.extend(l.todas());
+        }
         // O desenho Flip em edição: o painel mostra as camadas dele, selecionado ou não.
         publicar.extend(ph2d_app_flip::marcas_camada::alvo(&self.flip_state, flip).map(|a| a.0));
         publicar.sort_unstable();

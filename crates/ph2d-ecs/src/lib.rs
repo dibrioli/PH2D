@@ -105,8 +105,8 @@ pub mod canal_script;
 pub mod canal_vetor;
 pub mod clip_playback;
 pub use canal::{
-    AlvosDasFamilias, CampoInfo, CanaisEscritos, CanaisLidos, Especie, FieldKey, MaosDasFamilias,
-    TextosDosCanais,
+    AlvosDasFamilias, CampoInfo, CanaisEscritos, CanaisLidos, Especie, FieldKey, LeitoresDosCanais,
+    MaosDasFamilias, TextosDosCanais,
 };
 pub mod present;
 /// ⭐⭐⭐ **A reposição do estado VIVO ao rebobinar** — ver o cabeçalho do módulo.

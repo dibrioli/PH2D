@@ -444,6 +444,26 @@ impl AlvosDasFamilias {
     }
 }
 
+/// **Quem uma família LÊ pelos canais além da população do Auto Key** — o «Valor» das constraints lê
+/// um campo do alvo e o do dono fora da seleção (`docs/BlenderConstraints/06_W5_resto.md` §3.1). Entram
+/// na lista que as famílias publicam em [`CanaisLidos`]; não entram no Auto Key (ler não é autorar).
+#[derive(Resource, Debug, Default, Clone, PartialEq, Eq)]
+pub struct LeitoresDosCanais {
+    por_familia: BTreeMap<u16, Vec<u64>>,
+}
+
+impl LeitoresDosCanais {
+    /// O que a família `familia` lê agora (substitui o do quadro anterior).
+    pub fn publicar(&mut self, familia: u16, entidades: Vec<u64>) {
+        self.por_familia.insert(familia, entidades);
+    }
+
+    /// Todas as entidades lidas, de todas as famílias.
+    pub fn todas(&self) -> impl Iterator<Item = u64> + '_ {
+        self.por_familia.values().flatten().copied()
+    }
+}
+
 #[cfg(test)]
 #[path = "canal_tests.rs"]
 mod tests;

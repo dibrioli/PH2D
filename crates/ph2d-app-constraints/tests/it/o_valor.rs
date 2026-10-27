@@ -93,6 +93,16 @@ fn a_followed_field_is_a_preview_never_the_document() {
             .influence
     };
     assert!((forca(&sim) - 0.25).abs() < 1e-6, "{}", forca(&sim));
+    let lidos: Vec<u64> = sim
+        .world()
+        .resource::<ph2d_ecs::LeitoresDosCanais>()
+        .todas()
+        .collect();
+    assert_eq!(
+        lidos,
+        [a.to_bits()],
+        "o dono de um destino de campo é publicado, selecionado ou não"
+    );
     let vivo = drive.fields.substitute(&mut sim);
     assert_eq!(forca(&sim), 1.0, "o documento guarda o autorado");
     FieldDrive::restore(&mut sim, &vivo);

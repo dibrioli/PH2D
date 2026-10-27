@@ -1,5 +1,5 @@
 //! **A cena 10 — as quatro correcções do smoke da P6 que SE VÊEM** (P6b, dono 26/10). Um Pixel
-//! Sprite RGBA 128 × 64 em Draw, com a ESTRELA na mão (o painel mostra os campos dela):
+//! Sprite RGBA 128 × 80 em Draw, com a ESTRELA na mão (o painel mostra os campos dela):
 //!
 //! - na coluna: a **varinha** com o ícone de varinha, o **botão das selecções** com o triângulo no
 //!   canto e as quatro abertas ao lado (a cara é a Elliptical, a última usada), a ferramenta
@@ -7,7 +7,7 @@
 //! - em cima, da esquerda para a direita, as **formas do Vector** em células: um retângulo com
 //!   fillet de 6 e o canto de cima à direita vivo, uma pizza (elipse com Sweep 270), um hexágono de
 //!   cantos redondos e uma estrela de pontas redondas — cada uma UM passo do desfazer;
-//! - em baixo: a figura LEVANTADA no **gizmo do sprite**, girada 30° (as alças, o pivô e as zonas de
+//! - em baixo: a figura LEVANTADA no **gizmo do sprite**, a 2× e girada 30° (as alças, o pivô e as zonas de
 //!   giro da casa); `Enter` assenta.
 
 use ph2d_ecs::SimWorld;
@@ -19,7 +19,7 @@ use crate::gesture::{Kind, Mods, paint, reshape};
 use crate::{PixelApp, Tool};
 
 /// O tamanho da cena 10.
-pub const SIZE: (u32, u32) = (128, 64);
+pub const SIZE: (u32, u32) = (128, 80);
 /// As quatro formas: a ferramenta, a caixa (cantos inclusivos) e a cor.
 pub const SHAPES: [(Tool, (i32, i32), (i32, i32), [u8; 4]); 4] = [
     (Tool::Rectangle, (4, 4), (27, 23), [70, 110, 220, 255]),
@@ -36,8 +36,9 @@ pub const PIE_START: f64 = 45.0;
 pub const HEX_SIDES: f64 = 6.0;
 pub const HEX_ROUND: f64 = 3.0;
 pub const STAR_TIP: f64 = 2.0;
-/// Onde a figura fica e o giro do gizmo (anti-horário, o campo Angle).
-pub const FIGURE_AT: (i32, i32) = (54, 38);
+/// Onde a figura fica, o tamanho dela no gizmo (2×) e o giro (anti-horário, o campo Angle).
+pub const FIGURE_AT: (i32, i32) = (50, 42);
+pub const SCALED: i32 = 28;
 pub const ANGLE: i32 = 30;
 
 /// Os valores das formas da cena nas opções.
@@ -102,6 +103,8 @@ pub(crate) fn stage(
     if !app.levanta(key) {
         return None;
     }
+    app.campo_da_moldura(PixelTransformField::W, SCALED);
+    app.campo_da_moldura(PixelTransformField::H, SCALED);
     app.campo_da_moldura(PixelTransformField::Angle, ANGLE);
     // A estrela na mão; o botão das selecções mostra a Elliptical e as quatro abertas.
     app.tool = Tool::Star;

@@ -58,8 +58,11 @@ impl PixelApp {
         }
         self.reconcile(sim);
         if editing.is_none() {
-            // Sair do Draw assenta as células levantadas (o Aseprite larga-as antes de mudar).
-            self.assenta();
+            // SAIR do Draw assenta as células levantadas (o Aseprite larga-as antes de mudar); a cena
+            // de smoke que levanta antes do 1.º Draw não saiu de lado nenhum.
+            if self.was_editing.is_some() {
+                self.assenta();
+            }
             self.laco = None;
             self.gesture = None;
             self.hover = None;

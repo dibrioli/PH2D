@@ -50,7 +50,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.pixel.resample.rotsprite" => "RotSprite",
         "panel.pixel.transform" => "Transform",
         "panel.pixel.transform_hint" => {
-            "Drag the handles to scale, outside a corner to rotate, Ctrl on a side to skew · Enter applies"
+            "Drag the handles to scale (Shift keeps the ratio, Ctrl from the center), just outside a corner to rotate, Skew in the field · Enter applies"
         }
         "panel.pixel.xform.x" => "X",
         "panel.pixel.xform.y" => "Y",

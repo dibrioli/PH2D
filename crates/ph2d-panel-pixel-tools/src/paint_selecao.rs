@@ -83,7 +83,8 @@ impl Corpo<'_> {
             ];
             y = self.escolha(tr("panel.pixel.connectivity"), &conn, sec, y);
         }
-        if t == PixelTool::Move || info.transform.is_some() {
+        // Com células levantadas a amostragem mora nos campos da moldura (nunca duas vezes).
+        if matches!(t, PixelTool::Move | PixelTool::Transform) && info.transform.is_none() {
             y = self.amostragem(o.resample, sec, y);
         }
         y

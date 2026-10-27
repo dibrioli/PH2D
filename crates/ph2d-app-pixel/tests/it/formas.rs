@@ -251,3 +251,22 @@ fn the_transform_tool_lifts_on_press_and_ctrl_t_picks_it() {
     assert_eq!(i.tool, Tool::Transform);
     assert!(i.transform.is_some());
 }
+
+/// A foto da cena 10 (26/10): o 1.º quadro corre ANTES do Draw e a regra «sair do Draw assenta»
+/// assentava a figura que a cena levantou — o gizmo nunca aparecia. Só SAIR do Draw assenta.
+#[test]
+fn the_first_frame_outside_draw_does_not_settle_the_staged_float() {
+    let mut app = PixelApp::default();
+    let mut sim = SimWorld::new();
+    assert!(ph2d_app_pixel::smoke::stage(
+        &mut app, &mut sim, 10, spawn_root
+    ));
+    let (bits, _) = mode::sprites(sim.world())[0];
+    let mut cam = Camera2d::default();
+    app.frame(&mut sim, &mut cam, WINDOW, PPM, None, spawn_root);
+    assert!(app.floating(), "o quadro fora do Draw não saiu do Draw");
+    app.frame(&mut sim, &mut cam, WINDOW, PPM, Some(bits), spawn_root);
+    assert!(app.floating());
+    app.frame(&mut sim, &mut cam, WINDOW, PPM, None, spawn_root);
+    assert!(!app.floating(), "sair do Draw assenta");
+}

@@ -410,8 +410,8 @@ pub fn apply_edit(
             let rgba = px.as_ref().map(|(w, h, p)| (*w, *h, &p[..]));
             set_use(world, e, facts, rgba, to)
         }
-        ImageUseEdit::Width(m) => crate::tiled::set_tiled_side(world, e, 0, m),
-        ImageUseEdit::Height(m) => crate::tiled::set_tiled_side(world, e, 1, m),
+        ImageUseEdit::Width(n) => crate::tiled::set_tiled_side(world, e, 0, n),
+        ImageUseEdit::Height(n) => crate::tiled::set_tiled_side(world, e, 1, n),
     }
 }
 

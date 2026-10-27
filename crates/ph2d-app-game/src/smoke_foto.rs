@@ -208,3 +208,53 @@ pub fn plano_da_foto(
 fn uso(u: ph2d_editor_core::InspectorImageUse) -> ph2d_editor_core::ImageUseEdit {
     ph2d_editor_core::ImageUseEdit::Use(u)
 }
+
+/// Quadros entre dois cliques de [`usos_do_dono`]: cada clique chega sozinho num quadro, como o da mão.
+pub const QUADROS_POR_USO: u32 = 120;
+
+/// ⭐ `PH2D_GAME_SMOKE_USOS=repeated,still,animated,repeated` — a sequência de cliques do seletor «Use» que o dono
+/// faz sobre o Player (report 27/10), um a cada [`QUADROS_POR_USO`], pelo barramento do Inspector.
+#[must_use]
+pub fn usos_do_dono() -> Option<Vec<ph2d_editor_core::InspectorImageUse>> {
+    use ph2d_editor_core::InspectorImageUse as U;
+    let s = std::env::var("PH2D_GAME_SMOKE_USOS").ok()?;
+    s.split(',')
+        .map(|u| match u.trim() {
+            "still" => Some(U::Still),
+            "repeated" => Some(U::Repeated),
+            "animated" => Some(U::Animated),
+            _ => None,
+        })
+        .collect()
+}
+
+static QUADRO_DOS_USOS: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
+
+/// O clique de [`usos_do_dono`] deste quadro (`Some(i)` = o i-ésimo); um por chamada.
+#[must_use]
+pub fn uso_no_quadro(n: usize) -> Option<usize> {
+    let q = QUADRO_DOS_USOS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let i = (q / QUADROS_POR_USO) as usize;
+    (q % QUADROS_POR_USO == QUADROS_POR_USO / 2 && i >= 1 && i <= n).then(|| i - 1)
+}
+
+/// O que o Player tem agora, numa linha (o tamanho, o ladrilho, o corte e a memória por uso).
+#[must_use]
+pub fn estado_do_player(sim: &mut SimWorld) -> String {
+    let Some(e) = por_nome(sim, "Player") else {
+        return "sem Player".into();
+    };
+    let w = sim.world();
+    format!(
+        "size={:?} tiled={:?} grid={:?} anims={} memoria={:?}",
+        w.get::<ph2d_render::Sprite>(e).map(|s| s.size),
+        w.get::<ph2d_ecs::TiledDraw>(e).map(|t| t.tile),
+        w.get::<ph2d_ecs::SpriteGrid>(e)
+            .map(|g| (g.hframes, g.vframes)),
+        w.get::<ph2d_ecs::SpriteAnimations>(e).is_some(),
+        w.get::<ph2d_ecs::ImageUseMemory>(e)
+            .map(|m| [&m.still, &m.repeated, &m.animated].map(|s| s
+                .as_ref()
+                .and_then(|s| s.look.map(|l| (l.size, l.tiled.map(|t| t.tile)))))),
+    )
+}

@@ -473,15 +473,19 @@ fn cada_uso_guarda_a_sua_configuracao() {
     assert_eq!(tile, [celula[0] * 8.0, celula[1] * 4.0], "a imagem inteira");
     assert!(w.get::<SpriteGrid>(e).is_none(), "sem corte");
     let (db, atlas) = biblioteca();
-    let largura = tile[0] * 4.0;
     assert!(apply_edit(
         sim.world_mut(),
         e,
         &db,
         &atlas,
         PPM,
-        ImageUseEdit::Width(largura)
+        ImageUseEdit::Width(4.0)
     ));
+    assert_eq!(
+        sim.world().get::<Sprite>(e).map(|s| s.size[0]),
+        Some(tile[0] * 4.0),
+        "Width 4 = quatro cópias"
+    );
     let repetida = completo(&sim, e);
     assert!(usa(&mut sim, e, InspectorImageUse::Animated));
     assert_eq!(completo(&sim, e), animada, "a Animated voltou diferente");
@@ -607,3 +611,6 @@ fn um_bloco_que_repete_recebe_a_imagem_inteira() {
         assert!((a - b).abs() < 1e-4 * b, "{key}: esticada {a} ≠ {b}");
     }
 }
+
+#[path = "image_use_copias_tests.rs"]
+mod copias;

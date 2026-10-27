@@ -35,6 +35,7 @@ impl crate::App {
         self.script_smoke();
         self.game_smoke();
         self.game_smoke_drive();
+        self.game_smoke_usos();
         self.projectile_smoke();
         self.particles_smoke();
         // ⭐⭐⭐ **A CUTSCENE** (TOP-20 #19) — ela autora a timeline, logo corre DEPOIS das cenas

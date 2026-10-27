@@ -421,8 +421,8 @@ pub enum InspectorDraw {
     Fixed,
     /// A imagem estica até ao tamanho.
     Simple,
-    /// A imagem repete-se em ladrilhos até encher `size` (m).
-    Tiled { size: [f32; 2] },
+    /// A imagem repete-se: `copies` cópias da imagem inteira em cada eixo (dono 27/10: 1 × 1 = uma cópia).
+    Tiled { copies: [f32; 2] },
 }
 
 /// ⭐ **Uma edição do USO da imagem** (planos GEF 14 D5 e 15 D3): o seletor «Use» sob a linha Image e o
@@ -431,9 +431,9 @@ pub enum InspectorDraw {
 pub enum ImageUseEdit {
     /// O seletor **Still | Repeated | Animated**.
     Use(InspectorImageUse),
-    /// **Width** (m) de uma sprite Tiled.
+    /// **Width** de uma sprite que repete, em cópias da imagem.
     Width(f32),
-    /// **Height** (m) de uma sprite Tiled.
+    /// **Height** de uma sprite que repete, em cópias da imagem.
     Height(f32),
 }
 

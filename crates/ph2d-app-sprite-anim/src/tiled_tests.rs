@@ -45,13 +45,13 @@ fn caixa(sim: &SimWorld, e: Entity) -> ColliderShape {
     sim.world().get::<Collider>(e).expect("collider").shape
 }
 
-/// ⭐ D3: a Largura muda o desenho e leva o collider automático; a escala fica 1.
+/// ⭐ D3: a Largura (em cópias da imagem, dono 27/10) muda o desenho e leva o collider automático; a escala fica 1.
 #[test]
 fn largura_leva_o_collider_automatico() {
     let (mut sim, e) = platform_low();
     assert_eq!(
         draw_of(sim.world(), e),
-        InspectorDraw::Tiled { size: [2.4, 0.5] }
+        InspectorDraw::Tiled { copies: [2.4, 1.0] }
     );
     assert!(edita(&mut sim, e, ImageUseEdit::Width(4.0)));
     assert_eq!(
@@ -84,7 +84,7 @@ fn collider_a_mao_fica() {
         .get_mut::<Collider>(e)
         .expect("collider")
         .shape = mao;
-    assert!(edita(&mut sim, e, ImageUseEdit::Height(1.0)));
+    assert!(edita(&mut sim, e, ImageUseEdit::Height(2.0)));
     assert_eq!(
         sim.world().get::<Sprite>(e).map(|s| s.size),
         Some([2.4, 1.0])

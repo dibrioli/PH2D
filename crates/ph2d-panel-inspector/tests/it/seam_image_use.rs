@@ -102,7 +102,7 @@ fn y_de(rects: &[(ph2d_a11y::NodeId, Rect)], id: ph2d_a11y::NodeId) -> f32 {
 /// Gate 1: o seletor pinta os três; cada uso pinta SÓ os seus campos.
 #[test]
 fn cada_uso_pinta_so_os_seus_campos() {
-    let tiled = InspectorDraw::Tiled { size: [2.4, 0.5] };
+    let tiled = InspectorDraw::Tiled { copies: [2.4, 1.0] };
     // (uso, grelha, draw, células clicáveis, Width/Height, corte, Animation)
     for (uso, grelha, draw, celulas, tamanho, corte, animacao) in [
         (
@@ -256,7 +256,7 @@ fn largura_pede_a_accao() {
     let info = com(
         InspectorImageUse::Repeated,
         [1, 1],
-        InspectorDraw::Tiled { size: [2.4, 0.5] },
+        InspectorDraw::Tiled { copies: [2.4, 1.0] },
     );
     let (mut host, mut state, _) = pintado(&info);
     host.set_number_value(INSP_IMAGE_TILED_SIZE[0], 4.0);

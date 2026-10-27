@@ -134,6 +134,36 @@ impl crate::App {
         }
     }
 
+    /// `PH2D_GAME_SMOKE_USOS`: os cliques do seletor «Use» sobre o Player, um por vez, pelo barramento do Inspector
+    /// (a porta do clique); o estado do Player sai no `stderr` antes de cada clique e no fim.
+    pub(crate) fn game_smoke_usos(&mut self) {
+        use ph2d_app_game::smoke as s;
+        let (Some(usos), Some(_)) = (s::usos_do_dono(), s::armed_level()) else {
+            return;
+        };
+        let Some(gfx) = self.gfx.as_mut() else {
+            return;
+        };
+        let Some(i) = s::uso_no_quadro(usos.len() + 1) else {
+            return;
+        };
+        eprintln!(
+            "[usos] antes do passo {}: {}",
+            i + 1,
+            s::estado_do_player(&mut gfx.sim)
+        );
+        let (Some(&u), Some(p)) = (usos.get(i), s::por_nome(&mut gfx.sim, "Player")) else {
+            return;
+        };
+        if let Some(hero) = gfx.hero_screen.as_mut() {
+            use ph2d_editor_core::action_bus::EditorAction;
+            hero.bus.push(EditorAction::ImageUseEdit {
+                entity_bits: p.to_bits(),
+                edit: ph2d_editor_core::ImageUseEdit::Use(u),
+            });
+        }
+    }
+
     /// Só a janela onde o app vive conduz; a outra (o editor parado atrás da janela do jogo) só sabe
     /// fechar — e fechar pára o jogo. `true` = o evento era da outra janela.
     pub(crate) fn da_outra_janela(

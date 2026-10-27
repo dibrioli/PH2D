@@ -11,12 +11,12 @@ use ph2d_editor_core::{
     ImageUseEdit, InspectorDraw, InspectorImageUse, InspectorSpriteInfo, SpriteFieldEdit,
 };
 
-/// O passo de arrasto de Width/Height (m).
-const PASSO_M: f64 = 0.1;
-/// O menor lado (m): o mesmo da lei (`ph2d_app_sprite_anim::tiled::MIN_SIDE_M`, que o painel não importa).
-const MIN_M: f64 = 0.01;
-/// O maior lado (m): dez quilómetros, muito além de qualquer nível.
-const MAX_M: f64 = 1.0e4;
+/// O passo de arrasto de Width/Height (cópias da imagem): meia cópia.
+const PASSO: f64 = 0.5;
+/// O menor número de cópias: um centésimo da imagem (o lado mínimo em metros fica na lei).
+const MIN_COPIAS: f64 = 0.01;
+/// O maior número de cópias: dez mil, muito além de qualquer nível.
+const MAX_COPIAS: f64 = 1.0e4;
 
 pub(crate) fn populate(store: &mut WidgetStore) {
     crate::populate::register_button_ids(store, &ids::INSP_IMAGE_USE);
@@ -33,7 +33,7 @@ pub(crate) fn populate(store: &mut WidgetStore) {
                 selection_anchor: None,
             },
         );
-        store.set_number_range(id, MIN_M, MAX_M, PASSO_M);
+        store.set_number_range(id, MIN_COPIAS, MAX_COPIAS, PASSO);
     }
 }
 
@@ -48,12 +48,12 @@ pub(crate) fn use_is_fixed(sp: &InspectorSpriteInfo) -> bool {
 }
 
 pub(crate) fn sync(host: &mut dyn PanelHostInternal, sp: &InspectorSpriteInfo) {
-    let InspectorDraw::Tiled { size } = sp.draw else {
+    let InspectorDraw::Tiled { copies } = sp.draw else {
         return;
     };
     let focus = host.store().focus_id();
     let drag = host.store().number_input_drag().map(|d| d.id);
-    for (id, v) in ids::INSP_IMAGE_TILED_SIZE.into_iter().zip(size) {
+    for (id, v) in ids::INSP_IMAGE_TILED_SIZE.into_iter().zip(copies) {
         if focus != Some(id) && drag != Some(id) {
             host.store_mut().set_number_value(id, f64::from(v));
         }
@@ -102,13 +102,13 @@ pub(crate) fn event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
             let Some(m) = host.store().number_value(id) else {
                 return false;
             };
-            let m = m as f32;
+            let n = m as f32;
             EditorAction::ImageUseEdit {
                 entity_bits,
                 edit: if axis == 0 {
-                    ImageUseEdit::Width(m)
+                    ImageUseEdit::Width(n)
                 } else {
-                    ImageUseEdit::Height(m)
+                    ImageUseEdit::Height(n)
                 },
             }
         }

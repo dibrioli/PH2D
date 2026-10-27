@@ -21,21 +21,33 @@ pub fn draw_of(world: &World, e: Entity) -> InspectorDraw {
         return InspectorDraw::Fixed;
     }
     match world.get::<TiledDraw>(e) {
-        Some(_) => InspectorDraw::Tiled { size: s.size },
+        Some(t) => InspectorDraw::Tiled {
+            copies: std::array::from_fn(|i| {
+                if t.tile[i] > 0.0 {
+                    s.size[i] / t.tile[i]
+                } else {
+                    1.0
+                }
+            }),
+        },
         None => InspectorDraw::Simple,
     }
 }
 
-/// Muda um eixo (`0` = Width, `1` = Height) do tamanho de uma sprite Tiled para `m` metros. Um collider em
-/// caixa que media o desenho (o automático) segue-o; um que o artista mudou à mão fica. `false` se nada mudou.
-pub fn set_tiled_side(world: &mut World, e: Entity, axis: usize, m: f32) -> bool {
-    if axis > 1 || !m.is_finite() || world.get::<TiledDraw>(e).is_none() {
+/// Muda um eixo (`0` = Width, `1` = Height) de uma sprite Tiled para `copias` cópias da imagem (dono 27/10: o
+/// Inspector conta cópias, 1 × 1 = a imagem inteira uma vez). Um collider em caixa que media o desenho (o
+/// automático) segue-o; um que o artista mudou à mão fica. `false` se nada mudou.
+pub fn set_tiled_side(world: &mut World, e: Entity, axis: usize, copias: f32) -> bool {
+    let Some(tile) = world.get::<TiledDraw>(e).map(|t| t.tile[axis.min(1)]) else {
+        return false;
+    };
+    if axis > 1 || !copias.is_finite() {
         return false;
     }
     let Some(mut s) = world.get::<Sprite>(e).copied() else {
         return false;
     };
-    let novo = m.max(MIN_SIDE_M);
+    let novo = (copias * tile).max(MIN_SIDE_M);
     let antes = s.size;
     if antes[axis] == novo {
         return false;

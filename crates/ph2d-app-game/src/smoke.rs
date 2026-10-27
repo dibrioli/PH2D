@@ -50,7 +50,10 @@ pub fn imagens_da_cena(nivel: u32) -> &'static [&'static str] {
 // As fotos do dono (`PH2D_GAME_SMOKE_FOTO`), irmãs pelo tecto de LOC.
 #[path = "smoke_foto.rs"]
 mod foto;
-pub use foto::{CENTRO_DAS_FOTOS_13, Foto, ONDE_LARGA, PlanoDaFoto, foto, plano_da_foto};
+pub use foto::{
+    CENTRO_DAS_FOTOS_13, Foto, ONDE_LARGA, PlanoDaFoto, QUADROS_POR_USO, estado_do_player, foto,
+    plano_da_foto, uso_no_quadro, usos_do_dono,
+};
 
 /// O objecto da raiz com este nome.
 #[must_use]

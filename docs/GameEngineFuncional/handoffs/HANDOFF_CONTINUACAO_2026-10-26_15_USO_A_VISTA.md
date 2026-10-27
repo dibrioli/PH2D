@@ -243,3 +243,32 @@ Medido (sonda, removida): a bandeira num bloco 3 × 0,5 m cujo ladrilho era 1 ×
 ⚠️ **Decisão do dono por tomar:** isto, ou encaixar a imagem inteira na altura do bloco (12 bandeiras pequenas).
 Fotos refeitas: `player_repetido`, `memoria_repetida`, `voltas`, `bandeira`, `repetida_da_parada`, `uso_parada`,
 `largada`, `heroi_animado`.
+
+## Dono 27/10: «Repeated → Still → Animated → Repeated devolve 8 × 4 em vez de 1 × 1» — Width/Height em CÓPIAS
+
+**Medido antes de curar** (condutor novo `PH2D_GAME_SMOKE_USOS=repeated,still,animated,repeated`: um clique por
+2 s pelo barramento do Inspector, `EditorAction::ImageUseEdit`, com o estado do Player no `stderr`): o MUNDO
+estava certo — passo 1 e passo 4 iguais (`size 8×4 m`, `TiledDraw 8×4 m`), a `ImageUseMemory` devolvia o slot.
+O defeito era a **unidade do campo**: Width/Height mostravam METROS, e uma cópia da folha do Player
+(800 × 400 px a 100 ppm) mede 8 × 4 m — o dono lia «as 8 × 4 células da animada». O 1 × 1 que ele viu no passo 1
+era de um binário anterior a `d01dcb93cc` (o ladrilho era uma célula). Hipóteses a)/b) do briefing refutadas
+pela medição; c) confirmada.
+
+**Decisão do dono (27/10): Width/Height de uma repetida contam CÓPIAS da imagem** (1 × 1 = a imagem inteira uma
+vez). Cura: `InspectorDraw::Tiled { copies }` (era `size` em m) = `Sprite.size / TiledDraw.tile` por eixo
+(`tiled::draw_of`); `ImageUseEdit::Width/Height(n)` = n cópias ⇒ `set_tiled_side` escreve `n × tile` (o lado
+mínimo em metros fica); o painel passa a faixa 0,01–10 000 cópias, passo 0,5. O mundo e o formato não mudam
+(nenhum schema). ⚠️ A Platform Low passa a ler `2,4 × 1` (era `2,4 × 0,5` m).
+
+Gates por nome (`ph2d-app-sprite-anim`, ficheiro `image_use_copias_tests.rs`, filho de `uso_15_tests`):
+`a_volta_do_dono_devolve_o_repeated_do_passo_1` (a sequência literal, lida por `inspector_use`) e
+`cada_troca_ida_e_volta_devolve_o_uso_como_estava` (Player, Platform Low, Platform High ← bandeira; caminho
+R→A→S→A→R→S = os 6 pares ordenados, 2 voltas; Width 3 dada à 1.ª repetida; desfazer + refazer e projecto
+reaberto a meio da 2.ª volta). Vistos VERMELHOS com o campo em metros (o defeito de hoje), verdes com a cura;
+28 verdes em `copias|uso_15_tests|tiled_tests|gate_tests`, 6 em `seam_image_use` (painel). Mutação: campo em
+metros ⇒ 2 vermelhos · Width escrita em metros ⇒ vermelho · memória ignorada (`restore` nunca) ⇒ vermelho.
+Árvore reposta.
+
+Fotos (`fotos_15/`): `volta_do_dono_campos` (as linhas Use/Width/Height da rajada: Repeated 1 × 1 → Still →
+Animated → Repeated 1 × 1), `volta_do_dono_passo4`, `player_repetido` e `memoria_repetida` (Width 3 · Height 1 =
+três cópias da folha) refeitas.

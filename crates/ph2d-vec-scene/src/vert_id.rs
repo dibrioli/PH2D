@@ -6,7 +6,7 @@
 //! gancho que corre antes de toda captura de undo — uma operação só tem de copiar o vértice (mantém o
 //! id) ou construí-lo novo ([`VertId::NOVO`]). Desenho: `docs/BlenderConstraints/04_W4_cad.md` §3.1.
 
-use std::collections::HashSet;
+use std::collections::BTreeSet;
 
 use serde::{Deserialize, Deserializer, Serialize};
 
@@ -73,7 +73,7 @@ impl VecPath {
             mudou = true;
         }
         let mut proximo = self.next_vert.max(1);
-        let mut vistos = HashSet::with_capacity(self.verts.len());
+        let mut vistos = BTreeSet::new();
         let contornos =
             std::iter::once(&mut self.verts).chain(self.subpaths.iter_mut().map(|c| &mut c.verts));
         for verts in contornos {
@@ -96,7 +96,7 @@ impl VecPath {
     /// mesma topologia (forma viva, envelope, conector) guarda os ids — e o undo não vê mudança —, e uma
     /// inserção ganha id novo, porque os vizinhos deslocados ainda usam os deles.
     pub fn normaliza_ids_desde(&mut self, anterior: &Self) -> bool {
-        let mut usados: HashSet<VertId> = std::iter::once(&self.verts)
+        let mut usados: BTreeSet<VertId> = std::iter::once(&self.verts)
             .chain(self.subpaths.iter().map(|c| &c.verts))
             .flatten()
             .map(|v| v.id)

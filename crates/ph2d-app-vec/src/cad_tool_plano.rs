@@ -419,8 +419,7 @@ fn cota(
         rect: rect_em([0.0; 2], 0.0, 0.0),
         cor,
     };
-    let numero;
-    match (lei, ps) {
+    let numero = match (lei, ps) {
         (Lei::Distancia(pa, ..), [a, b]) => {
             let mut n = unit([b[1] - a[1], a[0] - b[0]]);
             if let Some(cc) = centro_do(pa.path(), e.scene, e.view, e.xf, e.cam)
@@ -437,7 +436,7 @@ fn cota(
             c.tracos.push(vec![a2, b2]);
             c.setas.push(seta(b2, a2));
             c.setas.push(seta(a2, b2));
-            numero = meio(a2, b2);
+            meio(a2, b2)
         }
         (Lei::Angulo(s, t, _), [a, b, cc, d]) => {
             // O vértice: o ponto que os dois lados partilham; senão, o meio dos dois inícios.
@@ -473,13 +472,13 @@ fn cota(
             }
             c.tracos.push(arco);
             let m = a1 + d * 0.5;
-            numero = add(
+            add(
                 v,
                 [
                     (r + f64::from(Spacing::Lg.px()) + w * 0.5) * m.cos(),
                     (r + f64::from(Spacing::Lg.px())) * m.sin(),
                 ],
-            );
+            )
         }
         (Lei::Raio(id, _), [centro]) => {
             let path = e.scene.path(*id)?;
@@ -492,10 +491,10 @@ fn cota(
             let b = [borda.x, borda.y];
             c.tracos.push(vec![*centro, b]);
             c.setas.push(seta(*centro, b));
-            numero = add(b, esc(unit(sub(b, *centro)), afasta * 0.5 + w * 0.5));
+            add(b, esc(unit(sub(b, *centro)), afasta * 0.5 + w * 0.5))
         }
         _ => return None,
-    }
+    };
     #[expect(clippy::cast_possible_truncation, reason = "px de ecrã")]
     let rect = chip_rect([numero[0] as f32, numero[1] as f32], w as f32);
     c.rect = rect;

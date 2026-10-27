@@ -85,7 +85,7 @@ fn an_angle_measure_rides_its_own_field() {
     )));
     scene.normaliza_ids();
     let angulo = scene.regras()[4].id;
-    let lei = |r: RegraId| scene.regra(r).unwrap().lei.clone();
+    let lei = |r: RegraId| scene.regra(r).unwrap().lei;
     assert_eq!(
         chave_da(&lei(angulo), angulo),
         Some(chave(ANGULO, angulo.0))

@@ -152,7 +152,7 @@ impl VecScene {
         let mut mudou = self.poda_regras();
         let maior = self.regras.iter().map(|r| r.id.0).max().unwrap_or(0);
         let mut proximo = self.next_regra.max(maior + 1);
-        let mut vistos = std::collections::HashSet::with_capacity(self.regras.len());
+        let mut vistos = std::collections::BTreeSet::new();
         for r in &mut self.regras {
             if r.id == RegraId::NOVO || !vistos.insert(r.id) {
                 r.id = RegraId(proximo);

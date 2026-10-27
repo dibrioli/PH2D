@@ -13,8 +13,8 @@ mod ik_novo;
 mod ordem;
 pub mod relogio;
 
-pub use cola::{COLAS_TYPE_NAME, Colas, EstadosDaCola, colar};
 pub use avalia::{Adotar, Caminhos, Estado, Estados, Pontos, com_autorado, evaluate};
+pub use cola::{COLAS_TYPE_NAME, Colas, EstadosDaCola, colar};
 pub use ik_item::{
     Ancora, ancora_de, ancoras, com_ancora, com_ik, converter_ik_de_um_osso, converter_ik_goals,
     ik_de, iks, por_ik, tirar_ancora, tirar_ik,

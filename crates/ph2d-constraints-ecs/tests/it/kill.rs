@@ -1,5 +1,5 @@
 //! **Kill-criterion** (plano §7, 05_W5 §4): 0,5 ms por quadro para 1 000 — a COLA (cadeias de pinos com condutor
-//! + quadriláteros, o caminho da ezpz) e a PILHA (1 000 itens, nunca medida desde a W1), na MESMA rodada:
+//! e quadriláteros, o caminho da ezpz) e a PILHA (1 000 itens, nunca medida desde a W1), na MESMA rodada:
 //! variantes no mesmo processo, intercaladas em blocos, resumo = o MÍNIMO (`docs/DevOps/MEDIR_VELOCIDADE.md`).
 //!
 //! `#[ignore]`: o relógio só vale sozinho e no perfil `smoke` —

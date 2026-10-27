@@ -20,7 +20,7 @@ pub(crate) fn com<T: Component>(world: &World) -> impl Iterator<Item = Entity> +
 }
 
 /// Os `T` pela ordem do `iter_entities`.
-pub(crate) fn cada<'w, T: Component>(world: &'w World) -> Vec<(Entity, &'w T)> {
+pub(crate) fn cada<T: Component>(world: &World) -> Vec<(Entity, &T)> {
     let Some(mut q) = world.try_query::<&T>() else {
         return Vec::new();
     };

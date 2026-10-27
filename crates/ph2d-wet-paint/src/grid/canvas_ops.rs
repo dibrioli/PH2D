@@ -139,6 +139,7 @@ pub fn clear_canvas(g: &mut Grid) {
     g.sett_rgb.fill([0.0; 3]);
     g.relevo.fill(0.0);
     g.altura = Vec::new();
+    g.espessura = Vec::new();
     g.traco = Vec::new();
     g.vela.fill(0.0);
     g.vel_x.fill(0.0);

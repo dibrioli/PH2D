@@ -151,7 +151,7 @@ impl CampoAltura {
                     if !visivel {
                         continue;
                     }
-                    massa[x + y * w] += f64::from(lg.sett[i]) + f64::from(lg.susp[i]);
+                    massa[x + y * w] += crate::grid::espessura::em(lg, i);
                     if !lg.altura.is_empty() {
                         fios[x + y * w] += f64::from(lg.altura[i]);
                     }

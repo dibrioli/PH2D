@@ -146,6 +146,8 @@ impl Trail {
                     continue;
                 }
                 let i = cx as usize + cy as usize * s;
+                // A espessura recebe o `v` inteiro, antes do tecto ([`crate::grid::espessura`]).
+                let espessura = crate::grid::espessura::em(g, i) + v;
                 // O relevo pousa com a tinta (Bug #48): a média, pela massa, do que estava e do que chega.
                 if let Some(t) = traco {
                     g.traco[i] = t;
@@ -299,6 +301,7 @@ impl Trail {
                     }
                     g.film[i] = nf as f32;
                 }
+                crate::grid::espessura::fixa(g, i, espessura);
                 // 5. Paint drag: pull from the same window offset at the
                 // PREVIOUS anchor — the film gets tugged along under the
                 // stroke.
@@ -308,12 +311,19 @@ impl Trail {
                     let si = sx as usize + sy as usize * s;
                     let had_susp = g.susp[i] > 0.0;
                     let had_sett = g.sett[i] > 0.0;
+                    let espessuras = (!g.espessura.is_empty()).then(|| {
+                        use crate::grid::espessura::em;
+                        (em(g, i), em(g, si))
+                    });
                     g.susp[i] =
                         (g.susp[i] as f64 + (g.susp[si] as f64 - g.susp[i] as f64) * drag) as f32;
                     g.sett[i] =
                         (g.sett[i] as f64 + (g.sett[si] as f64 - g.sett[i] as f64) * drag) as f32;
                     g.film[i] =
                         (g.film[i] as f64 + (g.film[si] as f64 - g.film[i] as f64) * drag) as f32;
+                    if let Some((ti, ts)) = espessuras {
+                        crate::grid::espessura::fixa(g, i, ti + (ts - ti) * drag);
+                    }
                     if !had_susp && g.susp[i] > 0.0 {
                         g.susp_rgb[i] = g.susp_rgb[si];
                     }

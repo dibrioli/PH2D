@@ -25,6 +25,8 @@ pub use scratch::{AdvCell, SolverScratch};
 
 #[path = "grid/altura.rs"]
 pub mod altura;
+#[path = "grid/espessura.rs"]
+pub mod espessura;
 #[path = "grid/patch.rs"]
 mod patch;
 #[path = "grid/traco.rs"]
@@ -61,6 +63,9 @@ pub struct Grid {
     /// altura por px de tela de uma CÉLULA (px ÷ px por célula) — o declive de célula a célula é o de px a px.
     /// VAZIO até o primeiro pincel com relevo pintar na grade ([`altura::garante`]) — quem não o usa não paga.
     pub altura: Vec<f32>,
+    /// **A ESPESSURA da tinta** (Óleo Real W1b, [`espessura`]): factor ≥ 1 sobre `sett+susp`, o que o tecto do
+    /// depósito aparou. VAZIO (= 1) até uma célula passar do tecto.
+    pub espessura: Vec<f32>,
     /// **O TRAÇO** que pousou a tinta da célula (J2, [`traco`]): o nivelamento não escoa de um traço para a tinta
     /// molhada de outro. VAZIO até o primeiro pincel com a lei pintar ([`traco::garante`]).
     pub traco: Vec<u32>,
@@ -224,6 +229,7 @@ impl Grid {
             sett_rgb: vec![[0.0; 3]; n],
             relevo: vec![0.0; n],
             altura: Vec::new(),
+            espessura: Vec::new(),
             traco: Vec::new(),
             vela: vec![0.0; n],
             flow,
@@ -551,6 +557,7 @@ pub struct GridSnapshot {
     pub sett_rgb: Vec<[f32; 3]>,
     pub relevo: Vec<f32>,
     pub altura: Vec<f32>,
+    pub espessura: Vec<f32>,
     pub traco: Vec<u32>,
     pub vela: Vec<f32>,
     pub vel_x: Vec<f32>,
@@ -586,6 +593,7 @@ pub fn snapshot_grid(g: &Grid) -> GridSnapshot {
         sett_rgb: g.sett_rgb.clone(),
         relevo: g.relevo.clone(),
         altura: g.altura.clone(),
+        espessura: g.espessura.clone(),
         traco: g.traco.clone(),
         vela: g.vela.clone(),
         vel_x: g.vel_x.clone(),
@@ -615,6 +623,7 @@ pub fn restore_grid(g: &mut Grid, s: &GridSnapshot) -> bool {
     g.sett_rgb.copy_from_slice(&s.sett_rgb);
     g.relevo.copy_from_slice(&s.relevo);
     g.altura.clone_from(&s.altura);
+    g.espessura.clone_from(&s.espessura);
     g.traco.clone_from(&s.traco);
     g.vela.copy_from_slice(&s.vela);
     g.vel_x.copy_from_slice(&s.vel_x);

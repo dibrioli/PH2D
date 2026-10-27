@@ -19,17 +19,33 @@ pub fn em(g: &Grid, i: usize) -> f32 {
 
 /// Devolve a janela `[x0..=x1] × [y0..=y1]` de um recorte (`linhas`, linha-a-linha): vazio = a grade não tinha
 /// o campo quando o recorte foi tirado ⇒ a janela volta a zero (sem alocar, se o campo também não existe).
-pub fn restaura_janela(g: &mut Grid, (x0, y0, x1, y1): (i32, i32, i32, i32), linhas: &[f32]) {
-    if linhas.is_empty() && g.altura.is_empty() {
+pub fn restaura_janela(g: &mut Grid, janela: (i32, i32, i32, i32), linhas: &[f32]) {
+    let (n, s) = (g.cells, g.s);
+    restaura_campo(&mut g.altura, n, s, janela, linhas, 0.0);
+}
+
+/// A restauração de um campo preguiçoso de `n` células (passo `s`): vazio no recorte e na grade = nada; um
+/// campo por alocar aloca-se a `neutro`, e as linhas que faltam no recorte voltam a `neutro`.
+pub(super) fn restaura_campo(
+    campo: &mut Vec<f32>,
+    n: usize,
+    s: usize,
+    (x0, y0, x1, y1): (i32, i32, i32, i32),
+    linhas: &[f32],
+    neutro: f32,
+) {
+    if linhas.is_empty() && campo.is_empty() {
         return;
     }
-    let (s, w) = (g.s, (x1 - x0 + 1) as usize);
-    let campo = garante(g);
+    if campo.is_empty() {
+        *campo = vec![neutro; n];
+    }
+    let w = (x1 - x0 + 1) as usize;
     for (r, y) in (y0..=y1).enumerate() {
         let o = y as usize * s + x0 as usize;
         match linhas.get(r * w..(r + 1) * w) {
             Some(l) => campo[o..o + w].copy_from_slice(l),
-            None => campo[o..o + w].fill(0.0),
+            None => campo[o..o + w].fill(neutro),
         }
     }
 }

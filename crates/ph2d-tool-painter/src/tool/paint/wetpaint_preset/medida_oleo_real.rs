@@ -1435,6 +1435,38 @@ fn medida_oleo_real_custo() {
             raios.iter().map(|r| r.0).zip(melhor[j]).collect::<Vec<_>>()
         );
     }
+    // K4: o RECOMPOR de uma pincelada (o campo + o sombreado e a sombra no papel de cada célula pedida) sem
+    // Subsurface, com ela e a luz do céu GUARDADA, e com ela contada de novo (`esquece_luz_do_ceu`) — intercalados.
+    let modos = ["sem", "r4 guardada", "r4 contada"];
+    let mut melhor = [f64::INFINITY; 3];
+    let (x0, y0, x1, y1) = (mx - 32, my - 32, mx + 32, my + 32);
+    for rodada in 0..5 {
+        for k in 0..3 {
+            let i = (k + rodada) % 3;
+            let mut o = OleoReal::default();
+            if i > 0 {
+                o.material.subsuperficie = 1.0;
+            }
+            let t0 = std::time::Instant::now();
+            let mut c = CampoAltura::de(&grades, &o, usize::from(s.ratio), x0, y0, x1, y1);
+            if i == 2 {
+                c.esquece_luz_do_ceu();
+            }
+            for cy in y0..=y1 {
+                for cx in x0..=x1 {
+                    let m = c.material_em(cx, cy);
+                    soma += termos_com(&o, &c, cx, cy, &m, [0.6, 0.1, 0.1]).vis;
+                    soma += ph2d_wet_paint::oleo_real::sombra_no_papel(&o, &c, cx, cy);
+                }
+            }
+            let ns = t0.elapsed().as_nanos() as f64 / ((x1 + 1 - x0) * (y1 + 1 - y0)) as f64;
+            melhor[i] = melhor[i].min(ns);
+        }
+    }
+    println!(
+        "[custo] recompor da pincelada 65², ns por célula (mínimo de 5): {:?} · {soma:.0}",
+        modos.iter().zip(melhor).collect::<Vec<_>>()
+    );
     println!("[custo] loadavg {}", std::fs::read_to_string("/proc/loadavg").unwrap_or_default());
 }
 

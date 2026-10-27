@@ -164,14 +164,11 @@ pub(super) fn raio_subsuperficie_max(
 }
 
 /// A irradiância relativa da célula (o difuso de uma tinta cinza `0,5`, plano iluminado = 1) — a luz que a
-/// Subsurface espalha: os mesmos termos difusos do [`super::termos_com`].
-fn irradiancia(o: &super::OleoReal, campo: &super::CampoAltura, x: isize, y: isize) -> f64 {
+/// Subsurface espalha: os mesmos termos difusos do [`super::termos_com`], das peças `lc` da célula.
+fn irradiancia(o: &super::OleoReal, campo: &super::CampoAltura, x: isize, y: isize, lc: &super::LuzCeu) -> f64 {
     let n = super::normal(campo, x, y);
     let l = super::para_a_luz(o);
-    let luz = super::luz_directa(o, campo, x, y, campo.at_sombra(x, y));
-    let ceu = super::CeuDoMapa::de(o);
-    let escala = super::escala_do_horizonte(o);
-    let (v, dir) = super::visibilidade_e_ceu(campo, x, y, n, escala, ceu.as_ref());
+    let super::LuzCeu { luz, v, dir } = *lc;
     let ndl = (n[0] * l[0] + n[1] * l[1] + n[2] * l[2]).max(0.0);
     super::Termos {
         vis: super::forca_da_fenda(v, o.fenda),
@@ -208,7 +205,9 @@ fn gauss(c: usize, lo: usize, hi: usize, s: f64, f: impl Fn(usize) -> f64) -> f6
 /// à Jimenez com o raio da célula em cada passagem), somada só onde a vizinhança é mais clara (`max(0, B − E)`:
 /// a fenda e a sombra enchem-se da cor da tinta, a encosta iluminada fica — o Cycles, Random Walk). Devolve, por
 /// célula da janela do `campo`, o que se SOMA ao difuso de cada canal antes do peso; zero fora de `(x0..x1,
-/// y0..y1)` e onde a célula não tem Subsurface.
+/// y0..y1)` e onde a célula não tem Subsurface. Devolve também as [`super::LuzCeu`] da janela da irradiância
+/// `(x0, y0, w, h)` — o sombreado da mesma célula reusa-as.
+#[allow(clippy::type_complexity)]
 pub(super) fn espalha(
     rep: &impl super::Reparte,
     campo: &super::CampoAltura,
@@ -216,14 +215,22 @@ pub(super) fn espalha(
     (ratio, rr): (usize, usize),
     (x0, y0, x1, y1): (usize, usize, usize, usize),
     (gw, gh): (usize, usize),
-) -> Vec<[f32; 3]> {
+) -> (Vec<[f32; 3]>, Vec<super::LuzCeu>, (usize, usize, usize, usize)) {
     let (ex0, ey0) = (x0.saturating_sub(rr).max(1), y0.saturating_sub(rr).max(1));
     let (ex1, ey1) = ((x1 + rr).min(gw), (y1 + rr).min(gh));
     let (ew, eh, dw) = (ex1 + 1 - ex0, ey1 + 1 - ey0, x1 + 1 - x0);
     let mut e = vec![0f64; ew * eh];
-    super::por_linha(rep, ew, &mut e, &|y, linha| {
-        for (x, q) in linha.iter_mut().enumerate() {
-            *q = irradiancia(o, campo, (ex0 + x) as isize, (ey0 + y) as isize);
+    let nada = super::LuzCeu {
+        luz: 0.0,
+        v: 0.0,
+        dir: None,
+    };
+    let mut luz_ceu = vec![nada; ew * eh];
+    rep.por_linhas(ew, &mut e, &mut luz_ceu, &|y, linha, lcs| {
+        for (x, (q, lc)) in linha.iter_mut().zip(lcs.iter_mut()).enumerate() {
+            let (cx, cy) = ((ex0 + x) as isize, (ey0 + y) as isize);
+            *lc = super::luz_ceu(o, campo, cx, cy);
+            *q = irradiancia(o, campo, cx, cy, lc);
         }
     });
     let tecto = f64::from(crate::material::RAIO_SUBSUPERFICIE_MAX);
@@ -262,7 +269,7 @@ pub(super) fn espalha(
             }
         }
     });
-    out
+    (out, luz_ceu, (ex0, ey0, ew, eh))
 }
 
 #[cfg(test)]

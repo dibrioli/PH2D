@@ -162,6 +162,32 @@ pub fn alcance(o: &OleoReal) -> usize {
     MARGEM + 2 * o.af.raio_suave + 1 + sss
 }
 
+/// O [`alcance`] de uma mudança na região `(x0, y0, x1, y1)` também pela Subsurface das CÉLULAS (K4): a célula `q`
+/// lê a irradiância até ao alcance do raio DELA, por isso com Subsurface de pincel (cartão a 0) a região cresce pelo
+/// maior raio de quem a pode ler. O do cartão já é o do tecto.
+#[must_use]
+pub fn alcance_na(
+    o: &OleoReal,
+    camadas: &[(&Grid, bool)],
+    ratio: usize,
+    (x0, y0, x1, y1): (usize, usize, usize, usize),
+) -> usize {
+    let a = alcance(o);
+    if o.material.subsuperficie > 0.0 {
+        return a;
+    }
+    let (gw, gh) = (camadas[0].0.w, camadas[0].0.h);
+    let m = a + oleo_material::alcance_subsuperficie(f64::INFINITY, ratio);
+    let janela = (
+        x0.saturating_sub(m).max(1),
+        y0.saturating_sub(m).max(1),
+        (x1 + m).min(gw),
+        (y1 + m).min(gh),
+    );
+    oleo_material::raio_subsuperficie_max(camadas, o, ratio, janela)
+        .map_or(a, |r| a + oleo_material::alcance_subsuperficie(r, ratio))
+}
+
 /// O alargamento máximo do lobo (α²) pelo antisserrilhado — o tecto de Kaplanyan 2016 (`0,18`).
 const VARIANCIA_MAX_BRILHO: f64 = 0.18;
 
@@ -186,6 +212,52 @@ pub struct CampoAltura {
     material: Vec<MaterialCelula>,
     /// W3 M1: a luz que a Subsurface traz da vizinhança, por canal (`oleo_material::espalha`). Vazio sem ela.
     sss: Vec<[f32; 3]>,
+    /// K4: a luz directa e o céu de cada célula da janela da irradiância (as peças que a Subsurface já calculou),
+    /// para o sombreado da MESMA célula não as refazer — com a [`ChaveLuz`] da óptica que as fez.
+    luz_ceu: Vec<LuzCeu>,
+    luz_ceu_janela: (usize, usize, usize, usize),
+    luz_ceu_chave: Option<ChaveLuz>,
+}
+
+/// A luz directa, a visibilidade BRUTA (antes da força da fenda) e o ganho do céu de uma célula.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) struct LuzCeu {
+    pub luz: f64,
+    pub v: f64,
+    pub dir: Option<[f64; 3]>,
+}
+
+/// O que a [`LuzCeu`] lê da óptica (além do campo): com outra chave a célula volta a ser calculada.
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct ChaveLuz {
+    azimute: f64,
+    altitude: f64,
+    sombra: f64,
+    penumbra: f64,
+    ambiente: Ambiente,
+    alcance_fenda: f64,
+}
+
+impl ChaveLuz {
+    fn de(o: &OleoReal) -> Self {
+        Self {
+            azimute: o.azimute,
+            altitude: o.altitude,
+            sombra: o.sombra,
+            penumbra: o.af.penumbra,
+            ambiente: o.ambiente,
+            alcance_fenda: o.alcance_fenda,
+        }
+    }
+}
+
+/// A [`LuzCeu`] da célula `(x, y)` contada de raiz.
+pub(crate) fn luz_ceu(o: &OleoReal, campo: &CampoAltura, x: isize, y: isize) -> LuzCeu {
+    let n = normal(campo, x, y);
+    let luz = luz_directa(o, campo, x, y, campo.at_sombra(x, y));
+    let ceu = CeuDoMapa::de(o);
+    let (v, dir) = visibilidade_e_ceu(campo, x, y, n, escala_do_horizonte(o), ceu.as_ref());
+    LuzCeu { luz, v, dir }
 }
 
 /// Quem corre as LINHAS de uma passagem do [`CampoAltura`]: `por_linhas(w, a, b, f)` chama `f(y, a_y, b_y)`
@@ -357,10 +429,17 @@ impl CampoAltura {
             sombra,
             material,
             sss: Vec::new(),
+            luz_ceu: Vec::new(),
+            luz_ceu_janela: (0, 0, 0, 0),
+            luz_ceu_chave: None,
         };
         if let Some(rr) = sss {
-            campo.sss =
+            let (sss, luz_ceu, janela) =
                 oleo_material::espalha(rep, &campo, o, (ratio, rr), (x0, y0, x1, y1), (g.w, g.h));
+            campo.sss = sss;
+            campo.luz_ceu = luz_ceu;
+            campo.luz_ceu_janela = janela;
+            campo.luz_ceu_chave = Some(ChaveLuz::de(o));
         }
         campo
     }
@@ -373,6 +452,30 @@ impl CampoAltura {
             return [0.0; 3];
         }
         self.sss[self.idx(x as isize, y as isize)].map(f64::from)
+    }
+
+    /// A [`LuzCeu`] guardada da célula `(x, y)`, se a Subsurface a calculou com a mesma óptica `o`.
+    #[inline]
+    fn luz_ceu_em(&self, o: &OleoReal, x: isize, y: isize) -> Option<LuzCeu> {
+        let (jx, jy, jw, jh) = self.luz_ceu_janela;
+        let (dx, dy) = (x - jx as isize, y - jy as isize);
+        if self.luz_ceu.is_empty()
+            || dx < 0
+            || dy < 0
+            || dx >= jw as isize
+            || dy >= jh as isize
+            || self.luz_ceu_chave != Some(ChaveLuz::de(o))
+        {
+            return None;
+        }
+        Some(self.luz_ceu[dx as usize + dy as usize * jw])
+    }
+
+    /// Larga a luz e o céu guardados (o sombreado volta a contá-los célula a célula; a MESMA imagem — gate
+    /// `a_luz_do_ceu_guardada_e_a_de_sempre`). Para medir o que eles poupam.
+    pub fn esquece_luz_do_ceu(&mut self) {
+        self.luz_ceu = Vec::new();
+        self.luz_ceu_chave = None;
     }
 
     /// O material que se vê na célula `(x, y)` ([`MaterialCelula::NEUTRO`] sem material em camada nenhuma).
@@ -786,6 +889,11 @@ fn reflexo_livre(
 /// brilho são da tinta.
 pub fn sombra_no_papel(o: &OleoReal, campo: &CampoAltura, cx: usize, cy: usize) -> f64 {
     let (x, y) = (cx as isize, cy as isize);
+    if o.sombra > 0.0
+        && let Some(lc) = campo.luz_ceu_em(o, x, y)
+    {
+        return sombra_de(o, lc.luz, forca_da_fenda(lc.v, o.fenda), lc.dir);
+    }
     let luz = luz_directa(o, campo, x, y, campo.at_sombra(x, y));
     let (vis, dir) = if o.sombra <= 0.0 {
         (1.0, None)
@@ -870,12 +978,16 @@ pub fn termos_com(
     let (x, y) = (cx as isize, cy as isize);
     let n = normal(campo, x, y);
     let l = para_a_luz(o);
-    let luz = luz_directa(o, campo, x, y, campo.at_sombra(x, y));
     let escala = escala_do_horizonte(o);
     // W2 E2: com HDRI o DIFUSO do céu é a irradiância do SECTOR que cada fatia vê (nunca a do HDRI × a
     // visibilidade média: a janela do estúdio entrava nas fendas que as paredes tapam, 1,09 × 0,55).
-    let ceu = CeuDoMapa::de(o);
-    let (v_bruta, dir) = visibilidade_e_ceu(campo, x, y, n, escala, ceu.as_ref());
+    let LuzCeu {
+        luz,
+        v: v_bruta,
+        dir,
+    } = campo
+        .luz_ceu_em(o, x, y)
+        .unwrap_or_else(|| luz_ceu(o, campo, x, y));
     let vis = forca_da_fenda(v_bruta, o.fenda);
     let forca = o.forca_ambiente;
 

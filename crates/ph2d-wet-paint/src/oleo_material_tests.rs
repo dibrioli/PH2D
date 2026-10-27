@@ -338,3 +338,45 @@ fn a_subsuperficie_enche_a_sombra_com_a_cor_da_tinta_e_a_energia_tem_tecto() {
         }
     }
 }
+
+/// K4 ⭐ **A luz e o céu que a Subsurface já contou são os do sombreado, bit a bit**: com eles guardados ou
+/// contados de novo (`esquece_luz_do_ceu`), os termos, a cor e a sombra no papel de cada célula são os MESMOS —
+/// numa janela que não é a grade inteira, com a fenda forte e o Estúdio; e uma óptica com OUTRA luz no mesmo campo
+/// não os usa (a chave).
+#[test]
+fn a_luz_do_ceu_guardada_e_a_de_sempre() {
+    let mut k = MaterialCartao::NEUTRO;
+    k.subsuperficie = 1.0;
+    let o = OleoReal {
+        fenda: 2.0,
+        ..com(k)
+    };
+    let g = estrias();
+    let novo = || CampoAltura::de(&[(&g, true)], &o, 1, 10, 12, 50, 48);
+    let (guardado, mut contado) = (novo(), novo());
+    contado.esquece_luz_do_ceu();
+    let outra = OleoReal {
+        azimute: 100f64.to_radians(),
+        altitude: 30f64.to_radians(),
+        ..o
+    };
+    for oo in [o, outra] {
+        for y in 1..=W {
+            for x in 1..=W {
+                let m = guardado.material_em(x, y);
+                let a = termos_com(&oo, &guardado, x, y, &m, [0.6, 0.1, 0.1]);
+                let b = termos_com(&oo, &contado, x, y, &m, [0.6, 0.1, 0.1]);
+                assert_eq!(a, b, "({x}, {y})");
+                assert_eq!(
+                    sombra_no_papel(&oo, &guardado, x, y).to_bits(),
+                    sombra_no_papel(&oo, &contado, x, y).to_bits(),
+                    "papel ({x}, {y})"
+                );
+                assert_eq!(
+                    ilumina(&oo, &guardado, x, y, VERMELHO, 1.0),
+                    ilumina(&oo, &contado, x, y, VERMELHO, 1.0)
+                );
+            }
+        }
+    }
+}

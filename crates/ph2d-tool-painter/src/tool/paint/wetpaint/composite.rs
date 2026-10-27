@@ -99,7 +99,13 @@ impl PainterTool {
         // Óleo Real: a fenda e a sombra de uma célula leem a tinta à volta — a região cresce pelo alcance.
         let (cx0, cy0, cx1, cy1) = match &oleo {
             Some(o) => {
-                let a = ph2d_wet_paint::oleo_real::alcance(o);
+                let grades: Vec<_> = sess.engine.layers.iter().map(|l| (&l.grid, l.visible)).collect();
+                let a = ph2d_wet_paint::oleo_real::alcance_na(
+                    o,
+                    &grades,
+                    usize::from(ratio),
+                    (cx0, cy0, cx1, cy1),
+                );
                 (
                     cx0.saturating_sub(a).max(1),
                     cy0.saturating_sub(a).max(1),

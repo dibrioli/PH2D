@@ -324,3 +324,54 @@ fn a_sombra_da_tinta_pelos_termos_e_bit_identica_ao_caminho_antigo() {
 fn o_campo_do_oleo_em_faixas_e_bit_identico_ao_caminho_antigo() {
     compara_curas((false, true), "campo");
 }
+
+/// K4 ⭐ **A Subsurface do PINCEL (cartão a 0) alarga a região suja como a do cartão**: cada passo da pincelada —
+/// traços que se cruzam, a água a correr — deixa a tela que a recomposição INTEIRA daria, bit a bit. Só o cartão
+/// alargava: o raio de uma célula com Subsurface de pincel deixava orla velha à volta da região.
+#[test]
+fn a_subsuperficie_do_pincel_recompoe_como_a_tela_inteira() {
+    use ph2d_wet_paint::tuning::Knob;
+    let b = Biblioteca::carregar(&raiz().join("assets/brushes"), None);
+    let preset = filbert(&b, "WetPainter/Oil/Flat/Filbert.ph2d-brush.png");
+    let (w, h) = (200u32, 140u32);
+    let mut t = PainterTool::default();
+    t.set_source(vec![240u8; (w * h * 4) as usize], w, h);
+    t.set_semente_dos_tracos(0);
+    t.set_wet_relogio_fixo(true);
+    assert!(t.preset_aplicar(&preset).unwrap().is_empty());
+    t.paint.wetpaint.knobs.set(Knob::Subsurface, 1.0);
+    t.paint.wetpaint.knobs.set(Knob::SubsurfaceRadius, 12.0);
+    t.set_wet_oleo_real(Some(ph2d_wet_paint::oleo_real::OleoReal::default()));
+    t.set_wet_oleo_real_ligado(true);
+    t.set_brush_size_px(10.0);
+    let traco = |t: &mut PainterTool, a: [f32; 2], b: [f32; 2], cor: [u8; 3]| {
+        t.set_brush_color_srgb8(cor);
+        let p = |k: f32, phase| CanvasPointer {
+            pos: [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k],
+            pressure: 0.8,
+            tilt: [0.0, 0.0],
+            phase,
+        };
+        t.on_canvas_pointer(p(0.0, PointerPhase::Down));
+        for i in 1..=30 {
+            t.on_canvas_pointer(p(i as f32 / 30.0, PointerPhase::Move));
+            t.on_tick(8.0);
+        }
+        t.on_canvas_pointer(p(1.0, PointerPhase::Up));
+    };
+    let confere = |t: &mut PainterTool, passo: &str| {
+        let viva = t.canvas_rgba.to_vec();
+        t.wet_recomposite_full();
+        let difs = viva.iter().zip(t.canvas_rgba.iter()).filter(|(x, y)| x != y).count();
+        assert_eq!(difs, 0, "{passo}: {difs} bytes diferentes da recomposição inteira");
+    };
+    traco(&mut t, [20.0, 40.0], [180.0, 60.0], [200, 30, 30]);
+    confere(&mut t, "1.º traço");
+    traco(&mut t, [60.0, 130.0], [110.0, 10.0], [30, 60, 200]);
+    confere(&mut t, "2.º traço");
+    for _ in 0..12 {
+        t.on_tick(1000.0 / 60.0);
+    }
+    confere(&mut t, "a água");
+    assert!(t.canvas_rgba.iter().any(|&v| v != 240), "a cena não pintou nada");
+}

@@ -21,41 +21,61 @@ pub struct Accoes(pub BTreeMap<(u64, u32), Amostra>);
 pub const STRIDE: i64 = 10;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-struct Passo {
-    valor: [f32; 3],
-    vel: [f32; 3],
+struct Passo<const N: usize> {
+    valor: [f32; N],
+    vel: [f32; N],
     /// A entrada com que este quadro se calculou — um checkpoint cuja entrada mudou (a animação foi
     /// editada) já não vale.
-    entrada: [f64; 3],
+    entrada: [f64; N],
+}
+
+/// A lei de uma mola de `N` canais: os knobs do nó `motion.spring` (modo Time) e quais canais são
+/// ÂNGULOS (perseguem pelo arco curto). A pose da Spring é `N = 3` com a rotação no índice 2.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Lei<const N: usize> {
+    pub duracao: f64,
+    pub ressalto: f64,
+    pub angular: [bool; N],
+}
+
+impl From<&Spring> for Lei<3> {
+    fn from(m: &Spring) -> Self {
+        Self {
+            duracao: m.duracao,
+            ressalto: m.ressalto,
+            angular: [false, false, true],
+        }
+    }
 }
 
 /// ⭐ **A mola de UM item: o estado é função do QUADRO.** Tocar para a frente dá um passo; um salto
 /// (scrub, rebobinar) volta ao checkpoint válido ≤ quadro e re-simula com a entrada de cada quadro —
 /// o mesmo bit que tocar.
 #[derive(Clone, Debug, Default)]
-pub struct Simulador {
-    ultimo: Option<(i64, Passo)>,
+pub struct Simulador<const N: usize = 3> {
+    ultimo: Option<(i64, Passo<N>)>,
     /// O quadro antes do [`Self::ultimo`] quando se chegou a ele por um passo — a outra ponta da
     /// mistura entre quadros ([`Self::atraso_em`]).
-    previo: Option<(i64, Passo)>,
-    pontos: BTreeMap<i64, Passo>,
+    previo: Option<(i64, Passo<N>)>,
+    pontos: BTreeMap<i64, Passo<N>>,
     chave: Option<[u64; 3]>,
     /// Num tempo virtual de laço: o período — o quadro 0 parte da ÓRBITA, não do repouso.
     periodo: Option<i64>,
     /// O tempo virtual do laço de agora, por `(de, ate, vaivém)` em quadros.
-    ciclico: Option<((i64, i64, bool), Box<Simulador>)>,
+    ciclico: Option<((i64, i64, bool), Box<Simulador<N>>)>,
 }
 
-impl Simulador {
+impl<const N: usize> Simulador<N> {
     /// O atraso `(x, y, rot)` = estado − entrada no quadro `f` (`f < 0` lê-se 0). `entrada(k)` é a
     /// pose ANIMADA do dono no quadro `k`.
     pub fn atraso(
         &mut self,
         f: i64,
-        mola: &Spring,
+        mola: impl Into<Lei<N>>,
         fps: f64,
-        entrada: &mut dyn FnMut(i64) -> [f64; 3],
-    ) -> [f64; 3] {
+        entrada: &mut dyn FnMut(i64) -> [f64; N],
+    ) -> [f64; N] {
+        let mola: Lei<N> = mola.into();
         let chave = [
             mola.duracao.to_bits(),
             mola.ressalto.to_bits(),
@@ -76,19 +96,19 @@ impl Simulador {
             mola.ressalto as f32,
         );
         let (tension, friction) = physics_of(MODE_TIME, 0.0, 0.0, d, b);
-        let (mut k, mut s) = self.partida(f, entrada, (tension, friction, dt));
+        let (mut k, mut s) = self.partida(f, entrada, mola.angular, (tension, friction, dt));
         while k < f {
             if k + 1 == f {
                 self.previo = Some((k, s));
             }
             k += 1;
-            s = um_passo(s, entrada(k), tension, friction, dt);
+            s = um_passo(s, entrada(k), mola.angular, (tension, friction, dt));
             if k % STRIDE == 0 {
                 self.pontos.insert(k, s);
             }
         }
         self.ultimo = Some((f, s));
-        desvio(s)
+        desvio(s, mola.angular)
     }
 
     /// ⭐ O atraso no instante CONTÍNUO `q` (em quadros): o ecrã desenha entre os quadros da timeline e
@@ -97,10 +117,11 @@ impl Simulador {
     pub fn atraso_em(
         &mut self,
         q: f64,
-        mola: &Spring,
+        mola: impl Into<Lei<N>>,
         fps: f64,
-        entrada: &mut dyn FnMut(i64) -> [f64; 3],
-    ) -> [f64; 3] {
+        entrada: &mut dyn FnMut(i64) -> [f64; N],
+    ) -> [f64; N] {
+        let mola: Lei<N> = mola.into();
         let q = if q.is_finite() { q.max(0.0) } else { 0.0 };
         #[expect(clippy::cast_possible_truncation, reason = "um quadro cabe em i64")]
         let k = q.floor() as i64;
@@ -111,18 +132,17 @@ impl Simulador {
         }
         let b = self.atraso(k + 1, mola, fps, entrada);
         let a = match self.previo {
-            Some((p, s)) if p == k && entrada(k) == s.entrada => desvio(s),
+            Some((p, s)) if p == k && entrada(k) == s.entrada => desvio(s, mola.angular),
             _ => {
                 let a = self.atraso(k, mola, fps, entrada);
                 let _ = self.atraso(k + 1, mola, fps, entrada);
                 a
             }
         };
-        [
-            a[0] + (b[0] - a[0]) * u,
-            a[1] + (b[1] - a[1]) * u,
-            a[2] + wrap_pi(b[2] - a[2]) * u,
-        ]
+        std::array::from_fn(|c| {
+            let d = b[c] - a[c];
+            a[c] + if mola.angular[c] { wrap_pi(d) } else { d } * u
+        })
     }
 
     /// De onde re-simular para chegar a `f`: o último quadro (se é `f` ou `f − 1`), senão o
@@ -130,9 +150,10 @@ impl Simulador {
     fn partida(
         &mut self,
         f: i64,
-        entrada: &mut dyn FnMut(i64) -> [f64; 3],
+        entrada: &mut dyn FnMut(i64) -> [f64; N],
+        angular: [bool; N],
         lei: (f32, f32, f32),
-    ) -> (i64, Passo) {
+    ) -> (i64, Passo<N>) {
         if let Some((u, s)) = self.ultimo
             && (u == f || u + 1 == f)
             && entrada(u) == s.entrada
@@ -147,7 +168,7 @@ impl Simulador {
             let _ = self.pontos.split_off(&k);
         }
         let s = match self.periodo {
-            Some(p) => Self::orbita(p, entrada, lei),
+            Some(p) => Self::orbita(p, entrada, angular, lei),
             None => repouso(entrada(0)),
         };
         self.pontos.insert(0, s);
@@ -170,7 +191,7 @@ pub struct Laco {
 /// sempre), e a costura carrega o resto.
 const MAX_PASSOS_DA_ORBITA: i64 = 100_000;
 
-impl Simulador {
+impl<const N: usize> Simulador<N> {
     /// ⭐ [`Self::atraso_em`] sob o LAÇO do transporte. Fora do laço (ou sem ele), a timeline linear.
     /// Dentro, a mola corre num tempo VIRTUAL que não volta atrás: em laço o período é `ate − de`; em
     /// vaivém, a ida e a volta (`2·(ate − de)`), a volta a ler a animação ao contrário — a mola reage,
@@ -181,10 +202,11 @@ impl Simulador {
         &mut self,
         q: f64,
         laco: Option<Laco>,
-        mola: &Spring,
+        mola: impl Into<Lei<N>>,
         fps: f64,
-        entrada: &mut dyn FnMut(i64) -> [f64; 3],
-    ) -> [f64; 3] {
+        entrada: &mut dyn FnMut(i64) -> [f64; N],
+    ) -> [f64; N] {
+        let mola: Lei<N> = mola.into();
         #[expect(clippy::cast_possible_truncation, reason = "um quadro cabe em i64")]
         let quadros = laco
             .filter(|l| l.de.is_finite() && l.ate.is_finite() && q >= l.de && q <= l.ate)
@@ -227,20 +249,21 @@ impl Simulador {
     /// no fim de uma volta ser o do começo (1e-6), ou até ao [`MAX_PASSOS_DA_ORBITA`].
     fn orbita(
         p: i64,
-        entrada: &mut dyn FnMut(i64) -> [f64; 3],
-        (tension, friction, dt): (f32, f32, f32),
-    ) -> Passo {
-        let ins: Vec<[f64; 3]> = (0..=p).map(&mut *entrada).collect();
+        entrada: &mut dyn FnMut(i64) -> [f64; N],
+        angular: [bool; N],
+        lei: (f32, f32, f32),
+    ) -> Passo<N> {
+        let ins: Vec<[f64; N]> = (0..=p).map(&mut *entrada).collect();
         let mut s = repouso(ins[0]);
         let mut feitos = 0;
         while feitos < MAX_PASSOS_DA_ORBITA {
             let inicio = s;
             for e in &ins[1..] {
-                s = um_passo(s, *e, tension, friction, dt);
+                s = um_passo(s, *e, angular, lei);
             }
             feitos += p;
             let perto =
-                |a: [f32; 3], b: [f32; 3]| a.iter().zip(b).all(|(x, y)| (x - y).abs() <= 1e-6);
+                |a: [f32; N], b: [f32; N]| a.iter().zip(b).all(|(x, y)| (x - y).abs() <= 1e-6);
             if perto(inicio.valor, s.valor) && perto(inicio.vel, s.vel) {
                 break;
             }
@@ -250,31 +273,34 @@ impl Simulador {
 }
 
 #[expect(clippy::cast_possible_truncation, reason = "a lei da mola é f32")]
-fn repouso(e: [f64; 3]) -> Passo {
+fn repouso<const N: usize>(e: [f64; N]) -> Passo<N> {
     Passo {
         valor: e.map(|v| v as f32),
-        vel: [0.0; 3],
+        vel: [0.0; N],
         entrada: e,
     }
 }
 
 /// O atraso de um estado: estado − entrada.
-fn desvio(s: Passo) -> [f64; 3] {
-    let e = s.entrada;
-    [
-        f64::from(s.valor[0]) - e[0],
-        f64::from(s.valor[1]) - e[1],
-        wrap_pi(f64::from(s.valor[2]) - e[2]),
-    ]
+fn desvio<const N: usize>(s: Passo<N>, angular: [bool; N]) -> [f64; N] {
+    std::array::from_fn(|c| {
+        let d = f64::from(s.valor[c]) - s.entrada[c];
+        if angular[c] { wrap_pi(d) } else { d }
+    })
 }
 
 #[expect(clippy::cast_possible_truncation, reason = "a lei da mola é f32")]
-fn um_passo(s: Passo, e: [f64; 3], tension: f32, friction: f32, dt: f32) -> Passo {
+fn um_passo<const N: usize>(
+    s: Passo<N>,
+    e: [f64; N],
+    angular: [bool; N],
+    (tension, friction, dt): (f32, f32, f32),
+) -> Passo<N> {
     let mut n = Passo { entrada: e, ..s };
-    for c in 0..3 {
-        // A rotação persegue pelo arco curto: o alvo desembrulha-se perto do estado.
-        let alvo = if c == 2 {
-            f64::from(s.valor[2]) + wrap_pi(e[2] - f64::from(s.valor[2]))
+    for c in 0..N {
+        // Um ângulo persegue pelo arco curto: o alvo desembrulha-se perto do estado.
+        let alvo = if angular[c] {
+            f64::from(s.valor[c]) + wrap_pi(e[c] - f64::from(s.valor[c]))
         } else {
             e[c]
         };

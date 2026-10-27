@@ -129,8 +129,9 @@ Um mostrador cujo ponteiro segue a vida com mola; uma moeda que Tremer e outra q
 cair pela distância a um íman; o HUD com a pontuação a crescer e a moeda colada ao lado; a janela do jogo estreita e
 o número encolhe sem invadir o minimapa.
 
-## 7. Para o dono (PRODUTO — pendente)
+## 7. Decisões do dono (27/10)
 
-1. Ordem das três.
-2. Onde mora cada uma na tela (proposta: Valor e *Behaviours* no **Add Constraint** do cartão Constraints; HUD como
-   **ferramenta** na barra esquerda com gizmos de seta entre os elementos — o idioma das regras de desenho, 26/10).
+1. Ordem: **Valor → *Behaviours* → HUD**.
+2. Valor e *Behaviours* moram no **Add Constraint** do cartão Constraints (*Behaviours* num submenu).
+3. O arranjo do HUD é uma **ferramenta na barra esquerda**: puxa-se uma seta de um elemento para outro na tela
+   (o idioma das regras de desenho, 26/10) — nunca lista no Inspector.

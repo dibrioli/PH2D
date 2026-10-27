@@ -38,6 +38,8 @@
 //! e as alças do Vector, à espera do `Enter`, ao lado de duas formas já assentadas.
 //! 13 — P6e, o catálogo inteiro do Vector ([`crate::smoke_catalogo`]): uma amostra assentada de cada
 //! família (as abertas em traço) e uma engrenagem viva com as alças.
+//! 14 — P6f, a forma viva até ao fim ([`crate::smoke_ajustes`]): uma estrela viva girada com a
+//! etiqueta das pontas, a barra da moldura, um ajuste para o `Ctrl+Z` desfazer, e gravar assenta.
 
 use ph2d_ecs::SimWorld;
 use ph2d_pixel_core::{NewSprite, Paint, Stroke};
@@ -49,7 +51,7 @@ use ph2d_editor_core::pixel_panel::{
 
 pub const ROUTERS: &[ph2d_app_host::SmokeRouter] = &[ph2d_app_host::SmokeRouter {
     env: "PH2D_PIXEL_SMOKE",
-    max_level: 13,
+    max_level: 14,
 }];
 
 /// O nível armado em `PH2D_PIXEL_SMOKE`.
@@ -116,6 +118,7 @@ pub fn stage(
         11 => crate::smoke_ferramentas::stage(app, sim, spawn_root).is_some(),
         12 => crate::smoke_viva::stage(app, sim, spawn_root).is_some(),
         13 => crate::smoke_catalogo::stage(app, sim, spawn_root).is_some(),
+        14 => crate::smoke_ajustes::stage(app, sim, spawn_root).is_some(),
         _ => false,
     }
 }

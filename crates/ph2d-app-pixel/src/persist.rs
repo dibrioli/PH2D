@@ -12,8 +12,13 @@ use crate::state::Doc;
 
 /// Os bytes a gravar: só os documentos que algum objecto vivo usa (o desfazer do mundo pode ter
 /// deixado outros na memória — não vão para o ficheiro). Sem Pixel Sprites = vazio.
+///
+/// A forma viva e a moldura solta ASSENTAM antes (um passo do desfazer cada): o ficheiro leva o que
+/// o artista vê, nunca o documento de antes delas.
 #[must_use]
-pub fn to_bytes(app: &PixelApp, world: &ph2d_ecs::World) -> Vec<u8> {
+pub fn to_bytes(app: &mut PixelApp, world: &ph2d_ecs::World) -> Vec<u8> {
+    crate::viva::assenta(app);
+    app.assenta();
     let live: BTreeMap<u32, ()> = sprites(world).into_iter().map(|(_, k)| (k, ())).collect();
     if live.is_empty() {
         return Vec::new();

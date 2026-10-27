@@ -10,7 +10,7 @@ fn pixel_blob() -> Vec<u8> {
     let mut sim = ph2d_ecs::SimWorld::new();
     let marker = (ph2d_ecs::Transform::IDENTITY, ph2d_ecs::PixelSprite(key));
     sim.world_mut().spawn(marker);
-    let bytes = ph2d_app_pixel::persist::to_bytes(&app, sim.world());
+    let bytes = ph2d_app_pixel::persist::to_bytes(&mut app, sim.world());
     assert!(!bytes.is_empty(), "um objecto vivo grava o documento dele");
     bytes
 }

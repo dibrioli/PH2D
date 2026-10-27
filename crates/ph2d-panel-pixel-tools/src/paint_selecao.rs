@@ -99,6 +99,7 @@ impl Corpo<'_> {
     }
 
     /// ⭐ **A moldura solta**: X, Y, W, H, Angle (anti-horário), Skew, a amostragem, Apply | Cancel.
+    /// Com uma forma viva (P6f) a mesma barra é a caixa dela, sem amostragem (ela não reamostra).
     pub(super) fn moldura(&mut self, info: &PixelPanelInfo, y: f32) -> f32 {
         if info.transform.is_none() {
             return y;
@@ -113,8 +114,10 @@ impl Corpo<'_> {
         for (f, id, _) in ids::XFORM_FIELDS {
             y = self.campo(tr(f.label_key()), id, sec, y);
         }
-        y = self.amostragem(info.options.resample, sec, y);
-        y = self.bloco(tr("panel.pixel.transform_hint"), ColorToken::Text3, y);
+        if !info.live_shape {
+            y = self.amostragem(info.options.resample, sec, y);
+            y = self.bloco(tr("panel.pixel.transform_hint"), ColorToken::Text3, y);
+        }
         let a = &ids::EDIT_ACTIONS;
         self.botoes(&[par(a, 16), par(a, 15)], y)
     }

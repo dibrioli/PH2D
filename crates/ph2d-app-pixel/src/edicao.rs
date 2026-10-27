@@ -155,8 +155,17 @@ impl PixelApp {
                 }
                 return;
             }
-            E::Commit => return self.assenta(),
-            E::Cancel => return self.larga(),
+            E::Commit => {
+                self.assenta();
+                return crate::viva::assenta(self);
+            }
+            E::Cancel => {
+                self.larga();
+                if self.live_shape().is_some() {
+                    crate::input::cancel(self);
+                }
+                return;
+            }
             E::Paste => {
                 let src = self
                     .clip

@@ -554,18 +554,18 @@ fn the_blob_carries_only_live_sprites_and_reopens_the_drawing() {
         &[(1, 30), (30, 1)],
         Button::Primary,
     );
-    let bytes = persist::to_bytes(&app, sim.world());
+    let bytes = persist::to_bytes(&mut app, sim.world());
     let mut fresh = PixelApp::default();
     persist::install(&mut fresh, persist::read(&bytes).expect("lê"));
     assert_eq!(value(&fresh, &sim, bits, 1, 30), [0xd9, 0x57, 0x63, 0xff]);
     assert_eq!(
-        persist::to_bytes(&fresh, sim.world()),
+        persist::to_bytes(&mut fresh, sim.world()),
         bytes,
         "reabrir e regravar dá os mesmos bytes"
     );
     let empty = SimWorld::new();
     assert!(
-        persist::to_bytes(&app, empty.world()).is_empty(),
+        persist::to_bytes(&mut app, empty.world()).is_empty(),
         "sem objecto vivo, nada a gravar"
     );
 }
@@ -615,7 +615,7 @@ fn smoke_1_stages_a_face_in_four_undo_steps_and_asks_for_edit() {
         Some((bits, ObjectMode::Draw))
     );
     assert!(
-        !ph2d_app_pixel::smoke::stage(&mut app, &mut sim, 14, spawn_root),
+        !ph2d_app_pixel::smoke::stage(&mut app, &mut sim, 15, spawn_root),
         "nível sem cena"
     );
 }

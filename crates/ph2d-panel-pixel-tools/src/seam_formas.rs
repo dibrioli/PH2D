@@ -18,6 +18,7 @@ static NOMES: std::sync::OnceLock<fn(&'static str) -> &'static str> = std::sync:
 /// Injecta a ponte dos nomes (o `ph2d-panel-registry-init`, que vê os dois painéis).
 pub fn set_field_names(f: fn(&'static str) -> &'static str) {
     let _ = NOMES.set(f);
+    ph2d_editor_core::pixel_panel::set_field_names(nome);
 }
 
 /// A tradução dos NOMES das formas do catálogo (`ph2d_panel_vector::nomes_do_motor::forma`), pela

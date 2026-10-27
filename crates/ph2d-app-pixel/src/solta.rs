@@ -154,21 +154,7 @@ impl Solta {
     /// Os números da barra (ângulo anti-horário, Aseprite).
     #[must_use]
     pub fn info(&self) -> PixelTransformInfo {
-        let (w, h) = self.size();
-        let f = self.m.fields(w, h);
-        #[expect(
-            clippy::cast_possible_truncation,
-            reason = "células e graus de um sprite"
-        )]
-        let r = |v: f64| v.round() as i32;
-        PixelTransformInfo {
-            x: f.x,
-            y: f.y,
-            w: r(f.w),
-            h: r(f.h),
-            angle: r(-f.rot),
-            skew: r(f.skew),
-        }
+        info_of(self.m, self.size())
     }
 
     /// O gizmo do sprite sobre a moldura ([`gizmo_of`]).
@@ -187,6 +173,48 @@ impl Solta {
     pub fn hit(&self, view: &GizmoView, p: (f32, f32)) -> Option<Handle> {
         hit_of(view, p)
     }
+}
+
+/// Os números da barra de uma moldura `m` de fonte `w × h` (ângulo anti-horário, Aseprite) — a
+/// moldura solta e a forma viva.
+#[must_use]
+pub(crate) fn info_of(m: Affine, (w, h): (u32, u32)) -> PixelTransformInfo {
+    let f = m.fields(w, h);
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "células e graus de um sprite"
+    )]
+    let r = |v: f64| v.round() as i32;
+    PixelTransformInfo {
+        x: f.x,
+        y: f.y,
+        w: r(f.w),
+        h: r(f.h),
+        angle: r(-f.rot),
+        skew: r(f.skew),
+    }
+}
+
+/// A moldura `m` com o campo `f` da barra a valer `v` (ângulo anti-horário).
+#[must_use]
+pub(crate) fn com_campo(
+    m: Affine,
+    pivot: Pivot,
+    (w, h): (u32, u32),
+    f: PixelTransformField,
+    v: i32,
+) -> Affine {
+    let v = f64::from(v);
+    let mut p = FieldPatch::default();
+    match f {
+        PixelTransformField::X => p.x = Some(v),
+        PixelTransformField::Y => p.y = Some(v),
+        PixelTransformField::W => p.w = Some(v),
+        PixelTransformField::H => p.h = Some(v),
+        PixelTransformField::Angle => p.rot = Some(-v),
+        PixelTransformField::Skew => p.skew = Some(v),
+    }
+    m.with_fields(pivot, w, h, p, false)
 }
 
 /// ⭐ **O gizmo do sprite sobre uma moldura** `m` de fonte `w × h` (a solta e a forma viva): a caixa
@@ -323,20 +351,10 @@ impl PixelApp {
     /// Um campo da barra da moldura (ângulo anti-horário).
     pub(crate) fn campo_da_moldura(&mut self, f: PixelTransformField, v: i32) {
         let Some(so) = self.solta.as_mut() else {
+            crate::viva::campo(self, f, v);
             return;
         };
-        let v = f64::from(v);
-        let mut p = FieldPatch::default();
-        match f {
-            PixelTransformField::X => p.x = Some(v),
-            PixelTransformField::Y => p.y = Some(v),
-            PixelTransformField::W => p.w = Some(v),
-            PixelTransformField::H => p.h = Some(v),
-            PixelTransformField::Angle => p.rot = Some(-v),
-            PixelTransformField::Skew => p.skew = Some(v),
-        }
-        let (w, h) = so.size();
-        so.m = so.m.with_fields(so.pivot, w, h, p, false);
+        so.m = com_campo(so.m, so.pivot, so.size(), f, v);
         let key = so.key;
         self.toca(key);
     }

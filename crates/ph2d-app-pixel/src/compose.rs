@@ -196,20 +196,29 @@ impl PixelApp {
         self.frame_in(sim, camera, window, ppm, editing, area, spawn_root);
     }
 
-    /// O [`crate::draw::draw`] com a régua, o Draw e o tema lidos do `hero`.
+    /// O [`crate::draw::draw`] com a régua, o Draw e o tema lidos do `hero`, e por cima a etiqueta
+    /// da forma viva ([`crate::viva::readout`]).
     pub fn draw_of(
         &mut self,
         world: &ph2d_ecs::World,
         camera: &Camera2d,
         window: WindowSize,
         hero: &HeroScreen,
-        scene: &mut ph2d_vector::VectorScene,
+        (scene, text): (&mut ph2d_vector::VectorScene, &mut ph2d_text::TextSystem),
     ) {
         let (ppm, editing) = (
             hero.project.pixels_per_meter,
             crate::mode::editing(world, hero),
         );
         crate::draw::draw(self, world, camera, window, ppm, editing, hero.theme, scene);
+        let c = crate::input::Canvas {
+            world,
+            camera,
+            window,
+            ppm,
+            editing,
+        };
+        crate::viva::ficha(self, &c, hero.last_content, hero.theme, (scene, text));
     }
 }
 

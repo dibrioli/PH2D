@@ -8,12 +8,19 @@
 //! re-cozinha a forma na hora. `Enter`, outra ferramenta, um clique fora ou sair do Draw assentam-na
 //! em células (UM passo); `Esc` larga-a (a meio de um arrasto, só desfaz o arrasto).
 //!
+//! P6f: a meio do arrasto de uma alça a caixa fica só com o contorno e a ETIQUETA do Vector
+//! («Points: 7») segue o cursor; a barra da moldura (X/Y/W/H/ângulo) mostra-a e edita-a com a conta
+//! da moldura solta; `Ctrl+Z` desfaz o último AJUSTE dela (um arrasto = um passo, a lei do Vector) e,
+//! sem ajustes, larga-a — `Ctrl+Shift+Z` refaz. Gravar o projecto assenta-a antes.
+//!
 //! Espaço LOCAL = o do Vector: centrado, Y para cima, em células; [`Geo::xf`] leva-o à imagem
 //! (cantos das células, Y para baixo) com o giro da caixa e escala 1 — esticar a caixa muda a
 //! largura e a altura da forma, nunca os raios dela.
 
 use ph2d_editor_core::DocPx;
-use ph2d_editor_core::pixel_panel::{PixelShape, PixelShapeValues};
+use ph2d_editor_core::pixel_panel::{
+    PixelShape, PixelShapeValues, PixelTransformField, PixelTransformInfo,
+};
 use ph2d_pixel_core::affine::{Affine, Handle, Linear, Pivot, Point as Ponto, wrap_deg};
 use ph2d_pixel_core::raster::Cell;
 use ph2d_pixel_render::px_per_cell;
@@ -26,11 +33,19 @@ use ph2d_vector::{Point, VectorScene};
 
 use crate::gesture::Mods;
 use crate::input::{Canvas, Press, to_screen};
-use crate::solta::{drag_opts, gizmo_of, hit_of, imagem, janela};
+use crate::solta::{com_campo, drag_opts, gizmo_of, hit_of, imagem, info_of, janela};
 use crate::{Options, PixelApp};
 
 /// Abaixo disto o giro e a inclinação são zero: a forma assenta pela caixa inteira (as leis medidas).
 const EPS_DEG: f64 = 1e-9;
+/// A espessura da caixa só-contorno (a do primário do gizmo: a caixa não «mexe» ao trocar).
+const CONTORNO_PX: f32 = 1.5; // LITERAL-PX-OK: a mesma do `paint_canvas_overlays` do Vector
+
+#[path = "viva_ajustes.rs"]
+mod ajustes;
+pub use ajustes::readout;
+pub(crate) use ajustes::{Foto, agarra_para_a_foto, ajuste, campo, desfaz, ficha, opcoes, refaz};
+use ajustes::{foto, guarda};
 
 /// O que a mão agarrou.
 #[derive(Debug, Clone, Copy)]
@@ -59,6 +74,16 @@ pub struct Viva {
     cursor: Option<(f32, f32)>,
     /// O último premir numa alça da forma (o par do duplo-clique, que a repõe).
     ultimo: Option<(std::time::Instant, usize)>,
+    /// O instante do premir do arrasto em curso (vira passo ao largar, se mudou alguma coisa).
+    premido: Option<Foto>,
+    /// Os passos do desfazer da forma viva e os do refazer.
+    passos: Vec<Foto>,
+    refeitos: Vec<Foto>,
+    /// O último passo veio do painel e mexeu nestes campos (bit `i` = campo `i`, o último = Fill):
+    /// os pedidos seguidos que mexem nos MESMOS (um deslizar) juntam-se num só.
+    painel: Option<u64>,
+    /// A cena de smoke: a alça mostrada quente (com a etiqueta) enquanto o cursor não chegou.
+    pub(crate) mostra: Option<usize>,
 }
 
 /// A geometria do momento: a meia-caixa local (de centro a centro de célula), o local → imagem e,
@@ -94,7 +119,31 @@ impl Viva {
             agarra: None,
             cursor: None,
             ultimo: None,
+            premido: None,
+            passos: Vec::new(),
+            refeitos: Vec::new(),
+            painel: None,
+            mostra: None,
         }
+    }
+
+    /// Os números da barra da moldura (os da moldura solta).
+    #[must_use]
+    pub fn info(&self) -> PixelTransformInfo {
+        info_of(self.m, (self.w, self.h))
+    }
+
+    /// A meio do arrasto de uma alça da forma: a caixa fica só com o contorno (o `outline_only` do
+    /// Vector — as alças da caixa somem).
+    #[must_use]
+    pub fn outline_only(&self) -> bool {
+        matches!(self.agarra, Some(Agarra::Alca(_)))
+    }
+
+    /// Quantos ajustes o `Ctrl+Z` dela tem para desfazer.
+    #[must_use]
+    pub fn steps(&self) -> usize {
+        self.passos.len()
     }
 
     /// A caixa girada `deg` graus (horário na tela) em volta do centro.
@@ -362,12 +411,14 @@ pub(crate) fn press(app: &mut PixelApp, c: &Canvas<'_>, key: u32, p: (f32, f32))
                     < ph2d_editor_core::interaction::DOUBLE_CLICK_WINDOW_NS
         });
         let forma = v.forma;
+        let antes = foto(app, v);
         if duplo {
             let novos = law::reset(kind, a, &values);
             if let Some(v) = viva_mut(app) {
                 v.ultimo = None;
             }
             escreve(app, forma, novos);
+            guarda(app, antes, false);
             return Some(Press::Done);
         }
         // A pega mede-se ao ponto VERDADEIRO (agarrar sem mexer não muda nada); os ângulos ao
@@ -383,6 +434,7 @@ pub(crate) fn press(app: &mut PixelApp, c: &Canvas<'_>, key: u32, p: (f32, f32))
         let v = viva_mut(app)?;
         v.agarra = Some(Agarra::Alca(d));
         v.ultimo = Some((agora, a));
+        v.premido = Some(antes);
         return Some(Press::Done);
     }
     let view = gizmo_of(v.m, (v.w, v.h), v.pivot, screen, janela(c), Some(p));
@@ -391,8 +443,10 @@ pub(crate) fn press(app: &mut PixelApp, c: &Canvas<'_>, key: u32, p: (f32, f32))
         return None;
     };
     let from = imagem(screen, Point::new(f64::from(p.0), f64::from(p.1)));
+    let antes = foto(app, v);
     let v = viva_mut(app)?;
     v.ultimo = None;
+    v.premido = Some(antes);
     v.agarra = Some(Agarra::Caixa {
         handle,
         from,
@@ -419,6 +473,7 @@ pub(crate) fn moved(app: &mut PixelApp, c: &Canvas<'_>, p: (f32, f32), m: Mods) 
     }
     let Some(agarra) = viva_mut(app).and_then(|v| {
         v.cursor = Some(p);
+        v.mostra = None;
         v.agarra
     }) else {
         return false;
@@ -469,7 +524,13 @@ pub(crate) fn release(app: &mut PixelApp) -> bool {
         return false;
     };
     let premida = std::mem::take(&mut g.held);
-    g.viva.as_mut().and_then(|v| v.agarra.take()).is_some() || premida
+    let (arrasto, antes) = g.viva.as_mut().map_or((false, None), |v| {
+        (v.agarra.take().is_some(), v.premido.take())
+    });
+    if let Some(antes) = antes {
+        guarda(app, antes, false);
+    }
+    arrasto || premida
 }
 
 /// `Esc` a meio de um arrasto: a caixa ou os campos voltam aos do premir e a forma continua viva.
@@ -479,6 +540,7 @@ pub(crate) fn escape(app: &mut PixelApp) -> bool {
         return false;
     };
     let forma = v.forma;
+    v.premido = None;
     match v.agarra.take() {
         None => false,
         Some(Agarra::Caixa { m0, p0, .. }) => {
@@ -512,22 +574,26 @@ pub(crate) fn draw(
         return;
     };
     let view = gizmo_of(v.m, (v.w, v.h), v.pivot, screen, window, v.cursor);
-    ph2d_editor_core::gizmo::paint_sprite_gizmo_with(
-        scene,
-        &view,
-        theme,
-        &mut ph2d_editor_core::interaction::HitIndex::new(),
-        true,
-    );
-    let values = valores(app, v.forma);
-    let (g, grips, em_ecra) = pegas(v, screen, &values);
-    let (kind, forma, half) = (v.forma.kind(), v.forma, g.half);
-    let k = screen * g.xf;
     let agarrada = match v.agarra {
         Some(Agarra::Alca(d)) => Some(d.handle),
         _ => None,
     };
-    let quente = agarrada.or_else(|| v.cursor.and_then(|p| hit(&em_ecra, p)));
+    if v.outline_only() {
+        ph2d_editor_core::gizmo::paint_gizmo_outline(scene, &view, theme, CONTORNO_PX);
+    } else {
+        ph2d_editor_core::gizmo::paint_sprite_gizmo_with(
+            scene,
+            &view,
+            theme,
+            &mut ph2d_editor_core::interaction::HitIndex::new(),
+            true,
+        );
+    }
+    let values = valores(app, v.forma);
+    let (g, grips, em_ecra) = pegas(v, screen, &values);
+    let (kind, forma, half) = (v.forma.kind(), v.forma, g.half);
+    let k = screen * g.xf;
+    let quente = agarrada.or_else(|| v.cursor.and_then(|p| hit(&em_ecra, p)).or(v.mostra));
     let ck = move |v: &ShapeValues| crate::formas::cook_local(forma, half, v);
     let hs = law::handles_of(kind);
     let verdade = |h: &law::HandleDesc| law::handle_point(h, &values, half, &ck);

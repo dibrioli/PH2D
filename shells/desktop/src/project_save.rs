@@ -159,7 +159,7 @@ impl crate::App {
             pixel_sprites: self
                 .gfx
                 .as_ref()
-                .map(|g| ph2d_app_pixel::persist::to_bytes(&self.pixel, g.sim.world()))
+                .map(|g| ph2d_app_pixel::persist::to_bytes(&mut self.pixel, g.sim.world()))
                 .unwrap_or_default(),
             // ⚠️ **A taxonomia NÃO está aqui, e a ausência é a decisão** (v105): ela viaja dentro
             // do `state`, que é a unidade do undo — ver [`crate::project_library`]. Um campo aqui

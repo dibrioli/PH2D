@@ -59,12 +59,12 @@ impl Mesa {
         }
     }
 
-    fn celula(&self, c: (i32, i32)) -> (f32, f32) {
+    pub(crate) fn celula(&self, c: (i32, i32)) -> (f32, f32) {
         at(&self.app, &self.sim, &self.cam, self.bits, c.0, c.1)
     }
 
     /// O ponto de ecrã do ponto `(x, y)` da IMAGEM (cantos das células).
-    fn ponto(&self, x: f64, y: f64) -> (f32, f32) {
+    pub(crate) fn ponto(&self, x: f64, y: f64) -> (f32, f32) {
         let m = input::to_screen(
             self.sim.world(),
             self.bits,
@@ -78,13 +78,13 @@ impl Mesa {
         (p.x as f32, p.y as f32)
     }
 
-    fn press(&mut self, p: (f32, f32)) {
+    pub(crate) fn press(&mut self, p: (f32, f32)) {
         let c = canvas(&self.sim, &self.cam, self.bits);
         let r = input::press(&mut self.app, &c, p, Button::Primary, Mods::default());
         assert_eq!(r, Press::Done);
     }
 
-    fn arrasta(&mut self, de: (f32, f32), para: (f32, f32)) {
+    pub(crate) fn arrasta(&mut self, de: (f32, f32), para: (f32, f32)) {
         self.press(de);
         let c = canvas(&self.sim, &self.cam, self.bits);
         assert!(input::moved(&mut self.app, &c, para, Mods::default()));
@@ -114,7 +114,7 @@ impl Mesa {
     }
 
     /// A alça da forma viva com a cara `g` (a 1.ª), no ecrã.
-    fn alca(&self, g: Glyph) -> (f32, f32) {
+    pub(crate) fn alca(&self, g: Glyph) -> (f32, f32) {
         let forma = self.app.live_shape().expect("viva").forma();
         let c = canvas(&self.sim, &self.cam, self.bits);
         let no_ecra = viva::handles_on_screen(&self.app, &c, self.key);

@@ -53,10 +53,7 @@ impl PixelApp {
                 self.groups.open = (!aberto).then_some(g);
             }
             // P6d: um campo da forma (ou o Fill) re-cozinha a forma viva na hora.
-            PixelRequest::Options(o) => {
-                self.options = *o;
-                self.reaviva();
-            }
+            PixelRequest::Options(o) => crate::viva::opcoes(self, *o),
             PixelRequest::Fg(c) => self.fg = c,
             PixelRequest::Bg(c) => self.bg = c,
             PixelRequest::Swap => std::mem::swap(&mut self.fg, &mut self.bg),
@@ -202,7 +199,11 @@ pub fn frame(
             .solta
             .as_ref()
             .filter(|s| Some(s.key) == app.chave)
-            .map(crate::solta::Solta::info),
+            .map(crate::solta::Solta::info)
+            .or_else(|| {
+                let g = app.gesture.as_ref().filter(|g| Some(g.key) == app.chave)?;
+                g.viva.as_ref().map(crate::viva::Viva::info)
+            }),
         can_reselect: doc.is_some_and(|d| d.sprite.last_mask().is_some()),
         presets: app.predefinicoes().to_vec(),
         groups: app.groups,

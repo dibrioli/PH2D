@@ -101,8 +101,8 @@ impl crate::App {
             // `the_collider_outline_is_painted_after_the_shape_art` prende a ordem.
             // ⭐ Os Pixel Sprites (ADR-0192) — antes das marcas, para elas ficarem por cima.
             let window = crate::scene_mapping::janela(hero.view.center_split, surface.size());
-            self.pixel
-                .draw_of(sim.world(), camera, window, hero, vector_scene);
+            let cena = (&mut *vector_scene, &mut *paint_ctx.text);
+            self.pixel.draw_of(sim.world(), camera, window, hero, cena);
             anchor_overlay::draw_anchor_marks(
                 !hero
                     .store

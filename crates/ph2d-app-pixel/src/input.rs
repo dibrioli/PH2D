@@ -628,14 +628,14 @@ pub fn key(
             KeyAnswer::Quiet
         }
         (KeyCode::KeyZ, true, false) => {
-            if app.stroking() || app.undo(key) {
+            if crate::viva::desfaz(app) || app.stroking() || app.undo(key) {
                 KeyAnswer::Quiet
             } else {
                 KeyAnswer::Toast(ph2d_i18n::tr("pixel.nothing_to_undo").to_owned())
             }
         }
         (KeyCode::KeyZ, true, true) | (KeyCode::KeyY, true, false) => {
-            if app.stroking() || app.redo(key) {
+            if crate::viva::refaz(app) || app.stroking() || app.redo(key) {
                 KeyAnswer::Quiet
             } else {
                 KeyAnswer::Toast(ph2d_i18n::tr("pixel.nothing_to_redo").to_owned())

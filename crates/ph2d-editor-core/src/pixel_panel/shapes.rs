@@ -92,6 +92,21 @@ pub fn set_shape_names(f: fn(ShapeKind) -> &'static str) {
     let _ = NOMES.set(f);
 }
 
+/// Os nomes dos CAMPOS do catálogo como o painel os pinta (a etiqueta do arrasto da forma viva fala
+/// como o painel) — a mesma ponte injectada, pela mesma razão que [`NOMES`].
+static CAMPOS: std::sync::OnceLock<fn(&'static str) -> &'static str> = std::sync::OnceLock::new();
+
+/// Injecta a ponte dos nomes dos campos.
+pub fn set_field_names(f: fn(&'static str) -> &'static str) {
+    let _ = CAMPOS.set(f);
+}
+
+/// O nome a pintar do rótulo de campo `label` (sem ponte, o rótulo do motor).
+#[must_use]
+pub fn field_name(label: &'static str) -> &'static str {
+    CAMPOS.get().map_or(label, |f| f(label))
+}
+
 /// Os valores de uma forma, na ordem dos campos do catálogo — guardados em bits (o `Eq` do
 /// instantâneo).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

@@ -16,8 +16,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "{tool}: drag the box · Shift keeps it square · Fill and its options are in the Pixel panel"
         }
         "pixel.hint.live_shape" => {
-            "{tool}: drag a handle or the box to adjust \u{00b7} Shift: 15\u{00b0} steps \u{00b7} Alt: one corner \u{00b7} Double-click: reset \u{00b7} Enter: make it pixels \u{00b7} Esc: drop it \u{00b7} Click outside: draw another"
+            "{tool}: drag a handle or the box to adjust \u{00b7} Shift: 15\u{00b0} steps \u{00b7} Alt: one corner \u{00b7} Double-click: reset \u{00b7} Ctrl+Z: undo the last adjustment \u{00b7} Enter: make it pixels \u{00b7} Esc: drop it \u{00b7} Click outside: draw another"
         }
+        // O comprimento na etiqueta do arrasto da forma viva: um píxel do Vector é uma célula.
+        "pixel.shape.length" => "{n} px",
         "panel.pixel.shape_options" => "Shape",
         "panel.pixel.shape_fill" => "Fill",
         "pixel.hint.transform" => {

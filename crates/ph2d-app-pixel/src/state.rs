@@ -159,6 +159,9 @@ pub struct PixelApp {
     /// A moldura solta (Transform, Ctrl+arrasto com uma selecção, Paste): as células levantadas até
     /// ao Enter/Esc.
     pub(crate) solta: Option<crate::solta::Solta>,
+    /// A forma viva que o `Ctrl+Z` largou, o tamanho do desfazer do documento nesse instante e os
+    /// campos dela — o `Ctrl+Shift+Z` tra-la de volta enquanto o documento não andou.
+    pub(crate) largada: Option<(Gesture, usize, crate::viva::Foto)>,
     /// O relógio das formigas, em ms (o do host, como o tocar).
     pub(crate) formigas_ms: u64,
     /// O diálogo do Pixel a abrir no próximo [`crate::panel::frame`] (lá há o `hero`).
@@ -213,6 +216,7 @@ impl Default for PixelApp {
             clip: None,
             laco: None,
             solta: None,
+            largada: None,
             formigas_ms: 0,
             abre_dialogo: None,
             groups: ph2d_editor_core::pixel_panel::PixelGroups::default(),
@@ -268,6 +272,7 @@ impl PixelApp {
         };
         let was = doc.sprite.frame_index(doc.frame);
         doc.history.commit(&mut doc.sprite, op)?;
+        self.largada = None;
         doc.stamp = stamp;
         doc.sane_frame(was);
         Ok(())

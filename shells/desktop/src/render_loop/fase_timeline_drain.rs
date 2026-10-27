@@ -80,6 +80,14 @@ impl crate::App {
             // escrevem enquanto o playhead toca não é uma edição (`crate::timeline_preview`).
             &mut self.preview_drive,
         );
+        let relogios = [
+            &self.playhead,
+            &self.clip_playhead,
+            &self.container_playhead,
+        ];
+        let r = ph2d_app_constraints::relogio::Relogio::da_vista(&self.timeline, relogios);
+        // O «Valor» lê a fonte como a curva a deixou e escreve antes dos drenos (06_W5 §3.1).
+        ph2d_app_constraints::valor::valores(sim, Some(r));
         // ⭐ Os campos de família que a curva mandou (plano 35): o vetor drena-os para o documento.
         let feito = ph2d_app_vec::canais::aplicar(sim, vec_scene, &mut self.vec.conducao);
         for (id, e) in feito.textos {

@@ -52,4 +52,21 @@ Os 8 controlos, nomes do Blender na UI, mesma ordem no pincel (Tuning → Materi
 | Fecho: clippy + fmt + testes por nome + catraca | ✅ | `fa2bd74b04` | 6 crates (i18n, painter-brush, panel-painter-layers, panel-wet-tuning, tool-painter, wet-paint) `--all-targets -D warnings` limpas (2 avisos curados, 0 `#[allow]`); fmt em 14 ficheiros da W3; **93 testes por nome verdes** (inclui `a_foto_com_oleo_so_na_foto_e_a_de_sempre` na árvore real); catraca `painter_layers` 4 → 3 (`nenhum_rotulo_do_app_pinta_nada.rs`). `cada_campo_do_pincel_vai_para_o_preview_ou_diz_porque_nao` reprova IGUAL num export de `5a01640d94` (da base: `WetPaintState.oleo_real`, `oleo_real_valores`). agent-loop-profile: paralelismo 1,20 (alvo ≥ 1,5), test:check 2,3× (alvo ≤ 1); os outros 4 no alvo | vermelhos da base registados, não corridos de novo |
 | Fecho: folha W3 | ✅ | `92bbda73df` | `out/W3_folha.jpg` — W2 \| W3 \| Cycles, cena do dono no Estúdio, uma faixa por controlo, Subsurface em destaque (0 · 0,5 · 1 a raio 4, e raio 16); olhada pela janela: Subsurface enche as sombras de vermelho como o Cycles; Metallic e Sheen parecidos com o Cycles; Roughness e IOR Level quase invisíveis à escala da folha | coluna Cycles em sRGB simples (como `compara.py`), não AgX |
 | Fecho: provas de mutação (SSS · Roughness ao bit · leitor tolerante) | ✅ | `00be503d31` `04d62d0004` | 22 mutações: 11 sangraram aos gates de antes (leitor tolerante 7/7); 9 sobreviventes curadas com 2 gates de valor novos em `oleo_material_tests.rs` — `a_subsuperficie_e_a_gaussiana_por_canal_do_raio_da_celula` (lei recalculada à mão, cena que varia em x e y, raios 2/8/30, janela ≠ grade: perfil trocado, σ do cartão, `max(0,·)`, tecto, janela) e `o_cartao_combina_o_produto_normalizado_nos_quatro_de_razao` (`max` no raio, IOR Level, Coat Roughness); 2 inofensivas por projecto (associatividade: no padrão `kv/kn` = 1 exacto). Tabela no `oraculo/README.md` §«Provas de mutação W3» | — |
-| Fecho: clippy dos gates novos + build smoke | em curso | | | |
+| Fecho: clippy dos gates novos + build smoke | ✅ | — | clippy `ph2d-wet-paint` `--all-targets -D warnings` limpo; rustfmt --check; os 2 gates novos verdes; `cargo build -p ph2d-host-desktop --profile smoke` verde (27/10 17:28) | handoff de continuação e prompt seguinte SÓ depois do veredito do smoke |
+
+## Mensagem ao dono (smoke)
+
+Escrita na conversa ao fechar; smoke `PH2D_WETPAINT_SMOKE=2 ./target/smoke/ph2d-host-desktop`: cartão Real Oil com os 8
+nomes do Blender (Subsurface em destaque), Tuning → Material no pincel, pastas Oil/Metallic (Metallic Flat, Metallic
+Splats), Oil/Dabber (Dabber 4), Oil/Knife (Knife Textured, Knife Stain). Decisão pedida ao dono: a isenção do Spacing 0,1
+para Dabber 4 e Metallic Splats.
+
+## Fila para a próxima onda (medida, não começada)
+
+- Motor: relevo fosco amarrotado (Dabber 2) · Flow só na textura da cerda com contorno fixo (Fan) · lascas finas sem
+  sombra (Dabber 3) · vãos finos fundos entre grumos lisos (Metallic Round) · marca de spray < 6 px · largura da faca que
+  segue a curvatura (Smooth) · estrias de depósito (Smooth 2) · lâmina fina ~21 px (Soft) · Dry 2 esfiapado ≠ Dry.
+- Óleo: luz DIRECTA do Estúdio no papel 0,13 abaixo do Cycles (faixa sob a faca) · penumbra/crista do lado da sombra
+  (halo) · sombra projectada longa atrás do empaste alto · meio-tom do metal nas paredes íngremes (0,34 × 0,16) · borda
+  com Subsurface clareia onde o Cycles escurece · rebote cinza (o Cycles tinge) · custo do óleo no APP ~10× por traço
+  (passe de placa).

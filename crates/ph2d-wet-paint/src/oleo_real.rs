@@ -218,6 +218,9 @@ pub struct CampoAltura {
     /// K10: a cor LINEAR que cada célula devolve ao papel (a tinta sem luz sobre o papel branco, pela cobertura),
     /// a do [`rebote_no_papel`]. Vazio sem rebote.
     albedo: Vec<[f32; 3]>,
+    /// §BUG-bordas: a fracção da célula DENTRO do contorno sub-célula ([`borda_suave`]); `1` fora da orla e vazio
+    /// sem orla — a cobertura da tinta e a altura das três escalas vão com ela.
+    borda: Vec<f32>,
 }
 
 /// A luz directa, a visibilidade BRUTA (antes da força da fenda) e o ganho do céu de uma célula.
@@ -361,6 +364,12 @@ impl CampoAltura {
                 *c = cobertura_da_celula(camadas, (ax0 + x) + (ay0 + y) * g.s);
             }
         });
+        // §BUG-bordas: a cobertura com o contorno sub-célula — a parede e a cor caem no contorno LISO, não na escada.
+        let borda = borda_suave(rep, &cob, w, h);
+        // A massa (antes do desfoque: o ombro da forma também segue o contorno) e as três alturas vão com ela.
+        for (c, b) in cob.iter_mut().zip(&borda) {
+            *c *= f64::from(*b);
+        }
         rep.por_linhas(w, &mut massa, &mut fios, &|y, massa, fios| {
             for x in 0..w {
                 let i = (ax0 + x) + (ay0 + y) * g.s;
@@ -478,6 +487,7 @@ impl CampoAltura {
             luz_ceu_janela: (0, 0, 0, 0),
             luz_ceu_chave: None,
             albedo,
+            borda,
         };
         if let Some(rr) = sss {
             let (sss, luz_ceu, janela) =
@@ -559,6 +569,16 @@ impl CampoAltura {
         let x = (x - self.x0 as isize).clamp(0, self.w as isize - 1) as usize;
         let y = (y - self.y0 as isize).clamp(0, self.h as isize - 1) as usize;
         x + y * self.w
+    }
+
+    /// §BUG-bordas: a fracção da célula `(x, y)` dentro do contorno sub-célula da tinta (`1` fora da orla).
+    #[inline]
+    #[must_use]
+    pub fn cobertura_da_borda(&self, x: usize, y: usize) -> f64 {
+        if self.borda.is_empty() {
+            return 1.0;
+        }
+        f64::from(self.borda[self.idx(x as isize, y as isize)])
     }
 
     /// A altura da FORMA na célula `(x, y)` (presa à janela).
@@ -670,6 +690,95 @@ fn forma_viva(
             livre[k] + viva
         })
         .collect()
+}
+
+/// O raio (células) da DIRECÇÃO da orla: o gradiente da silhueta pesado por uma gaussiana desta meia largura.
+const RAIO_DIRECCAO: isize = 3;
+/// Meio comprimento (células) da média AO LONGO da orla: cobre o degrau de uma borda a ~5° (12 células).
+const MEIO_TANGENTE: isize = 6;
+
+/// ⭐ §BUG-bordas (smoke do dono 27/10, `oraculo/README.md` §BUG-bordas): **a borda é contínua a sub-célula.** A
+/// silhueta (cobertura ≥ ½) é uma escada de células; o contorno LISO dela é a média da silhueta (bilinear) AO
+/// LONGO da orla — a tangente vem do gradiente da silhueta pesado numa gaussiana — e essa média é a fracção da
+/// célula do lado da tinta (`0,5` no contorno), que se inverte na distância do centro da célula ao contorno. A
+/// escada vira um contorno que só CORTA tinta (o papel sem pigmento continua papel, o gate
+/// `o_relevo_nao_sai_do_pigmento`). Fora da orla e na borda alinhada aos eixos é `1` ao bit; vazio sem orla.
+fn borda_suave(rep: &impl Reparte, cob: &[f64], w: usize, h: usize) -> Vec<f32> {
+    let em = |x: isize, y: isize| {
+        cob[x.clamp(0, w as isize - 1) as usize + y.clamp(0, h as isize - 1) as usize * w]
+    };
+    const LADO: usize = (2 * RAIO_DIRECCAO + 1) as usize;
+    let mut gauss = [0.0f64; LADO * LADO];
+    for (k, g) in gauss.iter_mut().enumerate() {
+        let (dx, dy) = (
+            (k % LADO) as f64 - RAIO_DIRECCAO as f64,
+            (k / LADO) as f64 - RAIO_DIRECCAO as f64,
+        );
+        *g = libm::exp(-(dx * dx + dy * dy) / (RAIO_DIRECCAO * RAIO_DIRECCAO) as f64);
+    }
+    let mut v = vec![1f32; w * h];
+    por_linha(rep, w, &mut v, &|y, l| {
+        for (x, q) in l.iter_mut().enumerate() {
+            let (xi, yi) = (x as isize, y as isize);
+            let propria = cob[x + y * w];
+            // A silhueta DESTA célula: as que cobrem pelo menos metade do que ela cobre. Numa borda que a massa já
+            // gradua (a cobertura a descer devagar por células, ou a variar ao longo dela) as vizinhas estão todas
+            // dentro e nada muda; só o DEGRAU (metade ou mais a cair numa célula) tem escada. A orla: a célula da
+            // tinta (≥ ½) com uma vizinha das 8 fora da silhueta dela.
+            if propria < 0.5 {
+                continue;
+            }
+            let lim = 0.5 * propria;
+            let (x0, x1, y0, y1) = (
+                x.saturating_sub(1),
+                (x + 1).min(w - 1),
+                y.saturating_sub(1),
+                (y + 1).min(h - 1),
+            );
+            if !(y0..=y1).any(|yy| cob[x0 + yy * w..=x1 + yy * w].iter().any(|&c| c < lim)) {
+                continue;
+            }
+            let m = |x: isize, y: isize| if em(x, y) >= lim { 1.0 } else { 0.0 };
+            let bil = |x: f64, y: f64| {
+                let (fx, fy) = (libm::floor(x), libm::floor(y));
+                let (tx, ty) = (x - fx, y - fy);
+                let (ix, iy) = (fx as isize, fy as isize);
+                let l0 = m(ix, iy) + (m(ix + 1, iy) - m(ix, iy)) * tx;
+                let l1 = m(ix, iy + 1) + (m(ix + 1, iy + 1) - m(ix, iy + 1)) * tx;
+                l0 + (l1 - l0) * ty
+            };
+            let (mut gx, mut gy) = (0.0, 0.0);
+            for (k, g) in gauss.iter().enumerate() {
+                let (dx, dy) = (
+                    (k % LADO) as isize - RAIO_DIRECCAO,
+                    (k / LADO) as isize - RAIO_DIRECCAO,
+                );
+                let p = g * m(xi + dx, yi + dy);
+                gx += p * dx as f64;
+                gy += p * dy as f64;
+            }
+            let n = libm::sqrt(gx * gx + gy * gy);
+            if n < 1e-9 {
+                continue;
+            }
+            let (tx, ty) = (-gy / n, gx / n);
+            let (mut soma, mut peso) = (0.0, 0.0);
+            for s in -MEIO_TANGENTE..=MEIO_TANGENTE {
+                let p = (MEIO_TANGENTE + 1 - s.abs()) as f64;
+                soma += p * bil(x as f64 + s as f64 * tx, y as f64 + s as f64 * ty);
+                peso += p;
+            }
+            // A média ao longo cresce `≈ 1 − ½(1 − d/0,85)²` com a distância `d` do centro ao contorno (medido sobre
+            // rectas de declive 0,05–1): invertida, a fracção da célula dentro dele.
+            let fora = (1.0 - soma / peso).clamp(0.0, 0.5);
+            *q = (1.0 - libm::sqrt(2.0 * fora)) as f32;
+        }
+    });
+    if v.iter().any(|&b| b < 1.0) {
+        v
+    } else {
+        Vec::new()
+    }
 }
 
 /// Média móvel separável de raio `r` (caixa `2r+1`), presa às bordas; cada passagem por linhas de `rep`.

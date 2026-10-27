@@ -532,6 +532,8 @@ fn pigment_row(
             }
             if let (true, Some((ol, campo))) = (pa > 0.0, oleo) {
                 let rgb = [pr / pa, pg / pa, pb / pa];
+                // §BUG-bordas: na orla a tinta cobre a fracção da célula dentro do contorno sub-célula.
+                let pa = pa * campo.cobertura_da_borda(cx, cy);
                 let [r, g, b] = match sombra.as_mut() {
                     Some((s, f)) => {
                         let (cor, sm) =

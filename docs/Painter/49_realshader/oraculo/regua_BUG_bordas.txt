@@ -1,0 +1,56 @@
+# §BUG-bordas — bordas_regua.py (TRAVA = posição da borda presa à grade; 1 = escada, ~0 = contínua). Caixas: recto 5° (120 580 50 200) e S (100 600 240 410); Rebelle: S (60 550 165 315).
+# cena: medida_oleo_real_bordas (PH2D_OLEO_PNG), antes = 78e69511ab, depois = este commit
+[antes]
+borda_dabber_branco_s0.ppm     (120, 580, 50, 200)  DEGRAU 17.77 ESC 0.409 · 400% 8.02 0.152 | ESCADA 0.124 LUZ 0.75/1.26 · 400% 0.055 0.58/1.56 | TRAVA 0.600 · 400% 0.378 | 100%: pos 1.781 fora 21.50 dentro 37.15 (813 col) | 400%: pos 0.587 fora 10.40 dentro 16.34
+borda_dabber_branco_s0.ppm     (100, 600, 240, 410) DEGRAU nan ESC 2.055 · 400% nan 0.389 | ESCADA 0.630 LUZ 0.82/7.91 · 400% 0.035 1.16/1.30 | TRAVA 0.640 · 400% 0.354 | 100%: pos 4.414 fora 26.38 dentro 44.17 (436 col) | 400%: pos 1.548 fora 13.66 dentro 22.42
+[antes]
+borda_dabber_branco_s1.ppm     (120, 580, 50, 200)  DEGRAU 6.29 ESC 0.143 · 400% 1.24 0.030 | ESCADA 0.029 LUZ 0.40/0.39 · 400% 0.002 0.13/0.26 | TRAVA 0.048 · 400% 0.032 | 100%: pos 0.580 fora 6.32 dentro 12.61 (875 col) | 400%: pos 0.175 fora 2.08 dentro 3.82
+borda_dabber_branco_s1.ppm     (100, 600, 240, 410) DEGRAU nan ESC 0.774 · 400% 1.52 0.085 | ESCADA 0.169 LUZ 1.12/2.14 · 400% 0.029 0.06/0.25 | TRAVA 0.084 · 400% 0.029 | 100%: pos 1.403 fora 10.72 dentro 19.81 (376 col) | 400%: pos 0.421 fora 3.55 dentro 6.32
+[antes]
+borda_dabber_tex_s0.ppm        (120, 580, 50, 200)  DEGRAU 12.98 ESC 0.531 · 400% 7.14 0.146 | ESCADA 0.105 LUZ 0.68/4.03 · 400% 0.062 1.26/0.43 | TRAVA 0.573 · 400% 0.454 | 100%: pos 1.757 fora 21.03 dentro 32.18 (779 col) | 400%: pos 0.396 fora 8.01 dentro 10.26
+borda_dabber_tex_s0.ppm        (100, 600, 240, 410) DEGRAU nan ESC 1.606 · 400% 13.85 0.673 | ESCADA 0.251 LUZ 0.57/1.96 · 400% 0.034 0.16/0.97 | TRAVA 0.494 · 400% 0.297 | 100%: pos 4.366 fora 27.20 dentro 35.91 (432 col) | 400%: pos 1.945 fora 11.99 dentro 16.32
+[antes]
+borda_dabber_tex_s1.ppm        (120, 580, 50, 200)  DEGRAU 3.94 ESC 0.170 · 400% 0.74 0.037 | ESCADA 0.044 LUZ 0.82/0.21 · 400% 0.012 0.08/0.10 | TRAVA 0.039 · 400% 0.010 | 100%: pos 0.674 fora 7.19 dentro 12.96 (840 col) | 400%: pos 0.142 fora 2.41 dentro 3.48
+borda_dabber_tex_s1.ppm        (100, 600, 240, 410) DEGRAU 25.40 ESC 0.261 · 400% 1.05 0.055 | ESCADA 0.022 LUZ 0.71/2.87 · 400% 0.024 0.12/0.48 | TRAVA 0.052 · 400% 0.037 | 100%: pos 1.283 fora 11.60 dentro 17.20 (395 col) | 400%: pos 0.234 fora 2.91 dentro 4.72
+[antes]
+borda_knifeoily_branco_s0.ppm  (120, 580, 50, 200)  DEGRAU 5.02 ESC 0.068 · 400% 1.19 0.033 | ESCADA 0.006 LUZ 0.73/0.46 · 400% 0.016 0.21/0.14 | TRAVA 0.113 · 400% 0.111 | 100%: pos 0.464 fora 10.90 dentro 11.00 (888 col) | 400%: pos 0.157 fora 3.07 dentro 4.19
+borda_knifeoily_branco_s0.ppm  (100, 600, 240, 410) DEGRAU 8.96 ESC 0.150 · 400% 1.33 0.029 | ESCADA 0.038 LUZ 0.26/1.96 · 400% 0.004 0.24/0.07 | TRAVA 0.050 · 400% 0.036 | 100%: pos 0.347 fora 5.76 dentro 11.16 (535 col) | 400%: pos 0.151 fora 1.97 dentro 3.94
+[antes]
+borda_knifeoily_branco_s1.ppm  (120, 580, 50, 200)  DEGRAU 2.50 ESC 0.031 · 400% 0.40 0.002 | ESCADA 0.007 LUZ 0.28/0.54 · 400% 0.000 0.00/0.07 | TRAVA 0.016 · 400% 0.031 | 100%: pos 0.129 fora 1.93 dentro 9.73 (888 col) | 400%: pos 0.046 fora 0.58 dentro 2.88
+borda_knifeoily_branco_s1.ppm  (100, 600, 240, 410) DEGRAU 4.44 ESC 0.026 · 400% 0.34 0.015 | ESCADA 0.010 LUZ 0.11/0.69 · 400% 0.007 0.04/0.01 | TRAVA 0.038 · 400% 0.021 | 100%: pos 0.094 fora 1.92 dentro 7.39 (532 col) | 400%: pos 0.057 fora 0.61 dentro 2.10
+[antes]
+borda_knifeoily_tex_s0.ppm     (120, 580, 50, 200)  DEGRAU 7.19 ESC 0.146 · 400% 0.70 0.023 | ESCADA 0.056 LUZ 0.83/0.47 · 400% 0.007 0.21/0.27 | TRAVA 0.331 · 400% 0.186 | 100%: pos 0.268 fora 8.57 dentro 8.95 (865 col) | 400%: pos 0.060 fora 1.51 dentro 2.70
+borda_knifeoily_tex_s0.ppm     (100, 600, 240, 410) DEGRAU 8.88 ESC 0.087 · 400% 0.55 0.006 | ESCADA 0.030 LUZ 0.51/0.36 · 400% 0.001 0.11/0.09 | TRAVA 0.131 · 400% 0.044 | 100%: pos 0.191 fora 3.93 dentro 5.92 (550 col) | 400%: pos 0.050 fora 0.88 dentro 1.35
+[antes]
+borda_knifeoily_tex_s1.ppm     (120, 580, 50, 200)  DEGRAU 3.13 ESC 0.017 · 400% 0.64 0.001 | ESCADA 0.003 LUZ 0.42/0.58 · 400% 0.001 0.03/0.01 | TRAVA 0.054 · 400% 0.050 | 100%: pos 0.069 fora 1.71 dentro 6.04 (881 col) | 400%: pos 0.026 fora 0.54 dentro 2.01
+borda_knifeoily_tex_s1.ppm     (100, 600, 240, 410) DEGRAU 2.97 ESC 0.043 · 400% 0.41 0.017 | ESCADA 0.014 LUZ 0.13/0.52 · 400% 0.006 0.04/0.09 | TRAVA 0.035 · 400% 0.027 | 100%: pos 0.068 fora 1.85 dentro 4.59 (540 col) | 400%: pos 0.043 fora 0.54 dentro 1.19
+[final]
+borda_dabber_branco_s0.ppm     (120, 580, 50, 200)  DEGRAU 14.68 ESC 0.325 · 400% 5.03 0.171 | ESCADA 0.026 LUZ 2.10/4.80 · 400% 0.026 0.58/0.85 | TRAVA 0.047 · 400% 0.046 | 100%: pos 1.886 fora 21.52 dentro 38.36 (770 col) | 400%: pos 0.634 fora 9.62 dentro 16.19
+borda_dabber_branco_s0.ppm     (100, 600, 240, 410) DEGRAU nan ESC 0.778 · 400% 4.34 0.218 | ESCADA 0.081 LUZ 2.56/7.32 · 400% 0.018 0.45/0.44 | TRAVA 0.055 · 400% 0.036 | 100%: pos 2.374 fora 24.77 dentro 41.95 (456 col) | 400%: pos 0.959 fora 10.25 dentro 17.81
+[final]
+borda_dabber_branco_s1.ppm     (120, 580, 50, 200)  DEGRAU 5.84 ESC 0.209 · 400% 0.75 0.026 | ESCADA 0.036 LUZ 0.48/1.17 · 400% 0.006 0.18/0.22 | TRAVA 0.064 · 400% 0.065 | 100%: pos 0.743 fora 7.53 dentro 15.50 (861 col) | 400%: pos 0.219 fora 2.43 dentro 4.32
+borda_dabber_branco_s1.ppm     (100, 600, 240, 410) DEGRAU 15.81 ESC 0.432 · 400% 1.82 0.076 | ESCADA 0.130 LUZ 0.50/1.56 · 400% 0.028 0.14/0.24 | TRAVA 0.027 · 400% 0.043 | 100%: pos 1.200 fora 9.31 dentro 16.00 (460 col) | 400%: pos 0.324 fora 2.52 dentro 4.25
+[final]
+borda_dabber_tex_s0.ppm        (120, 580, 50, 200)  DEGRAU 16.74 ESC 0.551 · 400% 2.96 0.119 | ESCADA 0.148 LUZ 1.37/1.71 · 400% 0.057 0.69/0.50 | TRAVA 0.102 · 400% 0.035 | 100%: pos 1.819 fora 20.76 dentro 36.58 (765 col) | 400%: pos 0.680 fora 9.68 dentro 14.41
+borda_dabber_tex_s0.ppm        (100, 600, 240, 410) DEGRAU nan ESC 0.356 · 400% 6.10 0.265 | ESCADA 0.092 LUZ 3.90/5.13 · 400% 0.044 0.72/0.32 | TRAVA 0.108 · 400% 0.055 | 100%: pos 2.177 fora 25.44 dentro 40.02 (431 col) | 400%: pos 1.541 fora 9.75 dentro 17.33
+[final]
+borda_dabber_tex_s1.ppm        (120, 580, 50, 200)  DEGRAU 4.19 ESC 0.162 · 400% 1.05 0.044 | ESCADA 0.049 LUZ 0.68/1.14 · 400% 0.007 0.22/0.19 | TRAVA 0.030 · 400% 0.024 | 100%: pos 0.822 fora 8.26 dentro 14.68 (851 col) | 400%: pos 0.272 fora 2.85 dentro 4.44
+borda_dabber_tex_s1.ppm        (100, 600, 240, 410) DEGRAU 15.94 ESC 0.753 · 400% 1.45 0.060 | ESCADA 0.167 LUZ 0.51/1.59 · 400% 0.011 0.22/0.10 | TRAVA 0.056 · 400% 0.025 | 100%: pos 1.248 fora 11.30 dentro 16.83 (439 col) | 400%: pos 0.281 fora 2.55 dentro 4.62
+[final]
+borda_knifeoily_branco_s0.ppm  (120, 580, 50, 200)  DEGRAU 6.22 ESC 0.215 · 400% 1.26 0.031 | ESCADA 0.050 LUZ 0.61/0.68 · 400% 0.012 0.06/0.31 | TRAVA 0.104 · 400% 0.132 | 100%: pos 0.394 fora 8.03 dentro 11.40 (888 col) | 400%: pos 0.152 fora 3.02 dentro 4.25
+borda_knifeoily_branco_s0.ppm  (100, 600, 240, 410) DEGRAU 6.02 ESC 0.155 · 400% 0.92 0.025 | ESCADA 0.051 LUZ 0.19/1.24 · 400% 0.004 0.09/0.13 | TRAVA 0.025 · 400% 0.036 | 100%: pos 0.352 fora 5.76 dentro 11.33 (537 col) | 400%: pos 0.154 fora 2.20 dentro 3.92
+[final]
+borda_knifeoily_branco_s1.ppm  (120, 580, 50, 200)  DEGRAU 2.67 ESC 0.030 · 400% 0.41 0.007 | ESCADA 0.007 LUZ 0.21/0.40 · 400% 0.001 0.01/0.07 | TRAVA 0.073 · 400% 0.077 | 100%: pos 0.137 fora 1.97 dentro 8.34 (888 col) | 400%: pos 0.053 fora 0.64 dentro 2.67
+borda_knifeoily_branco_s1.ppm  (100, 600, 240, 410) DEGRAU 3.50 ESC 0.027 · 400% 0.70 0.015 | ESCADA 0.010 LUZ 0.14/0.43 · 400% 0.007 0.04/0.04 | TRAVA 0.030 · 400% 0.019 | 100%: pos 0.091 fora 1.69 dentro 5.85 (534 col) | 400%: pos 0.057 fora 0.60 dentro 1.85
+[final]
+borda_knifeoily_tex_s0.ppm     (120, 580, 50, 200)  DEGRAU 9.76 ESC 0.069 · 400% 0.88 0.010 | ESCADA 0.029 LUZ 0.68/0.97 · 400% 0.001 0.06/0.14 | TRAVA 0.168 · 400% 0.034 | 100%: pos 0.274 fora 8.06 dentro 10.32 (875 col) | 400%: pos 0.100 fora 2.76 dentro 4.10
+borda_knifeoily_tex_s0.ppm     (100, 600, 240, 410) DEGRAU 4.54 ESC 0.076 · 400% 0.65 0.009 | ESCADA 0.012 LUZ 0.84/0.37 · 400% 0.001 0.20/0.10 | TRAVA 0.085 · 400% 0.018 | 100%: pos 0.201 fora 5.35 dentro 7.35 (553 col) | 400%: pos 0.069 fora 1.89 dentro 2.05
+[final]
+borda_knifeoily_tex_s1.ppm     (120, 580, 50, 200)  DEGRAU 3.57 ESC 0.013 · 400% 0.39 0.004 | ESCADA 0.002 LUZ 0.62/1.23 · 400% 0.001 0.03/0.07 | TRAVA 0.033 · 400% 0.031 | 100%: pos 0.064 fora 2.15 dentro 8.06 (881 col) | 400%: pos 0.028 fora 0.65 dentro 2.82
+borda_knifeoily_tex_s1.ppm     (100, 600, 240, 410) DEGRAU 4.23 ESC 0.031 · 400% 0.38 0.016 | ESCADA 0.007 LUZ 0.13/1.23 · 400% 0.007 0.04/0.06 | TRAVA 0.022 · 400% 0.027 | 100%: pos 0.066 fora 1.75 dentro 5.29 (541 col) | 400%: pos 0.044 fora 0.53 dentro 1.46
+[Rebelle 8, foto a 100 %]
+dabber_dabber_gestos_B.png     (60, 550, 165, 315)  DEGRAU 22.51 ESC 0.295 · 400% 12.11 0.030 | ESCADA 0.030 LUZ 1.99/1.62 · 400% 0.006 0.59/0.51 | TRAVA 0.213 · 400% 0.122 | 100%: pos 0.888 fora 12.26 dentro 29.26 (653 col) | 400%: pos 0.333 fora 7.01 dentro 13.51
+knife_knife_oily_gestos_B.png  (60, 550, 165, 315)  DEGRAU 8.00 ESC 0.137 · 400% 0.71 0.028 | ESCADA 0.031 LUZ 0.67/0.66 · 400% 0.008 0.29/0.32 | TRAVA 0.093 · 400% 0.098 | 100%: pos 0.382 fora 7.74 dentro 10.35 (624 col) | 400%: pos 0.163 fora 3.65 dentro 4.04
+flat_thick_gestos_B.png        (60, 550, 165, 315)  DEGRAU 7.81 ESC 0.096 · 400% 0.89 0.015 | ESCADA 0.009 LUZ 0.09/1.14 · 400% 0.008 0.44/0.31 | TRAVA 0.040 · 400% 0.025 | 100%: pos 0.353 fora 5.58 dentro 9.74 (656 col) | 400%: pos 0.031 fora 0.86 dentro 1.63
+knife_knife_smooth_gestos_B.png (60, 550, 165, 315)  DEGRAU 12.58 ESC 0.062 · 400% 4.12 0.063 | ESCADA 0.025 LUZ 0.32/0.74 · 400% 0.027 0.09/0.41 | TRAVA 0.260 · 400% 0.213 | 100%: pos 0.204 fora 2.76 dentro 6.88 (623 col) | 400%: pos 0.036 fora 0.94 dentro 1.27
+bristle_bristle_flat_gestos_B.png (60, 550, 165, 315)  DEGRAU 30.45 ESC 0.484 · 400% 15.45 0.198 | ESCADA 0.241 LUZ 0.00/3.94 · 400% 0.083 0.05/1.39 | TRAVA 0.694 · 400% 0.402 | 100%: pos 0.182 fora 0.00 dentro 9.76 (626 col) | 400%: pos 0.090 fora 0.15 dentro 4.54

@@ -27,6 +27,17 @@ fn biblioteca() -> Biblioteca {
     Biblioteca::carregar(&raiz, None)
 }
 
+/// O preset pelo `relativo` da fábrica — ou, se saiu dela (o Oil Bristle, 27/10), o seu candidato.
+fn preset_rel(b: &Biblioteca, rel: &str) -> ph2d_brush_presets::Preset {
+    b.entradas.iter().find(|e| e.relativo == rel).map_or_else(
+        || {
+            let nome = rel.rsplit('/').next().expect("nome");
+            super::de_fabrica_ou_candidato(nome.trim_end_matches(".ph2d-brush.png"))
+        },
+        |e| e.preset.clone(),
+    )
+}
+
 /// Os knobs do relevo de cada pincel de fábrica do Wet Paint, depois de aplicado.
 #[test]
 #[ignore = "medicao — corre-se à mão no perfil smoke"]
@@ -181,12 +192,7 @@ pub(super) fn pinta_cena_do_dono() -> PainterTool {
         ),
     ];
     for (preset, cor, raio, [a, z]) in pilhas {
-        let p = &b
-            .entradas
-            .iter()
-            .find(|e| e.relativo == preset)
-            .unwrap_or_else(|| panic!("preset {preset} não existe"))
-            .preset;
+        let p = &preset_rel(&b, preset);
         let erros = t.wet_preset_aplicar(p);
         assert!(erros.is_empty(), "{erros:?}");
         t.set_brush_size_px(raio);
@@ -223,12 +229,7 @@ pub(super) fn pinta_cena_lisa() -> PainterTool {
     ];
     for (preset, [a, z]) in tracos {
         let rel = format!("WetPainter/Oil/{preset}.ph2d-brush.png");
-        let p = &b
-            .entradas
-            .iter()
-            .find(|e| e.relativo == rel)
-            .unwrap_or_else(|| panic!("preset {rel} não existe"))
-            .preset;
+        let p = &preset_rel(&b, &rel);
         let erros = t.wet_preset_aplicar(p);
         assert!(erros.is_empty(), "{erros:?}");
         t.set_brush_size_px(20.0);
@@ -328,18 +329,7 @@ pub(super) fn pinta_cena_retangulo() -> PainterTool {
         ("Knife/Knife Oily", 390.0, 660.0),
     ] {
         let rel = format!("WetPainter/Oil/{preset}.ph2d-brush.png");
-        // O Oil Bristle pode ter saído da fábrica para os candidatos (`Pinceis/W2_Bristle_candidatos/`).
-        let p = b.entradas.iter().find(|e| e.relativo == rel).map_or_else(
-            || {
-                let nome = rel.rsplit('/').next().expect("nome");
-                let f = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-                    .join("../../docs/Painter/Pinceis/W2_Bristle_candidatos")
-                    .join(nome);
-                ph2d_brush_presets::ler(&std::fs::read(&f).unwrap_or_else(|_| panic!("{rel}")))
-                    .expect("preset")
-            },
-            |e| e.preset.clone(),
-        );
+        let p = preset_rel(&b, &rel);
         let erros = t.wet_preset_aplicar(&p);
         assert!(erros.is_empty(), "{erros:?}");
         t.set_brush_size_px(30.0);
@@ -749,12 +739,7 @@ fn tracos() -> Vec<Traco> {
 
 fn pinta_folha_com(t: &mut PainterTool, b: &Biblioteca) {
     for tr in &tracos() {
-        let p = &b
-            .entradas
-            .iter()
-            .find(|e| e.relativo == tr.preset)
-            .unwrap_or_else(|| panic!("preset {} não existe", tr.preset))
-            .preset;
+        let p = &preset_rel(b, &tr.preset);
         let erros = t.wet_preset_aplicar(p);
         assert!(erros.is_empty(), "{erros:?}");
         t.set_brush_size_px(tr.diametro / 2.0);
@@ -1090,12 +1075,7 @@ fn medida_oleo_real_faca_candidatas() {
         t.set_source(vec![255u8; (FW * FH * 4) as usize], FW, FH);
         t.set_paint_media(PaintMedia::WetPaint);
         t.set_wet_relogio_fixo(true);
-        let p = &b
-            .entradas
-            .iter()
-            .find(|e| e.relativo == preset)
-            .unwrap_or_else(|| panic!("preset {preset} não existe"))
-            .preset;
+        let p = &preset_rel(&b, preset);
         let erros = t.wet_preset_aplicar(p);
         assert!(erros.is_empty(), "{erros:?}");
         t.set_brush_size_px(60.0);
@@ -1438,12 +1418,7 @@ fn medida_oleo_real_acumulo() {
         "WetPainter/Oil/Dabber/Dabber.ph2d-brush.png",
         "WetPainter/Oil/Bristle/Oil Bristle.ph2d-brush.png",
     ] {
-        let p = &b
-            .entradas
-            .iter()
-            .find(|e| e.relativo == preset)
-            .expect("preset")
-            .preset;
+        let p = &preset_rel(&b, preset);
         for dy in [0.0f32, 15.0] {
             let mut t = PainterTool::default();
             t.set_source(vec![255u8; (AW * AH * 4) as usize], AW, AH);
@@ -1820,7 +1795,9 @@ fn o_papel_nos_vaos_entre_lascas_nao_fica_preto() {
         let s = t.paint.wetpaint.session.as_ref().expect("sessão");
         s.grid
     };
-    for (ambiente, tecto) in [(Ambiente::Estudio, 38.0), (Ambiente::Classico, 0.0)] {
+    // §BUG-bordas: 38 → 42 % (35,73 → 39,63): o contorno sub-célula tira à orla da lasca a parede em ESCADA que
+    // devolvia luz ao vão (o rebote K10: sem ele os vãos ficam MAIS claros que antes, 62,8 → 53,9 %).
+    for (ambiente, tecto) in [(Ambiente::Estudio, 42.0), (Ambiente::Classico, 0.0)] {
         let o = OleoReal {
             ambiente,
             ..OleoReal::default()
@@ -1870,12 +1847,7 @@ pub(super) fn tela_papel_texturizado(oleo: bool, relief: f32) -> (Vec<u8>, Vec<b
     t.abre_a_sprite(vec![255u8; (OW * OH * 4) as usize], OW, OH);
     t.set_paint_media(PaintMedia::WetPaint);
     t.set_wet_relogio_fixo(true);
-    let p = &b
-        .entradas
-        .iter()
-        .find(|e| e.relativo == "WetPainter/Oil/Dabber/Dabber.ph2d-brush.png")
-        .expect("Dabber de fábrica")
-        .preset;
+    let p = &preset_rel(&b, "WetPainter/Oil/Dabber/Dabber.ph2d-brush.png");
     assert!(t.wet_preset_aplicar(p).is_empty());
     t.set_brush_paper_kind(1);
     t.set_substrate_depth(relief);
@@ -1987,6 +1959,81 @@ fn medida_oleo_real_papel_texturizado() {
                     ppm.extend_from_slice(&p[..3]);
                 }
                 std::fs::write(format!("{d}/papel_o{oleo}_{nome}.ppm"), ppm).expect("grava");
+            }
+        }
+    }
+}
+
+/// §BUG-bordas (smoke do dono 27/10): a TELA FINAL (composite + a luz do relevo) de um recto INCLINADO (~5°) e de
+/// um S com o pincel `rel`, Óleo Real ligado, papel branco (`texturizado` = Cold, Relief 0,6), Smooth Edges `suave`.
+pub(super) fn tela_da_borda(rel: &str, texturizado: bool, suave: f32) -> Vec<u8> {
+    let b = biblioteca();
+    let mut t = PainterTool::default();
+    t.abre_a_sprite(vec![255u8; (OW * OH * 4) as usize], OW, OH);
+    t.set_paint_media(PaintMedia::WetPaint);
+    t.set_wet_relogio_fixo(true);
+    assert!(t.wet_preset_aplicar(&preset_rel(&b, rel)).is_empty());
+    if texturizado {
+        t.set_brush_paper_kind(1);
+        t.set_substrate_depth(0.6);
+    }
+    t.set_wet_oleo_real_ligado(true);
+    t.set_wet_smooth_edges(suave);
+    t.set_brush_size_px(40.0);
+    t.set_brush_color_srgb8([30, 70, 210]);
+    arrasta(&mut t, [60.0, 100.0], [640.0, 150.0]);
+    // O S: uma senóide de amplitude 50 px e período 330 px, de x 60 a 640 (como o S da bateria).
+    let s = |x: f32| {
+        [
+            x,
+            320.0 - 50.0 * (std::f32::consts::TAU * (x - 60.0) / 330.0).sin(),
+        ]
+    };
+    t.on_canvas_pointer(ponto(s(60.0), PointerPhase::Down));
+    for k in 1..=290 {
+        t.on_canvas_pointer(ponto(s(60.0 + 2.0 * k as f32), PointerPhase::Move));
+        t.on_tick(8.0);
+    }
+    arrasta(&mut t, s(640.0), s(640.0));
+    let mut px = t.run_full().0;
+    t.apply_impasto_light(
+        &mut px,
+        crate::Region {
+            x: 0,
+            y: 0,
+            w: OW,
+            h: OH,
+        },
+    );
+    px
+}
+
+/// `PH2D_OLEO_PNG=<pasta>`: as telas da borda (`borda_<pincel>_<papel>_s<suave>.ppm`) — régua `oraculo/bordas_regua.py`.
+#[test]
+#[ignore = "medicao — corre-se à mão no perfil smoke"]
+fn medida_oleo_real_bordas() {
+    let d = std::env::var("PH2D_OLEO_PNG").expect("PH2D_OLEO_PNG=<pasta>");
+    for (nome, rel) in [
+        (
+            "knifeoily",
+            "WetPainter/Oil/Knife/Knife Oily.ph2d-brush.png",
+        ),
+        ("dabber", "WetPainter/Oil/Dabber/Dabber.ph2d-brush.png"),
+    ] {
+        for tex in [false, true] {
+            for suave in [0.0f32, 1.0] {
+                let t0 = std::time::Instant::now();
+                let px = tela_da_borda(rel, tex, suave);
+                let mut ppm = format!("P6\n{OW} {OH}\n255\n").into_bytes();
+                for p in px.as_chunks::<4>().0 {
+                    ppm.extend_from_slice(&p[..3]);
+                }
+                let f = format!(
+                    "{d}/borda_{nome}_{}_s{suave}.ppm",
+                    if tex { "tex" } else { "branco" }
+                );
+                std::fs::write(&f, ppm).expect("grava");
+                println!("[borda] {f} ({:.1} s)", t0.elapsed().as_secs_f64());
             }
         }
     }

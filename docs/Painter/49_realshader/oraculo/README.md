@@ -664,6 +664,73 @@ substrato/papel/impasto/relevo/óleo do `ph2d-tool-painter` (272), `seam_substra
 «tinta grossa não mostra o grão» está pelo pedido do dono, sem oráculo corrido; no Digital opaco o dente também se
 enterra agora (o grão do DEPÓSITO, slot Grain, continua) — decisão do dono se quiser o contrário.
 
+## §BUG-bordas — a borda da tinta em ESCADA de pixels (smoke do dono 27/10)
+
+Defeito do dono (foto: azul grosso do Real Oil sobre papel texturizado, zoom alto): a borda é uma escada de células
+com uma linha ESCURA serrilhada e brilhos em degrau — «já que não temos o nano pixel do Rebelle, precisamos de Smooth
+Edges, que já está implementado mas não tem efeito perfeito». Cena `medida_oleo_real_bordas` (a TELA final: composite +
+`apply_impasto_light`; um recto a ~5° e um S, Knife Oily e Dabber, papel branco e Cold Relief 0,6, Smooth Edges 0 e 1).
+Régua [`bordas_regua.py`](bordas_regua.py) → [`regua_BUG_bordas.txt`](regua_BUG_bordas.txt); folha
+[`../out/BUG_bordas_folha.jpg`](../out/BUG_bordas_folha.jpg) (antes | depois | Rebelle, 400 %), olhada.
+
+**O Smooth Edges que existia** (`wetpaint/smooth_edges.rs`, slider `0..1` × 6 px, de fábrica `0`): desfoca a MANCHA
+binária (`pa ≥ SS0`) e, na orla, mistura o pigmento JÁ sombreado com a tinta desfocada (peso `4B(1−B)`). Age só na cor e
+no alfa do composite, DEPOIS do óleo: (1) a parede, a normal e o brilho do Óleo Real foram calculados sobre a escada de
+células — desfocá-los dá um borrão de 6 px com os brilhos em segmentos (os «brilhos em degrau»); (2) o plano da sombra
+no papel (`sess.sombra`) é lido por célula, fora do Smooth Edges — a linha escura fica. **Não chega porque age depois de
+tudo estar decidido por célula.** `ca26a7738a` (relevo × cobertura) **não piorou**: régua sintética (abaixo) luz
+33,9 → 28,7 níveis no Clássico, 22,2 → 20,9 no Estúdio, escada 0,286 nos dois (só o `× cobertura` revertido).
+
+**Lei (`CampoAltura::de_com` → `borda_suave`).** A borda é contínua a sub-célula: na célula da orla (cobertura ≥ ½ com
+uma vizinha que cobre menos de metade do que ela — o DEGRAU; a borda que a massa já gradua fica como está) a silhueta
+dela é média (bilinear) AO LONGO da orla, ±6 células com peso em tenda, na tangente do gradiente da silhueta numa
+gaussiana de raio 3; a média é a fracção do lado da tinta (½ no contorno) e inverte-se (`1 − √(2·(1 − média))`, medido
+sobre rectas de declive 0,05–1) na fracção da célula dentro do contorno. Ela multiplica a COBERTURA da célula ANTES da
+massa entrar no desfoque (o ombro da forma também segue o contorno; sem isto o Estúdio ficava com 10 níveis em degrau
+a 3 px dentro da tinta) e por isso as três alturas; o composite (`render.rs`, o ramo do óleo) cobre a célula por ela
+(alfa, o brilho que vai com a cobertura, a sombra do papel sob a orla parcial). Só CORTA tinta: o papel sem pigmento
+continua papel (`o_relevo_nao_sai_do_pigmento` verde). O Smooth Edges continua a ser o amaciador do artista, agora
+sobre um contorno já liso.
+
+| régua sintética `serrilhado` (recta 1/8, tinta 12 000, pela porta do composite) | escada (px) | luz Clássico | luz Estúdio |
+|---|---|---|---|
+| antes de `ca26a7738a` | 0,286 | 33,9 | 22,2 |
+| antes (`78e69511ab`) | 0,286 | 29,9 | 20,9 |
+| **depois** | **0,066** | **8,38** | **6,32** |
+| antisserrilhado IDEAL (área exacta), a mesma amostragem | 0 | 8,3 | — |
+
+| TRAVA (a posição da borda presa à grade; 1 = escada) | recto 5° | S |
+|---|---|---|
+| Dabber, papel branco · Cold, Smooth Edges 0: antes | 0,60 · 0,57 | 0,64 · 0,49 |
+| **depois** | **0,05 · 0,10** | **0,06 · 0,11** |
+| Knife Oily, branco · Cold: antes → depois | 0,11 → 0,10 · 0,33 → 0,17 | 0,05 → 0,03 · 0,13 → 0,09 |
+| Rebelle 8 (S, foto a 100 %): Dabber · Knife Oily · Flat Thick · Knife Smooth · Bristle Flat | 0,21 · 0,09 · 0,04 · 0,26 · 0,69 | |
+
+O Rebelle a 100 % NÃO é contínuo em todos os pincéis (Bristle Flat 0,69): o «nano pixel» dele é do ecrã em zoom, a
+foto da bateria é a 100 % — o oráculo serve de banda (0,04–0,26), não de alvo. Pixéis da orla mais escuros que o p5 da
+tinta: Dabber 2,4 · 3,5 → 2,9 · 3,5 % (são as fendas, não a parede; Rebelle 0,7 %), Knife Oily 0,82 · 0,56 → 0,29 · 0,48 %.
+
+**Neutralidade.** As impressões `o_material_neutro_e_bit_identico_a_de_antes` e `a_fenda_neutra_e_bit_identica_a_de_antes`
+NÃO mudam (o relevo variado só tem bordas alinhadas aos eixos ou graduadas); `a_tinta_lisa_sai_com_a_cor_dela_em_todo_ambiente`
+verde. Na tela final mudam > 2 níveis 1,7–11,7 % dos pixéis, 77–92 % deles a ≤ 2 px da borda e 89–97 % a ≤ 6 px; da
+tinta a > 6 px da borda muda 0,003–0,022 %. **Vãos do Dabber 3 (gate `o_papel_nos_vaos_entre_lascas_nao_fica_preto`):
+35,73 → 39,63 % abaixo de 70 no Estúdio** (p10 57 → 54): a escada da orla da lasca era parede que devolvia luz ao vão
+pelo rebote K10 (sem o rebote os vãos ficam MAIS claros que antes: 62,8 → 53,9 %, medido na variante da silhueta
+binária) — tecto 38 → 42 %; o Cycles desta malha não foi corrido. **Custo:** 2,85 ns por célula da janela (série, disco
+de 768² com orla ondulada) contra 66 ns do campo inteiro: 4,3 %.
+
+**Gate** `a_borda_inclinada_nao_tem_escada` (escada ≤ 0,12 px, luz ≤ 10 níveis nos dois ambientes; vermelho em
+`78e69511ab`: 0,286 · 29,9). Mutações vermelhas 4/4: sem o contorno (0,286 · 29,9) · o composite sem ele (`render.rs`,
+0,286 · 30,6) · o contorno arredondado à célula inteira (0,286 · 25,9) · as alturas sem ele (0,066 · 11,2).
+
+| Recusada nesta cura | medida |
+|---|---|
+| A fracção LINEAR `(média − ½)/½` | escada 0,097, luz 11,5 (acima do piso ideal 8,3): a média cresce em `1 − ½(1 − d)²`, não em recta |
+| A franja fina (< ½) ao pé da silhueta aplanada (altura 0) | vãos 35,7 → 43,1 %: o chão da franja era o que o vão via |
+| A silhueta BINÁRIA a ½ (a mesma para todas as células) | Knife Oily: a borda que a massa já gradua (0,44 · 0,42 · 0,56 · 0,57 …) partia-se em células soltas que perdiam a parede e ficavam ESCURAS (lum 79 entre 130) — a mesma escada que se cura |
+| Só o degrau QUASE binário (≥ 0,9 ao pé de ≤ 0,1) | vãos 34,5 % e nada pisca, mas o Dabber continua em escada (TRAVA 0,54 · 0,59): as orlas dele são degraus de 1 → 0,3 |
+| A média CONTÍNUA relativa à célula (`média(cob)/cob`) | a impressão neutra mudava: numa borda alinhada com a cobertura a variar ao longo dela (textura) a raiz invertida corta ~½ da célula por um desvio de 10 % |
+
 ## ⛔ Recusas MEDIDAS
 
 | Tentativa | Porque saiu |

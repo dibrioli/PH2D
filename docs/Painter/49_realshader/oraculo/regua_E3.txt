@@ -1,0 +1,68 @@
+# Régua E3-B (W2, 27/10) — o material do Óleo Real × o Principled do Cycles, cena do dono, Estúdio a 0,6 + lâmpada
+# (studio_sol10) salvo *_hdri (Estúdio puro, força 1). Sonda: medida_oleo_real_oraculo com PH2D_OLEO_VARIANTES de
+# materiais_e3.py; Cycles: cycles.py PH2D_CYCLES_SO=nenhum PH2D_CYCLES_MAT=todos (256 amostras, lóbulos × cobertura).
+# Comparador: compara_e3.py <sonda> <saida>. Lei de fábrica (antisserrilhado_ambiente 0).
+
+células de tinta 227018
+material               cor p50 p99 p99.9      área>0,3 | Δ média p99 · corr       | brilho p50 p99 p99.9 · área
+neutro         nós      0.204  1.000  1.000  21.13 % | +0.0000 +0.000 · +nan  |  0.000  0.528  1.181 ·  2.12 %
+neutro         Cycles   0.161  1.000  1.000  20.87 % | +0.0000 +0.000         |  0.005  0.482  1.338 ·  2.13 %
+metal1         nós      0.060  0.977  1.000  12.33 % | -0.1605 +0.012 · +0.64 | —
+metal1         Cycles   0.043  1.000  1.000  10.11 % | -0.1249 +0.111         | —
+metal05        nós      0.139  0.994  1.000  18.86 % | -0.0664 +0.017 · +0.60 | —
+metal05        Cycles   0.110  1.000  1.000  17.96 % | -0.0543 +0.081         | —
+rug05          nós      0.204  1.000  1.000  21.25 % | +0.0008 +0.031 · +0.03 |  0.000  0.606  1.528 ·  2.43 %
+rug05          Cycles   0.152  1.000  1.000  19.35 % | -0.0075 +0.119         |  0.001  0.659  2.580 ·  2.36 %
+rug2           nós      0.211  1.000  1.000  18.97 % | -0.0012 +0.034 · +0.55 |  0.008  0.134  0.173 ·  0.00 %
+rug2           Cycles   0.181  1.000  1.000  19.67 % | +0.0053 +0.060         |  0.020  0.175  0.228 ·  0.00 %
+esp0           nós      0.180  1.000  1.000  16.97 % | -0.0206 +0.000 · +0.56 |  0.000  0.000  0.000 ·  0.00 %
+esp0           Cycles   0.155  1.000  1.000  14.99 % | -0.0193 +0.050         |  0.000  0.000  0.000 ·  0.00 %
+esp2           nós      0.215  1.000  1.000  24.63 % | +0.0139 +0.155 · +0.54 |  0.000  0.976  2.000 ·  4.66 %
+esp2           Cycles   0.167  1.000  1.000  24.23 % | +0.0147 +0.234         |  0.010  0.913  2.478 ·  5.03 %
+tint1          nós      0.189  1.000  1.000  17.53 % | -0.0148 +0.000 · +0.61 | —
+tint1          Cycles   0.153  1.000  1.000  16.30 % | -0.0171 +0.006         | —
+verniz1        nós      0.192  1.000  1.000  24.47 % | +0.0018 +0.202 · +0.23 |  0.000  1.165  2.000 ·  4.96 %
+verniz1        Cycles   0.157  1.000  1.000  23.22 % | +0.0056 +0.296         |  0.006  1.110  4.089 ·  4.19 %
+verniz1_r10    nós      0.193  1.000  1.000  24.55 % | +0.0013 +0.159 · +0.40 |  0.000  0.992  2.000 ·  4.84 %
+verniz1_r10    Cycles   0.167  1.000  1.000  25.34 % | +0.0165 +0.237         |  0.011  0.909  2.408 ·  5.21 %
+veludo1        nós      0.275  1.000  1.000  43.78 % | +0.0591 +0.250 · +0.82 |  0.079  0.583  1.260 ·  6.19 %
+veludo1        Cycles   0.225  1.000  1.000  35.98 % | +0.0652 +0.369         |  0.067  0.621  1.322 ·  7.72 %
+aniso08        nós      0.202  1.000  1.000  20.90 % | -0.0018 +0.069 · +0.11 |  0.000  0.496  1.173 ·  1.94 %
+aniso08        Cycles   0.165  1.000  1.000  21.68 % | +0.0031 +0.092         |  0.005  0.454  1.162 ·  2.11 %
+transl1        nós      0.204  1.000  1.000  21.11 % | -0.0006 +0.000 · +0.39 |  0.000  0.528  1.181 ·  2.12 %
+transl1        Cycles   0.167  1.000  1.000  21.89 % | +0.0071 +0.107         |  0.006  0.485  1.329 ·  2.16 %
+neutro_hdri    nós      0.221  1.000  1.000  21.72 % | +0.0000 +0.000 · +nan  |  0.000  0.764  1.866 ·  2.99 %
+neutro_hdri    Cycles   0.166  1.000  1.000  23.51 % | +0.0000 +0.000         |  0.004  0.766  2.176 ·  3.38 %
+transl1_hdri   nós      0.220  1.000  1.000  21.71 % | -0.0006 +0.000 · +0.47 |  0.000  0.764  1.866 ·  2.99 %
+transl1_hdri   Cycles   0.172  1.000  1.000  25.40 % | +0.0048 +0.077         |  0.005  0.771  2.162 ·  3.43 %
+transl1        passagem [0,0.001) n=210852: Δ nós -0.0000 · Cycles +0.0083
+transl1        passagem [0.001,0.05) n= 11463: Δ nós -0.0014 · Cycles +0.0011
+transl1        passagem [0.05,0.3) n=  4061: Δ nós -0.0185 · Cycles -0.0276
+transl1        passagem [0.3,1.01) n=   642: Δ nós -0.0739 · Cycles -0.0912
+transl1_hdri   passagem [0,0.001) n=210852: Δ nós -0.0000 · Cycles +0.0060
+transl1_hdri   passagem [0.001,0.05) n= 11463: Δ nós -0.0013 · Cycles +0.0001
+transl1_hdri   passagem [0.05,0.3) n=  4061: Δ nós -0.0181 · Cycles -0.0260
+transl1_hdri   passagem [0.3,1.01) n=   642: Δ nós -0.0734 · Cycles -0.0875
+
+# Metal 1 no vermelho por inclinação (R linear p50/p90):
+metal1 vermelho nz[0.995,1.01) n=  3081: R nós p50 0.040 p90 0.089 · Cycles p50 0.050 p90 0.116
+metal1 vermelho nz[0.97,0.995) n= 12028: R nós p50 0.040 p90 0.235 · Cycles p50 0.057 p90 0.234
+metal1 vermelho nz[0.9,0.97) n= 24643: R nós p50 0.095 p90 0.723 · Cycles p50 0.094 p90 1.010
+metal1 vermelho nz[0,0.9) n=137966: R nós p50 0.279 p90 0.597 · Cycles p50 0.161 p90 1.162
+
+# Brilho só especular (base preta) — diagnóstico da cura do Estúdio (antes = antisserrilhado_ambiente 1):
+classico                    0.000  0.165  0.638 · área>0,3  0.42 %
+hdri1                       0.000  0.283  0.764 · área>0,3  0.88 %
+aa025                       0.000  0.386  1.110 · área>0,3  1.49 %
+aa0                         0.000  0.661  1.992 · área>0,3  2.54 %
+cy:sol10_brilho             0.018  0.154  0.421 · área>0,3  0.29 %
+cy:hdri_studio_brilho       0.004  0.766  2.176 · área>0,3  3.38 %
+cy:studio_sol10_brilho      0.005  0.482  1.338 · área>0,3  2.13 %
+h_e0                        0.000  0.764  1.866 · área>0,3  2.99 %
+h_e025                      0.000  0.425  1.181 · área>0,3  1.77 %
+s_e0                        0.000  0.528  1.181 · área>0,3  2.12 %
+s_e025                      0.000  0.331  0.874 · área>0,3  1.19 %
+hdri1_livre1                0.031  0.394  1.063 · área>0,3  1.65 %
+
+# Custo (medida_oleo_real_custo, smoke, 1 núcleo, mínimo de 7, loadavg 0,3–1,5), ns/célula:
+# Classico 1567 · Estudio 2183 · Interior 2184 · Patio 2181 · Classico+cheio 1929 · Estudio+cheio 2673

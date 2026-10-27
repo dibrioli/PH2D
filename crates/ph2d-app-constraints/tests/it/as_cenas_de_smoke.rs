@@ -286,3 +286,54 @@ fn the_arm_scene_turns_the_hand_below_the_ik() {
         "{ponta:?} ≠ {b:?}"
     );
 }
+
+/// ⭐ Cena 9: com a BÓIA em baixo o ponteiro aponta 225° e a lâmpada fica a 0,15; em cima, −45° e
+/// 1 (os números que a mensagem ao dono promete). Sem relógio: sem mola, o valor final.
+#[test]
+fn the_dial_scene_points_the_needle_by_the_float_and_lights_the_lamp() {
+    use ph2d_app_constraints::smoke_mostrador::{BOIA, PONTEIRO_GRAUS};
+    use ph2d_ecs::canal::familia::OBJETO;
+    use ph2d_ecs::canal_objeto::OPACIDADE;
+    use ph2d_ecs::{CanaisEscritos, CanaisLidos, FieldKey};
+    let (mut sim, mut drive) = cena(9);
+    let (boia, ponteiro, lampada) = (
+        chamada(&mut sim, "Bóia"),
+        chamada(&mut sim, "Ponteiro"),
+        chamada(&mut sim, "Lâmpada"),
+    );
+    let k = FieldKey::new(OBJETO, OPACIDADE, 0, 0);
+    sim.world_mut()
+        .get_resource_or_insert_with(CanaisLidos::default)
+        .publicar(lampada.to_bits(), k, 1.0);
+    for (y, graus, luz) in [
+        (BOIA[0].1, PONTEIRO_GRAUS[0], 0.15),
+        (BOIA[1].1, PONTEIRO_GRAUS[1], 1.0),
+    ] {
+        sim.world_mut()
+            .get_mut::<Transform>(boia)
+            .unwrap()
+            .translation
+            .y = y;
+        ph2d_app_constraints::valor::valores(&mut sim, None);
+        let escrito = sim
+            .world()
+            .resource::<CanaisEscritos>()
+            .valor(lampada.to_bits(), k);
+        ph2d_app_constraints::quadro(
+            &mut sim,
+            &mut ph2d_vec_scene::VecScene::new(),
+            &mut drive,
+            None,
+        );
+        let rot = f64::from(mundo(&sim, ponteiro).rotation);
+        assert!(
+            (rot - graus.to_radians()).abs() < 1e-5,
+            "{rot} contra {graus}°"
+        );
+        assert!(
+            escrito.is_some_and(|v| (v - luz).abs() < 1e-6),
+            "{escrito:?}"
+        );
+        let _ = sim.world_mut().remove_resource::<CanaisEscritos>();
+    }
+}

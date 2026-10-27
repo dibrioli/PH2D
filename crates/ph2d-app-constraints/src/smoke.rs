@@ -10,6 +10,7 @@
 //! | 6 | **Régua de desenho** — um perfil de dentes no VETOR com regras de desenho técnico (H/V, topos e folgas iguais, um canto preso): no modo Edit arraste um canto e o resto obedece; dê Play e a ALTURA do dente do meio estica e volta sem desfazer as outras regras (a medida animada, `smoke_regua`) |
 //! | 7 | **Caixa com tampa** — abre no Edit com a tool **Rules** na mão: o corpo e a tampa com dez regras, cada uma à vista (selos `|` `—` `=1` 🔒 ⊙, cotas da largura, da altura e do ângulo); o Play abre e fecha a tampa pelo ÂNGULO animado (`smoke_caixa`) |
 //! | 8 | **Braço articulado** — chão com cadeado, manivela, biela e balancim presos por 4 pinos e uma MÃO soldada na ponta: arraste a manivela, o balancim, a mão (`smoke_braco`) |
+//! | 9 | **Mostrador** — a BÓIA sobe e desce (curva da timeline); o PONTEIRO segue a altura dela com mola (Follow Value → rotação) e a LÂMPADA acende com ela (Follow Value → opacidade) (`smoke_mostrador`) |
 
 use bevy_ecs::entity::Entity;
 use bevy_ecs::prelude::Resource;
@@ -24,7 +25,7 @@ use ph2d_render::{DISC_TILE_KEY, Sprite, WHITE_TILE_KEY};
 /// O roteador desta família — o maior nível que [`encenar`] responde.
 pub const ROUTERS: &[ph2d_app_host::SmokeRouter] = &[ph2d_app_host::SmokeRouter {
     env: "PH2D_CONSTRAINT_SMOKE",
-    max_level: 8,
+    max_level: 9,
 }];
 
 /// O raio do olho da cena 2 e a folga da pupila dentro dele (o número que a sonda mede).
@@ -62,6 +63,7 @@ pub fn encenar(world: &mut World, nivel: u32) -> bool {
         4 => braco(world),
         5 => antena(world),
         8 => crate::smoke_braco::braco_articulado(world),
+        9 => crate::smoke_mostrador::mostrador(world),
         _ => return false,
     };
     world.insert_resource(Escolher(sujeito.to_bits()));
@@ -80,6 +82,7 @@ pub fn passo(
         .or_else(|| crate::smoke_antena::step(sim, hero, tl, ph))
         .or_else(|| crate::smoke_regua::step(sim, hero, tl, ph))
         .or_else(|| crate::smoke_caixa::step(sim, hero, tl, ph))
+        .or_else(|| crate::smoke_mostrador::step(sim, hero, tl, ph))
 }
 
 /// A cena abre com o sujeito escolhido e o cartão Constraints à vista — uma vez só.
@@ -126,7 +129,7 @@ pub(crate) fn peca(
 }
 
 /// Empilha `kinds` em `dono`, cada um com o alvo `alvo` (por identidade durável).
-fn pilha(world: &mut World, dono: Entity, itens: &[(Kind, Option<Entity>, f64)]) {
+pub(crate) fn pilha(world: &mut World, dono: Entity, itens: &[(Kind, Option<Entity>, f64)]) {
     assign_missing_stable_ids(world);
     let mut c = Constraints::default();
     for &(kind, alvo, forca) in itens {

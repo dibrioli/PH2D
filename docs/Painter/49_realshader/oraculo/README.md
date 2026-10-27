@@ -262,7 +262,74 @@ Saturação na sombra r4: nós 0,828 → 0,863 · Cycles 0,833 → 0,888 (mais s
 - Gates: `a_subsuperficie_zero_e_a_imagem_de_antes` (raio 16/12 com peso 0 = bit a bit; vermelho com o peso
   ignorado) · `a_subsuperficie_enche_a_sombra_com_a_cor_da_tinta_e_a_energia_tem_tecto` (vermelho com o núcleo
   sem normalizar, com `max(0, E − B)` e com o perfil `(1;1;1)`). Neutro da cena do dono: `oleo.ppm` == o de antes.
-- **Metal nas encostas (K4)**: não medido nesta passada (a régua M1 é só Subsurface); fica para a K4.
+- **Metal nas encostas (K4)**: medido na §K4.
+
+## §K4 — O sombreado: o halo no papel, o metal nas encostas, os restos da Subsurface (W3, 27/10)
+
+Réguas novas: [`halo_regua.py`](halo_regua.py) (o escurecimento do PAPEL por faixa de distância à tinta, do lado
+da luz e do lado da sombra projectada — máscara pela cobertura; sem ela, a cor da foto do Rebelle),
+[`halo_candidatas.py`](halo_candidatas.py) (as leis do papel sobre os termos `t_papel.f32` da sonda × o Cycles),
+[`metal_encostas.py`](metal_encostas.py) (máscaras pela inclinação da malha do ORÁCULO, `h_fina`). Cenas:
+`PH2D_OLEO_CENA=lisos` (Knife Smooth 3, Oily, Dry, Filbert, 40 px, azul — os traços lisos e baixos da bateria;
+`entrada_halo/`, `saida_halo/`) e a do dono (`entrada_k4/`, `saida_k4/`, com `metal1`/`metal05`). Folha:
+[`../out/K4_folha.jpg`](../out/K4_folha.jpg) (antes | depois | Cycles | Rebelle; em baixo a cena do dono).
+
+**1. O halo cinza = a sombra no papel aplicada ao BYTE sRGB.** A lei do papel (`sombra_de`) devolve uma fracção
+de LUZ (linear) e o composite escurecia o byte sRGB por ela (`papel·(1 − s)` em sRGB = `(1 − s)^2,2` da luz): o
+dobro do escurecimento físico em toda a volta do traço. A lei em f64 estava certa — os termos do papel batem
+com o Cycles; o defeito era a conversão. Cura: `sombra_em_u8(s) = 255·(1 − sRGB(1 − s))` (exacta no papel
+branco; um sítio só, os três consumidores passam por ele). As impressões neutras (`o_material_neutro…`,
+`a_fenda_neutra…`) não mudam: são da lei em f64. A IMAGEM muda de propósito só no papel e sob a orla parcial.
+
+Escurecimento LINEAR do papel, p50, por faixa (px) — `halo_regua.py`:
+
+| cena · luz | lado | antes | depois | Cycles (cor) | Rebelle |
+|---|---|---|---|---|---|
+| lisos · Estúdio | luz 6–12 · 12–24 | 0,087 · 0,087 | **0,044 · 0,035** | 0,036 · 0,045 | 0 · 0 |
+| lisos · Estúdio | sombra 3–6 · 6–12 · 12–24 | 0,209 · 0,216 · 0,053 | **0,095 · 0,104 · 0,027** | 0,154 · 0,107 · 0,097 | 0 |
+| lisos · Clássico | luz 3–6 · 6–12 | 0,061 · 0,026 | **0,027 · 0,009** | −0,014 · 0,000 | 0 |
+| lisos · Clássico | sombra 3–6 · 6–12 | 0,134 · 0,021 | **0,061 · 0,009** | 0,031 · 0,004 | 0 |
+| dono · Estúdio | luz 3–6 · 6–12 | 0,041 · 0,087 | **0,018 · 0,039** | −0,014 · 0,007 | — |
+| dono · Estúdio | sombra 3–6 · 6–12 · 12–24 | 0,227 · 0,142 · 0,002 | **0,107 · 0,065 · 0,000** | 0,101 · 0,208 · 0,276 | — |
+| dono · Clássico | sombra 3–6 · 6–12 · 12–24 | 0,104 · 0,048 · 0,002 | **0,047 · 0,022 · 0,001** | 0,069 · 0,068 · 0,059 | — |
+
+- O Rebelle (fotos da bateria: Knife Smooth/Smooth 3/Soft/Oily, Metallic Flat 3/Round 3) tem **zero** de 3 px para
+  fora; a captura `A_base` (impasto 8) mostra só uma sombra projectada curta. O Cycles da MESMA malha tem um halo
+  real com o Estúdio (o HDRI tem a janela baixa) e quase nenhum no Clássico. A régua é o Cycles: com o Estúdio
+  ele fica, com metade da força de antes; no Clássico sobra +0,03..0,04 a 3–6 px (o Cycles clareia o papel com o
+  que a parede iluminada devolve).
+- A cena do dono (empaste ALTO): a sombra a 3–6 px bate (0,107 × 0,101); a sombra projectada LONGA do Cycles
+  (12–24 px: 0,276 no Estúdio, 0,059 no Clássico) não existe em nós nem antes nem depois — aberto abaixo.
+- Gate `a_sombra_no_papel_tira_a_luz_linear_e_nao_o_byte` (o papel branco do byte devolve `1 − s` em luz linear a
+  meio passo; vermelho com `s·255`).
+
+**2. Metal nas encostas: o «p90 0,60 × 1,16» era a RÉGUA.** Comparava o nosso valor já passado pelo `rola` com o
+Cycles linear SEM tecto. O reflexo CRU (antes do `rola`, `−ln(1 − saída)` no metal 1, base 0) bate com o Cycles
+nas encostas (`metal_encostas.py`, R p50 · p90 · p99): **0,288 · 2,19 · 6,9 × 0,202 · 2,16 · 9,8**. No ecrã
+(ambos presos a 1): encosta 0,250 · 0,888 × 0,202 · 1,000; parede (|∇h| > 1,5) 0,337 · 0,565 × 0,161 · 0,787;
+plano 0,040 · 0,133 × 0,055 · 0,169. O Cycles também é vinho escuro com riscas pretas no Oil Bristle (lum < 0,01:
+nós 8 % × Cycles 16 % nas encostas) — com manchas claras saturadas onde nós temos meio-tom. Duas curas medidas,
+nenhuma ganha (tabela de recusas); o metal fica como estava. O defeito que resta é o meio-tom das PAREDES
+(0,34 × 0,16) — aberto.
+
+**3. Os restos da Subsurface.**
+- (a) A irradiância da Subsurface já conta a luz directa, a visibilidade bruta e o ganho do céu de cada célula da
+  janela (`LuzCeu`); o `CampoAltura` guarda-os com a `ChaveLuz` da óptica (azimute, altura, sombra, penumbra,
+  ambiente, alcance da fenda) e o `termos_com`/`sombra_no_papel` da MESMA célula reusam-nos — outra óptica no mesmo
+  campo conta de novo. Gate `a_luz_do_ceu_guardada_e_a_de_sempre` (bit a bit, fenda 2, Estúdio, janela parcial e
+  outra luz; vermelho com a chave ignorada, com a luz da vizinha guardada e com a janela +1).
+
+  | `medida_oleo_real_custo` (smoke, 1 núcleo, mínimo de 5 intercalado, loadavg 5,3) | sem SSS | r4 guardada | r4 contada |
+  |---|---|---|---|
+  | recompor da pincelada 65² (campo + sombreado + papel), ns por célula | 4 046 | **4 882** | 8 402 |
+
+  O extra da Subsurface no recompor: 4 357 → **837** ns/célula (o desfoque e o anel `3σ` da janela da irradiância).
+- (b) `oleo_real::alcance_na` (o `composite.rs` usa-o): com Subsurface de PINCEL e o cartão a 0 a região suja cresce
+  pelo maior raio das células que a podem ler (antes só o cartão a alargava). Gate
+  `a_subsuperficie_do_pincel_recompoe_como_a_tela_inteira` (cada passo = `wet_recomposite_full` bit a bit; vermelho
+  antes da cura: 2 bytes de orla velha no 1.º traço).
+- (c) O Subsurface Radius do cartão (`PAINTER_WETPAINT_OLEO_FAIXAS`) vai até `RAIO_SUBSUPERFICIE_MAX` (16), não 64.
+  O knob `subsurfaceRadius` do pincel (`tuning/defs.rs`, 0..64) fica para a linha do tuning.
 
 ## ⛔ Recusas MEDIDAS
 
@@ -287,16 +354,22 @@ Saturação na sombra r4: nós 0,828 → 0,863 · Cycles 0,833 → 0,888 (mais s
 | SSS com a «volta do papel» `w·g·exp(−h/(p·r_c))` (a passagem antiga) | piora a rms em toda a grelha g∈{0,1;0,25;0,5}×p∈{0,5;1;2} (r4 0,1052 → 0,1053..0,1192): o Cycles quase não clareia a tinta fina e escurece a borda (M1) |
 | SSS com perda para o papel `− w·E·(1 − blur(cob))` | borda −0,37 × −0,04 do Cycles (M1) |
 | SSS só com a luz da TINTA (`blur(E·cob)`, ou ÷ `blur(cob)`) | igual à escolhida a ±0,002 de rms; a escolhida não precisa da cobertura no campo (M1) |
+| Papel com o multi-ricochete das paredes (Jimenez com o albedo do papel, `a` 0,5..1) | nos traços lisos o Clássico ficava perfeito (3–6 px luz 0,006 × Cycles −0,014; sombra 0,034 × 0,031), mas na cena do dono apagava a sombra do empaste ALTO (Clássico, lado da sombra 3–6 px 0,010 × Cycles 0,069): as paredes vermelhas não devolvem a luz que um papel branco à volta devolveria (K4) |
+| Metal: o `rola` com JOELHO (linear até 80 % da folga) | o p90 das encostas bate (1,000 × 1,000) mas o meio-tom das paredes sobe (0,37 × 0,16): \|Δ\| sRGB na tinta 0,1123 → 0,1149, correlação 0,765 → 0,748 (K4) |
+| Metal: a vizinha tapada devolve só o CÉU (`a²·difuso` sem o `sol`) | parede 0,34 → 0,31 × 0,16, mas \|Δ\| 0,1123 → 0,1131 e correlação 0,765 → 0,755 (K4) |
 
 ## Fica aberto
 
 - Subsurface (M1): a BORDA sai +0,02..+0,04 onde o Cycles escurece −0,03..−0,06, e a iluminada +0,035 × 0,001 (r4);
-  o peso não-linear do Cycles na borda. Custo: com Subsurface o campo recalcula a irradiância (≈ o sombreado
-  outra vez) — guardá-la para o `termos_com` da mesma célula é a cura óbvia; o passe da placa.
+  o peso não-linear do Cycles na borda. ~~Custo: a irradiância 2×~~ curado na K4 (guardada para o sombreado).
+- Sombra projectada LONGA no papel ao pé do empaste alto (K4): Cycles 12–24 px 0,276 (Estúdio) · 0,059 (Clássico) ×
+  nós 0,000 — a marcha da luz e o sector do HDRI não a fazem; o Rebelle também não a tem nos traços lisos.
+- Papel no Clássico ao pé de traço liso +0,03 (3–6 px) × Cycles −0,014: a luz que a parede ILUMINADA devolve ao papel
+  (precisa da cor da parede; o ricochete com o albedo do papel foi recusado, K4).
 
 - ~~Brilho do Estúdio mais fraco que o do Cycles~~ curado na E3-B (p99 0,53 × 0,48; área 2,12 % × 2,13 %).
-- Metal nas ENCOSTAS: R p50 0,28 × 0,16 e p90 0,60 × 1,16 do Cycles (falta o reflexo forte da janela; o tapado
-  sobra) — 2 rondas gastas (E3-B).
+- Metal nas PAREDES: meio-tom R p50 0,34 × 0,16 do Cycles (as encostas batem no cru; o «p90 0,60 × 1,16» era a
+  régua, §K4) — 2 rondas na E3-B + 1 na K4 (duas curas recusadas).
 - Difuso da tinta no CLÁSSICO 0,71 × 0,83 (o rebote da lâmpada; a cura `(1−f)·(mr−V)` piorou o HDRI e não cabe
   no Clássico bit a bit — E2). Com HDRI a 0,6: interior 0,72 × 0,82, pátio 0,71 × 0,83; estúdio 1,06 × 0,98.
 - Fenda com HDRI a força 1 mais clara que o Cycles (estúdio 0,78 × 0,67, interior 0,81 × 0,57): o `V` de

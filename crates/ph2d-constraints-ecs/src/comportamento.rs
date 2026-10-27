@@ -67,7 +67,11 @@ pub fn delta(c: &Comportamento, t: f64) -> [f32; 3] {
         Perfil::Tremer => {
             let tr = tremor(c);
             if c.onde == Onde::XY {
-                [tr.sample(t, 0.0, 0.0), tr.sample(t, 0.0, AXIS_ROW_OFFSET), 0.0]
+                [
+                    tr.sample(t, 0.0, 0.0),
+                    tr.sample(t, 0.0, AXIS_ROW_OFFSET),
+                    0.0,
+                ]
             } else {
                 um(tr.sample(t, 0.0, 0.0))
             }
@@ -83,14 +87,7 @@ pub fn delta(c: &Comportamento, t: f64) -> [f32; 3] {
 #[expect(clippy::cast_possible_truncation, reason = "a lei do nó é f32")]
 pub fn peso(w: &Peso, p: [f64; 2], o: [f64; 2]) -> f32 {
     let (dx, dy) = (p[0] as f32 - o[0] as f32, p[1] as f32 - o[1] as f32);
-    ph2d_node_motion_falloff::field(
-        0,
-        dx,
-        dy,
-        w.raio as f32,
-        i32::from(w.curva),
-        w.inverte,
-    )
+    ph2d_node_motion_falloff::field(0, dx, dy, w.raio as f32, i32::from(w.curva), w.inverte)
 }
 
 /// O centro da órbita do dono em `dono` sem alvo: a `raio` dele, na direcção oposta ao `angulo` (no

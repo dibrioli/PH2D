@@ -3,12 +3,10 @@
 
 use ph2d_constraints::comportamento::{Comportamento, Onde, Perfil};
 use ph2d_ecs::canal_constraint::{
-    DURACAO, MOLA_LIGADA, RESSALTO,
-};
-use ph2d_ecs::canal_constraint::{
     AMORTECE, AMPLITUDE, CURVAS, FASE, FREQUENCIA, LEVA_ROTACAO, NAO_SIM, ONDE, ONDES, PESO_CURVA,
     PESO_INVERTE, PESO_RAIO, PUXAO, RAIO, SEMENTE, VELOCIDADE,
 };
+use ph2d_ecs::canal_constraint::{DURACAO, MOLA_LIGADA, RESSALTO};
 use ph2d_editor_core::constraint_edits::Unidade;
 
 /// Os números, pela ordem do cartão (o raio do peso só com peso).
@@ -143,8 +141,10 @@ pub fn escrever(c: &mut Comportamento, campo: u16, v: f32) -> bool {
         AMORTECE => c.arrasto = x.max(0.0),
         ONDE => c.onde = ONDES_DO_TIPO[opcao(ONDES_DO_TIPO.len())],
         LEVA_ROTACAO => c.leva_rotacao = opcao(2) == 1,
-        // Religar dá a mola de fábrica (como no Follow Value).
-        MOLA_LIGADA => c.segue = (opcao(2) == 1).then(|| c.segue.unwrap_or_default()),
+        // Ligar dá a mola de fábrica do seguir suave (sem ressalto).
+        MOLA_LIGADA => {
+            c.segue = (opcao(2) == 1).then_some(ph2d_constraints::comportamento::SEGUE_DE_FABRICA);
+        }
         DURACAO => {
             let Some(m) = &mut c.segue else { return false };
             m.duracao = x.max(0.0);

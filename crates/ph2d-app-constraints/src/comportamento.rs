@@ -77,9 +77,11 @@ pub(crate) fn preparar(sim: &mut SimWorld, relogio: Relogio<'_>) {
         };
         // Um alvo sem curva (arrastado à mão) não tem passado na timeline: a história guarda a pose
         // dele no quadro em que mudou — sem ela a mola re-simulava tudo com a pose de AGORA e colava.
-        let animado = relogio.doc.bindings().iter().any(|x| {
-            x.entity == alvo && !x.missing && x.prop.as_sprite_transform().is_some()
-        });
+        let animado = relogio
+            .doc
+            .bindings()
+            .iter()
+            .any(|x| x.entity == alvo && !x.missing && x.prop.as_sprite_transform().is_some());
         let vivo = ph2d_ecs::world_transform(w, Entity::from_bits(alvo))
             .map(|t| [f64::from(t.translation.x), f64::from(t.translation.y)]);
         let historia = cs.historia.entry((dono, id)).or_default();

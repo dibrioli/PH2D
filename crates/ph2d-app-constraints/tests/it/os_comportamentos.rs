@@ -285,7 +285,10 @@ fn attract_scrubs_to_the_same_bit() {
         .collect();
     assert_eq!(tocado[0], 0.0, "no quadro 0 parte do repouso");
     assert!(tocado[39] > 3.9, "chega ao alvo: {tocado:?}");
-    assert!(tocado.iter().all(|x| *x < 4.05), "sem passar dele: {tocado:?}");
+    assert!(
+        tocado.iter().all(|x| *x < 4.05),
+        "sem passar dele: {tocado:?}"
+    );
     for f in [12, 3, 31] {
         let x = em(&mut sim, &mut drive, &doc, f as f64 / fps).translation.x;
         assert_eq!(x.to_bits(), tocado[f].to_bits(), "quadro {f}");
@@ -446,10 +449,17 @@ fn the_orbit_keeps_its_radius_when_the_centre_moves() {
     let doc = TimelineDoc::new();
     for (k, x) in [0.0_f32, 2.0, 5.0, -3.0].into_iter().enumerate() {
         let b = ph2d_ecs::entity_with_stable_id(sim.world(), StableId(1)).unwrap();
-        sim.world_mut().get_mut::<Transform>(b).unwrap().translation.x = x;
+        sim.world_mut()
+            .get_mut::<Transform>(b)
+            .unwrap()
+            .translation
+            .x = x;
         let l = em(&mut sim, &mut drive, &doc, 0.3 * k as f64).translation;
         let r = f64::from(l.x - x).hypot(f64::from(l.y));
-        assert!((r - or.raio).abs() < or.raio * 1e-3, "centro em {x}: raio {r}");
+        assert!(
+            (r - or.raio).abs() < or.raio * 1e-3,
+            "centro em {x}: raio {r}"
+        );
     }
 }
 
@@ -470,7 +480,10 @@ fn picking_the_orbit_centre_does_not_move_the_moon() {
         .id();
     let i = TIPO_BEHAVIOUR + Perfil::Orbitar.tag();
     apply_all(&mut sim, &[(a.to_bits(), E::Adicionar(i))]);
-    assert_eq!(escolher_alvo(&mut sim, &[p.to_bits()], [0.0; 2]), Escolha::Gravado);
+    assert_eq!(
+        escolher_alvo(&mut sim, &[p.to_bits()], [0.0; 2]),
+        Escolha::Gravado
+    );
     let Kind::Comportamento(c) = sim.world().get::<Constraints>(a).unwrap().items[0].kind else {
         panic!("tipo");
     };
@@ -478,7 +491,10 @@ fn picking_the_orbit_centre_does_not_move_the_moon() {
     let mut drive = PreviewDrive::default();
     let doc = TimelineDoc::new();
     let l = em(&mut sim, &mut drive, &doc, 0.0).translation;
-    assert!((l.x - 1.6).abs() < 3e-3 && (l.y - 2.3).abs() < 3e-3, "saltou para {l:?}");
+    assert!(
+        (l.x - 1.6).abs() < 3e-3 && (l.y - 2.3).abs() < 3e-3,
+        "saltou para {l:?}"
+    );
 }
 
 /// ⭐ Report do dono 27/10: *«a limalha não corre atrás, parece que corre na frente»*. Na curva do
@@ -502,7 +518,11 @@ fn attracted_filings_run_behind_a_moving_magnet() {
             .unwrap()
             .translation
             .x;
-        sim.world_mut().get_mut::<Transform>(ima).unwrap().translation.x = x;
+        sim.world_mut()
+            .get_mut::<Transform>(ima)
+            .unwrap()
+            .translation
+            .x = x;
         let l = em(&mut sim, &mut drive, &tl.doc, t).translation;
         let sentido = (x - antes).signum();
         antes = x;
@@ -528,7 +548,11 @@ fn orbita_com_mola(segue: Option<ph2d_constraints::Mola>, x: impl Fn(i64) -> f32
     (0..72)
         .map(|f| {
             let px = x(f);
-            sim.world_mut().get_mut::<Transform>(p).unwrap().translation.x = px;
+            sim.world_mut()
+                .get_mut::<Transform>(p)
+                .unwrap()
+                .translation
+                .x = px;
             let l = em(&mut sim, &mut drive, &doc, f as f64 / doc.fps_display).translation;
             f64::from(l.x - px).hypot(f64::from(l.y))
         })
@@ -542,15 +566,26 @@ fn orbita_com_mola(segue: Option<ph2d_constraints::Mola>, x: impl Fn(i64) -> f32
 fn with_the_spring_the_moon_seeks_its_orbit_progressively() {
     let salta = |f: i64| if f < 24 { 0.0 } else { 2.0 };
     let rigida = orbita_com_mola(None, salta);
-    assert!(rigida.iter().all(|r| (r - 1.5).abs() < 1.5e-3), "{rigida:?}");
-    let mola = Some(ph2d_constraints::Mola {
-        duracao: 0.5,
-        ressalto: 0.0,
-    });
+    assert!(
+        rigida.iter().all(|r| (r - 1.5).abs() < 1.5e-3),
+        "{rigida:?}"
+    );
+    let mola = Some(ph2d_constraints::comportamento::SEGUE_DE_FABRICA);
     let busca = orbita_com_mola(mola, salta);
-    assert!((busca[23] - 1.5).abs() < 1.5e-3, "antes do salto, na órbita");
-    assert!((busca[24] - 1.5).abs() > 0.5, "no salto fica para trás: {}", busca[24]);
-    assert!((busca[71] - 1.5).abs() < 0.02, "e volta à órbita: {}", busca[71]);
+    assert!(
+        (busca[23] - 1.5).abs() < 1.5e-3,
+        "antes do salto, na órbita"
+    );
+    assert!(
+        (busca[24] - 1.5).abs() > 0.5,
+        "no salto fica para trás: {}",
+        busca[24]
+    );
+    assert!(
+        (busca[71] - 1.5).abs() < 0.02,
+        "e volta à órbita: {}",
+        busca[71]
+    );
 }
 
 /// A mola do centro, tocada e arrastada, dá o mesmo bit (a história do alvo arrastado à mão).
@@ -568,13 +603,39 @@ fn the_seeking_orbit_scrubs_to_the_same_bit() {
     let mut tocado = Vec::new();
     for f in 0..40 {
         if f == 10 {
-            sim.world_mut().get_mut::<Transform>(p).unwrap().translation.x = 2.0;
+            sim.world_mut()
+                .get_mut::<Transform>(p)
+                .unwrap()
+                .translation
+                .x = 2.0;
         }
         tocado.push(em(&mut sim, &mut drive, &doc, f64::from(f) / fps).translation);
     }
     for f in [15_usize, 12, 30] {
         let l = em(&mut sim, &mut drive, &doc, f as f64 / fps).translation;
-        assert_eq!([l.x.to_bits(), l.y.to_bits()], [tocado[f].x.to_bits(), tocado[f].y.to_bits()], "quadro {f}");
+        assert_eq!(
+            [l.x.to_bits(), l.y.to_bits()],
+            [tocado[f].x.to_bits(), tocado[f].y.to_bits()],
+            "quadro {f}"
+        );
     }
     let _ = a;
+}
+
+/// Ligar o Spring no cartão dá a mola de fábrica, sem ressalto (oráculo 27/10).
+#[test]
+fn turning_the_orbit_spring_on_gives_the_smooth_factory_spring() {
+    use ph2d_ecs::canal_constraint::MOLA_LIGADA;
+    let mut k = Kind::Comportamento(Perfil::Orbitar.numeros());
+    assert!(ph2d_app_constraints::campos::escrever(
+        &mut k,
+        MOLA_LIGADA,
+        1.0
+    ));
+    let Kind::Comportamento(c) = k else { panic!() };
+    assert_eq!(
+        c.segue,
+        Some(ph2d_constraints::comportamento::SEGUE_DE_FABRICA)
+    );
+    assert_eq!(c.segue.map(|m| m.ressalto), Some(0.0));
 }

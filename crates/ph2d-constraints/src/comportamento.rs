@@ -166,6 +166,14 @@ pub struct Comportamento {
     pub peso: Option<Peso>,
 }
 
+/// A mola com que o «Spring» do Orbitar nasce: SEM ressalto, 95 % em ~0,6 s (`0,75 · duração` no
+/// crítico) — o «seguir suave» das referências (oráculo 27/10: o Camera2D do Godot, exponencial, 95 %
+/// em 0,58 s; ressalto só por molas de física, muito sub-amortecidas). O Bounce fica no cartão.
+pub const SEGUE_DE_FABRICA: crate::Mola = crate::Mola {
+    duracao: 0.8,
+    ressalto: 0.0,
+};
+
 impl Default for Comportamento {
     fn default() -> Self {
         Perfil::default().numeros()

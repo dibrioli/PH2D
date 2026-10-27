@@ -272,6 +272,7 @@ fn losango(c: &mut Cena, clicar: bool) -> ph2d_editor_core::widget::key_mark::Ke
     const SEM: marcas::Contexto = marcas::Contexto {
         aberta: None,
         camadas: 0,
+        regra: None,
     };
     let inst = marcas::Instante {
         t_cut: c.st.doc.author_cut(true, None, c.ph.time()),

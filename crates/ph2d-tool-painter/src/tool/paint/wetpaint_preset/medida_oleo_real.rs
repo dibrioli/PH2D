@@ -104,7 +104,12 @@ fn medida_oleo_real_folha_png() {
 fn medida_oleo_real_oraculo() {
     let dir =
         std::path::PathBuf::from(std::env::var("PH2D_OLEO_PNG").expect("PH2D_OLEO_PNG=<pasta>"));
-    let mut t = pinta_cena_do_dono();
+    // `PH2D_OLEO_CENA=lisos`: os traços LISOS e baixos da bateria (régua do halo, K4).
+    let mut t = if std::env::var("PH2D_OLEO_CENA").is_ok_and(|v| v == "lisos") {
+        pinta_cena_lisa()
+    } else {
+        pinta_cena_do_dono()
+    };
     match std::env::var("PH2D_OLEO_VARIANTES") {
         Ok(vs) => {
             for v in vs.split(';').filter(|v| !v.is_empty()) {
@@ -196,6 +201,39 @@ pub(super) fn pinta_cena_do_dono() -> PainterTool {
     t
 }
 
+/// Os traços LISOS da bateria (K4, o halo): uma passagem de cada faca e do Filbert a 40 px, azul sobre o
+/// papel, horizontais e um vertical — o que a foto do Rebelle mostra sem sombra no papel.
+pub(super) fn pinta_cena_lisa() -> PainterTool {
+    let b = biblioteca();
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; (OW * OH * 4) as usize], OW, OH);
+    t.set_paint_media(PaintMedia::WetPaint);
+    t.set_wet_relogio_fixo(true);
+    let tracos: [(&str, [[f32; 2]; 2]); 5] = [
+        ("Knife/Knife Smooth 3", [[60.0, 70.0], [520.0, 70.0]]),
+        ("Knife/Knife Oily", [[60.0, 160.0], [520.0, 160.0]]),
+        ("Knife/Knife Dry", [[60.0, 250.0], [520.0, 250.0]]),
+        ("Flat/Filbert", [[60.0, 340.0], [520.0, 340.0]]),
+        ("Knife/Knife Smooth 3", [[620.0, 60.0], [620.0, 400.0]]),
+    ];
+    for (preset, [a, z]) in tracos {
+        let rel = format!("WetPainter/Oil/{preset}.ph2d-brush.png");
+        let p = &b
+            .entradas
+            .iter()
+            .find(|e| e.relativo == rel)
+            .unwrap_or_else(|| panic!("preset {rel} não existe"))
+            .preset;
+        let erros = t.wet_preset_aplicar(p);
+        assert!(erros.is_empty(), "{erros:?}");
+        t.set_brush_size_px(20.0);
+        t.set_brush_color_srgb8(AZ);
+        let ticks = arrasta(&mut t, a, z);
+        println!("[oraculo] {preset} (água {ticks})");
+    }
+    t
+}
+
 const OW: u32 = 700;
 const OH: u32 = 460;
 
@@ -270,6 +308,19 @@ fn grava_folha_com(
             }
         }
     }
+    // K4: os termos do PAPEL em toda a grade (`luz`, `vis` com a força da fenda, o ganho médio do céu), f32 LE —
+    // a régua do halo (`oraculo/halo_regua.py`) ensaia as leis da sombra no papel sobre eles.
+    let mut papel = Vec::with_capacity(gw * gh * 12);
+    for cy in 1..=gh {
+        for cx in 1..=gw {
+            let t = ph2d_wet_paint::oleo_real::termos(&o, &campo, cx, cy);
+            let g = t.dir.map_or(1.0, |d| (d[0] + d[1] + d[2]) / 3.0);
+            for v in [t.luz, t.vis, g] {
+                papel.extend_from_slice(&(v as f32).to_le_bytes());
+            }
+        }
+    }
+    std::fs::write(dir.join("t_papel.f32"), papel).expect("grava");
     for (nome, v) in ["t_vis", "t_luz", "t_e", "t_espec"].iter().zip(&termos) {
         let mut pgm = format!("P5\n{gw} {gh}\n255\n").into_bytes();
         pgm.extend_from_slice(v);
@@ -347,7 +398,7 @@ fn grava_folha_com(
             let papel = if com_oleo {
                 let s =
                     ph2d_wet_paint::oleo_real::sombra_no_papel(&o, &campo, k % gw + 1, k / gw + 1);
-                (255.0 * (1.0 - s)).round() as u32
+                255 - u32::from(ph2d_wet_paint::oleo_real::sombra_em_u8(s))
             } else {
                 255
             };
@@ -387,7 +438,10 @@ fn grava_antes_da_e2(
     for (k, p) in albedo.as_chunks::<4>().0.iter().enumerate() {
         let (cx, cy) = (k % gw + 1, k / gw + 1);
         let a = u32::from(p[3]);
-        let papel = (255.0 * (1.0 - sombra_no_papel(&classico, campo, cx, cy))).round() as u32;
+        let papel = 255
+            - u32::from(ph2d_wet_paint::oleo_real::sombra_em_u8(sombra_no_papel(
+                &classico, campo, cx, cy,
+            )));
         let cor = if a > 0 {
             let mut t = termos(o, campo, cx, cy);
             t.dir = None;
@@ -1444,7 +1498,7 @@ fn render_da_cena(
             let (p, a) = (oleo[k], u32::from(oleo[k][3]));
             let sombra =
                 ph2d_wet_paint::oleo_real::sombra_no_papel(o, &campo, k % gw + 1, k / gw + 1);
-            let papel = (255.0 * (1.0 - sombra)).round() as u32;
+            let papel = 255 - u32::from(ph2d_wet_paint::oleo_real::sombra_em_u8(sombra));
             let fim = [0, 1, 2].map(|c| ((u32::from(p[c]) * a + papel * (255 - a)) / 255) as u8);
             (
                 fim,

@@ -629,3 +629,22 @@ fn o_campo_em_faixas_e_bit_identico_ao_em_serie() {
         }
     }
 }
+
+/// K4 ⭐ **A sombra no papel tira LUZ, não bytes** (`oraculo/README.md` §K4): o papel branco escurecido pelo plano
+/// `u8` que o composite guarda devolve, em luz linear, `1 − s` (até meio passo do byte). Guardar `s·255` tirava
+/// ~2,2× a luz: o halo cinza à volta de todo traço liso que o Rebelle e o Cycles não têm.
+#[test]
+fn a_sombra_no_papel_tira_a_luz_linear_e_nao_o_byte() {
+    use crate::colorops::transfer::srgb255_to_linear;
+    for k in 0..=100 {
+        let s = f64::from(k) / 100.0;
+        let papel = 255.0 - f64::from(sombra_em_u8(s));
+        let luz = srgb255_to_linear(papel);
+        assert!(
+            (luz - (1.0 - s)).abs() <= 0.005,
+            "s {s}: o papel recebe {luz} em vez de {}",
+            1.0 - s
+        );
+    }
+}
+

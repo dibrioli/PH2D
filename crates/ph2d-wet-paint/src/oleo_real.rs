@@ -812,10 +812,13 @@ pub fn sombra_dos_termos(o: &OleoReal, t: &Termos) -> f64 {
     sombra_de(o, t.luz, t.vis, t.dir)
 }
 
-/// A sombra no papel em `u8` (o plano que o composite guarda): a MESMA conversão nos dois caminhos.
+/// A sombra no papel em `u8` (o plano que o composite guarda): a MESMA conversão nos dois caminhos. `s` é uma
+/// fracção de LUZ (linear); o composite escurece o byte sRGB por ela, por isso guarda-se a fracção do byte que
+/// tira essa luz: `1 − sRGB(1 − s)` (exacta no papel branco). Guardar `s` no byte era tirar ~2,2× a luz — o halo
+/// cinza à volta de todo traço (K4, `oraculo/README.md` §K4).
 #[must_use]
 pub fn sombra_em_u8(s: f64) -> u8 {
-    (s * 255.0).round() as u8
+    (255.0 - srgb255_of_linear(1.0 - s.clamp(0.0, 1.0))).round() as u8
 }
 
 /// O fim da [`sombra_no_papel`]: `luz` directa, a visibilidade `vis` já com a força da fenda, e o `dir` do céu.

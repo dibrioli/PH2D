@@ -445,6 +445,26 @@ em 26/10** (depois da cura).
 6. W4.4: juntar regra a 200 pontos 17–33 ms;
 7. o gate `each_vertex_mutation_site_keeps_or_assigns_ids` da W4.2 está sem ✓ na tabela §4 — conferir.
 
+**Fechado em 26–27/10 (janela W5.0)** — handoff [`W5.1`](handoffs/HANDOFF_CONTINUACAO_W5_1_2026-10-27.md):
+1. chip ② re-semeia: `WidgetStore::set_number_value` re-semeia um campo FOCADO cujo buffer ninguém tocou; o `cad_tool`
+   compara a marca (id, bits). Gates `number_input_set_value_reseeds_an_untouched_focused_buffer` ·
+   `a_focused_untouched_chip_follows_a_measure_changed_elsewhere`.
+2. «1234 p…»: `com_unidade` (`tracks_value.rs`) divide os 6 caracteres da fatia — cede a precisão, depois o espaço
+   («1234px», «-123°»). Gate `a_length_channel_shows_in_the_project_unit`.
+3. `canal::unidade` dá Comprimento a `CANTO`, `TRACO_LARGURA`, `PARAM_LARGURA`, `PARAM_ALTURA`. Gate
+   `each_field_says_its_display_unit`. **`PARAM_VALOR` e o tracejado ficam nus**: a grandeza depende do tipo da forma;
+   precisa do tipo publicado no snapshot — ABERTO.
+7. `each_vertex_mutation_site_keeps_or_assigns_ids` é verde; o cabeçalho prometia sub-gates inexistentes e agora diz a
+   verdade: os sítios de fora cobrem-se pela porta do assentar do undo (`VecScene::normaliza_ids_desde`,
+   `shells/desktop/src/vec_tree_settle.rs`). Mutação: 4/4 sangraram.
+- **Smoke do dono 27/10 («as linhas das shapes piscam»):** `CadCores` invalidava a análise a cada VALOR de regra; a tocar,
+  a análise (9–12 ms) chegava sempre atrasada ⇒ sem lados. Agora mostra a última resposta da MESMA estrutura até a nova
+  chegar. Gates `an_animated_value_keeps_the_colours_until_the_new_analysis_arrives` ·
+  `a_new_rule_never_shows_the_colours_of_the_old_structure`. Smoke do dono OK.
+
+Continuam como estavam: **4** (a sessão virtual não clica ⇒ foto com clique impossível), **5** (não é defeito), **6**
+(W4.4, juntar regra a 200 pontos 17–33 ms, ABERTO).
+
 ## 4. Gates red-first
 
 | gate | fenómeno na fixture | passo |

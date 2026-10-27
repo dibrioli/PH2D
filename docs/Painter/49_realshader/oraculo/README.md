@@ -50,6 +50,12 @@ python3 $O/compara.py $O/entrada $O/saida studio_sol10      # Clássico: PH2D_OL
 3. **Realce**: o Cycles com estúdio põe 23 % da tinta acima de 1 → `rola` enche a folga até 1 (neutro sem brilho).
 4. **Penumbra**: a marcha mede o horizonte em ELEVAÇÃO — já é um sol com tamanho (alarga com a distância).
 
+## Custo na CPU (o caminho da pintura até haver passe de placa)
+
+`medida_oleo_real_custo` (smoke, 1 núcleo, ambientes intercalados, mínimo de 7, loadavg 3,7–5,9):
+**Clássico 1 547 ns/célula · Estúdio/Interior/Pátio ≈ 1 870**. O composite reparte as linhas pelo rayon
+(ADR-0109): uma pincelada de ~40 mil células ≈ 75 ms num núcleo, ≈ 5 ms em 16.
+
 ## ⛔ Recusas MEDIDAS
 
 | Tentativa | Porque saiu |

@@ -1192,3 +1192,54 @@ fn medida_oleo_real_acumulo() {
         }
     }
 }
+
+/// O custo por célula da óptica na CPU (o caminho da pintura ao vivo até haver passe de placa): os
+/// ambientes no MESMO processo, intercalados, o MÍNIMO de 7 rodadas (`docs/DevOps/MEDIR_VELOCIDADE.md`).
+#[test]
+#[ignore = "medicao — corre-se à mão no perfil smoke"]
+fn medida_oleo_real_custo() {
+    use ph2d_wet_paint::oleo_real::{Ambiente, CampoAltura, OleoReal, termos};
+    let mut t = pinta_folha();
+    let s = t.paint.wetpaint.session.as_mut().expect("sessão");
+    s.bring_home();
+    let (gw, gh) = s.grid;
+    let grades: Vec<(&ph2d_wet_paint::grid::Grid, bool)> = s
+        .engine
+        .layers
+        .iter()
+        .map(|l| (&l.grid, l.visible))
+        .collect();
+    let campo = CampoAltura::de(
+        &grades,
+        &OleoReal::default(),
+        usize::from(s.ratio),
+        1,
+        1,
+        gw,
+        gh,
+    );
+    let mut melhor = [f64::INFINITY; 4];
+    let mut soma = 0.0;
+    for rodada in 0..7 {
+        for k in 0..4 {
+            let a = Ambiente::TODOS[(k + rodada) % 4];
+            let o = OleoReal {
+                ambiente: a,
+                ..OleoReal::default()
+            };
+            let t0 = std::time::Instant::now();
+            for cy in (1..=gh).step_by(4) {
+                for cx in (1..=gw).step_by(4) {
+                    soma += termos(&o, &campo, cx, cy).vis;
+                }
+            }
+            let ns = t0.elapsed().as_nanos() as f64 / ((gw / 4) * (gh / 4)) as f64;
+            let i = usize::from(a.indice());
+            melhor[i] = melhor[i].min(ns);
+        }
+    }
+    println!(
+        "[custo] ns/célula (mínimo de 7): {:?} · {soma:.0}",
+        Ambiente::TODOS.iter().zip(melhor).collect::<Vec<_>>()
+    );
+}

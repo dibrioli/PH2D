@@ -55,3 +55,12 @@
 ## 7. Próximo item
 
 O smoke do dono da cena 13; depois o que ele pedir.
+
+## Veredito do smoke (dono, 27/10): **OK**
+
+Cena 13 aprovada («Muito bom. Vamos seguir.»), sem reparo às alças estacionadas fora da caixa. Sem
+pedido novo: a próxima onda (**P6f**) fecha os abertos da forma viva herdados da
+[P6d §6](HANDOFF_CONTINUACAO_line_PixelArt_2026-10-27_P6d.md) — a etiqueta do arrasto do Vector
+(`face::readout`), a caixa só-contorno durante o arrasto de uma alça (`outline_only`), a barra da
+moldura (X/Y/W/H/ângulo) a mostrar e editar a forma viva, gravar o projecto com uma forma viva
+(assenta antes), e Ctrl+Z com forma viva.

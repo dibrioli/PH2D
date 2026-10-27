@@ -4,6 +4,9 @@
 
 use super::*;
 
+/// O mesmo estado gravado pelo código v193 (`c3662cd8e4`) como v191 — ⛔ nunca o regenere.
+const V191: &[u8] = include_bytes!("../tests/fixtures/projecto_opacidade_v191.ph2dproj");
+
 #[test]
 fn um_v191_abre_com_a_opacidade_da_forma_nas_poses() {
     let mut scene = VecScene::new();
@@ -20,9 +23,9 @@ fn um_v191_abre_com_a_opacidade_da_forma_nas_poses() {
         ..empty_state()
     };
     // O controlo: um ficheiro do degrau corrente NÃO é migrado (a pose diz o que o Rec gravou).
-    for (ver, esperado) in [(191u32, 0.4f32), (PROJECT_SCHEMA, 1.0)] {
+    let vivo = postcard::to_allocvec(&(PROJECT_SCHEMA, &bare_file(state))).expect("serializa");
+    for (ver, bytes, esperado) in [(191u32, V191, 0.4f32), (PROJECT_SCHEMA, &vivo[..], 1.0)] {
         let path = tmp_path(&format!("opacidade_v{ver}"));
-        let bytes = postcard::to_allocvec(&(ver, &bare_file(state.clone()))).expect("serializa");
         std::fs::write(&path, bytes).expect("grava");
         let mut app = headless_app();
         let (file, _) = app

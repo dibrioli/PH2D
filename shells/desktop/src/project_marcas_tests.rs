@@ -3,6 +3,9 @@
 
 use super::*;
 
+const V191: &[u8] = include_bytes!("../tests/fixtures/projecto_marcas_v191.ph2dproj");
+const V192: &[u8] = include_bytes!("../tests/fixtures/projecto_marcas_v192.ph2dproj");
+
 /// ⭐ **As marcas atravessam o arquivo** — os bytes que o palco deu voltam iguais ao abrir.
 #[test]
 fn as_marcas_do_artista_atravessam_o_arquivo() {
@@ -21,32 +24,12 @@ fn as_marcas_do_artista_atravessam_o_arquivo() {
     assert_eq!(back.marcas_do_artista, marcas);
 }
 
-/// ⭐ **Um v191 e um v192 abrem, sem marcas**. ⚠️ Os bytes são escritos campo a campo (a forma de então, sem o
-/// campo) — não a partir do tipo vivo, senão o teste provaria o braço com a hipótese dele.
+/// ⭐ **Um v191 e um v192 abrem, sem marcas** — bytes gravados pelo código v193 (`c3662cd8e4`), ⛔ nunca os regenere.
 #[test]
 fn um_v191_e_um_v192_abrem_sem_marcas() {
-    for ver in [191u32, 192] {
-        let f = bare_file(empty_state());
-        let v191 = (
-            &f.state,
-            &f.assets,
-            &f.painted,
-            &f.motion,
-            &f.timeline,
-            &f.physics,
-            &f.tokens,
-            &f.settings,
-            &f.player_tape,
-            &f.sprite_pixels,
-            &f.stable_id_counter,
-            &f.input_map,
-            &f.pattern_art,
-            &f.boards,
-            &f.scripts,
-        );
+    for (ver, bytes) in [(191u32, V191), (192, V192)] {
         let path = tmp_path(&format!("marcas_v{ver}"));
-        let bytes = postcard::to_allocvec(&(ver, v191)).expect("serializa");
-        std::fs::write(&path, bytes).expect("grava");
+        std::fs::write(&path, bytes).expect("grava o fixture");
         let lido = headless_app().read_project_file(&path.to_string_lossy());
         let _ = std::fs::remove_file(&path);
         let (back, _) = lido.expect("um v191/v192 é recusado");

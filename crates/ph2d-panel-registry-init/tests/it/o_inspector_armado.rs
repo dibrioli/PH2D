@@ -1377,6 +1377,7 @@ pub const PORTAS: &[(&str, fn())] = &[
     ("ray", || insp::set_current_inspector_ray(None)),
     ("sequence", || insp::set_current_inspector_sequence(None)),
     ("shake", || insp::set_current_inspector_shake(None)),
+    ("constraints", || insp::set_current_inspector_constraints(None)),
     ("luz", || insp::set_current_inspector_luz(None)),
     ("corpo_luz", || insp::set_current_inspector_corpo_luz(None)),
     ("tween", || insp::set_current_inspector_tween(None)),

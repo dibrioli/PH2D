@@ -143,7 +143,7 @@ pub const PAINTER_WETPAINT_OLEO_FIELDS: [NodeId; 16] = [
 /// (`FENDA_MAX`: pontos pretos na cena do dono; `ALCANCE_FENDA_MAX`: a margem da região suja).
 /// Environment light: uma MISTURA (`0` = só a lâmpada, `1` = só o ambiente), por isso `0..1`.
 /// O material (W3): os valores ABSOLUTOS do Principled, `0..1` (a faixa dele); o Subsurface Radius em px de
-/// tela, a mesma faixa provisória do knob do pincel (`subsurfaceRadius`; a M1 decide-a medindo).
+/// tela até ao tecto MEDIDO na M1 (`RAIO_SUBSUPERFICIE_MAX`: a CPU do recompor, `oraculo/README.md` §M-SSS).
 pub const PAINTER_WETPAINT_OLEO_FAIXAS: [(f64, f64); 16] = [
     (0.0, 3.0),
     (0.0, 1.0),
@@ -160,7 +160,10 @@ pub const PAINTER_WETPAINT_OLEO_FAIXAS: [(f64, f64); 16] = [
     (0.0, 1.0),
     (0.0, 1.0),
     (0.0, 1.0),
-    (0.0, 64.0),
+    (
+        0.0,
+        ph2d_wet_paint::material::RAIO_SUBSUPERFICIE_MAX as f64,
+    ),
 ];
 
 /// **Environment** chip do **Real Oil** (W1c): o céu que a tinta reflecte (`OleoReal::ambiente`; wire = o

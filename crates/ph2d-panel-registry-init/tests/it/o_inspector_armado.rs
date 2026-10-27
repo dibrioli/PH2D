@@ -38,6 +38,7 @@
 use ph2d_editor_core::action_trigger_edits::{
     InspectorActionTriggerInfo, InspectorTriggerRow, NoMapa,
 };
+use ph2d_editor_core::constraint_edits;
 use ph2d_editor_core::counter_watch_edits::{InspectorCounterWatchInfo, InspectorWatchRow};
 use ph2d_editor_core::factory_edits::{
     InspectorFactory, InspectorFactoryInfo, InspectorLifecycle, InspectorSpawnWhere,
@@ -924,6 +925,36 @@ fn arma_o_top20() {
         )),
         selected_count: selecionados(),
     }));
+    insp::set_current_inspector_constraints(Some(constraint_edits::InspectorConstraintsInfo {
+        entity_bits: BITS,
+        rows: vec![constraint_edits::InspectorConstraintRow {
+            id: 7,
+            tipo: 6,
+            alvo: Some("Mão".into()),
+            precisa_alvo: true,
+            forca: 0.5,
+            ligada: true,
+            estado: constraint_edits::EstadoDaConstraint::Activa,
+            escolhendo: false,
+            numeros: vec![constraint_edits::AjusteNumero {
+                campo: 3,
+                rotulo: "panel.inspector.constraint.min",
+                valor: -45.0,
+                unidade: constraint_edits::Unidade::Graus,
+            }],
+            escolhas: vec![constraint_edits::AjusteEscolha {
+                campo: 8,
+                rotulo: "panel.inspector.constraint.space",
+                opcoes: &[
+                    "panel.inspector.constraint.space.world",
+                    "panel.inspector.constraint.space.local",
+                ],
+                valor: 0,
+            }],
+            zera_desvio: true,
+        }],
+        selected_count: selecionados(),
+    }));
     // ⭐ Os cartões do CORPO na luz — LIGHT OCCLUDER e UNLIT, os dois.
     insp::set_current_inspector_corpo_luz(Some(
         ph2d_editor_core::luz_edits::InspectorCorpoDaLuzInfo {
@@ -1278,6 +1309,7 @@ pub fn desarma_tudo() {
     insp::set_current_inspector_parallax(None);
     insp::set_current_inspector_sequence(None);
     insp::set_current_inspector_shake(None);
+    insp::set_current_inspector_constraints(None);
     insp::set_current_inspector_luz(None);
     insp::set_current_inspector_corpo_luz(None);
     insp::set_current_inspector_tween(None);

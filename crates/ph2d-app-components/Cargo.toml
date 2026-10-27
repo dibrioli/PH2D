@@ -134,6 +134,7 @@ postcard = { version = "1", default-features = false, features = ["use-std"] }
 ph2d-skeleton-ecs = { path = "../ph2d-skeleton-ecs" }
 # A luz 2D: o catálogo das fixturas é o do produto (`component_registry_for_tests`).
 ph2d-light2d-ecs = { path = "../ph2d-light2d-ecs" }
+ph2d-constraints-ecs = { path = "../ph2d-constraints-ecs" }
 
 # ⭐ O losango dos campos do Inspector (`marcas_inspector.rs`, plano 35 §5): os ids do painel e a
 # porta do estado de um grupo de canais. Família → painel é aresta permitida pela lei das camadas.

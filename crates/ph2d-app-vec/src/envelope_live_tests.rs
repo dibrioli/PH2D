@@ -325,7 +325,9 @@ fn the_authored_source_survives_in_each_child() {
     recook(&mut sim, &mut scene);
 
     let kept = source_of(&env_of(&sim, container).children[0]);
-    let cooked_src = src.cooked().into_owned();
+    // A fonte entrou pela cena (`push_path`), que numera os vértices `1..=n`.
+    let mut cooked_src = src.cooked().into_owned();
+    cooked_src.normaliza_ids();
     assert_eq!(
         kept.verts, cooked_src.verts,
         "a fonte autorada foi corrompida — o undo/save recuperariam a forma errada"

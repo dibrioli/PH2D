@@ -74,7 +74,7 @@ fn changing_the_chain_recaptures_the_bend_side() {
         .join("\n");
     // Controlo positivo: é ESTE o sítio que escreve o `Chain`.
     assert!(
-        src.contains("IkKnob::Chain => g.chain ="),
+        src.contains("(IkKnob::Chain, Ancora::Ik(g)) => g.chain ="),
         "{} deixou de escrever o Chain — este gate perdeu o sujeito",
         f.display()
     );
@@ -85,7 +85,7 @@ fn changing_the_chain_recaptures_the_bend_side() {
         f.display()
     );
     assert!(
-        src.contains("g.bend = lado;"),
+        src.contains("g.bend = lado_novo.unwrap_or(g.bend);"),
         "{} calcula o lado novo e DEITA-O FORA — citar a porta não é consultá-la.",
         f.display()
     );

@@ -111,7 +111,7 @@ fn window(from: usize, until: &str) -> &'static str {
 #[test]
 fn the_scanner_finds_what_it_scans_for() {
     for (recv, method) in [
-        ("self.vec.pen", "on_press"),
+        ("self.vec.pen", "on_press_encaixe"),
         ("self.vec.shape", "on_press"),
         ("self.vec.pencil", "on_release"),
     ] {
@@ -142,7 +142,7 @@ fn the_scanner_finds_what_it_scans_for() {
 #[test]
 fn the_pencil_press_runs_before_the_pen_and_the_shape() {
     let pencil = at(PENCIL_PRESS);
-    let pen = call("self.vec.pen", "on_press");
+    let pen = call("self.vec.pen", "on_press_encaixe");
     let shape = call("self.vec.shape", "on_press");
     assert!(
         pencil < pen && pencil < shape,

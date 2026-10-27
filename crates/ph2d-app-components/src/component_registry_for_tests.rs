@@ -51,6 +51,7 @@ pub(crate) fn registo() -> ComponentRegistry {
     ph2d_script::register_script_components(&mut reg);
     // A luz 2D (W1) — entrou no boot sem entrar aqui; o gate abaixo apanhou-o na W3.
     ph2d_light2d_ecs::register_light2d_components(&mut reg);
+    ph2d_constraints_ecs::register_constraint_components(&mut reg);
     reg
 }
 

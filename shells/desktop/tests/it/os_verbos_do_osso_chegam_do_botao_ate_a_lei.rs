@@ -14,6 +14,7 @@ const CAMPOS: &str = include_str!("../../src/render_loop/fase_bus_tool_panel.rs"
 const FASE: &str = include_str!("../../src/render_loop/fase_bone_ik_and_limits.rs");
 const KNOBS: &str = include_str!("../../src/render_loop/fase_bone_smart_and_knobs.rs");
 const ESPELHO: &str = include_str!("../../src/render_loop/fase_selection_mirror_bone_focus.rs");
+const GOAL: &str = include_str!("../../../../crates/ph2d-app-skeleton/src/goal.rs");
 
 /// ⭐ **O botão é encaminhado, e a fase aplica-o pela porta que nasce a apontar.**
 ///
@@ -43,7 +44,7 @@ fn o_campo_do_desvio_chega_ao_componente_em_radianos() {
         "o campo do desvio nao e' encaminhado: ele aceita teclas e nao fala com ninguem"
     );
     assert!(
-        KNOBS.contains("IkKnob::Offset => g.offset = v.to_radians()"),
+        KNOBS.contains("(IkKnob::Offset, a) => a.set_desvio(v.to_radians())"),
         "o dreno do desvio nao escreve no componente (ou nao converte de graus): o campo mostra um \
          numero e o osso nao roda, ou roda 57 vezes mais"
     );
@@ -53,11 +54,11 @@ fn o_campo_do_desvio_chega_ao_componente_em_radianos() {
 ///
 /// ⛔⛔ *Com duas respostas à mesma pergunta, o painel promete um controlo que o solver não lê no
 /// primeiro ajuste* — e o report chega como *«mexo no Aim Offset e não acontece nada»*. A porta é a
-/// `goal::aponta`, e o espelho tem de a chamar em vez de reconstruir a conta.
+/// `skeleton_goal::ancora_no_painel`, e o espelho tem de a chamar em vez de reconstruir a conta.
 #[test]
 fn o_espelho_pergunta_a_porta_e_nao_reconstroi_a_conta() {
     assert!(
-        ESPELHO.contains("goal::aponta(sim, e)"),
+        ESPELHO.contains("skeleton_goal::ancora_no_painel(sim"),
         "o espelho do painel deixou de perguntar a` porta do apontar: a lente do painel e o solver \
          passam a poder discordar"
     );
@@ -66,10 +67,9 @@ fn o_espelho_pergunta_a_porta_e_nao_reconstroi_a_conta() {
         "a lente do apontar nao e' publicada: o painel nunca esconde os dois knobs inertes nem \
          pinta o desvio"
     );
-    // ⚠️ **E ela publica GRAUS**, que é o que o campo mostra — sem isto o artista lê `0,52` onde
-    // escreveu `30`.
+    // ⚠️ **E a porta publica GRAUS** — sem isto o artista lê `0,52` onde escreveu `30`.
     assert!(
-        ESPELHO.contains("g.offset.to_degrees()"),
+        GOAL.contains("a.desvio().to_degrees()"),
         "o desvio e' publicado em radianos: o campo mostraria 0,52 onde o artista escreveu 30"
     );
 }

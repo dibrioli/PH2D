@@ -27,6 +27,8 @@ pub(in crate::tool::paint) mod json;
 mod medida_oleo_real;
 #[cfg(test)]
 mod medida_preview;
+#[cfg(test)]
+mod sonda_custo_oleo;
 mod meios;
 mod miniatura;
 mod pedido;

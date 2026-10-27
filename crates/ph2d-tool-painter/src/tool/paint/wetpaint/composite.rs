@@ -5,6 +5,8 @@
 use super::*;
 // The row fan-out and the engine's per-row door live HERE and nowhere else, so the imports do too: the
 // parent was three lines over the workspace LOC cap carrying names only this file uses.
+#[cfg(test)]
+use super::composite_contagem as contagem;
 use ph2d_wet_paint::render::{RenderLayer, render_pigment_row_visual};
 use rayon::prelude::*;
 
@@ -92,6 +94,8 @@ impl PainterTool {
                 (y1.max(1) as usize).min(gh),
             ),
         };
+        #[cfg(test)]
+        let area_motor = (cx1 + 1).saturating_sub(cx0) * (cy1 + 1).saturating_sub(cy0);
         // Óleo Real: a fenda e a sombra de uma célula leem a tinta à volta — a região cresce pelo alcance.
         let (cx0, cy0, cx1, cy1) = match &oleo {
             Some(o) => {
@@ -108,6 +112,8 @@ impl PainterTool {
         if cx1 < cx0 || cy1 < cy0 || sess.base.len() != w * h * 4 {
             return;
         }
+        #[cfg(test)]
+        contagem::nota(area_motor, (cx1 + 1 - cx0) * (cy1 + 1 - cy0));
         let (px0, py0, px1, py1) = grid_map::cell_rect_to_px((cx0, cy0, cx1, cy1), ratio, w, h);
         if px1 <= px0 || py1 <= py0 {
             return;
@@ -163,6 +169,8 @@ impl PainterTool {
         // por isso que uma razão maior corta o render de pigmento por `ratio²`
         // — é o mesmo trabalho por célula, e há `ratio²` vezes menos delas.
         let g_stride = gw * 4;
+        #[cfg(test)]
+        let t_campo = std::time::Instant::now();
         let campo = oleo.map(|o| {
             let grades: Vec<_> = layers.iter().map(|l| (l.grid, l.visible)).collect();
             let c = ph2d_wet_paint::oleo_real::CampoAltura::de(
@@ -176,6 +184,10 @@ impl PainterTool {
             );
             (o, c)
         });
+        #[cfg(test)]
+        contagem::campo(t_campo.elapsed());
+        #[cfg(test)]
+        let t_pig = std::time::Instant::now();
         sess.pigment[(cy0 - 1) * g_stride..cy1 * g_stride]
             .par_chunks_mut(g_stride)
             .enumerate()
@@ -202,6 +214,10 @@ impl PainterTool {
                 ),
             });
         drop(layers);
+        #[cfg(test)]
+        let t_pig = t_pig.elapsed();
+        #[cfg(test)]
+        let t_som = std::time::Instant::now();
         // A sombra do Óleo Real no PAPEL: a luz que a tinta à volta lhe tira — também por BAIXO da orla fina,
         // que se compõe sobre o papel já sombreado (cortada em «alfa 0» a orla ficava um aro claro entre a
         // tinta e a sombra). Fica num plano à parte — o alfa do pigmento continua a ser só cobertura.
@@ -209,20 +225,37 @@ impl PainterTool {
             if sess.sombra.len() != gw * gh {
                 sess.sombra = vec![0u8; gw * gh];
             }
+            // O papel LISO (campo a zero até ao alcance da óptica) dá a mesma sombra em toda a parte: calcula-se
+            // uma vez por linha ([`super::oleo_plano`]) — na água parada a região é a caixa molhada inteira.
+            #[cfg(test)]
+            let atalho = !super::oleo_plano::desligado::get();
+            #[cfg(not(test))]
+            let atalho = true;
+            let plano =
+                atalho.then(|| super::oleo_plano::PapelLiso::de(c, (cx0, cy0, cx1, cy1), (gw, gh)));
             sess.sombra[(cy0 - 1) * gw..cy1 * gw]
                 .par_chunks_mut(gw)
                 .enumerate()
                 .for_each(|(k, row)| {
                     let cy = cy0 + k;
+                    let mut liso: Option<u8> = None;
                     for cx in cx0..=cx1 {
-                        row[cx - 1] = (ph2d_wet_paint::oleo_real::sombra_no_papel(o, c, cx, cy)
-                            * 255.0)
-                            .round() as u8;
+                        let calcula = || {
+                            (ph2d_wet_paint::oleo_real::sombra_no_papel(o, c, cx, cy) * 255.0)
+                                .round() as u8
+                        };
+                        row[cx - 1] = if plano.as_ref().is_some_and(|p| p.liso(cx, cy)) {
+                            *liso.get_or_insert_with(calcula)
+                        } else {
+                            calcula()
+                        };
                     }
                 });
         } else if !sess.sombra.is_empty() {
             sess.sombra = Vec::new();
         }
+        #[cfg(test)]
+        contagem::tempos(t_pig, t_som.elapsed());
         // ⚠️ **A FRONTEIRA DO MOTOR.** Tudo acima lê `sess.engine` (as camadas, o
         // `params`, o dirty); tudo abaixo lê `sess.pigment`, `sess.base` e o
         // `canvas` — **e mais nada do motor**, exceto o véu no fim.

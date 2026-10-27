@@ -572,11 +572,16 @@ mod cauda; // a água depois do fim de um clipe (W14)
 pub(super) mod faixas; // as lanes de um traço guardado (W16)
 
 mod composite;
+mod oleo_plano; // o papel liso da sombra do Óleo Real: uma conta por linha, não por célula
+#[cfg(test)]
+pub(in crate::tool::paint) use oleo_plano::desligado as oleo_plano_desligado;
 /// O Solid e os fios na água, pela porta da MÁSCARA do motor (doc 46 item 9).
 mod mascara;
 mod smooth_edges; // o Smooth Edges do Watercolor sobre a mancha do Wet Paint (dono 09/10)
 #[cfg(test)]
 pub(in crate::tool::paint) use composite::split as composite_split;
+#[cfg(test)]
+pub(in crate::tool::paint) mod composite_contagem; // as células e os ms de cada composite (sondas)
 mod offthread; // a sim FORA da thread do frame (o slot + o worker) — filho por LOC // the composite half (visual terms + veil) — child file (LOC cap)
 mod offthread_ritmo; // o worker RITMADO dos gates (W7) — filho por LOC
 

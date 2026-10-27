@@ -1,7 +1,7 @@
 //! O MATERIAL da tinta, por célula (Óleo Real): o Principled SIMPLIFICADO que o pincel pousa e que se mistura
 //! no molhado pesado pela massa, como o [`crate::grid::Grid::relevo`]. Os 8 controlos do Blender (W3, contrato em
 //! `docs/Painter/49_realshader/ESTADO_MISSAO_W3.md`): Metallic · Roughness · IOR Level · Coat · Coat Roughness ·
-//! Sheen · Subsurface · Subsurface Radius. A tinta comum é [`MaterialCelula::NEUTRO`] — a imagem de antes, bit a bit.
+//! Sheen · Subsurface · Subsurface Radius · Transparency (`1 − Alpha`, dono 27/10). A tinta comum é [`MaterialCelula::NEUTRO`] — a imagem de antes, bit a bit.
 
 use crate::oleo_real::MaterialCartao;
 
@@ -30,6 +30,9 @@ pub struct MaterialCelula {
     pub subsuperficie: f32,
     /// Subsurface Radius, em px de tela.
     pub raio_subsuperficie: f32,
+    /// Transparency (`1 − Alpha` do Principled, dono 27/10): a fracção da cobertura de COMPOSIÇÃO que a tinta deixa
+    /// ver o que está por baixo — o pigmento, a espessura e o relevo ficam ([`transparente`]).
+    pub transparencia: f32,
 }
 
 impl MaterialCelula {
@@ -42,6 +45,7 @@ impl MaterialCelula {
         veludo: 0.0,
         subsuperficie: 0.0,
         raio_subsuperficie: RAIO_SUBSUPERFICIE_PADRAO,
+        transparencia: 0.0,
     };
 
     /// `a` misturado com `b` na fracção `t` de `b` (a mesma lei de massa do relevo).
@@ -56,6 +60,7 @@ impl MaterialCelula {
             veludo: l(a.veludo, b.veludo),
             subsuperficie: l(a.subsuperficie, b.subsuperficie),
             raio_subsuperficie: l(a.raio_subsuperficie, b.raio_subsuperficie),
+            transparencia: l(a.transparencia, b.transparencia),
         }
     }
 }
@@ -77,9 +82,11 @@ pub struct Efectivo {
     pub veludo: f64,
     pub subsuperficie: f64,
     pub raio_subsuperficie: f64,
+    pub transparencia: f64,
 }
 
-/// A ÚNICA regra de combinação célula × cartão: `max` nos de neutro `0` (Metallic, Coat, Sheen, Subsurface — o
+/// A ÚNICA regra de combinação célula × cartão: `max` nos de neutro `0` (Metallic, Coat, Sheen, Subsurface,
+/// Transparency — o
 /// cartão põe verniz em toda a tinta, a célula metálica continua metálica); `cartão × célula / neutro` nos outros
 /// (Roughness, IOR Level, Coat Roughness, Subsurface Radius). Célula NEUTRA ⇒ o cartão; cartão no padrão ⇒ a célula
 /// (ao bit nos três de padrão = neutro, e na Roughness pelo factor de potência de 2 — gate
@@ -111,5 +118,27 @@ pub fn efectivo(c: &MaterialCelula, k: &MaterialCartao) -> Efectivo {
             k.raio_subsuperficie,
             kn.raio_subsuperficie,
         ),
+        transparencia: transparencia(c.transparencia, k.transparencia),
     }
 }
+
+/// A Transparency EFECTIVA (célula × cartão, `max` presa a `0..1`) — a mesma regra de [`efectivo`], sem o resto.
+#[inline]
+#[must_use]
+pub fn transparencia(celula: f32, cartao: f64) -> f64 {
+    f64::from(celula).max(cartao).clamp(0.0, 1.0)
+}
+
+/// ⭐ **A lei da Transparency** (dono 27/10, `1 − Alpha` do Principled): a cobertura de COMPOSIÇÃO `alfa` (a de
+/// [`crate::opacity::alpha_of_mass`]) que a tinta de transparência `t` deixa: `alfa × (1 − t)`. `t = 0` devolve
+/// `alfa` ao bit (`x × 1` é exacto). A massa, a espessura e o relevo ([`crate::oleo_real::CampoAltura`]) não a
+/// lêem: tinta transparente com volume.
+#[inline]
+#[must_use]
+pub fn transparente(alfa: f64, t: f64) -> f64 {
+    alfa * (1.0 - t)
+}
+
+#[cfg(test)]
+#[path = "transparencia_tests.rs"]
+mod transparencia_tests;

@@ -686,7 +686,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_layers.wetpaint.oleo_env_studio" => "Studio",
         "panel.painter_layers.wetpaint.oleo_env_interior" => "Interior",
         "panel.painter_layers.wetpaint.oleo_env_courtyard" => "Courtyard",
-        // O material (W3): os 8 do Principled simplificado, com os nomes do Blender.
+        // O material (W3): os 8 do Principled simplificado e a Transparency (27/10), com os nomes do Blender.
         "panel.painter_layers.wetpaint.oleo_metallic" => "Metallic",
         "panel.painter_layers.wetpaint.oleo_roughness" => "Roughness",
         "panel.painter_layers.wetpaint.oleo_ior_level" => "IOR Level",
@@ -695,6 +695,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_layers.wetpaint.oleo_sheen" => "Sheen",
         "panel.painter_layers.wetpaint.oleo_subsurface" => "Subsurface",
         "panel.painter_layers.wetpaint.oleo_subsurface_radius" => "Subsurface Radius",
+        "panel.painter_layers.wetpaint.oleo_transparency" => "Transparency",
         "panel.painter_layers.wetpaint.tuning" => "Tuning",
         "panel.painter_layers.wetpaint.grid_size_px" => "Grid Size (px)",
         "panel.painter_layers.wetpaint.flow_grid_x" => "Flow Grid (x)",

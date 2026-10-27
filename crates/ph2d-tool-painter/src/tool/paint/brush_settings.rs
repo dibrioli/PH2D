@@ -507,9 +507,9 @@ pub struct BrushSettings {
     pub wet_oleo_forca_ambiente: f32,
     /// O **Environment** do Real Oil: o índice em `Ambiente::TODOS` (`1` = Studio, o de fábrica).
     pub wet_oleo_ambiente: u8,
-    /// O **material** global do Real Oil (W3: os 8 do Principled simplificado), pela ordem de
+    /// O **material** global do Real Oil (W3: os 8 do Principled simplificado e a Transparency), pela ordem de
     /// `MaterialCartao::CAMPOS` (`PAINTER_WETPAINT_OLEO_MATERIAL`).
-    pub wet_oleo_material: [f32; 8],
+    pub wet_oleo_material: [f32; ph2d_wet_paint::oleo_real::N_CAMPOS],
     /// **Live Water** (W1g): a água corre com o traço aberto.
     pub wet_live_water: bool,
     /// **Heavy Edge** (W1g, `0..1`): o pigmento pesa na orla de baixo da tela inclinada.

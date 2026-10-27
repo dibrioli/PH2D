@@ -1841,6 +1841,19 @@ fn o_papel_nos_vaos_entre_lascas_nao_fica_preto() {
 /// com o Óleo Real ligado e desligado, o papel Cold com Relief 0 e 0,6. Imprime o desvio-padrão da
 /// luminância (o grão) no miolo da tinta grossa e no papel nu; `PH2D_OLEO_PNG` grava as telas.
 pub(super) fn tela_papel_texturizado(oleo: bool, relief: f32) -> (Vec<u8>, Vec<bool>, Vec<bool>) {
+    let (mut t, cob) = cena_papel_texturizado(oleo, relief, true);
+    let px = tela_final(&mut t);
+    let (miolo, nu) = miolo_e_papel_nu(&cob);
+    (px, miolo, nu)
+}
+
+/// A cena de [`tela_papel_texturizado`] pintada (`pinta = false`: só o papel) e a máscara da tinta grossa (massa
+/// > 3000) em píxeis da tela.
+pub(super) fn cena_papel_texturizado(
+    oleo: bool,
+    relief: f32,
+    pinta: bool,
+) -> (PainterTool, Vec<bool>) {
     let b = biblioteca();
     let mut t = PainterTool::default();
     // O documento do produto: a tela branca nasce PAPEL com a camada vazia (`abre_a_sprite`).
@@ -1854,9 +1867,12 @@ pub(super) fn tela_papel_texturizado(oleo: bool, relief: f32) -> (Vec<u8>, Vec<b
     t.set_wet_oleo_real_ligado(oleo);
     t.set_brush_size_px(40.0);
     t.set_brush_color_srgb8([30, 70, 210]);
-    for k in 0..3 {
+    for k in 0..if pinta { 3 } else { 0 } {
         let y = 200.0 + 6.0 * k as f32;
         arrasta(&mut t, [120.0, y], [580.0, y]);
+    }
+    if !pinta {
+        return (t, vec![false; (OW * OH) as usize]);
     }
     let cob = {
         let s = t.paint.wetpaint.session.as_mut().expect("sessão");
@@ -1872,6 +1888,11 @@ pub(super) fn tela_papel_texturizado(oleo: bool, relief: f32) -> (Vec<u8>, Vec<b
         }
         miolo
     };
+    (t, cob)
+}
+
+/// A TELA FINAL do produto: o composite e a luz do relevo (`apply_impasto_light`).
+pub(super) fn tela_final(t: &mut PainterTool) -> Vec<u8> {
     let mut px = t.run_full().0;
     t.apply_impasto_light(
         &mut px,
@@ -1882,6 +1903,11 @@ pub(super) fn tela_papel_texturizado(oleo: bool, relief: f32) -> (Vec<u8>, Vec<b
             h: OH,
         },
     );
+    px
+}
+
+/// As amostras (1 em 9 píxeis) do miolo da tinta grossa `cob` (a ≥ 12 px de papel) e do papel nu (a ≥ 40 px).
+pub(super) fn miolo_e_papel_nu(cob: &[bool]) -> (Vec<bool>, Vec<bool>) {
     // O miolo: tinta grossa (massa > 3000, onde o grão do pigmento já é 0) a ≥ 12 px de papel; o papel nu: a ≥ 40 px.
     let n = (OW * OH) as usize;
     let perto = |m: &[bool], x: usize, y: usize, r: usize, v: bool| {
@@ -1894,11 +1920,11 @@ pub(super) fn tela_papel_texturizado(oleo: bool, relief: f32) -> (Vec<u8>, Vec<b
     let mut nu = vec![false; n];
     for y in 0..OH as usize {
         for x in 0..OW as usize {
-            miolo[x + y * OW as usize] = (y % 3 == 0 && x % 3 == 0) && perto(&cob, x, y, 12, true);
-            nu[x + y * OW as usize] = (y % 3 == 0 && x % 3 == 0) && perto(&cob, x, y, 40, false);
+            miolo[x + y * OW as usize] = (y % 3 == 0 && x % 3 == 0) && perto(cob, x, y, 12, true);
+            nu[x + y * OW as usize] = (y % 3 == 0 && x % 3 == 0) && perto(cob, x, y, 40, false);
         }
     }
-    (px, miolo, nu)
+    (miolo, nu)
 }
 
 /// O DENTE que o Relief acrescenta: o desvio-padrão da diferença de luminância entre a tela com relevo `px` e a
@@ -2038,3 +2064,6 @@ fn medida_oleo_real_bordas() {
         }
     }
 }
+
+#[path = "medida_transparencia.rs"]
+mod transparencia;

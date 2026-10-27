@@ -32,6 +32,11 @@ MATERIAIS = {
     "sss1_r1": {"subsuperficie": 1.0, "raio_subsuperficie": 1.0},
     "sss001_r4": {"subsuperficie": 0.01, "raio_subsuperficie": 4.0},
     "neutro_hdri": {"_luz": "hdri_studio"},
+    # A Transparency (dono 27/10) = `1 − Alpha` do Principled: no `cycles.py` corre pelo bloco ALFA
+    # (`PH2D_CYCLES_ALFA`, malha ABERTA sobre o papel da entrada), não pelo MAT (o volume fechado da Subsurface).
+    "transp0": {"transparencia": 0.0},
+    "transp05": {"transparencia": 0.5},
+    "transp1": {"transparencia": 1.0},
 }
 
 # A luz da sonda que corresponde a cada `_luz` do Cycles.

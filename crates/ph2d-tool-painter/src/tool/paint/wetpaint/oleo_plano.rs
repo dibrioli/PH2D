@@ -120,3 +120,32 @@ pub(in crate::tool::paint) mod curas_desligadas {
         D.with(Cell::get)
     }
 }
+
+/// O cache do campo por dependência desligado (só sob `cfg(test)`, `oleo_real::CacheCampo`): cada recomposição
+/// refaz o campo — a referência do gate e o «antes» da sonda.
+#[cfg(test)]
+pub(in crate::tool::paint) mod sem_cache_do_campo {
+    use std::cell::Cell;
+
+    thread_local! {
+        static D: Cell<bool> = const { Cell::new(false) };
+        static N: Cell<usize> = const { Cell::new(0) };
+    }
+
+    pub(in crate::tool::paint) fn set(v: bool) {
+        D.with(|c| c.set(v));
+    }
+
+    pub(in crate::tool::paint) fn get() -> bool {
+        D.with(Cell::get)
+    }
+    /// Um campo calculado de raiz (o cache não serviu).
+    pub(in crate::tool::paint) fn conta() {
+        N.with(|c| c.set(c.get() + 1));
+    }
+
+    /// Quantos campos se calcularam de raiz desde a última leitura.
+    pub(in crate::tool::paint) fn take_calculados() -> usize {
+        N.with(Cell::take)
+    }
+}

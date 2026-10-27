@@ -88,8 +88,8 @@ pub const PAINTER_WETPAINT_OLEO_FORCA_AMBIENTE: NodeId =
     hash_node_id("painter_brush.wetpaint_oleo_forca_ambiente");
 /// O **material** GLOBAL do Real Oil (`OleoReal::material`, `MaterialCartao::CAMPOS` pela mesma ordem): os 8
 /// controlos do Principled simplificado (W3, nomes do Blender) — Metallic, Roughness, IOR Level, Coat, Coat
-/// Roughness, Sheen, Subsurface, Subsurface Radius.
-pub const PAINTER_WETPAINT_OLEO_MATERIAL: [NodeId; 8] = [
+/// Roughness, Sheen, Subsurface, Subsurface Radius — e a Transparency (`1 − Alpha`, dono 27/10), no fim.
+pub const PAINTER_WETPAINT_OLEO_MATERIAL: [NodeId; ph2d_wet_paint::oleo_real::N_CAMPOS] = [
     hash_node_id("painter_brush.wetpaint_oleo_mat_metal"),
     hash_node_id("painter_brush.wetpaint_oleo_mat_rugosidade"),
     hash_node_id("painter_brush.wetpaint_oleo_mat_nivel_ior"),
@@ -98,15 +98,16 @@ pub const PAINTER_WETPAINT_OLEO_MATERIAL: [NodeId; 8] = [
     hash_node_id("painter_brush.wetpaint_oleo_mat_veludo"),
     hash_node_id("painter_brush.wetpaint_oleo_mat_subsuperficie"),
     hash_node_id("painter_brush.wetpaint_oleo_mat_raio_subsuperficie"),
+    hash_node_id("painter_brush.wetpaint_oleo_mat_transparencia"),
 ];
 /// O índice da primeira linha do material em [`PAINTER_WETPAINT_OLEO_FIELDS`].
 pub const PAINTER_WETPAINT_OLEO_MATERIAL_DE: usize = 8;
 /// Os valores PADRÃO das linhas do material (`MaterialCartao::NEUTRO`, a imagem de antes), em `f32` do painel.
-pub const PAINTER_WETPAINT_OLEO_MATERIAL_NEUTRO: [f32; 8] = {
+pub const PAINTER_WETPAINT_OLEO_MATERIAL_NEUTRO: [f32; ph2d_wet_paint::oleo_real::N_CAMPOS] = {
     let v = ph2d_wet_paint::oleo_real::MaterialCartao::NEUTRO.valores();
-    let mut f = [0.0f32; 8];
+    let mut f = [0.0f32; ph2d_wet_paint::oleo_real::N_CAMPOS];
     let mut k = 0;
-    while k < 8 {
+    while k < ph2d_wet_paint::oleo_real::N_CAMPOS {
         f[k] = v[k] as f32;
         k += 1;
     }
@@ -116,7 +117,7 @@ pub const PAINTER_WETPAINT_OLEO_MATERIAL_NEUTRO: [f32; 8] = {
 /// As linhas numéricas do **Real Oil** — fora de [`PAINTER_WETPAINT_FIELDS`] porque só se pintam com o
 /// Óleo Real ligado (aquela lista é «pintada sempre que armado», com gate). Uma lista para o `SetValue`
 /// do painel, o populate e o encaminhamento da ferramenta.
-pub const PAINTER_WETPAINT_OLEO_FIELDS: [NodeId; 16] = [
+pub const PAINTER_WETPAINT_OLEO_FIELDS: [NodeId; 17] = [
     PAINTER_WETPAINT_OLEO_PROFUNDIDADE,
     PAINTER_WETPAINT_OLEO_SOMBRA,
     PAINTER_WETPAINT_OLEO_BRILHO,
@@ -133,6 +134,7 @@ pub const PAINTER_WETPAINT_OLEO_FIELDS: [NodeId; 16] = [
     PAINTER_WETPAINT_OLEO_MATERIAL[5],
     PAINTER_WETPAINT_OLEO_MATERIAL[6],
     PAINTER_WETPAINT_OLEO_MATERIAL[7],
+    PAINTER_WETPAINT_OLEO_MATERIAL[8],
 ];
 
 /// As faixas `(min, max)` das linhas de [`PAINTER_WETPAINT_OLEO_FIELDS`], pela MESMA ordem, nas unidades do
@@ -143,8 +145,9 @@ pub const PAINTER_WETPAINT_OLEO_FIELDS: [NodeId; 16] = [
 /// (`FENDA_MAX`: pontos pretos na cena do dono; `ALCANCE_FENDA_MAX`: a margem da região suja).
 /// Environment light: uma MISTURA (`0` = só a lâmpada, `1` = só o ambiente), por isso `0..1`.
 /// O material (W3): os valores ABSOLUTOS do Principled, `0..1` (a faixa dele); o Subsurface Radius em px de
-/// tela até ao tecto MEDIDO na M1 (`RAIO_SUBSUPERFICIE_MAX`: a CPU do recompor, `oraculo/README.md` §M-SSS).
-pub const PAINTER_WETPAINT_OLEO_FAIXAS: [(f64, f64); 16] = [
+/// tela até ao tecto MEDIDO na M1 (`RAIO_SUBSUPERFICIE_MAX`: a CPU do recompor, `oraculo/README.md` §M-SSS); a
+/// Transparency `0..1` (`1 − Alpha`).
+pub const PAINTER_WETPAINT_OLEO_FAIXAS: [(f64, f64); 17] = [
     (0.0, 3.0),
     (0.0, 1.0),
     (0.0, 1.0),
@@ -161,6 +164,7 @@ pub const PAINTER_WETPAINT_OLEO_FAIXAS: [(f64, f64); 16] = [
     (0.0, 1.0),
     (0.0, 1.0),
     (0.0, ph2d_wet_paint::material::RAIO_SUBSUPERFICIE_MAX as f64),
+    (0.0, 1.0),
 ];
 
 /// **Environment** chip do **Real Oil** (W1c): o céu que a tinta reflecte (`OleoReal::ambiente`; wire = o

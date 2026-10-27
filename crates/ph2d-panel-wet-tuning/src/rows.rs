@@ -230,10 +230,11 @@ mod tests {
     /// 27/10 (W3): o Material são os 8 do Principled simplificado e o Lock (10 → 9). Mais 2 a 27/10 (W3 K2): a textura
     /// que acompanha o tamanho do pincel (expoente e diâmetro de referência) no Stroke (7 → 9). Mais 1 a 27/10 (W3 K3a):
     /// a faca que nivela (`knifeLevel`) no Stroke (9 → 10). Mais 1 a 27/10 (W3 K5): o expoente da textura através
-    /// do traço (`textureSizeExpAcross`) no Stroke (10 → 11).
+    /// do traço (`textureSizeExpAcross`) no Stroke (10 → 11). Mais 1 a 27/10 (dono): a Transparency (`1 − Alpha`)
+    /// no Material (9 → 10).
     #[test]
     fn every_visible_knob_has_a_row() {
-        assert_eq!(rows().len(), 89);
+        assert_eq!(rows().len(), 90);
         for g in [
             (KnobGroup::Paint, 24),
             (KnobGroup::Water, 7),
@@ -244,7 +245,7 @@ mod tests {
             (KnobGroup::Stroke, 11),
             (KnobGroup::WetEffects, 3),
             (KnobGroup::Look, 5),
-            (KnobGroup::Material, 9),
+            (KnobGroup::Material, 10),
         ] {
             let n = rows().iter().filter(|r| r.group == g.0).count();
             assert_eq!(n, g.1, "group {:?} row count", g.0);

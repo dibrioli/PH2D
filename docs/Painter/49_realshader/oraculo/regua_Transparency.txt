@@ -1,0 +1,23 @@
+# Régua da Transparency (dono 27/10, 1 − Alpha do Principled) — 27/10
+# Cena: medida_oleo_real_transparencia (Dabber azul grosso, papel Cold Relief 0,6, Óleo Real de fábrica, 700×460, ratio 1)
+# Cycles: cycles.py bloco ALFA (PH2D_CYCLES_SO=nenhuma PH2D_CYCLES_ALFA=transp0,transp05,transp1), 256 amostras, OPTIX
+# Régua: transparencia_regua.py compara — L linear ÷ papel sem tinta; sombra projectada = 1 − L/L_papel no papel nu
+# a ≤ 30 células da tinta onde o Cycles T 0 escurece > 5 % (18 802 células); miolo = cobertura ≥ 0,99 erodida 6 (24 952)
+
+## Ronda 1 — sombra projectada × (1 − T)
+T 0.5 nós   : miolo L/L_papel 0.291 · grão corr 0.01 amp 5.79 · sombra projectada 0.019 (÷ T0 0.43)
+T 0.5 Cycles: miolo L/L_papel 0.397 · grão corr 0.04 amp 8.94 · sombra projectada 0.107 (÷ T0 0.77)
+
+## Ronda 2 — sombra projectada × (1 − T²) (a lei que fica)
+miolo 24952 células · sombra projectada (Cycles T 0) 18802 células
+T 0.0 nós   : miolo L/L_papel 0.170 · grão corr 0.00 amp 8.47 · sombra projectada 0.044 (÷ T0 1.00)
+T 0.0 Cycles: miolo L/L_papel 0.234 · grão corr 0.01 amp 17.68 · sombra projectada 0.139 (÷ T0 1.00)
+T 0.5 nós   : miolo L/L_papel 0.288 · grão corr 0.01 amp 5.91 · sombra projectada 0.030 (÷ T0 0.69)
+T 0.5 Cycles: miolo L/L_papel 0.397 · grão corr 0.04 amp 8.94 · sombra projectada 0.107 (÷ T0 0.77)
+T 1.0 nós   : miolo L/L_papel 1.000 · grão corr 1.00 amp 1.00 · sombra projectada 0.000 (÷ T0 0.00)
+T 1.0 Cycles: miolo L/L_papel 1.000 · grão corr 0.48 amp 1.87 · sombra projectada 0.003 (÷ T0 0.02)
+# (Cycles T 1: corr 0,48 / amp 1,87 = o ruído das 256 amostras sobre o papel; a média é a do papel.)
+
+## O dente do papel no produto (gate a_transparencia_deixa_ver_o_grao_e_a_cor_do_papel)
+[transparency] dente miolo/nu: T0 0.00/6.04 · T0,5 2.38/6.04 · T1 5.10/6.04 · papel no miolo 5.10
+# T 1: a tela final no miolo = a do papel sem tinta, Δ 0,0 por canal.

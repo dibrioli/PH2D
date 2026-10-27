@@ -137,6 +137,11 @@ pub struct Engine {
     /// `Send` a menos que capture algo que não seja.
     pub on_dab: Option<Box<dyn FnMut(f64, &Dab) + Send>>,
     pub dirty: Dirty,
+    /// A REVISÃO do conteúdo (Óleo Real W3, o cache do campo de altura): muda a cada marca de sujo de conteúdo
+    /// ([`Self::merge_dirty`], [`Self::mark_dirty_full`]) para um valor que nenhum motor teve — quem pinta marca
+    /// sujo (a tela já depende disso), logo a mesma revisão = as mesmas grades. A marca só de ÓPTICA
+    /// ([`Self::merge_dirty_otica`]) não a muda.
+    revisao: u64,
     /// A razao da grade de FLUXO desta engine (plano 30). `1` = a grade de
     /// fluxo E a fina, que e o motor que sempre shipou.
     pub flow_ratio: usize,
@@ -184,6 +189,7 @@ impl Engine {
             stroke_tool_backup: None,
             on_dab: None,
             dirty: Dirty::Clean,
+            revisao: nova_revisao(),
         };
         engine.layers.push(Layer {
             grid: Grid::with_flow_ratio(width, height, engine.flow_ratio),
@@ -638,6 +644,13 @@ impl Engine {
     // -----------------------------------------------------------------------
 
     pub fn merge_dirty(&mut self, x0: i32, y0: i32, x1: i32, y1: i32) {
+        self.revisao = nova_revisao();
+        self.merge_dirty_otica(x0, y0, x1, y1);
+    }
+
+    /// [`Self::merge_dirty`] de quem só mudou a ÓPTICA (o cartão Real Oil): as grades ficam, a [`Self::revisao`]
+    /// também.
+    pub fn merge_dirty_otica(&mut self, x0: i32, y0: i32, x1: i32, y1: i32) {
         if self.dirty == Dirty::Full {
             return;
         }
@@ -673,7 +686,14 @@ impl Engine {
     }
 
     pub fn mark_dirty_full(&mut self) {
+        self.revisao = nova_revisao();
         self.dirty = Dirty::Full;
+    }
+
+    /// A revisão do conteúdo das grades (ver o campo).
+    #[must_use]
+    pub fn revisao(&self) -> u64 {
+        self.revisao
     }
 
     /// Take and clear the pending dirty region.
@@ -689,3 +709,9 @@ mod mascara; // a porta da MÁSCARA: uma região pousada de uma vez (o Solid e o
 mod po; // a porta do GRÃO de pó solto, à parte do rasto (J4 pastel_carvao)
 mod relevo; // a porta do RELEVO dos fios (W3): o dab penteia a altura
 mod stage; // as portas do passo RETOMAVEL (drain/step_stage) — LOC-cap split
+
+/// Uma revisão que nenhum motor teve ([`Engine::revisao`]).
+fn nova_revisao() -> u64 {
+    static PROXIMA: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
+    PROXIMA.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+}

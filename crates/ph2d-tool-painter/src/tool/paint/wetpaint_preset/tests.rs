@@ -481,6 +481,7 @@ fn o_material_do_pincel_vai_e_volta_pelo_preset() {
         (Knob::Sheen, 0.5),
         (Knob::Subsurface, 0.25),
         (Knob::SubsurfaceRadius, 7.5),
+        (Knob::Transparency, 0.6),
         (Knob::LockMaterial, 1.0),
     ];
     let mut a = ferramenta();

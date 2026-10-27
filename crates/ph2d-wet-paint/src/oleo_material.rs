@@ -1,5 +1,6 @@
 //! **O material no sombreado do Óleo Real** (filho de [`super`]): o Principled SIMPLIFICADO do Cycles sobre a
-//! tinta (W3: Metallic · Roughness · IOR Level · Coat · Coat Roughness · Sheen · Subsurface · Subsurface Radius),
+//! tinta (W3: Metallic · Roughness · IOR Level · Coat · Coat Roughness · Sheen · Subsurface · Subsurface Radius ·
+//! Transparency),
 //! a partir do [`MaterialCelula`] da célula combinado com o ajuste GLOBAL do cartão Real Oil ([`MaterialCartao`],
 //! regra em [`crate::material::efectivo`]). Medido contra o Cycles em `docs/Painter/49_realshader/oraculo/`
 //! (README §E3-B). Com a célula NEUTRA e o cartão no padrão o sombreado é o de antes, bit a bit. O reflexo usa o
@@ -7,10 +8,14 @@
 
 use crate::material::MaterialCelula;
 
+/// O número de controlos do material do cartão (e do pincel): os 8 do Principled simplificado da W3 e a
+/// Transparency (27/10), sempre no FIM (append-only: a ordem é a da UI e da macro).
+pub const N_CAMPOS: usize = 9;
+
 /// A Roughness do cartão no PADRÃO: a `Afinacao::rugosidade` de antes da W3 (0,28, a régua M4) — a imagem de antes.
 pub const RUGOSIDADE_PADRAO: f64 = 0.28;
 
-/// O material GLOBAL do cartão Real Oil, os 8 controlos do Blender em valores ABSOLUTOS. [`Self::NEUTRO`] é o
+/// O material GLOBAL do cartão Real Oil, os 9 controlos do Blender em valores ABSOLUTOS. [`Self::NEUTRO`] é o
 /// padrão do cartão (= a imagem de antes). Conversão do cartão de antes da W3 (multiplicadores): Roughness =
 /// `0,28 × m`, IOR Level = `0,5 × s`, Coat Roughness = `0,03 × r`; Translucency → Subsurface
 /// ([`Self::poe_campo_antigo`]).
@@ -32,6 +37,8 @@ pub struct MaterialCartao {
     pub subsuperficie: f64,
     /// Subsurface Radius, px de tela.
     pub raio_subsuperficie: f64,
+    /// Transparency (`1 − Alpha`, `0..1`, max com a célula; [`crate::material::transparente`]).
+    pub transparencia: f64,
 }
 
 impl MaterialCartao {
@@ -45,10 +52,11 @@ impl MaterialCartao {
         veludo: 0.0,
         subsuperficie: 0.0,
         raio_subsuperficie: crate::material::RAIO_SUBSUPERFICIE_PADRAO as f64,
+        transparencia: 0.0,
     };
 
-    /// Os 8 campos, pela ordem da UI (`PAINTER_WETPAINT_OLEO_FIELDS[8..]`) e com os nomes da macro.
-    pub const CAMPOS: [&'static str; 8] = [
+    /// Os campos, pela ordem da UI (`PAINTER_WETPAINT_OLEO_FIELDS[8..]`) e com os nomes da macro.
+    pub const CAMPOS: [&'static str; N_CAMPOS] = [
         "metal",
         "rugosidade",
         "nivel_ior",
@@ -57,11 +65,12 @@ impl MaterialCartao {
         "veludo",
         "subsuperficie",
         "raio_subsuperficie",
+        "transparencia",
     ];
 
     /// Os valores de [`Self::CAMPOS`], pela mesma ordem.
     #[must_use]
-    pub const fn valores(&self) -> [f64; 8] {
+    pub const fn valores(&self) -> [f64; N_CAMPOS] {
         [
             self.metal,
             self.rugosidade,
@@ -71,6 +80,7 @@ impl MaterialCartao {
             self.veludo,
             self.subsuperficie,
             self.raio_subsuperficie,
+            self.transparencia,
         ]
     }
 
@@ -85,6 +95,7 @@ impl MaterialCartao {
             5 => &mut self.veludo,
             6 => &mut self.subsuperficie,
             7 => &mut self.raio_subsuperficie,
+            8 => &mut self.transparencia,
             _ => return,
         };
         *alvo = v;

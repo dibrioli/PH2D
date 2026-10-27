@@ -731,6 +731,53 @@ de 768² com orla ondulada) contra 66 ns do campo inteiro: 4,3 %.
 | Só o degrau QUASE binário (≥ 0,9 ao pé de ≤ 0,1) | vãos 34,5 % e nada pisca, mas o Dabber continua em escada (TRAVA 0,54 · 0,59): as orlas dele são degraus de 1 → 0,3 |
 | A média CONTÍNUA relativa à célula (`média(cob)/cob`) | a impressão neutra mudava: numa borda alinhada com a cobertura a variar ao longo dela (textura) a raiz invertida corta ~½ da célula por um desvio de 10 % |
 
+## §Transparency — a tinta que deixa ver o papel (dono 27/10)
+
+Pedido do dono: «um parâmetro novo chamado transparência como num shader do Blender» — quanto a tinta deixa ver o que
+está por baixo (papel, grão, cor de baixo) SEM mudar o pigmento, a espessura nem o relevo. **Transparency = `1 − Alpha`
+do Principled**, 9.º campo do material (no fim, nos dois lados: pincel Tuning → Material e cartão Real Oil), neutro 0,
+célula × cartão por `max` (como o Metallic). Código: `material::transparente`/`transparencia`,
+`render::pigment_row`, `oleo_real::sombra_transparente`. Oráculo: `cycles.py` bloco ALFA (malha ABERTA com
+`Alpha = cobertura × (1 − T)` sobre uma grelha plana com o papel do produto, `papel.png`), variantes `transp*` em
+`materiais_e3.py`, sonda `medida_oleo_real_transparencia`, régua [`transparencia_regua.py`](transparencia_regua.py) →
+[`regua_Transparency.txt`](regua_Transparency.txt), folha [`../out/Transparency_folha.jpg`](../out/Transparency_folha.jpg)
+(T 0 · 0,5 · 1 sobre o papel Cold texturizado, nós | Cycles).
+
+```
+PH2D_OLEO_PNG=<d> bash scripts/ph2d-run.sh cargo test -p ph2d-tool-painter --profile smoke --lib medida_oleo_real_transparencia -- --ignored
+python3 $O/transparencia_regua.py prepara <d>
+PH2D_CYCLES_SO=nenhuma PH2D_CYCLES_ALFA=transp0,transp05,transp1 PH2D_GPU=1 LD_LIBRARY_PATH=… bash scripts/ph2d-run.sh \
+  blender -b --factory-startup -P $O/cycles.py -- <d>/entrada <d>/saida h_fina 256
+python3 $O/transparencia_regua.py compara <d> <d>/saida docs/Painter/49_realshader/out/Transparency_folha.jpg
+```
+
+**A lei.** A cobertura de COMPOSIÇÃO de cada camada (o `la` que sai de `assenta::cor_e_alfa` sobre `alpha_of_mass`)
+× `(1 − T)`; a cor da camada, a massa, a espessura e as três alturas do `CampoAltura` não a lêem (gate: o campo a T 1
+é o de T 0 ao bit). O brilho (`rola` pela cobertura do FILME) e a escolha da sombra da orla usam a cobertura
+geométrica — com o Alpha o Cycles atenua o especular uma vez, pelo composite. O grão do papel atravessa sozinho:
+`ReliefFields::papel_a_vista` lê o alfa do canvas (§BUG-papel). O rebote vê a parede como `1 − (1 − t)(1 − A)`.
+
+**A sombra (decidida MEDINDO, 2 rondas).** No Cycles a sombra que a tinta transparente projecta no papel ATENUA: o raio
+de luz atravessa a tinta por DUAS faces (entra pela parede, sai pelo topo) e passa `T²`. Sombra projectada a T 0,5 ÷ a
+de T 0: Cycles **0,77**; nós com `× (1 − T)` 0,43 (recusada), com **`× (1 − T²)` 0,69** (fica). Sob a tinta o papel
+recebe a luz que atravessa o topo (`× T`) e é visto através dele: o plano da sombra leva
+`1 − (1 − s')·(a·t² + 1 − a)/(1 − a(1 − t))`. T 1: sombra 0,000 (Cycles 0,003) e a tela no miolo = o papel sem tinta,
+Δ 0,0. Miolo T 0,5 ÷ papel: nós 0,288 × Cycles 0,397 (a tinta opaca de base já é mais escura que a do Cycles: 0,170 ×
+0,234, W1c — o acréscimo de T 0 → 0,5 é 0,118 × 0,163).
+
+| mutação | gate que a vê vermelha |
+|---|---|
+| T ignorada no composite | `a_transparencia_deixa_ver_sem_mexer_no_relevo` |
+| T entra no relevo (cobertura × (1 − T)) | idem (as alturas ao bit) |
+| sombra opaca (sem `sombra_transparente`) | `a_sombra_da_tinta_transparente_e_a_luz_que_a_atravessa` |
+| mistura sem a Transparency · combinação sem `max` | `a_transparencia_mistura_pela_massa_e_combina_por_max` |
+| T da célula ignorada | `a_transparencia_deixa_ver_sem_mexer_no_relevo` (pincel = cartão) |
+| meia T no composite | `a_transparencia_deixa_ver_o_grao_e_a_cor_do_papel` (ph2d-tool-painter) |
+
+**Aberto:** a sombra projectada no papel NU por tinta transparente só do PINCEL (cartão a 0) é a da tinta opaca (a
+marcha da luz não lê a T de quem tapa); o «Opacity» abaixo de «Water» é a QUANTIDADE de pigmento por dab, não alfa
+(nome por decidir pelo dono).
+
 ## ⛔ Recusas MEDIDAS
 
 | Tentativa | Porque saiu |

@@ -38,6 +38,7 @@ impl Clone for Engine {
             agua_do_dab,
             on_dab: _,
             dirty,
+            revisao: _,
             flow_ratio,
         } = self;
         Engine {
@@ -71,6 +72,8 @@ impl Clone for Engine {
             agua_do_dab: *agua_do_dab,
             on_dab: None,
             dirty: *dirty,
+            // A cópia diverge por conta própria: uma revisão nova (nenhum cache a confunde com a original).
+            revisao: super::nova_revisao(),
             flow_ratio: *flow_ratio,
         }
     }

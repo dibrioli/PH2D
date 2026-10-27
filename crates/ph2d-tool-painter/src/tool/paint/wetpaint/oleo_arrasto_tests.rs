@@ -206,3 +206,6 @@ fn sonda_arrasto_do_oleo() {
         oleo_no_quadro::no_evento(false);
     }
 }
+
+#[path = "oleo_cache_tests.rs"]
+mod oleo_cache_tests;

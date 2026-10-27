@@ -103,6 +103,9 @@ pub(in crate::tool::paint) struct WetSession {
     /// **A sombra do Óleo Real no papel** (`gw * gh`, `0..255` de escurecimento) onde a célula não tem
     /// pigmento — VAZIO enquanto o Óleo Real está desligado (quem não o usa não paga).
     pub(super) sombra: Vec<u8>,
+    /// **O campo de altura do Óleo Real guardado por dependência** (W3, `oleo_real::CacheCampo`): a varredura do
+    /// cartão (Specular, fenda, material sem Subsurface, Transparency) reusa-o enquanto as grades e a chave ficam.
+    pub(super) campo_cache: Option<ph2d_wet_paint::oleo_real::CacheCampo>,
     /// Per-LANE stroke state (one lane per symmetry copy / tile offset,
     /// matched geometrically): last dab centre (the chord source) + the last
     /// fresh-ink colour sent (Randomize change detector). Cleared per stroke.
@@ -279,6 +282,7 @@ impl Clone for WetSession {
             canvas,
             pigment,
             sombra,
+            campo_cache: _,
             lanes,
             stroke_open,
             paper_key,
@@ -307,6 +311,7 @@ impl Clone for WetSession {
             canvas: Weak::clone(canvas),
             pigment: pigment.clone(),
             sombra: sombra.clone(),
+            campo_cache: None,
             lanes: lanes.clone(),
             stroke_open: *stroke_open,
             paper_key: *paper_key,

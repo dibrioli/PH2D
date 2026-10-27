@@ -17,7 +17,7 @@ pub fn garante(g: &mut Grid) -> &mut [MaterialCelula] {
     &mut g.material
 }
 
-/// O material que o pincel pousa: os 8 knobs do grupo Material ([`Knob::Metallic`]…).
+/// O material que o pincel pousa: os 9 knobs do grupo Material ([`Knob::Metallic`]…).
 #[must_use]
 pub fn do_pincel(p: &Params) -> MaterialCelula {
     let k = |kn: Knob| p.k(kn) as f32;
@@ -30,6 +30,7 @@ pub fn do_pincel(p: &Params) -> MaterialCelula {
         veludo: k(Knob::Sheen),
         subsuperficie: k(Knob::Subsurface),
         raio_subsuperficie: k(Knob::SubsurfaceRadius),
+        transparencia: k(Knob::Transparency),
     }
 }
 

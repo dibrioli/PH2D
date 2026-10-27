@@ -127,8 +127,9 @@ impl PainterTool {
         let pintadas =
             (y1 + 1 + alcance).min(gh + 1) - cursor.saturating_sub(1 + alcance).max(1) + 1;
         // `merge_dirty` alarga 1 célula por lado; a faixa vizinha volta a escrever essa orla com o valor novo.
+        // Só a ÓPTICA mudou: as grades (e o campo guardado, `oleo_real::CacheCampo`) ficam.
         sess.engine
-            .merge_dirty(1, cursor as i32, gw as i32, y1 as i32);
+            .merge_dirty_otica(1, cursor as i32, gw as i32, y1 as i32);
         let t0 = std::time::Instant::now();
         self.wetpaint_composite();
         let ms = t0.elapsed().as_secs_f64() * 1e3;

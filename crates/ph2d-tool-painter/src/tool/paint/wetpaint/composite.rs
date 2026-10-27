@@ -99,7 +99,12 @@ impl PainterTool {
         // Óleo Real: a fenda e a sombra de uma célula leem a tinta à volta — a região cresce pelo alcance.
         let (cx0, cy0, cx1, cy1) = match &oleo {
             Some(o) => {
-                let grades: Vec<_> = sess.engine.layers.iter().map(|l| (&l.grid, l.visible)).collect();
+                let grades: Vec<_> = sess
+                    .engine
+                    .layers
+                    .iter()
+                    .map(|l| (&l.grid, l.visible))
+                    .collect();
                 let a = ph2d_wet_paint::oleo_real::alcance_na(
                     o,
                     &grades,
@@ -183,10 +188,30 @@ impl PainterTool {
         let (sombra_antiga, campo_em_serie) = super::oleo_plano::curas_desligadas::get();
         #[cfg(not(test))]
         let (sombra_antiga, campo_em_serie) = (false, false);
-        let campo = oleo.map(|o| {
+        // O campo guardado por DEPENDÊNCIA (`oleo_real::CacheCampo`): a mesma chave e as mesmas grades reusam-no.
+        let revisao = sess.engine.revisao();
+        let chave = oleo.map(|o| {
+            let grades: Vec<_> = layers.iter().map(|l| (l.grid, l.visible)).collect();
+            ph2d_wet_paint::oleo_real::ChaveCampo::de(&o, &grades, usize::from(ratio))
+        });
+        #[cfg(test)]
+        let sem_cache = super::oleo_plano::sem_cache_do_campo::get();
+        #[cfg(not(test))]
+        let sem_cache = false;
+        let guardado = match (&oleo, &chave) {
+            (Some(o), Some(k)) if !sem_cache => ph2d_wet_paint::oleo_real::CacheCampo::serve(
+                sess.campo_cache.as_ref(),
+                k,
+                revisao,
+                o,
+                (cy0, cy1),
+            ),
+            _ => None,
+        };
+        let proprio = oleo.filter(|_| guardado.is_none()).map(|o| {
             let grades: Vec<_> = layers.iter().map(|l| (l.grid, l.visible)).collect();
             let janela = (cx0, cy0, cx1, cy1);
-            let c = if campo_em_serie {
+            if campo_em_serie {
                 ph2d_wet_paint::oleo_real::CampoAltura::de_com(
                     &ph2d_wet_paint::oleo_real::EmSerie,
                     &grades,
@@ -202,9 +227,13 @@ impl PainterTool {
                     usize::from(ratio),
                     janela,
                 )
-            };
-            (o, c)
+            }
         });
+        #[cfg(test)]
+        if proprio.is_some() {
+            super::oleo_plano::sem_cache_do_campo::conta();
+        }
+        let campo = oleo.zip(guardado.or(proprio.as_ref()));
         #[cfg(test)]
         contagem::campo(t_campo.elapsed());
         if campo.is_some() && sess.sombra.len() != gw * gh {
@@ -291,9 +320,14 @@ impl PainterTool {
                         if feita.is_some_and(|f| f[cx - 1]) {
                             continue;
                         }
+                        // O papel nu: a tinta que lhe projecta a sombra tem a Transparency do cartão.
                         let calcula = || {
                             ph2d_wet_paint::oleo_real::sombra_em_u8(
-                                ph2d_wet_paint::oleo_real::sombra_no_papel(o, c, cx, cy),
+                                ph2d_wet_paint::oleo_real::sombra_transparente(
+                                    ph2d_wet_paint::oleo_real::sombra_no_papel(o, c, cx, cy),
+                                    0.0,
+                                    o.material.transparencia,
+                                ),
                             )
                         };
                         row[cx - 1] = if plano.as_ref().is_some_and(|p| p.liso(cx, cy)) {
@@ -305,6 +339,20 @@ impl PainterTool {
                 });
         } else if !sess.sombra.is_empty() {
             sess.sombra = Vec::new();
+        }
+        if oleo.is_none() {
+            // Sem o Óleo Real o campo guardado só ocupava memória (~28 B por célula, 230 MB a 4K).
+            sess.campo_cache = None;
+        }
+        if let (Some(c), Some(k)) = (proprio.as_ref(), chave) {
+            ph2d_wet_paint::oleo_real::CacheCampo::guarda(
+                &mut sess.campo_cache,
+                k,
+                revisao,
+                c,
+                (gw, gh),
+                (cx0, cy0, cx1, cy1),
+            );
         }
         #[cfg(test)]
         contagem::tempos(t_pig, t_som.elapsed());

@@ -241,6 +241,93 @@ for luz, modo in VARIANTES:
         im.color_depth = "8"
         bpy.data.images["Render Result"].save_render(os.path.join(saida, f"{nome}_agx.png"), scene=cena)
 
+# A TRANSPARENCY (dono 27/10, `1 − Alpha`): `PH2D_CYCLES_ALFA="transp0,transp05,transp1"` (nomes de
+# `materiais_e3.py`). A malha ABERTA (a superfície da tinta) com `Alpha = cobertura × (1 − T)` — no papel sem
+# pigmento ela some — sobre uma cópia PLANA da grelha logo abaixo, difusa, com o papel do produto
+# (`<entrada>/papel.png`, a tela final sem tinta; branco sem ele). As sombras do Cycles atravessam o Alpha.
+# Grava `alfa_<nome>_cor.exr` e `_cor_agx.png`.
+ALFA_SO = [x for x in os.environ.get("PH2D_CYCLES_ALFA", "").split(",") if x]
+if ALFA_SO:
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import materiais_e3  # noqa: E402
+
+    nt = mat.node_tree
+    bsdf.inputs["Roughness"].default_value = rug
+    bsdf.inputs["Specular IOR Level"].default_value = 0.5
+    for l in list(nt.links):
+        if l.to_socket == bsdf.inputs["Base Color"]:
+            nt.links.remove(l)
+    nt.links.new(tex.outputs["Color"], bsdf.inputs["Base Color"])
+    tcob = nt.nodes.new("ShaderNodeTexImage")
+    tcob.image = bpy.data.images.load(os.path.join(entrada, "cobertura.png"))
+    tcob.image.colorspace_settings.name = "Non-Color"
+    tcob.interpolation = "Closest"
+    alfa = nt.nodes.new("ShaderNodeMath")
+    alfa.operation = "MULTIPLY"
+    nt.links.new(tcob.outputs["Color"], alfa.inputs[0])
+    nt.links.new(alfa.outputs["Value"], bsdf.inputs["Alpha"])
+    # O papel: a grelha plana logo abaixo do ponto mais baixo da tinta, com as mesmas UV.
+    z_papel = float(h.min()) - 0.02
+    vp = np.stack([ii, -jj, np.full_like(h, z_papel)], axis=-1).reshape(-1, 3).astype(np.float64)
+    mp_malha = bpy.data.meshes.new("papel")
+    mp_malha.from_pydata(vp.tolist(), [], quads.tolist())
+    mp_malha.update()
+    uvp = mp_malha.uv_layers.new(name="uv")
+    vip = np.empty(len(mp_malha.loops), dtype=np.int32)
+    mp_malha.loops.foreach_get("vertex_index", vip)
+    uvp.data.foreach_set(
+        "uv", np.stack([((vip % gw) + 0.5) / gw, 1.0 - ((vip // gw) + 0.5) / gh], axis=-1).astype(np.float32).ravel()
+    )
+    papel_o = bpy.data.objects.new("papel", mp_malha)
+    cena.collection.objects.link(papel_o)
+    mp = bpy.data.materials.new("papel")
+    mp.use_nodes = True
+    pb = mp.node_tree.nodes["Principled BSDF"]
+    pb.inputs["Specular IOR Level"].default_value = 0.0
+    pb.inputs["Roughness"].default_value = 1.0
+    f_papel = os.path.join(entrada, "papel.png")
+    if os.path.exists(f_papel):
+        tp = mp.node_tree.nodes.new("ShaderNodeTexImage")
+        tp.image = bpy.data.images.load(f_papel)
+        tp.image.colorspace_settings.name = "sRGB"
+        tp.interpolation = "Closest"
+        mp.node_tree.links.new(tp.outputs["Color"], pb.inputs["Base Color"])
+    else:
+        pb.inputs["Base Color"].default_value = (1.0, 1.0, 1.0, 1.0)
+    papel_o.data.materials.append(mp)
+    cena.cycles.transparent_max_bounces = 16
+    for nome_m in ALFA_SO:
+        m = materiais_e3.MATERIAIS[nome_m]
+        ang, com_sol, ceu_v = LUZES[materiais_e3.luz(nome_m)]
+        sol_d.angle = math.radians(ang)
+        sol_d.energy = forca_sol if com_sol else 0.0
+        for l in list(ceu_nos.links):
+            if l.to_node == fundo and l.to_socket.name == "Color":
+                ceu_nos.links.remove(l)
+        fundo.inputs["Color"].default_value = (ceu, ceu, ceu, 1.0)
+        fundo.inputs["Strength"].default_value = 1.0
+        if ceu_v != "uniforme":
+            amb.image, forca, rot = hdri(ceu_v)
+            mapa.inputs["Rotation"].default_value = (0.0, 0.0, rot)
+            fundo.inputs["Strength"].default_value = forca * (ceu if com_sol else 1.0)
+            ceu_nos.links.new(amb.outputs["Color"], fundo.inputs["Color"])
+        alfa.inputs[1].default_value = 1.0 - m.get("transparencia", 0.0)
+        cena.cycles.max_bounces = 12
+        cena.view_settings.view_transform = "Standard"
+        cena.view_settings.look = "None"
+        im = r.image_settings
+        if hasattr(im, "media_type"):
+            im.media_type = "IMAGE"
+        im.file_format = "OPEN_EXR"
+        im.color_depth = "32"
+        r.filepath = os.path.join(saida, f"alfa_{nome_m}_cor.exr")
+        bpy.ops.render.render(write_still=True)
+        print(f"[oraculo] {r.filepath}")
+        cena.view_settings.view_transform = "AgX"
+        im.file_format = "PNG"
+        im.color_depth = "8"
+        bpy.data.images["Render Result"].save_render(os.path.join(saida, f"alfa_{nome_m}_cor_agx.png"), scene=cena)
+
 # W3 (27/10): os MATERIAIS (`materiais_e3.py`, a mesma lista da sonda) — o Principled com o MESMO valor ABSOLUTO
 # sobre a MESMA tinta. `PH2D_CYCLES_MAT="a,b"` (ou `todos`) liga-os; cada um grava `mat_<nome>_cor` e `_brilho`.
 # A Subsurface (Random Walk, Radius de omissão (1; 0,2; 0,1), Scale = o raio em células) precisa de um VOLUME:

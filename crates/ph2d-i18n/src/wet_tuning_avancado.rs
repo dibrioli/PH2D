@@ -19,6 +19,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.wet_tuning.knob.sheen" => "Sheen",
         "panel.wet_tuning.knob.subsurface" => "Subsurface",
         "panel.wet_tuning.knob.subsurfaceRadius" => "Subsurface Radius",
+        "panel.wet_tuning.knob.transparency" => "Transparency",
         "panel.wet_tuning.knob.lockMaterial" => "Lock material (off · on)",
         "panel.wet_tuning.knob.knifeRidge" => "Knife ridge",
         "panel.wet_tuning.knob.knifeLevel" => "Knife leveling",

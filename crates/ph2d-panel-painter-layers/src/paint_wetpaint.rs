@@ -445,9 +445,9 @@ fn paint_oleo_real(
     paint_oleo_material(ctx, theme, x, content_w, y, brush)
 }
 
-/// Os rótulos das 8 linhas do material (nomes do Blender), pela ordem de `MaterialCartao::CAMPOS`; o que não cabe
+/// Os rótulos das linhas do material (nomes do Blender), pela ordem de `MaterialCartao::CAMPOS`; o que não cabe
 /// parte-se em duas linhas ([`crate::duas_linhas`]).
-pub(crate) const MATERIAL: [&str; 8] = [
+pub(crate) const MATERIAL: [&str; ph2d_tool_painter::ids::PAINTER_WETPAINT_OLEO_MATERIAL.len()] = [
     "panel.painter_layers.wetpaint.oleo_metallic",
     "panel.painter_layers.wetpaint.oleo_roughness",
     "panel.painter_layers.wetpaint.oleo_ior_level",
@@ -456,6 +456,7 @@ pub(crate) const MATERIAL: [&str; 8] = [
     "panel.painter_layers.wetpaint.oleo_sheen",
     "panel.painter_layers.wetpaint.oleo_subsurface",
     "panel.painter_layers.wetpaint.oleo_subsurface_radius",
+    "panel.painter_layers.wetpaint.oleo_transparency",
 ];
 
 /// O **material** global do Real Oil (W3): os 8 controlos do Principled simplificado, com os nomes do Blender. O

@@ -259,7 +259,8 @@ fn oleo_de_json(o: &mut ph2d_wet_paint::oleo_real::OleoReal, v: &Value) {
     }
 }
 
-/// A versão do material do cartão na macro: `2` = os 8 valores absolutos da W3.
+/// A versão do material do cartão na macro: `2` = os valores absolutos da W3 (a Transparency, 27/10, entrou sem
+/// mudar a versão: ausente = o valor de agora, `0` num cartão novo).
 const MAT_V: u64 = 2;
 
 impl PainterTool {

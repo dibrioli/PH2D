@@ -14,11 +14,14 @@ pub use crate::material::MaterialCelula;
 pub use crate::oleo_ambiente::Ambiente;
 use crate::oleo_ambiente::{CUNHA, Sectores};
 pub use oleo_material::{
-    MaterialCartao, PERFIL_SUBSUPERFICIE, RUGOSIDADE_PADRAO, alcance_subsuperficie,
+    MaterialCartao, N_CAMPOS, PERFIL_SUBSUPERFICIE, RUGOSIDADE_PADRAO, alcance_subsuperficie,
 };
 
+#[path = "oleo_cache.rs"]
+mod oleo_cache;
 #[path = "oleo_material.rs"]
 mod oleo_material;
+pub use oleo_cache::{CacheCampo, ChaveCampo};
 
 /// Os knobs do Óleo Real. `1.0` em profundidade, sombra e brilho = o look das capturas `A_base`
 /// (Rebelle: impasto 8, SoftShadows 10, Gloss 10, luz 42°).
@@ -596,7 +599,8 @@ impl CampoAltura {
 }
 
 /// A cor LINEAR da célula `i` sobre o papel branco: as camadas visíveis por cima umas das outras pela cobertura
-/// (a lei [`crate::assenta::Ecra::Porto`]; o rebote só precisa do tom da parede).
+/// (a lei [`crate::assenta::Ecra::Porto`]; o rebote só precisa do tom da parede). A Transparency NÃO entra aqui (o
+/// campo não depende do cartão além da sua chave, `oleo_cache`): o rebote clareia a parede transparente.
 fn albedo_da_celula(camadas: &[(&Grid, bool)], i: usize) -> [f32; 3] {
     let (mut p, mut pa) = ([0.0f64; 3], 0.0f64);
     for &(lg, visivel) in camadas {
@@ -1213,8 +1217,19 @@ pub fn rebote_no_papel(o: &OleoReal, campo: &CampoAltura, cx: usize, cy: usize) 
     let forca = o.forca_ambiente;
     let escala = escala_do_horizonte(o);
     let lum = |q: (isize, isize)| {
-        let a = campo.albedo[campo.idx(q.0, q.1)];
-        0.2126 * f64::from(a[0]) + 0.7152 * f64::from(a[1]) + 0.0722 * f64::from(a[2])
+        let k = campo.idx(q.0, q.1);
+        let a = campo.albedo[k];
+        let l = 0.2126 * f64::from(a[0]) + 0.7152 * f64::from(a[1]) + 0.0722 * f64::from(a[2]);
+        // A parede TRANSPARENTE (a Transparency) mostra o papel branco por trás: `1 − (1 − t)·(1 − A)`.
+        let t = crate::material::transparencia(
+            campo.material.get(k).map_or(0.0, |m| m.transparencia),
+            o.material.transparencia,
+        );
+        if t > 0.0 {
+            1.0 - (1.0 - t) * (1.0 - l)
+        } else {
+            l
+        }
     };
     // `∫₀^a cos(θ − g)·sin θ dθ`: o peso pelo cosseno de um arco da fatia (o da visibilidade).
     let int =
@@ -1271,6 +1286,26 @@ pub fn rebote_no_papel(o: &OleoReal, campo: &CampoAltura, cx: usize, cy: usize) 
 #[must_use]
 pub fn sombra_dos_termos(o: &OleoReal, t: &Termos) -> f64 {
     sombra_de(o, t.luz, t.vis, t.dir)
+}
+
+/// ⭐ **A sombra no papel sob a tinta TRANSPARENTE** (Transparency `t`, dono 27/10; medida contra o Cycles com o
+/// Alpha do Principled, `oraculo/README.md` §Transparency): a fracção `s` que a tinta OPACA tiraria ao papel da
+/// célula de cobertura geométrica `a` (`0..1`, a orla parcial). A luz que a tinta projectaria ATRAVESSA-A por duas
+/// faces (entra pela parede, sai pelo topo): passa `t²` — `s·(1 − t²)`; o Cycles com o Alpha na mesma malha dá a
+/// sombra a T 0,5 em `0,77` da de T 0 (`1 − t²` = `0,75`; `1 − t` seria `0,5`). O papel SOB a tinta recebe a luz
+/// que atravessa o topo (`× t`) e é visto através dele: a parte coberta pesa `a·t²` em vez de `a·t` no composite
+/// `a·(1 − t)` por cima. `t = 0` devolve `s` ao bit; `t = 1`, `0` (o Alpha 0: a tinta não projecta nada).
+#[must_use]
+pub fn sombra_transparente(s: f64, a: f64, t: f64) -> f64 {
+    if t <= 0.0 {
+        return s;
+    }
+    let atravessa = s * (1.0 - t * t);
+    let deixa = 1.0 - a * (1.0 - t);
+    if deixa <= 0.0 {
+        return atravessa;
+    }
+    (1.0 - (1.0 - atravessa) * (a * t * t + (1.0 - a)) / deixa).clamp(0.0, 1.0)
 }
 
 /// A sombra no papel em `u8` (o plano que o composite guarda): a MESMA conversão nos dois caminhos. `s` é uma

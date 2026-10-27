@@ -258,6 +258,9 @@ pub enum Knob {
     Subsurface,
     /// … Subsurface Radius (px de tela).
     SubsurfaceRadius,
+    /// … Transparency (`1 − Alpha`, dono 27/10): o que a tinta deixa ver do que está por baixo, sem mudar o
+    /// pigmento, a espessura nem o relevo ([`crate::material::transparente`]).
+    Transparency,
     /// ⭐ **Lock Reflectivity** (o Rebelle): `1` = pintar sem mudar o material já pousado — o pigmento muda, o material
     /// da célula com tinta fica; no papel limpo pousa o do pincel. `0` = o material mistura-se.
     LockMaterial,
@@ -272,7 +275,7 @@ pub enum Knob {
     TextureSizeExpAcross,
 }
 
-pub const KNOB_COUNT: usize = 122;
+pub const KNOB_COUNT: usize = 123;
 
 /// O LEITOR TOLERANTE das chaves do material de antes da W3 (preset e macro gravados com elas): `(knob, valor)`
 /// na lei nova, `None` para uma chave que não é antiga. `roughnessMul` m → Roughness `0,5·m` (o neutro `1` → `0,5`,

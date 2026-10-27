@@ -54,7 +54,7 @@ impl Perfil {
         let base = Comportamento {
             perfil: self,
             onde: Onde::XY,
-            amplitude: 0.08,
+            amplitude: 0.1,
             frequencia: 3.0,
             semente: 0.0,
             velocidade: 90.0,
@@ -73,9 +73,11 @@ impl Perfil {
                 ..base
             },
             Self::Orbitar => base,
-            // O atrito máximo da lei do `sim.step`: puxa, passa do alvo uma vez e assenta.
+            // O atrito máximo da lei do `sim.step`: puxa, passa do alvo uma vez e assenta. O alcance é
+            // largo: fora dele a força é ZERO e um objecto atirado para lá fica perdido (medido na cena
+            // 10 em laço: a limalha saiu do raio de 6 m e congelou a 9,6 m do íman).
             Self::Atrair => Comportamento {
-                raio: 6.0,
+                raio: 30.0,
                 amortece: 0.0,
                 ..base
             },

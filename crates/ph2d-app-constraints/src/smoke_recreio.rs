@@ -50,7 +50,7 @@ pub(crate) fn recreio(world: &mut World) -> Entity {
         [0.0, IMA_Y + 1.0],
         0.0,
         [0.3, 0.3],
-        [0.35, 0.35, 0.4, 1.0],
+        [0.4, 0.9, 0.5, 1.0],
     );
     let moeda = peca(
         world,
@@ -88,6 +88,10 @@ pub(crate) fn recreio(world: &mut World) -> Entity {
         [0.35, 0.2],
         [0.85, 0.85, 0.8, 1.0],
     );
+    // A limalha cola-se ao íman: desenha-se por cima dele, senão some debaixo do quadrado.
+    world
+        .entity_mut(limalha)
+        .insert(ph2d_ecs::ZIndexOverride(1));
     ph2d_ecs::assign_missing_stable_ids(world);
     let peso = Peso {
         objecto: stable_id_of(world, ima).map_or(0, |s| s.0),
@@ -106,7 +110,11 @@ pub(crate) fn recreio(world: &mut World) -> Entity {
     pilha(world, moeda, &[(Kind::Comportamento(treme), None, 1.0)]);
     let flutua = Kind::Comportamento(Perfil::Flutuar.numeros());
     pilha(world, balao, &[(flutua, None, 1.0)]);
-    pilha(world, lua, &[(Kind::Comportamento(orbita), Some(planeta), 1.0)]);
+    pilha(
+        world,
+        lua,
+        &[(Kind::Comportamento(orbita), Some(planeta), 1.0)],
+    );
     let atrai = Kind::Comportamento(Perfil::Atrair.numeros());
     pilha(world, limalha, &[(atrai, Some(ima), 1.0)]);
     moeda

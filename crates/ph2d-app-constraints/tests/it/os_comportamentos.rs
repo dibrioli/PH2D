@@ -205,12 +205,18 @@ fn the_weight_is_the_falloff_field_bit_for_bit() {
 #[test]
 fn the_attract_force_is_the_attractor_law_bit_for_bit() {
     let lei = Atracao::from(&Perfil::Atrair.numeros());
-    for p in [[0.0, 0.0], [3.0, -1.5], [15.9, 20.0], [40.0, 0.0]] {
+    for p in [
+        [0.0, 0.0],
+        [3.0, -1.5],
+        [15.9, 20.0],
+        [40.0, 0.0],
+        [10.0, 31.0],
+    ] {
         let s = cozinha(
             "force.attractor",
             &[
                 ("strength", 40.0),
-                ("radius", 6.0),
+                ("radius", 30.0),
                 ("target_x", 10.0),
                 ("target_y", 20.0),
             ],
@@ -273,7 +279,11 @@ fn attract_scrubs_to_the_same_bit() {
         .map(|f| em(&mut sim, &mut drive, &doc, f as f64 / fps).translation.x)
         .collect();
     assert_eq!(tocado[0], 0.0, "no quadro 0 parte do repouso");
-    assert!(tocado[39] > 3.0, "chega ao alvo: {tocado:?}");
+    assert!(
+        tocado.iter().any(|x| *x > 4.0),
+        "chega ao alvo e passa: {tocado:?}"
+    );
+    assert!(tocado.iter().all(|x| *x < 8.0), "nunca foge: {tocado:?}");
     for f in [12, 3, 31] {
         let x = em(&mut sim, &mut drive, &doc, f as f64 / fps).translation.x;
         assert_eq!(x.to_bits(), tocado[f].to_bits(), "quadro {f}");

@@ -4,11 +4,11 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
+use bevy_ecs::entity::Entity;
 use ph2d_constraints::Kind;
 use ph2d_constraints::comportamento::Perfil;
 use ph2d_constraints_ecs::comportamento::Atracao;
 use ph2d_constraints_ecs::{Comportamentos, Constraints};
-use bevy_ecs::entity::Entity;
 use ph2d_ecs::{SimWorld, StableId};
 
 use crate::relogio::Relogio;

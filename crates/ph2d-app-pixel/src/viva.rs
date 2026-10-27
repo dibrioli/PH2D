@@ -402,8 +402,8 @@ pub(crate) fn press(app: &mut PixelApp, c: &Canvas<'_>, key: u32, p: (f32, f32))
     Some(Press::Done)
 }
 
-/// Mover com uma forma viva: o arrasto em curso re-cozinha-a; sem arrasto, só guarda o ponteiro
-/// (a alça quente). `false` = não há forma viva.
+/// Mover com uma forma viva: guarda o ponteiro (a alça quente) e o arrasto em curso re-cozinha-a.
+/// `true` = só durante um arrasto — sem ele o movimento segue (o pan do botão do meio).
 pub(crate) fn moved(app: &mut PixelApp, c: &Canvas<'_>, p: (f32, f32), m: Mods) -> bool {
     let Some(key) = app
         .gesture
@@ -417,26 +417,31 @@ pub(crate) fn moved(app: &mut PixelApp, c: &Canvas<'_>, p: (f32, f32), m: Mods) 
     if let Some(d) = app.docs.get_mut(&key) {
         d.stamp = stamp;
     }
+    let Some(agarra) = viva_mut(app).and_then(|v| {
+        v.cursor = Some(p);
+        v.agarra
+    }) else {
+        return false;
+    };
     let Some((v, screen)) = alvo(app, c, key) else {
         return true;
     };
-    let (forma, agarra, g) = (v.forma, v.agarra, v.geo());
+    let (forma, g) = (v.forma, v.geo());
     let to = imagem(screen, Point::new(f64::from(p.0), f64::from(p.1)));
     match agarra {
-        None => {}
-        Some(Agarra::Caixa {
+        Agarra::Caixa {
             handle,
             from,
             m0,
             p0,
-        }) => {
+        } => {
             let size = (v.w, v.h);
             if let Some(v) = viva_mut(app) {
                 (v.m, v.pivot) = m0.drag(p0, size, handle, (from, to), drag_opts(m));
             }
             app.reaviva();
         }
-        Some(Agarra::Alca(mut d)) => {
+        Agarra::Alca(mut d) => {
             let q = g.xf.inverse() * Point::new(to.x, to.y);
             let half = g.half;
             let ck =
@@ -454,22 +459,17 @@ pub(crate) fn moved(app: &mut PixelApp, c: &Canvas<'_>, p: (f32, f32), m: Mods) 
             escreve(app, forma, novos);
         }
     }
-    if let Some(v) = viva_mut(app) {
-        v.cursor = Some(p);
-    }
     true
 }
 
-/// Largar com uma forma viva: o arrasto acaba e ela continua viva. `false` = não há forma viva.
+/// Largar com uma forma viva: o arrasto acaba e ela continua viva. `false` = o premir não foi dela
+/// (o largar do botão do meio segue para o pan).
 pub(crate) fn release(app: &mut PixelApp) -> bool {
     let Some(g) = app.gesture.as_mut().filter(|g| g.viva.is_some()) else {
         return false;
     };
-    g.held = false;
-    if let Some(v) = g.viva.as_mut() {
-        v.agarra = None;
-    }
-    true
+    let premida = std::mem::take(&mut g.held);
+    g.viva.as_mut().and_then(|v| v.agarra.take()).is_some() || premida
 }
 
 /// `Esc` a meio de um arrasto: a caixa ou os campos voltam aos do premir e a forma continua viva.

@@ -140,6 +140,9 @@ pub fn press(app: &mut PixelApp, c: &Canvas<'_>, p: (f32, f32), button: Button, 
     }
     // P6d: as alças da forma viva; fora delas ela assenta e o premir segue.
     if let Some(r) = crate::viva::press(app, c, key, p) {
+        if let Some(g) = app.gesture.as_mut() {
+            g.held = true;
+        }
         return r;
     }
     // A ferramenta Transform sem moldura levanta (a selecção, ou o cel inteiro) e o premir segue
@@ -313,6 +316,9 @@ pub fn moved(app: &mut PixelApp, c: &Canvas<'_>, p: (f32, f32), m: Mods) -> bool
     if crate::solta::moved(app, c, p, m) || crate::viva::moved(app, c, p, m) {
         return true;
     }
+    if app.live_shape().is_some() {
+        return false;
+    }
     if app.laco.is_some() {
         let at = c.editing.and_then(|bits| {
             let key = key_of(c.world, bits)?;
@@ -432,6 +438,9 @@ pub fn release(app: &mut PixelApp) -> bool {
     }
     if crate::viva::nasce(app) {
         return true;
+    }
+    if app.live_shape().is_some() {
+        return false;
     }
     let Some(g) = app.gesture.as_mut() else {
         return false;

@@ -278,3 +278,23 @@ fn scene_12_shows_a_live_rotated_star_with_its_handles() {
         .expect("a estrela pintou");
     assert!(topo.0 > meio.0 + 3, "a ponta de cima girou: {topo:?}");
 }
+
+#[test]
+fn with_a_live_shape_a_move_or_release_without_a_drag_goes_on_to_the_middle_button_pan() {
+    let mut m = Mesa::nova();
+    m.desenha(Tool::Rectangle, (4, 4), (20, 16));
+    let (forma, antes) = (m.app.live_shape().expect("viva").forma(), m.raio());
+    let c = canvas(&m.sim, &m.cam, m.bits);
+    for p in [m.celula((30, 30)), m.celula((2, 2)), m.celula((12, 10))] {
+        assert!(
+            !input::moved(&mut m.app, &c, p, Mods::default()),
+            "sem arrasto o mover segue para o pan"
+        );
+    }
+    assert!(!input::release(&mut m.app), "o largar do meio segue");
+    assert_eq!(m.app.live_shape().map(|v| v.forma()), Some(forma));
+    assert_eq!(m.raio(), antes);
+    assert_eq!(m.v((4, 4)), CLEAR, "nada assentou");
+    m.tecla(KeyCode::Enter);
+    assert_eq!(m.v((4, 4)), WHITE, "a caixa não andou com o pan");
+}

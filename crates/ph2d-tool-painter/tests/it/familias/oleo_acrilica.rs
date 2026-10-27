@@ -1,4 +1,4 @@
-//! **Família `oleo_acrilica`** — J4, catálogo G (óleo, acrílica): Oil Bristle, Express Oil, Dabber, Filbert, Flat Bristle.
+//! **Família `oleo_acrilica`** — J4, catálogo G (óleo, acrílica): Oil Bristle, Express Oil, Dabber, Filbert, Flat Bristle; e as quatro facas aprovadas da W2 do Óleo Real (E4).
 //! A Acrylic Round saiu na 2.ª ronda: fundida no Hard Round (`exames/oleo_acrilica.md`, G-2).
 //! Escreva aqui as receitas e os testes da família; nada fora deste ficheiro (`docs/Painter/Pinceis/04_BANCADA.md` §9).
 
@@ -61,45 +61,158 @@ pub const WET: &[Receita] = &[
         pincel: &[],
         nasce_de: None,
     },
-    // `dabberc_032` (prompt 53): o Oil Bristle de cerdas largas, mais relevo e a ponta espalhada (jitter) — a esponja.
-    // L13 (J2, 20/10): a esponja é REDONDA (o vertical do Rebelle tem a largura do deitado: 38/38) e morde o papel; a
-    // lâmina de pé do Oil Bristle espalhada pelo Jitter era o «rasgado» (rugosidade 2,97 × 1,05). Grelha flatten 0 ×
-    // jitter 0–0,5 × paperGate 0–1 à largura do Rebelle: 0,4 · 1 = 390/420 (era 346), rugosidade 0 ✗ (eram 20).
-    Receita {
-        grupo: "Dabber",
-        nome: "Dabber",
-        bristle_size: 2.0,
-        hardness: 0.6,
-        size_px: Some(51.0),
-        gate: 1.0,
-        achatado: Some((0.0, 90)),
-        extras: &[
-            ("felt", 0.05),
-            ("bristleStrength", 2.0),
-            // J4 (`exames/oleo_acrilica.md`, contra a bateria do Rebelle `Dabber/Dabber`): o relevo 1,2 → 0,5 e o claro por
-            // fio 0,55 → 0,1 — o nosso saía às manchas claras e escuras onde o dele é um granulado fino e igual (régua
-            // 182 → 192/227 com o jitter 0,3).
-            ("emboss", 0.5),
-            ("bristlePressure", 1.2),
-            ("bristleLaneWidth", 1.5),
-            ("bristleLift", 0.4),
-            ("bristleNoiseSat", 0.3),
-            // O grão claro da esponja: as duas fotos do Rebelle cercam-no (a da bateria: textura do recto ≤ ~11, 0,6 dá
-            // 11,3 ✗; a do 52 seca: ≥ 9,6, o vale do Wet Round) — 0,55 dá 10,9 e 9,67 (0,25: 9,9 e 8,1 ✗).
-            ("bristleNoiseLight", 0.1),
-            ("bristleHeight", 0.75),
-            ("pigmentSpacing", 0.0),
-            ("capsuleMaxPx", 2.0),
-            ("pressureSizeCurve", 0.25),
-            ("pressureOpacity", 1.0),
-            ("pressureOpacityCurve", 3.0),
-        ],
-        pincel: &[("jitter", "0.3")],
-        nasce_de: Some("Oil Bristle"),
-        ..OIL_BRISTLE
-    },
+    DABBER,
     FILBERT,
+    KNIFE_SMOOTH_3,
+    KNIFE_OILY,
+    KNIFE_GRAINY,
+    KNIFE_DRY,
 ];
+
+// `dabberc_032` (prompt 53): o Oil Bristle de cerdas largas, mais relevo e a ponta espalhada (jitter) — a esponja.
+// L13 (J2, 20/10): a esponja é REDONDA (o vertical do Rebelle tem a largura do deitado: 38/38) e morde o papel; a
+// lâmina de pé do Oil Bristle espalhada pelo Jitter era o «rasgado» (rugosidade 2,97 × 1,05). Grelha flatten 0 ×
+// jitter 0–0,5 × paperGate 0–1 à largura do Rebelle: 0,4 · 1 = 390/420 (era 346), rugosidade 0 ✗ (eram 20).
+const DABBER: Receita = Receita {
+    grupo: "Dabber",
+    nome: "Dabber",
+    bristle_size: 2.0,
+    hardness: 0.6,
+    size_px: Some(51.0),
+    gate: 1.0,
+    achatado: Some((0.0, 90)),
+    extras: &[
+        ("felt", 0.05),
+        ("bristleStrength", 2.0),
+        // J4 (`exames/oleo_acrilica.md`, contra a bateria do Rebelle `Dabber/Dabber`): o relevo 1,2 → 0,5 e o claro por
+        // fio 0,55 → 0,1 — o nosso saía às manchas claras e escuras onde o dele é um granulado fino e igual (régua
+        // 182 → 192/227 com o jitter 0,3).
+        ("emboss", 0.5),
+        ("bristlePressure", 1.2),
+        ("bristleLaneWidth", 1.5),
+        ("bristleLift", 0.4),
+        ("bristleNoiseSat", 0.3),
+        // O grão claro da esponja: as duas fotos do Rebelle cercam-no (a da bateria: textura do recto ≤ ~11, 0,6 dá
+        // 11,3 ✗; a do 52 seca: ≥ 9,6, o vale do Wet Round) — 0,55 dá 10,9 e 9,67 (0,25: 9,9 e 8,1 ✗).
+        ("bristleNoiseLight", 0.1),
+        ("bristleHeight", 0.75),
+        ("pigmentSpacing", 0.0),
+        ("capsuleMaxPx", 2.0),
+        ("pressureSizeCurve", 0.25),
+        ("pressureOpacity", 1.0),
+        ("pressureOpacityCurve", 3.0),
+    ],
+    pincel: &[("jitter", "0.3")],
+    nasce_de: Some("Oil Bristle"),
+    ..OIL_BRISTLE
+};
+
+// ⭐ As FACAS (Óleo Real W2 E4, `docs/Painter/Pinceis/W2_Knife_E4.md`): o Dabber de fábrica + a lâmina da lei L3
+// (`06_LEIS_DAS_LACUNAS` §1: fixa no eixo longo do Rebelle, `dab_flatten ≈ 1 − fino/longo`; seguidora `dabRotation` 1 a
+// 90°), a crista `knifeRidge`, a carga e o papel. Aprovadas na revisão cega r2 (o revisor tomou a nossa pelo Rebelle).
+// Os valores são os do ficheiro que a revisão viu, 1:1.
+const KNIFE_SMOOTH_3: Receita = Receita {
+    grupo: "Knife",
+    nome: "Knife Smooth 3",
+    pigment: 600.0,
+    gate: 1.2,
+    hardness: 1.0,
+    achatado: Some((0.8, 90)),
+    grao: Some(("Noise", 6.0)),
+    extras: &[
+        ("dabRotation", 1.0),
+        ("knifeRidge", 8.0),
+        ("emboss", 0.0),
+        ("paperContrast", 2.2),
+        ("pressureSize", 0.4),
+        ("pressureSizeCurve", 1.0),
+        ("pressureOpacityCurve", 1.0),
+        ("levelingOwnStroke", 1.0),
+    ],
+    pincel: &[
+        ("dab_quina", "1.0"),
+        ("falloff", "\"Constant\""),
+        ("jitter", "0.0"),
+    ],
+    nasce_de: Some("Dabber"),
+    ..DABBER
+};
+
+/// O Knife Oily: a lâmina FIXA a 172° e a carga em degradê ao longo dela (a forma [`CARGA_DA_LAMINA`] do G-7).
+const KNIFE_OILY: Receita = Receita {
+    grupo: "Knife",
+    nome: "Knife Oily",
+    pigment: 150.0,
+    gate: 0.0,
+    hardness: 0.5,
+    achatado: Some((0.69, 172)),
+    extras: &[
+        ("dabRotation", 0.0),
+        ("knifeRidge", 3.0),
+        ("emboss", 0.1),
+        ("pressureSize", 0.6),
+        ("pressureSizeCurve", 1.0),
+        ("pressureOpacityCurve", 1.0),
+        ("levelingOwnStroke", 1.0),
+    ],
+    pincel: &[
+        ("dab_quina", "1.0"),
+        ("jitter", "0.0"),
+        ("shape", CARGA_DA_LAMINA),
+    ],
+    nasce_de: Some("Dabber"),
+    ..DABBER
+};
+
+const KNIFE_GRAINY: Receita = Receita {
+    grupo: "Knife",
+    nome: "Knife Grainy",
+    pigment: 600.0,
+    gate: 1.2,
+    hardness: 1.0,
+    achatado: Some((0.8, 90)),
+    grao: Some(("Clouds", 20.0)),
+    extras: &[
+        ("dabRotation", 1.0),
+        ("knifeRidge", 2.0),
+        ("emboss", 0.1),
+        ("paperContrast", 2.0),
+        ("pressureSize", 0.3),
+        ("pressureSizeCurve", 1.0),
+        ("pressureOpacityCurve", 1.0),
+        ("levelingOwnStroke", 1.0),
+    ],
+    pincel: &[
+        ("dab_quina", "1.0"),
+        ("falloff", "\"Constant\""),
+        ("jitter", "0.1"),
+    ],
+    nasce_de: Some("Dabber"),
+    ..DABBER
+};
+
+const KNIFE_DRY: Receita = Receita {
+    grupo: "Knife",
+    nome: "Knife Dry",
+    pigment: 400.0,
+    gate: 1.0,
+    hardness: 0.4,
+    achatado: Some((0.74, 170)),
+    grao: Some(("Noise", 6.0)),
+    extras: &[
+        ("dabRotation", 0.0),
+        ("knifeRidge", 0.0),
+        ("emboss", 0.1),
+        ("extDryBrush", 0.6),
+        ("pressureSize", 0.6),
+        ("pressureSizeCurve", 1.0),
+        ("pressureOpacityCurve", 1.0),
+        ("levelingOwnStroke", 1.0),
+    ],
+    pincel: &[("dab_quina", "1.0"), ("jitter", "0.0")],
+    nasce_de: Some("Dabber"),
+    ..DABBER
+};
 
 /// Os REPROVADOS da J4 (`docs/Painter/Pinceis/exames/oleo_acrilica.md`): a receita fica para quem os retomar, sem ficheiro
 /// na fábrica (`os_reprovados_do_oleo_nao_estao_na_fabrica`).
@@ -115,6 +228,265 @@ pub const WET: &[Receita] = &[
 ///   Rebelle nas 6 linhas (média) e os dois listam as PONTAS (as do Rebelle cortadas a direito, as nossas desfiadas
 ///   cerda a cerda) e, a 200 px, as ~15 riscas escuras espaçadas dele contra o nosso campo denso de estrias.
 pub const EM_ESTUDO: &[Receita] = &[FLAT_BRISTLE, RAKE];
+
+/// Os CURADOS-NÃO-APROVADOS da W2 do Óleo Real (E4): o ficheiro de cada um vive em `docs/Painter/Pinceis/W2_<grupo>_candidatos/`
+/// (a bancada lê-o pelo caminho) e a receita aqui o refaz ([`os_candidatos_da_w2_sao_as_suas_receitas`]); nenhum entra
+/// na fábrica (`os_reprovados_do_oleo_nao_estao_na_fabrica`). Porquê de cada um: `W2_Knife_E4.md`, `W2_Dabber_E4.md`,
+/// `W2_Metallic_exame.md`.
+pub const EM_ESTUDO_W2: &[(&str, Receita)] = &[
+    (
+        "Knife",
+        Receita {
+            nome: "Knife Smooth",
+            gate: 0.8,
+            hardness: 0.5,
+            achatado: Some((0.0, 0)),
+            grao: Some(("Noise", 6.0)),
+            extras: &[
+                ("dabRotation", 0.0),
+                ("knifeRidge", 3.0),
+                ("emboss", 0.1),
+                ("pressureSize", 0.4),
+                ("pressureSizeCurve", 1.0),
+                ("pressureOpacityCurve", 1.0),
+                ("levelingOwnStroke", 1.0),
+            ],
+            pincel: &[("dab_quina", "1.0"), ("jitter", "0.0")],
+            ..KNIFE_SMOOTH_3
+        },
+    ),
+    (
+        "Knife",
+        Receita {
+            nome: "Knife Smooth 2",
+            pigment: 2000.0,
+            gate: 0.0,
+            grao: None,
+            extras: &[
+                ("dabRotation", 1.0),
+                ("knifeRidge", 8.0),
+                ("emboss", 0.0),
+                ("pressureSize", 0.4),
+                ("pressureSizeCurve", 1.0),
+                ("pressureOpacityCurve", 1.0),
+                ("levelingOwnStroke", 1.0),
+            ],
+            pincel: &[
+                ("dab_quina", "0.5"),
+                ("falloff", "\"Constant\""),
+                ("jitter", "0.0"),
+            ],
+            ..KNIFE_SMOOTH_3
+        },
+    ),
+    (
+        "Knife",
+        Receita {
+            nome: "Knife Textured",
+            pigment: 400.0,
+            gate: 1.0,
+            achatado: Some((0.87, 86)),
+            grao: None,
+            extras: &[
+                ("dabRotation", 0.0),
+                ("knifeRidge", 4.0),
+                ("emboss", 0.1),
+                ("pressureSize", 0.6),
+                ("pressureSizeCurve", 1.0),
+                ("pressureOpacityCurve", 1.0),
+                ("levelingOwnStroke", 1.0),
+            ],
+            pincel: &[
+                ("dab_quina", "0.5"),
+                ("falloff", "\"Constant\""),
+                ("jitter", "0.0"),
+                ("texture", ESTRIAS_DO_TEXTURED),
+            ],
+            ..KNIFE_SMOOTH_3
+        },
+    ),
+    (
+        "Knife",
+        Receita {
+            nome: "Knife Stain",
+            gate: 1.5,
+            grao: Some(("Noise", 5.0)),
+            extras: &[
+                ("dabRotation", 1.0),
+                ("knifeRidge", 0.0),
+                ("emboss", 0.1),
+                ("paperContrast", 2.5),
+                ("pressureSize", 0.3),
+                ("pressureSizeCurve", 1.0),
+                ("pressureOpacityCurve", 1.0),
+                ("levelingOwnStroke", 1.0),
+            ],
+            ..KNIFE_SMOOTH_3
+        },
+    ),
+    (
+        "Knife",
+        Receita {
+            nome: "Knife Soft",
+            pigment: 500.0,
+            gate: 1.0,
+            hardness: 0.3,
+            achatado: Some((0.84, 178)),
+            extras: &[
+                ("dabRotation", 0.0),
+                ("knifeRidge", 2.0),
+                ("emboss", 0.1),
+                ("pressureSize", 0.6),
+                ("pressureSizeCurve", 1.0),
+                ("pressureOpacityCurve", 1.0),
+                ("levelingOwnStroke", 1.0),
+            ],
+            ..KNIFE_DRY
+        },
+    ),
+    (
+        "Knife",
+        Receita {
+            nome: "Knife Dry 2",
+            pigment: 300.0,
+            gate: 1.2,
+            achatado: Some((0.79, 10)),
+            extras: &[
+                ("dabRotation", 0.0),
+                ("knifeRidge", 0.0),
+                ("emboss", 0.1),
+                ("extDryBrush", 0.85),
+                ("pressureSize", 0.6),
+                ("pressureSizeCurve", 1.0),
+                ("pressureOpacityCurve", 1.0),
+                ("levelingOwnStroke", 1.0),
+            ],
+            ..KNIFE_DRY
+        },
+    ),
+    (
+        "Dabber",
+        Receita {
+            nome: "Dabber 2",
+            bristle_size: 3.0,
+            gate: 0.5,
+            pincel: &[("jitter", "0.6")],
+            nasce_de: Some("Dabber"),
+            ..DABBER
+        },
+    ),
+    (
+        "Dabber",
+        Receita {
+            nome: "Dabber 3",
+            bristle_size: 8.0,
+            bristle_count: 400.0,
+            grao: Some(("Stucci", 45.0)),
+            extras: &[("bristleLift", 0.8), ("emboss", 0.8), ("felt", 0.0)],
+            pincel: &[("jitter", "0.5")],
+            nasce_de: Some("Dabber"),
+            ..DABBER
+        },
+    ),
+    (
+        "Dabber",
+        Receita {
+            nome: "Dabber 4",
+            grao: Some(("Stucci", 180.0)),
+            achatado: Some((0.6, 90)),
+            extras: &[("dabRotation", 0.0)],
+            pincel: &[("jitter", "0.1")],
+            nasce_de: Some("Dabber"),
+            ..DABBER
+        },
+    ),
+    (
+        "Dabber",
+        Receita {
+            nome: "Fan",
+            bristle_size: 3.0,
+            pigment: 1000.0,
+            achatado: Some((0.78, 0)),
+            extras: &[
+                ("bristleLaneWidth", 3.0),
+                ("bristleRemove", 0.3),
+                ("dabRotation", 0.0),
+                ("emboss", 0.8),
+            ],
+            pincel: &[("continuous_spacing", "false"), ("jitter", "0.15")],
+            nasce_de: Some("Dabber"),
+            ..DABBER
+        },
+    ),
+    (
+        "Metallic",
+        Receita {
+            grupo: "Metallic",
+            nome: "Metallic Flat",
+            pigment: 300.0,
+            size_px: Some(40.0),
+            extras: &[
+                ("bristleHeight", 0.0),
+                ("bristleLaneWidth", 1.5),
+                ("bristleNoiseSat", 0.05),
+                ("bristlePressure", 0.3),
+                ("bristleStrength", 0.1),
+                ("bristleTipRagged", 1.2),
+                ("emboss", 0.2),
+                ("metallic", 0.6),
+                ("pressureOpacity", 0.6),
+                ("pressureSize", 0.1),
+                ("roughnessMul", 1.4),
+            ],
+            pincel: &[("dab_quina", "0.75")],
+            nasce_de: Some("Filbert"),
+            ..FILBERT
+        },
+    ),
+    (
+        "Metallic",
+        Receita {
+            grupo: "Metallic",
+            nome: "Metallic Round",
+            size_px: Some(33.0),
+            extras: &[
+                ("bristleHeight", 0.0),
+                ("emboss", 1.5),
+                ("metallic", 0.6),
+                ("pressureSize", 0.2),
+                ("roughnessMul", 1.4),
+            ],
+            nasce_de: Some("Dabber"),
+            ..DABBER
+        },
+    ),
+    (
+        "Metallic",
+        Receita {
+            grupo: "Metallic",
+            nome: "Metallic Splats",
+            pigment: 50.0,
+            size_px: Some(18.0),
+            extras: &[
+                ("bristleStrength", 0.0),
+                ("emboss", 0.2),
+                ("metallic", 1.0),
+                ("pressureOpacity", 0.3),
+                ("pressureSize", 0.0),
+                ("roughnessMul", 0.8),
+            ],
+            pincel: &[("jitter", "0.0"), ("dab_jitter", POEIRA_DOS_SPLATS)],
+            nasce_de: Some("Dabber"),
+            ..DABBER
+        },
+    ),
+];
+
+/// O grão de estrias do Knife Textured (`Noise` 60 × 2 px, preso à tela).
+const ESTRIAS_DO_TEXTURED: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Noise", "mapping": "Tiled", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [60.0, 2.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
+
+/// O pó do Metallic Splats (as partículas da `dab_jitter`).
+const POEIRA_DOS_SPLATS: &str = r#"{"across": 0.0, "angle_per_stroke": 0.0, "count": 0.0, "flip_x": 0.0, "flip_y": 0.0, "opacity": 0.0, "particle": 1.0, "po": 3.0, "po_alcance": 0.5, "po_px": 1.5, "po_opacidade": 0.5, "roundness": 0.0}"#;
 
 /// **G-9 Rake** (J4, contra o Rebelle `Oil/Rake/Rake Sharp`, 108 px): o redondo que SEGUE o traço (38 px em qualquer
 /// direcção) com metade das faixas de cerdas tiradas (`bristleRemove` 0,5, faixas de 2 px) — riscas paralelas nítidas
@@ -592,12 +964,40 @@ fn os_reprovados_do_oleo_nao_estao_na_fabrica() {
         .iter()
         .map(|e| e.preset.parametros.name.as_str())
         .filter(|n| {
-            EM_ESTUDO.iter().any(|r| r.nome == *n) || EM_ESTUDO_MEIOS.iter().any(|r| r.nome == *n)
+            EM_ESTUDO.iter().any(|r| r.nome == *n)
+                || EM_ESTUDO_MEIOS.iter().any(|r| r.nome == *n)
+                || EM_ESTUDO_W2.iter().any(|(_, r)| r.nome == *n)
         })
         .collect();
     assert!(
         na_fabrica.is_empty(),
         "reprovados na fábrica: {na_fabrica:?}"
+    );
+}
+
+/// Cada curado-não-aprovado da W2 ([`EM_ESTUDO_W2`]) É a sua receita: a receita (pela porta do gerador, a partir do
+/// vizinho de `nasce_de`) dá os parâmetros do ficheiro em `docs/Painter/Pinceis/W2_<grupo>_candidatos/` (a tabela de
+/// largura é a do ficheiro: a do vizinho, não medida) — quem os retomar parte daqui sem reler o PNG.
+#[test]
+fn os_candidatos_da_w2_sao_as_suas_receitas() {
+    let docs =
+        std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../docs/Painter/Pinceis");
+    let mut mudaram = Vec::new();
+    for (pasta, r) in EM_ESTUDO_W2 {
+        let f = docs.join(format!("W2_{pasta}_candidatos/{}.ph2d-brush.png", r.nome));
+        let ficheiro =
+            ph2d_brush_presets::ler(&std::fs::read(&f).unwrap_or_else(|e| panic!("{f:?}: {e}")))
+                .unwrap()
+                .parametros;
+        let mut p = crate::presets_de_fabrica::parametros(r);
+        p.width_table.clone_from(&ficheiro.width_table);
+        if p != ficheiro {
+            mudaram.push(r.nome);
+        }
+    }
+    assert!(
+        mudaram.is_empty(),
+        "a receita não refaz o candidato: {mudaram:?}"
     );
 }
 

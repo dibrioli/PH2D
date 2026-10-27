@@ -334,6 +334,14 @@ a mistura em luz linear (muda TODOS: decisão do dono) · (5) a orla do secador 
 molhado na guache · (8) o fio do arrasto (Smudge Finger) · (9) a lâmina que gira (Flat Oily/Knife, C38) · (10)
 partículas (Particles, Glitter), ondulação do contorno (Oil Bristle), mip das pontas de imagem (Foliage, Noise Grit).
 
+## §3e — Óleo Real W2 E4 (2026-10-27): as facas
+
+✅ **+4 aprovados** (revisão cega r2, o revisor tomou o nosso pelo Rebelle): **Knife Smooth 3 · Knife Oily · Knife Grainy ·
+Knife Dry** ([`W2_Knife_E4.md`](W2_Knife_E4.md)). **Total: 22 aprovados, fábrica 49** (Wet 33, Digital 16). Curados não
+aprovados, fora da fábrica, com a receita em `familias/oleo_acrilica.rs` (`EM_ESTUDO_W2`): Knife Smooth · Smooth 2 ·
+Textured · Stain · Soft · Dry 2; Dabber 2 · 3 · 4 · Fan ([`W2_Dabber_E4.md`](W2_Dabber_E4.md)); Metallic Flat · Round ·
+Splats ([`W2_Metallic_exame.md`](W2_Metallic_exame.md)).
+
 ## §4 — Licenças por ARTEFACTO (medido 19/10 nesta máquina)
 
 | Artefacto | Versão | Licença (fonte) | O que se pode fazer |

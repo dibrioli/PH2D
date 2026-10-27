@@ -21,6 +21,10 @@
   (`73b8e11688`, `eb04c3440d`). Biblioteca (matriz, custo calmo, ordem) `2d6116b4c3`, `002c75267b`. Tutorial PDF
   `a054d6508f`. Fecho 1× (fmt, clippy, 19 576 testes, 0 falhas; 17 curas) até `b74b608d0e`. **Total: 18 aprovados, fábrica 45.**
 
+- **Óleo Real W2 E4** (27/10, [`W2_Knife_E4.md`](W2_Knife_E4.md)): **+4 facas aprovadas** — Knife Smooth 3, Oily, Grainy,
+  Dry. **Total: 22 aprovados, fábrica 49** (Wet 33, Digital 16). Os 13 curados não aprovados da W2 (6 facas, 4 Dabber,
+  3 Metallic) ficam fora da fábrica com a receita (`EM_ESTUDO_W2`).
+
 ## Decisões de produto (com o porquê)
 
 1. Filbert/Flat Oily/Knife Smooth só voltam com o exame e o Rebelle ao lado; a lâmina do Rebelle é FIXA no eixo do

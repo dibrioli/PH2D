@@ -32,10 +32,10 @@ Os 8 controlos, nomes do Blender na UI, mesma ordem no pincel (Tuning → Materi
 
 | etapa | estado | commits | números | o que ficou |
 |---|---|---|---|---|
-| M0 contrato + remoções + Roughness absoluta (workspace compila, neutro bit a bit) | em curso | | | |
-| K1 bancada rápida com óleo | em curso | | | |
-| M1 SSS × Cycles | à espera de M0 | | | |
-| M2 controlos no pincel e no cartão, leitor tolerante | à espera de M0 | | | |
-| K2 textura que escala · K3 faca/cerda · K4 sombreado | à espera | | | |
+| M0 contrato + remoções + Roughness absoluta (workspace compila, neutro bit a bit) | ✅ | `8966e951b2` `2e24c8d9b1` | cartão guarda Roughness ABSOLUTA, padrão `RUGOSIDADE_PADRAO = 0,28` (o valor fixo de `Afinacao::rugosidade`, que saiu); célula neutra 0,5; `roughnessMul` m → `0,5·m`; multiplicador antigo do cartão k → `0,28·k`; combinação única `material::efectivo` (max nos de neutro 0; `célula × (cartão/padrão) × (padrão/neutro)` nos outros 4 — no padrão dá `0,5m × 0,56` = `0,28m` bit a bit); Coat Roughness padrão `f64::from(0.03f32)`. Gates: `o_material_neutro_e_bit_identico_a_de_antes`, novo `o_roughness_do_cartao_no_padrao_e_a_imagem_de_antes`, `o_preset_de_antes_da_w3_abre_com_o_material_convertido`, `a_macro_de_antes_da_w3_abre_com_o_material_convertido`. 5 testes saíram com os lóbulos (Spec tint, Anisotropy, película translúcida, Strength/Scale/Reflection map, chip). Tuning 86 → 85 linhas, grupo Material 10 → 9 (`ph2d-panel-wet-tuning/src/rows.rs`) | **Decisão da janela: o Gloss FICA** — no código ele é a força do brilho (`OleoReal::brilho`), nunca mexeu na rugosidade; a fórmula «Roughness = g(Gloss)» do contrato não tinha objecto. Fica no cartão ao lado de Depth e Shadow. A etapa M2 (UI) ficou feita dentro da M0: não se lança |
+| K1 bancada rápida com óleo | ✅ | `c3d0e0c4a7` | causa medida: o óleo recompunha a cada evento/quadro (~1 700×/foto). Cura: pinta sem óleo e liga o Real Oil NA foto (recompõe 1×, bit a bit igual). Oil Bristle 19,53 → 1,63 s (sem óleo 1,44; 1,14×) · Blender Soft sobre 27,15 → 3,43 s (load 93–143: leia as razões). `PH2D_EXAME_OLEO=sempre` = caminho antigo. Gate `a_foto_com_oleo_so_na_foto_e_a_de_sempre` (vermelho sob mutação, 43 474 bytes) | gate corrido num export de `1e8664310f` (M0 partia a árvore): re-correr por nome no fecho. No APP o óleo custa ~10× por traço e por quadro — o passe de placa aberto desde a W2 |
+| M1 SSS × Cycles | em curso (com K2 em paralelo, ficheiros disjuntos) | | | |
+| K2 textura que escala com o pincel | em curso | | | |
+| K3 faca/cerda (depois de K2: mesmos ficheiros de traço) · K4 sombreado (depois de M1: mesmos ficheiros do óleo) | à espera | | | |
 | P 13 presets | à espera de M e K | | | |
 | Fecho | à espera | | | |

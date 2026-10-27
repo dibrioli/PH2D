@@ -159,6 +159,11 @@ pub enum Driver {
     /// PERSISTENTE como o [`Self::SolverPose`], e entrada própria pela mesma razão do
     /// [`Self::TweenPose`]: um objecto restringido pode ter também curva, script ou solver.
     ConstraintPose,
+    /// ⭐ **A pose que a COLA escreve num parceiro** enquanto outro motor conduz o grupo
+    /// (`ph2d-constraints-ecs::cola`, 05_W5 §2.2 B). Entrada própria e não a [`Self::ConstraintPose`]:
+    /// a pilha corre depois e parte do que a cola deixou — com o mesmo ledger, o autorado dela
+    /// engoliria a cola.
+    ColaPose,
 }
 
 /// **O FACTO que um motor escreve** — o recorte exacto do componente que é dele, e nada mais.
@@ -247,6 +252,8 @@ pub enum Driven {
     },
     /// ⭐ A pose das constraints — ver [`Driver::ConstraintPose`].
     ConstraintPose(Transform),
+    /// ⭐ A pose da cola — ver [`Driver::ColaPose`].
+    ColaPose(Transform),
 }
 
 /// Uma entidade sob condução: o que o artista autorou, e o que o motor deixou no último quadro.

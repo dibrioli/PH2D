@@ -75,7 +75,7 @@ impl Estados {
     }
 }
 
-fn pose(t: &Transform) -> Pose2 {
+pub(crate) fn pose(t: &Transform) -> Pose2 {
     Pose2 {
         x: f64::from(t.translation.x),
         y: f64::from(t.translation.y),
@@ -150,7 +150,7 @@ pub fn com_autorado<R>(
 
 /// A pose local do dono para a pose mundial `dono`. Sem mudança, o autorado ao bit: desfazer o pai em
 /// f32 mexeria o último dígito.
-fn local_de(parent: Transform, base_local: Transform, inicial: Pose2, dono: Pose2) -> Transform {
+pub(crate) fn local_de(parent: Transform, base_local: Transform, inicial: Pose2, dono: Pose2) -> Transform {
     if dono == inicial {
         return base_local;
     }

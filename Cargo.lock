@@ -6504,6 +6504,7 @@ version = "0.0.0"
 dependencies = [
  "bevy_ecs",
  "ph2d-constraints",
+ "ph2d-constraints-cola",
  "ph2d-ecs",
  "ph2d-node-motion-spring",
  "ph2d-physics-ecs",

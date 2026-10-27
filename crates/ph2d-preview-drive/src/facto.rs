@@ -24,6 +24,7 @@ impl Driven {
             Self::PontaNoMundo(_) => Driver::PontaNoMundo,
             Self::Roldana { .. } => Driver::Roldana,
             Self::ConstraintPose(_) => Driver::ConstraintPose,
+            Self::ColaPose(_) => Driver::ColaPose,
         }
     }
 
@@ -37,7 +38,8 @@ impl Driven {
             | Self::CanvasPose(t)
             | Self::ParallaxPose(t)
             | Self::TweenPose(t)
-            | Self::ConstraintPose(t) => Some(t),
+            | Self::ConstraintPose(t)
+            | Self::ColaPose(t) => Some(t),
             _ => None,
         }
     }
@@ -119,6 +121,7 @@ impl Driven {
             Driver::ConstraintPose => {
                 Some(Self::ConstraintPose(*sim.world().get::<Transform>(entity)?))
             }
+            Driver::ColaPose => Some(Self::ColaPose(*sim.world().get::<Transform>(entity)?)),
         }
     }
 
@@ -301,7 +304,7 @@ impl Driven {
                     }
                 }
             }
-            Self::ConstraintPose(pose) => {
+            Self::ConstraintPose(pose) | Self::ColaPose(pose) => {
                 if let Some(mut t) = sim.world_mut().get_mut::<Transform>(entity)
                     && *t != pose
                 {

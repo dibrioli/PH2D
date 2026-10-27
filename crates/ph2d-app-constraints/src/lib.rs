@@ -57,6 +57,8 @@ pub fn quadro(
     ph2d_constraints_ecs::converter_ik_de_um_osso(sim.world_mut());
     canais::aplicar(sim, preview);
     caminhos(sim, cena);
+    // A cola antes da pilha: a pilha parte do que ela deixou (05_W5 §2.4).
+    ph2d_constraints_ecs::colar(sim, preview);
     if let Some(r) = relogio {
         ph2d_constraints_ecs::com_autorado(sim, preview, |sim| relogio::preparar(sim, r));
     }

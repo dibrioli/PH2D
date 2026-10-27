@@ -5,6 +5,7 @@
 //! se guarda*. A lei de cada tipo é da `ph2d-constraints`.
 
 mod avalia;
+pub mod cola;
 mod curva;
 mod ik;
 pub mod ik_item;
@@ -12,6 +13,7 @@ mod ik_novo;
 mod ordem;
 pub mod relogio;
 
+pub use cola::{COLAS_TYPE_NAME, Colas, EstadosDaCola, colar};
 pub use avalia::{Adotar, Caminhos, Estado, Estados, Pontos, com_autorado, evaluate};
 pub use ik_item::{
     Ancora, ancora_de, ancoras, com_ancora, com_ik, converter_ik_de_um_osso, converter_ik_goals,
@@ -102,4 +104,5 @@ pub use avalia::bind_on_create;
 /// em silêncio.
 pub fn register_constraint_components(reg: &mut ComponentRegistry) {
     reg.register_default::<Constraints>(CONSTRAINTS_TYPE_NAME);
+    reg.register_default::<Colas>(COLAS_TYPE_NAME);
 }

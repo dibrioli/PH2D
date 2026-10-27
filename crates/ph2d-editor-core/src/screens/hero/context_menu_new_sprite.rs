@@ -29,7 +29,7 @@ pub(in crate::screens::hero) fn paint_new_sprite_dialog(
     viewport: Rect,
 ) {
     let gap = Spacing::Xs.px();
-    let total_h = pad_y() * 2.0 + ROW_H * ROWS + gap * (ROWS - 1.0);
+    let total_h = pad_y() * 2.0 + ROW_H * ROWS + ph2d_tokens::control_gap_px() * (ROWS - 1.0);
     let rect_x = (viewport.x + (viewport.w - DIALOG_W) * 0.5).max(viewport.x);
     let rect_y = (viewport.y + (viewport.h - total_h) * 0.5).max(viewport.y);
     let rect = Rect::new(rect_x, rect_y, DIALOG_W, total_h);
@@ -67,7 +67,7 @@ pub(in crate::screens::hero) fn paint_new_sprite_dialog(
         y,
         ColorToken::Text1,
     );
-    y += ROW_H + gap;
+    y += ph2d_tokens::row_pitch_px();
 
     let mut r = RowCtx {
         scene: &mut *scene,
@@ -78,7 +78,7 @@ pub(in crate::screens::hero) fn paint_new_sprite_dialog(
         inner_x,
         inner_w,
         row_h: ROW_H,
-        row_gap: gap,
+        row_gap: ph2d_tokens::control_gap_px(),
         font,
         open_fold: None,
     };
@@ -105,7 +105,7 @@ pub(in crate::screens::hero) fn paint_new_sprite_dialog(
         y,
         ColorToken::Text3,
     );
-    y += ROW_H + gap;
+    y += ph2d_tokens::row_pitch_px();
     let modes: Vec<(NodeId, &str, bool)> = ids::NEW_SPRITE_MODES
         .iter()
         .map(|(m, id, k)| (*id, tr(k), *m == choice.mode))
@@ -128,7 +128,7 @@ pub(in crate::screens::hero) fn paint_new_sprite_dialog(
         y,
         ColorToken::Text3,
     );
-    y += ROW_H + gap;
+    y += ph2d_tokens::row_pitch_px();
     let bgs: Vec<(NodeId, &str, bool)> = ids::NEW_SPRITE_BGS
         .iter()
         .map(|(b, id, k)| (*id, tr(k), *b == choice.background))
@@ -202,5 +202,5 @@ fn choice_row(
             *on,
         );
     }
-    y + ROW_H + gap
+    y + ph2d_tokens::row_pitch_px()
 }

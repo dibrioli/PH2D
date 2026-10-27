@@ -46,7 +46,7 @@ pub(in crate::screens::hero) fn paint_pixel_edit_dialog(
     #[expect(clippy::cast_precision_loss, reason = "uma contagem de filas, < 16")]
     let rows = rows_of(d.kind) as f32;
     let gap = Spacing::Xs.px();
-    let total_h = pad_y() * 2.0 + ROW_H * rows + gap * (rows - 1.0);
+    let total_h = pad_y() * 2.0 + ROW_H * rows + ph2d_tokens::control_gap_px() * (rows - 1.0);
     let rect_x = (viewport.x + (viewport.w - DIALOG_W) * 0.5).max(viewport.x);
     let rect_y = (viewport.y + (viewport.h - total_h) * 0.5).max(viewport.y);
     let rect = Rect::new(rect_x, rect_y, DIALOG_W, total_h);
@@ -211,7 +211,7 @@ impl Caixa<'_> {
             self.w,
             resolve(token, self.theme),
         );
-        y + ROW_H + Spacing::Xs.px()
+        y + ph2d_tokens::row_pitch_px()
     }
 
     /// Um campo numérico rotulado, o da casa.
@@ -225,7 +225,7 @@ impl Caixa<'_> {
             inner_x: self.x,
             inner_w: self.w,
             row_h: ROW_H,
-            row_gap: Spacing::Xs.px(),
+            row_gap: ph2d_tokens::control_gap_px(),
             font: TypeToken::Sm.px(),
             open_fold: None,
         };
@@ -253,6 +253,6 @@ impl Caixa<'_> {
                 *on,
             );
         }
-        y + ROW_H + gap
+        y + ph2d_tokens::row_pitch_px()
     }
 }

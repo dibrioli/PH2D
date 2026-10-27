@@ -1,0 +1,2322 @@
+{
+ "cabecalho": {
+  "oraculo": "kiwisolver 1.5.1 (python-kiwisolver 1.5.1-1.1, BSD-3-Clause \u2014 `pacman -Qi`), corrido, nunca lido",
+  "gerador": "docs/BlenderConstraints/ferramentas/oraculo_kiwisolver_hud.py",
+  "comando": "python -I docs/BlenderConstraints/ferramentas/oraculo_kiwisolver_hud.py crates/ph2d-hud-layout/fixtures/kiwisolver_1_5_1_hud.json",
+  "sistema": "ADR-0194 / ph2d_hud_layout (doc do m\u00f3dulo): stays (0.125, 0.3125, 0.5, 0.6875), edi\u00e7\u00e3o 1e+09, grelha 1/256, ordem fixa",
+  "data": "2026-10-27"
+ },
+ "casos": [
+  {
+   "nome": "moeda_a_direita_da_pontuacao_que_cresce",
+   "familia": "ao_lado",
+   "canvas": {
+    "x": 0.0,
+    "y": 0.0,
+    "w": 640.0,
+    "h": 360.0
+   },
+   "elementos": [
+    {
+     "caixa": {
+      "x": 16.0,
+      "y": 312.0,
+      "w": 100.0,
+      "h": 32.0
+     },
+     "conteudo": 38.5
+    },
+    {
+     "caixa": {
+      "x": 200.0,
+      "y": 316.0,
+      "w": 24.0,
+      "h": 24.0
+     },
+     "conteudo": null
+    }
+   ],
+   "relacoes": [
+    [
+     {
+      "LarguraDoConteudo": {
+       "a": 0
+      }
+     },
+     "Forte"
+    ],
+    [
+     {
+      "AoLado": {
+       "a": 1,
+       "b": 0,
+       "lado": "Direita",
+       "folga": 8.0
+      }
+     },
+     "Requerida"
+    ]
+   ],
+   "quadros": [
+    {
+     "canvas": {
+      "x": 0.0,
+      "y": 0.0,
+      "w": 640.0,
+      "h": 360.0
+     },
+     "conteudos": [
+      38.5,
+      null
+     ],
+     "caixas": [
+      {
+       "x": 16.0,
+       "y": 312.0,
+       "w": 38.5,
+       "h": 32.0
+      },
+      {
+       "x": 62.5,
+       "y": 316.0,
+       "w": 24.0,
+       "h": 24.0
+      }
+     ]
+    },
+    {
+     "canvas": {
+      "x": 0.0,
+      "y": 0.0,
+      "w": 640.0,
+      "h": 360.0
+     },
+     "conteudos": [
+      51.25,
+      null
+     ],
+     "caixas": [
+      {
+       "x": 16.0,
+       "y": 312.0,
+       "w": 51.25,
+       "h": 32.0
+      },
+      {
+       "x": 75.25,
+       "y": 316.0,
+       "w": 24.0,
+       "h": 24.0
+      }
+     ]
+    },
+    {
+     "canvas": {
+      "x": 0.0,
+      "y": 0.0,
+      "w": 640.0,
+      "h": 360.0
+     },
+     "conteudos": [
+      77.0,
+      null
+     ],
+     "caixas": [
+      {
+       "x": 16.0,
+       "y": 312.0,
+       "w": 77.0,
+       "h": 32.0
+      },
+      {
+       "x": 101.0,
+       "y": 316.0,
+       "w": 24.0,
+       "h": 24.0
+      }
+     ]
+    },
+    {
+     "canvas": {
+      "x": 0.0,
+      "y": 0.0,
+      "w": 640.0,
+      "h": 360.0
+     },
+     "conteudos": [
+      102.75,
+      null
+     ],
+     "caixas": [
+      {
+       "x": 16.0,
+       "y": 312.0,
+       "w": 102.75,
+       "h": 32.0
+      },
+      {
+       "x": 126.75,
+       "y": 316.0,
+       "w": 24.0,
+       "h": 24.0
+      }
+     ]
+    },
+    {
+     "canvas": {
+      "x": 0.0,
+      "y": 0.0,
+      "w": 640.0,
+      "h": 360.0
+     },
+     "conteudos": [
+      128.375,
+      null
+     ],
+     "caixas": [
+      {
+       "x": 16.0,
+       "y": 312.0,
+       "w": 128.375,
+       "h": 32.0
+      },
+      {
+       "x": 152.375,
+       "y": 316.0,
+       "w": 24.0,
+       "h": 24.0
+      }
+     ]
+    },
+    {
+     "canvas": {
+      "x": 0.0,
+      "y": 0.0,
+      "w": 640.0,
+      "h": 360.0
+     },
+     "conteudos": [
+      38.5,
+      null
+     ],
+     "caixas": [
+      {
+       "x": 16.0,
+       "y": 312.0,
+       "w": 38.5,
+       "h": 32.0
+      },
+      {
+       "x": 62.5,
+       "y": 316.0,
+       "w": 24.0,
+       "h": 24.0
+      }
+     ]
+    }
+   ],
+   "unico": true,
+   "unico_tudo_weak": false
+  },
+  {
+   "nome": "vidas_a_esquerda_do_relogio",
+   "familia": "ao_lado",
+   "canvas": {
+    "x": 0.0,
+    "y": 0.0,
+    "w": 640.0,
+    "h": 360.0
+   },
+   "elementos": [
+    {
+     "caixa": {
+      "x": 560.0,
+      "y": 312.0,
+      "w": 64.0,
+      "h": 32.0
+     },
+     "conteudo": null
+    },
+    {
+     "caixa": {
+      "x": 400.0,
+      "y": 316.0,
+      "w": 40.0,
+      "h": 24.0
+     },
+     "conteudo": null
+    },
+    {
+     "caixa": {
+      "x": 10.0,
+      "y": 10.0,
+      "w": 5.0,
+      "h": 5.0
+     },
+     "conteudo": null
+    }
+   ],
+   "relacoes": [
+    [
+     {
+      "AoLado": {
+       "a": 1,
+       "b": 0,
+       "lado": "Esquerda",
+       "folga": 6.5
+      }
+     },
+     "Requerida"
+    ]
+   ],
+   "quadros": [
+    {
+     "canvas": {
+      "x": 0.0,
+      "y": 0.0,
+      "w": 640.0,
+      "h": 360.0
+     },
+     "conteudos": [
+      null,
+      null,
+      null
+     ],
+     "caixas": [
+      {
+       "x": 560.0,
+       "y": 312.0,
+       "w": 64.0,
+       "h": 32.0
+      },
+      {
+       "x": 513.5,
+       "y": 316.0,
+       "w": 40.0,
+       "h": 24.0
+      },
+      {
+       "x": 10.0,
+       "y": 10.0,
+       "w": 5.0,
+       "h": 5.0
+      }
+     ]
+    },
+    {
+     "canvas": {
+      "x": 0.0,
+      "y": 0.0,
+      "w": 800.0,
+      "h": 360.0
+     },
+     "conteudos": [
+      null,
+      null,
+      null
+     ],
+     "caixas": [
+      {
+       "x": 560.0,
+       "y": 312.0,
+       "w": 64.0,
+       "h": 32.0
+      },
+      {
+       "x": 513.5,
+       "y": 316.0,
+       "w": 40.0,
+       "h": 24.0
+      },
+      {
+       "x": 10.0,
+       "y": 10.0,
+       "w": 5.0,
+       "h": 5.0
+      }
+     ]
+    }
+   ],
+   "unico": true,
+   "unico_tudo_weak": false
+  },
+  {
+   "nome": "legenda_acima_da_barra",
+   "familia": "ao_lado",
+   "canvas": {
+    "x": 0.0,
+    "y": 0.0,
+    "w": 640.0,
+    "h": 360.0
+   },
+   "elementos": [
+    {
+     "caixa": {
+      "x": 16.0,
+      "y": 16.0,
+      "w": 200.0,
+      "h": 12.0
+     },
+     "conteudo": null
+    },
+    {
+     "caixa": {
+      "x": 30.0,
+      "y": 90.0,
+      "w": 120.0,
+      "h": 18.0
+     },
+     "conteudo": null
+    }
+   ],
+   "relacoes": [
+    [
+     {
+      "AoLado": {
+       "a": 1,
+       "b": 0,
+       "lado": "Acima",
+       "folga": 4.0
+      }
+     },
+     "Forte"
+    ]
+   ],
+   "quadros": [
+    {
+     "canvas": {
+      "x": 0.0,
+      "y": 0.0,
+      "w": 640.0,
+      "h": 360.0
+     },
+     "conteudos": [
+      null,
+      null
+     ],
+     "caixas": [
+      {
+       "x": 16.0,
+       "y": 16.0,
+       "w": 200.0,
+       "h": 12.0
+      },
+      {
+       "x": 30.0,
+       "y": 32.0,
+       "w": 120.0,
+       "h": 18.0
+      }
+     ]
+    },
+    {
+     "canvas": {
+      "x": 0.0,
+      "y": 0.0,
+      "w": 640.0,
+      "h": 240.0
+     },
+     "conteudos": [
+      null,
+      null
+     ],
+     "caixas": [
+      {
+       "x": 16.0,
+       "y": 16.0,
+       "w": 200.0,
+       "h": 12.0
+      },
+      {
+       "x": 30.0,
+       "y": 32.0,
+       "w": 120.0,
+       "h": 18.0
+      }
+     ]
+    }
+   ],
+   "unico": true,
+   "unico_tudo_weak": false
+  },
+  {
+   "nome": "dica_abaixo_do_botao_fraca",
+   "familia": "ao_lado",
+   "canvas": {
+    "x": 0.0,
+    "y": 0.0,
+    "w": 640.0,
+    "h": 360.0
+   },
+   "elementos": [
+    {
+     "caixa": {
+      "x": 300.0,
+      "y": 200.0,
+      "w": 80.0,
+      "h": 30.0
+     },
+     "conteudo": null
+    },
+    {
+     "caixa": {
+      "x": 250.0,
+      "y": 120.0,
+      "w": 140.0,
+      "h": 20.0
+     },
+     "conteudo": null
+    }
+   ],
+   "relacoes": [
+    [
+     {
+      "AoLado": {
+       "a": 1,
+       "b": 0,
+       "lado": "Abaixo",
+       "folga": 10.0
+      }
+     },
+     "Fraca"
+    ]
+   ],
+   "quadros": [
+    {
+     "canvas": {
+      "x": 0.0,
+      "y": 0.0,
+      "w": 640.0,
+      "h": 360.0
+     },
+     "conteudos": [
+      null,
+      null
+     ],
+     "caixas": [
+      {
+       "x": 300.0,
+       "y": 200.0,
+       "w": 80.0,
+       "h": 30.0
+      },
+      {
+       "x": 250.0,
+       "y": 170.0,
+       "w": 140.0,
+       "h": 20.0
+      }
+     ]
+    }
+   ],
+   "unico": true,
+   "unico_tudo_weak": true
+  },
+  {
+   "nome": "tres_linhas_empilhadas",
+   "familia": "pilha",
+   "canvas": {
+    "x": 0.0,
+    "y": 0.0,
+    "w": 640.0,
+    "h": 360.0
+   },
+   "elementos": [
+    {
+     "caixa": {
+      "x": 16.0,
+      "y": 312.0,
+      "w": 160.0,
+      "h": 32.0
+     },
+     "conteudo": null
+    },
+    {
+     "caixa": {
+      "x": 16.0,
+      "y": 250.0,
+      "w": 160.0,
+      "h": 24.0
+     },
+     "conteudo": null
+    },
+    {
+     "caixa": {
+      "x": 16.0,
+      "y": 100.0,
+      "w": 160.0,
+      "h": 24.0
+     },
+     "conteudo": null
+    }
+   ],
+   "relacoes": [
+    [
+     {
+      "AoLado": {
+       "a": 1,
+       "b": 0,
+       "lado": "Abaixo",
+       "folga": 4.0
+      }
+     },
+     "Requerida"
+    ],
+    [
+     {
+      "AoLado": {
+       "a": 2,
+       "b": 1,
+       "lado": "Abaixo",
+       "folga": 4.0
+      }
+     },
+     "Requerida"
+    ]
+   ],
+   "quadros": [
+    {
+     "canvas": {
+      "x": 0.0,
+      "y": 0.0,
+      "w": 640.0,
+      "h": 360.0
+     },
+     "conteudos": [
+      null,
+      null,
+      null
+     ],
+     "caixas": [
+      {
+       "x": 16.0,
+       "y": 312.0,
+       "w": 160.0,
+       "h": 32.0
+      },
+      {
+       "x": 16.0,
+       "y": 284.0,
+       "w": 160.0,
+       "h": 24.0
+      },
+      {
+       "x": 16.0,
+       "y": 256.0,
+       "w": 160.0,
+       "h": 24.0
+      }
+     ]
+    },
+    {
+     "canvas": {
+      "x": 0.0,
+      "y": 0.0,
+      "w": 640.0,
+      "h": 480.0
+     },
+     "conteudos": [
+      null,
+      null,
+      null
+     ],
+     "caixas": [
+      {
+       "x": 16.0,
+       "y": 312.0,
+       "w": 160.0,
+       "h": 32.0
+      },
+      {
+       "x": 16.0,
+       "y": 284.0,
+       "w": 160.0,
+       "h": 24.0
+      },
+      {
+       "x": 16.0,
+       "y": 256.0,
+       "w": 160.0,
+       "h": 24.0
+      }
+     ]
+    },
+    {
+     "canvas": {
+      "x": 0.0,
+      "y": 0.0,
+      "w": 640.0,
+      "h": 360.0
+     },
+     "conteudos": [
+      null,
+      null,
+      null
+     ],
+     "caixas": [
+      {
+       "x": 16.0,
+       "y": 312.0,
+       "w": 160.0,
+       "h": 32.0
+      },
+      {
+       "x": 16.0,
+       "y": 284.0,
+       "w": 160.0,
+       "h": 24.0
+      },
+      {
+       "x": 16.0,
+       "y": 256.0,
+       "w": 160.0,
+       "h": 24.0
+      }
+     ]
+    }
+   ],
+   "unico": true,
+   "unico_tudo_weak": true
+  },
+  {
+   "nome": "pilha_media_com_rotulos",
+   "familia": "pilha",
+   "canvas": {
+    "x": 0.0,
+    "y": 0.0,
+    "w": 640.0,
+    "h": 360.0
+   },
+   "elementos": [
+    {
+     "caixa": {
+      "x": 400.0,
+      "y": 300.0,
+      "w": 200.0,
+      "h": 40.0
+     },
+     "conteudo": 150.0
+    },
+    {
+     "caixa": {
+      "x": 410.0,
+      "y": 10.0,
+      "w": 90.0,
+      "h": 20.0
+     },
+     "conteudo": 70.5
+    },
+    {
+     "caixa": {
+      "x": 5.0,
+      "y": 5.0,
+      "w": 50.0,
+      "h": 20.0
+     },
+     "conteudo": null
+    }
+   ],
+   "relacoes": [
+    [
+     {
+      "LarguraDoConteudo": {
+       "a": 0
+      }
+     },
+     "Forte"
+    ],
+    [
+     {
+      "AoLado": {
+       "a": 1,
+       "b": 0,
+       "lado": "Abaixo",
+       "folga": 2.5
+      }
+     },
+     "Media"
+    ],
+    [
+     {
+      "AoLado": {
+       "a": 2,
+       "b": 1,
+       "lado": "Abaixo",
+       "folga": 2.5
+      }
+     },
+     "Media"
+    ],
+    [
+     {
+      "LarguraDoConteudo": {
+       "a": 1
+      }
+     },
+     "Forte"
+    ]
+   ],
+   "quadros": [
+    {
+     "canvas": {
+      "x": 0.0,
+      "y": 0.0,
+      "w": 640.0,
+      "h": 360.0
+     },
+     "conteudos": [
+      150.0,
+      70.5,
+      null
+     ],
+     "caixas": [
+      {
+       "x": 400.0,
+       "y": 300.0,
+       "w": 150.0,
+       "h": 40.0
+      },
+      {
+       "x": 410.0,
+       "y": 277.5,
+       "w": 70.5,
+       "h": 20.0
+      },
+      {
+       "x": 5.0,
+       "y": 255.0,
+       "w": 50.0,
+       "h": 20.0
+      }
+     ]
+    },
+    {
+     "canvas": {
+      "x": 0.0,
+      "y": 0.0,
+      "w": 640.0,
+      "h": 360.0
+     },
+     "conteudos": [
+      180.0,
+      33.0,
+      null
+     ],
+     "caixas": [
+      {
+       "x": 400.0,
+       "y": 300.0,
+       "w": 180.0,
+       "h": 40.0
+      },
+      {
+       "x": 410.0,
+       "y": 277.5,
+       "w": 33.0,
+       "h": 20.0
+      },
+      {
+       "x": 5.0,
+       "y": 255.0,
+       "w": 50.0,
+       "h": 20.0
+      }
+     ]
+    }
+   ],
+   "unico": true,
+   "unico_tudo_weak": true
+  },
+  {
+   "nome": "titulo_centrado_no_painel",
+   "familia": "centrado",
+   "canvas": {
+    "x": 0.0,
+    "y": 0.0,
+    "w": 640.0,
+    "h": 360.0
+   },
+   "elementos": [
+    {
+     "caixa": {
+      "x": 120.0,
+      "y": 100.0,
+      "w": 400.0,
+      "h": 200.0
+     },
+     "conteudo": null
+    },
+    {
+     "caixa": {
+      "x": 0.0,
+      "y": 260.0,
+      "w": 180.0,
+      "h": 30.0
+     },
+     "conteudo": 96.0
+    }
+   ],
+   "relacoes": [
+    [
+     {
+      "Centrado": {
+       "a": 1,
+       "b": 0,
+       "eixo": "X"
+      }
+     },
+     "Requerida"
+    ],
+    [
+     {
+      "LarguraDoConteudo": {
+       "a": 1
+      }
+     },
+     "Forte"
+    ]
+   ],
+   "quadros": [
+    {
+     "canvas": {
+      "x": 0.0,
+      "y": 0.0,
+      "w": 640.0,
+      "h": 360.0
+     },
+     "conteudos": [
+      null,
+      96.0
+     ],
+     "caixas": [
+      {
+       "x": 120.0,
+       "y": 100.0,
+       "w": 400.0,
+       "h": 200.0
+      },
+      {
+       "x": 272.0,
+       "y": 260.0,
+       "w": 96.0,
+       "h": 30.0
+      }
+     ]
+    },
+    {
+     "canvas": {
+      "x": 0.0,
+      "y": 0.0,
+      "w": 640.0,
+      "h": 360.0
+     },
+     "conteudos": [
+      null,
+      250.0
+     ],
+     "caixas": [
+      {
+       "x": 120.0,
+       "y": 100.0,
+       "w": 400.0,
+       "h": 200.0
+      },
+      {
+       "x": 195.0,
+       "y": 260.0,
+       "w": 250.0,
+       "h": 30.0
+      }
+     ]
+    },
+    {
+     "canvas": {
+      "x": 0.0,
+      "y": 0.0,
+      "w": 640.0,
+      "h": 360.0
+     },
+     "conteudos": [
+      null,
+      96.0
+     ],
+     "caixas": [
+      {
+       "x": 120.0,
+       "y": 100.0,
+       "w": 400.0,
+       "h": 200.0
+      },
+      {
+       "x": 272.0,
+       "y": 260.0,
+       "w": 96.0,
+       "h": 30.0
+      }
+     ]
+    }
+   ],
+   "unico": true,
+   "unico_tudo_weak": false
+  },
+  {
+   "nome": "icone_centrado_em_y",
+   "familia": "centrado",
+   "canvas": {
+    "x": 0.0,
+    "y": 0.0,
+    "w": 640.0,
+    "h": 360.0
+   },
+   "elementos": [
+    {
+     "caixa": {
+      "x": 20.0,
+      "y": 140.0,
+      "w": 300.0,
+      "h": 80.0
+     },
+     "conteudo": null
+    },
+    {
+     "caixa": {
+      "x": 330.0,
+      "y": 10.0,
+      "w": 32.0,
+      "h": 32.0
+     },
+     "conteudo": null
+    }
+   ],
+   "relacoes": [
+    [
+     {
+      "Centrado": {
+       "a": 1,
+       "b": 0,
+       "eixo": "Y"
+      }
+     },
+     "Forte"
+    ]
+   ],
+   "quadros": [
+    {
+     "canvas": {
+      "x": 0.0,
+      "y": 0.0,
+      "w": 640.0,
+      "h": 360.0
+     },
+     "conteudos": [
+      null,
+      null
+     ],
+     "caixas": [
+      {
+       "x": 20.0,
+       "y": 140.0,
+       "w": 300.0,
+       "h": 80.0
+      },
+      {
+       "x": 330.0,
+       "y": 164.0,
+       "w": 32.0,
+       "h": 32.0
+      }
+     ]
+    },
+    {
+     "canvas": {
+      "x": 0.0,
+      "y": 0.0,
+      "w": 640.0,
+      "h": 200.0
+     },
+     "conteudos": [
+      null,
+      null
+     ],
+     "caixas": [
+      {
+       "x": 20.0,
+       "y": 120.0,
+       "w": 300.0,
+       "h": 80.0
+      },
+      {
+       "x": 330.0,
+       "y": 144.0,
+       "w": 32.0,
+       "h": 32.0
+      }
+     ]
+    }
+   ],
+   "unico": true,
+   "unico_tudo_weak": false
+  },
+  {
+   "nome": "centrado_nos_dois_eixos",
+   "familia": "centrado",
+   "canvas": {
+    "x": 0.0,
+    "y": 0.0,
+    "w": 640.0,
+    "h": 360.0
+   },
+   "elementos": [
+    {
+     "caixa": {
+      "x": 200.0,
+      "y": 120.0,
+      "w": 240.0,
+      "h": 120.0
+     },
+     "conteudo": null
+    },
+    {
+     "caixa": {
+      "x": 0.0,
+      "y": 0.0,
+      "w": 50.0,
+      "h": 30.0
+     },
+     "conteudo": null
+    }
+   ],
+   "relacoes": [
+    [
+     {
+      "Centrado": {
+       "a": 1,
+       "b": 0,
+       "eixo": "X"
+      }
+     },
+     "Requerida"
+    ],
+    [
+     {
+      "Centrado": {
+       "a": 1,
+       "b": 0,
+       "eixo": "Y"
+      }
+     },
+     "Requerida"
+    ]
+   ],
+   "quadros": [
+    {
+     "canvas": {
+      "x": 0.0,
+      "y": 0.0,
+      "w": 640.0,
+      "h": 360.0
+     },
+     "conteudos": [
+      null,
+      null
+     ],
+     "caixas": [
+      {
+       "x": 200.0,
+       "y": 120.0,
+       "w": 240.0,
+       "h": 120.0
+      },
+      {
+       "x": 295.0,
+       "y": 165.0,
+       "w": 50.0,
+       "h": 30.0
+      }
+     ]
+    }
+   ],
+   "unico": true,
+   "unico_tudo_weak": false
+  },
+  {
+   "nome": "pontuacao_contra_o_minimapa",
+   "familia": "nao_invade",
+   "canvas": {
+    "x": 0.0,
+    "y": 0.0,
+    "w": 640.0,
+    "h": 360.0
+   },
+   "elementos": [
+    {
+     "caixa": {
+      "x": 16.0,
+      "y": 312.0,
+      "w": 100.0,
+      "h": 32.0
+     },
+     "conteudo": 60.0
+    },
+    {
+     "caixa": {
+      "x": 504.0,
+      "y": 240.0,
+      "w": 120.0,
+      "h": 104.0
+     },
+     "conteudo": null
+    }
+   ],
+   "relacoes": [
+    [
+     {
+      "LarguraDoConteudo": {
+       "a": 0
+      }
+     },
+     "Media"
+    ],
+    [
+     {
+      "NaoInvade": {
+       "a": 0,
+       "b": 1,
+       "lado": "Direita",
+       "folga": 8.0
+      }
+     },
+     "Requerida"
+    ]
+   ],
+   "quadros": [
+    {
+     "canvas": {
+      "x": 0.0,
+      "y": 0.0,
+      "w": 640.0,
+      "h": 360.0
+     },
+     "conteudos": [
+      60.0,
+      null
+     ],
+     "caixas": [
+      {
+       "x": 16.0,
+       "y": 312.0,
+       "w": 60.0,
+       "h": 32.0
+      },
+      {
+       "x": 504.0,
+       "y": 240.0,
+       "w": 120.0,
+       "h": 104.0
+      }
+     ]
+    },
+    {
+     "canvas": {
+      "x": 0.0,
+      "y": 0.0,
+      "w": 640.0,
+      "h": 360.0
+     },
+     "conteudos": [
+      300.0,
+      null
+     ],
+     "caixas": [
+      {
+       "x": 16.0,
+       "y": 312.0,
+       "w": 300.0,
+       "h": 32.0
+      },
+      {
+       "x": 504.0,
+       "y": 240.0,
+       "w": 120.0,
+       "h": 104.0
+      }
+     ]
+    },
+    {
+     "canvas": {
+      "x": 0.0,
+      "y": 0.0,
+      "w": 640.0,
+      "h": 360.0
+     },
+     "conteudos": [
+      500.0,
+      null
+     ],
+     "caixas": [
+      {
+       "x": 0.0,
+       "y": 312.0,
+       "w": 500.0,
+       "h": 32.0
+      },
+      {
+       "x": 508.0,
+       "y": 240.0,
+       "w": 120.0,
+       "h": 104.0
+      }
+     ]
+    },
+    {
+     "canvas": {
+      "x": 0.0,
+      "y": 0.0,
+      "w": 640.0,
+      "h": 360.0
+     },
+     "conteudos": [
+      60.0,
+      null
+     ],
+     "caixas": [
+      {
+       "x": 16.0,
+       "y": 312.0,
+       "w": 60.0,
+       "h": 32.0
+      },
+      {
+       "x": 504.0,
+       "y": 240.0,
+       "w": 120.0,
+       "h": 104.0
+      }
+     ]
+    }
+   ],
+   "unico": true,
+   "unico_tudo_weak": false
+  },
+  {
+   "nome": "tela_estreita_encolhe_a_pontuacao",
+   "familia": "nao_invade",
+   "canvas": {
+    "x": 0.0,
+    "y": 0.0,
+    "w": 640.0,
+    "h": 360.0
+   },
+   "elementos": [
+    {
+     "caixa": {
+      "x": 16.0,
+      "y": 312.0,
+      "w": 100.0,
+      "h": 32.0
+     },
+     "conteudo": 200.0
+    },
+    {
+     "caixa": {
+      "x": 504.0,
+      "y": 240.0,
+      "w": 120.0,
+      "h": 104.0
+     },
+     "conteudo": 120.0
+    }
+   ],
+   "relacoes": [
+    [
+     {
+      "LarguraDoConteudo": {
+       "a": 0
+      }
+     },
+     "Media"
+    ],
+    [
+     {
+      "LarguraDoConteudo": {
+       "a": 1
+      }
+     },
+     "Forte"
+    ],
+    [
+     {
+      "NaoInvade": {
+       "a": 0,
+       "b": 1,
+       "lado": "Direita",
+       "folga": 8.0
+      }
+     },
+     "Requerida"
+    ]
+   ],
+   "quadros": [
+    {
+     "canvas": {
+      "x": 0.0,
+      "y": 0.0,
+      "w": 640.0,
+      "h": 360.0
+     },
+     "conteudos": [
+      200.0,
+      120.0
+     ],
+     "caixas": [
+      {
+       "x": 16.0,
+       "y": 312.0,
+       "w": 200.0,
+       "h": 32.0
+      },
+      {
+       "x": 504.0,
+       "y": 240.0,
+       "w": 120.0,
+       "h": 104.0
+      }
+     ]
+    },
+    {
+     "canvas": {
+      "x": 0.0,
+      "y": 0.0,
+      "w": 400.0,
+      "h": 360.0
+     },
+     "conteudos": [
+      200.0,
+      120.0
+     ],
+     "caixas": [
+      {
+       "x": 16.0,
+       "y": 312.0,
+       "w": 200.0,
+       "h": 32.0
+      },
+      {
+       "x": 280.0,
+       "y": 240.0,
+       "w": 120.0,
+       "h": 104.0
+      }
+     ]
+    },
+    {
+     "canvas": {
+      "x": 0.0,
+      "y": 0.0,
+      "w": 300.0,
+      "h": 360.0
+     },
+     "conteudos": [
+      200.0,
+      120.0
+     ],
+     "caixas": [
+      {
+       "x": 0.0,
+       "y": 312.0,
+       "w": 172.0,
+       "h": 32.0
+      },
+      {
+       "x": 180.0,
+       "y": 240.0,
+       "w": 120.0,
+       "h": 104.0
+      }
+     ]
+    },
+    {
+     "canvas": {
+      "x": 0.0,
+      "y": 0.0,
+      "w": 250.0,
+      "h": 360.0
+     },
+     "conteudos": [
+      200.0,
+      120.0
+     ],
+     "caixas": [
+      {
+       "x": 0.0,
+       "y": 312.0,
+       "w": 122.0,
+       "h": 32.0
+      },
+      {
+       "x": 130.0,
+       "y": 240.0,
+       "w": 120.0,
+       "h": 104.0
+      }
+     ]
+    },
+    {
+     "canvas": {
+      "x": 0.0,
+      "y": 0.0,
+      "w": 640.0,
+      "h": 360.0
+     },
+     "conteudos": [
+      200.0,
+      120.0
+     ],
+     "caixas": [
+      {
+       "x": 16.0,
+       "y": 312.0,
+       "w": 200.0,
+       "h": 32.0
+      },
+      {
+       "x": 504.0,
+       "y": 240.0,
+       "w": 120.0,
+       "h": 104.0
+      }
+     ]
+    }
+   ],
+   "unico": true,
+   "unico_tudo_weak": true
+  },
+  {
+   "nome": "nao_invade_ja_satisfeito",
+   "familia": "nao_invade",
+   "canvas": {
+    "x": 0.0,
+    "y": 0.0,
+    "w": 640.0,
+    "h": 360.0
+   },
+   "elementos": [
+    {
+     "caixa": {
+      "x": 16.0,
+      "y": 16.0,
+      "w": 50.0,
+      "h": 20.0
+     },
+     "conteudo": null
+    },
+    {
+     "caixa": {
+      "x": 300.0,
+      "y": 16.0,
+      "w": 50.0,
+      "h": 20.0
+     },
+     "conteudo": null
+    }
+   ],
+   "relacoes": [
+    [
+     {
+      "NaoInvade": {
+       "a": 0,
+       "b": 1,
+       "lado": "Direita",
+       "folga": 8.0
+      }
+     },
+     "Requerida"
+    ]
+   ],
+   "quadros": [
+    {
+     "canvas": {
+      "x": 0.0,
+      "y": 0.0,
+      "w": 640.0,
+      "h": 360.0
+     },
+     "conteudos": [
+      null,
+      null
+     ],
+     "caixas": [
+      {
+       "x": 16.0,
+       "y": 16.0,
+       "w": 50.0,
+       "h": 20.0
+      },
+      {
+       "x": 300.0,
+       "y": 16.0,
+       "w": 50.0,
+       "h": 20.0
+      }
+     ]
+    }
+   ],
+   "unico": true,
+   "unico_tudo_weak": true
+  },
+  {
+   "nome": "nao_invade_esquerda_acima_abaixo",
+   "familia": "nao_invade",
+   "canvas": {
+    "x": 0.0,
+    "y": 0.0,
+    "w": 640.0,
+    "h": 360.0
+   },
+   "elementos": [
+    {
+     "caixa": {
+      "x": 300.0,
+      "y": 150.0,
+      "w": 60.0,
+      "h": 60.0
+     },
+     "conteudo": null
+    },
+    {
+     "caixa": {
+      "x": 280.0,
+      "y": 160.0,
+      "w": 40.0,
+      "h": 20.0
+     },
+     "conteudo": null
+    },
+    {
+     "caixa": {
+      "x": 310.0,
+      "y": 190.0,
+      "w": 30.0,
+      "h": 40.0
+     },
+     "conteudo": null
+    },
+    {
+     "caixa": {
+      "x": 320.0,
+      "y": 140.0,
+      "w": 20.0,
+      "h": 30.0
+     },
+     "conteudo": null
+    }
+   ],
+   "relacoes": [
+    [
+     {
+      "NaoInvade": {
+       "a": 1,
+       "b": 0,
+       "lado": "Esquerda",
+       "folga": 4.0
+      }
+     },
+     "Forte"
+    ],
+    [
+     {
+      "NaoInvade": {
+       "a": 2,
+       "b": 0,
+       "lado": "Acima",
+       "folga": 4.0
+      }
+     },
+     "Media"
+    ],
+    [
+     {
+      "NaoInvade": {
+       "a": 3,
+       "b": 0,
+       "lado": "Abaixo",
+       "folga": 4.0
+      }
+     },
+     "Requerida"
+    ]
+   ],
+   "quadros": [
+    {
+     "canvas": {
+      "x": 0.0,
+      "y": 0.0,
+      "w": 640.0,
+      "h": 360.0
+     },
+     "conteudos": [
+      null,
+      null,
+      null,
+      null
+     ],
+     "caixas": [
+      {
+       "x": 300.0,
+       "y": 150.0,
+       "w": 60.0,
+       "h": 60.0
+      },
+      {
+       "x": 364.0,
+       "y": 160.0,
+       "w": 40.0,
+       "h": 20.0
+      },
+      {
+       "x": 310.0,
+       "y": 106.0,
+       "w": 30.0,
+       "h": 40.0
+      },
+      {
+       "x": 320.0,
+       "y": 214.0,
+       "w": 20.0,
+       "h": 30.0
+      }
+     ]
+    }
+   ],
+   "unico": true,
+   "unico_tudo_weak": false
+  },
+  {
+   "nome": "conteudo_estreito_forte",
+   "familia": "largura_com_forca",
+   "canvas": {
+    "x": 0.0,
+    "y": 0.0,
+    "w": 640.0,
+    "h": 360.0
+   },
+   "elementos": [
+    {
+     "caixa": {
+      "x": 16.0,
+      "y": 312.0,
+      "w": 100.0,
+      "h": 32.0
+     },
+     "conteudo": 60.0
+    }
+   ],
+   "relacoes": [
+    [
+     {
+      "LarguraDoConteudo": {
+       "a": 0
+      }
+     },
+     "Forte"
+    ]
+   ],
+   "quadros": [
+    {
+     "canvas": {
+      "x": 0.0,
+      "y": 0.0,
+      "w": 640.0,
+      "h": 360.0
+     },
+     "conteudos": [
+      60.0
+     ],
+     "caixas": [
+      {
+       "x": 16.0,
+       "y": 312.0,
+       "w": 60.0,
+       "h": 32.0
+      }
+     ]
+    }
+   ],
+   "unico": true,
+   "unico_tudo_weak": true
+  },
+  {
+   "nome": "conteudo_largo_contra_vizinho_media_forte",
+   "familia": "largura_com_forca",
+   "canvas": {
+    "x": 0.0,
+    "y": 0.0,
+    "w": 640.0,
+    "h": 360.0
+   },
+   "elementos": [
+    {
+     "caixa": {
+      "x": 16.0,
+      "y": 312.0,
+      "w": 100.0,
+      "h": 32.0
+     },
+     "conteudo": 60.0
+    },
+    {
+     "caixa": {
+      "x": 560.0,
+      "y": 312.0,
+      "w": 80.0,
+      "h": 32.0
+     },
+     "conteudo": 80.0
+    }
+   ],
+   "relacoes": [
+    [
+     {
+      "LarguraDoConteudo": {
+       "a": 0
+      }
+     },
+     "Forte"
+    ],
+    [
+     {
+      "LarguraDoConteudo": {
+       "a": 1
+      }
+     },
+     "Forte"
+    ],
+    [
+     {
+      "NaoInvade": {
+       "a": 0,
+       "b": 1,
+       "lado": "Direita",
+       "folga": 8.0
+      }
+     },
+     "Media"
+    ]
+   ],
+   "quadros": [
+    {
+     "canvas": {
+      "x": 0.0,
+      "y": 0.0,
+      "w": 640.0,
+      "h": 360.0
+     },
+     "conteudos": [
+      60.0,
+      80.0
+     ],
+     "caixas": [
+      {
+       "x": 16.0,
+       "y": 312.0,
+       "w": 60.0,
+       "h": 32.0
+      },
+      {
+       "x": 560.0,
+       "y": 312.0,
+       "w": 80.0,
+       "h": 32.0
+      }
+     ]
+    },
+    {
+     "canvas": {
+      "x": 0.0,
+      "y": 0.0,
+      "w": 640.0,
+      "h": 360.0
+     },
+     "conteudos": [
+      600.0,
+      80.0
+     ],
+     "caixas": [
+      {
+       "x": 0.0,
+       "y": 312.0,
+       "w": 600.0,
+       "h": 32.0
+      },
+      {
+       "x": 560.0,
+       "y": 312.0,
+       "w": 80.0,
+       "h": 32.0
+      }
+     ]
+    }
+   ],
+   "unico": true,
+   "unico_tudo_weak": true
+  },
+  {
+   "nome": "conteudo_estreito_fraca",
+   "familia": "largura_com_forca",
+   "canvas": {
+    "x": 0.0,
+    "y": 0.0,
+    "w": 640.0,
+    "h": 360.0
+   },
+   "elementos": [
+    {
+     "caixa": {
+      "x": 16.0,
+      "y": 312.0,
+      "w": 100.0,
+      "h": 32.0
+     },
+     "conteudo": 60.0
+    }
+   ],
+   "relacoes": [
+    [
+     {
+      "LarguraDoConteudo": {
+       "a": 0
+      }
+     },
+     "Fraca"
+    ]
+   ],
+   "quadros": [
+    {
+     "canvas": {
+      "x": 0.0,
+      "y": 0.0,
+      "w": 640.0,
+      "h": 360.0
+     },
+     "conteudos": [
+      60.0
+     ],
+     "caixas": [
+      {
+       "x": 16.0,
+       "y": 312.0,
+       "w": 60.0,
+       "h": 32.0
+      }
+     ]
+    }
+   ],
+   "unico": true,
+   "unico_tudo_weak": true
+  },
+  {
+   "nome": "conteudo_largo_contra_vizinho_media_fraca",
+   "familia": "largura_com_forca",
+   "canvas": {
+    "x": 0.0,
+    "y": 0.0,
+    "w": 640.0,
+    "h": 360.0
+   },
+   "elementos": [
+    {
+     "caixa": {
+      "x": 16.0,
+      "y": 312.0,
+      "w": 100.0,
+      "h": 32.0
+     },
+     "conteudo": 60.0
+    },
+    {
+     "caixa": {
+      "x": 560.0,
+      "y": 312.0,
+      "w": 80.0,
+      "h": 32.0
+     },
+     "conteudo": 80.0
+    }
+   ],
+   "relacoes": [
+    [
+     {
+      "LarguraDoConteudo": {
+       "a": 0
+      }
+     },
+     "Fraca"
+    ],
+    [
+     {
+      "LarguraDoConteudo": {
+       "a": 1
+      }
+     },
+     "Forte"
+    ],
+    [
+     {
+      "NaoInvade": {
+       "a": 0,
+       "b": 1,
+       "lado": "Direita",
+       "folga": 8.0
+      }
+     },
+     "Media"
+    ]
+   ],
+   "quadros": [
+    {
+     "canvas": {
+      "x": 0.0,
+      "y": 0.0,
+      "w": 640.0,
+      "h": 360.0
+     },
+     "conteudos": [
+      60.0,
+      80.0
+     ],
+     "caixas": [
+      {
+       "x": 16.0,
+       "y": 312.0,
+       "w": 60.0,
+       "h": 32.0
+      },
+      {
+       "x": 560.0,
+       "y": 312.0,
+       "w": 80.0,
+       "h": 32.0
+      }
+     ]
+    },
+    {
+     "canvas": {
+      "x": 0.0,
+      "y": 0.0,
+      "w": 640.0,
+      "h": 360.0
+     },
+     "conteudos": [
+      600.0,
+      80.0
+     ],
+     "caixas": [
+      {
+       "x": 0.0,
+       "y": 312.0,
+       "w": 552.0,
+       "h": 32.0
+      },
+      {
+       "x": 560.0,
+       "y": 312.0,
+       "w": 80.0,
+       "h": 32.0
+      }
+     ]
+    }
+   ],
+   "unico": true,
+   "unico_tudo_weak": true
+  },
+  {
+   "nome": "conteudo_some_e_volta",
+   "familia": "largura_com_forca",
+   "canvas": {
+    "x": 0.0,
+    "y": 0.0,
+    "w": 640.0,
+    "h": 360.0
+   },
+   "elementos": [
+    {
+     "caixa": {
+      "x": 16.0,
+      "y": 312.0,
+      "w": 100.0,
+      "h": 32.0
+     },
+     "conteudo": 60.0
+    }
+   ],
+   "relacoes": [
+    [
+     {
+      "LarguraDoConteudo": {
+       "a": 0
+      }
+     },
+     "Forte"
+    ]
+   ],
+   "quadros": [
+    {
+     "canvas": {
+      "x": 0.0,
+      "y": 0.0,
+      "w": 640.0,
+      "h": 360.0
+     },
+     "conteudos": [
+      60.0
+     ],
+     "caixas": [
+      {
+       "x": 16.0,
+       "y": 312.0,
+       "w": 60.0,
+       "h": 32.0
+      }
+     ]
+    },
+    {
+     "canvas": {
+      "x": 0.0,
+      "y": 0.0,
+      "w": 640.0,
+      "h": 360.0
+     },
+     "conteudos": [
+      null
+     ],
+     "caixas": [
+      {
+       "x": 16.0,
+       "y": 312.0,
+       "w": 100.0,
+       "h": 32.0
+      }
+     ]
+    },
+    {
+     "canvas": {
+      "x": 0.0,
+      "y": 0.0,
+      "w": 640.0,
+      "h": 360.0
+     },
+     "conteudos": [
+      200.0
+     ],
+     "caixas": [
+      {
+       "x": 16.0,
+       "y": 312.0,
+       "w": 200.0,
+       "h": 32.0
+      }
+     ]
+    },
+    {
+     "canvas": {
+      "x": 0.0,
+      "y": 0.0,
+      "w": 640.0,
+      "h": 360.0
+     },
+     "conteudos": [
+      60.0
+     ],
+     "caixas": [
+      {
+       "x": 16.0,
+       "y": 312.0,
+       "w": 60.0,
+       "h": 32.0
+      }
+     ]
+    }
+   ],
+   "unico": true,
+   "unico_tudo_weak": true
+  },
+  {
+   "nome": "conteudo_maior_que_a_tela_media",
+   "familia": "largura_com_forca",
+   "canvas": {
+    "x": 0.0,
+    "y": 0.0,
+    "w": 640.0,
+    "h": 360.0
+   },
+   "elementos": [
+    {
+     "caixa": {
+      "x": 16.0,
+      "y": 312.0,
+      "w": 100.0,
+      "h": 32.0
+     },
+     "conteudo": 900.0
+    }
+   ],
+   "relacoes": [
+    [
+     {
+      "LarguraDoConteudo": {
+       "a": 0
+      }
+     },
+     "Media"
+    ]
+   ],
+   "quadros": [
+    {
+     "canvas": {
+      "x": 0.0,
+      "y": 0.0,
+      "w": 640.0,
+      "h": 360.0
+     },
+     "conteudos": [
+      900.0
+     ],
+     "caixas": [
+      {
+       "x": 0.0,
+       "y": 312.0,
+       "w": 640.0,
+       "h": 32.0
+      }
+     ]
+    },
+    {
+     "canvas": {
+      "x": 0.0,
+      "y": 0.0,
+      "w": 1280.0,
+      "h": 360.0
+     },
+     "conteudos": [
+      900.0
+     ],
+     "caixas": [
+      {
+       "x": 16.0,
+       "y": 312.0,
+       "w": 900.0,
+       "h": 32.0
+      }
+     ]
+    }
+   ],
+   "unico": true,
+   "unico_tudo_weak": true
+  },
+  {
+   "nome": "requerida_impossivel_e_ignorada",
+   "familia": "impossivel",
+   "canvas": {
+    "x": 0.0,
+    "y": 0.0,
+    "w": 640.0,
+    "h": 360.0
+   },
+   "elementos": [
+    {
+     "caixa": {
+      "x": 16.0,
+      "y": 312.0,
+      "w": 100.0,
+      "h": 32.0
+     },
+     "conteudo": null
+    },
+    {
+     "caixa": {
+      "x": 200.0,
+      "y": 316.0,
+      "w": 24.0,
+      "h": 24.0
+     },
+     "conteudo": null
+    }
+   ],
+   "relacoes": [
+    [
+     {
+      "AoLado": {
+       "a": 1,
+       "b": 0,
+       "lado": "Direita",
+       "folga": 8.0
+      }
+     },
+     "Requerida"
+    ],
+    [
+     {
+      "AoLado": {
+       "a": 1,
+       "b": 0,
+       "lado": "Direita",
+       "folga": 20.0
+      }
+     },
+     "Requerida"
+    ],
+    [
+     {
+      "AoLado": {
+       "a": 7,
+       "b": 0,
+       "lado": "Abaixo",
+       "folga": 1.0
+      }
+     },
+     "Requerida"
+    ],
+    [
+     {
+      "Centrado": {
+       "a": 1,
+       "b": 1,
+       "eixo": "X"
+      }
+     },
+     "Requerida"
+    ]
+   ],
+   "quadros": [
+    {
+     "canvas": {
+      "x": 0.0,
+      "y": 0.0,
+      "w": 640.0,
+      "h": 360.0
+     },
+     "conteudos": [
+      null,
+      null
+     ],
+     "caixas": [
+      {
+       "x": 16.0,
+       "y": 312.0,
+       "w": 100.0,
+       "h": 32.0
+      },
+      {
+       "x": 124.0,
+       "y": 316.0,
+       "w": 24.0,
+       "h": 24.0
+      }
+     ]
+    }
+   ],
+   "unico": true,
+   "unico_tudo_weak": false
+  }
+ ]
+}

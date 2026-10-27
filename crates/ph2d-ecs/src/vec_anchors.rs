@@ -7,11 +7,11 @@
 //!
 //! # A escolha: âncoras PROCEDURAIS, e não um solver
 //!
-//! ⚠️ Cassowary (o simplex de restrições do AutoLayout da Apple) fica **FORA**, com a cerca
-//! escrita. O caso que justificaria um solver é o RELACIONAL (*"alinhe A com B"*), e ele já tem
-//! resposta neste app — o align/distribute e o snap de reivindicação 2-D. Para o resto, a regra
-//! é aritmética fechada, e uma aritmética fechada não tem passo de convergência para gastar num
-//! `advance(dt)` de runtime.
+//! A âncora ao PAI é aritmética fechada, e uma aritmética fechada não tem passo de convergência
+//! para gastar num `advance(dt)` de runtime — aqui não entra solver. ⚠️ O caso RELACIONAL entre
+//! IRMÃOS (*"a moeda ao lado da pontuação"*, *"encolhe antes de invadir"*) é outro: desigualdades e
+//! forças, que o align/distribute não exprime. Esse vive em `ph2d-hud-layout` (Cassowary, ADR-0194,
+//! `docs/BlenderConstraints/06_W5_resto.md` §1.3) e corre DEPOIS destas âncoras.
 //!
 //! # O modelo é o da Unity, com uma diferença que decide a wave
 //!

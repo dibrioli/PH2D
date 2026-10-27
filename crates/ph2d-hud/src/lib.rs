@@ -7,8 +7,10 @@
 //!
 //! A raiz do HUD é uma entidade como outra qualquer, e os filhos dela herdam pose por `Transform`.
 //! Tudo o que falta é **a pose da raiz**, e ela é uma função pura de dois rectângulos. Não há
-//! solver, não há convergência, não há estado entre quadros — é o mesmo argumento que o
-//! [`ph2d_ecs::VecAnchors`] escreve para recusar o Cassowary.
+//! solver, não há convergência, não há estado entre quadros — o mesmo argumento do
+//! [`ph2d_ecs::VecAnchors`] para a âncora ao pai. ⚠️ Os IRMÃOS com relações e desigualdades (a moeda
+//! ao lado da pontuação que cresce) não são isto: arrumam-se em `ph2d-hud-layout` (Cassowary,
+//! ADR-0194, `docs/BlenderConstraints/06_W5_resto.md` §1.3), depois desta raiz.
 //!
 //! # O ORÁCULO (Godot 4.7.2, MIT, corrido sem interface)
 //!

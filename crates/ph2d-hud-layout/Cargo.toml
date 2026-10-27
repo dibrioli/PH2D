@@ -1,0 +1,23 @@
+[package]
+name = "ph2d-hud-layout"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# O HUD que se arruma: relações entre IRMÃOS (ao lado, centrado, não invade, largura do conteúdo) resolvidas pelo
+# Cassowary incremental — ADR-0194, docs/BlenderConstraints/06_W5_resto.md §3.3. Sem ECS.
+# `kasuari` sem `portable-atomic`/`document-features`: só o `std` de omissão.
+[dependencies]
+kasuari = "=0.4.13"
+serde = { version = "1", features = ["derive"], default-features = false }
+
+[dev-dependencies]
+serde_json = "1"
+
+[lints]
+workspace = true

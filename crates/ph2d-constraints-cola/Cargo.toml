@@ -1,0 +1,23 @@
+[package]
+name = "ph2d-constraints-cola"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# A cola entre dois OBJECTOS (Rígido · Pino), resolvida por grupo: docs/BlenderConstraints/05_W5_diferenciais.md §2.
+# Sem ECS: o grafo, o fecho analítico e a tradução para a ezpz (só laços ou ≥ 2 condutores).
+[dependencies]
+kcl-ezpz = "=0.2.18"
+ph2d-constraints = { path = "../ph2d-constraints" }
+serde = { version = "1", features = ["derive"], default-features = false }
+
+[dev-dependencies]
+serde_json = "1"
+
+[lints]
+workspace = true

@@ -6489,6 +6489,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-constraints-cola"
+version = "0.0.0"
+dependencies = [
+ "kcl-ezpz",
+ "ph2d-constraints",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "ph2d-constraints-ecs"
 version = "0.0.0"
 dependencies = [

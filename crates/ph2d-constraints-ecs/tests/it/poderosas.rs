@@ -385,3 +385,42 @@ fn ping_pong_turns_without_a_jump_and_never_runs_backwards() {
         "na volta a mola repete a ida ao contrário: {vai:?} = {volta:?}"
     );
 }
+
+/// ⭐ O `Simulador` genérico (`N` canais, 06_W5 §3.1) dá à pose da Spring (`N = 3`) o MESMO bit que o
+/// de antes: a impressão FNV-1a de saltos, instantes contínuos, laço e vaivém, medida no código de
+/// `fe0777808d` (antes da troca).
+#[test]
+fn the_pose_spring_is_the_same_bit_after_the_generic_simulator() {
+    let mola = Spring {
+        ressalto: 0.8,
+        ..Spring::default()
+    };
+    let mut bits = Vec::new();
+    let mut s = Simulador::default();
+    for f in [0, 5, 13, 40, 7, 33, 34, 90] {
+        bits.extend(s.atraso(f, &mola, 24.0, &mut salto));
+    }
+    for q in [12.4, 3.7, 40.2, 40.9] {
+        bits.extend(s.atraso_em(q, &mola, 24.0, &mut salto));
+    }
+    for (vaivem, para_a_frente) in [(false, true), (true, true), (true, false)] {
+        let laco = Laco {
+            de: 0.0,
+            ate: 48.0,
+            vaivem,
+            para_a_frente,
+        };
+        for q in [30.4, 0.6, 47.8, 12.2] {
+            bits.extend(s.atraso_no_laco(q, Some(laco), &mola, 24.0, &mut balanco));
+        }
+    }
+    let fnv = bits.iter().fold(0xcbf2_9ce4_8422_2325_u64, |h, v| {
+        v.to_bits()
+            .to_le_bytes()
+            .iter()
+            .fold(h, |h, b| (h ^ u64::from(*b)).wrapping_mul(0x0100_0000_01b3))
+    });
+    assert_eq!((bits.len(), fnv), (72, IMPRESSAO), "impressão {fnv:#018x}");
+}
+
+const IMPRESSAO: u64 = 0x40b3_b313_e43b_d8ce;

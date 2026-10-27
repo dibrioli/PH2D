@@ -255,7 +255,7 @@ vazio nos ficheiros mutados após cada uma.
 
 | # | Lei | Mutação (ficheiro) | Resultado | Quem sangrou |
 |---|---|---|---|---|
-| M1a | fenda | `V/(V+f(1−V))` → `f*1.001` (`oleo_real.rs`) | **SOBREVIVEU** | ninguém (wet-paint 9 verdes, cena do dono verde) |
+| M1a | fenda | `V/(V+f(1−V))` → `f*1.001` (`oleo_real.rs`) | ~~SOBREVIVEU~~ → **sangra** (fecho) | `a_forca_da_fenda_multiplica_as_chances_de_oclusao` (gate de valor novo, visto verde e depois vermelho sob M1a) |
 | M1b | neutralidade | atalho `if f == 1.0 { return v }` removido | **SOBREVIVEU** | ninguém: `v/(v+(1−v))` dá `v` bit a bit; atalho só poupa custo |
 | M2 | neutralidade | `alcance / ALCANCE_FENDA_MAX` → `/ 23.0` | sangrou | `a_fenda_neutra_e_bit_identica_a_de_antes`, `o_material_neutro_e_bit_identico_a_de_antes` |
 | M3 | neutralidade | `MaterialCelula::NEUTRO.especular` 0,5 → 0,5001 (`material.rs`) | sangrou | os mesmos dois |

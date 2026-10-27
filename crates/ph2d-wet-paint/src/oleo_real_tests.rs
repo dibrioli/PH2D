@@ -260,6 +260,23 @@ fn impressao_digital(o: &OleoReal) -> u64 {
     h
 }
 
+/// A força da fenda multiplica as CHANCES de oclusão: `V' / (1 − V') = (V / (1 − V)) / f`, nos extremos
+/// `f = 0` (céu inteiro) e `V = 1` (nada a tapar). Fecha a mutação sobrevivente M1a (`f × 1,001`).
+#[test]
+fn a_forca_da_fenda_multiplica_as_chances_de_oclusao() {
+    assert_eq!(forca_da_fenda(0.5, 0.0), 1.0);
+    assert_eq!(forca_da_fenda(1.0, 3.0), 1.0);
+    assert_eq!(forca_da_fenda(0.5, 3.0), 0.25);
+    assert_eq!(forca_da_fenda(0.75, 2.0), 0.6);
+    for v in [0.1, 0.3, 0.55, 0.9] {
+        for f in [0.25, 0.5, 2.0, 3.0] {
+            let w = forca_da_fenda(v, f);
+            let chances = |x: f64| x / (1.0 - x);
+            assert!((chances(w) - chances(v) / f).abs() < 1e-12, "v {v} f {f}: {w}");
+        }
+    }
+}
+
 /// ⭐ **Neutro = a imagem de antes** (W2 E1 + E2): com a força da fenda `1`, o alcance de fábrica e a força
 /// do ambiente de fábrica, o CLÁSSICO é BIT a BIT o de `c3365fb579` (a impressão digital gravada antes dos
 /// ajustes). O Estúdio saiu daqui na E2 por DESENHO (o difuso passou a vir do sector do HDRI; a impressão

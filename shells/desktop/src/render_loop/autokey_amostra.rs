@@ -50,7 +50,7 @@ pub(super) fn sample_pose<'a>(
 /// *«cunha estes»*.
 ///
 /// ⚠️ **A ordem é a da SELECÇÃO primeiro** (é o que o diff e a primeira recusa do quadro esperam), a
-/// mão a seguir, **sem repetidos** — o osso agarrado costuma estar nas duas listas.
+/// mão a seguir, o que a tool aponta (`ph2d_ecs::AlvosDasFamilias`) por fim, **sem repetidos** — o osso agarrado costuma estar nas duas listas.
 ///
 /// ⛔ **Menos quem um MOTOR está a conduzir** (auditoria de 2026-09-08): a invariante do cabeçalho
 /// deste ficheiro exige que ninguém escreva pose **entre** o apply e este passe, e os passes do
@@ -65,7 +65,16 @@ pub(crate) fn populacao(
 ) -> Vec<u64> {
     let maos = super::super::timeline_bridge::maos_do_quadro(Some(hero), skeleton, sim);
     let mut fora: Vec<u64> = Vec::new();
-    for e in hero.gizmo.iter_selected().chain(maos.iter().copied()) {
+    let alvos = sim.world().get_resource::<ph2d_ecs::AlvosDasFamilias>();
+    let alvos = alvos
+        .into_iter()
+        .flat_map(ph2d_ecs::AlvosDasFamilias::todas);
+    for e in hero
+        .gizmo
+        .iter_selected()
+        .chain(maos.iter().copied())
+        .chain(alvos)
+    {
         if !preview.drives(e) && !fora.contains(&e) {
             fora.push(e);
         }

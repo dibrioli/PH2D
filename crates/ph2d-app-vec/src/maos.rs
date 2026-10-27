@@ -7,8 +7,8 @@
 //! (`timeline_bridge::maos_do_quadro`); estes são os gestos vivos do vetor, a mesma cadeia do
 //! «mover» da shell.
 
-use ph2d_ecs::canal::familia::VETOR;
-use ph2d_ecs::{MaosDasFamilias, SimWorld};
+use ph2d_ecs::canal::familia::{CAD, VETOR};
+use ph2d_ecs::{AlvosDasFamilias, MaosDasFamilias, SimWorld};
 use ph2d_vec_scene::VecPathId;
 
 use crate::state::VecState;
@@ -58,7 +58,8 @@ pub fn maos(vec: &VecState) -> Vec<u64> {
     out
 }
 
-/// Publica [`maos`] no mundo — uma vez por quadro, antes do apply da timeline.
+/// Publica [`maos`] no mundo — uma vez por quadro, antes do apply da timeline — e os alvos da tool Regras
+/// (`cad_tool::alvos`).
 pub fn publicar(vec: &VecState, sim: &mut SimWorld) {
     let m = maos(vec);
     let w = sim.world_mut();
@@ -67,6 +68,14 @@ pub fn publicar(vec: &VecState, sim: &mut SimWorld) {
     } else if !m.is_empty() {
         let mut r = MaosDasFamilias::default();
         r.publicar(VETOR, m);
+        w.insert_resource(r);
+    }
+    let alvos = vec.cad_tool.alvos.clone();
+    if let Some(mut r) = w.get_resource_mut::<AlvosDasFamilias>() {
+        r.publicar(CAD, alvos);
+    } else if !alvos.is_empty() {
+        let mut r = AlvosDasFamilias::default();
+        r.publicar(CAD, alvos);
         w.insert_resource(r);
     }
 }

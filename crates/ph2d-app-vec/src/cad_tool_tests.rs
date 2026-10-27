@@ -314,3 +314,53 @@ fn typing_a_dimension_with_autokey_records_a_key() {
         plan.keys
     );
 }
+
+/// ⭐ Report do dono (26/10, cena 7): a medida de um desenho que não é a seleção não se gravava com o Auto Key — a
+/// população do Auto Key era só a seleção. Com uma regra na mão, a tool aponta todo path que a folha pode mover.
+#[test]
+fn a_chosen_rule_points_the_autokey_at_every_path_the_sheet_can_move() {
+    use ph2d_ecs::AlvosDasFamilias;
+    let mut m = mesa();
+    let tampa = m.scene.push_path(VecPath {
+        verts: [[0.0, 1.0], [1.0, 2.0]]
+            .into_iter()
+            .map(VecVertex::corner)
+            .collect(),
+        ..VecPath::default()
+    });
+    m.scene.normaliza_ids();
+    let v = |i: usize| PontoCad::Vert(tampa, m.scene.path(tampa).expect("a tampa").verts[i].id);
+    let (a, b) = (v(0), v(1));
+    m.scene
+        .regras_mut()
+        .push(ph2d_vec_scene::cad::RegraCad::nova(Lei::Distancia(
+            a, b, 1.4,
+        )));
+    m.scene.normaliza_ids();
+    m.vec.entities.insert(m.path, 7);
+    m.vec.entities.insert(tampa, 9);
+    let apontados = |m: &mut Mesa| -> Vec<u64> {
+        m.quadro();
+        crate::maos::publicar(&m.vec, &mut m.sim);
+        m.sim
+            .world()
+            .get_resource::<AlvosDasFamilias>()
+            .map(|r| r.todas().collect())
+            .unwrap_or_default()
+    };
+    assert!(
+        apontados(&mut m).is_empty(),
+        "sem nada na mão a tool não aponta"
+    );
+    m.vec.cad_tool.regra = Some(m.scene.regras()[0].id);
+    assert_eq!(
+        apontados(&mut m),
+        vec![9],
+        "a tampa da regra escolhida ficou fora do Auto Key"
+    );
+    m.vec.draw_config.mode = DrawMode::Node;
+    assert!(
+        apontados(&mut m).is_empty(),
+        "fora da tool Regras não aponta nada"
+    );
+}

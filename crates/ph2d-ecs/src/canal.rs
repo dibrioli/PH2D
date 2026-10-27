@@ -407,6 +407,26 @@ impl MaosDasFamilias {
     }
 }
 
+/// ⭐ **O que a ferramenta de cada família APONTA além da seleção** — as entidades que um gesto discreto da tool pode
+/// mudar (a tool Regras escreve a medida de uma regra da tampa com a caixa selecionada). Entram na população do Auto
+/// Key ANTES do gesto (o diff precisa do quadro anterior), sem a lei da mão: a timeline continua a conduzi-las.
+#[derive(Resource, Debug, Default, Clone, PartialEq, Eq)]
+pub struct AlvosDasFamilias {
+    por_familia: BTreeMap<u16, Vec<u64>>,
+}
+
+impl AlvosDasFamilias {
+    /// O que a família `familia` aponta agora (substitui o do quadro anterior).
+    pub fn publicar(&mut self, familia: u16, entidades: Vec<u64>) {
+        self.por_familia.insert(familia, entidades);
+    }
+
+    /// Todas as entidades apontadas, de todas as famílias.
+    pub fn todas(&self) -> impl Iterator<Item = u64> + '_ {
+        self.por_familia.values().flatten().copied()
+    }
+}
+
 #[cfg(test)]
 #[path = "canal_tests.rs"]
 mod tests;

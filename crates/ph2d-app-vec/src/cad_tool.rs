@@ -46,6 +46,8 @@ pub struct CadTool {
     focar: bool,
     /// A regra cujo valor o chip já recebeu (a semente é one-shot: semear todo quadro brigaria com a escrita).
     semeada: Option<(RegraId, u64)>,
+    /// As entidades que um pedido da barra pode mudar ([`alvos`]); `maos::publicar` leva-as ao Auto Key.
+    pub alvos: Vec<u64>,
     /// O último plano pintado — o mesmo que o press e o hover perguntam.
     pub(crate) plano: RefCell<Option<Plano>>,
 }
@@ -126,6 +128,34 @@ pub fn lei_de(p: Possivel, escolha: &[Alvo], scene: &VecScene, xf: &VecXforms) -
         *lei.medida_mut()? = agora;
     }
     Some(lei)
+}
+
+/// ⭐ **O que a tool aponta para o Auto Key**: com uma regra ou uma escolha na mão, todo path que a resolução da folha
+/// pode mover (os citados por uma regra, mais os da escolha) — a medida da tampa grava-se com a caixa selecionada.
+#[must_use]
+pub fn alvos(
+    t: &CadTool,
+    scene: &VecScene,
+    entidades: &ph2d_vec_entities::entities::VecEntityMap,
+) -> Vec<u64> {
+    if t.regra.is_none() && t.escolha.is_empty() {
+        return Vec::new();
+    }
+    let escolha = t.escolha.iter().flat_map(|a| match *a {
+        Alvo::Ponto(p) => [Some(p.path()), None],
+        Alvo::Lado(s) => [Some(s.0.path()), Some(s.1.path())],
+        Alvo::Circulo(id) => [Some(id), None],
+    });
+    let ids: BTreeSet<VecPathId> = scene
+        .regras()
+        .iter()
+        .flat_map(|r| r.lei.pontos())
+        .map(PontoCad::path)
+        .chain(escolha.flatten())
+        .collect();
+    ids.iter()
+        .filter_map(|id| entidades.get(id).copied())
+        .collect()
 }
 
 /// Resolve todas as regras sobre todo path citado, a partir do desenho de AGORA, e escreve a solução de volta — o
@@ -315,6 +345,7 @@ pub fn frame(scene: &mut VecScene, vec: &mut VecState, xf: &VecXforms, hero: &mu
         t.escolha.clear();
         t.regra = None;
     }
+    t.alvos = alvos(t, scene, &vec.entities);
     t.escolha.retain(|a| existe(scene, a));
     if t.regra.is_some_and(|id| scene.regra(id).is_none()) {
         t.regra = None;

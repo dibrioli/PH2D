@@ -79,3 +79,5 @@
 | W5 | Convidado que cai volta sozinho: 250 ms a dobrar até 8 s, durante 60 s, com a pílula «Reconnecting…» | Miro/Figma | `share/` |
 | W9 | Evento recorrente: arrastar/editar/apagar pergunta «This event / This and following / All events»; Enter = «This event»; «All» desloca também as excepções | Google Calendar/Outlook | `ph2d-app-planner` |
 | W9 | Inbox «To Kanban»: popover com pesquisa, Kanban → lista → Topo/Fundo; abre na 1.ª lista do 1.º Kanban, no fundo | Trello | `dest_pop.rs` |
+| W6 | Sugestões de `@`/`#` sem tecto fixo: tantas quantas cabem sob o campo (rola) | Trello lista todos num popover que rola | `w6/complete.rs` |
+| W5 | Avatares ao reconectar: véu da cor do fundo do cabeçalho por cima (sem token de opacidade novo) | um token a menos | `header/` |

@@ -299,3 +299,4 @@ pub fn pega(r: Rect) -> (f32, f32) {
 pub fn centro(r: Rect) -> (f32, f32) {
     (r.x + r.w * 0.5, r.y + r.h * 0.5)
 }
+mod j7_porta;

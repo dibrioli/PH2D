@@ -39,3 +39,25 @@
 
 Fila de motor (§3d) · brecha do gate `arch_color_space_typed` (`set_brush_shape_image_rgba`, `&[u8]` em linha à parte) ·
 Ink Brush a vigiar · decisões 5 e 8 do dono (smoke pendente).
+
+## Decisões de produto (movidas do ESTADO em 28/10, J6)
+
+1. Filbert/Flat Oily/Knife Smooth só voltam com o exame e o Rebelle ao lado; a lâmina do Rebelle é FIXA no eixo do
+   preset (06 §1). J4: o Filbert voltou (aprovado); as lâminas continuam em estudo.
+2. A matriz é TRIAGEM (d ≥ 0,596; série graduada: degrau ≥ 0,40; `matriz/escala.json`); o veredito é prancha + cega.
+   J4: ferramentas (tiram/movem tinta) têm grupo e escala próprios (`matriz/escala_ferramenta.json`).
+3. Os pré-existentes passam o mesmo exame: cura contra a origem, ou fundem/saem; «curado, não aprovado» fica.
+4. Oráculo que manda: Rebelle; ArtRage/MyPaint/Krita onde ele não tem. GIMP fora.
+5. A cauda do taper volta só no Digital. ⏳ AGUARDA o smoke do dono (pergunta no PDF).
+6. Dual brush só no Digital e no Wet.
+7. Modos = W3C em sRGB; Saturation/Linear Burn/Dodge do Rebelle a 10× não se perseguem.
+8. Tecto de tamanho por preset (Max Size do Rebelle). ⏳ AGUARDA o smoke do dono (pergunta no PDF).
+9. A rampa de pressão é a do DONO, não a do Rebelle (piso revogado 18/10).
+10. 2H = HB com menos pigmento. 11. Round Pressure → Hard Round. 13. Canetas duras fundem pela matriz.
+12. «Diferença visível» = confiança média/alta, ou repetida por dois revisores novos.
+14. Grafites ficam no Spacing 0,1 + Continuous (dono 18/10).
+15. A régua da rampa não reprova a entrada tardia do oráculo — FEITO na lei (J4, `399a387c6d`): abaixo do 1.º decil
+    que o oráculo pinta, erro 0.
+16. Foto nova do Rebelle vence número antigo gravado num portão (Square Hard).
+17. O Dabber ficou como está (matriz final da J5: sem par < 0,596).
+18. (J5) Gouache Flat fica (0,763 do Wet Flat; a cura partia 3 leis). Wet Dry Brush não funde (vizinho Airbrush 1,236).

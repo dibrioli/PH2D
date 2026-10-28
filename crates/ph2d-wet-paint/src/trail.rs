@@ -461,7 +461,10 @@ impl Trail {
         // O filme: a espessura (os dabs do miolo de um traço largo) e o campo do tamanho da grade.
         let filme = (p.k(Knob::StrokeFilm) > 0.0).then(|| {
             self.filme.garante(g.cells, g.s);
-            filme::espessura(p.k(Knob::CapsuleSpacing), p.agua_do_dab)
+            (
+                filme::espessura(p.k(Knob::CapsuleSpacing), p.agua_do_dab),
+                filme::domo(p.k(Knob::StrokeFilmDome), dab.r),
+            )
         });
         let wrote = self.deposit_shaped(g, tex, dab, law, sil, grain, padrao, cor, mode, filme);
         self.accumulated(wrote)

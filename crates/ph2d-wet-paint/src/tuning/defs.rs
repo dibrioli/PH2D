@@ -313,4 +313,7 @@ pub const KNOB_DEFS: [KnobDef; KNOB_COUNT] = [
     // os do cartão de antes (`OleoCelula::NEUTRA`, a imagem de sempre ao byte)
     k(Knob::OilDepth, KnobGroup::Material, "oilDepth", 0.0, 3.0, 0.01, 1.0, None),
     k(Knob::OilGloss, KnobGroup::Material, "oilGloss", 0.0, 1.0, 0.01, 1.0, None),
+    // J6 (aguarela): a borda da mancha molhada e o domo do filme largo — neutro 0 = a tinta de sempre, ao bit
+    k(Knob::WetOpenEdge, KnobGroup::WetEffects, "wetOpenEdge", 0.0, 80.0, 0.5, 0.0, None),
+    k(Knob::StrokeFilmDome, KnobGroup::Stroke, "strokeFilmDome", 0.0, 1.0, 0.01, 0.0, None),
 ];

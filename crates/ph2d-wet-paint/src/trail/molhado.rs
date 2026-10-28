@@ -16,6 +16,10 @@
 //!    `s · (1 + abertura)` (a massa é a mesma, espalhada), repartida em [`PASSOS`] destinos de ±[`BORDA`] (a borda macia);
 //!    e a outra tinta debaixo do tubo perde a fracção `WetOpenPush` — uma vez por traço ([`Molhado::levantado`]).
 //!
+//! 3. **a pena** ([`Knob::WetOpenEdge`], J6): a célula da borda do traço reparte-se ainda até `pena` células para FORA
+//!    (a do centro nada, `(s/r)²`), e o levantar alarga a rampa de fora do mesmo tanto — a mancha esbate em ~12 células
+//!    como a do Rebelle `Liner`, sem o aro das duas tintas somadas. `0` = a borda de sempre, ao bit.
+//!
 //! `WetOpen = 0` = nada disto corre: o cruzamento de sempre, ao bit. Sem tinta molhada de outra cor, nada abre: ao bit.
 
 use super::{TouchedRect, Trail};
@@ -29,6 +33,11 @@ const MOLHADA: f32 = 0.01;
 const BORDA: f64 = 0.16;
 /// Os destinos de cada célula, com pesos em triângulo.
 const PASSOS: usize = 5;
+/// Os destinos com a pena ([`Knob::WetOpenEdge`]): a rampa larga em passos de ≤ ~3 células (⛔ medido: 5 destinos a
+/// 6 células uns dos outros riscavam a mancha de listras — a recusa dos destinos discretos da J5).
+const PASSOS_PENA: usize = 15;
+/// A semente da fase dos destinos da pena.
+const SEMENTE_PENA: u32 = 0x9e37_79b9;
 /// A abertura anda até ao alvo em `SUAVE_RAIOS` raios de caminho (⛔ medido: com 1 raio, o Liner que atravessa a
 /// faixa de 52 px do `sobre` não chegava a abrir — 1,27 × contra 1,45 do Rebelle, que abre inteiro dentro dela).
 const SUAVE_RAIOS: f64 = 0.3;
@@ -75,7 +84,7 @@ struct Fonte {
     a: f32,
     tip: [f64; 3],
     n: u8,
-    alvos: [(f64, f64, f64); PASSOS],
+    alvos: [(f64, f64, f64); PASSOS_PENA],
 }
 
 impl Fonte {
@@ -84,7 +93,7 @@ impl Fonte {
         a: 0.0,
         tip: [0.0; 3],
         n: 0,
-        alvos: [(0.0, 0.0, 0.0); PASSOS],
+        alvos: [(0.0, 0.0, 0.0); PASSOS_PENA],
     };
 }
 
@@ -286,6 +295,7 @@ impl Trail {
             f64::from(self.anchor_x - half),
             f64::from(self.anchor_y - half),
         );
+        let (gx, gy) = (self.anchor_x - half, self.anchor_y - half);
         // O caminho em coordenadas locais da janela.
         let pts: Vec<Ponto> = self.molhado.pontos[primeiro..]
             .iter()
@@ -299,9 +309,10 @@ impl Trail {
             return None;
         }
         // A caixa de saída: a de entrada + o alcance do tubo em volta do caminho.
+        let esbate = p.k(Knob::WetOpenEdge);
         let alcance = pts
             .iter()
-            .map(|q| q.r * (1.0 + q.abre[0].max(q.abre[1])) * (1.0 + BORDA) + 2.0)
+            .map(|q| q.r * (1.0 + q.abre[0].max(q.abre[1])) * (1.0 + BORDA) + 2.0 + esbate)
             .fold(0.0f64, f64::max);
         let (mut bx0, mut by0, mut bx1, mut by1) = (self.lx0, self.ly0, self.lx1, self.ly1);
         for q in &pts {
@@ -325,6 +336,8 @@ impl Trail {
         cor.resize(n, [0.0; 3]);
         let tri = |j: usize| (j + 1).min(PASSOS - j) as f64;
         let total: f64 = (0..PASSOS).map(tri).sum();
+        let tri_pena = |j: usize| (j + 1).min(PASSOS_PENA - j) as f64;
+        let total_pena: f64 = (0..PASSOS_PENA).map(tri_pena).sum();
         // 1. Os destinos de cada célula da janela (cada uma só lê a janela e o caminho: linha a linha, em paralelo).
         let (lx0, ly0) = (self.lx0, self.ly0);
         let jw = (self.lx1 - lx0 + 1) as usize;
@@ -360,21 +373,37 @@ impl Trail {
                             continue;
                         }
                         let (x, y) = (f64::from(lx), f64::from(ly));
-                        let (s, dx, dy, _, o) = mais_perto(&pts, !tampa, true, x, y);
+                        let (s, dx, dy, rr, o) = mais_perto(&pts, !tampa, true, x, y);
                         *f = Fonte {
                             v,
                             a,
                             tip: [tr[l], tg[l], tb[l]].map(f64::from),
                             n: 1,
-                            alvos: [(x, y, 1.0); PASSOS],
+                            alvos: [(x, y, 1.0); PASSOS_PENA],
                         };
                         if o > 0.0 && s > 1e-9 {
-                            f.n = PASSOS as u8;
                             let alvo = s * (1.0 + o);
-                            for j in 0..PASSOS {
-                                let c = (j as f64 + 0.5) / PASSOS as f64 * 2.0 - 1.0;
-                                let d = alvo * (1.0 + BORDA * c) - s;
-                                f.alvos[j] = (x + d * dx, y + d * dy, tri(j) / total);
+                            // A pena (J6): a célula da borda reparte-se até `esbate` para FORA, a do centro nada
+                            // (⛔ medido: repartida para os dois lados, a metade de dentro somava-se ao miolo num risco).
+                            let pena =
+                                esbate * (s / rr.max(1e-9)).min(1.0).powi(2) * (o / abre).min(1.0);
+                            if pena > 0.0 {
+                                f.n = PASSOS_PENA as u8;
+                                // A fase dos destinos sorteada por célula do grid: com a mesma em todas, cada linha
+                                // pousava nas mesmas colunas (⛔ medido: riscas ao longo do traço a cada ~4 células).
+                                let fase = crate::rng::hash2(lx + gx, ly + gy, SEMENTE_PENA);
+                                for j in 0..PASSOS_PENA {
+                                    let c = (j as f64 + fase) / PASSOS_PENA as f64 * 2.0 - 1.0;
+                                    let d = alvo * (1.0 + BORDA * c) + pena * 0.5 * (c + 1.0) - s;
+                                    f.alvos[j] = (x + d * dx, y + d * dy, tri_pena(j) / total_pena);
+                                }
+                            } else {
+                                f.n = PASSOS as u8;
+                                for j in 0..PASSOS {
+                                    let c = (j as f64 + 0.5) / PASSOS as f64 * 2.0 - 1.0;
+                                    let d = alvo * (1.0 + BORDA * c) - s;
+                                    f.alvos[j] = (x + d * dx, y + d * dy, tri(j) / total);
+                                }
                             }
                         }
                         for &(_, fy_, _) in &f.alvos[..usize::from(f.n)] {
@@ -518,9 +547,12 @@ impl Trail {
         let todos = &self.molhado.pontos;
         let pts = &todos[todos.len() - (m + 1).min(todos.len())..];
         // A caixa da cápsula dos dabs desta janela, em células do grid (não a da janela: a ponta redonda passa dela).
+        // A pena (J6, [`Knob::WetOpenEdge`]): a rampa do levantar alarga-se com a do esticão — as duas tintas repartem a
+        // fronteira em vez de se somarem num aro.
+        let pena = p.k(Knob::WetOpenEdge);
         let (mut x0, mut y0, mut x1, mut y1) = (f64::MAX, f64::MAX, f64::MIN, f64::MIN);
         for q in &pts[pts.len() - m..] {
-            let a = q.r * (1.0 + q.abre[0].max(q.abre[1])) * (1.0 + BORDA) + 1.0;
+            let a = q.r * (1.0 + q.abre[0].max(q.abre[1])) * (1.0 + BORDA) + 1.0 + pena;
             (x0, y0, x1, y1) = (
                 x0.min(q.x - a),
                 y0.min(q.y - a),
@@ -577,7 +609,7 @@ impl Trail {
                     }
                     let (s, _, _, r, o) = mais_perto(pts, false, false, cx as f64, cy as f64);
                     let raio = r * (1.0 + o);
-                    let (a, b) = (raio * (1.0 - BORDA), raio * (1.0 + BORDA));
+                    let (a, b) = (raio * (1.0 - BORDA), raio * (1.0 + BORDA) + pena);
                     let cobre = if s <= a {
                         1.0
                     } else if s >= b {

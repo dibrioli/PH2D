@@ -59,6 +59,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.wet_tuning.knob.tipReservoir" => "Tip picks up and smears",
         "panel.wet_tuning.knob.pressureGrain" => "Light pressure breaks into grain",
         "panel.wet_tuning.knob.strokeFilm" => "Smooth wash body (off · on)",
+        "panel.wet_tuning.knob.strokeFilmDome" => "Wash body: loaded centre, soft sides",
         "panel.wet_tuning.knob.dustDrop" => "Dust grain size",
         "panel.wet_tuning.knob.textureSizeExp" => "Texture follows brush size",
         "panel.wet_tuning.knob.textureSizeRef" => "Texture size reference (px)",
@@ -71,6 +72,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.wet_tuning.knob.extGranulation" => "Granulation",
         "panel.wet_tuning.knob.wetOpen" => "Wet-in-wet bloom",
         "panel.wet_tuning.knob.wetOpenPush" => "Bloom pushes paint away",
+        "panel.wet_tuning.knob.wetOpenEdge" => "Bloom edge softness",
         // Tools — a água e o secador.
         "panel.wet_tuning.knob.waterPush" => "Water pushes pigment",
         "panel.wet_tuning.knob.dryerEdge" => "Dryer leaves an edge",

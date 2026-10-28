@@ -85,9 +85,34 @@ pub(crate) fn espessura(capsula: f64, agua_do_dab: f64) -> f64 {
     agua_do_dab / capsula.max(1e-3)
 }
 
+/// O raio (células) até ao qual o filme é CHATO: o Rebelle `Liner`/`Wash Round` a 40 px pousa um perfil plano através
+/// do traço (o miolo ±1 % da borda a 1 px dela), a 200 px um domo (`Liner` 0,89 a 5 % da largura, 0,94 a 20 %, 1 no meio).
+pub(crate) const DOMO_R0: f64 = 20.0;
+
+/// ⭐ **O domo do filme largo** ([`crate::tuning::Knob::StrokeFilmDome`], J6): o coeficiente `c` do alvo
+/// `1 − c·d²` (`d` = distância ao centro do dab, células) — `profundidade · (1 − R0/r)⁺ ÷ r²`, a queda na borda do dab
+/// cresce com o raio a partir de [`DOMO_R0`]. O máximo do filme leva-o aos lados do traço E às tampas. `0` = chato.
+#[inline]
+#[must_use]
+pub(crate) fn domo(profundidade: f64, r: f64) -> f64 {
+    if profundidade <= 0.0 || r <= DOMO_R0 {
+        return 0.0;
+    }
+    profundidade * (1.0 - DOMO_R0 / r) / (r * r)
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{Filme, acrescenta, espessura};
+    use super::{DOMO_R0, Filme, acrescenta, domo, espessura};
+
+    /// ⭐ O domo: nada sem a profundidade nem até ao raio chato; acima dele, a queda na borda (`c·r²`) cresce com o raio.
+    #[test]
+    fn o_domo_so_cresce_acima_do_raio_chato() {
+        assert_eq!(domo(0.0, 100.0), 0.0);
+        assert_eq!(domo(0.5, DOMO_R0), 0.0);
+        let borda = |r: f64| domo(0.5, r) * r * r;
+        assert!(borda(40.0) > 0.0 && borda(40.0) < borda(100.0) && borda(100.0) < 0.5);
+    }
 
     /// ⭐ O filme guarda o MÁXIMO: um dab mais fraco por cima não acrescenta nada, um mais forte só a diferença.
     #[test]

@@ -349,3 +349,62 @@ fn o_liner_tem_o_fio_escuro_da_borda() {
         "o Wet Liner sem o fio escuro da borda: orla {o:.3} (Rebelle 1,247)"
     );
 }
+
+/// O perfil ATRAVÉS do recto da cena `tamanhos` (foto A) centrado em `y`: a escuridão a 5 %, 10 % e 20 % da largura, cada
+/// uma ÷ a do meio (os dois lados e as colunas x 400–600) — a régua do relatório (`exames/aguarela.md` «Motor J6»).
+fn domo(px: &[u8], w: usize, y: usize, meia: usize) -> [f64; 3] {
+    let esc = |yy: usize| {
+        (400..600)
+            .map(|x| {
+                let i = (yy * w + x) * 4;
+                255.0
+                    - (0.299 * f64::from(px[i])
+                        + 0.587 * f64::from(px[i + 1])
+                        + 0.114 * f64::from(px[i + 2]))
+            })
+            .sum::<f64>()
+            / 200.0
+    };
+    let p: Vec<f64> = (y - meia..=y + meia).map(esc).collect();
+    let on: Vec<usize> = (0..p.len()).filter(|&i| p[i] > 15.0).collect();
+    let (a, b) = (on[0], on[on.len() - 1]);
+    let l = (b - a + 1) as f64;
+    let meio = p[(a + b) / 2 - 5..(a + b) / 2 + 5].iter().sum::<f64>() / 10.0;
+    [0.05, 0.10, 0.20].map(|f| {
+        let k = (l * f) as usize;
+        let lados = p[a + k - 2..a + k + 3]
+            .iter()
+            .chain(&p[b - k - 2..b - k + 3]);
+        lados.sum::<f64>() / 10.0 / meio
+    })
+}
+
+/// ⭐ **O filme LARGO tem miolo carregado e lados em degradê** (`Knob::StrokeFilmDome`, J6): o Rebelle `Liner` a 200 px
+/// pousa 0,89 · 0,91 · 0,94 do meio a 5 · 10 · 20 % da largura, e a 40 px um perfil chato; o filme de sempre é chato aos
+/// dois (0,98 · 0,99 · 1,00). Com o domo 0,3 o de 200 px desce e o de 40 px fica chato (o raio chato `DOMO_R0`).
+/// CONTROLO: o mesmo Wet Liner sem o domo.
+#[test]
+fn o_filme_largo_tem_o_miolo_carregado_e_os_lados_em_degrade() {
+    let [(com, w), (sem, _)] = std::thread::scope(|s| {
+        let a = s.spawn(|| foto_a("Wet Liner", &[("strokeFilmDome", 0.3)], "tamanhos"));
+        let b = s.spawn(|| foto_a("Wet Liner", &[("strokeFilmDome", 0.0)], "tamanhos"));
+        [a.join().unwrap(), b.join().unwrap()]
+    });
+    let (d200, c200) = (domo(&com, w, 440, 130), domo(&sem, w, 440, 130));
+    let (d40, c40) = (domo(&com, w, 190, 30), domo(&sem, w, 190, 30));
+    println!(
+        "[domo] 200 px {d200:.3?} (Rebelle [0,886, 0,910, 0,942]) · sem {c200:.3?} · 40 px {d40:.3?} · sem {c40:.3?}"
+    );
+    assert!(
+        c200[0] > 0.96,
+        "o controlo (o filme de sempre) já tem os lados claros: {c200:.3?}"
+    );
+    assert!(
+        d200[0] < 0.92 && d200[0] < d200[1] && d200[1] < d200[2] && d200[2] < 0.98,
+        "o recto de 200 px sem o domo (miolo carregado, lados em degradê): {d200:.3?} (Rebelle [0,886, 0,910, 0,942])"
+    );
+    assert!(
+        d40[1] > 0.97 && (d40[1] - c40[1]).abs() < 0.01,
+        "o recto de 40 px deixou de ser chato: {d40:.3?} (sem o domo {c40:.3?})"
+    );
+}

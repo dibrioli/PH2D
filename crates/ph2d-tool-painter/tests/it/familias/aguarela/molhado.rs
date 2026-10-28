@@ -276,3 +276,106 @@ fn o_azul_que_corre_dentro_do_vermelho_molhado_alarga_como_um_tubo() {
         "a largura não é constante pelo caminho: faixa {faixa:.2} × o papel, salto {salto:.0} px (o degrau do disco)"
     );
 }
+
+/// A BORDA da mancha do cruzamento molhado (cena `sobre`, foto A, y 145–155, os três cruzamentos e os dois lados):
+/// `(degradê, aro)` — as células entre 80 % e 20 % da distância de cor do miolo à faixa longe, e a escuridão máxima na
+/// banda da borda (8 células para dentro do meio-caminho, 2 para fora) ÷ a do miolo. O Rebelle `Liner` 12,2 · 1,10 (o
+/// aro dele é o vermelho EMPURRADO, por fora), `Mop` 12,7 · 1,03, `Wash Round` 40,7 · 1,03.
+pub(super) fn borda(px: &[u8], w: usize) -> (f64, f64) {
+    let canal = |x: usize, k: usize| {
+        (145..156)
+            .map(|y| f64::from(px[(y * w + x) * 4 + k]))
+            .sum::<f64>()
+            / 11.0
+    };
+    let esc = |x: usize| 255.0 - (0.299 * canal(x, 0) + 0.587 * canal(x, 1) + 0.114 * canal(x, 2));
+    let (mut deg, mut aro) = (0.0, 0.0);
+    for c in [250usize, 500, 750] {
+        let longe: [f64; 3] =
+            [0, 1, 2].map(|k| (c + 100..c + 126).map(|x| canal(x, k)).sum::<f64>() / 26.0);
+        let d = |x: usize| {
+            (0..3)
+                .map(|k| (canal(x, k) - longe[k]).powi(2))
+                .sum::<f64>()
+                .sqrt()
+        };
+        let dc = (c - 6..=c + 6).map(d).sum::<f64>() / 13.0;
+        for lado in [-1i64, 1] {
+            let em = |i: usize| (c as i64 + lado * i as i64) as usize;
+            let ate = |f: f64| (0..=80).find(|&i| d(em(i)) < f * dc).unwrap_or(80);
+            deg += (ate(0.2) - ate(0.8)) as f64;
+            let i50 = ate(0.5);
+            let miolo = (0..6).map(|i| esc(em(i))).sum::<f64>() / 6.0;
+            let banda = (i50.saturating_sub(8)..i50 + 3)
+                .map(|i| esc(em(i)))
+                .fold(0.0, f64::max);
+            aro += banda / miolo;
+        }
+    }
+    (deg / 6.0, aro / 6.0)
+}
+
+/// ⭐ **A borda da mancha molhada ESBATE** (`Knob::WetOpenEdge`, J6): o Rebelle `Liner` esbate a mancha que o azul abre no
+/// vermelho molhado em 12,2 células (80 → 20 %), sem aro por dentro; a lei de sempre corta-a em 2–3 células, com o aro
+/// das duas tintas somadas (1,16). Com a pena de 20 células: o degradê dele e sem o aro. CONTROLO: o Wet Liner sem a pena.
+#[test]
+fn a_borda_da_mancha_molhada_esbate() {
+    let [(com, w), (sem, _)] = std::thread::scope(|s| {
+        let a = s.spawn(|| foto("Wet Liner", &[("wetOpenEdge".to_owned(), 20.0)], "sobre", 0));
+        let b = s.spawn(|| foto("Wet Liner", &[("wetOpenEdge".to_owned(), 0.0)], "sobre", 0));
+        [a.join().unwrap(), b.join().unwrap()]
+    });
+    let ((dl, al), (dc, ac)) = (borda(&com, w), borda(&sem, w));
+    let (rl, _) = mancha(&com, w);
+    println!(
+        "[borda] Wet Liner: degradê {dl:.1} · aro {al:.3} · mancha {rl:.2} (Rebelle 12,2 · 1,10 · 1,42) · sem a pena {dc:.1} · {ac:.3}"
+    );
+    assert!(
+        dc < 5.0 && ac > 1.10,
+        "o controlo (a borda de sempre) já esbate: {dc:.1} · aro {ac:.3}"
+    );
+    assert!(
+        (9.0..16.0).contains(&dl),
+        "a borda da mancha não esbate como a do Rebelle: {dl:.1} células (12,2)"
+    );
+    assert!(al < 1.06, "o aro das duas tintas somadas ficou: {al:.3}");
+    assert!(
+        rl > 1.3,
+        "a mancha deixou de abrir: {rl:.2} × a largura (1,42)"
+    );
+}
+
+/// As RISCAS ao longo do traço na mancha (cena `sobre`, foto A, y 130–170): o desvio do vermelho de cada coluna à média
+/// das 5 vizinhas, RMS nos três cruzamentos (x ±30). O Rebelle `Liner` 0,45.
+fn riscas(px: &[u8], w: usize) -> f64 {
+    let (mut t, mut n) = (0.0, 0.0);
+    for c in [250usize, 500, 750] {
+        let col: Vec<f64> = (c - 30..=c + 30)
+            .map(|x| {
+                (130..171)
+                    .map(|y| f64::from(px[(y * w + x) * 4]))
+                    .sum::<f64>()
+                    / 41.0
+            })
+            .collect();
+        for i in 2..col.len() - 2 {
+            t += (col[i] - col[i - 2..=i + 2].iter().sum::<f64>() / 5.0).powi(2);
+            n += 1.0;
+        }
+    }
+    (t / n).sqrt()
+}
+
+/// ⭐ **A pena larga não risca** (`Knob::WetOpenEdge`, J6): os destinos da borda a ~4 células uns dos outros, na MESMA fase
+/// em todas as células, pousavam nas mesmas colunas linha após linha — riscas ao longo do traço (o Wet Wash com a pena de
+/// 60: 1,56). A fase sorteada por célula do grid desfá-las (0,84). CONTROLO: a mancha de borda dura de sempre (2,0+).
+#[test]
+fn a_pena_larga_nao_risca() {
+    let (px, w) = foto("Wet Wash", &[("wetOpenEdge".to_owned(), 60.0)], "sobre", 0);
+    let r = riscas(&px, w);
+    println!("[riscas] Wet Wash com a pena de 60: {r:.2} (Rebelle Liner 0,45)");
+    assert!(
+        r < 1.2,
+        "a pena larga risca a mancha ao longo do traço: {r:.2}"
+    );
+}

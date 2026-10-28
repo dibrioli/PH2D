@@ -288,9 +288,17 @@ pub enum Knob {
     OilDepth,
     /// … **Gloss** do Óleo Real: a força do brilho especular da tinta que este pincel pousa (`1` = o de sempre).
     OilGloss,
+    /// ⭐ **A borda da mancha molhada ESBATE** (J6, `docs/Painter/Pinceis/exames/aguarela.md` «Motor J6»): a largura
+    /// (células) do degradê na fronteira da mancha do [`Knob::WetOpen`] — a tinta esticada e a levantada repartem-se
+    /// pela mesma rampa, sem o aro das duas somadas. `0` = a borda de sempre, ao bit (só com [`Knob::WetOpen`]).
+    WetOpenEdge,
+    /// ⭐ **O filme LARGO tem miolo carregado e borda em degradê** (J6, «Motor J6»): o alvo do filme de cada dab cai
+    /// `1 − d·(1 − R0/r)·u²` do centro (`u` = distância ÷ raio) — o traço grande do Rebelle esbate os lados e as pontas, o
+    /// de 40 px é chato. `0` = o filme chato de sempre, ao bit (só com [`Knob::StrokeFilm`]).
+    StrokeFilmDome,
 }
 
-pub const KNOB_COUNT: usize = 128;
+pub const KNOB_COUNT: usize = 130;
 
 /// O LEITOR TOLERANTE das chaves do material de antes da W3 (preset e macro gravados com elas): `(knob, valor)`
 /// na lei nova, `None` para uma chave que não é antiga. `roughnessMul` m → Roughness `0,5·m` (o neutro `1` → `0,5`,

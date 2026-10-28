@@ -268,7 +268,8 @@ impl Trail {
     /// Devolve o que a porta pública devolvia (a janela encheu? · onde o dab escreveu no grid) e
     /// actualiza a extensão da janela. `mode = None` é o produto: a rota sai de [`Rows::pick`]
     /// com o piso MEDIDO [`par::MIN_CELLS_DEPOSIT`]. `filme` = a espessura do filme do traço em dabs
-    /// ([`Knob::StrokeFilm`], [`super::filme`]): cada célula recebe só o que passa do máximo que o traço já lhe deu.
+    /// ([`Knob::StrokeFilm`], [`super::filme`]): cada célula recebe só o que passa do máximo que o traço já lhe deu;
+    /// e o coeficiente do domo ([`super::filme::domo`], por célula²; `0` = o filme chato).
     #[allow(clippy::too_many_arguments)]
     pub(super) fn deposit_shaped(
         &mut self,
@@ -281,7 +282,7 @@ impl Trail {
         padrao: Option<CellFn<'_>>,
         cor: Option<ColorFn<'_>>,
         mode: Option<Rows>,
-        filme: Option<f64>,
+        filme: Option<(f64, f64)>,
     ) -> (i32, i32, i32, i32) {
         let Some((x0, y0, x1, y1)) = shaped_bounds(g.w, g.h, dab.x, dab.y, dab.r * dab.reach)
         else {
@@ -379,8 +380,15 @@ impl Trail {
                     if let Some(c) = tinta {
                         deposit *= f64::from(c[3]);
                     }
-                    if let (Some(k), Some(f)) = (filme, filme_row.as_deref_mut()) {
-                        deposit = super::filme::acrescenta(&mut f[x as usize], deposit * k);
+                    if let (Some((k, domo)), Some(f)) = (filme, filme_row.as_deref_mut()) {
+                        let alvo = if domo > 0.0 {
+                            let d2 =
+                                (f64::from(x) - dab.x).powi(2) + (f64::from(y) - dab.y).powi(2);
+                            deposit * k * (1.0 - domo * d2).max(0.0)
+                        } else {
+                            deposit * k
+                        };
+                        deposit = super::filme::acrescenta(&mut f[x as usize], alvo);
                     }
                     // ⚠️ **Esta é uma escrita no DOCUMENTO** — ver o doc do pai: é dela que o véu do
                     // Show Wet se alimenta, e acontece mesmo fora da janela do rasto.

@@ -309,9 +309,14 @@ pub enum Knob {
     /// — o Blend com grão do Rebelle borra 28 px para fora da tinta, a janela arrastava-a 52–66. `0` = a média da
     /// janela, ao bit.
     BlendReach,
+    /// ⭐ **A guache COBRE a tinta molhada** (J6 lacuna 7, `docs/Painter/Pinceis/exames/guache.md` «Motor J6»): a cada
+    /// pouso, a tinta molhada de OUTRA cor na célula perde a fracção `WetCover × outra_tinta × peso` (`peso` = a parte da
+    /// tinta nova na mistura da célula) e o que fica não tinge a cor nova (`trail/transfer.rs` `cobre_a_outra`) — o azul
+    /// do Rebelle sobre o vermelho molhado fica a cor dele no papel. `0` = a mistura de sempre, ao bit.
+    WetCover,
 }
 
-pub const KNOB_COUNT: usize = 133;
+pub const KNOB_COUNT: usize = 134;
 
 /// O LEITOR TOLERANTE das chaves do material de antes da W3 (preset e macro gravados com elas): `(knob, valor)`
 /// na lei nova, `None` para uma chave que não é antiga. `roughnessMul` m → Roughness `0,5·m` (o neutro `1` → `0,5`,

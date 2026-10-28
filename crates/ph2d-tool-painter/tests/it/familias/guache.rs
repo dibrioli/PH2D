@@ -174,3 +174,78 @@ fn os_reprovados_do_guache_nao_estao_na_fabrica() {
         "reprovados na fábrica: {na_fabrica:?}"
     );
 }
+
+/// A cena `sobre` (foto A) pintada pelo preset `nome` com o mapa `engine` sobreposto: `(rgba, largura)`.
+fn sobre_com(nome: &str, engine: &[(&str, f64)]) -> (Vec<u8>, usize) {
+    use crate::exame_bancada::{Fonte, Pincel, bateria, pinceis, pinta_cena};
+    let p = pinceis(nome).remove(0);
+    let Fonte::Preset { mut preset, relativo } = p.fonte else {
+        unreachable!()
+    };
+    for (k, v) in engine {
+        preset.parametros.engine.insert((*k).to_owned(), *v);
+    }
+    let p = Pincel {
+        nome: p.nome,
+        fonte: Fonte::Preset { preset, relativo },
+    };
+    let bat = bateria();
+    let cena = bat["cenas"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|c| c["nome"] == "sobre")
+        .unwrap()
+        .clone();
+    let tela = [0, 1].map(|i| bat["tela"][i].as_u64().unwrap() as u32);
+    let papel = [0, 1, 2].map(|i| bat["papel"][i].as_u64().unwrap() as u8);
+    (pinta_cena(&p, None, &cena, tela, papel, 0).1, tela[0] as usize)
+}
+
+/// O RESTO do vermelho molhado sob o azul (cena `sobre` A, cruzamentos x 250 e 500 na faixa molhada y 150): a distância
+/// de cor do cruzamento ao azul no papel (y 240) ÷ a do vermelho longe (x + 125) ao mesmo azul — `0` = o azul cobre,
+/// `≈ 1` = o vermelho fica. E o vermelho longe (para o controlo: a faixa fora do azul não muda).
+fn resto(px: &[u8], w: usize) -> (f64, [f64; 3]) {
+    let caixa = |x: usize, y: usize| {
+        let mut s = [0.0; 3];
+        for yy in y - 4..=y + 4 {
+            for xx in x - 4..=x + 4 {
+                for (k, c) in s.iter_mut().enumerate() {
+                    *c += f64::from(px[(yy * w + xx) * 4 + k]) / 81.0;
+                }
+            }
+        }
+        s
+    };
+    let d = |a: [f64; 3], b: [f64; 3]| (0..3).map(|k| (a[k] - b[k]).powi(2)).sum::<f64>().sqrt();
+    let (mut r, mut longe) = (0.0, [0.0; 3]);
+    for x in [250, 500] {
+        let (cz, az, rv) = (caixa(x, 150), caixa(x, 240), caixa(x + 125, 150));
+        r += d(cz, az) / d(rv, az).max(1e-6) / 2.0;
+        for k in 0..3 {
+            longe[k] += rv[k] / 2.0;
+        }
+    }
+    (r, longe)
+}
+
+/// ⭐ **O azul da guache COBRE o vermelho molhado** (`Knob::WetCover`, J6 lacuna 7, `exames/guache.md` «Motor J6»): no
+/// Rebelle o cruzamento sobre a faixa ainda molhada é a cor do azul no papel (resto 0,11 na Flat, 0,33 na Round); a
+/// mistura de sempre deixa o vermelho por baixo (a nossa Flat 0,36, púrpura). CONTROLO: a mesma Flat sem a lei; a
+/// faixa longe do azul não muda.
+#[test]
+fn o_azul_da_guache_cobre_o_vermelho_molhado() {
+    let [(com, w), (sem, _)] = std::thread::scope(|s| {
+        let a = s.spawn(|| sobre_com("Gouache Flat", &[("wetCover", 1.0)]));
+        let b = s.spawn(|| sobre_com("Gouache Flat", &[]));
+        [a.join().unwrap(), b.join().unwrap()]
+    });
+    let ((rc, lc), (rs, ls)) = (resto(&com, w), resto(&sem, w));
+    println!("[cobre] Gouache Flat: resto {rc:.3} com a lei · {rs:.3} sem (Rebelle 0,11) · longe {lc:?} · {ls:?}");
+    assert!(rs > 0.28, "o controlo (a mistura de sempre) já cobre: resto {rs:.3}");
+    assert!(rc < 0.18, "o azul não cobre o vermelho molhado: resto {rc:.3} (Rebelle 0,11)");
+    assert!(
+        (0..3).all(|k| (lc[k] - ls[k]).abs() < 2.0),
+        "a lei mexeu na faixa longe do azul: {lc:?} contra {ls:?}"
+    );
+}

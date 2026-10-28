@@ -74,6 +74,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.wet_tuning.knob.wetOpen" => "Wet-in-wet bloom",
         "panel.wet_tuning.knob.wetOpenPush" => "Bloom pushes paint away",
         "panel.wet_tuning.knob.wetOpenEdge" => "Bloom edge softness",
+        "panel.wet_tuning.knob.wetCover" => "Covers wet paint underneath",
         // Tools — a água e o secador.
         "panel.wet_tuning.knob.waterPush" => "Water pushes pigment",
         "panel.wet_tuning.knob.dryerEdge" => "Dryer leaves an edge",

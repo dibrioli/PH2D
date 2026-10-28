@@ -323,4 +323,6 @@ pub const KNOB_DEFS: [KnobDef; KNOB_COUNT] = [
     // tecto 1 é o da JANELA: ela tem ~2 raios + a deriva, e uma caixa de meio-lado ≥ 1 raio já a cobre quase toda (o
     // censo `o_corpo_de_cada_ferramenta_da_agua_e_o_que_ela_le` a 4 raios não via diferença nenhuma)
     k(Knob::BlendReach, KnobGroup::Tools, "blendReach", 0.0, 1.0, 0.01, 0.0, None),
+    // J6 (guache, lacuna 7): a tinta nova cobre a molhada de outra cor — neutro 0 = a mistura de sempre, ao bit
+    k(Knob::WetCover, KnobGroup::WetEffects, "wetCover", 0.0, 1.0, 0.01, 0.0, None),
 ];

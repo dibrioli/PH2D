@@ -5,6 +5,8 @@
 use super::*;
 
 mod perto; // o misturador PERTO da tinta (Knob::BlendReach): a média local, não a da janela
+#[cfg(test)]
+mod cobre_tests; // a lei da tinta que cobre (Knob::WetCover)
 
 /// O piso de água de uma célula que recebeu tinta (`transfer_paint_impl`, «the wet map must know»): até
 /// ele a célula está SECA.
@@ -31,6 +33,23 @@ fn pousa_seco(g: &mut Grid, i: usize, v: f64, tip: [f32; 3], p: &Params, out: &m
         g.sett_rgb[i] = [out[0] as f32, out[1] as f32, out[2] as f32];
     }
     g.sett[i] = (old + v) as f32;
+}
+
+/// ⭐ **A tinta nova COBRE a molhada de outra cor** ([`Knob::WetCover`], J6 lacuna 7): `q = cobre × outra_tinta`; o
+/// suspenso da célula `i` perde a fracção `q × peso` (`peso` = a parte da tinta nova na mistura de opacidade logo
+/// abaixo: o que ela esconde sai), e devolve `q` — a mistura dá à cor nova `1 − (1 − peso)(1 − q)` (o que fica por
+/// baixo não tinge a de cima). ⛔ Medido: só a massa (sem a cor) deixava o cruzamento lilás claro (a 1.ª mistura já
+/// púrpura deixa de ser «outra»: resto 0,36 → 0,50); a massa inteira à 1.ª passagem abria o papel (0,77).
+fn cobre_a_outra(g: &mut Grid, i: usize, cobre: f64, in_a: f64, tip: [f32; 3]) -> f64 {
+    let old = f64::from(g.susp[i]);
+    let outra = crate::colorops::outra_tinta(g.susp_rgb[i].map(f64::from), tip.map(f64::from));
+    let e9 = alpha_of_mass(old) * (1.0 - in_a);
+    if outra <= 0.0 || e9 + in_a <= 0.0 {
+        return 0.0;
+    }
+    let q = (cobre * outra).min(1.0);
+    g.susp[i] = (old * (1.0 - q * in_a / (e9 + in_a))) as f32;
+    q
 }
 
 impl Trail {
@@ -121,6 +140,7 @@ impl Trail {
             crate::grid::traco::garante(g);
         }
         let vela = p.k(Knob::Glaze) as f32;
+        let cobre = p.k(Knob::WetCover);
         // O MATERIAL da tinta (W2 E3): o da ponta (suja do que apanhou) ou, sem ela, o do pincel; Lock = não muda o pousado.
         let (mat_pincel, mat_trava) = (
             crate::grid::material::do_pincel(p),
@@ -238,6 +258,11 @@ impl Trail {
                             g.susp[i] = (g.susp[i] as f64 - dm) as f32;
                         }
                     }
+                    let tinge = if cobre > 0.0 && g.susp[i] > 0.0 {
+                        cobre_a_outra(g, i, cobre, in_a, ponta)
+                    } else {
+                        0.0
+                    };
                     let old = g.susp[i] as f64;
                     // O Glaze pousa com a tinta (a média, pela massa SUSPENSA) — e só onde há uma camada POR BAIXO:
                     // sobre o papel limpo a tinta não filtra nada, e a parte do próprio traço que seca não é outra
@@ -273,6 +298,11 @@ impl Trail {
                         let e9 = a_old * (1.0 - in_a);
                         if e9 + in_a > 0.0 {
                             let wgt = in_a / (e9 + in_a);
+                            let wgt = if tinge > 0.0 {
+                                1.0 - (1.0 - wgt) * (1.0 - tinge)
+                            } else {
+                                wgt
+                            };
                             let uc = g.susp_rgb[i];
                             let tip = ponta.map(f64::from);
                             mix.mix(

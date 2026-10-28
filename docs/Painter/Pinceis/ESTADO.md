@@ -68,7 +68,9 @@
    Grainy curado não aprovado (preset de estudo; os grumos do Rebelle são grossos e rasgados — grão da máscara: fila).
 3. ✅ Secador nivela (`48da05baa5` `0ea881a460`, knob `dryerLevel`; cruzamento 0,35–1,63 → 0,98–1,10, Rebelle 0,9–1,14):
    Dry/Lift curado não aprovado (falta a linha escura 1,3 nos lados; o anel rouba tinta de fora — fila).
-6. guache — EM CURSO · 7. lâmina que gira — EM CURSO · 5. fio do arrasto
+6. ✅ Guache cobre (`600152c535` `20a320bbc9`, knob `wetCover`; resto Flat 0,36 → 0,10, Rebelle 0,11): Gouache Wash
+   e Dry curados não aprovados (cega: sem fiapos de cerda, tampa redonda, 200 px chapado — cerdas que crescem com o
+   diâmetro: fila); **Gouache Flat chega ao Rebelle com `wetCover` 0,5–1 ⇒ PRÓXIMO**. 7. lâmina — EM CURSO · 5. arrasto
    (Smudge Finger) · 6. azul sobre vermelho molhado (Gouache Wash/Dry/Round) · 7. lâmina que gira (C38/L3: A-4, B-9,
    D-3, F-2, G-5..G-8, I-8; L16 depende) · 8. partículas · ondulação (Oil Bristle) · mip das pontas (Foliage, Noise Grit).
 9. Óleo Real: `ESTADO_MISSAO_W3.md` «Fila para a próxima onda» + HANDOFF_W3b §Aberto 2–5.

@@ -639,3 +639,49 @@ fn turning_the_orbit_spring_on_gives_the_smooth_factory_spring() {
     );
     assert_eq!(c.segue.map(|m| m.ressalto), Some(0.0));
 }
+
+/// ⭐ **Todo ajuste que o cartão de um behaviour mostra é um campo inteiro**: tem rótulo, canal de
+/// Auto Key, chave que existe no item gravado, e escrever→ler devolve o valor. O Atrair mostra o
+/// Peak, em metros (doc BlenderConstraints 07 §0 #2).
+#[test]
+fn every_behaviour_setting_has_a_label_a_channel_and_round_trips() {
+    use ph2d_app_constraints::{campos, campos_comportamento as cc};
+    use ph2d_ecs::canal_constraint::{CAMPOS, DURACAO, MOLA_LIGADA, PICO, RESSALTO, info};
+    use ph2d_editor_core::constraint_edits::{MAX_NUMEROS, Unidade};
+    let peso = Peso {
+        objecto: 7,
+        raio: 2.0,
+        curva: 0,
+        inverte: false,
+    };
+    for perfil in Perfil::ALL {
+        for (com_peso, com_mola) in [(false, false), (true, false), (false, true), (true, true)] {
+            let mut c = perfil.numeros();
+            c.peso = com_peso.then_some(peso);
+            c.segue = com_mola.then_some(ph2d_constraints::comportamento::SEGUE_DE_FABRICA);
+            let k = Kind::Comportamento(c);
+            assert!(campos::numeros(&k).len() <= MAX_NUMEROS, "{perfil:?}");
+            let todos = campos::numeros(&k).iter().chain(campos::escolhas(&k));
+            for &campo in todos {
+                let quem = format!("{perfil:?} campo {campo}");
+                assert!(CAMPOS.contains(&campo) && info(campo).is_some(), "{quem}: sem canal");
+                // Sem rótulo daqui, o cartão pinta «Mix»; a mola tem os do Spring.
+                let da_mola = [MOLA_LIGADA, DURACAO, RESSALTO].contains(&campo);
+                assert!(cc::rotulo(campo).is_some() || da_mola, "{quem}: sem rótulo");
+                let chave = campos::chave_no_item(&k, campo).expect("chave no item");
+                let mut v = serde_json::json!({ "kind": k });
+                assert!(
+                    ph2d_ecs::scene::property::slot_in(&mut v, chave).is_some(),
+                    "{quem}: {chave} não existe no item gravado"
+                );
+                let mut k2 = k;
+                let x = if campos::escolhas(&k).contains(&campo) { 1.0 } else { 0.75 };
+                let _ = campos::escrever(&mut k2, campo, x);
+                assert_eq!(campos::ler(&k2, campo), Some(x), "{quem}: não volta");
+            }
+        }
+    }
+    let atrair = Kind::Comportamento(Perfil::Atrair.numeros());
+    assert!(campos::numeros(&atrair).contains(&PICO), "o Atrair esconde o Peak");
+    assert_eq!(cc::unidade(&Perfil::Atrair.numeros(), PICO), Unidade::Metros);
+}

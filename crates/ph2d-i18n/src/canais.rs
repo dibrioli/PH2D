@@ -75,6 +75,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "canal.constraint.peso_raio" => "Weight Radius",
         "canal.constraint.peso_curva" => "Weight Curve",
         "canal.constraint.peso_inverte" => "Weight Inverted",
+        "canal.constraint.pico" => "Attract Peak",
         // A medida de uma regra de desenho técnico do vetor (`ph2d_ecs::canal_cad`).
         "canal.cad.medida" => "Dimension",
         "canal.cad.angulo" => "Angle",

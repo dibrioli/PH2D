@@ -86,6 +86,32 @@ impl UiArranjo {
     }
 }
 
+/// ⭐ O remapeador do `UiArranjo` (tabela `REMAPPERS` de `ph2d-app-components`): numa cópia, cada id citado
+/// passa ao da cópia; o que ficou fora do mapa fica como está. Devolve quantos arranjos mudaram.
+pub fn remap_arranjo_refs(
+    world: &mut crate::World,
+    entities: &[Entity],
+    by_id: &std::collections::BTreeMap<u64, u64>,
+) -> usize {
+    let novo = |id: StableId| Some(by_id.get(&id.0).map_or(id, |&n| StableId(n)));
+    let mut hits = 0;
+    for &e in entities {
+        let Some(mut arr) = world.get_mut::<UiArranjo>(e) else {
+            continue;
+        };
+        let lacos: Vec<_> = arr
+            .lacos
+            .iter()
+            .filter_map(|(r, f)| r.mapeia(novo).map(|r| (r, *f)))
+            .collect();
+        if lacos != arr.lacos {
+            arr.lacos = lacos;
+            hits += 1;
+        }
+    }
+    hits
+}
+
 /// ⭐ O que o passe do arranjo VIU num quadro, por canvas — o retrato que a ferramenta do HUD desenha e acerta
 /// (ela não tem o mundo no desenho). Preview: nunca gravado.
 #[derive(Clone, Debug, PartialEq)]

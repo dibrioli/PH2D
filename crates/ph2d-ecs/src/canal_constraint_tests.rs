@@ -8,6 +8,7 @@ fn o_vocabulario_das_constraints_nao_renumera() {
     assert_eq!((FORCA, LIGADA), (1, 2));
     assert_eq!((LIMITE_MIN, LIMITE_MAX, DISTANCIA, DESVIO), (3, 4, 5, 6));
     assert_eq!((MODO, ESPACO, MISTURA), (7, 8, 9));
+    assert_eq!((RAIO, PESO_INVERTE, PICO), (44, 51, 52));
 }
 
 /// O id do item atravessa a chave inteiro (32 bits), e cada item tem a sua curva.

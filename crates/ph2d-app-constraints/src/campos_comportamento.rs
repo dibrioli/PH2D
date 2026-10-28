@@ -4,7 +4,7 @@
 use ph2d_constraints::comportamento::{Comportamento, Onde, Perfil};
 use ph2d_ecs::canal_constraint::{
     AMORTECE, AMPLITUDE, CURVAS, FASE, FREQUENCIA, LEVA_ROTACAO, NAO_SIM, ONDE, ONDES, PESO_CURVA,
-    PESO_INVERTE, PESO_RAIO, PUXAO, RAIO, SEMENTE, VELOCIDADE,
+    PESO_INVERTE, PESO_RAIO, PICO, PUXAO, RAIO, SEMENTE, VELOCIDADE,
 };
 use ph2d_ecs::canal_constraint::{DURACAO, MOLA_LIGADA, RESSALTO};
 use ph2d_editor_core::constraint_edits::Unidade;
@@ -23,8 +23,8 @@ pub fn numeros(c: &Comportamento) -> &'static [u16] {
             (true, false) => &[VELOCIDADE, RAIO, DURACAO, RESSALTO],
             (true, true) => &[VELOCIDADE, RAIO, DURACAO, RESSALTO, PESO_RAIO],
         },
-        (Perfil::Atrair, false) => &[PUXAO, RAIO, AMORTECE],
-        (Perfil::Atrair, true) => &[PUXAO, RAIO, AMORTECE, PESO_RAIO],
+        (Perfil::Atrair, false) => &[PUXAO, RAIO, PICO, AMORTECE],
+        (Perfil::Atrair, true) => &[PUXAO, RAIO, PICO, AMORTECE, PESO_RAIO],
     }
 }
 
@@ -51,6 +51,7 @@ pub fn rotulo(campo: u16) -> Option<&'static str> {
         FASE => "panel.inspector.constraint.phase",
         VELOCIDADE => "panel.inspector.constraint.speed",
         RAIO => "panel.inspector.constraint.radius",
+        PICO => "panel.inspector.constraint.peak",
         PUXAO => "panel.inspector.constraint.strength",
         AMORTECE => "panel.inspector.constraint.damping",
         ONDE => "panel.inspector.constraint.where",
@@ -78,7 +79,7 @@ pub fn opcoes(campo: u16) -> Option<&'static [&'static str]> {
 pub fn unidade(c: &Comportamento, campo: u16) -> Unidade {
     match campo {
         AMPLITUDE if c.onde == Onde::Rot => Unidade::Graus,
-        AMPLITUDE | RAIO | PESO_RAIO => Unidade::Metros,
+        AMPLITUDE | RAIO | PICO | PESO_RAIO => Unidade::Metros,
         VELOCIDADE => Unidade::Graus,
         DURACAO => Unidade::Segundos,
         RESSALTO => Unidade::Porcento,
@@ -107,6 +108,7 @@ pub fn ler(c: &Comportamento, campo: u16) -> Option<f32> {
         SEMENTE | FASE => c.semente as f32,
         VELOCIDADE => c.velocidade as f32,
         RAIO => c.raio as f32,
+        PICO => c.pico as f32,
         PUXAO => c.forca as f32,
         AMORTECE => c.arrasto as f32,
         ONDE => indice(&ONDES_DO_TIPO, &c.onde),
@@ -137,6 +139,7 @@ pub fn escrever(c: &mut Comportamento, campo: u16, v: f32) -> bool {
         SEMENTE | FASE => c.semente = x,
         VELOCIDADE => c.velocidade = x,
         RAIO => c.raio = x.max(0.0),
+        PICO => c.pico = x.max(0.0),
         PUXAO => c.forca = x,
         AMORTECE => c.arrasto = x.max(0.0),
         ONDE => c.onde = ONDES_DO_TIPO[opcao(ONDES_DO_TIPO.len())],
@@ -176,6 +179,7 @@ pub fn chave_no_item(campo: u16) -> Option<&'static str> {
         SEMENTE | FASE => "kind/Comportamento/semente",
         VELOCIDADE => "kind/Comportamento/velocidade",
         RAIO => "kind/Comportamento/raio",
+        PICO => "kind/Comportamento/pico",
         PUXAO => "kind/Comportamento/forca",
         AMORTECE => "kind/Comportamento/arrasto",
         ONDE => "kind/Comportamento/onde",

@@ -30,6 +30,10 @@ type Remap = fn(&mut World, &[Entity], &BTreeMap<u64, u64>) -> usize;
 pub(crate) const REMAPPERS: &[(&str, Remap)] = &[
     ("ph2d::ecs::InstanceOf", ph2d_ecs::remap_instance_of),
     (
+        "ph2d::ecs::UiArranjo",
+        ph2d_ecs::hud_arranjo::remap_arranjo_refs,
+    ),
+    (
         "ph2d::physics::PhysicsJoint",
         ph2d_physics_ecs::remap_joint_refs,
     ),

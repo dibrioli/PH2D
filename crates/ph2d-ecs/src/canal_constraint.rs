@@ -110,6 +110,8 @@ pub const PESO_RAIO: u16 = 49;
 pub const PESO_CURVA: u16 = 50;
 /// O peso por distância: invertido ([`NAO_SIM`]).
 pub const PESO_INVERTE: u16 = 51;
+/// Atrair: a distância em que o puxão chega ao máximo (o `peak` do `force.attractor`).
+pub const PICO: u16 = 52;
 
 /// As palavras de [`MODO`], pelo índice.
 pub const MODOS: &[&str] = &[
@@ -192,7 +194,7 @@ pub const CURVAS: &[&str] = &[
     "panel.inspector.constraint.curve.smoother",
 ];
 /// Os campos de um item, na ordem do cartão (o tipo diz quais tem).
-pub const CAMPOS: [u16; 51] = [
+pub const CAMPOS: [u16; 52] = [
     FORCA,
     LIGADA,
     LIMITE_MIN,
@@ -244,6 +246,7 @@ pub const CAMPOS: [u16; 51] = [
     PESO_RAIO,
     PESO_CURVA,
     PESO_INVERTE,
+    PICO,
 ];
 
 /// A chave do campo `campo` do item `item`.
@@ -347,6 +350,7 @@ pub fn info(campo: u16) -> Option<CampoInfo> {
             campo,
             Especie::Opcoes(NAO_SIM),
         ),
+        PICO => c("canal.constraint.pico", campo, Especie::Continuo),
         _ => return None,
     })
 }

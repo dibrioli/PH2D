@@ -580,3 +580,62 @@ fn o_editor_anuncia_a_copia_e_a_fabrica_nao() {
         "a Fábrica (cópias de jogo) não anuncia"
     );
 }
+
+/// ⭐ **Duplicar um canvas do HUD leva o ARRANJO dele, ligado aos filhos DELE** (doc
+/// BlenderConstraints 07 §0 #1): o `UiArranjo` cita os filhos pelo `StableId`, e sem remapeador a
+/// cópia arranjava os filhos do ORIGINAL. A relação a quem ficou fora da cópia fica como estava.
+///
+/// (Mutação: tirar a linha do `UiArranjo` da tabela `REMAPPERS` ⇒ RED na cópia.)
+#[test]
+fn duplicating_a_hud_canvas_brings_its_arrangement_bound_to_its_own_children() {
+    use ph2d_ecs::hud_arranjo::{Forca, Lado, Relacao, UiArranjo};
+    let (a, b, fora) = (StableId(901), StableId(902), StableId(999));
+    let arranjo = |a, b| UiArranjo {
+        lacos: vec![
+            (
+                Relacao::AoLado {
+                    a,
+                    b,
+                    lado: Lado::Direita,
+                    folga: 0.5,
+                },
+                Forca::Requerida,
+            ),
+            (Relacao::LarguraDoConteudo { a: fora }, Forca::Media),
+        ],
+    };
+    let mut sim = SimWorld::new();
+    let r = reg();
+    let canvas = sim
+        .world_mut()
+        .spawn((
+            Name::new("HUD"),
+            Transform::IDENTITY,
+            StableId(900),
+            arranjo(a, b),
+        ))
+        .id();
+    for (nome, id) in [("Pontos", a), ("Moeda", b)] {
+        sim.world_mut().spawn((
+            Name::new(nome),
+            Transform::IDENTITY,
+            id,
+            ph2d_ecs::ChildOf(canvas),
+        ));
+    }
+
+    let copy = duplicate(&mut sim, &r, canvas).expect("duplicado");
+    let id_de = |e| sim.world().get::<StableId>(e).copied().expect("id");
+    let (ca, cb) = (id_de(piece(&sim, copy, "Pontos")), id_de(piece(&sim, copy, "Moeda")));
+    assert!(ca != a && cb != b, "os filhos da copia tem ids proprios");
+    assert_eq!(
+        sim.world().get::<UiArranjo>(copy),
+        Some(&arranjo(ca, cb)),
+        "o arranjo da copia arranja os filhos do ORIGINAL"
+    );
+    assert_eq!(
+        sim.world().get::<UiArranjo>(canvas),
+        Some(&arranjo(a, b)),
+        "o original mudou"
+    );
+}

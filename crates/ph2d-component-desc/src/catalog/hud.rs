@@ -16,8 +16,21 @@
 
 use crate::{
     ComponentCategory as C, ComponentDesc, ComponentDesc as D, FieldDesc, FieldKind as K,
-    ObjectKinds as O, Propagation,
+    Hidden, ObjectKinds as O, Propagation, RefKind,
 };
+
+/// **`UiArranjo`** — as relações citam os filhos do canvas pelo `StableId`: `RefKind::Object`, remapeador
+/// `ph2d_ecs::hud_arranjo::remap_arranjo_refs` (censo em `ph2d-app-components/src/instance_refs.rs`).
+const UI_ARRANJO: &[FieldDesc] = &[FieldDesc {
+    field_id: 1,
+    label_key: "component.field.ui_arranjo.1",
+    kind: K::Ref,
+    policy: Propagation::Propagate,
+    is_ref: Some(RefKind::Object),
+    name: "",
+    key: "",
+    view: crate::View::Same,
+}];
 
 const fn f(field_id: u16, label_key: &'static str, kind: K) -> FieldDesc {
     FieldDesc {
@@ -94,12 +107,15 @@ pub const DESCS: &[ComponentDesc] = &[
         COUNTER_FIELDS,
     )
     .coded("counter"),
-    // O arranjo (ADR-0194): máquina — nasce e muda só pela ferramenta do HUD na barra esquerda (setas na tela).
-    D::machinery(
+    // O arranjo (ADR-0194): nasce e muda só pela ferramenta do HUD na barra esquerda (setas na tela) — `Intrinsic`
+    // sem cartão, como o `InstanceOf`, porque CITA os filhos pelo `StableId` e a cópia tem de os remapear.
+    D::intrinsic(
         "ph2d::ecs::UiArranjo",
         "component.ui_arranjo.name",
         C::Logic,
-    ),
+        UI_ARRANJO,
+    )
+    .hidden(Hidden::OtherEditor),
     D::authored(
         "ph2d::ecs::UiButton",
         "component.ui_button.name",

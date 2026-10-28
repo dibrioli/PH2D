@@ -8,9 +8,11 @@ use ph2d_editor_core::pixel_panel::{
     PixelDialogKind, PixelEditAction as E, PixelRequest, PixelSelectAction as S, PixelSelectMode,
     PixelSpriteAction as Sp,
 };
+use ph2d_i18n::tr;
 use ph2d_pixel_core::fill::BucketSample;
 use ph2d_pixel_core::raster::Cell;
 use ph2d_pixel_core::selection::{self, Mask, SelectMode, Wand};
+use ph2d_pixel_io::msk;
 use winit::keyboard::KeyCode;
 
 use crate::gesture::Mods;
@@ -119,9 +121,72 @@ impl PixelApp {
                 }
                 None
             }
+            S::LoadMsk => {
+                let d = rfd::FileDialog::new().add_filter(tr("pixel.select.msk_kind"), &["msk"]);
+                if let Some(c) = ph2d_app_host::modal::pick_file(d) {
+                    match std::fs::read(&c) {
+                        Ok(b) => self.carrega_msk(key, &b),
+                        Err(e) => self.falha_msk(&e.to_string()),
+                    }
+                }
+                return true;
+            }
+            S::SaveMsk => {
+                let Some(bytes) = self.msk_de(key) else {
+                    self.recusa("pixel.select.refuse.none");
+                    return true;
+                };
+                let d = rfd::FileDialog::new()
+                    .add_filter(tr("pixel.select.msk_kind"), &["msk"])
+                    .set_file_name("selection.msk");
+                if let Some(c) = ph2d_app_host::modal::save_file(d) {
+                    let path = c.display().to_string();
+                    match std::fs::write(&c, bytes) {
+                        Ok(()) => {
+                            let t =
+                                ph2d_i18n::tr_with("pixel.select.msk_saved", &[("path", &path)]);
+                            self.avisos.push((false, t));
+                        }
+                        Err(e) => self.falha_msk(&e.to_string()),
+                    }
+                }
+                return true;
+            }
         };
         self.passo(key, op);
         true
+    }
+
+    /// *Load from MSK file* com os bytes do ficheiro: UM passo (a selecção substitui a que havia).
+    pub fn carrega_msk(&mut self, key: u32, bytes: &[u8]) {
+        let Some(s) = self.docs.get(&key).map(|d| &d.sprite) else {
+            return;
+        };
+        let lida = msk::read_msk(bytes).map_err(|e| format!("{e:?}"));
+        let m = match lida {
+            Ok(f) => f.to_selection(s.width(), s.height()),
+            Err(e) => return self.falha_msk(&e),
+        };
+        let op = if m.count() == 0 {
+            selection::deselect(s)
+        } else {
+            selection::select(s, &m, SelectMode::Replace)
+        };
+        self.passo(key, op);
+        self.avisos
+            .push((false, tr("pixel.select.msk_loaded").to_owned()));
+    }
+
+    /// Os bytes do *Save to MSK file* da selecção do documento `key` (`None` = sem selecção).
+    #[must_use]
+    pub fn msk_de(&self, key: u32) -> Option<Vec<u8>> {
+        let m = self.docs.get(&key)?.sprite.mask()?;
+        Some(msk::write_msk(&msk::MaskFile::from_selection(m)?))
+    }
+
+    fn falha_msk(&mut self, e: &str) {
+        let t = ph2d_i18n::tr_with("pixel.select.msk_failed", &[("e", &e)]);
+        self.avisos.push((true, t));
     }
 
     pub(crate) fn recusa(&mut self, chave: &str) {

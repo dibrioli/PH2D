@@ -162,6 +162,9 @@ impl Corpo<'_> {
         if sel {
             y = self.botoes(&[par(s, 5), par(s, 6)], y);
             y = self.botoes(&[par(s, 7)], y);
+            y = self.botoes(&[par(s, 8), par(s, 9)], y);
+        } else {
+            y = self.botoes(&[par(s, 8)], y);
         }
         let e = &ids::EDIT_ACTIONS;
         y = self.linha(tr("panel.pixel.edit"), ColorToken::Text3, y);

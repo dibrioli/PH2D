@@ -78,6 +78,9 @@ pub enum PixelSelectAction {
     ColorRange,
     /// Abre o diálogo Modify ▸ Expand/Contract/Border.
     Modify(PixelModify),
+    /// *Load from MSK file* / *Save to MSK file* (o `.msk` do Aseprite).
+    LoadMsk,
+    SaveMsk,
 }
 
 /// O menu Edit (o que mexe nas células seleccionadas) e a moldura solta.

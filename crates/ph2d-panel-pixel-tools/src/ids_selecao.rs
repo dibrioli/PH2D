@@ -79,7 +79,7 @@ pub const XFORM_FIELDS: [(PixelTransformField, NodeId, (f64, f64)); 6] = [
 ];
 
 /// Os botões do menu Select: o id, o pedido e o rótulo, na ordem em que se pintam.
-pub const SELECT_ACTIONS: [(NodeId, PixelRequest, &str); 8] = [
+pub const SELECT_ACTIONS: [(NodeId, PixelRequest, &str); 10] = [
     (
         hash_node_id("pixel.select.all"),
         PixelRequest::Select(S::All),
@@ -119,6 +119,16 @@ pub const SELECT_ACTIONS: [(NodeId, PixelRequest, &str); 8] = [
         hash_node_id("pixel.select.border"),
         PixelRequest::Select(S::Modify(PixelModify::Border)),
         "panel.pixel.select.border",
+    ),
+    (
+        hash_node_id("pixel.select.load_msk"),
+        PixelRequest::Select(S::LoadMsk),
+        "panel.pixel.select.load_msk",
+    ),
+    (
+        hash_node_id("pixel.select.save_msk"),
+        PixelRequest::Select(S::SaveMsk),
+        "panel.pixel.select.save_msk",
     ),
 ];
 

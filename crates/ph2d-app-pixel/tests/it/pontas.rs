@@ -267,3 +267,29 @@ fn scene_15_shows_a_skewed_frame_two_layers_a_clip_and_the_flyout_in_one_row() {
         "o flyout das selecções aberto"
     );
 }
+
+#[test]
+fn save_to_msk_and_load_it_back_restores_the_selection_as_one_step() {
+    let mut p = Palco::limpo();
+    assert!(p.app.msk_de(p.key).is_none(), "sem selecção não há ficheiro");
+    p.ferramenta(Tool::EllipseMarquee);
+    p.arrasta((5, 7), (30, 20), Mods::default());
+    let antes = p.mascara().expect("selecção");
+    let bytes = p.app.msk_de(p.key).expect("o .msk");
+    assert_eq!(
+        ph2d_pixel_io::msk::read_msk(&bytes)
+            .expect("lê-se")
+            .to_selection(p.sprite().width(), p.sprite().height()),
+        antes
+    );
+    p.pede(PixelRequest::Select(S::Deselect));
+    let n = p.passos();
+    p.app.carrega_msk(p.key, &bytes);
+    p.quadro();
+    assert_eq!(p.mascara(), Some(antes), "o Load devolve a selecção");
+    assert_eq!(p.passos(), n + 1, "UM passo");
+    p.app.carrega_msk(p.key, b"lixo");
+    p.quadro();
+    assert_eq!(p.passos(), n + 1, "um ficheiro estragado não mexe");
+    assert!(!p.toasts.is_empty(), "e diz porquê");
+}

@@ -1,7 +1,7 @@
 //! Os testes da COSTURA hero → aba do Planner: o menu File pelo `apply_event`, o rato pelo
 //! `board_view`, o teclado pelo `board_keys`, o desfazer pelo `surface_input::undo`; o efeito lê-se no
-//! DOCUMENTO (`hero.documents.kanbans()`). Cada quadro corre como a shell: o `frame` do Kanban e o do
-//! Planner, `follow_surfaces`, pintar.
+//! DOCUMENTO (`hero.documents.kanbans()`). Cada quadro corre como a shell: o `frame` do Planner,
+//! `follow_surfaces`, pintar (a família Kanban não entra: as famílias não se conhecem).
 
 mod calendario;
 mod destino;
@@ -39,10 +39,9 @@ pub struct Mesa {
 }
 
 impl Mesa {
-    /// Um hero com as duas famílias, como a shell (`init.rs`), o relógio fixo e o fuso UTC.
+    /// Um hero com a família do Planner (como a shell, `init.rs`), o relógio fixo e o fuso UTC.
     pub fn new() -> Self {
         let mut hero = HeroScreen::new(NodeId(1));
-        ph2d_app_kanban::install(&mut hero);
         ph2d_app_planner::install(&mut hero);
         let mut m = Self {
             hero,
@@ -78,7 +77,6 @@ impl Mesa {
     pub fn quadro(&mut self) {
         self.agora += QUADRO_NS;
         self.hero.store.note_clock(self.agora);
-        ph2d_app_kanban::frame(&mut self.hero);
         ph2d_app_planner::frame(&mut self.hero, &mut self.toasts);
         ph2d_editor_core::screens::hero::document_tabs::follow_surfaces(&mut self.hero);
         let theme = self.hero.theme;

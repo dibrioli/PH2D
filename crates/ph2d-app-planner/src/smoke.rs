@@ -178,16 +178,19 @@ pub fn stage(hero: &mut HeroScreen, n: u8) -> Option<KanbanId> {
     if n != 1 {
         return None;
     }
-    let k = ph2d_app_kanban::smoke::stage(hero, 1)?;
     let me = me_of(hero);
     let now = crate::wall_clock().0;
-    {
+    let k = {
         let shared = hero.documents.kanbans_shared();
         let mut set = shared.borrow_mut();
+        let k = ph2d_kanban_scenes::short_film(&mut set, Moment(now));
         dress_cards(&mut set, k, &me, now);
         dress_agenda(&mut set, k, &me, now);
         second_kanban(&mut set);
-    }
+        k
+    };
+    // A aba do Kanban abre-se atrás (quem a abre é a família dele, pelo pedido do editor).
+    ph2d_editor_core::screens::hero::board_video::kanban::open_in_background(k);
     let shared = hero.documents.kanbans_shared();
     let docs = hero.documents.surfaces_mut().find_mut::<PlannerDocs>()?;
     docs.follow_project(shared);

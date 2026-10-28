@@ -75,7 +75,8 @@ fn my_cards_mostra_os_meus_cartoes_de_todos_os_kanbans() {
     };
     let row = m.docs().probe_hit(Hit::Card(r)).expect("o cartão está na lista");
     m.clica(centro(row));
-    assert!(!m.planner_activo(), "abrir um cartão leva ao Kanban dele");
+    // O verso abre-o a família Kanban, pelo pedido da porta baixa (as famílias não se conhecem).
+    assert_eq!(ph2d_kanban_hooks::take_open_cards(), vec![r], "abrir um cartão pede o verso dele");
 }
 
 #[test]
@@ -99,5 +100,6 @@ fn a_mencao_aparece_no_sino_por_ler_e_ler_a_abre() {
         .find(|x| x.key == n.key)
         .map(|x| x.unread);
     assert_eq!(lida, Some(false), "lida");
-    assert!(!m.planner_activo(), "e o cartão abriu no Kanban");
+    let card = n.card.map(|card| ph2d_kanban_model::CardRef { kanban: n.kanban, card });
+    assert_eq!(ph2d_kanban_hooks::take_open_cards(), card.into_iter().collect::<Vec<_>>(), "e o verso do cartão foi pedido");
 }

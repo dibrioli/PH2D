@@ -11,6 +11,7 @@
 //! scripts carregados vivem por fio ([`with_scripts`]): a VM Luau não é `Send`, e o app desenha e
 //! escreve num só fio.
 
+mod open;
 mod scripts;
 
 use std::collections::BTreeMap;
@@ -21,6 +22,7 @@ use ph2d_kanban_model::{
     Actor, History, KanbanId, KanbanOp, KanbanSet, Member, Moment, Plan, apply_logged,
 };
 
+pub use open::{request_open_card, take_open_cards};
 pub use ph2d_kanban_script::{Ctx, KanbanScripts, Report, ScriptError};
 pub use scripts::{
     Line, RunRequest, is_kanban_script, request_run, run as run_script, take_lines, take_runs,

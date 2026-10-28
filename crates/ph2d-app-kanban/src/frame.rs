@@ -39,6 +39,11 @@ pub fn frame(hero: &mut HeroScreen) {
     for k in kb::take_open_requests() {
         docs.open(k);
     }
+    // O verso pedido por outra família (o Planner, «My cards», o sino).
+    for c in ph2d_kanban_hooks::take_open_cards() {
+        docs.open(c.kanban);
+        docs.open_back(c.kanban.0, c.card);
+    }
     for k in kb::take_background_requests() {
         let focus = docs.focus;
         docs.open(k);

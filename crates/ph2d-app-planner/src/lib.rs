@@ -55,7 +55,7 @@ pub fn wall_clock() -> Moment {
     Moment(ms)
 }
 
-/// O arranque da família (DEPOIS da do Kanban: a cena de smoke parte da dele).
+/// O arranque da família.
 pub fn install(hero: &mut HeroScreen) {
     hero.documents
         .install_surface(Box::new(PlannerDocs::default()));
@@ -108,18 +108,9 @@ pub fn frame(hero: &mut HeroScreen, toasts: &mut ToastQueue) {
     if let Some(text) = ics {
         save_ics(&text, toasts);
     }
-    if cards.is_empty() {
-        return;
-    }
-    if let Some(k) = hero
-        .documents
-        .surfaces_mut()
-        .find_mut::<ph2d_app_kanban::KanbanDocs>()
-    {
-        for c in cards {
-            k.open(c.kanban);
-            k.open_back(c.kanban.0, c.card);
-        }
+    // O verso abre-o a família Kanban (pelo pedido da porta baixa: as famílias não se conhecem).
+    for c in cards {
+        ph2d_kanban_hooks::request_open_card(c);
     }
 }
 

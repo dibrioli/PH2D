@@ -28,8 +28,8 @@ ph2d-text = { path = "../ph2d-text" }
 ph2d-tokens = { path = "../ph2d-tokens" }
 ph2d-tool-registry = { path = "../ph2d-tool-registry" }
 ph2d-vector = { path = "../ph2d-vector" }
-# A cena de smoke parte da cena 1 do Kanban (a mesma «Short film — production»).
-ph2d-app-kanban = { path = "../ph2d-app-kanban" }
+# A cena de smoke parte da cena 1 do Kanban (a mesma «Short film — production»), como modelo puro.
+ph2d-kanban-scenes = { path = "../ph2d-kanban-scenes" }
 # «Export .ics»: o diálogo de gravar pela porta `ph2d_app_host::modal::save_file` (a mesma do Kanban).
 rfd = "0.17"
 

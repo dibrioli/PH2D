@@ -36,3 +36,8 @@
 | W10 | Anexos que o Trello não guarda (ficheiro do projecto, cartão, Kanban) saem como links `ph2d://` e voltam iguais | ida-e-volta sem perda | `export_json.rs` |
 | W3 | A 1.ª imagem anexada a um cartão sem capa vira capa (no mesmo desfazer) | Trello | `back/` anexos |
 | W3 | Link sem esquema abre como `https://`; `file:`/`javascript:` recusados | Trello + segurança | `back/` links |
+| W8 | Comando de calendário perdido com o app fechado corre UMA vez ao abrir; comando de prazo corre uma vez por cartão cuja hora passou; comando novo não corre o passado | política do Butler (não duplica, não perde) | `ph2d-kanban-auto::run_scheduled` |
+| W8 | Sugestões de automação a partir de 3 repetições (seguimento até 5 min depois de mover); a regra sugerida fica «por mim» | Butler sugere a partir do que se repete | `suggest` |
+| W8 | Comentários do Butler saem em nome dele, datas ISO; cartões-modelo não disparam regras; listas guardadas pelo id (renomear não parte a regra) | Trello/Butler | `ph2d-kanban-auto` |
+| W5 | Nomes em listas partilhadas (votos, membros, quem segue, etiquetas) ficam na ordem de entrada; tirar e voltar a pôr manda para o fim | ordem determinística entre colegas | `ph2d-kanban-sync` |
+| W5 | Apagar contra editar ao mesmo tempo: fica a lápide E a edição (como no Quadro) | uma só lei de fusão | `ph2d_board_sync::wins` |

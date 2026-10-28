@@ -28,9 +28,11 @@
 - [x] W4 lote M `4f06569b3a` `36d3fd8c1e` (ElementKind::Kanban, FORMAT 18, PROTOCOL 12, ganchos KanbanPainter/KanbanElementInput, botão Kanban, Open in tab na barra)
   - pendente p/ lote V: ContextMenuKind::BoardKanban (types_menu.rs+menu_rows.rs); key_of→Key::from; paint.rs usar kanban_board_bg/kanban_list_colors; MEDIR limiar LOD; foto; desfazer inserir deixa doc vazio órfão (decidir: apagar se intocado); board_nav.rs=700
 - [x] W10 lote I `c1d6f02b14` ph2d-kanban-import (UI File→Import/Export por fazer). Cargo.lock por comitar quando D3 acabar
-- W5 lote S (rede): crate ph2d-kanban-sync, loopback 2 processos
+- [x] W5 lote S `258968e864` ph2d-kanban-sync (LAN+QUIC loopback convergem; desfazer por campo). UI Share/avatares por fazer
+- W5 lote S2: Kanban::set_session (mint sem colisão), reacções como conjunto, compactar+medir retrato
 - [x] W6 lote F `50426ea408` desfazer · `0efbd1ed18` modelo v3 · `65f3ea9fed` ph2d-kanban-filter (UI da W6 por fazer)
-- W8 lote U (puro): crate ph2d-kanban-auto
+- [x] W8 lote U `d8ed63cb74` ph2d-kanban-auto + modelo v4 (UI, i18n kanban.auto.*, Luau por fazer; react NÃO ao desfazer; run_scheduled fora do desfazer). Lock por comitar
+- W3 lote E (fecho): shell, app-host, doc_surface.rs, back/ anexo
 - [x] W3 lote A `f94679ce9c` richdoc · `ba73d150f5` kanban-md · `4771ddc2a5` kanban-dates
 - [x] W3 lote D2 `b011d604b1` menção · `3033008f8f` tracking · `553bf822e3` frente · `d31a89fb33` fotos (4 ligações → D3)
 - [x] W3 lote B `97de715bf7` (calendar, date_picker, rich_editor; Cargo.lock por comitar com o lote A)

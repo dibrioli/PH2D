@@ -5743,6 +5743,8 @@ dependencies = [
  "ph2d-a11y",
  "ph2d-app-host",
  "ph2d-asset",
+ "ph2d-board-model",
+ "ph2d-board-render",
  "ph2d-editor-core",
  "ph2d-host",
  "ph2d-i18n",
@@ -6429,6 +6431,7 @@ version = "0.0.0"
 dependencies = [
  "flate2",
  "ph2d-frac",
+ "ph2d-kanban-model",
  "postcard",
  "serde",
  "sha2 0.10.9",
@@ -7549,6 +7552,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-kanban-auto"
+version = "0.0.0"
+dependencies = [
+ "ph2d-kanban-dates",
+ "ph2d-kanban-filter",
+ "ph2d-kanban-model",
+ "postcard",
+ "serde",
+]
+
+[[package]]
 name = "ph2d-kanban-dates"
 version = "0.0.0"
 dependencies = [
@@ -7590,6 +7604,19 @@ dependencies = [
  "postcard",
  "serde",
  "sha2 0.10.9",
+]
+
+[[package]]
+name = "ph2d-kanban-sync"
+version = "0.0.0"
+dependencies = [
+ "ph2d-board-internet",
+ "ph2d-board-model",
+ "ph2d-board-net",
+ "ph2d-board-sync",
+ "ph2d-kanban-model",
+ "postcard",
+ "serde",
 ]
 
 [[package]]

@@ -24,7 +24,22 @@ pub(crate) fn tr(k: &str) -> Option<&'static str> {
         .or_else(|| planner::tr(k))
         .or_else(|| kanban_links::tr(k))
         .or_else(|| kanban_auto::tr(k))
+        .or_else(|| kanban_share::tr(k))
+        .or_else(|| kanban_import::tr(k))
+        .or_else(|| kanban_hooks::tr(k))
 }
+
+/// O que a porta do gesto diz (J3): a cascata do Butler/scripts que parou num tecto.
+#[path = "kanban_hooks.rs"]
+mod kanban_hooks;
+
+/// Importar do Trello e exportar o Kanban (W10/J3).
+#[path = "kanban_import.rs"]
+mod kanban_import;
+
+/// O cabeçalho do Kanban (J1): o seletor de vistas e o «Share».
+#[path = "kanban_share.rs"]
+mod kanban_share;
 
 /// O Butler do Kanban (W8/J2): as palavras das frases das automações e o painel de automação.
 #[path = "kanban_auto.rs"]

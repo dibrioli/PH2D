@@ -5517,6 +5517,8 @@ dependencies = [
  "ph2d-host",
  "ph2d-i18n",
  "ph2d-imageio-svg",
+ "ph2d-kanban-model",
+ "ph2d-kanban-sync",
  "ph2d-render",
  "ph2d-text",
  "ph2d-tokens",
@@ -5548,6 +5550,7 @@ dependencies = [
  "ph2d-gpu",
  "ph2d-host",
  "ph2d-i18n",
+ "ph2d-kanban-hooks",
  "ph2d-panel-code",
  "ph2d-render",
  "ph2d-script",
@@ -5589,6 +5592,7 @@ dependencies = [
  "ph2d-i18n",
  "ph2d-input",
  "ph2d-inspector-ordering",
+ "ph2d-kanban-scenes",
  "ph2d-label-census",
  "ph2d-light2d-ecs",
  "ph2d-macro",
@@ -5745,15 +5749,27 @@ dependencies = [
  "ph2d-a11y",
  "ph2d-app-host",
  "ph2d-asset",
+ "ph2d-board-internet",
  "ph2d-board-model",
+ "ph2d-board-net",
  "ph2d-board-render",
+ "ph2d-board-sync",
  "ph2d-editor-core",
+ "ph2d-gpu",
  "ph2d-host",
  "ph2d-i18n",
+ "ph2d-kanban-auto",
  "ph2d-kanban-dates",
  "ph2d-kanban-filter",
+ "ph2d-kanban-hooks",
+ "ph2d-kanban-import",
+ "ph2d-kanban-links",
  "ph2d-kanban-md",
  "ph2d-kanban-model",
+ "ph2d-kanban-scenes",
+ "ph2d-kanban-sync",
+ "ph2d-kanban-views",
+ "ph2d-render",
  "ph2d-richdoc",
  "ph2d-spring",
  "ph2d-text",
@@ -6007,6 +6023,7 @@ dependencies = [
  "ph2d-i18n",
  "ph2d-kanban-dates",
  "ph2d-kanban-filter",
+ "ph2d-kanban-hooks",
  "ph2d-kanban-model",
  "ph2d-kanban-views",
  "ph2d-render",
@@ -7610,6 +7627,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-kanban-hooks"
+version = "0.0.0"
+dependencies = [
+ "ph2d-kanban-auto",
+ "ph2d-kanban-dates",
+ "ph2d-kanban-model",
+ "ph2d-kanban-scenes",
+ "ph2d-kanban-script",
+]
+
+[[package]]
 name = "ph2d-kanban-import"
 version = "0.0.0"
 dependencies = [
@@ -7646,6 +7674,15 @@ dependencies = [
  "postcard",
  "serde",
  "sha2 0.10.9",
+]
+
+[[package]]
+name = "ph2d-kanban-scenes"
+version = "0.0.0"
+dependencies = [
+ "ph2d-kanban-dates",
+ "ph2d-kanban-model",
+ "ph2d-kanban-script",
 ]
 
 [[package]]

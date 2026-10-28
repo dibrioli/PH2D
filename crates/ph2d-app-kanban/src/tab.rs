@@ -139,6 +139,12 @@ pub(crate) struct Tab {
     pub w6: crate::w6::W6,
     /// W6 — as linhas que o último quadro mostrou (os espelhos e o filtro).
     pub rows: crate::rows::Rows,
+    /// J1 — a vista à vista: `None` = o quadro; as outras são da `ph2d-kanban-views` (estado da VISTA).
+    pub other: Option<ph2d_kanban_views::ViewKind>,
+    pub views: ph2d_kanban_views::Views,
+    /// J1 — px da vista → ecrã no último quadro, e onde o rato esteve (px da vista: a presença).
+    pub to_screen: ph2d_vector::Affine,
+    pub cursor: Option<(f32, f32)>,
 }
 
 /// O registo do pintor num quadro.
@@ -175,6 +181,10 @@ impl Tab {
             placements: Vec::new(),
             w6: crate::w6::W6::default(),
             rows: crate::rows::Rows::default(),
+            other: None,
+            views: ph2d_kanban_views::Views::default(),
+            to_screen: ph2d_vector::Affine::IDENTITY,
+            cursor: None,
         }
     }
 

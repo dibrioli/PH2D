@@ -66,3 +66,14 @@
 | W6 | `D L M` e os itens da edição rápida abrem o verso com o popover (não um popover ancorado no menu) | um só sítio para cada editor | idem |
 | W6 | `W` abre o menu «…» do Kanban (não há barra lateral) | o equivalente mais próximo | idem |
 | W11 | «Convert to card» no Quadro: modal com busca, primeiro as listas dos Kanbans postos nesse Quadro; abrir objecto/trecho traz a aba da cena para a frente | o caminho mais curto | `board_note_card.rs` |
+| W5 | Entrar por link no popover Share (e «Join» no File); a sala de um Kanban sozinho não se anuncia na rede (não aparece na procura de Quadros) | privacidade; o link é a chave | `share/` |
+| W5 | Eu primeiro na pilha de avatares; cor de cada pessoa sai do nome; cursor do colega não é enviado com o verso aberto nem nas outras vistas | Trello/Miro | `presence` |
+| W8 | Sugestões dispensadas lembram-se só nessa vista (não gravadas); regra sem acção não grava; menus de chips que não cabem partem-se em colunas | Butler | `auto/` |
+| W11 | «Convert to sticky note» aparece quando o Kanban está posto num Quadro (ou é o elemento) | só faz sentido com um Quadro | `back/` |
+| W8 | Botões de quadro no cabeçalho ficam entre o filtro e os avatares | o Share ocupa o lugar ao lado do «…» | `header/` |
+| W8 | Um script é «de Kanban» quando o código (fora de comentários/strings) usa `ph2d.kanban`; NÃO corre sozinho ao abrir o projecto (o topo pode escrever) — os handlers ficam activos depois do 1.º Ctrl+S na sessão | segurança: abrir um projecto não pode mudar o Kanban sozinho | `ph2d-kanban-hooks` |
+| W8 | Reacção do Butler e dos scripts é um passo de desfazer próprio (1.º Ctrl+Z tira o efeito da regra, o 2.º o gesto) | o artista vê e desfaz a automação à parte | idem |
+| W10 | Pasta de anexos só é pedida se o Trello tem anexos; um só diálogo de exportar (CSV por omissão; sem extensão = CSV) | menos perguntas | `io/` |
+| W8 | Automação desligada «carimba» a ocorrência sem correr; ao religar não dispara o passado | Butler | `agenda.rs` |
+| W5 | Link de convite do Kanban é `ph2d-kanban://` (o do Quadro continua `ph2d-board://`); cada «Join» reconhece o outro tipo e encaminha | um link diz o que abre | `ph2d-board-net::invite` |
+| W5 | Convidado que cai volta sozinho: 250 ms a dobrar até 8 s, durante 60 s, com a pílula «Reconnecting…» | Miro/Figma | `share/` |

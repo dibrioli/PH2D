@@ -30,11 +30,20 @@ ph2d-richdoc = { path = "../ph2d-richdoc" }
 ph2d-kanban-dates = { path = "../ph2d-kanban-dates" }
 # W6 — o filtro, a pesquisa, a ordenação e o envelhecimento (puros).
 ph2d-kanban-filter = { path = "../ph2d-kanban-filter" }
+# J1 — «Share»: o Kanban ao vivo sozinho (a sala, a presença) pelo transporte do Quadro.
+ph2d-kanban-sync = { path = "../ph2d-kanban-sync" }
+ph2d-board-sync = { path = "../ph2d-board-sync" }
+ph2d-board-net = { path = "../ph2d-board-net" }
+ph2d-board-internet = { path = "../ph2d-board-internet" }
 # J2 — o Butler no ecrã (painel de automação, botões), as ligações do cartão ao projecto e a lei
 # pública das datas do seletor (a mesma da Tabela).
 ph2d-kanban-auto = { path = "../ph2d-kanban-auto" }
 ph2d-kanban-links = { path = "../ph2d-kanban-links" }
 ph2d-kanban-views = { path = "../ph2d-kanban-views" }
+# J3 — a porta única do gesto (Butler + scripts), as cenas como modelo e o importar/exportar.
+ph2d-kanban-hooks = { path = "../ph2d-kanban-hooks" }
+ph2d-kanban-scenes = { path = "../ph2d-kanban-scenes" }
+ph2d-kanban-import = { path = "../ph2d-kanban-import" }
 # W3 — a capa de IMAGEM descodifica-se pela MESMA porta que a cena e o Quadro usam
 # (`ph2d_asset::decode_image`, com os tectos e as recusas do registo `imageio`), fora do fio do desenho.
 ph2d-asset = { path = "../ph2d-asset" }

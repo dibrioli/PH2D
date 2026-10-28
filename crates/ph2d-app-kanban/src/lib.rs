@@ -19,7 +19,10 @@ mod docs;
 mod edit;
 mod frame;
 mod front;
+mod header;
 mod home;
+mod hooks;
+mod io;
 mod keys;
 mod layout;
 mod list_title;
@@ -31,8 +34,10 @@ mod paint;
 mod paint_card;
 mod paint_list;
 mod pointer;
+mod presence;
 pub mod project;
 mod rows;
+mod share;
 pub mod smoke;
 mod smoke_j2;
 mod smoke_w6;
@@ -43,6 +48,7 @@ mod w6;
 
 pub use back::outside::{Outside, Served, System, World};
 pub use docs::{CanvasProbe, KanbanDocs};
+pub use hooks::CanvasW6;
 pub use surface::{CMD_FROM, CMD_HOME, CMD_NEW};
 
 /// O arranque da família: a superfície das abas Kanban no `Documents` e as cenas de smoke armadas.
@@ -73,6 +79,8 @@ pub fn frame(hero: &mut ph2d_editor_core::screens::hero::HeroScreen) {
     }
     if let Some(docs) = hero.documents.surfaces_mut().find_mut::<KanbanDocs>() {
         docs.follow_people(&author, team);
+        // J1 — a sala ao vivo: a rede, a presença. O link e os avisos saem por [`service`].
+        docs.share_tick();
     }
 }
 

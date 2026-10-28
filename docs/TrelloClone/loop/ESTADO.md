@@ -19,7 +19,11 @@
 - [ ] FIM — fecho da linha, handoff de integração, smoke final ao dono (PDF)
 
 ## Agentes em voo
-- J1 (cabeçalho/vistas/Share/presença/filtro) · J2 (verso+Butler) · J3 (ganchos, scripts, cenas, import/export, serve). [x] X1 `66fc6afca1`. Clippy crates estáveis LIMPO (`84e4debf44`, `6230d6c770`)
+- [x] J1 `d38bee1f6c` (+linhas por comitar em lib.rs/tab.rs/Cargo.toml/smoke.rs/tests main.rs/familias.rs → COMMIT CONJUNTO no fim de J2/J3; HEAD não compila até lá). Cena 7. J4: sessão do Quadro leva Kanban, retrato fora da janela (medir), link próprio, reconexão
+- [x] J2 `9c088afccc` (cena 8). Por ligar (lote J5): botões do quadro no cabeçalho (`auto::buttons::paint_board_buttons`/`press_board`); teste `verso_recebe_ficheiros_largados…` vermelho (lib.rs::frame do J1 esvazia docs.notices). canvas.rs filtro auto aplicado pelo coordenador
+- [x] J5 `ec4784635d` botões de quadro + teste notices (lib.rs e main.rs `mod j5_botoes;` por comitar → conjunto). Revisor: 8 defeitos → R1 (frac, desfazer vazio, agenda religada, MonthDay inválido, spec unwrap, sort O(n²)) e J4 (Lamport u64::MAX, pending sem tecto)
+- [x] J3 `efd1e1ac7d` `55ffc8a654` `3d2401eed4` (ph2d-kanban-hooks, scripts, ph2d-kanban-scenes, CODE_SMOKE=10, Import/Export). [x] R1 `9b23dfbd98`…`37b83a8c1e`. J6: verso/botões pela porta + import report em docs.rs + foto W10. [x] J4 `a1861d1992` `07051c5317` (sessão do Quadro leva Kanbans, retrato num fio, ph2d-kanban://, reconexão, MAX_STAMP, PENDING_MAX). Por fazer: is_link do Join do Quadro aceitar KANBAN_SCHEME (editor-core board_live.rs); avatares esmaecidos ao reconectar; Quadro convidado com retrocesso exponencial; presença Kanban dentro da sessão do Quadro; histórico de versões do Quadro guarda ids locais
+- J2 (verso+Butler) · J3 (ganchos, scripts, cenas, import/export, serve). [x] X1 `66fc6afca1`. Clippy crates estáveis LIMPO (`84e4debf44`, `6230d6c770`)
 - [x] W8 lote L `35373e3520` ph2d-kanban-script (ph2d.kanban.*). Falta: app-kanban chamar run/react + Butler após cada gesto; UI do Butler
 - [ ] W8 L2 (adiado p/ ligação): mover short_film/sky_png p/ crate baixa (ph2d-kanban-scenes, now por argumento); app correr scripts Kanban (Run/Ctrl+S → KanbanScripts::run; handlers on() activos); depois cena CODE_SMOKE=10 + foto
 - [x] W7 lote W `fb27d29542` `3be4ca777f` `7525ed9173` `b4349d438c` ph2d-kanban-views (+Dia/Agenda/semana horas). Falta: seletor de vistas no app-kanban; back/dates.rs → usar datepick.rs da views (uma lei)

@@ -9,7 +9,6 @@ use serde::{Deserialize, Serialize};
 use crate::activity::Activity;
 use crate::agenda::{Block, Event, InboxItem, Seen};
 use crate::color::Hue;
-use crate::files::FileId;
 use crate::records::{
     ActivityId, Attachment, AttachmentId, Automation, AutomationId, Card, CardId, CheckItem,
     CheckItemId, Checklist, ChecklistId, Comment, CommentId, FieldDef, FieldId, KanbanId, Label,
@@ -26,15 +25,7 @@ pub enum Aging {
     Pirate,
 }
 
-/// O fundo do Kanban.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub enum Background {
-    Color(Hue),
-    /// Um dos gradientes dos tokens do Kanban, pelo índice.
-    Gradient(u16),
-    /// Uma imagem do projecto pela chave do conteúdo (ADR-0184).
-    Image(FileId),
-}
+pub use crate::background::Background;
 
 /// O que é do Kanban inteiro (um registo só, com versão própria).
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

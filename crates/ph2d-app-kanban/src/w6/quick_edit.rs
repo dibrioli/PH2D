@@ -109,6 +109,9 @@ pub(crate) fn paint(
     // Os botões são do cabeçalho (translúcidos sobre o fundo): por baixo deles, o fundo do quadro e a
     // sombra, opacos — a lista que estiver ali não se vê através do texto.
     let under = crate::paint::board_bg(theme, k.header.background);
+    // O chão dos botões (o fundo sob a sombra) e o véu que o texto branco pede sobre ele.
+    let floor = over(shadow, under);
+    let veil = ph2d_board_render::kanban_header_veil_over(theme, floor);
     let mut hits = vec![(r, Act::Inside)];
     if let Some(f) = tab
         .field
@@ -149,15 +152,14 @@ pub(crate) fn paint(
     for (q, key, icon) in rows(tab.id()) {
         let b = Rect::new(x, y, SIDE_W, m::BUTTON_H);
         let on = tab.w6.hover == Some(Act::Quick(q));
-        let fill = if on {
-            T::KanbanHeaderBtnOn
-        } else {
-            T::KanbanHeaderBg
-        };
         let ink = if on { c(theme, T::KanbanBtnOnFg) } else { fg };
-        fill_rounded_rect(scene, b, m::BUTTON_RADIUS, under);
-        fill_rounded_rect(scene, b, m::BUTTON_RADIUS, shadow);
-        fill_rounded_rect(scene, b, m::BUTTON_RADIUS, c(theme, fill));
+        fill_rounded_rect(scene, b, m::BUTTON_RADIUS, floor);
+        let fill = if on {
+            c(theme, T::KanbanHeaderBtnOn)
+        } else {
+            veil
+        };
+        fill_rounded_rect(scene, b, m::BUTTON_RADIUS, fill);
         let ir = Rect::new(b.x + m::BUTTON_PAD_X, b.y, m::ICON_PX, b.h);
         crate::paint::icon(scene, icon, ir, ink);
         let tx = ir.x + m::ICON_PX + m::LIST_ICON_GAP;
@@ -270,4 +272,15 @@ pub(crate) fn key(
         }
         _ => None,
     }
+}
+
+/// `top` (translúcida) composta sobre `bottom` (opaca).
+fn over(top: ph2d_vector::Color, bottom: ph2d_vector::Color) -> ph2d_vector::Color {
+    let a = top.components[3];
+    let mut out = bottom;
+    for i in 0..3 {
+        out.components[i] = top.components[i] * a + bottom.components[i] * (1.0 - a);
+    }
+    out.components[3] = 1.0;
+    out
 }

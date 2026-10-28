@@ -127,6 +127,15 @@ pub(crate) const SWATCH_H: f32 = 32.0;
 pub(crate) const SWATCH_GAP: f32 = 4.0;
 pub(crate) const PANEL_W: f32 = 340.0;
 
+// ── D11 — a gaveta «Change background» (a do Trello: miniaturas em grelha) ──
+pub(crate) const BG_PHOTO_H: f32 = 64.0;
+pub(crate) const BG_THUMB_H: f32 = 48.0;
+pub(crate) const BG_SWATCH_H: f32 = 28.0;
+pub(crate) const BG_SECTION_H: f32 = 28.0;
+pub(crate) const BG_SV_H: f32 = 132.0;
+pub(crate) const BG_HUE_H: f32 = 14.0;
+pub(crate) const BG_KNOB_R: f32 = 6.0;
+
 // ── O início (os Kanbans do projecto) ──
 pub(crate) const TILE_W: f32 = 194.0;
 pub(crate) const TILE_H: f32 = 96.0;

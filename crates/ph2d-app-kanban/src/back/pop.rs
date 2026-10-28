@@ -12,7 +12,7 @@ use ph2d_editor_core::paint::{fill_rounded_rect, stroke_rounded_rect};
 use ph2d_editor_core::widget::{DatePickerLayout, LineField, paint_date_picker};
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
-use ph2d_kanban_model::{CoverFill, Hue, LabelColor, Link, Shade};
+use ph2d_kanban_model::LabelColor;
 use ph2d_tokens::{ColorToken as T, StrokeToken};
 use ph2d_vector::VectorScene;
 
@@ -350,7 +350,7 @@ fn content(ui: &mut Ui<'_>, back: &Back, cx: &Ctx<'_>, x: f32, y: f32) -> f32 {
             ui.primary(Rect::new(ix, yy, sw, ROW), s, BackHit::Pop(PopHit::Save));
             yy += ROW;
         }
-        Pop::Cover => yy = cover(ui, cx, ix, yy, iw),
+        Pop::Cover => yy = super::cover_pop::cover(ui, cx, ix, yy, iw),
         Pop::Fields(name, kind, opts) => {
             let mut defs: Vec<_> = cx.k.fields.values().filter(|f| !f.meta.deleted).collect();
             defs.sort_by(|a, b| a.pos.cmp(&b.pos));
@@ -537,122 +537,4 @@ fn input_focus(
     }
     ui.hit(r, BackHit::Pop(h));
     r.y + r.h + u::GAP
-}
-
-/// A capa: o tamanho (metade/inteira), as dez cores e as imagens dos anexos.
-fn cover(ui: &mut Ui<'_>, cx: &Ctx<'_>, x: f32, y: f32, w: f32) -> f32 {
-    let mut y = y;
-    let cur = cx.card.cover;
-    ui.caption(tr("kanban.back.cover_size"), x, y, w);
-    y += u::META_LINE + u::SMALL_GAP;
-    let half_w = (w - u::GAP) / 2.0;
-    for (i, full) in [false, true].into_iter().enumerate() {
-        #[allow(clippy::cast_precision_loss)]
-        let r = Rect::new(x + i as f32 * (half_w + u::GAP), y, half_w, 2.0 * ROW);
-        let on = cur.is_some_and(|c| c.full == full);
-        ui.button(r, "", None, BackHit::Pop(PopHit::CoverSize(full)), on);
-        let tint = cur.map_or(ui.c(T::KanbanCardMeta), |c| match c.fill {
-            CoverFill::Color(hue) => {
-                label(
-                    ui.theme,
-                    LabelColor {
-                        hue,
-                        shade: Shade::Normal,
-                    },
-                )
-                .0
-            }
-            CoverFill::Image(_) => ui.c(T::KanbanCardMeta),
-        });
-        let inner = Rect::new(
-            r.x + u::SMALL_GAP,
-            r.y + u::SMALL_GAP,
-            r.w - 2.0 * u::SMALL_GAP,
-            r.h - 2.0 * u::SMALL_GAP,
-        );
-        let band = if full {
-            inner
-        } else {
-            Rect::new(inner.x, inner.y, inner.w, inner.h / 2.0)
-        };
-        fill_rounded_rect(ui.scene, band, m::LABEL_RADIUS, tint);
-    }
-    y += 2.0 * ROW + u::GAP;
-    if cur.is_some() {
-        ui.button(
-            Rect::new(x, y, w, ROW),
-            tr("kanban.back.remove_cover"),
-            None,
-            BackHit::Pop(PopHit::Remove),
-            false,
-        );
-        y += ROW + u::GAP;
-    }
-    ui.caption(tr("kanban.back.colors"), x, y, w);
-    y += u::META_LINE + u::SMALL_GAP;
-    let cols = 5usize;
-    #[allow(clippy::cast_precision_loss)]
-    let sw = (w - u::SMALL_GAP * (cols as f32 - 1.0)) / cols as f32;
-    for (i, hue) in Hue::ALL.iter().enumerate() {
-        #[allow(clippy::cast_precision_loss)]
-        let r = Rect::new(
-            x + (i % cols) as f32 * (sw + u::SMALL_GAP),
-            y + (i / cols) as f32 * (ROW + u::SMALL_GAP),
-            sw,
-            ROW,
-        );
-        fill_rounded_rect(
-            ui.scene,
-            r,
-            m::LABEL_RADIUS,
-            label(
-                ui.theme,
-                LabelColor {
-                    hue: *hue,
-                    shade: Shade::Normal,
-                },
-            )
-            .0,
-        );
-        if cur.is_some_and(|c| c.fill == CoverFill::Color(*hue)) {
-            let fg = ui.fg();
-            stroke_rounded_rect(
-                ui.scene,
-                r,
-                m::LABEL_RADIUS,
-                StrokeToken::Default.px() * 2.0,
-                fg,
-            );
-        }
-        #[allow(clippy::cast_possible_truncation)]
-        ui.hit(r, BackHit::Pop(PopHit::CoverHue(i as u8)));
-    }
-    y += 2.0 * (ROW + u::SMALL_GAP);
-    let images: Vec<_> = super::lists::attachments_of(cx)
-        .into_iter()
-        .filter(|a| matches!(a.link, Link::File(_)))
-        .collect();
-    ui.caption(tr("kanban.back.attachments"), x, y, w);
-    y += u::META_LINE + u::SMALL_GAP;
-    if images.is_empty() {
-        let meta = ui.meta();
-        ui.line(
-            tr("kanban.back.no_images"),
-            u::Band::new(x, y, w, u::META_LINE),
-            u::SMALL_PX,
-            meta,
-        );
-        y += u::META_LINE;
-    }
-    for a in images {
-        ui.button(
-            Rect::new(x, y, w, ROW),
-            &a.name,
-            Some(IconId::Image),
-            BackHit::Pop(PopHit::CoverImage(a.id)),
-            false,
-        );
-        y += ROW + u::SMALL_GAP;
-    }
-    y
 }

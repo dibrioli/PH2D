@@ -22,6 +22,16 @@ pub enum Outside {
 pub trait World {
     /// O diálogo nativo «escolher ficheiros» (`None` = cancelado).
     fn pick_files(&mut self) -> Option<Vec<PathBuf>>;
+    /// O diálogo «Upload a cover image»: UMA imagem (`None` = cancelado). Por omissão, a 1.ª do
+    /// diálogo de ficheiros (o mundo de um teste responde pela mesma porta).
+    fn pick_image(&mut self) -> Option<PathBuf> {
+        self.pick_files()?.into_iter().next()
+    }
+    /// O diálogo do «Upload…» do fundo do quadro: UMA imagem, com o título dele. Por omissão, a
+    /// mesma porta da capa.
+    fn pick_background(&mut self) -> Option<PathBuf> {
+        self.pick_image()
+    }
     /// Abre `target` (um link ou um caminho) no programa do sistema. `false` = não abriu.
     fn open(&mut self, target: &str) -> bool;
 }
@@ -34,6 +44,26 @@ impl World for System {
     fn pick_files(&mut self) -> Option<Vec<PathBuf>> {
         let dialog = rfd::FileDialog::new().set_title(tr("kanban.back.attach_computer"));
         ph2d_app_host::modal::pick_files(dialog)
+    }
+
+    fn pick_image(&mut self) -> Option<PathBuf> {
+        let dialog = rfd::FileDialog::new()
+            .set_title(tr("kanban.back.upload_cover"))
+            .add_filter(
+                tr("kanban.back.filter_images"),
+                ph2d_asset::SUPPORTED_IMAGE_EXTENSIONS,
+            );
+        ph2d_app_host::modal::pick_file(dialog)
+    }
+
+    fn pick_background(&mut self) -> Option<PathBuf> {
+        let dialog = rfd::FileDialog::new()
+            .set_title(tr("kanban.bg.upload_title"))
+            .add_filter(
+                tr("kanban.back.filter_images"),
+                ph2d_asset::SUPPORTED_IMAGE_EXTENSIONS,
+            );
+        ph2d_app_host::modal::pick_file(dialog)
     }
 
     fn open(&mut self, target: &str) -> bool {
@@ -99,9 +129,10 @@ impl KanbanDocs {
             let Some(b) = self.tab_mut(id).and_then(|t| t.back.as_deref_mut()) else {
                 continue;
             };
-            let (card, pick, opened, copy) = (
+            let (card, pick, cover, opened, copy) = (
                 b.card,
                 std::mem::take(&mut b.pick),
+                std::mem::take(&mut b.pick_cover),
                 std::mem::take(&mut b.opened),
                 b.copy.take(),
             );
@@ -111,6 +142,10 @@ impl KanbanDocs {
             }
             if pick && let Some(paths) = world.pick_files() {
                 super::attach::attach_paths(self, id, card, &paths);
+                out.notices.append(&mut self.notices);
+            }
+            if cover && let Some(path) = world.pick_image() {
+                super::attach::cover_paths(self, id, card, &[path]);
                 out.notices.append(&mut self.notices);
             }
             for o in opened {

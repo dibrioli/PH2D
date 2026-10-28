@@ -517,6 +517,8 @@ pub(crate) fn pop_click(docs: &mut KanbanDocs, id: u64, card: CardId, p: PopHit)
             b.pop = None;
             b.pick = true;
         }
+        // O popover fica aberto: a capa nova aparece nele (o Trello).
+        PopHit::CoverUpload => b.pick_cover = true,
         PopHit::CopyLink => {
             let link = read(docs, id, super::pop::card_link);
             if let Some(b) = back_mut(docs, id) {

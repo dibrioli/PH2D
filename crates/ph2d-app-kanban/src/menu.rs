@@ -46,6 +46,8 @@ pub(crate) enum Row {
     Aging,
     /// J2 — o painel de automação (o Butler).
     Automation,
+    /// D11 — a gaveta «Change background».
+    Background,
 }
 
 impl Row {
@@ -69,6 +71,7 @@ impl Row {
             Row::Sort => "kanban.w6.menu.sort",
             Row::Aging => "kanban.w6.menu.aging",
             Row::Automation => "kanban.auto.ui.menu",
+            Row::Background => "kanban.menu.background",
         }
     }
 }
@@ -136,6 +139,7 @@ pub(crate) fn place(menu: Menu, anchor: Rect, area: Rect) -> Placed {
         }
         Menu::Board => {
             for r in [
+                Row::Background,
                 Row::Archived,
                 Row::CollapseAll,
                 Row::ExpandAll,

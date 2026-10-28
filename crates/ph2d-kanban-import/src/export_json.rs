@@ -101,7 +101,12 @@ fn board(k: &Kanban) -> Value {
             .copied()
             .unwrap_or("blue")
             .to_owned(),
-        Background::Image(_) => "blue".to_owned(),
+        // O Trello não tem padrão nem cor livre: o padrão leva o matiz da base, o resto o azul.
+        Background::Pattern(p) => match p.base {
+            ph2d_kanban_model::Tint::Hue(h) => hue_name(h).to_owned(),
+            ph2d_kanban_model::Tint::Rgb(_) => "blue".to_owned(),
+        },
+        Background::Image(_) | Background::Custom(_) => "blue".to_owned(),
     };
     let labels: Vec<Value> = k
         .labels

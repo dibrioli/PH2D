@@ -214,6 +214,9 @@ impl KanbanElementInput for Input {
                 KanbanPointer::Up { at, screen, .. } => (PointerKind::Up, at, screen),
             };
             let (wx, wy) = if modal { scr(screen) } else { to_view(at, z) };
+            if !modal && let Some(taken) = crate::bg::pointer(docs, id, kind, wx, wy) {
+                return taken;
+            }
             if let Some(taken) = crate::w6::pointer(docs, id, kind, wx, wy) {
                 return taken;
             }
@@ -282,6 +285,12 @@ impl KanbanElementInput for Input {
         let (x, y) = to_view(at, z);
         with_element(docs, &self.0, target, view, |docs, id| {
             let modal = crate::back::is_open(docs, id);
+            if !modal
+                && let KanbanWheel::Wheel { dy, .. } = w
+                && crate::bg::wheel(docs, id, x, y, crate::pointer::wheel_px(dy))
+            {
+                return true;
+            }
             if !modal
                 && let KanbanWheel::Wheel { dy, shift } = w
                 && crate::w6::wheel(docs, id, x, y, crate::pointer::wheel_px(dy), shift)

@@ -169,8 +169,22 @@ pub(crate) fn paint(
     retarget(tab, &target);
     let lod = at.lod;
     tab.to_screen = at.to_screen;
+    // D11 — o fundo (a pré-visualização do seletor da gaveta por cima do gravado).
+    let shown = tab
+        .bg
+        .as_ref()
+        .and_then(|d| d.preview)
+        .unwrap_or(k.header.background);
+    if let Some(d) = tab.bg.as_deref_mut() {
+        d.theme = theme;
+    }
+    let look = crate::bg::Look::of(set, shown);
+    let back = crate::paint::Backdrop {
+        look: &look,
+        scale: at.to_screen.determinant().abs().sqrt(),
+    };
     if tab.other.is_some() {
-        crate::paint::chrome(out, ts, theme, k, tab);
+        crate::paint::chrome(out, ts, theme, (k, &back), tab);
         if lod == KanbanLod::High {
             crate::header::other::paint(out, ts, theme, tab, set, (&cx.me, &cx.team, cx.floor));
         }
@@ -184,13 +198,14 @@ pub(crate) fn paint(
                 age: t.rows.ages.get(&cid).copied().unwrap_or(0),
             })
         };
-        crate::paint::board(out, ts, theme, k, t, &mut looks);
+        crate::paint::board(out, ts, theme, (k, &back), t, &mut looks);
     }
     if let Some(seen) = cx.share.seen.get(&k.id) {
         crate::presence::paint(out, ts, theme, tab, seen);
     }
     if lod == KanbanLod::High {
         crate::overlay::paint(out, ts, theme, k, tab);
+        crate::bg::paint(out, ts, theme, set, tab, shown);
     }
     let people = (&cx.me, cx.team.as_slice(), cx.floor);
     crate::w6::paint(out, ts, theme, (k, set), tab, people, lod, &cx.share);

@@ -230,14 +230,20 @@ impl DocumentSurface for KanbanDocs {
         };
         // Com o verso aberto, o que se larga é do cartão dele (o modal do Trello); senão, do cartão
         // sob o rato.
+        // Largado sobre o popover da capa aberto, é a CAPA (só imagens).
         let card = match tab.back.as_deref() {
-            Some(b) => Some(b.card),
-            None => crate::pointer::card_under(tab, x, y),
+            Some(b) => Some((b.card, crate::back::cover_pop::over_cover(b, x, y))),
+            None => crate::pointer::card_under(tab, x, y).map(|c| (c, false)),
         };
-        let Some(card) = card else {
+        let Some((card, cover)) = card else {
             return false;
         };
-        crate::back::attach::attach_paths(self, id, card, paths) > 0 || !self.notices.is_empty()
+        let n = if cover {
+            crate::back::attach::cover_paths(self, id, card, paths)
+        } else {
+            crate::back::attach::attach_paths(self, id, card, paths)
+        };
+        n > 0 || !self.notices.is_empty()
     }
 
     fn wants_frame(&self) -> bool {
@@ -291,6 +297,9 @@ impl KanbanDocs {
         if let Some(taken) = crate::io::pointer(self, id, kind, x, y) {
             return taken;
         }
+        if let Some(taken) = crate::bg::pointer(self, id, kind, x, y) {
+            return taken;
+        }
         if let Some(taken) = crate::w6::pointer(self, id, kind, x, y) {
             return taken;
         }
@@ -317,6 +326,9 @@ impl KanbanDocs {
         if let Some(taken) = crate::io::pointer(self, id, PointerKind::Move, x, y) {
             return taken;
         }
+        if let Some(taken) = crate::bg::pointer(self, id, PointerKind::Move, x, y) {
+            return taken;
+        }
         if let Some(taken) = crate::w6::pointer(self, id, PointerKind::Move, x, y) {
             return taken;
         }
@@ -328,6 +340,9 @@ impl KanbanDocs {
 
     fn route_wheel(&mut self, id: u64, x: f32, y: f32, dy: f32, shift: bool) -> bool {
         if crate::io::wheel(self, id, crate::pointer::wheel_px(dy)) {
+            return true;
+        }
+        if id != HOME && crate::bg::wheel(self, id, x, y, crate::pointer::wheel_px(dy)) {
             return true;
         }
         if id != HOME && crate::w6::wheel(self, id, x, y, crate::pointer::wheel_px(dy), shift) {

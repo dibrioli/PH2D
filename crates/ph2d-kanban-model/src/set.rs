@@ -14,9 +14,11 @@ use crate::records::{CoverFill, KanbanId, Link};
 /// A versão dos bytes de [`KanbanSet::to_bytes`]. v2 (W3): seguir, atividade, origem do cartão,
 /// ficheiros por conteúdo. v3 (W6): modelos de cartão, envelhecimento, espelhos. v4 (W8): as
 /// automações. v5 (W9): a agenda do projecto (eventos, Inbox, Planner, lidas). v6 (W11): as ligações
-/// dos cartões ao projecto. v7 (W9 P2): as excepções das séries de eventos. As antigas leem-se pelos
-/// degraus de [`crate::v1`]..[`crate::v6`].
-pub const FORMAT_VERSION: u32 = 7;
+/// dos cartões ao projecto. v7 (W9 P2): as excepções das séries de eventos. v8 (D11): o fundo com cor
+/// livre e com padrão ([`crate::Background`] ganhou variantes no FIM). As antigas leem-se pelos
+/// degraus de [`crate::v1`]..[`crate::v6`]; a v7 pelos tipos de hoje (gate
+/// `v7_bytes_read_as_v8_equal`).
+pub const FORMAT_VERSION: u32 = 8;
 
 /// Os Kanbans de um projecto, pela ordem em que nasceram.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -207,7 +209,8 @@ impl KanbanSet {
         }
         let (version, _) = postcard::take_from_bytes::<u32>(bytes).map_err(|e| e.to_string())?;
         match version {
-            FORMAT_VERSION => postcard::from_bytes::<(u32, Self)>(bytes)
+            // O v8 só acrescentou variantes no fim do `Background`: os bytes v7 são bytes v8.
+            FORMAT_VERSION | 7 => postcard::from_bytes::<(u32, Self)>(bytes)
                 .map(|(_, set)| set)
                 .map_err(|e| e.to_string()),
             6 => postcard::from_bytes::<(u32, crate::v6::SetV6)>(bytes)

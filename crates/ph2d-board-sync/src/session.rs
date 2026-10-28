@@ -22,9 +22,10 @@ use crate::{PeerId, Replica, Snapshot, Write};
 /// `Style::birth` e `Ink::clean` (formato 17); 12 = o Kanban no quadro (`ElementKind::Kanban`,
 /// `Field::Kanban`: só a referência — os registos do documento Kanban viajam na W5, ADR-0195 §3); 13 =
 /// a vista do elemento Kanban mudou de bytes (W4 V2); 14 = o modelo Kanban v7 (o evento do calendário
-/// leva `until` e `exceptions`: o `Record` da AGENDA e o retrato do Kanban mudaram de bytes, P2). Uma
+/// leva `until` e `exceptions`: o `Record` da AGENDA e o retrato do Kanban mudaram de bytes, P2); 15 = o
+/// modelo Kanban v8 (o fundo do quadro ganha `Custom` e `Pattern`: o cabeçalho muda de bytes, D11). Uma
 /// só versão para a sala do Quadro e a do Kanban sozinho (`ph2d-kanban-sync::session`).
-pub const PROTOCOL: u32 = 14;
+pub const PROTOCOL: u32 = 15;
 
 /// Uma ligação, no transporte do anfitrião.
 pub type ConnId = u64;

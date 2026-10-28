@@ -305,9 +305,23 @@ pub(crate) fn collapsed(
 }
 
 /// «Add another list» — ou o compositor de lista.
-pub(crate) fn add_list(scene: &mut VectorScene, ts: &mut TextSystem, theme: Theme, tab: &Tab) {
+/// `light` = o chão é claro: o botão é opaco, da cor da lista (o texto branco não se leria).
+pub(crate) fn add_list(
+    scene: &mut VectorScene,
+    ts: &mut TextSystem,
+    theme: Theme,
+    tab: &Tab,
+    light: bool,
+) {
     let l = &tab.layout;
-    let fg = c(theme, T::KanbanHeaderFg);
+    let fg = c(
+        theme,
+        if light {
+            T::KanbanListFg
+        } else {
+            T::KanbanHeaderFg
+        },
+    );
     match (l.add_list_field, l.add_list_close, tab.field.as_ref()) {
         (Some(fr), Some(close), Some(f)) => {
             let bottom = l.add_list.y + l.add_list.h + m::LIST_FOOT_BOTTOM;
@@ -333,10 +347,11 @@ pub(crate) fn add_list(scene: &mut VectorScene, ts: &mut TextSystem, theme: Them
         }
         _ => {
             let on = tab.hover == Some(Hit::AddList);
-            let fill = if on {
-                T::KanbanHeaderBtn
-            } else {
-                T::KanbanNewList
+            let fill = match (light, on) {
+                (true, false) => T::KanbanList,
+                (true, true) => T::KanbanCardRaised,
+                (false, true) => T::KanbanHeaderBtn,
+                (false, false) => T::KanbanNewList,
             };
             fill_rounded_rect(scene, l.add_list, m::LIST_RADIUS, c(theme, fill));
             let ir = Rect::new(

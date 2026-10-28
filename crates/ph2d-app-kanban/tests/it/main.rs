@@ -6,6 +6,8 @@
 mod arrastar;
 mod canvas_entrada;
 mod d9;
+mod d11_fundo;
+mod d11_fotos;
 mod duas_janelas;
 mod escrever;
 mod foto_tutorial;
@@ -29,6 +31,7 @@ mod teto;
 mod titulo;
 mod verso;
 mod verso_anexos;
+mod verso_capa;
 mod escrever_no_verso;
 mod verso_listas;
 mod vista;

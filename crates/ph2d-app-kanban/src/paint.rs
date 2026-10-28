@@ -46,7 +46,8 @@ pub(crate) fn list_colors(theme: Theme, hue: Option<Hue>) -> (Color, Color, Colo
     ph2d_board_render::kanban_list_colors(theme, hue)
 }
 
-/// O fundo do quadro: o azul do Trello; outro matiz usa a etiqueta forte dele (a lei do Quadro).
+/// A cor plana do fundo do quadro (a média: por baixo de um botão opaco). A pintura inteira é
+/// [`crate::bg::Look::paint`] (a lei do Quadro).
 pub(crate) fn board_bg(theme: Theme, bg: Background) -> Color {
     ph2d_board_render::kanban_board_bg(theme, bg)
 }
@@ -74,18 +75,36 @@ pub(crate) fn hover_fill(scene: &mut VectorScene, r: Rect, on: bool, theme: Them
     }
 }
 
+/// O fundo da aba: o que pintar e a escala do ecrã (o nível do padrão).
+pub(crate) struct Backdrop<'a> {
+    pub look: &'a crate::bg::Look,
+    pub scale: f64,
+}
+
+/// O fundo e quão claro ele é na área da aba.
+fn backdrop(
+    scene: &mut VectorScene,
+    theme: Theme,
+    tab: &Tab,
+    b: &Backdrop<'_>,
+) -> ph2d_board_render::BgTone {
+    let area = tab.layout.area;
+    b.look.paint(scene, theme, area, b.scale);
+    b.look.tone(theme, area)
+}
+
 /// ⭐ O quadro inteiro, a partir da disposição VISTA.
 pub(crate) fn board(
     scene: &mut VectorScene,
     ts: &mut TextSystem,
     theme: Theme,
-    k: &Kanban,
+    (k, back): (&Kanban, &Backdrop<'_>),
     tab: &Tab,
     looks: &mut dyn FnMut(ph2d_kanban_model::CardId) -> Option<CardLook>,
 ) {
     let l = &tab.layout;
-    scene.fill_rect(rect_to_vello(l.area), board_bg(theme, k.header.background));
-    header(scene, ts, theme, k, tab);
+    let tone = backdrop(scene, theme, tab, back);
+    header(scene, ts, theme, k, tab, tone);
     scene.push_clip(&rect_to_vello(l.board));
     if let Some(s) = l.list_slot {
         fill_rounded_rect(scene, s, m::LIST_RADIUS, c(theme, T::KanbanNewList));
@@ -97,7 +116,8 @@ pub(crate) fn board(
             paint_list::list(scene, ts, theme, k, tab, lb, looks);
         }
     }
-    paint_list::add_list(scene, ts, theme, tab);
+    let light = ph2d_board_render::kanban_floor_is_light(theme, tone);
+    paint_list::add_list(scene, ts, theme, tab, light);
     scene.pop_layer();
     flying(scene, ts, theme, k, tab, looks);
 }
@@ -107,19 +127,25 @@ pub(crate) fn chrome(
     scene: &mut VectorScene,
     ts: &mut TextSystem,
     theme: Theme,
-    k: &Kanban,
+    (k, back): (&Kanban, &Backdrop<'_>),
     tab: &Tab,
 ) {
-    scene.fill_rect(
-        rect_to_vello(tab.layout.area),
-        board_bg(theme, k.header.background),
-    );
-    header(scene, ts, theme, k, tab);
+    let tone = backdrop(scene, theme, tab, back);
+    header(scene, ts, theme, k, tab, tone);
 }
 
-fn header(scene: &mut VectorScene, ts: &mut TextSystem, theme: Theme, k: &Kanban, tab: &Tab) {
+fn header(
+    scene: &mut VectorScene,
+    ts: &mut TextSystem,
+    theme: Theme,
+    k: &Kanban,
+    tab: &Tab,
+    tone: ph2d_board_render::BgTone,
+) {
     let l = &tab.layout;
-    scene.fill_rect(rect_to_vello(l.header), c(theme, T::KanbanHeaderBg));
+    // O véu escurece o que o fundo claro pede para o título branco se ler (a lei do Quadro).
+    let veil = ph2d_board_render::kanban_header_veil(theme, tone);
+    scene.fill_rect(rect_to_vello(l.header), veil);
     let fg = c(theme, T::KanbanHeaderFg);
     match tab
         .field

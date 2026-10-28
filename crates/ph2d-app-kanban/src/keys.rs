@@ -138,6 +138,7 @@ pub(crate) fn key(
     match (input.key, ch) {
         (Key::Escape, _) => {
             let had = tab.menu.take().is_some()
+                || tab.bg.take().is_some()
                 || tab.panel.take().is_some()
                 || tab.focus.take().is_some();
             return KeyOutcome {

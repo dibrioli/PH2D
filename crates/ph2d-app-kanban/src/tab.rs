@@ -113,6 +113,8 @@ pub(crate) struct Tab {
     pub focus: Option<CardId>,
     pub menu: Option<crate::menu::Menu>,
     pub panel: Option<crate::archive::Panel>,
+    /// D11 — a gaveta «Change background».
+    pub bg: Option<Box<crate::bg::Drawer>>,
     /// Os rótulos mostram o texto (clicar num rótulo alterna — o Trello).
     pub label_text: bool,
     pub springs: Springs,
@@ -168,6 +170,7 @@ impl Tab {
             focus: None,
             menu: None,
             panel: None,
+            bg: None,
             label_text: true,
             springs: Springs::default(),
             heights: BTreeMap::new(),

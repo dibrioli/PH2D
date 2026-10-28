@@ -211,17 +211,6 @@ fn label(theme: Theme, hue: Hue, shade: Shade) -> Color {
     token(ph2d_tokens::kanban::LABELS[s][hue_index(hue)], theme)
 }
 
-/// ⭐ O fundo de um Kanban: o azul do Trello; outro matiz, a etiqueta forte dele.
-#[must_use]
-pub fn kanban_board_bg(theme: Theme, bg: Background) -> Color {
-    match bg {
-        Background::Color(Hue::Blue) | Background::Gradient(_) | Background::Image(_) => {
-            token(T::KanbanBoardBg, theme)
-        }
-        Background::Color(h) => label(theme, h, Shade::Bold),
-    }
-}
-
 /// ⭐ Uma lista: (fundo, tinta do título, tinta da contagem). Com cor, a intensidade SUTIL do matiz.
 #[must_use]
 pub fn kanban_list_colors(theme: Theme, hue: Option<Hue>) -> (Color, Color, Color) {
@@ -300,11 +289,20 @@ pub(crate) fn paint(
     };
     if !painted {
         let kb = set.as_ref().and_then(|s| s.get(k.kanban));
-        let bg = kb.map_or_else(
-            || token(T::KanbanBoardBg, theme),
-            |kb| kanban_board_bg(theme, kb.header.background),
+        let bg = kb.map_or(Background::Color(Hue::Blue), |kb| kb.header.background);
+        let kz = k.view.zoom.max(f64::EPSILON);
+        crate::kanban_bg::paint_kanban_bg(
+            scene,
+            theme,
+            &crate::kanban_bg::KanbanBg {
+                bg,
+                // Em px do KANBAN (o ladrilho do padrão é o mesmo que a aba pinta).
+                rect: Rect::new(0.0, 0.0, el.w / kz, el.h / kz),
+                to_scene: t * Affine::scale(kz),
+                screen_scale: zoom * kz,
+                image: None,
+            },
         );
-        scene.fill_path(&outer, &Brush::Solid(bg), t);
         if let Some(kb) = kb {
             low(scene, ts, cache, (el, &k.view, t, zoom), kb, theme, board);
         }
@@ -391,7 +389,9 @@ fn low(
     let z = view.zoom;
     let screen = zoom * z;
     let head = Rect::new(0.0, 0.0, el.w, HEADER_H * z).to_path(0.1);
-    scene.fill_path(&head, &Brush::Solid(token(T::KanbanHeaderBg, theme)), t);
+    let tone = crate::kanban_bg::kanban_bg_tone(theme, kb.header.background, None);
+    let veil = crate::kanban_bg::kanban_header_veil(theme, tone);
+    scene.fill_path(&head, &Brush::Solid(veil), t);
     // De longe o texto não encolhe abaixo da menor letra da interface (a maquete: «the lists at a
     // glance», os títulos e as contagens legíveis): px LOCAIS que dão `TypeToken::Xs` no ecrã.
     let glance = f64::from(TypeToken::Xs.px()) / zoom.max(f64::EPSILON);

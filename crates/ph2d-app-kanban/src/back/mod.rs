@@ -10,6 +10,7 @@
 mod activity;
 pub(crate) mod attach;
 mod click;
+pub(crate) mod cover_pop;
 pub(crate) mod dates;
 mod keys;
 mod lists;
@@ -165,6 +166,8 @@ pub(crate) enum PopHit {
     FieldDelete(FieldId),
     /// «Choose a file»: o diálogo nativo do sistema.
     PickFile,
+    /// «Upload a cover image»: o diálogo de imagens; a escolhida é anexo E capa.
+    CoverUpload,
     /// «Copy link» do «Share».
     CopyLink,
     /// J2 — a linha `n` do catálogo do projecto no popover «Scene object».
@@ -279,6 +282,8 @@ pub(crate) struct Back {
     pub opened: Vec<outside::Outside>,
     /// O diálogo «Choose a file» pedido (a shell abre-o: [`outside`]).
     pub pick: bool,
+    /// O diálogo «Upload a cover image» pedido (só imagens; a escolhida passa a capa).
+    pub pick_cover: bool,
     /// O texto que um botão copiou (a shell entrega-o à área de transferência).
     pub copy: Option<String>,
     /// O último carregar num editor rico: o alvo, quando (ns) e quantos cliques seguidos (o duplo
@@ -356,6 +361,7 @@ impl Back {
             details: false,
             opened: Vec::new(),
             pick: false,
+            pick_cover: false,
             copy: None,
             last_down: None,
             feed: Vec::new(),

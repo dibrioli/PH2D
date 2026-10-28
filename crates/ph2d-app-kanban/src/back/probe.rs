@@ -50,14 +50,15 @@ impl KanbanDocs {
         )
     }
 
-    /// ⚠️ SONDA: a fila do verso para o mundo, por servir: `(abrir, diálogo pedido, a copiar)`.
+    /// ⚠️ SONDA: a fila do verso para o mundo, por servir: `(abrir, diálogo pedido — o dos
+    /// ficheiros ou o da capa —, a copiar)`.
     #[must_use]
     pub fn probe_back_outbox(
         &self,
         id: u64,
     ) -> (Vec<super::outside::Outside>, bool, Option<String>) {
         self.back_of(id)
-            .map(|b| (b.opened.clone(), b.pick, b.copy.clone()))
+            .map(|b| (b.opened.clone(), b.pick || b.pick_cover, b.copy.clone()))
             .unwrap_or_default()
     }
 

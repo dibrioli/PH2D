@@ -14,6 +14,7 @@ mod anim;
 mod archive;
 mod auto;
 mod back;
+mod bg;
 mod canvas;
 mod docs;
 mod edit;
@@ -103,7 +104,8 @@ pub fn service_with(hero: &mut ph2d_editor_core::screens::hero::HeroScreen, worl
     let Some(docs) = hero.documents.surfaces_mut().find_mut::<KanbanDocs>() else {
         return;
     };
-    let out = docs.serve(world);
+    let mut out = docs.serve(world);
+    out.notices.extend(docs.serve_background(world));
     if let Some(text) = out.copy {
         hero.store.set_clipboard_copy(text);
     }

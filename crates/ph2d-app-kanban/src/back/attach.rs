@@ -1,6 +1,7 @@
 //! ⭐ **Anexar FICHEIROS** — o que o diálogo escolheu ou o sistema largou: os bytes entram no
 //! conjunto por conteúdo (`KanbanSet::put_file`, com o tamanho natural se é imagem) e o cartão ganha
-//! um anexo `Link::File`. A 1.ª imagem de um cartão sem capa passa a capa (o Trello).
+//! um anexo `Link::File`. A 1.ª imagem de um cartão sem capa passa a capa (o Trello); a que veio
+//! pelo «Upload a cover image» (ou largada no popover da capa) passa a capa sempre.
 
 use super::write;
 use crate::docs::KanbanDocs;
@@ -50,30 +51,38 @@ pub(crate) fn human_size(n: usize) -> String {
     }
 }
 
-/// ⭐ Os ficheiros `(nome, bytes)` anexados ao cartão `card` da aba `id`, um passo de desfazer cada.
-/// Devolve quantos entraram (um ficheiro vazio não entra).
+/// ⭐ Os ficheiros `(nome, bytes)` anexados ao cartão `card` da aba `id`, um passo de desfazer cada
+/// (`cover`: como capa, ver [`attach_ready`]). Devolve quantos entraram (um vazio não entra).
 pub(crate) fn attach_bytes(
     docs: &mut KanbanDocs,
     id: u64,
     card: CardId,
     files: Vec<(String, Vec<u8>)>,
+    cover: bool,
 ) -> usize {
     let files = files.into_iter().map(|(name, b)| {
         let size = image_size(&b);
         (name, Arc::from(b), size, None)
     });
-    attach_ready(docs, id, card, files)
+    attach_ready(docs, id, card, files, cover)
 }
 
+/// `cover`: só imagens entram, e a que entra passa a capa (o que não é imagem fica num aviso).
 fn attach_ready(
     docs: &mut KanbanDocs,
     id: u64,
     card: CardId,
     files: impl IntoIterator<Item = (String, Arc<[u8]>, Option<[u32; 2]>, Option<FileId>)>,
+    cover: bool,
 ) -> usize {
     let mut n = 0;
     for (name, bytes, size, key) in files {
         if bytes.is_empty() {
+            continue;
+        }
+        if cover && size.is_none() {
+            docs.notices
+                .push(tr_with("kanban.back.not_an_image", &[("t", &name)]));
             continue;
         }
         // A chave calculada no fio entra feita; a do ficheiro lido na hora calcula-se aqui.
@@ -81,7 +90,7 @@ fn attach_ready(
             Some(k) => docs.set.borrow_mut().put_file_keyed(k, bytes, size),
             None => docs.set.borrow_mut().put_file(bytes, size),
         };
-        if write::add_file(docs, id, card, f, name, size.is_some()) {
+        if write::add_file(docs, id, card, f, name, size.is_some(), cover) {
             n += 1;
         }
     }
@@ -93,12 +102,14 @@ fn attach_ready(
 /// RAM. Medição: `docs/TrelloClone/loop/MEDICOES.md` §W3 E.
 const READ_NOW_UP_TO: u64 = 8 << 20;
 
-/// Um ficheiro lido no fio: (aba, cartão, nome, bytes, tamanho natural e a chave sha-256, ou a falha).
+/// Um ficheiro lido no fio: (aba, cartão, nome, bytes, tamanho natural e a chave sha-256, ou a
+/// falha; e se é para a capa).
 type Loaded = (
     u64,
     CardId,
     String,
     Option<(Arc<[u8]>, Option<[u32; 2]>, FileId)>,
+    bool,
 );
 
 #[derive(Default)]
@@ -113,7 +124,7 @@ thread_local! {
 }
 
 /// Lê `p`, o tamanho natural (se é imagem) e a chave ([`FileId::of`]) no fio; chega por [`arrived`].
-fn read_later(id: u64, card: CardId, name: String, p: PathBuf) {
+fn read_later(id: u64, card: CardId, name: String, p: PathBuf, cover: bool) {
     LOADING.with_borrow_mut(|l| {
         if l.tx.is_none() {
             let (tx, rx) = channel();
@@ -129,7 +140,7 @@ fn read_later(id: u64, card: CardId, name: String, p: PathBuf) {
                     let key = FileId::of(&b);
                     (Arc::from(b), size, key)
                 });
-                let _ = tx.send((id, card, name, got));
+                let _ = tx.send((id, card, name, got, cover));
             });
     });
 }
@@ -152,10 +163,10 @@ pub(crate) fn arrived(docs: &mut KanbanDocs) -> usize {
         got
     });
     let mut n = 0;
-    for (id, card, name, got) in done {
+    for (id, card, name, got, cover) in done {
         match got {
             Some((bytes, size, key)) => {
-                n += attach_ready(docs, id, card, [(name, bytes, size, Some(key))]);
+                n += attach_ready(docs, id, card, [(name, bytes, size, Some(key))], cover);
             }
             None => docs
                 .notices
@@ -173,6 +184,22 @@ pub(crate) fn attach_paths(
     card: CardId,
     paths: &[PathBuf],
 ) -> usize {
+    read_paths(docs, id, card, paths, false)
+}
+
+/// ⭐ A porta da CAPA («Upload a cover image», largar no popover da capa): cada imagem entra como
+/// anexo E capa, num passo de desfazer; o que não é imagem fica num aviso e a capa não muda.
+pub(crate) fn cover_paths(docs: &mut KanbanDocs, id: u64, card: CardId, paths: &[PathBuf]) -> usize {
+    read_paths(docs, id, card, paths, true)
+}
+
+fn read_paths(
+    docs: &mut KanbanDocs,
+    id: u64,
+    card: CardId,
+    paths: &[PathBuf],
+    cover: bool,
+) -> usize {
     let mut files = Vec::new();
     let mut later = 0;
     for p in paths {
@@ -184,7 +211,7 @@ pub(crate) fn attach_paths(
         match meta.map(|m| m.len()) {
             Some(0) => {}
             Some(len) if len > READ_NOW_UP_TO => {
-                read_later(id, card, name, p.clone());
+                read_later(id, card, name, p.clone(), cover);
                 later += 1;
             }
             Some(_) => match std::fs::read(p) {
@@ -198,7 +225,7 @@ pub(crate) fn attach_paths(
                 .push(tr_with("kanban.back.cannot_read", &[("t", &name)])),
         }
     }
-    attach_bytes(docs, id, card, files) + later
+    attach_bytes(docs, id, card, files, cover) + later
 }
 
 #[cfg(test)]

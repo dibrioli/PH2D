@@ -16,9 +16,9 @@ use std::path::PathBuf;
 
 /// O mundo de um teste: o que o diálogo «escolhe» e o que se pediu para abrir.
 #[derive(Default)]
-struct Mundo {
-    escolha: Option<Vec<PathBuf>>,
-    aberto: Vec<String>,
+pub(crate) struct Mundo {
+    pub(crate) escolha: Option<Vec<PathBuf>>,
+    pub(crate) aberto: Vec<String>,
 }
 
 impl World for Mundo {
@@ -33,7 +33,7 @@ impl World for Mundo {
 }
 
 /// Um PNG de `w × h` (liso).
-fn png(w: u32, h: u32) -> Vec<u8> {
+pub(crate) fn png(w: u32, h: u32) -> Vec<u8> {
     let img = image::RgbaImage::from_pixel(w, h, image::Rgba([200, 120, 40, 255]));
     let mut out = std::io::Cursor::new(Vec::new());
     img.write_to(&mut out, image::ImageFormat::Png)
@@ -42,7 +42,7 @@ fn png(w: u32, h: u32) -> Vec<u8> {
 }
 
 /// Escreve `bytes` em `<tmp>/ph2d-kanban-it-<pid>-<caso>/<nome>`.
-fn ficheiro(caso: &str, nome: &str, bytes: &[u8]) -> PathBuf {
+pub(crate) fn ficheiro(caso: &str, nome: &str, bytes: &[u8]) -> PathBuf {
     let dir = std::env::temp_dir().join(format!("ph2d-kanban-it-{}-{caso}", std::process::id()));
     std::fs::create_dir_all(&dir).expect("pasta");
     let p = dir.join(nome);
@@ -50,7 +50,7 @@ fn ficheiro(caso: &str, nome: &str, bytes: &[u8]) -> PathBuf {
     p
 }
 
-fn anexos(m: &Mesa, id: KanbanId, c: CardId) -> Vec<Attachment> {
+pub(crate) fn anexos(m: &Mesa, id: KanbanId, c: CardId) -> Vec<Attachment> {
     let mut v: Vec<Attachment> = m
         .kanban(id)
         .attachments
@@ -62,7 +62,7 @@ fn anexos(m: &Mesa, id: KanbanId, c: CardId) -> Vec<Attachment> {
     v
 }
 
-fn capa(m: &Mesa, id: KanbanId, c: CardId) -> Option<CoverFill> {
+pub(crate) fn capa(m: &Mesa, id: KanbanId, c: CardId) -> Option<CoverFill> {
     m.kanban(id).cards[&c].cover.map(|c| c.fill)
 }
 

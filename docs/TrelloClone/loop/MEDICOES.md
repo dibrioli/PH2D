@@ -313,3 +313,34 @@ Redial}` (`crates/ph2d-board-net/src/redial.rs`), chamadas pelo convidado do Qua
 a cada 2 s fixos) e pelo do Kanban sozinho. Os mesmos números e o mesmo porquê; o relógio de uma queda
 medido no gate `a_redial_tries_at_the_doubling_waits_and_gives_up_after_the_minute`: tentativas aos
 250 / 750 / 1 750 / 3 750 ms, depois de 8 em 8 s — 11 no minuto (≤ 12).
+
+## D11 — o fundo do Kanban: o padrão a ecrã inteiro (28/10)
+
+Máquina partilhada a `loadavg ≈ 17–22` (o MÍNIMO de cada série; o número verdadeiro é ≤ a este).
+**CPU** — montar a cena do fundo (`paint_kanban_bg`, 2560×1440, 1×, ladrilho 24 px), mínimo de 30,
+`--profile smoke`, gate `kanban_bg_measure_full_screen_pattern_cost` (`ph2d-board-render`, `#[ignore]`):
+
+| Padrão | ms | elementos de caminho |
+|---|---|---|
+| Dots | 0,66 | 39 528 |
+| Checks | 0,43 | 65 880 |
+| Waves (faixa fechada) | 0,27 | 26 535 |
+| Triangles | 0,24 | 26 352 |
+| CrossHatch | 0,03 | 1 680 |
+| Diagonal | 0,02 | 840 |
+| Grid | 0,01 | 845 |
+| Lines | 0,005 | 305 |
+
+⛔ Recusa MEDIDA: as ondas por `kurbo::stroke` (traço expandido) custavam **4,0 ms**; a faixa fechada
+(curva + a mesma descida de volta) dá o mesmo desenho por **0,27 ms**.
+
+**Placa** — a aba inteira (1200×700, cena 1) por `render_and_readback`, mínimo de 15 intercaladas
+(gate `d11_mede_o_fundo_na_placa`, `#[ignore]`): cor lisa **2,54 ms** · Dots 3,11 · Checks 3,32 ·
+Waves 3,29 · CrossHatch 3,31 (a leitura de volta é igual em todas: o padrão custa ≈ 0,6–0,8 ms).
+
+Os limites que nasceram aqui, e de que recurso são:
+- `PATTERN_MIN_TILE_PX = 6` (px de ecrã por ladrilho): abaixo disso o traço de 2 px já cobre um terço
+  do ladrilho e funde-se; pinta-se a cor média (base × traço pela fracção coberta) — custo zero e o que
+  o olho vê. Recurso: legibilidade/aliasing, não tempo.
+- `BG_TEXELS_W = 2048` (largura de textura do fundo de imagem): uma janela de 1920 lógicos a 1× sem
+  ampliar; ≤ 16 MB no atlas partilhado do Vello (a mesma política de memória da capa, §W3 D2).

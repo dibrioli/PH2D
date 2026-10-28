@@ -15,6 +15,7 @@ mod grid;
 mod image;
 mod image_frame;
 mod kanban;
+mod kanban_bg;
 mod mind;
 mod note;
 mod overlay;
@@ -35,7 +36,12 @@ pub use image::{Decode, Images, Pixels, Salvage, install_decoder, install_salvag
 pub use kanban::{
     HEADER_H as KANBAN_HEADER_H, KanbanFrames, KanbanLod, KanbanOver, KanbanPaint, KanbanPainter,
     KanbanPlacement, KanbanSource, force_kanban_lod, install_kanban_painter, install_kanbans,
-    kanban_board_bg, kanban_list_colors, kanban_name, kanban_painter_installed,
+    kanban_list_colors, kanban_name, kanban_painter_installed,
+};
+pub use kanban_bg::{
+    BgImage, BgTone, GRADIENTS as KANBAN_GRADIENTS, KanbanBg, PATTERN_MIN_TILE_PX, kanban_bg_tone,
+    kanban_board_bg, kanban_floor_is_light, kanban_gradient_stops, kanban_header_veil, kanban_header_veil_over, kanban_tint,
+    luminance, paint_kanban_bg, pattern_coverage, pattern_path,
 };
 pub use overlay::paint_overlay;
 pub use theme_ink::ThemeInk;

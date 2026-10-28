@@ -12,6 +12,7 @@
 
 mod activity;
 mod agenda;
+mod background;
 mod color;
 mod convert;
 mod files;
@@ -39,6 +40,7 @@ mod view;
 
 pub use activity::{Activity, Actor, Happened, Snapshot, Subject, activity_for, apply_logged};
 pub use agenda::{Block, BlockOf, Event, Exception, InboxItem, Repeat, Seen};
+pub use background::{Pattern, PatternKind, Rgb, Tint};
 pub use color::{Hue, LabelColor, Shade};
 pub use convert::convert_item_to_card;
 pub use files::{Blob, FileId, KanbanFile};

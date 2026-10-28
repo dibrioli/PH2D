@@ -5996,16 +5996,19 @@ dependencies = [
 name = "ph2d-app-planner"
 version = "0.0.0"
 dependencies = [
+ "image",
  "ph2d-a11y",
  "ph2d-app-host",
  "ph2d-app-kanban",
  "ph2d-editor-core",
+ "ph2d-gpu",
  "ph2d-host",
  "ph2d-i18n",
  "ph2d-kanban-dates",
  "ph2d-kanban-filter",
  "ph2d-kanban-model",
  "ph2d-kanban-views",
+ "ph2d-render",
  "ph2d-text",
  "ph2d-tokens",
  "ph2d-tool-registry",

@@ -41,3 +41,17 @@
 | W8 | Comentários do Butler saem em nome dele, datas ISO; cartões-modelo não disparam regras; listas guardadas pelo id (renomear não parte a regra) | Trello/Butler | `ph2d-kanban-auto` |
 | W5 | Nomes em listas partilhadas (votos, membros, quem segue, etiquetas) ficam na ordem de entrada; tirar e voltar a pôr manda para o fim | ordem determinística entre colegas | `ph2d-kanban-sync` |
 | W5 | Apagar contra editar ao mesmo tempo: fica a lápide E a edição (como no Quadro) | uma só lei de fusão | `ph2d_board_sync::wins` |
+| W4 | «Place on board» usa o Quadro activo, senão o último activo, senão o primeiro, senão cria um; depois mostra-o com a referência seleccionada | o caminho mais curto ao que o artista vê | `board_kanban_link.rs` |
+| W4 | Kanban em vários Quadros: «Show on board» abre a lista «Show on which board?» | plano §3.2 | idem |
+| W4 | Zoom baixo: nomes e contagens nunca abaixo de 11 px no ecrã; lista recolhida tem a altura do título | maquete do canvas | `board-render` LOD |
+| W3 | Sem tecto de tamanho por anexo (o tecto real é a RAM: ~3× ao gravar); até 8 MB lê na hora, acima num fio; anexos ficam DENTRO do projecto | medido (MEDICOES §W3 E); anexo por referência fica para o dono decidir | `back/attach` |
+| W3 | Abrir link: http/https/mailto (o vídeo do Quadro, que só aceitava https, passa à mesma lista) | uma só política | `ph2d_app_host::open` |
+| W5 | Reacções: o emoji aparece pela ordem da 1.ª reacção; reacção sem ninguém some | Trello | `ph2d-kanban-sync` |
+| W4 | Zoom interno do Kanban no Quadro: sem gesto (Ctrl+roda é sempre o zoom do Quadro); a roda dentro do Kanban activo rola a lista sob o rato | o Trello não tem zoom; o idioma do Quadro manda | `canvas.rs` |
+| W9 | Uma aba «Planner» com três modos (Calendar · Planner · My cards) | a navegação Inbox · Planner · Quadros do Trello | `ph2d-app-planner` |
+| W9 | Inbox, blocos do Planner e «lidas» são pessoais e NÃO viajam; eventos viajam e numa sessão os calendários juntam-se | Trello: a Inbox é só tua | `table.rs` |
+| W9 | Arrastar uma ocorrência de evento recorrente move a série inteira | o mais simples e previsível; editar só uma ocorrência fica por fazer | `ph2d-app-planner` |
+| W9 | Desfazer do Planner é do Planner (não se desfaz na aba do Kanban) | cada aba tem a sua fila (ADR-0195 §5) | — |
+| W7 | Painel: anel só «por lista» e «por entrega» (por etiqueta/membro só barras — um cartão conta em vários); o excesso dobra-se em «Other (n)» | um anel tem de somar 100 % | `ph2d-kanban-views` |
+| W7 | «+» no calendário pergunta a lista (1.ª por omissão); o cartão novo vence ao meio-dia | Trello | idem |
+| W7 | Linha do tempo agrupada por lista: largar a barra noutra faixa muda a lista do cartão | Trello Timeline | idem |

@@ -160,3 +160,36 @@ carimbo), título de ~35 letras, um voto a cada três. «Antes» = o retrato pla
 - ⚠️ O anfitrião paga **38 ms** (≈ 2 quadros) quando alguém entra num Kanban de 20 000 cartões nascidos na
   sessão; o convidado ~47 ms uma vez. Aceitável para um evento raro; se incomodar, o retrato sai num fio
   (o `KanbanSet` é `Clone`).
+
+## W7 W — as vistas Tabela, Calendário, Linha do tempo e Painel (`ph2d-kanban-views`, 28/10)
+
+**Tabela a 20 000 cartões** (`measure_table_20k`, `#[ignore]`; `fixture::big(20_000)`, perfil `dev`
+(debug), mínimo de 15 corridas, carga 5–10; a cena inteira pintada numa área de 1440 × 900):
+
+| O quê | Tempo |
+|---|---|
+| Pintar com as linhas em cache, ordem do quadro | 3,86 ms |
+| Pintar com as linhas em cache, por entrega | 4,37 ms |
+| Pintar com as linhas em cache, por nome | 2,76 ms |
+| Refazer as linhas sem cache, ordem do quadro | 4,30 ms |
+| Refazer as linhas sem cache, por nome (1.ª versão: 799 ms — normalizava o título em cada comparação) | 104,97 ms |
+
+- **Sem tecto de linhas:** a rolagem é virtual (pintam-se **21** linhas, as visíveis) e o recurso que cresce é
+  só a lista de ids em cache. A chave da cache: nº de registos + soma das versões (cartões, listas,
+  etiquetas, campos) + ordem + filtro + «eu» + minuto. Reordenar por nome a frio (105 ms, debug) é um
+  clique; o quadro de imagem seguinte já lê a cache.
+
+**Painel — a paleta das listas sem cor** (skill de dataviz, `validate_palette.js`; superfície =
+`kanban-card`): a ordem `Yellow · Blue · Red · Purple · Lime`, degrau `bold` no claro e `normal` no escuro.
+
+| Tema | Claridade | Croma | CVD vizinhas (pior) | Visão normal (pior) | Contraste |
+|---|---|---|---|---|---|
+| claro `#ffffff` | PASS 0,43–0,77 | PASS ≥ 0,10 | PASS ΔE 23,7 | PASS ΔE 26,5 | PASS ≥ 3:1 |
+| escuro `#22293a` | PASS 0,48–0,67 | PASS ≥ 0,10 | PASS ΔE 22,6 | PASS ΔE 24,9 | WARN < 3:1 → rótulos directos e valores sempre escritos |
+
+- ⛔ Recusado: os degraus `normal` no claro (`#579dff,#fea362,…`: FAIL claridade e croma, `sky` cinzento) e
+  as ordens que começam no azul (`blue,yellow,red,…`: FAIL CVD ΔE 3,9 / 1,1). Uma 6.ª lista sem cor fica
+  cinzenta — nunca um matiz reciclado. As etiquetas e os membros pintam a cor DELES (identidade escolhida
+  pelo artista), com o nome sempre ao lado.
+- **Barras que cabem:** `floor((h + 10) / (12 + 10))` (barra mínima `12`, ar `10`); o resto dobra-se em
+  «Other (n)» que SOMA o que dobrou (gate `dashboard_folds_what_does_not_fit_into_other`).

@@ -387,3 +387,54 @@ fn medida_custo_do_smooth_edges_no_campo() {
         m[2] * 1e9 / n
     );
 }
+
+/// A tinta com o GRÃO de 1 px (a Knife Stain: células cheias, ralas e vazias sorteadas por célula) numa faixa de
+/// 64 × 40 com orlas rectas: `(grade, cobertura crua de cada célula)`.
+fn grao_de_um_px() -> (Grid, Vec<f64>) {
+    let (w, h) = (96, 64);
+    let mut g = Grid::new(w, h);
+    let mut crua = vec![0.0; (w + 2) * (h + 2)];
+    for y in 12..52 {
+        for x in 16..80 {
+            let k = (x * 7_919 + y * 104_729) ^ (x * y * 31);
+            let m: f32 = [0.0, 1_500.0, 6_000.0, 12_000.0, 12_000.0][k % 5];
+            let i = x + y * g.s;
+            g.sett[i] = m;
+            crua[x + y * (w + 2)] = crate::opacity::alpha_of_mass(f64::from(m));
+        }
+    }
+    g.sett_rgb.fill([30.0, 70.0, 210.0]);
+    (g, crua)
+}
+
+/// ⭐ J6 (dono 28/10, Knife Stain com o Real Oil 368 → 162/454 na régua do Rebelle; bisseção em
+/// as leis do óleo uma a uma desligadas, só sem o contorno 194 → 278): **o grão de 1 px da tinta sobrevive ao óleo.** O contorno sub-célula
+/// ([`borda_suave`]) via cada célula rala do grão como a escada de uma borda e cortava-lhe a cobertura pela recta
+/// média — o grão derretia em manchas. Só a silhueta que é um MEIO PLANO amostrado ([`ESCADA_ERRO_MAX`]) é escada:
+/// a cobertura de composição do miolo granulado é a crua (RMS 0,0006 ≤ 0,01; sem a lei 0,323), nos dois ambientes.
+#[test]
+fn o_grao_de_um_px_sobrevive_ao_oleo() {
+    let (g, crua) = grao_de_um_px();
+    for ambiente in [Ambiente::Classico, Ambiente::Estudio] {
+        let o = OleoReal {
+            ambiente,
+            ..OleoReal::default()
+        };
+        let px = tela(&g, &o);
+        let s = g.w + 2;
+        let (mut soma, mut n) = (0.0, 0usize);
+        for y in 15..49 {
+            for x in 19..77 {
+                let d = px[x + y * s][1] - crua[x + y * s];
+                soma += d * d;
+                n += 1;
+            }
+        }
+        let rms = (soma / n as f64).sqrt();
+        println!("[grão] {ambiente:?}: RMS da cobertura contra a crua {rms:.4}");
+        assert!(
+            rms <= 0.01,
+            "{ambiente:?}: o óleo muda a cobertura do grão de 1 px (RMS {rms:.4}) — derrete-o"
+        );
+    }
+}

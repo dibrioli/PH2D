@@ -907,6 +907,11 @@ fn borda_suave(rep: &impl Reparte, cob: &[f64], w: usize, h: usize) -> Vec<f32> 
             if n < 1e-9 || fora_g < orla_fora_min() * soma_g {
                 continue;
             }
+            // J6: a escada de um contorno liso é um MEIO PLANO amostrado; o grão de 1 px da tinta (a orla rasgada
+            // da faca, o miolo granulado) não é — alisá-lo derretia o grão em manchas.
+            if !e_meio_plano(&gauss, &m, (xi, yi), (gx / n, gy / n), soma_g) {
+                continue;
+            }
             let (tx, ty) = (-gy / n, gx / n);
             let (mut soma, mut peso) = (0.0, 0.0);
             for s in -MEIO_TANGENTE..=MEIO_TANGENTE {
@@ -925,6 +930,57 @@ fn borda_suave(rep: &impl Reparte, cob: &[f64], w: usize, h: usize) -> Vec<f32> 
     } else {
         Vec::new()
     }
+}
+
+/// O erro máximo (fracção do peso da gaussiana da direcção) do melhor MEIO PLANO perpendicular ao gradiente contra a
+/// silhueta da janela para a célula ser a escada de um contorno liso no [`borda_suave`]. A recta amostrada dá `0`
+/// (a silhueta de uma recta É o meio plano nos centros), o canto e a curva pouco; o grão de 1 px muito. Medido (J6,
+/// régua do Rebelle /454): 0,05 · 0,10 · 0,20 = Knife Stain 278 · 282 · 296, Knife Oily 334 · 336 · —; a 0,20 o grão
+/// fixo derrete (RMS 0,094) e voltam 4 pontinhos à orla do Dabber.
+pub(crate) const ESCADA_ERRO_MAX: f64 = 0.10;
+
+#[cfg(test)]
+thread_local! {
+    /// (Testes) o [`ESCADA_ERRO_MAX`] de uma variante medida no MESMO processo; `Some(∞)` desliga a lei.
+    pub(crate) static ESCADA_ERRO_DA_MEDIDA: core::cell::Cell<Option<f64>> = const { core::cell::Cell::new(None) };
+}
+
+#[inline]
+fn escada_erro_max() -> f64 {
+    #[cfg(test)]
+    if let Some(v) = ESCADA_ERRO_DA_MEDIDA.with(core::cell::Cell::get) {
+        return v;
+    }
+    ESCADA_ERRO_MAX
+}
+
+/// A silhueta `m` na janela da gaussiana à volta de `(xi, yi)` é um meio plano de normal `(nx, ny)` a menos de
+/// [`ESCADA_ERRO_MAX`] do peso `soma_g`: as células ordenadas pela projecção na normal, o limiar que menos erra.
+fn e_meio_plano(
+    gauss: &[f64],
+    m: &dyn Fn(isize, isize) -> f64,
+    (xi, yi): (isize, isize),
+    (nx, ny): (f64, f64),
+    soma_g: f64,
+) -> bool {
+    const LADO: usize = (2 * RAIO_DIRECCAO + 1) as usize;
+    let mut v = [(0.0f64, 0.0f64, 0.0f64); LADO * LADO];
+    for (k, (e, &g)) in v.iter_mut().zip(gauss).enumerate() {
+        let (dx, dy) = (
+            (k % LADO) as isize - RAIO_DIRECCAO,
+            (k / LADO) as isize - RAIO_DIRECCAO,
+        );
+        *e = (dx as f64 * nx + dy as f64 * ny, g, m(xi + dx, yi + dy));
+    }
+    v.sort_unstable_by(|a, b| b.0.total_cmp(&a.0));
+    // Os k primeiros dentro: erra o papel entre eles e a tinta depois deles.
+    let mut erro: f64 = v.iter().map(|&(_, g, d)| g * d).sum();
+    let mut min = erro;
+    for &(_, g, d) in &v {
+        erro += g * (1.0 - d) - g * d;
+        min = min.min(erro);
+    }
+    min <= escada_erro_max() * soma_g
 }
 
 /// O entalhe mais raso que se enche (fracção da cobertura): `oraculo/README.md` §BUG-bordas-W3b.

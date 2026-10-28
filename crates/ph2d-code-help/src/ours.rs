@@ -4,7 +4,8 @@
 use crate::{Kind, Member, Page, Param};
 use ph2d_i18n::tr;
 use ph2d_script::api_help::api_help;
-use ph2d_script::api_table::{API, API_GLOBALS, API_TYPES, HOOKS, luau_params};
+use ph2d_script::api_table::{API_GLOBALS, HOOKS, api, api_types, luau_params};
+use ph2d_script::api_table_kanban::KANBAN_CLASSES;
 
 pub(crate) const TYPES: &str = "types";
 pub(crate) const HOOKS_PAGE: &str = "hooks";
@@ -49,8 +50,10 @@ fn member(
         text.push_str("\n\n");
         text.push_str(h.more);
     }
+    // O `self` de um método não se escreve na chamada (`card:move(…)`); o de um gancho sim.
     let params = luau_params(luau_type)
         .into_iter()
+        .filter(|(n, _)| kind == Kind::Hook || *n != "self")
         .map(|(n, _)| Param {
             name: n.to_owned(),
             text: help
@@ -80,8 +83,7 @@ pub(crate) fn pages() -> Vec<Page> {
             title: g.ident.to_owned(),
             summary: g.doc.to_owned(),
             about: String::new(),
-            members: API
-                .iter()
+            members: api()
                 .filter(|e| e.table == g.ident)
                 .map(|e| {
                     member(
@@ -96,11 +98,39 @@ pub(crate) fn pages() -> Vec<Page> {
                 .collect(),
         })
         .collect();
+    // Uma página por classe (`KanbanCard`): os campos e os métodos — o balão de `card:move` nomeia-a.
+    for c in KANBAN_CLASSES {
+        let fields = c.fields.iter().map(|f| Member {
+            name: f.ident,
+            kind: Kind::Constant,
+            sigs: vec![f.luau_type.to_owned()],
+            text: f.doc.to_owned(),
+            params: Vec::new(),
+            returns: None,
+            example: None,
+        });
+        let methods = api().filter(|e| e.table == c.ident).map(|e| {
+            member(
+                &format!("{}.{}", e.table, e.ident),
+                e.ident,
+                Kind::Function,
+                declaration(e.luau_type),
+                e.doc,
+                e.luau_type,
+            )
+        });
+        pages.push(Page {
+            id: c.ident,
+            title: c.ident.to_owned(),
+            summary: c.doc.to_owned(),
+            about: String::new(),
+            members: fields.chain(methods).collect(),
+        });
+    }
     for p in &mut pages {
         p.members.sort_by_key(|m| m.name);
     }
-    let mut types: Vec<Member> = API_TYPES
-        .iter()
+    let mut types: Vec<Member> = api_types()
         .map(|t| {
             member(
                 &format!("type.{}", t.ident),

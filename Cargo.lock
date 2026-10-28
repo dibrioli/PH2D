@@ -7635,6 +7635,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-kanban-script"
+version = "0.0.0"
+dependencies = [
+ "mlua",
+ "ph2d-kanban-auto",
+ "ph2d-kanban-dates",
+ "ph2d-kanban-filter",
+ "ph2d-kanban-model",
+ "ph2d-script",
+]
+
+[[package]]
 name = "ph2d-kanban-sync"
 version = "0.0.0"
 dependencies = [

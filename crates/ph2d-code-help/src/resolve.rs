@@ -33,7 +33,10 @@ pub fn resolve(q: &Query<'_>) -> Option<Anchor> {
         return Some(a);
     }
     match q.qualifier {
-        Some(lib) if !q.colon => anchor(lib, Some(q.word)),
+        // `ph2d.kanban.list`: o qualificador é `kanban`, a página é `ph2d.kanban`.
+        Some(lib) if !q.colon => anchor(lib, Some(q.word))
+            .or_else(|| anchor(&format!("ph2d.{lib}"), Some(q.word)))
+            .or_else(|| anchor(&format!("{lib}.{}", q.word), None)),
         Some(_) => None,
         None => anchor(GLOBALS, Some(q.word))
             .or_else(|| anchor(q.word, None))

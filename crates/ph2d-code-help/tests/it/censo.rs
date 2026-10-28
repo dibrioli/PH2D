@@ -7,8 +7,14 @@ use ph2d_code_help::{Kind, catalog, page};
 use ph2d_script::ScriptHost;
 use std::collections::BTreeSet;
 
-/// As páginas que não são uma tabela do runtime.
-const NOT_IN_RUNTIME: &[&str] = &["types", "hooks"];
+/// As páginas que não são uma tabela do runtime (as classes de `ph2d.kanban` são pegas que só um
+/// script de Kanban recebe: o censo delas é o `ph2d-kanban-script::api`).
+fn not_in_runtime(id: &str) -> bool {
+    matches!(id, "types" | "hooks")
+        || ph2d_script::api_table_kanban::KANBAN_CLASSES
+            .iter()
+            .any(|c| c.ident == id)
+}
 
 /// `PH2D_HELP_SO=<página>` restringe os três gates a uma página (a escrever o texto de uma biblioteca);
 /// sem ela, todas.
@@ -57,8 +63,18 @@ fn runtime_names() -> BTreeSet<(String, String)> {
     for (name, value) in reachable(&host.runtime().lua().globals()) {
         match value {
             Value::Table(t) if name != "_G" => {
-                for (m, _) in reachable(&t) {
-                    out.insert((name.clone(), m));
+                for (m, v) in reachable(&t) {
+                    match v {
+                        // Uma tabela dentro de um global é a página dela (`ph2d.kanban`).
+                        Value::Table(sub) => {
+                            for (mm, _) in reachable(&sub) {
+                                out.insert((format!("{name}.{m}"), mm));
+                            }
+                        }
+                        _ => {
+                            out.insert((name.clone(), m));
+                        }
+                    }
                 }
             }
             _ => {
@@ -81,7 +97,7 @@ fn toda_global_do_runtime_tem_pagina() {
         .collect();
     let documented: BTreeSet<(String, String)> = catalog()
         .iter()
-        .filter(|p| !NOT_IN_RUNTIME.contains(&p.id) && wanted(p.id))
+        .filter(|p| !not_in_runtime(p.id) && wanted(p.id))
         .flat_map(|p| {
             p.members
                 .iter()
@@ -161,7 +177,12 @@ fn cada_exemplo_corre_e_da_o_que_diz() {
     let mut corridos = 0;
     for p in catalog()
         .iter()
-        .filter(|p| wanted(p.id) && !matches!(p.id, "ph2d" | "motion" | "types" | "hooks"))
+        // Os de `ph2d.kanban` correm numa VM de Kanban (`ph2d-kanban-script::api`).
+        .filter(|p| {
+            wanted(p.id)
+                && !matches!(p.id, "ph2d" | "motion" | "types" | "hooks" | "ph2d.kanban")
+                && !not_in_runtime(p.id)
+        })
     {
         for m in &p.members {
             let Some(example) = m.example else { continue };

@@ -94,7 +94,47 @@ pub const API_GLOBALS: &[ApiGlobal] = &[
         ident: "motion",
         doc: "Writes the inputs that the Motion graph reads (`value.input`).",
     },
+    // Um global com ponto é uma tabela DENTRO de outro (`ph2d.kanban`).
+    crate::api_table_kanban::KANBAN_GLOBAL,
 ];
+
+/// Todas as linhas da API: as desta tabela e as do irmão `ph2d.kanban` (por LOC).
+pub fn api() -> impl Iterator<Item = &'static ApiEntry> {
+    API.iter().chain(crate::api_table_kanban::KANBAN_API)
+}
+
+/// Todos os tipos exportados.
+pub fn api_types() -> impl Iterator<Item = &'static ApiType> {
+    API_TYPES
+        .iter()
+        .chain(crate::api_table_kanban::KANBAN_TYPES)
+}
+
+/// Os globais de topo (sem ponto).
+fn top_globals() -> impl Iterator<Item = &'static ApiGlobal> {
+    API_GLOBALS.iter().filter(|g| !g.ident.contains('.'))
+}
+
+/// Os membros de `table`, com `pad` de indentação: as funções e as tabelas filhas (`ph2d.kanban`).
+fn members(out: &mut String, table: &str, pad: &str) {
+    for e in api().filter(|e| e.table == table) {
+        out.push_str(&format!(
+            "{pad}--- {}\n{pad}{}: {},\n",
+            e.doc, e.ident, e.luau_type
+        ));
+    }
+    for g in API_GLOBALS.iter().filter(|g| {
+        g.ident
+            .strip_prefix(table)
+            .and_then(|r| r.strip_prefix('.'))
+            .is_some_and(|r| !r.contains('.'))
+    }) {
+        let name = &g.ident[table.len() + 1..];
+        out.push_str(&format!("{pad}--- {}\n{pad}{name}: {{\n", g.doc));
+        members(out, g.ident, &format!("{pad}    "));
+        out.push_str(&format!("{pad}}},\n"));
+    }
+}
 
 pub const API_TYPES: &[ApiType] = &[
     ApiType {
@@ -390,20 +430,26 @@ pub fn luau_definitions() -> String {
          -- Regenerate:      cargo run -p ph2d-bindgen -- --write\n\
          -- ============================================================\n",
     );
-    for t in API_TYPES {
+    for t in api_types() {
         out.push_str(&format!(
             "\n--- {}\nexport type {} = {}\n",
             t.doc, t.ident, t.definition
         ));
     }
-    for g in API_GLOBALS {
-        out.push_str(&format!("\n--- {}\ndeclare {}: {{\n", g.doc, g.ident));
-        for e in API.iter().filter(|e| e.table == g.ident) {
+    for c in crate::api_table_kanban::KANBAN_CLASSES {
+        out.push_str(&format!("\n--- {}\nexport type {} = {{\n", c.doc, c.ident));
+        for f in c.fields {
             out.push_str(&format!(
                 "    --- {}\n    {}: {},\n",
-                e.doc, e.ident, e.luau_type
+                f.doc, f.ident, f.luau_type
             ));
         }
+        members(&mut out, c.ident, "    ");
+        out.push_str("}\n");
+    }
+    for g in top_globals() {
+        out.push_str(&format!("\n--- {}\ndeclare {}: {{\n", g.doc, g.ident));
+        members(&mut out, g.ident, "    ");
         out.push_str("}\n");
     }
     out.push_str("\n-- Engine hooks: global functions of a script that the engine calls.\n");
@@ -463,7 +509,7 @@ pub fn param_doc(key: &str, name: &str, ty: &str) -> Option<&'static str> {
         .map(|(_, t)| *t)
         .filter(|t| !t.trim().is_empty());
     let ty = ty.trim_end_matches('?');
-    own.or_else(|| API_TYPES.iter().find(|t| t.ident == ty).map(|t| t.doc))
+    own.or_else(|| api_types().find(|t| t.ident == ty).map(|t| t.doc))
 }
 
 /// ⭐ **A base de documentação do `luau-lsp`** (`--docs=<json>`), gerada da tabela: a documentação
@@ -480,7 +526,8 @@ pub fn luau_docs() -> String {
             json!({ "documentation": g.doc }),
         );
     }
-    for e in API {
+    // Os métodos das classes não têm símbolo de global: a página de ajuda os documenta.
+    for e in api().filter(|e| API_GLOBALS.iter().any(|g| g.ident == e.table)) {
         let sym = format!("{DEFINITIONS_PACKAGE}/global/{}.{}", e.table, e.ident);
         let key = format!("{}.{}", e.table, e.ident);
         let mut params = Vec::new();

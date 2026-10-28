@@ -396,6 +396,7 @@ fn build_runtime(
     crate::lane::wire(runtime.lua())?;
     crate::stdlib::wire(runtime.lua())?;
     wire_scene_api(&runtime, emit_queue)?;
+    crate::kanban_stub::wire(runtime.lua())?;
     crate::console::wire_print(runtime.lua(), console)?;
     install_deadline(runtime.lua(), deadline);
     runtime.lua().sandbox(true)?;

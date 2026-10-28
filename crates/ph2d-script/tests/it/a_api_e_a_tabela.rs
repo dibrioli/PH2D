@@ -7,7 +7,21 @@ use std::collections::BTreeSet;
 
 use mlua::{Lua, Table, Value};
 use ph2d_script::ScriptHost;
-use ph2d_script::api_table::{API, API_GLOBALS, API_TYPES, HOOKS, luau_definitions};
+use ph2d_script::api_table::{API_GLOBALS, API_TYPES, HOOKS, api, api_types, luau_definitions};
+use ph2d_script::api_table_kanban::KANBAN_CLASSES;
+
+/// A tabela de um global, seguindo os pontos (`ph2d.kanban`).
+fn tabela(lua: &Lua, caminho: &str) -> Table {
+    let mut partes = caminho.split('.');
+    let mut t: Table = lua
+        .globals()
+        .get(partes.next().unwrap())
+        .expect("o global é tabela");
+    for p in partes {
+        t = t.get(p).expect("a sub-tabela");
+    }
+    t
+}
 
 fn keys(t: &Table) -> BTreeSet<String> {
     t.pairs::<Value, Value>()
@@ -38,13 +52,28 @@ fn as_chaves_da_vm_sao_as_da_tabela_nos_dois_sentidos() {
     let limpa = Lua::new();
     limpa.sandbox(true).expect("sandbox");
     let instalados: BTreeSet<String> = globais(lua).difference(&globais(&limpa)).cloned().collect();
-    let declarados: BTreeSet<String> = API_GLOBALS.iter().map(|g| g.ident.to_owned()).collect();
+    let declarados: BTreeSet<String> = API_GLOBALS
+        .iter()
+        .filter(|g| !g.ident.contains('.'))
+        .map(|g| g.ident.to_owned())
+        .collect();
     assert_eq!(instalados, declarados, "globais da fiação × API_GLOBALS");
     for g in API_GLOBALS {
-        let t: Table = lua.globals().get(g.ident).expect("o global é tabela");
-        let na_vm = keys(&t);
-        let na_tabela: BTreeSet<String> = API
+        let t = tabela(lua, g.ident);
+        let filhas: BTreeSet<String> = API_GLOBALS
             .iter()
+            .filter_map(|f| f.ident.strip_prefix(g.ident)?.strip_prefix('.'))
+            .map(str::to_owned)
+            .collect();
+        let na_vm: BTreeSet<String> = keys(&t).difference(&filhas).cloned().collect();
+        for f in &filhas {
+            assert!(
+                matches!(t.get::<Value>(f.as_str()), Ok(Value::Table(_))),
+                "{}.{f} não é tabela",
+                g.ident
+            );
+        }
+        let na_tabela: BTreeSet<String> = api()
             .filter(|e| e.table == g.ident)
             .map(|e| e.ident.to_owned())
             .collect();
@@ -63,11 +92,12 @@ fn as_chaves_da_vm_sao_as_da_tabela_nos_dois_sentidos() {
             );
         }
     }
-    // Cada linha é única e aponta um global declarado.
+    // Cada linha é única e aponta um global ou uma classe declarados.
     let mut vistas = BTreeSet::new();
-    for e in API {
+    for e in api() {
         assert!(
-            API_GLOBALS.iter().any(|g| g.ident == e.table),
+            API_GLOBALS.iter().any(|g| g.ident == e.table)
+                || KANBAN_CLASSES.iter().any(|c| c.ident == e.table),
             "{}",
             e.table
         );
@@ -85,13 +115,28 @@ fn as_chaves_da_vm_sao_as_da_tabela_nos_dois_sentidos() {
 fn as_definicoes_saem_da_tabela() {
     let d = luau_definitions();
     for g in API_GLOBALS {
-        assert!(
-            d.contains(&format!("declare {}: {{", g.ident)),
-            "{}",
-            g.ident
-        );
+        let alvo = match g.ident.rsplit_once('.') {
+            None => format!("declare {}: {{", g.ident),
+            Some((_, filho)) => format!("    {filho}: {{\n"),
+        };
+        assert!(d.contains(&alvo), "{}", g.ident);
     }
-    for e in API {
+    for c in KANBAN_CLASSES {
+        assert!(
+            d.contains(&format!("export type {} = {{\n", c.ident)),
+            "{}",
+            c.ident
+        );
+        for f in c.fields {
+            assert!(
+                d.contains(&format!("    {}: {},\n", f.ident, f.luau_type)),
+                "{}.{}",
+                c.ident,
+                f.ident
+            );
+        }
+    }
+    for e in api() {
         assert!(
             d.contains(&format!("    {}: {},\n", e.ident, e.luau_type)),
             "{}.{}",
@@ -99,7 +144,7 @@ fn as_definicoes_saem_da_tabela() {
             e.ident
         );
     }
-    for t in API_TYPES {
+    for t in api_types() {
         assert!(
             d.contains(&format!("export type {} = {}\n", t.ident, t.definition)),
             "{}",
@@ -107,7 +152,10 @@ fn as_definicoes_saem_da_tabela() {
         );
     }
     // Um tipo com maiúscula citado numa assinatura tem de estar declarado.
-    let declarados: BTreeSet<&str> = API_TYPES.iter().map(|t| t.ident).collect();
+    let declarados: BTreeSet<&str> = api_types()
+        .map(|t| t.ident)
+        .chain(KANBAN_CLASSES.iter().map(|c| c.ident))
+        .collect();
     for h in HOOKS {
         assert!(
             d.contains(&format!("-- @hook {}: {}\n", h.ident, h.luau_type)),
@@ -115,10 +163,13 @@ fn as_definicoes_saem_da_tabela() {
             h.ident
         );
     }
-    let sigs = API
+    let campos = KANBAN_CLASSES
         .iter()
+        .flat_map(|c| c.fields.iter().map(|f| f.luau_type));
+    let sigs = api()
         .map(|e| e.luau_type)
-        .chain(API_TYPES.iter().map(|t| t.definition));
+        .chain(api_types().map(|t| t.definition))
+        .chain(campos);
     for sig in sigs.chain(HOOKS.iter().map(|h| h.luau_type)) {
         for w in sig.split(|c: char| !c.is_ascii_alphanumeric() && c != '_') {
             if w.starts_with(|c: char| c.is_ascii_uppercase()) {
@@ -143,7 +194,7 @@ fn a_base_de_documentacao_sai_da_tabela() {
         assert_eq!(doc(&k).as_deref(), Some(g.doc), "{k}");
     }
     let (mut com_ajuda, mut com_tipo) = (0, 0);
-    for e in API {
+    for e in api().filter(|e| API_GLOBALS.iter().any(|g| g.ident == e.table)) {
         let k = format!("{DEFINITIONS_PACKAGE}/global/{}.{}", e.table, e.ident);
         let ajuda = api_help(&format!("{}.{}", e.table, e.ident));
         assert_eq!(doc(&k).as_deref(), Some(e.doc), "{k}");
@@ -169,8 +220,7 @@ fn a_base_de_documentacao_sai_da_tabela() {
             let proprio = ajuda
                 .and_then(|h| h.params.iter().find(|(n, _)| n == name))
                 .map(|(_, t)| *t);
-            let tipo = API_TYPES
-                .iter()
+            let tipo = api_types()
                 .find(|t| t.ident == ty.trim_end_matches('?'))
                 .map(|t| t.doc);
             let d = p["documentation"].as_str().unwrap();
@@ -251,19 +301,14 @@ fn toda_entrada_da_api_tem_ajuda() {
     use ph2d_script::api_help::all_help;
     use ph2d_script::api_table::luau_params;
     // (chave, assinatura, precisa de exemplo)
-    let linhas: Vec<(String, &str, bool)> = API
-        .iter()
+    let linhas: Vec<(String, &str, bool)> = api()
         .map(|e| (format!("{}.{}", e.table, e.ident), e.luau_type, true))
         .chain(
             HOOKS
                 .iter()
                 .map(|h| (format!("hook.{}", h.ident), h.luau_type, true)),
         )
-        .chain(
-            API_TYPES
-                .iter()
-                .map(|t| (format!("type.{}", t.ident), "", false)),
-        )
+        .chain(api_types().map(|t| (format!("type.{}", t.ident), "", false)))
         .collect();
     let mut erros = Vec::new();
     for (key, sig, exemplo) in &linhas {
@@ -272,7 +317,12 @@ fn toda_entrada_da_api_tem_ajuda() {
             erros.push(format!("{key}: {} ajudas", ajudas.len()));
             continue;
         };
-        let esperados: Vec<&str> = luau_params(sig).into_iter().map(|(n, _)| n).collect();
+        let esperados: Vec<&str> = luau_params(sig)
+            .into_iter()
+            .map(|(n, _)| n)
+            // O `self` de um método de classe não se escreve na chamada (`card:move(…)`).
+            .filter(|n| key.starts_with("hook.") || *n != "self")
+            .collect();
         let dados: Vec<&str> = h.params.iter().map(|(n, _)| *n).collect();
         if dados != esperados {
             erros.push(format!(
@@ -310,8 +360,11 @@ fn toda_entrada_da_api_tem_ajuda() {
         erros.join("\n")
     );
     // Controlo: o censo viu as três famílias.
-    assert_eq!(linhas.len(), API.len() + HOOKS.len() + API_TYPES.len());
-    assert!(HOOKS.len() >= 3 && API_TYPES.len() >= 8 && API.len() >= 20);
+    assert_eq!(
+        linhas.len(),
+        api().count() + HOOKS.len() + api_types().count()
+    );
+    assert!(HOOKS.len() >= 3 && API_TYPES.len() >= 8 && api().count() >= 20);
 }
 
 /// ⭐ O tipo `KeyName` do `ph2d.d.luau` é a lista do teclado (`ph2d_input::Key::script_names`), pela

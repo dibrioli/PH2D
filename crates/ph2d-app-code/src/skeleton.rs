@@ -13,7 +13,7 @@
 use crate::complete::Item;
 use ph2d_code_buffer::Text;
 use ph2d_code_syntax::Syntax;
-use ph2d_script::api_table::{API, API_TYPES, ApiEntry, ApiHook, HOOKS};
+use ph2d_script::api_table::{API_TYPES, ApiEntry, ApiHook, HOOKS};
 
 /// O `kind` LSP de um modelo (snippet).
 const SNIPPET: u32 = 15;
@@ -125,7 +125,7 @@ pub(crate) fn call_snippet(e: &ApiEntry) -> String {
 
 /// A entrada da API `table.label`, se é uma.
 pub(crate) fn api_entry(table: &str, label: &str) -> Option<&'static ApiEntry> {
-    API.iter().find(|e| e.table == table && e.ident == label)
+    ph2d_script::api_table::api().find(|e| e.table == table && e.ident == label)
 }
 
 /// Os esqueletos que a palavra que começa em `start` aceita: os ganchos ainda por declarar e a

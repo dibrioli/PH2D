@@ -1,0 +1,24 @@
+[package]
+name = "ph2d-kanban-script"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# `ph2d.kanban` — os scripts Luau que mexem nos Kanbans do projecto (TrelloClone W8, lote L).
+[dependencies]
+mlua = { version = "0.12", features = ["luau"] }
+# As linhas da API (`api_table_kanban`) e o prazo de uma chamada (`HOOK_BUDGET`).
+ph2d-script = { path = "../ph2d-script" }
+ph2d-kanban-model = { path = "../ph2d-kanban-model" }
+ph2d-kanban-filter = { path = "../ph2d-kanban-filter" }
+# O Butler: os mesmos acontecimentos (`Seen`), as regras (`react`), os botões e os tectos do laço.
+ph2d-kanban-auto = { path = "../ph2d-kanban-auto" }
+ph2d-kanban-dates = { path = "../ph2d-kanban-dates" }
+
+[lints]
+workspace = true

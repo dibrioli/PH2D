@@ -27,6 +27,9 @@ mod api_help_life;
 mod api_help_props;
 /// A API Luau como tabela — a fonte única do `ph2d.d.luau`.
 pub mod api_table;
+/// `ph2d.kanban`: as linhas, os tipos e as classes da API dos Kanbans (TrelloClone W8).
+pub mod api_table_kanban;
+mod api_help_kanban;
 pub mod component;
 /// O console dos scripts: `print`, erros de runtime, recusas de recarga (CodeEditor E10).
 pub mod console;
@@ -34,6 +37,8 @@ pub mod console;
 pub mod diagnostic;
 pub mod host;
 pub mod io;
+/// `ph2d.kanban` na cena: as mesmas chaves, a dizer onde correm.
+mod kanban_stub;
 /// A pista do mundo: o `&mut World` emprestado à VM durante os ganchos (CodeEditor item 6).
 pub mod lane;
 mod lane_property;

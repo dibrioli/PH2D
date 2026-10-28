@@ -38,6 +38,122 @@ export type MouseButtonName = "left" | "right" | "middle"
 --- The `self` a hook receives: its `id`, the declared properties and whatever the script keeps.
 export type ScriptSelf = { id: Entity, [string]: any }
 
+--- A Kanban of the project, as `ph2d.kanban.list` names it.
+export type KanbanInfo = { id: number, name: string }
+
+--- A date: ISO 8601 text ("2026-11-03", "2026-11-03T14:30", with `Z` or an offset for another zone) or a table; local time of the project.
+export type KanbanDate = string | { year: number, month: number, day: number, hour: number?, min: number? }
+
+--- A label of a Kanban: its name (may be empty) and its colour name.
+export type KanbanLabel = { id: number, name: string, color: string? }
+
+--- An item of a checklist.
+export type KanbanCheckItem = { text: string, done: boolean }
+
+--- A checklist of a card, its items in order.
+export type KanbanChecklist = { title: string, items: { KanbanCheckItem } }
+
+--- A new card: its title and, if you want, the rest; `top = true` puts it first in the list.
+export type KanbanCardSpec = { title: string, description: string?, labels: { string }?, members: { string }?, due: KanbanDate?, start: KanbanDate?, top: boolean? }
+
+--- What `card:set` changes; what is missing stays, and `false` clears a date.
+export type KanbanCardChanges = { title: string?, description: string?, due: (KanbanDate | boolean)?, start: (KanbanDate | boolean)?, done: boolean?, labels: { string }?, members: { string }?, fields: { [string]: any }? }
+
+--- How `kanban:sort` orders a list.
+export type KanbanSortBy = "newest" | "oldest" | "name" | "due"
+
+--- What happened to a card, for `ph2d.kanban.on`.
+export type KanbanEventName = "card_created" | "card_moved" | "card_left" | "label_added" | "label_removed" | "member_added" | "member_removed" | "due_set" | "due_removed" | "due_completed" | "item_checked" | "checklist_completed" | "comment_added" | "card_archived" | "field_changed"
+
+--- What a `ph2d.kanban.on` handler receives: the card, who did it, and what changed.
+export type KanbanEvent = { name: KanbanEventName, kanban: Kanban, card: KanbanCard, by: string, list: KanbanList?, from: KanbanList?, label: string?, member: string?, due: string?, done: boolean?, item: string?, checklist: string?, comment: string?, archived: boolean?, field: string? }
+
+--- A Kanban of the project.
+export type Kanban = {
+    --- Its number in the project.
+    id: number,
+    --- Its name.
+    name: string,
+    --- Its open lists, left to right.
+    lists: (self: Kanban) -> { KanbanList },
+    --- Its first open list with this name; nil if none.
+    list: (self: Kanban, name: string) -> KanbanList?,
+    --- Its open cards in board order, or the ones a search finds in it.
+    cards: (self: Kanban, filter: string?) -> { KanbanCard },
+    --- Its labels.
+    labels: (self: Kanban) -> { KanbanLabel },
+    --- Everyone on its cards or following it, sorted.
+    members: (self: Kanban) -> { string },
+    --- Adds a list at the right end.
+    add_list: (self: Kanban, name: string) -> KanbanList,
+    --- Sorts the cards of one of its lists.
+    sort: (self: Kanban, list: KanbanList | string, by: KanbanSortBy) -> (),
+}
+
+--- A list (column) of a Kanban.
+export type KanbanList = {
+    --- Its number in the Kanban.
+    id: number,
+    --- Its title.
+    name: string,
+    --- Whether it is archived.
+    archived: boolean,
+    --- The Kanban it belongs to.
+    kanban: Kanban,
+    --- Its open cards, top to bottom.
+    cards: (self: KanbanList) -> { KanbanCard },
+    --- Adds a card at the bottom (or the top), by its title or with more.
+    add_card: (self: KanbanList, card: string | KanbanCardSpec) -> KanbanCard,
+}
+
+--- A card. Its fields are read when you ask, so they show your own changes.
+export type KanbanCard = {
+    --- Its number in the Kanban.
+    id: number,
+    --- Its title.
+    title: string,
+    --- Its description, in Markdown.
+    description: string,
+    --- The names of its labels.
+    labels: { string },
+    --- Its members.
+    members: { string },
+    --- Its due date as local ISO 8601 text ("2026-11-03T14:30"); nil without one.
+    due: string?,
+    --- Its start date, like `due`.
+    start: string?,
+    --- Whether its due date is marked complete.
+    done: boolean,
+    --- The list it is in.
+    list: KanbanList,
+    --- The Kanban it is in.
+    kanban: Kanban,
+    --- Its custom fields by name: text, number, date text, true/false or the chosen option.
+    fields: { [string]: any },
+    --- Its checklists, in order.
+    checklists: { KanbanChecklist },
+    --- Whether it is archived.
+    archived: boolean,
+    --- Its link inside the project (what «Copy link» gives).
+    url: string,
+    --- Moves it to a list — of any Kanban — at the bottom, or at a position (1 = top).
+    move: (self: KanbanCard, list: KanbanList | string, position: number?) -> (),
+    --- Changes several things at once: title, description, dates, labels, members, custom fields.
+    set: (self: KanbanCard, changes: KanbanCardChanges) -> (),
+    --- Adds one of the Kanban's labels, by its name (or its colour if it has no name).
+    add_label: (self: KanbanCard, label: string) -> (),
+    --- Removes a label, by its name (or its colour).
+    remove_label: (self: KanbanCard, label: string) -> (),
+    --- Adds a member, by name.
+    add_member: (self: KanbanCard, member: string) -> (),
+    --- Writes a comment (Markdown, `@name` mentions).
+    comment: (self: KanbanCard, text: string) -> (),
+    --- Ticks (or unticks) the first checklist item with this text.
+    check: (self: KanbanCard, item: string, done: boolean?) -> (),
+    --- Archives it.
+    archive: (self: KanbanCard) -> (),
+}
+
 --- The PH2D scene API: move objects, read input, signals, properties, values.
 declare ph2d: {
     --- Writes a pose field or a component property; applied at the end of the tick (everyone reads the same photo).
@@ -96,6 +212,19 @@ declare ph2d: {
     state_clear: (entity: Entity) -> (),
     --- Pauses this hook for `seconds` of play time and returns the time that passed; the object keeps running.
     wait: (seconds: number?) -> number,
+    --- The project's Kanbans: read lists and cards, change them, search, and react to what happens on a card.
+    kanban: {
+        --- The Kanbans of the project, in order.
+        list: () -> { KanbanInfo },
+        --- A Kanban by its name or its number; nil if none.
+        get: (kanban: string | number) -> Kanban?,
+        --- The cards of every Kanban that match a search, the best first (same words as the search box).
+        search: (query: string) -> { KanbanCard },
+        --- Calls `handler` each time this happens to a card, by anyone — the same events as the automation rules.
+        on: (event: KanbanEventName, handler: (KanbanEvent) -> ()) -> (),
+        --- Presses a board button by its name, or a card button on `card`; false if there is no such button.
+        press_button: (name: string, card: KanbanCard?) -> boolean,
+    },
 }
 
 --- Writes the inputs that the Motion graph reads (`value.input`).

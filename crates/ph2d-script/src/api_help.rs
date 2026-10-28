@@ -661,4 +661,5 @@ pub fn all_help() -> impl Iterator<Item = &'static ApiHelp> {
         .iter()
         .chain(crate::api_help_props::PROPERTY_HELP)
         .chain(crate::api_help_life::LIFE_HELP)
+        .chain(crate::api_help_kanban::KANBAN_HELP)
 }

@@ -21,6 +21,9 @@ pub(crate) struct Filme {
     s: usize,
     /// As células escritas neste traço (`x1 < x0` = nenhuma): o que [`Self::limpa`] zera.
     caixa: (i32, i32, i32, i32),
+    /// O centro do dab anterior e a direcção do traço (a [`Forma`] ao longo).
+    ultimo: Option<(f64, f64)>,
+    tangente: Option<(f64, f64)>,
 }
 
 impl Filme {
@@ -43,6 +46,20 @@ impl Filme {
             }
         }
         self.caixa = (0, 0, -1, -1);
+        self.ultimo = None;
+        self.tangente = None;
+    }
+
+    /// Um dab em `(x, y)`: a direcção do traço até ele (a do anterior se ele não andou; `None` no 1.º).
+    pub(crate) fn passo(&mut self, x: f64, y: f64) -> Option<(f64, f64)> {
+        if let Some((ax, ay)) = self.ultimo {
+            let d = (x - ax).hypot(y - ay);
+            if d > 1e-6 {
+                self.tangente = Some(((x - ax) / d, (y - ay) / d));
+            }
+        }
+        self.ultimo = Some((x, y));
+        self.tangente
     }
 
     /// As linhas `y0..=y1` do campo (stride `s`), uma fatia cada — o depósito por linhas parte-as como parte o `wet`.
@@ -89,29 +106,73 @@ pub(crate) fn espessura(capsula: f64, agua_do_dab: f64) -> f64 {
 /// do traço (o miolo ±1 % da borda a 1 px dela), a 200 px um domo (`Liner` 0,89 a 5 % da largura, 0,94 a 20 %, 1 no meio).
 pub(crate) const DOMO_R0: f64 = 20.0;
 
-/// ⭐ **O domo do filme largo** ([`crate::tuning::Knob::StrokeFilmDome`], J6): o coeficiente `c` do alvo
-/// `1 − c·d²` (`d` = distância ao centro do dab, células) — `profundidade · (1 − R0/r)⁺ ÷ r²`, a queda na borda do dab
-/// cresce com o raio a partir de [`DOMO_R0`]. O máximo do filme leva-o aos lados do traço E às tampas. `0` = chato.
-#[inline]
-#[must_use]
-pub(crate) fn domo(profundidade: f64, r: f64) -> f64 {
-    if profundidade <= 0.0 || r <= DOMO_R0 {
-        return 0.0;
+/// ⭐ **A forma do filme largo** (J6): o alvo de cada dab cai `1 − lado·u⊥²` através do traço
+/// ([`crate::tuning::Knob::StrokeFilmDome`]; ⛔ medido: `u³` não muda a orla — 0,842 contra 0,831 de `u²` a 2,5 % da
+/// largura, o Rebelle 0,909: a orla clara é a da água, não o expoente) e `1 − ponta·u∥²` ao longo dele
+/// ([`crate::tuning::Knob::StrokeFilmEnds`]): pelo MÁXIMO do filme só o 1.º e o último dab mostram a queda ao longo — as
+/// tampas esbatem, o corpo não (o dab seguinte cobre-o no seu centro). Os dois `× (1 − R0/r)⁺`: crescem com o raio.
+#[derive(Clone, Copy, Debug, Default)]
+pub(crate) struct Forma {
+    lado: f64,
+    ponta: f64,
+    r: f64,
+    /// A direcção do traço neste dab (`None` no 1.º: a queda ao longo vale em todas as direcções).
+    tangente: Option<(f64, f64)>,
+}
+
+impl Forma {
+    #[must_use]
+    pub(crate) fn nova(lado: f64, ponta: f64, r: f64, tangente: Option<(f64, f64)>) -> Self {
+        let g = if r <= DOMO_R0 { 0.0 } else { 1.0 - DOMO_R0 / r };
+        Self {
+            lado: lado * g,
+            ponta: ponta * g,
+            r,
+            tangente,
+        }
     }
-    profundidade * (1.0 - DOMO_R0 / r) / (r * r)
+
+    /// O filme chato de sempre (o alvo não se mexe: ao bit).
+    #[must_use]
+    pub(crate) fn chata(&self) -> bool {
+        self.lado <= 0.0 && self.ponta <= 0.0
+    }
+
+    /// O factor do alvo na célula a `(dx, dy)` do centro do dab.
+    #[must_use]
+    pub(crate) fn fator(&self, dx: f64, dy: f64) -> f64 {
+        let r2 = (self.r * self.r).max(1e-9);
+        let d2 = dx * dx + dy * dy;
+        let (ao_longo, atraves) = match self.tangente {
+            Some((tx, ty)) => {
+                let p = dx * tx + dy * ty;
+                (p * p, (d2 - p * p).max(0.0))
+            }
+            None => (d2, d2),
+        };
+        let lado = 1.0 - self.lado * (atraves / r2).min(1.0);
+        let ponta = 1.0 - self.ponta * (ao_longo / r2).min(1.0);
+        lado.max(0.0) * ponta.max(0.0)
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{DOMO_R0, Filme, acrescenta, domo, espessura};
+    use super::{DOMO_R0, Filme, Forma, acrescenta, espessura};
 
-    /// ⭐ O domo: nada sem a profundidade nem até ao raio chato; acima dele, a queda na borda (`c·r²`) cresce com o raio.
+    /// ⭐ A forma: chata sem os knobs e até ao raio chato; acima dele a borda (através) e a tampa (ao longo) caem, e
+    /// crescem com o raio; ao longo a tampa cai mais que o lado.
     #[test]
-    fn o_domo_so_cresce_acima_do_raio_chato() {
-        assert_eq!(domo(0.0, 100.0), 0.0);
-        assert_eq!(domo(0.5, DOMO_R0), 0.0);
-        let borda = |r: f64| domo(0.5, r) * r * r;
-        assert!(borda(40.0) > 0.0 && borda(40.0) < borda(100.0) && borda(100.0) < 0.5);
+    fn a_forma_so_cresce_acima_do_raio_chato() {
+        assert!(Forma::nova(0.0, 0.0, 100.0, None).chata());
+        assert!(Forma::nova(0.5, 0.5, DOMO_R0, None).chata());
+        let borda = |r: f64| 1.0 - Forma::nova(0.3, 0.0, r, Some((1.0, 0.0))).fator(0.0, r);
+        assert!(borda(40.0) > 0.0 && borda(40.0) < borda(100.0) && borda(100.0) < 0.3);
+        let f = Forma::nova(0.3, 0.6, 100.0, Some((1.0, 0.0)));
+        assert!(
+            f.fator(90.0, 0.0) < f.fator(0.0, 90.0),
+            "a tampa cai mais que o lado"
+        );
     }
 
     /// ⭐ O filme guarda o MÁXIMO: um dab mais fraco por cima não acrescenta nada, um mais forte só a diferença.

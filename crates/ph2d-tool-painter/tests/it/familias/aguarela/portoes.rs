@@ -350,9 +350,9 @@ fn o_liner_tem_o_fio_escuro_da_borda() {
     );
 }
 
-/// O perfil ATRAVÉS do recto da cena `tamanhos` (foto A) centrado em `y`: a escuridão a 5 %, 10 % e 20 % da largura, cada
+/// O perfil ATRAVÉS do recto da cena `tamanhos` (foto A) centrado em `y`: a escuridão a 5 %, 10 %, 20 % e 2,5 % da largura, cada
 /// uma ÷ a do meio (os dois lados e as colunas x 400–600) — a régua do relatório (`exames/aguarela.md` «Motor J6»).
-fn domo(px: &[u8], w: usize, y: usize, meia: usize) -> [f64; 3] {
+fn domo(px: &[u8], w: usize, y: usize, meia: usize) -> [f64; 4] {
     let esc = |yy: usize| {
         (400..600)
             .map(|x| {
@@ -370,7 +370,7 @@ fn domo(px: &[u8], w: usize, y: usize, meia: usize) -> [f64; 3] {
     let (a, b) = (on[0], on[on.len() - 1]);
     let l = (b - a + 1) as f64;
     let meio = p[(a + b) / 2 - 5..(a + b) / 2 + 5].iter().sum::<f64>() / 10.0;
-    [0.05, 0.10, 0.20].map(|f| {
+    [0.05, 0.10, 0.20, 0.025].map(|f| {
         let k = (l * f) as usize;
         let lados = p[a + k - 2..a + k + 3]
             .iter()
@@ -406,5 +406,50 @@ fn o_filme_largo_tem_o_miolo_carregado_e_os_lados_em_degrade() {
     assert!(
         d40[1] > 0.97 && (d40[1] - c40[1]).abs() < 0.01,
         "o recto de 40 px deixou de ser chato: {d40:.3?} (sem o domo {c40:.3?})"
+    );
+}
+
+/// A ponta do recto de 200 px (cena `tamanhos` A, y 435–445): a escuridão das colunas x 5–25 (a tampa de entrada, o dab
+/// a 60 com raio ~100) ÷ a do meio (x 450–550).
+fn ponta_200(px: &[u8], w: usize) -> f64 {
+    let esc = |xs: std::ops::Range<usize>| {
+        let n = (xs.len() * 10) as f64;
+        xs.flat_map(|x| (435..445).map(move |y| (x, y)))
+            .map(|(x, y)| {
+                let i = (y * w + x) * 4;
+                255.0
+                    - (0.299 * f64::from(px[i])
+                        + 0.587 * f64::from(px[i + 1])
+                        + 0.114 * f64::from(px[i + 2]))
+            })
+            .sum::<f64>()
+            / n
+    };
+    esc(5..25) / esc(450..550)
+}
+
+/// ⭐ **As TAMPAS do filme largo esbatem** (`Knob::StrokeFilmEnds`, J6): o Rebelle `Wash Round` a 200 px clareia a ponta
+/// para 0,41–0,60 do meio nas primeiras 10 colunas; a tampa de sempre é cheia (0,8+). Pelo MÁXIMO do filme só o 1.º e o
+/// último dab mostram a queda ao longo — o corpo fica (o meio do traço igual ao sem a lei). CONTROLO: sem as tampas.
+#[test]
+fn as_tampas_do_filme_largo_esbatem() {
+    let [(com, w), (sem, _)] = std::thread::scope(|s| {
+        let a = s.spawn(|| foto_a("Wet Wash", &[("strokeFilmEnds", 0.8)], "tamanhos"));
+        let b = s.spawn(|| foto_a("Wet Wash", &[("strokeFilmEnds", 0.0)], "tamanhos"));
+        [a.join().unwrap(), b.join().unwrap()]
+    });
+    let (pc, ps) = (ponta_200(&com, w), ponta_200(&sem, w));
+    let (mc, ms) = (domo(&com, w, 440, 130), domo(&sem, w, 440, 130));
+    println!(
+        "[tampas] Wet Wash 200 px: ponta {pc:.3} (Rebelle ~0,5) · sem {ps:.3} · através {mc:.3?} · sem {ms:.3?}"
+    );
+    assert!(ps > 0.75, "o controlo já tem a tampa esbatida: {ps:.3}");
+    assert!(
+        pc < ps - 0.1,
+        "a tampa do filme largo não esbate: {pc:.3} (sem a lei {ps:.3})"
+    );
+    assert!(
+        (mc[1] - ms[1]).abs() < 0.01,
+        "a queda ao longo mexeu no corpo do traço: {mc:.3?} contra {ms:.3?}"
     );
 }

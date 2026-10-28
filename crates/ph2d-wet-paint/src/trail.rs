@@ -463,7 +463,12 @@ impl Trail {
             self.filme.garante(g.cells, g.s);
             (
                 filme::espessura(p.k(Knob::CapsuleSpacing), p.agua_do_dab),
-                filme::domo(p.k(Knob::StrokeFilmDome), dab.r),
+                filme::Forma::nova(
+                    p.k(Knob::StrokeFilmDome),
+                    p.k(Knob::StrokeFilmEnds),
+                    dab.r,
+                    self.filme.passo(dab.x, dab.y),
+                ),
             )
         });
         let wrote = self.deposit_shaped(g, tex, dab, law, sil, grain, padrao, cor, mode, filme);

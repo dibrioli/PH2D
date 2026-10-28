@@ -296,9 +296,12 @@ pub enum Knob {
     /// `1 − d·(1 − R0/r)·u²` do centro (`u` = distância ÷ raio) — o traço grande do Rebelle esbate os lados e as pontas, o
     /// de 40 px é chato. `0` = o filme chato de sempre, ao bit (só com [`Knob::StrokeFilm`]).
     StrokeFilmDome,
+    /// … e as TAMPAS do filme largo esbatem ao longo do traço (`1 − p·(1 − R0/r)·u∥²` no 1.º e no último dab): o recto de
+    /// 200 px do Rebelle clareia ~0,6 nas pontas. `0` = a tampa de sempre, ao bit.
+    StrokeFilmEnds,
 }
 
-pub const KNOB_COUNT: usize = 130;
+pub const KNOB_COUNT: usize = 131;
 
 /// O LEITOR TOLERANTE das chaves do material de antes da W3 (preset e macro gravados com elas): `(knob, valor)`
 /// na lei nova, `None` para uma chave que não é antiga. `roughnessMul` m → Roughness `0,5·m` (o neutro `1` → `0,5`,

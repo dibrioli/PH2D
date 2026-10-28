@@ -40,13 +40,16 @@ const MANCHA_DO_WASH: [(&str, f64); 2] = [("wetOpen", 0.15), ("wetOpenPush", 0.4
 /// 0,91 · 0,94 a 5 · 10 · 20 % da largura (0,3 → 0,88 · 0,92 · 0,96), `Wash Round` 0,79 · 0,85 · 0,92 (0,3 → 0,76 · 0,86 ·
 /// 0,93), `Mop` quase chato (0,97 · 0,98 · 0,94).
 const DOMO: (&str, f64) = ("strokeFilmDome", 0.3);
+/// J6 2.ª ronda (revisor cego: «a ref esbate o traço grosso, a imitação tem contorno duro»): as tampas do filme largo
+/// esbatem (`Knob::StrokeFilmEnds`) — a ponta do Wash a 200 px 0,94 → 0,83 do meio (Rebelle ~0,5).
+const TAMPAS: (&str, f64) = ("strokeFilmEnds", 0.8);
 /// As curas da J6 sobre o preset de fábrica — por aplicar até à revisão cega (o coordenador): a bancada escreve o
 /// estudo com `"cura": "<nome>"` (`estudo.rs`).
 pub const CURAS_J6: &[(&str, &[(&str, f64)])] = &[
-    ("Wet Liner", &[("wetOpenEdge", 28.0), DOMO]),
+    ("Wet Liner", &[("wetOpenEdge", 28.0), DOMO, TAMPAS]),
     // A pena NÃO serve ao Wash (medido J6: com a orla 100 a frente da água esticada risca a mancha de fios escuros e a
     // pena larga levanta o vermelho numa caixa branca): só o domo.
-    ("Wet Wash", &[DOMO]),
+    ("Wet Wash", &[DOMO, TAMPAS]),
 ];
 
 pub const WET: &[Receita] = &[

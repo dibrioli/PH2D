@@ -60,6 +60,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.wet_tuning.knob.pressureGrain" => "Light pressure breaks into grain",
         "panel.wet_tuning.knob.strokeFilm" => "Smooth wash body (off · on)",
         "panel.wet_tuning.knob.strokeFilmDome" => "Wash body: loaded centre, soft sides",
+        "panel.wet_tuning.knob.strokeFilmEnds" => "Wash body: soft ends",
         "panel.wet_tuning.knob.dustDrop" => "Dust grain size",
         "panel.wet_tuning.knob.textureSizeExp" => "Texture follows brush size",
         "panel.wet_tuning.knob.textureSizeRef" => "Texture size reference (px)",

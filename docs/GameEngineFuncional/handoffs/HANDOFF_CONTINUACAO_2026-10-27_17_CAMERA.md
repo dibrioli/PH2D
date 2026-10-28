@@ -129,3 +129,7 @@ que o diff não toca).
 ## PRÓXIMO
 
 O smoke do dono decide. Depois a onda 18: A5 zona morta pintada, A6 miniatura, A7 escurecer fora.
+
+## Dono 28/10: smoke + auditoria
+
+Auditoria de 2 lentes (A1–A10) e plano de cura da onda 17b: [17b_auditoria_camera_e_plano.md](../17b_auditoria_camera_e_plano.md).

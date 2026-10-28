@@ -70,7 +70,9 @@
    Motor 1 (borda/filme/tampas, `8394f62eed` `5f6ae47051` `59f64037c1` `5cd611289a` `987763fc42`): Mop REPROVADO;
    Wet Liner e Wet Wash curados não aprovados (cega r2, média: traço largo chapado com tampa dura; Wash com contorno
    fino escuro do edge-darkening 100). Fila: a tampa do Rebelle esbate ~60 px para dentro do corpo do traço.
-3. Orla do secador nos lados (Dry/Lift) · 4. misturador com grão perto da tinta (Blender Grainy) · 5. fio do arrasto
+4. ✅ Misturador perto da tinta (`eac8182beb` `db69ce13f2`, knob `blendReach`; alcance 52→36 px, Rebelle 30): Blender
+   Grainy curado não aprovado (preset de estudo; os grumos do Rebelle são grossos e rasgados — grão da máscara: fila).
+3. Orla do secador nos lados (Dry/Lift) — EM CURSO · 6. guache — EM CURSO · 5. fio do arrasto
    (Smudge Finger) · 6. azul sobre vermelho molhado (Gouache Wash/Dry/Round) · 7. lâmina que gira (C38/L3: A-4, B-9,
    D-3, F-2, G-5..G-8, I-8; L16 depende) · 8. partículas · ondulação (Oil Bristle) · mip das pontas (Foliage, Noise Grit).
 9. Óleo Real: `ESTADO_MISSAO_W3.md` «Fila para a próxima onda» + HANDOFF_W3b §Aberto 2–5.

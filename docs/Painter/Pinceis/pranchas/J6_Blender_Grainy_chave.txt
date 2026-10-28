@@ -1,0 +1,3 @@
+Chave da prancha cega J6_Blender_Grainy_cega.jpg (linha: imagem → quem)
+sobre_A: 1 = Blender Grainy (escala 1) (nosso), 2 = Smear Shattered (d 2.966, limiar 0.591) (vizinho), 3 = default_textured (oraculo)
+sobre_B: 1 = Smear Shattered (d 2.966, limiar 0.591) (vizinho), 2 = Blender Grainy (escala 1) (nosso), 3 = default_textured (oraculo)

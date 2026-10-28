@@ -76,6 +76,31 @@ ferramentas, motor, medições completas): o detalhe está em `ea4e3c5a07` (esta
   2239 (coluna opaca). ⇒ o que falta é a LEI do transporte do Blend com grão (a janela arrasta a mistura ao longo do
   traço inteiro; o Rebelle mistura só perto da tinta, em grumos opacos) — **motor** (fila). Sem portão.
 
+## J6 — L-2 Blender Grainy — motor `blendReach` + 2 rondas (cega por fazer)
+
+- **Lei** (`Knob::BlendReach`, `trail/transfer/perto.rs`; gate `ph2d-wet-paint` `o_misturador_so_leva_a_tinta_perto`):
+  o Blend relaxa cada célula para a média das células da janela a `≤ blendReach × raio` dela (tabela de somas da
+  janela), não para a da janela inteira. `0` = a média da janela, ao bit (o mesmo `Media` entra no mesmo corpo do
+  relax). Tecto 1: a janela tem ~2 raios + a deriva — a 4 raios o censo do corpo não via diferença. Gate (raio 30,
+  `susp > 20`): para trás janela 41 → perto 0,75 28 · 0,375 16; para a frente 15 · 18 (arrasta como a janela).
+  Mutações (4) todas VERMELHAS: lei desligada · caixa só para cima · o 0 fora da janela · `r = 1`.
+- Receita (preset de estudo `pranchas/mistura/presets/blender_grainy.ph2d-brush.png`, fora da fábrica): o Blender Soft
+  + Grain Noise 24 + `intensity 0,2` + **`blendForce 1` + `blendReach 0,75`**. Ronda 1 (alcance 0 · 0,6 · 0,9 · 0,9+força
+  1) e ronda 2 (força 1 + alcance 0,75 · +Noise 36/intensidade/gate × 3) — medido (`sobre`, x±30, verde < 200, px):
+  | | acima | abaixo | grumos (verde < 60, ±40 px) |
+  |---|---|---|---|
+  | Rebelle `default_textured` | 30 | 41 | 260 |
+  | J5 (janela) | 52 | 37 | 147 |
+  | **J6 (0,75 · força 1)** | **36** | **35** | **216** |
+  | Noise 36 + intensidade (b/c/d) | 38–47 | 39–50 | 350–860 (mancha opaca larga) |
+- Régua 92 → **106/146**. Vizinho Smear Shattered d 2,966 (≥ 0,596). Pranchas `pranchas/J6_Blender_Grainy.jpg` · cega
+  `J6_Blender_Grainy_cega.jpg` + `J6_Blender_Grainy_chave.txt`. O que a prancha ainda MOSTRA: o grão do Rebelle são
+  grumos grossos e opacos de borda rasgada; o nosso é um pontilhado fino e pálido numa coluna de lados direitos — o
+  grão da máscara (o `texv` do Noise), não o alcance. Custo (load 54, o relógio não vale): 200 px rápido p95 283 contra
+  284 sem a lei; RSS +17 MiB (a tabela de somas, reutilizada).
+- **Smudge Finger** (o fio do arrasto) NÃO é este código: é o `smear_field` do Digital (`EM_ESTUDO`, modo Smear), não a
+  janela do Blend do Wet — fica na fila sem custo medido daqui.
+
 ## Fila (motor, com a medição acima)
 
 1. **Dry/Lift** — a orla do secador nos LADOS do traço (hoje sai ao longo dele: 1,90 no eixo × Rebelle 1,16).

@@ -11,10 +11,26 @@ use crate::edit::Target;
 use crate::tab::Tab;
 use ph2d_editor_core::doc_surface::{Key, KeyInput, KeyOutcome};
 use ph2d_kanban_filter::normalize;
+use crate::metrics as m;
+use ph2d_editor_core::zones::Rect;
 use ph2d_kanban_model::{CardId, FracKey, Kanban, LabelId, ListId, Member};
 
-/// Quantas sugestões se mostram (as melhores primeiro).
-const MAX: usize = 6;
+/// Quantas sugestões cabem por baixo do compositor: as linhas da folha (`ROW`) que ficam entre a
+/// âncora e a borda da área (a folha que não cabe sobe e tapava o campo). Pelo menos uma. Medição
+/// em `docs/TrelloClone/loop/MEDICOES.md` (T1).
+pub(crate) fn rows_fit(anchor: Rect, area: Rect) -> usize {
+    let below = anchor.y + anchor.h + m::LABEL_GAP;
+    let room = area.y + area.h - sheet::PAD - below - sheet::PAD;
+    ((room / sheet::ROW).floor().max(1.0)) as usize
+}
+
+fn fit(tab: &Tab) -> usize {
+    tab.layout
+        .lists
+        .iter()
+        .find_map(|l| l.composer)
+        .map_or(usize::MAX, |at| rows_fit(at, tab.layout.area))
+}
 
 /// Onde o cartão novo cai.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -192,7 +208,7 @@ pub(crate) fn candidates(tab: &Tab, k: &Kanban, me: &Member, team: &[String]) ->
             v.into_iter().filter(|(t, _)| t[1..].starts_with(&q)).collect()
         }
     };
-    out.truncate(MAX);
+    out.truncate(fit(tab));
     out
 }
 
@@ -202,13 +218,14 @@ pub(crate) fn sheet(tab: &Tab, k: &Kanban, me: &Member, team: &[String]) -> Opti
     if c.is_empty() {
         return None;
     }
+    let last = c.len() - 1;
     let mut s = Sheet::new(sheet::W);
     for (i, (_, label)) in c.into_iter().enumerate() {
         s.push(
             Item::Entry {
                 text: label,
                 icon: None,
-                on: i == tab.w6.pick.min(MAX - 1),
+                on: i == tab.w6.pick.min(last),
             },
             Act::Suggest(u8::try_from(i).unwrap_or(0)),
         );
@@ -271,4 +288,21 @@ pub(crate) fn key(docs: &mut KanbanDocs, id: u64, input: &KeyInput<'_>) -> Optio
         _ => return None,
     }
     Some(super::taken())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_suggestions_that_fit_follow_the_room_under_the_field() {
+        let area = |h| Rect::new(0.0, 0.0, 1200.0, h);
+        let at = |y| Rect::new(40.0, y, 272.0, 36.0);
+        // 1080 px de janela, o campo a meio: cabem as linhas do espaço, não 6.
+        assert_eq!(rows_fit(at(500.0), area(1000.0)), 13);
+        assert_eq!(rows_fit(at(100.0), area(1000.0)), 26);
+        // Janela pequena: o campo perto do fundo deixa UMA linha (nunca zero).
+        assert_eq!(rows_fit(at(250.0), area(420.0)), 3);
+        assert_eq!(rows_fit(at(300.0), area(420.0)), 1);
+    }
 }

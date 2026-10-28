@@ -29,6 +29,7 @@ mod verso_listas;
 mod vista;
 mod voo;
 mod w6;
+mod t1_abrir_cartao;
 mod w6_b;
 
 use ph2d_app_kanban::KanbanDocs;

@@ -288,3 +288,20 @@ Quadro (`ph2d-app-board::live::RECONNECT_FOR`: o Wi-Fi que soluça volta em segu
 fechado não). A 1.ª tentativa a 250 ms (um soluço de rede local reabre em < 1 RTT de TCP + aperto),
 dobrando até 8 s: no minuto são ≤ 12 tentativas; cada uma custa um fio e, por link, até 30 s de
 prazo (`LINK_TIMEOUT`), por isso o tecto não desce. Gate `the_backoff_doubles_up_to_its_ceiling`.
+
+## T1 — quantas sugestões de `@`/`#`/`^` no título do cartão novo (28/10)
+
+Era `MAX = 6`, sem medição. O recurso é o ESPAÇO por baixo do campo: a folha (`sheet::place`) que não
+cabe por baixo da âncora sobe e tapa o próprio campo. Lei nova: `rows_fit = ⌊(área.fundo − PAD − (âncora.fundo + LABEL_GAP) − PAD) / ROW⌋`,
+mínimo 1 (`ROW` 32, `PAD` 12, `LABEL_GAP` 4, campo 36 px; conta sobre as constantes do código, gate
+`the_suggestions_that_fit_follow_the_room_under_the_field`). Não conta o HUD (`floor`) do hero.
+
+| Janela (área útil) | campo termina em y | linhas que cabem |
+|---|---|---|
+| 1080 px (≈1000) | 136 (lista curta) | 26 |
+| 1080 px | 536 (lista a meio) | 13 |
+| pequena (420) | 286 | 3 |
+| pequena (420) | 336 | 1 |
+
+O Trello não foi corrido (sem oráculo instalado): de memória lista todos os que casam num popover que
+rola; aqui as linhas são limitadas só pelo espaço (os candidatos já filtram pelo prefixo).

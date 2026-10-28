@@ -8,14 +8,10 @@
 - **J1** ([handoff](HANDOFF_JANELA_1.md)): bateria, oráculos fotografados, catálogo (112), bancada, `03_MOTORES.md`.
 - **J2** ([handoff](HANDOFF_JANELA_2.md)): as lacunas de motor L1–L19 e as 4 leis sistémicas (`06_LEIS_DAS_LACUNAS.md`).
 - **J3** ([handoff](HANDOFF_JANELA_3.md)): fábrica por família, `BRIEFING_FAMILIA.md`; A–E, J: 6 aprovados. Fábrica 34.
-- **J4** ([handoff](HANDOFF_JANELA_4.md)): F, G, H, I, K, L, M: **11 aprovados** — Filbert (refeito), Blender Soft
-  (Wet); Hard Eraser, Kneaded Eraser, Halftone, Stars, Bokeh, Dodge, Burn, Color Glaze, Ballpoint (Digital).
-  Fundidos/saídos: Acrylic Round, Rigger, Charcoal Pencil, Smudge Spiky, Hue/Overlay. **Fábrica 44** (Wet 28, Digital 16).
-- **J5** ([handoff](HANDOFF_JANELA_5.md)): **Pastel Side aprovado** (`c6c99afab7`); curados, não aprovados: Square Hard
-  `2e1212e7ec`, Water Brush/Dry-Lift/Blender Grainy `db170ae238`, Wet Liner/Wet Wash `4c0a2b7457`, Gouache Wash
-  `953eb21e32`; reprovados Mop, Gouache Round; Gouache Flat fica, Wet Dry Brush não funde. Motor `Knob::WetOpen`
-  (`73b8e11688`, `eb04c3440d`). Biblioteca (matriz, custo calmo, ordem) `2d6116b4c3`, `002c75267b`. Tutorial PDF
-  `a054d6508f`. Fecho 1× (fmt, clippy, 19 576 testes, 0 falhas; 17 curas) até `b74b608d0e`. **Total: 18 aprovados, fábrica 45.**
+- **J4** ([handoff](HANDOFF_JANELA_4.md)): F–M: **11 aprovados** (Filbert, Blender Soft; Hard/Kneaded Eraser, Halftone,
+  Stars, Bokeh, Dodge, Burn, Color Glaze, Ballpoint). Fábrica 44.
+- **J5** ([handoff](HANDOFF_JANELA_5.md)): **Pastel Side aprovado**; curados não aprovados e reprovados no handoff;
+  biblioteca (matriz, custo) e tutorial PDF; fecho até `b74b608d0e`. **Total: 18 aprovados, fábrica 45.**
 
 - **Óleo Real W2 E4** (27/10, [`W2_Knife_E4.md`](W2_Knife_E4.md)): **+4 facas aprovadas** — Knife Smooth 3, Oily, Grainy,
   Dry. **Total: 22 aprovados, fábrica 49** (Wet 33, Digital 16). Os 13 curados não aprovados da W2 (6 facas, 4 Dabber,

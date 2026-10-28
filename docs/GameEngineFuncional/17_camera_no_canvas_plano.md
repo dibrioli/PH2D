@@ -44,11 +44,18 @@ proporções (telemóvel, 21:9); saber onde fica a borda do ecrã enquanto se de
 - **A6 — «o que a câmera vê»:** uma miniatura num canto do canvas, ao vivo, com a câmera seleccionada (ou fixada).
 - **A7 — escurecer o lado de fora:** um botão no canvas que escurece tudo o que fica fora da moldura.
 
-## Decisões do dono (antes de construir)
+## Decisões do dono (27/10, não reabrir)
 
-1. Que blocos entram nesta onda (recomendação: A1 + A2 + A3 + A4; A5–A7 na seguinte).
-2. A proporção do jogo: fica 16:9 (1280 × 720) fixa, ou o projecto ganha a escolha (16:9 · 4:3 · 9:16 telemóvel · 21:9)?
-3. A moldura sempre visível (ténue) — ou só com a câmera seleccionada, como no Unity?
+1. **Os blocos: escolha técnica (delegada).** Onda 17 = **A1 + A2 + A3 + A4 + o formato do jogo (D-F) + a escolha
+   da visibilidade (D-V)**. A5 (zona morta), A6 (miniatura) e A7 (escurecer fora) = onda 18.
+2. **D-F — o PROJECTO ganha o formato do jogo**, numa lista de predefinições: 16:9 · 16:10 · 4:3 · 3:2 · 21:9
+   (cinema) · 9:16 (celular em pé) · iPad (4:3, deitado e em pé) · retro (Game Boy 160 × 144 · NES 256 × 240 ·
+   SNES 256 × 224 · Game Boy Advance 240 × 160 · Mega Drive 320 × 224 · PICO-8 128 × 128) · personalizado (L × A).
+   A janela do jogo, a moldura no canvas e o «Look through» usam TODOS a mesma resolução (uma conta só).
+   ⚠️ Medir antes: onde mora a configuração do projecto (`ProjectSettings`/`hero.project`) e se gravá-la muda a
+   forma do `ProjectFile` (⇒ degrau do `PROJECT_SCHEMA`, recontado).
+3. **D-V — no painel da câmera, as duas opções:** a moldura **Sempre** (ténue sem seleção) ou **Só selecionada**.
+   O formato do jogo também se escolhe ali (é do projecto; o painel da câmera é a porta).
 
 ## Gates (por nome) e fotos
 

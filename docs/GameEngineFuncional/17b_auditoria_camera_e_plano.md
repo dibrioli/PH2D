@@ -115,3 +115,7 @@ em px correcto · dropdown/Size/Frame do Inspector pintados, populados e clicáv
 9. **Rótulo** dentro do canvas (encosta à borda visível); cursor/hover nas alças. (A10)
 10. **Fica para a onda 18** (já decidido): zona morta pintada, miniatura, escurecer fora. Juntar «a vista do
     editor segue a câmera do jogo» (pedido de Godot e Unity) como opção.
+
+## Estado (28/10)
+
+Curado na onda 17b: [handoff](handoffs/HANDOFF_CONTINUACAO_2026-10-28_17b_CAMERA.md).

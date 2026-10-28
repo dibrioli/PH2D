@@ -14,6 +14,10 @@ use ph2d_board_render::{PlayerInput, VideoCommand};
 use ph2d_host::{Modifiers, PointerButton};
 
 use super::board_keys::BoardKey;
+
+/// W4 do Kanban — o outro elemento VIVO do quadro (o rato e as teclas por um gancho), irmão deste.
+#[path = "board_kanban.rs"]
+pub mod kanban;
 use super::board_view::{area, area_of, editor};
 use crate::screens::hero::HeroScreen;
 

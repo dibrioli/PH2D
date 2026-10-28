@@ -36,6 +36,32 @@ pub enum BoardKey {
     F(u8),
 }
 
+/// O mesmo vocabulário das abas de família (o gancho do Kanban do quadro recebe-o assim).
+impl From<BoardKey> for crate::doc_surface::Key {
+    fn from(k: BoardKey) -> Self {
+        use crate::doc_surface::Key;
+        match k {
+            BoardKey::Char(c) => Key::Char(c),
+            BoardKey::Enter => Key::Enter,
+            BoardKey::Escape => Key::Escape,
+            BoardKey::Backspace => Key::Backspace,
+            BoardKey::Delete => Key::Delete,
+            BoardKey::Left => Key::Left,
+            BoardKey::Right => Key::Right,
+            BoardKey::Up => Key::Up,
+            BoardKey::Down => Key::Down,
+            BoardKey::Home => Key::Home,
+            BoardKey::End => Key::End,
+            BoardKey::Space => Key::Space,
+            BoardKey::Tab => Key::Tab,
+            BoardKey::PageUp => Key::PageUp,
+            BoardKey::PageDown => Key::PageDown,
+            BoardKey::Other => Key::Other,
+            BoardKey::F(n) => Key::F(n),
+        }
+    }
+}
+
 /// O que a tecla fez.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct KeyOutcome {
@@ -87,6 +113,10 @@ pub fn key(
                 copy: None,
             }
         };
+    }
+    // W4 do Kanban — o Kanban activo toma as teclas (o gancho da família).
+    if super::board_video::kanban::key(hero, ts, k, mods, pressed, text, paste.as_deref()) {
+        return taken();
     }
     // W18 — o vídeo activo toma as teclas do tocador; um link do YouTube colado vira um vídeo (fora de
     // um texto a escrever).

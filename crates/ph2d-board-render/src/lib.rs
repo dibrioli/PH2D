@@ -14,6 +14,7 @@ mod gray;
 mod grid;
 mod image;
 mod image_frame;
+mod kanban;
 mod mind;
 mod note;
 mod overlay;
@@ -31,6 +32,11 @@ pub use frames::{
 pub use gray::{gray_of, to_gray};
 pub use grid::{dot_grid, grid_step_world};
 pub use image::{Decode, Images, Pixels, Salvage, install_decoder, install_salvager, level_to_box};
+pub use kanban::{
+    HEADER_H as KANBAN_HEADER_H, KanbanFrames, KanbanLod, KanbanPaint, KanbanPainter,
+    KanbanPlacement, KanbanSource, install_kanban_painter, install_kanbans, kanban_board_bg,
+    kanban_list_colors, kanban_name, kanban_painter_installed,
+};
 pub use overlay::paint_overlay;
 pub use theme_ink::ThemeInk;
 pub use video::{
@@ -111,6 +117,8 @@ pub struct RenderCache {
     pub cropping: Option<ElementId>,
     /// W18 — os vídeos: o activado, o quadro do tocador, o que o editor lhe manda, onde ficaram.
     pub videos: Videos,
+    /// W4 do Kanban — o activado e onde cada Kanban ficou.
+    pub kanbans: KanbanFrames,
 }
 
 /// ⭐ W8 — o desenho para EXPORTAR (`docs/MiroClone/06_equipa_e_saida.md` E6/E7): o papel (ou nada:
@@ -278,6 +286,7 @@ pub fn paint(
     cache.images.begin_frame();
     if cache.export.is_none() {
         cache.videos.begin_frame();
+        cache.kanbans.begin_frame();
     }
     scene.push_clip(&clip);
     if cache.export.is_none() {
@@ -368,6 +377,10 @@ pub fn paint(
         }
         if let Some(e) = el.embed() {
             video::paint(scene, cache, &board.doc, el, e, v, area, theme, board.id.0);
+            continue;
+        }
+        if let Some(k) = el.kanban() {
+            kanban::paint(scene, ts, cache, el, k, v, zoom, theme, board.id.0);
             continue;
         }
         let Some(shape) = el.shape() else {

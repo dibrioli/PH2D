@@ -679,6 +679,7 @@ pub fn pointer_down(
 ) -> bool {
     minimap::down(hero, x, y)
         || team::pointer_down(hero, x, y, button)
+        || super::board_video::kanban::pointer_down(hero, x, y, button, now_ns)
         || super::board_video::pointer_down(hero, x, y, button, now_ns)
 }
 
@@ -686,6 +687,7 @@ pub fn pointer_down(
 pub fn pointer_move(hero: &mut HeroScreen, x: f32, y: f32) -> bool {
     minimap::drag(hero, x, y)
         || team::bubble_drag(hero, x, y)
+        || super::board_video::kanban::pointer_move(hero, x, y)
         || super::board_video::pointer_move(hero, x, y)
 }
 
@@ -693,5 +695,6 @@ pub fn pointer_move(hero: &mut HeroScreen, x: f32, y: f32) -> bool {
 pub fn pointer_up(hero: &mut HeroScreen, x: f32, y: f32, now_ns: u128) -> bool {
     std::mem::take(&mut hero.documents.live.nav.minimap_drag)
         || team::bubble_up(hero, x, y)
+        || super::board_video::kanban::pointer_up(hero, x, y, now_ns)
         || super::board_video::pointer_up(hero, x, y, now_ns)
 }

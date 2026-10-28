@@ -61,10 +61,12 @@ fn the_w16_items_come_last_and_move_no_id() {
     // Rascunho/Final da barra da forma.
     assert_eq!(v[g + 4], Item::Video);
     assert_eq!(v[g + 5], Item::MoreHeads(0));
+    // W4 do Kanban — o Kanban e «Open in tab» depois de tudo.
     let n = v.len();
-    assert_eq!(v[n - 2..], [Item::Look(false), Item::Look(true)]);
+    assert_eq!(v[n - 2..], [Item::Kanban, Item::OpenKanban]);
+    assert_eq!(v[n - 4..n - 2], [Item::Look(false), Item::Look(true)]);
     assert!(
-        v[g + 5..n - 2]
+        v[g + 5..n - 4]
             .iter()
             .all(|i| matches!(i, Item::MoreHeads(_) | Item::Head(..)))
     );

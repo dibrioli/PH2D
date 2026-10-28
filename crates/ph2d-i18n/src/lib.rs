@@ -59,6 +59,8 @@ mod board_facilitate;
 /// O QUADRO — a fidelidade ao Excalidraw (W9): a cena 11.
 mod board_fidelity;
 mod board_images;
+/// O Kanban no Quadro (TrelloClone W4).
+mod board_kanban;
 mod board_live;
 /// O QUADRO — o que é de uma pessoa (W12): o modo privado e a votação ao vivo.
 mod board_private;
@@ -592,6 +594,7 @@ fn tr_ingles(key: &str) -> &'static str {
             .or_else(|| board_send::tr(k))
             .or_else(|| board_block6::tr(k))
             .or_else(|| board_w24::tr(k))
+            .or_else(|| board_kanban::tr(k))
             .or_else(|| chrome_rail::tr(k))
             .or_else(|| chrome_panes::tr(k))
             .or_else(|| audio_fx::tr(k))

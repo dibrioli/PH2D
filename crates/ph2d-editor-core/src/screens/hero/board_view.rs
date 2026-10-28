@@ -278,6 +278,11 @@ fn canvas_down(
             && (at[0] - x).hypot(at[1] - y) <= crate::interaction::TAB_DRAG_THRESHOLD_PX
     });
     live.last_down = (!double).then_some((input.now_ns, [x, y]));
+    // W4 do Kanban — o duplo clique no cabeçalho de um Kanban pede-o numa aba.
+    let at = [f64::from(x), f64::from(y)];
+    if double && super::board_video::kanban::double_click(board, live, at) {
+        return true;
+    }
     let history = live.histories.entry(board.id).or_default();
     let ed = editor(&mut live.editor, theme);
     ed.at_time(input.now_ns);

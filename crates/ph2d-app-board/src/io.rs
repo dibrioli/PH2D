@@ -62,6 +62,9 @@ pub fn service(hero: &mut HeroScreen, gpu: Option<&GpuContext>, ts: &mut TextSys
     author(hero);
     crate::live::service(hero);
     crate::video::service(hero);
+    // W4 do Kanban — o desenho (e o export) deste fio lê os Kanbans do projecto: um `Rc` NOVO a cada
+    // projecto aberto, por isso a cada quadro.
+    ph2d_board_render::install_kanbans(hero.documents.kanbans_shared());
     let Some(req) = hero.documents.take_io() else {
         return;
     };
@@ -346,7 +349,9 @@ pub fn write_export(
                 let _ = ph2d_board_model::BoardOp::Put(el).apply(&mut seen.doc);
             }
         }
-        std::fs::write(path, ph2d_board_excalidraw::write(&seen)).map_err(|e| e.to_string())?;
+        // W4 do Kanban — um Kanban sai com o NOME do documento (que vive no projecto, fora do quadro).
+        let text = ph2d_board_excalidraw::write_with_names(&seen, &ph2d_board_render::kanban_name);
+        std::fs::write(path, text).map_err(|e| e.to_string())?;
         return Ok(vec![path.to_path_buf()]);
     }
     let mut routes = RouteCache::default();

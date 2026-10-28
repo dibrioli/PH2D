@@ -32,6 +32,7 @@ pub(super) fn tooltip_key(it: Item) -> Option<&'static str> {
         .or_else(|| super::organize::tooltip_key(it))
         .or_else(|| super::mind::tooltip_key(it))
         .or_else(|| super::fac::tooltip_key(it))
+        .or_else(|| super::super::board_video::kanban::tooltip_key(it))
     {
         return Some(k);
     }
@@ -87,7 +88,9 @@ pub(super) fn tooltip_key(it: Item) -> Option<&'static str> {
         | Item::Look(_)
         | Item::Organize(_)
         | Item::Mind(_)
-        | Item::Fac(_) => return None,
+        | Item::Fac(_)
+        | Item::Kanban
+        | Item::OpenKanban => return None,
     })
 }
 
@@ -192,6 +195,9 @@ pub(super) fn selected_kind(ed: &Editor, doc: &ph2d_board_model::BoardDoc) -> Op
     }
     if !els.is_empty() && els.iter().all(|el| el.embed().is_some()) {
         return Some(Selected::Videos);
+    }
+    if !els.is_empty() && els.iter().all(|el| el.kanban().is_some()) {
+        return Some(Selected::Kanbans);
     }
     let arrows = els.iter().any(|el| el.connector().is_some());
     let shapes = els.iter().any(|el| el.shape().is_some());
@@ -442,6 +448,7 @@ pub(super) fn paint_item(
         || super::organize::paint_icon(scene, theme, it, inner, fg, line)
         || super::mind::paint_icon(scene, text_system, it, r, inner, fg, line, on)
         || super::fac::paint_icon(scene, text_system, it, r, inner, fg, line)
+        || super::super::board_video::kanban::paint_icon(scene, theme, it, inner, fg)
     {
         return;
     }
@@ -648,6 +655,8 @@ pub(super) fn paint_item(
         | Item::Organize(_)
         | Item::Mind(_)
         | Item::Fac(_)
+        | Item::Kanban
+        | Item::OpenKanban
         | Item::Reshape => {} // a cara do «Forma» é a forma actual: `shapes::paint_button`
     }
 }

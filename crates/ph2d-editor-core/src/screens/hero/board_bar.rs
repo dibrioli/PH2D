@@ -140,6 +140,10 @@ pub enum Item {
     Crop,
     /// W18 — um vídeo do YouTube pelo link da área de transferência (ADR-0185).
     Video,
+    /// W4 do Kanban — um Kanban novo (documento do projecto + a referência no quadro).
+    Kanban,
+    /// W4 do Kanban — abrir o Kanban seleccionado numa aba.
+    OpenKanban,
 }
 
 /// As pontas que a barra oferece: as do fluxograma e do diagrama de quadro. (O documento guarda as
@@ -177,6 +181,8 @@ pub enum Selected {
     Images,
     /// Só vídeos (W20).
     Videos,
+    /// Só Kanbans (W4 do Kanban).
+    Kanbans,
 }
 
 /// Os atalhos da barra curta, na ordem em que se pintam (a Nota logo a seguir à mão: é o coração
@@ -221,6 +227,7 @@ pub fn items() -> Vec<Item> {
         Selected::Mind,
         Selected::Images,
         Selected::Videos,
+        Selected::Kanbans,
     ]
     .into_iter()
     .flat_map(style_groups)
@@ -233,6 +240,7 @@ pub fn items() -> Vec<Item> {
                     | Item::Gray
                     | Item::Flip(_)
                     | Item::Crop
+                    | Item::OpenKanban
                     | Item::MoreHeads(_)
                     | Item::Look(_)
             )
@@ -253,11 +261,13 @@ pub fn items() -> Vec<Item> {
     // W23 — a grelha das pontas, no FIM.
     v.extend(heads::extra_items());
     v.extend(LOOKS);
+    // W4 do Kanban — no FIM.
+    v.extend([Item::Kanban, Item::OpenKanban]);
     v
 }
 
 /// W18 — a cauda da barra curta (depois do [`TOOLBAR`], para os ids de antes não se moverem).
-pub(super) const TOOLBAR_TAIL: [Item; 1] = [Item::Video];
+pub(super) const TOOLBAR_TAIL: [Item; 2] = [Item::Video, Item::Kanban];
 
 /// Os grupos da barra de estilo, da esquerda para a direita, para o que está seleccionado.
 #[must_use]
@@ -354,6 +364,15 @@ pub fn style_groups(sel: Selected) -> Vec<Vec<Item>> {
         // Opacity). O fundo fica por trás do tocador e a borda à volta dele (`ph2d-board-render::video`).
         Selected::Videos => vec![
             fill,
+            stroke,
+            width,
+            dash,
+            vec![Item::Round(false), Item::Round(true)],
+            opacity,
+        ],
+        // W4 do Kanban — abrir na aba, e a decoração do vídeo (a moldura à volta do Kanban).
+        Selected::Kanbans => vec![
+            vec![Item::OpenKanban],
             stroke,
             width,
             dash,
@@ -577,6 +596,9 @@ pub fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         hero.documents.live.video_ask = true;
         return true;
     }
+    if super::board_video::kanban::apply(hero, it) {
+        return true;
+    }
     if shapes::apply(hero, it, reshaping) {
         return true;
     }
@@ -648,7 +670,9 @@ pub fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         | Item::Organize(_)
         | Item::Mind(_)
         | Item::Fac(_)
-        | Item::Video => {}
+        | Item::Video
+        | Item::Kanban
+        | Item::OpenKanban => {}
     }
     true
 }

@@ -1,11 +1,7 @@
 # ESTADO da missão Pincéis — MISSÃO 2 EM CURSO (J6, 2026-10-28) (≤ 8 KB)
 
-> **Encerrada com o alvo NÃO alcançado:** 18 pincéis APROVADOS (alvo 80–120); fábrica 45 (Wet 29, Digital 16), os
-> outros 27 «curados, não aprovados». Porquê: o que trava os 67 itens restantes é MOTOR (depois da 2.ª ronda o
-> rendimento é zero) e as [regras de custo](REGRAS_DE_CUSTO.md) do dono limitam a uma lacuna de motor por agente. A fila
-> de motor, medida, está em [01_CATALOGO §3d](01_CATALOGO.md) — é o escopo de uma missão futura. Integração:
-> [HANDOFF_INTEGRACAO ...PINCEIS](../handoffs/HANDOFF_INTEGRACAO_line_PainterWatercolor_2026-10-22_PINCEIS.md).
-> Contrato: [`00_MISSAO.md`](00_MISSAO.md). Detalhe por janela: `HANDOFF_JANELA_<n>.md`; por família: `exames/<família>.md`.
+> Missão 1 encerrada na J5 (18 aprovados; o que trava é MOTOR; [integração](../handoffs/HANDOFF_INTEGRACAO_line_PainterWatercolor_2026-10-22_PINCEIS.md)).
+> Contrato: [`00_MISSAO.md`](00_MISSAO.md) · [regras de custo](REGRAS_DE_CUSTO.md). Detalhe: `HANDOFF_JANELA_<n>.md`, `exames/<família>.md`.
 
 ## Feito
 
@@ -27,10 +23,8 @@
 
 - **Óleo Real W3 P** (27/10, [`W3_P_Knife.md`](W3_P_Knife.md) · [`W3_P_Dabber.md`](W3_P_Dabber.md) ·
   [`W3_P_Metallic.md`](W3_P_Metallic.md)): **+5 aprovados** — Knife Textured, Knife Stain, Dabber 4, Metallic Flat,
-  Metallic Splats (`WetPainter/Oil/{Knife,Dabber,Metallic}/`). **Total: 27 aprovados, fábrica 54** (Wet 38, Digital
-  16). Ficam candidatos (`EM_ESTUDO_W2`, receitas com os valores finais da W3): Knife Smooth · Smooth 2 · Soft · Dry 2;
-  Dabber 2 · 3 · Fan; Metallic Round. Dabber 4 e Metallic Splats saem da regra do Spacing pelo nome
-  (`CARIMBOS_ESPACADOS`: a marca deles é o carimbo espaçado). Prancha dos 13: [`pranchas/W3_presets.jpg`](pranchas/W3_presets.jpg).
+  Metallic Splats. **Total: 27 aprovados, fábrica 54.** Candidatos (`EM_ESTUDO_W2`): Knife Smooth · Smooth 2 · Soft ·
+  Dry 2; Dabber 2 · 3 · Fan; Metallic Round. Prancha dos 13: [`pranchas/W3_presets.jpg`](pranchas/W3_presets.jpg).
 
 - **Smoke do dono 27/10** ([`01_CATALOGO §3g`](01_CATALOGO.md)): saem da fábrica o **Metallic Splats** (reprovado: «muito
   inferior ao do Rebelle») e o **Oil Bristle** («a princípio»; medição W2 × W3 em

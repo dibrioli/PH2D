@@ -69,6 +69,9 @@ struct Vevent<'a> {
     summary: &'a str,
     description: &'a str,
     repeat: Option<Repeat>,
+    /// O fim da série (exclusivo) e as ocorrências tiradas (v7).
+    until: Option<Moment>,
+    exdates: Vec<Moment>,
     alarm_min: Option<u32>,
 }
 
@@ -88,7 +91,19 @@ fn vevent(out: &mut String, e: &Vevent<'_>, stamp: &str) {
         line(out, &format!("DESCRIPTION:{}", text(e.description)));
     }
     if let Some(r) = e.repeat {
-        line(out, &format!("RRULE:FREQ={}", freq(r)));
+        // O `UNTIL` do RFC 5545 é INCLUSIVO; o nosso fim é exclusivo.
+        let until = e.until.map_or_else(String::new, |u| {
+            let last = if e.all_day { date(Moment(u.0 - 1)) } else { utc(Moment(u.0 - 1000)) };
+            format!(";UNTIL={last}")
+        });
+        line(out, &format!("RRULE:FREQ={}{until}", freq(r)));
+        for x in &e.exdates {
+            if e.all_day {
+                line(out, &format!("EXDATE;VALUE=DATE:{}", date(*x)));
+            } else {
+                line(out, &format!("EXDATE:{}", utc(*x)));
+            }
+        }
     }
     if let Some(m) = e.alarm_min {
         line(out, "BEGIN:VALARM");
@@ -109,6 +124,8 @@ fn event(e: &Event) -> Vevent<'_> {
         summary: &e.title,
         description: &e.notes,
         repeat: e.repeat,
+        until: e.until,
+        exdates: e.exceptions.iter().map(|x| x.at).collect(),
         alarm_min: e.remind_before_min,
     }
 }
@@ -146,6 +163,8 @@ pub fn export(set: &KanbanSet, name: &str, now: Moment) -> String {
                     summary: &c.title,
                     description: &k.header.name,
                     repeat: None,
+                    until: None,
+                    exdates: Vec::new(),
                     alarm_min: c.due.and_then(|d| d.remind_before_min),
                 },
                 &stamp,
@@ -163,6 +182,8 @@ pub fn export(set: &KanbanSet, name: &str, now: Moment) -> String {
                     summary: &it.text,
                     description: &k.header.name,
                     repeat: None,
+                    until: None,
+                    exdates: Vec::new(),
                     alarm_min: None,
                 },
                 &stamp,

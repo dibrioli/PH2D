@@ -1,6 +1,8 @@
 //! **As ocorrências** de um evento com recorrência simples (diária, semanal, mensal, anual), na hora
 //! LOCAL: «toda segunda às 10:00» atravessa o horário de verão sem andar. O dia inteiro vive em UTC
-//! (o `DATE` do RFC 5545). Um mês sem o dia (31 de abril) salta, como no Google Calendar.
+//! (o `DATE` do RFC 5545). Um mês sem o dia (31 de abril) salta, como no Google Calendar. As
+//! excepções e o fim da série (`until`, v7) tiram ocorrências; o evento avulso que substitui uma
+//! aparece por si.
 
 use ph2d_kanban_dates::{CivilDate, Zone, add_days, civil, instant};
 use ph2d_kanban_model::{Event, Moment, Repeat};
@@ -43,6 +45,16 @@ fn period_ms(r: Repeat) -> i64 {
 /// As ocorrências `(início, fim)` que tocam `[from, to)`, pela ordem.
 #[must_use]
 pub fn occurrences(e: &Event, from: Moment, to: Moment, zone: &Zone) -> Vec<(Moment, Moment)> {
+    let to = e.until.map_or(to, |u| to.min(u));
+    let mut v = by_rule(e, from, to, zone);
+    if e.repeat.is_some() {
+        v.retain(|(s, _)| !e.skips(*s));
+    }
+    v
+}
+
+/// O que a regra dá, sem as excepções.
+fn by_rule(e: &Event, from: Moment, to: Moment, zone: &Zone) -> Vec<(Moment, Moment)> {
     let len = (e.end.0 - e.start.0).max(0);
     let touches = |s: i64| s < to.0 && s + len.max(1) > from.0;
     let Some(r) = e.repeat else {

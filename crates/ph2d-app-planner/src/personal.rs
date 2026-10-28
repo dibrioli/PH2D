@@ -4,7 +4,7 @@
 
 use ph2d_kanban_dates::{CivilDate, Zone, day_of};
 use ph2d_kanban_model::{
-    Block, BlockId, BlockOf, Card, CardId, CardRef, Due, InboxId, InboxItem, KanbanId, KanbanOp,
+    Block, BlockId, BlockOf, Card, CardId, CardRef, Due, FracKey, InboxId, InboxItem, KanbanId, KanbanOp,
     KanbanSet, ListRef, Member, Meta, Moment, Plan, Record, RecordId,
 };
 
@@ -33,21 +33,22 @@ pub fn capture(set: &KanbanSet, me: &Member, text: &str, now: Moment) -> Plan {
     plan
 }
 
-/// ⭐ «Mover para um Kanban»: o item vira um cartão no FIM da lista `to` (com `me` de membro, como
-/// no Trello), sai da Inbox, e os blocos do Planner que o tinham passam a ter o cartão.
+/// ⭐ «Mover para um Kanban»: o item vira um cartão no topo (`top`) ou no fim da lista `to` (com o
+/// dono de membro, como no Trello), sai da Inbox, e os blocos do Planner que o tinham passam a ter o
+/// cartão.
 #[must_use]
-pub fn inbox_to_card(set: &KanbanSet, item: InboxId, to: ListRef, now: Moment) -> Option<Plan> {
+pub fn inbox_to_card(set: &KanbanSet, item: InboxId, to: ListRef, top: bool, now: Moment) -> Option<Plan> {
     let a = set.agenda();
     let it = a.inbox.get(&item).filter(|i| !i.meta.deleted)?;
     let k = set.get(to.kanban)?;
     k.lists.get(&to.list).filter(|l| !l.meta.deleted)?;
-    let mut card = Card::new(
-        CardId(k.mint()),
-        to.list,
-        k.pos_after_cards(to.list),
-        &it.text,
-        now,
-    );
+    let pos = if top {
+        let first = k.cards_in(to.list).first().map(|c| c.pos.clone());
+        FracKey::between(None, first.as_ref())
+    } else {
+        k.pos_after_cards(to.list)
+    };
+    let mut card = Card::new(CardId(k.mint()), to.list, pos, &it.text, now);
     card.members.push(it.owner.clone());
     let r = CardRef {
         kanban: to.kanban,

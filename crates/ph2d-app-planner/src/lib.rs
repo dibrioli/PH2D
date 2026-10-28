@@ -4,9 +4,11 @@
 //! tempo), **My cards** e o **sino** das notificações (menções, atribuições, o que sigo, lembretes).
 //! Tudo DENTRO do projecto, sem Google/Microsoft; a porta para fora é o `.ics` (RFC 5545).
 //!
-//! Os dados moram na agenda do `KanbanSet` (`KanbanId::AGENDA`, formato v5); a grelha do calendário é
+//! Os dados moram na agenda do `KanbanSet` (`KanbanId::AGENDA`, formato v5; as excepções das séries
+//! no v7); a grelha do calendário é
 //! a vista da W7 (`ph2d-kanban-views`) sobre a [`source::ProjectSource`].
 
+mod dest_pop;
 mod docs;
 mod event_pop;
 pub mod ics;
@@ -14,6 +16,7 @@ mod metrics;
 pub mod notify;
 pub mod personal;
 pub mod recur;
+pub mod scope;
 mod side;
 pub mod smoke;
 pub mod source;
@@ -26,7 +29,9 @@ use ph2d_editor_core::toast::Toast;
 use ph2d_kanban_model::{KanbanId, Member, Moment, splitmix64};
 
 pub use docs::{Hit, Mode, PlannerDocs, TAB};
-pub use event_pop::{EventPop, PopHit};
+pub use dest_pop::{DestHit, DestPop, Row, rows};
+pub use event_pop::{Done, EventPop, PopHit};
+pub use scope::{ScopeHit, ScopePop};
 pub use surface::{CMD_CALENDAR, CMD_INBOX, CMD_MY_CARDS, CMD_PLANNER};
 pub use ui::notice_text;
 

@@ -150,6 +150,29 @@ fn dress_agenda(set: &mut KanbanSet, k: KanbanId, me: &Member, now: i64) {
     set.apply(KanbanId::AGENDA, ops);
 }
 
+/// Um segundo Kanban, só com listas (o destino de «To Kanban» escolhe entre dois).
+fn second_kanban(set: &mut KanbanSet) {
+    let id = set.create("Sound & music");
+    let k = set.get(id).expect("acabou de nascer");
+    let ids = k.mint_n(3);
+    let mut pos = ph2d_kanban_model::FracKey::between(None, None);
+    let mut ops = Vec::new();
+    for (i, title) in ["Ideas", "Recording", "Mixed"].into_iter().enumerate() {
+        ops.push(KanbanOp::put(Record::List(ph2d_kanban_model::List {
+            id: ph2d_kanban_model::ListId(ids[i]),
+            title: title.into(),
+            pos: pos.clone(),
+            color: None,
+            card_limit: None,
+            archived: false,
+            meta: Meta::default(),
+            watchers: Vec::new(),
+        })));
+        pos = ph2d_kanban_model::FracKey::between(Some(&pos), None);
+    }
+    set.apply(id, ops);
+}
+
 /// Monta a cena `n` e abre a aba no Calendário. `None` = cena desconhecida ou família em falta.
 pub fn stage(hero: &mut HeroScreen, n: u8) -> Option<KanbanId> {
     if n != 1 {
@@ -163,6 +186,7 @@ pub fn stage(hero: &mut HeroScreen, n: u8) -> Option<KanbanId> {
         let mut set = shared.borrow_mut();
         dress_cards(&mut set, k, &me, now);
         dress_agenda(&mut set, k, &me, now);
+        second_kanban(&mut set);
     }
     let shared = hero.documents.kanbans_shared();
     let docs = hero.documents.surfaces_mut().find_mut::<PlannerDocs>()?;

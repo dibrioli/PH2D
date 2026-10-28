@@ -4,9 +4,11 @@
 //! Planner, `follow_surfaces`, pintar.
 
 mod calendario;
+mod destino;
 mod fotos;
 mod ics;
 mod pessoal;
+mod serie;
 
 use ph2d_app_planner::{Hit, PlannerDocs};
 use ph2d_editor_core::screens::hero::HeroScreen;

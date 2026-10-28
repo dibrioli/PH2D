@@ -48,7 +48,25 @@ pub struct Event {
     /// Lembrar N minutos antes do início.
     pub remind_before_min: Option<u32>,
     pub meta: Meta,
+    /// v7 — a série acaba ANTES deste início (exclusivo; o «This and following» que a partiu).
+    pub until: Option<Moment>,
+    /// v7 — as ocorrências que deixaram a regra, pelo início ORIGINAL (o `EXDATE` do RFC 5545).
+    pub exceptions: Vec<Exception>,
 }
+
+/// Uma ocorrência de uma série que deixou de seguir a regra (v7): apagada, ou substituída por um
+/// evento avulso (o «This event» do Google Calendar).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Exception {
+    /// O início que a regra dava à ocorrência.
+    pub at: Moment,
+    /// `None` = apagada; `Some` = o evento que a substitui.
+    pub becomes: Option<EventId>,
+}
+
+/// Uma excepção casa a ocorrência a menos de meio dia dela: a hora de verão anda uma hora e a
+/// série mais densa é diária.
+const MATCH_MS: i64 = 12 * 3_600_000;
 
 impl Event {
     /// Um evento de `start` a `end`, sem mais nada.
@@ -66,7 +84,23 @@ impl Event {
             notes: String::new(),
             remind_before_min: None,
             meta: Meta::default(),
+            until: None,
+            exceptions: Vec::new(),
         }
+    }
+
+    /// A excepção da ocorrência que a regra põe em `at`.
+    #[must_use]
+    pub fn exception_at(&self, at: Moment) -> Option<&Exception> {
+        self.exceptions
+            .iter()
+            .find(|x| (x.at.0 - at.0).abs() < MATCH_MS)
+    }
+
+    /// A regra põe uma ocorrência em `at`, mas ela não aparece (depois do fim ou com excepção).
+    #[must_use]
+    pub fn skips(&self, at: Moment) -> bool {
+        self.until.is_some_and(|u| at >= u) || self.exception_at(at).is_some()
     }
 }
 

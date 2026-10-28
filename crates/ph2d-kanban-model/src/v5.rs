@@ -1,7 +1,7 @@
 //! **O formato v5, congelado** — só para LER ficheiros antigos (o degrau v5 → v6). Nunca se escreve.
 //!
 //! O v6 acrescentou a tabela `project_links` no fim do Kanban (postcard é posicional). O resto lê-se
-//! pelos tipos de hoje; o gate `v5_bytes_read_as_v6_equal` sobre a fixture gravada pelo código v5
+//! pelos tipos de hoje (os eventos pelo [`crate::v6::EventV6`]); o gate `v5_bytes_read_as_v6_equal` sobre a fixture gravada pelo código v5
 //! guarda os dois lados.
 
 use std::collections::BTreeMap;
@@ -9,7 +9,7 @@ use std::collections::BTreeMap;
 use serde::Deserialize;
 
 use crate::activity::Activity;
-use crate::agenda::{Block, Event, InboxItem, Seen};
+use crate::agenda::{Block, InboxItem, Seen};
 use crate::files::{FileId, KanbanFile};
 use crate::kanban::{Header, Kanban};
 use crate::records::{
@@ -34,7 +34,7 @@ struct KanbanV5 {
     activities: BTreeMap<ActivityId, Activity>,
     mirrors: BTreeMap<MirrorId, Mirror>,
     automations: BTreeMap<AutomationId, Automation>,
-    events: BTreeMap<EventId, Event>,
+    events: BTreeMap<EventId, crate::v6::EventV6>,
     inbox: BTreeMap<InboxId, InboxItem>,
     blocks: BTreeMap<BlockId, Block>,
     seen: BTreeMap<SeenId, Seen>,
@@ -73,7 +73,7 @@ impl KanbanV5 {
         k.activities = self.activities;
         k.mirrors = self.mirrors;
         k.automations = self.automations;
-        k.events = self.events;
+        k.events = crate::v6::events(self.events);
         k.inbox = self.inbox;
         k.blocks = self.blocks;
         k.seen = self.seen;

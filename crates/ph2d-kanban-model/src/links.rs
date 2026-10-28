@@ -142,4 +142,4 @@ impl KanbanSet {
 
 #[cfg(test)]
 #[path = "links_tests.rs"]
-mod tests;
+pub(crate) mod tests;

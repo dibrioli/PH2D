@@ -24,6 +24,7 @@ mod mirror;
 mod ops;
 mod plan;
 mod records;
+mod series;
 mod set;
 #[cfg(test)]
 mod test_support;
@@ -33,10 +34,11 @@ mod v2;
 mod v3;
 mod v4;
 mod v5;
+mod v6;
 mod view;
 
 pub use activity::{Activity, Actor, Happened, Snapshot, Subject, activity_for, apply_logged};
-pub use agenda::{Block, BlockOf, Event, InboxItem, Repeat, Seen};
+pub use agenda::{Block, BlockOf, Event, Exception, InboxItem, Repeat, Seen};
 pub use color::{Hue, LabelColor, Shade};
 pub use convert::convert_item_to_card;
 pub use files::{Blob, FileId, KanbanFile};
@@ -56,6 +58,7 @@ pub use records::{
     LabelId, Link, List, ListId, Member, Meta, Mirror, MirrorId, Moment, OptionId, ProjectLinkId,
     Reaction, SeenId,
 };
+pub use series::{Scope, change_occurrence, delete_occurrence};
 pub use set::{FORMAT_VERSION, KanbanSet};
 pub use transfer::{CopyKeep, card_from_template, copy_card, move_card, move_mirror};
 pub use view::{KanbanView, Shown, ShownList};

@@ -14,7 +14,7 @@ use ph2d_editor_core::zones::Rect;
 use ph2d_host::{PointerButton, PointerKind};
 use ph2d_i18n::tr;
 use ph2d_kanban_dates::{instant, start_of_day};
-use ph2d_kanban_model::{BlockOf, Moment};
+use ph2d_kanban_model::{BlockOf, EventId, KanbanId, Moment};
 use ph2d_kanban_views::calendar;
 use ph2d_kanban_views::{PointerAt, PointerKind as VKind, Reply};
 use ph2d_text::TextSystem;
@@ -23,7 +23,11 @@ use ph2d_tool_registry::hash_node_id;
 use ph2d_vector::VectorScene;
 
 use crate::docs::{Hit, Mode, PlannerDocs, SideDrag, TAB};
-use crate::event_pop::EventPop;
+use crate::dest_pop::DestDone;
+use crate::event_pop::{Done, EventPop};
+use crate::recur;
+use crate::scope::{ScopeDone, ScopePop};
+use crate::source::{REACH_MS, event_key};
 use crate::metrics as m;
 use crate::source::{ColorBy, ProjectSource};
 
@@ -38,23 +42,47 @@ const DROP_HOUR: u8 = 9;
 const DRAG_SLOP: f32 = 4.0;
 
 impl PlannerDocs {
-    fn with_calendar(&mut self, f: impl FnOnce(&mut calendar::CalendarState, &ProjectSource<'_>) -> Reply) -> bool {
+    /// Passa um gesto ao calendário; o arrasto de uma ocorrência de uma série pergunta o alcance
+    /// junto de `at`.
+    fn with_calendar(&mut self, at: (f32, f32), f: impl FnOnce(&mut calendar::CalendarState, &ProjectSource<'_>) -> Reply) -> bool {
         let set = self.set.clone();
         let mut cal = std::mem::take(&mut self.cal);
-        let reply = {
+        let (reply, asked) = {
             let set = set.borrow();
             let cx = self.ctx();
             let show = self.show.clone();
             let src = ProjectSource::new(&set, &show, cx);
-            f(&mut cal, &src)
+            let reply = f(&mut cal, &src);
+            (reply, src.asked.take())
         };
         self.cal = cal;
+        if let Some(ask) = asked {
+            self.ask_scope(ask, at);
+        }
         if let Some(open) = reply.open {
             self.open_cards.push(open);
         }
         let taken = reply.taken;
         self.apply(reply.plan);
         taken
+    }
+
+    /// A ocorrência de um evento pintada sob `(x, y)`: o Kanban, o evento e o início dela.
+    fn event_under(&self, x: f32, y: f32) -> Option<(KanbanId, EventId, Moment)> {
+        let cx = self.ctx();
+        let day = self.cal.anchor_or_today(&cx);
+        let mid = start_of_day(day, &self.zone)?;
+        let (from, to) = (Moment(mid - REACH_MS), Moment(mid + REACH_MS));
+        let set = self.set.borrow();
+        let docs = std::iter::once(set.agenda()).chain(set.iter());
+        docs.flat_map(|k| k.events.values().map(move |e| (k.id, e)))
+            .filter(|(_, e)| !e.meta.deleted)
+            .find_map(|(k, e)| {
+                recur::occurrences(e, from, to, &self.zone)
+                    .into_iter()
+                    .find(|(s, _)| self.cal.item_rects(event_key(e.id, *s)).iter().any(|r| r.contains(x, y)))
+                    .map(|(s, _)| (k, e.id, s))
+            })
     }
 
     fn hit_at(&self, x: f32, y: f32) -> Option<Hit> {
@@ -118,8 +146,8 @@ impl PlannerDocs {
                 self.capture.get_or_insert_with(|| LineField::new(""));
             }
             Hit::InboxToCard(i) => {
-                if let Some(to) = self.first_list() {
-                    self.inbox_to_card(i, to);
+                if let Some(r) = self.probe_hit(hit) {
+                    self.open_move(i, r);
                 }
             }
             Hit::Schedule(of) => {
@@ -131,7 +159,51 @@ impl PlannerDocs {
         }
     }
 
+    /// Um clique com a pergunta do alcance aberta (ela é a primeira: está por cima de tudo).
+    fn ask_down(&mut self, x: f32, y: f32) {
+        let Some(q) = self.ask.as_ref() else { return };
+        match q.click(x, y) {
+            ScopeDone::Pick(s) => {
+                self.answer(s);
+            }
+            ScopeDone::Cancel => self.ask = None,
+            ScopeDone::Stay => {}
+        }
+    }
+
+    fn dest_done(&mut self, done: DestDone) {
+        match done {
+            DestDone::Stay => {}
+            DestDone::Close => self.dest = None,
+            DestDone::Move { to, top } => {
+                if let Some(d) = self.dest.take() {
+                    self.inbox_to_card(d.item, to, top);
+                }
+            }
+        }
+    }
+
+    fn pop_done(&mut self, done: Done, rect: Rect) {
+        match done {
+            Done::Plan(plan) => {
+                self.apply(plan);
+            }
+            Done::Ask(ask) => self.ask_scope(ask, (rect.x + rect.w / 2.0, rect.y)),
+        }
+    }
+
     fn down(&mut self, x: f32, y: f32) -> bool {
+        if self.ask.is_some() || self.dest.is_some() {
+            self.pressed = Some(Hit::Pop(crate::event_pop::PopHit::Picker));
+            if self.ask.is_some() {
+                self.ask_down(x, y);
+            } else if let Some(mut d) = self.dest.take() {
+                let done = d.click(&self.set.borrow(), x, y);
+                self.dest = Some(d);
+                self.dest_done(done);
+            }
+            return true;
+        }
         if let Some(mut pop) = self.pop.take() {
             // O largar deste clique é do popover, mesmo que ele feche agora.
             self.pressed = Some(Hit::Pop(crate::event_pop::PopHit::Picker));
@@ -142,9 +214,7 @@ impl PlannerDocs {
                     pop.click(&set, &self.ctx(), x, y)
                 };
                 match done {
-                    Some(plan) => {
-                        self.apply(plan);
-                    }
+                    Some(done) => self.pop_done(done, pop.rect),
                     None => self.pop = Some(pop),
                 }
             }
@@ -170,16 +240,18 @@ impl PlannerDocs {
             }
             return true;
         }
-        self.calendar_area.contains(x, y)
-            && self.mode != Mode::MyCards
-            && self.with_calendar(|st, src| {
+        let on_calendar = self.calendar_area.contains(x, y) && self.mode != Mode::MyCards;
+        self.cal_down = on_calendar.then_some((x, y));
+        on_calendar
+            && self.with_calendar((x, y), |st, src| {
                 calendar::pointer(st, src, &src.cx, PointerAt { kind: VKind::Down, x, y })
             })
     }
 
     fn up(&mut self, x: f32, y: f32) -> bool {
         let pressed = self.pressed.take();
-        if self.pop.is_some() || matches!(pressed, Some(Hit::Pop(_))) {
+        let down = self.cal_down.take();
+        if self.pop.is_some() || self.ask.is_some() || self.dest.is_some() || matches!(pressed, Some(Hit::Pop(_))) {
             return self.area.contains(x, y);
         }
         if let Some(g) = self.drag.take() {
@@ -197,11 +269,20 @@ impl PlannerDocs {
             }
             return true;
         }
-        self.calendar_area.contains(x, y)
+        let taken = self.calendar_area.contains(x, y)
             && self.mode != Mode::MyCards
-            && self.with_calendar(|st, src| {
+            && self.with_calendar((x, y), |st, src| {
                 calendar::pointer(st, src, &src.cx, PointerAt { kind: VKind::Up, x, y })
-            })
+            });
+        // Um clique (sem arrasto) num evento abre-o — a vista só abre cartões.
+        let click = down.is_some_and(|d| (d.0 - x).abs().max((d.1 - y).abs()) <= DRAG_SLOP);
+        if click
+            && self.ask.is_none()
+            && let Some((k, id, at)) = self.event_under(x, y)
+        {
+            self.edit_occurrence(k, id, at);
+        }
+        taken
     }
 
     fn moved(&mut self, x: f32, y: f32) -> bool {
@@ -209,13 +290,22 @@ impl PlannerDocs {
             g.at = (x, y);
             return true;
         }
+        if let Some(q) = self.ask.as_mut() {
+            q.hover = q.hits().into_iter().find(|(_, r)| r.contains(x, y)).map(|(h, _)| h);
+            return self.area.contains(x, y);
+        }
+        if let Some(mut d) = self.dest.take() {
+            d.hover = d.hits(&self.set.borrow()).into_iter().find(|(_, r)| r.contains(x, y)).map(|(h, _)| h);
+            self.dest = Some(d);
+            return self.area.contains(x, y);
+        }
         self.hover = self.hit_at(x, y);
         if self.pop.is_some() || self.hover.is_some() {
             return self.area.contains(x, y);
         }
         self.calendar_area.contains(x, y)
             && self.mode != Mode::MyCards
-            && self.with_calendar(|st, src| {
+            && self.with_calendar((x, y), |st, src| {
                 calendar::pointer(st, src, &src.cx, PointerAt { kind: VKind::Move, x, y })
             })
     }
@@ -257,19 +347,44 @@ impl PlannerDocs {
         if self.bell {
             crate::ui::bell_box(self, area, scene, ts, theme);
         }
+        if let Some(mut d) = self.dest.take() {
+            let set = self.set.clone();
+            let set = set.borrow();
+            d.place(&set, area);
+            d.paint(&set, scene, ts, theme);
+            self.dest = Some(d);
+        }
+        if let Some(q) = self.ask.as_mut() {
+            q.place(area);
+            q.paint(scene, ts, theme);
+        }
     }
 
     fn key_in(&mut self, ts: &mut TextSystem, input: &KeyInput<'_>) -> bool {
         let _ = ts;
+        if self.ask.is_some() {
+            match ScopePop::key(input) {
+                ScopeDone::Pick(s) => {
+                    self.answer(s);
+                }
+                ScopeDone::Cancel => self.ask = None,
+                ScopeDone::Stay => {}
+            }
+            return true;
+        }
+        if let Some(mut d) = self.dest.take() {
+            let done = d.key(&self.set.borrow(), input);
+            self.dest = Some(d);
+            self.dest_done(done);
+            return true;
+        }
         if let Some(mut pop) = self.pop.take() {
             let (taken, done) = {
                 let set = self.set.borrow();
                 pop.key(&set, &self.ctx(), input)
             };
             match done {
-                Some(plan) => {
-                    self.apply(plan);
-                }
+                Some(done) => self.pop_done(done, pop.rect),
                 None => self.pop = Some(pop),
             }
             return taken;
@@ -293,8 +408,9 @@ impl PlannerDocs {
             self.bell = false;
             return true;
         }
+        let mid = (self.calendar_area.x + self.calendar_area.w / 2.0, self.calendar_area.y + m::TOP_H);
         self.mode != Mode::MyCards
-            && self.with_calendar(|st, src| calendar::key(st, src, &src.cx, input))
+            && self.with_calendar(mid, |st, src| calendar::key(st, src, &src.cx, input))
     }
 }
 
@@ -327,9 +443,15 @@ impl DocumentSurface for PlannerDocs {
     }
 
     fn wheel(&mut self, _id: u64, x: f32, y: f32, dy: f32, shift: bool) -> bool {
+        if let Some(d) = self.dest.as_mut()
+            && d.rect.contains(x, y)
+        {
+            d.wheel(&self.set.borrow(), dy);
+            return true;
+        }
         self.calendar_area.contains(x, y)
             && self.mode != Mode::MyCards
-            && self.with_calendar(|st, _| calendar::wheel(st, (x, y), dy, shift))
+            && self.with_calendar((x, y), |st, _| calendar::wheel(st, (x, y), dy, shift))
     }
 
     fn key(&mut self, _id: u64, ts: &mut TextSystem, input: KeyInput<'_>) -> KeyOutcome {
@@ -342,6 +464,10 @@ impl DocumentSurface for PlannerDocs {
     fn compose(&mut self, _id: u64, c: Compose<'_>) -> bool {
         let Compose::Commit(ch) = c else { return false };
         let s = ch.to_string();
+        if let Some(d) = self.dest.as_mut() {
+            d.insert(&self.set.borrow(), &s);
+            return true;
+        }
         if let Some(pop) = self.pop.as_mut().filter(|p| p.editing) {
             pop.title.insert(&s);
             return true;
@@ -356,6 +482,8 @@ impl DocumentSurface for PlannerDocs {
     fn close(&mut self, _id: u64) {
         self.open = false;
         self.pop = None;
+        self.dest = None;
+        self.ask = None;
         self.capture = None;
         self.bell = false;
     }

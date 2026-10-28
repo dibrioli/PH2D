@@ -36,7 +36,7 @@ fn link(set: &mut KanbanSet, at: CardRef, target: Target, name: &str) -> Project
 }
 
 /// O v5 cheio mais uma ligação de cada tipo (o que o v6 trouxe).
-fn full_v6() -> (KanbanSet, CardRef) {
+pub(crate) fn full_v6() -> (KanbanSet, CardRef) {
     let mut set = crate::agenda::tests::full_v5();
     let at = first(&set);
     for (t, n) in [
@@ -85,7 +85,7 @@ fn v5_bytes_read_as_v6_equal() {
 fn the_v6_bytes_round_trip_every_kind_of_project_link() {
     let (set, at) = full_v6();
     let bytes = set.to_bytes().unwrap();
-    assert_eq!(postcard::take_from_bytes::<u32>(&bytes).unwrap().0, 6);
+    assert!(postcard::take_from_bytes::<u32>(&bytes).unwrap().0 >= 6);
     let back = KanbanSet::from_bytes(&bytes).unwrap();
     assert!(back.iter().eq(set.iter()));
     assert_eq!(back.agenda(), set.agenda());

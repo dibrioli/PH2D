@@ -1,8 +1,10 @@
 //! ⭐ **A fonte do Calendário do projecto** — todas as datas do projecto para a vista Calendário da
 //! W7 (plano §8.1): início e entrega dos cartões de TODOS os Kanbans, os itens de checklist com data
 //! e os eventos próprios da agenda (com as ocorrências das recorrências). Arrastar um item devolve o
-//! lote que muda a data DELE — no mesmo documento que o quadro mostra.
+//! lote que muda a data DELE — no mesmo documento que o quadro mostra; o de uma ocorrência de uma
+//! série fica por responder em [`ProjectSource::asked`] (o alcance, [`crate::scope`]).
 
+use std::cell::RefCell;
 use std::collections::BTreeSet;
 
 use ph2d_kanban_dates::Zone;
@@ -14,6 +16,7 @@ use ph2d_kanban_views::calendar::Target;
 use ph2d_kanban_views::{Ctx, Item, ItemKey, ItemTone, KanbanSource, Source};
 
 use crate::recur;
+use crate::scope::{Ask, Change};
 
 /// A cor dos itens.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -57,11 +60,15 @@ pub fn block_key(id: BlockId) -> ItemKey {
     ItemKey::Event(splitmix64(id.0 ^ TAG_BLOCK))
 }
 
-/// A chave de um evento na vista (as ocorrências partilham-na).
+/// A chave da ocorrência de `id` que a regra põe em `at` (cada uma a sua: arrasta-se UMA).
 #[must_use]
-pub fn event_key(id: EventId) -> ItemKey {
-    ItemKey::Event(splitmix64(id.0 ^ TAG_EVENT))
+pub fn event_key(id: EventId, at: Moment) -> ItemKey {
+    ItemKey::Event(splitmix64(splitmix64(id.0 ^ TAG_EVENT) ^ at.0.cast_unsigned()))
 }
+
+/// Até onde se procura a ocorrência de uma chave à volta de um instante: a grelha do mês mostra
+/// seis semanas, e nem um arrasto nem um clique saem dela.
+pub(crate) const REACH_MS: i64 = 7 * 7 * 86_400_000;
 
 /// A chave de um item de checklist com data.
 #[must_use]
@@ -94,6 +101,8 @@ pub struct ProjectSource<'a> {
     pub show: &'a Show,
     pub zone: &'a Zone,
     pub cx: Ctx<'a>,
+    /// O arrasto de uma ocorrência de uma série: a pergunta do alcance (o lote fica vazio).
+    pub asked: RefCell<Option<Ask>>,
 }
 
 impl<'a> ProjectSource<'a> {
@@ -104,6 +113,7 @@ impl<'a> ProjectSource<'a> {
             show,
             zone: cx.zone,
             cx,
+            asked: RefCell::new(None),
         }
     }
 
@@ -202,7 +212,7 @@ impl<'a> ProjectSource<'a> {
             }
             for (s, end) in recur::occurrences(e, from, to, self.zone) {
                 out.push(Item {
-                    key: event_key(e.id),
+                    key: event_key(e.id, s),
                     title: e.title.clone(),
                     start: Some(s),
                     // O dia inteiro termina no último dia (o `end` do evento é exclusivo).
@@ -228,11 +238,19 @@ impl<'a> ProjectSource<'a> {
             .filter(|k| !self.show.hidden.contains(&k.id))
     }
 
-    fn event_at(&self, key: ItemKey) -> Option<(KanbanId, &'a Event)> {
+    /// A ocorrência da chave `key` perto de `near`: o Kanban, o evento e o início dela.
+    pub fn event_at(&self, key: ItemKey, near: Moment) -> Option<(KanbanId, &'a Event, Moment)> {
+        let (from, to) = (Moment(near.0 - REACH_MS), Moment(near.0 + REACH_MS));
         std::iter::once(self.set.agenda())
             .chain(self.set.iter())
             .flat_map(|k| k.events.values().map(move |e| (k.id, e)))
-            .find(|(_, e)| !e.meta.deleted && event_key(e.id) == key)
+            .filter(|(_, e)| !e.meta.deleted)
+            .find_map(|(k, e)| {
+                recur::occurrences(e, from, to, self.zone)
+                    .into_iter()
+                    .find(|(s, _)| event_key(e.id, *s) == key)
+                    .map(|(s, _)| (k, e, s))
+            })
     }
 
     fn item_at(&self, key: ItemKey) -> Option<(KanbanId, CheckItemId)> {
@@ -287,12 +305,23 @@ impl Source for ProjectSource<'_> {
             let minutes = u32::try_from((end.0 - start.0) / 60_000).unwrap_or(b.minutes);
             return crate::personal::move_block(self.set, b.id, start, minutes);
         }
-        if let Some((k, e)) = self.event_at(key) {
+        if let Some((k, e, at)) = self.event_at(key, start.unwrap_or(end)) {
+            // A vista dá o fim do dia inteiro no último dia (o do evento é exclusivo).
             let to = start.unwrap_or(end);
-            let delta = to.0 - recur::nearest(e, to, self.zone).0;
+            let len = e.end.0 - e.start.0;
+            let end = if e.all_day { Moment(end.0 + 1) } else { end };
+            let end = if start.is_some() && end > to { end } else { Moment(to.0 + len) };
+            if e.repeat.is_some() {
+                *self.asked.borrow_mut() = Some(Ask {
+                    kanban: k,
+                    series: e.id,
+                    at,
+                    change: Change::Move { start: to, end },
+                });
+                return plan;
+            }
             let mut n = e.clone();
-            n.start = Moment(e.start.0 + delta);
-            n.end = Moment(e.end.0 + delta);
+            (n.start, n.end) = (to, end);
             if n != *e {
                 plan.push(k, KanbanOp::put(Record::Event(n)));
             }

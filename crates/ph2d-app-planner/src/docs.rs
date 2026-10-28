@@ -21,7 +21,9 @@ use ph2d_kanban_model::{
 use ph2d_kanban_views::Ctx;
 use ph2d_kanban_views::calendar::CalendarState;
 
+use crate::dest_pop::DestPop;
 use crate::event_pop::EventPop;
+use crate::scope::{Ask, ScopePop};
 use crate::notify::Notice;
 use crate::personal::GroupBy;
 use crate::source::Show;
@@ -52,7 +54,7 @@ pub enum Hit {
     Notice(u64),
     InboxField,
     InboxItem(InboxId),
-    /// «Move to Kanban»: o item vira cartão na primeira lista do Kanban.
+    /// «To Kanban»: abre o destino do item (Kanban → lista → topo/fundo).
     InboxToCard(InboxId),
     /// Pôr no Planner (um bloco na próxima meia hora livre de hoje).
     Schedule(BlockOf),
@@ -95,6 +97,12 @@ pub struct PlannerDocs {
     /// A captura da Inbox (o campo «Add to Inbox»), em edição.
     pub(crate) capture: Option<LineField>,
     pub(crate) pop: Option<EventPop>,
+    /// O destino de «To Kanban» aberto.
+    pub(crate) dest: Option<DestPop>,
+    /// A pergunta do alcance numa ocorrência de uma série.
+    pub(crate) ask: Option<ScopePop>,
+    /// Onde o rato carregou no calendário (um clique sem arrasto num evento abre-o).
+    pub(crate) cal_down: Option<(f32, f32)>,
     pub(crate) drag: Option<SideDrag>,
     pub(crate) hover: Option<Hit>,
     pub(crate) pressed: Option<Hit>,
@@ -131,6 +139,9 @@ impl Default for PlannerDocs {
             export: None,
             capture: None,
             pop: None,
+            dest: None,
+            ask: None,
+            cal_down: None,
             drag: None,
             hover: None,
             pressed: None,
@@ -151,6 +162,8 @@ impl PlannerDocs {
         if self.adopted {
             self.histories.clear();
             self.pop = None;
+            self.dest = None;
+            self.ask = None;
             self.capture = None;
             self.fired.clear();
         }
@@ -232,10 +245,38 @@ impl PlannerDocs {
         self.apply(plan)
     }
 
-    /// O item `item` da Inbox vira um cartão no fim da lista `to`.
-    pub fn inbox_to_card(&mut self, item: InboxId, to: ListRef) -> bool {
-        let plan = crate::personal::inbox_to_card(&self.set.borrow(), item, to, self.now);
+    /// O item `item` da Inbox vira um cartão no topo (`top`) ou no fim da lista `to`.
+    pub fn inbox_to_card(&mut self, item: InboxId, to: ListRef, top: bool) -> bool {
+        let plan = crate::personal::inbox_to_card(&self.set.borrow(), item, to, top, self.now);
         plan.is_some_and(|p| self.apply(p))
+    }
+
+    /// Abre o destino de «To Kanban» do item `item`, debaixo de `anchor`.
+    pub fn open_move(&mut self, item: InboxId, anchor: Rect) {
+        self.dest = Some(DestPop::new(&self.set.borrow(), item, anchor));
+    }
+
+    /// Pergunta o alcance de `ask` junto de `anchor`.
+    pub(crate) fn ask_scope(&mut self, ask: Ask, anchor: (f32, f32)) {
+        self.ask = Some(ScopePop::new(ask, anchor));
+    }
+
+    /// Responde à pergunta aberta com `scope` (um gesto, um passo de desfazer).
+    pub fn answer(&mut self, scope: ph2d_kanban_model::Scope) -> bool {
+        let Some(q) = self.ask.take() else {
+            return false;
+        };
+        let plan = q.ask.plan(&self.set.borrow(), scope);
+        self.apply(plan)
+    }
+
+    /// Abre o popover na ocorrência `at` do evento `id` do Kanban `kanban`.
+    pub fn edit_occurrence(&mut self, kanban: KanbanId, id: EventId, at: Moment) {
+        let set = self.set.borrow();
+        let e = set.get(kanban).and_then(|k| k.events.get(&id)).cloned();
+        if e.is_some() {
+            self.pop = Some(EventPop::new(e, kanban, Some(at), self.next_slot(), &self.ctx()));
+        }
     }
 
     /// A primeira lista do primeiro Kanban (o destino de «Move to Kanban» sem escolha).
@@ -314,7 +355,7 @@ impl PlannerDocs {
     pub fn edit_event(&mut self, id: Option<EventId>) {
         let set = self.set.borrow();
         let e = id.and_then(|id| set.agenda().events.get(&id)).cloned();
-        self.pop = Some(EventPop::new(e, self.next_slot(), &self.ctx()));
+        self.pop = Some(EventPop::new(e, KanbanId::AGENDA, None, self.next_slot(), &self.ctx()));
     }
 
     /// O `.ics` do projecto inteiro (o que «Export .ics» grava).
@@ -367,12 +408,26 @@ impl PlannerDocs {
     /// ⚠️ SONDA: fecha o popover sem gravar (as fotos passam ao estado seguinte).
     pub fn close_pop_for_photo(&mut self) {
         self.pop = None;
+        self.dest = None;
+        self.ask = None;
     }
 
     /// ⚠️ SONDA: o popover do evento aberto.
     #[must_use]
     pub fn probe_pop(&self) -> Option<&EventPop> {
         self.pop.as_ref()
+    }
+
+    /// ⚠️ SONDA: o destino de «To Kanban» aberto.
+    #[must_use]
+    pub fn probe_dest(&self) -> Option<&DestPop> {
+        self.dest.as_ref()
+    }
+
+    /// ⚠️ SONDA: a pergunta do alcance aberta.
+    #[must_use]
+    pub fn probe_ask(&self) -> Option<&ScopePop> {
+        self.ask.as_ref()
     }
 
     /// ⚠️ SONDA: o estado do calendário (os testes perguntam-lhe onde pintou um item).

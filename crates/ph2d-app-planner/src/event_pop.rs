@@ -1,7 +1,8 @@
 //! **O popover do evento** — criar ou editar um evento próprio do Calendário: o título, a duração
 //! (30 min · 1 h · 2 h · dia inteiro), a recorrência, e o seletor de datas da W7 (o MESMO do verso do
 //! cartão) para o dia, a hora e o lembrete. «Start date» ligado = um evento de vários dias (do início
-//! à data).
+//! à data). Numa ocorrência de uma série, «Save» e «Delete event» perguntam o alcance
+//! ([`crate::scope`]).
 
 use ph2d_editor_core::doc_surface::{Key, KeyInput};
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_text_elided, stroke_rounded_rect};
@@ -22,6 +23,7 @@ use ph2d_tokens::{ColorToken as T, Theme};
 use ph2d_vector::VectorScene;
 
 use crate::metrics as m;
+use crate::scope::{Ask, Change};
 use crate::ui::{c, text_top};
 
 /// As durações oferecidas (minutos); a última é o dia inteiro.
@@ -44,10 +46,23 @@ pub enum PopHit {
     Picker,
 }
 
+/// O que fechou o popover.
+#[derive(Clone, Debug, PartialEq)]
+pub enum Done {
+    /// O lote a aplicar (vazio: «Close»).
+    Plan(Plan),
+    /// Uma ocorrência de uma série: falta o alcance.
+    Ask(Ask),
+}
+
 /// O popover aberto.
 #[derive(Clone, Debug)]
 pub struct EventPop {
     pub base: Option<Event>,
+    /// O documento do evento (a agenda, ou o Kanban de uma sessão).
+    pub kanban: KanbanId,
+    /// A ocorrência aberta de uma série (o início que a regra lhe dá).
+    pub occurrence: Option<Moment>,
     pub title: LineField,
     pub editing: bool,
     pub picker: Picker,
@@ -68,10 +83,19 @@ fn repeat_key(r: Option<Repeat>) -> &'static str {
 }
 
 impl EventPop {
-    /// O popover de `e` (`None` = um evento novo que começa em `slot`).
+    /// O popover de `e` (`None` = um evento novo que começa em `slot`), no Kanban `kanban`, aberto
+    /// na ocorrência `at` (`None` = o próprio evento).
     #[must_use]
-    pub fn new(e: Option<Event>, slot: Moment, cx: &Ctx<'_>) -> Self {
-        let (start, minutes, all_day, repeat, remind) = e.as_ref().map_or(
+    pub fn new(e: Option<Event>, kanban: KanbanId, at: Option<Moment>, slot: Moment, cx: &Ctx<'_>) -> Self {
+        let occurrence = at.filter(|_| e.as_ref().is_some_and(|e| e.repeat.is_some()));
+        // O seletor mostra a ocorrência, não o início da série.
+        let shown = e.clone().map(|mut s| {
+            if let Some(at) = occurrence {
+                (s.start, s.end) = (at, Moment(at.0 + (s.end.0 - s.start.0)));
+            }
+            s
+        });
+        let (start, minutes, all_day, repeat, remind) = shown.as_ref().map_or(
             (slot, DURATIONS[1], false, None, None),
             |e| {
                 let mins = u32::try_from((e.end.0 - e.start.0) / 60_000).unwrap_or(60);
@@ -80,7 +104,7 @@ impl EventPop {
         );
         let zone = if all_day { Zone::utc() } else { cx.zone.clone() };
         let multi = all_day && minutes > 24 * 60;
-        let last = e.as_ref().map_or(start, |e| Moment(e.end.0 - 1));
+        let last = shown.as_ref().map_or(start, |e| Moment(e.end.0 - 1));
         let mut picker = Picker::new(
             0x5045_4F50,
             multi.then_some(start),
@@ -100,6 +124,8 @@ impl EventPop {
             title: LineField::new(e.as_ref().map_or_else(String::new, |e| e.title.clone())),
             editing: e.is_none(),
             base: e,
+            kanban,
+            occurrence,
             picker,
             minutes,
             all_day,
@@ -186,7 +212,7 @@ impl EventPop {
     }
 
     /// Um clique. `Some(plan)` = o popover fechou (o plano pode estar vazio: «Close»).
-    pub fn click(&mut self, set: &KanbanSet, cx: &Ctx<'_>, x: f32, y: f32) -> Option<Plan> {
+    pub fn click(&mut self, set: &KanbanSet, cx: &Ctx<'_>, x: f32, y: f32) -> Option<Done> {
         let hit = self.hits().into_iter().find(|(_, r)| r.contains(x, y)).map(|(h, _)| h);
         self.editing = hit == Some(PopHit::Title);
         match hit? {
@@ -211,7 +237,7 @@ impl EventPop {
         }
     }
 
-    fn picker_events(&mut self, set: &KanbanSet, cx: &Ctx<'_>, events: Vec<DatePickerEvent>) -> Option<Plan> {
+    fn picker_events(&mut self, set: &KanbanSet, cx: &Ctx<'_>, events: Vec<DatePickerEvent>) -> Option<Done> {
         let zone = self.zone(cx);
         let today = day_of(cx.now.0, &zone);
         for ev in events {
@@ -224,7 +250,7 @@ impl EventPop {
                 DatePickerEvent::Toggled { .. } | DatePickerEvent::Reminder(_) => {}
                 DatePickerEvent::Save => return Some(self.save(set, cx)),
                 DatePickerEvent::Remove => return Some(self.remove()),
-                DatePickerEvent::Close => return Some(Plan::default()),
+                DatePickerEvent::Close => return Some(Done::Plan(Plan::default())),
             }
         }
         None
@@ -256,36 +282,56 @@ impl EventPop {
         Some(e)
     }
 
-    fn save(&self, set: &KanbanSet, cx: &Ctx<'_>) -> Plan {
-        let mut plan = Plan::default();
-        if let Some(e) = self.event(set, cx) {
-            plan.push(KanbanId::AGENDA, KanbanOp::put(Record::Event(e)));
-        }
-        plan
+    /// A pergunta do alcance, se o popover está numa ocorrência de uma série.
+    fn ask(&self, change: Change) -> Option<Done> {
+        let (base, at) = (self.base.as_ref()?, self.occurrence?);
+        Some(Done::Ask(Ask {
+            kanban: self.kanban,
+            series: base.id,
+            at,
+            change,
+        }))
     }
 
-    fn remove(&self) -> Plan {
+    fn save(&self, set: &KanbanSet, cx: &Ctx<'_>) -> Done {
+        let e = self.event(set, cx);
+        if let Some(to) = &e
+            && let Some(done) = self.ask(Change::Edit(Box::new(to.clone())))
+        {
+            return done;
+        }
+        let mut plan = Plan::default();
+        if let Some(e) = e {
+            plan.push(self.kanban, KanbanOp::put(Record::Event(e)));
+        }
+        Done::Plan(plan)
+    }
+
+    fn remove(&self) -> Done {
+        if let Some(done) = self.ask(Change::Delete) {
+            return done;
+        }
         let mut plan = Plan::default();
         if let Some(e) = &self.base {
-            plan.push(KanbanId::AGENDA, KanbanOp::Delete(RecordId::Event(e.id)));
+            plan.push(self.kanban, KanbanOp::Delete(RecordId::Event(e.id)));
         }
-        plan
+        Done::Plan(plan)
     }
 
     /// Uma tecla: o título em edição, ou a caixa do seletor. `Some(plan)` = fechou.
-    pub fn key(&mut self, set: &KanbanSet, cx: &Ctx<'_>, input: &KeyInput<'_>) -> (bool, Option<Plan>) {
+    pub fn key(&mut self, set: &KanbanSet, cx: &Ctx<'_>, input: &KeyInput<'_>) -> (bool, Option<Done>) {
         if !input.pressed {
             return (true, None);
         }
         if self.editing {
             return match self.title.key(input.key, input.text) {
                 FieldKey::Commit => (true, Some(self.save(set, cx))),
-                FieldKey::Cancel => (true, Some(Plan::default())),
+                FieldKey::Cancel => (true, Some(Done::Plan(Plan::default()))),
                 _ => (true, None),
             };
         }
         if input.key == Key::Escape {
-            return (true, Some(Plan::default()));
+            return (true, Some(Done::Plan(Plan::default())));
         }
         let (taken, ev) = self.picker.widget.key(input);
         let plan = ev.and_then(|e| self.picker_events(set, cx, vec![e]));

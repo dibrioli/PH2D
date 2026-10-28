@@ -30,6 +30,7 @@ fn inbox_captura_e_move_para_o_kanban_num_passo_que_se_desfaz() {
     let id = item(&m, "Buy paper");
     let me = m.set().agenda().inbox[&id].owner.clone();
     m.clica_em(Hit::InboxToCard(id));
+    m.enter(); // «Move» no destino (a 1.ª lista, no fundo)
     let c = m.cartao(k, "Buy paper");
     assert!(c.members.contains(&me), "o cartão é meu, como no Trello");
     assert!(m.set().agenda().inbox[&id].meta.deleted, "o item saiu da Inbox");

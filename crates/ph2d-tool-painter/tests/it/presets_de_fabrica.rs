@@ -427,9 +427,85 @@ fn largura_de_com(p: &Preset, raio: f32, crua: bool, r: Relogio) -> f32 {
     regua(&px, w, h)
 }
 
-/// A imagem que [`largura_de`] mede, e a régua com que a mede.
+std::thread_local! {
+    /// `true` = a largura medida COM o Real Oil do preset (o caminho de antes da J6; só a sonda
+    /// `sonda_largura_sem_oleo` o liga, para comparar).
+    static LEI_COM_OLEO: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// **A largura sem o Real Oil, medida** (J6): o preset de fábrica `PH2D_SONDA_PRESET` («Knife Oily») a cada 8.º raio
+/// da lei, com e sem o óleo, cada raio num fio, as duas ordens intercaladas — o relógio e a largura de cada.
+#[test]
+#[ignore = "sonda: mede a lei da largura com e sem o Real Oil; corre-se à mão"]
+fn sonda_largura_sem_oleo() {
+    let nome = std::env::var("PH2D_SONDA_PRESET").unwrap_or_else(|_| "Knife Oily".into());
+    let p = super::midias_de_fabrica::de_fabrica(&nome);
+    let raios: Vec<f32> = raios_da_lei().into_iter().step_by(8).collect();
+    let medidas: Vec<(f32, [(f32, f64); 2])> = std::thread::scope(|s| {
+        let h: Vec<_> = raios
+            .iter()
+            .enumerate()
+            .map(|(k, &raio)| {
+                let p = &p;
+                s.spawn(move || {
+                    let mut m = [(0.0, 0.0); 2];
+                    for j in 0..2 {
+                        let com = (j + k) % 2 == 0;
+                        LEI_COM_OLEO.set(com);
+                        let t0 = std::time::Instant::now();
+                        let l = largura_de(p, raio, true);
+                        m[usize::from(com)] = (l, t0.elapsed().as_secs_f64());
+                    }
+                    (raio, m)
+                })
+            })
+            .collect();
+        h.into_iter().map(|h| h.join().unwrap()).collect()
+    });
+    let (mut t_sem, mut t_com) = (0.0, 0.0);
+    for (raio, [(ls, ts), (lc, tc)]) in &medidas {
+        println!("[sonda] {nome} raio {raio}: sem óleo {ls} px {ts:.2} s · com {lc} px {tc:.2} s");
+        t_sem += ts;
+        t_com += tc;
+    }
+    println!("[sonda] {nome}: soma com óleo {t_com:.1} s → sem {t_sem:.1} s ({:.2}×)", t_com / t_sem);
+    let mudam: Vec<_> = medidas.iter().filter(|(_, [(a, _), (b, _)])| a != b).collect();
+    println!("[sonda] {} de {} larguras mudam sem o óleo", mudam.len(), medidas.len());
+    // ONDE mudam: o píxel que é papel sem o óleo e não é com ele (a luz/sombra fora da tinta), e o contrário.
+    for raio in [18.5, 98.9] {
+        let img = |com: bool| {
+            LEI_COM_OLEO.set(com);
+            imagem_da_largura(&p, raio, true, Relogio::PorQuadro).0
+        };
+        let (sem, com) = (img(false), img(true));
+        let papel = |px: &[u8; 4]| px[..3] == [255; 3];
+        let (mut so_com, mut so_sem, mut tinta) = (0, 0, 0);
+        for (a, b) in sem.as_chunks::<4>().0.iter().zip(com.as_chunks::<4>().0) {
+            match (papel(a), papel(b)) {
+                (true, false) => so_com += 1,
+                (false, true) => so_sem += 1,
+                (false, false) => tinta += 1,
+                _ => {}
+            }
+        }
+        println!(
+            "[sonda] raio {raio}: papel sem óleo que o óleo escurece {so_com} px · tinta sem óleo que com ele é papel \
+             {so_sem} px · tinta nos dois {tinta} px"
+        );
+    }
+}
+
+/// A imagem que [`largura_de`] mede, e a régua com que a mede. ⛔ Com o Real Oil DESLIGADO (J6, REGRAS_DE_CUSTO
+/// §METODOLOGIA 4): a luz não muda onde a tinta está, e com ela cada raio pagava o campo de altura a cada passo.
 type Regua = fn(&[u8], u32, u32) -> f32;
 fn imagem_da_largura(p: &Preset, raio: f32, crua: bool, r: Relogio) -> (Vec<u8>, u32, u32, Regua) {
+    let sem;
+    let p = if LEI_COM_OLEO.get() {
+        p
+    } else {
+        sem = sem_real_oil(p.clone());
+        &sem
+    };
     if let Some(modo) = p.parametros.paint_mode.as_deref().filter(|m| *m != "Paint") {
         let (px, w, h) = imagem_da_ferramenta(p, modo, raio, crua, r);
         return (px, w, h, super::sonda_gestos::largura_mediana);
@@ -587,13 +663,12 @@ fn raio_do_motor_da_tabela(tabela: &[[f64; 2]], raio: f32) -> f32 {
 pub(super) fn tabela_de_largura(p: &Preset) -> Vec<[f64; 2]> {
     use std::sync::atomic::{AtomicUsize, Ordering};
     let raios = raios_da_lei();
-    // Com o Real Oil a tela de um raio pesa ~260 B por célula (Dabber a raio 1000: 1 513 contra 940 MiB sem ele, J6):
-    // os 64 raios de uma vez passavam os 24G da fatia (OOM). 8 de cada vez, os maiores primeiro: ≤ ~11 GiB.
-    let com_oleo = p.parametros.engine.get(CHAVE_REAL_OIL) == Some(&1.0);
+    // A largura mede-se sem o Real Oil ([`imagem_da_largura`]): a tela de um raio volta a ~940 MiB no Dabber a 1000
+    // (com o óleo eram 1 513 e os 64 raios de uma vez passavam os 24G da fatia, J6).
     let fios = std::env::var("PH2D_LEI_FIOS")
         .ok()
         .and_then(|v| v.parse().ok())
-        .unwrap_or(if com_oleo { 8 } else { raios.len() });
+        .unwrap_or(raios.len());
     let proximo = AtomicUsize::new(0);
     let mut larguras = vec![0.0_f32; raios.len()];
     std::thread::scope(|s| {

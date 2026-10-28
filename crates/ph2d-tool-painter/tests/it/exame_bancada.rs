@@ -407,6 +407,13 @@ pub fn pinta_cena_com(
     )
 }
 
+std::thread_local! {
+    /// `true` = a luz do óleo a CADA composite (o caminho do app; antes da J6 a bancada pintava assim). Por omissão a
+    /// bancada adia-a para a foto ([`PainterTool::set_wet_oleo_adiado`]) — o gate
+    /// `a_luz_do_oleo_so_na_foto_e_a_de_cada_passo` prova o mesmo bit.
+    static LUZ_A_MEIO: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
 /// [`pinta_cena_com`] com o [`Oleo`] escolhido e o relógio de cada fase somado em `fases`.
 #[allow(clippy::too_many_arguments)]
 pub fn pinta_cena_oleo(
@@ -427,6 +434,7 @@ pub fn pinta_cena_oleo(
         .flat_map(|_| [papel[0], papel[1], papel[2], alfa])
         .collect();
     t.set_source(fundo, w, h);
+    t.set_wet_oleo_adiado(!LUZ_A_MEIO.get());
     let mut vistas = 0;
     let mut actual: Option<&Pincel> = None;
     let mut meio = pincel.meio();
@@ -481,6 +489,8 @@ pub fn pinta_cena_oleo(
             }
             "foto" if vistas == foto => {
                 let t0 = Instant::now();
+                // A luz do óleo UMA vez, aqui (REGRAS_DE_CUSTO §METODOLOGIA 4): a meio ela não muda a tinta.
+                t.set_wet_oleo_adiado(false);
                 let px = t.run_full().0;
                 fases.foto += t0.elapsed().as_secs_f64();
                 return (op["nome"].as_str().unwrap().to_owned(), px);
@@ -926,6 +936,93 @@ fn exame_oleo_fases() {
             pincel.nome,
             total(Oleo::Sempre) / total(Oleo::Desligado)
         );
+    }
+}
+
+/// [`pinta_cena_oleo`] com a luz do óleo a cada composite (`a_meio`) ou só na foto.
+fn pinta_com_luz(a_meio: bool, f: impl FnOnce() -> Vec<u8>) -> Vec<u8> {
+    LUZ_A_MEIO.set(a_meio);
+    let px = f();
+    LUZ_A_MEIO.set(false);
+    px
+}
+
+/// **A luz do óleo só na foto, medida** (J6, REGRAS_DE_CUSTO §METODOLOGIA 4): uma foto da bateria com a luz a cada
+/// composite (o caminho de antes) e só na foto, intercaladas no MESMO processo, relógio mínimo — e o mesmo bit.
+/// `PH2D_EXAME_PRESETS` («Knife Oily») · `PH2D_EXAME_CENAS` («gestos») · `PH2D_EXAME_FOTO` (0) · `PH2D_EXAME_RONDAS` (2).
+#[test]
+#[ignore = "bancada do EXAME: mede a luz do óleo adiada; corre-se à mão"]
+fn exame_oleo_adiado() {
+    let spec = std::env::var("PH2D_EXAME_PRESETS").unwrap_or_else(|_| "Knife Oily".into());
+    let pincel = pinceis(&spec).remove(0);
+    let base = pincel
+        .nao_pinta()
+        .then(|| pinceis(base_padrao(pincel.meio(), pincel.modo())).remove(0));
+    let nome = std::env::var("PH2D_EXAME_CENAS").unwrap_or_else(|_| "gestos".into());
+    let foto: usize = std::env::var("PH2D_EXAME_FOTO").map_or(0, |v| v.parse().unwrap());
+    let rondas: usize = std::env::var("PH2D_EXAME_RONDAS").map_or(2, |v| v.parse().unwrap());
+    let bat = bateria();
+    let tela = [0, 1].map(|i| bat["tela"][i].as_u64().unwrap() as u32);
+    let papel = [0, 1, 2].map(|i| bat["papel"][i].as_u64().unwrap() as u8);
+    let cena = bat["cenas"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|c| c["nome"] == nome.as_str())
+        .unwrap_or_else(|| panic!("cena {nome}"));
+    let mut minimo = [f64::INFINITY; 2];
+    let mut fotos: [Option<u64>; 2] = [None; 2];
+    for r in 0..rondas {
+        for k in 0..2 {
+            let a_meio = (k + r) % 2 == 0;
+            let t0 = Instant::now();
+            let px = pinta_com_luz(a_meio, || {
+                let mut f = Fases::default();
+                pinta_cena_oleo(&pincel, base.as_ref(), cena, tela, papel, foto, false, Oleo::DoPreset, &mut f).1
+            });
+            let s = t0.elapsed().as_secs_f64();
+            let h = fnv1a(&px);
+            println!("[adiado] ronda {r} luz a meio {a_meio}: {s:.2} s · fnv {h:#018x} (load {})", carga());
+            let i = usize::from(a_meio);
+            minimo[i] = minimo[i].min(s);
+            fotos[i] = Some(h);
+        }
+    }
+    println!(
+        "[adiado] {} · {nome} foto {foto}: MÍNIMO luz a meio {:.2} s → só na foto {:.2} s ({:.2}×)",
+        pincel.nome,
+        minimo[1],
+        minimo[0],
+        minimo[1] / minimo[0]
+    );
+    assert_eq!(fotos[0], fotos[1], "a luz só na foto não é a de cada passo");
+}
+
+/// ⛔ **A luz do óleo só na foto é a de cada passo, ao bit** (J6): a bancada e o gerador adiam a óptica do óleo até à
+/// foto (a luz não muda onde a tinta está); a foto sai igual à do caminho do app, que a calcula a cada composite. Um
+/// pincel com a caixa no preset e uma ferramenta sobre a base dele, a foto molhada e a seca. CONTROLO: sem o óleo a
+/// foto é outra (o portão compara imagens que o óleo mudou).
+#[test]
+fn a_luz_do_oleo_so_na_foto_e_a_de_cada_passo() {
+    let cena = cena_pequena();
+    let (tela, papel) = ([160, 112], [236, 232, 222]);
+    for (cand, base) in [("Knife Oily", None), ("Blender Soft", Some("Oil Bristle"))] {
+        let p = pinceis(cand).remove(0);
+        let b = base.map(|b| pinceis(b).remove(0));
+        for foto in 0..2 {
+            let pinta = |a_meio: bool, o: Oleo| {
+                pinta_com_luz(a_meio, || {
+                    let mut f = Fases::default();
+                    pinta_cena_oleo(&p, b.as_ref(), &cena, tela, papel, foto, false, o, &mut f).1
+                })
+            };
+            let so_na_foto = pinta(false, Oleo::DoPreset);
+            assert!(
+                so_na_foto == pinta(true, Oleo::DoPreset),
+                "{cand} foto {foto}: a luz do óleo só na foto saiu outra"
+            );
+            assert!(so_na_foto != pinta(false, Oleo::Desligado), "{cand} foto {foto}: controlo — sem óleo, igual");
+        }
     }
 }
 

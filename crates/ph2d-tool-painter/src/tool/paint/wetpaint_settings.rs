@@ -610,6 +610,21 @@ impl PainterTool {
         self.paint.wetpaint.oleo_real = oleo.map(|_| self.paint.wetpaint.oleo_real_valores);
     }
 
+    /// **Adia a óptica do óleo** até `false` (o pintor de TESTE — a bancada, o gerador —, como o preview do preset já
+    /// faz, U4 W3b): o traço pousa o óleo, o composite a meio sai sem a luz, e ao desligar, com óleo na tela, a tela
+    /// inteira recompõe-se com ela — a foto final ao bit (`exame_bancada` J6). O app nunca a liga.
+    #[doc(hidden)]
+    pub fn set_wet_oleo_adiado(&mut self, adiado: bool) {
+        let era = std::mem::replace(&mut self.paint.wetpaint.oleo_adiado, adiado);
+        let tem_oleo = self.paint.wetpaint.session.as_mut().is_some_and(|s| {
+            s.bring_home();
+            s.engine.layers.iter().any(|l| l.visible && !l.grid.oleo.is_empty())
+        });
+        if era && !adiado && tem_oleo {
+            self.wet_recomposite_full();
+        }
+    }
+
     /// O **Óleo Real** do Wet Paint (`None` = desligado).
     #[must_use]
     pub fn wet_oleo_real(&self) -> Option<ph2d_wet_paint::oleo_real::OleoReal> {

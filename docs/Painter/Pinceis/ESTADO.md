@@ -55,7 +55,11 @@
 
 ## MISSÃO 2 — JANELA 6 (28/10, [`JANELA_6.md`](JANELA_6.md)): A FILA (censo J6, por pincéis destravados)
 
-0. ⭐ Dono 28/10: Oil/* de fábrica com o Real Oil LIGADO + `paper_depth` limpo (HANDOFF_W3b §Aberto 1, 6) — EM CURSO.
+0. ⭐ Dono 28/10: Oil/* com o Real Oil LIGADO (`e314e58cec` `d94e19a57e` `105f28791d` `78fb8c7c77` `5470ce0969`): óleo 2×
+   mais rápido ao bit; bancada fotografa o óleo do traço. Cega (9 óleos): Rebelle achado 11/27 (acaso 9) ⇒ seguem
+   aprovados com óleo Filbert 396 · K. Textured 374 · K. Dry 362 · K. Smooth 3 352 · K. Oily 342 (régua > sem óleo).
+   Mais longe na régua (EM CURSO, motor: o óleo derrete o grão fino): K. Stain 162 · K. Grainy 226 · Dabber 4 322 ·
+   Metallic Flat 326. O OOM era paralelismo + 19 GB de /tmp órfão (11,5 GB de targets apagados).
 1. Borda da mancha molhada ~10 px + traço de 200 px do filme (`exames/aguarela.md`): Wet Liner, Wet Wash, Mop — EM CURSO.
 2. ✅ Pontas a direito (`10eee50b0d` motor, `fd73b349ca` r2; [`J6_pontas_rectas.md`](J6_pontas_rectas.md)): **Soft Pastel
    APROVADO** (cega r2: o revisor tomou o nosso pelo Rebelle nas 6 linhas). Square Hard curado não aprovado (r2: faixa

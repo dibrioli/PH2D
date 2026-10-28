@@ -222,7 +222,7 @@ sem a maquete aprovada.
 | **W6** | Filtro, pesquisa, modelos, **cartões espelho**, copiar/mover entre Kanbans, envelhecimento, edição rápida (`E`), todos os atalhos | `ph2d-kanban-filter` |
 | **W7** | Vistas **Tabela, Calendário, Linha do tempo, Painel** (+ Mapa, se o dono quiser — §8) | calendário arrastável; Painel com gráficos pela skill de dataviz |
 | **W8** | **Automação** (regras, botões de cartão e de quadro, comandos agendados e por prazo) + scripts Luau a mexer no Kanban | `ph2d-kanban-auto`; API `ph2d.kanban.*` no editor de scripts |
-| **W9** | **Inbox, Planner, Os meus cartões**, notificações e lembretes | centro de notificações (hoje só há avisos) |
+| **W9** | **Calendário do projecto** (§8.1), **Inbox, Planner, Os meus cartões**, notificações e lembretes | eventos próprios no `ph2d-kanban-model`; centro de notificações (hoje só há avisos) |
 | **W10** | **Importar do Trello** (o JSON que o trello.com exporta) e exportar CSV/markdown | o JSON real do dono vira fixture e gate |
 | **W11** | Os «Power-Ups» do PH2D: ligar um cartão a objectos da cena, scripts, macros, trechos da timeline; **nota adesiva ↔ cartão** | o que o Trello não pode ter: o cartão que abre o objecto |
 | **Fecho** | Tutorial em PDF + handoff de integração | — |
@@ -250,15 +250,30 @@ Pedir integração a cada 1–2 ondas (DIRETRIZ §1.5.2 item 5).
 
 ---
 
-## 8 — Decisões de PRODUTO pendentes (do dono)
+## 8 — Decisões de PRODUTO (do dono, 27/10)
 
-1. **Onde mora um Kanban:** dentro do projecto (como os Quadros — recomendado) ou também uma área
-   pessoal que atravessa projectos (Inbox/Planner pessoais)?
-2. **Calendários externos** (Google / Microsoft) no Planner: pede internet + login nas contas.
-   Alternativa sem login: exportar/assinar `.ics`.
-3. **Vista Mapa:** pede mapas da internet (OpenStreetMap). Fazer ou pular?
-4. **IA** (o Trello tem: resumir, extrair tarefas): fica para o fim, como no editor de scripts?
-5. **Ordem das ondas:** a proposta acima, ou outra prioridade (ex.: o canvas antes do verso)?
+1. ✅ **O Kanban mora dentro do projecto** (como os Quadros). Inbox, Planner e «Os meus cartões»
+   atravessam os Kanbans **do projecto**, não projectos diferentes.
+2. ✅ **Calendários externos (Google/Microsoft): talvez no futuro — fora desta linha.** No lugar
+   deles, o dono aceitou a proposta de um **Calendário do projecto, nosso, interno** (§8.1).
+3. ⏳ **Vista Mapa:** explicada ao dono em 27/10 (cartões com morada viram alfinetes num mapa da
+   internet); recomendação: **pular** — pouco uso num projecto de jogo/animação e pede internet.
+   O campo «Localização» do cartão fica (texto). Aguarda a palavra dele.
+4. ✅ **IA no fim** (como no editor de scripts).
+5. ✅ **Ordem das ondas: a do plano** (§6) — decisão técnica delegada.
+
+### 8.1 O Calendário do projecto (substitui o Google/Microsoft)
+- Uma **aba Calendário** (mês · semana · dia · agenda) que junta **todas as datas do projecto**:
+  início e entrega dos cartões de **todos** os Kanbans, itens de checklist com data, lembretes —
+  e **eventos próprios** que não são cartões (reunião, marco, entrega ao cliente, feriado).
+- Arrastar um cartão no calendário **muda a data dele** (é o mesmo documento, como aba ↔ canvas).
+- O **Planner** é este calendário com uma coluna lateral (Inbox + cartões sem data) para arrastar
+  para blocos de tempo.
+- Cores por Kanban/etiqueta, filtro por pessoa; vive no projecto e viaja na sessão ao vivo.
+- Porta para o futuro: exportar `.ics` (sem login) e, se o dono quiser, a ligação Google/Microsoft
+  por cima do mesmo modelo.
+- Entra na **W9** (com Inbox, Planner e notificações); a vista Calendário de UM Kanban (W7) é o
+  mesmo widget filtrado.
 
 ---
 

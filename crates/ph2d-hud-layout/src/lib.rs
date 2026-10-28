@@ -62,12 +62,22 @@ pub enum Eixo {
 pub enum Relacao {
     /// `a` encostado ao `lado` de `b` com `folga` (Direita: a.x == b.x + b.w + folga; Esquerda: a.x + a.w + folga == b.x;
     /// Acima: a.y == b.y + b.h + folga; Abaixo: a.y + a.h + folga == b.y). No eixo cruzado nada.
-    AoLado { a: usize, b: usize, lado: Lado, folga: f64 },
+    AoLado {
+        a: usize,
+        b: usize,
+        lado: Lado,
+        folga: f64,
+    },
     /// Os centros de `a` e `b` coincidem no eixo.
     Centrado { a: usize, b: usize, eixo: Eixo },
     /// `a` não passa a borda de `b` do lado de onde vem: Direita = a fica à esquerda de b (a.x + a.w + folga <= b.x);
     /// Esquerda: a.x >= b.x + b.w + folga; Acima: a.y + a.h + folga <= b.y; Abaixo: a.y >= b.y + b.h + folga.
-    NaoInvade { a: usize, b: usize, lado: Lado, folga: f64 },
+    NaoInvade {
+        a: usize,
+        b: usize,
+        lado: Lado,
+        folga: f64,
+    },
     /// A largura de `a` quer ser a do conteúdo (o texto medido) — `a.w == conteudo` com a força do par;
     /// e NUNCA maior que ele (REQUIRED `a.w <= conteudo`). Sem conteúdo medido, inerte.
     LarguraDoConteudo { a: usize },
@@ -130,7 +140,9 @@ struct Largura {
 /// Valida a relação contra `n` elementos: `(a, Some(b))`, `(a, None)` para a largura, ou `None` se é má.
 fn indices(r: &Relacao, n: usize) -> Option<(usize, Option<usize>)> {
     let (a, b) = match *r {
-        Relacao::AoLado { a, b, .. } | Relacao::Centrado { a, b, .. } | Relacao::NaoInvade { a, b, .. } => (a, Some(b)),
+        Relacao::AoLado { a, b, .. }
+        | Relacao::Centrado { a, b, .. }
+        | Relacao::NaoInvade { a, b, .. } => (a, Some(b)),
         Relacao::LarguraDoConteudo { a } => (a, None),
     };
     let ok = a < n && b.is_none_or(|b| b < n && b != a);
@@ -140,23 +152,68 @@ fn indices(r: &Relacao, n: usize) -> Option<(usize, Option<usize>)> {
 fn relacao(r: &Relacao, a: Vars, b: Vars, s: Strength) -> Constraint {
     match *r {
         Relacao::AoLado { lado, folga, .. } => match lado {
-            Lado::Direita => restricao(&[(a.x, 1.0), (b.x, -1.0), (b.w, -1.0)], -g(folga), Op::Equal, s),
-            Lado::Esquerda => restricao(&[(a.x, 1.0), (a.w, 1.0), (b.x, -1.0)], g(folga), Op::Equal, s),
-            Lado::Acima => restricao(&[(a.y, 1.0), (b.y, -1.0), (b.h, -1.0)], -g(folga), Op::Equal, s),
-            Lado::Abaixo => restricao(&[(a.y, 1.0), (a.h, 1.0), (b.y, -1.0)], g(folga), Op::Equal, s),
+            Lado::Direita => restricao(
+                &[(a.x, 1.0), (b.x, -1.0), (b.w, -1.0)],
+                -g(folga),
+                Op::Equal,
+                s,
+            ),
+            Lado::Esquerda => restricao(
+                &[(a.x, 1.0), (a.w, 1.0), (b.x, -1.0)],
+                g(folga),
+                Op::Equal,
+                s,
+            ),
+            Lado::Acima => restricao(
+                &[(a.y, 1.0), (b.y, -1.0), (b.h, -1.0)],
+                -g(folga),
+                Op::Equal,
+                s,
+            ),
+            Lado::Abaixo => restricao(
+                &[(a.y, 1.0), (a.h, 1.0), (b.y, -1.0)],
+                g(folga),
+                Op::Equal,
+                s,
+            ),
         },
         Relacao::Centrado { eixo, .. } => {
             let (ap, am, bp, bm) = match eixo {
                 Eixo::X => (a.x, a.w, b.x, b.w),
                 Eixo::Y => (a.y, a.h, b.y, b.h),
             };
-            restricao(&[(ap, 1.0), (am, 0.5), (bp, -1.0), (bm, -0.5)], 0.0, Op::Equal, s)
+            restricao(
+                &[(ap, 1.0), (am, 0.5), (bp, -1.0), (bm, -0.5)],
+                0.0,
+                Op::Equal,
+                s,
+            )
         }
         Relacao::NaoInvade { lado, folga, .. } => match lado {
-            Lado::Direita => restricao(&[(a.x, 1.0), (a.w, 1.0), (b.x, -1.0)], g(folga), Op::LessOrEqual, s),
-            Lado::Esquerda => restricao(&[(a.x, 1.0), (b.x, -1.0), (b.w, -1.0)], -g(folga), Op::GreaterOrEqual, s),
-            Lado::Acima => restricao(&[(a.y, 1.0), (a.h, 1.0), (b.y, -1.0)], g(folga), Op::LessOrEqual, s),
-            Lado::Abaixo => restricao(&[(a.y, 1.0), (b.y, -1.0), (b.h, -1.0)], -g(folga), Op::GreaterOrEqual, s),
+            Lado::Direita => restricao(
+                &[(a.x, 1.0), (a.w, 1.0), (b.x, -1.0)],
+                g(folga),
+                Op::LessOrEqual,
+                s,
+            ),
+            Lado::Esquerda => restricao(
+                &[(a.x, 1.0), (b.x, -1.0), (b.w, -1.0)],
+                -g(folga),
+                Op::GreaterOrEqual,
+                s,
+            ),
+            Lado::Acima => restricao(
+                &[(a.y, 1.0), (a.h, 1.0), (b.y, -1.0)],
+                g(folga),
+                Op::LessOrEqual,
+                s,
+            ),
+            Lado::Abaixo => restricao(
+                &[(a.y, 1.0), (b.y, -1.0), (b.h, -1.0)],
+                -g(folga),
+                Op::GreaterOrEqual,
+                s,
+            ),
         },
         Relacao::LarguraDoConteudo { .. } => unreachable!("a largura monta-se em `Arranjo::new`"),
     }
@@ -182,7 +239,11 @@ impl Grupo {
     }
 
     fn edicao(&mut self, v: Variable, k: f64) {
-        let _ = self.solver.add_edit_variable(v, Strength::new(FORCA_EDICAO));
+        self.edicao_com(v, k, Strength::new(FORCA_EDICAO));
+    }
+
+    fn edicao_com(&mut self, v: Variable, k: f64, s: Strength) {
+        let _ = self.solver.add_edit_variable(v, s);
         self.sugere(v, k);
     }
 }
@@ -208,7 +269,10 @@ pub struct Arranjo {
 impl Arranjo {
     pub fn new(canvas: Caixa, elementos: &[Elemento], relacoes: &[(Relacao, Forca)]) -> Self {
         let n = elementos.len();
-        let validas: Vec<_> = relacoes.iter().filter_map(|(r, f)| indices(r, n).map(|ab| (r, *f, ab))).collect();
+        let validas: Vec<_> = relacoes
+            .iter()
+            .filter_map(|(r, f)| indices(r, n).map(|ab| (r, *f, ab)))
+            .collect();
         let (mut entra, mut segue) = (vec![false; n], vec![false; n]);
         let mut pai: Vec<usize> = (0..n).collect();
         for &(_, _, (a, b)) in &validas {
@@ -232,9 +296,18 @@ impl Arranjo {
         for i in (0..n).filter(|&i| entra[i]) {
             let r = raiz(&mut pai, i);
             let gi = *grupo_da_raiz.entry(r).or_insert_with(|| {
-                let cv = [Variable::new(), Variable::new(), Variable::new(), Variable::new()];
-                let mut gr =
-                    Grupo { solver: Solver::new(), canvas: cv, sugerido: BTreeMap::new(), larguras: Vec::new() };
+                let cv = [
+                    Variable::new(),
+                    Variable::new(),
+                    Variable::new(),
+                    Variable::new(),
+                ];
+                let mut gr = Grupo {
+                    solver: Solver::new(),
+                    canvas: cv,
+                    sugerido: BTreeMap::new(),
+                    larguras: Vec::new(),
+                };
                 for (v, k) in cv.into_iter().zip([canvas.x, canvas.y, canvas.w, canvas.h]) {
                     gr.edicao(v, k);
                 }
@@ -244,20 +317,43 @@ impl Arranjo {
             let gr = &mut arr.grupos[gi];
             let [cx, cy, cw, ch] = gr.canvas;
             let c = elementos[i].caixa;
-            let c = Caixa { x: g(c.x), y: g(c.y), w: g(c.w), h: g(c.h) };
-            let v = Vars { x: Variable::new(), y: Variable::new(), w: Variable::new(), h: Variable::new() };
-            let (pp, pw) = if segue[i] { (PESOS[0], PESOS[1]) } else { (PESOS[2], PESOS[3]) };
+            let v = Vars {
+                x: Variable::new(),
+                y: Variable::new(),
+                w: Variable::new(),
+                h: Variable::new(),
+            };
+            let (pp, pw) = if segue[i] {
+                (PESOS[0], PESOS[1])
+            } else {
+                (PESOS[2], PESOS[3])
+            };
+            // O «fica onde foi desenhado» é EDIÇÃO (com a força do stay): a caixa muda sem remontar o sistema.
+            for (var, k, s) in [
+                (v.x, c.x, Strength::new(pp)),
+                (v.y, c.y, Strength::new(pp)),
+                (v.w, c.w, Strength::new(pw)),
+                (v.h, c.h, forte),
+            ] {
+                gr.edicao_com(var, k, s);
+            }
             for cn in [
-                restricao(&[(v.x, 1.0)], -c.x, Op::Equal, Strength::new(pp)),
-                restricao(&[(v.y, 1.0)], -c.y, Op::Equal, Strength::new(pp)),
-                restricao(&[(v.w, 1.0)], -c.w, Op::Equal, Strength::new(pw)),
-                restricao(&[(v.h, 1.0)], -c.h, Op::Equal, forte),
                 restricao(&[(v.w, 1.0)], 0.0, Op::GreaterOrEqual, req),
                 restricao(&[(v.h, 1.0)], 0.0, Op::GreaterOrEqual, req),
                 restricao(&[(v.x, 1.0), (cx, -1.0)], 0.0, Op::GreaterOrEqual, forte),
                 restricao(&[(v.y, 1.0), (cy, -1.0)], 0.0, Op::GreaterOrEqual, forte),
-                restricao(&[(v.x, 1.0), (v.w, 1.0), (cx, -1.0), (cw, -1.0)], 0.0, Op::LessOrEqual, forte),
-                restricao(&[(v.y, 1.0), (v.h, 1.0), (cy, -1.0), (ch, -1.0)], 0.0, Op::LessOrEqual, forte),
+                restricao(
+                    &[(v.x, 1.0), (v.w, 1.0), (cx, -1.0), (cw, -1.0)],
+                    0.0,
+                    Op::LessOrEqual,
+                    forte,
+                ),
+                restricao(
+                    &[(v.y, 1.0), (v.h, 1.0), (cy, -1.0), (ch, -1.0)],
+                    0.0,
+                    Op::LessOrEqual,
+                    forte,
+                ),
             ] {
                 let _ = gr.solver.add_constraint(cn);
             }
@@ -281,7 +377,12 @@ impl Arranjo {
                     Some(_) => cs.clone().map(|c| gr.solver.add_constraint(c).is_ok()),
                     None => [false; 2],
                 };
-                gr.larguras.push(Largura { a, conteudo: cvar, cs, postas });
+                gr.larguras.push(Largura {
+                    a,
+                    conteudo: cvar,
+                    cs,
+                    postas,
+                });
                 continue;
             };
             let (_, vb) = arr.vars[b].expect("quem tem relação tem variáveis");
@@ -290,9 +391,46 @@ impl Arranjo {
         arr
     }
 
+    /// O quadro vivo: as caixas (âncoras, rótulos re-cozidos) E os conteúdos mudam. Elementos a menos ficam com a
+    /// última caixa; a mais, ignorados.
+    pub fn atualiza_elementos(&mut self, canvas: Caixa, elementos: &[Elemento]) -> Vec<Caixa> {
+        for (i, e) in elementos.iter().enumerate().take(self.caixas.len()) {
+            self.caixas[i] = e.caixa;
+            if let Some((gi, v)) = self.vars[i] {
+                let gr = &mut self.grupos[gi];
+                for (var, k) in [
+                    (v.x, e.caixa.x),
+                    (v.y, e.caixa.y),
+                    (v.w, e.caixa.w),
+                    (v.h, e.caixa.h),
+                ] {
+                    gr.sugere(var, k);
+                }
+            }
+        }
+        let conteudos: Vec<Option<f64>> = (0..self.caixas.len())
+            .map(|i| elementos.get(i).map_or(self.conteudo_de(i), |e| e.conteudo))
+            .collect();
+        self.atualiza(canvas, &conteudos)
+    }
+
+    /// O conteúdo que a largura `i` sugeriu por último (quem não tem largura: `None`).
+    fn conteudo_de(&self, i: usize) -> Option<f64> {
+        let (gi, _) = self.vars[i]?;
+        let gr = &self.grupos[gi];
+        let l = gr.larguras.iter().find(|l| l.a == i)?;
+        l.postas[0]
+            .then(|| gr.sugerido.get(&l.conteudo).copied())
+            .flatten()
+    }
+
     pub fn atualiza(&mut self, canvas: Caixa, conteudos: &[Option<f64>]) -> Vec<Caixa> {
         for gr in &mut self.grupos {
-            for (v, k) in gr.canvas.into_iter().zip([canvas.x, canvas.y, canvas.w, canvas.h]) {
+            for (v, k) in gr
+                .canvas
+                .into_iter()
+                .zip([canvas.x, canvas.y, canvas.w, canvas.h])
+            {
                 gr.sugere(v, k);
             }
             for li in 0..gr.larguras.len() {
@@ -324,11 +462,85 @@ impl Arranjo {
             .iter()
             .zip(&self.caixas)
             .map(|(v, c)| match v {
-                Some((_, v)) => Caixa { x: val(v.x), y: val(v.y), w: val(v.w), h: val(v.h) },
+                Some((_, v)) => Caixa {
+                    x: val(v.x),
+                    y: val(v.y),
+                    w: val(v.w),
+                    h: val(v.h),
+                },
                 None => *c,
             })
             .collect()
     }
+}
+
+/// A ordem que uma relação impõe num eixo: `(eixo, antes, depois)` — antes = menor coordenada (y para cima).
+fn ordem(r: &Relacao) -> Option<(Eixo, usize, usize)> {
+    let (eixo, a_depois) = match *r {
+        Relacao::AoLado {
+            lado: Lado::Direita,
+            ..
+        }
+        | Relacao::NaoInvade {
+            lado: Lado::Esquerda,
+            ..
+        } => (Eixo::X, true),
+        Relacao::AoLado {
+            lado: Lado::Esquerda,
+            ..
+        }
+        | Relacao::NaoInvade {
+            lado: Lado::Direita,
+            ..
+        } => (Eixo::X, false),
+        Relacao::AoLado {
+            lado: Lado::Acima, ..
+        }
+        | Relacao::NaoInvade {
+            lado: Lado::Abaixo, ..
+        } => (Eixo::Y, true),
+        Relacao::AoLado {
+            lado: Lado::Abaixo, ..
+        }
+        | Relacao::NaoInvade {
+            lado: Lado::Acima, ..
+        } => (Eixo::Y, false),
+        Relacao::Centrado { .. } | Relacao::LarguraDoConteudo { .. } => return None,
+    };
+    let (Relacao::AoLado { a, b, .. } | Relacao::NaoInvade { a, b, .. }) = *r else {
+        return None;
+    };
+    Some(if a_depois { (eixo, b, a) } else { (eixo, a, b) })
+}
+
+/// ⭐ A lei da ferramenta: `nova` CONTRADIZ as `existentes` se fecha um círculo de lados num eixo (a depois de b,
+/// …, b depois de a). O Cassowary aceita os dois `REQUIRED` e viola um em silêncio — por isso se recusa ANTES.
+#[must_use]
+pub fn contradiz(existentes: &[Relacao], nova: &Relacao) -> bool {
+    let Some((eixo, antes, depois)) = ordem(nova) else {
+        return false;
+    };
+    // Há caminho `depois → … → antes` nas existentes do mesmo eixo?
+    let arestas: Vec<(usize, usize)> = existentes
+        .iter()
+        .filter_map(ordem)
+        .filter(|&(e, _, _)| e == eixo)
+        .map(|(_, x, y)| (x, y))
+        .collect();
+    let mut visto = vec![depois];
+    let mut fila = vec![depois];
+    while let Some(n) = fila.pop() {
+        if n == antes {
+            return true;
+        }
+        for &(x, y) in &arestas {
+            if x == n && !visto.contains(&y) {
+                visto.push(y);
+                fila.push(y);
+            }
+        }
+    }
+    false
 }
 
 /// Uma corrida de um só quadro: `Arranjo::new(..).atualiza(canvas, conteúdos dos elementos)`.

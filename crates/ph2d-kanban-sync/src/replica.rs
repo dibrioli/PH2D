@@ -278,6 +278,7 @@ impl KanbanReplica {
     /// ⭐ O que esta pessoa mudou nos Kanbans da sessão desde a última vez, como escritas a enviar
     /// (e as capturadas ao receber).
     pub fn local(&mut self, set: &mut KanbanSet) -> Vec<KWrite> {
+        self.arm(set);
         let mut out = std::mem::take(&mut self.outgoing);
         let pairs: Vec<(KanbanId, KanbanId)> = self.kanbans();
         for (wire, local) in pairs {
@@ -628,3 +629,7 @@ mod join;
 #[cfg(test)]
 #[path = "replica_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "replica_live_tests.rs"]
+mod live_tests;

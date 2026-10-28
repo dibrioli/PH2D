@@ -23,6 +23,7 @@ mod replica;
 mod room;
 mod session;
 mod shape;
+mod snapshot;
 mod table;
 #[cfg(test)]
 mod test_support;
@@ -32,3 +33,4 @@ pub use presence::{KanbanPresence, Viewers};
 pub use replica::KanbanReplica;
 pub use room::{GuestRoom, HostRoom, KEvent};
 pub use session::{KanbanGuest, KanbanHost, SoloMsg};
+pub use snapshot::SNAPSHOT_BLOCK;

@@ -99,10 +99,12 @@ impl HostRoom {
             .into_iter()
             .map(|m| (To::AllBut(conn), m))
             .collect();
-        out.push((
-            To::One(conn),
-            KMsg::Snapshot(Box::new(self.replica.snapshot(set))),
-        ));
+        let snap = self.replica.snapshot(set);
+        out.extend(
+            crate::snapshot::messages(snap, crate::SNAPSHOT_BLOCK)
+                .into_iter()
+                .map(|m| (To::One(conn), m)),
+        );
         for m in by_file(self.replica.all_files(set)) {
             out.push((To::One(conn), m));
         }
@@ -209,6 +211,9 @@ pub struct GuestRoom {
     pub replica: Option<KanbanReplica>,
     pub viewers: Viewers,
     pace: Pace,
+    /// O retrato em blocos a chegar, e as escritas que chegaram no meio (aplicam-se depois dele).
+    parts: crate::snapshot::Parts,
+    held: Vec<KWrite>,
 }
 
 impl GuestRoom {
@@ -221,6 +226,8 @@ impl GuestRoom {
             replica: None,
             viewers: Viewers::default(),
             pace: Pace::default(),
+            parts: crate::snapshot::Parts::default(),
+            held: Vec::new(),
         }
     }
 
@@ -240,22 +247,13 @@ impl GuestRoom {
         let mut events = Vec::new();
         let mut out = Vec::new();
         match msg {
-            KMsg::Snapshot(snap) => match &mut self.replica {
-                Some(r) => {
-                    let before = r.kanbans();
-                    if r.rejoin(set, &snap).is_ok() {
-                        arrived(r, &before, &mut events);
-                        out.extend(self.tick(set, now_ms));
-                    }
+            KMsg::Snapshot(snap) => self.snapshot(set, &snap, now_ms, &mut out, &mut events),
+            KMsg::SnapshotPart { part, of, bytes } => {
+                if let Some(snap) = self.parts.offer(part, of, bytes) {
+                    self.snapshot(set, &snap, now_ms, &mut out, &mut events);
                 }
-                None => {
-                    if let Ok((r, ids)) = KanbanReplica::join(self.peer, self.seed, &snap, set) {
-                        self.replica = Some(r);
-                        events.push(KEvent::Arrived(ids));
-                        out.extend(self.tick(set, now_ms));
-                    }
-                }
-            },
+            }
+            KMsg::Writes(ws) if self.parts.busy() => self.held.extend(ws),
             KMsg::Writes(ws) => {
                 if let Some(r) = &mut self.replica {
                     let before = r.kanbans();
@@ -268,6 +266,42 @@ impl GuestRoom {
             _ => {}
         }
         (out, events)
+    }
+
+    /// Um retrato inteiro: entrar (ou voltar), e as escritas que chegaram enquanto ele vinha.
+    fn snapshot(
+        &mut self,
+        set: &mut KanbanSet,
+        snap: &crate::KSnapshot,
+        now_ms: u64,
+        out: &mut Vec<KMsg>,
+        events: &mut Vec<KEvent>,
+    ) {
+        match &mut self.replica {
+            Some(r) => {
+                let before = r.kanbans();
+                if r.rejoin(set, snap).is_err() {
+                    return;
+                }
+                arrived(r, &before, events);
+            }
+            None => {
+                let Ok((r, ids)) = KanbanReplica::join(self.peer, self.seed, snap, set) else {
+                    return;
+                };
+                self.replica = Some(r);
+                events.push(KEvent::Arrived(ids));
+            }
+        }
+        let held = std::mem::take(&mut self.held);
+        if let Some(r) = &mut self.replica
+            && !held.is_empty()
+        {
+            let before = r.kanbans();
+            r.receive(set, &held);
+            arrived(r, &before, events);
+        }
+        out.extend(self.tick(set, now_ms));
     }
 
     /// Bytes de `ph2d_board_sync::Guest::take_kanban`.

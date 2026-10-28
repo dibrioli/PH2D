@@ -68,14 +68,12 @@ pub(crate) struct Elem {
 pub(crate) type FieldKey = (KanbanId, Target, u8);
 pub(crate) type ElemKey = (KanbanId, Target, u8, Vec<u8>);
 
-/// Tudo o que quem entra precisa: os Kanbans (postcard) e os carimbos. Os ficheiros vão a seguir,
-/// um por mensagem.
+/// Tudo o que quem entra precisa: os Kanbans (postcard) e os carimbos, compactos e sem perda
+/// ([`crate::snapshot`]). Os ficheiros vão a seguir, um por mensagem.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct KSnapshot {
     pub(crate) kanbans: Vec<(KanbanId, Vec<u8>)>,
-    pub(crate) stamps: Vec<(FieldKey, Lamport)>,
-    pub(crate) elems: Vec<(ElemKey, Elem)>,
-    pub(crate) tops: Vec<((KanbanId, Target), Lamport)>,
+    pub(crate) stamps: crate::snapshot::Stamps,
     pub(crate) clock: u64,
 }
 
@@ -90,6 +88,9 @@ pub enum KMsg {
     Presence(KanbanPresence),
     /// Quem saiu (a presença dele some).
     Gone(PeerId),
+    /// Um bloco do retrato grande (`part` de `of`, os bytes postcard do [`KSnapshot`] aos pedaços):
+    /// juntos, valem um [`KMsg::Snapshot`].
+    SnapshotPart { part: u32, of: u32, bytes: Vec<u8> },
 }
 
 impl KMsg {

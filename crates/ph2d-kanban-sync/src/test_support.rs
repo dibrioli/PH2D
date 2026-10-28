@@ -102,8 +102,10 @@ pub(crate) fn edit_card(set: &mut KanbanSet, id: CardId, f: impl FnOnce(&mut Car
     put(k, Record::Card(c));
 }
 
-/// Um gesto ao acaso de `peer` no Kanban dele (ids novos pela réplica, como numa sessão).
+/// Um gesto ao acaso de `peer` no Kanban dele (ids novos pelo `Kanban::mint` de sempre: em sessão a
+/// réplica ligou-lhe o sorteio).
 pub(crate) fn random_op(set: &mut KanbanSet, r: &mut KanbanReplica, peer: PeerId, rng: &mut Rng) {
+    r.arm(set);
     let k = kanban(set);
     let cards: Vec<CardId> = k.cards.keys().copied().collect();
     let lists: Vec<ListId> = k.lists.keys().copied().collect();
@@ -135,7 +137,7 @@ pub(crate) fn random_op(set: &mut KanbanSet, r: &mut KanbanReplica, peer: PeerId
         }
         7 => {
             let c = Checklist {
-                id: ChecklistId(r.mint()),
+                id: ChecklistId(kanban(set).mint()),
                 card,
                 pos: FracKey::between(None, None),
                 title: format!("cl{peer}"),
@@ -179,7 +181,7 @@ pub(crate) fn random_op(set: &mut KanbanSet, r: &mut KanbanReplica, peer: PeerId
             let list = lists[rng.below(lists.len())];
             let pos = kanban(set).pos_after_cards(list);
             let c = Card::new(
-                CardId(r.mint()),
+                CardId(kanban(set).mint()),
                 list,
                 pos,
                 &format!("new{peer}"),
@@ -192,7 +194,7 @@ pub(crate) fn random_op(set: &mut KanbanSet, r: &mut KanbanReplica, peer: PeerId
                 return;
             };
             let it = CheckItem {
-                id: CheckItemId(r.mint()),
+                id: CheckItemId(kanban(set).mint()),
                 checklist: cl,
                 pos: FracKey::between(None, None),
                 text: format!("i{peer}"),

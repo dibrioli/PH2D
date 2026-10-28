@@ -1,22 +1,10 @@
 //! Abrir, entrar, voltar e partilhar a meio — e os ids sorteados da sessão.
 
 use ph2d_board_sync::PeerId;
-use ph2d_kanban_model::{Kanban, KanbanId, KanbanSet};
+use ph2d_kanban_model::{Kanban, KanbanId, KanbanSet, SESSION_ID_BIT, splitmix64};
 
 use super::KanbanReplica;
 use crate::msg::{KSnapshot, KWrite};
-
-/// O bit dos ids sorteados numa sessão (o mesmo do modelo): nunca colidem com os do contador local.
-const SESSION_ID_BIT: u64 = 1 << 63;
-
-/// SplitMix64 — sorteia sem estado partilhado (a colisão entre dois pares é ~1e-8 a um milhão de
-/// registos, ADR-0181 §5).
-fn splitmix(mut z: u64) -> u64 {
-    z = z.wrapping_add(0x9E37_79B9_7F4A_7C15);
-    z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
-    z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
-    z ^ (z >> 31)
-}
 
 fn bytes_of(k: &Kanban, wire: KanbanId) -> Vec<u8> {
     let mut k = k.clone();
@@ -87,9 +75,12 @@ impl KanbanReplica {
             ids.push(self.adopt_kanban(set, *wire, k));
         }
         self.clock.n = self.clock.n.max(snap.clock);
-        self.stamps.extend(snap.stamps.iter().cloned());
-        self.elems.extend(snap.elems.iter().cloned());
-        self.tops.extend(snap.tops.iter().cloned());
+        crate::snapshot::unpack(
+            &snap.stamps,
+            &mut self.stamps,
+            &mut self.elems,
+            &mut self.tops,
+        );
         Ok(ids)
     }
 
@@ -108,7 +99,30 @@ impl KanbanReplica {
         self.map.insert(wire, local);
         self.shadow.insert(wire, k.clone());
         set.insert(k);
+        self.arm(set);
         local
+    }
+
+    /// ⭐ Liga o sorteio dos ids em cada Kanban da sessão que ainda não o tem (entrar, hospedar, um
+    /// Kanban reposto inteiro): todo `Kanban::mint` passa a dar ids que nenhum outro par fabrica.
+    /// [`Self::local`] chama-o a cada imagem.
+    pub fn arm(&self, set: &mut KanbanSet) {
+        for (wire, local) in &self.map {
+            if let Some(k) = set.doc_mut(*local)
+                && !k.in_session()
+            {
+                k.set_session(Some(splitmix64(self.seed ^ splitmix64(wire.0))));
+            }
+        }
+    }
+
+    /// Sai da sessão: os Kanbans voltam ao contador local (os ids sorteados ficam, com o bit alto).
+    pub fn disarm(&self, set: &mut KanbanSet) {
+        for local in self.map.values() {
+            if let Some(k) = set.doc_mut(*local) {
+                k.set_session(None);
+            }
+        }
     }
 
     /// O retrato para quem entra (chame [`Self::local`] antes: o que mudei vai aos outros, e o
@@ -121,13 +135,7 @@ impl KanbanReplica {
                 .iter()
                 .filter_map(|(w, l)| set.get(*l).map(|k| (*w, bytes_of(k, *w))))
                 .collect(),
-            stamps: self.stamps.iter().map(|(k, v)| (*k, *v)).collect(),
-            elems: self
-                .elems
-                .iter()
-                .map(|(k, v)| (k.clone(), v.clone()))
-                .collect(),
-            tops: self.tops.iter().map(|(k, v)| (*k, *v)).collect(),
+            stamps: crate::snapshot::pack(&self.stamps, &self.elems, &self.tops),
             clock: self.clock.n,
         }
     }
@@ -155,11 +163,11 @@ impl KanbanReplica {
         Some(wire)
     }
 
-    /// ⭐ Um id NOVO para um registo criado durante a sessão (o bit alto ligado: nunca colide com o
-    /// contador local nem com o de outro par). ⛔ Numa sessão, os registos novos usam ESTE, nunca o
-    /// `Kanban::mint` (dois pares a criar ao mesmo tempo dariam o mesmo id).
+    /// Um id da sessão para um Kanban partilhado a meio (o bit alto ligado: nunca colide com o
+    /// contador nem com o de outro par). Os REGISTOS usam o `Kanban::mint` de sempre: em sessão ele
+    /// já sorteia ([`Self::arm`]).
     pub fn mint(&mut self) -> u64 {
         self.minted += 1;
-        SESSION_ID_BIT | (splitmix(self.seed ^ splitmix(self.minted)) >> 1)
+        SESSION_ID_BIT | (splitmix64(self.seed ^ splitmix64(self.minted)) >> 1)
     }
 }

@@ -1,9 +1,10 @@
-//! Os campos que são CONJUNTOS (um registo por elemento): as pessoas, as etiquetas e os campos
-//! personalizados do cartão. O resto é um registo só.
+//! Os campos que são CONJUNTOS (um registo por elemento): as pessoas, as etiquetas, os campos
+//! personalizados do cartão e as reacções de um comentário (um elemento por `(emoji, pessoa)`). O
+//! resto é um registo só.
 
 use std::collections::BTreeMap;
 
-use ph2d_kanban_model::{FieldId, FieldValue, LabelId, Member};
+use ph2d_kanban_model::{FieldId, FieldValue, LabelId, Member, Reaction};
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 
@@ -57,6 +58,33 @@ where
     Some(enc(&m?))
 }
 
+/// As reacções achatadas: um elemento por `(emoji, pessoa)` — duas pessoas a reagir ao mesmo tempo
+/// são duas entradas, nunca uma escrita que apaga a outra.
+fn split_reactions(b: &[u8]) -> Option<Vec<Entry>> {
+    let v: Vec<Reaction> = exact(b)?;
+    Some(
+        v.iter()
+            .flat_map(|r| r.by.iter().map(|m| (enc(&(&r.emoji, m)), Vec::new())))
+            .collect(),
+    )
+}
+
+/// De volta ao modelo: cada emoji na ordem em que apareceu pela 1.ª vez, e quem o deu pela ordem.
+fn join_reactions(es: &[(&[u8], &[u8])]) -> Option<Vec<u8>> {
+    let mut out: Vec<Reaction> = Vec::new();
+    for (k, _) in es {
+        let (emoji, by): (String, Member) = exact(k)?;
+        match out.iter_mut().find(|r| r.emoji == emoji) {
+            Some(r) => r.by.push(by),
+            None => out.push(Reaction {
+                emoji,
+                by: vec![by],
+            }),
+        }
+    }
+    Some(enc(&out))
+}
+
 /// O feitio do campo `name` cujos bytes são `b` (`None` = um registo só). Pelo nome E pelos bytes:
 /// um campo com o mesmo nome e outro tipo não se lê como conjunto.
 pub(crate) fn shape_of(name: &str, b: &[u8]) -> Option<Shape> {
@@ -75,6 +103,11 @@ pub(crate) fn shape_of(name: &str, b: &[u8]) -> Option<Shape> {
             split: split_map::<FieldId, FieldValue>,
             join: join_map::<FieldId, FieldValue>,
             ordered: false,
+        },
+        "reactions" => Shape {
+            split: split_reactions,
+            join: join_reactions,
+            ordered: true,
         },
         _ => return None,
     };

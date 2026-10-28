@@ -130,3 +130,33 @@ e o Ctrl+S faz mais DUAS cópias transitórias (`to_bytes` + o `ProjectFile`): p
 - ⚠️ **O Ctrl+S re-grava tudo** (500 MB ≈ 0,33 s de `to_bytes`+cópia+gravar no fio da janela, por gravação).
   Anexos por REFERÊNCIA (fora do `.ph2dproj`) partiriam o projecto que viaja inteiro — decisão de produto,
   não tomada; o save em fundo é da shell inteira, não do Kanban.
+
+## W5 S2 — o retrato de quem entra (`ph2d-kanban-sync`, 28/10)
+
+Régua: `snapshot::tests::sonda_retrato` (ignorada; `bash scripts/ph2d-run.sh cargo test -p ph2d-kanban-sync
+--profile smoke --lib -- --ignored sonda_retrato --nocapture`), o MÍNIMO de 5, `loadavg` ≈ 15–16 em 32
+núcleos (vale a ordem de grandeza). O pior caso: TODOS os cartões nasceram na sessão (cada campo com
+carimbo), título de ~35 letras, um voto a cada três. «Antes» = o retrato plano do lote S (uma chave
+`(Kanban, alvo, campo)` inteira por carimbo — um id sorteado são 10 bytes), no MESMO processo.
+
+| cartões | Kanban (postcard) | carimbos antes | carimbos agora | retrato antes | retrato agora | blocos de 1 MiB | anfitrião: retrato + bytes | convidado: juntar + entrar |
+|---|---|---|---|---|---|---|---|---|
+| 100 | 8 KB | 24 KB | 5 KB | 32 KB | 13 KB | 1 | 0,2 ms | 0,2 ms |
+| 1 000 | 81 KB | 254 KB | 49 KB | 336 KB | 130 KB | 1 | 1,5 ms | 1,6 ms |
+| 5 000 | 411 KB | 1 279 KB | 246 KB | 1 690 KB | 656 KB | 1 | 8,9 ms | 8,6 ms |
+| 20 000 | 1 667 KB | 5 176 KB | 986 KB | 6 843 KB | 2 654 KB | 3 | 38,0 ms | 46,9 ms |
+
+**Decisão (padrão-ouro):**
+- **Carimbos compactos e SEM PERDA** (`snapshot::pack`/`unpack`, gate
+  `the_packed_stamps_unpack_to_the_same_maps`): agrupados por `(Kanban, alvo)` — a chave escreve-se uma vez —
+  e o carimbo igual ao mais comum do alvo (o do nascimento, quase sempre) é 1 byte. Carimbos **5,2×** menores,
+  retrato **2,6×** (20 000 cartões: 6,8 → 2,7 MB). Recusado: deitar fora os carimbos iguais ao do nascimento
+  (seria menor, mas é uma prova de fusão a mais por fazer — o sem-perda não pede prova nenhuma).
+- **Blocos de 1 MiB** (`SNAPSHOT_BLOCK`, `KMsg::SnapshotPart`): recurso = a moldura do transporte
+  (`ph2d_board_net::MAX_FRAME` 256 MiB, cifrada e copiada inteira de cada lado) e o progresso de quem entra;
+  o retrato de 20 000 cartões vai em 3. As escritas que chegam a meio dos blocos ficam guardadas e aplicam-se
+  depois do retrato (gate `a_guest_joining_by_a_snapshot_in_blocks_converges`). Os blocos saem todos no
+  `welcome` (o teto é o da ligação, sem ritmo artificial).
+- ⚠️ O anfitrião paga **38 ms** (≈ 2 quadros) quando alguém entra num Kanban de 20 000 cartões nascidos na
+  sessão; o convidado ~47 ms uma vez. Aceitável para um evento raro; se incomodar, o retrato sai num fio
+  (o `KanbanSet` é `Clone`).

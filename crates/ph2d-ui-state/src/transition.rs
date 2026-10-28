@@ -1,6 +1,7 @@
 //! **A TRANSIÇÃO** — o casamento pago uma vez, e o passo pago por frame.
 
 use crate::pose::ObjectPose;
+use ph2d_item_id::ItemId;
 use ph2d_vec_blend::Plan;
 use ph2d_vec_scene::VecPathId;
 
@@ -278,6 +279,7 @@ impl Transition {
             .iter()
             .map(|s| match s {
                 Step::Moving { from, to, shape } => {
+                    let (filters, filter_ids) = mix_filters(from, to, tc);
                     let mut p = ObjectPose {
                         id: from.id,
                         translation: [
@@ -303,13 +305,13 @@ impl Transition {
                         // perfil uniforme, então um lado sem perfil é um lado com o perfil que
                         // não faz nada. Não há caso especial a escrever.
                         width: mix_width(from.width.as_ref(), to.width.as_ref(), tc),
-                        // **Os FILTROS pela porta da folha que os define** — e o alinhamento é
+                        // **Os FILTROS casados pelo ID** ([`mix_filters`]) — e o alinhamento é
                         // que carrega a lei: um degrau que só existe de um lado cresce do NEUTRO
                         // em vez de saltar, então acrescentar um blur depois de o Default já ter
                         // sido gravado anima na mesma (Enio, 2026-08-21). ⚠️ `tc`, e não `t`:
                         // um overshoot daria raio e intensidade NEGATIVOS, que é lixo e não
                         // exagero — a mesma razão da opacidade e da escala aqui em cima.
-                        filters: ph2d_fx_op::mix_stacks(&from.filters, &to.filters, tc),
+                        filters,
                         // ⚠️ **O VERBO é DISCRETO e ele SEGURA na ponta de PARTIDA.** Não há meio
                         // caminho entre `Union` e `Subtract`, e um número interpolado entre dois
                         // códigos daria a operação ERRADA — o `2` entre `Union` (0) e `Exclude`
@@ -366,7 +368,7 @@ impl Transition {
                         } else {
                             from.morph_shape
                         },
-                        filter_ids: mix_filter_ids(&from.filter_ids, &to.filter_ids),
+                        filter_ids,
                     };
                     // ⚠️ E a forma que sai do `Plan` recebe a tinta da POSE, não a que o `Plan`
                     // interpolou por conta: se o objeto sai auto-consistente daqui, ninguém a
@@ -482,18 +484,68 @@ fn mix_width(
     let m = a.unwrap_or(&empty).mix(b.unwrap_or(&empty), t);
     (!m.is_uniform()).then_some(m)
 }
-/// O id de cada degrau do meio de uma transição — o do destino, senão o da partida (os degraus
-/// alinham-se por ÍNDICE, [`ph2d_fx_op::mix_stacks`]). `NONE` só onde nenhum lado o conhece.
-fn mix_filter_ids(
-    from: &[ph2d_item_id::ItemId],
-    to: &[ph2d_item_id::ItemId],
-) -> Vec<ph2d_item_id::ItemId> {
-    (0..from.len().max(to.len()))
-        .map(|i| {
-            (to.get(i).copied())
-                .filter(|x| !x.is_none())
-                .or_else(|| from.get(i).copied())
-                .unwrap_or(ph2d_item_id::ItemId::NONE)
-        })
-        .collect()
+/// Os ids de uma pilha, se cada degrau tem um e nenhum se repete; senão `None` (pose gravada antes
+/// do `PROJECT_SCHEMA` 197, ou um degrau ainda por atribuir).
+fn ids_completos(ops: &[ph2d_fx_op::FxOp], ids: &[ItemId]) -> Option<Vec<ItemId>> {
+    let mut vistos = std::collections::BTreeSet::new();
+    (ids.len() == ops.len() && ids.iter().all(|i| !i.is_none() && vistos.insert(*i)))
+        .then(|| ids.to_vec())
+}
+
+/// **Os FILTROS no ponto `tc` da transição, casados pelo ID do degrau** (F39, F32 §6.2), nunca pela
+/// posição: reordenar entre estados faz o valor de cada filtro viajar em vez de um degrau trocar de
+/// tipo a meio. Quem só existe de um lado cresce do neutro (ou sai para ele) — a lei de
+/// [`ph2d_fx_op::mix_stacks`], um degrau de cada vez.
+///
+/// ⚠️ **A ORDEM é discreta e segura na PARTIDA** (a lei do `bool_op`): até `tc < 1` a pilha tem a
+/// ordem da partida, com quem só o destino tem logo depois do vizinho de cima dele; em `tc >= 1` é
+/// a pilha do destino. Sem ids nos dois lados, o alinhamento por índice de antes.
+fn mix_filters(
+    from: &ObjectPose,
+    to: &ObjectPose,
+    tc: f64,
+) -> (Vec<ph2d_fx_op::FxOp>, Vec<ItemId>) {
+    use ph2d_fx_op::FxOp;
+    let (Some(ia), Some(ib)) = (
+        ids_completos(&from.filters, &from.filter_ids),
+        ids_completos(&to.filters, &to.filter_ids),
+    ) else {
+        let n = from.filters.len().max(to.filters.len());
+        let ids = (0..n)
+            .map(|i| {
+                (to.filter_ids.get(i).copied())
+                    .filter(|x| !x.is_none())
+                    .or_else(|| from.filter_ids.get(i).copied())
+                    .unwrap_or(ItemId::NONE)
+            })
+            .collect();
+        return (ph2d_fx_op::mix_stacks(&from.filters, &to.filters, tc), ids);
+    };
+    if tc >= 1.0 {
+        return (to.filters.clone(), ib);
+    }
+    let mut ordem = ia.clone();
+    let mut cursor = 0;
+    for id in &ib {
+        match ordem.iter().position(|x| x == id) {
+            Some(p) => cursor = p + 1,
+            None => {
+                ordem.insert(cursor, *id);
+                cursor += 1;
+            }
+        }
+    }
+    let de = |ids: &[ItemId], ops: &[FxOp], id| ids.iter().position(|x| *x == id).map(|p| ops[p]);
+    let ops = ordem
+        .iter()
+        .map(
+            |&id| match (de(&ia, &from.filters, id), de(&ib, &to.filters, id)) {
+                (Some(a), Some(b)) if a.kind == b.kind => a.mix(b, tc),
+                (Some(_) | None, Some(b)) => FxOp::neutral(b.kind).mix(b, tc),
+                (Some(a), None) => a.mix(FxOp::neutral(a.kind), tc),
+                (None, None) => unreachable!("cada id da ordem vem de um dos lados"),
+            },
+        )
+        .collect();
+    (ops, ordem)
 }

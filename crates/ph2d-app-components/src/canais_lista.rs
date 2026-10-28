@@ -30,15 +30,55 @@ fn itens<'v>(l: &ListaDesc, inteiro: &'v mut Value) -> Option<&'v mut Vec<Value>
     slot_in(inteiro, l.caminho)?.as_array_mut()
 }
 
-/// O valor de uma faixa de um campo de item; um texto entra na tabela.
+/// O maior id que o valor `f32` de um canal guarda EXACTO (a mantissa tem 24 bits). Um id acima
+/// não publica: o canal arredondaria para OUTRO item.
+const ID_EXACTO_EM_F32: u32 = 1 << 24;
+
+/// Os ids dos itens da lista `l`, pela posição.
+fn ids_da_lista(l: &ListaDesc, inteiro: &mut Value) -> Vec<ItemId> {
+    itens(l, inteiro).map_or_else(Vec::new, |v| v.iter().map(id_de).collect())
+}
+
+/// `(field_id, ids da lista apontada)` de cada campo de `l` que aponta para um item ([`ListaDesc::aponta`]).
+fn alvos(l: &ListaDesc, inteiro: &mut Value) -> Vec<(u16, Vec<ItemId>)> {
+    l.aponta
+        .iter()
+        .filter_map(|&(f, _)| Some((f, ids_da_lista(l.alvo(f)?, inteiro))))
+        .collect()
+}
+
+/// Os ids da lista para onde o campo `f` aponta, se aponta.
+fn alvo_de(alvos: &[(u16, Vec<ItemId>)], f: u16) -> Option<&[ItemId]> {
+    alvos
+        .iter()
+        .find(|(x, _)| *x == f)
+        .map(|(_, v)| v.as_slice())
+}
+
+/// O valor de uma faixa de um campo de item; um texto entra na tabela; uma posição de item apontado
+/// sai como o `ItemId` dele.
 fn ler_campo(
     f: &ph2d_component_desc::FieldDesc,
     faixa: u16,
     item: &mut Value,
     textos: &mut TextosDosCanais,
+    alvo: Option<&[ItemId]>,
 ) -> Option<f32> {
     let s = slot_in(item, f.serde_key())?;
-    cc::ler_texto(f, s, textos).or_else(|| cc::ler_valor(f, faixa, s))
+    let v = cc::ler_texto(f, s, textos).or_else(|| cc::ler_valor(f, faixa, s))?;
+    let Some(ids) = alvo else {
+        return Some(v);
+    };
+    #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "uma posição"
+    )]
+    let id = ids
+        .get(v.max(0.0) as usize)
+        .filter(|i| !i.is_none() && i.0 <= ID_EXACTO_EM_F32)?;
+    #[expect(clippy::cast_precision_loss, reason = "≤ ID_EXACTO_EM_F32")]
+    Some(id.0 as f32)
 }
 
 /// Os canais de cada item das listas que a entidade tem, com o valor de agora.
@@ -70,6 +110,7 @@ fn campos_e_posicoes(
         else {
             continue;
         };
+        let alvos = alvos(l, &mut inteiro);
         let Some(itens) = itens(l, &mut inteiro) else {
             continue;
         };
@@ -84,7 +125,7 @@ fn campos_e_posicoes(
                     let Some(k) = cl::chave(l.codigo, f.field_id, x, id) else {
                         continue;
                     };
-                    if let Some(v) = ler_campo(f, x, item, textos) {
+                    if let Some(v) = ler_campo(f, x, item, textos, alvo_de(&alvos, f.field_id)) {
                         out.push((k, v));
                     }
                 }
@@ -104,10 +145,11 @@ fn ler(
 ) -> Option<f32> {
     let (l, f, faixa) = cl::resolver(k)?;
     let mut inteiro = (reg.get_by_name(l.componente)?.value_of)(w, e).ok()??;
+    let alvo = l.alvo(f.field_id).map(|a| ids_da_lista(a, &mut inteiro));
     let item = itens(l, &mut inteiro)?
         .iter_mut()
         .find(|i| id_de(i) == cl::item(k))?;
-    ler_campo(f, faixa, item, textos)
+    ler_campo(f, faixa, item, textos, alvo.as_deref())
 }
 
 /// Publica os canais dos itens das `entidades` (o que o Auto Key e o losango comparam).
@@ -160,6 +202,16 @@ fn escrever(
     let entry: &ComponentTypeEntry = reg.get_by_name(l.componente)?;
     let mut inteiro = (entry.value_of)(w, e).ok()??;
     let antes = slot_in(&mut inteiro, l.caminho)?.clone();
+    // A curva de um campo que aponta guarda o `ItemId`: volta à POSIÇÃO de agora desse item (o
+    // item apagado não escreve nada).
+    let x = match l.alvo(f.field_id) {
+        #[expect(clippy::cast_precision_loss, reason = "uma posição numa lista")]
+        Some(a) => ids_da_lista(a, &mut inteiro)
+            .iter()
+            .position(|i| !i.is_none() && f64::from(i.0) == f64::from(x).round())?
+            as f32,
+        None => x,
+    };
     let item = itens(l, &mut inteiro)?
         .iter_mut()
         .find(|i| id_de(i) == cl::item(k))?;

@@ -335,3 +335,64 @@ fn desfazer_o_apagar_de_um_timer_devolve_o_mesmo_item_e_a_curva() {
         ]
     );
 }
+
+/// ⭐ F39 (F32 §6.3): a chave sobre o `from`/`to` de uma seta guarda o `ItemId` do ESTADO, não a
+/// posição — apagar um estado anterior (que reescreve as setas) não faz a curva apontar o vizinho.
+#[test]
+fn a_chave_de_uma_seta_segue_o_estado_depois_de_apagar_um_anterior() {
+    use ph2d_ecs::StateMachine;
+    use ph2d_ecs::state_machine::{MachineState, Transition};
+    use ph2d_editor_core::statemachine_edits::StateMachineFieldEdit as E;
+    let reg = registo();
+    let mut sim = SimWorld::new();
+    let estado = |n: &str| MachineState {
+        name: n.into(),
+        ..MachineState::default()
+    };
+    let e = sim
+        .world_mut()
+        .spawn(StateMachine {
+            states: vec![estado("a"), estado("b"), estado("c")],
+            transitions: vec![Transition {
+                from: 1,
+                on: "vai".into(),
+                to: 2,
+                ..Transition::default()
+            }],
+            initial: 0,
+        })
+        .id();
+    ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
+    let m = sim.world().get::<StateMachine>(e).expect("máquina").clone();
+    let (b, c, seta) = (m.states[1].item, m.states[2].item, m.transitions[0].item);
+    let para = cl::chave(codigo::SETAS, 6, 0, seta).expect("cabe");
+    let mut t = TextosDosCanais::default();
+    #[expect(clippy::cast_precision_loss, reason = "ids pequenos")]
+    let (vb, vc) = (b.0 as f32, c.0 as f32);
+    assert!(
+        campos(&reg, sim.world(), e, &mut t).contains(&(para, vc)),
+        "publica o id de `c`"
+    );
+    assert!(crate::statemachine_inspector::apply_statemachine_edit(
+        sim.world_mut(),
+        e.to_bits(),
+        &E::RemoveState(0)
+    ));
+    let to = |sim: &SimWorld| {
+        sim.world()
+            .get::<StateMachine>(e)
+            .expect("máquina")
+            .transitions[0]
+            .to
+    };
+    assert_eq!(to(&sim), 1, "a edição reescreveu a seta para `c`");
+    // A chave gravada antes de apagar (o id de `b`) conduz a seta para `b`, agora na posição 0.
+    assert!(curva(&mut sim, &reg, e, para, vb));
+    assert_eq!(to(&sim), 0, "o id de `b` escreveu a posição de `b`");
+    assert!(curva(&mut sim, &reg, e, para, vc));
+    assert_eq!(
+        to(&sim),
+        1,
+        "e o de `c` a de `c`, não a do estado que estava ali antes"
+    );
+}

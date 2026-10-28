@@ -685,6 +685,76 @@ fn o_meio_da_transicao_leva_o_id_de_cada_filtro() {
     );
 }
 
+/// ⭐ F39 (F32 §6.2): com a pilha REORDENADA entre os estados, o meio casa cada filtro pelo ID — o
+/// raio do blur viaja de 8 para 24 em vez de o degrau 0 trocar de Blur para Glow e o Glow entrar do
+/// neutro; a ordem segura na partida e a chegada é a pilha do destino.
+#[test]
+fn reordenar_os_filtros_entre_estados_nao_troca_o_tipo_de_um_degrau() {
+    use ph2d_fx_op::FxOp;
+    use ph2d_item_id::ItemId;
+    let op = |kind, radius| FxOp {
+        radius,
+        ..FxOp::new(kind)
+    };
+    let default = ObjectPose {
+        geometry: Some(rect(3)),
+        filters: vec![op(FxOp::BLUR, 8.0), op(FxOp::GLOW, 4.0)],
+        filter_ids: vec![ItemId(1), ItemId(2)],
+        ..posed(3)
+    };
+    let hover = ObjectPose {
+        filters: vec![op(FxOp::GLOW, 12.0), op(FxOp::BLUR, 24.0)],
+        filter_ids: vec![ItemId(2), ItemId(1)],
+        ..default.clone()
+    };
+    let tr = Transition::new(std::slice::from_ref(&default), std::slice::from_ref(&hover));
+    let meio = &tr.at(0.5)[0];
+    assert_eq!(
+        meio.filter_ids,
+        vec![ItemId(1), ItemId(2)],
+        "a ordem segura na partida"
+    );
+    let tipos: Vec<u8> = meio.filters.iter().map(|f| f.kind).collect();
+    assert_eq!(
+        tipos,
+        vec![FxOp::BLUR, FxOp::GLOW],
+        "nenhum degrau troca de tipo"
+    );
+    assert!(
+        (meio.filters[0].radius - 16.0).abs() < 1e-3,
+        "{:?}",
+        meio.filters
+    );
+    assert!(
+        (meio.filters[1].radius - 8.0).abs() < 1e-3,
+        "{:?}",
+        meio.filters
+    );
+    let fim = &tr.at(1.0)[0];
+    assert_eq!(
+        (&fim.filters, &fim.filter_ids),
+        (&hover.filters, &hover.filter_ids)
+    );
+    // Um filtro só do destino entra logo depois do vizinho de cima dele.
+    let com_sombra = ObjectPose {
+        filters: vec![
+            op(FxOp::BLUR, 8.0),
+            op(FxOp::DROP_SHADOW, 6.0),
+            op(FxOp::GLOW, 4.0),
+        ],
+        filter_ids: vec![ItemId(1), ItemId(3), ItemId(2)],
+        ..default.clone()
+    };
+    let tr = Transition::new(
+        std::slice::from_ref(&default),
+        std::slice::from_ref(&com_sombra),
+    );
+    assert_eq!(
+        tr.at(0.5)[0].filter_ids,
+        vec![ItemId(1), ItemId(3), ItemId(2)]
+    );
+}
+
 /// F32 §2: uma pose gravada até ao `PROJECT_SCHEMA` 196 (sem `filter_ids`, o último campo) lê-se no
 /// âmbito `PoseLayoutV196` sem comer os bytes de quem vem a seguir.
 #[test]

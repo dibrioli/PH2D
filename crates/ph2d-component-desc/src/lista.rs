@@ -41,6 +41,10 @@ pub struct ListaDesc {
     pub caminho: &'static str,
     /// Os campos de UM item, com a chave serde de cada um (dentro do item).
     pub campos: &'static [FieldDesc],
+    /// `(field_id, codigo)`: o campo guarda a POSIÇÃO de um item da lista `codigo` do MESMO
+    /// componente (a seta aponta um estado). O canal dele publica o `ItemId` desse item, nunca a
+    /// posição — apagar um item anterior não envelhece a chave (F39, F32 §6.3).
+    pub aponta: &'static [(u16, u16)],
 }
 
 impl ListaDesc {
@@ -48,6 +52,13 @@ impl ListaDesc {
     #[must_use]
     pub fn campo(&self, field_id: u16) -> Option<&'static FieldDesc> {
         self.campos.iter().find(|f| f.field_id == field_id)
+    }
+
+    /// A lista para cujo item o campo `field_id` aponta ([`Self::aponta`]).
+    #[must_use]
+    pub fn alvo(&self, field_id: u16) -> Option<&'static ListaDesc> {
+        let &(_, c) = self.aponta.iter().find(|(f, _)| *f == field_id)?;
+        lista(c)
     }
 }
 

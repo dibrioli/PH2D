@@ -99,7 +99,7 @@ const ESTADO: &[FieldDesc] = &[
     ),
 ];
 
-/// ⚠️ `from`/`to` são ÍNDICES de estado: discretos (`Int`), nunca interpolados.
+/// ⚠️ `from`/`to` guardam o ÍNDICE do estado; o canal deles é o `ItemId` dele (`ListaDesc::aponta`).
 const SETA: &[FieldDesc] = &[
     f(4, "component.field.state_machine_fields.4", K::Int, "from"),
     f(5, "component.field.state_machine_fields.5", K::Text, "on"),
@@ -241,6 +241,7 @@ const fn l(
         componente,
         caminho,
         campos,
+        aponta: &[],
     }
 }
 
@@ -249,7 +250,10 @@ pub const LISTAS: &[ListaDesc] = &[
     l(c::TIMERS, "ph2d::ecs::Timers", WHOLE, TIMER),
     l(c::TWEENS, "ph2d::ecs::Tweens", WHOLE, TWEEN),
     l(c::ESTADOS, "ph2d::ecs::StateMachine", "states", ESTADO),
-    l(c::SETAS, "ph2d::ecs::StateMachine", "transitions", SETA),
+    ListaDesc {
+        aponta: &[(4, c::ESTADOS), (6, c::ESTADOS)],
+        ..l(c::SETAS, "ph2d::ecs::StateMachine", "transitions", SETA)
+    },
     l(c::VIGIA, "ph2d::ecs::CounterWatch", WHOLE, VIGIA),
     l(c::ACOES, "ph2d::ecs::SignalActions", WHOLE, ACAO),
     l(c::GATILHOS, "ph2d::ecs::SignalOnAction", WHOLE, GATILHO),

@@ -211,10 +211,30 @@ pub fn wrapped_cells_for(
     max_cols: usize,
     text_system: &mut TextSystem,
 ) -> Vec<Vec<(Rect, GroupCell)>> {
+    wrapped_cells_in_font(
+        origin,
+        labels,
+        row_h,
+        max_cols,
+        _fonte_do_chip(),
+        text_system,
+    )
+}
+
+/// A mesma quebra pelas palavras, medida na fonte de quem PINTA (`font_size`) — uma fileira de
+/// [`super::Button`] pinta a [`super::button_label_font`], não a do chip.
+#[must_use]
+pub fn wrapped_cells_in_font(
+    origin: Rect,
+    labels: &[&str],
+    row_h: f32,
+    max_cols: usize,
+    font_size: f32,
+    text_system: &mut TextSystem,
+) -> Vec<Vec<(Rect, GroupCell)>> {
     if labels.is_empty() {
         return Vec::new();
     }
-    let font_size = _fonte_do_chip();
     let naturais: Vec<f32> = labels
         .iter()
         .map(|l| crate::paint::rect_for_label(text_system.prefix_width(l, font_size)))

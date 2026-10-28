@@ -18,7 +18,7 @@ use ph2d_editor_core::property_row::{
 use ph2d_editor_core::widget::SliderOrientation;
 use ph2d_i18n::{TextKey, tr};
 
-/// Uma fileira de botões agrupados pela porta do grupo. Devolve o `y` seguinte.
+/// Os botões agrupados pela porta do grupo, quebrados pelas palavras. Devolve o `y` seguinte.
 #[allow(clippy::too_many_arguments)]
 fn fileira(
     scene: &mut VectorScene,
@@ -32,14 +32,17 @@ fn fileira(
     botoes: &[(NodeId, &str)],
 ) -> f32 {
     let rotulos: Vec<&str> = botoes.iter().map(|(_, l)| *l).collect();
-    let seg = ph2d_editor_core::widget::segment_rects_for(
-        Rect::new(x, y, w, ALTURA_DE_CAMPO),
+    // Quebra pelas palavras: no dock estreito «Move Up | Move Down | Delete» não cabe numa fileira.
+    let seg = ph2d_editor_core::widget::wrapped_cells_in_font(
+        Rect::new(x, y, w, 0.0),
         &rotulos,
+        ALTURA_DE_CAMPO,
+        usize::MAX,
         ph2d_editor_core::widget::button_label_font(),
         text_system,
     );
     let mut fundo = y;
-    for (&(id, rotulo), (rect, group)) in botoes.iter().zip(seg) {
+    for (&(id, rotulo), (rect, group)) in botoes.iter().zip(seg.into_iter().flatten()) {
         hit_index.register(id, rect);
         paint_button(
             &Button::new(id, rotulo)

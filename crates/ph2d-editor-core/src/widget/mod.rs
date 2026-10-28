@@ -117,7 +117,7 @@ pub use dropdown::{
 pub(crate) use dropdown::{
     paint_dropdown_popover, paint_dropdown_popover_in_viewport, paint_dropdown_popover_scrolled,
 };
-pub use segmented_layout::{segment_rects_for, wrapped_cells_for};
+pub use segmented_layout::{segment_rects_for, wrapped_cells_for, wrapped_cells_in_font};
 // ⭐ A MESMA conta que o grupo adaptativo faz, para a porta da escolha medir sem pintar
 // (`property_row::escolha::fileiras_ao_lado`). `pub(crate)` por re-export porque o bloco `mod` acima
 // é gerado e só conhece `mod`/`pub mod`.

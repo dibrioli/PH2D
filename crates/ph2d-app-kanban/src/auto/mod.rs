@@ -221,13 +221,13 @@ pub(crate) fn close(docs: &mut KanbanDocs, id: u64) {
     }
 }
 
-/// Grava a automação montada (nova ou editada) — um passo de desfazer. Sem acções não grava (o
-/// Butler pede pelo menos uma).
+/// Grava a automação montada (nova ou editada) — um passo de desfazer. Sem acções (o Butler pede
+/// pelo menos uma) ou com uma agenda que nunca dispara não grava e o rascunho fica aberto.
 pub(crate) fn save(docs: &mut KanbanDocs, id: u64) -> bool {
     let Some(d) = panel_mut(docs, id).and_then(|p| p.draft.take()) else {
         return false;
     };
-    if d.spec.actions.is_empty() {
+    if d.spec.actions.is_empty() || d.spec.check().is_err() {
         if let Some(p) = panel_mut(docs, id) {
             p.draft = Some(d);
         }
@@ -236,8 +236,8 @@ pub(crate) fn save(docs: &mut KanbanDocs, id: u64) -> bool {
     let now = crate::actions::now();
     crate::back::write::logged(docs, id, |k| {
         Some(vec![match d.id.and_then(|a| k.automations.get(&a)) {
-            Some(a) => d.spec.update(a),
-            None => d.spec.create(k, now),
+            Some(a) => d.spec.update(a).ok()?,
+            None => d.spec.create(k, now).ok()?,
         }])
     })
 }
@@ -248,7 +248,7 @@ pub(crate) fn change(docs: &mut KanbanDocs, id: u64, a: AutomationId, f: impl Fn
         let rec = k.automations.get(&a)?;
         let mut s = Spec::from_bytes(&rec.body).ok()?;
         f(&mut s);
-        Some(vec![s.update(rec)])
+        Some(vec![s.update(rec).ok()?])
     })
 }
 

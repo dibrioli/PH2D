@@ -113,8 +113,9 @@ pub(crate) fn butler(set: &mut KanbanSet, id: KanbanId, me: &Member, card: CardI
         );
     }
     for s in specs {
-        let op = s.create(k, now);
-        ph2d_kanban_model::apply_batch(k, vec![op]);
+        if let Ok(op) = s.create(k, now) {
+            ph2d_kanban_model::apply_batch(k, vec![op]);
+        }
     }
     // A sugestão: três cartões para a «Review», e «eu» junto-me a cada um logo a seguir.
     let moving: Vec<_> = k

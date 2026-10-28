@@ -410,30 +410,35 @@ impl Spec {
 
     /// O `Put` que cria esta automação no fim das de `k`. Os comandos agendados contam a partir de
     /// `now` (nunca correm o que passou antes de existirem).
-    #[must_use]
-    pub fn create(&self, k: &Kanban, now: Moment) -> KanbanOp {
+    ///
+    /// # Errors
+    /// O que [`Self::to_bytes`] recusa — nunca se grava um corpo ilegível.
+    pub fn create(&self, k: &Kanban, now: Moment) -> Result<KanbanOp, String> {
+        let body = self.to_bytes()?;
         let last = k
             .automations
             .values()
             .filter(|a| !a.meta.deleted)
             .map(|a| &a.pos)
             .max();
-        KanbanOp::put(Record::Automation(Automation {
+        Ok(KanbanOp::put(Record::Automation(Automation {
             id: AutomationId(k.mint()),
             pos: FracKey::between(last, None),
-            body: self.to_bytes().unwrap_or_default(),
+            body,
             last_run: Some(now),
             meta: Meta::default(),
-        }))
+        })))
     }
 
     /// O `Put` que troca o corpo da automação `a` por este (sítio e último disparo ficam).
-    #[must_use]
-    pub fn update(&self, a: &Automation) -> KanbanOp {
-        KanbanOp::put(Record::Automation(Automation {
-            body: self.to_bytes().unwrap_or_default(),
+    ///
+    /// # Errors
+    /// O que [`Self::to_bytes`] recusa — o corpo de antes fica.
+    pub fn update(&self, a: &Automation) -> Result<KanbanOp, String> {
+        Ok(KanbanOp::put(Record::Automation(Automation {
+            body: self.to_bytes()?,
             ..a.clone()
-        }))
+        })))
     }
 }
 

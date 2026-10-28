@@ -23,7 +23,7 @@ fn poe_botao(m: &mut Mesa, id: KanbanId, nome: &str, lista: &str) {
     };
     let shared = m.hero.documents.kanbans_shared();
     let mut set = shared.borrow_mut();
-    let op = spec.create(set.get(id).unwrap(), Moment(0));
+    let op = spec.create(set.get(id).unwrap(), Moment(0)).expect("automação válida");
     set.apply(id, vec![op]);
 }
 
@@ -68,7 +68,7 @@ fn j5_o_botao_de_quadro_do_modelo_aparece_no_cabecalho_e_corre_como_butler() {
     {
         let shared = m.hero.documents.kanbans_shared();
         let mut set = shared.borrow_mut();
-        let op = s.update(&set.get(id).unwrap().automations[&a]);
+        let op = s.update(&set.get(id).unwrap().automations[&a]).expect("automação válida");
         set.apply(id, vec![op]);
     }
     m.quadro();

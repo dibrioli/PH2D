@@ -259,7 +259,7 @@ fn suggestion(docs: &mut KanbanDocs, id: u64, n: usize, create: bool) {
     };
     if create {
         let now = crate::actions::now();
-        crate::back::write::logged(docs, id, |k| Some(vec![s.spec.create(k, now)]));
+        crate::back::write::logged(docs, id, |k| Some(vec![s.spec.create(k, now).ok()?]));
     } else if let Some(p) = panel_mut(docs, id) {
         p.dismissed.push(s.spec);
     }

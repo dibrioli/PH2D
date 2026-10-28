@@ -130,7 +130,7 @@ fn set_enabled(s: &mut Scene, id: AutomationId, on: bool) {
     let a = s.set.get(s.k).unwrap().automations[&id].clone();
     let mut spec = Spec::from_bytes(&a.body).unwrap();
     spec.enabled = on;
-    let op = spec.update(&a);
+    let op = spec.update(&a).unwrap();
     s.set.apply(s.k, vec![op]);
 }
 
@@ -228,4 +228,16 @@ fn a_schedule_that_can_never_fire_is_refused_not_armed_silent() {
         let spec = calendar(every, TimeOfDay { hour: 23, minute: 59 });
         assert_eq!(Spec::from_bytes(&spec.to_bytes().unwrap()).unwrap(), spec);
     }
+}
+
+/// R1 — criar ou trocar uma automação que não grava devolve o ERRO a quem chama; antes gravava um
+/// corpo vazio, ilegível, que ficava no documento sem nunca correr.
+#[test]
+fn saving_an_automation_that_cannot_be_written_returns_the_error() {
+    let mut s = Scene::new();
+    let bad = calendar(Every::MonthDay(0), TimeOfDay { hour: 9, minute: 0 });
+    assert!(bad.create(s.set.get(s.k).unwrap(), NOW).is_err());
+    let id = s.add(&calendar(Every::Day, TimeOfDay { hour: 9, minute: 0 }));
+    let a = s.set.get(s.k).unwrap().automations[&id].clone();
+    assert!(bad.update(&a).is_err(), "o corpo de antes fica");
 }

@@ -101,7 +101,7 @@ impl Scene {
 
     pub(crate) fn add(&mut self, spec: &Spec) -> ph2d_kanban_model::AutomationId {
         let k = self.set.get(self.k).unwrap();
-        let op = spec.create(k, NOW);
+        let op = spec.create(k, NOW).expect("automação válida");
         let Some(ph2d_kanban_model::RecordId::Automation(id)) = op.target() else {
             panic!("create põe uma automação");
         };

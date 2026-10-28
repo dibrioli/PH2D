@@ -1,0 +1,17 @@
+[package]
+name = "ph2d-richdoc"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# Documento rico em blocos e as operações de edição (W3 do Kanban) — PURO: zero dependências,
+# sem UI. O formato gravado é markdown (`ph2d-kanban-md`), não este tipo.
+[dependencies]
+
+[lints]
+workspace = true

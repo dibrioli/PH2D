@@ -236,6 +236,7 @@ fn pincel_mexido() -> BrushSpec {
         pixel: ph2d_painter_brush::PixelTip::Perfect,
         tecto_por_dab: true,
         wash: true,
+        smear_fio: true,
         borda_px: 1.5,
         sub_passo_fino: true,
         passo_pela_pressao: true,

@@ -252,6 +252,8 @@ pub struct BrushSettings {
     pub accumulate: bool,
     /// **Wash** (`BrushSpec::wash`): com o Accumulate desligado, o traço pára no maior dab.
     pub wash: bool,
+    /// **Fine Thread** (`BrushSpec::smear_fio`): o Smear resolve-se por área — o fio do arrasto contínuo.
+    pub smear_fio: bool,
     /// **Style: Solid** on/off — o checkbox do card Line. Desmarcado (default) o traço é a linha de
     /// sempre; marcado ele é a região CERCADA pelo gesto, e a espessura deixa de entrar.
     pub style_solid: bool,

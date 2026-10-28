@@ -413,6 +413,8 @@ fn register_toggles_and_dropdowns(store: &mut WidgetStore) {
         ph2d_tool_painter::ids::PAINTER_BRUSH_CONTINUOUS_SPACING,
         ph2d_tool_painter::ids::PAINTER_BRUSH_ACCUMULATE,
         ph2d_tool_painter::ids::PAINTER_BRUSH_WASH,
+        // O fio do arrasto do Smear (J6).
+        ph2d_tool_painter::ids::PAINTER_BRUSH_SMEAR_FIO,
         // Shape (Wet Paint): a caixa das pontas rectas (J6).
         ph2d_tool_painter::ids::PAINTER_BRUSH_PONTAS_RECTAS,
         // Card Line: o checkbox Solid (sem ele o widget pinta, registra hit e fica MORTO sob o mouse).

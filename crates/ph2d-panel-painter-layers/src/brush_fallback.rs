@@ -172,6 +172,7 @@ pub const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     continuous_spacing: false,
     accumulate: false,
     wash: false,
+    smear_fio: false,
     style_solid: false,
     solid_owns_the_gesture: false,
     line_kind: 0,

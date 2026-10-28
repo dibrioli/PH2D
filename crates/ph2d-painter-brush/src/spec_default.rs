@@ -52,6 +52,7 @@ impl Default for BrushSpec {
             accumulate: false,
             tecto_por_dab: false,
             wash: false,
+            smear_fio: false,
             style_solid: false,
             line_kind: LineKind::None,
             // Sketchy: o alcance e a densidade são o ponto de operação do Krita traduzido para as

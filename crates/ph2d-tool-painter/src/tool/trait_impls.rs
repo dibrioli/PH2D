@@ -161,6 +161,9 @@ impl PainterTool {
             PanelEvent::Click(id) if id == crate::ids::PAINTER_BRUSH_WASH => {
                 self.toggle_brush_wash();
             }
+            PanelEvent::Click(id) if id == crate::ids::PAINTER_BRUSH_SMEAR_FIO => {
+                self.toggle_brush_smear_fio();
+            }
             PanelEvent::Click(id) if id == crate::ids::PAINTER_LINE_SOLID => {
                 self.toggle_style_solid();
             }

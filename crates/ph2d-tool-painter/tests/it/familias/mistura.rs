@@ -276,7 +276,11 @@ pub const EM_ESTUDO: &[ReceitaMeio] = &[
     // (`pressure_opacity_influence` 1 do preset dele), o tamanho não.
     ReceitaMeio {
         modo: Some("Smear"),
-        pincel: &[("hardness", "0.0"), ("falloff", "\"Smooth\"")],
+        pincel: &[
+            ("hardness", "0.0"),
+            ("falloff", "\"Smooth\""),
+            ("smear_fio", "true"),
+        ],
         mao: &[
             ("pressureSize", 0.0),
             ("pressureOpacity", 1.0),
@@ -886,5 +890,92 @@ fn cada_ferramenta_tem_os_seus_presets_de_fabrica() {
             };
             assert_eq!(t.paint_media(), meio, "{}: o meio", e.relativo);
         }
+    }
+}
+
+/// Sonda (à mão): a cena `sobre` do Smudge Finger em `PH2D_SONDA_OUT/<nome>.ppm` — o fio do arrasto medido por
+/// `mede_fio.py` contra `fixtures/rebelle_mistura/SMUDGE/default_soft_sobre_B.png`.
+#[test]
+#[ignore = "sonda: o fio do arrasto; corre-se à mão"]
+fn sonda_o_fio_do_arrasto() {
+    let out = std::env::var("PH2D_SONDA_OUT").unwrap_or_else(|_| "/tmp".into());
+    let nome = std::env::var("PH2D_SONDA_NOME").unwrap_or_else(|_| "smudge_finger".into());
+    // `PH2D_SONDA_BRUSH` = um JSON `{"<campo>": v}` sobreposto ao `brush` da receita (as variantes de uma ronda).
+    let mut p = preset_da_receita("Smudge Finger");
+    if let Ok(j) = std::env::var("PH2D_SONDA_BRUSH") {
+        let m: serde_json::Map<String, serde_json::Value> = serde_json::from_str(&j).unwrap();
+        p.parametros.brush.extend(m);
+    }
+    let px = sobre_de("Smudge Finger", Some(p));
+    let mut f = b"P6\n1000 640\n255\n".to_vec();
+    for p in px.as_chunks::<4>().0 {
+        f.extend_from_slice(&p[..3]);
+    }
+    std::fs::write(format!("{out}/{nome}.ppm"), f).unwrap();
+}
+
+/// O FIO do arrasto na cena `sobre` (foto A, 1000 px de largura), por cruzamento `x0`: por linha `y` de `ys`, a
+/// massa de tinta em `x0 ± 12` (`(248 − verde)/248`, a de `mede_fio.py`). Devolve (linhas vazias < 0,05, massa média).
+fn fio_do_arrasto(px: &[u8], x0: usize, ys: std::ops::Range<usize>) -> (usize, f64) {
+    let massa = |y: usize| -> f64 {
+        (x0 - 12..=x0 + 12)
+            .map(|x| ((248.0 - f64::from(px[(y * 1000 + x) * 4 + 1])) / 248.0).max(0.0))
+            .sum()
+    };
+    let n = ys.len();
+    let ms: Vec<f64> = ys.map(massa).collect();
+    (
+        ms.iter().filter(|&&m| m < 0.05).count(),
+        ms.iter().sum::<f64>() / n as f64,
+    )
+}
+
+/// ⭐ **O fio do arrasto é CONTÍNUO** (J6, lacuna de motor 8, `docs/Painter/Pinceis/exames/mistura.md` §J6): o dedo
+/// (`smear_fio`) puxa da faixa de cima um fio sub-píxel que o Rebelle leva sem buracos até à faixa de baixo — por
+/// baixo do traço «papel», y 322..440, as 118 linhas com tinta em cada cruzamento (massa média 2,14 px). Resolvido
+/// num ponto, o fio parte-se em contas (o CONTROLO: o mesmo dedo sem `smear_fio` — 35 linhas vazias medidas); por
+/// área, nenhuma, e a massa fica na ordem da do Rebelle.
+#[test]
+fn o_fio_do_arrasto_do_dedo_e_continuo() {
+    use serde_json::json;
+    let mut sem = preset_da_receita("Smudge Finger");
+    sem.parametros.brush.insert("smear_fio".to_owned(), json!(false));
+    let (com, sem) = std::thread::scope(|s| {
+        let a = s.spawn(|| sobre_de("Smudge Finger", None));
+        let b = s.spawn(move || sobre_de("Smudge Finger", Some(sem)));
+        (a.join().unwrap(), b.join().unwrap())
+    });
+    let mut falhas = Vec::new();
+    for x0 in [250, 500, 750] {
+        let (vazias, massa) = fio_do_arrasto(&com, x0, 322..440);
+        let (vazias_sem, _) = fio_do_arrasto(&sem, x0, 322..440);
+        println!("[fio] x {x0}: com o fio {vazias} vazias, massa {massa:.3} · sem {vazias_sem} vazias");
+        if vazias > 0 {
+            falhas.push(format!("x {x0}: o fio parte-se ({vazias}/118 linhas vazias)"));
+        }
+        if !(0.6..=4.0).contains(&massa) {
+            falhas.push(format!("x {x0}: massa do fio {massa:.3} fora de 0,6..4 (Rebelle 2,14)"));
+        }
+        if vazias_sem < 10 {
+            falhas.push(format!(
+                "CONTROLO x {x0}: sem o fio só {vazias_sem} vazias — a fixtura não vê a lei"
+            ));
+        }
+    }
+    assert!(falhas.is_empty(), "{}", falhas.join("\n"));
+}
+
+/// A bancada dos EM_ESTUDO da mistura: grava cada um, pela porta do gerador, em
+/// `PH2D_EM_ESTUDO_DIR/<nome>.ph2d-brush.png` — o `exame.sh` aceita o caminho.
+#[test]
+#[ignore = "bancada: escreve os EM_ESTUDO da mistura em PH2D_EM_ESTUDO_DIR"]
+fn escreve_os_em_estudo_da_mistura() {
+    let dir =
+        std::path::PathBuf::from(std::env::var("PH2D_EM_ESTUDO_DIR").expect("PH2D_EM_ESTUDO_DIR"));
+    for r in EM_ESTUDO {
+        let p = crate::presets_de_fabrica::preset_do_meio(r);
+        let f =
+            ph2d_brush_presets::gravar(&dir, &format!("{}.ph2d-brush.png", r.nome), &p).unwrap();
+        println!("[em estudo] {}", f.display());
     }
 }

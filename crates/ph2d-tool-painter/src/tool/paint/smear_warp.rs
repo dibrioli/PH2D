@@ -240,7 +240,7 @@ impl PainterTool {
             // One resample of the frozen source over everything that moved — colour and body together.
             #[cfg(test)]
             let t_render = std::time::Instant::now();
-            self.warp_render_from_session(all);
+            self.warp_render_por(all, self.paint.brush.smear_fio);
             #[cfg(test)]
             super::composite_acumulado::fases::soma_sub(9, t_render);
             // ⚠️ Sujo o que foi RENDERIZADO, não o que foi deslocado neste batch. Marcar só `rect`

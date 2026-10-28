@@ -231,6 +231,7 @@ pub(crate) const BRUSH: &[&str] = &[
     "panel.painter_layers.brush.sync_tools",
     "panel.painter_layers.brush.accumulate",
     "panel.painter_layers.brush.wash",
+    "panel.painter_layers.brush.smear_fine_thread",
     "panel.painter_layers.brush.blend",
     "panel.painter_layers.brush.blend_on_empty",
     "panel.painter_layers.brush.color",

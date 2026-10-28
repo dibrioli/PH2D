@@ -402,6 +402,7 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
                 || id == ph2d_tool_painter::ids::PAINTER_BRUSH_CONTINUOUS_SPACING
                 || id == ph2d_tool_painter::ids::PAINTER_BRUSH_ACCUMULATE
                 || id == ph2d_tool_painter::ids::PAINTER_BRUSH_WASH
+                || id == ph2d_tool_painter::ids::PAINTER_BRUSH_SMEAR_FIO
                 || id == ph2d_tool_painter::ids::PAINTER_LINE_SOLID
                 || id == ph2d_tool_painter::ids::PAINTER_LINE_SKETCHY_MAGNETIFY
                 || id == ph2d_tool_painter::ids::PAINTER_LINE_WIRE_CONNECTION

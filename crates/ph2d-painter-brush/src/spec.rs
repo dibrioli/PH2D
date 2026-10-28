@@ -165,6 +165,11 @@ pub struct BrushSpec {
     /// um dab que o cobre — a borda é a do Falloff exacta e o traço nunca escurece a si mesmo; o Flow escala, não
     /// soma (`stroke_cover::cover_max`). Desligado = a lei da taxa de sempre, ao bit.
     pub wash: bool,
+    /// ⭐ **O fio do arrasto do Smear** (J6, `docs/Painter/Pinceis/exames/mistura.md` §J6 Smudge Finger): o campo do
+    /// esfregão resolve-se POR ÁREA — cada texel é a média da tinta sobre a sua pegada levada para trás pelo mapa
+    /// (`warp::session::reamostra_por_area`), e o fio sub-píxel que o dedo puxa sai contínuo e pálido em vez de contas
+    /// soltas. Desligado = o ponto de sempre, ao bit.
+    pub smear_fio: bool,
     /// **Style: Solid** — o gesto ganha a área que ele CERCA, preenchida com cobertura exata por
     /// área ([`crate::solid`]), **além** do traço que a cerca. Um laço fino e solto vira uma mancha
     /// gorda com o contorno do pincel por cima. `false` (o default) é o mundo de sempre, byte a byte.

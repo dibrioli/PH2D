@@ -58,6 +58,7 @@ pub(super) fn ler(b: &BrushSpec, campo: &str) -> Value {
         "parado_s" => num(b.parado_s),
         "tecto_por_dab" => json!(b.tecto_por_dab),
         "wash" => json!(b.wash),
+        "smear_fio" => json!(b.smear_fio),
         // O dual brush (L6): gravado só ARMADO (`pincel_para_json`).
         "dual" => b.dual.map_or(Value::Null, |d| {
             json!({
@@ -155,6 +156,8 @@ pub(super) fn escrever(b: &mut BrushSpec, campo: &str, v: Option<&Value>) {
         // `pincel_de_json`.
         "tecto_por_dab" => b.tecto_por_dab = booleano(v, false),
         "wash" => b.wash = booleano(v, false),
+        // O fio do arrasto (J6): só se grava ligado; ausente = desligado.
+        "smear_fio" => b.smear_fio = booleano(v, false),
         // Campo ausente = o pincel de `b` (a lei do módulo); campo PRESENTE com uma sub-chave ausente (gravado
         // antes dela, a `opacity` da L2) = a de fábrica dessa sub-chave, nunca a de agora.
         "pen_tilt" if v.is_some() => {

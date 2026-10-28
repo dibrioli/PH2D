@@ -331,6 +331,11 @@ impl PainterTool {
         self.paint.brush.wash = !self.paint.brush.wash;
     }
 
+    /// **Fine Thread** do Smear (`BrushSpec::smear_fio`): o campo do esfregão resolve-se por área.
+    pub fn toggle_brush_smear_fio(&mut self) {
+        self.paint.brush.smear_fio = !self.paint.brush.smear_fio;
+    }
+
     /// **Style: Solid** — o traço deixa de ser a área varrida pelo pincel e passa a ser a área
     /// CERCADA pelo gesto (o `Style` do Alchemy; plano 38 §1.1).
     ///

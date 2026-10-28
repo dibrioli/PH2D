@@ -342,6 +342,7 @@ pub const INTERNAS: &[&str] = &[
     "toggle_brush_shape_alpha_from_image",
     "toggle_brush_shape_layer_color",
     "toggle_brush_shape_per_layer_color",
+    "toggle_brush_smear_fio",
     "toggle_brush_space_attenuation",
     "toggle_brush_texture_rake",
     "toggle_brush_tiling",

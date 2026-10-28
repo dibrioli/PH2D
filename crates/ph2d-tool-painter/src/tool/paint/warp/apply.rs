@@ -147,6 +147,13 @@ pub(super) fn bilinear_clamped(canvas: &[u8], w: u32, h: u32, x: f32, y: f32) ->
     if w == 0 || h == 0 {
         return [0, 0, 0, 0];
     }
+    despremultiplica(bilinear_premul(canvas, w, h, x, y))
+}
+
+/// [`bilinear_clamped`] antes de des-premultiplicar: `[r·a, g·a, b·a, a]` em `f32` — a amostra que se
+/// SOMA (o re-amostrar por área do fio do arrasto, `session::reamostra_por_area`). `w, h > 0`.
+#[inline]
+pub(super) fn bilinear_premul(canvas: &[u8], w: u32, h: u32, x: f32, y: f32) -> [f32; 4] {
     let x0f = x.floor();
     let y0f = y.floor();
     let fx = x - x0f;
@@ -179,7 +186,12 @@ pub(super) fn bilinear_clamped(canvas: &[u8], w: u32, h: u32, x: f32, y: f32) ->
     };
     let top = lerp(corner(x0, y0), corner(x1, y0), fx);
     let bot = lerp(corner(x0, y1), corner(x1, y1), fx);
-    let m = lerp(top, bot, fy); // [premR, premG, premB, A]
+    lerp(top, bot, fy) // [premR, premG, premB, A]
+}
+
+/// Uma amostra premultiplicada `[r·a, g·a, b·a, a]` de volta a RGBA8 direito.
+#[inline]
+pub(super) fn despremultiplica(m: [f32; 4]) -> [u8; 4] {
     let a = m[3];
     if a <= 0.0 {
         return [0, 0, 0, 0];

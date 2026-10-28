@@ -334,6 +334,22 @@ fn paint_top_basics(
             brush.wash,
         );
     }
+    // O fio do arrasto (J6): o Smear do Digital resolve-se por área (`BrushSpec::smear_fio`). Só o Smear lê o campo,
+    // e o preset que o leva é o do Digital.
+    if brush.ferramenta() == ph2d_tool_painter::FerramentaDoPincel::Smear
+        && ph2d_tool_painter::PaintMedia::from_u8(brush.media) == ph2d_tool_painter::PaintMedia::Digital
+    {
+        y = paint_checkbox_row(
+            ctx,
+            theme,
+            x,
+            content_w,
+            y,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_SMEAR_FIO,
+            "panel.painter_layers.brush.smear_fine_thread",
+            brush.smear_fio,
+        );
+    }
     y
 }
 

@@ -244,7 +244,14 @@ impl PainterTool {
     /// is `warp_render_relief`, the one door.
     ///
     /// With `disp = 0` everywhere each `dst` resolves to itself → **byte-identical**.
+    #[cfg(test)]
     pub(crate) fn warp_render_from_session(&mut self, bbox: Region) {
+        self.warp_render_por(bbox, false);
+    }
+
+    /// [`Self::warp_render_from_session`] com a escolha do re-amostrar: `por_area` = o fio do arrasto
+    /// ([`reamostra_por_area`], `BrushSpec::smear_fio`); `false` = o ponto de sempre, ao bit.
+    pub(crate) fn warp_render_por(&mut self, bbox: Region, por_area: bool) {
         let (w, h) = self.source_size;
         let n = (w as usize) * (h as usize);
         if self.paint.warp.pre.len() != n * 4 || self.paint.warp.disp.len() != n {
@@ -258,7 +265,11 @@ impl PainterTool {
             self.source_size.0,
             None,
         );
-        reamostra(buf, &src, &disp, w, h, bbox);
+        if por_area {
+            reamostra_por_area(buf, &src, &disp, w, h, bbox, TETO_DA_AREA);
+        } else {
+            reamostra(buf, &src, &disp, w, h, bbox);
+        }
         self.warp_render_relief(bbox);
     }
 }
@@ -286,6 +297,98 @@ fn reamostra(buf: &mut [u8], src: &[u8], disp: &[[f32; 2]], w: u32, h: u32, bbox
                 let d = disp[dy * w as usize + dx];
                 let px =
                     super::apply::bilinear_clamped(src, w, h, dx as f32 - d[0], dy as f32 - d[1]);
+                linha[dx * 4..dx * 4 + 4].copy_from_slice(&px);
+            }
+        });
+}
+
+/// **Quantas amostras por eixo, no máximo, o re-amostrar por área toma num texel** — o recurso é o TEMPO do
+/// render (o esfregão re-resolve toda a região tocada a cada lote). Medido na cena `sobre` do Smudge Finger
+/// (28/10, `sonda_o_fio_do_arrasto`), contra o teto 256: 16 → 81 px com |Δ| > 8 (máx 16) · 32 → 1 px (máx 9) ·
+/// **64 → 0 px (máx 4)** — a imagem converge aos 64; o tempo da cena 0,24 s (ponto) · 0,67 · 1,02 · 1,37 · 2,42 s.
+const TETO_DA_AREA: u32 = 64;
+
+/// O mapa `disp` amostrado bilinearmente em `(x, y)` contínuos, preso à borda (a mesma política do
+/// `bilinear_clamped` dos píxeis: estender, nunca dobrar).
+#[inline]
+fn disp_em(disp: &[[f32; 2]], w: u32, h: u32, x: f32, y: f32) -> [f32; 2] {
+    let (x0f, y0f) = (x.floor(), y.floor());
+    let (fx, fy) = (x - x0f, y - y0f);
+    let (wi, hi) = (i64::from(w), i64::from(h));
+    let x0 = (x0f as i64).clamp(0, wi - 1) as usize;
+    let y0 = (y0f as i64).clamp(0, hi - 1) as usize;
+    let x1 = (x0 + 1).min(w as usize - 1);
+    let y1 = (y0 + 1).min(h as usize - 1);
+    let at = |xi: usize, yi: usize| disp[yi * w as usize + xi];
+    let (a, b, c, d) = (at(x0, y0), at(x1, y0), at(x0, y1), at(x1, y1));
+    let top = [a[0] + (b[0] - a[0]) * fx, a[1] + (b[1] - a[1]) * fx];
+    let bot = [c[0] + (d[0] - c[0]) * fx, c[1] + (d[1] - c[1]) * fx];
+    [
+        top[0] + (bot[0] - top[0]) * fy,
+        top[1] + (bot[1] - top[1]) * fy,
+    ]
+}
+
+/// **O re-amostrar POR ÁREA — o fio do arrasto** (`BrushSpec::smear_fio`, `docs/Painter/Pinceis/exames/mistura.md`
+/// §J6 Smudge Finger): cada texel de saída é a MÉDIA do `pre` sobre a pegada do texel levada para trás pelo mapa, e
+/// não o `pre` num ponto.
+///
+/// Onde o dedo relaia, o mapa ESTICA: entre o eixo (a corrente levou a tinta do início do traço) e o texel ao lado
+/// (levou-a uns poucos px) o deslocamento salta dezenas de px num só texel, e a faixa que o dedo atravessou cabe numa
+/// LASCA desse texel — mais fina que ele. Amostrada num ponto, a lasca acerta ou falha o centro e o fio sai em contas
+/// soltas; integrada, ela dá ao texel a FRACÇÃO de tinta que lhe cabe — o fio contínuo e pálido do Rebelle.
+///
+/// A integração é uma grelha `nx × ny` por texel com o passo ≤ 1 px DE ORIGEM: `n` por eixo = o salto do mapa
+/// aos vizinhos nesse eixo (+1), até `teto` (o custo: só os texels esticados pagam; onde o mapa é liso, `n = 1` e o
+/// texel é o ponto de sempre). O mapa entre texels é o bilinear do `disp` (o mesmo que a composição usa).
+fn reamostra_por_area(
+    buf: &mut [u8],
+    src: &[u8],
+    disp: &[[f32; 2]],
+    w: u32,
+    h: u32,
+    bbox: Region,
+    teto: u32,
+) {
+    use rayon::prelude::*;
+    let stride = w as usize * 4;
+    let wu = w as usize;
+    let (y0, bh) = (bbox.y as usize, bbox.h as usize);
+    let (x0, bw) = (bbox.x as usize, bbox.w as usize);
+    let salto = |a: [f32; 2], b: [f32; 2]| (a[0] - b[0]).abs().max((a[1] - b[1]).abs());
+    buf[y0 * stride..(y0 + bh) * stride]
+        .par_chunks_mut(stride)
+        .enumerate()
+        .with_min_len(8)
+        .for_each(|(ry, linha)| {
+            let dy = y0 + ry;
+            for dx in x0..x0 + bw {
+                let d = disp[dy * wu + dx];
+                let viz = |xx: usize, yy: usize| disp[yy * wu + xx];
+                let sx = salto(d, viz(dx.saturating_sub(1), dy))
+                    .max(salto(d, viz((dx + 1).min(wu - 1), dy)));
+                let sy = salto(d, viz(dx, dy.saturating_sub(1)))
+                    .max(salto(d, viz(dx, (dy + 1).min(h as usize - 1))));
+                let n = |s: f32| if s > 1.0 { (s.ceil() as u32).min(teto) } else { 1 };
+                let (nx, ny) = (n(sx), n(sy));
+                let px = if nx == 1 && ny == 1 {
+                    super::apply::bilinear_clamped(src, w, h, dx as f32 - d[0], dy as f32 - d[1])
+                } else {
+                    let mut acc = [0.0f32; 4];
+                    for j in 0..ny {
+                        let qy = dy as f32 + (j as f32 + 0.5) / ny as f32 - 0.5;
+                        for i in 0..nx {
+                            let qx = dx as f32 + (i as f32 + 0.5) / nx as f32 - 0.5;
+                            let q = disp_em(disp, w, h, qx, qy);
+                            let s = super::apply::bilinear_premul(src, w, h, qx - q[0], qy - q[1]);
+                            for k in 0..4 {
+                                acc[k] += s[k];
+                            }
+                        }
+                    }
+                    let inv = 1.0 / (nx * ny) as f32;
+                    super::apply::despremultiplica(acc.map(|v| v * inv))
+                };
                 linha[dx * 4..dx * 4 + 4].copy_from_slice(&px);
             }
         });

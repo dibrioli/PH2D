@@ -6,8 +6,9 @@ use ph2d_kanban_model::{Kanban, KanbanId, KanbanSet, SESSION_ID_BIT, splitmix64}
 use super::KanbanReplica;
 use crate::msg::{KSnapshot, KWrite};
 
+/// Os bytes de `k` para a sessão: sem os registos pessoais (W9 — a Inbox é só de quem a escreveu).
 fn bytes_of(k: &Kanban, wire: KanbanId) -> Vec<u8> {
-    let mut k = k.clone();
+    let mut k = k.without_personal();
     k.id = wire;
     postcard::to_allocvec(&k).expect("postcard escreve o Kanban")
 }
@@ -91,13 +92,25 @@ impl KanbanReplica {
         wire: KanbanId,
         mut k: Kanban,
     ) -> KanbanId {
+        // W9 — a agenda da sessão é a MINHA agenda (uma por projecto); o que é pessoal fica o meu.
         let local = match self.map.get(&wire) {
             Some(l) => *l,
+            None if wire == KanbanId::AGENDA => KanbanId::AGENDA,
             None => set.create(&k.header.name),
         };
         k.id = local;
         self.map.insert(wire, local);
-        self.shadow.insert(wire, k.clone());
+        self.shadow.insert(wire, k.without_personal());
+        // Os meus eventos juntam-se aos da sessão (o próximo `local` leva-os aos outros: o calendário
+        // da sessão é a união); os pessoais ficam os meus.
+        if local == KanbanId::AGENDA
+            && let Some(mine) = set.get(local)
+        {
+            k.keep_personal_of(mine);
+            for (id, e) in &mine.events {
+                k.events.entry(*id).or_insert_with(|| e.clone());
+            }
+        }
         set.insert(k);
         self.arm(set);
         local

@@ -5,7 +5,8 @@ use std::collections::BTreeSet;
 
 use ph2d_kanban_model::{Background, CoverFill, FileId, Kanban, Link, Meta, RecordId};
 
-/// Todos os registos de `k`, apagados incluídos.
+/// Todos os registos de `k` que VIAJAM, apagados incluídos. ⛔ Os pessoais (Inbox, blocos do
+/// Planner, lidas — `RecordId::is_personal`) ficam no projecto de quem os escreveu.
 pub(crate) fn all_ids(k: &Kanban) -> Vec<RecordId> {
     let mut v = Vec::new();
     v.extend(k.lists.keys().map(|i| RecordId::List(*i)));
@@ -19,6 +20,13 @@ pub(crate) fn all_ids(k: &Kanban) -> Vec<RecordId> {
     v.extend(k.activities.keys().map(|i| RecordId::Activity(*i)));
     v.extend(k.mirrors.keys().map(|i| RecordId::Mirror(*i)));
     v.extend(k.automations.keys().map(|i| RecordId::Automation(*i)));
+    v.extend(k.events.keys().map(|i| RecordId::Event(*i)));
+    let personal = [
+        k.inbox.keys().map(|i| RecordId::Inbox(*i)).collect::<Vec<_>>(),
+        k.blocks.keys().map(|i| RecordId::Block(*i)).collect(),
+        k.seen.keys().map(|i| RecordId::Seen(*i)).collect(),
+    ];
+    debug_assert!(personal.iter().flatten().all(RecordId::is_personal));
     v
 }
 
@@ -36,6 +44,10 @@ pub(crate) fn meta_mut(k: &mut Kanban, id: RecordId) -> Option<&mut Meta> {
         RecordId::Activity(i) => k.activities.get_mut(&i).map(|r| &mut r.meta),
         RecordId::Mirror(i) => k.mirrors.get_mut(&i).map(|r| &mut r.meta),
         RecordId::Automation(i) => k.automations.get_mut(&i).map(|r| &mut r.meta),
+        RecordId::Event(i) => k.events.get_mut(&i).map(|r| &mut r.meta),
+        RecordId::Inbox(i) => k.inbox.get_mut(&i).map(|r| &mut r.meta),
+        RecordId::Block(i) => k.blocks.get_mut(&i).map(|r| &mut r.meta),
+        RecordId::Seen(i) => k.seen.get_mut(&i).map(|r| &mut r.meta),
     }
 }
 

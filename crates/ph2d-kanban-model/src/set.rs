@@ -13,16 +13,25 @@ use crate::records::{CoverFill, KanbanId, Link};
 
 /// A versão dos bytes de [`KanbanSet::to_bytes`]. v2 (W3): seguir, atividade, origem do cartão,
 /// ficheiros por conteúdo. v3 (W6): modelos de cartão, envelhecimento, espelhos. v4 (W8): as
-/// automações. As antigas leem-se pelos degraus de [`crate::v1`], [`crate::v2`] e [`crate::v3`].
-pub const FORMAT_VERSION: u32 = 4;
+/// automações. v5 (W9): a agenda do projecto (eventos, Inbox, Planner, lidas). As antigas leem-se
+/// pelos degraus de [`crate::v1`]..[`crate::v4`].
+pub const FORMAT_VERSION: u32 = 5;
 
 /// Os Kanbans de um projecto, pela ordem em que nasceram.
-#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct KanbanSet {
     kanbans: Vec<Kanban>,
     next_id: u64,
     /// Os bytes das imagens e anexos, uma vez por conteúdo (v2).
     files: BTreeMap<FileId, KanbanFile>,
+    /// A agenda do projecto (v5, [`KanbanId::AGENDA`]): fora de [`Self::iter`].
+    agenda: Kanban,
+}
+
+impl Default for KanbanSet {
+    fn default() -> Self {
+        Self::with_kanbans(Vec::new(), 0, BTreeMap::new())
+    }
 }
 
 /// O que [`KanbanSet::to_bytes`] escreve: o conjunto sem os ficheiros órfãos, por empréstimo (os
@@ -32,6 +41,7 @@ struct Saved<'a> {
     kanbans: &'a [Kanban],
     next_id: u64,
     files: BTreeMap<&'a FileId, &'a KanbanFile>,
+    agenda: &'a Kanban,
 }
 
 impl KanbanSet {
@@ -45,6 +55,10 @@ impl KanbanSet {
 
     /// Põe um Kanban inteiro (o desfazer de um apagar, uma importação). Substitui o de mesma chave.
     pub fn insert(&mut self, k: Kanban) {
+        if k.id == KanbanId::AGENDA {
+            self.agenda = k;
+            return;
+        }
         self.next_id = self.next_id.max(k.id.0);
         match self.kanbans.iter_mut().find(|x| x.id == k.id) {
             Some(slot) => *slot = k,
@@ -60,11 +74,36 @@ impl KanbanSet {
 
     #[must_use]
     pub fn get(&self, id: KanbanId) -> Option<&Kanban> {
+        if id == KanbanId::AGENDA {
+            return Some(&self.agenda);
+        }
         self.kanbans.iter().find(|k| k.id == id)
+    }
+
+    /// A agenda do projecto (eventos, Inbox, Planner, lidas).
+    #[must_use]
+    pub fn agenda(&self) -> &Kanban {
+        &self.agenda
+    }
+
+    fn with_kanbans(
+        kanbans: Vec<Kanban>,
+        next_id: u64,
+        files: BTreeMap<FileId, KanbanFile>,
+    ) -> Self {
+        Self {
+            kanbans,
+            next_id,
+            files,
+            agenda: Kanban::new(KanbanId::AGENDA, ""),
+        }
     }
 
     /// O Kanban `id` para o [`crate::History`] dele mudar (só por ops: não há outra porta).
     pub fn doc_mut(&mut self, id: KanbanId) -> Option<&mut Kanban> {
+        if id == KanbanId::AGENDA {
+            return Some(&mut self.agenda);
+        }
         self.kanbans.iter_mut().find(|k| k.id == id)
     }
 
@@ -97,6 +136,7 @@ impl KanbanSet {
                 .iter()
                 .filter(|(id, _)| used.contains(id))
                 .collect(),
+            agenda: &self.agenda,
         };
         postcard::to_allocvec(&(FORMAT_VERSION, saved)).map_err(|e| e.to_string())
     }
@@ -119,7 +159,11 @@ impl KanbanSet {
         size: Option<[u32; 2]>,
     ) -> FileId {
         let f = KanbanFile::new(bytes, size);
-        debug_assert_eq!(id, f.id(), "put_file_keyed: a chave não é o sha-256 dos bytes");
+        debug_assert_eq!(
+            id,
+            f.id(),
+            "put_file_keyed: a chave não é o sha-256 dos bytes"
+        );
         self.files.entry(id).or_insert(f);
         id
     }
@@ -165,34 +209,28 @@ impl KanbanSet {
             FORMAT_VERSION => postcard::from_bytes::<(u32, Self)>(bytes)
                 .map(|(_, set)| set)
                 .map_err(|e| e.to_string()),
+            4 => postcard::from_bytes::<(u32, crate::v4::SetV4)>(bytes)
+                .map(|(_, old)| {
+                    let (kanbans, next_id, files) = old.upgrade();
+                    Self::with_kanbans(kanbans, next_id, files)
+                })
+                .map_err(|e| e.to_string()),
             3 => postcard::from_bytes::<(u32, crate::v3::SetV3)>(bytes)
                 .map(|(_, old)| {
                     let (kanbans, next_id, files) = old.upgrade();
-                    Self {
-                        kanbans,
-                        next_id,
-                        files,
-                    }
+                    Self::with_kanbans(kanbans, next_id, files)
                 })
                 .map_err(|e| e.to_string()),
             2 => postcard::from_bytes::<(u32, crate::v2::SetV2)>(bytes)
                 .map(|(_, old)| {
                     let (kanbans, next_id, files) = old.upgrade();
-                    Self {
-                        kanbans,
-                        next_id,
-                        files,
-                    }
+                    Self::with_kanbans(kanbans, next_id, files)
                 })
                 .map_err(|e| e.to_string()),
             1 => postcard::from_bytes::<(u32, crate::v1::SetV1)>(bytes)
                 .map(|(_, old)| {
                     let (kanbans, next_id) = old.upgrade();
-                    Self {
-                        kanbans,
-                        next_id,
-                        files: BTreeMap::new(),
-                    }
+                    Self::with_kanbans(kanbans, next_id, BTreeMap::new())
                 })
                 .map_err(|e| e.to_string()),
             v => Err(format!("kanban format version {v} != {FORMAT_VERSION}")),
@@ -202,4 +240,4 @@ impl KanbanSet {
 
 #[cfg(test)]
 #[path = "set_tests.rs"]
-mod tests;
+pub(crate) mod tests;

@@ -7,6 +7,7 @@ use ph2d_frac::FracKey;
 use serde::{Deserialize, Serialize};
 
 use crate::activity::Activity;
+use crate::agenda::{Block, Event, InboxItem, Seen};
 use crate::color::Hue;
 use crate::files::FileId;
 use crate::records::{
@@ -14,6 +15,7 @@ use crate::records::{
     CheckItemId, Checklist, ChecklistId, Comment, CommentId, FieldDef, FieldId, KanbanId, Label,
     LabelId, List, ListId, Member, Mirror, MirrorId,
 };
+use crate::records::{BlockId, EventId, InboxId, SeenId};
 
 /// O envelhecimento dos cartões parados (v3, o Power-Up «Card Aging»): como a frente o pinta.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -69,6 +71,12 @@ pub struct Kanban {
     pub mirrors: BTreeMap<MirrorId, Mirror>,
     /// As automações do Kanban (v4): regras, botões e comandos, pela ordem `pos`.
     pub automations: BTreeMap<AutomationId, Automation>,
+    /// v5 — os eventos próprios do Calendário (na agenda do projecto, [`KanbanId::AGENDA`]).
+    pub events: BTreeMap<EventId, Event>,
+    /// v5 — PESSOAL (nunca viaja na sessão): a Inbox, os blocos do Planner e as notificações lidas.
+    pub inbox: BTreeMap<InboxId, InboxItem>,
+    pub blocks: BTreeMap<BlockId, Block>,
+    pub seen: BTreeMap<SeenId, Seen>,
     /// Em sessão ao vivo: o sorteio dos ids ([`Kanban::set_session`]). Não vai para o ficheiro.
     #[serde(skip)]
     pub(crate) session: crate::mint::Lottery,
@@ -100,6 +108,10 @@ impl Kanban {
             activities: BTreeMap::new(),
             mirrors: BTreeMap::new(),
             automations: BTreeMap::new(),
+            events: BTreeMap::new(),
+            inbox: BTreeMap::new(),
+            blocks: BTreeMap::new(),
+            seen: BTreeMap::new(),
             session: crate::mint::Lottery::default(),
         }
     }

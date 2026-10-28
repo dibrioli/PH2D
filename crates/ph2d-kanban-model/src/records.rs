@@ -37,6 +37,14 @@ ids! {
     MirrorId,
     /// Uma automação (v4).
     AutomationId,
+    /// Um evento próprio do Calendário do projecto (v5).
+    EventId,
+    /// Um item da Inbox de uma pessoa (v5).
+    InboxId,
+    /// Um bloco de tempo do Planner de uma pessoa (v5).
+    BlockId,
+    /// As notificações lidas de uma pessoa (v5).
+    SeenId,
 }
 
 /// Um instante: milissegundos desde 1970-01-01 UTC. Valor NEUTRO — fusos, «hoje», «atrasado» e

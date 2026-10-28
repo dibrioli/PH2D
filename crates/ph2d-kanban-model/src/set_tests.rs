@@ -375,8 +375,8 @@ fn v3_bytes_read_as_v4_equal() {
     assert_eq!(again, back, "e, regravado em v4, continua igual");
 }
 
-#[test]
-fn the_v4_bytes_round_trip_automations_and_their_last_run() {
+/// O v3 cheio mais uma automação (o que o v4 trouxe).
+pub(crate) fn full_v4() -> (KanbanSet, crate::CardRef, crate::Automation) {
     let (mut set, of) = full_v3();
     let k = set.doc_mut(of.kanban).unwrap();
     let a = crate::Automation {
@@ -387,8 +387,14 @@ fn the_v4_bytes_round_trip_automations_and_their_last_run() {
         meta: Meta::default(),
     };
     put(k, KanbanOp::put(Record::Automation(a.clone())));
+    (set, of, a)
+}
+
+#[test]
+fn the_v4_bytes_round_trip_automations_and_their_last_run() {
+    let (set, of, a) = full_v4();
     let bytes = set.to_bytes().unwrap();
-    assert_eq!(postcard::take_from_bytes::<u32>(&bytes).unwrap().0, 4);
+    assert!(postcard::take_from_bytes::<u32>(&bytes).unwrap().0 >= 4);
     let back = KanbanSet::from_bytes(&bytes).unwrap();
     assert!(back.iter().eq(set.iter()));
     let got = &back.get(of.kanban).unwrap().automations[&a.id];

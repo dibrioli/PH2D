@@ -11,6 +11,7 @@
 //! [ADR-0195]: ../../../docs/architecture/decisions/0195-o-kanban-e-um-documento-do-projeto-o-quadro-referencia-o-e-a-aba-abre-o.md
 
 mod activity;
+mod agenda;
 mod color;
 mod convert;
 mod files;
@@ -29,8 +30,10 @@ mod transfer;
 mod v1;
 mod v2;
 mod v3;
+mod v4;
 mod view;
 
+pub use agenda::{Block, BlockOf, Event, InboxItem, Repeat, Seen};
 pub use activity::{Activity, Actor, Happened, Snapshot, Subject, activity_for, apply_logged};
 pub use color::{Hue, LabelColor, Shade};
 pub use convert::convert_item_to_card;
@@ -44,10 +47,10 @@ pub use ops::{KanbanOp, Record, RecordId, apply_batch};
 pub use ph2d_frac::FracKey;
 pub use plan::{ListRef, Place, Plan};
 pub use records::{
-    ActivityId, Attachment, AttachmentId, Automation, AutomationId, Card, CardId, CardRef,
-    CheckItem, CheckItemId, Checklist, ChecklistId, Comment, CommentId, Cover, CoverFill, Due,
-    FieldDef, FieldId, FieldKind, FieldOption, FieldValue, KanbanId, Label, LabelId, Link, List,
-    ListId, Member, Meta, Mirror, MirrorId, Moment, OptionId, Reaction,
+    ActivityId, Attachment, AttachmentId, Automation, AutomationId, BlockId, Card, CardId, CardRef,
+    CheckItem, CheckItemId, Checklist, ChecklistId, Comment, CommentId, Cover, CoverFill, Due, EventId,
+    FieldDef, FieldId, FieldKind, FieldOption, FieldValue, InboxId, KanbanId, Label, LabelId, Link, List,
+    ListId, Member, Meta, Mirror, MirrorId, Moment, OptionId, Reaction, SeenId,
 };
 pub use set::{FORMAT_VERSION, KanbanSet};
 pub use transfer::{CopyKeep, card_from_template, copy_card, move_card, move_mirror};

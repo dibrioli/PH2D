@@ -12,6 +12,8 @@ use crate::records::{
     CheckItemId, Checklist, ChecklistId, Comment, CommentId, FieldDef, FieldId, Label, LabelId,
     List, ListId, Meta, Mirror, MirrorId,
 };
+use crate::agenda::{Block, Event, InboxItem, Seen};
+use crate::records::{BlockId, EventId, InboxId, SeenId};
 
 /// Um registo inteiro, de qualquer tabela.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -30,6 +32,12 @@ pub enum Record {
     Mirror(Mirror),
     /// v4 — uma automação.
     Automation(Automation),
+    /// v5 — um evento do Calendário.
+    Event(Event),
+    /// v5 — PESSOAIS: um item da Inbox, um bloco do Planner, as notificações lidas.
+    Inbox(InboxItem),
+    Block(Block),
+    Seen(Seen),
 }
 
 /// A chave de um registo, de qualquer tabela.
@@ -46,6 +54,10 @@ pub enum RecordId {
     Activity(ActivityId),
     Mirror(MirrorId),
     Automation(AutomationId),
+    Event(EventId),
+    Inbox(InboxId),
+    Block(BlockId),
+    Seen(SeenId),
 }
 
 /// Uma mudança num Kanban.
@@ -112,6 +124,10 @@ rec!(FieldDef, FieldId, fields, Field);
 rec!(Activity, ActivityId, activities, Activity);
 rec!(Mirror, MirrorId, mirrors, Mirror);
 rec!(Automation, AutomationId, automations, Automation);
+rec!(Event, EventId, events, Event);
+rec!(InboxItem, InboxId, inbox, Inbox);
+rec!(Block, BlockId, blocks, Block);
+rec!(Seen, SeenId, seen, Seen);
 
 use crate::mint::SESSION_ID_BIT;
 
@@ -174,6 +190,10 @@ impl KanbanOp {
                 Record::Activity(r) => put(k, r),
                 Record::Mirror(r) => put(k, r),
                 Record::Automation(r) => put(k, r),
+                Record::Event(r) => put(k, r),
+                Record::Inbox(r) => put(k, r),
+                Record::Block(r) => put(k, r),
+                Record::Seen(r) => put(k, r),
             },
             KanbanOp::Delete(id) => match id {
                 RecordId::List(id) => delete::<List>(k, id),
@@ -187,6 +207,10 @@ impl KanbanOp {
                 RecordId::Activity(id) => delete::<Activity>(k, id),
                 RecordId::Mirror(id) => delete::<Mirror>(k, id),
                 RecordId::Automation(id) => delete::<Automation>(k, id),
+                RecordId::Event(id) => delete::<Event>(k, id),
+                RecordId::Inbox(id) => delete::<InboxItem>(k, id),
+                RecordId::Block(id) => delete::<Block>(k, id),
+                RecordId::Seen(id) => delete::<Seen>(k, id),
             },
             KanbanOp::Header(mut h) => {
                 let mut prev = k.header.clone();
@@ -229,6 +253,10 @@ impl Record {
             Record::Activity(r) => RecordId::Activity(r.id),
             Record::Mirror(r) => RecordId::Mirror(r.id),
             Record::Automation(r) => RecordId::Automation(r.id),
+            Record::Event(r) => RecordId::Event(r.id),
+            Record::Inbox(r) => RecordId::Inbox(r.id),
+            Record::Block(r) => RecordId::Block(r.id),
+            Record::Seen(r) => RecordId::Seen(r.id),
         }
     }
 
@@ -245,6 +273,10 @@ impl Record {
             Record::Activity(r) => &mut r.meta,
             Record::Mirror(r) => &mut r.meta,
             Record::Automation(r) => &mut r.meta,
+            Record::Event(r) => &mut r.meta,
+            Record::Inbox(r) => &mut r.meta,
+            Record::Block(r) => &mut r.meta,
+            Record::Seen(r) => &mut r.meta,
         }
     }
 
@@ -276,6 +308,10 @@ impl Kanban {
             RecordId::Activity(id) => self.activities.get(&id).cloned().map(Record::Activity),
             RecordId::Mirror(id) => self.mirrors.get(&id).cloned().map(Record::Mirror),
             RecordId::Automation(id) => self.automations.get(&id).cloned().map(Record::Automation),
+            RecordId::Event(id) => self.events.get(&id).cloned().map(Record::Event),
+            RecordId::Inbox(id) => self.inbox.get(&id).cloned().map(Record::Inbox),
+            RecordId::Block(id) => self.blocks.get(&id).cloned().map(Record::Block),
+            RecordId::Seen(id) => self.seen.get(&id).cloned().map(Record::Seen),
         }
     }
 }

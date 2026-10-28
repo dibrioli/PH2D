@@ -486,12 +486,7 @@ fn foto_tutorial_parte_3_e_11_no_quadro() {
         let vivo = |d: &Duas| {
             d.hero.documents.kanbans().get(id).unwrap().cards.get(&c).is_some_and(|x| !x.meta.deleted)
         };
-        println!(
-            "11.4 depois do clique: quadro activo={} cartão vivo={} elementos={}",
-            d.hero.documents.active_board().is_some(),
-            vivo(&d),
-            d.hero.documents.active_board().map_or(0, |b| b.doc.live().count())
-        );
+        assert!(d.hero.documents.active_board().is_some() && !vivo(&d), "11.4: a nota no Quadro");
         foto_d(&mut d, &format!("11_4b_{tag}"));
         let _ = sem();
     }

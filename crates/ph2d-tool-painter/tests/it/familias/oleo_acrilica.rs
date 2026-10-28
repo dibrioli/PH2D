@@ -259,6 +259,9 @@ const KNIFE_STAIN: Receita = Receita {
     gate: 2.5,
     grao: None,
     extras: &[
+        // J6 (Real Oil, o grão de 1 px curado no motor): oilDepth 0,1 · oilGloss 0,3 — régua 282 → 322/454 (sem óleo 336).
+        ("oilDepth", 0.1),
+        ("oilGloss", 0.3),
         ("dabRotation", 1.0),
         ("knifeRidge", 0.0),
         ("emboss", 0.1),
@@ -285,8 +288,10 @@ const DABBER_4: Receita = Receita {
     extras: &[
         ("dabRotation", 0.0),
         ("textureSizeExp", 0.5),
-        // J6 (Real Oil): oilGloss 0,1 — régua 284 → 322/454; continua mais longe que sem óleo (348).
+        // J6 (Real Oil): oilGloss 0,1 — régua 284 → 322/454; com o grão curado no motor + oilDepth 0,3: 316 → 318
+        // (sem óleo 344, mesma bancada).
         ("oilGloss", 0.1),
+        ("oilDepth", 0.3),
     ],
     pincel: &[
         ("jitter", "0.1"),

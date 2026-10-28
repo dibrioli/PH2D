@@ -122,3 +122,7 @@ altura do canto leem a MESMA porta, logo sem cerca continuam coerentes; a cerca 
 - Câmera filha de outro objecto: o miolo soma o delta à translação LOCAL (pai rodado/escalado erra) — herdado.
 - Onda 18: zona morta pintada, miniatura, escurecer fora; «a vista do editor segue a câmera do jogo» como opção.
 - Os 13 vermelhos herdados da suíte `it` da shell (lista no handoff 17).
+
+## Depois do smoke (dono 28/10): o ícone vai no CENTRO do quadro
+
+`moldura_tinta::icones_em` passa a ler as `Moldura`s do quadro (`PickWorld.camera_frames`) e pinta/pega em `m.centro`, não na pose — a mesma lista para a tinta e o dedo; o fio do `follow` sai do ícone. Clique curto no miolo sobre o PRÓPRIO ícone fica com a câmera (`camera_frame_up`). Gate `o_icone_pega_no_centro_e_a_camera_escondida_some` (pose levada a (20, 20): pega no centro, não na pose); mutação `m.centro→m.pose` sangra. Fotos `fotos_17b/nivel_4_camera{,_arrasta}.png` refeitas.

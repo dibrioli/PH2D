@@ -146,6 +146,7 @@ impl crate::App {
             camera: &gfx.camera,
             pixels_per_meter: hero.project.pixels_per_meter,
             camera_icon_px: hero.project.camera_icon_px,
+            camera_frames: &self.undo.camera_no_canvas.molduras,
         };
         let mut hits = crate::hover_highlight::pick_objects_at(
             &mut pw,
@@ -155,6 +156,9 @@ impl crate::App {
             &self.flip_state.entities,
             a.ecra0(),
         );
+        if hits.first() == Some(&a.camera) {
+            return true; // o clique no próprio ícone fica com a câmera
+        }
         hits.retain(|b| *b != a.camera);
         crate::pick_order::descendants_first(gfx.sim.world(), &mut hits);
         if let Some(&b) = hits.first() {

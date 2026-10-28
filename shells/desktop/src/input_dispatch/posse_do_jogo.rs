@@ -139,6 +139,7 @@ impl crate::App {
             camera: &gfx.camera,
             pixels_per_meter: hero.project.pixels_per_meter,
             camera_icon_px: hero.project.camera_icon_px,
+            camera_frames: &self.undo.camera_no_canvas.molduras,
         };
         let mut hits = crate::hover_highlight::pick_objects_at(
             &mut pw,

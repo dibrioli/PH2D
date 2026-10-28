@@ -76,6 +76,8 @@ pub(crate) struct PickWorld<'a> {
     pub(crate) pixels_per_meter: f32,
     /// O lado do ícone da câmera (px de tela) — o dedo é o ícone ([`ph2d_app_game::moldura_tinta::icones_em`]).
     pub(crate) camera_icon_px: f32,
+    /// As molduras do quadro — o ícone está no centro de cada uma.
+    pub(crate) camera_frames: &'a [ph2d_app_game::moldura::Moldura],
 }
 
 pub(crate) fn pick_objects_at(
@@ -100,7 +102,7 @@ pub(crate) fn pick_objects_at(
     }
     // …e o da CÂMERA também (17b A9): o dedo é o ícone pintado.
     let cameras = ph2d_app_game::moldura_tinta::icones_em(
-        w.sim.world(),
+        w.camera_frames,
         pointer,
         w.camera_icon_px,
         w.camera,
@@ -193,6 +195,7 @@ impl crate::App {
             camera: &gfx.camera,
             pixels_per_meter: ppm,
             camera_icon_px: icone,
+            camera_frames: &self.undo.camera_no_canvas.molduras,
         };
         pick_objects_at(
             &mut w,

@@ -4,8 +4,6 @@
 //! Em espaço de TELA: o traço e o texto ficam nítidos em qualquer zoom.
 
 use crate::moldura::{AGARRE_PX, Moldura, alca_em, caixa, cantos};
-use bevy_ecs::entity::Entity;
-use bevy_ecs::world::World;
 use ph2d_editor_core::project::DisplayUnit;
 use ph2d_editor_core::zones::Rect;
 use ph2d_editor_core::{CameraFrameShow, icons::IconId};
@@ -52,30 +50,18 @@ fn icone(pose: [f32; 2], lado: f32, camera: &Camera2d, window: WindowSize) -> Re
     Rect::new(x - lado * 0.5, y - lado * 0.5, lado, lado)
 }
 
-/// ⭐ **O ícone pega** (17b A9): as câmeras visíveis cujo ícone contém `tela` — a MESMA conta da tinta.
+/// ⭐ **O ícone pega** (17b A9): as câmeras cujo ícone contém `tela` — a MESMA conta da tinta, no centro do quadro.
 #[must_use]
 pub fn icones_em(
-    world: &World,
+    ms: &[Moldura],
     tela: (f32, f32),
     lado: f32,
     camera: &Camera2d,
     window: WindowSize,
 ) -> Vec<u64> {
-    let Some(mut q) = world.try_query::<(Entity, &ph2d_ecs::GameCamera)>() else {
-        return Vec::new();
-    };
-    q.iter(world)
-        .map(|(e, _)| e)
-        .filter(|&e| {
-            !world
-                .get::<ph2d_ecs::Visibility>(e)
-                .is_some_and(|v| v.hidden)
-        })
-        .filter_map(|e| {
-            let t = ph2d_ecs::world_transform(world, e)?;
-            let r = icone([t.translation.x, t.translation.y], lado, camera, window);
-            r.contains(tela.0, tela.1).then_some(e.to_bits())
-        })
+    ms.iter()
+        .filter(|m| icone(m.centro, lado, camera, window).contains(tela.0, tela.1))
+        .map(|m| m.camera)
         .collect()
 }
 
@@ -97,7 +83,7 @@ pub fn desenhar(
         (f64::from(x), f64::from(y))
     };
     for m in ms {
-        let r = icone(m.pose, p.icone_px, camera, window);
+        let r = icone(m.centro, p.icone_px, camera, window);
         ph2d_editor_core::paint_icon(cena, IconId::Camera, r, selecao, TRACO_PX[1] as f32);
     }
     let sob = {
@@ -212,7 +198,7 @@ fn fio_do_follow(
     let Some(alvo) = s.alvo else {
         return;
     };
-    let (a, b) = (tela(m.pose), tela(alvo));
+    let (a, b) = (tela(m.centro), tela(alvo));
     let linha = ph2d_vector::Line::new(a, b);
     let s_ = cena.inner_mut();
     s_.stroke(

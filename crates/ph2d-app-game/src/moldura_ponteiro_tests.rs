@@ -162,34 +162,49 @@ fn os_dois_offset_tem_nomes_distintos() {
     let _ = CameraFollow::default();
 }
 
-/// ⭐⭐ **A9: o dedo é o ícone pintado, e uma câmera escondida não tem ícone nem moldura.** O ícone pega dentro do
+/// ⭐⭐ **A9: o dedo é o ícone pintado, NO CENTRO do quadro (dono 28/10), e uma câmera escondida não tem ícone
+/// nem moldura.** Com Follow o objecto fica longe do que filma: o ícone pega no centro e não na pose; dentro do
 /// quadrado do lado do projecto e não fora dele; com o dobro do lado pega onde antes falhava.
 #[test]
-fn o_icone_pega_e_a_camera_escondida_some() {
+fn o_icone_pega_no_centro_e_a_camera_escondida_some() {
     use crate::moldura_tinta::icones_em;
     let (mut sim, cam) = cena();
+    if let Some(mut t) = sim.world_mut().get_mut::<Transform>(cam) {
+        t.translation.x = 20.0;
+        t.translation.y = 20.0;
+    }
+    let ms = vec![quadro(&mut sim, cam)];
     let janela = ph2d_host::WindowSize {
         width: 1600,
         height: 900,
     };
-    let vista = ph2d_render::Camera2d::new([-8.0, 2.0], 15.0);
-    let (x, y) = vista.world_to_screen([-8.0, 2.0], janela);
+    let vista = ph2d_render::Camera2d::new(ms[0].centro, 15.0);
+    let (x, y) = vista.world_to_screen(ms[0].centro, janela);
     let lado = ph2d_editor_core::game_format::CAMERA_ICON_PX;
     let dentro = (x + lado * 0.5 - 1.0, y);
     let fora = (x + lado * 0.5 + 1.0, y);
     assert_eq!(
-        icones_em(sim.world(), dentro, lado, &vista, janela),
+        icones_em(&ms, dentro, lado, &vista, janela),
         vec![cam.to_bits()]
     );
-    assert!(icones_em(sim.world(), fora, lado, &vista, janela).is_empty());
+    assert!(icones_em(&ms, fora, lado, &vista, janela).is_empty());
     assert_eq!(
-        icones_em(sim.world(), fora, lado * 2.0, &vista, janela),
+        icones_em(&ms, fora, lado * 2.0, &vista, janela),
         vec![cam.to_bits()]
+    );
+    assert!(
+        icones_em(
+            &ms,
+            vista.world_to_screen([20.0, 20.0], janela),
+            lado,
+            &vista,
+            janela
+        )
+        .is_empty()
     );
     sim.world_mut()
         .entity_mut(cam)
         .insert(ph2d_ecs::Visibility { hidden: true });
-    assert!(icones_em(sim.world(), dentro, lado, &vista, janela).is_empty());
     let (vista_jogo, _) =
         ph2d_app_components::camera_2d::update(&mut sim, ASPECTO, 0, DT, [0.0, 0.0]);
     let ms = molduras(
@@ -199,6 +214,7 @@ fn o_icone_pega_e_a_camera_escondida_some() {
         Some(cam.to_bits()),
     );
     assert!(ms.iter().all(|m| m.camera != cam.to_bits()));
+    assert!(icones_em(&ms, dentro, lado, &vista, janela).is_empty());
 }
 
 /// ⭐ **Com Follow a moldura conhece o alvo** (o fio tracejado e a cruz da mira saem daqui).

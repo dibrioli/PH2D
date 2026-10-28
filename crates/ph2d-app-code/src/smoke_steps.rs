@@ -275,4 +275,16 @@ pub const STEPS_10: &[&[Gesture]] = &[
         Gesture::Type("card:"),
         Gesture::Wait(Until::ListHas("move")),
     ],
+    // 2 — Esc fecha a lista, o `card:` sai, Ctrl+S: o script corre; o separador Console mostra-o.
+    &[
+        Gesture::Key(Key::Escape, NONE),
+        Gesture::Key(Key::Backspace, NONE),
+        Gesture::Key(Key::Backspace, NONE),
+        Gesture::Key(Key::Backspace, NONE),
+        Gesture::Key(Key::Backspace, NONE),
+        Gesture::Key(Key::Backspace, NONE),
+        SAVE,
+        Gesture::Wait(Until::Saved),
+        Gesture::ClickBandTab(0),
+    ],
 ];

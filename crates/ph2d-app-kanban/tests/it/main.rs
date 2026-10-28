@@ -21,6 +21,7 @@ mod j3_import;
 mod j4_reconexao;
 mod j5_botoes;
 mod j6_verso_regras;
+mod j8_fotos_ao_vivo;
 mod medida;
 mod t1_abrir_cartao;
 mod teclado;

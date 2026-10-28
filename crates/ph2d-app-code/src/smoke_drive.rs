@@ -53,6 +53,8 @@ pub enum Gesture {
     Ctrl(bool),
     /// Um clique na linha `k` da lista de problemas pintada.
     ClickProblem(usize),
+    /// Um clique no separador `k` da faixa de baixo (0 = Console, 1 = Problems).
+    ClickBandTab(usize),
     /// O resto do passo entra no quadro seguinte (cada Tab vê-se).
     Frame,
     /// Um clique com `mods` sobre o carácter `ahead` bytes depois da 1.ª `needle` (o Ctrl+clique).
@@ -407,11 +409,14 @@ fn act(docs: &mut CodeDocs, id: ScriptId, g: Gesture) -> bool {
             };
             let _ = docs.pointer_move(id.0, input, x, y);
         }
-        Gesture::ClickProblem(k) => {
-            let Some(r) = docs
-                .band_of(id)
-                .and_then(|b| b.problems.get(k).map(|p| p.rect))
-            else {
+        Gesture::ClickProblem(_) | Gesture::ClickBandTab(_) => {
+            let band = docs.band_of(id);
+            let r = match g {
+                Gesture::ClickProblem(k) => band.and_then(|b| b.problems.get(k).map(|p| p.rect)),
+                Gesture::ClickBandTab(k) => band.and_then(|b| b.tabs.get(k).map(|t| t.1)),
+                _ => None,
+            };
+            let Some(r) = r else {
                 return false;
             };
             let (x, y) = (r.x + r.w * 0.5, r.y + r.h * 0.5);

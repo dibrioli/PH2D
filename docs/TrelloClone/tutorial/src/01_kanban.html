@@ -66,7 +66,7 @@ exemplo montado — o filme <b>«Short film — production»</b>, com as listas 
 <div class="note"><b>Como ler cada passo.</b> O texto em <code class="ui">assim</code> é exatamente o que
 aparece na tela (a interface é em inglês). A seta diz <b>o que tem de acontecer</b>; o triângulo diz
 <b>como saber que deu errado</b>. A foto ao lado é a tela real, tirada antes de este tutorial ser
-escrito. Onde diz <i>sem foto</i>, ainda não há imagem — o passo vale à mesma.<br>
+escrito.<br>
 A primeira vez que correr um comando, o PH2D demora alguns minutos a montar; as seguintes abrem em
 segundos. Para fechar, feche a janela.</div>
 
@@ -289,27 +289,30 @@ segundos. Para fechar, feche a janela.</div>
 <h3>Depois, com dois PH2D de verdade na mesma máquina</h3>
 <p>Abra <b>dois terminais</b>. Os dois PH2D usam o mesmo programa; a segunda janela abre depressa porque já está montado.</p>
 <ol class="steps">
-  <li class="np"><div><b>Terminal 1</b> (quem convida):
+  <li><div><b>Terminal 1</b> (quem convida):
     <div class="cmd">cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-TrelloClone &amp;&amp; env PH2D_KANBAN_SMOKE=1 cargo run -p ph2d-host-desktop --profile smoke</div>
     Clique <code class="ui">Share</code> → <code class="ui">Share this Kanban</code> → espere o link aparecer → <code class="ui">Copy link</code>.
     <p class="out">Aparece <code class="ui">Link copied.</code></p>
     <p class="bad">fica para sempre em <code class="ui">Preparing the internet link…</code> — então use, no passo 2, a linha
-    de <code class="ui">On this network</code> (endereço e código, escritos à mão com um espaço no meio).</p></div></li>
-  <li class="np"><div><b>Terminal 2</b> (quem entra) — o mesmo comando:
+    de <code class="ui">On this network</code> (endereço e código, escritos à mão com um espaço no meio).</p></div>
+    <div class="shot"><img src="../../smoke/W5/share_aberto_escuro.png"><div class="cap">o link pronto e <code class="ui">Copy link</code></div></div></li>
+  <li><div><b>Terminal 2</b> (quem entra) — o mesmo comando:
     <div class="cmd">cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-TrelloClone &amp;&amp; env PH2D_KANBAN_SMOKE=1 cargo run -p ph2d-host-desktop --profile smoke</div>
     Na nova janela: menu <code class="ui">File</code> → <code class="ui">Join a shared Kanban</code>. Clique na caixa
     <code class="ui">Paste an invite link</code>, <kbd>Ctrl</kbd>+<kbd>V</kbd>, e <code class="ui">Join</code>.
     <p class="out"><code class="ui">Joining…</code> e depois o Kanban partilhado abre numa aba nova, com
     <code class="ui">You are in a shared Kanban.</code> Cada janela mostra o avatar da outra.</p>
-    <p class="bad">aparece <code class="ui">That is not an invite link.</code> ou <code class="ui">Could not join</code>.</p></div></li>
+    <p class="bad">aparece <code class="ui">That is not an invite link.</code> ou <code class="ui">Could not join</code>.</p></div>
+    <div class="shot"><img src="../../smoke/tutorial/6_2_escuro.png"><div class="cap">o link colado em «Join a shared Kanban», antes do <code class="ui">Join</code></div></div></li>
   <li><div>Ponha as duas janelas lado a lado. Arraste um cartão numa; escreva um título na outra.
     <p class="out">A mudança aparece na outra janela quase na hora; o cursor de uma anda na outra.</p>
     <p class="bad">só uma das janelas vê a mudança, ou os cartões ficam em ordens diferentes.</p></div>
     <div class="shot"><img src="../../smoke/W5/dois_herois_escuro.png"><div class="cap">dois PH2D: à direita o colega com um cartão aberto</div></div></li>
-  <li class="np"><div>Na janela 1, <code class="ui">Share</code> → <code class="ui">Stop sharing</code>.
+  <li><div>Na janela 1, <code class="ui">Share</code> → <code class="ui">Stop sharing</code>.
     <p class="out">A janela 2 avisa <code class="ui">The host stopped sharing the Kanban.</code> Se em vez disso a ligação
     cair (rede), aparece <code class="ui">Reconnecting…</code> e ela tenta voltar sozinha durante um minuto.</p>
-    <p class="bad">a janela 2 continua a mostrar o avatar do anfitrião como se nada fosse. <i>(sem foto)</i></p></div></li>
+    <p class="bad">a janela 2 continua a mostrar o avatar do anfitrião como se nada fosse.</p></div>
+    <div class="shot"><img src="../../smoke/tutorial/6_4a_escuro.png"><div class="cap">a janela 2: o aviso no topo e nenhum avatar ao lado de Share</div><img src="../../smoke/tutorial/6_4b_escuro.png" style="margin-top:6px"><div class="cap">se a ligação cair: <code class="ui">Reconnecting…</code> por baixo dos avatares</div></div></li>
 </ol>
 <div class="note"><b>Entre duas casas</b> (duas redes diferentes) ainda não foi experimentado — ver «O que ficou de fora».</div>
 </div>
@@ -357,12 +360,13 @@ segundos. Para fechar, feche a janela.</div>
     escolher um mostra a ajuda.</p>
     <p class="bad">nenhuma lista aparece depois de <code>card:</code>.</p></div>
     <div class="shot"><img src="../../smoke/W8/code_smoke10_escuro.png"><div class="cap">o script do Kanban</div></div></li>
-  <li class="np"><div>Apague o <code>card:</code> que escreveu e carregue <kbd>Ctrl</kbd>+<kbd>S</kbd>.
+  <li><div>Apague o <code>card:</code> que escreveu e carregue <kbd>Ctrl</kbd>+<kbd>S</kbd>.
     <p class="out">O script corre: o console embaixo escreve o nome do Kanban, o número de listas e os cartões
     atrasados. Abra o Kanban (<code class="ui">File</code> → <code class="ui">Kanbans…</code> → «Short film — production»):
     «Animate shot 12» está agora na <code class="ui">REVIEW</code>, com o comentário «Blocking pronto — @Rui, pode rever?».
     Um <kbd>Ctrl</kbd>+<kbd>Z</kbd> no Kanban desfaz o script inteiro.</p>
-    <p class="bad">o console mostra um erro em vermelho, ou o cartão não se mexeu. <i>(sem foto)</i></p></div></li>
+    <p class="bad">o console mostra um erro em vermelho, ou o cartão não se mexeu.</p></div>
+    <div class="shot"><img src="../../smoke/tutorial/8_2_escuro.png"><div class="cap">depois do <kbd>Ctrl</kbd>+<kbd>S</kbd>: o separador <code class="ui">Console</code> com o que o script escreveu</div></div></li>
 </ol>
 <div class="note"><b>Segurança.</b> Abrir um projeto nunca corre um script de Kanban sozinho: só corre depois de você
 carregar <kbd>Ctrl</kbd>+<kbd>S</kbd> nele nessa sessão.</div>
@@ -410,10 +414,11 @@ carregar <kbd>Ctrl</kbd>+<kbd>S</kbd> nele nessa sessão.</div>
     <p class="out">A lista diz quem o mencionou, quem o pôs num cartão, o que vai vencer. <code class="ui">Mark all as read</code> apaga o número do sino.</p>
     <p class="bad">a menção a você não aparece.</p></div>
     <div class="shot"><img src="../../smoke/W9/sino_escuro.png"><div class="cap">as notificações</div></div></li>
-  <li class="np"><div>Fora desta cena, os mesmos modos abrem pelo menu <code class="ui">File</code>:
+  <li><div>Fora desta cena, os mesmos modos abrem pelo menu <code class="ui">File</code>:
     <code class="ui">Project calendar</code>, <code class="ui">Planner</code>, <code class="ui">My cards</code>, <code class="ui">Inbox</code>.
     <p class="out">Abre a aba <code class="ui">Planner</code> no modo pedido.</p>
-    <p class="bad">os itens não estão no menu. <i>(sem foto)</i></p></div></li>
+    <p class="bad">os itens não estão no menu.</p></div>
+    <div class="shot"><img src="../../smoke/tutorial/9_8_escuro.png"><div class="cap">o menu <code class="ui">File</code> com os quatro modos</div></div></li>
 </ol>
 </div>
 
@@ -434,7 +439,7 @@ carregar <kbd>Ctrl</kbd>+<kbd>S</kbd> nele nessa sessão.</div>
     <p class="out">O quadro abre numa aba própria, com o mesmo relatório.</p>
     <p class="bad">aparece «is not a Trello board export».</p></div>
     <div class="shot"><img src="../../smoke/tutorial/10_2_escuro.png"><div class="cap">o quadro importado e o relatório</div></div></li>
-  <li class="np"><div><code class="ui">File</code> → <code class="ui">Export Kanban…</code> → escolha
+  <li><div><code class="ui">File</code> → <code class="ui">Export Kanban…</code> → escolha
     <code class="ui">CSV (spreadsheet)</code>, <code class="ui">Markdown</code> ou <code class="ui">Trello JSON</code>.
     <p class="out">Aparece no topo, por cima do Kanban, «Exported «…» as … to …». O CSV abre numa folha de cálculo; o Trello JSON volta a entrar no PH2D igual.</p>
     <p class="bad">aparece «Could not write», ou nenhum aviso aparece.</p></div>

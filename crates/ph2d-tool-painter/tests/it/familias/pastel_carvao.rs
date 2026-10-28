@@ -45,6 +45,10 @@ pub const WET: &[Receita] = &[
     // J4 r3 (duas revisões cegas repetem: o Rebelle mais aberto e translúcido, a rampa nasce em névoa e não em agulha, o
     // de 5 px pontilhado): papel 0,6, carga 85 e a pressão leve em grão (`pressureGrain` 0,5). A base `SOFT_PASTEL`
     // fica como estava (o Square Hard, o Wax Scrape e o Pastel Side nascem dela).
+    // J6 r2 (a cega: «a referência tem um HALO de pontinhos, a imitação quase sem poeira, mais saturada»): o recto de 200
+    // à escala 0,475, a cobertura média FORA da borda 0,2–0,4 · 0,4–0,7 meia-largura — Rebelle 0,070 · 0,020, o nosso
+    // 0,027 · 0,008: o pó [`PO_DO_PASTEL`] em grãos de 2 px → 0,057 · 0,023. A carga fica 85 (a 75 o miolo a 200 casava,
+    // 0,901 contra 0,896, mas o recto de 40 cobria 0,737 contra 0,793 — o pó dele não cresce com o tamanho como o dela).
     Receita {
         pigment: 85.0,
         gate: 0.6,
@@ -85,9 +89,13 @@ pub const WET: &[Receita] = &[
     // J4 2.ª ronda (decisão 16: vale a foto da bateria): o Rebelle cobre o vermelho (o vermelho por baixo do azul 0,16;
     // o nosso a 75 · papel 1,0 lia 0,30) e é mais denso (cobertura 0,71 contra 0,53) — carga 110 e o papel 0,8. Variante
     // sq1 v4: régua 188 → 277/295 (só A); o Cruzamento do portão das mídias re-medido (`MIDIAS`).
+    // J6 r2 (a cega: «a referência tem o grão fino e denso e é mais escura; a imitação um salpicado branco grosso»): o
+    // recto de 200 à escala 0,8, o terço central — Rebelle cobertura 0,834, furos (c < 0,35) 3,7 %, o p90 da área 3 px;
+    // o nosso 0,761, 8,5 %, 5 px: a carga 116 e o grão mais fino ([`GRAO_DO_SQUARE`] 160 a 0,55) → 0,818, 3,6 %, 2 px
+    // (a 124: 0,835, mas o recto de 40 cobria 0,755 contra 0,698 — o Rebelle adensa com o tamanho, o nosso não).
     Receita {
         nome: "Square Hard",
-        pigment: 110.0,
+        pigment: 116.0,
         gate: 0.8,
         hardness: 0.7,
         size_px: Some(35.0),
@@ -193,7 +201,8 @@ const MARMORE_DO_CARVAO: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Nois
 /// ⭐ **O PÓ SOLTO do pastel seco** (J4 2.ª ronda, `wetpaint/po.rs`): os grãos à volta do traço, à parte do rasto. Rebelle
 /// «Dry Thin», recto de 200 px (a régua do pó): 56 grãos por 100 px a ≥ 0,2 da meia-largura, área p50 3 px, tom 0,18, 2,15×
 /// mais à direita de quem anda (`po_lado` 0,37); o nosso (variante sp6 v0, à escala 0,475): 54, área 2, tom 0,20.
-const PO_DO_PASTEL: &str = r#"{"across": 0.0, "angle_per_stroke": 0.0, "count": 0.0, "flip_x": 0.0, "flip_y": 0.0, "opacity": 0.0, "particle": 1.0, "roundness": 0.0, "po": 2.5, "po_alcance": 1.0, "po_px": 1.5, "po_opacidade": 0.08, "po_lado": 0.37}"#;
+/// J6 r2: contava os grãos e não a TINTA do halo (a cega via-o «quase sem poeira»): `po` 4, 2 px, 0,10, alcance 0,8.
+const PO_DO_PASTEL: &str = r#"{"across": 0.0, "angle_per_stroke": 0.0, "count": 0.0, "flip_x": 0.0, "flip_y": 0.0, "opacity": 0.0, "particle": 1.0, "roundness": 0.0, "po": 4.0, "po_alcance": 0.8, "po_px": 2.0, "po_opacidade": 0.1, "po_lado": 0.37}"#;
 
 /// O pó solto do carvão (J4 2.ª ronda): mais perto da borda (Rebelle «Charcoal»: 46 grãos por 100 px, todos a 0,1–0,5 da
 /// meia-largura, 231 × 91 à direita — `po_lado` 0,43); o nosso (ch6 v1): 44, as mesmas faixas, tom 0,17 (Rebelle 0,15).
@@ -213,8 +222,8 @@ const SEM_SHAPE: &str = r#"{"angle_deg": 0, "flow": false, "kind": "None", "mapp
 /// ½-autocorrelação no recto de 200 px 600 px ao longo × 6 através, contraste 0,23; sem a Shape 1 × 1, 0,17.
 const ESTRIAS_DO_OLEO: &str = r#"{"angle_deg": 0, "flow": true, "kind": "Noise", "mapping": "Random", "offset": [0.0, 0.0], "params": [1.0, 0.6, 0.0, 0.5, 0.5, 0.5], "rake": false, "size": [0.02, 20.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
 
-/// O grão do Square Hard (J4): Noise `Tiled` Size 100 (2,56 px), contraste 0,6.
-const GRAO_DO_SQUARE: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Noise", "mapping": "Tiled", "offset": [0.0, 0.0], "params": [0.6, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [100.0, 100.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
+/// O grão do Square Hard (J4): Noise `Tiled`; J6 r2 Size 160 (1,6 px), contraste 0,55 (era 100 a 0,6: furos de 5 px).
+const GRAO_DO_SQUARE: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Noise", "mapping": "Tiled", "offset": [0.0, 0.0], "params": [0.55, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [160.0, 160.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
 
 /// O miolo MANCHADO do Square Hard (J4 r3): a Shape um Noise `Random` de lado 6 a 0,5 — a mídia do Rebelle varia ao longo
 /// do traço (Cv 0,077; o nosso só com o grão 0,042) e a revisão cega r1 via-o «grosso e manchado».

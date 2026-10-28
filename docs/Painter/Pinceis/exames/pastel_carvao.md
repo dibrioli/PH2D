@@ -102,7 +102,40 @@ Régua da ponta (recto de 40, `../J6_pontas_rectas.md`; curva ini·fim · além 
 - Custo p95 a 200 px (bateria): Square Hard 18,3 ms (load 27,6), Soft Pastel 11,0 ms (load 18,4) — relógio inválido
   acima de load ~5; repetir calmo.
 
+## J6 r2 — a 2.ª (e última) ronda do Square Hard e do Soft Pastel, revisão cega por fazer
+
+A cega r1: Soft Pastel ENGANOU nos gestos; nos tamanhos (média) «o Rebelle tem um HALO de pontinhos, centro denso, a
+imitação bordas rectas e quase sem poeira»; Square Hard nos tamanhos (média) «o Rebelle tem grão fino e denso e é mais
+escuro, a bordas a desfazer; a imitação salpicado branco grosso, mais clara». Régua nova (`largo.py`/`po.py`, recto de
+200 da cena `tamanhos`, x 150..850, c = (255 − R)/232; o terço central = miolo; furos = c < 0,35):
+
+| | miolo c · furos · área p90 · rgb | halo c médio fora da borda 50 % (0,2–0,4 · 0,4–0,7 · 0,7–1,2 meia) |
+|---|---|---|
+| Rebelle Square Hard | 0,834 · 3,7 % · 3 px · (62,127,192) | 0 (nada além de 0,1) |
+| nosso r1 (carga 110, grão 100 a 0,6) | 0,761 · 8,5 % · 5 px · (79,138,197) | 0 |
+| **nosso r2 (carga 116, grão 160 a 0,55)** | **0,818 · 3,6 % · 2 px · (65,129,193)** | 0 |
+| Rebelle Dry Thin | 0,896 | 0,070 · 0,020 · 0,009 (tom p90 0,33) |
+| nosso r1 (pó 2,5 · 1,5 px · 0,08 · alcance 1) | 0,923 | 0,027 · 0,008 · 0,004 (p90 0,25) |
+| **nosso r2 (pó 4 · 2 px · 0,10 · alcance 0,8)** | 0,928 | **0,059 · 0,023 · 0,006** (p90 0,32) |
+
+Régua da bancada: Square Hard 432 → 428/454 (vizinho Oil Pastel 0,753), Soft Pastel 412 → 406 (escala 0,452 — o pó
+alarga o recto_lento medido; vizinho Graphite 8B 0,862). Pranchas `pranchas/J6_square_hard{,_cega}.jpg` e
+`J6_soft_pastel{,_cega}.jpg` regeradas com nova ordem e nova `_chave.txt`.
+
+⛔ Recusas MEDIDAS (r2): Square Hard carga 124 (miolo 0,835, mas o recto de 40 cobre 0,755 contra 0,698 — o Rebelle
+adensa com o tamanho: 0,698 → 0,753, o nosso não) e 140 (furos 0 %); Soft Pastel pó 6 · 0,12 · carga 75 (halo 0,083 ·
+0,035, o recto de 40 cobre 0,716 contra 0,793 e a régua cai a 304) — o pó dele é igual a todos os tamanhos, o dela cresce.
+
 ## Fila (com a medição)
+
+- **(J6 r2) O fim do traço LARGO esmaece ao comprido** (o «bordas se desfazendo» da cega, nos dois): a cobertura por
+  coluna no recto de 200 sobe ao longo de ~150 px no início e cai ao longo de ~100 px no fim (Rebelle Square Hard
+  0,33 → 0,84 e 0,85 → 0,33; Dry Thin 0,05 → 0,77 em ~60 px e 0,82 → 0,01 em ~70 px); o nosso salta de 0 ao cheio em
+  < 15 px (as pontas rectas). A 40 px a rampa dele é 11 · 35 px (Square Hard). É a «rampa larga do corte» abaixo, com
+  a escala ao tamanho — motor.
+- **(J6 r2) A densidade e o pó pelo TAMANHO**: o Rebelle adensa o Square Hard com o tamanho (cobertura da régua 0,698 a
+  40 → 0,753 a 200) e o pó do Dry Thin quase não se vê a 40 px; o nosso é igual a todos os tamanhos — uma lei do pó e
+  da carga pelo diâmetro (motor).
 
 - **O fim que esmaece num raio** (Charcoal, Wax Scrape: tampas redondas mas cheias no Rebelle): a janela do rasto que
   cai no fim (`end_direct_stroke`); a porta `land_direct_remainders` (J6) já existe — falta medir pousá-la sem o corte.

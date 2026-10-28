@@ -110,6 +110,20 @@ impl KanbanSet {
         id
     }
 
+    /// [`Self::put_file`] com a chave já calculada ([`FileId::of`], num fio de fundo: o sha-256 de um
+    /// anexo grande não pesa na janela). ⛔ `id` TEM de ser a chave dos bytes (verificado em debug).
+    pub fn put_file_keyed(
+        &mut self,
+        id: FileId,
+        bytes: impl Into<Arc<[u8]>>,
+        size: Option<[u32; 2]>,
+    ) -> FileId {
+        let f = KanbanFile::new(bytes, size);
+        debug_assert_eq!(id, f.id(), "put_file_keyed: a chave não é o sha-256 dos bytes");
+        self.files.entry(id).or_insert(f);
+        id
+    }
+
     #[must_use]
     pub fn file(&self, id: FileId) -> Option<&KanbanFile> {
         self.files.get(&id)

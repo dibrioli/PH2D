@@ -12,6 +12,7 @@ use std::collections::BTreeMap;
 use ph2d_frac::FracKey;
 
 use crate::kanban::Kanban;
+use crate::mint::Minter;
 use crate::ops::{KanbanOp, Record, RecordId};
 use crate::plan::{Place, Plan};
 use crate::records::{
@@ -84,7 +85,7 @@ impl How<'_> {
 pub(crate) struct Copier<'a> {
     pub src: &'a Kanban,
     pub dst: &'a Kanban,
-    next: u64,
+    ids: Minter<'a>,
     labels: BTreeMap<LabelId, Option<LabelId>>,
     fields: BTreeMap<FieldId, Option<FieldId>>,
     last_field: Option<FracKey>,
@@ -102,7 +103,7 @@ impl<'a> Copier<'a> {
         Self {
             src,
             dst,
-            next: dst.mint() - 1,
+            ids: dst.minter(),
             labels: BTreeMap::new(),
             fields: BTreeMap::new(),
             last_field,
@@ -111,8 +112,7 @@ impl<'a> Copier<'a> {
     }
 
     pub(crate) fn id(&mut self) -> u64 {
-        self.next += 1;
-        self.next
+        self.ids.id()
     }
 
     fn same(&self) -> bool {
@@ -330,7 +330,7 @@ pub(crate) fn cross_move(
 ) {
     let mut cp = Copier::new(src, dst);
     cp.ops = head;
-    cp.next += reserved;
+    cp.ids.skip(reserved);
     let mut moved = BTreeMap::new();
     for (c, list, pos) in cards {
         let Some(card) = src.cards.get(c).filter(|c| !c.meta.deleted) else {

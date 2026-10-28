@@ -113,8 +113,7 @@ rec!(Activity, ActivityId, activities, Activity);
 rec!(Mirror, MirrorId, mirrors, Mirror);
 rec!(Automation, AutomationId, automations, Automation);
 
-/// O bit dos ids sorteados numa sessão ao vivo (W5) — esses não sobem o contador local.
-const SESSION_ID_BIT: u64 = 1 << 63;
+use crate::mint::SESSION_ID_BIT;
 
 fn put<R: Rec>(k: &mut Kanban, mut r: R) -> Option<KanbanOp> {
     let id = r.id();

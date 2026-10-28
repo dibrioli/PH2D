@@ -69,6 +69,9 @@ pub struct Kanban {
     pub mirrors: BTreeMap<MirrorId, Mirror>,
     /// As automações do Kanban (v4): regras, botões e comandos, pela ordem `pos`.
     pub automations: BTreeMap<AutomationId, Automation>,
+    /// Em sessão ao vivo: o sorteio dos ids ([`Kanban::set_session`]). Não vai para o ficheiro.
+    #[serde(skip)]
+    pub(crate) session: crate::mint::Lottery,
 }
 
 impl Kanban {
@@ -97,20 +100,8 @@ impl Kanban {
             activities: BTreeMap::new(),
             mirrors: BTreeMap::new(),
             automations: BTreeMap::new(),
+            session: crate::mint::Lottery::default(),
         }
-    }
-
-    /// Um id novo para um registo deste Kanban. Não muda o documento: o `Put` que o usa sobe o
-    /// contador (dois ids pedidos sem `Put` no meio são o MESMO — peça-os todos com [`Self::mint_n`]).
-    #[must_use]
-    pub fn mint(&self) -> u64 {
-        self.next_id + 1
-    }
-
-    /// `n` ids novos e seguidos, para um gesto que cria vários registos.
-    #[must_use]
-    pub fn mint_n(&self, n: usize) -> Vec<u64> {
-        (1..=n as u64).map(|i| self.next_id + i).collect()
     }
 
     /// As listas vivas e não arquivadas, pela ordem (`pos`, e o id desempata).

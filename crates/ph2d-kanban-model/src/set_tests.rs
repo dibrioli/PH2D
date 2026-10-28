@@ -398,3 +398,20 @@ fn the_v4_bytes_round_trip_automations_and_their_last_run() {
     );
     assert!(!Member::butler().0.is_empty() && Member::butler().is_butler());
 }
+
+/// A chave calculada fora (num fio) dá o MESMO ficheiro que o `put_file`; uma chave errada é recusada
+/// em debug.
+#[test]
+fn put_file_keyed_is_put_file_with_the_key_computed_elsewhere() {
+    let bytes: Vec<u8> = (0..4096u32).map(|i| (i % 251) as u8).collect();
+    let id = crate::FileId::of(&bytes);
+    let mut a = KanbanSet::default();
+    let mut b = KanbanSet::default();
+    assert_eq!(a.put_file_keyed(id, bytes.clone(), Some([4, 2])), id);
+    assert_eq!(b.put_file(bytes.clone(), Some([4, 2])), id);
+    assert_eq!(a.file(id), b.file(id));
+    let wrong = std::panic::catch_unwind(move || {
+        KanbanSet::default().put_file_keyed(crate::FileId::default(), bytes, None)
+    });
+    assert_eq!(wrong.is_err(), cfg!(debug_assertions));
+}

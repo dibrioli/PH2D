@@ -21,6 +21,7 @@ use ph2d_vector::{Affine, BezPath, Brush, Stroke, VectorScene};
 
 /// A caixa da pesquisa no cabeçalho.
 const SEARCH_W: f32 = 220.0;
+
 /// O glifo do filtro (`M4 6h16M7 12h10M10 18h4`, a maquete), na grelha `24`.
 const FILTER_GLYPH: [[(f64, f64); 2]; 3] = [
     [(4.0, 6.0), (20.0, 6.0)],
@@ -42,20 +43,22 @@ fn glyph(scene: &mut VectorScene, at: Rect, color: ph2d_vector::Color) {
     scene.stroke_path(&Stroke::new(m::GLYPH_STROKE), t, &Brush::Solid(color), &p);
 }
 
-/// ⭐ Os botões do cabeçalho, da direita para a esquerda a partir do «…»: «Clear all» (com
-/// escolhas), «Filters», a pesquisa. Devolve as âncoras `(filtro, pesquisa)` dos painéis.
+/// ⭐ Os botões do cabeçalho, da direita para a esquerda a partir de `right` (à esquerda do «Share» e
+/// dos avatares): «Clear all» (com escolhas), «Filters», a pesquisa. Devolve as âncoras
+/// `(filtro, pesquisa)` dos painéis.
 pub(crate) fn header(
     scene: &mut VectorScene,
     ts: &mut TextSystem,
     theme: Theme,
     tab: &Tab,
+    (left, right): (f32, f32),
 ) -> (Rect, Rect) {
     let l = &tab.layout;
     let w6 = &tab.w6;
     let n = w6.filter.selected();
     let fg = c(theme, T::KanbanHeaderFg);
     let y = l.board_menu.y;
-    let mut x = l.board_menu.x - m::HEADER_GAP;
+    let mut x = right;
     let mut hits = Vec::new();
     let hover = |a: Act| w6.hover == Some(a);
     if n > 0 {
@@ -104,7 +107,8 @@ pub(crate) fn header(
     // A pesquisa: cabe entre a estrela e o filtro, ou fica só no `/`.
     x -= m::HEADER_GAP + SEARCH_W;
     let search = Rect::new(x, y, SEARCH_W, m::BUTTON_H);
-    if search.x > l.star.x + l.star.w + m::HEADER_GAP {
+    // A pesquisa cabe entre o seletor de vistas (`left`) e o filtro.
+    if search.x > left {
         match w6.input.as_ref().filter(|(b, _)| *b == Boxed::Query) {
             Some((_, f)) => crate::paint::field_box(scene, ts, theme, f, search, m::BUTTON_TEXT_PX),
             None => {
@@ -121,7 +125,7 @@ pub(crate) fn header(
         hits.push((search, Act::SearchBox));
     }
     tab.w6.hits.borrow_mut().extend(hits);
-    let anchor_search = if search.x > l.star.x + l.star.w + m::HEADER_GAP { search } else { filter };
+    let anchor_search = if search.x > left { search } else { filter };
     (filter, anchor_search)
 }
 
@@ -159,6 +163,8 @@ pub(crate) fn sheet(k: &Kanban, tab: &Tab, team: &[String]) -> Sheet {
         Act::Keyword,
     );
     s.push(Item::Note(tr("kanban.w6.keyword_note").to_owned()), Act::Inside);
+    // A palavra-chave fica sempre à vista (o cabeçalho fixo da maquete); o resto rola.
+    s.pin();
     s.caption("kanban.w6.members");
     s.check(f.no_members, tr("kanban.w6.no_members"), Act::NoMembers);
     s.check(f.mine, tr("kanban.w6.mine"), Act::Mine);

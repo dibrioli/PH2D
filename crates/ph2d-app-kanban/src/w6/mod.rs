@@ -41,6 +41,9 @@ pub(crate) enum Over {
     Filter,
     Search,
     Help,
+    /// J1 — o seletor de vistas e o popover «Share».
+    Views,
+    Share,
 }
 
 /// A caixa de texto com o teclado.
@@ -49,6 +52,8 @@ pub(crate) enum Boxed {
     Keyword,
     Query,
     Title,
+    /// J1 — o link para entrar num Kanban partilhado.
+    Link,
 }
 
 /// Uma linha do menu da edição rápida (o idioma do Trello).
@@ -117,6 +122,12 @@ pub(crate) enum Act {
     Dlg(Dlg),
     /// Uma sugestão do `@` `#` `^` no título do cartão novo.
     Suggest(u8),
+    /// J1 — o seletor de vistas do cabeçalho e uma vista dele (0 = o quadro).
+    ViewsButton,
+    View(u8),
+    /// J1 — o «Share» do cabeçalho e um alvo do popover dele.
+    ShareButton,
+    Share(crate::share::ShareAct),
 }
 
 /// O estado W6 de uma vista.
@@ -190,6 +201,7 @@ impl W6 {
                     d.title = text;
                 }
             }
+            Boxed::Link => {}
         }
     }
 
@@ -271,6 +283,7 @@ pub(crate) fn paint(
     tab: &mut Tab,
     (me, team, floor): (&Member, &[String], Option<f32>),
     lod: KanbanLod,
+    look: &crate::share::Look,
 ) {
     tab.w6.hits.borrow_mut().clear();
     tab.w6.sheets.borrow_mut().clear();
@@ -278,7 +291,8 @@ pub(crate) fn paint(
     if lod != KanbanLod::High {
         return;
     }
-    let anchors = filter_bar::header(scene, ts, theme, tab);
+    let head = crate::header::paint(scene, ts, theme, tab, (k.id, look));
+    let anchors = filter_bar::header(scene, ts, theme, tab, (head.views.x + head.views.w + crate::metrics::HEADER_GAP, head.right));
     let area = above(tab.layout.area, floor);
     if tab.w6.quick.is_some() {
         quick_edit::paint(scene, ts, theme, k, tab);
@@ -293,6 +307,8 @@ pub(crate) fn paint(
             Over::Filter => (filter_bar::sheet(k, tab, team), anchors.0, true),
             Over::Search => (search::sheet(tab, set), anchors.1, true),
             Over::Help => (help::sheet(), help::anchor(tab.layout.area), false),
+            Over::Views => (crate::header::views_sheet(tab), head.views, false),
+            Over::Share => (crate::share::sheet::sheet(tab, look), head.share, true),
         };
         show(scene, ts, theme, tab, &sheet, anchor, right, area);
     }
@@ -357,6 +373,7 @@ pub(crate) fn pointer(
     y: f32,
 ) -> Option<bool> {
     let tab = docs.tab_mut(id)?;
+    tab.cursor = Some((x, y));
     if tab.back.is_some() && tab.w6.dialog.is_none() {
         return None;
     }
@@ -369,7 +386,7 @@ pub(crate) fn pointer(
                 tab.hover = hit.map(Hit::W6);
                 return Some(true);
             }
-            None
+            crate::header::other::pointer(docs, id, kind, x, y)
         }
         PointerKind::Down => {
             if let Some(a) = hit {
@@ -380,10 +397,12 @@ pub(crate) fn pointer(
                 close_top(docs, id);
                 return Some(true);
             }
-            None
+            crate::header::other::pointer(docs, id, kind, x, y)
         }
         PointerKind::Up => {
-            let p = tab.w6.press.take()?;
+            let Some(p) = tab.w6.press.take() else {
+                return crate::header::other::pointer(docs, id, kind, x, y);
+            };
             if hit == Some(p) {
                 act(docs, id, p);
             }
@@ -411,7 +430,10 @@ pub(crate) fn wheel(docs: &mut KanbanDocs, id: u64, x: f32, y: f32, dy: f32) -> 
         return false;
     };
     if !t.w6.sheets.borrow().iter().any(|r| r.contains(x, y)) {
-        return t.w6.open() && t.back.is_none();
+        if t.w6.open() && t.back.is_none() {
+            return true;
+        }
+        return t.back.is_none() && crate::header::other::wheel(docs, id, x, y, dy, false);
     }
     let max = t.w6.scroll_max.get();
     t.w6.scroll = (t.w6.scroll.min(max) + dy).clamp(0.0, max);
@@ -428,6 +450,10 @@ pub(crate) fn act(docs: &mut KanbanDocs, id: u64, a: Act) {
         Act::Quick(_) | Act::QuickSave => quick_edit::click(docs, id, a),
         Act::Dlg(d) => copy_move::click(docs, id, d),
         Act::Suggest(i) => complete::pick(docs, id, i),
+        Act::ViewsButton => toggle_over(docs, id, Over::Views),
+        Act::View(i) => crate::header::pick_view(docs, id, i),
+        Act::ShareButton => toggle_over(docs, id, Over::Share),
+        Act::Share(s) => crate::share::sheet::click(docs, id, s),
         _ => filter_bar::click(docs, id, a),
     }
 }
@@ -454,12 +480,12 @@ pub(crate) fn toggle_over(docs: &mut KanbanDocs, id: u64, o: Over) {
             let q = t.w6.query.clone();
             t.w6.focus(Boxed::Query, &q);
         }
-        Over::Help => {}
+        Over::Help | Over::Views | Over::Share => {}
     }
 }
 
 /// O texto escrito na caixa com o teclado. `None` = não há caixa.
-fn type_into(docs: &mut KanbanDocs, id: u64, input: &KeyInput<'_>) -> Option<Outcome> {
+pub(crate) fn type_into(docs: &mut KanbanDocs, id: u64, input: &KeyInput<'_>) -> Option<Outcome> {
     let me = docs.me.clone();
     let set = docs.set();
     let t = docs.tab_mut(id)?;
@@ -488,12 +514,14 @@ pub(crate) fn key(
             Over::Filter => filter_bar::key(docs, id, input),
             Over::Search => search::key(docs, id, input),
             Over::Help => help::key(docs, id, input),
+            Over::Views => help::key(docs, id, input),
+            Over::Share => crate::share::sheet::key(docs, id, input),
         });
     }
     if t.w6.quick.is_some() {
         return quick_edit::key(docs, id, ts, input);
     }
-    None
+    crate::header::other::key(docs, id, input)
 }
 
 /// A composição (IME, carácter confirmado) para a caixa com o teclado. `true` = tomada.

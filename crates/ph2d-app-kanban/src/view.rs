@@ -26,6 +26,8 @@ pub(crate) struct ViewCtx {
     pub team: Vec<String>,
     /// O chrome do hero por cima (o HUD de baixo): as listas param acima dele (só a aba).
     pub floor: Option<f32>,
+    /// J1 — a partilha ao vivo: o papel e quem vê cada Kanban.
+    pub share: crate::share::Look,
 }
 
 impl Default for ViewCtx {
@@ -36,6 +38,7 @@ impl Default for ViewCtx {
             me: Member(ph2d_i18n::tr("kanban.back.me").to_owned()),
             team: Vec::new(),
             floor: None,
+            share: crate::share::Look::default(),
         }
     }
 }
@@ -159,7 +162,13 @@ pub(crate) fn paint(
     tab.layout = seen;
     retarget(tab, &target);
     let lod = at.lod;
-    {
+    tab.to_screen = at.to_screen;
+    if tab.other.is_some() {
+        crate::paint::chrome(out, ts, theme, k, tab);
+        if lod == KanbanLod::High {
+            crate::header::other::paint(out, ts, theme, tab, set, (&cx.me, &cx.team, cx.floor));
+        }
+    } else {
         let t: &Tab = tab;
         let mut looks = |cid: CardId| {
             fronts.get(&t.rows, cid).map(|f| CardLook {
@@ -171,10 +180,14 @@ pub(crate) fn paint(
         };
         crate::paint::board(out, ts, theme, k, t, &mut looks);
     }
+    if let Some(seen) = cx.share.seen.get(&k.id) {
+        crate::presence::paint(out, ts, theme, tab, seen);
+    }
     if lod == KanbanLod::High {
         crate::overlay::paint(out, ts, theme, k, tab);
     }
-    crate::w6::paint(out, ts, theme, (k, set), tab, (&cx.me, &cx.team, cx.floor), lod);
+    let people = (&cx.me, cx.team.as_slice(), cx.floor);
+    crate::w6::paint(out, ts, theme, (k, set), tab, people, lod, &cx.share);
     if at.modal {
         crate::back::paint(out, ts, theme, k, tab, set, &cx.me, &cx.team, crate::actions::now());
     }

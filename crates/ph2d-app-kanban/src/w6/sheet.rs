@@ -103,6 +103,9 @@ pub(crate) enum Item {
 pub(crate) struct Sheet {
     pub items: Vec<(Item, Act)>,
     pub w: f32,
+    /// As primeiras linhas que NÃO rolam (o título com o «×», e a palavra-chave do filtro): o
+    /// cabeçalho fixo da maquete; só o corpo rola por baixo dele.
+    pub pinned: usize,
 }
 
 impl Sheet {
@@ -110,6 +113,7 @@ impl Sheet {
         Self {
             items: Vec::new(),
             w,
+            pinned: 0,
         }
     }
 
@@ -118,8 +122,21 @@ impl Sheet {
         self
     }
 
+    /// O título com o «×» — fixo (as linhas até ele não rolam).
     pub fn title(&mut self, key: &str) -> &mut Self {
-        self.push(Item::Title(ph2d_i18n::tr(key).to_owned()), Act::Close)
+        self.push(Item::Title(ph2d_i18n::tr(key).to_owned()), Act::Close);
+        self.pin()
+    }
+
+    /// As linhas até aqui ficam fixas no topo.
+    pub fn pin(&mut self) -> &mut Self {
+        self.pinned = self.items.len();
+        self
+    }
+
+    /// A altura do cabeçalho fixo.
+    pub fn pinned_h(&self) -> f32 {
+        self.items.iter().take(self.pinned).map(|(i, _)| h(i)).sum()
     }
 
     pub fn caption(&mut self, key: &str) -> &mut Self {
@@ -245,11 +262,21 @@ pub(crate) fn paint(
     let raised = c(theme, T::KanbanCardRaised);
     scene.push_clip(&rect_to_vello(rect));
     let (x, iw) = (rect.x + PAD, rect.w - 2.0 * PAD);
-    let mut y = rect.y - scroll;
-    for (item, act) in &s.items {
+    // O cabeçalho fixo fica no topo; o corpo rola, recortado por baixo dele.
+    let head = s.pinned_h().min(rect.h);
+    let body = Rect::new(rect.x, rect.y + head, rect.w, rect.h - head);
+    let mut y = rect.y;
+    let mut body_hits = None;
+    for (idx, (item, act)) in s.items.iter().enumerate() {
+        if idx == s.pinned {
+            scene.push_clip(&rect_to_vello(body));
+            y = body.y - scroll;
+            body_hits = Some(hits.len());
+        }
+        let region = if idx < s.pinned { rect } else { body };
         let ih = h(item);
         let row = Rect::new(rect.x, y, rect.w, ih);
-        let visible = row.y + row.h > rect.y && row.y < rect.y + rect.h;
+        let visible = row.y + row.h > region.y && row.y < region.y + region.h;
         let on_hover = hover == Some(*act) && *act != Act::Inside;
         match item {
             Item::Title(t) => {
@@ -438,8 +465,23 @@ pub(crate) fn paint(
         }
         continue_y(&mut y, ih);
     }
+    if let Some(from) = body_hits {
+        scene.pop_layer();
+        // Um alvo do corpo meio escondido pelo cabeçalho só se acerta na parte à vista.
+        let clipped: Vec<(Rect, Act)> = hits
+            .drain(from..)
+            .filter_map(|(r, a)| clip(r, body).map(|r| (r, a)))
+            .collect();
+        hits.extend(clipped);
+    }
     scene.pop_layer();
     hits
+}
+
+/// `r` recortado a `to` (`None` = nada à vista).
+fn clip(r: Rect, to: Rect) -> Option<Rect> {
+    let (y0, y1) = (r.y.max(to.y), (r.y + r.h).min(to.y + to.h));
+    (y1 > y0).then(|| Rect::new(r.x, y0, r.w, y1 - y0))
 }
 
 fn continue_y(y: &mut f32, h: f32) {

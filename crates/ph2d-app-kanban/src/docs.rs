@@ -56,6 +56,8 @@ pub struct KanbanDocs {
     pub(crate) clip: Option<ph2d_kanban_model::CardRef>,
     /// A última aba pintada (a activa: o «New Kanban from…» do menu File parte dela).
     pub(crate) active: Option<u64>,
+    /// J1 — a partilha ao vivo («Share»).
+    pub(crate) share: crate::share::Share,
 }
 
 impl Default for KanbanDocs {
@@ -77,6 +79,7 @@ impl Default for KanbanDocs {
             canvas: crate::canvas::SharedCanvas::default(),
             clip: None,
             active: None,
+            share: crate::share::Share::default(),
         }
     }
 }
@@ -229,6 +232,7 @@ impl KanbanDocs {
             me: self.me.clone(),
             team: self.team.clone(),
             floor: self.over.map(|o| o.y),
+            share: self.share.look.clone(),
         }
     }
 

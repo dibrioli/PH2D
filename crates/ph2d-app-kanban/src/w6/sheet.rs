@@ -184,8 +184,14 @@ fn h(i: &Item) -> f32 {
 pub(crate) fn place(s: &Sheet, anchor: Rect, area: Rect, right: bool) -> Rect {
     let w = s.w.min(area.w);
     let hh = s.content_h().min(area.h - 2.0 * PAD).max(TITLE_H);
-    let x0 = if right { anchor.x + anchor.w - w } else { anchor.x };
-    let x = x0.min(area.x + area.w - w - PAD).max(area.x + PAD.min(area.w - w));
+    let x0 = if right {
+        anchor.x + anchor.w - w
+    } else {
+        anchor.x
+    };
+    let x = x0
+        .min(area.x + area.w - w - PAD)
+        .max(area.x + PAD.min(area.w - w));
     let below = anchor.y + anchor.h + m::LABEL_GAP;
     let room = area.y + area.h - PAD - below;
     // Por baixo da âncora se cabe inteira; a que cabe na área sobe para caber; a mais alta que a
@@ -281,8 +287,20 @@ pub(crate) fn paint(
         match item {
             Item::Title(t) => {
                 let w = crate::docs::title_width(ts, t, m::BUTTON_TEXT_PX);
-                line(scene, ts, t, (rect.x + (rect.w - w) / 2.0, y, iw, ih), meta, true);
-                let close = Rect::new(rect.x + rect.w - PAD / 2.0 - ROW, y + (ih - ROW) / 2.0, ROW, ROW);
+                line(
+                    scene,
+                    ts,
+                    t,
+                    (rect.x + (rect.w - w) / 2.0, y, iw, ih),
+                    meta,
+                    true,
+                );
+                let close = Rect::new(
+                    rect.x + rect.w - PAD / 2.0 - ROW,
+                    y + (ih - ROW) / 2.0,
+                    ROW,
+                    ROW,
+                );
                 if hover == Some(Act::Close) {
                     fill_rounded_rect(scene, close, m::BUTTON_RADIUS, raised);
                 }
@@ -309,7 +327,8 @@ pub(crate) fn paint(
                 let r = Rect::new(x, y + GAP / 2.0, iw, INPUT_H - GAP / 2.0);
                 match field {
                     Some(f) => {
-                        let inner = Rect::new(r.x, r.y + m::FIELD_PAD_Y / 2.0, r.w, r.h - m::FIELD_PAD_Y);
+                        let inner =
+                            Rect::new(r.x, r.y + m::FIELD_PAD_Y / 2.0, r.w, r.h - m::FIELD_PAD_Y);
                         field_box(scene, ts, theme, f, inner, m::BUTTON_TEXT_PX);
                     }
                     None => {
@@ -320,7 +339,14 @@ pub(crate) fn paint(
                         } else {
                             (text.as_str(), fg)
                         };
-                        line(scene, ts, t, (r.x + m::FIELD_PAD_X, r.y, r.w - 2.0 * m::FIELD_PAD_X, r.h), col, false);
+                        line(
+                            scene,
+                            ts,
+                            t,
+                            (r.x + m::FIELD_PAD_X, r.y, r.w - 2.0 * m::FIELD_PAD_X, r.h),
+                            col,
+                            false,
+                        );
                     }
                 }
                 if visible {
@@ -347,7 +373,19 @@ pub(crate) fn paint(
                     let sw = (iw - (tx - x)).min(iw);
                     let chip = Rect::new(tx, y + SEG_PAD, sw, ih - 2.0 * SEG_PAD);
                     fill_rounded_rect(scene, chip, m::LABEL_RADIUS, fill);
-                    line(scene, ts, text, (chip.x + m::LABEL_PAD_X, y, chip.w - 2.0 * m::LABEL_PAD_X, ih), ink, true);
+                    line(
+                        scene,
+                        ts,
+                        text,
+                        (
+                            chip.x + m::LABEL_PAD_X,
+                            y,
+                            chip.w - 2.0 * m::LABEL_PAD_X,
+                            ih,
+                        ),
+                        ink,
+                        true,
+                    );
                 } else {
                     if let Some(p) = person {
                         crate::w6::sheet_avatar(scene, ts, theme, (tx, y + (ih - AVATAR) / 2.0), p);
@@ -369,14 +407,23 @@ pub(crate) fn paint(
                 }
                 let b = Rect::new(x, y + (ih - CHECK) / 2.0, CHECK, CHECK);
                 checkbox(scene, theme, b, *on, true);
-                line(scene, ts, text, (b.x + CHECK + GAP, y, iw - CHECK - GAP, ih), fg, false);
+                line(
+                    scene,
+                    ts,
+                    text,
+                    (b.x + CHECK + GAP, y, iw - CHECK - GAP, ih),
+                    fg,
+                    false,
+                );
             }
             Item::Segment { label: l, options } => {
                 let ty = text_top(ts, y, ih, m::SMALL_PX);
                 paint_text_title_elided(ts, scene, l, x, ty, m::SMALL_PX, iw, meta);
                 let widths: Vec<f32> = options
                     .iter()
-                    .map(|(t, _, _)| crate::docs::title_width(ts, t, m::BUTTON_TEXT_PX) + 2.0 * m::BUTTON_PAD_X)
+                    .map(|(t, _, _)| {
+                        crate::docs::title_width(ts, t, m::BUTTON_TEXT_PX) + 2.0 * m::BUTTON_PAD_X
+                    })
                     .collect();
                 let total: f32 = widths.iter().sum::<f32>() + 2.0 * SEG_PAD;
                 let bar = Rect::new(x + iw - total, y + (ih - SEG_H) / 2.0, total, SEG_H);
@@ -400,15 +447,34 @@ pub(crate) fn paint(
                     sx += w;
                 }
             }
-            Item::Select { label: l, value, open } => {
+            Item::Select {
+                label: l,
+                value,
+                open,
+            } => {
                 let ty = text_top(ts, y + CAPTION_H - m::LINE_H, m::LINE_H, m::SMALL_PX);
                 paint_text_title_elided(ts, scene, l, x, ty, m::SMALL_PX, iw, meta);
                 let r = Rect::new(x, y + CAPTION_H, iw, ROW);
                 fill_rounded_rect(scene, r, m::FIELD_RADIUS, raised);
-                let ring = if *open || on_hover { c(theme, T::Accent) } else { meta };
+                let ring = if *open || on_hover {
+                    c(theme, T::Accent)
+                } else {
+                    meta
+                };
                 stroke_rounded_rect(scene, r, m::FIELD_RADIUS, m::HOVER_RING, ring);
-                line(scene, ts, value, (r.x + m::FIELD_PAD_X, r.y, r.w - ROW, r.h), fg, false);
-                let chev = if *open { IconId::ChevronUp } else { IconId::ChevronDown };
+                line(
+                    scene,
+                    ts,
+                    value,
+                    (r.x + m::FIELD_PAD_X, r.y, r.w - ROW, r.h),
+                    fg,
+                    false,
+                );
+                let chev = if *open {
+                    IconId::ChevronUp
+                } else {
+                    IconId::ChevronDown
+                };
                 crate::paint::icon(scene, chev, Rect::new(r.x + r.w - ROW, r.y, ROW, ROW), meta);
                 if visible {
                     hits.push((r, *act));
@@ -444,7 +510,14 @@ pub(crate) fn paint(
                 };
                 fill_rounded_rect(scene, r, m::BUTTON_RADIUS, bg);
                 let w = crate::docs::title_width(ts, text, m::BUTTON_TEXT_PX);
-                line(scene, ts, text, (r.x + ((r.w - w) / 2.0).max(0.0), r.y, r.w, r.h), ink, true);
+                line(
+                    scene,
+                    ts,
+                    text,
+                    (r.x + ((r.w - w) / 2.0).max(0.0), r.y, r.w, r.h),
+                    ink,
+                    true,
+                );
                 if visible {
                     hits.push((r, *act));
                 }
@@ -456,8 +529,24 @@ pub(crate) fn paint(
                 let chip = Rect::new(x, y + (ih - m::COUNT_H) / 2.0, kw.min(KEYS_W), m::COUNT_H);
                 fill_rounded_rect(scene, chip, m::LIMIT_RADIUS, raised);
                 let ty = text_top(ts, chip.y, chip.h, m::SMALL_PX);
-                paint_text_title_elided(ts, scene, keys, chip.x + m::COUNT_PAD_X, ty, m::SMALL_PX, KEYS_W, fg);
-                line(scene, ts, what, (x + KEYS_W + GAP, y, iw - KEYS_W - GAP, ih), fg, false);
+                paint_text_title_elided(
+                    ts,
+                    scene,
+                    keys,
+                    chip.x + m::COUNT_PAD_X,
+                    ty,
+                    m::SMALL_PX,
+                    KEYS_W,
+                    fg,
+                );
+                line(
+                    scene,
+                    ts,
+                    what,
+                    (x + KEYS_W + GAP, y, iw - KEYS_W - GAP, ih),
+                    fg,
+                    false,
+                );
             }
         }
         if visible && *act != Act::Inside {

@@ -133,6 +133,9 @@ fn r2_a_reference_to_a_deleted_kanban_leaves_as_waiting_never_as_the_local_id() 
     let mut ids = super::KanbanIds::default();
     ids.local.insert(KanbanId(1 << 63 | 5), KanbanId(7));
     ids.wire.insert(KanbanId(7), KanbanId(1 << 63 | 5));
-    assert_eq!(ids.to_wire(ElementId(1), KanbanId(7)), KanbanId(1 << 63 | 5));
+    assert_eq!(
+        ids.to_wire(ElementId(1), KanbanId(7)),
+        KanbanId(1 << 63 | 5)
+    );
     assert_eq!(ids.to_wire(ElementId(1), KanbanId(9)), KANBAN_WAITING);
 }

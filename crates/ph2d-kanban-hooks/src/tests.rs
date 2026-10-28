@@ -52,8 +52,7 @@ impl S {
         let kd = self.set.get(self.k).unwrap();
         let id = CardId(kd.mint());
         let c = Card::new(id, self.todo, kd.pos_after_cards(self.todo), title, NOW);
-        self.set
-            .apply(self.k, vec![KanbanOp::put(Record::card(c))]);
+        self.set.apply(self.k, vec![KanbanOp::put(Record::card(c))]);
         id
     }
 
@@ -72,7 +71,9 @@ impl S {
             },
             actions: vec![Action::Archive],
         };
-        let op = spec.create(self.set.get(self.k).unwrap(), NOW).expect("automação válida");
+        let op = spec
+            .create(self.set.get(self.k).unwrap(), NOW)
+            .expect("automação válida");
         self.set.apply(self.k, vec![op]);
     }
 
@@ -160,7 +161,11 @@ fn a_loaded_kanban_script_reacts_after_the_butler() {
     let r = s.move_to_done(c);
     assert_eq!(r.handlers, 1);
     let k = s.set.get(s.k).unwrap();
-    assert!(k.comments.values().any(|x| x.card == c && x.text == "moved"));
+    assert!(
+        k.comments
+            .values()
+            .any(|x| x.card == c && x.text == "moved")
+    );
     unload(7);
     assert!(with_scripts(|x| x.loaded().is_empty()));
 }
@@ -182,7 +187,11 @@ fn script_errors_and_prints_reach_the_console_of_their_script() {
     };
     let _ = scripts::run(&req, &mut s.set, &mut s.h, &who, 1);
     let lines = take_lines();
-    assert!(lines.iter().any(|l| l.key == 3 && !l.error && l.text == "1"));
+    assert!(
+        lines
+            .iter()
+            .any(|l| l.key == 3 && !l.error && l.text == "1")
+    );
     assert!(
         lines
             .iter()
@@ -198,14 +207,19 @@ fn a_kanban_script_is_one_whose_code_uses_ph2d_kanban() {
     assert!(!is_kanban_script("print(\"ph2d.kanban\")"));
     assert!(!is_kanban_script("--[[ ph2d.kanban ]] print(1)"));
     assert!(!is_kanban_script("local s = [==[ ph2d.kanban ]==]"));
-    assert!(is_kanban_script("--[[ x ]] ph2d.kanban.on('card_moved', f)"));
+    assert!(is_kanban_script(
+        "--[[ x ]] ph2d.kanban.on('card_moved', f)"
+    ));
 }
 
 #[test]
 fn the_agenda_skips_a_project_without_scheduled_commands_and_stays_out_of_undo() {
     let mut s = S::new();
     s.rule_archive_in_done();
-    assert!(!has_scheduled(&s.set), "uma regra não é um comando agendado");
+    assert!(
+        !has_scheduled(&s.set),
+        "uma regra não é um comando agendado"
+    );
     let zone = Zone::utc();
     let who = Who {
         me: Member("Enio".into()),
@@ -252,7 +266,9 @@ fn medir_agenda() {
                     kind,
                     actions: vec![Action::Archive],
                 };
-                let op = spec.create(set.get(k).unwrap(), NOW).expect("automação válida");
+                let op = spec
+                    .create(set.get(k).unwrap(), NOW)
+                    .expect("automação válida");
                 set.apply(k, vec![op]);
             }
         }

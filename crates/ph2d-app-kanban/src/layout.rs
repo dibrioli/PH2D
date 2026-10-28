@@ -488,7 +488,12 @@ fn list_box(
             tw,
         ));
         (
-            Rect::new(inner_x, foot_y, m::CARD_W - tw - m::LIST_ICON_GAP, m::BUTTON_H),
+            Rect::new(
+                inner_x,
+                foot_y,
+                m::CARD_W - tw - m::LIST_ICON_GAP,
+                m::BUTTON_H,
+            ),
             None,
         )
     };

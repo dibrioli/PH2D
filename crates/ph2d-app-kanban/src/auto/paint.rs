@@ -6,8 +6,8 @@ use super::choices::{self, Shown};
 use super::input::{of_family, visible_suggestions};
 use super::sentence::{Names, Seg, conditions_mut, segs};
 use super::{AutoHit, FAMILIES, Panel, family_key};
-use crate::back::{BackHit, ROW};
 use crate::back::ui::{self as u, Ui};
+use crate::back::{BackHit, ROW};
 use crate::metrics as m;
 use crate::tab::Tab;
 use ph2d_editor_core::IconId;
@@ -55,7 +55,10 @@ pub(crate) fn paint(
     p.area = area;
     p.lines.clear();
     let mut hits = vec![(area, A(AutoHit::Scrim))];
-    scene.fill_rect(rect_to_vello(area), crate::paint::c(theme, T::KanbanShadowFlight));
+    scene.fill_rect(
+        rect_to_vello(area),
+        crate::paint::c(theme, T::KanbanShadowFlight),
+    );
     let (x, w) = crate::back::paint::modal_x(area);
     let top = area.y + u::MODAL_TOP - p.scroll;
     let mut body = VectorScene::new();
@@ -80,7 +83,12 @@ pub(crate) fn paint(
         crate::paint::c(theme, T::KanbanShadowFlight),
         m::SHADOW_FLIGHT_DARK,
     );
-    fill_rounded_rect(scene, modal, u::MODAL_RADIUS, crate::paint::c(theme, T::KanbanCard));
+    fill_rounded_rect(
+        scene,
+        modal,
+        u::MODAL_RADIUS,
+        crate::paint::c(theme, T::KanbanCard),
+    );
     scene.append_transformed(&body, ph2d_vector::Affine::IDENTITY);
     {
         let mut ui = Ui {
@@ -103,7 +111,12 @@ fn modal_body(ui: &mut Ui<'_>, p: &mut Panel, cx: &Cx<'_>, x: f32, top: f32, w: 
     let close = Rect::new(x + w - u::PAD_R - u::CLOSE, y, u::CLOSE, u::CLOSE);
     let bg = ui.c(T::KanbanCard);
     ui.icon_button(close, IconId::Close, A(AutoHit::Close), true, bg);
-    let ir = Rect::new(ix, y + (u::CLOSE - m::ICON_PX) / 2.0, m::ICON_PX, m::ICON_PX);
+    let ir = Rect::new(
+        ix,
+        y + (u::CLOSE - m::ICON_PX) / 2.0,
+        m::ICON_PX,
+        m::ICON_PX,
+    );
     let fg = ui.fg();
     ph2d_editor_core::paint::paint_icon(ui.scene, IconId::Bolt, ir, fg, StrokeToken::Default.px());
     ui.strong(
@@ -124,7 +137,13 @@ fn modal_body(ui: &mut Ui<'_>, p: &mut Panel, cx: &Cx<'_>, x: f32, top: f32, w: 
             tx = ix;
             y += ROW + u::SMALL_GAP;
         }
-        ui.button(Rect::new(tx, y, bw, ROW), label, None, A(AutoHit::Tab(f)), f == p.family);
+        ui.button(
+            Rect::new(tx, y, bw, ROW),
+            label,
+            None,
+            A(AutoHit::Tab(f)),
+            f == p.family,
+        );
         tx += bw + u::SMALL_GAP;
     }
     y += ROW + u::SECTION_GAP;
@@ -157,13 +176,29 @@ fn list(ui: &mut Ui<'_>, p: &mut Panel, cx: &Cx<'_>, x: f32, y: f32, w: f32) -> 
             let box_top = y;
             y += u::GAP;
             let fg = ui.fg();
-            let say = tr_with("kanban.auto.ui.suggestion", &[("n", &s.times), ("list", &list)]);
+            let say = tr_with(
+                "kanban.auto.ui.suggestion",
+                &[("n", &s.times), ("list", &list)],
+            );
             y += ui.text(&say, x + u::GAP, y, u::BODY_PX, w - 2.0 * u::GAP, fg) + u::SMALL_GAP;
-            y = flow(ui, &cx.names, &segs(&s.spec), x + u::GAP, y, w - 2.0 * u::GAP, None, None);
+            y = flow(
+                ui,
+                &cx.names,
+                &segs(&s.spec),
+                x + u::GAP,
+                y,
+                w - 2.0 * u::GAP,
+                None,
+                None,
+            );
             y += u::SMALL_GAP;
             let create = tr("kanban.auto.ui.suggest_create");
             let cw = ui.button_w(create, false);
-            ui.primary(Rect::new(x + u::GAP, y, cw, ROW), create, A(AutoHit::Suggest(n, true)));
+            ui.primary(
+                Rect::new(x + u::GAP, y, cw, ROW),
+                create,
+                A(AutoHit::Suggest(n, true)),
+            );
             let dismiss = tr("kanban.auto.ui.suggest_dismiss");
             let dw = ui.button_w(dismiss, false);
             let r = Rect::new(x + u::GAP + cw + u::GAP, y, dw, ROW);
@@ -171,7 +206,13 @@ fn list(ui: &mut Ui<'_>, p: &mut Panel, cx: &Cx<'_>, x: f32, y: f32, w: f32) -> 
             y += ROW + u::GAP;
             let ring = ui.accent();
             let frame = Rect::new(x, box_top, w, y - box_top);
-            stroke_rounded_rect(ui.scene, frame, m::CARD_RADIUS, StrokeToken::Default.px(), ring);
+            stroke_rounded_rect(
+                ui.scene,
+                frame,
+                m::CARD_RADIUS,
+                StrokeToken::Default.px(),
+                ring,
+            );
             p.lines.push(format!("suggest:{}", cx.names.line(&s.spec)));
             y += u::GAP;
         }
@@ -198,7 +239,12 @@ fn list(ui: &mut Ui<'_>, p: &mut Panel, cx: &Cx<'_>, x: f32, y: f32, w: f32) -> 
     ph2d_editor_core::paint::paint_icon(
         ui.scene,
         IconId::Plus,
-        Rect::new(r.x + m::BUTTON_PAD_X, r.y + (r.h - m::ICON_PX) / 2.0, m::ICON_PX, m::ICON_PX),
+        Rect::new(
+            r.x + m::BUTTON_PAD_X,
+            r.y + (r.h - m::ICON_PX) / 2.0,
+            m::ICON_PX,
+            m::ICON_PX,
+        ),
         ink,
         StrokeToken::Default.px(),
     );
@@ -209,7 +255,15 @@ fn list(ui: &mut Ui<'_>, p: &mut Panel, cx: &Cx<'_>, x: f32, y: f32, w: f32) -> 
 }
 
 /// Uma automação da lista: a frase e, à direita, ligar/desligar, (correr), editar, apagar.
-fn row(ui: &mut Ui<'_>, cx: &Cx<'_>, a: ph2d_kanban_model::AutomationId, s: &Spec, x: f32, y: f32, w: f32) -> f32 {
+fn row(
+    ui: &mut Ui<'_>,
+    cx: &Cx<'_>,
+    a: ph2d_kanban_model::AutomationId,
+    s: &Spec,
+    x: f32,
+    y: f32,
+    w: f32,
+) -> f32 {
     let on_off = tr(if s.enabled {
         "kanban.auto.ui.on"
     } else {
@@ -219,8 +273,16 @@ fn row(ui: &mut Ui<'_>, cx: &Cx<'_>, a: ph2d_kanban_model::AutomationId, s: &Spe
     if matches!(s.kind, Kind::BoardButton { .. }) {
         buttons.push((tr("kanban.auto.ui.run").to_owned(), AutoHit::Run(a), false));
     }
-    buttons.push((tr("kanban.auto.ui.edit").to_owned(), AutoHit::Edit(a), false));
-    buttons.push((tr("kanban.auto.ui.delete").to_owned(), AutoHit::Delete(a), false));
+    buttons.push((
+        tr("kanban.auto.ui.edit").to_owned(),
+        AutoHit::Edit(a),
+        false,
+    ));
+    buttons.push((
+        tr("kanban.auto.ui.delete").to_owned(),
+        AutoHit::Delete(a),
+        false,
+    ));
     let widths: Vec<f32> = buttons.iter().map(|b| ui.button_w(&b.0, false)).collect();
     let bw: f32 = widths.iter().sum::<f32>() + u::SMALL_GAP * (widths.len() as f32);
     let text_w = (w - bw - 2.0 * u::GAP).max(w / 2.0);
@@ -240,10 +302,25 @@ fn row(ui: &mut Ui<'_>, cx: &Cx<'_>, a: ph2d_kanban_model::AutomationId, s: &Spe
     let card = Rect::new(x, y, w, h + 2.0 * u::GAP);
     let bg = ui.c(T::KanbanCardRaised);
     fill_rounded_rect(ui.scene, card, m::CARD_RADIUS, bg);
-    flow(ui, &cx.names, &segs(s), x + u::GAP, y + u::GAP, text_w, None, None);
+    flow(
+        ui,
+        &cx.names,
+        &segs(s),
+        x + u::GAP,
+        y + u::GAP,
+        text_w,
+        None,
+        None,
+    );
     let mut bx = x + w - u::GAP - bw + u::SMALL_GAP;
     for ((label, hit, on), bw) in buttons.iter().zip(widths) {
-        ui.button(Rect::new(bx, y + u::GAP, bw, ROW), label, None, A(*hit), *on);
+        ui.button(
+            Rect::new(bx, y + u::GAP, bw, ROW),
+            label,
+            None,
+            A(*hit),
+            *on,
+        );
         bx += bw + u::SMALL_GAP;
     }
     card.y + card.h + u::GAP
@@ -264,7 +341,11 @@ fn builder(ui: &mut Ui<'_>, p: &mut Panel, cx: &Cx<'_>, x: f32, y: f32, w: f32) 
     let mut spec = d.spec.clone();
     let has_conditions = conditions_mut(&mut spec).is_some();
     for (key, hit, show) in [
-        ("kanban.auto.ui.add_condition", AutoHit::AddCondition, has_conditions),
+        (
+            "kanban.auto.ui.add_condition",
+            AutoHit::AddCondition,
+            has_conditions,
+        ),
         ("kanban.auto.ui.add_action", AutoHit::AddAction, true),
     ] {
         if !show {
@@ -272,7 +353,13 @@ fn builder(ui: &mut Ui<'_>, p: &mut Panel, cx: &Cx<'_>, x: f32, y: f32, w: f32) 
         }
         let label = tr(key);
         let bw = ui.button_w(label, true);
-        ui.button(Rect::new(bx, y, bw, ROW), label, Some(IconId::Plus), A(hit), false);
+        ui.button(
+            Rect::new(bx, y, bw, ROW),
+            label,
+            Some(IconId::Plus),
+            A(hit),
+            false,
+        );
         bx += bw + u::GAP;
     }
     y += ROW + u::SECTION_GAP;
@@ -281,7 +368,13 @@ fn builder(ui: &mut Ui<'_>, p: &mut Panel, cx: &Cx<'_>, x: f32, y: f32, w: f32) 
     ui.primary(Rect::new(x, y, sw, ROW), save, A(AutoHit::Save));
     let cancel = tr("kanban.auto.ui.cancel");
     let cw = ui.button_w(cancel, false);
-    ui.button(Rect::new(x + sw + u::GAP, y, cw, ROW), cancel, None, A(AutoHit::Cancel), false);
+    ui.button(
+        Rect::new(x + sw + u::GAP, y, cw, ROW),
+        cancel,
+        None,
+        A(AutoHit::Cancel),
+        false,
+    );
     y + ROW
 }
 
@@ -323,7 +416,15 @@ fn flow(
                     let ring = ui.accent();
                     stroke_rounded_rect(ui.scene, r, m::LABEL_RADIUS, m::FOCUS_RING, ring);
                 }
-                ui.line(&text, r.x + m::LABEL_PAD_X, cy, line, u::BODY_PX, tw - m::LABEL_PAD_X, fg);
+                ui.line(
+                    &text,
+                    r.x + m::LABEL_PAD_X,
+                    cy,
+                    line,
+                    u::BODY_PX,
+                    tw - m::LABEL_PAD_X,
+                    fg,
+                );
                 if live.is_some() {
                     ui.hit(r, hit);
                 }
@@ -371,7 +472,11 @@ fn chooser(ui: &mut Ui<'_>, p: &mut Panel, cx: &Cx<'_>, area: Rect) {
         ui.hit(fr, A(AutoHit::Typed));
         let save = tr("kanban.auto.ui.save");
         let sw = ui.button_w(save, false);
-        ui.primary(Rect::new(r.x + pad, fr.y + fr.h + u::GAP, sw, ROW), save, A(AutoHit::TypedSave));
+        ui.primary(
+            Rect::new(r.x + pad, fr.y + fr.h + u::GAP, sw, ROW),
+            save,
+            A(AutoHit::TypedSave),
+        );
         return;
     }
     let sg = segs(&d.spec);
@@ -414,7 +519,15 @@ fn chooser(ui: &mut Ui<'_>, p: &mut Panel, cx: &Cx<'_>, area: Rect) {
         } else {
             fg
         };
-        ui.line(&text, rr.x + m::MENU_PAD / 2.0, rr.y, rr.h, u::BODY_PX, rr.w - m::MENU_PAD, ink);
+        ui.line(
+            &text,
+            rr.x + m::MENU_PAD / 2.0,
+            rr.y,
+            rr.h,
+            u::BODY_PX,
+            rr.w - m::MENU_PAD,
+            ink,
+        );
         ui.hit(rr, hit);
         p.lines.push(format!("choice:{text}"));
         p.picks.push(pick);
@@ -422,7 +535,13 @@ fn chooser(ui: &mut Ui<'_>, p: &mut Panel, cx: &Cx<'_>, area: Rect) {
 }
 
 fn backdrop(ui: &mut Ui<'_>, r: Rect) {
-    crate::paint::shadow(ui.scene, r, m::MENU_RADIUS, ui.c(T::KanbanShadowFlight), m::SHADOW_FLIGHT_NEAR);
+    crate::paint::shadow(
+        ui.scene,
+        r,
+        m::MENU_RADIUS,
+        ui.c(T::KanbanShadowFlight),
+        m::SHADOW_FLIGHT_NEAR,
+    );
     let bg = ui.c(T::KanbanCard);
     fill_rounded_rect(ui.scene, r, m::MENU_RADIUS, bg);
     let ring = ui.c(T::KanbanSlot);

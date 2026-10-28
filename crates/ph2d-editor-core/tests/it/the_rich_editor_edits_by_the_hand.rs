@@ -93,7 +93,13 @@ fn ctrl_b_marks_what_is_typed_next_and_shift_arrows_select() {
     let mut ed = editor(RichDoc::new());
     ed.editing = true;
     type_str(&mut ed, &mut ts, "ab");
-    press(&mut ed, &mut ts, Key::Char('b'), mods(true, false), Some("b"));
+    press(
+        &mut ed,
+        &mut ts,
+        Key::Char('b'),
+        mods(true, false),
+        Some("b"),
+    );
     type_str(&mut ed, &mut ts, "cd");
     let inline = &ed.doc().blocks()[0].inline;
     assert_eq!(inline.text(), "abcd");
@@ -104,7 +110,13 @@ fn ctrl_b_marks_what_is_typed_next_and_shift_arrows_select() {
     }
     assert_eq!(ed.selected_text(), "bcd");
     // Ctrl+Shift+X risca a selecção; Ctrl+C devolve o texto.
-    press(&mut ed, &mut ts, Key::Char('X'), mods(true, true), Some("X"));
+    press(
+        &mut ed,
+        &mut ts,
+        Key::Char('X'),
+        mods(true, true),
+        Some("X"),
+    );
     assert!(ed.doc().blocks()[0].inline.covers(1..4, &Mark::Strike));
     let copy = ed.key(
         &mut ts,
@@ -139,7 +151,10 @@ fn double_click_takes_the_word_and_the_painted_box_ticks_the_task() {
     ed.pointer_down(&mut ts, rect(), x, y, none(), 2);
     assert_eq!(ed.selected_text(), "brave");
     let mr = ed.layout(&mut ts, rect()).blocks[1].marker_rect;
-    assert_eq!(ed.layout(&mut ts, rect()).blocks[1].marker, Marker::Check(false));
+    assert_eq!(
+        ed.layout(&mut ts, rect()).blocks[1].marker,
+        Marker::Check(false)
+    );
     let ev = ed.pointer_down(&mut ts, rect(), mr.x + 2.0, mr.y + mr.h / 2.0, none(), 1);
     assert_eq!(ev, Some(RichEditorEvent::Changed));
     assert_eq!(ed.doc().blocks()[1].kind, BlockKind::Check(true));
@@ -165,7 +180,10 @@ fn the_toolbar_buttons_and_the_style_menu_change_the_document() {
     ed.set_selection(Selection::new(Caret::new(0, 0), Caret::new(0, 5)));
     let (bar, _) = ed.regions(rect());
     let bar = bar.expect("em edição há barra");
-    let bold = RICH_TOOLS.iter().position(|t| *t == RichTool::Bold).unwrap();
+    let bold = RICH_TOOLS
+        .iter()
+        .position(|t| *t == RichTool::Bold)
+        .unwrap();
     let b = ph2d_editor_core::widget::rich_editor_toolbar_button(bar, bold);
     let ev = ed.pointer_down(&mut ts, rect(), b.x + b.w / 2.0, b.y + b.h / 2.0, none(), 1);
     assert_eq!(ev, Some(RichEditorEvent::Changed));
@@ -229,7 +247,10 @@ fn the_ime_shows_the_preedit_and_commits_into_the_document() {
     ed.editing = true;
     assert_eq!(ed.compose(Compose::Preedit("´", None)), None);
     assert_eq!(ed.preedit.as_deref(), Some("´"));
-    assert_eq!(ed.compose(Compose::Commit('é')), Some(RichEditorEvent::Changed));
+    assert_eq!(
+        ed.compose(Compose::Commit('é')),
+        Some(RichEditorEvent::Changed)
+    );
     assert_eq!(ed.preedit, None);
     assert_eq!(ed.doc().plain_text(), "é");
 }

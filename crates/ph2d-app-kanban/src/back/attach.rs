@@ -94,7 +94,12 @@ fn attach_ready(
 const READ_NOW_UP_TO: u64 = 8 << 20;
 
 /// Um ficheiro lido no fio: (aba, cartão, nome, bytes, tamanho natural e a chave sha-256, ou a falha).
-type Loaded = (u64, CardId, String, Option<(Arc<[u8]>, Option<[u32; 2]>, FileId)>);
+type Loaded = (
+    u64,
+    CardId,
+    String,
+    Option<(Arc<[u8]>, Option<[u32; 2]>, FileId)>,
+);
 
 #[derive(Default)]
 struct Loading {

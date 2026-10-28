@@ -80,11 +80,17 @@ pub(crate) fn write_in(
     let Some(ops) = ops.filter(|o| !o.is_empty()) else {
         return false;
     };
-    let before = docs.histories.get(&kid).and_then(ph2d_kanban_model::History::undo_at);
+    let before = docs
+        .histories
+        .get(&kid)
+        .and_then(ph2d_kanban_model::History::undo_at);
     let mut plan = Plan::default();
     plan.extend(kid, ops);
     write(docs, Some(plan));
-    docs.histories.get(&kid).and_then(ph2d_kanban_model::History::undo_at) != before
+    docs.histories
+        .get(&kid)
+        .and_then(ph2d_kanban_model::History::undo_at)
+        != before
 }
 
 /// O que o Butler fez por um botão ou pelo painel (já com a cascata das regras, a lei do

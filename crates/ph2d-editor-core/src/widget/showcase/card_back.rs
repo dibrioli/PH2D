@@ -78,10 +78,22 @@ pub fn demo_date_picker(id: NodeId) -> DatePicker {
         save: String::from("Save"),
         remove: String::from("Remove"),
     };
-    let mut p = DatePicker::new(id, demo_calendar(ph2d_a11y::NodeId(id.0.wrapping_add(64))), labels);
+    let mut p = DatePicker::new(
+        id,
+        demo_calendar(ph2d_a11y::NodeId(id.0.wrapping_add(64))),
+        labels,
+    );
     p.start_on = true;
-    p.set_date(DateSlot::Start, Some(CalendarDate::new(2026, 10, 20)), "10/20/2026");
-    p.set_date(DateSlot::Due, Some(CalendarDate::new(2026, 10, 30)), "10/30/2026");
+    p.set_date(
+        DateSlot::Start,
+        Some(CalendarDate::new(2026, 10, 20)),
+        "10/20/2026",
+    );
+    p.set_date(
+        DateSlot::Due,
+        Some(CalendarDate::new(2026, 10, 30)),
+        "10/30/2026",
+    );
     p.set_time("10:00 AM");
     p.reminder = Reminder::Day1;
     p

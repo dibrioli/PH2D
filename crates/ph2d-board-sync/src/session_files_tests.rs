@@ -232,17 +232,24 @@ fn a_guest_kanban_reaches_the_others_as_its_reference() {
     let el = Element::new_kanban(doc.mint_id(), doc.z_on_top(), k, [0.0, 0.0, 960.0, 540.0]);
     let id = el.id;
     let _ = BoardOp::Put(el).apply(doc);
-    let mut relay = |bia: &mut Guest, bb: &mut Option<Board>, rui: &mut Guest, rb: &mut Option<Board>, t| {
-        let sent = bia.tick(bb.as_mut().unwrap(), t);
-        let mut relayed = Vec::new();
-        for m in &sent {
-            let (out, _) = host.frame(&mut hb, 7, &m.encode(), t);
-            relayed.extend(to_conn(&out, 8));
-        }
-        deliver(rui, rb, &relayed);
-    };
+    let mut relay =
+        |bia: &mut Guest, bb: &mut Option<Board>, rui: &mut Guest, rb: &mut Option<Board>, t| {
+            let sent = bia.tick(bb.as_mut().unwrap(), t);
+            let mut relayed = Vec::new();
+            for m in &sent {
+                let (out, _) = host.frame(&mut hb, 7, &m.encode(), t);
+                relayed.extend(to_conn(&out, 8));
+            }
+            deliver(rui, rb, &relayed);
+        };
     relay(&mut bia, &mut bb, &mut rui, &mut rb, 10);
-    let got = |rb: &Option<Board>| rb.as_ref().unwrap().doc.get(id).and_then(|e| e.kanban().map(|k| k.kanban));
+    let got = |rb: &Option<Board>| {
+        rb.as_ref()
+            .unwrap()
+            .doc
+            .get(id)
+            .and_then(|e| e.kanban().map(|k| k.kanban))
+    };
     assert_eq!(got(&rb), Some(KanbanId(4)));
     let doc = &mut bb.as_mut().unwrap().doc;
     let mut el = doc.get(id).unwrap().clone();

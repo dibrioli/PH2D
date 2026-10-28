@@ -86,7 +86,13 @@ impl EventPop {
     /// O popover de `e` (`None` = um evento novo que começa em `slot`), no Kanban `kanban`, aberto
     /// na ocorrência `at` (`None` = o próprio evento).
     #[must_use]
-    pub fn new(e: Option<Event>, kanban: KanbanId, at: Option<Moment>, slot: Moment, cx: &Ctx<'_>) -> Self {
+    pub fn new(
+        e: Option<Event>,
+        kanban: KanbanId,
+        at: Option<Moment>,
+        slot: Moment,
+        cx: &Ctx<'_>,
+    ) -> Self {
         let occurrence = at.filter(|_| e.as_ref().is_some_and(|e| e.repeat.is_some()));
         // O seletor mostra a ocorrência, não o início da série.
         let shown = e.clone().map(|mut s| {
@@ -95,14 +101,18 @@ impl EventPop {
             }
             s
         });
-        let (start, minutes, all_day, repeat, remind) = shown.as_ref().map_or(
-            (slot, DURATIONS[1], false, None, None),
-            |e| {
-                let mins = u32::try_from((e.end.0 - e.start.0) / 60_000).unwrap_or(60);
-                (e.start, mins, e.all_day, e.repeat, e.remind_before_min)
-            },
-        );
-        let zone = if all_day { Zone::utc() } else { cx.zone.clone() };
+        let (start, minutes, all_day, repeat, remind) =
+            shown
+                .as_ref()
+                .map_or((slot, DURATIONS[1], false, None, None), |e| {
+                    let mins = u32::try_from((e.end.0 - e.start.0) / 60_000).unwrap_or(60);
+                    (e.start, mins, e.all_day, e.repeat, e.remind_before_min)
+                });
+        let zone = if all_day {
+            Zone::utc()
+        } else {
+            cx.zone.clone()
+        };
         let multi = all_day && minutes > 24 * 60;
         let last = shown.as_ref().map_or(start, |e| Moment(e.end.0 - 1));
         let mut picker = Picker::new(
@@ -149,7 +159,10 @@ impl EventPop {
     /// A altura que o popover pede.
     #[must_use]
     pub fn height() -> f32 {
-        m::PAD + m::FIELD_H + 2.0 * (m::GAP + m::BUTTON_H) + m::GAP
+        m::PAD
+            + m::FIELD_H
+            + 2.0 * (m::GAP + m::BUTTON_H)
+            + m::GAP
             + DatePickerLayout::preferred_height()
     }
 
@@ -178,7 +191,12 @@ impl EventPop {
 
     pub fn paint(&self, scene: &mut VectorScene, ts: &mut TextSystem, theme: Theme) {
         let (title, dur, rep, picker) = self.rows();
-        let frame = Rect::new(self.rect.x, self.rect.y, self.rect.w, picker.y - self.rect.y);
+        let frame = Rect::new(
+            self.rect.x,
+            self.rect.y,
+            self.rect.w,
+            picker.y - self.rect.y,
+        );
         paint_popover(&Popover::new(crate::POP_NODE), frame, scene, theme);
         fill_rounded_rect(scene, title, m::RADIUS, c(theme, T::Bg2));
         if self.editing {
@@ -190,10 +208,23 @@ impl EventPop {
             (self.title.text.as_str(), T::Text1)
         };
         let ty = text_top(ts, title.y, title.h, m::TEXT_PX);
-        paint_text_elided(ts, scene, text, title.x + m::BUTTON_PAD_X, ty, m::TEXT_PX, title.w - 2.0 * m::BUTTON_PAD_X, c(theme, ink));
+        paint_text_elided(
+            ts,
+            scene,
+            text,
+            title.x + m::BUTTON_PAD_X,
+            ty,
+            m::TEXT_PX,
+            title.w - 2.0 * m::BUTTON_PAD_X,
+            c(theme, ink),
+        );
         let durs = Self::chips(dur, 4);
         for (i, r) in durs.into_iter().enumerate() {
-            let on = if i == 3 { self.all_day } else { !self.all_day && self.minutes == DURATIONS[i] };
+            let on = if i == 3 {
+                self.all_day
+            } else {
+                !self.all_day && self.minutes == DURATIONS[i]
+            };
             let label = if i == 3 {
                 tr("planner.event.all_day").to_owned()
             } else {
@@ -202,18 +233,33 @@ impl EventPop {
             chip(scene, ts, theme, r, &label, on);
         }
         for (i, r) in Self::chips(rep, REPEATS.len()).into_iter().enumerate() {
-            chip(scene, ts, theme, r, tr(repeat_key(REPEATS[i])), self.repeat == REPEATS[i]);
+            chip(
+                scene,
+                ts,
+                theme,
+                r,
+                tr(repeat_key(REPEATS[i])),
+                self.repeat == REPEATS[i],
+            );
         }
         paint_date_picker(&self.picker.widget, picker, scene, ts, theme);
     }
 
     fn zone(&self, cx: &Ctx<'_>) -> Zone {
-        if self.all_day { Zone::utc() } else { cx.zone.clone() }
+        if self.all_day {
+            Zone::utc()
+        } else {
+            cx.zone.clone()
+        }
     }
 
     /// Um clique. `Some(plan)` = o popover fechou (o plano pode estar vazio: «Close»).
     pub fn click(&mut self, set: &KanbanSet, cx: &Ctx<'_>, x: f32, y: f32) -> Option<Done> {
-        let hit = self.hits().into_iter().find(|(_, r)| r.contains(x, y)).map(|(h, _)| h);
+        let hit = self
+            .hits()
+            .into_iter()
+            .find(|(_, r)| r.contains(x, y))
+            .map(|(h, _)| h);
         self.editing = hit == Some(PopHit::Title);
         match hit? {
             PopHit::Title => None,
@@ -237,7 +283,12 @@ impl EventPop {
         }
     }
 
-    fn picker_events(&mut self, set: &KanbanSet, cx: &Ctx<'_>, events: Vec<DatePickerEvent>) -> Option<Done> {
+    fn picker_events(
+        &mut self,
+        set: &KanbanSet,
+        cx: &Ctx<'_>,
+        events: Vec<DatePickerEvent>,
+    ) -> Option<Done> {
         let zone = self.zone(cx);
         let today = day_of(cx.now.0, &zone);
         for ev in events {
@@ -262,9 +313,16 @@ impl EventPop {
         let zone = self.zone(cx);
         let (first, at) = self.picker.read(&zone);
         let (at, remind) = at?;
-        let id = self.base.as_ref().map_or_else(|| EventId(set.agenda().mint()), |e| e.id);
+        let id = self
+            .base
+            .as_ref()
+            .map_or_else(|| EventId(set.agenda().mint()), |e| e.id);
         let title = self.title.text.trim();
-        let title = if title.is_empty() { tr("planner.event.untitled") } else { title };
+        let title = if title.is_empty() {
+            tr("planner.event.untitled")
+        } else {
+            title
+        };
         let (start, end) = if self.all_day {
             let last: CivilDate = civil(at.0, &zone).date;
             let first = first.map_or(last, |f| day_of(f.0, &zone)).min(last);
@@ -274,7 +332,10 @@ impl EventPop {
         } else {
             (at, Moment(at.0 + i64::from(self.minutes) * 60_000))
         };
-        let mut e = self.base.clone().unwrap_or_else(|| Event::new(id, title, start, end, self.all_day));
+        let mut e = self
+            .base
+            .clone()
+            .unwrap_or_else(|| Event::new(id, title, start, end, self.all_day));
         e.title = title.to_owned();
         (e.start, e.end, e.all_day) = (start, end, self.all_day);
         e.repeat = self.repeat;
@@ -319,7 +380,12 @@ impl EventPop {
     }
 
     /// Uma tecla: o título em edição, ou a caixa do seletor. `Some(plan)` = fechou.
-    pub fn key(&mut self, set: &KanbanSet, cx: &Ctx<'_>, input: &KeyInput<'_>) -> (bool, Option<Done>) {
+    pub fn key(
+        &mut self,
+        set: &KanbanSet,
+        cx: &Ctx<'_>,
+        input: &KeyInput<'_>,
+    ) -> (bool, Option<Done>) {
         if !input.pressed {
             return (true, None);
         }
@@ -340,10 +406,30 @@ impl EventPop {
 }
 
 /// Um botão de escolha (aceso = o escolhido).
-pub(crate) fn chip(scene: &mut VectorScene, ts: &mut TextSystem, theme: Theme, r: Rect, label: &str, on: bool) {
-    let (bg, fg) = if on { (T::Accent, T::AccentFg) } else { (T::Bg2, T::Text1) };
+pub(crate) fn chip(
+    scene: &mut VectorScene,
+    ts: &mut TextSystem,
+    theme: Theme,
+    r: Rect,
+    label: &str,
+    on: bool,
+) {
+    let (bg, fg) = if on {
+        (T::Accent, T::AccentFg)
+    } else {
+        (T::Bg2, T::Text1)
+    };
     fill_rounded_rect(scene, r, m::RADIUS, c(theme, bg));
     let w = ts.prefix_width(label, m::SMALL_PX).min(r.w);
     let ty = text_top(ts, r.y, r.h, m::SMALL_PX);
-    paint_text_elided(ts, scene, label, r.x + (r.w - w) / 2.0, ty, m::SMALL_PX, r.w, c(theme, fg));
+    paint_text_elided(
+        ts,
+        scene,
+        label,
+        r.x + (r.w - w) / 2.0,
+        ty,
+        m::SMALL_PX,
+        r.w,
+        c(theme, fg),
+    );
 }

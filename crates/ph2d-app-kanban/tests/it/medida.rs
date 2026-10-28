@@ -61,8 +61,12 @@ fn medida_dos_niveis_do_kanban_no_canvas() {
         (e.w, e.h)
     };
     let xs = f64::from(ph2d_tokens::TypeToken::Xs.px());
-    println!("elemento {w:.0}×{hh:.0} · TypeToken::Xs = {xs} px · janela {HERO_VIEWPORT_W}×{HERO_VIEWPORT_H}");
-    println!("| zoom | texto do cartão (px ecrã) | título de lista (px ecrã) | nível pelo zoom | Baixo ms | Médio ms | Alto ms |");
+    println!(
+        "elemento {w:.0}×{hh:.0} · TypeToken::Xs = {xs} px · janela {HERO_VIEWPORT_W}×{HERO_VIEWPORT_H}"
+    );
+    println!(
+        "| zoom | texto do cartão (px ecrã) | título de lista (px ecrã) | nível pelo zoom | Baixo ms | Médio ms | Alto ms |"
+    );
     println!("|---|---|---|---|---|---|---|");
     let lods = [KanbanLod::Low, KanbanLod::Mid, KanbanLod::High];
     for zoom in [0.15, 0.25, 0.4, 0.55, 0.7, 0.786, 0.9, 1.0, 1.5] {

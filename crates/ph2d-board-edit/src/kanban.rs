@@ -58,7 +58,10 @@ mod tests {
         assert_eq!([el.x, el.y, el.w, el.h], [-240.0, -135.0, 480.0, 270.0]);
         assert_eq!(el.kanban().unwrap().kanban, KanbanId(5));
         assert!(el.style().round);
-        assert_eq!(ed.selection().iter().copied().collect::<Vec<_>>(), vec![made]);
+        assert_eq!(
+            ed.selection().iter().copied().collect::<Vec<_>>(),
+            vec![made]
+        );
         h.undo(doc);
         assert!(doc.get(made).is_none());
     }

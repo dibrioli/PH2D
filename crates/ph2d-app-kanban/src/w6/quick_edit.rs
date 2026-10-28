@@ -11,7 +11,9 @@ use crate::paint::{c, text_top};
 use crate::tab::Tab;
 use ph2d_editor_core::IconId;
 use ph2d_editor_core::doc_surface::{Key, KeyInput, KeyOutcome};
-use ph2d_editor_core::paint::{fill_rounded_rect, paint_text_elided, paint_text_title_elided, rect_to_vello};
+use ph2d_editor_core::paint::{
+    fill_rounded_rect, paint_text_elided, paint_text_title_elided, rect_to_vello,
+};
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
 use ph2d_kanban_model::{CardId, Kanban};
@@ -39,11 +41,13 @@ pub(crate) const ROWS: [(Quick, &str, IconId); 9] = [
 ];
 
 /// W11 — a linha a mais no canvas do Quadro: «Convert to sticky note».
-const TO_NOTE: (Quick, &str, IconId) = (Quick::ToNote, "kanban.hooks.to_note", IconId::MessageSquare);
+const TO_NOTE: (Quick, &str, IconId) =
+    (Quick::ToNote, "kanban.hooks.to_note", IconId::MessageSquare);
 
 /// As linhas da vista `id`: as do Trello, e no Quadro também a da nota.
 fn rows(id: u64) -> impl Iterator<Item = (Quick, &'static str, IconId)> {
-    ROWS.into_iter().chain(crate::canvas::on_board(id).then_some(TO_NOTE))
+    ROWS.into_iter()
+        .chain(crate::canvas::on_board(id).then_some(TO_NOTE))
 }
 
 /// ⭐ Abre a edição rápida da linha `row`. Um espelho abre o verso do original (o título é dele).
@@ -57,9 +61,14 @@ pub(crate) fn open(docs: &mut KanbanDocs, id: u64, row: CardId) {
         super::gesture::open_back(docs, id, row);
         return;
     }
-    let title = docs
-        .kanban_of(id)
-        .and_then(|kid| docs.set.borrow().get(kid)?.cards.get(&row).map(|c| c.title.clone()));
+    let title = docs.kanban_of(id).and_then(|kid| {
+        docs.set
+            .borrow()
+            .get(kid)?
+            .cards
+            .get(&row)
+            .map(|c| c.title.clone())
+    });
     let (Some(title), Some(t)) = (title, docs.tab_mut(id)) else {
         return;
     };
@@ -73,10 +82,21 @@ pub(crate) fn open(docs: &mut KanbanDocs, id: u64, row: CardId) {
 /// A caixa do título sobre o cartão (a disposição já o cresce para o texto).
 fn card_rect(tab: &Tab, row: CardId) -> Option<Rect> {
     let (_, cb) = tab.layout.card(row)?;
-    Some(Rect::new(cb.rect.x, cb.rect.y, cb.rect.w, cb.rect.h.max(MIN_H)))
+    Some(Rect::new(
+        cb.rect.x,
+        cb.rect.y,
+        cb.rect.w,
+        cb.rect.h.max(MIN_H),
+    ))
 }
 
-pub(crate) fn paint(scene: &mut VectorScene, ts: &mut TextSystem, theme: Theme, _k: &Kanban, tab: &Tab) {
+pub(crate) fn paint(
+    scene: &mut VectorScene,
+    ts: &mut TextSystem,
+    theme: Theme,
+    _k: &Kanban,
+    tab: &Tab,
+) {
     let Some(row) = tab.w6.quick else {
         return;
     };
@@ -86,16 +106,33 @@ pub(crate) fn paint(scene: &mut VectorScene, ts: &mut TextSystem, theme: Theme, 
     let area = tab.layout.area;
     scene.fill_rect(rect_to_vello(area), c(theme, T::KanbanShadowFlight));
     let mut hits = vec![(r, Act::Inside)];
-    if let Some(f) = tab.field.as_ref().filter(|f| f.target == Target::CardTitle(row)) {
+    if let Some(f) = tab
+        .field
+        .as_ref()
+        .filter(|f| f.target == Target::CardTitle(row))
+    {
         crate::paint::editing_card(scene, ts, theme, f, r);
     }
     let save = Rect::new(r.x, r.y + r.h + m::HEADER_GAP, SAVE_W, m::BUTTON_H);
-    let t = if tab.w6.hover == Some(Act::QuickSave) { T::AccentHover } else { T::Accent };
+    let t = if tab.w6.hover == Some(Act::QuickSave) {
+        T::AccentHover
+    } else {
+        T::Accent
+    };
     fill_rounded_rect(scene, save, m::BUTTON_RADIUS, c(theme, t));
     let label = tr("kanban.w6.quick.save");
     let w = crate::docs::title_width(ts, label, m::BUTTON_TEXT_PX);
     let ty = text_top(ts, save.y, save.h, m::BUTTON_TEXT_PX);
-    paint_text_title_elided(ts, scene, label, save.x + (save.w - w) / 2.0, ty, m::BUTTON_TEXT_PX, save.w, c(theme, T::AccentFg));
+    paint_text_title_elided(
+        ts,
+        scene,
+        label,
+        save.x + (save.w - w) / 2.0,
+        ty,
+        m::BUTTON_TEXT_PX,
+        save.w,
+        c(theme, T::AccentFg),
+    );
     hits.push((save, Act::QuickSave));
     let right = r.x + r.w + m::HEADER_GAP;
     let x = if right + SIDE_W <= area.x + area.w {
@@ -108,14 +145,27 @@ pub(crate) fn paint(scene: &mut VectorScene, ts: &mut TextSystem, theme: Theme, 
     for (q, key, icon) in rows(tab.id()) {
         let b = Rect::new(x, y, SIDE_W, m::BUTTON_H);
         let on = tab.w6.hover == Some(Act::Quick(q));
-        let fill = if on { T::KanbanHeaderBtnOn } else { T::KanbanHeaderBg };
+        let fill = if on {
+            T::KanbanHeaderBtnOn
+        } else {
+            T::KanbanHeaderBg
+        };
         let ink = if on { c(theme, T::KanbanBtnOnFg) } else { fg };
         fill_rounded_rect(scene, b, m::BUTTON_RADIUS, c(theme, fill));
         let ir = Rect::new(b.x + m::BUTTON_PAD_X, b.y, m::ICON_PX, b.h);
         crate::paint::icon(scene, icon, ir, ink);
         let tx = ir.x + m::ICON_PX + m::LIST_ICON_GAP;
         let ty = text_top(ts, b.y, b.h, m::BUTTON_TEXT_PX);
-        paint_text_elided(ts, scene, tr(key), tx, ty, m::BUTTON_TEXT_PX, b.x + b.w - tx, ink);
+        paint_text_elided(
+            ts,
+            scene,
+            tr(key),
+            tx,
+            ty,
+            m::BUTTON_TEXT_PX,
+            b.x + b.w - tx,
+            ink,
+        );
         hits.push((b, Act::Quick(q)));
         y += m::BUTTON_H + SIDE_GAP;
     }

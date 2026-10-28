@@ -141,7 +141,12 @@ impl RichEditor {
         let pad = Spacing::Md.px();
         let (bar, top) = if self.editing {
             let inset = Spacing::Xs.px();
-            let bar = Rect::new(rect.x + inset, rect.y + inset, (rect.w - inset * 2.0).max(0.0), ROW_H_PX);
+            let bar = Rect::new(
+                rect.x + inset,
+                rect.y + inset,
+                (rect.w - inset * 2.0).max(0.0),
+                ROW_H_PX,
+            );
             (Some(bar), bar.y + bar.h)
         } else {
             (None, rect.y)

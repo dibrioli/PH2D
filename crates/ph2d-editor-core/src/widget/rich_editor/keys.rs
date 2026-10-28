@@ -62,7 +62,11 @@ impl RichEditor {
         let head = self.selection().head;
         let l = self.layout(ts, rect);
         let r = l.caret_rect(head);
-        let y = if dir < 0.0 { r.y - r.h * 0.5 } else { r.y + r.h + r.h * 0.5 };
+        let y = if dir < 0.0 {
+            r.y - r.h * 0.5
+        } else {
+            r.y + r.h + r.h * 0.5
+        };
         let first = l.blocks.first().map_or(r.y, |b| b.rect.y);
         let last = l.blocks.last().map_or(r.y, |b| b.rect.y + b.rect.h);
         if y < first {
@@ -79,7 +83,11 @@ impl RichEditor {
         let head = self.selection().head;
         let l = self.layout(ts, rect);
         let b = &l.blocks[head.block];
-        let at_edge = if forward { head.byte >= b.len } else { head.byte == 0 };
+        let at_edge = if forward {
+            head.byte >= b.len
+        } else {
+            head.byte == 0
+        };
         if at_edge {
             return if forward {
                 self.doc().move_right(head)
@@ -219,7 +227,11 @@ impl RichEditor {
             Key::Home | Key::End => {
                 let end = input.key == Key::End;
                 let to = if cmd {
-                    if end { self.doc().end() } else { Caret::new(0, 0) }
+                    if end {
+                        self.doc().end()
+                    } else {
+                        Caret::new(0, 0)
+                    }
                 } else {
                     self.line_edge(ts, rect, end)
                 };
@@ -227,7 +239,10 @@ impl RichEditor {
                 taken(None)
             }
             _ if cmd => RichKeyOutcome::default(),
-            _ => match input.text.filter(|t| !t.is_empty() && !t.chars().any(char::is_control)) {
+            _ => match input
+                .text
+                .filter(|t| !t.is_empty() && !t.chars().any(char::is_control))
+            {
                 Some(t) => {
                     self.editor_mut().type_text(t);
                     taken(Some(RichEditorEvent::Changed))

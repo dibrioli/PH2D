@@ -68,7 +68,16 @@ pub(crate) fn header(
         let r = Rect::new(x, y, w, m::BUTTON_H);
         crate::paint::hover_fill(scene, r, hover(Act::ClearAll), theme, m::BUTTON_RADIUS);
         let ty = text_top(ts, r.y, r.h, m::BUTTON_TEXT_PX);
-        paint_text_title_elided(ts, scene, label, r.x + m::BUTTON_PAD_X, ty, m::BUTTON_TEXT_PX, w, fg);
+        paint_text_title_elided(
+            ts,
+            scene,
+            label,
+            r.x + m::BUTTON_PAD_X,
+            ty,
+            m::BUTTON_TEXT_PX,
+            w,
+            fg,
+        );
         hits.push((r, Act::ClearAll));
         x -= m::HEADER_GAP;
     }
@@ -81,16 +90,31 @@ pub(crate) fn header(
     } else {
         0.0
     };
-    let w = m::BUTTON_PAD_X + m::ICON_PX + m::LIST_ICON_GAP + tw + m::BUTTON_PAD_X
+    let w = m::BUTTON_PAD_X
+        + m::ICON_PX
+        + m::LIST_ICON_GAP
+        + tw
+        + m::BUTTON_PAD_X
         + if n > 0 { pw + m::LIST_ICON_GAP } else { 0.0 };
     x -= w;
     let filter = Rect::new(x, y, w, m::BUTTON_H);
     let on = n > 0 || w6.over == Some(Over::Filter);
     let ink = if on { c(theme, T::KanbanBtnOnFg) } else { fg };
     if on {
-        fill_rounded_rect(scene, filter, m::BUTTON_RADIUS, c(theme, T::KanbanHeaderBtnOn));
+        fill_rounded_rect(
+            scene,
+            filter,
+            m::BUTTON_RADIUS,
+            c(theme, T::KanbanHeaderBtnOn),
+        );
     } else {
-        crate::paint::hover_fill(scene, filter, hover(Act::FilterButton), theme, m::BUTTON_RADIUS);
+        crate::paint::hover_fill(
+            scene,
+            filter,
+            hover(Act::FilterButton),
+            theme,
+            m::BUTTON_RADIUS,
+        );
     }
     let gx = filter.x + m::BUTTON_PAD_X;
     glyph(scene, Rect::new(gx, filter.y, m::ICON_PX, filter.h), ink);
@@ -98,10 +122,24 @@ pub(crate) fn header(
     let ty = text_top(ts, filter.y, filter.h, m::BUTTON_TEXT_PX);
     paint_text_title_elided(ts, scene, label, tx, ty, m::BUTTON_TEXT_PX, tw + 1.0, ink);
     if n > 0 {
-        let p = Rect::new(tx + tw + m::LIST_ICON_GAP, filter.y + (filter.h - m::COUNT_H) / 2.0, pw, m::COUNT_H);
+        let p = Rect::new(
+            tx + tw + m::LIST_ICON_GAP,
+            filter.y + (filter.h - m::COUNT_H) / 2.0,
+            pw,
+            m::COUNT_H,
+        );
         fill_rounded_rect(scene, p, m::COUNT_RADIUS, c(theme, T::Accent));
         let py = text_top(ts, p.y, p.h, m::SMALL_PX);
-        paint_text_title_elided(ts, scene, &count, p.x + m::COUNT_PAD_X, py, m::SMALL_PX, pw, c(theme, T::AccentFg));
+        paint_text_title_elided(
+            ts,
+            scene,
+            &count,
+            p.x + m::COUNT_PAD_X,
+            py,
+            m::SMALL_PX,
+            pw,
+            c(theme, T::AccentFg),
+        );
     }
     hits.push((filter, Act::FilterButton));
     // A pesquisa: cabe entre a estrela e o filtro, ou fica só no `/`.
@@ -112,14 +150,35 @@ pub(crate) fn header(
         match w6.input.as_ref().filter(|(b, _)| *b == Boxed::Query) {
             Some((_, f)) => crate::paint::field_box(scene, ts, theme, f, search, m::BUTTON_TEXT_PX),
             None => {
-                let t = if hover(Act::SearchBox) { T::KanbanHeaderBtnOn } else { T::KanbanHeaderBtn };
+                let t = if hover(Act::SearchBox) {
+                    T::KanbanHeaderBtnOn
+                } else {
+                    T::KanbanHeaderBtn
+                };
                 fill_rounded_rect(scene, search, m::BUTTON_RADIUS, c(theme, t));
-                let ink = if hover(Act::SearchBox) { c(theme, T::KanbanBtnOnFg) } else { fg };
+                let ink = if hover(Act::SearchBox) {
+                    c(theme, T::KanbanBtnOnFg)
+                } else {
+                    fg
+                };
                 let ir = Rect::new(search.x + m::BUTTON_PAD_X, search.y, m::ICON_PX, search.h);
                 crate::paint::icon(scene, IconId::Search, ir, ink);
                 let sx = ir.x + m::ICON_PX + m::LIST_ICON_GAP;
-                let q = if w6.query.is_empty() { tr("kanban.w6.search") } else { w6.query.as_str() };
-                paint_text_elided(ts, scene, q, sx, ty, m::BUTTON_TEXT_PX, search.x + search.w - sx, ink);
+                let q = if w6.query.is_empty() {
+                    tr("kanban.w6.search")
+                } else {
+                    w6.query.as_str()
+                };
+                paint_text_elided(
+                    ts,
+                    scene,
+                    q,
+                    sx,
+                    ty,
+                    m::BUTTON_TEXT_PX,
+                    search.x + search.w - sx,
+                    ink,
+                );
             }
         }
         hits.push((search, Act::SearchBox));
@@ -130,11 +189,36 @@ pub(crate) fn header(
 }
 
 const DUES: [(DueWindow, &str, T, T); 5] = [
-    (DueWindow::NoDates, "kanban.w6.due.none", T::KanbanSlot, T::KanbanCardMeta),
-    (DueWindow::Overdue, "kanban.w6.due.over", T::KanbanDueOver, T::KanbanDueOverFg),
-    (DueWindow::NextDay, "kanban.w6.due.day", T::KanbanDueSoon, T::KanbanDueSoonFg),
-    (DueWindow::NextWeek, "kanban.w6.due.week", T::KanbanSlot, T::KanbanCardMeta),
-    (DueWindow::NextMonth, "kanban.w6.due.month", T::KanbanSlot, T::KanbanCardMeta),
+    (
+        DueWindow::NoDates,
+        "kanban.w6.due.none",
+        T::KanbanSlot,
+        T::KanbanCardMeta,
+    ),
+    (
+        DueWindow::Overdue,
+        "kanban.w6.due.over",
+        T::KanbanDueOver,
+        T::KanbanDueOverFg,
+    ),
+    (
+        DueWindow::NextDay,
+        "kanban.w6.due.day",
+        T::KanbanDueSoon,
+        T::KanbanDueSoonFg,
+    ),
+    (
+        DueWindow::NextWeek,
+        "kanban.w6.due.week",
+        T::KanbanSlot,
+        T::KanbanCardMeta,
+    ),
+    (
+        DueWindow::NextMonth,
+        "kanban.w6.due.month",
+        T::KanbanSlot,
+        T::KanbanCardMeta,
+    ),
 ];
 
 const ACTIVITY: [(ActivityWindow, &str); 4] = [
@@ -162,7 +246,10 @@ pub(crate) fn sheet(k: &Kanban, tab: &Tab, team: &[String]) -> Sheet {
         },
         Act::Keyword,
     );
-    s.push(Item::Note(tr("kanban.w6.keyword_note").to_owned()), Act::Inside);
+    s.push(
+        Item::Note(tr("kanban.w6.keyword_note").to_owned()),
+        Act::Inside,
+    );
     // A palavra-chave fica sempre à vista (o cabeçalho fixo da maquete); o resto rola.
     s.pin();
     s.caption("kanban.w6.members");

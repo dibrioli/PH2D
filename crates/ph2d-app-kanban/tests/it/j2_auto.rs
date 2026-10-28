@@ -95,7 +95,11 @@ fn j2_o_construtor_em_frase_cria_edita_e_liga_uma_regra() {
     toca_auto(&mut m, id, "Auto(Create)");
     let draft = linhas(&mut m, id);
     assert!(
-        draft.iter().any(|l| l.starts_with(&format!("draft:{} {}", w(Word::When), w(Word::CardAdded)))),
+        draft.iter().any(|l| l.starts_with(&format!(
+            "draft:{} {}",
+            w(Word::When),
+            w(Word::CardAdded)
+        ))),
         "a frase começa no gatilho: {draft:?}"
     );
     // O valor do gatilho: a lista.
@@ -155,9 +159,17 @@ fn j2_o_construtor_em_frase_cria_edita_e_liga_uma_regra() {
     toca_auto(&mut m, id, "Auto(Delete(");
     assert!(regras(&m, id).is_empty());
     assert!(m.desfaz().is_some());
-    assert_eq!(regras(&m, id)[0].1.actions[1], Action::ClearLabels, "o apagar desfeito");
+    assert_eq!(
+        regras(&m, id)[0].1.actions[1],
+        Action::ClearLabels,
+        "o apagar desfeito"
+    );
     assert!(m.desfaz().is_some());
-    assert_eq!(regras(&m, id)[0].1.actions[1], Action::Archive, "a edição desfeita");
+    assert_eq!(
+        regras(&m, id)[0].1.actions[1],
+        Action::Archive,
+        "a edição desfeita"
+    );
     assert!(m.desfaz().is_some());
     assert!(regras(&m, id).is_empty(), "a criação desfeita");
 }
@@ -172,14 +184,23 @@ fn j2_o_esc_desce_um_degrau_e_a_regra_sem_accao_nao_grava() {
     assert!(linhas(&mut m, id).iter().any(|l| l.starts_with("choice:")));
     assert!(m.tecla(BoardKey::Escape, sem(), None));
     m.quadro();
-    assert!(!linhas(&mut m, id).iter().any(|l| l.starts_with("choice:")), "o Esc fecha o menu");
+    assert!(
+        !linhas(&mut m, id).iter().any(|l| l.starts_with("choice:")),
+        "o Esc fecha o menu"
+    );
     assert!(m.tecla(BoardKey::Escape, sem(), None));
     m.quadro();
-    assert!(!linhas(&mut m, id).iter().any(|l| l.starts_with("draft:")), "depois o construtor");
+    assert!(
+        !linhas(&mut m, id).iter().any(|l| l.starts_with("draft:")),
+        "depois o construtor"
+    );
     assert!(m.tecla(BoardKey::Escape, sem(), None));
     m.quadro();
     assert_eq!(m.docs().probe_auto(id.0), None, "depois o painel");
-    assert!(m.docs().probe_back(id.0).is_some(), "o verso continua por baixo");
+    assert!(
+        m.docs().probe_back(id.0).is_some(),
+        "o verso continua por baixo"
+    );
 }
 
 /// Cria pelo construtor um botão com o nome `nome` e a acção `accao` (o painel no separador certo).
@@ -227,7 +248,10 @@ fn j2_os_botoes_de_cartao_e_de_quadro_correm_em_nome_do_butler() {
     let done = m.lista(id, "Done");
     assert!(!m.cartoes(id, done).is_empty(), "a Done tem cartões");
     toca_auto(&mut m, id, "Auto(Run(");
-    assert!(m.cartoes(id, done).is_empty(), "o botão de quadro arquivou a Done");
+    assert!(
+        m.cartoes(id, done).is_empty(),
+        "o botão de quadro arquivou a Done"
+    );
 }
 
 /// Três cartões movidos para a Done por «eu», com a entrega marcada logo a seguir.
@@ -253,7 +277,11 @@ fn tres_vezes(m: &mut Mesa, id: KanbanId) {
             done: false,
             remind_before_min: None,
         });
-        apply_logged(k, vec![KanbanOp::put(Record::Card(moved.clone().into()))], &actor);
+        apply_logged(
+            k,
+            vec![KanbanOp::put(Record::Card(moved.clone().into()))],
+            &actor,
+        );
         let mut marked = moved;
         marked.due = marked.due.map(|d| Due { done: true, ..d });
         let actor = Actor {
@@ -276,7 +304,12 @@ fn j2_a_sugestao_cria_a_regra_e_dispensar_cala_a() {
             .filter(|l| l.starts_with("suggest:"))
             .collect()
     };
-    assert_eq!(sug(&mut m).len(), 1, "uma sugestão: {:?}", linhas(&mut m, id));
+    assert_eq!(
+        sug(&mut m).len(),
+        1,
+        "uma sugestão: {:?}",
+        linhas(&mut m, id)
+    );
     toca_auto(&mut m, id, "Auto(Suggest(0, false))");
     assert!(sug(&mut m).is_empty(), "dispensada");
     assert!(regras(&m, id).is_empty());
@@ -288,7 +321,10 @@ fn j2_a_sugestao_cria_a_regra_e_dispensar_cala_a() {
     let rs = regras(&m, id);
     assert_eq!(rs.len(), 1, "a sugestão criou a regra");
     assert_eq!(rs[0].1.actions, [Action::MarkDue { done: true }]);
-    assert!(sug(&mut m).is_empty(), "a regra que já faz isto cala a sugestão");
+    assert!(
+        sug(&mut m).is_empty(),
+        "a regra que já faz isto cala a sugestão"
+    );
 }
 
 #[test]

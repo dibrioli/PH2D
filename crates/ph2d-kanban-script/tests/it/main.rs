@@ -143,7 +143,9 @@ impl Scene {
     }
 
     pub(crate) fn add(&mut self, spec: &Spec) {
-        let op = spec.create(self.set.get(self.k).unwrap(), NOW).expect("automação válida");
+        let op = spec
+            .create(self.set.get(self.k).unwrap(), NOW)
+            .expect("automação válida");
         self.set.apply(self.k, vec![op]);
     }
 

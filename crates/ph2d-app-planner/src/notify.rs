@@ -5,8 +5,8 @@
 
 use ph2d_kanban_dates::{Zone, reminder_due};
 use ph2d_kanban_model::{
-    Card, CardId, CommentId, Happened, Kanban, KanbanId, KanbanOp, KanbanSet, Member, Meta,
-    Moment, Record, Seen, SeenId, Subject, splitmix64,
+    Card, CardId, CommentId, Happened, Kanban, KanbanId, KanbanOp, KanbanSet, Member, Meta, Moment,
+    Record, Seen, SeenId, Subject, splitmix64,
 };
 
 use crate::recur;
@@ -76,12 +76,18 @@ pub fn mentions(text: &str, who: &Member) -> bool {
 /// Sigo o cartão `c` (ele, a lista dele ou o Kanban)?
 fn follows(k: &Kanban, c: &Card, me: &Member) -> bool {
     c.watchers.contains(me)
-        || k.lists.get(&c.list).is_some_and(|l| l.watchers.contains(me))
+        || k.lists
+            .get(&c.list)
+            .is_some_and(|l| l.watchers.contains(me))
         || k.header.watchers.contains(me)
 }
 
 fn card_notices(k: &Kanban, me: &Member, out: &mut Vec<Notice>) {
-    let place = |id: CardId| k.cards.get(&id).map_or_else(String::new, |c| c.title.clone());
+    let place = |id: CardId| {
+        k.cards
+            .get(&id)
+            .map_or_else(String::new, |c| c.title.clone())
+    };
     for cm in k.comments.values().filter(|c| !c.meta.deleted) {
         if &cm.author != me && mentions(&cm.text, me) {
             out.push(Notice {
@@ -99,7 +105,11 @@ fn card_notices(k: &Kanban, me: &Member, out: &mut Vec<Notice>) {
             });
         }
     }
-    for a in k.activities.values().filter(|a| !a.meta.deleted && &a.by != me) {
+    for a in k
+        .activities
+        .values()
+        .filter(|a| !a.meta.deleted && &a.by != me)
+    {
         let Subject::Card(cid) = a.subject else {
             if a.subject == Subject::Kanban && k.header.watchers.contains(me) {
                 out.push(Notice {
@@ -142,7 +152,12 @@ fn reminders(set: &KanbanSet, me: &Member, now: Moment, zone: &Zone, out: &mut V
                 continue;
             };
             let mine = c.members.contains(me) || c.watchers.contains(me);
-            if c.meta.deleted || c.archived || d.done || !mine || !reminder_due(d.at.0, before, now.0) {
+            if c.meta.deleted
+                || c.archived
+                || d.done
+                || !mine
+                || !reminder_due(d.at.0, before, now.0)
+            {
                 continue;
             }
             out.push(Notice {

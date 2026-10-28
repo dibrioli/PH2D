@@ -24,12 +24,12 @@
 /// O texto da página de ajuda de cada linha da `api_table`.
 pub mod api_help;
 mod api_help_life;
+mod api_help_kanban;
 mod api_help_props;
 /// A API Luau como tabela — a fonte única do `ph2d.d.luau`.
 pub mod api_table;
 /// `ph2d.kanban`: as linhas, os tipos e as classes da API dos Kanbans (TrelloClone W8).
 pub mod api_table_kanban;
-mod api_help_kanban;
 pub mod component;
 /// O console dos scripts: `print`, erros de runtime, recusas de recarga (CodeEditor E10).
 pub mod console;

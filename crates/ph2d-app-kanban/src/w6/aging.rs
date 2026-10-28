@@ -41,23 +41,27 @@ fn torn(r: Rect, depth: f64, seed: u64) -> BezPath {
     let (x1, y1) = (f64::from(r.x + r.w), f64::from(r.y + r.h));
     let mut p = BezPath::new();
     let mut i = 0u64;
-    let mut edge = |p: &mut BezPath, a: (f64, f64), b: (f64, f64), inward: (f64, f64), first: bool| {
-        let len = ((b.0 - a.0).powi(2) + (b.1 - a.1).powi(2)).sqrt();
-        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-        let n = (len / TOOTH).ceil().max(1.0) as u64;
-        for s in 0..=n {
-            #[allow(clippy::cast_precision_loss)]
-            let t = s as f64 / n as f64;
-            let d = depth * noise(seed, i);
-            i += 1;
-            let pt = (a.0 + (b.0 - a.0) * t + inward.0 * d, a.1 + (b.1 - a.1) * t + inward.1 * d);
-            if first && s == 0 {
-                p.move_to(pt);
-            } else {
-                p.line_to(pt);
+    let mut edge =
+        |p: &mut BezPath, a: (f64, f64), b: (f64, f64), inward: (f64, f64), first: bool| {
+            let len = ((b.0 - a.0).powi(2) + (b.1 - a.1).powi(2)).sqrt();
+            #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+            let n = (len / TOOTH).ceil().max(1.0) as u64;
+            for s in 0..=n {
+                #[allow(clippy::cast_precision_loss)]
+                let t = s as f64 / n as f64;
+                let d = depth * noise(seed, i);
+                i += 1;
+                let pt = (
+                    a.0 + (b.0 - a.0) * t + inward.0 * d,
+                    a.1 + (b.1 - a.1) * t + inward.1 * d,
+                );
+                if first && s == 0 {
+                    p.move_to(pt);
+                } else {
+                    p.line_to(pt);
+                }
             }
-        }
-    };
+        };
     edge(&mut p, (x0, y0), (x1, y0), (0.0, 1.0), true);
     edge(&mut p, (x1, y0), (x1, y1), (-1.0, 0.0), false);
     edge(&mut p, (x1, y1), (x0, y1), (0.0, -1.0), false);
@@ -112,7 +116,12 @@ pub(crate) fn card(
         }
         Some(Aging::Pirate) => {
             let edge = torn(r, TEAR[lv], seed);
-            scene.push_layer_shape(ph2d_vector::VelloBlend::default(), 1.0, Affine::IDENTITY, &edge);
+            scene.push_layer_shape(
+                ph2d_vector::VelloBlend::default(),
+                1.0,
+                Affine::IDENTITY,
+                &edge,
+            );
             paint_card::card(scene, ts, theme, ink, look, r, label_text);
             let paper = c(theme, T::KanbanYellowSubtle).with_alpha(PAPER[lv]);
             scene.fill_path(&edge, &Brush::Solid(paper), Affine::IDENTITY);

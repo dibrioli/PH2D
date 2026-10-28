@@ -22,7 +22,10 @@ fn item(m: &Mesa, texto: &str) -> InboxId {
 #[test]
 fn inbox_captura_e_move_para_o_kanban_num_passo_que_se_desfaz() {
     let (mut m, k) = Mesa::cena();
-    assert!(m.hero.apply_event(WidgetEvent::Click(ph2d_app_planner::CMD_INBOX)));
+    assert!(
+        m.hero
+            .apply_event(WidgetEvent::Click(ph2d_app_planner::CMD_INBOX))
+    );
     m.quadros(2);
     assert_eq!(m.docs().probe_mode().0, Mode::Planner);
     m.escreve("Buy paper");
@@ -33,10 +36,19 @@ fn inbox_captura_e_move_para_o_kanban_num_passo_que_se_desfaz() {
     m.enter(); // «Move» no destino (a 1.ª lista, no fundo)
     let c = m.cartao(k, "Buy paper");
     assert!(c.members.contains(&me), "o cartão é meu, como no Trello");
-    assert!(m.set().agenda().inbox[&id].meta.deleted, "o item saiu da Inbox");
+    assert!(
+        m.set().agenda().inbox[&id].meta.deleted,
+        "o item saiu da Inbox"
+    );
     assert_eq!(m.desfaz(), Some(true));
-    assert!(!m.set().agenda().inbox[&id].meta.deleted, "o desfazer devolve o item…");
-    assert!(m.cartao(k, "Buy paper").meta.deleted, "…e tira o cartão: UM passo");
+    assert!(
+        !m.set().agenda().inbox[&id].meta.deleted,
+        "o desfazer devolve o item…"
+    );
+    assert!(
+        m.cartao(k, "Buy paper").meta.deleted,
+        "…e tira o cartão: UM passo"
+    );
 }
 
 #[test]
@@ -73,10 +85,17 @@ fn my_cards_mostra_os_meus_cartoes_de_todos_os_kanbans() {
         kanban: k,
         card: fox.id,
     };
-    let row = m.docs().probe_hit(Hit::Card(r)).expect("o cartão está na lista");
+    let row = m
+        .docs()
+        .probe_hit(Hit::Card(r))
+        .expect("o cartão está na lista");
     m.clica(centro(row));
     // O verso abre-o a família Kanban, pelo pedido da porta baixa (as famílias não se conhecem).
-    assert_eq!(ph2d_kanban_hooks::take_open_cards(), vec![r], "abrir um cartão pede o verso dele");
+    assert_eq!(
+        ph2d_kanban_hooks::take_open_cards(),
+        vec![r],
+        "abrir um cartão pede o verso dele"
+    );
 }
 
 #[test]
@@ -100,6 +119,13 @@ fn a_mencao_aparece_no_sino_por_ler_e_ler_a_abre() {
         .find(|x| x.key == n.key)
         .map(|x| x.unread);
     assert_eq!(lida, Some(false), "lida");
-    let card = n.card.map(|card| ph2d_kanban_model::CardRef { kanban: n.kanban, card });
-    assert_eq!(ph2d_kanban_hooks::take_open_cards(), card.into_iter().collect::<Vec<_>>(), "e o verso do cartão foi pedido");
+    let card = n.card.map(|card| ph2d_kanban_model::CardRef {
+        kanban: n.kanban,
+        card,
+    });
+    assert_eq!(
+        ph2d_kanban_hooks::take_open_cards(),
+        card.into_iter().collect::<Vec<_>>(),
+        "e o verso do cartão foi pedido"
+    );
 }

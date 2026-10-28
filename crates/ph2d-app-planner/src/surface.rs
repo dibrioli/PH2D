@@ -22,14 +22,14 @@ use ph2d_tokens::Theme;
 use ph2d_tool_registry::hash_node_id;
 use ph2d_vector::VectorScene;
 
-use crate::docs::{Hit, Mode, PlannerDocs, SideDrag, TAB};
 use crate::dest_pop::DestDone;
+use crate::docs::{Hit, Mode, PlannerDocs, SideDrag, TAB};
 use crate::event_pop::{Done, EventPop};
+use crate::metrics as m;
 use crate::recur;
 use crate::scope::{ScopeDone, ScopePop};
-use crate::source::{REACH_MS, event_key};
-use crate::metrics as m;
 use crate::source::{ColorBy, ProjectSource};
+use crate::source::{REACH_MS, event_key};
 
 pub const CMD_CALENDAR: NodeId = hash_node_id("planner_cmd_calendar");
 pub const CMD_PLANNER: NodeId = hash_node_id("planner_cmd_planner");
@@ -44,7 +44,11 @@ const DRAG_SLOP: f32 = 4.0;
 impl PlannerDocs {
     /// Passa um gesto ao calendário; o arrasto de uma ocorrência de uma série pergunta o alcance
     /// junto de `at`.
-    fn with_calendar(&mut self, at: (f32, f32), f: impl FnOnce(&mut calendar::CalendarState, &ProjectSource<'_>) -> Reply) -> bool {
+    fn with_calendar(
+        &mut self,
+        at: (f32, f32),
+        f: impl FnOnce(&mut calendar::CalendarState, &ProjectSource<'_>) -> Reply,
+    ) -> bool {
         let set = self.set.clone();
         let mut cal = std::mem::take(&mut self.cal);
         let (reply, asked) = {
@@ -80,13 +84,22 @@ impl PlannerDocs {
             .find_map(|(k, e)| {
                 recur::occurrences(e, from, to, &self.zone)
                     .into_iter()
-                    .find(|(s, _)| self.cal.item_rects(event_key(e.id, *s)).iter().any(|r| r.contains(x, y)))
+                    .find(|(s, _)| {
+                        self.cal
+                            .item_rects(event_key(e.id, *s))
+                            .iter()
+                            .any(|r| r.contains(x, y))
+                    })
                     .map(|(s, _)| (k, e.id, s))
             })
     }
 
     fn hit_at(&self, x: f32, y: f32) -> Option<Hit> {
-        self.hits.iter().rev().find(|(_, r)| r.contains(x, y)).map(|(h, _)| *h)
+        self.hits
+            .iter()
+            .rev()
+            .find(|(_, r)| r.contains(x, y))
+            .map(|(h, _)| *h)
     }
 
     /// O dia do calendário sob `(x, y)` (a grelha pintada; procura à volta do dia que a fixa).
@@ -225,7 +238,8 @@ impl PlannerDocs {
             self.bell = false;
             return true;
         }
-        if hit != Some(Hit::InboxField) && self.capture.as_ref().is_some_and(|f| f.text.is_empty()) {
+        if hit != Some(Hit::InboxField) && self.capture.as_ref().is_some_and(|f| f.text.is_empty())
+        {
             self.capture = None;
         }
         self.pressed = hit;
@@ -236,7 +250,11 @@ impl PlannerDocs {
                 _ => None,
             };
             if let Some(of) = of {
-                self.drag = Some(SideDrag { of, from: (x, y), at: (x, y) });
+                self.drag = Some(SideDrag {
+                    of,
+                    from: (x, y),
+                    at: (x, y),
+                });
             }
             return true;
         }
@@ -244,14 +262,27 @@ impl PlannerDocs {
         self.cal_down = on_calendar.then_some((x, y));
         on_calendar
             && self.with_calendar((x, y), |st, src| {
-                calendar::pointer(st, src, &src.cx, PointerAt { kind: VKind::Down, x, y })
+                calendar::pointer(
+                    st,
+                    src,
+                    &src.cx,
+                    PointerAt {
+                        kind: VKind::Down,
+                        x,
+                        y,
+                    },
+                )
             })
     }
 
     fn up(&mut self, x: f32, y: f32) -> bool {
         let pressed = self.pressed.take();
         let down = self.cal_down.take();
-        if self.pop.is_some() || self.ask.is_some() || self.dest.is_some() || matches!(pressed, Some(Hit::Pop(_))) {
+        if self.pop.is_some()
+            || self.ask.is_some()
+            || self.dest.is_some()
+            || matches!(pressed, Some(Hit::Pop(_)))
+        {
             return self.area.contains(x, y);
         }
         if let Some(g) = self.drag.take() {
@@ -272,7 +303,16 @@ impl PlannerDocs {
         let taken = self.calendar_area.contains(x, y)
             && self.mode != Mode::MyCards
             && self.with_calendar((x, y), |st, src| {
-                calendar::pointer(st, src, &src.cx, PointerAt { kind: VKind::Up, x, y })
+                calendar::pointer(
+                    st,
+                    src,
+                    &src.cx,
+                    PointerAt {
+                        kind: VKind::Up,
+                        x,
+                        y,
+                    },
+                )
             });
         // Um clique (sem arrasto) num evento abre-o — a vista só abre cartões.
         let click = down.is_some_and(|d| (d.0 - x).abs().max((d.1 - y).abs()) <= DRAG_SLOP);
@@ -291,11 +331,19 @@ impl PlannerDocs {
             return true;
         }
         if let Some(q) = self.ask.as_mut() {
-            q.hover = q.hits().into_iter().find(|(_, r)| r.contains(x, y)).map(|(h, _)| h);
+            q.hover = q
+                .hits()
+                .into_iter()
+                .find(|(_, r)| r.contains(x, y))
+                .map(|(h, _)| h);
             return self.area.contains(x, y);
         }
         if let Some(mut d) = self.dest.take() {
-            d.hover = d.hits(&self.set.borrow()).into_iter().find(|(_, r)| r.contains(x, y)).map(|(h, _)| h);
+            d.hover = d
+                .hits(&self.set.borrow())
+                .into_iter()
+                .find(|(_, r)| r.contains(x, y))
+                .map(|(h, _)| h);
             self.dest = Some(d);
             return self.area.contains(x, y);
         }
@@ -306,11 +354,26 @@ impl PlannerDocs {
         self.calendar_area.contains(x, y)
             && self.mode != Mode::MyCards
             && self.with_calendar((x, y), |st, src| {
-                calendar::pointer(st, src, &src.cx, PointerAt { kind: VKind::Move, x, y })
+                calendar::pointer(
+                    st,
+                    src,
+                    &src.cx,
+                    PointerAt {
+                        kind: VKind::Move,
+                        x,
+                        y,
+                    },
+                )
             })
     }
 
-    fn paint_all(&mut self, area: Rect, scene: &mut VectorScene, ts: &mut TextSystem, theme: Theme) {
+    fn paint_all(
+        &mut self,
+        area: Rect,
+        scene: &mut VectorScene,
+        ts: &mut TextSystem,
+        theme: Theme,
+    ) {
         self.area = area;
         self.hits.clear();
         let body = crate::ui::top_bar(self, area, scene, ts, theme);
@@ -324,7 +387,10 @@ impl PlannerDocs {
         };
         self.calendar_area = cal;
         if self.mode != Mode::MyCards {
-            scene.fill_rect(ph2d_editor_core::paint::rect_to_vello(cal), crate::ui::c(theme, ph2d_tokens::ColorToken::Bg1));
+            scene.fill_rect(
+                ph2d_editor_core::paint::rect_to_vello(cal),
+                crate::ui::c(theme, ph2d_tokens::ColorToken::Bg1),
+            );
             let set = self.set.clone();
             let set = set.borrow();
             let show = self.show.clone();
@@ -337,7 +403,12 @@ impl PlannerDocs {
         }
         crate::side::ghost(self, scene, ts, theme);
         if let Some(mut pop) = self.pop.take() {
-            let anchor = self.probe_hit(Hit::NewEvent).unwrap_or(Rect::new(area.x + area.w, area.y, 0.0, m::TOP_H));
+            let anchor = self.probe_hit(Hit::NewEvent).unwrap_or(Rect::new(
+                area.x + area.w,
+                area.y,
+                0.0,
+                m::TOP_H,
+            ));
             let h = EventPop::height().min(area.h - m::TOP_H);
             let x = (anchor.x + anchor.w - m::POP_W).max(area.x + m::PAD);
             pop.rect = Rect::new(x, area.y + m::TOP_H, m::POP_W, h);
@@ -408,7 +479,10 @@ impl PlannerDocs {
             self.bell = false;
             return true;
         }
-        let mid = (self.calendar_area.x + self.calendar_area.w / 2.0, self.calendar_area.y + m::TOP_H);
+        let mid = (
+            self.calendar_area.x + self.calendar_area.w / 2.0,
+            self.calendar_area.y + m::TOP_H,
+        );
         self.mode != Mode::MyCards
             && self.with_calendar(mid, |st, src| calendar::key(st, src, &src.cx, input))
     }
@@ -426,11 +500,26 @@ impl DocumentSurface for PlannerDocs {
         }]
     }
 
-    fn paint(&mut self, _id: u64, area: Rect, scene: &mut VectorScene, text: &mut TextSystem, theme: &Theme) {
+    fn paint(
+        &mut self,
+        _id: u64,
+        area: Rect,
+        scene: &mut VectorScene,
+        text: &mut TextSystem,
+        theme: &Theme,
+    ) {
         self.paint_all(area, scene, text, *theme);
     }
 
-    fn pointer(&mut self, _id: u64, _input: PointerInput<'_>, kind: PointerKind, _button: PointerButton, x: f32, y: f32) -> bool {
+    fn pointer(
+        &mut self,
+        _id: u64,
+        _input: PointerInput<'_>,
+        kind: PointerKind,
+        _button: PointerButton,
+        x: f32,
+        y: f32,
+    ) -> bool {
         match kind {
             PointerKind::Down => self.down(x, y),
             PointerKind::Up => self.up(x, y),
@@ -496,7 +585,12 @@ impl DocumentSurface for PlannerDocs {
         let a = self.area;
         let node = ph2d_a11y::NodeBuilder::new(ph2d_a11y::Role::Document)
             .label(tr("planner.tab").to_owned())
-            .bounds(f64::from(a.x), f64::from(a.y), f64::from(a.w), f64::from(a.h))
+            .bounds(
+                f64::from(a.x),
+                f64::from(a.y),
+                f64::from(a.w),
+                f64::from(a.h),
+            )
             .build();
         vec![(NodeId(crate::A11Y_SALT ^ id), node)]
     }

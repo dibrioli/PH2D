@@ -28,8 +28,8 @@ use ph2d_editor_core::screens::hero::HeroScreen;
 use ph2d_editor_core::toast::Toast;
 use ph2d_kanban_model::{KanbanId, Member, Moment, splitmix64};
 
-pub use docs::{Hit, Mode, PlannerDocs, TAB};
 pub use dest_pop::{DestHit, DestPop, Row, rows};
+pub use docs::{Hit, Mode, PlannerDocs, TAB};
 pub use event_pop::{Done, EventPop, PopHit};
 pub use scope::{ScopeHit, ScopePop};
 pub use surface::{CMD_CALENDAR, CMD_INBOX, CMD_MY_CARDS, CMD_PLANNER};
@@ -88,7 +88,9 @@ pub fn frame(hero: &mut HeroScreen, toasts: &mut ToastQueue) {
             && !a.in_session()
         {
             #[allow(clippy::cast_possible_truncation)]
-            a.set_session(Some(splitmix64(clock as u64 ^ wall_clock().0.cast_unsigned())));
+            a.set_session(Some(splitmix64(
+                clock as u64 ^ wall_clock().0.cast_unsigned(),
+            )));
         }
     }
     let me = if author.is_empty() {

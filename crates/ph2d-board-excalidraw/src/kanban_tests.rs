@@ -1,9 +1,7 @@
 //! W4 do Kanban — um Kanban no `.excalidraw`: o `rectangle` de cantos redondos com o NOME preso dentro
 //! (o que o Excalidraw mostra), e o nosso elemento no `customData` (volta a ser o Kanban).
 
-use ph2d_board_model::{
-    BoardKanban, BoardOp, BoardSet, Element, KanbanId, Rgba, Style,
-};
+use ph2d_board_model::{BoardKanban, BoardOp, BoardSet, Element, KanbanId, Rgba, Style};
 use serde_json::Value;
 
 use crate::{read, write, write_with_names};
@@ -25,7 +23,10 @@ fn a_kanban_exports_as_a_named_rounded_rectangle_and_comes_back() {
     let text = write_with_names(&b, &names);
     let v: Value = serde_json::from_str(&text).unwrap();
     let els = v["elements"].as_array().unwrap();
-    let rect = els.iter().find(|e| e["type"] == "rectangle").expect("o rectângulo");
+    let rect = els
+        .iter()
+        .find(|e| e["type"] == "rectangle")
+        .expect("o rectângulo");
     assert!(!rect["roundness"].is_null());
     assert_eq!(rect["width"], 640.0);
     let label = els.iter().find(|e| e["type"] == "text").expect("o nome");

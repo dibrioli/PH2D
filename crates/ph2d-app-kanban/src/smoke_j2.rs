@@ -130,7 +130,11 @@ pub(crate) fn butler(set: &mut KanbanSet, id: KanbanId, me: &Member, card: CardI
         let mut moved = c.clone();
         moved.list = review;
         let actor = Actor { by: me.clone(), at };
-        apply_logged(k, vec![KanbanOp::put(Record::Card(moved.clone().into()))], &actor);
+        apply_logged(
+            k,
+            vec![KanbanOp::put(Record::Card(moved.clone().into()))],
+            &actor,
+        );
         moved.members.push(me.clone());
         let actor = Actor {
             by: me.clone(),

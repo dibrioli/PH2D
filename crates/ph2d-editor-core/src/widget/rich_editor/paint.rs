@@ -5,7 +5,8 @@ use super::layout::{BlockBox, Ink, Marker, indent_step};
 use super::{RichEditor, toolbar};
 use crate::icons::IconId;
 use crate::paint::{
-    fill_circle, fill_rounded_rect, paint_icon, paint_text, rect_to_vello, resolve, stroke_rounded_rect,
+    fill_circle, fill_rounded_rect, paint_icon, paint_text, rect_to_vello, resolve,
+    stroke_rounded_rect,
 };
 use crate::widget::TextInputState;
 use crate::zones::Rect;
@@ -67,7 +68,10 @@ fn paint_glyphs(scene: &mut VectorScene, b: &BlockBox, text: &str, theme: Theme)
                 scene.fill_rect(rect_to_vello(Rect::new(x0, y, w, size)), color);
             };
             if let Some(u) = &style.underline {
-                bar(u.offset.unwrap_or(m.underline_offset), u.size.unwrap_or(m.underline_size));
+                bar(
+                    u.offset.unwrap_or(m.underline_offset),
+                    u.size.unwrap_or(m.underline_size),
+                );
             }
             if let Some(s) = &style.strikethrough {
                 bar(
@@ -79,19 +83,20 @@ fn paint_glyphs(scene: &mut VectorScene, b: &BlockBox, text: &str, theme: Theme)
     }
 }
 
-fn paint_marker(
-    scene: &mut VectorScene,
-    ts: &mut TextSystem,
-    b: &BlockBox,
-    theme: Theme,
-) {
+fn paint_marker(scene: &mut VectorScene, ts: &mut TextSystem, b: &BlockBox, theme: Theme) {
     let r = b.marker_rect;
     let cy = r.y + r.h * 0.5;
     match b.marker {
         Marker::None => {}
         Marker::Bullet => {
             let rad = (Spacing::Xs.px() + Spacing::Xxs.px()) * 0.5;
-            fill_circle(scene, r.x + r.w * 0.5, cy, rad, resolve(ColorToken::Text2, theme));
+            fill_circle(
+                scene,
+                r.x + r.w * 0.5,
+                cy,
+                rad,
+                resolve(ColorToken::Text2, theme),
+            );
         }
         Marker::Number(n) => {
             let f = super::layout::font_px(&b.kind);
@@ -115,9 +120,21 @@ fn paint_marker(
                 fill_rounded_rect(scene, bx, radius, resolve(ColorToken::Accent, theme));
                 let pad = Spacing::Xxs.px();
                 let g = Rect::new(bx.x + pad, bx.y + pad, bx.w - pad * 2.0, bx.h - pad * 2.0);
-                paint_icon(scene, IconId::Check, g, resolve(ColorToken::AccentFg, theme), StrokeToken::Default.px() * 2.0);
+                paint_icon(
+                    scene,
+                    IconId::Check,
+                    g,
+                    resolve(ColorToken::AccentFg, theme),
+                    StrokeToken::Default.px() * 2.0,
+                );
             } else {
-                stroke_rounded_rect(scene, bx, radius, StrokeToken::Default.px() * 2.0, resolve(ColorToken::Text3, theme));
+                stroke_rounded_rect(
+                    scene,
+                    bx,
+                    radius,
+                    StrokeToken::Default.px() * 2.0,
+                    resolve(ColorToken::Text3, theme),
+                );
             }
         }
     }
@@ -127,7 +144,9 @@ fn paint_marker(
 fn paint_block_chrome(scene: &mut VectorScene, b: &BlockBox, theme: Theme) {
     let radius = crate::paint::frame_radius(theme, Radius::Sm.px());
     match b.kind {
-        BlockKind::Code(_) => fill_rounded_rect(scene, b.rect, radius, resolve(ColorToken::Bg2, theme)),
+        BlockKind::Code(_) => {
+            fill_rounded_rect(scene, b.rect, radius, resolve(ColorToken::Bg2, theme))
+        }
         BlockKind::Quote => {
             let bar = Rect::new(b.rect.x, b.rect.y, Spacing::Xs.px(), b.rect.h);
             fill_rounded_rect(scene, bar, 0.0, resolve(ColorToken::BorderStrong, theme));
@@ -152,7 +171,12 @@ pub fn paint_rich_editor(
     let (bar, area) = ed.regions(rect);
     if ed.editing {
         let state = TextInputState::Focused;
-        fill_rounded_rect(scene, rect, radius, crate::widget::text_input::field_fill(state, theme));
+        fill_rounded_rect(
+            scene,
+            rect,
+            radius,
+            crate::widget::text_input::field_fill(state, theme),
+        );
         crate::paint::stroke_frame(
             scene,
             rect,
@@ -210,10 +234,22 @@ pub fn paint_rich_editor(
         let c = l.caret_rect(sel.head);
         if let Some(p) = preedit {
             let f = TypeToken::Base.px();
-            paint_text(ts, scene, &p, c.x, c.y, f, area.x + area.w - c.x, resolve(ColorToken::Text2, theme));
+            paint_text(
+                ts,
+                scene,
+                &p,
+                c.x,
+                c.y,
+                f,
+                area.x + area.w - c.x,
+                resolve(ColorToken::Text2, theme),
+            );
             let w = ts.prefix_width(&p, f);
             let t = StrokeToken::Default.px();
-            scene.fill_rect(rect_to_vello(Rect::new(c.x, c.y + c.h - t, w, t)), resolve(ColorToken::Text2, theme));
+            scene.fill_rect(
+                rect_to_vello(Rect::new(c.x, c.y + c.h - t, w, t)),
+                resolve(ColorToken::Text2, theme),
+            );
         } else {
             scene.fill_rect(rect_to_vello(c), resolve(ColorToken::Accent, theme));
         }

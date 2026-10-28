@@ -107,13 +107,31 @@ fn dress_agenda(set: &mut KanbanSet, k: KanbanId, me: &Member, now: i64) {
     let a = set.agenda();
     let ids = a.mint_n(8);
     let day0 = now - now.rem_euclid(DAY);
-    let mut standup = Event::new(EventId(ids[0]), "Team review", Moment(day0 + DAY + 10 * HOUR), Moment(day0 + DAY + 11 * HOUR), false);
+    let mut standup = Event::new(
+        EventId(ids[0]),
+        "Team review",
+        Moment(day0 + DAY + 10 * HOUR),
+        Moment(day0 + DAY + 11 * HOUR),
+        false,
+    );
     standup.repeat = Some(Repeat::Weekly);
     standup.people = vec![me.clone(), Member("Ana".into()), Member("Rui".into())];
     standup.remind_before_min = Some(15);
-    let mut milestone = Event::new(EventId(ids[1]), "Animatic locked", Moment(day0 + 4 * DAY), Moment(day0 + 5 * DAY), true);
+    let mut milestone = Event::new(
+        EventId(ids[1]),
+        "Animatic locked",
+        Moment(day0 + 4 * DAY),
+        Moment(day0 + 5 * DAY),
+        true,
+    );
     milestone.color = Some(Hue::Green);
-    let mut client = Event::new(EventId(ids[2]), "Delivery to the client", Moment(now + 30 * 60_000), Moment(now + 90 * 60_000), false);
+    let mut client = Event::new(
+        EventId(ids[2]),
+        "Delivery to the client",
+        Moment(now + 30 * 60_000),
+        Moment(now + 90 * 60_000),
+        false,
+    );
     client.color = Some(Hue::Red);
     client.remind_before_min = Some(60);
     client.notes = "Export the cut and the stills.".into();
@@ -123,7 +141,14 @@ fn dress_agenda(set: &mut KanbanSet, k: KanbanId, me: &Member, now: i64) {
         KanbanOp::put(Record::Event(client)),
     ];
     let mut pos = a.pos_after_inbox();
-    for (i, text) in ["Call the sound studio", "Buy a new pen nib", "Idea: rain in the last shot"].into_iter().enumerate() {
+    for (i, text) in [
+        "Call the sound studio",
+        "Buy a new pen nib",
+        "Idea: rain in the last shot",
+    ]
+    .into_iter()
+    .enumerate()
+    {
         ops.push(KanbanOp::put(Record::Inbox(InboxItem {
             id: InboxId(ids[3 + i]),
             owner: me.clone(),
@@ -134,9 +159,12 @@ fn dress_agenda(set: &mut KanbanSet, k: KanbanId, me: &Member, now: i64) {
         })));
         pos = ph2d_kanban_model::FracKey::between(Some(&pos), None);
     }
-    let card = set
-        .get(k)
-        .and_then(|kb| kb.cards.values().find(|c| c.title == "Rain test").map(|c| c.id));
+    let card = set.get(k).and_then(|kb| {
+        kb.cards
+            .values()
+            .find(|c| c.title == "Rain test")
+            .map(|c| c.id)
+    });
     if let Some(card) = card {
         ops.push(KanbanOp::put(Record::Block(Block {
             id: BlockId(ids[6]),

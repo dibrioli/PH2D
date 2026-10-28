@@ -145,10 +145,9 @@ impl Calendar {
                 .index_of(anchor)
                 .and_then(|i| i.checked_add_signed(delta))
                 .filter(|i| *i < CALENDAR_CELLS),
-            Some(Pending::SameDay(day)) => self
-                .cells
-                .iter()
-                .rposition(|c| c.in_month && c.day <= day),
+            Some(Pending::SameDay(day)) => {
+                self.cells.iter().rposition(|c| c.in_month && c.day <= day)
+            }
             None => self.focus.and_then(|f| self.index_of(f)),
         };
         self.focus = Some(
@@ -175,7 +174,12 @@ impl Calendar {
     }
 
     /// Um clique em `(x, y)` dentro de `rect`.
-    pub fn pointer_down(&mut self, rect: crate::zones::Rect, x: f32, y: f32) -> Option<CalendarEvent> {
+    pub fn pointer_down(
+        &mut self,
+        rect: crate::zones::Rect,
+        x: f32,
+        y: f32,
+    ) -> Option<CalendarEvent> {
         match CalendarLayout::of(rect).hit(x, y)? {
             CalendarHit::Cell(i) => {
                 let d = self.cells[i].date();
@@ -229,7 +233,10 @@ impl Calendar {
             .focus
             .and_then(|f| self.index_of(f))
             .unwrap_or_default();
-        match from.checked_add_signed(step).filter(|i| *i < CALENDAR_CELLS) {
+        match from
+            .checked_add_signed(step)
+            .filter(|i| *i < CALENDAR_CELLS)
+        {
             Some(i) => {
                 self.focus = Some(self.cells[i].date());
                 (true, None)

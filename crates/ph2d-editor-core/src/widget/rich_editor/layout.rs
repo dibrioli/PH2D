@@ -259,8 +259,8 @@ impl DocLayout {
         if b.kind == BlockKind::Rule {
             return Rect::new(b.text_x, b.rect.y, w, b.rect.h);
         }
-        let g = Cursor::from_byte_index(&b.layout, c.byte, Affinity::Downstream)
-            .geometry(&b.layout, w);
+        let g =
+            Cursor::from_byte_index(&b.layout, c.byte, Affinity::Downstream).geometry(&b.layout, w);
         let h = (g.y1 - g.y0) as f32;
         Rect::new(
             b.text_x + g.x0 as f32,
@@ -284,11 +284,7 @@ impl DocLayout {
                 continue;
             }
             let s = if b.index == a.block { a.byte } else { 0 };
-            let e = if b.index == z.block {
-                z.byte
-            } else {
-                b.len
-            };
+            let e = if b.index == z.block { z.byte } else { b.len };
             out.extend(self.range_rects(b, s, e));
             if b.index < z.block {
                 // O fim do bloco também fica marcado (a quebra entra na selecção).

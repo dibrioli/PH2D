@@ -116,7 +116,10 @@ fn arrows_walk_by_day_and_week_and_cross_into_the_month_the_caller_hands_back() 
     // PageDown leva o mesmo dia ao mês seguinte, preso ao último dia dele.
     c.focus = Some(d(2026, 10, 31));
     c.set_month("October 2026", month(2026, 10));
-    assert_eq!(c.key(Key::PageDown, none), (true, Some(CalendarEvent::NextMonth)));
+    assert_eq!(
+        c.key(Key::PageDown, none),
+        (true, Some(CalendarEvent::NextMonth))
+    );
     c.set_month("November 2026", month(2026, 11));
     assert_eq!(c.focus, Some(d(2026, 11, 30)));
     assert_eq!(
@@ -218,7 +221,10 @@ fn typing_in_a_box_commits_on_enter_and_on_leaving_it() {
     assert!(click(&mut p, l.time_field).is_empty());
     assert_eq!(p.editing, Some(DateField::Time));
     for ch in ["9", ":", "3", "0"] {
-        assert_eq!(p.key(&key(Key::Char(ch.chars().next().unwrap()), Some(ch))), (true, None));
+        assert_eq!(
+            p.key(&key(Key::Char(ch.chars().next().unwrap()), Some(ch))),
+            (true, None)
+        );
     }
     p.key(&key(Key::Backspace, None));
     assert_eq!(
@@ -260,7 +266,10 @@ fn the_reminder_menu_opens_and_its_painted_row_chooses() {
     assert!(!p.reminder_open);
     assert_eq!(click(&mut p, l.remove), vec![DatePickerEvent::Remove]);
     assert_eq!(click(&mut p, l.close), vec![DatePickerEvent::Close]);
-    assert_eq!(p.key(&key(Key::Escape, None)), (true, Some(DatePickerEvent::Close)));
+    assert_eq!(
+        p.key(&key(Key::Escape, None)),
+        (true, Some(DatePickerEvent::Close))
+    );
 }
 
 #[test]

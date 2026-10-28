@@ -296,7 +296,16 @@ pub(crate) fn paint(
         return;
     }
     let head = crate::header::paint(scene, ts, theme, tab, (k, look));
-    let anchors = filter_bar::header(scene, ts, theme, tab, (head.views.x + head.views.w + crate::metrics::HEADER_GAP, head.right));
+    let anchors = filter_bar::header(
+        scene,
+        ts,
+        theme,
+        tab,
+        (
+            head.views.x + head.views.w + crate::metrics::HEADER_GAP,
+            head.right,
+        ),
+    );
     let area = above(tab.layout.area, floor);
     if tab.w6.quick.is_some() {
         quick_edit::paint(scene, ts, theme, k, tab);
@@ -321,7 +330,9 @@ pub(crate) fn paint(
 /// A área sem o chrome do hero por baixo (o HUD): as folhas param acima dele, como as listas.
 pub(crate) fn above(area: Rect, floor: Option<f32>) -> Rect {
     match floor {
-        Some(f) if f > area.y && f < area.y + area.h => Rect::new(area.x, area.y, area.w, f - area.y),
+        Some(f) if f > area.y && f < area.y + area.h => {
+            Rect::new(area.x, area.y, area.w, f - area.y)
+        }
         _ => area,
     }
 }

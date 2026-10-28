@@ -47,7 +47,10 @@ pub(crate) fn sheet(tab: &Tab, set: &ph2d_kanban_model::KanbanSet) -> Sheet {
         return s;
     }
     if w.found.is_empty() {
-        s.push(Item::Note(tr("kanban.w6.search.none").to_owned()), Act::Inside);
+        s.push(
+            Item::Note(tr("kanban.w6.search.none").to_owned()),
+            Act::Inside,
+        );
         return s;
     }
     for (group, rows) in groups(tab, set) {

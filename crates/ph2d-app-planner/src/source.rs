@@ -9,8 +9,8 @@ use std::collections::BTreeSet;
 
 use ph2d_kanban_dates::Zone;
 use ph2d_kanban_model::{
-    BlockId, Card, CardRef, CheckItemId, Event, EventId, Hue, Kanban, KanbanId, KanbanOp, KanbanSet,
-    LabelColor, Member, Moment, Plan, Record, Shade, splitmix64,
+    BlockId, Card, CardRef, CheckItemId, Event, EventId, Hue, Kanban, KanbanId, KanbanOp,
+    KanbanSet, LabelColor, Member, Moment, Plan, Record, Shade, splitmix64,
 };
 use ph2d_kanban_views::calendar::Target;
 use ph2d_kanban_views::{Ctx, Item, ItemKey, ItemTone, KanbanSource, Source};
@@ -63,7 +63,9 @@ pub fn block_key(id: BlockId) -> ItemKey {
 /// A chave da ocorrência de `id` que a regra põe em `at` (cada uma a sua: arrasta-se UMA).
 #[must_use]
 pub fn event_key(id: EventId, at: Moment) -> ItemKey {
-    ItemKey::Event(splitmix64(splitmix64(id.0 ^ TAG_EVENT) ^ at.0.cast_unsigned()))
+    ItemKey::Event(splitmix64(
+        splitmix64(id.0 ^ TAG_EVENT) ^ at.0.cast_unsigned(),
+    ))
 }
 
 /// Até onde se procura a ocorrência de uma chave à volta de um instante: a grelha do mês mostra
@@ -147,7 +149,12 @@ impl<'a> ProjectSource<'a> {
             .into_iter()
             .flat_map(|l| k.cards_in(l.id))
             .filter(|c| !c.template)
-            .filter(|c| self.show.person.as_ref().is_none_or(|p| c.members.contains(p)))
+            .filter(|c| {
+                self.show
+                    .person
+                    .as_ref()
+                    .is_none_or(|p| c.members.contains(p))
+            })
             .filter(|c| self.label_ok(k, c))
             .collect()
     }
@@ -290,8 +297,9 @@ impl Source for ProjectSource<'_> {
     fn reschedule(&self, key: ItemKey, start: Option<Moment>, end: Moment) -> Plan {
         let mut plan = Plan::default();
         match key {
-            ItemKey::Card(r) => return KanbanSource::new(self.set, r.kanban, &self.cx)
-                .reschedule(key, start, end),
+            ItemKey::Card(r) => {
+                return KanbanSource::new(self.set, r.kanban, &self.cx).reschedule(key, start, end);
+            }
             ItemKey::Event(_) => {}
         }
         if let Some(b) = self
@@ -310,7 +318,11 @@ impl Source for ProjectSource<'_> {
             let to = start.unwrap_or(end);
             let len = e.end.0 - e.start.0;
             let end = if e.all_day { Moment(end.0 + 1) } else { end };
-            let end = if start.is_some() && end > to { end } else { Moment(to.0 + len) };
+            let end = if start.is_some() && end > to {
+                end
+            } else {
+                Moment(to.0 + len)
+            };
             if e.repeat.is_some() {
                 *self.asked.borrow_mut() = Some(Ask {
                     kanban: k,

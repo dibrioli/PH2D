@@ -43,9 +43,13 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "loss.unsupported_action" => "Activity with no match in PH2D",
         "loss.action_without_author" => "Activity without an author",
         "loss.bad_value" => "Values of the wrong kind (a date that is not a date\u{2026})",
-        "loss.attachment_file_missing" => "Attachment files not in the folder (they came in as links)",
+        "loss.attachment_file_missing" => {
+            "Attachment files not in the folder (they came in as links)"
+        }
         "loss.card_role" => "Separators, mirrors and link cards (they came in as plain cards)",
-        "loss.subscription" => "\u{201c}Watch\u{201d} (it belongs to whoever exported, not to the board)",
+        "loss.subscription" => {
+            "\u{201c}Watch\u{201d} (it belongs to whoever exported, not to the board)"
+        }
         "export_title" => "Export Kanban",
         "format.csv" => "CSV (spreadsheet)",
         "format.md" => "Markdown",

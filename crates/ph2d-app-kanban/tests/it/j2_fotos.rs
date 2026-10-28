@@ -19,7 +19,8 @@ fn grava(nome: &str, scene: &VectorScene) {
     let px = pass
         .render_and_readback(&gpu, scene.inner(), (w, h))
         .expect("readback");
-    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../docs/TrelloClone/smoke/W8");
+    let dir =
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../docs/TrelloClone/smoke/W8");
     std::fs::create_dir_all(&dir).expect("pasta");
     let path = dir.join(format!("{nome}.png"));
     image::save_buffer(&path, &px, w, h, image::ExtendedColorType::Rgba8).expect("png");

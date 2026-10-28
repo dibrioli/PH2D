@@ -135,8 +135,14 @@ fn actions(d: &Defaults) -> Vec<Action> {
     if let Some(list) = d.list {
         let to = Dest { kanban: None, list };
         v.extend([
-            Action::MoveTo { to, at: End::Bottom },
-            Action::CopyTo { to, at: End::Bottom },
+            Action::MoveTo {
+                to,
+                at: End::Bottom,
+            },
+            Action::CopyTo {
+                to,
+                at: End::Bottom,
+            },
             Action::MirrorTo { to },
         ]);
     }
@@ -236,7 +242,9 @@ pub(crate) fn options(
                     .into_iter()
                     .map(|t| {
                         let c = vec![Condition::is(t.clone())];
-                        let w = describe(&rule(Trigger::DueSet, c, me)).get(3).and_then(word);
+                        let w = describe(&rule(Trigger::DueSet, c, me))
+                            .get(3)
+                            .and_then(word);
                         (w, Pick::Test(t))
                     })
                     .collect(),
@@ -383,7 +391,10 @@ pub(crate) fn typed_now(slot: Slot, segs: &[Seg]) -> String {
         Some(Part::Text(t)) => t.clone(),
         Some(Part::Number(n)) => n.to_string(),
         Some(Part::Time(t)) => crate::back::dates::time_text(t.hour, t.minute),
-        Some(Part::Date { month: Some(m), day }) => format!("{m}/{day}"),
+        Some(Part::Date {
+            month: Some(m),
+            day,
+        }) => format!("{m}/{day}"),
         Some(Part::Date { month: None, day }) => day.to_string(),
         _ => String::new(),
     }
@@ -479,7 +490,9 @@ fn arg(s: &mut Spec, sec: Sec, p: &Pick) {
             };
             match (&mut c.test, p) {
                 (Test::Labels { labels, .. }, Pick::Label(Some(l))) => *labels = vec![*l],
-                (Test::Members { members, .. }, Pick::Member(Some(m))) => *members = vec![m.clone()],
+                (Test::Members { members, .. }, Pick::Member(Some(m))) => {
+                    *members = vec![m.clone()]
+                }
                 (Test::InList(ls), Pick::List(Some(l))) => *ls = vec![*l],
                 (Test::Field { field, .. }, Pick::Field(Some(f))) => *field = *f,
                 _ => {}
@@ -552,7 +565,8 @@ pub(crate) fn write(s: &mut Spec, slot: Slot, t: Typed, text: &str) {
             };
             let t = TimeOfDay { hour, minute };
             match &mut s.kind {
-                Kind::Calendar { at, .. } | Kind::DueDate {
+                Kind::Calendar { at, .. }
+                | Kind::DueDate {
                     when: DueWhen::OnDay { at },
                     ..
                 } => *at = t,
@@ -581,7 +595,9 @@ pub(crate) fn write(s: &mut Spec, slot: Slot, t: Typed, text: &str) {
 }
 
 fn action_text(s: &mut Spec, i: usize, t: Typed, text: &str) {
-    let Some(a) = s.actions.get_mut(i) else { return };
+    let Some(a) = s.actions.get_mut(i) else {
+        return;
+    };
     match (a, t) {
         (
             Action::Comment(x)
@@ -616,7 +632,11 @@ pub(crate) fn toggle(s: &mut Spec, sec: Sec) {
                     Action::MoveTo { at, .. }
                     | Action::CopyTo { at, .. }
                     | Action::CreateCard { at, .. } => {
-                        *at = if *at == End::Top { End::Bottom } else { End::Top };
+                        *at = if *at == End::Top {
+                            End::Bottom
+                        } else {
+                            End::Top
+                        };
                     }
                     Action::SortList { by, .. } => {
                         *by = match by {

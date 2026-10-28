@@ -118,7 +118,10 @@ fn side() -> f32 {
 pub fn button(bar: Rect, i: usize) -> Rect {
     let s = side();
     // Um respiro depois do «Aa», das marcas e dos blocos (os três grupos do Trello).
-    let groups = [0usize, 1, 5, 10].iter().filter(|g| i >= **g && **g > 0).count();
+    let groups = [0usize, 1, 5, 10]
+        .iter()
+        .filter(|g| i >= **g && **g > 0)
+        .count();
     let x = bar.x + i as f32 * s + groups as f32 * Spacing::Sm.px();
     Rect::new(x, bar.y, s, bar.h)
 }
@@ -176,7 +179,11 @@ pub(super) fn paint_toolbar(
         } else if ed.hover == Some(ToolbarHit(i)) {
             fill_rounded_rect(scene, r, radius, resolve(ColorToken::Bg2, theme));
         }
-        let ink = if on { ColorToken::Accent } else { ColorToken::Text2 };
+        let ink = if on {
+            ColorToken::Accent
+        } else {
+            ColorToken::Text2
+        };
         crate::paint::paint_text_centered_com_orcamento(
             ts,
             scene,
@@ -197,7 +204,12 @@ pub(super) fn paint_style_menu(
     theme: Theme,
 ) {
     let m = style_menu(bar);
-    paint_popover(&Popover::new(NodeId(ed.id.0.wrapping_add(2))), m, scene, theme);
+    paint_popover(
+        &Popover::new(NodeId(ed.id.0.wrapping_add(2))),
+        m,
+        scene,
+        theme,
+    );
     let cur = current_kind(ed.doc(), ed.selection());
     for (i, kind) in TEXT_STYLES.iter().enumerate() {
         let r = style_option(bar, i);

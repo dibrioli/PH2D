@@ -90,7 +90,11 @@ struct Fronts<'a> {
 impl Fronts<'_> {
     fn get(&self, rows: &crate::rows::Rows, id: CardId) -> Option<Front> {
         let f = crate::rows::front_of(self.set, self.k, self.counts, self.others, rows, id)?;
-        Some(if self.lod == KanbanLod::High { f } else { titles_only(f) })
+        Some(if self.lod == KanbanLod::High {
+            f
+        } else {
+            titles_only(f)
+        })
     }
 }
 
@@ -113,7 +117,9 @@ pub(crate) fn paint(
     let area = at.area;
     edge_scroll(tab, cx.dt);
     *tab.painted.borrow_mut() = crate::tab::Painted::default();
-    let counts = Counts::of(k).seen_by(Some(cx.me.clone())).with_files(set, k);
+    let counts = Counts::of(k)
+        .seen_by(Some(cx.me.clone()))
+        .with_files(set, k);
     let zone = ph2d_kanban_dates::Zone::system();
     tab.rows = {
         let ask = crate::rows::Ask {
@@ -189,10 +195,27 @@ pub(crate) fn paint(
     let people = (&cx.me, cx.team.as_slice(), cx.floor);
     crate::w6::paint(out, ts, theme, (k, set), tab, people, lod, &cx.share);
     if at.modal {
-        crate::back::paint(out, ts, theme, k, tab, set, &cx.me, &cx.team, crate::actions::now());
+        crate::back::paint(
+            out,
+            ts,
+            theme,
+            k,
+            tab,
+            set,
+            &cx.me,
+            &cx.team,
+            crate::actions::now(),
+        );
     }
     if at.modal || tab.back.is_none() {
-        crate::w6::paint_dialog(out, ts, theme, set, tab, crate::w6::above(tab.layout.area, cx.floor));
+        crate::w6::paint_dialog(
+            out,
+            ts,
+            theme,
+            set,
+            tab,
+            crate::w6::above(tab.layout.area, cx.floor),
+        );
     }
     if !identity {
         scene.append_transformed(&local, at.to_screen);

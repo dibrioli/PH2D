@@ -12,18 +12,37 @@ fn w6_modelos_make_template_pinta_o_selo_o_rodape_cria_do_modelo_e_new_kanban_fr
     let (mut m, id, c) = crate::verso::abre("Fox concept sheet");
     // J2 — a coluna do verso cresceu («Scene object»): rola até ao botão.
     crate::j2_auto::toca_v(&mut m, id, "Side(Template)");
-    assert!(m.kanban(id).cards[&c].template, "Make template liga o modelo");
+    assert!(
+        m.kanban(id).cards[&c].template,
+        "Make template liga o modelo"
+    );
     assert!(m.tecla(BoardKey::Escape, sem(), None));
     m.quadro();
     // O modelo pinta o selo e perde o distintivo da entrega (estava atrasado).
     let selos = m.docs().probe_badges(id.0, c);
-    assert!(selos.iter().any(|s| s == "This card is a template"), "{selos:?}");
-    assert!(!selos.iter().any(|s| s.contains("Oct") || s.contains("Yesterday")), "{selos:?}");
+    assert!(
+        selos.iter().any(|s| s == "This card is a template"),
+        "{selos:?}"
+    );
+    assert!(
+        !selos
+            .iter()
+            .any(|s| s.contains("Oct") || s.contains("Yesterday")),
+        "{selos:?}"
+    );
     // O ícone do rodapé da «Backlog»: «Create card from template».
     let backlog = m.lista(id, "Backlog");
-    let r = m.docs().probe_template_button(id.0, backlog).expect("o ícone do modelo");
+    let r = m
+        .docs()
+        .probe_template_button(id.0, backlog)
+        .expect("o ícone do modelo");
     m.clica((r.x + r.w / 2.0, r.y + r.h / 2.0));
-    assert!(m.docs().probe_w6(id.0).1.is_some_and(|d| d.starts_with("FromTemplate")));
+    assert!(
+        m.docs()
+            .probe_w6(id.0)
+            .1
+            .is_some_and(|d| d.starts_with("FromTemplate"))
+    );
     toca(&mut m, id, "Dlg(Template(");
     toca(&mut m, id, "Dlg(Confirm)");
     let novo = m
@@ -33,14 +52,27 @@ fn w6_modelos_make_template_pinta_o_selo_o_rodape_cria_do_modelo_e_new_kanban_fr
         .filter(|x| x.title == "Fox concept sheet" && x.list == backlog)
         .map(|x| x.template)
         .collect::<Vec<_>>();
-    assert_eq!(novo, vec![false], "o cartão novo nasce do modelo e já não é modelo");
+    assert_eq!(
+        novo,
+        vec![false],
+        "o cartão novo nasce do modelo e já não é modelo"
+    );
     // «New Kanban from…» no menu File.
     let antes = m.hero.documents.kanbans().iter().count();
     assert!(m.docs().family_command(ph2d_app_kanban::CMD_FROM));
     m.quadro();
-    assert!(m.docs().probe_w6(id.0).1.is_some_and(|d| d == "NewKanbanFrom"));
+    assert!(
+        m.docs()
+            .probe_w6(id.0)
+            .1
+            .is_some_and(|d| d == "NewKanbanFrom")
+    );
     toca(&mut m, id, "Dlg(Confirm)");
-    assert_eq!(m.hero.documents.kanbans().iter().count(), antes + 1, "um Kanban novo");
+    assert_eq!(
+        m.hero.documents.kanbans().iter().count(),
+        antes + 1,
+        "um Kanban novo"
+    );
 }
 
 #[test]
@@ -59,7 +91,13 @@ fn w6_espelho_mirror_mostra_o_mesmo_cartao_noutra_lista_abre_o_original_e_arquiv
     let (row, of) = espelhos[0];
     assert_eq!(of.card, c);
     assert_eq!(m.docs().probe_rows(id.0, done)[0], row, "no topo da «Done»");
-    assert!(m.docs().probe_badges(id.0, row).iter().any(|s| s == "Mirror"), "o selo do espelho");
+    assert!(
+        m.docs()
+            .probe_badges(id.0, row)
+            .iter()
+            .any(|s| s == "Mirror"),
+        "o selo do espelho"
+    );
     // Clicar no espelho abre o verso do ORIGINAL.
     let r = m.rect_cartao(id, row);
     m.clica(crate::pega(r));
@@ -69,15 +107,25 @@ fn w6_espelho_mirror_mostra_o_mesmo_cartao_noutra_lista_abre_o_original_e_arquiv
     // Arquivar o original (C) tira o espelho; o desfazer devolve os dois.
     foca(&mut m, id, c);
     assert!(tecla(&mut m, 'c'));
-    assert!(m.docs().probe_mirrors(id.0).is_empty(), "sem original não há espelho");
+    assert!(
+        m.docs().probe_mirrors(id.0).is_empty(),
+        "sem original não há espelho"
+    );
     m.desfaz();
-    assert_eq!(m.docs().probe_mirrors(id.0).len(), 1, "o desfazer devolve o espelho");
+    assert_eq!(
+        m.docs().probe_mirrors(id.0).len(),
+        1,
+        "o desfazer devolve o espelho"
+    );
 }
 
 #[test]
 fn w6_envelhecimento_card_aging_liga_regular_e_pirata_pelo_menu_do_kanban() {
     let (mut m, id) = Mesa::cena1();
-    assert!(m.docs().probe_ages(id.0).is_empty(), "desligado: nada envelhece");
+    assert!(
+        m.docs().probe_ages(id.0).is_empty(),
+        "desligado: nada envelhece"
+    );
     let menu = m.docs().probe_rect(id.0, "menu").expect("menu");
     m.clica((menu.x + menu.w / 2.0, menu.y + menu.h / 2.0));
     let linha = m
@@ -93,7 +141,10 @@ fn w6_envelhecimento_card_aging_liga_regular_e_pirata_pelo_menu_do_kanban() {
     m.quadro();
     // A cena nasce em 1970: todos os cartões estão no nível 3.
     let ages = m.docs().probe_ages(id.0);
-    assert!(!ages.is_empty() && ages.iter().all(|(_, n)| *n == 3), "{ages:?}");
+    assert!(
+        !ages.is_empty() && ages.iter().all(|(_, n)| *n == 3),
+        "{ages:?}"
+    );
     toca(&mut m, id, "Dlg(Aging(2))");
     assert_eq!(m.kanban(id).header.aging, Some(Aging::Pirate));
     m.quadros(2);
@@ -123,7 +174,11 @@ fn w6_atalhos_ajuda_menu_espaco_seguir_votar_etiqueta_copiar_colar_e_z() {
     assert!(m.kanban(id).cards[&c].votes.contains(&me), "V vota");
     let n = m.kanban(id).cards[&c].labels.len();
     assert!(tecla(&mut m, '2'));
-    assert_ne!(m.kanban(id).cards[&c].labels.len(), n, "2 alterna a 2.ª etiqueta");
+    assert_ne!(
+        m.kanban(id).cards[&c].labels.len(),
+        n,
+        "2 alterna a 2.ª etiqueta"
+    );
     assert!(tecla(&mut m, 'z'), "Z desfaz");
     assert_eq!(m.kanban(id).cards[&c].labels.len(), n);
     // Ctrl+C / Ctrl+V: uma cópia logo abaixo.
@@ -133,7 +188,11 @@ fn w6_atalhos_ajuda_menu_espaco_seguir_votar_etiqueta_copiar_colar_e_z() {
     assert!(m.tecla(BoardKey::Char('v'), ctrl(), Some("v")));
     m.quadro();
     let ordem = m.cartoes(id, backlog);
-    assert_eq!(m.kanban(id).cards[&ordem[1]].title, "Write the logline", "a cópia abaixo");
+    assert_eq!(
+        m.kanban(id).cards[&ordem[1]].title,
+        "Write the logline",
+        "a cópia abaixo"
+    );
     // `L` abre o verso nas etiquetas.
     assert!(tecla(&mut m, 'l'));
     assert_eq!(m.docs().probe_back(id.0), Some(c));
@@ -158,7 +217,19 @@ fn w6_arroba_cardinal_e_circunflexo_completam_e_viram_membro_etiqueta_e_posicao(
     let k = m.kanban(id);
     let first = k.cards_in(backlog)[0];
     assert_eq!(first.title, "Shot", "as palavras que casam saem do título");
-    assert_eq!(first.members.iter().map(|x| x.0.as_str()).collect::<Vec<_>>(), vec!["Ana"]);
-    let anim = k.labels.values().find(|l| l.name == "Animation").expect("l").id;
+    assert_eq!(
+        first
+            .members
+            .iter()
+            .map(|x| x.0.as_str())
+            .collect::<Vec<_>>(),
+        vec!["Ana"]
+    );
+    let anim = k
+        .labels
+        .values()
+        .find(|l| l.name == "Animation")
+        .expect("l")
+        .id;
     assert_eq!(first.labels, vec![anim]);
 }

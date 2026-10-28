@@ -45,8 +45,14 @@ fn the_kanban_button_makes_a_document_and_deleting_its_reference_keeps_it() {
     t.click_bar(Item::Kanban);
     let el = kanban_el(&t).expect("o elemento");
     let k = el.kanban().unwrap().kanban;
-    assert!(shared.borrow().get(k).is_some(), "o documento no Rc partilhado");
-    assert_eq!(t.hero.documents.kanbans().get(k).unwrap().header.name, "Kanban");
+    assert!(
+        shared.borrow().get(k).is_some(),
+        "o documento no Rc partilhado"
+    );
+    assert_eq!(
+        t.hero.documents.kanbans().get(k).unwrap().header.name,
+        "Kanban"
+    );
     assert!(t.key(BoardKey::Delete, Modifiers::default(), None));
     assert!(kanban_el(&t).is_none(), "a referência saiu");
     assert!(shared.borrow().get(k).is_some(), "o documento ficou");
@@ -81,7 +87,11 @@ fn a_double_click_on_the_header_asks_for_the_tab() {
     let p = PointerButton::Primary;
     // Dois carregares a 100 ms (o `inp` dos outros anda um segundo por evento: nunca duplo).
     for i in 0..4u128 {
-        let kind = if i % 2 == 0 { PointerKind::Down } else { PointerKind::Up };
+        let kind = if i % 2 == 0 {
+            PointerKind::Down
+        } else {
+            PointerKind::Up
+        };
         let input = Input {
             text: &mut t.ts,
             mods: Modifiers::default(),
@@ -148,7 +158,11 @@ fn a_second_click_enters_the_kanban_and_the_hook_takes_the_mouse_and_keys() {
     assert_eq!(spy.borrow().0, ["down", "up"]);
     let now = kanban_el(&t).unwrap();
     assert_eq!([now.x, now.y], [el.x, el.y], "o clique não move o Kanban");
-    assert_eq!(now.kanban().unwrap().view.scroll_x, 2.0, "a vista é do gancho");
+    assert_eq!(
+        now.kanban().unwrap().view.scroll_x,
+        2.0,
+        "a vista é do gancho"
+    );
     assert!(t.key(BoardKey::Char('a'), Modifiers::default(), Some("a")));
     assert!(t.key(BoardKey::Escape, Modifiers::default(), None));
     assert_eq!(frames(&t), None, "o Esc sai");
@@ -170,15 +184,24 @@ fn undoing_the_kanban_insert_takes_the_untouched_document_with_it() {
     let k = kanban_el(&t).unwrap().kanban().unwrap().kanban;
     assert!(t.key(BoardKey::Char('z'), CTRL, None));
     assert!(kanban_el(&t).is_none());
-    assert!(shared.borrow().get(k).is_none(), "o órfão intocado saiu com a referência");
+    assert!(
+        shared.borrow().get(k).is_none(),
+        "o órfão intocado saiu com a referência"
+    );
     assert!(t.key(BoardKey::Char('y'), CTRL, None));
     assert_eq!(kanban_el(&t).map(|e| e.kanban().unwrap().kanban), Some(k));
-    assert!(shared.borrow().get(k).is_some(), "o refazer repõe o MESMO documento");
+    assert!(
+        shared.borrow().get(k).is_some(),
+        "o refazer repõe o MESMO documento"
+    );
     // Mexido (renomeado na aba, por exemplo), já não é só do gesto: o desfazer deixa-o.
     shared.borrow_mut().doc_mut(k).unwrap().header.name = "Mine".into();
     assert!(t.key(BoardKey::Char('z'), CTRL, None));
     assert!(kanban_el(&t).is_none());
-    assert_eq!(shared.borrow().get(k).map(|k| k.header.name.clone()), Some("Mine".into()));
+    assert_eq!(
+        shared.borrow().get(k).map(|k| k.header.name.clone()),
+        Some("Mine".into())
+    );
 }
 
 /// O botão direito num Kanban abre o menu dele, com «Open in tab» à cabeça (e a linha pede a aba).
@@ -195,6 +218,7 @@ fn the_right_click_menu_of_a_kanban_opens_it_in_a_tab() {
     let kind = t.hero.store.context_menu().map(|m| m.kind);
     assert_eq!(kind, Some(crate::interaction::ContextMenuKind::BoardKanban));
     let open = crate::ids::CTX_MENU_BOARD_EL_OPEN_TAB;
-    t.hero.apply_event(crate::interaction::WidgetEvent::Click(open));
+    t.hero
+        .apply_event(crate::interaction::WidgetEvent::Click(open));
     assert_eq!(kb::take_open_requests(), vec![el.kanban().unwrap().kanban]);
 }

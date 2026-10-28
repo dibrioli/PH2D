@@ -37,13 +37,23 @@ fn j2_scene_object_liga_abre_e_tira_uma_ligacao_ao_projecto() {
     m.escreve("jump");
     m.quadro();
     toca(&mut m, id, "Pop(Scene(0))");
-    assert_eq!(ligacoes(&m, id, c), [(Target::Script(3), "jump.luau".to_owned())]);
-    assert_eq!(m.docs().probe_back_state(id.0).0, None, "escolher fecha o popover");
+    assert_eq!(
+        ligacoes(&m, id, c),
+        [(Target::Script(3), "jump.luau".to_owned())]
+    );
+    assert_eq!(
+        m.docs().probe_back_state(id.0).0,
+        None,
+        "escolher fecha o popover"
+    );
     // O objecto, pelo popover sem pesquisa (a 1.ª entrada é o objecto da cena).
     toca_v(&mut m, id, "Side(SceneObject)");
     toca(&mut m, id, "Pop(Scene(0))");
     assert_eq!(ligacoes(&m, id, c).len(), 2);
-    assert_eq!(ligacoes(&m, id, c)[1], (Target::Object(7), "Hero".to_owned()));
+    assert_eq!(
+        ligacoes(&m, id, c)[1],
+        (Target::Object(7), "Hero".to_owned())
+    );
     // Clicar na ligação pede «abrir» ao dono dela (a cena seleciona o objecto).
     let _ = kanban_links::take(Family::Scene);
     let open: Vec<String> = m
@@ -63,13 +73,26 @@ fn j2_scene_object_liga_abre_e_tira_uma_ligacao_ao_projecto() {
     assert_eq!(ligacoes(&m, id, c).len(), 2, "o tirar desfeito");
     assert!(m.desfaz().is_some());
     assert!(m.desfaz().is_some());
-    assert!(ligacoes(&m, id, c).is_empty(), "um passo de desfazer por ligação");
+    assert!(
+        ligacoes(&m, id, c).is_empty(),
+        "um passo de desfazer por ligação"
+    );
 }
 
 #[test]
 fn j2_convert_to_sticky_note_com_o_kanban_num_quadro() {
     let (mut d, id, _) = Duas::new();
-    let c = d.hero.documents.kanbans().get(id).unwrap().cards.values().find(|c| c.title == "Write the logline").unwrap().id;
+    let c = d
+        .hero
+        .documents
+        .kanbans()
+        .get(id)
+        .unwrap()
+        .cards
+        .values()
+        .find(|c| c.title == "Write the logline")
+        .unwrap()
+        .id;
     d.docs().open(id);
     d.quadros(2);
     d.docs().open_back(id.0, c);

@@ -159,9 +159,8 @@ fn run_handlers(
         me: who.me.clone(),
         at,
     };
-    let report = with_scripts(|s| {
-        (!s.loaded().is_empty()).then(|| s.react(set, histories, events, &cx))
-    });
+    let report =
+        with_scripts(|s| (!s.loaded().is_empty()).then(|| s.react(set, histories, events, &cx)));
     if let Some(rep) = report {
         r.wrote |= rep.changed;
         r.handlers += rep.handlers;

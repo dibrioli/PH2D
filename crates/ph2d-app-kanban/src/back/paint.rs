@@ -276,13 +276,7 @@ fn header(ui: &mut Ui<'_>, back: &Back, cx: &Ctx<'_>, x: f32, y: f32, w: f32, cl
     } else {
         ui.c(T::KanbanCard)
     };
-    ui.icon_button(
-        watch,
-        IconId::Eye,
-        BackHit::Watch,
-        false,
-        fill,
-    );
+    ui.icon_button(watch, IconId::Eye, BackHit::Watch, false, fill);
     let mut yy = y + title_h + u::HAIR;
     let list =
         cx.k.lists

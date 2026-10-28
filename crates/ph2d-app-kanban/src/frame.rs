@@ -3,11 +3,11 @@
 //! carácter e o «movimento reduzido» do hero), e a aba activa (a que sai grava o campo aberto).
 
 use crate::docs::KanbanDocs;
-use ph2d_kanban_model::KanbanId;
-use std::collections::BTreeMap;
 use ph2d_editor_core::motion::Role;
 use ph2d_editor_core::screens::hero::HeroScreen;
 use ph2d_editor_core::screens::hero::board_video::kanban as kb;
+use ph2d_kanban_model::KanbanId;
+use std::collections::BTreeMap;
 
 pub fn frame(hero: &mut HeroScreen) {
     let shared = hero.documents.kanbans_shared();

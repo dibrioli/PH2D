@@ -49,7 +49,10 @@ fn read(text: &str) -> Comp {
     let mut lines: Vec<String> = Vec::new();
     for l in raw {
         if let Some(rest) = l.strip_prefix(' ') {
-            lines.last_mut().expect("continuação sem linha").push_str(rest);
+            lines
+                .last_mut()
+                .expect("continuação sem linha")
+                .push_str(rest);
         } else {
             lines.push(l.to_owned());
         }
@@ -104,7 +107,11 @@ fn o_ics_do_projecto_le_se_por_um_leitor_independente() {
     assert_eq!(cal.get("VERSION"), Some("2.0"));
     assert!(cal.get("PRODID").is_some());
     let events: Vec<&_> = cal.kids.iter().filter(|c| c.name == "VEVENT").collect();
-    assert!(events.len() >= 8, "eventos e datas de cartões: {}", events.len());
+    assert!(
+        events.len() >= 8,
+        "eventos e datas de cartões: {}",
+        events.len()
+    );
     let mut uids: Vec<&str> = Vec::new();
     for e in &events {
         for p in ["UID", "DTSTAMP", "DTSTART", "SUMMARY"] {
@@ -117,9 +124,15 @@ fn o_ics_do_projecto_le_se_por_um_leitor_independente() {
     assert_eq!(uids.len(), events.len(), "UIDs únicos");
     let long = events
         .iter()
-        .find(|e| e.get("SUMMARY").is_some_and(|s| s.starts_with("Review, notes; and")))
+        .find(|e| {
+            e.get("SUMMARY")
+                .is_some_and(|s| s.starts_with("Review, notes; and"))
+        })
         .expect("o título escapado volta igual");
-    assert!(long.get("SUMMARY").is_some_and(|s| s.ends_with("ção ção ção")));
+    assert!(
+        long.get("SUMMARY")
+            .is_some_and(|s| s.ends_with("ção ção ção"))
+    );
     assert_eq!(long.get("DTSTART"), Some("20260101"));
     assert!(long.props.iter().any(|(n, _)| n == "DTSTART;VALUE=DATE"));
     assert_eq!(long.get("RRULE"), Some("FREQ=YEARLY"));
@@ -128,11 +141,22 @@ fn o_ics_do_projecto_le_se_por_um_leitor_independente() {
         .find(|e| e.get("SUMMARY") == Some("Team review"))
         .expect("a reunião semanal");
     assert_eq!(review.get("RRULE"), Some("FREQ=WEEKLY"));
-    let alarm = review.kids.iter().find(|c| c.name == "VALARM").expect("o lembrete");
+    let alarm = review
+        .kids
+        .iter()
+        .find(|c| c.name == "VALARM")
+        .expect("o lembrete");
     assert_eq!(alarm.get("TRIGGER"), Some("-PT15M"));
     assert!(
-        review.get("DTSTART").is_some_and(|s| s.len() == 16 && s.ends_with('Z')),
+        review
+            .get("DTSTART")
+            .is_some_and(|s| s.len() == 16 && s.ends_with('Z')),
         "hora em UTC"
     );
-    assert!(events.iter().any(|e| e.get("SUMMARY") == Some("Design the fox")), "datas de cartões");
+    assert!(
+        events
+            .iter()
+            .any(|e| e.get("SUMMARY") == Some("Design the fox")),
+        "datas de cartões"
+    );
 }

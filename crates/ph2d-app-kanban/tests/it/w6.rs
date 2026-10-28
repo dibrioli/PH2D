@@ -49,7 +49,11 @@ pub(crate) fn foca(m: &mut Mesa, id: KanbanId, c: CardId) {
 /// Rola o painel aberto (a roda sobre ele) até o alvo `nome` se pintar.
 pub(crate) fn rola_ate(m: &mut Mesa, id: KanbanId, nome: &str) {
     for _ in 0..40 {
-        if m.docs().probe_w6_hits(id.0).iter().any(|(n, _)| n.starts_with(nome)) {
+        if m.docs()
+            .probe_w6_hits(id.0)
+            .iter()
+            .any(|(n, _)| n.starts_with(nome))
+        {
             return;
         }
         let r = alvo(m, id, "Inside");
@@ -73,7 +77,14 @@ pub(crate) fn segundo(m: &mut Mesa, id: KanbanId, titulo: Option<&str>) -> Kanba
     let mut set = shared.borrow_mut();
     let k = set.create_from(id, "Second", false).expect("kanban");
     if let Some(t) = titulo {
-        let mut c = set.get(id).expect("k").cards.values().next().expect("c").clone();
+        let mut c = set
+            .get(id)
+            .expect("k")
+            .cards
+            .values()
+            .next()
+            .expect("c")
+            .clone();
         let doc = set.doc_mut(k).expect("doc");
         let list = doc.lists_in_order()[0].id;
         c.id = CardId(doc.mint());
@@ -100,9 +111,18 @@ fn w6_filtro_f_abre_o_painel_a_palavra_e_a_etiqueta_tiram_cartoes_e_o_clear_all_
     m.escreve("fox");
     m.quadro();
     let fox = mostradas(&mut m, id);
-    let titulos: Vec<String> = fox.iter().map(|c| m.kanban(id).cards[c].title.clone()).collect();
-    assert!(!fox.is_empty() && fox.len() < todos, "o filtro tira cartões: {titulos:?}");
-    assert!(titulos.iter().all(|t| t.to_lowercase().contains("fox")), "{titulos:?}");
+    let titulos: Vec<String> = fox
+        .iter()
+        .map(|c| m.kanban(id).cards[c].title.clone())
+        .collect();
+    assert!(
+        !fox.is_empty() && fox.len() < todos,
+        "o filtro tira cartões: {titulos:?}"
+    );
+    assert!(
+        titulos.iter().all(|t| t.to_lowercase().contains("fox")),
+        "{titulos:?}"
+    );
     assert_eq!(m.docs().probe_w6(id.0).3, 1, "o botão conta uma escolha");
     // Uma etiqueta: «Character» (os dois cartões da raposa têm-na) — ainda casam.
     let character = m
@@ -123,7 +143,11 @@ fn w6_filtro_f_abre_o_painel_a_palavra_e_a_etiqueta_tiram_cartoes_e_o_clear_all_
     assert!(m.tecla(BoardKey::Escape, sem(), None));
     m.quadro();
     assert_eq!(m.docs().probe_w6(id.0).0, None, "Esc fecha o painel");
-    assert_eq!(mostradas(&mut m, id), fox, "o filtro fica depois de fechar o painel");
+    assert_eq!(
+        mostradas(&mut m, id),
+        fox,
+        "o filtro fica depois de fechar o painel"
+    );
     toca(&mut m, id, "ClearAll");
     assert_eq!(mostradas(&mut m, id).len(), todos, "Clear all devolve tudo");
     // `Q`: os meus cartões; `X` limpa.
@@ -149,7 +173,11 @@ fn w6_pesquisa_barra_procura_em_todos_os_kanbans_e_o_enter_abre_o_cartao_na_aba_
     m.enter();
     m.quadro();
     assert_eq!(m.activa(), Some(outro.0), "abriu a aba do Kanban do cartão");
-    assert_eq!(m.docs().probe_back(outro.0), Some(found[0].card), "com o verso aberto");
+    assert_eq!(
+        m.docs().probe_back(outro.0),
+        Some(found[0].card),
+        "com o verso aberto"
+    );
 }
 
 #[test]
@@ -159,7 +187,9 @@ fn w6_edicao_rapida_e_abre_no_lugar_enter_grava_o_titulo_e_archive_arquiva() {
     foca(&mut m, id, c);
     assert!(tecla(&mut m, 'e'), "E abre a edição rápida");
     assert_eq!(m.docs().probe_w6(id.0).2, Some(c));
-    for q in ["Open", "Labels", "Members", "Cover", "Dates", "Move", "Copy", "Mirror", "Archive"] {
+    for q in [
+        "Open", "Labels", "Members", "Cover", "Dates", "Move", "Copy", "Mirror", "Archive",
+    ] {
         alvo(&mut m, id, &format!("Quick({q})"));
     }
     alvo(&mut m, id, "QuickSave");
@@ -182,8 +212,18 @@ fn w6_copiar_com_titulo_e_mover_para_outro_kanban_que_o_ctrl_z_desfaz_inteiro() 
     foca(&mut m, id, c);
     assert!(tecla(&mut m, 'e'));
     toca(&mut m, id, "Quick(Copy)");
-    assert!(m.docs().probe_w6(id.0).1.is_some_and(|d| d.starts_with("CopyCard")));
-    for k in ["Dlg(Keep(0))", "Dlg(Open(Kanban))", "Dlg(Open(List))", "Dlg(Open(Position))"] {
+    assert!(
+        m.docs()
+            .probe_w6(id.0)
+            .1
+            .is_some_and(|d| d.starts_with("CopyCard"))
+    );
+    for k in [
+        "Dlg(Keep(0))",
+        "Dlg(Open(Kanban))",
+        "Dlg(Open(List))",
+        "Dlg(Open(Position))",
+    ] {
         alvo(&mut m, id, k);
     }
     // O título abre selecionado? Não: o cursor no fim — escreve-se a seguir.
@@ -199,7 +239,11 @@ fn w6_copiar_com_titulo_e_mover_para_outro_kanban_que_o_ctrl_z_desfaz_inteiro() 
     assert_eq!(copia.1, todo, "na mesma lista");
     let ordem = m.cartoes(id, todo);
     let i = ordem.iter().position(|x| *x == c).expect("o original");
-    assert_eq!(ordem[i + 1], copia.0, "logo abaixo do original (a posição do Trello)");
+    assert_eq!(
+        ordem[i + 1],
+        copia.0,
+        "logo abaixo do original (a posição do Trello)"
+    );
     // Mover para outro Kanban.
     let outro = segundo(&mut m, id, None);
     foca(&mut m, id, c);
@@ -208,13 +252,27 @@ fn w6_copiar_com_titulo_e_mover_para_outro_kanban_que_o_ctrl_z_desfaz_inteiro() 
     toca(&mut m, id, "Dlg(Open(Kanban))");
     toca(&mut m, id, &format!("Dlg(Kanban({outro:?}))"));
     toca(&mut m, id, "Dlg(Confirm)");
-    assert!(!m.kanban(id).cards.get(&c).is_some_and(|x| !x.meta.deleted), "saiu deste Kanban");
+    assert!(
+        !m.kanban(id).cards.get(&c).is_some_and(|x| !x.meta.deleted),
+        "saiu deste Kanban"
+    );
     let la = m.kanban(outro);
-    assert!(la.cards.values().any(|x| x.title == "Storyboard act 1" && !x.meta.deleted));
+    assert!(
+        la.cards
+            .values()
+            .any(|x| x.title == "Storyboard act 1" && !x.meta.deleted)
+    );
     // Um Ctrl+Z desfaz o gesto nos DOIS Kanbans.
     m.desfaz();
-    assert!(m.kanban(id).cards.get(&c).is_some_and(|x| !x.meta.deleted), "voltou");
+    assert!(
+        m.kanban(id).cards.get(&c).is_some_and(|x| !x.meta.deleted),
+        "voltou"
+    );
     let la = m.kanban(outro);
-    assert!(!la.cards.values().any(|x| x.title == "Storyboard act 1" && !x.meta.deleted));
+    assert!(
+        !la.cards
+            .values()
+            .any(|x| x.title == "Storyboard act 1" && !x.meta.deleted)
+    );
     let _ = ctrl();
 }

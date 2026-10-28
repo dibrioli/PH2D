@@ -71,7 +71,15 @@ pub fn rows(set: &KanbanSet, q: &str) -> Vec<Row> {
             .lists_in_order()
             .into_iter()
             .filter(|l| !l.archived && (all || l.title.to_lowercase().contains(&q)))
-            .map(|l| Row::List(ListRef { kanban: k.id, list: l.id }, l.title.clone()))
+            .map(|l| {
+                Row::List(
+                    ListRef {
+                        kanban: k.id,
+                        list: l.id,
+                    },
+                    l.title.clone(),
+                )
+            })
             .collect();
         if !lists.is_empty() {
             out.push(Row::Kanban(k.header.name.clone()));
@@ -117,8 +125,17 @@ impl DestPop {
     pub fn height(n: usize) -> f32 {
         #[allow(clippy::cast_precision_loss)]
         let list = n as f32 * m::ROW_H;
-        m::PAD + m::SECTION_H + m::FIELD_H + m::GAP + list + m::GAP + m::SECTION_H + m::BUTTON_H
-            + m::GAP + m::BUTTON_H + m::PAD
+        m::PAD
+            + m::SECTION_H
+            + m::FIELD_H
+            + m::GAP
+            + list
+            + m::GAP
+            + m::SECTION_H
+            + m::BUTTON_H
+            + m::GAP
+            + m::BUTTON_H
+            + m::PAD
     }
 
     /// Põe o popover debaixo da âncora, dentro de `area`, com as linhas que couberem.
@@ -128,8 +145,14 @@ impl DestPop {
         let shown = n.min(Self::fit(room)).max(1);
         self.scroll = self.scroll.min(n.saturating_sub(shown));
         let h = Self::height(shown);
-        let x = self.anchor.x.min(area.x + area.w - m::POP_W - m::PAD).max(area.x + m::PAD);
-        let y = (self.anchor.y + self.anchor.h).min(area.y + area.h - h).max(area.y);
+        let x = self
+            .anchor
+            .x
+            .min(area.x + area.w - m::POP_W - m::PAD)
+            .max(area.x + m::PAD);
+        let y = (self.anchor.y + self.anchor.h)
+            .min(area.y + area.h - h)
+            .max(area.y);
         self.rect = Rect::new(x, y, m::POP_W, h);
     }
 
@@ -180,14 +203,29 @@ impl DestPop {
         v
     }
 
-    pub fn paint(&self, set: &KanbanSet, scene: &mut VectorScene, ts: &mut TextSystem, theme: Theme) {
+    pub fn paint(
+        &self,
+        set: &KanbanSet,
+        scene: &mut VectorScene,
+        ts: &mut TextSystem,
+        theme: Theme,
+    ) {
         let (search, lines, seg, go) = self.layout(set);
         paint_popover(&Popover::new(crate::POP_NODE), self.rect, scene, theme);
         let x = search.x;
         let w = search.w;
         let caption = |ts: &mut TextSystem, scene: &mut VectorScene, y: f32, key: &str| {
             let ty = text_top(ts, y, m::SECTION_H, m::SMALL_PX);
-            paint_text_elided(ts, scene, tr(key), x, ty, m::SMALL_PX, w, c(theme, T::Text2));
+            paint_text_elided(
+                ts,
+                scene,
+                tr(key),
+                x,
+                ty,
+                m::SMALL_PX,
+                w,
+                c(theme, T::Text2),
+            );
         };
         caption(ts, scene, self.rect.y + m::PAD, "planner.move.title");
         fill_rounded_rect(scene, search, m::RADIUS, c(theme, T::Bg2));
@@ -198,16 +236,43 @@ impl DestPop {
             (self.search.text.as_str(), T::Text1)
         };
         let ty = text_top(ts, search.y, search.h, m::TEXT_PX);
-        paint_text_elided(ts, scene, text, search.x + m::BUTTON_PAD_X, ty, m::TEXT_PX, search.w - 2.0 * m::BUTTON_PAD_X, c(theme, ink));
+        paint_text_elided(
+            ts,
+            scene,
+            text,
+            search.x + m::BUTTON_PAD_X,
+            ty,
+            m::TEXT_PX,
+            search.w - 2.0 * m::BUTTON_PAD_X,
+            c(theme, ink),
+        );
         if lines.is_empty() {
             let ty = text_top(ts, search.y + search.h + m::GAP, m::ROW_H, m::TEXT_PX);
-            paint_text_elided(ts, scene, tr("planner.move.none"), x, ty, m::TEXT_PX, w, c(theme, T::Text2));
+            paint_text_elided(
+                ts,
+                scene,
+                tr("planner.move.none"),
+                x,
+                ty,
+                m::TEXT_PX,
+                w,
+                c(theme, T::Text2),
+            );
         }
         for (r, row) in &lines {
             match row {
                 Row::Kanban(name) => {
                     let ty = text_top(ts, r.y, r.h, m::SMALL_PX);
-                    paint_text_elided(ts, scene, name, r.x, ty, m::SMALL_PX, r.w, c(theme, T::KanbanListMeta));
+                    paint_text_elided(
+                        ts,
+                        scene,
+                        name,
+                        r.x,
+                        ty,
+                        m::SMALL_PX,
+                        r.w,
+                        c(theme, T::KanbanListMeta),
+                    );
                 }
                 Row::List(l, title) => {
                     let on = self.pick == Some(*l);
@@ -222,20 +287,49 @@ impl DestPop {
                     }
                     let ty = text_top(ts, r.y, r.h, m::TEXT_PX);
                     let tx = r.x + m::BUTTON_PAD_X;
-                    paint_text_elided(ts, scene, title, tx, ty, m::TEXT_PX, r.w - 2.0 * m::BUTTON_PAD_X, c(theme, fg));
+                    paint_text_elided(
+                        ts,
+                        scene,
+                        title,
+                        tx,
+                        ty,
+                        m::TEXT_PX,
+                        r.w - 2.0 * m::BUTTON_PAD_X,
+                        c(theme, fg),
+                    );
                 }
             }
         }
         caption(ts, scene, seg[0].y - m::SECTION_H, "planner.move.position");
         chip(scene, ts, theme, seg[0], tr("planner.move.top"), self.top);
-        chip(scene, ts, theme, seg[1], tr("planner.move.bottom"), !self.top);
+        chip(
+            scene,
+            ts,
+            theme,
+            seg[1],
+            tr("planner.move.bottom"),
+            !self.top,
+        );
         let ready = self.pick.is_some();
-        let (bg, fg) = if ready { (T::Accent, T::AccentFg) } else { (T::Bg2, T::Text2) };
+        let (bg, fg) = if ready {
+            (T::Accent, T::AccentFg)
+        } else {
+            (T::Bg2, T::Text2)
+        };
         fill_rounded_rect(scene, go, m::RADIUS, c(theme, bg));
         let label = tr("planner.move.go");
         let lw = ts.prefix_width(label, m::TEXT_PX).min(go.w);
         let ty = text_top(ts, go.y, go.h, m::TEXT_PX);
-        paint_text_elided(ts, scene, label, go.x + (go.w - lw) / 2.0, ty, m::TEXT_PX, go.w, c(theme, fg));
+        paint_text_elided(
+            ts,
+            scene,
+            label,
+            go.x + (go.w - lw) / 2.0,
+            ty,
+            m::TEXT_PX,
+            go.w,
+            c(theme, fg),
+        );
     }
 
     /// Um clique (dentro ou fora: fora fecha).
@@ -243,7 +337,11 @@ impl DestPop {
         if !self.rect.contains(x, y) {
             return DestDone::Close;
         }
-        let hit = self.hits(set).into_iter().find(|(_, r)| r.contains(x, y)).map(|(h, _)| h);
+        let hit = self
+            .hits(set)
+            .into_iter()
+            .find(|(_, r)| r.contains(x, y))
+            .map(|(h, _)| h);
         match hit {
             Some(DestHit::List(l)) => self.pick = Some(l),
             Some(DestHit::Top(t)) => self.top = t,
@@ -254,13 +352,16 @@ impl DestPop {
     }
 
     fn go(&self) -> DestDone {
-        self.pick.map_or(DestDone::Stay, |to| DestDone::Move { to, top: self.top })
+        self.pick
+            .map_or(DestDone::Stay, |to| DestDone::Move { to, top: self.top })
     }
 
     /// A pesquisa mudou: a escolha passa para a 1.ª lista que ficou, se a dela saiu.
     fn searched(&mut self, set: &KanbanSet) {
         let all = rows(set, &self.search.text);
-        let kept = all.iter().any(|r| matches!(r, Row::List(l, _) if Some(*l) == self.pick));
+        let kept = all
+            .iter()
+            .any(|r| matches!(r, Row::List(l, _) if Some(*l) == self.pick));
         if !kept {
             self.pick = first_pick(&all);
         }

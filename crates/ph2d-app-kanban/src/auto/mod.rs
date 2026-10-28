@@ -107,10 +107,14 @@ pub(crate) struct Panel {
 
 impl Panel {
     fn hit(&self, x: f32, y: f32) -> Option<AutoHit> {
-        self.hits.iter().rev().find(|(r, _)| r.contains(x, y)).and_then(|(_, h)| match h {
-            BackHit::Auto(a) => Some(*a),
-            _ => None,
-        })
+        self.hits
+            .iter()
+            .rev()
+            .find(|(r, _)| r.contains(x, y))
+            .and_then(|(_, h)| match h {
+                BackHit::Auto(a) => Some(*a),
+                _ => None,
+            })
     }
 
     fn typing(&self) -> bool {
@@ -243,7 +247,12 @@ pub(crate) fn save(docs: &mut KanbanDocs, id: u64) -> bool {
 }
 
 /// A automação `a` mudada por `f` (liga/desliga) — um passo de desfazer.
-pub(crate) fn change(docs: &mut KanbanDocs, id: u64, a: AutomationId, f: impl FnOnce(&mut Spec)) -> bool {
+pub(crate) fn change(
+    docs: &mut KanbanDocs,
+    id: u64,
+    a: AutomationId,
+    f: impl FnOnce(&mut Spec),
+) -> bool {
     crate::back::write::logged(docs, id, |k| {
         let rec = k.automations.get(&a)?;
         let mut s = Spec::from_bytes(&rec.body).ok()?;

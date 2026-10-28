@@ -329,7 +329,13 @@ fn content(ui: &mut Ui<'_>, back: &Back, cx: &Ctx<'_>, x: f32, y: f32) -> f32 {
             yy += ui.text(tr("kanban.back.drop_hint"), ix, yy, u::SMALL_PX, iw, meta);
             yy += u::SMALL_GAP;
             let r = Rect::new(ix, yy, iw, ROW);
-            ui.button(r, tr("kanban.back.choose_file"), None, BackHit::Pop(PopHit::PickFile), false);
+            ui.button(
+                r,
+                tr("kanban.back.choose_file"),
+                None,
+                BackHit::Pop(PopHit::PickFile),
+                false,
+            );
             yy += ROW + u::GAP;
             yy = input_focus(
                 ui,
@@ -464,7 +470,11 @@ fn content(ui: &mut Ui<'_>, back: &Back, cx: &Ctx<'_>, x: f32, y: f32) -> f32 {
             yy += ROW + u::SMALL_GAP;
             let s = tr("kanban.back.copy_link");
             let sw = ui.button_w(s, false);
-            ui.primary(Rect::new(ix, yy, sw, ROW), s, BackHit::Pop(PopHit::CopyLink));
+            ui.primary(
+                Rect::new(ix, yy, sw, ROW),
+                s,
+                BackHit::Pop(PopHit::CopyLink),
+            );
             yy += ROW + u::SMALL_GAP;
             let meta = ui.meta();
             ui.line(

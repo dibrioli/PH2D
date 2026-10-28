@@ -129,7 +129,14 @@ fn draft(docs: &mut KanbanDocs, id: u64) -> Option<&mut Draft> {
 }
 
 /// O Kanban da vista, «eu» e quem se pode escolher.
-fn context(docs: &KanbanDocs, id: u64) -> Option<(ph2d_kanban_model::Kanban, ph2d_kanban_model::Member, Vec<ph2d_kanban_model::Member>)> {
+fn context(
+    docs: &KanbanDocs,
+    id: u64,
+) -> Option<(
+    ph2d_kanban_model::Kanban,
+    ph2d_kanban_model::Member,
+    Vec<ph2d_kanban_model::Member>,
+)> {
     let kid = docs.kanban_of(id)?;
     let set = docs.set.borrow();
     let k = set.get(kid)?.clone();
@@ -142,7 +149,10 @@ pub(crate) fn click(docs: &mut KanbanDocs, id: u64, h: AutoHit) {
     // Um menu aberto: o clique fora dele só o fecha.
     if let Some(d) = draft(docs, id)
         && (d.open.is_some() || d.typed.is_some())
-        && !matches!(h, AutoHit::Choice(_) | AutoHit::Menu | AutoHit::Typed | AutoHit::TypedSave)
+        && !matches!(
+            h,
+            AutoHit::Choice(_) | AutoHit::Menu | AutoHit::Typed | AutoHit::TypedSave
+        )
     {
         let was = d.open.take().or(d.typed.take().map(|t| t.0));
         if was.map(AutoHit::Chip) == Some(h) || matches!(h, AutoHit::Inside | AutoHit::Scrim) {
@@ -160,7 +170,9 @@ pub(crate) fn click(docs: &mut KanbanDocs, id: u64, h: AutoHit) {
             }
         }
         AutoHit::Create => {
-            let Some((k, me, _)) = context(docs, id) else { return };
+            let Some((k, me, _)) = context(docs, id) else {
+                return;
+            };
             if let Some(p) = panel_mut(docs, id) {
                 p.draft = Some(Draft {
                     id: None,
@@ -174,7 +186,9 @@ pub(crate) fn click(docs: &mut KanbanDocs, id: u64, h: AutoHit) {
             super::change(docs, id, a, |s| s.enabled = !s.enabled);
         }
         AutoHit::Edit(a) => {
-            let Some((k, ..)) = context(docs, id) else { return };
+            let Some((k, ..)) = context(docs, id) else {
+                return;
+            };
             let Some(spec) = specs(&k).into_iter().find(|(i, _)| *i == a).map(|x| x.1) else {
                 return;
             };
@@ -206,7 +220,9 @@ pub(crate) fn click(docs: &mut KanbanDocs, id: u64, h: AutoHit) {
         }
         AutoHit::TypedSave => commit_typed(docs, id),
         AutoHit::AddCondition => {
-            let Some((k, me, _)) = context(docs, id) else { return };
+            let Some((k, me, _)) = context(docs, id) else {
+                return;
+            };
             if let Some(d) = draft(docs, id)
                 && let Some(c) = conditions_mut(&mut d.spec)
             {
@@ -214,7 +230,9 @@ pub(crate) fn click(docs: &mut KanbanDocs, id: u64, h: AutoHit) {
             }
         }
         AutoHit::AddAction => {
-            let Some((k, me, _)) = context(docs, id) else { return };
+            let Some((k, me, _)) = context(docs, id) else {
+                return;
+            };
             if let Some(d) = draft(docs, id) {
                 d.spec.actions.push(choices::new_action(&k, &me));
             }
@@ -252,8 +270,12 @@ fn chip(docs: &mut KanbanDocs, id: u64, slot: Slot) {
 
 /// Criar (a regra entra já gravada, como no Butler) ou dispensar a sugestão `n`.
 fn suggestion(docs: &mut KanbanDocs, id: u64, n: usize, create: bool) {
-    let Some((k, me, _)) = context(docs, id) else { return };
-    let dismissed = panel_mut(docs, id).map(|p| p.dismissed.clone()).unwrap_or_default();
+    let Some((k, me, _)) = context(docs, id) else {
+        return;
+    };
+    let dismissed = panel_mut(docs, id)
+        .map(|p| p.dismissed.clone())
+        .unwrap_or_default();
     let Some(s) = visible_suggestions(&k, &me, &dismissed).into_iter().nth(n) else {
         return;
     };
@@ -278,6 +300,12 @@ pub(crate) fn visible_suggestions(
 }
 
 /// As automações do separador `f`, pela ordem.
-pub(crate) fn of_family(k: &ph2d_kanban_model::Kanban, f: Family) -> Vec<(ph2d_kanban_model::AutomationId, Spec)> {
-    specs(k).into_iter().filter(|(_, s)| s.kind.family() == f).collect()
+pub(crate) fn of_family(
+    k: &ph2d_kanban_model::Kanban,
+    f: Family,
+) -> Vec<(ph2d_kanban_model::AutomationId, Spec)> {
+    specs(k)
+        .into_iter()
+        .filter(|(_, s)| s.kind.family() == f)
+        .collect()
 }

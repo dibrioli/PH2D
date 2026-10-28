@@ -8,9 +8,7 @@
 //!   rachas: 9, 16 e 30 dias), com um MODELO («Shot template», o selo «This card is a template») e
 //!   um ESPELHO de «Animate shot 12» na «Review» (o selo do espelho).
 
-use ph2d_kanban_model::{
-    Aging, CardRef, KanbanId, KanbanOp, KanbanSet, Moment, Record,
-};
+use ph2d_kanban_model::{Aging, CardRef, KanbanId, KanbanOp, KanbanSet, Moment, Record};
 
 const DAY: i64 = 24 * 3_600_000;
 
@@ -71,7 +69,14 @@ pub(crate) fn template_and_mirror(set: &mut KanbanSet, id: KanbanId) {
         ph2d_kanban_model::apply_batch(k, vec![KanbanOp::put(Record::Card(tpl.into()))]);
     }
     let mirror = set.place_at(id, review, 0, None).and_then(|p| {
-        ph2d_kanban_model::mirror_card(set, CardRef { kanban: id, card: shot }, &p)
+        ph2d_kanban_model::mirror_card(
+            set,
+            CardRef {
+                kanban: id,
+                card: shot,
+            },
+            &p,
+        )
     });
     if let Some(plan) = mirror {
         for (k, ops) in plan.into_steps() {

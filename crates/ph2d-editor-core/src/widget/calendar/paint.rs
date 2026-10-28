@@ -129,7 +129,12 @@ pub fn cell_node_id(cal: NodeId, i: usize) -> NodeId {
 /// O quadrado de cor por trás do número (o dia, não a célula inteira).
 fn chip(cell: Rect) -> Rect {
     let pad = Spacing::Xxs.px();
-    Rect::new(cell.x + pad, cell.y + pad, cell.w - pad * 2.0, cell.h - pad * 2.0)
+    Rect::new(
+        cell.x + pad,
+        cell.y + pad,
+        cell.w - pad * 2.0,
+        cell.h - pad * 2.0,
+    )
 }
 
 pub fn paint_calendar(
@@ -153,7 +158,12 @@ pub fn paint_calendar(
         if cal.hover == Some(hit) {
             fill_rounded_rect(scene, chip(r), radius, hover_fill);
         }
-        let g = Rect::new(r.x + icon_pad, r.y + icon_pad, r.w - icon_pad * 2.0, r.h - icon_pad * 2.0);
+        let g = Rect::new(
+            r.x + icon_pad,
+            r.y + icon_pad,
+            r.w - icon_pad * 2.0,
+            r.h - icon_pad * 2.0,
+        );
         paint_icon(scene, icon, g, resolve(ColorToken::Text2, theme), stroke);
     }
     if cal.hover == Some(CalendarHit::Today) {
@@ -181,7 +191,12 @@ pub fn paint_calendar(
 
     // Os dias da semana.
     for (c, name) in cal.weekdays.iter().enumerate() {
-        let r = Rect::new(l.weekdays.x + c as f32 * l.cell_w, l.weekdays.y, l.cell_w, l.weekdays.h);
+        let r = Rect::new(
+            l.weekdays.x + c as f32 * l.cell_w,
+            l.weekdays.y,
+            l.cell_w,
+            l.weekdays.h,
+        );
         paint_text_centered(
             text_system,
             scene,
@@ -213,7 +228,13 @@ pub fn paint_calendar(
             stroke_rounded_rect(scene, c, radius, stroke, resolve(ColorToken::Accent, theme));
         }
         if cal.focused && cal.focus == Some(d) {
-            stroke_rounded_rect(scene, r, radius, stroke * 2.0, resolve(ColorToken::FocusRing, theme));
+            stroke_rounded_rect(
+                scene,
+                r,
+                radius,
+                stroke * 2.0,
+                resolve(ColorToken::FocusRing, theme),
+            );
         }
         let ink = if selected {
             ColorToken::AccentFg

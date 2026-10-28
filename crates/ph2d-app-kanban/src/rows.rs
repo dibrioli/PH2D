@@ -50,9 +50,13 @@ fn level(last: Moment, now: Moment) -> u8 {
 impl Rows {
     /// O cartão que a linha `id` mostra (o original, se é um espelho).
     pub fn shows(&self, here: KanbanId, id: CardId) -> CardRef {
-        self.mirrors
-            .get(&id)
-            .map_or(CardRef { kanban: here, card: id }, |(_, of)| *of)
+        self.mirrors.get(&id).map_or(
+            CardRef {
+                kanban: here,
+                card: id,
+            },
+            |(_, of)| *of,
+        )
     }
 
     /// A lista onde a linha `id` está, e o índice dela.
@@ -83,7 +87,8 @@ pub(crate) fn build(set: &KanbanSet, k: &Kanban, ask: &Ask<'_>) -> Rows {
         let id = CardId(m.id.0);
         by_list.entry(m.list).or_default().push((&m.pos, 1, id));
         mirrors.insert(id, (m.id, m.of));
-        if need_last && !lasts.contains_key(&m.of.kanban)
+        if need_last
+            && !lasts.contains_key(&m.of.kanban)
             && let Some(src) = set.get(m.of.kanban)
         {
             lasts.insert(src.id, last_activity_index(src));
@@ -126,14 +131,21 @@ pub(crate) fn build(set: &KanbanSet, k: &Kanban, ask: &Ask<'_>) -> Rows {
 
 /// As contagens da frente de cada Kanban de onde vêm espelhos (os comentários e os anexos do
 /// original moram no Kanban dele).
-pub(crate) fn sources(set: &KanbanSet, k: &Kanban, rows: &Rows, me: &Member) -> BTreeMap<KanbanId, Counts> {
+pub(crate) fn sources(
+    set: &KanbanSet,
+    k: &Kanban,
+    rows: &Rows,
+    me: &Member,
+) -> BTreeMap<KanbanId, Counts> {
     let mut out = BTreeMap::new();
     for (_, of) in rows.mirrors.values() {
         if of.kanban == k.id || out.contains_key(&of.kanban) {
             continue;
         }
         if let Some(src) = set.get(of.kanban) {
-            let c = Counts::of(src).seen_by(Some(me.clone())).with_files(set, src);
+            let c = Counts::of(src)
+                .seen_by(Some(me.clone()))
+                .with_files(set, src);
             out.insert(src.id, c);
         }
     }

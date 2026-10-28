@@ -125,10 +125,17 @@ pub(crate) fn open(docs: &mut KanbanDocs, id: u64, kind: Kind, anchor: Rect) {
                     Kind::MoveCard {
                         mirror: Some(m), ..
                     } => {
-                        let l = set.get(here).and_then(|k| k.mirrors.get(&m)).map(|m| m.list);
+                        let l = set
+                            .get(here)
+                            .and_then(|k| k.mirrors.get(&m))
+                            .map(|m| m.list);
                         (here, l, Some(Entry::Mirror { id: m, of: src }))
                     }
-                    _ => (src.kanban, card.map(|c| c.list), Some(Entry::Card(src.card))),
+                    _ => (
+                        src.kanban,
+                        card.map(|c| c.list),
+                        Some(Entry::Card(src.card)),
+                    ),
                 };
                 d.kanban = k;
                 d.list = list;
@@ -162,9 +169,9 @@ pub(crate) fn open(docs: &mut KanbanDocs, id: u64, kind: Kind, anchor: Rect) {
                     .and_then(|k| k.lists_in_order().iter().position(|x| x.id == l))
                     .unwrap_or(0);
                 if let Kind::MoveAll(_) = kind {
-                    d.list = set.get(here).and_then(|k| {
-                        k.lists_in_order().iter().map(|x| x.id).find(|x| *x != l)
-                    });
+                    d.list = set
+                        .get(here)
+                        .and_then(|k| k.lists_in_order().iter().map(|x| x.id).find(|x| *x != l));
                 }
             }
             Kind::FromTemplate(l) => {
@@ -202,7 +209,14 @@ pub(crate) fn open(docs: &mut KanbanDocs, id: u64, kind: Kind, anchor: Rect) {
     }
 }
 
-fn select(s: &mut Sheet, d: &Dialog, p: Pick, label: &str, value: String, options: Vec<(String, Dlg, bool)>) {
+fn select(
+    s: &mut Sheet,
+    d: &Dialog,
+    p: Pick,
+    label: &str,
+    value: String,
+    options: Vec<(String, Dlg, bool)>,
+) {
     let open = d.open == Some(p);
     s.push(
         Item::Select {
@@ -225,7 +239,10 @@ fn destination(s: &mut Sheet, d: &Dialog, set: &KanbanSet, lists: bool, pos: Opt
         .iter()
         .map(|k| (k.header.name.clone(), Dlg::Kanban(k.id), k.id == d.kanban))
         .collect();
-    let kname = set.get(d.kanban).map(|k| k.header.name.clone()).unwrap_or_default();
+    let kname = set
+        .get(d.kanban)
+        .map(|k| k.header.name.clone())
+        .unwrap_or_default();
     select(s, d, Pick::Kanban, "kanban.w6.pick.kanban", kname, kanbans);
     if lists {
         let ls: Vec<(String, Dlg, bool)> = set
@@ -247,7 +264,14 @@ fn destination(s: &mut Sheet, d: &Dialog, set: &KanbanSet, lists: bool, pos: Opt
         let opts = (0..n)
             .map(|i| ((i + 1).to_string(), Dlg::Position(i), i == d.index))
             .collect();
-        select(s, d, Pick::Position, "kanban.w6.pick.position", (d.index + 1).to_string(), opts);
+        select(
+            s,
+            d,
+            Pick::Position,
+            "kanban.w6.pick.position",
+            (d.index + 1).to_string(),
+            opts,
+        );
     }
 }
 
@@ -318,7 +342,10 @@ pub(crate) fn sheet(d: &Dialog, set: &KanbanSet, field: Option<&Field>) -> Sheet
         }
         Kind::MirrorCard(_) => {
             s.title("kanban.w6.mirror_card");
-            s.push(Item::Note(tr("kanban.w6.mirror_note").to_owned()), Act::Inside);
+            s.push(
+                Item::Note(tr("kanban.w6.mirror_note").to_owned()),
+                Act::Inside,
+            );
             destination(&mut s, d, set, true, Some(positions(d, set)));
             button(&mut s, "kanban.w6.mirror");
         }
@@ -331,7 +358,8 @@ pub(crate) fn sheet(d: &Dialog, set: &KanbanSet, field: Option<&Field>) -> Sheet
         Kind::MoveList(l) => {
             s.title("kanban.w6.move_list");
             let n = set.get(d.kanban).map_or(0, |k| k.lists_in_order().len());
-            let here = d.kanban == d.here && set.get(d.here).is_some_and(|k| k.lists.contains_key(&l));
+            let here =
+                d.kanban == d.here && set.get(d.here).is_some_and(|k| k.lists.contains_key(&l));
             destination(&mut s, d, set, false, Some(n + usize::from(!here)));
             button(&mut s, "kanban.w6.move");
         }
@@ -355,7 +383,10 @@ pub(crate) fn sheet(d: &Dialog, set: &KanbanSet, field: Option<&Field>) -> Sheet
         }
         Kind::Aging => {
             s.title("kanban.w6.aging");
-            s.push(Item::Note(tr("kanban.w6.aging_note").to_owned()), Act::Inside);
+            s.push(
+                Item::Note(tr("kanban.w6.aging_note").to_owned()),
+                Act::Inside,
+            );
             let now = set.get(d.here).and_then(|k| k.header.aging);
             for (i, key, on) in [
                 (0, "kanban.w6.aging.off", now.is_none()),
@@ -379,9 +410,23 @@ pub(crate) fn sheet(d: &Dialog, set: &KanbanSet, field: Option<&Field>) -> Sheet
                 .iter()
                 .map(|k| (k.header.name.clone(), Dlg::Kanban(k.id), k.id == d.kanban))
                 .collect();
-            let kname = set.get(d.kanban).map(|k| k.header.name.clone()).unwrap_or_default();
-            select(&mut s, d, Pick::Kanban, "kanban.w6.pick.source", kname, kanbans);
-            s.check(d.keep_cards, tr("kanban.w6.keep_cards"), Act::Dlg(Dlg::KeepCards));
+            let kname = set
+                .get(d.kanban)
+                .map(|k| k.header.name.clone())
+                .unwrap_or_default();
+            select(
+                &mut s,
+                d,
+                Pick::Kanban,
+                "kanban.w6.pick.source",
+                kname,
+                kanbans,
+            );
+            s.check(
+                d.keep_cards,
+                tr("kanban.w6.keep_cards"),
+                Act::Dlg(Dlg::KeepCards),
+            );
             button(&mut s, "kanban.w6.create");
         }
     }
@@ -397,12 +442,26 @@ fn from_template(s: &mut Sheet, d: &Dialog, set: &KanbanSet, field: Option<&Fiel
                 k.cards
                     .values()
                     .filter(|c| c.template && !c.archived && !c.meta.deleted)
-                    .map(move |c| (CardRef { kanban: k.id, card: c.id }, c.title.clone()))
+                    .map(move |c| {
+                        (
+                            CardRef {
+                                kanban: k.id,
+                                card: c.id,
+                            },
+                            c.title.clone(),
+                        )
+                    })
             })
             .collect();
         if all.is_empty() {
-            s.push(Item::Note(tr("kanban.w6.no_templates").to_owned()), Act::Inside);
-            s.push(Item::Note(tr("kanban.w6.no_templates_how").to_owned()), Act::Inside);
+            s.push(
+                Item::Note(tr("kanban.w6.no_templates").to_owned()),
+                Act::Inside,
+            );
+            s.push(
+                Item::Note(tr("kanban.w6.no_templates_how").to_owned()),
+                Act::Inside,
+            );
         }
         for (r, title) in all {
             s.push(
@@ -432,11 +491,20 @@ fn keep_counts(set: &KanbanSet, r: CardRef) -> [usize; 5] {
         return [0; 5];
     };
     [
-        k.checklists.values().filter(|x| x.card == r.card && !x.meta.deleted).count(),
+        k.checklists
+            .values()
+            .filter(|x| x.card == r.card && !x.meta.deleted)
+            .count(),
         c.labels.len(),
         c.members.len(),
-        k.attachments.values().filter(|x| x.card == r.card && !x.meta.deleted).count(),
-        k.comments.values().filter(|x| x.card == r.card && !x.meta.deleted).count(),
+        k.attachments
+            .values()
+            .filter(|x| x.card == r.card && !x.meta.deleted)
+            .count(),
+        k.comments
+            .values()
+            .filter(|x| x.card == r.card && !x.meta.deleted)
+            .count(),
     ]
 }
 
@@ -503,7 +571,11 @@ pub(crate) fn click(docs: &mut KanbanDocs, id: u64, a: Dlg) {
 }
 
 fn sort(docs: &mut KanbanDocs, id: u64, by: SortBy) {
-    let Some(Kind::Sort(l)) = docs.tab_mut(id).and_then(|t| t.w6.dialog.as_ref()).map(|d| d.kind) else {
+    let Some(Kind::Sort(l)) = docs
+        .tab_mut(id)
+        .and_then(|t| t.w6.dialog.as_ref())
+        .map(|d| d.kind)
+    else {
         return;
     };
     let Some(kid) = docs.kanban_of(id) else {
@@ -567,7 +639,10 @@ fn confirm(docs: &mut KanbanDocs, id: u64) {
         if title.is_empty() {
             return;
         }
-        let made = docs.set.borrow_mut().create_from(d.kanban, &title, d.keep_cards);
+        let made = docs
+            .set
+            .borrow_mut()
+            .create_from(d.kanban, &title, d.keep_cards);
         close(docs, id);
         if let Some(k) = made {
             docs.open(k);
@@ -576,7 +651,10 @@ fn confirm(docs: &mut KanbanDocs, id: u64) {
     }
     let plan = {
         let set = docs.set.borrow();
-        let place = |skip| d.list.and_then(|l| set.place_at(d.kanban, l, d.index, skip));
+        let place = |skip| {
+            d.list
+                .and_then(|l| set.place_at(d.kanban, l, d.index, skip))
+        };
         match d.kind {
             Kind::CopyCard(src) if !title.is_empty() => place(None)
                 .and_then(|p| ph2d_kanban_model::copy_card(&set, src, &p, d.keep, &title, now)),
@@ -592,18 +670,43 @@ fn confirm(docs: &mut KanbanDocs, id: u64) {
                 place(None).and_then(|p| ph2d_kanban_model::mirror_card(&set, src, &p))
             }
             Kind::CopyList(l) if !title.is_empty() => {
-                let index = if d.kanban == d.here { d.index + 1 } else { usize::MAX };
+                let index = if d.kanban == d.here {
+                    d.index + 1
+                } else {
+                    usize::MAX
+                };
                 list_pos(&set, d.kanban, index, None).and_then(|pos| {
-                    let src = ListRef { kanban: d.here, list: l };
+                    let src = ListRef {
+                        kanban: d.here,
+                        list: l,
+                    };
                     ph2d_kanban_model::copy_list(&set, src, d.kanban, pos, &title, now)
                 })
             }
             Kind::MoveList(l) => list_pos(&set, d.kanban, d.index, Some(l)).and_then(|pos| {
-                ph2d_kanban_model::move_list(&set, ListRef { kanban: d.here, list: l }, d.kanban, pos)
+                ph2d_kanban_model::move_list(
+                    &set,
+                    ListRef {
+                        kanban: d.here,
+                        list: l,
+                    },
+                    d.kanban,
+                    pos,
+                )
             }),
             Kind::MoveAll(l) => d.list.and_then(|to| {
-                let src = ListRef { kanban: d.here, list: l };
-                ph2d_kanban_model::move_all_cards(&set, src, ListRef { kanban: d.kanban, list: to })
+                let src = ListRef {
+                    kanban: d.here,
+                    list: l,
+                };
+                ph2d_kanban_model::move_all_cards(
+                    &set,
+                    src,
+                    ListRef {
+                        kanban: d.kanban,
+                        list: to,
+                    },
+                )
             }),
             Kind::FromTemplate(l) if !title.is_empty() => d.template.and_then(|tpl| {
                 let p = set.place_at(d.here, l, usize::MAX, None)?;

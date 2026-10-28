@@ -30,8 +30,7 @@ pub(crate) fn draw(
     radii: (f32, f32, f32, f32),
     cover: bool,
 ) -> bool {
-    let Some(ThumbRef(t)) =
-        crate::front::cover::get(f, || set.file(f).map(|k| k.bytes.0.clone()))
+    let Some(ThumbRef(t)) = crate::front::cover::get(f, || set.file(f).map(|k| k.bytes.0.clone()))
     else {
         return false;
     };

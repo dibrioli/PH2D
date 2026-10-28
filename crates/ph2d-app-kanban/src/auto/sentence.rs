@@ -82,7 +82,12 @@ pub(crate) fn conditions_mut(s: &mut Spec) -> Option<&mut Vec<Condition>> {
 fn stands_for_a_value(w: Word) -> bool {
     matches!(
         w,
-        Word::AnyList | Word::AnyLabel | Word::AnyMember | Word::AnyField | Word::AllLists | Word::Now
+        Word::AnyList
+            | Word::AnyLabel
+            | Word::AnyMember
+            | Word::AnyField
+            | Word::AllLists
+            | Word::Now
     )
 }
 
@@ -213,14 +218,12 @@ impl Names<'_> {
                 FieldValue::Text(s) => s.clone(),
                 FieldValue::Number(n) => n.to_string(),
                 FieldValue::Date(d) => crate::back::dates::short(*d, *d),
-                FieldValue::Checkbox(b) => {
-                    tr(if *b {
-                        "kanban.auto.ui.check"
-                    } else {
-                        "kanban.auto.ui.uncheck"
-                    })
-                    .to_owned()
-                }
+                FieldValue::Checkbox(b) => tr(if *b {
+                    "kanban.auto.ui.check"
+                } else {
+                    "kanban.auto.ui.uncheck"
+                })
+                .to_owned(),
                 FieldValue::Option(o) => format!("#{}", o.0),
             },
         }

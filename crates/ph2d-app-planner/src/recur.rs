@@ -110,7 +110,13 @@ mod tests {
     use ph2d_kanban_model::EventId;
 
     fn ev(start: i64, repeat: Option<Repeat>) -> Event {
-        let mut e = Event::new(EventId(1), "e", Moment(start), Moment(start + 3_600_000), false);
+        let mut e = Event::new(
+            EventId(1),
+            "e",
+            Moment(start),
+            Moment(start + 3_600_000),
+            false,
+        );
         e.repeat = repeat;
         e
     }

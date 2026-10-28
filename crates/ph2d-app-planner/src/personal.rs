@@ -4,8 +4,8 @@
 
 use ph2d_kanban_dates::{CivilDate, Zone, day_of};
 use ph2d_kanban_model::{
-    Block, BlockId, BlockOf, Card, CardId, CardRef, Due, FracKey, InboxId, InboxItem, KanbanId, KanbanOp,
-    KanbanSet, ListRef, Member, Meta, Moment, Plan, Record, RecordId,
+    Block, BlockId, BlockOf, Card, CardId, CardRef, Due, FracKey, InboxId, InboxItem, KanbanId,
+    KanbanOp, KanbanSet, ListRef, Member, Meta, Moment, Plan, Record, RecordId,
 };
 
 const A: KanbanId = KanbanId::AGENDA;
@@ -37,7 +37,13 @@ pub fn capture(set: &KanbanSet, me: &Member, text: &str, now: Moment) -> Plan {
 /// dono de membro, como no Trello), sai da Inbox, e os blocos do Planner que o tinham passam a ter o
 /// cartão.
 #[must_use]
-pub fn inbox_to_card(set: &KanbanSet, item: InboxId, to: ListRef, top: bool, now: Moment) -> Option<Plan> {
+pub fn inbox_to_card(
+    set: &KanbanSet,
+    item: InboxId,
+    to: ListRef,
+    top: bool,
+    now: Moment,
+) -> Option<Plan> {
     let a = set.agenda();
     let it = a.inbox.get(&item).filter(|i| !i.meta.deleted)?;
     let k = set.get(to.kanban)?;
@@ -247,8 +253,10 @@ pub fn my_cards(set: &KanbanSet, me: &Member, by: GroupBy, now: Moment, zone: &Z
             for (r, c) in cards {
                 let k = set.get(r.kanban).expect("o cartão veio dele");
                 let list = k.lists.get(&c.list).map_or("", |l| l.title.as_str());
-                let title =
-                    ph2d_i18n::tr_with("planner.target", &[("kanban", &k.header.name), ("list", &list)]);
+                let title = ph2d_i18n::tr_with(
+                    "planner.target",
+                    &[("kanban", &k.header.name), ("list", &list)],
+                );
                 match out.last_mut() {
                     Some(g) if g.title == title => g.cards.push(r),
                     _ => out.push(Group {

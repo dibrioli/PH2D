@@ -18,7 +18,11 @@ fn focused(docs: &mut KanbanDocs, id: u64) -> Option<(CardId, CardRef)> {
 
 /// Escreve no cartão do foco quando ele é deste Kanban (o original de um espelho alheio escreve-se
 /// no verso dele).
-fn on_card(docs: &mut KanbanDocs, id: u64, f: impl FnOnce(&mut KanbanDocs, CardId) -> bool) -> bool {
+fn on_card(
+    docs: &mut KanbanDocs,
+    id: u64,
+    f: impl FnOnce(&mut KanbanDocs, CardId) -> bool,
+) -> bool {
     let Some((_, r)) = focused(docs, id) else {
         return false;
     };
@@ -89,7 +93,14 @@ fn paste(docs: &mut KanbanDocs, id: u64) -> bool {
         };
         let title = set.card(src).map(|c| c.title.clone());
         place.zip(title).and_then(|(p, title)| {
-            ph2d_kanban_model::copy_card(&set, src, &p, CopyKeep::default(), &title, crate::actions::now())
+            ph2d_kanban_model::copy_card(
+                &set,
+                src,
+                &p,
+                CopyKeep::default(),
+                &title,
+                crate::actions::now(),
+            )
         })
     };
     super::gesture::apply(docs, plan)
@@ -127,7 +138,9 @@ pub(crate) fn key(docs: &mut KanbanDocs, id: u64, input: &KeyInput<'_>) -> Optio
     let did = match (input.key, ch) {
         (Key::Space, _) | (_, Some(' ')) => {
             let me = docs.me.clone();
-            on_card(docs, id, |d, c| crate::back::write::toggle_member(d, id, c, &me))
+            on_card(docs, id, |d, c| {
+                crate::back::write::toggle_member(d, id, c, &me)
+            })
         }
         (_, Some('e' | 'E')) => {
             let row = docs.tab_mut(id)?.focus?;
@@ -160,7 +173,9 @@ pub(crate) fn key(docs: &mut KanbanDocs, id: u64, input: &KeyInput<'_>) -> Optio
         (_, Some('d' | 'D')) => side(docs, id, Side::Dates),
         (_, Some('l' | 'L')) => side(docs, id, Side::Labels),
         (_, Some('m' | 'M')) => side(docs, id, Side::Members),
-        (_, Some('s' | 'S')) => on_card(docs, id, |d, c| crate::back::write::toggle_watch(d, id, c)),
+        (_, Some('s' | 'S')) => {
+            on_card(docs, id, |d, c| crate::back::write::toggle_watch(d, id, c))
+        }
         (_, Some('v' | 'V')) => on_card(docs, id, |d, c| crate::back::write::toggle_vote(d, id, c)),
         (_, Some(n @ '1'..='9')) => {
             let i = usize::from(n as u8 - b'1');
@@ -176,7 +191,9 @@ pub(crate) fn key(docs: &mut KanbanDocs, id: u64, input: &KeyInput<'_>) -> Optio
             let Some(l) = label else {
                 return Some(KeyOutcome::default());
             };
-            on_card(docs, id, |d, c| crate::back::write::toggle_label(d, id, c, l))
+            on_card(docs, id, |d, c| {
+                crate::back::write::toggle_label(d, id, c, l)
+            })
         }
         (_, Some('z' | 'Z')) => super::gesture::undo(docs, id, false),
         _ => return None,

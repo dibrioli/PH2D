@@ -33,9 +33,9 @@ pub use gray::{gray_of, to_gray};
 pub use grid::{dot_grid, grid_step_world};
 pub use image::{Decode, Images, Pixels, Salvage, install_decoder, install_salvager, level_to_box};
 pub use kanban::{
-    HEADER_H as KANBAN_HEADER_H, KanbanFrames, KanbanLod, KanbanPaint, KanbanPainter,
-    KanbanOver, KanbanPlacement, KanbanSource, install_kanban_painter, install_kanbans, kanban_board_bg,
-    force_kanban_lod, kanban_list_colors, kanban_name, kanban_painter_installed,
+    HEADER_H as KANBAN_HEADER_H, KanbanFrames, KanbanLod, KanbanOver, KanbanPaint, KanbanPainter,
+    KanbanPlacement, KanbanSource, force_kanban_lod, install_kanban_painter, install_kanbans,
+    kanban_board_bg, kanban_list_colors, kanban_name, kanban_painter_installed,
 };
 pub use overlay::paint_overlay;
 pub use theme_ink::ThemeInk;

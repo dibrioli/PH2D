@@ -93,7 +93,11 @@ fn vevent(out: &mut String, e: &Vevent<'_>, stamp: &str) {
     if let Some(r) = e.repeat {
         // O `UNTIL` do RFC 5545 é INCLUSIVO; o nosso fim é exclusivo.
         let until = e.until.map_or_else(String::new, |u| {
-            let last = if e.all_day { date(Moment(u.0 - 1)) } else { utc(Moment(u.0 - 1000)) };
+            let last = if e.all_day {
+                date(Moment(u.0 - 1))
+            } else {
+                utc(Moment(u.0 - 1000))
+            };
             format!(";UNTIL={last}")
         });
         line(out, &format!("RRULE:FREQ={}{until}", freq(r)));

@@ -364,6 +364,5 @@ fn fotos_dos_estados_da_cena_12() {
     bia.join().unwrap();
 }
 
-
 #[path = "smoke_live_tests_internet.rs"]
 mod internet;

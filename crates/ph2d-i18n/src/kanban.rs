@@ -97,7 +97,9 @@ fn w6(key: &str) -> Option<&'static str> {
         "kanban.w6.copy_card" => "Copy card",
         "kanban.w6.move_card" => "Move card",
         "kanban.w6.mirror_card" => "Mirror card",
-        "kanban.w6.mirror_note" => "The same card, shown in another list. Editing either one edits both.",
+        "kanban.w6.mirror_note" => {
+            "The same card, shown in another list. Editing either one edits both."
+        }
         "kanban.w6.copy_list" => "Copy list",
         "kanban.w6.move_list" => "Move list",
         "kanban.w6.move_all" => "Move all cards in this list",
@@ -149,7 +151,9 @@ fn w6(key: &str) -> Option<&'static str> {
         "kanban.w6.pos.bottom" => "Bottom of the list",
         "kanban.w6.pos.n" => "Position {n}",
         "kanban.w6.help.title" => "Keyboard shortcuts",
-        "kanban.w6.help.note" => "On a card with the focus ring (click it, or walk with the arrows).",
+        "kanban.w6.help.note" => {
+            "On a card with the focus ring (click it, or walk with the arrows)."
+        }
         "kanban.w6.key.walk" => "Move between cards",
         "kanban.w6.key.walk.keys" => "\u{2190} \u{2191} \u{2192} \u{2193}  j k",
         "kanban.w6.key.open" => "Open the card",
@@ -205,4 +209,3 @@ fn w6(key: &str) -> Option<&'static str> {
         _ => return None,
     })
 }
-

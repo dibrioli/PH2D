@@ -24,7 +24,13 @@ impl KanbanDocs {
         Some(CanvasW6 {
             over: t.w6.over.map(|o| format!("{o:?}")),
             quick: t.w6.quick,
-            hits: t.w6.hits.borrow().iter().map(|(r, a)| (format!("{a:?}"), *r)).collect(),
+            hits: t
+                .w6
+                .hits
+                .borrow()
+                .iter()
+                .map(|(r, a)| (format!("{a:?}"), *r))
+                .collect(),
         })
     }
 }

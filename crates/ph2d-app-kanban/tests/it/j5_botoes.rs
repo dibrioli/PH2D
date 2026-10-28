@@ -23,7 +23,9 @@ fn poe_botao(m: &mut Mesa, id: KanbanId, nome: &str, lista: &str) {
     };
     let shared = m.hero.documents.kanbans_shared();
     let mut set = shared.borrow_mut();
-    let op = spec.create(set.get(id).unwrap(), Moment(0)).expect("automação válida");
+    let op = spec
+        .create(set.get(id).unwrap(), Moment(0))
+        .expect("automação válida");
     set.apply(id, vec![op]);
 }
 
@@ -39,7 +41,10 @@ fn botoes(m: &mut Mesa, id: KanbanId) -> Vec<ph2d_editor_core::zones::Rect> {
 #[test]
 fn j5_o_botao_de_quadro_do_modelo_aparece_no_cabecalho_e_corre_como_butler() {
     let (mut m, id) = Mesa::cena1();
-    assert!(botoes(&mut m, id).is_empty(), "sem botões, nada no cabeçalho");
+    assert!(
+        botoes(&mut m, id).is_empty(),
+        "sem botões, nada no cabeçalho"
+    );
     poe_botao(&mut m, id, "Sweep", "Done");
     m.quadro();
     let rs = botoes(&mut m, id);
@@ -68,7 +73,9 @@ fn j5_o_botao_de_quadro_do_modelo_aparece_no_cabecalho_e_corre_como_butler() {
     {
         let shared = m.hero.documents.kanbans_shared();
         let mut set = shared.borrow_mut();
-        let op = s.update(&set.get(id).unwrap().automations[&a]).expect("automação válida");
+        let op = s
+            .update(&set.get(id).unwrap().automations[&a])
+            .expect("automação válida");
         set.apply(id, vec![op]);
     }
     m.quadro();

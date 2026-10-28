@@ -6,9 +6,8 @@ use crate::paint::{fill_rounded_rect, paint_icon, paint_text_centered, paint_tex
 use crate::widget::calendar::{CalendarLayout, paint_calendar};
 use crate::widget::checkbox::{BooleanMark, paint_boolean_mark};
 use crate::widget::{
-    Button, ButtonKind, CheckboxState, CheckboxValue, Dropdown, DropdownOption, Popover,
-    TextInput, TextInputState, paint_button, paint_dropdown_chip, paint_popover,
-    paint_text_input_with_buffer,
+    Button, ButtonKind, CheckboxState, CheckboxValue, Dropdown, DropdownOption, Popover, TextInput,
+    TextInputState, paint_button, paint_dropdown_chip, paint_popover, paint_text_input_with_buffer,
 };
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
@@ -170,15 +169,18 @@ impl DatePickerLayout {
 }
 
 #[allow(clippy::too_many_arguments)]
-fn paint_label(
-    ts: &mut TextSystem,
-    scene: &mut VectorScene,
-    text: &str,
-    r: Rect,
-    theme: Theme,
-) {
+fn paint_label(ts: &mut TextSystem, scene: &mut VectorScene, text: &str, r: Rect, theme: Theme) {
     let f = TypeToken::Xs.px();
-    paint_text_title(ts, scene, text, r.x, r.y + (r.h - f) * 0.5, f, r.w, resolve(ColorToken::Text2, theme));
+    paint_text_title(
+        ts,
+        scene,
+        text,
+        r.x,
+        r.y + (r.h - f) * 0.5,
+        f,
+        r.w,
+        resolve(ColorToken::Text2, theme),
+    );
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -247,32 +249,90 @@ pub fn paint_date_picker(
     let lb = &p.labels;
 
     // Título e fechar.
-    paint_text_centered(ts, scene, &lb.title, l.title, TypeToken::Sm.px(), resolve(ColorToken::Text2, theme));
+    paint_text_centered(
+        ts,
+        scene,
+        &lb.title,
+        l.title,
+        TypeToken::Sm.px(),
+        resolve(ColorToken::Text2, theme),
+    );
     if p.hover == Some(DatePickerHit::Close) {
         let radius = crate::paint::frame_radius(theme, Radius::Sm.px());
         fill_rounded_rect(scene, l.close, radius, resolve(ColorToken::Bg2, theme));
     }
     let ip = Spacing::Xs.px();
-    let g = Rect::new(l.close.x + ip, l.close.y + ip, l.close.w - ip * 2.0, l.close.h - ip * 2.0);
-    paint_icon(scene, IconId::Close, g, resolve(ColorToken::Text2, theme), StrokeToken::Default.px());
+    let g = Rect::new(
+        l.close.x + ip,
+        l.close.y + ip,
+        l.close.w - ip * 2.0,
+        l.close.h - ip * 2.0,
+    );
+    paint_icon(
+        scene,
+        IconId::Close,
+        g,
+        resolve(ColorToken::Text2, theme),
+        StrokeToken::Default.px(),
+    );
 
     paint_calendar(&p.calendar, l.calendar, scene, ts, theme);
 
     let hov = |h| p.hover == Some(h);
     paint_label(ts, scene, &lb.start, l.start_label, theme);
-    paint_check(p.start_on, hov(DatePickerHit::Check(DateSlot::Start)), l.start_check, scene, theme);
-    paint_field(p, DateField::Start, p.start_on, l.start_field, 1, scene, ts, theme);
+    paint_check(
+        p.start_on,
+        hov(DatePickerHit::Check(DateSlot::Start)),
+        l.start_check,
+        scene,
+        theme,
+    );
+    paint_field(
+        p,
+        DateField::Start,
+        p.start_on,
+        l.start_field,
+        1,
+        scene,
+        ts,
+        theme,
+    );
 
     paint_label(ts, scene, &lb.due, l.due_label, theme);
-    paint_check(p.due_on, hov(DatePickerHit::Check(DateSlot::Due)), l.due_check, scene, theme);
-    paint_field(p, DateField::Due, p.due_on, l.due_field, 2, scene, ts, theme);
-    paint_field(p, DateField::Time, p.due_on, l.time_field, 3, scene, ts, theme);
+    paint_check(
+        p.due_on,
+        hov(DatePickerHit::Check(DateSlot::Due)),
+        l.due_check,
+        scene,
+        theme,
+    );
+    paint_field(
+        p,
+        DateField::Due,
+        p.due_on,
+        l.due_field,
+        2,
+        scene,
+        ts,
+        theme,
+    );
+    paint_field(
+        p,
+        DateField::Time,
+        p.due_on,
+        l.time_field,
+        3,
+        scene,
+        ts,
+        theme,
+    );
 
     paint_label(ts, scene, &lb.reminder, l.reminder_label, theme);
     let menu = reminder_menu(Some(p));
     paint_dropdown_chip(&menu, l.reminder, scene, ts, theme);
 
-    let save = Button::new(NodeId(p.id.0.wrapping_add(4)), lb.save.clone()).kind(ButtonKind::Accent);
+    let save =
+        Button::new(NodeId(p.id.0.wrapping_add(4)), lb.save.clone()).kind(ButtonKind::Accent);
     paint_button(&save, l.save, scene, ts, theme);
     let remove = Button::new(NodeId(p.id.0.wrapping_add(5)), lb.remove.clone());
     paint_button(&remove, l.remove, scene, ts, theme);

@@ -118,7 +118,13 @@ fn buttons(ui: &mut Ui<'_>, cx: &Ctx<'_>, x: f32, y: f32) -> f32 {
     y += u::META_LINE;
     for (a, s) in enabled(cx.k, is_card_button) {
         let r = Rect::new(x, y, u::SIDE_W, ROW);
-        ui.button(r, &s.name, Some(IconId::Bolt), BackHit::CardButton(a), false);
+        ui.button(
+            r,
+            &s.name,
+            Some(IconId::Bolt),
+            BackHit::CardButton(a),
+            false,
+        );
         y += ROW + u::SMALL_GAP + u::HAIR;
     }
     let (label, icon, on) = button(cx, Side::AddButton);

@@ -133,7 +133,15 @@ impl Mesa {
             mods: Modifiers::default(),
             now_ns: self.agora,
         };
-        board_view::pointer(&mut self.hero, input, kind, PointerButton::Primary, x, y, true)
+        board_view::pointer(
+            &mut self.hero,
+            input,
+            kind,
+            PointerButton::Primary,
+            x,
+            y,
+            true,
+        )
     }
 
     pub fn move_(&mut self, x: f32, y: f32) -> bool {
@@ -147,8 +155,14 @@ impl Mesa {
 
     /// Um clique e um quadro.
     pub fn clica(&mut self, (x, y): (f32, f32)) {
-        assert!(self.rato(PointerKind::Down, x, y), "o carregar em ({x}, {y}) não foi tomado");
-        assert!(self.rato(PointerKind::Up, x, y), "o largar em ({x}, {y}) não foi tomado");
+        assert!(
+            self.rato(PointerKind::Down, x, y),
+            "o carregar em ({x}, {y}) não foi tomado"
+        );
+        assert!(
+            self.rato(PointerKind::Up, x, y),
+            "o largar em ({x}, {y}) não foi tomado"
+        );
         self.quadro();
     }
 
@@ -163,20 +177,42 @@ impl Mesa {
 
     /// Um arrasto de `de` para `para`, um quadro entre cada passo, e largar.
     pub fn arrasta(&mut self, de: (f32, f32), para: (f32, f32)) {
-        assert!(self.rato(PointerKind::Down, de.0, de.1), "o carregar não foi tomado");
+        assert!(
+            self.rato(PointerKind::Down, de.0, de.1),
+            "o carregar não foi tomado"
+        );
         #[allow(clippy::cast_precision_loss)]
         for i in 1..=8 {
             let t = i as f32 / 8.0;
             self.move_(de.0 + (para.0 - de.0) * t, de.1 + (para.1 - de.1) * t);
             self.quadro();
         }
-        assert!(self.rato(PointerKind::Up, para.0, para.1), "o largar não foi tomado");
+        assert!(
+            self.rato(PointerKind::Up, para.0, para.1),
+            "o largar não foi tomado"
+        );
         self.quadro();
     }
 
     pub fn tecla(&mut self, k: BoardKey, text: Option<&str>) {
-        let _ = board_keys::key(&mut self.hero, &mut self.ts, k, Modifiers::default(), true, text, None);
-        let _ = board_keys::key(&mut self.hero, &mut self.ts, k, Modifiers::default(), false, None, None);
+        let _ = board_keys::key(
+            &mut self.hero,
+            &mut self.ts,
+            k,
+            Modifiers::default(),
+            true,
+            text,
+            None,
+        );
+        let _ = board_keys::key(
+            &mut self.hero,
+            &mut self.ts,
+            k,
+            Modifiers::default(),
+            false,
+            None,
+            None,
+        );
     }
 
     pub fn escreve(&mut self, s: &str) {

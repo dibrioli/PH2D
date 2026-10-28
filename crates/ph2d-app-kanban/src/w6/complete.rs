@@ -3,16 +3,16 @@
 //! mostra as sugestões (`Tab` ou `Enter` completa, `↑`/`↓` escolhem); ao gravar, as palavras que
 //! casam saem do título e viram membros, etiquetas e posição.
 
-use super::sheet::{self, Item, Sheet};
 use super::Act;
+use super::sheet::{self, Item, Sheet};
 use crate::actions::Doc;
 use crate::docs::KanbanDocs;
 use crate::edit::Target;
+use crate::metrics as m;
 use crate::tab::Tab;
 use ph2d_editor_core::doc_surface::{Key, KeyInput, KeyOutcome};
-use ph2d_kanban_filter::normalize;
-use crate::metrics as m;
 use ph2d_editor_core::zones::Rect;
+use ph2d_kanban_filter::normalize;
 use ph2d_kanban_model::{CardId, FracKey, Kanban, LabelId, ListId, Member};
 
 /// Quantas sugestões cabem por baixo do compositor: as linhas da folha (`ROW`) que ficam entre a
@@ -68,7 +68,11 @@ fn person(people: &[Member], t: &str) -> Option<Member> {
 
 fn label(k: &Kanban, t: &str) -> Option<LabelId> {
     let t = key_of(t);
-    let live = || k.labels.values().filter(|l| !l.meta.deleted && !l.name.is_empty());
+    let live = || {
+        k.labels
+            .values()
+            .filter(|l| !l.meta.deleted && !l.name.is_empty())
+    };
     live()
         .find(|l| key_of(&l.name) == t)
         .or_else(|| {
@@ -83,7 +87,11 @@ fn spot(t: &str) -> Option<Spot> {
     match normalize(t).as_str() {
         "top" => Some(Spot::Top),
         "bottom" => Some(Spot::Bottom),
-        n => n.parse::<usize>().ok().filter(|n| *n > 0).map(|n| Spot::At(n - 1)),
+        n => n
+            .parse::<usize>()
+            .ok()
+            .filter(|n| *n > 0)
+            .map(|n| Spot::At(n - 1)),
     }
 }
 
@@ -137,7 +145,12 @@ pub(crate) fn parse(docs: &KanbanDocs, id: u64, value: &str) -> Parsed {
 }
 
 /// ⭐ Cria o cartão lido (membros, etiquetas e posição no MESMO passo de desfazer).
-pub(crate) fn add(doc: &mut Doc<'_>, list: ListId, after: Option<CardId>, p: Parsed) -> Option<CardId> {
+pub(crate) fn add(
+    doc: &mut Doc<'_>,
+    list: ListId,
+    after: Option<CardId>,
+    p: Parsed,
+) -> Option<CardId> {
     let pos = match p.spot {
         None => doc.pos_after(list, after)?,
         Some(s) => {
@@ -173,8 +186,17 @@ fn word_at(text: &str, caret: usize) -> Option<(usize, &str)> {
 }
 
 /// As sugestões para a palavra do cursor do compositor: `(texto a pôr, rótulo)`.
-pub(crate) fn candidates(tab: &Tab, k: &Kanban, me: &Member, team: &[String]) -> Vec<(String, String)> {
-    let Some(f) = tab.field.as_ref().filter(|f| matches!(f.target, Target::NewCard { .. })) else {
+pub(crate) fn candidates(
+    tab: &Tab,
+    k: &Kanban,
+    me: &Member,
+    team: &[String],
+) -> Vec<(String, String)> {
+    let Some(f) = tab
+        .field
+        .as_ref()
+        .filter(|f| matches!(f.target, Target::NewCard { .. }))
+    else {
         return Vec::new();
     };
     let Some((_, w)) = word_at(&f.text, f.caret) else {
@@ -201,11 +223,24 @@ pub(crate) fn candidates(tab: &Tab, k: &Kanban, me: &Member, team: &[String]) ->
                 _ => 1,
             };
             let mut v = vec![
-                ("^top".to_owned(), ph2d_i18n::tr("kanban.w6.pos.top").to_owned()),
-                ("^bottom".to_owned(), ph2d_i18n::tr("kanban.w6.pos.bottom").to_owned()),
+                (
+                    "^top".to_owned(),
+                    ph2d_i18n::tr("kanban.w6.pos.top").to_owned(),
+                ),
+                (
+                    "^bottom".to_owned(),
+                    ph2d_i18n::tr("kanban.w6.pos.bottom").to_owned(),
+                ),
             ];
-            v.extend((1..=n).map(|i| (format!("^{i}"), ph2d_i18n::tr_with("kanban.w6.pos.n", &[("n", &i)]))));
-            v.into_iter().filter(|(t, _)| t[1..].starts_with(&q)).collect()
+            v.extend((1..=n).map(|i| {
+                (
+                    format!("^{i}"),
+                    ph2d_i18n::tr_with("kanban.w6.pos.n", &[("n", &i)]),
+                )
+            }));
+            v.into_iter()
+                .filter(|(t, _)| t[1..].starts_with(&q))
+                .collect()
         }
     };
     out.truncate(fit(tab));

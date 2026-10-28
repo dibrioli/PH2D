@@ -33,7 +33,11 @@ pub(crate) fn undo(docs: &mut KanbanDocs, id: u64, redo: bool) -> bool {
             continue;
         }
         if let Some(doc) = set.doc_mut(*k) {
-            did |= if redo { h.redo(doc, tick) } else { h.undo(doc, tick) };
+            did |= if redo {
+                h.redo(doc, tick)
+            } else {
+                h.undo(doc, tick)
+            };
         }
     }
     did
@@ -50,7 +54,13 @@ fn entry(docs: &KanbanDocs, id: u64, row: CardId) -> Option<Entry> {
 
 /// ⭐ Leva a linha `row` à lista `list`, no índice `index` entre as linhas MOSTRADAS (sem ela) —
 /// com o filtro, entre as que se vêem; um espelho anda como um cartão. Um passo.
-pub(crate) fn move_row(docs: &mut KanbanDocs, id: u64, row: CardId, list: ListId, index: usize) -> bool {
+pub(crate) fn move_row(
+    docs: &mut KanbanDocs,
+    id: u64,
+    row: CardId,
+    list: ListId,
+    index: usize,
+) -> bool {
     let Some(e) = entry(docs, id, row) else {
         return false;
     };
@@ -96,7 +106,8 @@ pub(crate) fn move_row(docs: &mut KanbanDocs, id: u64, row: CardId, list: ListId
     let Some(op) = op else {
         return false;
     };
-    docs.with_doc(id, |_, doc| doc.apply(vec![op])).unwrap_or(false)
+    docs.with_doc(id, |_, doc| doc.apply(vec![op]))
+        .unwrap_or(false)
 }
 
 /// ⭐ Arquivar a linha `row` (o `C`, a edição rápida, o verso): um cartão arquiva-se E leva os
@@ -114,7 +125,10 @@ pub(crate) fn archive_row(docs: &mut KanbanDocs, id: u64, row: CardId) -> bool {
         Some(Entry::Card(c)) => {
             let plan = ph2d_kanban_model::remove_card(
                 &docs.set.borrow(),
-                CardRef { kanban: kid, card: c },
+                CardRef {
+                    kanban: kid,
+                    card: c,
+                },
                 true,
             );
             apply(docs, plan)

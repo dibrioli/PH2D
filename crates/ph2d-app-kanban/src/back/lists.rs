@@ -381,7 +381,10 @@ pub(crate) fn attachments(ui: &mut Ui<'_>, cx: &Ctx<'_>, x: f32, y: f32, w: f32)
             && let Some(file) = cx.set.file(f)
         {
             let size = super::attach::human_size(file.bytes.0.len());
-            added = tr_with("kanban.back.file_meta", &[("added", &added), ("size", &size)]);
+            added = tr_with(
+                "kanban.back.file_meta",
+                &[("added", &added), ("size", &size)],
+            );
         }
         ui.line(
             &added,

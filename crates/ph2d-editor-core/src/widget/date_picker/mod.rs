@@ -79,7 +79,10 @@ impl Reminder {
 
     #[must_use]
     pub fn index(self) -> usize {
-        Self::ALL.iter().position(|r| *r == self).unwrap_or_default()
+        Self::ALL
+            .iter()
+            .position(|r| *r == self)
+            .unwrap_or_default()
     }
 }
 
@@ -103,10 +106,19 @@ pub enum DatePickerEvent {
     /// Mudar de mês / voltar a hoje — o chamador entrega a grelha nova ao `calendar`.
     Month(CalendarEvent),
     /// Um dia escolhido para `slot`; o chamador responde com [`DatePicker::set_date`].
-    Pick { slot: DateSlot, date: CalendarDate },
-    Toggled { slot: DateSlot, on: bool },
+    Pick {
+        slot: DateSlot,
+        date: CalendarDate,
+    },
+    Toggled {
+        slot: DateSlot,
+        on: bool,
+    },
     /// O artista escreveu numa caixa e confirmou (Enter ou saiu dela); o chamador lê o texto.
-    TextCommitted { field: DateField, text: String },
+    TextCommitted {
+        field: DateField,
+        text: String,
+    },
     Reminder(Reminder),
     Save,
     Remove,
@@ -176,7 +188,12 @@ impl DatePicker {
     }
 
     /// A data de `slot` e o texto com que o chamador a escreve.
-    pub fn set_date(&mut self, slot: DateSlot, date: Option<CalendarDate>, text: impl Into<String>) {
+    pub fn set_date(
+        &mut self,
+        slot: DateSlot,
+        date: Option<CalendarDate>,
+        text: impl Into<String>,
+    ) {
         match slot {
             DateSlot::Start => {
                 self.start = date;

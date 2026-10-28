@@ -511,7 +511,10 @@ fn menu_row(docs: &mut KanbanDocs, id: u64, row: MenuRow) {
         (Menu::List(l), MenuRow::Color(c)) => {
             docs.with_doc(id, |_, doc| doc.set_list_color(l, c));
         }
-        (Menu::List(l), MenuRow::CopyList | MenuRow::MoveList | MenuRow::MoveAll | MenuRow::Sort) => {
+        (
+            Menu::List(l),
+            MenuRow::CopyList | MenuRow::MoveList | MenuRow::MoveAll | MenuRow::Sort,
+        ) => {
             use crate::w6::DialogKind as K;
             let kind = match row {
                 MenuRow::CopyList => K::CopyList(l),
@@ -519,7 +522,9 @@ fn menu_row(docs: &mut KanbanDocs, id: u64, row: MenuRow) {
                 MenuRow::MoveAll => K::MoveAll(l),
                 _ => K::Sort(l),
             };
-            let anchor = docs.tab_mut(id).and_then(|t| t.layout.list(l).map(|lb| lb.menu));
+            let anchor = docs
+                .tab_mut(id)
+                .and_then(|t| t.layout.list(l).map(|lb| lb.menu));
             if let Some(a) = anchor {
                 crate::w6::copy_move::open(docs, id, kind, a);
             }

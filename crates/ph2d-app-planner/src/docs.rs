@@ -15,17 +15,16 @@ use ph2d_editor_core::zones::Rect;
 use ph2d_kanban_dates::{Weekday, Zone};
 use ph2d_kanban_filter::Filter;
 use ph2d_kanban_model::{
-    Actor, BlockOf, CardRef, EventId, History, InboxId, KanbanId, ListRef, Member,
-    Moment, Plan,
+    Actor, BlockOf, CardRef, EventId, History, InboxId, KanbanId, ListRef, Member, Moment, Plan,
 };
 use ph2d_kanban_views::Ctx;
 use ph2d_kanban_views::calendar::CalendarState;
 
 use crate::dest_pop::DestPop;
 use crate::event_pop::EventPop;
-use crate::scope::{Ask, ScopePop};
 use crate::notify::Notice;
 use crate::personal::GroupBy;
+use crate::scope::{Ask, ScopePop};
 use crate::source::Show;
 
 /// O id da aba (uma só).
@@ -275,7 +274,13 @@ impl PlannerDocs {
         let set = self.set.borrow();
         let e = set.get(kanban).and_then(|k| k.events.get(&id)).cloned();
         if e.is_some() {
-            self.pop = Some(EventPop::new(e, kanban, Some(at), self.next_slot(), &self.ctx()));
+            self.pop = Some(EventPop::new(
+                e,
+                kanban,
+                Some(at),
+                self.next_slot(),
+                &self.ctx(),
+            ));
         }
     }
 
@@ -318,7 +323,12 @@ impl PlannerDocs {
         if let Some(op) = op {
             plan.push(KanbanId::AGENDA, op);
         }
-        if let Some(c) = n.and_then(|n| n.card.map(|card| CardRef { kanban: n.kanban, card })) {
+        if let Some(c) = n.and_then(|n| {
+            n.card.map(|card| CardRef {
+                kanban: n.kanban,
+                card,
+            })
+        }) {
             self.open_cards.push(c);
         }
         self.apply(plan)
@@ -355,7 +365,13 @@ impl PlannerDocs {
     pub fn edit_event(&mut self, id: Option<EventId>) {
         let set = self.set.borrow();
         let e = id.and_then(|id| set.agenda().events.get(&id)).cloned();
-        self.pop = Some(EventPop::new(e, KanbanId::AGENDA, None, self.next_slot(), &self.ctx()));
+        self.pop = Some(EventPop::new(
+            e,
+            KanbanId::AGENDA,
+            None,
+            self.next_slot(),
+            &self.ctx(),
+        ));
     }
 
     /// O `.ics` do projecto inteiro (o que «Export .ics» grava).

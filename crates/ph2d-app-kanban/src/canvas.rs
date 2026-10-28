@@ -11,7 +11,6 @@
 use crate::docs::KanbanDocs;
 use crate::tab::Tab;
 use crate::view::{At, ViewCtx};
-use ph2d_host::PointerKind;
 use ph2d_board_model::{ElementId, KanbanBoardView, KanbanId};
 use ph2d_board_render::{KanbanLod, KanbanOver, KanbanPaint, KanbanPainter};
 use ph2d_editor_core::doc_surface::{Compose, KeyInput, KeyOutcome, PointerLook, Surfaces};
@@ -20,6 +19,7 @@ use ph2d_editor_core::screens::hero::board_video::kanban::{
     KanbanElementInput, KanbanPointer, KanbanWheel,
 };
 use ph2d_editor_core::zones::Rect;
+use ph2d_host::PointerKind;
 use ph2d_text::TextSystem;
 use ph2d_vector::Affine;
 use std::cell::RefCell;
@@ -159,7 +159,11 @@ impl KanbanPainter for Painter {
         let (Some(set), me, team) = (c.set.clone(), c.cx.me.clone(), c.cx.team.clone()) else {
             return;
         };
-        let Some(tab) = c.tabs.get_mut(&el).filter(|t| t.back.is_some() || t.auto.is_some()) else {
+        let Some(tab) = c
+            .tabs
+            .get_mut(&el)
+            .filter(|t| t.back.is_some() || t.auto.is_some())
+        else {
             return;
         };
         let set = set.borrow();

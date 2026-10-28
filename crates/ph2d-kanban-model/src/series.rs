@@ -72,14 +72,19 @@ pub fn change_occurrence(
             n.start = Moment(series.start.0 + shift);
             n.end = Moment(n.start.0 + len);
             n.until = series.until.map(|u| Moment(u.0 + shift));
-            n.exceptions = series.exceptions.iter().map(|x| shifted(x, shift)).collect();
+            n.exceptions = series
+                .exceptions
+                .iter()
+                .map(|x| shifted(x, shift))
+                .collect();
             if n == *series {
                 return Vec::new();
             }
             vec![KanbanOp::put(Record::Event(n))]
         }
         Scope::This => {
-            if to.start == at && len == series.end.0 - series.start.0 && same_but_dates(to, series) {
+            if to.start == at && len == series.end.0 - series.start.0 && same_but_dates(to, series)
+            {
                 return Vec::new();
             }
             fresh.repeat = None;

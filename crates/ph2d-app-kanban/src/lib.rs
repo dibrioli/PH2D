@@ -72,9 +72,16 @@ pub fn frame(hero: &mut ph2d_editor_core::screens::hero::HeroScreen) {
         .flat_map(|b| b.team.people(&author, &[]))
         .collect();
     // J2 — o catálogo do projecto para as ligações dos versos abertos (só com um verso aberto).
-    let open = hero.documents.surfaces_mut().find_mut::<KanbanDocs>().is_some_and(|d| back::scene::any_open(d));
+    let open = hero
+        .documents
+        .surfaces_mut()
+        .find_mut::<KanbanDocs>()
+        .is_some_and(|d| back::scene::any_open(d));
     let catalog = open.then(|| ph2d_editor_core::kanban_links::catalog(&hero.documents));
-    if let (Some(cat), Some(docs)) = (catalog, hero.documents.surfaces_mut().find_mut::<KanbanDocs>()) {
+    if let (Some(cat), Some(docs)) = (
+        catalog,
+        hero.documents.surfaces_mut().find_mut::<KanbanDocs>(),
+    ) {
         back::scene::follow(docs, &cat);
     }
     if let Some(docs) = hero.documents.surfaces_mut().find_mut::<KanbanDocs>() {

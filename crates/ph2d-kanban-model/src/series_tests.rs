@@ -57,7 +57,10 @@ fn this_event_moves_one_occurrence_out_of_the_series() {
     assert!(!s.skips(Moment(4 * DAY + 10 * H)));
     let one = others(&set, id);
     assert_eq!(one.len(), 1);
-    assert_eq!((one[0].start, one[0].repeat), (Moment(3 * DAY + 14 * H), None));
+    assert_eq!(
+        (one[0].start, one[0].repeat),
+        (Moment(3 * DAY + 14 * H), None)
+    );
     assert_eq!(s.exception_at(at).unwrap().becomes, Some(one[0].id));
 }
 
@@ -75,8 +78,14 @@ fn this_and_following_splits_the_series_at_the_occurrence() {
     let s = ev(&set, id);
     let mut before = s.clone();
     before.exceptions = vec![
-        Exception { at: Moment(DAY + 10 * H), becomes: None },
-        Exception { at: Moment(6 * DAY + 10 * H), becomes: None },
+        Exception {
+            at: Moment(DAY + 10 * H),
+            becomes: None,
+        },
+        Exception {
+            at: Moment(6 * DAY + 10 * H),
+            becomes: None,
+        },
     ];
     set.apply(A, vec![KanbanOp::put(Record::Event(before))]);
     let (at, to) = moved(&set, id, 4, 4 * DAY + 9 * H);
@@ -87,8 +96,15 @@ fn this_and_following_splits_the_series_at_the_occurrence() {
     assert_eq!(head.exceptions.len(), 1);
     let tail = others(&set, id);
     assert_eq!(tail.len(), 1);
-    assert_eq!((tail[0].start, tail[0].repeat), (Moment(4 * DAY + 9 * H), Some(Repeat::Daily)));
-    assert_eq!(tail[0].exceptions[0].at, Moment(6 * DAY + 9 * H), "a excepção anda com a série nova");
+    assert_eq!(
+        (tail[0].start, tail[0].repeat),
+        (Moment(4 * DAY + 9 * H), Some(Repeat::Daily))
+    );
+    assert_eq!(
+        tail[0].exceptions[0].at,
+        Moment(6 * DAY + 9 * H),
+        "a excepção anda com a série nova"
+    );
 }
 
 #[test]
@@ -103,7 +119,10 @@ fn following_on_the_first_occurrence_is_all() {
 fn all_events_shift_the_series_and_its_exceptions() {
     let (mut set, id) = daily();
     let mut s = ev(&set, id);
-    s.exceptions = vec![Exception { at: Moment(2 * DAY + 10 * H), becomes: None }];
+    s.exceptions = vec![Exception {
+        at: Moment(2 * DAY + 10 * H),
+        becomes: None,
+    }];
     set.apply(A, vec![KanbanOp::put(Record::Event(s))]);
     let (at, mut to) = moved(&set, id, 5, 5 * DAY + 12 * H);
     to.title = "Daily sync".into();
@@ -111,7 +130,10 @@ fn all_events_shift_the_series_and_its_exceptions() {
     set.apply(A, ops);
     let s = ev(&set, id);
     assert_eq!((s.start, s.title.as_str()), (Moment(12 * H), "Daily sync"));
-    assert!(s.skips(Moment(2 * DAY + 12 * H)), "a excepção andou duas horas");
+    assert!(
+        s.skips(Moment(2 * DAY + 12 * H)),
+        "a excepção andou duas horas"
+    );
     assert!(others(&set, id).is_empty());
 }
 
@@ -124,14 +146,23 @@ fn delete_this_following_and_all() {
     let lone = others(&set, id)[0].id;
     // Só este (dia 1): uma excepção sem substituto.
     let d1 = Moment(DAY + 10 * H);
-    set.apply(A, delete_occurrence(set.agenda(), &ev(&set, id), d1, Scope::This));
+    set.apply(
+        A,
+        delete_occurrence(set.agenda(), &ev(&set, id), d1, Scope::This),
+    );
     assert_eq!(ev(&set, id).exception_at(d1).unwrap().becomes, None);
     // Este e os seguintes (dia 2): a série acaba e o substituto do dia 2 vai com ela.
-    set.apply(A, delete_occurrence(set.agenda(), &ev(&set, id), at, Scope::Following));
+    set.apply(
+        A,
+        delete_occurrence(set.agenda(), &ev(&set, id), at, Scope::Following),
+    );
     assert_eq!(ev(&set, id).until, Some(at));
     assert!(set.agenda().events[&lone].meta.deleted);
     // Todos.
-    set.apply(A, delete_occurrence(set.agenda(), &ev(&set, id), Moment(10 * H), Scope::All));
+    set.apply(
+        A,
+        delete_occurrence(set.agenda(), &ev(&set, id), Moment(10 * H), Scope::All),
+    );
     assert!(ev(&set, id).meta.deleted);
 }
 
@@ -147,8 +178,16 @@ fn this_event_is_one_undo_step() {
     assert!(h.undo(a, 2));
     let mut back = a.events[&id].clone();
     back.meta = before.events[&id].meta.clone();
-    assert_eq!(back, before.events[&id], "a série volta (o desfazer é uma versão nova)");
-    assert!(a.events.values().filter(|e| e.id != id).all(|e| e.meta.deleted));
+    assert_eq!(
+        back, before.events[&id],
+        "a série volta (o desfazer é uma versão nova)"
+    );
+    assert!(
+        a.events
+            .values()
+            .filter(|e| e.id != id)
+            .all(|e| e.meta.deleted)
+    );
 }
 
 #[test]
@@ -157,9 +196,17 @@ fn v6_bytes_read_as_v7_equal() {
     assert_eq!(postcard::take_from_bytes::<u32>(&bytes).unwrap().0, 6);
     let back = KanbanSet::from_bytes(&bytes).unwrap();
     let (today, _) = crate::links::tests::full_v6();
-    assert!(back.iter().eq(today.iter()), "o degrau v6 → v7 dá os mesmos Kanbans");
+    assert!(
+        back.iter().eq(today.iter()),
+        "o degrau v6 → v7 dá os mesmos Kanbans"
+    );
     assert_eq!(back.agenda(), today.agenda(), "e a mesma agenda");
-    assert!(back.agenda().events.values().all(|e| e.until.is_none() && e.exceptions.is_empty()));
+    assert!(
+        back.agenda()
+            .events
+            .values()
+            .all(|e| e.until.is_none() && e.exceptions.is_empty())
+    );
     let again = KanbanSet::from_bytes(&back.to_bytes().unwrap()).unwrap();
     assert_eq!(again, back, "e, regravado em v7, continua igual");
 }
@@ -171,12 +218,21 @@ fn the_v7_bytes_round_trip_until_and_exceptions() {
     let mut s = ev(&set, id);
     s.until = Some(Moment(99 * DAY));
     s.exceptions = vec![
-        Exception { at: Moment(7 * DAY), becomes: None },
-        Exception { at: Moment(14 * DAY), becomes: Some(EventId(77)) },
+        Exception {
+            at: Moment(7 * DAY),
+            becomes: None,
+        },
+        Exception {
+            at: Moment(14 * DAY),
+            becomes: Some(EventId(77)),
+        },
     ];
     set.apply(A, vec![KanbanOp::put(Record::Event(s.clone()))]);
     let bytes = set.to_bytes().unwrap();
-    assert_eq!(postcard::take_from_bytes::<u32>(&bytes).unwrap().0, crate::FORMAT_VERSION);
+    assert_eq!(
+        postcard::take_from_bytes::<u32>(&bytes).unwrap().0,
+        crate::FORMAT_VERSION
+    );
     let back = KanbanSet::from_bytes(&bytes).unwrap();
     assert!(back.iter().eq(set.iter()));
     assert_eq!(back.agenda(), set.agenda());

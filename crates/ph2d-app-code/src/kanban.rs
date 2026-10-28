@@ -63,7 +63,11 @@ mod tests {
     fn kanban_o_ctrl_s_de_um_script_que_usa_ph2d_kanban_pede_a_corrida_e_o_resto_larga() {
         let _ = ph2d_kanban_hooks::take_runs();
         saved(ScriptId(5), "k.luau", "local c = ph2d.kanban.get(\"x\")");
-        saved(ScriptId(6), "scene.luau", "-- ph2d.kanban (só um comentário)\nprint(1)");
+        saved(
+            ScriptId(6),
+            "scene.luau",
+            "-- ph2d.kanban (só um comentário)\nprint(1)",
+        );
         let runs = ph2d_kanban_hooks::take_runs();
         assert_eq!(runs.len(), 1, "só o script de Kanban corre no projecto");
         assert_eq!((runs[0].key, runs[0].name.as_str()), (5, "k.luau"));

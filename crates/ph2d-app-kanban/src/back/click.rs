@@ -594,11 +594,20 @@ fn dialog(docs: &mut KanbanDocs, id: u64, card: CardId, s: Side) {
     };
     let r = ph2d_kanban_model::CardRef { kanban: here, card };
     let anchor = back_mut(docs, id)
-        .and_then(|b| b.hits.iter().rev().find(|(_, h)| *h == BackHit::Side(s)).map(|(r, _)| *r))
+        .and_then(|b| {
+            b.hits
+                .iter()
+                .rev()
+                .find(|(_, h)| *h == BackHit::Side(s))
+                .map(|(r, _)| *r)
+        })
         .unwrap_or(ph2d_editor_core::zones::Rect::new(0.0, 0.0, 0.0, 0.0));
     let list = read(docs, id, |_, c| c.list);
     let kind = match s {
-        Side::Move => K::MoveCard { src: r, mirror: None },
+        Side::Move => K::MoveCard {
+            src: r,
+            mirror: None,
+        },
         Side::Copy => K::CopyCard(r),
         Side::Mirror => K::MirrorCard(r),
         _ => match list {

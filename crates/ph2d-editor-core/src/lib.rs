@@ -39,7 +39,6 @@ pub mod aviso_da_placa;
 pub mod doc_surface;
 /// Os documentos do projecto além da cena — os quadros (MiroClone).
 pub mod documents;
-pub mod kanban_links;
 /// A âmbar do REALCE do editor — uma cor, uma porta, fora do tema de propósito.
 pub mod editor_highlight;
 pub mod floating_panel;
@@ -57,6 +56,7 @@ pub mod image_edit;
 /// A pré-edição de IME: a composição que o campo focado mostra e nunca grava antes do `Commit`.
 pub mod ime;
 pub mod interaction;
+pub mod kanban_links;
 /// A porta única de *como este app imprime um comprimento* — veja os docs do módulo.
 pub mod length;
 pub mod math;

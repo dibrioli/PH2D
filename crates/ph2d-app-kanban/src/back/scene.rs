@@ -88,8 +88,19 @@ pub(crate) fn links(ui: &mut Ui<'_>, back: &Back, cx: &Ctx<'_>, x: f32, y: f32, 
         let row = Rect::new(x, y, w - ROW - u::GAP, ROW);
         let (fg, meta) = (ui.fg(), ui.meta());
         let ink = if r.live { fg } else { meta };
-        let ir = Rect::new(row.x + m::BUTTON_PAD_X, y + (ROW - m::ICON_PX) / 2.0, m::ICON_PX, m::ICON_PX);
-        paint_icon(ui.scene, icon_of(r.kind), ir, ink, StrokeToken::Default.px());
+        let ir = Rect::new(
+            row.x + m::BUTTON_PAD_X,
+            y + (ROW - m::ICON_PX) / 2.0,
+            m::ICON_PX,
+            m::ICON_PX,
+        );
+        paint_icon(
+            ui.scene,
+            icon_of(r.kind),
+            ir,
+            ink,
+            StrokeToken::Default.px(),
+        );
         let name = if r.live {
             shown(&l.target, &r.name)
         } else {
@@ -100,7 +111,15 @@ pub(crate) fn links(ui: &mut Ui<'_>, back: &Back, cx: &Ctx<'_>, x: f32, y: f32, 
         let tx = ir.x + m::ICON_PX + u::GAP;
         let tw = (row.x + row.w - tx - kw - u::GAP).max(0.0);
         ui.strong(&name, tx, y, ROW, u::BODY_PX, tw, ink);
-        ui.line(kind, row.x + row.w - kw - m::BUTTON_PAD_X / 2.0, y, ROW, u::SMALL_PX, kw + u::GAP, meta);
+        ui.line(
+            kind,
+            row.x + row.w - kw - m::BUTTON_PAD_X / 2.0,
+            y,
+            ROW,
+            u::SMALL_PX,
+            kw + u::GAP,
+            meta,
+        );
         ui.hit(row, BackHit::LinkOpen(l.id));
         let x_btn = Rect::new(x + w - ROW, y, ROW, ROW);
         let bg = ui.c(ph2d_tokens::ColorToken::KanbanCard);
@@ -114,9 +133,18 @@ pub(crate) fn links(ui: &mut Ui<'_>, back: &Back, cx: &Ctx<'_>, x: f32, y: f32, 
 /// ligações que o cartão já tem saem.
 pub(crate) fn entries(cat: &Catalog, have: &[Target], q: &str) -> Vec<(Target, String)> {
     let q = q.trim().to_lowercase();
-    let objects = cat.objects.iter().map(|(i, n)| (Target::Object(*i), n.clone()));
-    let scripts = cat.scripts.iter().map(|(i, n)| (Target::Script(*i), n.clone()));
-    let macros = cat.macros.iter().map(|n| (Target::Macro(n.clone()), n.clone()));
+    let objects = cat
+        .objects
+        .iter()
+        .map(|(i, n)| (Target::Object(*i), n.clone()));
+    let scripts = cat
+        .scripts
+        .iter()
+        .map(|(i, n)| (Target::Script(*i), n.clone()));
+    let macros = cat
+        .macros
+        .iter()
+        .map(|n| (Target::Macro(n.clone()), n.clone()));
     let strips = cat.strips.iter().map(|(i, n)| {
         let t = Target::Span {
             object: None,
@@ -143,16 +171,34 @@ pub(crate) fn entries(cat: &Catalog, have: &[Target], q: &str) -> Vec<(Target, S
 }
 
 /// O popover «Scene object»: a pesquisa e as entradas que cabem na área (o ecrã é a régua).
-pub(crate) fn pop(ui: &mut Ui<'_>, back: &Back, cx: &Ctx<'_>, f: &ph2d_editor_core::widget::LineField, x: f32, y: f32, w: f32) -> f32 {
+pub(crate) fn pop(
+    ui: &mut Ui<'_>,
+    back: &Back,
+    cx: &Ctx<'_>,
+    f: &ph2d_editor_core::widget::LineField,
+    x: f32,
+    y: f32,
+    w: f32,
+) -> f32 {
     ui.caption(tr("kanban.links.title"), x, y, w);
     let r = Rect::new(x, y + u::META_LINE + u::SMALL_GAP, w, ROW);
     ui.field(r, f, tr("kanban.links.add"));
     ui.hit(r, BackHit::Pop(PopHit::Input));
     let mut y = r.y + r.h + u::GAP;
-    let have: Vec<Target> = cx.k.links_of(cx.card.id).into_iter().map(|l| l.target.clone()).collect();
-    let room = ((back.area.h - 2.0 * u::MODAL_TOP - (y - r.y) - ROW) / ROW).floor().max(1.0);
+    let have: Vec<Target> =
+        cx.k.links_of(cx.card.id)
+            .into_iter()
+            .map(|l| l.target.clone())
+            .collect();
+    let room = ((back.area.h - 2.0 * u::MODAL_TOP - (y - r.y) - ROW) / ROW)
+        .floor()
+        .max(1.0);
     let fit = room as usize;
-    for (i, (t, name)) in entries(&back.catalog, &have, &f.text).into_iter().take(fit).enumerate() {
+    for (i, (t, name)) in entries(&back.catalog, &have, &f.text)
+        .into_iter()
+        .take(fit)
+        .enumerate()
+    {
         let row = Rect::new(x, y, w, ROW);
         let h = BackHit::Pop(PopHit::Scene(u16::try_from(i).unwrap_or(u16::MAX)));
         if ui.hover == Some(h) {
@@ -160,8 +206,19 @@ pub(crate) fn pop(ui: &mut Ui<'_>, back: &Back, cx: &Ctx<'_>, f: &ph2d_editor_co
             ph2d_editor_core::paint::fill_rounded_rect(ui.scene, row, m::LABEL_RADIUS, raised);
         }
         let fg = ui.fg();
-        let ir = Rect::new(x + u::SMALL_GAP, y + (ROW - m::ICON_PX) / 2.0, m::ICON_PX, m::ICON_PX);
-        paint_icon(ui.scene, icon_of(kind_of(&t)), ir, fg, StrokeToken::Default.px());
+        let ir = Rect::new(
+            x + u::SMALL_GAP,
+            y + (ROW - m::ICON_PX) / 2.0,
+            m::ICON_PX,
+            m::ICON_PX,
+        );
+        paint_icon(
+            ui.scene,
+            icon_of(kind_of(&t)),
+            ir,
+            fg,
+            StrokeToken::Default.px(),
+        );
         let tx = ir.x + m::ICON_PX + u::GAP;
         ui.line(&name, tx, y, ROW, u::BODY_PX, x + w - tx, fg);
         ui.hit(row, h);
@@ -192,12 +249,16 @@ pub(crate) fn click(docs: &mut KanbanDocs, id: u64, card: CardId, h: BackHit) {
             crate::auto::buttons::press_card(docs, id, a, card);
         }
         BackHit::LinkOpen(l) => {
-            if let Some(Some(t)) = read(docs, id, |k, _| k.project_links.get(&l).map(|l| l.target.clone())) {
+            if let Some(Some(t)) = read(docs, id, |k, _| {
+                k.project_links.get(&l).map(|l| l.target.clone())
+            }) {
                 ph2d_editor_core::kanban_links::open(&t);
             }
         }
         BackHit::LinkRemove(l) => {
-            write::logged(docs, id, |_| Some(vec![KanbanOp::Delete(RecordId::ProjectLink(l))]));
+            write::logged(docs, id, |_| {
+                Some(vec![KanbanOp::Delete(RecordId::ProjectLink(l))])
+            });
         }
         BackHit::Pop(PopHit::Scene(n)) => pick(docs, id, card, usize::from(n)),
         _ => {}
@@ -213,7 +274,10 @@ fn pick(docs: &mut KanbanDocs, id: u64, card: CardId, n: usize) {
     let q = f.text.clone();
     let cat = b.catalog.clone();
     let have: Vec<Target> = read(docs, id, |k, _| {
-        k.links_of(card).into_iter().map(|l| l.target.clone()).collect()
+        k.links_of(card)
+            .into_iter()
+            .map(|l| l.target.clone())
+            .collect()
     })
     .unwrap_or_default();
     let Some((t, name)) = entries(&cat, &have, &q).into_iter().nth(n) else {

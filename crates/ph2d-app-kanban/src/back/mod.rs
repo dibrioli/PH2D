@@ -204,7 +204,10 @@ pub(crate) enum Pop {
     Label(Option<LabelId>, LineField, Option<LabelColor>),
     Checklist(LineField),
     /// As datas do cartão (`None`) ou de um item.
-    Dates(Option<CheckItemId>, Box<ph2d_kanban_views::datepick::Picker>),
+    Dates(
+        Option<CheckItemId>,
+        Box<ph2d_kanban_views::datepick::Picker>,
+    ),
     /// Anexar um link: o endereço e o nome.
     Attach(LineField, LineField),
     Cover,

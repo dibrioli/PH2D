@@ -22,7 +22,10 @@ use crate::ui::{c, text_top};
 #[derive(Clone, Debug, PartialEq)]
 pub enum Change {
     /// O arrasto: a ocorrência passa a `[start, end)`.
-    Move { start: Moment, end: Moment },
+    Move {
+        start: Moment,
+        end: Moment,
+    },
     /// O popover: a ocorrência passa a ser `to`.
     Edit(Box<Event>),
     Delete,
@@ -119,8 +122,14 @@ impl ScopePop {
     /// Põe a pergunta junto da âncora, dentro de `area`.
     pub fn place(&mut self, area: Rect) {
         let h = Self::height();
-        let x = (self.anchor.0 - m::POP_W / 2.0).clamp(area.x + m::PAD, (area.x + area.w - m::POP_W - m::PAD).max(area.x));
-        let y = self.anchor.1.clamp(area.y + m::TOP_H, (area.y + area.h - h).max(area.y));
+        let x = (self.anchor.0 - m::POP_W / 2.0).clamp(
+            area.x + m::PAD,
+            (area.x + area.w - m::POP_W - m::PAD).max(area.x),
+        );
+        let y = self
+            .anchor
+            .1
+            .clamp(area.y + m::TOP_H, (area.y + area.h - h).max(area.y));
         self.rect = Rect::new(x, y, m::POP_W, h);
     }
 
@@ -150,23 +159,50 @@ impl ScopePop {
         let x = self.rect.x + m::PAD;
         let w = self.rect.w - 2.0 * m::PAD;
         let ty = text_top(ts, self.rect.y + m::PAD, m::SECTION_H, m::TEXT_PX);
-        paint_text_elided(ts, scene, tr(title), x, ty, m::TEXT_PX, w, c(theme, T::Text1));
+        paint_text_elided(
+            ts,
+            scene,
+            tr(title),
+            x,
+            ty,
+            m::TEXT_PX,
+            w,
+            c(theme, T::Text1),
+        );
         for (h, r) in self.hits() {
             let (key, base) = match h {
                 ScopeHit::Pick(s) => (scope_key(s), T::Bg2),
                 ScopeHit::Cancel => ("planner.scope.cancel", T::Bg1),
             };
-            let (bg, fg) = if self.hover == Some(h) { (T::Accent, T::AccentFg) } else { (base, T::Text1) };
+            let (bg, fg) = if self.hover == Some(h) {
+                (T::Accent, T::AccentFg)
+            } else {
+                (base, T::Text1)
+            };
             fill_rounded_rect(scene, r, m::RADIUS, c(theme, bg));
             let ty = text_top(ts, r.y, r.h, m::TEXT_PX);
-            paint_text_elided(ts, scene, tr(key), r.x + m::BUTTON_PAD_X, ty, m::TEXT_PX, r.w - 2.0 * m::BUTTON_PAD_X, c(theme, fg));
+            paint_text_elided(
+                ts,
+                scene,
+                tr(key),
+                r.x + m::BUTTON_PAD_X,
+                ty,
+                m::TEXT_PX,
+                r.w - 2.0 * m::BUTTON_PAD_X,
+                c(theme, fg),
+            );
         }
     }
 
     /// Um clique: numa resposta escolhe-a; fora da pergunta (ou em «Cancel») desiste.
     #[must_use]
     pub fn click(&self, x: f32, y: f32) -> ScopeDone {
-        match self.hits().into_iter().find(|(_, r)| r.contains(x, y)).map(|(h, _)| h) {
+        match self
+            .hits()
+            .into_iter()
+            .find(|(_, r)| r.contains(x, y))
+            .map(|(h, _)| h)
+        {
             Some(ScopeHit::Pick(s)) => ScopeDone::Pick(s),
             Some(ScopeHit::Cancel) => ScopeDone::Cancel,
             None if self.rect.contains(x, y) => ScopeDone::Stay,

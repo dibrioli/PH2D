@@ -56,19 +56,37 @@ fn relatorio(m: &mut Mesa, id: KanbanId) -> Option<Vec<String>> {
 fn j3_import_abre_a_aba_e_o_relatorio_diz_o_que_se_perdeu() {
     let mut m = Mesa::new();
     m.quadro();
-    let comandos: Vec<_> = m.docs().family_commands().into_iter().map(|c| c.label).collect();
+    let comandos: Vec<_> = m
+        .docs()
+        .family_commands()
+        .into_iter()
+        .map(|c| c.label)
+        .collect();
     assert!(comandos.contains(&ph2d_i18n::tr("kanban.import.cmd_import").to_owned()));
     assert!(comandos.contains(&ph2d_i18n::tr("kanban.import.cmd_export").to_owned()));
     // O quadro tem anexos: a pasta pergunta-se, e cancelar = entram como links.
     let id = importa(&mut m, vec![Some(FIXTURE.into()), None]).expect("o Kanban importado");
-    assert_eq!(m.activa(), Some(id.0), "a aba activa é a do Kanban importado");
+    assert_eq!(
+        m.activa(),
+        Some(id.0),
+        "a aba activa é a do Kanban importado"
+    );
     let k = m.kanban(id);
     assert_eq!(k.lists.values().filter(|l| !l.archived).count(), 3);
     let texto = relatorio(&mut m, id).expect("o relatório abre sobre a aba");
-    assert!(texto.iter().all(|t| !t.contains("kanban.import.")), "chave crua: {texto:?}");
+    assert!(
+        texto.iter().all(|t| !t.contains("kanban.import.")),
+        "chave crua: {texto:?}"
+    );
     assert!(texto.contains(&ph2d_i18n::tr("kanban.import.report_title").to_owned()));
-    assert!(texto.iter().any(|t| t.contains(NOME)), "o nome no relatório");
-    assert!(texto.contains(&ph2d_i18n::tr_with("kanban.import.count.cards", &[("n", &9)])));
+    assert!(
+        texto.iter().any(|t| t.contains(NOME)),
+        "o nome no relatório"
+    );
+    assert!(texto.contains(&ph2d_i18n::tr_with(
+        "kanban.import.count.cards",
+        &[("n", &9)]
+    )));
     // Cada perda da importação aparece agrupada pelo porquê, com a contagem.
     let imp = import_trello(&std::fs::read(FIXTURE).expect("fixture"), KanbanId(1), None)
         .expect("quadro");
@@ -76,7 +94,10 @@ fn j3_import_abre_a_aba_e_o_relatorio_diz_o_que_se_perdeu() {
     let mut tipos: Vec<LossKind> = imp.report.losses.iter().map(|l| l.kind).collect();
     tipos.sort_unstable();
     tipos.dedup();
-    let grupos = texto.iter().filter(|s| s.contains(") (") || s.ends_with(')')).count();
+    let grupos = texto
+        .iter()
+        .filter(|s| s.contains(") (") || s.ends_with(')'))
+        .count();
     assert!(grupos >= tipos.len(), "um grupo por porquê: {texto:?}");
     let power_ups = ph2d_i18n::tr_with(
         "kanban.import.loss_group",
@@ -109,7 +130,10 @@ fn j3_import_com_a_pasta_traz_os_ficheiros_e_um_clique_fora_fecha() {
     let id = importa(&mut m, vec![Some(FIXTURE.into()), Some(dir.clone())]).expect("importado");
     let texto = relatorio(&mut m, id).expect("relatório");
     assert!(
-        texto.contains(&ph2d_i18n::tr_with("kanban.import.count.files", &[("n", &1)])),
+        texto.contains(&ph2d_i18n::tr_with(
+            "kanban.import.count.files",
+            &[("n", &1)]
+        )),
         "{texto:?}"
     );
     assert!(m.hero.documents.kanbans().iter().count() >= 1);

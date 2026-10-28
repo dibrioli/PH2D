@@ -3,8 +3,8 @@
 use std::collections::BTreeMap;
 
 use ph2d_board_model::{
-    Anchor, Board, Dash, Element, ElementId, ElementKind, End, FillStyle, KanbanId, RichText, Route,
-    Shape, ShapeType, Style, TextAlign, VAlign,
+    Anchor, Board, Dash, Element, ElementId, ElementKind, End, FillStyle, KanbanId, RichText,
+    Route, Shape, ShapeType, Style, TextAlign, VAlign,
 };
 use ph2d_board_route::RouteCache;
 use ph2d_vector::{BezPath, PathEl};

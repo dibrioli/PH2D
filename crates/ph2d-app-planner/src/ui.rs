@@ -3,7 +3,9 @@
 //! a coluna do Planner e «My cards» moram em [`crate::side`]. Cada coisa pintada com área de clique
 //! entra em [`PlannerDocs::hits`] (a ordem é a do desenho: a última pintada ganha o clique).
 
-use ph2d_editor_core::paint::{fill_rounded_rect, paint_text_elided, paint_text_title_elided, rect_to_vello, resolve};
+use ph2d_editor_core::paint::{
+    fill_rounded_rect, paint_text_elided, paint_text_title_elided, rect_to_vello, resolve,
+};
 use ph2d_editor_core::widget::{Popover, paint_popover};
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::{tr, tr_with};
@@ -55,7 +57,16 @@ fn button(
         fill_rounded_rect(scene, r, m::RADIUS, c(theme, bg));
     }
     let ty = text_top(ts, y, m::BUTTON_H, m::TEXT_PX);
-    paint_text_elided(ts, scene, label, x + m::BUTTON_PAD_X, ty, m::TEXT_PX, w, c(theme, fg));
+    paint_text_elided(
+        ts,
+        scene,
+        label,
+        x + m::BUTTON_PAD_X,
+        ty,
+        m::TEXT_PX,
+        w,
+        c(theme, fg),
+    );
     d.hits.push((hit, r));
     r
 }
@@ -67,17 +78,41 @@ fn badge(scene: &mut VectorScene, ts: &mut TextSystem, theme: Theme, right: f32,
     let r = Rect::new(right - w / 2.0, y - m::BADGE_H / 2.0, w, m::BADGE_H);
     fill_rounded_rect(scene, r, m::BADGE_H / 2.0, c(theme, T::KanbanDueOver));
     let ty = text_top(ts, r.y, r.h, m::SMALL_PX);
-    paint_text_elided(ts, scene, &t, r.x + m::BADGE_PAD_X, ty, m::SMALL_PX, w, c(theme, T::KanbanDueOverFg));
+    paint_text_elided(
+        ts,
+        scene,
+        &t,
+        r.x + m::BADGE_PAD_X,
+        ty,
+        m::SMALL_PX,
+        w,
+        c(theme, T::KanbanDueOverFg),
+    );
 }
 
 /// A barra de cima. Devolve a área por baixo dela.
-pub(crate) fn top_bar(d: &mut PlannerDocs, area: Rect, scene: &mut VectorScene, ts: &mut TextSystem, theme: Theme) -> Rect {
+pub(crate) fn top_bar(
+    d: &mut PlannerDocs,
+    area: Rect,
+    scene: &mut VectorScene,
+    ts: &mut TextSystem,
+    theme: Theme,
+) -> Rect {
     let bar = Rect::new(area.x, area.y, area.w, m::TOP_H);
     scene.fill_rect(rect_to_vello(bar), c(theme, T::Bg2));
     let y = bar.y + (m::TOP_H - m::BUTTON_H) / 2.0;
     let title = tr("planner.title");
     let ty = text_top(ts, bar.y, m::TOP_H, m::TITLE_PX);
-    paint_text_title_elided(ts, scene, title, bar.x + m::PAD, ty, m::TITLE_PX, bar.w, c(theme, T::Text1));
+    paint_text_title_elided(
+        ts,
+        scene,
+        title,
+        bar.x + m::PAD,
+        ty,
+        m::TITLE_PX,
+        bar.w,
+        c(theme, T::Text1),
+    );
     let mut x = bar.x + m::PAD + ts.prefix_width(title, m::TITLE_PX).ceil() + 2.0 * m::GAP;
     for (mode, key) in [
         (Mode::Calendar, "planner.mode.calendar"),
@@ -90,7 +125,12 @@ pub(crate) fn top_bar(d: &mut PlannerDocs, area: Rect, scene: &mut VectorScene, 
     }
     // Da direita para a esquerda.
     let mut right = bar.x + bar.w - m::PAD;
-    let mut place = |d: &mut PlannerDocs, scene: &mut VectorScene, ts: &mut TextSystem, label: String, hit: Hit, on: bool| {
+    let mut place = |d: &mut PlannerDocs,
+                     scene: &mut VectorScene,
+                     ts: &mut TextSystem,
+                     label: String,
+                     hit: Hit,
+                     on: bool| {
         let w = ts.prefix_width(&label, m::TEXT_PX).ceil() + 2.0 * m::BUTTON_PAD_X;
         right -= w;
         let r = button(d, scene, ts, theme, right, y, &label, hit, on);
@@ -98,11 +138,25 @@ pub(crate) fn top_bar(d: &mut PlannerDocs, area: Rect, scene: &mut VectorScene, 
         r
     };
     let unread = d.unread();
-    let bell = place(d, scene, ts, tr("planner.bell").to_owned(), Hit::Bell, d.bell);
+    let bell = place(
+        d,
+        scene,
+        ts,
+        tr("planner.bell").to_owned(),
+        Hit::Bell,
+        d.bell,
+    );
     if unread > 0 {
         badge(scene, ts, theme, bell.x + bell.w, bell.y, unread);
     }
-    place(d, scene, ts, tr("planner.export").to_owned(), Hit::Export, false);
+    place(
+        d,
+        scene,
+        ts,
+        tr("planner.export").to_owned(),
+        Hit::Export,
+        false,
+    );
     if d.mode == Mode::MyCards {
         let key = match d.group_by {
             GroupBy::Kanban => "planner.group_by.kanban",
@@ -110,7 +164,14 @@ pub(crate) fn top_bar(d: &mut PlannerDocs, area: Rect, scene: &mut VectorScene, 
         };
         place(d, scene, ts, tr(key).to_owned(), Hit::GroupBy, false);
     } else {
-        place(d, scene, ts, tr("planner.new_event").to_owned(), Hit::NewEvent, d.pop.is_some());
+        place(
+            d,
+            scene,
+            ts,
+            tr("planner.new_event").to_owned(),
+            Hit::NewEvent,
+            d.pop.is_some(),
+        );
         let key = match d.show.color_by {
             ColorBy::Kanban => "planner.color_by.kanban",
             ColorBy::Label => "planner.color_by.label",
@@ -122,7 +183,12 @@ pub(crate) fn top_bar(d: &mut PlannerDocs, area: Rect, scene: &mut VectorScene, 
         );
         place(d, scene, ts, label, Hit::Person, d.show.person.is_some());
     }
-    Rect::new(area.x, area.y + m::TOP_H, area.w, (area.h - m::TOP_H).max(0.0))
+    Rect::new(
+        area.x,
+        area.y + m::TOP_H,
+        area.w,
+        (area.h - m::TOP_H).max(0.0),
+    )
 }
 
 fn happened_key(h: &Happened) -> &'static str {
@@ -151,7 +217,10 @@ pub fn notice_text(n: &Notice, d: &PlannerDocs) -> (String, String) {
         let today = day_of(d.now.0, &d.zone);
         tr_with(
             "planner.when",
-            &[("day", &day_text(ct.date, today)), ("time", &time_text(ct.hour, ct.minute))],
+            &[
+                ("day", &day_text(ct.date, today)),
+                ("time", &time_text(ct.hour, ct.minute)),
+            ],
         )
     };
     let args = |key: &str| tr_with(key, &[("by", &by), ("card", &n.place)]);
@@ -171,8 +240,16 @@ pub fn notice_text(n: &Notice, d: &PlannerDocs) -> (String, String) {
 }
 
 /// A caixa das notificações sob o sino.
-pub(crate) fn bell_box(d: &mut PlannerDocs, area: Rect, scene: &mut VectorScene, ts: &mut TextSystem, theme: Theme) {
-    let Some(bell) = d.probe_hit(Hit::Bell) else { return };
+pub(crate) fn bell_box(
+    d: &mut PlannerDocs,
+    area: Rect,
+    scene: &mut VectorScene,
+    ts: &mut TextSystem,
+    theme: Theme,
+) {
+    let Some(bell) = d.probe_hit(Hit::Bell) else {
+        return;
+    };
     let rows = d.notices.len().max(1);
     #[allow(clippy::cast_precision_loss)]
     let want = m::GROUP_H + rows as f32 * m::NOTICE_H + m::PAD;
@@ -182,17 +259,44 @@ pub(crate) fn bell_box(d: &mut PlannerDocs, area: Rect, scene: &mut VectorScene,
     paint_popover(&Popover::new(crate::POP_NODE), r, scene, theme);
     let head = Rect::new(r.x + m::PAD, r.y, r.w - 2.0 * m::PAD, m::GROUP_H);
     let ty = text_top(ts, head.y, head.h, m::TEXT_PX);
-    paint_text_elided(ts, scene, tr("planner.bell"), head.x, ty, m::TEXT_PX, head.w / 2.0, c(theme, T::Text1));
+    paint_text_elided(
+        ts,
+        scene,
+        tr("planner.bell"),
+        head.x,
+        ty,
+        m::TEXT_PX,
+        head.w / 2.0,
+        c(theme, T::Text1),
+    );
     let all = tr("planner.mark_all");
     let w = ts.prefix_width(all, m::SMALL_PX).ceil();
     let mr = Rect::new(head.x + head.w - w, head.y, w, head.h);
     let ty = text_top(ts, head.y, head.h, m::SMALL_PX);
-    paint_text_elided(ts, scene, all, mr.x, ty, m::SMALL_PX, w + 1.0, c(theme, T::Text2));
+    paint_text_elided(
+        ts,
+        scene,
+        all,
+        mr.x,
+        ty,
+        m::SMALL_PX,
+        w + 1.0,
+        c(theme, T::Text2),
+    );
     d.hits.push((Hit::MarkAll, mr));
     let mut y = head.y + head.h;
     if d.notices.is_empty() {
         let ty = text_top(ts, y, m::NOTICE_H, m::SMALL_PX);
-        paint_text_elided(ts, scene, tr("planner.no_notices"), head.x, ty, m::SMALL_PX, head.w, c(theme, T::Text2));
+        paint_text_elided(
+            ts,
+            scene,
+            tr("planner.no_notices"),
+            head.x,
+            ty,
+            m::SMALL_PX,
+            head.w,
+            c(theme, T::Text2),
+        );
         return;
     }
     let notices = d.notices.clone();
@@ -200,7 +304,12 @@ pub(crate) fn bell_box(d: &mut PlannerDocs, area: Rect, scene: &mut VectorScene,
         if y + m::NOTICE_H > r.y + r.h {
             break;
         }
-        let row = Rect::new(r.x + m::GAP, y, r.w - 2.0 * m::GAP, m::NOTICE_H - m::GAP / 2.0);
+        let row = Rect::new(
+            r.x + m::GAP,
+            y,
+            r.w - 2.0 * m::GAP,
+            m::NOTICE_H - m::GAP / 2.0,
+        );
         let hit = Hit::Notice(n.key);
         if d.hover == Some(hit) {
             fill_rounded_rect(scene, row, m::RADIUS, c(theme, T::Bg3));
@@ -210,9 +319,27 @@ pub(crate) fn bell_box(d: &mut PlannerDocs, area: Rect, scene: &mut VectorScene,
         let (top, detail) = notice_text(n, d);
         let ink = if n.unread { T::Text1 } else { T::Text2 };
         let x = row.x + m::GAP;
-        paint_text_elided(ts, scene, &top, x, row.y + m::GAP, m::TEXT_PX, row.w - 2.0 * m::GAP, c(theme, ink));
+        paint_text_elided(
+            ts,
+            scene,
+            &top,
+            x,
+            row.y + m::GAP,
+            m::TEXT_PX,
+            row.w - 2.0 * m::GAP,
+            c(theme, ink),
+        );
         let ty = row.y + m::GAP + m::TEXT_PX + m::GAP / 2.0;
-        paint_text_elided(ts, scene, &detail, x, ty, m::SMALL_PX, row.w - 2.0 * m::GAP, c(theme, T::Text2));
+        paint_text_elided(
+            ts,
+            scene,
+            &detail,
+            x,
+            ty,
+            m::SMALL_PX,
+            row.w - 2.0 * m::GAP,
+            c(theme, T::Text2),
+        );
         d.hits.push((hit, row));
         y += m::NOTICE_H;
     }

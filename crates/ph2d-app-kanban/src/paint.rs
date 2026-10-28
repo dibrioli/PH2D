@@ -103,8 +103,17 @@ pub(crate) fn board(
 }
 
 /// J1 — só o fundo e o cabeçalho (as outras vistas pintam o corpo).
-pub(crate) fn chrome(scene: &mut VectorScene, ts: &mut TextSystem, theme: Theme, k: &Kanban, tab: &Tab) {
-    scene.fill_rect(rect_to_vello(tab.layout.area), board_bg(theme, k.header.background));
+pub(crate) fn chrome(
+    scene: &mut VectorScene,
+    ts: &mut TextSystem,
+    theme: Theme,
+    k: &Kanban,
+    tab: &Tab,
+) {
+    scene.fill_rect(
+        rect_to_vello(tab.layout.area),
+        board_bg(theme, k.header.background),
+    );
     header(scene, ts, theme, k, tab);
 }
 

@@ -52,7 +52,13 @@ impl KanbanDocs {
     #[must_use]
     pub fn probe_mirrors(&self, id: u64) -> Vec<(CardId, CardRef)> {
         self.w6_tab(id)
-            .map(|t| t.rows.mirrors.iter().map(|(k, (_, of))| (*k, *of)).collect())
+            .map(|t| {
+                t.rows
+                    .mirrors
+                    .iter()
+                    .map(|(k, (_, of))| (*k, *of))
+                    .collect()
+            })
             .unwrap_or_default()
     }
 

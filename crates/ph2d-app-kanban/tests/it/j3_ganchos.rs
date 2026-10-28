@@ -53,7 +53,11 @@ fn leva(m: &mut Mesa, id: KanbanId, para: &str) -> CardId {
     m.arrasta(p, fim, 8);
     assert!(m.larga(fim.0, fim.1));
     m.quadro();
-    assert_eq!(m.kanban(id).cards[&c].list, to, "o arrasto largou na {para}");
+    assert_eq!(
+        m.kanban(id).cards[&c].list,
+        to,
+        "o arrasto largou na {para}"
+    );
     c
 }
 
@@ -67,7 +71,10 @@ fn j3_o_butler_reage_ao_arrasto_num_passo_proprio_e_o_desfazer_nao_reage() {
     assert!(m.kanban(id).cards[&c].archived, "a regra arquivou o cartão");
     assert_eq!(m.desfaz(), Some(true));
     let k = m.kanban(id);
-    assert!(!k.cards[&c].archived, "o 1.º Ctrl+Z tira o que o Butler fez");
+    assert!(
+        !k.cards[&c].archived,
+        "o 1.º Ctrl+Z tira o que o Butler fez"
+    );
     assert_eq!(k.cards[&c].list, done, "e deixa o gesto da pessoa");
     assert_eq!(m.desfaz(), Some(true));
     assert_eq!(m.kanban(id).cards[&c].list, backlog);
@@ -77,7 +84,10 @@ fn j3_o_butler_reage_ao_arrasto_num_passo_proprio_e_o_desfazer_nao_reage() {
     assert_eq!(r, Some(true));
     let k = m.kanban(id);
     assert_eq!(k.cards[&c].list, done);
-    assert!(!k.cards[&c].archived, "refazer não é gesto: nenhuma regra corre");
+    assert!(
+        !k.cards[&c].archived,
+        "refazer não é gesto: nenhuma regra corre"
+    );
 }
 
 #[test]
@@ -93,7 +103,9 @@ fn j3_um_script_de_kanban_pedido_pelo_editor_corre_e_o_handler_reage_ao_gesto() 
     m.quadro();
     let lines = ph2d_kanban_hooks::take_lines();
     assert!(
-        lines.iter().any(|l| l.key == 41 && l.text == "armed" && !l.error),
+        lines
+            .iter()
+            .any(|l| l.key == 41 && l.text == "armed" && !l.error),
         "o print chega ao console do script: {lines:?}"
     );
     assert_eq!(
@@ -155,7 +167,11 @@ fn activo() -> (Duas, KanbanId, ElementId) {
     let x = rs[0].x + rs[0].w;
     let fundo = d.ecra(el, Rect::new(x, rs[0].y + 20.0, rs[1].x - x, 8.0));
     d.clica(fundo);
-    assert_eq!(kb::active(&d.hero), Some(el), "o 2.º clique entra no Kanban");
+    assert_eq!(
+        kb::active(&d.hero),
+        Some(el),
+        "o 2.º clique entra no Kanban"
+    );
     (d, id, el)
 }
 
@@ -166,18 +182,42 @@ fn j3_no_quadro_o_f_abre_o_filtro_e_o_e_a_edicao_rapida_com_a_nota() {
     let (mut d, id, el) = activo();
     tecla(&mut d, BoardKey::Char('f'), Some("f"));
     let w6 = d.docs().probe_canvas_w6(el.0).expect("a vista do elemento");
-    assert_eq!(w6.over.as_deref(), Some("Filter"), "F abre o filtro no elemento");
-    assert!(w6.hits.iter().any(|h| h.0 == "Inside"), "o painel pintou-se");
+    assert_eq!(
+        w6.over.as_deref(),
+        Some("Filter"),
+        "F abre o filtro no elemento"
+    );
+    assert!(
+        w6.hits.iter().any(|h| h.0 == "Inside"),
+        "o painel pintou-se"
+    );
     tecla(&mut d, BoardKey::Escape, None);
-    assert_eq!(d.docs().probe_canvas_w6(el.0).unwrap().over, None, "Esc fecha-o");
-    assert_eq!(kb::active(&d.hero), Some(el), "o Esc do painel não sai do Kanban");
+    assert_eq!(
+        d.docs().probe_canvas_w6(el.0).unwrap().over,
+        None,
+        "Esc fecha-o"
+    );
+    assert_eq!(
+        kb::active(&d.hero),
+        Some(el),
+        "o Esc do painel não sai do Kanban"
+    );
 
     let k = d.hero.documents.kanbans().get(id).unwrap().clone();
-    let c = k.cards.values().find(|c| c.title == "Design the fox").unwrap().id;
+    let c = k
+        .cards
+        .values()
+        .find(|c| c.title == "Design the fox")
+        .unwrap()
+        .id;
     let r = cartao_r(&mut d, el, c);
     let p = d.ecra(el, r);
     d.clica(p);
-    assert_eq!(d.docs().probe_canvas(el.0).unwrap().back, Some(c), "o clique abre o verso");
+    assert_eq!(
+        d.docs().probe_canvas(el.0).unwrap().back,
+        Some(c),
+        "o clique abre o verso"
+    );
     tecla(&mut d, BoardKey::Escape, None);
     tecla(&mut d, BoardKey::Char('e'), Some("e"));
     let w6 = d.docs().probe_canvas_w6(el.0).unwrap();

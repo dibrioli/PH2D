@@ -7,11 +7,10 @@ use crate::docs::KanbanDocs;
 use crate::metrics as m;
 use crate::paint::{c, text_top};
 use ph2d_editor_core::IconId;
-use ph2d_editor_core::documents::undo_tick;
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_icon, paint_text_elided};
 use ph2d_editor_core::zones::Rect;
 use ph2d_kanban_auto::{Kind, Outcome, Spec, press_board_button, press_card_button, specs};
-use ph2d_kanban_model::{Actor, AutomationId, CardId, Kanban, Member};
+use ph2d_kanban_model::{AutomationId, CardId, Kanban};
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken as T, StrokeToken, Theme};
 use ph2d_vector::VectorScene;
@@ -32,19 +31,10 @@ pub(crate) fn is_board_button(k: &Kind) -> bool {
     matches!(k, Kind::BoardButton { .. })
 }
 
-/// Aplica o que o Butler fez (com a hora de agora, o autor Butler). `true` = escreveu.
+/// Aplica o que o Butler fez pela porta única: em nome dele, e só os scripts reagem (o Butler não
+/// volta a correr sobre o seu próprio plano). `true` = escreveu.
 fn apply(docs: &mut KanbanDocs, out: Outcome) -> bool {
-    if out.plan.is_empty() {
-        return false;
-    }
-    let actor = Actor {
-        by: Member::butler(),
-        at: crate::actions::now(),
-    };
-    docs.set
-        .borrow_mut()
-        .apply_plan(out.plan, &mut docs.histories, undo_tick(), &actor);
-    true
+    crate::hooks::butler(docs, out.plan)
 }
 
 /// ⭐ Premir o botão de cartão `a` no cartão `card` da vista `id`.
@@ -71,7 +61,14 @@ pub(crate) fn press_board(docs: &mut KanbanDocs, id: u64, a: AutomationId) -> bo
         return false;
     };
     let zone = crate::back::dates::zone();
-    let out = press_board_button(&docs.set.borrow(), kid, a, &docs.me, crate::actions::now(), &zone);
+    let out = press_board_button(
+        &docs.set.borrow(),
+        kid,
+        a,
+        &docs.me,
+        crate::actions::now(),
+        &zone,
+    );
     apply(docs, out)
 }
 
@@ -105,11 +102,25 @@ pub(crate) fn paint_board_buttons(
             T::KanbanHeaderBtn
         };
         fill_rounded_rect(scene, r, m::BUTTON_RADIUS, c(theme, fill));
-        let ir = Rect::new(r.x + m::BUTTON_PAD_X, r.y + (h - m::ICON_PX) / 2.0, m::ICON_PX, m::ICON_PX);
+        let ir = Rect::new(
+            r.x + m::BUTTON_PAD_X,
+            r.y + (h - m::ICON_PX) / 2.0,
+            m::ICON_PX,
+            m::ICON_PX,
+        );
         paint_icon(scene, IconId::Play, ir, fg, StrokeToken::Default.px());
         let tx = ir.x + m::ICON_PX + m::HEADER_GAP;
         let ty = text_top(ts, r.y, h, m::BUTTON_TEXT_PX);
-        paint_text_elided(ts, scene, &s.name, tx, ty, m::BUTTON_TEXT_PX, r.x + w - tx, fg);
+        paint_text_elided(
+            ts,
+            scene,
+            &s.name,
+            tx,
+            ty,
+            m::BUTTON_TEXT_PX,
+            r.x + w - tx,
+            fg,
+        );
         out.push((r, a));
         x -= m::HEADER_GAP;
     }

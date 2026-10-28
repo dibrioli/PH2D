@@ -18,6 +18,8 @@
 //!   ([`crate::share::smoke`]).
 //! - **8** — J2: o BUTLER (regras, botões, uma sugestão) e o verso com botões e ligações ao
 //!   projecto ([`crate::smoke_j2`]).
+//! - **9** — W10: o quadro sintético do Trello IMPORTADO (a fixture do `ph2d-kanban-import`), com
+//!   o RELATÓRIO da importação aberto por cima da aba: o que entrou e o que ficou de fora.
 
 use crate::docs::KanbanDocs;
 use ph2d_editor_core::screens::hero::HeroScreen;
@@ -29,7 +31,7 @@ use ph2d_kanban_model::{
 use ph2d_kanban_scenes::{Scene, people, review_list, write};
 
 /// As cenas que existem.
-pub const CENAS: u8 = 8;
+pub const CENAS: u8 = 9;
 pub const ENV: &str = "PH2D_KANBAN_SMOKE";
 
 /// O roteador que a família declara ao registo (o gate de colisão lê-o).
@@ -79,6 +81,9 @@ fn code_smoke_wants_kanban(v: Option<&str>) -> bool {
 /// Monta a cena `n` no projecto aberto e abre-a numa aba.
 pub fn stage(hero: &mut HeroScreen, n: u8) -> Option<KanbanId> {
     let shared = hero.documents.kanbans_shared();
+    if n == 9 {
+        return trello_import(hero, shared);
+    }
     let id = {
         let mut set = shared.borrow_mut();
         match n {
@@ -145,6 +150,23 @@ pub fn stage(hero: &mut HeroScreen, n: u8) -> Option<KanbanId> {
         }
     }
     Some(id)
+}
+
+/// A fixture sintética do Trello (a mesma dos testes do importador), lida do repositório.
+const TRELLO_FIXTURE: &str = concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/../ph2d-kanban-import/tests/fixtures/trello_board_synthetic.json"
+);
+
+/// Cena 9: «Import from Trello…» da fixture, sem pasta de anexos (entram como links).
+fn trello_import(
+    hero: &mut HeroScreen,
+    shared: ph2d_editor_core::documents::SharedKanbans,
+) -> Option<KanbanId> {
+    let json = std::fs::read(TRELLO_FIXTURE).ok()?;
+    let docs = hero.documents.surfaces_mut().find_mut::<KanbanDocs>()?;
+    docs.follow_project(shared);
+    docs.import_json(&json, None, TRELLO_FIXTURE)
 }
 
 /// ⭐ O Kanban da cena 1 («Short film — production») em `set`, e a «Review» (que a cena recolhe) — a

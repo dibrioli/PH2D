@@ -14,7 +14,7 @@ use std::cell::RefCell;
 use std::collections::VecDeque;
 use std::path::{Path, PathBuf};
 
-pub(crate) use report::{key, paint, pointer, wheel};
+pub(crate) use report::{Open as ImportReportView, key, paint, pointer, wheel};
 
 /// Os três diálogos do importar/exportar.
 pub(crate) trait Dialogs {
@@ -124,7 +124,13 @@ fn format_of(path: &Path) -> (Format, PathBuf) {
 fn file_stem(name: &str) -> String {
     let s: String = name
         .chars()
-        .map(|c| if "/\\:*?\"<>|".contains(c) || c.is_control() { '-' } else { c })
+        .map(|c| {
+            if "/\\:*?\"<>|".contains(c) || c.is_control() {
+                '-'
+            } else {
+                c
+            }
+        })
         .collect();
     let s = s.trim().trim_matches('.').to_owned();
     if s.is_empty() {
@@ -193,7 +199,18 @@ impl KanbanDocs {
             .flatten()
             .map(DirFiles);
         let files = folder.as_ref().map(|f| f as &dyn FileSource);
-        let out = ph2d_kanban_import::import_trello_into(&mut self.set.borrow_mut(), &json, files);
+        self.import_json(&json, files, &shown);
+    }
+
+    /// O `.json` do Trello lido de `shown`: o Kanban novo numa aba e o relatório por cima dela
+    /// (ou o aviso do porquê não entrou).
+    pub(crate) fn import_json(
+        &mut self,
+        json: &[u8],
+        files: Option<&dyn FileSource>,
+        shown: &str,
+    ) -> Option<KanbanId> {
+        let out = ph2d_kanban_import::import_trello_into(&mut self.set.borrow_mut(), json, files);
         match out {
             Ok((id, rep)) => {
                 self.open(id);
@@ -203,7 +220,8 @@ impl KanbanDocs {
                     .get(id)
                     .map(|k| k.header.name.clone())
                     .unwrap_or_default();
-                report::show(id.0, name, rep);
+                report::show(self, id.0, name, rep);
+                return Some(id);
             }
             Err(ImportError::NotJson(e)) => self.notices.push(tr_with(
                 "kanban.import.not_json",
@@ -213,6 +231,7 @@ impl KanbanDocs {
                 .notices
                 .push(tr_with("kanban.import.not_board", &[("path", &shown)])),
         }
+        None
     }
 
     /// «Export Kanban…»: o Kanban da aba activa, no formato da extensão escolhida.
@@ -224,7 +243,8 @@ impl KanbanDocs {
         let Some((id, name)) =
             id.and_then(|id| Some((id, self.set.borrow().get(id)?.header.name.clone())))
         else {
-            self.notices.push(tr("kanban.import.export_none").to_owned());
+            self.notices
+                .push(tr("kanban.import.export_none").to_owned());
             return;
         };
         let proposed = format!("{}.{}", file_stem(&name), EXPORT_ORDER[0].extension());
@@ -239,7 +259,11 @@ impl KanbanDocs {
         self.notices.push(match std::fs::write(&path, text) {
             Ok(()) => tr_with(
                 "kanban.import.export_done",
-                &[("name", &name), ("format", &format_name(format)), ("path", &shown)],
+                &[
+                    ("name", &name),
+                    ("format", &format_name(format)),
+                    ("path", &shown),
+                ],
             ),
             Err(e) => tr_with(
                 "kanban.import.export_failed",
@@ -251,7 +275,7 @@ impl KanbanDocs {
     /// ⚠️ SONDA: os textos do relatório de importação aberto sobre a aba `id` (`None` = fechado).
     #[must_use]
     pub fn probe_import_report(&self, id: u64) -> Option<Vec<String>> {
-        report::texts(id)
+        report::texts(self, id)
     }
 }
 

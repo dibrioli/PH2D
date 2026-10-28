@@ -1,38 +1,22 @@
-//! ⭐ **O que o verso ESCREVE** — e só por aqui: cada gesto é um lote de `KanbanOp` aplicado com a
-//! atividade (`History::apply_logged`, em nome de «eu»), um passo de desfazer cada.
+//! ⭐ **O que o verso ESCREVE** — e só por aqui: cada gesto é um lote de `KanbanOp` aplicado pela
+//! porta única dos gestos (`crate::hooks`), em nome de «eu»; as reações vêm em passos seus.
 
 use crate::actions::now;
 use crate::docs::KanbanDocs;
-use ph2d_editor_core::documents::undo_tick;
 use ph2d_kanban_model::{
-    Actor, Attachment, AttachmentId, Card, CardId, CheckItem, CheckItemId, Checklist, ChecklistId,
+    Attachment, AttachmentId, Card, CardId, CheckItem, CheckItemId, Checklist, ChecklistId,
     Comment, CommentId, Cover, FieldDef, FieldId, FieldKind, FieldValue, FracKey, Kanban, KanbanOp,
     Label, LabelColor, LabelId, Link, ListId, Member, Meta, Moment, Reaction, Record, RecordId,
 };
 
-/// Aplica o lote que `f` monta sobre o Kanban da aba, com a atividade em nome de «eu». `true` = o
-/// documento mudou.
+/// Aplica o lote que `f` monta sobre o Kanban da aba como um gesto da pessoa (a porta única: a
+/// atividade em nome de «eu», o Butler e os scripts reagem). `true` = o documento mudou.
 pub(crate) fn logged(
     docs: &mut KanbanDocs,
     id: u64,
     f: impl FnOnce(&Kanban) -> Option<Vec<KanbanOp>>,
 ) -> bool {
-    let actor = Actor {
-        by: docs.me.clone(),
-        at: now(),
-    };
-    docs.with_doc(id, |_, doc| {
-        let Some(ops) = doc.kanban().and_then(f) else {
-            return false;
-        };
-        let Some(k) = doc.set.doc_mut(doc.id) else {
-            return false;
-        };
-        let before = doc.history.undo_at();
-        doc.history.apply_logged(k, ops, undo_tick(), &actor);
-        doc.history.undo_at() != before
-    })
-    .unwrap_or(false)
+    crate::hooks::write_in(docs, id, f)
 }
 
 /// O cartão `c` mudado por `f` (nenhuma escrita se `f` o deixa igual).

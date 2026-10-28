@@ -62,7 +62,7 @@ impl DocumentSurface for KanbanDocs {
             return;
         }
         self.paint_tab(id, area, scene, text, *theme);
-        crate::io::paint(id, area, scene, text, *theme);
+        crate::io::paint(self, id, area, scene, text, *theme);
     }
 
     fn chrome_over(&mut self, _id: u64, over: Option<Rect>) {
@@ -265,7 +265,10 @@ impl KanbanDocs {
             return;
         };
         self.focus = Some(id);
-        if self.tab_mut(id).is_some_and(|t| t.w6.over != Some(crate::w6::Over::Share)) {
+        if self
+            .tab_mut(id)
+            .is_some_and(|t| t.w6.over != Some(crate::w6::Over::Share))
+        {
             crate::w6::toggle_over(self, id, crate::w6::Over::Share);
         }
         if let Some(t) = self.tab_mut(id) {
@@ -285,7 +288,7 @@ impl KanbanDocs {
         if id == HOME {
             return self.home_pointer(kind, x, y);
         }
-        if let Some(taken) = crate::io::pointer(id, kind, x, y) {
+        if let Some(taken) = crate::io::pointer(self, id, kind, x, y) {
             return taken;
         }
         if let Some(taken) = crate::w6::pointer(self, id, kind, x, y) {
@@ -311,7 +314,7 @@ impl KanbanDocs {
         if id == HOME {
             return self.home_pointer(PointerKind::Move, x, y);
         }
-        if let Some(taken) = crate::io::pointer(id, PointerKind::Move, x, y) {
+        if let Some(taken) = crate::io::pointer(self, id, PointerKind::Move, x, y) {
             return taken;
         }
         if let Some(taken) = crate::w6::pointer(self, id, PointerKind::Move, x, y) {
@@ -324,7 +327,7 @@ impl KanbanDocs {
     }
 
     fn route_wheel(&mut self, id: u64, x: f32, y: f32, dy: f32, shift: bool) -> bool {
-        if crate::io::wheel(id, crate::pointer::wheel_px(dy)) {
+        if crate::io::wheel(self, id, crate::pointer::wheel_px(dy)) {
             return true;
         }
         if id != HOME && crate::w6::wheel(self, id, x, y, crate::pointer::wheel_px(dy), shift) {
@@ -340,7 +343,7 @@ impl KanbanDocs {
         if id == HOME {
             return KeyOutcome::default();
         }
-        if let Some(out) = crate::io::key(id, &input) {
+        if let Some(out) = crate::io::key(self, id, &input) {
             return out;
         }
         crate::keys::key(self, id, ts, input)

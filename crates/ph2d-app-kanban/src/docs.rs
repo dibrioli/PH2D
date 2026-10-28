@@ -58,6 +58,8 @@ pub struct KanbanDocs {
     pub(crate) active: Option<u64>,
     /// J1 — a partilha ao vivo («Share»).
     pub(crate) share: crate::share::Share,
+    /// W10 — o relatório da importação aberto sobre a aba do Kanban importado.
+    pub(crate) import_report: Option<crate::io::ImportReportView>,
 }
 
 impl Default for KanbanDocs {
@@ -80,6 +82,7 @@ impl Default for KanbanDocs {
             clip: None,
             active: None,
             share: crate::share::Share::default(),
+            import_report: None,
         }
     }
 }

@@ -374,7 +374,10 @@ impl Spec {
             if t.hour < 24 && t.minute < 60 {
                 Ok(())
             } else {
-                Err(format!("automation time {}:{} out of range", t.hour, t.minute))
+                Err(format!(
+                    "automation time {}:{} out of range",
+                    t.hour, t.minute
+                ))
             }
         };
         match &self.kind {

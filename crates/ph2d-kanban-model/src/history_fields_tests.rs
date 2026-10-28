@@ -131,6 +131,9 @@ fn an_undo_step_left_empty_by_a_colleague_is_skipped_not_counted() {
     h.apply(&mut k, vec![mine], 5);
     let theirs = edit(&k, id, |c| c.title = "theirs again".into());
     apply_batch(&mut k, vec![theirs]);
-    assert!(!h.undo(&mut k, 6), "só havia um passo vazio: nada a desfazer");
+    assert!(
+        !h.undo(&mut k, 6),
+        "só havia um passo vazio: nada a desfazer"
+    );
     assert!(!h.can_redo(), "sem refazer vazio");
 }

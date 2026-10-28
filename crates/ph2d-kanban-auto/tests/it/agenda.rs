@@ -176,7 +176,11 @@ fn a_command_switched_off_for_a_week_does_not_fire_the_past_when_switched_back_o
         "religar não dispara o que caiu enquanto desligada"
     );
     let tomorrow = Moment(NOW.0 + DAY);
-    assert_eq!(due_commands(&s.set, tomorrow, &utc()).len(), 1, "a próxima ocorrência corre");
+    assert_eq!(
+        due_commands(&s.set, tomorrow, &utc()).len(),
+        1,
+        "a próxima ocorrência corre"
+    );
 }
 
 fn calendar(every: Every, at: TimeOfDay) -> Spec {
@@ -203,12 +207,27 @@ fn a_schedule_that_can_never_fire_is_refused_not_armed_silent() {
         calendar(Every::YearDay { month: 1, day: 0 }, nine),
         calendar(Every::Weekdays(0), nine),
         calendar(Every::Weekdays(0x80), nine),
-        calendar(Every::Day, TimeOfDay { hour: 24, minute: 0 }),
-        calendar(Every::Day, TimeOfDay { hour: 9, minute: 60 }),
+        calendar(
+            Every::Day,
+            TimeOfDay {
+                hour: 24,
+                minute: 0,
+            },
+        ),
+        calendar(
+            Every::Day,
+            TimeOfDay {
+                hour: 9,
+                minute: 60,
+            },
+        ),
         command(
             Kind::DueDate {
                 when: DueWhen::OnDay {
-                    at: TimeOfDay { hour: 25, minute: 0 },
+                    at: TimeOfDay {
+                        hour: 25,
+                        minute: 0,
+                    },
                 },
                 scope: Scope::default(),
             },
@@ -225,7 +244,13 @@ fn a_schedule_that_can_never_fire_is_refused_not_armed_silent() {
         Every::YearDay { month: 2, day: 31 },
         Every::Weekdays(0x7F),
     ] {
-        let spec = calendar(every, TimeOfDay { hour: 23, minute: 59 });
+        let spec = calendar(
+            every,
+            TimeOfDay {
+                hour: 23,
+                minute: 59,
+            },
+        );
         assert_eq!(Spec::from_bytes(&spec.to_bytes().unwrap()).unwrap(), spec);
     }
 }

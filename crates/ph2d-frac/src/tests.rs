@@ -123,7 +123,17 @@ fn out_of_order_neighbours_give_a_key_between_them() {
 #[test]
 fn text_outside_the_key_grammar_never_deserializes() {
     let smallest = format!("A{}", "0".repeat(26));
-    for bad in ["", "a", "!x", "a0!", "a00", "b1", "a0 ", "é0", smallest.as_str()] {
+    for bad in [
+        "",
+        "a",
+        "!x",
+        "a0!",
+        "a00",
+        "b1",
+        "a0 ",
+        "é0",
+        smallest.as_str(),
+    ] {
         let bytes = postcard::to_allocvec(&bad.to_string()).unwrap();
         assert!(
             postcard::from_bytes::<FracKey>(&bytes).is_err(),
@@ -131,7 +141,14 @@ fn text_outside_the_key_grammar_never_deserializes() {
         );
         assert!(FracKey::try_from(bad.to_string()).is_err(), "{bad:?}");
     }
-    for good in ["a0", "Zz", "a0V", "b125", "Xzzz", "A00000000000000000000000000V"] {
+    for good in [
+        "a0",
+        "Zz",
+        "a0V",
+        "b125",
+        "Xzzz",
+        "A00000000000000000000000000V",
+    ] {
         assert_eq!(key(good).as_str(), good);
     }
 }
@@ -170,9 +187,15 @@ fn any_two_valid_keys_give_a_valid_key_between_them() {
         assert!(FracKey::try_from(k.as_str().to_string()).is_ok(), "{k:?}");
         assert!(lo < k && (k < hi || lo == hi), "{a:?} {b:?} -> {k:?}");
         let up = FracKey::between(Some(&a), None);
-        assert!(up > a && FracKey::try_from(up.as_str().to_string()).is_ok(), "{a:?} -> {up:?}");
+        assert!(
+            up > a && FracKey::try_from(up.as_str().to_string()).is_ok(),
+            "{a:?} -> {up:?}"
+        );
         let down = FracKey::between(None, Some(&a));
-        assert!(down < a && FracKey::try_from(down.as_str().to_string()).is_ok(), "{a:?} -> {down:?}");
+        assert!(
+            down < a && FracKey::try_from(down.as_str().to_string()).is_ok(),
+            "{a:?} -> {down:?}"
+        );
     }
 }
 

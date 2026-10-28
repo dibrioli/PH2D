@@ -79,7 +79,11 @@ pub fn sort_keys(
         }
     }
     let n = run.len();
-    out.extend(run.into_iter().zip(spread(lo, None, n)).map(|(j, p)| (rows[j].0, p)));
+    out.extend(
+        run.into_iter()
+            .zip(spread(lo, None, n))
+            .map(|(j, p)| (rows[j].0, p)),
+    );
     out
 }
 
@@ -187,7 +191,10 @@ impl Level {
 /// `entries_in`), `rank` é uma permutação. O(n log n): Fenwick no rank, posições iguais em lote.
 fn longest_kept(pos: &[&FracKey], rank: &[usize]) -> Vec<bool> {
     let n = rank.len();
-    debug_assert!(pos.windows(2).all(|w| w[0] <= w[1]), "as linhas vêm por posição");
+    debug_assert!(
+        pos.windows(2).all(|w| w[0] <= w[1]),
+        "as linhas vêm por posição"
+    );
     let mut len = vec![0_usize; n];
     let mut prev = vec![usize::MAX; n];
     let mut tree = MaxTree(vec![0; n + 1]);

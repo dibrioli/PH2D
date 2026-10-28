@@ -157,8 +157,16 @@ fn big(n: usize, distinct: usize, seed: u64, reversed: bool) -> (KanbanSet, Kanb
         .iter()
         .enumerate()
         .map(|(i, &id)| {
-            let pos = if distinct >= n { keys[i].clone() } else { keys[rng.next(distinct)].clone() };
-            let created = if reversed { (n - i) as i64 } else { rng.next(50) as i64 };
+            let pos = if distinct >= n {
+                keys[i].clone()
+            } else {
+                keys[rng.next(distinct)].clone()
+            };
+            let created = if reversed {
+                (n - i) as i64
+            } else {
+                rng.next(50) as i64
+            };
             let title = format!("t{}", rng.next(40));
             let mut c = ph2d_kanban_model::Card::new(CardId(id), l, pos, &title, Moment(created));
             c.due = (rng.next(3) > 0).then(|| due(rng.next(9) as i64)).flatten();
@@ -182,7 +190,12 @@ fn the_fast_sort_keeps_exactly_the_rows_the_quadratic_one_kept() {
         let rows: Vec<(FracKey, &ph2d_kanban_model::Card)> = set
             .entries_in(k, l)
             .into_iter()
-            .map(|e| (kd.entry_pos(e).unwrap().clone(), set.card(e.shows(k)).unwrap()))
+            .map(|e| {
+                (
+                    kd.entry_pos(e).unwrap().clone(),
+                    set.card(e.shows(k)).unwrap(),
+                )
+            })
             .collect();
         for by in [SortBy::Newest, SortBy::Oldest, SortBy::Name, SortBy::Due] {
             let mut want: Vec<usize> = (0..rows.len()).collect();
@@ -206,7 +219,9 @@ fn the_fast_sort_keeps_exactly_the_rows_the_quadratic_one_kept() {
                 .collect();
             let order: Vec<_> = got.iter().map(|&i| rows[i].1).collect();
             assert!(
-                order.windows(2).all(|w| cmp(by, w[0], w[1]) != Ordering::Greater),
+                order
+                    .windows(2)
+                    .all(|w| cmp(by, w[0], w[1]) != Ordering::Greater),
                 "n={n} {by:?}: a lista não ficou ordenada"
             );
         }
@@ -227,19 +242,31 @@ fn sorting_a_reversed_list_grows_n_log_n_not_n_squared() {
             let keys = sort_keys(&set, k, l, SortBy::Oldest);
             best = best.min(t.elapsed());
             assert_eq!(keys.len(), n - 1);
-            longest = keys.iter().map(|(_, p)| p.as_str().len()).max().unwrap_or(0);
+            longest = keys
+                .iter()
+                .map(|(_, p)| p.as_str().len())
+                .max()
+                .unwrap_or(0);
         }
         (best, longest)
     };
     let (small, _) = time(2_000);
     let (large, longest) = time(16_000);
     let ratio = large.as_secs_f64() / small.as_secs_f64().max(1e-9);
-    assert!(ratio < 24.0, "×8 cartões custaram ×{ratio:.1} ({small:?} → {large:?})");
+    assert!(
+        ratio < 24.0,
+        "×8 cartões custaram ×{ratio:.1} ({small:?} → {large:?})"
+    );
     assert!(longest <= 12, "chave nova com {longest} caracteres");
 }
 
 /// O `sort_keys` de antes, verbatim (O(n²) no `keep` e na busca do vizinho de cima; chaves em fila).
-fn sort_keys_quadratic(set: &KanbanSet, kanban: KanbanId, list: ListId, by: SortBy) -> Vec<(Entry, FracKey)> {
+fn sort_keys_quadratic(
+    set: &KanbanSet,
+    kanban: KanbanId,
+    list: ListId,
+    by: SortBy,
+) -> Vec<(Entry, FracKey)> {
     let k = set.get(kanban).unwrap();
     let rows: Vec<(Entry, FracKey, &ph2d_kanban_model::Card)> = set
         .entries_in(kanban, list)
@@ -260,7 +287,10 @@ fn sort_keys_quadratic(set: &KanbanSet, kanban: KanbanId, list: ListId, by: Sort
             lo = Some(rows[i].1.clone());
             continue;
         }
-        let hi = want[r + 1..].iter().find(|&&j| keep[j]).map(|&j| &rows[j].1);
+        let hi = want[r + 1..]
+            .iter()
+            .find(|&&j| keep[j])
+            .map(|&j| &rows[j].1);
         let pos = FracKey::between(lo.as_ref(), hi);
         lo = Some(pos.clone());
         out.push((rows[i].0, pos));
@@ -273,7 +303,10 @@ fn sort_keys_quadratic(set: &KanbanSet, kanban: KanbanId, list: ListId, by: Sort
 #[test]
 #[ignore = "medição"]
 fn measure_sort_twenty_thousand_cards() {
-    for (name, reversed, by) in [("ao contrário", true, SortBy::Oldest), ("ao acaso", false, SortBy::Name)] {
+    for (name, reversed, by) in [
+        ("ao contrário", true, SortBy::Oldest),
+        ("ao acaso", false, SortBy::Name),
+    ] {
         let (set, k, l) = big(20_000, 20_000, 1, reversed);
         let (mut old, mut new) = (f64::MAX, f64::MAX);
         let (mut old_len, mut new_len) = (0, 0);
@@ -288,6 +321,8 @@ fn measure_sort_twenty_thousand_cards() {
             old_len = o.iter().map(|x| x.1.as_str().len()).max().unwrap_or(0);
             new_len = n.iter().map(|x| x.1.as_str().len()).max().unwrap_or(0);
         }
-        println!("20000 {name}: antes {old:.4} s (chave até {old_len}) · agora {new:.4} s (chave até {new_len})");
+        println!(
+            "20000 {name}: antes {old:.4} s (chave até {old_len}) · agora {new:.4} s (chave até {new_len})"
+        );
     }
 }

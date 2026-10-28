@@ -20,7 +20,7 @@ pub mod table;
 pub mod timeline;
 
 pub use common::{Ctx, PointerAt, PointerKind, Reply};
-pub use item::{Item, ItemKey, ItemTone, KanbanSource, Source};
+pub use item::{Item, ItemKey, ItemTone, KanbanSource, Source, Target};
 
 use ph2d_editor_core::doc_surface::KeyInput;
 use ph2d_editor_core::zones::Rect;

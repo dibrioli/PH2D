@@ -405,6 +405,10 @@ pub struct VecState {
     /// A tool Regras (W4.6): a escolha, a regra escolhida, o hover e o último plano dos gizmos.
     pub cad_tool: crate::cad_tool::CadTool,
 
+    /// O arranjo do HUD (W5.5): a seta puxada, a escolhida e o plano; e o retrato que o passe do arranjo publicou.
+    pub hud_tool: crate::hud_tool::HudTool,
+    pub hud_visto: Vec<ph2d_ecs::hud_arranjo::Visto>,
+
     /// Edição de texto em curso (modo `DrawMode::Text`): o ponto de inserção, o
     /// conteúdo e os glyphs já na cena. `None` = sem cursor de texto ativo.
     pub text_edit: Option<crate::text_edit::VecTextEdit>,

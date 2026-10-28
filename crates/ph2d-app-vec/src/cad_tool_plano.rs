@@ -608,6 +608,7 @@ pub fn draw(
     text: &mut TextSystem,
     target: &mut ph2d_vector::VectorScene,
 ) {
+    crate::hud_tool::draw(vec, cam, hero, target); // as setas do HUD (W5.5) pela mesma porta
     let tool: &CadTool = &vec.cad_tool;
     let ativa = vec.draw_config.mode == ph2d_tool_vector::DrawMode::Rules;
     if scene.regras().is_empty() && !ativa {

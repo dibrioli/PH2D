@@ -5976,6 +5976,7 @@ dependencies = [
  "ph2d-entity-visibility",
  "ph2d-gpu",
  "ph2d-host",
+ "ph2d-hud-layout",
  "ph2d-i18n",
  "ph2d-image-import",
  "ph2d-input",

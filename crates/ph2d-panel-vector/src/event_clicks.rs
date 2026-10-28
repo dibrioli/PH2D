@@ -106,6 +106,7 @@ fn is_mode_pill(id: ph2d_a11y::NodeId) -> bool {
             || x == ph2d_tool_vector::ids::VECTOR_MODE_BUCKET
             || x == ph2d_tool_vector::ids::VECTOR_MODE_EYEDROPPER
             || x == ph2d_tool_vector::ids::VECTOR_MODE_RULES
+            || x == ph2d_tool_vector::ids::VECTOR_MODE_HUD
             // As portas da cor (D10: `Shift+X` · `D`) — a ferramenta troca/repõe.
             || x == ph2d_tool_vector::ids::VECTOR_COLOUR_SWAP
             || x == ph2d_tool_vector::ids::VECTOR_COLOUR_DEFAULT

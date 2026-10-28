@@ -143,6 +143,8 @@ ph2d-vec-text = { path = "../ph2d-vec-text" }
 # crate declarou a dependência como obrigatória por eu ter lido só o `use` do ficheiro e não o
 # `mod` que o declara: *a condição de compilação de um módulo não está escrita nele.*
 [dev-dependencies]
+# O gate da ferramenta do HUD confere que juntar uma seta não mexe no desenho (o solver do arranjo).
+ph2d-hud-layout = { path = "../ph2d-hud-layout" }
 # A régua lexical do HR-15, para o gate por crate (`tests/it/`).
 ph2d-label-census = { path = "../ph2d-label-census" }
 # ⚠️ Só a sonda do anel da Remoção de fundo sobre a arte dobrada a usa (`smoke_bone_paint_pincel_tests`):

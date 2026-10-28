@@ -139,6 +139,9 @@ pub enum DrawMode {
     /// Radius); os selos e as cotas desenham-se no canvas e escolhem-se ali. É um modo pela razão do Width: os
     /// selos e as cotas competiriam com as âncoras do Node pelo mesmo clique.
     Rules,
+    /// ⭐ **O arranjo do HUD** (W5.5, ADR-0194): puxar uma seta de um elemento de um canvas de HUD para um irmão
+    /// prende-os (ao lado, não invade, centrados); as setas desenham-se no canvas e escolhem-se ali.
+    HudLayout,
 }
 
 impl DrawMode {
@@ -171,6 +174,7 @@ impl DrawMode {
         Self::Frame,
         Self::Eyedropper,
         Self::Rules,
+        Self::HudLayout,
     ];
 
     /// **A forma que ESTE modo desenha** — `None` quando o gesto não produz forma nenhuma.
@@ -289,10 +293,11 @@ mod all_tests {
                 | DrawMode::Cut
                 | DrawMode::Frame
                 | DrawMode::Eyedropper
-                | DrawMode::Rules => 1,
+                | DrawMode::Rules
+                | DrawMode::HudLayout => 1,
             };
         }
-        assert_eq!(vistos, 18, "o vocabulario mudou — reveja quem o itera");
+        assert_eq!(vistos, 19, "o vocabulario mudou — reveja quem o itera");
         // …e sem repetidos: uma variante duplicada na lista faria todo censo medi-la duas vezes.
         let mut ordenada: Vec<String> = DrawMode::ALL.iter().map(|m| format!("{m:?}")).collect();
         ordenada.sort();

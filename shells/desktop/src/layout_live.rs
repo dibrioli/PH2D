@@ -151,7 +151,7 @@ pub(crate) struct LayoutLive {
     /// nenhum canvas ancora, que é a mesma lei que a raiz obedece.
     pub(crate) vista: Option<ph2d_app_components::hud_bridge::View>,
     /// O arranjo dos irmãos do HUD (ADR-0194): um solver vivo por canvas, entre quadros.
-    arranjos: ph2d_app_components::hud_arranjo::Arranjos,
+    pub(crate) arranjos: ph2d_app_components::hud_arranjo::Arranjos,
     /// Quantos filhos ANCORADOS o último passe moveu (o braço do W3).
     anchored: usize,
     /// **Quanto o conteúdo passa da moldura**, por moldura que flui — MEDIDO por este passe, em

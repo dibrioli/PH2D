@@ -212,6 +212,8 @@ pub mod cad_cores;
 /// A tool Regras (W4.6): a escolha, as regras possíveis, o quadro, o press, o Delete.
 pub mod cad_tool;
 mod cad_tool_pinta;
+pub mod hud_tool;
+mod hud_tool_pinta;
 /// Os gizmos das regras: o plano (o que se pinta é o que se acerta) e o desenho.
 pub mod cad_tool_plano;
 pub mod edit_marks;

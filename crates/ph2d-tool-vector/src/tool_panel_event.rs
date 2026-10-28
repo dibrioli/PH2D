@@ -205,6 +205,9 @@ impl VectorTool {
             PanelEvent::Click(id) if id == crate::ids::VECTOR_MODE_RULES => {
                 self.mode = DrawMode::Rules;
             }
+            PanelEvent::Click(id) if id == crate::ids::VECTOR_MODE_HUD => {
+                self.mode = DrawMode::HudLayout;
+            }
             // Stroke cap / join segmented rows + Dash slider. These are Style →
             // restyle the selected path (mirror of colour/width).
             PanelEvent::Click(id) if id == crate::ids::VECTOR_ALIGN_CENTRE => {

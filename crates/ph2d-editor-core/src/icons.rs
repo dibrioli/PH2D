@@ -269,6 +269,7 @@ pub enum IconId {
     VectorPen,
     VectorPencil,
     VectorRules,
+    VectorHud,
     VectorShape,
     VectorTrim,
     VectorWidth,

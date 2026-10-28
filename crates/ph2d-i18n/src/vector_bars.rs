@@ -17,6 +17,17 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         "panel.vector.cad.value" => "Value",
         "panel.vector.cad.delete" => "Delete rule",
+        "panel.vector.mode.hud" => "HUD Layout",
+        "panel.vector.hint.hud" => {
+            "Drag from one HUD element to another: keep them beside \u{00b7} click an arrow, then pick how they hold \u{00b7} Delete: remove it"
+        }
+        "panel.vector.hint.hud_refused" => {
+            "That arrow would close a circle (each one beside the other) \u{00b7} pick another pair"
+        }
+        "panel.vector.hud.beside" => "Beside",
+        "panel.vector.hud.apart" => "Don't overlap",
+        "panel.vector.hud.centre" => "Centre across",
+        "panel.vector.hud.delete" => "Delete arrow",
         "panel.vector.hint.select" => {
             "Click: pick \u{00b7} Shift+click: add \u{00b7} Drag: move, scale or rotate"
         }

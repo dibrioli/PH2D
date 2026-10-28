@@ -371,6 +371,7 @@ const ALL_ICONS: &[IconId] = &[
     IconId::VectorPen,
     IconId::VectorPencil,
     IconId::VectorRules,
+    IconId::VectorHud,
     IconId::VectorShape,
     IconId::VectorTrim,
     IconId::VectorWidth,

@@ -558,6 +558,9 @@ pub const VECTOR_MODE_WIDTH: NodeId = hash_node_id("vector.mode.width");
 /// **Regras** (W4.6) — as regras de desenho: escolher pontos/lados e prendê-los.
 pub const VECTOR_MODE_RULES: NodeId = hash_node_id("vector.mode.rules");
 
+/// **O arranjo do HUD** (W5.5) — setas entre os elementos de um canvas de HUD.
+pub const VECTOR_MODE_HUD: NodeId = hash_node_id("vector.mode.hud");
+
 // ── A TINTA DO TRAÇO (plano 35, wave D) ────────────────────────────────────────
 //
 // ⚠️ **Um `segmented` e não um checkbox**, pela MESMA lei que escolheu o checkbox acima, aplicada ao

@@ -446,6 +446,8 @@ pub struct ShapeHandleInput {
     /// O último press numa alça (instante, alça, forma) — o par do duplo-clique: o canvas não
     /// emite `DoubleClick` (é evento de widget), então ele conta-se aqui.
     last: Option<(u128, usize, VecPathId)>,
+    /// Quantos soltares do botão houve (a ferramenta do HUD fecha a seta no quadro seguinte a um).
+    soltos: u32,
 }
 
 /// O mundo que as portas tocam (a shell parte o `gfx`; o resto vem do `VecState`).
@@ -506,7 +508,14 @@ impl ShapeHandleInput {
 
     /// O soltar: o arrasto acaba (o passo de undo fecha com o botão). `true` = havia arrasto.
     pub fn release(&mut self) -> bool {
+        self.soltos = self.soltos.wrapping_add(1);
         self.grab.take().is_some()
+    }
+
+    /// O contador de soltares (ver o campo).
+    #[must_use]
+    pub fn soltos(&self) -> u32 {
+        self.soltos
     }
 
     /// O `Esc` a meio do arrasto: os campos voltam aos do press e o arrasto acaba. `true` =
@@ -631,6 +640,9 @@ pub mod on {
         if vec.draw_config.mode == ph2d_tool_vector::DrawMode::Rules {
             return crate::cad_tool::press(vec, w);
         }
+        if vec.draw_config.mode == ph2d_tool_vector::DrawMode::HudLayout {
+            return crate::hud_tool::press(vec, w);
+        }
         let (input, world) = split(vec, sim, scene);
         input.press(world, w, px_to_world, now_ns)
     }
@@ -644,6 +656,9 @@ pub mod on {
         mods: Mods,
         px_to_world: f64,
     ) -> bool {
+        if vec.draw_config.mode == ph2d_tool_vector::DrawMode::HudLayout {
+            return crate::hud_tool::drag(vec, w);
+        }
         let (input, world) = split(vec, sim, scene);
         input.drag(world, w, mods, px_to_world)
     }
@@ -652,6 +667,9 @@ pub mod on {
     pub fn escape(vec: &mut VecState, sim: &mut SimWorld, scene: &mut VecScene) -> bool {
         if vec.draw_config.mode == ph2d_tool_vector::DrawMode::Rules {
             return crate::cad_tool::escape(vec);
+        }
+        if vec.draw_config.mode == ph2d_tool_vector::DrawMode::HudLayout {
+            return crate::hud_tool::escape(vec);
         }
         let (input, world) = split(vec, sim, scene);
         input.escape(world)

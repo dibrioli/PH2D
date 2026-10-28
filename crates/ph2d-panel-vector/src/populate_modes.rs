@@ -61,7 +61,9 @@ pub(super) fn mode_buttons(store: &mut WidgetStore) {
     // exactamente porque o bug #29 mostrou que nenhum outro gate a vê.
     // **Regras** (W4.6): o pill e os botões das regras da ④ e o número da cota na ②.
     button(store, ph2d_tool_vector::ids::VECTOR_MODE_RULES);
+    button(store, ph2d_tool_vector::ids::VECTOR_MODE_HUD);
     crate::state_cad::populate(store);
+    crate::state_hud::populate(store);
 }
 
 /// **REGISTA os widgets das SETAS do Morph** (plano 32 W4) — o pool inteiro, de antemão.

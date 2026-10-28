@@ -333,7 +333,14 @@ pub fn canal_da_escolhida() -> Option<ph2d_timeline::PropKind> {
 
 /// ⭐ **Um quadro da tool**: drena os pedidos da barra, larga o que deixou de existir (undo, um ponto apagado),
 /// acha o hover pelo último plano e publica a ④/② (a vista, a semente do número, o foco pedido pelo clique).
-pub fn frame(scene: &mut VecScene, vec: &mut VecState, xf: &VecXforms, hero: &mut HeroScreen) {
+pub fn frame(
+    scene: &mut VecScene,
+    sim: &mut ph2d_ecs::SimWorld,
+    vec: &mut VecState,
+    xf: &VecXforms,
+    hero: &mut HeroScreen,
+) {
+    crate::hud_tool::frame(sim, vec); // a irmã do HUD (W5.5) pela mesma porta
     let u = Unidades::of(hero);
     let ativa = vec.draw_config.mode == DrawMode::Rules;
     let t = &mut vec.cad_tool;

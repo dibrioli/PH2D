@@ -39,7 +39,7 @@ use std::cell::Cell;
 
 /// ① **A coluna**, por família — a forma de cada ferramenta é o ícone dela, a cor é a família.
 /// `(modo, id, ícone, família, chave do nome)`.
-pub const TOOLS: [(DrawMode, NodeId, IconId, BarFamily, &str); 18] = [
+pub const TOOLS: [(DrawMode, NodeId, IconId, BarFamily, &str); 19] = [
     (
         DrawMode::Select,
         ids::VECTOR_MODE_SELECT,
@@ -116,6 +116,13 @@ pub const TOOLS: [(DrawMode, NodeId, IconId, BarFamily, &str); 18] = [
         IconId::VectorRules,
         BarFamily::Build,
         "panel.vector.mode.rules",
+    ),
+    (
+        DrawMode::HudLayout,
+        ids::VECTOR_MODE_HUD,
+        IconId::VectorHud,
+        BarFamily::Build,
+        "panel.vector.mode.hud",
     ),
     (
         DrawMode::Cut,
@@ -216,6 +223,7 @@ pub fn hint_key(mode: DrawMode) -> &'static str {
         DrawMode::Frame => "panel.vector.hint.frame",
         DrawMode::Eyedropper => "panel.vector.hint.eyedropper",
         DrawMode::Rules => "panel.vector.hint.rules",
+        DrawMode::HudLayout => crate::state_hud::dica(),
     }
 }
 
@@ -394,6 +402,7 @@ pub fn tool_bars(store: &WidgetStore, selection: Option<Rect>, readout: Vec<Stri
     row_lead.extend(fields);
     // Os parâmetros da forma em foco (F9) são campos: à frente, num grupo que o separador nomeia.
     let rules = snap.mode == DrawMode::Rules;
+    let hud = snap.mode == DrawMode::HudLayout;
     let mut shape = shape_chips(&snap, store);
     if rules {
         shape.extend(crate::state_cad::chips());
@@ -418,12 +427,16 @@ pub fn tool_bars(store: &WidgetStore, selection: Option<Rect>, readout: Vec<Stri
         row_tail: sym_chips,
         actions: if rules {
             crate::state_cad::acoes()
+        } else if hud {
+            crate::state_hud::acoes()
         } else {
             actions(snap.mode, sel)
         },
         actions_below: actions_below(snap.mode, sel),
         selection: if rules {
             crate::state_cad::cad_vista().ancora
+        } else if hud {
+            crate::state_hud::hud_vista().ancora
         } else {
             selection
         },

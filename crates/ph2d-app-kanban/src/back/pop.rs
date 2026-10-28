@@ -391,16 +391,8 @@ fn content(ui: &mut Ui<'_>, back: &Back, cx: &Ctx<'_>, x: f32, y: f32) -> f32 {
                 yy += ROW + u::SMALL_GAP;
             }
             let meta = ui.meta();
-            ui.line(
-                tr("kanban.back.on_front_hint"),
-                ix,
-                yy,
-                u::META_LINE,
-                u::SMALL_PX,
-                iw,
-                meta,
-            );
-            yy += u::META_LINE + u::GAP;
+            // Explicação: quebra em linhas, nunca se elide.
+            yy += ui.text(tr("kanban.back.on_front_hint"), ix, yy, u::SMALL_PX, iw, meta).max(u::META_LINE) + u::GAP;
             yy = input_focus(
                 ui,
                 ix,
@@ -477,16 +469,8 @@ fn content(ui: &mut Ui<'_>, back: &Back, cx: &Ctx<'_>, x: f32, y: f32) -> f32 {
             );
             yy += ROW + u::SMALL_GAP;
             let meta = ui.meta();
-            ui.line(
-                tr("kanban.back.share_hint"),
-                ix,
-                yy,
-                u::META_LINE,
-                u::SMALL_PX,
-                iw,
-                meta,
-            );
-            yy += u::META_LINE;
+            // Explicação: quebra em linhas, nunca se elide.
+            yy += ui.text(tr("kanban.back.share_hint"), ix, yy, u::SMALL_PX, iw, meta).max(u::META_LINE);
         }
         Pop::Dates(..) => {}
         Pop::Scene(f) => yy = super::scene::pop(ui, back, cx, f, ix, yy, iw),

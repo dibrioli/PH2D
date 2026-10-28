@@ -77,10 +77,9 @@ const ACTIONS: [Side; 9] = [
     Side::Vote,
 ];
 
-/// Pinta a coluna a partir de `y`; devolve o fundo.
-pub(crate) fn paint(ui: &mut Ui<'_>, cx: &Ctx<'_>, x: f32, y: f32) -> f32 {
-    let mut y = y;
-    // Um modelo oferece «Create card from template» à cabeça das ações (o Trello).
+/// As ações deste cartão: um modelo oferece «Create card from template» à cabeça (o Trello); um
+/// Kanban posto num Quadro, «Convert to sticky note» no fim.
+fn actions(cx: &Ctx<'_>) -> Vec<Side> {
     let mut actions = ACTIONS.to_vec();
     if cx.card.template {
         actions.insert(0, Side::FromTemplate);
@@ -88,16 +87,40 @@ pub(crate) fn paint(ui: &mut Ui<'_>, cx: &Ctx<'_>, x: f32, y: f32) -> f32 {
     if cx.on_board {
         actions.push(Side::ToNote);
     }
+    actions
+}
+
+/// ⭐ A largura da coluna: a da maquete, ou a do rótulo mais largo (medido com a fonte que o pinta)
+/// — um rótulo nunca se corta.
+pub(crate) fn width(ui: &mut Ui<'_>, cx: &Ctx<'_>) -> f32 {
+    use crate::auto::buttons::{enabled, is_card_button};
+    let mut labels: Vec<String> = ADD
+        .iter()
+        .chain(&actions(cx))
+        .chain(&[Side::AddButton])
+        .map(|s| button(cx, *s).0)
+        .collect();
+    labels.extend(enabled(cx.k, is_card_button).into_iter().map(|(_, s)| s.name.clone()));
+    labels
+        .iter()
+        .map(|l| ui.button_w(l, true).ceil())
+        .fold(u::SIDE_W, f32::max)
+}
+
+/// Pinta a coluna de largura `w` a partir de `y`; devolve o fundo.
+pub(crate) fn paint(ui: &mut Ui<'_>, cx: &Ctx<'_>, x: f32, y: f32, w: f32) -> f32 {
+    let mut y = y;
+    let actions = actions(cx);
     for (caption, list) in [
         ("kanban.back.add_to_card", &ADD[..]),
         ("kanban.back.actions", &actions[..]),
     ] {
-        ui.caption(tr(caption), x, y, u::SIDE_W);
+        ui.caption(tr(caption), x, y, w);
         y += u::META_LINE;
         for s in list {
             let (label, icon, on) = button(cx, *s);
             ui.button(
-                Rect::new(x, y, u::SIDE_W, ROW),
+                Rect::new(x, y, w, ROW),
                 &label,
                 Some(icon),
                 BackHit::Side(*s),
@@ -107,17 +130,17 @@ pub(crate) fn paint(ui: &mut Ui<'_>, cx: &Ctx<'_>, x: f32, y: f32) -> f32 {
         }
         y += u::GAP + u::SMALL_GAP;
     }
-    buttons(ui, cx, x, y)
+    buttons(ui, cx, x, y, w)
 }
 
 /// J2 — «Buttons» (o Butler, como no Trello): cada botão de cartão ligado, e «Add button».
-fn buttons(ui: &mut Ui<'_>, cx: &Ctx<'_>, x: f32, y: f32) -> f32 {
+fn buttons(ui: &mut Ui<'_>, cx: &Ctx<'_>, x: f32, y: f32, w: f32) -> f32 {
     use crate::auto::buttons::{enabled, is_card_button};
     let mut y = y;
-    ui.caption(tr("kanban.auto.ui.buttons"), x, y, u::SIDE_W);
+    ui.caption(tr("kanban.auto.ui.buttons"), x, y, w);
     y += u::META_LINE;
     for (a, s) in enabled(cx.k, is_card_button) {
-        let r = Rect::new(x, y, u::SIDE_W, ROW);
+        let r = Rect::new(x, y, w, ROW);
         ui.button(
             r,
             &s.name,
@@ -128,7 +151,7 @@ fn buttons(ui: &mut Ui<'_>, cx: &Ctx<'_>, x: f32, y: f32) -> f32 {
         y += ROW + u::SMALL_GAP + u::HAIR;
     }
     let (label, icon, on) = button(cx, Side::AddButton);
-    let r = Rect::new(x, y, u::SIDE_W, ROW);
+    let r = Rect::new(x, y, w, ROW);
     ui.button(r, &label, Some(icon), BackHit::Side(Side::AddButton), on);
     y + ROW + u::GAP
 }

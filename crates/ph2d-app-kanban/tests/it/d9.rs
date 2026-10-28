@@ -87,3 +87,84 @@ fn d9_a_pesquisa_tem_uma_so_caixa_de_edicao() {
     let topo = m.docs().probe_rect(id.0, "menu").expect("o «…» do cabeçalho");
     assert!((caixas[0].y - topo.y).abs() < 1.0, "e é a do cabeçalho");
 }
+
+/// Os textos cortados (com reticências) numa pintura da aba que são PEDAÇOS de `frases`.
+fn cortadas(m: &mut Mesa, frases: &[&str]) -> Vec<String> {
+    use ph2d_editor_core::text_elide::elisao;
+    let ((), medidos) = elisao::medindo(|| {
+        let mut s = VectorScene::new();
+        m.pinta(&mut s);
+    });
+    medidos
+        .into_iter()
+        .filter(|x| !x.coube() && frases.iter().any(|f| f.contains(x.texto.as_str())))
+        .map(|x| x.texto)
+        .collect()
+}
+
+fn mesa_com_fontes(n: u8) -> (Mesa, KanbanId) {
+    let mut m = Mesa::new();
+    m.ts = ph2d_text::TextSystem::new();
+    let id = ph2d_app_kanban::smoke::stage(&mut m.hero, n).expect("cena");
+    m.quadros(2);
+    (m, id)
+}
+
+/// 4 — o texto que EXPLICA nunca se elide: «Mirror card» e «Card aging» quebram em linhas e a
+/// janela cresce (as escolhas longas do envelhecimento também).
+#[test]
+fn d9_as_explicacoes_das_janelas_quebram_em_linhas() {
+    use ph2d_i18n::tr;
+    let (mut m, id) = mesa_com_fontes(5);
+    toca(&mut m, id, "ClearAll");
+    m.tecla(BoardKey::Escape, sem(), None);
+    m.quadro();
+    let c = cartao(&m, id, "Design the fox");
+    foca(&mut m, id, c);
+    tecla(&mut m, 'e');
+    toca(&mut m, id, "Quick(Mirror)");
+    let mirror = [tr("kanban.w6.mirror_note")];
+    assert_eq!(cortadas(&mut m, &mirror), Vec::<String>::new(), "Mirror card");
+
+    let (mut m, id) = mesa_com_fontes(6);
+    let menu = m.docs().probe_rect(id.0, "menu").expect("menu");
+    m.clica(crate::centro(menu));
+    let linha = m
+        .docs()
+        .probe_menu_rows(id.0)
+        .into_iter()
+        .find(|(n, _)| n == "Aging")
+        .expect("Card aging…")
+        .1;
+    m.clica(crate::centro(linha));
+    let aging = [
+        tr("kanban.w6.aging_note"),
+        tr("kanban.w6.aging.off"),
+        tr("kanban.w6.aging.regular"),
+        tr("kanban.w6.aging.pirate"),
+    ];
+    assert_eq!(cortadas(&mut m, &aging), Vec::<String>::new(), "Card aging");
+}
+
+/// 4 — a coluna lateral do verso alarga para o rótulo mais largo: «Convert to sticky note» inteiro.
+#[test]
+fn d9_a_coluna_do_verso_mede_os_rotulos() {
+    use ph2d_editor_core::text_elide::elisao;
+    let (mut d, id, _) = crate::duas_janelas::Duas::new();
+    d.ts = ph2d_text::TextSystem::new();
+    let c = d.hero.documents.kanbans().get(id).unwrap().cards.values()
+        .find(|c| c.title == "Write the logline").unwrap().id;
+    d.docs().open(id);
+    d.quadros(2);
+    d.docs().open_back(id.0, c);
+    d.quadros(2);
+    assert!(
+        d.docs().probe_back_hits(id.0).iter().any(|(n, _)| n == "Side(ToNote)"),
+        "o botão está no verso"
+    );
+    let rotulo = ph2d_i18n::tr("kanban.links.to_note");
+    let ((), medidos) = elisao::medindo(|| d.quadro());
+    let cortado: Vec<_> = medidos.iter().filter(|x| !x.coube() && rotulo.contains(x.texto.as_str())).collect();
+    assert!(cortado.is_empty(), "{cortado:?}");
+    assert!(medidos.iter().any(|x| x.texto == rotulo), "o rótulo foi medido");
+}

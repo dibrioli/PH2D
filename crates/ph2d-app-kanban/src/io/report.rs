@@ -141,6 +141,7 @@ pub(crate) fn paint(
         );
         let area = Rect::new(area.x, area.y, area.w, (floor - area.y).max(0.0));
         let w = sh.w.min(area.w - 2.0 * sheet::PAD);
+        let sh = sh.fitted(ts, w);
         let h = sh.content_h().min(area.h - 2.0 * sheet::PAD);
         let rect = Rect::new(
             area.x + (area.w - w) / 2.0,

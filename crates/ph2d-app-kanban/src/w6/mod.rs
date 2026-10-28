@@ -353,6 +353,8 @@ pub(crate) fn show(
     right: bool,
     area: Rect,
 ) {
+    let fitted = s.fitted(ts, s.w.min(area.w));
+    let s = &fitted;
     let r = sheet::place(s, anchor, area, right);
     let max = (s.content_h() - r.h).max(0.0);
     let scroll = tab.w6.scroll.clamp(0.0, max);

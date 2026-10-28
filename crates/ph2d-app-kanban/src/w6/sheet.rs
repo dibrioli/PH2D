@@ -26,6 +26,8 @@ pub(crate) const ROW: f32 = 32.0;
 pub(crate) const TITLE_H: f32 = 40.0;
 pub(crate) const CAPTION_H: f32 = 28.0;
 pub(crate) const NOTE_H: f32 = 22.0;
+/// Cada linha a mais de uma nota quebrada (o texto pequeno).
+pub(crate) const NOTE_LINE_H: f32 = 16.0;
 pub(crate) const INPUT_H: f32 = 36.0;
 pub(crate) const BUTTON_GAP: f32 = 8.0;
 pub(crate) const CHECK: f32 = 16.0;
@@ -160,19 +162,73 @@ impl Sheet {
     pub fn content_h(&self) -> f32 {
         self.items.iter().map(|(i, _)| h(i)).sum::<f32>() + PAD
     }
+
+    /// ⭐ A folha à largura `w` com as explicações e as escolhas QUEBRADAS em linhas (medidas com a
+    /// fonte que as pinta): a folha cresce para baixo, nunca elide uma frase.
+    #[must_use]
+    pub fn fitted(&self, ts: &mut TextSystem, w: f32) -> Self {
+        let mut s = self.clone();
+        s.w = w;
+        let iw = w - 2.0 * PAD;
+        for (item, _) in &mut s.items {
+            match item {
+                Item::Note(t) => *t = wrap(ts, t, m::SMALL_PX, iw),
+                Item::Radio { text, .. } => *text = wrap(ts, text, m::BUTTON_TEXT_PX, iw - CHECK - GAP),
+                Item::Check {
+                    text,
+                    swatch: None,
+                    person,
+                    icon,
+                    ..
+                } => {
+                    let mut tw = iw - CHECK - GAP;
+                    if person.is_some() {
+                        tw -= AVATAR + GAP;
+                    }
+                    if icon.is_some() {
+                        tw -= m::ICON_PX + m::LABEL_GAP + GAP;
+                    }
+                    *text = wrap(ts, text, m::BUTTON_TEXT_PX, tw);
+                }
+                _ => {}
+            }
+        }
+        s
+    }
+}
+
+/// `text` quebrado a `width` como o pintor o quebra (o mesmo peso e o mesmo modo de desenho).
+fn wrap(ts: &mut TextSystem, text: &str, px: f32, width: f32) -> String {
+    let mode = ph2d_text::active_text_rendering();
+    let layout = ts.layout_for_rendering(text, px, width, ph2d_text::FontWeight::MEDIUM, mode);
+    let lines: Vec<&str> = layout
+        .lines()
+        .filter_map(|l| text.get(l.text_range()))
+        .map(str::trim_end)
+        .collect();
+    if lines.is_empty() {
+        text.to_owned()
+    } else {
+        lines.join("\n")
+    }
+}
+
+/// As linhas a mais de um texto quebrado.
+#[allow(clippy::cast_precision_loss)]
+fn more(t: &str) -> f32 {
+    t.matches('\n').count() as f32
 }
 
 fn h(i: &Item) -> f32 {
     match i {
         Item::Title(_) => TITLE_H,
         Item::Caption(_) => CAPTION_H,
-        Item::Note(_) => NOTE_H,
+        Item::Note(t) => NOTE_H + more(t) * NOTE_LINE_H,
+        Item::Check { text, .. } | Item::Radio { text, .. } => ROW + more(text) * m::LINE_H,
         Item::Input { .. } => INPUT_H + GAP,
         Item::Select { .. } => CAPTION_H + ROW + GAP / 2.0,
         Item::Button { .. } => ROW + 2.0 * BUTTON_GAP,
-        Item::Check { .. }
-        | Item::Radio { .. }
-        | Item::Segment { .. }
+        Item::Segment { .. }
         | Item::Choice { .. }
         | Item::Entry { .. }
         | Item::Keys { .. } => ROW,
@@ -218,6 +274,26 @@ fn line(
         paint_text_title_elided(ts, scene, s, x, ty, m::BUTTON_TEXT_PX, w, color);
     } else {
         paint_text_elided(ts, scene, s, x, ty, m::BUTTON_TEXT_PX, w, color);
+    }
+}
+
+/// Um texto quebrado (por [`Sheet::fitted`]) numa linha de escolha: a 1.ª ao centro da linha de
+/// `ROW`, as outras por baixo, `LINE_H` a `LINE_H`.
+fn lines(
+    scene: &mut VectorScene,
+    ts: &mut TextSystem,
+    s: &str,
+    (x, y, w, row): (f32, f32, f32, f32),
+    color: ph2d_vector::Color,
+) {
+    if !s.contains('\n') {
+        line(scene, ts, s, (x, y, w, row), color, false);
+        return;
+    }
+    let mut ly = y;
+    for l in s.split('\n') {
+        line(scene, ts, l, (x, ly, w, ROW), color, false);
+        ly += m::LINE_H;
     }
 }
 
@@ -316,8 +392,12 @@ pub(crate) fn paint(
                 paint_text_title_elided(ts, scene, t, x, ty, m::SMALL_PX, iw, meta);
             }
             Item::Note(t) => {
-                let ty = text_top(ts, y, ih, m::SMALL_PX);
-                paint_text_elided(ts, scene, t, x, ty, m::SMALL_PX, iw, meta);
+                let mut ly = y;
+                for l in t.split('\n') {
+                    let ty = text_top(ts, ly, NOTE_H, m::SMALL_PX);
+                    paint_text_elided(ts, scene, l, x, ty, m::SMALL_PX, iw, meta);
+                    ly += NOTE_LINE_H;
+                }
             }
             Item::Input {
                 field,
@@ -365,7 +445,7 @@ pub(crate) fn paint(
                 if on_hover {
                     fill_rounded_rect(scene, row, 0.0, raised);
                 }
-                let b = Rect::new(x, y + (ih - CHECK) / 2.0, CHECK, CHECK);
+                let b = Rect::new(x, y + (ROW.min(ih) - CHECK) / 2.0, CHECK, CHECK);
                 checkbox(scene, theme, b, *on, false);
                 let mut tx = b.x + CHECK + GAP;
                 if let Some(col) = swatch {
@@ -398,23 +478,16 @@ pub(crate) fn paint(
                         crate::paint::icon(scene, *ic, ir, c(theme, *ink));
                         tx += d + GAP;
                     }
-                    line(scene, ts, text, (tx, y, iw - (tx - x), ih), fg, false);
+                    lines(scene, ts, text, (tx, y, iw - (tx - x), ih), fg);
                 }
             }
             Item::Radio { on, text } => {
                 if on_hover {
                     fill_rounded_rect(scene, row, 0.0, raised);
                 }
-                let b = Rect::new(x, y + (ih - CHECK) / 2.0, CHECK, CHECK);
+                let b = Rect::new(x, y + (ROW - CHECK) / 2.0, CHECK, CHECK);
                 checkbox(scene, theme, b, *on, true);
-                line(
-                    scene,
-                    ts,
-                    text,
-                    (b.x + CHECK + GAP, y, iw - CHECK - GAP, ih),
-                    fg,
-                    false,
-                );
+                lines(scene, ts, text, (b.x + CHECK + GAP, y, iw - CHECK - GAP, ih), fg);
             }
             Item::Segment { label: l, options } => {
                 let ty = text_top(ts, y, ih, m::SMALL_PX);

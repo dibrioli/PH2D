@@ -208,9 +208,10 @@ fn modal_body(ui: &mut Ui<'_>, back: &mut Back, cx: &Ctx<'_>, x: f32, top: f32, 
     }
     y = header(ui, back, cx, x, y, w, close);
     let main_x = x + u::PAD_L + u::MAIN_INDENT;
-    let side_x = x + w - u::PAD_R - u::SIDE_W;
+    let side_w = super::side::width(ui, cx);
+    let side_x = x + w - u::PAD_R - side_w;
     let main_w = (side_x - u::COL_GAP - main_x).max(0.0);
-    let side_end = super::side::paint(ui, cx, side_x, y);
+    let side_end = super::side::paint(ui, cx, side_x, y, side_w);
     let mut ym = y;
     ym = chips(ui, cx, main_x, ym, main_w);
     ym = description(ui, back, main_x, ym, main_w);

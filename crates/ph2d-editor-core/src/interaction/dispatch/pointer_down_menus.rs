@@ -322,6 +322,9 @@ pub(super) fn click_belongs_to_the_open_menu(
                 || id == crate::ids::CTX_SEND_BOARD_NEW
                 || crate::ids::CTX_SEND_BOARD_ROWS.contains(&id)
         }
+        ContextMenuKind::NotesToCard => {
+            id == crate::ids::CTX_NOTE_CARD_SEARCH || crate::ids::CTX_NOTE_CARD_ROWS.contains(&id)
+        }
         ContextMenuKind::ConfirmDeleteBoard { .. } => {
             id == crate::ids::CTX_MENU_BOARD_DELETE_CONFIRM
                 || id == crate::ids::CTX_MENU_BOARD_DELETE_CANCEL

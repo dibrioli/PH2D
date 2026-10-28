@@ -239,7 +239,6 @@ fn a_card_becomes_a_note_and_undo_gives_the_card_back() {
         card: cards[0],
     };
     request_card_to_note(r);
-    assert!(serve(&mut t.hero));
     t.paint();
     assert!(t.titles(k, l).is_empty(), "o cartão saiu");
     let note = selected_notes(&mut t.hero);
@@ -278,4 +277,53 @@ fn a_card_becomes_a_note_and_undo_gives_the_card_back() {
         ["Fix jump (edited)"],
         "e o trabalho no cartão nunca se apaga"
     );
+}
+
+/// ⭐ A nota que um cartão vira nasce já da altura do texto (a medida do ajuste ao texto), não
+/// quadrada à espera da próxima edição; um cartão curto fica na quadrada de nascença.
+#[test]
+fn a_note_born_from_a_card_fits_its_text_at_birth() {
+    let mut t = T::new();
+    let (k, l) = t.kanban();
+    let long = format!("Long\n{}", "the hero falls through the floor ".repeat(12));
+    t.note(&long, 3, 0.0);
+    t.note("Short", 3, 400.0);
+    let cards = notes_to_cards(&mut t.hero, k, l, Moment(5));
+    for c in &cards {
+        request_card_to_note(CardRef {
+            kanban: k,
+            card: *c,
+        });
+    }
+    t.paint();
+    let board = t.hero.documents.active_board().unwrap();
+    let notes: Vec<_> = board
+        .doc
+        .live()
+        .filter(|e| e.shape().is_some_and(|s| s.kind == ShapeType::Sticky))
+        .map(|e| (e.shape().unwrap().text.as_str().to_owned(), e.w, e.h))
+        .collect();
+    assert_eq!(notes.len(), 2, "os dois cartões viraram notas");
+    let (_, w, h) = notes.iter().find(|n| n.0.starts_with("Long")).unwrap();
+    assert!(h > &(w * 1.5), "a longa cresceu ao nascer: {w} × {h}");
+    let (_, w, h) = notes.iter().find(|n| n.0 == "Short").unwrap();
+    assert!((h - w).abs() < 1e-9, "a curta fica quadrada: {w} × {h}");
+}
+
+/// Uma macro pedida abre o painel Macros (fechado por omissão) e fica à espera de o painel a
+/// drenar ao pintar (`ph2d-panel-macros`, `seam_kanban`); o catálogo tem a biblioteca publicada.
+#[test]
+fn a_macro_asked_by_a_card_opens_the_macros_panel() {
+    let mut t = T::new();
+    assert!(
+        !t.hero.is_panel_visible("macros"),
+        "controlo: nasce fechado"
+    );
+    publish_macros(["Walk".to_owned()].into());
+    open(&Target::Macro("Walk".into()));
+    t.paint();
+    assert!(t.hero.is_panel_visible("macros"));
+    assert!(pending(Family::Macro), "quem drena é o painel");
+    assert!(catalog(&t.hero.documents).macros.contains("Walk"));
+    assert_eq!(take(Family::Macro), vec![Target::Macro("Walk".into())]);
 }

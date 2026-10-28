@@ -24,6 +24,7 @@ mod esqueletos;
 mod explicacoes;
 mod formatar;
 mod gramatica;
+mod kanban;
 mod linha_longa;
 mod lista;
 mod onda1;

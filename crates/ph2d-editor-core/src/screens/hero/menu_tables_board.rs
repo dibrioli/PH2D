@@ -47,6 +47,20 @@ pub(super) const BOARD_KANBAN_ROWS: &[MenuRow] = &[
     menu_row(ids::CTX_MENU_BOARD_EL_DELETE, "board.el.delete"),
 ];
 
+/// W11 do Kanban — numa NOTA ADESIVA: convertê-la (e as outras seleccionadas) em cartões à cabeça.
+pub(super) const BOARD_NOTE_ROWS: &[MenuRow] = &[
+    menu_row(ids::CTX_MENU_BOARD_EL_TO_CARD, "kanban.links.to_card"),
+    menu_row(ids::CTX_MENU_BOARD_EL_COPY, "board.el.copy"),
+    menu_row(ids::CTX_MENU_BOARD_EL_PASTE, "board.el.paste"),
+    menu_row(ids::CTX_MENU_BOARD_EL_DUPLICATE, "board.el.duplicate"),
+    menu_row(ids::CTX_MENU_BOARD_EL_COPY_TO, "board.el.copy_to"),
+    menu_row(ids::CTX_MENU_BOARD_EL_MOVE_TO, "board.el.move_to"),
+    menu_row(ids::CTX_MENU_BOARD_EL_FRONT, "board.el.front"),
+    menu_row(ids::CTX_MENU_BOARD_EL_BACK, "board.el.back"),
+    menu_row(ids::CTX_MENU_BOARD_EL_LOCK, "board.el.lock"),
+    menu_row(ids::CTX_MENU_BOARD_EL_DELETE, "board.el.delete"),
+];
+
 /// W23 B5(2) — numa SETA, as mesmas e, antes de travar, a que deita os textos do outro modo (os
 /// textos estão ao longo da linha: a linha oferece a horizontal).
 pub(super) const BOARD_ARROW_ALONG_ROWS: &[MenuRow] = &[

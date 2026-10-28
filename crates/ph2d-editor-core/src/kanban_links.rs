@@ -11,10 +11,12 @@
 //! no Quadro, cujo lado do Kanban [`serve`] acompanha.
 
 use std::cell::RefCell;
+use std::collections::BTreeSet;
 
 use ph2d_board_model::{BoardId, ElementId};
-use ph2d_kanban_links::Catalog;
-use ph2d_kanban_model::Target;
+pub use ph2d_kanban_links::Catalog;
+pub use ph2d_kanban_model::Target;
+use ph2d_text::TextSystem;
 
 use crate::documents::Documents;
 use crate::screens::hero::HeroScreen;
@@ -53,6 +55,7 @@ thread_local! {
     static ASKS: RefCell<Vec<Target>> = const { RefCell::new(Vec::new()) };
     static BOARDS: RefCell<Vec<BoardId>> = const { RefCell::new(Vec::new()) };
     static SCENE: RefCell<Catalog> = RefCell::new(Catalog::default());
+    static MACROS: RefCell<BTreeSet<String>> = const { RefCell::new(BTreeSet::new()) };
 }
 
 /// ⭐ Pede «abrir/seleccionar/focar» o alvo de uma ligação ao dono dele.
@@ -85,16 +88,28 @@ pub fn take(f: Family) -> Vec<Target> {
     })
 }
 
+/// Há pedidos da família `f` por drenar? (o painel Macros abre-se antes de o drenar ao pintar)
+#[must_use]
+pub fn pending(f: Family) -> bool {
+    ASKS.with(|q| q.borrow().iter().any(|t| family_of(t) == Some(f)))
+}
+
 /// Quem tem o mundo publica o que a cena tem agora (objectos, scripts, macros, clips); os Quadros
 /// vêm do projecto em [`catalog`].
 pub fn publish_scene(cat: Catalog) {
     SCENE.with(|s| *s.borrow_mut() = cat);
 }
 
-/// O catálogo do projecto: o da cena publicado e os Quadros de `docs`.
+/// A família Macros publica os nomes da biblioteca (somam-se aos de [`publish_scene`]).
+pub fn publish_macros(names: BTreeSet<String>) {
+    MACROS.with(|m| *m.borrow_mut() = names);
+}
+
+/// O catálogo do projecto: o da cena publicado, as macros e os Quadros de `docs`.
 #[must_use]
 pub fn catalog(docs: &Documents) -> Catalog {
     let mut cat = SCENE.with(|s| s.borrow().clone());
+    MACROS.with(|m| cat.macros.extend(m.borrow().iter().cloned()));
     cat.set_boards(docs.boards());
     cat
 }
@@ -111,6 +126,20 @@ pub fn serve(hero: &mut HeroScreen) -> bool {
         }
     }
     any |= notes::serve(hero);
+    any
+}
+
+/// Na pintura, a cada imagem: os cartões pedidos viram notas (medidas pelo moldador) e um pedido
+/// de macro abre o painel Macros, que o drena ao pintar (`ph2d-panel-macros`). `true` = mudou algo.
+pub(crate) fn run_pending(hero: &mut HeroScreen, ts: &mut TextSystem) -> bool {
+    let mut any = notes::run_pending(hero, ts);
+    if pending(Family::Macro) {
+        let node = crate::ids::MACROS_PANEL;
+        hero.panel_visibility.insert("macros", true);
+        crate::screens::hero::dock_reopen::reopen_for(hero, node);
+        hero.store.bump_panel_z(node);
+        any = true;
+    }
     any
 }
 

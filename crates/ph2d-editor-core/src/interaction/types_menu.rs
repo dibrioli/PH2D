@@ -355,6 +355,11 @@ pub enum ContextMenuKind {
     },
     /// W4 do Kanban — o mesmo num KANBAN do quadro, com «Open in tab» à cabeça.
     BoardKanban,
+    /// W11 do Kanban — o mesmo numa NOTA ADESIVA, com «Convert to card» à cabeça.
+    BoardNote,
+    /// W11 do Kanban — o modal que escolhe o Kanban e a lista das notas seleccionadas — desenha o
+    /// próprio corpo (`board_note_card::paint`, que conhece os Kanbans).
+    NotesToCard,
     /// A pergunta *«apagar este quadro?»* — desenha o próprio corpo
     /// (`document_tabs_menu::paint_confirm_delete`, que conhece o nome).
     ConfirmDeleteBoard {
@@ -480,6 +485,8 @@ impl ContextMenuKind {
         Self::BoardElement,
         Self::BoardArrow { along: true },
         Self::BoardKanban,
+        Self::BoardNote,
+        Self::NotesToCard,
         Self::ConfirmDeleteBoard { board: 0 },
         Self::SendToBoard { row: NodeId(1) },
         Self::SendSelection {

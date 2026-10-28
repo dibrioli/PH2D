@@ -216,9 +216,10 @@ impl crate::App {
                 motion,
             },
         );
-        // ⭐ O EDITOR DE SCRIPTS (a família); `filed` = o projecto tem ficheiro (Ctrl+S grava).
         let filed = self.project_path.is_some();
         ph2d_app_code::frame(sim, script.as_mut(), hero, toasts, filed);
+        let (tl, intents) = (&self.timeline.doc, &mut self.timeline_intents);
+        ph2d_app_components::kanban_scene::frame(sim, hero, tl, intents);
         ph2d_app_kanban::frame(hero);
         ph2d_app_planner::frame(hero, toasts);
         // ⭐ **A LUZ** (Luz 2D): a secção do Inspector e a recusa do solver, que sobe como aviso.

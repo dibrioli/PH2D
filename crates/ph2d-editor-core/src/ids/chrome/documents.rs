@@ -46,6 +46,25 @@ pub const CTX_MENU_BOARD_EL_TEXT_ALONG: NodeId = hash_node_id("ctx_menu_board_el
 pub const CTX_MENU_BOARD_EL_TEXT_LEVEL: NodeId = hash_node_id("ctx_menu_board_el_text_level");
 /// W4 do Kanban — abrir o Kanban do quadro na aba dele.
 pub const CTX_MENU_BOARD_EL_OPEN_TAB: NodeId = hash_node_id("ctx_menu_board_el_open_tab");
+/// W11 do Kanban — «Convert to card» numa nota adesiva, e o modal que escolhe o Kanban e a lista.
+pub const CTX_MENU_BOARD_EL_TO_CARD: NodeId = hash_node_id("ctx_menu_board_el_to_card");
+pub const CTX_NOTE_CARD_SEARCH: NodeId = hash_node_id("ctx_note_card_search");
+/// As listas do modal, depois da busca: as doze do modal «Send to board», que cabem num ecrã de
+/// 720 px com o título e a busca; o resto encontra-se escrevendo.
+pub const CTX_NOTE_CARD_ROWS: [NodeId; 12] = [
+    hash_node_id("ctx_note_card_row_0"),
+    hash_node_id("ctx_note_card_row_1"),
+    hash_node_id("ctx_note_card_row_2"),
+    hash_node_id("ctx_note_card_row_3"),
+    hash_node_id("ctx_note_card_row_4"),
+    hash_node_id("ctx_note_card_row_5"),
+    hash_node_id("ctx_note_card_row_6"),
+    hash_node_id("ctx_note_card_row_7"),
+    hash_node_id("ctx_note_card_row_8"),
+    hash_node_id("ctx_note_card_row_9"),
+    hash_node_id("ctx_note_card_row_10"),
+    hash_node_id("ctx_note_card_row_11"),
+];
 /// W23 B15 — mandar a selecção a outro quadro (copiar / mover) e o botão do aviso do quadro.
 pub const CTX_MENU_BOARD_EL_COPY_TO: NodeId = hash_node_id("ctx_menu_board_el_copy_to");
 pub const CTX_MENU_BOARD_EL_MOVE_TO: NodeId = hash_node_id("ctx_menu_board_el_move_to");

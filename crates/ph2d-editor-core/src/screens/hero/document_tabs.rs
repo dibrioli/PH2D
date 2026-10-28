@@ -216,6 +216,7 @@ pub fn populate(store: &mut WidgetStore) {
     }
     super::document_tabs_menu::populate(store);
     super::send_to_board::populate(store);
+    super::board_note_card::populate(store);
     super::board_bar::populate(store);
     super::board_alert::populate(store);
     super::board_video_bar::populate(store);

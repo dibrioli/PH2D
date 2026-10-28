@@ -14,6 +14,8 @@ use ph2d_kanban_model::{
     ListId, Meta, Moment, Record, RecordId,
 };
 
+use ph2d_text::TextSystem;
+
 use crate::screens::hero::HeroScreen;
 use crate::screens::hero::board_view::editor;
 
@@ -202,14 +204,20 @@ pub fn notes_to_cards(
     cards
 }
 
-/// «Convert to sticky note» no menu de um cartão (servido no Quadro activo, em [`serve`]).
+/// «Convert to sticky note» no menu de um cartão (servido no Quadro activo, na pintura seguinte:
+/// a nota mede o texto com o moldador).
 pub fn request_card_to_note(card: CardRef) {
     TO_NOTE.with(|q| q.borrow_mut().push(card));
 }
 
 /// O cartão `r` vira uma nota no centro da vista do Quadro activo (cor da 1.ª etiqueta, texto =
 /// título e descrição) e sai do Kanban — um passo de desfazer no Quadro.
-fn card_to_note(hero: &mut HeroScreen, r: CardRef, nth: usize) -> Option<ElementId> {
+fn card_to_note(
+    hero: &mut HeroScreen,
+    ts: &mut TextSystem,
+    r: CardRef,
+    nth: usize,
+) -> Option<ElementId> {
     let shared = hero.documents.kanbans_shared();
     let theme = hero.theme;
     let (fill, text) = {
@@ -226,7 +234,7 @@ fn card_to_note(hero: &mut HeroScreen, r: CardRef, nth: usize) -> Option<Element
     let ed = editor(&mut live.editor, theme);
     let step = ph2d_board_model::STICKY_SIDE * 1.1 * nth as f64;
     let centre = [board.camera.center_x + step, board.camera.center_y];
-    let el = ed.note_for_card(&mut board.doc, fill, text, centre);
+    let el = ed.note_for_card(&mut board.doc, ts, fill, text, centre);
     let id = el.id;
     let history = live.histories.entry(board.id).or_default();
     history.apply(&mut board.doc, vec![BoardOp::Put(el)]);
@@ -248,13 +256,19 @@ fn card_to_note(hero: &mut HeroScreen, r: CardRef, nth: usize) -> Option<Element
     Some(id)
 }
 
-/// Converte os cartões pedidos e acompanha, no Kanban, o desfazer/refazer das conversões.
-pub(super) fn serve(hero: &mut HeroScreen) -> bool {
+/// Converte os cartões pedidos em notas (na pintura do Quadro activo, com o moldador).
+pub(super) fn run_pending(hero: &mut HeroScreen, ts: &mut TextSystem) -> bool {
     let asks = TO_NOTE.with(|q| std::mem::take(&mut *q.borrow_mut()));
     let mut any = false;
     for (i, r) in asks.into_iter().enumerate() {
-        any |= card_to_note(hero, r, i).is_some();
+        any |= card_to_note(hero, ts, r, i).is_some();
     }
+    any
+}
+
+/// Acompanha, no Kanban, o desfazer/refazer das conversões.
+pub(super) fn serve(hero: &mut HeroScreen) -> bool {
+    let mut any = false;
     let shared = hero.documents.kanbans_shared();
     let boards = hero.documents.boards();
     PAIRS.with(|v| {

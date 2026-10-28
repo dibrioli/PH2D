@@ -16,12 +16,10 @@
 //! └──────────────────────────────────────────────────┘
 //! ```
 //!
-//! Region painters live in sibling sub-modules
-//! ([`canvas`], [`topbar`], [`left_rail`], [`bottom_hud`],
-//! [`selection`]). Inspector + Hierarchy panels live in their own
-//! crates (`ph2d-panel-inspector`, `ph2d-panel-hierarchy`) per
-//! ADR-0029 Phase C.1/C.2. Shared layout constants + small helpers
-//! in [`style`]; stable `NodeId`s in [`ids`]. Hardcoded mockup content
+//! Region painters live in sibling sub-modules ([`canvas`], [`topbar`], [`left_rail`],
+//! [`bottom_hud`], [`selection`]). Inspector + Hierarchy panels live in their own crates
+//! (`ph2d-panel-inspector`, `ph2d-panel-hierarchy`) per ADR-0029 Phase C.1/C.2. Shared layout
+//! constants + small helpers in [`style`]; stable `NodeId`s in [`ids`]. Hardcoded mockup content
 //! stays in [`fixture`] until a pilot project picks the entity model.
 
 mod asset_drag_ghost;
@@ -64,6 +62,7 @@ pub mod board_bar;
 pub mod board_images;
 pub mod board_keys;
 mod board_menu;
+mod board_note_card;
 pub mod board_nav;
 pub(crate) mod board_send;
 pub mod board_video;

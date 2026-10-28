@@ -58,6 +58,10 @@ pub(super) fn run(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
     if super::send_to_board::apply_event(hero, event) {
         return true;
     }
+    // W11 do Kanban — o modal «Convert to card» (as listas e a busca).
+    if super::board_note_card::apply_event(hero, event) {
+        return true;
+    }
     // Uma aba de DOCUMENTO troca a área central entre a cena e um quadro (MiroClone).
     if super::document_tabs::apply_event(hero, event) {
         return true;

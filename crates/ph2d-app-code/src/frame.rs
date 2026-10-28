@@ -52,6 +52,8 @@ pub fn frame(
         if docs.follow_epoch(lib.epoch(), toasts) {
             wanted.clear(); // pedidos de ids do projecto anterior
         }
+        // W11 do Kanban — o cartão que abre o script: a aba dele, como o «Edit script».
+        wanted.extend(crate::kanban::scripts_asked());
         for id in wanted {
             if let Some(d) = lib.get(id) {
                 docs.open(id, &d.name, &d.text);

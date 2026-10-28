@@ -20,6 +20,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "kanban.links.card_linking" => "1 card",
         "kanban.links.to_card" => "Convert to card",
         "kanban.links.to_card_title" => "Convert to card in\u{2026}",
+        "kanban.links.to_card_search" => "Search lists",
+        "kanban.links.to_card_row" => "{kanban} \u{203a} {list}",
         "kanban.links.to_card_empty" => "Create a Kanban with a list first.",
         "kanban.links.to_note" => "Convert to sticky note",
         "kanban.links.to_note_no_board" => "Open a board to place the sticky note.",

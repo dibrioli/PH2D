@@ -154,6 +154,7 @@ pub fn paint_context_menu_overlay(
         ContextMenuKind::ConfirmDeleteBoard { .. }
             | ContextMenuKind::SendToBoard { .. }
             | ContextMenuKind::SendSelection { .. }
+            | ContextMenuKind::NotesToCard
     ) {
         return;
     }

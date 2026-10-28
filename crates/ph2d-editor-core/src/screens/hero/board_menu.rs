@@ -47,13 +47,19 @@ pub(super) fn open(hero: &mut HeroScreen, x: f32, y: f32) {
     if !ed.selection().contains(&id) {
         ed.select(&board.doc, [id]);
     }
-    // Numa seta, a linha que deita os textos dela do outro modo; num Kanban, abri-lo na aba.
+    // Numa seta, a linha que deita os textos dela do outro modo; num Kanban, abri-lo na aba; numa
+    // nota adesiva, convertê-la em cartão.
     let el = board.doc.get(id);
+    let note = |el: &ph2d_board_model::Element| {
+        el.shape()
+            .is_some_and(|s| s.kind.is_note() && s.kind != ph2d_board_model::ShapeType::StickyStack)
+    };
     let kind = match el.and_then(|el| el.connector()) {
         Some(c) => ContextMenuKind::BoardArrow {
             along: c.turn == TextTurn::Along,
         },
         None if el.is_some_and(|el| el.kanban().is_some()) => ContextMenuKind::BoardKanban,
+        None if el.is_some_and(note) => ContextMenuKind::BoardNote,
         None => ContextMenuKind::BoardElement,
     };
     hero.store
@@ -71,7 +77,10 @@ pub(super) fn row_ids() -> impl Iterator<Item = ph2d_a11y::NodeId> {
     ROWS.into_iter()
         .map(|(id, _)| id)
         .chain(SEND_ROWS.into_iter().map(|(id, _)| id))
-        .chain([ids::CTX_MENU_BOARD_EL_OPEN_TAB])
+        .chain([
+            ids::CTX_MENU_BOARD_EL_OPEN_TAB,
+            ids::CTX_MENU_BOARD_EL_TO_CARD,
+        ])
 }
 
 /// Uma linha do menu: fecha-o e enfileira o comando (ou abre a escolha do quadro). Corre no
@@ -84,6 +93,12 @@ pub(super) fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         hero.store.close_context_menu();
         hero.store.consume_last_context_menu();
         super::board_video::kanban::open_selected(hero);
+        return true;
+    }
+    if id == ids::CTX_MENU_BOARD_EL_TO_CARD {
+        hero.store.close_context_menu();
+        hero.store.consume_last_context_menu();
+        super::board_note_card::open(&mut hero.store);
         return true;
     }
     if let Some(&(_, keep)) = SEND_ROWS.iter().find(|(row, _)| *row == id) {

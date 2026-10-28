@@ -35,6 +35,7 @@ pub(crate) fn paint(st: &mut MacrosPanelState, ctx: &mut PaintCtx) {
         st.lib_escolhida = None;
         st.lib_renomeando = false;
     }
+    pedido_do_kanban(st);
     let rect: Rect = ctx.slot;
     let theme = ctx.host.theme();
     ctx.host.store_mut().set_panel_rect(ids::MACROS_PANEL, rect);
@@ -95,4 +96,24 @@ pub(crate) fn paint(st: &mut MacrosPanelState, ctx: &mut PaintCtx) {
     });
     state::set_last_content_h(content_h);
     ph2d_editor_core::panel::scroll_area::close(area, ctx, content_h);
+}
+
+/// W11 do Kanban — o cartão que abre uma macro: a escolhida passa a ser ela assim que a biblioteca
+/// publicada a tem; uma biblioteca já lida sem ela deixa o pedido cair.
+fn pedido_do_kanban(st: &mut MacrosPanelState) {
+    use ph2d_editor_core::kanban_links::{Family, Target, take};
+    for t in take(Family::Macro) {
+        if let Target::Macro(nome) = t {
+            st.lib_pedida = Some(nome);
+        }
+    }
+    let Some(nome) = st.lib_pedida.as_deref() else {
+        return;
+    };
+    if state::na_biblioteca(nome) {
+        st.lib_escolhida = st.lib_pedida.take();
+        st.lib_renomeando = false;
+    } else if state::with_current(|i| !i.biblioteca.is_empty()) {
+        st.lib_pedida = None;
+    }
 }

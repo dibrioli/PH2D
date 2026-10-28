@@ -246,6 +246,8 @@ pub fn paint_hero_screen(
     //    nada do que é da cena (réguas, gizmos, selecção) chega a ser pintado ou clicável.
     // W7 — os cronómetros dos quadros andam com QUALQUER aba activa (a Cena incluída: F1).
     super::board_nav::facilitate::tick(hero, std::time::Instant::now());
+    // W11 do Kanban — o cartão que vira nota (com o moldador) e a macro que abre o painel dela.
+    crate::kanban_links::run_pending(hero, text_system);
     if hero.documents.surface_active().is_some() {
         // ⭐ Um documento de FAMÍLIA (o editor de scripts) é dono da área como o quadro: a cena fica
         //    por baixo, sem réguas, gizmos nem barras. Pintar e agarrar leem o MESMO rect.
@@ -552,6 +554,8 @@ pub fn paint_hero_screen(
         &hero.store,
         viewport,
     );
+    // W11 do Kanban — o modal «Convert to card»: precisa dos Kanbans.
+    super::board_note_card::paint(hero, scene, text_system, viewport);
     // Fill (Bucket) "Fill adjust" modal — a floating, draggable card at the ColorDrop release point
     // (no-op when closed). Painted after the context menu so its hit rects sit above the canvas.
     chrome::paint_fill_adjust_modal(

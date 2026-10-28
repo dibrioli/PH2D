@@ -307,6 +307,8 @@ pub mod inspector_visibility;
 #[cfg(test)]
 mod instance_tags_tests;
 /// O nome ÚNICO de uma imagem da biblioteca — o do painel Assets e o do script.
+/// W11 do Kanban — a cena publica-se aos cartões e serve os pedidos «abrir» deles.
+pub mod kanban_scene;
 pub mod library_names;
 #[cfg(test)]
 mod property_coverage_tests;

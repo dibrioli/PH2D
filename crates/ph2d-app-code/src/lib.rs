@@ -31,6 +31,7 @@ mod help_input;
 mod hint;
 mod inlay;
 mod intel;
+mod kanban;
 mod keys;
 mod link;
 mod lint;

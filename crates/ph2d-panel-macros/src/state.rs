@@ -22,6 +22,8 @@ pub struct MacrosPanelState {
     pub lib_escolhida: Option<String>,
     /// O campo de renomear está aberto sobre a macro escolhida da biblioteca.
     pub lib_renomeando: bool,
+    /// A macro que um cartão do Kanban pediu para abrir (W11), à espera de a biblioteca a mostrar.
+    pub lib_pedida: Option<String>,
 }
 
 thread_local! {

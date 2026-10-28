@@ -305,6 +305,9 @@ impl Macros {
         }
         self.sincroniza(c, f.etapas);
         ph2d_editor_core::macro_tutorial::set_balao(self.tutorial.balao(f, c.sim));
+        // W11 do Kanban: os cartões resolvem as ligações a macros contra a biblioteca.
+        let nomes = self.nomes_da_biblioteca().into_iter().collect();
+        ph2d_editor_core::kanban_links::publish_macros(nomes);
     }
 
     /// **O clipe acompanha a macro**: a duração dele é DERIVADA da trilha que toca, e re-cronometra-se

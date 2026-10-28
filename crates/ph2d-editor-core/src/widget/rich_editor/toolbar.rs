@@ -151,12 +151,8 @@ pub fn style_menu(bar: Rect, ts: &mut TextSystem, labels: &[String; TEXT_STYLES.
         .iter()
         .zip(labels)
         .map(|(k, l)| {
-            ts.prefix_width_weighted(
-                l,
-                super::layout::font_px(k),
-                super::layout::font_weight(k),
-            )
-            .ceil()
+            ts.prefix_width_weighted(l, super::layout::font_px(k), super::layout::font_weight(k))
+                .ceil()
         })
         .fold(0.0, f32::max);
     let h = TEXT_STYLES.iter().map(style_row_h).sum();

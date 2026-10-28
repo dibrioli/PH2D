@@ -2,10 +2,10 @@
 //! a gaveta aberta com um padrão escolhido, e o quadro com cor, padrão, imagem e um fundo claro.
 //! `bash scripts/ph2d-run.sh cargo test -p ph2d-app-kanban --profile smoke --test it d11_foto -- --ignored`
 
+use crate::Mesa;
 use crate::d11_fundo::{abre, foto, sobe, toca};
 use crate::j2_fotos::grava_em;
 use crate::verso_anexos::ficheiro;
-use crate::Mesa;
 use ph2d_editor_core::screens::hero::board_keys::BoardKey;
 use ph2d_host::Modifiers;
 use ph2d_kanban_model::KanbanId;

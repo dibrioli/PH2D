@@ -11,12 +11,10 @@ use crate::docs::KanbanDocs;
 use crate::front::cover::{self, ThumbRef};
 use ph2d_board_render::{BgImage, BgTone, KanbanBg, kanban_bg_tone, paint_kanban_bg};
 use ph2d_editor_core::paint::rect_to_vello;
+use ph2d_editor_core::widget::{hsv_to_rgba8, rgba_to_hsv};
 use ph2d_editor_core::zones::Rect;
 use ph2d_host::PointerKind;
-use ph2d_editor_core::widget::{hsv_to_rgba8, rgba_to_hsv};
-use ph2d_kanban_model::{
-    Background, Hue, KanbanOp, KanbanSet, Pattern, PatternKind, Rgb, Tint,
-};
+use ph2d_kanban_model::{Background, Hue, KanbanOp, KanbanSet, Pattern, PatternKind, Rgb, Tint};
 use ph2d_tokens::Theme;
 use ph2d_vector::{Affine, VectorScene};
 
@@ -57,7 +55,9 @@ impl Look {
         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
         let (a, b) = (
             (((area.y - d.y) / d.h * n).floor().clamp(0.0, n)) as usize,
-            (((area.y + crate::metrics::HEADER_H - d.y) / d.h * n).ceil().clamp(0.0, n)) as usize,
+            (((area.y + crate::metrics::HEADER_H - d.y) / d.h * n)
+                .ceil()
+                .clamp(0.0, n)) as usize,
         );
         #[allow(clippy::cast_precision_loss)]
         let mean = rows.iter().sum::<f32>() / n.max(1.0);
@@ -388,7 +388,8 @@ fn act(docs: &mut KanbanDocs, id: u64, row: Row) {
                     // O seletor que abre fica à vista (rola a gaveta até à faixa do matiz).
                     let p = place(d, bg, board);
                     if let Some(hue) = p.hue {
-                        let below = hue.y + hue.h + crate::metrics::MENU_PAD - (p.body.y + p.body.h);
+                        let below =
+                            hue.y + hue.h + crate::metrics::MENU_PAD - (p.body.y + p.body.h);
                         d.scroll = (d.scroll + below.max(0.0)).min(p.max_scroll);
                     }
                 }
@@ -521,7 +522,10 @@ mod tests {
             Some(Background::Pattern(Pattern::new(PatternKind::Grid)))
         );
         assert_eq!(
-            chosen(Background::Color(Hue::Red), Row::Tint(Target::Ink, Hue::Lime)),
+            chosen(
+                Background::Color(Hue::Red),
+                Row::Tint(Target::Ink, Hue::Lime)
+            ),
             None,
             "sem padrão, a cor do traço não escolhe nada"
         );

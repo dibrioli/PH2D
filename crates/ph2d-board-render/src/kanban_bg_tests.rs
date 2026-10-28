@@ -86,7 +86,11 @@ fn a_pattern_is_one_ink_fill_over_the_tiles_of_the_rect() {
 #[test]
 fn from_far_away_a_pattern_is_its_mean_colour() {
     let p = Pattern::new(PatternKind::Grid);
-    let far = record(Background::Pattern(p), PATTERN_MIN_TILE_PX / tile() / 2.0, None);
+    let far = record(
+        Background::Pattern(p),
+        PATTERN_MIN_TILE_PX / tile() / 2.0,
+        None,
+    );
     assert_eq!(far.len(), 1, "um preenchimento liso");
     let mean = kanban_board_bg(Theme::Forge, Background::Pattern(p));
     assert!(matches!(&far[0], DrawOp::Fill { brush: Brush::Solid(c), .. } if *c == mean));
@@ -112,7 +116,11 @@ fn a_light_background_darkens_the_header_until_white_reads() {
     let a = veil.components[3];
     let under = (1.0 - a) * white.brightest + a * luminance(veil.with_alpha(1.0));
     let ink = luminance(token(T::KanbanHeaderFg, th));
-    assert!(contrast(ink, under) >= MIN_CONTRAST - 1e-3, "{}", contrast(ink, under));
+    assert!(
+        contrast(ink, under) >= MIN_CONTRAST - 1e-3,
+        "{}",
+        contrast(ink, under)
+    );
     assert!(kanban_floor_is_light(th, white));
     // A imagem: a parte mais clara dela decide.
     let px = Arc::new(Vec::new());

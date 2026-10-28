@@ -189,7 +189,12 @@ pub(crate) fn attach_paths(
 
 /// ⭐ A porta da CAPA («Upload a cover image», largar no popover da capa): cada imagem entra como
 /// anexo E capa, num passo de desfazer; o que não é imagem fica num aviso e a capa não muda.
-pub(crate) fn cover_paths(docs: &mut KanbanDocs, id: u64, card: CardId, paths: &[PathBuf]) -> usize {
+pub(crate) fn cover_paths(
+    docs: &mut KanbanDocs,
+    id: u64,
+    card: CardId,
+    paths: &[PathBuf],
+) -> usize {
     read_paths(docs, id, card, paths, true)
 }
 

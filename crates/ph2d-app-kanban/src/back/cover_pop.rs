@@ -29,7 +29,13 @@ pub(super) fn cover(ui: &mut Ui<'_>, cx: &Ctx<'_>, x: f32, y: f32, w: f32) -> f3
         ui.button(r, "", None, BackHit::Pop(PopHit::CoverSize(full)), false);
         if on {
             let ring = ui.accent();
-            stroke_rounded_rect(ui.scene, r, m::LABEL_RADIUS, StrokeToken::Default.px() * 2.0, ring);
+            stroke_rounded_rect(
+                ui.scene,
+                r,
+                m::LABEL_RADIUS,
+                StrokeToken::Default.px() * 2.0,
+                ring,
+            );
         }
         let tint = cur.map_or(ui.c(T::KanbanCardMeta), |c| match c.fill {
             CoverFill::Color(hue) => {

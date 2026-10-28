@@ -21,7 +21,10 @@ fn pintados(m: &mut Mesa, id: KanbanId) -> Vec<String> {
 fn cabe(m: &mut Mesa, id: KanbanId) {
     let r = alvo(m, id, "Pop(Inside)");
     assert!(
-        r.y >= AREA.y && r.y + r.h <= AREA.y + AREA.h && r.x >= AREA.x && r.x + r.w <= AREA.x + AREA.w,
+        r.y >= AREA.y
+            && r.y + r.h <= AREA.y + AREA.h
+            && r.x >= AREA.x
+            && r.x + r.w <= AREA.x + AREA.w,
         "o popover da capa sai do ecrã: {r:?} em {AREA:?}"
     );
 }
@@ -138,7 +141,11 @@ fn capa_largar_imagem_sobre_o_popover_troca_a_capa() {
     ));
     m.quadro();
     assert_eq!(anexos(&m, id, c).len(), 2);
-    assert_eq!(capa(&m, id, c), Some(CoverFill::Image(fa)), "fora não é capa");
+    assert_eq!(
+        capa(&m, id, c),
+        Some(CoverFill::Image(fa)),
+        "fora não é capa"
+    );
     // Sobre o popover, a nova passa a capa; um texto avisa e não entra.
     let pop = alvo(&mut m, id, "Pop(Inside)");
     let t = ficheiro("capa-largar", "t.txt", b"x");

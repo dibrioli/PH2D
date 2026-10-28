@@ -62,7 +62,13 @@ fn d11_the_board_menu_opens_the_drawer_and_each_choice_is_one_undo_step() {
     let antes = fundo(&m, id);
     abre(&mut m, id);
     let nomes: Vec<String> = alvos(&mut m, id).into_iter().map(|(n, _)| n).collect();
-    for n in ["Upload", "Color(Green)", "Gradient(8)", "Custom(Solid)", "Pattern(Dots)"] {
+    for n in [
+        "Upload",
+        "Color(Green)",
+        "Gradient(8)",
+        "Custom(Solid)",
+        "Pattern(Dots)",
+    ] {
         assert!(nomes.iter().any(|x| x == n), "{n} em {nomes:?}");
     }
     assert!(
@@ -71,7 +77,10 @@ fn d11_the_board_menu_opens_the_drawer_and_each_choice_is_one_undo_step() {
     );
     toca(&mut m, id, "Color(Green)");
     assert_eq!(fundo(&m, id), Background::Color(Hue::Green));
-    assert!(!alvos(&mut m, id).is_empty(), "a gaveta fica aberta (o Trello)");
+    assert!(
+        !alvos(&mut m, id).is_empty(),
+        "a gaveta fica aberta (o Trello)"
+    );
     m.desfaz();
     assert_eq!(fundo(&m, id), antes, "um passo de desfazer");
     // Um padrão, e depois a cor da base dele.
@@ -110,7 +119,10 @@ fn d11_the_custom_colour_previews_while_dragging_and_saves_once_on_release() {
     toca(&mut m, id, "Custom(Solid)");
     let sv = alvo(&mut m, id, "Sv");
     let hue = alvo(&mut m, id, "HueStrip");
-    assert!(hue.y + hue.h <= AREA.y + AREA.h, "o seletor abre à vista: {hue:?}");
+    assert!(
+        hue.y + hue.h <= AREA.y + AREA.h,
+        "o seletor abre à vista: {hue:?}"
+    );
     let de = (sv.x + 4.0, sv.y + 4.0);
     let para = (sv.x + sv.w * 0.8, sv.y + sv.h * 0.3);
     m.arrasta(de, para, 6);
@@ -134,7 +146,10 @@ fn d11_the_custom_colour_previews_while_dragging_and_saves_once_on_release() {
     let Background::Custom(rgb2) = fundo(&m, id) else {
         panic!("cor livre");
     };
-    assert!(rgb2.0[0] > rgb2.0[2], "o vermelho do início da faixa: {rgb2:?}");
+    assert!(
+        rgb2.0[0] > rgb2.0[2],
+        "o vermelho do início da faixa: {rgb2:?}"
+    );
     m.desfaz();
     assert_eq!(fundo(&m, id), Background::Custom(rgb));
     m.desfaz();
@@ -179,7 +194,8 @@ pub(crate) fn foto(w: u32, h: u32) -> Vec<u8> {
         ])
     });
     let mut out = std::io::Cursor::new(Vec::new());
-    img.write_to(&mut out, image::ImageFormat::Png).expect("png");
+    img.write_to(&mut out, image::ImageFormat::Png)
+        .expect("png");
     out.into_inner()
 }
 

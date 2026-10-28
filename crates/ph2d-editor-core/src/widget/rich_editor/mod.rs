@@ -76,7 +76,7 @@ pub struct RichEditor {
 
 impl std::fmt::Debug for RichEditor {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("RichEditor")
+        f.debug_struct(std::any::type_name::<Self>())
             .field("id", &self.id)
             .field("editing", &self.editing)
             .field("selection", &self.editor.selection())

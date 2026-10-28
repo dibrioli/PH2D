@@ -24,8 +24,9 @@ pub(crate) fn grava_em(pasta: &str, nome: &str, scene: &VectorScene) {
     let px = pass
         .render_and_readback(&gpu, scene.inner(), (w, h))
         .expect("readback");
-    let dir =
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../docs/TrelloClone/smoke").join(pasta);
+    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../docs/TrelloClone/smoke")
+        .join(pasta);
     std::fs::create_dir_all(&dir).expect("pasta");
     let path = dir.join(format!("{nome}.png"));
     image::save_buffer(&path, &px, w, h, image::ExtendedColorType::Rgba8).expect("png");

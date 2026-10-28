@@ -158,10 +158,8 @@ pub fn kanban_board_bg(theme: Theme, bg: Background) -> Color {
 }
 
 fn pattern_mean(theme: Theme, p: Pattern) -> Color {
-    kanban_tint(theme, p.base, false).lerp_rect(
-        kanban_tint(theme, p.ink, true),
-        pattern_coverage(p.kind),
-    )
+    kanban_tint(theme, p.base, false)
+        .lerp_rect(kanban_tint(theme, p.ink, true), pattern_coverage(p.kind))
 }
 
 /// A luminância relativa (WCAG) de uma cor.
@@ -365,10 +363,16 @@ pub fn pattern_path(kind: PatternKind, r: Rect) -> BezPath {
             for k in 0..n {
                 #[allow(clippy::cast_precision_loss)]
                 let c = r.x0 + k as f64 * t;
-                add(&mut path, &quad([(c, r.y0), (c + d, r.y0), (c + d - h, r.y1), (c - h, r.y1)]));
+                add(
+                    &mut path,
+                    &quad([(c, r.y0), (c + d, r.y0), (c + d - h, r.y1), (c - h, r.y1)]),
+                );
                 if kind == PatternKind::CrossHatch {
                     let c = c - h;
-                    add(&mut path, &quad([(c, r.y0), (c + d, r.y0), (c + d + h, r.y1), (c + h, r.y1)]));
+                    add(
+                        &mut path,
+                        &quad([(c, r.y0), (c + d, r.y0), (c + d + h, r.y1), (c + h, r.y1)]),
+                    );
                 }
             }
         }
@@ -412,11 +416,14 @@ pub fn pattern_path(kind: PatternKind, r: Rect) -> BezPath {
             for j in 0..rows {
                 for i in 0..cols {
                     let (x, y) = at(i, j);
-                    add(&mut path, &tri([
-                        (x + t / 4.0, y + 3.0 * t / 4.0),
-                        (x + 3.0 * t / 4.0, y + 3.0 * t / 4.0),
-                        (x + t / 2.0, y + t / 4.0),
-                    ]));
+                    add(
+                        &mut path,
+                        &tri([
+                            (x + t / 4.0, y + 3.0 * t / 4.0),
+                            (x + 3.0 * t / 4.0, y + 3.0 * t / 4.0),
+                            (x + t / 2.0, y + t / 4.0),
+                        ]),
+                    );
                 }
             }
         }

@@ -10,7 +10,10 @@ fn texto(m: &mut crate::Mesa, id: ph2d_kanban_model::KanbanId, desc: bool) -> St
 fn verso_um_clique_na_descricao_vazia_e_as_teclas_escrevem() {
     let (mut m, id, _) = abre("Pick the music");
     toca(&mut m, id, "DescArea");
-    assert!(m.docs().probe_back_state(id.0).2, "o clique entra em edição");
+    assert!(
+        m.docs().probe_back_state(id.0).2,
+        "o clique entra em edição"
+    );
     m.escreve("Hello world");
     m.quadro();
     assert_eq!(texto(&mut m, id, true), "Hello world");
@@ -33,8 +36,15 @@ fn verso_a_tecla_morta_compoe_na_descricao() {
     use ph2d_editor_core::screens::hero::board_keys::BoardKey;
     let (mut m, id, _) = abre("Pick the music");
     toca(&mut m, id, "DescArea");
-    assert!(m.hero.handle_compose_key(ComposeKey::Dead('´')), "o acento é da composição");
-    m.tecla(BoardKey::Char('e'), ph2d_host::Modifiers::default(), Some("é"));
+    assert!(
+        m.hero.handle_compose_key(ComposeKey::Dead('´')),
+        "o acento é da composição"
+    );
+    m.tecla(
+        BoardKey::Char('e'),
+        ph2d_host::Modifiers::default(),
+        Some("é"),
+    );
     m.escreve("x");
     m.quadro();
     assert_eq!(texto(&mut m, id, true), "éx");
@@ -56,10 +66,16 @@ fn verso_o_menu_aa_fica_por_cima_e_o_clique_e_dele() {
     let hits = m.docs().probe_back_hits(id.0);
     let i_menu = hits.iter().rposition(|h| h.0 == "DescMenu").unwrap();
     let i_save = hits.iter().rposition(|h| h.0 == "DescSave").unwrap();
-    assert!(i_menu > i_save, "o menu é registado depois (por cima) do Save");
+    assert!(
+        i_menu > i_save,
+        "o menu é registado depois (por cima) do Save"
+    );
     // A 2.ª linha (Heading 1).
     m.clica((menu.x + menu.w / 2.0, menu.y + menu.h * 0.3));
-    assert!(m.docs().probe_back_state(id.0).2, "continua em edição (não guardou)");
+    assert!(
+        m.docs().probe_back_state(id.0).2,
+        "continua em edição (não guardou)"
+    );
     assert_eq!(texto(&mut m, id, true), "# Title");
 }
 

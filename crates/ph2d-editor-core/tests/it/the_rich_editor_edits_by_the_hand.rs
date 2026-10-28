@@ -286,15 +286,27 @@ fn the_dead_key_door_lets_every_other_key_through() {
     let mut ed = editor(RichDoc::new());
     ed.editing = true;
     for k in [ComposeKey::Other, ComposeKey::Modifier, ComposeKey::Escape] {
-        assert!(!ed.dead_key(k), "{k:?} sem acento à espera segue para a tecla");
+        assert!(
+            !ed.dead_key(k),
+            "{k:?} sem acento à espera segue para a tecla"
+        );
     }
     assert!(ed.dead_key(ComposeKey::Dead('´')));
     assert_eq!(ed.preedit.as_deref(), Some("´"));
-    assert!(ed.dead_key(ComposeKey::Modifier), "o Shift não desfaz o acento");
-    assert!(!ed.dead_key(ComposeKey::Other), "a letra segue (o xkb compõe-na)");
+    assert!(
+        ed.dead_key(ComposeKey::Modifier),
+        "o Shift não desfaz o acento"
+    );
+    assert!(
+        !ed.dead_key(ComposeKey::Other),
+        "a letra segue (o xkb compõe-na)"
+    );
     assert_eq!(ed.preedit, None);
     ed.editing = false;
-    assert!(!ed.dead_key(ComposeKey::Dead('´')), "fora de edição nada é tomado");
+    assert!(
+        !ed.dead_key(ComposeKey::Dead('´')),
+        "fora de edição nada é tomado"
+    );
 }
 
 /// Report do dono 28/10 (menu «Aa» mal formatado): cada opção cabe o rótulo inteiro no estilo que

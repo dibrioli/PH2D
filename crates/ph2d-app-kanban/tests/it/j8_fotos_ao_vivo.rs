@@ -2,9 +2,9 @@
 //! anfitrião pára de partilhar (o aviso no topo do hero do convidado), nos dois temas.
 //! `bash scripts/cargo-test-narrow.sh ph2d-app-kanban j8_foto -- --ignored`
 
+use crate::AREA;
 use crate::j1_partilha::ate;
 use crate::w6::toca;
-use crate::AREA;
 use ph2d_editor_core::screens::hero::{HERO_VIEWPORT_H, HERO_VIEWPORT_W, paint_hero_screen};
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;

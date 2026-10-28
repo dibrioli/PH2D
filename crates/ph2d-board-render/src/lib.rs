@@ -40,8 +40,9 @@ pub use kanban::{
 };
 pub use kanban_bg::{
     BgImage, BgTone, GRADIENTS as KANBAN_GRADIENTS, KanbanBg, PATTERN_MIN_TILE_PX, kanban_bg_tone,
-    kanban_board_bg, kanban_floor_is_light, kanban_gradient_stops, kanban_header_veil, kanban_header_veil_over, kanban_tint,
-    luminance, paint_kanban_bg, pattern_coverage, pattern_path,
+    kanban_board_bg, kanban_floor_is_light, kanban_gradient_stops, kanban_header_veil,
+    kanban_header_veil_over, kanban_tint, luminance, paint_kanban_bg, pattern_coverage,
+    pattern_path,
 };
 pub use overlay::paint_overlay;
 pub use theme_ink::ThemeInk;

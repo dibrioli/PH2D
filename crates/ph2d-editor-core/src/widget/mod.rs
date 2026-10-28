@@ -187,10 +187,10 @@ pub use rect2_editor::{
 };
 pub use rich_editor::{
     BlockBox, DocLayout, Ink, Marker, RICH_TOOLS, RichEditor, RichEditorEvent, RichEditorLabels,
-    RichKeyOutcome, RichTool, TEXT_STYLES, area_node_id as rich_doc_node_id, paint_rich_editor,
-    font_px as rich_editor_font_px, font_weight as rich_editor_font_weight, paint_rich_editor_menu,
-    style_option as rich_editor_style_option, toolbar_button as rich_editor_toolbar_button,
-    toolbar_node_id as rich_toolbar_node_id,
+    RichKeyOutcome, RichTool, TEXT_STYLES, area_node_id as rich_doc_node_id,
+    font_px as rich_editor_font_px, font_weight as rich_editor_font_weight, paint_rich_editor,
+    paint_rich_editor_menu, style_option as rich_editor_style_option,
+    toolbar_button as rich_editor_toolbar_button, toolbar_node_id as rich_toolbar_node_id,
 };
 pub use scrollbar::{
     SCROLLBAR_W, ScrollbarState, delta_for_drag as scrollbar_delta_for_drag,

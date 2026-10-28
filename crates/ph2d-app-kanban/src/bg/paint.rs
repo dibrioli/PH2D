@@ -48,9 +48,8 @@ fn current(bg: Background, row: Row) -> bool {
         (Row::Color(h), Background::Color(x)) => h == x,
         (Row::Gradient(i), Background::Gradient(x)) => i == x,
         (Row::Pattern(k), Background::Pattern(p)) => p.kind == k,
-        (Row::Photo, Background::Image(_)) | (Row::Custom(Target::Solid), Background::Custom(_)) => {
-            true
-        }
+        (Row::Photo, Background::Image(_))
+        | (Row::Custom(Target::Solid), Background::Custom(_)) => true,
         (Row::Tint(t, h), Background::Pattern(p)) => tint_of(p, t) == Tint::Hue(h),
         (Row::Custom(t), Background::Pattern(p)) if t != Target::Solid => {
             matches!(tint_of(p, t), Tint::Rgb(_))
@@ -89,7 +88,12 @@ fn picker(scene: &mut VectorScene, theme: Theme, p: &Placed, hsv: [f32; 3]) {
     let [h, s, v] = hsv;
     let white = rgba(hsv_to_rgba8(0.0, 0.0, 1.0, 1.0));
     let black = rgba(hsv_to_rgba8(0.0, 0.0, 0.0, 1.0));
-    fill_rounded_rect(scene, sv, m::BUTTON_RADIUS, rgba(hsv_to_rgba8(h, 1.0, 1.0, 1.0)));
+    fill_rounded_rect(
+        scene,
+        sv,
+        m::BUTTON_RADIUS,
+        rgba(hsv_to_rgba8(h, 1.0, 1.0, 1.0)),
+    );
     let shape = ph2d_vector::Shape::to_path(&rounded(sv), 0.1);
     let (x0, y0) = (f64::from(sv.x), f64::from(sv.y));
     let across = Gradient::new_linear(Point::new(x0, y0), Point::new(x0 + f64::from(sv.w), y0))
@@ -178,7 +182,16 @@ pub(crate) fn paint(
                 icon(scene, IconId::Plus, Rect::new(x, r.y, m::ICON_PX, r.h), fg);
                 let tx = x + m::ICON_PX + m::HEADER_GAP;
                 let ty = text_top(ts, r.y, r.h, m::BUTTON_TEXT_PX);
-                paint_text_elided(ts, scene, label, tx, ty, m::BUTTON_TEXT_PX, r.x + r.w - tx, fg);
+                paint_text_elided(
+                    ts,
+                    scene,
+                    label,
+                    tx,
+                    ty,
+                    m::BUTTON_TEXT_PX,
+                    r.x + r.w - tx,
+                    fg,
+                );
             }
             (Row::Tint(t, h), _) => {
                 let col = kanban_tint(theme, Tint::Hue(h), t == Target::Ink);

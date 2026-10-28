@@ -35,16 +35,14 @@ pub(crate) fn full_v7() -> KanbanSet {
     // Os três fundos que o v7 conhecia, um por Kanban (o índice de cada variante fica gravado).
     let photo = set.put_file(vec![1_u8, 2, 3], Some([4, 3]));
     let ids: Vec<_> = set.iter().map(|k| k.id).collect();
-    let others = [
-        Background::Gradient(4),
-        Background::Image(photo),
-    ];
+    let others = [Background::Gradient(4), Background::Image(photo)];
     let more = [set.create("Gradiente"), set.create("Imagem")];
-    for (id, bg) in ids.iter().take(1).chain(&more).zip([
-        Background::Color(Hue::Pink),
-        others[0],
-        others[1],
-    ]) {
+    for (id, bg) in
+        ids.iter()
+            .take(1)
+            .chain(&more)
+            .zip([Background::Color(Hue::Pink), others[0], others[1]])
+    {
         set.doc_mut(*id).unwrap().header.background = bg;
     }
     set

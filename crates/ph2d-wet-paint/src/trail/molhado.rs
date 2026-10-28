@@ -38,6 +38,13 @@ const PASSOS: usize = 5;
 const PASSOS_PENA: usize = 15;
 /// A semente da fase dos destinos da pena.
 const SEMENTE_PENA: u32 = 0x9e37_79b9;
+/// O recuo da pena: metade dela, no máximo esta fracção do raio aberto (o mapa da célula à borda continua a crescer).
+const RECUO: f64 = 0.45;
+
+/// Quanto a borda da mancha recua para a pena ficar centrada nela (`0` sem pena: ao bit).
+fn recuo(pena: f64, raio: f64) -> f64 {
+    (0.5 * pena).min(RECUO * raio)
+}
 /// A abertura anda até ao alvo em `SUAVE_RAIOS` raios de caminho (⛔ medido: com 1 raio, o Liner que atravessa a
 /// faixa de 52 px do `sobre` não chegava a abrir — 1,27 × contra 1,45 do Rebelle, que abre inteiro dentro dela).
 const SUAVE_RAIOS: f64 = 0.3;
@@ -385,16 +392,22 @@ impl Trail {
                             let alvo = s * (1.0 + o);
                             // A pena (J6): a célula da borda reparte-se até `esbate` para FORA, a do centro nada
                             // (⛔ medido: repartida para os dois lados, a metade de dentro somava-se ao miolo num risco).
-                            let pena =
-                                esbate * (s / rr.max(1e-9)).min(1.0).powi(2) * (o / abre).min(1.0);
+                            let q = (s / rr.max(1e-9)).min(1.0).powi(2) * (o / abre).min(1.0);
+                            let pena = esbate * q;
                             if pena > 0.0 {
+                                // E RECUA metade dela (no máximo [`RECUO`] do raio aberto, para o mapa não dobrar): a
+                                // rampa fica CENTRADA na borda do tubo (⛔ medido: só para fora, a mancha do Liner lia
+                                // 2,0 × a largura contra 1,45 do Rebelle).
+                                let recua = recuo(esbate, rr * (1.0 + o)) * q;
                                 f.n = PASSOS_PENA as u8;
                                 // A fase dos destinos sorteada por célula do grid: com a mesma em todas, cada linha
                                 // pousava nas mesmas colunas (⛔ medido: riscas ao longo do traço a cada ~4 células).
                                 let fase = crate::rng::hash2(lx + gx, ly + gy, SEMENTE_PENA);
                                 for j in 0..PASSOS_PENA {
                                     let c = (j as f64 + fase) / PASSOS_PENA as f64 * 2.0 - 1.0;
-                                    let d = alvo * (1.0 + BORDA * c) + pena * 0.5 * (c + 1.0) - s;
+                                    let d = alvo * (1.0 + BORDA * c) - recua
+                                        + pena * 0.5 * (c + 1.0)
+                                        - s;
                                     f.alvos[j] = (x + d * dx, y + d * dy, tri_pena(j) / total_pena);
                                 }
                             } else {
@@ -609,7 +622,11 @@ impl Trail {
                     }
                     let (s, _, _, r, o) = mais_perto(pts, false, false, cx as f64, cy as f64);
                     let raio = r * (1.0 + o);
-                    let (a, b) = (raio * (1.0 - BORDA), raio * (1.0 + BORDA) + pena);
+                    let meio = recuo(pena, raio);
+                    let (a, b) = (
+                        raio * (1.0 - BORDA) - meio,
+                        raio * (1.0 + BORDA) + pena - meio,
+                    );
                     let cobre = if s <= a {
                         1.0
                     } else if s >= b {

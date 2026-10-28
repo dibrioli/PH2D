@@ -317,11 +317,12 @@ pub(super) fn borda(px: &[u8], w: usize) -> (f64, f64) {
 
 /// ⭐ **A borda da mancha molhada ESBATE** (`Knob::WetOpenEdge`, J6): o Rebelle `Liner` esbate a mancha que o azul abre no
 /// vermelho molhado em 12,2 células (80 → 20 %), sem aro por dentro; a lei de sempre corta-a em 2–3 células, com o aro
-/// das duas tintas somadas (1,16). Com a pena de 20 células: o degradê dele e sem o aro. CONTROLO: o Wet Liner sem a pena.
+/// das duas tintas somadas (1,16). Com a pena de 28 células: o degradê dele, sem o aro, e a mancha CENTRADA na borda do
+/// tubo (a pena só para fora levava-a a 2,0 × a largura). CONTROLO: o Wet Liner sem a pena.
 #[test]
 fn a_borda_da_mancha_molhada_esbate() {
     let [(com, w), (sem, _)] = std::thread::scope(|s| {
-        let a = s.spawn(|| foto("Wet Liner", &[("wetOpenEdge".to_owned(), 20.0)], "sobre", 0));
+        let a = s.spawn(|| foto("Wet Liner", &[("wetOpenEdge".to_owned(), 28.0)], "sobre", 0));
         let b = s.spawn(|| foto("Wet Liner", &[("wetOpenEdge".to_owned(), 0.0)], "sobre", 0));
         [a.join().unwrap(), b.join().unwrap()]
     });
@@ -340,8 +341,8 @@ fn a_borda_da_mancha_molhada_esbate() {
     );
     assert!(al < 1.06, "o aro das duas tintas somadas ficou: {al:.3}");
     assert!(
-        rl > 1.3,
-        "a mancha deixou de abrir: {rl:.2} × a largura (1,42)"
+        (1.3..1.65).contains(&rl),
+        "a mancha não tem a largura do Rebelle: {rl:.2} × a largura (1,42; a pena só para fora 2,0)"
     );
 }
 

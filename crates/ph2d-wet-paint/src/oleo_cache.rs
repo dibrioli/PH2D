@@ -21,6 +21,8 @@ pub struct ChaveCampo {
     sss: Option<(ChaveLuz, [f64; 4])>,
     ratio: usize,
     visiveis: Vec<bool>,
+    /// W3b: o Relevo do papel do cartão e o dente do papel (a altura fina lê-os).
+    papel: [f64; 2],
 }
 
 impl ChaveCampo {
@@ -45,6 +47,7 @@ impl ChaveCampo {
             }),
             ratio,
             visiveis: camadas.iter().map(|&(_, v)| v).collect(),
+            papel: [o.material.relevo_papel, o.dente_papel],
         }
     }
 }

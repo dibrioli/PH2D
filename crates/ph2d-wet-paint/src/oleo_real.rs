@@ -53,6 +53,12 @@ pub struct OleoReal {
     pub material: MaterialCartao,
     /// As constantes da lei, afinadas contra as capturas (não são knobs do artista).
     pub af: Afinacao,
+    /// W3b (não é knob: o composite põe-no a cada recomposição): a cor LINEAR do papel do documento sob a tinta — a
+    /// que a Transmission tinge ([`crate::material::transmite`]). Branco sem papel.
+    pub papel: [f64; 3],
+    /// W3b (não é knob, idem): a amplitude do dente do papel (px de relevo, `Relief × MAX_TOOTH_PX` do substrato) que
+    /// o Relevo do papel põe na superfície da tinta; `0` sem papel.
+    pub dente_papel: f64,
 }
 
 impl Default for OleoReal {
@@ -69,6 +75,8 @@ impl Default for OleoReal {
             forca_ambiente: FORCA_AMBIENTE_FABRICA,
             material: MaterialCartao::NEUTRO,
             af: Afinacao::default(),
+            papel: [1.0; 3],
+            dente_papel: 0.0,
         }
     }
 }
@@ -107,6 +115,9 @@ pub struct Afinacao {
     /// K10: o peso do REBOTE de um salto da tinta vizinha no papel ([`rebote_no_papel`]); `0` = sem (a sombra no
     /// papel de antes, bit a bit), `1` = a física (`oraculo/README.md` §K10).
     pub rebote_papel: f64,
+    /// W3b: o ganho do dente do papel na altura FINA da tinta com o Relevo do papel 1 (`oraculo/README.md`
+    /// §Transmission, calibrado contra a tela de antes de `ca26a7738a`).
+    pub papel_na_tinta: f64,
 }
 
 impl Default for Afinacao {
@@ -126,6 +137,9 @@ impl Default for Afinacao {
             antisserrilhado: 1.0,
             antisserrilhado_ambiente: 0.0,
             rebote_papel: 1.0,
+            // `medida_relevo_do_papel_calibra`: miolo ÷ nu 0,449 · 0,866 a 1 · 2 (linear); 0,67 (a tela de antes de
+            // `ca26a7738a`, Dabber de fábrica com o óleo) a 1,5.
+            papel_na_tinta: 1.5,
         }
     }
 }
@@ -368,7 +382,7 @@ impl CampoAltura {
             }
         });
         // §BUG-bordas: a cobertura com o contorno sub-célula — a parede e a cor caem no contorno LISO, não na escada.
-        let borda = borda_suave(rep, &cob, w, h);
+        let borda = sem_entalhes(rep, &cob, borda_suave(rep, &cob, w, h), w, h);
         // A massa (antes do desfoque: o ombro da forma também segue o contorno) e as três alturas vão com ela.
         for (c, b) in cob.iter_mut().zip(&borda) {
             *c *= f64::from(*b);
@@ -451,8 +465,24 @@ impl CampoAltura {
             0 => (massa.clone(), fios),
             r => (d(&massa, r), d(&fios, r)),
         };
+        // W3b: o Relevo do papel — a superfície da tinta assenta no dente do papel (`Grid::paper`, o mesmo papel do
+        // substrato), pela cobertura; sem Relevo do papel (ou sem papel) a soma nem se faz (ao bit).
+        let dente = o.dente_papel * af.papel_na_tinta / ratio.max(1) as f64;
+        let relevo_papel = |k: usize| {
+            let r = material.get(k).map_or(0.0, |m| m.relevo_papel);
+            crate::material::transparencia(r, o.material.relevo_papel)
+        };
+        let com_papel =
+            dente > 0.0 && !g.paper.is_empty() && (com_material || o.material.relevo_papel > 0.0);
         let detalhe = plano_f32(rep, w, h, &|k| {
-            ((af.grao * (massa_d[k] - suave[k]) * escala + fios_d[k] * k_fios) * cob[k]) as f32
+            let d = (af.grao * (massa_d[k] - suave[k]) * escala + fios_d[k] * k_fios) * cob[k];
+            let r = if com_papel { relevo_papel(k) } else { 0.0 };
+            if r > 0.0 {
+                let i = (ax0 + k % w) + (ay0 + k / w) * g.s;
+                (d + dente * r * f64::from(g.paper[i]) * cob[k]) as f32
+            } else {
+                d as f32
+            }
         });
         let alta = match af.raio_sombra {
             0 => massa,
@@ -574,7 +604,8 @@ impl CampoAltura {
         x + y * self.w
     }
 
-    /// §BUG-bordas: a fracção da célula `(x, y)` dentro do contorno sub-célula da tinta (`1` fora da orla).
+    /// §BUG-bordas: a fracção da célula `(x, y)` dentro do contorno sub-célula da tinta (`1` fora da orla); `> 1` no
+    /// entalhe que [`sem_entalhes`] enche.
     #[inline]
     #[must_use]
     pub fn cobertura_da_borda(&self, x: usize, y: usize) -> f64 {
@@ -751,18 +782,24 @@ fn borda_suave(rep: &impl Reparte, cob: &[f64], w: usize, h: usize) -> Vec<f32> 
                 let l1 = m(ix, iy + 1) + (m(ix + 1, iy + 1) - m(ix, iy + 1)) * tx;
                 l0 + (l1 - l0) * ty
             };
-            let (mut gx, mut gy) = (0.0, 0.0);
+            let (mut gx, mut gy, mut fora_g, mut soma_g) = (0.0, 0.0, 0.0, 0.0);
             for (k, g) in gauss.iter().enumerate() {
                 let (dx, dy) = (
                     (k % LADO) as isize - RAIO_DIRECCAO,
                     (k / LADO) as isize - RAIO_DIRECCAO,
                 );
-                let p = g * m(xi + dx, yi + dy);
+                let dentro = m(xi + dx, yi + dy);
+                let p = g * dentro;
                 gx += p * dx as f64;
                 gy += p * dy as f64;
+                fora_g += g * (1.0 - dentro);
+                soma_g += g;
             }
             let n = libm::sqrt(gx * gx + gy * gy);
-            if n < 1e-9 {
+            // §BUG-bordas-W3b: o contorno liso é o de uma BORDA (meio plano); um furo ou uma fenda de uma célula no meio
+            // da tinta tem pouco «fora» na janela e não é borda — cortá-lo pela inversão da recta abria um entalhe à
+            // volta do furo (a tinta escura em volta dos pontinhos).
+            if n < 1e-9 || fora_g < orla_fora_min() * soma_g {
                 continue;
             }
             let (tx, ty) = (-gy / n, gx / n);
@@ -783,6 +820,92 @@ fn borda_suave(rep: &impl Reparte, cob: &[f64], w: usize, h: usize) -> Vec<f32> 
     } else {
         Vec::new()
     }
+}
+
+/// O entalhe mais raso que se enche (fracção da cobertura): `oraculo/README.md` §BUG-bordas-W3b.
+pub(crate) const ENTALHE_MIN: f64 = 0.10;
+
+#[cfg(test)]
+thread_local! {
+    /// (Testes) o [`ENTALHE_MIN`] de uma variante medida no MESMO processo; `Some(∞)` desliga a lei.
+    pub(crate) static ENTALHE_DA_MEDIDA: core::cell::Cell<Option<f64>> = const { core::cell::Cell::new(None) };
+}
+
+/// A fracção mínima de «fora» (pesada pela gaussiana da direcção) para a célula ser BORDA no [`borda_suave`]: a
+/// recta pela célula dá ~0,45, o canto interior ~0,25, o furo de uma célula ~0,03 (`oraculo/README.md`
+/// §BUG-bordas-W3b).
+pub(crate) const ORLA_FORA_MIN: f64 = 0.20;
+
+#[cfg(test)]
+thread_local! {
+    /// (Testes) o [`ORLA_FORA_MIN`] de uma variante medida no MESMO processo.
+    pub(crate) static ORLA_FORA_DA_MEDIDA: core::cell::Cell<Option<f64>> = const { core::cell::Cell::new(None) };
+}
+
+#[inline]
+fn orla_fora_min() -> f64 {
+    #[cfg(test)]
+    if let Some(v) = ORLA_FORA_DA_MEDIDA.with(core::cell::Cell::get) {
+        return v;
+    }
+    ORLA_FORA_MIN
+}
+
+#[inline]
+fn entalhe_min() -> f64 {
+    #[cfg(test)]
+    if let Some(v) = ENTALHE_DA_MEDIDA.with(core::cell::Cell::get) {
+        return v;
+    }
+    ENTALHE_MIN
+}
+
+/// ⭐ §BUG-bordas-W3b (smoke do dono 27/10, foto `smoke_27_10/7.png`): **a cobertura parcial é ÁREA, não espessura
+/// — a tinta não tem entalhes de uma célula.** As alturas (desfocadas) vão × a cobertura CRUA da célula; uma célula
+/// pintada mais rala que as vizinhas (o ruído do pouso na orla rasgada) virava um poço de uma célula com paredes de
+/// toda a espessura: a tinta dela sem luz nem céu (quase preta) sobre o papel na sombra cheia — os pontinhos escuros
+/// soltos; e o contorno liso da [`borda_suave`] cortava fundo a célula SALIENTE de uma orla rasgada, com as vizinhas
+/// dos lados dentro da tinta — o mesmo entalhe. A célula COM pigmento cuja cobertura (depois do contorno) fica
+/// `≥ ENTALHE_MIN` abaixo da MEDIANA das 3×3 cobre (altura e alfa) até essa mediana: a mediana enche o entalhe e
+/// deixa a borda (recta, canto, graduada: a mediana de um campo monótono é ele próprio) onde está. O papel sem
+/// pigmento continua papel. Devolve o factor da célula sobre a cobertura crua (o `borda` onde nada se enche).
+fn sem_entalhes(rep: &impl Reparte, cob: &[f64], borda: Vec<f32>, w: usize, h: usize) -> Vec<f32> {
+    let min = entalhe_min();
+    // A cobertura depois do contorno sub-célula: é ela que tem (ou não) entalhes.
+    let depois = |k: usize| cob[k] * borda.get(k).map_or(1.0, |&b| f64::from(b));
+    let mut f = vec![1f32; w * h];
+    por_linha(rep, w, &mut f, &|y, l| {
+        for (x, q) in l.iter_mut().enumerate() {
+            let k = x + y * w;
+            let c = depois(k);
+            if cob[k] <= 0.0 || c >= 1.0 - min {
+                continue;
+            }
+            let mut v = [0f64; 9];
+            for (n, e) in v.iter_mut().enumerate() {
+                let (xx, yy) = (
+                    (x + n % 3).saturating_sub(1).min(w - 1),
+                    (y + n / 3).saturating_sub(1).min(h - 1),
+                );
+                *e = depois(xx + yy * w);
+            }
+            v.sort_unstable_by(f64::total_cmp);
+            let mediana = v[4];
+            if mediana - c >= min {
+                *q = (mediana / cob[k]) as f32;
+            }
+        }
+    });
+    if !f.iter().any(|&q| q != 1.0) {
+        return borda;
+    }
+    if borda.is_empty() {
+        return f;
+    }
+    f.iter()
+        .zip(&borda)
+        .map(|(&a, &b)| if a != 1.0 { a } else { b })
+        .collect()
 }
 
 /// Média móvel separável de raio `r` (caixa `2r+1`), presa às bordas; cada passagem por linhas de `rep`.
@@ -840,6 +963,8 @@ pub struct Termos {
     pub sob_verniz: f64,
     /// W3 M1: o difuso que a SUBSURFACE soma a cada canal (já com o peso; `0` sem ela).
     pub sss: [f64; 3],
+    /// W3b: o peso da TRANSMISSION ([`crate::material::transmite`]; `0` sem ela).
+    pub transmissao: f64,
 }
 
 impl Termos {
@@ -958,6 +1083,11 @@ fn cor_dos_termos(o: &OleoReal, t: &Termos, a: [f64; 3], cobertura: f64) -> [f64
         let mut base = a[c] * difuso(o, &t, a[c], c);
         if t.sss[c] != 0.0 {
             base = a[c] * (difuso(o, &t, a[c], c) + t.sss[c]);
+        }
+        if t.transmissao > 0.0 {
+            let a2 = a[c] * a[c];
+            let d = difuso(o, &t, a2, c) * o.papel[c];
+            base = crate::material::transmite(base, a[c], d, t.transmissao);
         }
         if t.metal > 0.0 || t.sob_verniz != 1.0 {
             base = base * (1.0 - t.metal) * t.sob_verniz;
@@ -1308,10 +1438,107 @@ pub fn sombra_transparente(s: f64, a: f64, t: f64) -> f64 {
     (1.0 - (1.0 - atravessa) * (a * t * t + (1.0 - a)) / deixa).clamp(0.0, 1.0)
 }
 
+/// ⭐ **A transparência À LUZ da tinta que tapa o papel NU `(cx, cy)`** (W3b; o aberto da Transparency só do
+/// pincel, `oraculo/README.md` §Transmission): marcha para a luz como [`luz_directa`] e lê a tinta da célula mais
+/// alta no caminho — a Transparency `t` dela (célula ∘ cartão) e a Transmission `w` (a luz passa tingida pelas duas faces,
+/// `w·L(a²)`) — no `t` equivalente de [`sombra_transparente`]: `t² = 1 − (1 − t²)(1 − w·L(a²))`. Sem material em
+/// célula nenhuma e sem Transmission no cartão devolve a Transparency do cartão (a lei de antes, ao bit).
+#[must_use]
+pub fn transparencia_de_quem_tapa(o: &OleoReal, campo: &CampoAltura, cx: usize, cy: usize) -> f64 {
+    let k = &o.material;
+    if campo.material.is_empty() && k.transmissao <= 0.0 {
+        return k.transparencia;
+    }
+    let (x, y) = (cx as f64, cy as f64);
+    let l = para_a_luz(o);
+    let lxy = libm::hypot(l[0], l[1]).max(1e-9);
+    let (dx, dy) = (l[0] / lxy, l[1] / lxy);
+    // O CORPO da tinta que tapa: a célula mais alta no caminho da luz (a orla parcial à frente dela mistura o
+    // material com o papel pela cobertura).
+    let (mut alto, mut quem) = (f64::NEG_INFINITY, (cx as isize, cy as isize));
+    for t in 1..=PASSOS_SOMBRA {
+        let t = t as f64;
+        let q = (
+            libm::round(x + dx * t) as isize,
+            libm::round(y + dy * t) as isize,
+        );
+        let h = campo.at_sombra(q.0, q.1);
+        if h > alto {
+            alto = h;
+            quem = q;
+        }
+    }
+    let m = campo.material_em(quem.0.max(0) as usize, quem.1.max(0) as usize);
+    let t = crate::material::transparencia(m.transparencia, k.transparencia);
+    let w = crate::material::transparencia(m.transmissao, k.transmissao);
+    if w <= 0.0 {
+        return t;
+    }
+    let a = if campo.albedo.is_empty() {
+        [1.0f32; 3]
+    } else {
+        campo.albedo[campo.idx(quem.0, quem.1)]
+    };
+    let passa = w
+        * (0.2126 * f64::from(a[0] * a[0])
+            + 0.7152 * f64::from(a[1] * a[1])
+            + 0.0722 * f64::from(a[2] * a[2]));
+    libm::sqrt(1.0 - (1.0 - t * t) * (1.0 - passa))
+}
+
+/// W3b: quanto do DENTE do papel se vê ATRAVÉS da tinta da célula `(cx, cy)` (`0..1`): a Transmission `w` (o papel
+/// iluminado sob o filme), célula ∘ cartão. `0` na tinta de sempre — o dente fica enterrado (§BUG-papel). O Relevo do
+/// papel não passa por aqui: a SUPERFÍCIE da tinta segue o dente na altura fina do campo (luz e brilho do óleo).
+#[must_use]
+pub fn grao_do_papel(o: &OleoReal, campo: &CampoAltura, cx: usize, cy: usize) -> f64 {
+    let m = campo.material_em(cx, cy);
+    crate::material::transparencia(m.transmissao, o.material.transmissao)
+}
+
 /// A sombra no papel em `u8` (o plano que o composite guarda): a MESMA conversão nos dois caminhos. `s` é uma
 /// fracção de LUZ (linear); o composite escurece o byte sRGB por ela, por isso guarda-se a fracção do byte que
 /// tira essa luz: `1 − sRGB(1 − s)` (exacta no papel branco). Guardar `s` no byte era tirar ~2,2× a luz — o halo
 /// cinza à volta de todo traço (K4, `oraculo/README.md` §K4).
+/// Quantos níveis (`u8`) uma célula do plano da sombra tem de ficar ACIMA da mediana das 3×3 para ser um furo
+/// (`oraculo/README.md` §BUG-bordas-W3b).
+pub const FURO_DA_SOMBRA: u8 = 32;
+
+#[cfg(test)]
+thread_local! {
+    /// (Testes) o [`FURO_DA_SOMBRA`] de uma variante medida no MESMO processo; `255` desliga a lei.
+    pub(crate) static FURO_DA_MEDIDA: core::cell::Cell<Option<u8>> = const { core::cell::Cell::new(None) };
+}
+
+/// ⭐ §BUG-bordas-W3b: **a sombra no papel não tem furos de uma célula.** O plano da sombra (`gw × gh`, `0..255` de
+/// escurecimento) lido na célula `(x, y)`: a célula [`FURO_DA_SOMBRA`] níveis (ou mais) mais escura que a MEDIANA
+/// das 3×3 lê a mediana. O papel num vão de uma ou duas células ao pé da tinta (a baía da orla rasgada, a orla
+/// parcial cortada) via o céu tapado em três lados e a luz tapada: 0,8–0,88 de sombra entre vizinhas a 0,1–0,4 — o
+/// pontinho escuro solto. A faixa da sombra projectada (contínua) e a sombra larga não mudam: a mediana de um campo
+/// liso é ele próprio.
+#[must_use]
+pub fn sombra_sem_furo(plano: &[u8], (gw, gh): (usize, usize), (x, y): (usize, usize)) -> u8 {
+    let s = plano[x + y * gw];
+    #[cfg(test)]
+    let furo = FURO_DA_MEDIDA
+        .with(core::cell::Cell::get)
+        .unwrap_or(FURO_DA_SOMBRA);
+    #[cfg(not(test))]
+    let furo = FURO_DA_SOMBRA;
+    if s < furo {
+        return s;
+    }
+    let mut v = [0u8; 9];
+    for (k, e) in v.iter_mut().enumerate() {
+        let (xx, yy) = (
+            (x + k % 3).saturating_sub(1).min(gw - 1),
+            (y + k / 3).saturating_sub(1).min(gh - 1),
+        );
+        *e = plano[xx + yy * gw];
+    }
+    v.sort_unstable();
+    if s - v[4] >= furo { v[4] } else { s }
+}
+
 #[must_use]
 pub fn sombra_em_u8(s: f64) -> u8 {
     (255.0 - srgb255_of_linear(1.0 - s.clamp(0.0, 1.0))).round() as u8
@@ -1461,6 +1688,7 @@ pub fn termos_com(
             metal: 0.0,
             sob_verniz: 1.0,
             sss: [0.0; 3],
+            transmissao: 0.0,
         };
         let d_metal = ggx(a2_amb);
         for c in 0..3 {
@@ -1502,6 +1730,7 @@ pub fn termos_com(
         } else {
             [0.0; 3]
         },
+        transmissao: m.transmissao,
     };
     // VELUDO: o sheen branco, mais forte onde a normal foge da vista, à luz que a célula recebe.
     if m.veludo > 0.0 {
@@ -1516,3 +1745,124 @@ pub fn termos_com(
 #[cfg(test)]
 #[path = "oleo_real_tests.rs"]
 mod oleo_real_tests;
+
+/// §BUG-bordas-W3b — **a régua dos pontinhos escuros SOLTOS** (a de `oraculo/pontinhos_regua.py`, para os gates
+/// das duas crates; `px` = `(luminância, cobertura)` por célula, `(w + 2)` por linha, borda de 1): célula a ≤ 3 do
+/// contorno da tinta (cobertura ≥ ½), mais escura que o p5 e que METADE da mediana da tinta interior (a > 4 do
+/// contorno) E ≥ 20 níveis abaixo da mediana das 8 vizinhas; conta as componentes 8-conexas de ≤ 4 células com uma
+/// célula a ≤ 4 do PAPEL ABERTO (papel com < 20 % de tinta na janela 9×9) — a orla EXTERNA, a das setas do dono; os
+/// salpicos do interior da textura contam à parte (o Rebelle tem 81 no Dabber inteiro, 1 na orla). Devolve
+/// `(soltos na orla, soltos em toda a parte)` — a ≤ 3 de qualquer contorno, também o de um furo no meio da tinta.
+pub fn pontinhos_escuros(px: &[[f64; 2]], (w, h): (usize, usize)) -> (usize, usize) {
+    let s = w + 2;
+    let at = |x: usize, y: usize| px[x + y * s];
+    let tinta = |x: usize, y: usize| at(x, y)[1] >= 0.5;
+    let viz = |x: usize, y: usize| {
+        [
+            (-1, -1),
+            (0, -1),
+            (1, -1),
+            (-1, 0),
+            (1, 0),
+            (-1, 1),
+            (0, 1),
+            (1, 1),
+        ]
+        .map(|(dx, dy)| ((x as isize + dx) as usize, (y as isize + dy) as usize))
+    };
+    // A distância (Chebyshev) ao contorno, até 5.
+    let mut dist = vec![99usize; s * (h + 2)];
+    for y in 2..h {
+        for x in 2..w {
+            if tinta(x, y) && viz(x, y).iter().any(|&(a, b)| !tinta(a, b)) {
+                dist[x + y * s] = 0;
+            }
+        }
+    }
+    for k in 1..=5 {
+        for y in 2..h {
+            for x in 2..w {
+                if dist[x + y * s] == 99 && viz(x, y).iter().any(|&(a, b)| dist[a + b * s] == k - 1)
+                {
+                    dist[x + y * s] = k;
+                }
+            }
+        }
+    }
+    let mut interior: Vec<f64> = (2..h)
+        .flat_map(|y| (2..w).map(move |x| (x, y)))
+        .filter(|&(x, y)| tinta(x, y) && dist[x + y * s] > 4)
+        .map(|(x, y)| at(x, y)[0])
+        .collect();
+    interior.sort_by(f64::total_cmp);
+    let p5 = interior[interior.len() / 20].min(0.5 * interior[interior.len() / 2]);
+    let mut escuro = vec![false; s * (h + 2)];
+    for y in 2..h {
+        for x in 2..w {
+            if dist[x + y * s] > 3 {
+                continue;
+            }
+            let mut v = viz(x, y).map(|(a, b)| at(a, b)[0]);
+            v.sort_by(f64::total_cmp);
+            let mediana = 0.5 * (v[3] + v[4]);
+            let l = at(x, y)[0];
+            escuro[x + y * s] = l < p5 && l <= mediana - 20.0;
+        }
+    }
+    // O papel aberto, e a faixa a ≤ 4 dele.
+    let mut perto = vec![false; s * (h + 2)];
+    for y in 1..=h {
+        for x in 1..=w {
+            if tinta(x, y) {
+                continue;
+            }
+            let mut n = 0;
+            for yy in y.saturating_sub(4).max(1)..=(y + 4).min(h) {
+                for xx in x.saturating_sub(4).max(1)..=(x + 4).min(w) {
+                    n += usize::from(tinta(xx, yy));
+                }
+            }
+            if n * 5 < 81 {
+                perto[x + y * s] = true;
+            }
+        }
+    }
+    for _ in 0..4 {
+        let antes = perto.clone();
+        for y in 2..h {
+            for x in 2..w {
+                if !antes[x + y * s] && viz(x, y).iter().any(|&(a, b)| antes[a + b * s]) {
+                    perto[x + y * s] = true;
+                }
+            }
+        }
+    }
+    let mut visto = vec![false; s * (h + 2)];
+    let (mut soltos, mut todos) = (0, 0);
+    for y in 2..h {
+        for x in 2..w {
+            if !escuro[x + y * s] || visto[x + y * s] {
+                continue;
+            }
+            let (mut pilha, mut tam, mut na_orla) = (vec![(x, y)], 0, false);
+            visto[x + y * s] = true;
+            while let Some((a, b)) = pilha.pop() {
+                tam += 1;
+                na_orla |= perto[a + b * s];
+                for (c, d) in viz(a, b) {
+                    if escuro[c + d * s] && !visto[c + d * s] {
+                        visto[c + d * s] = true;
+                        pilha.push((c, d));
+                    }
+                }
+            }
+            soltos += usize::from(tam <= 4 && na_orla);
+            todos += usize::from(tam <= 4);
+        }
+    }
+    (soltos, todos)
+}
+
+#[cfg(test)]
+#[path = "oleo_borda_w3b_tests.rs"]
+mod oleo_borda_w3b_tests;

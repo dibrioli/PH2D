@@ -273,9 +273,14 @@ pub enum Knob {
     /// ângulo 0) e este no 2.º (Y: através) — os fios do leque crescem num eixo sem engrossar no outro. Negativo (o
     /// default) = o mesmo `γ` nos dois eixos, ao bit.
     TextureSizeExpAcross,
+    /// … Transmission (W3b, o «Transmission Weight» do Principled): a luz atravessa o filme, bate no papel e volta
+    /// tingida ([`crate::material::transmite`]). No FIM do enum: a ordem dos knobs é a dos índices.
+    Transmission,
+    /// … Relevo do papel (W3b): quanto a superfície da tinta segue o dente do papel por baixo.
+    PaperRelief,
 }
 
-pub const KNOB_COUNT: usize = 123;
+pub const KNOB_COUNT: usize = 125;
 
 /// O LEITOR TOLERANTE das chaves do material de antes da W3 (preset e macro gravados com elas): `(knob, valor)`
 /// na lei nova, `None` para uma chave que não é antiga. `roughnessMul` m → Roughness `0,5·m` (o neutro `1` → `0,5`,
@@ -309,8 +314,6 @@ pub enum KnobGroup {
     Stroke,
     /// O que a água faz depois: difusão, backrun, dedos, granulação, molhado × molhado.
     WetEffects,
-    /// Só a aparência (render): luz rasante, grão dos vales, brilho molhado, ruído, tom da orla.
-    Look,
     /// O material da TINTA do pincel (Óleo Real W2 E3): o Principled por célula e o Lock Reflectivity.
     Material,
 }

@@ -250,7 +250,7 @@ impl crate::tool::PainterTool {
     ///
     /// A imagem entra pela **versão monotônica** e nunca pelo endereço do buffer, o mesmo cuidado que
     /// o `PaperKey` do Wet Paint já toma (ADR-0124: um `Arc` novo pode nascer no endereço de um morto).
-    fn substrate_key(&self) -> SubstrateKey {
+    pub(super) fn substrate_key(&self) -> SubstrateKey {
         SubstrateKey {
             tex: self.paint.brush.paper,
             depth: self.paint.substrate_depth,
@@ -291,6 +291,8 @@ impl crate::tool::PainterTool {
             }
             None => self.lit_substrate = Some(now),
         }
+        // W3b: a tinta do Óleo Real assa o dente e tinge pelo papel — segue-os também (`wetpaint/grao_no_filme.rs`).
+        self.reconcilia_o_grao_do_oleo();
     }
 
     /// Escreve um campo do PAPEL em todos os slots de pincel.

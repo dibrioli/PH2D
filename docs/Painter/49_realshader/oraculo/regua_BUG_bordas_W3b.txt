@@ -1,0 +1,47 @@
+# §BUG-bordas-W3b — pontinhos_regua.py (SOLTOS na orla = px de componentes escuras ≤ 4 px a ≤ 4 px do papel aberto; todos = a ≤ 3 de qualquer contorno). Cena medida_oleo_real_bordas_horizontais (3 traços quase horizontais, 40 px, Óleo Real ligado, tela 700×460). antes = HEAD 8c853c1f15, depois = esta onda.
+[antes]
+hor_bristle_branco_s0.5.ppm        SOLTOS na orla    3 (todos  192) · linhas  21 · px   542 / orla  61165 · p5 51 · LARGURA 10–90 2.90 px
+hor_bristle_branco_s0.ppm          SOLTOS na orla   16 (todos  202) · linhas  27 · px   654 / orla  66655 · p5 51 · LARGURA 10–90 1.45 px
+hor_bristle_branco_s1.ppm          SOLTOS na orla    1 (todos  182) · linhas  21 · px   550 / orla  60250 · p5 52 · LARGURA 10–90 4.30 px
+hor_bristle_tex_s0.5.ppm           SOLTOS na orla    6 (todos  192) · linhas  19 · px   523 / orla  61022 · p5 52 · LARGURA 10–90 2.93 px
+hor_bristle_tex_s0.ppm             SOLTOS na orla   18 (todos  205) · linhas  26 · px   652 / orla  66291 · p5 51 · LARGURA 10–90 1.48 px
+hor_bristle_tex_s1.ppm             SOLTOS na orla    0 (todos  177) · linhas  21 · px   539 / orla  60278 · p5 52 · LARGURA 10–90 4.37 px
+hor_dabber_branco_s0.5.ppm         SOLTOS na orla    7 (todos  259) · linhas   4 · px   399 / orla  80238 · p5 61 · LARGURA 10–90 6.28 px
+hor_dabber_branco_s0.ppm           SOLTOS na orla   65 (todos  487) · linhas  10 · px   776 / orla  99490 · p5 61 · LARGURA 10–90 3.14 px
+hor_dabber_branco_s1.ppm           SOLTOS na orla    3 (todos   88) · linhas   2 · px   142 / orla  67240 · p5 62 · LARGURA 10–90 7.18 px
+hor_dabber_tex_s0.5.ppm            SOLTOS na orla    9 (todos  237) · linhas   3 · px   369 / orla  79555 · p5 60 · LARGURA 10–90 6.30 px
+hor_dabber_tex_s0.ppm              SOLTOS na orla   64 (todos  436) · linhas  10 · px   735 / orla  98692 · p5 60 · LARGURA 10–90 2.61 px
+hor_dabber_tex_s1.ppm              SOLTOS na orla    5 (todos  107) · linhas   0 · px   177 / orla  68218 · p5 61 · LARGURA 10–90 7.26 px
+hor_knifeoily_branco_s0.5.ppm      SOLTOS na orla    0 (todos    2) · linhas   0 · px     4 / orla  34888 · p5 69 · LARGURA 10–90 4.50 px
+hor_knifeoily_branco_s0.ppm        SOLTOS na orla    2 (todos   10) · linhas   0 · px    15 / orla  42869 · p5 69 · LARGURA 10–90 3.97 px
+hor_knifeoily_branco_s1.ppm        SOLTOS na orla    0 (todos    0) · linhas   0 · px     0 / orla  33449 · p5 69 · LARGURA 10–90 5.56 px
+hor_knifeoily_tex_s0.5.ppm         SOLTOS na orla    0 (todos    0) · linhas   0 · px     0 / orla  36811 · p5 67 · LARGURA 10–90 3.32 px
+hor_knifeoily_tex_s0.ppm           SOLTOS na orla    2 (todos    2) · linhas   0 · px     2 / orla  40415 · p5 67 · LARGURA 10–90 2.41 px
+hor_knifeoily_tex_s1.ppm           SOLTOS na orla    0 (todos    0) · linhas   0 · px     0 / orla  34899 · p5 67 · LARGURA 10–90 4.61 px
+[depois]
+hor_bristle_branco_s0.5.ppm        SOLTOS na orla    0 (todos  190) · linhas  21 · px   539 / orla  61612 · p5 51 · LARGURA 10–90 2.89 px
+hor_bristle_branco_s0.ppm          SOLTOS na orla   10 (todos  193) · linhas  29 · px   654 / orla  66446 · p5 51 · LARGURA 10–90 1.39 px
+hor_bristle_branco_s1.ppm          SOLTOS na orla    0 (todos  181) · linhas  21 · px   549 / orla  60237 · p5 52 · LARGURA 10–90 4.29 px
+hor_bristle_tex_s0.5.ppm           SOLTOS na orla    0 (todos  188) · linhas  23 · px   534 / orla  61637 · p5 52 · LARGURA 10–90 2.93 px
+hor_bristle_tex_s0.ppm             SOLTOS na orla    6 (todos  183) · linhas  31 · px   637 / orla  66040 · p5 51 · LARGURA 10–90 1.44 px
+hor_bristle_tex_s1.ppm             SOLTOS na orla    0 (todos  177) · linhas  21 · px   540 / orla  60365 · p5 52 · LARGURA 10–90 4.37 px
+hor_dabber_branco_s0.5.ppm         SOLTOS na orla    0 (todos   24) · linhas   0 · px    35 / orla  69714 · p5 61 · LARGURA 10–90 4.88 px
+hor_dabber_branco_s0.ppm           SOLTOS na orla    0 (todos   35) · linhas   0 · px    52 / orla  86679 · p5 61 · LARGURA 10–90 2.74 px
+hor_dabber_branco_s1.ppm           SOLTOS na orla    0 (todos   23) · linhas   0 · px    30 / orla  63826 · p5 62 · LARGURA 10–90 6.20 px
+hor_dabber_tex_s0.5.ppm            SOLTOS na orla    0 (todos   31) · linhas   1 · px    52 / orla  73551 · p5 60 · LARGURA 10–90 5.07 px
+hor_dabber_tex_s0.ppm              SOLTOS na orla   10 (todos   68) · linhas   1 · px    99 / orla  90868 · p5 60 · LARGURA 10–90 2.44 px
+hor_dabber_tex_s1.ppm              SOLTOS na orla    0 (todos   29) · linhas   1 · px    48 / orla  66127 · p5 61 · LARGURA 10–90 6.47 px
+hor_knifeoily_branco_s0.5.ppm      SOLTOS na orla    0 (todos    0) · linhas   0 · px     0 / orla  34089 · p5 69 · LARGURA 10–90 4.40 px
+hor_knifeoily_branco_s0.ppm        SOLTOS na orla    0 (todos    0) · linhas   0 · px     0 / orla  41570 · p5 69 · LARGURA 10–90 3.95 px
+hor_knifeoily_branco_s1.ppm        SOLTOS na orla    0 (todos    0) · linhas   0 · px     0 / orla  32885 · p5 69 · LARGURA 10–90 5.50 px
+hor_knifeoily_tex_s0.5.ppm         SOLTOS na orla    0 (todos    0) · linhas   0 · px     0 / orla  36842 · p5 67 · LARGURA 10–90 3.33 px
+hor_knifeoily_tex_s0.ppm           SOLTOS na orla    0 (todos    0) · linhas   0 · px     0 / orla  40308 · p5 67 · LARGURA 10–90 2.43 px
+hor_knifeoily_tex_s1.ppm           SOLTOS na orla    0 (todos    0) · linhas   0 · px     0 / orla  34909 · p5 67 · LARGURA 10–90 4.61 px
+[Rebelle 8, foto a 100 %]
+dabber_dabber_gestos_B.png         SOLTOS na orla    1 (todos   82) · linhas   0 · px    83 / orla 106203 · p5 75 · LARGURA 10–90 3.16 px
+knife_knife_oily_gestos_B.png      SOLTOS na orla    0 (todos    3) · linhas   0 · px     3 / orla  66227 · p5 95 · LARGURA 10–90 4.46 px
+flat_thick_gestos_B.png            SOLTOS na orla   28 (todos   61) · linhas   7 · px   143 / orla  66630 · p5 78 · LARGURA 10–90 4.42 px
+knife_knife_smooth_gestos_B.png    SOLTOS na orla    0 (todos    0) · linhas   0 · px     0 / orla  63061 · p5 85 · LARGURA 10–90 1.09 px
+bristle_bristle_flat_gestos_B.png  SOLTOS na orla    2 (todos   13) · linhas   5 · px   172 / orla  67164 · p5 73 · LARGURA 10–90 0.85 px
+[foto do dono smoke_27_10/7.png (ecrã a ~260 %)]
+7.png                              SOLTOS na orla    0 (todos    3) · linhas   0 · px     3 / orla  52426 · p5 68 · LARGURA 10–90 11.48 px

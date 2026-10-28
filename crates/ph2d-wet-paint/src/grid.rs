@@ -33,6 +33,8 @@ pub mod nivelado;
 pub mod espessura;
 #[path = "grid/material.rs"]
 pub mod material;
+#[path = "grid/aparencia.rs"]
+pub mod aparencia;
 #[path = "grid/patch.rs"]
 mod patch;
 #[path = "grid/traco.rs"]
@@ -88,6 +90,9 @@ pub struct Grid {
     /// **O MATERIAL da tinta** (Óleo Real W2 E3, [`material`]): o Principled que o pincel pousou, pela massa. VAZIO
     /// (= NEUTRO) até o primeiro pincel com material pintar; lê-se por [`Grid::material_da_celula`].
     pub material: Vec<crate::material::MaterialCelula>,
+    /// **A APARÊNCIA da tinta** (W3b, [`aparencia`]): os controlos do pincel que o ecrã lê, guardados no pouso. VAZIA
+    /// (= NEUTRA) até o primeiro pincel fora da fábrica pintar.
+    pub aparencia: Vec<aparencia::AparenciaCelula>,
     /// **A geometria da grade de FLUXO** (plano 30) — os quatro planos de
     /// velocidade abaixo são dimensionados por ELA, não pela grade fina.
     ///
@@ -258,6 +263,7 @@ impl Grid {
             traco: Vec::new(),
             vela: vec![0.0; n],
             material: Vec::new(),
+            aparencia: Vec::new(),
             flow,
             vel_x: vec![0.0; fn_],
             vel_y: vec![0.0; fn_],
@@ -589,6 +595,7 @@ pub struct GridSnapshot {
     pub traco: Vec<u32>,
     pub vela: Vec<f32>,
     pub material: Vec<crate::material::MaterialCelula>,
+    pub aparencia: Vec<aparencia::AparenciaCelula>,
     pub vel_x: Vec<f32>,
     pub vel_y: Vec<f32>,
     pub wet: Vec<u8>,
@@ -628,6 +635,7 @@ pub fn snapshot_grid(g: &Grid) -> GridSnapshot {
         traco: g.traco.clone(),
         vela: g.vela.clone(),
         material: g.material.clone(),
+        aparencia: g.aparencia.clone(),
         vel_x: g.vel_x.clone(),
         vel_y: g.vel_y.clone(),
         wet: g.wet.clone(),
@@ -661,6 +669,7 @@ pub fn restore_grid(g: &mut Grid, s: &GridSnapshot) -> bool {
     g.traco.clone_from(&s.traco);
     g.vela.copy_from_slice(&s.vela);
     g.material.clone_from(&s.material);
+    g.aparencia.clone_from(&s.aparencia);
     g.vel_x.copy_from_slice(&s.vel_x);
     g.vel_y.copy_from_slice(&s.vel_y);
     g.flow_x.fill(0.0);

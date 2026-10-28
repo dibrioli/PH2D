@@ -209,11 +209,11 @@ pub const KNOB_DEFS: [KnobDef; KNOB_COUNT] = [
     k(Knob::ExtStaining, KnobGroup::Paint, "extStaining", 0.0, 1.0, 0.01, 0.5, None),
     k(Knob::ExtDryBrush, KnobGroup::Stroke, "extDryBrush", 0.0, 1.0, 0.01, 0.0, None),
     k(Knob::ExtWetSoften, KnobGroup::Stroke, "extWetSoften", 0.0, 1.0, 0.01, 0.0, None),
-    k(Knob::ExtRakeLight, KnobGroup::Look, "extRakeLight", 0.0, 3.0, 0.05, 0.0, Some(Rebuild::Render)),
-    k(Knob::ExtValleyGran, KnobGroup::Look, "extValleyGran", 0.0, 1.0, 0.01, 0.0, Some(Rebuild::Render)),
-    k(Knob::ExtWetSheen, KnobGroup::Look, "extWetSheen", 0.0, 2.0, 0.05, 0.0, Some(Rebuild::Render)),
-    k(Knob::ExtGrainDither, KnobGroup::Look, "extGrainDither", 0.0, 8.0, 0.1, 0.0, Some(Rebuild::Render)),
-    k(Knob::ExtEdgeTint, KnobGroup::Look, "extEdgeTint", 0.0, 1.0, 0.01, 0.5, Some(Rebuild::Render)),
+    k(Knob::ExtRakeLight, KnobGroup::Hidden, "extRakeLight", 0.0, 3.0, 0.05, 0.0, Some(Rebuild::Render)),
+    k(Knob::ExtValleyGran, KnobGroup::Hidden, "extValleyGran", 0.0, 1.0, 0.01, 0.0, Some(Rebuild::Render)),
+    k(Knob::ExtWetSheen, KnobGroup::Hidden, "extWetSheen", 0.0, 2.0, 0.05, 0.0, Some(Rebuild::Render)),
+    k(Knob::ExtGrainDither, KnobGroup::Hidden, "extGrainDither", 0.0, 8.0, 0.1, 0.0, Some(Rebuild::Render)),
+    k(Knob::ExtEdgeTint, KnobGroup::Hidden, "extEdgeTint", 0.0, 1.0, 0.01, 0.5, Some(Rebuild::Render)),
     // Doc 23 P1 — active re-wet lift (Tools group, beside eraser/dryer/blow/
     // smear). 0 = the old model to the byte (Wet never touches settled
     // pigment); default 0.25 is calibrated by the reactivation gate: three
@@ -304,4 +304,7 @@ pub const KNOB_DEFS: [KnobDef; KNOB_COUNT] = [
     k(Knob::KnifeLevel, KnobGroup::Stroke, "knifeLevel", 0.0, 1.0, 0.01, 0.0, None),
     // o expoente através do traço (W3 K5): um passo abaixo de 0 = «o mesmo que o textureSizeExp», o de sempre
     k(Knob::TextureSizeExpAcross, KnobGroup::Stroke, "textureSizeExpAcross", -0.01, 1.5, 0.01, -0.01, None),
+    // a Transmission e o Relevo do papel (W3b): neutro 0 = a tinta de sempre, ao bit
+    k(Knob::Transmission, KnobGroup::Material, "transmission", 0.0, 1.0, 0.01, 0.0, None),
+    k(Knob::PaperRelief, KnobGroup::Material, "paperRelief", 0.0, 1.0, 0.01, 0.0, None),
 ];

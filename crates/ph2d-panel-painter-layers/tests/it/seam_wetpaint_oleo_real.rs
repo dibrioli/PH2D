@@ -30,7 +30,7 @@ use ph2d_ui_testkit::MockPanelHost;
 
 /// As dezasseis linhas por LITERAL (um gate que iterasse a lista sob teste encolheria com ela): as oito da
 /// óptica e as oito do material (W3).
-const LINHAS: [NodeId; 17] = [
+const LINHAS: [NodeId; 19] = [
     PAINTER_WETPAINT_OLEO_PROFUNDIDADE,
     PAINTER_WETPAINT_OLEO_SOMBRA,
     PAINTER_WETPAINT_OLEO_BRILHO,
@@ -48,6 +48,8 @@ const LINHAS: [NodeId; 17] = [
     PAINTER_WETPAINT_OLEO_MATERIAL[6],
     PAINTER_WETPAINT_OLEO_MATERIAL[7],
     PAINTER_WETPAINT_OLEO_MATERIAL[8],
+    PAINTER_WETPAINT_OLEO_MATERIAL[9],
+    PAINTER_WETPAINT_OLEO_MATERIAL[10],
 ];
 
 fn viewport() -> Rect {
@@ -373,7 +375,7 @@ fn o_material_do_cartao_chega_ao_oleo_real_e_sobrevive_a_religar() {
     let neutro = PAINTER_WETPAINT_OLEO_MATERIAL_NEUTRO;
     let mut tool = molhado();
     clica_na_caixa(&mut tool);
-    let f32s = |v: [f64; 9]| v.map(|x| x as f32);
+    let f32s = |v: [f64; 11]| v.map(|x| x as f32);
     assert_eq!(
         f32s(tool.wet_oleo_real().expect("ligado").material.valores()),
         neutro

@@ -147,6 +147,7 @@ pub(crate) fn dry_cell(
     paper: f32,
     count: u32,
     vela: f32,
+    vidrado: f32,
     film: &mut f32,
     susp: &mut f32,
     sett: &mut f32,
@@ -162,7 +163,7 @@ pub(crate) fn dry_cell(
     let mut susp_rgb_c = *susp_rgb;
     let mut sett_rgb_c = *sett_rgb;
     let mix = c.mix;
-    let ecra = c.ecra.com_vela(vela);
+    let ecra = c.ecra.com_vela(vela).com_vidrado(vidrado);
 
     // Edge factor: fraction of the 3x3 neighbourhood carrying pigment. A full
     // block (9/9) reads e=1 (no boost); a rim cell reads e<1.
@@ -323,8 +324,17 @@ pub fn drying_pass(g: &mut Grid, p: &Params, evap_base: f64, rewet_base: f64, ex
             let mut srgb = g.susp_rgb[i];
             let mut trgb = g.sett_rgb[i];
             dry_cell(
-                &c, g.paper[i], count, g.vela[i], &mut film, &mut susp, &mut sett, &mut srgb,
-                &mut trgb, &mut out,
+                &c,
+                g.paper[i],
+                count,
+                g.vela[i],
+                crate::grid::aparencia::vidrado(&g.aparencia, i),
+                &mut film,
+                &mut susp,
+                &mut sett,
+                &mut srgb,
+                &mut trgb,
+                &mut out,
             );
             g.film[i] = film;
             g.susp[i] = susp;
@@ -459,6 +469,7 @@ pub fn drying_pass_jacobi_rows(
         sett_rgb,
         paper,
         vela,
+        aparencia,
         row_lo,
         row_hi,
         spans_enabled,
@@ -470,6 +481,7 @@ pub fn drying_pass_jacobi_rows(
     let edge: &[u8] = &scratch.edge;
     let paper: &[f32] = paper;
     let vela: &[f32] = vela;
+    let aparencia: &[crate::grid::aparencia::AparenciaCelula] = aparencia;
     let band = by0 as usize * s..(by1 as usize + 1) * s;
     crate::par::walk_rows5(
         mode,
@@ -499,6 +511,7 @@ pub fn drying_pass_jacobi_rows(
                     paper[i],
                     u32::from(edge[i]),
                     vela[i],
+                    crate::grid::aparencia::vidrado(aparencia, i),
                     &mut a,
                     &mut b,
                     &mut d,

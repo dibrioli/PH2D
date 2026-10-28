@@ -312,6 +312,15 @@ if ALFA_SO:
             fundo.inputs["Strength"].default_value = forca * (ceu if com_sol else 1.0)
             ceu_nos.links.new(amb.outputs["Color"], fundo.inputs["Color"])
         alfa.inputs[1].default_value = 1.0 - m.get("transparencia", 0.0)
+        # W3b: a TRANSMISSION (o «Transmission Weight» do Principled, a Base Color tinge a refracção) — a luz do
+        # sol que atravessa o filme até ao papel é um caminho CÁUSTICO: as Shadow Caustics (MNEE) da tinta para o
+        # papel, ou o papel sob o filme só via o céu. `PH2D_CYCLES_MNEE=0` desliga-as (a variante de controlo).
+        tr = m.get("transmissao", 0.0)
+        bsdf.inputs["Transmission Weight"].default_value = tr
+        mnee = tr > 0.0 and os.environ.get("PH2D_CYCLES_MNEE", "1") != "0"
+        obj.cycles.is_caustics_caster = mnee
+        papel_o.cycles.is_caustics_receiver = mnee
+        sol_d.cycles.is_caustics_light = mnee
         cena.cycles.max_bounces = 12
         cena.view_settings.view_transform = "Standard"
         cena.view_settings.look = "None"

@@ -1,7 +1,7 @@
 //! **Com o «Glaze layering» ligado, as transferências verticais guardam a lei que o ecrã mostra.**
 //!
-//! A caixa é UMA lei da sessão (`Sim::camadas_transparentes` → `Sim::gather_params` → `Params::ecra`): o
-//! render compõe com ela e as quatro portas que mudam pigmento de camada — assentar na secagem
+//! A caixa é da TINTA (W3b: `Sim::camadas_transparentes` → `Params::vidrado` → pousa em `Grid::aparencia`; a lei de
+//! cada célula é `Params::ecra` com `Ecra::com_vidrado` do vidrado dela): o render compõe com ela e as quatro portas que mudam pigmento de camada — assentar na secagem
 //! (`dry_cell`), o Dry canvas, o re-molhar do Wet e o do Smear (`lift_settled`) — resolvem a cor nova pela
 //! inversa da MESMA lei. Se uma delas construísse o seu `Ecra` à parte (o tapar do produto, `esconde` 5,
 //! enquanto o ecrã tapa 2), o traço mudaria de cor ao secar ou ao re-molhar e nenhum portão de texto o via
@@ -19,6 +19,7 @@
 //! mede-se pela lei dele: dab a dab, onde a caixa NÃO prendeu, o ecrã fica; e o traço inteiro tem tecto.
 
 use ph2d_wet_paint::assenta::{Lei, sobre_branco};
+use ph2d_wet_paint::grid::aparencia::{AparenciaCelula, vidrado};
 use ph2d_wet_paint::colorops::{
     TINTA_ESCONDE, TINTA_MOLHADA_ESCURECE, VELATURA_DO_FILME, VELATURA_MEDIDA,
 };
@@ -70,6 +71,16 @@ fn cena(glaze: bool) -> Engine {
     e.sim.esconde = TINTA_ESCONDE;
     e.sim.camadas_transparentes = glaze;
     let g = e.active_grid_mut();
+    // A tinta semeada à mão foi pousada com o «Glaze layering» que a cena pede (o vidrado é da célula, W3b).
+    if glaze {
+        g.aparencia = vec![
+            AparenciaCelula {
+                vidrado: 1.0,
+                ..AparenciaCelula::NEUTRA
+            };
+            g.cells
+        ];
+    }
     for y in 1..=H {
         let (sc, uc) = PARES[((y - 1) / 10) % PARES.len()];
         let k = ((y - 1) % 10) as f32;
@@ -97,7 +108,7 @@ fn ecra_seco(e: &Engine) -> Vec<[f64; 3]> {
         for x in 1..=W {
             let i = x + y * g.s;
             v.push(sobre_branco(
-                lei,
+                lei.com_vela(g.vela[i]).com_vidrado(vidrado(&g.aparencia, i)),
                 g.sett_rgb[i].map(f64::from),
                 g.susp_rgb[i].map(f64::from),
                 alpha_of_mass(g.sett[i] as f64),

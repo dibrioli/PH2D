@@ -125,6 +125,8 @@ impl Trail {
             crate::grid::material::travado(p),
         );
         let com_ponta = self.mat_ponta.len() == self.pig.len();
+        // A APARÊNCIA (W3b): o que o ecrã lê dos controlos do pincel fica na célula — o painel só vale para o futuro.
+        let aparencia = crate::grid::aparencia::do_pincel(p);
         // A marca do nivelado (K8): a tinta de um dab que não nivela apaga-a pela massa; a da lâmina é dela.
         let apaga_marca = !g.nivelado.is_empty() && !crate::grid::nivelado::nivela(p);
         // O FILME do traço (`Knob::StrokeFilm`): a água da célula é a do filme — sem o 2.º gole da célula virgem (o gole
@@ -172,6 +174,7 @@ impl Trail {
                 };
                 let m_old = g.susp[i] as f64 + g.sett[i] as f64;
                 crate::grid::material::pousa(g, i, m_old, mat, v, mat_trava);
+                crate::grid::aparencia::pousa(g, i, m_old, aparencia, v);
                 if apaga_marca {
                     crate::grid::nivelado::dilui(g, i, m_old, v);
                 }
@@ -216,7 +219,10 @@ impl Trail {
                         };
                         let dm = g.susp[i] as f64 * f64::from(vela) * d;
                         if dm > 0.0 {
-                            let e = p.ecra.com_vela(g.vela[i]);
+                            let e = p
+                                .ecra
+                                .com_vela(g.vela[i])
+                                .com_vidrado(crate::grid::aparencia::vidrado(&g.aparencia, i));
                             crate::grid::settle_composite(g, i, dm, p.mix, p.glaze, e, &mut out);
                             // A camada que vai para BAIXO leva a sua água (a fracção que assentou): deixada no
                             // filme, a orla do traço novo (que quase nada pousa) virava água LIMPA ao lado do azul
@@ -390,6 +396,7 @@ impl Trail {
         if rx1 < rx0 {
             return levantou;
         }
+        crate::grid::aparencia::veste_virgens(g, (rx0, ry0, rx1, ry1), aparencia);
         g.expand_bbox(rx0 - 1, ry0 - 1, rx1 + 1, ry1 + 1);
         TouchedRect::union(
             Some(TouchedRect {
@@ -583,7 +590,8 @@ impl Trail {
                             sett_c,
                             mix,
                             p.glaze,
-                            p.ecra.com_vela(g.vela[i]),
+                            p.ecra.com_vela(g.vela[i])
+                                .com_vidrado(crate::grid::aparencia::vidrado(&g.aparencia, i)),
                             &mut out,
                         );
                     }

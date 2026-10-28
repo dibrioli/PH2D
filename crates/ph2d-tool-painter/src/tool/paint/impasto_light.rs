@@ -394,7 +394,7 @@ impl PainterTool {
 /// — the halo Enio photographed, arriving through the specular door. (It is also what a real highlight
 /// does: approach white, never overshoot it.)
 #[inline]
-fn light_pixel(v: f32, mul: f32, add: f32) -> f32 {
+pub(super) fn light_pixel(v: f32, mul: f32, add: f32) -> f32 {
     let lit = (v * mul).clamp(0.0, 1.0);
     (lit + add * (1.0 - lit)).clamp(0.0, 1.0)
 }

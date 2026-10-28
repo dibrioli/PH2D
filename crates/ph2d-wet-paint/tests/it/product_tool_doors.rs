@@ -236,8 +236,9 @@ fn the_paper_visual_prints_the_tooth_into_the_pigment_alpha_intact() {
     }
     assert!(rgb_moved, "default knobs must print visible grain");
     drop(layers);
-    // Zero the two amplitudes: the term must vanish to the bit. The relief is the PAINT's (Bug #48: the
-    // render reads `Grid::relevo`, written at the deposit), so zeroing the Emboss knob NOW leaves it.
+    // Zero the two amplitudes: the term must vanish to the bit. The relief and the grain are the PAINT's (Bug #48,
+    // W3b: the render reads `Grid::relevo` and `Grid::aparencia`, written at the deposit), so zeroing the knobs NOW
+    // leaves them.
     e.set_knob(Knob::VisualGrain, 0.0);
     e.set_knob(Knob::Emboss, 0.0);
     let params = e.sim.gather_params(&e.tuning);
@@ -258,8 +259,16 @@ fn the_paper_visual_prints_the_tooth_into_the_pigment_alpha_intact() {
         "the paint keeps the relief it was laid with"
     );
     drop(layers);
-    // Paint laid with Emboss 0 carries no relief.
-    e.active_grid_mut().relevo.fill(0.0);
+    // Paint laid with Emboss 0 and Visual grain 0 carries neither.
+    let g = e.active_grid_mut();
+    g.relevo.fill(0.0);
+    g.aparencia = vec![
+        ph2d_wet_paint::grid::aparencia::AparenciaCelula {
+            grao: 0.0,
+            ..ph2d_wet_paint::grid::aparencia::AparenciaCelula::NEUTRA
+        };
+        g.cells
+    ];
     let layers = layers_of(&e);
     let mut on_zeroed = vec![0u8; W * H * 4];
     render_pigment_region_visual(Some(&params), &layers, paper_on, 1, 1, W, H, &mut on_zeroed);
@@ -269,35 +278,42 @@ fn the_paper_visual_prints_the_tooth_into_the_pigment_alpha_intact() {
     );
 }
 
-/// The «Glaze layering» (`Sim::camadas_transparentes`, a law of the session the
-/// composite reads from `gather_params`) lets the dried paint show through the
-/// wet film — the colour changes exactly where suspension sits OVER settled
-/// paint, and nowhere else (bare paper and paint without film keep their bytes).
+/// The «Glaze layering» (`Sim::camadas_transparentes`) lets the dried paint show through the wet film — the
+/// colour changes exactly where suspension sits OVER settled paint, and nowhere else (bare paper and paint
+/// without film keep their bytes). It is a BRUSH control (W3b): it lands in the cell with the wash
+/// (`Grid::aparencia`), so it is on while the wash is laid; the session flag read at render changes nothing.
 #[test]
 fn the_glaze_stacks_the_film_over_the_dried_paint() {
-    let mut e = seeded_engine([220.0, 45.0, 40.0]);
-    e.action_dry_canvas(); // settle the seed
-    // A fresh blue wash over the dried red.
-    e.color = [10.0, 70.0, 150.0];
-    e.begin_direct_stroke(0, 30.0, 48.0);
-    let mut x = 30.0;
-    while x < 66.0 {
-        x += 4.0;
-        e.direct_segment(0, 4.0);
-        e.dispatch_pressure_dab_lane(0, x, 48.0, 5.0, 10.0, None, None, None);
-    }
-    e.end_direct_stroke();
-    e.sim.lei = ph2d_wet_paint::assenta::Lei::Cobre;
-    e.sim.esconde = ph2d_wet_paint::colorops::TINTA_ESCONDE;
+    let lava = |glaze: bool| {
+        let mut e = seeded_engine([220.0, 45.0, 40.0]);
+        e.action_dry_canvas(); // settle the seed
+        e.sim.camadas_transparentes = glaze;
+        // A fresh blue wash over the dried red.
+        e.color = [10.0, 70.0, 150.0];
+        e.begin_direct_stroke(0, 30.0, 48.0);
+        let mut x = 30.0;
+        while x < 66.0 {
+            x += 4.0;
+            e.direct_segment(0, 4.0);
+            e.dispatch_pressure_dab_lane(0, x, 48.0, 5.0, 10.0, None, None, None);
+        }
+        e.end_direct_stroke();
+        e.sim.lei = ph2d_wet_paint::assenta::Lei::Cobre;
+        e.sim.esconde = ph2d_wet_paint::colorops::TINTA_ESCONDE;
+        // The session flag after the wash is NOT what the screen reads.
+        e.sim.camadas_transparentes = !glaze;
+        e
+    };
+    let (e, com) = (lava(false), lava(true));
     let plain = e.sim.gather_params(&e.tuning);
-    e.sim.camadas_transparentes = true;
-    let glaze = e.sim.gather_params(&e.tuning);
+    let glaze = com.sim.gather_params(&com.tuning);
+    let layers_com = layers_of(&com);
     let layers = layers_of(&e);
     let visual = PigmentVisual::default();
     let mut off = vec![0u8; W * H * 4];
     let mut on = vec![0u8; W * H * 4];
     render_pigment_region_visual(Some(&plain), &layers, visual, 1, 1, W, H, &mut off);
-    render_pigment_region_visual(Some(&glaze), &layers, visual, 1, 1, W, H, &mut on);
+    render_pigment_region_visual(Some(&glaze), &layers_com, visual, 1, 1, W, H, &mut on);
     let g = e.active_grid();
     let mut moved = false;
     for cy in 1..=H {

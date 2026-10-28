@@ -49,6 +49,9 @@ pub struct Params {
     pub pickup_assentado: f64,
     /// A lei do ecrã que assentar e re-molhar preservam ([`crate::assenta`]), com a velatura do filme.
     pub ecra: crate::assenta::Ecra,
+    /// O «Glaze layering (K-M)» do pincel ([`Sim::camadas_transparentes`]): `1` = ligado. Pousa na célula
+    /// ([`crate::grid::aparencia`]); a lei de cada célula lê o dela ([`crate::assenta::Ecra::com_vidrado`]).
+    pub vidrado: f32,
     /// [`Sim::semente_do_po`].
     pub semente_do_po: u32,
     /// [`Sim::relevo_do_tamanho`].
@@ -136,8 +139,9 @@ pub struct Sim {
     /// **Quanto uma camada tapa a de baixo** na [`crate::assenta::Lei::Cobre`] (`h = 1 − (1 − a)^esconde`).
     pub esconde: f64,
     /// **«Glaze layering (K-M)»: camadas transparentes** — a camada tapa só a sua força
-    /// ([`crate::colorops::TINTA_ESCONDE_EM_VELATURA`] no lugar de [`Sim::esconde`]). Lido só por
-    /// [`Sim::gather_params`]: o ecrã e as transferências verticais vêem a MESMA lei.
+    /// ([`crate::colorops::TINTA_ESCONDE_EM_VELATURA`] no lugar de [`Sim::esconde`]). É do PINCEL (W3b): pousa
+    /// na célula ([`Params::vidrado`]) e o ecrã e as transferências verticais lêem o da célula — mudá-lo não
+    /// muda a tinta já pousada.
     pub camadas_transparentes: bool,
     /// **A semente do PÓ deste dab** ([`Knob::Dust`]): o hospedeiro sorteia-a por dab do fluxo do traço
     /// (dabs parados no mesmo lugar pousam pontos novos); o motor mistura-lhe o centro do dab.
@@ -323,15 +327,12 @@ impl Sim {
                 crate::assenta::Lei::Camada => crate::assenta::Ecra::Camada,
                 crate::assenta::Lei::Cobre => crate::assenta::Ecra::Cobre {
                     filme: self.glaze_filme,
-                    esconde: if self.camadas_transparentes {
-                        crate::colorops::TINTA_ESCONDE_EM_VELATURA
-                    } else {
-                        self.esconde
-                    },
+                    esconde: self.esconde,
                     molhada: self.molhada_escurece,
                     vela: 0.0,
                 },
             },
+            vidrado: if self.camadas_transparentes { 1.0 } else { 0.0 },
             semente_do_po: self.semente_do_po,
             relevo_do_tamanho: self.relevo_do_tamanho,
             traco_actual: self.traco_actual,

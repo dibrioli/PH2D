@@ -85,7 +85,6 @@ fn da_tela(g: KnobGroup) -> bool {
             | KnobGroup::Physics
             | KnobGroup::Paper
             | KnobGroup::WetEffects
-            | KnobGroup::Look
     )
 }
 

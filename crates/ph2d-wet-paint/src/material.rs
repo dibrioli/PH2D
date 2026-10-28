@@ -1,7 +1,8 @@
 //! O MATERIAL da tinta, por célula (Óleo Real): o Principled SIMPLIFICADO que o pincel pousa e que se mistura
 //! no molhado pesado pela massa, como o [`crate::grid::Grid::relevo`]. Os 8 controlos do Blender (W3, contrato em
 //! `docs/Painter/49_realshader/ESTADO_MISSAO_W3.md`): Metallic · Roughness · IOR Level · Coat · Coat Roughness ·
-//! Sheen · Subsurface · Subsurface Radius · Transparency (`1 − Alpha`, dono 27/10). A tinta comum é [`MaterialCelula::NEUTRO`] — a imagem de antes, bit a bit.
+//! Sheen · Subsurface · Subsurface Radius · Transparency (`1 − Alpha`, dono 27/10) · Transmission · Relevo do papel
+//! (W3b). A tinta comum é [`MaterialCelula::NEUTRO`] — a imagem de antes, bit a bit.
 
 use crate::oleo_real::MaterialCartao;
 
@@ -33,6 +34,13 @@ pub struct MaterialCelula {
     /// Transparency (`1 − Alpha` do Principled, dono 27/10): a fracção da cobertura de COMPOSIÇÃO que a tinta deixa
     /// ver o que está por baixo — o pigmento, a espessura e o relevo ficam ([`transparente`]).
     pub transparencia: f32,
+    /// Transmission (o «Transmission Weight» do Principled, W3b 27/10): a fracção da luz que ATRAVESSA o filme,
+    /// bate no papel e volta tingida pela cor da tinta — a tinta viva e saturada com o papel por baixo
+    /// ([`transmite`]). A cobertura fica (não é o Alpha).
+    pub transmissao: f32,
+    /// Relevo do papel (W3b 27/10): quanto a SUPERFÍCIE da tinta segue o dente do papel por baixo (a tinta fina
+    /// que assenta no grão). `0` = a tinta enterra o dente (§BUG-papel), `1` = o grão inteiro na tinta.
+    pub relevo_papel: f32,
 }
 
 impl MaterialCelula {
@@ -46,6 +54,8 @@ impl MaterialCelula {
         subsuperficie: 0.0,
         raio_subsuperficie: RAIO_SUBSUPERFICIE_PADRAO,
         transparencia: 0.0,
+        transmissao: 0.0,
+        relevo_papel: 0.0,
     };
 
     /// `a` misturado com `b` na fracção `t` de `b` (a mesma lei de massa do relevo).
@@ -61,6 +71,8 @@ impl MaterialCelula {
             subsuperficie: l(a.subsuperficie, b.subsuperficie),
             raio_subsuperficie: l(a.raio_subsuperficie, b.raio_subsuperficie),
             transparencia: l(a.transparencia, b.transparencia),
+            transmissao: l(a.transmissao, b.transmissao),
+            relevo_papel: l(a.relevo_papel, b.relevo_papel),
         }
     }
 }
@@ -83,10 +95,12 @@ pub struct Efectivo {
     pub subsuperficie: f64,
     pub raio_subsuperficie: f64,
     pub transparencia: f64,
+    pub transmissao: f64,
+    pub relevo_papel: f64,
 }
 
 /// A ÚNICA regra de combinação célula × cartão: `max` nos de neutro `0` (Metallic, Coat, Sheen, Subsurface,
-/// Transparency — o
+/// Transparency, Transmission, Relevo do papel — o
 /// cartão põe verniz em toda a tinta, a célula metálica continua metálica); `cartão × célula / neutro` nos outros
 /// (Roughness, IOR Level, Coat Roughness, Subsurface Radius). Célula NEUTRA ⇒ o cartão; cartão no padrão ⇒ a célula
 /// (ao bit nos três de padrão = neutro, e na Roughness pelo factor de potência de 2 — gate
@@ -119,6 +133,8 @@ pub fn efectivo(c: &MaterialCelula, k: &MaterialCartao) -> Efectivo {
             kn.raio_subsuperficie,
         ),
         transparencia: transparencia(c.transparencia, k.transparencia),
+        transmissao: transparencia(c.transmissao, k.transmissao),
+        relevo_papel: transparencia(c.relevo_papel, k.relevo_papel),
     }
 }
 
@@ -139,6 +155,24 @@ pub fn transparente(alfa: f64, t: f64) -> f64 {
     alfa * (1.0 - t)
 }
 
+/// ⭐ **A lei da Transmission** (W3b 27/10, o «Transmission Weight» do Principled; medida contra o Cycles em
+/// `docs/Painter/49_realshader/oraculo/README.md` §Transmission): o difuso LINEAR `base` de um canal de albedo
+/// `a` com o peso `w`. A luz atravessa o filme (tinge-se por `a`), bate no papel e volta (tinge-se outra vez):
+/// `a²` — sem o branco que o difuso de uma tinta opaca reflecte, por isso saturada. `d` é o difuso relativo da
+/// célula (a luz que chega, igual para o papel sob o filme fino). `w = 0` devolve `base` ao bit.
+#[inline]
+#[must_use]
+pub fn transmite(base: f64, a: f64, d: f64, w: f64) -> f64 {
+    if w <= 0.0 {
+        return base;
+    }
+    base * (1.0 - w) + w * a * a * d
+}
+
 #[cfg(test)]
 #[path = "transparencia_tests.rs"]
 mod transparencia_tests;
+
+#[cfg(test)]
+#[path = "transmissao_tests.rs"]
+mod transmissao_tests;

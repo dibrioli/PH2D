@@ -989,6 +989,10 @@ fn o_relevo_nao_sai_do_pigmento() {
 /// papel com a sombra dele. Devolve `(escada, luz)`: o RMS do resíduo da cobertura somada por coluna contra a recta
 /// (px) e, em cada distância `d` à recta (−3..3 px, passo ½), o RMS ao longo da borda da luminância menos a média
 /// dela — o maior `d` (níveis). A borda recta é invariante ao longo dela: tudo o que varia é a grade.
+pub(super) fn serrilhado_pub(o: &OleoReal) -> (f64, f64) {
+    serrilhado(o)
+}
+
 fn serrilhado(o: &OleoReal) -> (f64, f64) {
     let recta = |x: usize| 20.3 + (x as f64 - 1.0) / 8.0;
     let mut g = grade(|x, y| {

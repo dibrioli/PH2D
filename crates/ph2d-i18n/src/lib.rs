@@ -345,7 +345,7 @@ fn tr_ingles(key: &str) -> &'static str {
         "panel.wet_tuning.km_mixing" => "Pigment mixing (K-M)",
         "panel.wet_tuning.km_glaze" => "Glaze layering (K-M)",
         "panel.wet_tuning.note" => {
-            "These two boxes apply to all the paint of the artwork (Kubelka-Munk subtractive color). Brush glaze (Paint) is saved with the brush and acts on top of them: its paint filters the layers below. The advanced groups (Bristles, Stroke, Wet effects, Look) start folded: they are for building new brush presets."
+            "These two boxes apply to all the paint of the artwork (Kubelka-Munk subtractive color). Brush glaze (Paint) is saved with the brush and acts on top of them: its paint filters the layers below. The advanced groups (Bristles, Stroke, Wet effects) start folded: they are for building new brush presets."
         }
         "panel.wet_tuning.knob.pigmentPerDab" => "Pigment per dab",
         "panel.wet_tuning.knob.paperGate" => "Paper gate",

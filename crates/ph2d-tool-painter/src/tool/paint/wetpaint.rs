@@ -576,6 +576,7 @@ mod cauda; // a água depois do fim de um clipe (W14)
 pub(super) mod faixas; // as lanes de um traço guardado (W16)
 
 mod composite;
+mod grao_no_filme; // W3b: o dente do papel assado na tinta do Óleo Real (Relevo do papel, Transmission)
 pub(in crate::tool::paint) mod oleo_no_quadro; // a recomposição do painel corre no tick, em faixas
 #[cfg(test)]
 mod oleo_arrasto_tests; // arrastar um número do Real Oil: uma faixa por quadro, a tela final ao byte
@@ -600,6 +601,9 @@ mod grid_ratio_tests; // os gates de PRODUTO da razão da grade
 #[cfg(test)]
 #[path = "wetpaint/relevo_tests.rs"]
 mod relevo_tests;
+#[cfg(test)]
+#[path = "wetpaint/painel_so_no_futuro_tests.rs"]
+mod painel_so_no_futuro_tests; // W3b item 3: o painel do pincel só vale para os traços seguintes
 #[path = "wetpaint/sil_memo.rs"]
 mod sil_memo; // a silhueta do dab guardada para o pente do relevo (W3b) // o Emboss do Tuning morde sem papel (dono 11/10)
 

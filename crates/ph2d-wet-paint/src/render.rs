@@ -454,10 +454,8 @@ fn pigment_row(
         Some(e @ crate::assenta::Ecra::Camada) => e,
         _ => crate::assenta::Ecra::PorCima(glaze),
     };
-    let (paper_vis, grain_vis) = match (paper_on, p) {
-        (true, Some(p)) => (p.k(Knob::PaperVisibility), p.k(Knob::VisualGrain)),
-        _ => (0.0, 0.0),
-    };
+    // A Paper visibility e o Visual grain são da TINTA (W3b): os da célula ([`crate::grid::aparencia`]), nunca os do
+    // pincel de agora — o painel só vale para os traços seguintes.
     // O RELEVO da tinta (o gradiente da massa) é da tinta, não do papel (dono 11/10): com `relevo`,
     // desenha-se com ou sem papel escolhido, com o `Emboss` que a CÉLULA guardou ao receber a tinta
     // ([`Grid::relevo`], Bug #48), nunca o do pincel de agora; `0` = nenhum.
@@ -483,7 +481,8 @@ fn pigment_row(
                 let sc = lg.sett_rgb[i];
                 let uc = lg.susp_rgb[i];
                 let ([mut cr, mut cg, mut cb], la) = crate::assenta::cor_e_alfa(
-                    lei.com_vela(lg.vela[i]),
+                    lei.com_vela(lg.vela[i])
+                        .com_vidrado(crate::grid::aparencia::vidrado(&lg.aparencia, i)),
                     sc.map(f64::from),
                     uc.map(f64::from),
                     a_s,
@@ -501,6 +500,12 @@ fn pigment_row(
                     // the signed emboss (vertical weighted 2x). Adding v to
                     // the combined colour equals adding it to settled AND
                     // suspended before combining (distributivity).
+                    let (paper_vis, grain_vis) = if paper_on {
+                        let a = crate::grid::aparencia::da_celula(&lg.aparencia, i);
+                        (f64::from(a.papel), f64::from(a.grao))
+                    } else {
+                        (0.0, 0.0)
+                    };
                     let pap_raw = g0.paper[i] as f64;
                     let pap = 0.5 + (pap_raw - 0.5) * paper_vis;
                     let total = lg.sett[i] as f64 + lg.susp[i] as f64;
@@ -544,10 +549,11 @@ fn pigment_row(
             if let (true, Some((ol, campo))) = (pa > 0.0, oleo) {
                 let rgb = [pr / pa, pg / pa, pb / pa];
                 // §BUG-bordas: na orla a tinta cobre a fracção da célula dentro do contorno sub-célula.
+                // §BUG-bordas-W3b: e o entalhe de uma célula cobre até à mediana das vizinhas (`borda > 1`).
                 let borda = campo.cobertura_da_borda(cx, cy);
-                let pa = pa * borda;
+                let pa = (pa * borda).min(1.0);
                 // O brilho e a sombra da orla são do FILME (a cobertura geométrica); a Transparency só deixa ver.
-                let tinta = pa_tinta * borda;
+                let tinta = (pa_tinta * borda).min(1.0);
                 let [r, g, b] = match sombra.as_mut() {
                     Some((s, f)) => {
                         let (cor, sm) =

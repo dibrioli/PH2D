@@ -8,7 +8,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.wet_tuning.group.bristles" => "Bristles",
         "panel.wet_tuning.group.stroke" => "Stroke",
         "panel.wet_tuning.group.wet_effects" => "Wet effects",
-        "panel.wet_tuning.group.look" => "Look",
         "panel.wet_tuning.group.material" => "Material",
         // Material — o Principled simplificado que o pincel pousa na tinta, por célula (W3, nomes do Blender).
         "panel.wet_tuning.knob.metallic" => "Metallic",
@@ -19,7 +18,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.wet_tuning.knob.sheen" => "Sheen",
         "panel.wet_tuning.knob.subsurface" => "Subsurface",
         "panel.wet_tuning.knob.subsurfaceRadius" => "Subsurface Radius",
-        "panel.wet_tuning.knob.transparency" => "Transparency",
+        // W3b: a Transparency é o Alpha do Principled (mistura de cobertura); a Transmission, a luz pelo filme.
+        "panel.wet_tuning.knob.transparency" => "Transparency (Alpha)",
+        "panel.wet_tuning.knob.transmission" => "Transmission",
+        "panel.wet_tuning.knob.paperRelief" => "Paper Relief",
         "panel.wet_tuning.knob.lockMaterial" => "Lock material (off · on)",
         "panel.wet_tuning.knob.knifeRidge" => "Knife ridge",
         "panel.wet_tuning.knob.knifeLevel" => "Knife leveling",
@@ -62,12 +64,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.wet_tuning.knob.extGranulation" => "Granulation",
         "panel.wet_tuning.knob.wetOpen" => "Wet-in-wet bloom",
         "panel.wet_tuning.knob.wetOpenPush" => "Bloom pushes paint away",
-        // Look — só a aparência.
-        "panel.wet_tuning.knob.extRakeLight" => "Raking light",
-        "panel.wet_tuning.knob.extValleyGran" => "Grain in paper valleys",
-        "panel.wet_tuning.knob.extWetSheen" => "Wet sheen",
-        "panel.wet_tuning.knob.extGrainDither" => "Grain noise",
-        "panel.wet_tuning.knob.extEdgeTint" => "Edge tone (lighter · darker)",
         // Tools — a água e o secador.
         "panel.wet_tuning.knob.waterPush" => "Water pushes pigment",
         "panel.wet_tuning.knob.dryerEdge" => "Dryer leaves an edge",

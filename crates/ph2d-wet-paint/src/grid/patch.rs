@@ -55,6 +55,8 @@ pub struct GridPatch {
     vela: Vec<f32>,
     /// O material no recorte ([`super::material`]); VAZIO quando a grade não o tinha.
     material: Vec<crate::material::MaterialCelula>,
+    /// A aparência no recorte ([`super::aparencia`]); VAZIA quando a grade não a tinha.
+    aparencia: Vec<super::aparencia::AparenciaCelula>,
     wet: Vec<u8>,
     active: Vec<u8>,
     bloom: Vec<u8>,
@@ -172,6 +174,11 @@ pub fn snapshot_grid_region(g: &Grid, x0: i32, y0: i32, x1: i32, y1: i32) -> Opt
         } else {
             take_rows(&g.material, s, x0, y0, x1, y1)
         },
+        aparencia: if g.aparencia.is_empty() {
+            Vec::new()
+        } else {
+            take_rows(&g.aparencia, s, x0, y0, x1, y1)
+        },
         wet: take_rows(&g.wet, s, x0, y0, x1, y1),
         active: take_rows(&g.active, s, x0, y0, x1, y1),
         bloom: take_rows(&g.bloom, s, x0, y0, x1, y1),
@@ -203,6 +210,7 @@ pub fn restore_grid_region(g: &mut Grid, p: &GridPatch) {
     super::traco::restaura_janela(g, (x0, y0, x1, y1), &p.traco);
     put_rows(&mut g.vela, s, x0, y0, x1, y1, &p.vela);
     super::material::restaura_janela(g, (x0, y0, x1, y1), &p.material);
+    super::aparencia::restaura_janela(g, (x0, y0, x1, y1), &p.aparencia);
     put_rows(&mut g.wet, s, x0, y0, x1, y1, &p.wet);
     put_rows(&mut g.active, s, x0, y0, x1, y1, &p.active);
     put_rows(&mut g.bloom, s, x0, y0, x1, y1, &p.bloom);

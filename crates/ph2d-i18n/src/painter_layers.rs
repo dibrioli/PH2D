@@ -695,7 +695,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_layers.wetpaint.oleo_sheen" => "Sheen",
         "panel.painter_layers.wetpaint.oleo_subsurface" => "Subsurface",
         "panel.painter_layers.wetpaint.oleo_subsurface_radius" => "Subsurface Radius",
-        "panel.painter_layers.wetpaint.oleo_transparency" => "Transparency",
+        // W3b: a Transparency é o Alpha do Principled; a Transmission, a luz pelo filme; o relevo do papel na tinta.
+        "panel.painter_layers.wetpaint.oleo_transparency" => "Transparency (Alpha)",
+        "panel.painter_layers.wetpaint.oleo_transmission" => "Transmission",
+        "panel.painter_layers.wetpaint.oleo_paper_relief" => "Paper Relief",
         "panel.painter_layers.wetpaint.tuning" => "Tuning",
         "panel.painter_layers.wetpaint.grid_size_px" => "Grid Size (px)",
         "panel.painter_layers.wetpaint.flow_grid_x" => "Flow Grid (x)",

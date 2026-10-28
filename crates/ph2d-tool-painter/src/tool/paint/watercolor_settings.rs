@@ -469,9 +469,11 @@ impl PainterTool {
     }
 
     /// Set the **Paper Depth** (how strongly the paper tooth textures the wash), clamped to
-    /// `[0, PAPER_TOOTH_MAX]`.
+    /// `[0, PAPER_TOOTH_MAX]`. É do PAPEL, logo da tela (dono 27/10, W3b): carimba-se em todos os slots de pincel
+    /// ([`Self::set_paper_field`]) — pegar outra ferramenta ou outro pincel não o muda.
     pub fn set_brush_paper_depth(&mut self, v: f32) {
-        self.paint.brush.paper_depth = v.clamp(0.0, ph2d_painter_brush::PAPER_TOOTH_MAX);
+        let v = v.clamp(0.0, ph2d_painter_brush::PAPER_TOOTH_MAX);
+        self.set_paper_field(|b| b.paper_depth = v);
     }
 
     /// Set the **Paper** per-pattern param on `slot` (`0..6`; slots 0/1 = Contrast/Brightness), `[0, 1]`.

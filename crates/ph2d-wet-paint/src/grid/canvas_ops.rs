@@ -54,7 +54,10 @@ pub fn dry_canvas(g: &mut Grid, mix: ColorMix, glaze: f64, ecra: crate::assenta:
         for _x in 1..=g.w {
             let dm = g.susp[i] as f64;
             if dm > 0.0 {
-                settle_composite(g, i, dm, mix, glaze, ecra.com_vela(g.vela[i]), &mut out);
+                let e = ecra
+                    .com_vela(g.vela[i])
+                    .com_vidrado(super::aparencia::vidrado(&g.aparencia, i));
+                settle_composite(g, i, dm, mix, glaze, e, &mut out);
                 g.sett[i] = (g.sett[i] as f64 + dm) as f32;
                 g.susp[i] = 0.0;
             }
@@ -145,6 +148,7 @@ pub fn clear_canvas(g: &mut Grid) {
     g.traco = Vec::new();
     g.vela.fill(0.0);
     g.material = Vec::new();
+    g.aparencia = Vec::new();
     g.vel_x.fill(0.0);
     g.vel_y.fill(0.0);
     g.flow_x.fill(0.0);

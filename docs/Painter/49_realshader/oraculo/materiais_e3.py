@@ -37,6 +37,9 @@ MATERIAIS = {
     "transp0": {"transparencia": 0.0},
     "transp05": {"transparencia": 0.5},
     "transp1": {"transparencia": 1.0},
+    # W3b: a Transmission (o «Transmission Weight» do Principled), pelo mesmo bloco ALFA (Alpha = cobertura).
+    "tr05": {"transmissao": 0.5},
+    "tr1": {"transmissao": 1.0},
 }
 
 # A luz da sonda que corresponde a cada `_luz` do Cycles.

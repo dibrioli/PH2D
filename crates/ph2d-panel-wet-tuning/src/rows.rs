@@ -110,10 +110,10 @@ pub struct Section {
 }
 
 /// The knob groups shown, in the model's display order (o PAPER saiu na W1e, F2; o Relief é o grupo
-/// `Paper` do motor reduzido ao relevo da tinta), e depois os quatro AVANÇADOS (25/10, dono: «os
-/// escondidos do Wet Paint podem mostrar dentro do Tuning»), que nascem dobrados. (Experimental is
-/// not a knob group — it is the two K–M checkboxes, painted after these.)
-pub const SECTIONS: [Section; 10] = [
+/// `Paper` do motor reduzido ao relevo da tinta), e depois os AVANÇADOS (25/10, dono: «os
+/// escondidos do Wet Paint podem mostrar dentro do Tuning»), que nascem dobrados — o Look saiu a 27/10 (W3b:
+/// controlos mortos). (Experimental is not a knob group — it is the two K–M checkboxes, painted after these.)
+pub const SECTIONS: [Section; 9] = [
     Section {
         group: KnobGroup::Paint,
         header: ph2d_tool_painter::ids::WET_TUNING_GROUP_HEADERS[0],
@@ -163,15 +163,9 @@ pub const SECTIONS: [Section; 10] = [
         label: "panel.wet_tuning.group.wet_effects",
     },
     Section {
-        group: KnobGroup::Look,
+        group: KnobGroup::Material,
         header: ph2d_tool_painter::ids::WET_TUNING_GROUP_HEADERS[9],
         reset: ph2d_tool_painter::ids::WET_TUNING_GROUP_RESETS[8],
-        label: "panel.wet_tuning.group.look",
-    },
-    Section {
-        group: KnobGroup::Material,
-        header: ph2d_tool_painter::ids::WET_TUNING_GROUP_HEADERS[10],
-        reset: ph2d_tool_painter::ids::WET_TUNING_GROUP_RESETS[9],
         label: "panel.wet_tuning.group.material",
     },
 ];
@@ -231,10 +225,11 @@ mod tests {
     /// que acompanha o tamanho do pincel (expoente e diâmetro de referência) no Stroke (7 → 9). Mais 1 a 27/10 (W3 K3a):
     /// a faca que nivela (`knifeLevel`) no Stroke (9 → 10). Mais 1 a 27/10 (W3 K5): o expoente da textura através
     /// do traço (`textureSizeExpAcross`) no Stroke (10 → 11). Mais 1 a 27/10 (dono): a Transparency (`1 − Alpha`)
-    /// no Material (9 → 10).
+    /// no Material (9 → 10). Mais 2 (W3b): a Transmission e o Relevo do papel (10 → 12). Menos 5 a 27/10 (W3b item 3):
+    /// o grupo Look inteiro (controlos mortos: só o `render_region`, sem chamador no produto, os lia).
     #[test]
     fn every_visible_knob_has_a_row() {
-        assert_eq!(rows().len(), 90);
+        assert_eq!(rows().len(), 87);
         for g in [
             (KnobGroup::Paint, 24),
             (KnobGroup::Water, 7),
@@ -244,8 +239,7 @@ mod tests {
             (KnobGroup::Bristles, 19),
             (KnobGroup::Stroke, 11),
             (KnobGroup::WetEffects, 3),
-            (KnobGroup::Look, 5),
-            (KnobGroup::Material, 10),
+            (KnobGroup::Material, 12),
         ] {
             let n = rows().iter().filter(|r| r.group == g.0).count();
             assert_eq!(n, g.1, "group {:?} row count", g.0);
@@ -283,6 +277,14 @@ mod tests {
             "smear",
             "smearWater",
         ];
+        // Controlos MORTOS no produto (W3b): só o `render::render_region` os lê, e nenhum caminho do produto o chama.
+        const MORTOS: [&str; 5] = [
+            "extRakeLight",
+            "extValleyGran",
+            "extWetSheen",
+            "extGrainDither",
+            "extEdgeTint",
+        ];
         const CALIBRACAO: [&str; 8] = [
             // normaliza o pigmento pelo comprimento (o preset diz a que Spacing foi afinado)
             "pigmentSpacing",
@@ -304,6 +306,7 @@ mod tests {
         let lista: BTreeSet<&str> = NOUTRA_SUPERFICIE
             .iter()
             .chain(CALIBRACAO.iter())
+            .chain(MORTOS.iter())
             .copied()
             .collect();
         assert_eq!(hidden, lista);

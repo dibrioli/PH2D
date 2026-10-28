@@ -731,6 +731,81 @@ de 768² com orla ondulada) contra 66 ns do campo inteiro: 4,3 %.
 | Só o degrau QUASE binário (≥ 0,9 ao pé de ≤ 0,1) | vãos 34,5 % e nada pisca, mas o Dabber continua em escada (TRAVA 0,54 · 0,59): as orlas dele são degraus de 1 → 0,3 |
 | A média CONTÍNUA relativa à célula (`média(cob)/cob`) | a impressão neutra mudava: numa borda alinhada com a cobertura a variar ao longo dela (textura) a raiz invertida corta ~½ da célula por um desvio de 10 % |
 
+## §BUG-bordas-W3b — os pontinhos ESCUROS soltos na orla (smoke do dono 27/10, `smoke_27_10/7.png`)
+
+Pedido do dono: «Smooth edges com resultados fracos. Aqui somos profissionais. Precisamos de um substituto
+profissional ao nano pixel do Rebelle.» Na foto (traços horizontais, Óleo Real, Smooth Edges ligado): pontinhos
+ESCUROS de ~1 px de tela soltos ao longo da borda de BAIXO, dentro da orla borrada do Smooth Edges.
+
+**Mecanismo (medido nos planos da sessão, `smooth_edges::diag_w3b::medida_planos_da_borda_w3b`).** 98 % dos pontinhos
+são células COM pigmento parcial (alfa 1–200 de 255), não papel nu: a tinta delas sai quase preta (lum ~10) e o papel
+por baixo lê a sombra 0,78–0,88 (u8 195–226) entre vizinhas a ~0,14. Três causas, na mesma família — **a cobertura da
+célula a abrir um POÇO de uma célula na altura**:
+1. As três alturas (desfocadas) vão × a cobertura CRUA da célula (`CampoAltura::de_com`, a lei do §BUG-ressalto). A
+   cobertura parcial é ÁREA, mas entrava como ESPESSURA: a célula rala entre vizinhas grossas (o ruído do pouso do
+   Dabber na orla rasgada) virava um entalhe de uma célula com paredes de toda a espessura — sem luz directa, sem céu.
+2. O contorno sub-célula do §BUG-bordas (`borda_suave`) tratava um FURO de uma célula no meio da tinta como borda:
+   a inversão da recta cortava ~45 % das células à volta do furo (cobertura e alturas) — um anel de entalhes.
+3. O papel numa baía de 1–3 células ao pé da tinta via o céu tapado em três lados: a sombra no papel 0,85 entre
+   vizinhas a 0,1–0,4.
+O Smooth Edges não chega lá: desfoca a cor JÁ sombreada e a sombra do papel é lida por célula, fora dele.
+
+**Leis (padrão-ouro escolhido MEDINDO: a mediana da vizinhança na escala da célula).**
+- `sem_entalhes` (depois do contorno): a célula COM pigmento cuja cobertura fica ≥ `ENTALHE_MIN` = 0,10 abaixo da
+  MEDIANA das 3×3 cobre (altura e alfa) até essa mediana — `borda > 1`, e o composite cobre `min(pa·borda, 1)`
+  (`render.rs`, o ramo do óleo). A mediana de um campo monótono (borda recta, canto, borda graduada) é ele próprio:
+  só o entalhe muda. O papel sem pigmento continua papel.
+- `borda_suave` só corta a BORDA: a fracção de «fora» pesada pela gaussiana da direcção ≥ `ORLA_FORA_MIN` = 0,20
+  (recta ~0,45, canto interior ~0,25, furo de uma célula ~0,03).
+- `sombra_sem_furo` (a leitura do plano da sombra no composite): a célula ≥ `FURO_DA_SOMBRA` = 32 níveis mais escura
+  que a mediana das 3×3 lê a mediana. A faixa projectada contínua e a sombra larga não mudam.
+
+**O Smooth Edges fica como o amaciador do artista** (o raio 0–6 px sobre o contorno já limpo); o «substituto
+profissional» é o contorno + as três leis, sempre ligados e sem slider. Smooth 0,5 já não tem pontinhos na orla (tabela).
+
+| régua `pontinhos_regua.py` (px soltos na orla · todos) | antes | depois | Rebelle 8 (100 %) |
+|---|---|---|---|
+| Dabber, papel branco, Smooth 0 | 65 · 487 | **0 · 35** | 1 · 82 (Dabber inteiro) |
+| Dabber, Cold 0,6, Smooth 0 | 64 · 436 | 10 · 68 | — |
+| Dabber, branco · Cold, Smooth 0,5 | 7 · 259 · 9 · 237 | **0 · 24 · 0 · 31** | — |
+| Knife Oily, branco · Cold, Smooth 0 | 2 · 10 · 2 · 2 | **0 · 0 · 0 · 0** | 0 · 3 |
+| Oil Bristle (candidato), branco · Cold, Smooth 0 | 16 · 202 · 18 · 205 | 10 · 193 · 6 · 183 | Bristle Flat 2 · 13 |
+| fixtura `fixtures/orla_dabber.bin` (Estúdio) | 10 · 59 | **0 · 0** | — |
+
+Largura 10–90 da orla (px): Dabber 3,14 → 2,74, Knife Oily 3,97 → 3,95 (Rebelle 3,16 · 4,46). TRAVA (`bordas_regua.py`,
+recto da cena): Dabber 0,132 → 0,095, Knife Oily Cold 0,197 → 0,176. Registo: [`regua_BUG_bordas_W3b.txt`](regua_BUG_bordas_W3b.txt);
+folha [`../out/BUG_bordas_W3b_folha.jpg`](../out/BUG_bordas_W3b_folha.jpg) (antes | depois | Rebelle a 400 %), olhada: os poços
+pretos da borda de baixo e de cima do Dabber e os pontos da Knife Oily saíram; ficam 2–3 fendas cinzentas maiores
+(> 4 px) por dentro do Dabber (a família da fenda, `a_fenda_forte_nao_volta_aos_pontos_pretos_na_cena_do_dono`).
+O Oil Bristle: os «soltos» que restam são as riscas escuras ENTRE as cerdas (linhas partidas pela régua), não a orla.
+Fotos novas do Rebelle a 400 % não foram tiradas: as da bateria a 100 % são a banda.
+
+**Gates.** `a_orla_rasgada_nao_tem_pontinhos_escuros` (ph2d-wet-paint; a orla REAL do Dabber gravada como fixtura,
+pela porta do composite; 0 na orla e 0 em toda a parte, Clássico e Estúdio) e
+`a_orla_do_dabber_nao_tem_pontinhos_escuros_na_tela` (ph2d-tool-painter; a tela inteira de um traço do Dabber,
+`run_full`; 0 na orla). Verdes por nome: `a_borda_inclinada_nao_tem_escada` (0,066 · 8,38 · 6,32: igual),
+`o_relevo_nao_sai_do_pigmento`, `o_material_neutro_e_bit_identico_a_de_antes`, `a_fenda_neutra_e_bit_identica_a_de_antes`
+(as duas impressões NÃO mudam), `o_campo_em_faixas_e_bit_identico_ao_em_serie`, `a_luz_do_ceu_guardada_e_a_de_sempre`,
+`a_tinta_lisa_sai_com_a_cor_dela*`, `o_papel_nos_vaos_entre_lascas_nao_fica_preto`,
+`a_fenda_forte_nao_volta_aos_pontos_pretos_na_cena_do_dono`, `oleo_cache`.
+**Mutações vermelhas 5/5:** sem o entalhe (fixtura 10 · tela vermelha) · o contorno corta furos (fixtura) · a sombra
+com furos (fixtura e tela) · o alfa sem o enchimento (`render.rs`, fixtura) · o composite lê o plano cru
+(`composite.rs`, tela). **Custo** (fixtura 256 × 64, mínimo de 9, load 46 — relativo): campo 100 ns/célula, contorno
+16,5, entalhe 7,8 (7,8 % do campo), sombra sem furos 13,7 ns/célula no PIOR caso (plano em serra; o real sai no
+`s < 32`).
+
+| Recusada nesta cura | medida |
+|---|---|
+| O entalhe só FORA da orla do contorno (antes do contorno) | fixtura Estúdio 72 → 45 soltos: a célula saliente cortada pelo contorno ficava entalhe |
+| `ORLA_FORA_MIN` 0 / 0,10 / 0,15 / 0,25 (com o entalhe 0,10) | 12 · 5 · 5 · 4 soltos (sem a sombra sem furos); 0,20 → 3 |
+| `ENTALHE_MIN` 0,20 / 0,05 (contorno 0,20, sem a sombra sem furos) | 6 · 2 soltos contra 3 a 0,10; com a sombra sem furos 0,10 já dá 0 |
+| `FURO_DA_SOMBRA` 96 / 64 / 48 | 2 · 1 · 1 soltos na fixtura (a baía de 3 células, 36 entre 95) |
+| A régua «p5 e 12 níveis abaixo das vizinhas» | o Rebelle dava 81 «pontinhos» (os salpicos da textura): a régua passou a «abaixo de METADE da mediana da tinta e 20 abaixo das vizinhas», e a orla EXTERNA (a ≤ 4 do papel aberto) |
+
+**Aberto.** O Smooth Edges ainda é lido ao COMPOR (`composite.rs`, `w.smooth_edges`): mudá-lo muda a tinta antiga —
+decisão do dono 27/10: passa a ser do TRAÇO, por célula (ver `ESTADO_MISSAO_W3.md`). Dabber em Cold 0,6: 10 px soltos na
+orla (o dente do papel). As fendas > 4 px do Dabber.
+
 ## §Transparency — a tinta que deixa ver o papel (dono 27/10)
 
 Pedido do dono: «um parâmetro novo chamado transparência como num shader do Blender» — quanto a tinta deixa ver o que
@@ -774,9 +849,133 @@ recebe a luz que atravessa o topo (`× T`) e é visto através dele: o plano da 
 | T da célula ignorada | `a_transparencia_deixa_ver_sem_mexer_no_relevo` (pincel = cartão) |
 | meia T no composite | `a_transparencia_deixa_ver_o_grao_e_a_cor_do_papel` (ph2d-tool-painter) |
 
-**Aberto:** a sombra projectada no papel NU por tinta transparente só do PINCEL (cartão a 0) é a da tinta opaca (a
-marcha da luz não lê a T de quem tapa); o «Opacity» abaixo de «Water» é a QUANTIDADE de pigmento por dab, não alfa
+**Aberto:** ~~a sombra projectada no papel NU por tinta transparente só do PINCEL~~ — fechado na §Transmission (W3b); o «Opacity» abaixo de «Water» é a QUANTIDADE de pigmento por dab, não alfa
 (nome por decidir pelo dono).
+
+## §Transmission (W3b) — a tinta VIVA, com todas as opções (dono 27/10)
+
+Pedido do dono: «A transparência deixou a tinta pálida sem pigmento, como se fosse opacidade, diferente do resultado do
+Cycles/Eevee. Quando apontei o defeito da tinta não cobrir o papel, aquela aparência era mais interessante que a atual. A
+tinta era viva. Descubra o modo de ter todas as opções para o usuário.» Três controlos, cada um no pincel (Tuning →
+Material, por célula, no FIM do `MaterialCelula`) e no cartão Real Oil (no FIM do `MaterialCartao`, `N_CAMPOS` 11),
+célula ∘ cartão por `max`, neutro 0 ao bit, preset/macro sem a chave = 0 (macro: o valor de agora, como os outros):
+
+| controlo (UI) | o que é | nome |
+|---|---|---|
+| **Transmission** | a luz atravessa o filme, bate no papel e volta tingida — saturada, o papel por baixo | o «Transmission Weight» do Principled (é o que o dono vê no Blender, secção Transmission) |
+| **Transparency (Alpha)** | a de `6233a4e2ef`: a cobertura × (1 − T), mistura com o papel (pálida) | `1 − Alpha` do Principled; o rótulo diz «Alpha» sem inverter o valor (0 = opaca: um «Alpha» a 0 que fosse opaco mentia ao dono, que conhece o Blender) |
+| **Paper Relief** | quanto a superfície da tinta segue o dente do papel (a aparência de antes de `ca26a7738a`, agora escolha) | sem equivalente no Principled |
+
+**As leis.**
+- Transmission (`material::transmite`, em `oleo_real::cor_dos_termos`, campo `Termos::transmissao`): o difuso linear de
+  cada canal `base·(1 − w) + w·a²·D` — `a` a cor linear da tinta, `a²` as DUAS travessias do filme (entra e sai), `D` o
+  difuso relativo da célula com albedo `a²` (a luz que chega ao papel sob o filme). O brilho, o metal e o verniz por cima
+  como sempre; a cobertura NÃO muda (não é Alpha). Espessura: o Principled do Cycles tinge na superfície, sem depender da
+  espessura; a nossa espessura entra pela cobertura da massa (a orla fina deixa ver o papel) — ver a recusa abaixo.
+- O dente do papel na tinta (`oleo_real::grao_do_papel`): `d = 1 − (1 − r)(1 − w)` por célula (Relevo do papel `r`,
+  Transmission `w`). A tinta do Wet Paint vive em píxeis (a grade morre com a sessão) e a luz do relevo
+  (`ReliefFields::papel_a_vista`) só lê o alfa: o grão ASSA-SE no píxel da tinta no composite
+  (`wetpaint/grao_no_filme.rs`, plano `WetSession::grao`), pela MESMA óptica do passe do relevo (`Rig::shade` com o
+  dente do substrato × `d`, `light_pixel`) — o grão sob a tinta casa com o do papel nu, e o passe do relevo, que vê a
+  tinta opaca, não o soma outra vez. `d = 0` salta o píxel (ao bit). Sem papel (Relief 0) ou sem lâmpada: nada.
+- A sombra no papel NU (o aberto da §Transparency, fechado): `oleo_real::transparencia_de_quem_tapa` marcha para a luz,
+  toma a célula MAIS ALTA no caminho (o corpo da tinta; a orla parcial mistura o material com o papel) e dá à
+  `sombra_transparente` o `t` dela: `t² = 1 − (1 − T²)(1 − w·L(a²))` (a Transmission passa a luz tingida pelas duas
+  faces). Sem material em célula nenhuma e sem Transmission no cartão = a Transparency do cartão, a lei de antes ao bit.
+
+**Medição × Cycles** (bloco ALFA do `cycles.py` com `bsdf["Transmission Weight"]` nas variantes `tr05`/`tr1` de
+`materiais_e3.py`, Shadow Caustics (MNEE) da tinta para o papel; régua [`transmissao_regua.py`](transmissao_regua.py) →
+[`regua_Transmission.txt`](regua_Transmission.txt); folha [`../out/Transmission_folha.jpg`](../out/Transmission_folha.jpg),
+olhada):
+
+```
+PH2D_OLEO_PNG=<d> bash scripts/ph2d-run.sh cargo test -p ph2d-tool-painter --profile smoke --lib medida_oleo_real_transparencia -- --ignored
+python3 $O/transparencia_regua.py prepara <d>
+PH2D_CYCLES_SO=nenhuma PH2D_CYCLES_ALFA=transp0,transp05,transp1,tr05,tr1 PH2D_GPU=1 LD_LIBRARY_PATH=… bash scripts/ph2d-run.sh \
+  blender -b --factory-startup -P $O/cycles.py -- <d>/entrada <d>/saida h_fina 256
+python3 $O/transmissao_regua.py <d> <d>/saida docs/Painter/49_realshader/out/Transmission_folha.jpg
+```
+
+| miolo do Dabber azul (papel Cold) | L ÷ papel nós · Cycles | saturação nós · Cycles | croma nós · Cycles | sombra ÷ T0 nós · Cycles |
+|---|---|---|---|---|
+| opaca | 0,170 · 0,234 | 0,738 · 0,727 | 166,9 · 171,7 | 1,00 · 1,00 |
+| Alpha 0,5 | 0,288 · 0,397 | 0,406 · 0,415 | 83,7 · 101,0 | 0,69 · 0,77 |
+| **Transmission 0,5** | 0,136 · 0,182 | **0,750 · 0,718** | 159,6 · 149,9 | 0,91 · 1,01 |
+| **Transmission 1** | 0,101 · 0,154 | **0,771 · 0,674** | 149,6 · 118,5 | 0,84 · 1,00 |
+| Paper Relief 1 | 0,170 · — | 0,737 · — | 166,3 · — | 1,00 · — |
+
+A Transmission fica no lado VIVO do Alpha nos dois (saturação 0,750 × 0,406; Cycles 0,718 × 0,415): o Alpha mistura o
+branco, a Transmission não. A luz cai como no Cycles (Transmission 1 ÷ opaca: nós 0,59 × Cycles 0,66 — a nossa opaca já
+é mais escura, W1c). Diferença declarada: no Cycles a saturação CAI um pouco a 1 (0,674: a refracção pela malha de
+relevo alto mostra brilhos brancos do papel), a nossa sobe (0,771) — é a direcção que o dono pediu. A sombra projectada
+pela tinta azul transmissiva: Cycles ÷ T0 1,00 (o azul escuro bloqueia a luminância), nós 0,84–0,91 — a lei da marcha
+dá `w·L(a²)` ≈ 0,03 para este azul, a diferença vem de outra peça não isolada (**aberto**). O Relevo do papel não tem
+variante no Cycles (seria a malha da tinta + o dente): o oráculo dele é o papel nu do PRÓPRIO produto — o gate exige o
+grão relativo sob a tinta ≥ 60 % do do papel nu (medido 0,90 a 1; Transmission 1: 1,09).
+
+**Gates.** wet-paint (`transmissao_tests.rs`): `a_transmissao_e_o_relevo_do_papel_a_zero_sao_a_imagem_de_antes` (campo
+alocado e cartão a 0 = bytes de antes; `grao_do_papel` 0 em toda a célula; `transmite(…, 0)` ao bit) ·
+`a_transmissao_e_mais_saturada_que_o_alfa` (0,5 e 1: saturação > Alpha + 0,1 e ≥ opaca; a do pincel > opaca) ·
+`o_grao_do_papel_na_tinta_combina_relevo_e_transmissao` · `a_sombra_da_tinta_do_pincel_atravessa_no_papel_nu` (só o
+pincel: T 0,5 < 0,9× opaca, T 1 = 0, Transmission 1 entre 0 e a opaca; sem material = a do cartão). tool-painter:
+`a_transmissao_e_o_relevo_do_papel_mostram_o_grao` (a tela final, Relief 0,6 − 0 relativo: 0 ≤ 10 %, 1 ≥ 60 % do
+papel nu, 0,5 entre) e `o_material_do_pincel_vai_e_volta_pelo_preset` (+2 knobs: ida-e-volta e ausente = 0). Neutros
+verdes por nome: `o_material_neutro_e_bit_identico_a_de_antes`, `a_fenda_neutra_e_bit_identica_a_de_antes`,
+`a_tinta_lisa_sai_com_a_cor_dela_em_todo_ambiente`, `transparencia_tests` (4), `oleo_material_tests` (13), o
+`o_dente_do_papel_nao_atravessa_a_tinta_grossa`, `seam_wetpaint_oleo_real` (7), `every_visible_knob_has_a_row`.
+
+| mutação | gate que a vê vermelha |
+|---|---|
+| `transmite` ignora `w` | `a_transmissao_e_mais_saturada_que_o_alfa` |
+| uma travessia (`a` em vez de `a²`) | idem (saturação ≤ a da opaca) |
+| a Transmission da célula ignorada (só o cartão) | idem (o pincel) |
+| a sombra do papel nu só com a T do cartão (o aberto de antes) | `a_sombra_da_tinta_do_pincel_atravessa_no_papel_nu` |
+| a Transmission fora da sombra | idem |
+| `grao_do_papel` = 0 (ronda 1, quando ele levava também o Relevo) | `a_transmissao_e_o_relevo_do_papel_mostram_o_grao` |
+| o composite sem o grão assado | idem |
+| o dente sem a escala `d` (tudo ou nada) | idem (0,5 deixa de ficar entre) |
+
+| Recusada nesta onda | porquê |
+|---|---|
+| Beer–Lambert pela MASSA (`a^(massa/ref)`) | o Principled do Cycles tinge na superfície (sem espessura); o óleo grosso do produto vai a 12 000 de massa contra ~3 000 do filme cheio: `a^8` — preto, o contrário do «viva» |
+| O grão pela luz do relevo lendo um plano novo por camada | a tinta do Wet Paint vive em píxeis e o documento grava `heights/covers/mats/vidros` por camada: um plano novo é degrau de esquema; assar pela mesma óptica dá o mesmo grão sem ele |
+| O rótulo «Alpha» com o valor invertido na UI | o knob do pincel e o cartão guardam `T` (0 = opaca) em preset e macro desde `6233a4e2ef`; inverter só a vista pede dois caminhos por controlo |
+
+**Ronda 2 (pedidos do coordenador para o smoke sobre papel CREME).**
+- **Papel de cor.** `OleoReal::papel` (não é knob: o composite põe a cor LINEAR do papel do documento a cada
+  recomposição; branco sem papel) entra na lei: `D·papel` no `transmite` — a Transmission tinge o papel REAL. Sobre o
+  creme `[222, 208, 180]` o azul do miolo sai creme ÷ branco **0,517** × papel 0,456 (o brilho da superfície por cima
+  não se tinge, por isso acima). Escolhido em vez do vidro por canal: a tinta transmissiva sai opaca (alfa = a
+  cobertura), então a cor do papel conhece-se no composite e a conta é exacta sem um plano novo. Gates
+  `a_transmissao_tinge_a_cor_do_papel` (wet-paint) e `a_transmissao_tinge_o_papel_creme_do_documento` (a tela final).
+- **Paper Relief no campo do óleo** (luz E brilho). A superfície da tinta assenta no dente: na altura FINA de
+  `CampoAltura::de_com` soma-se `dente_papel · papel_na_tinta · r · Grid::paper · cobertura` (o mesmo papel do
+  substrato; `OleoReal::dente_papel` = `Relief × MAX_TOOTH_PX`, posto pelo composite, `0` sem papel; `r` célula ∘
+  cartão). Sem Relevo do papel a soma nem se faz (ao bit); a chave do campo guardado lê `relevo_papel` e o dente. O
+  grão assado (`grao_do_papel`) fica só para a Transmission (o papel visto pelo filme) — o Relevo não passa duas
+  vezes. Calibração contra a tela de ANTES de `ca26a7738a` (a régua absoluta do §BUG-papel, Dabber de fábrica com o
+  óleo: **0,67**): `Afinacao::papel_na_tinta` 0 · 1 · 2 · 4 → 0 · 0,449 · 0,866 · 1,655 (linear) ⇒ **1,5**: miolo ÷ nu
+  **0,663**, e o grão nos BRILHOS (o décimo mais claro da tinta) ÷ papel nu **1,56** (antes de `ca26a7738a` o óleo não
+  via o papel: o grão era só sombreado). Gates `o_relevo_do_papel_assenta_a_tinta_no_dente` (o brilho da tinta lisa
+  varia > 5× com o grão; 0 ao bit; papel nu plano; pincel = cartão) e a régua absoluta em
+  `a_transmissao_e_o_relevo_do_papel_mostram_o_grao` (0,55–0,80; brilhos ≥ 0,5). Na folha (Dabber, Cold Relief 0,6)
+  o grão sob a tinta continua discreto a olho: o relevo da própria tinta domina — é o mesmo número da tela de antes.
+- **O grão segue o papel e a lâmpada depois do traço.** `ChaveDoGrao` (substrato, `LightRig` do relevo, papel) na
+  `WetSession`; o `reconcile_substrate` (a cada quadro) chama `reconcilia_o_grao_do_oleo`: mudou ⇒
+  `wet_recompoe_no_quadro` (a varredura do cartão, 8 ms por quadro — o mesmo custo de arrastar um número do cartão).
+  Gate `o_grao_assado_segue_a_lampada_depois_do_traco` (= a recomposição inteira, ≠ a de antes). Uma sessão que já
+  acabou é píxel: não segue (como a luz do próprio óleo).
+- **PT:** o `ph2d-i18n` não tem tabela pt-BR (`Idioma` = Inglês | Teste); nada a acrescentar.
+- Mutações da ronda 2, 6/6 vermelhas: o papel fora da lei · o composite sem o papel · o Relevo fora do campo · o
+  composite sem o dente · sem o `reconcilia_o_grao_do_oleo` (os dois gates) · a chave do campo sem o papel
+  (`a_chave_do_campo_le_o_relevo_do_papel_e_o_dente`; sobreviveu ao 1.º gate — a cena da cache não tem papel).
+- Folha regravada sobre o papel creme, com o recorte a 4× da orla ([`../out/Transmission_folha.jpg`](../out/Transmission_folha.jpg),
+  olhada); números em [`regua_Transmission.txt`](regua_Transmission.txt) §Ronda 2 (creme: Transmission 1 saturação
+  0,701 × Cycles 0,577, L ÷ papel 0,118 × 0,187).
+
+**Aberto.** (1) A sombra projectada da tinta transmissiva (0,81–0,91 × Cycles 1,00). (2) O grão e a cor do papel não
+seguem depois de a sessão acabar. (3) No Cycles a Transmission sobre o creme fica mais clara e mais cinza que a nossa
+(L 0,187 × 0,118: a refracção pela malha alta mostra o papel com brilhos).
 
 ## ⛔ Recusas MEDIDAS
 

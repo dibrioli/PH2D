@@ -71,7 +71,34 @@ impl PainterTool {
             && camada.is_none_or(|c| !self.vidros.contains_key(&c))
             && self.preview_layer_stack_is_trivial()
             && !self.papel_atravessa_vidro();
-        let oleo = self.paint.wetpaint.oleo_real;
+        // W3b: o papel do documento sob a tinta (a cor que a Transmission tinge) e o dente dele (o Relevo do papel).
+        let oleo = self.paint.wetpaint.oleo_real.map(|mut o| {
+            o.papel = self.papel.map_or([1.0; 3], |p| {
+                p.map(|c| ph2d_wet_paint::colorops::transfer::srgb255_to_linear(f64::from(c)))
+            });
+            o.dente_papel = if self.paint.brush.paper.is_active() {
+                f64::from(
+                    self.paint.substrate_depth.clamp(0.0, 1.0)
+                        * super::super::substrate_relief::MAX_TOOTH_PX,
+                )
+            } else {
+                0.0
+            };
+            o
+        });
+        // W3b: o dente do papel que o Relevo do papel e a Transmission assam na tinta ([`super::grao_no_filme`]).
+        let grao = oleo.and_then(|_| {
+            super::grao_no_filme::GraoNoFilme::de(
+                super::super::substrate_relief::Substrate::resolve(
+                    self.paint.brush.paper,
+                    self.paint.substrate_depth,
+                    self.paint.substrate_rough,
+                    self.paint.paper_image.as_ref().map(|i| i.as_mask()),
+                ),
+                &self.paint.impasto_rig,
+                (w, h),
+            )
+        });
         let Some(sess) = self.paint.wetpaint.session.as_mut() else {
             return;
         };
@@ -320,13 +347,16 @@ impl PainterTool {
                         if feita.is_some_and(|f| f[cx - 1]) {
                             continue;
                         }
-                        // O papel nu: a tinta que lhe projecta a sombra tem a Transparency do cartão.
+                        // O papel nu: a sombra atravessa a tinta que a projecta (a Transparency e a Transmission
+                        // dela, célula ∘ cartão — W3b).
                         let calcula = || {
                             ph2d_wet_paint::oleo_real::sombra_em_u8(
                                 ph2d_wet_paint::oleo_real::sombra_transparente(
                                     ph2d_wet_paint::oleo_real::sombra_no_papel(o, c, cx, cy),
                                     0.0,
-                                    o.material.transparencia,
+                                    ph2d_wet_paint::oleo_real::transparencia_de_quem_tapa(
+                                        o, c, cx, cy,
+                                    ),
                                 ),
                             )
                         };
@@ -339,6 +369,23 @@ impl PainterTool {
                 });
         } else if !sess.sombra.is_empty() {
             sess.sombra = Vec::new();
+        }
+        // W3b: o dente que a tinta de cada célula mostra — o píxel lê-o depois da fronteira do motor.
+        match (&campo, &grao) {
+            (Some((o, c)), Some(_)) => {
+                if sess.grao.len() != gw * gh {
+                    sess.grao = vec![0u8; gw * gh];
+                }
+                for cy in cy0..=cy1 {
+                    for cx in cx0..=cx1 {
+                        let d = ph2d_wet_paint::oleo_real::grao_do_papel(o, c, cx, cy);
+                        sess.grao[(cy - 1) * gw + cx - 1] =
+                            (d.clamp(0.0, 1.0) * 255.0).round() as u8;
+                    }
+                }
+            }
+            _ if !sess.grao.is_empty() => sess.grao = Vec::new(),
+            _ => {}
         }
         if oleo.is_none() {
             // Sem o Óleo Real o campo guardado só ocupava memória (~28 B por célula, 230 MB a 4K).
@@ -436,6 +483,7 @@ impl PainterTool {
         // A metade da SIM continua serial e assim fica: o engine é port 1:1 com fingerprint pinado e o
         // ADR-0134 declara o solver serial POR SEMÂNTICA — o ADR-0109 é inaplicável lá, de propósito.
         let (pigment, base, sombra) = (&sess.pigment, &sess.base, &sess.sombra);
+        let grao_cel = &sess.grao;
         let rr = usize::from(ratio);
         let modo = sess.blend;
         let base_da_marca = marca.map(|_| Arc::clone(&sess.base));
@@ -495,8 +543,27 @@ impl PainterTool {
                         Some(sv) => sv.aplica(px, py, dele),
                         None => dele,
                     };
+                    // W3b: o dente do papel na tinta (Relevo do papel, Transmission); `d = 0` ao bit.
+                    let premul = match &grao {
+                        Some(gf) if pa > 0.0 && !grao_cel.is_empty() => {
+                            let d = grao_cel[(py / rr).min(gh - 1) * gw + (px / rr).min(gw - 1)];
+                            if d == 0 {
+                                premul
+                            } else {
+                                let k = pa * 255.0;
+                                gf.sombreia(px, py, f32::from(d) / 255.0, premul.map(|v| v / k))
+                                    .map(|v| v * k)
+                            }
+                        }
+                        _ => premul,
+                    };
                     let escuro = if !sombra.is_empty() && vrow.is_none() {
-                        sombra[(py / rr).min(gh - 1) * gw + (px / rr).min(gw - 1)]
+                        // §BUG-bordas-W3b: sem o furo de uma célula (o pontinho escuro da orla).
+                        ph2d_wet_paint::oleo_real::sombra_sem_furo(
+                            sombra,
+                            (gw, gh),
+                            ((px / rr).min(gw - 1), (py / rr).min(gh - 1)),
+                        )
                     } else {
                         0
                     };

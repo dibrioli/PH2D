@@ -86,7 +86,7 @@ const TEXTURA_GRAO: &str = "grain";
 const TEXTURA_FLUXO: &str = "flow";
 
 /// Os campos do `BrushSpec` que o preset leva, pelo nome do campo.
-pub const CAMPOS_DO_PINCEL: [&str; 38] = [
+pub const CAMPOS_DO_PINCEL: [&str; 37] = [
     // O tecto de tamanho (J3, decisão 8): os quatro meios; gravado só quando o preset o fixa.
     "size_max_px",
     "hardness",
@@ -127,7 +127,6 @@ pub const CAMPOS_DO_PINCEL: [&str; 38] = [
     "pigment_mix",
     // A lei espectral do pigmento (J4 efeitos): gravada só ligada.
     "pigment_espectral",
-    "paper_depth",
 ];
 
 /// **O pincel INTEIRO, pelo nome de cada campo** — o que o estado inicial de uma MACRO leva de cada
@@ -164,11 +163,13 @@ const DOS_KNOBS: &str = "a caneta deitada: no Wet Paint são os knobs do pincel 
 const NAO_LIDO: &str = "o Wet Paint não o lê (deposita pela lei do fluido)";
 
 /// Os campos do `BrushSpec` que o preset NÃO leva, e porquê.
-pub const CAMPOS_FORA: [(&str, &str); 78] = [
+pub const CAMPOS_FORA: [(&str, &str); 79] = [
     ("radius_px", VOLUME),
     ("strength", VOLUME),
     ("color", DA_OBRA),
     ("paper", DA_OBRA),
+    // O dente do papel é da TELA (dono 27/10, W3b): o pincel não o grava, e o de um preset antigo é ignorado.
+    ("paper_depth", DA_OBRA),
     ("symmetry", DA_OBRA),
     ("stroke_method", DO_GESTO),
     ("grid_cell_px", DO_GESTO),
@@ -615,6 +616,8 @@ impl PainterTool {
         MEIO_DO_PRESET.clone_into(&mut p.media);
         p.brush
             .extend(json::pincel_para_json(&self.paint.brush, &CAMPOS_DO_PINCEL));
+        // O dente do papel saiu do pincel (W3b): o de um preset antigo não sobrevive à gravação.
+        p.brush.remove("paper_depth");
         let k = &self.paint.wetpaint.knobs;
         // As cerdas moram no Shape (plano 27 W2): o mapa do motor não as grava — e a ausência delas é o
         // que diz ao [`Self::wet_preset_aplicar`] que o Shape do ficheiro já é a verdade.

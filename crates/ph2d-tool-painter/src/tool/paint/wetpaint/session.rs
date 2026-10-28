@@ -103,6 +103,11 @@ pub(in crate::tool::paint) struct WetSession {
     /// **A sombra do Óleo Real no papel** (`gw * gh`, `0..255` de escurecimento) onde a célula não tem
     /// pigmento — VAZIO enquanto o Óleo Real está desligado (quem não o usa não paga).
     pub(super) sombra: Vec<u8>,
+    /// W3b: o DENTE do papel que a tinta de cada célula mostra (`gw * gh`, `0..255`,
+    /// [`ph2d_wet_paint::oleo_real::grao_do_papel`]) — VAZIO sem papel, sem luz ou sem Óleo Real.
+    pub(super) grao: Vec<u8>,
+    /// W3b: o papel, o dente e a lâmpada do relevo com que a tinta foi composta ([`super::grao_no_filme::ChaveDoGrao`]).
+    pub(super) chave_do_grao: Option<super::grao_no_filme::ChaveDoGrao>,
     /// **O campo de altura do Óleo Real guardado por dependência** (W3, `oleo_real::CacheCampo`): a varredura do
     /// cartão (Specular, fenda, material sem Subsurface, Transparency) reusa-o enquanto as grades e a chave ficam.
     pub(super) campo_cache: Option<ph2d_wet_paint::oleo_real::CacheCampo>,
@@ -237,8 +242,8 @@ impl WetSession {
             };
         }
         if f.km_glaze != a.km_glaze {
-            // «Glaze layering»: camadas transparentes. O ecrã e as transferências verticais lêem a lei da
-            // sessão pela mesma porta (`Sim::gather_params`).
+            // «Glaze layering»: camadas transparentes — do PINCEL (W3b): pousa na célula (`grid::aparencia`), e o
+            // ecrã e as transferências verticais lêem o da célula; a tinta já pousada não muda.
             e.sim.camadas_transparentes = f.km_glaze;
         }
         if f.agua_viva != a.agua_viva {
@@ -282,6 +287,8 @@ impl Clone for WetSession {
             canvas,
             pigment,
             sombra,
+            grao,
+            chave_do_grao,
             campo_cache: _,
             lanes,
             stroke_open,
@@ -311,6 +318,8 @@ impl Clone for WetSession {
             canvas: Weak::clone(canvas),
             pigment: pigment.clone(),
             sombra: sombra.clone(),
+            grao: grao.clone(),
+            chave_do_grao: *chave_do_grao,
             campo_cache: None,
             lanes: lanes.clone(),
             stroke_open: *stroke_open,

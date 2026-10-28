@@ -194,6 +194,7 @@ pub fn apply_wet(
         susp_rgb,
         sett_rgb,
         vela,
+        aparencia,
         ..
     } = g;
     for_each_stamp_pixel(
@@ -233,7 +234,9 @@ pub fn apply_wet(
                         sett_rgb[i],
                         mix,
                         p.glaze,
-                        p.ecra.com_vela(vela[i]),
+                        p.ecra
+                            .com_vela(vela[i])
+                            .com_vidrado(crate::grid::aparencia::vidrado(aparencia, i)),
                         &mut out,
                     );
                 }
@@ -484,6 +487,7 @@ pub fn apply_smear(
         sett_rgb,
         film,
         vela,
+        aparencia,
         material,
         nivelado,
         wet,
@@ -624,7 +628,9 @@ pub fn apply_smear(
                             sett_rgb[i],
                             mix,
                             p.glaze,
-                            p.ecra.com_vela(vela[i]),
+                            p.ecra
+                            .com_vela(vela[i])
+                            .com_vidrado(crate::grid::aparencia::vidrado(aparencia, i)),
                             &mut out,
                         );
                     }

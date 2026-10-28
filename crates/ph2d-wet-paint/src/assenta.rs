@@ -94,6 +94,32 @@ impl Ecra {
             e => e,
         }
     }
+
+    /// A lei da CÉLULA com o «Glaze layering» que a tinta dela pousou ([`crate::grid::aparencia`], W3b): o tapar vai
+    /// da lei da sessão a [`crate::colorops::TINTA_ESCONDE_EM_VELATURA`] pela fracção `v`; `0` devolve a da sessão ao
+    /// bit, `1` dá a de velatura ao bit.
+    #[inline]
+    #[must_use]
+    pub fn com_vidrado(self, v: f32) -> Self {
+        match self {
+            Ecra::Cobre {
+                filme,
+                esconde,
+                molhada,
+                vela,
+            } if v > 0.0 => Ecra::Cobre {
+                filme,
+                esconde: if v >= 1.0 {
+                    crate::colorops::TINTA_ESCONDE_EM_VELATURA
+                } else {
+                    esconde + (crate::colorops::TINTA_ESCONDE_EM_VELATURA - esconde) * f64::from(v)
+                },
+                molhada,
+                vela,
+            },
+            e => e,
+        }
+    }
 }
 
 /// A cor da camada e a sua cobertura (o que o render compõe): `sc` assentado (`a_s`) sob `uc` em

@@ -529,3 +529,138 @@ mod linhas_tests {
         );
     }
 }
+
+/// §BUG-bordas-W3b: os PLANOS de uma cena de traços horizontais do Dabber com o Óleo Real (o pigmento da grade, a
+/// sombra no papel e a tela final) para achar o mecanismo dos pontinhos escuros da orla. `PH2D_OLEO_PNG=<pasta>`.
+#[cfg(test)]
+mod diag_w3b {
+    use crate::{PaintMedia, PainterTool};
+    use ph2d_editor_core::Tool;
+    use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase, RasterEditTool};
+
+    fn cp(pos: [f32; 2], phase: PointerPhase) -> CanvasPointer {
+        CanvasPointer {
+            pos,
+            pressure: 1.0,
+            tilt: [0.0, 0.0],
+            phase,
+        }
+    }
+
+    const W: u32 = 700;
+    const H: u32 = 200;
+
+    /// Um traço quase horizontal (y 90 → 102) de 40 px do pincel de fábrica `nome`, Óleo Real ligado, Smooth Edges 0,
+    /// numa tela 700 × 200 — e a água parada.
+    fn um_traco(nome: &str) -> PainterTool {
+        let (w, h) = (W, H);
+        let mut t = PainterTool::default();
+        t.abre_a_sprite(vec![255u8; (w * h * 4) as usize], w, h);
+        t.set_paint_media(PaintMedia::WetPaint);
+        t.set_wet_relogio_fixo(true);
+        let p = crate::tool::paint::wetpaint_preset::de_fabrica_ou_candidato(nome);
+        assert!(t.wet_preset_aplicar(&p).is_empty());
+        t.set_wet_oleo_real_ligado(true);
+        t.set_wet_smooth_edges(0.0);
+        t.set_brush_size_px(40.0);
+        t.set_brush_color_srgb8([30, 70, 210]);
+        let (a, z) = ([60.0f32, 90.0f32], [640.0f32, 102.0f32]);
+        let n = ((z[0] - a[0]).hypot(z[1] - a[1]) / 3.0).ceil() as u32;
+        t.on_canvas_pointer(cp(a, PointerPhase::Down));
+        for k in 1..=n {
+            let f = k as f32 / n as f32;
+            t.on_canvas_pointer(cp(
+                [a[0] + (z[0] - a[0]) * f, a[1] + (z[1] - a[1]) * f],
+                PointerPhase::Move,
+            ));
+            t.on_tick(8.0);
+        }
+        t.on_canvas_pointer(cp(z, PointerPhase::Up));
+        for _ in 0..600 {
+            t.on_tick(1000.0 / 60.0);
+            let s = t.paint.wetpaint.session.as_mut().expect("sessão");
+            s.bring_home();
+            if !s.engine.active_grid().has_fluid {
+                break;
+            }
+        }
+        t
+    }
+
+    #[test]
+    #[ignore = "medicao — corre-se à mão no perfil smoke"]
+    fn medida_planos_da_borda_w3b() {
+        let d = std::env::var("PH2D_OLEO_PNG").expect("PH2D_OLEO_PNG=<pasta>");
+        let nome = std::env::var("PH2D_OLEO_PINCEL").unwrap_or_else(|_| "Dabber".into());
+        let (w, h) = (W, H);
+        let mut t = um_traco(&nome);
+        let mut px = t.run_full().0;
+        let sem_luz = px.clone();
+        t.apply_impasto_light(&mut px, crate::Region { x: 0, y: 0, w, h });
+        let s = t.paint.wetpaint.session.as_ref().expect("sessão");
+        let ratio = s.ratio;
+        let gw = s.pigment.len() / 4 / (h as usize / usize::from(ratio)).max(1);
+        println!(
+            "[planos] ratio {ratio} · grade {gw} · sombra {} · grao {}",
+            s.sombra.len(),
+            s.grao.len()
+        );
+        std::fs::write(format!("{d}/tela.rgba"), &px).expect("grava");
+        std::fs::write(format!("{d}/sem_luz.rgba"), &sem_luz).expect("grava");
+        std::fs::write(format!("{d}/pigmento.rgba"), &s.pigment).expect("grava");
+        std::fs::write(format!("{d}/sombra.u8"), &s.sombra).expect("grava");
+        // A massa EFECTIVA (× o factor da espessura) da grade, `u16`, e os fios: a fixtura do gate da orla.
+        let g = s.engine.active_grid();
+        let mut m = Vec::with_capacity(g.w * g.h * 2);
+        for y in 1..=g.h {
+            for x in 1..=g.w {
+                let i = x + y * g.s;
+                let v = (f64::from(g.sett[i]) + f64::from(g.susp[i]))
+                    * ph2d_wet_paint::grid::espessura::factor(g, i);
+                m.extend_from_slice(&(v.round().clamp(0.0, 65_535.0) as u16).to_le_bytes());
+            }
+        }
+        println!(
+            "[planos] grade {}x{} · altura {} · crista {} · material {}",
+            g.w,
+            g.h,
+            g.altura.len(),
+            g.crista.len(),
+            g.material.len()
+        );
+        std::fs::write(format!("{d}/massa.u16"), &m).expect("grava");
+        let fios: Vec<u8> = (1..=g.h)
+            .flat_map(|y| (1..=g.w).map(move |x| x + y * g.s))
+            .flat_map(|i| g.altura.get(i).copied().unwrap_or(0.0).to_le_bytes())
+            .collect();
+        std::fs::write(format!("{d}/fios.f32"), &fios).expect("grava");
+    }
+
+    /// ⭐ §BUG-bordas-W3b (foto do dono `smoke_27_10/7.png`): **a orla do traço do Dabber não tem pontinhos escuros
+    /// soltos NA TELA** — o composite inteiro (o contorno, o entalhe cheio, a sombra do papel lida sem furos), pela
+    /// régua [`ph2d_wet_paint::oleo_real::pontinhos_escuros`] com a cobertura pela cor (`(B − R)/120`, a de
+    /// `oraculo/pontinhos_regua.py`). Antes: 22 soltos neste traço.
+    #[test]
+    fn a_orla_do_dabber_nao_tem_pontinhos_escuros_na_tela() {
+        let mut t = um_traco("Dabber");
+        let px = t.run_full().0;
+        let (w, h) = (W as usize, H as usize);
+        let mut tela = vec![[255.0f64, 0.0]; (w + 2) * (h + 2)];
+        for y in 0..h {
+            for x in 0..w {
+                let p = &px[(x + y * w) * 4..(x + y * w) * 4 + 3];
+                let (r, g, b) = (f64::from(p[0]), f64::from(p[1]), f64::from(p[2]));
+                tela[(x + 1) + (y + 1) * (w + 2)] = [
+                    0.299 * r + 0.587 * g + 0.114 * b,
+                    ((b - r) / 120.0).clamp(0.0, 1.0),
+                ];
+            }
+        }
+        let (soltos, todos) = ph2d_wet_paint::oleo_real::pontinhos_escuros(&tela, (w, h));
+        println!("[pontinhos na tela] soltos na orla {soltos} · em toda a parte {todos}");
+        assert_eq!(
+            soltos, 0,
+            "{soltos} pontinhos escuros soltos na orla do Dabber"
+        );
+    }
+}

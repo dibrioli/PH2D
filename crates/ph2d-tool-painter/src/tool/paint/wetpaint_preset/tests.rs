@@ -483,6 +483,9 @@ fn o_material_do_pincel_vai_e_volta_pelo_preset() {
         (Knob::SubsurfaceRadius, 7.5),
         (Knob::Transparency, 0.6),
         (Knob::LockMaterial, 1.0),
+        // W3b: a Transmission e o Relevo do papel (ausentes = 0, o neutro)
+        (Knob::Transmission, 0.7),
+        (Knob::PaperRelief, 0.4),
     ];
     let mut a = ferramenta();
     for (k, v) in mexidos {

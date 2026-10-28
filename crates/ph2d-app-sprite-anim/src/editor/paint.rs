@@ -14,7 +14,7 @@ use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Radius, StrokeToken, Theme, TypeToken};
 use ph2d_vector::{ImageQuality, VectorScene};
 
-fn button(
+pub(crate) fn button(
     scene: &mut VectorScene,
     text: &mut TextSystem,
     theme: Theme,
@@ -43,7 +43,7 @@ fn button(
     );
 }
 
-fn field(
+pub(crate) fn field(
     scene: &mut VectorScene,
     text: &mut TextSystem,
     theme: Theme,

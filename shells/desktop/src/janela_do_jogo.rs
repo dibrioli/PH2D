@@ -144,6 +144,7 @@ impl crate::App {
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
+        gfx.camera.center = s::CENTRO_DOS_USOS;
         let Some(i) = s::uso_no_quadro(usos.len() + 1) else {
             return;
         };
@@ -152,15 +153,23 @@ impl crate::App {
             i + 1,
             s::estado_do_player(&mut gfx.sim)
         );
-        let (Some(&u), Some(p)) = (usos.get(i), s::por_nome(&mut gfx.sim, "Player")) else {
+        let (Some(&passo), Some(p)) = (usos.get(i), s::por_nome(&mut gfx.sim, "Player")) else {
             return;
         };
-        if let Some(hero) = gfx.hero_screen.as_mut() {
-            use ph2d_editor_core::action_bus::EditorAction;
-            hero.bus.push(EditorAction::ImageUseEdit {
-                entity_bits: p.to_bits(),
-                edit: ph2d_editor_core::ImageUseEdit::Use(u),
-            });
+        let Some(hero) = gfx.hero_screen.as_mut() else {
+            return;
+        };
+        use ph2d_app_sprite_anim::region as r;
+        match passo {
+            s::PassoDoDono::Uso(u) => {
+                hero.bus
+                    .push(ph2d_editor_core::action_bus::EditorAction::ImageUseEdit {
+                        entity_bits: p.to_bits(),
+                        edit: ph2d_editor_core::ImageUseEdit::Use(u),
+                    })
+            }
+            s::PassoDoDono::Celula(c) => _ = r::click_cell(hero, c),
+            s::PassoDoDono::Ok => _ = r::click_ok(hero),
         }
     }
 

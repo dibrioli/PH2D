@@ -209,21 +209,40 @@ fn uso(u: ph2d_editor_core::InspectorImageUse) -> ph2d_editor_core::ImageUseEdit
     ph2d_editor_core::ImageUseEdit::Use(u)
 }
 
+/// O centro da vista durante [`usos_do_dono`]: o Player do nível 4 (m), para as fotos o mostrarem.
+pub const CENTRO_DOS_USOS: [f32; 2] = [-8.0, 1.5];
+
 /// Quadros entre dois cliques de [`usos_do_dono`]: cada clique chega sozinho num quadro, como o da mão.
 pub const QUADROS_POR_USO: u32 = 120;
 
+/// Um passo do condutor [`usos_do_dono`]: um clique do seletor «Use», ou um gesto no editor de Region aberto.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PassoDoDono {
+    Uso(ph2d_editor_core::InspectorImageUse),
+    /// `cell:C:L` — um clique no centro da célula (coluna `C`, linha `L`) da grelha do editor de Region.
+    Celula([u32; 2]),
+    /// `ok` — o botão OK do editor de Region.
+    Ok,
+}
+
 /// ⭐ `PH2D_GAME_SMOKE_USOS=repeated,still,animated,repeated` — a sequência de cliques do seletor «Use» que o dono
-/// faz sobre o Player (report 27/10), um a cada [`QUADROS_POR_USO`], pelo barramento do Inspector.
+/// faz sobre o Player (report 27/10), um a cada [`QUADROS_POR_USO`], pelo barramento do Inspector; com `region`,
+/// `cell:C:L` e `ok` (plano GEF 16) os gestos no editor de Region.
 #[must_use]
-pub fn usos_do_dono() -> Option<Vec<ph2d_editor_core::InspectorImageUse>> {
+pub fn usos_do_dono() -> Option<Vec<PassoDoDono>> {
     use ph2d_editor_core::InspectorImageUse as U;
     let s = std::env::var("PH2D_GAME_SMOKE_USOS").ok()?;
     s.split(',')
         .map(|u| match u.trim() {
-            "still" => Some(U::Still),
-            "repeated" => Some(U::Repeated),
-            "animated" => Some(U::Animated),
-            _ => None,
+            "still" => Some(PassoDoDono::Uso(U::Still)),
+            "repeated" => Some(PassoDoDono::Uso(U::Repeated)),
+            "animated" => Some(PassoDoDono::Uso(U::Animated)),
+            "region" => Some(PassoDoDono::Uso(U::Region)),
+            "ok" => Some(PassoDoDono::Ok),
+            p => {
+                let (c, l) = p.strip_prefix("cell:")?.split_once(':')?;
+                Some(PassoDoDono::Celula([c.parse().ok()?, l.parse().ok()?]))
+            }
         })
         .collect()
 }
@@ -246,11 +265,12 @@ pub fn estado_do_player(sim: &mut SimWorld) -> String {
     };
     let w = sim.world();
     format!(
-        "size={:?} tiled={:?} grid={:?} anims={} memoria={:?}",
+        "size={:?} tiled={:?} grid={:?} area={:?} anims={} memoria={:?}",
         w.get::<ph2d_render::Sprite>(e).map(|s| s.size),
         w.get::<ph2d_ecs::TiledDraw>(e).map(|t| t.tile),
         w.get::<ph2d_ecs::SpriteGrid>(e)
             .map(|g| (g.hframes, g.vframes)),
+        w.get::<ph2d_ecs::SpriteRegion>(e).map(|r| r.rect),
         w.get::<ph2d_ecs::SpriteAnimations>(e).is_some(),
         w.get::<ph2d_ecs::ImageUseMemory>(e)
             .map(|m| [&m.still, &m.repeated, &m.animated].map(|s| s

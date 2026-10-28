@@ -249,8 +249,16 @@ pub fn snapshot(sim: &SimWorld, bits: u64) -> EditorSnapshot {
     }
 }
 
+/// As famílias de abas desta crate: o editor de animações e o de Region (plano GEF 16).
+pub fn install(hero: &mut HeroScreen) {
+    hero.documents
+        .install_surface(Box::new(AnimDocs::default()));
+    hero.documents
+        .install_surface(Box::new(crate::region::RegionDocs::default()));
+}
+
 /// **O quadro da família**: abre o que se pediu, resolve as folhas, aplica as edições das abas pela
-/// porta do Inspector e entrega a cada aba o snapshot novo.
+/// porta do Inspector e entrega a cada aba o snapshot novo. O editor de Region corre primeiro, aqui.
 pub fn frame(
     sim: &mut SimWorld,
     hero: &mut HeroScreen,
@@ -259,6 +267,8 @@ pub fn frame(
     registry: &ComponentRegistry,
     toasts: &mut ToastQueue,
 ) {
+    let ppm = hero.project.pixels_per_meter;
+    crate::region::frame(sim, hero, db, atlas, ppm);
     let wanted = sim
         .world_mut()
         .get_resource_mut::<AnimEditorRequests>()

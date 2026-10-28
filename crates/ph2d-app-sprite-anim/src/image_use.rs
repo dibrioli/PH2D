@@ -252,10 +252,6 @@ pub fn set_use(
     let mut memory = world.get::<ImageUseMemory>(e).cloned().unwrap_or_default();
     let deixado = capture(world, e);
     let regiao_deixada = capture_region(world, e);
-    if cur == ImageUse::Region {
-        // A área é só da Region: as outras mostram a imagem inteira.
-        world.entity_mut(e).remove::<(ImageRegion, SpriteRegion)>();
-    }
     if let Some(destino) = slot(&mut memory, to) {
         let guardado = destino.take();
         match guardado {
@@ -276,6 +272,11 @@ pub fn set_use(
             Some(look) => restore_region(world, e, look),
             None => fresh_region(world, e, facts, rgba),
         }
+    }
+    if cur == ImageUse::Region {
+        // A área é só da Region: as outras mostram a imagem inteira. Sai DEPOIS de o uso novo medir a escala
+        // (com ela, a `display_scale` é a da área; sem ela, a da imagem inteira ao tamanho da área).
+        world.entity_mut(e).remove::<(ImageRegion, SpriteRegion)>();
     }
     match slot(&mut memory, cur) {
         Some(lugar) => *lugar = Some(deixado),
@@ -546,6 +547,21 @@ pub fn clamp_area(rect: [u32; 4], px: [u32; 2]) -> [u32; 4] {
         rect[2].clamp(1, px[0] - x),
         rect[3].clamp(1, px[1] - y),
     ]
+}
+
+/// Por onde o editor de Region de `e` começa: os píxeis da imagem, a área de agora (`None` = a imagem inteira) e a
+/// grelha. `None` fora de Region ou sem os píxeis da imagem.
+#[must_use]
+pub fn region_seed(
+    world: &World,
+    e: Entity,
+    db: &AssetDb,
+    atlas: &BTreeMap<u32, AssetId>,
+    ppm: f32,
+) -> Option<([u32; 2], Option<[f32; 4]>, [u32; 2])> {
+    let cut = *world.get::<ImageRegion>(e)?;
+    let px = shown_facts(world, e, db, atlas, ppm)?.px;
+    (px[0] > 0 && px[1] > 0).then(|| (px, world.get::<SpriteRegion>(e).map(|r| r.rect), cut.grid))
 }
 
 /// As sprites cujo editor de Region alguém pediu neste quadro («Edit Region», ou uma Region nova).

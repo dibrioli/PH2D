@@ -6,6 +6,7 @@ pub mod editor;
 pub mod image_choice;
 pub mod image_use;
 pub mod inspector;
+pub mod region;
 pub mod sheet;
 pub mod tick;
 pub mod tiled;

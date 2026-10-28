@@ -226,3 +226,34 @@ fn trocar_a_imagem_esquece_a_area() {
     assert!(m.region.is_some(), "a Region nova (da bandeira) guardou-se");
     assert_eq!(m.region.and_then(|r| r.area), None);
 }
+
+/// ⭐ Sair de uma Region COM ÁREA para um uso novo não muda a escala (foto do smoke 27/10: Region na célula →
+/// Still deu a folha a 1 × 1 m, a escala da célula aplicada à folha inteira). Os três destinos, cada um novo.
+#[test]
+fn sair_de_uma_area_nao_muda_a_escala() {
+    for to in [
+        InspectorImageUse::Still,
+        InspectorImageUse::Repeated,
+        InspectorImageUse::Animated,
+    ] {
+        let mut sim = SimWorld::new();
+        ph2d_app_game::smoke::montar(&mut sim, &registo(), 4);
+        let e = por_nome(&mut sim, "Player");
+        sim.world_mut().entity_mut(e).remove::<ImageUseMemory>();
+        let f = factos(&sim, e);
+        let k0 = display_scale(sim.world(), e, f);
+        assert!(usa(&mut sim, e, InspectorImageUse::Region));
+        let [pw, ph] = f.px;
+        assert!(regiao(&mut sim, e, [pw / 8, 0, pw / 8, ph / 4], [8, 4]));
+        // O Animated já foi usado (o Player nasce animado): esquecê-lo faz dele um uso NOVO.
+        if let Some(mut m) = sim.world_mut().get_mut::<ImageUseMemory>(e) {
+            m.animated = None;
+        }
+        assert!(usa(&mut sim, e, to), "{to:?}");
+        let k = display_scale(sim.world(), e, factos(&sim, e));
+        assert!(
+            perto(k, k0),
+            "Region (célula) → {to:?}: escala {k0:?} → {k:?}"
+        );
+    }
+}

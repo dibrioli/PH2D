@@ -34,6 +34,17 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "anim_editor.remove_frame" => "\u{d7}",
         "anim_editor.frame_factor" => "{x}x",
         "anim_editor.commit_failed" => "The animation edit did not apply: {e}",
+        // O editor de Region (plano GEF 16 D2): a área que o objecto mostra.
+        "region_editor.tab" => "Region \u{2014} {name}",
+        "region_editor.columns" => "Columns",
+        "region_editor.rows" => "Rows",
+        "region_editor.hint" => {
+            "Drag to move \u{00b7} handles resize \u{00b7} drag outside or click a cell for a new area \u{00b7} Alt: no snap"
+        }
+        "region_editor.hint_alt" => "Alt: snapping to pixels",
+        "region_editor.ok" => "OK",
+        "region_editor.cancel" => "Cancel",
+        "region_editor.no_pixels" => "This sprite's image is not in memory, so it can't be shown.",
         _ => return None,
     })
 }

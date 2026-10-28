@@ -1,0 +1,19 @@
+[package]
+name = "ph2d-kanban-model"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+[dependencies]
+# O documento Kanban (ADR-0192) — PURO: sem ECS, sem render, sem UI. Entra e sai por ops e bytes.
+serde = { version = "1", features = ["derive"] }
+postcard = { version = "1", features = ["alloc"] }
+ph2d-frac = { path = "../ph2d-frac" }
+
+[lints]
+workspace = true

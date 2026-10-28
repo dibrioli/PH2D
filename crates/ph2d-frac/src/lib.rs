@@ -1,4 +1,7 @@
-//! **Ordem por índice fraccionário** — a posição em z de um elemento é uma chave que ordena
+//! **Ordem por índice fraccionário**, partilhada pelo Quadro (z dos elementos) e pelo Kanban (listas
+//! e cartões) — crate própria para os dois modelos não dependerem um do outro (ADR-0192).
+//!
+//! A posição em z de um elemento é uma chave que ordena
 //! lexicograficamente, e entre duas chaves cabe sempre uma terceira. Inserir entre vizinhos não
 //! renumera ninguém: é o que deixa duas pessoas reordenarem ao mesmo tempo sem conflito (Etapa 2).
 //!
@@ -228,5 +231,4 @@ fn midpoint(a: &[u8], b: Option<&[u8]>) -> Vec<u8> {
 }
 
 #[cfg(test)]
-#[path = "frac_tests.rs"]
 mod tests;

@@ -17,6 +17,8 @@ postcard = { version = "1", features = ["alloc"] }
 flate2 = "1"
 # W14 — a chave de um ficheiro de imagem é o sha256 dos bytes (o mesmo crate do `ph2d-board-net`).
 sha2 = "0.10"
+# A ordem fraccionária, partilhada com o Kanban (ADR-0192).
+ph2d-frac = { path = "../ph2d-frac" }
 
 [lints]
 workspace = true

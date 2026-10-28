@@ -6319,6 +6319,7 @@ name = "ph2d-board-model"
 version = "0.0.0"
 dependencies = [
  "flate2",
+ "ph2d-frac",
  "postcard",
  "serde",
  "sha2 0.10.9",
@@ -6782,6 +6783,14 @@ version = "0.0.0"
 dependencies = [
  "ph2d-core",
  "ph2d-flip",
+]
+
+[[package]]
+name = "ph2d-frac"
+version = "0.0.0"
+dependencies = [
+ "postcard",
+ "serde",
 ]
 
 [[package]]
@@ -7421,6 +7430,15 @@ dependencies = [
 name = "ph2d-item-id"
 version = "0.0.0"
 dependencies = [
+ "postcard",
+ "serde",
+]
+
+[[package]]
+name = "ph2d-kanban-model"
+version = "0.0.0"
+dependencies = [
+ "ph2d-frac",
  "postcard",
  "serde",
 ]

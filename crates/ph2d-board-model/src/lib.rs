@@ -14,7 +14,6 @@ mod element;
 mod embed;
 mod facilitate;
 mod fields;
-mod frac;
 mod history;
 mod image;
 mod ink;
@@ -41,7 +40,6 @@ pub use facilitate::{
     mark_side, stamp_chips, vote_badge, vote_plus,
 };
 pub use fields::Field;
-pub use frac::FracKey;
 pub use history::{History, MAX_STEPS, undo_tick};
 pub use image::{Blob, Crop, FileId, Files, Image, ImageFile, ImageFilter, Ingest, mime_of};
 pub use ink::{Ink, Pen};
@@ -53,6 +51,7 @@ pub use mind::{
 };
 pub use ops::{BoardOp, apply_batch};
 pub use organize::{FRAME_FILL, Frame, GroupId, MAX_TAGS, Org, Tag, far_frame};
+pub use ph2d_frac::FracKey;
 pub use poll::{Poll, PollId};
 pub use rich::{Mark, Marks, RichText, Span};
 pub use session::SESSION_ID_BIT;

@@ -256,7 +256,8 @@ pub const EM_ESTUDO: &[Receita] = &[
             ("pressureOpacity", 1.0),
             ("pressureOpacityCurve", 1.0),
         ],
-        achatado: Some((0.55, 0)),
+        // J6 L3: à escala do oráculo (w0 16) 0,55 dava w90/w0 1,88 (Rebelle 2,31); 0,62 dá 2,31 (`J6_lamina.md`).
+        achatado: Some((0.62, 0)),
         pincel: &[
             ("falloff", "\"Sharp\""),
             ("jitter", "0.0"),

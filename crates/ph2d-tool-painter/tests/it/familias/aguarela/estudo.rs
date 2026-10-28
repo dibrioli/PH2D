@@ -30,6 +30,8 @@ fn escreve_os_estudos_da_aguarela() {
                 .chain(crate::familias::guache::WET)
                 .chain(crate::familias::guache::EM_ESTUDO)
                 .chain(crate::familias::oleo_acrilica::EM_ESTUDO)
+                .chain(crate::familias::pastel_carvao::EM_ESTUDO)
+                .chain(crate::familias::caligrafia_marcadores::EM_ESTUDO_WET)
                 .find(|r| r.nome == nome)
                 .expect("receita da família");
             let mut p = ph2d_brush_presets::Preset {
@@ -44,6 +46,14 @@ fn escreve_os_estudos_da_aguarela() {
             };
             p.parametros.width_table = crate::presets_de_fabrica::tabela_de_largura(&p);
             p
+        } else if let Some(nome) = e["receita_meio"].as_str() {
+            // J6 L3: um reprovado de outro meio (Digital/Watercolor/Impasto) como o gerador o faz.
+            let r = crate::familias::lapis::EM_ESTUDO
+                .iter()
+                .chain(crate::familias::caligrafia_marcadores::EM_ESTUDO)
+                .find(|r| r.nome == nome)
+                .expect("receita de meio em estudo");
+            crate::presets_de_fabrica::preset_do_meio(r)
         } else {
             let base = e["base"].as_str().unwrap();
             let Fonte::Preset { preset, .. } = pinceis(base).remove(0).fonte else {

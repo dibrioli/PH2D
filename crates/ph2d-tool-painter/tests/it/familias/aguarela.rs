@@ -5,6 +5,7 @@
 use super::prelude::*;
 
 mod estudo;
+mod lamina;
 mod molhado;
 mod portoes;
 mod sonda;
@@ -290,7 +291,9 @@ pub const EM_ESTUDO: &[Receita] = &[
             ("pressureOpacityCurve", CURVA_DO_FLAT),
         ],
         grao: None,
-        achatado: Some((0.65, 90)),
+        // J6 L3: a lâmina do Rebelle (fixa, eixo 100°) é mais fina — w90/w0 0,35 · S±40/w0 0,89; 0,65 dava 0,44 · 0,94,
+        // 0,75 dá 0,36 · 0,91 (`docs/Painter/Pinceis/J6_lamina.md`).
+        achatado: Some((0.75, 90)),
         pincel: &[("dab_quina", "1.0")],
         nasce_de: Some("Wet Flat"),
         real_oil: false,

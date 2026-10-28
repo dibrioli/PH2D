@@ -343,21 +343,69 @@ impl Spec {
     /// Os bytes do corpo: a versão e a automação, em postcard.
     ///
     /// # Errors
-    /// Se o postcard recusar (não acontece com estes tipos).
+    /// Uma agenda que nunca dispara ([`Self::check`]) ou o postcard a recusar.
     pub fn to_bytes(&self) -> Result<Vec<u8>, String> {
+        self.check()?;
         postcard::to_allocvec(&(SPEC_VERSION, self)).map_err(|e| e.to_string())
     }
 
     /// # Errors
-    /// Versão desconhecida (de um PH2D mais novo) ou bytes corrompidos.
+    /// Versão desconhecida (de um PH2D mais novo), bytes corrompidos ou uma agenda que nunca dispara.
     pub fn from_bytes(bytes: &[u8]) -> Result<Self, String> {
         let (v, _) = postcard::take_from_bytes::<u32>(bytes).map_err(|e| e.to_string())?;
         if v != SPEC_VERSION {
             return Err(format!("automation version {v} != {SPEC_VERSION}"));
         }
-        postcard::from_bytes::<(u32, Self)>(bytes)
+        let spec = postcard::from_bytes::<(u32, Self)>(bytes)
             .map(|(_, s)| s)
-            .map_err(|e| e.to_string())
+            .map_err(|e| e.to_string())?;
+        spec.check()?;
+        Ok(spec)
+    }
+
+    /// Recusa o dia ou a hora que nunca chega — sem isto a automação ficava armada e muda. Dia do mês
+    /// `1..=31` em qualquer mês (o que passa do fim cai no último dia), mês `1..=12`, pelo menos um
+    /// dia da semana, horas `0..24` e minutos `0..60`.
+    ///
+    /// # Errors
+    /// O primeiro campo fora da faixa.
+    pub fn check(&self) -> Result<(), String> {
+        let time = |t: &TimeOfDay| {
+            if t.hour < 24 && t.minute < 60 {
+                Ok(())
+            } else {
+                Err(format!("automation time {}:{} out of range", t.hour, t.minute))
+            }
+        };
+        match &self.kind {
+            Kind::Calendar { every, at, .. } => {
+                let ok = match *every {
+                    Every::Day => true,
+                    Every::Weekdays(mask) => mask != 0 && mask < 0x80,
+                    Every::MonthDay(d) => (1..=31).contains(&d),
+                    Every::YearDay { month, day } => {
+                        (1..=12).contains(&month) && (1..=31).contains(&day)
+                    }
+                };
+                if !ok {
+                    return Err(format!("automation day {every:?} never comes"));
+                }
+                time(at)?;
+            }
+            Kind::DueDate {
+                when: DueWhen::OnDay { at },
+                ..
+            } => time(at)?,
+            _ => {}
+        }
+        for a in &self.actions {
+            if let Action::SetDue(r) | Action::SetStart(r) = a
+                && let Some(t) = &r.at
+            {
+                time(t)?;
+            }
+        }
+        Ok(())
     }
 
     /// O `Put` que cria esta automação no fim das de `k`. Os comandos agendados contam a partir de

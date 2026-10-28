@@ -2,6 +2,7 @@
 
 use ph2d_richdoc::{Block, BlockKind, Inline, Mark, RichDoc};
 use pulldown_cmark::{CodeBlockKind, Event, HeadingLevel, Options, Parser, Tag, TagEnd};
+use std::ops::Range;
 
 /// Lê markdown (CommonMark + tarefas + riscado).
 pub fn parse(md: &str) -> RichDoc {
@@ -26,6 +27,8 @@ struct Builder {
     quote: usize,
     images: Vec<String>,
     raw: bool,
+    /// Onde começou cada link `mention:` aberto.
+    mentions: Vec<usize>,
 }
 
 impl Builder {
@@ -35,7 +38,7 @@ impl Builder {
             Event::End(tag) => self.end(tag),
             Event::Text(t) => self.text(&t),
             Event::Code(t) => {
-                let mut m = self.marks.clone();
+                let mut m = self.open_marks();
                 m.push(Mark::Code);
                 self.ensure_cur().inline.push(&t, &m);
             }
@@ -104,6 +107,11 @@ impl Builder {
             Tag::Emphasis => self.marks.push(Mark::Italic),
             Tag::Strong => self.marks.push(Mark::Bold),
             Tag::Strikethrough => self.marks.push(Mark::Strike),
+            Tag::Link { dest_url, .. } if dest_url.starts_with(MENTION) => {
+                let at = self.ensure_cur().inline.len();
+                self.mentions.push(at);
+                self.marks.push(Mark::Mention);
+            }
             Tag::Link { dest_url, .. } => self.marks.push(Mark::Link(dest_url.into_string())),
             Tag::Image {
                 dest_url, title, ..
@@ -151,7 +159,14 @@ impl Builder {
                 self.items.pop();
             }
             TagEnd::Emphasis | TagEnd::Strong | TagEnd::Strikethrough | TagEnd::Link => {
-                self.marks.pop();
+                // A menção é UMA marca sobre o texto todo do link (o leitor parte-o em pedaços).
+                if self.marks.pop() == Some(Mark::Mention)
+                    && let Some(at) = self.mentions.pop()
+                {
+                    let c = self.ensure_cur();
+                    let end = c.inline.len();
+                    c.inline.add_mark(at..end, Mark::Mention);
+                }
             }
             TagEnd::Image => {
                 let dest = self.images.pop().unwrap_or_default();
@@ -161,11 +176,20 @@ impl Builder {
         }
     }
 
+    /// As marcas abertas, sem a menção (essa marca-se inteira no fim do link).
+    fn open_marks(&self) -> Vec<Mark> {
+        self.marks
+            .iter()
+            .filter(|m| **m != Mark::Mention)
+            .cloned()
+            .collect()
+    }
+
     fn text(&mut self, t: &str) {
         let marks = if self.raw {
             Vec::new()
         } else {
-            self.marks.clone()
+            self.open_marks()
         };
         self.ensure_cur().inline.push(t, &marks);
     }
@@ -222,9 +246,11 @@ fn is_name_char(c: char) -> bool {
     c.is_alphanumeric() || matches!(c, '_' | '-' | '.')
 }
 
-/// `@nome` fora de código e de links vira menção (o nome acaba antes de `.`/`-` finais).
-fn mark_mentions(inline: &mut Inline) {
-    let text = inline.text().to_owned();
+/// O esquema da menção que o `@nome` simples não exprime (`[@Ana Silva](mention:Ana%20Silva)`).
+pub(crate) const MENTION: &str = "mention:";
+
+/// Onde o texto puro tem `@nome` (o nome acaba antes de `.`/`-` finais).
+pub(crate) fn plain_mentions(text: &str) -> Vec<Range<usize>> {
     let mut found = Vec::new();
     let mut prev: Option<char> = None;
     for (i, c) in text.char_indices() {
@@ -236,20 +262,26 @@ fn mark_mentions(inline: &mut Inline) {
         let rest = &text[i + 1..];
         let len = rest.find(|ch| !is_name_char(ch)).unwrap_or(rest.len());
         let name = rest[..len].trim_end_matches(['.', '-']);
-        if name.is_empty() {
-            continue;
-        }
-        let end = i + 1 + name.len();
-        let inside = (i..end).any(|p| {
-            inline
-                .marks_on_byte(p)
-                .iter()
-                .any(|m| matches!(m, Mark::Code | Mark::Link(_)))
-        });
-        if !inside {
-            found.push(i..end);
+        if !name.is_empty() {
+            found.push(i..i + 1 + name.len());
         }
     }
+    found
+}
+
+/// `@nome` fora de código, de links e de menções já lidas vira menção.
+fn mark_mentions(inline: &mut Inline) {
+    let found: Vec<Range<usize>> = plain_mentions(inline.text())
+        .into_iter()
+        .filter(|r| {
+            !r.clone().any(|p| {
+                inline
+                    .marks_on_byte(p)
+                    .iter()
+                    .any(|m| matches!(m, Mark::Code | Mark::Link(_) | Mark::Mention))
+            })
+        })
+        .collect();
     for r in found {
         inline.add_mark(r, Mark::Mention);
     }

@@ -7,7 +7,7 @@ use ph2d_richdoc::{Inline, Mark};
 /// Escreve `inline` em `out`. `cont` = prefixo das linhas de continuação; num título as
 /// quebras viram espaço.
 pub(crate) fn emit_inline(out: &mut String, inline: &Inline, cont: &str, heading: bool) {
-    let stable = stable(clean(inline, heading), heading);
+    let stable = stable(clean(&linkify(inline), heading), heading);
     write(out, &stable, cont, heading);
 }
 
@@ -62,11 +62,47 @@ fn without(i: &Inline, k: usize) -> Inline {
 fn reread(md: &str) -> Option<Inline> {
     let doc = crate::parse(md);
     let [b] = doc.blocks() else { return None };
-    let mut back = Inline::plain(b.inline.text());
-    for s in b.inline.marks().iter().filter(|s| s.mark != Mark::Mention) {
-        back.add_mark(s.start..s.end, s.mark.clone());
+    Some(linkify(&b.inline))
+}
+
+/// ⭐ As menções que o `@nome` simples não devolve (um espaço, um acento fora do nome, um `]`)
+/// viram o link `mention:` — a ida-e-volta guarda o nome inteiro e um leitor comum mostra o texto.
+/// As outras saem: o leitor volta a encontrá-las no texto. Dentro de código ou de link perdem-se.
+fn linkify(inline: &Inline) -> Inline {
+    let plain = crate::parse::plain_mentions(inline.text());
+    let mut out = Inline::plain(inline.text());
+    for s in inline.marks() {
+        let r = s.start..s.end;
+        if s.mark != Mark::Mention {
+            out.add_mark(r, s.mark.clone());
+            continue;
+        }
+        let nested = r.clone().any(|p| {
+            inline
+                .marks_on_byte(p)
+                .iter()
+                .any(|m| matches!(m, Mark::Code | Mark::Link(_)))
+        });
+        if !nested && !plain.contains(&r) {
+            let name = &inline.text()[r.clone()];
+            let url = mention_url(name.strip_prefix('@').unwrap_or(name));
+            out.add_mark(r, Mark::Link(url));
+        }
     }
-    Some(back)
+    out
+}
+
+/// `mention:` + o nome em percent-encoding (UTF-8; só `A-Z a-z 0-9 - . _ ~` ficam).
+fn mention_url(name: &str) -> String {
+    let mut url = String::from(crate::parse::MENTION);
+    for b in name.bytes() {
+        if b.is_ascii_alphanumeric() || matches!(b, b'-' | b'.' | b'_' | b'~') {
+            url.push(char::from(b));
+        } else {
+            url.push_str(&format!("%{b:02X}"));
+        }
+    }
+    url
 }
 
 fn write(out: &mut String, clean: &Inline, cont: &str, heading: bool) {

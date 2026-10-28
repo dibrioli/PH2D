@@ -15,7 +15,7 @@ use ph2d_editor_core::IconId;
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_text_title_elided};
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
-use ph2d_kanban_model::{KanbanId, Member};
+use ph2d_kanban_model::{Kanban, Member};
 use ph2d_kanban_views::ViewKind;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken as T, Theme};
@@ -51,8 +51,9 @@ pub(crate) fn paint(
     ts: &mut TextSystem,
     theme: Theme,
     tab: &Tab,
-    (kanban, look): (KanbanId, &Look),
+    (k, look): (&Kanban, &Look),
 ) -> Head {
+    let kanban = k.id;
     let l = &tab.layout;
     let fg = c(theme, T::KanbanHeaderFg);
     let hover = |a: Act| tab.w6.hover == Some(a);
@@ -130,6 +131,22 @@ pub(crate) fn paint(
         .map(|s| s.people.as_slice())
         .unwrap_or_default();
     let right = avatars(scene, ts, theme, share.x - m::HEADER_GAP, l.header, people);
+    // J5 — os botões de quadro do Butler à esquerda dos avatares (o clique: `Act::BoardButton`).
+    let lit = match tab.w6.hover {
+        Some(Act::BoardButton(a)) => Some(a),
+        _ => None,
+    };
+    let (buttons, right) = crate::auto::buttons::paint_board_buttons(
+        scene,
+        ts,
+        theme,
+        k,
+        right - m::HEADER_GAP,
+        l.board_menu.y,
+        m::BUTTON_H,
+        lit,
+    );
+    hits.extend(buttons.into_iter().map(|(r, a)| (r, Act::BoardButton(a))));
     tab.w6.hits.borrow_mut().extend(hits);
     Head {
         views,

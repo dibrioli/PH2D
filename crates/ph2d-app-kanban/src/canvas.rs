@@ -154,7 +154,7 @@ impl KanbanPainter for Painter {
         let (Some(set), me, team) = (c.set.clone(), c.cx.me.clone(), c.cx.team.clone()) else {
             return;
         };
-        let Some(tab) = c.tabs.get_mut(&el).filter(|t| t.back.is_some()) else {
+        let Some(tab) = c.tabs.get_mut(&el).filter(|t| t.back.is_some() || t.auto.is_some()) else {
             return;
         };
         let set = set.borrow();
@@ -325,7 +325,7 @@ impl KanbanElementInput for Input {
             .borrow()
             .tabs
             .get(&el)
-            .is_some_and(|t| t.back.is_some() || t.w6.open())
+            .is_some_and(|t| t.back.is_some() || t.auto.is_some() || t.w6.open())
     }
 }
 

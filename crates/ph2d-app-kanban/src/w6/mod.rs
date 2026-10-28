@@ -128,6 +128,8 @@ pub(crate) enum Act {
     /// J1 — o «Share» do cabeçalho e um alvo do popover dele.
     ShareButton,
     Share(crate::share::ShareAct),
+    /// J5 — um botão de quadro do Butler no cabeçalho.
+    BoardButton(ph2d_kanban_model::AutomationId),
 }
 
 /// O estado W6 de uma vista.
@@ -291,7 +293,7 @@ pub(crate) fn paint(
     if lod != KanbanLod::High {
         return;
     }
-    let head = crate::header::paint(scene, ts, theme, tab, (k.id, look));
+    let head = crate::header::paint(scene, ts, theme, tab, (k, look));
     let anchors = filter_bar::header(scene, ts, theme, tab, (head.views.x + head.views.w + crate::metrics::HEADER_GAP, head.right));
     let area = above(tab.layout.area, floor);
     if tab.w6.quick.is_some() {
@@ -454,6 +456,9 @@ pub(crate) fn act(docs: &mut KanbanDocs, id: u64, a: Act) {
         Act::View(i) => crate::header::pick_view(docs, id, i),
         Act::ShareButton => toggle_over(docs, id, Over::Share),
         Act::Share(s) => crate::share::sheet::click(docs, id, s),
+        Act::BoardButton(a) => {
+            crate::auto::buttons::press_board(docs, id, a);
+        }
         _ => filter_bar::click(docs, id, a),
     }
 }

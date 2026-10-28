@@ -28,7 +28,6 @@ pub(crate) fn is_card_button(k: &Kind) -> bool {
     matches!(k, Kind::CardButton)
 }
 
-#[allow(dead_code)] // o cabeçalho (J1) chama [`paint_board_buttons`]
 pub(crate) fn is_board_button(k: &Kind) -> bool {
     matches!(k, Kind::BoardButton { .. })
 }
@@ -79,7 +78,7 @@ pub(crate) fn press_board(docs: &mut KanbanDocs, id: u64, a: AutomationId) -> bo
 /// ⭐ A fiada dos botões de quadro para o CABEÇALHO: pinta-os da direita para a esquerda a acabar em
 /// `right` (o cabeçalho põe-na à esquerda do «…»), na faixa `y..y+h`; devolve o rect de cada um
 /// (para o clique: [`press_board`]) e onde a fiada começa.
-#[allow(clippy::too_many_arguments, dead_code)] // o cabeçalho (J1) liga-o
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn paint_board_buttons(
     scene: &mut VectorScene,
     ts: &mut TextSystem,

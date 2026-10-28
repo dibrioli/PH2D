@@ -89,9 +89,10 @@ impl KanbanDocs {
     /// cartão do verso, os links abrem-se, os anexos de ficheiro abrem-se de uma cópia temporária.
     pub fn serve(&mut self, world: &mut dyn World) -> Served {
         super::attach::arrived(self);
+        // A ÚNICA saída da fila de avisos e do link da sala (J1) para o mundo.
         let mut out = Served {
+            copy: self.share.copy.take(),
             notices: std::mem::take(&mut self.notices),
-            ..Served::default()
         };
         let ids: Vec<u64> = self.tabs.iter().map(crate::tab::Tab::id).collect();
         for id in ids {

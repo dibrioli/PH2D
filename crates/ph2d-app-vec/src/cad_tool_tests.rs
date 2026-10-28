@@ -98,7 +98,13 @@ impl Mesa {
         )
     }
     pub fn quadro(&mut self) {
-        frame(&mut self.scene, &mut self.vec, &self.xf, &mut self.hero);
+        frame(
+            &mut self.scene,
+            &mut self.sim,
+            &mut self.vec,
+            &self.xf,
+            &mut self.hero,
+        );
     }
 }
 

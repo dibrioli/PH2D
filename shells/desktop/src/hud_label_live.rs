@@ -81,11 +81,8 @@ pub(crate) fn cook(
     let mut live = LiveGeometry::new();
     for p in pedidos {
         let font = crate::vec_font::resolve(p.params.family.as_deref());
-        let (fill, stroke) = scene
-            .paths()
-            .iter()
-            .find(|q| q.id == p.id)
-            .map_or((None, None), |q| (q.fill.clone(), q.stroke.clone()));
+        let autorado = scene.paths().iter().find(|q| q.id == p.id);
+        let (fill, stroke) = autorado.map_or((None, None), |q| (q.fill.clone(), q.stroke.clone()));
         // ⚠️ **O mesmo enquadramento do `recook_text_object`**, e pela mesma porta: um texto que
         // monta um caminho-guia é colocado sobre ele; os outros são cozidos na baseline e
         // centrados. Duas respostas a *«onde este texto assenta?»* poriam o número do placar meio
@@ -106,9 +103,10 @@ pub(crate) fn cook(
         ) else {
             continue; // uma string que não produz glyph nenhum não substitui nada
         };
-        if guide.is_none() {
-            let ctr = crate::vec_glyph::path_center(&compound);
-            crate::vec_glyph::offset_path(&mut compound, [-ctr[0], -ctr[1]]);
+        if guide.is_none()
+            && let Some(a) = autorado
+        {
+            ph2d_vec_text::alinha::ao_autorado(&mut compound, a, p.params.align); // cresce do alinhamento
         }
         // ⛔⛔ **O caminho vivo é o do DOCUMENTO com a geometria trocada, e não o compound cru** —
         // e foi a FOTO que o disse: com o cru, os dois rótulos **desapareceram** da tela enquanto
@@ -118,7 +116,7 @@ pub(crate) fn cook(
         // ⇒ a porta é a mesma que o `recook_text_object` usa (`replace_cooked`), que existe
         // exactamente para isto: *o re-cozimento produz geometria e estilo, e não conhece a
         // identidade*.
-        let Some(mut vivo) = scene.paths().iter().find(|q| q.id == p.id).cloned() else {
+        let Some(mut vivo) = autorado.cloned() else {
             continue;
         };
         vivo.replace_cooked(compound);

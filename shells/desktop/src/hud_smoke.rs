@@ -188,6 +188,7 @@ impl crate::App {
         // coordenadas são as da CAIXA DE REFERÊNCIA, centrada: o canto de cima à esquerda é
         // `(-16, +9)`.
         let mut pontos = texto("Pontos: 0", [235, 235, 245]);
+        pontos.align = ph2d_vec_text::TextAlign::Right; // preso à DIREITA: cresce para a esquerda (W5.5)
         let mut resta = texto("30.0 s", [235, 200, 120]);
         let mut rotulo = texto("+10", [20, 22, 28]);
         for e in [&mut pontos, &mut resta, &mut rotulo] {

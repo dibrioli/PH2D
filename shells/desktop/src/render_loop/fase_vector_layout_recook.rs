@@ -61,7 +61,7 @@ impl crate::App {
         // geometria: as âncoras do modo Node, a caixa do gizmo e o hit-test leem a pose
         // AUTORADA, e ela não se mexeu com o layout.
         vec_view.poses = self.layout_live.poses();
-        self.vec.hud_visto.clone_from(self.layout_live.arranjos.visto()); // o retrato da tool do HUD
+        self.vec.hud_visto = self.layout_live.arranjos.visto().to_vec(); // o retrato da tool do HUD
         // **E os TRÊS fatos derivados são PUBLICADOS** para quem vier depois do desenho. O
         // hit-test monta o `VecViewState` dele do zero a cada evento de ponteiro, e aquela
         // porta só sabe o que a ÁRVORE diz (escondido, travado) — sem isto ele decide como se

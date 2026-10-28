@@ -318,6 +318,7 @@ mod tests {
             (crate::ids::VECTOR_MODE_FRAME, DrawMode::Frame),
             (crate::ids::VECTOR_MODE_EYEDROPPER, DrawMode::Eyedropper),
             (crate::ids::VECTOR_MODE_RULES, DrawMode::Rules),
+            (crate::ids::VECTOR_MODE_HUD, DrawMode::HudLayout),
         ];
         for &(id, esperado) in pills {
             // ⚠️ Parte de OUTRO modo, senão o teste ficaria verde sobre um braço que não existe.

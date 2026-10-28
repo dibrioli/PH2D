@@ -8,6 +8,7 @@
 //! uma folha não depende de uma ferramenta, e a ferramenta nunca o usou — só o hospedava.
 #![forbid(unsafe_code)]
 
+pub mod alinha;
 pub mod glyph;
 pub mod glyph_build;
 

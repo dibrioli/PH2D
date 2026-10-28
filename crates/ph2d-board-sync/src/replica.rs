@@ -505,7 +505,10 @@ impl Replica {
         let at = w.at();
         self.clock = self.clock.max(at.n);
         if let Write::Board { field, value, at } = w {
-            if *at > self.board_stamps.get(field).copied().unwrap_or_default() {
+            if crate::lww::wins(
+                *at,
+                self.board_stamps.get(field).copied().unwrap_or_default(),
+            ) {
                 self.board_stamps.insert(*field, *at);
                 match field {
                     BoardField::Name => board.name = dec(value).unwrap_or_default(),
@@ -538,7 +541,7 @@ impl Replica {
         match w {
             Write::Born { el: born, at } => {
                 for f in Field::ALL.into_iter().filter(|f| !f.is_counter()) {
-                    if *at > self.stamp(id, f)
+                    if crate::lww::wins(*at, self.stamp(id, f))
                         && let Some(v) = born.read(f)
                     {
                         el.write(f, &v);
@@ -549,7 +552,7 @@ impl Replica {
             Write::Set {
                 field, value, at, ..
             } => {
-                if *at > self.stamp(id, *field) {
+                if crate::lww::wins(*at, self.stamp(id, *field)) {
                     el.write(*field, value);
                     self.stamps.insert((id, *field), *at);
                 }

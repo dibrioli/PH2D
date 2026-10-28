@@ -288,7 +288,7 @@ impl TeamState {
                     TeamWrite::Pin(..) => Key::Pin(*id),
                     _ => Key::Resolved(*id),
                 };
-                if at > self.stamps.get(&key).copied().unwrap_or_default() {
+                if crate::lww::wins(at, self.stamps.get(&key).copied().unwrap_or_default()) {
                     self.stamps.insert(key, at);
                     match w {
                         TeamWrite::Pin(_, p) => t.pin = *p,

@@ -6,38 +6,77 @@
 //! pilhas de famílias diferentes sem este crate ter relógio próprio.
 
 use crate::activity::{Actor, apply_logged};
-use crate::kanban::Kanban;
+use crate::kanban::{Header, Kanban};
 use crate::ops::{KanbanOp, Record, apply_batch};
+
+#[path = "history_fields.rs"]
+mod fields;
+use fields::{meta_field, to_restore};
 
 /// Passos guardados por Kanban — a mesma ordem do Quadro e do Figma; é memória, não desempenho.
 pub const MAX_STEPS: usize = 500;
 
-/// Um passo: o lote inverso e o estado, DEPOIS do gesto, de cada registo que ele repõe.
+/// O estado, DEPOIS do gesto, do que uma op do lote inverso repõe.
+#[derive(Clone, Debug)]
+enum Was {
+    Record(Option<Record>),
+    Header(Header),
+}
+
+/// Um passo: o lote inverso e o estado depois do gesto de cada alvo dele.
 #[derive(Clone, Debug)]
 struct Step {
     inverse: Vec<KanbanOp>,
-    after: Vec<Option<Record>>,
+    after: Vec<Was>,
 }
 
-fn after(k: &Kanban, ops: &[KanbanOp]) -> Vec<Option<Record>> {
+fn after(k: &Kanban, ops: &[KanbanOp]) -> Vec<Was> {
     ops.iter()
-        .map(|op| op.target().and_then(|id| k.record(id)))
+        .map(|op| match op.target() {
+            Some(id) => Was::Record(k.record(id)),
+            None => Was::Header(k.header.clone()),
+        })
         .collect()
 }
 
-/// O lote de desfazer contra o documento de AGORA: um registo que outra pessoa mexeu depois do gesto
-/// fica como ela o deixou. Sem mais ninguém (antes da W5, sempre), é o lote tal como foi guardado.
+/// ⭐ O lote de desfazer contra o documento de AGORA, CAMPO A CAMPO (W5, ADR-0181 §3): repõe-se só o
+/// campo que ainda tem o valor que o gesto deixou; o que outra pessoa mexeu depois fica como ela o
+/// deixou. Sem mais ninguém, é o lote tal como foi guardado.
 fn rebase(k: &Kanban, step: Step) -> Vec<KanbanOp> {
     step.inverse
         .into_iter()
         .zip(step.after)
-        .filter(|(op, was)| {
-            op.target().is_none_or(|id| match (k.record(id), was) {
-                (Some(now), Some(was)) => now.same_content(was),
-                (now, was) => now.is_none() && was.is_none(),
-            })
+        .filter_map(|(op, was)| match (op, was) {
+            (KanbanOp::Header(before), Was::Header(was)) => {
+                let (now, was, b) = (k.header.fields(), was.fields(), before.fields());
+                let put = to_restore(&now, &was, &b);
+                if put.is_empty() {
+                    return None;
+                }
+                k.header.with_fields(&put).map(KanbanOp::Header)
+            }
+            (KanbanOp::Put(before), Was::Record(was)) => match (k.record(before.id()), was) {
+                (Some(now), Some(was)) => {
+                    let (n, w, b) = (now.fields(), was.fields(), before.fields());
+                    let put = to_restore(&n, &w, &b);
+                    if put.is_empty() {
+                        return None;
+                    }
+                    now.with_fields(&put).map(KanbanOp::put)
+                }
+                (None, None) => Some(KanbanOp::Put(before)),
+                _ => None,
+            },
+            // Desfazer um nascimento é a lápide: só se ninguém a mexeu depois.
+            (op @ KanbanOp::Delete(id), Was::Record(was)) => match (k.record(id), was) {
+                (Some(now), Some(was)) => {
+                    let (n, w) = (now.fields(), was.fields());
+                    (meta_field(&n) == meta_field(&w)).then_some(op)
+                }
+                _ => None,
+            },
+            _ => None,
         })
-        .map(|(op, _)| op)
         .collect()
 }
 
@@ -138,6 +177,9 @@ impl History {
     }
 }
 
+#[cfg(test)]
+#[path = "history_fields_tests.rs"]
+mod fields_tests;
 #[cfg(test)]
 #[path = "history_tests.rs"]
 mod tests;

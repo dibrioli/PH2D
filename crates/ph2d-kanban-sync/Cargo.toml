@@ -1,0 +1,29 @@
+[package]
+name = "ph2d-kanban-sync"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+[dependencies]
+# O Kanban AO VIVO (W5, ADR-0195 §3 sobre o ADR-0181) — PURO: os registos do documento Kanban na
+# MESMA lei de fusão do Quadro (`ph2d_board_sync::wins`, Lamport por campo), a sessão e a presença
+# como máquinas de estado. O transporte é o do Quadro (`ph2d-board-net`/`-internet`), por quem compõe.
+ph2d-kanban-model = { path = "../ph2d-kanban-model" }
+ph2d-board-sync = { path = "../ph2d-board-sync" }
+serde = { version = "1", features = ["derive"] }
+postcard = { version = "1", features = ["alloc"] }
+
+[dev-dependencies]
+# A sala do QUADRO a levar o Kanban (o teste da `Msg::Kanban`).
+ph2d-board-model = { path = "../ph2d-board-model" }
+# A prova em DOIS PROCESSOS pelo transporte real: a rede local (TCP) e a internet (QUIC) em 127.0.0.1.
+ph2d-board-net = { path = "../ph2d-board-net" }
+ph2d-board-internet = { path = "../ph2d-board-internet" }
+
+[lints]
+workspace = true

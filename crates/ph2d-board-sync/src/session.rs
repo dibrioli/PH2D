@@ -77,6 +77,8 @@ pub enum Msg {
     Ask(Ask),
     /// O anfitrião recusou o meu pedido.
     Denied(Refusal),
+    /// W5 (ainda o 12) — uma mensagem da `ph2d-kanban-sync`, opaca aqui (`Host::take_kanban`).
+    Kanban(Vec<u8>),
 }
 
 impl Msg {
@@ -223,6 +225,8 @@ impl Room {
 
 #[path = "session_chair.rs"]
 mod chair;
+#[path = "session_kanban.rs"]
+mod kanban;
 use chair::Chair;
 
 /// O anfitrião.
@@ -235,6 +239,7 @@ pub struct Host {
     keys: BTreeMap<PeerId, u64>,
     room: Room,
     chair: Chair,
+    kanban_in: Vec<(ConnId, PeerId, Vec<u8>)>,
 }
 
 impl Host {
@@ -254,6 +259,7 @@ impl Host {
             keys: BTreeMap::new(),
             room,
             chair: Chair::default(),
+            kanban_in: Vec::new(),
         }
     }
 
@@ -361,6 +367,7 @@ impl Host {
             m @ (Msg::Sealed(_) | Msg::Ballot(_) | Msg::Ask(_)) => {
                 out.extend(self.chair_frame(board, conn, from, m, now_ms));
             }
+            Msg::Kanban(b) => self.kanban_in.push((conn, from, b)),
             _ => {}
         }
         (out, events)
@@ -453,6 +460,7 @@ pub struct Guest {
     fac: (Fac, u64),
     /// O meu último boletim (reenvia-se ao voltar de uma queda).
     ballot: Option<Ballot>,
+    kanban_in: Vec<Vec<u8>>,
 }
 
 impl Guest {
@@ -469,6 +477,7 @@ impl Guest {
             room: Room::default(),
             fac: (Fac::default(), 0),
             ballot: None,
+            kanban_in: Vec::new(),
         }
     }
 
@@ -621,6 +630,7 @@ impl Guest {
                 events.push(Event::Summoned { from, camera });
             }
             Msg::End => events.push(Event::Ended),
+            Msg::Kanban(b) => self.kanban_in.push(b),
             _ => {}
         }
         (out, events)

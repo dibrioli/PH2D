@@ -10,6 +10,7 @@
 //! [ADR-0181]: ../../../docs/architecture/decisions/0181-o-quadro-ao-vivo-funde-por-campo-e-o-transporte-e-uma-porta.md
 
 mod fac;
+mod lww;
 mod presence;
 mod replica;
 mod session;
@@ -18,6 +19,7 @@ mod tokens;
 mod vault;
 
 pub use fac::{Ask, Ballot, Fac, Private, REVEAL_COUNTDOWN_MS, Refusal, VoteRoom};
+pub use lww::{Clock, wins};
 pub use presence::{Presence, RENDER_DELAY_MS, SEND_EVERY_MS, Seen, Track};
 pub use replica::{BoardField, Lamport, PeerId, Replica, Snapshot, Write};
 pub use session::{ConnId, Event, Guest, Host, Msg, PROTOCOL, PeerInfo, To};

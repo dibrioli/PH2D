@@ -14,18 +14,19 @@
 //!   com responsável e data, um comentário com menção e reacção, e o histórico.
 //! - **5** — W6: o FILTRO aberto (a maquete `Filter.dc.html`) e o envelhecimento regular.
 //! - **6** — W6: o envelhecimento PIRATA, um MODELO e um ESPELHO ([`crate::smoke_w6`]).
+//! - **7** — J1: o Kanban da cena 1 PARTILHADO, o «Share» aberto e um colega («Rui») a ver
+//!   ([`crate::share::smoke`]).
 //! - **8** — J2: o BUTLER (regras, botões, uma sugestão) e o verso com botões e ligações ao
 //!   projecto ([`crate::smoke_j2`]).
 
 use crate::docs::KanbanDocs;
 use ph2d_editor_core::screens::hero::HeroScreen;
 use ph2d_kanban_model::{
-    Activity, ActivityId, Attachment, AttachmentId, Card, CardId, CheckItem, CheckItemId,
-    Checklist, ChecklistId, Comment, CommentId, Cover, CoverFill, Due, FieldDef, FieldId,
-    FieldKind, FieldOption, FieldValue, FracKey, Happened, Hue, KanbanId, KanbanOp, KanbanSet,
-    Label, LabelColor, LabelId, Link, List, ListId, Member, Meta, Moment, OptionId, Reaction,
-    Record, Shade, Subject,
+    Activity, ActivityId, CardId, Comment, CommentId, Cover, CoverFill, Due, FieldDef, FieldId,
+    FieldKind, FieldOption, FieldValue, Happened, Hue, KanbanId, KanbanSet, ListId, Member, Meta,
+    Moment, OptionId, Reaction, Record, Shade, Subject,
 };
+use ph2d_kanban_scenes::{Scene, people, review_list, write};
 
 /// As cenas que existem.
 pub const CENAS: u8 = 8;
@@ -52,7 +53,27 @@ pub fn armed_level() -> Option<u8> {
 pub fn stage_armed_smokes(hero: &mut HeroScreen) {
     if let Some(n) = armed_level() {
         stage(hero, n);
+    } else if code_smoke_wants_kanban(std::env::var(CODE_ENV).ok().as_deref()) {
+        stage_in_project(hero);
     }
+}
+
+/// A cena 1 só no projecto, sem aba: o foco fica na aba do script.
+fn stage_in_project(hero: &mut HeroScreen) {
+    let shared = hero.documents.kanbans_shared();
+    short_film(&mut shared.borrow_mut());
+    if let Some(docs) = hero.documents.surfaces_mut().find_mut::<KanbanDocs>() {
+        docs.follow_project(shared);
+    }
+}
+
+/// O roteador do editor de scripts: a cena 10 é um script sobre o Kanban da cena 1, que é esta
+/// família quem põe no projecto (lido pelo nome, sem depender do `ph2d-app-code`).
+const CODE_ENV: &str = "PH2D_CODE_SMOKE";
+const CODE_KANBAN_LEVEL: &str = "10";
+
+fn code_smoke_wants_kanban(v: Option<&str>) -> bool {
+    v.is_some_and(|v| v.trim() == CODE_KANBAN_LEVEL)
 }
 
 /// Monta a cena `n` no projecto aberto e abre-a numa aba.
@@ -61,7 +82,7 @@ pub fn stage(hero: &mut HeroScreen, n: u8) -> Option<KanbanId> {
     let id = {
         let mut set = shared.borrow_mut();
         match n {
-            1 | 3 | 4 | 8 => short_film(&mut set),
+            1 | 3 | 4 | 7 | 8 => short_film(&mut set),
             5 | 6 => {
                 let id = short_film(&mut set);
                 let aging = if n == 5 {
@@ -111,6 +132,9 @@ pub fn stage(hero: &mut HeroScreen, n: u8) -> Option<KanbanId> {
     if n == 5 {
         crate::smoke_w6::open_filter(docs, id);
     }
+    if n == 7 {
+        crate::share::smoke::stage(docs, id);
+    }
     if n == 4 || n == 8 {
         let shot = rich_back(&mut docs.set.borrow_mut(), id);
         if let Some(c) = shot {
@@ -126,8 +150,12 @@ pub fn stage(hero: &mut HeroScreen, n: u8) -> Option<KanbanId> {
 /// ⭐ O Kanban da cena 1 («Short film — production») em `set`, e a «Review» (que a cena recolhe) — a
 /// cena 30 do Quadro põe-no no canvas.
 pub fn short_film_into(set: &mut KanbanSet) -> (KanbanId, Option<ListId>) {
-    let id = short_film(set);
-    (id, review_list(set, id))
+    ph2d_kanban_scenes::short_film_into(set, crate::actions::now())
+}
+
+/// A cena 1 (o quadro da maquete), com os prazos contados a partir de agora.
+fn short_film(set: &mut KanbanSet) -> KanbanId {
+    ph2d_kanban_scenes::short_film(set, crate::actions::now())
 }
 
 /// SMOKE 3: põe na mão a lista pedida, assim que a disposição a tem (o arrasto como o do rato), presa
@@ -158,364 +186,6 @@ pub(crate) fn hold(tab: &mut crate::tab::Tab) {
         to_card: None,
         to_list: to_list.unwrap_or(0),
     });
-}
-
-fn review_list(set: &KanbanSet, id: KanbanId) -> Option<ListId> {
-    set.get(id)?
-        .lists
-        .values()
-        .find(|l| l.title == "Review")
-        .map(|l| l.id)
-}
-
-/// Quem escreve uma cena: ids em sequência e as chaves de ordem por ordem de chegada.
-struct Scene {
-    ops: Vec<KanbanOp>,
-    next: u64,
-    pos: Option<FracKey>,
-}
-
-impl Scene {
-    fn new(after: u64) -> Self {
-        Self {
-            ops: Vec::new(),
-            next: after,
-            pos: None,
-        }
-    }
-
-    fn id(&mut self) -> u64 {
-        self.next += 1;
-        self.next
-    }
-
-    fn pos(&mut self) -> FracKey {
-        let p = FracKey::between(self.pos.as_ref(), None);
-        self.pos = Some(p.clone());
-        p
-    }
-
-    fn put(&mut self, r: Record) {
-        self.ops.push(KanbanOp::put(r));
-    }
-
-    fn label(&mut self, name: &str, hue: Hue, shade: Shade) -> LabelId {
-        let id = LabelId(self.id());
-        self.put(Record::Label(Label {
-            id,
-            name: name.into(),
-            color: Some(LabelColor { hue, shade }),
-            meta: Meta::default(),
-        }));
-        id
-    }
-
-    fn list(&mut self, title: &str, color: Option<Hue>, limit: Option<u32>) -> ListId {
-        let id = ListId(self.id());
-        let pos = self.pos();
-        self.put(Record::List(List {
-            id,
-            title: title.into(),
-            pos,
-            color,
-            card_limit: limit,
-            archived: false,
-            meta: Meta::default(),
-            watchers: Vec::new(),
-        }));
-        id
-    }
-
-    fn card(&mut self, list: ListId, title: &str, f: impl FnOnce(&mut Card)) -> CardId {
-        let id = CardId(self.id());
-        let mut c = Card {
-            id,
-            list,
-            pos: self.pos(),
-            title: title.into(),
-            description: String::new(),
-            labels: Vec::new(),
-            members: Vec::new(),
-            start: None,
-            due: None,
-            cover: None,
-            fields: std::collections::BTreeMap::new(),
-            location: String::new(),
-            votes: Vec::new(),
-            created: Moment(0),
-            archived: false,
-            meta: Meta::default(),
-            watchers: Vec::new(),
-            origin: None,
-            template: false,
-        };
-        f(&mut c);
-        self.put(Record::Card(c.into()));
-        id
-    }
-
-    fn comments(&mut self, card: CardId, n: u32) {
-        for i in 0..n {
-            let id = CommentId(self.id());
-            self.put(Record::Comment(Comment {
-                id,
-                card,
-                author: Member("Enio".into()),
-                at: Moment(0),
-                text: format!("Note {i}"),
-                edited: None,
-                reactions: Vec::new(),
-                meta: Meta::default(),
-            }));
-        }
-    }
-
-    fn attachments(&mut self, card: CardId, n: u32) {
-        for i in 0..n {
-            let id = AttachmentId(self.id());
-            let pos = self.pos();
-            self.put(Record::Attachment(Attachment {
-                id,
-                card,
-                pos,
-                name: format!("ref-{i}.png"),
-                link: Link::Url(format!("https://example.com/{i}")),
-                at: Moment(0),
-                meta: Meta::default(),
-            }));
-        }
-    }
-
-    fn file(&mut self, card: CardId, name: &str, f: ph2d_kanban_model::FileId) {
-        let id = AttachmentId(self.id());
-        let pos = self.pos();
-        self.put(Record::Attachment(Attachment {
-            id,
-            card,
-            pos,
-            name: name.into(),
-            link: Link::File(f),
-            at: Moment(0),
-            meta: Meta::default(),
-        }));
-    }
-
-    fn checklist(&mut self, card: CardId, done: u32, all: u32) {
-        let id = ChecklistId(self.id());
-        let pos = self.pos();
-        self.put(Record::Checklist(Checklist {
-            id,
-            card,
-            pos,
-            title: "Checklist".into(),
-            hide_checked: false,
-            meta: Meta::default(),
-        }));
-        for i in 0..all {
-            let item = CheckItemId(self.id());
-            let pos = self.pos();
-            self.put(Record::CheckItem(CheckItem {
-                id: item,
-                checklist: id,
-                pos,
-                text: format!("Step {i}"),
-                done: i < done,
-                member: None,
-                due: None,
-                meta: Meta::default(),
-            }));
-        }
-    }
-}
-
-/// A capa de imagem da cena 1, gerada aqui (sem ficheiro de fora, sem licença): um céu de fim de
-/// tarde com o sol e um monte, num PNG de 256 × 144 com o deflate «guardado» (sem compressão).
-fn sky_png() -> ([u32; 2], Vec<u8>) {
-    const W: u32 = 256;
-    const H: u32 = 144;
-    let mut raw = Vec::with_capacity(((W * 3 + 1) * H) as usize);
-    for y in 0..H {
-        raw.push(0);
-        let t = y as f32 / H as f32;
-        for x in 0..W {
-            let (dx, dy) = (x as f32 - 180.0, y as f32 - 70.0);
-            let sun = (dx * dx + dy * dy).sqrt() < 22.0;
-            let hill = (y as f32) > 110.0 - 18.0 * ((x as f32) / 40.0).sin();
-            let px = if hill {
-                [40, 70 + (t * 30.0) as u8, 50]
-            } else if sun {
-                [255, 214, 120]
-            } else {
-                [(70.0 + 180.0 * t) as u8, (90.0 + 60.0 * t) as u8, (170.0 - 60.0 * t) as u8]
-            };
-            raw.extend_from_slice(&px);
-        }
-    }
-    let mut z = vec![0x78, 0x01];
-    let mut chunks = raw.chunks(65_535).peekable();
-    while let Some(c) = chunks.next() {
-        let len = c.len() as u16;
-        z.push(u8::from(chunks.peek().is_none()));
-        z.extend_from_slice(&len.to_le_bytes());
-        z.extend_from_slice(&(!len).to_le_bytes());
-        z.extend_from_slice(c);
-    }
-    let (mut a, mut b) = (1u32, 0u32);
-    for &v in &raw {
-        a = (a + u32::from(v)) % 65_521;
-        b = (b + a) % 65_521;
-    }
-    z.extend_from_slice(&((b << 16) | a).to_be_bytes());
-    let mut ihdr = Vec::new();
-    ihdr.extend_from_slice(&W.to_be_bytes());
-    ihdr.extend_from_slice(&H.to_be_bytes());
-    ihdr.extend_from_slice(&[8, 2, 0, 0, 0]);
-    let mut png = b"\x89PNG\r\n\x1a\n".to_vec();
-    for (kind, data) in [(*b"IHDR", ihdr), (*b"IDAT", z), (*b"IEND", Vec::new())] {
-        png.extend_from_slice(&(data.len() as u32).to_be_bytes());
-        let mut crc = !0u32;
-        for &v in kind.iter().chain(&data) {
-            crc ^= u32::from(v);
-            for _ in 0..8 {
-                crc = if crc & 1 == 1 { (crc >> 1) ^ 0xEDB8_8320 } else { crc >> 1 };
-            }
-        }
-        png.extend_from_slice(&kind);
-        png.extend_from_slice(&data);
-        png.extend_from_slice(&(!crc).to_be_bytes());
-    }
-    ([W, H], png)
-}
-
-fn people(names: &[&str]) -> Vec<Member> {
-    names.iter().map(|n| Member((*n).into())).collect()
-}
-
-fn write(set: &mut KanbanSet, name: &str, f: impl FnOnce(&mut Scene)) -> KanbanId {
-    let id = set.create(name);
-    let Some(k) = set.doc_mut(id) else {
-        return id;
-    };
-    let mut s = Scene::new(k.mint() - 1);
-    f(&mut s);
-    ph2d_kanban_model::apply_batch(k, s.ops);
-    id
-}
-
-/// A cena 1: o quadro da maquete.
-fn short_film(set: &mut KanbanSet) -> KanbanId {
-    const HOUR: i64 = 3_600_000;
-    let now = crate::actions::now().0;
-    let (size, png) = sky_png();
-    let sky = set.put_file(png, Some(size));
-    write(set, "Short film \u{2014} production", |s| {
-        let writing = s.label("Writing", Hue::Green, Shade::Normal);
-        let audio = s.label("Audio", Hue::Sky, Shade::Normal);
-        let later = s.label("Later", Hue::Black, Shade::Subtle);
-        let story = s.label("Story", Hue::Purple, Shade::Normal);
-        let urgent = s.label("Urgent", Hue::Red, Shade::Bold);
-        let character = s.label("Character", Hue::Pink, Shade::Normal);
-        let look = s.label("Look", Hue::Orange, Shade::Subtle);
-        let animation = s.label("Animation", Hue::Green, Shade::Bold);
-        let light = s.label("Light", Hue::Lime, Shade::Normal);
-        let backlog = s.list("Backlog", None, None);
-        let todo = s.list("To Do", None, None);
-        let doing = s.list("Doing", Some(Hue::Blue), Some(3));
-        let review = s.list("Review", None, None);
-        let done = s.list("Done", None, None);
-        s.card(backlog, "Write the logline", |c| {
-            c.labels = vec![writing];
-            c.description = "One sentence.".into();
-        });
-        let refs = s.card(backlog, "Collect references for the forest", |c| {
-            c.description = "Moodboard.".into()
-        });
-        s.attachments(refs, 6);
-        s.comments(refs, 1);
-        s.card(backlog, "Pick the music", |c| {
-            c.labels = vec![audio];
-            c.members = people(&["Mia"]);
-        });
-        s.card(backlog, "Voice casting", |c| c.labels = vec![audio, later]);
-        let sb = s.card(todo, "Storyboard act 1", |c| {
-            c.labels = vec![story, urgent];
-            c.description = "Panels 1\u{2013}40.".into();
-            c.members = people(&["Rui", "Ana"]);
-        });
-        s.comments(sb, 4);
-        s.attachments(sb, 2);
-        s.checklist(sb, 2, 6);
-        let fox = s.card(todo, "Design the fox", |c| {
-            c.labels = vec![character];
-            c.members = people(&["Ana"]);
-        });
-        s.comments(fox, 3);
-        s.attachments(fox, 2);
-        let sheet = s.card(todo, "Fox concept sheet", |c| {
-            c.labels = vec![character, look];
-            c.members = people(&["Ana"]);
-            c.cover = Some(Cover {
-                fill: CoverFill::Image(sky),
-                full: false,
-            });
-            c.due = Some(Due {
-                at: Moment(now - 2 * 24 * HOUR),
-                done: false,
-                remind_before_min: None,
-            });
-        });
-        s.file(sheet, "fox_sky.png", sky);
-        let cs = s.card(todo, "Color script", |c| {
-            c.labels = vec![look];
-            c.cover = Some(Cover {
-                fill: CoverFill::Color(Hue::Orange),
-                full: false,
-            });
-        });
-        s.checklist(cs, 0, 4);
-        let shot = s.card(doing, "Animate shot 12", |c| {
-            c.labels = vec![animation];
-            c.members = people(&["Enio"]);
-        });
-        s.checklist(shot, 3, 5);
-        s.card(doing, "Clean up shot 08", |c| {
-            c.labels = vec![animation, story];
-            c.members = people(&["Mia"]);
-            c.due = Some(Due {
-                at: Moment(now + 5 * HOUR),
-                done: false,
-                remind_before_min: Some(60),
-            });
-        });
-        s.card(doing, "Light pass \u{2014} forest", |c| {
-            c.labels = vec![light];
-            c.votes = people(&["Rui", "Enio"]);
-            c.members = people(&["Rui", "Enio", "Mia"]);
-            c.location = "Studio B".into();
-        });
-        for t in ["Fox walk cycle", "Rain test", "Title card", "Sound sync"] {
-            s.card(review, t, |_| {});
-        }
-        s.card(done, "Rough the opening shot", |c| {
-            c.cover = Some(Cover {
-                fill: CoverFill::Color(Hue::Sky),
-                full: false,
-            })
-        });
-        let lock = s.card(done, "Lock the script", |c| {
-            c.labels = vec![writing];
-            c.members = people(&["Enio", "Rui"]);
-            c.due = Some(Due {
-                at: Moment(now - 4 * 24 * HOUR),
-                done: true,
-                remind_before_min: None,
-            });
-        });
-        s.checklist(lock, 8, 8);
-        s.card(done, "Pick the aspect ratio", |c| {
-            c.labels = vec![writing, later]
-        });
-    })
 }
 
 /// A cena 2: um quadro grande.
@@ -673,6 +343,16 @@ the cut \u{2014} the music hits there.\n\n- Reference: [fox_jump_ref.mp4](https:
         },
         meta: Meta::default(),
     }));
-    ph2d_kanban_model::apply_batch(k, s.ops);
+    ph2d_kanban_model::apply_batch(k, s.into_ops());
     Some(card.id)
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn so_a_cena_10_do_editor_de_scripts_pede_o_kanban() {
+        use super::code_smoke_wants_kanban as quer;
+        assert!(quer(Some("10")) && quer(Some(" 10 ")));
+        assert!(!quer(Some("9")) && !quer(Some("1")) && !quer(None));
+    }
 }

@@ -35,6 +35,8 @@
 //!   `ph2d.set(` faz a moeda girar. Renomear a «Door» na Hierarquia muda o script (um Ctrl+Z desfaz os
 //!   dois); `ph2d.object("` sugere os nomes; um nome errado é um aviso; Ctrl+clique selecciona.
 //! - **8** — as propriedades pelo nome (fase 8d): [`crate::code_smoke_props`].
+//! - **9** — arrastar nomes do Inspector: [`crate::code_smoke_inspector`].
+//! - **10** — um script que mexe no Kanban do projecto (`ph2d.kanban`): [`kanban`].
 
 use ph2d_ecs::{Entity, Name, SimWorld, Transform};
 use ph2d_script::{LuauScript, ProjectScripts, ScriptEditRequests, ScriptId, ScriptValue};
@@ -42,7 +44,7 @@ use ph2d_vec_entities::entities::{VecEntityMap, sync};
 use ph2d_vec_scene::{Paint, Rgba8, VecPath, VecScene, ellipse, rectangle, regular_polygon, star};
 
 /// Quantas cenas este roteador serve — o `max_level` do roteador da família (conferido em teste).
-pub const CENAS: u32 = 9;
+pub const CENAS: u32 = 10;
 
 /// O nome do script das formas nos scripts do projeto.
 pub const BOB_NAME: &str = "bob.luau";
@@ -296,6 +298,9 @@ pub fn monta_em(
     if nivel == 8 {
         return crate::code_smoke_props::monta(sim, cena, mapa);
     }
+    if nivel == 10 {
+        return kanban::monta(sim);
+    }
     let (bob, broken) = {
         let mut lib = sim.world_mut().get_resource_or_init::<ProjectScripts>();
         let bob = match nivel {
@@ -525,6 +530,9 @@ pub fn montar(cx: crate::scene_ctx::SceneCtx<'_>, nivel: u32) -> Option<u64> {
     if nivel == 9 {
         return crate::code_smoke_inspector::montar(cx);
     }
+    if nivel == 10 {
+        return kanban::montar(cx);
+    }
     let formas = monta_em(cx.sim, cx.vec_scene, cx.vec_entities, nivel);
     if nivel == 3 {
         println!(
@@ -582,6 +590,9 @@ pub fn montar(cx: crate::scene_ctx::SceneCtx<'_>, nivel: u32) -> Option<u64> {
     );
     None
 }
+
+#[path = "code_smoke_kanban.rs"]
+pub mod kanban;
 
 #[cfg(test)]
 #[path = "code_smoke_tests.rs"]

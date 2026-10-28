@@ -1,4 +1,4 @@
-//! ⭐ **A porta das FOTOS das cenas 3 a 5** (`PH2D_CODE_SMOKE=3|4|5 PH2D_CODE_SMOKE_PASSO=<n>`): o
+//! ⭐ **A porta das FOTOS das cenas 3 a 5 e 10** (`PH2D_CODE_SMOKE=3|4|5|10 PH2D_CODE_SMOKE_PASSO=<n>`): o
 //! roteiro do smoke conduzido pelas teclas REAIS da aba até ao fim do passo `n`, e pára — cada foto é
 //! o passo que diz ser. A tela virtual das fotos ignora eventos sintéticos (`fotografa_cena.sh`), logo
 //! o gesto entra pelas portas do artista (`DocumentSurface::key`, `pointer_move`, `pointer`), o cursor
@@ -116,7 +116,7 @@ pub enum Until {
 #[path = "smoke_steps.rs"]
 mod roteiros;
 use roteiros::NONE;
-pub use roteiros::{STEPS, STEPS_4, STEPS_5};
+pub use roteiros::{STEPS, STEPS_4, STEPS_5, STEPS_10};
 
 /// O roteiro da cena `level` (`None` = a cena não tem fotos conduzidas).
 #[must_use]
@@ -125,6 +125,7 @@ pub fn steps(level: u32) -> Option<&'static [&'static [Gesture]]> {
         3 => Some(STEPS),
         4 => Some(STEPS_4),
         5 => Some(STEPS_5),
+        10 => Some(STEPS_10),
         _ => None,
     }
 }

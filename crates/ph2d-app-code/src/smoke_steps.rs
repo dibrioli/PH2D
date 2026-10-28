@@ -1,4 +1,4 @@
-//! **Os roteiros das cenas 3, 4 e 5** — cada `STEPS*[k]` é o passo `k + 1`. Sairam do `smoke_drive.rs`
+//! **Os roteiros das cenas 3, 4, 5 e 10** — cada `STEPS*[k]` é o passo `k + 1`. Sairam do `smoke_drive.rs`
 //! por tecto de LOC (fecho da Onda 2, 20/10); a porta que os conduz continua lá.
 
 use super::{Gesture, Until};
@@ -258,5 +258,21 @@ pub const STEPS_5: &[&[Gesture]] = &[
             needle: "local m = math",
             ahead: 2,
         }),
+    ],
+];
+
+/// ⭐ O roteiro da cena 10 (o script do Kanban): a agulha é o `ph2d_kanban_scenes::script::NEEDLE`.
+pub const STEPS_10: &[&[Gesture]] = &[
+    // 1 — uma linha nova depois do «1)», `card:`: a lista abre com os métodos do cartão.
+    &[
+        Gesture::Wait(Until::Checked),
+        Gesture::Go {
+            needle: "-- 1) escreva aqui",
+            ahead: 0,
+        },
+        Gesture::Key(Key::End, NONE),
+        Gesture::Key(Key::Enter, NONE),
+        Gesture::Type("card:"),
+        Gesture::Wait(Until::ListHas("move")),
     ],
 ];

@@ -105,6 +105,8 @@ ph2d-hud-layout = { path = "../ph2d-hud-layout" }
 # `ScriptHost` e anexam o `LuauScript`. ⚠️ A VM (`mlua` + Luau) já é compilada pela shell, logo esta
 # aresta não acrescenta uma unidade à build do binário — só à dos testes desta crate.
 ph2d-script = { path = "../ph2d-script" }
+# O script do `PH2D_CODE_SMOKE=10` (mexe no Kanban da cena 1): mora ao lado do Kanban que lê.
+ph2d-kanban-scenes = { path = "../ph2d-kanban-scenes" }
 # (CodeEditor I8) O cartão do script diz a explicação escrita à mão do erro, a mesma do editor.
 ph2d-code-explain = { path = "../ph2d-code-explain" }
 ph2d-thumbnail = { path = "../ph2d-thumbnail" }

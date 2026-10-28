@@ -2,13 +2,13 @@
 //!
 //! A CENA mora na `ph2d-app-components` (`code_smoke`: precisa da cena vectorial); a shell lê o
 //! nível por [`armed_level`] e compõe-a. Níveis 2 a 5 abrem a aba pelo pedido do «Edit script», que
-//! o [`crate::frame`] drena como qualquer outro; do 3 ao 5 têm a porta das fotos
+//! o [`crate::frame`] drena como qualquer outro; 3 a 5 e 10 têm a porta das fotos
 //! ([`crate::smoke_drive`]).
 
 use std::sync::OnceLock;
 
 /// O maior nível — o mesmo `ph2d_app_components::code_smoke::CENAS` (as cenas contam-se lá).
-pub const CENAS: u32 = 9;
+pub const CENAS: u32 = 10;
 
 pub const ROUTERS: &[ph2d_app_host::SmokeRouter] = &[ph2d_app_host::SmokeRouter {
     env: "PH2D_CODE_SMOKE",
@@ -48,7 +48,8 @@ mod tests {
         assert_eq!(armed_level_in(com("7")), Some(7));
         assert_eq!(armed_level_in(com("8")), Some(8));
         assert_eq!(armed_level_in(com("9")), Some(9));
-        assert_eq!(armed_level_in(com("10")), None);
+        assert_eq!(armed_level_in(com("10")), Some(10));
+        assert_eq!(armed_level_in(com("11")), None);
         assert_eq!(armed_level_in(com("x")), None);
         assert_eq!(armed_level_in(|_| None), None);
     }

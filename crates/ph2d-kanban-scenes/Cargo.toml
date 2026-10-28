@@ -1,0 +1,23 @@
+[package]
+name = "ph2d-kanban-scenes"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+[dependencies]
+# As cenas de smoke do Kanban como MODELO puro (TrelloClone J3): o «Short film — production» e a capa
+# gerada, para qualquer família (o Quadro, o Planner, o editor de scripts) sem subir uma camada.
+ph2d-kanban-model = { path = "../ph2d-kanban-model" }
+
+[dev-dependencies]
+# O script do `PH2D_CODE_SMOKE=10` corre-se sobre a cena 1, como o host o corre.
+ph2d-kanban-script = { path = "../ph2d-kanban-script" }
+ph2d-kanban-dates = { path = "../ph2d-kanban-dates" }
+
+[lints]
+workspace = true

@@ -40,46 +40,15 @@ pub(crate) fn label(theme: Theme, l: LabelColor) -> (Color, Color) {
     (c(theme, tok), c(theme, ph2d_tokens::kanban::label_ink(s)))
 }
 
-/// Uma lista com cor usa a intensidade SUTIL do matiz (a paleta do Trello) e a tinta das etiquetas.
+/// Uma lista com cor usa a intensidade SUTIL do matiz (a paleta do Trello) e a tinta das etiquetas —
+/// a MESMA lei que o Quadro pinta no nível baixo (`ph2d_board_render::kanban_list_colors`).
 pub(crate) fn list_colors(theme: Theme, hue: Option<Hue>) -> (Color, Color, Color) {
-    match hue {
-        None => (
-            c(theme, T::KanbanList),
-            c(theme, T::KanbanListFg),
-            c(theme, T::KanbanListMeta),
-        ),
-        Some(h) => (
-            label(
-                theme,
-                LabelColor {
-                    hue: h,
-                    shade: Shade::Subtle,
-                },
-            )
-            .0,
-            c(theme, T::KanbanLabelInk),
-            c(theme, T::KanbanTintedMeta),
-        ),
-    }
+    ph2d_board_render::kanban_list_colors(theme, hue)
 }
 
-/// O fundo do quadro: o azul do Trello; outro matiz usa a etiqueta forte dele.
+/// O fundo do quadro: o azul do Trello; outro matiz usa a etiqueta forte dele (a lei do Quadro).
 fn board_bg(theme: Theme, bg: Background) -> Color {
-    match bg {
-        Background::Color(Hue::Blue) | Background::Gradient(_) | Background::Image(_) => {
-            c(theme, T::KanbanBoardBg)
-        }
-        Background::Color(h) => {
-            label(
-                theme,
-                LabelColor {
-                    hue: h,
-                    shade: Shade::Bold,
-                },
-            )
-            .0
-        }
-    }
+    ph2d_board_render::kanban_board_bg(theme, bg)
 }
 
 /// O topo de uma linha de texto de `px` centrada numa faixa de `row_h` que começa em `y`.

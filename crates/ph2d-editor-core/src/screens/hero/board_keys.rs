@@ -496,6 +496,8 @@ fn step(
     ts: &mut TextSystem,
     c: Command,
 ) -> bool {
+    let undo = matches!(c, Command::Undo | Command::Redo);
+    let before = undo.then(|| super::board_video::kanban::link::refs(doc));
     let done = ed.command(doc, history, ts, c)
         || match c {
             Command::Undo => history.undo_team(team),
@@ -505,6 +507,9 @@ fn step(
     if let Some(mode) = history.take_mode() {
         *sketch = mode;
         ed.style.sketch = mode;
+    }
+    if let Some(before) = before {
+        super::board_video::kanban::link::after_history(doc, &before);
     }
     done
 }

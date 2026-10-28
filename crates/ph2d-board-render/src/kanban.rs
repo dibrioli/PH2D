@@ -95,10 +95,24 @@ pub struct KanbanPaint<'a> {
     pub export: bool,
 }
 
+/// O que o gancho recebe para pintar POR CIMA do quadro inteiro (o verso de um cartão do Kanban activo:
+/// o modal do Trello, em ecrã, centrado na área do quadro).
+pub struct KanbanOver<'a> {
+    pub scene: &'a mut VectorScene,
+    pub ts: &'a mut TextSystem,
+    pub theme: Theme,
+    /// A área do quadro no ecrã.
+    pub area: Rect,
+    /// O Kanban activo (o rato e as teclas são dele).
+    pub active: Option<ElementId>,
+}
+
 /// ⭐ O gancho de pintura (a família Kanban implementa-o; a entrada é o `KanbanElementInput` do editor).
 pub trait KanbanPainter {
     /// Pinta o Kanban. `false` = não pintou nada (o board-render pinta o nível baixo).
     fn paint(&mut self, p: KanbanPaint<'_>) -> bool;
+    /// Pinta o que vai por cima de todo o quadro (o verso aberto). Sem nada a pintar, nada.
+    fn paint_over(&mut self, _o: KanbanOver<'_>) {}
 }
 
 thread_local! {
@@ -150,6 +164,8 @@ pub struct KanbanFrames {
     /// Um carregar que foi do Kanban activo (o largar também é dele).
     pub pressed: bool,
     pub on_screen: BTreeMap<ElementId, KanbanPlacement>,
+    /// O tema do último desenho (o passe por cima não o recebe).
+    pub theme: Theme,
 }
 
 impl KanbanFrames {
@@ -231,6 +247,7 @@ pub(crate) fn paint(
         KanbanLod::at(zoom * k.view.zoom)
     };
     if cache.export.is_none() {
+        cache.kanbans.theme = theme;
         let size = [el.w, el.h];
         let pl = KanbanPlacement { to_screen: t, lod, size };
         cache.kanbans.on_screen.insert(el.id, pl);
@@ -278,6 +295,29 @@ pub(crate) fn paint(
         scene.pop_layer();
     }
     crate::image_frame::paint(scene, cache, el, st, t, board);
+}
+
+/// ⭐ O passe por cima do quadro (o verso aberto de um Kanban activo), depois de tudo o resto.
+pub(crate) fn paint_over(
+    scene: &mut VectorScene,
+    ts: &mut TextSystem,
+    cache: &crate::RenderCache,
+    area: ph2d_board_model::Area,
+) {
+    if cache.export.is_some() || cache.kanbans.on_screen.is_empty() {
+        return;
+    }
+    let Some(p) = PAINTER.with(|s| s.borrow().clone()) else {
+        return;
+    };
+    let [x, y, w, h] = area;
+    p.borrow_mut().paint_over(KanbanOver {
+        scene,
+        ts,
+        theme: cache.kanbans.theme,
+        area: Rect::new(x, y, x + w, y + h),
+        active: cache.kanbans.active,
+    });
 }
 
 /// O dono de um texto do nível baixo na cache do texto: o espaço alto do quadro (os elementos usam o

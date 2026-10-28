@@ -17,6 +17,8 @@ use ph2d_vector::VectorScene;
 pub(crate) enum Menu {
     List(ListId),
     Board,
+    /// W4 — «Show on board» com o Kanban em `n` quadros: escolher um.
+    Boards(usize),
 }
 
 /// Uma linha de um menu.
@@ -31,6 +33,11 @@ pub(crate) enum Row {
     Archived,
     CollapseAll,
     ExpandAll,
+    /// W4 — ir ao Quadro onde o Kanban está, e pôr uma referência nova no Quadro activo.
+    ShowOnBoard,
+    PlaceOnBoard,
+    /// Um dos quadros onde ele está (o índice em `Tab::placements`).
+    Board(usize),
 }
 
 impl Row {
@@ -45,6 +52,9 @@ impl Row {
             Row::Archived => "kanban.menu.archived",
             Row::CollapseAll => "kanban.menu.collapse_all",
             Row::ExpandAll => "kanban.menu.expand_all",
+            Row::ShowOnBoard => "kanban.menu.show_on_board",
+            Row::PlaceOnBoard => "kanban.menu.place_on_board",
+            Row::Board(_) => "",
         }
     }
 }
@@ -107,8 +117,19 @@ pub(crate) fn place(menu: Menu, anchor: Rect, area: Rect) -> Placed {
             row(&mut rows, &mut y, Row::Color(None));
         }
         Menu::Board => {
-            for r in [Row::Archived, Row::CollapseAll, Row::ExpandAll] {
+            for r in [
+                Row::Archived,
+                Row::CollapseAll,
+                Row::ExpandAll,
+                Row::ShowOnBoard,
+                Row::PlaceOnBoard,
+            ] {
                 row(&mut rows, &mut y, r);
+            }
+        }
+        Menu::Boards(n) => {
+            for i in 0..n {
+                row(&mut rows, &mut y, Row::Board(i));
             }
         }
     }
@@ -134,7 +155,9 @@ pub(crate) fn hit(p: &Placed, x: f32, y: f32) -> Option<Option<Row>> {
     )
 }
 
-/// Pinta o menu; `current` = a cor da lista agora (marcada), `hover` = a linha sob o rato.
+/// Pinta o menu; `current` = a cor da lista agora (marcada), `hover` = a linha sob o rato, `boards` =
+/// os nomes dos quadros onde o Kanban está (as linhas `Row::Board`).
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn paint(
     scene: &mut VectorScene,
     ts: &mut TextSystem,
@@ -143,6 +166,7 @@ pub(crate) fn paint(
     p: &Placed,
     current: Option<Hue>,
     hover: Option<Row>,
+    boards: &[(u64, u64, String)],
 ) {
     crate::paint::shadow(
         scene,
@@ -157,6 +181,7 @@ pub(crate) fn paint(
     let title = tr(match menu {
         Menu::List(_) => "kanban.menu.list_title",
         Menu::Board => "kanban.menu.board_title",
+        Menu::Boards(_) => "kanban.menu.boards_title",
     });
     let w = ts.prefix_width(title, m::BUTTON_TEXT_PX);
     let ty = text_top(ts, p.title.y, p.title.h, m::BUTTON_TEXT_PX);
@@ -209,10 +234,14 @@ pub(crate) fn paint(
                     fill_rounded_rect(scene, *r, 0.0, c(theme, T::KanbanCardRaised));
                 }
                 let ty = text_top(ts, r.y, r.h, m::BUTTON_TEXT_PX);
+                let text = match row {
+                    Row::Board(i) => boards.get(*i).map_or("", |b| b.2.as_str()),
+                    _ => tr(row.key()),
+                };
                 paint_text_elided(
                     ts,
                     scene,
-                    tr(row.key()),
+                    text,
                     r.x + m::MENU_PAD,
                     ty,
                     m::BUTTON_TEXT_PX,

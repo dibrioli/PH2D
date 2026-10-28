@@ -13,6 +13,7 @@ mod actions;
 mod anim;
 mod archive;
 mod back;
+mod canvas;
 mod docs;
 mod edit;
 mod frame;
@@ -23,6 +24,7 @@ mod layout;
 mod list_title;
 mod menu;
 mod metrics;
+mod on_board;
 mod overlay;
 mod paint;
 mod paint_card;
@@ -32,6 +34,7 @@ pub mod project;
 pub mod smoke;
 mod surface;
 mod tab;
+mod view;
 
 pub use back::outside::{Outside, Served, System, World};
 pub use docs::KanbanDocs;
@@ -39,8 +42,9 @@ pub use surface::{CMD_HOME, CMD_NEW};
 
 /// O arranque da família: a superfície das abas Kanban no `Documents` e as cenas de smoke armadas.
 pub fn install(hero: &mut ph2d_editor_core::screens::hero::HeroScreen) {
-    hero.documents
-        .install_surface(Box::new(KanbanDocs::default()));
+    let mut docs = KanbanDocs::default();
+    docs.canvas = canvas::install();
+    hero.documents.install_surface(Box::new(docs));
     smoke::stage_armed_smokes(hero);
 }
 

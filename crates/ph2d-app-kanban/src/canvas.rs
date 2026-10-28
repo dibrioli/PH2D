@@ -1,0 +1,253 @@
+//! ⭐ **O Kanban no canvas do Quadro** (W4, lote V, ADR-0195 §3.3) — os ganchos que o Quadro chama: a
+//! pintura ([`ph2d_board_render::KanbanPainter`]) e a entrada
+//! ([`ph2d_editor_core::screens::hero::board_video::kanban::KanbanElementInput`]).
+//!
+//! Cada elemento é uma VISTA como a aba ([`crate::tab::Tab`], id [`key_of`]): o mesmo `view::paint`
+//! numa `Affine` (a câmara × o zoom interno) e o MESMO código do rato e das teclas, em px da vista. As
+//! vistas dos elementos vivem aqui (o desenho do Quadro não chega à família); o rato e as teclas
+//! trazem a vista para as abas da família pelo tempo do evento ([`with_element`]). O que é desta vista
+//! (rolagem, recolhidas) volta ao `KanbanBoardView` do elemento, nunca ao documento.
+
+use crate::docs::KanbanDocs;
+use crate::tab::Tab;
+use crate::view::{At, ViewCtx};
+use ph2d_board_model::{ElementId, KanbanBoardView, KanbanId};
+use ph2d_board_render::{KanbanLod, KanbanOver, KanbanPaint, KanbanPainter};
+use ph2d_editor_core::doc_surface::{KeyInput, KeyOutcome, Surfaces};
+use ph2d_editor_core::documents::SharedKanbans;
+use ph2d_editor_core::screens::hero::board_video::kanban::{KanbanElementInput, KanbanPointer};
+use ph2d_editor_core::zones::Rect;
+use ph2d_text::TextSystem;
+use ph2d_vector::Affine;
+use std::cell::RefCell;
+use std::collections::BTreeMap;
+use std::rc::Rc;
+
+/// O id de uma vista de elemento: fora do espaço dos `KanbanId` (contam de 1) e do início (`u64::MAX`).
+const ELEMENT_KEY: u64 = 1 << 62;
+
+pub(crate) fn key_of(el: ElementId) -> u64 {
+    ELEMENT_KEY | el.0
+}
+
+/// As vistas dos Kanbans do canvas e o que o quadro de imagem lhes dá.
+#[derive(Default)]
+pub(crate) struct Canvas {
+    pub tabs: BTreeMap<ElementId, Tab>,
+    pub cx: ViewCtx,
+    /// Os Kanbans do projecto (o passe por cima não os recebe do Quadro).
+    pub set: Option<SharedKanbans>,
+}
+
+pub(crate) type SharedCanvas = Rc<RefCell<Canvas>>;
+
+/// A vista do elemento lê o `KanbanBoardView` se ele mudou fora dela (desfazer, um colega).
+fn adopt(tab: &mut Tab, view: &KanbanBoardView) {
+    let seen = (view.scroll[0], view.collapsed.clone());
+    if tab.board_seen.as_ref() != Some(&seen) {
+        tab.view.scroll_x = view.scroll[0];
+        tab.view.collapsed.clone_from(&view.collapsed);
+        tab.board_seen = Some(seen);
+    }
+}
+
+/// O que é desta vista volta ao elemento.
+fn write_back(tab: &mut Tab, view: &mut KanbanBoardView) {
+    view.scroll[0] = tab.view.scroll_x;
+    view.collapsed.clone_from(&tab.view.collapsed);
+    tab.board_seen = Some((view.scroll[0], view.collapsed.clone()));
+}
+
+fn take(canvas: &SharedCanvas, el: ElementId, kanban: KanbanId) -> Tab {
+    canvas
+        .borrow_mut()
+        .tabs
+        .remove(&el)
+        .filter(|t| t.view.kanban == kanban)
+        .unwrap_or_else(|| Tab::on_board(kanban, key_of(el)))
+}
+
+/// ⭐ Corre `f` com a vista do elemento entre as abas da família (o código da aba, intacto).
+fn with_element<R>(
+    docs: &mut KanbanDocs,
+    canvas: &SharedCanvas,
+    (el, kanban): (ElementId, KanbanId),
+    view: &mut KanbanBoardView,
+    f: impl FnOnce(&mut KanbanDocs, u64) -> R,
+) -> R {
+    let key = key_of(el);
+    let mut tab = take(canvas, el, kanban);
+    adopt(&mut tab, view);
+    docs.tabs.push(tab);
+    let out = f(docs, key);
+    if let Some(i) = docs.tabs.iter().position(|t| t.id() == key) {
+        let mut tab = docs.tabs.remove(i);
+        write_back(&mut tab, view);
+        canvas.borrow_mut().tabs.insert(el, tab);
+    }
+    out
+}
+
+/// Px de ecrã → px da vista.
+fn zoom_of(view: &KanbanBoardView) -> f64 {
+    if view.zoom > 0.0 { view.zoom } else { 1.0 }
+}
+
+#[allow(clippy::cast_possible_truncation)]
+fn to_view(at: [f64; 2], z: f64) -> (f32, f32) {
+    ((at[0] / z) as f32, (at[1] / z) as f32)
+}
+
+/// O gancho de pintura.
+pub(crate) struct Painter(pub SharedCanvas);
+
+impl KanbanPainter for Painter {
+    fn paint(&mut self, p: KanbanPaint<'_>) -> bool {
+        if p.lod == KanbanLod::Low {
+            return false;
+        }
+        let z = zoom_of(p.view);
+        #[allow(clippy::cast_possible_truncation)]
+        let area = Rect::new(0.0, 0.0, (p.frame.width() / z) as f32, (p.frame.height() / z) as f32);
+        let at = At {
+            to_screen: p.to_screen * Affine::scale(z),
+            area,
+            lod: p.lod,
+            modal: false,
+        };
+        if p.export {
+            // Um export não mexe no estado da vista viva (nem nas molas: sem lei, saltam).
+            let mut tab = Tab::on_board(p.kanban, key_of(p.element));
+            adopt(&mut tab, p.view);
+            let cx = ViewCtx::default();
+            crate::view::paint(p.scene, p.ts, p.theme, at, &mut tab, p.set, &cx);
+            return true;
+        }
+        let mut c = self.0.borrow_mut();
+        let cx = c.cx.clone();
+        let mut tab = c
+            .tabs
+            .remove(&p.element)
+            .filter(|t| t.view.kanban == p.kanban)
+            .unwrap_or_else(|| Tab::on_board(p.kanban, key_of(p.element)));
+        adopt(&mut tab, p.view);
+        crate::view::paint(p.scene, p.ts, p.theme, at, &mut tab, p.set, &cx);
+        c.tabs.insert(p.element, tab);
+        true
+    }
+
+    fn paint_over(&mut self, o: KanbanOver<'_>) {
+        let Some(el) = o.active else {
+            return;
+        };
+        let mut c = self.0.borrow_mut();
+        let (Some(set), me, team) = (c.set.clone(), c.cx.me.clone(), c.cx.team.clone()) else {
+            return;
+        };
+        let Some(tab) = c.tabs.get_mut(&el).filter(|t| t.back.is_some()) else {
+            return;
+        };
+        let set = set.borrow();
+        let Some(k) = set.get(tab.view.kanban) else {
+            return;
+        };
+        // O verso é o modal do Trello: em ecrã, centrado na área do quadro.
+        #[allow(clippy::cast_possible_truncation)]
+        let screen = Rect::new(
+            o.area.x0 as f32,
+            o.area.y0 as f32,
+            o.area.width() as f32,
+            o.area.height() as f32,
+        );
+        let board_area = std::mem::replace(&mut tab.layout.area, screen);
+        let now = crate::actions::now();
+        crate::back::paint(o.scene, o.ts, o.theme, k, tab, &set, &me, &team, now);
+        tab.layout.area = board_area;
+    }
+}
+
+/// O gancho de entrada.
+pub(crate) struct Input(pub SharedCanvas);
+
+impl KanbanElementInput for Input {
+    fn pointer(
+        &mut self,
+        surfaces: &mut Surfaces,
+        ts: &mut TextSystem,
+        target: (ElementId, KanbanId),
+        ev: KanbanPointer,
+        view: &mut KanbanBoardView,
+    ) -> bool {
+        let Some(docs) = surfaces.find_mut::<KanbanDocs>() else {
+            return false;
+        };
+        let z = zoom_of(view);
+        with_element(docs, &self.0, target, view, |docs, id| {
+            let modal = crate::back::is_open(docs, id);
+            #[allow(clippy::cast_possible_truncation)]
+            let scr = |s: [f64; 2]| (s[0] as f32, s[1] as f32);
+            match ev {
+                KanbanPointer::Down {
+                    at,
+                    screen,
+                    button,
+                    mods,
+                    now_ns,
+                } => {
+                    if modal {
+                        return crate::back::down(docs, id, ts, scr(screen), mods, now_ns);
+                    }
+                    let (x, y) = to_view(at, z);
+                    crate::pointer::down(docs, id, ts, button, x, y)
+                }
+                KanbanPointer::Move { at, screen } => {
+                    if modal {
+                        let (x, y) = scr(screen);
+                        return crate::back::moved(docs, id, ts, x, y);
+                    }
+                    let (x, y) = to_view(at, z);
+                    crate::pointer::moved(docs, id, ts, x, y)
+                }
+                KanbanPointer::Up { at, screen, now_ns } => {
+                    if modal {
+                        let (x, y) = scr(screen);
+                        return crate::back::up(docs, id, x, y);
+                    }
+                    let (x, y) = to_view(at, z);
+                    crate::pointer::up(docs, id, ts, now_ns, x, y)
+                }
+            }
+        })
+    }
+
+    fn key(
+        &mut self,
+        surfaces: &mut Surfaces,
+        ts: &mut TextSystem,
+        target: (ElementId, KanbanId),
+        input: KeyInput<'_>,
+        view: &mut KanbanBoardView,
+    ) -> KeyOutcome {
+        let Some(docs) = surfaces.find_mut::<KanbanDocs>() else {
+            return KeyOutcome::default();
+        };
+        with_element(docs, &self.0, target, view, |docs, id| {
+            crate::keys::key(docs, id, ts, input)
+        })
+    }
+
+    fn captures(&mut self, _surfaces: &mut Surfaces, el: ElementId) -> bool {
+        self.0.borrow().tabs.get(&el).is_some_and(|t| t.back.is_some())
+    }
+}
+
+/// Instala os dois ganchos neste fio e devolve as vistas (a família segura-as).
+pub(crate) fn install() -> SharedCanvas {
+    let canvas = SharedCanvas::default();
+    ph2d_board_render::install_kanban_painter(Rc::new(RefCell::new(Painter(canvas.clone()))));
+    ph2d_editor_core::screens::hero::board_video::kanban::install_kanban_input(Rc::new(
+        RefCell::new(Input(canvas.clone())),
+    ));
+    ph2d_editor_core::screens::hero::board_video::kanban::install_tab_opener();
+    canvas
+}

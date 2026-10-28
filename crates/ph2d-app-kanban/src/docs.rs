@@ -3,14 +3,10 @@
 //! desfazer de CADA Kanban (§5: `Ctrl+Z` num Kanban nunca desfaz outro nem a cena).
 
 use crate::actions::Doc;
-use crate::front::{self, Counts};
-use crate::layout::{self, Heights, Layout, Lifted};
-use crate::metrics as m;
-use crate::paint_card::CardLook;
-use crate::tab::{Lift, Tab};
+use crate::tab::Tab;
 use ph2d_editor_core::documents::SharedKanbans;
 use ph2d_editor_core::zones::Rect;
-use ph2d_kanban_model::{CardId, History, Kanban, KanbanId, KanbanSet, ListId};
+use ph2d_kanban_model::{CardId, History, KanbanId, KanbanSet, ListId};
 use ph2d_spring::Spring;
 use ph2d_text::TextSystem;
 use ph2d_tokens::Theme;
@@ -41,6 +37,8 @@ pub struct KanbanDocs {
     pub(crate) team: Vec<String>,
     /// Avisos para o ecrã (um ficheiro que não se leu), servidos com a fila de fora.
     pub(crate) notices: Vec<String>,
+    /// W4 — as vistas dos Kanbans no canvas do Quadro (partilhadas com os ganchos dele).
+    pub(crate) canvas: crate::canvas::SharedCanvas,
 }
 
 impl Default for KanbanDocs {
@@ -59,36 +57,8 @@ impl Default for KanbanDocs {
             me: ph2d_kanban_model::Member(ph2d_i18n::tr("kanban.back.me").to_owned()),
             team: Vec::new(),
             notices: Vec::new(),
+            canvas: crate::canvas::SharedCanvas::default(),
         }
-    }
-}
-
-/// O medidor de alturas que a disposição pede, sobre o texto e a cache da aba.
-struct Measure<'a> {
-    ts: &'a mut TextSystem,
-    cache: &'a mut BTreeMap<CardId, (u64, f32)>,
-    counts: &'a Counts,
-    label_text: bool,
-}
-
-impl Heights for Measure<'_> {
-    fn card(&mut self, k: &Kanban, id: CardId) -> f32 {
-        front::front(k, self.counts, id).map_or(m::LINE_H, |f| {
-            front::height(self.ts, self.cache, id, &f, self.label_text)
-        })
-    }
-
-    #[allow(clippy::cast_precision_loss)]
-    fn field(&mut self, text: &str, width: f32) -> f32 {
-        front::title_lines(self.ts, text, width) as f32 * m::LINE_H
-    }
-
-    fn title_w(&mut self, text: &str) -> f32 {
-        crate::list_title::width(self.ts, text)
-    }
-
-    fn limit_w(&mut self, text: &str) -> f32 {
-        title_width(self.ts, text, m::SMALL_PX) + 2.0 * m::COUNT_PAD_X
     }
 }
 
@@ -201,8 +171,7 @@ impl KanbanDocs {
         Some(f(tab, &mut doc))
     }
 
-    /// ⭐ Um quadro de imagem da aba `id`: dispõe (alvos → molas → ecrã), segue o arrasto (o alvo e
-    /// a rolagem nas bordas) e pinta.
+    /// ⭐ Um quadro de imagem da aba `id`: a VISTA ([`crate::view::paint`]) à escala 1, no ecrã.
     pub(crate) fn paint_tab(
         &mut self,
         id: u64,
@@ -212,67 +181,35 @@ impl KanbanDocs {
         theme: Theme,
     ) {
         self.area = area;
-        let dt = self.dt();
-        let law = self.law;
+        let cx = self.view_ctx();
         let set = self.set.clone();
         let set = set.borrow();
         let Some(tab) = self.tabs.iter_mut().find(|t| t.id() == id) else {
             return;
         };
-        let Some(k) = set.get(tab.view.kanban) else {
+        if set.get(tab.view.kanban).is_none() {
             crate::paint::missing(scene, ts, theme, area);
             return;
-        };
+        }
         crate::smoke::hold(tab);
-        edge_scroll(tab, dt);
-        *tab.painted.borrow_mut() = crate::tab::Painted::default();
-        let counts = Counts::of(k).seen_by(Some(self.me.clone())).with_files(&set, k);
-        let title_w = title_width(ts, &k.header.name, m::HEADER_TITLE_PX) + 2.0 * m::FIELD_PAD_X;
-        let floor = self.over.map(|o| o.y);
-        let lifted = lifted(tab, &counts, k, ts);
-        let mut cache = std::mem::take(&mut tab.heights);
-        let target = {
-            let mut measure = Measure {
-                ts,
-                cache: &mut cache,
-                counts: &counts,
-                label_text: tab.label_text,
-            };
-            layout::targets(
-                k,
-                &tab.view,
-                area,
-                (title_w, floor),
-                tab.field.as_ref(),
-                lifted,
-                &mut measure,
-            )
+        let at = crate::view::At {
+            to_screen: ph2d_vector::Affine::IDENTITY,
+            area,
+            lod: ph2d_board_render::KanbanLod::High,
+            modal: true,
         };
-        tab.heights = cache;
-        clamp_scroll(tab, &target);
-        let seen = crate::tab::place(tab, target.clone(), dt, law);
-        tab.layout = seen;
-        retarget(tab, &target);
-        let mut looks = |cid: CardId| {
-            front::front(k, &counts, cid).map(|f| CardLook {
-                front: f,
-                hover: false,
-                focus: false,
-            })
-        };
-        crate::paint::board(scene, ts, theme, k, tab, &mut looks);
-        crate::overlay::paint(scene, ts, theme, k, tab);
-        crate::back::paint(
-            scene,
-            ts,
-            theme,
-            k,
-            tab,
-            &set,
-            &self.me,
-            &self.team,
-            crate::actions::now(),
-        );
+        crate::view::paint(scene, ts, theme, at, tab, &set, &cx);
+    }
+
+    /// O que todas as vistas deste quadro de imagem partilham.
+    pub(crate) fn view_ctx(&self) -> crate::view::ViewCtx {
+        crate::view::ViewCtx {
+            dt: self.dt(),
+            law: self.law,
+            me: self.me.clone(),
+            team: self.team.clone(),
+            floor: self.over.map(|o| o.y),
+        }
     }
 
     /// Quem é «eu» (vazio = «Me») e as equipas dos quadros do projecto.
@@ -492,130 +429,3 @@ impl KanbanDocs {
     }
 }
 
-/// O que voa sai do fluxo da disposição e abre o espaço dele onde cai.
-fn lifted(tab: &mut Tab, counts: &Counts, k: &Kanban, ts: &mut TextSystem) -> Option<Lifted> {
-    let d = tab.drag?;
-    match d.lift {
-        Lift::Card(id) => {
-            let h = front::front(k, counts, id).map_or(d.size.1, |f| {
-                front::height(ts, &mut tab.heights, id, &f, tab.label_text)
-            });
-            Some(Lifted::Card {
-                id,
-                to: d.to_card,
-                h,
-            })
-        }
-        Lift::List(id) => Some(Lifted::List {
-            id,
-            to: d.to_list,
-            w: d.size.0,
-            h: d.size.1,
-        }),
-        Lift::Pan { .. } => None,
-    }
-}
-
-/// A rolagem não passa do fim (uma lista que encolheu, o quadro que estreitou).
-fn clamp_scroll(tab: &mut Tab, target: &Layout) {
-    let max_x = layout::max_scroll_x(target);
-    tab.view.scroll_x = tab.view.scroll_x.clamp(0.0, f64::from(max_x));
-    for lb in &target.lists {
-        let max_y = f64::from(layout::max_scroll_y(lb));
-        if let Some(v) = tab.view.scroll_y.get_mut(&lb.id) {
-            *v = v.clamp(0.0, max_y);
-        }
-    }
-}
-
-/// A fundura `0 → 1` de `p` na faixa junto à borda `[lo, hi]` (negativa = a de baixo/esquerda).
-fn edge(p: f32, lo: f32, hi: f32) -> f32 {
-    let band = m::EDGE_SCROLL_BAND.min((hi - lo) / 3.0).max(1.0);
-    if p < lo + band {
-        -((lo + band - p) / band).min(1.0)
-    } else if p > hi - band {
-        ((p - (hi - band)) / band).min(1.0)
-    } else {
-        0.0
-    }
-}
-
-/// ⭐ A rolagem nas bordas durante um arrasto (o Trello): o quadro na horizontal, a lista por baixo
-/// do ponteiro na vertical; mais depressa quanto mais fundo na faixa.
-#[allow(clippy::cast_possible_truncation)]
-fn edge_scroll(tab: &mut Tab, dt: f64) {
-    let Some(d) = tab.drag else {
-        return;
-    };
-    if matches!(d.lift, Lift::Pan { .. }) {
-        return;
-    }
-    let speed = f64::from(m::EDGE_SCROLL_MAX_PX_S) * dt;
-    let b = tab.layout.board;
-    let ex = edge(d.at.0, b.x, b.x + b.w);
-    tab.view.scroll_x += f64::from(ex) * speed;
-    if let Lift::Card(_) = d.lift
-        && let Some(lb) = tab
-            .layout
-            .lists
-            .iter()
-            .find(|l| !l.collapsed && l.rect.x <= d.at.0 && d.at.0 <= l.rect.x + l.rect.w)
-    {
-        let ey = edge(d.at.1, lb.body.y, lb.body.y + lb.body.h);
-        if ey != 0.0 && (lb.body.y..=lb.body.y + lb.body.h).contains(&d.at.1) {
-            *tab.view.scroll_y.entry(lb.id).or_default() += f64::from(ey) * speed;
-        }
-    }
-}
-
-/// ⭐ Onde cai o que voa — medido nos ALVOS sem o espaço aberto (senão o espaço que abre empurra a
-/// fronteira e o alvo oscila entre dois sítios).
-fn retarget(tab: &mut Tab, target: &Layout) {
-    let Some(mut d) = tab.drag else {
-        return;
-    };
-    let ox = target.board.x + m::BOARD_PAD;
-    #[allow(clippy::cast_possible_truncation)]
-    let sx = tab.view.scroll_x as f32;
-    let cx = d.at.0 - d.grab.0 + d.size.0 / 2.0 - ox + sx;
-    match d.lift {
-        Lift::Card(id) => {
-            let open: Vec<_> = target.lists.iter().filter(|l| !l.collapsed).collect();
-            let Some(lb) = open
-                .iter()
-                .find(|l| cx < l.rect.x + l.rect.w + m::LIST_GAP / 2.0)
-                .or(open.last())
-            else {
-                d.to_card = None;
-                tab.drag = Some(d);
-                return;
-            };
-            let sy = tab.scroll_y(lb.id);
-            let cy = d.at.1 - d.grab.1 + d.size.1 / 2.0 - (lb.body.y + m::LIST_BODY_TOP) + sy;
-            let mut acc = 0.0_f32;
-            let mut index = 0usize;
-            for c in lb.cards.iter().filter(|c| c.id != id) {
-                if acc + c.rect.h / 2.0 > cy {
-                    break;
-                }
-                acc += c.rect.h + m::CARD_GAP;
-                index += 1;
-            }
-            d.to_card = Some((lb.id, index));
-        }
-        Lift::List(id) => {
-            let mut acc = 0.0_f32;
-            let mut index = 0usize;
-            for l in target.lists.iter().filter(|l| l.id != id) {
-                if acc + l.rect.w / 2.0 > cx {
-                    break;
-                }
-                acc += l.rect.w + m::LIST_GAP;
-                index += 1;
-            }
-            d.to_list = index;
-        }
-        Lift::Pan { .. } => {}
-    }
-    tab.drag = Some(d);
-}

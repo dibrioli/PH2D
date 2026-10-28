@@ -508,6 +508,9 @@ fn menu_row(docs: &mut KanbanDocs, id: u64, row: MenuRow) {
         (Menu::List(l), MenuRow::Color(c)) => {
             docs.with_doc(id, |_, doc| doc.set_list_color(l, c));
         }
+        (Menu::Board | Menu::Boards(_), MenuRow::ShowOnBoard | MenuRow::PlaceOnBoard | MenuRow::Board(_)) => {
+            crate::on_board::row(docs, id, row);
+        }
         (Menu::Board, MenuRow::Archived) => {
             if let Some(t) = docs.tab_mut(id) {
                 t.panel = Some(crate::archive::Panel::default());

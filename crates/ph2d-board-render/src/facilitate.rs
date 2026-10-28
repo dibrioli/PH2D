@@ -349,6 +349,8 @@ pub fn paint_votes(
     cache: &mut crate::RenderCache,
     marks: &[VoteMark],
 ) {
+    // O último passe do quadro: o verso aberto de um Kanban vai por cima de tudo o que se pintou.
+    crate::kanban::paint_over(scene, ts, cache, area);
     if marks.is_empty() {
         return;
     }

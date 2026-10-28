@@ -122,6 +122,13 @@ pub(crate) struct Tab {
     pub smoke_hold: Option<(ListId, (f32, f32))>,
     /// O verso do cartão aberto (o modal do Trello, W3).
     pub back: Option<Box<crate::back::Back>>,
+    /// W4 — a vista de um elemento do Quadro: o id dela (`None` = a aba, cujo id é o do Kanban).
+    pub key: Option<u64>,
+    /// W4 — a vista do elemento (rolagem, recolhidas) como o documento do Quadro a deu da última vez:
+    /// outra mudança lá (desfazer, um colega) volta a ser a desta vista.
+    pub board_seen: Option<(f64, std::collections::BTreeSet<ListId>)>,
+    /// W4 — os quadros onde este Kanban está posto («Show on board»): `(quadro, elemento, nome)`.
+    pub placements: Vec<(u64, u64, String)>,
 }
 
 /// O registo do pintor num quadro.
@@ -152,12 +159,23 @@ impl Tab {
             painted: std::cell::RefCell::default(),
             smoke_hold: None,
             back: None,
+            key: None,
+            board_seen: None,
+            placements: Vec::new(),
         }
     }
 
-    /// O id da aba (o do Kanban).
+    /// A vista de um elemento do Quadro (id `key`, fora do espaço dos `KanbanId`).
+    pub fn on_board(kanban: KanbanId, key: u64) -> Self {
+        Self {
+            key: Some(key),
+            ..Self::new(kanban)
+        }
+    }
+
+    /// O id da aba (o do Kanban) ou da vista de um elemento do Quadro.
     pub fn id(&self) -> u64 {
-        self.view.kanban.0
+        self.key.unwrap_or(self.view.kanban.0)
     }
 
     pub fn scroll_y(&self, list: ListId) -> f32 {

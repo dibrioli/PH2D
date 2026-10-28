@@ -13,7 +13,7 @@ pub(crate) fn menu_placed(tab: &Tab) -> Option<menu::Placed> {
     let mn = tab.menu?;
     let anchor = match mn {
         Menu::List(id) => tab.layout.list(id)?.menu,
-        Menu::Board => tab.layout.board_menu,
+        Menu::Board | Menu::Boards(_) => tab.layout.board_menu,
     };
     Some(menu::place(mn, anchor, tab.layout.area))
 }
@@ -44,12 +44,12 @@ pub(crate) fn paint(
     if let (Some(mn), Some(p)) = (tab.menu, menu_placed(tab)) {
         let current = match mn {
             Menu::List(id) => k.lists.get(&id).and_then(|l| l.color),
-            Menu::Board => None,
+            Menu::Board | Menu::Boards(_) => None,
         };
         let hover = match tab.hover {
             Some(Hit::Menu(r)) => Some(r),
             _ => None,
         };
-        menu::paint(scene, ts, theme, mn, &p, current, hover);
+        menu::paint(scene, ts, theme, mn, &p, current, hover, &tab.placements);
     }
 }

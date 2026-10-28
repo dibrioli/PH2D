@@ -7,6 +7,11 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.kanban.new_name" => "Kanban",
         "board.kanban.open_tab" => "Open in tab",
         "board.kanban.no_tab" => "Opening a Kanban in its own tab isn\u{2019}t available yet",
+        // W4, lote V — o «…» da aba do Kanban liga-a ao Quadro.
+        "kanban.menu.show_on_board" => "Show on board",
+        "kanban.menu.place_on_board" => "Place on board",
+        "kanban.menu.boards_title" => "Show on which board?",
+        "kanban.board.nowhere" => "This Kanban isn\u{2019}t on any board yet \u{2014} use \u{201c}Place on board\u{201d}",
         _ => return None,
     })
 }

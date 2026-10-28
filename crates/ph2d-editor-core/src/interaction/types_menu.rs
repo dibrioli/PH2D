@@ -353,6 +353,8 @@ pub enum ContextMenuKind {
     BoardArrow {
         along: bool,
     },
+    /// W4 do Kanban — o mesmo num KANBAN do quadro, com «Open in tab» à cabeça.
+    BoardKanban,
     /// A pergunta *«apagar este quadro?»* — desenha o próprio corpo
     /// (`document_tabs_menu::paint_confirm_delete`, que conhece o nome).
     ConfirmDeleteBoard {
@@ -477,6 +479,7 @@ impl ContextMenuKind {
         Self::BoardTab { board: 0 },
         Self::BoardElement,
         Self::BoardArrow { along: true },
+        Self::BoardKanban,
         Self::ConfirmDeleteBoard { board: 0 },
         Self::SendToBoard { row: NodeId(1) },
         Self::SendSelection {

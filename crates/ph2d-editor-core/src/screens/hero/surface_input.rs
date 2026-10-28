@@ -10,28 +10,6 @@ use crate::doc_surface::{Compose, Key, PointerInput};
 use ph2d_host::{Modifiers, PointerButton, PointerKind};
 use ph2d_text::TextSystem;
 
-fn key_of(k: BoardKey) -> Key {
-    match k {
-        BoardKey::Char(c) => Key::Char(c),
-        BoardKey::Enter => Key::Enter,
-        BoardKey::Escape => Key::Escape,
-        BoardKey::Backspace => Key::Backspace,
-        BoardKey::Delete => Key::Delete,
-        BoardKey::Left => Key::Left,
-        BoardKey::Right => Key::Right,
-        BoardKey::Up => Key::Up,
-        BoardKey::Down => Key::Down,
-        BoardKey::Home => Key::Home,
-        BoardKey::End => Key::End,
-        BoardKey::Space => Key::Space,
-        BoardKey::Tab => Key::Tab,
-        BoardKey::PageUp => Key::PageUp,
-        BoardKey::PageDown => Key::PageDown,
-        BoardKey::Other => Key::Other,
-        BoardKey::F(n) => Key::F(n),
-    }
-}
-
 impl HeroScreen {
     /// Um CAMPO DE TEXTO da interface tem o teclado (um botão focado — a aba clicada, o «Edit
     /// script» — não conta: o teclado e a composição seguem para o documento).
@@ -175,7 +153,7 @@ pub(super) fn key(
 ) -> Option<BoardOutcome> {
     let (f, id) = hero.documents.active_surface_mut()?;
     let input = crate::doc_surface::KeyInput {
-        key: key_of(k),
+        key: Key::from(k),
         mods,
         pressed,
         text,

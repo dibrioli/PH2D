@@ -34,7 +34,7 @@ pub use grid::{dot_grid, grid_step_world};
 pub use image::{Decode, Images, Pixels, Salvage, install_decoder, install_salvager, level_to_box};
 pub use kanban::{
     HEADER_H as KANBAN_HEADER_H, KanbanFrames, KanbanLod, KanbanPaint, KanbanPainter,
-    KanbanPlacement, KanbanSource, install_kanban_painter, install_kanbans, kanban_board_bg,
+    KanbanOver, KanbanPlacement, KanbanSource, install_kanban_painter, install_kanbans, kanban_board_bg,
     kanban_list_colors, kanban_name, kanban_painter_installed,
 };
 pub use overlay::paint_overlay;

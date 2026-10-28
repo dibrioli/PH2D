@@ -16,6 +16,10 @@ ph2d-a11y = { path = "../ph2d-a11y" }
 # A declaração da família (`FAMILY`) que o registo empurra.
 ph2d-app-host = { path = "../ph2d-app-host" }
 ph2d-editor-core = { path = "../ph2d-editor-core" }
+# W4 — o Kanban no canvas do Quadro: os ganchos de pintura (`KanbanPainter`, o nível e a lei das cores)
+# e as ids do elemento. Acíclico: o Quadro não depende da família.
+ph2d-board-model = { path = "../ph2d-board-model" }
+ph2d-board-render = { path = "../ph2d-board-render" }
 ph2d-host = { path = "../ph2d-host" }
 ph2d-i18n = { path = "../ph2d-i18n" }
 ph2d-kanban-model = { path = "../ph2d-kanban-model" }

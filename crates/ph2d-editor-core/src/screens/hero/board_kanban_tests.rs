@@ -7,7 +7,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use super::*;
-use crate::doc_surface::{Key, KeyInput};
+use crate::doc_surface::{Key, KeyInput, KeyOutcome, Surfaces};
 use crate::screens::hero::board_video::kanban::{
     self as kb, KanbanElementInput, KanbanPointer, NO_TAB,
 };
@@ -96,7 +96,14 @@ fn a_double_click_on_the_header_asks_for_the_tab() {
 struct Spy(Vec<String>);
 
 impl KanbanElementInput for Spy {
-    fn pointer(&mut self, _: ElementId, _: KanbanId, ev: KanbanPointer, v: &mut KanbanBoardView) -> bool {
+    fn pointer(
+        &mut self,
+        _: &mut Surfaces,
+        _: &mut TextSystem,
+        _: (ElementId, KanbanId),
+        ev: KanbanPointer,
+        v: &mut KanbanBoardView,
+    ) -> bool {
         let name = match ev {
             KanbanPointer::Down { .. } => "down",
             KanbanPointer::Move { .. } => "move",
@@ -109,16 +116,19 @@ impl KanbanElementInput for Spy {
 
     fn key(
         &mut self,
-        _: ElementId,
-        _: KanbanId,
+        _: &mut Surfaces,
         _: &mut TextSystem,
+        _: (ElementId, KanbanId),
         input: KeyInput<'_>,
         _: &mut KanbanBoardView,
-    ) -> bool {
+    ) -> KeyOutcome {
         if input.pressed {
             self.0.push(format!("{:?}", input.key));
         }
-        input.key != Key::Escape
+        KeyOutcome {
+            consumed: input.key != Key::Escape,
+            copy: None,
+        }
     }
 }
 
@@ -148,4 +158,43 @@ fn a_second_click_enters_the_kanban_and_the_hook_takes_the_mouse_and_keys() {
     let out = t.at(0.02, 0.98);
     click(&mut t, out);
     assert_eq!(frames(&t), None, "clicar fora sai");
+}
+
+/// ⭐ Desfazer «inserir Kanban» leva o documento que o gesto criou se ele ficou intocado (no MESMO
+/// passo); refazer repõe-no com o mesmo id; um documento mexido fica (vive só em aba).
+#[test]
+fn undoing_the_kanban_insert_takes_the_untouched_document_with_it() {
+    let mut t = T::new();
+    let shared = t.hero.documents.kanbans_shared();
+    t.click_bar(Item::Kanban);
+    let k = kanban_el(&t).unwrap().kanban().unwrap().kanban;
+    assert!(t.key(BoardKey::Char('z'), CTRL, None));
+    assert!(kanban_el(&t).is_none());
+    assert!(shared.borrow().get(k).is_none(), "o órfão intocado saiu com a referência");
+    assert!(t.key(BoardKey::Char('y'), CTRL, None));
+    assert_eq!(kanban_el(&t).map(|e| e.kanban().unwrap().kanban), Some(k));
+    assert!(shared.borrow().get(k).is_some(), "o refazer repõe o MESMO documento");
+    // Mexido (renomeado na aba, por exemplo), já não é só do gesto: o desfazer deixa-o.
+    shared.borrow_mut().doc_mut(k).unwrap().header.name = "Mine".into();
+    assert!(t.key(BoardKey::Char('z'), CTRL, None));
+    assert!(kanban_el(&t).is_none());
+    assert_eq!(shared.borrow().get(k).map(|k| k.header.name.clone()), Some("Mine".into()));
+}
+
+/// O botão direito num Kanban abre o menu dele, com «Open in tab» à cabeça (e a linha pede a aba).
+#[test]
+fn the_right_click_menu_of_a_kanban_opens_it_in_a_tab() {
+    let mut t = T::new();
+    kb::install_tab_opener();
+    t.click_bar(Item::Kanban);
+    let el = kanban_el(&t).unwrap();
+    let at = middle(&mut t, el.id);
+    let p = PointerButton::Secondary;
+    let (h, ts, c) = (&mut t.hero, &mut t.ts, &mut t.clock);
+    board_view::pointer(h, inp(ts, c), PointerKind::Down, p, at.0, at.1, true);
+    let kind = t.hero.store.context_menu().map(|m| m.kind);
+    assert_eq!(kind, Some(crate::interaction::ContextMenuKind::BoardKanban));
+    let open = crate::ids::CTX_MENU_BOARD_EL_OPEN_TAB;
+    t.hero.apply_event(crate::interaction::WidgetEvent::Click(open));
+    assert_eq!(kb::take_open_requests(), vec![el.kanban().unwrap().kanban]);
 }

@@ -340,6 +340,20 @@ pub fn pointer(
         {
             true
         }
+        // W4 do Kanban — o Kanban activo (ou o 2.º clique que entra nele) toma o carregar.
+        PointerKind::Down
+            if on_canvas
+                && super::board_video::kanban::pointer_down(
+                    hero,
+                    input.text,
+                    (x, y),
+                    button,
+                    input.mods,
+                    input.now_ns,
+                ) =>
+        {
+            true
+        }
         PointerKind::Down if on_canvas && inside(hero.last_canvas, x, y) => {
             canvas_down(hero, input, button, x, y)
         }
@@ -368,7 +382,9 @@ pub fn pointer(
                     now_ns: input.now_ns,
                 };
                 canvas_down(hero, replay, PointerButton::Primary, ax as f32, ay as f32);
-            } else if super::board_nav::pointer_up(hero, x, y, input.now_ns) {
+            } else if super::board_nav::pointer_up(hero, x, y, input.now_ns)
+                || super::board_video::kanban::pointer_up(hero, input.text, x, y, input.now_ns)
+            {
                 return true;
             }
             let Some((board, live)) = hero.documents.active_parts() else {
@@ -407,7 +423,9 @@ pub fn pointer_move(hero: &mut HeroScreen, input: Input<'_>, x: f32, y: f32) -> 
         };
         canvas_down(hero, replay, PointerButton::Primary, ax as f32, ay as f32);
     }
-    if super::board_nav::pointer_move(hero, x, y) {
+    if super::board_nav::pointer_move(hero, x, y)
+        || super::board_video::kanban::pointer_move(hero, input.text, x, y)
+    {
         return true;
     }
     if let Some(from) = hero.documents.pan_from {

@@ -266,13 +266,9 @@ intercalação):
 | misto 200 | **1,526** · 1,788 | 1,444 · 1,486 | 33,1 · 34,8 | 45,6 · 51,1 |
 
 ⇒ o editor não acrescenta custo ao solver (≤ 0,08 ms); **kill-criterion < 2 ms PASSA** mesmo a load 43 (a W4.0 mediu
-0,68–0,81 ms do `resolve` a load 11–18). A análise das cores (~45 ms) está fora do quadro, como desenhado. ⚠️ **Aberto:**
-juntar uma regra corre no quadro em que a guia ACENDE (só quando a guia muda) e custa 17–33 ms a 200 pontos — o
-Gram–Schmidt do posto (`r²n`). **Feito:** o teste só olha a COMPONENTE ligada à regra nova (linhas de componentes
-disjuntas são ortogonais — exacto; gate `another_shape_with_its_own_rules_does_not_change_the_rank_answer`) ⇒ várias
-formas pequenas custam a sua, não a soma. **Aberto:** UMA componente de 200 pontos (as duas cenas medidas) continua a
-17–33 ms; a cura desenhada é a base do posto em cache pela análise que já corre fora do quadro (a regra nova projecta
-contra ela: `O(r·n)`) — exige publicar essa base na caneta.
+0,68–0,81 ms do `resolve` a load 11–18). A análise das cores (~45 ms) está fora do quadro, como desenhado. Juntar uma regra (o posto,
+só a COMPONENTE ligada, gate `another_shape_with_its_own_rules_does_not_change_the_rank_answer`) custava 17–33 ms a 200
+pontos → **fechado na W6 (QR de Householder esparsa, 0,47–1,32 ms): [`07_W6_pontas.md` §2](07_W6_pontas.md#2-ponta-3--medido)**.
 
 ### 3.5 W4.5 feita (26/10) — a medida animada
 

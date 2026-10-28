@@ -18,3 +18,43 @@
 
 Gates red-first por nome; suíte completa só na integração; clippy só no fecho; shell a 1 linha do tecto
 (`189 040`/`189 041`) — a cura é mover; `shape_handles_live.rs` a 700 linhas exactas.
+
+## 2. Ponta 3 — medido
+
+**Divisão (antes da cura):** o posto é ~98 % do custo. `Sistema::monta` 0,13–0,15 ms, resíduos+linhas 0,10–0,12 ms,
+componente 0,05–0,09 ms; o Gram–Schmidt denso duas vezes (`r²n`, base ortonormal DENSA: a base de uma cadeia enche-se
+toda) 13,9–14,5 ms. ⇒ a cura é no posto, não na montagem.
+
+**Cura:** `posto::Posto` = QR de Householder **esparsa com pivô** das linhas aceites (como colunas). A linha nova
+(normalizada, como antes) passa pelos reflexos (`Qᵀl`) e a norma do que sobra FORA dos pivôs é **exactamente** a
+distância ao espaço das aceites — a mesma grandeza que o Gram–Schmidt mede, com a mesma `TOL_POSTO = 1e-8`. Um reflexo
+só se aplica se tocar o suporte do momento (fila por variável, em ordem: o salto é exacto, produto zero); linha abaixo da
+tolerância não cria reflexo (nada de direcção inventada); regra recusada desfaz os reflexos das irmãs. `estado()` usa a
+mesma rotina. O denso fica como `PostoDenso` (`#[cfg(test)]`), a referência.
+
+**Gates** (`crates/ph2d-vec-constraints/src/posto_tests.rs`): `the_sparse_rank_gives_the_dense_answer_on_every_fixture_scene`
+(18 cenas da W4 — as de 800 ficam de fora, o denso custa minutos em `dev` —, na pose do desenho e na resolvida: as
+MESMAS redundantes e, linha a linha, a mesma distância a `1e-11`) e `..._for_random_new_rules` (`a_mais` de 104 regras
+sorteadas, semente fixa, de todos os tipos, mais 64 de cópias e «tirada e reposta», em escada/misto 50 e 200; vê os dois
+vereditos). Mutações: `TOL` 1e-8 → 0,3 sangra os dois; esquecer o reflexo seguinte ao enchimento (`k + 1` → `k + 2`)
+sobreviveu ao veredito e sangra a régua da distância (foi por isso que ela entrou).
+
+**Medido** (perfil `smoke`, denso × esparso intercalados no MESMO processo com a ordem rodada, mínimo de 9 rodadas,
+ms; `loadavg` 19,4 em 32 núcleos — outras linhas a compilar):
+
+| cena | `a_mais` denso | `a_mais` esparso | posto denso | posto esparso |
+|---|---|---|---|---|
+| escada 202 | 14,90 | **0,45** | 14,54 | 0,15 |
+| misto 200 | 14,25 | **0,87** | 13,87 | 0,52 |
+
+No editor (`cad_medida_tests.rs` `the_worst_drag_step_in_the_editor`, 7 rodadas, mínimo, `loadavg` 19,4; a W4.4 a load 43
+na coluna «antes»):
+
+| cena | juntar uma regra antes → agora | `a_mais` cru agora | análise das cores antes → agora |
+|---|---|---|---|
+| escada 202 | 17,3 → **0,47** | 0,44 | 43,5 → 9,0 |
+| misto 200 | 33,1 → **1,32** | 1,28 | 45,6 → 12,5 |
+
+⇒ juntar uma regra a 200 pontos cabe no quadro em que a guia acende, abaixo do critério de 2 ms do arrasto. ⚠️ O misto
+mede 0,87 ms numa sonda e 1,28 ms na outra (binários e ordem de corrida diferentes; o `a_mais` cru acompanha a porta do
+editor, então a diferença não é do editor).

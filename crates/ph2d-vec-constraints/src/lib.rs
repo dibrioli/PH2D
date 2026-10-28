@@ -300,6 +300,15 @@ impl Sistema {
         }
     }
 
+    /// O índice global (o id da ezpz) de uma variável de resíduo.
+    fn global(&self, v: &posto::Var) -> usize {
+        match *v {
+            posto::Var::X(p) => self.pts[&p].id_x() as usize,
+            posto::Var::Y(p) => self.pts[&p].id_y() as usize,
+            posto::Var::Raio(c) => self.raios[&c].id as usize,
+        }
+    }
+
     fn palpites(&self) -> Vec<(u32, f64)> {
         (0u32..).zip(self.valores.iter().copied()).collect()
     }
@@ -464,8 +473,25 @@ pub fn violacao(folha: &Folha<'_>, regras: &[RegraCad]) -> f64 {
 /// posto sem a análise da ezpz: barato o bastante para correr quando uma guia acende.
 #[must_use]
 pub fn a_mais(folha: &Folha<'_>, regras: &[RegraCad], nova: RegraCad) -> bool {
-    // Só a componente ligada à regra nova: as linhas de uma componente disjunta não partilham variável, são
-    // ortogonais e não mudam o posto — o resultado é o mesmo e o custo (`r²n`) cai com o tamanho da componente.
+    a_mais_com(folha, regras, nova, posto::Posto::new)
+}
+
+fn a_mais_com<B: posto::Base>(
+    folha: &Folha<'_>,
+    regras: &[RegraCad],
+    nova: RegraCad,
+    base: impl Fn(usize) -> B,
+) -> bool {
+    let todas = componente(regras, nova);
+    let n = todas.len() - 1;
+    let s = Sistema::monta(folha, &todas, None, None);
+    s.ativas.contains(&n)
+        && redundantes_com(&s, &todas, &s.valores, base(s.valores.len())).contains(&n)
+}
+
+/// As regras da componente ligada à regra nova, em ordem de nascimento, e a nova (activa) no fim: as linhas de uma
+/// componente disjunta não partilham variável, são ortogonais e não mudam o posto.
+fn componente(regras: &[RegraCad], nova: RegraCad) -> Vec<RegraCad> {
     let mut ligados: BTreeSet<PontoCad> = nova.lei.pontos().into_iter().collect();
     let mut fora: Vec<&RegraCad> = regras.iter().collect();
     loop {
@@ -487,27 +513,25 @@ pub fn a_mais(folha: &Folha<'_>, regras: &[RegraCad], nova: RegraCad) -> bool {
         referencia: false,
         ..nova
     });
-    let n = todas.len() - 1;
-    let s = Sistema::monta(folha, &todas, None, None);
-    s.ativas.contains(&n) && redundantes(&s, &todas, &s.valores).contains(&n)
+    todas
 }
 
 fn redundantes(s: &Sistema, regras: &[RegraCad], f: &[f64]) -> Vec<usize> {
-    let valor = |v: &posto::Var| match *v {
-        posto::Var::X(p) => f[s.pts[&p].id_x() as usize],
-        posto::Var::Y(p) => f[s.pts[&p].id_y() as usize],
-        posto::Var::Raio(c) => f[s.raios[&c].id as usize],
-    };
-    let global = |v: &posto::Var| match *v {
-        posto::Var::X(p) => s.pts[&p].id_x() as usize,
-        posto::Var::Y(p) => s.pts[&p].id_y() as usize,
-        posto::Var::Raio(c) => s.raios[&c].id as usize,
-    };
-    let mut base = posto::Posto::default();
+    redundantes_com(s, regras, f, posto::Posto::new(f.len()))
+}
+
+fn redundantes_com(
+    s: &Sistema,
+    regras: &[RegraCad],
+    f: &[f64],
+    mut base: impl posto::Base,
+) -> Vec<usize> {
+    let valor = |v: &posto::Var| f[s.global(v)];
+    let global = |v: &posto::Var| s.global(v);
     let mut fora = Vec::new();
     for &i in &s.ativas {
         let (vars, res) = posto::residuos(&regras[i].lei, &valor);
-        if !base.aceita(posto::linhas(&vars, &res, f.len(), &global)) {
+        if !base.aceita(posto::linhas(&vars, &res, &global)) {
             fora.push(i);
         }
     }
@@ -533,3 +557,10 @@ pub fn orienta_tangente(folha: &Folha<'_>, seg: SegCad, circulo: VecPathId) -> O
         Some(SegCad(seg.1, seg.0))
     }
 }
+
+#[cfg(test)]
+extern crate self as ph2d_vec_constraints;
+#[cfg(test)]
+mod medida_tests;
+#[cfg(test)]
+mod posto_tests;

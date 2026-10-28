@@ -1,8 +1,11 @@
 //! REF/redundante = a regra que não sobe o POSTO do jacobiano, em ordem de nascimento (§1.4, §3.2).
 //! O jacobiano da ezpz é privado: os resíduos escrevem-se aqui uma vez, sobre um dual (derivada exacta).
-//! Posto por Gram–Schmidt modificado duas vezes, linha a linha: a QR de Householder SEM pivô inventa uma
-//! direcção quando uma coluna é dependente e estraga o teste das seguintes.
+//! Posto por QR de Householder esparsa COM pivô e sem reflexão para a linha dependente ([`Posto`]): a SEM pivô
+//! inventa uma direcção quando uma coluna é dependente e estraga o teste das seguintes. A referência densa (o
+//! Gram–Schmidt duas vezes) fica nos testes.
 
+use std::cmp::Reverse;
+use std::collections::BinaryHeap;
 use std::ops::{Add, Div, Mul, Neg, Sub};
 
 use ph2d_vec_scene::VecPathId;
@@ -181,13 +184,187 @@ pub(crate) fn residuos(lei: &Lei, valor: &dyn Fn(&Var) -> f64) -> (Vec<Var>, Vec
     (vars, r)
 }
 
-/// A base ortonormal das linhas já aceites; `aceita` diz se as linhas novas sobem o posto em TODAS as direcções.
-#[derive(Default)]
+/// Uma linha esparsa do jacobiano: (variável global, derivada), por índice crescente, sem zeros.
+pub(crate) type Linha = Vec<(usize, f64)>;
+
+/// O teste de posto em ordem de nascimento.
+pub(crate) trait Base {
+    /// Junta as linhas se cada uma for independente das aceites e das irmãs; senão não junta nenhuma.
+    fn aceita(&mut self, linhas: Vec<Linha>) -> bool;
+    /// A distância (da linha normalizada) ao espaço das aceites que a última linha mediu.
+    #[cfg(test)]
+    fn ultima(&self) -> f64;
+}
+
+/// Uma reflexão de Householder `I − 2vvᵀ/vᵀv` esparsa e a variável-pivô que ela ocupou.
+struct Reflexo {
+    v: Linha,
+    vv: f64,
+    pivo: usize,
+}
+
+/// QR de Householder das linhas aceites (como colunas), esparsa e com pivô: a linha nova (normalizada) passa pelas
+/// reflexões (`Qᵀl`) e o que sobra FORA dos pivôs é exactamente a distância dela ao espaço das aceites — a grandeza
+/// que o Gram–Schmidt mede, sem a base densa: uma reflexão só toca as variáveis a que a linha chegou (W6 ponta 3,
+/// `07_W6_pontas.md` §2). Abaixo de `TOL_POSTO` não nasce reflexão: nenhuma direcção inventada.
 pub(crate) struct Posto {
-    base: Vec<Vec<f64>>,
+    reflexos: Vec<Reflexo>,
+    /// Os reflexos que tocam cada variável, por ordem.
+    por_var: Vec<Vec<usize>>,
+    e_pivo: Vec<bool>,
+    w: Vec<f64>,
+    tocadas: Vec<usize>,
+    tocada: Vec<bool>,
+    na_fila: Vec<bool>,
+    #[cfg(test)]
+    ultima: f64,
 }
 
 impl Posto {
+    pub(crate) fn new(n: usize) -> Self {
+        Self {
+            reflexos: Vec::new(),
+            por_var: vec![Vec::new(); n],
+            e_pivo: vec![false; n],
+            w: vec![0.0; n],
+            tocadas: Vec::new(),
+            tocada: vec![false; n],
+            na_fila: Vec::new(),
+            #[cfg(test)]
+            ultima: 0.0,
+        }
+    }
+
+    fn toca(&mut self, j: usize, depois: usize, fila: &mut BinaryHeap<Reverse<usize>>) {
+        if self.tocada[j] {
+            return;
+        }
+        self.tocada[j] = true;
+        self.tocadas.push(j);
+        let lista = &self.por_var[j];
+        for &k in &lista[lista.partition_point(|&k| k < depois)..] {
+            if !self.na_fila[k] {
+                self.na_fila[k] = true;
+                fila.push(Reverse(k));
+            }
+        }
+    }
+
+    /// `Qᵀl` e a norma do que fica fora dos pivôs. Um reflexo que não toca o suporte do momento tem produto zero.
+    fn reduz(&mut self, l: &Linha) -> f64 {
+        for j in self.tocadas.drain(..) {
+            self.w[j] = 0.0;
+            self.tocada[j] = false;
+        }
+        self.na_fila.clear();
+        self.na_fila.resize(self.reflexos.len(), false);
+        let mut fila = BinaryHeap::new();
+        for &(j, x) in l {
+            self.toca(j, 0, &mut fila);
+            self.w[j] = x;
+        }
+        while let Some(Reverse(k)) = fila.pop() {
+            let r = &self.reflexos[k];
+            let d: f64 = r.v.iter().map(|&(j, x)| x * self.w[j]).sum();
+            if d == 0.0 {
+                continue;
+            }
+            let f = 2.0 * d / r.vv;
+            let v = std::mem::take(&mut self.reflexos[k].v);
+            for &(j, x) in &v {
+                self.toca(j, k + 1, &mut fila);
+                self.w[j] -= f * x;
+            }
+            self.reflexos[k].v = v;
+        }
+        self.tocadas
+            .iter()
+            .filter(|&&j| !self.e_pivo[j])
+            .map(|&j| self.w[j] * self.w[j])
+            .sum::<f64>()
+            .sqrt()
+    }
+
+    fn desfaz(&mut self, n0: usize) {
+        while self.reflexos.len() > n0 {
+            let r = self.reflexos.pop().expect("acima de n0");
+            self.e_pivo[r.pivo] = false;
+            for &(j, _) in &r.v {
+                self.por_var[j].pop();
+            }
+        }
+    }
+}
+
+impl Base for Posto {
+    fn aceita(&mut self, linhas: Vec<Linha>) -> bool {
+        let n0 = self.reflexos.len();
+        for mut l in linhas {
+            let n = l.iter().map(|(_, x)| x * x).sum::<f64>().sqrt();
+            let m = if n == 0.0 {
+                0.0
+            } else {
+                l.iter_mut().for_each(|(_, x)| *x /= n);
+                self.reduz(&l)
+            };
+            #[cfg(test)]
+            {
+                self.ultima = m;
+            }
+            if m < TOL_POSTO {
+                self.desfaz(n0);
+                return false;
+            }
+            let mut v: Linha = self
+                .tocadas
+                .iter()
+                .filter(|&&j| !self.e_pivo[j] && self.w[j] != 0.0)
+                .map(|&j| (j, self.w[j]))
+                .collect();
+            v.sort_unstable_by_key(|&(j, _)| j);
+            let p = v
+                .iter()
+                .enumerate()
+                .max_by(|a, b| a.1.1.abs().total_cmp(&b.1.1.abs()))
+                .map(|(i, _)| i)
+                .expect("m > 0");
+            v[p].1 += m.copysign(v[p].1);
+            let pivo = v[p].0;
+            let k = self.reflexos.len();
+            for &(j, _) in &v {
+                self.por_var[j].push(k);
+            }
+            self.e_pivo[pivo] = true;
+            let vv = v.iter().map(|(_, x)| x * x).sum();
+            self.reflexos.push(Reflexo { v, vv, pivo });
+        }
+        true
+    }
+
+    #[cfg(test)]
+    fn ultima(&self) -> f64 {
+        self.ultima
+    }
+}
+
+/// ⛔ A referência: Gram–Schmidt modificado duas vezes sobre linhas DENSAS (o teste de posto até à W6, `r²n`).
+#[cfg(test)]
+pub(crate) struct PostoDenso {
+    n: usize,
+    base: Vec<Vec<f64>>,
+    ultima: f64,
+}
+
+#[cfg(test)]
+impl PostoDenso {
+    pub(crate) fn new(n: usize) -> Self {
+        Self {
+            n,
+            base: Vec::new(),
+            ultima: 0.0,
+        }
+    }
+
     fn projecta(&self, l: &mut [f64]) {
         for _ in 0..2 {
             for q in &self.base {
@@ -196,19 +373,25 @@ impl Posto {
             }
         }
     }
+}
 
-    /// Junta as linhas se cada uma for independente das aceites e das irmãs; senão não junta nenhuma.
-    pub(crate) fn aceita(&mut self, linhas: Vec<Vec<f64>>) -> bool {
+#[cfg(test)]
+impl Base for PostoDenso {
+    fn aceita(&mut self, linhas: Vec<Linha>) -> bool {
         let n0 = self.base.len();
-        for mut l in linhas {
+        for esparsa in linhas {
+            let mut l = vec![0.0; self.n];
+            esparsa.iter().for_each(|&(j, x)| l[j] = x);
             let n = l.iter().map(|x| x * x).sum::<f64>().sqrt();
             if n == 0.0 {
+                self.ultima = 0.0;
                 self.base.truncate(n0);
                 return false;
             }
             l.iter_mut().for_each(|x| *x /= n);
             self.projecta(&mut l);
             let m = l.iter().map(|x| x * x).sum::<f64>().sqrt();
+            self.ultima = m;
             if m < TOL_POSTO {
                 self.base.truncate(n0);
                 return false;
@@ -218,21 +401,26 @@ impl Posto {
         }
         true
     }
+
+    fn ultima(&self) -> f64 {
+        self.ultima
+    }
 }
 
-/// As linhas densas (sobre `n` variáveis globais) dos resíduos de uma regra.
-pub(crate) fn linhas(
-    vars: &[Var],
-    res: &[D],
-    n: usize,
-    global: &dyn Fn(&Var) -> usize,
-) -> Vec<Vec<f64>> {
+/// As linhas esparsas (sobre as variáveis globais) dos resíduos de uma regra; a mesma variável lida duas vezes soma.
+pub(crate) fn linhas(vars: &[Var], res: &[D], global: &dyn Fn(&Var) -> usize) -> Vec<Linha> {
     res.iter()
         .map(|r| {
-            let mut l = vec![0.0; n];
+            let mut l: Linha = Vec::with_capacity(vars.len());
             for (i, v) in vars.iter().enumerate() {
-                l[global(v)] += r.d[i];
+                let g = global(v);
+                match l.iter_mut().find(|(j, _)| *j == g) {
+                    Some((_, x)) => *x += r.d[i],
+                    None => l.push((g, r.d[i])),
+                }
             }
+            l.retain(|&(_, x)| x != 0.0);
+            l.sort_unstable_by_key(|&(j, _)| j);
             l
         })
         .collect()

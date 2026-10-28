@@ -15,8 +15,8 @@ mod cena;
 
 use std::time::Instant;
 
-use ph2d_vec_constraints::{Arrasto, Folha, Solucao, estado, resolve};
-use ph2d_vec_scene::cad::{Lei, PontoCad, SegCad, circulo_de};
+use ph2d_vec_constraints::{Arrasto, Folha, Solucao, a_mais, estado, resolve};
+use ph2d_vec_scene::cad::{Lei, PontoCad, RegraCad, SegCad, circulo_de};
 use ph2d_vec_scene::{VecPath, VecScene, VecXforms, Xform};
 
 use crate::PenTool;
@@ -128,8 +128,10 @@ fn resumo(v: &mut [f64]) -> (f64, f64) {
 fn the_worst_drag_step_in_the_editor() {
     let carga = std::fs::read_to_string("/proc/loadavg").unwrap_or_default();
     println!("loadavg: {}", carga.trim());
-    println!("| cena | caneta (editor) | resolve cru | juntar uma regra | análise das cores |");
-    println!("|---|---|---|---|---|");
+    println!(
+        "| cena | caneta (editor) | resolve cru | juntar uma regra | `a_mais` cru | análise das cores |"
+    );
+    println!("|---|---|---|---|---|---|");
     for nome in ["escada_202", "misto_200"] {
         let c = cena::cena(nome);
         let base = na_cena(&c);
@@ -145,6 +147,7 @@ fn the_worst_drag_step_in_the_editor() {
         pela_caneta(&c, &base, i, &caminho);
         cru(&c, i, &caminho);
         let (mut a, mut b, mut j, mut e) = (Vec::new(), Vec::new(), Vec::new(), Vec::new());
+        let mut q = Vec::new();
         for rodada in 0..RODADAS {
             if rodada % 2 == 0 {
                 a.push(pela_caneta(&c, &base, i, &caminho));
@@ -159,6 +162,11 @@ fn the_worst_drag_step_in_the_editor() {
             let t = Instant::now();
             junta_regra(&mut s, &VecXforms::default(), lei);
             j.push(ms(t));
+            // O mesmo teste de posto cru, sobre a folha da bancada: o resto é o preço da porta do editor.
+            let folha = c.folha();
+            let t = Instant::now();
+            let _ = a_mais(&folha, &c.regras, RegraCad::nova(lei));
+            q.push(ms(t));
             let t = Instant::now();
             let _ = estado(
                 &Folha::new(c.paths.iter().map(|p| (p, Xform::IDENTITY))),
@@ -168,10 +176,11 @@ fn the_worst_drag_step_in_the_editor() {
         }
         let f = |(m, md): (f64, f64)| format!("{m:.3} · {md:.3}");
         println!(
-            "| {nome} | {} | {} | {} | {} |",
+            "| {nome} | {} | {} | {} | {} | {} |",
             f(resumo(&mut a)),
             f(resumo(&mut b)),
             f(resumo(&mut j)),
+            f(resumo(&mut q)),
             f(resumo(&mut e))
         );
     }

@@ -28,6 +28,16 @@
 - **8** Particles/Glitter: sem oráculo, fora. **9b** Óleo Real: `ESTADO_MISSAO_W3.md` «Fila» + HANDOFF_W3b §Aberto 2–5. **10b** Só valores: Wax Crayon (F-10), Wood Stick (C-15), Blur (L-5).
 - Motor restante: azul sobre vermelho molhado (Gouache Wash/Dry/Round) · lâmina que gira (C38/L3) · partículas · ondulação (Oil Bristle) · mip das pontas (Foliage, Noise Grit). Mistura em luz linear: FORA (dono). ⚠️ Brecha `arch_color_space_typed`; Ink Brush a vigiar (p95 12,54 ms).
 
+## J6 — óleo, grão fino (`9fba4165d8` `37529e35de` `b00ee7cbdc`)
+
+`borda_suave` tratava o grão de 1 px como degrau e apagava-o; agora só suaviza borda RECTA (`ESCADA_ERRO_MAX` 0,10;
+gate `o_grao_de_um_px_sobrevive_ao_oleo`). Régua (sem óleo / antes / depois): K. Stain 336/194/322 · Dabber 4
+344/302/318 · K. Grainy 274/222/226 (`sem_entalhes` enche o grão — fila) · Metallic Flat 373/335/335. Os 5 mantêm
+ou sobem (K. Smooth 3 356 → 378). Vermelhos do óleo, motor: `cada_preset_parece_a_sua_midia` (orla Dabber 10 × 5,
+orla Oil Bristle 0,618 × 0,872) · `a_largura_e_a_prometida` (K. Smooth 3 a tamanho 2: 7 × 4 px). Regerar 10 Oil/* = 4,5 h.
+**METODOLOGIA NOVA** (dono 28/10, `REGRAS_DE_CUSTO.md`): folha do dono para os ~25 «quase» — EM CURSO; acelerar o
+exame/gerador do óleo (largura sem óleo, luz só na foto) — EM CURSO, prazo 45 min.
+
 ## J6 passo 3 — pincel a pincel (16 só por valores; 16 travados por motor; 7 sem oráculo)
 
 - Digital ✅ (`8a9703db68` `07c644af37` `c8d4ad953d`, [`exames/digital_j6.md`](exames/digital_j6.md)): C-4 Studio Pen (Hard Round 0,283) e C-6 Technical Pen (Pixel 1px 0,330) FUNDEM; K-1 Clouds curado não aprovado; motor B-6 (rampa sob o tecto), L-5 (blur puxa o papel); M-7 sem oráculo. **Cega Digital: B-7 Rough Sketch e I-12 Optical Wash curados NÃO aprovados** (Rough Sketch: o revisor tomou o NOSSO pelo pincel de fora em todas as linhas — discos nítidos onde o MyPaint tem grão de pontos e pontas rectas; Optical Wash: achado em todas as linhas, média em 2 — contorno forte e contínuo, o Krita tem franja fraca irregular). ⚠️ Biblioteca `j6_wet` incompleta (28/66) ⇒ d antigos suspeitos; usar `/tmp/claude-1000/j6_digital/biblioteca`.

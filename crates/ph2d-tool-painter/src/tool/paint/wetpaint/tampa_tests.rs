@@ -103,6 +103,9 @@ fn as_pontas_rectas_cortam_o_traco_a_direito_e_pousam_a_mesma_tinta() {
     let (redondo, tinta_r) = mede(&recto(false));
     let (rectas, tinta_q) = mede(&recto(true));
     eprintln!("curva ini·fim: redondo {redondo:.3?} · rectas {rectas:.3?}; tinta {tinta_r:.1} · {tinta_q:.1}");
+    let (q, r) = (pontas(&recto(true)), pontas(&recto(false)));
+    let alem = pontas(&recto_alem(true, 0.5));
+    eprintln!("pontas [início, fim, rampa ini, rampa fim]: rectas {q:?} · redondo {r:?} · além 0,5 {alem:?}");
     assert!(
         redondo.iter().all(|&k| k >= 0.2),
         "controlo: o redondo acaba em meia-lua ({redondo:?})"
@@ -117,9 +120,6 @@ fn as_pontas_rectas_cortam_o_traco_a_direito_e_pousam_a_mesma_tinta() {
         "o miolo pousa a tinta do redondo: {razao:.3}"
     );
     // As pontas CHEIAS até ao corte: a rampa de 10 → 90 % do miolo, ao longo do eixo.
-    let (q, r) = (pontas(&recto(true)), pontas(&recto(false)));
-    let alem = pontas(&recto_alem(true, 0.5));
-    eprintln!("pontas [início, fim, rampa ini, rampa fim]: rectas {q:?} · redondo {r:?} · além 0,5 {alem:?}");
     assert!(r[2] >= 40.0 && r[3] >= 40.0, "controlo: o redondo esmaece num raio ({r:?})");
     // O Rebelle (a mesma régua no recto de 40 da bateria, `docs/Painter/Pinceis/J6_pontas_rectas.md`): 11–35 px.
     assert!(

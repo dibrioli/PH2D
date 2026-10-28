@@ -82,3 +82,17 @@
 | W6 | Sugestões de `@`/`#` sem tecto fixo: tantas quantas cabem sob o campo (rola) | Trello lista todos num popover que rola | `w6/complete.rs` |
 | W5 | Avatares ao reconectar: véu da cor do fundo do cabeçalho por cima (sem token de opacidade novo) | um token a menos | `header/` |
 | W11 | «Convert to sticky note» na aba vai ao Quadro onde o Kanban está (o da última vez, senão o primeiro), a nota nasce à direita do Kanban; sem Quadro, aviso | nunca descartar em silêncio | `kanban_links_notes.rs` |
+
+## Smoke do dono 28/10
+
+| Onda | Decisão | Porquê | Como desfazer |
+|---|---|---|---|
+| D10 | Menu «Aa» da descrição: largura = o nome mais largo medido no próprio estilo; altura da linha = a do estilo; pintado por cima do verso inteiro com o seu próprio clique (um clique numa opção sobre o Save não grava) | estava mal formatado e cortado | diga «quero o menu como antes»; vive em `rich_editor/toolbar.rs` |
+| D12 | Capa: só imagens se anexam como capa (outro tipo só avisa); sobe-se UMA imagem por vez; «Upload a cover image» anexa e põe capa num único desfazer | o dono não via como escolher imagens | diga «quero poder subir várias» ou «anexar qualquer ficheiro» |
+| D12 | Largar uma imagem FORA do popover da capa não troca a capa que já existe; a dica diz «drop an image here» | largar sem querer não pode apagar a capa | diga «largar em qualquer lado deve trocar» |
+| D12 | A secção Attachments tem sempre título e um aviso quando está vazia; o tamanho escolhido tem aro azul (era uma caixa branca no tema escuro) | clareza | cosmético, diga o que prefere |
+| D11 | Fundo do quadro: menu «···» → «Change background» → gaveta à direita com Photos (Upload…), Colors (10 cores + 9 degradês do Trello + Custom…) e 8 padrões (Dots, Grid, Lines, Diagonal, Checks, Cross-hatch, Waves, Triangles) com cor de fundo e cor das linhas, cada uma com Custom… O mesmo fundo vale no Kanban dentro do Quadro | pedido do dono | diga «tire os padrões» ou «só cores»; cabe em `ph2d-app-kanban/src/bg/` |
+| D11 | O padrão começa azul com linhas azul-claras; trocar de padrão guarda as cores; uma cor da paleta usada nas linhas pinta o tom claro dela | não perder o que o artista escolheu | diga as cores iniciais que prefere |
+| D11 | Clicar fora da gaveta fecha-a | Trello | diga «só fecha no ×» |
+| D11 | O cabeçalho escurece sozinho para o texto branco ler (contraste ≥ 4,5:1); os botões da edição rápida (E) seguem a mesma lei | legibilidade sobre qualquer fundo | diga «não mexa no cabeçalho» |
+| D11 | Exportar para o Trello (JSON): o padrão sai como o nome da cor-base; cor livre e foto saem como «blue» | o Trello não tem padrões nem cor livre | diga «quero outra cor nessa saída» |

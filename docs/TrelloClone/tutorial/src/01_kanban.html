@@ -82,6 +82,7 @@ segundos. Para fechar, feche a janela.</div>
   <li>9 · Calendário do projeto, Planner, Inbox, Os meus cartões, notificações</li>
   <li>10 · Importar do Trello e exportar</li>
   <li>11 · Ligar cartões a objetos, scripts, macros e timeline; nota adesiva ↔ cartão</li>
+  <li>12 · Fundo do quadro: cores, gradientes, padrões e imagem</li>
   <li>No fim: o que ficou de fora · as decisões que tomámos por você · o que precisa do seu «sim»</li>
 </ul>
 
@@ -136,8 +137,16 @@ segundos. Para fechar, feche a janela.</div>
     <code class="ui">Start date</code> faz o clique seguinte escolher o início.</p>
     <p class="bad">o calendário abre fora da janela ou o dia escolhido não muda a data no cartão.</p></div>
     <div class="shot"><img src="../../smoke/W3/widgets_escuro.png"><div class="cap">o calendário, o seletor de data e o editor da descrição</div></div></li>
-  <li><div>Em <code class="ui">Description</code>, clique <code class="ui">Edit</code>, escreva,
-    use os botões <code class="ui">B</code> <code class="ui">I</code> <code class="ui">•</code>, e <code class="ui">Save</code>.
+  <li><div>Em <code class="ui">Description</code>, clique <code class="ui">Add a more detailed description…</code>
+    e escreva um texto com acentos (por exemplo <code>ação, coração, você</code>).
+    <p class="out">As letras aparecem na caixa, com os acentos certos, tecla a tecla.</p>
+    <p class="bad">nada aparece quando você digita, ou o acento some.</p></div>
+    <div class="shot"><img src="../../smoke/D10/descricao_escrita_escuro.png"><div class="cap">a descrição sendo escrita, com acentos</div></div></li>
+  <li><div>Na barra da descrição, clique <code class="ui">Aa</code>.
+    <p class="out">Abre uma lista de estilos com todos os nomes inteiros e alinhados, por cima do verso. Clicar num estilo aplica-o ao texto; clicar numa opção sobre o <code class="ui">Save</code> não grava o cartão.</p>
+    <p class="bad">a lista corta os nomes, fica por baixo de outro botão, ou o clique grava o cartão em vez de escolher o estilo.</p></div>
+    <div class="shot"><img src="../../smoke/D10/descricao_menu_aa_escuro.png"><div class="cap">o menu <code class="ui">Aa</code> aberto</div></div></li>
+  <li><div>Use os botões <code class="ui">B</code> <code class="ui">I</code> <code class="ui">•</code> e <code class="ui">Save</code>.
     Marque uma caixa da checklist. Em <code class="ui">Write a comment…</code> escreva <code>@Rui olá</code> e grave.
     <p class="out">A descrição fica formatada; a barra da checklist sobe; o comentário aparece com o nome do Rui destacado.</p>
     <p class="bad">a formatação some depois de gravar, ou a percentagem não muda.</p></div>
@@ -152,6 +161,10 @@ segundos. Para fechar, feche a janela.</div>
     <p class="out">Entra em <code class="ui">Attachments</code>; se o cartão não tinha capa, a imagem vira a capa.</p>
     <p class="bad">nada entra, ou aparece «Couldn’t read».</p></div>
     <div class="shot"><img src="../../smoke/tutorial/2_5_escuro.png"><div class="cap">a imagem largada em Attachments (este cartão já tinha capa)</div></div></li>
+  <li><div>Com o verso aberto, clique <code class="ui">Cover</code> (à direita, em <code class="ui">Add to card</code>) e depois <code class="ui">Upload a cover image</code>.
+    <p class="out">Abre uma janela que só mostra imagens. Escolha uma: ela entra em <code class="ui">Attachments</code> e vira a capa de uma vez (um só <kbd>Ctrl</kbd>+<kbd>Z</kbd> desfaz as duas coisas). Sem nenhuma imagem ainda, <code class="ui">Attachments</code> aparece com o aviso de vazio e a dica «drop an image here»; arrastar uma imagem para cima do quadro da capa também a põe como capa. O tamanho escolhido tem um aro azul.</p>
+    <p class="bad">escolher um ficheiro que não é imagem o anexa (deve só avisar), ou não aparece o botão <code class="ui">Upload a cover image</code>.</p></div>
+    <div class="shot"><img src="../../smoke/D10/capa_sem_imagens_escuro.png"><div class="cap">a capa ainda sem imagens</div><img src="../../smoke/D10/capa_com_imagens_escuro.png" style="margin-top:6px"><div class="cap">com imagens anexadas, o aro azul no tamanho escolhido</div></div></li>
 </ol>
 </div>
 
@@ -479,6 +492,39 @@ carregar <kbd>Ctrl</kbd>+<kbd>S</kbd> nele nessa sessão.</div>
 </ol>
 </div>
 
+<!-- ============================================================ 12 -->
+<div class="sec">
+<h2>12 · Fundo do quadro
+  <small>cores, gradientes, padrões de desenho e imagem — o quadro do seu jeito</small></h2>
+<div class="cmd">cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-TrelloClone &amp;&amp; PH2D_KANBAN_SMOKE=1 cargo run -p ph2d-host-desktop --profile smoke</div>
+<ol class="steps">
+  <li><div>No canto de cima à direita, clique <code class="ui">···</code> e escolha <code class="ui">Change background</code>.
+    <p class="out">Abre uma gaveta à direita com três partes: <code class="ui">Photos</code>, <code class="ui">Colors</code> e <code class="ui">Patterns</code>.</p>
+    <p class="bad">o menu não tem <code class="ui">Change background</code>, ou a gaveta abre vazia.</p></div>
+    <div class="shot"><img src="../../smoke/D11/gaveta_padrao_escuro.png"><div class="cap">a gaveta aberta</div></div></li>
+  <li><div>Em <code class="ui">Colors</code>, clique numa cor e depois num dos degradês (os quadradinhos com duas cores).
+    <p class="out">O fundo do quadro muda na hora. O cabeçalho escurece sozinho para o texto branco continuar legível.</p>
+    <p class="bad">o fundo não muda, ou o texto do cabeçalho fica difícil de ler.</p></div>
+    <div class="shot"><img src="../../smoke/D11/quadro_cor_escuro.png"><div class="cap">uma cor</div><img src="../../smoke/D11/quadro_gradiente_oceano_escuro.png" style="margin-top:6px"><div class="cap">um degradê (azul)</div></div></li>
+  <li><div>Ainda em <code class="ui">Colors</code>, clique <code class="ui">Custom…</code> e escolha qualquer cor no seletor.
+    <p class="out">O fundo fica exatamente com a cor que você escolheu.</p>
+    <p class="bad">o seletor não abre, ou a cor do fundo é outra.</p></div>
+    <div class="shot"><img src="../../smoke/D11/gaveta_cor_livre_escuro.png"><div class="cap">a cor livre</div></div></li>
+  <li><div>Em <code class="ui">Patterns</code>, clique num padrão (<code class="ui">Dots</code>, <code class="ui">Grid</code>, <code class="ui">Diagonal</code>, <code class="ui">Waves</code>…). Depois mude a cor do fundo e a cor das linhas (cada uma tem o seu <code class="ui">Custom…</code>).
+    <p class="out">O quadro ganha o desenho; ao trocar de padrão, as cores que você escolheu ficam. O padrão começa azul com linhas azul-claras.</p>
+    <p class="bad">o desenho não aparece, ou as cores voltam ao azul sempre que troca de padrão.</p></div>
+    <div class="shot"><img src="../../smoke/D11/quadro_padrao_pontos_escuro.png"><div class="cap">pontos</div><img src="../../smoke/D11/quadro_padrao_diagonal_escuro.png" style="margin-top:6px"><div class="cap">diagonal</div><img src="../../smoke/D11/quadro_padrao_ondas_escuro.png" style="margin-top:6px"><div class="cap">ondas</div></div></li>
+  <li><div>Em <code class="ui">Photos</code>, clique <code class="ui">Upload…</code> e escolha uma imagem sua. Depois clique fora da gaveta.
+    <p class="out">A imagem vira o fundo e a gaveta fecha. A lista de <code class="ui">Photos</code> mostra só as imagens que você subiu aqui.</p>
+    <p class="bad">a janela mostra outros tipos de ficheiro, ou o quadro fica azul liso em vez da imagem.</p></div>
+    <div class="shot"><img src="../../smoke/D11/gaveta_imagem_escuro.png"><div class="cap">a gaveta com a imagem</div><img src="../../smoke/D11/quadro_imagem_escuro.png" style="margin-top:6px"><div class="cap">o quadro com a imagem de fundo</div></div></li>
+  <li><div>Aperte <kbd>E</kbd> sobre um cartão (edição rápida) com o fundo escolhido.
+    <p class="out">Os botões da edição rápida também ficam legíveis sobre o fundo. O mesmo fundo aparece no Kanban dentro do Quadro (<code>PH2D_BOARD_SMOKE=30</code>).</p>
+    <p class="bad">botões com texto apagado sobre o fundo.</p></div>
+    <div class="shot"><img src="../../smoke/D11/quadro_gradiente_neve_escuro.png"><div class="cap">um fundo claro (claro): o cabeçalho escurece para o branco ler</div></div></li>
+</ol>
+</div>
+
 <!-- ============================================================ fim -->
 <div class="sec">
 <h2>O que ficou de fora</h2>
@@ -505,13 +551,14 @@ carregar <kbd>Ctrl</kbd>+<kbd>S</kbd> nele nessa sessão.</div>
   <tr><td><b>Scripts</b></td><td>nomes em inglês minúsculo (<code>add_card</code>); etiqueta que não existe é erro (não é criada); script que falha não deixa nada; nunca correm sozinhos ao abrir o projeto</td><td>«deixe criar etiquetas», etc.</td></tr>
   <tr><td><b>Planner</b></td><td>uma só aba com três modos; Inbox e blocos são só seus (não viajam ao vivo); eventos viajam; o desfazer do Planner é dele</td><td>«quero abas separadas»</td></tr>
   <tr><td><b>Importar / exportar</b></td><td>pessoas entram pelo nome de utilizador do Trello; CSV protegido contra fórmulas perigosas (o Trello não protege); anexos do PH2D saem como links e voltam iguais</td><td>«quero o CSV igual ao do Trello»</td></tr>
+  <tr><td><b>Fundo e capa</b></td><td>padrões começam azuis com linhas azul-claras e trocar de padrão guarda as cores; clicar fora fecha a gaveta; só imagens podem ser anexadas como capa (outro tipo só avisa); soltar fora do quadro da capa não troca a capa; o export do Trello grava o padrão como a cor-base</td><td>«quero que clicar fora não feche a gaveta», etc.</td></tr>
   <tr><td><b>Nota ↔ cartão</b></td><td>converter SUBSTITUI (a nota some, como no Miro); nota branca/cinza não ganha etiqueta; ligações ao projeto não entram no histórico</td><td>«quero que a nota fique»</td></tr>
 </table>
 <p style="font-size:11px;color:var(--t3)">A lista completa (66 decisões, uma linha cada) está em <code>docs/TrelloClone/loop/DECISOES_SEM_O_DONO.md</code>.</p>
 
 <h2>O que precisa do seu «sim» para entrar no programa principal</h2>
 <ul class="plain">
-  <li><b>Este teste.</b> Faça as 11 partes; diga o que falhou (o número da parte e do passo bastam).</li>
+  <li><b>Este teste.</b> Faça as 12 partes; diga o que falhou (o número da parte e do passo bastam).</li>
   <li><b>As decisões acima.</b> Silêncio = ficam como estão. «Muda» em qualquer uma = mudamos antes de juntar.</li>
   <li><b>A ordem para juntar.</b> O Kanban, o Planner e as mudanças no Quadro e no editor de scripts só entram no
     programa principal quando você disser «pode juntar».</li>

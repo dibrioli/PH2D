@@ -7,7 +7,7 @@ Leitor: o integrador e a próxima LLM. Plano [`01_plano`](../01_plano.md) · ADR
 ## 1. Base e HEAD
 
 - Branch `line/TrelloClone` (`Worktrees/line-TrelloClone`) · base = merge-base `c3662cd8e4` (main em 28/10, 0 atrás; **leia o main no ficheiro**, `collision-surface.sh` pelo caminho absoluto).
-- **HEAD `24e9b5429d`**: 119 commits desde a base, 740 ficheiros, +93 033 / −855. Árvore: só `Cargo.lock` `M` (4 linhas — `app-board`/`app-*` deixam `ph2d-app-kanban`, ganham `ph2d-kanban-scenes`; consequência do corte J7; o coordenador comita; se faltar, `cargo check` regenera).
+- **Código até `8ef6bdf648`** (smoke do dono 28/10; os commits seguintes são só docs): 126 commits desde a base, 793 ficheiros, +96 271 / −860. Árvore: só `Cargo.lock` `M` (4 linhas — `app-board`/`app-*` deixam `ph2d-app-kanban`, ganham `ph2d-kanban-scenes`; consequência do corte J7; o coordenador comita; se faltar, `cargo check` regenera).
 
 ## 2. Commits por onda (hashes = os que fecham cada lote)
 
@@ -33,6 +33,7 @@ Leitor: o integrador e a próxima LLM. Plano [`01_plano`](../01_plano.md) · ADR
 | P2 | modelo v7 (excepções das séries), `ph2d-app-planner` sem dep. de `app-kanban`; falta teste do lado Kanban de `request_open_card` (`frame.rs`) | `97f371f9de` `29427ab3c6` |
 | T1 | tutorial: fotos de 14 passos sem foto, claro e escuro, por `foto_tutorial.rs` (`#[ignore]`, a placa); PDF regenerado | `3d27f7ec45` `a3d6f888d0` |
 | D9 (defeitos das fotos) | aviso de um pedido servido (`tell`) em qualquer aba de família (editor-core); «Convert to sticky note» na aba converte no Quadro onde o Kanban está posto; botões da edição rápida opacos; pesquisa com uma só caixa; texto que explica quebra em linhas (nunca elide); `Sheet::fitted` | `f1543d91f5` `5997209547` `0374a2e155` `4dcd892367` `7ac5cf14c2` |
+| Smoke do dono 28/10 | D10 escrever no verso/filtro/automação + menu «Aa»; D12 capa por upload; D11 fundo do quadro (`KanbanSet` v8, `PROTOCOL` 15) | `6739befe3b` `8ef6bdf648` |
 | fmt/clippy | `cargo fmt` nas crates tocadas; clippy `--all-targets` pela raiz (código morto apagado, aliases, args agrupados), LIMPO na linha toda | `91e1ddad42` `96ffa55c9b` `d871ad7f54` `078c731a74` `61488e56c3` |
 
 ## 3. Crates NOVAS — 16
@@ -46,9 +47,9 @@ Leitor: o integrador e a próxima LLM. Plano [`01_plano`](../01_plano.md) · ADR
 | Item | Base `c3662cd8e4` | Linha (HEAD) | Nota |
 |---|---|---|---|
 | `PROJECT_SCHEMA` (`shells/desktop/src/project_schema.rs:499`) | 193 | **194** | `kanbans` no fim do `ProjectFile` (`da655e8075`). O main está em 193 → **reconte**: `python3 scripts/schema-recount.py <valor no main>` (exige o argumento) |
-| `KanbanSet` `FORMAT_VERSION` (`ph2d-kanban-model/src/set.rs:19`) | — (novo) | **7** | v2 C · v3 F · v4 U · v5 P · v6 K · v7 P2 (excepções das séries). Antigas leem-se por degrau com fixture |
+| `KanbanSet` `FORMAT_VERSION` (`ph2d-kanban-model/src/set.rs:19`) | — (novo) | **8** | v2 C · v3 F · v4 U · v5 P · v6 K · v7 P2 (excepções das séries) · v8 D11 (`Background` do Kanban, `background.rs`; fixtures v7 e v8). Antigas leem-se por degrau com fixture |
 | Quadro `FORMAT_VERSION` (`ph2d-board-model/src/board.rs:28`) | 17 | **19** | 18 = `ElementKind::Kanban` (bytes do 17 = os do 18 sem a variante); 19 = rolagem por lista na vista do elemento |
-| `PROTOCOL` (`ph2d-board-sync/src/session.rs:27`) | 11 | **14** | J7 comitado (`9bba7079d4`/`c3b7fa1ba5`). Outras linhas do Quadro/MiroClone também o sobem → CONTAR |
+| `PROTOCOL` (`ph2d-board-sync/src/session.rs:27`) | 11 | **15** | 14 = J7 (`9bba7079d4`/`c3b7fa1ba5`); 15 = D11 (`8ef6bdf648`, o fundo viaja na sala). Outras linhas do Quadro/MiroClone também o sobem → CONTAR |
 | Contratos §6 (`NodeOp`, `Tool`…) | — | intactos | nenhum gate `architecture_*_contract_surface` tocado |
 
 ## 5. Tokens, i18n, dependências
@@ -81,9 +82,16 @@ O que um merge pode partir:
 - **Portões**: UI/arquitectura 25/25 verdes por nome depois do J7 (reconfirme na suíte). Nenhum vermelho conhecido.
 - **Docs**: decisões de PRODUTO tomadas sem o dono (para rever no smoke): [`DECISOES_SEM_O_DONO.md`](../loop/DECISOES_SEM_O_DONO.md). Medições (`MAX_*` e tectos): [`MEDICOES.md`](../loop/MEDICOES.md).
 
+## 7b. Smoke do dono 28/10 (`6739befe3b`, `8ef6bdf648`) — mecanismo em [SMOKE_DONO_2026-10-28_D10_a_D12.md](SMOKE_DONO_2026-10-28_D10_a_D12.md)
+
+- **D10**: o teclado era engolido (o verso, o filtro e a automação respondiam «tomada» à tecla morta); a Mesa agora passa pela composição como a shell (`escrever_no_verso.rs`; mutação: 4+3+2 vermelhos). Menu «Aa» medido e por cima.
+- **D12**: capa por upload («Upload a cover image»), Attachments com estado vazio, largar imagem = capa (`verso_capa.rs`).
+- **D11**: fundo do quadro (cores, degradês, 8 padrões, imagem; `bg/`, `background.rs`, `kanban_bg.rs`; `d11_fundo.rs`, `d11_fotos.rs`); `KanbanSet` v8, `PROTOCOL` 15.
+- Merge pode partir: esses dois números; `ph2d-i18n/src/kanban{,_back}.rs`; `ph2d-board-render/src/lib.rs`; `export_json.rs`.
+
 ## 8. Prova de fecho e smokes
 
-Verdes por nome (ver `ESTADO.md`): seam tests do hero (`ph2d-app-kanban/tests/it/`, `j7_porta.rs`), modelo (degraus v1→v7 com fixture), `ph2d-kanban-sync` `loopback::two_processes_converge_*` (127.0.0.1), gate das duas janelas (`2603d3023c`), tokens (contraste por par), catraca. Fotos `docs/TrelloClone/smoke/W2..W10/`. Tutorial do smoke final: `docs/TrelloClone/tutorial/01_kanban.pdf` (regenerado em `a3d6f888d0`); faltam as fotos 8.2/9.8 (cenas `PH2D_CODE_SMOKE=10`, `PH2D_PLANNER_SMOKE=1`) e a parte 6; a foto `cena30_aba` perdeu-se no J7.
+Verdes por nome (ver `ESTADO.md`): seam tests do hero (`ph2d-app-kanban/tests/it/`, `j7_porta.rs`), modelo (degraus v1→v7 com fixture), `ph2d-kanban-sync` `loopback::two_processes_converge_*` (127.0.0.1), gate das duas janelas (`2603d3023c`), tokens (contraste por par), catraca. Fotos `docs/TrelloClone/smoke/W2..W10/`. Tutorial do smoke final: `docs/TrelloClone/tutorial/01_kanban.pdf` (27 páginas, 12 partes; regenerado depois do D10–D12: parte 2 com descrição/«Aa»/capa e parte 12 «Fundo do quadro»); as fotos 8.2/9.8 e a parte 6 entraram em `9bd14fa500`; a foto `cena30_aba` perdeu-se no J7.
 
 Smokes (o `cd` inteiro):
 1. `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-TrelloClone && PH2D_KANBAN_SMOKE=1 cargo run -p ph2d-host-desktop --profile smoke` (trocar 1 por 2..9).
@@ -105,8 +113,9 @@ Errado = tela vazia, cartão sem título, ou o quadro vazio ao abrir um projecto
 - P2: teste do lado Kanban de `request_open_card` (`frame.rs`).
 - W4: desfazer «inserir Kanban» deixa o documento vazio órfão (decidir); `board_nav.rs` = 700 linhas (no tecto). Menores: tracking das maiúsculas nos títulos; `back/dates.rs` → `datepick.rs` das views; gancho `front::cover::pending()`.
 - Revisor final por fazer; `rm -rf target/*/incremental` e `agent-loop-profile.sh` ao fechar.
+- D11: «Photos» lista só as imagens subidas, não as do projeto; a reserva do canvas sem a família Kanban pinta azul liso para fundo de imagem (nunca no app real). Ver [`BLOQUEIOS.md`](../loop/BLOQUEIOS.md).
 - Smoke FINAL do dono: do PDF; [decisões sem o dono](../loop/DECISOES_SEM_O_DONO.md) por rever.
 
 ## Entrada §5.1 proposta (≤ 700 bytes; o integrador aplica)
 
-- **Kanban (TrelloClone)** — o Kanban é um documento do projeto ([ADR-0195](docs/architecture/decisions/0195-o-kanban-e-um-documento-do-projeto-o-quadro-referencia-o-e-a-aba-abre-o.md)): aba como no Trello (verso, vistas, filtro, Butler, `ph2d.kanban` Luau), o mesmo no canvas do Quadro, ao vivo, import do Trello, Planner; `ph2d-kanban-*` + `ph2d-app-kanban`/`-planner`. Smoke `PH2D_KANBAN_SMOKE=1..9` · `PH2D_BOARD_SMOKE=30`; tutorial em PDF (`docs/TrelloClone/tutorial/01_kanban.pdf`). Último: [W2b–W11, 28/10](docs/TrelloClone/handoffs/HANDOFF_INTEGRACAO_line_TrelloClone_2026-10-28_W2b_a_W11.md) · [plano](docs/TrelloClone/01_plano.md) · [docs](docs/TrelloClone/README.md)
+- **Kanban (TrelloClone)** — o Kanban é um documento do projeto ([ADR-0195](docs/architecture/decisions/0195-o-kanban-e-um-documento-do-projeto-o-quadro-referencia-o-e-a-aba-abre-o.md)): aba como no Trello (verso, vistas, fundo e padrões, Butler, `ph2d.kanban` Luau), o mesmo no Quadro, ao vivo, import do Trello, Planner; `ph2d-kanban-*` + `ph2d-app-kanban`/`-planner`. Smoke `PH2D_KANBAN_SMOKE=1..9` · `PH2D_BOARD_SMOKE=30`; tutorial PDF. Último: [W2b–W11, 28/10](docs/TrelloClone/handoffs/HANDOFF_INTEGRACAO_line_TrelloClone_2026-10-28_W2b_a_W11.md) · [plano](docs/TrelloClone/01_plano.md) · [docs](docs/TrelloClone/README.md)

@@ -10,9 +10,9 @@ use crate::activity::Activity;
 use crate::color::Hue;
 use crate::files::FileId;
 use crate::records::{
-    ActivityId, Attachment, AttachmentId, Card, CardId, CheckItem, CheckItemId, Checklist,
-    ChecklistId, Comment, CommentId, FieldDef, FieldId, KanbanId, Label, LabelId, List, ListId,
-    Member, Mirror, MirrorId,
+    ActivityId, Attachment, AttachmentId, Automation, AutomationId, Card, CardId, CheckItem,
+    CheckItemId, Checklist, ChecklistId, Comment, CommentId, FieldDef, FieldId, KanbanId, Label,
+    LabelId, List, ListId, Member, Mirror, MirrorId,
 };
 
 /// O envelhecimento dos cartões parados (v3, o Power-Up «Card Aging»): como a frente o pinta.
@@ -67,6 +67,8 @@ pub struct Kanban {
     pub activities: BTreeMap<ActivityId, Activity>,
     /// Os espelhos MOSTRADOS neste Kanban (v3; o original pode ser de outro).
     pub mirrors: BTreeMap<MirrorId, Mirror>,
+    /// As automações do Kanban (v4): regras, botões e comandos, pela ordem `pos`.
+    pub automations: BTreeMap<AutomationId, Automation>,
 }
 
 impl Kanban {
@@ -94,6 +96,7 @@ impl Kanban {
             next_id: 0,
             activities: BTreeMap::new(),
             mirrors: BTreeMap::new(),
+            automations: BTreeMap::new(),
         }
     }
 

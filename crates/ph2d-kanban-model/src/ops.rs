@@ -8,9 +8,9 @@ use serde::{Deserialize, Serialize};
 use crate::activity::Activity;
 use crate::kanban::{Header, Kanban};
 use crate::records::{
-    ActivityId, Attachment, AttachmentId, Card, CardId, CheckItem, CheckItemId, Checklist,
-    ChecklistId, Comment, CommentId, FieldDef, FieldId, Label, LabelId, List, ListId, Meta, Mirror,
-    MirrorId,
+    ActivityId, Attachment, AttachmentId, Automation, AutomationId, Card, CardId, CheckItem,
+    CheckItemId, Checklist, ChecklistId, Comment, CommentId, FieldDef, FieldId, Label, LabelId,
+    List, ListId, Meta, Mirror, MirrorId,
 };
 
 /// Um registo inteiro, de qualquer tabela.
@@ -28,6 +28,8 @@ pub enum Record {
     Activity(Activity),
     /// v3 — um cartão espelho.
     Mirror(Mirror),
+    /// v4 — uma automação.
+    Automation(Automation),
 }
 
 /// A chave de um registo, de qualquer tabela.
@@ -43,6 +45,7 @@ pub enum RecordId {
     Field(FieldId),
     Activity(ActivityId),
     Mirror(MirrorId),
+    Automation(AutomationId),
 }
 
 /// Uma mudança num Kanban.
@@ -108,6 +111,7 @@ rec!(Attachment, AttachmentId, attachments, Attachment);
 rec!(FieldDef, FieldId, fields, Field);
 rec!(Activity, ActivityId, activities, Activity);
 rec!(Mirror, MirrorId, mirrors, Mirror);
+rec!(Automation, AutomationId, automations, Automation);
 
 /// O bit dos ids sorteados numa sessão ao vivo (W5) — esses não sobem o contador local.
 const SESSION_ID_BIT: u64 = 1 << 63;
@@ -170,6 +174,7 @@ impl KanbanOp {
                 Record::Field(r) => put(k, r),
                 Record::Activity(r) => put(k, r),
                 Record::Mirror(r) => put(k, r),
+                Record::Automation(r) => put(k, r),
             },
             KanbanOp::Delete(id) => match id {
                 RecordId::List(id) => delete::<List>(k, id),
@@ -182,6 +187,7 @@ impl KanbanOp {
                 RecordId::Field(id) => delete::<FieldDef>(k, id),
                 RecordId::Activity(id) => delete::<Activity>(k, id),
                 RecordId::Mirror(id) => delete::<Mirror>(k, id),
+                RecordId::Automation(id) => delete::<Automation>(k, id),
             },
             KanbanOp::Header(mut h) => {
                 let mut prev = k.header.clone();
@@ -223,6 +229,7 @@ impl Record {
             Record::Field(r) => RecordId::Field(r.id),
             Record::Activity(r) => RecordId::Activity(r.id),
             Record::Mirror(r) => RecordId::Mirror(r.id),
+            Record::Automation(r) => RecordId::Automation(r.id),
         }
     }
 
@@ -238,6 +245,7 @@ impl Record {
             Record::Field(r) => &mut r.meta,
             Record::Activity(r) => &mut r.meta,
             Record::Mirror(r) => &mut r.meta,
+            Record::Automation(r) => &mut r.meta,
         }
     }
 
@@ -268,6 +276,7 @@ impl Kanban {
             RecordId::Field(id) => self.fields.get(&id).cloned().map(Record::Field),
             RecordId::Activity(id) => self.activities.get(&id).cloned().map(Record::Activity),
             RecordId::Mirror(id) => self.mirrors.get(&id).cloned().map(Record::Mirror),
+            RecordId::Automation(id) => self.automations.get(&id).cloned().map(Record::Automation),
         }
     }
 }

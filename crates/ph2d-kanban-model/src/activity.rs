@@ -194,7 +194,8 @@ fn record(b: Option<&Record>, a: &Record, k: &Kanban, out: &mut Vec<(Subject, Ha
         | Record::Comment(_)
         | Record::Field(_)
         | Record::Activity(_)
-        | Record::Mirror(_) => {}
+        | Record::Mirror(_)
+        | Record::Automation(_) => {}
     }
 }
 
@@ -210,6 +211,7 @@ fn meta(r: &Record) -> Meta {
         Record::Field(r) => r.meta,
         Record::Activity(r) => r.meta,
         Record::Mirror(r) => r.meta,
+        Record::Automation(r) => r.meta,
     }
 }
 

@@ -301,8 +301,8 @@ fn v2_bytes_read_as_v3_equal() {
     assert_eq!(again, back, "e, regravado em v3, continua igual");
 }
 
-#[test]
-fn the_v3_bytes_round_trip_templates_aging_and_mirrors() {
+/// O v2 cheio mais o que o v3 trouxe: um modelo, o envelhecimento e um espelho noutro Kanban.
+fn full_v3() -> (KanbanSet, crate::CardRef) {
     let (mut set, _, _) = full_v2();
     let id = set.iter().next().unwrap().id;
     let other = set.create("Outro");
@@ -331,8 +331,15 @@ fn the_v3_bytes_round_trip_templates_aging_and_mirrors() {
     for (k, ops) in plan.into_steps() {
         set.apply(k, ops);
     }
+    (set, of)
+}
+
+#[test]
+fn the_v3_bytes_round_trip_templates_aging_and_mirrors() {
+    let (set, of) = full_v3();
+    let id = of.kanban;
     let bytes = set.to_bytes().unwrap();
-    assert_eq!(postcard::take_from_bytes::<u32>(&bytes).unwrap().0, 3);
+    assert!(postcard::take_from_bytes::<u32>(&bytes).unwrap().0 >= 3);
     let back = KanbanSet::from_bytes(&bytes).unwrap();
     assert!(back.iter().eq(set.iter()), "os Kanbans voltam iguais");
     assert_eq!(back.mirrors_of(of).len(), 1);
@@ -341,4 +348,53 @@ fn the_v3_bytes_round_trip_templates_aging_and_mirrors() {
         Some(crate::Aging::Pirate)
     );
     assert!(back.card(of).unwrap().template);
+}
+
+/// A fixture gravada pelo código v3 (cabeçalho `#`, depois hex).
+fn v3_fixture() -> Vec<u8> {
+    let text = include_str!("../tests/fixtures/kanban_set_v3_full.hex");
+    let hex: String = text.lines().filter(|l| !l.starts_with('#')).collect();
+    (0..hex.len())
+        .step_by(2)
+        .map(|i| u8::from_str_radix(&hex[i..i + 2], 16).unwrap())
+        .collect()
+}
+
+#[test]
+fn v3_bytes_read_as_v4_equal() {
+    let bytes = v3_fixture();
+    assert_eq!(postcard::take_from_bytes::<u32>(&bytes).unwrap().0, 3);
+    let back = KanbanSet::from_bytes(&bytes).unwrap();
+    let (today, _) = full_v3();
+    assert!(
+        back.iter().eq(today.iter()),
+        "o degrau v3 → v4 dá os mesmos Kanbans que o código de hoje monta"
+    );
+    assert!(back.iter().all(|k| k.automations.is_empty()));
+    let again = KanbanSet::from_bytes(&back.to_bytes().unwrap()).unwrap();
+    assert_eq!(again, back, "e, regravado em v4, continua igual");
+}
+
+#[test]
+fn the_v4_bytes_round_trip_automations_and_their_last_run() {
+    let (mut set, of) = full_v3();
+    let k = set.doc_mut(of.kanban).unwrap();
+    let a = crate::Automation {
+        id: crate::AutomationId(k.mint()),
+        pos: FracKey::between(None, None),
+        body: vec![7, 1, 2],
+        last_run: Some(Moment(1_000)),
+        meta: Meta::default(),
+    };
+    put(k, KanbanOp::put(Record::Automation(a.clone())));
+    let bytes = set.to_bytes().unwrap();
+    assert_eq!(postcard::take_from_bytes::<u32>(&bytes).unwrap().0, 4);
+    let back = KanbanSet::from_bytes(&bytes).unwrap();
+    assert!(back.iter().eq(set.iter()));
+    let got = &back.get(of.kanban).unwrap().automations[&a.id];
+    assert_eq!(
+        (got.body.as_slice(), got.last_run),
+        (a.body.as_slice(), a.last_run)
+    );
+    assert!(!Member::butler().0.is_empty() && Member::butler().is_butler());
 }

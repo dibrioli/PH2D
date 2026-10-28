@@ -27,6 +27,7 @@ mod test_support;
 mod transfer;
 mod v1;
 mod v2;
+mod v3;
 mod view;
 
 pub use activity::{Activity, Actor, Happened, Snapshot, Subject, activity_for, apply_logged};
@@ -41,10 +42,10 @@ pub use ops::{KanbanOp, Record, RecordId, apply_batch};
 pub use ph2d_frac::FracKey;
 pub use plan::{ListRef, Place, Plan};
 pub use records::{
-    ActivityId, Attachment, AttachmentId, Card, CardId, CardRef, CheckItem, CheckItemId, Checklist,
-    ChecklistId, Comment, CommentId, Cover, CoverFill, Due, FieldDef, FieldId, FieldKind,
-    FieldOption, FieldValue, KanbanId, Label, LabelId, Link, List, ListId, Member, Meta, Mirror,
-    MirrorId, Moment, OptionId, Reaction,
+    ActivityId, Attachment, AttachmentId, Automation, AutomationId, Card, CardId, CardRef,
+    CheckItem, CheckItemId, Checklist, ChecklistId, Comment, CommentId, Cover, CoverFill, Due,
+    FieldDef, FieldId, FieldKind, FieldOption, FieldValue, KanbanId, Label, LabelId, Link, List,
+    ListId, Member, Meta, Mirror, MirrorId, Moment, OptionId, Reaction,
 };
 pub use set::{FORMAT_VERSION, KanbanSet};
 pub use transfer::{CopyKeep, card_from_template, copy_card, move_card, move_mirror};

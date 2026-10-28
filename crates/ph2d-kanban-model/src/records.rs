@@ -35,6 +35,8 @@ ids! {
     ActivityId,
     /// Um cartão espelho (v3).
     MirrorId,
+    /// Uma automação (v4).
+    AutomationId,
 }
 
 /// Um instante: milissegundos desde 1970-01-01 UTC. Valor NEUTRO — fusos, «hoje», «atrasado» e
@@ -46,6 +48,23 @@ pub struct Moment(pub i64);
 /// menções e votos atravessarem os dois documentos sem tradução.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct Member(pub String);
+
+/// O nome reservado do autor das automações (o «Butler» do Trello), com o prefixo `ph2d:` que
+/// nenhum nome da Equipa leva; a UI mostra-o pelo nome traduzido.
+const BUTLER: &str = "ph2d:butler";
+
+impl Member {
+    /// O autor das automações: as acções delas aparecem na atividade em nome dele.
+    #[must_use]
+    pub fn butler() -> Self {
+        Self(BUTLER.to_owned())
+    }
+
+    #[must_use]
+    pub fn is_butler(&self) -> bool {
+        self.0 == BUTLER
+    }
+}
 
 /// O que a colaboração ao vivo pede a cada registo (o molde do `Element` do Quadro, ADR-0181).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -285,5 +304,20 @@ pub struct FieldDef {
     /// Mostrar na frente do cartão.
     pub on_front: bool,
     pub pos: FracKey,
+    pub meta: Meta,
+}
+
+/// Uma automação do Kanban (v4): regra, botão ou comando. O CORPO é opaco aqui — a linguagem das
+/// automações vive em `ph2d-kanban-auto`, com versão própria, porque as condições dela são as do
+/// filtro (que depende deste modelo). O documento só garante que viaja, se ordena e se desfaz.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Automation {
+    pub id: AutomationId,
+    pub pos: FracKey,
+    /// Os bytes da automação (`ph2d_kanban_auto::Spec`).
+    pub body: Vec<u8>,
+    /// O último instante agendado já corrido (comandos de calendário e de prazo): reabrir o
+    /// projecto não volta a correr o que já correu.
+    pub last_run: Option<Moment>,
     pub meta: Meta,
 }

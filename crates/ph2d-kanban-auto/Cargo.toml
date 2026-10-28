@@ -1,0 +1,25 @@
+[package]
+name = "ph2d-kanban-auto"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+[dependencies]
+# O Butler do Kanban (W8) — PURO: regras, botões, comandos agendados e o executor determinístico.
+# Sem ECS, sem relógio próprio, sem texto (as frases saem em partes para a i18n).
+ph2d-kanban-model = { path = "../ph2d-kanban-model" }
+ph2d-kanban-filter = { path = "../ph2d-kanban-filter" }
+ph2d-kanban-dates = { path = "../ph2d-kanban-dates" }
+serde = { version = "1", features = ["derive"] }
+postcard = { version = "1", features = ["alloc"] }
+
+[dev-dependencies]
+postcard = { version = "1", features = ["alloc"] }
+
+[lints]
+workspace = true

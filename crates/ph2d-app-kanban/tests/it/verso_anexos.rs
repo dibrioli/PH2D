@@ -187,7 +187,10 @@ fn verso_abre_links_no_navegador_e_copia_o_link_do_cartao() {
     let mut w = Mundo::default();
     ph2d_app_kanban::service_with(&mut m.hero, &mut w);
     assert_eq!(w.aberto, vec![u], "o link vai ao navegador do sistema");
-    assert!(m.docs().probe_back_outbox(id.0).0.is_empty(), "e sai da fila");
+    assert!(
+        m.docs().probe_back_outbox(id.0).0.is_empty(),
+        "e sai da fila"
+    );
     toca(&mut m, id, "Side(Share)");
     toca(&mut m, id, "Pop(CopyLink)");
     ph2d_app_kanban::service_with(&mut m.hero, &mut w);
@@ -223,12 +226,13 @@ fn verso_duplo_e_triplo_clique_e_shift_estendem_a_seleccao_da_descricao() {
     let (mut m, id, _) = abre("Write the logline");
     toca(&mut m, id, "DescEdit");
     let r = alvo(&mut m, id, "DescArea");
-    let (md, xs) = (
-        ph2d_tokens::Spacing::Md.px(),
-        ph2d_tokens::Spacing::Xs.px(),
-    );
+    let (md, xs) = (ph2d_tokens::Spacing::Md.px(), ph2d_tokens::Spacing::Xs.px());
     let inicio = (r.x + md + 3.0, r.y + xs + ph2d_tokens::ROW_H_PX + md + 6.0);
-    let sel = |m: &mut Mesa| m.docs().probe_back_selection(id.0, true).unwrap_or_default();
+    let sel = |m: &mut Mesa| {
+        m.docs()
+            .probe_back_selection(id.0, true)
+            .unwrap_or_default()
+    };
     clique(&mut m, inicio, sem());
     assert_eq!(sel(&mut m), "");
     clique(&mut m, inicio, sem());
@@ -257,7 +261,10 @@ fn verso_as_datas_mudadas_no_verso_chegam_a_frente() {
     let (mut m, id, c) = abre("Write the logline");
     m.docs().probe_arm_fronts();
     m.quadro();
-    let antes = m.docs().probe_painted_front("Write the logline").expect("pintada");
+    let antes = m
+        .docs()
+        .probe_painted_front("Write the logline")
+        .expect("pintada");
     assert_eq!(antes.3, None, "sem datas");
     assert!(m.tecla(BoardKey::Char('d'), sem(), Some("d")));
     m.quadro();
@@ -268,10 +275,55 @@ fn verso_as_datas_mudadas_no_verso_chegam_a_frente() {
     let save = DatePickerLayout::of(alvo(&mut m, id, "Pop(Picker)")).save;
     m.clica((save.x + save.w / 2.0, save.y + save.h / 2.0));
     assert!(m.kanban(id).cards[&c].due.is_some(), "o documento mudou");
-    let depois = m.docs().probe_painted_front("Write the logline").expect("pintada");
-    assert!(depois.3.is_some(), "a frente releu a entrega no quadro seguinte");
+    let depois = m
+        .docs()
+        .probe_painted_front("Write the logline")
+        .expect("pintada");
+    assert!(
+        depois.3.is_some(),
+        "a frente releu a entrega no quadro seguinte"
+    );
     m.tecla(BoardKey::Escape, sem(), None);
     m.quadro();
-    let fechado = m.docs().probe_painted_front("Write the logline").expect("pintada");
+    let fechado = m
+        .docs()
+        .probe_painted_front("Write the logline")
+        .expect("pintada");
     assert_eq!(fechado.3, depois.3, "e fica com o verso fechado");
+}
+
+/// ⭐ Um ficheiro GRANDE (acima do meio quadro medido, `MEDICOES.md` §W3 E) lê-se num fio: o pedido
+/// serve-se sem o anexo, e ele entra num quadro seguinte, inteiro e com um passo de desfazer.
+#[test]
+fn verso_le_o_ficheiro_grande_num_fio_e_anexa_o_depois() {
+    let (mut m, id, c) = abre("Write the logline");
+    toca(&mut m, id, "Side(Attachment)");
+    toca(&mut m, id, "Pop(PickFile)");
+    let grande: Vec<u8> = (0..(9u32 << 20)).map(|i| (i % 251) as u8).collect();
+    let mut w = Mundo {
+        escolha: Some(vec![ficheiro("grande", "take.mov", &grande)]),
+        ..Mundo::default()
+    };
+    ph2d_app_kanban::service_with(&mut m.hero, &mut w);
+    let inicio = std::time::Instant::now();
+    while anexos(&m, id, c).is_empty() {
+        assert!(
+            inicio.elapsed().as_secs() < 30,
+            "o fio nunca entregou o ficheiro"
+        );
+        std::thread::yield_now();
+        ph2d_app_kanban::service_with(&mut m.hero, &mut w);
+    }
+    let v = anexos(&m, id, c);
+    assert_eq!(v.len(), 1);
+    assert_eq!(v[0].name, "take.mov");
+    let Link::File(f) = v[0].link else {
+        panic!("um anexo de ficheiro: {:?}", v[0].link)
+    };
+    assert_eq!(
+        m.hero.documents.kanbans().file(f).map(|k| k.bytes.0.len()),
+        Some(grande.len())
+    );
+    m.desfaz();
+    assert!(anexos(&m, id, c).is_empty(), "um passo de desfazer");
 }

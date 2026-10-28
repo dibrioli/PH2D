@@ -26,8 +26,8 @@ pub trait World {
     fn open(&mut self, target: &str) -> bool;
 }
 
-/// O mundo real: o `rfd` pela porta dos diálogos modais (que declara o congelamento) e o
-/// `xdg-open`/`open`/`explorer`.
+/// O mundo real: o `rfd` pela porta dos diálogos modais (que declara o congelamento) e a porta
+/// única de abrir fora (`ph2d_app_host::open`: links da web; ficheiros só do temporário).
 pub struct System;
 
 impl World for System {
@@ -37,26 +37,12 @@ impl World for System {
     }
 
     fn open(&mut self, target: &str) -> bool {
-        let opener = if cfg!(target_os = "macos") {
-            "open"
-        } else if cfg!(windows) {
-            "explorer"
+        use ph2d_app_host::open::{is_web_link, open_link, open_temp_file};
+        if is_web_link(target) {
+            open_link(target)
         } else {
-            "xdg-open"
-        };
-        let child = std::process::Command::new(opener)
-            .arg(target)
-            .stdin(std::process::Stdio::null())
-            .stdout(std::process::Stdio::null())
-            .stderr(std::process::Stdio::null())
-            .spawn();
-        // Esperado num fio: um filho largado sem `wait` fica zombie até o PH2D sair.
-        child.is_ok_and(|mut c| {
-            std::thread::spawn(move || {
-                let _ = c.wait();
-            });
-            true
-        })
+            open_temp_file(Path::new(target))
+        }
     }
 }
 
@@ -72,9 +58,7 @@ pub struct Served {
 #[must_use]
 pub fn web_link(u: &str) -> Option<String> {
     let u = u.trim();
-    let lower = u.to_ascii_lowercase();
-    if lower.starts_with("https://") || lower.starts_with("http://") || lower.starts_with("mailto:")
-    {
+    if ph2d_app_host::open::is_web_link(u) {
         return Some(u.to_owned());
     }
     let scheme = u.split_once(':').map(|(s, _)| s);
@@ -104,6 +88,7 @@ impl KanbanDocs {
     /// ⭐ Serve a fila de TODAS as abas por `world`: o diálogo pedido anexa o que se escolheu ao
     /// cartão do verso, os links abrem-se, os anexos de ficheiro abrem-se de uma cópia temporária.
     pub fn serve(&mut self, world: &mut dyn World) -> Served {
+        super::attach::arrived(self);
         let mut out = Served {
             notices: std::mem::take(&mut self.notices),
             ..Served::default()
@@ -154,7 +139,10 @@ mod tests {
     fn only_web_links_open_and_a_bare_host_gets_https() {
         assert_eq!(web_link("https://a.b/c").as_deref(), Some("https://a.b/c"));
         assert_eq!(web_link("mailto:x@y.z").as_deref(), Some("mailto:x@y.z"));
-        assert_eq!(web_link("example.com/x").as_deref(), Some("https://example.com/x"));
+        assert_eq!(
+            web_link("example.com/x").as_deref(),
+            Some("https://example.com/x")
+        );
         assert_eq!(web_link("localhost:8080").as_deref(), None);
         assert_eq!(web_link("javascript:alert(1)"), None);
         assert_eq!(web_link("file:///etc/passwd"), None);

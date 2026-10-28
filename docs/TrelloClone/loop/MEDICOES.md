@@ -98,3 +98,35 @@ Com o elemento de nascença (677×381) a forma é a mesma: Baixo ~2,95 · Médio
   **~1,1 ms por Kanban grande** à vista (de longe cabem muitos); o Baixo não dispõe os 2 000 cartões.
 - O Baixo é legível de longe: o nome e os títulos de lista nunca encolhem abaixo de `TypeToken::Xs` no
   ecrã, e a contagem desce para a linha de baixo (a maquete `Canvas.dc.html`, «the lists at a glance»).
+
+## §W3 E — o tecto de tamanho por anexo (28/10)
+
+Sonda `back::attach::tests::sonda_tecto_do_anexo` (`#[ignore]`; `cargo test --profile smoke -p ph2d-app-kanban
+--lib sonda_tecto_do_anexo -- --ignored --nocapture`): bytes pseudo-aleatórios (não-imagem) no NVMe do repo, o
+caminho REAL (`fs::read` → `image_size` → `KanbanSet::put_file` (sha-256 + cópia `Vec`→`Arc`) →
+`KanbanSet::to_bytes` → cópia para o `ProjectFile` → gravar + `fsync` → abrir), 3 rondas intercaladas, o
+MÍNIMO. ⚠️ `loadavg` 32 (máquina partilhada) e a leitura vem da cache de páginas (o ficheiro acabou de ser
+escrito): disco frio lê mais devagar.
+
+| tamanho | ler | image_size | put_file | to_bytes | cópia ProjectFile | gravar+fsync | abrir |
+|---|---|---|---|---|---|---|---|
+| 1 MB | 0,1 ms | 0,0 | 0,4 | 0,0 | 0,0 | 11,7 | 0,1 |
+| 10 MB | 0,9 | 0,0 | 4,2 | 1,4 | 0,4 | 6,8 | 2,6 |
+| 100 MB | 20,7 | 0,0 | 58,7 | 16,1 | 17,0 | 37,4 | 39,7 |
+| 500 MB | 103,8 | 0,0 | 290,3 | 94,5 | 78,4 | 158,3 | 169,2 |
+
+**Leitura:** tudo é linear, ~0,2 ms/MB a ler e ~0,6 ms/MB no `put_file` (o sha-256 é a maior parte). Nada
+falha: o recurso que acaba é a **RAM** — o ficheiro vive uma vez no conjunto (`Arc`, o desfazer não o copia),
+e o Ctrl+S faz mais DUAS cópias transitórias (`to_bytes` + o `ProjectFile`): pico ≈ 3× o anexo. O Trello
+(10 MB grátis / 250 MB pagos) é limite COMERCIAL do servidor dele; não se copia.
+
+**Decisão (padrão-ouro, sem tecto de tamanho):**
+- Até **8 MB** lê-se na hora (ler + `put_file` ≈ 0,8 ms/MB ⇒ ≈ meio quadro de 16,7 ms); acima, **num fio**
+  (`attach::read_later`): ler e `image_size` saem do fio da janela, o anexo entra num quadro seguinte com o
+  seu passo de desfazer (`verso_le_o_ficheiro_grande_num_fio_e_anexa_o_depois`).
+- ⚠️ **Fica no fio da janela o sha-256** (~0,4 ms/MB: ~200 ms a 500 MB) — o `KanbanSet` só aceita bytes e
+  calcula a chave ele mesmo. Cura: `KanbanSet::put_file_keyed(FileId, Arc<[u8]>, size)` no modelo, com a
+  chave calculada no fio (modelo é de outro agente; trecho entregue ao coordenador).
+- ⚠️ **O Ctrl+S re-grava tudo** (500 MB ≈ 0,33 s de `to_bytes`+cópia+gravar no fio da janela, por gravação).
+  Anexos por REFERÊNCIA (fora do `.ph2dproj`) partiriam o projecto que viaja inteiro — decisão de produto,
+  não tomada; o save em fundo é da shell inteira, não do Kanban.

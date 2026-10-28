@@ -6,7 +6,10 @@ use super::write;
 use crate::docs::KanbanDocs;
 use ph2d_i18n::tr_with;
 use ph2d_kanban_model::CardId;
+use std::cell::RefCell;
 use std::path::PathBuf;
+use std::sync::Arc;
+use std::sync::mpsc::{Receiver, Sender, channel};
 
 /// O tamanho natural de uma imagem: o do CABEÇALHO (sem descodificar os píxeis); sem cabeçalho que
 /// o `image` leia (TIFF, PSD, ORA…), a porta da cena descodifica. `None` = não é imagem.
@@ -55,12 +58,24 @@ pub(crate) fn attach_bytes(
     card: CardId,
     files: Vec<(String, Vec<u8>)>,
 ) -> usize {
+    let files = files.into_iter().map(|(name, b)| {
+        let size = image_size(&b);
+        (name, Arc::from(b), size)
+    });
+    attach_ready(docs, id, card, files)
+}
+
+fn attach_ready(
+    docs: &mut KanbanDocs,
+    id: u64,
+    card: CardId,
+    files: impl IntoIterator<Item = (String, Arc<[u8]>, Option<[u32; 2]>)>,
+) -> usize {
     let mut n = 0;
-    for (name, bytes) in files {
+    for (name, bytes, size) in files {
         if bytes.is_empty() {
             continue;
         }
-        let size = image_size(&bytes);
         let f = docs.set.borrow_mut().put_file(bytes, size);
         if write::add_file(docs, id, card, f, name, size.is_some()) {
             n += 1;
@@ -69,23 +84,113 @@ pub(crate) fn attach_bytes(
     n
 }
 
-/// ⭐ A porta dos CAMINHOS (o diálogo, o largar do sistema): lê cada um e anexa-o; o que não se lê
+/// Até aqui um ficheiro lê-se na hora; acima, num fio (ler + `image_size` custam ~0,2 ms/MB e o
+/// sha-256 do `put_file` ~0,6 ms/MB: 8 MB ≈ meio quadro). Não é um tecto de tamanho — o tecto é a
+/// RAM. Medição: `docs/TrelloClone/loop/MEDICOES.md` §W3 E.
+const READ_NOW_UP_TO: u64 = 8 << 20;
+
+/// Um ficheiro lido no fio: (aba, cartão, nome, bytes e tamanho natural, ou a falha).
+type Loaded = (u64, CardId, String, Option<(Arc<[u8]>, Option<[u32; 2]>)>);
+
+#[derive(Default)]
+struct Loading {
+    tx: Option<Sender<Loaded>>,
+    rx: Option<Receiver<Loaded>>,
+    waiting: usize,
+}
+
+thread_local! {
+    static LOADING: RefCell<Loading> = RefCell::new(Loading::default());
+}
+
+/// Lê `p` (e o tamanho natural, se é imagem) no fio; chega por [`arrived`].
+fn read_later(id: u64, card: CardId, name: String, p: PathBuf) {
+    LOADING.with_borrow_mut(|l| {
+        if l.tx.is_none() {
+            let (tx, rx) = channel();
+            (l.tx, l.rx) = (Some(tx), Some(rx));
+        }
+        let Some(tx) = l.tx.clone() else { return };
+        l.waiting += 1;
+        let _ = std::thread::Builder::new()
+            .name("kanban-attach".into())
+            .spawn(move || {
+                let got = std::fs::read(&p).ok().map(|b| {
+                    let size = image_size(&b);
+                    (Arc::from(b), size)
+                });
+                let _ = tx.send((id, card, name, got));
+            });
+    });
+}
+
+/// Ainda há ficheiros grandes a ler (quem desenha a pedido pede outro quadro).
+#[must_use]
+#[expect(
+    dead_code,
+    reason = "lido pelo `wants_frame` da superfície (surface.rs, outro agente)"
+)]
+pub(crate) fn loading() -> bool {
+    LOADING.with_borrow(|l| l.waiting > 0)
+}
+
+/// ⭐ Anexa o que o fio acabou de ler (chamado a cada quadro pela fila do verso); o que não se leu
 /// fica num aviso. Devolve quantos entraram.
-pub(crate) fn attach_paths(docs: &mut KanbanDocs, id: u64, card: CardId, paths: &[PathBuf]) -> usize {
+pub(crate) fn arrived(docs: &mut KanbanDocs) -> usize {
+    let done: Vec<Loaded> = LOADING.with_borrow_mut(|l| {
+        let got: Vec<Loaded> =
+            l.rx.as_ref()
+                .map(|rx| rx.try_iter().collect())
+                .unwrap_or_default();
+        l.waiting -= got.len().min(l.waiting);
+        got
+    });
+    let mut n = 0;
+    for (id, card, name, got) in done {
+        match got {
+            Some((bytes, size)) => n += attach_ready(docs, id, card, [(name, bytes, size)]),
+            None => docs
+                .notices
+                .push(tr_with("kanban.back.cannot_read", &[("t", &name)])),
+        }
+    }
+    n
+}
+
+/// ⭐ A porta dos CAMINHOS (o diálogo, o largar do sistema): lê cada um e anexa-o — o pequeno já, o
+/// grande no fio ([`READ_NOW_UP_TO`]); o que não se lê fica num aviso. Devolve quantos foram aceites.
+pub(crate) fn attach_paths(
+    docs: &mut KanbanDocs,
+    id: u64,
+    card: CardId,
+    paths: &[PathBuf],
+) -> usize {
     let mut files = Vec::new();
+    let mut later = 0;
     for p in paths {
         let name = p.file_name().map_or_else(
             || p.display().to_string(),
             |n| n.to_string_lossy().into_owned(),
         );
-        match std::fs::read(p) {
-            Ok(b) if p.is_file() => files.push((name, b)),
-            _ => docs
+        let meta = std::fs::metadata(p).ok().filter(std::fs::Metadata::is_file);
+        match meta.map(|m| m.len()) {
+            Some(0) => {}
+            Some(len) if len > READ_NOW_UP_TO => {
+                read_later(id, card, name, p.clone());
+                later += 1;
+            }
+            Some(_) => match std::fs::read(p) {
+                Ok(b) => files.push((name, b)),
+                Err(_) => docs
+                    .notices
+                    .push(tr_with("kanban.back.cannot_read", &[("t", &name)])),
+            },
+            None => docs
                 .notices
                 .push(tr_with("kanban.back.cannot_read", &[("t", &name)])),
         }
     }
-    attach_bytes(docs, id, card, files)
+    attach_bytes(docs, id, card, files) + later
 }
 
 #[cfg(test)]
@@ -99,5 +204,67 @@ mod tests {
         assert_eq!(human_size(2_400_000), "2.4 MB");
         assert_eq!(kind_of("fox.sheet.png").as_deref(), Some("PNG"));
         assert_eq!(kind_of("README"), None);
+    }
+
+    #[test]
+    #[ignore = "sonda de medição"]
+    fn sonda_tecto_do_anexo() {
+        use std::time::Instant;
+        let dir =
+            std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../target/sonda-anexo");
+        std::fs::create_dir_all(&dir).unwrap();
+        let sizes = [1usize, 10, 100, 500];
+        for &mb in &sizes {
+            let n = mb << 20;
+            let mut x = 0x9e37_79b9_7f4a_7c15u64;
+            let data: Vec<u8> = (0..n)
+                .map(|_| {
+                    x ^= x << 13;
+                    x ^= x >> 7;
+                    x ^= x << 17;
+                    x as u8
+                })
+                .collect();
+            std::fs::write(dir.join(format!("{mb}.bin")), &data).unwrap();
+        }
+        let mut best = std::collections::BTreeMap::<(usize, &str), f64>::new();
+        for _round in 0..3 {
+            for &mb in &sizes {
+                let p = dir.join(format!("{mb}.bin"));
+                let mut t = Instant::now();
+                let mut lap = |k: &'static str, t: &mut Instant| {
+                    let s = t.elapsed().as_secs_f64() * 1e3;
+                    let e = best.entry((mb, k)).or_insert(f64::MAX);
+                    *e = e.min(s);
+                    *t = Instant::now();
+                };
+                let bytes = std::fs::read(&p).unwrap();
+                lap("1 ler", &mut t);
+                let size = super::image_size(&bytes);
+                lap("2 image_size", &mut t);
+                let mut set = ph2d_kanban_model::KanbanSet::default();
+                let k = set.create("m");
+                let f = set.put_file(bytes, size);
+                lap("3 put_file(sha256)", &mut t);
+                set.doc_mut(k).unwrap().header.background = ph2d_kanban_model::Background::Image(f);
+                let blob = set.to_bytes().unwrap();
+                lap("4 KanbanSet::to_bytes", &mut t);
+                let mut file = Vec::with_capacity(blob.len() + 64);
+                file.extend_from_slice(&blob);
+                lap("5 ProjectFile copia", &mut t);
+                let out = dir.join("proj.out");
+                let mut w = std::fs::File::create(&out).unwrap();
+                std::io::Write::write_all(&mut w, &file).unwrap();
+                w.sync_all().unwrap();
+                lap("6 gravar+fsync", &mut t);
+                let back = std::fs::read(&out).unwrap();
+                let _set = ph2d_kanban_model::KanbanSet::from_bytes(&back).unwrap();
+                lap("7 abrir (ler+from_bytes)", &mut t);
+            }
+        }
+        for ((mb, k), ms) in &best {
+            println!("SONDA {mb} MB | {k} | {ms:.1} ms");
+        }
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }

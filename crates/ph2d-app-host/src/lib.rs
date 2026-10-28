@@ -47,6 +47,7 @@ pub mod canvas_area;
 pub mod clipboard;
 pub mod family;
 pub mod modal;
+pub mod open;
 
 pub use family::{AppFamily, AppFamilyRegistry, SmokeRouter};
 

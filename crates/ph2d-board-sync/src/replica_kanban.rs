@@ -129,7 +129,7 @@ impl KanbanIds {
         if local == KANBAN_WAITING {
             return self.waiting.get(&el).copied().unwrap_or(local);
         }
-        self.wire.get(&local).copied().unwrap_or(local)
+        self.wire.get(&local).copied().unwrap_or(KANBAN_WAITING)
     }
 
     /// O que sai: ids locais → da sessão.

@@ -127,3 +127,12 @@ fn j7_a_version_saved_in_the_session_keeps_each_pairs_own_kanban() {
     assert_eq!(in_version(&hb, 2, a), Some(KanbanId(1)));
     assert_eq!(in_version(&hb, 2, b), Some(KANBAN_WAITING));
 }
+
+#[test]
+fn r2_a_reference_to_a_deleted_kanban_leaves_as_waiting_never_as_the_local_id() {
+    let mut ids = super::KanbanIds::default();
+    ids.local.insert(KanbanId(1 << 63 | 5), KanbanId(7));
+    ids.wire.insert(KanbanId(7), KanbanId(1 << 63 | 5));
+    assert_eq!(ids.to_wire(ElementId(1), KanbanId(7)), KanbanId(1 << 63 | 5));
+    assert_eq!(ids.to_wire(ElementId(1), KanbanId(9)), KANBAN_WAITING);
+}

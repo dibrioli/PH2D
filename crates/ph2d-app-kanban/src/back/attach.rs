@@ -126,10 +126,6 @@ fn read_later(id: u64, card: CardId, name: String, p: PathBuf) {
 
 /// Ainda há ficheiros grandes a ler (quem desenha a pedido pede outro quadro).
 #[must_use]
-#[expect(
-    dead_code,
-    reason = "lido pelo `wants_frame` da superfície (surface.rs, outro agente)"
-)]
 pub(crate) fn loading() -> bool {
     LOADING.with_borrow(|l| l.waiting > 0)
 }

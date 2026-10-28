@@ -240,6 +240,10 @@ impl DocumentSurface for KanbanDocs {
             || !self.notices.is_empty()
     }
 
+    fn wants_frame(&self) -> bool {
+        crate::front::cover::pending() || crate::back::attach::loading()
+    }
+
     fn as_any(&self) -> &dyn Any {
         self
     }

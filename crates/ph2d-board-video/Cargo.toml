@@ -14,8 +14,6 @@ authors.workspace = true
 # navegador da pessoa (família Chrome, conduzido pelo CDP num tubo). Nada disto corre no fio da janela.
 ph2d-board-model = { path = "../ph2d-board-model" }
 ph2d-board-embed = { path = "../ph2d-board-embed" }
-# «Abrir no navegador» pela porta única das famílias (`open`), a mesma política de esquemas do Kanban.
-ph2d-app-host = { path = "../ph2d-app-host" }
 # HTTPS da miniatura: rustls com o `ring` e os certificados do SISTEMA lidos pelo `rustls-native-certs` —
 # nem o `webpki-roots` nem o `platform-verifier` (os dois puxam certificados embarcados com a licença
 # CDLA-Permissive-2.0, fora do `deny.toml`; medido 12/10).

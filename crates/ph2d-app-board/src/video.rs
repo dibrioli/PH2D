@@ -352,7 +352,7 @@ fn player(hero: &mut HeroScreen, st: &mut State) {
                 st.browser = Some((false, now));
             }
             let link = ph2d_board_embed::canonical_link(&video);
-            let opened = ph2d_board_video::open_in_browser(&link);
+            let opened = ph2d_app_host::open::open_link(&link);
             hero.documents.warn(match (no, opened) {
                 (true, true) => "board.video.no_browser",
                 (false, true) => "board.video.failed",
@@ -382,7 +382,7 @@ fn player(hero: &mut HeroScreen, st: &mut State) {
             VideoCommand::OpenOutside => {
                 p.player.pause();
                 let link = ph2d_board_embed::link_at(&video, b.now(now) as u32);
-                if !ph2d_board_video::open_in_browser(&link) {
+                if !ph2d_app_host::open::open_link(&link) {
                     notice = Some("board.video.cannot_open");
                 }
             }
@@ -399,7 +399,7 @@ fn player(hero: &mut HeroScreen, st: &mut State) {
                 if pause {
                     p.player.pause();
                 }
-                if !ph2d_board_video::open_in_browser(&url) {
+                if !ph2d_app_host::open::open_link(&url) {
                     notice = Some("board.video.cannot_open");
                 }
             }

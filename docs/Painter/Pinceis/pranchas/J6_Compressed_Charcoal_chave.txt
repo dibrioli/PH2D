@@ -1,0 +1,7 @@
+Chave da prancha cega J6_Compressed_Charcoal_cega.jpg (ordem sorteada POR LINHA; linha: imagem → quem)
+gestos_A: 1 = charcoal_charcoal_flat (oraculo), 2 = Oil Pastel (d 1.212, limiar 0.591) (vizinho), 3 = Compressed Charcoal (escala 0.381) (nosso)
+gestos_B: 1 = charcoal_charcoal_flat (oraculo), 2 = Compressed Charcoal (escala 0.381) (nosso), 3 = Oil Pastel (d 1.212, limiar 0.591) (vizinho)
+tamanhos_A: 1 = charcoal_charcoal_flat (oraculo), 2 = Oil Pastel (d 1.212, limiar 0.591) (vizinho), 3 = Compressed Charcoal (escala 0.381) (nosso)
+tamanhos_B: 1 = Oil Pastel (d 1.212, limiar 0.591) (vizinho), 2 = charcoal_charcoal_flat (oraculo), 3 = Compressed Charcoal (escala 0.381) (nosso)
+sobre_A: 1 = Oil Pastel (d 1.212, limiar 0.591) (vizinho), 2 = charcoal_charcoal_flat (oraculo), 3 = Compressed Charcoal (escala 0.381) (nosso)
+sobre_B: 1 = Oil Pastel (d 1.212, limiar 0.591) (vizinho), 2 = charcoal_charcoal_flat (oraculo), 3 = Compressed Charcoal (escala 0.381) (nosso)

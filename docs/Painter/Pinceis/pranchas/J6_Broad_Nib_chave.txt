@@ -1,0 +1,7 @@
+Chave da prancha cega J6_Broad_Nib_cega.jpg (ordem sorteada POR LINHA; linha: imagem → quem)
+gestos_A: 1 = calligraphy (oraculo), 2 = Knife Smooth 3 (d 1.866, limiar 0.591) (vizinho), 3 = Broad Nib (escala 0.9) (nosso)
+gestos_B: 1 = calligraphy (oraculo), 2 = Broad Nib (escala 0.9) (nosso), 3 = Knife Smooth 3 (d 1.866, limiar 0.591) (vizinho)
+tamanhos_A: 1 = calligraphy (oraculo), 2 = Broad Nib (escala 0.9) (nosso), 3 = Knife Smooth 3 (d 1.866, limiar 0.591) (vizinho)
+tamanhos_B: 1 = Broad Nib (escala 0.9) (nosso), 2 = Knife Smooth 3 (d 1.866, limiar 0.591) (vizinho), 3 = calligraphy (oraculo)
+sobre_A: 1 = Broad Nib (escala 0.9) (nosso), 2 = calligraphy (oraculo), 3 = Knife Smooth 3 (d 1.866, limiar 0.591) (vizinho)
+sobre_B: 1 = calligraphy (oraculo), 2 = Knife Smooth 3 (d 1.866, limiar 0.591) (vizinho), 3 = Broad Nib (escala 0.9) (nosso)

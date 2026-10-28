@@ -1,0 +1,7 @@
+Chave da prancha cega J6_Flat_Block-in_cega.jpg (ordem sorteada POR LINHA; linha: imagem → quem)
+gestos_A: 1 = Flat Block-in (escala 1.026) (nosso), 2 = Soft Pastel (d 1.299, limiar 0.591) (vizinho), 3 = digital_flat (oraculo)
+gestos_B: 1 = Flat Block-in (escala 1.026) (nosso), 2 = digital_flat (oraculo), 3 = Soft Pastel (d 1.299, limiar 0.591) (vizinho)
+tamanhos_A: 1 = digital_flat (oraculo), 2 = Flat Block-in (escala 1.026) (nosso), 3 = Soft Pastel (d 1.299, limiar 0.591) (vizinho)
+tamanhos_B: 1 = digital_flat (oraculo), 2 = Flat Block-in (escala 1.026) (nosso), 3 = Soft Pastel (d 1.299, limiar 0.591) (vizinho)
+sobre_A: 1 = digital_flat (oraculo), 2 = Soft Pastel (d 1.299, limiar 0.591) (vizinho), 3 = Flat Block-in (escala 1.026) (nosso)
+sobre_B: 1 = Flat Block-in (escala 1.026) (nosso), 2 = Soft Pastel (d 1.299, limiar 0.591) (vizinho), 3 = digital_flat (oraculo)

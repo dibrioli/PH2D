@@ -1,0 +1,7 @@
+Chave da prancha cega J6_Bristle_Watercolor_cega.jpg (ordem sorteada POR LINHA; linha: imagem → quem)
+gestos_A: 1 = Wet Round (d 1.432, limiar 0.591) (vizinho), 2 = Bristle Watercolor (escala 1.353) (nosso), 3 = bristle_bristle_flat (oraculo)
+gestos_B: 1 = Bristle Watercolor (escala 1.353) (nosso), 2 = bristle_bristle_flat (oraculo), 3 = Wet Round (d 1.432, limiar 0.591) (vizinho)
+tamanhos_A: 1 = Wet Round (d 1.432, limiar 0.591) (vizinho), 2 = Bristle Watercolor (escala 1.353) (nosso), 3 = bristle_bristle_flat (oraculo)
+tamanhos_B: 1 = Bristle Watercolor (escala 1.353) (nosso), 2 = bristle_bristle_flat (oraculo), 3 = Wet Round (d 1.432, limiar 0.591) (vizinho)
+sobre_A: 1 = Bristle Watercolor (escala 1.353) (nosso), 2 = bristle_bristle_flat (oraculo), 3 = Wet Round (d 1.432, limiar 0.591) (vizinho)
+sobre_B: 1 = Bristle Watercolor (escala 1.353) (nosso), 2 = Wet Round (d 1.432, limiar 0.591) (vizinho), 3 = bristle_bristle_flat (oraculo)

@@ -41,7 +41,20 @@ Nib). Controlo por dentro: a mesma ponta com `dabRotation` 1 tem de REPROVAR (l�
 0,323 (0,348). Mutação vista VERMELHA: Bristle Watercolor 0,75 → 0,65 (lê 0,419) e Broad Nib a 132° (os ±40 trocam).
 Sem knob novo ⇒ os censos dos knobs não mudam; nenhum ficheiro de fábrica mudou (as curas são de `EM_ESTUDO`).
 
-## §4 — Fila
+## §4 — O EXAME (ronda 1; revisão cega POR FAZER — coordenador)
+
+Bancada `exame.sh` com a biblioteca fixa (`/tmp/claude-1000/j6_wet/biblioteca`). Pranchas `pranchas/J6_<nome>.jpg`,
+cegas `J6_<nome>_cega.jpg` (ordem sorteada por linha) + `J6_<nome>_chave.txt`; réguas `exames/<slug>_regua.txt`.
+
+| pincel | oráculo | escala | régua | vizinho (d; limiar 0,591) | o que ainda se vê (fora da lâmina) |
+|---|---|---|---|---|---|
+| A-4 Flat Block-in | Rb digital_flat | 1,026 | 440/454 | Soft Pastel 1,299 | já aprovado; nada novo |
+| B-9 Craft Flat | Rb graphite_pencil_craft_flat | 0,75 | 368/454 | Graphite 2H 1,134 | a mistura sobre o vermelho (o Rebelle mistura, o nosso pousa) — motor, `exames/lapis.md` |
+| D-3 Broad Nib | MP classic/calligraphy | 0,90 | 334/454 | Knife Smooth 3 1,866 | o gancho de entrada e o afinar com a velocidade do MyPaint (o Wet sem `speedSize`) |
+| F-2 Compressed Charcoal | Rb charcoal_charcoal_flat | 0,381 | 250/454 | Oil Pastel 1,212 | o halo de pó em px fixos; as riscas ao comprido translúcidas do Rebelle |
+| I-8 Bristle Watercolor | Rb bristle_bristle_flat | 1,353 | 237/454 | Wet Round 1,432 | pálido e riscado onde o Rebelle é cheio (o pigmento por COMPRIMENTO — motor); a lâmina já casa |
+
+## §5 — Fila
 
 - **L16 (lâminas finas, C40)** — já não depende de nada (a L3 fecha sem motor): Cv da borda 0,004 → 0,056 a 4,8–6,0 px
   (grelha do Wet; `03_MOTORES` L16). Pincéis G-7, D-3, G-14. Não medido de novo nesta onda.

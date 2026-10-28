@@ -1,0 +1,7 @@
+Chave da prancha cega J6_Craft_Flat_cega.jpg (ordem sorteada POR LINHA; linha: imagem → quem)
+gestos_A: 1 = Craft Flat (escala 0.75) (nosso), 2 = Graphite 2H (d 1.134, limiar 0.591) (vizinho), 3 = graphite_pencil_craft_flat (oraculo)
+gestos_B: 1 = Craft Flat (escala 0.75) (nosso), 2 = Graphite 2H (d 1.134, limiar 0.591) (vizinho), 3 = graphite_pencil_craft_flat (oraculo)
+tamanhos_A: 1 = Craft Flat (escala 0.75) (nosso), 2 = Graphite 2H (d 1.134, limiar 0.591) (vizinho), 3 = graphite_pencil_craft_flat (oraculo)
+tamanhos_B: 1 = Craft Flat (escala 0.75) (nosso), 2 = Graphite 2H (d 1.134, limiar 0.591) (vizinho), 3 = graphite_pencil_craft_flat (oraculo)
+sobre_A: 1 = graphite_pencil_craft_flat (oraculo), 2 = Graphite 2H (d 1.134, limiar 0.591) (vizinho), 3 = Craft Flat (escala 0.75) (nosso)
+sobre_B: 1 = graphite_pencil_craft_flat (oraculo), 2 = Craft Flat (escala 0.75) (nosso), 3 = Graphite 2H (d 1.134, limiar 0.591) (vizinho)

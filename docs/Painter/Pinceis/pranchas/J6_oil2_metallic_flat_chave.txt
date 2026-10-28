@@ -1,0 +1,19 @@
+prancha cega J6 oil2 — Metallic Flat (ordem aleatória por linha; colunas 1 · 2 · 3)
+linha 1 (gestos_A) 1 = nossa com Real Oil (depois da cura do grão)
+linha 1 (gestos_A) 2 = Rebelle
+linha 1 (gestos_A) 3 = vizinho da biblioteca · Knife Grainy (vizinho da biblioteca)
+linha 2 (gestos_B) 1 = Rebelle
+linha 2 (gestos_B) 2 = nossa com Real Oil (depois da cura do grão)
+linha 2 (gestos_B) 3 = vizinho da biblioteca · Knife Grainy (vizinho da biblioteca)
+linha 3 (tamanhos_A) 1 = vizinho da biblioteca · Knife Grainy (vizinho da biblioteca)
+linha 3 (tamanhos_A) 2 = nossa com Real Oil (depois da cura do grão)
+linha 3 (tamanhos_A) 3 = Rebelle
+linha 4 (tamanhos_B) 1 = nossa com Real Oil (depois da cura do grão)
+linha 4 (tamanhos_B) 2 = vizinho da biblioteca · Knife Grainy (vizinho da biblioteca)
+linha 4 (tamanhos_B) 3 = Rebelle
+linha 5 (sobre_A) 1 = Rebelle
+linha 5 (sobre_A) 2 = vizinho da biblioteca · Knife Grainy (vizinho da biblioteca)
+linha 5 (sobre_A) 3 = nossa com Real Oil (depois da cura do grão)
+linha 6 (sobre_B) 1 = nossa com Real Oil (depois da cura do grão)
+linha 6 (sobre_B) 2 = vizinho da biblioteca · Knife Grainy (vizinho da biblioteca)
+linha 6 (sobre_B) 3 = Rebelle

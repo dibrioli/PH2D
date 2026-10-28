@@ -220,7 +220,7 @@ sem a maquete aprovada.
 | **W4** | O **mesmo Kanban no canvas** do Quadro, vivo, com zoom; «Open in tab» / «Show on board» / «Place on board» | `ElementKind::Kanban`, LOD, interacção no canvas, exportação Excalidraw como imagem |
 | **W5** | **Ao vivo com colegas** (LAN e internet), presença no cartão aberto | registos na réplica, `PROTOCOL` 12, sessão leva os Kanbans referenciados, partilha da aba sozinha |
 | **W6** | Filtro, pesquisa, modelos, **cartões espelho**, copiar/mover entre Kanbans, envelhecimento, edição rápida (`E`), todos os atalhos | `ph2d-kanban-filter` |
-| **W7** | Vistas **Tabela, Calendário, Linha do tempo, Painel** (+ Mapa, se o dono quiser — §8) | calendário arrastável; Painel com gráficos pela skill de dataviz |
+| **W7** | Vistas **Tabela, Calendário, Linha do tempo, Painel** (sem Mapa — §8) | calendário arrastável; Painel com gráficos pela skill de dataviz |
 | **W8** | **Automação** (regras, botões de cartão e de quadro, comandos agendados e por prazo) + scripts Luau a mexer no Kanban | `ph2d-kanban-auto`; API `ph2d.kanban.*` no editor de scripts |
 | **W9** | **Calendário do projecto** (§8.1), **Inbox, Planner, Os meus cartões**, notificações e lembretes | eventos próprios no `ph2d-kanban-model`; centro de notificações (hoje só há avisos) |
 | **W10** | **Importar do Trello** (o JSON que o trello.com exporta) e exportar CSV/markdown | o JSON real do dono vira fixture e gate |
@@ -256,9 +256,8 @@ Pedir integração a cada 1–2 ondas (DIRETRIZ §1.5.2 item 5).
    atravessam os Kanbans **do projecto**, não projectos diferentes.
 2. ✅ **Calendários externos (Google/Microsoft): talvez no futuro — fora desta linha.** No lugar
    deles, o dono aceitou a proposta de um **Calendário do projecto, nosso, interno** (§8.1).
-3. ⏳ **Vista Mapa:** explicada ao dono em 27/10 (cartões com morada viram alfinetes num mapa da
-   internet); recomendação: **pular** — pouco uso num projecto de jogo/animação e pede internet.
-   O campo «Localização» do cartão fica (texto). Aguarda a palavra dele.
+3. ✅ **Sem vista Mapa** (dono 27/10: *«não precisa de mapa»*). O campo «Localização» do cartão
+   fica, em texto.
 4. ✅ **IA no fim** (como no editor de scripts).
 5. ✅ **Ordem das ondas: a do plano** (§6) — decisão técnica delegada.
 

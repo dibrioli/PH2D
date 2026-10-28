@@ -185,13 +185,13 @@ fn corpo(
             TextKey::new("component.field.top_down_player.1"),
             crate::ids::INSP_TD_ACCEL,
             0.5,
-            None,
+            Some(ph2d_editor_core::widget::Unit::MetersPerSecondSquared),
         ), // LITERAL-PX-OK: m/s²
         (
             TextKey::new("component.field.top_down_player.2"),
             crate::ids::INSP_TD_DECEL,
             0.5,
-            None,
+            Some(ph2d_editor_core::widget::Unit::MetersPerSecondSquared),
         ), // LITERAL-PX-OK: m/s²
         // ⭐ O EMPURRÃO (plano 28, W5): um golpe de uma `Damage` com `Push` fá-lo deslizar, e isto
         // diz quão depressa ele pára de deslizar.
@@ -199,7 +199,7 @@ fn corpo(
             TextKey::new("component.field.top_down_player.11"),
             crate::ids::INSP_TD_KNOCKBACK_RECOVERY,
             0.5,
-            None,
+            Some(ph2d_editor_core::widget::Unit::MetersPerSecondSquared),
         ), // LITERAL-PX-OK: m/s²
     ] {
         cur_y = super::rows::fields_row(

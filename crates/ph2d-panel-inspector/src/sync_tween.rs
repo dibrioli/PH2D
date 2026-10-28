@@ -61,6 +61,7 @@ pub(crate) fn sync(
     let aberto = inspector_state
         .tween_selected
         .min(info.rows.len().saturating_sub(1));
+    crate::unidade_mundo::tween_aberto(aberto);
     let Some(linha) = info.rows.get(aberto) else {
         inspector_state.last_tween_sig = None;
         return;

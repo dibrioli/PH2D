@@ -62,6 +62,7 @@ pub(crate) fn apply_tween_event(
             && n < info.rows.len()
         {
             *selected = n;
+            crate::unidade_mundo::tween_aberto(n);
             return true;
         }
         if id == crate::ids::INSP_TWEEN_ADD {
@@ -135,7 +136,7 @@ pub(crate) fn apply_tween_event(
     }
 
     if let WidgetEvent::ValueChanged(id) = ev {
-        let v = host.store().number_value(id).unwrap_or(0.0);
+        let v = crate::unidade_mundo::le(host, id).unwrap_or(0.0);
         #[allow(clippy::cast_possible_truncation)]
         let f = v as f32;
         for (ids_, faz) in [

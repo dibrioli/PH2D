@@ -150,8 +150,8 @@ const FIXOS: [(NodeId, Grandeza); 52] = {
 };
 
 /// A segunda metade da tabela fixa (o tecto de um literal legível).
-const FIXOS_2: [(NodeId, Grandeza); 13] = {
-    use Grandeza::{Comprimento as L, Velocidade as V};
+const FIXOS_2: [(NodeId, Grandeza); 21] = {
+    use Grandeza::{Aceleracao as A, Comprimento as L, Velocidade as V};
     [
         (i::INSP_SHAKE_AMPLITUDE, L),
         (i::INSP_WHEEL_RADIUS, L),
@@ -163,9 +163,18 @@ const FIXOS_2: [(NodeId, Grandeza); 13] = {
         (i::INSP_DANO_KNOCKBACK, V),
         (i::INSP_DANO_KNOCKBACK_LIFT, V),
         (i::INSP_TD_SPEED, V),
+        (i::INSP_TD_ACCEL, A),
+        (i::INSP_TD_DECEL, A),
+        // A taxa a que o empurrão desce a zero (`intent::recover`): m/s², não um tempo.
+        (i::INSP_TD_KNOCKBACK_RECOVERY, A),
+        (i::INSP_PJ_ACCEL, A),
+        (i::INSP_PJ_MAX_SPEED, V),
+        (i::INSP_PJ_GRAVITY, A),
+        (i::INSP_PJ_HOMING_ACCEL, A),
         (i::INSP_SLICE_SIZE[0], L),
         (i::INSP_SLICE_SIZE[1], L),
         (i::INSP_JOINT_REST_LENGTH, L),
+        (i::INSP_JOINT_MAX_LENGTH, L),
     ]
 };
 
@@ -193,11 +202,37 @@ pub fn guardada(id: NodeId) -> Option<Grandeza> {
         let info = crate::state::current_inspector_joint()?;
         return crate::sections::joint::unidade_guardada(&info, id).and_then(Grandeza::de_unit);
     }
+    if let Some(g) = do_tween(id) {
+        return g;
+    }
     crate::sections::player::PLAYER_CARDS
         .iter()
         .flat_map(|(_, _, rows)| rows.iter())
         .find(|(_, o, _, _)| *o == id)
         .and_then(|(_, _, _, u)| u.and_then(Grandeza::de_unit))
+}
+
+/// Os campos De/Para do Tween: metros quando o canal da linha aberta é uma POSIÇÃO; `Some(None)` =
+/// é do tween e o canal não é de mundo.
+fn do_tween(id: NodeId) -> Option<Option<Grandeza>> {
+    if !i::INSP_TWEEN_DE.contains(&id) && !i::INSP_TWEEN_PARA.contains(&id) {
+        return None;
+    }
+    let info = crate::state_components::current_inspector_tween()?;
+    let n = TWEEN_ABERTO.with(Cell::get);
+    let row = info.rows.get(n.min(info.rows.len().saturating_sub(1)))?;
+    Some(
+        matches!(
+            ph2d_tween::Canal::from_tag(row.canal),
+            ph2d_tween::Canal::PositionX | ph2d_tween::Canal::PositionY
+        )
+        .then_some(Grandeza::Comprimento),
+    )
+}
+
+/// A linha do Tween aberta no painel (o `sync_tween` e a escolha da linha publicam-na).
+pub(crate) fn tween_aberto(n: usize) {
+    TWEEN_ABERTO.with(|c| c.set(n));
 }
 
 /// **Todos os ids que PODEM ser de mundo** — a régua do gate de varredura e o laço das faixas.
@@ -224,6 +259,8 @@ pub fn candidatos() -> Vec<NodeId> {
     // Só os eixos de translação (X, Y): o terceiro é a rotação, em graus.
     v.extend(&i::INSP_JOINT_AXIS_MIN[..2]);
     v.extend(&i::INSP_JOINT_AXIS_MAX[..2]);
+    v.extend(&i::INSP_TWEEN_DE[..1]);
+    v.extend(&i::INSP_TWEEN_PARA[..1]);
     for (_, _, rows) in crate::sections::player::PLAYER_CARDS {
         v.extend(
             rows.iter()
@@ -262,6 +299,13 @@ fn factor(id: NodeId, d: DisplayUnit, ppm: f32) -> f64 {
 /// unidade), no seletor que a pintura publicou.
 pub(crate) fn no_campo(ids: &[NodeId], unit: Option<Unit>, passo: f64) -> (Option<Unit>, f64) {
     let Some(u) = unit else {
+        if ids
+            .first()
+            .and_then(|&id| guardada(id))
+            .is_some_and(|g| g != Grandeza::PixelsDoMundo)
+        {
+            regista(ids, true);
+        }
         return (None, passo);
     };
     let d = crate::state::current_display_unit();
@@ -323,12 +367,14 @@ pub(crate) fn assinatura(p: &ProjectSettings) -> (bool, u32) {
 pub struct Censo {
     /// Ids de mundo pintados pela porta.
     pub pela_porta: Vec<NodeId>,
-    /// Ids pintados com `m`/`m/s`/`m/s2` FIXO com o projecto em px — fora do registo.
+    /// Ids pintados com `m`/`m/s`/`m/s2` FIXO com o projecto em px — fora do registo — ou SEM
+    /// unidade sendo de mundo no registo.
     pub fugas: Vec<NodeId>,
 }
 
 thread_local! {
     static ARMADO: Cell<bool> = const { Cell::new(false) };
+    static TWEEN_ABERTO: Cell<usize> = const { Cell::new(0) };
     static CENSO: RefCell<Censo> = RefCell::new(Censo::default());
 }
 

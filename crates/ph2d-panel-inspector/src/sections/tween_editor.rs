@@ -248,7 +248,8 @@ fn campos_de_para(
             label,
             &ids_[..n],
             0.05, // LITERAL-PX-OK: passo de arrasto — adimensional numa cor, metros numa pose
-            None,
+            matches!(canal, Canal::PositionX | Canal::PositionY)
+                .then_some(ph2d_editor_core::widget::Unit::Meters),
             seccao,
         );
     }

@@ -133,19 +133,19 @@ fn corpo(
             TextKey::new("component.field.projectile_motion.1"),
             crate::ids::INSP_PJ_ACCEL,
             0.5,
-            None,
+            Some(ph2d_editor_core::widget::Unit::MetersPerSecondSquared),
         ), // LITERAL-PX-OK: m/s²
         (
             TextKey::new("component.field.projectile_motion.2"),
             crate::ids::INSP_PJ_MAX_SPEED,
             0.5,
-            None,
+            Some(ph2d_editor_core::widget::Unit::MetersPerSecond),
         ), // LITERAL-PX-OK: m/s
         (
             TextKey::new("component.field.projectile_motion.3"),
             crate::ids::INSP_PJ_GRAVITY,
             0.5,
-            None,
+            Some(ph2d_editor_core::widget::Unit::MetersPerSecondSquared),
         ), // LITERAL-PX-OK: m/s²
         (
             TextKey::new("component.field.projectile_motion.5"),
@@ -215,7 +215,7 @@ fn corpo(
         TextKey::new("component.field.projectile_motion.8"),
         &[crate::ids::INSP_PJ_HOMING_ACCEL],
         10.0, // LITERAL-PX-OK: m/s²
-        None,
+        Some(ph2d_editor_core::widget::Unit::MetersPerSecondSquared),
         seccao,
     );
     // ⭐ **Só com perseguição** — um campo de alvo sem aceleração é um controlo morto.

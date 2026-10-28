@@ -163,7 +163,7 @@ pub(super) fn paint_kind_params(
             KIND_PULLEY => Rotulo::from(tr("panel.inspector.joint.rope_length_m")),
             _ => Rotulo::from(TextKey::new("component.field.joint.13")),
         };
-        yy = num_row(
+        yy = num_row_unit(
             scene,
             text_system,
             theme,
@@ -174,6 +174,8 @@ pub(super) fn paint_kind_params(
             yy,
             label,
             ids::INSP_JOINT_MAX_LENGTH,
+            Some(ph2d_editor_core::widget::Unit::Meters),
+            None,
         );
     }
     if info.kind_tag == KIND_PULLEY {

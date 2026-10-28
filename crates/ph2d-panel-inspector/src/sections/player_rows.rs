@@ -98,13 +98,13 @@ const WALK_ROWS: [PlayerRow; 5] = [
         TextKey::new("component.field.platform_player.5"),
         crate::ids::INSP_PLAYER_ACCEL,
         TextKey::new("panel.inspector.player.how_quickly_he_reaches_cruising"),
-        None,
+        Some(Unit::MetersPerSecondSquared),
     ),
     (
         TextKey::new("component.field.platform_player.6"),
         crate::ids::INSP_PLAYER_AIR_ACCEL,
         TextKey::new("panel.inspector.player.steering_while_airborne_0_keeps"),
-        None,
+        Some(Unit::MetersPerSecondSquared),
     ),
     (
         TextKey::new("component.field.platform_player.50"),

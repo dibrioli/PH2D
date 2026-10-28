@@ -52,6 +52,7 @@ fn limpa() {
     set_current_inspector_topdown(None);
     set_current_inspector_slice(None);
     set_current_inspector_anchor(None);
+    set_current_inspector_tween(None);
 }
 
 fn fabrica() -> InspectorFactoryInfo {
@@ -86,13 +87,34 @@ fn projectil() -> InspectorProjectileInfo {
         max_bounces: 2,
         range: 7.25,
         face_velocity: true,
-        homing_accel: 0.0,
+        homing_accel: 4.0,
         homing_target: String::new(),
         homing_target_missing: false,
         body_is_kinematic: true,
         has_body: true,
         clock_playing: true,
         flight_over: false,
+        selected_count: 1,
+    }
+}
+
+/// Um tween de POSIÇÃO: De/Para em metros.
+fn tween_posicao() -> ph2d_editor_core::tween_edits::InspectorTweenInfo {
+    ph2d_editor_core::tween_edits::InspectorTweenInfo {
+        entity_bits: 0x7_3EE,
+        rows: vec![ph2d_editor_core::tween_edits::InspectorTweenRow {
+            canal: ph2d_tween::Canal::PositionX.tag(),
+            de: [0.6, 0.0, 0.0, 0.0],
+            para: [-1.25, 0.0, 0.0, 0.0],
+            familia: 0,
+            modo: 0,
+            ao_acabar: ph2d_tween::AoAcabar::Hold.tag(),
+            ciclo: ph2d_tween::Ciclo::Reinicia.tag(),
+            duracao_us: Some(400_000),
+            repeat: true,
+            autostart: true,
+        }],
+        tem_sprite: true,
         selected_count: 1,
     }
 }
@@ -176,6 +198,14 @@ fn fixturas() -> Vec<Fixtura> {
         (
             "joint_spring",
             Box::new(|| set_current_inspector_joint(Some(junta::junta(1)))),
+        ),
+        (
+            "joint_rope",
+            Box::new(|| set_current_inspector_joint(Some(junta::junta(2)))),
+        ),
+        (
+            "tween_posicao",
+            Box::new(|| set_current_inspector_tween(Some(tween_posicao()))),
         ),
         (
             "joint_custom",
@@ -367,7 +397,7 @@ fn todo_numero_de_mundo_obedece_a_px_metros_do_projecto() {
         let censo = unidade_mundo::colhe_censo();
         for id in &censo.fugas {
             falhas.push(format!(
-                "{nome}: {id:?} pintado com unidade de mundo FIXA (fora da porta)"
+                "{nome}: {id:?} pintado fora da porta (unidade de mundo FIXA, ou SEM unidade)"
             ));
         }
         let pela_porta: BTreeSet<_> = censo.pela_porta.iter().copied().collect();
@@ -463,7 +493,7 @@ fn a_faixa_de_um_numero_de_mundo_segue_o_seletor() {
 /// As secções que declaram uma unidade de mundo (`m`, `m/s`, `m/s2`) e que a varredura acima
 /// cobre com uma fixtura — mais as duas que passam pela porta do cartão Constraints
 /// (`sync_constraint::unidade_e_passo`): o Transform e o HUD.
-const SECCOES_DE_MUNDO: [&str; 30] = [
+const SECCOES_DE_MUNDO: [&str; 31] = [
     "audio.rs",
     "camera.rs",
     "factory.rs",
@@ -490,6 +520,7 @@ const SECCOES_DE_MUNDO: [&str; 30] = [
     "slice_nine.rs",
     "topdown.rs",
     "transform.rs",
+    "tween_editor.rs",
     "vida_barra.rs",
     "vida_dano.rs",
     "vida_impacto.rs",
@@ -556,5 +587,99 @@ fn censo_nenhum_numero_de_mundo_foge_da_porta_px_m() {
     assert!(
         obsoletas.is_empty(),
         "entradas sem metros (tire-as da lista): {obsoletas:?}"
+    );
+}
+
+/// O id de `ids::NOME` (ou `ids::NOME[k]`), lido da sua declaração em `src/ids/` — a mesma
+/// `hash_node_id` do produto.
+fn id_por_nome(fontes: &str, nome: &str) -> Option<ph2d_a11y::NodeId> {
+    let (base, k) = match nome.split_once('[') {
+        Some((b, r)) => (b, r.trim_end_matches(']').parse::<usize>().ok()?),
+        None => (nome, usize::MAX),
+    };
+    let decl = format!("pub const {base}:");
+    let resto = &fontes[fontes.find(&decl)? + decl.len()..];
+    let resto = &resto[resto.find('=')?..];
+    let corpo = &resto[..resto.find(';')?];
+    let literais: Vec<&str> = corpo.split("hash_node_id(\"").skip(1).collect();
+    let alvo = if k == usize::MAX {
+        literais.first()?
+    } else {
+        literais.get(k)?
+    };
+    Some(ph2d_tool_registry::hash_node_id_runtime(
+        alvo.split('"').next()?,
+    ))
+}
+
+/// ⭐⭐ **O CENSO pela grandeza: nenhum número de mundo nasce SEM unidade.**
+///
+/// A grandeza de cada campo está escrita na faixa do `populate_*` (`// LITERAL-PX-OK: m/s²`), que
+/// é onde quem cria o campo diz o que ele guarda. Toda faixa em `m`, `m/s` ou `m/s²` tem de estar
+/// na porta (`unidade_mundo::candidatos`); e a porta reprova na pintura (`Censo::fugas`) o campo
+/// registado pintado sem unidade — a metade que a varredura acima apanha.
+///
+/// ⚠️ Fora, declarado: forças (N), binários (N·m) e densidades (kg/m²) também levam o metro, mas o
+/// seletor não tem unidade em px para eles — o censo lê só o que começa por comprimento.
+#[test]
+fn censo_nenhum_numero_de_mundo_nasce_sem_unidade() {
+    let src = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+    let mut ids_fonte = String::new();
+    for e in std::fs::read_dir(src.join("ids"))
+        .expect("src/ids")
+        .flatten()
+    {
+        ids_fonte.push_str(&std::fs::read_to_string(e.path()).unwrap_or_default());
+    }
+    let candidatos: BTreeSet<_> = unidade_mundo::candidatos().into_iter().collect();
+    let mut lidos = 0_usize;
+    let mut fora: Vec<String> = Vec::new();
+    let mut entradas: Vec<_> = std::fs::read_dir(&src)
+        .expect("src")
+        .flatten()
+        .filter(|e| e.file_name().to_string_lossy().starts_with("populate"))
+        .collect();
+    entradas.sort_by_key(std::fs::DirEntry::file_name);
+    for e in entradas {
+        let nome = e.file_name().to_string_lossy().into_owned();
+        for linha in std::fs::read_to_string(e.path())
+            .unwrap_or_default()
+            .lines()
+        {
+            let Some((codigo, unidade)) = linha.split_once("LITERAL-PX-OK:") else {
+                continue;
+            };
+            let u = unidade.trim();
+            let de_mundo = u == "m"
+                || ["m/s", "m ", "m,", "m;", "metros", "meters", "metres"]
+                    .iter()
+                    .any(|p| u.starts_with(p));
+            let Some(i) = codigo.find("INSP_") else {
+                continue;
+            };
+            if !de_mundo {
+                continue;
+            }
+            let fim = codigo[i..]
+                .find(|c: char| !(c.is_ascii_alphanumeric() || c == '_' || c == '[' || c == ']'))
+                .map_or(codigo.len(), |f| i + f);
+            let id_nome = &codigo[i..fim];
+            lidos += 1;
+            match id_por_nome(&ids_fonte, id_nome) {
+                Some(id) if candidatos.contains(&id) => {}
+                Some(_) => fora.push(format!("{nome}: {id_nome} ({u}) fora da porta px/m")),
+                None => fora.push(format!("{nome}: {id_nome} sem declaração em src/ids")),
+            }
+        }
+    }
+    assert!(
+        lidos >= 100,
+        "o censo leu só {lidos} faixas de mundo — a régua mudou de forma"
+    );
+    assert!(
+        fora.is_empty(),
+        "{} números de mundo sem unidade:\n{}",
+        fora.len(),
+        fora.join("\n")
     );
 }

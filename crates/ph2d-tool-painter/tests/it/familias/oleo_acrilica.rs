@@ -205,6 +205,9 @@ const KNIFE_DRY: Receita = Receita {
     achatado: Some((0.74, 170)),
     grao: Some(("Noise", 6.0)),
     extras: &[
+        // J6 (Real Oil): oilDepth 0,1 · oilGloss 0,3 — régua 252 → 362/454 (sem óleo 354).
+        ("oilDepth", 0.1),
+        ("oilGloss", 0.3),
         ("dabRotation", 0.0),
         ("knifeRidge", 0.0),
         ("emboss", 0.1),
@@ -228,6 +231,8 @@ const KNIFE_TEXTURED: Receita = Receita {
     achatado: Some((0.87, 86)),
     grao: None,
     extras: &[
+        // J6 (Real Oil): oilDepth 0,1 — régua 314 → 374/454 (sem óleo 362).
+        ("oilDepth", 0.1),
         ("dabRotation", 0.0),
         ("knifeRidge", 4.0),
         ("knifeLevel", 1.0),
@@ -277,7 +282,12 @@ const KNIFE_STAIN: Receita = Receita {
 const DABBER_4: Receita = Receita {
     nome: "Dabber 4",
     achatado: Some((0.6, 90)),
-    extras: &[("dabRotation", 0.0), ("textureSizeExp", 0.5)],
+    extras: &[
+        ("dabRotation", 0.0),
+        ("textureSizeExp", 0.5),
+        // J6 (Real Oil): oilGloss 0,1 — régua 284 → 322/454; continua mais longe que sem óleo (348).
+        ("oilGloss", 0.1),
+    ],
     pincel: &[
         ("jitter", "0.1"),
         ("spacing", "0.3"),
@@ -296,6 +306,8 @@ const METALLIC_FLAT: Receita = Receita {
     size_px: Some(40.0),
     grao: Some(("Noise", 4.0)),
     extras: &[
+        // J6 (Real Oil): oilDepth 0,5 — régua 298 → 326/454; continua mais longe que sem óleo (358).
+        ("oilDepth", 0.5),
         ("blendForce", 0.3),
         ("bristleHeight", 0.0),
         ("bristleLaneWidth", 1.5),
@@ -701,6 +713,8 @@ const FILBERT: Receita = Receita {
     size_px: Some(64.0),
     achatado: Some((0.0, 90)),
     extras: &[
+        // J6 (Real Oil ligado, dono 28/10): a altura do óleo a 0,3 — régua contra o Rebelle 330 → 396/454 (sem óleo 376).
+        ("oilDepth", 0.3),
         ("felt", 0.05),
         ("bristleStrength", 2.0),
         ("bristlePressure", 1.2),

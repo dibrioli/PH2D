@@ -79,6 +79,11 @@ pub struct DabJitter {
     pub veu_escala: f32,
     /// A cobertura de uma marca do véu × isto (`0..1`; só com [`Self::veu`]).
     pub veu_opacidade: f32,
+    /// ⭐ **A marca abaixo de meio píxel pousa pela ÁREA** (J6 `texturas`): o raio mínimo que se pinta é `0,5 px`; uma
+    /// marca que pedia `r < 0,5` pinta esse disco com a cobertura × `(r ÷ 0,5)²` — a MESMA tinta que o disco pedido,
+    /// espalhada no píxel (o anti-alias de uma gotícula). Sem ela a gotícula de 0,1 px pinta 25× a sua tinta: o Spray
+    /// Can a 5 px era uma linha escura onde o Texture Spray do Krita é pó quase invisível. `false` = o de sempre.
+    pub subpixel_area: bool,
 }
 
 impl DabJitter {
@@ -103,7 +108,23 @@ impl DabJitter {
         po_px: 2.0,
         po_opacidade: 0.3,
         po_lado: 0.0,
+        subpixel_area: false,
     };
+
+    /// O raio mínimo que um dab pinta (px): o `clamp(0.5, …)` de todo raio do traço.
+    pub const RAIO_MIN_PX: f32 = 0.5;
+
+    /// ⭐ O factor da cobertura de uma marca que pedia o raio `livre` e pinta o raio `raio` (o `livre` subido ao
+    /// mínimo): `(livre ÷ raio)²` com [`Self::subpixel_area`] e `livre < raio`; senão `1` (ao bit).
+    #[must_use]
+    pub fn fator_da_area(&self, livre: f32, raio: f32) -> f32 {
+        if self.subpixel_area && livre < raio && raio > 0.0 {
+            let k = livre.max(0.0) / raio;
+            k * k
+        } else {
+            1.0
+        }
+    }
 
     /// A menor partícula (`5 %` do pincel): abaixo disso o dab do raio mínimo (`0,5 px`) já é o que se pinta.
     pub const PARTICULA_MIN: f32 = 0.05;

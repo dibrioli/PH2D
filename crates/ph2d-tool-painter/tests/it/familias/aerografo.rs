@@ -142,6 +142,8 @@ pub const EM_ESTUDO: &[ReceitaMeio] = &[
     // J-2 — a LATA (Krita «y) Texture Spray»), REEXAMINADA na J4 pelo motor da família `texturas`
     // (`exames/texturas.md` «Motor J4»): gotas pequenas de tamanhos vários (a receita medida da J3) + o VÉU (a 2.ª
     // população: maior e pálida, `DabJitter::veu`) + o spray PARADO (`parado_s`: parada, a lata continua a pousar).
+    // J6: a gotícula abaixo de meio píxel pela ÁREA (`subpixel_area`: a 5 px cobertura 0,258 → 0,123, Krita 0,122) e
+    // o véu menor (×1,8 → ×1,2, tom 0,3); régua 426 → 442/454.
     ReceitaMeio {
         pincel: &[
             ("hardness", "0.85"),
@@ -155,7 +157,7 @@ pub const EM_ESTUDO: &[ReceitaMeio] = &[
             ("parado_s", "0.0035"),
             (
                 "dab_jitter",
-                r#"{"across": 0.4, "angle_per_stroke": 0.0, "count": 0.0, "flip_x": 0.0, "flip_y": 0.0, "opacity": 0.5, "particle": 0.09, "roundness": 0.0, "veu": 0.2, "veu_escala": 1.8, "veu_opacidade": 0.2}"#,
+                r#"{"across": 0.4, "angle_per_stroke": 0.0, "count": 0.0, "flip_x": 0.0, "flip_y": 0.0, "opacity": 0.5, "particle": 0.09, "roundness": 0.0, "veu": 0.2, "veu_escala": 1.2, "veu_opacidade": 0.3, "subpixel_area": true}"#,
             ),
         ],
         mao: &[("pressureSize", 0.0), ("pressureOpacity", 1.0)],

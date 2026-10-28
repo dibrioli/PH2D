@@ -141,6 +141,7 @@ fn pincel_mexido() -> BrushSpec {
             veu: 0.4,
             veu_escala: 2.5,
             veu_opacidade: 0.2,
+            subpixel_area: true,
         },
         hose: ph2d_painter_brush::ImageHose {
             n: 1,

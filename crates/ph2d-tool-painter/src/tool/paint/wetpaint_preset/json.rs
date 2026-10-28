@@ -206,6 +206,10 @@ fn marca_para_json(j: &DabJitter) -> Value {
         v["veu_escala"] = num(j.veu_escala);
         v["veu_opacidade"] = num(j.veu_opacidade);
     }
+    // A marca abaixo de meio píxel pela área (J6) só ligada: idem.
+    if j.subpixel_area {
+        v["subpixel_area"] = json!(true);
+    }
     v
 }
 
@@ -235,6 +239,10 @@ fn marca_de_json(v: Option<&Value>, base: DabJitter) -> DabJitter {
         veu: f(o.get("veu"), 0.0).clamp(0.0, 1.0),
         veu_escala: f(o.get("veu_escala"), 1.0).max(0.05),
         veu_opacidade: f(o.get("veu_opacidade"), 1.0).clamp(0.0, 1.0),
+        subpixel_area: o
+            .get("subpixel_area")
+            .and_then(Value::as_bool)
+            .unwrap_or(false),
     }
 }
 

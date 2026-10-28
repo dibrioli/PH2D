@@ -135,19 +135,23 @@ impl Stroke {
         if jitter && self.por_traco.rotor != [1.0, 0.0] {
             rotation = crate::heading::rotate(rotation, self.por_traco.rotor);
         }
-        let radius = (self.spec.clamped_radius() * self.dynamics.radius_scale(pressure) * scale)
-            .clamp(0.5, MAX_BRUSH_RADIUS_PX);
+        // O raio PEDIDO (sem o mínimo de 0,5 px): o que a marca abaixo de meio píxel pousa pela área (J6).
+        let livre =
+            (self.spec.clamped_radius() * self.dynamics.radius_scale(pressure) * scale).min(MAX_BRUSH_RADIUS_PX);
+        let radius = livre.clamp(0.5, MAX_BRUSH_RADIUS_PX);
         let coverage =
             (self.spec.strength * self.dynamics.coverage_scale(pressure) * overlap).clamp(0.0, 1.0);
         // A velocidade (L12) na MESMA lei da mão: a do dab é a rampa do traço (`speed.rs`).
-        let (radius, coverage) = if self.dynamics.speed_armed() {
+        let (radius, coverage, livre) = if self.dynamics.speed_armed() {
             let v = self.velocidade_do_dab();
+            let k = self.dynamics.speed_radius_scale(v);
             (
-                (radius * self.dynamics.speed_radius_scale(v)).clamp(0.5, MAX_BRUSH_RADIUS_PX),
+                (radius * k).clamp(0.5, MAX_BRUSH_RADIUS_PX),
                 (coverage * self.dynamics.speed_coverage_scale(v)).clamp(0.0, 1.0),
+                (livre * k).min(MAX_BRUSH_RADIUS_PX),
             )
         } else {
-            (radius, coverage)
+            (radius, coverage, livre)
         };
         // Jitter reads the UN-tapered radius on purpose: the scatter is a property of the brush, not of
         // where along the stroke this dab happens to fall.
@@ -192,18 +196,23 @@ impl Stroke {
         } else {
             1.0
         };
-        let radius = if particula != 1.0 {
-            (radius * particula).clamp(0.5, MAX_BRUSH_RADIUS_PX)
+        let (radius, livre) = if particula != 1.0 {
+            (
+                (radius * particula).clamp(0.5, MAX_BRUSH_RADIUS_PX),
+                (livre * particula).min(MAX_BRUSH_RADIUS_PX),
+            )
         } else {
-            radius
+            (radius, livre)
         };
         // O tecto da partícula em px (J4): o espalhamento acima já leu o raio do pincel.
-        let radius = if jitter {
-            self.spec
-                .dab_jitter
-                .com_tecto(self.spec.spray_count, radius)
+        let (radius, livre) = if jitter {
+            let j = &self.spec.dab_jitter;
+            (
+                j.com_tecto(self.spec.spray_count, radius),
+                j.com_tecto(self.spec.spray_count, livre),
+            )
         } else {
-            radius
+            (radius, livre)
         };
         let ante = self.dab_ante.map(|mut a| {
             a.salto = (alcance > 0.0 || atraves > 0.0).then_some(crate::capsula::Salto {
@@ -235,6 +244,11 @@ impl Stroke {
             && m.cobertura != 1.0
         {
             dab.coverage = (dab.coverage * m.cobertura).clamp(0.0, 1.0);
+        }
+        // A marca abaixo de meio píxel pousa pela ÁREA (J6, `DabJitter::subpixel_area`): `1` desligada.
+        let area = self.spec.dab_jitter.fator_da_area(livre, radius);
+        if area != 1.0 {
+            dab.coverage *= area;
         }
         // A caneta DEITADA (W6) antes da ponta afilada: o taper escala a ponta que a caneta fez. A forma
         // sorteada da marca (L4: redondeza, espelho) entra na MESMA pegada, antes de a caneta a deitar.

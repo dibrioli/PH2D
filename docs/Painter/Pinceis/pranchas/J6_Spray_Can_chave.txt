@@ -1,0 +1,7 @@
+Chave da prancha cega J6_Spray_Can_cega.jpg (ordem sorteada POR LINHA; linha: imagem → quem)
+gestos_A: 1 = Oil Pastel (d 1.842, limiar 0.591) (vizinho), 2 = Spray Can (escala 0.975) (nosso), 3 = y__Texture_Spray (Krita) (oraculo)
+gestos_B: 1 = Oil Pastel (d 1.842, limiar 0.591) (vizinho), 2 = y__Texture_Spray (Krita) (oraculo), 3 = Spray Can (escala 0.975) (nosso)
+tamanhos_A: 1 = Spray Can (escala 0.975) (nosso), 2 = y__Texture_Spray (Krita) (oraculo), 3 = Oil Pastel (d 1.842, limiar 0.591) (vizinho)
+tamanhos_B: 1 = Spray Can (escala 0.975) (nosso), 2 = Oil Pastel (d 1.842, limiar 0.591) (vizinho), 3 = y__Texture_Spray (Krita) (oraculo)
+sobre_A: 1 = y__Texture_Spray (Krita) (oraculo), 2 = Spray Can (escala 0.975) (nosso), 3 = Oil Pastel (d 1.842, limiar 0.591) (vizinho)
+sobre_B: 1 = Oil Pastel (d 1.842, limiar 0.591) (vizinho), 2 = y__Texture_Spray (Krita) (oraculo), 3 = Spray Can (escala 0.975) (nosso)

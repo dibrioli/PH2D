@@ -68,6 +68,13 @@ nosso tomado pelo original 6/6, baixa). Custo p95 0,17 · 0,37 · 0,96 ms. Port�
   tomou o nosso pelo original (baixa); r2 e r3 acharam o Krita (r3 média). Repetido (visível): **a 5 px o nosso é uma
   linha escura, o Krita pó quase invisível** (a marca mínima de 0,5 px de raio concentra a tinta) e **discos do véu
   grandes e iguais soltos acima da faixa**. Custo p95 1,5 · 12,0 ms a 40 · 200 (a receita da ronda r2, load 22).
+  **J6 (motor `subpixel_area`, 1 ronda, 3 variantes):** A = só a lei: régua 440/454, recto de 5 px cobertura 0,258 →
+  **0,123** (Krita 0,122), opacidade 0,49 → 0,175 (0,20), cor (72,134,195) → (225,235,245) (Krita (241,246,250)) — o pó.
+  **B (a receita)** = A + véu ×1,2, tom 0,3: **442/454**, 5 px 0,131 · 0,192. C = B + `particle_max_px` 12 e através
+  0,3: 430 (a 200 px rala demais) — recusada. Vizinho Oil Pastel 1,842. Prancha `pranchas/J6_Spray_Can{,_cega}.jpg` +
+  `_chave.txt`; régua `exames/texturas/spray_can_J6_regua.txt`. **Ainda se vê:** a 200 px, gotas redondas soltas
+  ACIMA da faixa (o jitter 0,7 + através, não o véu: com o véu ×1,2 ficam) e as gotas do miolo maiores e mais
+  regulares que as do Krita (manchas irregulares). Revisão cega POR FAZER (fica em `EM_ESTUDO`).
 - **J-3 Splatter, J-5 Stipple**: como a 1.ª onda os deixou (o Splats é aguarela: dono `aguarela`).
 
 ## Motor J4 (o agente «motor da família texturas»)
@@ -83,6 +90,7 @@ Cada lei aditiva, desligada por omissão, gravada no preset só ligada (os prese
 | `DabJitter::veu` (+ escala, opacidade) | `stroke/spray.rs` | uma 2.ª população das marcas (fluxo próprio) | `o_veu_e_uma_segunda_populacao_maior_e_palida` (V1, V2) |
 | `BrushSpec::parado_s` | `stroke/spray.rs` | o Space parado pousa uma nuvem a cada `parado_s` | `o_spray_parado_pousa_pelo_tempo` (Pa1, Pa2) |
 | `DabJitter::po` (+ alcance, px, opacidade) | `stroke/spray.rs` | o PÓ SOLTO fora da borda (pedido do `pastel_carvao`) | `o_po_solto_espalha_graos_a_volta_do_traco` (PO1–PO3) |
+| `DabJitter::subpixel_area` (J6) | `marca.rs` · `stroke/dab_build.rs` | a marca que pedia `r < 0,5 px` pinta o disco mínimo com a cobertura × `(r ÷ 0,5)²` — a tinta do disco pedido | `a_marca_abaixo_de_meio_pixel_pousa_pela_area` (S1 linear, S2 sem chegar ao dab, S3 o raio livre sem a partícula: SANGRAM) |
 
 - **O custo da área** (medido): com um toque por texel (grelha ≤ 16) o Foliage a 40 px dava p95 33 ms (load 26); com
   ½ texel por toque e ≤ 8, 8,3 ms (load 22). Um mipmap verdadeiro (O(1) por píxel) precisa da pirâmide junto do
@@ -103,8 +111,18 @@ verdes; `a_lei_da_tinta` vermelho só no **Wet Liner** (fnv da cena; Wet, não d
 ## Para a fila
 
 1. **O pó solto no Wet** (acima) — a rota do Wet; depois o reexame dos pastéis (Soft Pastel, Pastel Side, Charcoal).
-2. Foliage: a pressão baixa lisa (sem a contagem sorteada na pressão baixa) e o ralo a 200 px. Grass: a fila contínua de
+2. **J6 — a escolha** (das diferenças escritas dos 6 curados, cada lacuna de motor destrava UM): a marca abaixo de
+   meio píxel (Spray Can) foi a única com o defeito MEDIDO no motor (o clamp 0,5 px × 4,9 a tinta). O resto, medido
+   e por lei: Foliage — a pressão baixa partida é da RECEITA (`count` 0,4) e o ralo a 200 px do `particle_max_px`
+   (existe): receita, não motor. Grass — a fila de tufos em gancho é o DESENHO do carimbo (receita). Noise Grit — os
+   grumos pedem uma lei nova: a densidade modulada por ruído BAIXO ao longo do arco (nós espaçados); a 5 px o Krita
+   mais escuro (0 de motor: a área já é a média). Splatter — a orla de aguarela (dono `aguarela`) e a gota gigante
+   isolada a 200 px (lei de potência do tamanho). Stipple — os tufos regulares (o carimbo de vários pontos: spray com
+   `jitter` menor e passo maior — receita primeiro) e o ponto redondo de borda mole (`hardness`). Spray Can — as gotas
+   soltas acima da faixa (o espalhamento por raio ⇒ um tecto do espalhamento em px, a medir).
+3. Foliage: a pressão baixa lisa (sem a contagem sorteada na pressão baixa) e o ralo a 200 px. Grass: a fila contínua de
    tufos em gancho. Noise Grit: os grumos (densidade desigual). Spray Can: a marca a 5 px (a cobertura da marca menor que
    meio píxel) e o véu menor. Clouds/Hatching: um oráculo que se compare (Krita com preset de hachura; MyPaint `Clouds` a
    outra escala).
-3. As leis sem UI (cartões Jitter/Spray): `particle_px/max/min`, `veu`, `po`, `parado_s`, `passo_pela_pressao`, `area`.
+4. As leis sem UI (cartões Jitter/Spray): `particle_px/max/min`, `veu`, `po`, `parado_s`, `passo_pela_pressao`, `area`,
+   `subpixel_area`.

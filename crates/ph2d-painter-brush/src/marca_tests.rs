@@ -596,3 +596,36 @@ fn o_po_solto_espalha_graos_a_volta_do_traco() {
         graos.len()
     );
 }
+
+/// ⭐ **A marca abaixo de meio píxel pousa pela ÁREA** (J6 `texturas`, `DabJitter::subpixel_area`; o Spray Can a 5 px
+/// era uma linha escura onde o Texture Spray do Krita é pó): a gotícula que pedia `r = 0,2 px` pinta o disco mínimo
+/// de 0,5 px com a cobertura × `(0,2 ÷ 0,5)² = 0,16` — a MESMA tinta (`cobertura × r²`) do disco pedido. Posições,
+/// raios e contagem ficam; acima de meio píxel, e com o campo desligado, tudo ao bit.
+#[test]
+fn a_marca_abaixo_de_meio_pixel_pousa_pela_area() {
+    let gotas = |raio: f32, particula: f32, area: bool| {
+        let mut s = spec_base();
+        s.radius_px = raio;
+        s.jitter_scale = 0.0;
+        s.spray_count = 4;
+        s.dab_jitter.particle = particula;
+        s.dab_jitter.subpixel_area = area;
+        recto(s, 11)
+    };
+    let (sem, com_area) = (gotas(2.5, 0.08, false), gotas(2.5, 0.08, true));
+    assert_eq!(sem.len(), com_area.len());
+    let mut tinta = (0.0f64, 0.0f64);
+    for (a, b) in sem.iter().zip(&com_area) {
+        assert_eq!((a.center, a.radius_px), (b.center, b.radius_px));
+        assert!((a.radius_px - DabJitter::RAIO_MIN_PX).abs() < 1e-6, "raio {}", a.radius_px);
+        let k = f64::from(b.coverage) / f64::from(a.coverage);
+        assert!((k - 0.16).abs() < 1e-4, "cobertura × {k}, a lei pede (0,2 ÷ 0,5)² = 0,16");
+        tinta.0 += f64::from(a.coverage) * 0.25;
+        tinta.1 += f64::from(b.coverage) * 0.25;
+    }
+    // A tinta pousada é a do disco PEDIDO (`cobertura × 0,2²`), não a do mínimo.
+    let pedida: f64 = sem.iter().map(|a| f64::from(a.coverage) * 0.04).sum();
+    assert!((tinta.1 / pedida - 1.0).abs() < 1e-3, "tinta {} × pedida {pedida} (sem a lei {})", tinta.1, tinta.0);
+    // Acima de meio píxel: ao bit.
+    assert_eq!(gotas(20.0, 0.5, false), gotas(20.0, 0.5, true));
+}

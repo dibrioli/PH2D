@@ -549,6 +549,9 @@ pub fn clamp_area(rect: [u32; 4], px: [u32; 2]) -> [u32; 4] {
     ]
 }
 
+/// Por onde o editor de Region começa: os píxeis da imagem, a área (`None` = a imagem inteira) e a grelha.
+pub type RegionSeed = ([u32; 2], Option<[f32; 4]>, [u32; 2]);
+
 /// Por onde o editor de Region de `e` começa: os píxeis da imagem, a área de agora (`None` = a imagem inteira) e a
 /// grelha. `None` fora de Region ou sem os píxeis da imagem.
 #[must_use]
@@ -558,7 +561,7 @@ pub fn region_seed(
     db: &AssetDb,
     atlas: &BTreeMap<u32, AssetId>,
     ppm: f32,
-) -> Option<([u32; 2], Option<[f32; 4]>, [u32; 2])> {
+) -> Option<RegionSeed> {
     let cut = *world.get::<ImageRegion>(e)?;
     let px = shown_facts(world, e, db, atlas, ppm)?.px;
     (px[0] > 0 && px[1] > 0).then(|| (px, world.get::<SpriteRegion>(e).map(|r| r.rect), cut.grid))

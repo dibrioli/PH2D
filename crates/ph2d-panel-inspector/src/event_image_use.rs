@@ -14,7 +14,7 @@ use ph2d_editor_core::{
 /// O passo de arrasto de Width/Height (cópias da imagem): meia cópia.
 const PASSO: f64 = 0.5;
 /// O menor número de cópias: um centésimo da imagem (o lado mínimo em metros fica na lei).
-const MIN_COPIAS: f64 = 0.01;
+const MIN_COPIAS: f64 = 0.01; // LITERAL-PX-OK: cópias da imagem, não px
 /// O maior número de cópias: dez mil, muito além de qualquer nível.
 const MAX_COPIAS: f64 = 1.0e4;
 

@@ -61,31 +61,31 @@ const DEMO_ILLUSTRATION: &[crate::widget::illustration::Mark] = {
     use crate::widget::illustration::Mark;
     &[
         Mark::Rect {
-            at: [0.1, 0.8],
-            size: [0.8, 0.1],
+            at: [0.1, 0.8],   // LITERAL-PX-OK: coordenada da moldura 0..1
+            size: [0.8, 0.1], // LITERAL-PX-OK: coordenada da moldura 0..1
             fill: ColorToken::Text3,
-            round: 0.02,
+            round: 0.02, // LITERAL-PX-OK: coordenada da moldura 0..1
         },
         Mark::Capsule {
-            c: [0.35, 0.55],
-            half_h: 0.1,
-            r: 0.12,
+            c: [0.35, 0.55], // LITERAL-PX-OK: coordenada da moldura 0..1
+            half_h: 0.1,     // LITERAL-PX-OK: coordenada da moldura 0..1
+            r: 0.12,         // LITERAL-PX-OK: coordenada da moldura 0..1
             fill: ColorToken::Accent,
         },
         Mark::Dashed {
-            at: [0.27, 0.3],
-            size: [0.16, 0.5],
+            at: [0.27, 0.3],   // LITERAL-PX-OK: coordenada da moldura 0..1
+            size: [0.16, 0.5], // LITERAL-PX-OK: coordenada da moldura 0..1
             stroke: ColorToken::Text2,
         },
         Mark::Line {
-            a: [0.5, 0.6],
-            b: [0.7, 0.25],
+            a: [0.5, 0.6],  // LITERAL-PX-OK: coordenada da moldura 0..1
+            b: [0.7, 0.25], // LITERAL-PX-OK: coordenada da moldura 0..1
             stroke: ColorToken::Text2,
             arrow: true,
         },
         Mark::Disc {
-            c: [0.78, 0.2],
-            r: 0.06,
+            c: [0.78, 0.2], // LITERAL-PX-OK: coordenada da moldura 0..1
+            r: 0.06,        // LITERAL-PX-OK: coordenada da moldura 0..1
             fill: ColorToken::Warn,
         },
     ]

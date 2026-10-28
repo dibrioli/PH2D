@@ -1,4 +1,4 @@
-//! **O formato v1, congelado** — só para LER ficheiros antigos (o degrau v1 → v2). Nunca se escreve.
+//! **O formato v1, congelado** — só para LER ficheiros antigos (o degrau v1 → hoje). Nunca se escreve.
 //!
 //! Estão aqui só os tipos cujo desenho o v2 mudou (postcard é posicional: um campo a mais desloca
 //! tudo). Os registos que o v2 não tocou (etiqueta, checklist, item, comentário, anexo, campo, capa,
@@ -98,6 +98,7 @@ impl KanbanV1 {
             background: h.background,
             version: h.version,
             watchers: Vec::new(),
+            aging: None,
         };
         k.lists = self
             .lists
@@ -156,6 +157,7 @@ impl Card {
             meta: self.meta,
             watchers: Vec::new(),
             origin: None,
+            template: false,
         }
     }
 }

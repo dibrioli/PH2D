@@ -40,6 +40,7 @@ pub(crate) fn card(k: &Kanban, list: ListId, title: &str) -> KanbanOp {
         meta: Meta::default(),
         watchers: Vec::new(),
         origin: None,
+        template: false,
     }))
 }
 

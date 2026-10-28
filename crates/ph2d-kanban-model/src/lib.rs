@@ -16,12 +16,17 @@ mod convert;
 mod files;
 mod history;
 mod kanban;
+mod lists;
+mod mirror;
 mod ops;
+mod plan;
 mod records;
 mod set;
 #[cfg(test)]
 mod test_support;
+mod transfer;
 mod v1;
+mod v2;
 mod view;
 
 pub use activity::{Activity, Actor, Happened, Snapshot, Subject, activity_for, apply_logged};
@@ -29,14 +34,18 @@ pub use color::{Hue, LabelColor, Shade};
 pub use convert::convert_item_to_card;
 pub use files::{Blob, FileId, KanbanFile};
 pub use history::{History, MAX_STEPS};
-pub use kanban::{Background, Header, Kanban};
+pub use kanban::{Aging, Background, Header, Kanban};
+pub use lists::{archive_all_cards, copy_list, move_all_cards, move_list};
+pub use mirror::{Entry, mirror_card, remove_card};
 pub use ops::{KanbanOp, Record, RecordId, apply_batch};
 pub use ph2d_frac::FracKey;
+pub use plan::{ListRef, Place, Plan};
 pub use records::{
-    ActivityId, Attachment, AttachmentId, Card, CardId, CheckItem, CheckItemId, Checklist,
+    ActivityId, Attachment, AttachmentId, Card, CardId, CardRef, CheckItem, CheckItemId, Checklist,
     ChecklistId, Comment, CommentId, Cover, CoverFill, Due, FieldDef, FieldId, FieldKind,
-    FieldOption, FieldValue, KanbanId, Label, LabelId, Link, List, ListId, Member, Meta, Moment,
-    OptionId, Reaction,
+    FieldOption, FieldValue, KanbanId, Label, LabelId, Link, List, ListId, Member, Meta, Mirror,
+    MirrorId, Moment, OptionId, Reaction,
 };
 pub use set::{FORMAT_VERSION, KanbanSet};
+pub use transfer::{CopyKeep, card_from_template, copy_card, move_card, move_mirror};
 pub use view::{KanbanView, Shown, ShownList};

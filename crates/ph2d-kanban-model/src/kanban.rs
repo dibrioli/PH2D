@@ -12,8 +12,17 @@ use crate::files::FileId;
 use crate::records::{
     ActivityId, Attachment, AttachmentId, Card, CardId, CheckItem, CheckItemId, Checklist,
     ChecklistId, Comment, CommentId, FieldDef, FieldId, KanbanId, Label, LabelId, List, ListId,
-    Member,
+    Member, Mirror, MirrorId,
 };
+
+/// O envelhecimento dos cartões parados (v3, o Power-Up «Card Aging»): como a frente o pinta.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum Aging {
+    /// O cartão desbota.
+    Regular,
+    /// O cartão amarelece, racha e rasga (o mapa de pirata).
+    Pirate,
+}
 
 /// O fundo do Kanban.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -34,6 +43,8 @@ pub struct Header {
     pub version: u64,
     /// Quem segue o Kanban inteiro (v2).
     pub watchers: Vec<Member>,
+    /// O envelhecimento ligado (v3; `None` = desligado, o de nascença).
+    pub aging: Option<Aging>,
 }
 
 /// Um Kanban do projecto.
@@ -54,6 +65,8 @@ pub struct Kanban {
     /// A história do Kanban (v2): nasce das ops aplicadas por [`crate::apply_logged`] e o desfazer
     /// não a apaga (como no Trello).
     pub activities: BTreeMap<ActivityId, Activity>,
+    /// Os espelhos MOSTRADOS neste Kanban (v3; o original pode ser de outro).
+    pub mirrors: BTreeMap<MirrorId, Mirror>,
 }
 
 impl Kanban {
@@ -68,6 +81,7 @@ impl Kanban {
                 background: Background::Color(Hue::Blue),
                 version: 0,
                 watchers: Vec::new(),
+                aging: None,
             },
             lists: BTreeMap::new(),
             cards: BTreeMap::new(),
@@ -79,6 +93,7 @@ impl Kanban {
             fields: BTreeMap::new(),
             next_id: 0,
             activities: BTreeMap::new(),
+            mirrors: BTreeMap::new(),
         }
     }
 
@@ -131,15 +146,19 @@ impl Kanban {
         FracKey::between(last, None)
     }
 
-    /// A posição depois do último cartão de `list`.
+    /// A posição depois do último cartão (ou espelho, v3) de `list`.
     #[must_use]
     pub fn pos_after_cards(&self, list: ListId) -> FracKey {
-        let last = self
+        let cards = self
             .cards
             .values()
             .filter(|c| c.list == list && !c.meta.deleted)
-            .map(|c| &c.pos)
-            .max();
-        FracKey::between(last, None)
+            .map(|c| &c.pos);
+        let mirrors = self
+            .mirrors
+            .values()
+            .filter(|m| m.list == list && !m.meta.deleted)
+            .map(|m| &m.pos);
+        FracKey::between(cards.chain(mirrors).max(), None)
     }
 }

@@ -12,8 +12,9 @@ use crate::ops::{KanbanOp, apply_batch};
 use crate::records::{CoverFill, KanbanId, Link};
 
 /// A versão dos bytes de [`KanbanSet::to_bytes`]. v2 (W3): seguir, atividade, origem do cartão,
-/// ficheiros por conteúdo. A v1 lê-se pelo degrau de [`crate::v1`].
-pub const FORMAT_VERSION: u32 = 2;
+/// ficheiros por conteúdo. v3 (W6): modelos de cartão, envelhecimento, espelhos. A v1 e a v2 leem-se
+/// pelos degraus de [`crate::v1`] e [`crate::v2`].
+pub const FORMAT_VERSION: u32 = 3;
 
 /// Os Kanbans de um projecto, pela ordem em que nasceram.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
@@ -149,6 +150,16 @@ impl KanbanSet {
         match version {
             FORMAT_VERSION => postcard::from_bytes::<(u32, Self)>(bytes)
                 .map(|(_, set)| set)
+                .map_err(|e| e.to_string()),
+            2 => postcard::from_bytes::<(u32, crate::v2::SetV2)>(bytes)
+                .map(|(_, old)| {
+                    let (kanbans, next_id, files) = old.upgrade();
+                    Self {
+                        kanbans,
+                        next_id,
+                        files,
+                    }
+                })
                 .map_err(|e| e.to_string()),
             1 => postcard::from_bytes::<(u32, crate::v1::SetV1)>(bytes)
                 .map(|(_, old)| {

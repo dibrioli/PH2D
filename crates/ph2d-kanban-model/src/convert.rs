@@ -54,6 +54,7 @@ pub fn convert_item_to_card(
         meta: Meta::default(),
         watchers: Vec::new(),
         origin: Some(origin.id),
+        template: false,
     };
     Some(vec![
         KanbanOp::put(Record::Card(card)),

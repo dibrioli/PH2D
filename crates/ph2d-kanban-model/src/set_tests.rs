@@ -274,3 +274,71 @@ fn orphan_files_are_not_saved_and_the_same_bytes_are_one_file() {
         "o cartão apagado já não segura a capa"
     );
 }
+
+/// A fixture gravada pelo código v2 (cabeçalho `#`, depois hex).
+fn v2_fixture() -> Vec<u8> {
+    let text = include_str!("../tests/fixtures/kanban_set_v2_full.hex");
+    let hex: String = text.lines().filter(|l| !l.starts_with('#')).collect();
+    (0..hex.len())
+        .step_by(2)
+        .map(|i| u8::from_str_radix(&hex[i..i + 2], 16).unwrap())
+        .collect()
+}
+
+#[test]
+fn v2_bytes_read_as_v3_equal() {
+    let bytes = v2_fixture();
+    assert_eq!(postcard::take_from_bytes::<u32>(&bytes).unwrap().0, 2);
+    let back = KanbanSet::from_bytes(&bytes).unwrap();
+    let (today, cover, _) = full_v2();
+    assert_eq!(
+        back.iter().collect::<Vec<_>>(),
+        today.iter().collect::<Vec<_>>(),
+        "o degrau v2 → v3 dá os mesmos Kanbans que o código de hoje monta"
+    );
+    assert_eq!(back.file(cover), today.file(cover));
+    let again = KanbanSet::from_bytes(&back.to_bytes().unwrap()).unwrap();
+    assert_eq!(again, back, "e, regravado em v3, continua igual");
+}
+
+#[test]
+fn the_v3_bytes_round_trip_templates_aging_and_mirrors() {
+    let (mut set, _, _) = full_v2();
+    let id = set.iter().next().unwrap().id;
+    let other = set.create("Outro");
+    let k = set.doc_mut(id).unwrap();
+    let mut h = k.header.clone();
+    h.aging = Some(crate::Aging::Pirate);
+    let todo = k.lists_in_order()[0].id;
+    let c = k.cards_in(todo)[0].id;
+    let mut card = k.cards[&c].clone();
+    card.template = true;
+    put(k, KanbanOp::Header(h));
+    put(k, KanbanOp::put(Record::Card(card)));
+    let l = crate::test_support::list(set.get(other).unwrap(), "Mirrors");
+    set.apply(other, vec![l]);
+    let ko = set.get(other).unwrap();
+    let at = crate::Place {
+        kanban: other,
+        list: ko.lists_in_order()[0].id,
+        pos: ko.pos_after_lists(),
+    };
+    let of = crate::CardRef {
+        kanban: id,
+        card: c,
+    };
+    let plan = crate::mirror_card(&set, of, &at).unwrap();
+    for (k, ops) in plan.into_steps() {
+        set.apply(k, ops);
+    }
+    let bytes = set.to_bytes().unwrap();
+    assert_eq!(postcard::take_from_bytes::<u32>(&bytes).unwrap().0, 3);
+    let back = KanbanSet::from_bytes(&bytes).unwrap();
+    assert!(back.iter().eq(set.iter()), "os Kanbans voltam iguais");
+    assert_eq!(back.mirrors_of(of).len(), 1);
+    assert_eq!(
+        back.get(id).unwrap().header.aging,
+        Some(crate::Aging::Pirate)
+    );
+    assert!(back.card(of).unwrap().template);
+}

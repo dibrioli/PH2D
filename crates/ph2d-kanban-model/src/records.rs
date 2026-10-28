@@ -33,6 +33,8 @@ ids! {
     OptionId,
     /// Uma entrada da atividade (v2).
     ActivityId,
+    /// Um cartão espelho (v3).
+    MirrorId,
 }
 
 /// Um instante: milissegundos desde 1970-01-01 UTC. Valor NEUTRO — fusos, «hoje», «atrasado» e
@@ -130,6 +132,55 @@ pub struct Card {
     pub watchers: Vec<Member>,
     /// O cartão de cuja checklist este nasceu ([`crate::convert_item_to_card`], v2).
     pub origin: Option<CardId>,
+    /// Um modelo de cartão (v3): a frente mostra-o como modelo e «Criar cartão» copia-o.
+    pub template: bool,
+}
+
+impl Card {
+    /// Um cartão vazio — a porta que não parte quando o registo ganha um campo.
+    #[must_use]
+    pub fn new(id: CardId, list: ListId, pos: FracKey, title: &str, created: Moment) -> Self {
+        Self {
+            id,
+            list,
+            pos,
+            title: title.to_owned(),
+            description: String::new(),
+            labels: Vec::new(),
+            members: Vec::new(),
+            start: None,
+            due: None,
+            cover: None,
+            fields: BTreeMap::new(),
+            location: String::new(),
+            votes: Vec::new(),
+            created,
+            archived: false,
+            meta: Meta::default(),
+            watchers: Vec::new(),
+            origin: None,
+            template: false,
+        }
+    }
+}
+
+/// Um cartão de um Kanban do projecto, de qualquer Kanban.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+pub struct CardRef {
+    pub kanban: KanbanId,
+    pub card: CardId,
+}
+
+/// Um cartão ESPELHO (v3, o «Mirror» do Trello de 2025): o MESMO cartão `of`, mostrado nesta lista.
+/// Vive no Kanban onde aparece (a ordem é dessa lista); o conteúdo é sempre o do original — editar
+/// de qualquer lado escreve o original.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct Mirror {
+    pub id: MirrorId,
+    pub list: ListId,
+    pub pos: FracKey,
+    pub of: CardRef,
+    pub meta: Meta,
 }
 
 /// Uma etiqueta do Kanban (sem cor = só texto; sem nome = só cor).

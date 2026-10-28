@@ -9,7 +9,8 @@ use crate::activity::Activity;
 use crate::kanban::{Header, Kanban};
 use crate::records::{
     ActivityId, Attachment, AttachmentId, Card, CardId, CheckItem, CheckItemId, Checklist,
-    ChecklistId, Comment, CommentId, FieldDef, FieldId, Label, LabelId, List, ListId, Meta,
+    ChecklistId, Comment, CommentId, FieldDef, FieldId, Label, LabelId, List, ListId, Meta, Mirror,
+    MirrorId,
 };
 
 /// Um registo inteiro, de qualquer tabela.
@@ -25,6 +26,8 @@ pub enum Record {
     Field(FieldDef),
     /// v2 — uma entrada da história.
     Activity(Activity),
+    /// v3 — um cartão espelho.
+    Mirror(Mirror),
 }
 
 /// A chave de um registo, de qualquer tabela.
@@ -39,6 +42,7 @@ pub enum RecordId {
     Attachment(AttachmentId),
     Field(FieldId),
     Activity(ActivityId),
+    Mirror(MirrorId),
 }
 
 /// Uma mudança num Kanban.
@@ -103,6 +107,7 @@ rec!(Comment, CommentId, comments, Comment);
 rec!(Attachment, AttachmentId, attachments, Attachment);
 rec!(FieldDef, FieldId, fields, Field);
 rec!(Activity, ActivityId, activities, Activity);
+rec!(Mirror, MirrorId, mirrors, Mirror);
 
 /// O bit dos ids sorteados numa sessão ao vivo (W5) — esses não sobem o contador local.
 const SESSION_ID_BIT: u64 = 1 << 63;
@@ -164,6 +169,7 @@ impl KanbanOp {
                 Record::Attachment(r) => put(k, r),
                 Record::Field(r) => put(k, r),
                 Record::Activity(r) => put(k, r),
+                Record::Mirror(r) => put(k, r),
             },
             KanbanOp::Delete(id) => match id {
                 RecordId::List(id) => delete::<List>(k, id),
@@ -175,6 +181,7 @@ impl KanbanOp {
                 RecordId::Attachment(id) => delete::<Attachment>(k, id),
                 RecordId::Field(id) => delete::<FieldDef>(k, id),
                 RecordId::Activity(id) => delete::<Activity>(k, id),
+                RecordId::Mirror(id) => delete::<Mirror>(k, id),
             },
             KanbanOp::Header(mut h) => {
                 let mut prev = k.header.clone();
@@ -215,6 +222,7 @@ impl Record {
             Record::Attachment(r) => RecordId::Attachment(r.id),
             Record::Field(r) => RecordId::Field(r.id),
             Record::Activity(r) => RecordId::Activity(r.id),
+            Record::Mirror(r) => RecordId::Mirror(r.id),
         }
     }
 
@@ -229,6 +237,7 @@ impl Record {
             Record::Attachment(r) => &mut r.meta,
             Record::Field(r) => &mut r.meta,
             Record::Activity(r) => &mut r.meta,
+            Record::Mirror(r) => &mut r.meta,
         }
     }
 
@@ -258,6 +267,7 @@ impl Kanban {
             RecordId::Attachment(id) => self.attachments.get(&id).cloned().map(Record::Attachment),
             RecordId::Field(id) => self.fields.get(&id).cloned().map(Record::Field),
             RecordId::Activity(id) => self.activities.get(&id).cloned().map(Record::Activity),
+            RecordId::Mirror(id) => self.mirrors.get(&id).cloned().map(Record::Mirror),
         }
     }
 }

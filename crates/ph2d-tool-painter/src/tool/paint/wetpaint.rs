@@ -351,6 +351,9 @@ mod lote; // o papel e o sub-passo da cápsula de cada lote — filho de dab_rou
 mod po; // o PÓ SOLTO pousado à parte do rasto (J4 pastel_carvao) — filho de dab_route por LOC
 mod ponta_das_cerdas; // a ponta RECTA e DESFIADA das cerdas (J2 §7 c) — filho de dab_route por LOC
 mod tampa; // as PONTAS RECTAS do traço (J6) — filho de dab_route por LOC
+mod esbate; // as pontas que ESBATEM ao comprido (J6t)
+#[cfg(test)]
+mod esbate_tests;
 #[cfg(test)]
 mod tampa_tests;
 mod rota_da_lane; // a lane de cada dab, a tinta do motor e o b/opacidade — filho de dab_route por LOC

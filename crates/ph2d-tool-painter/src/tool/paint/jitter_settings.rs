@@ -440,6 +440,7 @@ impl PainterTool {
         self.paint.brush.dab_quina = d.dab_quina;
         self.paint.brush.pontas_rectas = d.pontas_rectas;
         self.paint.brush.pontas_alem = d.pontas_alem;
+        self.paint.brush.pontas_esbate = d.pontas_esbate;
     }
 
     /// Reset the **Stroke** section to defaults (method / spacing / Adjust-Strength / jitter group /

@@ -154,6 +154,7 @@ pub const INTERNAS: &[&str] = &[
     "set_brush_pigment_mix",
     "set_brush_pigment_mixing",
     "set_brush_pontas_alem",
+    "set_brush_pontas_esbate",
     "set_brush_shape_angle",
     "set_brush_shape_angle_norm",
     "set_brush_shape_follow",

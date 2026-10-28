@@ -205,6 +205,7 @@ impl DualTip {
         s.dab_quina = 0.0;
         s.pontas_rectas = false;
         s.pontas_alem = 0.0;
+        s.pontas_esbate = 0.0;
         // A caneta DEITADA é da mão, não da ponta (J3, `Pinceis/exames/grafite.md`): a 2.ª ponta deita-se com a 1.ª —
         // de pé, o Multiply recortava a pegada deitada à largura de pé (o 8B com a orla: através 1,11×, Rebelle 3,45×).
         s.dab_tilt = None;

@@ -36,6 +36,9 @@ pub const PAPER_TOOTH_MAX: f32 = 2.0;
 /// do SVG), `1` = meia largura além (o *square cap*). Medido no Rebelle (o recto de 40 px, J6): o corte passa
 /// 0,42–0,85 da meia-largura vista; além de `1` a ponta seria um bloco que nenhum oráculo pinta.
 pub const PONTAS_ALEM_MAX: f32 = 1.0;
+/// Tecto de [`BrushSpec::pontas_esbate`] — uma FAIXA do produto: a `8` a ponta esvazia no seu centro (`1 − e/8`) e
+/// enche até um raio para dentro; acima o traço acabaria antes do último centro, que nenhum oráculo pinta.
+pub const PONTAS_ESBATE_MAX: f32 = 8.0;
 /// **Flow Size** range — a multiple of the Classic's scale of detail (`1` = the Classic's; the pattern
 /// is normalized to it). `4×` either way spans a wash's edge from one slow meander to a fine fray; past
 /// it a feature is either wider than any stroke or finer than the AA's sub-texel taps.
@@ -362,6 +365,10 @@ pub struct BrushSpec {
     /// Quanto o corte das [`Self::pontas_rectas`] passa do 1.º e do último centro, em raios do dab (`0..1,5`): `0` o
     /// corte no centro, `1` a fita que passa meia largura (o *square cap*). Sem as pontas rectas não se lê.
     pub pontas_alem: f32,
+    /// ⭐ **As pontas que ESBATEM ao comprido** (J6t, `docs/Painter/Pinceis/J6t_pontas_esbatem.md`): o depósito cai
+    /// para as duas pontas do traço ao longo de UMA pegada (escala com o diâmetro) — `1 − e·((1 − a)/2)³` a `a` raios
+    /// para dentro do centro da ponta. `0` = o traço de sempre, ao bit; só o Wet Paint a lê. Faixa `0..`[`PONTAS_ESBATE_MAX`].
+    pub pontas_esbate: f32,
     /// ⭐⭐⭐ **A CURVATURA da arte debaixo do dab** — os graus `2` e `3` da pegada
     /// ([`crate::FootprintCurve`]). ⛔ **NÃO é um knob do artista**: ela é DERIVADA da malha que a
     /// sprite desenha, e quem a escreve é o [`crate::canvas_warp::warped_dab`], pela mesma porta

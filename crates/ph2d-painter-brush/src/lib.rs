@@ -202,7 +202,7 @@ pub use smear_field::{
 pub use spec::MAX_BRUSH_RADIUS_PX;
 pub use spec::{
     AIRBRUSH_RATE_MAX_S, AIRBRUSH_RATE_MIN_S, BrushSpec, FLOW_KINDS, FLOW_SIZE_MAX, FLOW_SIZE_MIN,
-    PAPER_TOOTH_MAX, PONTAS_ALEM_MAX,
+    PAPER_TOOTH_MAX, PONTAS_ALEM_MAX, PONTAS_ESBATE_MAX,
 };
 pub use stamp::{StampMask, blit_canvas_cached, blit_stamp, dab_write_bounds, render_stamp_mask};
 pub use stamp_color::{

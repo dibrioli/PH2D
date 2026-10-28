@@ -391,6 +391,7 @@ fn ler_campo(b: &BrushSpec, campo: &str) -> Value {
         "dab_quina" => num(b.dab_quina),
         "pontas_rectas" => json!(b.pontas_rectas),
         "pontas_alem" => num(b.pontas_alem),
+        "pontas_esbate" => num(b.pontas_esbate),
         "dab_curve" => pegada_para_json(b.dab_curve),
         "color_jitter_enabled" => json!(b.color_jitter_enabled),
         "continuous_spacing" => json!(b.continuous_spacing),
@@ -569,6 +570,9 @@ fn escrever_campo(b: &mut BrushSpec, campo: &str, v: Option<&Value>) {
         "pontas_alem" => {
             b.pontas_alem = f(v, 0.0).clamp(0.0, ph2d_painter_brush::PONTAS_ALEM_MAX);
         }
+        "pontas_esbate" => {
+            b.pontas_esbate = f(v, 0.0).clamp(0.0, ph2d_painter_brush::PONTAS_ESBATE_MAX);
+        }
         "dab_curve" => b.dab_curve = pegada_de_json(v, b.dab_curve),
         "color_jitter_enabled" => b.color_jitter_enabled = booleano(v, b.color_jitter_enabled),
         "continuous_spacing" => b.continuous_spacing = booleano(v, b.continuous_spacing),
@@ -628,6 +632,7 @@ pub(crate) fn pincel_para_json(b: &BrushSpec, campos: &[&str]) -> BTreeMap<Strin
         // As pontas rectas (J6) só ligadas: idem.
         .filter(|&&c| !(c == "pontas_rectas" && !b.pontas_rectas))
         .filter(|&&c| !(c == "pontas_alem" && b.pontas_alem <= 0.0))
+        .filter(|&&c| !(c == "pontas_esbate" && b.pontas_esbate <= 0.0))
         .map(|&c| ((*c).to_owned(), ler_campo(b, c)))
         .collect()
 }

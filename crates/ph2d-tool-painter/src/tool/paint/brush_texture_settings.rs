@@ -224,6 +224,16 @@ impl PainterTool {
         };
     }
 
+    /// Set the **Ends fade** (`0..PONTAS_ESBATE_MAX`, clamped; J6t) — how deep the deposit falls toward both ends
+    /// ([`ph2d_painter_brush::BrushSpec::pontas_esbate`]; only the Wet Paint reads it).
+    pub fn set_brush_pontas_esbate(&mut self, v: f32) {
+        self.paint.brush.pontas_esbate = if v.is_nan() {
+            0.0
+        } else {
+            v.clamp(0.0, ph2d_painter_brush::PONTAS_ESBATE_MAX)
+        };
+    }
+
     /// Set the **Dab rotation** of the flatten/rotate gizmo in whole **degrees**.
     pub fn set_brush_dab_angle(&mut self, deg: f32) {
         self.paint.brush.dab_angle_deg =

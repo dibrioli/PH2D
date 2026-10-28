@@ -249,6 +249,8 @@ impl PainterTool {
         // As PONTAS RECTAS (J6, [`super::tampa`]): só o pincel que pinta; desligadas, nada abaixo muda.
         let pontas = brush.pontas_rectas && !erasing && wet_tool == WetTool::Paint;
         let alem = self.alem_no_motor(brush);
+        // As pontas que ESBATEM (J6t, [`super::esbate`]): só o pincel que pinta; a 0, nada abaixo muda.
+        let esbate_e = if !erasing && wet_tool == WetTool::Paint { brush.pontas_esbate } else { 0.0 };
         let virtual_ = !sess.fecho.is_empty();
         let lote = match (virtual_, sess.abrindo) {
             (false, _) => super::tampa::Lote::Mao,
@@ -290,6 +292,10 @@ impl PainterTool {
                 super::tampa::Tampa::do_dab(d, &mut sess.lanes[li], lote, alem)
             });
             let corte = tampa.flatten();
+            let esbate = (esbate_e > 0.0).then(|| {
+                super::esbate::Esbate::do_dab(d, &mut sess.lanes[li], lote, esbate_e, pontas, filme_liso)
+            });
+            let peso_esbate = esbate.flatten().filter(|w| !w.trivial());
             // Per-dab fresh ink (Randomize): reload the lane's trail — a
             // brush dipped in new paint (see `Trail::set_base_color`).
             if !erasing && wet_tool == WetTool::Paint && d.color != sess.lanes[li].ink {
@@ -690,7 +696,29 @@ impl PainterTool {
             let cor_arg = cor_tampa
                 .as_ref()
                 .map_or(cor_arg, |c| Some(c as ph2d_wet_paint::brush::ColorFn<'_>));
-            if matches!(tampa, Some(None)) {
+            // As pontas que esbatem: o peso ao comprido, depois do portão (a cor da queda lê a de sempre).
+            let padrao_esbate = peso_esbate.map(|w| {
+                move |cx: i32, cy: i32| -> f64 {
+                    let x = grid_map::cell_subsample_px(cx, ratio, 0, f32::from(ratio));
+                    let y = grid_map::cell_subsample_px(cy, ratio, 0, f32::from(ratio));
+                    f64::from(w.peso(x, y)) * padrao_arg.map_or(1.0, |p| p(cx, cy))
+                }
+            });
+            let padrao_arg = padrao_esbate
+                .as_ref()
+                .map_or(padrao_arg, |p| Some(p as ph2d_wet_paint::brush::CellFn<'_>));
+            let cor_esbate = cor_arg.zip(peso_esbate).map(|(c, w)| {
+                move |cx: i32, cy: i32, queda: f64| -> [f32; 4] {
+                    let x = grid_map::cell_subsample_px(cx, ratio, 0, f32::from(ratio));
+                    let y = grid_map::cell_subsample_px(cy, ratio, 0, f32::from(ratio));
+                    let k = f64::from(w.peso(x, y));
+                    c(cx, cy, if k > 1e-6 { queda / k } else { queda })
+                }
+            });
+            let cor_arg = cor_esbate
+                .as_ref()
+                .map_or(cor_arg, |c| Some(c as ph2d_wet_paint::brush::ColorFn<'_>));
+            if matches!(tampa, Some(None)) || matches!(esbate, Some(None)) {
                 sess.lanes[li].pos = d.center;
                 sess.lanes[li].arco = d.arc_len;
                 continue;

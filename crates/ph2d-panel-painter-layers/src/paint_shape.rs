@@ -188,6 +188,22 @@ pub(crate) fn paint_shape_section(
                 sec,
             );
         }
+        // As pontas que ESBATEM ao comprido (J6t): o depósito cai para as duas pontas ao longo de uma pegada.
+        y = crate::number_field::paint_num_row(
+            ctx,
+            theme,
+            x,
+            content_w,
+            y,
+            tr("panel.painter_layers.shape.ends_fade"),
+            ph2d_tool_painter::ids::PAINTER_BRUSH_PONTAS_ESBATE,
+            brush.pontas_esbate,
+            0.0,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_PONTAS_ESBATE_MAX,
+            crate::number_field::FINE_STEP,
+            2,
+            sec,
+        );
     }
 
     // ── Texture source picker (None / procedural kinds / Image) — the same kinds as the Grain. Picking

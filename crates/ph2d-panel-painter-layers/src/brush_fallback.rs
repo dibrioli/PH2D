@@ -225,6 +225,7 @@ pub const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     dab_quina: 0.0,
     pontas_rectas: false,
     pontas_alem: 0.0,
+    pontas_esbate: 0.0,
     dab_angle_deg: 0,
     // No live stroke behind a fallback, so the ring rests at the brush Angle (rotor identity).
     dab_rotor: [1.0, 0.0],

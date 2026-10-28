@@ -56,6 +56,7 @@ fn monta(n: usize, listas: usize) -> (Mesa, KanbanId) {
                     card_limit: None,
                     archived: false,
                     meta: Meta::default(),
+                    watchers: Vec::new(),
                 })));
                 lid
             })
@@ -82,6 +83,8 @@ fn monta(n: usize, listas: usize) -> (Mesa, KanbanId) {
                 created: Moment(0),
                 archived: false,
                 meta: Meta::default(),
+                watchers: Vec::new(),
+                origin: None,
             })));
         }
         ph2d_kanban_model::apply_batch(k, ops);

@@ -174,6 +174,7 @@ impl Scene {
             card_limit: limit,
             archived: false,
             meta: Meta::default(),
+            watchers: Vec::new(),
         }));
         id
     }
@@ -197,6 +198,8 @@ impl Scene {
             created: Moment(0),
             archived: false,
             meta: Meta::default(),
+            watchers: Vec::new(),
+            origin: None,
         };
         f(&mut c);
         self.put(Record::Card(c));

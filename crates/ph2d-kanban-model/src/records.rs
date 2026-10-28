@@ -8,6 +8,7 @@ use ph2d_frac::FracKey;
 use serde::{Deserialize, Serialize};
 
 use crate::color::{Hue, LabelColor};
+use crate::files::FileId;
 
 macro_rules! ids {
     ($($(#[$m:meta])* $name:ident),* $(,)?) => {$(
@@ -30,6 +31,8 @@ ids! {
     FieldId,
     /// Uma opção de um campo «lista suspensa».
     OptionId,
+    /// Uma entrada da atividade (v2).
+    ActivityId,
 }
 
 /// Um instante: milissegundos desde 1970-01-01 UTC. Valor NEUTRO — fusos, «hoje», «atrasado» e
@@ -64,6 +67,8 @@ pub struct List {
     pub card_limit: Option<u32>,
     pub archived: bool,
     pub meta: Meta,
+    /// Quem segue a lista (v2): avisado de cada cartão que entra.
+    pub watchers: Vec<Member>,
 }
 
 /// O prazo de um cartão.
@@ -80,7 +85,7 @@ pub struct Due {
 pub enum CoverFill {
     Color(Hue),
     /// Uma imagem do projecto pela chave do conteúdo (sha-256 dos bytes, a mesma do Quadro, ADR-0184).
-    Image([u8; 32]),
+    Image(FileId),
 }
 
 /// A capa: metade (acima do título) ou inteira (o cartão é a capa).
@@ -121,6 +126,10 @@ pub struct Card {
     pub created: Moment,
     pub archived: bool,
     pub meta: Meta,
+    /// Quem segue o cartão (v2, o «Seguir» do Trello).
+    pub watchers: Vec<Member>,
+    /// O cartão de cuja checklist este nasceu ([`crate::convert_item_to_card`], v2).
+    pub origin: Option<CardId>,
 }
 
 /// Uma etiqueta do Kanban (sem cor = só texto; sem nome = só cor).
@@ -180,7 +189,7 @@ pub struct Comment {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Link {
     /// Um ficheiro do projecto, pela chave do conteúdo (ADR-0184).
-    File([u8; 32]),
+    File(FileId),
     Url(String),
     Card(KanbanId, CardId),
     Kanban(KanbanId),

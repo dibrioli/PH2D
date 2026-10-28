@@ -5,10 +5,11 @@ use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 
+use crate::activity::Activity;
 use crate::kanban::{Header, Kanban};
 use crate::records::{
-    Attachment, AttachmentId, Card, CardId, CheckItem, CheckItemId, Checklist, ChecklistId,
-    Comment, CommentId, FieldDef, FieldId, Label, LabelId, List, ListId, Meta,
+    ActivityId, Attachment, AttachmentId, Card, CardId, CheckItem, CheckItemId, Checklist,
+    ChecklistId, Comment, CommentId, FieldDef, FieldId, Label, LabelId, List, ListId, Meta,
 };
 
 /// Um registo inteiro, de qualquer tabela.
@@ -22,6 +23,8 @@ pub enum Record {
     Comment(Comment),
     Attachment(Attachment),
     Field(FieldDef),
+    /// v2 — uma entrada da história.
+    Activity(Activity),
 }
 
 /// A chave de um registo, de qualquer tabela.
@@ -35,6 +38,7 @@ pub enum RecordId {
     Comment(CommentId),
     Attachment(AttachmentId),
     Field(FieldId),
+    Activity(ActivityId),
 }
 
 /// Uma mudança num Kanban.
@@ -49,7 +53,7 @@ pub enum KanbanOp {
     Header(Header),
 }
 
-/// O que as oito tabelas têm em comum.
+/// O que as tabelas têm em comum.
 trait Rec: Clone + PartialEq + Sized {
     type Id: Copy + Ord;
     fn id(&self) -> Self::Id;
@@ -98,6 +102,7 @@ rec!(CheckItem, CheckItemId, items, CheckItem);
 rec!(Comment, CommentId, comments, Comment);
 rec!(Attachment, AttachmentId, attachments, Attachment);
 rec!(FieldDef, FieldId, fields, Field);
+rec!(Activity, ActivityId, activities, Activity);
 
 /// O bit dos ids sorteados numa sessão ao vivo (W5) — esses não sobem o contador local.
 const SESSION_ID_BIT: u64 = 1 << 63;
@@ -158,6 +163,7 @@ impl KanbanOp {
                 Record::Comment(r) => put(k, r),
                 Record::Attachment(r) => put(k, r),
                 Record::Field(r) => put(k, r),
+                Record::Activity(r) => put(k, r),
             },
             KanbanOp::Delete(id) => match id {
                 RecordId::List(id) => delete::<List>(k, id),
@@ -168,6 +174,7 @@ impl KanbanOp {
                 RecordId::Comment(id) => delete::<Comment>(k, id),
                 RecordId::Attachment(id) => delete::<Attachment>(k, id),
                 RecordId::Field(id) => delete::<FieldDef>(k, id),
+                RecordId::Activity(id) => delete::<Activity>(k, id),
             },
             KanbanOp::Header(mut h) => {
                 let mut prev = k.header.clone();
@@ -207,6 +214,7 @@ impl Record {
             Record::Comment(r) => RecordId::Comment(r.id),
             Record::Attachment(r) => RecordId::Attachment(r.id),
             Record::Field(r) => RecordId::Field(r.id),
+            Record::Activity(r) => RecordId::Activity(r.id),
         }
     }
 }
@@ -224,6 +232,7 @@ impl Kanban {
             RecordId::Comment(id) => self.comments.get(&id).cloned().map(Record::Comment),
             RecordId::Attachment(id) => self.attachments.get(&id).cloned().map(Record::Attachment),
             RecordId::Field(id) => self.fields.get(&id).cloned().map(Record::Field),
+            RecordId::Activity(id) => self.activities.get(&id).cloned().map(Record::Activity),
         }
     }
 }

@@ -14,6 +14,8 @@ authors.workspace = true
 serde = { version = "1", features = ["derive"] }
 postcard = { version = "1", features = ["alloc"] }
 ph2d-frac = { path = "../ph2d-frac" }
+# v2 — a chave de um ficheiro é o sha-256 dos bytes (a mesma do `ph2d_board_model::FileId`, ADR-0184).
+sha2 = "0.10"
 
 [lints]
 workspace = true

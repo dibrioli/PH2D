@@ -7463,6 +7463,7 @@ dependencies = [
  "ph2d-frac",
  "postcard",
  "serde",
+ "sha2 0.10.9",
 ]
 
 [[package]]

@@ -5,6 +5,7 @@
 //! A hora de cada passo vem de quem chama (o `undo_tick` único do editor), para o `Ctrl+Z` comparar
 //! pilhas de famílias diferentes sem este crate ter relógio próprio.
 
+use crate::activity::{Actor, apply_logged};
 use crate::kanban::Kanban;
 use crate::ops::{KanbanOp, Record, apply_batch};
 
@@ -49,6 +50,12 @@ impl History {
         self.record(inverse, k, at);
     }
 
+    /// [`Self::apply`] e a atividade do gesto em nome de `actor` (que o desfazer não apaga).
+    pub fn apply_logged(&mut self, k: &mut Kanban, ops: Vec<KanbanOp>, at: u64, actor: &Actor) {
+        let inverse = apply_logged(k, ops, actor);
+        self.record(inverse, k, at);
+    }
+
     /// Guarda um passo já aplicado a `k` (um arrasto que o mexeu quadro a quadro): `inverse` devolve-o
     /// ao início do gesto. Vazio não é passo.
     pub fn record(&mut self, inverse: Vec<KanbanOp>, k: &Kanban, at: u64) {
@@ -65,12 +72,22 @@ impl History {
 
     /// Desfaz o último gesto. `false` = nada a desfazer.
     pub fn undo(&mut self, k: &mut Kanban, at: u64) -> bool {
-        Self::swap(&mut self.undo, &mut self.redo, k, at)
+        Self::swap(&mut self.undo, &mut self.redo, k, at, None)
     }
 
     /// Refaz o último desfeito.
     pub fn redo(&mut self, k: &mut Kanban, at: u64) -> bool {
-        Self::swap(&mut self.redo, &mut self.undo, k, at)
+        Self::swap(&mut self.redo, &mut self.undo, k, at, None)
+    }
+
+    /// [`Self::undo`] que regista na atividade o que o desfazer fez (é outra ação, como no Trello).
+    pub fn undo_logged(&mut self, k: &mut Kanban, at: u64, actor: &Actor) -> bool {
+        Self::swap(&mut self.undo, &mut self.redo, k, at, Some(actor))
+    }
+
+    /// [`Self::redo`] com a atividade.
+    pub fn redo_logged(&mut self, k: &mut Kanban, at: u64, actor: &Actor) -> bool {
+        Self::swap(&mut self.redo, &mut self.undo, k, at, Some(actor))
     }
 
     fn swap(
@@ -78,11 +95,16 @@ impl History {
         to: &mut Vec<(u64, Step)>,
         k: &mut Kanban,
         at: u64,
+        actor: Option<&Actor>,
     ) -> bool {
         let Some((_, step)) = from.pop() else {
             return false;
         };
-        let inverse = apply_batch(k, rebase(k, step));
+        let ops = rebase(k, step);
+        let inverse = match actor {
+            Some(a) => apply_logged(k, ops, a),
+            None => apply_batch(k, ops),
+        };
         let after = after(k, &inverse);
         to.push((at, Step { inverse, after }));
         true

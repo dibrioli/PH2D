@@ -41,6 +41,8 @@ fn card(id: CardId, list: ListId, pos: FracKey, title: String, created: Moment) 
         created,
         archived: false,
         meta: Meta::default(),
+        watchers: Vec::new(),
+        origin: None,
     }
 }
 
@@ -102,6 +104,7 @@ impl Doc<'_> {
             card_limit: None,
             archived: false,
             meta: Meta::default(),
+            watchers: Vec::new(),
         };
         self.apply(vec![KanbanOp::put(Record::List(list))])
             .then_some(id)

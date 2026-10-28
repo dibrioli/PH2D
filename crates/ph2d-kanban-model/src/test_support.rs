@@ -16,6 +16,7 @@ pub(crate) fn list(k: &Kanban, title: &str) -> KanbanOp {
         card_limit: None,
         archived: false,
         meta: Meta::default(),
+        watchers: Vec::new(),
     }))
 }
 
@@ -37,6 +38,8 @@ pub(crate) fn card(k: &Kanban, list: ListId, title: &str) -> KanbanOp {
         created: Moment(0),
         archived: false,
         meta: Meta::default(),
+        watchers: Vec::new(),
+        origin: None,
     }))
 }
 

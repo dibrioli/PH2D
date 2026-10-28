@@ -6,10 +6,13 @@ use std::collections::BTreeMap;
 use ph2d_frac::FracKey;
 use serde::{Deserialize, Serialize};
 
+use crate::activity::Activity;
 use crate::color::Hue;
+use crate::files::FileId;
 use crate::records::{
-    Attachment, AttachmentId, Card, CardId, CheckItem, CheckItemId, Checklist, ChecklistId,
-    Comment, CommentId, FieldDef, FieldId, KanbanId, Label, LabelId, List, ListId,
+    ActivityId, Attachment, AttachmentId, Card, CardId, CheckItem, CheckItemId, Checklist,
+    ChecklistId, Comment, CommentId, FieldDef, FieldId, KanbanId, Label, LabelId, List, ListId,
+    Member,
 };
 
 /// O fundo do Kanban.
@@ -19,7 +22,7 @@ pub enum Background {
     /// Um dos gradientes dos tokens do Kanban, pelo índice.
     Gradient(u16),
     /// Uma imagem do projecto pela chave do conteúdo (ADR-0184).
-    Image([u8; 32]),
+    Image(FileId),
 }
 
 /// O que é do Kanban inteiro (um registo só, com versão própria).
@@ -29,6 +32,8 @@ pub struct Header {
     pub starred: bool,
     pub background: Background,
     pub version: u64,
+    /// Quem segue o Kanban inteiro (v2).
+    pub watchers: Vec<Member>,
 }
 
 /// Um Kanban do projecto.
@@ -46,6 +51,9 @@ pub struct Kanban {
     pub fields: BTreeMap<FieldId, FieldDef>,
     /// O maior id local já dado a um registo (os ids são de UM espaço por Kanban).
     pub(crate) next_id: u64,
+    /// A história do Kanban (v2): nasce das ops aplicadas por [`crate::apply_logged`] e o desfazer
+    /// não a apaga (como no Trello).
+    pub activities: BTreeMap<ActivityId, Activity>,
 }
 
 impl Kanban {
@@ -59,6 +67,7 @@ impl Kanban {
                 starred: false,
                 background: Background::Color(Hue::Blue),
                 version: 0,
+                watchers: Vec::new(),
             },
             lists: BTreeMap::new(),
             cards: BTreeMap::new(),
@@ -69,6 +78,7 @@ impl Kanban {
             attachments: BTreeMap::new(),
             fields: BTreeMap::new(),
             next_id: 0,
+            activities: BTreeMap::new(),
         }
     }
 

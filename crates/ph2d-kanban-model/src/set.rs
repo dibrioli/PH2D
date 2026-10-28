@@ -1,20 +1,36 @@
 //! **Os Kanbans do projecto** e os bytes com versão PRÓPRIA que viajam no `.ph2dproj` (campo irmão
 //! do `boards`): mudar o formato daqui sobe [`FORMAT_VERSION`], nunca o `PROJECT_SCHEMA`.
 
+use std::collections::{BTreeMap, BTreeSet};
+use std::sync::Arc;
+
 use serde::{Deserialize, Serialize};
 
-use crate::kanban::Kanban;
+use crate::files::{FileId, KanbanFile};
+use crate::kanban::{Background, Kanban};
 use crate::ops::{KanbanOp, apply_batch};
-use crate::records::KanbanId;
+use crate::records::{CoverFill, KanbanId, Link};
 
-/// A versão dos bytes de [`KanbanSet::to_bytes`].
-pub const FORMAT_VERSION: u32 = 1;
+/// A versão dos bytes de [`KanbanSet::to_bytes`]. v2 (W3): seguir, atividade, origem do cartão,
+/// ficheiros por conteúdo. A v1 lê-se pelo degrau de [`crate::v1`].
+pub const FORMAT_VERSION: u32 = 2;
 
 /// Os Kanbans de um projecto, pela ordem em que nasceram.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct KanbanSet {
     kanbans: Vec<Kanban>,
     next_id: u64,
+    /// Os bytes das imagens e anexos, uma vez por conteúdo (v2).
+    files: BTreeMap<FileId, KanbanFile>,
+}
+
+/// O que [`KanbanSet::to_bytes`] escreve: o conjunto sem os ficheiros órfãos, por empréstimo (os
+/// mesmos bytes que o `KanbanSet`, campo a campo).
+#[derive(Serialize)]
+struct Saved<'a> {
+    kanbans: &'a [Kanban],
+    next_id: u64,
+    files: BTreeMap<&'a FileId, &'a KanbanFile>,
 }
 
 impl KanbanSet {
@@ -71,7 +87,54 @@ impl KanbanSet {
     /// # Errors
     /// Se o postcard recusar (não acontece com estes tipos; a porta é a do Quadro).
     pub fn to_bytes(&self) -> Result<Vec<u8>, String> {
-        postcard::to_allocvec(&(FORMAT_VERSION, self)).map_err(|e| e.to_string())
+        let used = self.files_in_use();
+        let saved = Saved {
+            kanbans: &self.kanbans,
+            next_id: self.next_id,
+            files: self
+                .files
+                .iter()
+                .filter(|(id, _)| used.contains(id))
+                .collect(),
+        };
+        postcard::to_allocvec(&(FORMAT_VERSION, saved)).map_err(|e| e.to_string())
+    }
+
+    /// Guarda os bytes de um ficheiro (imagem: `size` = o tamanho natural) e devolve a chave. O
+    /// mesmo conteúdo duas vezes é UM ficheiro.
+    pub fn put_file(&mut self, bytes: impl Into<Arc<[u8]>>, size: Option<[u32; 2]>) -> FileId {
+        let f = KanbanFile::new(bytes, size);
+        let id = f.id();
+        self.files.entry(id).or_insert(f);
+        id
+    }
+
+    #[must_use]
+    pub fn file(&self, id: FileId) -> Option<&KanbanFile> {
+        self.files.get(&id)
+    }
+
+    /// Os ficheiros que algum registo VIVO usa (capa, anexo, fundo; arquivado conta). Os outros
+    /// ficam na memória (o desfazer da sessão ainda os pode querer) e não vão para o disco.
+    #[must_use]
+    pub fn files_in_use(&self) -> BTreeSet<FileId> {
+        let mut used = BTreeSet::new();
+        for k in &self.kanbans {
+            if let Background::Image(f) = k.header.background {
+                used.insert(f);
+            }
+            for c in k.cards.values().filter(|c| !c.meta.deleted) {
+                if let Some(CoverFill::Image(f)) = c.cover.map(|c| c.fill) {
+                    used.insert(f);
+                }
+            }
+            for a in k.attachments.values().filter(|a| !a.meta.deleted) {
+                if let Link::File(f) = a.link {
+                    used.insert(f);
+                }
+            }
+        }
+        used
     }
 
     /// Lê o que [`Self::to_bytes`] escreveu. Bytes vazios = projecto sem Kanbans.
@@ -86,6 +149,16 @@ impl KanbanSet {
         match version {
             FORMAT_VERSION => postcard::from_bytes::<(u32, Self)>(bytes)
                 .map(|(_, set)| set)
+                .map_err(|e| e.to_string()),
+            1 => postcard::from_bytes::<(u32, crate::v1::SetV1)>(bytes)
+                .map(|(_, old)| {
+                    let (kanbans, next_id) = old.upgrade();
+                    Self {
+                        kanbans,
+                        next_id,
+                        files: BTreeMap::new(),
+                    }
+                })
                 .map_err(|e| e.to_string()),
             v => Err(format!("kanban format version {v} != {FORMAT_VERSION}")),
         }

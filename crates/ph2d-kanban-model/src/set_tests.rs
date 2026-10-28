@@ -56,7 +56,7 @@ fn full() -> KanbanSet {
         remind_before_min: Some(60),
     });
     card.cover = Some(Cover {
-        fill: CoverFill::Image([7; 32]),
+        fill: CoverFill::Image(crate::FileId([7; 32])),
         full: true,
     });
     card.fields = BTreeMap::from([(field, FieldValue::Option(OptionId(1)))]);
@@ -160,4 +160,117 @@ fn remove_and_insert_put_a_kanban_back_whole() {
     assert!(set.get(id).is_none());
     set.insert(k.clone());
     assert_eq!(set.get(id), Some(&k));
+}
+
+/// A fixture gravada pelo código v1 (cabeçalho `#`, depois hex).
+fn v1_fixture() -> Vec<u8> {
+    let text = include_str!("../tests/fixtures/kanban_set_v1_full.hex");
+    let hex: String = text.lines().filter(|l| !l.starts_with('#')).collect();
+    (0..hex.len())
+        .step_by(2)
+        .map(|i| u8::from_str_radix(&hex[i..i + 2], 16).unwrap())
+        .collect()
+}
+
+#[test]
+fn v1_bytes_read_as_v2_equal() {
+    let bytes = v1_fixture();
+    assert_eq!(postcard::take_from_bytes::<u32>(&bytes).unwrap().0, 1);
+    let back = KanbanSet::from_bytes(&bytes).unwrap();
+    assert_eq!(
+        back,
+        full(),
+        "o degrau v1 → v2 dá o mesmo conjunto que o código de hoje monta"
+    );
+    let again = KanbanSet::from_bytes(&back.to_bytes().unwrap()).unwrap();
+    assert_eq!(again, back, "e, regravado em v2, continua igual");
+}
+
+/// `full()` mais tudo o que o v2 trouxe: seguir (três níveis), origem, atividade, ficheiros.
+fn full_v2() -> (KanbanSet, crate::FileId, crate::FileId) {
+    let mut set = full();
+    let cover = set.put_file(vec![1_u8, 2, 3], Some([4, 2]));
+    let orphan = set.put_file(vec![9_u8; 16], None);
+    let id = set.iter().next().unwrap().id;
+    let who = Member("Ana".to_owned());
+    let actor = crate::Actor {
+        by: who.clone(),
+        at: Moment(77),
+    };
+    let k = set.doc_mut(id).unwrap();
+    let mut h = k.header.clone();
+    h.watchers = vec![who.clone()];
+    let todo = k.lists_in_order()[0].id;
+    let mut l = k.lists[&todo].clone();
+    l.watchers = vec![who.clone()];
+    let c = k.cards_in(todo)[0].id;
+    let mut card = k.cards[&c].clone();
+    card.watchers = vec![who];
+    card.origin = Some(CardId(2));
+    card.cover = Some(Cover {
+        fill: CoverFill::Image(cover),
+        full: false,
+    });
+    card.title = "Sketch v2".to_owned();
+    let ops = vec![
+        KanbanOp::Header(h),
+        KanbanOp::put(Record::List(l)),
+        KanbanOp::put(Record::Card(card)),
+    ];
+    crate::apply_logged(k, ops, &actor);
+    assert!(!k.activities.is_empty());
+    (set, cover, orphan)
+}
+
+#[test]
+fn the_v2_bytes_round_trip_watchers_activity_and_files() {
+    let (set, cover, _) = full_v2();
+    let bytes = set.to_bytes().unwrap();
+    let back = KanbanSet::from_bytes(&bytes).unwrap();
+    assert_eq!(back.to_bytes().unwrap(), bytes, "os bytes são estáveis");
+    let k = back.iter().next().unwrap();
+    assert_eq!(k, set.iter().next().unwrap());
+    assert_eq!(k.header.watchers.len(), 1);
+    assert!(k.lists.values().any(|l| !l.watchers.is_empty()));
+    assert!(
+        k.cards
+            .values()
+            .any(|c| !c.watchers.is_empty() && c.origin.is_some())
+    );
+    assert_eq!(back.file(cover), set.file(cover));
+    assert_eq!(back.file(cover).unwrap().size, Some([4, 2]));
+}
+
+#[test]
+fn orphan_files_are_not_saved_and_the_same_bytes_are_one_file() {
+    let (mut set, cover, orphan) = full_v2();
+    assert_eq!(
+        set.put_file(vec![1_u8, 2, 3], None),
+        cover,
+        "a chave é o conteúdo"
+    );
+    assert!(
+        set.file(orphan).is_some(),
+        "na memória fica (o desfazer da sessão)"
+    );
+    let back = KanbanSet::from_bytes(&set.to_bytes().unwrap()).unwrap();
+    assert!(back.file(cover).is_some(), "a capa usa-o");
+    assert!(
+        back.file(orphan).is_none(),
+        "ninguém o usa: não vai para o disco"
+    );
+    let id = set.iter().next().unwrap().id;
+    let k = set.doc_mut(id).unwrap();
+    let c = *k
+        .cards
+        .iter()
+        .find(|(_, c)| c.cover.is_some() && c.watchers.len() == 1)
+        .unwrap()
+        .0;
+    put(k, KanbanOp::Delete(crate::RecordId::Card(c)));
+    let back = KanbanSet::from_bytes(&set.to_bytes().unwrap()).unwrap();
+    assert!(
+        back.file(cover).is_none(),
+        "o cartão apagado já não segura a capa"
+    );
 }

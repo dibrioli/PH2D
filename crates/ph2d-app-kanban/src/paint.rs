@@ -118,6 +118,9 @@ pub(crate) fn board(
     scene.fill_rect(rect_to_vello(l.area), board_bg(theme, k.header.background));
     header(scene, ts, theme, k, tab);
     scene.push_clip(&rect_to_vello(l.board));
+    if let Some(s) = l.list_slot {
+        fill_rounded_rect(scene, s, m::LIST_RADIUS, c(theme, T::KanbanNewList));
+    }
     for lb in &l.lists {
         if lb.collapsed {
             paint_list::collapsed(scene, ts, theme, k, tab, lb);
@@ -373,15 +376,15 @@ fn flying(
     let Some(d) = tab.drag else {
         return;
     };
-    let r = Rect::new(d.at.0 - d.grab.0, d.at.1 - d.grab.1, d.size.0, d.size.1);
+    let mut r = Rect::new(d.at.0 - d.grab.0, d.at.1 - d.grab.1, d.size.0, d.size.1);
     let mut s = VectorScene::new();
-    let local = Rect::new(0.0, 0.0, r.w, r.h);
+    let mut local = Rect::new(0.0, 0.0, r.w, r.h);
     match d.lift {
         Lift::Card(id) => {
             let Some(look) = looks(id) else {
                 return;
             };
-            paint_card::flight_shadow(&mut s, theme, local);
+            paint_card::flight_shadow(&mut s, theme, local, m::CARD_RADIUS);
             paint_card::card(
                 &mut s,
                 ts,
@@ -392,18 +395,22 @@ fn flying(
                 tab.label_text,
             );
         }
-        Lift::List(id) => {
-            let Some(lb) = tab.layout.list(id).cloned() else {
+        Lift::List(_) => {
+            // A disposição VISTA da que voa (a mão e as molas dos cartões dela já estão lá).
+            let Some(lb) = tab.layout.flying.as_ref() else {
                 return;
             };
-            let dx = -lb.rect.x;
-            let dy = -lb.rect.y;
-            let moved = shifted(&lb, dx, dy);
-            paint_card::flight_shadow(&mut s, theme, local);
-            let mut t = tab.clone();
-            t.drag = None;
-            t.field = None;
-            paint_list::list(&mut s, ts, theme, k, &t, &moved, looks);
+            r = lb.rect;
+            local = Rect::new(0.0, 0.0, r.w, r.h);
+            let moved = shifted(lb, -r.x, -r.y);
+            paint_card::flight_shadow(&mut s, theme, local, m::LIST_RADIUS);
+            let cards = if lb.collapsed {
+                paint_list::collapsed(&mut s, ts, theme, k, tab, &moved);
+                Vec::new()
+            } else {
+                paint_list::list(&mut s, ts, theme, k, tab, &moved, looks)
+            };
+            tab.painted.borrow_mut().flight = Some((lb.id, r, tab.springs.tilt.pos, cards));
         }
         Lift::Pan { .. } => return,
     }

@@ -25,7 +25,8 @@ pub(crate) const LIST_HEAD_TOP: f32 = 10.0;
 pub(crate) const LIST_HEAD_LEFT: f32 = 14.0;
 pub(crate) const LIST_HEAD_RIGHT: f32 = 8.0;
 pub(crate) const LIST_HEAD_BOTTOM: f32 = 6.0;
-pub(crate) const LIST_TITLE_PX: f32 = 14.0;
+/// O título da lista, em MAIÚSCULAS (dono 28/10: «maior e mais destacado»; a maquete tinha `14`).
+pub(crate) const LIST_TITLE_PX: f32 = 15.0;
 pub(crate) const LINE_H: f32 = 20.0;
 pub(crate) const LIST_ICON_BTN: f32 = 28.0;
 pub(crate) const LIST_ICON_GAP: f32 = 6.0;

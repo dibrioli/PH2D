@@ -75,7 +75,7 @@ impl Heights for Measure<'_> {
     }
 
     fn title_w(&mut self, text: &str) -> f32 {
-        title_width(self.ts, text, m::LIST_TITLE_PX)
+        crate::list_title::width(self.ts, text)
     }
 
     fn limit_w(&mut self, text: &str) -> f32 {
@@ -214,7 +214,9 @@ impl KanbanDocs {
             crate::paint::missing(scene, ts, theme, area);
             return;
         };
+        crate::smoke::hold(tab);
         edge_scroll(tab, dt);
+        *tab.painted.borrow_mut() = crate::tab::Painted::default();
         let counts = Counts::of(k);
         let title_w = title_width(ts, &k.header.name, m::HEADER_TITLE_PX) + 2.0 * m::FIELD_PAD_X;
         let floor = self.over.map(|o| o.y);
@@ -366,6 +368,30 @@ impl KanbanDocs {
             .map(|f| f.text.clone())
     }
 
+    /// ⚠️ SONDA: os títulos de lista que o último quadro PINTOU — `(lista, texto mostrado, tamanho,
+    /// peso)`.
+    #[must_use]
+    pub fn probe_painted_titles(&self, id: u64) -> Vec<(ListId, String, f32, f32)> {
+        self.tabs
+            .iter()
+            .find(|t| t.id() == id)
+            .map(|t| t.painted.borrow().titles.clone())
+            .unwrap_or_default()
+    }
+
+    /// ⚠️ SONDA: a lista em voo que o último quadro PINTOU — `(lista, rect no ecrã antes de
+    /// inclinar, inclinação °, cartões pintados dentro dela)`.
+    #[must_use]
+    pub fn probe_painted_flight(&self, id: u64) -> Option<(ListId, Rect, f64, Vec<CardId>)> {
+        self.tabs
+            .iter()
+            .find(|t| t.id() == id)?
+            .painted
+            .borrow()
+            .flight
+            .clone()
+    }
+
     /// ⚠️ SONDA: a inclinação de quem voa (graus).
     #[must_use]
     pub fn probe_tilt(&self, id: u64) -> f64 {
@@ -446,6 +472,7 @@ fn lifted(tab: &mut Tab, counts: &Counts, k: &Kanban, ts: &mut TextSystem) -> Op
             id,
             to: d.to_list,
             w: d.size.0,
+            h: d.size.1,
         }),
         Lift::Pan { .. } => None,
     }

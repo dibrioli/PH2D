@@ -75,23 +75,18 @@ fn rest_shadow(scene: &mut VectorScene, ink: &Ink, r: Rect, hover: bool) {
 }
 
 /// A sombra de voo (o cartão agarrado descola do quadro).
-pub(crate) fn flight_shadow(scene: &mut VectorScene, theme: Theme, r: Rect) {
+/// A sombra de voo (do cartão e da lista, com o `radius` de cada).
+pub(crate) fn flight_shadow(scene: &mut VectorScene, theme: Theme, r: Rect, radius: f32) {
     let far = if theme.is_dark() {
         m::SHADOW_FLIGHT_DARK
     } else {
         m::SHADOW_FLIGHT_LIGHT
     };
+    shadow(scene, r, radius, c(theme, T::KanbanShadowFlight), far);
     shadow(
         scene,
         r,
-        m::CARD_RADIUS,
-        c(theme, T::KanbanShadowFlight),
-        far,
-    );
-    shadow(
-        scene,
-        r,
-        m::CARD_RADIUS,
+        radius,
         c(theme, T::KanbanFlightNear),
         m::SHADOW_FLIGHT_NEAR,
     );

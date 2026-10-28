@@ -72,11 +72,24 @@ pub(crate) struct Drag {
     pub to_list: usize,
 }
 
-/// As molas de uma aba, no espaço do conteúdo.
+/// A mola de um cartão, RELATIVA à lista onde está (`x` desde a borda dela, `y` desde o topo do
+/// corpo): os cartões andam com a lista — a que abre espaço, a que voa, a que assenta.
+#[derive(Clone, Copy, Debug, Default)]
+pub(crate) struct CardSpring {
+    /// A lista onde foi visto (mudar de lista re-baseia a mola: o cartão não salta).
+    pub list: Option<ListId>,
+    pub x: Follow,
+    pub y: Follow,
+}
+
+/// As molas de uma aba.
 #[derive(Clone, Debug, Default)]
 pub(crate) struct Springs {
-    pub lists: BTreeMap<ListId, Follow>,
-    pub cards: BTreeMap<CardId, (Follow, Follow)>,
+    /// Cada lista: `x` no espaço do conteúdo e `y` = o desvio do topo do quadro (`0` no lugar).
+    pub lists: BTreeMap<ListId, (Follow, Follow)>,
+    pub cards: BTreeMap<CardId, CardSpring>,
+    /// Onde cada lista foi vista no último quadro: `(x do conteúdo, topo do corpo no ecrã)`.
+    pub seen: BTreeMap<ListId, (f32, f32)>,
     /// A inclinação de quem voa (graus) e a sombra (0 → 1).
     pub tilt: Follow,
     /// A disposição inteira ainda se mexe (o hero repinta; o teste espera).
@@ -103,6 +116,19 @@ pub(crate) struct Tab {
     pub heights: BTreeMap<CardId, (u64, f32)>,
     /// O cartão largado agora: parte de onde a mão o deixou (ecrã).
     pub landed: Option<(CardId, f32, f32)>,
+    /// O que o último quadro PINTOU (as sondas leem-no).
+    pub painted: std::cell::RefCell<Painted>,
+    /// SMOKE 3: a lista a pôr na mão, e onde (o canto dela desde a origem das listas).
+    pub smoke_hold: Option<(ListId, (f32, f32))>,
+}
+
+/// O registo do pintor num quadro.
+#[derive(Clone, Debug, Default)]
+pub(crate) struct Painted {
+    /// Cada título de lista pintado: `(lista, texto mostrado, tamanho, peso)`.
+    pub titles: Vec<(ListId, String, f32, f32)>,
+    /// A lista em voo: `(lista, rect no ecrã antes de inclinar, inclinação °, cartões pintados nela)`.
+    pub flight: Option<(ListId, Rect, f64, Vec<CardId>)>,
 }
 
 impl Tab {
@@ -121,6 +147,8 @@ impl Tab {
             springs: Springs::default(),
             heights: BTreeMap::new(),
             landed: None,
+            painted: std::cell::RefCell::default(),
+            smoke_hold: None,
         }
     }
 
@@ -139,72 +167,151 @@ fn shift(r: Rect, dx: f32, dy: f32) -> Rect {
     Rect::new(r.x + dx, r.y + dy, r.w, r.h)
 }
 
-/// ⭐ A disposição VISTA: mira as molas nos alvos, avança `dt` e leva tudo ao ecrã (com a rolagem).
+/// A origem das listas no ecrã: `(x 0 do conteúdo, topo das listas)`.
 #[allow(clippy::cast_possible_truncation)]
-pub(crate) fn place(tab: &mut Tab, target: Layout, dt: f64, law: Option<Spring>) -> Layout {
-    let ox = target.board.x + m::BOARD_PAD - tab.view.scroll_x as f32;
-    let mut moving = false;
-    let landed = tab.landed.take();
-    let mut lists = Vec::with_capacity(target.lists.len());
-    for lb in target.lists {
-        let f = tab.springs.lists.entry(lb.id).or_default();
-        f.aim(f64::from(lb.rect.x));
-        moving |= f.advance(dt, law);
-        let lx = f.pos as f32;
-        let dx = ox + lx - lb.rect.x;
-        let sy = tab.scroll_y(lb.id);
-        let body_y = lb.body.y + m::LIST_BODY_TOP - sy;
-        let mut cards = Vec::with_capacity(lb.cards.len());
-        for c in &lb.cards {
-            let (fx, fy) = tab.springs.cards.entry(c.id).or_default();
-            if let Some((id, x, y)) = landed
-                && id == c.id
-            {
-                fx.jump(f64::from(x - ox));
-                fy.jump(f64::from(y - body_y));
-            }
-            fx.aim(f64::from(c.rect.x));
-            fy.aim(f64::from(c.rect.y));
-            moving |= fx.advance(dt, law);
-            moving |= fy.advance(dt, law);
-            cards.push(CardBox {
-                id: c.id,
-                rect: Rect::new(
-                    ox + fx.pos as f32,
-                    body_y + fy.pos as f32,
-                    c.rect.w,
-                    c.rect.h,
-                ),
-            });
+pub(crate) fn origin(tab: &Tab, board: Rect) -> (f32, f32) {
+    (
+        board.x + m::BOARD_PAD - tab.view.scroll_x as f32,
+        board.y + m::BOARD_PAD,
+    )
+}
+
+/// ⭐ A lista em voo está onde a mão a leva (`ghost` = o canto dela no ecrã): as molas saltam para
+/// lá a cada quadro, e ao largar partem daí — ela assenta com mola, com os cartões dentro.
+pub(crate) fn pin_list(springs: &mut Springs, id: ListId, ghost: (f32, f32), (ox, oy): (f32, f32)) {
+    let (fx, fy) = springs.lists.entry(id).or_default();
+    fx.jump(f64::from(ghost.0 - ox));
+    fy.jump(f64::from(ghost.1 - oy));
+}
+
+/// O que todas as listas de um quadro partilham em [`place`].
+struct Ctx<'a> {
+    origin: (f32, f32),
+    dt: f64,
+    law: Option<Spring>,
+    landed: Option<(CardId, f32, f32)>,
+    /// Onde cada lista foi vista no quadro anterior (o cartão que muda de lista re-baseia-se).
+    prev: &'a BTreeMap<ListId, (f32, f32)>,
+}
+
+/// Uma lista levada ao ecrã: a mola dela (ou a mão, se voa) e a dos cartões, relativa a ela.
+#[allow(clippy::cast_possible_truncation)]
+fn place_list(
+    tab: &mut Tab,
+    lb: ListBox,
+    c: &Ctx<'_>,
+    pin: Option<(f32, f32)>,
+    moving: &mut bool,
+) -> ListBox {
+    let (ox, oy) = c.origin;
+    {
+        let (fx, fy) = tab.springs.lists.entry(lb.id).or_default();
+        fx.aim(f64::from(lb.rect.x));
+        fy.aim(f64::from(lb.rect.y - oy));
+    }
+    if let Some(g) = pin {
+        pin_list(&mut tab.springs, lb.id, g, c.origin);
+    } else if let Some((fx, fy)) = tab.springs.lists.get_mut(&lb.id) {
+        *moving |= fx.advance(c.dt, c.law);
+        *moving |= fy.advance(c.dt, c.law);
+    }
+    let (lx, ly) = tab
+        .springs
+        .lists
+        .get(&lb.id)
+        .map_or((lb.rect.x, lb.rect.y), |(fx, fy)| {
+            (fx.pos as f32, oy + fy.pos as f32)
+        });
+    let (dx, dy) = (ox + lx - lb.rect.x, ly - lb.rect.y);
+    let list_x = ox + lx;
+    let body_y = lb.body.y + dy + m::LIST_BODY_TOP - tab.scroll_y(lb.id);
+    tab.springs.seen.insert(lb.id, (lx, body_y));
+    let mut cards = Vec::with_capacity(lb.cards.len());
+    for cb in &lb.cards {
+        let s = tab.springs.cards.entry(cb.id).or_default();
+        if let Some(from) = s.list
+            && from != lb.id
+            && let (Some(a), Some(b)) = (c.prev.get(&from), c.prev.get(&lb.id))
+        {
+            s.x.pos += f64::from(a.0 - b.0);
+            s.y.pos += f64::from(a.1 - b.1);
         }
-        let card_dy = |r: Rect| Rect::new(r.x + dx, body_y + r.y, r.w, r.h);
-        lists.push(ListBox {
-            id: lb.id,
-            rect: shift(lb.rect, dx, 0.0),
-            collapsed: lb.collapsed,
-            title: shift(lb.title, dx, 0.0),
-            collapse: shift(lb.collapse, dx, 0.0),
-            menu: shift(lb.menu, dx, 0.0),
-            body: shift(lb.body, dx, 0.0),
-            content_h: lb.content_h,
-            cards,
-            slot: lb.slot.map(card_dy),
-            composer: lb.composer.map(card_dy),
-            add: shift(lb.add, dx, 0.0),
-            close: lb.close.map(|r| shift(r, dx, 0.0)),
-            count: lb.count,
-            limit: lb.limit.map(|r| shift(r, dx, 0.0)),
+        s.list = Some(lb.id);
+        if let Some((id, x, y)) = c.landed
+            && id == cb.id
+        {
+            s.x.jump(f64::from(x - list_x));
+            s.y.jump(f64::from(y - body_y));
+        }
+        s.x.aim(f64::from(cb.rect.x - lb.rect.x));
+        s.y.aim(f64::from(cb.rect.y));
+        *moving |= s.x.advance(c.dt, c.law);
+        *moving |= s.y.advance(c.dt, c.law);
+        cards.push(CardBox {
+            id: cb.id,
+            rect: Rect::new(
+                list_x + s.x.pos as f32,
+                body_y + s.y.pos as f32,
+                cb.rect.w,
+                cb.rect.h,
+            ),
         });
     }
+    let card_dy = |r: Rect| Rect::new(r.x + dx, body_y + r.y, r.w, r.h);
+    let s = |r: Rect| shift(r, dx, dy);
+    ListBox {
+        id: lb.id,
+        rect: s(lb.rect),
+        collapsed: lb.collapsed,
+        title: s(lb.title),
+        collapse: s(lb.collapse),
+        menu: s(lb.menu),
+        body: s(lb.body),
+        content_h: lb.content_h,
+        cards,
+        slot: lb.slot.map(card_dy),
+        composer: lb.composer.map(card_dy),
+        add: s(lb.add),
+        close: lb.close.map(s),
+        count: lb.count,
+        limit: lb.limit.map(s),
+    }
+}
+
+/// ⭐ A disposição VISTA: mira as molas nos alvos, avança `dt` e leva tudo ao ecrã (com a rolagem).
+/// A lista em voo vai aonde a mão a leva; as outras abrem-lhe o espaço com mola.
+pub(crate) fn place(tab: &mut Tab, target: Layout, dt: f64, law: Option<Spring>) -> Layout {
+    let ghost = tab
+        .drag
+        .filter(|d| matches!(d.lift, Lift::List(_)))
+        .map(|d| (d.at.0 - d.grab.0, d.at.1 - d.grab.1));
+    let prev = std::mem::take(&mut tab.springs.seen);
+    let c = Ctx {
+        origin: origin(tab, target.board),
+        dt,
+        law,
+        landed: tab.landed.take(),
+        prev: &prev,
+    };
+    let mut moving = false;
+    let mut lists = Vec::with_capacity(target.lists.len());
+    for lb in target.lists {
+        lists.push(place_list(tab, lb, &c, None, &mut moving));
+    }
+    let flying = target
+        .flying
+        .map(|lb| place_list(tab, lb, &c, ghost, &mut moving));
     // O que já não está na disposição larga a mola (um cartão arquivado não volta a voar de lá).
-    let alive_l: std::collections::BTreeSet<ListId> = lists.iter().map(|l| l.id).collect();
+    let alive_l: std::collections::BTreeSet<ListId> =
+        lists.iter().chain(&flying).map(|l| l.id).collect();
     tab.springs.lists.retain(|id, _| alive_l.contains(id));
     let alive_c: std::collections::BTreeSet<CardId> = lists
         .iter()
+        .chain(&flying)
         .flat_map(|l| l.cards.iter().map(|c| c.id))
         .collect();
     let lifted = match tab.drag.map(|d| d.lift) {
-        Some(crate::tab::Lift::Card(id)) => Some(id),
+        Some(Lift::Card(id)) => Some(id),
         _ => None,
     };
     tab.springs
@@ -225,6 +332,7 @@ pub(crate) fn place(tab: &mut Tab, target: Layout, dt: f64, law: Option<Spring>)
     tab.springs.tilt.aim(tilt_to);
     moving |= tab.springs.tilt.advance(dt, law);
     tab.springs.moving = moving;
+    let ox = c.origin.0;
     Layout {
         area: target.area,
         header: target.header,
@@ -233,6 +341,8 @@ pub(crate) fn place(tab: &mut Tab, target: Layout, dt: f64, law: Option<Spring>)
         board_menu: target.board_menu,
         board: target.board,
         lists,
+        flying,
+        list_slot: target.list_slot.map(|r| shift(r, ox, 0.0)),
         add_list: shift(target.add_list, ox, 0.0),
         add_list_field: target.add_list_field.map(|r| shift(r, ox, 0.0)),
         add_list_close: target.add_list_close.map(|r| shift(r, ox, 0.0)),

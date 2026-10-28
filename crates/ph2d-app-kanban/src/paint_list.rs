@@ -2,6 +2,7 @@
 //! botões dos compositores. O fundo, o cabeçalho, os campos e o que voa moram em [`crate::paint`].
 
 use crate::layout::{ListBox, limit_text};
+use crate::list_title;
 use crate::metrics as m;
 use crate::paint::{c, editing_card, field_box, hover_fill, icon, list_colors, shadow, text_top};
 use crate::paint_card::{self, CardLook, Ink};
@@ -70,7 +71,7 @@ fn collapse_glyph(scene: &mut VectorScene, around: Rect, open: bool, color: Colo
     scene.stroke_path(&Stroke::new(m::GLYPH_STROKE), t, &Brush::Solid(color), &p);
 }
 
-/// Uma lista aberta.
+/// Uma lista aberta. Devolve os cartões pintados.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn list(
     scene: &mut VectorScene,
@@ -80,7 +81,7 @@ pub(crate) fn list(
     tab: &Tab,
     lb: &ListBox,
     looks: &mut dyn FnMut(ph2d_kanban_model::CardId) -> Option<CardLook>,
-) {
+) -> Vec<ph2d_kanban_model::CardId> {
     let color = k.lists.get(&lb.id).and_then(|l| l.color);
     let (bg, fg, meta) = list_colors(theme, color);
     shadow(
@@ -97,19 +98,11 @@ pub(crate) fn list(
         .as_ref()
         .filter(|f| f.target == crate::edit::Target::ListTitle(lb.id))
     {
-        Some(f) => field_box(scene, ts, theme, f, lb.title, m::LIST_TITLE_PX),
+        Some(f) => field_box(scene, ts, theme, f, lb.title, list_title::PX),
         None => {
-            let y = text_top(ts, lb.title.y, lb.title.h, m::LIST_TITLE_PX);
-            paint_text_title_elided(
-                ts,
-                scene,
-                title,
-                lb.title.x,
-                y,
-                m::LIST_TITLE_PX,
-                lb.title.w,
-                fg,
-            );
+            let y = text_top(ts, lb.title.y, lb.title.h, list_title::PX);
+            let shown = list_title::paint(ts, scene, title, lb.title.x, y, lb.title.w, fg);
+            noted(tab, lb, shown);
         }
     }
     if let (Some(r), Some(n)) = (lb.limit, k.lists.get(&lb.id).and_then(|l| l.card_limit)) {
@@ -143,6 +136,7 @@ pub(crate) fn list(
     if let Some(s) = lb.slot {
         fill_rounded_rect(scene, s, m::CARD_RADIUS, c(theme, T::KanbanSlot));
     }
+    let mut painted = Vec::new();
     for cb in &lb.cards {
         if cb.rect.y > lb.body.y + lb.body.h || cb.rect.y + cb.rect.h < lb.body.y {
             continue;
@@ -163,6 +157,7 @@ pub(crate) fn list(
             Some(f) => editing_card(scene, ts, theme, f, cb.rect),
             None => paint_card::card(scene, ts, theme, &ink, &look, cb.rect, tab.label_text),
         }
+        painted.push(cb.id);
     }
     if let (Some(r), Some(f)) = (lb.composer, tab.field.as_ref()) {
         editing_card(scene, ts, theme, f, r);
@@ -204,6 +199,17 @@ pub(crate) fn list(
             );
         }
     }
+    painted
+}
+
+/// O título pintado entra no registo do quadro (a sonda compara-o com a medida).
+fn noted(tab: &Tab, lb: &ListBox, shown: String) {
+    tab.painted.borrow_mut().titles.push((
+        lb.id,
+        shown,
+        list_title::PX,
+        list_title::WEIGHT.value(),
+    ));
 }
 
 /// Uma lista recolhida: o botão, o título na vertical e a contagem.
@@ -239,7 +245,8 @@ pub(crate) fn collapsed(
         (lb.rect.y + lb.rect.h - top - m::COUNT_H - m::LIST_HEAD_TOP - m::LIST_ICON_GAP).max(0.0);
     // O título deitado, rodado 90° no sentido do relógio (o `writing-mode: vertical-rl` da maquete).
     let mut s = VectorScene::new();
-    paint_text_title_elided(ts, &mut s, title, 0.0, 0.0, m::LIST_TITLE_PX, room, fg);
+    let shown = list_title::paint(ts, &mut s, title, 0.0, 0.0, room, fg);
+    noted(tab, lb, shown);
     let x = f64::from(lb.rect.x + (lb.rect.w + m::LINE_H) / 2.0);
     let t = Affine::translate((x, f64::from(top))) * Affine::rotate(std::f64::consts::FRAC_PI_2);
     scene.append_transformed(&s, t);
@@ -270,7 +277,7 @@ pub(crate) fn add_list(scene: &mut VectorScene, ts: &mut TextSystem, theme: Them
                 bottom - fr.y + m::LIST_BODY_X,
             );
             fill_rounded_rect(scene, back, m::LIST_RADIUS, c(theme, T::KanbanList));
-            field_box(scene, ts, theme, f, fr, m::LIST_TITLE_PX);
+            field_box(scene, ts, theme, f, fr, list_title::PX);
             let meta = c(theme, T::KanbanListMeta);
             composer_buttons(
                 scene,

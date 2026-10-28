@@ -248,6 +248,7 @@ pub(crate) fn moved(docs: &mut KanbanDocs, id: u64, ts: &mut TextSystem, x: f32,
     };
     if let Some(d) = tab.drag.as_mut() {
         d.at = (x, y);
+        tab.smoke_hold = None;
         if let Lift::Pan { scroll_x } = d.lift
             && let Some(p) = tab.press
         {
@@ -288,6 +289,18 @@ fn start_drag(tab: &mut Tab, p: Press, x: f32, y: f32) {
     if let Lift::Card(c) = lift {
         tab.focus = Some(c);
     }
+    // O espaço abre de início onde o que voa estava (nada se mexe no 1.º quadro).
+    let to_card = match lift {
+        Lift::Card(c) => tab.layout.card(c).and_then(|(lb, _)| {
+            let i = lb.cards.iter().position(|cb| cb.id == c)?;
+            Some((lb.id, i))
+        }),
+        _ => None,
+    };
+    let to_list = match lift {
+        Lift::List(l) => tab.layout.lists.iter().position(|lb| lb.id == l),
+        _ => None,
+    };
     tab.field = None;
     tab.hover = None;
     tab.drag = Some(Drag {
@@ -295,8 +308,8 @@ fn start_drag(tab: &mut Tab, p: Press, x: f32, y: f32) {
         at: (x, y),
         grab: (p.at.0 - r.x, p.at.1 - r.y),
         size: (r.w, r.h),
-        to_card: None,
-        to_list: 0,
+        to_card,
+        to_list: to_list.unwrap_or(0),
     });
 }
 
@@ -346,13 +359,8 @@ fn land(docs: &mut KanbanDocs, id: u64, d: Drag) {
         }
         Lift::List(l) => {
             doc.move_list(l, d.to_list);
-            #[allow(clippy::cast_possible_truncation)]
-            let ox = tab.layout.board.x + m::BOARD_PAD - tab.view.scroll_x as f32;
-            tab.springs
-                .lists
-                .entry(l)
-                .or_default()
-                .jump(f64::from(ghost.0 - ox));
+            let o = crate::tab::origin(tab, tab.layout.board);
+            crate::tab::pin_list(&mut tab.springs, l, ghost, o);
         }
         Lift::Pan { .. } => {}
     });

@@ -55,6 +55,10 @@ pub(crate) struct Layout {
     /// A área das listas (abaixo do cabeçalho).
     pub board: Rect,
     pub lists: Vec<ListBox>,
+    /// A lista em voo (fora de `lists`: o clique não a toma; o pintor leva-a, inclinada, à mão).
+    pub flying: Option<ListBox>,
+    /// O espaço que as outras listas lhe abrem.
+    pub list_slot: Option<Rect>,
     /// «Add another list» — ou o compositor de lista.
     pub add_list: Rect,
     pub add_list_field: Option<Rect>,
@@ -65,7 +69,7 @@ pub(crate) struct Layout {
 
 impl Layout {
     pub fn list(&self, id: ListId) -> Option<&ListBox> {
-        self.lists.iter().find(|l| l.id == id)
+        self.lists.iter().chain(&self.flying).find(|l| l.id == id)
     }
 
     pub fn card(&self, id: CardId) -> Option<(&ListBox, CardBox)> {
@@ -84,8 +88,13 @@ pub(crate) enum Lifted {
         to: Option<(ListId, usize)>,
         h: f32,
     },
-    /// Uma lista fora do fluxo; o espaço dela abre no índice `to`.
-    List { id: ListId, to: usize, w: f32 },
+    /// Uma lista fora do fluxo; o espaço dela (`w` × `h`) abre no índice `to`.
+    List {
+        id: ListId,
+        to: usize,
+        w: f32,
+        h: f32,
+    },
 }
 
 /// A altura de cada cartão (o pintor mede-a e guarda-a) e a do texto do campo aberto.
@@ -172,185 +181,41 @@ pub(crate) fn targets(
     for v in by_list.values_mut() {
         v.sort_by(|a, b| a.pos.cmp(&b.pos).then(a.id.cmp(&b.id)));
     }
-    let order: Vec<_> = k
-        .lists_in_order()
-        .into_iter()
-        .filter(|l| Some(l.id) != lifted_list)
-        .collect();
+    let mut order = k.lists_in_order();
+    let b = Box {
+        k,
+        view,
+        top,
+        max_h,
+        field,
+        lifted,
+    };
+    // A lista em voo dispõe-se à parte (na origem): o pintor leva-a à mão, com os cartões dela.
+    let mut flying = None;
+    if let Some(id) = lifted_list
+        && let Some(i) = order.iter().position(|l| l.id == id)
+    {
+        let l = order.remove(i);
+        let cards_all = by_list.remove(&l.id).unwrap_or_default();
+        flying = Some(list_box(&b, l, 0.0, &cards_all, heights));
+    }
+    let mut list_slot = None;
     for (i, l) in order.iter().enumerate() {
-        if let Some(Lifted::List { to, w, .. }) = lifted
+        if let Some(Lifted::List { to, w, h, .. }) = lifted
             && to == i
         {
+            list_slot = Some(Rect::new(x, top, w, h));
             x += w + m::LIST_GAP;
         }
-        let collapsed = view.collapsed.contains(&l.id);
         let cards_all = by_list.remove(&l.id).unwrap_or_default();
-        let count = cards_all.len();
-        if collapsed {
-            let tw = heights.title_w(&l.title);
-            let rect = Rect::new(x, top, m::COLLAPSED_W, max_h.min(collapsed_h(tw)));
-            let btn = Rect::new(
-                x + (m::COLLAPSED_W - m::LIST_ICON_BTN) / 2.0,
-                top + m::LIST_HEAD_TOP,
-                m::LIST_ICON_BTN,
-                m::LIST_ICON_BTN,
-            );
-            lists.push(ListBox {
-                id: l.id,
-                rect,
-                collapsed: true,
-                title: rect,
-                collapse: btn,
-                menu: Rect::new(0.0, 0.0, 0.0, 0.0),
-                body: Rect::new(0.0, 0.0, 0.0, 0.0),
-                content_h: 0.0,
-                cards: Vec::new(),
-                slot: None,
-                composer: None,
-                add: Rect::new(0.0, 0.0, 0.0, 0.0),
-                close: None,
-                count,
-                limit: None,
-            });
-            x += m::COLLAPSED_W + m::LIST_GAP;
-            continue;
-        }
-        let inner_x = x + m::LIST_BODY_X;
-        let menu = Rect::new(
-            x + m::LIST_W - m::LIST_HEAD_RIGHT - m::LIST_ICON_BTN,
-            top + m::LIST_HEAD_TOP - (m::LIST_ICON_BTN - m::LINE_H) / 2.0,
-            m::LIST_ICON_BTN,
-            m::LIST_ICON_BTN,
-        );
-        // A fila da cabeça: título, pílula do limite, recolher, menu — `6` entre cada um.
-        let collapse = Rect::new(
-            menu.x - m::LIST_ICON_GAP - m::LIST_ICON_BTN,
-            menu.y,
-            m::LIST_ICON_BTN,
-            m::LIST_ICON_BTN,
-        );
-        let limit = l.card_limit.map(|n| {
-            let w = heights.limit_w(&limit_text(count, n));
-            Rect::new(
-                collapse.x - m::LIST_ICON_GAP - w,
-                top + m::LIST_HEAD_TOP + (m::LINE_H - m::COUNT_H) / 2.0,
-                w,
-                m::COUNT_H,
-            )
-        });
-        let title_end = limit.map_or(collapse.x, |p| p.x);
-        let title = Rect::new(
-            x + m::LIST_HEAD_LEFT,
-            top + m::LIST_HEAD_TOP,
-            (title_end - m::LIST_ICON_GAP - x - m::LIST_HEAD_LEFT).max(0.0),
-            m::LINE_H,
-        );
-        // Os cartões, um a seguir ao outro, com o espaço do arrasto e o compositor no meio.
-        let mut y = 0.0_f32;
-        let mut cards = Vec::new();
-        let mut slot = None;
-        let mut composer = None;
-        let composing = field.and_then(|f| match f.target {
-            Target::NewCard { list, after } if list == l.id => Some((after, f.text.as_str())),
-            _ => None,
-        });
-        let lifted_card = match lifted {
-            Some(Lifted::Card { id, .. }) => Some(id),
-            _ => None,
-        };
-        let drop_at = match lifted {
-            Some(Lifted::Card {
-                to: Some((list, i)),
-                h,
-                ..
-            }) if list == l.id => Some((i, h)),
-            _ => None,
-        };
-        let push_gap = |y: &mut f32, h: f32| {
-            let r = Rect::new(inner_x, *y, m::CARD_W, h);
-            *y += h + m::CARD_GAP;
-            r
-        };
-        let mut shown = 0usize;
-        for c in &cards_all {
-            if Some(c.id) == lifted_card {
-                continue;
-            }
-            if let Some((i, h)) = drop_at
-                && i == shown
-            {
-                slot = Some(push_gap(&mut y, h));
-            }
-            let editing = field.is_some_and(|f| f.target == Target::CardTitle(c.id));
-            let h = if editing {
-                let f = field.map_or("", |f| f.text.as_str());
-                (heights.field(f, m::CARD_W - 2.0 * m::CARD_PAD_X) + 2.0 * m::CARD_PAD_Y)
-                    .max(heights.card(k, c.id))
-            } else {
-                heights.card(k, c.id)
-            };
-            cards.push(CardBox {
-                id: c.id,
-                rect: Rect::new(inner_x, y, m::CARD_W, h),
-            });
-            y += h + m::CARD_GAP;
-            shown += 1;
-            if let Some((Some(after), text)) = composing
-                && after == c.id
-            {
-                let h = composer_h(heights, text);
-                composer = Some(push_gap(&mut y, h));
-            }
-        }
-        if let Some((i, h)) = drop_at
-            && i >= shown
-        {
-            slot = Some(push_gap(&mut y, h));
-        }
-        if let Some((None, text)) = composing {
-            let h = composer_h(heights, text);
-            composer = Some(push_gap(&mut y, h));
-        }
-        let content_h = (y - m::CARD_GAP).max(0.0);
-        let body_room = (max_h - head_h() - foot_h()).max(0.0);
-        let body_h = content_h.min(body_room) + m::LIST_BODY_TOP + m::LIST_BODY_BOTTOM;
-        let body = Rect::new(x, top + head_h(), m::LIST_W, body_h);
-        let foot_y = body.y + body.h + m::LIST_FOOT_TOP;
-        let (add, close) = if composing.is_some() {
-            let add = Rect::new(inner_x, foot_y, m::CARD_W / 2.0, m::BUTTON_H);
-            let close = Rect::new(
-                add.x + add.w + m::LIST_ICON_GAP,
-                foot_y,
-                m::BUTTON_H,
-                m::BUTTON_H,
-            );
-            (add, Some(close))
-        } else {
-            (Rect::new(inner_x, foot_y, m::CARD_W, m::BUTTON_H), None)
-        };
-        let rect = Rect::new(x, top, m::LIST_W, head_h() + body_h + foot_h());
-        lists.push(ListBox {
-            id: l.id,
-            rect,
-            collapsed: false,
-            title,
-            collapse,
-            menu,
-            body,
-            content_h,
-            cards,
-            slot,
-            composer,
-            add,
-            close,
-            count,
-            limit,
-        });
-        x += m::LIST_W + m::LIST_GAP;
+        let lb = list_box(&b, l, x, &cards_all, heights);
+        x += lb.rect.w + m::LIST_GAP;
+        lists.push(lb);
     }
-    if let Some(Lifted::List { to, w, .. }) = lifted
+    if let Some(Lifted::List { to, w, h, .. }) = lifted
         && to >= order.len()
     {
+        list_slot = Some(Rect::new(x, top, w, h));
         x += w + m::LIST_GAP;
     }
     let new_list = field.is_some_and(|f| f.target == Target::NewList);
@@ -381,6 +246,8 @@ pub(crate) fn targets(
         board_menu,
         board,
         lists,
+        flying,
+        list_slot,
         add_list,
         add_list_field,
         add_list_close,
@@ -420,4 +287,194 @@ pub(crate) fn max_scroll_y(lb: &ListBox) -> f32 {
         return 0.0;
     }
     (lb.content_h - (lb.body.h - m::LIST_BODY_TOP - m::LIST_BODY_BOTTOM)).max(0.0)
+}
+
+/// O que todas as listas de uma disposição partilham.
+struct Box<'a> {
+    k: &'a Kanban,
+    view: &'a KanbanView,
+    top: f32,
+    max_h: f32,
+    field: Option<&'a Field>,
+    lifted: Option<Lifted>,
+}
+
+/// ⭐ Uma lista em `x` (espaço do conteúdo): a cabeça, os cartões (com o espaço do arrasto e o
+/// compositor) e o pé — ou a recolhida.
+#[allow(clippy::too_many_lines)]
+fn list_box(
+    b: &Box<'_>,
+    l: &ph2d_kanban_model::List,
+    x: f32,
+    cards_all: &[&ph2d_kanban_model::Card],
+    heights: &mut dyn Heights,
+) -> ListBox {
+    let Box {
+        k,
+        view,
+        top,
+        max_h,
+        field,
+        lifted,
+    } = *b;
+    let collapsed = view.collapsed.contains(&l.id);
+    let count = cards_all.len();
+    if collapsed {
+        let tw = heights.title_w(&l.title);
+        let rect = Rect::new(x, top, m::COLLAPSED_W, max_h.min(collapsed_h(tw)));
+        let btn = Rect::new(
+            x + (m::COLLAPSED_W - m::LIST_ICON_BTN) / 2.0,
+            top + m::LIST_HEAD_TOP,
+            m::LIST_ICON_BTN,
+            m::LIST_ICON_BTN,
+        );
+        return ListBox {
+            id: l.id,
+            rect,
+            collapsed: true,
+            title: rect,
+            collapse: btn,
+            menu: Rect::new(0.0, 0.0, 0.0, 0.0),
+            body: Rect::new(0.0, 0.0, 0.0, 0.0),
+            content_h: 0.0,
+            cards: Vec::new(),
+            slot: None,
+            composer: None,
+            add: Rect::new(0.0, 0.0, 0.0, 0.0),
+            close: None,
+            count,
+            limit: None,
+        };
+    }
+    let inner_x = x + m::LIST_BODY_X;
+    let menu = Rect::new(
+        x + m::LIST_W - m::LIST_HEAD_RIGHT - m::LIST_ICON_BTN,
+        top + m::LIST_HEAD_TOP - (m::LIST_ICON_BTN - m::LINE_H) / 2.0,
+        m::LIST_ICON_BTN,
+        m::LIST_ICON_BTN,
+    );
+    // A fila da cabeça: título, pílula do limite, recolher, menu — `6` entre cada um.
+    let collapse = Rect::new(
+        menu.x - m::LIST_ICON_GAP - m::LIST_ICON_BTN,
+        menu.y,
+        m::LIST_ICON_BTN,
+        m::LIST_ICON_BTN,
+    );
+    let limit = l.card_limit.map(|n| {
+        let w = heights.limit_w(&limit_text(count, n));
+        Rect::new(
+            collapse.x - m::LIST_ICON_GAP - w,
+            top + m::LIST_HEAD_TOP + (m::LINE_H - m::COUNT_H) / 2.0,
+            w,
+            m::COUNT_H,
+        )
+    });
+    let title_end = limit.map_or(collapse.x, |p| p.x);
+    let title = Rect::new(
+        x + m::LIST_HEAD_LEFT,
+        top + m::LIST_HEAD_TOP,
+        (title_end - m::LIST_ICON_GAP - x - m::LIST_HEAD_LEFT).max(0.0),
+        m::LINE_H,
+    );
+    // Os cartões, um a seguir ao outro, com o espaço do arrasto e o compositor no meio.
+    let mut y = 0.0_f32;
+    let mut cards = Vec::new();
+    let mut slot = None;
+    let mut composer = None;
+    let composing = field.and_then(|f| match f.target {
+        Target::NewCard { list, after } if list == l.id => Some((after, f.text.as_str())),
+        _ => None,
+    });
+    let lifted_card = match lifted {
+        Some(Lifted::Card { id, .. }) => Some(id),
+        _ => None,
+    };
+    let drop_at = match lifted {
+        Some(Lifted::Card {
+            to: Some((list, i)),
+            h,
+            ..
+        }) if list == l.id => Some((i, h)),
+        _ => None,
+    };
+    let push_gap = |y: &mut f32, h: f32| {
+        let r = Rect::new(inner_x, *y, m::CARD_W, h);
+        *y += h + m::CARD_GAP;
+        r
+    };
+    let mut shown = 0usize;
+    for c in cards_all {
+        if Some(c.id) == lifted_card {
+            continue;
+        }
+        if let Some((i, h)) = drop_at
+            && i == shown
+        {
+            slot = Some(push_gap(&mut y, h));
+        }
+        let editing = field.is_some_and(|f| f.target == Target::CardTitle(c.id));
+        let h = if editing {
+            let f = field.map_or("", |f| f.text.as_str());
+            (heights.field(f, m::CARD_W - 2.0 * m::CARD_PAD_X) + 2.0 * m::CARD_PAD_Y)
+                .max(heights.card(k, c.id))
+        } else {
+            heights.card(k, c.id)
+        };
+        cards.push(CardBox {
+            id: c.id,
+            rect: Rect::new(inner_x, y, m::CARD_W, h),
+        });
+        y += h + m::CARD_GAP;
+        shown += 1;
+        if let Some((Some(after), text)) = composing
+            && after == c.id
+        {
+            let h = composer_h(heights, text);
+            composer = Some(push_gap(&mut y, h));
+        }
+    }
+    if let Some((i, h)) = drop_at
+        && i >= shown
+    {
+        slot = Some(push_gap(&mut y, h));
+    }
+    if let Some((None, text)) = composing {
+        let h = composer_h(heights, text);
+        composer = Some(push_gap(&mut y, h));
+    }
+    let content_h = (y - m::CARD_GAP).max(0.0);
+    let body_room = (max_h - head_h() - foot_h()).max(0.0);
+    let body_h = content_h.min(body_room) + m::LIST_BODY_TOP + m::LIST_BODY_BOTTOM;
+    let body = Rect::new(x, top + head_h(), m::LIST_W, body_h);
+    let foot_y = body.y + body.h + m::LIST_FOOT_TOP;
+    let (add, close) = if composing.is_some() {
+        let add = Rect::new(inner_x, foot_y, m::CARD_W / 2.0, m::BUTTON_H);
+        let close = Rect::new(
+            add.x + add.w + m::LIST_ICON_GAP,
+            foot_y,
+            m::BUTTON_H,
+            m::BUTTON_H,
+        );
+        (add, Some(close))
+    } else {
+        (Rect::new(inner_x, foot_y, m::CARD_W, m::BUTTON_H), None)
+    };
+    let rect = Rect::new(x, top, m::LIST_W, head_h() + body_h + foot_h());
+    ListBox {
+        id: l.id,
+        rect,
+        collapsed: false,
+        title,
+        collapse,
+        menu,
+        body,
+        content_h,
+        cards,
+        slot,
+        composer,
+        add,
+        close,
+        count,
+        limit,
+    }
 }

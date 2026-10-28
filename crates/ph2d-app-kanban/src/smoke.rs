@@ -6,6 +6,9 @@
 //!   da frente que a W2 pinta. ⚠️ É a maquete SEM o que chega depois: prazos, capas de imagem e
 //!   campos personalizados (W3) e o cartão envelhecido (W6) — esses cartões aparecem sem eles.
 //! - **2** — um quadro grande (8 listas × 250 cartões) para sentir o arrasto a 60 fps.
+//! - **3** — o quadro da cena 1 com a «To Do» NA MÃO, a meio do caminho entre a «Doing» e a
+//!   «Review»: inclinada, com a sombra de voo e os cartões dentro; as outras abriram-lhe o espaço.
+//!   Mexer o rato leva-a; um clique larga-a ali.
 
 use crate::docs::KanbanDocs;
 use ph2d_editor_core::screens::hero::HeroScreen;
@@ -16,7 +19,7 @@ use ph2d_kanban_model::{
 };
 
 /// As cenas que existem.
-pub const CENAS: u8 = 2;
+pub const CENAS: u8 = 3;
 pub const ENV: &str = "PH2D_KANBAN_SMOKE";
 
 /// O roteador que a família declara ao registo (o gate de colisão lê-o).
@@ -49,7 +52,7 @@ pub fn stage(hero: &mut HeroScreen, n: u8) -> Option<KanbanId> {
     let id = {
         let mut set = shared.borrow_mut();
         match n {
-            1 => short_film(&mut set),
+            1 | 3 => short_film(&mut set),
             2 => big(&mut set),
             _ => return None,
         }
@@ -58,13 +61,56 @@ pub fn stage(hero: &mut HeroScreen, n: u8) -> Option<KanbanId> {
     docs.follow_project(shared);
     docs.open(id);
     let review = review_list(&docs.set.borrow(), id);
-    if n == 1
+    if matches!(n, 1 | 3)
         && let Some(review) = review
         && let Some(t) = docs.tab_mut(id.0)
     {
         t.view.collapsed.insert(review);
     }
+    let todo = docs
+        .set
+        .borrow()
+        .get(id)
+        .and_then(|k| k.lists.values().find(|l| l.title == "To Do").map(|l| l.id));
+    if n == 3
+        && let Some(todo) = todo
+        && let Some(t) = docs.tab_mut(id.0)
+    {
+        // Um passo e meio de lista para a direita, um pouco levantada.
+        let step = crate::metrics::LIST_W + crate::metrics::LIST_GAP;
+        t.smoke_hold = Some((todo, (1.55 * step, 2.0 * crate::metrics::LIST_HEAD_BOTTOM)));
+    }
     Some(id)
+}
+
+/// SMOKE 3: põe na mão a lista pedida, assim que a disposição a tem (o arrasto como o do rato), presa
+/// à origem das listas a cada quadro (a janela que maximiza move-a) até o rato a mexer.
+pub(crate) fn hold(tab: &mut crate::tab::Tab) {
+    let Some((list, (dx, dy))) = tab.smoke_hold else {
+        return;
+    };
+    let Some(r) = tab.layout.list(list).map(|lb| lb.rect) else {
+        return;
+    };
+    let b = tab.layout.board;
+    let corner = (
+        b.x + crate::metrics::BOARD_PAD + dx,
+        b.y + crate::metrics::BOARD_PAD + dy,
+    );
+    if let Some(d) = tab.drag.as_mut() {
+        d.at = (corner.0 + d.grab.0, corner.1 + d.grab.1);
+        return;
+    }
+    let grab = (r.w / 2.0, crate::metrics::LINE_H);
+    let to_list = tab.layout.lists.iter().position(|l| l.id == list);
+    tab.drag = Some(crate::tab::Drag {
+        lift: crate::tab::Lift::List(list),
+        at: (corner.0 + grab.0, corner.1 + grab.1),
+        grab,
+        size: (r.w, r.h),
+        to_card: None,
+        to_list: to_list.unwrap_or(0),
+    });
 }
 
 fn review_list(set: &KanbanSet, id: KanbanId) -> Option<ListId> {

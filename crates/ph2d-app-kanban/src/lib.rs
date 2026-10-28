@@ -19,6 +19,7 @@ mod front;
 mod home;
 mod keys;
 mod layout;
+mod list_title;
 mod menu;
 mod metrics;
 mod overlay;

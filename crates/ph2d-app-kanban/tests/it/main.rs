@@ -7,7 +7,9 @@ mod arrastar;
 mod escrever;
 mod teclado;
 mod teto;
+mod titulo;
 mod vista;
+mod voo;
 
 use ph2d_app_kanban::KanbanDocs;
 use ph2d_editor_core::NodeId;

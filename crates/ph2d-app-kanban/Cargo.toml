@@ -42,5 +42,9 @@ ph2d-tokens = { path = "../ph2d-tokens" }
 ph2d-tool-registry = { path = "../ph2d-tool-registry" }
 ph2d-vector = { path = "../ph2d-vector" }
 
+[dev-dependencies]
+# A porta do carácter confirmado (`HeroScreen::handle_text_input`) pede a arena do despacho.
+bumpalo = "3"
+
 [lints]
 workspace = true

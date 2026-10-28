@@ -6,9 +6,9 @@
 
 use ph2d_board_model::ElementId;
 use ph2d_editor_core::NodeId;
+use ph2d_editor_core::screens::hero::board_keys::{self, BoardKey};
 use ph2d_editor_core::screens::hero::board_video::kanban::{self as kb, link};
 use ph2d_editor_core::screens::hero::board_view::{self, Input};
-use ph2d_editor_core::screens::hero::board_keys::{self, BoardKey};
 use ph2d_editor_core::screens::hero::{
     HERO_VIEWPORT_H, HERO_VIEWPORT_W, HeroScreen, paint_hero_screen,
 };
@@ -18,16 +18,16 @@ use ph2d_kanban_model::{KanbanId, ListId};
 use ph2d_text::TextSystem;
 use ph2d_vector::{Point, VectorScene};
 
-struct Duas {
-    hero: HeroScreen,
-    ts: TextSystem,
-    agora: u128,
+pub struct Duas {
+    pub hero: HeroScreen,
+    pub ts: TextSystem,
+    pub agora: u128,
 }
 
 impl Duas {
     /// A shell: a família instalada (os ganchos do canvas), a cena 1 na aba, e um Quadro com o MESMO
     /// Kanban posto por «Place on board».
-    fn new() -> (Self, KanbanId, ElementId) {
+    pub fn new() -> (Self, KanbanId, ElementId) {
         ph2d_editor_core::test_support::ensure_panel_registry();
         let mut hero = HeroScreen::new(NodeId(1));
         ph2d_app_kanban::install(&mut hero);
@@ -48,7 +48,7 @@ impl Duas {
         (d, id, el)
     }
 
-    fn quadro(&mut self) {
+    pub fn quadro(&mut self) {
         self.agora += crate::QUADRO_NS;
         self.hero.store.note_clock(self.agora);
         ph2d_app_kanban::frame(&mut self.hero);
@@ -59,13 +59,13 @@ impl Duas {
         paint_hero_screen(&mut self.hero, vp, &mut scene, &mut self.ts);
     }
 
-    fn quadros(&mut self, n: usize) {
+    pub fn quadros(&mut self, n: usize) {
         for _ in 0..n {
             self.quadro();
         }
     }
 
-    fn rato(&mut self, kind: PointerKind, (x, y): (f32, f32)) -> bool {
+    pub fn rato(&mut self, kind: PointerKind, (x, y): (f32, f32)) -> bool {
         let input = Input {
             text: &mut self.ts,
             mods: Modifiers::default(),
@@ -75,7 +75,7 @@ impl Duas {
         board_view::pointer(&mut self.hero, input, kind, p, x, y, true)
     }
 
-    fn move_(&mut self, (x, y): (f32, f32)) {
+    pub fn move_(&mut self, (x, y): (f32, f32)) {
         let input = Input {
             text: &mut self.ts,
             mods: Modifiers::default(),
@@ -84,23 +84,39 @@ impl Duas {
         board_view::pointer_move(&mut self.hero, input, x, y);
     }
 
-    fn docs(&mut self) -> &mut ph2d_app_kanban::KanbanDocs {
+    pub fn docs(&mut self) -> &mut ph2d_app_kanban::KanbanDocs {
         let s = self.hero.documents.surfaces_mut();
-        s.find_mut::<ph2d_app_kanban::KanbanDocs>().expect("família")
+        s.find_mut::<ph2d_app_kanban::KanbanDocs>()
+            .expect("família")
     }
 
-    fn lista(&self, id: KanbanId, titulo: &str) -> ListId {
+    pub fn lista(&self, id: KanbanId, titulo: &str) -> ListId {
         let k = self.hero.documents.kanbans();
-        let l = k.get(id).unwrap().lists.values().find(|l| l.title == titulo);
+        let l = k
+            .get(id)
+            .unwrap()
+            .lists
+            .values()
+            .find(|l| l.title == titulo);
         l.expect("lista").id
     }
 
     /// O ponto de ecrã do centro de um rect em px da vista do elemento `el`.
-    fn ecra(&self, el: ElementId, r: Rect) -> (f32, f32) {
+    pub fn ecra(&self, el: ElementId, r: Rect) -> (f32, f32) {
         let pl = kb::placement(&self.hero, el).expect("o Kanban à vista");
-        let k = self.hero.documents.active_board().unwrap().doc.get(el).unwrap();
+        let k = self
+            .hero
+            .documents
+            .active_board()
+            .unwrap()
+            .doc
+            .get(el)
+            .unwrap();
         let z = k.kanban().unwrap().view.zoom;
-        let c = (f64::from(r.x + r.w / 2.0) * z, f64::from(r.y + r.h / 2.0) * z);
+        let c = (
+            f64::from(r.x + r.w / 2.0) * z,
+            f64::from(r.y + r.h / 2.0) * z,
+        );
         let p = pl.to_screen * Point::new(c.0, c.1);
         (p.x as f32, p.y as f32)
     }
@@ -116,17 +132,35 @@ fn a_aba_e_o_canvas_mostram_o_mesmo_kanban_nos_dois_sentidos() {
     );
     let backlog = d.lista(id, "Backlog");
     let todo = d.lista(id, "To Do");
-    let card = d.hero.documents.kanbans().get(id).unwrap().cards_in(backlog)[0].id;
+    let card = d
+        .hero
+        .documents
+        .kanbans()
+        .get(id)
+        .unwrap()
+        .cards_in(backlog)[0]
+        .id;
 
     // ── canvas → aba: entrar no Kanban (seleccionado, 2.º clique) e arrastar um cartão para a To Do.
     board_view::select(&mut d.hero, [el]);
     d.quadro();
-    let probe = d.docs().probe_canvas(el.0).expect("a vista do elemento pintou");
-    let r = probe.cards.iter().find(|c| c.0 == card).expect("o cartão no canvas").1;
+    let probe = d
+        .docs()
+        .probe_canvas(el.0)
+        .expect("a vista do elemento pintou");
+    let r = probe
+        .cards
+        .iter()
+        .find(|c| c.0 == card)
+        .expect("o cartão no canvas")
+        .1;
     let alvo = probe.lists.iter().find(|l| l.0 == todo).unwrap().1;
     let de = d.ecra(el, r);
     let para = d.ecra(el, Rect::new(alvo.x, alvo.y + 60.0, alvo.w, 40.0));
-    assert!(d.rato(PointerKind::Down, de), "o 2.º clique entra no Kanban");
+    assert!(
+        d.rato(PointerKind::Down, de),
+        "o 2.º clique entra no Kanban"
+    );
     assert_eq!(kb::active(&d.hero), Some(el));
     for i in 1..=8 {
         let t = i as f32 / 8.0;
@@ -150,7 +184,10 @@ fn a_aba_e_o_canvas_mostram_o_mesmo_kanban_nos_dois_sentidos() {
         }
         d.quadro();
     }
-    let na_aba = d.docs().probe_card_rect(id.0, card).expect("o cartão na aba");
+    let na_aba = d
+        .docs()
+        .probe_card_rect(id.0, card)
+        .expect("o cartão na aba");
     let todo_aba = d.docs().probe_list_rect(id.0, todo).unwrap();
     assert!(
         na_aba.x >= todo_aba.x && na_aba.x + na_aba.w <= todo_aba.x + todo_aba.w,
@@ -167,9 +204,25 @@ fn a_aba_e_o_canvas_mostram_o_mesmo_kanban_nos_dois_sentidos() {
     for c in "Ideas".chars() {
         let k = BoardKey::Char(c.to_ascii_lowercase());
         let s = c.to_string();
-        board_keys::key(&mut d.hero, &mut d.ts, k, Modifiers::default(), true, Some(&s), None);
+        board_keys::key(
+            &mut d.hero,
+            &mut d.ts,
+            k,
+            Modifiers::default(),
+            true,
+            Some(&s),
+            None,
+        );
     }
-    board_keys::key(&mut d.hero, &mut d.ts, BoardKey::Enter, Modifiers::default(), true, Some("\r"), None);
+    board_keys::key(
+        &mut d.hero,
+        &mut d.ts,
+        BoardKey::Enter,
+        Modifiers::default(),
+        true,
+        Some("\r"),
+        None,
+    );
     d.quadro();
     d.hero.documents.activate(Some(board));
     d.quadro();
@@ -192,7 +245,7 @@ fn centro(r: Rect) -> (f32, f32) {
 }
 
 impl Duas {
-    fn clica(&mut self, p: (f32, f32)) {
+    pub fn clica(&mut self, p: (f32, f32)) {
         assert!(self.rato(PointerKind::Down, p), "o carregar em {p:?}");
         self.rato(PointerKind::Up, p);
         self.quadro();
@@ -221,7 +274,11 @@ fn show_on_board_escolhe_entre_dois_quadros_e_centra_a_camara() {
     assert_eq!(rows.len(), 2, "uma linha por quadro: {rows:?}");
     d.clica(centro(linha(&rows, "Board(1)")));
     d.quadro();
-    assert_eq!(d.hero.documents.active(), Some(segundo), "o quadro escolhido");
+    assert_eq!(
+        d.hero.documents.active(),
+        Some(segundo),
+        "o quadro escolhido"
+    );
     let b = d.hero.documents.active_board().unwrap();
     let e = b.doc.get(el2).unwrap();
     assert_eq!(
@@ -237,17 +294,32 @@ fn show_on_board_escolhe_entre_dois_quadros_e_centra_a_camara() {
 fn o_verso_abre_no_canvas_por_cima_do_quadro_e_fecha_no_fundo() {
     let (mut d, id, el) = Duas::new();
     let backlog = d.lista(id, "Backlog");
-    let card = d.hero.documents.kanbans().get(id).unwrap().cards_in(backlog)[0].id;
+    let card = d
+        .hero
+        .documents
+        .kanbans()
+        .get(id)
+        .unwrap()
+        .cards_in(backlog)[0]
+        .id;
     board_view::select(&mut d.hero, [el]);
     d.quadro();
     let probe = d.docs().probe_canvas(el.0).unwrap();
     let r = probe.cards.iter().find(|c| c.0 == card).unwrap().1;
     let p = d.ecra(el, r);
     d.clica(p);
-    assert_eq!(d.docs().probe_canvas(el.0).unwrap().back, Some(card), "o verso abriu");
+    assert_eq!(
+        d.docs().probe_canvas(el.0).unwrap().back,
+        Some(card),
+        "o verso abriu"
+    );
     // Um canto do quadro, longe do modal centrado: o fundo escuro do verso, não o quadro.
     d.clica((40.0, HERO_VIEWPORT_H - 80.0));
-    assert_eq!(d.docs().probe_canvas(el.0).unwrap().back, None, "o fundo fecha o verso");
+    assert_eq!(
+        d.docs().probe_canvas(el.0).unwrap().back,
+        None,
+        "o fundo fecha o verso"
+    );
     assert_eq!(kb::active(&d.hero), Some(el), "e o Kanban continua activo");
 }
 
@@ -256,7 +328,12 @@ fn o_verso_abre_no_canvas_por_cima_do_quadro_e_fecha_no_fundo() {
 fn no_nivel_medio_o_cartao_perde_os_distintivos() {
     let (mut d, id, el) = Duas::new();
     let k = d.hero.documents.kanbans().get(id).unwrap().clone();
-    let card = k.cards.values().find(|c| c.title == "Storyboard act 1").unwrap().id;
+    let card = k
+        .cards
+        .values()
+        .find(|c| c.title == "Storyboard act 1")
+        .unwrap()
+        .id;
     let alto = |d: &mut Duas| {
         let p = d.docs().probe_canvas(el.0).unwrap();
         p.cards.iter().find(|c| c.0 == card).unwrap().1.h
@@ -272,5 +349,8 @@ fn no_nivel_medio_o_cartao_perde_os_distintivos() {
             break;
         }
     }
-    assert!(alto(&mut d) < inteiro, "sem rótulos nem distintivos o cartão encolhe");
+    assert!(
+        alto(&mut d) < inteiro,
+        "sem rótulos nem distintivos o cartão encolhe"
+    );
 }

@@ -107,7 +107,9 @@ fn show(hero: &mut HeroScreen, board: BoardId, element: ElementId) {
 /// quadro novo se não há nenhum); o quadro fica à vista com ela seleccionada. UM passo de desfazer.
 pub(crate) fn place(hero: &mut HeroScreen, kanban: KanbanId) -> Option<(BoardId, ElementId)> {
     let boards = hero.documents.boards();
-    let last = LAST_BOARD.with(Cell::get).filter(|b| boards.get(*b).is_some());
+    let last = LAST_BOARD
+        .with(Cell::get)
+        .filter(|b| boards.get(*b).is_some());
     let target = hero
         .documents
         .active()
@@ -154,7 +156,9 @@ pub(crate) fn born(set: &SharedKanbans, k: KanbanId) {
 /// Os Kanbans referidos no quadro.
 #[must_use]
 pub(crate) fn refs(doc: &BoardDoc) -> BTreeSet<KanbanId> {
-    doc.live().filter_map(|e| e.kanban().map(|k| k.kanban)).collect()
+    doc.live()
+        .filter_map(|e| e.kanban().map(|k| k.kanban))
+        .collect()
 }
 
 /// ⭐ Depois de um desfazer/refazer do quadro (`before` = os referidos antes): o Kanban nascido com a

@@ -3,8 +3,8 @@
 
 use super::outside::Outside;
 use super::{Back, BackHit, Edit, EditAt, Pop, PopHit, Side, write};
-use ph2d_editor_core::interaction::DOUBLE_CLICK_WINDOW_NS;
 use crate::docs::KanbanDocs;
+use ph2d_editor_core::interaction::DOUBLE_CLICK_WINDOW_NS;
 use ph2d_editor_core::widget::{DatePickerEvent, LineField, RichEditorEvent};
 use ph2d_host::Modifiers;
 use ph2d_i18n::tr;
@@ -179,13 +179,14 @@ pub(crate) fn up(docs: &mut KanbanDocs, id: u64, x: f32, y: f32) -> bool {
     true
 }
 
-/// A roda rola o verso inteiro (o modal anda com a página, o Trello).
+/// A roda rola o verso inteiro (o modal anda com a página, o Trello): `dy` px de ecrã, positivo =
+/// ver mais abaixo ([`crate::pointer::wheel_px`] converte a roda).
 pub(crate) fn wheel(docs: &mut KanbanDocs, id: u64, dy: f32) -> bool {
     let Some(b) = back_mut(docs, id) else {
         return false;
     };
     let max = (b.content_h + 2.0 * super::ui::MODAL_TOP - b.area.h).max(0.0);
-    b.scroll = (b.scroll + dy * crate::metrics::WHEEL_STEP).clamp(0.0, max);
+    b.scroll = (b.scroll + dy).clamp(0.0, max);
     true
 }
 

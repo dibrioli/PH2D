@@ -22,8 +22,10 @@ use crate::{BoardDoc, Files, Team};
 /// do traço (`Style::birth`) e a tinta limpa (`Ink::clean`) — auditoria do Sketch, doc 17 §9; 18 = o
 /// Kanban no quadro (`ElementKind::Kanban`, ADR-0195 §3). Os bytes do 17 são os do 18 sem a variante
 /// nova: lê-os o mesmo leitor; o degrau existe para um build do 17 recusar o ficheiro PELO NOME em vez
-/// de tropeçar num discriminante que não conhece.
-pub const FORMAT_VERSION: u32 = 18;
+/// de tropeçar num discriminante que não conhece. 19 = a rolagem de cada lista na vista do Kanban
+/// (`KanbanBoardView::scroll_y`, W4 V2); o 17 e o 18 leem-se pelo mesmo leitor, a vista pela forma do
+/// 18 (`kanban::reading`).
+pub const FORMAT_VERSION: u32 = 19;
 
 /// Identidade de um quadro no projecto. Nunca reusada.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -311,7 +313,7 @@ impl BoardSet {
         // A versão é o 1.º campo: lê-se sozinha, e decide com que structs ler o resto.
         let (version, _) = postcard::take_from_bytes::<u32>(bytes).map_err(|e| e.to_string())?;
         match version {
-            17 | FORMAT_VERSION => postcard::from_bytes(bytes)
+            17 | 18 | FORMAT_VERSION => crate::kanban::reading(version, || postcard::from_bytes(bytes))
                 .map(|mut set: Self| {
                     set.version = FORMAT_VERSION;
                     for b in &mut set.boards {

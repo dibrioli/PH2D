@@ -7,7 +7,7 @@ use crate::docs::KanbanDocs;
 use crate::edit::{Outcome, Target};
 use crate::layout::Layout;
 use crate::tab::Hit;
-use ph2d_editor_core::doc_surface::{Key, KeyInput, KeyOutcome};
+use ph2d_editor_core::doc_surface::{Compose, Key, KeyInput, KeyOutcome};
 use ph2d_kanban_model::{CardId, ListId};
 
 fn taken() -> KeyOutcome {
@@ -39,6 +39,24 @@ fn neighbour(l: &Layout, from: (usize, usize), dl: isize, dc: isize) -> Option<C
         from.1.min(cards.len() - 1)
     };
     cards.get(ci).map(|c| c.id)
+}
+
+/// A composição (IME, tecla morta, carácter confirmado) para o verso aberto ou o campo no lugar da
+/// vista `id` (a aba e o elemento do Quadro). `true` = tomada.
+pub(crate) fn compose(docs: &mut KanbanDocs, id: u64, c: Compose<'_>) -> bool {
+    if crate::back::is_open(docs, id) {
+        return crate::back::compose(docs, id, c);
+    }
+    let Some(f) = docs.tab_mut(id).and_then(|t| t.field.as_mut()) else {
+        return false;
+    };
+    match c {
+        Compose::Commit(ch) => {
+            f.insert(ch.encode_utf8(&mut [0; 4]));
+            true
+        }
+        Compose::Preedit(..) | Compose::DeadKey(_) => false,
+    }
 }
 
 pub(crate) fn key(

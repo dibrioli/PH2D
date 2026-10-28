@@ -4,6 +4,7 @@
 //! da vista. Cada quadro corre como a shell o corre: `frame` da família → `follow_surfaces` → pintar.
 
 mod arrastar;
+mod canvas_entrada;
 mod duas_janelas;
 mod medida;
 mod escrever;

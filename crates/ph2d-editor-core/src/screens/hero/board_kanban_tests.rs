@@ -110,7 +110,7 @@ impl KanbanElementInput for Spy {
             KanbanPointer::Up { .. } => "up",
         };
         self.0.push(name.into());
-        v.scroll[0] += 1.0;
+        v.scroll_x += 1.0;
         true
     }
 
@@ -148,7 +148,7 @@ fn a_second_click_enters_the_kanban_and_the_hook_takes_the_mouse_and_keys() {
     assert_eq!(spy.borrow().0, ["down", "up"]);
     let now = kanban_el(&t).unwrap();
     assert_eq!([now.x, now.y], [el.x, el.y], "o clique não move o Kanban");
-    assert_eq!(now.kanban().unwrap().view.scroll[0], 2.0, "a vista é do gancho");
+    assert_eq!(now.kanban().unwrap().view.scroll_x, 2.0, "a vista é do gancho");
     assert!(t.key(BoardKey::Char('a'), Modifiers::default(), Some("a")));
     assert!(t.key(BoardKey::Escape, Modifiers::default(), None));
     assert_eq!(frames(&t), None, "o Esc sai");

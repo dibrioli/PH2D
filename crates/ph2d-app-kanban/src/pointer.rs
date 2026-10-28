@@ -508,7 +508,10 @@ fn menu_row(docs: &mut KanbanDocs, id: u64, row: MenuRow) {
         (Menu::List(l), MenuRow::Color(c)) => {
             docs.with_doc(id, |_, doc| doc.set_list_color(l, c));
         }
-        (Menu::Board | Menu::Boards(_), MenuRow::ShowOnBoard | MenuRow::PlaceOnBoard | MenuRow::Board(_)) => {
+        (
+            Menu::Board | Menu::Boards(_),
+            MenuRow::ShowOnBoard | MenuRow::PlaceOnBoard | MenuRow::Board(_),
+        ) => {
             crate::on_board::row(docs, id, row);
         }
         (Menu::Board, MenuRow::Archived) => {
@@ -572,19 +575,36 @@ fn panel_row(docs: &mut KanbanDocs, id: u64, row: crate::archive::Row) {
     }
 }
 
-/// A roda: sobre o corpo de uma lista rola-a; no resto, o quadro na horizontal. `true` = tomada.
+/// A roda em px da vista: a janela dá 16 por linha, positivo = para longe (= ver mais acima).
+pub(crate) fn wheel_px(dy: f32) -> f32 {
+    -dy / m::WHEEL_LINE_PX * m::WHEEL_STEP
+}
+
+/// A roda: sobre o corpo de uma lista rola-a; no resto (ou com `shift`), o quadro na horizontal.
+/// `true` = tomada.
 pub(crate) fn wheel(docs: &mut KanbanDocs, id: u64, x: f32, y: f32, dy: f32, shift: bool) -> bool {
+    let px = wheel_px(dy);
+    scroll(docs, id, (x, y), if shift { [px, 0.0] } else { [0.0, px] })
+}
+
+/// ⭐ Rola `[dx, dy]` px da vista em `(x, y)` (positivo = ver mais à direita / abaixo): o `dy` rola a
+/// lista sob o ponteiro (no fundo do quadro, o quadro na horizontal); o `dx`, o quadro.
+pub(crate) fn scroll(
+    docs: &mut KanbanDocs,
+    id: u64,
+    (x, y): (f32, f32),
+    [dx, dy]: [f32; 2],
+) -> bool {
     let Some(tab) = docs.tab_mut(id) else {
         return false;
     };
     if !tab.layout.area.contains(x, y) {
         return false;
     }
-    let step = f64::from(dy * m::WHEEL_STEP);
     if let Some(p) = tab.panel.as_mut()
         && x > tab.layout.board.x + tab.layout.board.w - m::PANEL_W
     {
-        p.scroll = (p.scroll + dy * m::WHEEL_STEP).max(0.0);
+        p.scroll = (p.scroll + dy).max(0.0);
         return true;
     }
     let over = tab
@@ -593,15 +613,17 @@ pub(crate) fn wheel(docs: &mut KanbanDocs, id: u64, x: f32, y: f32, dy: f32, shi
         .iter()
         .find(|l| !l.collapsed && l.body.contains(x, y))
         .map(|l| (l.id, crate::layout::max_scroll_y(l)));
+    let mut sideways = dx;
     match over {
-        Some((list, max)) if !shift => {
+        Some((list, max)) if dy != 0.0 => {
             let v = tab.view.scroll_y.entry(list).or_default();
-            *v = (*v + step).clamp(0.0, f64::from(max));
+            *v = (*v + f64::from(dy)).clamp(0.0, f64::from(max));
         }
-        _ => {
-            let max = f64::from(crate::layout::max_scroll_x(&tab.layout));
-            tab.view.scroll_x = (tab.view.scroll_x + step).clamp(0.0, max);
-        }
+        _ => sideways += dy,
+    }
+    if sideways != 0.0 {
+        let max = f64::from(crate::layout::max_scroll_x(&tab.layout));
+        tab.view.scroll_x = (tab.view.scroll_x + f64::from(sideways)).clamp(0.0, max);
     }
     true
 }

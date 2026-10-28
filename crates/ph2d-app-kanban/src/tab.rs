@@ -126,7 +126,7 @@ pub(crate) struct Tab {
     pub key: Option<u64>,
     /// W4 — a vista do elemento (rolagem, recolhidas) como o documento do Quadro a deu da última vez:
     /// outra mudança lá (desfazer, um colega) volta a ser a desta vista.
-    pub board_seen: Option<(f64, std::collections::BTreeSet<ListId>)>,
+    pub board_seen: Option<ph2d_board_model::KanbanBoardView>,
     /// W4 — os quadros onde este Kanban está posto («Show on board»): `(quadro, elemento, nome)`.
     pub placements: Vec<(u64, u64, String)>,
 }

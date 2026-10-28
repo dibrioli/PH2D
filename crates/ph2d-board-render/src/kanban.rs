@@ -19,7 +19,9 @@ use ph2d_board_model::{BoardKanban, Element, ElementId, KanbanBoardView, KanbanI
 use ph2d_kanban_model::{Background, Hue, KanbanSet, Shade};
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken as T, Theme, TypeToken};
-use ph2d_vector::{Affine, Brush, Color, Point, Rect, RoundedRect, Shape as _, VectorScene, VelloBlend};
+use ph2d_vector::{
+    Affine, Brush, Color, Point, Rect, RoundedRect, Shape as _, VectorScene, VelloBlend,
+};
 
 use crate::{GREEK_ALPHA, READ_PX, RenderCache, token};
 
@@ -255,12 +257,18 @@ pub(crate) fn paint(
     let lod = if cache.export.is_some() {
         KanbanLod::Mid
     } else {
-        FORCE.with(std::cell::Cell::get).unwrap_or_else(|| KanbanLod::at(zoom * k.view.zoom))
+        FORCE
+            .with(std::cell::Cell::get)
+            .unwrap_or_else(|| KanbanLod::at(zoom * k.view.zoom))
     };
     if cache.export.is_none() {
         cache.kanbans.theme = theme;
         let size = [el.w, el.h];
-        let pl = KanbanPlacement { to_screen: t, lod, size };
+        let pl = KanbanPlacement {
+            to_screen: t,
+            lod,
+            size,
+        };
         cache.kanbans.on_screen.insert(el.id, pl);
     }
     let st = &k.style;
@@ -391,10 +399,22 @@ fn low(
     let title_at = [HEADER_PAD * z, (HEADER_H * z - title_px * LINE_K) / 2.0];
     let fg = token(T::KanbanHeaderFg, theme);
     let name = &kb.header.name;
-    text(scene, ts, cache, owner(board, el.id, 0), name, title_px, title_at, None, t, screen, fg);
+    text(
+        scene,
+        ts,
+        cache,
+        owner(board, el.id, 0),
+        name,
+        title_px,
+        title_at,
+        None,
+        t,
+        screen,
+        fg,
+    );
     let top = (HEADER_H + BOARD_PAD) * z;
     let bottom = el.h - BOARD_PAD * z;
-    let mut x = BOARD_PAD * z - view.scroll[0];
+    let mut x = (BOARD_PAD - view.scroll_x) * z;
     for (i, l) in kb.lists_in_order().into_iter().enumerate() {
         if x > el.w {
             break;
@@ -413,10 +433,25 @@ fn low(
                 scene.push_layer_shape(VelloBlend::default(), 1.0, t, &r);
                 let pad = LIST_PAD * z;
                 let px = (LIST_TITLE_PX * z).max(glance);
-                let at = [x + pad, top + (LIST_HEAD - LIST_TITLE_PX * LINE_K) * z / 2.0];
+                let at = [
+                    x + pad,
+                    top + (LIST_HEAD - LIST_TITLE_PX * LINE_K) * z / 2.0,
+                ];
                 let n = i as u64 * 2 + 1;
                 let up = l.title.to_uppercase();
-                text(scene, ts, cache, owner(board, el.id, n), &up, px, at, None, t, screen, ink);
+                text(
+                    scene,
+                    ts,
+                    cache,
+                    owner(board, el.id, n),
+                    &up,
+                    px,
+                    at,
+                    None,
+                    t,
+                    screen,
+                    ink,
+                );
                 let count = cards.to_string();
                 // Ampliada, a contagem desce para a linha de baixo (ao lado não cabe na coluna).
                 let (cat, right) = if px > LIST_TITLE_PX * z {
@@ -424,7 +459,19 @@ fn low(
                 } else {
                     (at, Some(x + w - pad))
                 };
-                text(scene, ts, cache, owner(board, el.id, n + 1), &count, px, cat, right, t, screen, meta);
+                text(
+                    scene,
+                    ts,
+                    cache,
+                    owner(board, el.id, n + 1),
+                    &count,
+                    px,
+                    cat,
+                    right,
+                    t,
+                    screen,
+                    meta,
+                );
                 scene.pop_layer();
             }
         }

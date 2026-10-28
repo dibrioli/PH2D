@@ -103,14 +103,26 @@ fn without_a_hook_the_low_level_paints_one_column_per_list_in_its_colour() {
     let mut c = RenderCache::default();
     let o = ops(&b, &mut c);
     let th = Theme::Forge;
-    assert_eq!(fills(&o, crate::token(ColorToken::KanbanBoardBg, th)), 1, "a moldura");
-    assert_eq!(fills(&o, crate::token(ColorToken::KanbanHeaderBg, th)), 1, "o cabeçalho");
+    assert_eq!(
+        fills(&o, crate::token(ColorToken::KanbanBoardBg, th)),
+        1,
+        "a moldura"
+    );
+    assert_eq!(
+        fills(&o, crate::token(ColorToken::KanbanHeaderBg, th)),
+        1,
+        "o cabeçalho"
+    );
     let (green, ..) = kanban_list_colors(th, Some(Hue::Green));
     let (plain, ..) = kanban_list_colors(th, None);
     assert_ne!(green, plain);
     assert_eq!(fills(&o, green), 1, "a lista verde");
     assert_eq!(fills(&o, plain), 1, "a lista sem cor");
-    let pl = c.kanbans.on_screen.get(&b.doc.live().next().unwrap().id).unwrap();
+    let pl = c
+        .kanbans
+        .on_screen
+        .get(&b.doc.live().next().unwrap().id)
+        .unwrap();
     assert_eq!(pl.lod, KanbanLod::High);
     assert_eq!(pl.size, [960.0, 540.0]);
 }
@@ -125,9 +137,11 @@ fn a_longer_list_is_a_taller_column() {
     let height = |c: Color| {
         o.iter()
             .find_map(|op| match op {
-                DrawOp::Fill { brush: Brush::Solid(x), path, .. } if *x == c => {
-                    Some(ph2d_vector::Shape::bounding_box(path).height())
-                }
+                DrawOp::Fill {
+                    brush: Brush::Solid(x),
+                    path,
+                    ..
+                } if *x == c => Some(ph2d_vector::Shape::bounding_box(path).height()),
                 _ => None,
             })
             .unwrap()

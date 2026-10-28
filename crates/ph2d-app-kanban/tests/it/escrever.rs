@@ -46,14 +46,15 @@ fn new_kanban_abre_a_aba_com_o_nome_em_edicao_e_enter_renomeia() {
 #[test]
 fn add_another_list_cria_a_lista_e_o_compositor_fica_aberto() {
     let (mut m, id) = Mesa::cena1();
-    // O «Add another list» está à direita, fora da vista: a roda no fundo do quadro rola-o.
+    // O «Add another list» está à direita, fora da vista: a roda (para baixo, uma linha = 16 px da
+    // janela) no fundo do quadro rola-o.
     let fora = m.docs().probe_rect(id.0, "add_list").expect("add_list");
     assert!(
         fora.x + fora.w > AREA.w,
         "a cena começa com ele fora: {fora:?}"
     );
     for _ in 0..20 {
-        assert!(m.roda(600.0, AREA.h - 20.0, 1.0), "a roda foi tomada");
+        assert!(m.roda(600.0, AREA.h - 20.0, -16.0), "a roda foi tomada");
     }
     let add = m.docs().probe_rect(id.0, "add_list").expect("add_list");
     assert!(add.x + add.w <= AREA.w, "rolou até se ver: {add:?}");

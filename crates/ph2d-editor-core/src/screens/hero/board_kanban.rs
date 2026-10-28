@@ -18,13 +18,13 @@ use ph2d_board_render::KanbanLod;
 use ph2d_host::{Modifiers, PointerButton};
 use ph2d_text::TextSystem;
 
+use crate::doc_surface::{Compose, KeyInput, KeyOutcome, PointerLook, Surfaces};
+use crate::documents::BoardLive;
+use crate::icons::IconId;
+use crate::screens::hero::HeroScreen;
+use crate::screens::hero::board_bar::Item;
 use crate::screens::hero::board_keys::BoardKey;
 use crate::screens::hero::board_view::{area, area_of};
-use crate::doc_surface::{KeyInput, KeyOutcome, Surfaces};
-use crate::icons::IconId;
-use crate::screens::hero::board_bar::Item;
-use crate::documents::BoardLive;
-use crate::screens::hero::HeroScreen;
 
 /// O que o rato faz dentro de um Kanban activo; `at` em coordenadas LOCAIS do elemento (`0..w × 0..h`,
 /// unidades do mundo — a vista do Kanban escala-as por `view.zoom`); `screen` = o mesmo ponto no ecrã
@@ -49,6 +49,16 @@ pub enum KanbanPointer {
     },
 }
 
+/// A roda num Kanban activo. `Wheel` = a roda do rato (px da janela, 16 por linha, positivo = para
+/// longe; `shift` = na horizontal); `Pan` = dois dedos no trackpad, em unidades LOCAIS do elemento e
+/// em px de ecrã (o verso abre-se em ecrã), no sentido do
+/// [`crate::screens::hero::board_view::BoardScroll::Pan`] (o conteúdo anda com os dedos).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum KanbanWheel {
+    Wheel { dy: f32, shift: bool },
+    Pan { local: [f64; 2], screen: [f64; 2] },
+}
+
 /// ⭐ O gancho de ENTRADA (a família Kanban implementa-o com o `KanbanPainter` do board-render). A
 /// família encontra-se a si própria em `surfaces` (a aba e o elemento são vistas da MESMA família).
 pub trait KanbanElementInput {
@@ -70,6 +80,32 @@ pub trait KanbanElementInput {
         input: KeyInput<'_>,
         view: &mut KanbanBoardView,
     ) -> KeyOutcome;
+    /// A roda no Kanban (o ponteiro em `at`, LOCAL). `true` = consumida.
+    fn wheel(
+        &mut self,
+        _surfaces: &mut Surfaces,
+        _target: (ElementId, KanbanId),
+        _at: [f64; 2],
+        _w: KanbanWheel,
+        _view: &mut KanbanBoardView,
+    ) -> bool {
+        false
+    }
+    /// A composição (IME, tecla morta, carácter confirmado) para o campo aberto no Kanban.
+    fn compose(
+        &mut self,
+        _surfaces: &mut Surfaces,
+        _target: (ElementId, KanbanId),
+        _c: Compose<'_>,
+        _view: &mut KanbanBoardView,
+    ) -> bool {
+        false
+    }
+    /// O ponteiro que o Kanban `el` quer onde o rato o viu da última vez; `inside` = o rato está na
+    /// caixa dele (fora dela só o modal aberto responde).
+    fn look(&mut self, _el: ElementId, _inside: bool) -> Option<PointerLook> {
+        None
+    }
     /// O elemento `el` tem um modal aberto (o verso): o rato é dele em TODO o quadro.
     fn captures(&mut self, _surfaces: &mut Surfaces, _el: ElementId) -> bool {
         false
@@ -122,7 +158,13 @@ pub fn can_open_tabs() -> bool {
 /// Onde o Kanban `id` do quadro activo ficou no último desenho (as sondas e os testes clicam aí).
 #[must_use]
 pub fn placement(hero: &HeroScreen, id: ElementId) -> Option<ph2d_board_render::KanbanPlacement> {
-    hero.documents.live.render_cache.kanbans.on_screen.get(&id).copied()
+    hero.documents
+        .live
+        .render_cache
+        .kanbans
+        .on_screen
+        .get(&id)
+        .copied()
 }
 
 /// O Kanban activo do quadro (o rato e as teclas são dele).
@@ -264,7 +306,9 @@ fn deliver(
     let k = board.doc.get(id)?.kanban()?;
     let (kanban, mut view) = (k.kanban, k.view.clone());
     let surfaces = &mut hero.documents.surfaces;
-    let out = h.borrow_mut().pointer(surfaces, ts, (id, kanban), ev, &mut view);
+    let out = h
+        .borrow_mut()
+        .pointer(surfaces, ts, (id, kanban), ev, &mut view);
     write_view(hero, id, view);
     Some(out)
 }
@@ -319,7 +363,10 @@ pub(crate) fn pointer_down(
     }
     let frames = &mut live.render_cache.kanbans;
     let target = match (modal, frames.active) {
-        (Some(id), _) => frames.on_screen.get(&id).map(|pl| (id, screen_to_local(pl, p))),
+        (Some(id), _) => frames
+            .on_screen
+            .get(&id)
+            .map(|pl| (id, screen_to_local(pl, p))),
         (None, Some(id)) => match frames.local(id, p) {
             Some(at) => Some((id, at)),
             None => {
@@ -399,7 +446,16 @@ pub(crate) fn pointer_up(
         .on_screen
         .get(&id)
         .map_or([-1.0; 2], |pl| screen_to_local(pl, p));
-    deliver(hero, ts, id, KanbanPointer::Up { at, screen: p, now_ns });
+    deliver(
+        hero,
+        ts,
+        id,
+        KanbanPointer::Up {
+            at,
+            screen: p,
+            now_ns,
+        },
+    );
     true
 }
 
@@ -434,7 +490,9 @@ pub(crate) fn key(
         paste: paste.map(str::to_owned),
     };
     let surfaces = &mut hero.documents.surfaces;
-    let out = h.borrow_mut().key(surfaces, ts, (id, kanban), input, &mut view);
+    let out = h
+        .borrow_mut()
+        .key(surfaces, ts, (id, kanban), input, &mut view);
     write_view(hero, id, view);
     if let Some(text) = out.copy {
         hero.store.set_clipboard_copy(text);
@@ -449,4 +507,88 @@ pub(crate) fn key(
         return true;
     }
     false
+}
+
+/// O Kanban activo que recebe o ponteiro em `p` (ecrã): dentro dele, ou em todo o quadro com o modal.
+fn under(hero: &mut HeroScreen, p: [f64; 2]) -> Option<(ElementId, [f64; 2])> {
+    hook()?;
+    let id = hero.documents.live.render_cache.kanbans.active?;
+    let modal = captured(hero, id);
+    let frames = &hero.documents.live.render_cache.kanbans;
+    let pl = frames.on_screen.get(&id)?;
+    (modal || frames.local(id, p).is_some()).then(|| (id, screen_to_local(pl, p)))
+}
+
+/// ⭐ A roda e os dois dedos sobre um Kanban ACTIVO rolam-no (a lista sob o rato; o quadro dele na
+/// horizontal com `Shift` ou de lado no trackpad). `Ctrl`+roda e a pinça ficam do Quadro (o zoom dele,
+/// também por cima do Kanban); com o Kanban só seleccionado, a roda é do Quadro. `true` = tomada.
+pub(crate) fn scroll(
+    hero: &mut HeroScreen,
+    (x, y): (f32, f32),
+    s: crate::screens::hero::board_view::BoardScroll,
+) -> bool {
+    use crate::screens::hero::board_view::BoardScroll;
+    let ctrl = hero.store.cmd_held();
+    let shift = hero.store.shift_held();
+    let p = [f64::from(x), f64::from(y)];
+    if matches!(s, BoardScroll::Pinch(_)) || (ctrl && matches!(s, BoardScroll::Wheel(_))) {
+        return false;
+    }
+    let Some((id, at)) = under(hero, p) else {
+        return false;
+    };
+    let w = match s {
+        BoardScroll::Pan([dx, dy]) => {
+            let frames = &hero.documents.live.render_cache.kanbans;
+            let Some(pl) = frames.on_screen.get(&id) else {
+                return false;
+            };
+            let b = screen_to_local(pl, [p[0] + f64::from(dx), p[1] + f64::from(dy)]);
+            KanbanWheel::Pan {
+                local: [b[0] - at[0], b[1] - at[1]],
+                screen: [f64::from(dx), f64::from(dy)],
+            }
+        }
+        BoardScroll::Wheel(dy) => KanbanWheel::Wheel { dy, shift },
+        BoardScroll::Pinch(_) => return false,
+    };
+    let Some(h) = hook() else { return false };
+    let Some((board, _)) = hero.documents.active_parts() else {
+        return false;
+    };
+    let Some(k) = board.doc.get(id).and_then(|e| e.kanban()) else {
+        return false;
+    };
+    let (kanban, mut view) = (k.kanban, k.view.clone());
+    let surfaces = &mut hero.documents.surfaces;
+    let out = h
+        .borrow_mut()
+        .wheel(surfaces, (id, kanban), at, w, &mut view);
+    write_view(hero, id, view);
+    out
+}
+
+/// A composição com um Kanban activo vai ao gancho. `None` = não há Kanban activo (segue o resto).
+pub(crate) fn compose(hero: &mut HeroScreen, c: Compose<'_>) -> Option<bool> {
+    let h = hook()?;
+    let (board, live) = hero.documents.active_parts()?;
+    let id = live.render_cache.kanbans.active?;
+    let kb = board.doc.get(id)?.kanban()?;
+    let (kanban, mut view) = (kb.kanban, kb.view.clone());
+    let surfaces = &mut hero.documents.surfaces;
+    let out = h.borrow_mut().compose(surfaces, (id, kanban), c, &mut view);
+    write_view(hero, id, view);
+    Some(out)
+}
+
+/// O ponteiro que o Kanban activo quer em `(x, y)` (ecrã): a mão nos cartões, o I no texto. `None` =
+/// fora dele (ou nenhum activo).
+#[must_use]
+pub fn pointer_look(hero: &HeroScreen, x: f32, y: f32) -> Option<PointerLook> {
+    let h = hook()?;
+    let frames = &hero.documents.live.render_cache.kanbans;
+    let id = frames.active?;
+    let p = [f64::from(x), f64::from(y)];
+    let inside = frames.local(id, p).is_some();
+    h.borrow_mut().look(id, inside)
 }

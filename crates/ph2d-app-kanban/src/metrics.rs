@@ -106,8 +106,10 @@ pub(crate) const HOVER_RING: f32 = 1.0;
 /// fundo dela. O Trello rola ao chegar à borda; a velocidade cresce com a fundura.
 pub(crate) const EDGE_SCROLL_BAND: f32 = 64.0;
 pub(crate) const EDGE_SCROLL_MAX_PX_S: f32 = 900.0;
-/// Px por «linha» de roda.
+/// Px da vista por «linha» de roda.
 pub(crate) const WHEEL_STEP: f32 = 48.0;
+/// Px que a janela dá por linha de roda (o espelho do `on_mouse_wheel` da shell e do Quadro).
+pub(crate) const WHEEL_LINE_PX: f32 = 16.0;
 
 // ── O campo de texto no lugar ──
 pub(crate) const FIELD_PAD_X: f32 = 8.0;

@@ -104,7 +104,7 @@ impl DocumentSurface for KanbanDocs {
 
     fn wheel(&mut self, id: u64, x: f32, y: f32, dy: f32, shift: bool) -> bool {
         if id != HOME && crate::back::is_open(self, id) {
-            return crate::back::wheel(self, id, dy);
+            return crate::back::wheel(self, id, crate::pointer::wheel_px(dy));
         }
         id != HOME && crate::pointer::wheel(self, id, x, y, dy, shift)
     }
@@ -117,19 +117,7 @@ impl DocumentSurface for KanbanDocs {
     }
 
     fn compose(&mut self, id: u64, c: Compose<'_>) -> bool {
-        if crate::back::is_open(self, id) {
-            return crate::back::compose(self, id, c);
-        }
-        let Some(f) = self.tab_mut(id).and_then(|t| t.field.as_mut()) else {
-            return false;
-        };
-        match c {
-            Compose::Commit(ch) => {
-                f.insert(ch.encode_utf8(&mut [0; 4]));
-                true
-            }
-            Compose::Preedit(..) | Compose::DeadKey(_) => false,
-        }
+        crate::keys::compose(self, id, c)
     }
 
     fn close(&mut self, id: u64) {
@@ -212,12 +200,7 @@ impl DocumentSurface for KanbanDocs {
                 PointerLook::Arrow
             });
         }
-        let t = self.tabs.iter().find(|t| t.id() == id)?;
-        Some(match t.hover {
-            Some(crate::tab::Hit::Field) => PointerLook::Text,
-            Some(crate::tab::Hit::Board) | None => PointerLook::Arrow,
-            Some(_) => PointerLook::Hand,
-        })
+        self.tabs.iter().find(|t| t.id() == id).map(look_of)
     }
 
     fn drop_files(&mut self, id: u64, x: f32, y: f32, paths: &[std::path::PathBuf]) -> bool {
@@ -236,8 +219,7 @@ impl DocumentSurface for KanbanDocs {
         let Some(card) = card else {
             return false;
         };
-        crate::back::attach::attach_paths(self, id, card, paths) > 0
-            || !self.notices.is_empty()
+        crate::back::attach::attach_paths(self, id, card, paths) > 0 || !self.notices.is_empty()
     }
 
     fn wants_frame(&self) -> bool {
@@ -276,5 +258,20 @@ impl KanbanDocs {
             }
         }
         self.area.contains(x, y)
+    }
+}
+
+/// O ponteiro que uma vista quer onde o rato a viu da última vez (a aba e o elemento do Quadro).
+pub(crate) fn look_of(t: &crate::tab::Tab) -> PointerLook {
+    use crate::edit::Target;
+    use crate::tab::Hit;
+    // O título que se escreve no lugar é texto (o I), não o botão que o abre.
+    let editing = t.field.as_ref().map(|f| f.target);
+    match t.hover {
+        Some(Hit::ListTitle(l)) if editing == Some(Target::ListTitle(l)) => PointerLook::Text,
+        Some(Hit::KanbanTitle) if editing == Some(Target::KanbanName) => PointerLook::Text,
+        Some(crate::tab::Hit::Field) => PointerLook::Text,
+        Some(crate::tab::Hit::Board) | None => PointerLook::Arrow,
+        Some(_) => PointerLook::Hand,
     }
 }

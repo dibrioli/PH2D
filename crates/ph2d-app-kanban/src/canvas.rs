@@ -13,9 +13,11 @@ use crate::tab::Tab;
 use crate::view::{At, ViewCtx};
 use ph2d_board_model::{ElementId, KanbanBoardView, KanbanId};
 use ph2d_board_render::{KanbanLod, KanbanOver, KanbanPaint, KanbanPainter};
-use ph2d_editor_core::doc_surface::{KeyInput, KeyOutcome, Surfaces};
+use ph2d_editor_core::doc_surface::{Compose, KeyInput, KeyOutcome, PointerLook, Surfaces};
 use ph2d_editor_core::documents::SharedKanbans;
-use ph2d_editor_core::screens::hero::board_video::kanban::{KanbanElementInput, KanbanPointer};
+use ph2d_editor_core::screens::hero::board_video::kanban::{
+    KanbanElementInput, KanbanPointer, KanbanWheel,
+};
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
 use ph2d_vector::Affine;
@@ -41,21 +43,23 @@ pub(crate) struct Canvas {
 
 pub(crate) type SharedCanvas = Rc<RefCell<Canvas>>;
 
-/// A vista do elemento lê o `KanbanBoardView` se ele mudou fora dela (desfazer, um colega).
+/// A vista do elemento lê o `KanbanBoardView` se ele mudou fora dela (desfazer, um colega, abrir).
 fn adopt(tab: &mut Tab, view: &KanbanBoardView) {
-    let seen = (view.scroll[0], view.collapsed.clone());
-    if tab.board_seen.as_ref() != Some(&seen) {
-        tab.view.scroll_x = view.scroll[0];
+    if tab.board_seen.as_ref() != Some(view) {
+        tab.view.scroll_x = view.scroll_x;
+        tab.view.scroll_y.clone_from(&view.scroll_y);
         tab.view.collapsed.clone_from(&view.collapsed);
-        tab.board_seen = Some(seen);
+        tab.board_seen = Some(view.clone());
     }
 }
 
-/// O que é desta vista volta ao elemento.
+/// O que é desta vista volta ao elemento (a rolagem do quadro e de cada lista, as recolhidas).
 fn write_back(tab: &mut Tab, view: &mut KanbanBoardView) {
-    view.scroll[0] = tab.view.scroll_x;
+    view.scroll_x = tab.view.scroll_x;
+    view.scroll_y.clone_from(&tab.view.scroll_y);
+    view.scroll_y.retain(|_, y| *y > 0.0);
     view.collapsed.clone_from(&tab.view.collapsed);
-    tab.board_seen = Some((view.scroll[0], view.collapsed.clone()));
+    tab.board_seen = Some(view.clone());
 }
 
 fn take(canvas: &SharedCanvas, el: ElementId, kanban: KanbanId) -> Tab {
@@ -108,7 +112,12 @@ impl KanbanPainter for Painter {
         }
         let z = zoom_of(p.view);
         #[allow(clippy::cast_possible_truncation)]
-        let area = Rect::new(0.0, 0.0, (p.frame.width() / z) as f32, (p.frame.height() / z) as f32);
+        let area = Rect::new(
+            0.0,
+            0.0,
+            (p.frame.width() / z) as f32,
+            (p.frame.height() / z) as f32,
+        );
         let at = At {
             to_screen: p.to_screen * Affine::scale(z),
             area,
@@ -236,8 +245,68 @@ impl KanbanElementInput for Input {
         })
     }
 
+    fn wheel(
+        &mut self,
+        surfaces: &mut Surfaces,
+        target: (ElementId, KanbanId),
+        at: [f64; 2],
+        w: KanbanWheel,
+        view: &mut KanbanBoardView,
+    ) -> bool {
+        let Some(docs) = surfaces.find_mut::<KanbanDocs>() else {
+            return false;
+        };
+        let z = zoom_of(view);
+        let (x, y) = to_view(at, z);
+        with_element(docs, &self.0, target, view, |docs, id| {
+            let modal = crate::back::is_open(docs, id);
+            #[allow(clippy::cast_possible_truncation)]
+            match w {
+                KanbanWheel::Wheel { dy, .. } if modal => {
+                    crate::back::wheel(docs, id, crate::pointer::wheel_px(dy))
+                }
+                KanbanWheel::Pan { screen, .. } if modal => {
+                    crate::back::wheel(docs, id, -screen[1] as f32)
+                }
+                KanbanWheel::Wheel { dy, shift } => {
+                    crate::pointer::wheel(docs, id, x, y, dy, shift)
+                }
+                // O conteúdo anda com os dedos: a rolagem anda ao contrário.
+                KanbanWheel::Pan { local, .. } => {
+                    let d = [(-local[0] / z) as f32, (-local[1] / z) as f32];
+                    crate::pointer::scroll(docs, id, (x, y), d)
+                }
+            }
+        })
+    }
+
+    fn compose(
+        &mut self,
+        surfaces: &mut Surfaces,
+        target: (ElementId, KanbanId),
+        c: Compose<'_>,
+        view: &mut KanbanBoardView,
+    ) -> bool {
+        let Some(docs) = surfaces.find_mut::<KanbanDocs>() else {
+            return false;
+        };
+        with_element(docs, &self.0, target, view, |docs, id| {
+            crate::keys::compose(docs, id, c)
+        })
+    }
+
+    fn look(&mut self, el: ElementId, inside: bool) -> Option<PointerLook> {
+        let c = self.0.borrow();
+        let tab = c.tabs.get(&el)?;
+        (inside || tab.back.is_some()).then(|| crate::surface::look_of(tab))
+    }
+
     fn captures(&mut self, _surfaces: &mut Surfaces, el: ElementId) -> bool {
-        self.0.borrow().tabs.get(&el).is_some_and(|t| t.back.is_some())
+        self.0
+            .borrow()
+            .tabs
+            .get(&el)
+            .is_some_and(|t| t.back.is_some())
     }
 }
 

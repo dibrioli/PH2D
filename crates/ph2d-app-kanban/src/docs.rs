@@ -22,6 +22,8 @@ pub struct CanvasProbe {
     pub lists: Vec<(ListId, Rect)>,
     /// O cartão com o verso aberto.
     pub back: Option<CardId>,
+    /// O texto do campo aberto no lugar (título, cartão novo).
+    pub field: Option<String>,
 }
 
 /// O id da aba «Kanbans» (o início): nenhum `KanbanId` chega lá (contam de 1).
@@ -320,10 +322,22 @@ impl KanbanDocs {
         let c = self.canvas.borrow();
         let t = c.tabs.get(&ph2d_board_model::ElementId(el))?;
         Some(CanvasProbe {
-            titles: t.painted.borrow().titles.iter().map(|x| x.1.clone()).collect(),
-            cards: t.layout.lists.iter().flat_map(|l| l.cards.iter().map(|c| (c.id, c.rect))).collect(),
+            titles: t
+                .painted
+                .borrow()
+                .titles
+                .iter()
+                .map(|x| x.1.clone())
+                .collect(),
+            cards: t
+                .layout
+                .lists
+                .iter()
+                .flat_map(|l| l.cards.iter().map(|c| (c.id, c.rect)))
+                .collect(),
             lists: t.layout.lists.iter().map(|l| (l.id, l.rect)).collect(),
             back: t.back.as_ref().map(|b| b.card),
+            field: t.field.as_ref().map(|f| f.text.clone()),
         })
     }
 
@@ -453,4 +467,3 @@ impl KanbanDocs {
         out
     }
 }
-

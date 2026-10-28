@@ -146,6 +146,19 @@ pub fn cursor(hero: &HeroScreen, x: f32, y: f32) -> Option<BoardCursor> {
     ed.cursor_at(&board.doc, p)
 }
 
+/// ⭐ O ponteiro que a área central quer em `(x, y)`: o da aba de família activa, ou o do Kanban
+/// activo do quadro (a mão nos cartões, o I no texto). A janela traduz para o do sistema.
+#[must_use]
+pub fn pointer_look(hero: &HeroScreen, x: f32, y: f32) -> Option<crate::doc_surface::PointerLook> {
+    if hero.documents.surface_active().is_some() {
+        return hero.documents.surface_pointer_look(x, y);
+    }
+    if !inside(hero.last_canvas, x, y) {
+        return None;
+    }
+    super::board_video::kanban::pointer_look(hero, x, y)
+}
+
 /// Ecrã → ponteiro no mundo do quadro.
 pub(crate) fn world_pointer(board: &Board, area: Area, x: f32, y: f32, mods: Modifiers) -> Pointer {
     Pointer {
@@ -205,6 +218,9 @@ pub fn scroll(hero: &mut HeroScreen, x: f32, y: f32, s: BoardScroll) -> bool {
         return false;
     }
     if !matches!(s, BoardScroll::Pinch(_)) && super::board_nav::facilitate::wheel(hero, x, y, dy) {
+        return true;
+    }
+    if super::board_video::kanban::scroll(hero, (x, y), s) {
         return true;
     }
     // c21 — o MEU zoom pára de seguir.

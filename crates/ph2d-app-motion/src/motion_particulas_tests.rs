@@ -71,6 +71,9 @@ fn lidas(w: &World) -> BTreeMap<u32, [f64; 2]> {
         .unwrap_or_default()
 }
 
+/// As partículas publicadas: id → posição no espaço do objecto.
+type Lidas = BTreeMap<u32, [f64; 2]>;
+
 /// O quadro do PRODUTO: a publicação antes da pilha (o cozimento anterior), o cozimento, e a de
 /// depois dele (a deste tique). Devolve `(antes, depois, republicou depois)`.
 fn quadro_inteiro(
@@ -78,7 +81,7 @@ fn quadro_inteiro(
     w: &mut World,
     gpu: Option<&ph2d_gpu::GpuContext>,
     p: &ph2d_core::Playhead,
-) -> (BTreeMap<u32, [f64; 2]>, BTreeMap<u32, [f64; 2]>, bool) {
+) -> (Lidas, Lidas, bool) {
     let mao = MaoDoEditor {
         selecionado: None,
         arrasto: None,
@@ -353,7 +356,7 @@ fn mede_a_leitura_das_particulas() {
         let inteira: BTreeSet<u32> = (0..u32::try_from(n).unwrap()).collect();
         let (mut toda, mut so) = (f64::MAX, f64::MAX);
         for r in 0..9 {
-            let mut corre = |ids: &BTreeSet<u32>| {
+            let corre = |ids: &BTreeSet<u32>| {
                 let t = std::time::Instant::now();
                 let m = do_objeto([Some(&s)], ids);
                 std::hint::black_box(m);

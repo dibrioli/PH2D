@@ -113,10 +113,20 @@ impl ColorToken {
             | T::GraphBackdrop8
             | T::TimelineRulerBg
             | T::CodeBg
-            | T::CodeGutter => Role::Surface(Rank::Rest),
-            T::Bg3 | T::BgElev | T::TimelineRowAlt | T::CodeLineCurrent => {
-                Role::Surface(Rank::Raised)
-            }
+            | T::CodeGutter
+            | T::KanbanBoardBg
+            | T::KanbanHeaderBg
+            | T::KanbanHeaderBtn
+            | T::KanbanList
+            | T::KanbanSlot
+            | T::KanbanNewList
+            | T::KanbanCard => Role::Surface(Rank::Rest),
+            T::Bg3
+            | T::BgElev
+            | T::TimelineRowAlt
+            | T::CodeLineCurrent
+            | T::KanbanCardRaised
+            | T::KanbanHeaderBtnOn => Role::Surface(Rank::Raised),
             T::AccentSoft
             | T::DangerSoft
             | T::SuccessSoft
@@ -133,9 +143,23 @@ impl ColorToken {
             | T::GraphGrid
             | T::TimelineRulerTick
             | T::TimelineHandleLine => Role::Line,
-            T::Text1 | T::Text2 | T::PersonInk => Role::Ink(InkLevel::Primary),
+            T::Text1
+            | T::Text2
+            | T::PersonInk
+            | T::KanbanLabelInk
+            | T::KanbanLabelInkBold
+            | T::KanbanHeaderFg
+            | T::KanbanHeaderBtnOnFg
+            | T::KanbanListFg
+            | T::KanbanCardFg
+            | T::KanbanDueSoonFg
+            | T::KanbanDueOverFg
+            | T::KanbanDueDoneFg
+            | T::KanbanAvatarInk => Role::Ink(InkLevel::Primary),
             T::AccentFg => Role::Ink(InkLevel::OnAccent),
-            T::Text3 => Role::Ink(InkLevel::Tertiary),
+            T::Text3 | T::KanbanListMeta | T::KanbanCardMeta | T::KanbanTintedMeta => {
+                Role::Ink(InkLevel::Tertiary)
+            }
             T::TextDisabled => Role::Ink(InkLevel::Disabled),
             T::BorderEmph
             | T::Accent
@@ -201,7 +225,48 @@ impl ColorToken {
             | T::CodeProperty
             | T::CodeOperator
             | T::CodeUnresolved
-            | T::CodeComment => Role::Graphic,
+            | T::CodeComment
+            // O Kanban: as etiquetas, os prazos, a estrela e as sombras são DADO.
+            | T::KanbanGreenSubtle
+            | T::KanbanGreenNormal
+            | T::KanbanGreenBold
+            | T::KanbanYellowSubtle
+            | T::KanbanYellowNormal
+            | T::KanbanYellowBold
+            | T::KanbanOrangeSubtle
+            | T::KanbanOrangeNormal
+            | T::KanbanOrangeBold
+            | T::KanbanRedSubtle
+            | T::KanbanRedNormal
+            | T::KanbanRedBold
+            | T::KanbanPurpleSubtle
+            | T::KanbanPurpleNormal
+            | T::KanbanPurpleBold
+            | T::KanbanBlueSubtle
+            | T::KanbanBlueNormal
+            | T::KanbanBlueBold
+            | T::KanbanSkySubtle
+            | T::KanbanSkyNormal
+            | T::KanbanSkyBold
+            | T::KanbanLimeSubtle
+            | T::KanbanLimeNormal
+            | T::KanbanLimeBold
+            | T::KanbanPinkSubtle
+            | T::KanbanPinkNormal
+            | T::KanbanPinkBold
+            | T::KanbanBlackSubtle
+            | T::KanbanBlackNormal
+            | T::KanbanBlackBold
+            | T::KanbanDueSoon
+            | T::KanbanDueOver
+            | T::KanbanDueDone
+            | T::KanbanStar
+            | T::KanbanListShadow
+            | T::KanbanShadowNear
+            | T::KanbanShadowRim
+            | T::KanbanShadowHover
+            | T::KanbanShadowFlight
+            | T::KanbanShadowFlightNear => Role::Graphic,
         }
     }
 }

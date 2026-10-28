@@ -118,6 +118,72 @@ pub const CONTRAST_PAIRS: &[ContrastPair] = &[
     // O global que não existe (CodeEditor I11). Não é o `danger`: medido 17/10, ele fica a
     // 3,49–4,39:1 na linha do cursor em 6 temas e a ΔE 0,044 do `code-constant` em 6.
     code_ink(ColorToken::CodeUnresolved),
+    // ── O Kanban (TrelloClone): cada texto sobre o fundo onde se lê. Uma etiqueta subtle/normal
+    //    leva `kanban-label-ink`, uma bold a `-bold`; a lista TINGIDA usa o subtle como fundo; o
+    //    avatar de um membro é a etiqueta normal. Fundos translúcidos ficam de fora (a régua
+    //    ignora o alfa).
+    kanban_text(ColorToken::KanbanLabelInk, ColorToken::KanbanGreenSubtle),
+    kanban_text(ColorToken::KanbanLabelInk, ColorToken::KanbanGreenNormal),
+    kanban_text(ColorToken::KanbanLabelInkBold, ColorToken::KanbanGreenBold),
+    kanban_text(ColorToken::KanbanLabelInk, ColorToken::KanbanYellowSubtle),
+    kanban_text(ColorToken::KanbanLabelInk, ColorToken::KanbanYellowNormal),
+    kanban_text(ColorToken::KanbanLabelInkBold, ColorToken::KanbanYellowBold),
+    kanban_text(ColorToken::KanbanLabelInk, ColorToken::KanbanOrangeSubtle),
+    kanban_text(ColorToken::KanbanLabelInk, ColorToken::KanbanOrangeNormal),
+    kanban_text(ColorToken::KanbanLabelInkBold, ColorToken::KanbanOrangeBold),
+    kanban_text(ColorToken::KanbanLabelInk, ColorToken::KanbanRedSubtle),
+    kanban_text(ColorToken::KanbanLabelInk, ColorToken::KanbanRedNormal),
+    kanban_text(ColorToken::KanbanLabelInkBold, ColorToken::KanbanRedBold),
+    kanban_text(ColorToken::KanbanLabelInk, ColorToken::KanbanPurpleSubtle),
+    kanban_text(ColorToken::KanbanLabelInk, ColorToken::KanbanPurpleNormal),
+    kanban_text(ColorToken::KanbanLabelInkBold, ColorToken::KanbanPurpleBold),
+    kanban_text(ColorToken::KanbanLabelInk, ColorToken::KanbanBlueSubtle),
+    kanban_text(ColorToken::KanbanLabelInk, ColorToken::KanbanBlueNormal),
+    kanban_text(ColorToken::KanbanLabelInkBold, ColorToken::KanbanBlueBold),
+    kanban_text(ColorToken::KanbanLabelInk, ColorToken::KanbanSkySubtle),
+    kanban_text(ColorToken::KanbanLabelInk, ColorToken::KanbanSkyNormal),
+    kanban_text(ColorToken::KanbanLabelInkBold, ColorToken::KanbanSkyBold),
+    kanban_text(ColorToken::KanbanLabelInk, ColorToken::KanbanLimeSubtle),
+    kanban_text(ColorToken::KanbanLabelInk, ColorToken::KanbanLimeNormal),
+    kanban_text(ColorToken::KanbanLabelInkBold, ColorToken::KanbanLimeBold),
+    kanban_text(ColorToken::KanbanLabelInk, ColorToken::KanbanPinkSubtle),
+    kanban_text(ColorToken::KanbanLabelInk, ColorToken::KanbanPinkNormal),
+    kanban_text(ColorToken::KanbanLabelInkBold, ColorToken::KanbanPinkBold),
+    kanban_text(ColorToken::KanbanLabelInk, ColorToken::KanbanBlackSubtle),
+    kanban_text(ColorToken::KanbanLabelInk, ColorToken::KanbanBlackNormal),
+    kanban_text(ColorToken::KanbanLabelInkBold, ColorToken::KanbanBlackBold),
+    kanban_text(ColorToken::KanbanCardFg, ColorToken::KanbanCard),
+    kanban_text(ColorToken::KanbanCardMeta, ColorToken::KanbanCard),
+    kanban_text(ColorToken::KanbanListFg, ColorToken::KanbanList),
+    kanban_text(ColorToken::KanbanListMeta, ColorToken::KanbanList),
+    kanban_text(ColorToken::KanbanTintedMeta, ColorToken::KanbanGreenSubtle),
+    kanban_text(ColorToken::KanbanTintedMeta, ColorToken::KanbanYellowSubtle),
+    kanban_text(ColorToken::KanbanTintedMeta, ColorToken::KanbanOrangeSubtle),
+    kanban_text(ColorToken::KanbanTintedMeta, ColorToken::KanbanRedSubtle),
+    kanban_text(ColorToken::KanbanTintedMeta, ColorToken::KanbanPurpleSubtle),
+    kanban_text(ColorToken::KanbanTintedMeta, ColorToken::KanbanBlueSubtle),
+    kanban_text(ColorToken::KanbanTintedMeta, ColorToken::KanbanSkySubtle),
+    kanban_text(ColorToken::KanbanTintedMeta, ColorToken::KanbanLimeSubtle),
+    kanban_text(ColorToken::KanbanTintedMeta, ColorToken::KanbanPinkSubtle),
+    kanban_text(ColorToken::KanbanTintedMeta, ColorToken::KanbanBlackSubtle),
+    kanban_text(ColorToken::KanbanHeaderFg, ColorToken::KanbanBoardBg),
+    kanban_text(
+        ColorToken::KanbanHeaderBtnOnFg,
+        ColorToken::KanbanHeaderBtnOn,
+    ),
+    kanban_text(ColorToken::KanbanDueSoonFg, ColorToken::KanbanDueSoon),
+    kanban_text(ColorToken::KanbanDueOverFg, ColorToken::KanbanDueOver),
+    kanban_text(ColorToken::KanbanDueDoneFg, ColorToken::KanbanDueDone),
+    kanban_text(ColorToken::KanbanAvatarInk, ColorToken::KanbanGreenNormal),
+    kanban_text(ColorToken::KanbanAvatarInk, ColorToken::KanbanYellowNormal),
+    kanban_text(ColorToken::KanbanAvatarInk, ColorToken::KanbanOrangeNormal),
+    kanban_text(ColorToken::KanbanAvatarInk, ColorToken::KanbanRedNormal),
+    kanban_text(ColorToken::KanbanAvatarInk, ColorToken::KanbanPurpleNormal),
+    kanban_text(ColorToken::KanbanAvatarInk, ColorToken::KanbanBlueNormal),
+    kanban_text(ColorToken::KanbanAvatarInk, ColorToken::KanbanSkyNormal),
+    kanban_text(ColorToken::KanbanAvatarInk, ColorToken::KanbanLimeNormal),
+    kanban_text(ColorToken::KanbanAvatarInk, ColorToken::KanbanPinkNormal),
+    kanban_text(ColorToken::KanbanAvatarInk, ColorToken::KanbanBlackNormal),
 ];
 
 /// Uma tinta do editor de scripts sobre o `code-bg` — é TEXTO, logo a barra de texto.
@@ -125,6 +191,16 @@ const fn code_ink(fg: ColorToken) -> ContrastPair {
     ContrastPair {
         fg,
         bg: ColorToken::CodeBg,
+        min_ratio: 4.5,
+        criterion: "WCAG 2.2 AA 1.4.3",
+    }
+}
+
+/// Um texto do Kanban sobre o fundo dele — a barra de texto.
+const fn kanban_text(fg: ColorToken, bg: ColorToken) -> ContrastPair {
+    ContrastPair {
+        fg,
+        bg,
         min_ratio: 4.5,
         criterion: "WCAG 2.2 AA 1.4.3",
     }

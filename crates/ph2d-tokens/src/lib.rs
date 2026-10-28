@@ -58,6 +58,9 @@ pub mod contrast;
 /// **A camada de OVERRIDE numérica** — a irmã da [`overrides`], no molde dela.
 /// ⭐ **A derivação de um tema moderno** — cinco entradas → todos os slots (regras do Godot 4.6, MIT).
 pub mod derive;
+mod faint_row;
+/// O Kanban (TrelloClone): as etiquetas por `[tom][matiz]` e a tinta de cada tom.
+pub mod kanban;
 pub mod layer;
 pub mod motion;
 /// **A identidade de um token NUMÉRICO** (plano UI/UX W4c.1) — a família que se mede em px.

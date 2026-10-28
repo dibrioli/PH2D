@@ -24,7 +24,8 @@ const VIEWPORT: Rect = Rect {
     x: 0.0,
     y: 0.0,
     w: 1600.0,
-    h: 4000.0,
+    // 4000 → 8000 (TrelloClone W2, 27/10): as 62 cores do Kanban levam a lista a ~5 041 px.
+    h: 8000.0,
 };
 const SEC: u128 = 1_000_000_000;
 /// A linha que os gates usam. Qualquer uma serve; fixá-la torna as falhas comparáveis.

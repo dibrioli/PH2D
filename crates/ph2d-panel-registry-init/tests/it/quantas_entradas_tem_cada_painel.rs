@@ -2200,7 +2200,9 @@ const ALTURA_DE_ABERTURA: &[(&str, f32)] = &[
     //    realce): `13 × ROW_H_PX (25) = 325` exactos (somados ao `3 141` do main, que traz o UIUX F17).
     // ⬆️ `3 466 → 3 491` em 2026-10-17 (CodeEditor I11), pela MESMA razão: a fileira do
     //    `code-unresolved` (o global que não existe): `1 × ROW_H_PX (25)` exactos.
-    ("tokens", 3491.0),
+    // ⬆️ `3 491 → 5 041` em 2026-10-27 (TrelloClone W2), pela MESMA razão: as 62 cores do Kanban
+    //    (30 etiquetas + 32 superfícies/tintas/sombras/prazos): `62 × ROW_H_PX (25) = 1 550`.
+    ("tokens", 5041.0),
     // ⬆️ `1 239 → 1 262` em 2026-10-04 (spec/06 F3 ▸ Vector, o OBJECTO vetorial): a fileira TOOL
     //    volta a mostrar a grelha INTEIRA — o Edit do objecto tem todas as ferramentas (escolha do
     //    dono: *«o menu exatamente como era antigamente»*). É o valor de antes do filtro por modo.

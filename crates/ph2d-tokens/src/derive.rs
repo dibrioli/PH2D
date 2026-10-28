@@ -589,6 +589,7 @@ pub(crate) fn colour(theme: Theme, token: ColorToken) -> Color {
             || k.starts_with("graph-backdrop-")
             || k.starts_with("person-")
             || k.starts_with("code-")
+            || k.starts_with("kanban-")
             || k == "wire-fire-glow"
             || k == "attr-write" =>
         {

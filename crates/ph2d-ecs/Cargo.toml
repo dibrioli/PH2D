@@ -28,6 +28,8 @@ ph2d-tween = { path = "../ph2d-tween" }
 # argumento da linha acima: e' uma FOLHA (so' serde), o `Fit` dela e' campo do `UiCanvas` e
 # portanto viaja no documento, e a mesma lei corre no editor e no runtime do jogo.
 ph2d-hud = { path = "../ph2d-hud" }
+# O arranjo do HUD (ADR-0194): a `Relacao` gravada no `UiArranjo` é a do solver. FOLHA (`kasuari` + `serde`).
+ph2d-hud-layout = { path = "../ph2d-hud-layout" }
 # ⭐ A lei do ABANÃO da vista (suplente #25). Mesmo argumento das duas linhas acima e da
 # `ph2d-tween`: ela é uma FOLHA (**zero** dependências, nem `libm`), os cinco números dela são
 # campos do `CameraShake` e portanto viajam no documento, e a faixa do expoente que o painel pinta

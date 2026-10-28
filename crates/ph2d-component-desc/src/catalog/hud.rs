@@ -110,6 +110,8 @@ pub const DESCS: &[ComponentDesc] = &[
         CANVAS_FIELDS,
     )
     .coded("hud_canvas"),
+    // O arranjo (ADR-0194): máquina — nasce e muda só pela ferramenta do HUD na barra esquerda (setas na tela).
+    D::machinery("ph2d::ecs::UiArranjo", "component.ui_arranjo.name", C::Logic),
     // ⚠️ **O rótulo PEDE o canvas?** Não: um `UiLabel` numa forma solta continua a derivar o texto
     // dela; o que ele perde sem uma raiz é ficar colado à vista. *Exigir o pai tornaria
     // inexprimível um número que vive no MUNDO* — a barra de vida sobre a cabeça de um inimigo.

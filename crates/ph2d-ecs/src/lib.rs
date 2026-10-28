@@ -156,6 +156,7 @@ pub use state_machine::{
 pub mod counter;
 pub mod counter_watch;
 pub mod hud;
+pub mod hud_arranjo;
 /// ⭐ **O TWEEN** (suplente #22) — «esta propriedade vai de A a B», no relógio do `Timer`.
 pub mod path_follow;
 pub mod tags;
@@ -207,6 +208,7 @@ pub use factory::{
 };
 pub use flip_object_ref::FlipObjectRef;
 pub use hud::{Counter, CounterRuntime, Fit, LabelSource, UiButton, UiCanvas, UiLabel};
+pub use hud_arranjo::UiArranjo;
 pub use motion_generator::{MotionGenerator, MotionTemplate, assign_motion_templates};
 pub mod graveyard;
 mod subtree_copies;

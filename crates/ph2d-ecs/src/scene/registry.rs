@@ -602,6 +602,8 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     // quadro pela fase do HUD, e passa pelo ledger do `preview_drive` — registá-la faria *«o HUD
     // acompanhou a câmera»* virar um passo de `Ctrl+Z` por quadro.
     reg.register_default::<crate::UiCanvas>("ph2d::ecs::UiCanvas");
+    // O arranjo dos irmãos (ADR-0194): CONFIG do artista. As caixas que ele produz são preview, nunca isto.
+    reg.register_default::<crate::UiArranjo>("ph2d::ecs::UiArranjo");
     reg.register_default::<crate::UiLabel>("ph2d::ecs::UiLabel");
     reg.register_default::<crate::UiButton>("ph2d::ecs::UiButton");
     reg.register_default::<crate::Counter>("ph2d::ecs::Counter");

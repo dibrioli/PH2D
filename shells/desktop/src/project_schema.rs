@@ -553,7 +553,9 @@
 ///
 /// `Colas` REGISTADO (`ph2d-constraints-ecs`): um binário v200 descartaria as colas. A forma do
 /// `ProjectFile` não muda: o `200` lê-se com o tipo vivo. A tripla NÃO vê este degrau.
-pub(crate) const PROJECT_SCHEMA: u32 = 201;
+///
+/// # `201 → 202` — **o arranjo do HUD** (W5.5, ADR-0194, 27/10): `UiArranjo` REGISTADO, como a cola.
+pub(crate) const PROJECT_SCHEMA: u32 = 202;
 
 /// O último degrau cuja geometria do vetor é a v23 (vértices sem id).
 pub(crate) const PROJECT_SCHEMA_GEOMETRIA_V23: u32 = 199;

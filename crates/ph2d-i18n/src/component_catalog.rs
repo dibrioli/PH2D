@@ -634,6 +634,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "component.top_level.name" => "Top Level",
         "component.transform.name" => "Transform",
         "component.tweens.name" => "Tween",
+        "component.ui_arranjo.name" => "HUD Arrangement",
         "component.ui_button.name" => "Button",
         "component.ui_canvas.name" => "HUD Canvas",
         "component.ui_label.name" => "Label",

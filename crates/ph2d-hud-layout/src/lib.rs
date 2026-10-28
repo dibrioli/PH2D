@@ -59,28 +59,66 @@ pub enum Eixo {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
-pub enum Relacao {
+pub enum Relacao<I = usize> {
     /// `a` encostado ao `lado` de `b` com `folga` (Direita: a.x == b.x + b.w + folga; Esquerda: a.x + a.w + folga == b.x;
     /// Acima: a.y == b.y + b.h + folga; Abaixo: a.y + a.h + folga == b.y). No eixo cruzado nada.
-    AoLado {
-        a: usize,
-        b: usize,
-        lado: Lado,
-        folga: f64,
-    },
+    AoLado { a: I, b: I, lado: Lado, folga: f64 },
     /// Os centros de `a` e `b` coincidem no eixo.
-    Centrado { a: usize, b: usize, eixo: Eixo },
+    Centrado { a: I, b: I, eixo: Eixo },
     /// `a` não passa a borda de `b` do lado de onde vem: Direita = a fica à esquerda de b (a.x + a.w + folga <= b.x);
     /// Esquerda: a.x >= b.x + b.w + folga; Acima: a.y + a.h + folga <= b.y; Abaixo: a.y >= b.y + b.h + folga.
-    NaoInvade {
-        a: usize,
-        b: usize,
-        lado: Lado,
-        folga: f64,
-    },
+    NaoInvade { a: I, b: I, lado: Lado, folga: f64 },
     /// A largura de `a` quer ser a do conteúdo (o texto medido) — `a.w == conteudo` com a força do par;
     /// e NUNCA maior que ele (REQUIRED `a.w <= conteudo`). Sem conteúdo medido, inerte.
-    LarguraDoConteudo { a: usize },
+    LarguraDoConteudo { a: I },
+}
+
+impl<I: Copy> Relacao<I> {
+    /// `(a, b)`; a largura do conteúdo só tem `a`.
+    pub fn ids(&self) -> (I, Option<I>) {
+        match *self {
+            Self::AoLado { a, b, .. }
+            | Self::Centrado { a, b, .. }
+            | Self::NaoInvade { a, b, .. } => (a, Some(b)),
+            Self::LarguraDoConteudo { a } => (a, None),
+        }
+    }
+
+    /// O eixo em que a relação manda (a largura do conteúdo é do X).
+    pub fn eixo(&self) -> Eixo {
+        match *self {
+            Self::AoLado { lado, .. } | Self::NaoInvade { lado, .. } => match lado {
+                Lado::Esquerda | Lado::Direita => Eixo::X,
+                Lado::Acima | Lado::Abaixo => Eixo::Y,
+            },
+            Self::Centrado { eixo, .. } => eixo,
+            Self::LarguraDoConteudo { .. } => Eixo::X,
+        }
+    }
+
+    /// A mesma relação sobre outros ids (`StableId` → índice da lista); `None` se algum não se traduz.
+    pub fn mapeia<J>(&self, mut f: impl FnMut(I) -> Option<J>) -> Option<Relacao<J>> {
+        Some(match *self {
+            Self::AoLado { a, b, lado, folga } => Relacao::AoLado {
+                a: f(a)?,
+                b: f(b)?,
+                lado,
+                folga,
+            },
+            Self::Centrado { a, b, eixo } => Relacao::Centrado {
+                a: f(a)?,
+                b: f(b)?,
+                eixo,
+            },
+            Self::NaoInvade { a, b, lado, folga } => Relacao::NaoInvade {
+                a: f(a)?,
+                b: f(b)?,
+                lado,
+                folga,
+            },
+            Self::LarguraDoConteudo { a } => Relacao::LarguraDoConteudo { a: f(a)? },
+        })
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
@@ -139,12 +177,7 @@ struct Largura {
 
 /// Valida a relação contra `n` elementos: `(a, Some(b))`, `(a, None)` para a largura, ou `None` se é má.
 fn indices(r: &Relacao, n: usize) -> Option<(usize, Option<usize>)> {
-    let (a, b) = match *r {
-        Relacao::AoLado { a, b, .. }
-        | Relacao::Centrado { a, b, .. }
-        | Relacao::NaoInvade { a, b, .. } => (a, Some(b)),
-        Relacao::LarguraDoConteudo { a } => (a, None),
-    };
+    let (a, b) = r.ids();
     let ok = a < n && b.is_none_or(|b| b < n && b != a);
     ok.then_some((a, b))
 }
@@ -475,53 +508,27 @@ impl Arranjo {
 }
 
 /// A ordem que uma relação impõe num eixo: `(eixo, antes, depois)` — antes = menor coordenada (y para cima).
-fn ordem(r: &Relacao) -> Option<(Eixo, usize, usize)> {
-    let (eixo, a_depois) = match *r {
-        Relacao::AoLado {
-            lado: Lado::Direita,
-            ..
-        }
-        | Relacao::NaoInvade {
-            lado: Lado::Esquerda,
-            ..
-        } => (Eixo::X, true),
-        Relacao::AoLado {
-            lado: Lado::Esquerda,
-            ..
-        }
-        | Relacao::NaoInvade {
-            lado: Lado::Direita,
-            ..
-        } => (Eixo::X, false),
-        Relacao::AoLado {
-            lado: Lado::Acima, ..
-        }
-        | Relacao::NaoInvade {
-            lado: Lado::Abaixo, ..
-        } => (Eixo::Y, true),
-        Relacao::AoLado {
-            lado: Lado::Abaixo, ..
-        }
-        | Relacao::NaoInvade {
-            lado: Lado::Acima, ..
-        } => (Eixo::Y, false),
+fn ordem<I: Copy>(r: &Relacao<I>) -> Option<(Eixo, I, I)> {
+    use Lado::{Abaixo, Acima, Direita, Esquerda};
+    // `a` fica DEPOIS de `b`? (AoLado diz onde `a` está; NaoInvade diz de que lado `b` está.)
+    let (a, b, a_depois) = match *r {
+        Relacao::AoLado { a, b, lado, .. } => (a, b, matches!(lado, Direita | Acima)),
+        Relacao::NaoInvade { a, b, lado, .. } => (a, b, matches!(lado, Esquerda | Abaixo)),
         Relacao::Centrado { .. } | Relacao::LarguraDoConteudo { .. } => return None,
     };
-    let (Relacao::AoLado { a, b, .. } | Relacao::NaoInvade { a, b, .. }) = *r else {
-        return None;
-    };
+    let eixo = r.eixo();
     Some(if a_depois { (eixo, b, a) } else { (eixo, a, b) })
 }
 
 /// ⭐ A lei da ferramenta: `nova` CONTRADIZ as `existentes` se fecha um círculo de lados num eixo (a depois de b,
 /// …, b depois de a). O Cassowary aceita os dois `REQUIRED` e viola um em silêncio — por isso se recusa ANTES.
 #[must_use]
-pub fn contradiz(existentes: &[Relacao], nova: &Relacao) -> bool {
+pub fn contradiz<I: Copy + PartialEq>(existentes: &[Relacao<I>], nova: &Relacao<I>) -> bool {
     let Some((eixo, antes, depois)) = ordem(nova) else {
         return false;
     };
     // Há caminho `depois → … → antes` nas existentes do mesmo eixo?
-    let arestas: Vec<(usize, usize)> = existentes
+    let arestas: Vec<(I, I)> = existentes
         .iter()
         .filter_map(ordem)
         .filter(|&(e, _, _)| e == eixo)

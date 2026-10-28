@@ -9,6 +9,7 @@
 //! globais não cabem num binário, e um contador global veria as alocações dos vizinhos): fica em `tests/`.
 
 mod anchor_mount_hierarchy;
+mod o_arranjo_do_hud;
 mod end_to_end_m14;
 mod generate_transform_v1_fixtures;
 mod measure_incremental_capture;

@@ -224,7 +224,7 @@ fn matches_with(
         .members
         .iter()
         .map(|m| card.members.contains(m))
-        .chain(f.no_members.then(|| card.members.is_empty()))
+        .chain(f.no_members.then_some(card.members.is_empty()))
         .chain(f.mine.then(|| card.members.contains(me)));
     let done = card.due.is_some_and(|d| d.done);
     let status = f
@@ -238,7 +238,7 @@ fn matches_with(
         .labels
         .iter()
         .map(|l| has_label(card, ck, view, *l))
-        .chain(f.no_labels.then(|| card.labels.is_empty()));
+        .chain(f.no_labels.then_some(card.labels.is_empty()));
     category(mode, members)
         && category(mode, status)
         && category(mode, due)

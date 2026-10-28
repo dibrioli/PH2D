@@ -68,7 +68,7 @@ pub fn change_occurrence(
         Scope::All => {
             let mut n = to.clone();
             n.id = series.id;
-            n.meta = series.meta.clone();
+            n.meta = series.meta;
             n.start = Moment(series.start.0 + shift);
             n.end = Moment(n.start.0 + len);
             n.until = series.until.map(|u| Moment(u.0 + shift));
@@ -123,7 +123,7 @@ pub fn change_occurrence(
 fn same_but_dates(to: &Event, series: &Event) -> bool {
     let mut p = to.clone();
     p.id = series.id;
-    p.meta = series.meta.clone();
+    p.meta = series.meta;
     (p.start, p.end) = (series.start, series.end);
     p.until = series.until;
     p.exceptions.clone_from(&series.exceptions);

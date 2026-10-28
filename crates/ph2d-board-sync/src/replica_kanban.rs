@@ -112,7 +112,7 @@ impl KanbanIds {
         }
     }
 
-    fn to_local(&mut self, el: ElementId, wire: KanbanId) -> KanbanId {
+    fn localize(&mut self, el: ElementId, wire: KanbanId) -> KanbanId {
         match self.local.get(&wire) {
             Some(l) => {
                 self.waiting.remove(&el);
@@ -179,7 +179,7 @@ impl KanbanIds {
             match w {
                 Write::Born { el, .. } => {
                     if let Some(k) = kanban_of(el) {
-                        let l = self.to_local(el.id, k);
+                        let l = self.localize(el.id, k);
                         set_kanban(el, l);
                     }
                 }
@@ -187,7 +187,7 @@ impl KanbanIds {
                     id, field, value, ..
                 } if *field == Field::Kanban => {
                     if let Ok(k) = postcard::from_bytes::<KanbanId>(value) {
-                        *value = enc(self.to_local(*id, k));
+                        *value = enc(self.localize(*id, k));
                     }
                 }
                 Write::Team {
@@ -282,7 +282,7 @@ impl Replica {
             .collect();
         let fix: Vec<(ElementId, KanbanId)> = all
             .into_iter()
-            .map(|(e, w)| (e, self.kanbans.to_local(e, w)))
+            .map(|(e, w)| (e, self.kanbans.localize(e, w)))
             .collect();
         self.relabel(board, &fix);
         for v in &mut board.team.versions {

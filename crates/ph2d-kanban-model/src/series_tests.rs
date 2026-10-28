@@ -177,7 +177,7 @@ fn this_event_is_one_undo_step() {
     h.apply(a, ops, 1);
     assert!(h.undo(a, 2));
     let mut back = a.events[&id].clone();
-    back.meta = before.events[&id].meta.clone();
+    back.meta = before.events[&id].meta;
     assert_eq!(
         back, before.events[&id],
         "a série volta (o desfazer é uma versão nova)"

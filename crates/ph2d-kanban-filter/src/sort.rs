@@ -138,7 +138,7 @@ impl MaxTree {
         let mut p = r + 1;
         while p < self.0.len() {
             self.0[p] = self.0[p].max(v);
-            p += p & p.wrapping_neg();
+            p += p.isolate_lowest_one();
         }
     }
 }

@@ -72,7 +72,7 @@ fn a_span_seeks_its_first_frame_and_a_gone_object_selects_nothing() {
     assert!(matches!(intents[..], [TimelineIntent::SeekFrame(12)]));
     assert_eq!(selected(&mut hero), vec![bits], "só o dono do trecho");
     assert!(
-        project_catalog(&hero.documents).objects.get(&99).is_none(),
+        !project_catalog(&hero.documents).objects.contains_key(&99),
         "o verso mostra-a quebrada"
     );
 }

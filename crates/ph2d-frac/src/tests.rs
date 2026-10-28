@@ -159,7 +159,7 @@ fn text_outside_the_key_grammar_never_deserializes() {
 fn any_two_valid_keys_give_a_valid_key_between_them() {
     let mut rng = Lcg(0xF0CA);
     let digit = |r: &mut Lcg| super::DIGITS[r.next(62)];
-    let mut pick = |r: &mut Lcg| -> FracKey {
+    let pick = |r: &mut Lcg| -> FracKey {
         loop {
             let head = if r.next(2) == 0 { b'a' } else { b'A' } + u8::try_from(r.next(26)).unwrap();
             let mut k = vec![head];

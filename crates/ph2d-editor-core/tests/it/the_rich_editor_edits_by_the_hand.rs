@@ -242,7 +242,6 @@ fn up_and_down_cross_blocks_and_a_long_line_wraps_softly() {
 
 #[test]
 fn the_ime_shows_the_preedit_and_commits_into_the_document() {
-    let mut ts = TextSystem::without_system_fonts();
     let mut ed = editor(RichDoc::new());
     ed.editing = true;
     assert_eq!(ed.compose(Compose::Preedit("´", None)), None);

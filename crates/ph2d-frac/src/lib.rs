@@ -48,12 +48,12 @@ impl FracKey {
             (Some(a), Some(b)) if a > b => (Some(b), Some(a)),
             other => other,
         };
-        if let (Some(a), Some(b)) = (lo, hi) {
-            if a == b {
-                let (ia, fa) = split(a.0.as_bytes());
-                let out = [ia, &midpoint(fa, None)].concat();
-                return FracKey(String::from_utf8(out).expect("base 62 é ASCII"));
-            }
+        if let (Some(a), Some(b)) = (lo, hi)
+            && a == b
+        {
+            let (ia, fa) = split(a.0.as_bytes());
+            let out = [ia, &midpoint(fa, None)].concat();
+            return FracKey(String::from_utf8(out).expect("base 62 é ASCII"));
         }
         let a = lo.map(|k| k.0.as_bytes());
         let b = hi.map(|k| k.0.as_bytes());

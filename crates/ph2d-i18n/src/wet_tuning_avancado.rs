@@ -78,6 +78,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.wet_tuning.knob.waterPush" => "Water pushes pigment",
         "panel.wet_tuning.knob.dryerEdge" => "Dryer leaves an edge",
         "panel.wet_tuning.knob.dryerLevel" => "Dryer evens the paint (brush radii)",
+        "panel.wet_tuning.knob.blendReach" => "Blender reach (brush radii)",
         _ => return None,
     })
 }

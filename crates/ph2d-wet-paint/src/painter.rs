@@ -320,7 +320,7 @@ impl Engine {
                     ..dab
                 };
                 if self.trail.accumulate_blend(&layer.grid, &p, &tex, &bd) {
-                    self.trail.transfer_blend(&mut layer.grid, &p)
+                    self.trail.transfer_blend(&mut layer.grid, &p, bd.r)
                 } else {
                     None
                 }

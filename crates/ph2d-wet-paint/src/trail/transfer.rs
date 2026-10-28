@@ -4,6 +4,8 @@
 
 use super::*;
 
+mod perto; // o misturador PERTO da tinta (Knob::BlendReach): a média local, não a da janela
+
 /// O piso de água de uma célula que recebeu tinta (`transfer_paint_impl`, «the wet map must know»): até
 /// ele a célula está SECA.
 const FILM_TRACO: f32 = 0.00001;
@@ -422,7 +424,10 @@ impl Trail {
     /// settled layer lifts through the same door the Wet tool uses
     /// (`drying::lift_settled`), so a wet blend bleeds afterwards while a
     /// dry blend stays the in-place re-mix it always was.
-    pub fn transfer_blend(&mut self, g: &mut Grid, p: &Params) -> Option<TouchedRect> {
+    ///
+    /// `raio` = o raio do dab do misturador (células): com [`Knob::BlendReach`] `> 0` a média de cada célula é a
+    /// das células da janela a `≤ BlendReach × raio` dela ([`perto`]) — o misturador só leva a tinta PERTO dela.
+    pub fn transfer_blend(&mut self, g: &mut Grid, p: &Params, raio: f64) -> Option<TouchedRect> {
         if self.lx1 < self.lx0 {
             self.roll_window();
             return None;
@@ -493,16 +498,25 @@ impl Trail {
             return None;
         }
         let nf = n as f64;
-        let avg_susp = s_susp / nf;
-        let avg_sett = s_sett / nf;
-        let avg_film = s_film / nf;
-        let avg_wet = s_wet / nf;
-        let a_r = if w_susp > 0.0 { s_r / w_susp } else { 0.0 };
-        let a_g = if w_susp > 0.0 { s_g / w_susp } else { 0.0 };
-        let a_b = if w_susp > 0.0 { s_b / w_susp } else { 0.0 };
-        let b_r = if w_sett > 0.0 { t_r / w_sett } else { 0.0 };
-        let b_g = if w_sett > 0.0 { t_g / w_sett } else { 0.0 };
-        let b_b = if w_sett > 0.0 { t_b / w_sett } else { 0.0 };
+        let janela = perto::Media {
+            susp: s_susp / nf,
+            sett: s_sett / nf,
+            film: s_film / nf,
+            wet: s_wet / nf,
+            tem_susp: w_susp > 0.0,
+            tem_sett: w_sett > 0.0,
+            a: if w_susp > 0.0 {
+                [s_r / w_susp, s_g / w_susp, s_b / w_susp]
+            } else {
+                [0.0; 3]
+            },
+            b: if w_sett > 0.0 {
+                [t_r / w_sett, t_g / w_sett, t_b / w_sett]
+            } else {
+                [0.0; 3]
+            },
+        };
+        let local = perto::Local::nova(self, g, p.k(Knob::BlendReach) * raio);
         let mat_media = crate::grid::material::media(mats);
         let marca_media = (marca && w_marca > 0.0).then(|| s_marca / w_marca);
         // Pass 2: relax every masked cell toward the window mix.
@@ -528,6 +542,10 @@ impl Trail {
                     continue;
                 }
                 let i = cx as usize + cy as usize * s;
+                let m = local.as_ref().map_or(janela, |l| l.media(lx, ly));
+                let [a_r, a_g, a_b] = m.a;
+                let [b_r, b_g, b_b] = m.b;
+                let (avg_susp, avg_sett, avg_film, avg_wet) = (m.susp, m.sett, m.film, m.wet);
                 if let Some(mm) = marca_media {
                     let q = &mut g.nivelado[i];
                     *q = (f64::from(*q) + (mm - f64::from(*q)) * a) as f32;
@@ -536,7 +554,7 @@ impl Trail {
                     g.material[i] =
                         crate::material::MaterialCelula::mistura(g.material[i], mm, a as f32);
                 }
-                if w_susp > 0.0 {
+                if m.tem_susp {
                     let in_c = alpha_of_mass(avg_susp) * a;
                     let res = alpha_of_mass(g.susp[i] as f64) * (1.0 - in_c);
                     if in_c + res > 0.0 {
@@ -557,7 +575,7 @@ impl Trail {
                     g.susp[i] = (g.susp[i] as f64 + (avg_susp - g.susp[i] as f64) * a) as f32;
                     g.film[i] = (g.film[i] as f64 + (avg_film - g.film[i] as f64) * a) as f32;
                 }
-                if w_sett > 0.0 {
+                if m.tem_sett {
                     let in_c = alpha_of_mass(avg_sett) * a;
                     let res = alpha_of_mass(g.sett[i] as f64) * (1.0 - in_c);
                     if in_c + res > 0.0 {
@@ -595,7 +613,8 @@ impl Trail {
                             sett_c,
                             mix,
                             p.glaze,
-                            p.ecra.com_vela(g.vela[i])
+                            p.ecra
+                                .com_vela(g.vela[i])
                                 .com_vidrado(crate::grid::aparencia::vidrado(&g.aparencia, i)),
                             &mut out,
                         );

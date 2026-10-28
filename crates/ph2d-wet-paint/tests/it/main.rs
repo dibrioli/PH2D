@@ -41,6 +41,7 @@ mod measure_transfer_candidates;
 mod measure_transport_range;
 mod molhado_rows;
 mod o_material_da_tinta;
+mod o_misturador_so_leva_a_tinta_perto;
 mod paper_rows;
 mod parallel_rows;
 mod perf;

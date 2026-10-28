@@ -300,7 +300,7 @@ impl Engine {
             return;
         };
         let rect = if trail.accumulate_blend_grao(&layer.grid, &p, &tex, &bd, grain) {
-            trail.transfer_blend(&mut layer.grid, &p)
+            trail.transfer_blend(&mut layer.grid, &p, bd.r)
         } else {
             None
         };

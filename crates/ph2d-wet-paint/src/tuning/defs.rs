@@ -319,4 +319,8 @@ pub const KNOB_DEFS: [KnobDef; KNOB_COUNT] = [
     k(Knob::StrokeFilmEnds, KnobGroup::Stroke, "strokeFilmEnds", 0.0, 1.0, 0.01, 0.0, None),
     // J6 (mistura, lacuna 5): o secador seca a tinta já nivelada (raio da caixa ÷ o do dab) — neutro 0 = o de sempre, ao bit
     k(Knob::DryerLevel, KnobGroup::Tools, "dryerLevel", 0.0, 2.0, 0.01, 0.0, None),
+    // J6 (mistura, lacuna 6): o alcance do misturador em raios do dab — neutro 0 = a média da janela inteira, ao bit. O
+    // tecto 1 é o da JANELA: ela tem ~2 raios + a deriva, e uma caixa de meio-lado ≥ 1 raio já a cobre quase toda (o
+    // censo `o_corpo_de_cada_ferramenta_da_agua_e_o_que_ela_le` a 4 raios não via diferença nenhuma)
+    k(Knob::BlendReach, KnobGroup::Tools, "blendReach", 0.0, 1.0, 0.01, 0.0, None),
 ];

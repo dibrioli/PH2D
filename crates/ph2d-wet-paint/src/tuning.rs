@@ -304,9 +304,14 @@ pub enum Knob {
     /// ([`crate::tools::apply_dry_level`]) — sem ele o secador congelava os sulcos das cerdas da tinta fresca (bandas
     /// 0,35 · 1,6 · 0,35 no cruzamento, contra a mancha lisa do Rebelle). `0` = o secador de sempre, ao bit.
     DryerLevel,
+    /// ⭐ **O misturador só leva a tinta PERTO dela** (J6 lacuna 6, `exames/mistura.md`): o Blend relaxa cada célula
+    /// para a média das da janela a `≤ BlendReach × raio` dela (`trail/transfer/perto.rs`), não para a da janela inteira
+    /// — o Blend com grão do Rebelle borra 28 px para fora da tinta, a janela arrastava-a 52–66. `0` = a média da
+    /// janela, ao bit.
+    BlendReach,
 }
 
-pub const KNOB_COUNT: usize = 132;
+pub const KNOB_COUNT: usize = 133;
 
 /// O LEITOR TOLERANTE das chaves do material de antes da W3 (preset e macro gravados com elas): `(knob, valor)`
 /// na lei nova, `None` para uma chave que não é antiga. `roughnessMul` m → Roughness `0,5·m` (o neutro `1` → `0,5`,

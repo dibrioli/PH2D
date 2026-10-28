@@ -325,6 +325,7 @@ pub(crate) const CORPO_DA_AGUA: [(WetTool, &[Knob]); 5] = [
             Knob::PaperGate,
             Knob::Spacing,
             Knob::GateSaturation,
+            Knob::BlendReach,
         ],
     ),
     (

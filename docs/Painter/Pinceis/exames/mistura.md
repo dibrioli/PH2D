@@ -12,7 +12,7 @@ ferramentas, motor, medições completas): o detalhe está em `ea4e3c5a07` (esta
 | L-1 Blender Soft | **aprovado** (J4) | — |
 | L-6 Water Brush | **curado, não aprovado** (2 rondas) | a base pálida e o «U» na faixa seca raso |
 | L-2 Blender Grainy | **curado, não aprovado** (1 ronda + cura sem efeito) | motor: o alcance do misturador e os grumos |
-| L-7 Dry/Lift | **curado, não aprovado** (1 ronda + cura sem efeito) | motor: a orla do secador sai na direcção errada |
+| L-7 Dry/Lift | J6: motor `dryerLevel` + 2 rondas (cega por fazer) | o cruzamento liso; falta a linha escura dos lados |
 | L-3 Smudge Finger | reprovado (J4) | motor: o fio do arrasto |
 | L-5 Blur | reprovado (J4) | falta um oráculo em que o desfoque se veja |
 | L-4 Smudge Spiky | fundido com Smudge Finger | — |
@@ -101,9 +101,38 @@ ferramentas, motor, medições completas): o detalhe está em `ea4e3c5a07` (esta
 - **Smudge Finger** (o fio do arrasto) NÃO é este código: é o `smear_field` do Digital (`EM_ESTUDO`, modo Smear), não a
   janela do Blend do Wet — fica na fila sem custo medido daqui.
 
+## J6 — L-7 Dry/Lift — motor `dryerLevel` + 2 rondas (cega por fazer)
+
+- **O diagnóstico da J5 estava errado** (medido): com `dryerEdge 0` as bandas do eixo ficam iguais. A sonda (foto da
+  faixa fresca · depois do secador · depois de simular, cena `sobre` reduzida) mostra o mecanismo: o secador CONGELA os
+  sulcos das cerdas da tinta fresca do Wet Round (43 · 199 · 55 a 12 px) que a água nivela nos segundos seguintes (~100
+  liso). ⛔ Recusas medidas: assentar o pigmento sob o carimbo (nada muda — não há transporte durante o traço) · nivelar a
+  CONCENTRAÇÃO (o filme tem os mesmos sulcos: no-op) · a média sobre toda a água (a franja rasa alarga a faixa 10 px).
+- **Lei** (`Knob::DryerLevel`, Tools, `tools/secador.rs`; `0` = ao bit): cada célula DENTRO da tinta que o dab do Dry
+  toca pela 1.ª vez toma a média do pigmento suspenso das células dentro da tinta da caixa de meio-lado `L·r` (tabela
+  integral, O(área) por dab); dentro = filme ≥ 0,25 × a espessura média da água à volta. Portão
+  `familias::mistura::secador::o_secador_seca_a_tinta_ja_nivelada` (desvio no eixo 0,688 → 0,011, massa ± 10 %, franja
+  fica, neutro ao bit); mutações (lei desligada · sem piso · caixa de raio 1 · média sobre o papel) todas VERMELHAS.
+- Receita (`pranchas/mistura/presets/dry_lift.ph2d-brush.png`, fora da fábrica): J5 + **`dryerLevel 2`** +
+  **`dryerEdge 0,25`** (era 0,5). Medido (B, x 500, ÷ a faixa intacta):
+  | | eixo (ao longo) | linha dos lados | fora da linha |
+  |---|---|---|---|
+  | Rebelle `default_sponge` | 0,9–1,14 | 1,31 · 1,35 | 0,97–1,02 |
+  | J5 (a mesma base) | 0,35 · 1,63 · 0,35 | 1,22 · 1,11 | 0,73 · 0,82 |
+  | r1 (`dryerLevel 2`, edge 0,5) | 0,96–1,10 | 1,17 · 1,10 | 0,71 · 0,78 |
+  | **r2 (edge 0,25)** | **0,98–1,10** | 1,09 · 1,04 | **0,87 · 0,93** |
+  Ronda 2 entre `dryerEdge` 0 · 0,15 · 0,25 · 0,35: nenhuma dá a linha de 1,3 sem o claro de fora (o anel puxa de
+  FORA). Régua 48 → **62/80**. Vizinho Smear Flat d **2,491** (≥ 0,591). Pranchas `pranchas/J6_Dry_Lift.jpg` · cega
+  `J6_Dry_Lift_cega.jpg` + `J6_Dry_Lift_chave.txt` (o oráculo só tem a cena `sobre`).
+- O que a prancha ainda MOSTRA: o Rebelle risca a linha escura nos dois lados do secador; o nosso deixa um claro fino
+  (fila 1).
+- **Water Brush**: NÃO é o mesmo mecanismo (a ferramenta Wet e o `waterPush`; o que falta é a base pálida e o «U» na
+  faixa seca) — fica.
+
 ## Fila (motor, com a medição acima)
 
-1. **Dry/Lift** — a orla do secador nos LADOS do traço (hoje sai ao longo dele: 1,90 no eixo × Rebelle 1,16).
+1. **Dry/Lift** — a linha escura nos LADOS do secador (1,09 · 1,04 × Rebelle 1,31 · 1,35) sem o claro de fora: o anel
+  do `dryerEdge` tira a tinta de fora; a do Rebelle vem de dentro ou da água ao lado (por medir).
 2. **Blender Grainy** — o alcance do Blend com grão limitado à tinta (52–66 px × 28) e os grumos opacos.
 3. **Smudge Finger** — o fio do arrasto (J4: o campo re-amostrado a cada pingo perde o traço sub-píxel).
 4. **Bancada**: uma base Wet mais carregada para as ferramentas de água (`presets/base_escura`), antes de rever de novo

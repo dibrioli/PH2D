@@ -1,0 +1,3 @@
+Chave da prancha cega J6_Dry_Lift_cega.jpg (linha: imagem → quem)
+sobre_A: 1 = default_sponge (oraculo), 2 = Dry Lift (escala 0.56) (nosso), 3 = Smear Flat (d 2.491, limiar 0.591) (vizinho)
+sobre_B: 1 = default_sponge (oraculo), 2 = Smear Flat (d 2.491, limiar 0.591) (vizinho), 3 = Dry Lift (escala 0.56) (nosso)

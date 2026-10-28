@@ -253,3 +253,91 @@ fn o_azul_da_guache_cobre_o_vermelho_molhado() {
         "a lei mexeu na faixa longe do azul: {lc:?} contra {ls:?}"
     );
 }
+
+/// A Gouache Dry da receita (sem a tabela da largura: o diâmetro pedido é o pintado) com o mapa `engine` sobreposto,
+/// num recto de 40 px (y 80) e num de 320 (y 400), foto molhada: `(rgba, largura)`.
+fn rectos_da_guache_seca(engine: &[(&str, f64)]) -> (Vec<u8>, usize) {
+    use crate::exame_bancada::{Fonte, Pincel, pinta_cena};
+    let r = EM_ESTUDO.iter().find(|r| r.nome == "Gouache Dry").unwrap();
+    let mut preset = ph2d_brush_presets::Preset {
+        parametros: crate::presets_de_fabrica::parametros(r),
+        origem: ph2d_brush_presets::Origem::Fabrica,
+        miniatura: ph2d_brush_presets::Miniatura {
+            largura: 1,
+            altura: 1,
+            rgba: vec![255; 4],
+        },
+        texturas: Default::default(),
+    };
+    for (k, v) in engine {
+        preset.parametros.engine.insert((*k).to_owned(), *v);
+    }
+    let p = Pincel {
+        nome: r.nome.to_owned(),
+        fonte: Fonte::Preset {
+            preset: Box::new(preset),
+            relativo: String::new(),
+        },
+    };
+    let recto = |y: f64| -> Vec<serde_json::Value> {
+        (0..294).map(|i| serde_json::json!([60.0 + 3.0 * f64::from(i), y, 1.0])).collect()
+    };
+    let cena = serde_json::json!({"nome": "fios", "ops": [
+        {"op": "pincel", "quem": "preset"},
+        {"op": "cor", "rgb": [23, 101, 179]},
+        {"op": "traco", "nome": "r40", "size_px": 40, "passo": 3.0, "pts": recto(80.0)},
+        {"op": "traco", "nome": "r320", "size_px": 320, "passo": 3.0, "pts": recto(400.0)},
+        {"op": "simula", "quadros": 60},
+        {"op": "foto", "nome": "A"},
+    ]});
+    (pinta_cena(&p, None, &cena, [1000, 640], [255; 3], 0).1, 1000)
+}
+
+/// A LARGURA das riscas ao comprido de um traço horizontal (miolo x 300..700, linhas `y ± meia`): o 1.º zero da
+/// autocorrelação do perfil por linha (a escuridão média de cada linha, sem a sua média móvel de ¼ da tinta).
+fn largura_das_riscas(px: &[u8], w: usize, y: usize, meia: usize) -> usize {
+    let linha = |yy: usize| {
+        (300..700)
+            .map(|x| {
+                let i = (yy * w + x) * 4;
+                1.0 - (f64::from(px[i]) + f64::from(px[i + 1]) + f64::from(px[i + 2])) / 765.0
+            })
+            .sum::<f64>()
+            / 400.0
+    };
+    let p: Vec<f64> = (y - meia..=y + meia).map(linha).collect();
+    let tinta: Vec<usize> = (0..p.len()).filter(|&i| p[i] > 0.03).collect();
+    let r = &p[tinta[0]..=*tinta.last().unwrap()];
+    let k = (r.len() / 4).max(3);
+    let c: Vec<f64> = (0..r.len())
+        .map(|i| {
+            let (a, b) = (i.saturating_sub(k / 2), (i + k / 2 + 1).min(r.len()));
+            r[i] - r[a..b].iter().sum::<f64>() / (b - a) as f64
+        })
+        .collect();
+    (1..c.len())
+        .find(|&l| (0..c.len() - l).map(|i| c[i] * c[i + l]).sum::<f64>() <= 0.0)
+        .unwrap_or(c.len())
+}
+
+/// ⭐ **Os FIOS crescem com o pincel** (`Knob::BristleLaneSizeExp`, J6 cerdas, `exames/guache.md` «Motor J6 — cerdas»):
+/// a guache seca do Rebelle pinta riscas de ~2 px a 40 e de ~10 a 200 (a largura cresce com o diâmetro); os fios em px
+/// fixos dão a mesma risca fina a todo tamanho (a «nuvem pontilhada» dos 200 px). CONTROLO: a mesma receita sem a lei.
+#[test]
+fn os_fios_da_guache_seca_crescem_com_o_pincel() {
+    let [(com, w), (sem, _)] = std::thread::scope(|s| {
+        let a = s.spawn(|| rectos_da_guache_seca(&[("bristleLaneSizeExp", 1.0)]));
+        let b = s.spawn(|| rectos_da_guache_seca(&[]));
+        [a.join().unwrap(), b.join().unwrap()]
+    });
+    let razao = |px: &[u8]| {
+        let (a, b) = (largura_das_riscas(px, w, 80, 40), largura_das_riscas(px, w, 400, 200));
+        (a, b, b as f64 / a.max(1) as f64)
+    };
+    let ((c40, c320, rc), (s40, s320, rs)) = (razao(&com), razao(&sem));
+    println!("[fios] riscas 40 → 320 px: com a lei {c40} → {c320} ({rc:.2}×) · sem {s40} → {s320} ({rs:.2}×)");
+    // A lei = o diâmetro 8× → a risca ~8× (medido 9,3×); sem ela os fios ficam em 3 px e só a queda da borda alarga o
+    // perfil (4,7×).
+    assert!(rs < 6.0, "o controlo (fios em px fixos) já cresce: {s40} → {s320}");
+    assert!(rc > 7.0, "os fios não crescem com o pincel: {c40} → {c320} ({rc:.2}×, sem a lei {rs:.2}×)");
+}

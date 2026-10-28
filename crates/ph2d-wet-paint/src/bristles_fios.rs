@@ -72,6 +72,26 @@ impl Fios {
         veio_corte: 0.5,
     };
 
+    /// ⭐ **Os fios à escala `e` do pincel** (J6 cerdas, [`crate::tuning::Knob::BristleLaneSizeExp`]): todo comprimento
+    /// em px (a largura, o ruído, a onda, a oscilação, o span, o veio) × `e`; o resto (amplitudes, cor, corte) fica.
+    /// `e == 1` = os mesmos fios, ao bit.
+    #[must_use]
+    pub fn escalado(self, e: f64) -> Fios {
+        if e == 1.0 {
+            return self;
+        }
+        Fios {
+            ruido_px: self.ruido_px * e,
+            largura_px: self.largura_px * e,
+            onda_px: self.onda_px * e,
+            oscilacao_px: self.oscilacao_px * e,
+            span_px: self.span_px * e,
+            span_comprimento_px: self.span_comprimento_px * e,
+            veio_px: self.veio_px * e,
+            ..self
+        }
+    }
+
     /// Nenhum dos três age: a lei de antes.
     #[must_use]
     pub fn neutro(&self) -> bool {

@@ -387,3 +387,30 @@ fn o_veio_e_raro_tem_principio_e_fim_e_os_dois_sinais() {
         "o controlo não mede: {ruidos} de 80 fios tingidos"
     );
 }
+
+/// ⭐ **Os fios à escala do pincel** (J6 cerdas, [`Fios::escalado`]): `e` = 1 é o mesmo fio ao bit; `e` = 4 lê no ponto
+/// `4·d` o fio e o ganho que `e` = 1 lê em `d` no arco `a` (o fio, a pressão ao longo do caminho, a oscilação — todo
+/// comprimento × 4), e as amplitudes não mudam.
+#[test]
+fn os_fios_crescem_com_a_escala_do_pincel() {
+    let f = com(|f| {
+        f.pressao = 1.5;
+        f.oscilacao_px = 2.0;
+        f.ruido_px = 30.0;
+        f.span_px = 1.0;
+    });
+    assert_eq!(f.escalado(1.0), f);
+    let g = f.escalado(4.0);
+    assert_eq!((g.pressao, g.cor, g.veio_corte), (f.pressao, f.cor, f.veio_corte));
+    let (a, b) = (f.no_dab(50.0, [1.0, 0.0], 1.0).unwrap(), g.no_dab(200.0, [1.0, 0.0], 1.0).unwrap());
+    let mut mudou = 0;
+    for k in -20..20 {
+        let d = [0.0, 0.7 * f64::from(k)];
+        let (p, q) = (a.no_ponto(d), b.no_ponto([0.0, 4.0 * d[1]]));
+        assert_eq!(p.fio, q.fio, "o fio em {d:?}");
+        assert!((p.ganho - q.ganho).abs() < 1e-9, "o ganho em {d:?}: {} contra {}", p.ganho, q.ganho);
+        mudou += usize::from(a.no_ponto([0.0, 4.0 * d[1]]).fio != q.fio);
+    }
+    // CONTROLO: sem a escala, o ponto 4·d cai noutro fio.
+    assert!(mudou > 20, "o controlo não mede: {mudou} de 40 pontos noutro fio");
+}

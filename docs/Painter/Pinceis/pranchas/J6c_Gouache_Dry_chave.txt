@@ -1,0 +1,7 @@
+Chave da prancha cega J6c_Gouache_Dry_cega.jpg (linha: imagem → quem)
+gestos_A: 1 = gouache_gouache_dry (oraculo), 2 = Dry L08 R32 (escala 0.8) (nosso), 3 = Wet Dry Brush (d 1.771, limiar 0.591) (vizinho)
+gestos_B: 1 = Wet Dry Brush (d 1.771, limiar 0.591) (vizinho), 2 = Dry L08 R32 (escala 0.8) (nosso), 3 = gouache_gouache_dry (oraculo)
+tamanhos_A: 1 = gouache_gouache_dry (oraculo), 2 = Wet Dry Brush (d 1.771, limiar 0.591) (vizinho), 3 = Dry L08 R32 (escala 0.8) (nosso)
+tamanhos_B: 1 = Wet Dry Brush (d 1.771, limiar 0.591) (vizinho), 2 = gouache_gouache_dry (oraculo), 3 = Dry L08 R32 (escala 0.8) (nosso)
+sobre_A: 1 = gouache_gouache_dry (oraculo), 2 = Wet Dry Brush (d 1.771, limiar 0.591) (vizinho), 3 = Dry L08 R32 (escala 0.8) (nosso)
+sobre_B: 1 = gouache_gouache_dry (oraculo), 2 = Dry L08 R32 (escala 0.8) (nosso), 3 = Wet Dry Brush (d 1.771, limiar 0.591) (vizinho)

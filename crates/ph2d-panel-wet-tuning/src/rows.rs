@@ -291,17 +291,17 @@ mod tests {
     /// vindos do cartão Real Oil (13 → 15). Mais 2 a 28/10 (J6 aguarela): o domo do filme no Stroke (11 → 12) e a
     /// borda da mancha molhada no Wet effects (3 → 4). Mais 1 (J6): as tampas do filme no Stroke (12 → 13). Mais 1 (J6 mistura): o
     /// nível do secador no Tools (+1). Mais 1 (J6 mistura, lacuna 6): o alcance do misturador no Tools (+1). Mais 1 (J6 guache, lacuna 7): a tinta que cobre a molhada no
-    /// Wet effects (4 → 5).
+    /// Wet effects (4 → 5). Mais 1 (J6 cerdas): os fios que crescem com o pincel no Bristles (19 → 20).
     #[test]
     fn every_visible_knob_has_a_row() {
-        assert_eq!(rows().len(), 96);
+        assert_eq!(rows().len(), 97);
         for g in [
             (KnobGroup::Paint, 24),
             (KnobGroup::Water, 7),
             (KnobGroup::Physics, 6),
             (KnobGroup::Tools, 6),
             (KnobGroup::Paper, 1),
-            (KnobGroup::Bristles, 19),
+            (KnobGroup::Bristles, 20),
             (KnobGroup::Stroke, 13),
             (KnobGroup::WetEffects, 5),
             (KnobGroup::Material, 15),

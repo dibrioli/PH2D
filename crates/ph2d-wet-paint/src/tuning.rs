@@ -314,9 +314,14 @@ pub enum Knob {
     /// tinta nova na mistura da célula) e o que fica não tinge a cor nova (`trail/transfer.rs` `cobre_a_outra`) — o azul
     /// do Rebelle sobre o vermelho molhado fica a cor dele no papel. `0` = a mistura de sempre, ao bit.
     WetCover,
+    /// ⭐ **Os FIOS crescem com o pincel** (J6 cerdas, `docs/Painter/Pinceis/exames/guache.md` «Motor J6 — cerdas»): os
+    /// comprimentos em px dos fios ([`crate::bristles_fios::Fios`] — largura, ruído, onda, oscilação, span, veio)
+    /// multiplicados por `(D ÷ textureSizeRef)^γ` (`D` = o diâmetro do pincel): a guache seca do Rebelle pinta faixas
+    /// de ~2 px a 40 e de ~10 a 200. `0` = os px escritos a todo tamanho, ao bit.
+    BristleLaneSizeExp,
 }
 
-pub const KNOB_COUNT: usize = 134;
+pub const KNOB_COUNT: usize = 135;
 
 /// O LEITOR TOLERANTE das chaves do material de antes da W3 (preset e macro gravados com elas): `(knob, valor)`
 /// na lei nova, `None` para uma chave que não é antiga. `roughnessMul` m → Roughness `0,5·m` (o neutro `1` → `0,5`,

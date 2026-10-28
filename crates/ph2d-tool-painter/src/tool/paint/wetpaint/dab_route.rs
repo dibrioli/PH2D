@@ -165,7 +165,9 @@ impl PainterTool {
             .tuning
             .get(ph2d_wet_paint::tuning::Knob::StrokeFilm)
             > 0.0;
-        let fios = self.fios_do_pincel();
+        let fios = self
+            .fios_do_pincel()
+            .escalado(super::lote::escala_dos_fios(&sess.engine, brush));
         let relevo = self.relevo_do_pincel();
         // O rebordo da lâmina (W2 E4, `ph2d_wet_paint::lamina`): `0` = nem se chama a porta.
         let rebordo = sess

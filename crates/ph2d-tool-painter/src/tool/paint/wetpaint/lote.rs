@@ -156,6 +156,20 @@ pub(super) fn escala_da_textura(
     }
 }
 
+/// ⭐ **Os FIOS crescem com o pincel** (J6 cerdas, [`ph2d_wet_paint::tuning::Knob::BristleLaneSizeExp`]): o factor
+/// `(D ÷ ref)^γ` dos comprimentos dos fios ([`ph2d_wet_paint::bristles_fios::Fios::escalado`]), com `D` o diâmetro do
+/// pincel e `ref` o [`ph2d_wet_paint::tuning::Knob::TextureSizeRef`]. `γ = 0` = `1`, ao bit.
+pub(super) fn escala_dos_fios(engine: &ph2d_wet_paint::painter::Engine, brush: &BrushSpec) -> f64 {
+    use ph2d_wet_paint::tuning::Knob;
+    let gama = engine.tuning.get(Knob::BristleLaneSizeExp);
+    if gama > 0.0 {
+        let d = 2.0 * f64::from(brush.clamped_radius()).max(0.5);
+        (d / engine.tuning.get(Knob::TextureSizeRef).max(1.0)).powf(gama)
+    } else {
+        1.0
+    }
+}
+
 /// O grão do dab sob [`escala_da_textura`]: só o mapeamento `Tiled` (preso à tela) — o View/Random já é relativo ao
 /// dab, o Flow ao traço e o Stencil ao gizmo. O `Size` MULTIPLICA a coordenada, logo dividi-lo cresce o padrão.
 pub(super) fn escala_o_grao(t: &mut ph2d_painter_brush::texture::TextureSettings, escala: f32) {

@@ -36,6 +36,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.wet_tuning.knob.bristlePressure" => "Pressure per bristle",
         "panel.wet_tuning.knob.bristleNoiseLength" => "Pressure change length",
         "panel.wet_tuning.knob.bristleLaneWidth" => "Bristle width",
+        "panel.wet_tuning.knob.bristleLaneSizeExp" => "Bristles follow brush size",
         "panel.wet_tuning.knob.bristleWave" => "Width wave",
         "panel.wet_tuning.knob.bristleWaveLength" => "Width wave length",
         "panel.wet_tuning.knob.bristleOscillation" => "Brush wobble",

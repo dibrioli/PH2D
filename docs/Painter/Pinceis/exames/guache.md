@@ -85,12 +85,36 @@ Nossa Flat 0,36 → **0,10** (1,0) / 0,13 (0,5); Round 0,61 → 0,17 (0,15) / 0,
   degrau. Cura: motor/lei da largura (medir a largura do fino pela cobertura útil, não pelo fio pálido), depois regerar.
   Fica à vista na prancha: o recto de 5 px pálido; as bordas lisas e a espiral fechada do J5.
 
+## Motor J6 — cerdas (28/10): os FIOS crescem com o pincel (`Knob::BristleLaneSizeExp`)
+
+Régua (`riscas.py`, cena tamanhos A, miolo x 300..700; risca = 1.º zero da autocorrelação do perfil por linha). Rebelle
+**Dry** 40/200: riscas 7/10, largura **2/10 px** (∝ diâmetro), contraste 0,49/0,42, cob 0,69/0,88 — faixas sólidas de
+borda viva. Nosso (fios 3 px, ruído 60 px fixos): 3/7 px, contraste 0,60/0,43, grão ao comprido 0,50/0,38 (Rebelle
+0,65/0,27). **Wash**: o Rebelle não tem riscas (contraste 0,04 a 40; a 200 só as faixas VERTICAIS do carimbo); o nosso
+0,14 — do tapete em px, não dos fios. **Bristle Watercolor** (Rb `bristle_flat`): cheio com fios de 1 px, contraste que
+CAI com o tamanho (0,35/0,16/0,07), escuro 0,23/0,29/0,30; o nosso 0,24/0,35/0,10 e escuro **0,10/0,12**/0,31 — pálido
+no pequeno (pigmento por tamanho, não riscas). ⇒ Lei NÃO comum; feita a do Dry.
+
+**A lei** (aditiva, 0 = ao bit): todo comprimento em px dos fios (`Fios::escalado`: largura, ruído, onda, oscilação,
+span, veio) × `(D ÷ textureSizeRef)^γ`. Dry γ 1: risca a 160 px 7 → **11–12** (Rebelle 10). Portões
+`os_fios_da_guache_seca_crescem_com_o_pincel` (it: 40 → 320 px, com 9,3× · sem 4,7×) + `os_fios_crescem_com_a_escala_do_pincel`
+(lib); mutações (o `dab_route` sem a escala; a largura fora do `escalado`) VERMELHAS. Fábrica: só Oil/* vermelho (obra
+do óleo por comitar). ⛔ Recusa medida: `textureSizeExp` 1 (o TAPETE à escala) — miolo escuro e lados pálidos, contraste
+0,83 (Rebelle 0,42).
+
+**Exame Dry (1 ronda, 4 variantes; base 382/452 à escala 0,8)**: γ 1 → 360 · γ 1 ref 32 → 358 · **γ 0,8 ref 32 → 364**
+(vizinho Wet Dry Brush **1,771**) · γ 1 escala auto 0,889 → 356. Perde no cruzamento sobre o vermelho (a faixa larga
+cobre: `vermelho_em_cima` 0,42 → 0,28; Rebelle 0,57–0,66). **Receita fica.** Prancha `pranchas/J6c_Gouache_Dry{,_cega}.jpg`
++ chave (γ 0,8 ref 32); régua `guache/gouache_dry_J6c_regua.txt`. Fica à vista: as faixas largas são um miolo escuro a
+esbater (dureza 0), não tiras cheias de borda viva com papel entre elas.
+
 ## Portão
 `os_reprovados_do_guache_nao_estao_na_fabrica` (os três de `EM_ESTUDO` sem ficheiro; mutação J4: a Round renomeada
 «Gouache Flat» → VERMELHO). A Flat continua presa pelos de antes (`MIDIAS` gouacheflat, `a_lei_da_tinta`), verdes.
 
 ## Para a fila
 1. Motor: o azul que COBRE o vermelho molhado (Gouache Round; o «sobre» de toda a guache).
-2. Motor: o tapete das cerdas que escala com o diâmetro (Gouache Dry a 200 px).
+2. Motor: a largura dos fios JÁ escala (J6 cerdas); falta a tira CHEIA de borda viva (o fio ligado/desligado, não o
+   ganho contínuo do Perlin) — Gouache Dry a 200 px.
 3. Gouache Wash: riscas e pontas rasgadas contra o liso do Rebelle (sem valor que o desfaça; medido na J4).
 4. Fotos: refazer `gouache_gouache_round_2_sobre` e `gouache_gouache_liner_2_gestos_A` (sem pincel que as peça agora).

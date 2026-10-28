@@ -325,4 +325,6 @@ pub const KNOB_DEFS: [KnobDef; KNOB_COUNT] = [
     k(Knob::BlendReach, KnobGroup::Tools, "blendReach", 0.0, 1.0, 0.01, 0.0, None),
     // J6 (guache, lacuna 7): a tinta nova cobre a molhada de outra cor — neutro 0 = a mistura de sempre, ao bit
     k(Knob::WetCover, KnobGroup::WetEffects, "wetCover", 0.0, 1.0, 0.01, 0.0, None),
+    // J6 (cerdas): os fios crescem com o diâmetro — neutro 0 = os px escritos, ao bit
+    k(Knob::BristleLaneSizeExp, KnobGroup::Bristles, "bristleLaneSizeExp", 0.0, 1.5, 0.01, 0.0, None),
 ];

@@ -71,7 +71,7 @@ pub(crate) fn apply_camera_event(host: &mut dyn PanelHostInternal, ev: WidgetEve
     }
 
     if let WidgetEvent::ValueChanged(id) = ev {
-        let v = host.store().number_value(id).unwrap_or(0.0);
+        let v = crate::unidade_mundo::le(host, id).unwrap_or(0.0);
         #[allow(clippy::cast_possible_truncation)]
         let f = v as f32;
         let follow = info.follow.as_ref();

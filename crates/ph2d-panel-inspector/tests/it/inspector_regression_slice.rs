@@ -28,7 +28,7 @@ const VIEWPORT: Rect = Rect {
 /// ⚠️ Um fixture em `Simple` não pinta nada além da dica e do «Remove» (o modo É a seção
 /// desligada), e um teste sobre ele mediria o silêncio: a lei do fixture que não contém o
 /// fenómeno.
-fn slice() -> InspectorSliceInfo {
+pub(crate) fn slice() -> InspectorSliceInfo {
     InspectorSliceInfo {
         entity_bits: ENTITY,
         present: true,
@@ -177,7 +177,7 @@ fn drive(host: &mut MockPanelHost, state: &mut InspectorState, id: NodeId, stim:
 
 fn run(case: &Case, info: InspectorSliceInfo) -> Vec<SliceFieldEdit> {
     set_current_inspector_slice(Some(info));
-    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut host = crate::host_em_metros();
     let mut state = InspectorState::default();
     host.settle_section_folds();
     host.paint::<InspectorPanel>(&mut state, VIEWPORT);
@@ -308,7 +308,7 @@ fn a_corner_shows_that_it_is_fixed_not_stretched() {
 fn no_slice_control_acts_without_its_snapshot() {
     for case in cases() {
         set_current_inspector_slice(None);
-        let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+        let mut host = crate::host_em_metros();
         let mut state = InspectorState::default();
         host.settle_section_folds();
         let _ = host.drained_actions();
@@ -380,7 +380,7 @@ fn the_enable_checkbox_is_reachable_on_a_sprite_without_the_component() {
     let mut info = slice();
     info.present = false;
     set_current_inspector_slice(Some(info));
-    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut host = crate::host_em_metros();
     let mut state = InspectorState::default();
     host.settle_section_folds();
     let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
@@ -412,7 +412,7 @@ fn switched_off_the_section_shows_only_the_box() {
     info.present = true;
     info.draw_mode_tag = 0;
     set_current_inspector_slice(Some(info));
-    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut host = crate::host_em_metros();
     let mut state = InspectorState::default();
     host.settle_section_folds();
     let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);

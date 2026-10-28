@@ -68,7 +68,7 @@ pub(crate) fn sync(
             continue; // a mão do artista ganha ao instantâneo
         }
         #[allow(clippy::cast_precision_loss)]
-        host.store_mut().set_number_value(id, v as f64);
+        crate::unidade_mundo::semeia(host, id, v as f64);
     }
     for (id, t) in [
         (crate::ids::INSP_WEAPON_ON_SIGNAL, info.on_signal.as_str()),

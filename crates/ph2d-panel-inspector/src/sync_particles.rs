@@ -105,8 +105,7 @@ pub(crate) fn sync(
         if focus == Some(id) || drag == Some(id) {
             continue; // a mão do artista ganha ao instantâneo
         }
-        host.store_mut()
-            .set_number_value(id, f64::from(info.number(n)));
+        crate::unidade_mundo::semeia(host, id, f64::from(info.number(n)));
     }
     for (i, t) in PARTICLES_TEXTS.into_iter().enumerate() {
         let Some(&id) = crate::ids::INSP_PART_TEXT.get(i) else {

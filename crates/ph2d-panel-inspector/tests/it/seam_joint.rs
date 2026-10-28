@@ -97,7 +97,7 @@ fn joint(kind_tag: u8) -> InspectorJointInfo {
 /// Paint the section, then click the middle of the widget with `id` — through
 /// the real pointer dispatcher. Returns the actions the panel raised.
 fn click_real(info: InspectorJointInfo, id: ph2d_a11y::NodeId) -> Vec<EditorAction> {
-    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut host = crate::host_em_metros();
     let mut state = InspectorState::default();
     set_current_inspector_joint(Some(info));
     let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
@@ -124,7 +124,7 @@ fn click_real(info: InspectorJointInfo, id: ph2d_a11y::NodeId) -> Vec<EditorActi
 }
 
 fn commit(info: InspectorJointInfo, id: ph2d_a11y::NodeId, v: f64) -> Vec<EditorAction> {
-    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut host = crate::host_em_metros();
     let mut state = InspectorState::default();
     set_current_inspector_joint(Some(info));
     host.set_number_value(id, v);
@@ -213,7 +213,7 @@ const SPRING_ROWS: [ph2d_a11y::NodeId; 2] = [
 
 /// Tudo o que a §12 pinta para este joint.
 fn painted_ids(info: InspectorJointInfo) -> Vec<ph2d_a11y::NodeId> {
-    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut host = crate::host_em_metros();
     let mut state = InspectorState::default();
     set_current_inspector_joint(Some(info));
     let out = host
@@ -335,7 +335,7 @@ fn the_anchor_b_chips_ask_for_the_side_they_name() {
 fn a_world_pin_withholds_the_b_picker_but_keeps_the_a_one() {
     let mut info = joint(0);
     info.world_anchored = true;
-    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut host = crate::host_em_metros();
     let mut state = InspectorState::default();
     set_current_inspector_joint(Some(info));
     let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
@@ -360,7 +360,7 @@ fn a_world_pin_withholds_the_b_picker_but_keeps_the_a_one() {
 #[test]
 fn both_pickers_paint_for_every_kind() {
     for kind in 0u8..5 {
-        let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+        let mut host = crate::host_em_metros();
         let mut state = InspectorState::default();
         set_current_inspector_joint(Some(joint(kind)));
         let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
@@ -479,7 +479,7 @@ fn each_kind_paints_only_the_rows_it_uses() {
     // (5) e o Wheel (6) chegaram. Agora ela é o COMPRIMENTO do array de chips —
     // um tipo novo entra na varredura sem ninguém lembrar.
     for kind in 0u8..ph2d_panel_inspector::ids::INSP_JOINT_KIND.len() as u8 {
-        let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+        let mut host = crate::host_em_metros();
         let mut state = InspectorState::default();
         set_current_inspector_joint(Some(joint(kind)));
         let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
@@ -569,7 +569,7 @@ fn each_kind_paints_only_the_rows_it_uses() {
 #[test]
 fn the_pin_rows_follow_their_switches() {
     for (limits, motor) in [(false, false), (true, false), (false, true)] {
-        let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+        let mut host = crate::host_em_metros();
         let mut state = InspectorState::default();
         set_current_inspector_joint(Some(InspectorJointInfo {
             limits_enabled: limits,
@@ -605,7 +605,7 @@ fn the_pin_rows_follow_their_switches() {
 /// selected — writing joint parameters onto a sprite.
 #[test]
 fn the_joint_arms_are_silent_when_nothing_is_a_joint() {
-    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut host = crate::host_em_metros();
     let mut state = InspectorState::default();
     set_current_inspector_joint(None);
     for id in [
@@ -657,7 +657,7 @@ fn the_motor_mode_chips_ask_for_the_mode_they_name() {
 #[test]
 fn each_motor_mode_paints_only_its_own_number() {
     for mode in 0u8..2 {
-        let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+        let mut host = crate::host_em_metros();
         let mut state = InspectorState::default();
         set_current_inspector_joint(Some(InspectorJointInfo {
             motor_mode_tag: mode,
@@ -691,7 +691,7 @@ fn each_motor_mode_paints_only_its_own_number() {
 #[test]
 fn switching_the_motor_off_takes_its_instruction_off_the_screen() {
     for on in [false, true] {
-        let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+        let mut host = crate::host_em_metros();
         let mut state = InspectorState::default();
         set_current_inspector_joint(Some(InspectorJointInfo {
             motor_enabled: on,
@@ -741,7 +741,7 @@ fn breaking_is_offered_to_every_kind_and_the_torque_row_follows_the_flag() {
     // na shell); aqui fica só a metade que é do painel.
     for kind in 0u8..ph2d_panel_inspector::ids::INSP_JOINT_KIND.len() as u8 {
         for torque in [false, true] {
-            let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+            let mut host = crate::host_em_metros();
             let mut state = InspectorState::default();
             set_current_inspector_joint(Some(InspectorJointInfo {
                 breaks_on_torque: torque,
@@ -784,7 +784,7 @@ fn breaking_is_offered_to_every_kind_and_the_torque_row_follows_the_flag() {
 #[test]
 fn the_break_rows_follow_their_switch() {
     for on in [false, true] {
-        let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+        let mut host = crate::host_em_metros();
         let mut state = InspectorState::default();
         set_current_inspector_joint(Some(InspectorJointInfo {
             break_enabled: on,
@@ -857,7 +857,7 @@ fn selecting_a_joint_shows_the_thresholds_it_carries() {
     use ph2d_editor_core::screens::hero::InspectorTransformInfo;
     use ph2d_panel_inspector::state::set_current_inspector_transform;
 
-    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut host = crate::host_em_metros();
     let mut state = InspectorState::default();
     set_current_inspector_joint(Some(InspectorJointInfo {
         break_force: 250.0,
@@ -907,7 +907,7 @@ fn the_joint_numbers_follow_the_document_while_the_joint_stays_selected() {
     use ph2d_panel_inspector::ids::{INSP_JOINT_DAMPING, INSP_JOINT_STIFFNESS};
     use ph2d_panel_inspector::state::set_current_inspector_transform;
 
-    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut host = crate::host_em_metros();
     let mut state = InspectorState::default();
     set_current_inspector_transform(Some(InspectorTransformInfo {
         entity_bits: ENTITY,
@@ -1014,7 +1014,7 @@ fn the_pair_controls_are_offered_on_every_kind() {
 #[test]
 fn only_a_pulley_offers_the_add_wheel_button_and_the_click_lands() {
     for kind_tag in 0..=KIND_PULLEY {
-        let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+        let mut host = crate::host_em_metros();
         let mut state = InspectorState::default();
         set_current_inspector_joint(Some(joint(kind_tag)));
         let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
@@ -1200,7 +1200,7 @@ fn every_number_row_the_section_paints_is_seeded_synced_and_routed() {
     for kind in 0u8..ph2d_panel_inspector::ids::INSP_JOINT_KIND.len() as u8 {
         // O que o Inspector pinta SEM joint nenhuma — o controle que isola os
         // ids da §12 dos das outras seções.
-        let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+        let mut host = crate::host_em_metros();
         let mut state = InspectorState::default();
         name();
         let base: Vec<_> = host
@@ -1211,7 +1211,7 @@ fn every_number_row_the_section_paints_is_seeded_synced_and_routed() {
         set_current_inspector_name(None);
 
         // E com ela.
-        let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+        let mut host = crate::host_em_metros();
         let mut state = InspectorState::default();
         name();
         set_current_inspector_joint(Some(numbered(kind)));
@@ -1290,7 +1290,7 @@ fn every_number_row_the_section_paints_is_seeded_synced_and_routed() {
 #[test]
 fn a_pulleys_rope_length_follows_the_derived_number_unless_you_are_typing() {
     const PULLEY: u8 = 7;
-    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut host = crate::host_em_metros();
     let mut state = InspectorState::default();
 
     // A ponte semeou 11,965 na corda; a caixa ainda não sabe.
@@ -1358,7 +1358,7 @@ fn the_paste_button_is_absent_until_something_is_copied() {
     for (targets, want_paste) in [(0usize, false), (1, true), (7, true)] {
         let mut info = joint(0);
         info.paste_targets = targets;
-        let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+        let mut host = crate::host_em_metros();
         let mut state = InspectorState::default();
         set_current_inspector_joint(Some(info));
         let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
@@ -1464,7 +1464,7 @@ fn an_axis_shows_its_stops_only_while_it_is_limited() {
     for mode in 0u8..3 {
         let mut info = joint(KIND_CUSTOM);
         info.axis_mode_tag = [mode, mode, mode];
-        let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+        let mut host = crate::host_em_metros();
         let mut state = InspectorState::default();
         set_current_inspector_joint(Some(info));
         let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
@@ -1492,7 +1492,7 @@ fn an_axis_shows_its_stops_only_while_it_is_limited() {
 #[test]
 fn only_a_custom_paints_the_axis_rows() {
     for tag in 0u8..8 {
-        let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+        let mut host = crate::host_em_metros();
         let mut state = InspectorState::default();
         set_current_inspector_joint(Some(joint(tag)));
         let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);

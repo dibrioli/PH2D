@@ -267,6 +267,25 @@ const fn limit_unit(kind_tag: u8) -> ph2d_editor_core::widget::Unit {
     }
 }
 
+/// ⭐ **A unidade GUARDADA de um número da junta** — pelo tipo (batentes, motor) ou pelo eixo
+/// (Custom). A porta px/m ([`crate::unidade_mundo`]) lê-a daqui, das mesmas funções que a pintura.
+pub(crate) fn unidade_guardada(
+    info: &InspectorJointInfo,
+    id: NodeId,
+) -> Option<ph2d_editor_core::widget::Unit> {
+    let (taxa, lugar) = motor_units(info);
+    match id {
+        ids::INSP_JOINT_LIMIT_MIN | ids::INSP_JOINT_LIMIT_MAX => Some(limit_unit(info.kind_tag)),
+        ids::INSP_JOINT_MOTOR_SPEED => Some(taxa),
+        ids::INSP_JOINT_MOTOR_TARGET => Some(lugar),
+        _ => ids::INSP_JOINT_AXIS_MIN
+            .iter()
+            .position(|&o| o == id)
+            .or_else(|| ids::INSP_JOINT_AXIS_MAX.iter().position(|&o| o == id))
+            .map(custom::unidade_do_eixo),
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn paint_joint_section(
     scene: &mut VectorScene,

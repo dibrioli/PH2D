@@ -54,7 +54,7 @@ pub(crate) fn apply_wheel_event(host: &mut dyn PanelHostInternal, ev: WidgetEven
                     .map(|i| WheelFieldEdit::Weston(i == 1))
             }),
         WidgetEvent::ValueChanged(id) => {
-            let v = host.store().number_value(id).unwrap_or(0.0);
+            let v = crate::unidade_mundo::le(host, id).unwrap_or(0.0);
             match id {
                 crate::ids::INSP_WHEEL_RADIUS => Some(WheelFieldEdit::Radius(v as f32)),
                 crate::ids::INSP_WHEEL_RADIUS_OUT => Some(WheelFieldEdit::RadiusOut(v as f32)),

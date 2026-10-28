@@ -107,9 +107,41 @@ pub(super) use ph2d_editor_core::property_row::paint_label_row as property_label
 
 /// ⭐ **A LINHA DE VÁRIAS COMPONENTES** — hoje é a porta de `ph2d-editor-core`.
 ///
-/// ⚠️ **A implementação MUDOU-SE em 2026-09-15** (`widget::paint_property_fields_row`), pelo mesmo
-/// motivo da irmã acima. Os 23 sítios do Inspector não mudaram de forma: o nome curto fica.
-pub(super) use ph2d_editor_core::property_row::paint_fields_row as fields_row;
+/// ⭐ O sufixo e o passo de um número de MUNDO passam pela porta px/m
+/// ([`crate::unidade_mundo::no_campo`]) — a secção declara a unidade GUARDADA (`m`, `m/s`).
+#[allow(clippy::too_many_arguments)]
+pub(super) fn fields_row<'a>(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+    label: impl Into<ph2d_editor_core::widget::key_mark::Rotulo<'a>>,
+    field_ids: &[NodeId],
+    step: f64,
+    unit: Option<ph2d_editor_core::widget::Unit>,
+    seccao: ph2d_editor_core::property_row::Seccao,
+) -> f32 {
+    let (unit, step) = crate::unidade_mundo::no_campo(field_ids, unit, step);
+    ph2d_editor_core::property_row::paint_fields_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        y,
+        label,
+        field_ids,
+        step,
+        unit,
+        seccao,
+    )
+}
 
 /// A altura que uma [`num_row`] consome — **uma linha**.
 ///
@@ -254,10 +286,8 @@ pub(super) fn num_row<'a>(
 /// competir por espaço com o NOME; pô-la no campo põe-na ao lado do valor, que é onde ela é lida.
 /// É o que o Blender, o Godot e o Illustrator fazem.
 ///
-/// ⏳ **Dívida NOMEADA:** quando a unidade é um COMPRIMENTO, o app tem uma definição de projecto
-/// (`DisplayUnit`, metros ⇄ pixels) e esta porta ainda mostra a unidade **fixa** que a tabela
-/// declara. ⛔ Ligar as duas exige converter também o VALOR — mostrar `px` sobre um número em
-/// metros seria trocar um rótulo comprido por um rótulo MENTIROSO. Wave própria.
+/// ⭐ **Um número de MUNDO segue o seletor px/m** (report do dono 27/10): a secção declara a
+/// unidade guardada e a porta [`crate::unidade_mundo`] converte sufixo, semente e escrita.
 #[allow(clippy::too_many_arguments)]
 pub(super) fn num_row_unit<'a>(
     scene: &mut VectorScene,
@@ -286,6 +316,7 @@ pub(super) fn num_row_unit<'a>(
     // ⚠️ **A altura de uma row cai de `label_h + passo` para o PASSO** (~16 px por linha), e é por
     // isso que a [`num_row_h`] encolheu no mesmo commit: a `card_h` deriva dela, e as duas têm de
     // continuar a ser a mesma resposta — senão a moldura do card nasce por cima das caixas.
+    let (unit, _) = crate::unidade_mundo::no_campo(&[id], unit, 0.0);
     let rotulo = label.into();
     let label = rotulo.texto;
     let row = ph2d_editor_core::widget::property_row_columns_for(

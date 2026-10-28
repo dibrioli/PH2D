@@ -139,7 +139,7 @@ pub(crate) fn apply_anchor_event(
     }
 
     if let WidgetEvent::ValueChanged(id) = ev {
-        let v = host.store().number_value(id).unwrap_or(0.0) as f32;
+        let v = crate::unidade_mundo::le(host, id).unwrap_or(0.0) as f32;
         // ⚠️ Cada campo despacha SÓ o seu eixo — a lei do `PerCornerTintAt`.
         let edit = crate::ids::INSP_ANCHOR_POS
             .iter()

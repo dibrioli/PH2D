@@ -129,7 +129,7 @@ pub(crate) fn sync(
             if focus == Some(id) || drag == Some(id) {
                 continue; // a mão do artista ganha ao instantâneo
             }
-            host.store_mut().set_number_value(id, f64::from(v));
+            crate::unidade_mundo::semeia(host, id, f64::from(v));
         }
     }
     // ⭐⭐⭐ **A DURAÇÃO do relógio, em SEGUNDOS** — a quinta vez que esta casa escreve esta linha,
@@ -142,7 +142,7 @@ pub(crate) fn sync(
         let id = crate::ids::INSP_TWEEN_DURACAO;
         if focus != Some(id) && drag != Some(id) {
             #[allow(clippy::cast_precision_loss)]
-            host.store_mut().set_number_value(id, us as f64 / 1e6);
+            crate::unidade_mundo::semeia(host, id, us as f64 / 1e6);
         }
     }
 }

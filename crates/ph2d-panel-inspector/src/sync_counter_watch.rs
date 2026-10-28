@@ -57,8 +57,7 @@ pub(crate) fn sync(
             reason = "o limiar é um i64 e o campo é um f64: acima de 2^53 o painel não é o \
                       instrumento certo, e a lei continua a comparar em i64"
         )]
-        host.store_mut()
-            .set_number_value(crate::ids::INSP_WATCH_VALUE, row.value as f64);
+        crate::unidade_mundo::semeia(host, crate::ids::INSP_WATCH_VALUE, row.value as f64);
     }
     // ⚠️ **Os DOIS textos pelo mesmo laço, e pela porta partilhada** — um deles escrito à mão ao
     // lado do outro é como o segundo nasce sem a cerca do FOCO e apaga a letra que se está a

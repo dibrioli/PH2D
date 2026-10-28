@@ -143,7 +143,7 @@ pub(crate) fn sync_camera_fields(
     }
     for (id, v) in numeros {
         if focus != Some(id) && drag != Some(id) {
-            host.store_mut().set_number_value(id, v);
+            crate::unidade_mundo::semeia(host, id, v);
         }
     }
 }

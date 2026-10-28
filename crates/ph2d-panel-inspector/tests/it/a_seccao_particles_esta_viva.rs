@@ -37,7 +37,7 @@ fn pointer(kind: PointerKind, x: f32, y: f32, t: u128) -> PointerEvent {
 }
 
 /// O emissor da cena de smoke: uma fonte a emitir, num disco, no espaço do mundo.
-fn info() -> InspectorParticlesInfo {
+pub(crate) fn info() -> InspectorParticlesInfo {
     InspectorParticlesInfo {
         entity_bits: BITS,
         emitting: true,

@@ -86,7 +86,7 @@ pub(crate) fn apply_particles_event(host: &mut dyn PanelHostInternal, ev: Widget
             clippy::cast_possible_truncation,
             reason = "o campo do componente é f32"
         )]
-        let v = host.store().number_value(id).unwrap_or(0.0) as f32;
+        let v = crate::unidade_mundo::le(host, id).unwrap_or(0.0) as f32;
         push(host, bits, E::Number(campo, v));
         return true;
     }

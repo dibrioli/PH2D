@@ -74,7 +74,7 @@ pub(crate) fn sync_camera(
         if focus == Some(id) || drag == Some(id) {
             continue; // a mão do artista ganha ao instantâneo
         }
-        host.store_mut().set_number_value(id, v);
+        crate::unidade_mundo::semeia(host, id, v);
     }
 }
 
@@ -113,6 +113,6 @@ pub(crate) fn sync_emitter(
         if focus == Some(id) || drag == Some(id) {
             continue;
         }
-        host.store_mut().set_number_value(id, v);
+        crate::unidade_mundo::semeia(host, id, v);
     }
 }

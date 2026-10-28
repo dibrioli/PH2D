@@ -27,7 +27,7 @@ const BITS: u64 = 0x00BA_7700;
 
 /// ⭐ Uma barra que **NÃO** é o `HealthBar::default()` em nenhum campo — *um corpus no neutro de um
 /// knob não testa esse knob*.
-fn barra() -> InspectorBarInfo {
+pub(crate) fn barra() -> InspectorBarInfo {
     InspectorBarInfo {
         target: "Heroi".into(),
         width: 2.5,
@@ -48,7 +48,7 @@ fn barra() -> InspectorBarInfo {
 }
 
 /// Um objecto que só tem a barra — a do PLACAR.
-fn info(b: InspectorBarInfo) -> InspectorVidaInfo {
+pub(crate) fn info(b: InspectorBarInfo) -> InspectorVidaInfo {
     InspectorVidaInfo {
         entity_bits: BITS,
         health: None,
@@ -61,7 +61,7 @@ fn info(b: InspectorBarInfo) -> InspectorVidaInfo {
 }
 
 fn host(i: InspectorVidaInfo) -> (MockPanelHost, InspectorState) {
-    let h = MockPanelHost::with_panel::<InspectorPanel>();
+    let h = crate::host_em_metros();
     set_current_inspector_vida(Some(i));
     (h, InspectorState::default())
 }
@@ -335,7 +335,7 @@ fn a_barra_do_inimigo_mora_ao_lado_da_vida_dele() {
 }
 
 /// Uma vida com os NÚMEROS de dano ligados (plano 28, W5) — é isso que pinta a amostra da cor.
-fn vida_com_numeros() -> InspectorHealthInfo {
+pub(crate) fn vida_com_numeros() -> InspectorHealthInfo {
     InspectorHealthInfo {
         max: 30.0,
         start: 30.0,

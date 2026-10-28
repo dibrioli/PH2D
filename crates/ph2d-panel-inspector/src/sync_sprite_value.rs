@@ -54,7 +54,8 @@ pub(crate) fn sync_sprite_sliders(
                 .blank_number_input(crate::ids::INSP_SPRITE_OPACITY_CHIP);
         } else {
             // Chip lives in display space (percent) per the integer map.
-            host.store_mut().set_number_value(
+            crate::unidade_mundo::semeia(
+                host,
                 crate::ids::INSP_SPRITE_OPACITY_CHIP,
                 (sp.opacity * 100.0) as f64, // LITERAL-PX-OK: opacity percent scale
             );
@@ -86,7 +87,8 @@ pub(crate) fn sync_sprite_sliders(
             host.store_mut()
                 .blank_number_input(crate::ids::INSP_SPRITE_EMISSIVE_CHIP);
         } else {
-            host.store_mut().set_number_value(
+            crate::unidade_mundo::semeia(
+                host,
                 crate::ids::INSP_SPRITE_EMISSIVE_CHIP,
                 f64::from(sp.emissive),
             );

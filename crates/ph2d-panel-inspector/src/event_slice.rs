@@ -155,10 +155,7 @@ pub(crate) fn apply_slice_event(host: &mut dyn PanelHostInternal, ev: WidgetEven
         // fan-out de seleção múltipla, as bordas divergentes de todas as outras sprites — a lei
         // que o `PerCornerTintAt` e o `RegionX/Y/W/H` já pagaram.
         if let Some(i) = crate::ids::INSP_SLICE_BORDER.iter().position(|&o| o == id) {
-            let v = host
-                .store()
-                .number_value(id)
-                .unwrap_or(f64::from(info.borders[i])) as f32;
+            let v = crate::unidade_mundo::le(host, id).unwrap_or(f64::from(info.borders[i])) as f32;
             host.bus_mut().push(EditorAction::InspectorSliceEdit {
                 entity_bits: info.entity_bits,
                 edit: SliceFieldEdit::Border(i as u8, v),
@@ -166,10 +163,7 @@ pub(crate) fn apply_slice_event(host: &mut dyn PanelHostInternal, ev: WidgetEven
             return true;
         }
         if let Some(i) = crate::ids::INSP_SLICE_SIZE.iter().position(|&o| o == id) {
-            let v = host
-                .store()
-                .number_value(id)
-                .unwrap_or(f64::from(info.size[i])) as f32;
+            let v = crate::unidade_mundo::le(host, id).unwrap_or(f64::from(info.size[i])) as f32;
             let edit = if i == 0 {
                 SliceFieldEdit::SizeX(v)
             } else {

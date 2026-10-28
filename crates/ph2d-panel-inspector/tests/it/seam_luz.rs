@@ -21,7 +21,7 @@ const VIEWPORT: Rect = Rect {
 
 /// ⚠️ O tipo da fixtura é o ÚLTIMO (Ambiente) só onde o gate o pede; aqui é Ponto com alcance
 /// FINITO, para os cinco controlos estarem todos pintados.
-fn ponto() -> InspectorLuzInfo {
+pub(crate) fn ponto() -> InspectorLuzInfo {
     InspectorLuzInfo {
         entity_bits: ENTITY,
         cor_srgb: [255, 200, 150],
@@ -47,7 +47,7 @@ fn pinta(
     InspectorState,
     Vec<(ph2d_a11y::NodeId, Rect)>,
 ) {
-    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut host = crate::host_em_metros();
     let mut state = InspectorState::default();
     set_current_inspector_luz(Some(info));
     let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);

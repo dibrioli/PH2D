@@ -74,8 +74,7 @@ pub(crate) fn sync_statemachine_fields(
         && focus != Some(crate::ids::INSP_SM_INITIAL)
         && drag != Some(crate::ids::INSP_SM_INITIAL)
     {
-        host.store_mut()
-            .set_number_value(crate::ids::INSP_SM_INITIAL, f64::from(sm.initial));
+        crate::unidade_mundo::semeia(host, crate::ids::INSP_SM_INITIAL, f64::from(sm.initial));
     }
     if semeia_estado && let Some(r) = sm.states.get(est) {
         for (id, value) in [
@@ -92,7 +91,7 @@ pub(crate) fn sync_statemachine_fields(
             (crate::ids::INSP_SM_TRANS_TO, t.to),
         ] {
             if focus != Some(id) && drag != Some(id) {
-                host.store_mut().set_number_value(id, f64::from(v));
+                crate::unidade_mundo::semeia(host, id, f64::from(v));
             }
         }
         crate::sync_text_field::escreve_texto(host, focus, crate::ids::INSP_SM_TRANS_ON, &t.on);

@@ -88,6 +88,12 @@ pub enum Unit {
     /// ⭐ **Vezes** — um multiplicador (a duração de um quadro sobre o ritmo da animação, a lei do
     /// Godot). ⚠️ `x` é o fim de `px` ⇒ depois de [`Unit::Px`] em [`Unit::ALL`].
     Times,
+    /// ⭐ **Pixels por segundo** — a [`Unit::MetersPerSecond`] com o projecto em px (o seletor
+    /// px/m do Settings, a mesma conta do Transform). Acaba em `s` ⇒ antes de [`Unit::Seconds`].
+    PxPerSecond,
+    /// ⭐ **Pixels por segundo ao quadrado** — a [`Unit::MetersPerSecondSquared`] em px. ASCII
+    /// (`px/s2`) pela razão da irmã em metros.
+    PxPerSecondSquared,
 }
 
 impl Unit {
@@ -108,6 +114,8 @@ impl Unit {
             Unit::Milliseconds => "ms",
             Unit::PerSecond => "1/s",
             Unit::Times => "x",
+            Unit::PxPerSecond => "px/s",
+            Unit::PxPerSecondSquared => "px/s2",
         }
     }
 
@@ -115,12 +123,15 @@ impl Unit {
     ///
     /// ⚠️ Pública para que o gate possa medir a ORDEM em vez de a repetir — uma cópia da lista no
     /// teste provaria que a cópia está ordenada, não que o parser está.
-    pub const ALL: [Unit; 14] = [
+    pub const ALL: [Unit; 16] = [
         // ⚠️ `deg/s` acaba em `s` ⇒ antes de `Seconds`. (E `deg` **não** é o fim de `deg/s`, logo
         //    `Degrees` pode ficar onde está.)
         Unit::DegreesPerSecond,
         Unit::Degrees,
         Unit::Radians,
+        // ⚠️ `px/s2` e `px/s` acabam em `s2`/`s` ⇒ antes de `Seconds` (e nenhum é fim do outro).
+        Unit::PxPerSecondSquared,
+        Unit::PxPerSecond,
         Unit::MetersPerSecondSquared,
         Unit::MetersPerSecond,
         Unit::Px,

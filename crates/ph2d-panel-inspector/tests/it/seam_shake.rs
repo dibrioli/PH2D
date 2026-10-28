@@ -33,7 +33,7 @@ const VIEWPORT: Rect = Rect {
 
 /// ⚠️ **O expoente da fixtura é o MÁXIMO**, e é deliberado: com o de fábrica no meio da faixa, um
 /// despacho que mandasse sempre o valor de fábrica passaria em metade dos chips.
-fn info_camera() -> InspectorShakeInfo {
+pub(crate) fn info_camera() -> InspectorShakeInfo {
     InspectorShakeInfo {
         entity_bits: ENTITY,
         amplitude: 0.25,
@@ -50,7 +50,7 @@ fn info_camera() -> InspectorShakeInfo {
 
 /// ⚠️ **DUAS fontes, e a aberta é a `1`** — *uma fixtura com um elemento não pode testar um índice*
 /// (`get(0)` e `first()` são a mesma coisa), a lição que esta linha pagou três vezes no #22.
-fn info_emissor() -> InspectorEmitterInfo {
+pub(crate) fn info_emissor() -> InspectorEmitterInfo {
     let f = |on: &str| InspectorEmitterRow {
         on: on.into(),
         de: 0,

@@ -77,7 +77,7 @@ pub(crate) fn apply_joint_event(host: &mut dyn PanelHostInternal, ev: WidgetEven
             }
         }
         WidgetEvent::ValueChanged(id) => {
-            let v = host.store().number_value(id).unwrap_or(0.0) as f32;
+            let v = crate::unidade_mundo::le(host, id).unwrap_or(0.0) as f32;
             match id {
                 crate::ids::INSP_JOINT_LIMIT_MIN => Some(JointFieldEdit::LimitMin(v)),
                 crate::ids::INSP_JOINT_LIMIT_MAX => Some(JointFieldEdit::LimitMax(v)),

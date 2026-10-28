@@ -11,7 +11,6 @@ use ph2d_editor_core::topdown_edits::{
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_panel_inspector::{InspectorPanel, InspectorState, ids, set_current_inspector_topdown};
-use ph2d_ui_testkit::MockPanelHost;
 
 const VIEWPORT: Rect = Rect {
     x: 0.0,
@@ -22,7 +21,7 @@ const VIEWPORT: Rect = Rect {
 
 /// ⭐ Um mover que **NÃO** é o de fábrica em nenhum número — *um corpus no neutro de um knob não
 /// testa esse knob*, e aqui o neutro é exactamente o que o defeito mostrava.
-fn mover() -> InspectorTopDownInfo {
+pub(crate) fn mover() -> InspectorTopDownInfo {
     InspectorTopDownInfo {
         entity_bits: 0x00CD_5678,
         speed: 9.5,
@@ -62,7 +61,7 @@ const NUMEROS: [(ph2d_a11y::NodeId, f64); 8] = [
 /// **Mutação que deve sangrar:** tirar a chamada do `sync_topdown` do `sync_sections`.
 #[test]
 fn os_campos_do_mover_mostram_o_que_o_objecto_tem() {
-    let mut h = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut h = crate::host_em_metros();
     let mut st = InspectorState::default();
     set_current_inspector_topdown(Some(mover()));
     let _ = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
@@ -85,7 +84,7 @@ fn os_campos_do_mover_mostram_o_que_o_objecto_tem() {
 /// **Mutação que deve sangrar:** tirar o `INSP_TD_KNOCKBACK_RECOVERY` do `populate_topdown`.
 #[test]
 fn a_linha_do_empurrao_esta_viva_sob_o_dedo() {
-    let mut h = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut h = crate::host_em_metros();
     let mut st = InspectorState::default();
     set_current_inspector_topdown(Some(mover()));
     let rects = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
@@ -111,7 +110,7 @@ fn a_linha_do_empurrao_esta_viva_sob_o_dedo() {
 fn o_numero_do_empurrao_pede_a_edicao_dele() {
     use ph2d_editor_core::action_bus::{ComponentEdit, EditorAction};
     use ph2d_editor_core::interaction::WidgetEvent;
-    let mut h = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut h = crate::host_em_metros();
     let mut st = InspectorState::default();
     set_current_inspector_topdown(Some(mover()));
     let _ = h.paint::<InspectorPanel>(&mut st, VIEWPORT);

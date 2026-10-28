@@ -35,7 +35,7 @@ fn row(name: &str, bounds: Option<[f32; 4]>, center: Option<[f32; 4]>) -> Inspec
 }
 
 /// Três âncoras, e a **segunda é uma `Region`** — o estado em que todos os campos existem.
-fn info() -> InspectorAnchorInfo {
+pub(crate) fn info() -> InspectorAnchorInfo {
     InspectorAnchorInfo {
         entity_bits: ENTITY,
         rows: vec![

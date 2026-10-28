@@ -41,7 +41,7 @@ const VIEWPORT: Rect = Rect {
 
 /// Um seguidor SÃO, e a fixtura declara-o: **com nome, com forma e com relógio**. Sem isso a queixa
 /// toma a primeira linha e o bloco do relógio nem é pintado.
-fn info() -> InspectorPathFollowInfo {
+pub(crate) fn info() -> InspectorPathFollowInfo {
     InspectorPathFollowInfo {
         entity_bits: ENTITY,
         caminho: "Trilho".into(),

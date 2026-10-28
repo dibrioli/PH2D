@@ -29,7 +29,7 @@ const VIEWPORT: Rect = Rect {
 /// ⭐ Uma vida que **NÃO** é o `Health::default()` em nenhum campo, com os três interruptores de
 /// linhas condicionais LIGADOS (regeneração · escudo · esquiva) — *um corpus no NEUTRO de um knob
 /// não testa esse knob*, e aqui o neutro de três deles ESCONDE linhas.
-fn vida() -> InspectorHealthInfo {
+pub(crate) fn vida() -> InspectorHealthInfo {
     InspectorHealthInfo {
         max: 120.0,
         start: 90.0,
@@ -82,7 +82,7 @@ fn vida() -> InspectorHealthInfo {
     }
 }
 
-fn dano() -> InspectorDamageInfo {
+pub(crate) fn dano() -> InspectorDamageInfo {
     InspectorDamageInfo {
         amount: 15.0,
         team: "player".into(),
@@ -102,7 +102,7 @@ fn dano() -> InspectorDamageInfo {
     }
 }
 
-fn info(
+pub(crate) fn info(
     health: Option<InspectorHealthInfo>,
     damage: Option<InspectorDamageInfo>,
 ) -> InspectorVidaInfo {
@@ -118,7 +118,7 @@ fn info(
 }
 
 fn host(i: InspectorVidaInfo) -> (MockPanelHost, InspectorState) {
-    let h = MockPanelHost::with_panel::<InspectorPanel>();
+    let h = crate::host_em_metros();
     set_current_inspector_vida(Some(i));
     (h, InspectorState::default())
 }
@@ -330,7 +330,7 @@ fn cada_seccao_so_existe_para_quem_tem_o_componente() {
     );
     set_current_inspector_vida(None);
 
-    let mut h = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut h = crate::host_em_metros();
     let mut st = InspectorState::default();
     let rects = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
     assert!(

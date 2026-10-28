@@ -85,7 +85,7 @@ pub(crate) fn apply_nav_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent)
 
     if let WidgetEvent::ValueChanged(id) = ev {
         #[allow(clippy::cast_possible_truncation)]
-        let f = host.store().number_value(id).unwrap_or(0.0) as f32;
+        let f = crate::unidade_mundo::le(host, id).unwrap_or(0.0) as f32;
         // ⚠️ **Um `match` e não um `if` por campo** — com `if`s, o terceiro acaba a escrever no
         // primeiro (a lição dos três campos de texto da tabela de acções).
         let edit = match id {

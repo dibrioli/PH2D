@@ -118,6 +118,12 @@ const ROTULOS: [(TextKey, f64, Option<ph2d_editor_core::widget::Unit>); 19] = [
     ), // LITERAL-PX-OK: fracção do tamanho ao nascer
 ];
 
+/// A unidade GUARDADA do número `i` (pela ordem do modelo) — a porta px/m
+/// ([`crate::unidade_mundo`]) lê-a daqui, da mesma tabela que a pintura usa.
+pub(crate) fn unidade_guardada(i: usize) -> Option<ph2d_editor_core::widget::Unit> {
+    ROTULOS.get(i).and_then(|r| r.2)
+}
+
 /// Um título de módulo — a arrumação que separa *quantas* de *como saem* e de *como são*.
 fn titulo(
     scene: &mut VectorScene,

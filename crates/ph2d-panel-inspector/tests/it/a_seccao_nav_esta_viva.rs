@@ -28,7 +28,7 @@ const VIEWPORT: Rect = Rect {
 };
 
 /// Uma região fora do neutro em todo campo (`NavRegion::default()` é `10 × 10` e todas as camadas).
-fn regiao() -> InspectorNavRegion {
+pub(crate) fn regiao() -> InspectorNavRegion {
     InspectorNavRegion {
         half_w: 6.5,
         half_h: 3.25,
@@ -37,7 +37,7 @@ fn regiao() -> InspectorNavRegion {
 }
 
 /// Um agente fora do neutro em todo campo — *um corpus no NEUTRO de um knob não testa esse knob*.
-fn agente(modo: NavAlvoModo) -> InspectorNavAgent {
+pub(crate) fn agente(modo: NavAlvoModo) -> InspectorNavAgent {
     InspectorNavAgent {
         alvo_modo: modo,
         alvo_nome: "Hero".into(),
@@ -66,7 +66,10 @@ fn agente(modo: NavAlvoModo) -> InspectorNavAgent {
     }
 }
 
-fn info(region: Option<InspectorNavRegion>, agent: Option<InspectorNavAgent>) -> InspectorNavInfo {
+pub(crate) fn info(
+    region: Option<InspectorNavRegion>,
+    agent: Option<InspectorNavAgent>,
+) -> InspectorNavInfo {
     InspectorNavInfo {
         entity_bits: 0x00CD_5678,
         region,
@@ -79,7 +82,7 @@ fn info(region: Option<InspectorNavRegion>, agent: Option<InspectorNavAgent>) ->
 }
 
 fn host(i: InspectorNavInfo) -> (MockPanelHost, InspectorState) {
-    let h = MockPanelHost::with_panel::<InspectorPanel>();
+    let h = crate::host_em_metros();
     set_current_inspector_nav(Some(i));
     (h, InspectorState::default())
 }
@@ -251,7 +254,7 @@ fn cada_seccao_so_existe_para_quem_tem_o_componente() {
     );
     set_current_inspector_nav(None);
 
-    let mut h = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut h = crate::host_em_metros();
     let mut st = InspectorState::default();
     let rects = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
     assert!(

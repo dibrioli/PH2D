@@ -55,8 +55,7 @@ pub(crate) fn sync(
     let drag = host.store().number_input_drag().map(|d| d.id);
     let valor = crate::ids::INSP_MI_VALUE;
     if focus != Some(valor) && drag != Some(valor) {
-        host.store_mut()
-            .set_number_value(valor, f64::from(info.value));
+        crate::unidade_mundo::semeia(host, valor, f64::from(info.value));
     }
     crate::sync_text_field::escreve_texto(host, focus, crate::ids::INSP_MI_NAME, &info.name);
 }

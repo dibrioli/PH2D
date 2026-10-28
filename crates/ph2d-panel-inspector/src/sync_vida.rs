@@ -212,7 +212,7 @@ pub(crate) fn sync(
         if focus == Some(id) || drag == Some(id) {
             continue; // a mão do artista ganha ao instantâneo
         }
-        host.store_mut().set_number_value(id, v);
+        crate::unidade_mundo::semeia(host, id, v);
     }
     for (id, t) in textos(&info, aberta) {
         crate::sync_text_field::escreve_texto(host, focus, id, t);

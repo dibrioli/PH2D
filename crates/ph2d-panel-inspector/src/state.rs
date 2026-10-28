@@ -123,6 +123,13 @@ pub struct InspectorState {
     /// o que o artista está a digitar antes de o commit da shell voltar.
     /// A assinatura do último instantâneo do HUD — a aresta que semeia a secção.
     pub last_hud_sig: Option<u64>,
+    /// A assinatura dos números de Factory · Lifecycle · Projectile (`sync_fabrica`).
+    pub last_fabrica_sig: Option<u64>,
+    /// O seletor px/m da última semente — mudá-lo re-semeia tudo (`sync.rs`).
+    pub last_display: Option<(bool, u32)>,
+    /// As faixas e taxas de arrasto dos números de mundo, na unidade GUARDADA
+    /// ([`crate::unidade_mundo::reescala_faixas`]).
+    pub faixas_mundo: crate::unidade_mundo::FaixasOriginais,
     pub last_particles_sig: Option<u64>,
     /// RAY SENSOR — idem. ⛔ Esta linha FALTAVA e a secção shipou a mostrar os valores de FÁBRICA
     /// do `populate_ray`; quem a apanhou foi uma foto (ver o cabeçalho do `sync_ray`).

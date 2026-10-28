@@ -55,7 +55,7 @@ pub(crate) fn sync_joint_fields(host: &mut dyn PanelHostInternal) {
         (crate::ids::INSP_JOINT_AXIS_MAX[2], info.axis_max_ui[2]),
     ] {
         if focus != Some(id) && drag != Some(id) {
-            host.store_mut().set_number_value(id, f64::from(v));
+            crate::unidade_mundo::semeia(host, id, f64::from(v));
         }
     }
 }
@@ -72,7 +72,9 @@ pub(crate) fn sync_physics_fields(host: &mut dyn PanelHostInternal) {
     let Some(info) = state::current_inspector_physics() else {
         return;
     };
-    if !info.has_body {
+    // ⚠️ Uma PEÇA (collider sem corpo) também mostra a forma e o offset — sem ela na semente as
+    // caixas dela eram WRITE-ONLY (o `0,5` do `populate`).
+    if !info.has_body && !info.has_collider {
         return;
     }
     for (id, v) in [
@@ -111,7 +113,7 @@ pub(crate) fn sync_physics_fields(host: &mut dyn PanelHostInternal) {
         (crate::ids::INSP_PHYS_AREA_DENSITY, info.area_density),
         (crate::ids::INSP_PHYS_AREA_FORM_DRAG, info.area_form_drag),
     ] {
-        host.store_mut().set_number_value(id, f64::from(v));
+        crate::unidade_mundo::semeia(host, id, f64::from(v));
     }
     // **Os dois nomes de sinal** (W-Signal · W-SignalLeave).
     //
@@ -182,7 +184,7 @@ pub(crate) fn sync_wheel_fields(host: &mut dyn PanelHostInternal) {
         ),
     ] {
         if focus != Some(id) && drag != Some(id) {
-            host.store_mut().set_number_value(id, v);
+            crate::unidade_mundo::semeia(host, id, v);
         }
     }
 }
@@ -252,6 +254,6 @@ pub(crate) fn sync_player_fields(host: &mut dyn PanelHostInternal) {
         ),
         (crate::ids::INSP_PLAYER_REACT_PUSH, info.reaction_push),
     ] {
-        host.store_mut().set_number_value(id, f64::from(v));
+        crate::unidade_mundo::semeia(host, id, f64::from(v));
     }
 }

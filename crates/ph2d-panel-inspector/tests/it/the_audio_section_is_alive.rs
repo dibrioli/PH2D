@@ -40,7 +40,7 @@ fn pointer(kind: PointerKind, x: f32, y: f32, t: u128) -> PointerEvent {
     }
 }
 
-fn fonte() -> InspectorAudioSource {
+pub(crate) fn fonte() -> InspectorAudioSource {
     InspectorAudioSource {
         sound: "/tmp/passo.wav".into(),
         volume_db: 0.0,
@@ -61,7 +61,11 @@ fn fonte() -> InspectorAudioSource {
 /// ⚠️ **Os rótulos são escritos à mão de propósito** (o painel não conhece o enum), e por isso o
 /// gate confere que a fixtura ainda cobre o modelo — senão um barramento novo dá um *«a entrada 4
 /// não foi pintada»* que parece um defeito do painel.
-fn info(source: Option<InspectorAudioSource>, is_listener: bool, n: usize) -> InspectorAudioInfo {
+pub(crate) fn info(
+    source: Option<InspectorAudioSource>,
+    is_listener: bool,
+    n: usize,
+) -> InspectorAudioInfo {
     let i = InspectorAudioInfo {
         entity_bits: 0xABCD_1234,
         source,

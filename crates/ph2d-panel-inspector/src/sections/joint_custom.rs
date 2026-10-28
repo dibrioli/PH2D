@@ -35,6 +35,11 @@ const AXIS_ROWS: [(TextKey, ph2d_editor_core::widget::Unit); 3] = [
     ),
 ];
 
+/// A unidade do eixo `i` (X/Y metros, Rotation graus).
+pub(super) fn unidade_do_eixo(i: usize) -> ph2d_editor_core::widget::Unit {
+    AXIS_ROWS[i.min(AXIS_ROWS.len() - 1)].1
+}
+
 /// Free / Limited / Locked.
 const AXIS_MODE_LABELS: [TextKey; 3] = [
     TextKey::new("panel.inspector.joint.free"),

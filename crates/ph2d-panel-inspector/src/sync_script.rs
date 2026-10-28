@@ -87,7 +87,7 @@ pub(crate) fn sync(
                 };
                 faixa(host, id, p.min, p.max, p.step);
                 if focus != Some(id) && drag != Some(id) {
-                    host.store_mut().set_number_value(id, *v);
+                    crate::unidade_mundo::semeia(host, id, *v);
                 }
             }
             V::Text(t) | V::Object(t) => {
@@ -105,7 +105,7 @@ pub(crate) fn sync(
                     let Some(&id) = tabela.get(i) else { break };
                     faixa(host, id, p.min, p.max, p.step);
                     if focus != Some(id) && drag != Some(id) {
-                        host.store_mut().set_number_value(id, v[k]);
+                        crate::unidade_mundo::semeia(host, id, v[k]);
                     }
                 }
             }

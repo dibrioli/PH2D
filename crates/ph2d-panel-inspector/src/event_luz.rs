@@ -29,16 +29,15 @@ pub(crate) fn apply_luz_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent)
                 E::Alcance(f32::INFINITY)
             } else {
                 #[allow(clippy::cast_possible_truncation)]
-                let v = host
-                    .store()
-                    .number_value(crate::ids::INSP_LUZ_ALCANCE)
-                    .unwrap_or(10.0) as f32; // LITERAL-PX-OK: a partida do `populate_luz`
+                let partida = 10.0; // LITERAL-PX-OK: a partida do `populate_luz`
+                let v = crate::unidade_mundo::le(host, crate::ids::INSP_LUZ_ALCANCE)
+                    .unwrap_or(partida) as f32;
                 E::Alcance(v)
             }
         }
         WidgetEvent::ValueChanged(id) => {
             #[allow(clippy::cast_possible_truncation)]
-            let v = host.store().number_value(id).unwrap_or(0.0) as f32;
+            let v = crate::unidade_mundo::le(host, id).unwrap_or(0.0) as f32;
             if id == crate::ids::INSP_LUZ_INTENSIDADE {
                 E::Intensidade(v)
             } else if id == crate::ids::INSP_LUZ_TAMANHO {
@@ -69,7 +68,7 @@ pub(crate) fn apply_luz_corpo_event(host: &mut dyn PanelHostInternal, ev: Widget
             if id == crate::ids::INSP_LUZ_OPACIDADE && info.oclusor.is_some() =>
         {
             #[allow(clippy::cast_possible_truncation)]
-            let v = host.store().number_value(id).unwrap_or(1.0) as f32; // LITERAL-PX-OK: a partida
+            let v = crate::unidade_mundo::le(host, id).unwrap_or(1.0) as f32; // LITERAL-PX-OK: a partida
             E::Opacidade(v)
         }
         WidgetEvent::Click(id)

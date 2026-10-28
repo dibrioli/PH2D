@@ -20,13 +20,12 @@ use ph2d_editor_core::screens::hero::{
 use ph2d_panel_inspector::{
     InspectorPanel, InspectorState, set_current_inspector_physics, set_current_inspector_transform,
 };
-use ph2d_ui_testkit::MockPanelHost;
 
 const ENTITY: u64 = 0xABCD_1234;
 
 /// An entity that already carries a body — a Box, because that is what the
 /// Add button produces and therefore the state an artist is actually in.
-fn with_body() -> InspectorPhysicsInfo {
+pub(crate) fn with_body() -> InspectorPhysicsInfo {
     InspectorPhysicsInfo {
         entity_bits: ENTITY,
         has_body: true,
@@ -121,7 +120,7 @@ fn without_body() -> InspectorPhysicsInfo {
 
 /// Uma **PEÇA** (W-PartFace): collider sem corpo, pendurada num dono nomeado.
 /// A terceira face do §11.
-fn as_part() -> InspectorPhysicsInfo {
+pub(crate) fn as_part() -> InspectorPhysicsInfo {
     InspectorPhysicsInfo {
         has_body: false,
         has_collider: true,
@@ -131,7 +130,7 @@ fn as_part() -> InspectorPhysicsInfo {
 }
 
 fn click(info: InspectorPhysicsInfo, id: ph2d_a11y::NodeId) -> Vec<EditorAction> {
-    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut host = crate::host_em_metros();
     let mut state = InspectorState::default();
     set_current_inspector_physics(Some(info.clone()));
     let _ = host.apply_panel_event::<InspectorPanel>(&mut state, WidgetEvent::Click(id));
@@ -158,7 +157,7 @@ fn click_real(info: InspectorPhysicsInfo, id: ph2d_a11y::NodeId) -> Vec<EditorAc
         w: 320.0,
         h: 2400.0,
     };
-    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut host = crate::host_em_metros();
     let mut state = InspectorState::default();
     set_current_inspector_physics(Some(info.clone()));
     let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
@@ -185,7 +184,7 @@ fn click_real(info: InspectorPhysicsInfo, id: ph2d_a11y::NodeId) -> Vec<EditorAc
 }
 
 fn commit(info: InspectorPhysicsInfo, id: ph2d_a11y::NodeId, v: f64) -> Vec<EditorAction> {
-    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut host = crate::host_em_metros();
     let mut state = InspectorState::default();
     set_current_inspector_physics(Some(info.clone()));
     host.set_number_value(id, v);
@@ -563,7 +562,7 @@ fn a_dimension_commit_without_a_body_is_refused() {
 /// while the button was unreachable in the product.
 #[test]
 fn the_panel_consumes_the_add_click_so_the_section_is_reachable() {
-    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut host = crate::host_em_metros();
     let mut state = InspectorState::default();
     set_current_inspector_physics(Some(without_body()));
     let outcome = host.apply_panel_event::<InspectorPanel>(
@@ -1806,7 +1805,6 @@ fn selecting_a_zone_shows_its_authored_area_values() {
 fn selecting_a_surface_shows_its_authored_grip_and_belt() {
     use ph2d_editor_core::interaction::InteractiveState;
     use ph2d_editor_core::zones::Rect;
-    use ph2d_ui_testkit::MockPanelHost as Host;
 
     const VIEWPORT: Rect = Rect {
         x: 0.0,
@@ -1825,7 +1823,7 @@ fn selecting_a_surface_shows_its_authored_grip_and_belt() {
         walk_belt: -3.25,
         ..with_body()
     };
-    let mut host = Host::with_panel::<InspectorPanel>();
+    let mut host = crate::host_em_metros();
     let mut state = InspectorState::default();
     set_current_inspector_physics(Some(info));
     // A borda de seleção que gateia o sync sai do snapshot de TRANSFORM.
@@ -1919,7 +1917,7 @@ fn the_selection_button_is_absent_without_two_bodies() {
         w: 320.0,
         h: 2400.0,
     };
-    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut host = crate::host_em_metros();
     let mut state = InspectorState::default();
     set_current_inspector_physics(Some(InspectorPhysicsInfo {
         join_count: 0,
@@ -2140,7 +2138,7 @@ fn painted_ids(info: InspectorPhysicsInfo) -> Vec<ph2d_a11y::NodeId> {
         w: 320.0,
         h: 2400.0,
     };
-    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut host = crate::host_em_metros();
     let mut state = InspectorState::default();
     set_current_inspector_physics(Some(info));
     let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
@@ -2402,7 +2400,7 @@ fn a_compound_body_says_so_and_the_rows_below_make_room() {
         h: 2400.0,
     };
     let y_of = |parts: u8| {
-        let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+        let mut host = crate::host_em_metros();
         let mut state = InspectorState::default();
         set_current_inspector_physics(Some(InspectorPhysicsInfo {
             part_count: parts,
@@ -2455,7 +2453,7 @@ fn each_signal_row_dispatches_its_own_end() {
             "door_close",
         ),
     ] {
-        let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+        let mut host = crate::host_em_metros();
         let mut state = InspectorState::default();
         set_current_inspector_physics(Some(with_body()));
         host.set_text(id, text);
@@ -2503,7 +2501,7 @@ fn selecting_an_entity_shows_the_signal_names_it_carries() {
         w: 320.0,
         h: 2400.0,
     };
-    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut host = crate::host_em_metros();
     let mut state = InspectorState::default();
     set_current_inspector_physics(Some(InspectorPhysicsInfo {
         signal: "door_open".to_string(),
@@ -2618,7 +2616,7 @@ fn a_row_do_filtro_por_tag_esta_viva_sob_o_dedo() {
         w: 320.0,
         h: 2400.0,
     };
-    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut host = crate::host_em_metros();
     let mut state = InspectorState::default();
     set_current_inspector_physics(Some(with_body()));
     let _ = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
@@ -2668,7 +2666,7 @@ fn o_chip_do_filtro_por_tag_e_pintado() {
         w: 320.0,
         h: 2400.0,
     };
-    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut host = crate::host_em_metros();
     let mut state = InspectorState::default();
     set_current_inspector_physics(Some(with_body()));
     let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
@@ -2714,7 +2712,7 @@ fn os_campos_da_fisica_pintam_o_losango() {
     ];
     set_key_marks(linhas.iter().map(|&(id, _)| (id, KeyMark::Chave)).collect());
     set_current_inspector_physics(Some(with_body()));
-    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut host = crate::host_em_metros();
     let mut state = InspectorState::default();
     host.settle_section_folds();
     let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);

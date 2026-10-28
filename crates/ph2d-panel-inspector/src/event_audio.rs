@@ -74,7 +74,7 @@ pub(crate) fn apply_audio_event(host: &mut dyn PanelHostInternal, ev: WidgetEven
     }
 
     if let WidgetEvent::ValueChanged(id) = ev {
-        let v = host.store().number_value(id).unwrap_or(0.0);
+        let v = crate::unidade_mundo::le(host, id).unwrap_or(0.0);
         #[allow(clippy::cast_possible_truncation)]
         let f = v as f32;
         // ⚠️ **Um `if` por campo seria como o terceiro acaba a escrever no primeiro** — a mesma

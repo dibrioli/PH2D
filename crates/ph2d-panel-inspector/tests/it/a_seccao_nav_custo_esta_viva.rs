@@ -21,7 +21,7 @@ const VIEWPORT: Rect = Rect {
     h: 3200.0,
 };
 
-fn agente(avoid_harm: bool, has_health: bool) -> InspectorNavAgent {
+pub(crate) fn agente(avoid_harm: bool, has_health: bool) -> InspectorNavAgent {
     InspectorNavAgent {
         alvo_modo: NavAlvoModo::Ponto,
         alvo_nome: String::new(),
@@ -62,7 +62,7 @@ fn area(forbidden: bool) -> InspectorNavCostArea {
 }
 
 /// Fora do neutro em todo campo (`NavLink::default()` é teleporte, um sentido, custo 0, calado).
-fn atalho(teleport: bool) -> InspectorNavLink {
+pub(crate) fn atalho(teleport: bool) -> InspectorNavLink {
     InspectorNavLink {
         to_nome: "Exit".into(),
         to_perdido: false,
@@ -73,7 +73,7 @@ fn atalho(teleport: bool) -> InspectorNavLink {
     }
 }
 
-fn info(
+pub(crate) fn info(
     agent: Option<InspectorNavAgent>,
     cost_area: Option<InspectorNavCostArea>,
     link: Option<InspectorNavLink>,
@@ -90,7 +90,7 @@ fn info(
 }
 
 fn host(i: InspectorNavInfo) -> (MockPanelHost, InspectorState) {
-    let h = MockPanelHost::with_panel::<InspectorPanel>();
+    let h = crate::host_em_metros();
     set_current_inspector_nav(Some(i));
     (h, InspectorState::default())
 }

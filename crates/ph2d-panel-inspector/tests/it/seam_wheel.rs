@@ -32,7 +32,7 @@ const VIEWPORT: Rect = Rect {
 
 /// Uma roldana presa a uma corda — o estado em que o artista está quando afina
 /// uma.
-fn wheel() -> InspectorWheelInfo {
+pub(crate) fn wheel() -> InspectorWheelInfo {
     InspectorWheelInfo {
         entity_bits: ENTITY,
         rope_name: "Simple Rope".into(),
@@ -72,7 +72,7 @@ fn mounted() -> InspectorWheelInfo {
 }
 
 fn click_real(info: InspectorWheelInfo, id: ph2d_a11y::NodeId) -> Vec<EditorAction> {
-    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut host = crate::host_em_metros();
     let mut state = InspectorState::default();
     set_current_inspector_wheel(Some(info));
     let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
@@ -99,7 +99,7 @@ fn click_real(info: InspectorWheelInfo, id: ph2d_a11y::NodeId) -> Vec<EditorActi
 }
 
 fn commit(info: InspectorWheelInfo, id: ph2d_a11y::NodeId, v: f64) -> Vec<EditorAction> {
-    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut host = crate::host_em_metros();
     let mut state = InspectorState::default();
     set_current_inspector_wheel(Some(info));
     host.set_number_value(id, v);
@@ -137,7 +137,7 @@ fn the_wrap_chips_each_pick_their_own_side() {
 }
 
 /// **Uma roldana com dois diâmetros:** a fixture do card de diferencial.
-fn differential() -> InspectorWheelInfo {
+pub(crate) fn differential() -> InspectorWheelInfo {
     InspectorWheelInfo {
         radius: 0.5,
         radius_out: 0.375,
@@ -179,7 +179,7 @@ fn the_differential_chips_arm_the_weston_marker() {
 #[test]
 fn the_differential_row_is_offered_only_when_it_qualifies_something() {
     let painted = |info: InspectorWheelInfo| -> bool {
-        let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+        let mut host = crate::host_em_metros();
         let mut state = InspectorState::default();
         set_current_inspector_wheel(Some(info));
         host.paint::<InspectorPanel>(&mut state, VIEWPORT)
@@ -242,7 +242,7 @@ fn the_order_row_is_a_one_based_ordinal() {
 /// sprite ofereceria raio e lado a um objeto que não tem nenhum dos dois.
 #[test]
 fn no_wheel_selected_paints_no_wheel_section() {
-    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut host = crate::host_em_metros();
     let mut state = InspectorState::default();
     set_current_inspector_wheel(None);
     let painted: Vec<_> = host
@@ -328,7 +328,7 @@ fn every_number_row_the_wheel_section_paints_is_seeded_synced_and_routed() {
         }));
     };
 
-    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut host = crate::host_em_metros();
     let mut state = InspectorState::default();
     name();
     let base: Vec<_> = host
@@ -338,7 +338,7 @@ fn every_number_row_the_wheel_section_paints_is_seeded_synced_and_routed() {
         .collect();
     set_current_inspector_name(None);
 
-    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut host = crate::host_em_metros();
     let mut state = InspectorState::default();
     name();
     set_current_inspector_wheel(Some(numbered.clone()));
@@ -450,7 +450,7 @@ fn the_axle_break_switch_gates_its_own_threshold() {
     );
 
     // Desarmado, a row do limiar não é pintada.
-    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut host = crate::host_em_metros();
     let mut state = InspectorState::default();
     set_current_inspector_wheel(Some(InspectorWheelInfo {
         break_enabled: false,
@@ -530,7 +530,7 @@ fn the_mount_row_arms_a_pick_and_offers_unmount_only_when_mounted() {
     );
 
     // Presença E ausência: do cenário não há o que desmontar.
-    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut host = crate::host_em_metros();
     let mut state = InspectorState::default();
     set_current_inspector_wheel(Some(wheel()));
     let painted: Vec<_> = host
@@ -577,7 +577,7 @@ fn the_wheel_numbers_follow_the_document_while_the_wheel_stays_selected() {
     use ph2d_editor_core::interaction::InteractiveState;
     use ph2d_editor_core::panel::PanelHostInternal;
     use ph2d_panel_inspector::ids::{INSP_WHEEL_MOTOR, INSP_WHEEL_RADIUS};
-    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut host = crate::host_em_metros();
     let mut state = InspectorState::default();
     let roda = |radius, motor_deg_per_s| InspectorWheelInfo {
         radius,

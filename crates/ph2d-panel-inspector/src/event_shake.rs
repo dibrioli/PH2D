@@ -48,7 +48,7 @@ pub(crate) fn apply_shake_event(host: &mut dyn PanelHostInternal, ev: WidgetEven
     }
 
     if let WidgetEvent::ValueChanged(id) = ev {
-        let v = host.store().number_value(id).unwrap_or(0.0);
+        let v = crate::unidade_mundo::le(host, id).unwrap_or(0.0);
         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
         let edit = if id == crate::ids::INSP_SHAKE_AMPLITUDE {
             SE::Amplitude(v as f32)
@@ -131,7 +131,7 @@ pub(crate) fn apply_emitter_event(
 
     if let WidgetEvent::ValueChanged(id) = ev {
         #[allow(clippy::cast_possible_truncation)]
-        let v = host.store().number_value(id).unwrap_or(0.0) as f32;
+        let v = crate::unidade_mundo::le(host, id).unwrap_or(0.0) as f32;
         // ⚠️ **Os três campos por uma porta só** — um `if` por campo é como o segundo acaba a
         // escrever no primeiro, e trocar um raio pelo outro é o defeito que só se vê quando a
         // explosão deixa de abanar.

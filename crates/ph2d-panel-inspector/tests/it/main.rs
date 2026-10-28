@@ -6,6 +6,16 @@
 //! ganham o prefixo do módulo (`ficheiro::fn`); filtros por `test(nome)` continuam a casar.
 //! ⚠️ Teste novo = ficheiro novo AQUI + uma linha `mod` abaixo — nunca um `tests/*.rs` solto.
 
+/// ⭐ **Um Inspector com o projecto em METROS** — para os gates que medem o encaminhamento de um
+/// número na unidade que o componente GUARDA. O projecto de fábrica está em px; a conversão px/m
+/// de todo número de mundo é medida, por id, no `seam_px_m`.
+pub(crate) fn host_em_metros() -> ph2d_ui_testkit::MockPanelHost {
+    let mut h =
+        ph2d_ui_testkit::MockPanelHost::with_panel::<ph2d_panel_inspector::InspectorPanel>();
+    h.project_mut().display_unit = ph2d_editor_core::project::DisplayUnit::Meters;
+    h
+}
+
 mod a_caixa_do_contador_esta_viva;
 mod a_faixa_media_do_dock_nao_corta_nomes;
 mod a_field_is_never_narrower_than_its_owner_declared;
@@ -78,6 +88,7 @@ mod seam_physics;
 mod seam_player;
 mod seam_precision;
 mod seam_properties;
+mod seam_px_m;
 mod seam_render_source;
 mod seam_shake;
 mod seam_texture_slot;

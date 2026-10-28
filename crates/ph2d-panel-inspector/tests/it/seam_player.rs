@@ -169,7 +169,7 @@ fn empty() -> InspectorPlayerInfo {
 }
 
 fn painted(info: InspectorPlayerInfo) -> Vec<(ph2d_a11y::NodeId, Rect)> {
-    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut host = crate::host_em_metros();
     let mut state = InspectorState::default();
     set_current_inspector_player(Some(info));
     let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
@@ -178,7 +178,7 @@ fn painted(info: InspectorPlayerInfo) -> Vec<(ph2d_a11y::NodeId, Rect)> {
 }
 
 fn click_real(info: InspectorPlayerInfo, id: ph2d_a11y::NodeId) -> Vec<EditorAction> {
-    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut host = crate::host_em_metros();
     let mut state = InspectorState::default();
     set_current_inspector_player(Some(info));
     let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
@@ -205,7 +205,7 @@ fn click_real(info: InspectorPlayerInfo, id: ph2d_a11y::NodeId) -> Vec<EditorAct
 }
 
 fn commit(info: InspectorPlayerInfo, id: ph2d_a11y::NodeId, v: f64) -> Vec<EditorAction> {
-    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut host = crate::host_em_metros();
     let mut state = InspectorState::default();
     set_current_inspector_player(Some(info));
     host.set_number_value(id, v);
@@ -672,7 +672,7 @@ fn the_rows_show_what_was_authored_not_the_seed() {
         reaction_push: 0.85,
         ..player()
     };
-    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut host = crate::host_em_metros();
     let mut state = InspectorState::default();
     // ⚠️ **O NOME faz parte da fixture, e a premissa é declarada:** o
     // `entity_changed` do sync — a porta que decide re-semear as caixas — só
@@ -781,7 +781,7 @@ fn every_player_control_carries_a_hover_hint() {
 
     let with_player = painted(player());
     let without: Vec<ph2d_a11y::NodeId> = {
-        let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+        let mut host = crate::host_em_metros();
         let mut state = InspectorState::default();
         set_current_inspector_player(None);
         host.paint::<InspectorPanel>(&mut state, VIEWPORT)
@@ -789,7 +789,7 @@ fn every_player_control_carries_a_hover_hint() {
             .map(|(id, _)| id)
             .collect()
     };
-    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut host = crate::host_em_metros();
     let mut state = InspectorState::default();
     set_current_inspector_player(Some(player()));
     let _ = host.paint::<InspectorPanel>(&mut state, VIEWPORT);

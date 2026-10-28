@@ -154,7 +154,7 @@ pub(crate) fn apply_vida_event(
         }
         WidgetEvent::Toggled(id) => caixa(id, &info, aberta),
         WidgetEvent::ValueChanged(id) => {
-            let v = host.store().number_value(id).unwrap_or(0.0);
+            let v = crate::unidade_mundo::le(host, id).unwrap_or(0.0);
             numero(id, v, aberta)
         }
         WidgetEvent::TextChanged(id) => {

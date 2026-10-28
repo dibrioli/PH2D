@@ -65,7 +65,7 @@ fn sprite() -> InspectorSpriteInfo {
 
 /// Uma junta do tipo `kind_tag` com todos os interruptores LIGADOS (cada linha na tela), e o eixo X
 /// de um Custom em `Limited` (o par min/max só existe nesse modo).
-fn junta(kind_tag: u8) -> InspectorJointInfo {
+pub(crate) fn junta(kind_tag: u8) -> InspectorJointInfo {
     InspectorJointInfo {
         entity_bits: ENTITY,
         kind_tag,

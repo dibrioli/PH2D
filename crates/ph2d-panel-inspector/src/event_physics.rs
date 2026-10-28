@@ -37,7 +37,7 @@ pub(crate) fn apply_physics_event(host: &mut dyn PanelHostInternal, ev: WidgetEv
     if let WidgetEvent::ValueChanged(id) = ev
         && let Some(info) = state::current_inspector_physics()
     {
-        let v = host.store().number_value(id).unwrap_or(0.0) as f32;
+        let v = crate::unidade_mundo::le(host, id).unwrap_or(0.0) as f32;
         if let Some(edit) = value_edit(id, v, &info) {
             host.bus_mut().push(EditorAction::InspectorPhysicsEdit {
                 entity_bits: info.entity_bits,

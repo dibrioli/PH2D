@@ -102,6 +102,7 @@ pub(crate) fn sync_new_sections(
     // do irmão): a secção mostrava os números de PARTIDA do `populate` sobre um mover autorado.
     crate::sync_topdown::sync(host, inspector_state, entity_changed);
     crate::sync_tween::sync(host, inspector_state, entity_changed);
+    crate::sync_fabrica::sync(host, inspector_state, entity_changed);
     crate::sync_path_follow::sync(host, inspector_state, entity_changed);
     // ⭐⭐⭐ **A VIGIA DO CONTADOR** — no irmão, pelo mesmo tecto. ⛔ Esta linha FALTAVA: a secção
     // shipou com o editor a mostrar os valores de fábrica do `populate` sobre uma regra escolhida,
@@ -219,7 +220,7 @@ fn sync_audio_fields(
         ),
     ] {
         if focus != Some(id) && drag != Some(id) {
-            host.store_mut().set_number_value(id, v);
+            crate::unidade_mundo::semeia(host, id, v);
         }
     }
     write_text(host, crate::ids::INSP_AUDIO_SOUND, &src.sound);
@@ -262,8 +263,11 @@ fn sync_timer_fields(
     if focus != Some(crate::ids::INSP_TIMER_DURATION)
         && drag != Some(crate::ids::INSP_TIMER_DURATION)
     {
-        host.store_mut()
-            .set_number_value(crate::ids::INSP_TIMER_DURATION, f64::from(row.duration_s));
+        crate::unidade_mundo::semeia(
+            host,
+            crate::ids::INSP_TIMER_DURATION,
+            f64::from(row.duration_s),
+        );
     }
     // ⚠️ **Os DOIS campos de texto pelo mesmo laço** — o nome e o do sinal. Um deles espelhado à
     // mão ao lado do outro é como o segundo nasce sem `sync` e mostra o valor do timer ANTERIOR.
@@ -306,7 +310,7 @@ fn sync_anim_fields(
     let drag = host.store().number_input_drag().map(|d| d.id);
     let put = |host: &mut dyn PanelHostInternal, id, v: f64| {
         if focus != Some(id) && drag != Some(id) {
-            host.store_mut().set_number_value(id, v);
+            crate::unidade_mundo::semeia(host, id, v);
         }
     };
     put(host, crate::ids::INSP_ANIM_SPEED, f64::from(an.speed));
@@ -440,7 +444,7 @@ fn sync_slice_fields(
         (crate::ids::INSP_SLICE_SIZE[1], f64::from(sl.size[1])),
     ] {
         if focus != Some(id) && drag != Some(id) {
-            host.store_mut().set_number_value(id, value);
+            crate::unidade_mundo::semeia(host, id, value);
         }
     }
     // ⚠️ O checkbox só semeia na TROCA de entidade: reescrevê-lo todo o quadro faria um
@@ -509,7 +513,7 @@ fn sync_anchor_fields(
         (crate::ids::INSP_ANCHOR_CENTER[3], f64::from(c[3])),
     ] {
         if focus != Some(id) && drag != Some(id) {
-            host.store_mut().set_number_value(id, value);
+            crate::unidade_mundo::semeia(host, id, value);
         }
     }
     // As duas caixas e o NOME semeiam na troca de entidade — reescrevê-los todo o quadro faria

@@ -31,7 +31,7 @@ const VIEWPORT: Rect = Rect {
 /// ⭐ Um olho que **NÃO** é o `RaySensor::default()` em nenhum dos seis números — é isso que faz o
 /// gate da semente discriminar: com uma fixtura no ponto neutro de um campo, esse campo não é
 /// testado (*um corpus no NEUTRO de um knob não testa esse knob*).
-fn olho() -> InspectorRayInfo {
+pub(crate) fn olho() -> InspectorRayInfo {
     InspectorRayInfo {
         entity_bits: 0x00AB_CDEF,
         origin_x: 0.25,
@@ -50,7 +50,7 @@ fn olho() -> InspectorRayInfo {
 }
 
 fn host(i: InspectorRayInfo) -> (MockPanelHost, InspectorState) {
-    let h = MockPanelHost::with_panel::<InspectorPanel>();
+    let h = crate::host_em_metros();
     set_current_inspector_ray(Some(i));
     (h, InspectorState::default())
 }

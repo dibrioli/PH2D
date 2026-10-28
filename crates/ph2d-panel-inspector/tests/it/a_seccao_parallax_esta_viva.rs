@@ -19,7 +19,7 @@ const VIEWPORT: Rect = Rect {
 
 /// ⭐ Uma camada que **NÃO** está no valor de fábrica em nenhum dos dez campos — *um corpus no NEUTRO
 /// de um knob não testa esse knob*.
-fn camada(completa: bool) -> InspectorParallaxInfo {
+pub(crate) fn camada(completa: bool) -> InspectorParallaxInfo {
     InspectorParallaxInfo {
         entity_bits: 0x00AB_CDEF,
         factor: [0.35, 0.6],
@@ -36,7 +36,7 @@ fn camada(completa: bool) -> InspectorParallaxInfo {
 }
 
 fn host(i: InspectorParallaxInfo) -> (MockPanelHost, InspectorState) {
-    let h = MockPanelHost::with_panel::<InspectorPanel>();
+    let h = crate::host_em_metros();
     set_current_inspector_parallax(Some(i));
     (h, InspectorState::default())
 }
@@ -185,7 +185,7 @@ fn escrever_num_campo_chega_ao_barramento_com_a_variante_e_o_par() {
 #[test]
 fn sem_o_componente_a_seccao_nao_e_pintada() {
     set_current_inspector_parallax(None);
-    let mut h = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut h = crate::host_em_metros();
     let mut st = InspectorState::default();
     let r = pintados(&mut h, &mut st);
     for (id, _) in NUMEROS {

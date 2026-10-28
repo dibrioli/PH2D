@@ -31,7 +31,12 @@ pub(crate) fn sync_inspector_from_snapshots(
         .map(|i| i.entity_bits)
         .or_else(|| name.as_ref().map(|i| i.entity_bits))
         .or_else(|| visibility.map(|i| i.entity_bits));
-    let entity_changed = new_entity != inspector_state.last_entity;
+    // ⭐ Trocar px/m (ou a escala) re-semeia como uma troca de objecto: os números de mundo mudam.
+    let seletor = Some(crate::unidade_mundo::assinatura(host.project()));
+    let seletor_mudou = inspector_state.last_display != seletor;
+    inspector_state.last_display = seletor;
+    crate::unidade_mundo::reescala_faixas(host, &mut inspector_state.faixas_mundo);
+    let entity_changed = new_entity != inspector_state.last_entity || seletor_mudou;
     let display_unit = host.project().display_unit;
     let ppm = host.project().pixels_per_meter;
     let pos_for_display = |m: f32| display_unit.from_meters(m, ppm) as f64;

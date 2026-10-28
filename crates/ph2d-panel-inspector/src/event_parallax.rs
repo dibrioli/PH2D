@@ -23,7 +23,7 @@ pub(crate) fn apply_parallax_event(host: &mut dyn PanelHostInternal, ev: WidgetE
     let WidgetEvent::ValueChanged(id) = ev else {
         return false;
     };
-    let v = host.store().number_value(id).unwrap_or(0.0);
+    let v = crate::unidade_mundo::le(host, id).unwrap_or(0.0);
     #[allow(clippy::cast_possible_truncation)]
     let f = v as f32;
     // ⚠️ **O outro eixo vem do SNAPSHOT**, e os três blocos opcionais caem para o neutro quando o

@@ -45,7 +45,7 @@ const NOMES: &[&str] = &[
     "Max",
 ];
 
-fn camera() -> InspectorCameraInfo {
+pub(crate) fn camera() -> InspectorCameraInfo {
     InspectorCameraInfo {
         entity_bits: 0xABCD_1234,
         camera: InspectorGameCamera {

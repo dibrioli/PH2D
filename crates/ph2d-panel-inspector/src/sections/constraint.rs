@@ -495,7 +495,14 @@ fn acrescentar(
     // O submenu (decisão do dono 27/10): um botão que abre os *behaviours* por baixo, recuados.
     let sub = aberta == MenuAdd::Behaviours;
     let id = ids::INSP_CONSTRAINT_BEHAVIOURS;
-    cur_y = botao(id, tr("panel.inspector.constraint.behaviours"), x, w, cur_y, sub);
+    cur_y = botao(
+        id,
+        tr("panel.inspector.constraint.behaviours"),
+        x,
+        w,
+        cur_y,
+        sub,
+    );
     if sub {
         let recuo = ph2d_tokens::list_indent_px();
         let chaves = &TIPOS[usize::from(TIPO_BEHAVIOUR)..];

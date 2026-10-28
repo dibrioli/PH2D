@@ -20,8 +20,11 @@ use crate::{PeerId, Replica, Snapshot, Write};
 /// seta (`Field::Captions` no lugar do rótulo único, `Field::TextTurn`, W23 B5(2)); 10 = as menções
 /// das mensagens (`Message::mentions` no `TeamWrite::Message`/`Thread`, W23 B14); 11 = o elemento com
 /// `Style::birth` e `Ink::clean` (formato 17); 12 = o Kanban no quadro (`ElementKind::Kanban`,
-/// `Field::Kanban`: só a referência — os registos do documento Kanban viajam na W5, ADR-0195 §3).
-pub const PROTOCOL: u32 = 13;
+/// `Field::Kanban`: só a referência — os registos do documento Kanban viajam na W5, ADR-0195 §3); 13 =
+/// a vista do elemento Kanban mudou de bytes (W4 V2); 14 = o modelo Kanban v7 (o evento do calendário
+/// leva `until` e `exceptions`: o `Record` da AGENDA e o retrato do Kanban mudaram de bytes, P2). Uma
+/// só versão para a sala do Quadro e a do Kanban sozinho (`ph2d-kanban-sync::session`).
+pub const PROTOCOL: u32 = 14;
 
 /// Uma ligação, no transporte do anfitrião.
 pub type ConnId = u64;

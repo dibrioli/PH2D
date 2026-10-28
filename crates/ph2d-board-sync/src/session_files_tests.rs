@@ -213,7 +213,7 @@ fn a_guest_video_reaches_the_others_as_its_link() {
 #[test]
 fn a_guest_kanban_reaches_the_others_as_its_reference() {
     use ph2d_board_model::{BoardKanban, KanbanId};
-    assert_eq!(PROTOCOL, 13);
+    assert_eq!(PROTOCOL, 14, "14 = o modelo Kanban v7 (P2)");
     let mut hb = board();
     let mut host = Host::open(1, "Ana".into(), &mut hb, 1);
     let (mut bia, mut rui) = (

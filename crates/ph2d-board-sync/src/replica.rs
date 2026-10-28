@@ -218,7 +218,7 @@ impl Replica {
     }
 
     fn adopt(&mut self, snap: &Snapshot) {
-        self.clock = self.clock.max(snap.clock);
+        self.clock = self.clock.max(snap.clock.min(crate::lww::MAX_STAMP));
         self.stamps = snap
             .stamps
             .iter()
@@ -266,7 +266,7 @@ impl Replica {
     }
 
     fn tick(&mut self) -> Lamport {
-        self.clock += 1;
+        self.clock = self.clock.saturating_add(1);
         Lamport {
             n: self.clock,
             peer: self.peer,
@@ -411,7 +411,7 @@ impl Replica {
         self.shadow = (board.name.clone(), board.sketch);
         let (mut clock, peer) = (self.clock, self.peer);
         let mut team = self.team.capture(&mut board.team, &self.team_shadow, || {
-            clock += 1;
+            clock = clock.saturating_add(1);
             Lamport { n: clock, peer }
         });
         // Uma versão guardada com algo meu selado leva o quadro como todos o vêem (aqui também).
@@ -443,6 +443,14 @@ impl Replica {
     /// ⭐ Funde escritas que chegaram. O que esta pessoa tinha mudado e ainda não saiu fica para
     /// o próximo [`Self::local`].
     pub fn receive(&mut self, board: &mut Board, writes: &[Write]) {
+        // Um carimbo acima do tecto é lixo de um par: não se funde (`lww::MAX_STAMP`).
+        let sane: Vec<Write>;
+        let writes = if writes.iter().all(|w| crate::lww::sane(w.at())) {
+            writes
+        } else {
+            sane = writes.iter().filter(|w| crate::lww::sane(w.at())).cloned().collect();
+            &sane
+        };
         let mine = self.local(board);
         self.outgoing.extend(mine);
         let mut cache: BTreeMap<ElementId, Element> = BTreeMap::new();
@@ -664,3 +672,7 @@ fn dec<T: serde::de::DeserializeOwned>(b: &[u8]) -> Option<T> {
 #[cfg(test)]
 #[path = "replica_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "replica_guard_tests.rs"]
+mod guard_tests;

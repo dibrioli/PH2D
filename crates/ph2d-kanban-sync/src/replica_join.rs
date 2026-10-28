@@ -75,7 +75,7 @@ impl KanbanReplica {
             let k: Kanban = postcard::from_bytes(bytes).map_err(|e| e.to_string())?;
             ids.push(self.adopt_kanban(set, *wire, k));
         }
-        self.clock.n = self.clock.n.max(snap.clock);
+        self.clock.n = self.clock.n.max(snap.clock.min(ph2d_board_sync::MAX_STAMP));
         crate::snapshot::unpack(
             &snap.stamps,
             &mut self.stamps,

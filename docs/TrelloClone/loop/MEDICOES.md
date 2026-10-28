@@ -193,3 +193,28 @@ carimbo), título de ~35 letras, um voto a cada três. «Antes» = o retrato pla
   pelo artista), com o nome sempre ao lado.
 - **Barras que cabem:** `floor((h + 10) / (12 + 10))` (barra mínima `12`, ar `10`); o resto dobra-se em
   «Other (n)» que SOMA o que dobrou (gate `dashboard_folds_what_does_not_fit_into_other`).
+
+## J4 — defesas da sala ao vivo (28/10)
+
+**`ph2d_board_sync::MAX_STAMP = 2^53`** (Quadro e Kanban, uma só lei) — não é medição, é aritmética:
+cada escrita sobe o contador de Lamport de 1; `2^53` = 285 anos a 10⁶ escritas/s. Uma escrita com
+carimbo acima é lixo de um par e NÃO se funde (o `Clock::see` ignora-a; o retrato também se corta
+ao tecto); o `tick` satura. Deixa `2^64 − 2^53` de folga: o relógio nunca transborda.
+
+**`ph2d_kanban_sync::replica::PENDING_MAX = 16 384`** — as escritas à espera de um registo/Kanban
+que não chegou; cada `receive` volta a passá-las. Régua: `replica::guard_tests::measure_pending_cost`
+(ignorada; `bash scripts/ph2d-run.sh cargo test --profile smoke -p ph2d-kanban-sync measure_pending
+-- --ignored --nocapture`), 4 tamanhos no MESMO processo, 30 blocos intercalados, o MÍNIMO.
+⚠️ `loadavg` 28,8 (máquina partilhada).
+
+| Escritas à espera | um `receive` vazio |
+|---|---|
+| 1 024 | 0,027 ms |
+| 4 096 | 0,087 ms |
+| 16 384 | 0,333 ms |
+| 65 536 | 1,396 ms |
+
+Linear (~21 ns por escrita). Recurso: o quadro de imagem da janela (16,7 ms a 60 Hz), e o `receive`
+corre por MENSAGEM. 16 384 = 2 % do quadro. Numa sessão sã a fila está vazia (o transporte é
+ordenado e a estrela retransmite pela ordem); acima do tecto saem as mais VELHAS, com aviso no
+`stderr`.

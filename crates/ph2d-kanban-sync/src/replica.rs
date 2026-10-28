@@ -14,6 +14,12 @@ use crate::table::{all_ids, files_of, meta_mut};
 
 type Fields = Vec<(&'static str, Vec<u8>)>;
 
+/// O tecto das escritas à espera de um registo (ou Kanban) que ainda não chegou: cada `receive`
+/// volta a passá-las todas — cheia, essa passagem custa 0,33 ms (o recurso: o quadro de imagem da
+/// janela, 16,7 ms a 60 Hz; linear, ~21 ns por escrita). Medido em `docs/TrelloClone/loop/MEDICOES.md`
+/// §J4. Acima, saem as mais VELHAS (com aviso): numa sessão sã a fila fica vazia (transporte ordenado).
+pub(crate) const PENDING_MAX: usize = 16_384;
+
 /// A chave de uma escrita minha por reenviar (depois de uma queda): um campo guarda só a última.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 enum OutKey {
@@ -460,6 +466,19 @@ impl KanbanReplica {
         }
     }
 
+    /// Acima de [`PENDING_MAX`], saem as escritas mais velhas (pelo carimbo).
+    fn cap_pending(&mut self) {
+        let over = self.pending.len().saturating_sub(PENDING_MAX);
+        if over == 0 {
+            return;
+        }
+        self.pending.sort_by_key(KWrite::at);
+        self.pending.drain(..over);
+        eprintln!(
+            "ph2d-kanban-sync: {over} escrita(s) à espera de um registo que nunca chegou, descartada(s)"
+        );
+    }
+
     fn has_elems(&self, wire: KanbanId, t: Target, ix: u8) -> bool {
         self.elems
             .range((wire, t, ix, Vec::new())..)
@@ -473,7 +492,13 @@ impl KanbanReplica {
         let mine = self.local(set);
         self.outgoing.extend(mine);
         let mut todo = std::mem::take(&mut self.pending);
-        todo.extend(writes.iter().cloned());
+        // Um carimbo acima do tecto é lixo de um par: não se funde (`ph2d_board_sync::MAX_STAMP`).
+        todo.extend(
+            writes
+                .iter()
+                .filter(|w| w.at().is_none_or(ph2d_board_sync::sane))
+                .cloned(),
+        );
         let mut dirty: BTreeSet<(KanbanId, Target)> = BTreeSet::new();
         loop {
             let before = todo.len();
@@ -489,6 +514,7 @@ impl KanbanReplica {
             }
         }
         self.pending = todo;
+        self.cap_pending();
         for (wire, t) in dirty {
             self.settle(set, wire, t);
         }
@@ -641,3 +667,7 @@ mod agenda_tests;
 #[cfg(test)]
 #[path = "replica_links_tests.rs"]
 mod links_tests;
+
+#[cfg(test)]
+#[path = "replica_guard_tests.rs"]
+mod guard_tests;

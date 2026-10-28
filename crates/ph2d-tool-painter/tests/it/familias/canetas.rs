@@ -62,12 +62,12 @@ pub const MEIOS: &[ReceitaMeio] = &[
 pub const EM_ESTUDO: &[ReceitaMeio] = &[];
 
 /// J6w — as canetas do Wet Paint EM ESTUDO (fora da fábrica; o coordenador promove as aprovadas): a Reed Pen (C-9) e o
-/// Wood Stick (C-15), as receitas da J3 (`exames/tintas.md`) curadas na J6w. ⚠️ No Wet o dual (L6) DESFAZ o achatado
-/// (a pegada volta ao disco: Reed com dual w90 32 = w0 33; sem dual 24, Rebelle 23) — a Reed fica sem a serrilha, o Wood
-/// com os grumos e sem a elipse. Exame e fila: `docs/Painter/Pinceis/exames/canetas_j6.md`.
+/// Wood Stick (C-15), as receitas da J3 (`exames/tintas.md`) curadas na J6w e, na J6x, com o dual DE VOLTA: no Wet a
+/// 2.ª ponta passou a modular dentro do achatado (`PegadaDaPrimeira`; Reed com dual w0 34 · w90 21, Rebelle 34 · 23).
+/// Exame e fila: `docs/Painter/Pinceis/exames/canetas_j6.md`.
 pub const EM_ESTUDO_J6_WET: &[Receita] = &[
     // C-9 Ink › Reed › Reed Pen (Rebelle `Pen/Reed Pen`): a cana cortada — a ponta CHATA fixa na tela (alta: o recto
-    // horizontal largo, o vertical ~0,7 dele), a borda lisa (a serrilha pelo dual apagava o achatado), o corte a esquadro.
+    // horizontal largo, o vertical ~0,7 dele), a borda serrilhada pela 2.ª ponta (`SERRILHA_DA_CANA`), o corte a esquadro.
     Receita {
         meio: "Ink",
         grupo: "Reed",
@@ -99,6 +99,7 @@ pub const EM_ESTUDO_J6_WET: &[Receita] = &[
             ("shape", SEM_FORMA_WET),
             ("dab_quina", "0.8"),
             ("size_max_px", "95"),
+            ("dual", SERRILHA_DA_CANA),
         ],
         nasce_de: Some("Dip Pen"),
         real_oil: false,
@@ -132,7 +133,7 @@ pub const EM_ESTUDO_J6_WET: &[Receita] = &[
             ("pressureOpacityCurve", 1.5),
         ],
         grao: None,
-        // O Rebelle é ~1,2× mais largo na vertical (36 contra 30): a elipse deitada — hoje sem efeito sob o dual.
+        // O Rebelle é ~1,2× mais largo na vertical (36 contra 30): a elipse deitada (viva sob o dual desde a J6x: 36).
         achatado: Some((0.17, 0)),
         pincel: &[
             ("shape", SEM_FORMA_WET),
@@ -149,9 +150,13 @@ pub const EM_ESTUDO_J6_WET: &[Receita] = &[
 /// O Shape sem forma (nem cerdas) do Wet: a ponta é só a queda.
 const SEM_FORMA_WET: &str = r#"{"angle_deg": 0, "flow": false, "kind": "None", "mapping": "ViewPlane", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [1.0, 1.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
 
-/// Os grumos do pau: marcas de ruído (0,35 D) espalhadas pela orla, Multiply — a borda que incha e encolhe (a 0,6 D os
-/// grumos saíam bolhas maiores que as do Rebelle).
-const GRUMOS_DO_PAU: &str = r#"{"angulo": 0, "atraves": 0.3, "contagem": 3, "dureza": 0.0, "escala": 0.35, "espalhar": 0.25, "forma": {"angle_deg": 0, "flow": false, "kind": "Noise", "mapping": "Random", "offset": [0.0, 0.0], "params": [0.3, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [32.0, 32.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}, "modo": 0, "passo": 0.25, "rotacao": 0.0}"#;
+/// Os grumos do pau: marcas de ruído (0,45 D) espalhadas pela orla, Multiply — a borda que incha e encolhe (a 0,6 D os
+/// grumos saíam bolhas maiores que as do Rebelle; J6x: espalhar 0,15 e através 0,2, mais rasos — régua 392 contra 377).
+const GRUMOS_DO_PAU: &str = r#"{"angulo": 0, "atraves": 0.2, "contagem": 3, "dureza": 0.0, "escala": 0.45, "espalhar": 0.15, "forma": {"angle_deg": 0, "flow": false, "kind": "Noise", "mapping": "Random", "offset": [0.0, 0.0], "params": [0.3, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [32.0, 32.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}, "modo": 0, "passo": 0.25, "rotacao": 0.0}"#;
+
+/// A serrilha da cana (J6x): uma 2.ª ponta quase do tamanho da 1.ª (0,8 D), dura, pouco espalhada, Multiply — o miolo
+/// cheio e a orla a 1–2 px que entra e sai (a 0,3 D sem a pegada da 1.ª a ponta voltava ao disco).
+const SERRILHA_DA_CANA: &str = r#"{"angulo": 0, "atraves": 0.15, "contagem": 3, "dureza": 0.6, "escala": 0.8, "espalhar": 0.1, "forma": {"angle_deg": 0, "flow": false, "kind": "None", "mapping": "Random", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [32.0, 32.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}, "modo": 0, "passo": 0.15, "rotacao": 0.0}"#;
 
 #[rustfmt::skip]
 pub const MIDIAS: &[Midia] = &[];

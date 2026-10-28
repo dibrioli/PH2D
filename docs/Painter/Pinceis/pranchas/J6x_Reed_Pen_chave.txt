@@ -1,0 +1,7 @@
+Chave da prancha cega J6x_Reed_Pen_cega.jpg (linha: imagem → quem)
+gestos_A: 1 = Dip Pen (d 0.924, limiar 0.591) (vizinho), 2 = pen_reed_pen (oraculo), 3 = Reed Pen F (escala 0.872) (nosso)
+gestos_B: 1 = Reed Pen F (escala 0.872) (nosso), 2 = Dip Pen (d 0.924, limiar 0.591) (vizinho), 3 = pen_reed_pen (oraculo)
+tamanhos_A: 1 = pen_reed_pen (oraculo), 2 = Reed Pen F (escala 0.872) (nosso), 3 = Dip Pen (d 0.924, limiar 0.591) (vizinho)
+tamanhos_B: 1 = Reed Pen F (escala 0.872) (nosso), 2 = pen_reed_pen (oraculo), 3 = Dip Pen (d 0.924, limiar 0.591) (vizinho)
+sobre_A: 1 = Reed Pen F (escala 0.872) (nosso), 2 = Dip Pen (d 0.924, limiar 0.591) (vizinho), 3 = pen_reed_pen (oraculo)
+sobre_B: 1 = pen_reed_pen (oraculo), 2 = Reed Pen F (escala 0.872) (nosso), 3 = Dip Pen (d 0.924, limiar 0.591) (vizinho)

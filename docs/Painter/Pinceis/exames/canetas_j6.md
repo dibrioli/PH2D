@@ -84,3 +84,32 @@ da largura), 22 min para 8.
 2. **A lei da largura da ponta achatada de pé** (Reed): Size 84 (200 × 0,42) pinta 194; o tecto não a apanha.
 3. **`speedSize` no Wet** (Wood: o recto rápido fino).
 4. **As riscas dos carimbos** (Dry Marker a 200 px).
+
+## J6x — o dual DENTRO do achatado (motor) e a ronda com o dual de volta, 28/10
+
+**Mecanismo** (fila nº 1 acima): a máscara da 2.ª ponta é uma faixa ISOTRÓPICA à volta do caminho, do tamanho da ponta
+REDONDA, e o Wet lia-a no píxel onde a tinta pousa (`RecorteNoWet::padrao`). Uma 2.ª ponta mais estreita que o eixo maior
+cortava os dois eixos à largura dela ⇒ disco. (O «w90 32 contra 24» da J6w juntava a isto a escala do exame: o recto
+horizontal recortado subia a escala.) **Cura** (`9dfb735b24`): a máscara lê-se no ponto da ponta redonda que corresponde
+ao píxel (`PegadaDaPrimeira::redonda`, o eixo menor esticado a 1/menor à volta do centro do dab); sem achatado, a leitura de
+sempre (neutro ao bit: as três portas de fábrica dão os MESMOS vermelhos, todos Oil/* da obra Real Oil, com e sem a cura).
+Gate `o_dual_brush::o_dual_modula_dentro_da_ponta_achatada_no_wet` (razão vertical÷horizontal por desvio-padrão, ponta 0,43
+a 90°, 2.ª ponta 0,3 D): sem dual 0,552 · com 0,639 · mutação (sem a pegada) **0,925 VERMELHO**.
+
+**O tamanho em pé (200 px: 194 contra 81) NÃO é o mesmo mecanismo** — a Reed C não tinha dual. Com o dual de volta a
+Reed pinta 94 a 200 px (o recorte da 2.ª ponta segura a largura que a tabela deixava crescer); a lei da largura da ponta
+achatada continua na fila (nº 2).
+
+Ronda única, 4 variantes cada, biblioteca fixa `j6_digital`, bancada `PH2D_EXAME_DIR=/tmp/claude-1000/j6_dual`:
+
+| pincel | variantes (régua /456) | escolhida | w0 · w90 (Rebelle) | 200 px | vizinho (d) |
+|---|---|---|---|---|---|
+| C-9 Reed Pen | E 417 · **F 423** · G 417 · H 419 (J6w C sem dual: 418) | F: `SERRILHA_DA_CANA` (0,8 D, dura 0,6, através 0,15) | 34 · 21 (34 · 23) | 94 (81) | Dip Pen 0,924 |
+| C-15 Wood Stick | E 377 (os grumos de antes) · F 374 · **G 392** · H 355 (J6w C: 368) | G: grumos 0,45 D, espalhar 0,15, através 0,2 | 30 · 36 (30 · 36) | 97 (71) | Dip Pen 1,563 |
+
+Pranchas `pranchas/J6x_{Reed_Pen,Wood_Stick}{,_cega}.jpg` + `_chave.txt` (ordem sorteada por linha); réguas
+`exames/canetas_j6/J6x_*_regua.{txt,json}`. Revisão cega: POR FAZER (coordenador). Ainda se vê — **Reed**: a 200 px as
+tampas arredondadas e a serrilha mais fina que a do Rebelle (ele: tampa a esquadro e dentes de 2–3 px); o cruzamento sem a
+NÓDOA redonda escura; as rampas mais claras e esfiapadas na entrada. **Wood**: a espiral cheia (o Rebelle deixa as voltas
+abertas); o recto rápido não afina (`speedSize`, fila nº 3); a 200 px a entrada esbatida e os grumos maiores (97 contra 71);
+as rampas mais largas e claras.

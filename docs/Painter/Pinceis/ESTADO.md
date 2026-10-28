@@ -33,7 +33,8 @@
 - Digital ✅ (`8a9703db68` `07c644af37` `c8d4ad953d`, [`exames/digital_j6.md`](exames/digital_j6.md)): C-4 Studio Pen (Hard Round 0,283) e C-6 Technical Pen (Pixel 1px 0,330) FUNDEM; K-1 Clouds curado não aprovado; motor B-6 (rampa sob o tecto), L-5 (blur puxa o papel); M-7 sem oráculo. **Cega Digital: B-7 Rough Sketch e I-12 Optical Wash curados NÃO aprovados** (Rough Sketch: o revisor tomou o NOSSO pelo pincel de fora em todas as linhas — discos nítidos onde o MyPaint tem grão de pontos e pontas rectas; Optical Wash: achado em todas as linhas, média em 2 — contorno forte e contínuo, o Krita tem franja fraca irregular). ⚠️ Biblioteca `j6_wet` incompleta (28/66) ⇒ d antigos suspeitos; usar `/tmp/claude-1000/j6_digital/biblioteca`.
 - Canetas/marcadores Wet ✅ (`221fb75e43`, `EM_ESTUDO_J6_WET`, [`exames/canetas_j6.md`](exames/canetas_j6.md)): Reed Pen,
   Wood Stick, Marker Chisel, Dry Marker curados não aprovados (diferenças medidas e conhecidas — cega não gasta). Fila:
-  dual deita fora a ponta achatada (EM CURSO) · tamanho em pé · velocidade→tamanho no Wet · riscas do carimbo.
+  ✅ dual compõe com a ponta achatada (`9dfb735b24` `095a508bfa`; Reed Pen w0·w90 34·21, Rebelle 34·23; Wood Stick
+  régua 392, larguras do Rebelle) — ambos curados não aprovados (pontas redondas a 200 px, espiral cheia) · tamanho em pé · velocidade→tamanho no Wet · riscas do carimbo.
 - Aguarela/texturas ✅ (`6999f3ec3d`, [`exames/aguarela_texturas_j6.md`](exames/aguarela_texturas_j6.md)): **F-10 Wax Crayon
   APROVADO** (cega: o Rebelle nunca achado — chamado «imitação» nas 6 linhas; o nosso tomado pela referência em 3,
   média/alta; régua 436, Graphite 8B d 0,783) ⇒ sobe no lote. I-10 Fringe Bloom curado não aprovado (achado em todas).

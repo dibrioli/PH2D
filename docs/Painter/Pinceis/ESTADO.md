@@ -34,7 +34,12 @@
 - Canetas/marcadores Wet ✅ (`221fb75e43`, `EM_ESTUDO_J6_WET`, [`exames/canetas_j6.md`](exames/canetas_j6.md)): Reed Pen,
   Wood Stick, Marker Chisel, Dry Marker curados não aprovados (diferenças medidas e conhecidas — cega não gasta). Fila:
   dual deita fora a ponta achatada (EM CURSO) · tamanho em pé · velocidade→tamanho no Wet · riscas do carimbo.
-- Aguarela/texturas Wet (I-9, I-10, I-11, K-9, F-10) — EM CURSO (`EM_ESTUDO_J6`).
+- Aguarela/texturas ✅ (`6999f3ec3d`, [`exames/aguarela_texturas_j6.md`](exames/aguarela_texturas_j6.md)): **F-10 Wax Crayon
+  APROVADO** (cega: o Rebelle nunca achado — chamado «imitação» nas 6 linhas; o nosso tomado pela referência em 3,
+  média/alta; régua 436, Graphite 8B d 0,783) ⇒ sobe no lote. I-10 Fringe Bloom curado não aprovado (achado em todas).
+  K-9 Grunge curado (riscas contínuas × traços partidos). Motor: I-9 Granulation (poros de 1–2 px), I-11 Spatter
+  (o spray do Wet pousa discos longe do traço + OOM a jitter 0,8 — EM CURSO).
+- **LOTE DE PROMOÇÃO** (no fim, uma regeração): Wax Crayon.
 - Aprovados pela cega sobem à fábrica num lote único no fim. Sem oráculo: C-13, C-14, D-2, D-4, G-13, J-4, M-5. Motor: CAP-19 cerdas que esgotam (C-11, G-9, G-11, I-13), L17, L15, L20, L10.
 
 ## Bancada

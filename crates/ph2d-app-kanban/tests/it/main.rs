@@ -8,6 +8,7 @@ mod canvas_entrada;
 mod duas_janelas;
 mod medida;
 mod escrever;
+mod foto_tutorial;
 mod frente;
 mod j2_auto;
 mod j2_fotos;

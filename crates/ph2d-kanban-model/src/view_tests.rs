@@ -28,7 +28,7 @@ fn both_views_show_the_same_state_after_every_op() {
     moved.pos = k.pos_after_cards(doing);
     let gestures: Vec<Vec<KanbanOp>> = vec![
         vec![card(k, todo, "from the tab")],
-        vec![KanbanOp::Put(Record::Card(moved))],
+        vec![KanbanOp::put(Record::Card(moved))],
     ];
     let mut tick = 0;
     for ops in gestures {
@@ -77,7 +77,7 @@ fn archived_and_deleted_records_are_not_shown() {
     set.apply(
         id,
         vec![
-            KanbanOp::Put(Record::Card(a)),
+            KanbanOp::put(Record::Card(a)),
             KanbanOp::Delete(crate::RecordId::Card(b)),
         ],
     );

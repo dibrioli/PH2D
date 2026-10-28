@@ -19,7 +19,7 @@ fn full() -> KanbanSet {
     let label = LabelId(k.mint());
     put(
         &mut k,
-        KanbanOp::Put(Record::Label(Label {
+        KanbanOp::put(Record::Label(Label {
             id: label,
             name: "Urgent".to_owned(),
             color: Some(LabelColor {
@@ -32,7 +32,7 @@ fn full() -> KanbanSet {
     let field = FieldId(k.mint());
     put(
         &mut k,
-        KanbanOp::Put(Record::Field(FieldDef {
+        KanbanOp::put(Record::Field(FieldDef {
             id: field,
             name: "Priority".to_owned(),
             kind: FieldKind::Dropdown(vec![FieldOption {
@@ -62,14 +62,14 @@ fn full() -> KanbanSet {
     card.fields = BTreeMap::from([(field, FieldValue::Option(OptionId(1)))]);
     card.location = "Studio".to_owned();
     card.votes = vec![Member("Ana".to_owned())];
-    put(&mut k, KanbanOp::Put(Record::Card(card)));
+    put(&mut k, KanbanOp::put(Record::Card(card)));
     let op = checklist(&k, c);
     put(&mut k, op);
     let cl = *k.checklists.keys().next().unwrap();
     let item = CheckItemId(k.mint());
     put(
         &mut k,
-        KanbanOp::Put(Record::CheckItem(CheckItem {
+        KanbanOp::put(Record::CheckItem(CheckItem {
             id: item,
             checklist: cl,
             pos: FracKey::between(None, None),
@@ -88,11 +88,11 @@ fn full() -> KanbanSet {
         emoji: "👍".to_owned(),
         by: vec![Member("Ana".to_owned())],
     }];
-    put(&mut k, KanbanOp::Put(Record::Comment(com)));
+    put(&mut k, KanbanOp::put(Record::Comment(com)));
     let att = AttachmentId(k.mint());
     put(
         &mut k,
-        KanbanOp::Put(Record::Attachment(Attachment {
+        KanbanOp::put(Record::Attachment(Attachment {
             id: att,
             card: c,
             pos: FracKey::between(None, None),

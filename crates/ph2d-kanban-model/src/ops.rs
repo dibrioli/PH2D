@@ -40,8 +40,9 @@ pub enum RecordId {
 /// Uma mudança num Kanban.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum KanbanOp {
-    /// Põe o registo (novo, ou a reposição de um estado anterior inteiro).
-    Put(Record),
+    /// Põe o registo (novo, ou a reposição de um estado anterior inteiro). Em caixa: um cartão é
+    /// grande e um `Delete` é um id.
+    Put(Box<Record>),
     /// Apaga (lápide) o registo.
     Delete(RecordId),
     /// Põe o cabeçalho (nome, favorito, fundo).
@@ -123,7 +124,7 @@ fn put<R: Rec>(k: &mut Kanban, mut r: R) -> Option<KanbanOp> {
     m.version = before.max(m.version) + 1;
     table.insert(id, r);
     Some(match prev {
-        Some(p) if !p.meta().deleted => KanbanOp::Put(p.wrap()),
+        Some(p) if !p.meta().deleted => KanbanOp::put(p.wrap()),
         _ => KanbanOp::Delete(R::key(id)),
     })
 }
@@ -134,15 +135,21 @@ fn delete<R: Rec>(k: &mut Kanban, id: R::Id) -> Option<KanbanOp> {
     let m = r.meta_mut();
     m.deleted = true;
     m.version += 1;
-    Some(KanbanOp::Put(before.wrap()))
+    Some(KanbanOp::put(before.wrap()))
 }
 
 impl KanbanOp {
+    /// `Put` de um registo.
+    #[must_use]
+    pub fn put(r: Record) -> Self {
+        Self::Put(Box::new(r))
+    }
+
     /// Aplica a operação e devolve a que a desfaz. `None` = não mudou nada (id desconhecido, já
     /// apagado, ou o mesmo conteúdo) — quem chama não empilha um passo vazio.
     pub fn apply(self, k: &mut Kanban) -> Option<KanbanOp> {
         match self {
-            KanbanOp::Put(r) => match r {
+            KanbanOp::Put(r) => match *r {
                 Record::List(r) => put(k, r),
                 Record::Card(r) => put(k, r),
                 Record::Label(r) => put(k, r),

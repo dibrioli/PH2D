@@ -8,7 +8,7 @@ use crate::{
 };
 
 pub(crate) fn list(k: &Kanban, title: &str) -> KanbanOp {
-    KanbanOp::Put(Record::List(List {
+    KanbanOp::put(Record::List(List {
         id: ListId(k.mint()),
         title: title.to_owned(),
         pos: k.pos_after_lists(),
@@ -20,7 +20,7 @@ pub(crate) fn list(k: &Kanban, title: &str) -> KanbanOp {
 }
 
 pub(crate) fn card(k: &Kanban, list: ListId, title: &str) -> KanbanOp {
-    KanbanOp::Put(Record::Card(Card {
+    KanbanOp::put(Record::Card(Card {
         id: CardId(k.mint()),
         list,
         pos: k.pos_after_cards(list),
@@ -41,7 +41,7 @@ pub(crate) fn card(k: &Kanban, list: ListId, title: &str) -> KanbanOp {
 }
 
 pub(crate) fn checklist(k: &Kanban, card: CardId) -> KanbanOp {
-    KanbanOp::Put(Record::Checklist(Checklist {
+    KanbanOp::put(Record::Checklist(Checklist {
         id: ChecklistId(k.mint()),
         card,
         pos: FracKey::between(None, None),
@@ -52,7 +52,7 @@ pub(crate) fn checklist(k: &Kanban, card: CardId) -> KanbanOp {
 }
 
 pub(crate) fn comment(k: &Kanban, card: CardId, who: &str, text: &str) -> KanbanOp {
-    KanbanOp::Put(Record::Comment(Comment {
+    KanbanOp::put(Record::Comment(Comment {
         id: CommentId(k.mint()),
         card,
         author: Member(who.to_owned()),

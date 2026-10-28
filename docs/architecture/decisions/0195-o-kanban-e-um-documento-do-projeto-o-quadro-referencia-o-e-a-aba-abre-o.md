@@ -20,47 +20,127 @@ equipa e menções, ficheiro por conteúdo, e um desfazer **por quadro** fora do
 
 ## Decisão
 
-1. **Um documento de primeira classe.** `ph2d-kanban-model`: `KanbanSet` → `Kanban` (cabeçalho + oito
-   tabelas `BTreeMap`: listas, cartões, etiquetas, checklists, itens, comentários, anexos, campos).
-   Muda-se só por `KanbanOp` (`Put` · `Delete` · `Header`), que devolve o inverso. A crate é pura:
-   sem ECS, sem render, sem UI.
-2. **No projeto, um blob irmão do `boards`.** `ProjectFile.kanbans: Vec<u8>`, o último campo
-   (`PROJECT_SCHEMA 193 → 194`), com versão PRÓPRIA (`ph2d_kanban_model::FORMAT_VERSION = 1`). Uma
-   mudança interna sobe a dele, nunca o schema. Em tempo de execução o dono é
-   `ph2d_editor_core::documents::Documents::kanbans`, ao lado dos quadros: a aba (W2) e o elemento do
-   canvas (W4) estão ambos ao alcance dele.
-3. **Duas vistas, um documento.** A aba e o elemento do Quadro guardam cada um uma `KanbanView`: o
-   `KanbanId` e o que é SÓ dessa vista (listas recolhidas, rolagem; na W6, o filtro). O que a vista
-   mostra é `KanbanView::shown(&KanbanSet)`, uma projecção pura. Por isso não há sincronização entre
-   janelas: as duas leem o mesmo registo. O elemento do canvas (W4) será
-   `ElementKind::Kanban { view: KanbanView }`, variante no FIM.
-4. **Um registo por coisa, com o que a colaboração pede.** Cada registo tem `Meta { version, nonce,
-   deleted }` (o molde do `Element`, ADR-0181). Comentários, checklists, itens e anexos são registos
-   próprios, filhos que apontam ao pai, e não `Vec` dentro do cartão: dois colegas a comentar o mesmo
-   cartão escrevem dois registos. A ordem é por `FracKey`, então reordenar é uma escrita. Os ids são
-   um espaço por Kanban; o bit 63 fica para os sorteados numa sessão ao vivo (W5).
-5. **Desfazer POR KANBAN, fora do `ProjectState`** (o handoff da W0 dizia `ProjectState.kanbans`; a
-   medição derrubou-o). O `History` guarda o lote INVERSO, como o do Quadro, e desfazer não pisa um
-   registo que outro mudou depois. O `ProjectState` restaura por FOTOGRAFIA: numa sessão ao vivo, um
-   `Ctrl+Z` apagaria as edições do colega. Também guardaria o documento inteiro a cada passo. A hora
-   de cada passo é a do `undo_tick` único, passada por quem chama, para a crate ficar pura.
-6. **O `FracKey` mora em `ph2d-frac`**, movido (`git mv`) do `ph2d-board-model`, que o reexporta: os
-   bytes e o caminho público `ph2d_board_model::FracKey` não mudam. Sem o movimento, a W4 teria um
-   ciclo: o Kanban dependeria do Quadro para a ordem, e o Quadro do Kanban para o `KanbanView`.
-7. **Pessoas e ficheiros sem depender do Quadro.** `Member(String)` é a mesma identidade de
-   `Who::Person` (o nome na Equipa). Imagens e anexos guardam o sha-256 dos bytes, a chave de
-   `ph2d_board_model::FileId` (ADR-0184). As cores são CHAVES (`Hue` × `Shade`, as 30 do Trello),
-   nunca RGB: a paleta vem dos tokens.
-8. **As datas são um instante neutro** (`Moment`, ms desde a época, UTC) no documento. O que «hoje»,
-   «atrasado» e «esta semana» significam, os fusos e a recorrência vivem em `ph2d-kanban-dates`
-   sobre **`jiff` 0.2** (BurntSushi, `Unlicense OR MIT`, as duas na lista do `deny.toml`). Escolhido
-   sobre o `time` 0.3 (já transitivo, `MIT OR Apache-2.0`) porque o `jiff` traz a base de fusos IANA
-   e a aritmética civil do Temporal: «mesma hora amanhã» atravessa a mudança de horário sem erro, e
-   o `time` deixa isso a quem chama. O `stack-audit --tetos` não o segura (crate nova, sem pais no
-   lock).
-9. **A descrição é markdown** (CommonMark), lida e escrita por `ph2d-kanban-md` sobre
-   **`pulldown-cmark` 0.13** (`MIT`) — o mesmo formato que o Trello exporta (W10 importa-o sem
-   tradução). O `RichText` do Quadro é a vista do editor, não o formato gravado.
+1. **Um documento de primeira classe.** `ph2d-kanban-model`: `KanbanSet` → `Kanban` (cabeçalho + tabelas
+   `BTreeMap`: listas, cartões, etiquetas, checklists, itens, comentários, anexos, campos, espelhos,
+   automações, atividade, eventos). Muda-se só por `KanbanOp` (`Put` · `Delete` · `Header`), que devolve o
+   inverso; gestos compostos saem como `Plan`. A crate é pura (deps: `ph2d-frac`, `sha2`, `serde`/`postcard`).
+2. **No projecto, um blob irmão do `boards`.** `ProjectFile.kanbans: Vec<u8>`, o último campo
+   (`PROJECT_SCHEMA 193 → 194`, `shells/desktop/src/project_schema.rs`), com versão PRÓPRIA:
+   `ph2d_kanban_model::FORMAT_VERSION = 6` (`set.rs`). Escada: v1 base · v2 seguir/atividade/origem/ficheiros ·
+   v3 modelos, envelhecimento, espelhos · v4 automações · v5 agenda do projecto · v6 ligações do cartão ao
+   projecto (objecto/script/macro/timeline). `from_bytes` lê cada degrau antigo por `v1.rs`..`v5.rs`
+   (`upgrade()`); versão maior recusa por nome. Fixtures congeladas `tests/fixtures/kanban_set_v1..v5_full.hex`
+   (gravadas pelo código do degrau, cabeçalho `#`); ⚠️ **v6 ainda sem fixture própria** (cobertura em
+   `links_tests.rs`). Mudança interna sobe a versão dele, nunca o schema. Em execução o dono é
+   `ph2d_editor_core::documents::Documents::kanbans` (`SharedKanbans`, o mesmo `Rc` da aba e do elemento).
+3. **Duas vistas, um documento.** A aba e o elemento do Quadro têm cada um o estado SÓ da vista
+   (`KanbanView` na aba; `KanbanBoardView` no elemento: `scroll_x`, `zoom`, `collapsed`, `scroll_y` por
+   lista). `KanbanView::shown(&KanbanSet)` é projecção pura: não há sincronização entre janelas, as duas
+   leem o mesmo registo (gate `both_views_show_the_same_state_after_every_op`; `a aba e o canvas do MESMO
+   Kanban` em `ph2d-app-kanban/tests/it`).
+4. **Um registo por coisa.** Cada registo tem `Meta { version, nonce, deleted }` (molde do `Element`,
+   ADR-0181). Comentários, checklists, itens e anexos são registos próprios apontando ao pai, nunca `Vec`
+   dentro do cartão. Ordem por `FracKey`. Ids: um espaço por Kanban; em sessão ao vivo
+   `Kanban::set_session(Some(semente))` passa a sortear com o bit 63 (porta única `mint`/`mint_n`; o
+   `Copier` também passa pelo `Minter`).
+5. **Desfazer POR KANBAN, fora do `ProjectState`.** `History` guarda o lote INVERSO e compara **por campo**
+   (`Record::fields`, `history_fields.rs`): desfazer não pisa um campo que outro mudou depois; o 2.º desfazer
+   seguido no mesmo cartão funciona (`History::rebase` × `meta.version`). `undo_logged`/`redo_logged` põem o
+   desfazer na atividade (ele nunca a apaga). A hora é a do `undo_tick` único, passada por quem chama. O
+   Planner tem a fila dele (a aba do Kanban não o desfaz).
+6. **`FracKey` em `ph2d-frac`** (movido do `ph2d-board-model`, que o reexporta; bytes e caminho público
+   iguais). Evita o ciclo `board-model ↔ kanban-model`.
+7. **Pessoas e ficheiros PRÓPRIOS, sem depender do Quadro.** `Member(String)` = o nome da Equipa
+   (`Who::Person`); o Butler é `Member::butler`. Ficheiros: `FileId` (sha-256 dos bytes, os mesmos 32 bytes
+   do `ph2d_board_model::FileId`, mas tipo PRÓPRIO em `files.rs`), `KanbanFile`, guardados UMA vez por
+   conteúdo no `KanbanSet` (`put_file`, e `put_file_keyed` quando a chave já foi calculada noutro fio);
+   `to_bytes` leva só os que algum registo vivo usa (`files_in_use`). Sem tecto de tamanho por anexo (o
+   recurso é a RAM, ~3× ao gravar); até 8 MB lê-se na hora, acima num fio (MEDICOES §W3 E). Cores =
+   CHAVES (`Hue` × `Shade`, 30 do Trello), nunca RGB.
+8. **Agenda do projecto.** `KanbanId::AGENDA` (= 0; os Kanbans contam de 1) é um `Kanban` reservado dentro
+   do `KanbanSet`, fora de `iter()`: eventos próprios, Inbox, blocos do Planner e «lidas». Eventos viajam na
+   réplica e os calendários juntam-se numa sessão; Inbox, blocos e lidas são pessoais e NÃO viajam.
+9. **Datas:** `Moment` (ms UTC) no documento; «hoje/atrasado/semana», fusos e recorrência em
+   `ph2d-kanban-dates` sobre **`jiff` 0.2** (`Unlicense OR MIT`; base IANA e aritmética civil: «mesma hora
+   amanhã» atravessa a mudança de horário). API sem tipos do `jiff`; textos saem em enums para a i18n.
+10. **Descrição = markdown** (CommonMark + tarefas + riscado) por `ph2d-kanban-md` sobre **`pulldown-cmark`
+    0.13** ↔ `RichDoc` de `ph2d-richdoc` (zero deps). `render(parse(md))` é ponto fixo; o que o modelo não
+    tem (tabelas, HTML, imagens, títulos 4–6→3) vira texto literal; menção com espaço =
+    `[@Ana Silva](mention:Ana%20Silva)`.
+
+## O elemento `ElementKind::Kanban` no Quadro
+
+- `ElementKind::Kanban { kanban: KanbanId, view: KanbanBoardView }`, variante no FIM (postcard posicional).
+  Quadro `FORMAT_VERSION` **19** (18: a variante; 19: `scroll_y`; leitores `KanbanBoardViewV18/V19` por
+  `reading(version)`); `ph2d_board_sync::session::PROTOCOL` **13** (12: a variante; 13: a vista mudou de
+  bytes). `ph2d-board-model → ph2d-kanban-model` é acíclico.
+- O Quadro não depende da família Kanban: pintura e entrada passam por GANCHOS, molde do vídeo.
+  `ph2d_board_render::kanban::KanbanPainter` (`paint` → `false` = o board-render pinta o nível baixo a
+  partir do `KanbanSet`; `paint_over` = o verso aberto, em ecrã) e `ph2d_editor_core::…::board_kanban::KanbanElementInput`
+  (rato, teclas, roda, IME, cursor, `wants_frame`). A família implementa-os (`ph2d-app-kanban`), `ph2d-app-board`/shell compõem.
+  A aba é UM chamador do mesmo `paint_view`/`pointer_view` sobre uma `Affine` (escala 1), o elemento outro.
+- **LOD (limiares MEDIDOS, MEDICOES §W4 V)**: Alto ≥ escala **0,786** (texto do cartão de 14 px chega a
+  `TypeToken::Xs` = 11 px; recurso = legibilidade de quem edita — Alto custa o mesmo que Médio, ~4,3 ms);
+  Médio ≥ **0,4** (título de lista 15 px × escala ≥ `READ_PX` = 6; o Baixo poupa ~1,1 ms por Kanban
+  grande); Baixo = blocos por lista + contagem, nome nunca abaixo de 11 px no ecrã. `force_kanban_lod`
+  só para medir.
+- Gestos: «Kanban» na barra do Quadro; «Open in tab» na barra do elemento; na aba «Show on board» /
+  «Place on board» (Quadro activo → último activo → primeiro → cria). Apagar a referência não apaga o
+  documento. Entra-se no Kanban do elemento com 2.º clique, no zoom alto.
+
+## A réplica — `ph2d-kanban-sync`
+
+Pura, como `ph2d-board-sync`, com a MESMA lei de fusão (`ph2d_board_sync::wins`; duas leis seriam duas classes
+de defeito). Cada registo divide-se em campos (`Record::fields`, a divisão do desfazer), cada campo tem carimbo
+de Lamport; apagar é lápide e vence-se como no Quadro (apagar × editar: ficam a lápide E a edição). Listas de
+pessoas/etiquetas (membros, votos, quem segue) e campos personalizados do cartão são CONJUNTOS: um registo por
+elemento, ordem de entrada. Ficheiros viajam uma vez por conteúdo. O transporte é o do Quadro
+(`ph2d-board-net`/`-internet`), por quem compõe. **Retrato de quem entra:** carimbos compactos e SEM perda
+(`snapshot::pack/unpack`, 5,2× menores; retrato 2,6×) em blocos de 1 MiB (`SNAPSHOT_BLOCK`, `KMsg::SnapshotPart`);
+escritas a meio dos blocos ficam guardadas e aplicam-se depois (anfitrião 38 ms / convidado ~47 ms com 20 000
+cartões nascidos na sessão; MEDICOES §W5 S2). Provado: LAN e QUIC em loopback convergem. UI de Share/avatares
+e o retrato do anfitrião num fio ficam por fazer.
+
+## Mapa das crates (sem ciclos)
+
+```
+ph2d-frac ← ph2d-kanban-model ← ph2d-board-model ← ph2d-board-{render,sync,…}
+ph2d-richdoc ← ph2d-kanban-md                      ph2d-kanban-dates (jiff; folha)
+kanban-model + dates + md → ph2d-kanban-filter → ph2d-kanban-auto → ph2d-kanban-script (+ ph2d-script)
+kanban-model → ph2d-kanban-import                  kanban-model + ph2d-board-sync → ph2d-kanban-sync
+dates+filter+model+editor-core → ph2d-kanban-views → ph2d-app-planner (+ ph2d-app-kanban)
+model+md+richdoc+dates+filter+board-model+board-render → ph2d-app-kanban → ph2d-app-board → shell
+```
+
+`ph2d-kanban-model` depende só de `ph2d-frac`; `ph2d-board-model`/`-render` dependem dele, nunca ao
+contrário. Puras (sem UI): richdoc, md, dates, filter, import, auto, sync, script (+ `ph2d-script`).
+
+## Automação — `ph2d-kanban-auto`
+
+O Butler: regras, botões de cartão e de quadro, comandos de calendário e de prazo, executor determinístico
+(`Seen::plan` → aplicar → `react` → aplicar o `Outcome::plan` com o autor `Member::butler`), agenda, frase para a
+i18n e sugestões. Puro: «agora», fuso e autor vêm de quem chama. **Anti-laço:** uma regra nunca dispara por
+acontecimentos da sua PRÓPRIA cadeia (A→B→A pára em A; gate `a_ping_pong_pair_stops_when_a_rule_meets_its_own_chain`,
+mutação medida). Limites de SEGURANÇA, não de hardware: `MAX_DEPTH = 16` (cenário real mais fundo: 2),
+`MAX_RUNS = 1000` por gesto (= 8 ms medidos < 1 quadro); parar regista `Stop::Depth`. `react` não corre ao
+desfazer; `run_scheduled` fica fora do desfazer; calendário perdido corre UMA vez ao abrir, prazo uma vez por
+cartão; `SCAN_DAYS = 367` não é tecto. Sugestões: `SUGGEST_MIN = 3`, janela de 5 min. (MEDICOES §W8 U.)
+
+## Scripts — `ph2d-kanban-script`
+
+`ph2d.kanban.*` (ADR-0188: o script mora no projecto). Linhas da API, tipos do `ph2d.d.luau` e ajuda na fonte
+única `ph2d_script::api_table_kanban`/`api_help_kanban`; a fiação e `KanbanScripts` (`run`, `react`) aqui. Escreve
+por `apply_logged` com autor «script: <nome>», UM passo de desfazer por corrida, numa cópia (um script falhado
+não deixa nada), mesmos acontecimentos e mesmo anti-laço do Butler. snake_case (`add_card`, `press_button`);
+etiqueta desconhecida é erro que lista as existentes. ⚠️ Por ligar: o `app-kanban` chamar `run`/`react` e o
+Butler após cada gesto.
+
+## Import/export e vistas
+
+`ph2d-kanban-import`: JSON do Trello ↔ `Kanban` (`import_trello`, `export_trello_json`), CSV, markdown; pessoa =
+`username`; anexos do PH2D saem como `ph2d://`. `ph2d-kanban-views`: Tabela, Calendário (mês/semana/dia/agenda),
+Linha do tempo, Painel; estado da VISTA, gestos voltam em `Reply::plan` que o chamador aplica; a `Source`
+genérica do calendário serve o Kanban (`KanbanSource`) e o projecto (`ProjectSource`, `ph2d-app-planner`).
 
 ## Alternativas recusadas
 
@@ -71,17 +151,20 @@ equipa e menções, ficheiro por conteúdo, e um desfazer **por quadro** fora do
 | Ficheiro **fora** do projeto | quebra o projeto como unidade (desfazer, salvar, partilhar); fica como exportação |
 | CRDT externo (automerge/yrs) | o repo já tem réplica por campo provada em LAN e internet; duas leis de fusão = duas classes de defeito |
 | Desfazer no **`ProjectState`** (o handoff da W0) | restaura por fotografia: apaga o trabalho de um colega ao vivo e guarda o documento inteiro por passo (§5) |
-| Kanban **depende de `ph2d-board-model`** (para `FracKey`, `Who`, `FileId`) | ciclo na W4 (`ElementKind::Kanban` precisa do `KanbanView`); só a ordem tinha lei a partilhar, e saiu para `ph2d-frac` |
+| Kanban **depende de `ph2d-board-model`** (para `FracKey`, `Who`, `FileId`) | ciclo na W4 (`ElementKind::Kanban` precisa do `KanbanBoardView`); a ordem saiu para `ph2d-frac`, pessoas e ficheiros são próprios |
+| Quadro a pintar o Kanban directamente | `board-render`/`editor-core` ← família Kanban seria ciclo; ganchos `KanbanPainter`/`KanbanElementInput` (molde do vídeo) |
+| Deitar fora carimbos iguais ao do nascimento no retrato | menor, mas pede uma prova de fusão a mais; o sem-perda não pede nenhuma |
+| `time` 0.3 em vez de `jiff` | deixa a quem chama a mudança de horário e não traz a base de fusos |
+| Kanban **depende de `ph2d-board-model`** só para `FileId` | o `FileId` é PRÓPRIO (mesma chave sha-256); o ciclo já custou o `FracKey` |
 | Comentários e checklists como `Vec` **dentro** do `Card` | dois colegas no mesmo cartão escreveriam o mesmo registo, e a fusão por registo perderia um deles |
 
 ## O preço
 
-- O desfazer da W1 compara **por registo**: quando outro mexeu num registo depois do gesto, o passo
-  deixa esse registo inteiro como o outro o deixou. O Quadro compara campo a campo. Antes da W5 não
-  há outro escritor, então não muda nada para o artista. A W5 passa a regra a campo a campo, junto
-  com a réplica.
-- `PROTOCOL` 11 → 12 e a variante nova de `ElementKind` ficam para as W4–W5.
-- Mais uma crate no grafo (`ph2d-frac`, ~230 linhas, só `serde`).
+- O desfazer compara por campo (como o Quadro) desde o lote F; antes disso era por registo.
+- `PROTOCOL` 13 e Quadro `FORMAT_VERSION` 19: quem integrar reconta contra o `main` (§5.0).
+- Mais crates no grafo: `ph2d-frac` e as dez desta linha; deps novas `jiff` 0.2, `pulldown-cmark` 0.13.
+- Aberto: fixture v6; UI de Share/avatares; scripts/Butler não ligados ao `app-kanban`; células CSV sem
+  protecção contra fórmulas (paridade com o Trello; ver `DECISOES_SEM_O_DONO.md`).
 
 ## Gates
 

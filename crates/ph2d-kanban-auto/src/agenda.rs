@@ -141,26 +141,25 @@ fn pending(
     }
 }
 
-/// Os disparos em `(last_run, now]`: os das ligadas (`enabled`) e os das desligadas (`!enabled`).
-fn pending_all(set: &KanbanSet, now: Moment, zone: &Zone, enabled: bool) -> Vec<Firing> {
-    let mut out = Vec::new();
+/// Os disparos em `(last_run, now]`: `(das ligadas, das desligadas)`, numa passagem.
+fn pending_all(set: &KanbanSet, now: Moment, zone: &Zone) -> (Vec<Firing>, Vec<Firing>) {
+    let (mut on, mut off) = (Vec::new(), Vec::new());
     for k in set.iter() {
         for (id, spec) in specs(k) {
             let Some(last) = k.automations.get(&id).and_then(|a| a.last_run) else {
                 continue;
             };
-            if spec.enabled == enabled {
-                out.extend(pending(set, k, id, &spec, last, now, zone));
-            }
+            let to = if spec.enabled { &mut on } else { &mut off };
+            to.extend(pending(set, k, id, &spec, last, now, zone));
         }
     }
-    out
+    (on, off)
 }
 
 /// Os comandos de calendário e de prazo de todos os Kanbans que têm disparo em `(last_run, now]`.
 #[must_use]
 pub fn due_commands(set: &KanbanSet, now: Moment, zone: &Zone) -> Vec<Firing> {
-    pending_all(set, now, zone, true)
+    pending_all(set, now, zone).0
 }
 
 /// Corre a agenda: arma as automações agendadas sem `last_run`, corre cada [`Firing`] e carimba
@@ -170,8 +169,7 @@ pub fn due_commands(set: &KanbanSet, now: Moment, zone: &Zone) -> Vec<Firing> {
 #[must_use]
 pub fn run_scheduled(set: &KanbanSet, now: Moment, zone: &Zone) -> Outcome {
     let mut en = Engine::new(set, now, zone);
-    let firings = due_commands(set, now, zone);
-    let skipped = pending_all(set, now, zone, false);
+    let (firings, skipped) = pending_all(set, now, zone);
     for k in set.iter() {
         for (id, spec) in specs(k) {
             let scheduled = matches!(spec.kind, Kind::Calendar { .. } | Kind::DueDate { .. });

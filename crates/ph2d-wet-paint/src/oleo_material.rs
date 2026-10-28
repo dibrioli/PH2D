@@ -137,7 +137,7 @@ pub const PERFIL_SUBSUPERFICIE: [f64; 3] = [1.0, 0.2, 0.1];
 #[must_use]
 pub fn alcance_subsuperficie(raio: f64, ratio: usize) -> usize {
     let r = raio.clamp(0.0, f64::from(crate::material::RAIO_SUBSUPERFICIE_MAX));
-    libm::ceil(3.0 * r * PERFIL_SUBSUPERFICIE[0] / ratio.max(1) as f64) as usize
+    crate::oleo_real::exato::ceil(3.0 * r * PERFIL_SUBSUPERFICIE[0] / ratio.max(1) as f64) as usize
 }
 
 /// O MAIOR raio efectivo (px) da Subsurface que a janela `(x0, y0, x1, y1)` lê — as suas colunas, com as linhas
@@ -202,7 +202,7 @@ fn gauss(c: usize, lo: usize, hi: usize, s: f64, f: impl Fn(usize) -> f64) -> f6
     if s < 0.25 {
         return f(c);
     }
-    let r = libm::ceil(3.0 * s) as usize;
+    let r = crate::oleo_real::exato::ceil(3.0 * s) as usize;
     let k = -0.5 / (s * s);
     let (mut acc, mut pes) = (0.0, 0.0);
     for i in c.saturating_sub(r).max(lo)..=(c + r).min(hi) {

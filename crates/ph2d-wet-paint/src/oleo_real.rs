@@ -187,7 +187,11 @@ pub fn alcance(o: &OleoReal) -> usize {
 /// Quantas células o Smooth Edges de raio `r` (células; px é um tecto, `ratio ≥ 1`) espalha uma mudança: a tenda.
 #[must_use]
 fn alcance_do_suave(r: f64) -> usize {
-    if r > 0.0 { libm::ceil(r) as usize + 1 } else { 0 }
+    if r > 0.0 {
+        exato::ceil(r) as usize + 1
+    } else {
+        0
+    }
 }
 
 /// O [`alcance`] de uma mudança na região `(x0, y0, x1, y1)` também pela Subsurface das CÉLULAS (K4): a célula `q`
@@ -367,6 +371,28 @@ fn ganho_da_celula(lg: &Grid, i: usize, todo_oleo: bool) -> f64 {
     }
 }
 
+/// As operações EXACTAS do IEEE 754 (arredondar, chão, tecto e a raiz, correctamente arredondada): o mesmo bit em
+/// todo o SO pela própria norma — a lei do porte só pede o `libm` para as TRANSCENDENTES. As do `libm` são em
+/// software e eram ~20 % do tempo do óleo por quadro (perf, J6: `round` 11 %, `from_parts` 7 %).
+pub(crate) mod exato {
+    #[inline(always)]
+    pub(crate) fn round(v: f64) -> f64 {
+        v.round()
+    }
+    #[inline(always)]
+    pub(crate) fn floor(v: f64) -> f64 {
+        v.floor()
+    }
+    #[inline(always)]
+    pub(crate) fn ceil(v: f64) -> f64 {
+        v.ceil()
+    }
+    #[inline(always)]
+    pub(crate) fn sqrt(v: f64) -> f64 {
+        v.sqrt()
+    }
+}
+
 impl CampoAltura {
     /// A janela `[x0..=x1]×[y0..=y1]` (células, `1..=W`) alargada pela margem e presa à grade.
     pub fn de(
@@ -431,7 +457,8 @@ impl CampoAltura {
                     let m = f64::from(lg.sett[i]) + f64::from(lg.susp[i]);
                     // O Depth da tinta (dono 28/10, por célula) escala a massa ANTES do desfoque: a parede entre traços
                     // de Depth diferentes é a rampa do desfoque, sem degrau (doc W3b §Depth e Gloss).
-                    let k = crate::grid::espessura::factor(lg, i) * ganho_da_celula(lg, i, todo_oleo);
+                    let k =
+                        crate::grid::espessura::factor(lg, i) * ganho_da_celula(lg, i, todo_oleo);
                     massa[x] += m * k;
                     // Os sulcos dos fios fundam-se com a tinta que se empilhou (a amplitude ∝ espessura).
                     if !lg.altura.is_empty() {
@@ -527,7 +554,8 @@ impl CampoAltura {
         // W3b: o Relevo do papel — a superfície da tinta assenta no dente do papel (`Grid::paper`, o mesmo papel do
         // substrato), pela cobertura; sem Relevo do papel (ou sem papel) a soma nem se faz (ao bit).
         let dente = o.dente_papel * af.papel_na_tinta / ratio.max(1) as f64;
-        let relevo_papel = |k: usize| crate::material::peso(material.get(k).map_or(0.0, |m| m.relevo_papel));
+        let relevo_papel =
+            |k: usize| crate::material::peso(material.get(k).map_or(0.0, |m| m.relevo_papel));
         let com_papel = dente > 0.0 && !g.paper.is_empty() && com_material;
         let detalhe = plano_f32(rep, w, h, &|k| {
             let d = (af.grao * (massa_d[k] - suave[k]) * escala + fios_d[k] * k_fios) * cob[k];
@@ -664,7 +692,7 @@ impl CampoAltura {
     /// desenhava em escada a borda de cada estria (o pente da folha W1b).
     #[inline]
     fn at_sombra_em(&self, x: f64, y: f64) -> f64 {
-        let (fx, fy) = (libm::floor(x), libm::floor(y));
+        let (fx, fy) = (exato::floor(x), exato::floor(y));
         let (tx, ty) = (x - fx, y - fy);
         let (ix, iy) = (fx as isize, fy as isize);
         let l0 =
@@ -852,7 +880,7 @@ fn borda_suave(rep: &impl Reparte, cob: &[f64], w: usize, h: usize) -> Vec<f32> 
             }
             let m = |x: isize, y: isize| if em(x, y) >= lim { 1.0 } else { 0.0 };
             let bil = |x: f64, y: f64| {
-                let (fx, fy) = (libm::floor(x), libm::floor(y));
+                let (fx, fy) = (exato::floor(x), exato::floor(y));
                 let (tx, ty) = (x - fx, y - fy);
                 let (ix, iy) = (fx as isize, fy as isize);
                 let l0 = m(ix, iy) + (m(ix + 1, iy) - m(ix, iy)) * tx;
@@ -872,7 +900,7 @@ fn borda_suave(rep: &impl Reparte, cob: &[f64], w: usize, h: usize) -> Vec<f32> 
                 fora_g += g * (1.0 - dentro);
                 soma_g += g;
             }
-            let n = libm::sqrt(gx * gx + gy * gy);
+            let n = exato::sqrt(gx * gx + gy * gy);
             // §BUG-bordas-W3b: o contorno liso é o de uma BORDA (meio plano); um furo ou uma fenda de uma célula no meio
             // da tinta tem pouco «fora» na janela e não é borda — cortá-lo pela inversão da recta abria um entalhe à
             // volta do furo (a tinta escura em volta dos pontinhos).
@@ -889,7 +917,7 @@ fn borda_suave(rep: &impl Reparte, cob: &[f64], w: usize, h: usize) -> Vec<f32> 
             // A média ao longo cresce `≈ 1 − ½(1 − d/0,85)²` com a distância `d` do centro ao contorno (medido sobre
             // rectas de declive 0,05–1): invertida, a fracção da célula dentro dele.
             let fora = (1.0 - soma / peso).clamp(0.0, 0.5);
-            *q = (1.0 - libm::sqrt(2.0 * fora)) as f32;
+            *q = (1.0 - exato::sqrt(2.0 * fora)) as f32;
         }
     });
     if v.iter().any(|&b| b < 1.0) {
@@ -1014,7 +1042,7 @@ fn desfoca(rep: &impl Reparte, v: &[f64], w: usize, h: usize, r: usize) -> Vec<f
 /// Média móvel separável de meia largura FRACIONÁRIA `hh` (as pontas `⌊hh⌋ + 1` pesam `hh − ⌊hh⌋`, a `caixa` do
 /// Smooth Edges do composite), presa às bordas.
 fn desfoca_frac(rep: &impl Reparte, v: &[f64], w: usize, h: usize, hh: f64) -> Vec<f64> {
-    let k = libm::floor(hh) as isize;
+    let k = exato::floor(hh) as isize;
     let f = hh - k as f64;
     let n = 2.0 * k as f64 + 1.0 + 2.0 * f;
     let caixa = |ler: &dyn Fn(isize) -> f64| {
@@ -1295,8 +1323,53 @@ fn normal(campo: &CampoAltura, x: isize, y: isize) -> [f64; 3] {
     }
     let fx = (h(1, -1) + 2.0 * h(1, 0) + h(1, 1) - h(-1, -1) - 2.0 * h(-1, 0) - h(-1, 1)) / 8.0;
     let fy = (h(-1, 1) + 2.0 * h(0, 1) + h(1, 1) - h(-1, -1) - 2.0 * h(0, -1) - h(1, -1)) / 8.0;
-    let inv = 1.0 / libm::sqrt(fx * fx + fy * fy + 1.0);
+    let inv = 1.0 / exato::sqrt(fx * fx + fy * fy + 1.0);
     [-fx * inv, -fy * inv, inv]
+}
+
+/// As amostras do horizonte de uma [`escala_do_horizonte`]: por fatia a direcção `(cos φ, sin φ)` e, para cada
+/// lado e cada raio do [`HORIZONTE`], o deslocamento arredondado e a distância dele (`d = 0` = amostra saltada).
+/// São as MESMAS contas que cada célula fazia (ao bit), feitas uma vez por escala em vez de 72 vezes por célula.
+struct Amostras {
+    dir: [(f64, f64); FATIAS],
+    desloc: [[[(isize, isize, f64); HORIZONTE.len()]; 2]; FATIAS],
+}
+
+impl Amostras {
+    fn de(escala: f64) -> Self {
+        use core::f64::consts::PI;
+        let mut a = Self {
+            dir: [(0.0, 0.0); FATIAS],
+            desloc: [[[(0, 0, 0.0); HORIZONTE.len()]; 2]; FATIAS],
+        };
+        for k in 0..FATIAS {
+            let phi = PI * k as f64 / FATIAS as f64;
+            let (dx, dy) = (libm::cos(phi), libm::sin(phi));
+            a.dir[k] = (dx, dy);
+            for (j, sgn) in [1.0, -1.0].into_iter().enumerate() {
+                for (i, r) in HORIZONTE.into_iter().enumerate() {
+                    let r = r * escala;
+                    let (ox, oy) = (exato::round(sgn * dx * r), exato::round(sgn * dy * r));
+                    a.desloc[k][j][i] = (ox as isize, oy as isize, libm::hypot(ox, oy));
+                }
+            }
+        }
+        a
+    }
+
+    /// As da escala `escala`, guardadas por fio (a última escala pedida).
+    fn com<R>(escala: f64, f: impl FnOnce(&Self) -> R) -> R {
+        thread_local! {
+            static GUARDADAS: core::cell::RefCell<Option<(u64, Amostras)>> = const { core::cell::RefCell::new(None) };
+        }
+        GUARDADAS.with(|g| {
+            let mut g = g.borrow_mut();
+            if g.as_ref().is_none_or(|(b, _)| *b != escala.to_bits()) {
+                *g = Some((escala.to_bits(), Self::de(escala)));
+            }
+            f(&g.as_ref().unwrap().1)
+        })
+    }
 }
 
 /// A visibilidade do céu pelo cosseno (GTAO, Jimenez 2016, vista ortográfica +z) sobre a altura FINA:
@@ -1311,30 +1384,38 @@ fn visibilidade_e_ceu(
     escala: f64,
     ceu: Option<&CeuDoMapa<'_>>,
 ) -> (f64, Option<[f64; 3]>) {
+    Amostras::com(escala, |am| visibilidade_com(campo, x, y, n, am, ceu))
+}
+
+fn visibilidade_com(
+    campo: &CampoAltura,
+    x: isize,
+    y: isize,
+    n: [f64; 3],
+    am: &Amostras,
+    ceu: Option<&CeuDoMapa<'_>>,
+) -> (f64, Option<[f64; 3]>) {
     use core::f64::consts::{FRAC_PI_2, PI, TAU};
     let h0 = campo.at_fina(x, y);
     let mut acc = 0.0;
     let mut e = [0.0f64; 4];
     for k in 0..FATIAS {
         let phi = PI * k as f64 / FATIAS as f64;
-        let (dx, dy) = (libm::cos(phi), libm::sin(phi));
+        let (dx, dy) = am.dir[k];
         let mut s = [0.0f64; 2];
-        for (j, sgn) in [1.0, -1.0].into_iter().enumerate() {
-            for r in HORIZONTE {
-                let r = r * escala;
-                let (ox, oy) = (libm::round(sgn * dx * r), libm::round(sgn * dy * r));
-                let d = libm::hypot(ox, oy);
+        for (j, lado) in am.desloc[k].iter().enumerate() {
+            for &(ox, oy, d) in lado {
                 if d == 0.0 {
                     continue;
                 }
-                let dh = campo.at_fina(x + ox as isize, y + oy as isize) - h0;
-                s[j] = s[j].max(dh / libm::sqrt(dh * dh + d * d));
+                let dh = campo.at_fina(x + ox, y + oy) - h0;
+                s[j] = s[j].max(dh / exato::sqrt(dh * dh + d * d));
             }
         }
         // A normal projectada no plano da fatia: o comprimento pesa a fatia, o ângulo `g` mede-se do zénite.
         let no = -n[0] * dy + n[1] * dx;
         let np = [n[0] + no * dy, n[1] - no * dx, n[2]];
-        let len = libm::sqrt(np[0] * np[0] + np[1] * np[1] + np[2] * np[2]);
+        let len = exato::sqrt(np[0] * np[0] + np[1] * np[1] + np[2] * np[2]);
         if len < 1e-9 {
             continue;
         }
@@ -1431,13 +1512,13 @@ fn reflexo_livre(
     let mut sen = 0.0f64;
     for d in HORIZONTE {
         let d = d * escala;
-        let (ox, oy) = (libm::round(dx * d), libm::round(dy * d));
+        let (ox, oy) = (exato::round(dx * d), exato::round(dy * d));
         let dist = libm::hypot(ox, oy);
         if dist == 0.0 {
             continue;
         }
         let dh = campo.at_fina(x + ox as isize, y + oy as isize) - h0;
-        sen = sen.max(dh / libm::sqrt(dh * dh + dist * dist));
+        sen = sen.max(dh / exato::sqrt(dh * dh + dist * dist));
     }
     ((r[2] - sen) / rug.max(0.05) + 0.5).clamp(0.0, 1.0)
 }
@@ -1496,7 +1577,7 @@ fn menos_rebote(o: &OleoReal, campo: &CampoAltura, cx: usize, cy: usize, s: f64)
 /// «chão inclinado» da K10 era a saia da forma desfocada e saiu com ela.
 #[must_use]
 pub fn rebote_no_papel(o: &OleoReal, campo: &CampoAltura, cx: usize, cy: usize) -> f64 {
-    use core::f64::consts::{FRAC_PI_2, PI};
+    use core::f64::consts::FRAC_PI_2;
     if campo.albedo.is_empty() || o.sombra <= 0.0 {
         return 0.0;
     }
@@ -1522,50 +1603,48 @@ pub fn rebote_no_papel(o: &OleoReal, campo: &CampoAltura, cx: usize, cy: usize) 
     // `∫₀^a cos(θ − g)·sin θ dθ`: o peso pelo cosseno de um arco da fatia (o da visibilidade).
     let int =
         |a: f64, g: f64| 0.25 * (-libm::cos(2.0 * a - g) + libm::cos(g) + 2.0 * a * libm::sin(g));
-    let mut soma = 0.0;
-    for k in 0..FATIAS {
-        let phi = PI * k as f64 / FATIAS as f64;
-        let (dx, dy) = (libm::cos(phi), libm::sin(phi));
-        let no = -n[0] * dy + n[1] * dx;
-        let np = [n[0] + no * dy, n[1] - no * dx, n[2]];
-        let len = libm::sqrt(np[0] * np[0] + np[1] * np[1] + np[2] * np[2]);
-        if len < 1e-9 {
-            continue;
-        }
-        let g = libm::acos((np[2] / len).clamp(-1.0, 1.0)).copysign(np[0] * dx + np[1] * dy);
-        for sgn in [1.0, -1.0] {
-            let gs = sgn * g;
-            // O limite da meia-esfera da normal deste lado (abaixo da horizontal se ela pende para cá).
-            let fim = FRAC_PI_2 + gs;
-            let (mut e, mut parede) = (0.0f64, (x, y));
-            for r in HORIZONTE {
-                let r = r * escala;
-                let (ox, oy) = (libm::round(sgn * dx * r), libm::round(sgn * dy * r));
-                let d = libm::hypot(ox, oy);
-                if d == 0.0 {
-                    continue;
-                }
-                let q = (x + ox as isize, y + oy as isize);
-                let dh = campo.at_fina(q.0, q.1) - h0;
-                let sen = dh / libm::sqrt(dh * dh + d * d);
-                if sen > e {
-                    (e, parede) = (sen, q);
-                }
+    Amostras::com(escala, |am| {
+        let mut soma = 0.0;
+        for k in 0..FATIAS {
+            let (dx, dy) = am.dir[k];
+            let no = -n[0] * dy + n[1] * dx;
+            let np = [n[0] + no * dy, n[1] - no * dx, n[2]];
+            let len = exato::sqrt(np[0] * np[0] + np[1] * np[1] + np[2] * np[2]);
+            if len < 1e-9 {
+                continue;
             }
-            let mut luz = 0.0;
-            if e > 0.0 {
-                let (a, b) = (FRAC_PI_2 - libm::asin(e), fim.min(FRAC_PI_2));
-                if b > a {
-                    // A face olha de volta para o papel: normal horizontal `−(dx, dy)·sgn`.
-                    let ndl = -(sgn * dx * l[0] + sgn * dy * l[1]);
-                    let face = 0.5 * forca + (1.0 - forca) * ndl.max(0.0) / l[2];
-                    luz += (int(b, gs) - int(a, gs)) * lum(parede) * face;
+            let g = libm::acos((np[2] / len).clamp(-1.0, 1.0)).copysign(np[0] * dx + np[1] * dy);
+            for (sgn, lado) in [1.0, -1.0].into_iter().zip(&am.desloc[k]) {
+                let gs = sgn * g;
+                // O limite da meia-esfera da normal deste lado (abaixo da horizontal se ela pende para cá).
+                let fim = FRAC_PI_2 + gs;
+                let (mut e, mut parede) = (0.0f64, (x, y));
+                for &(ox, oy, d) in lado {
+                    if d == 0.0 {
+                        continue;
+                    }
+                    let q = (x + ox, y + oy);
+                    let dh = campo.at_fina(q.0, q.1) - h0;
+                    let sen = dh / exato::sqrt(dh * dh + d * d);
+                    if sen > e {
+                        (e, parede) = (sen, q);
+                    }
                 }
+                let mut luz = 0.0;
+                if e > 0.0 {
+                    let (a, b) = (FRAC_PI_2 - libm::asin(e), fim.min(FRAC_PI_2));
+                    if b > a {
+                        // A face olha de volta para o papel: normal horizontal `−(dx, dy)·sgn`.
+                        let ndl = -(sgn * dx * l[0] + sgn * dy * l[1]);
+                        let face = 0.5 * forca + (1.0 - forca) * ndl.max(0.0) / l[2];
+                        luz += (int(b, gs) - int(a, gs)) * lum(parede) * face;
+                    }
+                }
+                soma += len * luz;
             }
-            soma += len * luz;
         }
-    }
-    o.sombra * o.af.rebote_papel * soma / FATIAS as f64
+        o.sombra * o.af.rebote_papel * soma / FATIAS as f64
+    })
 }
 
 /// A [`sombra_no_papel`] de uma célula PINTADA a partir dos [`Termos`] que a cor dela já calculou (a luz
@@ -1618,7 +1697,7 @@ pub fn transparencia_a_luz(t: f64, w: f64, a: [f64; 3], claro: f64) -> f64 {
     }
     let v = a.map(crate::material::vidro);
     let passa = w * (0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2]);
-    libm::sqrt(1.0 - (1.0 - t * t) * (1.0 - passa))
+    exato::sqrt(1.0 - (1.0 - t * t) * (1.0 - passa))
 }
 
 /// ⭐ **A transparência À LUZ da tinta que tapa o papel NU `(cx, cy)`** (W3b, `oraculo/README.md` §Transmission):
@@ -1640,8 +1719,8 @@ pub fn transparencia_de_quem_tapa(o: &OleoReal, campo: &CampoAltura, cx: usize, 
     for t in 1..=PASSOS_SOMBRA {
         let t = t as f64;
         let q = (
-            libm::round(x + dx * t) as isize,
-            libm::round(y + dy * t) as isize,
+            exato::round(x + dx * t) as isize,
+            exato::round(y + dy * t) as isize,
         );
         let h = campo.at_sombra(q.0, q.1);
         if h > alto {
@@ -1801,7 +1880,7 @@ pub fn termos_com(
 
     // Brilho da lâmpada: GGX + Schlick, vista ortográfica (0,0,1), só onde a luz directa chega.
     let hv = [l[0], l[1], l[2] + 1.0];
-    let hn = libm::sqrt(hv[0] * hv[0] + hv[1] * hv[1] + hv[2] * hv[2]);
+    let hn = exato::sqrt(hv[0] * hv[0] + hv[1] * hv[1] + hv[2] * hv[2]);
     let ndh = ((n[0] * hv[0] + n[1] * hv[1] + n[2] * hv[2]) / hn).max(0.0);
     // Antisserrilhado do brilho (Kaplanyan 2016): o lobo alarga-se pela variação da normal dentro da célula
     // (a hessiana da altura fina) — numa encosta estreita o pico de GGX saturava em pontos brancos.
@@ -1844,7 +1923,7 @@ pub fn termos_com(
             2.0 * nr[2] * nr[1],
             2.0 * nr[2] * nr[2] - 1.0,
         ];
-        let rug = libm::sqrt(libm::sqrt(a2));
+        let rug = exato::sqrt(exato::sqrt(a2));
         let nv = nr[2].max(1e-4);
         let r0 = -rug + 1.0;
         let a004 = (r0 * r0).min(libm::exp2(-9.28 * nv)) * r0 + (-0.0275 * rug + 0.0425);

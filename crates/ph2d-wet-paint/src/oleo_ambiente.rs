@@ -112,12 +112,12 @@ impl Sectores {
     #[inline]
     pub(crate) fn ate(&self, u: f64, alfa: f64) -> [[f64; 4]; 2] {
         let fx = u.rem_euclid(1.0) * self.k as f64 - 0.5;
-        let x0 = libm::floor(fx);
+        let x0 = crate::oleo_real::exato::floor(fx);
         let tx = fx - x0;
         let xa = (x0 as isize).rem_euclid(self.k as isize) as usize;
         let xb = (xa + 1) % self.k;
         let fy = (alfa / core::f64::consts::FRAC_PI_2 * self.m as f64).clamp(0.0, self.m as f64);
-        let j0 = (libm::floor(fy) as usize).min(self.m - 1);
+        let j0 = (crate::oleo_real::exato::floor(fy) as usize).min(self.m - 1);
         let ty = fy - j0 as f64;
         let p = |x: usize, j: usize| &self.c[x + j * self.k];
         let (p00, p10, p01, p11) = (p(xa, j0), p(xb, j0), p(xa, j0 + 1), p(xb, j0 + 1));
@@ -188,7 +188,7 @@ impl Mapa {
         let fx = u * w as f64 - 0.5;
         let fy_bruto = (1.0 - v) * h as f64 - 0.5;
         let fy = fy_bruto.clamp(0.0, (h - 1) as f64);
-        let (x0, y0) = (libm::floor(fx), libm::floor(fy));
+        let (x0, y0) = (crate::oleo_real::exato::floor(fx), crate::oleo_real::exato::floor(fy));
         let (tx, ty) = (fx - x0, fy - y0);
         let xi = |k: f64| (k as isize).rem_euclid(w as isize) as usize;
         let (xa, xb) = (xi(x0), xi(x0 + 1.0));

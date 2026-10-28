@@ -183,6 +183,14 @@ pub(super) fn parametros(r: &Receita) -> Parametros {
     p
 }
 
+/// O preset SEM a caixa Real Oil (J6, triagem dos portões): um portão que mede uma lei do PIGMENTO, do relevo do
+/// Impasto/cerdas ou da textura usa o preset de fábrica só como instrumento — com os `Oil/*` de Real Oil (dono 28/10)
+/// a luz do óleo somava-se à lei medida. A lei continua medida, sem isenção; o óleo mede-se no EXAME.
+pub(super) fn sem_real_oil(mut p: Preset) -> Preset {
+    p.parametros.engine.remove(CHAVE_REAL_OIL);
+    p
+}
+
 /// O caminho de fábrica de uma receita de Digital/Watercolor/Impasto.
 pub(super) fn relativo_do_meio(r: &ReceitaMeio) -> String {
     caminho_relativo(motor_do_meio(r.meio), r.pasta, r.grupo, r.nome)
@@ -568,10 +576,13 @@ fn raio_do_motor_da_tabela(tabela: &[[f64; 2]], raio: f32) -> f32 {
 pub(super) fn tabela_de_largura(p: &Preset) -> Vec<[f64; 2]> {
     use std::sync::atomic::{AtomicUsize, Ordering};
     let raios = raios_da_lei();
+    // Com o Real Oil a tela de um raio pesa ~260 B por célula (Dabber a raio 1000: 1 513 contra 940 MiB sem ele, J6):
+    // os 64 raios de uma vez passavam os 24G da fatia (OOM). 8 de cada vez, os maiores primeiro: ≤ ~11 GiB.
+    let com_oleo = p.parametros.engine.get(CHAVE_REAL_OIL) == Some(&1.0);
     let fios = std::env::var("PH2D_LEI_FIOS")
         .ok()
         .and_then(|v| v.parse().ok())
-        .unwrap_or(raios.len());
+        .unwrap_or(if com_oleo { 8 } else { raios.len() });
     let proximo = AtomicUsize::new(0);
     let mut larguras = vec![0.0_f32; raios.len()];
     std::thread::scope(|s| {
@@ -1141,26 +1152,43 @@ fn a_largura_e_a_prometida() {
     let mut falhas = Vec::new();
     // Só o Wet: a tabela de largura é a promessa do slider dele (os outros meios não a gravam nem a leem).
     let ficheiros = ficheiros_do_wet();
-    // Os presets em paralelo (cada um já pinta os seus raios em paralelo): medido 11/10, 55 → 51 s.
-    let medidos: Vec<(Preset, Vec<f32>, Option<Vec<f32>>)> = std::thread::scope(|s| {
-        let h: Vec<_> = ficheiros
-            .iter()
-            .map(|(rel, b)| {
-                s.spawn(move || {
-                    let p = ler(b).unwrap();
-                    let (larguras, crua) = std::thread::scope(|s| {
-                        let crua = rel
-                            .ends_with("Wet Round.ph2d-brush.png")
-                            .then(|| s.spawn(|| larguras_da_promessa(&p, true)));
-                        let larguras = larguras_da_promessa(&p, false);
-                        (larguras, crua.map(|h| h.join().unwrap()))
-                    });
-                    (p, larguras, crua)
+    // Os presets em paralelo (cada um já pinta os seus 8 raios em paralelo), mas só `núcleos ÷ 8` de cada vez: todos
+    // de uma vez eram 44 × 8 = 352 telas vivas, e com os Oil/* de Real Oil (dono 28/10; o campo do óleo ~+100 B por
+    // célula, 466 contra 248 MiB a raio 300) a soma passava os 24G da fatia — OOM 2× (J6). Acima dos núcleos o
+    // paralelismo não compra relógio, só memória.
+    let de_cada_vez = std::thread::available_parallelism()
+        .map_or(4, |n| (n.get() / RAIOS_DA_PROMESSA.len()).max(1));
+    let proximo = std::sync::atomic::AtomicUsize::new(0);
+    let mut medidos: Vec<Option<(Preset, Vec<f32>, Option<Vec<f32>>)>> =
+        (0..ficheiros.len()).map(|_| None).collect();
+    std::thread::scope(|s| {
+        let h: Vec<_> = (0..de_cada_vez)
+            .map(|_| {
+                s.spawn(|| {
+                    let mut feitos = Vec::new();
+                    loop {
+                        let k = proximo.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                        let Some((rel, b)) = ficheiros.get(k) else {
+                            break feitos;
+                        };
+                        let p = ler(b).unwrap();
+                        let (larguras, crua) = std::thread::scope(|s| {
+                            let crua = rel
+                                .ends_with("Wet Round.ph2d-brush.png")
+                                .then(|| s.spawn(|| larguras_da_promessa(&p, true)));
+                            let larguras = larguras_da_promessa(&p, false);
+                            (larguras, crua.map(|h| h.join().unwrap()))
+                        });
+                        feitos.push((k, (p, larguras, crua)));
+                    }
                 })
             })
             .collect();
-        h.into_iter().map(|h| h.join().unwrap()).collect()
+        for (k, m) in h.into_iter().flat_map(|h| h.join().unwrap()) {
+            medidos[k] = Some(m);
+        }
     });
+    let medidos = medidos.into_iter().map(Option::unwrap);
     for ((rel, _), (p, larguras, crua)) in ficheiros.iter().zip(medidos) {
         println!("[largura] {rel}: {larguras:?} (pedidas {RAIOS_DA_PROMESSA:?} × 2)");
         let tol = if borda_ruidosa(&p) {
@@ -1432,6 +1460,10 @@ fn sonda_memoria_da_lei() {
         p.parametros = parametros(r);
         p.parametros.width_table = tabela;
     }
+    // `PH2D_SONDA_OLEO=0`: o mesmo preset sem a caixa Real Oil (J6: o custo do óleo é a diferença).
+    if var("PH2D_SONDA_OLEO").as_deref() == Some("0") {
+        p.parametros.engine.remove(CHAVE_REAL_OIL);
+    }
     if let Some(j) = var("PH2D_SONDA_JITTER") {
         p.parametros.brush.insert(
             "jitter".into(),
@@ -1533,7 +1565,15 @@ fn memoria_num_filho(raio: f32) -> (f64, usize) {
 /// | 1000 | 2 966 | 1 221 | 1 800 |
 ///
 /// (O Dabber de antes — lâmina, Jitter 0,5 — com o limiar `r`: 467 a raio 300 e 3 955 a 1 100, 6–7 lanes.)
-const TECTO_DA_MEMORIA_MIB: [(f32, f64); 2] = [(300.0, 230.0), (1000.0, 1800.0)];
+///
+/// J6 (dono 28/10): o Dabber de fábrica traz o **Real Oil** — o campo do óleo soma ~+60 B por célula ao gesto. Medido
+/// 28/10 (smoke, um processo por raio, `PH2D_SONDA_OLEO`):
+///
+/// | raio | sem óleo | com óleo | mutante (limiar `r`) com óleo | tecto |
+/// |---|---|---|---|---|
+/// | 300  | 152 | 270 | 309 (2 lanes) | 290 |
+/// | 1000 | 940 | 1 513 | 2 029 (2 lanes) | 1 800 |
+const TECTO_DA_MEMORIA_MIB: [(f32, f64); 2] = [(300.0, 290.0), (1000.0, 1800.0)];
 
 /// ⭐ **A MEMÓRIA do Dabber cabe** (L13, EXAME §3.6): o Jitter espalha UMA ponta — o traço inteiro numa lane — e o
 /// pico do gesto a raio 300 e 1000 fica abaixo do tecto medido. Mutação: o limiar da lane sem o Jitter

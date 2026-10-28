@@ -303,7 +303,7 @@ impl UserData for ListH {
                 let mut c = Card::new(CardId(kb.mint()), this.list, pos, &spec.title, l.now);
                 spec.fill(&mut c);
                 let id = c.id;
-                l.write(this.kanban, vec![KanbanOp::put(Record::Card(c))]);
+                l.write(this.kanban, vec![KanbanOp::put(Record::card(c))]);
                 Ok(id)
             })?;
             card_ud(lua, this.kanban, id)

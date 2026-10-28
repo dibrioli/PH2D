@@ -59,3 +59,6 @@
 | W8 | Etiqueta desconhecida num script é erro que lista as existentes (o script não a cria) | erro visível > criação silenciosa | idem |
 | W8 | Um script falhado não deixa NADA (corre numa cópia); uma execução = um passo de desfazer | a regra do `ph2d.set` | idem |
 | W10 | CSV protegido contra injecção de fórmulas (prefixo `'`, OWASP) — revoga a linha «NÃO são protegidas» | segurança > paridade com o Trello | `export_csv` (`56b1bb9ce6`) |
+| W11 | Nota adesiva → cartão SUBSTITUI a nota (como o Miro); cartão → nota apaga o cartão; um passo de desfazer no Quadro; cartão editado depois nunca é apagado pelo desfazer | Miro | `notes_to_cards` |
+| W11 | Nota branca/cinza não ganha etiqueta; notas da mesma cor partilham uma etiqueta | cor → etiqueta mais próxima | idem |
+| W11 | Ligações do cartão (objecto, script, macro, trecho, Quadro) não entram na actividade | o Trello não regista Power-Ups | `ProjectLink` |

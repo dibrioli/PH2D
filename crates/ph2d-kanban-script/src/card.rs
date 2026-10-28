@@ -214,7 +214,7 @@ impl CardH {
             let before = c.clone();
             change(l, &mut c)?;
             if c != before {
-                l.write(self.kanban, vec![KanbanOp::put(Record::Card(c))]);
+                l.write(self.kanban, vec![KanbanOp::put(Record::card(c))]);
             }
             Ok(())
         })

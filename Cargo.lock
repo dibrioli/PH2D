@@ -5751,6 +5751,7 @@ dependencies = [
  "ph2d-host",
  "ph2d-i18n",
  "ph2d-kanban-dates",
+ "ph2d-kanban-filter",
  "ph2d-kanban-md",
  "ph2d-kanban-model",
  "ph2d-richdoc",
@@ -6792,6 +6793,7 @@ dependencies = [
  "ph2d-host",
  "ph2d-i18n",
  "ph2d-input",
+ "ph2d-kanban-links",
  "ph2d-kanban-model",
  "ph2d-label-census",
  "ph2d-macro",
@@ -7614,6 +7616,18 @@ dependencies = [
  "jiff",
  "ph2d-kanban-model",
  "serde_json",
+]
+
+[[package]]
+name = "ph2d-kanban-links"
+version = "0.0.0"
+dependencies = [
+ "ph2d-board-model",
+ "ph2d-color",
+ "ph2d-kanban-md",
+ "ph2d-kanban-model",
+ "ph2d-richdoc",
+ "ph2d-tokens",
 ]
 
 [[package]]

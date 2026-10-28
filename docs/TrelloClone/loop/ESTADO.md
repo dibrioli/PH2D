@@ -22,7 +22,7 @@
 - [x] W8 lote L `35373e3520` ph2d-kanban-script (ph2d.kanban.*). Falta: app-kanban chamar run/react + Butler após cada gesto; UI do Butler
 - [ ] W8 L2 (adiado p/ ligação): mover short_film/sky_png p/ crate baixa (ph2d-kanban-scenes, now por argumento); app correr scripts Kanban (Run/Ctrl+S → KanbanScripts::run; handlers on() activos); depois cena CODE_SMOKE=10 + foto
 - [x] W7 lote W `fb27d29542` `3be4ca777f` `7525ed9173` `b4349d438c` ph2d-kanban-views (+Dia/Agenda/semana horas). Falta: seletor de vistas no app-kanban; back/dates.rs → usar datepick.rs da views (uma lei)
-- W11 lote K: modelo Link→objecto/script/macro/timeline + nota adesiva↔cartão (app-board)
+- [x] W11 lote K `53883fefd8` `246d58ecfe` (modelo v6 ProjectLink, ph2d-kanban-links, notas↔cartões). Fiação por fazer: frame.rs serve(hero); menu do Quadro «Convert to card»; «Convert to sticky note» no cartão; shell publish_scene + drenar take(Scene/Timeline); app-code take(Script)→CodeDocs::open; Macros take(Macro); secção «Scene object» no verso; nota nova do cartão no tamanho do texto
 - [x] W3 lote C `3e5dd5b05a` modelo v2 · `6b4ff2373e` tracking no ph2d-text (falta ligar paint_text.rs/text_elide.rs + list_title → D2). ADR-0195 desactualizado (v1, ImageFile) → documentador
 - [x] W3 lote D1 `251b2d2652` `59d6c6828b` verso + cena 4
 - [x] W3 lote D3 `da79404217` ligações D2 · `ea80f10a4a` anexos/links/copy/cliques

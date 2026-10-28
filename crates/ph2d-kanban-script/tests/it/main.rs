@@ -107,7 +107,7 @@ impl Scene {
         );
         edit(&mut c);
         let id = c.id;
-        self.set.apply(self.k, vec![KanbanOp::put(Record::Card(c))]);
+        self.set.apply(self.k, vec![KanbanOp::put(Record::card(c))]);
         id
     }
 

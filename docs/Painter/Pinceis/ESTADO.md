@@ -72,7 +72,8 @@
    diâmetro: fila); Gouache Flat com `wetCover` — EM CURSO.
 5. ✅ Fio do arrasto (`3f6377fcec` `49211e2779`, `smear_fio`; linhas vazias 35/118 → 0, Rebelle 0): Smudge Finger
    curado não aprovado (fio pálido 1,25 × 2,14; língua oca sob a faixa). Portão sem_glaze: verde (`e42004f3e8`; o
-   vermelho vinha de `5291edbc75`, 25/10, lei deliberada do tubo — repintado com o porquê). 8. partículas — EM CURSO.
+   vermelho vinha de `5291edbc75`, 25/10, lei deliberada do tubo — repintado com o porquê). Tampas do traço largo (Square Hard, Wet Liner, Wet Wash) — EM CURSO. 8. Particles/Glitter: SEM oráculo que as
+   pinte (efeitos.md «Para a fila» 4–5) ⇒ ficam fora até haver foto.
 7. ✅ Lâmina (`a6dcb2afa1` `883ea9d7c2`, [`J6_lamina.md`](J6_lamina.md)): o Rebelle NÃO gira — cada plano fica fixo no
    seu eixo; sem knob novo, gate `a_lamina_de_cada_preset_e_a_do_oraculo`. Craft Flat, Broad Nib, Compressed Charcoal,
    Bristle Watercolor ficam em estudo (o que se vê é outra lacuna); receitas Oil em `J6_lamina_oil_receitas.md`.

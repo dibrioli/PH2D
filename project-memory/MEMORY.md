@@ -52,6 +52,7 @@
 - ⛔ **Nada armengado: SILENCIAR um diagnóstico é armengo mesmo com a ferramenta defeituosa** ([§SUPRESSÃO, 29/08](feedback_perfection_no_deferrals.md)) — e meio-feito é pior que não começar
 - ⭐⭐ [Máximo AMOSTRADO que vira limite de segurança erra sempre PARA BAIXO](feedback_a_sampled_maximum_that_becomes_a_safety_bound_errs_only_downwards.md)
 - 📚 [Comunicação & decisão: mais (72) lições, uma linha cada, verbatim](reference_topic_communication_and_decision_lessons.md)
+- ⛔⛔ [Missão de pincéis (dono 28/10): o DONO faz a triagem, SIMULA-SE o conserto antes de construir, 45 min/agente, pesado 1× no fim (J6: 25 h → 2 pincéis)](feedback_brush_method_owner_triage_and_simulate_before_building.md)
 
 ## Git & colisão multi-agente
 - [Perigos de git/edição (15)](reference_topic_git_hazards.md)

@@ -1,9 +1,9 @@
-//! ⭐ **A frente de um cartão pintada** — a do `Card.dc.html` da maquete: capa de cor, rótulos (com
-//! texto ou só barras), título, distintivos (descrição, comentários, anexos, checklist, votos,
-//! local), membros à direita; o anel do foco, o lápis ao pairar e as três sombras (repouso, pairar,
-//! voo).
+//! ⭐ **A frente de um cartão pintada** — a do `Card.dc.html` da maquete: capa de cor ou de imagem
+//! (metade ou inteira), rótulos (com texto ou só barras), título, campos «na frente», distintivos
+//! em filas (seguir, datas com a cor do estado, descrição, comentários, anexos, checklist, votos,
+//! local), membros à direita; o anel do foco, o lápis ao pairar e as três sombras.
 
-use crate::front::{self, Front};
+use crate::front::{self, Front, badges};
 use crate::metrics as m;
 use crate::paint::{c, label, shadow, text_top};
 use ph2d_editor_core::IconId;
@@ -11,7 +11,7 @@ use ph2d_editor_core::paint::{
     fill_rounded_rect, paint_icon, paint_text_block, paint_text_elided, stroke_rounded_rect,
 };
 use ph2d_editor_core::zones::Rect;
-use ph2d_kanban_model::{LabelColor, Shade};
+use ph2d_kanban_model::{Hue, LabelColor, Shade};
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken as T, StrokeToken, Theme};
 use ph2d_vector::{Color, VectorScene};
@@ -114,38 +114,14 @@ pub(crate) fn card(
             c(theme, T::KanbanShadowHover),
         );
     }
-    let mut y = r.y;
-    if let Some(h) = f.cover {
-        let cover = Rect::new(r.x, r.y, r.w, m::COVER_COLOR_H);
-        let (fill, _) = label(
-            theme,
-            LabelColor {
-                hue: h,
-                shade: Shade::Normal,
-            },
-        );
-        ph2d_editor_core::paint::fill_rounded_rect_radii(
-            scene,
-            cover,
-            (m::CARD_RADIUS, m::CARD_RADIUS, 0.0, 0.0),
-            fill,
-        );
-        y += m::COVER_COLOR_H;
-    }
-    y += m::CARD_PAD_Y;
-    let x = r.x + m::CARD_PAD_X;
-    let inner = r.w - 2.0 * m::CARD_PAD_X;
-    if !f.labels.is_empty() {
-        y = labels(scene, ts, theme, f, x, y, inner, label_text) + m::CARD_ROW_GAP;
-    }
-    let top = text_top(ts, y, m::LINE_H, m::CARD_TITLE_PX);
-    paint_text_block(ts, scene, &f.title, x, top, m::CARD_TITLE_PX, inner, ink.fg);
-    #[allow(clippy::cast_precision_loss)]
-    let lines = front::title_lines(ts, &f.title, inner) as f32;
-    y += lines * m::LINE_H;
-    if f.badges() {
-        badges(scene, ts, ink, f, x, y + m::CARD_ROW_GAP, inner);
-    }
+    let mut seen = probe::Painted::default();
+    let bottom = if f.full() {
+        cover::full(scene, ts, theme, f, r, &mut seen)
+    } else {
+        body(scene, ts, ink, f, r, label_text, &mut seen)
+    };
+    seen.h = bottom - r.y;
+    probe::note(&f.title, seen);
     if look.focus {
         let o = m::FOCUS_OFFSET;
         let ring = Rect::new(r.x - o, r.y - o, r.w + 2.0 * o, r.h + 2.0 * o);
@@ -169,6 +145,44 @@ pub(crate) fn card(
         fill_rounded_rect(scene, b, m::EDIT_BTN / 2.0, c(theme, T::KanbanCardRaised));
         icon(scene, IconId::EyePencil, b, ink.fg);
     }
+}
+
+/// O corpo de um cartão sem capa inteira: a capa metade, os rótulos, o título, os campos e os
+/// distintivos — a MESMA sequência que [`front::measure`] soma. Devolve o fundo pintado.
+#[allow(clippy::cast_precision_loss)]
+fn body(
+    scene: &mut VectorScene,
+    ts: &mut TextSystem,
+    ink: &Ink,
+    f: &Front,
+    r: Rect,
+    label_text: bool,
+    seen: &mut probe::Painted,
+) -> f32 {
+    let theme = ink.theme;
+    let ch = front::cover_h(f);
+    if ch > 0.0 {
+        cover::half(scene, theme, f, Rect::new(r.x, r.y, r.w, ch), seen);
+    }
+    let mut y = r.y + front::labels_top(f).unwrap_or(ch + m::CARD_PAD_Y);
+    let x = r.x + m::CARD_PAD_X;
+    let inner = r.w - 2.0 * m::CARD_PAD_X;
+    if !f.labels.is_empty() {
+        y = labels(scene, ts, theme, f, x, y, inner, label_text) + m::CARD_ROW_GAP;
+    }
+    let top = text_top(ts, y, m::LINE_H, m::CARD_TITLE_PX);
+    paint_text_block(ts, scene, &f.title, x, top, m::CARD_TITLE_PX, inner, ink.fg);
+    y += front::title_lines(ts, &f.title, inner) as f32 * m::LINE_H;
+    if !f.fields.is_empty() {
+        y = fields(scene, ts, theme, f, x, y + m::CARD_ROW_GAP, inner, seen);
+    }
+    let placed = badges::place(ts, f, inner);
+    if placed.h > 0.0 {
+        let y0 = y + m::CARD_ROW_GAP;
+        badges(scene, ts, ink, f, &placed, x, y0, seen);
+        y = y0 + placed.h;
+    }
+    y + m::CARD_PAD_Y
 }
 
 /// O lápis no canto do cartão (pairar): editar o título no lugar.
@@ -237,115 +251,109 @@ fn labels(
     y + row_h
 }
 
-/// A fila dos distintivos e, à direita, os avatares.
+/// Os campos «na frente»: chips `Nome: valor` (a opção da lista suspensa com a cor dela). Devolve
+/// o fundo deles.
+#[allow(clippy::too_many_arguments)]
+fn fields(
+    scene: &mut VectorScene,
+    ts: &mut TextSystem,
+    theme: Theme,
+    f: &Front,
+    x0: f32,
+    y0: f32,
+    width: f32,
+    seen: &mut probe::Painted,
+) -> f32 {
+    let (mut x, mut y) = (x0, y0);
+    for chip in &f.fields {
+        let w = badges::field_w(ts, &chip.text, chip.check, width);
+        if x > x0 && x + w > x0 + width {
+            x = x0;
+            y += badges::FIELD_H + m::LABEL_GAP;
+        }
+        let hue = chip.hue.unwrap_or(Hue::Black);
+        let (fill, fg) = label(
+            theme,
+            LabelColor {
+                hue,
+                shade: Shade::Subtle,
+            },
+        );
+        fill_rounded_rect(
+            scene,
+            Rect::new(x, y, w, badges::FIELD_H),
+            m::LABEL_RADIUS,
+            fill,
+        );
+        let mut tx = x + badges::FIELD_PAD_X;
+        if chip.check {
+            icon(
+                scene,
+                IconId::Check,
+                Rect::new(tx, y, m::BADGE_ICON, badges::FIELD_H),
+                fg,
+            );
+            tx += m::BADGE_ICON + m::BADGE_PAD;
+        }
+        let ty = text_top(ts, y, badges::FIELD_H, m::SMALL_PX);
+        let room = x + w - badges::FIELD_PAD_X - tx;
+        paint_text_elided(ts, scene, &chip.text, tx, ty, m::SMALL_PX, room, fg);
+        seen.fields.push(chip.text.clone());
+        x += w + m::LABEL_GAP;
+    }
+    y + badges::FIELD_H
+}
+
+/// Os distintivos já partidos em filas ([`badges::place`]) e os avatares à direita.
+#[allow(clippy::too_many_arguments)]
 fn badges(
     scene: &mut VectorScene,
     ts: &mut TextSystem,
     ink: &Ink,
     f: &Front,
+    placed: &badges::Placed,
     x0: f32,
-    y: f32,
-    width: f32,
+    y0: f32,
+    seen: &mut probe::Painted,
 ) {
     let theme = ink.theme;
-    let mut x = x0;
-    let row = |x: f32, w: f32| Rect::new(x, y, w, m::BADGE_ROW_H);
-    let badge = |scene: &mut VectorScene,
-                 ts: &mut TextSystem,
-                 x: &mut f32,
-                 id: IconId,
-                 text: Option<String>,
-                 fill: Option<(Color, Color)>| {
-        let tw = text
-            .as_deref()
-            .map_or(0.0, |t| ts.prefix_width(t, m::SMALL_PX) + m::BADGE_PAD);
-        let w = m::BADGE_ICON + tw + 2.0 * m::BADGE_PAD;
-        let r = row(*x, w);
-        let fg = match fill {
+    for (b, at, tw) in &placed.badges {
+        let r = Rect::new(x0 + at.x, y0 + at.y, at.w, at.h);
+        let fg = match b.fill {
             Some((bg, fg)) => {
                 fill_rounded_rect(
                     scene,
                     Rect::new(r.x, r.y + m::BADGE_PAD / 2.0, r.w, r.h - m::BADGE_PAD),
                     m::LABEL_RADIUS,
-                    bg,
+                    c(theme, bg),
                 );
-                fg
+                c(theme, fg)
             }
             None => ink.meta,
         };
         icon(
             scene,
-            id,
+            b.icon,
             Rect::new(r.x + m::BADGE_PAD, r.y, m::BADGE_ICON, r.h),
             fg,
         );
-        if let Some(t) = text {
+        if let Some(t) = &b.text {
             let ty = text_top(ts, r.y, r.h, m::SMALL_PX);
-            paint_text_elided(
-                ts,
-                scene,
-                &t,
-                r.x + m::BADGE_PAD + m::BADGE_ICON + m::BADGE_PAD,
-                ty,
-                m::SMALL_PX,
-                tw,
-                fg,
-            );
+            let tx = r.x + m::BADGE_PAD + m::BADGE_ICON + m::BADGE_PAD;
+            paint_text_elided(ts, scene, t, tx, ty, m::SMALL_PX, *tw, fg);
         }
-        *x += w + m::BADGE_GAP;
+        if b.icon == IconId::Timer {
+            seen.due = Some((b.text.clone().unwrap_or_default(), b.fill.map(|f| f.0)));
+        }
+        seen.badges.push(b.icon);
+    }
+    let Some((group, n)) = placed.members else {
+        return;
     };
-    if f.description {
-        badge(scene, ts, &mut x, IconId::Menu, None, None);
-    }
-    if f.comments > 0 {
-        badge(
-            scene,
-            ts,
-            &mut x,
-            IconId::MessageSquare,
-            Some(f.comments.to_string()),
-            None,
-        );
-    }
-    if f.attachments > 0 {
-        badge(
-            scene,
-            ts,
-            &mut x,
-            IconId::Link,
-            Some(f.attachments.to_string()),
-            None,
-        );
-    }
-    if let Some((done, all)) = f.check {
-        let full = done == all && all > 0;
-        let fill = full.then(|| (c(theme, T::KanbanDueDone), c(theme, T::KanbanDueDoneFg)));
-        badge(
-            scene,
-            ts,
-            &mut x,
-            IconId::Check,
-            Some(format!("{done}/{all}")),
-            fill,
-        );
-    }
-    if f.votes > 0 {
-        badge(
-            scene,
-            ts,
-            &mut x,
-            IconId::Vote,
-            Some(f.votes.to_string()),
-            None,
-        );
-    }
-    if f.location {
-        badge(scene, ts, &mut x, IconId::Place, None, None);
-    }
-    // Os membros, da direita para a esquerda, cada um a sobrepor o vizinho com um anel da cor do
-    // cartão.
-    let mut ax = x0 + width - m::AVATAR;
-    for who in f.members.iter().rev() {
+    // Da direita para a esquerda, cada um a sobrepor o vizinho com um anel da cor do cartão.
+    let mut ax = x0 + group.x + group.w - m::AVATAR;
+    let y = y0 + group.y;
+    for who in f.members.iter().rev().take(n) {
         let r = Rect::new(ax, y, m::AVATAR, m::AVATAR);
         let ring = Rect::new(
             r.x - m::AVATAR_RING,
@@ -354,10 +362,11 @@ fn badges(
             r.h + 2.0 * m::AVATAR_RING,
         );
         fill_rounded_rect(scene, ring, ring.w / 2.0, ink.card);
+        let hue = front::avatar_hue(who);
         let (bg, _) = label(
             theme,
             LabelColor {
-                hue: front::avatar_hue(who),
+                hue,
                 shade: Shade::Normal,
             },
         );
@@ -365,6 +374,7 @@ fn badges(
         let s = front::initials(who);
         let w = ts.prefix_width(&s, m::AVATAR_PX);
         let ty = text_top(ts, r.y, r.h, m::AVATAR_PX);
+        let avatar_ink = c(theme, T::KanbanAvatarInk);
         paint_text_elided(
             ts,
             scene,
@@ -373,11 +383,14 @@ fn badges(
             ty,
             m::AVATAR_PX,
             r.w,
-            c(theme, T::KanbanAvatarInk),
+            avatar_ink,
         );
         ax -= m::AVATAR - m::AVATAR_OVERLAP;
-        if ax < x {
-            break;
-        }
     }
 }
+
+mod cover;
+pub(crate) mod probe;
+
+#[cfg(test)]
+mod tests;

@@ -34,6 +34,21 @@ const POUCA_AGUA: [(&str, f64); 2] = [("waterPerDab", 0.15), ("capillary", 0.05)
 const MANCHA_DO_LINER: [(&str, f64); 2] = [("wetOpen", 0.42), ("wetOpenPush", 0.5)];
 const MANCHA_DO_WASH: [(&str, f64); 2] = [("wetOpen", 0.15), ("wetOpenPush", 0.4)];
 
+/// ⭐ J6 — a BORDA da mancha molhada esbate (`Knob::WetOpenEdge`) e o filme largo tem o miolo carregado
+/// (`Knob::StrokeFilmDome`; `exames/aguarela.md` «Motor J6»). Medido contra o Rebelle (cena `sobre` e o recto de 200 px):
+/// o degradê da mancha `Liner` 12,2 células e 1,42 × a largura (pena 28 → 12,5 · 1,46); o domo `Liner` 0,89 ·
+/// 0,91 · 0,94 a 5 · 10 · 20 % da largura (0,3 → 0,88 · 0,92 · 0,96), `Wash Round` 0,79 · 0,85 · 0,92 (0,3 → 0,76 · 0,86 ·
+/// 0,93), `Mop` quase chato (0,97 · 0,98 · 0,94).
+const DOMO: (&str, f64) = ("strokeFilmDome", 0.3);
+/// As curas da J6 sobre o preset de fábrica — por aplicar até à revisão cega (o coordenador): a bancada escreve o
+/// estudo com `"cura": "<nome>"` (`estudo.rs`).
+pub const CURAS_J6: &[(&str, &[(&str, f64)])] = &[
+    ("Wet Liner", &[("wetOpenEdge", 28.0), DOMO]),
+    // A pena NÃO serve ao Wash (medido J6: com a orla 100 a frente da água esticada risca a mancha de fios escuros e a
+    // pena larga levanta o vermelho numa caixa branca): só o domo.
+    ("Wet Wash", &[DOMO]),
+];
+
 pub const WET: &[Receita] = &[
     // J4 3.ª ronda (`exames/aguarela.md`): CURADO, NÃO aprovado — o FILME (o miolo mosqueado e a orla oca que dois revisores
     // repetiram saem), dura 0,9, papel 0, pigmento 2,8, orla 100, largura fixa, a ponta que não se suja; régua 349 → 373/456
@@ -233,6 +248,12 @@ pub const EM_ESTUDO: &[Receita] = &[
             SEM_ARRASTO,
             PAREDE,
             VIDRADO,
+            // J6: a mancha do molhado (a da J5, 0,42 · 0,8) agora de borda esbatida, e o domo leve (o Rebelle `Mop` é
+            // quase chato através).
+            ("wetOpen", 0.42),
+            ("wetOpenPush", 0.8),
+            ("wetOpenEdge", 28.0),
+            ("strokeFilmDome", 0.1),
         ],
         grao: None,
         achatado: None,

@@ -1,0 +1,7 @@
+Chave da prancha cega J6_Wet_Wash_cega.jpg (linha: imagem → quem)
+gestos_A: 1 = Wet Round (d 1.004, limiar 0.591) (vizinho), 2 = watercolor_wash_round (oraculo), 3 = Wet Wash (escala 1.0) (nosso)
+gestos_B: 1 = watercolor_wash_round (oraculo), 2 = Wet Wash (escala 1.0) (nosso), 3 = Wet Round (d 1.004, limiar 0.591) (vizinho)
+tamanhos_A: 1 = Wet Wash (escala 1.0) (nosso), 2 = watercolor_wash_round (oraculo), 3 = Wet Round (d 1.004, limiar 0.591) (vizinho)
+tamanhos_B: 1 = Wet Round (d 1.004, limiar 0.591) (vizinho), 2 = watercolor_wash_round (oraculo), 3 = Wet Wash (escala 1.0) (nosso)
+sobre_A: 1 = watercolor_wash_round (oraculo), 2 = Wet Round (d 1.004, limiar 0.591) (vizinho), 3 = Wet Wash (escala 1.0) (nosso)
+sobre_B: 1 = watercolor_wash_round (oraculo), 2 = Wet Round (d 1.004, limiar 0.591) (vizinho), 3 = Wet Wash (escala 1.0) (nosso)

@@ -60,12 +60,50 @@ Wash 5,90 ms a 200 px, RSS ≤ 100 MiB (load 11–5; smoke).
   aprovado contra a origem (régua 220/454), com a razão de uso: o pincel seco de riscos soltos.
 - Flat Bristle (óleo): ver `exames/oleo_acrilica.md` — a lei não se aplica (o Rebelle `Flat` não abre mancha, 0,86).
 
+## Motor J6 (28/10) — a borda da mancha e o domo do filme (`8394f62eed`, `5f6ae47051`)
+
+Réguas (scratchpad J6 `borda.py`/`perfil.py`; as mesmas contas nos portões `borda()`/`domo()`): na cena `sobre` A, y 145–155,
+o **degradê** = células entre 80 % e 20 % da distância de cor do miolo da mancha à faixa longe, o **aro** = escuridão
+máxima na banda da borda ÷ miolo; no recto de 200 px da `tamanhos` A, a escuridão a 5/10/20 % da largura ÷ o meio.
+
+| | Rebelle | nosso antes | **nosso J6** |
+|---|---|---|---|
+| Liner — degradê · aro · mancha | 12,2 · 1,10 (o vermelho empurrado, por fora) · 1,42 | 2,8 · 1,16 · 1,51 | **12,5 · 1,035 · 1,46** (pena 28) |
+| Wash Round — degradê · aro | 40,7 · 1,03 | 2,0 · 1,28 | pena 80: 45,7 · 1,09, mas ver abaixo |
+| Liner 200 px — 5/10/20 % | 0,89 · 0,91 · 0,94 (40 px chato) | 0,98 · 0,99 · 1,00 | **0,88 · 0,92 · 0,96** (domo 0,3), 40 px chato |
+| Wash 200 px | 0,79 · 0,85 · 0,92 | 0,95 · 0,99 · 1,00 | **0,76 · 0,86 · 0,93** (domo 0,3) |
+
+**As leis** (aditivas; 0 = ao bit — a cena `a_lei_da_tinta` dá o mesmo hash com e sem o motor, A/B no mesmo processo):
+`Knob::WetOpenEdge` (pena, células): a célula da borda do tubo (`(s/r)²`) reparte-se em 15 destinos por uma rampa de
+largura `pena` CENTRADA na borda (recua `min(pena/2, 0,45·raio)`), com a fase dos destinos sorteada por célula do grid;
+o levantar do vermelho alarga a rampa do mesmo tanto. `Knob::StrokeFilmDome`: o alvo do filme de cada dab é
+`1 − d·(1 − 20/r)⁺·u²` (r em células; até 20 o filme é chato). ⛔ Recusas medidas: pena para os DOIS lados (a metade de
+dentro soma-se ao miolo: dois riscos escuros); só para FORA (mancha 2,0 × a largura); 5 destinos (riscas a 6 células);
+fase fixa (riscas ao longo do traço, 1,56 contra 0,84). Portões: `a_borda_da_mancha_molhada_esbate`,
+`a_pena_larga_nao_risca`, `o_filme_largo_tem_o_miolo_carregado_e_os_lados_em_degrade`; mutações (pena 0, levantar
+sem pena, RECUO 0, fase fixa, domo 0, raio chato 0) todas VERMELHAS. Censos W3b verdes (os knobs não mudam tinta pousada).
+
+## Os pincéis J6 (receitas em `CURAS_J6` e no `EM_ESTUDO`; NÃO aplicadas à fábrica até à revisão cega)
+
+Biblioteca fixa (65 presets pintados uma vez em `/tmp/claude-1000/j6_wet/biblioteca` — a chave do `exame.sh` muda a cada
+edição dos outros agentes nas crates e o Óleo Real leva ~6 min por preset). Pranchas `pranchas/J6_<nome>{,_cega}.jpg`,
+chave `J6_<nome>_chave.txt`.
+
+- **Wet Liner** — + pena 28 + domo 0,3. Régua 429/454 (J5 430); vizinho Soft Pastel **0,853**; 1.º dos oráculos
+  (Liner 0,677). Fica: as pontas do 200 px (o Rebelle esbate 60–120 px nas duas pontas; o domo não chega lá) e um leve
+  clarão do levantar abaixo da faixa.
+- **Wet Wash** — só o domo 0,3 (régua 384/454 = J5). ⛔ A pena NÃO serve ao Wash: com a orla 100 a frente da água
+  esticada desenha fios escuros ondulados na mancha (pena 28: aro 1,46) e a pena larga levanta o vermelho numa caixa
+  branca (pena 60–80). A mancha difusa dele (que passa a faixa) é outro motor. Vizinho Scratch 1,43.
+- **Mop** (EM_ESTUDO) — + mancha 0,42 · 0,8 + pena 28 + domo 0,1: régua 382/454 (J5 383); 2.ª ronda (empurrão 0,5,
+  domo 0,3) 371 — fica a 1.ª. Vizinho Wet Wash 0,771. Na prancha a mancha ainda tem a barra escura nos bordos da faixa.
+- **Custo** (200 px, bateria, smoke) só sob load 18–35: p95 Liner 60 · 17 ms contra o de fábrica 54 · 56 na MESMA
+  ronda intercalada — sem diferença mensurável; RSS 102 MiB. O relógio calmo fica por medir (J5: 4,7 ms).
+
 ## Para a fila (coordenador)
 
-1. **A borda da mancha** (Liner, Wash, Mop): a nossa é redonda e de aro nítido com um halo escuro (anel 1,09–1,25 contra
-   1,04); a do Rebelle esbate em ~10 px e no Liner tem cantos quase quadrados. O aro nasce na fronteira entre a tinta
-   esticada e a empurrada (a parede e o pouso pela opacidade) — precisa de um degradê de mistura na fronteira, não de
-   valores (variadas a borda do empurrão 0,35–0,95, a orla 0,35–2 r, a cauda: o aro fica).
-2. **O traço de 200 px do filme** (`Knob::StrokeFilm`): pontas e borda em degradê, miolo carregado (Liner, Wash, Mop).
+1. As pontas do traço de 200 px do filme: o Rebelle esbate 60–120 px nas DUAS pontas (Liner 0,70 → 0,99 do meio); a de
+   saída pede saber onde o traço acaba (motor). O domo (J6) só dá os lados e a tampa.
+2. A mancha do Wash e do Mop: a frente da água esticada com orla (fios escuros) e o véu difuso que passa a faixa.
 3. As voltas da espiral do Liner; o recto de 5 px do Mop; o Sumi-e (cerdas em pente); granulação; franja; escorrido.
 4. O Wet Round com pigmento 125 (régua 297 → 419): só com o `painter_default_knobs` e o controlo das MIDIAS.

@@ -51,6 +51,16 @@ fn escreve_os_estudos_da_aguarela() {
             };
             *preset
         };
+        // `"cura": "<nome>"` = a cura da J6 por aplicar ([`super::CURAS_J6`]) sobre o preset de fábrica.
+        if let Some(nome) = e["cura"].as_str() {
+            let (_, knobs) = super::CURAS_J6
+                .iter()
+                .find(|(n, _)| *n == nome)
+                .expect("cura da J6");
+            for (k, v) in *knobs {
+                p.parametros.engine.insert((*k).to_owned(), *v);
+            }
+        }
         p.parametros.name = e["nome"].as_str().unwrap().to_owned();
         if let Some(g) = e["grupo"].as_str() {
             p.parametros.group = g.to_owned();

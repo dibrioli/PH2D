@@ -1,0 +1,7 @@
+Chave da prancha cega J6_Mop_cega.jpg (linha: imagem → quem)
+gestos_A: 1 = Mop (escala 1.025) (nosso), 2 = watercolor_mop (oraculo), 3 = Wet Wash (d 0.771, limiar 0.591) (vizinho)
+gestos_B: 1 = Mop (escala 1.025) (nosso), 2 = Wet Wash (d 0.771, limiar 0.591) (vizinho), 3 = watercolor_mop (oraculo)
+tamanhos_A: 1 = watercolor_mop (oraculo), 2 = Wet Wash (d 0.771, limiar 0.591) (vizinho), 3 = Mop (escala 1.025) (nosso)
+tamanhos_B: 1 = Mop (escala 1.025) (nosso), 2 = watercolor_mop (oraculo), 3 = Wet Wash (d 0.771, limiar 0.591) (vizinho)
+sobre_A: 1 = watercolor_mop (oraculo), 2 = Wet Wash (d 0.771, limiar 0.591) (vizinho), 3 = Mop (escala 1.025) (nosso)
+sobre_B: 1 = Wet Wash (d 0.771, limiar 0.591) (vizinho), 2 = Mop (escala 1.025) (nosso), 3 = watercolor_mop (oraculo)

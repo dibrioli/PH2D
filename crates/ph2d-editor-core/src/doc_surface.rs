@@ -274,6 +274,12 @@ pub trait DocumentSurface: Any {
         let _ = (id, x, y, paths);
         false
     }
+    /// ⭐ **Quer outro quadro** mesmo sem evento: um trabalho de fundo (uma capa a descodificar) vai
+    /// mudar o que ela pinta. Perguntado a cada quadro, com qualquer aba activa (a família pode estar
+    /// à vista no canvas de um quadro); o laço que espera por eventos pede o redesenho por ele.
+    fn wants_frame(&self) -> bool {
+        false
+    }
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;
 }
@@ -317,6 +323,12 @@ impl Surfaces {
             .find_map(|f| f.as_any().downcast_ref::<T>())
     }
 
+    /// Alguma família quer outro quadro ([`DocumentSurface::wants_frame`]).
+    #[must_use]
+    pub fn wants_frame(&self) -> bool {
+        self.families.iter().any(|f| f.wants_frame())
+    }
+
     /// Todas as abas de todas as famílias, pela ordem das famílias.
     pub fn tabs(&self) -> Vec<(SurfaceTab, DocTab)> {
         let mut out = Vec::new();
@@ -331,3 +343,7 @@ impl Surfaces {
         out
     }
 }
+
+#[cfg(test)]
+#[path = "doc_surface_tests.rs"]
+mod tests;

@@ -69,3 +69,18 @@ integração, DIRETRIZ §1.5.9) ou **abrir nova onda**. NÃO integrar sem ordem 
 - Enum de ícones e `ALL_ICONS` seguem a ordem alfabética dos svg; o catálogo de descritores de componente segue `canonical_name` (fora de ordem, os DOIS vizinhos leem-se como ausentes).
 - Grelha: compare saídas do solver com `PARADA`, nunca `==`.
 - Empate entre *stays* STRONG e o STRONG «dentro do canvas» faz a resposta depender da ordem do hash — por isso `FIXO` = 2e6.
+
+## Depois do smoke (27/10, report do dono: «por que usa metros? temos o seletor m/px»)
+
+- `0fb2eee73f` HUD Canvas (Reference Width/Height) segue o seletor m/px; `a59ee89c95` TODO número de mundo do
+  Inspector (128 ids, 30 secções) passa por `ph2d-panel-inspector/src/unidade_mundo.rs` (a mesma conta do Transform;
+  unidades novas `PxPerSecond`/`PxPerSecondSquared`); curados de passagem: Factory/Lifecycle/Projectile sem sync
+  (`sync_fabrica.rs`) e a peça de física sem corpo. `925956469e` os campos de mundo SEM unidade (top-down, projétil,
+  Max Length da junta, aceleração do player, From/To do Tween de posição). Forças, torques, densidades e rigidez
+  ficam sem unidade de propósito (o seletor não tem px para elas).
+- Portões: `seam_px_m.rs` — varredura (140 valores), censo `censo_nenhum_numero_de_mundo_foge_da_porta_px_m` e
+  `censo_nenhum_numero_de_mundo_nasce_sem_unidade` (lê a nota de unidade ao lado da faixa nos `populate_*`).
+- `0a5af68c4b` o vermelho da truncagem de rótulos (90/88 contra 87/85) ERA desta linha: «Move Up/Move Down/Delete» da
+  pilha de constraints (`215ad758bc`); cura no layout (a fila quebra linha, `wrapped_cells_in_font` no editor-core),
+  nunca no número.
+- O smoke disto (o dono ainda não o fez): trocar m ↔ px e ver os cartões mudarem de unidade.

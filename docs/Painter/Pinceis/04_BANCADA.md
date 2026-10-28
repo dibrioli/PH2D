@@ -405,3 +405,16 @@ Um processo por tamanho ⇒ o RSS é deste pincel a este tamanho.
 | O chão = o p50 | 62 % das larguras e 47 % das pontas repetem ao pixel: chão 0, uma ponta 0,94 × 1,00 valia 13 desvios (a forma passava a 2–3 em todos os pares) |
 | Lei = 3 × a mediana do ruído do recto | o ruído é só dos traços do recto (0,33) e eles mal separam pincéis (0,65 ao vizinho): 3 × daria 1,0 e «perto» a quase tudo |
 | O recto de 200 px dos 31 presets com Max Size < 200 na identidade deles | o Rebelle pinta-o ao max (o 8B a 80): era o tecto, não o pincel — o 8B nosso ficava 6 desvios longe só por isso |
+
+## Notas da bancada (vindas do ESTADO, J4–J6)
+
+- `exame.sh "<preset>" fixtures/<oráculo>/<prefixo>` · `--matriz` · `--custo`; SEMPRE `PH2D_EXAME_DIR=/tmp/…`.
+- J4: a foto da bancada é a camada composta sobre o papel; ferramenta que não pinta ganha a base do seu meio
+  (`PH2D_EXAME_BASE`, `PH2D_EXAME_ESCALA_BASE`); `PH2D_EXAME_CAMADA=1` pinta numa camada transparente;
+  `exame.sh` corre o cargo da SUA árvore. Fotos novas do Rebelle: `fixtures/rebelle_mistura/`
+  (`PH2D_REBELLE_REPETE_TROCA=1`: o 1.º traço depois de trocar de ferramenta saía ao tamanho anterior).
+- Fábrica: `ReceitaFerramenta`/`FERRAMENTAS_WET` (ferramentas Wet: Blend/Wet/Dry); `ReceitaMeio::texturas` (imagens
+  desenhadas por código); a largura e a miniatura das ferramentas medem-se sobre a base.
+- Custo da J5: calmo (load 1–3,4), 135 medições, [exames/biblioteca.md](exames/biblioteca.md).
+- J6: `PH2D_EXAME_OLEO` sem variável = a caixa Real Oil do preset; `0` desliga, `1` liga (`78fb8c7c77`). Biblioteca
+  pintada uma vez e fixa para a matriz: `exame_fixo.sh` (a chave do cache muda a cada edição de crate de outro agente).

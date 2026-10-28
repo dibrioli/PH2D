@@ -81,13 +81,6 @@
 - ⚠️ Censo: o disco tem 65 PNG de fábrica (44 Wet, 21 Digital/Watercolor) × 52 declarados — conferir por
   `the_factory_presets_are_counted`. Também: brecha `arch_color_space_typed`; Ink Brush a vigiar (p95 12,54 ms).
 
-## Bancada: o essencial
+## Bancada
 
-- `exame.sh "<preset>" fixtures/<oráculo>/<prefixo>` · `--matriz` · `--custo`; SEMPRE `PH2D_EXAME_DIR=/tmp/…`.
-- J4: a foto da bancada é a camada composta sobre o papel; ferramenta que não pinta ganha a base do seu meio
-  (`PH2D_EXAME_BASE`, `PH2D_EXAME_ESCALA_BASE`); `PH2D_EXAME_CAMADA=1` pinta numa camada transparente;
-  `exame.sh` corre o cargo da SUA árvore. Fotos novas do Rebelle: `fixtures/rebelle_mistura/`
-  (`PH2D_REBELLE_REPETE_TROCA=1`: o 1.º traço depois de trocar de ferramenta saía ao tamanho anterior).
-- Fábrica: `ReceitaFerramenta`/`FERRAMENTAS_WET` (ferramentas Wet: Blend/Wet/Dry); `ReceitaMeio::texturas` (imagens
-  desenhadas por código); a largura e a miniatura das ferramentas medem-se sobre a base.
-- Custo da J5: calmo (load 1–3,4), 135 medições, [exames/biblioteca.md](exames/biblioteca.md).
+[`04_BANCADA.md`](04_BANCADA.md) §«Notas da bancada» (exame.sh, PH2D_EXAME_*, fábrica, custo).

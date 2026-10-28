@@ -21,6 +21,18 @@ pub enum HudNumber {
     CounterStart,
 }
 
+impl HudNumber {
+    /// A unidade em que o componente GUARDA o número: a caixa de referência é comprimento de
+    /// mundo (metros, mostrados no px/m do projecto), o contador é contagem.
+    #[must_use]
+    pub const fn unidade(self) -> crate::constraint_edits::Unidade {
+        match self {
+            Self::RefWidth | Self::RefHeight => crate::constraint_edits::Unidade::Metros,
+            Self::CounterStart => crate::constraint_edits::Unidade::Contagem,
+        }
+    }
+}
+
 /// A ordem dos números. ⚠️ A tabela de rótulos do pintor é indexada por esta, com gate a atar os
 /// comprimentos.
 pub const HUD_NUMBERS: [HudNumber; 3] = [

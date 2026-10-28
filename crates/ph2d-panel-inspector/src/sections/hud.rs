@@ -26,32 +26,26 @@ use ph2d_editor_core::widget::SectionFold;
 use ph2d_i18n::TextKey;
 use ph2d_i18n::tr;
 
-/// O rótulo, o passo e a unidade de cada número — **pela ordem do modelo**, com gate a atar os
-/// comprimentos.
-const ROTULOS: [(TextKey, f64, Option<ph2d_editor_core::widget::Unit>); 3] = [
-    (
-        TextKey::new("component.field.canvas_fields.1"),
-        0.5, // LITERAL-PX-OK: metros
-        Some(ph2d_editor_core::widget::Unit::Meters),
-    ),
-    (
-        TextKey::new("component.field.canvas_fields.2"),
-        0.5, // LITERAL-PX-OK: metros
-        Some(ph2d_editor_core::widget::Unit::Meters),
-    ),
-    (
-        TextKey::new("component.field.counter_fields.2"),
-        1.0, // LITERAL-PX-OK: contagem (inteiro)
-        None,
-    ),
+/// O rótulo de cada número — **pela ordem do modelo**, com gate a atar os comprimentos. A unidade e
+/// o passo são do seletor do projecto ([`crate::sync_constraint::unidade_e_passo`] sobre
+/// [`N::unidade`]): a caixa de referência é comprimento de MUNDO e mostra-se em px ou m.
+const ROTULOS: [TextKey; 3] = [
+    TextKey::new("component.field.canvas_fields.1"),
+    TextKey::new("component.field.canvas_fields.2"),
+    TextKey::new("component.field.counter_fields.2"),
 ];
+
+/// O sufixo e o passo da caixa de `which`, no seletor px/m do projecto.
+fn sufixo_e_passo(which: N) -> (Option<ph2d_editor_core::widget::Unit>, f64) {
+    crate::sync_constraint::unidade_e_passo(which.unidade())
+}
 
 /// ⭐⭐ **A coluna do nome desta secção — UMA, para os números, as caixas e as ESCOLHAS.**
 ///
 /// ⚠️ As duas escolhas (`Fit` · `Source`) pintavam o nome POR CIMA e por isso nunca entraram na
 /// medida; com o nome ao lado (2026-09-23) têm de entrar.
 fn seccao(text_system: &mut TextSystem) -> ph2d_editor_core::property_row::Seccao {
-    let mut nomes: Vec<&str> = ROTULOS.iter().map(|(chave, _, _)| chave.tr()).collect();
+    let mut nomes: Vec<&str> = ROTULOS.iter().map(|chave| chave.tr()).collect();
     nomes.push(tr("component.field.canvas_fields.3"));
     nomes.push(tr("component.field.label_fields.1"));
     ph2d_editor_core::property_row::Seccao::medida(text_system, 1, &nomes)
@@ -150,7 +144,8 @@ fn num_row(
     let Some(i) = HUD_NUMBERS.iter().position(|&n| n == which) else {
         return y;
     };
-    let (chave, step, unidade) = ROTULOS[i];
+    let chave = ROTULOS[i];
+    let (unidade, step) = sufixo_e_passo(which);
     // ⭐⭐ A coluna do nome é da SECÇÃO: mede-se da tabela inteira, senão ela salta de linha
     // para linha.
     let seccao = seccao(text_system);
@@ -225,3 +220,24 @@ fn txt_row(
 #[path = "hud_corpo.rs"]
 mod irmao;
 pub(crate) use irmao::*;
+
+#[cfg(test)]
+mod sufixo_tests {
+    use super::{N, sufixo_e_passo};
+    use ph2d_editor_core::project::DisplayUnit;
+    use ph2d_editor_core::widget::Unit;
+
+    /// ⭐ Report do dono 27/10: «Reference Width 32 m» com o projecto em px. O sufixo segue o
+    /// seletor; o contador (contagem) não tem sufixo nenhum.
+    #[test]
+    fn o_sufixo_da_caixa_de_referencia_segue_o_seletor_px_m() {
+        crate::state::set_current_display_unit(DisplayUnit::Pixels, 100.0);
+        let px = [N::RefWidth, N::RefHeight].map(|n| sufixo_e_passo(n).0);
+        let contador = sufixo_e_passo(N::CounterStart).0;
+        crate::state::set_current_display_unit(DisplayUnit::Meters, 100.0);
+        let m = sufixo_e_passo(N::RefWidth).0;
+        assert_eq!(px, [Some(Unit::Px); 2]);
+        assert_eq!(m, Some(Unit::Meters));
+        assert_eq!(contador, None);
+    }
+}

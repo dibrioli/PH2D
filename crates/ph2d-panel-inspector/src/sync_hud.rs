@@ -11,12 +11,19 @@ use std::hash::{Hash, Hasher};
 use ph2d_editor_core::hud_edits::{HUD_NUMBERS, HUD_TEXTS, InspectorHudInfo};
 use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::panel::PanelHostInternal;
+use ph2d_editor_core::project::ProjectSettings;
 use ph2d_editor_core::widget::CheckboxValue;
 
 use crate::state::InspectorState;
 
-fn assinatura(info: &InspectorHudInfo) -> u64 {
+fn assinatura(info: &InspectorHudInfo, p: &ProjectSettings) -> u64 {
     let mut h = std::hash::DefaultHasher::new();
+    // A unidade do ecrã entra: trocar px/m no Settings re-semeia os comprimentos.
+    (
+        p.display_unit == ph2d_editor_core::project::DisplayUnit::Pixels,
+        p.pixels_per_meter.to_bits(),
+    )
+        .hash(&mut h);
     info.entity_bits.hash(&mut h);
     for n in HUD_NUMBERS {
         info.number(n).to_bits().hash(&mut h);
@@ -51,7 +58,7 @@ pub(crate) fn sync(
             };
         }
     }
-    let sig = assinatura(&info);
+    let sig = assinatura(&info, host.project());
     if !entity_changed && inspector_state.last_hud_sig == Some(sig) {
         return;
     }
@@ -65,8 +72,8 @@ pub(crate) fn sync(
         if focus == Some(id) || drag == Some(id) {
             continue; // a mão do artista ganha ao instantâneo
         }
-        host.store_mut()
-            .set_number_value(id, f64::from(info.number(n)));
+        let v = crate::sync_constraint::no_ecra(n.unidade(), info.number(n), host.project());
+        host.store_mut().set_number_value(id, v);
     }
     for (i, t) in HUD_TEXTS.into_iter().enumerate() {
         let Some(&id) = crate::ids::INSP_HUD_TEXT.get(i) else {

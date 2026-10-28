@@ -67,6 +67,7 @@ mod seam_anim_this_frame;
 mod seam_apply_ladder;
 mod seam_image_use;
 mod seam_constraints;
+mod seam_hud;
 mod seam_joint;
 mod seam_luz;
 mod seam_luz_corpo;

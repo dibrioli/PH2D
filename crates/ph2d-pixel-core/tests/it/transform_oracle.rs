@@ -6,8 +6,7 @@
 //! Fixados aqui: Edit ▸ Flip/Rotate/Shift, Rotate/Flip Canvas, a escala e o 90° da transformação,
 //! Sprite Size nearest e bilinear (exacta: a coordenada é o passo SOMADO em `f64`; `d·passo`,
 //! pontos fixos 2⁴–2²⁰ e `f32` ficavam em 8 392/8 463) (+ RotSprite a 2×), Canvas Size, Crop, Trim
-//! e Paste. ⛔ Recusas MEDIDAS: a rotação não-90° e a inclinação não têm fórmula
-//! do Trial (só tabelas): medem-se em `mede_rotacao.rs`, nunca por tabela.
+//! e Paste. A rotação não-90° e a inclinação (Fast) e o RotSprite fora de 2×: `rotation_oracle.rs`.
 
 use ph2d_pixel_core::canvas::{self, Anchor, Borders, SizeMethod, anchor_borders};
 use ph2d_pixel_core::edit::{self, Rotation};
@@ -239,7 +238,7 @@ fn transform_scale_fields_and_ninety_degrees_match_the_trial() {
             let t = Affine::around_center(Linear::from_screen_ccw(90.0, 1.0, 1.0, 0.0), fl.rect());
             edit::transform(&fl, &t, method, 0).expect("90")
         } else {
-            continue; // sem fórmula do Trial: `mede_rotacao.rs`
+            continue; // giro e inclinação: `rotation_oracle.rs`
         };
         let op = edit::commit(&s, kk, &original, &moved, 0);
         run(&mut s, op);
@@ -270,7 +269,7 @@ fn sprite_size_nearest_bilinear_and_rotsprite_at_2x_match_the_trial() {
             _ => SizeMethod::RotSprite,
         };
         if method == SizeMethod::RotSprite && (w % 24 != 0 || h % 16 != 0) {
-            continue; // padrão próprio do Trial: `mede_rotacao.rs`
+            continue; // padrão próprio do Trial: `rotation_oracle.rs`
         }
         let mut s = sz_sprite(&f);
         let op = canvas::sprite_size(&s, w, h, method);

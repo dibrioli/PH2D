@@ -87,10 +87,29 @@ Charcoal, Square Hard; controlo Soft Pastel) · `o_pastel_side_e_o_lado_do_basta
 | estrias em Flow + quina no Charcoal (r5) | régua 424 → 396, o revisor vê o mesmo |
 | o pó dentro das lanes do Wet | nódoas no miolo: 92 → 109 px |
 
+## J6 — as pontas rectas (lacuna de motor 2), 1.ª ronda, revisão cega por fazer
+
+Régua da ponta (recto de 40, `../J6_pontas_rectas.md`; curva ini·fim · além do 1.º ponto px): Rebelle Square Hard
+0,03·0,06 · 12 · Dry Thin 0,05·−0,10 · 3 · Wax Scrape 0,28·0,33 · 15 · Charcoal 0,50·0,30 · 2.
+- **Square Hard** (`pontas_rectas`, `pontas_alem` 0,7): curva 0·0, ini −14 · fim +10 px (Rebelle −12 · +9). Régua
+  432/454 (J5: 412). Vizinho Wax Scrape 0,809. Prancha `pranchas/J6_square_hard.jpg` (cega + chave ao lado).
+- **Soft Pastel** (`pontas_rectas`, `pontas_alem` 0,3): curva 0·0, ini −6 · fim −1 (Rebelle −3 · +3). Régua 412/454.
+  Vizinho Graphite 8B 0,872. A 200 px o corte sai duro e o Rebelle esfiapa (com pó) — o que o revisor tem de julgar.
+- **Charcoal e Wax Scrape: NÃO levam as pontas rectas** — o Rebelle ACABA-OS REDONDOS (curva 0,50·0,30 e 0,28·0,33; a
+  prancha da Wax Scrape mostra as tampas em meia-lua), e no Charcoal o corte da frente de cada dab no centro risca o
+  padrão sorteado (`MARMORE`) ao passo do Spacing (a régua: Textura ✗ 4 → 12). O «pontas redondas» do revisor era o
+  esmaecer de um raio, não a forma: fila abaixo.
+- Custo p95 a 200 px (bateria): Square Hard 18,3 ms (load 27,6), Soft Pastel 11,0 ms (load 18,4) — relógio inválido
+  acima de load ~5; repetir calmo.
+
 ## Fila (com a medição)
 
-- **Tampa RECTA de um dab redondo** (Square Hard, Soft Pastel, Charcoal, Wax Scrape — r1–r5 e a r4 da J5 repetem): cortar
-  a cápsula a direito no início e no fim do traço, não o carimbo (motor; a `dab_quina` endurece a borda lateral).
+- **O fim que esmaece num raio** (Charcoal, Wax Scrape: tampas redondas mas cheias no Rebelle): a janela do rasto que
+  cai no fim (`end_direct_stroke`); a porta `land_direct_remainders` (J6) já existe — falta medir pousá-la sem o corte.
+- **A rampa larga do corte da frente** (para padrões `Random` fortes): pesada DEPOIS do portão (a soma fica: tinta
+  0,995) esvaziava as pontas (rampa 12·0 → 15·13 px) — medido J6 e revertido; por perceber.
+
+- ✅ J6: **Tampa RECTA** feita (motor `pontas_rectas`/`pontas_alem`, [`../J6_pontas_rectas.md`](../J6_pontas_rectas.md)).
 - **Square Hard liso e denso** (r4 J5): o grão salpicado com furos brancos; uma 3.ª ronda só com recurso de motor novo.
 - **O lado largo translúcido do Pastel Side** (resíduo da régua: de pé cobertura 0,78 × 0,69): a carga é uma só para os
   dois lados da lâmina; uma opacidade pela orientação do dab seria motor.

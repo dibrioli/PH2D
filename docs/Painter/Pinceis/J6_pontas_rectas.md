@@ -32,11 +32,17 @@ redondo; tinta do miolo ± 3 %; `alem` 0,5 = 20 px além, cheio) · `the_flat_en
 VERMELHAS): M1 sem o corte da frente (curva 0,18·0,27, tinta 1,73×) · M2 `COMPENSA` 1 (tinta 0,53×) · M3 sem o fecho
 (curva do fim 0,16) · M4 `alem` no raio do motor (33 px em vez de 20).
 
+**Os pincéis** (`exames/pastel_carvao.md` §J6): Square Hard (`alem` 0,7) e Soft Pastel (`alem` 0,3) levam-nas;
+Charcoal, Wax Scrape e Wax Crayon NÃO (o Rebelle acaba-os redondos: curva 0,50·0,30 · 0,28·0,33 · 0,93·1,07).
+
 ## ⛔ Recusas MEDIDAS
 | recusa | medido |
 |---|---|
 | só a metade de trás, sem o fecho | o fim esmaece num raio atrás do último centro (curva 0,16) |
 | `alem` em raios do motor | o redondo de 40 px tem raio de motor 66,9: o além saía 33 px em vez de 20 |
+| rampa larga da frente (raio) na SILHUETA | antes do portão a soma não é linear: tinta do miolo 0,60 |
+| a mesma rampa como peso DEPOIS do portão | tinta 0,995, mas as pontas esvaziam (rampa 12·0 → 15·13 px, curva 0,09) |
+| pontas rectas no Charcoal / Wax Scrape | o Rebelle é redondo neles; no Charcoal o corte no centro risca o `MARMORE` |
 
 Não medido, só desenho (não reconstruir sem medir): atrasar o depósito um raio para ver o fim antes (a tinta seguiria
 o cursor um raio atrás) e fechar com UM dab de peso grande (uma amostra do padrão em vez de muitas).

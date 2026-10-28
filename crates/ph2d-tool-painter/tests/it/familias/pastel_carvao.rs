@@ -57,7 +57,12 @@ pub const WET: &[Receita] = &[
             ("pressureOpacityCurve", 0.5),
             ("pressureGrain", 0.5),
         ],
-        pincel: &[("dab_jitter", PO_DO_PASTEL)],
+        // J6: as pontas RECTAS (Rebelle Dry Thin: curva 0,05 · −0,10; o corte passa 3 px do 1.º ponto a 40).
+        pincel: &[
+            ("dab_jitter", PO_DO_PASTEL),
+            ("pontas_rectas", "true"),
+            ("pontas_alem", "0.3"),
+        ],
         ..SOFT_PASTEL
     },
     // Pastel › Pastel Oil › Oil Pastel 2 (o giz de cera): grão mais fino e mais carregado que o seco (o
@@ -101,6 +106,9 @@ pub const WET: &[Receita] = &[
             ("dab_quina", "1.0"),
             ("texture", GRAO_DO_SQUARE),
             ("shape", MANCHAS_DO_SQUARE),
+            // J6: as pontas RECTAS (Rebelle: curva 0,03 · 0,06; o corte passa 12 px do 1.º ponto a 40).
+            ("pontas_rectas", "true"),
+            ("pontas_alem", "0.7"),
         ],
         nasce_de: Some("Soft Pastel"),
         ..SOFT_PASTEL

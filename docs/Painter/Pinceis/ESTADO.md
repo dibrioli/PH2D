@@ -1,4 +1,4 @@
-# ESTADO da missão Pincéis — MISSÃO ENCERRADA (J5, 2026-10-22) (≤ 8 KB)
+# ESTADO da missão Pincéis — MISSÃO 2 EM CURSO (J6, 2026-10-28) (≤ 8 KB)
 
 > **Encerrada com o alvo NÃO alcançado:** 18 pincéis APROVADOS (alvo 80–120); fábrica 45 (Wet 29, Digital 16), os
 > outros 27 «curados, não aprovados». Porquê: o que trava os 67 itens restantes é MOTOR (depois da 2.ª ronda o
@@ -59,16 +59,19 @@
 17. O Dabber ficou como está (matriz final da J5: sem par < 0,596).
 18. (J5) Gouache Flat fica (0,763 do Wet Flat; a cura partia 3 leis). Wet Dry Brush não funde (vizinho Airbrush 1,236).
 
-## A FILA para uma missão futura (medida em [01_CATALOGO §3d](01_CATALOGO.md), por pincéis destravados)
+## MISSÃO 2 — JANELA 6 (28/10, [`JANELA_6.md`](JANELA_6.md)): A FILA (censo J6, por pincéis destravados)
 
-1. Borda da mancha molhada esbatida ~10 px (anel 1,04 Rebelle × 1,09–1,25 nosso): Wet Liner, Wet Wash, Mop.
-2. Pontas cortadas a direito num dab redondo: Square Hard, Soft Pastel, Charcoal, Wax Scrape.
-3. O traço de 200 px do filme (`Knob::StrokeFilm`): Liner, Wash, Mop.
-4. A mistura em luz linear (`exames/mistura.md`): muda TODOS os presets ⇒ decisão do dono + re-pinar portões num bloco.
-5. Orla do secador nos lados (Dry/Lift) · misturador com grão perto da tinta (Blender Grainy) · o azul que cobre o
-   vermelho molhado na guache · fio do arrasto (Smudge Finger) · lâmina que gira (Flat Oily/Knife, C38).
-6. Partículas (Particles, Glitter) · ondulação do contorno (Oil Bristle) · mip das pontas de imagem (Foliage, Noise Grit).
-Também: brecha do gate `arch_color_space_typed` (`&[u8]` em linha à parte); Ink Brush a vigiar (p95 12,54 ms a 200 px).
+0. ⭐ Dono 28/10: Oil/* de fábrica com o Real Oil LIGADO + `paper_depth` limpo (HANDOFF_W3b §Aberto 1, 6) — EM CURSO.
+1. Borda da mancha molhada ~10 px + traço de 200 px do filme (`exames/aguarela.md`): Wet Liner, Wet Wash, Mop — EM CURSO.
+2. Pontas cortadas a direito num dab redondo (`exames/pastel_carvao.md`): Square Hard, Soft Pastel, Charcoal, Wax Scrape — EM CURSO.
+3. Orla do secador nos lados (Dry/Lift) · 4. misturador com grão perto da tinta (Blender Grainy) · 5. fio do arrasto
+   (Smudge Finger) · 6. azul sobre vermelho molhado (Gouache Wash/Dry/Round) · 7. lâmina que gira (C38/L3: A-4, B-9,
+   D-3, F-2, G-5..G-8, I-8; L16 depende) · 8. partículas · ondulação (Oil Bristle) · mip das pontas (Foliage, Noise Grit).
+9. Óleo Real: `ESTADO_MISSAO_W3.md` «Fila para a próxima onda» + HANDOFF_W3b §Aberto 2–5.
+10. Só valores (sem motor): Wax Crayon (F-10), Wood Stick (C-15), Blur (L-5).
+- **Mistura em luz linear: FORA** (decisão do dono; ele não estava presente — ordem de desligar o PC no fim).
+- ⚠️ Censo: o disco tem 65 PNG de fábrica (44 Wet, 21 Digital/Watercolor) × 52 declarados — conferir por
+  `the_factory_presets_are_counted`. Também: brecha `arch_color_space_typed`; Ink Brush a vigiar (p95 12,54 ms).
 
 ## Bancada: o essencial
 

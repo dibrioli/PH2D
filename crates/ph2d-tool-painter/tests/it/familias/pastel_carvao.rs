@@ -180,6 +180,19 @@ pub const WET: &[Receita] = &[
         nasce_de: Some("Soft Pastel"),
         ..SOFT_PASTEL
     },
+    // ✅ APROVADO J6 (revisão cega: o Rebelle nunca achado; prancha `pranchas/J6a_wax_crayon.jpg`) — era «Wax Crayon J6 D»
+    // do [`EM_ESTUDO_J6`] (exame 436/454, Graphite 8B 0,783: `exames/aguarela_texturas_j6.md`).
+    // ⭐ F-10 `Pastel › Pastel Oil › Wax Pencil`: o [`WAX_C`] sem o dual, as manchas da cera e jitter 0,12.
+    Receita {
+        nome: "Wax Crayon",
+        pincel: &[
+            ("jitter", "0.12"),
+            ("spacing", "0.25"),
+            ("shape", MANCHAS_DA_CERA),
+            ("size_max_px", "140"),
+        ],
+        ..WAX_C
+    },
 ];
 
 /// A orla aos caroços do giz de cera (J4): a 2.ª ponta (Multiply) a 0,8 do diâmetro, 2 marcas, espalhadas 0,6 e 0,5
@@ -302,8 +315,9 @@ pub const EM_ESTUDO: &[Receita] = &[
     // ⭐ F-10 (J4) `Pastel › Pastel Oil › Wax Pencil`: o giz de CERA — denso (0,75–0,86), a borda aos caroços (a orla
     // do dual, onda 0,045–0,049 no Rebelle) e o miolo manchado; sem estrias. O Oil Pastel sem a Shape em Flow, carga
     // 300, papel 0,4, o tecto 140.
+    // (o nome «Wax Crayon» é hoje o da fábrica, a receita J6 D: esta é a J4)
     Receita {
-        nome: "Wax Crayon",
+        nome: "Wax Crayon J4",
         pigment: 300.0,
         gate: 0.4,
         size_px: None,
@@ -383,17 +397,8 @@ pub const EM_ESTUDO_J6: &[Receita] = &[
     },
     // r2 (r1: o nosso chapado e de borda dura, a rampa AFINA; o Rebelle mosqueado e nebuloso, translúcido, a rampa
     // ESMAECE com a largura quase igual): a pressão na opacidade, dureza 0,3, as manchas da cera de volta.
+    // A D (C sem o dual, jitter 0,12) foi APROVADA e é o «Wax Crayon» de fábrica ([`WET`]).
     WAX_C,
-    Receita {
-        nome: "Wax Crayon J6 D",
-        pincel: &[
-            ("jitter", "0.12"),
-            ("spacing", "0.25"),
-            ("shape", MANCHAS_DA_CERA),
-            ("size_max_px", "140"),
-        ],
-        ..WAX_C
-    },
 ];
 const WAX_C: Receita = Receita {
     nome: "Wax Crayon J6 C",

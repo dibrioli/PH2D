@@ -173,7 +173,7 @@ Wine pela entrega C (`02_ORACULOS.md`); até lá «doc.». Motor: **Dg** Digital
 | F-7 | Pastel Side | Rb Flat Soft · CP Square Soft Pastel · Pc Charcoal Roll | Rb `Pastel/Pastel Dry/Flat Soft` | o LADO do bastão: faixa larga, só os picos | WP | fundos e massas em pastel | CAP-01, 03 | P2 |
 | F-8 | ✅ Oil Pastel | Pc Oil Pastel / Artist Crayon · CP Variable Oil Pastel | Rb `Pastel/Pastel Oil/Oil Pastel 2` † | gordo, empasta e arrasta a cor de baixo | WP | cor cremosa e vibrante | — | P1 |
 | F-9 | ✅ Wax Scrape | Rb Wax Scrape | Rb `Pastel/Scrape/Wax Scrape` † | raspa a cera e mostra a camada de baixo | WP | sgraffito | — | P1 |
-| F-10 | Wax Crayon | AR Crayon · CP Waxy Crayon · Rb Wax Pencil | Rb `Pastel/Pastel Oil/Wax Pencil` | ceroso, salta o grão, não mistura | WP | ilustração infantil | — | P3 |
+| F-10 | ✅ Wax Crayon | AR Crayon · CP Waxy Crayon · Rb Wax Pencil | Rb `Pastel/Pastel Oil/Wax Pencil` | ceroso, salta o grão, não mistura | WP | ilustração infantil | — (aprovado J6, cega: o Rebelle nunca achado; prancha [`pranchas/J6a_wax_crayon.jpg`](pranchas/J6a_wax_crayon.jpg); `Pastel/Oil/Wax Crayon`) | P3 |
 
 ### G. Óleo / Acrílica
 

@@ -1,58 +1,43 @@
 # Handoff de INTEGRAÇÃO — `line/TrelloClone` W2b → W11 + ligação J1–J6 (28/10/2026)
 
-Leitor: o agente integrador e a próxima LLM. Plano: [`../01_plano.md`](../01_plano.md) · ADR: [0195](../../architecture/decisions/0195-o-kanban-e-um-documento-do-projeto-o-quadro-referencia-o-e-a-aba-abre-o.md) (provisório) · loop: [`../loop/`](../loop/) (`ESTADO`, `MEDICOES`, `BLOQUEIOS`, `DECISOES_SEM_O_DONO`) · antecessor: [W2→W3](HANDOFF_CONTINUACAO_W2_para_W3_2026-10-28.md).
+> ⛔ **Suíte completa NÃO corrida na linha (dono 23/10) — é do integrador.** Só testes por NOME, clippy `--all-targets` e fmt (LIMPOS em toda a linha: `96ffa55c9b` `d871ad7f54` `61488e56c3` `91e1ddad42`), portões de UI/arquitectura 25/25 por nome depois do J7/P2.
+
+Leitor: o integrador e a próxima LLM. Plano [`01_plano`](../01_plano.md) · ADR [0195](../../architecture/decisions/0195-o-kanban-e-um-documento-do-projeto-o-quadro-referencia-o-e-a-aba-abre-o.md) (provisório) · loop [`loop/`](../loop/) (`ESTADO`, `MEDICOES`, `BLOQUEIOS`, `DECISOES_SEM_O_DONO`) · antecessor [W2→W3](HANDOFF_CONTINUACAO_W2_para_W3_2026-10-28.md).
 
 ## 1. Base e HEAD
 
-| | |
-|---|---|
-| Branch / worktree | `line/TrelloClone` · `Worktrees/line-TrelloClone` |
-| Base (merge-base com o main) | `c3662cd8e4` (main nessa data; 0 atrás) |
-| HEAD no momento de escrever | `00401bbc49` (99 commits desde a base; 683 ficheiros, +88 370 / −537) |
-| Árvore **suja** (J7 em curso, ver §9) | 22 `M` + 3 `??` por comitar: `ph2d-app-board/src/live*.rs`, `ph2d-app-kanban/{header,share}`, `ph2d-board-net/src/{lib,redial}.rs`, `ph2d-board-sync/src/{replica_kanban,session}.rs`, `ph2d-kanban-sync/src/{lib,port}.rs`, `editor-core board_live.rs`, `tests/it/j7_porta.rs`, `Cargo.lock` |
+- Branch `line/TrelloClone` (`Worktrees/line-TrelloClone`) · base = merge-base `c3662cd8e4` (main em 28/10, 0 atrás; **leia o main no ficheiro**, `collision-surface.sh` pelo caminho absoluto).
+- **HEAD `24e9b5429d`**: 119 commits desde a base, 740 ficheiros, +93 033 / −855. Árvore: só `Cargo.lock` `M` (4 linhas — `app-board`/`app-*` deixam `ph2d-app-kanban`, ganham `ph2d-kanban-scenes`; consequência do corte J7; o coordenador comita; se faltar, `cargo check` regenera).
 
-⚠️ O integrador lê o merge-base e o `main` NO FICHEIRO (`collision-surface.sh` pelo caminho absoluto); a base acima é o que a linha mediu em 28/10.
-
-## 2. Commits por onda (99; hashes = os que fecham cada lote)
+## 2. Commits por onda (hashes = os que fecham cada lote)
 
 | Onda | O que entrou | Commits |
 |---|---|---|
-| W0–W1 (pré) | pesquisa/plano, decisões do dono, `ph2d-kanban-model` + `FracKey`, `PROJECT_SCHEMA 193→194`, ADR-0195, maquete | `622f11da11` `b30313cebb` `86ab320490` `da655e8075` `a09c623648` `bf893b2729` |
+| W0–W1 | plano, `ph2d-kanban-model` + `FracKey`, `PROJECT_SCHEMA 193→194`, ADR-0195, maquete | `622f11da11` `b30313cebb` `86ab320490` `da655e8075` `a09c623648` `bf893b2729` |
 | W2 | tokens `kanban-*`, `ph2d-app-kanban` (aba), seam tests, fecho/fidelidade | `86a83f07d1` `0deede112f` `c644b6d738` `e0cc013232` `a227acc576` |
 | W2b | títulos de lista em MAIÚSC. 15 px, lista em voo | `b7b46b7555` |
-| W3 | richdoc, kanban-md, kanban-dates (A) · widgets calendar/date_picker/rich_editor (B) · modelo v2 + tracking de letras (C) · verso do cartão + frente + menção + ligações + anexos (D1–D3) · catraca/wants_frame/anexos grandes/`ph2d_app_host::open` (E) | `f94679ce9c`(A) `97de715bf7`(B) `3e5dd5b05a`(C) `ea80f10a4a`(D3) `6a80664997`(E) |
-| W4 | `ElementKind::Kanban` no Quadro (Quadro v18, PROTOCOL 12), vista numa `Affine`, Show/Place on board, Open in tab, roda/IME/cursor (v19, PROTOCOL 13), cena 30 | `4f06569b3a` `1a59f46c7c` `13459e3837` `f29cef9136` |
+| W3 | richdoc, kanban-md, kanban-dates (A) · widgets calendar/date_picker/rich_editor (B) · modelo v2 (C) · verso, frente, menção, ligações, anexos (D) · catraca/`wants_frame`/`ph2d_app_host::open` (E) | `f94679ce9c` `97de715bf7` `3e5dd5b05a` `ea80f10a4a` `6a80664997` |
+| W4 | `ElementKind::Kanban` (Quadro v18, PROTOCOL 12), vista numa `Affine`, Show/Place on board, Open in tab, roda/IME (v19, PROTOCOL 13), cena 30 | `4f06569b3a` `1a59f46c7c` `13459e3837` `f29cef9136` |
 | W5 | `ph2d-kanban-sync` (LAN+QUIC, loopback 2 processos), `set_session`, retrato em blocos | `258968e864` `7871d1c4a6` `d9e9b202b3` |
 | W6 | desfazer (F), modelo v3 (modelos/cópia/espelhos), `ph2d-kanban-filter`, UI (filtro, `/`, `E`, atalhos), cenas 5–6 | `0efbd1ed18` `65f3ea9fed` `8d9871cba8` |
 | W7 | `ph2d-kanban-views` (Tabela, Calendário mês/semana/Dia/Agenda, Linha do tempo, Painel) | `fb27d29542` `b4349d438c` |
 | W8 | Butler `ph2d-kanban-auto` (modelo v4), `ph2d.kanban.*` Luau (`ph2d-kanban-script`) | `d8ed63cb74` `35373e3520` |
-| W9 | agenda no `KanbanSet` v5, `ph2d-app-planner`, Inbox/My cards/sino/.ics; «To Kanban», séries recorrentes (v7); Planner sem dep. de app-kanban | `1fd42be44d` `b74e72502f` `97f371f9de` `29427ab3c6` |
+| W9 | agenda no `KanbanSet` v5, `ph2d-app-planner`, Inbox/My cards/sino/.ics; «To Kanban», séries recorrentes | `1fd42be44d` `b74e72502f` `97f371f9de` `29427ab3c6` |
 | W10 | `ph2d-kanban-import` (Trello JSON, CSV, markdown); `export_csv` anti-injecção de fórmulas | `c1d6f02b14` `56b1bb9ce6` |
 | W11 | `KanbanSet` v6 `ProjectLink`, `ph2d-kanban-links`, canal `ph2d_editor_core::kanban_links`, nota adesiva ↔ cartão | `53883fefd8` `246d58ecfe` `66fc6afca1` |
 | Ligação J1–J6 | cabeçalho (vistas, Share, presença, filtro fixo), verso+Butler, `ph2d-kanban-hooks` (porta única do gesto), `ph2d-kanban-scenes` + `PH2D_CODE_SMOKE=10`, Import/Export no menu File, sala do Quadro leva Kanbans (`ph2d-kanban://`, reconexão) | `d38bee1f6c` `9c088afccc` `efd1e1ac7d` `07051c5317` `590f1c8ae6` `02039c9c7a` |
-| R1 (revisor) | `FracKey` só válida, desfazer esvaziado salta, agenda nunca-dispara recusada, religar não dispara o passado, ordenar O(n log n) | `9b23dfbd98`…`37b83a8c1e` |
-| Fecho/docs | clippy/fmt, ADR-0195 segue o construído, tutorial PDF, T1 (seam do pedido de abrir cartão; sugestões `@`/`#` sem tecto fixo) | `84e4debf44` `6230d6c770` `9bdce8b5bf` `e11d1eb99c` `aa75d50ab1` `00401bbc49` |
+| R1 (revisor) | 8 defeitos: `FracKey`, desfazer vazio, agenda, religar, ordenar O(n log n) | `9b23dfbd98`…`37b83a8c1e` |
+| Fecho/docs | clippy/fmt, ADR-0195 segue o construído, tutorial PDF, T1 (seam do pedido de abrir cartão; `@`/`#` sem tecto fixo) | `84e4debf44` `6230d6c770` `9bdce8b5bf` `e11d1eb99c` `aa75d50ab1` `00401bbc49` |
+| J7 | `PROTOCOL` 14; Join do Quadro aceita `ph2d-kanban://`; retrocesso único `ph2d_board_net::{backoff,Redial}`; presença do Kanban na sessão do Quadro; versões do Quadro com ids traduzidos; dep família→família cortada por `ph2d_kanban_sync::port` (`app-board` já não depende de `app-kanban`); teste `j7_porta.rs` | `9bba7079d4` `c3b7fa1ba5` |
+| R2 | `to_wire` de um Kanban fora da sala envia `KANBAN_WAITING`, nunca o id local; `smoke_live_tests` 629→<600 (cena 22 + link da internet no irmão) | `b770e99d04` `2913777e47` |
+| P2 | modelo v7 (excepções das séries), `ph2d-app-planner` sem dep. de `app-kanban`; falta teste do lado Kanban de `request_open_card` (`frame.rs`) | `97f371f9de` `29427ab3c6` |
+| T1 | tutorial: fotos de 14 passos sem foto, claro e escuro, por `foto_tutorial.rs` (`#[ignore]`, a placa); PDF regenerado | `3d27f7ec45` `a3d6f888d0` |
+| D9 (defeitos das fotos) | aviso de um pedido servido (`tell`) em qualquer aba de família (editor-core); «Convert to sticky note» na aba converte no Quadro onde o Kanban está posto; botões da edição rápida opacos; pesquisa com uma só caixa; texto que explica quebra em linhas (nunca elide); `Sheet::fitted` | `f1543d91f5` `5997209547` `0374a2e155` `4dcd892367` `7ac5cf14c2` |
+| fmt/clippy | `cargo fmt` nas crates tocadas; clippy `--all-targets` pela raiz (código morto apagado, aliases, args agrupados), LIMPO na linha toda | `91e1ddad42` `96ffa55c9b` `d871ad7f54` `078c731a74` `61488e56c3` |
 
-## 3. Crates NOVAS — 16 (contagem por `git diff --name-status c3662cd8e4..HEAD -- 'crates/*/Cargo.toml'`, `A`)
+## 3. Crates NOVAS — 16
 
-| Crate | É |
-|---|---|
-| `ph2d-frac` | `FracKey` (índice fraccionário), partilhado pelo Quadro (z) e pelo Kanban |
-| `ph2d-kanban-model` | o documento: `KanbanSet` (registos, ops, `History`, vistas, agenda, `ProjectLink`) |
-| `ph2d-richdoc` | documento rico em blocos + marcas inline, edição pura (descrição/comentário) |
-| `ph2d-kanban-md` | markdown ↔ `RichDoc` (`pulldown-cmark`) |
-| `ph2d-kanban-dates` | «hoje/atrasado/esta semana» num fuso (`jiff`), `due_tone` |
-| `ph2d-kanban-filter` | filtro, pesquisa `/`, ordenação, envelhecimento |
-| `ph2d-kanban-auto` | Butler: regras, botões, agenda, executor determinístico |
-| `ph2d-kanban-script` | `ph2d.kanban.*` (Luau) |
-| `ph2d-kanban-hooks` | **a porta ÚNICA de escrita de um gesto** (alvos antes → aplicar → Butler/scripts reagem) |
-| `ph2d-kanban-scenes` | cenas de smoke como modelo puro (`now` por argumento) |
-| `ph2d-kanban-links` | Power-Ups: cartão ↔ objecto/script/macro/trecho/Quadro; nota ↔ cartão |
-| `ph2d-kanban-import` | Trello JSON → Kanban; export Trello-JSON/CSV/md |
-| `ph2d-kanban-sync` | Kanban ao vivo, mesma lei de fusão do Quadro (LAN + QUIC) |
-| `ph2d-kanban-views` | Tabela, Calendário, Linha do tempo, Painel; `DatePicker` partilhado |
-| `ph2d-app-kanban` | a família: a aba do Kanban + a vista do elemento no Quadro |
-| `ph2d-app-planner` | família pessoal: Calendário do projecto, Planner, Inbox, My cards, `.ics` |
+`ph2d-frac` (`FracKey`, partilhado com o Quadro) · `ph2d-kanban-model` (`KanbanSet`: registos, ops, `History`, vistas, agenda, `ProjectLink`) · `ph2d-richdoc` (documento rico) · `ph2d-kanban-md` (markdown↔RichDoc, `pulldown-cmark`) · `ph2d-kanban-dates` (`jiff`, `due_tone`) · `ph2d-kanban-filter` · `ph2d-kanban-auto` (Butler) · `ph2d-kanban-script` (`ph2d.kanban.*` Luau) · `ph2d-kanban-hooks` (**porta ÚNICA de escrita de um gesto**) · `ph2d-kanban-scenes` (cenas de smoke, `now` por argumento) · `ph2d-kanban-links` (Power-Ups cartão↔objecto/script/macro/trecho/Quadro) · `ph2d-kanban-import` (Trello JSON, export CSV/md) · `ph2d-kanban-sync` (ao vivo, LAN+QUIC; `port`) · `ph2d-kanban-views` (Tabela, Calendário, Linha do tempo, Painel) · `ph2d-app-kanban` (aba + vista no Quadro) · `ph2d-app-planner` (Calendário, Planner, Inbox, My cards, `.ics`).
 
 `ph2d-app-registry-init`: +features `app-kanban`, `app-planner` e dois `reg.push(..::FAMILY)` (`crates/ph2d-app-registry-init/src/lib.rs`) — o integrador confere que o registo não colide com as linhas que também o editam.
 
@@ -61,48 +46,44 @@ Leitor: o agente integrador e a próxima LLM. Plano: [`../01_plano.md`](../01_pl
 | Item | Base `c3662cd8e4` | Linha (HEAD) | Nota |
 |---|---|---|---|
 | `PROJECT_SCHEMA` (`shells/desktop/src/project_schema.rs:499`) | 193 | **194** | `kanbans` no fim do `ProjectFile` (`da655e8075`). O main está em 193 → **reconte**: `python3 scripts/schema-recount.py <valor no main>` (exige o argumento) |
-| `KanbanSet` `FORMAT_VERSION` (`ph2d-kanban-model/src/set.rs:19`) | — (novo) | **7** | v2 C · v3 F · v4 U · v5 P · v6 K · v7 P2b (excepções das séries). Antigas leem-se por degrau com fixture |
+| `KanbanSet` `FORMAT_VERSION` (`ph2d-kanban-model/src/set.rs:19`) | — (novo) | **7** | v2 C · v3 F · v4 U · v5 P · v6 K · v7 P2 (excepções das séries). Antigas leem-se por degrau com fixture |
 | Quadro `FORMAT_VERSION` (`ph2d-board-model/src/board.rs:28`) | 17 | **19** | 18 = `ElementKind::Kanban` (bytes do 17 = os do 18 sem a variante); 19 = rolagem por lista na vista do elemento |
-| `PROTOCOL` (`ph2d-board-sync/src/session.rs:27`) | 11 | **13 comitado** | **14 na árvore suja (J7)**; só vale depois de comitado. Outras linhas do Quadro/MiroClone também o sobem → CONTAR |
+| `PROTOCOL` (`ph2d-board-sync/src/session.rs:27`) | 11 | **14** | J7 comitado (`9bba7079d4`/`c3b7fa1ba5`). Outras linhas do Quadro/MiroClone também o sobem → CONTAR |
 | Contratos §6 (`NodeOp`, `Tool`…) | — | intactos | nenhum gate `architecture_*_contract_surface` tocado |
 
 ## 5. Tokens, i18n, dependências
 
-- **Tokens** (`crates/ph2d-tokens/src/`): `kanban.rs` (etiquetas claro/escuro, superfícies, sombras, prazos; 62 cores da W2 + os de W3–W7), `faint_row.rs`, `contrast.rs` (pares medidos pelo gate), `skin_body.rs`, `color.rs`, `derive.rs`. Renomeados na W2: `kanban-<hue>-normal`→`kanban-<hue>`, `kanban-header-btn-on-fg`→`kanban-btn-on-fg`, `kanban-shadow-flight-near`→`kanban-flight-near`.
-- **i18n** (`crates/ph2d-i18n/src/`): `kanban.rs`, `kanban_back.rs`, `kanban_front.rs`, `kanban_auto.rs`, `kanban_hooks.rs`, `kanban_import.rs`, `kanban_links.rs`, `kanban_share.rs`, `kanban_views/{calendar,dashboard,table,timeline}.rs`, `board_kanban.rs`, `planner.rs`; editados `lib.rs`, `familias.rs`, `shell_media.rs`. `lib.rs` e `familias.rs` são pontos de colisão (outras linhas acrescentam módulos).
+- **Tokens** (`crates/ph2d-tokens/src/`): `kanban.rs` (etiquetas, superfícies, sombras, prazos), `faint_row.rs`, `contrast.rs` (pares medidos pelo gate), `skin_body.rs`, `color.rs`, `derive.rs`. Renomeados na W2: `kanban-<hue>-normal`→`kanban-<hue>`, `kanban-header-btn-on-fg`→`kanban-btn-on-fg`, `kanban-shadow-flight-near`→`kanban-flight-near`.
+- **i18n** (`crates/ph2d-i18n/src/`): `kanban*.rs` (back/front/auto/hooks/import/links/share), `kanban_views/*`, `board_kanban.rs`, `planner.rs`; editados `lib.rs`, `familias.rs`, `shell_media.rs` (pontos de colisão).
 - **Dependências externas novas** (`Cargo.lock`; a conferir no `cargo deny`/`stack-audit`):
 
-| Crate | Versão | Licença | Onde |
-|---|---|---|---|
-| `jiff` (+`jiff-core`, `jiff-static`, `jiff-tzdb`, `jiff-tzdb-platform`) | 0.2.38 | Unlicense OR MIT | `ph2d-kanban-dates` (e `-views`/`-sync` com `std`); features `tz-system`, `tzdb-zoneinfo`, `tzdb-bundle-platform` |
-| `pulldown-cmark` (+`unicase`) | 0.13.5 | MIT | `ph2d-kanban-md` |
-| `sha2` 0.10 | já no lock | MIT OR Apache-2.0 | `ph2d-kanban-model` (ids de ficheiro por conteúdo) |
-| `parley` 0.11.1 | já no workspace | Apache-2.0 OR MIT | `ph2d-editor-core` (rich_editor); só o `Cargo.lock` mexeu |
+- `jiff` 0.2.38 (+`-core`/`-static`/`-tzdb`/`-tzdb-platform`; Unlicense OR MIT; `ph2d-kanban-dates`, `-views`, `-sync`; features `tz-system`, `tzdb-zoneinfo`, `tzdb-bundle-platform`) · `pulldown-cmark` 0.13.5 (+`unicase`; MIT; `ph2d-kanban-md`) · `sha2` 0.10 (já no lock; ids de ficheiro por conteúdo) · `parley` 0.11.1 (já no workspace; só o `Cargo.lock`). Conferir no `cargo deny`/`stack-audit`.
 
 ## 6. Superfície de colisão (ficheiros que outras linhas também tocam)
 
-`Cargo.lock` · `crates/ph2d-i18n/src/{lib,familias,shell_media}.rs` · `crates/ph2d-tokens/src/{color,derive,lib,skin_body}.rs` · `crates/ph2d-editor-core` (55 ficheiros: `documents.rs` `SharedKanbans`, `DocumentSurface::{family_commands,family_command,chrome_over,wants_frame}`, widgets `calendar`/`date_picker`/`rich_editor`, `kanban_links`, `board_live.rs`) · `shells/desktop` (18 ficheiros: `project_schema.rs`, `project.rs`, `render_loop/fase_*`, testes `it/`) · `crates/ph2d-board-{model,sync,net,render,edit,excalidraw,video,geom}` · `crates/ph2d-app-board` · `crates/ph2d-app-code` · `crates/ph2d-script` + `runtime/luau` (binding `ph2d.kanban`) · `crates/ph2d-app-{components,macros,host}` · `ph2d-panel-{macros,tokens,registry-init}` · `ph2d-text` · `ph2d-code-help`.
+`Cargo.lock` · `ph2d-i18n/src/{lib,familias,shell_media}.rs` · `ph2d-tokens/src/{color,derive,lib,skin_body}.rs` · `ph2d-editor-core` (`documents.rs` `SharedKanbans`, `DocumentSurface::{family_commands,family_command,chrome_over,wants_frame}`, widgets `calendar`/`date_picker`/`rich_editor`, `kanban_links`, `board_live.rs`, avisos de aba) · `shells/desktop` (`project_schema.rs`, `project.rs`, `render_loop/fase_*`, `it/`) · `ph2d-board-{model,sync,net,render,edit,excalidraw,video,geom}` · `ph2d-app-{board,code,components,macros,host}` · `ph2d-script` + `runtime/luau` · `ph2d-panel-{macros,tokens,registry-init}` · `ph2d-text` · `ph2d-code-help`.
 
 O que um merge pode partir:
 - **Quadro** (MiroClone W24+): `FORMAT_VERSION`/`PROTOCOL`/`ElementKind` — a variante `Kanban` entra no enum; um segundo merge de variante exige renumerar os dois e as fixtures de bytes.
 - **`PROJECT_SCHEMA`** e a escada `project_schema.rs`: o degrau 194 é por campo `kanbans` no fim; outra linha com 194 → recontar e re-ordenar o campo.
 - **`ph2d-app-registry-init`**, `ph2d-panel-registry-init`, `i18n/lib.rs`: adições em linhas vizinhas (Mergiraf pode apagar uma remoção em array — confira por `git diff`).
-- **`ph2d-app-board` → `ph2d-app-kanban`** (dep família → família, vermelho J7 conhecido no gate de arquitectura; ver §9).
+- **`ph2d-app-board`**: já NÃO depende de `ph2d-app-kanban` (porta `ph2d_kanban_sync::port`, J7); `Cargo.lock` muda por isso.
+- **`ph2d-board-net`** (`redial.rs`, retrocesso único) e `ph2d-board-sync` (`replica_kanban`, `session`): o MiroClone toca os mesmos ficheiros.
 - **`ph2d-script`/luau**: registo `ph2d.kanban`; a linha CodeEditor mexe no mesmo registo e em `ph2d-code-help`.
 
 ## 7. Para o integrador
 
-- **Catraca `the_shell_only_shrinks`** (`crates/ph2d-editor-core/tests/it/architecture_the_shell_only_shrinks.rs:112`): `TETO_LOC = 189_041`; sem alteração do tecto na linha. Última medição da linha: **189 023** (lote E1, `2403db62e1`) — a W2 tinha chegado a 189 086 e foi curada MOVENDO. Reconte na árvore combinada (integrar → `cargo fmt --all` → medir → escrever). Nenhuma linha lhe toca.
+- **Catraca `the_shell_only_shrinks`** (`crates/ph2d-editor-core/tests/it/architecture_the_shell_only_shrinks.rs:112`): `TETO_LOC = 189_041`, intacto na linha. Medido no HEAD (mesma contagem do teste, `.rs` sob `shells/desktop`): **189 026**; o teste passa por nome. Reconte na árvore combinada (integrar → `cargo fmt --all` → medir → escrever).
 - **ADR 0195 PROVISÓRIO.** Último no main: `0191`; há `0192..0194` noutras linhas por contar. Renumere pelo código: `git ls-tree main docs/architecture/decisions/`, depois `grep -rn "0195" docs crates` (o ADR, `decisions/README.md`, handoffs, doc-comments `[ADR-0195]`).
-- **Cenas de smoke** (contadas nos roteadores, não escolhidas): `PH2D_KANBAN_SMOKE=1..9` (`CENAS: u8 = 9`, `ph2d-app-kanban/src/smoke.rs:34`; 1–2 W2, 3 verso, 4 verso/datas, 5–6 filtro, 7 cabeçalho/Share, 8 Butler/verso ligado, 9 import do Trello) · `PH2D_BOARD_SMOKE=30` (`ph2d-app-board/src/smoke.rs`; o main chega a 29 → a 30 é a do Kanban no canvas; **recontar** se o MiroClone somou) · `PH2D_PLANNER_SMOKE=1` · `PH2D_CODE_SMOKE=10` (`CENAS: u32 = 10`, `ph2d-app-code/src/smoke.rs:11`; o main anuncia 1..9).
-- **A suíte COMPLETA NÃO foi corrida na linha** (ordem do dono 23/10): só testes por NOME, clippy das crates estáveis (`84e4debf44`, `6230d6c770`) e fmt. `nextest-impacted` + clippy `--all-targets` + `ship.sh` são do integrador. Precisam de `PH2D_SUITE="motivo: crate NOVA …"` ou `fecho`.
-- **Flakes de carga conhecidos** (confirme com `loadavg` antes de culpar um commit; [FLAKES_DE_CARGA](../../DevOps/FLAKES_DE_CARGA.md)): profundidade da timeline, traço de máscara, timeout do painter (fora do Kanban; herdados do W2). Medições da linha tomadas a `load` 28–33 são cota SUPERIOR.
-- **Portões vermelhos conhecidos** no HEAD (23/25 UI/arquitectura verdes): `app-board → app-kanban` (família → família, cura = J7/porta no `ph2d-kanban-sync`, §9). O `ph2d-app-planner` já não depende do `ph2d-app-kanban` (`29427ab3c6`).
+- **Cenas de smoke** (contadas nos roteadores): `PH2D_KANBAN_SMOKE=1..9` (`CENAS: u8 = 9`, `ph2d-app-kanban/src/smoke.rs:34`) · `PH2D_BOARD_SMOKE=30` (`max_level: 30`, `ph2d-app-board/src/smoke.rs:115`; o main chega a 29 → **recontar** se o MiroClone somou) · `PH2D_PLANNER_SMOKE=1` · `PH2D_CODE_SMOKE=10` (`CENAS: u32 = 10`, `ph2d-app-code/src/smoke.rs:11`; o main anuncia 1..9).
+- **Suíte completa**: `nextest-impacted` + clippy `--all-targets` + `ship.sh` são do integrador (`PH2D_SUITE=fecho`).
+- **Flakes de carga** (confirme com `loadavg`; [FLAKES_DE_CARGA](../../DevOps/FLAKES_DE_CARGA.md)): timeline, traço de máscara, timeout do painter (fora do Kanban). Medições a `load` 28–33 são cota SUPERIOR.
+- **Portões**: UI/arquitectura 25/25 verdes por nome depois do J7 (reconfirme na suíte). Nenhum vermelho conhecido.
 - **Docs**: decisões de PRODUTO tomadas sem o dono (para rever no smoke): [`DECISOES_SEM_O_DONO.md`](../loop/DECISOES_SEM_O_DONO.md). Medições (`MAX_*` e tectos): [`MEDICOES.md`](../loop/MEDICOES.md).
 
 ## 8. Prova de fecho e smokes
 
-Verdes por nome na linha (ver `ESTADO.md`): seam tests do hero (`ph2d-app-kanban/tests/it/`), modelo (degraus v1→v7 com fixture), `ph2d-kanban-sync` `loopback::two_processes_converge_*` (127.0.0.1), gate das duas janelas (aba e canvas do MESMO Kanban, `2603d3023c`), tokens (contraste por par). Fotos em `docs/TrelloClone/smoke/W2..W10/`. Tutorial do smoke final: `docs/TrelloClone/tutorial/01_kanban.pdf` (18 p.; 22 passos ainda SEM foto → lote FOTO depois do J7, depois regenerar o PDF).
+Verdes por nome (ver `ESTADO.md`): seam tests do hero (`ph2d-app-kanban/tests/it/`, `j7_porta.rs`), modelo (degraus v1→v7 com fixture), `ph2d-kanban-sync` `loopback::two_processes_converge_*` (127.0.0.1), gate das duas janelas (`2603d3023c`), tokens (contraste por par), catraca. Fotos `docs/TrelloClone/smoke/W2..W10/`. Tutorial do smoke final: `docs/TrelloClone/tutorial/01_kanban.pdf` (regenerado em `a3d6f888d0`); faltam as fotos 8.2/9.8 (cenas `PH2D_CODE_SMOKE=10`, `PH2D_PLANNER_SMOKE=1`) e a parte 6; a foto `cena30_aba` perdeu-se no J7.
 
 Smokes (o `cd` inteiro):
 1. `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-TrelloClone && PH2D_KANBAN_SMOKE=1 cargo run -p ph2d-host-desktop --profile smoke` (trocar 1 por 2..9).
@@ -117,18 +98,15 @@ Errado = tela vazia, cartão sem título, ou o quadro vazio ao abrir um projecto
 - W10: JSON REAL do Trello do dono (Menu → Export as JSON) vira fixture e gate; hoje só fixture sintética.
 - W5: furo de NAT entre DUAS máquinas reais — provado só em 127.0.0.1 (LAN e QUIC sem ponto de encontro); mesma pendência do Quadro (ADR-0187).
 
-**Pendências do `ESTADO.md`** (ligação por fechar):
-- J4: `is_link` do Join do Quadro aceitar `KANBAN_SCHEME` (editor-core `board_live.rs`); avatares esmaecidos ao reconectar; Quadro convidado com retrocesso exponencial; presença do Kanban dentro da sessão do Quadro; histórico de versões do Quadro guarda ids locais.
-- W8 L2: mover `short_film`/`sky_png` para crate baixa (feito em `ph2d-kanban-scenes`); app correr scripts Kanban com handlers `on()` activos; UI do Butler completa.
-- W11: fiação por fazer — `frame.rs` `serve(hero)`; menu do Quadro «Convert to card»; shell `publish_scene` + drenar `take(Scene/Timeline)`; app-code `take(Script)→CodeDocs::open`; Macros `take(Macro)`; secção «Scene object» no verso; nota nova do cartão no tamanho do texto.
+**Pendências** (resto da ligação):
+- J4: avatares esmaecidos ao reconectar. (Join `ph2d-kanban://`, retrocesso, presença e ids das versões: FEITOS no J7.)
+- W8 L2: app correr scripts Kanban com handlers `on()` activos; UI do Butler completa.
+- W11, fiação: `frame.rs` `serve(hero)`; menu do Quadro «Convert to card»; shell `publish_scene` + drenar `take(Scene/Timeline)`; app-code `take(Script)→CodeDocs::open`; Macros `take(Macro)`; secção «Scene object» no verso; nota nova do cartão no tamanho do texto.
+- P2: teste do lado Kanban de `request_open_card` (`frame.rs`).
 - W4: desfazer «inserir Kanban» deixa o documento vazio órfão (decidir); `board_nav.rs` = 700 linhas (no tecto). Menores: tracking das maiúsculas nos títulos; `back/dates.rs` → `datepick.rs` das views; gancho `front::cover::pending()`.
-- Fecho batched por fazer: `cargo fmt`/clippy `--all-targets` sobre as crates novas de W7–W11 + revisor final.
-- Smoke FINAL do dono: do PDF; decisões sem o dono (tabela acima) por rever.
-
-## J7 (em curso)
-
-> A completar pelo coordenador: o que o J7 comita (porta `ph2d-kanban-sync::port`, `redial.rs` no `ph2d-board-net`, `PROTOCOL 14`, `j7_porta.rs`), cura do vermelho `app-board → app-kanban`, hash final, `Cargo.lock`, HEAD definitivo, recontagens (PROTOCOL, catraca).
+- Revisor final por fazer; `rm -rf target/*/incremental` e `agent-loop-profile.sh` ao fechar.
+- Smoke FINAL do dono: do PDF; [decisões sem o dono](../loop/DECISOES_SEM_O_DONO.md) por rever.
 
 ## Entrada §5.1 proposta (≤ 700 bytes; o integrador aplica)
 
-- **Kanban (TrelloClone)** — o Kanban é um documento do projeto ([ADR-0195](docs/architecture/decisions/0195-o-kanban-e-um-documento-do-projeto-o-quadro-referencia-o-e-a-aba-abre-o.md)): aba como no Trello (verso, vistas, filtro, Butler, `ph2d.kanban` Luau), o mesmo no canvas do Quadro, ao vivo, import do Trello, Planner; `ph2d-kanban-*` + `ph2d-app-kanban`/`-planner`. Smoke `PH2D_KANBAN_SMOKE=1..9` · `PH2D_BOARD_SMOKE=30`. Último: [W2b–W11, 28/10](docs/TrelloClone/handoffs/HANDOFF_INTEGRACAO_line_TrelloClone_2026-10-28_W2b_a_W11.md) · [plano](docs/TrelloClone/01_plano.md) · [docs](docs/TrelloClone/README.md)
+- **Kanban (TrelloClone)** — o Kanban é um documento do projeto ([ADR-0195](docs/architecture/decisions/0195-o-kanban-e-um-documento-do-projeto-o-quadro-referencia-o-e-a-aba-abre-o.md)): aba como no Trello (verso, vistas, filtro, Butler, `ph2d.kanban` Luau), o mesmo no canvas do Quadro, ao vivo, import do Trello, Planner; `ph2d-kanban-*` + `ph2d-app-kanban`/`-planner`. Smoke `PH2D_KANBAN_SMOKE=1..9` · `PH2D_BOARD_SMOKE=30`; tutorial em PDF (`docs/TrelloClone/tutorial/01_kanban.pdf`). Último: [W2b–W11, 28/10](docs/TrelloClone/handoffs/HANDOFF_INTEGRACAO_line_TrelloClone_2026-10-28_W2b_a_W11.md) · [plano](docs/TrelloClone/01_plano.md) · [docs](docs/TrelloClone/README.md)

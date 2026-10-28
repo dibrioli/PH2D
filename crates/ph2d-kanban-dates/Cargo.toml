@@ -1,0 +1,19 @@
+[package]
+name = "ph2d-kanban-dates"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+[dependencies]
+# O que «hoje», «atrasado» e «esta semana» significam num fuso (ADR-0195 §8). `jiff` 0.2 é
+# `Unlicense OR MIT`; a base IANA vem do sistema (`tzdb-zoneinfo`) e, onde não há, embutida
+# (`tzdb-bundle-platform`: Windows/wasm).
+jiff = { version = "0.2", default-features = false, features = ["std", "tz-system", "tzdb-zoneinfo", "tzdb-bundle-platform"] }
+
+[lints]
+workspace = true

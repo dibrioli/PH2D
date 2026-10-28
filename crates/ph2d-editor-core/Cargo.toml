@@ -77,7 +77,12 @@ ph2d-i18n             = { path = "../ph2d-i18n" }
 # A porta das etapas de uma família de macros (`macro_etapas`): a `Track` e o `LeitorDaFamilia`.
 # Folha pura, sem dependências.
 ph2d-macro            = { path = "../ph2d-macro" }
-smallvec              = "1"
+# O documento rico do verso do cartão (W3 do Kanban): o `rich_editor` conduz o `Editor` dele.
+ph2d-richdoc          = { path = "../ph2d-richdoc" }
+# O `rich_editor` molda texto com estilos por intervalo (negrito, itálico, código, link) e acha o
+# caret pelo MESMO layout — o `ph2d-text` só re-exporta o layout, não os estilos nem o cursor.
+parley                = "0.11.1"
+smallvec             = "1"
 bumpalo               = { version = "3", features = ["collections"] }
 
 [dev-dependencies]

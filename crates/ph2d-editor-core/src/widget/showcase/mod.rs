@@ -360,6 +360,7 @@ pub fn active_index(store: &WidgetStore, ids: &[NodeId]) -> Option<usize> {
 
 mod actions;
 mod card;
+pub mod card_back;
 mod color;
 mod identity;
 mod inputs;

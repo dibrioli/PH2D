@@ -18,6 +18,7 @@ mod bitmask_grid32;
 mod blender_color_picker;
 mod button;
 mod button_surface;
+mod calendar;
 mod card;
 mod checkbox;
 mod color_picker;
@@ -26,6 +27,7 @@ mod combobox;
 pub mod command_palette;
 pub mod composto;
 mod context_menu;
+mod date_picker;
 mod divider;
 mod drag_ghost;
 mod dropdown;
@@ -44,6 +46,7 @@ mod progress_bar;
 mod property_box;
 mod radio_group;
 mod rect2_editor;
+mod rich_editor;
 pub mod scroll_area;
 mod scrollbar;
 mod scrollbar_ids;
@@ -91,6 +94,11 @@ pub use button_surface::{
     chip_axis_t, chip_feel, flat_button_surface_color, grid_cells, grid_height, segment_rects,
     stepper_middle_w,
 };
+pub use calendar::{
+    CALENDAR_CELLS, CALENDAR_COLS, CALENDAR_ROWS, Calendar, CalendarCell, CalendarDate,
+    CalendarEvent, CalendarHit, CalendarLayout, cell_node_id as calendar_cell_node_id,
+    paint_calendar,
+};
 pub use card::{Card, paint_card, pop_card_body_clip, push_card_body_clip};
 // ⭐ A fileira que mede as PALAVRAS — irmã do `segment_rects`, que reparte em partes iguais.
 pub use checkbox::{CHECKBOX_BOX_PX, Checkbox, CheckboxState, CheckboxValue, paint_checkbox};
@@ -104,6 +112,10 @@ pub use combobox::{
     paint_combobox, paint_combobox_with_state, text_origin_x as combobox_text_origin_x,
 };
 pub use context_menu::{ContextMenu, ContextMenuEntry, paint_context_menu};
+pub use date_picker::{
+    DateField, DatePicker, DatePickerEvent, DatePickerHit, DatePickerLabels, DatePickerLayout,
+    DateSlot, FieldKey, LineField, Reminder, paint_date_picker,
+};
 pub use divider::{Divider, DividerOrientation, paint_divider};
 pub use drag_ghost::{afim_do_fantasma, paint_card_ghost};
 // ⛔ Os pintores da lista ABERTA são `pub(crate)`: um painel chega-lhe pela porta
@@ -172,6 +184,12 @@ pub use radio_group::{
 pub use rect2_editor::{
     RECT2_HANDLE_COUNT, Rect2Editor, Rect2Layout, paint_rect2_editor,
     paint_rect2_editor_with_state, paint_rect2_handles,
+};
+pub use rich_editor::{
+    BlockBox, DocLayout, Ink, Marker, RICH_TOOLS, RichEditor, RichEditorEvent, RichEditorLabels,
+    RichKeyOutcome, RichTool, TEXT_STYLES, area_node_id as rich_doc_node_id, paint_rich_editor,
+    style_option as rich_editor_style_option, toolbar_button as rich_editor_toolbar_button,
+    toolbar_node_id as rich_toolbar_node_id,
 };
 pub use scrollbar::{
     SCROLLBAR_W, ScrollbarState, delta_for_drag as scrollbar_delta_for_drag,

@@ -53,7 +53,7 @@ pub(super) fn paint_card_section(
     let pic_h = 64.0_f32; // LITERAL-PX-OK: demo illustration height (showcase-specific)
     let pic = Rect::new(x, y + card_h, w, pic_h);
     crate::widget::illustration::paint_illustration(scene, pic, DEMO_ILLUSTRATION, theme);
-    y + card_h + pic_h
+    super::card_back::paint_card_back_widgets(scene, text_system, theme, x, w, y + card_h + pic_h)
 }
 
 /// O desenho de exemplo da galeria (coordenadas da moldura, `0..1`).

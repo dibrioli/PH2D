@@ -79,13 +79,6 @@ pub(super) fn sheet(
     drawn: std::ops::Range<usize>,
     look: &Look,
 ) {
-    let area = Rect::new(
-        g.sheet.x - m::PAD,
-        g.sheet.y - m::PAD,
-        g.sheet.w + 2.0 * m::PAD,
-        g.sheet.h + 2.0 * m::PAD,
-    );
-    out.fill_rect(rect_to_vello(area), c(theme, T::KanbanBoardBg));
     fill_rounded_rect(out, g.sheet, m::RADIUS, c(theme, T::KanbanCard));
     let clip = RoundedRect::from_rect(rect_to_vello(g.sheet), f64::from(m::RADIUS));
     out.push_clip(&clip);

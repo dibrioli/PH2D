@@ -118,3 +118,32 @@ fn d11_mede_o_fundo_na_placa() {
         println!("{alvo}: {ms:.2} ms");
     }
 }
+
+/// 📷 Smoke do dono 28/10: «na timeline, a depender do fundo, as palavras ficam ilegíveis» — as
+/// quatro vistas sobre um fundo CLARO (o gradiente «neve» e as ondas sobre azul-céu), nos dois temas.
+#[test]
+#[ignore = "a placa: fotos para docs/TrelloClone/smoke/D11/"]
+fn d11_foto_vistas_sobre_fundo_claro() {
+    for (theme, tag) in [(Theme::Light, "claro"), (Theme::Dark, "escuro")] {
+        for (fundo, alvos) in [
+            ("neve", &["Gradient(0)"][..]),
+            ("ondas", &["Pattern(Waves)", "Tint(Base, Sky)"][..]),
+        ] {
+            let (mut m, id) = cena1(theme);
+            abre(&mut m, id);
+            for a in alvos {
+                toca(&mut m, id, a);
+            }
+            fecha(&mut m);
+            for (i, nome) in [
+                (1, "tabela"),
+                (2, "calendario"),
+                (3, "linha_do_tempo"),
+                (4, "painel"),
+            ] {
+                crate::j1_vistas::vista(&mut m, id, i);
+                grava_em("D11", &format!("vista_{nome}_{fundo}_{tag}"), &cena(&mut m));
+            }
+        }
+    }
+}

@@ -6,9 +6,7 @@ use std::hash::{Hash, Hasher};
 use ph2d_editor_core::paint::resolve;
 use ph2d_kanban_dates::{Weekday, Zone};
 use ph2d_kanban_filter::{Filter, matches};
-use ph2d_kanban_model::{
-    Card, CardRef, Hue, Kanban, LabelColor, Member, Moment, Plan, Shade,
-};
+use ph2d_kanban_model::{Card, CardRef, Hue, Kanban, LabelColor, Member, Moment, Plan, Shade};
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken as T, Theme};
 use ph2d_vector::Color;

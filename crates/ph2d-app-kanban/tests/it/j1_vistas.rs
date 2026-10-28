@@ -9,7 +9,7 @@ use ph2d_kanban_model::{
 use ph2d_kanban_views::ViewKind;
 use ph2d_kanban_views::table::Column;
 
-fn vista(m: &mut Mesa, id: KanbanId, i: u8) {
+pub(crate) fn vista(m: &mut Mesa, id: KanbanId, i: u8) {
     toca(m, id, "ViewsButton");
     assert_eq!(m.docs().probe_w6(id.0).0.as_deref(), Some("Views"));
     toca(m, id, &format!("View({i})"));

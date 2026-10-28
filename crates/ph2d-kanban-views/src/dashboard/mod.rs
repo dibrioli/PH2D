@@ -273,7 +273,6 @@ pub fn paint(
     cx: &Ctx<'_>,
 ) {
     st.painted.clear();
-    out.fill_rect(vrect(area), c(theme, T::KanbanBoardBg));
     let Some(k) = set.get(kanban) else {
         return;
     };

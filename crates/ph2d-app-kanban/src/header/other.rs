@@ -28,9 +28,11 @@ pub(crate) fn week_start() -> Weekday {
     ph2d_kanban_dates::week_start_for_region(region)
 }
 
-/// O corpo da vista (por baixo do cabeçalho, acima do HUD).
+/// O painel da vista: o corpo (por baixo do cabeçalho, acima do HUD) menos a margem do quadro, por onde o fundo escolhido se vê (o Trello).
 pub(crate) fn body(tab: &Tab, floor: Option<f32>) -> Rect {
-    crate::w6::above(tab.layout.board, floor)
+    let r = crate::w6::above(tab.layout.board, floor);
+    let p = crate::metrics::BOARD_PAD;
+    Rect::new(r.x + p, r.y, (r.w - 2.0 * p).max(0.0), (r.h - p).max(0.0))
 }
 
 /// ⭐ Pinta a vista à vista no corpo (px da vista; a `Affine` da aba leva tudo junto ao ecrã).
@@ -55,7 +57,20 @@ pub(crate) fn paint(
         filter: &w6.filter,
         week_start: week_start(),
     };
-    scene.push_clip(&ph2d_editor_core::paint::rect_to_vello(rect));
+    // As vistas escrevem com a tinta das LISTAS: pintam-se sobre a superfície das listas, nunca
+    // directamente sobre o fundo do quadro (que pode ser claro, um padrão ou uma foto).
+    let radius = crate::metrics::LIST_RADIUS;
+    ph2d_editor_core::paint::fill_rounded_rect(
+        scene,
+        rect,
+        radius,
+        crate::paint::c(theme, ph2d_tokens::ColorToken::KanbanList),
+    );
+    let clip = ph2d_vector::RoundedRect::from_rect(
+        ph2d_editor_core::paint::rect_to_vello(rect),
+        f64::from(radius),
+    );
+    scene.push_clip(&clip);
     views.paint(scene, Affine::IDENTITY, rect, set, kanban, ts, theme, &cx);
     scene.pop_layer();
 }

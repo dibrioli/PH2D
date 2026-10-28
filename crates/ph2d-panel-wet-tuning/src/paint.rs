@@ -287,11 +287,38 @@ fn paint_row(
     theme: Theme,
 ) -> f32 {
     let row_w = (w - RESET_W - Spacing::Xs.px()).max(0.0);
+    let mut used = None;
+    if let Some(opts) = &row.options {
+        // ⭐ A linha de ESCOLHA da casa (o nome na coluna, o grupo segmentado na do valor): a opção acesa é o valor.
+        let sel = value.round() as usize;
+        let segmentos: Vec<(&str, bool, ph2d_a11y::NodeId)> = opts
+            .iter()
+            .enumerate()
+            .map(|(i, (k, id))| (tr(k.as_str()), i == sel, *id))
+            .collect();
+        let (store, hit_index) = ctx.host.store_and_hit_index_mut();
+        let fim = ph2d_editor_core::property_row::paint_choice_row(
+            ctx.scene,
+            ctx.text_system,
+            theme,
+            hit_index,
+            store,
+            x,
+            row_w,
+            y,
+            tr(row.label.as_str()),
+            &segmentos,
+            ph2d_editor_core::property_row::Seccao::apenas_campos(1),
+        );
+        used = Some(fim - y - ph2d_tokens::control_gap_px());
+    }
     let track = row.track_of(value);
     let text = format!("{value:.*}", row.decimals);
     let label = tr(row.label.as_str());
     // Returns the row HEIGHT used (the physics panel's convention).
-    let used = {
+    let used = if let Some(u) = used {
+        u
+    } else {
         let scene = &mut *ctx.scene;
         let text_system = &mut *ctx.text_system;
         let (store, hit_index) = ctx.host.store_and_hit_index_mut();

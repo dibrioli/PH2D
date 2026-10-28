@@ -19,21 +19,17 @@ use ph2d_panel_painter_layers::state::{PainterLayersPanelState, set_current_brus
 use ph2d_tool_painter::PainterTool;
 use ph2d_tool_painter::ids::{
     PAINTER_WETPAINT_OLEO_ALCANCE_FENDA, PAINTER_WETPAINT_OLEO_ALTITUDE,
-    PAINTER_WETPAINT_OLEO_AMBIENTE, PAINTER_WETPAINT_OLEO_AZIMUTE, PAINTER_WETPAINT_OLEO_BRILHO,
-    PAINTER_WETPAINT_OLEO_FAIXAS, PAINTER_WETPAINT_OLEO_FENDA,
-    PAINTER_WETPAINT_OLEO_FORCA_AMBIENTE, PAINTER_WETPAINT_OLEO_MATERIAL,
-    PAINTER_WETPAINT_OLEO_MATERIAL_NEUTRO, PAINTER_WETPAINT_OLEO_PROFUNDIDADE,
-    PAINTER_WETPAINT_OLEO_REAL, PAINTER_WETPAINT_OLEO_SOMBRA,
+    PAINTER_WETPAINT_OLEO_AMBIENTE, PAINTER_WETPAINT_OLEO_AZIMUTE, PAINTER_WETPAINT_OLEO_FAIXAS,
+    PAINTER_WETPAINT_OLEO_FENDA, PAINTER_WETPAINT_OLEO_FORCA_AMBIENTE, PAINTER_WETPAINT_OLEO_MATERIAL,
+    PAINTER_WETPAINT_OLEO_MATERIAL_NEUTRO, PAINTER_WETPAINT_OLEO_REAL, PAINTER_WETPAINT_OLEO_SOMBRA,
     painter_wetpaint_oleo_ambiente_option_id,
 };
 use ph2d_ui_testkit::MockPanelHost;
 
-/// As dezasseis linhas por LITERAL (um gate que iterasse a lista sob teste encolheria com ela): as oito da
-/// óptica e as oito do material (W3).
-const LINHAS: [NodeId; 16] = [
-    PAINTER_WETPAINT_OLEO_PROFUNDIDADE,
+/// As catorze linhas por LITERAL (um gate que iterasse a lista sob teste encolheria com ela): as seis da
+/// óptica da tela e as oito do material (W3). O Depth e o Gloss saíram (dono 28/10: são do pincel).
+const LINHAS: [NodeId; 14] = [
     PAINTER_WETPAINT_OLEO_SOMBRA,
-    PAINTER_WETPAINT_OLEO_BRILHO,
     PAINTER_WETPAINT_OLEO_ALTITUDE,
     PAINTER_WETPAINT_OLEO_AZIMUTE,
     PAINTER_WETPAINT_OLEO_FENDA,
@@ -122,6 +118,24 @@ fn a_caixa_real_oil_so_aparece_com_o_wet_paint_armado_e_as_linhas_so_com_ela_lig
             "a linha {id:?} do Real Oil não aparece com a caixa ligada"
         );
     }
+    // Dono 28/10: os números são da TELA — com tinta com óleo na tela aparecem também com a caixa do pincel desligada
+    // (o facto vem do composite; `ph2d-tool-painter` `o_cartao_segue_a_tinta_com_oleo_na_tela`), clicáveis.
+    tool.set_wet_oleo_real_ligado(false);
+    let mut b = tool.brush_settings();
+    b.wet_oleo_na_tela = true;
+    set_current_brush(Some(b));
+    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut st = PainterLayersPanelState;
+    let na_tela = host.paint::<PainterLayersPanel>(&mut st, viewport());
+    for id in LINHAS {
+        let r = rect_de(&na_tela, id)
+            .unwrap_or_else(|| panic!("a linha {id:?} sumiu com óleo na tela e a caixa desligada"));
+        assert_eq!(host.hit_at(r.x + r.w * 0.5, r.y + r.h * 0.5), Some(id));
+        assert_eq!(
+            host.apply_panel_event::<PainterLayersPanel>(&mut st, WidgetEvent::ValueChanged(id)),
+            EventOutcome::Consumed
+        );
+    }
 }
 
 #[test]
@@ -161,18 +175,14 @@ fn o_real_oil_liga_com_o_look_aprovado_cada_linha_chega_a_ferramenta_e_desligar_
     }
     // O `SetValue` na ferramenta, nas unidades do painel.
     for (id, v) in [
-        (PAINTER_WETPAINT_OLEO_PROFUNDIDADE, 2.5),
         (PAINTER_WETPAINT_OLEO_SOMBRA, 0.35),
-        (PAINTER_WETPAINT_OLEO_BRILHO, 0.4),
         (PAINTER_WETPAINT_OLEO_ALTITUDE, 30.0),
         (PAINTER_WETPAINT_OLEO_AZIMUTE, 90.0),
     ] {
         tool.handle_panel_event(PanelEvent::SetValue(id, v));
     }
     let o = tool.wet_oleo_real().expect("continua ligado");
-    assert!((o.profundidade - 2.5).abs() < 1e-12);
     assert!((o.sombra - 0.35).abs() < 1e-12);
-    assert!((o.brilho - 0.4).abs() < 1e-12);
     assert!(
         (o.altitude - 30f64.to_radians()).abs() < 1e-12,
         "a altura da luz não chegou em radianos"
@@ -379,7 +389,7 @@ fn o_material_do_cartao_chega_ao_oleo_real_e_sobrevive_a_religar() {
     );
     assert_eq!(tool.brush_settings().wet_oleo_material, neutro);
     for (k, &id) in PAINTER_WETPAINT_OLEO_MATERIAL.iter().enumerate() {
-        let (lo, hi) = PAINTER_WETPAINT_OLEO_FAIXAS[8 + k];
+        let (lo, hi) = PAINTER_WETPAINT_OLEO_FAIXAS[6 + k];
         let v = lo + (hi - lo) * (0.25 + 0.05 * k as f64);
         tool.handle_panel_event(PanelEvent::SetValue(id, v));
         let o = tool.wet_oleo_real().expect("ligado");
@@ -477,8 +487,9 @@ fn a_220_os_nomes_do_material_partem_se_em_duas_linhas_e_nao_cortam() {
 }
 
 /// ⭐ **D3/C2 (dono 27/10): o cartão Real Oil não tem a Transmission, a Transparency nem o Paper Relief** — eles são
-/// só do pincel (Tuning › Material), por célula: mexer no cartão mudava a tinta já pousada. O cartão pintado (com o
-/// óleo ligado) não mostra nenhum dos três nomes; o CONTROLO é o «Subsurface Radius», a última linha do material.
+/// só do pincel (Tuning › Material), por célula: mexer no cartão mudava a tinta já pousada. Dono 28/10: nem o Depth
+/// nem o Gloss. O cartão pintado (com o óleo ligado) não mostra nenhum dos cinco nomes; o CONTROLO é o «Subsurface
+/// Radius», a última linha do material, e a «Shadow», a primeira da óptica.
 #[test]
 fn o_cartao_real_oil_nao_mostra_os_pesos_da_tinta() {
     use ph2d_editor_core::text_elide::elisao;
@@ -491,10 +502,10 @@ fn o_cartao_real_oil_nao_mostra_os_pesos_da_tinta() {
     let (_, medidos) = elisao::medindo(|| host.paint::<PainterLayersPanel>(&mut st, vp));
     let textos: Vec<&str> = medidos.iter().map(|m| m.texto.as_str()).collect();
     assert!(
-        textos.contains(&"Subsurface Radius"),
-        "controlo: o material do cartão está pintado ({textos:?})"
+        textos.contains(&"Subsurface Radius") && textos.contains(&"Shadow"),
+        "controlo: a óptica e o material do cartão estão pintados ({textos:?})"
     );
-    for nome in ["Transparency", "Transmission", "Paper Relief"] {
+    for nome in ["Transparency", "Transmission", "Paper Relief", "Depth", "Gloss"] {
         assert!(
             !textos.iter().any(|t| t.starts_with(nome)),
             "«{nome}» no cartão Real Oil"

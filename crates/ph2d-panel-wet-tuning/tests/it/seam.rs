@@ -41,6 +41,24 @@ fn drained_click(actions: &[EditorAction], id: ph2d_a11y::NodeId) -> bool {
 #[test]
 fn every_row_slider_and_reset_forwards() {
     for row in rows::rows() {
+        if let Some(opts) = &row.options {
+            // A CHOICE row (28/10): each option forwards the row's slider at its index.
+            for (i, (_, id)) in opts.iter().enumerate() {
+                let (mut host, mut st) = host();
+                let out = host.apply_panel_event::<WetTuningPanel>(&mut st, WidgetEvent::Click(*id));
+                assert_eq!(out, EventOutcome::Consumed, "option {i} of {} ignored", row.key);
+                assert_eq!(
+                    drained_setvalue(&host.drained_actions(), row.slider),
+                    Some(i as f64),
+                    "option {i} of {} must forward SetValue({i})",
+                    row.key
+                );
+            }
+            let (mut host, mut st) = self::host();
+            let out = host.apply_panel_event::<WetTuningPanel>(&mut st, WidgetEvent::Click(row.reset));
+            assert_eq!(out, EventOutcome::Consumed, "reset {} ignored", row.key);
+            continue;
+        }
         let (mut host, mut st) = host();
         // Put the slider's track at 1.0 — the forwarded value must be the
         // row's MAX (the def's own bound, from the registry).
@@ -212,7 +230,16 @@ fn paint_offers_the_table_and_no_paper_row_lives_here() {
     };
     let plain = paint_with(PainterTool::default().brush_settings());
     for row in rows::rows() {
-        assert!(has(&plain, row.slider), "row {} slider missing", row.key);
+        match &row.options {
+            // A CHOICE row paints its options and NO slider (a selector, never a slider, dono 28/10).
+            Some(opts) => {
+                for (_, id) in opts {
+                    assert!(has(&plain, *id), "row {} option missing", row.key);
+                }
+                assert!(!has(&plain, row.slider), "row {} is a choice: no slider", row.key);
+            }
+            None => assert!(has(&plain, row.slider), "row {} slider missing", row.key),
+        }
         assert!(has(&plain, row.reset), "row {} reset missing", row.key);
     }
     for s in rows::SECTIONS {

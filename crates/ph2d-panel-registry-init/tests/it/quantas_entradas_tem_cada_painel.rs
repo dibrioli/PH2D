@@ -1122,7 +1122,9 @@ const CARGA_DE_COMANDOS: &[(&str, usize)] = &[
     //    tinham levado a conta a `24` e `26` — cada secção nova pagava DOIS (o reset e o CABEÇALHO, registado
     //    como `Button`). Os onze cabeçalhos passaram a secções dobráveis da casa (`mark_collapsible_section`,
     //    o molde da Física de 24/09); ficam os dez resets de grupo, o fecho e a coluna dos resets por botão.
-    ("wet_tuning", 15),
+    // ⬇️ `15 → 14` em 2026-10-28 (W3b: o modo da Transmission como seletor, Depth e Gloss do Óleo Real no Material,
+    //    a Paint Texture do traço): MEDIDO pela catraca na árvore com as três mudanças; a catraca só aperta.
+    ("wet_tuning", 14),
     // ⬇️ `49 → 4` em 2026-09-24 (*«Arrumar»* os painéis, depois do Vector): `36` eram as células da
     //    matriz de camadas (um VALOR, hoje declarado composto como a grelha de bits do Inspector) e
     //    `8` os cabeçalhos de secção, registados como `Button` em vez de secções dobráveis da casa.
@@ -2195,7 +2197,9 @@ const ALTURA_DE_ABERTURA: &[(&str, f32)] = &[
     //    sobre o estado que outro teste deixou no registo partilhado — nenhum ficheiro do painel do Painter
     //    nem a fixtura dele mudou na linha. Medido SOZINHO (um processo por teste, como o nextest): `1 570`,
     //    o número do main.
-    ("painter_layers", 1570.0),
+    // ⬇️ `1 570 → 1 568` em 2026-10-28 (W3b: a Paint Texture no cartão Wet Paint, o Depth/Gloss fora do cartão Real
+    //    Oil): MEDIDO pela catraca; só encolhe.
+    ("painter_layers", 1568.0),
     // ⬆️ `2 866 → 3 091` em 2026-10-10 (MiroClone W11), e NÃO é uma secção a nascer aberta: o painel
     //    é UMA LISTA, uma fileira por `ColorToken::ALL` (sem secções a recolher), e a W11 acrescentou
     //    nove cores (`person-0`…`person-7` + `person-ink`, as das pessoas do quadro ao vivo):

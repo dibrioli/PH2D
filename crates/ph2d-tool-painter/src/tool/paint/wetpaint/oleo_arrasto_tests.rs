@@ -7,8 +7,8 @@ use super::*;
 use ph2d_editor_core::Tool;
 use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PanelEvent, PointerPhase};
 
-/// O Specular do cartão (`PAINTER_WETPAINT_OLEO_FIELDS[2]`, `0..1`): só muda o sombreado.
-const BRILHO: usize = 2;
+/// A Shadow do cartão (`PAINTER_WETPAINT_OLEO_FIELDS[0]`, `0..1`): só muda o sombreado (o Gloss saiu do cartão, 28/10).
+const BRILHO: usize = 0;
 
 /// Uma tela `w × h` em Wet Paint com o Óleo Real ligado e dois traços que se cruzam, a água parada.
 fn tela(w: usize, h: usize) -> PainterTool {
@@ -141,6 +141,9 @@ fn a_tela_depois_da_varredura_e_a_recomposicao_inteira_ao_byte() {
     );
     b.set_wet_smooth_edges(a.wet_smooth_edges());
     b.set_wet_oleo_real(a.wet_oleo_real());
+    // Os números do cartão vão à tela pela varredura do tick (dono 28/10: a caixa já não recompõe): a referência é
+    // a recomposição INTEIRA, à mão.
+    b.wet_recomposite_full();
     let difs = a
         .canvas_rgba
         .iter()

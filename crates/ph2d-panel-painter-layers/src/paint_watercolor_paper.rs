@@ -183,12 +183,10 @@ pub(crate) fn paint_paper_section(
     y = paint_substrate_rows(ctx, theme, x, content_w, y, brush);
     if kind == TextureKind::None {
         // ⚠️ O Wet Paint SEM Kind pinta no papel de FÁBRICA do painel (o Cold que o Relief arma, W1e F2):
-        // o Tooth morde-o e a Texture on Paint imprime-o — os dois vivem aqui, nunca escondidos nem fora
-        // da secção.
+        // o Tooth morde-o — vive aqui, nunca escondido. (A Paint Texture é do TRAÇO desde 28/10: cartão Wet Paint.)
         if brush.wetpaint && brush.le(ph2d_tool_painter::LinhaDaFerramenta::DepositoMolhado) {
             let sec = seccao_do_papel(ctx);
             y = paint_tooth_row(ctx, theme, x, content_w, y, brush, sec);
-            y = paint_texture_on_paint_row(ctx, theme, x, content_w, y, brush);
         }
         y = paint_smooth_edges_row(ctx, theme, x, content_w, y, brush);
         return crate::paint_brush_top::end_fold(ctx, fold, y);
@@ -255,9 +253,6 @@ pub(crate) fn paint_paper_section(
         sec,
     );
     y = paint_tooth_row(ctx, theme, x, content_w, y, brush, sec);
-    if brush.wetpaint && brush.le(ph2d_tool_painter::LinhaDaFerramenta::DepositoMolhado) {
-        y = paint_texture_on_paint_row(ctx, theme, x, content_w, y, brush);
-    }
     y = paint_smooth_edges_row(ctx, theme, x, content_w, y, brush);
     // ── Per-pattern params (Contrast / Brightness / kind knobs) ──
     let pp = crate::number_field::params_de_padrao(
@@ -298,29 +293,6 @@ fn paint_tooth_row(
         number_field::FINE_STEP,
         2,
         sec,
-    )
-}
-
-/// ── Paint Texture (só o Wet Paint): o dente do papel impresso DENTRO da tinta (grão + relevo da
-///    massa) — o efeito que o Rebelle guarda no papel (*Paint Texture*, `paint_texture`). Morava na secção Wet Paint
-///    com o nome «Paper»; desde a W1e (F2) é do papel, como tudo o que é do papel.
-fn paint_texture_on_paint_row(
-    ctx: &mut PaintCtx,
-    theme: ph2d_tokens::Theme,
-    x: f32,
-    content_w: f32,
-    y: f32,
-    brush: BrushSettings,
-) -> f32 {
-    crate::paint_brush_top::paint_checkbox_row(
-        ctx,
-        theme,
-        x,
-        content_w,
-        y,
-        ph2d_tool_painter::ids::PAINTER_WETPAINT_PAPER_VISUAL,
-        "panel.painter_layers.paper.texture_on_paint",
-        brush.wet_paper_visual,
     )
 }
 

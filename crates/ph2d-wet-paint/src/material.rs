@@ -41,6 +41,10 @@ pub struct MaterialCelula {
     /// Relevo do papel (W3b 27/10): quanto a SUPERFÍCIE da tinta segue o dente do papel por baixo (a tinta fina
     /// que assenta no grão). `0` = a tinta enterra o dente (§BUG-papel), `1` = o grão inteiro na tinta.
     pub relevo_papel: f32,
+    /// O MODO da Transmission (dono 28/10): `0` = **Blender** (o Principled do Cycles), `1` = **Clear glass** (o
+    /// vidro colorido claro). Mistura-se pela massa TRANSMISSIVA (`massa × transmissao`): a tinta sem Transmission
+    /// não tem modo a dar; entre duas tintas sem Transmission, linear. A lei lê-o em [`filtro`].
+    pub vidro_claro: f32,
 }
 
 impl MaterialCelula {
@@ -56,6 +60,7 @@ impl MaterialCelula {
         transparencia: 0.0,
         transmissao: 0.0,
         relevo_papel: 0.0,
+        vidro_claro: 0.0,
     };
 
     /// `a` misturado com `b` na fracção `t` de `b` (a mesma lei de massa do relevo).
@@ -73,7 +78,20 @@ impl MaterialCelula {
             transparencia: l(a.transparencia, b.transparencia),
             transmissao: l(a.transmissao, b.transmissao),
             relevo_papel: l(a.relevo_papel, b.relevo_papel),
+            vidro_claro: modo_pela_massa_transmissiva(a, b, t),
         }
+    }
+}
+
+/// O [`MaterialCelula::vidro_claro`] de `a` misturado com `b` na fracção `t`: a média pesada pela massa que
+/// TRANSMITE. Os dois no mesmo modo dão esse modo ao bit (numerador = denominador); nenhum a transmitir, linear.
+fn modo_pela_massa_transmissiva(a: MaterialCelula, b: MaterialCelula, t: f32) -> f32 {
+    let (pa, pb) = (a.transmissao.max(0.0) * (1.0 - t), b.transmissao.max(0.0) * t);
+    let den = pa + pb;
+    if den > 0.0 {
+        ((a.vidro_claro * pa + b.vidro_claro * pb) / den).clamp(0.0, 1.0)
+    } else {
+        a.vidro_claro + (b.vidro_claro - a.vidro_claro) * t
     }
 }
 
@@ -97,6 +115,8 @@ pub struct Efectivo {
     pub transparencia: f64,
     pub transmissao: f64,
     pub relevo_papel: f64,
+    /// O modo da Transmission (`0` Blender · `1` Clear glass), só da célula.
+    pub vidro_claro: f64,
 }
 
 /// A ÚNICA regra de combinação célula × cartão: `max` nos de neutro `0` (Metallic, Coat, Sheen, Subsurface — o
@@ -135,6 +155,7 @@ pub fn efectivo(c: &MaterialCelula, k: &MaterialCartao) -> Efectivo {
         transparencia: peso(c.transparencia),
         transmissao: peso(c.transmissao),
         relevo_papel: peso(c.relevo_papel),
+        vidro_claro: peso(c.vidro_claro),
     }
 }
 
@@ -174,17 +195,39 @@ pub fn vidro(a: f64) -> f64 {
     }
 }
 
-/// ⭐ **A lei da Transmission** (W3b, o «Transmission Weight» do Principled; `oraculo/README.md` §Transmission
-/// «Ronda 3»): o difuso LINEAR `base` de um canal de albedo `a` com o peso `w`. A luz atravessa o filme fino, bate
-/// no papel e volta, filtrada pelo [`vidro`] — claro e tingido, sem o branco que o difuso de uma tinta opaca
-/// reflecte. `d` é o difuso relativo do papel sob o filme (com a cor dele). `w = 0` devolve `base` ao bit.
+/// A espessura óptica do filme no modo **Blender** (dono 28/10): a que casa a Transmission com o Principled
+/// Transmission Weight do Cycles na mesma malha — `k = 0,5`, o filtro `a` (uma passagem da cor). Varredura no creme
+/// (`oraculo/README.md` §Transmission «Ronda 4»): `k` 1 · 0,6 · **0,5** · 0,45 · 0,4 → L ÷ papel a 1 0,118 · 0,156 ·
+/// **0,183** · 0,203 · 0,229 (Cycles 0,187); Σ|Δ| de L e saturação a 0,5 e 1: 0,87 · 0,59 · **0,33** · 0,31 · 0,37.
+pub const K_BLENDER: f64 = 0.5;
+
+/// ⭐ **O filtro do filme transmissivo no modo `claro`** ([`MaterialCelula::vidro_claro`]): `a^(2k)` com `k` de
+/// [`K_BLENDER`] (`claro = 0`) a [`VIDRO_K`] (`claro = 1`, o [`vidro`] ao bit), linear entre os dois (a célula de
+/// tintas misturadas).
 #[inline]
 #[must_use]
-pub fn transmite(base: f64, a: f64, d: f64, w: f64) -> f64 {
+pub fn filtro(a: f64, claro: f64) -> f64 {
+    if claro >= 1.0 {
+        return vidro(a);
+    }
+    if a <= 0.0 {
+        return 0.0;
+    }
+    let k = K_BLENDER + (VIDRO_K - K_BLENDER) * claro.max(0.0);
+    libm::pow(a.min(1.0), 2.0 * k)
+}
+
+/// ⭐ **A lei da Transmission** (W3b, o «Transmission Weight» do Principled; `oraculo/README.md` §Transmission
+/// «Ronda 3» e «Ronda 4»): o difuso LINEAR `base` de um canal de albedo `a` com o peso `w`. A luz atravessa o filme
+/// fino, bate no papel e volta, filtrada pelo [`filtro`] do modo `claro` — sem o branco que o difuso de uma tinta
+/// opaca reflecte. `d` é o difuso relativo do papel sob o filme (com a cor dele). `w = 0` devolve `base` ao bit.
+#[inline]
+#[must_use]
+pub fn transmite(base: f64, a: f64, d: f64, w: f64, claro: f64) -> f64 {
     if w <= 0.0 {
         return base;
     }
-    base * (1.0 - w) + w * vidro(a) * d
+    base * (1.0 - w) + w * filtro(a, claro) * d
 }
 
 #[cfg(test)]

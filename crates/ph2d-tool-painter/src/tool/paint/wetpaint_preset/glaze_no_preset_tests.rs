@@ -66,3 +66,55 @@ fn o_glaze_e_por_ferramenta() {
         "desligar o Sync dá a todas o de agora"
     );
 }
+
+fn com_textura(on: bool) -> Preset {
+    let mut t = PainterTool::default();
+    t.set_paint_media(PaintMedia::WetPaint);
+    t.paint.wetpaint.paper_visual = on;
+    let nome = if on { "A" } else { "B" };
+    let (prm, texturas) = t.wet_preset_capturar(&Parametros::novo(MEIO_DO_PRESET, "Teste", nome));
+    pelo_ficheiro(prm, texturas)
+}
+
+/// A **Paint Texture** é do TRAÇO (dono 28/10) como o Glaze: viaja com o preset (gravada só ligada; sem a chave = a de
+/// fábrica, desligada, mesmo com ela ligada na mão) e cada ferramenta tem a sua.
+#[test]
+fn a_paint_texture_viaja_com_o_preset_e_com_a_ferramenta() {
+    let (a, b) = (com_textura(true), com_textura(false));
+    assert_eq!(a.parametros.engine.get(CHAVE_TEXTURA), Some(&1.0));
+    assert!(
+        !b.parametros.engine.contains_key(CHAVE_TEXTURA),
+        "desligada não se grava: o preset sem ela é o de antes, ao byte"
+    );
+    let mut t = PainterTool::default();
+    t.set_paint_media(PaintMedia::WetPaint);
+    t.wet_preset_aplicar(&a);
+    assert!(t.paint.wetpaint.paper_visual, "A liga");
+    t.wet_preset_aplicar(&b);
+    assert!(!t.paint.wetpaint.paper_visual, "B (sem a chave) = a de fábrica");
+    t.wet_preset_aplicar(&a);
+    assert!(t.paint.wetpaint.paper_visual, "A de novo liga");
+
+    let mut t = PainterTool::default();
+    t.set_paint_tool_mode("wetpaint");
+    t.paint.wetpaint.paper_visual = true;
+    t.set_paint_tool_mode("mask");
+    assert!(!t.paint.wetpaint.paper_visual, "a outra ferramenta tem a sua");
+    t.set_paint_tool_mode("wetpaint");
+    assert!(t.paint.wetpaint.paper_visual, "volta a do pincel");
+}
+
+/// Nenhum preset de fábrica traz a chave: a fábrica fica ao byte (e desligada).
+#[test]
+fn nenhum_preset_de_fabrica_traz_a_paint_texture() {
+    let raiz = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes");
+    let fabrica = ph2d_brush_presets::Biblioteca::carregar(&raiz, None).entradas;
+    assert!(fabrica.len() > 40, "controlo: a fábrica carregou");
+    for e in &fabrica {
+        assert!(
+            !e.preset.parametros.engine.contains_key(CHAVE_TEXTURA),
+            "{}: o preset de fábrica traz a Paint Texture",
+            e.relativo
+        );
+    }
+}

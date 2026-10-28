@@ -121,9 +121,11 @@ const AGUADA: [NodeId; 6] = [
 ];
 
 /// Os ids do que o pincel do Wet Paint pousa.
-const DEPOSITO_MOLHADO: [NodeId; 8] = [
+const DEPOSITO_MOLHADO: [NodeId; 9] = [
     PAINTER_BRUSH_DAB_QUINA,
     PAINTER_WETPAINT_PAPER_VISUAL,
+    // A caixa Real Oil é do TRAÇO (dono 28/10): pousa na célula.
+    PAINTER_WETPAINT_OLEO_REAL,
     PAINTER_WETPAINT_VOL_OPACITY,
     PAINTER_WETPAINT_PIGMENT,
     PAINTER_WETPAINT_PICKUP,

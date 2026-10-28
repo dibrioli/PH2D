@@ -316,7 +316,8 @@ pub struct PigmentVisual {
     /// (`(pap·100−40)·visualGrain·fade`) plus the signed mass-gradient
     /// emboss, both riding INSIDE the pigment colour channels exactly as in
     /// [`render_region`], scaled by the `PaperVisibility` master. "The
-    /// texture becomes visually part of the painting."
+    /// texture becomes visually part of the painting." ⚠️ Desde 28/10 é «há papel a imprimir»: QUEM imprime é a
+    /// célula (`AparenciaCelula::textura`, a Paint Texture do traço que a pousou).
     pub paper: bool,
     /// O RELEVO da tinta (o emboss do gradiente da massa) também SEM papel — o produto liga-o (dono 11/10:
     /// o relevo é da tinta; o knob `Emboss` decide, `0` = nenhum). Desligado, o emboss só entra com o
@@ -442,7 +443,13 @@ fn pigment_row(
 ) {
     let g0 = layers[0].grid;
     let s = g0.s;
-    let paper_on = visual.paper && p.is_some();
+    // A Paint Texture é do TRAÇO (dono 28/10): imprime-se onde a CÉLULA a pediu (`AparenciaCelula::textura`); sem o
+    // campo em camada nenhuma, nenhuma célula a pede (a fábrica = desligada) e o caminho é o de antes, ao byte.
+    let paper_on = visual.paper
+        && p.is_some()
+        && layers
+            .iter()
+            .any(|l| l.visible && !l.grid.aparencia.is_empty());
     let glaze = p.map_or(0.0, |p| p.glaze_filme);
     // A cor da camada: o assentado e o filme por cima dele — pela MESMA porta que assentar e re-molhar
     // preservam ([`crate::assenta::cor`]), com a lei que a sessão escolheu ([`crate::sim::Sim::gather_params`]).
@@ -468,6 +475,10 @@ fn pigment_row(
             let (mut pr, mut pg, mut pb, mut pa) = (0.0f64, 0.0f64, 0.0f64, 0.0f64);
             // A cobertura GEOMÉTRICA (sem a Transparency): a do filme que dá o brilho e escolhe a sombra da orla.
             let mut pa_tinta = 0.0f64;
+            // O Real Oil é do TRAÇO (dono 28/10): a fracção da tinta da célula com ele (`1` sem o campo). `1` = a óptica
+            // do óleo, `0` = a tinta sem ela ao byte; entre os dois a mistura, com o emboss da parte sem óleo à parte.
+            let w_oleo = oleo.map_or(0.0, |(_, c)| c.oleo_em(cx, cy));
+            let mut pe = 0.0f64;
             for layer in layers.iter().filter(|l| l.visible) {
                 let lg = layer.grid;
                 let op = layer.opacity;
@@ -486,11 +497,12 @@ fn pigment_row(
                     a_s,
                     a_f,
                 );
-                let emboss_k = if com_relevo && oleo.is_none() {
+                let emboss_k = if com_relevo && w_oleo < 1.0 {
                     lg.relevo[i] as f64
                 } else {
                     0.0
                 };
+                let mut emb_cam = 0.0f64;
                 if paper_on || emboss_k != 0.0 {
                     // The tooth printed into the pigment — [`render_region`]'s
                     // exact `v`: paper faded by the master toward flat 0.5,
@@ -500,7 +512,8 @@ fn pigment_row(
                     // suspended before combining (distributivity).
                     let (paper_vis, grain_vis) = if paper_on {
                         let a = crate::grid::aparencia::da_celula(&lg.aparencia, i);
-                        (f64::from(a.papel), f64::from(a.grao))
+                        let t = f64::from(a.textura);
+                        (f64::from(a.papel) * t, f64::from(a.grao) * t)
                     } else {
                         (0.0, 0.0)
                     };
@@ -529,7 +542,11 @@ fn pigment_row(
                             * emboss_k;
                     }
                     emb = emb.clamp(-40.0, 40.0);
-                    v += emb;
+                    if w_oleo > 0.0 {
+                        emb_cam = emb;
+                    } else {
+                        v += emb;
+                    }
                     cr += v;
                     cg += v;
                     cb += v;
@@ -542,13 +559,15 @@ fn pigment_row(
                 pr = pr * (1.0 - la) + cr * la;
                 pg = pg * (1.0 - la) + cg * la;
                 pb = pb * (1.0 - la) + cb * la;
+                pe = pe * (1.0 - la) + emb_cam * la;
                 pa += la * (1.0 - pa);
             }
-            if let (true, Some((ol, campo))) = (pa > 0.0, oleo) {
+            if let (true, Some((ol, campo))) = (pa > 0.0 && w_oleo > 0.0, oleo) {
                 let rgb = [pr / pa, pg / pa, pb / pa];
                 // §BUG-bordas: na orla a tinta cobre a fracção da célula dentro do contorno sub-célula.
                 // §BUG-bordas-W3b: e o entalhe de uma célula cobre até à mediana das vizinhas (`borda > 1`).
                 let borda = campo.cobertura_da_borda(cx, cy);
+                let pa_sem = pa;
                 let pa = (pa * borda).min(1.0);
                 // O brilho e a sombra da orla são do FILME (a cobertura geométrica); a Transparency só deixa ver.
                 let tinta = (pa_tinta * borda).min(1.0);
@@ -559,24 +578,42 @@ fn pigment_row(
                         // A Transparency EQUIVALENTE da pilha (`pa = pa_tinta·(1 − t)`; `0` ao bit sem ela) e a
                         // Transmission da célula: a MESMA conta do papel nu (C5, `transparencia_a_luz`).
                         let t = if tinta > 0.0 { 1.0 - pa / tinta } else { 0.0 };
-                        let w = crate::material::peso(campo.material_em(cx, cy).transmissao);
+                        let m = campo.material_em(cx, cy);
                         let t_luz = crate::oleo_real::transparencia_a_luz(
                             t,
-                            w,
+                            crate::material::peso(m.transmissao),
                             crate::oleo_real::albedo_em(campo, cx as isize, cy as isize),
+                            crate::material::peso(m.vidro_claro),
                         );
                         let sm = crate::oleo_real::sombra_transparente_a_luz(sm, tinta, t, t_luz);
+                        // A tinta sem óleo não recebe a sombra do óleo (a parte dela na mistura).
+                        let sm = if w_oleo < 1.0 { sm * w_oleo } else { sm };
                         s[cx - 1] = crate::oleo_real::sombra_em_u8(sm);
                         f[cx - 1] = true;
                         cor
                     }
                     None => crate::oleo_real::ilumina(ol, campo, cx, cy, rgb, tinta),
                 };
-                out[o] = clamp_u8(r);
-                out[o + 1] = clamp_u8(g);
-                out[o + 2] = clamp_u8(b);
-                out[o + 3] = clamp_u8(pa * 255.0);
+                if w_oleo < 1.0 {
+                    // A mistura com a tinta SEM óleo (a de baixo da fronteira, ou molhada com ela): a cor e a
+                    // cobertura de cada uma pela fracção.
+                    let (q, sem) = (1.0 - w_oleo, |c: f64| (c + pe) / pa_sem);
+                    out[o] = clamp_u8(w_oleo * r + q * sem(pr));
+                    out[o + 1] = clamp_u8(w_oleo * g + q * sem(pg));
+                    out[o + 2] = clamp_u8(w_oleo * b + q * sem(pb));
+                    out[o + 3] = clamp_u8((w_oleo * pa + q * pa_sem) * 255.0);
+                } else {
+                    out[o] = clamp_u8(r);
+                    out[o + 1] = clamp_u8(g);
+                    out[o + 2] = clamp_u8(b);
+                    out[o + 3] = clamp_u8(pa * 255.0);
+                }
             } else if pa > 0.0 {
+                if let (Some((s, f)), true) = (sombra.as_mut(), oleo.is_some()) {
+                    // A tinta sem óleo numa tela com óleo: sem a sombra dele, nem a do papel por baixo dela.
+                    s[cx - 1] = 0;
+                    f[cx - 1] = true;
+                }
                 out[o] = clamp_u8(pr / pa);
                 out[o + 1] = clamp_u8(pg / pa);
                 out[o + 2] = clamp_u8(pb / pa);

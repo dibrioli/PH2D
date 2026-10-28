@@ -120,6 +120,8 @@ impl CacheCampo {
                     luz_ceu_chave: None,
                     albedo: Vec::new(),
                     borda: Vec::new(),
+                    brilho: Vec::new(),
+                    oleo: Vec::new(),
                 },
                 validas: vec![false; gh + 1],
             });
@@ -145,6 +147,8 @@ impl CacheCampo {
             copia(&mut f.sss, &de.sss, [0.0; 3], n, (d, s, gw));
             copia(&mut f.albedo, &de.albedo, [1.0; 3], n, (d, s, gw));
             copia(&mut f.borda, &de.borda, 1.0, n, (d, s, gw));
+            copia(&mut f.brilho, &de.brilho, 1.0, n, (d, s, gw));
+            copia(&mut f.oleo, &de.oleo, 1.0, n, (d, s, gw));
             c.validas[y] = true;
         }
     }

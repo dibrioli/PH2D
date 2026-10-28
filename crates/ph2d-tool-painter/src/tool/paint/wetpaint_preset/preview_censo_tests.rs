@@ -235,6 +235,22 @@ const WET_FORA_DO_PREVIEW: &[(&str, &str)] = &[
         "glaze_por_slot",
         "o das ferramentas FORA da mão: o preview pinta o da mão (`km_glaze`)",
     ),
+    (
+        "textura_por_slot",
+        "o das ferramentas FORA da mão: o preview pinta o da mão (`paper_visual`)",
+    ),
+    (
+        "oleo_por_slot",
+        "o das ferramentas FORA da mão: o preview pinta o da mão (`oleo_real`)",
+    ),
+    (
+        "oleo_na_tela",
+        "a tela da OBRA tem óleo (o composite escreve-o): o preview pinta a tela dele",
+    ),
+    (
+        "oleo_adiado",
+        "é o PRÓPRIO preview que o arma (adia a óptica até ao quadro final)",
+    ),
     ("preset_pedido", UI),
     ("fita", SESSAO),
     ("ritmo", SESSAO),

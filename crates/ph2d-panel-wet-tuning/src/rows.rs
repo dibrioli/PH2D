@@ -26,7 +26,14 @@ pub struct TuneRow {
     pub default: f64,
     /// Readout decimals, derived from the step's granularity.
     pub decimals: usize,
+    /// ⭐ A row painted as a CHOICE (a segmented group, not a slider): one `(i18n key, id)` per option `i`, whose
+    /// click forwards `SetValue(slider, i)` — the tool's route stays the slider's. `None` = slider + chip.
+    pub options: Option<[(String, NodeId); 2]>,
 }
+
+/// The knobs painted as a 2-way CHOICE (dono 28/10: the Transmission mode — Blender · Clear glass — is a selector,
+/// never a slider nor a checkbox). Each is `0..1` with step `1` in the registry.
+pub const CHOICES: [&str; 1] = ["transmissionMode"];
 
 impl TuneRow {
     /// Slider track (`0..=1`) → the value it means.
@@ -87,10 +94,27 @@ pub fn rows() -> &'static [TuneRow] {
                 step: d.step,
                 default: d.default,
                 decimals: decimals_for_step(d.step),
+                options: CHOICES.contains(&d.key).then(|| {
+                    [0, 1].map(|i| {
+                        (
+                            format!("panel.wet_tuning.option.{}.{i}", d.key),
+                            ph2d_tool_painter::ids::wet_tuning_option_id(d.key, i),
+                        )
+                    })
+                }),
             })
             .collect::<Vec<_>>();
         // U5 (auditoria W3b): no Material os PESOS ficam juntos e o «Lock material» no FIM do grupo — ordem de
-        // EXIBIÇÃO (o enum `Knob` é append-only: a Transmission e o Paper Relief nasceram depois do Lock).
+        // EXIBIÇÃO (o enum `Knob` é append-only: a Transmission e o Paper Relief nasceram depois do Lock). O modo da
+        // Transmission (28/10) logo abaixo dela.
+        if let (Some(i), Some(_)) = (
+            rows.iter().position(|r| r.key == "transmissionMode"),
+            rows.iter().position(|r| r.key == "transmission"),
+        ) {
+            let modo = rows.remove(i);
+            let j = rows.iter().position(|r| r.key == "transmission").map_or(0, |j| j + 1);
+            rows.insert(j, modo);
+        }
         if let Some(i) = rows.iter().position(|r| r.key == "lockMaterial") {
             let lock = rows.remove(i);
             let fim = rows
@@ -98,6 +122,17 @@ pub fn rows() -> &'static [TuneRow] {
                 .rposition(|r| r.group == KnobGroup::Material)
                 .map_or(rows.len(), |j| j + 1);
             rows.insert(fim, lock);
+        }
+        // O Depth e o Gloss do Óleo Real (dono 28/10, vindos do cartão Real Oil) ABREM o grupo.
+        for key in ["oilGloss", "oilDepth"] {
+            if let Some(i) = rows.iter().position(|r| r.key == key) {
+                let r = rows.remove(i);
+                let j = rows
+                    .iter()
+                    .position(|r| r.group == KnobGroup::Material)
+                    .unwrap_or(rows.len());
+                rows.insert(j, r);
+            }
         }
         rows
     })
@@ -108,6 +143,17 @@ pub fn row_for(id: NodeId) -> Option<&'static TuneRow> {
     rows()
         .iter()
         .find(|r| r.slider == id || r.chip == id || r.reset == id)
+}
+
+/// The CHOICE row and option index an id is (`None` for any other id).
+pub fn option_for(id: NodeId) -> Option<(&'static TuneRow, usize)> {
+    rows().iter().find_map(|r| {
+        r.options
+            .as_ref()?
+            .iter()
+            .position(|(_, o)| *o == id)
+            .map(|i| (r, i))
+    })
 }
 
 /// One collapsible group section.
@@ -201,6 +247,9 @@ mod tests {
             put(r.slider, r.key);
             put(r.chip, r.key);
             put(r.reset, r.key);
+            for (_, o) in r.options.iter().flatten() {
+                put(*o, r.key);
+            }
         }
         for s in SECTIONS {
             put(s.header, s.label);
@@ -237,10 +286,12 @@ mod tests {
     /// a faca que nivela (`knifeLevel`) no Stroke (9 → 10). Mais 1 a 27/10 (W3 K5): o expoente da textura através
     /// do traço (`textureSizeExpAcross`) no Stroke (10 → 11). Mais 1 a 27/10 (dono): a Transparency (`1 − Alpha`)
     /// no Material (9 → 10). Mais 2 (W3b): a Transmission e o Relevo do papel (10 → 12). Menos 5 a 27/10 (W3b item 3):
-    /// o grupo Look inteiro (controlos mortos: só o `render_region`, sem chamador no produto, os lia).
+    /// o grupo Look inteiro (controlos mortos: só o `render_region`, sem chamador no produto, os lia). Mais 1 a 28/10
+    /// (dono): o modo da Transmission, um seletor (12 → 13). Mais 2 a 28/10 (dono): o Depth e o Gloss do Óleo Real,
+    /// vindos do cartão Real Oil (13 → 15).
     #[test]
     fn every_visible_knob_has_a_row() {
-        assert_eq!(rows().len(), 87);
+        assert_eq!(rows().len(), 90);
         for g in [
             (KnobGroup::Paint, 24),
             (KnobGroup::Water, 7),
@@ -250,7 +301,7 @@ mod tests {
             (KnobGroup::Bristles, 19),
             (KnobGroup::Stroke, 11),
             (KnobGroup::WetEffects, 3),
-            (KnobGroup::Material, 12),
+            (KnobGroup::Material, 15),
         ] {
             let n = rows().iter().filter(|r| r.group == g.0).count();
             assert_eq!(n, g.1, "group {:?} row count", g.0);
@@ -324,7 +375,8 @@ mod tests {
     }
 
     /// ⭐ U5 (auditoria W3b): o grupo Material mostra os 8 do Principled, os três PESOS da tinta juntos (Transparency ·
-    /// Transmission · Paper Relief) e o «Lock material» no FIM.
+    /// Transmission · Paper Relief), o modo da Transmission logo abaixo dela (dono 28/10) e o «Lock material» no FIM;
+    /// o Depth e o Gloss do Óleo Real (dono 28/10, vindos do cartão) à cabeça.
     #[test]
     fn a_ordem_do_material_junta_os_pesos_e_o_lock_no_fim() {
         let m: Vec<&str> = rows()
@@ -335,6 +387,8 @@ mod tests {
         assert_eq!(
             m,
             [
+                "oilDepth",
+                "oilGloss",
                 "metallic",
                 "roughness",
                 "iorLevel",
@@ -345,10 +399,17 @@ mod tests {
                 "subsurfaceRadius",
                 "transparency",
                 "transmission",
+                "transmissionMode",
                 "paperRelief",
                 "lockMaterial",
             ]
         );
+        let escolhas: Vec<&str> = rows().iter().filter(|r| r.options.is_some()).map(|r| r.key).collect();
+        assert_eq!(escolhas, CHOICES, "só o modo da Transmission é um seletor");
+        for k in CHOICES {
+            let d = KNOB_DEFS.iter().find(|d| d.key == k).expect("knob");
+            assert_eq!((d.min, d.max, d.step), (0.0, 1.0, 1.0), "{k}: um seletor de 2 é 0..1 de passo 1");
+        }
     }
 
     /// Cada secção repõe o grupo que pinta — a tabela da ferramenta e a do painel são a mesma.

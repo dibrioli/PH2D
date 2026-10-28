@@ -486,6 +486,8 @@ fn o_material_do_pincel_vai_e_volta_pelo_preset() {
         // W3b: a Transmission e o Relevo do papel (ausentes = 0, o neutro)
         (Knob::Transmission, 0.7),
         (Knob::PaperRelief, 0.4),
+        // o modo da Transmission (dono 28/10): ausente = 0, o Blender
+        (Knob::TransmissionMode, 1.0),
     ];
     let mut a = ferramenta();
     for (k, v) in mexidos {

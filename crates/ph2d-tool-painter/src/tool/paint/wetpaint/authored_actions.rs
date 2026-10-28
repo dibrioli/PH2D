@@ -13,6 +13,8 @@ impl PainterTool {
             tilt: (w.tilt_on, w.tilt_ring, w.tilt_spoke),
             km_mixing: w.km_mixing,
             km_glaze: w.km_glaze,
+            textura: w.paper_visual,
+            oleo: w.oleo_real.is_some(),
             opacidade: w.opacidade,
             tooth: self
                 .paint

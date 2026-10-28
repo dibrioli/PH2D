@@ -56,3 +56,22 @@ Transmission 1       Cycles: L/L_papel 0.187 · saturação 0.577 · croma  70.8
 Relevo do papel 0,5  nós   : L/L_papel 0.257 · saturação 0.737 · croma 166.9 · grão corr -0.01 · sombra 0.054 (÷ T0 1.02)
 Relevo do papel 1    nós   : L/L_papel 0.258 · saturação 0.737 · croma 166.8 · grão corr -0.01 · sombra 0.055 (÷ T0 1.05)
 # Folha: docs/Painter/49_realshader/out/Transmission_folha.jpg (olhada: a Transmission 1 é um vidro azul claro sobre o creme; o Cycles continua escuro).
+
+## Ronda 4 — os DOIS MODOS (dono 28/10): Blender (K_BLENDER 0,5: filtro a) × Clear glass (= ronda 3 ao byte), papel CREME, Cycles = a saída da ronda 2
+# varredura do k (PH2D_OLEO_MODOS, modo intermédio): ver oraculo/README.md §Transmission «Ronda 4»
+miolo 24952 células · sombra projectada (Cycles T 0) 19819 células
+opaca              nós   : L/L_papel 0.257 · saturação 0.738 · croma 166.9 · sombra 0.053 (÷ opaca 1.00)
+opaca              Cycles: L/L_papel 0.347 · saturação 0.730 · croma 172.1 · sombra 0.138 (÷ opaca 1.00)
+Blender 0,5        nós   : L/L_papel 0.223 · saturação 0.718 · croma 145.9 · sombra 0.053 (÷ opaca 1.00)
+Transmission 0,5   Cycles: L/L_papel 0.257 · saturação 0.709 · croma 138.6 · sombra 0.139 (÷ opaca 1.01)
+Clear glass 0,5    nós   : L/L_papel 0.362 · saturação 0.556 · croma 117.5 · sombra 0.045 (÷ opaca 0.85)
+Blender 1          nós   : L/L_papel 0.183 · saturação 0.674 · croma 112.6 · sombra 0.053 (÷ opaca 1.00)
+Transmission 1     Cycles: L/L_papel 0.187 · saturação 0.577 · croma  70.8 · sombra 0.138 (÷ opaca 1.00)
+Clear glass 1      nós   : L/L_papel 0.460 · saturação 0.385 · croma  72.1 · sombra 0.037 (÷ opaca 0.70)
+[miolo do produto] Blender 0,5        nós   : L/L_papel 0.207 · saturação 0.716
+[miolo do produto] Transmission 0,5   Cycles: L/L_papel 0.205 · saturação 0.744
+[miolo do produto] Blender 1          nós   : L/L_papel 0.171 · saturação 0.670
+[miolo do produto] Transmission 1     Cycles: L/L_papel 0.144 · saturação 0.631
+[miolo do produto] Clear glass 1      nós   : L/L_papel 0.427 · saturação 0.385
+m 0.0000: 0,5 0.223 · 0.718 | 1 0.183 · 0.674 · croma 1 112.6 · Σ 0.332
+[modos] docs/Painter/49_realshader/out/Transmission_modos_folha.jpg

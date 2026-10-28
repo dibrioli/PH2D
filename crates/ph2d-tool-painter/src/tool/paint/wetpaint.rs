@@ -114,18 +114,25 @@ pub(crate) struct WetPaintState {
     /// Show-wet overlay (display-only; NEVER baked — the end-session door
     /// recomposites clean first).
     pub(super) show_wet: bool,
-    /// Paper checkbox (doc 22 §2.8): the tooth becomes visually part of the
-    /// painting (granulation + emboss into the pigment colours). Baked on
-    /// purpose — it is part of the painting, unlike the show-wet veil.
+    /// A **Paint Texture** (doc 22 §2.8): o papel impresso na tinta (granulação + emboss nas cores do pigmento). É do
+    /// TRAÇO (dono 28/10): pousa na célula (`grid::aparencia::textura`), logo viaja com o preset e com a ferramenta
+    /// ([`Self::textura_por_slot`]), como o Glaze.
     pub(super) paper_visual: bool,
     /// **Smooth Edges** (dono 09/10; intensidade `0..1` desde 10/10): a silhueta da mancha com meio-tom,
     /// pela lei do Watercolor ([`smooth_edges`]). `0` de fábrica = o composite de antes, ao byte; `1` = o
     /// checkbox ligado de antes, ao byte; no meio, a cobertura da orla entre os dois. É da TELA (D1 W3b, cartão
     /// Paper); com o Óleo Real amacia a silhueta no campo de altura (`oleo_real::amacia_a_silhueta`).
     pub(super) smooth_edges: f32,
-    /// **Óleo Real** (doc 49): a óptica do relevo sobre a mancha. `None` de fábrica = o composite de
-    /// hoje, ao byte.
+    /// **Óleo Real** (doc 49): a caixa do PINCEL — do TRAÇO (dono 28/10): pousa na célula (`grid::oleo_celula`), logo
+    /// viaja com o preset e com a ferramenta ([`Self::oleo_por_slot`]), como o Glaze. `None` de fábrica.
     pub(super) oleo_real: Option<ph2d_wet_paint::oleo_real::OleoReal>,
+    /// A tela tem tinta com óleo (alguma camada visível tem o campo `grid::oleo`): o composite corre a óptica com
+    /// os números do cartão e o cartão mostra-os mesmo com a caixa do pincel desligada. Escrito no composite.
+    pub(super) oleo_na_tela: bool,
+    /// O preview do preset adia a óptica do óleo até ao quadro final (U4 W3b: custo); `false` fora dele.
+    pub(super) oleo_adiado: bool,
+    /// A caixa [`Self::oleo_real`] de cada slot do pincel (`switch_brush_slot`).
+    pub(super) oleo_por_slot: [bool; super::SLOT_COUNT],
     /// Os últimos valores dos knobs do **Real Oil** (os do painel): desligar e voltar a ligar a caixa
     /// devolve-os; ligada, `oleo_real == Some(oleo_real_valores)`.
     pub(super) oleo_real_valores: ph2d_wet_paint::oleo_real::OleoReal,
@@ -174,6 +181,8 @@ pub(crate) struct WetPaintState {
     pub(super) knobs_por_slot: [[f64; ph2d_wet_paint::tuning::KNOB_COUNT]; super::SLOT_COUNT],
     /// O [`Self::km_glaze`] de cada slot do pincel (`switch_brush_slot`).
     pub(super) glaze_por_slot: [bool; super::SLOT_COUNT],
+    /// O [`Self::paper_visual`] de cada slot do pincel (`switch_brush_slot`).
+    pub(super) textura_por_slot: [bool; super::SLOT_COUNT],
     /// A fita da macro ([`fita`]) que cada sessão nova herda.
     pub(super) fita: Option<fita::FitaPartilhada>,
     /// O ritmo escrito do worker ([`fita::RitmoDaAgua`]) que cada sessão nova herda — só gates.
@@ -210,6 +219,9 @@ impl Default for WetPaintState {
             paper_visual: false,
             smooth_edges: 0.0,
             oleo_real: None,
+            oleo_na_tela: false,
+            oleo_adiado: false,
+            oleo_por_slot: [false; super::SLOT_COUNT],
             oleo_real_valores: ph2d_wet_paint::oleo_real::OleoReal::default(),
             agua_viva: false,
             borda_que_pesa: 0.0,
@@ -225,6 +237,7 @@ impl Default for WetPaintState {
             largura_por_slot: std::array::from_fn(|_| Some(largura::LeiDaLargura::de_omissao())),
             knobs_por_slot: [super::WetKnobs::DEFAULT.knobs; super::SLOT_COUNT],
             glaze_por_slot: [false; super::SLOT_COUNT],
+            textura_por_slot: [false; super::SLOT_COUNT],
             fita: None,
             ritmo: None,
             composta: None,
@@ -608,7 +621,10 @@ mod grid_ratio_tests; // os gates de PRODUTO da razão da grade
 mod relevo_tests;
 #[cfg(test)]
 #[path = "wetpaint/painel_so_no_futuro_tests.rs"]
-mod painel_so_no_futuro_tests; // W3b item 3: o painel do pincel só vale para os traços seguintes
+mod painel_so_no_futuro_tests;
+#[cfg(test)]
+#[path = "wetpaint/oleo_por_traco_tests.rs"]
+mod oleo_por_traco_tests; // dono 28/10: Depth, Gloss e a caixa Real Oil são do traço // W3b item 3: o painel do pincel só vale para os traços seguintes
 #[cfg(test)]
 #[path = "wetpaint/material_do_pincel_tests.rs"]
 mod material_do_pincel_tests; // auditoria W3b C3/C4/U2/U4: o material do pincel fica na tinta e no preview

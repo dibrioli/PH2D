@@ -162,6 +162,7 @@ impl PainterTool {
         if let Some(on) = wv["oleo_real"].as_bool() {
             w.oleo_real = on.then_some(w.oleo_real_valores);
         }
+        cartao_antigo_no_pincel(&mut w.knobs, &wv["oleo_real_valores"], &v["preset"]["engine"]);
         if let Some(x) = wv["opacidade"].as_f64() {
             w.opacidade = x as f32;
         }
@@ -191,11 +192,9 @@ impl PainterTool {
 /// o `ambiente` é o índice em `Ambiente::TODOS`.
 fn oleo_para_json(o: &ph2d_wet_paint::oleo_real::OleoReal) -> Value {
     let mut v = json!({
-        "profundidade": o.profundidade,
         "azimute": o.azimute,
         "altitude": o.altitude,
         "sombra": o.sombra,
-        "brilho": o.brilho,
         "fenda": o.fenda,
         "alcance_fenda": o.alcance_fenda,
         "forca_ambiente": o.forca_ambiente,
@@ -214,14 +213,27 @@ fn oleo_para_json(o: &ph2d_wet_paint::oleo_real::OleoReal) -> Value {
     v
 }
 
-/// O inverso de [`oleo_para_json`]: um campo ausente fica como está.
+/// A MIGRAÇÃO do Depth e do Gloss (dono 28/10: saíram do cartão Real Oil para o pincel): a macro de antes traz
+/// `profundidade`/`brilho` no cartão e um preset sem `oilDepth`/`oilGloss` ⇒ o valor do cartão vira o do PINCEL (o
+/// traço reproduzido pousa a altura e o brilho com que foi gravado). Com a chave do knob no preset, o preset manda.
+fn cartao_antigo_no_pincel(k: &mut super::WetKnobs, cartao: &Value, engine: &Value) {
+    use ph2d_wet_paint::tuning::{KNOB_DEFS, Knob};
+    for (campo, knob) in [("profundidade", Knob::OilDepth), ("brilho", Knob::OilGloss)] {
+        if let Some(x) = cartao[campo].as_f64()
+            && engine.get(KNOB_DEFS[knob as usize].key).is_none()
+        {
+            k.set(knob, x);
+        }
+    }
+}
+
+/// O inverso de [`oleo_para_json`]: um campo ausente fica como está (o Depth e o Gloss de antes:
+/// [`cartao_antigo_no_pincel`]).
 fn oleo_de_json(o: &mut ph2d_wet_paint::oleo_real::OleoReal, v: &Value) {
     for (campo, alvo) in [
-        ("profundidade", &mut o.profundidade),
         ("azimute", &mut o.azimute),
         ("altitude", &mut o.altitude),
         ("sombra", &mut o.sombra),
-        ("brilho", &mut o.brilho),
         ("fenda", &mut o.fenda),
         ("alcance_fenda", &mut o.alcance_fenda),
         ("forca_ambiente", &mut o.forca_ambiente),

@@ -98,6 +98,23 @@ fn o_material_do_pincel_fica_na_tinta_pousada() {
     assert_eq!(mudou, 0, "o pincel a 0 mudou {mudou} bytes da tinta pousada");
 }
 
+/// ⭐ **O MODO da Transmission fica na tinta pousada** (dono 28/10: o seletor Blender · Clear glass é do pincel): pintada
+/// com Transmission 0,8 em Clear glass, o seletor do pincel passa a Blender e a tela recompõe-se — nem um byte muda.
+/// O CONTROLO: a mesma tela pintada em Blender é outra (o modo mordeu a tinta).
+#[test]
+fn o_modo_da_transmissao_fica_na_tinta_pousada() {
+    let tr = (Knob::Transmission, 0.8);
+    let mut t = tela(&[tr, (Knob::TransmissionMode, 1.0)], true);
+    let vidro = recompoe(&mut t);
+    let blender = recompoe(&mut tela(&[tr], true));
+    let difs = vidro.iter().zip(&blender).filter(|(a, b)| a != b).count();
+    assert!(difs > 1000, "controlo: o modo mordeu ({difs} bytes)");
+    t.paint.wetpaint.knobs.set(Knob::TransmissionMode, 0.0);
+    let depois = recompoe(&mut t);
+    let mudou = vidro.iter().zip(&depois).filter(|(a, b)| a != b).count();
+    assert_eq!(mudou, 0, "o seletor do pincel mudou {mudou} bytes da tinta pousada");
+}
+
 /// ⭐ **C4: o material veste a orla VIRGEM** (o par de `aparencia::veste_virgens`): pintado com a Transmission, o censo
 /// das células com tinta (`sett + susp > 0`) e o material NEUTRO é ~0 — sem a orla, o pigmento que a água leva a uma
 /// célula virgem mostrava a tinta opaca de sempre (um aro).

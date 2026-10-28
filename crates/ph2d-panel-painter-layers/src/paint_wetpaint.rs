@@ -339,8 +339,8 @@ fn paint_resolution_readout(
     y + font + ph2d_tokens::control_gap_px()
 }
 
-/// O **Real Oil** (Óleo Real, doc 49): a caixa e, só com ela ligada, as oito linhas da óptica do relevo —
-/// Depth, Shadow, Gloss, a luz (altura e direcção, em GRAUS), a fenda (força e alcance, W2 E1) e a força do
+/// O **Real Oil** (Óleo Real, doc 49): a caixa e, só com ela ligada, as seis linhas da óptica do relevo da TELA —
+/// Shadow (o Depth e o Gloss são do pincel desde 28/10: Tuning › Material), a luz (altura e direcção, em GRAUS), a fenda (força e alcance, W2 E1) e a força do
 /// ambiente (W2 E2), por cima do Environment; depois o MATERIAL (W2 E3-B, [`paint_oleo_material`]). As
 /// faixas são as da ferramenta (`PAINTER_WETPAINT_OLEO_FAIXAS`), uma lei para quem pinta e quem prende.
 fn paint_oleo_real(
@@ -352,35 +352,29 @@ fn paint_oleo_real(
     brush: &BrushSettings,
 ) -> f32 {
     use ph2d_tool_painter::ids::{PAINTER_WETPAINT_OLEO_FAIXAS, PAINTER_WETPAINT_OLEO_FIELDS};
-    let mut y = crate::paint_brush_top::paint_checkbox_row(
-        ctx,
-        theme,
-        x,
-        content_w,
-        y,
-        ph2d_tool_painter::ids::PAINTER_WETPAINT_OLEO_REAL,
-        "panel.painter_layers.wetpaint.oleo_real",
-        brush.wet_oleo_real,
-    );
-    if !brush.wet_oleo_real {
+    // A caixa é do TRAÇO (dono 28/10): só a ferramenta que POUSA tinta a lê (a borracha e as da água não).
+    let pousa = brush.le(ph2d_tool_painter::LinhaDaFerramenta::DepositoMolhado);
+    let mut y = y;
+    if pousa {
+        y = crate::paint_brush_top::paint_checkbox_row(
+            ctx,
+            theme,
+            x,
+            content_w,
+            y,
+            ph2d_tool_painter::ids::PAINTER_WETPAINT_OLEO_REAL,
+            "panel.painter_layers.wetpaint.oleo_real",
+            brush.wet_oleo_real,
+        );
+    }
+    // Os números são da TELA (dono 28/10): à vista com a caixa do pincel ligada OU com tinta com óleo na tela.
+    if !(pousa && brush.wet_oleo_real) && !brush.wet_oleo_na_tela {
         return y;
     }
     let linhas = [
         (
-            "panel.painter_layers.wetpaint.oleo_depth",
-            brush.wet_oleo_profundidade,
-            number_field::FINE_STEP,
-            2,
-        ),
-        (
             "panel.painter_layers.wetpaint.oleo_shadow",
             brush.wet_oleo_sombra,
-            number_field::FINE_STEP,
-            2,
-        ),
-        (
-            "panel.painter_layers.wetpaint.oleo_gloss",
-            brush.wet_oleo_brilho,
             number_field::FINE_STEP,
             2,
         ),
@@ -537,7 +531,7 @@ pub(crate) fn paint_wetpaint_popovers(ctx: &mut PaintCtx, theme: ph2d_tokens::Th
     }
 }
 
-/// O fim da secção — Show Wet, Smooth Edges (a intensidade, `0..1`), Live Water (W1g) e Tuning. Partida de
+/// O fim da secção — Show Wet, Paint Texture (do traço), Live Water (W1g) e Tuning. Partida de
 /// [`paint_wetpaint_section`] pelo tecto de 200 LOC de função dos painéis.
 fn paint_display_toggles(
     ctx: &mut PaintCtx,
@@ -558,8 +552,21 @@ fn paint_display_toggles(
         "panel.painter_layers.wetpaint.show_wet",
         brush.wet_show_wet,
     );
-    // (O «Paper» que morava aqui é a Texture on Paint da secção Paper desde a W1e: um papel, uma secção.)
+    // Paint Texture — o papel impresso DENTRO da tinta (o *Paint Texture* do Rebelle). É do TRAÇO (dono 28/10: «por
+    // traço e não para o papel todo»): pousa na célula, vale para os seguintes, viaja com o preset e com a ferramenta.
     // (O Smooth Edges é da TELA desde a W3b — D1 do dono 27/10: mora no cartão Paper.)
+    if brush.le(ph2d_tool_painter::LinhaDaFerramenta::DepositoMolhado) {
+        y = crate::paint_brush_top::paint_checkbox_row(
+            ctx,
+            theme,
+            x,
+            content_w,
+            y,
+            ph2d_tool_painter::ids::PAINTER_WETPAINT_PAPER_VISUAL,
+            "panel.painter_layers.paper.texture_on_paint",
+            brush.wet_paper_visual,
+        );
+    }
     y = paint_oleo_real(ctx, theme, x, content_w, y, brush);
     // Live Water (W1g) — a água corre com o traço; desligada de fábrica (o custo está na dica).
     if brush.le(ph2d_tool_painter::LinhaDaFerramenta::AguaViva) {

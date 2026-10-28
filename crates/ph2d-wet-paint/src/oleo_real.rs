@@ -27,7 +27,9 @@ pub use oleo_cache::{CacheCampo, ChaveCampo};
 /// (Rebelle: impasto 8, SoftShadows 10, Gloss 10, luz 42°).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct OleoReal {
-    /// Ganho da altura: `1` = a escala medida em W0(b) (≈ 15–17 px de relevo na faca).
+    /// Ganho GLOBAL da altura (`1` = a escala medida em W0(b), ≈ 15–17 px de relevo na faca). NÃO é knob do
+    /// artista desde 28/10: o Depth do artista é do PINCEL e mora na célula (`Grid::oleo`); o produto deixa este a
+    /// `1` — fica para as réguas e os testes do motor.
     pub profundidade: f64,
     /// De ONDE vem a luz, em radianos, no plano da tela (x para a direita, y para BAIXO): `225°` = topo-esquerda.
     pub azimute: f64,
@@ -35,7 +37,8 @@ pub struct OleoReal {
     pub altitude: f64,
     /// Força da sombra projectada, `0..=1` (linear no slider — M6).
     pub sombra: f64,
-    /// Força do brilho especular, `0..=1` (M4: só o termo somado; nunca o volume).
+    /// Ganho GLOBAL do brilho especular, `0..=1` (M4: só o termo somado; nunca o volume). Como a
+    /// [`Self::profundidade`]: o Gloss do artista é do pincel, na célula; o produto deixa este a `1`.
     pub brilho: f64,
     /// O céu que a tinta recebe e reflecte, rodado para o lado claro ficar no azimute da luz.
     pub ambiente: Ambiente,
@@ -248,6 +251,10 @@ pub struct CampoAltura {
     /// §BUG-bordas: a fracção da célula DENTRO do contorno sub-célula ([`borda_suave`]); `1` fora da orla e vazio
     /// sem orla — a cobertura da tinta e a altura das três escalas vão com ela.
     borda: Vec<f32>,
+    /// O Gloss da tinta que se vê em cada célula (dono 28/10, `Grid::oleo`); vazio = `1` em toda a parte.
+    brilho: Vec<f32>,
+    /// A fracção da tinta que se vê com o Real Oil (dono 28/10, `Grid::oleo`); vazio = `1` (toda a tinta é óleo).
+    oleo: Vec<f32>,
 }
 
 /// A luz directa, a visibilidade BRUTA (antes da força da fenda) e o ganho do céu de uma célula.
@@ -349,6 +356,17 @@ fn plano_f32(
     v
 }
 
+/// O ganho da altura de óleo da célula `i` de `lg` (dono 28/10: `Depth × Real Oil` da tinta). `todo_oleo` = nenhuma
+/// camada tem o campo: a chamada de antes (réguas, testes do motor), em que toda a tinta é óleo de Depth `1`.
+#[inline]
+fn ganho_da_celula(lg: &Grid, i: usize, todo_oleo: bool) -> f64 {
+    if todo_oleo {
+        1.0
+    } else {
+        crate::grid::oleo_celula::ganho(&lg.oleo, i)
+    }
+}
+
 impl CampoAltura {
     /// A janela `[x0..=x1]×[y0..=y1]` (células, `1..=W`) alargada pela margem e presa à grade.
     pub fn de(
@@ -387,6 +405,8 @@ impl CampoAltura {
         let mut massa = vec![0f64; w * h];
         let mut fios = vec![0f64; w * h];
         let com_material = camadas.iter().any(|&(lg, v)| v && !lg.material.is_empty());
+        // Dono 28/10: o Real Oil é do traço — com o campo em alguma camada visível, só a tinta com óleo tem altura.
+        let todo_oleo = !camadas.iter().any(|&(lg, v)| v && !lg.oleo.is_empty());
         let mut cob = vec![0f64; w * h];
         por_linha(rep, w, &mut cob, &|y, linha| {
             for (x, c) in linha.iter_mut().enumerate() {
@@ -409,7 +429,9 @@ impl CampoAltura {
                         continue;
                     }
                     let m = f64::from(lg.sett[i]) + f64::from(lg.susp[i]);
-                    let k = crate::grid::espessura::factor(lg, i);
+                    // O Depth da tinta (dono 28/10, por célula) escala a massa ANTES do desfoque: a parede entre traços
+                    // de Depth diferentes é a rampa do desfoque, sem degrau (doc W3b §Depth e Gloss).
+                    let k = crate::grid::espessura::factor(lg, i) * ganho_da_celula(lg, i, todo_oleo);
                     massa[x] += m * k;
                     // Os sulcos dos fios fundam-se com a tinta que se empilhou (a amplitude ∝ espessura).
                     if !lg.altura.is_empty() {
@@ -437,7 +459,8 @@ impl CampoAltura {
                                 continue;
                             }
                             let m = f64::from(lg.sett[i]) + f64::from(lg.susp[i]);
-                            let k = crate::grid::espessura::factor(lg, i);
+                            let k = crate::grid::espessura::factor(lg, i)
+                                * ganho_da_celula(lg, i, todo_oleo);
                             *c += f64::from(crate::grid::crista::em(lg, i)) * k;
                             cobre += crate::opacity::alpha_of_mass(m) * (1.0 - cobre);
                         }
@@ -463,6 +486,28 @@ impl CampoAltura {
             material
         } else {
             Vec::new()
+        };
+        // O Gloss e o Real Oil que se VÊEM em cada célula (dono 28/10): os da camada de baixo com tinta, e cada camada
+        // visível por cima pela cobertura dela. Vazios sem o campo em camada nenhuma = `1` (toda a tinta é óleo).
+        let (brilho, oleo) = if todo_oleo {
+            (Vec::new(), Vec::new())
+        } else {
+            let visto = |f: fn(crate::grid::oleo_celula::OleoCelula) -> f32, sem_tinta: f64| {
+                plano_f32(rep, w, h, &|k| {
+                    let i = (ax0 + k % w) + (ay0 + k / w) * g.s;
+                    let mut q: Option<f64> = None;
+                    for &(lg, visivel) in camadas {
+                        let m = f64::from(lg.sett[i]) + f64::from(lg.susp[i]);
+                        if visivel && m > 0.0 {
+                            let b = f64::from(f(crate::grid::oleo_celula::da_celula(&lg.oleo, i)));
+                            let alfa = crate::opacity::alpha_of_mass(m);
+                            q = Some(q.map_or(b, |q| q + (b - q) * alfa));
+                        }
+                    }
+                    q.unwrap_or(sem_tinta) as f32
+                })
+            };
+            (visto(|c| c.brilho, 1.0), visto(|c| c.oleo, 0.0))
         };
         let d = |v: &[f64], r: usize| desfoca(rep, v, w, h, r);
         let suave = match marca_do_nivelado(rep, camadas, (ax0, ay0, w, h)) {
@@ -531,6 +576,8 @@ impl CampoAltura {
             luz_ceu_chave: None,
             albedo,
             borda,
+            brilho,
+            oleo,
         };
         if let Some(rr) = sss {
             let (sss, luz_ceu, janela) =
@@ -575,6 +622,26 @@ impl CampoAltura {
     pub fn esquece_luz_do_ceu(&mut self) {
         self.luz_ceu = Vec::new();
         self.luz_ceu_chave = None;
+    }
+
+    /// O Gloss da tinta que se vê na célula `(x, y)` (`1` sem o campo em camada nenhuma).
+    #[inline]
+    #[must_use]
+    pub fn brilho_em(&self, x: usize, y: usize) -> f64 {
+        if self.brilho.is_empty() {
+            return 1.0;
+        }
+        f64::from(self.brilho[self.idx(x as isize, y as isize)])
+    }
+
+    /// A fracção da tinta que se vê na célula `(x, y)` com o Real Oil (`1` sem o campo em camada nenhuma).
+    #[inline]
+    #[must_use]
+    pub fn oleo_em(&self, x: usize, y: usize) -> f64 {
+        if self.oleo.is_empty() {
+            return 1.0;
+        }
+        f64::from(self.oleo[self.idx(x as isize, y as isize)])
     }
 
     /// O material que se vê na célula `(x, y)` ([`MaterialCelula::NEUTRO`] sem material em camada nenhuma).
@@ -1058,6 +1125,8 @@ pub struct Termos {
     pub sss: [f64; 3],
     /// W3b: o peso da TRANSMISSION ([`crate::material::transmite`]; `0` sem ela).
     pub transmissao: f64,
+    /// O modo dela ([`crate::material::filtro`]: `0` Blender · `1` Clear glass).
+    pub vidro_claro: f64,
 }
 
 impl Termos {
@@ -1178,8 +1247,8 @@ fn cor_dos_termos(o: &OleoReal, t: &Termos, a: [f64; 3], cobertura: f64) -> [f64
             base = a[c] * (difuso(o, &t, a[c], c) + t.sss[c]);
         }
         if t.transmissao > 0.0 {
-            let d = difuso(o, &t, crate::material::vidro(a[c]), c) * o.papel[c];
-            base = crate::material::transmite(base, a[c], d, t.transmissao);
+            let d = difuso(o, &t, crate::material::filtro(a[c], t.vidro_claro), c) * o.papel[c];
+            base = crate::material::transmite(base, a[c], d, t.transmissao, t.vidro_claro);
         }
         if t.metal > 0.0 || t.sob_verniz != 1.0 {
             base = base * (1.0 - t.metal) * t.sob_verniz;
@@ -1535,12 +1604,15 @@ pub fn sombra_transparente_a_luz(s: f64, a: f64, t: f64, t_luz: f64) -> f64 {
     (1.0 - (1.0 - atravessa) * (a * t * t + (1.0 - a)) / deixa).clamp(0.0, 1.0)
 }
 
-/// ⭐ **A transparência À LUZ de uma tinta** de Transparency `t` e Transmission `w` com albedo linear `a` — o `t`
-/// equivalente que a [`sombra_transparente`] recebe, a MESMA conta sob a tinta (`render`) e no papel nu
-/// ([`transparencia_de_quem_tapa`]): a luz atravessa o Alpha (`t²`) ou passa tingida pelo [`crate::material::vidro`]
-/// (`w·L(vidro(a))`) — `t² = 1 − (1 − t²)(1 − w·L(vidro(a)))`. `w = 0` devolve `t` ao bit.
+/// ⭐ **A transparência À LUZ de uma tinta** de Transparency `t` e Transmission `w` com albedo linear `a` no modo
+/// `claro` — o `t` equivalente que a [`sombra_transparente`] recebe, a MESMA conta sob a tinta (`render`) e no papel
+/// nu ([`transparencia_de_quem_tapa`]). Clear glass (`claro = 1`): a luz atravessa o Alpha (`t²`) ou passa tingida
+/// pelo [`crate::material::vidro`] (`w·L(vidro(a))`) — `t² = 1 − (1 − t²)(1 − w·L(vidro(a)))`. Blender (`claro = 0`):
+/// a Transmission não passa luz para o papel (o Cycles: a sombra da Transmission 1 = a da opaca, `oraculo/README.md`
+/// §Transmission «Ronda 4») — só o Alpha; entre os dois, `claro·w`. `w·claro = 0` devolve `t` ao bit.
 #[must_use]
-pub fn transparencia_a_luz(t: f64, w: f64, a: [f64; 3]) -> f64 {
+pub fn transparencia_a_luz(t: f64, w: f64, a: [f64; 3], claro: f64) -> f64 {
+    let w = w * claro.clamp(0.0, 1.0);
     if w <= 0.0 {
         return t;
     }
@@ -1582,6 +1654,7 @@ pub fn transparencia_de_quem_tapa(o: &OleoReal, campo: &CampoAltura, cx: usize, 
         crate::material::peso(m.transparencia),
         crate::material::peso(m.transmissao),
         albedo_em(campo, quem.0, quem.1),
+        crate::material::peso(m.vidro_claro),
     )
 }
 
@@ -1704,6 +1777,8 @@ pub fn termos_com(
 ) -> Termos {
     let af = &o.af;
     let m = crate::material::efectivo(mat, &o.material);
+    // O Gloss: o da tinta da célula (dono 28/10) sobre o ganho do motor (`1` no produto).
+    let brilho = o.brilho * campo.brilho_em(cx, cy);
     let (x, y) = (cx as isize, cy as isize);
     let n = normal(campo, x, y);
     let l = para_a_luz(o);
@@ -1755,7 +1830,7 @@ pub fn termos_com(
     let mistura = (1.0 - forca) / (1.0 - FORCA_AMBIENTE_FABRICA);
     let lampada_de = |f0: f64, borda: f64, d: f64| {
         let fres = f0 + (1.0 - f0) * p5 * borda;
-        o.brilho * af.brilho_max * fres * d * ndl * luz * mistura
+        brilho * af.brilho_max * fres * d * ndl * luz * mistura
     };
     let lampada = [lampada_de(f0d, borda, d_ggx); 3];
 
@@ -1784,7 +1859,7 @@ pub fn termos_com(
     let mut espec = match (mapa, base) {
         (Some(_), Some((pre, xa, yb, livre))) => [0, 1, 2].map(|c| {
             let ab = f0d * xa + yb * borda;
-            lampada[c] + o.brilho * forca * pre[c] * ab * livre
+            lampada[c] + brilho * forca * pre[c] * ab * livre
         }),
         _ => lampada,
     };
@@ -1803,6 +1878,7 @@ pub fn termos_com(
             sob_verniz: 1.0,
             sss: [0.0; 3],
             transmissao: 0.0,
+            vidro_claro: 0.0,
         };
         let d_metal = ggx(a2_amb);
         for c in 0..3 {
@@ -1810,7 +1886,7 @@ pub fn termos_com(
             let ab = f0m * xa + yb;
             let viz = a[c] * difuso(o, &sem_brilho, a[c], c) * (1.0 + (a[c] - 1.0) * m.metal);
             let em = lampada_de(f0m, 1.0, d_metal)
-                + o.brilho * (forca * pre[c] * livre + (1.0 - livre) * viz) * ab;
+                + brilho * (forca * pre[c] * livre + (1.0 - livre) * viz) * ab;
             espec[c] = (1.0 - m.metal) * espec[c] + m.metal * em;
         }
     }
@@ -1825,7 +1901,7 @@ pub fn termos_com(
         sob_verniz = 1.0 - m.verniz * fv;
         let lv = lampada_de(F0, 1.0, ggx(a2c));
         for c in 0..3 {
-            let ev = lv + o.brilho * forca * pre[c] * (F0 * xa + yb) * livre;
+            let ev = lv + brilho * forca * pre[c] * (F0 * xa + yb) * livre;
             espec[c] = espec[c] * sob_verniz + m.verniz * ev;
         }
     }
@@ -1845,6 +1921,7 @@ pub fn termos_com(
             [0.0; 3]
         },
         transmissao: m.transmissao,
+        vidro_claro: m.vidro_claro,
     };
     // VELUDO: o sheen branco, mais forte onde a normal foge da vista, à luz que a célula recebe.
     if m.veludo > 0.0 {

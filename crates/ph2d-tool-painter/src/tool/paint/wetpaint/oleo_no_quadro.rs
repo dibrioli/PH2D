@@ -87,6 +87,8 @@ impl PainterTool {
             return;
         }
         let facts = self.wet_facts();
+        let wp = &self.paint.wetpaint;
+        let oleo = wp.oleo_na_tela.then_some(wp.oleo_real_valores);
         let Some(sess) = self.paint.wetpaint.session.as_mut() else {
             self.paint.wetpaint.varredura.faltam = 0;
             return;
@@ -99,7 +101,7 @@ impl PainterTool {
         let cursor = v.cursor.clamp(1, gh.max(1));
         // O alcance com que o composite alarga a faixa (o mesmo `alcance_na` que ele chama).
         let suave_px = f64::from(self.paint.wetpaint.smooth_edges * super::smooth_edges::RAIO_MAX);
-        let alcance = self.paint.wetpaint.oleo_real.map_or(0, |mut o| {
+        let alcance = oleo.map_or(0, |mut o| {
             o.suave_px = suave_px;
             let grades: Vec<_> = sess
                 .engine

@@ -35,6 +35,8 @@ pub mod espessura;
 pub mod material;
 #[path = "grid/aparencia.rs"]
 pub mod aparencia;
+#[path = "grid/oleo_celula.rs"]
+pub mod oleo_celula;
 #[path = "grid/patch.rs"]
 mod patch;
 #[path = "grid/traco.rs"]
@@ -93,6 +95,9 @@ pub struct Grid {
     /// **A APARÊNCIA da tinta** (W3b, [`aparencia`]): os controlos do pincel que o ecrã lê, guardados no pouso. VAZIA
     /// (= NEUTRA) até o primeiro pincel fora da fábrica pintar.
     pub aparencia: Vec<aparencia::AparenciaCelula>,
+    /// **O Depth e o Gloss do Óleo Real da tinta** (dono 28/10, [`oleo_celula`]): os do pincel que a pousou. VAZIO (=
+    /// NEUTRO) até o primeiro pincel fora da fábrica pintar.
+    pub oleo: Vec<oleo_celula::OleoCelula>,
     /// **A geometria da grade de FLUXO** (plano 30) — os quatro planos de
     /// velocidade abaixo são dimensionados por ELA, não pela grade fina.
     ///
@@ -264,6 +269,7 @@ impl Grid {
             vela: vec![0.0; n],
             material: Vec::new(),
             aparencia: Vec::new(),
+            oleo: Vec::new(),
             flow,
             vel_x: vec![0.0; fn_],
             vel_y: vec![0.0; fn_],
@@ -596,6 +602,7 @@ pub struct GridSnapshot {
     pub vela: Vec<f32>,
     pub material: Vec<crate::material::MaterialCelula>,
     pub aparencia: Vec<aparencia::AparenciaCelula>,
+    pub oleo: Vec<oleo_celula::OleoCelula>,
     pub vel_x: Vec<f32>,
     pub vel_y: Vec<f32>,
     pub wet: Vec<u8>,
@@ -636,6 +643,7 @@ pub fn snapshot_grid(g: &Grid) -> GridSnapshot {
         vela: g.vela.clone(),
         material: g.material.clone(),
         aparencia: g.aparencia.clone(),
+        oleo: g.oleo.clone(),
         vel_x: g.vel_x.clone(),
         vel_y: g.vel_y.clone(),
         wet: g.wet.clone(),
@@ -670,6 +678,7 @@ pub fn restore_grid(g: &mut Grid, s: &GridSnapshot) -> bool {
     g.vela.copy_from_slice(&s.vela);
     g.material.clone_from(&s.material);
     g.aparencia.clone_from(&s.aparencia);
+    g.oleo.clone_from(&s.oleo);
     g.vel_x.copy_from_slice(&s.vel_x);
     g.vel_y.copy_from_slice(&s.vel_y);
     g.flow_x.fill(0.0);

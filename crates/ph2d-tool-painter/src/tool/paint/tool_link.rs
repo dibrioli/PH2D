@@ -38,6 +38,10 @@ impl PainterTool {
         w.knobs_por_slot[old] = w.knobs.knobs;
         w.glaze_por_slot[old] = w.km_glaze; // o Glaze é do traço: cada ferramenta tem o seu
         w.km_glaze = w.glaze_por_slot[new];
+        w.oleo_por_slot[old] = w.oleo_real.is_some(); // e o Real Oil (dono 28/10)
+        w.oleo_real = w.oleo_por_slot[new].then_some(w.oleo_real_valores);
+        w.textura_por_slot[old] = w.paper_visual; // a Paint Texture também é do traço
+        w.paper_visual = w.textura_por_slot[new];
         for k in super::mao::knobs_da_mao() {
             w.knobs.knobs[k as usize] = w.knobs_por_slot[new][k as usize];
         }
@@ -92,6 +96,8 @@ impl PainterTool {
             w.largura_por_slot = std::array::from_fn(|_| w.largura.clone());
             w.knobs_por_slot.fill(w.knobs.knobs);
             w.glaze_por_slot.fill(w.km_glaze);
+            w.oleo_por_slot.fill(w.oleo_real.is_some());
+            w.textura_por_slot.fill(w.paper_visual);
         }
         // Linking needs no seeding: while linked, a mode switch keeps the live `brush`, so every tool
         // immediately shows this (the checked) panel's settings.

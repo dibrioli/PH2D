@@ -9,7 +9,7 @@ use super::Grid;
 use crate::sim::Params;
 use crate::tuning::Knob;
 
-/// A aparência da tinta de uma célula (12 B).
+/// A aparência da tinta de uma célula (16 B).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct AparenciaCelula {
     /// [`Knob::PaperVisibility`] da tinta (o mestre do papel impresso nela).
@@ -19,6 +19,9 @@ pub struct AparenciaCelula {
     /// A fracção da tinta pousada com o «Glaze layering (K-M)» ([`crate::sim::Sim::camadas_transparentes`]):
     /// `1` = a camada tapa só a sua força ([`crate::colorops::TINTA_ESCONDE_EM_VELATURA`]), `0` = a lei da sessão.
     pub vidrado: f32,
+    /// A fracção da tinta pousada com a **Paint Texture** (o papel impresso na tinta; dono 28/10: é do TRAÇO):
+    /// `1` = imprime o papel pela [`Self::papel`]/[`Self::grao`] dela, `0` = não imprime (a de fábrica).
+    pub textura: f32,
 }
 
 impl AparenciaCelula {
@@ -27,6 +30,7 @@ impl AparenciaCelula {
         papel: 1.0,
         grao: 1.0,
         vidrado: 0.0,
+        textura: 0.0,
     };
 }
 
@@ -43,6 +47,7 @@ pub fn do_pincel(p: &Params) -> AparenciaCelula {
         papel: p.k(Knob::PaperVisibility) as f32,
         grao: p.k(Knob::VisualGrain) as f32,
         vidrado: p.vidrado,
+        textura: p.textura,
     }
 }
 
@@ -78,6 +83,7 @@ pub fn pousa(g: &mut Grid, i: usize, m_old: f64, nova: AparenciaCelula, v: f64) 
                 papel: m(a.papel, nova.papel),
                 grao: m(a.grao, nova.grao),
                 vidrado: m(a.vidrado, nova.vidrado),
+                textura: m(a.textura, nova.textura),
             }
         } else {
             nova

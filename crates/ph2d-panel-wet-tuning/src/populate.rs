@@ -19,6 +19,14 @@ fn button(store: &mut WidgetStore, id: ph2d_a11y::NodeId) {
 
 pub fn populate(store: &mut WidgetStore) {
     for row in rows::rows() {
+        if let Some(opts) = &row.options {
+            // A CHOICE row is buttons (one per option) + the reset — no slider, no chip.
+            for (_, id) in opts {
+                button(store, *id);
+            }
+            button(store, row.reset);
+            continue;
+        }
         store.register(
             row.slider,
             InteractiveState::Slider {

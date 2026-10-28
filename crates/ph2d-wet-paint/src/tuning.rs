@@ -279,9 +279,18 @@ pub enum Knob {
     Transmission,
     /// … Relevo do papel (W3b): quanto a superfície da tinta segue o dente do papel por baixo.
     PaperRelief,
+    /// … o MODO da Transmission (dono 28/10, um seletor de 2): `0` = **Blender** (o Principled do Cycles, a
+    /// omissão), `1` = **Clear glass** (o vidro colorido claro da ronda 3). Pousa na célula
+    /// ([`crate::material::MaterialCelula::vidro_claro`]); a lei: [`crate::material::filtro`].
+    TransmissionMode,
+    /// ⭐ **Depth** do Óleo Real (dono 28/10: era do cartão Real Oil, passou ao PINCEL): o ganho da altura do relevo
+    /// da tinta que este pincel pousa (`1` = a escala medida em W0), na célula ([`crate::grid::oleo_celula`]).
+    OilDepth,
+    /// … **Gloss** do Óleo Real: a força do brilho especular da tinta que este pincel pousa (`1` = o de sempre).
+    OilGloss,
 }
 
-pub const KNOB_COUNT: usize = 125;
+pub const KNOB_COUNT: usize = 128;
 
 /// O LEITOR TOLERANTE das chaves do material de antes da W3 (preset e macro gravados com elas): `(knob, valor)`
 /// na lei nova, `None` para uma chave que não é antiga. `roughnessMul` m → Roughness `0,5·m` (o neutro `1` → `0,5`,

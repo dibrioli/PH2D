@@ -149,3 +149,23 @@ pub(in crate::tool::paint) mod sem_cache_do_campo {
         N.with(Cell::take)
     }
 }
+
+/// A LEI DE ANTES do Real Oil (só sob `cfg(test)`, dono 28/10): a óptica corre pela CAIXA de agora, sobre a tela toda —
+/// a referência do gate `pintar_tudo_com_o_real_oil_e_a_imagem_de_antes_ao_byte` (o teste tira o campo `grid::oleo`
+/// das grades, e o campo de altura volta à chamada de antes: toda a tinta é óleo de Depth 1).
+#[cfg(test)]
+pub(in crate::tool::paint) mod lei_da_caixa {
+    use std::cell::Cell;
+
+    thread_local! {
+        static D: Cell<bool> = const { Cell::new(false) };
+    }
+
+    pub(in crate::tool::paint) fn set(v: bool) {
+        D.with(|c| c.set(v));
+    }
+
+    pub(in crate::tool::paint) fn get() -> bool {
+        D.with(Cell::get)
+    }
+}

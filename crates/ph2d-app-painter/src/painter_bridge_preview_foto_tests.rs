@@ -42,6 +42,18 @@ fn foto_de_altura(
     fixada: bool,
     h: u32,
 ) -> Vec<u8> {
+    foto_abrindo(gpu, painter, rolagem, fixada, h, &[])
+}
+
+/// [`foto_de_altura`] com as secções `abrir` desdobradas (o clique do artista no cabeçalho).
+fn foto_abrindo(
+    gpu: &ph2d_gpu::GpuContext,
+    painter: &PainterTool,
+    rolagem: f32,
+    fixada: bool,
+    h: u32,
+    abrir: &[ph2d_editor_core::NodeId],
+) -> Vec<u8> {
     let mut pass =
         ph2d_render::VelloPass::new(gpu, ph2d_gpu::TextureFormat::Rgba8Unorm, (W, h)).unwrap();
     set_current_brush(Some(painter.brush_settings()));
@@ -55,6 +67,9 @@ fn foto_de_altura(
     }
     host.store_mut()
         .set_panel_scroll(ph2d_editor_core::ids::PAINTER_LAYERS_PANEL, rolagem);
+    for &id in abrir {
+        host.store_mut().set_collapsed(id, false);
+    }
     let mut st = PainterLayersPanelState;
     let viewport = Rect::new(0.0, 0.0, W as f32, h as f32);
     let layout = HeroLayout::for_viewport(viewport);
@@ -297,4 +312,50 @@ fn foto_das_ferramentas() {
             .unwrap();
         }
     }
+}
+
+/// **Onde moram o Smooth Edges e a Paint Texture** (28/10): com um pincel de Óleo de fábrica (`WetPainter/Oil/Dabber`)
+/// e o cartão Paper desdobrado (nasce dobrado): a Paint Texture (do traço) no cartão Wet Paint, o Smooth Edges (da
+/// tela) no Paper. `PH2D_FOTO_DIR=<pasta> cargo test -p ph2d-app-painter --features panel-painter-layers
+/// foto_do_smooth_edges -- --ignored`.
+#[test]
+#[ignore = "foto do cartão Paper com o Óleo — PH2D_FOTO_DIR=<pasta> e --ignored"]
+fn foto_do_smooth_edges() {
+    let Ok(dir) = std::env::var("PH2D_FOTO_DIR") else {
+        return;
+    };
+    let sufixo = std::env::var("PH2D_FOTO_SUFIXO").unwrap_or_else(|_| "depois".into());
+    let gpu = ph2d_gpu::GpuContext::new(ph2d_gpu::GpuContext::default_instance(), None)
+        .expect("a foto precisa da placa");
+    std::fs::create_dir_all(&dir).unwrap();
+    let raiz = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes");
+    let b = ph2d_brush_presets::Biblioteca::carregar(&raiz, None);
+    let p = &b
+        .entradas
+        .iter()
+        .find(|e| e.relativo.ends_with("WetPainter/Oil/Dabber/Dabber.ph2d-brush.png"))
+        .expect("o Dabber de fábrica")
+        .preset;
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; 64 * 64 * 4], 64, 64);
+    t.set_paint_media(PaintMedia::WetPaint);
+    let _ = t.wet_preset_aplicar(p);
+    assert!(t.brush_settings().wetpaint, "o Dabber arma o Wet Paint");
+    let h = 3200;
+    let px = foto_abrindo(
+        &gpu,
+        &t,
+        0.0,
+        false,
+        h,
+        &[ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PAPER_SECTION],
+    );
+    image::save_buffer(
+        format!("{dir}/smooth_edges_{sufixo}.png"),
+        &px,
+        W,
+        h,
+        image::ExtendedColorType::Rgba8,
+    )
+    .unwrap();
 }

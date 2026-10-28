@@ -131,3 +131,10 @@ pub fn wet_tuning_chip_id(key: &str) -> NodeId {
 pub fn wet_tuning_reset_id(key: &str) -> NodeId {
     ph2d_tool_registry::hash_node_id_runtime(&format!("wet_tuning.reset.{key}"))
 }
+
+/// The OPTION `i` of a knob row painted as a choice (the Transmission mode, dono 28/10): a click forwards the
+/// row's slider `SetValue(i)`, so the tool's route stays the slider's.
+#[must_use]
+pub fn wet_tuning_option_id(key: &str, i: usize) -> NodeId {
+    ph2d_tool_registry::hash_node_id_runtime(&format!("wet_tuning.option.{key}.{i}"))
+}

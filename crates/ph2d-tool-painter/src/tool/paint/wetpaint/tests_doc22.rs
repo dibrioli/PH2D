@@ -590,19 +590,29 @@ fn the_show_wet_veil_shows_and_never_bakes() {
     );
 }
 
-/// Paper checkbox: grain prints into the pigment (bytes move where paint
-/// is) and BAKES on purpose — it is part of the painting.
+/// Paint Texture: grain prints into the pigment (bytes move where paint
+/// is) and BAKES on purpose — it is part of the painting. É do TRAÇO (dono 28/10): o clique não toca na tinta
+/// pousada; o traço SEGUINTE imprime o papel.
 #[test]
 fn paper_visual_prints_grain_into_the_paint_and_bakes() {
-    let mut t = wet_tool_fixture();
-    // Um papel ESCOLHIDO: sem Kind não há papel para imprimir (dono 10/10).
-    t.set_brush_paper_kind(ph2d_painter_brush::TextureKind::PaperCold.to_u8());
-    stroke(&mut t, 60.0);
-    let plain = t.canvas_rgba.as_ref().clone();
-    click(&mut t, crate::ids::PAINTER_WETPAINT_PAPER_VISUAL);
-    assert!(t.paint.wetpaint.paper_visual);
+    let pinta = |textura: bool| {
+        let mut t = wet_tool_fixture();
+        // Um papel ESCOLHIDO: sem Kind não há papel para imprimir (dono 10/10).
+        t.set_brush_paper_kind(ph2d_painter_brush::TextureKind::PaperCold.to_u8());
+        stroke(&mut t, 40.0);
+        let antes = t.canvas_rgba.as_ref().clone();
+        if textura {
+            click(&mut t, crate::ids::PAINTER_WETPAINT_PAPER_VISUAL);
+            assert!(t.paint.wetpaint.paper_visual);
+        }
+        assert_eq!(antes, *t.canvas_rgba, "the toggle must not touch the laid paint");
+        stroke(&mut t, 85.0);
+        t
+    };
+    let plain = pinta(false).canvas_rgba.as_ref().clone();
+    let mut t = pinta(true);
     let grained = t.canvas_rgba.as_ref().clone();
-    assert_ne!(plain, grained, "the tooth must print into the pigment");
+    assert_ne!(plain, grained, "the tooth must print into the NEXT stroke");
     t.wetpaint_end_session();
     assert_eq!(
         grained, *t.canvas_rgba,

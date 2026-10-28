@@ -18,7 +18,13 @@ const H: usize = 96;
 /// dab positions — the engine's own synthetic stroke would drift with clock
 /// cadence), then settle everything so the tools have paint to act on.
 fn seeded_engine(color: [f64; 3]) -> Engine {
+    seeded_engine_textura(color, false)
+}
+
+/// [`seeded_engine`] com a **Paint Texture** do pincel (`Sim::textura`, do TRAÇO desde 28/10: pousa na célula).
+fn seeded_engine_textura(color: [f64; 3], textura: bool) -> Engine {
     let mut e = Engine::new(W, H);
+    e.sim.textura = textura;
     e.color = color;
     e.begin_direct_stroke(0, 20.0, 48.0);
     let mut x = 20.0;
@@ -209,15 +215,24 @@ fn the_visual_render_off_is_the_pigment_render_bit_for_bit() {
 /// effect is those two knobs, scaled by the master).
 #[test]
 fn the_paper_visual_prints_the_tooth_into_the_pigment_alpha_intact() {
-    let mut e = seeded_engine([220.0, 45.0, 40.0]);
-    let params = e.sim.gather_params(&e.tuning);
-    let layers = layers_of(&e);
     let paper_on = PigmentVisual {
         paper: true,
         relevo: false,
     };
     let mut off = vec![0u8; W * H * 4];
     let mut on = vec![0u8; W * H * 4];
+    // A Paint Texture é do TRAÇO (dono 28/10): a tinta pousada SEM ela não imprime o papel, mesmo com papel escolhido.
+    {
+        let sem = seeded_engine([220.0, 45.0, 40.0]);
+        let params = sem.sim.gather_params(&sem.tuning);
+        let layers = layers_of(&sem);
+        render_pigment_only_region(&layers, 1, 1, W, H, &mut off);
+        render_pigment_region_visual(Some(&params), &layers, paper_on, 1, 1, W, H, &mut on);
+        assert_eq!(off, on, "tinta pousada sem a Paint Texture imprimiu o papel");
+    }
+    let mut e = seeded_engine_textura([220.0, 45.0, 40.0], true);
+    let params = e.sim.gather_params(&e.tuning);
+    let layers = layers_of(&e);
     render_pigment_only_region(&layers, 1, 1, W, H, &mut off);
     render_pigment_region_visual(Some(&params), &layers, paper_on, 1, 1, W, H, &mut on);
     let mut rgb_moved = false;
@@ -265,6 +280,7 @@ fn the_paper_visual_prints_the_tooth_into_the_pigment_alpha_intact() {
     g.aparencia = vec![
         ph2d_wet_paint::grid::aparencia::AparenciaCelula {
             grao: 0.0,
+            textura: 1.0,
             ..ph2d_wet_paint::grid::aparencia::AparenciaCelula::NEUTRA
         };
         g.cells

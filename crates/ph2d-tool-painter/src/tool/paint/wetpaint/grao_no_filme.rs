@@ -119,7 +119,7 @@ impl crate::tool::PainterTool {
     /// lâmpada que mudaram desde o último quadro recompõem a tela inteira pela varredura do cartão
     /// ([`Self::wet_recompoe_no_quadro`], o orçamento por quadro). A tinta de uma sessão que já acabou é píxel.
     pub(in crate::tool::paint) fn reconcilia_o_grao_do_oleo(&mut self) {
-        if self.paint.wetpaint.oleo_real.is_none() {
+        if !self.paint.wetpaint.oleo_na_tela {
             return;
         }
         let agora = ChaveDoGrao::de(self);

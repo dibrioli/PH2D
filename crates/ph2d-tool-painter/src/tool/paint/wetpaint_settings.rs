@@ -558,10 +558,10 @@ impl PainterTool {
         w.km_mixing = false;
         w.agua_viva = false;
         w.borda_que_pesa = 0.0;
+        // O Real Oil é do traço (28/10): só os números do cartão, que são da tela, mudam a tinta com óleo pousada.
         let need_recomposite = w.show_wet
-            || w.paper_visual
             || w.km_glaze
-            || w.oleo_real.is_some();
+            || (w.oleo_na_tela && w.oleo_real_valores != ph2d_wet_paint::oleo_real::OleoReal::default());
         w.show_wet = false;
         w.paper_visual = false;
         w.oleo_real = None;
@@ -599,16 +599,13 @@ impl PainterTool {
         self.paint.wetpaint.smooth_edges
     }
 
-    /// O **Óleo Real** (doc 49): a óptica do relevo — a fenda na cor da tinta, a sombra que cai também no
-    /// papel, o brilho. `None` = o composite de hoje, ao byte. Mudá-lo recompõe a tela inteira.
+    /// O **Óleo Real** (doc 49): a caixa do pincel (`Some`) e, com ela, os números do cartão. A caixa é do TRAÇO (dono
+    /// 28/10): vale para os traços seguintes e não recompõe; os números são da TELA e recompõem a tinta com óleo.
     pub fn set_wet_oleo_real(&mut self, oleo: Option<ph2d_wet_paint::oleo_real::OleoReal>) {
         if let Some(o) = oleo {
-            self.paint.wetpaint.oleo_real_valores = o;
+            self.guarda_oleo_valores(o);
         }
-        if self.paint.wetpaint.oleo_real != oleo {
-            self.paint.wetpaint.oleo_real = oleo;
-            self.wet_recomposite_full();
-        }
+        self.paint.wetpaint.oleo_real = oleo.map(|_| self.paint.wetpaint.oleo_real_valores);
     }
 
     /// O **Óleo Real** do Wet Paint (`None` = desligado).
@@ -646,14 +643,12 @@ impl PainterTool {
         let (lo, hi) = crate::ids::PAINTER_WETPAINT_OLEO_FAIXAS[k];
         let mut o = self.paint.wetpaint.oleo_real_valores;
         match k {
-            0 => o.profundidade = v.clamp(lo, hi),
-            1 => o.sombra = v.clamp(lo, hi),
-            2 => o.brilho = v.clamp(lo, hi),
-            3 => o.altitude = v.clamp(lo, hi).to_radians(),
-            4 => o.azimute = v.rem_euclid(hi).to_radians(),
-            5 => o.fenda = v.clamp(lo, hi),
-            6 => o.alcance_fenda = v.clamp(lo, hi),
-            7 => o.forca_ambiente = v.clamp(lo, hi),
+            0 => o.sombra = v.clamp(lo, hi),
+            1 => o.altitude = v.clamp(lo, hi).to_radians(),
+            2 => o.azimute = v.rem_euclid(hi).to_radians(),
+            3 => o.fenda = v.clamp(lo, hi),
+            4 => o.alcance_fenda = v.clamp(lo, hi),
+            5 => o.forca_ambiente = v.clamp(lo, hi),
             _ => o.material.poe(
                 k - crate::ids::PAINTER_WETPAINT_OLEO_MATERIAL_DE,
                 v.clamp(lo, hi),
@@ -679,9 +674,13 @@ impl PainterTool {
     /// (um arrasto manda um valor por evento do rato — `wetpaint::oleo_no_quadro`).
     fn guarda_oleo_valores(&mut self, o: ph2d_wet_paint::oleo_real::OleoReal) {
         let w = &mut self.paint.wetpaint;
+        let muda = w.oleo_real_valores != o;
         w.oleo_real_valores = o;
-        if w.oleo_real.is_some_and(|v| v != o) {
+        if w.oleo_real.is_some() {
             w.oleo_real = Some(o);
+        }
+        // Os números do cartão são da TELA: mudam a tinta com óleo já pousada (e só ela).
+        if muda && w.oleo_na_tela {
             self.wet_recompoe_no_quadro();
         }
     }
@@ -876,9 +875,8 @@ impl PainterTool {
                 true
             }
             PanelEvent::Click(id) if *id == crate::ids::PAINTER_WETPAINT_PAPER_VISUAL => {
-                // A Texture on Paint da secção Paper (W1e, F2).
+                // A Paint Texture é do TRAÇO (dono 28/10, pousa na célula): vale para os seguintes; a tela não se recompõe.
                 self.paint.wetpaint.paper_visual = !self.paint.wetpaint.paper_visual;
-                self.wet_recomposite_full();
                 true
             }
             PanelEvent::Click(id) if *id == crate::ids::PAINTER_WETPAINT_OLEO_REAL => {

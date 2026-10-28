@@ -38,6 +38,14 @@ pub(crate) fn apply_event(
                 false
             }
         }
+        // A CHOICE option (the Transmission mode, 28/10): the click forwards the row's slider at the option's
+        // index — the tool's route (`SetValue` on the slider id) is the slider's.
+        WidgetEvent::Click(id) if rows::option_for(id).is_some() => {
+            if let Some((row, i)) = rows::option_for(id) {
+                forward(host, PanelEvent::SetValue(row.slider, i as f64));
+            }
+            true
+        }
         // Section headers fold (panel-local view state, never forwarded).
         WidgetEvent::Click(id)
             if rows::SECTIONS.iter().any(|s| s.header == id)

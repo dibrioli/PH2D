@@ -127,6 +127,8 @@ impl Trail {
         let com_ponta = self.mat_ponta.len() == self.pig.len();
         // A APARÊNCIA (W3b): o que o ecrã lê dos controlos do pincel fica na célula — o painel só vale para o futuro.
         let aparencia = crate::grid::aparencia::do_pincel(p);
+        // O Depth e o Gloss do Óleo Real (dono 28/10) também ficam na célula.
+        let oleo = crate::grid::oleo_celula::do_pincel(p);
         // A marca do nivelado (K8): a tinta de um dab que não nivela apaga-a pela massa; a da lâmina é dela.
         let apaga_marca = !g.nivelado.is_empty() && !crate::grid::nivelado::nivela(p);
         // O FILME do traço (`Knob::StrokeFilm`): a água da célula é a do filme — sem o 2.º gole da célula virgem (o gole
@@ -175,6 +177,7 @@ impl Trail {
                 let m_old = g.susp[i] as f64 + g.sett[i] as f64;
                 crate::grid::material::pousa(g, i, m_old, mat, v, mat_trava);
                 crate::grid::aparencia::pousa(g, i, m_old, aparencia, v);
+                crate::grid::oleo_celula::pousa(g, i, m_old, oleo, v);
                 if apaga_marca {
                     crate::grid::nivelado::dilui(g, i, m_old, v);
                 }
@@ -397,6 +400,7 @@ impl Trail {
             return levantou;
         }
         crate::grid::aparencia::veste_virgens(g, (rx0, ry0, rx1, ry1), aparencia);
+        crate::grid::oleo_celula::veste_virgens(g, (rx0, ry0, rx1, ry1), oleo);
         crate::grid::material::veste_virgens(g, (rx0, ry0, rx1, ry1), mat_pincel);
         g.expand_bbox(rx0 - 1, ry0 - 1, rx1 + 1, ry1 + 1);
         TouchedRect::union(

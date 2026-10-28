@@ -101,10 +101,111 @@ fn a_transmissao_e_o_relevo_do_papel_a_zero_sao_a_imagem_de_antes() {
             );
         }
     }
-    assert_eq!(
-        crate::material::transmite(0.3, 0.2, 0.9, 0.0).to_bits(),
-        0.3f64.to_bits()
+    for claro in [0.0, 0.5, 1.0] {
+        assert_eq!(
+            crate::material::transmite(0.3, 0.2, 0.9, 0.0, claro).to_bits(),
+            0.3f64.to_bits()
+        );
+        assert_eq!(
+            crate::oleo_real::transparencia_a_luz(0.4, 0.0, [0.2, 0.3, 0.8], claro).to_bits(),
+            0.4f64.to_bits()
+        );
+        // Transmission 0 = a imagem de antes ao bit nos dois modos (o modo sozinho não morde).
+        assert_eq!(
+            antes,
+            render(&cel(&g, |m| m.vidro_claro = claro as f32), &OleoReal::default()),
+            "o modo {claro} sem Transmission mudou a tinta"
+        );
+    }
+}
+
+/// ⭐ **Clear glass = a lei de `ad16f60b75` AO BIT** (dono 28/10: «sem tirar a atual»): a conta de antes (`base·(1 − w) +
+/// w·a^(2·VIDRO_K)·d` e a luz pelo vidro `√(1 − (1 − t²)(1 − w·L(a^(2·VIDRO_K))))`) escrita aqui à mão, contra a de
+/// agora com o modo 1, numa grelha de entradas. A tela inteira: `ph2d-tool-painter`
+/// `o_modo_blender_casa_com_o_cycles_e_o_clear_glass_e_o_de_antes` (o hash da tela de `ad16f60b75`).
+#[test]
+fn o_clear_glass_e_a_lei_de_antes_ao_bit() {
+    let vidro = |a: f64| if a <= 0.0 { 0.0 } else { libm::pow(a.min(1.0), 2.0 * 0.2) };
+    let antes = |base: f64, a: f64, d: f64, w: f64| {
+        if w <= 0.0 { base } else { base * (1.0 - w) + w * vidro(a) * d }
+    };
+    let luz = |t: f64, w: f64, a: [f64; 3]| {
+        if w <= 0.0 {
+            return t;
+        }
+        let v = a.map(vidro);
+        let passa = w * (0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2]);
+        libm::sqrt(1.0 - (1.0 - t * t) * (1.0 - passa))
+    };
+    for i in 0..=20 {
+        let a = f64::from(i) / 20.0;
+        for w in [0.0, 0.3, 0.5, 1.0] {
+            assert_eq!(
+                crate::material::transmite(0.37, a, 0.81, w, 1.0).to_bits(),
+                antes(0.37, a, 0.81, w).to_bits()
+            );
+            assert_eq!(crate::material::filtro(a, 1.0).to_bits(), vidro(a).to_bits());
+            for t in [0.0, 0.4] {
+                let c = [a, 0.5 * a, 1.0 - a];
+                assert_eq!(
+                    crate::oleo_real::transparencia_a_luz(t, w, c, 1.0).to_bits(),
+                    luz(t, w, c).to_bits()
+                );
+            }
+        }
+    }
+}
+
+/// ⭐ **Blender = o Principled do Cycles, mais escuro** (dono 28/10): o filtro `a^(2·K_BLENDER)` (`a`), a tinta a 1 mais
+/// escura que o Clear glass e com mais croma; a Transmission não passa luz para o papel (`transparencia_a_luz` = o
+/// Alpha ao bit). Os números × Cycles: `ph2d-tool-painter` `o_modo_blender_casa_com_o_cycles_e_o_clear_glass_e_o_de_antes`.
+#[test]
+fn o_modo_blender_e_o_principled_escuro() {
+    for i in 1..=20 {
+        let a = f64::from(i) / 20.0;
+        assert_eq!(
+            crate::material::filtro(a, 0.0).to_bits(),
+            libm::pow(a, 2.0 * crate::material::K_BLENDER).to_bits()
+        );
+        assert!(crate::material::filtro(a, 0.0) <= crate::material::filtro(a, 1.0));
+        assert_eq!(
+            crate::oleo_real::transparencia_a_luz(0.3, 1.0, [a; 3], 0.0).to_bits(),
+            0.3f64.to_bits(),
+            "Blender: a luz não atravessa"
+        );
+    }
+    let g = tinta();
+    let (pb, _) = render(&cel(&g, |m| m.transmissao = 1.0), &OleoReal::default());
+    let (pv, _) = render(
+        &cel(&g, |m| {
+            m.transmissao = 1.0;
+            m.vidro_claro = 1.0;
+        }),
+        &OleoReal::default(),
     );
+    let (lb, lv) = (luz_no_miolo(&pb), luz_no_miolo(&pv));
+    let (sb, sv) = (croma_no_miolo(&pb), croma_no_miolo(&pv));
+    println!("[transmission] Transmission 1, papel branco: L Blender {lb:.3} × Clear glass {lv:.3} · saturação {sb:.3} × {sv:.3}");
+    assert!(lb < 0.7 * lv, "Blender mais escuro: {lb} × {lv}");
+    assert!(sb > sv, "Blender mais saturado: {sb} × {sv}");
+}
+
+/// ⭐ O modo mistura-se pela massa que TRANSMITE: a tinta sem Transmission não tem modo a dar; dois no mesmo modo dão
+/// esse modo ao bit; dois a transmitir, a média pesada.
+#[test]
+fn o_modo_mistura_pela_massa_transmissiva() {
+    use crate::material::MaterialCelula as M;
+    let vidro = M { transmissao: 0.8, vidro_claro: 1.0, ..M::NEUTRO };
+    let blender = M { transmissao: 0.8, ..M::NEUTRO };
+    let opaca_vidro = M { vidro_claro: 1.0, ..M::NEUTRO };
+    for t in [0.1, 0.37, 0.5, 0.9] {
+        assert_eq!(M::mistura(vidro, M::NEUTRO, t).vidro_claro.to_bits(), 1f32.to_bits());
+        assert_eq!(M::mistura(M::NEUTRO, vidro, t).vidro_claro.to_bits(), 1f32.to_bits());
+        assert_eq!(M::mistura(vidro, opaca_vidro, t).vidro_claro.to_bits(), 1f32.to_bits());
+        let m = M::mistura(vidro, blender, t).vidro_claro;
+        assert!((m - (1.0 - t)).abs() < 1e-6, "a média pesada: {m} × {}", 1.0 - t);
+    }
+    assert_eq!(M::mistura(M::NEUTRO, opaca_vidro, 0.25).vidro_claro, 0.25, "sem Transmission: linear");
 }
 
 /// A luminância LINEAR média do miolo sobre o papel branco (o píxel por cima do branco pelo alfa), ÷ a do papel.
@@ -132,8 +233,15 @@ fn luz_no_miolo(px: &[u8]) -> f64 {
 fn a_transmissao_e_um_vidro_colorido_claro() {
     let g = tinta();
     let (po, _) = render(&g, &OleoReal::default());
-    let (p1, _) = render(&cel(&g, |m| m.transmissao = 1.0), &OleoReal::default());
-    let (pm, _) = render(&cel(&g, |m| m.transmissao = 0.5), &OleoReal::default());
+    // O modo Clear glass (o de antes, dono 28/10).
+    let vidro = |w: f32| {
+        cel(&g, move |m| {
+            m.transmissao = w;
+            m.vidro_claro = 1.0;
+        })
+    };
+    let (p1, _) = render(&vidro(1.0), &OleoReal::default());
+    let (pm, _) = render(&vidro(0.5), &OleoReal::default());
     let (lo, l1, lm) = (luz_no_miolo(&po), luz_no_miolo(&p1), luz_no_miolo(&pm));
     let s1 = croma_no_miolo(&p1);
     // O Alpha da mesma luminância que o vidro (procura em passos de 0,05).
@@ -302,10 +410,15 @@ fn a_sombra_da_tinta_do_pincel_atravessa_no_papel_nu() {
     let s0 = soma(&opaca);
     let st = soma(&com(&|m| m.transparencia = 0.5));
     let s1 = soma(&com(&|m| m.transparencia = 1.0));
-    let sw = soma(&com(&|m| m.transmissao = 1.0));
+    let sw = soma(&com(&|m| {
+        m.transmissao = 1.0;
+        m.vidro_claro = 1.0;
+    }));
+    let sb = soma(&com(&|m| m.transmissao = 1.0));
     println!(
-        "[transmission] sombra no papel nu: opaca {s0:.3} · T 0,5 {st:.3} · T 1 {s1:.3} · Transmission 1 {sw:.3}"
+        "[transmission] sombra no papel nu: opaca {s0:.3} · T 0,5 {st:.3} · T 1 {s1:.3} · Transmission 1 Clear glass {sw:.3} · Blender {sb:.3}"
     );
+    assert_eq!(sb.to_bits(), s0.to_bits(), "Blender: a sombra da opaca (o Cycles)");
     assert!(s0 > 0.5, "a opaca projecta sombra: {s0}");
     assert!(st < 0.9 * s0, "T 0,5 do pincel atenua: {st} × {s0}");
     assert!(s1 < 1e-9, "T 1 do pincel não projecta: {s1}");
@@ -347,24 +460,39 @@ fn o_cartao_nao_tem_os_pesos_da_tinta() {
 
 /// ⭐ **C5: a sombra SOB a tinta e no papel NU usam a mesma conta da Transmission** (`transparencia_a_luz`): uma tinta
 /// só com Transmission 1 (Transparency 0) atenua a sombra que projecta na MESMA razão dos dois lados da orla — sob a
-/// orla parcial (o plano que o `render` escreve) e no papel nu ao lado (`transparencia_de_quem_tapa`).
+/// orla parcial (o plano que o `render` escreve) e no papel nu ao lado (`transparencia_de_quem_tapa`). A sombra SEGUE
+/// O MODO (dono 28/10): Clear glass atenua (0,579 · 0,600 em `ad16f60b75`); Blender = a da opaca nos dois lados, ao
+/// byte (o Cycles: Transmission 1 ÷ opaca 1,00).
 #[test]
 fn a_sombra_da_transmissao_casa_sob_a_tinta_e_no_papel_nu() {
     let g = tinta();
     let (po, so) = render(&g, &OleoReal::default());
-    let (_, sw) = render(&cel(&g, |m| m.transmissao = 1.0), &OleoReal::default());
-    let (mut sob, mut nu) = ([0.0f64; 2], [0.0f64; 2]);
-    for k in 0..W * W {
-        if so[k] < 16 {
-            continue;
+    let razao = |claro: f32| {
+        let (_, sw) = render(
+            &cel(&g, |m| {
+                m.transmissao = 1.0;
+                m.vidro_claro = claro;
+            }),
+            &OleoReal::default(),
+        );
+        let (mut sob, mut nu) = ([0.0f64; 2], [0.0f64; 2]);
+        for k in 0..W * W {
+            if so[k] < 16 {
+                continue;
+            }
+            let lado = if po[k * 4 + 3] > 0 { &mut sob } else { &mut nu };
+            lado[0] += f64::from(sw[k]);
+            lado[1] += f64::from(so[k]);
         }
-        let lado = if po[k * 4 + 3] > 0 { &mut sob } else { &mut nu };
-        lado[0] += f64::from(sw[k]);
-        lado[1] += f64::from(so[k]);
-    }
-    let (rs, rn) = (sob[0] / sob[1], nu[0] / nu[1]);
-    println!("[transmission] sombra Transmission 1 ÷ opaca: sob a tinta {rs:.3} · papel nu {rn:.3}");
-    assert!(sob[1] > 0.0 && nu[1] > 0.0, "controlo: sombra dos dois lados");
-    assert!(rn < 0.97, "o papel nu atenua: {rn}");
-    assert!((rs - rn).abs() < 0.1, "a costura: sob {rs} × nu {rn}");
+        assert!(sob[1] > 0.0 && nu[1] > 0.0, "controlo: sombra dos dois lados");
+        (sob[0] / sob[1], nu[0] / nu[1], sw)
+    };
+    let (rs, rn, _) = razao(1.0);
+    let (bs, bn, sb) = razao(0.0);
+    println!(
+        "[transmission] sombra Transmission 1 ÷ opaca: Clear glass sob a tinta {rs:.3} · papel nu {rn:.3} · Blender {bs:.3} · {bn:.3}"
+    );
+    assert!(rn < 0.97, "Clear glass: o papel nu atenua: {rn}");
+    assert!((rs - rn).abs() < 0.1, "Clear glass: a costura: sob {rs} × nu {rn}");
+    assert_eq!(sb, so, "Blender: a sombra da opaca, sob a tinta e no papel nu");
 }

@@ -14,11 +14,13 @@ const W: usize = 160;
 const H: usize = 100;
 const VENENO: u8 = 7;
 
-fn tela() -> PainterTool {
+fn tela(oleo: bool) -> PainterTool {
     let mut t = PainterTool::default();
     t.set_source(vec![255u8; W * H * 4], W as u32, H as u32);
     t.set_paint_tool_mode("wetpaint");
     t.set_wet_relogio_fixo(true);
+    // Dono 28/10: com tinta com óleo na tela também (a caixa, o Depth e o Gloss são do traço).
+    t.set_wet_oleo_real_ligado(oleo);
     t.set_brush_size_px(10.0);
     t.set_brush_color_srgb8([180, 30, 30]);
     let p = |x: f32, phase| CanvasPointer {
@@ -86,6 +88,8 @@ fn eventos_do_pincel() -> Vec<(String, PanelEvent)> {
     for (nome, id) in [
         ("km_glaze", i::WET_TUNING_KM_GLAZE),
         ("km_mixing", i::WET_TUNING_KM_MIXING),
+        ("paint_texture", i::PAINTER_WETPAINT_PAPER_VISUAL),
+        ("real_oil", i::PAINTER_WETPAINT_OLEO_REAL),
         ("live_water", i::PAINTER_WETPAINT_LIVE_WATER),
         ("tilt_toggle", i::PAINTER_WETPAINT_TILT_TOGGLE),
     ] {
@@ -108,10 +112,16 @@ fn eventos_do_pincel() -> Vec<(String, PanelEvent)> {
     ev
 }
 
-/// ⭐ O GATE: nenhum controlo do pincel, pelo roteador do painel, recompõe a tela.
+/// ⭐ O GATE: nenhum controlo do pincel, pelo roteador do painel, recompõe a tela — com e sem tinta com óleo.
 #[test]
 fn um_controlo_do_pincel_nao_recompoe_a_tela() {
-    let mut t = tela();
+    for oleo in [false, true] {
+        um_controlo_do_pincel_nao_recompoe(oleo);
+    }
+}
+
+fn um_controlo_do_pincel_nao_recompoe(oleo: bool) {
+    let mut t = tela(oleo);
     // Controlo positivo: o detector vê uma recomposição.
     envenena(&mut t);
     t.wet_recomposite_full();
@@ -136,6 +146,6 @@ fn um_controlo_do_pincel_nao_recompoe_a_tela() {
     }
     assert!(
         recompoem.is_empty(),
-        "estes controlos do pincel recompõem a tela: {recompoem:?}"
+        "óleo {oleo}: estes controlos do pincel recompõem a tela: {recompoem:?}"
     );
 }

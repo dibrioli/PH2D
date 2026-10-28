@@ -62,15 +62,11 @@ pub const PAINTER_WETPAINT_SMOOTH_EDGES: NodeId =
     hash_node_id("painter_brush.wetpaint_smooth_edges");
 
 /// **Real Oil** checkbox (Óleo Real, doc 49): a óptica do relevo sobre a mancha (`PainterTool::set_wet_oleo_real`);
-/// desligado de fábrica. Ligado, as cinco linhas de [`PAINTER_WETPAINT_OLEO_FIELDS`] aparecem por baixo.
+/// desligado de fábrica. Ligado, as linhas de [`PAINTER_WETPAINT_OLEO_FIELDS`] aparecem por baixo. O **Depth** e o
+/// **Gloss** SAÍRAM do cartão (dono 28/10): são do pincel (Tuning › Material, `Knob::OilDepth`/`OilGloss`), na célula.
 pub const PAINTER_WETPAINT_OLEO_REAL: NodeId = hash_node_id("painter_brush.wetpaint_oleo_real");
-/// **Depth** (`OleoReal::profundidade`, `0..3`, `1` = a escala medida em W0).
-pub const PAINTER_WETPAINT_OLEO_PROFUNDIDADE: NodeId =
-    hash_node_id("painter_brush.wetpaint_oleo_profundidade");
 /// **Shadow** (`OleoReal::sombra`, `0..1`).
 pub const PAINTER_WETPAINT_OLEO_SOMBRA: NodeId = hash_node_id("painter_brush.wetpaint_oleo_sombra");
-/// **Gloss** (`OleoReal::brilho`, `0..1`).
-pub const PAINTER_WETPAINT_OLEO_BRILHO: NodeId = hash_node_id("painter_brush.wetpaint_oleo_brilho");
 /// **Light height** em GRAUS (`OleoReal::altitude`, em radianos na ferramenta).
 pub const PAINTER_WETPAINT_OLEO_ALTITUDE: NodeId =
     hash_node_id("painter_brush.wetpaint_oleo_altitude");
@@ -101,7 +97,7 @@ pub const PAINTER_WETPAINT_OLEO_MATERIAL: [NodeId; ph2d_wet_paint::oleo_real::N_
     hash_node_id("painter_brush.wetpaint_oleo_mat_raio_subsuperficie"),
 ];
 /// O índice da primeira linha do material em [`PAINTER_WETPAINT_OLEO_FIELDS`].
-pub const PAINTER_WETPAINT_OLEO_MATERIAL_DE: usize = 8;
+pub const PAINTER_WETPAINT_OLEO_MATERIAL_DE: usize = 6;
 /// Os valores PADRÃO das linhas do material (`MaterialCartao::NEUTRO`, a imagem de antes), em `f32` do painel.
 pub const PAINTER_WETPAINT_OLEO_MATERIAL_NEUTRO: [f32; ph2d_wet_paint::oleo_real::N_CAMPOS] = {
     let v = ph2d_wet_paint::oleo_real::MaterialCartao::NEUTRO.valores();
@@ -117,10 +113,8 @@ pub const PAINTER_WETPAINT_OLEO_MATERIAL_NEUTRO: [f32; ph2d_wet_paint::oleo_real
 /// As linhas numéricas do **Real Oil** — fora de [`PAINTER_WETPAINT_FIELDS`] porque só se pintam com o
 /// Óleo Real ligado (aquela lista é «pintada sempre que armado», com gate). Uma lista para o `SetValue`
 /// do painel, o populate e o encaminhamento da ferramenta.
-pub const PAINTER_WETPAINT_OLEO_FIELDS: [NodeId; 16] = [
-    PAINTER_WETPAINT_OLEO_PROFUNDIDADE,
+pub const PAINTER_WETPAINT_OLEO_FIELDS: [NodeId; 14] = [
     PAINTER_WETPAINT_OLEO_SOMBRA,
-    PAINTER_WETPAINT_OLEO_BRILHO,
     PAINTER_WETPAINT_OLEO_ALTITUDE,
     PAINTER_WETPAINT_OLEO_AZIMUTE,
     PAINTER_WETPAINT_OLEO_FENDA,
@@ -145,9 +139,7 @@ pub const PAINTER_WETPAINT_OLEO_FIELDS: [NodeId; 16] = [
 /// Environment light: uma MISTURA (`0` = só a lâmpada, `1` = só o ambiente), por isso `0..1`.
 /// O material (W3): os valores ABSOLUTOS do Principled, `0..1` (a faixa dele); o Subsurface Radius em px de
 /// tela até ao tecto MEDIDO na M1 (`RAIO_SUBSUPERFICIE_MAX`: a CPU do recompor, `oraculo/README.md` §M-SSS).
-pub const PAINTER_WETPAINT_OLEO_FAIXAS: [(f64, f64); 16] = [
-    (0.0, 3.0),
-    (0.0, 1.0),
+pub const PAINTER_WETPAINT_OLEO_FAIXAS: [(f64, f64); 14] = [
     (0.0, 1.0),
     (5.0, 90.0),
     (0.0, 360.0),

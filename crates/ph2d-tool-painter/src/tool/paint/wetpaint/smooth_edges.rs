@@ -328,9 +328,21 @@ impl Suave {
     /// O pigmento que o pixel `(px, py)` mostra: `dele` longe de qualquer borda (o caminho de antes); na
     /// orla com o papel e nos degraus de cor dentro da tinta, a mistura dele com a tinta desfocada.
     pub(super) fn aplica(&self, px: usize, py: usize, dele: ([f32; 3], f32)) -> ([f32; 3], f32) {
+        self.aplica_com(px, py, dele, self.orla)
+    }
+
+    /// [`Self::aplica`] com a orla escolhida POR PÍXEL (dono 28/10: numa tela com óleo, a tinta sem óleo guarda a
+    /// orla de sempre).
+    pub(super) fn aplica_com(
+        &self,
+        px: usize,
+        py: usize,
+        dele: ([f32; 3], f32),
+        orla: bool,
+    ) -> ([f32; 3], f32) {
         let i = (py - self.y0) * self.rw + (px - self.x0);
         let b = self.b[i];
-        let mut peso = if self.orla {
+        let mut peso = if orla {
             4.0 * b * (1.0 - b)
         } else if dele.1 < SS0 {
             // A silhueta é do campo; o píxel SEM tinta dele (a metade de fora da tenda e os vãos sem pigmento da orla
@@ -342,7 +354,7 @@ impl Suave {
         // Dentro da tinta: um DEGRAU de cor — a tinta desfocada a `r` px de cada lado do pixel (num
         // degrau os dois lados diferem; no grão, desfocado, são iguais) e a posição do pixel dentro dele
         // (`u`), com o peso em sino `4·u·(1−u)` como na orla com o papel.
-        let dentro = if self.orla {
+        let dentro = if orla {
             (2.0 * b - 1.0).clamp(0.0, 1.0)
         } else if b >= 1.0 - 1e-6 {
             // A silhueta é do campo: só onde a tenda inteira é tinta.

@@ -76,7 +76,7 @@ fn outro(def: &KnobDef, v: f64) -> f64 {
 
 /// Os controlos do painel do pincel que não são knobs do registo (os factos que a sessão reconcilia).
 type Muda = fn(&mut PainterTool);
-const FACTOS: [(&str, Muda, Muda); 6] = [
+const FACTOS: [(&str, Muda, Muda); 8] = [
     (
         "km_glaze",
         |t| t.paint.wetpaint.km_glaze ^= true,
@@ -106,6 +106,19 @@ const FACTOS: [(&str, Muda, Muda); 6] = [
         "tilt",
         |t| t.paint.wetpaint.tilt_spoke ^= 1,
         |t| t.paint.wetpaint.tilt_spoke ^= 1,
+    ),
+    // A Paint Texture é do TRAÇO (dono 28/10), guardada na célula (`AparenciaCelula::textura`).
+    (
+        "paint_texture",
+        |t| t.paint.wetpaint.paper_visual ^= true,
+        |t| t.paint.wetpaint.paper_visual ^= true,
+    ),
+    // A caixa Real Oil é do TRAÇO (dono 28/10), guardada na célula (`OleoCelula::oleo`); o Depth e o Gloss são knobs
+    // (`oilDepth`, `oilGloss`) e entram pela tabela.
+    (
+        "real_oil",
+        |t| t.set_wet_oleo_real_ligado(t.wet_oleo_real().is_none()),
+        |t| t.set_wet_oleo_real_ligado(t.wet_oleo_real().is_none()),
     ),
 ];
 
@@ -153,8 +166,8 @@ fn mudar_o_painel_do_pincel_nao_muda_a_tinta_pousada() {
     }
 }
 
-/// Os knobs do papel são os três que refazem a folha (o dente e a Texture on Paint moram no cartão Paper, fora do
-/// registo): a excepção do gate é pequena e nomeada.
+/// Os knobs do papel são os três que refazem a folha (o dente mora no cartão Paper, fora do registo; a Paint Texture
+/// é do TRAÇO desde 28/10 — `FACTOS`, cartão Wet Paint): a excepção do gate é pequena e nomeada.
 #[test]
 fn os_knobs_do_papel_sao_os_que_refazem_a_folha() {
     let papel: Vec<_> = KNOB_DEFS
@@ -169,7 +182,7 @@ fn os_knobs_do_papel_sao_os_que_refazem_a_folha() {
 /// de antes fica ao byte.
 #[test]
 fn o_traco_seguinte_usa_o_valor_novo() {
-    let controlos: [(&str, Muda); 3] = [
+    let controlos: [(&str, Muda); 4] = [
         ("paperVisibility", |t| {
             t.paint.wetpaint.knobs.set(Knob::PaperVisibility, 0.2)
         }),
@@ -177,6 +190,8 @@ fn o_traco_seguinte_usa_o_valor_novo() {
             t.paint.wetpaint.knobs.set(Knob::VisualGrain, 2.5)
         }),
         ("km_glaze", |t| t.paint.wetpaint.km_glaze = true),
+        // A tela pinta com ela ligada: desligá-la tira o papel da tinta dos seguintes.
+        ("paint_texture", |t| t.paint.wetpaint.paper_visual = false),
     ];
     // O seguinte cruza o primeiro (o vidrado só morde onde um filme cobre outra tinta).
     let seguinte = |t: &mut PainterTool| {
@@ -216,6 +231,8 @@ fn a_fabrica_nao_aloca_a_aparencia() {
     assert_eq!(f64::from(n.papel), d.get(Knob::PaperVisibility));
     assert_eq!(f64::from(n.grao), d.get(Knob::VisualGrain));
     assert_eq!(n.vidrado, 0.0);
+    assert_eq!(n.textura, 0.0, "a Paint Texture de fábrica é desligada");
+    assert!(!PainterTool::default().paint.wetpaint.paper_visual);
     // A Live Water troca a velatura do filme que o ecrã lê da SESSÃO: hoje as duas são iguais. Se divergirem, a
     // velatura do filme passa a mudar a tinta pousada e tem de ir para a célula (`grid::aparencia`).
     assert_eq!(
@@ -235,7 +252,7 @@ fn a_fabrica_nao_aloca_a_aparencia() {
         "controlo: há tinta"
     );
     assert!(g.aparencia.is_empty(), "a fábrica alocou a aparência");
-    // O custo de quem sai da fábrica: 12 B por célula, contra os bytes que a grade já retém por célula.
+    // O custo de quem sai da fábrica: 16 B por célula (com a Paint Texture do traço, 28/10), contra os bytes que a grade já retém por célula.
     let base = g.bytes_retidos();
     let cells = g.cells;
     t.paint.wetpaint.knobs.set(Knob::PaperVisibility, 0.4);
@@ -250,14 +267,14 @@ fn a_fabrica_nao_aloca_a_aparencia() {
         .engine
         .layers[0]
         .grid;
-    assert_eq!(std::mem::size_of::<AparenciaCelula>(), 12);
+    assert_eq!(std::mem::size_of::<AparenciaCelula>(), 16);
     assert_eq!(
         g.bytes_retidos() - base,
-        12 * cells,
-        "o campo custa 12 B por célula"
+        16 * cells,
+        "o campo custa 16 B por célula"
     );
     eprintln!(
-        "APARENCIA: grade {} B/célula, campo +12 B/célula",
+        "APARENCIA: grade {} B/célula, campo +16 B/célula",
         base as f64 / cells as f64
     );
 }

@@ -604,7 +604,9 @@ pub(super) fn gesto_do_preview(
     };
     // U4 (auditoria W3b): o Óleo Real (o material do pincel) só no quadro FINAL, com a água assente — medido no gate
     // `cada_knob_do_material_muda_o_preview` (perfil smoke): o óleo em cada quadro custava 85 s por preview × 0,7 s.
-    let oleo = t.paint.wetpaint.oleo_real.take();
+    // O Real Oil é do traço (28/10): o traço pousa-o; o composite adia a óptica até ao quadro final.
+    let oleo = t.paint.wetpaint.oleo_real.is_some().then_some(());
+    t.paint.wetpaint.oleo_adiado = oleo.is_some();
     t.on_canvas_pointer(ponto(em(0.0), pressao(0.0), PointerPhase::Down));
     for k in 1..=n {
         if deve_parar() {
@@ -628,7 +630,7 @@ pub(super) fn gesto_do_preview(
             !s.engine.active_grid().has_fluid
         }) || k == AGUA_MAX_TICKS;
         if parou && oleo.is_some() {
-            t.paint.wetpaint.oleo_real = oleo;
+            t.paint.wetpaint.oleo_adiado = false;
             t.wet_recomposite_full();
         }
         if parou || k % TICKS_POR_QUADRO_AGUA == 0 {

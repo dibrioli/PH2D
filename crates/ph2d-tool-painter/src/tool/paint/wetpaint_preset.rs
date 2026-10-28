@@ -84,6 +84,11 @@ const CHAVE_ERASE: &str = "erase";
 /// O **Glaze layering (K-M)** no mapa `engine` (não é knob do registo: é do traço, `km_glaze`). Gravado só LIGADO
 /// (`1`): ausente = desligado, o de fábrica — nenhuma receita de fábrica o liga, e os ficheiros dela ficam ao byte.
 pub(super) const CHAVE_GLAZE: &str = "glazeLayering";
+/// A **Paint Texture** no mapa `engine` (do traço, `paper_visual`, dono 28/10): gravada só LIGADA, como o Glaze —
+/// ausente = desligada, a de fábrica; os ficheiros de fábrica ficam ao byte.
+pub(super) const CHAVE_TEXTURA: &str = "paintTexture";
+/// A caixa **Real Oil** no mapa `engine` (do traço, `oleo_real`, dono 28/10): gravada só LIGADA, como o Glaze.
+pub(super) const CHAVE_OLEO: &str = "realOil";
 const TEXTURA_FORMA: &str = "shape";
 const TEXTURA_GRAO: &str = "grain";
 /// A imagem do Flow da Ragged Edge («Use as Flow»): só a Aquarela a lê. O Paper NÃO viaja — é da obra
@@ -521,6 +526,13 @@ impl PainterTool {
         self.paint.wetpaint.knobs = k;
         // O Glaze é do traço (U1, auditoria W3b): um preset é o pincel inteiro — ausente = o de fábrica (desligado).
         self.paint.wetpaint.km_glaze = prm.engine.get(CHAVE_GLAZE).is_some_and(|v| *v >= 0.5);
+        self.paint.wetpaint.paper_visual = prm.engine.get(CHAVE_TEXTURA).is_some_and(|v| *v >= 0.5);
+        let w = &mut self.paint.wetpaint;
+        w.oleo_real = prm
+            .engine
+            .get(CHAVE_OLEO)
+            .is_some_and(|v| *v >= 0.5)
+            .then_some(w.oleo_real_valores);
 
         // A ferramenta do fluido é do Pincel; a Borracha já está na mão (`pegar_a_ferramenta_do_preset`).
         if let Some(m) = prm.paint_mode.as_deref()
@@ -642,6 +654,16 @@ impl PainterTool {
             p.engine.insert(CHAVE_GLAZE.to_owned(), 1.0);
         } else {
             p.engine.remove(CHAVE_GLAZE);
+        }
+        if self.paint.wetpaint.paper_visual {
+            p.engine.insert(CHAVE_TEXTURA.to_owned(), 1.0);
+        } else {
+            p.engine.remove(CHAVE_TEXTURA);
+        }
+        if self.paint.wetpaint.oleo_real.is_some() {
+            p.engine.insert(CHAVE_OLEO.to_owned(), 1.0);
+        } else {
+            p.engine.remove(CHAVE_OLEO);
         }
         // As linhas da `Dynamics` sem knob só quando o pincel as mexe: o preset sem elas é o de antes, ao byte.
         for l in super::mao::linhas_da_dinamica_do_wet() {

@@ -307,4 +307,10 @@ pub const KNOB_DEFS: [KnobDef; KNOB_COUNT] = [
     // a Transmission e o Relevo do papel (W3b): neutro 0 = a tinta de sempre, ao bit
     k(Knob::Transmission, KnobGroup::Material, "transmission", 0.0, 1.0, 0.01, 0.0, None),
     k(Knob::PaperRelief, KnobGroup::Material, "paperRelief", 0.0, 1.0, 0.01, 0.0, None),
+    // o modo da Transmission (dono 28/10): 0 = Blender (omissão: o preset sem a chave), 1 = Clear glass
+    k(Knob::TransmissionMode, KnobGroup::Material, "transmissionMode", 0.0, 1.0, 1.0, 0.0, None),
+    // Depth e Gloss do Óleo Real (dono 28/10): saíram do cartão Real Oil para o pincel; as faixas e o neutro `1` são
+    // os do cartão de antes (`OleoCelula::NEUTRA`, a imagem de sempre ao byte)
+    k(Knob::OilDepth, KnobGroup::Material, "oilDepth", 0.0, 3.0, 0.01, 1.0, None),
+    k(Knob::OilGloss, KnobGroup::Material, "oilGloss", 0.0, 1.0, 0.01, 1.0, None),
 ];

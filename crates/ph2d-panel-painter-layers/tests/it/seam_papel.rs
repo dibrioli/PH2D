@@ -71,14 +71,13 @@ fn o_seletor_da_cor_do_papel_aplica_o_papel_nos_quatro_meios() {
     }
 }
 
-/// **Um papel, uma secção** (W1e, F2 — dono 09/10: *«o Wet Paint obedece ao Paper do painel»*): a
-/// *Paint Texture* (o papel impresso dentro da tinta, que morava na secção Wet Paint com o nome
-/// «Paper») vive na secção Paper e só no Wet Paint; o Tooth aparece SEM Kind no Wet Paint (lá ele morde
-/// o papel de fábrica — esconder um controlo que age é mentir); e o clique REAL na caixa chega à
-/// ferramenta. Mutações que sangram: pintar a caixa fora do `brush.wetpaint` (aparece no Digital) ·
-/// voltar a esconder o Tooth sem Kind · tirar o id do braço da ferramenta (o clique não liga nada).
+/// A *Paint Texture* (o papel impresso dentro da tinta) só no Wet Paint — desde 28/10 é do TRAÇO e mora no cartão
+/// **Wet Paint** (dono: «por traço e não para o papel todo»); o Tooth aparece SEM Kind no Wet Paint, no cartão Paper
+/// (lá ele morde o papel de fábrica — esconder um controlo que age é mentir); e o clique REAL na caixa chega à
+/// ferramenta. Mutações que sangram: pintar a caixa fora do Wet Paint (aparece no Digital) · voltar a esconder o
+/// Tooth sem Kind · tirar o id do braço da ferramenta (o clique não liga nada).
 #[test]
-fn a_paint_texture_e_o_tooth_do_wet_paint_vivem_na_seccao_paper() {
+fn a_paint_texture_e_do_wet_paint_e_o_tooth_vive_na_seccao_paper() {
     use ph2d_tool_painter::ids::{PAINTER_WATERCOLOR_PAPER_DEPTH, PAINTER_WETPAINT_PAPER_VISUAL};
     for meio in ["0", "1", "2", "3"] {
         let mut tool = PainterTool::default();
@@ -134,4 +133,39 @@ fn a_paint_texture_e_o_tooth_do_wet_paint_vivem_na_seccao_paper() {
             "o clique na Paint Texture não chegou à ferramenta"
         );
     }
+}
+
+/// A Paint Texture mora no cartão **Wet Paint** (dono 28/10: é do traço), e não no Paper: o rect da caixa cai dentro do
+/// cartão Wet Paint, abaixo do cabeçalho dele e acima do cabeçalho do Paper.
+#[test]
+fn a_paint_texture_mora_no_cartao_wet_paint() {
+    use ph2d_tool_painter::ids::{
+        PAINTER_WATERCOLOR_PAPER_SECTION, PAINTER_WETPAINT_PAPER_VISUAL, PAINTER_WETPAINT_SECTION,
+    };
+    let mut tool = PainterTool::default();
+    tool.set_source(vec![255u8; 64 * 64 * 4], 64, 64);
+    tool.handle_panel_event(PanelEvent::SelectOption(PAINTER_BRUSH_MEDIA, "3".into()));
+    set_current_brush(Some(tool.brush_settings()));
+    set_current_dock_shows_layers(false);
+    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut st = PainterLayersPanelState;
+    let vp = Rect::new(0.0, 0.0, 1600.0, 6000.0);
+    let _ = host.paint::<PainterLayersPanel>(&mut st, vp);
+    host.open_all_sections();
+    let p = host.paint::<PainterLayersPanel>(&mut st, vp);
+    let y = |id| {
+        p.iter()
+            .find(|(i, r)| *i == id && r.w > 0.0 && r.h > 0.0)
+            .map(|(_, r)| r.y)
+            .unwrap_or_else(|| panic!("{id:?} não pintado"))
+    };
+    let (wet, caixa, papel) = (
+        y(PAINTER_WETPAINT_SECTION),
+        y(PAINTER_WETPAINT_PAPER_VISUAL),
+        y(PAINTER_WATERCOLOR_PAPER_SECTION),
+    );
+    assert!(
+        wet < caixa && caixa < papel,
+        "a Paint Texture fora do cartão Wet Paint (Wet Paint y={wet}, caixa y={caixa}, Paper y={papel})"
+    );
 }

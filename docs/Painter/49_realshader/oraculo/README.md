@@ -1143,6 +1143,94 @@ Mutações da ronda 3 (perfil dev, por troca de texto com assert e volta; 13/14 
 | A orla do material com o alcance da aparência (2) | 131 das 8 408 células com tinta ficavam NEUTRAS (medido) |
 | Um controlo de espessura | o dono escolheu o vidro claro; a massa já entrou recusada na ronda 1 (`a^8` = preto) |
 
+**Ronda 4 — os dois modos (dono 28/10: «vou preferir o mais escuro do Blender, com segunda opção, sem tirar a atual. A
+sombra do vidro acompanha o modo: o atual ou o novo do Blender»).**
+
+- **O seletor.** Tuning › Material, logo abaixo da Transmission: «Transmission mode» = **Blender** | **Clear glass** — a
+  linha de ESCOLHA da casa (`property_row::paint_choice_row`, o nome na coluna, o grupo segmentado no valor; nunca
+  caixa). Knob `transmissionMode` (`Knob::TransmissionMode`, no FIM do enum; `0..1` passo 1; omissão **0 = Blender**:
+  o preset e a macro sem a chave abrem Blender). Nenhuma receita de fábrica tem Transmission > 0 — os presets de fábrica
+  não mudam. ⚠️ Um preset do artista gravado na ronda 3 com Transmission > 0 (sem a chave) abre agora em Blender. Opção
+  `i` → `SetValue(slider, i)` (a rota da ferramenta é a do slider; ids `wet_tuning_option_id(key, i)`).
+- **Por célula.** `MaterialCelula::vidro_claro` (no FIM; `0` Blender · `1` Clear glass), pousado pelo pincel
+  (`grid::material::do_pincel`), +4 B por célula do campo preguiçoso. **Mistura: pela massa que TRANSMITE**
+  (`massa × transmissao`): a tinta sem Transmission não tem modo a dar (Clear glass sobre tinta opaca fica Clear glass,
+  ao bit); dois a transmitir, a média pesada; nenhum, linear. Escolhida em vez do «modo da maior massa» (um degrau no
+  meio da mistura) — o modo intermédio é uma lei contínua (abaixo). O cartão Real Oil não o tem.
+- **A lei** (`material::filtro(a, claro)`): o filme filtra `a^(2k)`, `k = K_BLENDER + (VIDRO_K − K_BLENDER)·claro`.
+  Clear glass (`claro = 1`) devolve o `vidro(a)` de sempre (ao bit). **Blender: `K_BLENDER = 0,5`, o filtro `a`** (uma
+  passagem da cor) — a lei da ronda 2 (`a²`, `k = 1`) ficava escura de mais (0,118 × 0,187). `transmite(base, a, d, w,
+  claro)` e o difuso do papel sob o filme leem o mesmo filtro.
+- **A sombra segue o modo** (`oleo_real::transparencia_a_luz(t, w, a, claro)`, a MESMA conta sob a tinta e no papel nu,
+  C5): Clear glass = a de antes (`w·L(vidro(a))` atravessa); **Blender: a Transmission não passa luz** (`w·claro = 0` ⇒
+  o Alpha `t` ao bit) — o Cycles dá a sombra da Transmission 1 = a da opaca (1,00).
+- **Calibração** (varredura no MESMO processo: o modo intermédio `m` é o `k` intermédio — `PH2D_OLEO_MODOS`; régua
+  [`transmissao_modos_regua.py`](transmissao_modos_regua.py); Cycles = a saída da ronda 2, a malha não mudou; papel
+  creme Cold 0,6):
+
+  | `k` | 1 (ronda 2) | 0,8 | 0,6 | **0,5** | 0,45 | 0,4 | 0,35 | 0,2 (Clear glass) | Cycles |
+  |---|---|---|---|---|---|---|---|---|---|
+  | L ÷ papel a 1 | 0,118 | 0,129 | 0,156 | **0,183** | 0,203 | 0,229 | 0,264 | 0,460 | 0,187 |
+  | saturação a 1 | 0,701 | 0,711 | 0,700 | **0,674** | 0,653 | 0,624 | 0,585 | 0,385 | 0,577 |
+  | L ÷ papel a 0,5 | 0,191 | 0,197 | 0,210 | **0,223** | 0,233 | 0,246 | 0,264 | 0,362 | 0,257 |
+  | Σ\|Δ\| relativo (L e sat., 0,5 e 1) | 0,87 | 0,81 | 0,59 | **0,33** | 0,31 | 0,37 | 0,51 | — | — |
+
+  `k = 0,5`: L a 1 a −2 % do Cycles (o «mais escuro» do dono) e Σ a 0,02 do mínimo (0,45, já mais claro). Final
+  ([`regua_Transmission.txt`](regua_Transmission.txt) §Ronda 4; folha
+  [`../out/Transmission_modos_folha.jpg`](../out/Transmission_modos_folha.jpg), olhada: Blender azul escuro como o
+  Cycles, Clear glass o vidro claro de antes, a orla a 4×):
+
+  | miolo do Dabber azul, creme | L ÷ papel | saturação | croma | sombra ÷ opaca |
+  |---|---|---|---|---|
+  | Blender 0,5 · Cycles | 0,223 · 0,257 | 0,718 · 0,709 | 145,9 · 138,6 | **1,00 · 1,01** |
+  | Blender 1 · Cycles | **0,183 · 0,187** | 0,674 · 0,577 | 112,6 · 70,8 | **1,00 · 1,00** |
+  | Clear glass 0,5 · 1 (= ronda 3, ao byte) | 0,362 · 0,460 | 0,556 · 0,385 | 117,5 · 72,1 | 0,85 · 0,70 |
+
+  No miolo dos gates do produto (`miolo_e_papel_nu`, `miolo_produto.pgm`): Blender 0,5 0,207 · 0,716 × Cycles
+  0,205 · 0,744; 1 0,171 · 0,670 × 0,144 · 0,631. **Diferença declarada:** a 1 o Cycles é mais cinza (croma 71 × 113,
+  saturação 0,58 × 0,67) — a refracção pela malha alta mostra brilhos brancos do papel (a mesma da ronda 1); um
+  filtro só não acerta L e croma juntos (a varredura: a saturação só desce a 0,58 com `k` 0,35, L 0,264).
+- **Clear glass = `ad16f60b75` AO BYTE**: o binário de testes de `ad16f60b75` (dev, guardado antes da edição) e o de
+  agora escrevem `nos_tr1.ppm`/`nos_tr05.ppm` (antes) = `nos_vc1.ppm`/`nos_vc05.ppm` (agora) com o mesmo md5 (e as
+  variantes sem Transmission, idem); o gate fixa o hash dessas telas.
+- **Gates.** wet-paint (`transmissao_tests.rs`): `a_transmissao_e_o_relevo_do_papel_a_zero_sao_a_imagem_de_antes`
+  (+ Transmission 0 nos dois modos e no intermédio = os bytes de antes; `transmite`/`transparencia_a_luz` a `w = 0` ao
+  bit) · `o_clear_glass_e_a_lei_de_antes_ao_bit` (a conta de `ad16f60b75` escrita à mão × a de agora, grelha) ·
+  `o_modo_blender_e_o_principled_escuro` · `o_modo_mistura_pela_massa_transmissiva` ·
+  `a_transmissao_e_um_vidro_colorido_claro` (agora com o modo 1) · `a_sombra_da_tinta_do_pincel_atravessa_no_papel_nu`
+  (Blender = a opaca, ao bit) · `a_sombra_da_transmissao_casa_sob_a_tinta_e_no_papel_nu` (Clear glass como antes;
+  Blender: o plano da sombra = o da opaca, sob a tinta e no papel nu). tool-painter:
+  `o_modo_blender_casa_com_o_cycles_e_o_clear_glass_e_o_de_antes` (o Cycles no miolo do produto, tolerância medida
+  0,5 ±8 %/±8 %, 1 ±25 %/±10 %; o hash das telas Clear glass) · `o_modo_da_transmissao_fica_na_tinta_pousada` (pintada
+  em Clear glass, o seletor a Blender, recomposta: 0 bytes; controlo > 1000) · `o_material_do_pincel_vai_e_volta_pelo_preset`
+  (+ o modo; ausente = Blender) · `cada_knob_do_material_muda_o_preview` (o modo entra sozinho, pela tabela).
+  wet-tuning: a ordem do Material (`transmissionMode` logo abaixo de `transmission`; só ele é escolha, `0..1` passo 1) ·
+  `seam` (cada opção envia `SetValue(i)`; pinta as opções e nenhum slider) · o censo das chaves (as opções montadas).
+  O `mudar_o_painel_do_pincel_nao_muda_a_tinta_pousada` (parametrizado sobre `KNOB_DEFS`) inclui o knob, mas a tela
+  dele não tem Transmission — vácuo para o modo; quem o vê é o `o_modo_da_transmissao_fica_na_tinta_pousada` (M9).
+  Números dos gates (fixture branca do wet-paint): Transmission 1 L ÷ papel Blender 0,102 × Clear glass 0,324;
+  sombra Transmission 1 ÷ opaca Clear glass sob 0,579 · nu 0,600 (= ronda 3), Blender 1,000 · 1,000.
+
+Mutações da ronda 4 (perfil dev, troca de texto com assert e volta): 12/14 vermelhas.
+
+| mutação | gate que a vê vermelha |
+|---|---|
+| M2 Clear glass = Blender · M8 os `Termos` sem o modo · M11 o `efectivo` sem o modo | `a_transmissao_e_um_vidro_colorido_claro` |
+| M3 Blender = Clear glass (`k = VIDRO_K`) | `o_modo_blender_e_o_principled_escuro` |
+| M4 a luz pelo filme ignora o modo · M5 o `render` com o modo Clear glass fixo | `a_sombra_da_transmissao_casa_sob_a_tinta_e_no_papel_nu` |
+| M6 o papel nu (`transparencia_de_quem_tapa`) com o modo Clear glass fixo | `a_sombra_da_tinta_do_pincel_atravessa_no_papel_nu` |
+| M9 o pincel não pousa o modo | `o_modo_da_transmissao_fica_na_tinta_pousada` |
+| M10 o modo mistura linear | `o_modo_mistura_pela_massa_transmissiva` |
+| M12 o modo fora de baixo da Transmission · M13 a opção envia o índice errado · M14 o modo pintado como slider | wet-tuning: a ordem · `every_row_slider_and_reset_forwards` · `paint_offers_the_table_…` |
+| M1 Clear glass pelo caminho geral (`claro > 1`) — **sobrevive: EQUIVALENTE** | `0,5 + (0,2 − 0,5)·1` dá `0,2` exacto em `f64`: o mesmo `pow` |
+| M7 o difuso do papel sob o filme com `vidro(a)` no lugar do filtro — **sobrevive** | o albedo só entra no multi-ricochete das fendas (`difuso`), 2.ª ordem: abaixo das tolerâncias do gate × Cycles |
+
+| Recusada nesta ronda | porquê |
+|---|---|
+| A lei da ronda 2 (`a²`, `k = 1`) como Blender | L ÷ papel a 1 0,118 × Cycles 0,187 (escura de mais; Σ 0,87 × 0,33) |
+| O «modo da maior massa» na mistura | um degrau a meio da mistura; a média pela massa transmissiva é contínua e dá o modo puro ao bit quando só um transmite |
+| Um 2.º parâmetro (dessaturar a 1) para casar a saturação do Cycles | o Cycles a 1 tem croma 71 × L 0,19: os brilhos brancos da refracção pela malha alta, não um filtro; nenhum `k` acerta L e croma juntos (varredura) |
+
 ## ⛔ Recusas MEDIDAS
 
 | Tentativa | Porque saiu |

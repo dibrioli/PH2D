@@ -10,6 +10,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.wet_tuning.group.wet_effects" => "Wet effects",
         "panel.wet_tuning.group.material" => "Material",
         // Material — o Principled simplificado que o pincel pousa na tinta, por célula (W3, nomes do Blender).
+        // Depth e Gloss do Óleo Real (dono 28/10): saíram do cartão Real Oil — os nomes que o dono já conhece.
+        "panel.wet_tuning.knob.oilDepth" => "Depth",
+        "panel.wet_tuning.knob.oilGloss" => "Gloss",
         "panel.wet_tuning.knob.metallic" => "Metallic",
         "panel.wet_tuning.knob.roughness" => "Roughness",
         "panel.wet_tuning.knob.iorLevel" => "IOR Level",
@@ -21,6 +24,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // W3b: a Transparency é o `1 − Alpha` do Principled (mistura de cobertura); a Transmission, o vidro colorido.
         "panel.wet_tuning.knob.transparency" => "Transparency",
         "panel.wet_tuning.knob.transmission" => "Transmission",
+        // O modo dela (dono 28/10): o do Blender (o Principled, mais escuro; omissão) ou o vidro colorido claro.
+        "panel.wet_tuning.knob.transmissionMode" => "Transmission mode",
+        "panel.wet_tuning.option.transmissionMode.0" => "Blender",
+        "panel.wet_tuning.option.transmissionMode.1" => "Clear glass",
         "panel.wet_tuning.knob.paperRelief" => "Paper Relief",
         "panel.wet_tuning.knob.lockMaterial" => "Lock material (off · on)",
         "panel.wet_tuning.knob.knifeRidge" => "Knife ridge",

@@ -9,7 +9,8 @@ fn com_transparencia(t: &mut PainterTool, v: f64) {
     com_material(t, 8, v);
 }
 
-/// A tinta POUSADA com o peso `k` do material da célula a `v` — 8 Transparency, 9 Transmission, 10 Relevo do papel —
+/// A tinta POUSADA com o peso `k` do material da célula a `v` — 8 Transparency, 9 Transmission, 10 Relevo do papel,
+/// 11 o modo da Transmission (`0` Blender · `1` Clear glass) —
 /// em todas as células de todas as camadas, e a tela recomposta: o mesmo traço como se o pincel o tivesse pintado com
 /// o knob (W3b ronda 3: os três saíram do cartão, são só do pincel; `material_do_pincel_tests` prova que o pincel os
 /// pousa). Assim as medidas comparam a MESMA tinta.
@@ -22,6 +23,7 @@ pub(super) fn com_material(t: &mut PainterTool, k: usize, v: f64) {
                 8 => &mut m.transparencia,
                 9 => &mut m.transmissao,
                 10 => &mut m.relevo_papel,
+                11 => &mut m.vidro_claro,
                 _ => panic!("peso {k}"),
             };
             *alvo = v as f32;
@@ -199,8 +201,12 @@ fn grava_ppm(f: &std::path::Path, px: &[u8], w: u32, h: u32) {
 fn medida_oleo_real_transparencia() {
     let dir =
         std::path::PathBuf::from(std::env::var("PH2D_OLEO_PNG").expect("PH2D_OLEO_PNG=<pasta>"));
-    let (mut t, _) = cena_papel_texturizado(true, 0.6, true);
+    let (mut t, cob) = cena_papel_texturizado(true, 0.6, true);
     let (mut so_papel, _) = cena_papel_texturizado(true, 0.6, false);
+    // O miolo que os gates do produto medem (`miolo_e_papel_nu`): a régua dos modos lê também o Cycles nele.
+    let mut pgm = format!("P5\n{OW} {OH}\n255\n").into_bytes();
+    pgm.extend(miolo_e_papel_nu(&cob).0.iter().map(|&m| if m { 255u8 } else { 0 }));
+    std::fs::write(dir.join("miolo_produto.pgm"), pgm).expect("grava");
     // W3b: `PH2D_OLEO_CREME=1` = o papel creme do smoke do dono (o Cycles lê-o no `papel.ppm`).
     if std::env::var_os("PH2D_OLEO_CREME").is_some() {
         crate::tool::paint::wetpaint::oleo_no_quadro::no_evento(true);
@@ -212,16 +218,20 @@ fn medida_oleo_real_transparencia() {
         crate::tool::paint::wetpaint::oleo_no_quadro::no_evento(false);
     }
     grava_ppm(&dir.join("papel.ppm"), &tela_final(&mut so_papel), OW, OH);
-    // A Transparency (Alpha, 8), a Transmission (9) e o Relevo do papel (10), um de cada vez, os outros a 0.
-    for (nome, k, v) in [
-        ("t0", 8, 0.0),
-        ("t05", 8, 0.5),
-        ("t1", 8, 1.0),
-        ("tr05", 9, 0.5),
-        ("tr1", 9, 1.0),
-        ("rp05", 10, 0.5),
-        ("rp1", 10, 1.0),
+    // A Transparency (Alpha, 8), a Transmission (9) e o Relevo do papel (10), um de cada vez, os outros a 0. A
+    // Transmission no modo Blender (`tr*`, o de omissão) e no Clear glass (`vc*`, o modo 11 a 1).
+    for (nome, k, v, claro) in [
+        ("t0", 8, 0.0, 0.0),
+        ("t05", 8, 0.5, 0.0),
+        ("t1", 8, 1.0, 0.0),
+        ("tr05", 9, 0.5, 0.0),
+        ("tr1", 9, 1.0, 0.0),
+        ("vc05", 9, 0.5, 1.0),
+        ("vc1", 9, 1.0, 1.0),
+        ("rp05", 10, 0.5, 0.0),
+        ("rp1", 10, 1.0, 0.0),
     ] {
+        com_material(&mut t, 11, claro);
         com_material(&mut t, k, v);
         grava_ppm(
             &dir.join(format!("nos_{nome}.ppm")),
@@ -230,6 +240,25 @@ fn medida_oleo_real_transparencia() {
             OH,
         );
         com_material(&mut t, k, 0.0);
+        com_material(&mut t, 11, 0.0);
+    }
+    // A varredura da calibração do modo Blender (`PH2D_OLEO_MODOS=0.1,0.2,…`): o modo intermédio `m` dá o filtro
+    // `a^(2k)` com `k = K_BLENDER + (VIDRO_K − K_BLENDER)·m` — as variantes no MESMO processo.
+    if let Ok(lista) = std::env::var("PH2D_OLEO_MODOS") {
+        for m in lista.split(',').filter_map(|x| x.trim().parse::<f64>().ok()) {
+            com_material(&mut t, 11, m);
+            for (nome, v) in [("05", 0.5), ("1", 1.0)] {
+                com_material(&mut t, 9, v);
+                grava_ppm(
+                    &dir.join(format!("nos_m{m}_{nome}.ppm")),
+                    &tela_final(&mut t),
+                    OW,
+                    OH,
+                );
+            }
+            com_material(&mut t, 9, 0.0);
+            com_material(&mut t, 11, 0.0);
+        }
     }
     let o = ph2d_wet_paint::oleo_real::OleoReal {
         material: ph2d_wet_paint::oleo_real::MaterialCartao::NEUTRO,
@@ -360,3 +389,92 @@ fn o_grao_assado_segue_a_lampada_depois_do_traco() {
         "a tinta pousada seguiu a lâmpada (= a recomposição inteira)"
     );
 }
+
+/// A luminância linear ÷ a do papel e a saturação sRGB `(max − min)/max` médias nas amostras `m` (a régua do
+/// `oraculo/transmissao_modos_regua.py`, sobre o miolo do produto).
+fn luz_e_saturacao(px: &[u8], papel: &[u8], m: &[bool]) -> (f64, f64) {
+    let lin = |p: &[u8]| {
+        let c = [0, 1, 2]
+            .map(|k| ph2d_wet_paint::colorops::transfer::srgb255_to_linear(f64::from(p[k])));
+        0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]
+    };
+    let (mut l, mut s, mut n) = (0.0, 0.0, 0.0);
+    for ((p, q), _) in px
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(papel.as_chunks::<4>().0)
+        .zip(m)
+        .filter(|(_, v)| **v)
+    {
+        let mx = f64::from(*p[..3].iter().max().expect("rgb"));
+        let mn = f64::from(*p[..3].iter().min().expect("rgb"));
+        l += lin(p) / lin(q);
+        s += (mx - mn) / mx.max(1.0);
+        n += 1.0;
+    }
+    (l / n, s / n)
+}
+
+/// O FNV-1a de 64 bits dos bytes da tela.
+fn fnv(px: &[u8]) -> u64 {
+    px.iter().fold(0xcbf2_9ce4_8422_2325, |h, &b| {
+        (h ^ u64::from(b)).wrapping_mul(0x0100_0000_01b3)
+    })
+}
+
+/// ⭐ **Os dois modos da Transmission** (dono 28/10: «vou preferir o mais escuro do Blender, com segunda opção, sem
+/// tirar a atual»), na cena do oráculo sobre o papel CREME. **Blender** casa com o Cycles (Principled Transmission
+/// Weight, a mesma malha; `oraculo/README.md` §Transmission «Ronda 4»): L ÷ papel e saturação no miolo dentro da
+/// tolerância MEDIDA — o Cycles lido NESTE miolo (`miolo_produto.pgm`; 0,5: 0,205 · 0,744; 1: 0,144 · 0,631).
+/// **Clear glass** = a tela de `ad16f60b75` AO BYTE
+/// (o hash da tela que o binário de `ad16f60b75` escreveu — `nos_tr1.ppm`/`nos_tr05.ppm` md5 iguais aos do modo 1).
+#[test]
+fn o_modo_blender_casa_com_o_cycles_e_o_clear_glass_e_o_de_antes() {
+    crate::tool::paint::wetpaint::oleo_no_quadro::no_evento(true);
+    let (mut t, cob) = cena_papel_texturizado(true, 0.6, true);
+    let (mut so_papel, _) = cena_papel_texturizado(true, 0.6, false);
+    for x in [&mut t, &mut so_papel] {
+        x.reconcile_substrate();
+        poe_o_papel(x, CREME);
+        x.reconcile_substrate();
+    }
+    crate::tool::paint::wetpaint::oleo_no_quadro::no_evento(false);
+    let papel = tela_final(&mut so_papel);
+    let (miolo, _) = miolo_e_papel_nu(&cob);
+    let mut tela = |w: f64, claro: f64| {
+        com_material(&mut t, 11, claro);
+        com_material(&mut t, 9, w);
+        let px = tela_final(&mut t);
+        com_material(&mut t, 9, 0.0);
+        com_material(&mut t, 11, 0.0);
+        px
+    };
+    let (b05, b1) = (tela(0.5, 0.0), tela(1.0, 0.0));
+    let (v05, v1) = (tela(0.5, 1.0), tela(1.0, 1.0));
+    let n = |px: &[u8]| luz_e_saturacao(px, &papel, &miolo);
+    let ((lb05, sb05), (lb1, sb1), (lv1, sv1)) = (n(&b05), n(&b1), n(&v1));
+    println!(
+        "[modos] Blender 0,5 L {lb05:.3} sat {sb05:.3} · 1 L {lb1:.3} sat {sb1:.3} (Cycles 0,205 · 0,744 | 0,144 · 0,631) · Clear glass 1 L {lv1:.3} sat {sv1:.3} · hash Clear glass 0,5 {:#x} · 1 {:#x}",
+        fnv(&v05),
+        fnv(&v1)
+    );
+    // As tolerâncias: o erro MEDIDO neste miolo (0,5: L +1 %, sat −4 %; 1: L +19 %, sat +6 %) com folga.
+    for (nome, l, s, (lc, sc), (tl, ts)) in [
+        ("0,5", lb05, sb05, (0.205, 0.744), (0.08, 0.08)),
+        ("1", lb1, sb1, (0.144, 0.631), (0.25, 0.10)),
+    ] {
+        assert!((l / lc - 1.0).abs() <= tl, "Blender {nome}: L {l} × Cycles {lc}");
+        assert!((s / sc - 1.0).abs() <= ts, "Blender {nome}: saturação {s} × Cycles {sc}");
+    }
+    assert!(lb1 < 0.6 * lv1, "Blender mais escuro que o Clear glass: {lb1} × {lv1}");
+    assert_eq!(
+        (fnv(&v05), fnv(&v1)),
+        (CLEAR_GLASS_05, CLEAR_GLASS_1),
+        "Clear glass ≠ a tela de ad16f60b75"
+    );
+}
+
+/// O hash da tela de `ad16f60b75` (a lei do vidro claro) na cena de [`o_modo_blender_casa_com_o_cycles_e_o_clear_glass_e_o_de_antes`].
+const CLEAR_GLASS_05: u64 = 0x41f2_e6a6_379b_7fa6;
+const CLEAR_GLASS_1: u64 = 0xaa52_ebb1_0843_041c;

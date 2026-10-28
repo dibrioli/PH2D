@@ -17,6 +17,10 @@ pub(in crate::tool::paint) struct WetEngineFacts {
     pub(in crate::tool::paint) opacidade: f32,
     /// O «Glaze layering (K-M)»: a lei do ECRÃ, que assentar e re-molhar preservam ([`ph2d_wet_paint::assenta`]).
     pub(in crate::tool::paint) km_glaze: bool,
+    /// A **Paint Texture** (o papel impresso na tinta): do TRAÇO (dono 28/10), pousa na célula (`grid::aparencia`).
+    pub(in crate::tool::paint) textura: bool,
+    /// A caixa **Real Oil**: do TRAÇO (dono 28/10), pousa na célula (`grid::oleo_celula`).
+    pub(in crate::tool::paint) oleo: bool,
     /// O **Tooth** do Paper (BUGS #32) — chega ao motor também no tique, para o papel do PRÓPRIO motor
     /// re-assar quando só ele mexe (o papel do artista re-semeia pela [`PaperKey`]).
     pub(in crate::tool::paint) tooth: f32,
@@ -34,6 +38,8 @@ impl WetEngineFacts {
         tilt: (true, 4, 3),
         km_mixing: false,
         km_glaze: false,
+        textura: false,
+        oleo: false,
         opacidade: 1.0,
         tooth: 1.0,
         agua_viva: false,
@@ -245,6 +251,12 @@ impl WetSession {
             // «Glaze layering»: camadas transparentes — do PINCEL (W3b): pousa na célula (`grid::aparencia`), e o
             // ecrã e as transferências verticais lêem o da célula; a tinta já pousada não muda.
             e.sim.camadas_transparentes = f.km_glaze;
+        }
+        if f.textura != a.textura {
+            e.sim.textura = f.textura;
+        }
+        if f.oleo != a.oleo {
+            e.sim.oleo = f.oleo;
         }
         if f.agua_viva != a.agua_viva {
             e.sim.sim_while_painting = f.agua_viva;

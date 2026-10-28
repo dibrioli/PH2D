@@ -98,10 +98,15 @@ fn every_key_of_this_panel_exists_on_both_sides() {
         "a família montada em runtime tem {montadas} chaves e em 2026-09-17 tinha 19 — ou os knobs \
          encolheram (baixe o piso com o número novo) ou o censo deixou de as ver"
     );
+    // As OPÇÕES de uma linha de escolha (o modo da Transmission, 28/10) também são montadas no `rows.rs`.
+    assert!(
+        rows.contains("format!(\"panel.wet_tuning.option.{}.{i}\""),
+        "a isenção das opções montadas já não descreve o código: o `format!` das opções saiu do `rows.rs`"
+    );
     let orfas: Vec<&String> = c
         .orfas
         .iter()
-        .filter(|k| !k.starts_with(MONTADA_EM_RUNTIME))
+        .filter(|k| !k.starts_with(MONTADA_EM_RUNTIME) && !k.starts_with(OPCAO_MONTADA))
         .collect();
     assert!(
         orfas.is_empty(),
@@ -111,3 +116,5 @@ fn every_key_of_this_panel_exists_on_both_sides() {
 
 /// ⛔⛔ O prefixo da família cujas chaves o painel MONTA em runtime — ver o cabeçalho.
 const MONTADA_EM_RUNTIME: &str = "panel.wet_tuning.knob.";
+/// As opções das linhas de escolha (`rows::CHOICES`), montadas por `format!("panel.wet_tuning.option.{}.{i}")`.
+const OPCAO_MONTADA: &str = "panel.wet_tuning.option.";

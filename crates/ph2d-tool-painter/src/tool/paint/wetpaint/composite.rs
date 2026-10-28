@@ -46,8 +46,9 @@ impl PainterTool {
         #[cfg(test)]
         let camada = camada.filter(|_| !self.sem_vidro);
         let visual = ph2d_wet_paint::render::PigmentVisual {
-            // A Texture on Paint imprime o PAPEL: sem papel escolhido não há o que imprimir (dono 10/10).
-            paper: self.paint.wetpaint.paper_visual && self.paint.brush.paper.is_active(),
+            // A Paint Texture imprime o PAPEL: sem papel escolhido não há o que imprimir (dono 10/10). É do TRAÇO (dono
+            // 28/10): QUEM imprime é a célula (`grid::aparencia::textura`), nunca a caixa de agora.
+            paper: self.paint.brush.paper.is_active(),
             // O relevo da tinta é da tinta (dono 11/10): o knob Emboss decide, com ou sem papel.
             relevo: true,
         };
@@ -71,8 +72,25 @@ impl PainterTool {
             && camada.is_none_or(|c| !self.vidros.contains_key(&c))
             && self.preview_layer_stack_is_trivial()
             && !self.papel_atravessa_vidro();
+        // O Real Oil é do TRAÇO (dono 28/10): a óptica corre quando ALGUMA camada visível tem tinta com óleo (o campo
+        // `grid::oleo` existe), com os números da TELA do cartão — nunca pela caixa de agora.
+        let tem_oleo = !self.paint.wetpaint.oleo_adiado
+            && self.paint.wetpaint.session.as_mut().is_some_and(|s| {
+            s.bring_home();
+            s.engine
+                .layers
+                .iter()
+                .any(|l| l.visible && !l.grid.oleo.is_empty())
+        });
+        #[cfg(test)]
+        let tem_oleo = if super::oleo_plano::lei_da_caixa::get() {
+            self.paint.wetpaint.oleo_real.is_some()
+        } else {
+            tem_oleo
+        };
+        self.paint.wetpaint.oleo_na_tela = tem_oleo;
         // W3b: o papel do documento sob a tinta (a cor que a Transmission tinge) e o dente dele (o Relevo do papel).
-        let oleo = self.paint.wetpaint.oleo_real.map(|mut o| {
+        let oleo = tem_oleo.then_some(self.paint.wetpaint.oleo_real_valores).map(|mut o| {
             o.papel = self.papel.map_or([1.0; 3], |p| {
                 p.map(|c| ph2d_wet_paint::colorops::transfer::srgb255_to_linear(f64::from(c)))
             });
@@ -383,7 +401,9 @@ impl PainterTool {
                 }
                 for cy in cy0..=cy1 {
                     for cx in cx0..=cx1 {
-                        let d = ph2d_wet_paint::oleo_real::grao_do_papel(o, c, cx, cy);
+                        // A tinta sem óleo não mostra o dente do papel do óleo (a fracção dela).
+                        let d = ph2d_wet_paint::oleo_real::grao_do_papel(o, c, cx, cy)
+                            * c.oleo_em(cx, cy);
                         sess.grao[(cy - 1) * gw + cx - 1] =
                             (d.clamp(0.0, 1.0) * 255.0).round() as u8;
                     }
@@ -392,8 +412,49 @@ impl PainterTool {
             _ if !sess.grao.is_empty() => sess.grao = Vec::new(),
             _ => {}
         }
+        // O Smooth Edges numa tela com óleo (dono 28/10): a silhueta amaciada pelo campo é a da tinta COM óleo; a tinta
+        // SEM ele (e o papel à volta só dela) guarda a orla de sempre do Smooth Edges — a tinta sem óleo não muda por
+        // haver óleo noutro sítio. `(cx0, cy0, largura, célula sem óleo)`.
+        let sem_oleo = match (&campo, suave) {
+            (Some((_, c)), true) => {
+                let tinta = |i: usize| {
+                    sess.engine
+                        .layers
+                        .iter()
+                        .any(|l| l.visible && l.grid.sett[i] + l.grid.susp[i] > 0.0)
+                };
+                let s = sess.engine.layers[0].grid.s;
+                let r = (raio / f32::from(ratio)).ceil() as usize + 1;
+                let cw = cx1 + 1 - cx0;
+                let mut v = vec![false; cw * (cy1 + 1 - cy0)];
+                for cy in cy0..=cy1 {
+                    for cx in cx0..=cx1 {
+                        v[(cy - cy0) * cw + cx - cx0] = if tinta(cx + cy * s) {
+                            c.oleo_em(cx, cy) < 0.5
+                        } else {
+                            // O papel segue a tinta à volta: só sem óleo se nenhuma tinta com óleo o rodeia.
+                            let (mut com, mut sem) = (false, false);
+                            for y in cy.saturating_sub(r).max(1)..=(cy + r).min(gh) {
+                                for x in cx.saturating_sub(r).max(1)..=(cx + r).min(gw) {
+                                    if tinta(x + y * s) {
+                                        if c.oleo_em(x, y) < 0.5 {
+                                            sem = true;
+                                        } else {
+                                            com = true;
+                                        }
+                                    }
+                                }
+                            }
+                            sem && !com
+                        };
+                    }
+                }
+                Some((cx0, cy0, cw, v))
+            }
+            _ => None,
+        };
         if oleo.is_none() {
-            // Sem o Óleo Real o campo guardado só ocupava memória (~28 B por célula, 230 MB a 4K).
+            // Sem tinta com óleo na tela o campo guardado só ocupava memória (~28 B por célula, 230 MB a 4K).
             sess.campo_cache = None;
         }
         if let (Some(c), Some(k)) = (proprio.as_ref(), chave) {
@@ -550,9 +611,16 @@ impl PainterTool {
                     };
                     // Smooth Edges: o pigmento que o pixel mostra, com a cobertura da borda alisada (a
                     // fração na COBERTURA premultiplicada — exacta também sobre uma camada transparente).
-                    let (premul, pa) = match &suavizada {
-                        Some(sv) => sv.aplica(px, py, dele),
-                        None => dele,
+                    let (premul, pa) = match (&suavizada, &sem_oleo) {
+                        (Some(sv), Some((sx, sy, sw, so))) => {
+                            let (cx, cy) = ((px / rr).min(gw - 1) + 1, (py / rr).min(gh - 1) + 1);
+                            let sem = cx >= *sx
+                                && cy >= *sy
+                                && so.get((cy - sy) * sw + cx - sx).copied().unwrap_or(false);
+                            sv.aplica_com(px, py, dele, orla || sem)
+                        }
+                        (Some(sv), None) => sv.aplica(px, py, dele),
+                        (None, _) => dele,
                     };
                     // W3b: o dente do papel na tinta (Relevo do papel, Transmission); `d = 0` ao bit.
                     let premul = match &grao {

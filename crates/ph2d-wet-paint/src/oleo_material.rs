@@ -192,6 +192,7 @@ fn irradiancia(
         sob_verniz: 1.0,
         sss: [0.0; 3],
         transmissao: 0.0,
+        vidro_claro: 0.0,
     }
     .e(o)
 }

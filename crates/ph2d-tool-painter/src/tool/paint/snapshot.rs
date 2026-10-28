@@ -455,9 +455,8 @@ impl PainterTool {
             wet_paper_visual: self.paint.wetpaint.paper_visual,
             wet_smooth_edges: self.paint.wetpaint.smooth_edges,
             wet_oleo_real: self.paint.wetpaint.oleo_real.is_some(),
-            wet_oleo_profundidade: self.paint.wetpaint.oleo_real_valores.profundidade as f32,
+            wet_oleo_na_tela: self.paint.wetpaint.oleo_na_tela,
             wet_oleo_sombra: self.paint.wetpaint.oleo_real_valores.sombra as f32,
-            wet_oleo_brilho: self.paint.wetpaint.oleo_real_valores.brilho as f32,
             wet_oleo_altitude_graus: self.paint.wetpaint.oleo_real_valores.altitude.to_degrees()
                 as f32,
             wet_oleo_azimute_graus: self.paint.wetpaint.oleo_real_valores.azimute.to_degrees()

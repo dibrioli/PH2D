@@ -493,11 +493,12 @@ pub struct BrushSettings {
     pub wet_smooth_edges: f32,
     /// **Real Oil** (Óleo Real, doc 49): a caixa ligada.
     pub wet_oleo_real: bool,
+    /// A tela tem tinta com óleo (dono 28/10): os números do cartão Real Oil — que são da TELA — mostram-se também com a
+    /// caixa do pincel desligada.
+    pub wet_oleo_na_tela: bool,
     /// Os knobs do Real Oil nas unidades do painel (os últimos valores, ligada ou não a caixa):
-    /// Depth `0..3`, Shadow `0..1`, Gloss `0..1`, Light height e Light angle em GRAUS.
-    pub wet_oleo_profundidade: f32,
+    /// Shadow `0..1`, Light height e Light angle em GRAUS (o Depth e o Gloss são do pincel desde 28/10: knobs).
     pub wet_oleo_sombra: f32,
-    pub wet_oleo_brilho: f32,
     pub wet_oleo_altitude_graus: f32,
     pub wet_oleo_azimute_graus: f32,
     /// **Crevice shadow** (`0..FENDA_MAX`, `1` = a física) e **Crevice reach** (células, `1..24`) do Real Oil.

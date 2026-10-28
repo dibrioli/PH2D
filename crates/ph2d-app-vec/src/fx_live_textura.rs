@@ -37,7 +37,7 @@ pub(crate) fn sobra(cap: (u32, u32), preciso: (u32, u32)) -> bool {
 /// para o atlas (`COPY_SRC`, `Rgba8Unorm`).
 pub(super) fn textura_mostrada(gpu: &GpuContext, w: u32, h: u32) -> wgpu::Texture {
     gpu.device.create_texture(&wgpu::TextureDescriptor {
-        label: Some("ph2d-app-vec fx mostrada"),
+        label: Some("ph2d-app-vec::fx_live::textura_mostrada"),
         size: wgpu::Extent3d {
             width: w.max(1),
             height: h.max(1),
@@ -64,7 +64,7 @@ pub(super) fn copia_o_que_mostra(
     let mut enc = gpu
         .device
         .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("ph2d-app-vec fx mostra"),
+            label: Some("ph2d-app-vec::fx_live::copia_o_que_mostra"),
         });
     enc.copy_texture_to_texture(
         wgpu::TexelCopyTextureInfo {

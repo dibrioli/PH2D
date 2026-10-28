@@ -665,3 +665,95 @@ fn o_composite_nao_carimba_a_mascara_no_wet() {
         "com o Composite ligado o dual do Wet pinta outra tela"
     );
 }
+
+/// Um recto de 140 px, horizontal ou `vertical`, pela porta do ponteiro; a tela.
+fn recto(mut t: PainterTool, vertical: bool) -> Vec<u8> {
+    let cp = |p: [f32; 2], phase| CanvasPointer {
+        pos: p,
+        pressure: 1.0,
+        tilt: [0.0, 0.0],
+        phase,
+    };
+    let pt = |k: f32| {
+        if vertical {
+            [180.0, 30.0 + k]
+        } else {
+            [60.0 + k, 100.0]
+        }
+    };
+    t.on_canvas_pointer(cp(pt(0.0), PointerPhase::Down));
+    for k in 1..=70 {
+        t.on_canvas_pointer(cp(pt(2.0 * k as f32), PointerPhase::Move));
+        t.on_tick(8.0);
+    }
+    t.on_canvas_pointer(cp(pt(140.0), PointerPhase::Up));
+    t.run_full().0
+}
+
+/// A largura do recto ATRAVÉS dele: o desvio-padrão do perfil de tinta médio dos 60 px do meio (px).
+fn largura_do_recto(px: &[u8], vertical: bool) -> f64 {
+    let ti = tinta(px);
+    let perfil: Vec<f64> = if vertical {
+        (0..W)
+            .map(|x| (70..130).map(|y| f64::from(ti[y * W + x])).sum())
+            .collect()
+    } else {
+        (0..H)
+            .map(|y| (100..160).map(|x| f64::from(ti[y * W + x])).sum())
+            .collect()
+    };
+    let m0: f64 = perfil.iter().sum();
+    let m1: f64 = perfil
+        .iter()
+        .enumerate()
+        .map(|(i, v)| i as f64 * v)
+        .sum::<f64>()
+        / m0;
+    let m2: f64 = perfil
+        .iter()
+        .enumerate()
+        .map(|(i, v)| (i as f64 - m1).powi(2) * v)
+        .sum::<f64>()
+        / m0;
+    m2.sqrt()
+}
+
+/// ⭐ **No Wet a 2.ª ponta modula DENTRO da ponta achatada** (J6x, `Pinceis/exames/canetas_j6.md`): a máscara é uma
+/// faixa isotrópica à volta do caminho; lida onde a tinta pousa, uma 2.ª ponta fina cortava o eixo maior da ponta
+/// achatada à largura do menor e a ponta voltava ao DISCO (a Reed Pen). Lida na pegada da 1.ª
+/// (`PegadaDaPrimeira`), a razão vertical ÷ horizontal com o dual fica a da ponta sem ele.
+#[test]
+fn o_dual_modula_dentro_da_ponta_achatada_no_wet() {
+    let achatada = |dual: bool| {
+        move |t: &mut PainterTool| {
+            t.set_brush_dab_flatten(0.43);
+            t.set_brush_dab_angle(90.0);
+            if dual {
+                t.set_ponta(LinhaDaPonta::DualMode, 1.0);
+                t.set_ponta(LinhaDaPonta::DualSize, 0.3);
+                t.set_ponta(LinhaDaPonta::DualSpacing, 0.1);
+                t.set_ponta(LinhaDaPonta::DualHardness, 0.8);
+            }
+        }
+    };
+    let razao = |dual: bool| {
+        let h = largura_do_recto(
+            &recto(pincel(PaintMedia::WetPaint, achatada(dual)), false),
+            false,
+        );
+        let v = largura_do_recto(
+            &recto(pincel(PaintMedia::WetPaint, achatada(dual)), true),
+            true,
+        );
+        eprintln!(
+            "dual {dual}: horizontal {h:.2} · vertical {v:.2} · razão {:.3}",
+            v / h
+        );
+        v / h
+    };
+    let (sem, com) = (razao(false), razao(true));
+    assert!(
+        (com - sem).abs() < 0.12,
+        "a ponta achatada com o dual: razão {com:.3} contra {sem:.3} sem ele (o disco é 1)"
+    );
+}

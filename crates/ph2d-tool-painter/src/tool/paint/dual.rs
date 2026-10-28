@@ -107,16 +107,25 @@ impl RecorteNoWet {
     /// ⭐ **O canal `padrao` do motor com o recorte**: o que pousa numa célula × `modo(s, m) / s` — DEPOIS do portão do
     /// papel, como o padrão do Shape (a lei B do plano 27), sem mexer na silhueta: recortar a silhueta deixava o motor
     /// pousar a carga do dab inteira no que sobrava (manchas — medido na prancha do pincel seco, 20/10).
+    ///
+    /// ⭐ **A máscara lê-se DENTRO da pegada da 1.ª** (`pegada`, J6x): ela é uma faixa ISOTRÓPICA à volta do caminho,
+    /// do tamanho da ponta REDONDA; lida em `(px, py)` cortava o eixo maior de uma ponta achatada à largura do menor
+    /// e a ponta voltava ao disco (Reed Pen no exame: vertical 32 com o dual × 24 sem, Rebelle 23). Lida no ponto
+    /// da ponta redonda que corresponde a este ([`PegadaDaPrimeira::redonda`]) ela modula a ponta achatada na mesma
+    /// proporção em que modula a redonda — a forma da 1.ª sobrevive. `None` (a ponta redonda) = a leitura de sempre.
     pub(super) fn padrao<'a>(
         &'a self,
         padrao: Option<ph2d_wet_paint::brush::CellFn<'a>>,
         sil: ph2d_wet_paint::brush::CellFn<'a>,
         ratio: u8,
+        pegada: Option<PegadaDaPrimeira>,
     ) -> impl Fn(i32, i32) -> f64 + Sync + 'a {
         let r = f32::from(ratio.max(1));
         move |x, y| {
             let centro = |c: i32| super::wetpaint::grid_map::cell_subsample_px(c, ratio, 0, r);
-            let m = self.m(centro(x), centro(y));
+            let p = [centro(x), centro(y)];
+            let [mx, my] = pegada.map_or(p, |g| g.redonda(p));
+            let m = self.m(mx, my);
             // O Multiply não depende da ponta (`a·m / a = m`): sem reavaliar a silhueta da célula (medido: no Wet
             // a silhueta com o AA é o que pesa).
             let f = if self.modo == DualMode::Multiply {
@@ -131,6 +140,43 @@ impl RecorteNoWet {
             };
             padrao.map_or(1.0, |p| p(x, y)) * f
         }
+    }
+}
+
+/// ⭐ **A pegada achatada da 1.ª ponta num dab** (J6x): o centro, o eixo maior e `1 / menor` — a parte LINEAR do
+/// achatado do pincel (o ângulo, o rotor do dab), sem a caneta deitada (a 2.ª ponta já se deita com a 1.ª,
+/// [`PainterTool::dual_comeca`]) nem a quina (o contorno, não a escala).
+#[derive(Clone, Copy)]
+pub(super) struct PegadaDaPrimeira {
+    centro: [f32; 2],
+    eixo: [f32; 2],
+    inv_menor: f32,
+}
+
+impl PegadaDaPrimeira {
+    /// A pegada achatada do pincel `spec` no dab `d`; `None` sem achatado (a ponta redonda lê a máscara onde está).
+    pub(super) fn do_dab(spec: &ph2d_painter_brush::BrushSpec, d: &Dab) -> Option<Self> {
+        let f = ph2d_painter_brush::FootprintDeform::new(spec.dab_flatten, spec.dab_angle_deg)
+            .rotated_by(spec.dab_rotor(d));
+        let menor = f.minor_fraction();
+        (menor < 1.0).then(|| Self {
+            centro: d.center,
+            eixo: f.frame(),
+            inv_menor: 1.0 / menor,
+        })
+    }
+
+    /// O ponto da ponta REDONDA que corresponde a `p` (px de canvas): o eixo menor esticado a `1 / menor` à volta do
+    /// centro — a orla da ponta achatada cai na orla da redonda.
+    #[inline]
+    fn redonda(self, p: [f32; 2]) -> [f32; 2] {
+        let [c, s] = self.eixo;
+        let d = [p[0] - self.centro[0], p[1] - self.centro[1]];
+        let (u, v) = (d[0] * c + d[1] * s, (-d[0] * s + d[1] * c) * self.inv_menor);
+        [
+            self.centro[0] + u * c - v * s,
+            self.centro[1] + u * s + v * c,
+        ]
     }
 }
 

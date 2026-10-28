@@ -676,7 +676,10 @@ impl PainterTool {
             // silhueta (em pixels), e é assim que o pincel não muda de tamanho
             // quando a razão muda: o mesmo disco, resolvido mais grosso.
             // O dual brush (L6) recorta o que POUSA pelo canal do padrão (depois do portão do papel, `RecorteNoWet`).
-            let pad = dual.as_ref().map(|r| r.padrao(padrao_arg, &sil, ratio));
+            let pad = dual.as_ref().map(|r| {
+                let pegada = super::super::dual::PegadaDaPrimeira::do_dab(&spec, d);
+                r.padrao(padrao_arg, &sil, ratio, pegada)
+            });
             let padrao_arg = pad
                 .as_ref()
                 .map_or(padrao_arg, |p| Some(p as ph2d_wet_paint::brush::CellFn<'_>));

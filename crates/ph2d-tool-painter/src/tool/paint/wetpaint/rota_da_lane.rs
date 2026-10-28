@@ -46,6 +46,11 @@ pub(super) fn esmaece_fino(engine: &ph2d_wet_paint::painter::Engine, brush: &Bru
 /// previous dab centre — the smear/blow displacement source) but
 /// never touch the engine's lane trails.
 ///
+/// ⭐ **Uma GOTA do spray** (`gota`: a marca menor que o pincel, J6 I-11) não casa: é um traço de um dab, que pousa e
+/// devolve a lane ([`solta_a_gota`]). Casada pela distância, a gota de raio `p·r` tinha o limiar da PARTÍCULA, mas o
+/// salto do Jitter é o do PINCEL: quase toda marca nascia uma lane nova, nunca solta — uma janela de rasto (≥ 123²
+/// células × os planos) por marca, ~0,35 MiB cada, ~680 lanes num recto a raio 4 (`exames/aguarela_texturas_j6.md`).
+///
 /// Devolve `(lane, nasceu)`.
 pub(super) fn casa_a_lane(
     sess: &mut WetSession,
@@ -53,16 +58,17 @@ pub(super) fn casa_a_lane(
     brush: &BrushSpec,
     copia: u32,
     wet_tool: WetTool,
+    gota: bool,
 ) -> (usize, bool) {
     let ratio = sess.ratio;
     let [x, y] = d.center;
     let thr = brush.limiar_da_lane(d.radius_px);
     let mut best = thr * thr;
     let mut lane = None;
-    for (i, l) in sess.lanes.iter().enumerate() {
+    for (i, l) in sess.lanes.iter().enumerate().filter(|_| !gota) {
         let (ddx, ddy) = (x - l.pos[0], y - l.pos[1]);
         let d2 = ddx * ddx + ddy * ddy;
-        if l.copia == copia && d2 <= best {
+        if l.copia == copia && !l.livre && d2 <= best {
             best = d2;
             lane = Some(i);
         }
@@ -74,7 +80,11 @@ pub(super) fn casa_a_lane(
             (i, false)
         }
         None => {
-            let i = sess.lanes.len();
+            let i = sess
+                .lanes
+                .iter()
+                .position(|l| l.livre)
+                .unwrap_or(sess.lanes.len());
             if wet_tool.uses_lanes() {
                 // The DAB's colour, not the brush's: Randomize
                 // is already resolved per dab by the stroke
@@ -86,7 +96,7 @@ pub(super) fn casa_a_lane(
                     grid_map::px_to_cell(f64::from(y), ratio),
                 );
             }
-            sess.lanes.push(Lane {
+            let nova = Lane {
                 pos: d.center,
                 ink: d.color,
                 arco: d.arc_len,
@@ -98,10 +108,22 @@ pub(super) fn casa_a_lane(
                 passo: 0.0,
                 raio0: d.radius_px,
                 aberta: false,
-            });
+                livre: false,
+            };
+            match sess.lanes.get_mut(i) {
+                Some(l) => *l = nova,
+                None => sess.lanes.push(nova),
+            }
             (i, true)
         }
     }
+}
+
+/// A GOTA da lane `i` pousou: o que sobra na janela pousa já ([`ph2d_wet_paint::painter::Engine::land_direct_remainders`]
+/// — no fim do traço cairia) e a lane fica livre para a gota seguinte.
+pub(super) fn solta_a_gota(sess: &mut WetSession, i: usize) {
+    sess.engine.land_direct_remainders(&[i]);
+    sess.lanes[i].livre = true;
 }
 
 /// Um dab anda a lane `i` (já casada; `corda` = a distância ao centro anterior dela, `caminho` = o caminho desde ele,

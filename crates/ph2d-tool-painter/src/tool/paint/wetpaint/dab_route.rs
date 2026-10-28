@@ -260,6 +260,8 @@ impl PainterTool {
         if pontas && !virtual_ {
             sess.pincel_do_fecho = Some(*brush);
         }
+        // Cada marca do spray é uma GOTA: um traço de um dab que pousa e solta a lane ([`super::rota_da_lane`]).
+        let gota = marca_do_spray && !erasing && !virtual_ && wet_tool.uses_lanes();
         for (didx, sub_k, passo, d) in sub_dabs.iter().map(|(i, k, p, d)| (*i, *k, *p, d)) {
             let [x, y] = d.center;
             // A lane do dab ([`super::rota_da_lane::casa_a_lane`]); a borracha não tem lanes.
@@ -273,7 +275,7 @@ impl PainterTool {
                 super::rota_da_lane::anda_a_lane(sess, li, corda, caminho, wet_tool);
                 (li, false)
             } else {
-                super::rota_da_lane::casa_a_lane(sess, d, brush, copia[didx], wet_tool)
+                super::rota_da_lane::casa_a_lane(sess, d, brush, copia[didx], wet_tool, gota)
             };
             // The lane's PREVIOUS centre (before this dab updates it) — the
             // direct tools' displacement source; a born lane has none, and
@@ -724,6 +726,9 @@ impl PainterTool {
             if matches!(tampa, Some(None)) || matches!(esbate, Some(None)) {
                 sess.lanes[li].pos = d.center;
                 sess.lanes[li].arco = d.arc_len;
+                if gota {
+                    super::rota_da_lane::solta_a_gota(sess, li);
+                }
                 continue;
             }
             if erasing {
@@ -826,6 +831,9 @@ impl PainterTool {
             }
             sess.lanes[li].pos = d.center;
             sess.lanes[li].arco = d.arc_len;
+            if gota {
+                super::rota_da_lane::solta_a_gota(sess, li);
+            }
         }
         // O PÓ SOLTO (J4 `pastel_carvao`): os grãos do lote, À PARTE do rasto ([`super::po`]); `po = 0`, nada.
         // Os dabs virtuais das pontas rectas não deixam pó: são o traço que NÃO houve.

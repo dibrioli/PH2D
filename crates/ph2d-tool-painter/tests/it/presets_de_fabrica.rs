@@ -17,7 +17,8 @@ use super::receitas_de_fabrica::{
     grao, modo_da_ferramenta, receitas, receitas_dos_meios,
 };
 use super::sonda_gestos::{
-    Relogio, fnv1a, largura_que_se_ve, passa_o_tempo, traco_recto_alto, traco_recto_alto_com,
+    Relogio, fnv1a, largura_da_nuvem, largura_que_se_ve, passa_o_tempo, traco_recto_alto,
+    traco_recto_alto_com,
 };
 use ph2d_brush_presets::{
     Biblioteca, Origem, Parametros, Preset, caminho_relativo, escrever, gravar, ler,
@@ -441,7 +442,17 @@ fn imagem_da_largura(p: &Preset, raio: f32, crua: bool, r: Relogio) -> (Vec<u8>,
             t.set_wet_largura_crua(escala);
         }
     });
-    (px, w, h, largura_que_se_ve)
+    (px, w, h, if espalha(p) { largura_da_nuvem } else { largura_que_se_ve })
+}
+
+/// O pincel ESPALHA marcas (o spray, `spray_count` > 1): a largura que se vê é a da nuvem
+/// ([`super::sonda_gestos::largura_da_nuvem`]). Nenhum preset de fábrica do Wet espalha.
+fn espalha(p: &Preset) -> bool {
+    p.parametros
+        .brush
+        .get("spray_count")
+        .and_then(serde_json::Value::as_u64)
+        .is_some_and(|n| n > 1)
 }
 
 /// **A imagem da largura de uma FERRAMENTA** (J4 `mistura`; uma ferramenta não pinta — no papel branco mede 0): a do que ela

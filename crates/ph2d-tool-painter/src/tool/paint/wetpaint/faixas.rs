@@ -25,6 +25,7 @@ const MORTA: Lane = Lane {
     passo: 0.0,
     raio0: 0.0,
     aberta: true,
+    livre: false,
 };
 
 impl PainterTool {

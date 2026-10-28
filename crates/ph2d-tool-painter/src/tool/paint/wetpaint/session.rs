@@ -430,4 +430,7 @@ pub(super) struct Lane {
     /// O raio do 1.º dab (o corte do início passa `pontas_alem` dele) e se a ABERTURA já pousou.
     pub(super) raio0: f32,
     pub(super) aberta: bool,
+    /// A lane de uma GOTA já pousada ([`super::rota_da_lane::casa_a_lane`]): nunca casa, e a gota seguinte nasce
+    /// neste índice — o rasto dela é reaproveitado em vez de se juntar um por marca do spray.
+    pub(super) livre: bool,
 }

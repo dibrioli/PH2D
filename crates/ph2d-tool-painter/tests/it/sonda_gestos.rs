@@ -222,6 +222,31 @@ pub fn largura_que_se_ve(rgba: &[u8], w: u32, h: u32) -> f32 {
     largura_a(rgba, w, h, 0.25)
 }
 
+/// ⭐ **A largura de uma NUVEM** (o spray, J6 I-11): por coluna o spray tem 0–2 gotas e [`largura_que_se_ve`] lia o
+/// diâmetro de UMA gota — a tabela do Spatter dava largura 63 ao raio do motor 803, e a promessa pintava o traço de
+/// 40 px com o raio 386 (gotas de 30 px a 300 px do traço). Aqui a tinta de TODAS as colunas soma-se por linha, e a
+/// largura é a extensão das linhas com `≥ ¼` do máximo desse perfil (o mesmo limiar, sobre o traço inteiro).
+pub fn largura_da_nuvem(rgba: &[u8], w: u32, h: u32) -> f32 {
+    let perfil: Vec<f32> = (0..h)
+        .map(|y| {
+            (0..w)
+                .map(|x| {
+                    let i = ((y * w + x) * 4) as usize;
+                    rgba[i..i + 3].iter().map(|&v| 255 - v).max().unwrap_or(0) as f32 / 255.0
+                })
+                .sum()
+        })
+        .collect();
+    let m = perfil.iter().copied().fold(0.0f32, f32::max);
+    if m < 0.08 {
+        return 0.0;
+    }
+    let ys: Vec<usize> = (0..perfil.len())
+        .filter(|&y| perfil[y] >= 0.25 * m)
+        .collect();
+    (ys[ys.len() - 1] - ys[0] + 1) as f32
+}
+
 fn largura_a(rgba: &[u8], w: u32, h: u32, fracao: f32) -> f32 {
     let c = |x: u32, y: u32| {
         let i = ((y * w + x) * 4) as usize;

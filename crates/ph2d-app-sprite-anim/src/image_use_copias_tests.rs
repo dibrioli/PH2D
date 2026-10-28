@@ -14,6 +14,23 @@ fn copias(sim: &SimWorld, e: Entity) -> Option<[f32; 2]> {
     }
 }
 
+/// O que o Inspector mostra em «Area» (`None` fora de Region).
+fn area_px(sim: &SimWorld, e: Entity) -> Option<[u32; 2]> {
+    let (db, atlas) = biblioteca();
+    match inspector_use(sim.world(), e, &db, &atlas, PPM).2 {
+        InspectorDraw::Region { px } => Some(px),
+        _ => None,
+    }
+}
+
+/// Os píxeis da imagem que `e` mostra.
+fn imagem_px(sim: &SimWorld, e: Entity) -> [u32; 2] {
+    let (db, atlas) = biblioteca();
+    shown_facts(sim.world(), e, &db, &atlas, PPM)
+        .expect("factos")
+        .px
+}
+
 fn perto(a: [f32; 2], b: [f32; 2]) -> bool {
     a.iter()
         .zip(b)
@@ -48,14 +65,15 @@ fn a_volta_do_dono_devolve_o_repeated_do_passo_1() {
     );
 }
 
-/// ⭐ Toda a família: as 6 trocas (o caminho S→R→A→S→A→R→S passa por cada par ordenado), duas voltas, sobre o
-/// Player (nasce animado), a Platform Low (nasce repetida) e um bloco com a bandeira (parada). Cada uso volta TAL
-/// E QUAL o deixámos; uma repetida nova mostra 1 × 1; a Width que o artista deu fica com ela. A meio da 2.ª volta,
-/// o desfazer (o mundo gravado antes do clique) e o projecto reaberto continuam a mesma lei.
+/// ⭐ Toda a família, os 4 usos (plano GEF 16): as 12 trocas (o caminho S→R→A→G→S→A→R→G→A→S→G→R→S passa por cada
+/// par ordenado; G = Region), duas voltas, sobre o Player (nasce animado), a Platform Low (nasce repetida) e um
+/// bloco com a bandeira (parada). Cada uso volta TAL E QUAL o deixámos; uma repetida nova mostra 1 × 1 e uma região
+/// nova a imagem inteira; a Width e a área que o artista deu ficam com elas. A meio da 2.ª volta, o desfazer (o
+/// mundo gravado antes do clique) e o projecto reaberto continuam a mesma lei.
 #[test]
 fn cada_troca_ida_e_volta_devolve_o_uso_como_estava() {
-    use InspectorImageUse::{Animated as A, Repeated as R, Still as S};
-    let caminho = [R, A, S, A, R, S];
+    use InspectorImageUse::{Animated as A, Region as G, Repeated as R, Still as S};
+    let caminho = [R, A, G, S, A, R, G, A, S, G, R, S];
     let (db, atlas) = biblioteca();
     for (nome, bandeira) in [
         ("Player", false),
@@ -81,8 +99,10 @@ fn cada_troca_ida_e_volta_devolve_o_uso_como_estava() {
             ImageUse::Still => S,
             ImageUse::Repeated => R,
             ImageUse::Animated => A,
+            ImageUse::Region => G,
         };
         let mut largura_dada = false;
+        let mut area_dada = false;
         for volta in 0..2 {
             for (i, &to) in caminho.iter().enumerate() {
                 if to == uso_agora {
@@ -92,7 +112,7 @@ fn cada_troca_ida_e_volta_devolve_o_uso_como_estava() {
                 deixado.insert(chave(de), completo(&sim, e));
                 let antes = instantaneo(&mut sim);
                 assert!(usa(&mut sim, e, to), "{nome} v{volta} {de:?} → {to:?}");
-                if volta == 1 && i == 2 {
+                if volta == 1 && i == 3 {
                     // O desfazer: o mundo gravado antes do clique volta igual, e a volta segue sobre ele.
                     let mut desfeito = reaberto(&antes);
                     let e2 = por_nome(&mut desfeito, nome);
@@ -108,7 +128,7 @@ fn cada_troca_ida_e_volta_devolve_o_uso_como_estava() {
                         "{nome}: refazer"
                     );
                 }
-                if volta == 1 && i == 4 {
+                if volta == 1 && i == 7 {
                     let gravado = instantaneo(&mut sim);
                     sim = reaberto(&gravado);
                     e = por_nome(&mut sim, nome);
@@ -126,7 +146,37 @@ fn cada_troca_ida_e_volta_devolve_o_uso_como_estava() {
                         let c = copias(&sim, e).expect("Width/Height");
                         assert!(perto(c, [1.0, 1.0]), "{nome}: repetida nova {c:?}");
                     }
+                    None if agora == ImageUse::Region => {
+                        let px = area_px(&sim, e).expect("a área à vista");
+                        assert_eq!(
+                            px,
+                            imagem_px(&sim, e),
+                            "{nome}: região nova ≠ a imagem inteira"
+                        );
+                    }
                     None => {}
+                }
+                if agora == ImageUse::Region && !area_dada {
+                    // O artista escolhe a 2.ª célula de cima numa grelha 4 × 2: é isso que tem de voltar.
+                    let [w, h] = imagem_px(&sim, e);
+                    let celula = [w / 4, 0, w / 4, h / 2];
+                    assert!(apply_edit(
+                        sim.world_mut(),
+                        e,
+                        &db,
+                        &atlas,
+                        PPM,
+                        ImageUseEdit::SetRegion {
+                            rect: celula,
+                            grid: [4, 2]
+                        }
+                    ));
+                    assert_eq!(
+                        area_px(&sim, e),
+                        Some([w / 4, h / 2]),
+                        "{nome}: a área dada"
+                    );
+                    area_dada = true;
                 }
                 if agora == ImageUse::Repeated && !largura_dada {
                     // O artista dá-lhe 3 cópias de largura: é isso que tem de voltar.

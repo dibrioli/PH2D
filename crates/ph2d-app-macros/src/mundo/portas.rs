@@ -50,6 +50,7 @@ pub const PORTAS: &[(&str, Porta)] = &[
     ("ph2d::ecs::FlipObjectRef", Recusado(DO_PROJECTO)),
     ("ph2d::ecs::GameCamera", Gravado),
     ("ph2d::ecs::GroupedChildren", Gravado),
+    ("ph2d::ecs::ImageRegion", Gravado),
     ("ph2d::ecs::ImageUseMemory", Gravado),
     ("ph2d::ecs::InstanceOf", Recusado(PREFAB)),
     ("ph2d::ecs::Lifetime", Gravado),

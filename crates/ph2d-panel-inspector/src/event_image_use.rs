@@ -20,6 +20,7 @@ const MAX_COPIAS: f64 = 1.0e4;
 
 pub(crate) fn populate(store: &mut WidgetStore) {
     crate::populate::register_button_ids(store, &ids::INSP_IMAGE_USE);
+    crate::populate::register_button_ids(store, &[ids::INSP_IMAGE_EDIT_REGION]);
     crate::populate::register_button_ids(store, &ids::INSP_IMAGE_FRAME_STEP);
     for id in ids::INSP_IMAGE_TILED_SIZE {
         store.register(
@@ -76,6 +77,14 @@ pub(crate) fn event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
             EditorAction::ImageUseEdit {
                 entity_bits,
                 edit: ImageUseEdit::Use(to),
+            }
+        }
+        WidgetEvent::Click(id)
+            if id == ids::INSP_IMAGE_EDIT_REGION && info.image_use == InspectorImageUse::Region =>
+        {
+            EditorAction::ImageUseEdit {
+                entity_bits,
+                edit: ImageUseEdit::EditRegion,
             }
         }
         // «‹ ›» trocam o quadro de uma parada numa folha, em roda.

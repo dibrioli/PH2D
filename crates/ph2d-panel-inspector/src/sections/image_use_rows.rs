@@ -1,17 +1,19 @@
 //! ⭐ **O uso da imagem à vista** ([plano GEF 15](../../../../docs/GameEngineFuncional/15_uso_da_imagem_a_vista_plano.md)
-//! D1/D2): logo abaixo da linha Image, o seletor «Use» (Still · Repeated · Animated) e, por baixo, só os campos do
-//! uso escolhido — parada: o quadro no ecrã e «‹ n / N ›»; repetida: Width/Height; animada: H/V Frames e a
-//! secção Animation ali mesmo (sem a folha com as células, dono 27/10).
+//! D1/D2): logo abaixo da linha Image, o seletor «Use» (Still · Repeated · Animated · Region) e, por baixo, só os
+//! campos do uso escolhido — parada: o quadro no ecrã e «‹ n / N ›»; repetida: Width/Height; animada: H/V Frames e a
+//! secção Animation ali mesmo (sem a folha com as células, dono 27/10); região (plano GEF 16): «Edit Region…» e o
+//! tamanho da área.
 
 use super::*;
 use ph2d_editor_core::screens::hero::InspectorAnimInfo;
 use ph2d_editor_core::{InspectorDraw, InspectorImageUse};
-use ph2d_i18n::tr;
+use ph2d_i18n::{tr, tr_with};
 
-const USOS: [&str; 3] = [
+const USOS: [&str; 4] = [
     "panel.inspector.image.use_still",
     "panel.inspector.image.use_repeated",
     "panel.inspector.image.use_animated",
+    "panel.inspector.image.use_region",
 ];
 
 /// Pinta o seletor e os campos do uso de `info`; `anim` é a secção Animation (e a animação aberta) de uma sprite
@@ -79,6 +81,36 @@ pub(crate) fn paint_image_use(
         InspectorImageUse::Still => y,
         InspectorImageUse::Repeated => {
             paint_size_rows(scene, text_system, theme, hit_index, store, x, w, y, info)
+        }
+        InspectorImageUse::Region => {
+            y = super::anim_card::button_row(
+                scene,
+                text_system,
+                theme,
+                hit_index,
+                store,
+                x,
+                w,
+                y,
+                ids::INSP_IMAGE_EDIT_REGION,
+                tr("panel.inspector.image.edit_region"),
+            );
+            match info.draw {
+                InspectorDraw::Region { px } => super::rows::aviso(
+                    scene,
+                    text_system,
+                    theme,
+                    x,
+                    w,
+                    y,
+                    &tr_with(
+                        "panel.inspector.image.region_px",
+                        &[("w", &px[0]), ("h", &px[1])],
+                    ),
+                    ColorToken::Text2,
+                ),
+                _ => y,
+            }
         }
         InspectorImageUse::Animated => {
             let sec = super::sprite_pose::seccao(text_system);

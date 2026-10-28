@@ -13,8 +13,8 @@ use ph2d_editor_core::screens::hero::{
 use ph2d_editor_core::zones::Rect;
 use ph2d_editor_core::{ImageUseEdit, InspectorDraw, InspectorImageUse, SpriteFieldEdit};
 use ph2d_panel_inspector::ids::{
-    INSP_ANIM_ROW, INSP_IMAGE_FRAME_STEP, INSP_IMAGE_TILED_SIZE, INSP_IMAGE_USE, INSP_SPRITE_FRAME,
-    INSP_SPRITE_HFRAMES, INSP_SPRITE_VFRAMES,
+    INSP_ANIM_ROW, INSP_IMAGE_EDIT_REGION, INSP_IMAGE_FRAME_STEP, INSP_IMAGE_TILED_SIZE,
+    INSP_IMAGE_USE, INSP_SPRITE_FRAME, INSP_SPRITE_HFRAMES, INSP_SPRITE_VFRAMES,
 };
 use ph2d_panel_inspector::slot_image::{SlotImage, set_current_slot_image};
 use ph2d_panel_inspector::{
@@ -99,7 +99,7 @@ fn y_de(rects: &[(ph2d_a11y::NodeId, Rect)], id: ph2d_a11y::NodeId) -> f32 {
         .unwrap_or_else(|| panic!("{id:?} não pintado"))
 }
 
-/// Gate 1: o seletor pinta os três; cada uso pinta SÓ os seus campos.
+/// Gate 1: o seletor pinta os quatro; cada uso pinta SÓ os seus campos.
 #[test]
 fn cada_uso_pinta_so_os_seus_campos() {
     let tiled = InspectorDraw::Tiled { copies: [2.4, 1.0] };
@@ -141,6 +141,15 @@ fn cada_uso_pinta_so_os_seus_campos() {
             true,
             true,
         ),
+        (
+            InspectorImageUse::Region,
+            [4, 1],
+            InspectorDraw::Region { px: [16, 32] },
+            false,
+            false,
+            false,
+            false,
+        ),
     ] {
         let (_, _, rects) = pintado(&com(uso, grelha, draw));
         let quem = format!("{uso:?} {grelha:?}");
@@ -163,7 +172,46 @@ fn cada_uso_pinta_so_os_seus_campos() {
             "{quem}: o campo Frame saiu"
         );
         assert_eq!(tem(&rects, INSP_ANIM_ROW[0]), animacao, "{quem}: Animation");
+        assert_eq!(
+            tem(&rects, INSP_IMAGE_EDIT_REGION),
+            uso == InspectorImageUse::Region,
+            "{quem}: Edit Region"
+        );
     }
+}
+
+/// ⭐ Plano GEF 16 D1: «Edit Region…» de uma Region chega como `ImageUseEdit::EditRegion`, logo sob o seletor;
+/// fora de Region o mesmo id não age.
+#[test]
+fn edit_region_pede_o_editor() {
+    let info = com(
+        InspectorImageUse::Region,
+        [1, 1],
+        InspectorDraw::Region { px: [100, 100] },
+    );
+    let (mut host, mut state, rects) = pintado(&info);
+    assert!(y_de(&rects, INSP_IMAGE_USE[3]) < y_de(&rects, INSP_IMAGE_EDIT_REGION));
+    InspectorPanel::apply_event(
+        &mut state,
+        &mut host,
+        WidgetEvent::Click(INSP_IMAGE_EDIT_REGION),
+    );
+    assert_eq!(
+        host.drained_actions(),
+        vec![EditorAction::ImageUseEdit {
+            entity_bits: info.entity_bits,
+            edit: ImageUseEdit::EditRegion,
+        }]
+    );
+    // CONTROLO: numa parada o id não age.
+    let info = com(InspectorImageUse::Still, [1, 1], InspectorDraw::Simple);
+    let (mut host, mut state, _) = pintado(&info);
+    InspectorPanel::apply_event(
+        &mut state,
+        &mut host,
+        WidgetEvent::Click(INSP_IMAGE_EDIT_REGION),
+    );
+    assert!(host.drained_actions().is_empty());
 }
 
 /// ⭐ D2: a secção Animation abre ALI — logo abaixo do seletor, antes do Transform e de tudo o resto.

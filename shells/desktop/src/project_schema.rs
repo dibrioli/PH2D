@@ -516,7 +516,18 @@
 /// lê-se com o tipo vivo. Registos: ecs `+1`.
 ///
 /// ⚠️ **A tripla NÃO vê este degrau** — nem a forma do `FlipDoc` nem a da `VecScene` mudam.
-pub(crate) const PROJECT_SCHEMA: u32 = 196;
+///
+/// # `196 → 197` — **o uso Region** (`line/GameEngineFuncional`, plano 16, 2026-10-27)
+///
+/// UM componente registado novo: `ph2d::ecs::ImageRegion` (o marcador do uso e a grelha de snap; a área é o
+/// `SpriteRegion`). O `ImageUseMemory` ganha o lugar `region` no FIM e lê a forma de 3 lugares (o seu
+/// `Deserialize`). ⭐ **COM leitura dos anteriores:** um `196`…`193` lê-se com o tipo vivo. Registos: ecs `+1`.
+///
+/// ⚠️ **A tripla NÃO vê este degrau** — nem a forma do `FlipDoc` nem a da `VecScene` mudam.
+pub(crate) const PROJECT_SCHEMA: u32 = 197;
+
+/// O último degrau sem o `ImageRegion` — a memória do uso com 3 lugares, que se lê com o tipo vivo.
+pub(crate) const PROJECT_SCHEMA_SEM_REGION: u32 = 196;
 
 /// O último degrau sem o `ImageUseMemory` — a mesma forma do actual.
 pub(crate) const PROJECT_SCHEMA_SEM_MEMORIA_DO_USO: u32 = 195;

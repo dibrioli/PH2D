@@ -1,15 +1,17 @@
 //! ⭐ **O USO de uma imagem num objecto** (planos [GEF 13](../../../docs/GameEngineFuncional/13_isolamento_por_uso_plano.md)
 //! D4 e [GEF 15](../../../docs/GameEngineFuncional/15_uso_da_imagem_a_vista_plano.md) D3): parada · repetida (bloco,
-//! fundo) · animada. O seletor «Use» do Inspector escolhe-o; um uso exclui os outros, e por isso «imagem animada
-//! num bloco» deixou de ser um estado que se possa escrever.
+//! fundo) · animada · região ([GEF 16](../../../docs/GameEngineFuncional/16_uso_region_plano.md)). O seletor «Use» do
+//! Inspector escolhe-o; um uso exclui os outros, e por isso «imagem animada num bloco» deixou de ser um estado que se
+//! possa escrever.
 
 use crate::image_choice::{ImageFacts, Slicing, library_facts};
 use ph2d_app_components::asset_index_build::texture_of;
 use ph2d_asset::{AssetDb, AssetId};
 use ph2d_ecs::{
-    AnimationTag, Entity, ImageUseLook, ImageUseMemory, ImageUseState, RepeatMode, ScrollRepeat,
-    SpriteAnimCursor, SpriteAnimFrames, SpriteAnimations, SpriteAnimator, SpriteGrid, SpritePixels,
-    TextureRepeat, TiledDraw, UvTransform, World,
+    AnimationTag, Entity, ImageRegion, ImageUseLook, ImageUseMemory, ImageUseState, RegionLook,
+    RepeatMode, Resource, ScrollRepeat, SpriteAnimCursor, SpriteAnimFrames, SpriteAnimations,
+    SpriteAnimator, SpriteGrid, SpritePixels, SpriteRegion, TextureRepeat, TiledDraw, UvTransform,
+    World,
 };
 use ph2d_editor_core::{ImageUseEdit, InspectorDraw, InspectorImageUse};
 use ph2d_render::Sprite;
@@ -24,6 +26,8 @@ pub enum ImageUse {
     Repeated,
     /// As células da imagem tocam como animação.
     Animated,
+    /// Só uma área da imagem ([`ImageRegion`] + a área no [`SpriteRegion`]).
+    Region,
 }
 
 /// O uso de `e`; `None` se não é uma sprite. Animada ganha (as animações mandam no que se desenha), e um
@@ -33,6 +37,9 @@ pub fn image_use(world: &World, e: Entity) -> Option<ImageUse> {
     world.get::<Sprite>(e)?;
     if world.get::<SpriteAnimations>(e).is_some() || world.get::<SpriteAnimator>(e).is_some() {
         return Some(ImageUse::Animated);
+    }
+    if world.get::<ImageRegion>(e).is_some() {
+        return Some(ImageUse::Region);
     }
     let repete = world.get::<ScrollRepeat>(e).is_some()
         || world.get::<TiledDraw>(e).is_some()
@@ -83,7 +90,7 @@ pub fn make_animated(world: &mut World, e: Entity, facts: ImageFacts) -> bool {
 }
 
 /// ⭐ **A escala a que `e` mostra a imagem** — metros no ecrã por metro nativo, lidos do que ele MOSTRA (a sua
-/// grelha; o ladrilho de um Tiled, de um fundo ou de um UV à mão; senão o tamanho). É o invariante do seletor
+/// grelha ou a sua área; o ladrilho de um Tiled, de um fundo ou de um UV à mão; senão o tamanho). É o invariante do seletor
 /// «Use» (dono 27/10, «mudando entre os modos a imagem ficou gigante»): cada uso deriva o tamanho dela, e por
 /// isso nenhuma troca, nem uma volta inteira, muda o tamanho a que a imagem se vê.
 #[must_use]
@@ -96,10 +103,11 @@ pub fn display_scale(world: &World, e: Entity, facts: ImageFacts) -> [f32; 2] {
         .copied()
         .unwrap_or(SpriteGrid::SINGLE);
     let grelha = [g.hframes.max(1) as f32, g.vframes.max(1) as f32];
+    let area = area_fraction(world, e, facts);
     let uv = world.get::<UvTransform>(e);
     // Por EIXO: uma imagem que o artista achatou continua achatada em qualquer uso.
     std::array::from_fn(|i| {
-        let nativo = facts.native_m[i] / grelha[i];
+        let nativo = facts.native_m[i] / grelha[i] * area[i];
         let visto = match (world.get::<TiledDraw>(e), world.get::<ScrollRepeat>(e), uv) {
             (Some(t), _, _) => t.tile[i],
             (_, Some(r), _) if r.tile[i] > 0.0 => r.tile[i],
@@ -108,6 +116,21 @@ pub fn display_scale(world: &World, e: Entity, facts: ImageFacts) -> [f32; 2] {
         };
         if nativo > 0.0 && visto > 0.0 {
             visto / nativo
+        } else {
+            1.0
+        }
+    })
+}
+
+/// A fracção da imagem que a área ([`SpriteRegion`]) de `e` mostra, por eixo; `1` sem área ou sem os píxeis.
+fn area_fraction(world: &World, e: Entity, facts: ImageFacts) -> [f32; 2] {
+    let Some(r) = world.get::<SpriteRegion>(e) else {
+        return [1.0; 2];
+    };
+    std::array::from_fn(|i| {
+        let w = r.rect[2 + i];
+        if facts.px[i] > 0 && w > 0.0 {
+            w / facts.px[i] as f32
         } else {
             1.0
         }
@@ -165,6 +188,7 @@ fn own_facts(world: &World, e: Entity) -> Option<ImageFacts> {
     let grid = [g.hframes.max(1), g.vframes.max(1)];
     Some(ImageFacts {
         native_m: [size[0] * grid[0] as f32, size[1] * grid[1] as f32],
+        px: [0, 0],
         slicing: (grid[0] * grid[1] > 1).then_some(Slicing {
             grid,
             still_frame: g.frame,
@@ -227,21 +251,36 @@ pub fn set_use(
     };
     let mut memory = world.get::<ImageUseMemory>(e).cloned().unwrap_or_default();
     let deixado = capture(world, e);
-    let guardado = slot(&mut memory, to).take();
-    match guardado {
-        Some(ImageUseState {
-            look: Some(look), ..
-        }) => restore(world, e, look, guardado.as_ref()),
-        _ => {
-            if !fresh(world, e, facts, rgba, to) {
-                return false;
-            }
-            if let Some(st) = guardado.as_ref().filter(|s| s.animations.is_some()) {
-                insert_animation(world, e, st);
+    let regiao_deixada = capture_region(world, e);
+    if cur == ImageUse::Region {
+        // A área é só da Region: as outras mostram a imagem inteira.
+        world.entity_mut(e).remove::<(ImageRegion, SpriteRegion)>();
+    }
+    if let Some(destino) = slot(&mut memory, to) {
+        let guardado = destino.take();
+        match guardado {
+            Some(ImageUseState {
+                look: Some(look), ..
+            }) => restore(world, e, look, guardado.as_ref()),
+            _ => {
+                if !fresh(world, e, facts, rgba, to) {
+                    return false;
+                }
+                if let Some(st) = guardado.as_ref().filter(|s| s.animations.is_some()) {
+                    insert_animation(world, e, st);
+                }
             }
         }
+    } else {
+        match memory.region.take() {
+            Some(look) => restore_region(world, e, look),
+            None => fresh_region(world, e, facts, rgba),
+        }
     }
-    *slot(&mut memory, cur) = Some(deixado);
+    match slot(&mut memory, cur) {
+        Some(lugar) => *lugar = Some(deixado),
+        None => memory.region = regiao_deixada,
+    }
     world.entity_mut(e).insert(memory);
     if let Some(depois) = world.get::<Sprite>(e).map(|s| s.size) {
         crate::tiled::follow_auto_collider(world, e, antes, depois);
@@ -249,13 +288,67 @@ pub fn set_use(
     true
 }
 
-/// O lugar do uso `u` na memória.
-fn slot(memory: &mut ImageUseMemory, u: ImageUse) -> &mut Option<ImageUseState> {
+/// O lugar do uso `u` na memória; `None` para a Region, que guarda um [`RegionLook`] em `memory.region`.
+fn slot(memory: &mut ImageUseMemory, u: ImageUse) -> Option<&mut Option<ImageUseState>> {
     match u {
-        ImageUse::Still => &mut memory.still,
-        ImageUse::Repeated => &mut memory.repeated,
-        ImageUse::Animated => &mut memory.animated,
+        ImageUse::Still => Some(&mut memory.still),
+        ImageUse::Repeated => Some(&mut memory.repeated),
+        ImageUse::Animated => Some(&mut memory.animated),
+        ImageUse::Region => None,
     }
+}
+
+/// O que a Region de agora de `e` tem; `None` se `e` não está em Region.
+fn capture_region(world: &World, e: Entity) -> Option<RegionLook> {
+    Some(RegionLook {
+        size: world.get::<Sprite>(e)?.size,
+        area: world.get::<SpriteRegion>(e).copied(),
+        cut: *world.get::<ImageRegion>(e)?,
+    })
+}
+
+/// `e` passa a mostrar só uma área, sem repetir nem animar.
+fn enter_region(
+    world: &mut World,
+    e: Entity,
+    size: [f32; 2],
+    area: Option<SpriteRegion>,
+    cut: ImageRegion,
+) {
+    stop_animating(world, e);
+    let mut ent = world.entity_mut(e);
+    ent.remove::<(
+        TextureRepeat,
+        UvTransform,
+        TiledDraw,
+        SpriteGrid,
+        SpriteRegion,
+    )>();
+    if let Some(mut s) = ent.get_mut::<Sprite>() {
+        s.size = size;
+    }
+    if let Some(a) = area {
+        ent.insert(a);
+    }
+    ent.insert(cut);
+}
+
+/// A Region guardada volta tal e qual.
+fn restore_region(world: &mut World, e: Entity, look: RegionLook) {
+    enter_region(world, e, look.size, look.area, look.cut);
+}
+
+/// Uma Region nova: a imagem INTEIRA à [`display_scale`] de agora (plano GEF 16 D1), e a grelha de snap que a
+/// imagem traz ou que a transparência propõe (sem proposta, 1 × 1 = ao píxel).
+fn fresh_region(world: &mut World, e: Entity, facts: ImageFacts, rgba: Option<(u32, u32, &[u8])>) {
+    let k = display_scale(world, e, facts);
+    let grid = facts
+        .slicing
+        .map(|s| s.grid)
+        .or_else(|| rgba.and_then(|(w, h, px)| proposed_grid(px, w, h)))
+        .unwrap_or([1, 1]);
+    let size = [facts.native_m[0] * k[0], facts.native_m[1] * k[1]];
+    enter_region(world, e, size, None, ImageRegion { grid });
 }
 
 /// O que o uso de agora de `e` tem.
@@ -327,6 +420,10 @@ fn fresh(
 ) -> bool {
     let k = display_scale(world, e, facts);
     match to {
+        ImageUse::Region => {
+            fresh_region(world, e, facts, rgba);
+            true
+        }
         ImageUse::Animated => to_animated(world, e, facts, rgba),
         ImageUse::Still => {
             stop_animating(world, e);
@@ -377,15 +474,90 @@ pub fn inspector_use(
     let uso = match image_use(world, e) {
         Some(ImageUse::Animated) => InspectorImageUse::Animated,
         Some(ImageUse::Repeated) => InspectorImageUse::Repeated,
+        Some(ImageUse::Region) => InspectorImageUse::Region,
         _ => InspectorImageUse::Still,
     };
-    let n = match shown_facts(world, e, db, atlas, ppm) {
+    let facts = shown_facts(world, e, db, atlas, ppm);
+    let n = match facts {
         Some(f) => cells(f),
         None => world
             .get::<SpriteGrid>(e)
             .map_or(1, |g| g.hframes.max(1) * g.vframes.max(1)),
     };
-    (uso, n, crate::tiled::draw_of(world, e))
+    let draw = if uso == InspectorImageUse::Region {
+        InspectorDraw::Region {
+            px: region_px(world, e, facts.map_or([0, 0], |f| f.px)),
+        }
+    } else {
+        crate::tiled::draw_of(world, e)
+    };
+    (uso, n, draw)
+}
+
+/// Os píxeis da área que `e` mostra: o [`SpriteRegion`], senão a imagem inteira (`image_px`).
+#[must_use]
+pub fn region_px(world: &World, e: Entity, image_px: [u32; 2]) -> [u32; 2] {
+    world.get::<SpriteRegion>(e).map_or(image_px, |r| {
+        [r.rect[2].round() as u32, r.rect[3].round() as u32]
+    })
+}
+
+/// ⭐ **O OK do editor de Region** (plano GEF 16 D2): `e` passa a mostrar a área `rect` (`[x, y, w, h]`, px da
+/// imagem `facts`) com a grelha de snap `grid`, à MESMA [`display_scale`] (nenhuma área muda a escala). A área fica
+/// dentro da imagem e com pelo menos 1 px. O collider automático segue. `false` fora de Region ou se nada mudou.
+pub fn set_region(
+    world: &mut World,
+    e: Entity,
+    facts: ImageFacts,
+    rect: [u32; 4],
+    grid: [u32; 2],
+) -> bool {
+    if image_use(world, e) != Some(ImageUse::Region) || facts.px[0] == 0 || facts.px[1] == 0 {
+        return false;
+    }
+    let Some(antes) = world.get::<Sprite>(e).map(|s| s.size) else {
+        return false;
+    };
+    let rect = clamp_area(rect, facts.px);
+    let k = display_scale(world, e, facts);
+    let size: [f32; 2] =
+        std::array::from_fn(|i| facts.native_m[i] * rect[2 + i] as f32 / facts.px[i] as f32 * k[i]);
+    let area = SpriteRegion::for_atlas(rect.map(|v| v as f32));
+    let cut = ImageRegion {
+        grid: [grid[0].max(1), grid[1].max(1)],
+    };
+    let w = world;
+    if w.get::<SpriteRegion>(e) == Some(&area) && w.get::<ImageRegion>(e) == Some(&cut) {
+        return false;
+    }
+    enter_region(w, e, size, Some(area), cut);
+    crate::tiled::follow_auto_collider(w, e, antes, size);
+    true
+}
+
+/// `rect` dentro de uma imagem de `px` píxeis, com pelo menos 1 px de lado.
+#[must_use]
+pub fn clamp_area(rect: [u32; 4], px: [u32; 2]) -> [u32; 4] {
+    let x = rect[0].min(px[0].saturating_sub(1));
+    let y = rect[1].min(px[1].saturating_sub(1));
+    [
+        x,
+        y,
+        rect[2].clamp(1, px[0] - x),
+        rect[3].clamp(1, px[1] - y),
+    ]
+}
+
+/// As sprites cujo editor de Region alguém pediu neste quadro («Edit Region», ou uma Region nova).
+#[derive(Resource, Default, Debug)]
+pub struct RegionEditorRequests(pub Vec<u64>);
+
+/// Pede o editor de Region de `e`.
+pub fn request_region_editor(world: &mut World, e: Entity) {
+    world
+        .get_resource_or_init::<RegionEditorRequests>()
+        .0
+        .push(e.to_bits());
 }
 
 /// ⭐ **Uma edição do uso da imagem que `e` mostra** — o seletor «Use» e Width/Height. `false` se nada mudou.
@@ -404,11 +576,31 @@ pub fn apply_edit(
                 InspectorImageUse::Still => ImageUse::Still,
                 InspectorImageUse::Repeated => ImageUse::Repeated,
                 InspectorImageUse::Animated => ImageUse::Animated,
+                InspectorImageUse::Region => ImageUse::Region,
             };
             let asset = shown_id(world, e, atlas).and_then(|id| db.get(&id));
             let px = asset.as_ref().and_then(|a| a.image_rgba8());
             let rgba = px.as_ref().map(|(w, h, p)| (*w, *h, &p[..]));
-            set_use(world, e, facts, rgba, to)
+            let nova = to == ImageUse::Region
+                && world
+                    .get::<ImageUseMemory>(e)
+                    .is_none_or(|m| m.region.is_none());
+            let mudou = set_use(world, e, facts, rgba, to);
+            // Uma Region nova é a imagem inteira: o editor abre-se sozinho para escolher a área.
+            if mudou && nova {
+                request_region_editor(world, e);
+            }
+            mudou
+        }
+        ImageUseEdit::SetRegion { rect, grid } => match facts {
+            Some(f) => set_region(world, e, f, rect, grid),
+            None => false,
+        },
+        ImageUseEdit::EditRegion => {
+            if image_use(world, e) == Some(ImageUse::Region) {
+                request_region_editor(world, e);
+            }
+            false
         }
         ImageUseEdit::Width(n) => crate::tiled::set_tiled_side(world, e, 0, n),
         ImageUseEdit::Height(n) => crate::tiled::set_tiled_side(world, e, 1, n),

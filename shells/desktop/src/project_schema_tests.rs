@@ -321,7 +321,9 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // `+1`, espelhos `0`); `194`/`193` lêem-se com o tipo vivo. A tripla NÃO vê este degrau.
         // ⚠️ **`196` em 2026-10-27** (`line/GameEngineFuncional`, plano 15) — o `ImageUseMemory` REGISTADO
         // (ECS `+1`, espelhos `0`); `195`/`194`/`193` lêem-se com o tipo vivo. A tripla NÃO vê este degrau.
-        (196, 13, 23),
+        // ⚠️ **`197` em 2026-10-27** (`line/GameEngineFuncional`, plano 16) — o `ImageRegion` REGISTADO (ECS
+        // `+1`, espelhos `0`); `196`…`193` lêem-se com o tipo vivo. A tripla NÃO vê este degrau.
+        (197, 13, 23),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

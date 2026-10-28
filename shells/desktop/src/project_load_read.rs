@@ -56,9 +56,10 @@ impl crate::App {
         let antigo = ver <= crate::project_schema::PROJECT_SCHEMA_TRACO_V22;
         let _traco_v22 = antigo.then(ph2d_vec_scene::StrokeLayoutV22::enter);
         let (mut file, migrated_counter) = match ver {
-            // ⭐ **193 → 194 → 195 → 196: as animações do personagem, o `TiledDraw`, a memória do uso da
-            // imagem** — um componente novo cada, a mesma forma.
+            // ⭐ **193 → … → 197: as animações do personagem, o `TiledDraw`, a memória do uso da imagem, o
+            // `ImageRegion`** — um componente novo cada, a mesma forma.
             PROJECT_SCHEMA
+            | crate::project_schema::PROJECT_SCHEMA_SEM_REGION
             | crate::project_schema::PROJECT_SCHEMA_SEM_MEMORIA_DO_USO
             | crate::project_schema::PROJECT_SCHEMA_SEM_TILED_DRAW
             | crate::project_schema::PROJECT_SCHEMA_SEM_ANIMACOES_DO_PERSONAGEM => {

@@ -561,6 +561,8 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     // O que cada uso da imagem guarda enquanto o objecto usa outro (plano GEF 15, dono 27/10): sem o registo o
     // Desfazer e o projecto reaberto perdiam a configuração do uso que o artista deixou.
     reg.register_default::<crate::ImageUseMemory>("ph2d::ecs::ImageUseMemory");
+    // O uso Region (plano GEF 16): o marcador e a grelha de snap; a área é o `SpriteRegion`.
+    reg.register_default::<crate::ImageRegion>("ph2d::ecs::ImageRegion");
     // ⭐⭐⭐ O TIMER (TOP-20 #2, 2026-09-08) -- os timers nomeados de uma entidade. Sem o registro,
     // o artista autora uma duracao, um nome de sinal e o autostart, grava o projeto, reabre, e o
     // objecto volta MUDO: nada some da tela, nada da erro, e o jogo simplesmente deixa de

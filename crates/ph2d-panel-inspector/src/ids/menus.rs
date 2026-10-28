@@ -12,14 +12,18 @@ use ph2d_tool_registry::hash_node_id;
 /// `Sprite.size` against the current `ProjectSettings.pixels_per_meter`.
 pub const INSP_RENDER_SOURCE_REIMPORT: NodeId = hash_node_id("insp_render_source_reimport");
 
-/// ⭐ O seletor **Use** sob a linha Image (plano GEF 15 D1): o grupo e as três opções, pela ordem de
+/// ⭐ O seletor **Use** sob a linha Image (planos GEF 15 D1 e 16 D1): o grupo e as quatro opções, pela ordem de
 /// `InspectorImageUse::ALL`.
 pub const INSP_IMAGE_USE_GROUP: NodeId = hash_node_id("insp_image_use_group");
-pub const INSP_IMAGE_USE: [NodeId; 3] = [
+pub const INSP_IMAGE_USE: [NodeId; 4] = [
     hash_node_id("insp_image_use_still"),
     hash_node_id("insp_image_use_repeated"),
     hash_node_id("insp_image_use_animated"),
+    hash_node_id("insp_image_use_region"),
 ];
+
+/// **Edit Region…** — abre o editor da área de uma sprite em Region (plano GEF 16 D2).
+pub const INSP_IMAGE_EDIT_REGION: NodeId = hash_node_id("insp_image_edit_region");
 
 /// «‹ ›» do quadro de uma imagem parada numa folha (plano GEF 15, smoke do dono 27/10).
 pub const INSP_IMAGE_FRAME_STEP: [NodeId; 2] = [

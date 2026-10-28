@@ -334,6 +334,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.image.use_still" => "Still",
         "panel.inspector.image.use_repeated" => "Repeated",
         "panel.inspector.image.use_animated" => "Animated",
+        "panel.inspector.image.use_region" => "Region",
+        // O uso Region (plano GEF 16): o botão que abre o editor da área e o tamanho dela.
+        "panel.inspector.image.edit_region" => "Edit Region\u{2026}",
+        "panel.inspector.image.region_px" => "Area: {w} \u{d7} {h} px",
         "panel.inspector.image.use_background" => {
             "Use: Repeated \u{2014} a background layer always repeats."
         }

@@ -138,6 +138,7 @@ fn trocar_o_uso_e_desfazer_devolve_tudo() {
                     InspectorImageUse::Still => ImageUse::Still,
                     InspectorImageUse::Repeated => ImageUse::Repeated,
                     InspectorImageUse::Animated => ImageUse::Animated,
+                    InspectorImageUse::Region => ImageUse::Region,
                 })
             );
             // As regras ficam (dormem sem animações) — voltar a animada devolve-as.
@@ -397,6 +398,27 @@ fn nenhuma_troca_de_uso_muda_a_escala() {
                         if agora == ImageUse::Still {
                             assert_eq!(g, SpriteGrid::SINGLE, "{quem}: parada nova com corte");
                         }
+                        if agora == ImageUse::Region {
+                            // Uma Region nova é a imagem INTEIRA, sem corte (plano GEF 16 D1).
+                            assert_eq!(g, SpriteGrid::SINGLE, "{quem}: região nova com corte");
+                            assert_eq!(
+                                w.get::<SpriteRegion>(e),
+                                None,
+                                "{quem}: região nova com área"
+                            );
+                        }
+                        if agora != ImageUse::Region {
+                            assert_eq!(
+                                w.get::<ImageRegion>(e),
+                                None,
+                                "{quem}: {agora:?} marcada Region"
+                            );
+                            assert_eq!(
+                                w.get::<SpriteRegion>(e),
+                                None,
+                                "{quem}: {agora:?} com a área"
+                            );
+                        }
                         if agora == ImageUse::Repeated {
                             // A IMAGEM INTEIRA, nunca uma célula da folha (dono 27/10).
                             assert_eq!(g, SpriteGrid::SINGLE, "{quem}: repetida com corte");
@@ -406,7 +428,7 @@ fn nenhuma_troca_de_uso_muda_a_escala() {
                                 "{quem}: ladrilho {tile:?} ≠ {mostra:?}"
                             );
                         }
-                        // Os três usos novos: o tamanho é o que mostram (a repetida, UM ladrilho).
+                        // Os usos novos: o tamanho é o que mostram (a repetida, UM ladrilho).
                         assert!(
                             perto(size[0], mostra[0]) && perto(size[1], mostra[1]),
                             "{quem}: {agora:?} nova {size:?} ≠ {mostra:?}"
@@ -418,7 +440,8 @@ fn nenhuma_troca_de_uso_muda_a_escala() {
     }
 }
 
-/// Tudo o que um uso pode ter: [`Estado`], o corte, o UV, o *Repeat*, os quadros e o passo.
+/// Tudo o que um uso pode ter: [`Estado`], o corte, o UV, o *Repeat*, os quadros e o passo, a área e a grelha
+/// de snap da Region.
 type Completo = (
     Estado,
     Option<SpriteGrid>,
@@ -426,6 +449,8 @@ type Completo = (
     Option<TextureRepeat>,
     Option<SpriteAnimFrames>,
     Option<SpriteAnimCursor>,
+    Option<SpriteRegion>,
+    Option<ImageRegion>,
 );
 
 fn completo(sim: &SimWorld, e: Entity) -> Completo {
@@ -437,6 +462,8 @@ fn completo(sim: &SimWorld, e: Entity) -> Completo {
         w.get::<TextureRepeat>(e).copied(),
         w.get::<SpriteAnimFrames>(e).cloned(),
         w.get::<SpriteAnimCursor>(e).copied(),
+        w.get::<SpriteRegion>(e).copied(),
+        w.get::<ImageRegion>(e).copied(),
     )
 }
 
@@ -614,3 +641,6 @@ fn um_bloco_que_repete_recebe_a_imagem_inteira() {
 
 #[path = "image_use_copias_tests.rs"]
 mod copias;
+
+#[path = "image_use_region_tests.rs"]
+mod region;

@@ -617,6 +617,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "component.sprite_anim_cursor.name" => "Animation Frame Step",
         "component.sprite_anim_frames.name" => "Animation Frames",
         "component.image_use_memory.name" => "Image Use Memory",
+        "component.image_region.name" => "Image Region",
         "component.anim_rules.name" => "Animation Rules",
         "component.sprite_region.name" => "Region",
         "component.sprite_sheet_frame.name" => "Sheet Frame",

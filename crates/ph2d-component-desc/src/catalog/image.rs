@@ -182,6 +182,12 @@ pub const DESCS: &[D] = &[
     )
     .coded("anchor_visibility")
     .row_of("ph2d::ecs::NamedAnchorList"),
+    // O uso Region (plano GEF 16): o seletor «Use» e o editor de Region escrevem-no; a área é o `SpriteRegion`.
+    D::machinery(
+        "ph2d::ecs::ImageRegion",
+        "component.image_region.name",
+        C::Image,
+    ),
     // O que cada uso da imagem guarda enquanto o objecto usa outro (plano GEF 15): o seletor «Use» escreve-o.
     D::machinery(
         "ph2d::ecs::ImageUseMemory",

@@ -406,11 +406,13 @@ pub enum InspectorImageUse {
     Repeated,
     /// As células tocam: a secção Animation abre sob o seletor.
     Animated,
+    /// Só uma área da imagem, escolhida no editor de Region (plano GEF 16).
+    Region,
 }
 
 impl InspectorImageUse {
     /// A ordem do seletor «Use».
-    pub const ALL: [Self; 3] = [Self::Still, Self::Repeated, Self::Animated];
+    pub const ALL: [Self; 4] = [Self::Still, Self::Repeated, Self::Animated, Self::Region];
 }
 
 /// ⭐ Como a sprite enche o seu tamanho (plano GEF 14 D5): a linha **Tiled** e, ligada, Width/Height.
@@ -423,14 +425,21 @@ pub enum InspectorDraw {
     Simple,
     /// A imagem repete-se: `copies` cópias da imagem inteira em cada eixo (dono 27/10: 1 × 1 = uma cópia).
     Tiled { copies: [f32; 2] },
+    /// Só uma área da imagem: o tamanho dela em píxeis da imagem (plano GEF 16).
+    Region { px: [u32; 2] },
 }
 
 /// ⭐ **Uma edição do USO da imagem** (planos GEF 14 D5 e 15 D3): o seletor «Use» sob a linha Image e o
 /// tamanho de uma sprite que repete.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum ImageUseEdit {
-    /// O seletor **Still | Repeated | Animated**.
+    /// O seletor **Still | Repeated | Animated | Region**.
     Use(InspectorImageUse),
+    /// **Edit Region**: abre o editor da área (plano GEF 16 D2).
+    EditRegion,
+    /// O **OK** do editor de Region: a área `rect` (`[x, y, w, h]` em px da imagem) e a grelha de snap `grid`
+    /// (colunas × linhas).
+    SetRegion { rect: [u32; 4], grid: [u32; 2] },
     /// **Width** de uma sprite que repete, em cópias da imagem.
     Width(f32),
     /// **Height** de uma sprite que repete, em cópias da imagem.

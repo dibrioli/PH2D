@@ -249,7 +249,9 @@ fn register_ecs_components_populates_registry() {
     //   plano 14). Quem integrar conta o DELTA, nunca o literal.
     // ⚠️ **2026-10-27: `111` -> `112`, delta +1** -- o `ImageUseMemory` (cada uso da imagem guarda a sua
     //   configuração, line/GameEngineFuncional plano 15). Quem integrar conta o DELTA, nunca o literal.
-    assert_eq!(reg.len(), 112);
+    // ⚠️ **2026-10-27: `112` -> `113`, delta +1** -- o `ImageRegion` (o uso Region, line/GameEngineFuncional
+    //   plano 16). Quem integrar conta o DELTA, nunca o literal.
+    assert_eq!(reg.len(), 113);
     assert!(reg.get_by_name("ph2d::ecs::VecObject").is_none());
     assert!(reg.get_by_name("ph2d::ecs::MotionGenerator").is_some());
     assert!(reg.get_by_name("ph2d::ecs::WeaponFire").is_some());

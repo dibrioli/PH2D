@@ -25,6 +25,8 @@ pub struct Slicing {
 pub struct ImageFacts {
     /// O tamanho NATIVO (m) da imagem inteira.
     pub native_m: [f32; 2],
+    /// Os píxeis da imagem inteira (`[0, 0]` = desconhecidos: uma pintura sem imagem da biblioteca).
+    pub px: [u32; 2],
     /// O corte da própria imagem, se ela o traz (a fábrica; um `.ase`).
     pub slicing: Option<Slicing>,
 }
@@ -67,9 +69,11 @@ pub fn choose_image(
     };
     let old_cell = old.map(|f| cell_m(f.native_m, old_grid));
     let new_cell = cell_m(new.native_m, grid);
-    // Lei 1: a escala do objecto fica (o tamanho em relação à imagem nativa).
-    let escala = match old_cell {
-        Some(c) if c[0] > 0.0 && c[1] > 0.0 => {
+    // Lei 1: a escala do objecto fica (o tamanho em relação à imagem nativa); a de uma Region conta a área.
+    let region = crate::image_use::image_use(world, e) == Some(crate::image_use::ImageUse::Region);
+    let escala = match (old, old_cell) {
+        (Some(f), _) if region => crate::image_use::display_scale(world, e, f),
+        (_, Some(c)) if c[0] > 0.0 && c[1] > 0.0 => {
             let base = match world.get::<ScrollRepeat>(e) {
                 Some(r) if r.tile[0] > 0.0 => [r.tile[0], sprite.size[1]],
                 _ => sprite.size,
@@ -164,6 +168,7 @@ pub fn factory_facts(art: &ph2d_render::FactoryArt) -> ImageFacts {
     let grid = art.frames();
     ImageFacts {
         native_m: [cell[0] * grid[0] as f32, cell[1] * grid[1] as f32],
+        px: art.image_px(),
         slicing: (grid[0] * grid[1] > 1).then_some(Slicing {
             grid,
             still_frame: 0,
@@ -193,6 +198,7 @@ pub fn imported_facts(w: u32, h: u32, ppm: f32) -> ImageFacts {
     let ppm = ppm.max(f32::EPSILON);
     ImageFacts {
         native_m: [w as f32 / ppm, h as f32 / ppm],
+        px: [w, h],
         slicing: None,
     }
 }

@@ -100,3 +100,29 @@ fn an_arrow_that_closes_a_circle_is_refused_and_changes_nothing() {
         "sem a primeira já não há círculo"
     );
 }
+
+#[test]
+fn a_group_of_more_than_the_ceiling_is_refused() {
+    use ph2d_ecs::hud_arranjo::TECTO_GRUPO;
+    let mut arr = UiArranjo::default();
+    let id = |i: usize| StableId(100 + i as u64);
+    for i in 1..TECTO_GRUPO {
+        assert!(
+            arr.junta(ao_lado(id(i), id(i - 1), Lado::Direita), Forca::Requerida),
+            "{i}"
+        );
+    }
+    let antes = arr.clone();
+    assert!(!arr.junta(
+        ao_lado(id(TECTO_GRUPO), id(TECTO_GRUPO - 1), Lado::Direita),
+        Forca::Requerida
+    ));
+    assert_eq!(arr, antes, "o 65.º elemento não entra e nada muda");
+    assert!(
+        arr.junta(
+            ao_lado(StableId(1), StableId(2), Lado::Direita),
+            Forca::Requerida
+        ),
+        "outro grupo entra"
+    );
+}

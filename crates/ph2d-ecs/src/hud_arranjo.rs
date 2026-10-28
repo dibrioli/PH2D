@@ -18,6 +18,33 @@ pub struct UiArranjo {
 
 impl SimComponent for UiArranjo {}
 
+/// ⭐ **O tecto de elementos num grupo ligado de relações** — recurso: o TEMPO de montar o solver do grupo, que corre
+/// ao editar uma seta (o quadro vivo só actualiza). Medido 27/10 (`kill_w5::w5_hud_group_cost_by_size`, `--profile
+/// smoke`, mínimo de 7×10, carga ~96 — indicativo): cadeia de 8 / 16 / 32 / 64 / 128 → `new` 0,31 / 0,97 / 2,8 / 12 /
+/// 86 ms, `atualiza` 7 / 12 / 25 / 55 / 95 µs. 64 cabe num quadro de 60 Hz; 128 pararia ~5 quadros.
+pub const TECTO_GRUPO: usize = 64;
+
+/// O tamanho do maior grupo ligado (os elementos unidos por relações entre dois).
+fn maior_grupo(rel: &[Relacao<StableId>]) -> usize {
+    let mut grupos: Vec<Vec<StableId>> = Vec::new();
+    for r in rel {
+        let (a, Some(b)) = r.ids() else { continue };
+        let ia = grupos.iter().position(|g| g.contains(&a));
+        let ib = grupos.iter().position(|g| g.contains(&b));
+        match (ia, ib) {
+            (Some(i), Some(j)) if i != j => {
+                let g = grupos.remove(i.max(j));
+                grupos[i.min(j)].extend(g);
+            }
+            (Some(_), Some(_)) => {}
+            (Some(i), None) => grupos[i].push(b),
+            (None, Some(j)) => grupos[j].push(a),
+            (None, None) => grupos.push(vec![a, b]),
+        }
+    }
+    grupos.iter().map(Vec::len).max().unwrap_or(0)
+}
+
 impl UiArranjo {
     /// ⭐ A porta da ferramenta: junta `nova`, trocando a que o mesmo par já tinha NO MESMO EIXO (uma seta nova
     /// entre os mesmos dois substitui a antiga; ao lado em X e centrado em Y convivem). Recusa — e não muda nada — o que fecharia um círculo de
@@ -38,8 +65,12 @@ impl UiArranjo {
             .filter(|(r, _)| !mesmo(r))
             .cloned()
             .collect();
-        let so: Vec<_> = restantes.iter().map(|(r, _)| *r).collect();
+        let mut so: Vec<_> = restantes.iter().map(|(r, _)| *r).collect();
         if ph2d_hud_layout::contradiz(&so, &nova) {
+            return false;
+        }
+        so.push(nova);
+        if maior_grupo(&so) > TECTO_GRUPO {
             return false;
         }
         self.lacos = restantes;

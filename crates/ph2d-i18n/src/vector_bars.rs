@@ -22,7 +22,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "Drag from one HUD element to another: keep them beside \u{00b7} click an arrow, then pick how they hold \u{00b7} Delete: remove it"
         }
         "panel.vector.hint.hud_refused" => {
-            "That arrow would close a circle (each one beside the other) \u{00b7} pick another pair"
+            "That arrow can't hold: it would close a circle (each one beside the other) or join more than 64 elements \u{00b7} pick another pair"
         }
         "panel.vector.hud.beside" => "Beside",
         "panel.vector.hud.apart" => "Don't overlap",

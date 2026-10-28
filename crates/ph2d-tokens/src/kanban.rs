@@ -58,3 +58,7 @@ pub const fn label_ink(shade: usize) -> T {
         T::KanbanLabelInk
     }
 }
+
+/// O espaçamento entre letras do título de lista em MAIÚSCULAS, em `em` (o `letter-spacing` das
+/// capitulares do Trello): maiúsculas sem ar fecham-se umas nas outras.
+pub const LIST_TITLE_TRACKING_EM: f32 = 0.04;

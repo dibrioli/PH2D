@@ -198,6 +198,28 @@ impl TextSystem {
         weight_nominal: FontWeight,
         rendering: ph2d_tokens::TextRendering,
     ) -> Layout<()> {
+        self.layout_for_rendering_tracked(
+            text,
+            font_size,
+            max_width,
+            weight_nominal,
+            rendering,
+            0.0,
+        )
+    }
+
+    /// [`Self::layout_for_rendering`] com **espaçamento entre letras** `tracking_em` (em `em`, do
+    /// tamanho MOSTRADO; `0.0` = a mesma resposta ao bit). É a porta de PINTAR; a de medir é
+    /// [`Self::prefix_width_tracked`] — as duas passam o mesmo valor ao parley.
+    pub fn layout_for_rendering_tracked(
+        &mut self,
+        text: &str,
+        font_size: f32,
+        max_width: f32,
+        weight_nominal: FontWeight,
+        rendering: ph2d_tokens::TextRendering,
+        tracking_em: f32,
+    ) -> Layout<()> {
         let effective_weight_val = effective_weight(weight_nominal, font_size, rendering);
         let letter_spacing_px = effective_letter_spacing_px(font_size, rendering);
         self.layout_inner(
@@ -206,6 +228,7 @@ impl TextSystem {
             max_width,
             effective_weight_val,
             letter_spacing_px,
+            tracking_em,
         )
     }
 
@@ -223,7 +246,7 @@ impl TextSystem {
         max_width: f32,
         weight: FontWeight,
     ) -> Layout<()> {
-        self.layout_inner(text, font_size, max_width, weight, 0.0)
+        self.layout_inner(text, font_size, max_width, weight, 0.0, 0.0)
     }
 
     /// Private builder. Single source of truth for the parley layout
@@ -236,6 +259,7 @@ impl TextSystem {
         max_width: f32,
         weight: FontWeight,
         letter_spacing_px: f32,
+        tracking_em: f32,
     ) -> Layout<()> {
         // ⭐⭐ **O estilo do artista entra AQUI, na porta por onde todo texto passa** — medir e
         //    pintar saem daqui, então os dois veem a mesma fonte, o mesmo peso e o mesmo tamanho.
@@ -245,6 +269,12 @@ impl TextSystem {
         let weight = FontWeight::new(
             (weight.value() + f32::from(style.weight.boost())).clamp(WEIGHT_MIN, WEIGHT_MAX),
         );
+        // O tracking é do tamanho MOSTRADO (o do estilo): `0.04 em` continua `0.04 em` a 125 %.
+        let letter_spacing_px = if tracking_em == 0.0 {
+            letter_spacing_px
+        } else {
+            letter_spacing_px + tracking_em * font_size
+        };
         let font = style.font.index();
         let key = LayoutCacheKey {
             font,
@@ -383,6 +413,18 @@ impl TextSystem {
         font_size: f32,
         weight: FontWeight,
     ) -> f32 {
+        self.prefix_width_tracked(prefix, font_size, weight, 0.0)
+    }
+
+    /// [`Self::prefix_width_weighted`] com espaçamento entre letras `tracking_em` — a porta de
+    /// MEDIR irmã de [`Self::layout_for_rendering_tracked`]. `0.0` = a mesma resposta ao bit.
+    pub fn prefix_width_tracked(
+        &mut self,
+        prefix: &str,
+        font_size: f32,
+        weight: FontWeight,
+        tracking_em: f32,
+    ) -> f32 {
         if prefix.is_empty() {
             return 0.0;
         }
@@ -391,18 +433,26 @@ impl TextSystem {
         // (now rendering-aware) already returns the correct width.
         if !prefix.ends_with(' ') && !prefix.ends_with('\t') {
             return self
-                .layout_for_rendering(prefix, font_size, f32::INFINITY, weight, rendering)
+                .layout_for_rendering_tracked(
+                    prefix,
+                    font_size,
+                    f32::INFINITY,
+                    weight,
+                    rendering,
+                    tracking_em,
+                )
                 .width();
         }
         const SENTINEL: &str = "|";
         let mut combined = String::with_capacity(prefix.len() + SENTINEL.len());
         combined.push_str(prefix);
         combined.push_str(SENTINEL);
+        let inf = f32::INFINITY;
         let w_with = self
-            .layout_for_rendering(&combined, font_size, f32::INFINITY, weight, rendering)
+            .layout_for_rendering_tracked(&combined, font_size, inf, weight, rendering, tracking_em)
             .width();
         let w_sentinel = self
-            .layout_for_rendering(SENTINEL, font_size, f32::INFINITY, weight, rendering)
+            .layout_for_rendering_tracked(SENTINEL, font_size, inf, weight, rendering, tracking_em)
             .width();
         (w_with - w_sentinel).max(0.0)
     }
@@ -454,6 +504,10 @@ fn effective_letter_spacing_px(font_size: f32, rendering: ph2d_tokens::TextRende
     }
     p.letter_spacing_em_dense * font_size
 }
+
+#[cfg(test)]
+#[path = "tracking_tests.rs"]
+mod tracking_tests;
 
 #[cfg(test)]
 mod tests {

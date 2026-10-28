@@ -4,10 +4,9 @@
 //! dono (gate, medição ou recusa listada).
 //!
 //! Fixados aqui: Edit ▸ Flip/Rotate/Shift, Rotate/Flip Canvas, a escala e o 90° da transformação,
-//! Sprite Size nearest (+ RotSprite a 2×), Canvas Size, Crop, Trim e Paste. ⛔ Recusas MEDIDAS: a
-//! bilinear bate 8 392 de 8 463 canais (nenhum a mais de 1) — truncar a soma em `f64` foi o melhor
-//! de ~400 variantes (pontos fixos 2⁴–2²⁰, passo truncado/arredondado, ordens de interpolação,
-//! `f32`); a lei inteira do Trial não foi achada. A rotação não-90° e a inclinação não têm fórmula
+//! Sprite Size nearest e bilinear (exacta: a coordenada é o passo SOMADO em `f64`; `d·passo`,
+//! pontos fixos 2⁴–2²⁰ e `f32` ficavam em 8 392/8 463) (+ RotSprite a 2×), Canvas Size, Crop, Trim
+//! e Paste. ⛔ Recusas MEDIDAS: a rotação não-90° e a inclinação não têm fórmula
 //! do Trial (só tabelas): medem-se em `mede_rotacao.rs`, nunca por tabela.
 
 use ph2d_pixel_core::canvas::{self, Anchor, Borders, SizeMethod, anchor_borders};
@@ -251,7 +250,7 @@ fn transform_scale_fields_and_ninety_degrees_match_the_trial() {
 }
 
 #[test]
-fn sprite_size_nearest_and_rotsprite_at_2x_match_and_bilinear_is_within_one() {
+fn sprite_size_nearest_bilinear_and_rotsprite_at_2x_match_the_trial() {
     let f = fx();
     let sz: Vec<u8> = f["inputs"]["sz_rows_rgba"]
         .as_array()
@@ -288,7 +287,7 @@ fn sprite_size_nearest_and_rotsprite_at_2x_match_and_bilinear_is_within_one() {
                 for x in 0..w as usize {
                     for ch in 0..3 {
                         let (a, b) = (px[y * w as usize + x][ch], rgb[y][3 * x + ch]);
-                        assert!(a.abs_diff(b) <= 1, "{k} ({x},{y})");
+                        assert_eq!(a, b, "{k} ({x},{y}) canal {ch}");
                         exact += usize::from(a == b);
                         channels += 1;
                     }
@@ -301,11 +300,7 @@ fn sprite_size_nearest_and_rotsprite_at_2x_match_and_bilinear_is_within_one() {
         gated += 1;
     }
     assert_eq!(gated, 9, "4 nearest + 4 bilinear + RotSprite a 2×");
-    assert_eq!(
-        (exact, channels),
-        (8392, 8463),
-        "a lacuna medida da bilinear mudou"
-    );
+    assert_eq!((exact, channels), (8463, 8463), "a bilinear é exacta");
 }
 
 #[test]

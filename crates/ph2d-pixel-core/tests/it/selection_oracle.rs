@@ -6,7 +6,10 @@
 //!
 //! ⛔ Recusas MEDIDAS: a marquee elíptica como Zingl dá 106/112 — `4x6 5x6 6x5 10x6 10x8 24x16` são
 //! mais apertadas no Trial; nenhuma das variantes medidas (raio/centro em meia célula, limiar,
-//! arredondamento por linha, a caixa ±1, transposta, linhas ∩ colunas) passa das 106. As seis
+//! arredondamento por linha, a caixa ±1, transposta, linhas ∩ colunas) passa das 106; nem (27/10)
+//! a caixa ímpar+1 sem a linha/coluna do meio (acerta as seis, falha 35), a cónica racional de
+//! Zingl, superamostragem 2–4×, nem limiares nos passos (109 é ajuste, não lei). O Trial ⊆ Zingl
+//! em 112/112 e as ímpar×ímpar são todas Zingl: a lacuna é só da paridade par. As seis
 //! ficam listadas abaixo: uma lei melhor aparece como «menos falhas» e reprova até a lista encolher.
 //! `mode_btn_add` é uma leitura partida do driver (máscara vazia); mede-se pelo `mode_shift`.
 

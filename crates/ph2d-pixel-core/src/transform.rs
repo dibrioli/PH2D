@@ -139,22 +139,31 @@ pub fn resize_nearest_centred(i: &Image, w: u32, h: u32) -> Image {
     Image::map(w, h, i.bpp, |x, y| i.get(at(x, i.w, w), at(y, i.h, h)))
 }
 
-/// **Sprite Size ▸ Bilinear** sobre RGBA (`bpp == 4`): cantos alinhados, `fx = d·(S−1)/(N−1)`, a
-/// soma em `f64` truncada. O Trial bate canal a canal em 99,2 % e nunca a mais de 1 (fixtura
-/// `size_bilinear_*`); a lei inteira dele não foi achada.
+/// **Sprite Size ▸ Bilinear** sobre RGBA (`bpp == 4`): cantos alinhados, a coordenada é a SOMA
+/// acumulada em `f64` do passo `(S−1)/(N−1)` (nunca `d·passo`: o erro de arredondamento da soma é
+/// o do Trial), a mistura em `f64` truncada. Trial 8 463/8 463 canais (`size_bilinear_*`).
 #[must_use]
 pub fn resize_bilinear(i: &Image, w: u32, h: u32) -> Image {
-    let coord = |d: u32, s: u32, n: u32| -> (u32, u32, f64) {
+    let axis = |s: u32, n: u32| -> Vec<(u32, u32, f64)> {
         if n <= 1 || s <= 1 {
-            return (0, 0, 0.0);
+            return vec![(0, 0, 0.0); n as usize];
         }
-        let f = f64::from(d) * f64::from(s - 1) / f64::from(n - 1);
-        let a = (f.floor() as u32).min(s - 1);
-        (a, (a + 1).min(s - 1), f - f64::from(a))
+        let step = f64::from(s - 1) / f64::from(n - 1);
+        let mut f = 0.0_f64;
+        (0..n)
+            .map(|d| {
+                if d > 0 {
+                    f += step;
+                }
+                let a = (f.floor() as u32).min(s - 1);
+                (a, (a + 1).min(s - 1), f - f64::from(a))
+            })
+            .collect()
     };
+    let (xs, ys) = (axis(i.w, w), axis(i.h, h));
     Image::map(w, h, 4, |x, y| {
-        let (x0, x1, ax) = coord(x, i.w, w);
-        let (y0, y1, ay) = coord(y, i.h, h);
+        let (x0, x1, ax) = xs[x as usize];
+        let (y0, y1, ay) = ys[y as usize];
         let px = |x, y| i.get(x, y).to_le_bytes();
         let (p00, p10, p01, p11) = (px(x0, y0), px(x1, y0), px(x0, y1), px(x1, y1));
         let mut out = [0u8; 4];

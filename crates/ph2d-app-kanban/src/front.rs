@@ -162,7 +162,6 @@ impl Counts {
 
     /// Quem eu sou: os cartões que sigo mostram o olho.
     #[must_use]
-    #[allow(dead_code)] // ⚠️ o `docs.rs` (outro lote) liga-o: `Counts::of(k).seen_by(..).with_files(..)`
     pub fn seen_by(mut self, me: Option<Member>) -> Self {
         self.me = me;
         self
@@ -171,7 +170,6 @@ impl Counts {
     /// Os bytes das capas de imagem de `k` que ainda não estão descodificadas (partilhados, sem
     /// cópia).
     #[must_use]
-    #[allow(dead_code)] // ⚠️ idem
     pub fn with_files(mut self, set: &KanbanSet, k: &Kanban) -> Self {
         for c in k.cards.values().filter(|c| !c.meta.deleted) {
             if let Some(CoverFill::Image(id)) = c.cover.map(|c| c.fill)

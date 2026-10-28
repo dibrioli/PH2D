@@ -223,7 +223,7 @@ impl KanbanDocs {
         crate::smoke::hold(tab);
         edge_scroll(tab, dt);
         *tab.painted.borrow_mut() = crate::tab::Painted::default();
-        let counts = Counts::of(k);
+        let counts = Counts::of(k).seen_by(Some(self.me.clone())).with_files(&set, k);
         let title_w = title_width(ts, &k.header.name, m::HEADER_TITLE_PX) + 2.0 * m::FIELD_PAD_X;
         let floor = self.over.map(|o| o.y);
         let lifted = lifted(tab, &counts, k, ts);

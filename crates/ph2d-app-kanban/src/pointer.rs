@@ -109,7 +109,9 @@ pub(crate) fn hit(tab: &Tab, k: &Kanban, ts: &mut TextSystem, x: f32, y: f32) ->
         if let Some(f) = front::front(k, &front::Counts::default(), cb.id)
             && !f.labels.is_empty()
         {
-            let top = cb.rect.y + f.cover.map_or(0.0, |_| m::COVER_COLOR_H) + m::CARD_PAD_Y;
+            let Some(top) = front::labels_top(&f).map(|t| cb.rect.y + t) else {
+                return Some(Hit::Card(cb.id));
+            };
             if (top..top + front::labels_h(ts, &f, tab.label_text)).contains(&y) {
                 return Some(Hit::CardLabel(cb.id));
             }

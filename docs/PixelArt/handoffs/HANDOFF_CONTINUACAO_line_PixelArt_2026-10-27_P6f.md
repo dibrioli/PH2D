@@ -21,7 +21,7 @@
 
 **Cena `PH2D_PIXEL_SMOKE=14`** (`crates/ph2d-app-pixel/src/smoke_ajustes.rs`, 128×80 RGBA): retângulo azul assentado; estrela amarela cheia VIVA girada (barra: `Angle 15`, W/H 60), nascida com 5 pontas e com UM ajuste guardado para 7 (`viva::ajuste`); a alça das pontas mostrada quente com a etiqueta (`Viva.mostra`, só da cena: o 1.º movimento do rato apaga-a). `PH2D_PIXEL_SMOKE_AGARRA=1` (**só para a foto**, que não manda cliques — XTest ignorado na Xwayland do `kwin --virtual`) deixa a alça agarrada: caixa só-contorno. `max_level` 14; a sonda de nível desconhecido (`tests/it/edit.rs`) passou ao 15. Fotos (1930×1040, placa 1,1 de 16 GB): `smoke_P6f_cena14_2026-10-27.png` e `…_arrasto_…` (fábrica), `…_dono_…` e `…_arrasto_dono_…` (`HOME=/home/enio`; `layout.txt` sha256 `827fb56f…` igual antes/depois).
 
-## 3. Smoke do dono — POR FAZER
+## 3. Smoke do dono — OK (27/10)
 
 1. `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-PixelArt && PH2D_PIXEL_SMOKE=14 ./target/smoke/ph2d-host-desktop`
 2. Estrela viva com a etiqueta «Points: 7»; arrastar uma pontinha → a caixa fica só com a linha e a etiqueta segue o rato.
@@ -45,7 +45,7 @@
 
 ## 6. ABERTO
 
-- **O smoke do dono da P6f (§3).**
+- ~~O smoke do dono da P6f (§3)~~ — OK 27/10.
 - A etiqueta no Pixel não segue a `LengthDisplay` do projecto (o Pixel mede em células: «px» fixo pela chave i18n).
 - O painel Pixel mostra «Shape» duas vezes (pincel e secção da forma) — herdado.
 - Os abertos anteriores: [P6c §6](HANDOFF_CONTINUACAO_line_PixelArt_2026-10-27_P6c.md) (Skew só pelo campo, flyout 3+1), [P6 §6](HANDOFF_CONTINUACAO_line_PixelArt_2026-10-26_P6.md), [P4 §6](HANDOFF_CONTINUACAO_line_PixelArt_2026-10-26_P4.md).

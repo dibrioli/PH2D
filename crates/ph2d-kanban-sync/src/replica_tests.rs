@@ -139,8 +139,7 @@ fn two_votes_at_the_same_time_are_two_votes() {
     let id = card_ids(&net.sets[0])[0];
     let labels: Vec<_> = kanban(&net.sets[0]).labels.keys().copied().collect();
     use ph2d_kanban_model::{FieldId, FieldValue};
-    for p in 0..2 {
-        let l = labels[p];
+    for (p, &l) in labels.iter().enumerate().take(2) {
         edit_card(&mut net.sets[p], id, |c| {
             c.votes.push(Member(format!("p{p}")));
             c.labels.push(l);

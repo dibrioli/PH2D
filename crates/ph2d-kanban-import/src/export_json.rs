@@ -381,7 +381,7 @@ fn actions(k: &Kanban, ids: &Ids) -> Vec<Value> {
             out.push((a.id.0, v));
         }
     }
-    out.sort_by(|a, b| b.0.cmp(&a.0));
+    out.sort_by_key(|a| std::cmp::Reverse(a.0));
     out.into_iter().map(|(_, v)| v).collect()
 }
 

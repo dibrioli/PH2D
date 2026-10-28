@@ -11,9 +11,12 @@ use serde::de::DeserializeOwned;
 /// `(chave do elemento, valor)`: num conjunto o valor é vazio; num mapa é o valor da chave.
 pub(crate) type Entry = (Vec<u8>, Vec<u8>);
 
+/// O mesmo par `(chave, valor)`, emprestado, na entrada de `join`.
+pub(crate) type BorrowedEntry<'a> = (&'a [u8], &'a [u8]);
+
 pub(crate) struct Shape {
     pub split: fn(&[u8]) -> Option<Vec<Entry>>,
-    pub join: fn(&[(&[u8], &[u8])]) -> Option<Vec<u8>>,
+    pub join: fn(&[BorrowedEntry]) -> Option<Vec<u8>>,
     /// A ordem do conjunto vem da escrita (a do mapa é a da chave).
     pub ordered: bool,
 }

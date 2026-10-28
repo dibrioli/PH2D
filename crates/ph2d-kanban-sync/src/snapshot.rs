@@ -36,8 +36,11 @@ pub(crate) struct Packed {
     /// `(campo, carimbo)`.
     pub stamps: Vec<(u8, At)>,
     /// `(campo, chave, valor, posição de entrada, carimbo)`.
-    pub elems: Vec<(u8, Vec<u8>, Option<Vec<u8>>, u32, At)>,
+    pub elems: Vec<PackedElem>,
 }
+
+/// `(campo, chave, valor, posição de entrada, carimbo)` de um elemento.
+pub(crate) type PackedElem = (u8, Vec<u8>, Option<Vec<u8>>, u32, At);
 
 /// Os carimbos de todos os Kanbans, agrupados por Kanban e por alvo.
 pub(crate) type Stamps = Vec<(KanbanId, Vec<Packed>)>;

@@ -123,7 +123,7 @@ pub(crate) fn random_op(set: &mut KanbanSet, r: &mut KanbanReplica, peer: PeerId
             let t = format!("t{peer}-{}", rng.below(1000));
             edit_card(set, card, |c| c.title = t);
         }
-        3 => edit_card(set, card, |c| c.description.push_str("·")),
+        3 => edit_card(set, card, |c| c.description.push('·')),
         4 => edit_card(set, card, |c| c.archived = !c.archived),
         5 => {
             let _ = KanbanOp::Delete(RecordId::Card(card)).apply(doc(set));

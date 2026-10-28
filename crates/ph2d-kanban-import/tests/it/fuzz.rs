@@ -61,7 +61,7 @@ fn fuzz_byte_mutations_never_panic() {
 fn junk(rng: &mut Rng) -> Value {
     match rng.below(10) {
         0 => Value::Null,
-        1 => json!(rng.next() % 2 == 0),
+        1 => json!(rng.next().is_multiple_of(2)),
         2 => json!(-1.5e300),
         3 => json!(i64::MIN),
         4 => json!("2026-13-45T99:99:99Z"),

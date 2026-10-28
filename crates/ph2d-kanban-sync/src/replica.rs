@@ -302,7 +302,7 @@ impl KanbanReplica {
             // de antes, a que todos têm.
             let mut back: Vec<RecordId> = Vec::new();
             let header_back =
-                (hb == hn && shadow.header != k.header).then(|| shadow.header.version);
+                (hb == hn && shadow.header != k.header).then_some(shadow.header.version);
             for id in all_ids(k) {
                 let now = k.record(id).expect("o id veio da tabela");
                 match shadow.record(id) {

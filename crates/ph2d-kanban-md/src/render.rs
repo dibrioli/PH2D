@@ -30,14 +30,14 @@ pub fn render(doc: &RichDoc) -> String {
         let is_item = b.kind.is_list_item();
         // Item vazio com um parágrafo filho logo a seguir: o markdown lê-o como o texto do item.
         let mut text = &b.inline;
-        if is_item && blank(text) {
-            if let Some(n) = blocks
+        if is_item
+            && blank(text)
+            && let Some(n) = blocks
                 .get(i)
                 .filter(|n| n.kind == BlockKind::Paragraph && n.indent == k + 1)
-            {
-                text = &n.inline;
-                i += 1;
-            }
+        {
+            text = &n.inline;
+            i += 1;
         }
         match prev {
             // Um item vazio não interrompe o texto de cima (seria sublinhado de título).

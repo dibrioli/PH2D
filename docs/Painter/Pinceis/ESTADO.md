@@ -51,7 +51,10 @@
 
 ## J6 passo 3 — pincel a pincel (censo: 16 examináveis só por valores; 16 travados por motor; 7 sem oráculo)
 
-- Digital (B-6, B-7, C-4, C-6, K-1, L-5, M-7, I-12) — EM CURSO, receitas em `EM_ESTUDO_J6`.
-- Wet canetas/marcadores (C-9, C-15, E-3, E-4) · Wet aguarela/texturas (I-9, I-10, I-11, K-9, F-10) — A SEGUIR.
+- Digital ✅ (`8a9703db68` `07c644af37`, [`exames/digital_j6.md`](exames/digital_j6.md)): prontos p/ cega B-7 Rough Sketch,
+  I-12 Optical Wash; FUNDEM C-4 Studio Pen (Hard Round 0,283), C-6 Technical Pen (Pixel 1px 0,330); K-1 Clouds curado
+  não aprovado; motor B-6 (rampa sob o tecto), L-5 (blur que puxa o papel); M-7 sem oráculo útil. ⚠️ A biblioteca
+  `j6_wet` estava incompleta (28/66) ⇒ d antigos suspeitos; usar `/tmp/claude-1000/j6_digital/biblioteca`.
+- Wet canetas/marcadores (C-9, C-15, E-3, E-4) · Wet aguarela/texturas (I-9, I-10, I-11, K-9, F-10) — EM CURSO.
 - Aprovados pela cega sobem à fábrica num lote único no fim (uma regeração). Sem oráculo: C-13, C-14, D-2, D-4,
   G-13, J-4, M-5 (só doc. Procreate/ArtRage). Motor: CAP-19 cerdas que esgotam (C-11, G-9, G-11, I-13), L17, L15, L20, L10.

@@ -8,14 +8,17 @@
 //! VISTA do quadro.
 
 mod activity;
+pub(crate) mod attach;
 mod click;
 mod dates;
 mod keys;
 mod lists;
+pub(crate) mod outside;
 mod paint;
 mod pop;
 mod probe;
 mod side;
+mod thumb;
 mod ui;
 pub(crate) mod write;
 
@@ -129,6 +132,10 @@ pub(crate) enum PopHit {
     FieldKind(u8),
     FieldFront(FieldId),
     FieldDelete(FieldId),
+    /// «Choose a file»: o diálogo nativo do sistema.
+    PickFile,
+    /// «Copy link» do «Share».
+    CopyLink,
 }
 
 /// As reacções que se oferecem (o Trello abre o seletor inteiro; estas são as mais usadas).
@@ -235,8 +242,15 @@ pub(crate) struct Back {
     pub bodies: std::collections::BTreeMap<CommentId, (String, RichEditor)>,
     /// O histórico com os detalhes (o «Show details» do Trello).
     pub details: bool,
-    /// Links que o artista pediu para abrir (a shell drena-os; ver `take_opened_links`).
-    pub opened: Vec<String>,
+    /// O que o artista pediu para abrir fora do PH2D (a shell serve-o: [`outside`]).
+    pub opened: Vec<outside::Outside>,
+    /// O diálogo «Choose a file» pedido (a shell abre-o: [`outside`]).
+    pub pick: bool,
+    /// O texto que um botão copiou (a shell entrega-o à área de transferência).
+    pub copy: Option<String>,
+    /// O último carregar num editor rico: o alvo, quando (ns) e quantos cliques seguidos (o duplo
+    /// e o triplo clique contam-se aqui, à janela do sistema `DOUBLE_CLICK_WINDOW_NS`).
+    pub last_down: Option<(BackHit, u128, u8)>,
     /// O que o último quadro pintou na atividade (as sondas leem-no).
     pub feed: Vec<String>,
 }
@@ -305,6 +319,9 @@ impl Back {
             bodies: std::collections::BTreeMap::new(),
             details: false,
             opened: Vec::new(),
+            pick: false,
+            copy: None,
+            last_down: None,
             feed: Vec::new(),
         }
     }

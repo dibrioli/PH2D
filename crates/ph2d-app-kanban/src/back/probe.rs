@@ -50,11 +50,22 @@ impl KanbanDocs {
         )
     }
 
-    /// Os links que o artista pediu para abrir no verso desde a última chamada (a shell abre-os).
-    pub fn take_opened_links(&mut self, id: u64) -> Vec<String> {
-        self.tab_mut(id)
-            .and_then(|t| t.back.as_deref_mut())
-            .map(|b| std::mem::take(&mut b.opened))
+    /// ⚠️ SONDA: a fila do verso para o mundo, por servir: `(abrir, diálogo pedido, a copiar)`.
+    #[must_use]
+    pub fn probe_back_outbox(
+        &self,
+        id: u64,
+    ) -> (Vec<super::outside::Outside>, bool, Option<String>) {
+        self.back_of(id)
+            .map(|b| (b.opened.clone(), b.pick, b.copy.clone()))
             .unwrap_or_default()
+    }
+
+    /// ⚠️ SONDA: o texto seleccionado no editor da descrição (`true`) ou do comentário.
+    #[must_use]
+    pub fn probe_back_selection(&self, id: u64, desc: bool) -> Option<String> {
+        let b = self.back_of(id)?;
+        let ed = if desc { &b.desc } else { &b.comment };
+        Some(ed.selected_text())
     }
 }

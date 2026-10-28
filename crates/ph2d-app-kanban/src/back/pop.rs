@@ -27,7 +27,13 @@ pub(crate) const FIELD_KINDS: [&str; 5] = [
 
 /// O link interno do cartão (o «Share» do Trello).
 pub(crate) fn share_link(cx: &Ctx<'_>) -> String {
-    format!("ph2d://kanban/{}/card/{}", cx.k.id.0, cx.card.id.0)
+    card_link(cx.k, cx.card)
+}
+
+/// O link interno de um cartão: o que o campo do «Share» mostra e o que o «Copy link» e o `Ctrl+C`
+/// copiam.
+pub(crate) fn card_link(k: &ph2d_kanban_model::Kanban, c: &ph2d_kanban_model::Card) -> String {
+    format!("ph2d://kanban/{}/card/{}", k.id.0, c.id.0)
 }
 
 fn place(back: &Back, anchor: Option<Rect>, w: f32, h: f32) -> Rect {
@@ -317,6 +323,14 @@ fn content(ui: &mut Ui<'_>, back: &Back, cx: &Ctx<'_>, x: f32, y: f32) -> f32 {
             yy += ROW;
         }
         Pop::Attach(url, name) => {
+            ui.caption(tr("kanban.back.attach_computer"), ix, yy, iw);
+            yy += u::META_LINE + u::SMALL_GAP;
+            let meta = ui.meta();
+            yy += ui.text(tr("kanban.back.drop_hint"), ix, yy, u::SMALL_PX, iw, meta);
+            yy += u::SMALL_GAP;
+            let r = Rect::new(ix, yy, iw, ROW);
+            ui.button(r, tr("kanban.back.choose_file"), None, BackHit::Pop(PopHit::PickFile), false);
+            yy += ROW + u::GAP;
             yy = input_focus(
                 ui,
                 ix,
@@ -447,6 +461,10 @@ fn content(ui: &mut Ui<'_>, back: &Back, cx: &Ctx<'_>, x: f32, y: f32) -> f32 {
             f.caret = f.text.len();
             ui.field(r, &f, "");
             ui.hit(r, BackHit::Pop(PopHit::Input));
+            yy += ROW + u::SMALL_GAP;
+            let s = tr("kanban.back.copy_link");
+            let sw = ui.button_w(s, false);
+            ui.primary(Rect::new(ix, yy, sw, ROW), s, BackHit::Pop(PopHit::CopyLink));
             yy += ROW + u::SMALL_GAP;
             let meta = ui.meta();
             ui.line(

@@ -37,6 +37,10 @@ impl App {
         let Some(hero) = gfx.hero_screen.as_mut() else {
             return;
         };
+        if ph2d_editor_core::screens::hero::surface_input::drop_files(hero, at.0, at.1, paths) {
+            self.title_dirty = true;
+            return;
+        }
         // Com um QUADRO na aba, as imagens vão para ele (W14), onde se largou.
         if hero.documents.active().is_some() {
             let at = [f64::from(at.0), f64::from(at.1)];
@@ -48,21 +52,9 @@ impl App {
         }
         let pixels_per_meter = hero.project.pixels_per_meter;
         let win = gfx.scene_window();
-        // macOS-only: winit 0.30 does NOT emit `CursorMoved` during
-        // external file drag operations (see
-        // winit-0.30.13/src/platform_impl/macos/window_delegate.rs —
-        // `draggingEntered:` doesn't extract `draggingLocation`, no
-        // `draggingUpdated:` is implemented at all). So `last_cursor`
-        // is whatever it was BEFORE the drag started, not where the
-        // file was actually dropped. Query the live cursor from
-        // CoreGraphics (`macos_cursor_query`) to override; fall back
-        // to `last_cursor` on other platforms.
-        let cursor_px = self
-            .host
-            .as_ref()
-            .and_then(|h| live_cursor_in_window(h.window()))
-            .unwrap_or(self.last_cursor);
-        let drop_world_raw = gfx.camera.screen_to_world(cursor_px, win);
+        // The live cursor (`at`, above): winit 0.30 emits no `CursorMoved` during an external drag
+        // on macOS (winit-0.30.13/src/platform_impl/macos/window_delegate.rs), so `last_cursor` is stale.
+        let drop_world_raw = gfx.camera.screen_to_world(at, win);
         // Grid-snap apply (drag-drop site). When snap is enabled in
         // `grid_snap_state`, align the drop position to the active
         // grid before spawning so a multi-sprite drop forms a tidy

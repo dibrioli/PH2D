@@ -268,6 +268,12 @@ pub trait DocumentSurface: Any {
         let _ = (id, at);
         false
     }
+    /// Ficheiros do SISTEMA largados em `(x, y)` sobre a aba (o `DroppedFile`). `true` = ela os
+    /// recebeu (a shell não os importa para a cena).
+    fn drop_files(&mut self, id: u64, x: f32, y: f32, paths: &[std::path::PathBuf]) -> bool {
+        let _ = (id, x, y, paths);
+        false
+    }
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;
 }

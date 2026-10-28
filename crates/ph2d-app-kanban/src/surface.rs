@@ -78,7 +78,9 @@ impl DocumentSurface for KanbanDocs {
         }
         if crate::back::is_open(self, id) {
             return match kind {
-                PointerKind::Down => crate::back::down(self, id, input.text, x, y),
+                PointerKind::Down => {
+                    crate::back::down(self, id, input.text, (x, y), input.mods, input.now_ns)
+                }
                 PointerKind::Up => crate::back::up(self, id, x, y),
                 PointerKind::Move => crate::back::moved(self, id, input.text, x, y),
             };
@@ -216,6 +218,26 @@ impl DocumentSurface for KanbanDocs {
             Some(crate::tab::Hit::Board) | None => PointerLook::Arrow,
             Some(_) => PointerLook::Hand,
         })
+    }
+
+    fn drop_files(&mut self, id: u64, x: f32, y: f32, paths: &[std::path::PathBuf]) -> bool {
+        if id == HOME || !self.area.contains(x, y) {
+            return false;
+        }
+        let Some(tab) = self.tabs.iter().find(|t| t.id() == id) else {
+            return false;
+        };
+        // Com o verso aberto, o que se larga é do cartão dele (o modal do Trello); senão, do cartão
+        // sob o rato.
+        let card = match tab.back.as_deref() {
+            Some(b) => Some(b.card),
+            None => crate::pointer::card_under(tab, x, y),
+        };
+        let Some(card) = card else {
+            return false;
+        };
+        crate::back::attach::attach_paths(self, id, card, paths) > 0
+            || !self.notices.is_empty()
     }
 
     fn as_any(&self) -> &dyn Any {

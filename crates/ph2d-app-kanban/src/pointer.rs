@@ -14,6 +14,16 @@ use ph2d_host::PointerButton;
 use ph2d_kanban_model::{Kanban, RecordId};
 use ph2d_text::TextSystem;
 
+/// O cartão sob `(x, y)` pela disposição VISTA, sem texto (os ficheiros largados do sistema).
+pub(crate) fn card_under(tab: &Tab, x: f32, y: f32) -> Option<ph2d_kanban_model::CardId> {
+    tab.layout
+        .lists
+        .iter()
+        .filter(|lb| !lb.collapsed && lb.body.contains(x, y))
+        .find_map(|lb| lb.cards.iter().find(|c| c.rect.contains(x, y)))
+        .map(|c| c.id)
+}
+
 /// ⭐ O que está em `(x, y)`: o menu e o painel por cima, depois os campos, o cabeçalho e as listas.
 pub(crate) fn hit(tab: &Tab, k: &Kanban, ts: &mut TextSystem, x: f32, y: f32) -> Option<Hit> {
     let l = &tab.layout;

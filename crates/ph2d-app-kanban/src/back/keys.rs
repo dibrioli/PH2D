@@ -55,9 +55,7 @@ pub(crate) fn key(
         };
     }
     if matches!(b.pop, Some(Pop::Share)) && input.mods.ctrl && input.key == Key::Char('c') {
-        let link = read(docs, id, |k, c| {
-            format!("ph2d://kanban/{}/card/{}", k.id.0, c.id.0)
-        });
+        let link = read(docs, id, super::pop::card_link);
         return KeyOutcome {
             consumed: true,
             copy: link,
@@ -114,7 +112,7 @@ pub(crate) fn key(
         let out = b.desc.key(ts, r, input);
         match out.event {
             Some(RichEditorEvent::Submit | RichEditorEvent::ExitEdit) => save_description(docs, id),
-            Some(RichEditorEvent::OpenLink(u)) => b.opened.push(u),
+            Some(RichEditorEvent::OpenLink(u)) => b.opened.push(super::outside::Outside::Link(u)),
             _ => {}
         }
         return KeyOutcome {
@@ -495,6 +493,17 @@ pub(crate) fn pop_click(docs: &mut KanbanDocs, id: u64, card: CardId, p: PopHit)
         }
         PopHit::FieldDelete(f) => {
             write::delete(docs, id, RecordId::Field(f));
+        }
+        PopHit::PickFile => {
+            b.pop = None;
+            b.pick = true;
+        }
+        PopHit::CopyLink => {
+            let link = read(docs, id, super::pop::card_link);
+            if let Some(b) = back_mut(docs, id) {
+                b.copy = link;
+                b.pop = None;
+            }
         }
     }
 }

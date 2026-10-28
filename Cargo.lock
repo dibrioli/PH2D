@@ -5739,6 +5739,7 @@ dependencies = [
 name = "ph2d-app-kanban"
 version = "0.0.0"
 dependencies = [
+ "image",
  "ph2d-a11y",
  "ph2d-app-host",
  "ph2d-asset",
@@ -5754,6 +5755,7 @@ dependencies = [
  "ph2d-tokens",
  "ph2d-tool-registry",
  "ph2d-vector",
+ "rfd",
 ]
 
 [[package]]

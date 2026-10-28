@@ -1,7 +1,9 @@
 //! ⭐ **O rato no verso** — carregar guarda o alvo (os editores e o seletor de datas tomam-no já, para
 //! o cursor e a selecção); largar no MESMO alvo é o clique. Cada clique é um verbo do Trello.
 
+use super::outside::Outside;
 use super::{Back, BackHit, Edit, EditAt, Pop, PopHit, Side, write};
+use ph2d_editor_core::interaction::DOUBLE_CLICK_WINDOW_NS;
 use crate::docs::KanbanDocs;
 use ph2d_editor_core::widget::{DatePickerEvent, LineField, RichEditorEvent};
 use ph2d_host::Modifiers;
@@ -39,8 +41,29 @@ pub(crate) fn people(docs: &KanbanDocs, id: u64) -> Vec<Member> {
     read(docs, id, |k, _| super::people(k, &team, &me)).unwrap_or_default()
 }
 
-/// Carregar. `true` = tomado (o verso está aberto e o rato na área).
-pub(crate) fn down(docs: &mut KanbanDocs, id: u64, ts: &mut TextSystem, x: f32, y: f32) -> bool {
+/// Quantos cliques seguidos no alvo `h` (1, 2 = palavra, 3 = bloco; o 4.º recomeça), à janela do
+/// duplo clique do sistema.
+fn clicks(b: &mut Back, h: BackHit, now_ns: u128) -> u8 {
+    let n = match b.last_down {
+        Some((at, t, n)) if at == h && now_ns.saturating_sub(t) <= DOUBLE_CLICK_WINDOW_NS => {
+            n % 3 + 1
+        }
+        _ => 1,
+    };
+    b.last_down = Some((h, now_ns, n));
+    n
+}
+
+/// Carregar. `true` = tomado (o verso está aberto e o rato na área). `mods` e `now_ns` chegam ao
+/// editor rico: o Shift estende a selecção, o 2.º e o 3.º clique escolhem a palavra e o bloco.
+pub(crate) fn down(
+    docs: &mut KanbanDocs,
+    id: u64,
+    ts: &mut TextSystem,
+    (x, y): (f32, f32),
+    mods: Modifiers,
+    now_ns: u128,
+) -> bool {
     let Some(b) = back_mut(docs, id) else {
         return false;
     };
@@ -79,16 +102,18 @@ pub(crate) fn down(docs: &mut KanbanDocs, id: u64, ts: &mut TextSystem, x: f32, 
     }
     match h {
         Some(BackHit::DescArea) => {
+            let n = clicks(b, BackHit::DescArea, now_ns);
             if let Some(r) = b.rect_of(BackHit::DescArea) {
-                let ev = b.desc.pointer_down(ts, r, x, y, Modifiers::default(), 1);
+                let ev = b.desc.pointer_down(ts, r, x, y, mods, n);
                 if let Some(RichEditorEvent::OpenLink(u)) = ev {
-                    b.opened.push(u);
+                    b.opened.push(Outside::Link(u));
                 }
             }
         }
         Some(BackHit::CommentArea) => {
+            let n = clicks(b, BackHit::CommentArea, now_ns);
             if let Some(r) = b.rect_of(BackHit::CommentArea) {
-                let _ = b.comment.pointer_down(ts, r, x, y, Modifiers::default(), 1);
+                let _ = b.comment.pointer_down(ts, r, x, y, mods, n);
             }
         }
         Some(BackHit::Pop(PopHit::Picker)) => {
@@ -537,20 +562,22 @@ pub(crate) fn click(docs: &mut KanbanDocs, id: u64, h: BackHit) {
 }
 
 fn open_attachment(docs: &mut KanbanDocs, id: u64, a: ph2d_kanban_model::AttachmentId) {
-    let Some(Some((link, here))) = read(docs, id, |k, _| {
-        k.attachments.get(&a).map(|x| (x.link.clone(), k.id))
+    let Some(Some((link, name, here))) = read(docs, id, |k, _| {
+        k.attachments
+            .get(&a)
+            .map(|x| (x.link.clone(), x.name.clone(), k.id))
     }) else {
         return;
     };
     match link {
         Link::Url(u) => {
             if let Some(b) = back_mut(docs, id) {
-                b.opened.push(u);
+                b.opened.push(Outside::Link(u));
             }
         }
         Link::File(f) => {
             if let Some(b) = back_mut(docs, id) {
-                b.opened.push(format!("ph2d://file/{}", f.hex()));
+                b.opened.push(Outside::File(f, name));
             }
         }
         Link::Card(k, c) if k == here => super::open(docs, id, c),

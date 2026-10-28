@@ -346,7 +346,26 @@ pub(crate) fn attachments(ui: &mut Ui<'_>, cx: &Ctx<'_>, x: f32, y: f32, w: f32)
         let thumb = Rect::new(x, y, u::THUMB_W, u::THUMB_H);
         let slot = ui.c(T::KanbanSlot);
         fill_rounded_rect(ui.scene, thumb, m::LABEL_RADIUS, slot);
-        crate::paint::icon(ui.scene, kind_icon(a), thumb, meta);
+        let r = m::LABEL_RADIUS;
+        let pictured = match a.link {
+            Link::File(f) => super::thumb::draw(ui.scene, cx.set, f, thumb, (r, r, r, r), true),
+            _ => false,
+        };
+        if !pictured {
+            let kind = match a.link {
+                Link::File(f) => cx.set.file(f).and_then(|_| super::attach::kind_of(&a.name)),
+                _ => None,
+            };
+            match kind {
+                Some(k) => {
+                    let kw = ui.width(&k, u::SMALL_PX);
+                    let ky = thumb.y + (thumb.h - u::META_LINE) / 2.0;
+                    let kx = thumb.x + ((thumb.w - kw) / 2.0).max(0.0);
+                    ui.strong(&k, kx, ky, u::META_LINE, u::SMALL_PX, thumb.w, meta);
+                }
+                None => crate::paint::icon(ui.scene, kind_icon(a), thumb, meta),
+            }
+        }
         ui.hit(thumb, BackHit::AttOpen(a.id));
         let tx = x + u::THUMB_W + u::GAP;
         let tw = (w - u::THUMB_W - u::GAP).max(0.0);
@@ -354,10 +373,16 @@ pub(crate) fn attachments(ui: &mut Ui<'_>, cx: &Ctx<'_>, x: f32, y: f32, w: f32)
         ui.strong(&a.name, tx, y, u::META_LINE, u::BODY_PX, tw, fg);
         let nw = ui.width(&a.name, u::BODY_PX).min(tw);
         ui.hit(Rect::new(tx, y, nw, u::META_LINE), BackHit::AttOpen(a.id));
-        let added = tr_with(
+        let mut added = tr_with(
             "kanban.back.added",
             &[("when", &super::dates::ago(a.at, cx.now))],
         );
+        if let Link::File(f) = a.link
+            && let Some(file) = cx.set.file(f)
+        {
+            let size = super::attach::human_size(file.bytes.0.len());
+            added = tr_with("kanban.back.file_meta", &[("added", &added), ("size", &size)]);
+        }
         ui.line(
             &added,
             tx,

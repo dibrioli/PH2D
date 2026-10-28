@@ -10,6 +10,7 @@ mod teclado;
 mod teto;
 mod titulo;
 mod verso;
+mod verso_anexos;
 mod verso_listas;
 mod vista;
 mod voo;

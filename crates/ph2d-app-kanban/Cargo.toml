@@ -27,6 +27,10 @@ ph2d-kanban-dates = { path = "../ph2d-kanban-dates" }
 # W3 — a capa de IMAGEM descodifica-se pela MESMA porta que a cena e o Quadro usam
 # (`ph2d_asset::decode_image`, com os tectos e as recusas do registo `imageio`), fora do fio do desenho.
 ph2d-asset = { path = "../ph2d-asset" }
+# W3, lote D3 — anexar ficheiros: o diálogo nativo (pela porta `ph2d_app_host::modal`, como o Quadro) e o
+# tamanho natural de uma imagem pelo CABEÇALHO (os mesmos formatos que a `ph2d-asset` já compila).
+rfd = "0.17"
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp", "gif"] }
 # A mola do arrasto (a lei vem do `UiMotion` do hero: o carácter e o «movimento reduzido»).
 ph2d-spring = { path = "../ph2d-spring" }
 ph2d-text = { path = "../ph2d-text" }

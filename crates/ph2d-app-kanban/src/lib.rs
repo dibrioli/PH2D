@@ -33,6 +33,7 @@ pub mod smoke;
 mod surface;
 mod tab;
 
+pub use back::outside::{Outside, Served, System, World};
 pub use docs::KanbanDocs;
 pub use surface::{CMD_HOME, CMD_NEW};
 
@@ -57,6 +58,26 @@ pub fn frame(hero: &mut ph2d_editor_core::screens::hero::HeroScreen) {
         .collect();
     if let Some(docs) = hero.documents.surfaces_mut().find_mut::<KanbanDocs>() {
         docs.follow_people(&author, team);
+    }
+}
+
+/// ⭐ A fila do Kanban para o MUNDO (a shell chama-a uma vez por imagem, ao lado do `io::service` do
+/// Quadro): o diálogo «Choose a file», os links e os anexos a abrir, o link copiado e os avisos.
+pub fn service(hero: &mut ph2d_editor_core::screens::hero::HeroScreen) {
+    service_with(hero, &mut System);
+}
+
+/// [`service`] por outro mundo (um teste responde no lugar do diálogo e do navegador).
+pub fn service_with(hero: &mut ph2d_editor_core::screens::hero::HeroScreen, world: &mut dyn World) {
+    let Some(docs) = hero.documents.surfaces_mut().find_mut::<KanbanDocs>() else {
+        return;
+    };
+    let out = docs.serve(world);
+    if let Some(text) = out.copy {
+        hero.store.set_clipboard_copy(text);
+    }
+    for n in out.notices {
+        hero.documents.tell(n);
     }
 }
 

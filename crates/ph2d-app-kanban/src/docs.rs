@@ -39,6 +39,8 @@ pub struct KanbanDocs {
     /// dos quadros do projecto — os membros e as menções do verso.
     pub(crate) me: ph2d_kanban_model::Member,
     pub(crate) team: Vec<String>,
+    /// Avisos para o ecrã (um ficheiro que não se leu), servidos com a fila de fora.
+    pub(crate) notices: Vec<String>,
 }
 
 impl Default for KanbanDocs {
@@ -56,6 +58,7 @@ impl Default for KanbanDocs {
             over: None,
             me: ph2d_kanban_model::Member(ph2d_i18n::tr("kanban.back.me").to_owned()),
             team: Vec::new(),
+            notices: Vec::new(),
         }
     }
 }
@@ -265,6 +268,7 @@ impl KanbanDocs {
             theme,
             k,
             tab,
+            &set,
             &self.me,
             &self.team,
             crate::actions::now(),

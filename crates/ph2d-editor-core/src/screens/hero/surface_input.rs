@@ -141,6 +141,13 @@ pub fn drop(hero: &mut HeroScreen, at: crate::doc_surface::DropAt<'_>) -> bool {
         .is_some_and(|(f, id)| f.drop(id, at))
 }
 
+/// Ficheiros do sistema largados em `(x, y)`: a aba de família activa recebe-os? (`true` = sim.)
+pub fn drop_files(hero: &mut HeroScreen, x: f32, y: f32, paths: &[std::path::PathBuf]) -> bool {
+    hero.documents
+        .active_surface_mut()
+        .is_some_and(|(f, id)| f.drop_files(id, x, y, paths))
+}
+
 pub(super) fn pointer_move(
     hero: &mut HeroScreen,
     input: Input<'_>,

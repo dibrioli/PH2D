@@ -255,6 +255,45 @@ pub(crate) fn add_link(
     })
 }
 
+/// Um anexo de ficheiro (já no conjunto); uma imagem num cartão sem capa passa a capa, no MESMO
+/// passo de desfazer (o Trello).
+pub(crate) fn add_file(
+    docs: &mut KanbanDocs,
+    id: u64,
+    c: CardId,
+    file: ph2d_kanban_model::FileId,
+    name: String,
+    image: bool,
+) -> bool {
+    logged(docs, id, |k| {
+        let card = k.cards.get(&c)?;
+        let pos = after(
+            k.attachments
+                .values()
+                .filter(|a| a.card == c && !a.meta.deleted)
+                .map(|a| &a.pos),
+        );
+        let mut ops = vec![KanbanOp::put(Record::Attachment(Attachment {
+            id: AttachmentId(k.mint()),
+            card: c,
+            pos,
+            name,
+            link: Link::File(file),
+            at: now(),
+            meta: Meta::default(),
+        }))];
+        if image && card.cover.is_none() {
+            let mut new = card.clone();
+            new.cover = Some(Cover {
+                fill: ph2d_kanban_model::CoverFill::Image(file),
+                full: false,
+            });
+            ops.push(KanbanOp::put(Record::Card(new)));
+        }
+        Some(ops)
+    })
+}
+
 pub(crate) fn set_cover(docs: &mut KanbanDocs, id: u64, c: CardId, cover: Option<Cover>) -> bool {
     card(docs, id, c, |c| c.cover = cover)
 }

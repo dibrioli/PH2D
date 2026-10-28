@@ -23,6 +23,8 @@ use ph2d_vector::VectorScene;
 /// O que o verso lê para se pintar.
 pub(crate) struct Ctx<'a> {
     pub k: &'a Kanban,
+    /// O conjunto (os bytes dos anexos de ficheiro e das capas).
+    pub set: &'a ph2d_kanban_model::KanbanSet,
     pub card: &'a Card,
     pub me: &'a Member,
     pub now: Moment,
@@ -37,12 +39,14 @@ pub(crate) fn modal_x(area: Rect) -> (f32, f32) {
 }
 
 /// ⭐ Pinta o verso aberto da aba (se há) por cima do quadro.
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn paint(
     scene: &mut VectorScene,
     ts: &mut TextSystem,
     theme: Theme,
     k: &Kanban,
     tab: &mut Tab,
+    set: &ph2d_kanban_model::KanbanSet,
     me: &Member,
     team: &[String],
     now: Moment,
@@ -57,6 +61,7 @@ pub(crate) fn paint(
     };
     let cx = Ctx {
         k,
+        set,
         card,
         me,
         now,
@@ -155,8 +160,11 @@ fn modal_body(ui: &mut Ui<'_>, back: &mut Back, cx: &Ctx<'_>, x: f32, top: f32, 
             (u::MODAL_RADIUS, u::MODAL_RADIUS, 0.0, 0.0),
             fill,
         );
-        if matches!(cover.fill, CoverFill::Image(_)) {
-            crate::paint::icon(ui.scene, IconId::Image, r, ui.meta());
+        if let CoverFill::Image(f) = cover.fill {
+            let radii = (u::MODAL_RADIUS, u::MODAL_RADIUS, 0.0, 0.0);
+            if !super::thumb::draw(ui.scene, cx.set, f, r, radii, false) {
+                crate::paint::icon(ui.scene, IconId::Image, r, ui.meta());
+            }
         }
         let label = tr("kanban.back.cover");
         let bw = ui.button_w(label, true);

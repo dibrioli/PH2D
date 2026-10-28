@@ -6651,6 +6651,7 @@ dependencies = [
  "ph2d-host",
  "ph2d-i18n",
  "ph2d-input",
+ "ph2d-kanban-model",
  "ph2d-label-census",
  "ph2d-macro",
  "ph2d-panel-flip",

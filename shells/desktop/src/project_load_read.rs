@@ -124,8 +124,9 @@ impl crate::App {
             // `Vec` vazio acrescentado lê o v192 com o tipo vivo (os anteriores levam-no também). O `191`
             // tem a mesma forma; só o SIGNIFICADO da opacidade nas poses mudou (abaixo).
             // ⭐ **203 → 204: a mesa de som** (F30 §B2): mais um `Vec` vazio no fim — um `0` a mais.
+            // ⭐ **207 → 208: os kanbans** (ADR-0192): mais um `Vec` vazio no fim — outro `0`.
             192 | crate::project_schema::PROJECT_SCHEMA_OPACIDADE_FORA_DOS_ESTADOS => {
-                match postcard::from_bytes::<(u32, ProjectFile)>(&[&bytes[..], &[0, 0, 0]].concat())
+                match postcard::from_bytes::<(u32, ProjectFile)>(&[&bytes[..], &[0, 0, 0, 0]].concat())
                 {
                     Ok((_, f)) => (f, None),
                     Err(e) => {
@@ -139,7 +140,7 @@ impl crate::App {
                 use ph2d_app_components::script_project::read_before_scripts;
                 match read_before_scripts(
                     ver,
-                    &[&bytes[..], &[0, 0, 0]].concat(),
+                    &[&bytes[..], &[0, 0, 0, 0]].concat(),
                     |f: &mut ProjectFile| &mut f.state.world,
                     PROJECT_SCHEMA,
                 ) {
@@ -202,17 +203,20 @@ impl crate::App {
     }
 }
 
-/// Os `0` do `Vec` vazio que faltam ao fim de um ficheiro `ver` lido com o tipo vivo: do `204` (a `mesa` já lá
-/// está) para cima nenhum; do `198` ao `203` falta-lhe a `mesa`; abaixo falta-lhe também o `jogo`. Os itens
+/// Os `0` do `Vec` vazio que faltam ao fim de um ficheiro `ver` lido com o tipo vivo: do `208` (os `kanbans` já
+/// lá estão) para cima nenhum; do `204` ao `207` falta-lhe só os `kanbans`; do `198` ao `203` também a `mesa`;
+/// abaixo também o `jogo`. Os itens
 /// (F30 §A1, `205`), os filtros e a pilha (`206`) e os relógios (`207`) migram em `migra_depois_de_ler`: a forma
 /// do ficheiro é a mesma.
 fn falta_no_fim(ver: u32) -> &'static [u8] {
-    if ver > crate::project_schema::PROJECT_SCHEMA_SEM_MESA {
+    if ver > crate::project_schema::PROJECT_SCHEMA_SEM_KANBANS {
         &[]
-    } else if ver >= crate::project_schema::PROJECT_SCHEMA_SEM_CONSTRAINTS {
+    } else if ver > crate::project_schema::PROJECT_SCHEMA_SEM_MESA {
         &[0]
-    } else {
+    } else if ver >= crate::project_schema::PROJECT_SCHEMA_SEM_CONSTRAINTS {
         &[0, 0]
+    } else {
+        &[0, 0, 0]
     }
 }
 

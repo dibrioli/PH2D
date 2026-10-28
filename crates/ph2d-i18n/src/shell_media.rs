@@ -191,6 +191,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "shell.project_load.project_refused_its_boards" => {
             "Project refused: its boards are from another version ({e})"
         }
+        "shell.project_load.project_refused_its_kanbans" => {
+            "Project refused: its Kanbans are from another version ({e})"
+        }
         "shell.project_load.project_refused_its_scripts" => {
             "Project refused: its scripts are unreadable ({e})"
         }

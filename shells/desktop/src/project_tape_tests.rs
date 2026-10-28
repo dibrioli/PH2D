@@ -78,6 +78,7 @@ fn a_recorded_run_survives_the_file() {
         marcas_do_artista: Vec::new(),
         jogo: Vec::new(),
         mesa: Vec::new(),
+        kanbans: Vec::new(),
     };
     std::fs::write(
         &path,

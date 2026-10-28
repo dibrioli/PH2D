@@ -72,10 +72,21 @@ impl crate::App {
                 return;
             }
         };
-        // A meio do Play o documento é a fotografia (`undo::jogo`): o que o jogo mudou não se grava.
-        let Some(state) = self.documento_do_jogo().or_else(|| self.capture_project()) else {
+        // Os KANBANS (ADR-0192), pela mesma lei dos quadros: sem bytes, não se grava.
+        let kanbans = self
+            .gfx
+            .as_ref()
+            .and_then(|g| g.hero_screen.as_ref())
+            .map_or(Ok(Vec::new()), |h| h.documents.kanbans().to_bytes());
+        let Ok(kanbans) = kanbans.inspect_err(|e| {
+            eprintln!("[proj] kanbans nao serializaram — save RECUSADO: {e}");
+        }) else {
             return;
         };
+        // A meio do Play o documento é a fotografia (`undo::jogo`): o que o jogo mudou não se grava.
+        let Some(state) = self.documento_do_jogo().or_else(|| self.capture_project()) else {
+        return;
+    };
         let file = ProjectFile {
             state,
             assets,
@@ -150,6 +161,7 @@ impl crate::App {
             mesa: (self.gfx.as_ref())
                 .map(|g| ph2d_app_audio::mesa_doc::autorado(&g.sim).to_bytes())
                 .unwrap_or_default(),
+            kanbans,
             // ⚠️ **A taxonomia NÃO está aqui, e a ausência é a decisão** (v105): ela viaja dentro
             // do `state`, que é a unidade do undo — ver [`crate::project_library`]. Um campo aqui
             // seria a **segunda** resposta à mesma pergunta, e a que o load lesse ganharia sem

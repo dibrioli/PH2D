@@ -427,6 +427,7 @@ fn project_file_round_trips_through_postcard() {
         marcas_do_artista: Vec::new(),
         jogo: Vec::new(),
         mesa: Vec::new(),
+        kanbans: Vec::new(),
     };
     let bytes = postcard::to_allocvec(&(PROJECT_SCHEMA, &file)).unwrap();
     let (ver, back): (u32, ProjectFile) = postcard::from_bytes(&bytes).unwrap();
@@ -585,6 +586,10 @@ mod scripts;
 /// **As MARCAS DO ARTISTA no arquivo** (Macros W9, v192) — filho pela mesma razão.
 #[path = "project_marcas_tests.rs"]
 mod marcas;
+
+/// **Os KANBANS no arquivo** (TrelloClone W1, v194, ADR-0192) — filho pela mesma razão.
+#[path = "project_kanbans_tests.rs"]
+mod kanbans;
 
 /// **O que um load faz com a CORRIDA GRAVADA** (W17) — FILHO e não irmão porque as fixtures desta suíte
 /// (`headless_app`, `write_project`, `tmp_path`, `empty_state`) são as portas dele: copiá-las seria um

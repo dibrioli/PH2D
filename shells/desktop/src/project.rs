@@ -178,8 +178,8 @@ pub(crate) struct ProjectFile {
     /// **As MARCAS DO ARTISTA** (v193, W9 das Macros) — por imagem com macro, onde o artista escreveu
     /// depois da gravação (`ph2d_app_painter::macro_track::PalcosDoPainter::marcas_a_gravar`), com versão
     /// PRÓPRIA. Fora do `ProjectState`: a marca anda com o desfazer de quem escreve os píxeis. Sem ela,
-    /// abrir o projeto tirava do Play tudo o que se pintou depois de gravar. ⚠️ **O último campo** — os
-    /// braços `189`..`192` do load leem-no acrescentando o `0` deste `Vec` vazio.
+    /// abrir o projeto tirava do Play tudo o que se pintou depois de gravar. Os braços `189`..`192` do
+    /// load leem-no acrescentando o `0` deste `Vec` vazio.
     pub(crate) marcas_do_artista: Vec<u8>,
     /// **O FORMATO DO JOGO** (v198, plano GEF 17 D-F/D-V) — a resolução que o jogo mostra e quando a moldura da
     /// câmera se vê ([`crate::project_settings::collect_jogo`]), com versão PRÓPRIA. Fora do `ProjectState` como o
@@ -187,8 +187,12 @@ pub(crate) struct ProjectFile {
     /// vazio (= o formato de fábrica).
     pub(crate) jogo: Vec<u8>,
     /// **A MESA DE SOM** (v204, F30 §B2) — `ph2d_audio::Mesa::to_bytes`, versão PRÓPRIA (vazio = a de
-    /// fábrica). Fora do `ProjectState`: a mesa nunca teve undo. ⚠️ O último campo.
+    /// fábrica). Fora do `ProjectState`: a mesa nunca teve undo.
     pub(crate) mesa: Vec<u8>,
+    /// **Os KANBANS** (v208, `line/TrelloClone`, ADR-0192) — `ph2d_kanban_model::KanbanSet::to_bytes`,
+    /// com versão PRÓPRIA. Fora do `ProjectState`: cada Kanban tem desfazer próprio (o do Quadro).
+    /// ⚠️ **O último campo** — os braços `189`..`207` do load leem-no acrescentando o `0` deste `Vec`.
+    pub(crate) kanbans: Vec<u8>,
 }
 
 /// Uma imagem de sprite embutida no projeto: os pixels RGBA + a célula de atlas que

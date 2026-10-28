@@ -93,6 +93,13 @@ impl crate::App {
                 return;
             }
         };
+        let kanbans = match ph2d_editor_core::documents::KanbanSet::from_bytes(&file.kanbans) {
+            Ok(k) => k,
+            Err(e) => {
+                self.toast_refused("shell.project_load.project_refused_its_kanbans", &e);
+                return;
+            }
+        };
         // ---- Daqui pra baixo o arquivo foi ACEITO. ----
         //
         let abertos =
@@ -119,6 +126,7 @@ impl crate::App {
         // Os quadros do ficheiro tomam as abas (e a área volta à cena).
         if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
             ph2d_editor_core::screens::hero::document_tabs::load(hero, boards);
+            hero.documents.replace_kanbans(kanbans);
         }
         if let Some(n) = scripts.notice {
             self.toast(n);

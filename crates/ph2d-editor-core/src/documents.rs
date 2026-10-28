@@ -11,6 +11,7 @@
 
 use ph2d_board_model::{Board, BoardId, History};
 pub use ph2d_board_model::{BoardSet, undo_tick};
+pub use ph2d_kanban_model::KanbanSet;
 use std::collections::BTreeMap;
 
 #[path = "documents_alert.rs"]
@@ -33,6 +34,8 @@ pub mod team;
 #[derive(Debug, Default)]
 pub struct Documents {
     boards: BoardSet,
+    /// Os Kanbans do projecto (ADR-0192) — documento, não aba: as vistas apontam-lhes pelo id.
+    kanbans: KanbanSet,
     /// `None` = a aba `Cena`.
     active: Option<BoardId>,
     /// Âncora do arrasto da vista do quadro (px de ecrã), enquanto ele dura.
@@ -220,6 +223,17 @@ impl Documents {
     #[must_use]
     pub fn boards(&self) -> &BoardSet {
         &self.boards
+    }
+
+    /// Os Kanbans do projecto — o que a shell grava.
+    #[must_use]
+    pub fn kanbans(&self) -> &KanbanSet {
+        &self.kanbans
+    }
+
+    /// Troca todos os Kanbans (ao carregar um projecto).
+    pub fn replace_kanbans(&mut self, kanbans: KanbanSet) {
+        self.kanbans = kanbans;
     }
 
     /// O quadro da aba activa, ou `None` se a aba activa é a `Cena`.

@@ -538,7 +538,19 @@
 /// passam pelas formas congeladas (`ph2d_ecs::item_id::migra`, um componente pode subir vários degraus)
 /// e o passe dá os ids. Desenho e porquê: `docs/UI_New_and_Simple/F30_plano.md` §A1, `F31_plano.md` §1,
 /// `F32_plano.md` §1. Gates: `project_itens_tests`. Registos de componentes: `0`.
-pub(crate) const PROJECT_SCHEMA: u32 = 207;
+///
+/// # `207 → 208` — **os Kanbans** (`line/TrelloClone`, W1, ADR-0192, 2026-10-27)
+///
+/// Campo novo no FIM do `ProjectFile`: `kanbans: Vec<u8>` — o `KanbanSet` com versão PRÓPRIA
+/// (`ph2d_kanban_model::FORMAT_VERSION`): o documento Kanban do projecto, que a aba e o elemento do
+/// Quadro referenciam pelo `KanbanId`. ⭐ **COM leitura dos anteriores:** do `204` ao `207` falta só
+/// este `Vec` (um `0`); abaixo faltam-lhe também a `mesa` e o `jogo` — ver `falta_no_fim` — e os braços
+/// `192`/`191` e `190`/`189` acrescentam um `0` a mais (um projecto antigo abre sem Kanbans). Gate:
+/// `project_kanbans_tests`. Registos de componentes: `0`. ⚠️ **A tripla NÃO vê este degrau.**
+pub(crate) const PROJECT_SCHEMA: u32 = 208;
+
+/// O último degrau sem os Kanbans — a mesma forma do actual, sem o `Vec` final (`kanbans`).
+pub(crate) const PROJECT_SCHEMA_SEM_KANBANS: u32 = 207;
 
 /// O último degrau com o relógio dos tweens/seguidores e os filtros das poses por POSIÇÃO (F32).
 pub(crate) const PROJECT_SCHEMA_RELOGIO_POR_POSICAO: u32 = 206;

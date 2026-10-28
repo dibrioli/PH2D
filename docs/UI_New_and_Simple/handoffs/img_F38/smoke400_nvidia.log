@@ -1,0 +1,4 @@
+f37.2 | [ocupa] 14336 MiB ocupados, Some(460) MiB livres; seguro 60 s | cheia: gpu-erro=0 oom=0 | depois de libertar: gpu-erro=0 | aviso-dono=0
+f38b.37 | [ocupa] 14336 MiB ocupados, Some(452) MiB livres; seguro 60 s | cheia: gpu-erro=0 oom=0 | depois de libertar: gpu-erro=0 | aviso-dono=0
+f37.71 | [ocupa] 14336 MiB ocupados, Some(419) MiB livres; seguro 60 s | cheia: gpu-erro=132 oom=0 | depois de libertar: gpu-erro=132 | aviso-dono=0
+f38b.104 | [ocupa] 14336 MiB ocupados, Some(409) MiB livres; seguro 60 s | cheia: gpu-erro=0 oom=0 | depois de libertar: gpu-erro=0 | aviso-dono=0

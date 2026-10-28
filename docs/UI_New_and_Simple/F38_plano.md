@@ -122,6 +122,12 @@ escopo de `Validation` aberto ANTES de nascerem o átlas, uma individual de 8 e 
 escritos (com o remendo) e os meios-float; os dois renascem. Visto vermelho antes da cura (o
 `create_view` sobre a textura destruída). G17 e G18 seguem verdes.
 
+**No app** (NVIDIA, `ocupa_a_placa 400` → ~410 MiB livres, cena 41, liberta-se a placa aos 15 s;
+[`smoke400.sh`](handoffs/img_F38/smoke400.sh), [`smoke400_nvidia.log`](handoffs/img_F38/smoke400_nvidia.log)):
+F37 = **132** `[gpu-erro]` (91 `Texture::create_view`, 20 `create_bind_group`, 10 `Queue::submit`, 1
+`write_texture`); F38 = **0**. A imagem, cheia e depois de libertar, é a mesma nas duas (0 px). Com ~455 MiB
+livres nenhuma das duas recusa (0 × 0).
+
 ## 4 — Mutações (as 12 sangraram, todas no G28)
 
 | mutação | vermelho |

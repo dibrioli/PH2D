@@ -25,11 +25,14 @@ pub(super) fn nasce_textura(
 }
 
 impl TextureAtlas {
-    /// O funil de toda subida de pixels: escreve a região e, com a textura recusada, guarda os bytes.
+    /// O funil de toda subida de pixels: escreve a região, ou, com a textura recusada, só guarda os
+    /// bytes — trabalho de placa sobre ela é um `[gpu-erro]` falso por escrita (F38 §3).
     pub(super) fn sobe(&mut self, gpu: &GpuContext, key: u32, region: AtlasRegion, rgba: &[u8]) {
-        upload_region(gpu, &self.texture, region, rgba);
-        if let Some(fonte) = &mut self.fonte {
-            fonte.insert(key, rgba.to_vec());
+        match &mut self.fonte {
+            Some(fonte) => {
+                fonte.insert(key, rgba.to_vec());
+            }
+            None => upload_region(gpu, &self.texture, region, rgba),
         }
     }
 

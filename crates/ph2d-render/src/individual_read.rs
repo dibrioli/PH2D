@@ -62,7 +62,24 @@ impl IndividualTextureStore {
             .entries
             .get(&id)
             .ok_or(IndividualTextureError::NotFound(id))?;
-        readback_texture(gpu, &entry.texture, 0, entry.width, entry.height)
+        // A recusada lê-se da fonte guardada: a substituta não tem os pixels, e uma ferramenta que
+        // editasse o que ela devolve gravaria uma imagem vazia por cima (F38 §3).
+        let (w, h) = (entry.width, entry.height);
+        match &entry.fonte {
+            None => readback_texture(gpu, &entry.texture, 0, w, h),
+            Some(crate::individual_renasce::FonteRecusada::Rgba8(px)) => Ok((w, h, px.clone())),
+            Some(crate::individual_renasce::FonteRecusada::Rgba16(meios)) => {
+                Ok((w, h, bytemuck::cast_slice(meios).to_vec()))
+            }
+            Some(crate::individual_renasce::FonteRecusada::Vazia) => {
+                let bpp = if entry.format == Self::FORMAT_16 {
+                    8
+                } else {
+                    4
+                };
+                Ok((w, h, vec![0; w as usize * h as usize * bpp]))
+            }
+        }
     }
 
     /// **Lê uma entrada SEMPRE como RGBA8 sRGB**, convertendo quando ela é de 16 bits.
@@ -151,7 +168,9 @@ impl IndividualTextureStore {
             return Ok(());
         };
         if entry.width == width && entry.height == height {
-            crate::individual_entry::write_pixels(gpu, &entry.texture, width, height, rgba);
+            if entry.fonte.is_none() {
+                crate::individual_entry::write_pixels(gpu, &entry.texture, width, height, rgba);
+            }
             self.anota_pixels_recusados(id, rgba);
         } else {
             let refcount = entry.refcount;
@@ -234,15 +253,17 @@ impl IndividualTextureStore {
                 expected,
             });
         }
-        crate::individual_entry::write_pixels_region(
-            gpu,
-            &entry.texture,
-            x,
-            y,
-            width,
-            height,
-            region_rgba,
-        );
+        if entry.fonte.is_none() {
+            crate::individual_entry::write_pixels_region(
+                gpu,
+                &entry.texture,
+                x,
+                y,
+                width,
+                height,
+                region_rgba,
+            );
+        }
         self.anota_regiao_recusada(id, x, y, width, height, region_rgba);
         self.regen_mips(gpu, id);
         Ok(())

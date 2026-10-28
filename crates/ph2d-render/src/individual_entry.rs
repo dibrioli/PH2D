@@ -32,9 +32,10 @@ pub(crate) fn create_entry(
         wgpu::TextureFormat::Rgba8UnormSrgb,
     );
     let mut entry = entry;
-    write_pixels(gpu, &entry.texture, width, height, rgba);
     if entry.fonte.is_some() {
         entry.fonte = Some(FonteRecusada::Rgba8(rgba.to_vec()));
+    } else {
+        write_pixels(gpu, &entry.texture, width, height, rgba);
     }
     entry
 }
@@ -62,10 +63,11 @@ pub(crate) fn create_entry_16(
         height,
         IndividualTextureStore::FORMAT_16,
     );
-    write_pixels_16(gpu, &entry.texture, width, height, halves);
     let mut entry = entry;
     if entry.fonte.is_some() {
         entry.fonte = Some(FonteRecusada::Rgba16(halves.to_vec()));
+    } else {
+        write_pixels_16(gpu, &entry.texture, width, height, halves);
     }
     entry
 }
@@ -107,7 +109,8 @@ pub(crate) fn create_entry_empty(
         })
     });
     // Clear-on-alloc: an EMPTY slot (`acquire_empty`) is sampled before its first fill → else garbage.
-    crate::texture_clear::clear_all_mips_transparent(gpu, &texture, mip_count);
+    // Os níveis DA TEXTURA: a substituta da recusada tem um só (F38 §3).
+    crate::texture_clear::clear_all_mips_transparent(gpu, &texture, texture.mip_level_count());
     // The sampled view spans ALL mip levels (default) so the trilinear sampler can
     // pick the right level; the generator makes its own single-level views.
     let view = texture.create_view(&wgpu::TextureViewDescriptor::default());

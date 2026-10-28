@@ -4,18 +4,40 @@
 //! texturas individuais) guardam a fonte da que nasceu recusada e refazem-na no fim do episódio.
 
 /// Cria a textura sob [`ph2d_gpu::memoria::sob_escopo_de_memoria`]; `true` = a placa recusou.
+///
+/// A recusada é trocada por uma SUBSTITUTA de 1×1 (mesmo formato e usos) até renascer (F38 §3): a
+/// inválida envenenava a `view`, o material e todo passe que a amostrasse — um `[gpu-erro]` por
+/// quadro. O dono guarda a fonte e não lhe faz trabalho de placa (os pixels não cabem nela).
 pub(crate) fn nasce_textura(
     device: &wgpu::Device,
     cria: impl FnOnce() -> wgpu::Texture,
 ) -> (wgpu::Texture, bool) {
     let (texture, erro) = ph2d_gpu::memoria::sob_escopo_de_memoria(device, cria);
     #[cfg(test)]
-    if testes::consome_recusa_forcada() {
-        // A recusa de verdade: o conteúdo que vier a seguir perde-se.
-        texture.destroy();
-        return (texture, true);
+    let erro = erro.map(|_| ()).or_else(|| {
+        testes::consome_recusa_forcada().then(|| {
+            // A recusa de verdade: o conteúdo que vier a seguir perde-se.
+            texture.destroy();
+        })
+    });
+    if erro.is_none() {
+        return (texture, false);
     }
-    (texture, erro.is_some())
+    let substituta = device.create_texture(&wgpu::TextureDescriptor {
+        label: Some("ph2d-render substituta da recusada"),
+        size: wgpu::Extent3d {
+            width: 1,
+            height: 1,
+            depth_or_array_layers: 1,
+        },
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: texture.format(),
+        usage: texture.usage(),
+        view_formats: &[],
+    });
+    (substituta, true)
 }
 
 #[cfg(test)]

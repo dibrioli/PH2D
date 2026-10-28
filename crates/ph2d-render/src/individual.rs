@@ -160,7 +160,8 @@ impl IndividualTextureStore {
     /// Regenerate mip levels `1..` of an entry from its freshly-written level 0.
     /// No-op for an unknown id or a single-level (tiny) texture.
     pub(crate) fn regen_mips(&self, gpu: &GpuContext, id: u32) {
-        if let Some(entry) = self.entries.get(&id) {
+        // A recusada não tem nível 0: os mips refazem-se no `refaz_recusadas` (F38 §3).
+        if let Some(entry) = self.entries.get(&id).filter(|e| e.fonte.is_none()) {
             // ⚠️ O gerador escolhe-se pelo formato DO ENTRY, nunca por um default. Um `MipGenerator`
             // traz o seu pipeline de blit amarrado a um formato; o errado é erro de validação.
             let generator = if entry.format == Self::FORMAT_16 {
@@ -339,7 +340,8 @@ impl IndividualTextureStore {
                 tex_height: entry.height,
             });
         }
-        if width == 0 || height == 0 {
+        // A recusada não recebe trabalho de placa (F38 §3); quem copia volta a copiar no quadro seguinte.
+        if width == 0 || height == 0 || entry.fonte.is_some() {
             return Ok(());
         }
         let mut encoder = gpu
@@ -409,7 +411,7 @@ impl IndividualTextureStore {
                 tex_height: entry.height,
             });
         }
-        if w == 0 || h == 0 {
+        if w == 0 || h == 0 || entry.fonte.is_some() {
             return Ok(());
         }
         let mut encoder = gpu

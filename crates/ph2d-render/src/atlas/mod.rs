@@ -322,6 +322,10 @@ impl TextureAtlas {
     fn regen_mips(&mut self, gpu: &GpuContext) {
         // ⚠️ **O contador vive AQUI**, e não em cada mutador — ver [`Self::epoch`].
         self.epoch = self.epoch.wrapping_add(1);
+        // A recusada não tem nível 0: os mips refazem-se no `refaz_se_recusada` (F38 §3).
+        if self.recusada() {
+            return;
+        }
         self.mip_gen.run(
             gpu,
             &self.texture,

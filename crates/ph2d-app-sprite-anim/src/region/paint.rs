@@ -39,10 +39,19 @@ pub fn paint_doc(
         let (t, aberto) = doc.field_text(f);
         field(scene, text, theme, r, &t, aberto.then_some(t.as_str()));
     }
-    let ajuda = if doc.alt {
-        "region_editor.hint_alt"
-    } else {
-        "region_editor.hint"
+    button(
+        scene,
+        text,
+        theme,
+        l.snap,
+        tr("region_editor.snap"),
+        doc.snap_on,
+    );
+    let ajuda = match (doc.snapping(), doc.alt) {
+        (true, false) => "region_editor.hint",
+        (false, false) => "region_editor.hint_free",
+        (false, true) => "region_editor.hint_alt",
+        (true, true) => "region_editor.hint_alt_snap",
     };
     rotulo(scene, text, l.hint, ajuda);
     button(

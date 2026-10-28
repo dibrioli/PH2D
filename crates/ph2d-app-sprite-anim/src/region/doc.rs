@@ -62,6 +62,8 @@ pub struct Layout {
     pub cols: Rect,
     pub rows_label: Rect,
     pub rows: Rect,
+    /// O botão **Snap** (ligado/desligado).
+    pub snap: Rect,
     pub hint: Rect,
     pub cancel: Rect,
     pub ok: Rect,
@@ -79,6 +81,7 @@ impl Default for Layout {
             cols: z,
             rows_label: z,
             rows: z,
+            snap: z,
             hint: z,
             cancel: z,
             ok: z,
@@ -101,7 +104,9 @@ pub struct RegionDoc {
     pub rect: [f32; 4],
     pub grid: [u32; 2],
     pub editing: Option<(Field, String)>,
-    /// `Alt` premido: o snap desliga-se (ao píxel).
+    /// O botão Snap (dono 27/10: «é preciso ter a opção sem snap»): desligado, a área anda ao píxel.
+    pub snap_on: bool,
+    /// `Alt` premido: inverte o Snap enquanto está premido.
     pub alt: bool,
     space: bool,
     /// Píxeis do ecrã por píxel da imagem.
@@ -142,6 +147,7 @@ impl RegionDoc {
                 grid[1].clamp(1, px[1].max(1)),
             ],
             editing: None,
+            snap_on: true,
             alt: false,
             space: false,
             zoom: 1.0,
@@ -175,6 +181,8 @@ impl RegionDoc {
         let rows = Rect::new(x, y, h * FIELD_ROWS, h);
         x += rows.w + gap;
         let bw = h * BUTTON_ROWS;
+        let snap = Rect::new(x, y, bw, h);
+        x += snap.w + gap;
         let ok = Rect::new(area.x + area.w - gap - bw, y, bw, h);
         let cancel = Rect::new(ok.x - gap - bw, y, bw, h);
         let hint = Rect::new(x, y, (cancel.x - gap - x).max(0.0), h);
@@ -186,6 +194,7 @@ impl RegionDoc {
             cols,
             rows_label,
             rows,
+            snap,
             hint,
             cancel,
             ok,
@@ -247,13 +256,19 @@ impl RegionDoc {
         (i as f32 * self.px[axis] as f32 / self.grid[axis] as f32).round()
     }
 
-    /// ⭐ **O snap** (plano GEF 16 D2): `v` (px, eixo `axis`) cai na linha da grelha mais perto; com 1 coluna (ou
-    /// linha) e com `Alt`, ao píxel. Sempre dentro da imagem.
+    /// O snap vale agora: o botão Snap, invertido enquanto o `Alt` está premido.
+    #[must_use]
+    pub fn snapping(&self) -> bool {
+        self.snap_on != self.alt
+    }
+
+    /// ⭐ **O snap** (plano GEF 16 D2): `v` (px, eixo `axis`) cai na linha da grelha mais perto; sem [`Self::snapping`]
+    /// e com 1 coluna (ou linha), ao píxel. Sempre dentro da imagem.
     #[must_use]
     pub fn snap(&self, axis: usize, v: f32) -> f32 {
         let max = self.px[axis] as f32;
         let n = self.grid[axis];
-        if self.alt || n <= 1 {
+        if !self.snapping() || n <= 1 {
             return v.round().clamp(0.0, max);
         }
         let passo = max / n as f32;
@@ -295,6 +310,8 @@ impl RegionDoc {
             self.editing = Some((Field::Cols, self.grid[0].to_string()));
         } else if hit(l.rows, x, y) {
             self.editing = Some((Field::Rows, self.grid[1].to_string()));
+        } else if hit(l.snap, x, y) {
+            self.snap_on = !self.snap_on;
         } else if hit(l.canvas, x, y) {
             let p = self.to_image(x, y);
             self.drag = if self.space {
@@ -395,9 +412,9 @@ impl RegionDoc {
         drag != Drag::None
     }
 
-    /// A célula da grelha sob `(x, y)` passa a ser a área (com 1 × 1 não há células: nada muda).
+    /// A célula da grelha sob `(x, y)` passa a ser a área (com 1 × 1, ou sem snap, não há células: nada muda).
     fn pick_cell(&mut self, x: f32, y: f32) {
-        if self.grid == [1, 1] {
+        if self.grid == [1, 1] || !self.snapping() {
             return;
         }
         let p = self.to_image(x, y);

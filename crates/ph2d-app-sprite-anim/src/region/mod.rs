@@ -27,6 +27,8 @@ use ph2d_vector::VectorScene;
 pub struct RegionDocs {
     pub docs: Vec<RegionDoc>,
     focus: Option<u64>,
+    /// O botão Snap como o artista o deixou na última aba (a sessão lembra-o; `None` = ligado).
+    last_snap: Option<bool>,
 }
 
 impl RegionDocs {
@@ -181,8 +183,9 @@ pub fn open(
             return false;
         };
         let stable = w.get::<ph2d_ecs::StableId>(e).map_or(0, |s| s.0);
-        docs.docs
-            .push(RegionDoc::new(bits, stable, name_of(w, e), px, rect, grid));
+        let mut d = RegionDoc::new(bits, stable, name_of(w, e), px, rect, grid);
+        d.snap_on = docs.last_snap.unwrap_or(true);
+        docs.docs.push(d);
     }
     docs.focus = Some(bits);
     true
@@ -235,6 +238,9 @@ pub fn frame(
             );
         }
     }
+    if let Some(d) = docs.docs.last() {
+        docs.last_snap = Some(d.snap_on);
+    }
     let w = sim.world();
     docs.docs.retain(|d| {
         d.outcome.is_none()
@@ -268,6 +274,15 @@ pub fn click_cell(hero: &mut HeroScreen, cell: [u32; 2]) -> bool {
 
 /// O gesto da mão: um clique no botão OK da aba de Region aberta.
 pub fn click_ok(hero: &mut HeroScreen) -> bool {
+    click_button(hero, true)
+}
+
+/// O gesto da mão: um clique no botão Snap da aba de Region aberta.
+pub fn click_snap(hero: &mut HeroScreen) -> bool {
+    click_button(hero, false)
+}
+
+fn click_button(hero: &mut HeroScreen, ok: bool) -> bool {
     let Some(d) = hero
         .documents
         .surfaces_mut()
@@ -276,8 +291,8 @@ pub fn click_ok(hero: &mut HeroScreen) -> bool {
     else {
         return false;
     };
-    let ok = d.layout.ok;
-    d.press(ok.x + ok.w * 0.5, ok.y + ok.h * 0.5)
+    let b = if ok { d.layout.ok } else { d.layout.snap };
+    d.press(b.x + b.w * 0.5, b.y + b.h * 0.5)
 }
 
 /// A aba segue a sprite pela identidade, não pelos bits (o restauro do desfazer respawna o mundo).

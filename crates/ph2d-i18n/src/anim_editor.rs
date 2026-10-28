@@ -42,6 +42,11 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "Drag to move \u{00b7} handles resize \u{00b7} drag outside or click a cell for a new area \u{00b7} Alt: no snap"
         }
         "region_editor.hint_alt" => "Alt: snapping to pixels",
+        "region_editor.hint_free" => {
+            "Snap off: the area moves pixel by pixel \u{00b7} Alt: snap to the grid"
+        }
+        "region_editor.hint_alt_snap" => "Alt: snapping to the grid",
+        "region_editor.snap" => "Snap",
         "region_editor.ok" => "OK",
         "region_editor.cancel" => "Cancel",
         "region_editor.no_pixels" => "This sprite's image is not in memory, so it can't be shown.",

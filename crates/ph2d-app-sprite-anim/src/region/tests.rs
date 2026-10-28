@@ -92,6 +92,40 @@ fn a_area_nunca_sai_da_imagem() {
 
 /// Um clique sem arrastar escolhe a célula por baixo — fora da área, e DENTRO dela (a Region nova é a imagem
 /// inteira: tudo é «dentro», e o clique tem de escolher na mesma — a foto do 1.º smoke mostrou-o perdido).
+/// ⭐ Dono 27/10, smoke da Region: «é preciso ter a opção sem snap». O botão Snap desligado: a área anda ao píxel
+/// e um clique não escolhe célula; o `Alt` inverte-o (encaixa enquanto premido); ligado de novo, encaixa.
+#[test]
+fn o_botao_snap_desliga_o_encaixe() {
+    let mut d = aba();
+    d.rect = [0.0, 0.0, 100.0, 100.0];
+    d.layout.snap = Rect::new(0.0, -50.0, 40.0, 20.0);
+    d.press(10.0, -40.0);
+    assert!(!d.snap_on, "o botão desliga");
+    d.press(437.3, 163.6);
+    d.motion(612.4, 288.8);
+    d.release(612.4, 288.8);
+    assert_eq!(d.rect, [437.0, 164.0, 175.0, 125.0], "sem snap: ao píxel");
+    d.press(350.0, 50.0);
+    d.release(350.0, 50.0);
+    assert_eq!(
+        d.rect,
+        [437.0, 164.0, 175.0, 125.0],
+        "sem snap um clique não escolhe célula"
+    );
+    d.set_keys(true, None);
+    d.press(130.0, 30.0);
+    d.motion(260.0, 140.0);
+    d.release(260.0, 140.0);
+    assert_eq!(
+        d.rect,
+        [100.0, 0.0, 200.0, 100.0],
+        "Alt com o Snap desligado: encaixa"
+    );
+    d.set_keys(false, None);
+    d.press(10.0, -40.0);
+    assert!(d.snap_on, "o botão volta a ligar");
+}
+
 #[test]
 fn um_clique_escolhe_a_celula() {
     let mut d = aba();
@@ -329,5 +363,23 @@ mod pela_aba {
         assert_eq!(depois.2, Some(ImageRegion { grid: [8, 4] }));
         m.frame();
         assert_eq!(m.visto(), depois, "o quadro seguinte não muda mais nada");
+    }
+
+    /// O botão Snap desligado numa aba fica desligado na aba seguinte (a sessão lembra-o).
+    #[test]
+    fn a_aba_seguinte_lembra_o_snap() {
+        let mut m = Mesa::new();
+        let id = m.e.to_bits();
+        let snap = m.docs().doc(id).expect("aba").layout.snap;
+        assert!(m.docs().doc(id).expect("aba").snap_on);
+        m.click(snap.x + snap.w * 0.5, snap.y + snap.h * 0.5);
+        m.key(Key::Escape);
+        m.frame();
+        m.edit(ImageUseEdit::EditRegion);
+        m.frame();
+        assert!(
+            !m.docs().doc(id).expect("aba").snap_on,
+            "reabriu com o Snap ligado"
+        );
     }
 }

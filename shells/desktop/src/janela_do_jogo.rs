@@ -170,6 +170,7 @@ impl crate::App {
             }
             s::PassoDoDono::Celula(c) => _ = r::click_cell(hero, c),
             s::PassoDoDono::Ok => _ = r::click_ok(hero),
+            s::PassoDoDono::Snap => _ = r::click_snap(hero),
         }
     }
 

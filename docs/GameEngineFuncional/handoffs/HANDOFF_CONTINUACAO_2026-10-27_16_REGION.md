@@ -111,3 +111,13 @@ px, «Area: 192 × 192 px») · `nivel_4_volta_still_region` (Still → Region d
 ## PRÓXIMO
 
 O smoke do dono decide. Depois: 12b ou J5 moedas ([plano 03](../03_plano_jogo_de_plataforma.md)), conforme o dono.
+
+## Dono 27/10: **smoke OK** · «é preciso ter a opção sem snap»
+
+Botão **Snap** na barra do editor (entre Rows e a ajuda), ligado por omissão: desligado, a área anda ao píxel e um
+clique não escolhe célula; o `Alt` INVERTE o botão enquanto premido (`RegionDoc::snapping = snap_on != alt`). A
+sessão lembra-o (`RegionDocs::last_snap`: a aba seguinte abre como a última ficou); não é gravado no projecto.
+A ajuda segue o estado (`hint` · `hint_free` · `hint_alt` · `hint_alt_snap`). Condutor: passo `nosnap`.
+Gates `o_botao_snap_desliga_o_encaixe`, `a_aba_seguinte_lembra_o_snap` (region::tests 9 verdes); mutações:
+`snapping` sem o botão → vermelho («sem snap: ao píxel»); a aba nova sempre ligada → vermelho. Clippy limpo.
+Foto `nivel_4_editor_sem_snap`. Smoke do Snap: por fazer.

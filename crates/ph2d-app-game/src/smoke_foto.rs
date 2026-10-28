@@ -223,6 +223,8 @@ pub enum PassoDoDono {
     Celula([u32; 2]),
     /// `ok` — o botão OK do editor de Region.
     Ok,
+    /// `nosnap` — o botão Snap do editor de Region (liga/desliga).
+    Snap,
 }
 
 /// ⭐ `PH2D_GAME_SMOKE_USOS=repeated,still,animated,repeated` — a sequência de cliques do seletor «Use» que o dono
@@ -239,6 +241,7 @@ pub fn usos_do_dono() -> Option<Vec<PassoDoDono>> {
             "animated" => Some(PassoDoDono::Uso(U::Animated)),
             "region" => Some(PassoDoDono::Uso(U::Region)),
             "ok" => Some(PassoDoDono::Ok),
+            "nosnap" => Some(PassoDoDono::Snap),
             p => {
                 let (c, l) = p.strip_prefix("cell:")?.split_once(':')?;
                 Some(PassoDoDono::Celula([c.parse().ok()?, l.parse().ok()?]))

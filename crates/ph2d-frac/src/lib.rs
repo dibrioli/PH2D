@@ -14,30 +14,41 @@
 //! um dígito a cada ~6 acrescentos — 100 mil elementos davam chaves de milhares de caracteres.
 //! Com ela, o acrescento incrementa um inteiro e o comprimento cresce com log₆₂(n).
 
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 
 const DIGITS: &[u8; 62] = b"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 const ZERO: u8 = b'0';
 const MAX_DIGIT: u8 = b'z';
 
-/// Uma posição na ordem de um quadro. Compara-se como texto.
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+/// Uma posição na ordem de um quadro. Compara-se como texto. Só existe VÁLIDA: o texto que vem de
+/// fora (rede, ficheiro) passa pela gramática em [`TryFrom<String>`] — os bytes gravados não mudam.
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
 pub struct FracKey(String);
+
+impl<'de> Deserialize<'de> for FracKey {
+    fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        /// O mesmo caminho do `derive` de antes (newtype), para os bytes de chaves válidas não mudarem.
+        #[derive(Deserialize)]
+        #[serde(rename = "FracKey")]
+        struct Raw(String);
+        let Raw(s) = Raw::deserialize(d)?;
+        FracKey::try_from(s).map_err(serde::de::Error::custom)
+    }
+}
 
 impl FracKey {
     /// A chave estritamente entre `lo` e `hi` (`None` = a ponta aberta). `lo == hi` é um EMPATE
     /// legítimo (duas pessoas criaram ao mesmo tempo no mesmo sítio — ADR-0181): devolve a chave logo
-    /// acima de `lo`, abaixo do inteiro seguinte.
-    ///
-    /// # Panics
-    /// Se `lo > hi`, ou se uma das duas não é uma chave válida — os dois são defeitos de quem chama.
+    /// acima de `lo`, abaixo do inteiro seguinte. `lo > hi` (vizinhos trocados por dados de um par) é
+    /// tratado como `between(hi, lo)`: o «entre» é simétrico. Nunca entra em pânico — toda `FracKey`
+    /// é válida por construção.
     #[must_use]
     pub fn between(lo: Option<&FracKey>, hi: Option<&FracKey>) -> FracKey {
+        let (lo, hi) = match (lo, hi) {
+            (Some(a), Some(b)) if a > b => (Some(b), Some(a)),
+            other => other,
+        };
         if let (Some(a), Some(b)) = (lo, hi) {
-            assert!(
-                a <= b,
-                "FracKey::between: lo ({a:?}) não é menor que hi ({b:?})"
-            );
             if a == b {
                 let (ia, fa) = split(a.0.as_bytes());
                 let out = [ia, &midpoint(fa, None)].concat();
@@ -119,6 +130,43 @@ impl FracKey {
             self
         }
     }
+}
+
+/// Texto que não é uma chave: a gramática é `cabeça (a..z|A..Z) + dígitos da parte inteira +
+/// fracção opcional sem zero final`, em base 62, e nunca o menor inteiro sem fracção (não há nada
+/// abaixo dele).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct InvalidFracKey(pub String);
+
+impl std::fmt::Display for InvalidFracKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "FracKey inválida: {:?}", self.0)
+    }
+}
+
+impl std::error::Error for InvalidFracKey {}
+
+impl TryFrom<String> for FracKey {
+    type Error = InvalidFracKey;
+    fn try_from(s: String) -> Result<Self, InvalidFracKey> {
+        if is_valid(s.as_bytes()) {
+            Ok(FracKey(s))
+        } else {
+            Err(InvalidFracKey(s))
+        }
+    }
+}
+
+fn is_valid(k: &[u8]) -> bool {
+    let Some(&head) = k.first() else {
+        return false;
+    };
+    if !head.is_ascii_alphabetic() || !k.iter().all(u8::is_ascii_alphanumeric) {
+        return false;
+    }
+    let n = integer_len(head);
+    let smallest = head == b'A' && k.len() == n && k[1..].iter().all(|&d| d == ZERO);
+    k.len() >= n && (k.len() == n || k.last() != Some(&ZERO)) && !smallest
 }
 
 fn digit_value(c: u8) -> u8 {

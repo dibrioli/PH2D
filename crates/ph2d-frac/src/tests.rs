@@ -108,12 +108,72 @@ fn inserting_between_adjacent_digits_descends_a_level() {
     }
 }
 
+/// R1 — vizinhos trocados (dados de um par ou de um ficheiro fora de ordem) não derrubam quem cria:
+/// a chave cai entre os dois, como se viessem por ordem.
 #[test]
-#[should_panic(expected = "não é menor")]
-fn out_of_order_neighbours_are_a_caller_bug() {
+fn out_of_order_neighbours_give_a_key_between_them() {
     let a = FracKey::between(None, None);
     let b = FracKey::between(Some(&a), None);
-    let _ = FracKey::between(Some(&b), Some(&a));
+    let k = FracKey::between(Some(&b), Some(&a));
+    assert!(a < k && k < b, "{k:?}");
+}
+
+/// R1 — texto fora da gramática da chave (vindo da rede ou de um ficheiro) NÃO vira chave: antes
+/// entrava e o `between` seguinte dava pânico.
+#[test]
+fn text_outside_the_key_grammar_never_deserializes() {
+    let smallest = format!("A{}", "0".repeat(26));
+    for bad in ["", "a", "!x", "a0!", "a00", "b1", "a0 ", "é0", smallest.as_str()] {
+        let bytes = postcard::to_allocvec(&bad.to_string()).unwrap();
+        assert!(
+            postcard::from_bytes::<FracKey>(&bytes).is_err(),
+            "{bad:?} entrou como chave"
+        );
+        assert!(FracKey::try_from(bad.to_string()).is_err(), "{bad:?}");
+    }
+    for good in ["a0", "Zz", "a0V", "b125", "Xzzz", "A00000000000000000000000000V"] {
+        assert_eq!(key(good).as_str(), good);
+    }
+}
+
+/// R1 — para QUALQUER par de chaves válidas, em qualquer ordem e com as pontas extremas, `between`
+/// devolve uma chave válida estritamente entre as duas (ou logo acima no empate), sem pânico.
+#[test]
+fn any_two_valid_keys_give_a_valid_key_between_them() {
+    let mut rng = Lcg(0xF0CA);
+    let digit = |r: &mut Lcg| super::DIGITS[r.next(62)];
+    let mut pick = |r: &mut Lcg| -> FracKey {
+        loop {
+            let head = if r.next(2) == 0 { b'a' } else { b'A' } + u8::try_from(r.next(26)).unwrap();
+            let mut k = vec![head];
+            let n = super::integer_len(head);
+            let edge = r.next(4);
+            for _ in 1..n {
+                k.push(match edge {
+                    0 => b'0',
+                    1 => b'z',
+                    _ => digit(r),
+                });
+            }
+            for _ in 0..r.next(4) {
+                k.push(digit(r));
+            }
+            if let Ok(key) = FracKey::try_from(String::from_utf8(k).unwrap()) {
+                return key;
+            }
+        }
+    };
+    for _ in 0..20_000 {
+        let (a, b) = (pick(&mut rng), pick(&mut rng));
+        let (lo, hi) = (a.clone().min(b.clone()), a.clone().max(b.clone()));
+        let k = FracKey::between(Some(&a), Some(&b));
+        assert!(FracKey::try_from(k.as_str().to_string()).is_ok(), "{k:?}");
+        assert!(lo < k && (k < hi || lo == hi), "{a:?} {b:?} -> {k:?}");
+        let up = FracKey::between(Some(&a), None);
+        assert!(up > a && FracKey::try_from(up.as_str().to_string()).is_ok(), "{a:?} -> {up:?}");
+        let down = FracKey::between(None, Some(&a));
+        assert!(down < a && FracKey::try_from(down.as_str().to_string()).is_ok(), "{a:?} -> {down:?}");
+    }
 }
 
 /// ADR-0181 — duas chaves IGUAIS (duas pessoas criaram no mesmo sítio ao mesmo tempo) são um empate

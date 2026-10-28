@@ -91,7 +91,7 @@ pub fn step(
     vec: &mut VecState,
     scene: &mut VecScene,
     sim: &mut SimWorld,
-    _hero: &mut HeroScreen,
+    hero: &mut HeroScreen,
 ) -> Option<u8> {
     let n = vec.entities.len();
     let passo = usize::from(PASSO.load(Ordering::Relaxed));
@@ -108,6 +108,9 @@ pub fn step(
         return None;
     }
     let ids: Vec<VecPathId> = vec.entities.keys().copied().collect();
+    if passo > CENTROS.len() {
+        return seleciona(vec, hero, &ids);
+    }
     let mut rotulos = Vec::new();
     for (&id, efeito) in ids.iter().zip(efeitos()) {
         let p = scene.path_mut(id)?;
@@ -125,11 +128,24 @@ pub fn step(
         rotulos.push(rotulo);
     }
     let postos = ph2d_vec_entities::filter::set_filter(sim, &vec.entities, &ids, Some(filtro()));
-    vec.pen.select_many(&[*ids.get(SELECIONADA)?]);
     eprintln!(
         "[cena 40] {} nuvens com Bevel + Drop Shadow ({postos} filtros): {}",
         ids.len(),
         rotulos.join(", ")
     );
+    PASSO.fetch_add(1, Ordering::Relaxed);
+    None
+}
+
+/// Selecciona a nuvem do Flag pela Hierarquia (o clique do dono na linha) depois de a última nuvem
+/// ter entrado em Edit: antes disso a entrada dela, que chega um quadro depois do desenho, troca a
+/// selecção pela forma que nasceu e deixa a caneta só com as formas do Edit (F33 §6.2).
+fn seleciona(vec: &VecState, hero: &mut HeroScreen, ids: &[VecPathId]) -> Option<u8> {
+    let ultima = vec.entities.get(ids.last()?).copied();
+    if vec.edit.objects.first().copied() != ultima {
+        return None;
+    }
+    hero.gizmo
+        .replace_selection(vec.entities.get(ids.get(SELECIONADA)?).copied());
     Some(9)
 }

@@ -348,6 +348,7 @@ const OIL_PASTEL: Receita = Receita {
     achatado: None,
     pincel: &[("jitter", "0.1"), ("shape", ESTRIAS_DO_OLEO)],
     nasce_de: None,
+    real_oil: false,
 };
 
 const SOFT_PASTEL: Receita = Receita {
@@ -378,6 +379,7 @@ const SOFT_PASTEL: Receita = Receita {
     achatado: None,
     pincel: &[],
     nasce_de: None,
+    real_oil: false,
 };
 
 /// Escreve os [`EM_ESTUDO`] (com a tabela da largura e a miniatura, como o gerador) em `$PH2D_EXAME_DIR/estudo/` — o exame

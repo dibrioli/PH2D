@@ -57,6 +57,7 @@ pub const RECEITAS: &[Receita] = &[Receita {
     achatado: None,
     pincel: &[],
     nasce_de: None,
+    real_oil: false,
 }];
 
 /// Quantos presets a fábrica tem — CONTADO das receitas (a base + cada família, o Wet e os outros meios), nunca
@@ -183,6 +184,9 @@ pub struct Receita {
     /// overrides (o estado que a receita não lista — o `drag` da acrílica, os fios do Oil Bristle). Com o ficheiro
     /// gravado, a fonte é ele.
     pub nasce_de: Option<&'static str>,
+    /// A caixa **Real Oil** do pincel (`realOil` no `engine`, gravada só ligada). Dono 28/10: toda receita da pasta
+    /// `Oil/` a liga (`os_oleos_de_fabrica_vem_com_o_real_oil`); nasce na base `OIL_BRISTLE` e herda-se por `..`.
+    pub real_oil: bool,
 }
 
 /// Uma imagem do preset: o id no ficheiro e a função que a desenha.
@@ -307,6 +311,7 @@ pub const GRAPHITE_8B: Receita = Receita {
     achatado: None,
     pincel: &[("falloff", "\"Linear\""), ("jitter", "0.1")],
     nasce_de: None,
+    real_oil: false,
 };
 
 pub const CHARCOAL: Receita = Receita {
@@ -330,6 +335,7 @@ pub const CHARCOAL: Receita = Receita {
     achatado: None,
     pincel: &[("falloff", "\"Sharp\""), ("jitter", "0.2")],
     nasce_de: None,
+    real_oil: false,
 };
 
 /// ⭐ **O grão do lápis e do carvão é preso à tela e mais FINO que o de antes** (J2, `docs/Painter/Pinceis/03_MOTORES.md`

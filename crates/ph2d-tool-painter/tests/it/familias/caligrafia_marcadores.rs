@@ -48,6 +48,7 @@ pub const WET: &[Receita] = &[
         achatado: None,
         pincel: &[("shape", SEM_FORMA), ("size_max_px", "101")],
         nasce_de: None,
+        real_oil: false,
     },
 ];
 
@@ -79,6 +80,7 @@ pub const EM_ESTUDO_WET: &[Receita] = &[
         achatado: Some((0.95, 48)),
         pincel: &[("shape", SEM_FORMA), ("dab_quina", "0.8")],
         nasce_de: Some("Ink Bullet"),
+        real_oil: false,
     },
 ];
 

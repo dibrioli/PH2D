@@ -32,6 +32,7 @@ const BLENDER_SOFT: Receita = Receita {
     achatado: None,
     pincel: &[],
     nasce_de: Some("Wet Round"),
+    real_oil: false,
 };
 
 /// O feltro dos Smear: o do Wet Round. O 0,2 do Blender Soft (de onde eles nascem) junta as cerdas e o Smear quase não

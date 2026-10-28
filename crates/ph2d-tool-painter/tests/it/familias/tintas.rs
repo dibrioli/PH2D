@@ -54,6 +54,7 @@ pub const WET: &[Receita] = &[
         achatado: None,
         pincel: &[("shape", SEM_FORMA)],
         nasce_de: None,
+        real_oil: false,
     },
     // Ink › Pen › Dip Pen: duro e cheio, a borda GRUMOSA do aparo (o tamanho de cada carimbo sorteado ±10 %: os
     // grumos do Rebelle `Pen/Dip Pen`), o cruzamento que escurece (Glaze 0,75) e arrasta um pouco da cor de baixo.
@@ -98,6 +99,7 @@ pub const WET: &[Receita] = &[
             ("size_max_px", "91"),
         ],
         nasce_de: None,
+        real_oil: false,
     },
     // Ink › Pen › Ink Bullet: o mais carregado e seco da tinta. J3 (Rebelle `Pen/Bullet`): a ponta redonda LISA (sem
     // a forma de cerdas que esfiapava as pontas — o que a punha ao lado do Marker Bullet), a largura que a pressão
@@ -145,6 +147,7 @@ pub const WET: &[Receita] = &[
             ("size_max_px", "93"),
         ],
         nasce_de: None,
+        real_oil: false,
     },
 ];
 

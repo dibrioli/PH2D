@@ -42,6 +42,10 @@ const RAIO_MAX: f32 = 1100.0;
 /// (a 0 quadros o Wet Round a raio 30 lê 8 px; aos 8 s, 32 — 05 §4b).
 const QUADROS_DA_LEI: u32 = 480;
 
+/// A caixa Real Oil no `engine` do preset (`wetpaint_preset::CHAVE_OLEO`, gravada só ligada). Que é ESTA a chave que o
+/// motor lê prova-o `os_oleos_de_fabrica_vem_com_o_real_oil`, aplicando cada ficheiro.
+const CHAVE_REAL_OIL: &str = "realOil";
+
 fn raiz() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes")
 }
@@ -87,6 +91,13 @@ pub(super) fn parametros(r: &Receita) -> Parametros {
                 .0
         }
     };
+    // O dente do papel é da TELA (W3b): um ficheiro de antes dela ainda o levava, ignorado.
+    p.brush.remove("paper_depth");
+    if r.real_oil {
+        p.engine.insert(CHAVE_REAL_OIL.to_owned(), 1.0);
+    } else {
+        p.engine.remove(CHAVE_REAL_OIL);
+    }
     p.volumes.size_px = r.size_px;
     p.volumes.opacity = Some(r.opacity);
     p.volumes.water = Some(r.water);
@@ -786,6 +797,39 @@ fn the_factory_presets_are_counted() {
         );
         nomes.push(e.preset.parametros.name.clone());
     }
+}
+
+/// ⭐ **Os óleos de fábrica vêm com o Real Oil LIGADO** (dono 28/10, HANDOFF_W3b §Aberto 1; a caixa é do pincel, e
+/// escolher um preset sem ela desligava-a): toda receita da pasta `Oil/` o declara, e todo ficheiro de fábrica sob
+/// `WetPainter/Oil/` o grava — e só esses (fora dela a fábrica fica como era). O ficheiro e a receita, os dois: a
+/// receita sem regerar acusa aqui antes do `cada_preset_de_fabrica_e_a_sua_receita`.
+#[test]
+fn os_oleos_de_fabrica_vem_com_o_real_oil() {
+    let receitas_sem: Vec<&str> = receitas()
+        .filter(|r| (r.meio == "Oil") != r.real_oil)
+        .map(|r| r.nome)
+        .collect();
+    assert!(
+        receitas_sem.is_empty(),
+        "receita com o Real Oil fora da lei (Oil/ ⇔ ligado): {receitas_sem:?}"
+    );
+    let pasta = format!("{MOTOR_DOS_PRESETS}/Oil/");
+    let mut oleos = 0;
+    for (rel, b) in ficheiros_de_fabrica() {
+        let p = ler(&b).unwrap();
+        let e_oleo = rel.starts_with(&pasta);
+        if p.parametros.media != MEIO_DO_PRESET {
+            assert!(!e_oleo, "{rel}: sob Oil/ mas não é do Wet Paint");
+            continue;
+        }
+        // O que o artista recebe: o preset aplicado arma (ou não) a caixa.
+        let mut t = PainterTool::default();
+        assert!(t.wet_preset_aplicar(&p).is_empty(), "{rel}: aplicar falhou");
+        let ligado = t.wet_oleo_real().is_some();
+        oleos += usize::from(e_oleo);
+        assert_eq!(ligado, e_oleo, "{rel}: Real Oil {ligado} (Oil/ ⇔ ligado)");
+    }
+    assert!(oleos > 0, "nenhum ficheiro sob {pasta}");
 }
 
 /// Os campos de topo (e as chaves de `engine`/`brush`) em que a receita e o ficheiro divergem — o veredito diz QUAL.

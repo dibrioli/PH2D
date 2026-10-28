@@ -48,6 +48,7 @@ pub const WET: &[Receita] = &[
         achatado: None,
         pincel: &[("falloff", "\"Smooth\""), ("shape", SEM_FORMA)],
         nasce_de: None,
+        real_oil: false,
     },
 ];
 

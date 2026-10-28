@@ -60,6 +60,7 @@ pub const WET: &[Receita] = &[
         achatado: None,
         pincel: &[],
         nasce_de: None,
+        real_oil: false,
     },
     DABBER,
     FILBERT,
@@ -863,6 +864,7 @@ const OIL_BRISTLE: Receita = Receita {
     // (`bristleTipRagged`, J2 §7 c).
     pincel: &[("dab_quina", "1.0")],
     nasce_de: None,
+    real_oil: true,
 };
 
 /// As medidas de identidade de um óleo na bateria do EXAME (`ferramentas/bateria.json`, cena `gestos`, foto A, escala 1):
@@ -1098,6 +1100,30 @@ fn os_candidatos_da_w2_sao_as_suas_receitas() {
         "a receita não refaz o candidato (receita ≠ ficheiro):\n{}",
         mudaram.join("\n")
     );
+}
+
+/// **Regera os candidatos da W2** ([`EM_ESTUDO_W2`]) pela receita, como o gerador da fábrica regera os dela: os
+/// parâmetros da receita, a tabela de largura e as imagens do ficheiro (não medidas: as do vizinho), a miniatura que o
+/// motor pinta hoje. J6 (dono 28/10): voltam a exame com o Real Oil ligado.
+/// `PH2D_REGERA_CANDIDATOS=1 cargo test -p ph2d-tool-painter --profile smoke --test it regera_os_candidatos_da_w2 -- --ignored`
+#[test]
+#[ignore = "gerador: escreve docs/Painter/Pinceis/W2_*_candidatos (PH2D_REGERA_CANDIDATOS=1)"]
+fn regera_os_candidatos_da_w2() {
+    let escreve = std::env::var("PH2D_REGERA_CANDIDATOS").as_deref() == Ok("1");
+    let docs =
+        std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../docs/Painter/Pinceis");
+    for (pasta, r) in EM_ESTUDO_W2 {
+        let f = docs.join(format!("W2_{pasta}_candidatos/{}.ph2d-brush.png", r.nome));
+        let mut preset = ph2d_brush_presets::ler(&std::fs::read(&f).unwrap()).unwrap();
+        let mut p = crate::presets_de_fabrica::parametros(r);
+        p.width_table.clone_from(&preset.parametros.width_table);
+        preset.parametros = p;
+        preset.miniatura = ph2d_tool_painter::miniatura_do_preset(&preset);
+        println!("[candidato] {} · {f:?}", r.nome);
+        if escreve {
+            std::fs::write(&f, ph2d_brush_presets::escrever(&preset).unwrap()).unwrap();
+        }
+    }
 }
 
 /// Os VEIOS de um traço (J4 2.ª ronda, `exames/oleo_acrilica.md`): no recto de 200 px da cena `tamanhos` (foto A, linhas

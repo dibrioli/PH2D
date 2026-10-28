@@ -70,6 +70,7 @@ pub const WET: &[Receita] = &[
         achatado: None,
         pincel: &[],
         nasce_de: None,
+        real_oil: false,
     },
     Receita {
         meio: "Watercolor",
@@ -95,6 +96,7 @@ pub const WET: &[Receita] = &[
         achatado: None,
         pincel: &[],
         nasce_de: None,
+        real_oil: false,
     },
     Receita {
         meio: "Watercolor",
@@ -121,6 +123,7 @@ pub const WET: &[Receita] = &[
         achatado: None,
         pincel: &[],
         nasce_de: None,
+        real_oil: false,
     },
     // ⭐ O 1.º da Fase C (prompt 17, 05 §4b «Presets de todas as mídias»): o Liner do Rebelle
     // (`Watercolor/Liner`: duro, carregado, papel 0,10 — o grão quase não fura, 28,86 px). Medido contra
@@ -159,6 +162,7 @@ pub const WET: &[Receita] = &[
         achatado: None,
         pincel: &[],
         nasce_de: None,
+        real_oil: false,
     },
     // ⭐ As FORMAS (prompt 44, doc 44): o Wet Round com a ponta RETA (quina 1, dura 0,9 — a ponta macia lê-se
     // redonda), um pouco mais alta que larga e FIXA na tela (o rato do Rebelle não roda a ponta), e a pressão
@@ -188,6 +192,7 @@ pub const WET: &[Receita] = &[
         achatado: Some((0.12, 90)),
         pincel: &[("dab_quina", "1.0")],
         nasce_de: None,
+        real_oil: false,
     },
 ];
 
@@ -233,6 +238,7 @@ pub const EM_ESTUDO: &[Receita] = &[
         achatado: None,
         pincel: &[],
         nasce_de: Some("Wet Wash"),
+        real_oil: false,
     },
     // J4 I-8: a trincha de CERDAS da aguarela do Rebelle (`Bristle/Bristle Flat`, 46 × 16 px): a lâmina FIXA na tela
     // (larga deitada, fina de pé; a espiral abre buracos), cheia, de borda direita — o Wet Flat achatado a 0,65. Régua
@@ -263,6 +269,7 @@ pub const EM_ESTUDO: &[Receita] = &[
         achatado: Some((0.65, 90)),
         pincel: &[("dab_quina", "1.0")],
         nasce_de: Some("Wet Flat"),
+        real_oil: false,
     },
     // J4 I-13: o Sumi-e do Rebelle (`Sumi-e/Sumi-e soft`): o pincel de cerdas da tinta (o Ink Brush) com ÁGUA — sem
     // o reservatório nem o vidrado da tinta, a ponta desfiada inteira, o pigmento que se dilui (45: régua 306 → 378/454,
@@ -296,6 +303,7 @@ pub const EM_ESTUDO: &[Receita] = &[
         achatado: None,
         pincel: &[],
         nasce_de: Some("Ink Brush"),
+        real_oil: false,
     },
 ];
 

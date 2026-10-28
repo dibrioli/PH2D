@@ -36,6 +36,7 @@ pub const WET: &[Receita] = &[
         achatado: Some((0.2, 90)),
         pincel: &[("dab_quina", "1.0")],
         nasce_de: None,
+        real_oil: false,
     },
 ];
 
@@ -73,6 +74,7 @@ pub const EM_ESTUDO: &[Receita] = &[
         // Nasce da Flat: a ponta volta a REDONDA (sem a quina nem o achatado dela).
         pincel: &[("dab_quina", "0.0"), ("dab_flatten", "0.0")],
         nasce_de: Some("Gouache Flat"),
+        real_oil: false,
     },
     // J4 H-4: a guache DILUÍDA do Rebelle (`Gouache/Gouache Wash`): a ponta quadrada (o corte recto) de lados nítidos
     // cujos dabs SOMAM — as pontas do traço entram e saem a esbater num diâmetro —, pouca tinta, SEM a orla da aguarela,
@@ -110,6 +112,7 @@ pub const EM_ESTUDO: &[Receita] = &[
             ("size_max_px", "56"),
         ],
         nasce_de: Some("Gouache Flat"),
+        real_oil: false,
     },
     // J4 H-3: a guache QUASE SECA do Rebelle (`Gouache/Gouache Dry`): o corpo do Wet Dry Brush (pouca água, as cerdas
     // finas, a orla) com metade da tinta, e cada FIO com a sua pressão ao longo do caminho — os fios somem e voltam em
@@ -141,6 +144,7 @@ pub const EM_ESTUDO: &[Receita] = &[
         achatado: None,
         pincel: &[],
         nasce_de: None,
+        real_oil: false,
     },
 ];
 

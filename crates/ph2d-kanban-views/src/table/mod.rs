@@ -176,7 +176,7 @@ pub fn paint(
     };
 }
 
-fn card_of<'k>(k: &'k Kanban, id: CardId) -> Option<&'k Card> {
+fn card_of(k: &Kanban, id: CardId) -> Option<&Card> {
     k.cards.get(&id).filter(|c| !c.meta.deleted)
 }
 

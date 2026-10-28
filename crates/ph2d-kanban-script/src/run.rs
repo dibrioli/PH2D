@@ -120,6 +120,7 @@ fn vm() -> mlua::Result<Lua> {
 
 /// Uma escrita da fase, `(autor, Kanban, lote)`.
 type Write = (Member, KanbanId, Vec<KanbanOp>);
+type Hooks = Vec<(String, Function)>;
 
 /// Uma corrida: o desfazer acumulado por Kanban e o relatório.
 struct Pass<'c, 'z> {
@@ -328,7 +329,7 @@ fn phase(
     cx: &Ctx<'_>,
     report: &mut Report,
     call: impl FnOnce(&Lua) -> mlua::Result<()>,
-) -> Option<(Vec<Write>, Vec<(String, Function)>)> {
+) -> Option<(Vec<Write>, Hooks)> {
     lua.set_app_data(Lane {
         set: set.clone(),
         writes: Vec::new(),

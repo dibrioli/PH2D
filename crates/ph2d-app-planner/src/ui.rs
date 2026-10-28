@@ -39,11 +39,9 @@ fn button(
     scene: &mut VectorScene,
     ts: &mut TextSystem,
     theme: Theme,
-    x: f32,
-    y: f32,
+    (x, y): (f32, f32),
     label: &str,
-    hit: Hit,
-    on: bool,
+    (hit, on): (Hit, bool),
 ) -> Rect {
     let w = ts.prefix_width(label, m::TEXT_PX).ceil() + 2.0 * m::BUTTON_PAD_X;
     let r = Rect::new(x, y, w, m::BUTTON_H);
@@ -120,7 +118,7 @@ pub(crate) fn top_bar(
         (Mode::MyCards, "planner.mode.my_cards"),
     ] {
         let on = d.mode == mode;
-        let r = button(d, scene, ts, theme, x, y, tr(key), Hit::Mode(mode), on);
+        let r = button(d, scene, ts, theme, (x, y), tr(key), (Hit::Mode(mode), on));
         x = r.x + r.w + m::GAP / 2.0;
     }
     // Da direita para a esquerda.
@@ -133,7 +131,7 @@ pub(crate) fn top_bar(
                      on: bool| {
         let w = ts.prefix_width(&label, m::TEXT_PX).ceil() + 2.0 * m::BUTTON_PAD_X;
         right -= w;
-        let r = button(d, scene, ts, theme, right, y, &label, hit, on);
+        let r = button(d, scene, ts, theme, (right, y), &label, (hit, on));
         right -= m::GAP;
         r
     };

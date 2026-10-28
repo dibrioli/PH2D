@@ -4,10 +4,10 @@
 use std::hash::{Hash, Hasher};
 
 use ph2d_editor_core::paint::resolve;
-use ph2d_kanban_dates::{CivilDate, Weekday, Zone};
+use ph2d_kanban_dates::{Weekday, Zone};
 use ph2d_kanban_filter::{Filter, matches};
 use ph2d_kanban_model::{
-    Card, CardRef, Hue, Kanban, KanbanId, KanbanSet, LabelColor, Member, Moment, Plan, Shade,
+    Card, CardRef, Hue, Kanban, LabelColor, Member, Moment, Plan, Shade,
 };
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken as T, Theme};
@@ -98,18 +98,6 @@ pub fn visible_cards<'k>(k: &'k Kanban, cx: &Ctx<'_>) -> Vec<&'k Card> {
     out
 }
 
-/// O Kanban `id` de `set`, e a referência de um cartão dele.
-#[must_use]
-pub fn card_ref(kanban: KanbanId, c: &Card) -> CardRef {
-    CardRef { kanban, card: c.id }
-}
-
-/// O Kanban `id`, se vivo.
-#[must_use]
-pub fn kanban(set: &KanbanSet, id: KanbanId) -> Option<&Kanban> {
-    set.get(id)
-}
-
 fn hue_index(h: Hue) -> usize {
     Hue::ALL.iter().position(|x| *x == h).unwrap_or(0)
 }
@@ -190,12 +178,6 @@ pub fn text_top(ts: &mut TextSystem, y: f32, row_h: f32, px: f32) -> f32 {
 #[must_use]
 pub fn c(theme: Theme, t: T) -> Color {
     resolve(t, theme)
-}
-
-/// «Oct 25» (com o ano se não for o de `today`).
-#[must_use]
-pub fn day_text(d: CivilDate, today: CivilDate) -> String {
-    crate::datepick::day_text(d, today)
 }
 
 #[cfg(test)]

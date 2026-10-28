@@ -15,7 +15,7 @@ use ph2d_board_net as net;
 use ph2d_board_net::firewall::Change;
 use ph2d_board_sync::{self as sync, Event, Msg, Presence};
 use ph2d_editor_core::documents::live::{
-    LiveFac, LiveFound, LiveInternet, LiveOther, LivePeer, LiveRequest, LiveRole,
+    LiveFac, LiveFound, LiveInternet, LivePeer, LiveRequest, LiveRole,
 };
 use ph2d_editor_core::screens::HeroScreen;
 use ph2d_editor_core::screens::hero::document_tabs;
@@ -58,7 +58,7 @@ mod fac;
 
 #[path = "live_internet.rs"]
 mod internet;
-use fac::{announce, fac_view, refusal_key};
+use fac::{announce, fac_view};
 #[cfg(test)]
 pub(crate) use internet::fake_nat_for_tests;
 use internet::{Internet, Route, dial, internet_tick, invite_internet, join_by};

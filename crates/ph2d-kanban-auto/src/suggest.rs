@@ -129,6 +129,6 @@ pub fn suggest(k: &Kanban, me: &Member) -> Vec<Suggestion> {
             times,
         });
     }
-    out.sort_by(|a, b| b.times.cmp(&a.times));
+    out.sort_by_key(|a| std::cmp::Reverse(a.times));
     out
 }

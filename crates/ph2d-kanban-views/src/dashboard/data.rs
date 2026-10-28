@@ -219,7 +219,7 @@ pub fn stats(k: &Kanban, cx: &Ctx<'_>) -> Stats {
             who: Who::Label(l.id, l.color),
         })
         .collect();
-    per_label.sort_by(|a, b| b.count.cmp(&a.count));
+    per_label.sort_by_key(|a| std::cmp::Reverse(a.count));
     push_none(
         &mut per_label,
         cards.iter().filter(|c| c.labels.is_empty()).count(),
@@ -233,7 +233,7 @@ pub fn stats(k: &Kanban, cx: &Ctx<'_>) -> Stats {
             who: Who::Member(m),
         })
         .collect();
-    per_member.sort_by(|a, b| b.count.cmp(&a.count));
+    per_member.sort_by_key(|a| std::cmp::Reverse(a.count));
     push_none(
         &mut per_member,
         cards.iter().filter(|c| c.members.is_empty()).count(),

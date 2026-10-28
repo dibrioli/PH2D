@@ -16,6 +16,9 @@ use ph2d_kanban_model::{
 };
 use ph2d_kanban_script::{Ctx, KanbanScripts, Report};
 
+/// Listas, cartões (título, lista, arquivado, etiquetas) e comentários.
+type Photo = (Vec<String>, Vec<(String, ListId, bool, usize)>, usize);
+
 /// «Agora»: 2026-10-28 12:00 UTC.
 pub(crate) const NOW: Moment = Moment(1_793_188_800_000);
 
@@ -219,7 +222,7 @@ impl Scene {
     }
 
     /// O que se vê: listas e cartões vivos (título, lista, arquivado, etiquetas) e comentários.
-    pub(crate) fn photo(&self) -> (Vec<String>, Vec<(String, ListId, bool, usize)>, usize) {
+    pub(crate) fn photo(&self) -> Photo {
         let k = self.set.get(self.k).unwrap();
         let lists = k.lists_in_order().iter().map(|l| l.title.clone()).collect();
         let mut cards: Vec<_> = k

@@ -4,7 +4,7 @@
 
 use std::net::SocketAddr;
 use std::sync::mpsc;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use ph2d_board_internet::{DhtMode, InternetConfig, InternetHost, LinkGuest, Mapping};
 use ph2d_board_net as net;

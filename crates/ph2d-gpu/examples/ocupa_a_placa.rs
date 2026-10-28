@@ -1,13 +1,29 @@
 //! **Outro programa a ocupar a placa** (F35, `docs/UI_New_and_Simple/F35_plano.md` §2): reproduz o
 //! smoke de 26/10 (o `ollama` com 13,7 de 16 GB, o editor em branco) sem depender do `ollama`. Ocupa a
 //! placa principal em blocos de 256 MiB, limpos na placa (residentes), até sobrar `<livre>` MiB segundo
-//! o `nvidia-smi`, e segura-os `<segundos>` (prazo obrigatório: nada de processo sem fim).
+//! o `nvidia-smi` (ou, numa AMD, o `mem_info_vram_*` do `amdgpu`), e segura-os `<segundos>` (prazo
+//! obrigatório: nada de processo sem fim).
 //!
 //!     bash scripts/ph2d-run.sh cargo run --profile smoke -p ph2d-gpu --example ocupa_a_placa -- 1500 300
 
 const BLOCO: u64 = 256 << 20;
 
-fn livre_mib() -> Option<u64> {
+/// A VRAM livre da placa AMD, pelo `amdgpu` (F38: a Radeon onboard não tem `nvidia-smi`).
+fn livre_mib_amd() -> Option<u64> {
+    std::fs::read_dir("/sys/class/drm")
+        .ok()?
+        .flatten()
+        .find_map(|e| {
+            let d = e.path().join("device");
+            let le = |f: &str| std::fs::read_to_string(d.join(f)).ok();
+            (le("vendor")?.trim() == "0x1002").then_some(())?;
+            let total: u64 = le("mem_info_vram_total")?.trim().parse().ok()?;
+            let usado: u64 = le("mem_info_vram_used")?.trim().parse().ok()?;
+            Some(total.saturating_sub(usado) >> 20)
+        })
+}
+
+fn livre_mib_nvidia() -> Option<u64> {
     let out = std::process::Command::new("nvidia-smi")
         .args(["--query-gpu=memory.free", "--format=csv,noheader,nounits"])
         .output()
@@ -44,6 +60,11 @@ fn main() {
     }))
     .expect("dispositivo");
     println!("[ocupa] placa: {}", adapter.get_info().name);
+    let livre_mib = if adapter.get_info().vendor == 0x1002 {
+        livre_mib_amd
+    } else {
+        livre_mib_nvidia
+    };
     let mut blocos = Vec::new();
     while livre_mib().is_some_and(|l| l > alvo + (BLOCO >> 20)) {
         let escopo = device.push_error_scope(wgpu::ErrorFilter::OutOfMemory);

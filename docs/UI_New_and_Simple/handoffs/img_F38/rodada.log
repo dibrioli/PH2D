@@ -1,0 +1,37 @@
+vez da fila de testes (Radeon): sim
+livre antes: 1989 MiB
+livre.amd.f36.c41.0 | 12s amd[vram=1331 gtt=150 evicted=0] nv= | 20s amd[vram=1331 gtt=150 evicted=0] nv= | livre=619 | erros=0 oom=0 | adaptador=
+livre.amd.f37.c41.23 | 12s amd[vram=494 gtt=54 evicted=0] nv= | 20s amd[vram=494 gtt=54 evicted=0] nv= | livre=1457 | erros=0 oom=0 | adaptador=
+livre.amd.f38.c41.45 | 12s amd[vram=494 gtt=53 evicted=0] nv= | 20s amd[vram=494 gtt=53 evicted=0] nv= | livre=1457 | erros=0 oom=0 | adaptador=
+livre.amd.f38.c1.67 | 12s amd[vram=366 gtt=53 evicted=0] nv= | 20s amd[vram=366 gtt=53 evicted=0] nv= | livre=1585 | erros=0 oom=0 | adaptador=
+livre.amd.f37.c1.89 | 12s amd[vram=366 gtt=48 evicted=0] nv= | 20s amd[vram=366 gtt=48 evicted=0] nv= | livre=1585 | erros=0 oom=0 | adaptador=
+livre.amd.f36.c1.112 | 12s amd[vram=819 gtt=90 evicted=0] nv= | 20s amd[vram=819 gtt=90 evicted=0] nv= | livre=1132 | erros=0 oom=0 | adaptador=
+livre.amd.f37.c41.134 | 12s amd[vram=494 gtt=66 evicted=0] nv= | 20s amd[vram=494 gtt=66 evicted=0] nv= | livre=1456 | erros=0 oom=0 | adaptador=
+livre.amd.f38.c41.156 | 12s amd[vram=494 gtt=73 evicted=0] nv= | 20s amd[vram=494 gtt=73 evicted=0] nv= | livre=1456 | erros=0 oom=0 | adaptador=
+livre.amd.f36.c41.179 | 12s amd[vram=1331 gtt=163 evicted=0] nv= | 20s amd[vram=1331 gtt=163 evicted=0] nv= | livre=619 | erros=0 oom=0 | adaptador=
+livre.amd.f36.c1.201 | 12s amd[vram=819 gtt=96 evicted=0] nv= | 20s amd[vram=819 gtt=96 evicted=0] nv= | livre=1132 | erros=0 oom=0 | adaptador=
+livre.amd.f38.c1.223 | 12s amd[vram=366 gtt=48 evicted=0] nv= | 20s amd[vram=366 gtt=48 evicted=0] nv= | livre=1585 | erros=0 oom=0 | adaptador=
+livre.amd.f37.c1.245 | 12s amd[vram=366 gtt=46 evicted=0] nv= | 20s amd[vram=366 gtt=48 evicted=0] nv= | livre=1586 | erros=0 oom=0 | adaptador=
+ocupa 950: [ocupa] 768 MiB ocupados, Some(975) MiB livres; seguro 200 s
+cheia950.amd.f36.c41.269 | 12s amd[vram=820 gtt=682 evicted=0] nv= | 25s amd[vram=820 gtt=682 evicted=0] nv= | livre=171 | erros=0 oom=0 | adaptador=
+cheia950.amd.f37.c41.296 | 12s amd[vram=494 gtt=53 evicted=0] nv= | 25s amd[vram=494 gtt=53 evicted=0] nv= | livre=349 | erros=0 oom=0 | adaptador=
+cheia950.amd.f38.c41.323 | 12s amd[vram=494 gtt=65 evicted=0] nv= | 25s amd[vram=494 gtt=65 evicted=0] nv= | livre=331 | erros=0 oom=0 | adaptador=
+cheia950.amd.f38.c1.350 | 12s amd[vram=366 gtt=48 evicted=0] nv= | 25s amd[vram=366 gtt=48 evicted=0] nv= | livre=452 | erros=0 oom=0 | adaptador=
+ocupa 300: [ocupa] 1024 MiB ocupados, Some(546) MiB livres; seguro 200 s
+cheia300.amd.f36.c41.381 | 12s amd[vram=477 gtt=1020 evicted=0] nv= | 25s amd[vram=477 gtt=1023 evicted=0] nv= | livre=77 | erros=0 oom=0 | adaptador=
+cheia300.amd.f37.c41.408 | 12s amd[vram=494 gtt=51 evicted=0] nv= | 25s amd[vram=494 gtt=53 evicted=0] nv= | livre=51 | erros=0 oom=0 | adaptador=
+cheia300.amd.f38.c41.435 | 12s amd[vram=494 gtt=63 evicted=0] nv= | 25s amd[vram=494 gtt=63 evicted=0] nv= | livre=43 | erros=0 oom=0 | adaptador=
+cheia300.amd.f38.c1.462 | 12s amd[vram=366 gtt=48 evicted=0] nv= | 25s amd[vram=366 gtt=48 evicted=0] nv= | livre=164 | erros=0 oom=0 | adaptador=
+rabisco.amd.uso.491 | 12s amd[vram=434 gtt=62 evicted=0] nv= | 30s amd[vram=434 gtt=62 evicted=0] nv= | livre=1304 | erros=0 oom=0 | adaptador=
+rabisco.amd.desempenho.524 | 12s amd[vram=477 gtt=127 evicted=0] nv= | 30s amd[vram=477 gtt=127 evicted=0] nv= | livre=1253 | erros=0 oom=0 | adaptador=
+rabisco.amd.desempenho.556 | 12s amd[vram=477 gtt=127 evicted=0] nv= | 30s amd[vram=477 gtt=127 evicted=0] nv= | livre=1245 | erros=0 oom=0 | adaptador=
+rabisco.amd.uso.588 | 12s amd[vram=434 gtt=75 evicted=0] nv= | 30s amd[vram=434 gtt=75 evicted=0] nv= | livre=1279 | erros=0 oom=0 | adaptador=
+rabisco.amd.uso.621 | 12s amd[vram=434 gtt=75 evicted=0] nv= | 30s amd[vram=434 gtt=75 evicted=0] nv= | livre=1271 | erros=0 oom=0 | adaptador=
+rabisco.amd.desempenho.653 | 12s amd[vram=477 gtt=122 evicted=0] nv= | 30s amd[vram=477 gtt=122 evicted=0] nv= | livre=1221 | erros=0 oom=0 | adaptador=
+livre antes: 1994 MiB
+rabisco.nv.uso.0 | 12s amd[vram=0 gtt=2 evicted=0] nv=447 | 30s amd[vram=0 gtt=2 evicted=0] nv=447 | livre=1994 | erros=0 oom=0 | adaptador=
+rabisco.nv.desempenho.33 | 12s amd[vram=0 gtt=2 evicted=0] nv=490 | 30s amd[vram=0 gtt=2 evicted=0] nv=490 | livre=1994 | erros=0 oom=0 | adaptador=
+rabisco.nv.desempenho.65 | 12s amd[vram=0 gtt=2 evicted=0] nv=490 | 30s amd[vram=0 gtt=2 evicted=0] nv=490 | livre=1994 | erros=0 oom=0 | adaptador=
+rabisco.nv.uso.98 | 12s amd[vram=0 gtt=2 evicted=0] nv=447 | 30s amd[vram=0 gtt=2 evicted=0] nv=447 | livre=1993 | erros=0 oom=0 | adaptador=
+rabisco.nv.uso.130 | 12s amd[vram=0 gtt=2 evicted=0] nv=447 | 30s amd[vram=0 gtt=2 evicted=0] nv=447 | livre=1993 | erros=0 oom=0 | adaptador=
+rabisco.nv.desempenho.163 | 12s amd[vram=0 gtt=2 evicted=0] nv=490 | 30s amd[vram=0 gtt=2 evicted=0] nv=490 | livre=1993 | erros=0 oom=0 | adaptador=

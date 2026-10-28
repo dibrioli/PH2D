@@ -1,0 +1,11 @@
+[blocos] placa: NVIDIA GeForce RTX 5060 Ti
+[blocos] textura 4096² rgba8 ×3 uso: min 1.92 ms · mediana 2.39 ms (12 medidas)
+[blocos] textura 4096² rgba8 ×3 desempenho: min 2.40 ms · mediana 3.02 ms (12 medidas)
+[blocos] textura 4096² rgba16f ×3 uso: min 3.85 ms · mediana 4.80 ms (12 medidas)
+[blocos] textura 4096² rgba16f ×3 desempenho: min 5.49 ms · mediana 6.80 ms (12 medidas)
+[blocos] textura 1024² rgba8 ×3 uso: min 0.50 ms · mediana 0.55 ms (12 medidas)
+[blocos] textura 1024² rgba8 ×3 desempenho: min 0.09 ms · mediana 0.16 ms (12 medidas)
+[blocos] lote 512² (buffers) ×3 uso: min 0.05 ms · mediana 0.05 ms (12 medidas)
+[blocos] lote 512² (buffers) ×3 desempenho: min 0.08 ms · mediana 0.09 ms (12 medidas)
+[blocos] lote 2048² (buffers) ×3 uso: min 0.61 ms · mediana 0.70 ms (12 medidas)
+[blocos] lote 2048² (buffers) ×3 desempenho: min 0.10 ms · mediana 0.19 ms (12 medidas)

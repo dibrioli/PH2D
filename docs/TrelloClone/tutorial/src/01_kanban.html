@@ -1,0 +1,500 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>PH2D · Kanban</title>
+<style>
+  @page { size: A4; margin: 14mm 13mm; }
+  :root {
+    --bg: #0f0e12; --card: #17161c; --line: #2a2830;
+    --t1: #ece9f2; --t2: #a9a3b8; --t3: #6f6a7d;
+    --acc: #c9a6ff; --ok: #7ee0b0; --warn: #ffcf7a; --blue: #579dff;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--t1);
+         font:13px/1.5 "Inter","Segoe UI",system-ui,sans-serif; }
+  h1 { font-size:30px; line-height:1.15; margin:0 0 4px; letter-spacing:-.02em; }
+  h1 small { display:block; font-size:14px; font-weight:400; color:var(--t2); margin-top:6px; }
+  h2 { font-size:19px; margin:0 0 10px; padding-top:4px; color:var(--t1); }
+  h2 small { display:block; font-size:12px; font-weight:400; color:var(--t2); }
+  h3 { font-size:15px; margin:18px 0 6px; color:var(--acc); }
+  p { margin:7px 0; }
+  code, kbd { font-family:"JetBrains Mono",ui-monospace,monospace; font-size:11.5px; }
+  kbd { background:#22202a; border:1px solid var(--line); border-bottom-width:2px;
+        border-radius:5px; padding:0 5px; color:var(--t1); }
+  code.ui { color:var(--t1); background:#1f1d26; border-radius:4px; padding:0 4px; }
+  .cmd { background:#080810; border:1px solid var(--line); border-left:3px solid var(--acc);
+         border-radius:8px; padding:9px 12px; color:var(--ok); font-family:ui-monospace,monospace;
+         font-size:11px; overflow-wrap:anywhere; margin:8px 0 12px; }
+  .sec { break-before:page; }
+  .steps { counter-reset:s; list-style:none; padding:0; margin:0; }
+  .steps > li { counter-increment:s; position:relative; padding:0 0 0 36px; margin:0 0 14px;
+                break-inside:avoid; display:grid; grid-template-columns:1fr 78mm; gap:12px;
+                align-items:start; }
+  .steps > li.np { grid-template-columns:1fr; }
+  .steps > li::before { content:counter(s); position:absolute; left:0; top:-1px;
+      width:24px; height:24px; border-radius:50%; background:var(--acc); color:#1a1420;
+      font-weight:700; font-size:12px; display:flex; align-items:center; justify-content:center; }
+  .out { color:var(--t2); margin:4px 0; }
+  .out::before { content:"\2192  o que acontece: "; color:var(--acc); }
+  .bad { color:var(--warn); margin:4px 0; }
+  .bad::before { content:"\26A0  deu errado se: "; }
+  .shot img { width:100%; display:block; border:1px solid var(--line); border-radius:6px; }
+  .shot .cap { color:var(--t3); font-size:10px; margin-top:3px; }
+  .nofoto { border:1px dashed var(--line); border-radius:6px; color:var(--t3); font-size:11px;
+            padding:16px 8px; text-align:center; }
+  table { border-collapse:collapse; width:100%; margin:6px 0 12px; font-size:11px; }
+  th, td { text-align:left; padding:4px 7px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { color:var(--t3); font-weight:600; font-size:10px; text-transform:uppercase; letter-spacing:.05em; }
+  .note { background:var(--card); border:1px solid var(--line); border-left:3px solid var(--acc);
+          border-radius:8px; padding:9px 12px; margin:10px 0; font-size:12.5px; break-inside:avoid; }
+  .note b { color:var(--acc); }
+  ul.toc { columns:2; font-size:12.5px; padding-left:18px; }
+  ul.plain { padding-left:18px; } ul.plain li { margin:4px 0; }
+  footer { margin-top:22px; padding-top:8px; border-top:1px solid var(--line); color:var(--t3); font-size:10.5px; }
+</style>
+
+<h1>Kanban
+  <small>PH2D · o Trello dentro do projeto — as listas e os cartões, o verso, o Kanban dentro do
+  Quadro, as vistas, o trabalho ao vivo com colegas, a automação, os scripts, o Planner e a
+  importação do Trello</small></h1>
+
+<p>Este é o <b>teste final</b> do Kanban. Cada parte abaixo é <b>uma coisa que você pode fazer</b>.
+Cada uma começa com um comando: cole-o inteiro num terminal. O PH2D abre já com um Kanban de
+exemplo montado — o filme <b>«Short film — production»</b>, com as listas <code class="ui">BACKLOG</code>,
+<code class="ui">TO DO</code>, <code class="ui">DOING</code>, <code class="ui">REVIEW</code> e
+<code class="ui">DONE</code>.</p>
+
+<div class="note"><b>Como ler cada passo.</b> O texto em <code class="ui">assim</code> é exatamente o que
+aparece na tela (a interface é em inglês). A seta diz <b>o que tem de acontecer</b>; o triângulo diz
+<b>como saber que deu errado</b>. A foto ao lado é a tela real, tirada antes de este tutorial ser
+escrito. Onde diz <i>sem foto</i>, ainda não há imagem — o passo vale à mesma.<br>
+A primeira vez que correr um comando, o PH2D demora alguns minutos a montar; as seguintes abrem em
+segundos. Para fechar, feche a janela.</div>
+
+<ul class="toc">
+  <li>1 · Listas: títulos e arrastar listas</li>
+  <li>2 · O verso do cartão</li>
+  <li>3 · O Kanban dentro do Quadro</li>
+  <li>4 · Filtro, pesquisa, edição rápida, copiar/mover, modelos, espelhos, envelhecimento, atalhos</li>
+  <li>5 · Vistas: Tabela, Calendário, Linha do tempo, Painel</li>
+  <li>6 · Ao vivo com colegas (dois PH2D na mesma máquina)</li>
+  <li>7 · Automação e botões</li>
+  <li>8 · Scripts</li>
+  <li>9 · Calendário do projeto, Planner, Inbox, Os meus cartões, notificações</li>
+  <li>10 · Importar do Trello e exportar</li>
+  <li>11 · Ligar cartões a objetos, scripts, macros e timeline; nota adesiva ↔ cartão</li>
+  <li>No fim: o que ficou de fora · as decisões que tomámos por você · o que precisa do seu «sim»</li>
+</ul>
+
+<!-- ============================================================ 1 -->
+<div class="sec">
+<h2>1 · Listas: títulos e arrastar listas
+  <small>os títulos das listas maiores e em MAIÚSCULAS; a lista levanta-se e voa como um cartão</small></h2>
+<div class="cmd">cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-TrelloClone &amp;&amp; env PH2D_KANBAN_SMOKE=1 cargo run -p ph2d-host-desktop --profile smoke</div>
+<ol class="steps">
+  <li><div>Olhe para o topo de cada lista.
+    <p class="out">Os títulos estão em MAIÚSCULAS e mais fortes (<code class="ui">BACKLOG</code>,
+    <code class="ui">TO DO</code>…). A <code class="ui">DOING</code> é azul e diz <code class="ui">3 / 3</code>
+    (cheia). A <code class="ui">REVIEW</code> está recolhida, de pé, com o número <code class="ui">4</code>.</p>
+    <p class="bad">os títulos estão em letra normal, ou cortados a meio.</p></div>
+    <div class="shot"><img src="../../smoke/W2b/cena1_escuro_1930x1040.png"><div class="cap">o quadro da cena 1</div></div></li>
+  <li><div>Agarre a lista <code class="ui">TO DO</code> pelo título e arraste-a para a direita, sem largar.
+    <p class="out">A lista sai inteira, um pouco inclinada e com sombra, com os cartões dentro; as
+    outras abrem-lhe espaço. Ao largar, fica no novo lugar. <kbd>Ctrl</kbd>+<kbd>Z</kbd> devolve-a.</p>
+    <p class="bad">só o título se mexe, a lista some, ou os cartões ficam para trás.</p></div>
+    <div class="shot"><img src="../../smoke/W2b/cena3_lista_em_voo_escuro_1930x1040.png"><div class="cap">a lista no ar (cena 3 — troque o <code>1</code> por <code>3</code> no comando para a abrir já na mão)</div></div></li>
+  <li class="np"><div>Clique no ícone <code class="ui">‹ ›</code> ao lado do título da <code class="ui">REVIEW</code>.
+    Depois clique no <code class="ui">…</code> de uma lista.
+    <p class="out">A <code class="ui">REVIEW</code> abre-se (Fox walk cycle, Rain test…). O <code class="ui">…</code>
+    abre <code class="ui">List actions</code> com <code class="ui">Collapse list</code>,
+    <code class="ui">Change list color</code>, <code class="ui">Copy list…</code>, <code class="ui">Sort by…</code>.</p>
+    <p class="bad">o clique não faz nada, ou o menu abre noutra lista. <i>(sem foto)</i></p></div></li>
+  <li class="np"><div>Na ponta direita, clique <code class="ui">Add another list</code>, escreva um nome e
+    <kbd>Enter</kbd>. Numa lista, <code class="ui">Add a card</code>, escreva e <kbd>Enter</kbd>.
+    <p class="out">A lista nova aparece no fim; o cartão novo no fundo da lista.</p>
+    <p class="bad">o texto some sem criar nada. <i>(sem foto)</i></p></div></li>
+</ol>
+</div>
+
+<!-- ============================================================ 2 -->
+<div class="sec">
+<h2>2 · O verso do cartão
+  <small>o cartão aberto: capa, pessoas, etiquetas, datas, descrição com formatação, checklist, comentários, histórico</small></h2>
+<div class="cmd">cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-TrelloClone &amp;&amp; env PH2D_KANBAN_SMOKE=4 cargo run -p ph2d-host-desktop --profile smoke</div>
+<ol class="steps">
+  <li><div>Nada a clicar: o verso de <b>«Animate shot 12»</b> abre sozinho.
+    <p class="out">Em cima a capa; depois <code class="ui">Members</code>, <code class="ui">Labels</code>, a data
+    vermelha <code class="ui">Overdue</code>, a <code class="ui">Description</code> com negrito e link, os
+    <code class="ui">Custom fields</code> (Priority, Estimate, Shot), a checklist
+    <code class="ui">Animation pass</code> com barra de progresso, e em baixo a <code class="ui">Activity</code>
+    com um comentário. À direita: <code class="ui">Add to card</code> e <code class="ui">Actions</code>.</p>
+    <p class="bad">o verso não abre, ou abre vazio.</p></div>
+    <div class="shot"><img src="../../smoke/W3/verso_escuro_1930x1640.png"><div class="cap">o verso de «Animate shot 12»</div></div></li>
+  <li><div>À direita, clique <code class="ui">Dates</code>.
+    <p class="out">Abre um calendário do mês. Clicar num dia muda a entrega; ligar
+    <code class="ui">Start date</code> faz o clique seguinte escolher o início.</p>
+    <p class="bad">o calendário abre fora da janela ou o dia escolhido não muda a data no cartão.</p></div>
+    <div class="shot"><img src="../../smoke/W3/widgets_escuro.png"><div class="cap">o calendário, o seletor de data e o editor da descrição</div></div></li>
+  <li class="np"><div>Em <code class="ui">Description</code>, clique <code class="ui">Edit</code>, escreva,
+    use os botões <code class="ui">B</code> <code class="ui">I</code> <code class="ui">•</code>, e <code class="ui">Save</code>.
+    Marque uma caixa da checklist. Em <code class="ui">Write a comment…</code> escreva <code>@Rui olá</code> e grave.
+    <p class="out">A descrição fica formatada; a barra da checklist sobe; o comentário aparece com o nome do Rui destacado.</p>
+    <p class="bad">a formatação some depois de gravar, ou a percentagem não muda. <i>(sem foto)</i></p></div></li>
+  <li><div>Feche o verso (<kbd>Esc</kbd> ou o <code class="ui">×</code>) e olhe para a frente dos cartões.
+    <p class="out">Cada cartão mostra as suas marcas: etiquetas, pessoas, contagem de comentários,
+    checklist (<code class="ui">3/5</code>) e a data — verde se concluída, amarela se falta menos de um
+    dia, vermelha se passou.</p>
+    <p class="bad">a frente não mudou depois do que fez no verso.</p></div>
+    <div class="shot"><img src="../../smoke/W3/frente_escuro.png"><div class="cap">a frente dos cartões</div></div></li>
+  <li class="np"><div>Arraste uma imagem do seu computador para dentro do verso aberto.
+    <p class="out">Entra em <code class="ui">Attachments</code>; se o cartão não tinha capa, a imagem vira a capa.</p>
+    <p class="bad">nada entra, ou aparece «Couldn’t read». <i>(sem foto)</i></p></div></li>
+</ol>
+</div>
+
+<!-- ============================================================ 3 -->
+<div class="sec">
+<h2>3 · O Kanban dentro do Quadro
+  <small>o mesmo Kanban, vivo, no meio das notas do Quadro — e na sua própria aba</small></h2>
+<div class="cmd">cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-TrelloClone &amp;&amp; env PH2D_BOARD_SMOKE=30 cargo run -p ph2d-host-desktop --profile smoke</div>
+<ol class="steps">
+  <li><div>Nada a clicar: abre o Quadro <code class="ui">Production board</code>.
+    <p class="out">À esquerda, o Kanban «Short film — production» inteiro; à direita, três notas
+    adesivas. Em cima há também a aba <code class="ui">Short film — production</code> — é o MESMO Kanban.</p>
+    <p class="bad">o Kanban aparece como um retângulo vazio.</p></div>
+    <div class="shot"><img src="../../smoke/W4/cena30_alto_escuro.png"><div class="cap">de perto: o Kanban inteiro</div></div></li>
+  <li class="np"><div>Clique uma vez no Kanban (fica selecionado, pode movê-lo e mudar o tamanho);
+    clique <b>outra vez</b> para entrar. Arraste um cartão para outra lista. Gire a roda do rato sobre uma lista.
+    Carregue <kbd>Esc</kbd> para sair.
+    <p class="out">Lá dentro, tudo funciona como na aba: arrastar, escrever, abrir o verso. A roda rola a lista.
+    Depois, abra a aba <code class="ui">Short film — production</code>: o cartão também mudou lá.</p>
+    <p class="bad">o primeiro clique já arrasta cartões, ou a aba não mostra a mudança. <i>(sem foto)</i></p></div></li>
+  <li><div>Afaste o zoom do Quadro (<kbd>Ctrl</kbd> + roda para trás), aos poucos.
+    <p class="out">Primeiro só títulos e capas; de longe, um bloco de cor por lista. Os nomes nunca ficam ilegíveis de tão pequenos.</p>
+    <p class="bad">o texto vira borrão minúsculo, ou o Kanban desaparece.</p></div>
+    <div class="shot"><img src="../../smoke/W4/cena30_medio_escuro.png"><div class="cap">a meia distância</div>
+      <img src="../../smoke/W4/cena30_baixo_escuro.png" style="margin-top:6px"><div class="cap">de longe: blocos de cor</div></div></li>
+  <li><div>Na aba do Kanban, clique no <code class="ui">…</code> (canto direito) → <code class="ui">Show on board</code>.
+    No Quadro, com o Kanban selecionado, use <code class="ui">Open in tab</code> na barra.
+    <p class="out"><code class="ui">Show on board</code> leva-o ao Quadro com o Kanban selecionado;
+    <code class="ui">Open in tab</code> faz o caminho inverso. Num Kanban que ainda não está num Quadro, use
+    <code class="ui">Place on board</code>.</p>
+    <p class="bad">aparece «This Kanban isn’t on any board yet» neste Kanban (ele ESTÁ num Quadro).</p></div>
+    <div class="shot"><img src="../../smoke/W4/cena30_aba_escuro.png"><div class="cap">o mesmo Kanban na sua aba</div></div></li>
+</ol>
+</div>
+
+<!-- ============================================================ 4 -->
+<div class="sec">
+<h2>4 · Filtro, pesquisa, edição rápida, copiar/mover, modelos, espelhos, envelhecimento, atalhos</h2>
+<div class="cmd">cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-TrelloClone &amp;&amp; env PH2D_KANBAN_SMOKE=5 cargo run -p ph2d-host-desktop --profile smoke</div>
+<ol class="steps">
+  <li><div>Nada a clicar: o painel <code class="ui">Filters</code> abre sozinho, com as etiquetas
+    <code class="ui">Animation</code> e <code class="ui">Audio</code> marcadas.
+    <p class="out">O botão diz <code class="ui">Filters 2</code>; cada lista mostra «n of m»; a lista que ficou
+    sem nada diz <code class="ui">No cards match the filter.</code> «Voice casting» e «Pick the music»
+    estão desbotados (cartões parados há 9 e 16 dias).</p>
+    <p class="bad">o topo do painel (título, ×, campo <code class="ui">Keyword</code>) aparece cortado.</p></div>
+    <div class="shot"><img src="../../smoke/W6/filtro_escuro.png"><div class="cap">o filtro aberto</div></div></li>
+  <li class="np"><div>Clique <code class="ui">Clear all</code>. Depois carregue <kbd>/</kbd> e escreva <code>#Animation due:week</code>.
+    <p class="out">Todos os cartões voltam. A pesquisa mostra os cartões com essa etiqueta e entrega esta semana,
+    de TODOS os Kanbans do projeto, agrupados por Kanban e lista.</p>
+    <p class="bad">a pesquisa não acha nada, ou ignora o <code>#</code>. <i>(sem foto)</i></p></div></li>
+  <li class="np"><div>Clique num cartão e carregue <kbd>E</kbd> (edição rápida). Escolha
+    <code class="ui">Move</code>, depois <code class="ui">Copy</code>, depois <code class="ui">Mirror</code>.
+    <p class="out">Cada um abre <code class="ui">Select destination</code> com <code class="ui">Kanban</code>,
+    <code class="ui">List</code> e <code class="ui">Position</code>. O espelho é o MESMO cartão mostrado noutra lista:
+    mudar um muda o outro.</p>
+    <p class="bad">o espelho é uma cópia solta (mudar um não muda o outro). <i>(sem foto)</i></p></div></li>
+  <li><div>Feche e abra a cena 6 (troque o <code>5</code> por <code>6</code> no comando).
+    <p class="out">Os cartões parados ficam amarelados, rachados e rasgados (o modo pirata). Há um modelo,
+    «Shot template», com o selo <code class="ui">This card is a template</code>, e um espelho de «Animate shot 12»
+    na <code class="ui">REVIEW</code>, com o selo <code class="ui">Mirror</code>.</p>
+    <p class="bad">todos os cartões parecem iguais.</p></div>
+    <div class="shot"><img src="../../smoke/W6/pirata_escuro.png"><div class="cap">cena 6: modo pirata, modelo e espelho</div></div></li>
+  <li class="np"><div>No <code class="ui">…</code> do Kanban: <code class="ui">Card aging…</code> → escolha
+    <code class="ui">Off</code>, <code class="ui">Regular mode (cards fade)</code> ou <code class="ui">Pirate mode</code>.
+    No fundo de uma lista, clique o pequeno ícone de folha ao lado de <code class="ui">Add a card</code> →
+    <code class="ui">Create from template</code> → escolha «Shot template» → <code class="ui">Create card</code>.
+    <p class="out">O envelhecimento muda na hora; o cartão novo nasce com as checklists do modelo.</p>
+    <p class="bad">o modo não muda, ou o cartão nasce vazio. <i>(sem foto)</i></p></div></li>
+  <li class="np"><div>Carregue <kbd>?</kbd>.
+    <p class="out">Abre <code class="ui">Keyboard shortcuts</code>: setas para andar, <kbd>Enter</kbd> abre,
+    <kbd>N</kbd> cartão novo, <kbd>C</kbd> arquiva, <kbd>,</kbd> <kbd>.</kbd> muda de lista, <kbd>F</kbd> filtro,
+    <kbd>Q</kbd> os meus cartões, <kbd>Z</kbd> desfaz…</p>
+    <p class="bad">nada abre, ou um atalho da lista não faz o que diz. <i>(sem foto)</i></p></div></li>
+</ol>
+</div>
+
+<!-- ============================================================ 5 -->
+<div class="sec">
+<h2>5 · Vistas: Tabela, Calendário, Linha do tempo, Painel
+  <small>os mesmos cartões vistos de outras formas — mexer numa vista muda o Kanban</small></h2>
+<div class="cmd">cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-TrelloClone &amp;&amp; env PH2D_KANBAN_SMOKE=1 cargo run -p ph2d-host-desktop --profile smoke</div>
+<ol class="steps">
+  <li><div>Ao lado da estrela, clique <code class="ui">Board ▾</code>.
+    <p class="out">Abre a lista <code class="ui">Board</code>, <code class="ui">Table</code>,
+    <code class="ui">Calendar</code>, <code class="ui">Timeline</code>, <code class="ui">Dashboard</code>.</p>
+    <p class="bad">o botão não abre nada.</p></div>
+    <div class="shot"><img src="../../smoke/W7/vistas_no_app_seletor_escuro.png"><div class="cap">o seletor de vistas</div></div></li>
+  <li><div>Escolha <code class="ui">Table</code>. Clique numa célula da coluna de lista.
+    <p class="out">Uma linha por cartão, com lista, etiquetas, pessoas e datas. Mudar a lista ali move o cartão.</p>
+    <p class="bad">a tabela vem vazia, ou a mudança não aparece ao voltar a <code class="ui">Board</code>.</p></div>
+    <div class="shot"><img src="../../smoke/W7/vistas_no_app_tabela_escuro.png"><div class="cap">Table</div></div></li>
+  <li><div>Escolha <code class="ui">Calendar</code>. Arraste um cartão para outro dia. Experimente semana, dia e agenda.
+    <p class="out">Os cartões estão no dia da entrega; arrastar muda a data. O <code class="ui">+</code> num dia pergunta a lista e cria um cartão.</p>
+    <p class="bad">o cartão volta ao dia antigo.</p></div>
+    <div class="shot"><img src="../../smoke/W7/vistas_no_app_calendario_escuro.png"><div class="cap">Calendar</div>
+      <img src="../../smoke/W7/calendario_semana_horas_escuro.png" style="margin-top:6px"><div class="cap">a semana com horas</div></div></li>
+  <li><div>Escolha <code class="ui">Timeline</code>. Arraste a ponta de uma barra; arraste uma barra para outra faixa.
+    <p class="out">Cada cartão é uma barra do início à entrega, agrupada por lista. Esticar muda as datas; mudar de faixa muda a lista.</p>
+    <p class="bad">a barra não estica, ou estica sem mudar a data no verso.</p></div>
+    <div class="shot"><img src="../../smoke/W7/vistas_no_app_linha_do_tempo_escuro.png"><div class="cap">Timeline</div></div></li>
+  <li><div>Escolha <code class="ui">Dashboard</code>. Passe o rato por cima de uma fatia.
+    <p class="out">Gráficos: cartões por lista, por entrega, por etiqueta, por pessoa. A dica diz o número.</p>
+    <p class="bad">os números não batem com o quadro.</p></div>
+    <div class="shot"><img src="../../smoke/W7/vistas_no_app_painel_escuro.png"><div class="cap">Dashboard</div></div></li>
+</ol>
+</div>
+
+<!-- ============================================================ 6 -->
+<div class="sec">
+<h2>6 · Ao vivo com colegas
+  <small>dois PH2D a mexer no mesmo Kanban ao mesmo tempo</small></h2>
+<h3>Primeiro, com um colega de mentira («Rui»)</h3>
+<div class="cmd">cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-TrelloClone &amp;&amp; env PH2D_KANBAN_SMOKE=7 cargo run -p ph2d-host-desktop --profile smoke</div>
+<ol class="steps">
+  <li><div>Nada a clicar: o painel <code class="ui">Share Kanban</code> abre sozinho.
+    <p class="out">Mostra <code class="ui">Invite link</code> (primeiro diz <code class="ui">Preparing the internet link…</code>),
+    o botão <code class="ui">Copy link</code>, a linha <code class="ui">On this network (address and code)</code> e
+    <code class="ui">Stop sharing</code>.</p>
+    <p class="bad">aparece «Could not share the Kanban».</p></div>
+    <div class="shot"><img src="../../smoke/W5/share_aberto_escuro.png"><div class="cap">Share aberto</div></div></li>
+  <li><div>Feche o painel e olhe para o cabeçalho e para a lista <code class="ui">DOING</code>.
+    <p class="out">Ao lado de <code class="ui">Share</code> aparece o avatar redondo do Rui. O primeiro cartão da
+    <code class="ui">DOING</code> tem um anel da cor dele (é o cartão que ele tem aberto) e o cursor dele anda em círculos.</p>
+    <p class="bad">nenhum avatar ao fim de alguns segundos.</p></div>
+    <div class="shot"><img src="../../smoke/W5/avatares_escuro.png"><div class="cap">o avatar do colega</div>
+      <img src="../../smoke/W5/cursor_escuro.png" style="margin-top:6px"><div class="cap">o cursor dele no quadro</div></div></li>
+</ol>
+<h3>Depois, com dois PH2D de verdade na mesma máquina</h3>
+<p>Abra <b>dois terminais</b>. Os dois PH2D usam o mesmo programa; a segunda janela abre depressa porque já está montado.</p>
+<ol class="steps">
+  <li class="np"><div><b>Terminal 1</b> (quem convida):
+    <div class="cmd">cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-TrelloClone &amp;&amp; env PH2D_KANBAN_SMOKE=1 cargo run -p ph2d-host-desktop --profile smoke</div>
+    Clique <code class="ui">Share</code> → <code class="ui">Share this Kanban</code> → espere o link aparecer → <code class="ui">Copy link</code>.
+    <p class="out">Aparece <code class="ui">Link copied.</code></p>
+    <p class="bad">fica para sempre em <code class="ui">Preparing the internet link…</code> — então use, no passo 2, a linha
+    de <code class="ui">On this network</code> (endereço e código, escritos à mão com um espaço no meio).</p></div></li>
+  <li class="np"><div><b>Terminal 2</b> (quem entra) — o mesmo comando:
+    <div class="cmd">cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-TrelloClone &amp;&amp; env PH2D_KANBAN_SMOKE=1 cargo run -p ph2d-host-desktop --profile smoke</div>
+    Na nova janela: menu <code class="ui">File</code> → <code class="ui">Join a shared Kanban</code>. Clique na caixa
+    <code class="ui">Paste an invite link</code>, <kbd>Ctrl</kbd>+<kbd>V</kbd>, e <code class="ui">Join</code>.
+    <p class="out"><code class="ui">Joining…</code> e depois o Kanban partilhado abre numa aba nova, com
+    <code class="ui">You are in a shared Kanban.</code> Cada janela mostra o avatar da outra.</p>
+    <p class="bad">aparece <code class="ui">That is not an invite link.</code> ou <code class="ui">Could not join</code>.</p></div></li>
+  <li><div>Ponha as duas janelas lado a lado. Arraste um cartão numa; escreva um título na outra.
+    <p class="out">A mudança aparece na outra janela quase na hora; o cursor de uma anda na outra.</p>
+    <p class="bad">só uma das janelas vê a mudança, ou os cartões ficam em ordens diferentes.</p></div>
+    <div class="shot"><img src="../../smoke/W5/dois_herois_escuro.png"><div class="cap">dois PH2D: à direita o colega com um cartão aberto</div></div></li>
+  <li class="np"><div>Na janela 1, <code class="ui">Share</code> → <code class="ui">Stop sharing</code>.
+    <p class="out">A janela 2 avisa <code class="ui">The host stopped sharing the Kanban.</code> Se em vez disso a ligação
+    cair (rede), aparece <code class="ui">Reconnecting…</code> e ela tenta voltar sozinha durante um minuto.</p>
+    <p class="bad">a janela 2 continua a mostrar o avatar do anfitrião como se nada fosse. <i>(sem foto)</i></p></div></li>
+</ol>
+<div class="note"><b>Entre duas casas</b> (duas redes diferentes) ainda não foi experimentado — ver «O que ficou de fora».</div>
+</div>
+
+<!-- ============================================================ 7 -->
+<div class="sec">
+<h2>7 · Automação e botões
+  <small>o «mordomo» (Butler do Trello): regras que correm sozinhas, botões num cartão e no quadro, comandos marcados</small></h2>
+<div class="cmd">cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-TrelloClone &amp;&amp; env PH2D_KANBAN_SMOKE=8 cargo run -p ph2d-host-desktop --profile smoke</div>
+<ol class="steps">
+  <li><div>Nada a clicar: o verso de «Animate shot 12» abre. À direita, em <code class="ui">Buttons</code>, clique
+    <code class="ui">Ship it</code>.
+    <p class="out">O botão faz o que foi montado nele (mover o cartão, comentar…). Um <kbd>Ctrl</kbd>+<kbd>Z</kbd> desfaz o
+    efeito do botão de uma vez.</p>
+    <p class="bad">nada muda, ou o desfazer leva só metade.</p></div>
+    <div class="shot"><img src="../../smoke/W8/verso_botoes_e_ligacoes_escuro.png"><div class="cap">Buttons e Project links no verso</div></div></li>
+  <li><div>Feche o verso. No <code class="ui">…</code> do Kanban → <code class="ui">Automation…</code>.
+    <p class="out">Abre <code class="ui">Automation</code> com as abas <code class="ui">Rules</code>,
+    <code class="ui">Card buttons</code>, <code class="ui">Board buttons</code>, <code class="ui">Calendar</code>,
+    <code class="ui">Due date</code>. Em <code class="ui">Rules</code> há três regras e, em cima,
+    <code class="ui">Suggested for you</code>: «You moved 3 cards to Review and did the same each time…».</p>
+    <p class="bad">o painel abre vazio.</p></div>
+    <div class="shot"><img src="../../smoke/W8/painel_regras_escuro.png"><div class="cap">as regras e a sugestão</div></div></li>
+  <li><div>Clique <code class="ui">Create rule</code>. Monte a frase clicando nos pedaços («when a card is moved to…»,
+    «…add a comment»). <code class="ui">Save</code>. Volte ao quadro e faça o gesto.
+    <p class="out">A regra corre sozinha logo a seguir ao seu gesto. O 1.º <kbd>Ctrl</kbd>+<kbd>Z</kbd> tira o efeito da regra; o 2.º, o seu gesto.</p>
+    <p class="bad">a regra não corre, ou corre duas vezes.</p></div>
+    <div class="shot"><img src="../../smoke/W8/construtor_escuro.png"><div class="cap">o construtor de frases</div></div></li>
+  <li class="np"><div>No cabeçalho do Kanban, entre <code class="ui">Filters</code> e os avatares, clique no botão de quadro.
+    <p class="out">Ele age sobre o quadro inteiro (por exemplo, ordenar uma lista).</p>
+    <p class="bad">o botão não aparece no cabeçalho. <i>(sem foto)</i></p></div></li>
+</ol>
+</div>
+
+<!-- ============================================================ 8 -->
+<div class="sec">
+<h2>8 · Scripts
+  <small>um script do projeto que lê e muda o Kanban</small></h2>
+<div class="cmd">cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-TrelloClone &amp;&amp; env PH2D_CODE_SMOKE=10 cargo run -p ph2d-host-desktop --profile smoke</div>
+<ol class="steps">
+  <li><div>Nada a clicar: abre o editor de scripts com <code class="ui">kanban.luau</code>.
+    Vá à linha <code>-- 1) escreva aqui, numa linha nova</code>, carregue <kbd>End</kbd>, <kbd>Enter</kbd> e escreva <code>card:</code>.
+    <p class="out">Abre uma lista com o que um cartão sabe fazer (<code>move</code>, <code>comment</code>, <code>set</code>, <code>check</code>…);
+    escolher um mostra a ajuda.</p>
+    <p class="bad">nenhuma lista aparece depois de <code>card:</code>.</p></div>
+    <div class="shot"><img src="../../smoke/W8/code_smoke10_escuro.png"><div class="cap">o script do Kanban</div></div></li>
+  <li class="np"><div>Apague o <code>card:</code> que escreveu e carregue <kbd>Ctrl</kbd>+<kbd>S</kbd>.
+    <p class="out">O script corre: o console embaixo escreve o nome do Kanban, o número de listas e os cartões
+    atrasados. Abra o Kanban (<code class="ui">File</code> → <code class="ui">Kanbans…</code> → «Short film — production»):
+    «Animate shot 12» está agora na <code class="ui">REVIEW</code>, com o comentário «Blocking pronto — @Rui, pode rever?».
+    Um <kbd>Ctrl</kbd>+<kbd>Z</kbd> no Kanban desfaz o script inteiro.</p>
+    <p class="bad">o console mostra um erro em vermelho, ou o cartão não se mexeu. <i>(sem foto)</i></p></div></li>
+</ol>
+<div class="note"><b>Segurança.</b> Abrir um projeto nunca corre um script de Kanban sozinho: só corre depois de você
+carregar <kbd>Ctrl</kbd>+<kbd>S</kbd> nele nessa sessão.</div>
+</div>
+
+<!-- ============================================================ 9 -->
+<div class="sec">
+<h2>9 · Calendário do projeto, Planner, Inbox, Os meus cartões, notificações
+  <small>uma aba «Planner» com três modos: Calendar · Planner · My cards</small></h2>
+<div class="cmd">cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-TrelloClone &amp;&amp; env PH2D_PLANNER_SMOKE=1 cargo run -p ph2d-host-desktop --profile smoke</div>
+<ol class="steps">
+  <li><div>Nada a clicar: abre a aba <code class="ui">Planner</code> no modo <code class="ui">Calendar</code>.
+    <p class="out">O calendário do projeto junta as entregas de todos os Kanbans, um item de checklist com data,
+    e eventos próprios (a reunião semanal, um marco de dia inteiro, a entrega ao cliente).
+    Em cima: <code class="ui">Color: Kanban</code>, <code class="ui">Everyone</code>, <code class="ui">+ Event</code>, <code class="ui">Export .ics</code>.</p>
+    <p class="bad">só aparecem os cartões de um Kanban.</p></div>
+    <div class="shot"><img src="../../smoke/W9/calendario_escuro.png"><div class="cap">Calendar</div></div></li>
+  <li><div>Clique <code class="ui">+ Event</code>. Dê um nome em <code class="ui">Event name</code>, escolha o dia, um
+    <code class="ui">Remind me</code> e uma repetição (<code class="ui">Weekly</code>).
+    <p class="out">O evento aparece no calendário e repete-se nas semanas seguintes.</p>
+    <p class="bad">o evento não aparece, ou aparece só uma vez.</p></div>
+    <div class="shot"><img src="../../smoke/W9/evento_escuro.png"><div class="cap">o evento</div></div></li>
+  <li><div>Arraste uma das repetições da reunião semanal para outro dia.
+    <p class="out">Pergunta <code class="ui">Edit recurring event</code>: <code class="ui">This event</code>,
+    <code class="ui">This and following events</code> ou <code class="ui">All events</code>.</p>
+    <p class="bad">muda a série inteira sem perguntar.</p></div>
+    <div class="shot"><img src="../../smoke/W9/alcance_escuro.png"><div class="cap">a pergunta do evento repetido</div></div></li>
+  <li><div>Mude para o modo <code class="ui">Planner</code>.
+    <p class="out">À esquerda a <code class="ui">INBOX</code> com três ideias soltas e
+    <code class="ui">MY CARDS WITHOUT A DATE</code>; à direita a semana com um bloco marcado.
+    Arrastar uma ideia ou um cartão para a semana marca um bloco de trabalho.</p>
+    <p class="bad">arrastar não marca nada.</p></div>
+    <div class="shot"><img src="../../smoke/W9/planner_escuro.png"><div class="cap">Planner com a Inbox</div></div></li>
+  <li><div>Numa ideia da <code class="ui">INBOX</code>, clique <code class="ui">To Kanban</code>. Escreva parte do nome de uma lista.
+    <p class="out">Abre <code class="ui">Move to Kanban</code> com pesquisa, <code class="ui">Top</code>/<code class="ui">Bottom</code>
+    e <code class="ui">Move</code>. A ideia sai da Inbox e vira cartão nessa lista.</p>
+    <p class="bad">a ideia fica na Inbox E aparece no Kanban (duplicada).</p></div>
+    <div class="shot"><img src="../../smoke/W9/move_to_kanban_pesquisa_escuro.png"><div class="cap">Move to Kanban</div></div></li>
+  <li><div>Mude para o modo <code class="ui">My cards</code>.
+    <p class="out">Os cartões com você, agrupados por Kanban (ou, com <code class="ui">Group: Date</code>, em
+    <code class="ui">Overdue</code>, <code class="ui">Today</code>, <code class="ui">This week</code>…).</p>
+    <p class="bad">aparecem cartões que não são seus.</p></div>
+    <div class="shot"><img src="../../smoke/W9/my_cards_escuro.png"><div class="cap">My cards</div></div></li>
+  <li><div>Clique o sino <code class="ui">Notifications</code>.
+    <p class="out">A lista diz quem o mencionou, quem o pôs num cartão, o que vai vencer. <code class="ui">Mark all as read</code> apaga o número do sino.</p>
+    <p class="bad">a menção a você não aparece.</p></div>
+    <div class="shot"><img src="../../smoke/W9/sino_escuro.png"><div class="cap">as notificações</div></div></li>
+  <li class="np"><div>Fora desta cena, os mesmos modos abrem pelo menu <code class="ui">File</code>:
+    <code class="ui">Project calendar</code>, <code class="ui">Planner</code>, <code class="ui">My cards</code>, <code class="ui">Inbox</code>.
+    <p class="out">Abre a aba <code class="ui">Planner</code> no modo pedido.</p>
+    <p class="bad">os itens não estão no menu. <i>(sem foto)</i></p></div></li>
+</ol>
+</div>
+
+<!-- ============================================================ 10 -->
+<div class="sec">
+<h2>10 · Importar do Trello e exportar</h2>
+<div class="cmd">cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-TrelloClone &amp;&amp; env PH2D_KANBAN_SMOKE=9 cargo run -p ph2d-host-desktop --profile smoke</div>
+<ol class="steps">
+  <li><div>Nada a clicar: um quadro do Trello de exemplo já foi importado e o relatório abre por cima.
+    <p class="out"><code class="ui">Imported from Trello</code>: em <code class="ui">What came in</code> as contagens
+    (listas, cartões, etiquetas, checklists, comentários…); em <code class="ui">What was left out</code> o que
+    não entrou e porquê (dados de outros apps, a foto de fundo…). <code class="ui">Done</code> fecha.</p>
+    <p class="bad">o relatório diz que entrou zero cartões.</p></div>
+    <div class="shot"><img src="../../smoke/W10/relatorio_importacao_escuro.png"><div class="cap">o relatório da importação</div></div></li>
+  <li class="np"><div>Com um quadro seu: no Trello, <b>Menu → Print, export and share → Export as JSON</b>. No PH2D,
+    <code class="ui">File</code> → <code class="ui">Import from Trello…</code> → escolha o ficheiro. Se o quadro tiver anexos,
+    ele pede a pasta deles (<code class="ui">Cancel</code> = ficam como links).
+    <p class="out">O quadro abre numa aba própria, com o mesmo relatório.</p>
+    <p class="bad">aparece «is not a Trello board export». <i>(sem foto)</i></p></div></li>
+  <li class="np"><div><code class="ui">File</code> → <code class="ui">Export Kanban…</code> → escolha
+    <code class="ui">CSV (spreadsheet)</code>, <code class="ui">Markdown</code> ou <code class="ui">Trello JSON</code>.
+    <p class="out">Aparece «Exported «…» as … to …». O CSV abre numa folha de cálculo; o Trello JSON volta a entrar no PH2D igual.</p>
+    <p class="bad">aparece «Could not write». <i>(sem foto)</i></p></div></li>
+</ol>
+</div>
+
+<!-- ============================================================ 11 -->
+<div class="sec">
+<h2>11 · Ligar cartões ao projeto; nota adesiva ↔ cartão
+  <small>um cartão que abre o objeto da cena, o script, a macro, o trecho da timeline ou o Quadro de que fala</small></h2>
+<div class="cmd">cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-TrelloClone &amp;&amp; env PH2D_KANBAN_SMOKE=8 cargo run -p ph2d-host-desktop --profile smoke</div>
+<ol class="steps">
+  <li><div>No verso de «Animate shot 12», desça até <code class="ui">Project links</code>.
+    <p class="out">Duas ligações: <code class="ui">Storyboard</code> (um Quadro, viva) e
+    <code class="ui">Fox rig (deleted)</code> (o objeto foi apagado: a ligação fica cinzenta, com o nome antigo).
+    Clicar <code class="ui">Storyboard</code> abre esse Quadro; o <code class="ui">×</code> tira a ligação.</p>
+    <p class="bad">clicar não abre nada, ou a ligação quebrada desaparece sozinha.</p></div>
+    <div class="shot"><img src="../../smoke/W8/verso_botoes_e_ligacoes_escuro.png"><div class="cap">Project links</div></div></li>
+  <li class="np"><div>À direita, <code class="ui">Scene object</code>. Pesquise e escolha um objeto, um script, uma macro
+    ou um trecho da timeline.
+    <p class="out">Entra em <code class="ui">Project links</code> com o tipo ao lado (<code class="ui">Object</code>,
+    <code class="ui">Script</code>, <code class="ui">Macro</code>, <code class="ui">Timeline</code>). Clicar abre o objeto
+    na cena, o script no editor, a macro, ou a timeline nos quadros certos.</p>
+    <p class="bad">a lista vem vazia num projeto com objetos. <i>(sem foto)</i></p></div></li>
+  <li class="np"><div>No Quadro (comando da secção 3, <code>PH2D_BOARD_SMOKE=30</code>): botão direito numa nota adesiva →
+    <code class="ui">Convert to card</code> → escolha a lista em <code class="ui">Convert to card in…</code>.
+    <p class="out">A nota é trocada por um cartão nessa lista, com etiqueta da cor da nota. Um <kbd>Ctrl</kbd>+<kbd>Z</kbd> devolve a nota.</p>
+    <p class="bad">ficam a nota E o cartão. <i>(sem foto)</i></p></div></li>
+  <li class="np"><div>No verso de um cartão desse Kanban (que está no Quadro): <code class="ui">Convert to sticky note</code>.
+    <p class="out">O cartão sai do Kanban e aparece no Quadro como nota adesiva.</p>
+    <p class="bad">o botão não aparece (ele só aparece quando o Kanban está num Quadro). <i>(sem foto)</i></p></div></li>
+</ol>
+</div>
+
+<!-- ============================================================ fim -->
+<div class="sec">
+<h2>O que ficou de fora</h2>
+<ul class="plain">
+  <li><b>Um quadro seu do Trello.</b> A importação foi testada só com um quadro de exemplo feito por nós.
+    Para fechar: exporte um quadro seu (Menu → Export as JSON) e mande o ficheiro — ele vira o teste.</li>
+  <li><b>Ao vivo entre duas casas.</b> O trabalho ao vivo foi provado só na mesma máquina. Falta experimentar
+    entre duas redes de casa diferentes — é a mesma pendência do Quadro.</li>
+  <li><b>Pequenos acabamentos ao vivo:</b> o «Join» do Quadro ainda não aceita o link do Kanban; avatares não
+    esmaecem enquanto se religa; ver quem está num Kanban dentro da sessão de um Quadro.</li>
+</ul>
+
+<h2>As decisões que tomámos por você</h2>
+<p>Você não estava; decidimos pelo que o Trello (ou o Miro) faz. Reveja durante este teste e diga «muda» no que não gostar.</p>
+<table>
+  <tr><th>tema</th><th>o que decidimos</th><th>como desfazer</th></tr>
+  <tr><td><b>Listas</b></td><td>títulos em MAIÚSCULAS, um pouco maiores; a lista em voo tem a sombra do cartão em voo</td><td>«quero os títulos como na maquete»</td></tr>
+  <tr><td><b>Verso</b></td><td>datas: o 1.º clique escolhe a entrega; clicar fora confirma; prazo vermelho só depois da hora, amarelo a menos de 24 h; semana começa à segunda; cinco reações fixas (👍 ❤️ 🎉 😄 👀); desfazer nunca apaga o histórico; a 1.ª imagem anexada vira capa; anexos ficam DENTRO do projeto, sem limite de tamanho</td><td>diga qual; para anexos «por referência» (fora do projeto) basta pedir</td></tr>
+  <tr><td><b>Kanban no Quadro</b></td><td>tamanho novo 960×540; muda de tamanho livremente; entra-se com um 2.º clique; <kbd>Ctrl</kbd>+roda é sempre o zoom do Quadro; «Place on board» usa o Quadro ativo</td><td>«quero entrar com duplo clique», etc.</td></tr>
+  <tr><td><b>Filtro e afins</b></td><td>a palavra do filtro procura no título, campos, etiquetas e pessoas (a pesquisa <kbd>/</kbd> procura em tudo); envelhecimento aos 7, 14 e 28 dias; arquivar o original tira os espelhos; <kbd>W</kbd> abre o menu «…»</td><td>diga os dias ou o comportamento que prefere</td></tr>
+  <tr><td><b>Vistas</b></td><td>o anel do Painel só por lista e por entrega; o «+» do calendário pergunta a lista e o cartão vence ao meio-dia</td><td>idem</td></tr>
+  <tr><td><b>Ao vivo</b></td><td>link próprio do Kanban (diferente do do Quadro); um Kanban partilhado sozinho não aparece na procura da rede (só com o link); quem cai tenta voltar durante 1 minuto; editar contra apagar ao mesmo tempo: ficam os dois</td><td>«quero que apareça na rede», etc.</td></tr>
+  <tr><td><b>Automação</b></td><td>sugestão depois de 3 repetições; comando perdido com o app fechado corre uma vez ao abrir; o efeito da regra desfaz-se à parte do seu gesto; botões de quadro entre o filtro e os avatares</td><td>diga o número ou o lugar</td></tr>
+  <tr><td><b>Scripts</b></td><td>nomes em inglês minúsculo (<code>add_card</code>); etiqueta que não existe é erro (não é criada); script que falha não deixa nada; nunca correm sozinhos ao abrir o projeto</td><td>«deixe criar etiquetas», etc.</td></tr>
+  <tr><td><b>Planner</b></td><td>uma só aba com três modos; Inbox e blocos são só seus (não viajam ao vivo); eventos viajam; o desfazer do Planner é dele</td><td>«quero abas separadas»</td></tr>
+  <tr><td><b>Importar / exportar</b></td><td>pessoas entram pelo nome de utilizador do Trello; CSV protegido contra fórmulas perigosas (o Trello não protege); anexos do PH2D saem como links e voltam iguais</td><td>«quero o CSV igual ao do Trello»</td></tr>
+  <tr><td><b>Nota ↔ cartão</b></td><td>converter SUBSTITUI (a nota some, como no Miro); nota branca/cinza não ganha etiqueta; ligações ao projeto não entram no histórico</td><td>«quero que a nota fique»</td></tr>
+</table>
+<p style="font-size:11px;color:var(--t3)">A lista completa (66 decisões, uma linha cada) está em <code>docs/TrelloClone/loop/DECISOES_SEM_O_DONO.md</code>.</p>
+
+<h2>O que precisa do seu «sim» para entrar no programa principal</h2>
+<ul class="plain">
+  <li><b>Este teste.</b> Faça as 11 partes; diga o que falhou (o número da parte e do passo bastam).</li>
+  <li><b>As decisões acima.</b> Silêncio = ficam como estão. «Muda» em qualquer uma = mudamos antes de juntar.</li>
+  <li><b>A ordem para juntar.</b> O Kanban, o Planner e as mudanças no Quadro e no editor de scripts só entram no
+    programa principal quando você disser «pode juntar».</li>
+  <li><b>Opcional, mas fecha duas pendências:</b> o JSON de um quadro seu do Trello, e uma tarde para experimentar
+    o ao vivo entre a sua casa e outra.</li>
+</ul>
+<footer>PH2D · Kanban · tutorial do teste final · 28/10/2026 · fonte: docs/TrelloClone/tutorial/src/01_kanban.html</footer>
+</div>

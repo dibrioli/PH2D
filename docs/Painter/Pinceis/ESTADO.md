@@ -39,7 +39,8 @@
   APROVADO** (cega: o Rebelle nunca achado — chamado «imitação» nas 6 linhas; o nosso tomado pela referência em 3,
   média/alta; régua 436, Graphite 8B d 0,783) ⇒ sobe no lote. I-10 Fringe Bloom curado não aprovado (achado em todas).
   K-9 Grunge curado (riscas contínuas × traços partidos). Motor: I-9 Granulation (poros de 1–2 px), I-11 Spatter
-  (o spray do Wet pousa discos longe do traço + OOM a jitter 0,8 — EM CURSO).
+  ✅ spray do Wet (`3cc04a5d93` `057b4d22ab`): a tabela de largura media UMA gota (p99 317 → 40 px) e cada gota abria
+  uma lane sem a soltar (645 lanes → 1; tabela 24 G+ → ≤ 4,1 GiB). Spatter curado não aprovado (gotas grandes e escuras).
 - **LOTE DE PROMOÇÃO** (no fim, uma regeração): Wax Crayon.
 - Aprovados pela cega sobem à fábrica num lote único no fim. Sem oráculo: C-13, C-14, D-2, D-4, G-13, J-4, M-5. Motor: CAP-19 cerdas que esgotam (C-11, G-9, G-11, I-13), L17, L15, L20, L10.
 

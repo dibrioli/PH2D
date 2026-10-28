@@ -103,6 +103,10 @@ pub const EM_ESTUDO: &[Receita] = &[
             ("pressureOpacityCurve", 1.0),
             // Seca depressa (como a Round): régua 333 → 363/454, o cruzamento sobre o vermelho molhado sem manchas.
             ("retention", 0.95),
+            // J6: a guache DILUÍDA não cobre — VELA (o Rebelle: o cruzamento no vermelho molhado [208,195,210], mais
+            // escuro que as duas; o nosso sem véu [227,208,217], com 0,3 [207,192,207]). Régua 355 → 363/456. ⛔ O
+            // `wetCover` (a lei da J6) leva-o ao contrário (resto 0,73 → 0,31; o Rebelle 0,95); `felt` 0,05: 361.
+            ("glaze", 0.3),
         ],
         grao: None,
         achatado: None,

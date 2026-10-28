@@ -1,0 +1,7 @@
+Chave da prancha cega J6_Gouache_Wash_cega.jpg (linha: imagem → quem)
+gestos_A: 1 = Gouache Wash (escala 0.925) (nosso), 2 = Wet Wash (d 0.74, limiar 0.591) (vizinho), 3 = gouache_gouache_wash (oraculo)
+gestos_B: 1 = Wet Wash (d 0.74, limiar 0.591) (vizinho), 2 = Gouache Wash (escala 0.925) (nosso), 3 = gouache_gouache_wash (oraculo)
+tamanhos_A: 1 = gouache_gouache_wash (oraculo), 2 = Wet Wash (d 0.74, limiar 0.591) (vizinho), 3 = Gouache Wash (escala 0.925) (nosso)
+tamanhos_B: 1 = Wet Wash (d 0.74, limiar 0.591) (vizinho), 2 = Gouache Wash (escala 0.925) (nosso), 3 = gouache_gouache_wash (oraculo)
+sobre_A: 1 = Gouache Wash (escala 0.925) (nosso), 2 = gouache_gouache_wash (oraculo), 3 = Wet Wash (d 0.74, limiar 0.591) (vizinho)
+sobre_B: 1 = gouache_gouache_wash (oraculo), 2 = Wet Wash (d 0.74, limiar 0.591) (vizinho), 3 = Gouache Wash (escala 0.925) (nosso)

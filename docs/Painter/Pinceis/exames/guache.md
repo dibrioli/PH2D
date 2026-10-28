@@ -48,6 +48,32 @@ Gouache Dry reprovado (em estudo; motor: cerdas que crescem com o diâmetro).
   régua desce). A diferença que falta: as riscas e as pontas rasgadas (o Rebelle liso) — `felt` 0,1 com quina 1 dá a
   espiral quadrada (recusado na J4).
 
+## Motor J6 (28/10) — a guache COBRE a tinta molhada (`Knob::WetCover`, lacuna 7)
+
+Régua (`resto`, cena `sobre` A, cruzamentos x 250/500 na faixa molhada): `|cruzamento − azul no papel| ÷ |vermelho longe −
+azul no papel|` — 0 = o azul cobre, ~1 = o vermelho fica. Rebelle: **Flat 0,11 · Liner 0,15 · Round 0,33 · Filbert 0,37 ·
+Dry 0,64 · Wash 0,95** (a diluída NÃO cobre: vela, o cruzamento mais escuro que as duas).
+
+**A lei** (aditiva, 0 = ao bit): a cada pouso, `q = wetCover × outra_tinta`; o suspenso perde `q × peso` (`peso` = a parte
+da tinta nova na mistura de opacidade) e a cor nova pesa `1 − (1 − peso)(1 − q)` (`trail/transfer.rs` `cobre_a_outra`).
+Nossa Flat 0,36 → **0,10** (1,0) / 0,13 (0,5); Round 0,61 → 0,17 (0,15) / 0,07 (0,5); o anel não muda (Flat 1,09–1,11).
+⛔ Recusas medidas: só a massa (a cor mista já não é «outra»: cruzamento lilás claro, 0,36 → **0,50**); a massa inteira à
+1.ª passagem (abre o papel: 0,77); só a cor (a massa vermelha passa a azul: o Dry escurece). Portões
+`o_azul_da_guache_cobre_o_vermelho_molhado` (it) + `cobre_tests` (lib); mutações (cor desligada, massa fica, mistura sem
+`q`, lei desligada) todas VERMELHAS. A cena `a_lei_da_tinta` dá os mesmos hashes com e sem este motor.
+
+- **Gouache Wash** — o `wetCover` vai ao contrário (0,73 → 0,31); a cura é o VÉU: `glaze` 0,3 (cruzamento [207,192,207]
+  contra o Rebelle [208,195,210]). Régua 355 → **363/456** (`guache/gouache_wash_J6_regua.txt`); r2 `felt` 0,05: 361 —
+  fica a r1. Vizinho Wet Wash **0,740**. Prancha `pranchas/J6_Gouache_Wash{,_cega}.jpg` + chave. Fica à vista: as riscas
+  das cerdas (grão 0,076 contra 0,018) e as pontas rasgadas; as faixas de carimbo verticais dele a 200 px.
+- **Gouache Dry** — a lei não serve (0,89 → 0,75, o cruzamento escurece; o dele é claro [208,187,202]); sem receita nova
+  (as 2 rondas foram da J4). Régua 383/454, vizinho Wet Dry Brush **1,473**. Prancha `pranchas/J6_Gouache_Dry{,_cega}.jpg`.
+  Fica: a 200 px o Rebelle são faixas sólidas largas, o nosso uma nuvem de pontilhado (o tapete das cerdas — motor 2).
+- **Gouache Round** — NÃO refeito: a lei dá o resto (0,05–0,15 já o passa de 0,33), mas o que a reprovou fica — o vermelho
+  empurrado (anel 1,20 contra 1,11) e as pontas em cápsula.
+- **Gouache Flat** (fábrica, não aprovada): `wetCover` 0,5–1 casa-a com o Rebelle (0,10–0,13 contra 0,11) — candidata a cura
+  quando o coordenador a reabrir (regerar o preset e os portões dela).
+
 ## Portão
 `os_reprovados_do_guache_nao_estao_na_fabrica` (os três de `EM_ESTUDO` sem ficheiro; mutação J4: a Round renomeada
 «Gouache Flat» → VERMELHO). A Flat continua presa pelos de antes (`MIDIAS` gouacheflat, `a_lei_da_tinta`), verdes.

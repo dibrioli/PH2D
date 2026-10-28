@@ -1,0 +1,36 @@
+{
+  "v": 3,
+  "createdOnFiles": { "v": 1, "at": "2026-10-27T18:00:00Z" },
+  "title": "Kanban — maquete W1b",
+  "launch": { "view": "canvas" },
+  "pages": [],
+  "boards": {
+    "Main.dc.html": { "x": 0, "y": 0, "w": 1440, "h": 900, "title": "Board — dark", "expand": "fill" },
+    "BoardLight.dc.html": { "x": 1520, "y": 0, "w": 1440, "h": 900, "title": "Board — light", "expand": "fill" },
+    "Cards.dc.html": { "x": 0, "y": 1260, "w": 1440, "h": 820, "title": "Card front — dark" },
+    "CardsLight.dc.html": { "x": 1520, "y": 1260, "w": 1440, "h": 820, "title": "Card front — light" },
+    "Card.dc.html": { "x": 3040, "y": 1260, "w": 320, "h": 220, "title": "Card (component)" },
+    "Back.dc.html": { "x": 0, "y": 2440, "w": 1180, "h": 1000, "title": "Card back — dark" },
+    "Filter.dc.html": { "x": 1260, "y": 2440, "w": 1180, "h": 820, "title": "Filter — light" },
+    "Canvas.dc.html": { "x": 0, "y": 3800, "w": 1440, "h": 860, "title": "On the board canvas — 3 zooms" },
+    "Palette.dc.html": { "x": 1520, "y": 3800, "w": 1440, "h": 900, "title": "Colors, shadows, motion" }
+  },
+  "order": [
+    "Main.dc.html",
+    "BoardLight.dc.html",
+    "Cards.dc.html",
+    "CardsLight.dc.html",
+    "Card.dc.html",
+    "Back.dc.html",
+    "Filter.dc.html",
+    "Canvas.dc.html",
+    "Palette.dc.html"
+  ],
+  "notes": {
+    "row1": { "x": 0, "y": -300, "text": "1 · O Kanban na aba — escuro e claro", "kind": "title1", "maxW": 2960 },
+    "row2": { "x": 0, "y": 960, "text": "2 · A frente do cartão — todas as variantes", "kind": "title1", "maxW": 3360 },
+    "row3": { "x": 0, "y": 2140, "text": "3 · O verso do cartão e o filtro", "kind": "title1", "maxW": 2440 },
+    "row4": { "x": 0, "y": 3500, "text": "4 · No canvas do Quadro, e a paleta", "kind": "title1", "maxW": 2960 }
+  },
+  "designSystems": []
+}

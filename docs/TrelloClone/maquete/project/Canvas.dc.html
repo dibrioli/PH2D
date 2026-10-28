@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Kanban on the board canvas</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width: 1440px; height: 860px; box-sizing: border-box; padding: 32px 40px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 32px; font-family: Inter, system-ui, sans-serif; background: #e6dccb; color: #1f1b16">
+
+  <figure style="margin: 0; display: flex; flex-direction: column; gap: 10px">
+    <figcaption style="font-size: 13px; font-weight: 600">100% — live: drag, edit, open the card</figcaption>
+    <div style="position: relative; height: 760px; border-radius: 12px; overflow: hidden; background-color: #fbfaf7; background-image: radial-gradient(#d6d0c4 1px, transparent 1px); background-size: 20px 20px; box-shadow: 0 0 0 1px #d4c8b4">
+      <div style="position: absolute; left: 22px; top: 22px; width: 150px; height: 150px; padding: 12px; box-sizing: border-box; background: #fff9b1; box-shadow: 0 2px 4px rgba(31,27,22,0.18); font-size: 14px; line-height: 19px">Pitch to the studio on Friday</div>
+      <div style="position: absolute; left: 60px; top: 196px; display: flex; align-items: center; gap: 2px; padding: 4px; border-radius: 8px; background: #ffffff; box-shadow: 0 4px 12px rgba(31,27,22,0.18), 0 0 0 1px rgba(31,27,22,0.08)">
+        <button type="button" style="display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px; border: 0; border-radius: 6px; background: #4150d8; color: #ffffff; font: inherit; font-size: 13px; font-weight: 600">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M14 4h6v6M20 4l-8 8M18 14v6H4V6h6"></path></svg>Open in tab
+        </button>
+        <button type="button" style="height: 30px; padding: 0 10px; border: 0; border-radius: 6px; background: transparent; color: #1f1b16; font: inherit; font-size: 13px">Board</button>
+        <button type="button" aria-label="More" style="width: 30px; height: 30px; border: 0; border-radius: 6px; background: transparent; color: #1f1b16; display: flex; align-items: center; justify-content: center">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="6" cy="12" r="1.5"></circle><circle cx="12" cy="12" r="1.5"></circle><circle cx="18" cy="12" r="1.5"></circle></svg>
+        </button>
+      </div>
+      <div style="position: absolute; left: 60px; top: 246px; width: 620px; height: 480px; border-radius: 12px; overflow: hidden; background: #2c63c9; outline: 2px solid #4150d8; outline-offset: 3px">
+        <div style="height: 40px; display: flex; align-items: center; padding: 0 12px; background: rgba(9,20,45,0.28); color: #ffffff; font-size: 15px; font-weight: 700">Short film — production</div>
+        <div style="display: flex; gap: 10px; padding: 10px">
+          <sc-for list="{{near}}" as="list" hint-placeholder-count="2">
+            <section aria-label="{{list.title}}" style="width: 272px; flex: none; border-radius: 12px; background: #f1f2f4; color: #172b4d">
+              <h2 style="margin: 0; padding: 10px 14px 6px; font-size: 14px; font-weight: 600">{{list.title}}</h2>
+              <div style="display: flex; flex-direction: column; gap: 8px; padding: 2px 8px 10px">
+                <sc-for list="{{list.cards}}" as="c" hint-placeholder-count="2">
+                  <dc-import name="Card" card="{{c}}" theme="light" state="rest" w="256" hint-size="256px,72px"></dc-import>
+                </sc-for>
+              </div>
+            </section>
+          </sc-for>
+        </div>
+      </div>
+      <span aria-hidden="true" style="position: absolute; left: 676px; top: 722px; width: 10px; height: 10px; background: #ffffff; border: 2px solid #4150d8; border-radius: 2px"></span>
+    </div>
+  </figure>
+
+  <figure style="margin: 0; display: flex; flex-direction: column; gap: 10px">
+    <figcaption style="font-size: 13px; font-weight: 600">45% — titles and covers, no badges</figcaption>
+    <div style="position: relative; height: 760px; border-radius: 12px; overflow: hidden; background-color: #fbfaf7; background-image: radial-gradient(#d6d0c4 1px, transparent 1px); background-size: 9px 9px; box-shadow: 0 0 0 1px #d4c8b4">
+      <div style="position: absolute; left: 20px; top: 24px; width: 68px; height: 68px; padding: 6px; box-sizing: border-box; background: #fff9b1; box-shadow: 0 1px 2px rgba(31,27,22,0.18); font-size: 8px; line-height: 10px">Pitch to the studio on Friday</div>
+      <div style="position: absolute; left: 20px; top: 120px; width: 380px; border-radius: 6px; overflow: hidden; background: #2c63c9">
+        <div style="height: 18px; display: flex; align-items: center; padding: 0 6px; background: rgba(9,20,45,0.28); color: #ffffff; font-size: 8px; font-weight: 700">Short film — production</div>
+        <div style="display: flex; gap: 5px; padding: 5px; align-items: flex-start">
+          <sc-for list="{{mid}}" as="list" hint-placeholder-count="5">
+            <div style="width: 68px; flex: none; border-radius: 5px; background: {{list.bg}}; padding: 4px 3px 4px">
+              <div style="padding: 0 2px 3px; font-size: 7px; font-weight: 700; color: #172b4d; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{list.title}}</div>
+              <div style="display: flex; flex-direction: column; gap: 3px">
+                <sc-for list="{{list.cards}}" as="c" hint-placeholder-count="3">
+                  <div style="border-radius: 3px; overflow: hidden; background: #ffffff; box-shadow: 0 0.5px 0.5px rgba(9,30,66,0.3)">
+                    <sc-if value="{{c.hasCover}}" hint-placeholder-val="{{ false }}">
+                      <div style="height: {{c.coverH}}px; background: {{c.cover}}"></div>
+                    </sc-if>
+                    <div style="padding: 3px 4px; font-size: 6px; line-height: 8px; color: #172b4d">{{c.title}}</div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+      <div style="position: absolute; left: 230px; top: 420px; width: 150px; height: 90px; border: 1.5px solid #6e5dc6; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #6e5dc6">Animatic — v2</div>
+    </div>
+  </figure>
+
+  <figure style="margin: 0; display: flex; flex-direction: column; gap: 10px">
+    <figcaption style="font-size: 13px; font-weight: 600">15% — the lists at a glance</figcaption>
+    <div style="position: relative; height: 760px; border-radius: 12px; overflow: hidden; background-color: #fbfaf7; background-image: radial-gradient(#e2dccf 1px, transparent 1px); background-size: 6px 6px; box-shadow: 0 0 0 1px #d4c8b4">
+      <div style="position: absolute; left: 34px; top: 40px; width: 24px; height: 24px; background: #fff9b1; box-shadow: 0 1px 1px rgba(31,27,22,0.18)"></div>
+      <div style="position: absolute; left: 70px; top: 46px; width: 18px; height: 18px; background: #ffceE0; box-shadow: 0 1px 1px rgba(31,27,22,0.18)"></div>
+      <div style="position: absolute; left: 34px; top: 92px; width: 184px">
+        <div style="font-size: 12px; font-weight: 700; color: #1f1b16; margin-bottom: 4px">Short film — production</div>
+        <div style="display: flex; gap: 3px; padding: 4px; border-radius: 5px; background: #2c63c9">
+          <sc-for list="{{far}}" as="b" hint-placeholder-count="5">
+            <div title="{{b.title}}: {{b.count}} cards" style="flex: 1; height: {{b.h}}px; border-radius: 3px; background: {{b.bg}}; display: flex; align-items: flex-start; justify-content: center; padding-top: 3px; box-sizing: border-box; font-size: 10px; font-weight: 700; color: #172b4d">{{b.count}}</div>
+          </sc-for>
+        </div>
+      </div>
+      <div style="position: absolute; left: 260px; top: 96px; width: 120px; height: 70px; border-radius: 5px; background: #f1f2f4; box-shadow: 0 0 0 1px #d4c8b4; padding: 6px; box-sizing: border-box">
+        <div style="font-size: 9px; font-weight: 700; color: #1f1b16">Voice — schedule</div>
+        <div style="display: flex; gap: 2px; margin-top: 6px">
+          <span style="flex: 1; height: 30px; border-radius: 2px; background: #cce0ff"></span>
+          <span style="flex: 1; height: 22px; border-radius: 2px; background: #dcdfe4"></span>
+          <span style="flex: 1; height: 14px; border-radius: 2px; background: #baf3db"></span>
+        </div>
+      </div>
+      <div style="position: absolute; left: 80px; top: 320px; width: 70px; height: 42px; border: 1px solid #6e5dc6; border-radius: 4px"></div>
+      <div style="position: absolute; left: 220px; top: 300px; width: 140px; height: 2px; background: #1f1b16; transform: rotate(-18deg); transform-origin: left"></div>
+    </div>
+  </figure>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":860}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const near = [
+      { title: 'To Do', cards: [
+        { title: 'Storyboard act 1', labels: [['purple', 'normal', 'Story'], ['red', 'bold', 'Urgent']], cover: { kind: 'image' }, due: { text: 'Oct 29', state: 'soon' }, comments: 4, check: [2, 6], members: ['RA', 'AN'] },
+        { title: 'Design the fox', labels: [['pink', 'normal', 'Character']], comments: 3, members: ['AN'] }
+      ] },
+      { title: 'Doing', cards: [
+        { title: 'Animate shot 12', labels: [['green', 'bold', 'Animation']], due: { text: 'Oct 25', state: 'over' }, check: [3, 5], members: ['EN'] },
+        { title: 'Light pass — forest', labels: [['lime', 'normal', 'Light']], votes: 2, members: ['RA'] }
+      ] }
+    ];
+    const card = (title, cover, coverH) => ({ title, hasCover: !!cover, cover: cover ?? 'transparent', coverH: coverH ?? 0 });
+    const mid = [
+      { title: 'Backlog', bg: '#f1f2f4', cards: [card('Write the logline'), card('Collect references'), card('Pick the music'), card('Voice casting')] },
+      { title: 'To Do', bg: '#f1f2f4', cards: [card('Storyboard act 1', '#9cc6f2', 22), card('Design the fox'), card('Color script', '#fea362', 6)] },
+      { title: 'Doing', bg: '#cce0ff', cards: [card('Animate shot 12'), card('Clean up shot 08'), card('Light pass — forest')] },
+      { title: 'Review', bg: '#f1f2f4', cards: [card('Shot 03 timing'), card('Shot 05 color'), card('Fox model sheet'), card('Title card')] },
+      { title: 'Done', bg: '#f1f2f4', cards: [card('Rough the opening shot', '#9cc6f2', 30), card('Lock the script')] }
+    ];
+    const far = [
+      ['Backlog', 4, '#f1f2f4'], ['To Do', 3, '#f1f2f4'], ['Doing', 3, '#cce0ff'], ['Review', 4, '#f1f2f4'], ['Done', 2, '#f1f2f4']
+    ].map(([title, count, bg]) => ({ title, count, bg, h: 22 + count * 12 }));
+    return { near, mid, far };
+  }
+}
+</script>
+</body>
+</html>

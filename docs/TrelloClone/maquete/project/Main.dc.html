@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Kanban board in a tab</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width: 100%; height: 900px; display: flex; flex-direction: column; font-family: Inter, system-ui, sans-serif; background: {{t.chrome}}; color: {{t.chromeFg}}; overflow: hidden">
+  <nav aria-label="Documents" style="height: 40px; flex: none; display: flex; align-items: flex-end; gap: 2px; padding: 0 12px; border-bottom: 1px solid {{t.chromeLine}}">
+    <span style="align-self: center; margin-right: 12px; font-size: 13px; font-weight: 700; letter-spacing: 0.02em">PH2D</span>
+    <a href="#" style="display: flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border-radius: 6px 6px 0 0; color: {{t.chromeFg2}}; font-size: 13px; text-decoration: none">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"></rect><path d="M4 15l4-4 4 4 3-3 5 5"></path></svg>Scene
+    </a>
+    <a href="#" style="display: flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border-radius: 6px 6px 0 0; color: {{t.chromeFg2}}; font-size: 13px; text-decoration: none">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M5 5h9l5 5v9H5z"></path><path d="M14 5v5h5"></path></svg>Storyboard
+    </a>
+    <a href="#" aria-current="page" style="display: flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border-radius: 6px 6px 0 0; background: {{t.tabActive}}; color: {{t.chromeFg}}; font-size: 13px; font-weight: 500; text-decoration: none; box-shadow: inset 0 2px 0 {{t.accent}}">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="4" y="5" width="4.5" height="14" rx="1.2"></rect><rect x="9.75" y="5" width="4.5" height="9" rx="1.2"></rect><rect x="15.5" y="5" width="4.5" height="11" rx="1.2"></rect></svg>Short film
+    </a>
+  </nav>
+
+  <div style="flex: 1; min-height: 0; display: flex; flex-direction: column; background: {{t.boardBg}}">
+    <header style="flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-height: 52px; padding: 8px 12px 8px 16px; box-sizing: border-box; background: {{t.headerBg}}; color: {{t.headerFg}}">
+      <h1 style="margin: 0; font-size: 18px; line-height: 24px; font-weight: 700">Short film — production</h1>
+      <button type="button" aria-label="Star this Kanban" style="width: 32px; height: 32px; border: 0; border-radius: 6px; background: transparent; color: #f5cd47; display: flex; align-items: center; justify-content: center">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 3.8l2.5 5.2 5.7.7-4.2 3.9 1.1 5.6L12 16.4l-5.1 2.8 1.1-5.6-4.2-3.9 5.7-.7z"></path></svg>
+      </button>
+      <button type="button" style="display: flex; align-items: center; gap: 6px; height: 32px; padding: 0 10px; border: 0; border-radius: 6px; background: {{t.headerBtnOn}}; color: {{t.headerBtnOnFg}}; font: inherit; font-size: 14px; font-weight: 500">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="4" y="5" width="4.5" height="14" rx="1.2"></rect><rect x="9.75" y="5" width="4.5" height="9" rx="1.2"></rect><rect x="15.5" y="5" width="4.5" height="11" rx="1.2"></rect></svg>Board
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M7 10l5 5 5-5"></path></svg>
+      </button>
+      <span style="flex: 1"></span>
+      <button type="button" style="display: flex; align-items: center; gap: 6px; height: 32px; padding: 0 10px; border: 0; border-radius: 6px; background: {{t.headerBtn}}; color: {{t.headerFg}}; font: inherit; font-size: 14px">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4"></path></svg>Filter
+      </button>
+      <button type="button" style="display: flex; align-items: center; gap: 6px; height: 32px; padding: 0 10px; border: 0; border-radius: 6px; background: {{t.headerBtn}}; color: {{t.headerFg}}; font: inherit; font-size: 14px">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3.5" y="5" width="17" height="14" rx="2"></rect><circle cx="9" cy="10" r="1.6"></circle><path d="M13 9h4M13 13h4M7 15h10"></path></svg>Show on board
+      </button>
+      <span style="display: inline-flex; flex-direction: row-reverse; padding: 0 6px">
+        <sc-for list="{{people}}" as="p" hint-placeholder-count="4">
+          <span title="{{p.name}}" style="width: 28px; height: 28px; margin-left: -6px; border-radius: 50%; background: {{p.bg}}; color: #091e42; box-shadow: 0 0 0 2px {{t.boardBg}}; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600">{{p.initials}}</span>
+        </sc-for>
+      </span>
+      <button type="button" style="height: 32px; padding: 0 12px; border: 0; border-radius: 6px; background: {{t.accent}}; color: {{t.accentFg}}; font: inherit; font-size: 14px; font-weight: 600">Share</button>
+      <button type="button" aria-label="Kanban menu" style="width: 32px; height: 32px; border: 0; border-radius: 6px; background: transparent; color: {{t.headerFg}}; display: flex; align-items: center; justify-content: center">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="6" cy="12" r="1.6"></circle><circle cx="12" cy="12" r="1.6"></circle><circle cx="18" cy="12" r="1.6"></circle></svg>
+      </button>
+    </header>
+
+    <div style="flex: 1; min-height: 0; overflow-x: auto; overflow-y: hidden">
+      <div style="position: relative; display: flex; align-items: flex-start; gap: 12px; padding: 12px; width: max-content">
+        <sc-for list="{{lists}}" as="list" hint-placeholder-count="5">
+          <sc-if value="{{list.open}}" hint-placeholder-val="{{ true }}">
+            <section aria-label="{{list.title}}" style="width: 272px; flex: none; box-sizing: border-box; max-height: 790px; display: flex; flex-direction: column; border-radius: 12px; background: {{list.bg}}; color: {{list.fg}}; box-shadow: {{t.listShadow}}">
+              <div style="display: flex; align-items: center; gap: 6px; padding: 10px 8px 6px 14px">
+                <h2 style="margin: 0; flex: 1; font-size: 14px; line-height: 20px; font-weight: 600">{{list.title}}</h2>
+                <sc-if value="{{list.hasLimit}}" hint-placeholder-val="{{ false }}">
+                  <span style="padding: 0 6px; border-radius: 4px; font-size: 12px; line-height: 18px; font-weight: 600; background: {{list.limitBg}}; color: {{list.limitFg}}">{{list.limit}}</span>
+                </sc-if>
+                <button type="button" aria-label="Collapse list" style="width: 28px; height: 28px; border: 0; border-radius: 6px; background: transparent; color: {{list.meta}}; display: flex; align-items: center; justify-content: center">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M9 6l-4 6 4 6M15 6l4 6-4 6"></path></svg>
+                </button>
+                <button type="button" aria-label="List actions" style="width: 28px; height: 28px; border: 0; border-radius: 6px; background: transparent; color: {{list.meta}}; display: flex; align-items: center; justify-content: center">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="6" cy="12" r="1.5"></circle><circle cx="12" cy="12" r="1.5"></circle><circle cx="18" cy="12" r="1.5"></circle></svg>
+                </button>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 8px; padding: 2px 8px 4px; overflow: hidden">
+                <sc-for list="{{list.items}}" as="it" hint-placeholder-count="2">
+                  <sc-if value="{{it.isCard}}" hint-placeholder-val="{{ true }}">
+                    <dc-import name="Card" card="{{it.card}}" theme="{{theme}}" state="{{it.state}}" w="256" hint-size="256px,72px"></dc-import>
+                  </sc-if>
+                  <sc-if value="{{it.isSlot}}" hint-placeholder-val="{{ false }}">
+                    <div aria-hidden="true" style="height: {{it.h}}px; border-radius: 8px; background: {{list.slot}}"></div>
+                  </sc-if>
+                </sc-for>
+              </div>
+              <div style="display: flex; align-items: center; gap: 4px; padding: 4px 8px 8px">
+                <button type="button" style="flex: 1; display: flex; align-items: center; gap: 6px; height: 32px; padding: 0 8px; border: 0; border-radius: 8px; background: transparent; color: {{list.meta}}; font: inherit; font-size: 14px; font-weight: 500; text-align: left">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>Add a card
+                </button>
+                <button type="button" aria-label="Create from template" style="width: 32px; height: 32px; border: 0; border-radius: 8px; background: transparent; color: {{list.meta}}; display: flex; align-items: center; justify-content: center">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="5" y="4" width="14" height="16" rx="2"></rect><path d="M9 9h6M9 13h6M9 17h3"></path></svg>
+                </button>
+              </div>
+            </section>
+          </sc-if>
+          <sc-if value="{{list.collapsed}}" hint-placeholder-val="{{ false }}">
+            <section aria-label="{{list.title}} (collapsed)" style="width: 44px; flex: none; box-sizing: border-box; padding: 10px 0 12px; display: flex; flex-direction: column; align-items: center; gap: 10px; border-radius: 12px; background: {{list.bg}}; color: {{list.fg}}; box-shadow: {{t.listShadow}}">
+              <button type="button" aria-label="Expand list" style="width: 28px; height: 28px; border: 0; border-radius: 6px; background: transparent; color: {{list.meta}}; display: flex; align-items: center; justify-content: center">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M5 6l4 6-4 6M19 6l-4 6 4 6"></path></svg>
+              </button>
+              <span style="writing-mode: vertical-rl; font-size: 14px; font-weight: 600; line-height: 20px">{{list.title}}</span>
+              <span style="padding: 0 6px; border-radius: 10px; background: {{list.limitBg}}; color: {{list.limitFg}}; font-size: 12px; line-height: 18px; font-weight: 600">{{list.count}}</span>
+            </section>
+          </sc-if>
+        </sc-for>
+        <button type="button" style="width: 272px; flex: none; display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 12px; border: 0; border-radius: 12px; background: {{t.newList}}; color: {{t.headerFg}}; font: inherit; font-size: 14px; font-weight: 500; text-align: left">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>Add another list
+        </button>
+        <div style="position: absolute; left: 618px; top: 196px; pointer-events: none">
+          <dc-import name="Card" card="{{flying}}" theme="{{theme}}" state="flight" w="256" hint-size="256px,96px"></dc-import>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const theme = this.props.theme ?? 'dark';
+    const dark = theme === 'dark';
+    const t = dark ? {
+      chrome: '#171c28', chromeLine: '#2c3550', tabActive: '#1e2433', chromeFg: '#e3e8f2', chromeFg2: '#a3aec3',
+      accent: '#4aa3ff', accentFg: '#0b1220', boardBg: '#1b3a6e',
+      headerBg: 'rgba(8,12,22,0.42)', headerFg: '#f2f5fa', headerBtn: 'rgba(255,255,255,0.12)',
+      headerBtnOn: '#dee4ea', headerBtnOnFg: '#172b4d',
+      list: '#111520', listFg: '#dee4ea', listMeta: '#9fadbc', slot: 'rgba(255,255,255,0.08)',
+      newList: 'rgba(255,255,255,0.14)', listShadow: '0 1px 1px rgba(0,0,0,0.4)',
+      tint: { blue: '#09326C', yellow: '#533F04' }, limitBg: '#E2B203', limitFg: '#1D2125'
+    } : {
+      chrome: '#ede5d6', chromeLine: '#d4c8b4', tabActive: '#f7f2e8', chromeFg: '#1f1b16', chromeFg2: '#5c5346',
+      accent: '#4150d8', accentFg: '#ffffff', boardBg: '#2c63c9',
+      headerBg: 'rgba(9,20,45,0.28)', headerFg: '#ffffff', headerBtn: 'rgba(255,255,255,0.18)',
+      headerBtnOn: '#ffffff', headerBtnOnFg: '#172b4d',
+      list: '#f1f2f4', listFg: '#172b4d', listMeta: '#44546f', slot: 'rgba(9,30,66,0.10)',
+      newList: 'rgba(255,255,255,0.24)', listShadow: '0 1px 1px rgba(9,30,66,0.25)',
+      tint: { blue: '#CCE0FF', yellow: '#F8E6A0' }, limitBg: '#F5CD47', limitFg: '#091E42'
+    };
+    const tintFg = dark ? '#DEE4EA' : '#091E42';
+    const tintMeta = dark ? '#B6C2CF' : '#2c3e5d';
+    const card = (c) => ({ isCard: true, isSlot: false, card: c, state: c.state ?? 'rest' });
+    const slot = (h) => ({ isCard: false, isSlot: true, h, card: null, state: 'rest' });
+    const list = (title, items, opts) => {
+      const o = opts ?? {};
+      const bg = o.tint ? t.tint[o.tint] : t.list;
+      return {
+        title, items, open: !o.collapsed, collapsed: !!o.collapsed,
+        bg, fg: o.tint ? tintFg : t.listFg, meta: o.tint ? tintMeta : t.listMeta, slot: t.slot,
+        hasLimit: !!o.limit, limit: o.limit ?? '', count: o.count ?? '',
+        limitBg: o.full ? t.limitBg : t.slot, limitFg: o.full ? t.limitFg : (o.tint ? tintFg : t.listFg)
+      };
+    };
+    const lists = [
+      list('Backlog', [
+        card({ title: 'Write the logline', labels: [['green', 'normal', 'Writing']], desc: true }),
+        card({ title: 'Collect references for the forest', desc: true, attach: 6, comments: 1 }),
+        card({ title: 'Pick the music', labels: [['sky', 'normal', 'Audio']], members: ['MI'] }),
+        card({ title: 'Voice casting', labels: [['sky', 'normal', 'Audio'], ['black', 'subtle', 'Later']], state: 'aged' })
+      ]),
+      list('To Do', [
+        card({ title: 'Storyboard act 1', labels: [['purple', 'normal', 'Story'], ['red', 'bold', 'Urgent']], cover: { kind: 'image' }, due: { text: 'Oct 29', state: 'soon' }, desc: true, comments: 4, attach: 2, check: [2, 6], members: ['RA', 'AN'] }),
+        card({ title: 'Design the fox', labels: [['pink', 'normal', 'Character']], comments: 3, attach: 2, members: ['AN'], state: 'hover' }),
+        card({ title: 'Color script', cover: { kind: 'color', hue: 'orange' }, labels: [['orange', 'subtle', 'Look']], check: [0, 4] })
+      ]),
+      list('Doing', [
+        card({ title: 'Animate shot 12', labels: [['green', 'bold', 'Animation']], due: { text: 'Oct 25', state: 'over' }, check: [3, 5], members: ['EN'], fields: [['Priority: High', 'orange']] }),
+        slot(92),
+        card({ title: 'Light pass — forest', labels: [['lime', 'normal', 'Light']], votes: 2, members: ['RA', 'EN', 'MI'], state: 'focus' })
+      ], { tint: 'blue', limit: '3 / 3', full: true }),
+      list('Review', [], { collapsed: true, count: '4' }),
+      list('Done', [
+        card({ title: 'Rough the opening shot', cover: { kind: 'image', full: true } }),
+        card({ title: 'Lock the script', labels: [['green', 'normal', 'Writing']], due: { text: 'Oct 20', state: 'done' }, check: [8, 8], members: ['EN', 'RA'] }),
+        card({ title: 'Pick the aspect ratio', labelBars: true, labels: [['blue', 'normal'], ['black', 'normal']] })
+      ])
+    ];
+    const flying = { title: 'Clean up shot 08', labels: [['green', 'bold', 'Animation'], ['purple', 'normal', 'Story']], check: [1, 3], members: ['MI'] };
+    const people = [['EN', 'Enio', '#4BCE97'], ['RA', 'Rui', '#579DFF'], ['AN', 'Ana', '#F87168'], ['MI', 'Mia', '#9F8FEF']]
+      .reverse().map(([initials, name, bg]) => ({ initials, name, bg }));
+    return { t, theme, lists, flying, people };
+  }
+}
+</script>
+</body>
+</html>

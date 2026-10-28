@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Card front variants</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width: 1440px; height: 820px; box-sizing: border-box; padding: 32px 40px; font-family: Inter, system-ui, sans-serif; background: {{bg}}; color: {{fg}}">
+  <div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 28px 32px; align-items: start">
+    <sc-for list="{{cells}}" as="c" hint-placeholder-count="15">
+      <div style="display: flex; flex-direction: column; gap: 8px">
+        <span style="font-size: 12px; line-height: 16px; font-weight: 500; color: {{meta}}">{{c.caption}}</span>
+        <dc-import name="Card" card="{{c.card}}" theme="{{theme}}" state="{{c.state}}" w="256" hint-size="256px,80px"></dc-import>
+      </div>
+    </sc-for>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":1440,"height":820}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const theme = this.props.theme ?? 'dark';
+    const dark = theme === 'dark';
+    const cell = (caption, card, state) => ({ caption, card, state: state ?? 'rest' });
+    const cells = [
+      cell('Title only', { title: 'Rough the opening shot' }),
+      cell('Labels — bars (collapsed)', { title: 'Pick the aspect ratio', labelBars: true, labels: [['blue', 'normal'], ['green', 'normal'], ['black', 'normal']] }),
+      cell('Labels — with text', { title: 'Storyboard act 1', labels: [['purple', 'normal', 'Story'], ['red', 'bold', 'Urgent'], ['yellow', 'subtle', 'Review']] }),
+      cell('Half cover — color', { title: 'Color script', cover: { kind: 'color', hue: 'purple' }, labels: [['orange', 'subtle', 'Look']] }),
+      cell('Half cover — image', { title: 'Forest background', cover: { kind: 'image' }, labels: [['lime', 'normal', 'Light']], attach: 1 }),
+      cell('Full cover — image', { title: 'Rough the opening shot', cover: { kind: 'image', full: true } }),
+      cell('Full cover — color', { title: 'Milestone: animatic', cover: { kind: 'color', hue: 'sky', full: true } }),
+      cell('Badges — all of them', { title: 'Animate shot 12', due: { text: 'Nov 2', state: 'none' }, desc: true, comments: 4, attach: 2, check: [3, 5], votes: 3, place: 'Studio B', members: ['RA', 'AN', 'EN'] }),
+      cell('Due soon · checklist done', { title: 'Lock the music edit', labels: [['sky', 'normal', 'Audio']], due: { text: 'Oct 28', state: 'soon' }, check: [5, 5], members: ['MI'] }),
+      cell('Overdue', { title: 'Send the animatic to Ana', due: { text: 'Oct 25', state: 'over' }, comments: 2, members: ['EN'] }),
+      cell('Due complete', { title: 'Lock the script', labels: [['green', 'normal', 'Writing']], due: { text: 'Oct 20', state: 'done' }, check: [8, 8] }),
+      cell('Custom fields on the front', { title: 'Shot 14 — chase', labels: [['green', 'bold', 'Animation']], fields: [['Priority: High', 'orange'], ['Estimate: 3 days', null], ['Shot: 14', null]] }),
+      cell('Hover — edit button', { title: 'Design the fox', labels: [['pink', 'normal', 'Character']], comments: 3, members: ['AN'] }, 'hover'),
+      cell('Keyboard focus', { title: 'Light pass — forest', labels: [['lime', 'normal', 'Light']], votes: 2, members: ['RA'] }, 'focus'),
+      cell('Aged (untouched for weeks)', { title: 'Voice casting', labels: [['sky', 'normal', 'Audio']], members: ['MI'] }, 'aged')
+    ];
+    return {
+      theme, cells,
+      bg: dark ? '#111520' : '#f1f2f4',
+      fg: dark ? '#dee4ea' : '#172b4d',
+      meta: dark ? '#9fadbc' : '#44546f'
+    };
+  }
+}
+</script>
+</body>
+</html>

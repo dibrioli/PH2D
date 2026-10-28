@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Kanban card</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width: {{w}}px; font-family: Inter, system-ui, sans-serif; transform: {{v.transform}}; transform-origin: 50% 60%; position: relative">
+  <article style="position: relative; background: {{v.cardBg}}; border-radius: 8px; box-shadow: {{v.shadow}}; overflow: hidden; outline: {{v.outline}}; outline-offset: 2px; color: {{v.fg}}; opacity: {{v.opacity}}; filter: {{v.filter}}">
+    <sc-if value="{{v.coverHalf}}" hint-placeholder-val="{{ false }}">
+      <div style="position: relative; height: {{v.coverH}}px; background: {{v.coverBg}}; overflow: hidden">
+        <sc-if value="{{v.coverImage}}" hint-placeholder-val="{{ false }}">
+          <svg viewBox="0 0 256 128" preserveAspectRatio="xMidYMid slice" style="position: absolute; inset: 0; width: 100%; height: 100%" aria-hidden="true">
+            <rect width="256" height="128" fill="{{v.scene.sky}}"></rect>
+            <circle cx="190" cy="40" r="18" fill="{{v.scene.sun}}"></circle>
+            <path d="M0 96 C40 70 70 74 110 88 C150 102 190 70 256 84 V128 H0 Z" fill="{{v.scene.far}}"></path>
+            <path d="M0 112 C50 92 96 100 140 110 C184 120 220 102 256 106 V128 H0 Z" fill="{{v.scene.near}}"></path>
+            <path d="M70 104 l10 -26 l10 26 Z M84 108 l8 -20 l8 20 Z" fill="{{v.scene.tree}}"></path>
+          </svg>
+        </sc-if>
+      </div>
+    </sc-if>
+    <sc-if value="{{v.coverFull}}" hint-placeholder-val="{{ false }}">
+      <div style="position: relative; min-height: 152px; background: {{v.coverBg}}; display: flex; align-items: flex-end; overflow: hidden">
+        <sc-if value="{{v.coverImage}}" hint-placeholder-val="{{ false }}">
+          <svg viewBox="0 0 256 152" preserveAspectRatio="xMidYMid slice" style="position: absolute; inset: 0; width: 100%; height: 100%" aria-hidden="true">
+            <rect width="256" height="152" fill="{{v.scene.sky}}"></rect>
+            <circle cx="70" cy="46" r="20" fill="{{v.scene.sun}}"></circle>
+            <path d="M0 104 C50 76 90 82 128 96 C170 110 206 80 256 92 V152 H0 Z" fill="{{v.scene.far}}"></path>
+            <path d="M0 126 C60 104 110 114 150 122 C196 132 226 114 256 118 V152 H0 Z" fill="{{v.scene.near}}"></path>
+            <path d="M176 116 l12 -32 l12 32 Z M194 122 l9 -24 l9 24 Z" fill="{{v.scene.tree}}"></path>
+          </svg>
+        </sc-if>
+        <div style="position: relative; width: 100%; padding: 36px 12px 10px; background: {{v.scrim}}; color: {{v.fullFg}}; font-size: 16px; line-height: 20px; font-weight: 600">{{v.title}}</div>
+      </div>
+    </sc-if>
+    <sc-if value="{{v.body}}" hint-placeholder-val="{{ true }}">
+      <div style="padding: 8px 12px 8px; display: flex; flex-direction: column; gap: 6px">
+        <sc-if value="{{v.hasLabels}}" hint-placeholder-val="{{ false }}">
+          <div style="display: flex; flex-wrap: wrap; gap: 4px">
+            <sc-for list="{{v.labels}}" as="l" hint-placeholder-count="2">
+              <span style="display: inline-block; box-sizing: border-box; min-width: {{l.minW}}; height: {{l.h}}; padding: {{l.pad}}; border-radius: 4px; background: {{l.bg}}; color: {{l.fg}}; font-size: 12px; line-height: 16px; font-weight: 500">{{l.text}}</span>
+            </sc-for>
+          </div>
+        </sc-if>
+        <div style="font-size: 14px; line-height: 20px; font-weight: 400; overflow-wrap: anywhere">{{v.title}}</div>
+        <sc-if value="{{v.hasFields}}" hint-placeholder-val="{{ false }}">
+          <div style="display: flex; flex-wrap: wrap; gap: 4px">
+            <sc-for list="{{v.fields}}" as="f" hint-placeholder-count="1">
+              <span style="display: inline-flex; align-items: center; gap: 4px; padding: 0 6px; height: 20px; border-radius: 4px; background: {{f.bg}}; color: {{f.fg}}; font-size: 12px; line-height: 20px">{{f.text}}</span>
+            </sc-for>
+          </div>
+        </sc-if>
+        <sc-if value="{{v.hasBadges}}" hint-placeholder-val="{{ false }}">
+          <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; font-size: 12px; line-height: 16px; color: {{v.meta}}; min-height: 24px">
+            <sc-if value="{{v.hasDue}}" hint-placeholder-val="{{ false }}">
+              <span style="display: inline-flex; align-items: center; gap: 4px; padding: 2px 4px; border-radius: 4px; background: {{v.dueBg}}; color: {{v.dueFg}}; font-weight: {{v.dueWeight}}">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 7.5V12l3 2"></path></svg>{{v.dueText}}
+              </span>
+            </sc-if>
+            <sc-if value="{{v.desc}}" hint-placeholder-val="{{ false }}">
+              <span style="display: inline-flex; padding: 2px" title="This card has a description">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-label="Has description" role="img"><path d="M5 7h14M5 12h14M5 17h9"></path></svg>
+              </span>
+            </sc-if>
+            <sc-if value="{{v.hasComments}}" hint-placeholder-val="{{ false }}">
+              <span style="display: inline-flex; align-items: center; gap: 3px; padding: 2px">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M5 6.5h14v9H10l-4 3.5v-3.5H5z"></path></svg>{{v.comments}}
+              </span>
+            </sc-if>
+            <sc-if value="{{v.hasAttach}}" hint-placeholder-val="{{ false }}">
+              <span style="display: inline-flex; align-items: center; gap: 3px; padding: 2px">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M15.5 7.5l-6.8 6.8a2.2 2.2 0 003.1 3.1l7.2-7.2a4 4 0 00-5.7-5.7l-7.4 7.4a5.8 5.8 0 008.2 8.2l5.4-5.4"></path></svg>{{v.attach}}
+              </span>
+            </sc-if>
+            <sc-if value="{{v.hasCheck}}" hint-placeholder-val="{{ false }}">
+              <span style="display: inline-flex; align-items: center; gap: 4px; padding: 2px 4px; border-radius: 4px; background: {{v.checkBg}}; color: {{v.checkFg}}; font-weight: {{v.checkWeight}}">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4.5" y="4.5" width="15" height="15" rx="3"></rect><path d="M8.5 12.2l2.4 2.4 4.8-5"></path></svg>{{v.checkText}}
+              </span>
+            </sc-if>
+            <sc-if value="{{v.hasVotes}}" hint-placeholder-val="{{ false }}">
+              <span style="display: inline-flex; align-items: center; gap: 3px; padding: 2px">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M8 11v8H5v-8zM8 11l3.5-6.5c1.3 0 2 1 1.7 2.3L12.6 10H18a1.6 1.6 0 011.6 1.9l-1.2 6A1.6 1.6 0 0116.8 19H8"></path></svg>{{v.votes}}
+              </span>
+            </sc-if>
+            <sc-if value="{{v.hasPlace}}" hint-placeholder-val="{{ false }}">
+              <span style="display: inline-flex; align-items: center; gap: 3px; padding: 2px">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 20s-6-5.3-6-10a6 6 0 0112 0c0 4.7-6 10-6 10z"></path><circle cx="12" cy="10" r="2.2"></circle></svg>{{v.place}}
+              </span>
+            </sc-if>
+            <sc-if value="{{v.hasMembers}}" hint-placeholder-val="{{ false }}">
+              <span style="margin-left: auto; display: inline-flex; flex-direction: row-reverse">
+                <sc-for list="{{v.members}}" as="m" hint-placeholder-count="2">
+                  <span title="{{m.name}}" style="width: 24px; height: 24px; margin-left: -4px; border-radius: 50%; background: {{m.bg}}; color: #091e42; box-shadow: 0 0 0 2px {{v.cardBg}}; display: inline-flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 600">{{m.initials}}</span>
+                </sc-for>
+              </span>
+            </sc-if>
+          </div>
+        </sc-if>
+      </div>
+    </sc-if>
+    <sc-if value="{{v.hover}}" hint-placeholder-val="{{ false }}">
+      <button type="button" aria-label="Edit card" style="position: absolute; top: 6px; right: 6px; width: 32px; height: 32px; border: 0; border-radius: 50%; background: {{v.editBg}}; color: {{v.fg}}; display: flex; align-items: center; justify-content: center; box-shadow: {{v.editShadow}}; cursor: pointer">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 5.5l4 4L9 19H5v-4z"></path></svg>
+      </button>
+    </sc-if>
+  </article>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"card":{"editor":null},"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"state":{"editor":"enum","options":["rest","hover","focus","flight","aged"],"default":"rest"},"w":{"editor":"int","default":256,"min":200,"max":320},"$preview":{"width":320,"height":220}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const theme = this.props.theme ?? 'dark';
+    const state = this.props.state ?? 'rest';
+    const dark = theme === 'dark';
+    const PAL = dark ? {
+      green: ['#164B35', '#216E4E', '#4BCE97'], yellow: ['#533F04', '#7F5F01', '#E2B203'],
+      orange: ['#702E00', '#A54800', '#FEA362'], red: ['#5D1F1A', '#AE2E24', '#F87168'],
+      purple: ['#352C63', '#5E4DB2', '#9F8FEF'], blue: ['#09326C', '#0055CC', '#579DFF'],
+      sky: ['#164555', '#206A83', '#6CC3E0'], lime: ['#37471F', '#4C6B1F', '#94C748'],
+      pink: ['#50253F', '#943D73', '#E774BB'], black: ['#454F59', '#596773', '#8C9BAB']
+    } : {
+      green: ['#BAF3DB', '#4BCE97', '#1F845A'], yellow: ['#F8E6A0', '#F5CD47', '#7F5F01'],
+      orange: ['#FEDEC8', '#FEA362', '#C25100'], red: ['#FFD5D2', '#F87168', '#C9372C'],
+      purple: ['#DFD8FD', '#9F8FEF', '#6E5DC6'], blue: ['#CCE0FF', '#579DFF', '#0C66E4'],
+      sky: ['#C6EDFB', '#6CC3E0', '#227D9B'], lime: ['#D3F1A7', '#94C748', '#5B7F24'],
+      pink: ['#FDD0EC', '#E774BB', '#AE4787'], black: ['#DCDFE4', '#8590A2', '#626F86']
+    };
+    const SHADE = { subtle: 0, normal: 1, bold: 2 };
+    const ink = (s) => dark ? (s === 2 ? '#1D2125' : '#DEE4EA') : (s === 2 ? '#FFFFFF' : '#091E42');
+    const tok = dark ? {
+      card: '#22293a', fg: '#dee4ea', meta: '#9fadbc',
+      rest: '0 1px 1px rgba(0,0,0,0.5), 0 0 1px rgba(0,0,0,0.6)',
+      hover: '0 1px 1px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.14)',
+      flight: '0 14px 30px rgba(0,0,0,0.6), 0 3px 8px rgba(0,0,0,0.45)',
+      accent: '#4aa3ff', editBg: '#2c3447'
+    } : {
+      card: '#ffffff', fg: '#172b4d', meta: '#44546f',
+      rest: '0 1px 1px rgba(9,30,66,0.25), 0 0 1px rgba(9,30,66,0.31)',
+      hover: '0 4px 8px rgba(9,30,66,0.16), 0 0 1px rgba(9,30,66,0.31)',
+      flight: '0 16px 32px rgba(9,30,66,0.30), 0 3px 8px rgba(9,30,66,0.22)',
+      accent: '#4150d8', editBg: '#f1f2f4'
+    };
+    const c = this.props.card ?? {
+      title: 'Storyboard act 1',
+      labels: [['purple', 'normal', 'Story'], ['red', 'bold', 'Urgent']],
+      cover: { kind: 'image' },
+      due: { text: 'Oct 29', state: 'soon' }, desc: true, comments: 4, attach: 2,
+      check: [2, 6], members: ['RA', 'AN']
+    };
+    const PEOPLE = { RA: ['Rui', '#579DFF'], AN: ['Ana', '#F87168'], EN: ['Enio', '#4BCE97'], MI: ['Mia', '#9F8FEF'] };
+    const bar = c.labelBars === true;
+    const labels = (c.labels ?? []).map(([hue, shade, text]) => {
+      const s = SHADE[shade];
+      return bar
+        ? { bg: PAL[hue][s], fg: ink(s), text: '', minW: '40px', h: '8px', pad: '0' }
+        : { bg: PAL[hue][s], fg: ink(s), text: text ?? '', minW: '48px', h: '16px', pad: '0 8px' };
+    });
+    const cover = c.cover ?? null;
+    const full = !!(cover && cover.full);
+    const coverBg = cover ? (cover.kind === 'color' ? PAL[cover.hue][dark ? 1 : 1] : '#9fb7d8') : 'transparent';
+    const scene = dark
+      ? { sky: '#2a3f66', sun: '#e2b203', far: '#2f5b4f', near: '#1f4237', tree: '#173229' }
+      : { sky: '#9cc6f2', sun: '#f5cd47', far: '#6fae8a', near: '#4b8f6c', tree: '#2f6b4d' };
+    const due = c.due ?? null;
+    const DUE = {
+      none: ['transparent', tok.meta, 400],
+      soon: [dark ? '#E2B203' : '#F5CD47', dark ? '#1D2125' : '#091E42', 500],
+      over: [dark ? '#F87168' : '#C9372C', dark ? '#1D2125' : '#FFFFFF', 500],
+      done: [dark ? '#4BCE97' : '#1F845A', dark ? '#1D2125' : '#FFFFFF', 500]
+    };
+    const d = due ? DUE[due.state] : DUE.none;
+    const check = c.check ?? null;
+    const checkDone = check && check[0] === check[1];
+    const members = (c.members ?? []).slice().reverse().map((k) => ({ initials: k, name: PEOPLE[k][0], bg: PEOPLE[k][1] }));
+    const fields = (c.fields ?? []).map(([text, hue]) => ({
+      text,
+      bg: hue ? PAL[hue][0] : (dark ? '#2c3447' : '#f1f2f4'),
+      fg: dark ? '#DEE4EA' : '#091E42'
+    }));
+    const shadow = state === 'flight' ? tok.flight : (state === 'hover' ? tok.hover : tok.rest);
+    const v = {
+      title: c.title,
+      cardBg: tok.card, fg: tok.fg, meta: tok.meta, shadow,
+      transform: state === 'flight' ? 'rotate(4deg)' : 'none',
+      outline: state === 'focus' ? '2px solid ' + tok.accent : 'none',
+      opacity: state === 'aged' ? 0.62 : 1,
+      filter: state === 'aged' ? 'saturate(0.35)' : 'none',
+      hover: state === 'hover', editBg: tok.editBg, editShadow: dark ? '0 1px 2px rgba(0,0,0,0.5)' : '0 1px 2px rgba(9,30,66,0.25)',
+      coverHalf: !!cover && !full, coverFull: full,
+      coverImage: !!cover && cover.kind === 'image', coverBg,
+      coverH: cover && cover.kind === 'color' ? 36 : 128,
+      scene,
+      scrim: cover && cover.kind === 'image' ? 'linear-gradient(to top, rgba(0,0,0,0.62), rgba(0,0,0,0))' : 'transparent',
+      fullFg: cover && cover.kind === 'image' ? '#ffffff' : ink(1),
+      body: !full,
+      hasLabels: labels.length > 0, labels,
+      hasFields: fields.length > 0, fields,
+      hasDue: !!due, dueText: due ? due.text : '', dueBg: d[0], dueFg: d[1], dueWeight: d[2],
+      desc: !!c.desc,
+      hasComments: !!c.comments, comments: c.comments ?? 0,
+      hasAttach: !!c.attach, attach: c.attach ?? 0,
+      hasCheck: !!check, checkText: check ? check[0] + '/' + check[1] : '',
+      checkBg: checkDone ? DUE.done[0] : 'transparent', checkFg: checkDone ? DUE.done[1] : tok.meta, checkWeight: checkDone ? 500 : 400,
+      hasVotes: !!c.votes, votes: c.votes ?? 0,
+      hasPlace: !!c.place, place: c.place ?? '',
+      hasMembers: members.length > 0, members
+    };
+    v.hasBadges = v.hasDue || v.desc || v.hasComments || v.hasAttach || v.hasCheck || v.hasVotes || v.hasPlace || v.hasMembers;
+    return { v, w: this.props.w ?? 256 };
+  }
+}
+</script>
+</body>
+</html>

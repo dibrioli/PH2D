@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Kanban colors, shadows and motion</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width: 1440px; height: 900px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); font-family: Inter, system-ui, sans-serif">
+  <sc-for list="{{sides}}" as="s" hint-placeholder-count="2">
+    <section aria-label="{{s.name}}" style="box-sizing: border-box; padding: 32px 36px; display: flex; flex-direction: column; gap: 22px; background: {{s.bg}}; color: {{s.fg}}">
+      <h2 style="margin: 0; font-size: 20px; font-weight: 700">{{s.name}}</h2>
+
+      <div>
+        <h3 style="margin: 0 0 8px; font-size: 13px; font-weight: 600; color: {{s.meta}}">Label colors — subtle · normal · bold</h3>
+        <div style="display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 6px">
+          <sc-for list="{{s.labels}}" as="l" hint-placeholder-count="30">
+            <span title="{{l.name}}" style="height: 32px; border-radius: 4px; background: {{l.bg}}; color: {{l.fg}}; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 500">{{l.short}}</span>
+          </sc-for>
+        </div>
+      </div>
+
+      <div>
+        <h3 style="margin: 0 0 8px; font-size: 13px; font-weight: 600; color: {{s.meta}}">List colors</h3>
+        <div style="display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 6px">
+          <sc-for list="{{s.lists}}" as="l" hint-placeholder-count="10">
+            <span title="{{l.name}}" style="height: 44px; border-radius: 8px; background: {{l.bg}}; color: {{l.fg}}; display: flex; align-items: flex-start; padding: 6px 8px; box-sizing: border-box; font-size: 11px; font-weight: 600">{{l.name}}</span>
+          </sc-for>
+        </div>
+      </div>
+
+      <div>
+        <h3 style="margin: 0 0 10px; font-size: 13px; font-weight: 600; color: {{s.meta}}">Card shadow — resting · hover · in flight</h3>
+        <div style="display: flex; gap: 28px; align-items: center; padding: 18px 20px; border-radius: 12px; background: {{s.list}}">
+          <sc-for list="{{s.shadows}}" as="sh" hint-placeholder-count="3">
+            <div style="width: 170px; height: 64px; border-radius: 8px; background: {{s.card}}; box-shadow: {{sh.shadow}}; transform: {{sh.transform}}; display: flex; align-items: center; padding: 0 12px; box-sizing: border-box; font-size: 13px; color: {{s.cardFg}}">{{sh.name}}</div>
+          </sc-for>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px">
+        <div>
+          <h3 style="margin: 0 0 8px; font-size: 13px; font-weight: 600; color: {{s.meta}}">Corners</h3>
+          <div style="display: flex; flex-direction: column; gap: 6px; font-size: 13px">
+            <span>Label 4 px · Card 8 px</span>
+            <span>List 12 px · Card back 12 px</span>
+            <span>Buttons 4–6 px · Avatars round</span>
+          </div>
+        </div>
+        <div>
+          <h3 style="margin: 0 0 8px; font-size: 13px; font-weight: 600; color: {{s.meta}}">Motion (can be turned off)</h3>
+          <div style="display: flex; flex-direction: column; gap: 6px; font-size: 13px">
+            <span>Hover lift — 150 ms, ease out</span>
+            <span>Pick up — tilt 4°, 150 ms</span>
+            <span>Drop and gap opening — 240 ms, spring</span>
+            <span>Collapse list — 240 ms · Check item — 150 ms</span>
+          </div>
+        </div>
+      </div>
+    </section>
+  </sc-for>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const HUES = ['green', 'yellow', 'orange', 'red', 'purple', 'blue', 'sky', 'lime', 'pink', 'black'];
+    const NAMES = ['Green', 'Yellow', 'Orange', 'Red', 'Purple', 'Blue', 'Sky', 'Lime', 'Pink', 'Black'];
+    const PAL = {
+      light: {
+        green: ['#BAF3DB', '#4BCE97', '#1F845A'], yellow: ['#F8E6A0', '#F5CD47', '#7F5F01'],
+        orange: ['#FEDEC8', '#FEA362', '#C25100'], red: ['#FFD5D2', '#F87168', '#C9372C'],
+        purple: ['#DFD8FD', '#9F8FEF', '#6E5DC6'], blue: ['#CCE0FF', '#579DFF', '#0C66E4'],
+        sky: ['#C6EDFB', '#6CC3E0', '#227D9B'], lime: ['#D3F1A7', '#94C748', '#5B7F24'],
+        pink: ['#FDD0EC', '#E774BB', '#AE4787'], black: ['#DCDFE4', '#8590A2', '#626F86']
+      },
+      dark: {
+        green: ['#164B35', '#216E4E', '#4BCE97'], yellow: ['#533F04', '#7F5F01', '#E2B203'],
+        orange: ['#702E00', '#A54800', '#FEA362'], red: ['#5D1F1A', '#AE2E24', '#F87168'],
+        purple: ['#352C63', '#5E4DB2', '#9F8FEF'], blue: ['#09326C', '#0055CC', '#579DFF'],
+        sky: ['#164555', '#206A83', '#6CC3E0'], lime: ['#37471F', '#4C6B1F', '#94C748'],
+        pink: ['#50253F', '#943D73', '#E774BB'], black: ['#454F59', '#596773', '#8C9BAB']
+      }
+    };
+    const SHADES = ['Subtle', 'Normal', 'Bold'];
+    const side = (theme) => {
+      const dark = theme === 'dark';
+      const ink = (s) => dark ? (s === 2 ? '#1D2125' : '#DEE4EA') : (s === 2 ? '#FFFFFF' : '#091E42');
+      const labels = [];
+      for (let s = 0; s < 3; s++) {
+        HUES.forEach((h, i) => labels.push({ bg: PAL[theme][h][s], fg: ink(s), short: NAMES[i], name: NAMES[i] + ' ' + SHADES[s].toLowerCase() }));
+      }
+      const lists = HUES.map((h, i) => ({ name: NAMES[i], bg: PAL[theme][h][0], fg: ink(0) }));
+      const shadows = dark ? [
+        { name: 'Resting', shadow: '0 1px 1px rgba(0,0,0,0.5), 0 0 1px rgba(0,0,0,0.6)', transform: 'none' },
+        { name: 'Hover', shadow: '0 1px 1px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.14)', transform: 'none' },
+        { name: 'In flight', shadow: '0 14px 30px rgba(0,0,0,0.6), 0 3px 8px rgba(0,0,0,0.45)', transform: 'rotate(4deg)' }
+      ] : [
+        { name: 'Resting', shadow: '0 1px 1px rgba(9,30,66,0.25), 0 0 1px rgba(9,30,66,0.31)', transform: 'none' },
+        { name: 'Hover', shadow: '0 4px 8px rgba(9,30,66,0.16), 0 0 1px rgba(9,30,66,0.31)', transform: 'none' },
+        { name: 'In flight', shadow: '0 16px 32px rgba(9,30,66,0.30), 0 3px 8px rgba(9,30,66,0.22)', transform: 'rotate(4deg)' }
+      ];
+      return dark ? {
+        name: 'Dark', bg: '#1e2433', fg: '#e3e8f2', meta: '#a3aec3', list: '#111520', card: '#22293a', cardFg: '#dee4ea',
+        labels, lists, shadows
+      } : {
+        name: 'Light', bg: '#f7f2e8', fg: '#1f1b16', meta: '#5c5346', list: '#f1f2f4', card: '#ffffff', cardFg: '#172b4d',
+        labels, lists, shadows
+      };
+    };
+    return { sides: [side('light'), side('dark')] };
+  }
+}
+</script>
+</body>
+</html>

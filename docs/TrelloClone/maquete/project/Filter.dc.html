@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Kanban filter</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="position: relative; width: 1180px; height: 820px; overflow: hidden; font-family: Inter, system-ui, sans-serif; background: {{t.boardBg}}">
+  <header style="display: flex; align-items: center; gap: 8px; height: 52px; padding: 0 12px 0 16px; background: {{t.headerBg}}; color: {{t.headerFg}}">
+    <h1 style="margin: 0; font-size: 18px; font-weight: 700">Short film — production</h1>
+    <span style="flex: 1"></span>
+    <span style="display: inline-flex; align-items: center; height: 32px; border-radius: 6px; background: {{t.filterOn}}; color: {{t.filterOnFg}}; font-size: 14px; font-weight: 500">
+      <button type="button" style="display: flex; align-items: center; gap: 6px; height: 32px; padding: 0 10px; border: 0; background: transparent; color: inherit; font: inherit">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4"></path></svg>Filters
+        <span style="padding: 0 6px; border-radius: 10px; background: {{t.countBg}}; color: {{t.countFg}}; font-size: 12px; line-height: 18px; font-weight: 600">3</span>
+      </button>
+      <button type="button" style="height: 32px; padding: 0 10px; border: 0; border-left: 1px solid {{t.divider}}; background: transparent; color: inherit; font: inherit">Clear all</button>
+    </span>
+    <button type="button" style="height: 32px; padding: 0 12px; border: 0; border-radius: 6px; background: {{t.accent}}; color: {{t.accentFg}}; font: inherit; font-size: 14px; font-weight: 600">Share</button>
+  </header>
+
+  <div style="display: flex; align-items: flex-start; gap: 12px; padding: 12px">
+    <sc-for list="{{lists}}" as="list" hint-placeholder-count="4">
+      <section aria-label="{{list.title}}" style="width: 272px; flex: none; border-radius: 12px; background: {{t.list}}; color: {{t.listFg}}; box-shadow: {{t.listShadow}}">
+        <div style="display: flex; align-items: center; padding: 10px 12px 6px 14px">
+          <h2 style="margin: 0; flex: 1; font-size: 14px; font-weight: 600">{{list.title}}</h2>
+          <span style="font-size: 12px; color: {{t.listMeta}}">{{list.shown}}</span>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 8px; padding: 2px 8px 10px">
+          <sc-for list="{{list.cards}}" as="c" hint-placeholder-count="1">
+            <dc-import name="Card" card="{{c}}" theme="{{theme}}" state="rest" w="256" hint-size="256px,72px"></dc-import>
+          </sc-for>
+          <sc-if value="{{list.empty}}" hint-placeholder-val="{{ false }}">
+            <p style="margin: 0; padding: 10px 6px; font-size: 13px; color: {{t.listMeta}}">No cards match the filter.</p>
+          </sc-if>
+        </div>
+      </section>
+    </sc-for>
+  </div>
+
+  <div role="dialog" aria-label="Filter" style="position: absolute; right: 108px; top: 58px; width: 384px; box-sizing: border-box; padding: 12px 16px 16px; border-radius: 10px; background: {{t.pop}}; color: {{t.fg}}; box-shadow: {{t.popShadow}}; font-size: 14px">
+    <div style="display: flex; align-items: center; margin-bottom: 8px">
+      <h2 style="margin: 0; flex: 1; text-align: center; font-size: 14px; font-weight: 600; color: {{t.meta}}">Filter</h2>
+      <button type="button" aria-label="Close" style="width: 32px; height: 32px; border: 0; border-radius: 6px; background: transparent; color: {{t.meta}}; display: flex; align-items: center; justify-content: center">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+      </button>
+    </div>
+    <label style="display: block; font-size: 12px; font-weight: 600; color: {{t.meta}}">Keyword
+      <input type="text" value="shot" style="display: block; width: 100%; box-sizing: border-box; margin-top: 4px; height: 36px; padding: 0 10px; border: 0; border-radius: 6px; background: {{t.input}}; color: {{t.fg}}; font: inherit; font-size: 14px; font-weight: 400; box-shadow: 0 0 0 2px {{t.accent}}">
+    </label>
+    <p style="margin: 4px 0 12px; font-size: 12px; color: {{t.meta}}">Search cards, members, labels and more.</p>
+
+    <div style="font-size: 12px; font-weight: 600; color: {{t.meta}}; margin-bottom: 4px">Due date</div>
+    <sc-for list="{{due}}" as="d" hint-placeholder-count="4">
+      <label style="display: flex; align-items: center; gap: 10px; min-height: 32px">
+        <input type="checkbox" checked="{{d.on}}" style="width: 16px; height: 16px; margin: 0; accent-color: {{t.accent}}">
+        <span style="width: 24px; height: 24px; border-radius: 50%; background: {{d.bg}}; color: {{d.fg}}; display: inline-flex; align-items: center; justify-content: center">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="8"></circle><path d="M12 8v4l2.5 1.5"></path></svg>
+        </span>
+        {{d.label}}
+      </label>
+    </sc-for>
+
+    <div style="font-size: 12px; font-weight: 600; color: {{t.meta}}; margin: 12px 0 4px">Labels</div>
+    <sc-for list="{{labels}}" as="l" hint-placeholder-count="4">
+      <label style="display: flex; align-items: center; gap: 10px; min-height: 32px">
+        <input type="checkbox" checked="{{l.on}}" style="width: 16px; height: 16px; margin: 0; accent-color: {{t.accent}}">
+        <span style="flex: 1; height: 28px; padding: 0 10px; border-radius: 4px; background: {{l.bg}}; color: {{l.fg}}; display: flex; align-items: center; font-size: 14px; font-weight: 500">{{l.text}}</span>
+      </label>
+    </sc-for>
+
+    <div style="display: flex; align-items: center; gap: 10px; margin-top: 12px">
+      <span style="flex: 1; font-size: 12px; font-weight: 600; color: {{t.meta}}">Match</span>
+      <span role="radiogroup" aria-label="Match" style="display: inline-flex; padding: 2px; border-radius: 6px; background: {{t.input}}">
+        <label style="height: 28px; padding: 0 12px; border-radius: 4px; background: {{t.accent}}; color: {{t.accentFg}}; display: flex; align-items: center; font-size: 13px; font-weight: 500"><input type="radio" name="match" checked="{{ true }}" style="position: absolute; opacity: 0">Any</label>
+        <label style="height: 28px; padding: 0 12px; border-radius: 4px; color: {{t.fg}}; display: flex; align-items: center; font-size: 13px"><input type="radio" name="match" style="position: absolute; opacity: 0">All</label>
+      </span>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["light","dark"],"default":"light"},"$preview":{"width":1180,"height":820}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const theme = this.props.theme ?? 'light';
+    const dark = theme === 'dark';
+    const t = dark ? {
+      boardBg: '#1b3a6e', headerBg: 'rgba(8,12,22,0.42)', headerFg: '#f2f5fa',
+      filterOn: '#dee4ea', filterOnFg: '#172b4d', countBg: '#4aa3ff', countFg: '#0b1220', divider: 'rgba(23,43,77,0.25)',
+      accent: '#4aa3ff', accentFg: '#0b1220',
+      list: '#111520', listFg: '#dee4ea', listMeta: '#9fadbc', listShadow: '0 1px 1px rgba(0,0,0,0.4)',
+      pop: '#1f2534', fg: '#dee4ea', meta: '#9fadbc', input: '#22293a', popShadow: '0 12px 32px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.06)'
+    } : {
+      boardBg: '#2c63c9', headerBg: 'rgba(9,20,45,0.28)', headerFg: '#ffffff',
+      filterOn: '#ffffff', filterOnFg: '#172b4d', countBg: '#4150d8', countFg: '#ffffff', divider: 'rgba(9,30,66,0.15)',
+      accent: '#4150d8', accentFg: '#ffffff',
+      list: '#f1f2f4', listFg: '#172b4d', listMeta: '#44546f', listShadow: '0 1px 1px rgba(9,30,66,0.25)',
+      pop: '#ffffff', fg: '#172b4d', meta: '#44546f', input: '#f7f8f9', popShadow: '0 12px 32px rgba(9,30,66,0.25), 0 0 1px rgba(9,30,66,0.31)'
+    };
+    const lists = [
+      ['Backlog', []],
+      ['To Do', []],
+      ['Doing', [
+        { title: 'Animate shot 12', labels: [['green', 'bold', 'Animation']], due: { text: 'Oct 25', state: 'over' }, check: [3, 5], members: ['EN'] }
+      ]],
+      ['Review', [
+        { title: 'Clean up shot 08', labels: [['green', 'bold', 'Animation']], due: { text: 'Oct 26', state: 'over' }, comments: 2, members: ['MI'] },
+        { title: 'Shot 03 — timing notes', labels: [['purple', 'normal', 'Story']], due: { text: 'Oct 24', state: 'over' }, desc: true }
+      ]]
+    ].map(([title, cards]) => ({ title, cards, empty: cards.length === 0, shown: cards.length + ' of ' + (title === 'Doing' ? 3 : title === 'Review' ? 4 : 4) }));
+    const due = [
+      ['No dates', false, dark ? '#2c3447' : '#dcdfe4', dark ? '#9fadbc' : '#44546f'],
+      ['Overdue', true, dark ? '#F87168' : '#C9372C', dark ? '#1D2125' : '#ffffff'],
+      ['Due in the next day', false, dark ? '#E2B203' : '#F5CD47', dark ? '#1D2125' : '#091E42'],
+      ['Due in the next week', false, dark ? '#2c3447' : '#dcdfe4', dark ? '#9fadbc' : '#44546f']
+    ].map(([label, on, bg, fg]) => ({ label, on, bg, fg }));
+    const labels = [
+      ['Animation', true, dark ? '#4BCE97' : '#1F845A', dark ? '#1D2125' : '#ffffff'],
+      ['Story', true, dark ? '#5E4DB2' : '#9F8FEF', dark ? '#DEE4EA' : '#091E42'],
+      ['Audio', false, dark ? '#206A83' : '#6CC3E0', dark ? '#DEE4EA' : '#091E42'],
+      ['Urgent', false, dark ? '#F87168' : '#C9372C', dark ? '#1D2125' : '#ffffff']
+    ].map(([text, on, bg, fg]) => ({ text, on, bg, fg }));
+    return { t, theme, lists, due, labels };
+  }
+}
+</script>
+</body>
+</html>

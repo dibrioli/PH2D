@@ -15,7 +15,7 @@
 
 /// Pixel rect (left, top, width, height). f32 for direct flow into
 /// vello/wgpu math.
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, Default, PartialEq)]
 pub struct Rect {
     pub x: f32,
     pub y: f32,

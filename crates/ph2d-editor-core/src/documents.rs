@@ -14,6 +14,9 @@ pub use ph2d_board_model::{BoardSet, undo_tick};
 pub use ph2d_kanban_model::KanbanSet;
 use std::collections::BTreeMap;
 
+/// Os Kanbans do projecto, partilhados entre o `Documents` e as vistas que os mostram.
+pub type SharedKanbans = std::rc::Rc<std::cell::RefCell<KanbanSet>>;
+
 #[path = "documents_alert.rs"]
 pub(crate) mod alert;
 #[path = "documents_fac.rs"]
@@ -34,8 +37,10 @@ pub mod team;
 #[derive(Debug, Default)]
 pub struct Documents {
     boards: BoardSet,
-    /// Os Kanbans do projecto (ADR-0195) — documento, não aba: as vistas apontam-lhes pelo id.
-    kanbans: KanbanSet,
+    /// Os Kanbans do projecto (ADR-0195) — documento, não aba: as vistas apontam-lhes pelo id. A
+    /// família da aba (`ph2d-app-kanban`) segura o MESMO `Rc` ([`Self::kanbans_shared`]): os métodos
+    /// do `DocumentSurface` não recebem o `Documents`, e uma cópia divergiria.
+    kanbans: SharedKanbans,
     /// `None` = a aba `Cena`.
     active: Option<BoardId>,
     /// Âncora do arrasto da vista do quadro (px de ecrã), enquanto ele dura.
@@ -227,13 +232,20 @@ impl Documents {
 
     /// Os Kanbans do projecto — o que a shell grava.
     #[must_use]
-    pub fn kanbans(&self) -> &KanbanSet {
-        &self.kanbans
+    pub fn kanbans(&self) -> std::cell::Ref<'_, KanbanSet> {
+        self.kanbans.borrow()
     }
 
-    /// Troca todos os Kanbans (ao carregar um projecto).
+    /// O conjunto partilhado: quem o segura vê cada escrita no mesmo quadro de imagem.
+    #[must_use]
+    pub fn kanbans_shared(&self) -> SharedKanbans {
+        self.kanbans.clone()
+    }
+
+    /// Troca todos os Kanbans (ao carregar um projecto). Um `Rc` NOVO: quem segurava o anterior
+    /// sabe, por `Rc::ptr_eq`, que o projecto mudou (os ids recomeçam).
     pub fn replace_kanbans(&mut self, kanbans: KanbanSet) {
-        self.kanbans = kanbans;
+        self.kanbans = std::rc::Rc::new(std::cell::RefCell::new(kanbans));
     }
 
     /// O quadro da aba activa, ou `None` se a aba activa é a `Cena`.

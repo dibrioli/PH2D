@@ -226,6 +226,16 @@ pub trait DocumentSurface: Any {
         let _ = (id, cmd);
         false
     }
+    /// Os comandos da FAMÍLIA, com qualquer aba activa (a Cena, um quadro): criar ou abrir um
+    /// documento dela («New Kanban»). Entram nos menus e na paleta depois dos da aba activa.
+    fn family_commands(&self) -> Vec<DocCommand> {
+        Vec::new()
+    }
+    /// Corre o comando de família `cmd`. `true` = era dela.
+    fn family_command(&mut self, cmd: ph2d_a11y::NodeId) -> bool {
+        let _ = cmd;
+        false
+    }
     /// Os sítios da aba para o `@` e o `:` da paleta (I14); `None` = ela não tem nenhum.
     fn places(&mut self, id: u64) -> Option<DocPlaces> {
         let _ = id;

@@ -1,0 +1,30 @@
+[package]
+name = "ph2d-app-kanban"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+[dependencies]
+# A família do KANBAN (TrelloClone W2, ADR-0195): o documento em aba (o trait `DocumentSurface` do
+# `ph2d-editor-core`), sobre o modelo puro `ph2d-kanban-model`.
+ph2d-a11y = { path = "../ph2d-a11y" }
+# A declaração da família (`FAMILY`) que o registo empurra.
+ph2d-app-host = { path = "../ph2d-app-host" }
+ph2d-editor-core = { path = "../ph2d-editor-core" }
+ph2d-host = { path = "../ph2d-host" }
+ph2d-i18n = { path = "../ph2d-i18n" }
+ph2d-kanban-model = { path = "../ph2d-kanban-model" }
+# A mola do arrasto (a lei vem do `UiMotion` do hero: o carácter e o «movimento reduzido»).
+ph2d-spring = { path = "../ph2d-spring" }
+ph2d-text = { path = "../ph2d-text" }
+ph2d-tokens = { path = "../ph2d-tokens" }
+ph2d-tool-registry = { path = "../ph2d-tool-registry" }
+ph2d-vector = { path = "../ph2d-vector" }
+
+[lints]
+workspace = true

@@ -374,6 +374,9 @@ fn boot_hero_screen(
             .install_surface(Box::new(ph2d_app_code::CodeDocs::default()));
         // Os editores de animações e de Region (GameEngineFuncional planos 07 e 16): uma aba por sprite.
         ph2d_app_sprite_anim::editor::install(&mut hero);
+        hero.documents
+            .install_surface(Box::new(ph2d_app_kanban::KanbanDocs::default()));
+        ph2d_app_kanban::smoke::stage_armed_smokes(&mut hero);
         Some(hero)
     } else {
         None

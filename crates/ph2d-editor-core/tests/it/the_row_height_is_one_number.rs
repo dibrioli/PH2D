@@ -45,6 +45,16 @@ const OWN_RULER: &[(&str, &str, &str)] = &[
         "MENU_ROW_H",
         "a linha do menu de adicionar no canvas do grafo: idem",
     ),
+    (
+        "crates/ph2d-app-kanban/src/metrics.rs",
+        "BADGE_ROW_H",
+        "a fileira de selos da frente do cartao: medida do Trello na maquete aprovada (27/10)",
+    ),
+    (
+        "crates/ph2d-app-kanban/src/metrics.rs",
+        "MENU_ROW_H",
+        "a linha do menu da lista do Kanban: medida do Trello na maquete aprovada (27/10)",
+    ),
 ];
 
 fn repo_root() -> PathBuf {

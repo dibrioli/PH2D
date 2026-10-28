@@ -5651,6 +5651,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-app-kanban"
+version = "0.0.0"
+dependencies = [
+ "ph2d-a11y",
+ "ph2d-app-host",
+ "ph2d-editor-core",
+ "ph2d-host",
+ "ph2d-i18n",
+ "ph2d-kanban-model",
+ "ph2d-spring",
+ "ph2d-text",
+ "ph2d-tokens",
+ "ph2d-tool-registry",
+ "ph2d-vector",
+]
+
+[[package]]
 name = "ph2d-app-light2d"
 version = "0.0.0"
 dependencies = [
@@ -5892,6 +5909,7 @@ dependencies = [
  "ph2d-app-flip",
  "ph2d-app-game",
  "ph2d-app-host",
+ "ph2d-app-kanban",
  "ph2d-app-light2d",
  "ph2d-app-macros",
  "ph2d-app-motion",
@@ -6999,6 +7017,7 @@ dependencies = [
  "ph2d-app-flip",
  "ph2d-app-game",
  "ph2d-app-host",
+ "ph2d-app-kanban",
  "ph2d-app-light2d",
  "ph2d-app-macros",
  "ph2d-app-motion",

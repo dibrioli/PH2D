@@ -64,21 +64,22 @@ pub(super) fn wheel(hero: &mut HeroScreen, x: f32, y: f32, dy: f32) -> Option<bo
     Some(f.wheel(id, x, y, dy, shift))
 }
 
-/// Os comandos da aba de família activa (vazio sem ela).
+/// Os comandos da aba de família activa (vazio sem ela), seguidos dos de cada família (valem com
+/// qualquer aba activa).
 #[must_use]
 pub fn commands(hero: &HeroScreen) -> Vec<crate::doc_surface::DocCommand> {
-    let Some(tab) = hero.documents.surface_active() else {
-        return Vec::new();
-    };
-    hero.documents
-        .surfaces()
-        .families
-        .get(usize::from(tab.family))
-        .map(|f| f.commands(tab.id))
-        .unwrap_or_default()
+    let families = &hero.documents.surfaces().families;
+    let mut out = hero
+        .documents
+        .surface_active()
+        .and_then(|tab| families.get(usize::from(tab.family)).map(|f| f.commands(tab.id)))
+        .unwrap_or_default();
+    out.extend(families.iter().flat_map(|f| f.family_commands()));
+    out
 }
 
-/// Um clique (linha de menu ou escolha do `Ctrl+K`) num comando da aba activa. `true` = tomado.
+/// Um clique (linha de menu ou escolha do `Ctrl+K`) num comando da aba activa ou de uma família.
+/// `true` = tomado.
 pub(super) fn command(hero: &mut HeroScreen, event: crate::interaction::WidgetEvent) -> bool {
     let crate::interaction::WidgetEvent::Click(cmd) = event else {
         return false;
@@ -86,7 +87,13 @@ pub(super) fn command(hero: &mut HeroScreen, event: crate::interaction::WidgetEv
     let taken = hero
         .documents
         .active_surface_mut()
-        .is_some_and(|(f, id)| f.command(id, cmd));
+        .is_some_and(|(f, id)| f.command(id, cmd))
+        || hero
+            .documents
+            .surfaces_mut()
+            .families
+            .iter_mut()
+            .any(|f| f.family_command(cmd));
     if taken && hero.store.context_menu().is_some() {
         hero.store.close_context_menu();
     }

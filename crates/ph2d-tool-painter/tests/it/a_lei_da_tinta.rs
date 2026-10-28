@@ -22,21 +22,24 @@ const RAIO_DA_CENA: f32 = 18.0;
 #[rustfmt::skip]
 const CENAS: [(&str, bool, u64); 20] = [
     ("Wet Round", false, 0x8e37a39e8ee2ba79),
-    ("Wet Wash", false, 0x94c4915c9762415f), // J4 aguarela 3.ª ronda: o filme, orla 100, a ponta que não se suja (era 0xb08be15433107c85)
+    // Wet Wash e Wet Liner: o molhado × molhado (WetOpen, ligado nas receitas em `442ab73435`) passou a TUBO em
+    // `5291edbc75` (smoke da janela 8) e o cruzamento da cena entra nele; WetOpen 0 continua ao bit (os outros 18).
+    ("Wet Wash", false, 0x47ddb5430c301ebb), // `5291edbc75` o tubo (era 0x94c4915c9762415f)
     ("Wet Dry Brush", false, 0xf45f7dcaa32eb88e),
     ("Wet Drip", false, 0x6ad975ec85398727),
-    ("Wet Liner", false, 0xc8c30d93e4c6ffd3), // J4 aguarela 3.ª ronda: a ponta limpa, a parede, o vidrado, a água pouca (era 0xc458dcf08bfe5390)
+    ("Wet Liner", false, 0xa212ee358c43676e), // `5291edbc75` o tubo (era 0xc8c30d93e4c6ffd3)
     // Os dois com os FIOS da W2 (prompt 48, doc 48_medicao): repinados pela lei nova; os outros 20 ao bit.
     // O Oil Bristle repintado pelo relevo sem escada (W3b, prompt 50, doc 50_medicao): os outros 21 ao bit.
     // Os 22 repintados pela regra do prompt 51 (Spacing 0,1 + Continuous em todos, doc 51_medicao); o Airbrush também
     // pela curva da pressão no tamanho que casa as pontas do Rebelle (ordem do dono 19/10).
     // J2 (03_MOTORES §7 a): a pressão de cada preset passou a ser a da sua origem no Rebelle (a cena tem a rampa).
-    ("Oil Bristle", false, 0xd5dc7c77cb4a281b), // J4 oleo_acrilica 2.ª ronda: o veio dos fios, o emboss 0,6 × expoente 0,5 (era 0x261ee2908291c9c7)
+    // Oil Bristle: candidato fora da fábrica (`78e69511ab`, lido pelo `candidato`), regerado com o Real Oil em `e314e58cec`.
+    ("Oil Bristle", false, 0xd7258ae210c35e61), // J6 Real Oil (era 0xd5dc7c77cb4a281b)
     // J4 oleo_acrilica 2.ª ronda: a Acrylic Round (0xb6475854432e61f0) saiu da fábrica — fundida no Hard Round.
     ("Express Oil", false, 0x324fcd3206cecaff), // J4 oleo_acrilica: os tufos (cerdas 7 × 300, faixa 4 px, pigmento 75) (era 0x6ae408041d1e042f)
     ("Graphite 8B", false, 0xa30d19aed297aa0d), // J3 3.ª ronda: a 2.ª ponta à frente (no arco), a orla 0,8 × 1, os tufos, a carga 280 e o papel 0,4 (era 0x0aed0cb29386b748)
     ("Charcoal", false, 0xaebbe231138b2b31), // J4 pastel_carvao 2.ª ronda: o pó solto (`9965b60b59`; era 0x46f876790c63367f)
-    ("Soft Pastel", false, 0xd39987ad156db77d), // J4 pastel_carvao 2.ª ronda: o pó solto (`9965b60b59`; era 0x2cb481e69a9bc110)
+    ("Soft Pastel", false, 0xc8fc6772866a8b65), // J6 a receita: pontas rectas `44dd973d8a` + o halo de pó `fd73b349ca` (era 0xd39987ad156db77d)
     ("Oil Pastel", false, 0x27cb9ff840de7885), // J4 pastel_carvao: as estrias em Flow (era 0x53088992b4918139)
     // J3 tintas (bff754ff58 → 4d70916e0d: a ponta lisa, os grumos, o reservatório) e o fecho da J3 (a mão do dono, a lei
     // das camadas e a das bordas: `familias/tintas.rs`) — era 0xd3ea3f5b4f847521 · 0x2785d41ac04f93a1 · 0x5856e27ccfe8f621.
@@ -48,7 +51,7 @@ const CENAS: [(&str, bool, u64); 20] = [
     ("Wet Flat", false, 0x270ceb734f4d9aea),
     ("Gouache Flat", false, 0x6111ea627d99cff5),
     ("Wet Round", true, 0xab51e31b5a6e8cb0),
-    ("Wet Liner", true, 0x88a2105dbd6a9777), // J4 aguarela 3.ª ronda (era 0x8a3c8be418ae2ca9)
+    ("Wet Liner", true, 0x06a9cff290a04135), // `5291edbc75` o tubo (era 0x88a2105dbd6a9777)
 ];
 
 fn cena(preset: &str, obra: bool) -> u64 {

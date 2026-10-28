@@ -38,6 +38,12 @@ pub(crate) enum Row {
     PlaceOnBoard,
     /// Um dos quadros onde ele está (o índice em `Tab::placements`).
     Board(usize),
+    /// W6 — os diálogos da lista e o envelhecimento do Kanban.
+    CopyList,
+    MoveList,
+    MoveAll,
+    Sort,
+    Aging,
 }
 
 impl Row {
@@ -55,6 +61,11 @@ impl Row {
             Row::ShowOnBoard => "kanban.menu.show_on_board",
             Row::PlaceOnBoard => "kanban.menu.place_on_board",
             Row::Board(_) => "",
+            Row::CopyList => "kanban.w6.menu.copy_list",
+            Row::MoveList => "kanban.w6.menu.move_list",
+            Row::MoveAll => "kanban.w6.menu.move_all",
+            Row::Sort => "kanban.w6.menu.sort",
+            Row::Aging => "kanban.w6.menu.aging",
         }
     }
 }
@@ -93,6 +104,10 @@ pub(crate) fn place(menu: Menu, anchor: Rect, area: Rect) -> Placed {
         Menu::List(_) => {
             for r in [
                 Row::AddCard,
+                Row::CopyList,
+                Row::MoveList,
+                Row::MoveAll,
+                Row::Sort,
                 Row::Collapse,
                 Row::ArchiveList,
                 Row::ArchiveCards,
@@ -123,6 +138,7 @@ pub(crate) fn place(menu: Menu, anchor: Rect, area: Rect) -> Placed {
                 Row::ExpandAll,
                 Row::ShowOnBoard,
                 Row::PlaceOnBoard,
+                Row::Aging,
             ] {
                 row(&mut rows, &mut y, r);
             }

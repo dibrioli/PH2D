@@ -44,6 +44,9 @@ fn neighbour(l: &Layout, from: (usize, usize), dl: isize, dc: isize) -> Option<C
 /// A composição (IME, tecla morta, carácter confirmado) para o verso aberto ou o campo no lugar da
 /// vista `id` (a aba e o elemento do Quadro). `true` = tomada.
 pub(crate) fn compose(docs: &mut KanbanDocs, id: u64, c: Compose<'_>) -> bool {
+    if crate::w6::compose(docs, id, &c) {
+        return true;
+    }
     if crate::back::is_open(docs, id) {
         return crate::back::compose(docs, id, c);
     }
@@ -65,8 +68,18 @@ pub(crate) fn key(
     ts: &mut ph2d_text::TextSystem,
     input: KeyInput<'_>,
 ) -> KeyOutcome {
+    if let Some(out) = crate::w6::key(docs, id, ts, &input) {
+        return out;
+    }
     if crate::back::is_open(docs, id) {
         return crate::back::key(docs, id, ts, &input);
+    }
+    let composing = docs.tab_mut(id).is_some_and(|t| t.field.is_some());
+    if composing && let Some(out) = crate::w6::complete::key(docs, id, &input) {
+        return out;
+    }
+    if !composing && let Some(out) = crate::w6::shortcuts::key(docs, id, &input) {
+        return out;
     }
     let Some(tab) = docs.tab_mut(id) else {
         return KeyOutcome::default();
@@ -138,7 +151,7 @@ pub(crate) fn key(
             };
             crate::back::open(docs, id, c);
         }
-        (_, Some('e' | 'E' | 't' | 'T')) => {
+        (_, Some('t' | 'T')) => {
             let Some(c) = focus else {
                 return KeyOutcome::default();
             };
@@ -171,7 +184,7 @@ pub(crate) fn key(
                 neighbour(&tab.layout, a, 0, 1).or_else(|| neighbour(&tab.layout, a, 0, -1))
             });
             tab.focus = next;
-            docs.with_doc(id, |_, doc| doc.archive_card(c, true));
+            crate::w6::gesture::archive_row(docs, id, c);
         }
         (_, Some(k @ (',' | '.' | '<' | '>'))) => {
             let (Some(c), Some((li, ci))) = (focus, at) else {
@@ -201,7 +214,7 @@ pub(crate) fn key(
             } else {
                 ci.min(len)
             };
-            docs.with_doc(id, |_, doc| doc.move_card(c, list, index));
+            crate::w6::gesture::move_row(docs, id, c, list, index);
         }
         (_, Some('\\')) => {
             let list = match (tab.hover, at) {

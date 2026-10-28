@@ -28,6 +28,8 @@ ph2d-kanban-md = { path = "../ph2d-kanban-md" }
 ph2d-richdoc = { path = "../ph2d-richdoc" }
 # W3 — a frente do cartão: o distintivo da entrega no fuso do sistema (`due_tone`, `due_label`).
 ph2d-kanban-dates = { path = "../ph2d-kanban-dates" }
+# W6 — o filtro, a pesquisa, a ordenação e o envelhecimento (puros).
+ph2d-kanban-filter = { path = "../ph2d-kanban-filter" }
 # W3 — a capa de IMAGEM descodifica-se pela MESMA porta que a cena e o Quadro usam
 # (`ph2d_asset::decode_image`, com os tectos e as recusas do registo `imageio`), fora do fio do desenho.
 ph2d-asset = { path = "../ph2d-asset" }

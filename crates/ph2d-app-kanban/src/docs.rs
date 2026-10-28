@@ -52,6 +52,10 @@ pub struct KanbanDocs {
     pub(crate) notices: Vec<String>,
     /// W4 — as vistas dos Kanbans no canvas do Quadro (partilhadas com os ganchos dele).
     pub(crate) canvas: crate::canvas::SharedCanvas,
+    /// W6 — o cartão do `Ctrl+C` (o `Ctrl+V` cola uma cópia dele).
+    pub(crate) clip: Option<ph2d_kanban_model::CardRef>,
+    /// A última aba pintada (a activa: o «New Kanban from…» do menu File parte dela).
+    pub(crate) active: Option<u64>,
 }
 
 impl Default for KanbanDocs {
@@ -71,6 +75,8 @@ impl Default for KanbanDocs {
             team: Vec::new(),
             notices: Vec::new(),
             canvas: crate::canvas::SharedCanvas::default(),
+            clip: None,
+            active: None,
         }
     }
 }
@@ -194,6 +200,7 @@ impl KanbanDocs {
         theme: Theme,
     ) {
         self.area = area;
+        self.active = Some(id);
         let cx = self.view_ctx();
         let set = self.set.clone();
         let set = set.borrow();

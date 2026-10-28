@@ -81,6 +81,10 @@ pub(crate) struct Front {
     pub votes: u32,
     pub location: String,
     pub members: Vec<Member>,
+    /// W6 — um cartão-MODELO (o selo «This card is a template»; sem distintivos de datas).
+    pub template: bool,
+    /// W6 — um ESPELHO: o nome do Kanban do original (vazio = o mesmo Kanban).
+    pub mirror: Option<String>,
 }
 
 impl Front {
@@ -344,6 +348,8 @@ pub(crate) fn front(k: &Kanban, counts: &Counts, id: CardId) -> Option<Front> {
         _ => None,
     };
     let now = counts.now;
+    // O modelo do Trello não mostra datas na frente: é um molde, não um trabalho.
+    let dated = !c.template;
     Some(Front {
         title: c.title.clone(),
         cover,
@@ -355,7 +361,8 @@ pub(crate) fn front(k: &Kanban, counts: &Counts, id: CardId) -> Option<Front> {
             c.due.map(|d| (d.at.0, d.done)),
             now,
             zone,
-        ),
+        )
+        .filter(|_| dated),
         watching: counts.me.as_ref().is_some_and(|me| c.watchers.contains(me)),
         description: !c.description.trim().is_empty(),
         comments: counts.comments.get(&id).copied().unwrap_or(0),
@@ -364,6 +371,8 @@ pub(crate) fn front(k: &Kanban, counts: &Counts, id: CardId) -> Option<Front> {
         votes: u32::try_from(c.votes.len()).unwrap_or(u32::MAX),
         location: c.location.trim().to_owned(),
         members: c.members.clone(),
+        template: c.template,
+        mirror: None,
     })
 }
 

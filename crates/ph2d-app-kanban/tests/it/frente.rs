@@ -29,7 +29,7 @@ fn muda(m: &Mesa, id: KanbanId, titulo: &str, f: impl FnOnce(&mut Card)) {
         .unwrap_or_else(|| panic!("cartão {titulo}"));
     f(&mut c);
     c.meta.version += 1;
-    set.apply(id, vec![KanbanOp::put(Record::Card(c))]);
+    set.apply(id, vec![KanbanOp::put(Record::Card(c.into()))]);
 }
 
 fn prazo(at: i64, done: bool) -> Option<Due> {

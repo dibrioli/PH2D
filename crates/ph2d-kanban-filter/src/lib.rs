@@ -15,6 +15,7 @@ mod text;
 pub use age::{AGE_DAYS, age_level, last_activity, last_activity_index};
 pub use filter::{
     ActivityWindow, DueWindow, Filter, MatchMode, count, due_in, filter_entries, matches,
+    matches_at,
 };
 pub use search::{Clause, Has, Hit, Is, Term, parse_query, search};
 pub use sort::{SortBy, sort_keys, sort_list};

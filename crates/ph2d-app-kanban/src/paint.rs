@@ -417,6 +417,8 @@ fn shifted(lb: &ListBox, dx: f32, dy: f32) -> ListBox {
         close: None,
         count: lb.count,
         limit: lb.limit.map(s),
+        total: lb.total,
+        template: None,
     }
 }
 

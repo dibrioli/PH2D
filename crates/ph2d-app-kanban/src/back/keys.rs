@@ -435,7 +435,11 @@ pub(crate) fn pop_click(docs: &mut KanbanDocs, id: u64, card: CardId, p: PopHit)
                 }
             }
             Some(Pop::Delete) => {
-                if write::delete(docs, id, RecordId::Card(card))
+                let plan = docs.kanban_of(id).and_then(|kanban| {
+                    let r = ph2d_kanban_model::CardRef { kanban, card };
+                    ph2d_kanban_model::remove_card(&docs.set.borrow(), r, false)
+                });
+                if crate::w6::gesture::apply(docs, plan)
                     && let Some(t) = docs.tab_mut(id)
                 {
                     t.back = None;

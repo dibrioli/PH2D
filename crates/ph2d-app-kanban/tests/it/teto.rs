@@ -62,7 +62,7 @@ fn monta(n: usize, listas: usize) -> (Mesa, KanbanId) {
             })
             .collect();
         for c in 0..n {
-            ops.push(KanbanOp::put(Record::Card(Card {
+            ops.push(KanbanOp::put(Record::card(Card {
                 id: CardId(nid()),
                 list: ids[c % listas],
                 pos: key(),
@@ -86,7 +86,7 @@ fn monta(n: usize, listas: usize) -> (Mesa, KanbanId) {
                 watchers: Vec::new(),
                 origin: None,
                 template: false,
-            })));
+            }.into())));
         }
         ph2d_kanban_model::apply_batch(k, ops);
         id

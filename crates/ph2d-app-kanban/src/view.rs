@@ -70,12 +70,25 @@ fn titles_only(f: Front) -> Front {
         votes: 0,
         location: String::new(),
         members: Vec::new(),
+        template: f.template,
+        mirror: f.mirror,
     }
 }
 
-fn front_at(k: &Kanban, counts: &Counts, id: CardId, lod: KanbanLod) -> Option<Front> {
-    let f = front::front(k, counts, id)?;
-    Some(if lod == KanbanLod::High { f } else { titles_only(f) })
+/// A frente de uma linha ao nível `lod` (um espelho mostra o original, com o selo).
+struct Fronts<'a> {
+    set: &'a KanbanSet,
+    k: &'a Kanban,
+    counts: &'a Counts,
+    others: &'a BTreeMap<ph2d_kanban_model::KanbanId, Counts>,
+    lod: KanbanLod,
+}
+
+impl Fronts<'_> {
+    fn get(&self, rows: &crate::rows::Rows, id: CardId) -> Option<Front> {
+        let f = crate::rows::front_of(self.set, self.k, self.counts, self.others, rows, id)?;
+        Some(if self.lod == KanbanLod::High { f } else { titles_only(f) })
+    }
 }
 
 /// ⭐ Um quadro de imagem de uma vista: dispõe, segue o arrasto e pinta em `scene` (por `at.to_screen`).
@@ -98,20 +111,40 @@ pub(crate) fn paint(
     edge_scroll(tab, cx.dt);
     *tab.painted.borrow_mut() = crate::tab::Painted::default();
     let counts = Counts::of(k).seen_by(Some(cx.me.clone())).with_files(set, k);
+    let zone = ph2d_kanban_dates::Zone::system();
+    tab.rows = {
+        let ask = crate::rows::Ask {
+            filter: &tab.w6.filter,
+            now: crate::actions::now(),
+            zone: &zone,
+            me: &cx.me,
+            aging: k.header.aging.is_some(),
+        };
+        crate::rows::build(set, k, &ask)
+    };
+    let others = crate::rows::sources(set, k, &tab.rows, &cx.me);
+    let fronts = Fronts {
+        set,
+        k,
+        counts: &counts,
+        others: &others,
+        lod: at.lod,
+    };
     let title_w =
         crate::docs::title_width(ts, &k.header.name, m::HEADER_TITLE_PX) + 2.0 * m::FIELD_PAD_X;
-    let lifted = lifted(tab, &counts, k, ts, at.lod);
+    let lifted = lifted(tab, &fronts, ts);
     let mut cache = std::mem::take(&mut tab.heights);
     let target = {
         let mut measure = Measure {
             ts,
             cache: &mut cache,
-            counts: &counts,
+            fronts: &fronts,
+            rows: &tab.rows,
             label_text: tab.label_text,
-            lod: at.lod,
         };
         layout::targets(
             k,
+            &tab.rows,
             &tab.view,
             area,
             (title_w, cx.floor),
@@ -126,19 +159,27 @@ pub(crate) fn paint(
     tab.layout = seen;
     retarget(tab, &target);
     let lod = at.lod;
-    let mut looks = |cid: CardId| {
-        front_at(k, &counts, cid, lod).map(|f| CardLook {
-            front: f,
-            hover: false,
-            focus: false,
-        })
-    };
-    crate::paint::board(out, ts, theme, k, tab, &mut looks);
+    {
+        let t: &Tab = tab;
+        let mut looks = |cid: CardId| {
+            fronts.get(&t.rows, cid).map(|f| CardLook {
+                front: f,
+                hover: false,
+                focus: false,
+                age: t.rows.ages.get(&cid).copied().unwrap_or(0),
+            })
+        };
+        crate::paint::board(out, ts, theme, k, t, &mut looks);
+    }
     if lod == KanbanLod::High {
         crate::overlay::paint(out, ts, theme, k, tab);
     }
+    crate::w6::paint(out, ts, theme, (k, set), tab, (&cx.me, &cx.team, cx.floor), lod);
     if at.modal {
         crate::back::paint(out, ts, theme, k, tab, set, &cx.me, &cx.team, crate::actions::now());
+    }
+    if at.modal || tab.back.is_none() {
+        crate::w6::paint_dialog(out, ts, theme, set, tab, crate::w6::above(tab.layout.area, cx.floor));
     }
     if !identity {
         scene.append_transformed(&local, at.to_screen);
@@ -149,14 +190,14 @@ pub(crate) fn paint(
 struct Measure<'a> {
     ts: &'a mut TextSystem,
     cache: &'a mut BTreeMap<CardId, (u64, f32)>,
-    counts: &'a Counts,
+    fronts: &'a Fronts<'a>,
+    rows: &'a crate::rows::Rows,
     label_text: bool,
-    lod: KanbanLod,
 }
 
 impl Heights for Measure<'_> {
-    fn card(&mut self, k: &Kanban, id: CardId) -> f32 {
-        front_at(k, self.counts, id, self.lod).map_or(m::LINE_H, |f| {
+    fn card(&mut self, _k: &Kanban, id: CardId) -> f32 {
+        self.fronts.get(self.rows, id).map_or(m::LINE_H, |f| {
             front::height(self.ts, self.cache, id, &f, self.label_text)
         })
     }
@@ -176,17 +217,11 @@ impl Heights for Measure<'_> {
 }
 
 /// O que voa sai do fluxo da disposição e abre o espaço dele onde cai.
-fn lifted(
-    tab: &mut Tab,
-    counts: &Counts,
-    k: &Kanban,
-    ts: &mut TextSystem,
-    lod: KanbanLod,
-) -> Option<Lifted> {
+fn lifted(tab: &mut Tab, fronts: &Fronts<'_>, ts: &mut TextSystem) -> Option<Lifted> {
     let d = tab.drag?;
     match d.lift {
         Lift::Card(id) => {
-            let h = front_at(k, counts, id, lod).map_or(d.size.1, |f| {
+            let h = fronts.get(&tab.rows, id).map_or(d.size.1, |f| {
                 front::height(ts, &mut tab.heights, id, &f, tab.label_text)
             });
             Some(Lifted::Card {

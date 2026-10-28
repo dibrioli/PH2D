@@ -19,6 +19,9 @@ pub(crate) enum Target {
         after: Option<CardId>,
     },
     NewList,
+    /// W6 — uma caixa de texto de um painel (a palavra do filtro, a pesquisa, o título de uma
+    /// cópia): não escreve no documento; quem a abriu lê o texto.
+    Scratch,
 }
 
 impl Target {

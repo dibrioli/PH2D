@@ -11,6 +11,7 @@
 use crate::docs::KanbanDocs;
 use crate::tab::Tab;
 use crate::view::{At, ViewCtx};
+use ph2d_host::PointerKind;
 use ph2d_board_model::{ElementId, KanbanBoardView, KanbanId};
 use ph2d_board_render::{KanbanLod, KanbanOver, KanbanPaint, KanbanPainter};
 use ph2d_editor_core::doc_surface::{Compose, KeyInput, KeyOutcome, PointerLook, Surfaces};
@@ -171,6 +172,8 @@ impl KanbanPainter for Painter {
         let board_area = std::mem::replace(&mut tab.layout.area, screen);
         let now = crate::actions::now();
         crate::back::paint(o.scene, o.ts, o.theme, k, tab, &set, &me, &team, now);
+        // O diálogo aberto do verso (mover, copiar, espelhar) vai por cima dele, em ecrã.
+        crate::w6::paint_dialog(o.scene, o.ts, o.theme, &set, tab, screen);
         tab.layout.area = board_area;
     }
 }
@@ -195,6 +198,16 @@ impl KanbanElementInput for Input {
             let modal = crate::back::is_open(docs, id);
             #[allow(clippy::cast_possible_truncation)]
             let scr = |s: [f64; 2]| (s[0] as f32, s[1] as f32);
+            // A W6 primeiro: com o verso aberto, o diálogo dele está em ecrã; senão, na vista.
+            let (kind, at, screen) = match ev {
+                KanbanPointer::Down { at, screen, .. } => (PointerKind::Down, at, screen),
+                KanbanPointer::Move { at, screen } => (PointerKind::Move, at, screen),
+                KanbanPointer::Up { at, screen, .. } => (PointerKind::Up, at, screen),
+            };
+            let (wx, wy) = if modal { scr(screen) } else { to_view(at, z) };
+            if let Some(taken) = crate::w6::pointer(docs, id, kind, wx, wy) {
+                return taken;
+            }
             match ev {
                 KanbanPointer::Down {
                     at,
@@ -260,6 +273,12 @@ impl KanbanElementInput for Input {
         let (x, y) = to_view(at, z);
         with_element(docs, &self.0, target, view, |docs, id| {
             let modal = crate::back::is_open(docs, id);
+            if !modal
+                && let KanbanWheel::Wheel { dy, .. } = w
+                && crate::w6::wheel(docs, id, x, y, crate::pointer::wheel_px(dy))
+            {
+                return true;
+            }
             #[allow(clippy::cast_possible_truncation)]
             match w {
                 KanbanWheel::Wheel { dy, .. } if modal => {
@@ -298,7 +317,7 @@ impl KanbanElementInput for Input {
     fn look(&mut self, el: ElementId, inside: bool) -> Option<PointerLook> {
         let c = self.0.borrow();
         let tab = c.tabs.get(&el)?;
-        (inside || tab.back.is_some()).then(|| crate::surface::look_of(tab))
+        (inside || tab.back.is_some() || tab.w6.open()).then(|| crate::surface::look_of(tab))
     }
 
     fn captures(&mut self, _surfaces: &mut Surfaces, el: ElementId) -> bool {
@@ -306,7 +325,7 @@ impl KanbanElementInput for Input {
             .borrow()
             .tabs
             .get(&el)
-            .is_some_and(|t| t.back.is_some())
+            .is_some_and(|t| t.back.is_some() || t.w6.open())
     }
 }
 

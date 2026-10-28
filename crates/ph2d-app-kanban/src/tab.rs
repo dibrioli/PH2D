@@ -38,6 +38,10 @@ pub(crate) enum Hit {
     Board,
     Menu(crate::menu::Row),
     Panel(crate::archive::Row),
+    /// W6 — «Create card from template» no pé da lista.
+    TemplateBtn(ListId),
+    /// W6 — um alvo de um painel (filtro, pesquisa, edição rápida, diálogo).
+    W6(crate::w6::Act),
 }
 
 /// O que o arrasto leva.
@@ -129,6 +133,10 @@ pub(crate) struct Tab {
     pub board_seen: Option<ph2d_board_model::KanbanBoardView>,
     /// W4 — os quadros onde este Kanban está posto («Show on board»): `(quadro, elemento, nome)`.
     pub placements: Vec<(u64, u64, String)>,
+    /// W6 — o filtro, os painéis e a edição rápida desta vista.
+    pub w6: crate::w6::W6,
+    /// W6 — as linhas que o último quadro mostrou (os espelhos e o filtro).
+    pub rows: crate::rows::Rows,
 }
 
 /// O registo do pintor num quadro.
@@ -162,6 +170,8 @@ impl Tab {
             key: None,
             board_seen: None,
             placements: Vec::new(),
+            w6: crate::w6::W6::default(),
+            rows: crate::rows::Rows::default(),
         }
     }
 
@@ -296,6 +306,8 @@ fn place_list(
         close: lb.close.map(s),
         count: lb.count,
         limit: lb.limit.map(s),
+        total: lb.total,
+        template: lb.template.map(s),
     }
 }
 

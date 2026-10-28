@@ -22,6 +22,8 @@ pub(crate) struct CardLook {
     pub front: Front,
     pub hover: bool,
     pub focus: bool,
+    /// W6 — o nível de envelhecimento `0..=3` (0 = fresco).
+    pub age: u8,
 }
 
 /// As tintas do cartão no tema.

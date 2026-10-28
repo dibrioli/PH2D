@@ -17,6 +17,8 @@ mod verso_anexos;
 mod verso_listas;
 mod vista;
 mod voo;
+mod w6;
+mod w6_b;
 
 use ph2d_app_kanban::KanbanDocs;
 use ph2d_editor_core::NodeId;

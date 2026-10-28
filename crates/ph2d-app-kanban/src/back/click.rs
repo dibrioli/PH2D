@@ -400,7 +400,10 @@ pub(crate) fn click(docs: &mut KanbanDocs, id: u64, h: BackHit) {
             let t = read(docs, id, |_, c| c.title.clone()).unwrap_or_default();
             edit(docs, id, EditAt::Title, &t);
         }
-        BackHit::ListLink | BackHit::Side(Side::Move) => open_pop(docs, id, Pop::Move),
+        BackHit::ListLink => open_pop(docs, id, Pop::Move),
+        BackHit::Side(s @ (Side::Move | Side::Copy | Side::Mirror | Side::FromTemplate)) => {
+            dialog(docs, id, card, s);
+        }
         BackHit::Watch | BackHit::Side(Side::Watch) => {
             write::toggle_watch(docs, id, card);
         }
@@ -545,13 +548,17 @@ pub(crate) fn click(docs: &mut KanbanDocs, id: u64, h: BackHit) {
                 Pop::Fields(LineField::default(), 0, LineField::default()),
             );
         }
-        BackHit::Side(Side::Copy) => {
-            write::copy(docs, id, card);
+        BackHit::Side(Side::Template) => {
+            write::card(docs, id, card, |c| c.template = !c.template);
         }
-        BackHit::Side(Side::Template) => open_pop(docs, id, Pop::Template),
         BackHit::Side(Side::Archive) => {
             let archived = read(docs, id, |_, c| c.archived).unwrap_or(false);
-            write::card(docs, id, card, |c| c.archived = !archived);
+            // Arquivar leva os espelhos do cartão (o Trello); restaurar só o devolve.
+            if archived {
+                write::card(docs, id, card, |c| c.archived = false);
+            } else {
+                crate::w6::gesture::archive_row(docs, id, card);
+            }
         }
         BackHit::Side(Side::Delete) => open_pop(docs, id, Pop::Delete),
         BackHit::Side(Side::Share) => open_pop(docs, id, Pop::Share),
@@ -559,6 +566,32 @@ pub(crate) fn click(docs: &mut KanbanDocs, id: u64, h: BackHit) {
             write::toggle_vote(docs, id, card);
         }
         BackHit::Pop(p) => super::keys::pop_click(docs, id, card, p),
+    }
+}
+
+/// W6 — os diálogos de mover, copiar, espelhar e «Create card from template», ancorados no botão.
+fn dialog(docs: &mut KanbanDocs, id: u64, card: CardId, s: Side) {
+    use crate::w6::DialogKind as K;
+    let Some(here) = docs.kanban_of(id) else {
+        return;
+    };
+    let r = ph2d_kanban_model::CardRef { kanban: here, card };
+    let anchor = back_mut(docs, id)
+        .and_then(|b| b.hits.iter().rev().find(|(_, h)| *h == BackHit::Side(s)).map(|(r, _)| *r))
+        .unwrap_or(ph2d_editor_core::zones::Rect::new(0.0, 0.0, 0.0, 0.0));
+    let list = read(docs, id, |_, c| c.list);
+    let kind = match s {
+        Side::Move => K::MoveCard { src: r, mirror: None },
+        Side::Copy => K::CopyCard(r),
+        Side::Mirror => K::MirrorCard(r),
+        _ => match list {
+            Some(l) => K::FromTemplate(l),
+            None => return,
+        },
+    };
+    crate::w6::copy_move::open(docs, id, kind, anchor);
+    if s == Side::FromTemplate {
+        crate::w6::copy_move::click(docs, id, crate::w6::Dlg::Template(r));
     }
 }
 

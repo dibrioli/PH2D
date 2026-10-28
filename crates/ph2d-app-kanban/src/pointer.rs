@@ -91,6 +91,8 @@ pub(crate) fn hit(tab: &Tab, k: &Kanban, ts: &mut TextSystem, x: f32, y: f32) ->
             if lb.add.contains(x, y) {
                 return Some(Hit::FieldAdd);
             }
+        } else if lb.template.is_some_and(|r| r.contains(x, y)) {
+            return Some(Hit::TemplateBtn(lb.id));
         } else if lb.add.contains(x, y) {
             return Some(Hit::AddCard(lb.id));
         }
@@ -142,6 +144,11 @@ pub(crate) fn commit_field(docs: &mut KanbanDocs, id: u64) {
 /// Grava o campo. Devolve o cartão criado (o compositor seguinte abre depois dele).
 fn write_field(docs: &mut KanbanDocs, id: u64, f: &Field) -> Option<ph2d_kanban_model::CardId> {
     let value = f.value()?;
+    // `@` `#` `^` no título do cartão novo: membros, etiquetas e posição (o Trello).
+    let new = match f.target {
+        Target::NewCard { .. } => Some(crate::w6::complete::parse(docs, id, &value)),
+        _ => None,
+    };
     docs.with_doc(id, |_, doc| match f.target {
         Target::KanbanName => {
             doc.rename_kanban(value);
@@ -155,11 +162,15 @@ fn write_field(docs: &mut KanbanDocs, id: u64, f: &Field) -> Option<ph2d_kanban_
             doc.rename_card(c, value);
             None
         }
-        Target::NewCard { list, after } => doc.add_card(list, after, value),
+        Target::NewCard { list, after } => match new {
+            Some(p) => crate::w6::complete::add(doc, list, after, p),
+            None => doc.add_card(list, after, value),
+        },
         Target::NewList => {
             doc.add_list(value);
             None
         }
+        Target::Scratch => None,
     })
     .flatten()
 }
@@ -227,28 +238,12 @@ pub(crate) fn down(
     if button == PointerButton::Secondary {
         // O botão direito num cartão é a edição rápida (o Trello).
         if let Hit::Card(c) | Hit::CardEdit(c) | Hit::CardLabel(c) = h {
-            let title = docs_title(docs, id, c);
-            if let Some(tab) = docs.tab_mut(id) {
-                tab.focus = Some(c);
-                open_field(tab, Target::CardTitle(c), &title);
-            }
+            crate::w6::quick_edit::open(docs, id, c);
         }
         return true;
     }
     tab.press = Some(Press { at: (x, y), hit: h });
     true
-}
-
-fn docs_title(docs: &KanbanDocs, id: u64, c: ph2d_kanban_model::CardId) -> String {
-    let Some(kid) = docs.kanban_of(id) else {
-        return String::new();
-    };
-    docs.set
-        .borrow()
-        .get(kid)
-        .and_then(|k| k.cards.get(&c))
-        .map(|c| c.title.clone())
-        .unwrap_or_default()
 }
 
 /// Movimento (com ou sem botão). `true` = tomado.
@@ -362,13 +357,18 @@ pub(crate) fn up(
 /// O que voa assenta: escreve a ordem nova e a mola parte de onde a mão o largou.
 fn land(docs: &mut KanbanDocs, id: u64, d: Drag) {
     let ghost = (d.at.0 - d.grab.0, d.at.1 - d.grab.1);
-    docs.with_doc(id, |tab, doc| match d.lift {
-        Lift::Card(c) => {
-            if let Some((list, index)) = d.to_card {
-                doc.move_card(c, list, index);
-            }
+    if let Lift::Card(c) = d.lift {
+        // Entre as linhas MOSTRADAS (com o filtro, as que se vêem); um espelho anda como um cartão.
+        if let Some((list, index)) = d.to_card {
+            crate::w6::gesture::move_row(docs, id, c, list, index);
+        }
+        if let Some(tab) = docs.tab_mut(id) {
             tab.landed = Some((c, ghost.0, ghost.1));
         }
+        return;
+    }
+    docs.with_doc(id, |tab, doc| match d.lift {
+        Lift::Card(_) => {}
         Lift::List(l) => {
             doc.move_list(l, d.to_list);
             let o = crate::tab::origin(tab, tab.layout.board);
@@ -429,14 +429,17 @@ fn click(docs: &mut KanbanDocs, id: u64, h: Hit, now_ns: u128) {
                 );
             }
         }
-        Hit::Card(c) => crate::back::open(docs, id, c),
-        Hit::CardEdit(c) => {
-            let title = docs_title(docs, id, c);
-            if let Some(t) = docs.tab_mut(id) {
-                t.focus = Some(c);
-                open_field(t, Target::CardTitle(c), &title);
+        Hit::Card(c) => crate::w6::gesture::open_back(docs, id, c),
+        Hit::CardEdit(c) => crate::w6::quick_edit::open(docs, id, c),
+        Hit::TemplateBtn(l) => {
+            let anchor = docs
+                .tab_mut(id)
+                .and_then(|t| t.layout.list(l).and_then(|lb| lb.template));
+            if let Some(a) = anchor {
+                crate::w6::copy_move::open(docs, id, crate::w6::DialogKind::FromTemplate(l), a);
             }
         }
+        Hit::W6(a) => crate::w6::act(docs, id, a),
         Hit::CardLabel(_) => {
             if let Some(t) = docs.tab_mut(id) {
                 t.label_text = !t.label_text;
@@ -507,6 +510,25 @@ fn menu_row(docs: &mut KanbanDocs, id: u64, row: MenuRow) {
         }
         (Menu::List(l), MenuRow::Color(c)) => {
             docs.with_doc(id, |_, doc| doc.set_list_color(l, c));
+        }
+        (Menu::List(l), MenuRow::CopyList | MenuRow::MoveList | MenuRow::MoveAll | MenuRow::Sort) => {
+            use crate::w6::DialogKind as K;
+            let kind = match row {
+                MenuRow::CopyList => K::CopyList(l),
+                MenuRow::MoveList => K::MoveList(l),
+                MenuRow::MoveAll => K::MoveAll(l),
+                _ => K::Sort(l),
+            };
+            let anchor = docs.tab_mut(id).and_then(|t| t.layout.list(l).map(|lb| lb.menu));
+            if let Some(a) = anchor {
+                crate::w6::copy_move::open(docs, id, kind, a);
+            }
+        }
+        (Menu::Board, MenuRow::Aging) => {
+            let anchor = docs.tab_mut(id).map(|t| t.layout.board_menu);
+            if let Some(a) = anchor {
+                crate::w6::copy_move::open(docs, id, crate::w6::DialogKind::Aging, a);
+            }
         }
         (
             Menu::Board | Menu::Boards(_),

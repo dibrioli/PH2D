@@ -31,14 +31,17 @@ mod paint_card;
 mod paint_list;
 mod pointer;
 pub mod project;
+mod rows;
 pub mod smoke;
+mod smoke_w6;
 mod surface;
 mod tab;
 mod view;
+mod w6;
 
 pub use back::outside::{Outside, Served, System, World};
 pub use docs::{CanvasProbe, KanbanDocs};
-pub use surface::{CMD_HOME, CMD_NEW};
+pub use surface::{CMD_FROM, CMD_HOME, CMD_NEW};
 
 /// O arranque da família: a superfície das abas Kanban no `Documents` e as cenas de smoke armadas.
 pub fn install(hero: &mut ph2d_editor_core::screens::hero::HeroScreen) {

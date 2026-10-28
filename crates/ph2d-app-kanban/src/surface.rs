@@ -20,6 +20,8 @@ use std::any::Any;
 
 pub const CMD_NEW: NodeId = hash_node_id("kanban_cmd_new");
 pub const CMD_HOME: NodeId = hash_node_id("kanban_cmd_home");
+/// W6 — «New Kanban from…» (um Kanban a partir de outro: o modelo de quadro do Trello).
+pub const CMD_FROM: NodeId = hash_node_id("kanban_cmd_new_from");
 
 impl DocumentSurface for KanbanDocs {
     fn tabs(&self) -> Vec<DocTab> {
@@ -76,6 +78,9 @@ impl DocumentSurface for KanbanDocs {
         if id == HOME {
             return self.home_pointer(kind, x, y);
         }
+        if let Some(taken) = crate::w6::pointer(self, id, kind, x, y) {
+            return taken;
+        }
         if crate::back::is_open(self, id) {
             return match kind {
                 PointerKind::Down => {
@@ -96,6 +101,9 @@ impl DocumentSurface for KanbanDocs {
         if id == HOME {
             return self.home_pointer(PointerKind::Move, x, y);
         }
+        if let Some(taken) = crate::w6::pointer(self, id, PointerKind::Move, x, y) {
+            return taken;
+        }
         if crate::back::is_open(self, id) {
             return crate::back::moved(self, id, input.text, x, y);
         }
@@ -103,6 +111,9 @@ impl DocumentSurface for KanbanDocs {
     }
 
     fn wheel(&mut self, id: u64, x: f32, y: f32, dy: f32, shift: bool) -> bool {
+        if id != HOME && crate::w6::wheel(self, id, x, y, crate::pointer::wheel_px(dy)) {
+            return true;
+        }
         if id != HOME && crate::back::is_open(self, id) {
             return crate::back::wheel(self, id, crate::pointer::wheel_px(dy));
         }
@@ -130,11 +141,8 @@ impl DocumentSurface for KanbanDocs {
     }
 
     fn undo(&mut self, id: u64, redo: bool) -> bool {
-        self.with_doc(id, |tab, doc| {
-            tab.field = None;
-            doc.undo(redo)
-        })
-        .unwrap_or(false)
+        // Um gesto que tocou vários Kanbans (mover para outro, espelhar) desfaz-se inteiro.
+        crate::w6::gesture::undo(self, id, redo)
     }
 
     fn a11y(&self, id: u64) -> Vec<(NodeId, ph2d_a11y::Node)> {
@@ -169,6 +177,11 @@ impl DocumentSurface for KanbanDocs {
                 menu: DocMenu::File,
             },
             DocCommand {
+                id: CMD_FROM,
+                label: tr("kanban.w6.cmd.new_from").to_owned(),
+                menu: DocMenu::File,
+            },
+            DocCommand {
                 id: CMD_HOME,
                 label: tr("kanban.cmd.home").to_owned(),
                 menu: DocMenu::File,
@@ -182,6 +195,9 @@ impl DocumentSurface for KanbanDocs {
             true
         } else if cmd == CMD_HOME {
             self.open_home();
+            true
+        } else if cmd == CMD_FROM {
+            self.new_from();
             true
         } else {
             false
@@ -236,6 +252,24 @@ impl DocumentSurface for KanbanDocs {
 }
 
 impl KanbanDocs {
+    /// «New Kanban from…»: o diálogo na aba activa (sem nenhuma, o início, onde se cria um).
+    fn new_from(&mut self) {
+        let tab = self
+            .active
+            .filter(|a| *a != HOME && self.tabs.iter().any(|t| t.id() == *a))
+            .or_else(|| self.tabs.first().map(crate::tab::Tab::id));
+        let Some(id) = tab else {
+            self.open_home();
+            return;
+        };
+        self.focus = Some(id);
+        let anchor = self
+            .tab_mut(id)
+            .map(|t| t.layout.board_menu)
+            .unwrap_or(Rect::new(0.0, 0.0, 0.0, 0.0));
+        crate::w6::copy_move::open(self, id, crate::w6::DialogKind::NewKanbanFrom, anchor);
+    }
+
     fn home_pointer(&mut self, kind: PointerKind, x: f32, y: f32) -> bool {
         let Some(h) = self.home.as_mut() else {
             return false;
@@ -271,6 +305,7 @@ pub(crate) fn look_of(t: &crate::tab::Tab) -> PointerLook {
         Some(Hit::ListTitle(l)) if editing == Some(Target::ListTitle(l)) => PointerLook::Text,
         Some(Hit::KanbanTitle) if editing == Some(Target::KanbanName) => PointerLook::Text,
         Some(crate::tab::Hit::Field) => PointerLook::Text,
+        Some(crate::tab::Hit::W6(crate::w6::Act::Inside)) => PointerLook::Arrow,
         Some(crate::tab::Hit::Board) | None => PointerLook::Arrow,
         Some(_) => PointerLook::Hand,
     }

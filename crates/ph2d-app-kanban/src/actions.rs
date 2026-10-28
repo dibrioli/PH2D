@@ -67,6 +67,7 @@ impl Doc<'_> {
         self.history.undo_at() != before
     }
 
+    #[cfg(test)]
     pub fn undo(&mut self, redo: bool) -> bool {
         let Some(k) = self.set.doc_mut(self.id) else {
             return false;
@@ -91,7 +92,7 @@ impl Doc<'_> {
             return false;
         };
         f(&mut c);
-        self.apply(vec![KanbanOp::put(Record::Card(c))])
+        self.apply(vec![KanbanOp::put(Record::Card(c.into()))])
     }
 
     pub fn add_list(&mut self, title: String) -> Option<ListId> {
@@ -118,18 +119,36 @@ impl Doc<'_> {
         after: Option<CardId>,
         title: String,
     ) -> Option<CardId> {
+        let pos = self.pos_after(list, after)?;
+        self.add_card_at(list, pos, title, |_| {})
+    }
+
+    /// A posição logo depois de `after` na lista (`None` = no fim).
+    pub fn pos_after(&self, list: ListId, after: Option<CardId>) -> Option<FracKey> {
         let k = self.kanban()?;
-        let id = CardId(k.mint());
-        let pos = match after {
+        Some(match after {
             None => k.pos_after_cards(list),
             Some(a) => {
                 let shown = k.cards_in(list);
                 let i = shown.iter().position(|c| c.id == a)?;
                 between(Some(&shown[i].pos), shown.get(i + 1).map(|c| &c.pos))
             }
-        };
-        let c = card(id, list, pos, title, now());
-        self.apply(vec![KanbanOp::put(Record::Card(c))])
+        })
+    }
+
+    /// Um cartão novo em `pos`, acabado por `f` (os membros e as etiquetas do `@`/`#`) — um passo.
+    pub fn add_card_at(
+        &mut self,
+        list: ListId,
+        pos: FracKey,
+        title: String,
+        f: impl FnOnce(&mut Card),
+    ) -> Option<CardId> {
+        let k = self.kanban()?;
+        let id = CardId(k.mint());
+        let mut c = card(id, list, pos, title, now());
+        f(&mut c);
+        self.apply(vec![KanbanOp::put(Record::Card(c.into()))])
             .then_some(id)
     }
 
@@ -154,6 +173,7 @@ impl Doc<'_> {
     }
 
     /// Leva o cartão à lista `list`, na posição `index` entre os cartões VISÍVEIS dela (sem ele).
+    #[cfg(test)]
     pub fn move_card(&mut self, id: CardId, list: ListId, index: usize) -> bool {
         let Some(k) = self.kanban() else {
             return false;
@@ -228,7 +248,7 @@ impl Doc<'_> {
             .map(|c| {
                 let mut c = c.clone();
                 c.archived = true;
-                KanbanOp::put(Record::Card(c))
+                KanbanOp::put(Record::Card(c.into()))
             })
             .collect();
         self.apply(ops)

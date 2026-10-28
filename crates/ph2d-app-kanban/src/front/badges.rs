@@ -39,6 +39,22 @@ pub(crate) fn due_fill(t: DueTone) -> Option<(T, T)> {
 pub(crate) fn items(f: &Front) -> Vec<Badge> {
     let b = |icon, text: Option<String>, fill| Badge { icon, text, fill };
     let mut out = Vec::new();
+    if f.template {
+        let text = Some(ph2d_i18n::tr("kanban.w6.template_badge").to_owned());
+        out.push(b(
+            IconId::File,
+            text,
+            Some((T::KanbanBlueSubtle, T::KanbanLabelInk)),
+        ));
+    }
+    if let Some(from) = &f.mirror {
+        let text = if from.is_empty() {
+            ph2d_i18n::tr("kanban.w6.mirror_badge").to_owned()
+        } else {
+            ph2d_i18n::tr_with("kanban.w6.mirror_from", &[("kanban", from)])
+        };
+        out.push(b(IconId::Clone, Some(text), None));
+    }
     if f.watching {
         out.push(b(IconId::Eye, None, None));
     }

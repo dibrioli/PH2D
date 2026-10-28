@@ -1,11 +1,11 @@
 //! ⭐ **As listas pintadas** — a aberta (cabeça, cartões, pé), a recolhida, «Add another list» e os
 //! botões dos compositores. O fundo, o cabeçalho, os campos e o que voa moram em [`crate::paint`].
 
-use crate::layout::{ListBox, limit_text};
+use crate::layout::{ListBox, limit_text, shown_text};
 use crate::list_title;
 use crate::metrics as m;
 use crate::paint::{c, editing_card, field_box, hover_fill, icon, list_colors, shadow, text_top};
-use crate::paint_card::{self, CardLook, Ink};
+use crate::paint_card::{CardLook, Ink};
 use crate::tab::{Hit, Lift, Tab};
 use ph2d_editor_core::IconId;
 use ph2d_editor_core::paint::{
@@ -105,10 +105,17 @@ pub(crate) fn list(
             noted(tab, lb, shown);
         }
     }
-    if let (Some(r), Some(n)) = (lb.limit, k.lists.get(&lb.id).and_then(|l| l.card_limit)) {
-        let (pbg, pfg) = limit_colors(theme, is_full(k, lb), fg);
+    let limit = k.lists.get(&lb.id).and_then(|l| l.card_limit);
+    if let Some(r) = lb.limit {
+        // Com o filtro, a pílula diz quantas se vêem («1 of 3»); senão, o limite.
+        let (text, full) = match (lb.total, limit) {
+            (Some(t), _) => (shown_text(lb.count, t), false),
+            (None, Some(n)) => (limit_text(lb.count, n), is_full(k, lb)),
+            (None, None) => (String::new(), false),
+        };
+        let (pbg, pfg) = limit_colors(theme, full, fg);
         fill_rounded_rect(scene, r, m::LIMIT_RADIUS, pbg);
-        pill_text(scene, ts, r, &limit_text(lb.count, n), pfg);
+        pill_text(scene, ts, r, &text, pfg);
     }
     hover_fill(
         scene,
@@ -137,6 +144,21 @@ pub(crate) fn list(
         fill_rounded_rect(scene, s, m::CARD_RADIUS, c(theme, T::KanbanSlot));
     }
     let mut painted = Vec::new();
+    if lb.total.is_some() && lb.cards.is_empty() && lb.composer.is_none() {
+        let y = text_top(ts, lb.body.y + m::LIST_BODY_TOP, m::LINE_H, m::SMALL_PX);
+        let x = lb.body.x + m::LIST_BODY_X + m::CARD_PAD_X;
+        paint_text_elided(
+            ts,
+            scene,
+            tr("kanban.w6.no_match"),
+            x,
+            y,
+            m::SMALL_PX,
+            lb.body.w - 2.0 * (x - lb.body.x),
+            meta,
+        );
+    }
+    let aging = k.header.aging;
     for cb in &lb.cards {
         if cb.rect.y > lb.body.y + lb.body.h || cb.rect.y + cb.rect.h < lb.body.y {
             continue;
@@ -155,7 +177,16 @@ pub(crate) fn list(
             .filter(|f| f.target == crate::edit::Target::CardTitle(cb.id))
         {
             Some(f) => editing_card(scene, ts, theme, f, cb.rect),
-            None => paint_card::card(scene, ts, theme, &ink, &look, cb.rect, tab.label_text),
+            None => crate::w6::aging::card(
+                scene,
+                ts,
+                theme,
+                &ink,
+                &look,
+                cb.rect,
+                tab.label_text,
+                (aging, look.age, cb.id.0),
+            ),
         }
         painted.push(cb.id);
     }
@@ -197,6 +228,16 @@ pub(crate) fn list(
                 lb.add.w - (x - lb.add.x),
                 meta,
             );
+            if let Some(r) = lb.template {
+                hover_fill(
+                    scene,
+                    r,
+                    tab.hover == Some(Hit::TemplateBtn(lb.id)),
+                    theme,
+                    m::ADD_RADIUS,
+                );
+                icon(scene, IconId::File, r, meta);
+            }
         }
     }
     painted

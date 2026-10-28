@@ -40,8 +40,13 @@ pub(crate) struct ListBox {
     pub add: Rect,
     pub close: Option<Rect>,
     pub count: usize,
-    /// A pílula «n / limite» entre o título e os botões, se a lista tem limite de cartões.
+    /// A pílula «n / limite» entre o título e os botões, se a lista tem limite de cartões — ou,
+    /// com o filtro, «n of m» (W6).
     pub limit: Option<Rect>,
+    /// W6 — com o filtro: quantas linhas a lista tem sem ele.
+    pub total: Option<usize>,
+    /// W6 — «Create card from template» (o ícone à direita de «Add a card»).
+    pub template: Option<Rect>,
 }
 
 /// O quadro inteiro.
@@ -112,6 +117,11 @@ pub(crate) fn limit_text(count: usize, limit: u32) -> String {
     ph2d_i18n::tr_with("kanban.list_limit", &[("n", &count), ("max", &limit)])
 }
 
+/// O texto da pílula com o filtro: «1 of 3».
+pub(crate) fn shown_text(count: usize, total: usize) -> String {
+    ph2d_i18n::tr_with("kanban.w6.shown", &[("n", &count), ("total", &total)])
+}
+
 /// O cabeçalho: o título à esquerda, a estrela, o menu à direita.
 fn header(area: Rect, title_w: f32) -> (Rect, Rect, Rect, Rect) {
     let h = Rect::new(area.x, area.y, area.w, m::HEADER_H);
@@ -148,6 +158,7 @@ fn foot_h() -> f32 {
 #[allow(clippy::too_many_lines)]
 pub(crate) fn targets(
     k: &Kanban,
+    rows: &crate::rows::Rows,
     view: &KanbanView,
     area: Rect,
     (title_w, floor): (f32, Option<f32>),
@@ -171,19 +182,14 @@ pub(crate) fn targets(
         Some(Lifted::List { id, .. }) => Some(id),
         _ => None,
     };
-    // Os cartões agrupados por lista numa passagem (pedir `cards_in` por lista custava listas × N:
-    // 63–77 ms dos 144 a 100 000 cartões em 10 listas, medido 28/10). A ordem é a do `cards_in`.
-    let mut by_list: std::collections::BTreeMap<ListId, Vec<&ph2d_kanban_model::Card>> =
-        std::collections::BTreeMap::new();
-    for c in k.cards.values().filter(|c| !c.meta.deleted && !c.archived) {
-        by_list.entry(c.list).or_default().push(c);
-    }
-    for v in by_list.values_mut() {
-        v.sort_by(|a, b| a.pos.cmp(&b.pos).then(a.id.cmp(&b.id)));
-    }
+    // As linhas de cada lista vêm agrupadas numa passagem ([`crate::rows::build`]: pedir
+    // `cards_in` por lista custava listas × N — 63–77 ms dos 144 a 100 000 cartões em 10 listas,
+    // medido 28/10), com os espelhos e sem o que o filtro esconde.
+    let empty = Vec::new();
     let mut order = k.lists_in_order();
     let b = Box {
         k,
+        rows,
         view,
         top,
         max_h,
@@ -196,8 +202,8 @@ pub(crate) fn targets(
         && let Some(i) = order.iter().position(|l| l.id == id)
     {
         let l = order.remove(i);
-        let cards_all = by_list.remove(&l.id).unwrap_or_default();
-        flying = Some(list_box(&b, l, 0.0, &cards_all, heights));
+        let ids = rows.lists.get(&l.id).unwrap_or(&empty);
+        flying = Some(list_box(&b, l, 0.0, ids, heights));
     }
     let mut list_slot = None;
     for (i, l) in order.iter().enumerate() {
@@ -207,8 +213,8 @@ pub(crate) fn targets(
             list_slot = Some(Rect::new(x, top, w, h));
             x += w + m::LIST_GAP;
         }
-        let cards_all = by_list.remove(&l.id).unwrap_or_default();
-        let lb = list_box(&b, l, x, &cards_all, heights);
+        let ids = rows.lists.get(&l.id).unwrap_or(&empty);
+        let lb = list_box(&b, l, x, ids, heights);
         x += lb.rect.w + m::LIST_GAP;
         lists.push(lb);
     }
@@ -292,6 +298,7 @@ pub(crate) fn max_scroll_y(lb: &ListBox) -> f32 {
 /// O que todas as listas de uma disposição partilham.
 struct Box<'a> {
     k: &'a Kanban,
+    rows: &'a crate::rows::Rows,
     view: &'a KanbanView,
     top: f32,
     max_h: f32,
@@ -306,11 +313,12 @@ fn list_box(
     b: &Box<'_>,
     l: &ph2d_kanban_model::List,
     x: f32,
-    cards_all: &[&ph2d_kanban_model::Card],
+    cards_all: &[CardId],
     heights: &mut dyn Heights,
 ) -> ListBox {
     let Box {
         k,
+        rows,
         view,
         top,
         max_h,
@@ -319,6 +327,9 @@ fn list_box(
     } = *b;
     let collapsed = view.collapsed.contains(&l.id);
     let count = cards_all.len();
+    let total = rows
+        .filtered
+        .then(|| rows.totals.get(&l.id).copied().unwrap_or(0));
     if collapsed {
         let tw = heights.title_w(&l.title);
         let rect = Rect::new(x, top, m::COLLAPSED_W, max_h.min(collapsed_h(tw)));
@@ -344,6 +355,8 @@ fn list_box(
             close: None,
             count,
             limit: None,
+            total,
+            template: None,
         };
     }
     let inner_x = x + m::LIST_BODY_X;
@@ -360,8 +373,13 @@ fn list_box(
         m::LIST_ICON_BTN,
         m::LIST_ICON_BTN,
     );
-    let limit = l.card_limit.map(|n| {
-        let w = heights.limit_w(&limit_text(count, n));
+    let pill = match (total, l.card_limit) {
+        (Some(t), _) => Some(shown_text(count, t)),
+        (None, Some(n)) => Some(limit_text(count, n)),
+        (None, None) => None,
+    };
+    let limit = pill.map(|text| {
+        let w = heights.limit_w(&text);
         Rect::new(
             collapse.x - m::LIST_ICON_GAP - w,
             top + m::LIST_HEAD_TOP + (m::LINE_H - m::COUNT_H) / 2.0,
@@ -403,8 +421,8 @@ fn list_box(
         r
     };
     let mut shown = 0usize;
-    for c in cards_all {
-        if Some(c.id) == lifted_card {
+    for &id in cards_all {
+        if Some(id) == lifted_card {
             continue;
         }
         if let Some((i, h)) = drop_at
@@ -412,22 +430,22 @@ fn list_box(
         {
             slot = Some(push_gap(&mut y, h));
         }
-        let editing = field.is_some_and(|f| f.target == Target::CardTitle(c.id));
+        let editing = field.is_some_and(|f| f.target == Target::CardTitle(id));
         let h = if editing {
             let f = field.map_or("", |f| f.text.as_str());
             (heights.field(f, m::CARD_W - 2.0 * m::CARD_PAD_X) + 2.0 * m::CARD_PAD_Y)
-                .max(heights.card(k, c.id))
+                .max(heights.card(k, id))
         } else {
-            heights.card(k, c.id)
+            heights.card(k, id)
         };
         cards.push(CardBox {
-            id: c.id,
+            id,
             rect: Rect::new(inner_x, y, m::CARD_W, h),
         });
         y += h + m::CARD_GAP;
         shown += 1;
         if let Some((Some(after), text)) = composing
-            && after == c.id
+            && after == id
         {
             let h = composer_h(heights, text);
             composer = Some(push_gap(&mut y, h));
@@ -442,11 +460,16 @@ fn list_box(
         let h = composer_h(heights, text);
         composer = Some(push_gap(&mut y, h));
     }
+    // Com o filtro, a lista que ficou sem nada diz porquê (a maquete: «No cards match the filter.»).
+    if total.is_some() && shown == 0 && composer.is_none() && slot.is_none() {
+        y = m::LINE_H + m::CARD_GAP;
+    }
     let content_h = (y - m::CARD_GAP).max(0.0);
     let body_room = (max_h - head_h() - foot_h()).max(0.0);
     let body_h = content_h.min(body_room) + m::LIST_BODY_TOP + m::LIST_BODY_BOTTOM;
     let body = Rect::new(x, top + head_h(), m::LIST_W, body_h);
     let foot_y = body.y + body.h + m::LIST_FOOT_TOP;
+    let mut template = None;
     let (add, close) = if composing.is_some() {
         let add = Rect::new(inner_x, foot_y, m::CARD_W / 2.0, m::BUTTON_H);
         let close = Rect::new(
@@ -457,7 +480,17 @@ fn list_box(
         );
         (add, Some(close))
     } else {
-        (Rect::new(inner_x, foot_y, m::CARD_W, m::BUTTON_H), None)
+        let tw = m::LIST_ICON_BTN;
+        template = Some(Rect::new(
+            inner_x + m::CARD_W - tw,
+            foot_y + (m::BUTTON_H - tw) / 2.0,
+            tw,
+            tw,
+        ));
+        (
+            Rect::new(inner_x, foot_y, m::CARD_W - tw - m::LIST_ICON_GAP, m::BUTTON_H),
+            None,
+        )
     };
     let rect = Rect::new(x, top, m::LIST_W, head_h() + body_h + foot_h());
     ListBox {
@@ -476,5 +509,7 @@ fn list_box(
         close,
         count,
         limit,
+        total,
+        template,
     }
 }

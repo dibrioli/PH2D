@@ -1,0 +1,25 @@
+▸ linha line_trelloclone · CPU ≤ 1600% de 32 núcleos · mem ≤ 24G · prazo 1800s
+[foto] a construir o binario (smoke) — senao esta foto e' da build de ontem…
+warning: function `card_ref` is never used
+   --> crates/ph2d-kanban-views/src/common.rs:103:8
+    |
+103 | pub fn card_ref(kanban: KanbanId, c: &Card) -> CardRef {
+    |        ^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `kanban` is never used
+   --> crates/ph2d-kanban-views/src/common.rs:109:8
+    |
+109 | pub fn kanban(set: &KanbanSet, id: KanbanId) -> Option<&Kanban> {
+    |        ^^^^^^
+
+warning: function `day_text` is never used
+   --> crates/ph2d-kanban-views/src/common.rs:197:8
+    |
+197 | pub fn day_text(d: CivilDate, today: CivilDate) -> String {
+    |        ^^^^^^^^
+
+RECUSA: o app morreu antes do 1.o quadro (ver o log do app)
+sem foto — log do app:
+env: “dark”: Arquivo ou diretório inexistente

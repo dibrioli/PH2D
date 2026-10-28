@@ -25,6 +25,14 @@ pub(crate) mod write;
 pub(crate) use click::{down, moved, up, wheel};
 pub(crate) use keys::{compose, key};
 pub(crate) use paint::paint;
+pub(crate) use pop::card_link;
+
+/// W6 — carrega no botão `s` da coluna do verso aberto (a edição rápida e os atalhos `D` `L` `M`).
+pub(crate) fn press_side(docs: &mut crate::docs::KanbanDocs, id: u64, s: Side) {
+    if is_open(docs, id) {
+        click::click(docs, id, BackHit::Side(s));
+    }
+}
 
 use ph2d_editor_core::widget::{DatePicker, LineField, RichEditor, RichEditorLabels};
 use ph2d_editor_core::zones::Rect;
@@ -98,7 +106,12 @@ pub(crate) enum Side {
     Fields,
     Move,
     Copy,
+    /// W6 — «Mirror» (o espelho noutra lista ou Kanban).
+    Mirror,
+    /// «Make template» (liga/desliga o modelo).
     Template,
+    /// W6 — num modelo: «Create card from template».
+    FromTemplate,
     Archive,
     Delete,
     Share,
@@ -187,7 +200,6 @@ pub(crate) enum Pop {
     Fields(LineField, u8, LineField),
     Delete,
     Share,
-    Template,
 }
 
 impl Pop {
@@ -206,7 +218,6 @@ impl Pop {
             Pop::Fields(..) => BackHit::Side(Side::Fields),
             Pop::Delete => BackHit::Side(Side::Delete),
             Pop::Share => BackHit::Side(Side::Share),
-            Pop::Template => BackHit::Side(Side::Template),
         }
     }
 }
@@ -402,6 +413,11 @@ pub(crate) fn open(docs: &mut crate::docs::KanbanDocs, id: u64, card: CardId) {
         t.focus = Some(card);
         t.field = None;
         t.menu = None;
+        t.w6.over = None;
+        t.w6.quick = None;
+        if !matches!(t.w6.input, Some((crate::w6::Boxed::Title, _))) {
+            t.w6.input = None;
+        }
         t.back = Some(Box::new(Back::new(card, &desc)));
     }
 }

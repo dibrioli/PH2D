@@ -114,7 +114,6 @@ fn title_key(pop: &Pop) -> &'static str {
         Pop::Fields(..) => "kanban.back.pop.fields",
         Pop::Delete => "kanban.back.pop.delete",
         Pop::Share => "kanban.back.pop.share",
-        Pop::Template => "kanban.back.pop.template",
     }
 }
 
@@ -477,10 +476,6 @@ fn content(ui: &mut Ui<'_>, back: &Back, cx: &Ctx<'_>, x: f32, y: f32) -> f32 {
                 meta,
             );
             yy += u::META_LINE;
-        }
-        Pop::Template => {
-            let fg = ui.fg();
-            yy += ui.text(tr("kanban.back.template_soon"), ix, yy, u::BODY_PX, iw, fg);
         }
         Pop::Dates(..) => {}
     }

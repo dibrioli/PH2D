@@ -21,7 +21,10 @@ fn button(cx: &Ctx<'_>, s: Side) -> (String, IconId, bool) {
         Side::Fields => (t("kanban.back.side.fields"), IconId::Menu, false),
         Side::Move => (t("kanban.back.side.move"), IconId::ChevronRight, false),
         Side::Copy => (t("kanban.back.side.copy"), IconId::Copy, false),
+        Side::Mirror => (t("kanban.w6.side.mirror"), IconId::Clone, false),
+        Side::Template if card.template => (t("kanban.w6.side.template_on"), IconId::File, true),
         Side::Template => (t("kanban.back.side.template"), IconId::File, false),
+        Side::FromTemplate => (t("kanban.w6.side.from_template"), IconId::Plus, false),
         Side::Archive if card.archived => (t("kanban.back.side.restore"), IconId::Undo, false),
         Side::Archive => (t("kanban.back.side.archive"), IconId::Folder, false),
         Side::Delete => (t("kanban.back.side.delete"), IconId::Trash, false),
@@ -58,9 +61,10 @@ const ADD: [Side; 7] = [
     Side::Fields,
 ];
 
-const ACTIONS: [Side; 8] = [
+const ACTIONS: [Side; 9] = [
     Side::Move,
     Side::Copy,
+    Side::Mirror,
     Side::Template,
     Side::Archive,
     Side::Delete,
@@ -72,9 +76,14 @@ const ACTIONS: [Side; 8] = [
 /// Pinta a coluna a partir de `y`; devolve o fundo.
 pub(crate) fn paint(ui: &mut Ui<'_>, cx: &Ctx<'_>, x: f32, y: f32) -> f32 {
     let mut y = y;
+    // Um modelo oferece «Create card from template» à cabeça das ações (o Trello).
+    let mut actions = ACTIONS.to_vec();
+    if cx.card.template {
+        actions.insert(0, Side::FromTemplate);
+    }
     for (caption, list) in [
         ("kanban.back.add_to_card", &ADD[..]),
-        ("kanban.back.actions", &ACTIONS[..]),
+        ("kanban.back.actions", &actions[..]),
     ] {
         ui.caption(tr(caption), x, y, u::SIDE_W);
         y += u::META_LINE;

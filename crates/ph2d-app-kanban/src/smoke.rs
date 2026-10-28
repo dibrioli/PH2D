@@ -12,6 +12,8 @@
 //! - **4** — o quadro da cena 1 com o VERSO de «Animate shot 12» aberto (a maquete `Back.dc.html`):
 //!   capa, membros, etiquetas, prazo atrasado, descrição rica, campos, a checklist «Animation pass»
 //!   com responsável e data, um comentário com menção e reacção, e o histórico.
+//! - **5** — W6: o FILTRO aberto (a maquete `Filter.dc.html`) e o envelhecimento regular.
+//! - **6** — W6: o envelhecimento PIRATA, um MODELO e um ESPELHO ([`crate::smoke_w6`]).
 
 use crate::docs::KanbanDocs;
 use ph2d_editor_core::screens::hero::HeroScreen;
@@ -24,7 +26,7 @@ use ph2d_kanban_model::{
 };
 
 /// As cenas que existem.
-pub const CENAS: u8 = 4;
+pub const CENAS: u8 = 6;
 pub const ENV: &str = "PH2D_KANBAN_SMOKE";
 
 /// O roteador que a família declara ao registo (o gate de colisão lê-o).
@@ -58,6 +60,19 @@ pub fn stage(hero: &mut HeroScreen, n: u8) -> Option<KanbanId> {
         let mut set = shared.borrow_mut();
         match n {
             1 | 3 | 4 => short_film(&mut set),
+            5 | 6 => {
+                let id = short_film(&mut set);
+                let aging = if n == 5 {
+                    ph2d_kanban_model::Aging::Regular
+                } else {
+                    ph2d_kanban_model::Aging::Pirate
+                };
+                crate::smoke_w6::age(&mut set, id, aging);
+                if n == 6 {
+                    crate::smoke_w6::template_and_mirror(&mut set, id);
+                }
+                id
+            }
             2 => big(&mut set),
             _ => return None,
         }
@@ -84,6 +99,9 @@ pub fn stage(hero: &mut HeroScreen, n: u8) -> Option<KanbanId> {
         // Um passo e meio de lista para a direita, um pouco levantada.
         let step = crate::metrics::LIST_W + crate::metrics::LIST_GAP;
         t.smoke_hold = Some((todo, (1.55 * step, 2.0 * crate::metrics::LIST_HEAD_BOTTOM)));
+    }
+    if n == 5 {
+        crate::smoke_w6::open_filter(docs, id);
     }
     if n == 4 {
         let shot = rich_back(&mut docs.set.borrow_mut(), id);
@@ -221,7 +239,7 @@ impl Scene {
             template: false,
         };
         f(&mut c);
-        self.put(Record::Card(c));
+        self.put(Record::Card(c.into()));
         id
     }
 
@@ -582,7 +600,7 @@ the cut \u{2014} the music hits there.\n\n- Reference: [fox_jump_ref.mp4](https:
     c.fields.insert(priority, FieldValue::Option(high));
     c.fields.insert(estimate, FieldValue::Number(3.0));
     c.fields.insert(shot_no, FieldValue::Text("12".into()));
-    s.put(Record::Card(c));
+    s.put(Record::Card(c.into()));
     let lists: Vec<_> = k
         .checklists
         .values()

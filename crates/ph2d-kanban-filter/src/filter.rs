@@ -253,6 +253,24 @@ pub fn matches(f: &Filter, card: &Card, k: &Kanban, now: Moment, zone: &Zone, me
     matches_with(f, card, k, k, last, now, zone, me)
 }
 
+/// [`matches`] com a última atividade já sabida (`last`, de [`last_activity_index`]) e o Kanban
+/// que VÊ o cartão (`view`: as etiquetas de um espelho casam pelo nome e cor dele) — a UI conta um
+/// quadro inteiro por imagem sem varrer a atividade por cartão.
+#[must_use]
+#[allow(clippy::too_many_arguments)]
+pub fn matches_at(
+    f: &Filter,
+    card: &Card,
+    ck: &Kanban,
+    view: &Kanban,
+    last: Moment,
+    now: Moment,
+    zone: &Zone,
+    me: &Member,
+) -> bool {
+    matches_with(f, card, ck, view, last, now, zone, me)
+}
+
 /// Quantos cartões à vista de `k` passam no filtro.
 #[must_use]
 pub fn count(f: &Filter, k: &Kanban, now: Moment, zone: &Zone, me: &Member) -> usize {

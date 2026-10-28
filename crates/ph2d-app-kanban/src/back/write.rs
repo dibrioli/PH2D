@@ -41,7 +41,7 @@ pub(crate) fn card(docs: &mut KanbanDocs, id: u64, c: CardId, f: impl FnOnce(&mu
         let old = k.cards.get(&c)?;
         let mut new = old.clone();
         f(&mut new);
-        (new != *old).then(|| vec![KanbanOp::put(Record::Card(new))])
+        (new != *old).then(|| vec![KanbanOp::put(Record::Card(new.into()))])
     })
 }
 
@@ -98,7 +98,7 @@ pub(crate) fn create_label(
                 color,
                 meta: Meta::default(),
             })),
-            KanbanOp::put(Record::Card(card)),
+            KanbanOp::put(Record::Card(card.into())),
         ])
     })
     .then_some(made)
@@ -130,7 +130,7 @@ pub(crate) fn delete_label(docs: &mut KanbanDocs, id: u64, l: LabelId) -> bool {
             .map(|c| {
                 let mut c = c.clone();
                 c.labels.retain(|x| *x != l);
-                KanbanOp::put(Record::Card(c))
+                KanbanOp::put(Record::Card(c.into()))
             })
             .collect();
         ops.push(KanbanOp::Delete(RecordId::Label(l)));
@@ -288,7 +288,7 @@ pub(crate) fn add_file(
                 fill: ph2d_kanban_model::CoverFill::Image(file),
                 full: false,
             });
-            ops.push(KanbanOp::put(Record::Card(new)));
+            ops.push(KanbanOp::put(Record::Card(new.into())));
         }
         Some(ops)
     })
@@ -408,62 +408,8 @@ pub(crate) fn move_to(docs: &mut KanbanDocs, id: u64, c: CardId, to: ListId) -> 
         }
         card.list = to;
         card.pos = k.pos_after_cards(to);
-        Some(vec![KanbanOp::put(Record::Card(card))])
+        Some(vec![KanbanOp::put(Record::Card(card.into()))])
     })
-}
-
-/// Uma cópia do cartão logo abaixo dele, com as checklists e os itens. Devolve a cópia.
-pub(crate) fn copy(docs: &mut KanbanDocs, id: u64, c: CardId) -> Option<CardId> {
-    let mut made = None;
-    let at = now();
-    logged(docs, id, |k| {
-        let src = k.cards.get(&c)?;
-        let lists: Vec<&Checklist> = k
-            .checklists
-            .values()
-            .filter(|x| x.card == c && !x.meta.deleted)
-            .collect();
-        let items: Vec<&CheckItem> = k
-            .items
-            .values()
-            .filter(|i| !i.meta.deleted && lists.iter().any(|l| l.id == i.checklist))
-            .collect();
-        let mut ids = k.mint_n(1 + lists.len() + items.len()).into_iter();
-        let next = k
-            .cards_in(src.list)
-            .into_iter()
-            .map(|x| &x.pos)
-            .filter(|p| **p > src.pos)
-            .min();
-        let mut card = src.clone();
-        card.id = CardId(ids.next()?);
-        card.pos = FracKey::between(Some(&src.pos), next);
-        card.created = at;
-        card.meta = Meta::default();
-        card.watchers.clear();
-        card.votes.clear();
-        made = Some(card.id);
-        let mut ops = vec![KanbanOp::put(Record::Card(card))];
-        let mut map = std::collections::BTreeMap::new();
-        for l in &lists {
-            let mut n = (*l).clone();
-            n.id = ChecklistId(ids.next()?);
-            n.card = made?;
-            n.meta = Meta::default();
-            map.insert(l.id, n.id);
-            ops.push(KanbanOp::put(Record::Checklist(n)));
-        }
-        for i in &items {
-            let mut n = (*i).clone();
-            n.id = CheckItemId(ids.next()?);
-            n.checklist = *map.get(&i.checklist)?;
-            n.meta = Meta::default();
-            ops.push(KanbanOp::put(Record::CheckItem(n)));
-        }
-        Some(ops)
-    })
-    .then_some(made)
-    .flatten()
 }
 
 /// As datas do cartão: início, entrega (com o lembrete e o «concluída» que já tinha).

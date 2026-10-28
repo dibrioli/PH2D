@@ -85,7 +85,7 @@ fn with_image(bytes: Vec<u8>, size: [u32; 2], full: bool) -> (KanbanSet, KanbanI
             meta: Meta::default(),
             watchers: Vec::new(),
         })),
-        KanbanOp::put(Record::Card(Card {
+        KanbanOp::put(Record::card(Card {
             id: card,
             list,
             pos,
@@ -108,7 +108,7 @@ fn with_image(bytes: Vec<u8>, size: [u32; 2], full: bool) -> (KanbanSet, KanbanI
             watchers: Vec::new(),
             origin: None,
             template: false,
-        })),
+        }.into())),
     ];
     set.apply(id, ops);
     (set, id, card)
@@ -136,6 +136,7 @@ fn paint(set: &KanbanSet, id: KanbanId, card: CardId) -> (probe::Painted, f32) {
         front: f,
         hover: false,
         focus: false,
+        age: 0,
     };
     let r = Rect::new(20.0, 30.0, m::CARD_W, h);
     super::card(
@@ -255,7 +256,7 @@ fn medir_capas() {
             fill: CoverFill::Image(files[(n % 20) as usize]),
             full: n % 4 == 0,
         });
-        ops.push(KanbanOp::put(Record::Card(c)));
+        ops.push(KanbanOp::put(Record::Card(c.into())));
     }
     set.apply(id, ops);
     let k = set.get(id).expect("k").clone();
@@ -295,6 +296,7 @@ fn medir_capas() {
                 front: f,
                 hover: false,
                 focus: false,
+                age: 0,
             };
             super::card(
                 &mut scene,

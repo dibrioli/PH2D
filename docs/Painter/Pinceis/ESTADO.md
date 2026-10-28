@@ -69,7 +69,10 @@
    Dry/Lift curado não aprovado (falta a linha escura 1,3 nos lados; o anel rouba tinta de fora — fila).
 6. ✅ Guache cobre (`600152c535` `20a320bbc9`, knob `wetCover`; resto Flat 0,36 → 0,10, Rebelle 0,11): Gouache Wash
    e Dry curados não aprovados (cega: sem fiapos de cerda, tampa redonda, 200 px chapado — cerdas que crescem com o
-   diâmetro: fila); **Gouache Flat chega ao Rebelle com `wetCover` 0,5–1 ⇒ PRÓXIMO**. 7. lâmina — EM CURSO · 5. arrasto
+   diâmetro: fila); **Gouache Flat chega ao Rebelle com `wetCover` 0,5–1 ⇒ PRÓXIMO**. 5. arrasto — EM CURSO.
+7. ✅ Lâmina (`a6dcb2afa1` `883ea9d7c2`, [`J6_lamina.md`](J6_lamina.md)): o Rebelle NÃO gira — cada plano fica fixo no
+   seu eixo; sem knob novo, gate `a_lamina_de_cada_preset_e_a_do_oraculo`. Craft Flat, Broad Nib, Compressed Charcoal,
+   Bristle Watercolor ficam em estudo (o que se vê é outra lacuna); receitas Oil em `J6_lamina_oil_receitas.md`.
    (Smudge Finger) · 6. azul sobre vermelho molhado (Gouache Wash/Dry/Round) · 7. lâmina que gira (C38/L3: A-4, B-9,
    D-3, F-2, G-5..G-8, I-8; L16 depende) · 8. partículas · ondulação (Oil Bristle) · mip das pontas (Foliage, Noise Grit).
 9. Óleo Real: `ESTADO_MISSAO_W3.md` «Fila para a próxima onda» + HANDOFF_W3b §Aberto 2–5.

@@ -5496,6 +5496,7 @@ dependencies = [
  "image",
  "ph2d-a11y",
  "ph2d-app-host",
+ "ph2d-app-kanban",
  "ph2d-asset",
  "ph2d-board-edit",
  "ph2d-board-embed",

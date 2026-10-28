@@ -13,7 +13,7 @@
 use super::*;
 // As fixtures moram no irmão `tests` e são compartilhadas em vez de copiadas — duas
 // cópias de `empty_state` divergiriam no dia em que o `ProjectState` ganhar um campo.
-use super::tests::{empty_state, tmp_path};
+use super::tests::{bare_file, empty_state, tmp_path};
 
 /// **As settings de MUNDO da física sobrevivem ao arquivo — e chegam ao SOLVER.**
 ///
@@ -40,25 +40,8 @@ fn the_world_settings_survive_the_project_file() {
         ..Default::default()
     };
     let file = ProjectFile {
-        state: empty_state(),
-        assets: Vec::new(),
-        painted: Vec::new(),
-        motion: String::new(),
-        timeline: Vec::new(),
         physics: authored,
-        tokens: Vec::new(),
-        settings: crate::project_settings::collect(Default::default()),
-        player_tape: ph2d_physics_ecs::TapeWire::default(),
-        sprite_pixels: Vec::new(),
-        stable_id_counter: ph2d_ecs::StableId::FIRST,
-        input_map: ph2d_input::InputMap::new(),
-        pattern_art: Vec::new(),
-        boards: Vec::new(),
-        scripts: Vec::new(),
-        marcas_do_artista: Vec::new(),
-        jogo: Vec::new(),
-        mesa: Vec::new(),
-        kanbans: Vec::new(),
+        ..bare_file(empty_state())
     };
     let bytes = postcard::to_allocvec(&(PROJECT_SCHEMA, &file)).expect("serializa");
     std::fs::write(&path, bytes).expect("grava");
@@ -120,25 +103,9 @@ fn the_project_scale_and_unit_survive_the_project_file() {
         "uma fixture igual ao default nao prova travessia nenhuma"
     );
     let file = ProjectFile {
-        state: empty_state(),
-        assets: Vec::new(),
-        painted: Vec::new(),
-        motion: String::new(),
-        timeline: Vec::new(),
-        physics: Default::default(),
-        tokens: Vec::new(),
         settings: crate::project_settings::collect(authored),
-        player_tape: ph2d_physics_ecs::TapeWire::default(),
-        sprite_pixels: Vec::new(),
-        stable_id_counter: ph2d_ecs::StableId::FIRST,
-        input_map: ph2d_input::InputMap::new(),
-        pattern_art: Vec::new(),
-        boards: Vec::new(),
-        scripts: Vec::new(),
-        marcas_do_artista: Vec::new(),
         jogo: crate::project_settings::collect_jogo(authored),
-        mesa: Vec::new(),
-        kanbans: Vec::new(),
+        ..bare_file(empty_state())
     };
     let bytes = postcard::to_allocvec(&(PROJECT_SCHEMA, &file)).expect("serializa");
     std::fs::write(&path, bytes).expect("grava");

@@ -47,7 +47,7 @@ pub(super) fn write_project_boards(
 }
 
 /// Um arquivo com `state` e o resto VAZIO — a base dos escritores acima.
-pub(super) fn bare_file(state: ProjectState) -> ProjectFile {
+pub(crate) fn bare_file(state: ProjectState) -> ProjectFile {
     ProjectFile {
         state,
         assets: Vec::new(),

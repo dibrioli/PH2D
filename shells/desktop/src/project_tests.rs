@@ -44,9 +44,9 @@ mod opacidade;
 /// responsabilidade. `pub(super)` + `use` para que os outros filhos o alcancem por `super::*`.
 #[path = "project_test_writer.rs"]
 mod writer;
+pub(super) use writer::bare_file;
 use writer::{
-    bare_file, two_boards, write_project, write_project_art, write_project_boards,
-    write_project_with,
+    two_boards, write_project, write_project_art, write_project_boards, write_project_with,
 };
 
 /// O documento de uma animação: uma track em `hero`, com o `wire_id` (a identidade do objeto)
@@ -393,33 +393,20 @@ fn project_file_round_trips_through_postcard() {
     // junto em vez de mentir que sobreviveu.
     let motion = ph2d_motion_doc::MotionDoc::new().to_text();
     let file = ProjectFile {
-        state: state.clone(),
         assets: vec![SavedAsset {
             key: 16,
             width: 2,
             height: 2,
             rgba: vec![10, 20, 30, 40],
         }],
-        painted: Vec::new(),
         motion: motion.clone(),
         timeline: animation_of_hero(),
-        physics: Default::default(),
-        tokens: Vec::new(),
-        settings: crate::project_settings::collect(Default::default()),
-        player_tape: ph2d_physics_ecs::TapeWire::default(),
-        sprite_pixels: Vec::new(),
-        stable_id_counter: ph2d_ecs::StableId::FIRST,
         // ⚠️ NAO-DEFAULT de proposito: vazio, a ida-e-volta passaria sobre o `Default` do serde e
         // nao sobre os bytes do campo -- assim uma mutacao sobreviveu a 10.503 testes (23/08).
         input_map: super::input_map_tests::authored_input_map(),
-        pattern_art: Vec::new(),
         // NÃO-vazio pela razão do `input_map` acima: dois quadros com nome.
         boards: two_boards().to_bytes().unwrap(),
-        scripts: Vec::new(),
-        marcas_do_artista: Vec::new(),
-        jogo: Vec::new(),
-        mesa: Vec::new(),
-        kanbans: Vec::new(),
+        ..bare_file(state.clone())
     };
     let bytes = postcard::to_allocvec(&(PROJECT_SCHEMA, &file)).unwrap();
     let (ver, back): (u32, ProjectFile) = postcard::from_bytes(&bytes).unwrap();

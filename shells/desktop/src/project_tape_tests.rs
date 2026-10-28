@@ -60,25 +60,8 @@ fn a_recorded_run_survives_the_file() {
     let path = tmp_path("recorded_run");
     let mut saved = a_recorded_run();
     let file = ProjectFile {
-        state: empty_state(),
-        assets: Vec::new(),
-        painted: Vec::new(),
-        motion: String::new(),
-        timeline: Vec::new(),
-        physics: Default::default(),
-        tokens: Vec::new(),
-        settings: crate::project_settings::collect(Default::default()),
         player_tape: saved.to_wire(),
-        sprite_pixels: Vec::new(),
-        stable_id_counter: ph2d_ecs::StableId::FIRST,
-        input_map: ph2d_input::InputMap::new(),
-        pattern_art: Vec::new(),
-        boards: Vec::new(),
-        scripts: Vec::new(),
-        marcas_do_artista: Vec::new(),
-        jogo: Vec::new(),
-        mesa: Vec::new(),
-        kanbans: Vec::new(),
+        ..bare_file(empty_state())
     };
     std::fs::write(
         &path,

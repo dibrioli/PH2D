@@ -12,7 +12,7 @@
 | F-10 Wax Crayon | «Wax Crayon J6 D», Wet (`pastel_carvao::EM_ESTUDO_J6`) | 436/454 | Graphite 8B 0,783 | pronto p/ cega |
 | K-9 Grunge | «Grunge C», Wet (`texturas::EM_ESTUDO_J6_WET`) | 372/454 | Express Oil 0,890 | pronto p/ cega (diferença escrita) |
 | I-9 Granulation | «Granulation C», Wet (`aguarela::EM_ESTUDO_J6`) | 259/454 | Wet Round 0,930 | **motor em falta** |
-| I-11 Spatter Watercolor | «Spatter Watercolor D», Wet (`aguarela::EM_ESTUDO_J6`) | 26/81 | Wet Round 1,572 | **motor em falta** |
+| I-11 Spatter Watercolor | «Spatter Watercolor G», Wet (`aguarela::EM_ESTUDO_J6`), J6s | 43/83 | Burn 2,239 | pronto p/ cega (diferença escrita) |
 
 ## I-10 Fringe Bloom (oráculo Krita `j) Watercolor Fringe`)
 
@@ -71,6 +71,21 @@
   gotas soltas de 2–8 px numa nuvem 1,5× a largura; o nosso uma nuvem lisa.
 - **Fila (motor):** o spray do Wet (espalhamento e partícula como no Digital, sem o OOM) — ou o Digital `Spray Can`
   (J-2, gotículas pela área) com a cor pálida, a medir.
+- **J6s — os dois defeitos do motor, curados (commit `3cc04a5d93`, gates `o_spray_do_wet`):** (1) os discos pela tela
+  eram a TABELA DA LARGURA: `largura_que_se_ve` lê por coluna, e numa nuvem lia UMA gota (raio do motor 803 → 63 px);
+  a promessa pintava o traço de 40 px com o raio 386 — tinta a p99 317 px. O spray mede-se agora pela nuvem
+  (`largura_da_nuvem`): p99 40 px. (2) o OOM era uma LANE POR MARCA (o limiar da partícula, o salto do pincel), cada
+  uma com a sua janela de rasto: 645 rastos e 277 MiB num raio cru 4, 64 raios em paralelo > 24 G (hoje também o
+  0,7 · 0,9). A marca do spray é uma GOTA: pousa e solta a lane. Depois: 1 rasto, 31 MiB; a tabela inteira 2,8 / 4,1
+  / 3,1 GiB a jitter 0,6 / 0,7 / 0,8; os quatro estudos gravam em 187 s.
+- **J6s ronda única** (`PH2D_EXAME_DIR=/tmp/claude-1000/j6_spray`, biblioteca fixa da J6): E (o r1 tal qual) 29/72,
+  Bokeh 3,09 — gotas soltas perto do traço mas raras, o recto de 200 quase vazio; F (gotas em PÍXEIS 2–8 px, 8
+  marcas) 35/83; **G (F + o véu: 35 % das marcas ×2,5 e pálidas) 43/83, Burn 2,24** (escolhido); H (12 marcas, nuvem
+  larga, pigmento 25) 34/66. Prancha `pranchas/J6s_Spatter_Watercolor{,_cega}.jpg` + `_chave.txt`.
+- **Ainda vê (G):** os gestos são um véu de gotas como o do Rebelle, mais escuro e de gotas maiores; a 200 px a nuvem
+  tem o tamanho certo mas as gotas são poucas, grandes e escuras (opacidade 0,45 contra 0,09) onde o Rebelle tem
+  milhares de pontos pálidos de 1–2 px (a régua lê largura 8 contra 188); a 5 px o nosso é um CORDÃO escuro (as gotas de 2–8 px maiores que o pincel), o Rebelle
+  quase invisível. Fila: a densidade por área (contagem que cresce com o diâmetro) e a gota abaixo do pincel fino.
 
 ## Custo e portões
 

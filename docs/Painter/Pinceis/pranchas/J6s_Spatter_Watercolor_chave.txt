@@ -1,0 +1,19 @@
+prancha cega J6s — Spatter Watercolor (ordem aleatória por linha; colunas 1 · 2 · 3)
+linha 1 (gestos_A) 1 = Rebelle Watercolor/Spatter/Spatter
+linha 1 (gestos_A) 2 = vizinho da biblioteca · Burn (d 2.239, limiar 0.591)
+linha 1 (gestos_A) 3 = nosso · Spatter Watercolor (receita «Spatter Watercolor G», Wet)
+linha 2 (gestos_B) 1 = Rebelle Watercolor/Spatter/Spatter
+linha 2 (gestos_B) 2 = nosso · Spatter Watercolor (receita «Spatter Watercolor G», Wet)
+linha 2 (gestos_B) 3 = vizinho da biblioteca · Burn (d 2.239, limiar 0.591)
+linha 3 (tamanhos_A) 1 = nosso · Spatter Watercolor (receita «Spatter Watercolor G», Wet)
+linha 3 (tamanhos_A) 2 = vizinho da biblioteca · Burn (d 2.239, limiar 0.591)
+linha 3 (tamanhos_A) 3 = Rebelle Watercolor/Spatter/Spatter
+linha 4 (tamanhos_B) 1 = nosso · Spatter Watercolor (receita «Spatter Watercolor G», Wet)
+linha 4 (tamanhos_B) 2 = vizinho da biblioteca · Burn (d 2.239, limiar 0.591)
+linha 4 (tamanhos_B) 3 = Rebelle Watercolor/Spatter/Spatter
+linha 5 (sobre_A) 1 = Rebelle Watercolor/Spatter/Spatter
+linha 5 (sobre_A) 2 = nosso · Spatter Watercolor (receita «Spatter Watercolor G», Wet)
+linha 5 (sobre_A) 3 = vizinho da biblioteca · Burn (d 2.239, limiar 0.591)
+linha 6 (sobre_B) 1 = Rebelle Watercolor/Spatter/Spatter
+linha 6 (sobre_B) 2 = nosso · Spatter Watercolor (receita «Spatter Watercolor G», Wet)
+linha 6 (sobre_B) 3 = vizinho da biblioteca · Burn (d 2.239, limiar 0.591)

@@ -400,6 +400,56 @@ pub const EM_ESTUDO_J6: &[Receita] = &[
         pincel: &[("jitter", "0.5")],
         ..SALPICO
     },
+    // J6s (o spray do Wet curado, `o_spray_do_wet`): a gota na nuvem do traço e um rasto só. E = o r1 tal qual; F = as
+    // gotas em PÍXEIS (2–8 px a todo tamanho, como o Rebelle); G = F + o véu pálido por baixo (o traço fino do Rebelle é
+    // um véu esfiapado); H = F mais cheio e mais pálido (12 marcas, pigmento 25, a nuvem mais larga).
+    Receita {
+        nome: "Spatter Watercolor E",
+        ..SALPICO
+    },
+    Receita {
+        nome: "Spatter Watercolor F",
+        pincel: &[
+            ("spray_count", "8"),
+            ("spacing", "0.5"),
+            ("jitter", "0.6"),
+            ("jitter_scale", "0.6"),
+            ("continuous_spacing", "false"),
+            ("dab_jitter", GOTAS_EM_PX),
+        ],
+        ..SALPICO
+    },
+    Receita {
+        nome: "Spatter Watercolor G",
+        pincel: &[
+            ("spray_count", "8"),
+            ("spacing", "0.5"),
+            ("jitter", "0.6"),
+            ("jitter_scale", "0.6"),
+            ("continuous_spacing", "false"),
+            (
+                "dab_jitter",
+                r#"{"across": 0.6, "angle_per_stroke": 0.0, "count": 0.6, "flip_x": 0.0, "flip_y": 0.0, "opacity": 0.5, "particle": 1.0, "particle_px": 5.0, "particle_min_px": 2.0, "particle_max_px": 8.0, "roundness": 0.0, "veu": 0.35, "veu_escala": 2.5, "veu_opacidade": 0.25}"#,
+            ),
+        ],
+        ..SALPICO
+    },
+    Receita {
+        nome: "Spatter Watercolor H",
+        pigment: 25.0,
+        pincel: &[
+            ("spray_count", "12"),
+            ("spacing", "0.5"),
+            ("jitter", "0.75"),
+            ("jitter_scale", "0.6"),
+            ("continuous_spacing", "false"),
+            (
+                "dab_jitter",
+                r#"{"across": 0.8, "angle_per_stroke": 0.0, "count": 0.6, "flip_x": 0.0, "flip_y": 0.0, "opacity": 0.5, "particle": 1.0, "particle_px": 5.0, "particle_min_px": 2.0, "particle_max_px": 8.0, "roundness": 0.0}"#,
+            ),
+        ],
+        ..SALPICO
+    },
     // r2 da Granulation: r1 (papel 1,2–1,5) saiu pálido sem pontos e de orla escura — menos portão, mais pigmento,
     // sem orla, e os pontos pelo pontilhado do render (C) ou pelo pó (D).
     Receita {
@@ -471,6 +521,8 @@ const GRANULACAO: Receita = Receita {
     nasce_de: Some("Wet Round"),
     real_oil: false,
 };
+/// As gotas do Spatter em PÍXEIS (J6s): 5 px de diâmetro, 2–8 px com a escala, a nuvem do pincel.
+const GOTAS_EM_PX: &str = r#"{"across": 0.6, "angle_per_stroke": 0.0, "count": 0.6, "flip_x": 0.0, "flip_y": 0.0, "opacity": 0.5, "particle": 1.0, "particle_px": 5.0, "particle_min_px": 2.0, "particle_max_px": 8.0, "roundness": 0.0}"#;
 const SALPICO: Receita = Receita {
     meio: "Watercolor",
     grupo: "Splatter",

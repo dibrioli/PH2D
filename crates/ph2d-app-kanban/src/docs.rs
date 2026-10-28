@@ -307,6 +307,30 @@ impl KanbanDocs {
             .map(|p| p.rows.iter().map(|(r, rect)| (format!("{r:?}"), *rect)).collect())
             .unwrap_or_default()
     }
+
+    /// ⚠️ SONDA: os botões do painel do arquivo aberto (`Close`, `ShowLists`, `Restore(..)`…), com o
+    /// rect de cada um.
+    #[must_use]
+    pub fn probe_panel_rows(&self, id: u64, ts: &mut TextSystem) -> Vec<(String, Rect)> {
+        use crate::archive::Row;
+        let set = self.set.borrow();
+        let Some(t) = self.tabs.iter().find(|t| t.id() == id) else {
+            return Vec::new();
+        };
+        let Some(p) = set.get(t.view.kanban).and_then(|k| crate::overlay::panel_placed(t, k, ts)) else {
+            return Vec::new();
+        };
+        let mut out = vec![
+            (format!("{:?}", Row::Close), p.close),
+            (format!("{:?}", Row::ShowCards), p.cards),
+            (format!("{:?}", Row::ShowLists), p.lists),
+        ];
+        for i in &p.items {
+            out.push((format!("{:?}", Row::Restore(i.id)), i.restore));
+            out.push((format!("{:?}", Row::Delete(i.id)), i.delete));
+        }
+        out
+    }
 }
 
 /// O que voa sai do fluxo da disposição e abre o espaço dele onde cai.

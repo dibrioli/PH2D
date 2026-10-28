@@ -89,4 +89,4 @@ equipa e menções, ficheiro por conteúdo, e um desfazer **por quadro** fora do
 `every_op_returns_the_op_that_undoes_it` · `a_delete_is_a_tombstone_and_its_inverse_revives_it` ·
 `reordering_writes_one_record_and_renumbers_nobody` · `undo_leaves_a_record_someone_else_changed_since` ·
 ⭐ `both_views_show_the_same_state_after_every_op` · `collapsing_a_list_is_the_views_and_never_the_documents`.
-Shell: `project_kanbans_tests` (ida-e-volta; v193/v192/v190 abrem sem Kanbans).
+Família: `ph2d_app_kanban::project::tests` (ida-e-volta do blob, vazio = sem Kanbans, blob ilegível recusa). Shell: `project_marcas_tests` (o campo atravessa o `.ph2dproj`; v193/v192/v191 abrem sem Kanbans; v189/v190 pelos testes dos scripts).

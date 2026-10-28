@@ -142,6 +142,16 @@ pub(crate) fn targets(
         Some(Lifted::List { id, .. }) => Some(id),
         _ => None,
     };
+    // Os cartões agrupados por lista numa passagem (pedir `cards_in` por lista custava listas × N:
+    // 63–77 ms dos 144 a 100 000 cartões em 10 listas, medido 28/10). A ordem é a do `cards_in`.
+    let mut by_list: std::collections::BTreeMap<ListId, Vec<&ph2d_kanban_model::Card>> =
+        std::collections::BTreeMap::new();
+    for c in k.cards.values().filter(|c| !c.meta.deleted && !c.archived) {
+        by_list.entry(c.list).or_default().push(c);
+    }
+    for v in by_list.values_mut() {
+        v.sort_by(|a, b| a.pos.cmp(&b.pos).then(a.id.cmp(&b.id)));
+    }
     let order: Vec<_> = k
         .lists_in_order()
         .into_iter()
@@ -154,7 +164,7 @@ pub(crate) fn targets(
             x += w + m::LIST_GAP;
         }
         let collapsed = view.collapsed.contains(&l.id);
-        let cards_all = k.cards_in(l.id);
+        let cards_all = by_list.remove(&l.id).unwrap_or_default();
         let count = cards_all.len();
         if collapsed {
             let tw = heights.title_w(&l.title);

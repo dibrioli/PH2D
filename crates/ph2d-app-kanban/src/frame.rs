@@ -30,6 +30,9 @@ impl KanbanDocs {
     /// A aba activa deste quadro (`None` = outra família, um quadro ou a Cena): a que deixou de o
     /// ser grava o campo aberto e larga o gesto.
     pub(crate) fn follow_active(&mut self, active: Option<u64>) {
+        // A aba que pediu o foco é a deste quadro: o hero só a activa ao pintar, depois deste
+        // `frame` (senão o nome de um Kanban acabado de criar fechava antes de se ver).
+        let active = self.focus.or(active);
         let left: Vec<u64> = self.tabs.iter().map(crate::tab::Tab::id).filter(|id| Some(*id) != active).collect();
         for id in left {
             let busy = self.tabs.iter().any(|t| t.id() == id && (t.field.is_some() || t.drag.is_some() || t.press.is_some()));

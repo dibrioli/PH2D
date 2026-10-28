@@ -124,7 +124,7 @@ impl crate::App {
             // `Vec` vazio acrescentado lê o v192 com o tipo vivo (os anteriores levam-no também). O `191`
             // tem a mesma forma; só o SIGNIFICADO da opacidade nas poses mudou (abaixo).
             // ⭐ **203 → 204: a mesa de som** (F30 §B2): mais um `Vec` vazio no fim — um `0` a mais.
-            // ⭐ **207 → 208: os kanbans** (ADR-0195): mais um `Vec` vazio no fim — outro `0`.
+            // ⭐ **207 → 208: os kanbans** (ADR-0195): outro `0` no fim.
             192 | crate::project_schema::PROJECT_SCHEMA_OPACIDADE_FORA_DOS_ESTADOS => {
                 match postcard::from_bytes::<(u32, ProjectFile)>(&[&bytes[..], &[0, 0, 0, 0]].concat())
                 {

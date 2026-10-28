@@ -494,7 +494,7 @@
 ///
 /// ⚠️ **A tripla NÃO vê este degrau** — nem a forma do `FlipDoc` nem a da `VecScene` mudam.
 ///
-/// # `198 → 199` — **a pilha de CONSTRAINTS** (`line/BlenderConstraints`, W1, ADR-0195, 2026-10-25)
+/// # `198 → 199` — **a pilha de CONSTRAINTS** (`line/BlenderConstraints`, W1, ADR-0192, 2026-10-25)
 ///
 /// `Constraints` REGISTADO (`ph2d-constraints-ecs`, ECS e espelhos `0`): um binário v198 descartaria a
 /// pilha. A forma do `ProjectFile` não muda: o `198` lê-se com o tipo vivo. A tripla NÃO vê este degrau.
@@ -541,12 +541,9 @@
 ///
 /// # `207 → 208` — **os Kanbans** (`line/TrelloClone`, W1, ADR-0195, 2026-10-27)
 ///
-/// Campo novo no FIM do `ProjectFile`: `kanbans: Vec<u8>` — o `KanbanSet` com versão PRÓPRIA
-/// (`ph2d_kanban_model::FORMAT_VERSION`): o documento Kanban do projecto, que a aba e o elemento do
-/// Quadro referenciam pelo `KanbanId`. ⭐ **COM leitura dos anteriores:** do `204` ao `207` falta só
-/// este `Vec` (um `0`); abaixo faltam-lhe também a `mesa` e o `jogo` — ver `falta_no_fim` — e os braços
-/// `192`/`191` e `190`/`189` acrescentam um `0` a mais (um projecto antigo abre sem Kanbans). Gate:
-/// `project_kanbans_tests`. Registos de componentes: `0`. ⚠️ **A tripla NÃO vê este degrau.**
+/// `kanbans: Vec<u8>` no FIM do `ProjectFile` (formato em `ph2d_app_kanban::project`); do `204` ao `207`
+/// lê-se com um `0`, os anteriores com mais (ver `falta_no_fim`). Gate: `project_marcas_tests`. Registos de
+/// componentes: `0`. ⚠️ **A tripla NÃO vê este degrau.**
 pub(crate) const PROJECT_SCHEMA: u32 = 208;
 
 /// O último degrau sem os Kanbans — a mesma forma do actual, sem o `Vec` final (`kanbans`).

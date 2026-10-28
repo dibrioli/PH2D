@@ -25,6 +25,7 @@ mod overlay;
 mod paint;
 mod paint_card;
 mod pointer;
+pub mod project;
 pub mod smoke;
 mod surface;
 mod tab;
@@ -32,6 +33,12 @@ mod tab;
 pub use docs::KanbanDocs;
 pub use frame::frame;
 pub use surface::{CMD_HOME, CMD_NEW};
+
+/// O arranque da família: a superfície das abas Kanban no `Documents` e as cenas de smoke armadas.
+pub fn install(hero: &mut ph2d_editor_core::screens::hero::HeroScreen) {
+    hero.documents.install_surface(Box::new(KanbanDocs::default()));
+    smoke::stage_armed_smokes(hero);
+}
 
 /// A declaração da família ao registo (`ph2d-app-registry-init`).
 pub const FAMILY: ph2d_app_host::AppFamily = ph2d_app_host::AppFamily {

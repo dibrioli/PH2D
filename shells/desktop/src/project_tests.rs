@@ -587,10 +587,6 @@ mod scripts;
 #[path = "project_marcas_tests.rs"]
 mod marcas;
 
-/// **Os KANBANS no arquivo** (TrelloClone W1, v194, ADR-0195) — filho pela mesma razão.
-#[path = "project_kanbans_tests.rs"]
-mod kanbans;
-
 /// **O que um load faz com a CORRIDA GRAVADA** (W17) — FILHO e não irmão porque as fixtures desta suíte
 /// (`headless_app`, `write_project`, `tmp_path`, `empty_state`) são as portas dele: copiá-las seria um
 /// segundo escritor de arquivo de projeto, e ele divergiria no próximo bump.

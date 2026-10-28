@@ -73,14 +73,8 @@ impl crate::App {
             }
         };
         // Os KANBANS (ADR-0195), pela mesma lei dos quadros: sem bytes, não se grava.
-        let kanbans = self
-            .gfx
-            .as_ref()
-            .and_then(|g| g.hero_screen.as_ref())
-            .map_or(Ok(Vec::new()), |h| h.documents.kanbans().to_bytes());
-        let Ok(kanbans) = kanbans.inspect_err(|e| {
-            eprintln!("[proj] kanbans nao serializaram — save RECUSADO: {e}");
-        }) else {
+        let hero = self.gfx.as_ref().and_then(|g| g.hero_screen.as_ref());
+        let Some(kanbans) = ph2d_app_kanban::project::to_bytes(hero.map(|h| &h.documents)) else {
             return;
         };
         // A meio do Play o documento é a fotografia (`undo::jogo`): o que o jogo mudou não se grava.

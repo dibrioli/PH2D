@@ -53,4 +53,9 @@
 
 ## 7. Próximo item
 
-O smoke do dono da cena 14; depois o que ele pedir.
+Smoke OK (27/10). Ordem do dono 27/10: **P6g — as pontas soltas das formas e da selecção, num bloco**:
+inclinar pelo gizmo (hoje só o campo Skew, P6c §6); o flyout 3+1 (widget partilhado — varrer por
+consumidor); «Shape» duas vezes no painel; a unidade da etiqueta (células × `LengthDisplay`: decidir e
+escrever); Load/Save MSK, Paste as New Sprite, Auto Select Layer do Move, Ctrl+Alt+I (Alt no teclado),
+a amostra «camadas visíveis» da varinha (P6 §6); as lacunas medidas contra o Trial (elipse 6/112,
+bilinear ±1, giro fora de 90°). Cena 15.

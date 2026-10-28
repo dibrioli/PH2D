@@ -142,11 +142,14 @@ pub fn relacao(
         Eixo::Y => (1, v.escala[1]),
     };
     let depois = centro(a.caixa)[k] > centro(b.caixa)[k];
-    let folga = if depois {
-        a.caixa.0[k] - b.caixa.1[k]
-    } else {
-        b.caixa.0[k] - a.caixa.1[k]
-    } / s;
+    // Gravada já na grelha do solver: juntar a seta não mexe em nada.
+    let folga = ph2d_ecs::hud_arranjo::na_grelha(
+        if depois {
+            a.caixa.0[k] - b.caixa.1[k]
+        } else {
+            b.caixa.0[k] - a.caixa.1[k]
+        } / s,
+    );
     let (a, b) = (a.id, b.id);
     let lado = |depois_x, antes_x, depois_y, antes_y| match (eixo, depois) {
         (Eixo::X, true) => depois_x,

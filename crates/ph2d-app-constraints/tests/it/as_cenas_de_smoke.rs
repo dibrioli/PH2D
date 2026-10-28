@@ -390,3 +390,125 @@ fn the_playground_scene_moves_each_piece_by_its_behaviour() {
         "a limalha vai para o íman"
     );
 }
+
+/// ⭐ Cena 11 (o HUD que se arruma): montada de verdade (semear → as entidades nascem → vestir), a fiação está lá
+/// e os números da cena contam a história — na janela LARGA a pontuação longa cabe; em `16:9` ela encolhe e a moeda
+/// fica colada sem invadir o minimapa; com o «Score: 0» nada se mexe.
+#[test]
+fn the_hud_scene_keeps_the_coin_beside_and_shrinks_the_score_before_the_minimap() {
+    use ph2d_app_constraints::smoke_painel::{
+        FOLGA, LINHA_Y, MAPA, MARGEM, MOEDA_R, PONT_X, Painel, REF, relacoes, vestir,
+    };
+    use ph2d_ecs::hud_arranjo::UiArranjo;
+    use ph2d_ecs::{GameCamera, StableId, UiLabel, VecAnchors, VecShape};
+    use ph2d_hud_layout::{Caixa, Elemento, resolve};
+    let mut sim = SimWorld::new();
+    assert!(smoke::encenar(sim.world_mut(), 11));
+    let mut cena = ph2d_vec_scene::VecScene::new();
+    ph2d_app_constraints::quadro(&mut sim, &mut cena, &mut PreviewDrive::default(), None);
+    let largura = sim
+        .world()
+        .get_resource::<Painel>()
+        .expect("o documento semeado")
+        .largura;
+    assert!(vestir(&mut sim).is_none(), "sem entidades ainda não veste");
+    let mut map = ph2d_vec_entities::entities::VecEntityMap::new();
+    ph2d_vec_entities::entities::sync(&mut sim, &mut cena, &mut map);
+    let canvas = vestir(&mut sim).expect("veste quando as formas têm entidade");
+    let (pont, moeda, mapa) = (
+        chamada(&mut sim, "Pontuação"),
+        chamada(&mut sim, "Moeda"),
+        chamada(&mut sim, "Minimapa"),
+    );
+    let w = sim.world();
+    let id = |e| *w.get::<StableId>(e).unwrap();
+    assert_eq!(
+        w.get::<UiArranjo>(canvas).unwrap().lacos,
+        relacoes(id(pont), id(moeda), id(mapa))
+    );
+    assert!(
+        matches!(w.get::<VecShape>(pont), Some(VecShape::Text(_)))
+            && w.get::<UiLabel>(pont).is_some()
+    );
+    assert_eq!(
+        w.get::<VecAnchors>(mapa).unwrap().min,
+        [1.0, 1.0],
+        "o minimapa preso ao canto de cima à direita"
+    );
+    assert_eq!(w.get::<VecAnchors>(pont).unwrap().min, [0.0, 1.0]);
+    let mut q = sim.world_mut().query::<&GameCamera>();
+    assert_eq!(
+        q.iter(sim.world()).count(),
+        1,
+        "a câmera de jogo conduz o HUD"
+    );
+    // As caixas LOCAIS do canvas, como as âncoras as deixam numa janela de largura `tela` (Expand: o minimapa anda
+    // com a borda direita); a pontuação com o texto de largura `texto`.
+    let (r, h, folga) = (MOEDA_R, 2.0, FOLGA);
+    let caixas = |tela: f64, texto: f64| {
+        let dx = (tela - f64::from(REF[0])) / 2.0;
+        let (mw, mh) = (MAPA[0], MAPA[1]);
+        let mx = f64::from(REF[0]) / 2.0 - f64::from(MARGEM) - mw + dx;
+        let my = f64::from(REF[1]) / 2.0 - f64::from(MARGEM) - mh;
+        let px = f64::from(PONT_X) - dx;
+        let el = |x, y, w, h, c| Elemento {
+            caixa: Caixa { x, y, w, h },
+            conteudo: c,
+        };
+        vec![
+            el(px, f64::from(LINHA_Y) - h / 2.0, texto, h, Some(texto)),
+            el(
+                px + largura + folga,
+                f64::from(LINHA_Y) - r,
+                2.0 * r,
+                2.0 * r,
+                None,
+            ),
+            el(mx, my, mw, mh, None),
+        ]
+    };
+    let rel: Vec<_> = relacoes(StableId(1), StableId(2), StableId(3))
+        .into_iter()
+        .filter_map(|(r, f)| Some((r.mapeia(|s: StableId| usize::try_from(s.0 - 1).ok())?, f)))
+        .collect();
+    let corre = |tela: f64, texto: f64| {
+        let t = Caixa {
+            x: -tela / 2.0,
+            y: -f64::from(REF[1]) / 2.0,
+            w: tela,
+            h: f64::from(REF[1]),
+        };
+        (caixas(tela, texto), resolve(t, &caixas(tela, texto), &rel))
+    };
+    // «Score: 0»: a moeda já está colada; nada se mexe.
+    let (antes, depois) = corre(f64::from(REF[0]), largura);
+    // Dentro da PARADA o passe não publica nada (`hud_arranjo::parada`).
+    let d = ph2d_hud_layout::PARADA;
+    for (a, b) in antes.iter().zip(&depois) {
+        let a = a.caixa;
+        assert!(
+            [(a.x, b.x), (a.y, b.y), (a.w, b.w), (a.h, b.h)]
+                .iter()
+                .all(|(p, q)| (p - q).abs() <= d),
+            "juntar não mexe no desenho: {a:?} → {b:?}"
+        );
+    }
+    // Uma pontuação que cabe na janela larga e não em 16:9.
+    let longa = f64::from(REF[0]) - 2.0 * f64::from(MARGEM) - MAPA[0] - 2.0 * folga - 2.0 * r + 3.0;
+    let (_, larga) = corre(f64::from(REF[0]) + 10.0, longa);
+    assert!((larga[0].w - longa).abs() <= d, "na janela larga a pontuação cabe inteira");
+    let (els, estreita) = corre(f64::from(REF[0]), longa);
+    assert!(
+        estreita[0].w < longa - 1.0,
+        "em 16:9 a pontuação encolhe: {estreita:?}"
+    );
+    assert!(
+        (estreita[1].x - (estreita[0].x + estreita[0].w + folga)).abs() <= d,
+        "a moeda colada"
+    );
+    assert!(
+        estreita[1].x + estreita[1].w + folga <= estreita[2].x + d,
+        "a moeda não invade o minimapa"
+    );
+    assert_eq!(estreita[2], els[2].caixa, "o minimapa não cede");
+}

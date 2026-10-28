@@ -21,6 +21,10 @@ ph2d-constraints-cola = { path = "../ph2d-constraints-cola" }
 ph2d-skeleton-live = { path = "../ph2d-skeleton-live" }
 ph2d-skeleton-ecs = { path = "../ph2d-skeleton-ecs" }
 ph2d-vec-scene = { path = "../ph2d-vec-scene" }
+# A cena 11 (o HUD) coze o texto da pontuação sem a shell.
+ph2d-vec-text = { path = "../ph2d-vec-text" }
+ph2d-system-fonts = { path = "../ph2d-system-fonts" }
+ph2d-vector-font = { path = "../ph2d-vector-font" }
 ph2d-ecs = { path = "../ph2d-ecs" }
 # O vocabulário do cartão (`constraint_edits`).
 ph2d-editor-core = { path = "../ph2d-editor-core" }
@@ -49,6 +53,8 @@ ph2d-vec-entities = { path = "../ph2d-vec-entities" }
 ph2d-tool-vector = { path = "../ph2d-tool-vector" }
 
 [dev-dependencies]
+# O gate da cena 11 corre o solver do arranjo sobre as caixas da cena.
+ph2d-hud-layout = { path = "../ph2d-hud-layout" }
 # A cola pelo caminho real: o clique no cartão do Inspector.
 ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }
 ph2d-a11y = { path = "../ph2d-a11y" }

@@ -137,6 +137,17 @@ pub const FORCA_EDICAO: f64 = 1.0e9;
 /// → `61,3` devolvia `w` a 2 ulp.
 pub const GRELHA: f64 = 256.0;
 
+/// Abaixo disto (por lado da caixa) o arranjo NÃO mexeu: a soma de três números na grelha difere da soma
+/// arredondada em até `1,5` células (medido 27/10, W5.5: a moeda «andava» `0,0023` com a folga `0,4`). Publicar
+/// esse resto pagaria a cópia da geometria todo quadro por uma fracção de pixel.
+pub const PARADA: f64 = 2.0 / GRELHA;
+
+/// Um número na grelha do solver (o que se grava, para juntar uma relação não mexer em nada).
+#[must_use]
+pub fn na_grelha(x: f64) -> f64 {
+    g(x)
+}
+
 fn g(x: f64) -> f64 {
     (x * GRELHA).round() / GRELHA
 }

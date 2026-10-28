@@ -6,7 +6,7 @@
 use bevy_ecs::component::Component;
 use serde::{Deserialize, Serialize};
 
-pub use ph2d_hud_layout::{Eixo, Forca, Lado, Relacao};
+pub use ph2d_hud_layout::{Eixo, Forca, Lado, Relacao, na_grelha};
 
 use crate::{Entity, SimComponent, StableId};
 

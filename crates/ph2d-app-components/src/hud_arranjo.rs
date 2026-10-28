@@ -119,7 +119,8 @@ impl Arranjos {
         self.visto.clear();
         let vazio = UiArranjo::default();
         for canvas in todos {
-            let (Some(cfg), Some(tf)) = (w.get::<UiCanvas>(canvas), w.get::<Transform>(canvas)) else {
+            let (Some(cfg), Some(tf)) = (w.get::<UiCanvas>(canvas), w.get::<Transform>(canvas))
+            else {
                 continue;
             };
             let arr = w.get::<UiArranjo>(canvas).unwrap_or(&vazio);
@@ -155,7 +156,15 @@ impl Arranjos {
                 canvas,
                 escala: m.s,
                 lacos: lacos.clone(),
-                filhos: kids.iter().map(|&(kid, id, caixa)| FilhoVisto { kid, id, caixa, texto: texto(kid) }).collect(),
+                filhos: kids
+                    .iter()
+                    .map(|&(kid, id, caixa)| FilhoVisto {
+                        kid,
+                        id,
+                        caixa,
+                        texto: texto(kid),
+                    })
+                    .collect(),
             };
             if lacos.is_empty() {
                 self.vivos.remove(&canvas);
@@ -226,10 +235,9 @@ impl Arranjos {
     }
 }
 
-/// Dentro de meia célula da grelha do solver nada andou: o solver devolve a caixa ARREDONDADA à grelha, e
-/// publicar esse resto seria pagar a cópia da geometria todo quadro por zero pixéis.
+/// Dentro de [`ph2d_hud_layout::PARADA`] nada andou (o solver devolve a caixa na grelha).
 fn parada(a: Caixa, b: Caixa) -> bool {
-    let d = 0.5 / ph2d_hud_layout::GRELHA;
+    let d = ph2d_hud_layout::PARADA;
     [(a.x, b.x), (a.y, b.y), (a.w, b.w), (a.h, b.h)]
         .iter()
         .all(|(p, q)| (p - q).abs() <= d)

@@ -5548,6 +5548,7 @@ dependencies = [
  "ph2d-ecs",
  "ph2d-editor-core",
  "ph2d-host",
+ "ph2d-hud-layout",
  "ph2d-i18n",
  "ph2d-label-census",
  "ph2d-node-force-attractor",
@@ -5562,6 +5563,7 @@ dependencies = [
  "ph2d-render",
  "ph2d-skeleton-ecs",
  "ph2d-skeleton-live",
+ "ph2d-system-fonts",
  "ph2d-timeline",
  "ph2d-tokens",
  "ph2d-tool-vector",
@@ -5570,7 +5572,9 @@ dependencies = [
  "ph2d-vec-edit",
  "ph2d-vec-entities",
  "ph2d-vec-scene",
+ "ph2d-vec-text",
  "ph2d-vector",
+ "ph2d-vector-font",
  "serde_json",
 ]
 

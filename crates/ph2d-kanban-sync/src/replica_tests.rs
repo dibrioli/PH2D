@@ -174,7 +174,7 @@ fn undo_in_a_live_session_reverts_only_my_fields() {
     c.title = "meu".into();
     h.apply(
         doc(&mut net.sets[0]),
-        vec![KanbanOp::put(Record::Card(c))],
+        vec![KanbanOp::put(Record::card(c))],
         1,
     );
     net.settle(&mut Rng(6));

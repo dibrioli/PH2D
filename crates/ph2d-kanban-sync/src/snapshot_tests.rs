@@ -51,7 +51,7 @@ fn hosted(n: usize) -> (KanbanSet, HostRoom) {
         if i % 3 == 0 {
             c.votes.push(Member("ana".into()));
         }
-        let _ = KanbanOp::put(Record::Card(c)).apply(k);
+        let _ = KanbanOp::put(Record::card(c)).apply(k);
     }
     let _ = room.replica.local(&mut set);
     (set, room)
@@ -92,8 +92,14 @@ fn a_guest_joining_by_a_snapshot_in_blocks_converges() {
     let k = doc(&mut gs);
     assert!(k.in_session());
     let list = *k.lists.keys().next().unwrap();
-    let c = Card::new(CardId(k.mint()), list, k.pos_after_cards(list), "g", Moment(0));
-    let _ = KanbanOp::put(Record::Card(c)).apply(k);
+    let c = Card::new(
+        CardId(k.mint()),
+        list,
+        k.pos_after_cards(list),
+        "g",
+        Moment(0),
+    );
+    let _ = KanbanOp::put(Record::card(c)).apply(k);
     for m in guest.tick(&mut gs, 0) {
         let _ = host.frame(&mut hs, 9, 2, m, 0);
     }
@@ -118,10 +124,15 @@ fn sonda_retrato() {
         kanbans: &'a [(ph2d_kanban_model::KanbanId, Vec<u8>)],
         stamps: Vec<(&'a crate::msg::FieldKey, &'a ph2d_board_sync::Lamport)>,
         elems: Vec<(&'a crate::msg::ElemKey, &'a crate::msg::Elem)>,
-        tops: Vec<(&'a (ph2d_kanban_model::KanbanId, crate::Target), &'a ph2d_board_sync::Lamport)>,
+        tops: Vec<(
+            &'a (ph2d_kanban_model::KanbanId, crate::Target),
+            &'a ph2d_board_sync::Lamport,
+        )>,
         clock: u64,
     }
-    println!("| cartões | Kanban (postcard) | carimbos antes | carimbos agora | retrato antes | retrato agora | blocos | anfitrião: retrato+bytes | convidado: juntar+entrar |");
+    println!(
+        "| cartões | Kanban (postcard) | carimbos antes | carimbos agora | retrato antes | retrato agora | blocos | anfitrião: retrato+bytes | convidado: juntar+entrar |"
+    );
     for n in [100usize, 1_000, 5_000, 20_000] {
         let (hs, host) = hosted(n);
         let r = &host.replica;

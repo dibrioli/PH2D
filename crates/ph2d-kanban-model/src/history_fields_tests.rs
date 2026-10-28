@@ -7,7 +7,7 @@ use crate::{CardId, KanbanOp, Member, Record};
 fn edit(k: &Kanban, id: CardId, f: impl FnOnce(&mut crate::Card)) -> KanbanOp {
     let mut c = card_of(k, id);
     f(&mut c);
-    KanbanOp::put(Record::Card(c))
+    KanbanOp::put(Record::card(c))
 }
 
 #[test]
@@ -22,7 +22,7 @@ fn every_record_splits_into_fields_and_joins_back_byte_equal() {
         .values()
         .cloned()
         .map(Record::List)
-        .chain(k.cards.values().cloned().map(Record::Card))
+        .chain(k.cards.values().cloned().map(Record::card))
         .chain(k.checklists.values().cloned().map(Record::Checklist))
         .chain(k.comments.values().cloned().map(Record::Comment))
         .collect();
@@ -41,7 +41,7 @@ fn every_record_splits_into_fields_and_joins_back_byte_equal() {
 #[test]
 fn bytes_of_another_field_are_refused_not_misaligned() {
     let k = sample();
-    let c = Record::Card(k.cards.values().next().unwrap().clone());
+    let c = Record::card(k.cards.values().next().unwrap().clone());
     assert!(c.with_fields(&[("title", &[0xff, 0xff, 0xff])]).is_none());
 }
 

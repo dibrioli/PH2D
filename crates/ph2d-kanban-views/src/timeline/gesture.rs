@@ -142,7 +142,7 @@ pub fn plan(
         n.pos = k.pos_after_cards(*l);
     }
     if n != *c {
-        plan.push(kanban, KanbanOp::put(Record::Card(n)));
+        plan.push(kanban, KanbanOp::put(Record::card(n)));
     }
     plan
 }

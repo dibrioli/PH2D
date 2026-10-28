@@ -17,6 +17,7 @@ mod convert;
 mod files;
 mod history;
 mod kanban;
+mod links;
 mod lists;
 mod mint;
 mod mirror;
@@ -31,15 +32,17 @@ mod v1;
 mod v2;
 mod v3;
 mod v4;
+mod v5;
 mod view;
 
-pub use agenda::{Block, BlockOf, Event, InboxItem, Repeat, Seen};
 pub use activity::{Activity, Actor, Happened, Snapshot, Subject, activity_for, apply_logged};
+pub use agenda::{Block, BlockOf, Event, InboxItem, Repeat, Seen};
 pub use color::{Hue, LabelColor, Shade};
 pub use convert::convert_item_to_card;
 pub use files::{Blob, FileId, KanbanFile};
 pub use history::{History, MAX_STEPS};
 pub use kanban::{Aging, Background, Header, Kanban};
+pub use links::{ProjectLink, Target};
 pub use lists::{archive_all_cards, copy_list, move_all_cards, move_list};
 pub use mint::{SESSION_ID_BIT, splitmix64};
 pub use mirror::{Entry, mirror_card, remove_card};
@@ -48,9 +51,10 @@ pub use ph2d_frac::FracKey;
 pub use plan::{ListRef, Place, Plan};
 pub use records::{
     ActivityId, Attachment, AttachmentId, Automation, AutomationId, BlockId, Card, CardId, CardRef,
-    CheckItem, CheckItemId, Checklist, ChecklistId, Comment, CommentId, Cover, CoverFill, Due, EventId,
-    FieldDef, FieldId, FieldKind, FieldOption, FieldValue, InboxId, KanbanId, Label, LabelId, Link, List,
-    ListId, Member, Meta, Mirror, MirrorId, Moment, OptionId, Reaction, SeenId,
+    CheckItem, CheckItemId, Checklist, ChecklistId, Comment, CommentId, Cover, CoverFill, Due,
+    EventId, FieldDef, FieldId, FieldKind, FieldOption, FieldValue, InboxId, KanbanId, Label,
+    LabelId, Link, List, ListId, Member, Meta, Mirror, MirrorId, Moment, OptionId, ProjectLinkId,
+    Reaction, SeenId,
 };
 pub use set::{FORMAT_VERSION, KanbanSet};
 pub use transfer::{CopyKeep, card_from_template, copy_card, move_card, move_mirror};

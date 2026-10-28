@@ -81,7 +81,7 @@ fn dress(set: &mut KanbanSet, r: CardRef) {
             pos: FracKey::between(None, None),
             meta: Meta::default(),
         })),
-        KanbanOp::put(Record::Card(c)),
+        KanbanOp::put(Record::card(c)),
     ];
     set.apply(r.kanban, ops);
     let op = checklist(set.get(r.kanban).unwrap(), r.card);
@@ -239,7 +239,7 @@ fn a_card_from_a_template_is_a_plain_card_and_only_templates_qualify() {
     assert!(card_from_template(&set, src, &to, CopyKeep::template(), "x", Moment(1)).is_none());
     let mut c = set.card(src).unwrap().clone();
     c.template = true;
-    set.apply(a, vec![KanbanOp::put(Record::Card(c))]);
+    set.apply(a, vec![KanbanOp::put(Record::card(c))]);
     let op = comment(set.get(a).unwrap(), src.card, "Ana", "nota");
     set.apply(a, vec![op]);
     let plan =
@@ -261,7 +261,7 @@ fn move_list_to_another_kanban_carries_cards_archived_and_mirrors() {
     let ink = set.get(a).unwrap().cards_in(todo)[1].clone();
     set.apply(
         a,
-        vec![KanbanOp::put(Record::Card(Card {
+        vec![KanbanOp::put(Record::card(Card {
             archived: true,
             ..ink
         }))],
@@ -366,7 +366,7 @@ fn a_kanban_from_a_template_keeps_lists_labels_and_card_templates() {
     };
     let mut c = set.card(ink).unwrap().clone();
     c.template = true;
-    set.apply(a, vec![KanbanOp::put(Record::Card(c))]);
+    set.apply(a, vec![KanbanOp::put(Record::card(c))]);
     let bare = set.create_from(a, "Novo", false).unwrap();
     let full = set.create_from(a, "Cheio", true).unwrap();
     assert_eq!(set.get(bare).unwrap().header.name, "Novo");

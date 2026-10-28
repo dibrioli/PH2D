@@ -81,7 +81,7 @@ pub(crate) fn base() -> KanbanSet {
             &format!("card {i}"),
             Moment(0),
         );
-        put(k, Record::Card(c));
+        put(k, Record::card(c));
     }
     set
 }
@@ -99,7 +99,7 @@ pub(crate) fn edit_card(set: &mut KanbanSet, id: CardId, f: impl FnOnce(&mut Car
     let k = doc(set);
     let mut c = k.cards[&id].clone();
     f(&mut c);
-    put(k, Record::Card(c));
+    put(k, Record::card(c));
 }
 
 /// Um gesto ao acaso de `peer` no Kanban dele (ids novos pelo `Kanban::mint` de sempre: em sessão a
@@ -187,7 +187,7 @@ pub(crate) fn random_op(set: &mut KanbanSet, r: &mut KanbanReplica, peer: PeerId
                 &format!("new{peer}"),
                 Moment(1),
             );
-            put(doc(set), Record::Card(c));
+            put(doc(set), Record::card(c));
         }
         _ => {
             let Some(cl) = checklists.get(rng.below(checklists.len().max(1))).copied() else {

@@ -90,7 +90,11 @@ pub enum KMsg {
     Gone(PeerId),
     /// Um bloco do retrato grande (`part` de `of`, os bytes postcard do [`KSnapshot`] aos pedaços):
     /// juntos, valem um [`KMsg::Snapshot`].
-    SnapshotPart { part: u32, of: u32, bytes: Vec<u8> },
+    SnapshotPart {
+        part: u32,
+        of: u32,
+        bytes: Vec<u8>,
+    },
 }
 
 impl KMsg {

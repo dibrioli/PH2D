@@ -21,8 +21,12 @@ pub(crate) fn all_ids(k: &Kanban) -> Vec<RecordId> {
     v.extend(k.mirrors.keys().map(|i| RecordId::Mirror(*i)));
     v.extend(k.automations.keys().map(|i| RecordId::Automation(*i)));
     v.extend(k.events.keys().map(|i| RecordId::Event(*i)));
+    v.extend(k.project_links.keys().map(|i| RecordId::ProjectLink(*i)));
     let personal = [
-        k.inbox.keys().map(|i| RecordId::Inbox(*i)).collect::<Vec<_>>(),
+        k.inbox
+            .keys()
+            .map(|i| RecordId::Inbox(*i))
+            .collect::<Vec<_>>(),
         k.blocks.keys().map(|i| RecordId::Block(*i)).collect(),
         k.seen.keys().map(|i| RecordId::Seen(*i)).collect(),
     ];
@@ -48,6 +52,7 @@ pub(crate) fn meta_mut(k: &mut Kanban, id: RecordId) -> Option<&mut Meta> {
         RecordId::Inbox(i) => k.inbox.get_mut(&i).map(|r| &mut r.meta),
         RecordId::Block(i) => k.blocks.get_mut(&i).map(|r| &mut r.meta),
         RecordId::Seen(i) => k.seen.get_mut(&i).map(|r| &mut r.meta),
+        RecordId::ProjectLink(i) => k.project_links.get_mut(&i).map(|r| &mut r.meta),
     }
 }
 

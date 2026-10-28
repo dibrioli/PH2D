@@ -140,7 +140,7 @@ impl Source for KanbanSource<'_> {
             None => n.start = Some(end),
         }
         if n != *c {
-            plan.push(r.kanban, KanbanOp::put(Record::Card(n)));
+            plan.push(r.kanban, KanbanOp::put(Record::card(n)));
         }
         plan
     }
@@ -184,7 +184,7 @@ impl Source for KanbanSource<'_> {
             remind_before_min: None,
         });
         c.meta = Meta::default();
-        plan.push(at.list.kanban, KanbanOp::put(Record::Card(c)));
+        plan.push(at.list.kanban, KanbanOp::put(Record::card(c)));
         plan
     }
     fn create_span(&self, at: &Target, title: &str, start: Option<Moment>, due: Moment) -> Plan {

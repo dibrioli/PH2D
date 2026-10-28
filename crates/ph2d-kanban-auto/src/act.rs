@@ -58,7 +58,7 @@ impl Work {
             return Vec::new();
         };
         f(&mut c);
-        self.put(t.kanban, Record::Card(c))
+        self.put(t.kanban, Record::card(c))
     }
 
     fn place(&self, home: KanbanId, d: Dest, at: End) -> Option<Place> {
@@ -128,7 +128,7 @@ pub(crate) fn board(w: &mut Work, a: &Action, home: KanbanId, cx: &Cx) -> Vec<Ev
             };
             let title = expand(title, &w.set, home, None, cx);
             let c = Card::new(CardId(k.mint()), place.list, place.pos, &title, cx.now);
-            w.put(place.kanban, Record::Card(c))
+            w.put(place.kanban, Record::card(c))
         }
         _ => Vec::new(),
     }

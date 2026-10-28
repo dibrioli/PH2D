@@ -80,7 +80,7 @@ impl Scene {
         let id = CardId(self.id());
         let mut c = Card::new(id, list, self.pos(), title, Moment(self.now - 30 * DAY));
         f(&mut c, self.now);
-        self.ops.push(KanbanOp::put(Record::Card(c)));
+        self.ops.push(KanbanOp::put(Record::card(c)));
         id
     }
 }

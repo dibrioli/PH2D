@@ -14,7 +14,7 @@ fn every_op_returns_the_op_that_undoes_it() {
     h.background = Background::Color(Hue::Pink);
     let new_card = card(&k, todo, "Color");
     let ops = vec![
-        KanbanOp::put(Record::Card(renamed)),
+        KanbanOp::put(Record::card(renamed)),
         KanbanOp::Delete(RecordId::List(k.lists_in_order()[2].id)),
         KanbanOp::Header(h),
         new_card,
@@ -33,7 +33,7 @@ fn the_same_content_is_not_a_change() {
     let mut k = sample();
     let todo = k.lists_in_order()[0].id;
     let c = k.cards_in(todo)[0].clone();
-    assert_eq!(KanbanOp::put(Record::Card(c)).apply(&mut k), None);
+    assert_eq!(KanbanOp::put(Record::card(c)).apply(&mut k), None);
     assert_eq!(KanbanOp::Header(k.header.clone()).apply(&mut k), None);
     assert_eq!(
         KanbanOp::Delete(RecordId::Card(CardId(999))).apply(&mut k),
@@ -71,7 +71,7 @@ fn reordering_writes_one_record_and_renumbers_nobody() {
     // O último vai para entre o 1.º e o 2.º.
     let mut moved = card_of(&k, order[4]);
     moved.pos = FracKey::between(Some(&others[0].pos), Some(&others[1].pos));
-    let inverse = apply_batch(&mut k, vec![KanbanOp::put(Record::Card(moved))]);
+    let inverse = apply_batch(&mut k, vec![KanbanOp::put(Record::card(moved))]);
     assert_eq!(inverse.len(), 1);
     for c in &others {
         assert_eq!(&card_of(&k, c.id), c, "vizinho intocado");
@@ -88,7 +88,7 @@ fn a_card_moves_between_lists_by_its_list_field() {
     c.list = doing;
     c.pos = k.pos_after_cards(doing);
     let id = c.id;
-    apply_batch(&mut k, vec![KanbanOp::put(Record::Card(c))]);
+    apply_batch(&mut k, vec![KanbanOp::put(Record::card(c))]);
     assert_eq!(k.cards_in(doing)[0].id, id);
     assert!(k.cards_in(todo).iter().all(|c| c.id != id));
 }

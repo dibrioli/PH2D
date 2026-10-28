@@ -54,7 +54,7 @@ pub fn inbox_to_card(set: &KanbanSet, item: InboxId, to: ListRef, now: Moment) -
         card: card.id,
     };
     let mut plan = Plan::default();
-    plan.push(to.kanban, KanbanOp::put(Record::Card(card)));
+    plan.push(to.kanban, KanbanOp::put(Record::card(card)));
     plan.push(A, KanbanOp::Delete(RecordId::Inbox(item)));
     for b in a.blocks.values() {
         if !b.meta.deleted && b.of == BlockOf::Inbox(item) {

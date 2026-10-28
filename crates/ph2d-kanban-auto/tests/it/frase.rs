@@ -74,9 +74,9 @@ fn repeat(s: &mut Scene, n: usize, who: &Member) {
             by: who.clone(),
             at: Moment(m),
         };
-        apply_logged(k, vec![KanbanOp::put(Record::Card(card.clone()))], &at(t));
+        apply_logged(k, vec![KanbanOp::put(Record::card(card.clone()))], &at(t));
         card.due.as_mut().unwrap().done = true;
-        apply_logged(k, vec![KanbanOp::put(Record::Card(card))], &at(t + 60_000));
+        apply_logged(k, vec![KanbanOp::put(Record::card(card))], &at(t + 60_000));
     }
 }
 

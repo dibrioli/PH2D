@@ -63,6 +63,6 @@ pub(crate) fn add_card(
     let id = CardId(kd.mint());
     let mut c = Card::new(id, list, kd.pos_after_cards(list), title, created);
     edit(&mut c);
-    set.apply(k, vec![KanbanOp::put(Record::Card(c))]);
+    set.apply(k, vec![KanbanOp::put(Record::card(c))]);
     id
 }

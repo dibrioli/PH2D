@@ -123,6 +123,9 @@ impl Kanban {
             || self.inbox.contains_key(&crate::records::InboxId(id))
             || self.blocks.contains_key(&crate::records::BlockId(id))
             || self.seen.contains_key(&crate::records::SeenId(id))
+            || self
+                .project_links
+                .contains_key(&crate::records::ProjectLinkId(id))
     }
 
     /// Um id novo para um registo deste Kanban. Não muda o documento. Fora de sessão, o contador:

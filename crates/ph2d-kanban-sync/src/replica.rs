@@ -637,3 +637,7 @@ mod live_tests;
 #[cfg(test)]
 #[path = "replica_agenda_tests.rs"]
 mod agenda_tests;
+
+#[cfg(test)]
+#[path = "replica_links_tests.rs"]
+mod links_tests;

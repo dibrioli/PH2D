@@ -62,7 +62,7 @@ fn full() -> KanbanSet {
     card.fields = BTreeMap::from([(field, FieldValue::Option(OptionId(1)))]);
     card.location = "Studio".to_owned();
     card.votes = vec![Member("Ana".to_owned())];
-    put(&mut k, KanbanOp::put(Record::Card(card)));
+    put(&mut k, KanbanOp::put(Record::card(card)));
     let op = checklist(&k, c);
     put(&mut k, op);
     let cl = *k.checklists.keys().next().unwrap();
@@ -215,7 +215,7 @@ fn full_v2() -> (KanbanSet, crate::FileId, crate::FileId) {
     let ops = vec![
         KanbanOp::Header(h),
         KanbanOp::put(Record::List(l)),
-        KanbanOp::put(Record::Card(card)),
+        KanbanOp::put(Record::card(card)),
     ];
     crate::apply_logged(k, ops, &actor);
     assert!(!k.activities.is_empty());
@@ -314,7 +314,7 @@ fn full_v3() -> (KanbanSet, crate::CardRef) {
     let mut card = k.cards[&c].clone();
     card.template = true;
     put(k, KanbanOp::Header(h));
-    put(k, KanbanOp::put(Record::Card(card)));
+    put(k, KanbanOp::put(Record::card(card)));
     let l = crate::test_support::list(set.get(other).unwrap(), "Mirrors");
     set.apply(other, vec![l]);
     let ko = set.get(other).unwrap();

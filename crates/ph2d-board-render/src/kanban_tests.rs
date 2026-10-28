@@ -30,7 +30,7 @@ fn list(id: u64, title: &str, color: Option<Hue>, pos: &FracKey) -> KanbanOp {
 }
 
 fn card(id: u64, list: u64, pos: &FracKey) -> KanbanOp {
-    KanbanOp::Put(Box::new(Record::Card(Card {
+    KanbanOp::Put(Box::new(Record::card(Card {
         id: CardId(id),
         list: ListId(list),
         pos: pos.clone(),

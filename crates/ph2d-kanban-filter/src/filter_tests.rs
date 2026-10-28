@@ -253,7 +253,7 @@ fn activity_windows_read_the_cards_last_activity() {
     let actor = Actor { by: me(), at: NOW };
     ph2d_kanban_model::apply_logged(
         set.doc_mut(k).unwrap(),
-        vec![KanbanOp::put(Record::Card(c))],
+        vec![KanbanOp::put(Record::card(c))],
         &actor,
     );
     assert!(shown(&set, k, l, &f(ActivityWindow::IdleFourWeeks)).is_empty());

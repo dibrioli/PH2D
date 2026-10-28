@@ -53,7 +53,7 @@ impl Kanban {
     #[must_use]
     pub fn entry_moved(&self, e: Entry, list: ListId, pos: FracKey) -> Option<KanbanOp> {
         Some(KanbanOp::put(match e {
-            Entry::Card(c) => Record::Card(Card {
+            Entry::Card(c) => Record::card(Card {
                 list,
                 pos,
                 ..self.cards.get(&c)?.clone()
@@ -179,7 +179,7 @@ pub fn remove_card(set: &KanbanSet, r: CardRef, archive: bool) -> Option<Plan> {
     plan.push(
         r.kanban,
         if archive {
-            KanbanOp::put(Record::Card(Card {
+            KanbanOp::put(Record::card(Card {
                 archived: true,
                 ..c.clone()
             }))

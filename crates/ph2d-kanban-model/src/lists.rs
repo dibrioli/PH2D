@@ -157,7 +157,7 @@ pub fn archive_all_cards(k: &Kanban, list: ListId) -> Vec<KanbanOp> {
     k.cards_in(list)
         .into_iter()
         .map(|c| {
-            KanbanOp::put(Record::Card(Card {
+            KanbanOp::put(Record::card(Card {
                 archived: true,
                 ..c.clone()
             }))

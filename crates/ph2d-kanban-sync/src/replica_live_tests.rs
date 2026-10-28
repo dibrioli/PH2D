@@ -2,8 +2,8 @@
 //! que não se apagam umas às outras.
 
 use ph2d_kanban_model::{
-    Card, CardId, Checklist, ChecklistId, Comment, CommentId, FracKey, KanbanOp, KanbanSet,
-    Member, Meta, Moment, Reaction, Record,
+    Card, CardId, Checklist, ChecklistId, Comment, CommentId, FracKey, KanbanOp, KanbanSet, Member,
+    Meta, Moment, Reaction, Record,
 };
 
 use crate::test_support::{Net, Rng, doc, kanban};
@@ -31,7 +31,7 @@ fn records_created_at_the_same_time_by_every_peer_never_collide() {
             let pos = k.pos_after_cards(list);
             let card = CardId(ids[0]);
             let c = Card::new(card, list, pos, &format!("p{p}-{i}"), Moment(0));
-            put(&mut net.sets[p], Record::Card(c));
+            put(&mut net.sets[p], Record::card(c));
             let cl = Checklist {
                 id: ChecklistId(ids[1]),
                 card,
@@ -58,7 +58,11 @@ fn records_created_at_the_same_time_by_every_peer_never_collide() {
     let bytes = net.bytes();
     assert!(bytes.iter().all(|b| *b == bytes[0]), "os pares divergiram");
     let k = kanban(&net.sets[0]);
-    assert_eq!(k.cards.len(), before + 3 * N, "cartões perdidos numa colisão");
+    assert_eq!(
+        k.cards.len(),
+        before + 3 * N,
+        "cartões perdidos numa colisão"
+    );
     assert_eq!(k.checklists.len(), 3 * N);
     assert_eq!(k.comments.len(), 3 * N);
     assert!(k.cards.values().all(|c| !c.meta.deleted));

@@ -25,7 +25,7 @@ fn a_mirror_shows_the_original_and_an_edit_on_either_side_is_the_same() {
     // Editar «pelo espelho» é escrever o original.
     let mut c = set.card(e[0].shows(b)).unwrap().clone();
     c.title = "Sketch v2".to_owned();
-    set.apply(a, vec![KanbanOp::put(Record::Card(c))]);
+    set.apply(a, vec![KanbanOp::put(Record::card(c))]);
     assert_eq!(titles(&set, b, doing), ["Sketch v2"]);
     assert_eq!(set.mirrors_of(of).len(), 1);
 }
@@ -58,7 +58,7 @@ fn removing_or_archiving_the_original_takes_its_mirrors_away() {
         let mut c = set.card(of).unwrap().clone();
         c.archived = true;
         let mut s2 = set.clone();
-        s2.apply(a, vec![KanbanOp::put(Record::Card(c))]);
+        s2.apply(a, vec![KanbanOp::put(Record::card(c))]);
         assert!(s2.entries_in(b, lists(&s2, b)[0]).is_empty());
         let plan = remove_card(&set, of, archive).unwrap();
         set.apply_plan(plan, &mut h, 2, &me());

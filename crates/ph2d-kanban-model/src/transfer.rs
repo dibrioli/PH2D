@@ -213,7 +213,7 @@ impl<'a> Copier<'a> {
             n.archived = c.archived;
             n.origin = c.origin.filter(|_| self.same());
         }
-        self.ops.push(KanbanOp::put(Record::Card(n)));
+        self.ops.push(KanbanOp::put(Record::card(n)));
         self.children(c.id, id, how.keep);
         id
     }
@@ -264,6 +264,20 @@ impl<'a> Copier<'a> {
                     ..a.clone()
                 })));
             }
+            let links = src
+                .project_links
+                .values()
+                .filter(|l| l.card == from && !l.meta.deleted);
+            for l in links {
+                let id = crate::records::ProjectLinkId(self.id());
+                self.ops
+                    .push(KanbanOp::put(Record::ProjectLink(crate::ProjectLink {
+                        id,
+                        card: to,
+                        meta: Meta::default(),
+                        ..l.clone()
+                    })));
+            }
         }
         if keep.comments {
             let cms = src
@@ -304,6 +318,12 @@ pub(crate) fn tombstones(k: &Kanban, card: CardId) -> Vec<KanbanOp> {
             .values()
             .filter(|a| a.card == card && !a.meta.deleted)
             .map(|a| KanbanOp::Delete(RecordId::Attachment(a.id))),
+    );
+    v.extend(
+        k.project_links
+            .values()
+            .filter(|l| l.card == card && !l.meta.deleted)
+            .map(|l| KanbanOp::Delete(RecordId::ProjectLink(l.id))),
     );
     v.extend(
         k.comments
@@ -446,7 +466,7 @@ pub fn move_card(set: &KanbanSet, src: CardRef, to: &Place) -> Option<Plan> {
     if src.kanban == to.kanban {
         plan.push(
             to.kanban,
-            KanbanOp::put(Record::Card(Card {
+            KanbanOp::put(Record::card(Card {
                 list: to.list,
                 pos: to.pos.clone(),
                 ..card.clone()

@@ -68,7 +68,7 @@ fn scene() -> KanbanSet {
             &format!("c{i}"),
             Moment(0),
         );
-        let _ = KanbanOp::put(Record::Card(c)).apply(k);
+        let _ = KanbanOp::put(Record::card(c)).apply(k);
     }
     set
 }
@@ -101,7 +101,7 @@ fn edit(set: &mut KanbanSet, r: &mut KanbanReplica, who: &str, i: usize) {
             return;
         }
     }
-    put(set, Record::Card(c));
+    put(set, Record::card(c));
 }
 
 fn done(set: &KanbanSet, who: &str) -> bool {

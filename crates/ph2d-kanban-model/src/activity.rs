@@ -138,7 +138,7 @@ fn record(b: Option<&Record>, a: &Record, k: &Kanban, out: &mut Vec<(Subject, Ha
     match a {
         Record::Card(a) => {
             let b = b.and_then(|r| match r {
-                Record::Card(c) => Some(c),
+                Record::Card(c) => Some(&**c),
                 _ => None,
             });
             card(b, a, out);
@@ -199,7 +199,8 @@ fn record(b: Option<&Record>, a: &Record, k: &Kanban, out: &mut Vec<(Subject, Ha
         | Record::Event(_)
         | Record::Inbox(_)
         | Record::Block(_)
-        | Record::Seen(_) => {}
+        | Record::Seen(_)
+        | Record::ProjectLink(_) => {}
     }
 }
 
@@ -220,6 +221,7 @@ fn meta(r: &Record) -> Meta {
         Record::Inbox(r) => r.meta,
         Record::Block(r) => r.meta,
         Record::Seen(r) => r.meta,
+        Record::ProjectLink(r) => r.meta,
     }
 }
 

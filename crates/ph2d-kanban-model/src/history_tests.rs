@@ -5,7 +5,7 @@ use crate::{CardId, KanbanOp, Record};
 fn rename(k: &Kanban, id: CardId, t: &str) -> KanbanOp {
     let mut c = card_of(k, id);
     c.title = t.to_owned();
-    KanbanOp::put(Record::Card(c))
+    KanbanOp::put(Record::card(c))
 }
 
 #[test]

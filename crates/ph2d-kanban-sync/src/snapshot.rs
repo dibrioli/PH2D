@@ -93,7 +93,15 @@ pub(crate) fn pack(
             stamps: st.iter().map(|(ix, l)| (*ix, at(base, *l))).collect(),
             elems: el
                 .iter()
-                .map(|(ix, key, e)| ((*ix), (*key).clone(), e.value.clone(), e.idx, at(base, e.at)))
+                .map(|(ix, key, e)| {
+                    (
+                        (*ix),
+                        (*key).clone(),
+                        e.value.clone(),
+                        e.idx,
+                        at(base, e.at),
+                    )
+                })
                 .collect(),
         };
         match out.last_mut() {
@@ -173,7 +181,10 @@ impl Parts {
         if self.got.len() < of as usize {
             return None;
         }
-        let all: Vec<u8> = std::mem::take(&mut self.got).into_values().flatten().collect();
+        let all: Vec<u8> = std::mem::take(&mut self.got)
+            .into_values()
+            .flatten()
+            .collect();
         self.of = 0;
         postcard::from_bytes(&all).ok()
     }

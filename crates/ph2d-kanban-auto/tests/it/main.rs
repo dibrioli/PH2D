@@ -95,7 +95,7 @@ impl Scene {
         let id = CardId(kd.mint());
         let mut c = Card::new(id, list, kd.pos_after_cards(list), title, NOW);
         edit(&mut c);
-        self.set.apply(self.k, vec![KanbanOp::put(Record::Card(c))]);
+        self.set.apply(self.k, vec![KanbanOp::put(Record::card(c))]);
         id
     }
 
@@ -124,7 +124,7 @@ impl Scene {
         let mut card = self.get(c);
         f(&mut card);
         let mut p = Plan::default();
-        p.push(self.k, KanbanOp::put(Record::Card(card)));
+        p.push(self.k, KanbanOp::put(Record::card(card)));
         self.gesture(p, by)
     }
 

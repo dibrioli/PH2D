@@ -57,7 +57,7 @@ pub fn convert_item_to_card(
         template: false,
     };
     Some(vec![
-        KanbanOp::put(Record::Card(card)),
+        KanbanOp::put(Record::card(card)),
         KanbanOp::Delete(RecordId::CheckItem(item)),
     ])
 }

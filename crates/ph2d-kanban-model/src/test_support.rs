@@ -21,7 +21,7 @@ pub(crate) fn list(k: &Kanban, title: &str) -> KanbanOp {
 }
 
 pub(crate) fn card(k: &Kanban, list: ListId, title: &str) -> KanbanOp {
-    KanbanOp::put(Record::Card(Card {
+    KanbanOp::put(Record::card(Card {
         id: CardId(k.mint()),
         list,
         pos: k.pos_after_cards(list),

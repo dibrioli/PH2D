@@ -182,4 +182,4 @@ impl Kanban {
 
 #[cfg(test)]
 #[path = "agenda_tests.rs"]
-mod tests;
+pub(crate) mod tests;

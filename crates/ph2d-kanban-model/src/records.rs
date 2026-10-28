@@ -45,6 +45,8 @@ ids! {
     BlockId,
     /// As notificações lidas de uma pessoa (v5).
     SeenId,
+    /// Uma ligação do cartão a uma coisa do projecto (v6).
+    ProjectLinkId,
 }
 
 /// Um instante: milissegundos desde 1970-01-01 UTC. Valor NEUTRO — fusos, «hoje», «atrasado» e

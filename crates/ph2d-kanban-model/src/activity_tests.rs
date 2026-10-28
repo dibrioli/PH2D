@@ -35,7 +35,7 @@ fn every_card_change_the_trello_logs_becomes_one_entry() {
     });
     c.members = vec![Member("Rui".to_owned())];
     c.labels = vec![crate::LabelId(99)];
-    apply_logged(&mut k, vec![KanbanOp::put(Record::Card(c.clone()))], &ana());
+    apply_logged(&mut k, vec![KanbanOp::put(Record::card(c.clone()))], &ana());
     let rui = Member("Rui".to_owned());
     assert_eq!(
         whats(&k, Subject::Card(id)),
@@ -61,7 +61,7 @@ fn every_card_change_the_trello_logs_becomes_one_entry() {
     d.due = d.due.map(|x| Due { done: true, ..x });
     d.members.clear();
     d.archived = true;
-    apply_logged(&mut k, vec![KanbanOp::put(Record::Card(d))], &ana());
+    apply_logged(&mut k, vec![KanbanOp::put(Record::card(d))], &ana());
     apply_logged(&mut k, vec![KanbanOp::Delete(RecordId::Card(id))], &ana());
     let tail = whats(&k, Subject::Card(id)).split_off(6);
     assert_eq!(
@@ -183,7 +183,7 @@ fn undo_does_not_erase_history_it_logs_the_reverse() {
     let mut c = card_of(&k, id);
     c.list = doing;
     let mut h = History::default();
-    h.apply_logged(&mut k, vec![KanbanOp::put(Record::Card(c))], 1, &ana());
+    h.apply_logged(&mut k, vec![KanbanOp::put(Record::card(c))], 1, &ana());
     assert!(h.undo_logged(&mut k, 2, &ana()));
     assert_eq!(k.cards[&id].list, todo, "o desfazer devolveu o cartão");
     assert_eq!(

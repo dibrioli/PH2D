@@ -290,7 +290,7 @@ fn with_blocks() -> World {
         c.start = ph2d_kanban_dates::instant(date(10, d), h, mi, &zone).map(Moment);
         plan.push(
             w.id,
-            ph2d_kanban_model::KanbanOp::put(ph2d_kanban_model::Record::Card(c)),
+            ph2d_kanban_model::KanbanOp::put(ph2d_kanban_model::Record::card(c)),
         );
     }
     w.apply(plan);

@@ -69,7 +69,7 @@ fn dress_cards(set: &mut KanbanSet, k: KanbanId, me: &Member, now: i64) {
         if !n.members.contains(me) {
             n.members.push(me.clone());
         }
-        ops.push(KanbanOp::put(Record::Card(n)));
+        ops.push(KanbanOp::put(Record::card(n)));
     }
     // Um item de checklist com data (o primeiro do storyboard).
     if let Some(it) = kb.items.values().find(|i| !i.meta.deleted) {
@@ -97,7 +97,7 @@ fn dress_cards(set: &mut KanbanSet, k: KanbanId, me: &Member, now: i64) {
         if let Some(c) = kb.cards.values().find(|c| c.title == title) {
             let mut n = c.clone();
             n.members.push(me.clone());
-            ops.push(KanbanOp::put(Record::Card(n)));
+            ops.push(KanbanOp::put(Record::card(n)));
         }
     }
     set.apply(k, ops);

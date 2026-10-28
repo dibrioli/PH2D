@@ -6,20 +6,22 @@ use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
 
 use crate::activity::Activity;
+use crate::agenda::{Block, Event, InboxItem, Seen};
 use crate::kanban::{Header, Kanban};
+use crate::links::ProjectLink;
 use crate::records::{
     ActivityId, Attachment, AttachmentId, Automation, AutomationId, Card, CardId, CheckItem,
     CheckItemId, Checklist, ChecklistId, Comment, CommentId, FieldDef, FieldId, Label, LabelId,
     List, ListId, Meta, Mirror, MirrorId,
 };
-use crate::agenda::{Block, Event, InboxItem, Seen};
-use crate::records::{BlockId, EventId, InboxId, SeenId};
+use crate::records::{BlockId, EventId, InboxId, ProjectLinkId, SeenId};
 
 /// Um registo inteiro, de qualquer tabela.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum Record {
     List(List),
-    Card(Card),
+    /// Em caixa: o cartão é o registo grande (postcard grava `Box<T>` como `T` — os bytes não mudam).
+    Card(Box<Card>),
     Label(Label),
     Checklist(Checklist),
     CheckItem(CheckItem),
@@ -38,6 +40,8 @@ pub enum Record {
     Inbox(InboxItem),
     Block(Block),
     Seen(Seen),
+    /// v6 — uma ligação do cartão a uma coisa do projecto.
+    ProjectLink(ProjectLink),
 }
 
 /// A chave de um registo, de qualquer tabela.
@@ -58,6 +62,7 @@ pub enum RecordId {
     Inbox(InboxId),
     Block(BlockId),
     Seen(SeenId),
+    ProjectLink(ProjectLinkId),
 }
 
 /// Uma mudança num Kanban.
@@ -86,6 +91,9 @@ trait Rec: Clone + PartialEq + Sized {
 
 macro_rules! rec {
     ($ty:ident, $id:ident, $table:ident, $variant:ident) => {
+        rec!($ty, $id, $table, $variant, |r| r);
+    };
+    ($ty:ident, $id:ident, $table:ident, $variant:ident, $wrap:expr) => {
         impl Rec for $ty {
             type Id = $id;
             fn id(&self) -> $id {
@@ -101,7 +109,7 @@ macro_rules! rec {
                 &mut k.$table
             }
             fn wrap(self) -> Record {
-                Record::$variant(self)
+                Record::$variant($wrap(self))
             }
             fn key(id: $id) -> RecordId {
                 RecordId::$variant(id)
@@ -114,7 +122,7 @@ macro_rules! rec {
 }
 
 rec!(List, ListId, lists, List);
-rec!(Card, CardId, cards, Card);
+rec!(Card, CardId, cards, Card, Box::new);
 rec!(Label, LabelId, labels, Label);
 rec!(Checklist, ChecklistId, checklists, Checklist);
 rec!(CheckItem, CheckItemId, items, CheckItem);
@@ -128,6 +136,7 @@ rec!(Event, EventId, events, Event);
 rec!(InboxItem, InboxId, inbox, Inbox);
 rec!(Block, BlockId, blocks, Block);
 rec!(Seen, SeenId, seen, Seen);
+rec!(ProjectLink, ProjectLinkId, project_links, ProjectLink);
 
 use crate::mint::SESSION_ID_BIT;
 
@@ -180,7 +189,7 @@ impl KanbanOp {
         match self {
             KanbanOp::Put(r) => match *r {
                 Record::List(r) => put(k, r),
-                Record::Card(r) => put(k, r),
+                Record::Card(r) => put(k, *r),
                 Record::Label(r) => put(k, r),
                 Record::Checklist(r) => put(k, r),
                 Record::CheckItem(r) => put(k, r),
@@ -194,6 +203,7 @@ impl KanbanOp {
                 Record::Inbox(r) => put(k, r),
                 Record::Block(r) => put(k, r),
                 Record::Seen(r) => put(k, r),
+                Record::ProjectLink(r) => put(k, r),
             },
             KanbanOp::Delete(id) => match id {
                 RecordId::List(id) => delete::<List>(k, id),
@@ -211,6 +221,7 @@ impl KanbanOp {
                 RecordId::Inbox(id) => delete::<InboxItem>(k, id),
                 RecordId::Block(id) => delete::<Block>(k, id),
                 RecordId::Seen(id) => delete::<Seen>(k, id),
+                RecordId::ProjectLink(id) => delete::<ProjectLink>(k, id),
             },
             KanbanOp::Header(mut h) => {
                 let mut prev = k.header.clone();
@@ -238,6 +249,12 @@ impl KanbanOp {
 }
 
 impl Record {
+    /// O registo de um cartão (a caixa por dentro).
+    #[must_use]
+    pub fn card(c: Card) -> Self {
+        Record::Card(Box::new(c))
+    }
+
     /// A chave deste registo.
     #[must_use]
     pub fn id(&self) -> RecordId {
@@ -257,6 +274,7 @@ impl Record {
             Record::Inbox(r) => RecordId::Inbox(r.id),
             Record::Block(r) => RecordId::Block(r.id),
             Record::Seen(r) => RecordId::Seen(r.id),
+            Record::ProjectLink(r) => RecordId::ProjectLink(r.id),
         }
     }
 
@@ -277,6 +295,7 @@ impl Record {
             Record::Inbox(r) => &mut r.meta,
             Record::Block(r) => &mut r.meta,
             Record::Seen(r) => &mut r.meta,
+            Record::ProjectLink(r) => &mut r.meta,
         }
     }
 
@@ -298,7 +317,7 @@ impl Kanban {
     pub fn record(&self, id: RecordId) -> Option<Record> {
         match id {
             RecordId::List(id) => self.lists.get(&id).cloned().map(Record::List),
-            RecordId::Card(id) => self.cards.get(&id).cloned().map(Record::Card),
+            RecordId::Card(id) => self.cards.get(&id).cloned().map(Record::card),
             RecordId::Label(id) => self.labels.get(&id).cloned().map(Record::Label),
             RecordId::Checklist(id) => self.checklists.get(&id).cloned().map(Record::Checklist),
             RecordId::CheckItem(id) => self.items.get(&id).cloned().map(Record::CheckItem),
@@ -312,6 +331,11 @@ impl Kanban {
             RecordId::Inbox(id) => self.inbox.get(&id).cloned().map(Record::Inbox),
             RecordId::Block(id) => self.blocks.get(&id).cloned().map(Record::Block),
             RecordId::Seen(id) => self.seen.get(&id).cloned().map(Record::Seen),
+            RecordId::ProjectLink(id) => self
+                .project_links
+                .get(&id)
+                .cloned()
+                .map(Record::ProjectLink),
         }
     }
 }

@@ -77,6 +77,8 @@ pub struct Kanban {
     pub inbox: BTreeMap<InboxId, InboxItem>,
     pub blocks: BTreeMap<BlockId, Block>,
     pub seen: BTreeMap<SeenId, Seen>,
+    /// v6 — as ligações dos cartões ao projecto (objectos, scripts, macros, timeline, Quadros).
+    pub project_links: BTreeMap<crate::records::ProjectLinkId, crate::links::ProjectLink>,
     /// Em sessão ao vivo: o sorteio dos ids ([`Kanban::set_session`]). Não vai para o ficheiro.
     #[serde(skip)]
     pub(crate) session: crate::mint::Lottery,
@@ -112,6 +114,7 @@ impl Kanban {
             inbox: BTreeMap::new(),
             blocks: BTreeMap::new(),
             seen: BTreeMap::new(),
+            project_links: BTreeMap::new(),
             session: crate::mint::Lottery::default(),
         }
     }

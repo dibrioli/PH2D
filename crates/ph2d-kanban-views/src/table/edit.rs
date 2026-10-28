@@ -93,7 +93,7 @@ pub fn option_dropdown(k: &Kanban, card: &Card, f: FieldId) -> Option<Dropdown<O
 fn put(kanban: KanbanId, before: &Card, after: Card) -> Plan {
     let mut p = Plan::default();
     if after != *before {
-        p.push(kanban, KanbanOp::put(Record::Card(after)));
+        p.push(kanban, KanbanOp::put(Record::card(after)));
     }
     p
 }

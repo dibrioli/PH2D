@@ -47,7 +47,7 @@ macro_rules! refuse {
     )*};
 }
 
-impl<'a> Serializer for &'a mut Parts {
+impl Serializer for &mut Parts {
     type Ok = ();
     type Error = Nope;
     type SerializeSeq = Impossible<(), Nope>;

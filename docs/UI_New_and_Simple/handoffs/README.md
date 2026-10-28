@@ -11,7 +11,7 @@
 > um doc descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**97 arquivos** · **1** citados pelo `CLAUDE.md` (marcados **◆**) · **97** são handoffs (registro **morto**).
+**100 arquivos** · **1** citados pelo `CLAUDE.md` (marcados **◆**) · **100** são handoffs (registro **morto**).
 
 | Data | | Arquivo | Papel | Assunto |
 |---|---|---|---|---|
@@ -112,7 +112,9 @@
 | 2026-10-26 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-26_F32.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-26_F32.md) | ⚠️ handoff (morto) | HANDOFF de continuação — line/UIUX, onda F32 (26/10) — smoke do dono OK |
 | 2026-10-26 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-26_F33.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-26_F33.md) | ⚠️ handoff (morto) | HANDOFF de continuação — line/UIUX, onda F33 (filtros × efeitos), 26/10 |
 | 2026-10-26 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-26_F34.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-26_F34.md) | ⚠️ handoff (morto) | HANDOFF de continuação — line/UIUX, onda F34 (zoom perto numa forma com filtro), 26/10 |
-| 2026-10-26 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-26_F35.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-26_F35.md) | ⚠️ handoff (morto) | HANDOFF de continuação — line/UIUX, onda F35 (memória da placa: o FX devolve; placa cheia avisa e volta), 26/10 |
+| 2026-10-26 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-26_F35.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-26_F35.md) | ⚠️ handoff (morto) | HANDOFF de continuação — line/UIUX, onda F35 (memória da placa: o FX devolve; placa cheia avisa e volta), 26/1… |
+| 2026-10-27 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-27_F36.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-27_F36.md) | ⚠️ handoff (morto) | HANDOFF de continuação — line/UIUX, onda F36 (o que nasce sob a placa cheia renasce; arranque espera a placa; … |
+| 2026-10-27 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-27_F37.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-27_F37.md) | ⚠️ handoff (morto) | HANDOFF de continuação — line/UIUX, onda F37 (o editor cabe numa placa com ~950 MiB livres: átlas sob demanda,… |
 
 ---
 

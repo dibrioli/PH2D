@@ -81,3 +81,4 @@
 | W9 | Inbox «To Kanban»: popover com pesquisa, Kanban → lista → Topo/Fundo; abre na 1.ª lista do 1.º Kanban, no fundo | Trello | `dest_pop.rs` |
 | W6 | Sugestões de `@`/`#` sem tecto fixo: tantas quantas cabem sob o campo (rola) | Trello lista todos num popover que rola | `w6/complete.rs` |
 | W5 | Avatares ao reconectar: véu da cor do fundo do cabeçalho por cima (sem token de opacidade novo) | um token a menos | `header/` |
+| W11 | «Convert to sticky note» na aba vai ao Quadro onde o Kanban está (o da última vez, senão o primeiro), a nota nasce à direita do Kanban; sem Quadro, aviso | nunca descartar em silêncio | `kanban_links_notes.rs` |

@@ -31,7 +31,12 @@ fn rebase(k: &Kanban, step: Step) -> Vec<KanbanOp> {
     step.inverse
         .into_iter()
         .zip(step.after)
-        .filter(|(op, was)| op.target().is_none_or(|id| k.record(id) == *was))
+        .filter(|(op, was)| {
+            op.target().is_none_or(|id| match (k.record(id), was) {
+                (Some(now), Some(was)) => now.same_content(was),
+                (now, was) => now.is_none() && was.is_none(),
+            })
+        })
         .map(|(op, _)| op)
         .collect()
 }

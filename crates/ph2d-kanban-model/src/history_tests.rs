@@ -77,6 +77,52 @@ fn undo_leaves_a_record_someone_else_changed_since() {
     assert_eq!(card_of(&k, b).title, "theirs B");
 }
 
+/// N escritas no MESMO cartão: N desfazer devolvem cada estado anterior e N refazer voltam — com e
+/// sem atividade (o desfazer escreve e sobe a versão; o passo seguinte não pode ficar mudo).
+#[test]
+fn n_writes_to_one_card_undo_and_redo_one_by_one() {
+    for logged in [false, true] {
+        let mut k = sample();
+        let todo = k.lists_in_order()[0].id;
+        let id = k.cards_in(todo)[0].id;
+        let actor = Actor {
+            by: crate::Member("Enio".to_owned()),
+            at: crate::Moment(5),
+        };
+        let mut h = History::default();
+        let names = ["A", "B", "C", "D"];
+        for (i, t) in names.iter().enumerate() {
+            let ops = vec![rename(&k, id, t)];
+            if logged {
+                h.apply_logged(&mut k, ops, i as u64 + 1, &actor);
+            } else {
+                h.apply(&mut k, ops, i as u64 + 1);
+            }
+        }
+        let back = ["C", "B", "A", "Sketch"];
+        for want in back {
+            let did = if logged {
+                h.undo_logged(&mut k, 9, &actor)
+            } else {
+                h.undo(&mut k, 9)
+            };
+            assert!(did);
+            assert_eq!(card_of(&k, id).title, want, "logged={logged}");
+        }
+        assert!(!h.can_undo());
+        for want in names {
+            let did = if logged {
+                h.redo_logged(&mut k, 9, &actor)
+            } else {
+                h.redo(&mut k, 9)
+            };
+            assert!(did);
+            assert_eq!(card_of(&k, id).title, want, "logged={logged}");
+        }
+        assert!(!h.can_redo());
+    }
+}
+
 #[test]
 fn the_stack_keeps_at_most_max_steps() {
     let mut k = sample();

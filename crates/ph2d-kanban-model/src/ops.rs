@@ -217,6 +217,31 @@ impl Record {
             Record::Activity(r) => RecordId::Activity(r.id),
         }
     }
+
+    fn meta_mut(&mut self) -> &mut Meta {
+        match self {
+            Record::List(r) => &mut r.meta,
+            Record::Card(r) => &mut r.meta,
+            Record::Label(r) => &mut r.meta,
+            Record::Checklist(r) => &mut r.meta,
+            Record::CheckItem(r) => &mut r.meta,
+            Record::Comment(r) => &mut r.meta,
+            Record::Attachment(r) => &mut r.meta,
+            Record::Field(r) => &mut r.meta,
+            Record::Activity(r) => &mut r.meta,
+        }
+    }
+
+    /// O mesmo conteúdo, lápide incluída — a versão e o desempate não contam (cada escrita sobe a
+    /// versão, e o desfazer de um passo escreve: comparar com ela tornava mudo o passo seguinte).
+    #[must_use]
+    pub fn same_content(&self, other: &Record) -> bool {
+        let (mut a, mut b) = (self.clone(), other.clone());
+        for m in [a.meta_mut(), b.meta_mut()] {
+            (m.version, m.nonce) = (0, 0);
+        }
+        a == b
+    }
 }
 
 impl Kanban {

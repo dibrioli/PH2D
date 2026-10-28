@@ -7554,6 +7554,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-kanban-filter"
+version = "0.0.0"
+dependencies = [
+ "ph2d-kanban-dates",
+ "ph2d-kanban-md",
+ "ph2d-kanban-model",
+ "unicode-normalization",
+]
+
+[[package]]
 name = "ph2d-kanban-md"
 version = "0.0.0"
 dependencies = [

@@ -1,0 +1,23 @@
+[package]
+name = "ph2d-kanban-filter"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+[dependencies]
+# Filtro, pesquisa, ordenação e envelhecimento do Kanban (W6) — PUROS: a UI e as automações (W8)
+# chamam-nos. Sem ECS, sem render, sem relógio próprio.
+ph2d-kanban-model = { path = "../ph2d-kanban-model" }
+ph2d-kanban-dates = { path = "../ph2d-kanban-dates" }
+# A descrição em texto plano (markdown → RichDoc → texto) para a pesquisa.
+ph2d-kanban-md = { path = "../ph2d-kanban-md" }
+# Sem acentos: NFD e fora as marcas combinantes. Já está no Cargo.lock (MIT OR Apache-2.0).
+unicode-normalization = "0.1"
+
+[lints]
+workspace = true

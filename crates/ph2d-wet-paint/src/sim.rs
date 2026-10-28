@@ -52,6 +52,8 @@ pub struct Params {
     /// O «Glaze layering (K-M)» do pincel ([`Sim::camadas_transparentes`]): `1` = ligado. Pousa na célula
     /// ([`crate::grid::aparencia`]); a lei de cada célula lê o dela ([`crate::assenta::Ecra::com_vidrado`]).
     pub vidrado: f32,
+    /// O Smooth Edges do pincel ([`Sim::suave`]), que pousa na célula ([`crate::grid::aparencia`]).
+    pub suave: f32,
     /// [`Sim::semente_do_po`].
     pub semente_do_po: u32,
     /// [`Sim::relevo_do_tamanho`].
@@ -143,6 +145,9 @@ pub struct Sim {
     /// na célula ([`Params::vidrado`]) e o ecrã e as transferências verticais lêem o da célula — mudá-lo não
     /// muda a tinta já pousada.
     pub camadas_transparentes: bool,
+    /// **O Smooth Edges do pincel** (`0..1`): pousa na célula ([`Params::suave`]); o composite amacia a orla de cada
+    /// célula pelo dela — mudá-lo não muda a tinta já pousada (§BUG-bordas-W3b).
+    pub suave: f32,
     /// **A semente do PÓ deste dab** ([`Knob::Dust`]): o hospedeiro sorteia-a por dab do fluxo do traço
     /// (dabs parados no mesmo lugar pousam pontos novos); o motor mistura-lhe o centro do dab.
     pub semente_do_po: u32,
@@ -233,6 +238,7 @@ impl Default for Sim {
             molhada_escurece: 1.0,
             esconde: 1.0,
             camadas_transparentes: false,
+            suave: 0.0,
             semente_do_po: 0,
             relevo_do_tamanho: 1.0,
             traco_actual: 0,
@@ -333,6 +339,7 @@ impl Sim {
                 },
             },
             vidrado: if self.camadas_transparentes { 1.0 } else { 0.0 },
+            suave: self.suave,
             semente_do_po: self.semente_do_po,
             relevo_do_tamanho: self.relevo_do_tamanho,
             traco_actual: self.traco_actual,

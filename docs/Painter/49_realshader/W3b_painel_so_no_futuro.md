@@ -47,7 +47,7 @@ massa; viaja no instantâneo, no `GridPatch` (undo de janela), no `clear_canvas`
 
 ## Custo de memória
 
-`AparenciaCelula` = **12 B por célula**, só quando alocado (medido no gate: a grade retém 67,1 B/célula; +12 =
+`AparenciaCelula` = **16 B por célula** (12 + `suave` do Smooth Edges, W3b bordas ronda 2), só quando alocado (medido no gate: a grade retém 67,1 B/célula; +12 =
 +18 %; 4096² com razão 1: +201 MB). A fábrica paga **0** (gate). `u8` quantizado (3 B) foi pesado e recusado: os
 valores dos presets (passo 0,01) deixavam de ser exactos (1/170 de passo) e a lei do vidrado `1` deixava de ser a de
 velatura ao bit; o idioma da crate (relevo, vela, material) é `f32`.
@@ -60,7 +60,7 @@ velatura ao bit; o idioma da crate (relevo, vela, material) é `f32`.
   antes fica ao byte (mesma história com e sem a mudança).
 - `o_vidrado_da_celula_e_a_lei_de_velatura_ao_bit` — uma tela pintada toda com o Glaze layering = a sessão cuja lei já
   é de velatura, ao byte, em toda célula pousada (secar, pintar por cima, ticks); ≤ 0,1 % de células só pela água.
-- `a_fabrica_nao_aloca_a_aparencia` — `NEUTRA` = `WetKnobs::DEFAULT`; a fábrica não aloca; o campo custa 12 B/célula;
+- `a_fabrica_nao_aloca_a_aparencia` — `NEUTRA` = `WetKnobs::DEFAULT`; a fábrica não aloca; o campo custa 16 B/célula;
   Live Water latente.
 - `os_knobs_do_papel_sao_os_que_refazem_a_folha` — a excepção do gate, nomeada.
 - `escolher_um_pincel_nao_muda_o_dente_da_tela` (ronda 2) — os 65 presets de fábrica e um antigo com `paper_depth`

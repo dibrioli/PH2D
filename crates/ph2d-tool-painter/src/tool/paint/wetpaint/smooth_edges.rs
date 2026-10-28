@@ -147,6 +147,78 @@ pub(super) struct Suave {
     /// A tinta da região (premultiplicada + `pa`) desfocada pela MESMA tenda que a mancha, nas linhas a
     /// `alcance + 1` da tinta (as que [`Suave::aplica`] lê, com o vizinho do declive); o resto não se lê.
     pbar: Vec<[f32; 4]>,
+    /// O Smooth Edges de cada pixel da região ÷ o da região (§BUG-bordas-W3b: é do TRAÇO, guardado na célula): a
+    /// força da tinta à volta, pela MESMA tenda que a mancha (`Σ tenda·mancha·s ÷ Σ tenda·mancha`). Vazio = todas as
+    /// células da região com o mesmo valor — o caminho de antes, ao byte.
+    forca: Vec<f32>,
+}
+
+/// O Smooth Edges guardado na célula (`grid::aparencia::suave`) numa janela de células: o da camada visível com
+/// tinta de maior valor; `0` no papel.
+pub(super) struct ForcaDaCelula {
+    cx0: usize,
+    cy0: usize,
+    cw: usize,
+    ch: usize,
+    rr: usize,
+    v: Vec<f32>,
+    /// O maior da janela (`0` = nenhum Smooth Edges).
+    pub(super) max: f32,
+    /// Toda célula pintada da janela tem o [`ForcaDaCelula::max`].
+    pub(super) uniforme: bool,
+}
+
+impl ForcaDaCelula {
+    /// A janela de células que cobre os pixels `(px0, py0, px1, py1)` com a margem que o [`Suave`] lê no raio máximo.
+    pub(super) fn de(
+        camadas: &[(&ph2d_wet_paint::grid::Grid, bool)],
+        ratio: u8,
+        (gw, gh): (usize, usize),
+        (px0, py0, px1, py1): (usize, usize, usize, usize),
+    ) -> Self {
+        let rr = usize::from(ratio).max(1);
+        let a = alcance(RAIO_MAX) * 2 + 1;
+        let (cx0, cy0) = (px0.saturating_sub(a) / rr, py0.saturating_sub(a) / rr);
+        let (cx1, cy1) = (((px1 + a) / rr).min(gw - 1), ((py1 + a) / rr).min(gh - 1));
+        let (cw, ch) = (cx1 + 1 - cx0, cy1 + 1 - cy0);
+        let mut v = vec![0f32; cw * ch];
+        let (mut max, mut min) = (0f32, f32::INFINITY);
+        for cy in cy0..=cy1 {
+            for cx in cx0..=cx1 {
+                let mut q: Option<f32> = None;
+                for &(g, visivel) in camadas {
+                    let i = (cx + 1) + (cy + 1) * g.s;
+                    if visivel && (g.sett[i] > 0.0 || g.susp[i] > 0.0) {
+                        let s = ph2d_wet_paint::grid::aparencia::da_celula(&g.aparencia, i).suave;
+                        q = Some(q.map_or(s, |q: f32| q.max(s)));
+                    }
+                }
+                if let Some(q) = q {
+                    v[(cx - cx0) + (cy - cy0) * cw] = q;
+                    max = max.max(q);
+                    min = min.min(q);
+                }
+            }
+        }
+        ForcaDaCelula {
+            cx0,
+            cy0,
+            cw,
+            ch,
+            rr,
+            v,
+            max,
+            uniforme: min >= max || min == f32::INFINITY,
+        }
+    }
+
+    /// A força do pixel `(x, y)` (a da célula dele).
+    #[inline]
+    fn em(&self, x: usize, y: usize) -> f32 {
+        let cx = (x / self.rr).clamp(self.cx0, self.cx0 + self.cw - 1) - self.cx0;
+        let cy = (y / self.rr).clamp(self.cy0, self.cy0 + self.ch - 1) - self.cy0;
+        self.v[cx + cy * self.cw]
+    }
 }
 
 impl Suave {
@@ -159,6 +231,7 @@ impl Suave {
         (x0, y0, x1, y1): (usize, usize, usize, usize),
         raio: f32,
         linhas: Option<bool>,
+        forca: Option<&ForcaDaCelula>,
     ) -> Self {
         let a = alcance(raio) * 2;
         let (rx0, ry0) = (x0.saturating_sub(a), y0.saturating_sub(a));
@@ -233,6 +306,57 @@ impl Suave {
                 *v = caixa(rh, hb, y, |j| t[j * rw + x]);
             }
         });
+        // A força de cada pixel (§BUG-bordas-W3b): a mancha × a força da célula ÷ a da região, pela MESMA tenda.
+        let forca = forca
+            .filter(|f| !f.uniforme && f.max > 0.0)
+            .map_or_else(Vec::new, |f| {
+                let mut sm: Vec<f32> = (0..rw * rh)
+                    .map(|k| {
+                        if m[k] {
+                            f.em(rx0 + k % rw, ry0 + k / rw) / f.max
+                        } else {
+                            0.0
+                        }
+                    })
+                    .collect();
+                let mut u = vec![0.0f32; rw * rh];
+                u.par_chunks_mut(rw).enumerate().for_each(|(y, l)| {
+                    if tem[y] {
+                        let fonte = &sm[y * rw..(y + 1) * rw];
+                        for (x, v) in l.iter_mut().enumerate() {
+                            *v = caixa(rw, hb, x, |i| fonte[i]);
+                        }
+                    }
+                });
+                sm.par_chunks_mut(rw).enumerate().for_each(|(y, l)| {
+                    if tem[y] {
+                        let fonte = &u[y * rw..(y + 1) * rw];
+                        for (x, v) in l.iter_mut().enumerate() {
+                            *v = caixa(rw, hb, x, |i| fonte[i]);
+                        }
+                    } else {
+                        l.fill(0.0);
+                    }
+                });
+                u.par_chunks_mut(rw).enumerate().for_each(|(y, l)| {
+                    if perto[y] {
+                        for (x, v) in l.iter_mut().enumerate() {
+                            *v = caixa(rh, hb, y, |j| sm[j * rw + x]);
+                        }
+                    }
+                });
+                sm.par_chunks_mut(rw).enumerate().for_each(|(y, l)| {
+                    if perto[y] {
+                        for (x, v) in l.iter_mut().enumerate() {
+                            *v = caixa(rh, hb, y, |j| u[j * rw + x]);
+                        }
+                    }
+                });
+                sm.iter()
+                    .zip(&b)
+                    .map(|(&s, &bb)| if bb > 0.0 { (s / bb).min(1.0) } else { 0.0 })
+                    .collect()
+            });
         // A tinta desfocada: duas caixas horizontais nas linhas onde a tinta foi lida (pre → tmp → pre) e
         // duas verticais nas que se leem (pre → tmp → pre).
         let lida = |y: usize| acc[(y + 2 * al + 1).min(rh)] > acc[y.saturating_sub(2 * al)];
@@ -278,6 +402,7 @@ impl Suave {
             raio,
             linhas,
             pbar: pre,
+            forca,
         }
     }
 
@@ -350,6 +475,9 @@ impl Suave {
             let wl = ((linha - LINHA_MIN) / (LINHA_CHEIA - LINHA_MIN)).clamp(0.0, 1.0);
             melhor = melhor.max(wl * wl * (3.0 - 2.0 * wl));
             peso = peso.max(melhor * dentro);
+        }
+        if let Some(f) = self.forca.get(i) {
+            peso *= f;
         }
         if peso < 1e-3 {
             return dele;
@@ -472,7 +600,16 @@ mod linhas_tests {
     fn depois(linhas: Option<bool>) -> Vec<[f32; 4]> {
         let p = campo();
         let sampler = SampleU::new(1, L, L);
-        let s = Suave::nova(sampler, &p, L * 4, (L, L), (0, 0, L, L), RAIO_MAX, linhas);
+        let s = Suave::nova(
+            sampler,
+            &p,
+            L * 4,
+            (L, L),
+            (0, 0, L, L),
+            RAIO_MAX,
+            linhas,
+            None,
+        );
         (0..L)
             .map(|x| {
                 let dele = premul_da_celula(&p, (60 * L + x) * 4);
@@ -552,7 +689,7 @@ mod diag_w3b {
 
     /// Um traço quase horizontal (y 90 → 102) de 40 px do pincel de fábrica `nome`, Óleo Real ligado, Smooth Edges 0,
     /// numa tela 700 × 200 — e a água parada.
-    fn um_traco(nome: &str) -> PainterTool {
+    fn um_traco(nome: &str, cold: bool) -> PainterTool {
         let (w, h) = (W, H);
         let mut t = PainterTool::default();
         t.abre_a_sprite(vec![255u8; (w * h * 4) as usize], w, h);
@@ -560,6 +697,10 @@ mod diag_w3b {
         t.set_wet_relogio_fixo(true);
         let p = crate::tool::paint::wetpaint_preset::de_fabrica_ou_candidato(nome);
         assert!(t.wet_preset_aplicar(&p).is_empty());
+        if cold {
+            t.set_brush_paper_kind(1);
+            t.set_substrate_depth(0.6);
+        }
         t.set_wet_oleo_real_ligado(true);
         t.set_wet_smooth_edges(0.0);
         t.set_brush_size_px(40.0);
@@ -593,7 +734,7 @@ mod diag_w3b {
         let d = std::env::var("PH2D_OLEO_PNG").expect("PH2D_OLEO_PNG=<pasta>");
         let nome = std::env::var("PH2D_OLEO_PINCEL").unwrap_or_else(|_| "Dabber".into());
         let (w, h) = (W, H);
-        let mut t = um_traco(&nome);
+        let mut t = um_traco(&nome, std::env::var("PH2D_OLEO_COLD").is_ok());
         let mut px = t.run_full().0;
         let sem_luz = px.clone();
         t.apply_impasto_light(&mut px, crate::Region { x: 0, y: 0, w, h });
@@ -609,6 +750,7 @@ mod diag_w3b {
         std::fs::write(format!("{d}/sem_luz.rgba"), &sem_luz).expect("grava");
         std::fs::write(format!("{d}/pigmento.rgba"), &s.pigment).expect("grava");
         std::fs::write(format!("{d}/sombra.u8"), &s.sombra).expect("grava");
+        std::fs::write(format!("{d}/grao.u8"), &s.grao).expect("grava");
         // A massa EFECTIVA (× o factor da espessura) da grade, `u16`, e os fios: a fixtura do gate da orla.
         let g = s.engine.active_grid();
         let mut m = Vec::with_capacity(g.w * g.h * 2);
@@ -642,7 +784,7 @@ mod diag_w3b {
     /// `oraculo/pontinhos_regua.py`). Antes: 22 soltos neste traço.
     #[test]
     fn a_orla_do_dabber_nao_tem_pontinhos_escuros_na_tela() {
-        let mut t = um_traco("Dabber");
+        let mut t = um_traco("Dabber", false);
         let px = t.run_full().0;
         let (w, h) = (W as usize, H as usize);
         let mut tela = vec![[255.0f64, 0.0]; (w + 2) * (h + 2)];

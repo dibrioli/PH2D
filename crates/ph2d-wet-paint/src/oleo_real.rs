@@ -1495,10 +1495,6 @@ pub fn grao_do_papel(o: &OleoReal, campo: &CampoAltura, cx: usize, cy: usize) ->
     crate::material::transparencia(m.transmissao, o.material.transmissao)
 }
 
-/// A sombra no papel em `u8` (o plano que o composite guarda): a MESMA conversão nos dois caminhos. `s` é uma
-/// fracção de LUZ (linear); o composite escurece o byte sRGB por ela, por isso guarda-se a fracção do byte que
-/// tira essa luz: `1 − sRGB(1 − s)` (exacta no papel branco). Guardar `s` no byte era tirar ~2,2× a luz — o halo
-/// cinza à volta de todo traço (K4, `oraculo/README.md` §K4).
 /// Quantos níveis (`u8`) uma célula do plano da sombra tem de ficar ACIMA da mediana das 3×3 para ser um furo
 /// (`oraculo/README.md` §BUG-bordas-W3b).
 pub const FURO_DA_SOMBRA: u8 = 32;
@@ -1539,6 +1535,10 @@ pub fn sombra_sem_furo(plano: &[u8], (gw, gh): (usize, usize), (x, y): (usize, u
     if s - v[4] >= furo { v[4] } else { s }
 }
 
+/// A sombra no papel em `u8` (o plano que o composite guarda): a MESMA conversão nos dois caminhos. `s` é uma
+/// fracção de LUZ (linear); o composite escurece o byte sRGB por ela, por isso guarda-se a fracção do byte que
+/// tira essa luz: `1 − sRGB(1 − s)` (exacta no papel branco). Guardar `s` no byte era tirar ~2,2× a luz — o halo
+/// cinza à volta de todo traço (K4, `oraculo/README.md` §K4).
 #[must_use]
 pub fn sombra_em_u8(s: f64) -> u8 {
     (255.0 - srgb255_of_linear(1.0 - s.clamp(0.0, 1.0))).round() as u8

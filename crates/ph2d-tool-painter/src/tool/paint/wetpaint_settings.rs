@@ -575,23 +575,20 @@ impl PainterTool {
         }
     }
 
-    /// A intensidade do **Smooth Edges** do Wet Paint (`0..1`; NaN = `0`): mudá-la recompõe a tela inteira.
+    /// A intensidade do **Smooth Edges** do Wet Paint (`0..1`; NaN = `0`): é do TRAÇO (dono 27/10, §BUG-bordas-W3b) —
+    /// vale para os traços seguintes (pousa na célula); a tinta já pousada não muda, logo nada se recompõe.
     pub fn set_wet_smooth_edges(&mut self, forca: f32) {
-        if self.guarda_smooth_edges(forca) {
-            self.wet_recomposite_full();
-        }
+        self.guarda_smooth_edges(forca);
     }
 
-    /// Guarda o Smooth Edges; `true` = mudou.
-    fn guarda_smooth_edges(&mut self, forca: f32) -> bool {
+    /// Guarda o Smooth Edges.
+    fn guarda_smooth_edges(&mut self, forca: f32) {
         let forca = if forca.is_nan() {
             0.0
         } else {
             forca.clamp(0.0, 1.0)
         };
-        let muda = self.paint.wetpaint.smooth_edges != forca;
         self.paint.wetpaint.smooth_edges = forca;
-        muda
     }
 
     /// A intensidade do **Smooth Edges** do Wet Paint (`0` = desligado).
@@ -791,9 +788,8 @@ impl PainterTool {
             return true;
         }
         if id == crate::ids::PAINTER_WETPAINT_SMOOTH_EDGES {
-            if self.guarda_smooth_edges(v as f32) {
-                self.wet_recompoe_no_quadro();
-            }
+            // Do TRAÇO (§BUG-bordas-W3b): vale para os seguintes; a tela não se recompõe.
+            self.guarda_smooth_edges(v as f32);
             return true;
         }
         if id == crate::ids::PAINTER_WETPAINT_HEAVY_EDGE {

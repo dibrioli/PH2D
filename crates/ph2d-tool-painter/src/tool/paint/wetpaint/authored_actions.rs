@@ -21,6 +21,7 @@ impl PainterTool {
                 .clamp(0.0, ph2d_painter_brush::PAPER_TOOTH_MAX),
             agua_viva: w.agua_viva,
             borda_que_pesa: w.borda_que_pesa,
+            suave: w.smooth_edges,
         }
     }
 

@@ -51,9 +51,6 @@ impl PainterTool {
             // O relevo da tinta é da tinta (dono 11/10): o knob Emboss decide, com ou sem papel.
             relevo: true,
         };
-        // O raio do Smooth Edges (o slider `0..1` × `RAIO_MAX`); `0` = desligado.
-        let raio = self.paint.wetpaint.smooth_edges * super::smooth_edges::RAIO_MAX;
-        let suave = raio > 0.0;
         // As linhas que o Smooth Edges procura dentro da tinta: as da GRAVIDADE (o eixo mais perto dela).
         let wp = &self.paint.wetpaint;
         let linhas = (wp.tilt_on && wp.tilt_ring > 0).then(|| {
@@ -111,6 +108,14 @@ impl PainterTool {
         // escreve — e que o `mark_dirty` publica — é em PIXELS.
         let ratio = sess.ratio;
         let (gw, gh) = sess.grid;
+        // O Smooth Edges é do TRAÇO (§BUG-bordas-W3b): o de cada célula (`grid::aparencia::suave`), nunca o slider de
+        // agora. Sem o campo em camada nenhuma, nenhum; com ele, o retângulo cresce pelo raio MÁXIMO.
+        let suave = sess
+            .engine
+            .layers
+            .iter()
+            .any(|l| l.visible && !l.grid.aparencia.is_empty());
+        let raio_max = super::smooth_edges::RAIO_MAX;
         let (cx0, cy0, cx1, cy1) = match sess.engine.take_dirty() {
             Dirty::Clean => return,
             Dirty::Full => (1, 1, gw, gh),
@@ -158,7 +163,7 @@ impl PainterTool {
         }
         // Smooth Edges: um pixel até ao alcance do raio também muda, logo o retângulo cresce por ele.
         let (px0, py0, px1, py1) = if suave {
-            let a = super::smooth_edges::alcance(raio);
+            let a = super::smooth_edges::alcance(raio_max);
             (
                 px0.saturating_sub(a),
                 py0.saturating_sub(a),
@@ -506,17 +511,34 @@ impl PainterTool {
         // sorte numérica, por ser literalmente a mesma expressão.
         let sampler = grid_map::SampleU::new(ratio, gw, gh);
         let one_cell_per_pixel = sampler.is_identity();
-        let suavizada = suave.then(|| {
-            super::smooth_edges::Suave::nova(
-                sampler,
-                pigment,
-                stride,
-                (w, h),
-                (px0, py0, px1, py1),
-                raio,
-                linhas,
-            )
-        });
+        let suavizada = suave
+            .then(|| {
+                let camadas: Vec<(&ph2d_wet_paint::grid::Grid, bool)> = sess
+                    .engine
+                    .layers
+                    .iter()
+                    .map(|l| (&l.grid, l.visible))
+                    .collect();
+                super::smooth_edges::ForcaDaCelula::de(
+                    &camadas,
+                    ratio,
+                    (gw, gh),
+                    (px0, py0, px1, py1),
+                )
+            })
+            .filter(|f| f.max > 0.0)
+            .map(|f| {
+                super::smooth_edges::Suave::nova(
+                    sampler,
+                    pigment,
+                    stride,
+                    (w, h),
+                    (px0, py0, px1, py1),
+                    f.max * super::smooth_edges::RAIO_MAX,
+                    linhas,
+                    Some(&f),
+                )
+            });
         canvas[py0 * stride..py1 * stride]
             .par_chunks_mut(stride)
             .zip(vlinhas.into_par_iter())

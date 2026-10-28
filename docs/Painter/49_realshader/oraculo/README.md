@@ -802,9 +802,22 @@ com furos (fixtura e tela) · o alfa sem o enchimento (`render.rs`, fixtura) · 
 | `FURO_DA_SOMBRA` 96 / 64 / 48 | 2 · 1 · 1 soltos na fixtura (a baía de 3 células, 36 entre 95) |
 | A régua «p5 e 12 níveis abaixo das vizinhas» | o Rebelle dava 81 «pontinhos» (os salpicos da textura): a régua passou a «abaixo de METADE da mediana da tinta e 20 abaixo das vizinhas», e a orla EXTERNA (a ≤ 4 do papel aberto) |
 
-**Aberto.** O Smooth Edges ainda é lido ao COMPOR (`composite.rs`, `w.smooth_edges`): mudá-lo muda a tinta antiga —
-decisão do dono 27/10: passa a ser do TRAÇO, por célula (ver `ESTADO_MISSAO_W3.md`). Dabber em Cold 0,6: 10 px soltos na
-orla (o dente do papel). As fendas > 4 px do Dabber.
+**Ronda 2 — o Smooth Edges é do TRAÇO** (dono 27/10). `AparenciaCelula::suave` (16 B/célula fora da fábrica,
+preguiçoso, mistura pela massa; `Sim::suave` → `Params::suave` pelo facto `WetEngineFacts::suave`); o slider só
+guarda o valor (não recompõe). O composite (`smooth_edges::ForcaDaCelula`) lê o de cada célula: o `Suave` corre no raio
+MÁXIMO da região e cada pixel amacia por `Σ tenda·mancha·s ÷ Σ tenda·mancha ÷ máx` (a força da tinta à volta, pela
+mesma tenda); região toda com o mesmo valor = o caminho de antes ao byte. Gates: `smooth_edges` entrou nos FACTOS de
+`mudar_o_painel_do_pincel_nao_muda_a_tinta_pousada` (a lista é à mão — não o apanhava sozinho) e em
+`o_traco_seguinte_usa_o_valor_novo`; `a_fabrica_nao_aloca_a_aparencia` 12 → 16 B;
+`smooth_edges_so_toca_a_silhueta_e_desligado_e_o_over_de_antes` regravado (o slider a 0 depois do traço não muda a tela;
+o traço pintado a 0 = o `over`). Mutações vermelhas 3/3: o facto não pousa (`suave: 0`) · a força por pixel ignorada ·
+o composite sem a força (região não uniforme). **Dabber em Cold 0,6 (os 10 px que restam)**: não é sombra (plano 5) nem
+o dente na tinta da Transmission (plano `grao` 0) — a tinta do píxel (77, 103, 240, alfa 249) sai do composite ×0,6
+(47, 62, 139) e o passe do relevo ainda a escurece (27, 36, 80): o papel Cold num poço do dente (0,58 entre 0,76 em
+volta) visto pela tinta de massa média (1 866) na orla — a família do §BUG-papel (o dente atravessa a tinta pela
+espessura). Não curado: a lei é a do §BUG-papel/Paper Relief e não há Rebelle sobre papel texturizado.
+
+**Aberto.** Dabber em Cold 0,6: 10 px soltos na orla (acima). As fendas > 4 px do Dabber.
 
 ## §Transparency — a tinta que deixa ver o papel (dono 27/10)
 

@@ -5740,6 +5740,7 @@ dependencies = [
 name = "ph2d-app-kanban"
 version = "0.0.0"
 dependencies = [
+ "bumpalo",
  "image",
  "ph2d-a11y",
  "ph2d-app-host",
@@ -5992,6 +5993,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-app-planner"
+version = "0.0.0"
+dependencies = [
+ "ph2d-a11y",
+ "ph2d-app-host",
+ "ph2d-app-kanban",
+ "ph2d-editor-core",
+ "ph2d-host",
+ "ph2d-i18n",
+ "ph2d-kanban-dates",
+ "ph2d-kanban-filter",
+ "ph2d-kanban-model",
+ "ph2d-kanban-views",
+ "ph2d-text",
+ "ph2d-tokens",
+ "ph2d-tool-registry",
+ "ph2d-vector",
+ "rfd",
+]
+
+[[package]]
 name = "ph2d-app-registry-init"
 version = "0.0.0"
 dependencies = [
@@ -6009,6 +6031,7 @@ dependencies = [
  "ph2d-app-motion",
  "ph2d-app-painter",
  "ph2d-app-physics",
+ "ph2d-app-planner",
  "ph2d-app-skeleton",
  "ph2d-app-sprite-anim",
  "ph2d-app-sync",
@@ -7121,6 +7144,7 @@ dependencies = [
  "ph2d-app-motion",
  "ph2d-app-painter",
  "ph2d-app-physics",
+ "ph2d-app-planner",
  "ph2d-app-skeleton",
  "ph2d-app-sprite-anim",
  "ph2d-app-vec",
@@ -7618,6 +7642,25 @@ dependencies = [
  "ph2d-kanban-model",
  "postcard",
  "serde",
+]
+
+[[package]]
+name = "ph2d-kanban-views"
+version = "0.0.0"
+dependencies = [
+ "image",
+ "ph2d-a11y",
+ "ph2d-editor-core",
+ "ph2d-gpu",
+ "ph2d-host",
+ "ph2d-i18n",
+ "ph2d-kanban-dates",
+ "ph2d-kanban-filter",
+ "ph2d-kanban-model",
+ "ph2d-render",
+ "ph2d-text",
+ "ph2d-tokens",
+ "ph2d-vector",
 ]
 
 [[package]]

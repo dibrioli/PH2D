@@ -172,7 +172,10 @@ pub(super) fn compose(hero: &mut HeroScreen, c: Compose<'_>) -> Option<bool> {
     if hero.text_entry_focused() {
         return None;
     }
-    let (f, id) = hero.documents.active_surface_mut()?;
+    let Some((f, id)) = hero.documents.active_surface_mut() else {
+        // Sem aba de família: o Kanban activo no canvas do Quadro (W4 V2), se há.
+        return super::board_video::kanban::compose(hero, c);
+    };
     Some(f.compose(id, c))
 }
 

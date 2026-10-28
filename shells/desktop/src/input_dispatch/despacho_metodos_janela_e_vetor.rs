@@ -270,7 +270,7 @@ impl crate::App {
                 } else {
                     use ph2d_editor_core::doc_surface::PointerLook;
                     let (x, y) = self.last_pointer;
-                    match h.documents.surface_pointer_look(x, y) {
+                    match ph2d_editor_core::screens::hero::board_view::pointer_look(h, x, y) {
                         Some(PointerLook::Text) => CursorIcon::Text,
                         Some(PointerLook::Hand) => CursorIcon::Pointer,
                         Some(PointerLook::Arrow) | None => CursorIcon::Default,

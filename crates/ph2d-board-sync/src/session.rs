@@ -21,7 +21,7 @@ use crate::{PeerId, Replica, Snapshot, Write};
 /// das mensagens (`Message::mentions` no `TeamWrite::Message`/`Thread`, W23 B14); 11 = o elemento com
 /// `Style::birth` e `Ink::clean` (formato 17); 12 = o Kanban no quadro (`ElementKind::Kanban`,
 /// `Field::Kanban`: só a referência — os registos do documento Kanban viajam na W5, ADR-0195 §3).
-pub const PROTOCOL: u32 = 12;
+pub const PROTOCOL: u32 = 13;
 
 /// Uma ligação, no transporte do anfitrião.
 pub type ConnId = u64;

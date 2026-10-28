@@ -30,6 +30,11 @@ ph2d-richdoc = { path = "../ph2d-richdoc" }
 ph2d-kanban-dates = { path = "../ph2d-kanban-dates" }
 # W6 — o filtro, a pesquisa, a ordenação e o envelhecimento (puros).
 ph2d-kanban-filter = { path = "../ph2d-kanban-filter" }
+# J2 — o Butler no ecrã (painel de automação, botões), as ligações do cartão ao projecto e a lei
+# pública das datas do seletor (a mesma da Tabela).
+ph2d-kanban-auto = { path = "../ph2d-kanban-auto" }
+ph2d-kanban-links = { path = "../ph2d-kanban-links" }
+ph2d-kanban-views = { path = "../ph2d-kanban-views" }
 # W3 — a capa de IMAGEM descodifica-se pela MESMA porta que a cena e o Quadro usam
 # (`ph2d_asset::decode_image`, com os tectos e as recusas do registo `imageio`), fora do fio do desenho.
 ph2d-asset = { path = "../ph2d-asset" }
@@ -47,6 +52,9 @@ ph2d-vector = { path = "../ph2d-vector" }
 [dev-dependencies]
 # A porta do carácter confirmado (`HeroScreen::handle_text_input`) pede a arena do despacho.
 bumpalo = "3"
+# J1 — as fotos da aba (`#[ignore]`: a placa pinta a cena e o PNG grava-se em `docs/TrelloClone/smoke/`).
+ph2d-gpu = { path = "../ph2d-gpu" }
+ph2d-render = { path = "../ph2d-render" }
 
 [lints]
 workspace = true

@@ -14,6 +14,8 @@
 //!   com responsável e data, um comentário com menção e reacção, e o histórico.
 //! - **5** — W6: o FILTRO aberto (a maquete `Filter.dc.html`) e o envelhecimento regular.
 //! - **6** — W6: o envelhecimento PIRATA, um MODELO e um ESPELHO ([`crate::smoke_w6`]).
+//! - **8** — J2: o BUTLER (regras, botões, uma sugestão) e o verso com botões e ligações ao
+//!   projecto ([`crate::smoke_j2`]).
 
 use crate::docs::KanbanDocs;
 use ph2d_editor_core::screens::hero::HeroScreen;
@@ -26,7 +28,7 @@ use ph2d_kanban_model::{
 };
 
 /// As cenas que existem.
-pub const CENAS: u8 = 6;
+pub const CENAS: u8 = 8;
 pub const ENV: &str = "PH2D_KANBAN_SMOKE";
 
 /// O roteador que a família declara ao registo (o gate de colisão lê-o).
@@ -59,7 +61,7 @@ pub fn stage(hero: &mut HeroScreen, n: u8) -> Option<KanbanId> {
     let id = {
         let mut set = shared.borrow_mut();
         match n {
-            1 | 3 | 4 => short_film(&mut set),
+            1 | 3 | 4 | 8 => short_film(&mut set),
             5 | 6 => {
                 let id = short_film(&mut set);
                 let aging = if n == 5 {
@@ -76,6 +78,12 @@ pub fn stage(hero: &mut HeroScreen, n: u8) -> Option<KanbanId> {
             2 => big(&mut set),
             _ => return None,
         }
+    };
+    // J2 — o Quadro a que o cartão da cena 8 se liga, e quem é «eu» (o autor das sugestões).
+    let board = (n == 8).then(|| hero.documents.create("Storyboard".into()).0);
+    let me = match hero.documents.author().trim() {
+        "" => Member(ph2d_i18n::tr("kanban.back.me").to_owned()),
+        a => Member(a.to_owned()),
     };
     let docs = hero.documents.surfaces_mut().find_mut::<KanbanDocs>()?;
     docs.follow_project(shared);
@@ -103,9 +111,12 @@ pub fn stage(hero: &mut HeroScreen, n: u8) -> Option<KanbanId> {
     if n == 5 {
         crate::smoke_w6::open_filter(docs, id);
     }
-    if n == 4 {
+    if n == 4 || n == 8 {
         let shot = rich_back(&mut docs.set.borrow_mut(), id);
         if let Some(c) = shot {
+            if let Some(b) = board {
+                crate::smoke_j2::butler(&mut docs.set.borrow_mut(), id, &me, c, b);
+            }
             docs.open_back(id.0, c);
         }
     }

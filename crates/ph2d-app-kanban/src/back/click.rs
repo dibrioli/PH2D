@@ -64,6 +64,9 @@ pub(crate) fn down(
     mods: Modifiers,
     now_ns: u128,
 ) -> bool {
+    if crate::auto::is_open(docs, id) {
+        return crate::auto::down(docs, id, (x, y));
+    }
     let Some(b) = back_mut(docs, id) else {
         return false;
     };
@@ -119,7 +122,7 @@ pub(crate) fn down(
         Some(BackHit::Pop(PopHit::Picker)) => {
             let r = b.rect_of(BackHit::Pop(PopHit::Picker));
             let events = match (&mut b.pop, r) {
-                (Some(Pop::Dates(_, p, _)), Some(r)) => p.pointer_down(r, x, y),
+                (Some(Pop::Dates(_, p)), Some(r)) => p.widget.pointer_down(r, x, y),
                 _ => Vec::new(),
             };
             picker_events(docs, id, events);
@@ -131,6 +134,9 @@ pub(crate) fn down(
 
 /// Movimento: o realce, e o arrasto da selecção num editor.
 pub(crate) fn moved(docs: &mut KanbanDocs, id: u64, ts: &mut TextSystem, x: f32, y: f32) -> bool {
+    if crate::auto::is_open(docs, id) {
+        return crate::auto::moved(docs, id, x, y);
+    }
     let Some(b) = back_mut(docs, id) else {
         return false;
     };
@@ -155,14 +161,17 @@ pub(crate) fn moved(docs: &mut KanbanDocs, id: u64, ts: &mut TextSystem, x: f32,
         b.desc.pointer_move(r, x, y);
     }
     let picker = b.rect_of(BackHit::Pop(PopHit::Picker));
-    if let (Some(Pop::Dates(_, p, _)), Some(r)) = (&mut b.pop, picker) {
-        p.pointer_move(r, x, y);
+    if let (Some(Pop::Dates(_, p)), Some(r)) = (&mut b.pop, picker) {
+        p.widget.pointer_move(r, x, y);
     }
     true
 }
 
 /// Largar: o clique, se acabou no alvo onde começou.
 pub(crate) fn up(docs: &mut KanbanDocs, id: u64, x: f32, y: f32) -> bool {
+    if crate::auto::is_open(docs, id) {
+        return crate::auto::up(docs, id, x, y);
+    }
     let Some(b) = back_mut(docs, id) else {
         return false;
     };
@@ -182,6 +191,9 @@ pub(crate) fn up(docs: &mut KanbanDocs, id: u64, x: f32, y: f32) -> bool {
 /// A roda rola o verso inteiro (o modal anda com a página, o Trello): `dy` px de ecrã, positivo =
 /// ver mais abaixo ([`crate::pointer::wheel_px`] converte a roda).
 pub(crate) fn wheel(docs: &mut KanbanDocs, id: u64, dy: f32) -> bool {
+    if crate::auto::is_open(docs, id) {
+        return crate::auto::wheel(docs, id, dy);
+    }
     let Some(b) = back_mut(docs, id) else {
         return false;
     };
@@ -228,8 +240,8 @@ pub(crate) fn dates_pop(
     }) else {
         return;
     };
-    let (picker, month) = super::dates::picker(card, start, due, now);
-    open_pop(docs, id, Pop::Dates(item, Box::new(picker), month));
+    let picker = super::dates::picker(card, start, due, now);
+    open_pop(docs, id, Pop::Dates(item, Box::new(picker)));
 }
 
 pub(crate) fn picker_events(docs: &mut KanbanDocs, id: u64, events: Vec<DatePickerEvent>) {
@@ -238,13 +250,13 @@ pub(crate) fn picker_events(docs: &mut KanbanDocs, id: u64, events: Vec<DatePick
             return;
         };
         let card = b.card;
-        let Some(Pop::Dates(item, p, month)) = b.pop.as_mut() else {
+        let Some(Pop::Dates(item, p)) = b.pop.as_mut() else {
             return;
         };
         let item = *item;
         match ev {
-            DatePickerEvent::Month(e) => super::dates::month_event(p, month, e),
-            DatePickerEvent::Pick { slot, date } => super::dates::picked(p, slot, date),
+            DatePickerEvent::Month(e) => super::dates::month_event(p, e),
+            DatePickerEvent::Pick { slot, date } => p.picked(slot, date),
             DatePickerEvent::TextCommitted { field, text } => super::dates::typed(p, field, &text),
             DatePickerEvent::Toggled { .. } | DatePickerEvent::Reminder(_) => {}
             DatePickerEvent::Save | DatePickerEvent::Remove => {
@@ -566,6 +578,11 @@ pub(crate) fn click(docs: &mut KanbanDocs, id: u64, h: BackHit) {
             write::toggle_vote(docs, id, card);
         }
         BackHit::Pop(p) => super::keys::pop_click(docs, id, card, p),
+        BackHit::Side(Side::SceneObject | Side::AddButton | Side::ToNote)
+        | BackHit::CardButton(_)
+        | BackHit::LinkOpen(_)
+        | BackHit::LinkRemove(_) => super::scene::click(docs, id, card, h),
+        BackHit::Auto(_) => {}
     }
 }
 

@@ -12,6 +12,7 @@
 mod actions;
 mod anim;
 mod archive;
+mod auto;
 mod back;
 mod canvas;
 mod docs;
@@ -33,6 +34,7 @@ mod pointer;
 pub mod project;
 mod rows;
 pub mod smoke;
+mod smoke_j2;
 mod smoke_w6;
 mod surface;
 mod tab;
@@ -63,6 +65,12 @@ pub fn frame(hero: &mut ph2d_editor_core::screens::hero::HeroScreen) {
         .iter()
         .flat_map(|b| b.team.people(&author, &[]))
         .collect();
+    // J2 — o catálogo do projecto para as ligações dos versos abertos (só com um verso aberto).
+    let open = hero.documents.surfaces_mut().find_mut::<KanbanDocs>().is_some_and(|d| back::scene::any_open(d));
+    let catalog = open.then(|| ph2d_editor_core::kanban_links::catalog(&hero.documents));
+    if let (Some(cat), Some(docs)) = (catalog, hero.documents.surfaces_mut().find_mut::<KanbanDocs>()) {
+        back::scene::follow(docs, &cat);
+    }
     if let Some(docs) = hero.documents.surfaces_mut().find_mut::<KanbanDocs>() {
         docs.follow_people(&author, team);
     }

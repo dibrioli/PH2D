@@ -65,9 +65,9 @@ pub(crate) fn paint(ui: &mut Ui<'_>, back: &mut Back, cx: &Ctx<'_>) {
         .rev()
         .find(|(_, h)| *h == pop.anchor())
         .map(|(r, _)| *r);
-    if let Some(Pop::Dates(_, picker, _)) = back.pop.as_ref() {
+    if let Some(Pop::Dates(_, picker)) = back.pop.as_ref() {
         let r = place(back, anchor, u::POP_W, DatePickerLayout::preferred_height());
-        paint_date_picker(picker, r, ui.scene, ui.ts, ui.theme);
+        paint_date_picker(&picker.widget, r, ui.scene, ui.ts, ui.theme);
         ui.hit(r, BackHit::Pop(PopHit::Picker));
         return;
     }
@@ -114,6 +114,7 @@ fn title_key(pop: &Pop) -> &'static str {
         Pop::Fields(..) => "kanban.back.pop.fields",
         Pop::Delete => "kanban.back.pop.delete",
         Pop::Share => "kanban.back.pop.share",
+        Pop::Scene(_) => "kanban.links.add",
     }
 }
 
@@ -478,6 +479,7 @@ fn content(ui: &mut Ui<'_>, back: &Back, cx: &Ctx<'_>, x: f32, y: f32) -> f32 {
             yy += u::META_LINE;
         }
         Pop::Dates(..) => {}
+        Pop::Scene(f) => yy = super::scene::pop(ui, back, cx, f, ix, yy, iw),
     }
     yy + p - y
 }

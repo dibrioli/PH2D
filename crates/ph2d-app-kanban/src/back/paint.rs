@@ -30,6 +30,9 @@ pub(crate) struct Ctx<'a> {
     pub now: Moment,
     /// Quem se pode pôr no cartão e chamar com `@` (equipas dos quadros + membros usados + «eu»).
     pub people: Vec<Member>,
+    /// J2 — o Kanban está num Quadro (a vista é o elemento, ou ele está posto num): «Convert to
+    /// sticky note».
+    pub on_board: bool,
 }
 
 /// A caixa do modal na área (sem a rolagem): `(x, w)`.
@@ -38,7 +41,7 @@ pub(crate) fn modal_x(area: Rect) -> (f32, f32) {
     (area.x + (area.w - w) / 2.0, w)
 }
 
-/// ⭐ Pinta o verso aberto da aba (se há) por cima do quadro.
+/// ⭐ Pinta o verso aberto da aba (se há) por cima do quadro, e o painel de automação por cima dele.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn paint(
     scene: &mut VectorScene,
@@ -51,6 +54,23 @@ pub(crate) fn paint(
     team: &[String],
     now: Moment,
 ) {
+    card_back(scene, ts, theme, k, tab, set, me, team, now);
+    crate::auto::paint(scene, ts, theme, k, tab, set, me, team);
+}
+
+#[allow(clippy::too_many_arguments)]
+fn card_back(
+    scene: &mut VectorScene,
+    ts: &mut TextSystem,
+    theme: Theme,
+    k: &Kanban,
+    tab: &mut Tab,
+    set: &ph2d_kanban_model::KanbanSet,
+    me: &Member,
+    team: &[String],
+    now: Moment,
+) {
+    let on_board = tab.key.is_some() || !tab.placements.is_empty();
     let area = tab.layout.area;
     let Some(back) = tab.back.as_deref_mut() else {
         return;
@@ -66,6 +86,7 @@ pub(crate) fn paint(
         me,
         now,
         people: super::people(k, team, me),
+        on_board,
     };
     sync_description(back, card);
     back.area = area;
@@ -195,6 +216,7 @@ fn modal_body(ui: &mut Ui<'_>, back: &mut Back, cx: &Ctx<'_>, x: f32, top: f32, 
     ym = description(ui, back, main_x, ym, main_w);
     ym = fields(ui, back, cx, main_x, ym, main_w);
     ym = location(ui, back, cx, main_x, ym, main_w);
+    ym = super::scene::links(ui, back, cx, main_x, ym, main_w);
     ym = super::lists::attachments(ui, cx, main_x, ym, main_w);
     ym = super::lists::checklists(ui, back, cx, main_x, ym, main_w);
     ym = super::activity::feed(ui, back, cx, main_x, ym, main_w);

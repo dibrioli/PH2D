@@ -22,7 +22,7 @@ fn taken() -> KeyOutcome {
 fn pop_field(b: &mut Back) -> Option<&mut LineField> {
     let second = b.pop_focus;
     match b.pop.as_mut()? {
-        Pop::Label(_, f, _) | Pop::Checklist(f) => Some(f),
+        Pop::Label(_, f, _) | Pop::Checklist(f) | Pop::Scene(f) => Some(f),
         Pop::Attach(a, n) => Some(if second { n } else { a }),
         Pop::Fields(n, _, o) => Some(if second { o } else { n }),
         _ => None,
@@ -36,6 +36,9 @@ pub(crate) fn key(
     ts: &mut TextSystem,
     input: &KeyInput<'_>,
 ) -> KeyOutcome {
+    if crate::auto::is_open(docs, id) {
+        return crate::auto::key(docs, id, input);
+    }
     let Some(b) = back_mut(docs, id) else {
         return KeyOutcome::default();
     };
@@ -46,8 +49,8 @@ pub(crate) fn key(
         };
     }
     // O seletor de datas.
-    if let Some(Pop::Dates(_, p, _)) = b.pop.as_mut() {
-        let (took, ev) = p.key(input);
+    if let Some(Pop::Dates(_, p)) = b.pop.as_mut() {
+        let (took, ev) = p.widget.key(input);
         super::click::picker_events(docs, id, ev.into_iter().collect());
         return KeyOutcome {
             consumed: took || !input.mods.ctrl,
@@ -218,6 +221,9 @@ fn shortcut(docs: &mut KanbanDocs, id: u64, input: &KeyInput<'_>) -> KeyOutcome 
 
 /// A composição (IME, tecla morta) vai para o texto aberto.
 pub(crate) fn compose(docs: &mut KanbanDocs, id: u64, c: Compose<'_>) -> bool {
+    if crate::auto::is_open(docs, id) {
+        return crate::auto::compose(docs, id, c);
+    }
     let Some(b) = back_mut(docs, id) else {
         return false;
     };
@@ -434,6 +440,13 @@ pub(crate) fn pop_click(docs: &mut KanbanDocs, id: u64, card: CardId, p: PopHit)
                     b.pop = Some(Pop::Fields(LineField::default(), 0, LineField::default()));
                 }
             }
+            Some(p @ Pop::Scene(_)) => {
+                // Enter na pesquisa liga a 1.ª entrada.
+                if let Some(b) = back_mut(docs, id) {
+                    b.pop = Some(p);
+                }
+                super::scene::click(docs, id, card, BackHit::Pop(PopHit::Scene(0)));
+            }
             Some(Pop::Delete) => {
                 let plan = docs.kanban_of(id).and_then(|kanban| {
                     let r = ph2d_kanban_model::CardRef { kanban, card };
@@ -509,5 +522,6 @@ pub(crate) fn pop_click(docs: &mut KanbanDocs, id: u64, card: CardId, p: PopHit)
                 b.pop = None;
             }
         }
+        PopHit::Scene(_) => super::scene::click(docs, id, card, BackHit::Pop(p)),
     }
 }

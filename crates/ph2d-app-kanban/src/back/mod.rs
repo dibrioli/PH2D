@@ -10,16 +10,17 @@
 mod activity;
 pub(crate) mod attach;
 mod click;
-mod dates;
+pub(crate) mod dates;
 mod keys;
 mod lists;
 pub(crate) mod outside;
-mod paint;
+pub(crate) mod paint;
 mod pop;
 mod probe;
+pub(crate) mod scene;
 mod side;
 mod thumb;
-mod ui;
+pub(crate) mod ui;
 pub(crate) mod write;
 
 pub(crate) use click::{down, moved, up, wheel};
@@ -34,7 +35,7 @@ pub(crate) fn press_side(docs: &mut crate::docs::KanbanDocs, id: u64, s: Side) {
     }
 }
 
-use ph2d_editor_core::widget::{DatePicker, LineField, RichEditor, RichEditorLabels};
+use ph2d_editor_core::widget::{LineField, RichEditor, RichEditorLabels};
 use ph2d_editor_core::zones::Rect;
 use ph2d_kanban_model::{
     AttachmentId, CardId, CheckItemId, ChecklistId, CommentId, FieldId, LabelColor, LabelId,
@@ -92,6 +93,13 @@ pub(crate) enum BackHit {
     Mention(u8),
     Side(Side),
     Pop(PopHit),
+    /// J2 — um botão de cartão do Butler (a secção «Buttons»).
+    CardButton(ph2d_kanban_model::AutomationId),
+    /// J2 — uma ligação ao projecto: abrir, ou tirá-la.
+    LinkOpen(ph2d_kanban_model::ProjectLinkId),
+    LinkRemove(ph2d_kanban_model::ProjectLinkId),
+    /// J2 — o painel de automação (o Butler), que pinta e clica pelas mesmas peças.
+    Auto(crate::auto::AutoHit),
 }
 
 /// Os botões da coluna lateral.
@@ -117,6 +125,12 @@ pub(crate) enum Side {
     Share,
     Watch,
     Vote,
+    /// J2 — «Scene object»: ligar o cartão a um objecto/script/macro/trecho/Quadro do projecto.
+    SceneObject,
+    /// J2 — «Add button»: o painel de automação, num botão de cartão novo.
+    AddButton,
+    /// J2 — «Convert to sticky note» (com o Kanban num Quadro).
+    ToNote,
 }
 
 /// O que se acerta dentro de um popover.
@@ -149,6 +163,8 @@ pub(crate) enum PopHit {
     PickFile,
     /// «Copy link» do «Share».
     CopyLink,
+    /// J2 — a linha `n` do catálogo do projecto no popover «Scene object».
+    Scene(u16),
 }
 
 /// As reacções que se oferecem (o Trello abre o seletor inteiro; estas são as mais usadas).
@@ -188,11 +204,7 @@ pub(crate) enum Pop {
     Label(Option<LabelId>, LineField, Option<LabelColor>),
     Checklist(LineField),
     /// As datas do cartão (`None`) ou de um item.
-    Dates(
-        Option<CheckItemId>,
-        Box<DatePicker>,
-        ph2d_kanban_dates::CalendarMonth,
-    ),
+    Dates(Option<CheckItemId>, Box<ph2d_kanban_views::datepick::Picker>),
     /// Anexar um link: o endereço e o nome.
     Attach(LineField, LineField),
     Cover,
@@ -200,6 +212,8 @@ pub(crate) enum Pop {
     Fields(LineField, u8, LineField),
     Delete,
     Share,
+    /// J2 — «Scene object»: a pesquisa no catálogo do projecto.
+    Scene(LineField),
 }
 
 impl Pop {
@@ -218,6 +232,7 @@ impl Pop {
             Pop::Fields(..) => BackHit::Side(Side::Fields),
             Pop::Delete => BackHit::Side(Side::Delete),
             Pop::Share => BackHit::Side(Side::Share),
+            Pop::Scene(_) => BackHit::Side(Side::SceneObject),
         }
     }
 }
@@ -264,6 +279,9 @@ pub(crate) struct Back {
     pub last_down: Option<(BackHit, u128, u8)>,
     /// O que o último quadro pintou na atividade (as sondas leem-no).
     pub feed: Vec<String>,
+    /// J2 — o catálogo do projecto (o que existe agora e o nome de cada coisa), seguido a cada quadro
+    /// ([`scene::follow`]); as ligações do cartão resolvem-se contra ele.
+    pub catalog: ph2d_kanban_links::Catalog,
 }
 
 pub(crate) fn rich_labels(placeholder: &str) -> RichEditorLabels {
@@ -334,6 +352,7 @@ impl Back {
             copy: None,
             last_down: None,
             feed: Vec::new(),
+            catalog: ph2d_kanban_links::Catalog::default(),
         }
     }
 
@@ -362,9 +381,15 @@ impl Back {
             || self.comment.editing
             || matches!(
                 self.pop,
-                Some(Pop::Label(..) | Pop::Checklist(_) | Pop::Attach(..) | Pop::Fields(..))
+                Some(
+                    Pop::Label(..)
+                        | Pop::Checklist(_)
+                        | Pop::Attach(..)
+                        | Pop::Fields(..)
+                        | Pop::Scene(_)
+                )
             )
-            || matches!(&self.pop, Some(Pop::Dates(_, p, _)) if p.editing.is_some())
+            || matches!(&self.pop, Some(Pop::Dates(_, p)) if p.widget.editing.is_some())
     }
 }
 
@@ -393,9 +418,11 @@ pub(crate) fn people(k: &ph2d_kanban_model::Kanban, team: &[String], me: &Member
     v
 }
 
-/// O verso de um cartão está aberto na aba (ele toma o rato e o teclado).
+/// O verso de um cartão (ou o painel de automação, que entra pelas mesmas portas) está aberto na aba:
+/// ele toma o rato e o teclado.
 pub(crate) fn is_open(docs: &mut crate::docs::KanbanDocs, id: u64) -> bool {
-    docs.tab_mut(id).is_some_and(|t| t.back.is_some())
+    docs.tab_mut(id)
+        .is_some_and(|t| t.back.is_some() || t.auto.is_some())
 }
 
 /// Abre o verso do cartão `card` na aba `id` (o clique sem arrasto e o `Enter`).

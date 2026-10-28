@@ -191,7 +191,8 @@ fn verso_abre_links_no_navegador_e_copia_o_link_do_cartao() {
         m.docs().probe_back_outbox(id.0).0.is_empty(),
         "e sai da fila"
     );
-    toca(&mut m, id, "Side(Share)");
+    // J2 — a coluna cresceu («Scene object», «Buttons»): rola até ao «Share».
+    crate::j2_auto::toca_v(&mut m, id, "Side(Share)");
     toca(&mut m, id, "Pop(CopyLink)");
     ph2d_app_kanban::service_with(&mut m.hero, &mut w);
     assert_eq!(

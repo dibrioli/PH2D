@@ -126,6 +126,8 @@ pub(crate) struct Tab {
     pub smoke_hold: Option<(ListId, (f32, f32))>,
     /// O verso do cartão aberto (o modal do Trello, W3).
     pub back: Option<Box<crate::back::Back>>,
+    /// J2 — o painel de automação (o Butler) aberto: um modal por cima do quadro e do verso.
+    pub auto: Option<Box<crate::auto::Panel>>,
     /// W4 — a vista de um elemento do Quadro: o id dela (`None` = a aba, cujo id é o do Kanban).
     pub key: Option<u64>,
     /// W4 — a vista do elemento (rolagem, recolhidas) como o documento do Quadro a deu da última vez:
@@ -167,6 +169,7 @@ impl Tab {
             painted: std::cell::RefCell::default(),
             smoke_hold: None,
             back: None,
+            auto: None,
             key: None,
             board_seen: None,
             placements: Vec::new(),

@@ -5,7 +5,7 @@
 use super::write;
 use crate::docs::KanbanDocs;
 use ph2d_i18n::tr_with;
-use ph2d_kanban_model::CardId;
+use ph2d_kanban_model::{CardId, FileId};
 use std::cell::RefCell;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -60,7 +60,7 @@ pub(crate) fn attach_bytes(
 ) -> usize {
     let files = files.into_iter().map(|(name, b)| {
         let size = image_size(&b);
-        (name, Arc::from(b), size)
+        (name, Arc::from(b), size, None)
     });
     attach_ready(docs, id, card, files)
 }
@@ -69,14 +69,18 @@ fn attach_ready(
     docs: &mut KanbanDocs,
     id: u64,
     card: CardId,
-    files: impl IntoIterator<Item = (String, Arc<[u8]>, Option<[u32; 2]>)>,
+    files: impl IntoIterator<Item = (String, Arc<[u8]>, Option<[u32; 2]>, Option<FileId>)>,
 ) -> usize {
     let mut n = 0;
-    for (name, bytes, size) in files {
+    for (name, bytes, size, key) in files {
         if bytes.is_empty() {
             continue;
         }
-        let f = docs.set.borrow_mut().put_file(bytes, size);
+        // A chave calculada no fio entra feita; a do ficheiro lido na hora calcula-se aqui.
+        let f = match key {
+            Some(k) => docs.set.borrow_mut().put_file_keyed(k, bytes, size),
+            None => docs.set.borrow_mut().put_file(bytes, size),
+        };
         if write::add_file(docs, id, card, f, name, size.is_some()) {
             n += 1;
         }
@@ -89,8 +93,8 @@ fn attach_ready(
 /// RAM. Medição: `docs/TrelloClone/loop/MEDICOES.md` §W3 E.
 const READ_NOW_UP_TO: u64 = 8 << 20;
 
-/// Um ficheiro lido no fio: (aba, cartão, nome, bytes e tamanho natural, ou a falha).
-type Loaded = (u64, CardId, String, Option<(Arc<[u8]>, Option<[u32; 2]>)>);
+/// Um ficheiro lido no fio: (aba, cartão, nome, bytes, tamanho natural e a chave sha-256, ou a falha).
+type Loaded = (u64, CardId, String, Option<(Arc<[u8]>, Option<[u32; 2]>, FileId)>);
 
 #[derive(Default)]
 struct Loading {
@@ -103,7 +107,7 @@ thread_local! {
     static LOADING: RefCell<Loading> = RefCell::new(Loading::default());
 }
 
-/// Lê `p` (e o tamanho natural, se é imagem) no fio; chega por [`arrived`].
+/// Lê `p`, o tamanho natural (se é imagem) e a chave ([`FileId::of`]) no fio; chega por [`arrived`].
 fn read_later(id: u64, card: CardId, name: String, p: PathBuf) {
     LOADING.with_borrow_mut(|l| {
         if l.tx.is_none() {
@@ -117,7 +121,8 @@ fn read_later(id: u64, card: CardId, name: String, p: PathBuf) {
             .spawn(move || {
                 let got = std::fs::read(&p).ok().map(|b| {
                     let size = image_size(&b);
-                    (Arc::from(b), size)
+                    let key = FileId::of(&b);
+                    (Arc::from(b), size, key)
                 });
                 let _ = tx.send((id, card, name, got));
             });
@@ -144,7 +149,9 @@ pub(crate) fn arrived(docs: &mut KanbanDocs) -> usize {
     let mut n = 0;
     for (id, card, name, got) in done {
         match got {
-            Some((bytes, size)) => n += attach_ready(docs, id, card, [(name, bytes, size)]),
+            Some((bytes, size, key)) => {
+                n += attach_ready(docs, id, card, [(name, bytes, size, Some(key))]);
+            }
             None => docs
                 .notices
                 .push(tr_with("kanban.back.cannot_read", &[("t", &name)])),

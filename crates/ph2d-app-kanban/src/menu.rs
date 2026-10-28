@@ -44,6 +44,8 @@ pub(crate) enum Row {
     MoveAll,
     Sort,
     Aging,
+    /// J2 — o painel de automação (o Butler).
+    Automation,
 }
 
 impl Row {
@@ -66,6 +68,7 @@ impl Row {
             Row::MoveAll => "kanban.w6.menu.move_all",
             Row::Sort => "kanban.w6.menu.sort",
             Row::Aging => "kanban.w6.menu.aging",
+            Row::Automation => "kanban.auto.ui.menu",
         }
     }
 }
@@ -139,6 +142,7 @@ pub(crate) fn place(menu: Menu, anchor: Rect, area: Rect) -> Placed {
                 Row::ShowOnBoard,
                 Row::PlaceOnBoard,
                 Row::Aging,
+                Row::Automation,
             ] {
                 row(&mut rows, &mut y, r);
             }

@@ -61,6 +61,26 @@ impl KanbanDocs {
             .unwrap_or_default()
     }
 
+    /// ⚠️ SONDA (J2): o painel de automação aberto — o separador (`Rule`, `CardButton`…) e o que o
+    /// último quadro pintou: `<separador>:<on|off>:<frase>` por automação, `suggest:<frase>`,
+    /// `draft:<frase>` e `choice:<linha>` do menu aberto.
+    #[must_use]
+    pub fn probe_auto(&self, id: u64) -> Option<(String, Vec<String>)> {
+        let p = self.tabs.iter().find(|t| t.id() == id)?.auto.as_deref()?;
+        Some((format!("{:?}", p.family), p.lines.clone()))
+    }
+
+    /// ⚠️ SONDA (J2): os alvos do painel de automação (`Auto(Chip(Head(Trigger)))`, `Auto(Save)`…).
+    #[must_use]
+    pub fn probe_auto_hits(&self, id: u64) -> Vec<(String, Rect)> {
+        self.tabs
+            .iter()
+            .find(|t| t.id() == id)
+            .and_then(|t| t.auto.as_deref())
+            .map(|p| p.hits.iter().map(|(r, h)| (format!("{h:?}"), *r)).collect())
+            .unwrap_or_default()
+    }
+
     /// ⚠️ SONDA: o texto seleccionado no editor da descrição (`true`) ou do comentário.
     #[must_use]
     pub fn probe_back_selection(&self, id: u64, desc: bool) -> Option<String> {

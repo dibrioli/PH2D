@@ -10,7 +10,8 @@ use ph2d_kanban_model::Aging;
 #[test]
 fn w6_modelos_make_template_pinta_o_selo_o_rodape_cria_do_modelo_e_new_kanban_from() {
     let (mut m, id, c) = crate::verso::abre("Fox concept sheet");
-    crate::verso::toca(&mut m, id, "Side(Template)");
+    // J2 — a coluna do verso cresceu («Scene object»): rola até ao botão.
+    crate::j2_auto::toca_v(&mut m, id, "Side(Template)");
     assert!(m.kanban(id).cards[&c].template, "Make template liga o modelo");
     assert!(m.tecla(BoardKey::Escape, sem(), None));
     m.quadro();

@@ -23,7 +23,12 @@ pub(crate) fn tr(k: &str) -> Option<&'static str> {
         .or_else(|| kanban_views::tr(k))
         .or_else(|| planner::tr(k))
         .or_else(|| kanban_links::tr(k))
+        .or_else(|| kanban_auto::tr(k))
 }
+
+/// O Butler do Kanban (W8/J2): as palavras das frases das automações e o painel de automação.
+#[path = "kanban_auto.rs"]
+mod kanban_auto;
 
 /// Os «Power-Ups» do Kanban (W11): as ligações do cartão e a nota ↔ cartão.
 #[path = "kanban_links.rs"]

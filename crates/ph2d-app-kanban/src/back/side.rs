@@ -38,6 +38,9 @@ fn button(cx: &Ctx<'_>, s: Side) -> (String, IconId, bool) {
             };
             (t(k), IconId::Eye, on)
         }
+        Side::SceneObject => (t("kanban.links.add"), IconId::Cube, false),
+        Side::AddButton => (t("kanban.auto.ui.add_button"), IconId::Plus, false),
+        Side::ToNote => (t("kanban.links.to_note"), IconId::MessageSquare, false),
         Side::Vote => {
             let on = card.votes.contains(cx.me);
             let n = card.votes.len();
@@ -51,7 +54,7 @@ fn button(cx: &Ctx<'_>, s: Side) -> (String, IconId, bool) {
     }
 }
 
-const ADD: [Side; 7] = [
+const ADD: [Side; 8] = [
     Side::Members,
     Side::Labels,
     Side::Checklist,
@@ -59,6 +62,7 @@ const ADD: [Side; 7] = [
     Side::Attachment,
     Side::Cover,
     Side::Fields,
+    Side::SceneObject,
 ];
 
 const ACTIONS: [Side; 9] = [
@@ -81,6 +85,9 @@ pub(crate) fn paint(ui: &mut Ui<'_>, cx: &Ctx<'_>, x: f32, y: f32) -> f32 {
     if cx.card.template {
         actions.insert(0, Side::FromTemplate);
     }
+    if cx.on_board {
+        actions.push(Side::ToNote);
+    }
     for (caption, list) in [
         ("kanban.back.add_to_card", &ADD[..]),
         ("kanban.back.actions", &actions[..]),
@@ -100,5 +107,22 @@ pub(crate) fn paint(ui: &mut Ui<'_>, cx: &Ctx<'_>, x: f32, y: f32) -> f32 {
         }
         y += u::GAP + u::SMALL_GAP;
     }
-    y
+    buttons(ui, cx, x, y)
+}
+
+/// J2 — «Buttons» (o Butler, como no Trello): cada botão de cartão ligado, e «Add button».
+fn buttons(ui: &mut Ui<'_>, cx: &Ctx<'_>, x: f32, y: f32) -> f32 {
+    use crate::auto::buttons::{enabled, is_card_button};
+    let mut y = y;
+    ui.caption(tr("kanban.auto.ui.buttons"), x, y, u::SIDE_W);
+    y += u::META_LINE;
+    for (a, s) in enabled(cx.k, is_card_button) {
+        let r = Rect::new(x, y, u::SIDE_W, ROW);
+        ui.button(r, &s.name, Some(IconId::Bolt), BackHit::CardButton(a), false);
+        y += ROW + u::SMALL_GAP + u::HAIR;
+    }
+    let (label, icon, on) = button(cx, Side::AddButton);
+    let r = Rect::new(x, y, u::SIDE_W, ROW);
+    ui.button(r, &label, Some(icon), BackHit::Side(Side::AddButton), on);
+    y + ROW + u::GAP
 }

@@ -165,7 +165,7 @@ pub fn import_trello(
     let mut kanban = Kanban::new(id, &header.name);
     let mut ops = vec![KanbanOp::Header(header)];
     let cards = std::mem::take(&mut cx.cards);
-    ops.extend(cards.into_values().map(|c| KanbanOp::put(Record::Card(c))));
+    ops.extend(cards.into_values().map(|c| KanbanOp::put(Record::card(c))));
     ops.extend(cx.records.drain(..).map(KanbanOp::put));
     let _ = apply_batch(&mut kanban, ops);
     let c = &mut cx.report.counts;

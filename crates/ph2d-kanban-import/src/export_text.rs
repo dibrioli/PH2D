@@ -93,6 +93,17 @@ fn check_counts(k: &Kanban, c: &Card) -> (usize, usize) {
     n
 }
 
+/// Injecção de fórmulas (OWASP CSV Injection): texto do utilizador que a folha leria como fórmula
+/// (`=`, `+`, `-`, `@`, TAB, CR à frente) ganha um `'`. Só células de texto — contagens, booleanos
+/// e datas ISO que o próprio export produz ficam intactos.
+fn safe(s: &str) -> String {
+    if s.starts_with(['=', '+', '-', '@', '\t', '\r']) {
+        format!("'{s}")
+    } else {
+        s.to_owned()
+    }
+}
+
 fn csv_field(out: &mut String, f: &str) {
     if f.contains([',', '"', '\r', '\n']) {
         out.push('"');
@@ -134,18 +145,18 @@ pub fn export_csv(k: &Kanban) -> String {
             &mut out,
             &[
                 object_id(c.id.0, Some(c.created)),
-                c.title.clone(),
+                safe(&c.title),
                 String::new(),
-                c.description.clone(),
-                label_text(k, c).join(", "),
-                people(&c.members),
+                safe(&c.description),
+                safe(&label_text(k, c).join(", ")),
+                safe(&people(&c.members)),
                 c.due.map(|d| format_time(d.at)).unwrap_or_default(),
                 c.start.map(format_time).unwrap_or_default(),
                 c.due.is_some_and(|d| d.done).to_string(),
                 total.to_string(),
                 done.to_string(),
                 atts.to_string(),
-                list.to_owned(),
+                safe(list),
                 c.archived.to_string(),
                 format_time(c.created),
             ],

@@ -120,3 +120,47 @@ fn csv_cells_read_back_by_an_independent_parser() {
         .expect("CRLF dentro");
     assert!(trilha[col("Card Description")].contains("\"aspas\"\r\ne quebra"));
 }
+
+fn dangerous_export() -> (Vec<Vec<String>>, Vec<String>) {
+    let mut k = imported().kanban;
+    let titles: Vec<String> = ["=1+1", "+1", "-5", "@SUM(A1)", "\tx", "\rx", "safe"]
+        .iter()
+        .map(|s| (*s).to_owned())
+        .collect();
+    for (c, t) in k.cards.values_mut().zip(&titles) {
+        c.title = t.clone();
+        c.description = format!("={t}");
+    }
+    (parse_csv(&export_csv(&k)), titles)
+}
+
+#[test]
+fn csv_formula_characters_are_prefixed_with_a_quote() {
+    let (rows, titles) = dangerous_export();
+    let col = |name: &str| CSV_COLUMNS.iter().position(|c| *c == name).expect(name);
+    for t in &titles {
+        let want = if t == "safe" { t.clone() } else { format!("'{t}") };
+        let row = rows[1..]
+            .iter()
+            .find(|r| r[col("Card Name")] == want)
+            .unwrap_or_else(|| panic!("título {t:?} → {want:?}"));
+        assert_eq!(row[col("Card Description")], format!("'={t}"));
+    }
+}
+
+#[test]
+fn csv_numeric_and_date_columns_are_never_prefixed() {
+    let (rows, _) = dangerous_export();
+    for name in [
+        "Checklist Items Total",
+        "Checklist Items Completed",
+        "Attachment Count",
+    ] {
+        let i = CSV_COLUMNS.iter().position(|c| *c == name).expect(name);
+        assert!(rows[1..].iter().all(|r| r[i].parse::<u32>().is_ok()), "{name}");
+    }
+    for name in ["Due Date", "Start Date", "Created"] {
+        let i = CSV_COLUMNS.iter().position(|c| *c == name).expect(name);
+        assert!(rows[1..].iter().all(|r| !r[i].starts_with('\'')), "{name}");
+    }
+}

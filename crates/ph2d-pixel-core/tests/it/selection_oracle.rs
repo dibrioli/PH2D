@@ -4,13 +4,11 @@
 //! NOSSO núcleo e tem de dar a máscara célula a célula; cada família conta os seus casos (um salto
 //! mudo reprova).
 //!
-//! ⛔ Recusas MEDIDAS: a marquee elíptica como Zingl dá 106/112 — `4x6 5x6 6x5 10x6 10x8 24x16` são
-//! mais apertadas no Trial; nenhuma das variantes medidas (raio/centro em meia célula, limiar,
-//! arredondamento por linha, a caixa ±1, transposta, linhas ∩ colunas) passa das 106; nem (27/10)
-//! a caixa ímpar+1 sem a linha/coluna do meio (acerta as seis, falha 35), a cónica racional de
-//! Zingl, superamostragem 2–4×, nem limiares nos passos (109 é ajuste, não lei). O Trial ⊆ Zingl
-//! em 112/112 e as ímpar×ímpar são todas Zingl: a lacuna é só da paridade par. As seis
-//! ficam listadas abaixo: uma lei melhor aparece como «menos falhas» e reprova até a lista encolher.
+//! A marquee elíptica: 112 caixas aqui e 715 na grelha `oracle_trial_ellipse_grid.json` (27/10), todas
+//! exatas pela lei de `selection::ellipse_rows`. ⛔ Recusas MEDIDAS na grelha: Zingl puro 445/576,
+//! elipse contínua centrada (nenhum raio serve: 13 caixas, até 23x23, são inviáveis), Zingl ∩ contínua
+//! 276, viés/condições do passo de Zingl ≤ 477, Kennedy/Zingl-centro com o meio duplicado ≤ 186,
+//! «ímpar+1 sem o meio» em TODO lado par 504 — os pares 4, 8, 12 e 22 são o próprio Zingl.
 //! `mode_btn_add` é uma leitura partida do driver (máscara vazia); mede-se pelo `mode_shift`.
 
 use ph2d_pixel_core::fill::BucketSample;
@@ -139,30 +137,51 @@ fn the_rect_marquee_is_inclusive_press_to_release_like_the_trial() {
 }
 
 #[test]
-fn the_ellipse_marquee_is_zingl_except_the_six_measured_boxes() {
+fn the_ellipse_marquee_matches_the_trial_on_every_measured_box() {
     let f = fx();
     let cs = cases(&f, "ell_");
-    let mut off = Vec::new();
     for (k, c) in &cs {
         let m = Mask::ellipse(W, H, cell(&c["press"]), cell(&c["release"]));
-        if rows(&m) != want(c) {
+        assert_eq!(rows(&m), want(c), "{k}");
+    }
+    assert_eq!(cs.len(), 112);
+}
+
+/// A grelha da marquee elíptica (`oracle_trial_ellipse_grid.json`): toda caixa 1..24 × 1..24 e os
+/// lados pares até 150 / 96, cada uma na posição em que foi arrastada no Trial — exata, linha a linha.
+#[test]
+fn the_ellipse_marquee_matches_the_trial_grid_row_by_row() {
+    let f: Value = serde_json::from_str(include_str!("../fixtures/oracle_trial_ellipse_grid.json"))
+        .expect("json");
+    let cs = f["cases"].as_object().expect("cases");
+    let mut off = Vec::new();
+    for (k, c) in cs {
+        let (w, h) = k.split_once('x').expect("wxh");
+        let (w, h): (i32, i32) = (w.parse().expect("w"), h.parse().expect("h"));
+        let at = cell(&c["at"]);
+        let mut got = vec![None; h as usize];
+        selection::ellipse_rows(at, (at.0 + w - 1, at.1 + h - 1), |x0, x1, y| {
+            got[(y - at.1) as usize] = Some((x0 - at.0, x1 - at.0));
+        });
+        let want: Vec<Option<(i32, i32)>> = c["rows"]
+            .as_array()
+            .expect("rows")
+            .iter()
+            .map(|r| {
+                r.as_array().map(|p| {
+                    (
+                        p[0].as_i64().expect("x0") as i32,
+                        p[1].as_i64().expect("x1") as i32,
+                    )
+                })
+            })
+            .collect();
+        if got != want {
             off.push(k.as_str());
         }
     }
-    assert_eq!(cs.len(), 112);
-    off.sort_unstable();
-    assert_eq!(
-        off,
-        [
-            "ell_10x6",
-            "ell_10x8",
-            "ell_4x6",
-            "ell_5x6",
-            "ell_6x5",
-            "ell_from_0_0__23_15"
-        ],
-        "a lacuna medida da elipse mudou"
-    );
+    assert_eq!(cs.len(), 715);
+    assert_eq!(off, Vec::<&str>::new(), "caixas fora do Trial");
 }
 
 /// As amostras do rato do `trial_selecao.py`: 16 px por célula, centro em +8, passos de ~4 px

@@ -149,7 +149,7 @@ impl Mask {
         )
     }
 
-    /// **A marquee elíptica** na caixa inclusiva `a..b`: as linhas da elipse de Zingl (Trial 106/112).
+    /// **A marquee elíptica** na caixa inclusiva `a..b`: as linhas de [`ellipse_rows`] (Trial 715/715).
     #[must_use]
     pub fn ellipse(w: u32, h: u32, a: Cell, b: Cell) -> Self {
         let mut m = Self::empty(w, h);
@@ -288,12 +288,45 @@ pub fn brush_offsets(n: u32, brush: ModifyBrush) -> Vec<Cell> {
     }
 }
 
-/// As linhas cheias `(x0, x1, y)` da elipse inscrita na caixa inclusiva `a..b` — o contorno de
-/// Zingl (`plotEllipseRect`, com a ponta das elipses achatadas acabada até `y0 - y1 <= b`).
+/// Os lados PARES em que o Trial fica com o par do próprio Zingl; todo outro lado par `n` sai da
+/// elipse ímpar `n + 1` (medido: a grelha 1..24 × 1..24 e os pares até 150 / 96, 0 falhas —
+/// `oracle_trial_ellipse_grid.json`).
+const EVEN_SIDES_ZINGL: [i64; 4] = [4, 8, 12, 22];
+
+/// As linhas cheias `(x0, x1, y)` da **marquee elíptica** na caixa inclusiva `a..b` (Trial 715/715).
+/// Lado ímpar, ou par de [`EVEN_SIDES_ZINGL`]: o de Zingl. Outro lado par `n`: a elipse de Zingl
+/// com `n + 1` nesse eixo, cujas duas linhas (colunas) vizinhas da do meio saem e a do meio fica em
+/// dobro — as duas centrais nunca têm menos que a do meio.
 pub fn ellipse_rows(a: Cell, b: Cell, mut row: impl FnMut(i32, i32, i32)) {
-    let (mut x0, mut x1) = (i64::from(a.0.min(b.0)), i64::from(a.0.max(b.0)));
-    let (ya, yb) = (i64::from(a.1.min(b.1)), i64::from(a.1.max(b.1)));
-    let (top, height) = (ya, (yb - ya + 1) as usize);
+    let (bx, by) = (i64::from(a.0.min(b.0)), i64::from(a.1.min(b.1)));
+    let w = i64::from(a.0.max(b.0)) - bx + 1;
+    let h = i64::from(a.1.max(b.1)) - by + 1;
+    let grow = |n: i64| i64::from(n % 2 == 0 && !EVEN_SIDES_ZINGL.contains(&n));
+    let (gw, gh) = (grow(w), grow(h));
+    let (lo, hi) = zingl_spans(w - 1 + gw, h - 1 + gh);
+    let (mc, mr) = (w / 2, h / 2);
+    for r in 0..h {
+        let src = match gh {
+            1 if r >= mr - 1 && r <= mr => mr,
+            1 if r > mr => r + 1,
+            _ => r,
+        } as usize;
+        let (mut l, mut x) = (lo[src], hi[src]);
+        if l > x {
+            continue;
+        }
+        if gw == 1 {
+            (l, x) = (l.min(mc - 1), (x - 1).max(mc));
+        }
+        row((bx + l) as i32, (bx + x) as i32, (by + r) as i32);
+    }
+}
+
+/// Os extremos `(lo, hi)` de cada linha do contorno de Zingl (`plotEllipseRect`, com a ponta das
+/// elipses achatadas acabada até `y0 - y1 <= b`) na caixa `0..=aa × 0..=bb`.
+fn zingl_spans(aa: i64, bb: i64) -> (Vec<i64>, Vec<i64>) {
+    let (mut x0, mut x1, ya) = (0_i64, aa, 0_i64);
+    let (top, height) = (ya, (bb + 1) as usize);
     let mut lo = vec![i64::MAX; height];
     let mut hi = vec![i64::MIN; height];
     let mut put = |x: i64, y: i64| {
@@ -303,8 +336,6 @@ pub fn ellipse_rows(a: Cell, b: Cell, mut row: impl FnMut(i32, i32, i32)) {
             hi[r] = hi[r].max(x);
         }
     };
-    let aa = x1 - x0;
-    let bb = yb - ya;
     let mut b1 = bb & 1;
     let mut dx = 4 * (1 - aa) * bb * bb;
     let mut dy = 4 * (b1 + 1) * aa * aa;
@@ -343,11 +374,7 @@ pub fn ellipse_rows(a: Cell, b: Cell, mut row: impl FnMut(i32, i32, i32)) {
         put(x1 + 1, y1);
         y1 -= 1;
     }
-    for r in 0..height {
-        if lo[r] <= hi[r] {
-            row(lo[r] as i32, hi[r] as i32, (top + r as i64) as i32);
-        }
-    }
+    (lo, hi)
 }
 
 /// Bresenham DE `a` PARA `b` (sem canonicalizar: o laço do Trial desempata pela direcção).

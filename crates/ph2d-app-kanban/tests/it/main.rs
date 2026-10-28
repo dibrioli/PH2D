@@ -36,6 +36,12 @@ pub struct Mesa {
     pub agora: u128,
 }
 
+impl Default for Mesa {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Mesa {
     /// Um hero com a família instalada, como a shell (`init.rs`).
     pub fn new() -> Self {

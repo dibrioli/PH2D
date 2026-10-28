@@ -108,7 +108,12 @@ impl Doc<'_> {
     }
 
     /// Um cartão novo na lista, logo depois de `after` (`None` = no fim).
-    pub fn add_card(&mut self, list: ListId, after: Option<CardId>, title: String) -> Option<CardId> {
+    pub fn add_card(
+        &mut self,
+        list: ListId,
+        after: Option<CardId>,
+        title: String,
+    ) -> Option<CardId> {
         let k = self.kanban()?;
         let id = CardId(k.mint());
         let pos = match after {
@@ -149,7 +154,11 @@ impl Doc<'_> {
         let Some(k) = self.kanban() else {
             return false;
         };
-        let others: Vec<&Card> = k.cards_in(list).into_iter().filter(|c| c.id != id).collect();
+        let others: Vec<&Card> = k
+            .cards_in(list)
+            .into_iter()
+            .filter(|c| c.id != id)
+            .collect();
         let i = index.min(others.len());
         let lo = i.checked_sub(1).map(|j| &others[j].pos);
         let hi = others.get(i).map(|c| &c.pos);
@@ -178,7 +187,11 @@ impl Doc<'_> {
         let Some(k) = self.kanban() else {
             return false;
         };
-        let others: Vec<&List> = k.lists_in_order().into_iter().filter(|l| l.id != id).collect();
+        let others: Vec<&List> = k
+            .lists_in_order()
+            .into_iter()
+            .filter(|l| l.id != id)
+            .collect();
         let i = index.min(others.len());
         let lo = i.checked_sub(1).map(|j| &others[j].pos);
         let hi = others.get(i).map(|l| &l.pos);
@@ -219,11 +232,15 @@ impl Doc<'_> {
 
     /// Apaga de vez (do arquivo). O desfazer devolve-o.
     pub fn delete_card(&mut self, id: CardId) -> bool {
-        self.apply(vec![KanbanOp::Delete(ph2d_kanban_model::RecordId::Card(id))])
+        self.apply(vec![KanbanOp::Delete(ph2d_kanban_model::RecordId::Card(
+            id,
+        ))])
     }
 
     pub fn delete_list(&mut self, id: ListId) -> bool {
-        self.apply(vec![KanbanOp::Delete(ph2d_kanban_model::RecordId::List(id))])
+        self.apply(vec![KanbanOp::Delete(ph2d_kanban_model::RecordId::List(
+            id,
+        ))])
     }
 }
 
@@ -240,7 +257,11 @@ mod tests {
     #[test]
     fn a_card_dragged_to_another_list_is_one_write_and_one_undo() {
         let (mut set, mut h, id) = fresh();
-        let mut d = Doc { set: &mut set, history: &mut h, id };
+        let mut d = Doc {
+            set: &mut set,
+            history: &mut h,
+            id,
+        };
         let a = d.add_list("To Do".into()).expect("lista");
         let b = d.add_list("Doing".into()).expect("lista");
         let c1 = d.add_card(a, None, "Storyboard".into()).expect("cartão");
@@ -251,13 +272,21 @@ mod tests {
         assert_eq!(ids, vec![c1, c2], "foi para o topo da outra lista");
         assert!(d.undo(false));
         let k = d.kanban().expect("kanban");
-        assert_eq!(k.cards_in(a).len(), 1, "o desfazer devolve-o à lista de origem");
+        assert_eq!(
+            k.cards_in(a).len(),
+            1,
+            "o desfazer devolve-o à lista de origem"
+        );
     }
 
     #[test]
     fn dropping_a_card_where_it_already_is_writes_nothing() {
         let (mut set, mut h, id) = fresh();
-        let mut d = Doc { set: &mut set, history: &mut h, id };
+        let mut d = Doc {
+            set: &mut set,
+            history: &mut h,
+            id,
+        };
         let a = d.add_list("To Do".into()).expect("lista");
         let c1 = d.add_card(a, None, "1".into()).expect("cartão");
         d.add_card(a, None, "2".into());
@@ -269,7 +298,11 @@ mod tests {
     #[test]
     fn a_new_card_after_another_lands_between_it_and_the_next() {
         let (mut set, mut h, id) = fresh();
-        let mut d = Doc { set: &mut set, history: &mut h, id };
+        let mut d = Doc {
+            set: &mut set,
+            history: &mut h,
+            id,
+        };
         let a = d.add_list("L".into()).expect("lista");
         let c1 = d.add_card(a, None, "1".into()).expect("cartão");
         let c3 = d.add_card(a, None, "3".into()).expect("cartão");
@@ -282,14 +315,30 @@ mod tests {
     #[test]
     fn moving_a_list_reorders_and_archiving_hides_it() {
         let (mut set, mut h, id) = fresh();
-        let mut d = Doc { set: &mut set, history: &mut h, id };
+        let mut d = Doc {
+            set: &mut set,
+            history: &mut h,
+            id,
+        };
         let a = d.add_list("A".into()).expect("lista");
         let b = d.add_list("B".into()).expect("lista");
         assert!(d.move_list(b, 0));
-        let order: Vec<ListId> = d.kanban().expect("k").lists_in_order().iter().map(|l| l.id).collect();
+        let order: Vec<ListId> = d
+            .kanban()
+            .expect("k")
+            .lists_in_order()
+            .iter()
+            .map(|l| l.id)
+            .collect();
         assert_eq!(order, vec![b, a]);
         assert!(d.archive_list(b, true));
-        let order: Vec<ListId> = d.kanban().expect("k").lists_in_order().iter().map(|l| l.id).collect();
+        let order: Vec<ListId> = d
+            .kanban()
+            .expect("k")
+            .lists_in_order()
+            .iter()
+            .map(|l| l.id)
+            .collect();
         assert_eq!(order, vec![a]);
     }
 }

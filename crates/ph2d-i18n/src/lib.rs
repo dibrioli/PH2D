@@ -80,8 +80,6 @@ mod chrome_reach;
 mod code_editor;
 /// As explicações escritas à mão das mensagens do Luau (CodeEditor Onda 2, I8).
 mod code_explain;
-/// O que o KANBAN diz (TrelloClone W2).
-mod kanban;
 /// A página de ajuda do editor de scripts: o texto de cada biblioteca do Luau (Onda 2, item 5).
 mod code_help;
 /// ⭐⭐ **As palavras do MOTOR DA CENA** (`ph2d-ecs`) — a 7.ª fatia da fronteira dos motores, e a
@@ -96,6 +94,8 @@ mod hier_rows;
 mod image_tools;
 /// ⭐ **A JANELA do Input Map** — irmã por ASSUNTO, cortada do pai pelo tecto de LOC em 2026-09-17.
 mod input_map;
+/// O que o KANBAN diz (TrelloClone W2).
+mod kanban;
 /// As strings dos painéis do Motion (grafo, params) e dos editores ricos partilhados.
 mod motion_panels;
 /// O menu Add de OBJECTOS (o `+` da Hierarquia e o `Shift+A`).

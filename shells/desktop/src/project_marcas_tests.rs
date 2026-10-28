@@ -30,7 +30,10 @@ fn as_marcas_do_artista_atravessam_o_arquivo() {
         .read_project_file(&path.to_string_lossy())
         .expect("aceite");
     let _ = std::fs::remove_file(&path);
-    assert_eq!((back.marcas_do_artista, back.kanbans), (marcas, vec![1, 0, 9]));
+    assert_eq!(
+        (back.marcas_do_artista, back.kanbans),
+        (marcas, vec![1, 0, 9])
+    );
 }
 
 /// ⭐ **Um v191/v192 abre sem marcas e um v193 com elas, todos sem Kanbans** — bytes gravados pelo código v193

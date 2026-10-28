@@ -77,7 +77,11 @@ impl Layout {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) enum Lifted {
     /// Um cartão fora do fluxo; o espaço dele abre em `to` (lista, índice), com `h` de altura.
-    Card { id: CardId, to: Option<(ListId, usize)>, h: f32 },
+    Card {
+        id: CardId,
+        to: Option<(ListId, usize)>,
+        h: f32,
+    },
     /// Uma lista fora do fluxo; o espaço dela abre no índice `to`.
     List { id: ListId, to: usize, w: f32 },
 }
@@ -95,7 +99,12 @@ fn header(area: Rect, title_w: f32) -> (Rect, Rect, Rect, Rect) {
     let h = Rect::new(area.x, area.y, area.w, m::HEADER_H);
     let cy = h.y + (m::HEADER_H - m::BUTTON_H) / 2.0;
     let title = Rect::new(h.x + m::HEADER_PAD_L, cy, title_w, m::BUTTON_H);
-    let star = Rect::new(title.x + title.w + m::HEADER_GAP, cy, m::BUTTON_H, m::BUTTON_H);
+    let star = Rect::new(
+        title.x + title.w + m::HEADER_GAP,
+        cy,
+        m::BUTTON_H,
+        m::BUTTON_H,
+    );
     let menu = Rect::new(
         h.x + h.w - m::HEADER_PAD_R - m::BUTTON_H,
         cy,
@@ -201,7 +210,12 @@ pub(crate) fn targets(
             m::LIST_ICON_BTN,
             m::LIST_ICON_BTN,
         );
-        let collapse = Rect::new(menu.x - m::LIST_ICON_BTN, menu.y, m::LIST_ICON_BTN, m::LIST_ICON_BTN);
+        let collapse = Rect::new(
+            menu.x - m::LIST_ICON_BTN,
+            menu.y,
+            m::LIST_ICON_BTN,
+            m::LIST_ICON_BTN,
+        );
         let title = Rect::new(
             x + m::LIST_HEAD_LEFT,
             top + m::LIST_HEAD_TOP,
@@ -222,7 +236,11 @@ pub(crate) fn targets(
             _ => None,
         };
         let drop_at = match lifted {
-            Some(Lifted::Card { to: Some((list, i)), h, .. }) if list == l.id => Some((i, h)),
+            Some(Lifted::Card {
+                to: Some((list, i)),
+                h,
+                ..
+            }) if list == l.id => Some((i, h)),
             _ => None,
         };
         let push_gap = |y: &mut f32, h: f32| {
@@ -277,7 +295,12 @@ pub(crate) fn targets(
         let foot_y = body.y + body.h + m::LIST_FOOT_TOP;
         let (add, close) = if composing.is_some() {
             let add = Rect::new(inner_x, foot_y, m::CARD_W / 2.0, m::BUTTON_H);
-            let close = Rect::new(add.x + add.w + m::LIST_ICON_GAP, foot_y, m::BUTTON_H, m::BUTTON_H);
+            let close = Rect::new(
+                add.x + add.w + m::LIST_ICON_GAP,
+                foot_y,
+                m::BUTTON_H,
+                m::BUTTON_H,
+            );
             (add, Some(close))
         } else {
             (Rect::new(inner_x, foot_y, m::CARD_W, m::BUTTON_H), None)
@@ -309,11 +332,19 @@ pub(crate) fn targets(
     let new_list = field.is_some_and(|f| f.target == Target::NewList);
     let (add_list, add_list_field, add_list_close) = if new_list {
         let text = field.map_or("", |f| f.text.as_str());
-        let fh = heights.field(text, m::CARD_W - 2.0 * m::FIELD_PAD_X).max(m::LINE_H) + 2.0 * m::FIELD_PAD_Y;
+        let fh = heights
+            .field(text, m::CARD_W - 2.0 * m::FIELD_PAD_X)
+            .max(m::LINE_H)
+            + 2.0 * m::FIELD_PAD_Y;
         let f = Rect::new(x + m::LIST_BODY_X, top + m::LIST_BODY_X, m::CARD_W, fh);
         let btn_y = f.y + f.h + m::LIST_FOOT_TOP;
         let add = Rect::new(f.x, btn_y, m::CARD_W / 2.0, m::BUTTON_H);
-        let close = Rect::new(add.x + add.w + m::LIST_ICON_GAP, btn_y, m::BUTTON_H, m::BUTTON_H);
+        let close = Rect::new(
+            add.x + add.w + m::LIST_ICON_GAP,
+            btn_y,
+            m::BUTTON_H,
+            m::BUTTON_H,
+        );
         (add, Some(f), Some(close))
     } else {
         (Rect::new(x, top, m::LIST_W, m::NEW_LIST_H), None, None)
@@ -336,7 +367,10 @@ pub(crate) fn targets(
 
 /// A caixa do compositor de cartão para `text`.
 fn composer_h(heights: &mut dyn Heights, text: &str) -> f32 {
-    (heights.field(text, m::CARD_W - 2.0 * m::CARD_PAD_X).max(m::LINE_H) + 2.0 * m::CARD_PAD_Y)
+    (heights
+        .field(text, m::CARD_W - 2.0 * m::CARD_PAD_X)
+        .max(m::LINE_H)
+        + 2.0 * m::CARD_PAD_Y)
         .max(m::COMPOSER_MIN_H)
 }
 

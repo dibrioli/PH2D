@@ -3,7 +3,9 @@
 
 use crate::metrics as m;
 use crate::paint::{c, label, text_top};
-use ph2d_editor_core::paint::{fill_rounded_rect, paint_text_elided, paint_text_title_elided, stroke_rounded_rect};
+use ph2d_editor_core::paint::{
+    fill_rounded_rect, paint_text_elided, paint_text_title_elided, stroke_rounded_rect,
+};
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
 use ph2d_kanban_model::{Hue, LabelColor, ListId, Shade};
@@ -62,7 +64,9 @@ const SWATCH_COLS: usize = 5;
 /// Dispõe `menu` por baixo de `anchor`, dentro de `area`.
 #[allow(clippy::cast_precision_loss)]
 pub(crate) fn place(menu: Menu, anchor: Rect, area: Rect) -> Placed {
-    let x = (anchor.x).min(area.x + area.w - m::MENU_W - m::BOARD_PAD).max(area.x);
+    let x = (anchor.x)
+        .min(area.x + area.w - m::MENU_W - m::BOARD_PAD)
+        .max(area.x);
     let mut y = anchor.y + anchor.h + m::LABEL_GAP;
     let top = y;
     let inner_x = x + m::MENU_PAD;
@@ -77,7 +81,12 @@ pub(crate) fn place(menu: Menu, anchor: Rect, area: Rect) -> Placed {
     let mut colors = None;
     match menu {
         Menu::List(_) => {
-            for r in [Row::AddCard, Row::Collapse, Row::ArchiveList, Row::ArchiveCards] {
+            for r in [
+                Row::AddCard,
+                Row::Collapse,
+                Row::ArchiveList,
+                Row::ArchiveCards,
+            ] {
                 row(&mut rows, &mut y, r);
             }
             y += m::MENU_PAD / 2.0;
@@ -117,7 +126,12 @@ pub(crate) fn hit(p: &Placed, x: f32, y: f32) -> Option<Option<Row>> {
     if !p.rect.contains(x, y) {
         return None;
     }
-    Some(p.rows.iter().find(|(_, r)| r.contains(x, y)).map(|(row, _)| *row))
+    Some(
+        p.rows
+            .iter()
+            .find(|(_, r)| r.contains(x, y))
+            .map(|(row, _)| *row),
+    )
 }
 
 /// Pinta o menu; `current` = a cor da lista agora (marcada), `hover` = a linha sob o rato.
@@ -130,7 +144,13 @@ pub(crate) fn paint(
     current: Option<Hue>,
     hover: Option<Row>,
 ) {
-    crate::paint::shadow(scene, p.rect, m::MENU_RADIUS, c(theme, T::KanbanShadowFlight), m::SHADOW_FLIGHT_NEAR);
+    crate::paint::shadow(
+        scene,
+        p.rect,
+        m::MENU_RADIUS,
+        c(theme, T::KanbanShadowFlight),
+        m::SHADOW_FLIGHT_NEAR,
+    );
     fill_rounded_rect(scene, p.rect, m::MENU_RADIUS, c(theme, T::KanbanCard));
     let fg = c(theme, T::KanbanCardFg);
     let meta = c(theme, T::KanbanCardMeta);
@@ -140,18 +160,48 @@ pub(crate) fn paint(
     });
     let w = ts.prefix_width(title, m::BUTTON_TEXT_PX);
     let ty = text_top(ts, p.title.y, p.title.h, m::BUTTON_TEXT_PX);
-    paint_text_title_elided(ts, scene, title, p.title.x + (p.title.w - w) / 2.0, ty, m::BUTTON_TEXT_PX, p.title.w, meta);
+    paint_text_title_elided(
+        ts,
+        scene,
+        title,
+        p.title.x + (p.title.w - w) / 2.0,
+        ty,
+        m::BUTTON_TEXT_PX,
+        p.title.w,
+        meta,
+    );
     if let Some(r) = p.colors {
         let ty = text_top(ts, r.y, r.h, m::SMALL_PX);
-        paint_text_title_elided(ts, scene, tr("kanban.menu.color"), r.x, ty, m::SMALL_PX, r.w, meta);
+        paint_text_title_elided(
+            ts,
+            scene,
+            tr("kanban.menu.color"),
+            r.x,
+            ty,
+            m::SMALL_PX,
+            r.w,
+            meta,
+        );
     }
     for (row, r) in &p.rows {
         match row {
             Row::Color(Some(h)) => {
-                let (fill, _) = label(theme, LabelColor { hue: *h, shade: Shade::Subtle });
+                let (fill, _) = label(
+                    theme,
+                    LabelColor {
+                        hue: *h,
+                        shade: Shade::Subtle,
+                    },
+                );
                 fill_rounded_rect(scene, *r, m::LABEL_RADIUS, fill);
                 if current == Some(*h) || hover == Some(*row) {
-                    stroke_rounded_rect(scene, *r, m::LABEL_RADIUS, m::FOCUS_RING, c(theme, T::Accent));
+                    stroke_rounded_rect(
+                        scene,
+                        *r,
+                        m::LABEL_RADIUS,
+                        m::FOCUS_RING,
+                        c(theme, T::Accent),
+                    );
                 }
             }
             _ => {
@@ -159,7 +209,16 @@ pub(crate) fn paint(
                     fill_rounded_rect(scene, *r, 0.0, c(theme, T::KanbanCardRaised));
                 }
                 let ty = text_top(ts, r.y, r.h, m::BUTTON_TEXT_PX);
-                paint_text_elided(ts, scene, tr(row.key()), r.x + m::MENU_PAD, ty, m::BUTTON_TEXT_PX, r.w - 2.0 * m::MENU_PAD, fg);
+                paint_text_elided(
+                    ts,
+                    scene,
+                    tr(row.key()),
+                    r.x + m::MENU_PAD,
+                    ty,
+                    m::BUTTON_TEXT_PX,
+                    r.w - 2.0 * m::MENU_PAD,
+                    fg,
+                );
             }
         }
     }

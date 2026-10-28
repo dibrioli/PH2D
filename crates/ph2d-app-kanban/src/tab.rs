@@ -46,7 +46,9 @@ pub(crate) enum Lift {
     Card(CardId),
     List(ListId),
     /// O fundo do quadro (rola).
-    Pan { scroll_x: f64 },
+    Pan {
+        scroll_x: f64,
+    },
 }
 
 /// Um carregar que ainda não decidiu se é clique ou arrasto.
@@ -167,7 +169,12 @@ pub(crate) fn place(tab: &mut Tab, target: Layout, dt: f64, law: Option<Spring>)
             moving |= fy.advance(dt, law);
             cards.push(CardBox {
                 id: c.id,
-                rect: Rect::new(ox + fx.pos as f32, body_y + fy.pos as f32, c.rect.w, c.rect.h),
+                rect: Rect::new(
+                    ox + fx.pos as f32,
+                    body_y + fy.pos as f32,
+                    c.rect.w,
+                    c.rect.h,
+                ),
             });
         }
         let card_dy = |r: Rect| Rect::new(r.x + dx, body_y + r.y, r.w, r.h);
@@ -191,8 +198,10 @@ pub(crate) fn place(tab: &mut Tab, target: Layout, dt: f64, law: Option<Spring>)
     // O que já não está na disposição larga a mola (um cartão arquivado não volta a voar de lá).
     let alive_l: std::collections::BTreeSet<ListId> = lists.iter().map(|l| l.id).collect();
     tab.springs.lists.retain(|id, _| alive_l.contains(id));
-    let alive_c: std::collections::BTreeSet<CardId> =
-        lists.iter().flat_map(|l| l.cards.iter().map(|c| c.id)).collect();
+    let alive_c: std::collections::BTreeSet<CardId> = lists
+        .iter()
+        .flat_map(|l| l.cards.iter().map(|c| c.id))
+        .collect();
     let lifted = match tab.drag.map(|d| d.lift) {
         Some(crate::tab::Lift::Card(id)) => Some(id),
         _ => None,

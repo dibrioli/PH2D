@@ -30,15 +30,26 @@ impl DocumentSurface for KanbanDocs {
             dirty: false,
         });
         home.into_iter()
-            .chain(self.tabs.iter().map(|t| DocTab {
-                id: t.id(),
-                title: set.get(t.view.kanban).map_or_else(String::new, |k| k.header.name.clone()),
-                dirty: false,
+            .chain(self.tabs.iter().map(|t| {
+                DocTab {
+                    id: t.id(),
+                    title: set
+                        .get(t.view.kanban)
+                        .map_or_else(String::new, |k| k.header.name.clone()),
+                    dirty: false,
+                }
             }))
             .collect()
     }
 
-    fn paint(&mut self, id: u64, area: Rect, scene: &mut VectorScene, text: &mut TextSystem, theme: &Theme) {
+    fn paint(
+        &mut self,
+        id: u64,
+        area: Rect,
+        scene: &mut VectorScene,
+        text: &mut TextSystem,
+        theme: &Theme,
+    ) {
         if id == HOME {
             let names = self.names();
             if let Some(h) = self.home.as_mut() {
@@ -49,7 +60,15 @@ impl DocumentSurface for KanbanDocs {
         self.paint_tab(id, area, scene, text, *theme);
     }
 
-    fn pointer(&mut self, id: u64, input: PointerInput<'_>, kind: PointerKind, button: PointerButton, x: f32, y: f32) -> bool {
+    fn pointer(
+        &mut self,
+        id: u64,
+        input: PointerInput<'_>,
+        kind: PointerKind,
+        button: PointerButton,
+        x: f32,
+        y: f32,
+    ) -> bool {
         if id == HOME {
             return self.home_pointer(kind, x, y);
         }
@@ -109,11 +128,21 @@ impl DocumentSurface for KanbanDocs {
     }
 
     fn a11y(&self, id: u64) -> Vec<(NodeId, ph2d_a11y::Node)> {
-        let title = self.tabs().into_iter().find(|t| t.id == id).map(|t| t.title).unwrap_or_default();
+        let title = self
+            .tabs()
+            .into_iter()
+            .find(|t| t.id == id)
+            .map(|t| t.title)
+            .unwrap_or_default();
         let a = self.area;
         let node = ph2d_a11y::NodeBuilder::new(ph2d_a11y::Role::Document)
             .label(title)
-            .bounds(f64::from(a.x), f64::from(a.y), f64::from(a.w), f64::from(a.h))
+            .bounds(
+                f64::from(a.x),
+                f64::from(a.y),
+                f64::from(a.w),
+                f64::from(a.h),
+            )
             .build();
         vec![(NodeId(crate::A11Y_SALT ^ id), node)]
     }
@@ -124,8 +153,16 @@ impl DocumentSurface for KanbanDocs {
 
     fn family_commands(&self) -> Vec<DocCommand> {
         vec![
-            DocCommand { id: CMD_NEW, label: tr("kanban.cmd.new").to_owned(), menu: DocMenu::File },
-            DocCommand { id: CMD_HOME, label: tr("kanban.cmd.home").to_owned(), menu: DocMenu::File },
+            DocCommand {
+                id: CMD_NEW,
+                label: tr("kanban.cmd.new").to_owned(),
+                menu: DocMenu::File,
+            },
+            DocCommand {
+                id: CMD_HOME,
+                label: tr("kanban.cmd.home").to_owned(),
+                menu: DocMenu::File,
+            },
         ]
     }
 
@@ -147,7 +184,11 @@ impl DocumentSurface for KanbanDocs {
         }
         if id == HOME {
             let over = self.home.as_ref().and_then(|h| crate::home::hit(h, x, y));
-            return Some(if over.is_some() { PointerLook::Hand } else { PointerLook::Arrow });
+            return Some(if over.is_some() {
+                PointerLook::Hand
+            } else {
+                PointerLook::Arrow
+            });
         }
         let t = self.tabs.iter().find(|t| t.id() == id)?;
         Some(match t.hover {

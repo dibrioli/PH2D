@@ -90,7 +90,11 @@ mod tests {
         for _ in 0..240 {
             f.advance(1.0 / 60.0, law);
         }
-        assert!((f.pos - 100.0).abs() < f64::EPSILON, "assenta no alvo: {}", f.pos);
+        assert!(
+            (f.pos - 100.0).abs() < f64::EPSILON,
+            "assenta no alvo: {}",
+            f.pos
+        );
     }
 
     #[test]

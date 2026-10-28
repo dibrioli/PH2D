@@ -14,7 +14,10 @@ pub(crate) enum Target {
     ListTitle(ListId),
     CardTitle(CardId),
     /// Um cartão novo na lista, depois de `after` (`None` = no fim).
-    NewCard { list: ListId, after: Option<CardId> },
+    NewCard {
+        list: ListId,
+        after: Option<CardId>,
+    },
     NewList,
 }
 
@@ -82,7 +85,10 @@ impl Field {
     }
 
     fn prev(&self, i: usize) -> usize {
-        self.text[..i].char_indices().next_back().map_or(0, |(j, _)| j)
+        self.text[..i]
+            .char_indices()
+            .next_back()
+            .map_or(0, |(j, _)| j)
     }
 
     fn next(&self, i: usize) -> usize {
@@ -100,7 +106,13 @@ impl Field {
     }
 
     /// Uma tecla premida. `text` = o que ela escreve; `paste` = a área de transferência (Ctrl+V).
-    pub fn key(&mut self, key: Key, mods: Modifiers, text: Option<&str>, paste: Option<&str>) -> Outcome {
+    pub fn key(
+        &mut self,
+        key: Key,
+        mods: Modifiers,
+        text: Option<&str>,
+        paste: Option<&str>,
+    ) -> Outcome {
         let chord = mods.ctrl || mods.meta;
         let sel = self.selection();
         match key {

@@ -47,7 +47,11 @@ pub(crate) fn hit(tab: &Tab, k: &Kanban, ts: &mut TextSystem, x: f32, y: f32) ->
     if l.add_list_close.is_some_and(|r| r.contains(x, y)) {
         return Some(Hit::FieldClose);
     }
-    if tab.field.as_ref().is_some_and(|f| f.target == Target::NewList) {
+    if tab
+        .field
+        .as_ref()
+        .is_some_and(|f| f.target == Target::NewList)
+    {
         if l.add_list.contains(x, y) {
             return Some(Hit::FieldAdd);
         }
@@ -57,7 +61,7 @@ pub(crate) fn hit(tab: &Tab, k: &Kanban, ts: &mut TextSystem, x: f32, y: f32) ->
     } else if l.add_list.contains(x, y) {
         return Some(Hit::AddList);
     }
-    for lb in l.lists.iter().filter(|lb| lb.rect.contains(x, y)) {
+    if let Some(lb) = l.lists.iter().find(|lb| lb.rect.contains(x, y)) {
         if lb.collapsed {
             return Some(Hit::ListHead(lb.id));
         }
@@ -92,7 +96,11 @@ pub(crate) fn hit(tab: &Tab, k: &Kanban, ts: &mut TextSystem, x: f32, y: f32) ->
         let Some(cb) = lb.cards.iter().find(|c| c.rect.contains(x, y)) else {
             return Some(Hit::Board);
         };
-        if tab.field.as_ref().is_some_and(|f| f.target == Target::CardTitle(cb.id)) {
+        if tab
+            .field
+            .as_ref()
+            .is_some_and(|f| f.target == Target::CardTitle(cb.id))
+        {
             return Some(Hit::Field);
         }
         if edit_button(cb.rect).contains(x, y) {
@@ -172,7 +180,14 @@ fn open_field(tab: &mut Tab, target: Target, text: &str) {
 }
 
 /// Carregar. `true` = tomado.
-pub(crate) fn down(docs: &mut KanbanDocs, id: u64, ts: &mut TextSystem, button: PointerButton, x: f32, y: f32) -> bool {
+pub(crate) fn down(
+    docs: &mut KanbanDocs,
+    id: u64,
+    ts: &mut TextSystem,
+    button: PointerButton,
+    x: f32,
+    y: f32,
+) -> bool {
     let set = docs.set();
     let set = set.borrow();
     let Some(tab) = docs.tabs.iter_mut().find(|t| t.id() == id) else {
@@ -216,7 +231,12 @@ fn docs_title(docs: &KanbanDocs, id: u64, c: ph2d_kanban_model::CardId) -> Strin
     let Some(kid) = docs.kanban_of(id) else {
         return String::new();
     };
-    docs.set.borrow().get(kid).and_then(|k| k.cards.get(&c)).map(|c| c.title.clone()).unwrap_or_default()
+    docs.set
+        .borrow()
+        .get(kid)
+        .and_then(|k| k.cards.get(&c))
+        .map(|c| c.title.clone())
+        .unwrap_or_default()
 }
 
 /// Movimento (com ou sem botão). `true` = tomado.
@@ -281,7 +301,14 @@ fn start_drag(tab: &mut Tab, p: Press, x: f32, y: f32) {
 }
 
 /// Largar. `true` = tomado.
-pub(crate) fn up(docs: &mut KanbanDocs, id: u64, ts: &mut TextSystem, now_ns: u128, x: f32, y: f32) -> bool {
+pub(crate) fn up(
+    docs: &mut KanbanDocs,
+    id: u64,
+    ts: &mut TextSystem,
+    now_ns: u128,
+    x: f32,
+    y: f32,
+) -> bool {
     let Some(tab) = docs.tab_mut(id) else {
         return false;
     };
@@ -321,7 +348,11 @@ fn land(docs: &mut KanbanDocs, id: u64, d: Drag) {
             doc.move_list(l, d.to_list);
             #[allow(clippy::cast_possible_truncation)]
             let ox = tab.layout.board.x + m::BOARD_PAD - tab.view.scroll_x as f32;
-            tab.springs.lists.entry(l).or_default().jump(f64::from(ghost.0 - ox));
+            tab.springs
+                .lists
+                .entry(l)
+                .or_default()
+                .jump(f64::from(ghost.0 - ox));
         }
         Lift::Pan { .. } => {}
     });
@@ -368,7 +399,14 @@ fn click(docs: &mut KanbanDocs, id: u64, h: Hit, now_ns: u128) {
         }
         Hit::AddCard(l) => {
             if let Some(t) = docs.tab_mut(id) {
-                open_field(t, Target::NewCard { list: l, after: None }, "");
+                open_field(
+                    t,
+                    Target::NewCard {
+                        list: l,
+                        after: None,
+                    },
+                    "",
+                );
             }
         }
         Hit::Card(c) => {
@@ -409,7 +447,12 @@ fn list_title(docs: &KanbanDocs, id: u64, l: ph2d_kanban_model::ListId) -> Strin
     let Some(kid) = docs.kanban_of(id) else {
         return String::new();
     };
-    docs.set.borrow().get(kid).and_then(|k| k.lists.get(&l)).map(|l| l.title.clone()).unwrap_or_default()
+    docs.set
+        .borrow()
+        .get(kid)
+        .and_then(|k| k.lists.get(&l))
+        .map(|l| l.title.clone())
+        .unwrap_or_default()
 }
 
 fn toggle_menu(docs: &mut KanbanDocs, id: u64, mn: Menu) {
@@ -425,7 +468,14 @@ fn menu_row(docs: &mut KanbanDocs, id: u64, row: MenuRow) {
     match (mn, row) {
         (Menu::List(l), MenuRow::AddCard) => {
             if let Some(t) = docs.tab_mut(id) {
-                open_field(t, Target::NewCard { list: l, after: None }, "");
+                open_field(
+                    t,
+                    Target::NewCard {
+                        list: l,
+                        after: None,
+                    },
+                    "",
+                );
             }
         }
         (Menu::List(l), MenuRow::Collapse) => {
@@ -450,7 +500,12 @@ fn menu_row(docs: &mut KanbanDocs, id: u64, row: MenuRow) {
         (Menu::Board, MenuRow::CollapseAll | MenuRow::ExpandAll) => {
             let all: Vec<_> = docs
                 .kanban_of(id)
-                .and_then(|kid| docs.set.borrow().get(kid).map(|k| k.lists_in_order().iter().map(|l| l.id).collect()))
+                .and_then(|kid| {
+                    docs.set
+                        .borrow()
+                        .get(kid)
+                        .map(|k| k.lists_in_order().iter().map(|l| l.id).collect())
+                })
                 .unwrap_or_default();
             if let Some(t) = docs.tab_mut(id) {
                 if row == MenuRow::CollapseAll {

@@ -50,7 +50,9 @@ mod tests {
         assert_eq!(to_bytes(None), Some(Vec::new()));
         assert_eq!(from_bytes(&[]), Ok(KanbanSet::default()));
         assert_eq!(
-            to_bytes(Some(&Documents::default())).as_deref().map(from_bytes),
+            to_bytes(Some(&Documents::default()))
+                .as_deref()
+                .map(from_bytes),
             Some(Ok(KanbanSet::default()))
         );
     }

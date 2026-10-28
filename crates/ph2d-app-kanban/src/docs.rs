@@ -94,7 +94,14 @@ impl KanbanDocs {
 
     /// O relógio do chrome e a lei das molas (`None` = movimento reduzido).
     pub fn set_clock(&mut self, now_ns: u128, law: Option<Spring>) {
-        self.clock = (now_ns, if self.clock.0 == 0 { now_ns } else { self.clock.0 });
+        self.clock = (
+            now_ns,
+            if self.clock.0 == 0 {
+                now_ns
+            } else {
+                self.clock.0
+            },
+        );
         self.law = law;
     }
 
@@ -122,7 +129,10 @@ impl KanbanDocs {
         let id = self.set.borrow_mut().create(&name);
         self.open(id);
         if let Some(t) = self.tab_mut(id.0) {
-            t.field = Some(crate::edit::Field::open(crate::edit::Target::KanbanName, &name));
+            t.field = Some(crate::edit::Field::open(
+                crate::edit::Target::KanbanName,
+                &name,
+            ));
         }
         id
     }
@@ -150,18 +160,33 @@ impl KanbanDocs {
     }
 
     /// Um gesto que escreve: a aba, o Kanban dela e o desfazer dele.
-    pub(crate) fn with_doc<R>(&mut self, id: u64, f: impl FnOnce(&mut Tab, &mut Doc<'_>) -> R) -> Option<R> {
+    pub(crate) fn with_doc<R>(
+        &mut self,
+        id: u64,
+        f: impl FnOnce(&mut Tab, &mut Doc<'_>) -> R,
+    ) -> Option<R> {
         let tab = self.tabs.iter_mut().find(|t| t.id() == id)?;
         let kid = tab.view.kanban;
         let mut set = self.set.borrow_mut();
         let history = self.histories.entry(kid).or_default();
-        let mut doc = Doc { set: &mut set, history, id: kid };
+        let mut doc = Doc {
+            set: &mut set,
+            history,
+            id: kid,
+        };
         Some(f(tab, &mut doc))
     }
 
     /// ⭐ Um quadro de imagem da aba `id`: dispõe (alvos → molas → ecrã), segue o arrasto (o alvo e
     /// a rolagem nas bordas) e pinta.
-    pub(crate) fn paint_tab(&mut self, id: u64, area: Rect, scene: &mut VectorScene, ts: &mut TextSystem, theme: Theme) {
+    pub(crate) fn paint_tab(
+        &mut self,
+        id: u64,
+        area: Rect,
+        scene: &mut VectorScene,
+        ts: &mut TextSystem,
+        theme: Theme,
+    ) {
         self.area = area;
         let dt = self.dt();
         let law = self.law;
@@ -180,8 +205,21 @@ impl KanbanDocs {
         let lifted = lifted(tab, &counts, k, ts);
         let mut cache = std::mem::take(&mut tab.heights);
         let target = {
-            let mut measure = Measure { ts, cache: &mut cache, counts: &counts, label_text: tab.label_text };
-            layout::targets(k, &tab.view, area, title_w, tab.field.as_ref(), lifted, &mut measure)
+            let mut measure = Measure {
+                ts,
+                cache: &mut cache,
+                counts: &counts,
+                label_text: tab.label_text,
+            };
+            layout::targets(
+                k,
+                &tab.view,
+                area,
+                title_w,
+                tab.field.as_ref(),
+                lifted,
+                &mut measure,
+            )
         };
         tab.heights = cache;
         clamp_scroll(tab, &target);
@@ -189,19 +227,30 @@ impl KanbanDocs {
         tab.layout = seen;
         retarget(tab, &target);
         let mut looks = |cid: CardId| {
-            front::front(k, &counts, cid).map(|f| CardLook { front: f, hover: false, focus: false })
+            front::front(k, &counts, cid).map(|f| CardLook {
+                front: f,
+                hover: false,
+                focus: false,
+            })
         };
         crate::paint::board(scene, ts, theme, k, tab, &mut looks);
         crate::overlay::paint(scene, ts, theme, k, tab);
     }
 
     pub(crate) fn kanban_of(&self, id: u64) -> Option<KanbanId> {
-        self.tabs.iter().find(|t| t.id() == id).map(|t| t.view.kanban)
+        self.tabs
+            .iter()
+            .find(|t| t.id() == id)
+            .map(|t| t.view.kanban)
     }
 
     /// Os Kanbans do projecto (o início lista-os).
     pub(crate) fn names(&self) -> Vec<(KanbanId, String)> {
-        self.set.borrow().iter().map(|k| (k.id, k.header.name.clone())).collect()
+        self.set
+            .borrow()
+            .iter()
+            .map(|k| (k.id, k.header.name.clone()))
+            .collect()
     }
 
     /// Fecha os campos e o arrasto de uma aba que deixou de estar activa (o texto escrito grava-se).
@@ -232,7 +281,12 @@ impl KanbanDocs {
 
     #[must_use]
     pub fn probe_list_rect(&self, id: u64, list: ListId) -> Option<Rect> {
-        self.tabs.iter().find(|t| t.id() == id)?.layout.list(list).map(|l| l.rect)
+        self.tabs
+            .iter()
+            .find(|t| t.id() == id)?
+            .layout
+            .list(list)
+            .map(|l| l.rect)
     }
 
     /// ⚠️ SONDA: um rect nomeado da disposição da aba (`"add_list"`, `"title"`, `"star"`, `"menu"`).
@@ -258,7 +312,10 @@ impl KanbanDocs {
     /// ⚠️ SONDA: as molas ainda se mexem?
     #[must_use]
     pub fn probe_moving(&self, id: u64) -> bool {
-        self.tabs.iter().find(|t| t.id() == id).is_some_and(|t| t.springs.moving)
+        self.tabs
+            .iter()
+            .find(|t| t.id() == id)
+            .is_some_and(|t| t.springs.moving)
     }
 
     /// ⚠️ SONDA: o arrasto em curso cai em `(lista, índice)`.
@@ -270,7 +327,10 @@ impl KanbanDocs {
     /// ⚠️ SONDA: a vista da aba (recolhidas, rolagem).
     #[must_use]
     pub fn probe_view(&self, id: u64) -> Option<ph2d_kanban_model::KanbanView> {
-        self.tabs.iter().find(|t| t.id() == id).map(|t| t.view.clone())
+        self.tabs
+            .iter()
+            .find(|t| t.id() == id)
+            .map(|t| t.view.clone())
     }
 
     /// ⚠️ SONDA: o cartão com o foco do teclado.
@@ -282,19 +342,30 @@ impl KanbanDocs {
     /// ⚠️ SONDA: o texto do campo aberto.
     #[must_use]
     pub fn probe_field(&self, id: u64) -> Option<String> {
-        self.tabs.iter().find(|t| t.id() == id)?.field.as_ref().map(|f| f.text.clone())
+        self.tabs
+            .iter()
+            .find(|t| t.id() == id)?
+            .field
+            .as_ref()
+            .map(|f| f.text.clone())
     }
 
     /// ⚠️ SONDA: a inclinação de quem voa (graus).
     #[must_use]
     pub fn probe_tilt(&self, id: u64) -> f64 {
-        self.tabs.iter().find(|t| t.id() == id).map_or(0.0, |t| t.springs.tilt.pos)
+        self.tabs
+            .iter()
+            .find(|t| t.id() == id)
+            .map_or(0.0, |t| t.springs.tilt.pos)
     }
 
     /// ⚠️ SONDA: o menu e o painel do arquivo estão abertos?
     #[must_use]
     pub fn probe_overlays(&self, id: u64) -> (bool, bool) {
-        self.tabs.iter().find(|t| t.id() == id).map_or((false, false), |t| (t.menu.is_some(), t.panel.is_some()))
+        self.tabs
+            .iter()
+            .find(|t| t.id() == id)
+            .map_or((false, false), |t| (t.menu.is_some(), t.panel.is_some()))
     }
 
     /// ⚠️ SONDA: as linhas do menu aberto, com o rect de cada uma.
@@ -304,7 +375,12 @@ impl KanbanDocs {
             return Vec::new();
         };
         crate::overlay::menu_placed(t)
-            .map(|p| p.rows.iter().map(|(r, rect)| (format!("{r:?}"), *rect)).collect())
+            .map(|p| {
+                p.rows
+                    .iter()
+                    .map(|(r, rect)| (format!("{r:?}"), *rect))
+                    .collect()
+            })
             .unwrap_or_default()
     }
 
@@ -317,7 +393,10 @@ impl KanbanDocs {
         let Some(t) = self.tabs.iter().find(|t| t.id() == id) else {
             return Vec::new();
         };
-        let Some(p) = set.get(t.view.kanban).and_then(|k| crate::overlay::panel_placed(t, k, ts)) else {
+        let Some(p) = set
+            .get(t.view.kanban)
+            .and_then(|k| crate::overlay::panel_placed(t, k, ts))
+        else {
             return Vec::new();
         };
         let mut out = vec![
@@ -338,11 +417,20 @@ fn lifted(tab: &mut Tab, counts: &Counts, k: &Kanban, ts: &mut TextSystem) -> Op
     let d = tab.drag?;
     match d.lift {
         Lift::Card(id) => {
-            let h = front::front(k, counts, id)
-                .map_or(d.size.1, |f| front::height(ts, &mut tab.heights, id, &f, tab.label_text));
-            Some(Lifted::Card { id, to: d.to_card, h })
+            let h = front::front(k, counts, id).map_or(d.size.1, |f| {
+                front::height(ts, &mut tab.heights, id, &f, tab.label_text)
+            });
+            Some(Lifted::Card {
+                id,
+                to: d.to_card,
+                h,
+            })
         }
-        Lift::List(id) => Some(Lifted::List { id, to: d.to_list, w: d.size.0 }),
+        Lift::List(id) => Some(Lifted::List {
+            id,
+            to: d.to_list,
+            w: d.size.0,
+        }),
         Lift::Pan { .. } => None,
     }
 }
@@ -386,7 +474,11 @@ fn edge_scroll(tab: &mut Tab, dt: f64) {
     let ex = edge(d.at.0, b.x, b.x + b.w);
     tab.view.scroll_x += f64::from(ex) * speed;
     if let Lift::Card(_) = d.lift
-        && let Some(lb) = tab.layout.lists.iter().find(|l| !l.collapsed && l.rect.x <= d.at.0 && d.at.0 <= l.rect.x + l.rect.w)
+        && let Some(lb) = tab
+            .layout
+            .lists
+            .iter()
+            .find(|l| !l.collapsed && l.rect.x <= d.at.0 && d.at.0 <= l.rect.x + l.rect.w)
     {
         let ey = edge(d.at.1, lb.body.y, lb.body.y + lb.body.h);
         if ey != 0.0 && (lb.body.y..=lb.body.y + lb.body.h).contains(&d.at.1) {

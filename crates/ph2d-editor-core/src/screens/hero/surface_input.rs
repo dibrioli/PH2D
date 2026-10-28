@@ -72,7 +72,11 @@ pub fn commands(hero: &HeroScreen) -> Vec<crate::doc_surface::DocCommand> {
     let mut out = hero
         .documents
         .surface_active()
-        .and_then(|tab| families.get(usize::from(tab.family)).map(|f| f.commands(tab.id)))
+        .and_then(|tab| {
+            families
+                .get(usize::from(tab.family))
+                .map(|f| f.commands(tab.id))
+        })
         .unwrap_or_default();
     out.extend(families.iter().flat_map(|f| f.family_commands()));
     out

@@ -33,9 +33,16 @@ impl KanbanDocs {
         // A aba que pediu o foco é a deste quadro: o hero só a activa ao pintar, depois deste
         // `frame` (senão o nome de um Kanban acabado de criar fechava antes de se ver).
         let active = self.focus.or(active);
-        let left: Vec<u64> = self.tabs.iter().map(crate::tab::Tab::id).filter(|id| Some(*id) != active).collect();
+        let left: Vec<u64> = self
+            .tabs
+            .iter()
+            .map(crate::tab::Tab::id)
+            .filter(|id| Some(*id) != active)
+            .collect();
         for id in left {
-            let busy = self.tabs.iter().any(|t| t.id() == id && (t.field.is_some() || t.drag.is_some() || t.press.is_some()));
+            let busy = self.tabs.iter().any(|t| {
+                t.id() == id && (t.field.is_some() || t.drag.is_some() || t.press.is_some())
+            });
             if busy {
                 self.leave(id);
             }

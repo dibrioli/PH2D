@@ -4,7 +4,9 @@
 use crate::metrics as m;
 use crate::paint::{c, text_top};
 use ph2d_editor_core::IconId;
-use ph2d_editor_core::paint::{fill_rounded_rect, paint_icon, paint_text_elided, paint_text_title_elided};
+use ph2d_editor_core::paint::{
+    fill_rounded_rect, paint_icon, paint_text_elided, paint_text_title_elided,
+};
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
 use ph2d_kanban_model::{Kanban, RecordId};
@@ -73,7 +75,12 @@ pub(crate) fn place(panel: Panel, k: &Kanban, board: Rect, ts: &mut TextSystem) 
     let rect = Rect::new(board.x + board.w - m::PANEL_W, board.y, m::PANEL_W, board.h);
     let x = rect.x + m::MENU_PAD;
     let w = rect.w - 2.0 * m::MENU_PAD;
-    let close = Rect::new(rect.x + rect.w - m::MENU_PAD - m::BUTTON_H, rect.y + m::MENU_PAD, m::BUTTON_H, m::BUTTON_H);
+    let close = Rect::new(
+        rect.x + rect.w - m::MENU_PAD - m::BUTTON_H,
+        rect.y + m::MENU_PAD,
+        m::BUTTON_H,
+        m::BUTTON_H,
+    );
     let tabs_y = close.y + close.h + m::MENU_PAD;
     let cards = Rect::new(x, tabs_y, w / 2.0, m::BUTTON_H);
     let lists = Rect::new(x + w / 2.0, tabs_y, w / 2.0, m::BUTTON_H);
@@ -86,10 +93,22 @@ pub(crate) fn place(panel: Panel, k: &Kanban, board: Rect, ts: &mut TextSystem) 
         let by = y + h + m::LABEL_GAP;
         let restore = Rect::new(x, by, w / 2.0 - m::LABEL_GAP, m::BUTTON_H);
         let delete = Rect::new(x + w / 2.0, by, w / 2.0, m::BUTTON_H);
-        items.push(Item { id, title, rect: item, restore, delete });
+        items.push(Item {
+            id,
+            title,
+            rect: item,
+            restore,
+            delete,
+        });
         y = by + m::BUTTON_H + m::MENU_PAD;
     }
-    Placed { rect, close, cards, lists, items }
+    Placed {
+        rect,
+        close,
+        cards,
+        lists,
+        items,
+    }
 }
 
 pub(crate) fn hit(p: &Placed, x: f32, y: f32) -> Option<Row> {
@@ -117,38 +136,111 @@ pub(crate) fn hit(p: &Placed, x: f32, y: f32) -> Option<Row> {
     Some(row.unwrap_or(Row::Inside))
 }
 
-pub(crate) fn paint(scene: &mut VectorScene, ts: &mut TextSystem, theme: Theme, panel: Panel, p: &Placed, hover: Option<Row>) {
-    crate::paint::shadow(scene, p.rect, 0.0, c(theme, T::KanbanShadowFlight), m::SHADOW_FLIGHT_NEAR);
+pub(crate) fn paint(
+    scene: &mut VectorScene,
+    ts: &mut TextSystem,
+    theme: Theme,
+    panel: Panel,
+    p: &Placed,
+    hover: Option<Row>,
+) {
+    crate::paint::shadow(
+        scene,
+        p.rect,
+        0.0,
+        c(theme, T::KanbanShadowFlight),
+        m::SHADOW_FLIGHT_NEAR,
+    );
     fill_rounded_rect(scene, p.rect, 0.0, c(theme, T::KanbanList));
     let fg = c(theme, T::KanbanListFg);
     let meta = c(theme, T::KanbanListMeta);
     let ty = text_top(ts, p.close.y, p.close.h, m::BUTTON_TEXT_PX);
-    paint_text_title_elided(ts, scene, tr("kanban.archive.title"), p.rect.x + m::MENU_PAD, ty, m::BUTTON_TEXT_PX, p.rect.w, fg);
+    paint_text_title_elided(
+        ts,
+        scene,
+        tr("kanban.archive.title"),
+        p.rect.x + m::MENU_PAD,
+        ty,
+        m::BUTTON_TEXT_PX,
+        p.rect.w,
+        fg,
+    );
     if hover == Some(Row::Close) {
         fill_rounded_rect(scene, p.close, m::BUTTON_RADIUS, c(theme, T::KanbanSlot));
     }
-    let ir = Rect::new(p.close.x + (p.close.w - m::ICON_PX) / 2.0, p.close.y + (p.close.h - m::ICON_PX) / 2.0, m::ICON_PX, m::ICON_PX);
+    let ir = Rect::new(
+        p.close.x + (p.close.w - m::ICON_PX) / 2.0,
+        p.close.y + (p.close.h - m::ICON_PX) / 2.0,
+        m::ICON_PX,
+        m::ICON_PX,
+    );
     paint_icon(scene, IconId::Close, ir, meta, StrokeToken::Default.px());
-    for (r, on, key) in [(p.cards, !panel.lists, "kanban.archive.cards"), (p.lists, panel.lists, "kanban.archive.lists")] {
-        let fill = if on { T::KanbanHeaderBtnOn } else { T::KanbanSlot };
+    for (r, on, key) in [
+        (p.cards, !panel.lists, "kanban.archive.cards"),
+        (p.lists, panel.lists, "kanban.archive.lists"),
+    ] {
+        let fill = if on {
+            T::KanbanHeaderBtnOn
+        } else {
+            T::KanbanSlot
+        };
         fill_rounded_rect(scene, r, m::BUTTON_RADIUS, c(theme, fill));
         let label = tr(key);
         let w = ts.prefix_width(label, m::BUTTON_TEXT_PX);
         let ty = text_top(ts, r.y, r.h, m::BUTTON_TEXT_PX);
-        let ink = if on { c(theme, T::KanbanHeaderBtnOnFg) } else { fg };
-        paint_text_elided(ts, scene, label, r.x + (r.w - w) / 2.0, ty, m::BUTTON_TEXT_PX, r.w, ink);
+        let ink = if on {
+            c(theme, T::KanbanHeaderBtnOnFg)
+        } else {
+            fg
+        };
+        paint_text_elided(
+            ts,
+            scene,
+            label,
+            r.x + (r.w - w) / 2.0,
+            ty,
+            m::BUTTON_TEXT_PX,
+            r.w,
+            ink,
+        );
     }
-    let body = Rect::new(p.rect.x, p.cards.y + p.cards.h + m::MENU_PAD / 2.0, p.rect.w, p.rect.y + p.rect.h - p.cards.y - p.cards.h);
+    let body = Rect::new(
+        p.rect.x,
+        p.cards.y + p.cards.h + m::MENU_PAD / 2.0,
+        p.rect.w,
+        p.rect.y + p.rect.h - p.cards.y - p.cards.h,
+    );
     scene.push_clip(&ph2d_editor_core::paint::rect_to_vello(body));
     if p.items.is_empty() {
         let ty = text_top(ts, body.y, m::MENU_ROW_H, m::BUTTON_TEXT_PX);
-        paint_text_elided(ts, scene, tr("kanban.archive.empty"), body.x + m::MENU_PAD, ty, m::BUTTON_TEXT_PX, body.w, meta);
+        paint_text_elided(
+            ts,
+            scene,
+            tr("kanban.archive.empty"),
+            body.x + m::MENU_PAD,
+            ty,
+            m::BUTTON_TEXT_PX,
+            body.w,
+            meta,
+        );
     }
     for i in &p.items {
         fill_rounded_rect(scene, i.rect, m::CARD_RADIUS, c(theme, T::KanbanCard));
         let ty = text_top(ts, i.rect.y + m::CARD_PAD_Y, m::LINE_H, m::CARD_TITLE_PX);
-        ph2d_editor_core::paint::paint_text_block(ts, scene, &i.title, i.rect.x + m::CARD_PAD_X, ty, m::CARD_TITLE_PX, i.rect.w - 2.0 * m::CARD_PAD_X, c(theme, T::KanbanCardFg));
-        for (r, row, key) in [(i.restore, Row::Restore(i.id), "kanban.archive.restore"), (i.delete, Row::Delete(i.id), "kanban.archive.delete")] {
+        ph2d_editor_core::paint::paint_text_block(
+            ts,
+            scene,
+            &i.title,
+            i.rect.x + m::CARD_PAD_X,
+            ty,
+            m::CARD_TITLE_PX,
+            i.rect.w - 2.0 * m::CARD_PAD_X,
+            c(theme, T::KanbanCardFg),
+        );
+        for (r, row, key) in [
+            (i.restore, Row::Restore(i.id), "kanban.archive.restore"),
+            (i.delete, Row::Delete(i.id), "kanban.archive.delete"),
+        ] {
             let fill = match (row, hover == Some(row)) {
                 (Row::Delete(_), true) => T::DangerSoft,
                 (_, true) => T::KanbanHeaderBtn,
@@ -158,7 +250,16 @@ pub(crate) fn paint(scene: &mut VectorScene, ts: &mut TextSystem, theme: Theme, 
             let label = tr(key);
             let w = ts.prefix_width(label, m::BUTTON_TEXT_PX);
             let ty = text_top(ts, r.y, r.h, m::BUTTON_TEXT_PX);
-            paint_text_elided(ts, scene, label, r.x + (r.w - w) / 2.0, ty, m::BUTTON_TEXT_PX, r.w, fg);
+            paint_text_elided(
+                ts,
+                scene,
+                label,
+                r.x + (r.w - w) / 2.0,
+                ty,
+                m::BUTTON_TEXT_PX,
+                r.w,
+                fg,
+            );
         }
     }
     scene.pop_layer();

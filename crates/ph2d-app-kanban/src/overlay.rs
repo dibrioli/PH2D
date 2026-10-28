@@ -18,12 +18,22 @@ pub(crate) fn menu_placed(tab: &Tab) -> Option<menu::Placed> {
     Some(menu::place(mn, anchor, tab.layout.area))
 }
 
-pub(crate) fn panel_placed(tab: &Tab, k: &Kanban, ts: &mut TextSystem) -> Option<crate::archive::Placed> {
+pub(crate) fn panel_placed(
+    tab: &Tab,
+    k: &Kanban,
+    ts: &mut TextSystem,
+) -> Option<crate::archive::Placed> {
     let p = tab.panel?;
     Some(crate::archive::place(p, k, tab.layout.board, ts))
 }
 
-pub(crate) fn paint(scene: &mut VectorScene, ts: &mut TextSystem, theme: Theme, k: &Kanban, tab: &Tab) {
+pub(crate) fn paint(
+    scene: &mut VectorScene,
+    ts: &mut TextSystem,
+    theme: Theme,
+    k: &Kanban,
+    tab: &Tab,
+) {
     if let Some(p) = panel_placed(tab, k, ts) {
         let hover = match tab.hover {
             Some(Hit::Panel(r)) => Some(r),

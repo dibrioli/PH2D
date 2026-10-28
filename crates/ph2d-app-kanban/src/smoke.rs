@@ -8,9 +8,9 @@
 use crate::docs::KanbanDocs;
 use ph2d_editor_core::screens::hero::HeroScreen;
 use ph2d_kanban_model::{
-    Attachment, AttachmentId, Card, CardId, CheckItem, CheckItemId, Checklist, ChecklistId, Comment,
-    CommentId, Cover, CoverFill, FracKey, Hue, KanbanId, KanbanOp, KanbanSet, Label, LabelColor,
-    LabelId, Link, List, ListId, Member, Meta, Moment, Record, Shade,
+    Attachment, AttachmentId, Card, CardId, CheckItem, CheckItemId, Checklist, ChecklistId,
+    Comment, CommentId, Cover, CoverFill, FracKey, Hue, KanbanId, KanbanOp, KanbanSet, Label,
+    LabelColor, LabelId, Link, List, ListId, Member, Meta, Moment, Record, Shade,
 };
 
 /// As cenas que existem.
@@ -26,7 +26,12 @@ pub const ROUTERS: &[ph2d_app_host::SmokeRouter] = &[ph2d_app_host::SmokeRouter 
 /// O nível pedido pela env (`None` = nenhum, ou fora de `1..=CENAS`).
 #[must_use]
 pub fn armed_level() -> Option<u8> {
-    std::env::var(ENV).ok()?.trim().parse().ok().filter(|n| (1..=CENAS).contains(n))
+    std::env::var(ENV)
+        .ok()?
+        .trim()
+        .parse()
+        .ok()
+        .filter(|n| (1..=CENAS).contains(n))
 }
 
 /// Monta a cena pedida pela env (inerte sem ela). Chamar depois de instalar a família.
@@ -61,7 +66,11 @@ pub fn stage(hero: &mut HeroScreen, n: u8) -> Option<KanbanId> {
 }
 
 fn review_list(set: &KanbanSet, id: KanbanId) -> Option<ListId> {
-    set.get(id)?.lists.values().find(|l| l.title == "Review").map(|l| l.id)
+    set.get(id)?
+        .lists
+        .values()
+        .find(|l| l.title == "Review")
+        .map(|l| l.id)
 }
 
 /// Quem escreve uma cena: ids em sequência e as chaves de ordem por ordem de chegada.
@@ -73,7 +82,11 @@ struct Scene {
 
 impl Scene {
     fn new(after: u64) -> Self {
-        Self { ops: Vec::new(), next: after, pos: None }
+        Self {
+            ops: Vec::new(),
+            next: after,
+            pos: None,
+        }
     }
 
     fn id(&mut self) -> u64 {
@@ -93,14 +106,27 @@ impl Scene {
 
     fn label(&mut self, name: &str, hue: Hue, shade: Shade) -> LabelId {
         let id = LabelId(self.id());
-        self.put(Record::Label(Label { id, name: name.into(), color: Some(LabelColor { hue, shade }), meta: Meta::default() }));
+        self.put(Record::Label(Label {
+            id,
+            name: name.into(),
+            color: Some(LabelColor { hue, shade }),
+            meta: Meta::default(),
+        }));
         id
     }
 
     fn list(&mut self, title: &str, color: Option<Hue>, limit: Option<u32>) -> ListId {
         let id = ListId(self.id());
         let pos = self.pos();
-        self.put(Record::List(List { id, title: title.into(), pos, color, card_limit: limit, archived: false, meta: Meta::default() }));
+        self.put(Record::List(List {
+            id,
+            title: title.into(),
+            pos,
+            color,
+            card_limit: limit,
+            archived: false,
+            meta: Meta::default(),
+        }));
         id
     }
 
@@ -132,7 +158,16 @@ impl Scene {
     fn comments(&mut self, card: CardId, n: u32) {
         for i in 0..n {
             let id = CommentId(self.id());
-            self.put(Record::Comment(Comment { id, card, author: Member("Enio".into()), at: Moment(0), text: format!("Note {i}"), edited: None, reactions: Vec::new(), meta: Meta::default() }));
+            self.put(Record::Comment(Comment {
+                id,
+                card,
+                author: Member("Enio".into()),
+                at: Moment(0),
+                text: format!("Note {i}"),
+                edited: None,
+                reactions: Vec::new(),
+                meta: Meta::default(),
+            }));
         }
     }
 
@@ -140,18 +175,42 @@ impl Scene {
         for i in 0..n {
             let id = AttachmentId(self.id());
             let pos = self.pos();
-            self.put(Record::Attachment(Attachment { id, card, pos, name: format!("ref-{i}.png"), link: Link::Url(format!("https://example.com/{i}")), at: Moment(0), meta: Meta::default() }));
+            self.put(Record::Attachment(Attachment {
+                id,
+                card,
+                pos,
+                name: format!("ref-{i}.png"),
+                link: Link::Url(format!("https://example.com/{i}")),
+                at: Moment(0),
+                meta: Meta::default(),
+            }));
         }
     }
 
     fn checklist(&mut self, card: CardId, done: u32, all: u32) {
         let id = ChecklistId(self.id());
         let pos = self.pos();
-        self.put(Record::Checklist(Checklist { id, card, pos, title: "Checklist".into(), hide_checked: false, meta: Meta::default() }));
+        self.put(Record::Checklist(Checklist {
+            id,
+            card,
+            pos,
+            title: "Checklist".into(),
+            hide_checked: false,
+            meta: Meta::default(),
+        }));
         for i in 0..all {
             let item = CheckItemId(self.id());
             let pos = self.pos();
-            self.put(Record::CheckItem(CheckItem { id: item, checklist: id, pos, text: format!("Step {i}"), done: i < done, member: None, due: None, meta: Meta::default() }));
+            self.put(Record::CheckItem(CheckItem {
+                id: item,
+                checklist: id,
+                pos,
+                text: format!("Step {i}"),
+                done: i < done,
+                member: None,
+                due: None,
+                meta: Meta::default(),
+            }));
         }
     }
 }
@@ -192,7 +251,9 @@ fn short_film(set: &mut KanbanSet) -> KanbanId {
             c.labels = vec![writing];
             c.description = "One sentence.".into();
         });
-        let refs = s.card(backlog, "Collect references for the forest", |c| c.description = "Moodboard.".into());
+        let refs = s.card(backlog, "Collect references for the forest", |c| {
+            c.description = "Moodboard.".into()
+        });
         s.attachments(refs, 6);
         s.comments(refs, 1);
         s.card(backlog, "Pick the music", |c| {
@@ -216,7 +277,10 @@ fn short_film(set: &mut KanbanSet) -> KanbanId {
         s.attachments(fox, 2);
         let cs = s.card(todo, "Color script", |c| {
             c.labels = vec![look];
-            c.cover = Some(Cover { fill: CoverFill::Color(Hue::Orange), full: false });
+            c.cover = Some(Cover {
+                fill: CoverFill::Color(Hue::Orange),
+                full: false,
+            });
         });
         s.checklist(cs, 0, 4);
         let shot = s.card(doing, "Animate shot 12", |c| {
@@ -237,13 +301,20 @@ fn short_film(set: &mut KanbanSet) -> KanbanId {
         for t in ["Fox walk cycle", "Rain test", "Title card", "Sound sync"] {
             s.card(review, t, |_| {});
         }
-        s.card(done, "Rough the opening shot", |c| c.cover = Some(Cover { fill: CoverFill::Color(Hue::Sky), full: false }));
+        s.card(done, "Rough the opening shot", |c| {
+            c.cover = Some(Cover {
+                fill: CoverFill::Color(Hue::Sky),
+                full: false,
+            })
+        });
         let lock = s.card(done, "Lock the script", |c| {
             c.labels = vec![writing];
             c.members = people(&["Enio", "Rui"]);
         });
         s.checklist(lock, 8, 8);
-        s.card(done, "Pick the aspect ratio", |c| c.labels = vec![writing, later]);
+        s.card(done, "Pick the aspect ratio", |c| {
+            c.labels = vec![writing, later]
+        });
     })
 }
 
@@ -254,14 +325,18 @@ fn big(set: &mut KanbanSet) -> KanbanId {
         for l in 0..8 {
             let list = s.list(&format!("Sequence {}", l + 1), None, None);
             for c in 0..250 {
-                s.card(list, &format!("Shot {:03} \u{2014} layout, anim, light", c + 1), |card| {
-                    if c % 3 == 0 {
-                        card.labels = vec![tag];
-                    }
-                    if c % 5 == 0 {
-                        card.members = people(&["Enio"]);
-                    }
-                });
+                s.card(
+                    list,
+                    &format!("Shot {:03} \u{2014} layout, anim, light", c + 1),
+                    |card| {
+                        if c % 3 == 0 {
+                            card.labels = vec![tag];
+                        }
+                        if c % 5 == 0 {
+                            card.members = people(&["Enio"]);
+                        }
+                    },
+                );
             }
         }
     })

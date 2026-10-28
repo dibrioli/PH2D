@@ -49,18 +49,52 @@ impl Ink {
 fn rest_shadow(scene: &mut VectorScene, ink: &Ink, r: Rect, hover: bool) {
     let t = ink.theme;
     if hover && !ink.dark {
-        shadow(scene, r, m::CARD_RADIUS, c(t, T::KanbanShadowHover), m::SHADOW_HOVER_LIGHT);
+        shadow(
+            scene,
+            r,
+            m::CARD_RADIUS,
+            c(t, T::KanbanShadowHover),
+            m::SHADOW_HOVER_LIGHT,
+        );
     } else {
-        shadow(scene, r, m::CARD_RADIUS, c(t, T::KanbanShadowNear), m::SHADOW_NEAR);
+        shadow(
+            scene,
+            r,
+            m::CARD_RADIUS,
+            c(t, T::KanbanShadowNear),
+            m::SHADOW_NEAR,
+        );
     }
-    shadow(scene, r, m::CARD_RADIUS, c(t, T::KanbanShadowRim), m::SHADOW_RIM);
+    shadow(
+        scene,
+        r,
+        m::CARD_RADIUS,
+        c(t, T::KanbanShadowRim),
+        m::SHADOW_RIM,
+    );
 }
 
 /// A sombra de voo (o cartão agarrado descola do quadro).
 pub(crate) fn flight_shadow(scene: &mut VectorScene, theme: Theme, r: Rect) {
-    let far = if theme.is_dark() { m::SHADOW_FLIGHT_DARK } else { m::SHADOW_FLIGHT_LIGHT };
-    shadow(scene, r, m::CARD_RADIUS, c(theme, T::KanbanShadowFlight), far);
-    shadow(scene, r, m::CARD_RADIUS, c(theme, T::KanbanShadowFlightNear), m::SHADOW_FLIGHT_NEAR);
+    let far = if theme.is_dark() {
+        m::SHADOW_FLIGHT_DARK
+    } else {
+        m::SHADOW_FLIGHT_LIGHT
+    };
+    shadow(
+        scene,
+        r,
+        m::CARD_RADIUS,
+        c(theme, T::KanbanShadowFlight),
+        far,
+    );
+    shadow(
+        scene,
+        r,
+        m::CARD_RADIUS,
+        c(theme, T::KanbanShadowFlightNear),
+        m::SHADOW_FLIGHT_NEAR,
+    );
 }
 
 /// ⭐ Um cartão em `r`.
@@ -77,12 +111,24 @@ pub(crate) fn card(
     rest_shadow(scene, ink, r, look.hover);
     fill_rounded_rect(scene, r, m::CARD_RADIUS, ink.card);
     if look.hover && ink.dark {
-        stroke_rounded_rect(scene, r, m::CARD_RADIUS, m::HOVER_RING, c(theme, T::KanbanShadowHover));
+        stroke_rounded_rect(
+            scene,
+            r,
+            m::CARD_RADIUS,
+            m::HOVER_RING,
+            c(theme, T::KanbanShadowHover),
+        );
     }
     let mut y = r.y;
     if let Some(h) = f.cover {
         let cover = Rect::new(r.x, r.y, r.w, m::COVER_COLOR_H);
-        let (fill, _) = label(theme, LabelColor { hue: h, shade: Shade::Normal });
+        let (fill, _) = label(
+            theme,
+            LabelColor {
+                hue: h,
+                shade: Shade::Normal,
+            },
+        );
         ph2d_editor_core::paint::fill_rounded_rect_radii(
             scene,
             cover,
@@ -108,11 +154,23 @@ pub(crate) fn card(
     if look.focus {
         let o = m::FOCUS_OFFSET;
         let ring = Rect::new(r.x - o, r.y - o, r.w + 2.0 * o, r.h + 2.0 * o);
-        stroke_rounded_rect(scene, ring, m::CARD_RADIUS + o, m::FOCUS_RING, c(theme, T::Accent));
+        stroke_rounded_rect(
+            scene,
+            ring,
+            m::CARD_RADIUS + o,
+            m::FOCUS_RING,
+            c(theme, T::Accent),
+        );
     }
     if look.hover {
         let b = edit_button(r);
-        shadow(scene, b, m::EDIT_BTN / 2.0, c(theme, T::KanbanShadowNear), m::SHADOW_NEAR);
+        shadow(
+            scene,
+            b,
+            m::EDIT_BTN / 2.0,
+            c(theme, T::KanbanShadowNear),
+            m::SHADOW_NEAR,
+        );
         fill_rounded_rect(scene, b, m::EDIT_BTN / 2.0, c(theme, T::KanbanCardRaised));
         icon(scene, IconId::EyePencil, b, ink.fg);
     }
@@ -120,12 +178,22 @@ pub(crate) fn card(
 
 /// O lápis no canto do cartão (pairar): editar o título no lugar.
 pub(crate) fn edit_button(r: Rect) -> Rect {
-    Rect::new(r.x + r.w - m::EDIT_INSET - m::EDIT_BTN, r.y + m::EDIT_INSET, m::EDIT_BTN, m::EDIT_BTN)
+    Rect::new(
+        r.x + r.w - m::EDIT_INSET - m::EDIT_BTN,
+        r.y + m::EDIT_INSET,
+        m::EDIT_BTN,
+        m::EDIT_BTN,
+    )
 }
 
 fn icon(scene: &mut VectorScene, id: IconId, around: Rect, color: Color) {
     let s = m::BADGE_ICON;
-    let r = Rect::new(around.x + (around.w - s) / 2.0, around.y + (around.h - s) / 2.0, s, s);
+    let r = Rect::new(
+        around.x + (around.w - s) / 2.0,
+        around.y + (around.h - s) / 2.0,
+        s,
+        s,
+    );
     paint_icon(scene, id, r, color, StrokeToken::Default.px());
 }
 
@@ -144,7 +212,11 @@ fn labels(
     let row_h = if text { m::LABEL_H } else { m::LABEL_H / 2.0 };
     let (mut x, mut y) = (x0, y0);
     for (col, name) in &f.labels {
-        let w = if text { front::chip_w(ts, name) } else { m::LABEL_MIN_W };
+        let w = if text {
+            front::chip_w(ts, name)
+        } else {
+            m::LABEL_MIN_W
+        };
         if x > x0 && x + w > x0 + width {
             x = x0;
             y += row_h + m::LABEL_GAP;
@@ -154,7 +226,16 @@ fn labels(
         fill_rounded_rect(scene, chip, m::LABEL_RADIUS, fill);
         if text && !name.is_empty() {
             let ty = text_top(ts, y, row_h, m::SMALL_PX);
-            paint_text_elided(ts, scene, name, x + m::LABEL_PAD_X, ty, m::SMALL_PX, w - 2.0 * m::LABEL_PAD_X, fg);
+            paint_text_elided(
+                ts,
+                scene,
+                name,
+                x + m::LABEL_PAD_X,
+                ty,
+                m::SMALL_PX,
+                w - 2.0 * m::LABEL_PAD_X,
+                fg,
+            );
         }
         x += w + m::LABEL_GAP;
     }
@@ -162,25 +243,59 @@ fn labels(
 }
 
 /// A fila dos distintivos e, à direita, os avatares.
-fn badges(scene: &mut VectorScene, ts: &mut TextSystem, ink: &Ink, f: &Front, x0: f32, y: f32, width: f32) {
+fn badges(
+    scene: &mut VectorScene,
+    ts: &mut TextSystem,
+    ink: &Ink,
+    f: &Front,
+    x0: f32,
+    y: f32,
+    width: f32,
+) {
     let theme = ink.theme;
     let mut x = x0;
     let row = |x: f32, w: f32| Rect::new(x, y, w, m::BADGE_ROW_H);
-    let badge = |scene: &mut VectorScene, ts: &mut TextSystem, x: &mut f32, id: IconId, text: Option<String>, fill: Option<(Color, Color)>| {
-        let tw = text.as_deref().map_or(0.0, |t| ts.prefix_width(t, m::SMALL_PX) + m::BADGE_PAD);
+    let badge = |scene: &mut VectorScene,
+                 ts: &mut TextSystem,
+                 x: &mut f32,
+                 id: IconId,
+                 text: Option<String>,
+                 fill: Option<(Color, Color)>| {
+        let tw = text
+            .as_deref()
+            .map_or(0.0, |t| ts.prefix_width(t, m::SMALL_PX) + m::BADGE_PAD);
         let w = m::BADGE_ICON + tw + 2.0 * m::BADGE_PAD;
         let r = row(*x, w);
         let fg = match fill {
             Some((bg, fg)) => {
-                fill_rounded_rect(scene, Rect::new(r.x, r.y + m::BADGE_PAD / 2.0, r.w, r.h - m::BADGE_PAD), m::LABEL_RADIUS, bg);
+                fill_rounded_rect(
+                    scene,
+                    Rect::new(r.x, r.y + m::BADGE_PAD / 2.0, r.w, r.h - m::BADGE_PAD),
+                    m::LABEL_RADIUS,
+                    bg,
+                );
                 fg
             }
             None => ink.meta,
         };
-        icon(scene, id, Rect::new(r.x + m::BADGE_PAD, r.y, m::BADGE_ICON, r.h), fg);
+        icon(
+            scene,
+            id,
+            Rect::new(r.x + m::BADGE_PAD, r.y, m::BADGE_ICON, r.h),
+            fg,
+        );
         if let Some(t) = text {
             let ty = text_top(ts, r.y, r.h, m::SMALL_PX);
-            paint_text_elided(ts, scene, &t, r.x + m::BADGE_PAD + m::BADGE_ICON + m::BADGE_PAD, ty, m::SMALL_PX, tw, fg);
+            paint_text_elided(
+                ts,
+                scene,
+                &t,
+                r.x + m::BADGE_PAD + m::BADGE_ICON + m::BADGE_PAD,
+                ty,
+                m::SMALL_PX,
+                tw,
+                fg,
+            );
         }
         *x += w + m::BADGE_GAP;
     };
@@ -188,18 +303,46 @@ fn badges(scene: &mut VectorScene, ts: &mut TextSystem, ink: &Ink, f: &Front, x0
         badge(scene, ts, &mut x, IconId::Text, None, None);
     }
     if f.comments > 0 {
-        badge(scene, ts, &mut x, IconId::MessageSquare, Some(f.comments.to_string()), None);
+        badge(
+            scene,
+            ts,
+            &mut x,
+            IconId::MessageSquare,
+            Some(f.comments.to_string()),
+            None,
+        );
     }
     if f.attachments > 0 {
-        badge(scene, ts, &mut x, IconId::Link, Some(f.attachments.to_string()), None);
+        badge(
+            scene,
+            ts,
+            &mut x,
+            IconId::Link,
+            Some(f.attachments.to_string()),
+            None,
+        );
     }
     if let Some((done, all)) = f.check {
         let full = done == all && all > 0;
         let fill = full.then(|| (c(theme, T::KanbanDueDone), c(theme, T::KanbanDueDoneFg)));
-        badge(scene, ts, &mut x, IconId::Check, Some(format!("{done}/{all}")), fill);
+        badge(
+            scene,
+            ts,
+            &mut x,
+            IconId::Check,
+            Some(format!("{done}/{all}")),
+            fill,
+        );
     }
     if f.votes > 0 {
-        badge(scene, ts, &mut x, IconId::Vote, Some(f.votes.to_string()), None);
+        badge(
+            scene,
+            ts,
+            &mut x,
+            IconId::Vote,
+            Some(f.votes.to_string()),
+            None,
+        );
     }
     if f.location {
         badge(scene, ts, &mut x, IconId::Place, None, None);
@@ -209,14 +352,34 @@ fn badges(scene: &mut VectorScene, ts: &mut TextSystem, ink: &Ink, f: &Front, x0
     let mut ax = x0 + width - m::AVATAR;
     for who in f.members.iter().rev() {
         let r = Rect::new(ax, y, m::AVATAR, m::AVATAR);
-        let ring = Rect::new(r.x - m::AVATAR_RING, r.y - m::AVATAR_RING, r.w + 2.0 * m::AVATAR_RING, r.h + 2.0 * m::AVATAR_RING);
+        let ring = Rect::new(
+            r.x - m::AVATAR_RING,
+            r.y - m::AVATAR_RING,
+            r.w + 2.0 * m::AVATAR_RING,
+            r.h + 2.0 * m::AVATAR_RING,
+        );
         fill_rounded_rect(scene, ring, ring.w / 2.0, ink.card);
-        let (bg, _) = label(theme, LabelColor { hue: front::avatar_hue(who), shade: Shade::Normal });
+        let (bg, _) = label(
+            theme,
+            LabelColor {
+                hue: front::avatar_hue(who),
+                shade: Shade::Normal,
+            },
+        );
         fill_rounded_rect(scene, r, m::AVATAR / 2.0, bg);
         let s = front::initials(who);
         let w = ts.prefix_width(&s, m::AVATAR_PX);
         let ty = text_top(ts, r.y, r.h, m::AVATAR_PX);
-        paint_text_elided(ts, scene, &s, r.x + (r.w - w) / 2.0, ty, m::AVATAR_PX, r.w, c(theme, T::KanbanAvatarInk));
+        paint_text_elided(
+            ts,
+            scene,
+            &s,
+            r.x + (r.w - w) / 2.0,
+            ty,
+            m::AVATAR_PX,
+            r.w,
+            c(theme, T::KanbanAvatarInk),
+        );
         ax -= m::AVATAR - m::AVATAR_OVERLAP;
         if ax < x {
             break;

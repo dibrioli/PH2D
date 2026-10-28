@@ -147,7 +147,11 @@ pub(crate) fn labels_h(ts: &mut TextSystem, f: &Front, label_text: bool) -> f32 
     } else {
         chip_rows(&vec![m::LABEL_MIN_W; f.labels.len()], inner)
     };
-    let row_h = if label_text { m::LABEL_H } else { m::LABEL_H / 2.0 };
+    let row_h = if label_text {
+        m::LABEL_H
+    } else {
+        m::LABEL_H / 2.0
+    };
     rows as f32 * row_h + rows.saturating_sub(1) as f32 * m::LABEL_GAP
 }
 

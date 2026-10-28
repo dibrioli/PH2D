@@ -36,7 +36,8 @@ pub use surface::{CMD_HOME, CMD_NEW};
 
 /// O arranque da família: a superfície das abas Kanban no `Documents` e as cenas de smoke armadas.
 pub fn install(hero: &mut ph2d_editor_core::screens::hero::HeroScreen) {
-    hero.documents.install_surface(Box::new(KanbanDocs::default()));
+    hero.documents
+        .install_surface(Box::new(KanbanDocs::default()));
     smoke::stage_armed_smokes(hero);
 }
 

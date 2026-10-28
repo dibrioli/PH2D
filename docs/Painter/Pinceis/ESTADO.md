@@ -69,7 +69,9 @@
    Dry/Lift curado não aprovado (falta a linha escura 1,3 nos lados; o anel rouba tinta de fora — fila).
 6. ✅ Guache cobre (`600152c535` `20a320bbc9`, knob `wetCover`; resto Flat 0,36 → 0,10, Rebelle 0,11): Gouache Wash
    e Dry curados não aprovados (cega: sem fiapos de cerda, tampa redonda, 200 px chapado — cerdas que crescem com o
-   diâmetro: fila); Gouache Flat com `wetCover` — EM CURSO.
+   diâmetro: fila). Gouache Flat: `wetCover` 1 leva-o ao Rebelle (régua 404→424) mas NÃO entrou (`cc49c5616a`):
+   regerar faz a tabela de largura ver o traço de r 1,5–1,8 (linha pálida de 3 px, tabela P44 diz 0) ⇒ PRÓXIMO depois
+   do óleo: medir a largura do traço fino pela cobertura útil, regerar Gouache/Wet Flat. Texturas (6) — EM CURSO.
 5. ✅ Fio do arrasto (`3f6377fcec` `49211e2779`, `smear_fio`; linhas vazias 35/118 → 0, Rebelle 0): Smudge Finger
    curado não aprovado (fio pálido 1,25 × 2,14; língua oca sob a faixa). Portão sem_glaze: verde (`e42004f3e8`; o
    vermelho vinha de `5291edbc75`, 25/10, lei deliberada do tubo — repintado com o porquê). Tampas do traço largo (Square Hard, Wet Liner, Wet Wash) — EM CURSO. 8. Particles/Glitter: SEM oráculo que as

@@ -33,6 +33,11 @@ pub(crate) fn key_of(el: ElementId) -> u64 {
     ELEMENT_KEY | el.0
 }
 
+/// A vista `id` é a de um elemento do Quadro (não uma aba nem o início).
+pub(crate) fn on_board(id: u64) -> bool {
+    id != crate::docs::HOME && id & ELEMENT_KEY != 0
+}
+
 /// As vistas dos Kanbans do canvas e o que o quadro de imagem lhes dá.
 #[derive(Default)]
 pub(crate) struct Canvas {
@@ -274,8 +279,8 @@ impl KanbanElementInput for Input {
         with_element(docs, &self.0, target, view, |docs, id| {
             let modal = crate::back::is_open(docs, id);
             if !modal
-                && let KanbanWheel::Wheel { dy, .. } = w
-                && crate::w6::wheel(docs, id, x, y, crate::pointer::wheel_px(dy))
+                && let KanbanWheel::Wheel { dy, shift } = w
+                && crate::w6::wheel(docs, id, x, y, crate::pointer::wheel_px(dy), shift)
             {
                 return true;
             }

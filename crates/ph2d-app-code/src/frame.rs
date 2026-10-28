@@ -108,6 +108,7 @@ pub fn frame(
     if let Some(h) = host {
         hear(docs, h);
     }
+    crate::kanban::hear(docs);
     if let Some(lib) = world.get_resource::<ProjectScripts>() {
         docs.sync_intel(lib);
     }
@@ -213,6 +214,7 @@ fn save(
         d.project_unsaved = unsaved;
         let text = d.buffer.text().to_string();
         let changed = lib.set_text(d.script, &text);
+        crate::kanban::saved(d.script, &d.title, &text);
         d.synced = text;
         d.buffer.mark_saved();
         let users = host.as_deref().map_or(0, |h| h.objects_using(d.script));

@@ -20,6 +20,8 @@ ph2d-i18n = { path = "../ph2d-i18n" }
 ph2d-kanban-dates = { path = "../ph2d-kanban-dates" }
 ph2d-kanban-filter = { path = "../ph2d-kanban-filter" }
 ph2d-kanban-model = { path = "../ph2d-kanban-model" }
+# J3 — a porta única do gesto (o Butler e os scripts reagem ao que o Planner escreve).
+ph2d-kanban-hooks = { path = "../ph2d-kanban-hooks" }
 # A grelha do calendário e o seletor de datas são os da W7 (a MESMA vista, outra `Source`).
 ph2d-kanban-views = { path = "../ph2d-kanban-views" }
 ph2d-text = { path = "../ph2d-text" }

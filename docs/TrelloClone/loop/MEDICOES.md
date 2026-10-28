@@ -218,3 +218,39 @@ Linear (~21 ns por escrita). Recurso: o quadro de imagem da janela (16,7 ms a 60
 corre por MENSAGEM. 16 384 = 2 % do quadro. Numa sessão sã a fila está vazia (o transporte é
 ordenado e a estrela retransmite pela ordem); acima do tecto saem as mais VELHAS, com aviso no
 `stderr`.
+
+## J3 — a agenda do Butler no quadro do app (28/10)
+
+Régua: `ph2d-kanban-hooks` `tests::medir_agenda` (ignorada; `PH2D_RELEASE="mede velocidade" bash
+scripts/ph2d-run.sh cargo test -p ph2d-kanban-hooks --release medir_agenda -- --ignored --nocapture`).
+`n` Kanbans da cena 1 com 21 automações cada (1 comando de calendário + 20 regras), já armadas; o
+MÍNIMO de 200 amostras. ⚠️ `loadavg` 41 (máquina partilhada): vale a ordem de grandeza.
+
+| Kanbans × 21 automações | `has_scheduled` (cada verificação) | `run_scheduled` (nada a disparar) |
+|---|---|---|
+| 1 | 1,9 µs | 12,9 µs |
+| 10 | 1,9 µs | 127,6 µs |
+| 50 | 2,1 µs | 648,2 µs |
+
+Decisão (`AGENDA_STEP_MS = 1 000`): a corrida cresce com o projecto (0,65 ms a 50 Kanbans = 4 % de um
+quadro de 16,7 ms se fosse a cada quadro) e a menor unidade de um comando é o MINUTO; uma vez por
+segundo dá a hora certa ao segundo por 0,04 % do tempo. Sem comandos agendados, a verificação pára
+antes de correr (`has_scheduled`; o pior caso é decodificar todas as automações de todos os Kanbans).
+
+## R1 — «Ordenar a lista» a 20 000 cartões (28/10)
+
+Régua: `ph2d-kanban-filter` `sort::tests::measure_sort_twenty_thousand_cards` (ignorada;
+`bash scripts/ph2d-run.sh cargo test --profile smoke -p ph2d-kanban-filter --lib measure_sort_twenty_thousand -- --ignored --nocapture`).
+A versão de antes (`sort_keys_quadratic`, verbatim no teste) e a de agora no MESMO processo,
+intercaladas, o MÍNIMO de 3. ⚠️ `loadavg` 39 em 32 núcleos: vale a ordem de grandeza.
+
+| 20 000 cartões | antes (O(n²) + chaves em fila) | agora (Fenwick O(n log n) + bissecção) |
+|---|---|---|
+| ao contrário («mais antigo primeiro»; 1 fica) | 2,64 s · chave até 4 002 caracteres | 5,5 ms · chave até 4 |
+| ao acaso (por nome) | 0,73 s · chave até 215 | 54 ms · chave até 6 |
+
+O `keep` é o MESMO linha a linha (`the_fast_sort_keeps_exactly_the_rows_the_quadratic_one_kept`,
+400 listas com empates de posição × 4 critérios). Gate de escala:
+`sorting_a_reversed_list_grows_n_log_n_not_n_squared` (2 000 → 16 000: antes ×65,6, tecto ×24;
+chave nova ≤ 12). As chaves em fila («logo acima da anterior») cresciam um carácter a cada ~6 —
+a bissecção entre os dois vizinhos que ficam dá log(n).

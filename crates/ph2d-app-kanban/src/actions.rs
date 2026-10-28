@@ -57,14 +57,20 @@ impl Doc<'_> {
         self.set.get(self.id)
     }
 
-    /// Aplica um lote como UM passo de desfazer. `true` = o documento mudou.
+    /// Aplica um lote como UM passo de desfazer; o Butler e os scripts reagem no fim da entrada
+    /// ([`crate::hooks::settle`]). `true` = o documento mudou.
     pub fn apply(&mut self, ops: Vec<KanbanOp>) -> bool {
+        let seen = ph2d_kanban_hooks::seen_ops(self.set, self.id, &ops);
         let Some(k) = self.set.doc_mut(self.id) else {
             return false;
         };
         let before = self.history.undo_at();
         self.history.apply(k, ops, undo_tick());
-        self.history.undo_at() != before
+        let wrote = self.history.undo_at() != before;
+        if wrote {
+            crate::hooks::noted(&seen, self.set);
+        }
+        wrote
     }
 
     #[cfg(test)]

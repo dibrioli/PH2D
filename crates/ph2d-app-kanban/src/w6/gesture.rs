@@ -2,26 +2,13 @@
 //! `Plan` aplicado com UMA hora em cada histórico tocado; o desfazer de um Kanban leva junto os
 //! passos dos outros com a MESMA hora (o gesto inteiro), e nunca um passo alheio.
 
-use crate::actions::now;
 use crate::docs::KanbanDocs;
 use ph2d_editor_core::documents::undo_tick;
-use ph2d_kanban_model::{
-    Actor, CardId, CardRef, Entry, FracKey, KanbanOp, ListId, Plan, RecordId,
-};
+use ph2d_kanban_model::{CardId, CardRef, Entry, FracKey, KanbanOp, ListId, Plan, RecordId};
 
-/// Aplica o gesto em nome de «eu». `true` = escreveu.
+/// Aplica o gesto em nome de «eu», pela porta única ([`crate::hooks::write`]). `true` = escreveu.
 pub(crate) fn apply(docs: &mut KanbanDocs, plan: Option<Plan>) -> bool {
-    let Some(plan) = plan.filter(|p| !p.is_empty()) else {
-        return false;
-    };
-    let actor = Actor {
-        by: docs.me.clone(),
-        at: now(),
-    };
-    docs.set
-        .borrow_mut()
-        .apply_plan(plan, &mut docs.histories, undo_tick(), &actor);
-    true
+    crate::hooks::write(docs, plan)
 }
 
 /// ⭐ O desfazer (ou refazer) do Kanban da vista `id`: o passo mais recente DELE, e com ele os

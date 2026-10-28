@@ -27,6 +27,8 @@ pub fn frame(hero: &mut HeroScreen) {
     docs.follow_project(shared);
     docs.set_clock(now, law);
     docs.follow_active(ours);
+    // J3 — as reações que ficaram, os scripts de Kanban pedidos pelo editor e a agenda do Butler.
+    crate::hooks::frame(docs);
     // W4 — o canvas do Quadro: as vistas dos elementos leem o relógio e o «eu» deste quadro.
     {
         let mut c = docs.canvas.borrow_mut();
@@ -64,6 +66,8 @@ pub fn frame(hero: &mut HeroScreen) {
         }
     }
     kb::link::serve(hero);
+    // W11 — o lado do Kanban das notas ↔ cartões (só acompanha o desfazer do Quadro).
+    ph2d_editor_core::kanban_links::serve(hero);
 }
 
 impl KanbanDocs {

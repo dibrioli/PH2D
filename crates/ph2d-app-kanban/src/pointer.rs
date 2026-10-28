@@ -524,6 +524,9 @@ fn menu_row(docs: &mut KanbanDocs, id: u64, row: MenuRow) {
                 crate::w6::copy_move::open(docs, id, kind, a);
             }
         }
+        (Menu::Board, MenuRow::Automation) => {
+            crate::auto::open(docs, id, ph2d_kanban_auto::Family::Rule, false);
+        }
         (Menu::Board, MenuRow::Aging) => {
             let anchor = docs.tab_mut(id).map(|t| t.layout.board_menu);
             if let Some(a) = anchor {

@@ -68,6 +68,8 @@ pub(crate) enum Quick {
     Copy,
     Mirror,
     Archive,
+    /// W11 — no canvas do Quadro: o cartão vira uma nota adesiva ao lado.
+    ToNote,
 }
 
 /// Qual lista suspensa de um diálogo.
@@ -427,7 +429,7 @@ pub(crate) fn close_top(docs: &mut KanbanDocs, id: u64) {
 }
 
 /// A roda sobre um painel rola-o. `true` = tomada.
-pub(crate) fn wheel(docs: &mut KanbanDocs, id: u64, x: f32, y: f32, dy: f32) -> bool {
+pub(crate) fn wheel(docs: &mut KanbanDocs, id: u64, x: f32, y: f32, dy: f32, shift: bool) -> bool {
     let Some(t) = docs.tab_mut(id) else {
         return false;
     };
@@ -435,7 +437,7 @@ pub(crate) fn wheel(docs: &mut KanbanDocs, id: u64, x: f32, y: f32, dy: f32) -> 
         if t.w6.open() && t.back.is_none() {
             return true;
         }
-        return t.back.is_none() && crate::header::other::wheel(docs, id, x, y, dy, false);
+        return t.back.is_none() && crate::header::other::wheel(docs, id, x, y, dy, shift);
     }
     let max = t.w6.scroll_max.get();
     t.w6.scroll = (t.w6.scroll.min(max) + dy).clamp(0.0, max);

@@ -190,19 +190,25 @@ impl PlannerDocs {
         }
     }
 
-    /// ⭐ Aplica um gesto: um passo de desfazer em cada documento que ele toca, com a atividade em
-    /// nome de «eu». `false` = nada a fazer.
+    /// ⭐ Aplica um gesto pela porta única do Kanban (`ph2d_kanban_hooks::gesture`): um passo de
+    /// desfazer em cada documento que ele toca, com a atividade em nome de «eu», e o Butler e os
+    /// scripts `ph2d.kanban.on` a reagir. `false` = nada a fazer.
     pub fn apply(&mut self, plan: Plan) -> bool {
         if plan.is_empty() {
             return false;
         }
-        let actor = Actor {
-            by: self.me.clone(),
-            at: self.now,
+        let who = ph2d_kanban_hooks::Who {
+            me: self.me.clone(),
+            now: self.now,
+            zone: &self.zone,
         };
-        self.set
-            .borrow_mut()
-            .apply_plan(plan, &mut self.histories, undo_tick(), &actor);
+        ph2d_kanban_hooks::gesture(
+            &mut self.set.borrow_mut(),
+            &mut self.histories,
+            plan,
+            &who,
+            &mut undo_tick,
+        );
         true
     }
 

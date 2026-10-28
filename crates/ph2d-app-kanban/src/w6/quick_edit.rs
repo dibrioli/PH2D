@@ -38,6 +38,14 @@ pub(crate) const ROWS: [(Quick, &str, IconId); 9] = [
     (Quick::Archive, "kanban.w6.quick.archive", IconId::Folder),
 ];
 
+/// W11 — a linha a mais no canvas do Quadro: «Convert to sticky note».
+const TO_NOTE: (Quick, &str, IconId) = (Quick::ToNote, "kanban.hooks.to_note", IconId::MessageSquare);
+
+/// As linhas da vista `id`: as do Trello, e no Quadro também a da nota.
+fn rows(id: u64) -> impl Iterator<Item = (Quick, &'static str, IconId)> {
+    ROWS.into_iter().chain(crate::canvas::on_board(id).then_some(TO_NOTE))
+}
+
 /// ⭐ Abre a edição rápida da linha `row`. Um espelho abre o verso do original (o título é dele).
 pub(crate) fn open(docs: &mut KanbanDocs, id: u64, row: CardId) {
     let mirror = docs
@@ -97,7 +105,7 @@ pub(crate) fn paint(scene: &mut VectorScene, ts: &mut TextSystem, theme: Theme, 
     };
     let fg = c(theme, T::KanbanHeaderFg);
     let mut y = r.y;
-    for (q, key, icon) in ROWS {
+    for (q, key, icon) in rows(tab.id()) {
         let b = Rect::new(x, y, SIDE_W, m::BUTTON_H);
         let on = tab.w6.hover == Some(Act::Quick(q));
         let fill = if on { T::KanbanHeaderBtnOn } else { T::KanbanHeaderBg };
@@ -151,6 +159,12 @@ pub(crate) fn click(docs: &mut KanbanDocs, id: u64, a: Act) {
         Act::Quick(Quick::Archive) => {
             done(docs, id);
             super::gesture::archive_row(docs, id, row);
+        }
+        Act::Quick(Quick::ToNote) => {
+            done(docs, id);
+            if let Some(card) = super::gesture::shows(docs, id, row) {
+                ph2d_editor_core::kanban_links::request_card_to_note(card);
+            }
         }
         Act::Quick(q @ (Quick::Move | Quick::Copy | Quick::Mirror)) => {
             let anchor = rect_of(docs, id, a).unwrap_or_default();

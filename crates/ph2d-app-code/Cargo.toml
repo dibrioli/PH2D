@@ -28,6 +28,9 @@ ph2d-code-intel = { path = "../ph2d-code-intel" }
 ph2d-code-lsp = { path = "../ph2d-code-lsp" }
 ph2d-code-syntax = { path = "../ph2d-code-syntax" }
 ph2d-ecs = { path = "../ph2d-ecs" }
+# J3 do Kanban — o script que usa `ph2d.kanban` corre sobre o projecto ao Ctrl+S (a porta única do
+# gesto: os handlers `ph2d.kanban.on` ficam activos) e o que ele diz vem para o console dele.
+ph2d-kanban-hooks = { path = "../ph2d-kanban-hooks" }
 ph2d-editor-core = { path = "../ph2d-editor-core" }
 ph2d-host = { path = "../ph2d-host" }
 ph2d-i18n = { path = "../ph2d-i18n" }

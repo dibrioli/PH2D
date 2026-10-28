@@ -1,0 +1,26 @@
+[package]
+name = "ph2d-kanban-hooks"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+[dependencies]
+# ⭐ A porta ÚNICA de escrita de um gesto no Kanban (TrelloClone J3): Seen → aplicar → o Butler
+# reage → os scripts `ph2d.kanban.on` reagem; a agenda fora do desfazer; os scripts carregados.
+# Baixa de propósito: o Kanban e o Planner (duas famílias) chamam-na sem se conhecerem.
+ph2d-kanban-model = { path = "../ph2d-kanban-model" }
+ph2d-kanban-auto = { path = "../ph2d-kanban-auto" }
+ph2d-kanban-script = { path = "../ph2d-kanban-script" }
+ph2d-kanban-dates = { path = "../ph2d-kanban-dates" }
+
+[dev-dependencies]
+# A régua da agenda corre sobre a cena 1 do Kanban (`medir_agenda`).
+ph2d-kanban-scenes = { path = "../ph2d-kanban-scenes" }
+
+[lints]
+workspace = true

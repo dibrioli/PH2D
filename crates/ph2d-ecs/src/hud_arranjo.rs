@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 
 pub use ph2d_hud_layout::{Eixo, Forca, Lado, Relacao};
 
-use crate::{SimComponent, StableId};
+use crate::{Entity, SimComponent, StableId};
 
 /// As relações de um canvas, pela ordem em que o artista as fez (a ordem é a de inserção no solver).
 #[derive(Component, Clone, PartialEq, Debug, Default, Serialize, Deserialize)]
@@ -53,4 +53,26 @@ impl UiArranjo {
             .then(|| self.lacos.remove(i))
             .is_some()
     }
+}
+
+/// ⭐ O que o passe do arranjo VIU num quadro, por canvas — o retrato que a ferramenta do HUD desenha e acerta
+/// (ela não tem o mundo no desenho). Preview: nunca gravado.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Visto {
+    pub canvas: Entity,
+    /// Mundo por unidade local do canvas (as folgas gravam-se em unidades locais).
+    pub escala: [f64; 2],
+    pub lacos: Vec<(Relacao<StableId>, Forca)>,
+    pub filhos: Vec<FilhoVisto>,
+}
+
+/// Um filho do canvas como se DESENHA neste quadro (depois das âncoras e do arranjo).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct FilhoVisto {
+    pub kid: Entity,
+    pub id: StableId,
+    /// Caixa de mundo `(min, max)`.
+    pub caixa: ([f64; 2], [f64; 2]),
+    /// É um texto: ao entrar numa relação ganha «largura do texto» (encolhe antes de invadir).
+    pub texto: bool,
 }

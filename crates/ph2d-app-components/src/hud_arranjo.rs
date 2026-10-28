@@ -20,8 +20,8 @@
 
 use std::collections::BTreeMap;
 
-use ph2d_ecs::hud_arranjo::{Forca, Relacao, UiArranjo};
-use ph2d_ecs::{ChildOf, Children, Entity, SimWorld, StableId, Transform, UiCanvas};
+use ph2d_ecs::hud_arranjo::{FilhoVisto, Forca, Relacao, UiArranjo, Visto};
+use ph2d_ecs::{ChildOf, Children, Entity, SimWorld, StableId, Transform, UiCanvas, VecShape};
 use ph2d_hud_layout::{Arranjo, Caixa, Elemento};
 use ph2d_vec_entities::entities::VecEntityMap;
 
@@ -44,10 +44,11 @@ struct Vivo {
     arranjo: Arranjo,
 }
 
-/// Os solvers vivos, um por canvas com arranjo.
+/// Os solvers vivos, um por canvas com arranjo, e o retrato do último quadro (para a ferramenta).
 #[derive(Default)]
 pub struct Arranjos {
     vivos: BTreeMap<Entity, Vivo>,
+    visto: Vec<Visto>,
 }
 
 /// O canvas no mundo: a origem e a escala local → mundo.
@@ -81,7 +82,8 @@ impl Moldura {
     }
 }
 
-/// Os canvas com arranjo, pelos filhos que desenham (a ordem do mapa, sem repetidos).
+/// Os canvas, pelos filhos que desenham (sem repetidos, ordem estável) — com ou sem arranjo: a ferramenta
+/// precisa de ver o canvas antes da primeira seta.
 fn canvases(sim: &SimWorld, map: &VecEntityMap) -> Vec<Entity> {
     let w = sim.world();
     let mut out: Vec<Entity> = Vec::new();
@@ -92,10 +94,7 @@ fn canvases(sim: &SimWorld, map: &VecEntityMap) -> Vec<Entity> {
         else {
             continue;
         };
-        if w.get::<UiArranjo>(pai).is_some()
-            && w.get::<UiCanvas>(pai).is_some()
-            && !out.contains(&pai)
-        {
+        if w.get::<UiCanvas>(pai).is_some() && !out.contains(&pai) {
             out.push(pai);
         }
     }
@@ -117,14 +116,13 @@ impl Arranjos {
         let todos = canvases(sim, map);
         self.vivos.retain(|e, _| todos.contains(e));
         let mut out = Vec::new();
+        self.visto.clear();
+        let vazio = UiArranjo::default();
         for canvas in todos {
-            let (Some(cfg), Some(arr), Some(tf)) = (
-                w.get::<UiCanvas>(canvas),
-                w.get::<UiArranjo>(canvas),
-                w.get::<Transform>(canvas),
-            ) else {
+            let (Some(cfg), Some(tf)) = (w.get::<UiCanvas>(canvas), w.get::<Transform>(canvas)) else {
                 continue;
             };
+            let arr = w.get::<UiArranjo>(canvas).unwrap_or(&vazio);
             // Com câmera de jogo, a caixa EFECTIVA (a que as âncoras leem); sem ela, a de referência onde está.
             let (r, h) = (f64::from(cfg.ref_w) / 2.0, f64::from(cfg.ref_h) / 2.0);
             let now = vista
@@ -152,6 +150,18 @@ impl Arranjos {
             }
             let ids: Vec<StableId> = kids.iter().map(|k| k.1).collect();
             let lacos = &arr.lacos;
+            let texto = |k: Entity| matches!(w.get::<VecShape>(k), Some(VecShape::Text(_)));
+            let mut visto = Visto {
+                canvas,
+                escala: m.s,
+                lacos: lacos.clone(),
+                filhos: kids.iter().map(|&(kid, id, caixa)| FilhoVisto { kid, id, caixa, texto: texto(kid) }).collect(),
+            };
+            if lacos.is_empty() {
+                self.vivos.remove(&canvas);
+                self.visto.push(visto);
+                continue;
+            }
             let indice = |id: StableId| ids.iter().position(|&x| x == id);
             let com_largura: Vec<bool> = (0..ids.len())
                 .map(|i| lacos.iter().any(|(r, _)| matches!(r, Relacao::LarguraDoConteudo { a } if indice(*a) == Some(i))))
@@ -187,23 +197,32 @@ impl Arranjos {
                 }
             };
             let caixas = vivo.arranjo.atualiza_elementos(tela, &els);
-            for ((k, e), (c, &larg)) in kids
+            for (((k, e), (c, &larg)), f) in kids
                 .iter()
                 .zip(&els)
                 .zip(caixas.into_iter().zip(&com_largura))
+                .zip(&mut visto.filhos)
             {
                 if parada(e.caixa, c) {
                     continue;
                 }
                 let c = if larg { por_igual(e.caixa, c) } else { c };
+                f.caixa = m.mundo(c);
                 out.push(Movido {
                     kid: k.0,
                     de: k.2,
-                    para: m.mundo(c),
+                    para: f.caixa,
                 });
             }
+            self.visto.push(visto);
         }
         out
+    }
+
+    /// O retrato do último quadro: cada canvas e os filhos como se desenham.
+    #[must_use]
+    pub fn visto(&self) -> &[Visto] {
+        &self.visto
     }
 }
 

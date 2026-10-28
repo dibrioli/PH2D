@@ -211,3 +211,19 @@ fn nothing_moves_without_an_arrangement_or_when_it_is_already_satisfied() {
         "irmão que não existe"
     );
 }
+
+#[test]
+fn the_pass_publishes_what_it_drew_even_without_relations() {
+    let (mut sim, map, kids) = cena(Vec::new());
+    let mut arr = Arranjos::default();
+    quadro(&mut arr, &sim, &map, kids, 16.0, 4.0);
+    let v = &arr.visto()[0];
+    assert!(v.lacos.is_empty() && v.filhos.len() == 3, "sem setas a ferramenta tem de ver o canvas: {v:?}");
+    assert_eq!(v.filhos[1].caixa, caixas(4.0, 16.0)(1));
+    let canvas = v.canvas;
+    sim.world_mut().entity_mut(canvas).insert(UiArranjo { lacos: moeda_ao_lado() });
+    let mov = quadro(&mut arr, &sim, &map, kids, 16.0, 4.0);
+    let moeda = arr.visto()[0].filhos[1];
+    assert_eq!(moeda.caixa, onde(&mov, kids[1], ([0.0; 2], [0.0; 2])), "o retrato é a caixa ARRUMADA");
+    assert_eq!(moeda.id, MOEDA);
+}

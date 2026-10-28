@@ -9,7 +9,7 @@ use ph2d_tokens::{ColorToken as T, Theme};
 /// ⭐ A ordem categórica das listas SEM cor — validada pela skill de dataviz
 /// (`validate_palette.js`, 28/10): degrau `bold` no claro sobre `kanban-card` e `normal` no escuro
 /// passam faixa de claridade, croma, separação CVD e o piso da visão normal entre vizinhas. Uma
-/// 6.ª lista sem cor fica cinzenta (nunca um matiz reciclado). Tabela: `MEDICOES.md` §W7.
+/// lista sem cor além da série fica cinzenta (nunca um matiz reciclado). Tabela: `MEDICOES.md` §W7.
 pub const SERIES: [Hue; 5] = [Hue::Yellow, Hue::Blue, Hue::Red, Hue::Purple, Hue::Lime];
 
 use crate::common::{Ctx, avatar_hue, list_token, visible_cards};
@@ -17,8 +17,9 @@ use crate::common::{Ctx, avatar_hue, list_token, visible_cards};
 /// Quem é uma barra (a cor segue a ENTIDADE, nunca a posição).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Who {
-    /// A lista, a cor dela, e o lugar dela entre as listas SEM cor (pela ordem do quadro).
-    List(ListId, Option<Hue>, usize),
+    /// A lista, a cor dela, e — se não tem — o matiz da série que lhe cabe ([`SERIES`]) e se esse
+    /// matiz já é o de uma lista COM cor (então leva o outro degrau: duas listas nunca iguais).
+    List(ListId, Option<Hue>, Option<(Hue, bool)>),
     Label(LabelId, Option<LabelColor>),
     Member(Member),
     Due(Bucket),
@@ -34,9 +35,11 @@ impl Who {
     pub fn token(&self, theme: Theme) -> T {
         match self {
             Self::List(_, Some(hue), _) => list_token(Some(*hue)),
-            Self::List(_, None, slot) => SERIES.get(*slot).map_or(T::KanbanBlackSubtle, |h| {
-                let shade = usize::from(!theme.is_dark()) + 1;
-                ph2d_tokens::kanban::LABELS[shade][Hue::ALL.iter().position(|x| x == h).unwrap_or(0)]
+            Self::List(_, None, series) => series.map_or(T::KanbanBlackSubtle, |(h, taken)| {
+                // As listas COM cor vestem o `normal`; a série veste o `bold` no claro, e no escuro
+                // também quando o matiz já é de uma lista com cor.
+                let shade = if theme.is_dark() && !taken { 1 } else { 2 };
+                ph2d_tokens::kanban::LABELS[shade][Hue::ALL.iter().position(|x| *x == h).unwrap_or(0)]
             }),
             Self::Label(_, Some(c)) => crate::common::label_token(*c),
             Self::Label(_, None) | Self::None | Self::Other => T::KanbanBlackSubtle,
@@ -187,13 +190,22 @@ pub fn stats(k: &Kanban, cx: &Ctx<'_>) -> Stats {
         .filter(|l| l.color.is_none())
         .map(|l| l.id)
         .collect();
+    let own: Vec<Hue> = k.lists_in_order().iter().filter_map(|l| l.color).collect();
     let per_list = k
         .lists_in_order()
         .into_iter()
         .map(|l| Bar {
             name: l.title.clone(),
             count: cards.iter().filter(|c| c.list == l.id).count(),
-            who: Who::List(l.id, l.color, uncolored.iter().position(|x| *x == l.id).unwrap_or(usize::MAX)),
+            who: Who::List(
+                l.id,
+                l.color,
+                uncolored
+                    .iter()
+                    .position(|x| *x == l.id)
+                    .and_then(|i| SERIES.get(i))
+                    .map(|h| (*h, own.contains(h))),
+            ),
         })
         .collect();
     let mut labels: Vec<_> = k.labels.values().filter(|l| !l.meta.deleted).collect();

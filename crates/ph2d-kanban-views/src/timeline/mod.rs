@@ -382,8 +382,14 @@ pub fn wheel(
     _cx: &Ctx<'_>,
     at: (f32, f32),
     dy: f32,
-    shift: bool,
+    (shift, ctrl): (bool, bool),
 ) -> Reply {
+    if ctrl {
+        if dy != 0.0 {
+            st.set_zoom(st.zoom.step(dy < 0.0));
+        }
+        return Reply::taken();
+    }
     let step = dy * m::WHEEL_PX;
     if st.painted.drawer.is_some_and(|r| r.contains(at.0, at.1)) {
         st.drawer_scroll += step;

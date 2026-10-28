@@ -284,3 +284,21 @@ fn photo_timeline() {
         v.timeline.zoom = Zoom::Week;
     });
 }
+
+#[test]
+fn timeline_ctrl_wheel_zooms_and_plain_wheel_scrolls() {
+    let w = World::scene1();
+    let mut v = ph2d_kanban_views::Views::default();
+    v.kind = ph2d_kanban_views::ViewKind::Timeline;
+    let mut ts = ph2d_text::TextSystem::without_system_fonts();
+    let area = ph2d_editor_core::zones::Rect::new(0.0, 0.0, 1440.0, 900.0);
+    let mut s = ph2d_vector::VectorScene::new();
+    v.paint(&mut s, ph2d_vector::Affine::IDENTITY, area, &w.set, w.id, &mut ts, ph2d_tokens::Theme::Light, &w.cx());
+    let before = v.timeline.zoom;
+    let r = v.wheel(&w.set, w.id, &w.cx(), (700.0, 500.0), -16.0, (false, true));
+    assert!(r.taken && r.plan.is_empty());
+    assert_ne!(v.timeline.zoom, before, "Ctrl+roda muda o zoom");
+    let z = v.timeline.zoom;
+    v.wheel(&w.set, w.id, &w.cx(), (700.0, 500.0), -16.0, (false, false));
+    assert_eq!(v.timeline.zoom, z, "a roda sozinha não muda o zoom");
+}

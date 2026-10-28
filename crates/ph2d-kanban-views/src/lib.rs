@@ -133,7 +133,8 @@ impl Views {
         }
     }
 
-    /// A roda em `(x, y)` do ECRÃ: `dy` vertical, `shift` = horizontal (o idioma do hero).
+    /// A roda em `(x, y)` do ECRÃ: `dy` vertical, `shift` = horizontal (o idioma do hero), `ctrl` =
+    /// zoom (a linha do tempo).
     pub fn wheel(
         &mut self,
         set: &KanbanSet,
@@ -141,14 +142,14 @@ impl Views {
         cx: &Ctx<'_>,
         (x, y): (f32, f32),
         dy: f32,
-        shift: bool,
+        (shift, ctrl): (bool, bool),
     ) -> Reply {
         let (x, y) = self.to_view(x, y);
         match self.kind {
             ViewKind::Table => table::wheel(&mut self.table, (x, y), dy, shift),
             ViewKind::Calendar => calendar::wheel(&mut self.calendar, (x, y), dy, shift),
             ViewKind::Timeline => {
-                timeline::wheel(&mut self.timeline, set, kanban, cx, (x, y), dy, shift)
+                timeline::wheel(&mut self.timeline, set, kanban, cx, (x, y), dy, (shift, ctrl))
             }
             ViewKind::Dashboard => Reply::default(),
         }

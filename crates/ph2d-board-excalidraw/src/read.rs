@@ -359,7 +359,9 @@ fn edits(el: &mut Element, v: &Value, text: Option<&Text>, links: Links<'_, '_>,
                 el.translate([x - p0[0], y - p0[1]]);
             }
         }
-        ph2d_board_model::ElementKind::Image(_) | ph2d_board_model::ElementKind::Embed(_) => {
+        ph2d_board_model::ElementKind::Image(_)
+        | ph2d_board_model::ElementKind::Embed(_)
+        | ph2d_board_model::ElementKind::Kanban(_) => {
             let (w, h) = (
                 num(v, "width").unwrap_or(el.w),
                 num(v, "height").unwrap_or(el.h),

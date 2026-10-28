@@ -120,6 +120,7 @@ fn births(b: &Board) -> Vec<(BirthScale, Option<bool>)> {
             ElementKind::Frame(f) => (f.style.birth, None),
             ElementKind::Image(i) => (i.style.birth, None),
             ElementKind::Embed(e) => (e.style.birth, None),
+            ElementKind::Kanban(k) => (k.style.birth, None),
         })
         .collect()
 }

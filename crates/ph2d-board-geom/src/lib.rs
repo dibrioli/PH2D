@@ -242,7 +242,7 @@ pub fn text_origin(t: ShapeType, w: f64, h: f64, block_h: f64, valign: VAlign) -
     [x, y + room * k]
 }
 
-/// ⭐ W14 — a forma que um elemento OCUPA: a dele, ou, numa imagem (W18: e num vídeo), o rectângulo da caixa (com os
+/// ⭐ W14 — a forma que um elemento OCUPA: a dele, ou, numa imagem (W18: e num vídeo; W4: num Kanban), o rectângulo da caixa (com os
 /// cantos redondos dela) — clicar, prender uma seta e a faixa da seta tratam a imagem como uma caixa
 /// (o Excalidraw prende setas a imagens). `None` = não ocupa uma forma (seta, traço, frame).
 #[must_use]
@@ -250,11 +250,12 @@ pub fn shape_of(el: &Element) -> Option<std::borrow::Cow<'_, Shape>> {
     if let Some(s) = el.shape() {
         return Some(std::borrow::Cow::Borrowed(s));
     }
-    // W18 — um vídeo ocupa a caixa como uma imagem.
+    // W18 — um vídeo ocupa a caixa como uma imagem; W4 do Kanban — um Kanban também.
     let style = el
         .image()
         .map(|i| &i.style)
-        .or_else(|| el.embed().map(|e| &e.style))?;
+        .or_else(|| el.embed().map(|e| &e.style))
+        .or_else(|| el.kanban().map(|k| &k.style))?;
     let mut style = style.clone();
     (style.fill, style.stroke) = (None, None);
     Some(std::borrow::Cow::Owned(Shape {

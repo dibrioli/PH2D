@@ -22,7 +22,7 @@ mod write;
 
 pub use embed::scene_from_bytes;
 pub use read::{Import, read, read_with};
-pub use write::write;
+pub use write::{write, write_with_names};
 
 use ph2d_board_model::{Head, Rgba};
 
@@ -143,6 +143,9 @@ mod image_tests;
 #[cfg(test)]
 #[path = "image_w15_tests.rs"]
 mod image_w15_tests;
+#[cfg(test)]
+#[path = "kanban_tests.rs"]
+mod kanban_tests;
 #[cfg(test)]
 #[path = "lib_tests.rs"]
 mod tests;

@@ -19,6 +19,8 @@ flate2 = "1"
 sha2 = "0.10"
 # A ordem fraccionária, partilhada com o Kanban (ADR-0195).
 ph2d-frac = { path = "../ph2d-frac" }
+# W4 do Kanban (ADR-0195 §3) — o elemento guarda a chave de um Kanban do projecto.
+ph2d-kanban-model = { path = "../ph2d-kanban-model" }
 
 [lints]
 workspace = true

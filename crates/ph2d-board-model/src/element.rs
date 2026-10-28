@@ -74,6 +74,8 @@ pub enum ElementKind {
     Image(Box<crate::Image>),
     /// W18 (ADR-0185) — um vídeo: o link e o que ele é; o tocador é do navegador.
     Embed(Box<crate::Embed>),
+    /// W4 do Kanban (ADR-0195 §3) — a REFERÊNCIA a um Kanban do projecto e a vista deste elemento.
+    Kanban(Box<crate::BoardKanban>),
 }
 
 /// Uma forma do quadro: o contorno, o estilo e o texto que vive DENTRO dela (centrado, com quebra).
@@ -517,6 +519,7 @@ impl Element {
             ElementKind::Frame(f) => &f.style,
             ElementKind::Image(i) => &i.style,
             ElementKind::Embed(e) => &e.style,
+            ElementKind::Kanban(k) => &k.style,
         }
     }
 
@@ -528,6 +531,7 @@ impl Element {
             ElementKind::Frame(f) => &mut f.style,
             ElementKind::Image(i) => &mut i.style,
             ElementKind::Embed(e) => &mut e.style,
+            ElementKind::Kanban(k) => &mut k.style,
         }
     }
 
@@ -539,7 +543,8 @@ impl Element {
             | ElementKind::Ink(_)
             | ElementKind::Frame(_)
             | ElementKind::Image(_)
-            | ElementKind::Embed(_) => {
+            | ElementKind::Embed(_)
+            | ElementKind::Kanban(_) => {
                 self.x += d[0];
                 self.y += d[1];
             }

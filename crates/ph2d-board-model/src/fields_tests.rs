@@ -144,6 +144,12 @@ fn pairs() -> Vec<(Element, Element)> {
         },
         style: st,
     };
+    // A vista NÃO é registo (não viaja nem se desfaz): fica a de nascença nos dois.
+    let kanban = |st: Style, rich: bool| crate::BoardKanban {
+        kanban: crate::KanbanId(u64::from(rich) + 1),
+        view: crate::KanbanBoardView::default(),
+        style: st,
+    };
     let bx = [0.0, 0.0, 10.0, 10.0];
     let plain = [
         Element::new_shape(ID, z0(), shape(plain_style(), ShapeType::Rectangle, ""), bx),
@@ -152,6 +158,7 @@ fn pairs() -> Vec<(Element, Element)> {
         Element::new_frame(ID, z0(), frame(plain_style(), ""), bx),
         Element::new_image(ID, z0(), image(plain_style(), false), bx),
         Element::new_embed(ID, z0(), embed(plain_style(), false), bx),
+        Element::new_kanban(ID, z0(), kanban(plain_style(), false), bx),
     ];
     let rich = [
         Element::new_shape(ID, z0(), shape(rich_style(), ShapeType::Hexagon, "olá"), bx),
@@ -160,6 +167,7 @@ fn pairs() -> Vec<(Element, Element)> {
         Element::new_frame(ID, z0(), frame(rich_style(), "F"), bx),
         Element::new_image(ID, z0(), image(rich_style(), true), bx),
         Element::new_embed(ID, z0(), embed(rich_style(), true), bx),
+        Element::new_kanban(ID, z0(), kanban(rich_style(), true), bx),
     ]
     .map(|mut el| {
         (el.x, el.y, el.w, el.h) = (1.5, -2.5, 30.0, 40.0);
@@ -288,6 +296,15 @@ fn every_field_of_the_model_is_named_here() {
                     video: _,
                     style,
                 } = &**e;
+                style
+            }
+            ElementKind::Kanban(k) => {
+                // `view` é estado de vista, de propósito fora dos registos (kanban.rs).
+                let crate::BoardKanban {
+                    kanban: _,
+                    view: _,
+                    style,
+                } = &**k;
                 style
             }
         };

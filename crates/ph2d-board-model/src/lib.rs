@@ -17,6 +17,7 @@ mod fields;
 mod history;
 mod image;
 mod ink;
+mod kanban;
 mod legacy;
 mod mind;
 mod ops;
@@ -43,6 +44,7 @@ pub use fields::Field;
 pub use history::{History, MAX_STEPS, undo_tick};
 pub use image::{Blob, Crop, FileId, Files, Image, ImageFile, ImageFilter, Ingest, mime_of};
 pub use ink::{Ink, Pen};
+pub use kanban::{BoardKanban, KanbanBoardView, KanbanId, ListId};
 pub use mind::{
     MIND_ARM, MIND_BADGE_GAP, MIND_BADGE_H, MIND_BRANCH_WIDTH, MIND_COLORS, MIND_FONT,
     MIND_LEVEL_GAP, MIND_PAD, MIND_ROOT_PAD_Y, MIND_ROOT_STROKE, MIND_SIBLING_GAP, Mind, Side,

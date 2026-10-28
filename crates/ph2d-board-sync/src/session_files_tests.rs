@@ -207,3 +207,47 @@ fn a_guest_video_reaches_the_others_as_its_link() {
         Some(("https://youtu.be/aqz-KE-bpKQ?t=30".into(), video))
     );
 }
+
+/// ⭐ W4 do Kanban (PROTOCOL 12) — o Kanban que a Bia põe chega ao Rui como a REFERÊNCIA ao documento
+/// (o `Field::Kanban`); os registos do documento Kanban viajam na W5. Mudar a referência lá também chega.
+#[test]
+fn a_guest_kanban_reaches_the_others_as_its_reference() {
+    use ph2d_board_model::{BoardKanban, KanbanId};
+    assert_eq!(PROTOCOL, 12);
+    let mut hb = board();
+    let mut host = Host::open(1, "Ana".into(), &mut hb, 1);
+    let (mut bia, mut rui) = (
+        Guest::new(2, "Bia".into(), 2, 2),
+        Guest::new(3, "Rui".into(), 3, 3),
+    );
+    let (mut bb, mut rb) = (None, None);
+    for (g, slot, conn) in [(&mut bia, &mut bb, 7), (&mut rui, &mut rb, 8)] {
+        let (out, _) = host.frame(&mut hb, conn, &g.hello().encode(), 0);
+        for m in deliver(g, slot, &to_conn(&out, conn)) {
+            let _ = host.frame(&mut hb, conn, &m.encode(), 0);
+        }
+    }
+    let k = BoardKanban::new(KanbanId(4), Style::new(None, None, Rgba([0, 0, 0, 255])));
+    let doc = &mut bb.as_mut().unwrap().doc;
+    let el = Element::new_kanban(doc.mint_id(), doc.z_on_top(), k, [0.0, 0.0, 960.0, 540.0]);
+    let id = el.id;
+    let _ = BoardOp::Put(el).apply(doc);
+    let mut relay = |bia: &mut Guest, bb: &mut Option<Board>, rui: &mut Guest, rb: &mut Option<Board>, t| {
+        let sent = bia.tick(bb.as_mut().unwrap(), t);
+        let mut relayed = Vec::new();
+        for m in &sent {
+            let (out, _) = host.frame(&mut hb, 7, &m.encode(), t);
+            relayed.extend(to_conn(&out, 8));
+        }
+        deliver(rui, rb, &relayed);
+    };
+    relay(&mut bia, &mut bb, &mut rui, &mut rb, 10);
+    let got = |rb: &Option<Board>| rb.as_ref().unwrap().doc.get(id).and_then(|e| e.kanban().map(|k| k.kanban));
+    assert_eq!(got(&rb), Some(KanbanId(4)));
+    let doc = &mut bb.as_mut().unwrap().doc;
+    let mut el = doc.get(id).unwrap().clone();
+    el.kanban_mut().unwrap().kanban = KanbanId(9);
+    let _ = BoardOp::Put(el).apply(doc);
+    relay(&mut bia, &mut bb, &mut rui, &mut rb, 20);
+    assert_eq!(got(&rb), Some(KanbanId(9)));
+}

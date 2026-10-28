@@ -454,8 +454,12 @@ impl Editor {
             self.selection = std::collections::BTreeSet::from([id]);
             return self.begin_crop(doc, history);
         }
-        // W18 — num VÍDEO o duplo-clique é do tocador (o app activa-o), nunca um texto por cima.
-        if doc.get(id).is_some_and(|e| e.embed().is_some()) {
+        // W18 — num VÍDEO o duplo-clique é do tocador (o app activa-o), nunca um texto por cima; num
+        // KANBAN (W4) é do app (abrir na aba, ou o gancho dele).
+        if doc
+            .get(id)
+            .is_some_and(|e| e.embed().is_some() || e.kanban().is_some())
+        {
             self.selection = std::collections::BTreeSet::from([id]);
             return false;
         }

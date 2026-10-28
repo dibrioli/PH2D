@@ -19,8 +19,11 @@ use crate::{BoardDoc, Files, Team};
 /// (`Image::filter`, W15); 14 = o segmento do meio do cotovelo (`Connector::mids`, W23 — doc 13);
 /// 15 = os textos ao longo da linha da seta (`Connector::captions`, `Connector::turn`, W23 — doc 14);
 /// 16 = as menções das mensagens (`Message::mentions`, W23 B14 — doc 17); 17 = a escala de nascença
-/// do traço (`Style::birth`) e a tinta limpa (`Ink::clean`) — auditoria do Sketch, doc 17 §9.
-pub const FORMAT_VERSION: u32 = 17;
+/// do traço (`Style::birth`) e a tinta limpa (`Ink::clean`) — auditoria do Sketch, doc 17 §9; 18 = o
+/// Kanban no quadro (`ElementKind::Kanban`, ADR-0195 §3). Os bytes do 17 são os do 18 sem a variante
+/// nova: lê-os o mesmo leitor; o degrau existe para um build do 17 recusar o ficheiro PELO NOME em vez
+/// de tropeçar num discriminante que não conhece.
+pub const FORMAT_VERSION: u32 = 18;
 
 /// Identidade de um quadro no projecto. Nunca reusada.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -308,8 +311,9 @@ impl BoardSet {
         // A versão é o 1.º campo: lê-se sozinha, e decide com que structs ler o resto.
         let (version, _) = postcard::take_from_bytes::<u32>(bytes).map_err(|e| e.to_string())?;
         match version {
-            FORMAT_VERSION => postcard::from_bytes(bytes)
+            17 | FORMAT_VERSION => postcard::from_bytes(bytes)
                 .map(|mut set: Self| {
+                    set.version = FORMAT_VERSION;
                     for b in &mut set.boards {
                         b.doc.reindex();
                     }

@@ -62,11 +62,13 @@ pub enum Field {
     TextTurn,
     /// Formato 17 — a escala do ecrã em que o elemento nasceu (`Style::birth`).
     Birth,
+    /// W4 do Kanban — o Kanban do projecto que o elemento mostra (só a REFERÊNCIA: a vista não viaja).
+    Kanban,
 }
 
 impl Field {
     /// Todos, pela ordem do enum.
-    pub const ALL: [Field; 41] = [
+    pub const ALL: [Field; 42] = [
         Field::Box,
         Field::Angle,
         Field::Z,
@@ -108,6 +110,7 @@ impl Field {
         Field::Embed,
         Field::TextTurn,
         Field::Birth,
+        Field::Kanban,
     ];
 
     /// Uma contagem que SOMA entre pessoas (dois carimbos ao mesmo tempo são dois): a sessão ao vivo
@@ -188,6 +191,7 @@ impl Element {
             }
             Field::TextTurn => enc(&self.connector()?.turn),
             Field::Birth => enc(&st.birth),
+            Field::Kanban => enc(&self.kanban()?.kanban),
         })
     }
 
@@ -271,6 +275,7 @@ impl Element {
             }
             Field::TextTurn => put(&mut self.connector_mut()?.turn, b),
             Field::Birth => put(&mut self.style_mut().birth, b),
+            Field::Kanban => put(&mut self.kanban_mut()?.kanban, b),
         }
     }
 

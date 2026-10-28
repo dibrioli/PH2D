@@ -3,8 +3,8 @@
 use std::collections::BTreeMap;
 
 use ph2d_board_model::{
-    Anchor, Board, Dash, Element, ElementId, ElementKind, End, FillStyle, Route, Shape, ShapeType,
-    Style, TextAlign, VAlign,
+    Anchor, Board, Dash, Element, ElementId, ElementKind, End, FillStyle, KanbanId, RichText, Route,
+    Shape, ShapeType, Style, TextAlign, VAlign,
 };
 use ph2d_board_route::RouteCache;
 use ph2d_vector::{BezPath, PathEl};
@@ -388,6 +388,14 @@ fn freedraw(board: &Board, el: &Element, out: &mut Vec<Value>) {
 /// array manda; sem `index`), os presos de cada contentor ligados nos dois sentidos.
 #[must_use]
 pub fn write(board: &Board) -> String {
+    write_with_names(board, &|_| None)
+}
+
+/// [`write`] com o NOME de cada Kanban (o documento vive no projecto, fora do quadro): um Kanban sai
+/// como o `rectangle` de cantos redondos com o nome preso dentro — o que o Excalidraw mostra e edita
+/// —, e o nosso elemento inteiro no `customData` (volta a ser o Kanban ao importar).
+#[must_use]
+pub fn write_with_names(board: &Board, names: &dyn Fn(KanbanId) -> Option<String>) -> String {
     let mut routes = RouteCache::default();
     routes.sync(&board.doc);
     let mut els: Vec<&Element> = board.doc.live_with_hidden().collect();
@@ -407,6 +415,15 @@ pub fn write(board: &Board) -> String {
             ElementKind::Embed(e) => {
                 let m = base(board, el, "embeddable", &[]);
                 out.push(crate::video::write(el, e, m));
+            }
+            ElementKind::Kanban(k) => {
+                let name = names(k.kanban).unwrap_or_default();
+                let s = Shape {
+                    kind: ShapeType::Rectangle,
+                    style: k.style.clone(),
+                    text: RichText::from(name.as_str()),
+                };
+                shape(board, el, &s, &mut out);
             }
             ElementKind::Frame(f) => {
                 let mut m = base(board, el, "frame", &[]);

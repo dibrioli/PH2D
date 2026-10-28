@@ -94,7 +94,7 @@ pub(crate) fn paint(
     scene: &mut VectorScene,
     ts: &mut TextSystem,
     theme: Theme,
-    _k: &Kanban,
+    k: &Kanban,
     tab: &Tab,
 ) {
     let Some(row) = tab.w6.quick else {
@@ -104,7 +104,11 @@ pub(crate) fn paint(
         return;
     };
     let area = tab.layout.area;
-    scene.fill_rect(rect_to_vello(area), c(theme, T::KanbanShadowFlight));
+    let shadow = c(theme, T::KanbanShadowFlight);
+    scene.fill_rect(rect_to_vello(area), shadow);
+    // Os botões são do cabeçalho (translúcidos sobre o fundo): por baixo deles, o fundo do quadro e a
+    // sombra, opacos — a lista que estiver ali não se vê através do texto.
+    let under = crate::paint::board_bg(theme, k.header.background);
     let mut hits = vec![(r, Act::Inside)];
     if let Some(f) = tab
         .field
@@ -151,6 +155,8 @@ pub(crate) fn paint(
             T::KanbanHeaderBg
         };
         let ink = if on { c(theme, T::KanbanBtnOnFg) } else { fg };
+        fill_rounded_rect(scene, b, m::BUTTON_RADIUS, under);
+        fill_rounded_rect(scene, b, m::BUTTON_RADIUS, shadow);
         fill_rounded_rect(scene, b, m::BUTTON_RADIUS, c(theme, fill));
         let ir = Rect::new(b.x + m::BUTTON_PAD_X, b.y, m::ICON_PX, b.h);
         crate::paint::icon(scene, icon, ir, ink);

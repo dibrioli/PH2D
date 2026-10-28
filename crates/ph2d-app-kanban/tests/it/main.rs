@@ -5,6 +5,7 @@
 
 mod arrastar;
 mod canvas_entrada;
+mod d9;
 mod duas_janelas;
 mod medida;
 mod escrever;

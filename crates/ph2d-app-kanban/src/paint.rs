@@ -47,7 +47,7 @@ pub(crate) fn list_colors(theme: Theme, hue: Option<Hue>) -> (Color, Color, Colo
 }
 
 /// O fundo do quadro: o azul do Trello; outro matiz usa a etiqueta forte dele (a lei do Quadro).
-fn board_bg(theme: Theme, bg: Background) -> Color {
+pub(crate) fn board_bg(theme: Theme, bg: Background) -> Color {
     ph2d_board_render::kanban_board_bg(theme, bg)
 }
 

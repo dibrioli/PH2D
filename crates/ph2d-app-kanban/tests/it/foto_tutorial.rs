@@ -484,9 +484,19 @@ fn foto_tutorial_parte_3_e_11_no_quadro() {
         d.clica(centro(r));
         d.quadros(4);
         let vivo = |d: &Duas| {
-            d.hero.documents.kanbans().get(id).unwrap().cards.get(&c).is_some_and(|x| !x.meta.deleted)
+            d.hero
+                .documents
+                .kanbans()
+                .get(id)
+                .unwrap()
+                .cards
+                .get(&c)
+                .is_some_and(|x| !x.meta.deleted)
         };
-        assert!(d.hero.documents.active_board().is_some() && !vivo(&d), "11.4: a nota no Quadro");
+        assert!(
+            d.hero.documents.active_board().is_some() && !vivo(&d),
+            "11.4: a nota no Quadro"
+        );
         foto_d(&mut d, &format!("11_4b_{tag}"));
         let _ = sem();
     }

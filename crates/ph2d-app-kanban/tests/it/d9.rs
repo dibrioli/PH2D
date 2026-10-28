@@ -58,14 +58,21 @@ fn d9_os_botoes_da_edicao_rapida_tapam_as_listas_por_baixo() {
     let abrir = alvo(&mut m, id, "Quick(Open)");
     let arquivar = alvo(&mut m, id, "Quick(Archive)");
     let doing = m.lista(id, "Doing");
-    let lr = m.docs().probe_list_rect(id.0, doing).expect("a lista DOING");
+    let lr = m
+        .docs()
+        .probe_list_rect(id.0, doing)
+        .expect("a lista DOING");
     assert!(
         abrir.x + abrir.w > lr.x && abrir.y < lr.y + lr.h,
         "o «Open card» está sobre a DOING: {abrir:?} × {lr:?}"
     );
     let img = pixeis(&mut m);
     let ponta = |r: Rect| px(&img, r.x + r.w - 3.0, r.y + r.h / 2.0);
-    assert_eq!(ponta(abrir), ponta(arquivar), "a lista vê-se através do botão");
+    assert_eq!(
+        ponta(abrir),
+        ponta(arquivar),
+        "a lista vê-se através do botão"
+    );
 }
 
 /// 4.2 — a pesquisa tem UMA caixa de edição: a do cabeçalho; o painel dos resultados só os mostra
@@ -84,7 +91,10 @@ fn d9_a_pesquisa_tem_uma_so_caixa_de_edicao() {
         .map(|(_, r)| r)
         .collect();
     assert_eq!(caixas.len(), 1, "uma só caixa: {caixas:?}");
-    let topo = m.docs().probe_rect(id.0, "menu").expect("o «…» do cabeçalho");
+    let topo = m
+        .docs()
+        .probe_rect(id.0, "menu")
+        .expect("o «…» do cabeçalho");
     assert!((caixas[0].y - topo.y).abs() < 1.0, "e é a do cabeçalho");
 }
 
@@ -124,7 +134,11 @@ fn d9_as_explicacoes_das_janelas_quebram_em_linhas() {
     tecla(&mut m, 'e');
     toca(&mut m, id, "Quick(Mirror)");
     let mirror = [tr("kanban.w6.mirror_note")];
-    assert_eq!(cortadas(&mut m, &mirror), Vec::<String>::new(), "Mirror card");
+    assert_eq!(
+        cortadas(&mut m, &mirror),
+        Vec::<String>::new(),
+        "Mirror card"
+    );
 
     let (mut m, id) = mesa_com_fontes(6);
     let menu = m.docs().probe_rect(id.0, "menu").expect("menu");
@@ -152,19 +166,37 @@ fn d9_a_coluna_do_verso_mede_os_rotulos() {
     use ph2d_editor_core::text_elide::elisao;
     let (mut d, id, _) = crate::duas_janelas::Duas::new();
     d.ts = ph2d_text::TextSystem::new();
-    let c = d.hero.documents.kanbans().get(id).unwrap().cards.values()
-        .find(|c| c.title == "Write the logline").unwrap().id;
+    let c = d
+        .hero
+        .documents
+        .kanbans()
+        .get(id)
+        .unwrap()
+        .cards
+        .values()
+        .find(|c| c.title == "Write the logline")
+        .unwrap()
+        .id;
     d.docs().open(id);
     d.quadros(2);
     d.docs().open_back(id.0, c);
     d.quadros(2);
     assert!(
-        d.docs().probe_back_hits(id.0).iter().any(|(n, _)| n == "Side(ToNote)"),
+        d.docs()
+            .probe_back_hits(id.0)
+            .iter()
+            .any(|(n, _)| n == "Side(ToNote)"),
         "o botão está no verso"
     );
     let rotulo = ph2d_i18n::tr("kanban.links.to_note");
     let ((), medidos) = elisao::medindo(|| d.quadro());
-    let cortado: Vec<_> = medidos.iter().filter(|x| !x.coube() && rotulo.contains(x.texto.as_str())).collect();
+    let cortado: Vec<_> = medidos
+        .iter()
+        .filter(|x| !x.coube() && rotulo.contains(x.texto.as_str()))
+        .collect();
     assert!(cortado.is_empty(), "{cortado:?}");
-    assert!(medidos.iter().any(|x| x.texto == rotulo), "o rótulo foi medido");
+    assert!(
+        medidos.iter().any(|x| x.texto == rotulo),
+        "o rótulo foi medido"
+    );
 }

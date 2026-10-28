@@ -234,9 +234,20 @@ fn j3_import_o_aviso_do_export_aparece_sobre_a_aba_do_kanban() {
             .apply_event(WidgetEvent::Click(KanbanDocs::CMD_EXPORT))
     );
     serve(&mut m);
-    assert!(m.hero.documents.surface_active().is_some(), "a aba do Kanban continua activa");
-    assert!(m.hero.documents.told().is_some_and(|t| t.contains("lua.csv")));
+    assert!(
+        m.hero.documents.surface_active().is_some(),
+        "a aba do Kanban continua activa"
+    );
+    assert!(
+        m.hero
+            .documents
+            .told()
+            .is_some_and(|t| t.contains("lua.csv"))
+    );
     let depois = caminhos_do_hero(&mut m);
-    assert!(depois > antes, "o balão do aviso foi pintado ({antes} → {depois})");
+    assert!(
+        depois > antes,
+        "o balão do aviso foi pintado ({antes} → {depois})"
+    );
     let _ = std::fs::remove_dir_all(dir);
 }

@@ -122,7 +122,13 @@ pub(crate) fn decode(bytes: &[u8]) -> Option<Thumb> {
     let row_max = px
         .chunks_exact(w as usize * 4)
         .take(h as usize)
-        .map(|row| row.chunks_exact(4).map(luminance).fold(0.0_f32, f32::max))
+        .map(|row| {
+            row.as_chunks::<4>()
+                .0
+                .iter()
+                .map(luminance)
+                .fold(0.0_f32, f32::max)
+        })
         .collect();
     Some(Thumb {
         size: [w, h],
@@ -162,7 +168,7 @@ fn lin(c: u8) -> f32 {
 }
 
 /// A luminância relativa (WCAG) de um píxel; o transparente conta como BRANCO (o pior fundo).
-fn luminance(p: &[u8]) -> f32 {
+fn luminance(p: &[u8; 4]) -> f32 {
     let l = 0.2126 * lin(p[0]) + 0.7152 * lin(p[1]) + 0.0722 * lin(p[2]);
     let a = f32::from(p[3]) / 255.0;
     l * a + (1.0 - a)

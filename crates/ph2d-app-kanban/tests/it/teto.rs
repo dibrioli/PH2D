@@ -62,34 +62,31 @@ fn monta(n: usize, listas: usize) -> (Mesa, KanbanId) {
             })
             .collect();
         for c in 0..n {
-            ops.push(KanbanOp::put(Record::card(
-                Card {
-                    id: CardId(nid()),
-                    list: ids[c % listas],
-                    pos: key(),
-                    title: format!("Shot {:05} \u{2014} layout, anim, light", c + 1),
-                    description: String::new(),
-                    labels: if c % 3 == 0 { vec![tag] } else { Vec::new() },
-                    members: if c % 5 == 0 {
-                        vec![Member("Enio".into())]
-                    } else {
-                        Vec::new()
-                    },
-                    start: None,
-                    due: None,
-                    cover: None,
-                    fields: std::collections::BTreeMap::new(),
-                    location: String::new(),
-                    votes: Vec::new(),
-                    created: Moment(0),
-                    archived: false,
-                    meta: Meta::default(),
-                    watchers: Vec::new(),
-                    origin: None,
-                    template: false,
-                }
-                .into(),
-            )));
+            ops.push(KanbanOp::put(Record::card(Card {
+                id: CardId(nid()),
+                list: ids[c % listas],
+                pos: key(),
+                title: format!("Shot {:05} \u{2014} layout, anim, light", c + 1),
+                description: String::new(),
+                labels: if c % 3 == 0 { vec![tag] } else { Vec::new() },
+                members: if c % 5 == 0 {
+                    vec![Member("Enio".into())]
+                } else {
+                    Vec::new()
+                },
+                start: None,
+                due: None,
+                cover: None,
+                fields: std::collections::BTreeMap::new(),
+                location: String::new(),
+                votes: Vec::new(),
+                created: Moment(0),
+                archived: false,
+                meta: Meta::default(),
+                watchers: Vec::new(),
+                origin: None,
+                template: false,
+            })));
         }
         ph2d_kanban_model::apply_batch(k, ops);
         id

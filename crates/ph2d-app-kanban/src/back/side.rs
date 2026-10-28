@@ -100,7 +100,11 @@ pub(crate) fn width(ui: &mut Ui<'_>, cx: &Ctx<'_>) -> f32 {
         .chain(&[Side::AddButton])
         .map(|s| button(cx, *s).0)
         .collect();
-    labels.extend(enabled(cx.k, is_card_button).into_iter().map(|(_, s)| s.name.clone()));
+    labels.extend(
+        enabled(cx.k, is_card_button)
+            .into_iter()
+            .map(|(_, s)| s.name.clone()),
+    );
     labels
         .iter()
         .map(|l| ui.button_w(l, true).ceil())

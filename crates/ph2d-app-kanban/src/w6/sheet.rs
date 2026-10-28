@@ -173,7 +173,9 @@ impl Sheet {
         for (item, _) in &mut s.items {
             match item {
                 Item::Note(t) => *t = wrap(ts, t, m::SMALL_PX, iw),
-                Item::Radio { text, .. } => *text = wrap(ts, text, m::BUTTON_TEXT_PX, iw - CHECK - GAP),
+                Item::Radio { text, .. } => {
+                    *text = wrap(ts, text, m::BUTTON_TEXT_PX, iw - CHECK - GAP)
+                }
                 Item::Check {
                     text,
                     swatch: None,
@@ -228,10 +230,7 @@ fn h(i: &Item) -> f32 {
         Item::Input { .. } => INPUT_H + GAP,
         Item::Select { .. } => CAPTION_H + ROW + GAP / 2.0,
         Item::Button { .. } => ROW + 2.0 * BUTTON_GAP,
-        Item::Segment { .. }
-        | Item::Choice { .. }
-        | Item::Entry { .. }
-        | Item::Keys { .. } => ROW,
+        Item::Segment { .. } | Item::Choice { .. } | Item::Entry { .. } | Item::Keys { .. } => ROW,
     }
 }
 
@@ -487,7 +486,13 @@ pub(crate) fn paint(
                 }
                 let b = Rect::new(x, y + (ROW - CHECK) / 2.0, CHECK, CHECK);
                 checkbox(scene, theme, b, *on, true);
-                lines(scene, ts, text, (b.x + CHECK + GAP, y, iw - CHECK - GAP, ih), fg);
+                lines(
+                    scene,
+                    ts,
+                    text,
+                    (b.x + CHECK + GAP, y, iw - CHECK - GAP, ih),
+                    fg,
+                );
             }
             Item::Segment { label: l, options } => {
                 let ty = text_top(ts, y, ih, m::SMALL_PX);

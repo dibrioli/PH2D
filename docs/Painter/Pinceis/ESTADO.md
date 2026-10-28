@@ -31,6 +31,9 @@
 9. ✅ Texturas (`f9fbbe7c26`, `DabJitter::subpixel_area`: marca < ½ px pousa pela área; traço de 5 px 0,258 → 0,131,
    Krita 0,122): Spray Can curado não aprovado (cega média/alta: faltam salpicos escuros e discos grandes translúcidos).
    Foliage, Grass, Stipple, Noise Grit, Splatter: sem lacuna comum (receita/carimbo/aguarela) — `exames/texturas.md`.
+10. ✅ Cerdas que crescem com o diâmetro (`a7cd157000`, `bristleLaneSizeExp`; fio a 160 px 7 → 11–12, Rebelle 10): só o
+   Gouache Dry as tem — a régua desceu (382 → 364: as faixas cobrem o vermelho) ⇒ receita fica; Wash não tem riscas no
+   Rebelle, Bristle Watercolor é pigmento a tamanho pequeno (fila em `exames/guache.md`).
 7. ✅ Lâmina (`a6dcb2afa1` `883ea9d7c2`, [`J6_lamina.md`](J6_lamina.md)): o Rebelle NÃO gira — plano fixo no seu eixo; sem knob novo, gate `a_lamina_de_cada_preset_e_a_do_oraculo`. Craft Flat, Broad Nib, Compressed Charcoal, Bristle Watercolor em estudo (outra lacuna); receitas Oil em `J6_lamina_oil_receitas.md`.
 8. Particles/Glitter: SEM oráculo que as pinte (efeitos.md «Para a fila» 4–5) ⇒ fora até haver foto.
 9. Óleo Real: `ESTADO_MISSAO_W3.md` «Fila para a próxima onda» + HANDOFF_W3b §Aberto 2–5. 10. Só valores (sem motor): Wax Crayon (F-10), Wood Stick (C-15), Blur (L-5).

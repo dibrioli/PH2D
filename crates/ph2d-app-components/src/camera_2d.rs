@@ -242,13 +242,9 @@ pub fn update(
     // ⭐⭐ **A cerca entra AQUI e não dentro do laço**, e a diferença é observável: aplicá-la a cada
     // tique deixaria o amortecimento a puxar para fora e a cerca a puxar de volta, que é o tremor
     // clássico na borda do nível. Ela é idempotente, então uma vez por quadro dá o mesmo sítio.
-    if let Some(l) = limits.as_ref() {
-        let antes = rt.center;
-        for (eixo, (c, h)) in rt.center.iter_mut().zip(half.iter()).enumerate() {
-            *c = ph2d_ecs::clamp_axis_to_limits(*c, *h, l.min[eixo], l.max[eixo]);
-        }
-        report.limited = rt.center != antes;
-    }
+    let antes = rt.center;
+    rt.center = enquadra(rt.center, half, limits.as_ref());
+    report.limited = rt.center != antes;
 
     report.center = rt.center;
     let vista = CameraView {
@@ -274,6 +270,40 @@ pub fn update(
         ent.insert(rt);
     }
     (Some(vista), report)
+}
+
+/// ⭐ **A cerca**, eixo a eixo: o centro `mira` com a meia-janela `half` preso aos limites. A porta única — o
+/// passe da câmera e a moldura do canvas (`ph2d_app_game::moldura`) leem-na.
+#[must_use]
+pub fn enquadra(mira: [f32; 2], half: [f32; 2], limits: Option<&CameraLimits>) -> [f32; 2] {
+    let Some(l) = limits else {
+        return mira;
+    };
+    std::array::from_fn(|i| ph2d_ecs::clamp_axis_to_limits(mira[i], half[i], l.min[i], l.max[i]))
+}
+
+/// A mira de uma câmera parada (sem velocidade): o alvo do `follow` + o offset dele, ou a pose. É onde ela
+/// renasce em cada quadro do editor parado (o rebobinar tira o estado vivo).
+#[must_use]
+pub fn mira_parada(world: &mut World, cam: Entity) -> [f32; 2] {
+    let pose = position_of(world, cam).unwrap_or([0.0, 0.0]);
+    match world.get::<CameraFollow>(cam).cloned() {
+        Some(f) => {
+            let alvo = follow_target(world, &f.target)
+                .and_then(|t| position_of(world, t))
+                .unwrap_or(pose);
+            ph2d_ecs::aim_at(alvo, [0.0, 0.0], &f)
+        }
+        None => pose,
+    }
+}
+
+/// O alvo do `follow` de `cam`, se o achar: `(nome, onde está)`.
+#[must_use]
+pub fn alvo_do_follow(world: &mut World, cam: Entity) -> Option<(String, [f32; 2])> {
+    let f = world.get::<CameraFollow>(cam)?.target.trim().to_string();
+    let t = follow_target(world, &f)?;
+    Some((f, position_of(world, t)?))
 }
 
 /// O `follow` neutro, para a mira do nascimento quando não há nenhum.

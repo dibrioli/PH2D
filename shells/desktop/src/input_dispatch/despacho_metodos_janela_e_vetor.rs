@@ -252,6 +252,8 @@ impl crate::App {
                 {
                     // ⭐ A borda de uma coluna docada — a MESMA porta que o arrasto pergunta.
                     icon
+                } else if let Some(icon) = self.camera_frame_cursor() {
+                    icon
                 } else if let Some(c) = ph2d_editor_core::screens::hero::board_view::cursor(
                     h,
                     self.last_pointer.0,

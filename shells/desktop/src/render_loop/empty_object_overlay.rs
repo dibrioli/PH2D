@@ -60,10 +60,6 @@ pub(super) fn draw_empty_object_marks(
     let ppm = pixels_per_meter.max(crate::EPS_PIXELS_PER_METER);
     let color = ph2d_editor_core::paint::resolve(ColorToken::Selection, theme);
     for entity in crate::group_gizmo_view::empty_objects(sim) {
-        // A câmera tem o ícone dela (`ph2d_app_game::moldura_tinta`, plano GEF 17 A1); o dedo continua no anel.
-        if sim.world().get::<ph2d_ecs::GameCamera>(entity).is_some() {
-            continue;
-        }
         let c = ph2d_vec_entities::transform::world_transform(sim, entity).translation;
         let r_world = crate::group_gizmo_view::marker_world_radius(sim, entity, ppm);
         // ⚠️ **O raio é MEDIDO na tela, e não convertido à mão**: o anel tem de crescer com o zoom

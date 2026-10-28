@@ -121,25 +121,40 @@ pub(crate) fn install(dst: &mut ProjectSettings, saved: &SavedSettings) {
     dst.display_angle = display_angle_from_u8(saved.display_angle);
 }
 
-/// A versão do blob do formato do jogo (v198, plano GEF 17).
-const JOGO_VERSAO: u8 = 1;
+/// A versão do blob do formato do jogo (v198, plano GEF 17; v2 = o lado do ícone da câmera, 17b).
+const JOGO_VERSAO: u8 = 2;
 
-/// O blob `jogo` do arquivo: `(versão, predefinição, largura, altura personalizadas, moldura)` em postcard.
+/// O blob `jogo` do arquivo: `(versão, predefinição, largura, altura personalizadas, moldura, ícone px)` em postcard.
 pub(crate) fn collect_jogo(p: ProjectSettings) -> Vec<u8> {
     let f = p.game_format;
     let moldura = u8::from(p.camera_frame == CameraFrameShow::Selected);
-    postcard::to_allocvec(&(JOGO_VERSAO, f.preset.to_u8(), f.custom, moldura)).unwrap_or_default()
+    postcard::to_allocvec(&(
+        JOGO_VERSAO,
+        f.preset.to_u8(),
+        f.custom,
+        moldura,
+        p.camera_icon_px,
+    ))
+    .unwrap_or_default()
 }
 
-/// Instala o formato do jogo do arquivo. Vazio (um projecto `<= 197`) ou ilegível = o de fábrica.
+/// Instala o formato do jogo do arquivo. Vazio (um projecto `<= 197`) ou ilegível = o de fábrica; a v1 (sem o
+/// ícone) abre com o ícone de fábrica.
 pub(crate) fn install_jogo(dst: &mut ProjectSettings, bytes: &[u8]) {
-    let lido = postcard::from_bytes::<(u8, u8, [u32; 2], u8)>(bytes)
-        .ok()
-        .filter(|(v, ..)| *v == JOGO_VERSAO);
     let fabrica = ProjectSettings::default();
-    let Some((_, preset, custom, moldura)) = lido else {
+    let lido = postcard::from_bytes::<(u8, u8, [u32; 2], u8, f32)>(bytes)
+        .ok()
+        .filter(|(v, ..)| *v == JOGO_VERSAO)
+        .or_else(|| {
+            postcard::from_bytes::<(u8, u8, [u32; 2], u8)>(bytes)
+                .ok()
+                .filter(|(v, ..)| *v == 1)
+                .map(|(v, p, c, m)| (v, p, c, m, fabrica.camera_icon_px))
+        });
+    let Some((_, preset, custom, moldura, icone)) = lido else {
         dst.game_format = fabrica.game_format;
         dst.camera_frame = fabrica.camera_frame;
+        dst.camera_icon_px = fabrica.camera_icon_px;
         return;
     };
     dst.game_format = GameFormat {
@@ -151,6 +166,12 @@ pub(crate) fn install_jogo(dst: &mut ProjectSettings, bytes: &[u8]) {
     } else {
         CameraFrameShow::Always
     };
+    let mut p = fabrica;
+    ph2d_app_game::formato_do_jogo::aplica_formato(
+        &mut p,
+        &ph2d_editor_core::CameraFieldEdit::IconSize(icone),
+    );
+    dst.camera_icon_px = p.camera_icon_px;
 }
 
 #[cfg(test)]
@@ -182,6 +203,7 @@ mod tests {
                 custom: [400, 300],
             },
             camera_frame: CameraFrameShow::Selected,
+            camera_icon_px: 72.0,
         };
         assert_ne!(
             authored,

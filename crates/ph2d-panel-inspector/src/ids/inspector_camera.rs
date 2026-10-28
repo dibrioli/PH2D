@@ -165,6 +165,9 @@ pub const INSP_CAMERA_CUSTOM_W: NodeId = hash_node_id("insp_camera_custom_w");
 /// O tamanho do formato `Custom`, em píxeis — altura.
 pub const INSP_CAMERA_CUSTOM_H: NodeId = hash_node_id("insp_camera_custom_h");
 
+/// O lado do ícone da câmera no canvas, em píxeis de tela (17b).
+pub const INSP_CAMERA_ICON_SIZE: NodeId = hash_node_id("insp_camera_icon_size");
+
 /// A fileira segmentada «Frame»: Always | When Selected.
 pub const INSP_CAMERA_FRAME_GROUP: NodeId = hash_node_id("insp_camera_frame_group");
 

@@ -64,6 +64,7 @@ fn info(
         selected_count: 1,
         format: ph2d_editor_core::GameFormat::default(),
         frame: ph2d_editor_core::CameraFrameShow::Always,
+        icon_px: ph2d_editor_core::game_format::CAMERA_ICON_PX,
     }
 }
 
@@ -372,5 +373,67 @@ fn o_formato_e_a_moldura_chegam_ao_barramento() {
         3 * SEC,
     );
     assert_eq!(edits, vec![CameraFieldEdit::Frame(true)]);
+    set_current_inspector_camera(None);
+}
+
+/// ⭐ **«Icon Size», «View Offset» e «Follow Offset» estão vivos** (onda 17b): cada campo pinta-se clicável, mostra
+/// o snapshot e chega ao barramento com a sua variante — os dois «Offset» com nomes distintos.
+///
+/// **Mutações que devem sangrar:** tirar a linha do ícone do `camera_format` · tirar o braço do `event_camera` ·
+/// trocar `FollowOffset` por `Offset`.
+#[test]
+fn o_icone_e_os_dois_offset_chegam_ao_barramento() {
+    use ph2d_editor_core::action_bus::EditorAction;
+    use ph2d_editor_core::interaction::WidgetEvent;
+    use ph2d_editor_core::panel::PanelHostInternal as _;
+    use ph2d_panel_inspector::ids as I;
+    assert_ne!(
+        ph2d_i18n::tr("component.field.camera_fields.1"),
+        ph2d_i18n::tr("component.field.follow_fields.4")
+    );
+    let mut i = info(Some(seguidor()), None, false);
+    i.icon_px = 60.0;
+    let (mut h, mut st) = host(i);
+    let rects = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
+    for id in [
+        I::INSP_CAMERA_ICON_SIZE,
+        I::INSP_CAMERA_OFFSET_X,
+        I::INSP_CAMERA_FOLLOW_OFF_Y,
+    ] {
+        assert!(
+            rects.iter().any(|r| r.0 == id),
+            "o campo {id:?} não está pintado clicável"
+        );
+    }
+    assert_eq!(h.store().number_value(I::INSP_CAMERA_ICON_SIZE), Some(60.0));
+    for (id, v, esperado) in [
+        (
+            I::INSP_CAMERA_ICON_SIZE,
+            88.0,
+            CameraFieldEdit::IconSize(88.0),
+        ),
+        (
+            I::INSP_CAMERA_OFFSET_X,
+            1.5,
+            CameraFieldEdit::Offset([1.5, 0.0]),
+        ),
+        (
+            I::INSP_CAMERA_FOLLOW_OFF_Y,
+            2.0,
+            CameraFieldEdit::FollowOffset([seguidor().offset[0], 2.0]),
+        ),
+    ] {
+        h.store_mut().set_number_value(id, v);
+        let _ = h.apply_panel_event::<InspectorPanel>(&mut st, WidgetEvent::ValueChanged(id));
+        let edits: Vec<_> = h
+            .drained_actions()
+            .into_iter()
+            .filter_map(|a| match a {
+                EditorAction::InspectorCameraEdit { edit, .. } => Some(edit),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(edits, vec![esperado]);
+    }
     set_current_inspector_camera(None);
 }

@@ -80,6 +80,14 @@ pub(super) fn publish_hierarchy(
         for (id, entry) in &mut entries {
             if let Some(bits) = live.bridge.entity_for(*id) {
                 entry.components = icons.of_entity(sim.world(), bits);
+                // O ícone do TIPO (17b A4): a câmera, a luz e o vazio deixam de se ler como imagem.
+                entry.icon = ph2d_editor_core::hier_rows::type_icon(
+                    ph2d_app_components::component_attach::kind_of(
+                        sim.world(),
+                        ph2d_ecs::Entity::from_bits(bits),
+                    ),
+                    &entry.components,
+                );
                 entry.has = icons.set_of(sim.world(), bits);
                 entry.content = hero.gizmo.content_of(bits).to_vec();
                 ph2d_panel_timeline::hier::declare_in_row(timeline, bits, entry);

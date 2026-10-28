@@ -1,8 +1,11 @@
-//! A tinta da câmera no canvas (plano GEF 17 A1/A2/A4): o ícone no lugar do anel do vazio, a moldura (forte com a
-//! câmera selecionada, ténue sem ela, tracejada se não é a que manda), o rótulo do tamanho, os cantos e os limites.
+//! A tinta da câmera no canvas (plano GEF 17 A1/A2/A4, cura 17b): o ícone (com o tamanho do projecto), a moldura
+//! (forte com a câmera selecionada, ténue sem ela, tracejada se não é a que manda), o rótulo do tamanho DENTRO do
+//! canvas, os cantos, os limites, a alça sob o ponteiro e — com `follow` — o fio até ao alvo e a mira.
 //! Em espaço de TELA: o traço e o texto ficam nítidos em qualquer zoom.
 
-use crate::moldura::{Moldura, caixa, cantos};
+use crate::moldura::{AGARRE_PX, Moldura, alca_em, caixa, cantos};
+use bevy_ecs::entity::Entity;
+use bevy_ecs::world::World;
 use ph2d_editor_core::project::DisplayUnit;
 use ph2d_editor_core::zones::Rect;
 use ph2d_editor_core::{CameraFrameShow, icons::IconId};
@@ -12,12 +15,13 @@ use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Theme, TypeToken};
 use ph2d_vector::{Affine, Color, Fill, Stroke, VectorScene};
 
-/// A opacidade da moldura de uma câmera não selecionada (ténue, D-V «Sempre»).
+/// A opacidade da moldura de uma câmera não selecionada (ténue, D-V «Sempre») e com o jogo a correr.
 const TENUE: f32 = 0.45; // LITERAL-PX-OK: opacidade de overlay
 const TRACO_PX: [f64; 2] = [1.0, 2.0]; // LITERAL-PX-OK: chrome de overlay (ténue, forte)
 const TRACEJADO_PX: [f64; 2] = [6.0, 4.0]; // LITERAL-PX-OK: chrome de overlay
 const ALCA_PX: f64 = 4.0; // LITERAL-PX-OK: meia-alça
-const ICONE_PX: f32 = 22.0; // LITERAL-PX-OK: lado do ícone da câmera
+const ALCA_SOB_PX: f64 = 6.0; // LITERAL-PX-OK: meia-alça sob o ponteiro
+const MIRA_PX: f64 = 5.0; // LITERAL-PX-OK: meio braço da cruz da mira
 const ROTULO_FOLGA_PX: f32 = 4.0; // LITERAL-PX-OK: entre o rótulo e a moldura
 const ROTULO_MAX_PX: f32 = 420.0; // LITERAL-PX-OK: largura máxima do rótulo
 
@@ -27,13 +31,58 @@ pub fn visiveis(ms: &[Moldura], mostrar: CameraFrameShow) -> impl Iterator<Item 
         .filter(move |m| mostrar == CameraFrameShow::Always || m.selecionada)
 }
 
+/// O que o canvas sabe deste quadro para pintar a câmera.
+#[derive(Clone, Copy, Debug)]
+pub struct Pintura {
+    pub mostrar: CameraFrameShow,
+    pub unidade: DisplayUnit,
+    pub pixels_per_meter: f32,
+    pub icone_px: f32,
+    /// O editor parado no início: alças e rótulo. Senão a moldura é o jogo (ténue, sem alças).
+    pub em_edicao: bool,
+    /// O rectângulo do canvas visível `[x, y, w, h]` (px de janela) — o rótulo fica dentro dele.
+    pub canvas: [f32; 4],
+    /// O ponteiro (px da vista), para acender a alça sob ele.
+    pub ponteiro: (f32, f32),
+}
+
+/// O rectângulo do ícone de uma câmera em `pose`, em px da vista.
+fn icone(pose: [f32; 2], lado: f32, camera: &Camera2d, window: WindowSize) -> Rect {
+    let (x, y) = camera.world_to_screen(pose, window);
+    Rect::new(x - lado * 0.5, y - lado * 0.5, lado, lado)
+}
+
+/// ⭐ **O ícone pega** (17b A9): as câmeras visíveis cujo ícone contém `tela` — a MESMA conta da tinta.
+#[must_use]
+pub fn icones_em(
+    world: &World,
+    tela: (f32, f32),
+    lado: f32,
+    camera: &Camera2d,
+    window: WindowSize,
+) -> Vec<u64> {
+    let Some(mut q) = world.try_query::<(Entity, &ph2d_ecs::GameCamera)>() else {
+        return Vec::new();
+    };
+    q.iter(world)
+        .map(|(e, _)| e)
+        .filter(|&e| {
+            !world
+                .get::<ph2d_ecs::Visibility>(e)
+                .is_some_and(|v| v.hidden)
+        })
+        .filter_map(|e| {
+            let t = ph2d_ecs::world_transform(world, e)?;
+            let r = icone([t.translation.x, t.translation.y], lado, camera, window);
+            r.contains(tela.0, tela.1).then_some(e.to_bits())
+        })
+        .collect()
+}
+
 /// Pinta a câmera no canvas.
-#[allow(clippy::too_many_arguments)]
 pub fn desenhar(
     ms: &[Moldura],
-    mostrar: CameraFrameShow,
-    unidade: DisplayUnit,
-    pixels_per_meter: f32,
+    p: Pintura,
     theme: Theme,
     camera: &Camera2d,
     window: WindowSize,
@@ -43,23 +92,21 @@ pub fn desenhar(
     let selecao = ph2d_editor_core::paint::resolve(ColorToken::Selection, theme);
     let limites = ph2d_editor_core::paint::resolve(ColorToken::Warn, theme);
     let fundo = ph2d_editor_core::paint::resolve(ColorToken::Bg0, theme);
-    let tela = |p: [f32; 2]| {
-        let (x, y) = camera.world_to_screen(p, window);
+    let tela = |q: [f32; 2]| {
+        let (x, y) = camera.world_to_screen(q, window);
         (f64::from(x), f64::from(y))
     };
     for m in ms {
-        let (x, y) = tela(m.pose);
-        let lado = f64::from(ICONE_PX);
-        let r = Rect::new(
-            (x - lado * 0.5) as f32,
-            (y - lado * 0.5) as f32,
-            ICONE_PX,
-            ICONE_PX,
-        );
+        let r = icone(m.pose, p.icone_px, camera, window);
         ph2d_editor_core::paint_icon(cena, IconId::Camera, r, selecao, TRACO_PX[1] as f32);
     }
-    for m in visiveis(ms, mostrar) {
-        let forte = m.selecionada;
+    let sob = {
+        let a = camera.screen_to_world(p.ponteiro, window);
+        let b = camera.screen_to_world((p.ponteiro.0 + 1.0, p.ponteiro.1), window);
+        (a, (b[0] - a[0]).hypot(b[1] - a[1]) * AGARRE_PX)
+    };
+    for m in visiveis(ms, p.mostrar) {
+        let forte = m.selecionada && p.em_edicao;
         let cor = if forte {
             selecao
         } else {
@@ -73,36 +120,22 @@ pub fn desenhar(
         } else {
             traco.with_dashes(0.0, TRACEJADO_PX)
         };
-        let s = cena.inner_mut();
-        s.stroke(&traco, Affine::IDENTITY, cor, None, &rect);
-        let w = unidade.from_meters(m.meia[0] * 2.0, pixels_per_meter);
-        let h = unidade.from_meters(m.meia[1] * 2.0, pixels_per_meter);
-        let casas = usize::from(unidade == DisplayUnit::Meters);
-        let rotulo = ph2d_i18n::tr_with(
-            "game.camera_frame.label",
-            &[
-                ("NAME", &m.nome),
-                ("W", &format!("{w:.casas$}")),
-                ("H", &format!("{h:.casas$}")),
-                ("UNIT", &unidade.suffix()),
-            ],
-        );
-        let tam = TypeToken::Sm.px();
-        ph2d_editor_core::paint_text(
-            texto,
-            cena,
-            &rotulo,
-            rect.x0 as f32,
-            rect.y0 as f32 - tam - ROTULO_FOLGA_PX,
-            tam,
-            ROTULO_MAX_PX,
-            cor,
-        );
+        cena.inner_mut()
+            .stroke(&traco, Affine::IDENTITY, cor, None, &rect);
+        if !p.em_edicao {
+            continue;
+        }
+        rotulo(m, &p, rect, cor, cena, texto);
         if !forte {
             continue;
         }
+        if let Some(s) = m.segue.as_ref() {
+            fio_do_follow(m, s, cor, &tela, cena, texto);
+        }
+        let acesa = alca_em(m, sob.0, sob.1);
+        let realce = |c: [f32; 2]| alca_em(m, c, 0.0) == acesa && acesa.is_some();
         for c in cantos(lo, hi) {
-            alca(cena, tela(c), fundo, selecao);
+            alca(cena, tela(c), fundo, selecao, realce(c));
         }
         if let Some((min, max)) = m.limites {
             let r = retangulo(tela([min[0], max[1]]), tela([max[0], min[1]]));
@@ -114,7 +147,7 @@ pub fn desenhar(
                 &r,
             );
             for c in cantos(min, max) {
-                alca(cena, tela(c), fundo, limites);
+                alca(cena, tela(c), fundo, limites, realce(c));
             }
             for c in [
                 [min[0], (min[1] + max[1]) * 0.5],
@@ -123,18 +156,108 @@ pub fn desenhar(
                 [(min[0] + max[0]) * 0.5, max[1]],
                 [(min[0] + max[0]) * 0.5, (min[1] + max[1]) * 0.5],
             ] {
-                alca(cena, tela(c), limites, fundo);
+                alca(cena, tela(c), limites, fundo, realce(c));
             }
         }
     }
+}
+
+/// O rótulo «Nome · W × H unidade» por cima da moldura, empurrado para DENTRO do canvas (17b A10).
+fn rotulo(
+    m: &Moldura,
+    p: &Pintura,
+    rect: ph2d_vector::Rect,
+    cor: Color,
+    cena: &mut VectorScene,
+    texto: &mut TextSystem,
+) {
+    let w = p.unidade.from_meters(m.meia[0] * 2.0, p.pixels_per_meter);
+    let h = p.unidade.from_meters(m.meia[1] * 2.0, p.pixels_per_meter);
+    let casas = usize::from(p.unidade == DisplayUnit::Meters);
+    let rotulo = ph2d_i18n::tr_with(
+        "game.camera_frame.label",
+        &[
+            ("NAME", &m.nome),
+            ("W", &format!("{w:.casas$}")),
+            ("H", &format!("{h:.casas$}")),
+            ("UNIT", &p.unidade.suffix()),
+        ],
+    );
+    let tam = TypeToken::Sm.px();
+    let [cx, cy, cw, ch] = p.canvas;
+    let largura = texto.prefix_width(&rotulo, tam).min(ROTULO_MAX_PX);
+    let x = (rect.x0 as f32).clamp(
+        cx + ROTULO_FOLGA_PX,
+        (cx + cw - largura - ROTULO_FOLGA_PX).max(cx),
+    ); // CLAMP-OK: dentro do canvas
+    let em_cima = rect.y0 as f32 - tam - ROTULO_FOLGA_PX;
+    let y = if em_cima >= cy {
+        em_cima
+    } else {
+        (rect.y0 as f32 + ROTULO_FOLGA_PX).clamp(cy, (cy + ch - tam).max(cy)) // CLAMP-OK: dentro do canvas
+    };
+    ph2d_editor_core::paint_text(texto, cena, &rotulo, x, y, tam, ROTULO_MAX_PX, cor);
+}
+
+/// ⭐ **O fio do `follow`** (17b A2): tracejado do ícone ao alvo, com o nome dele, e a cruz da MIRA (alvo + offset
+/// do `follow`) — o que o miolo arrasta. A moldura vai até onde a cerca deixa; a cruz vai com o ponteiro.
+fn fio_do_follow(
+    m: &Moldura,
+    s: &crate::moldura::Segue,
+    cor: Color,
+    tela: &dyn Fn([f32; 2]) -> (f64, f64),
+    cena: &mut VectorScene,
+    texto: &mut TextSystem,
+) {
+    let Some(alvo) = s.alvo else {
+        return;
+    };
+    let (a, b) = (tela(m.pose), tela(alvo));
+    let linha = ph2d_vector::Line::new(a, b);
+    let s_ = cena.inner_mut();
+    s_.stroke(
+        &Stroke::new(TRACO_PX[0]).with_dashes(0.0, TRACEJADO_PX),
+        Affine::IDENTITY,
+        cor,
+        None,
+        &linha,
+    );
+    let mira = tela([alvo[0] + s.offset[0], alvo[1] + s.offset[1]]);
+    for (d0, d1) in [
+        ((MIRA_PX, 0.0), (-MIRA_PX, 0.0)),
+        ((0.0, MIRA_PX), (0.0, -MIRA_PX)),
+    ] {
+        let l = ph2d_vector::Line::new(
+            (mira.0 + d0.0, mira.1 + d0.1),
+            (mira.0 + d1.0, mira.1 + d1.1),
+        );
+        s_.stroke(&Stroke::new(TRACO_PX[1]), Affine::IDENTITY, cor, None, &l);
+    }
+    let rotulo = ph2d_i18n::tr_with("game.camera_frame.follows", &[("TARGET", &s.nome)]);
+    let tam = TypeToken::Sm.px();
+    ph2d_editor_core::paint_text(
+        texto,
+        cena,
+        &rotulo,
+        b.0 as f32 + ROTULO_FOLGA_PX,
+        b.1 as f32 + ROTULO_FOLGA_PX,
+        tam,
+        ROTULO_MAX_PX,
+        cor,
+    );
 }
 
 fn retangulo(a: (f64, f64), b: (f64, f64)) -> ph2d_vector::Rect {
     ph2d_vector::Rect::new(a.0.min(b.0), a.1.min(b.1), a.0.max(b.0), a.1.max(b.1))
 }
 
-fn alca(cena: &mut VectorScene, c: (f64, f64), dentro: Color, borda: Color) {
-    let r = ph2d_vector::Rect::new(c.0 - ALCA_PX, c.1 - ALCA_PX, c.0 + ALCA_PX, c.1 + ALCA_PX);
+fn alca(cena: &mut VectorScene, c: (f64, f64), dentro: Color, borda: Color, acesa: bool) {
+    let (meia, dentro) = if acesa {
+        (ALCA_SOB_PX, borda)
+    } else {
+        (ALCA_PX, dentro)
+    };
+    let r = ph2d_vector::Rect::new(c.0 - meia, c.1 - meia, c.0 + meia, c.1 + meia);
     let s = cena.inner_mut();
     s.fill(Fill::NonZero, Affine::IDENTITY, dentro, None, &r);
     s.stroke(&Stroke::new(TRACO_PX[0]), Affine::IDENTITY, borda, None, &r);

@@ -131,6 +131,43 @@ impl crate::App {
         }
     }
 
+    /// As fotos-gesto da câmera (17b, [`ph2d_app_game::smoke_mao`]): aperta, arrasta e solta pelas portas reais
+    /// do ponteiro; o `Up` imprime o que ficou (`[camera-mao]`).
+    pub(crate) fn mao_da_camera_do_smoke(&mut self) {
+        use ph2d_app_game::smoke_mao::{Mao, mao, proximo_quadro_da_mao, relato};
+        let Some(m) = ph2d_app_game::smoke::foto().and_then(|f| mao(f, proximo_quadro_da_mao()))
+        else {
+            return;
+        };
+        let Some(gfx) = self.gfx.as_ref() else {
+            return;
+        };
+        // A mão anda na TELA: com o «Look through» a vista anda com a câmera, e a mão não.
+        let vista = self
+            .undo
+            .camera_no_canvas
+            .vista_do_down
+            .unwrap_or(gfx.camera);
+        let ecra = |w: [f32; 2]| vista.world_to_screen(w, gfx.scene_window());
+        match m {
+            Mao::Desce(w) => {
+                let (x, y) = ecra(w);
+                self.smoke_pointer_down(x, y);
+            }
+            Mao::Move(w) => {
+                let (x, y) = ecra(w);
+                self.smoke_pointer_move(x, y);
+            }
+            Mao::Sobe => {
+                self.smoke_pointer_up();
+                if let Some(gfx) = self.gfx.as_mut() {
+                    let sel = gfx.hero_screen.as_ref().and_then(|h| h.gizmo.selection);
+                    eprintln!("[camera-mao] {}", relato(&mut gfx.sim, sel));
+                }
+            }
+        }
+    }
+
     /// `PH2D_GAME_SMOKE_USOS`: os cliques do seletor «Use» sobre o Player, um por vez, pelo barramento do Inspector
     /// (a porta do clique); o estado do Player sai no `stderr` antes de cada clique e no fim.
     pub(crate) fn game_smoke_usos(&mut self) {

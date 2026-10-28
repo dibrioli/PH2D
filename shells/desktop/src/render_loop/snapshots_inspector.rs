@@ -334,6 +334,7 @@ fn late(
             selected_count,
             hero.project.game_format,
             hero.project.camera_frame,
+            hero.project.camera_icon_px,
             game_camera_preview,
         )
     });

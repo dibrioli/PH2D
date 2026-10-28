@@ -444,6 +444,7 @@ impl crate::App {
                     present: &mut gfx.present,
                     camera: &gfx.camera,
                     pixels_per_meter: ppm_for_pick,
+                    camera_icon_px: hero.project.camera_icon_px,
                 };
                 let hits = crate::hover_highlight::pick_objects_at(
                     &mut pw,

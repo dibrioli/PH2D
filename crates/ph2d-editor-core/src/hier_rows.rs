@@ -114,9 +114,48 @@ pub fn row_categories(
         .collect()
 }
 
+/// ⭐ **O ícone do TIPO na linha** (onda 17b, A4) — o que o objecto É: o tipo dele e, num vazio, o 1.º
+/// cartão que o define (a câmera, depois a luz — como a Unity mostra o 1.º componente); um vazio sem
+/// nenhum é o cubo do objecto de jogo.
+#[must_use]
+pub fn type_icon(
+    kind: ph2d_component_desc::ObjectKind,
+    categories: &[ComponentCategory],
+) -> IconId {
+    use ph2d_component_desc::ObjectKind as K;
+    match kind {
+        K::Image => IconId::Sprite,
+        K::Vector => IconId::Vector,
+        K::Flip => IconId::Flip,
+        K::Painted => IconId::Painter,
+        K::Skeleton => IconId::Bone,
+        K::Motion => IconId::MotionNodes,
+        K::Empty => [ComponentCategory::Camera, ComponentCategory::Light]
+            .into_iter()
+            .find(|c| categories.contains(c))
+            .and_then(component_icon)
+            .unwrap_or(IconId::Cube),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// ⭐ **A câmera, a luz e o vazio leem-se pelo ícone** — e o tipo manda sobre o cartão.
+    #[test]
+    fn o_icone_da_linha_e_o_do_tipo() {
+        use ph2d_component_desc::ObjectKind as K;
+        let cam = [ComponentCategory::Camera, ComponentCategory::Logic];
+        assert_eq!(type_icon(K::Empty, &cam), IconId::Camera);
+        assert_eq!(
+            type_icon(K::Empty, &[ComponentCategory::Light]),
+            IconId::Light
+        );
+        assert_eq!(type_icon(K::Empty, &[]), IconId::Cube);
+        assert_eq!(type_icon(K::Image, &cam), IconId::Sprite);
+        assert_eq!(type_icon(K::Vector, &[]), IconId::Vector);
+    }
 
     #[test]
     fn uma_familia_aparece_uma_vez_e_na_ordem_da_paleta() {

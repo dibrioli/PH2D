@@ -10,10 +10,11 @@ use ph2d_i18n::TextKey;
 use ph2d_i18n::tr;
 
 /// Os rótulos das três fileiras — entram na medição da coluna da secção.
-pub(crate) const ROTULOS: [&str; 3] = [
+pub(crate) const ROTULOS: [&str; 4] = [
     "panel.inspector.camera.format",
     "panel.inspector.camera.custom_size",
     "panel.inspector.camera.frame",
+    "panel.inspector.camera.icon_size",
 ];
 
 /// As 15 entradas do seletor, na ordem de `GamePreset::ALL` (a posição é a tag).
@@ -73,7 +74,7 @@ pub(super) fn format_rows(
         tr("panel.inspector.camera.frame_selected"),
     ];
     let selected = u8::from(info.frame == ph2d_editor_core::CameraFrameShow::Selected);
-    super::rows::seg_row(
+    let cur_y = super::rows::seg_row(
         scene,
         text_system,
         theme,
@@ -87,6 +88,21 @@ pub(super) fn format_rows(
         &ids::INSP_CAMERA_FRAME,
         &labels,
         selected,
+    );
+    super::rows::fields_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        cur_y,
+        TextKey::new(ROTULOS[3]),
+        &[ids::INSP_CAMERA_ICON_SIZE],
+        4.0, // LITERAL-PX-OK: passo de 4 px de tela
+        Some(ph2d_editor_core::widget::Unit::Px),
+        seccao,
     )
 }
 
@@ -132,5 +148,6 @@ fn format_row(
     if open {
         crate::state_popovers::set_pending_camera_format_dd(Some((sel, rect)));
     }
+    ph2d_editor_core::widget::paint_decorator_dot(scene, theme, linha.dot);
     y + ph2d_tokens::row_pitch_px()
 }

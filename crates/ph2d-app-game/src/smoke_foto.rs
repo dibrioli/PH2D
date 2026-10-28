@@ -36,6 +36,14 @@ pub enum Foto {
     CameraLimites,
     CameraRetro,
     CameraOlhar,
+    /// Onda 17b: os GESTOS pelo ponteiro ([`crate::smoke_mao`]) — o miolo arrastado, o clique sem mexer, a borda dos
+    /// limites e o canto com a cerca.
+    CameraArrasta,
+    CameraClique,
+    CameraBorda,
+    CameraCanto,
+    /// O miolo arrastado com o «Look through» ligado (17b A5): a vista anda com a câmera.
+    CameraOlharArrasta,
 }
 
 #[must_use]
@@ -64,6 +72,11 @@ pub fn foto() -> Option<Foto> {
         "camera_limites" => Some(Foto::CameraLimites),
         "camera_retro" => Some(Foto::CameraRetro),
         "camera_olhar" => Some(Foto::CameraOlhar),
+        "camera_arrasta" => Some(Foto::CameraArrasta),
+        "camera_clique" => Some(Foto::CameraClique),
+        "camera_borda" => Some(Foto::CameraBorda),
+        "camera_canto" => Some(Foto::CameraCanto),
+        "camera_olhar_arrasta" => Some(Foto::CameraOlharArrasta),
         _ => None,
     }
 }
@@ -92,6 +105,11 @@ impl Foto {
                 | Self::CameraLimites
                 | Self::CameraRetro
                 | Self::CameraOlhar
+                | Self::CameraArrasta
+                | Self::CameraClique
+                | Self::CameraBorda
+                | Self::CameraCanto
+                | Self::CameraOlharArrasta
         )
     }
 
@@ -170,7 +188,7 @@ pub fn plano_da_foto(
         let camara = por_nome(sim, "Camera")?;
         let mut c = FotoDaCamera {
             formato: ph2d_editor_core::GameFormat::default(),
-            olhar: foto == Foto::CameraOlhar,
+            olhar: matches!(foto, Foto::CameraOlhar | Foto::CameraOlharArrasta),
             vista: VISTA_DA_CAMERA,
         };
         plano.alvo = camara.to_bits();
@@ -183,6 +201,8 @@ pub fn plano_da_foto(
             }
             Foto::CameraLimites => c.vista = ([2.0, 4.0], 27.0),
             Foto::CameraRetro => c.formato.preset = ph2d_editor_core::GamePreset::GameBoy,
+            Foto::CameraArrasta | Foto::CameraCanto => c.vista = ([-2.0, 4.0], 20.0),
+            Foto::CameraBorda => c.vista = ([2.0, 4.0], 27.0),
             _ => {}
         }
         plano.camera = Some(c);
@@ -214,7 +234,12 @@ pub fn plano_da_foto(
         | Foto::CameraZoom
         | Foto::CameraLimites
         | Foto::CameraRetro
-        | Foto::CameraOlhar => unreachable!("as fotos da câmera voltam antes"),
+        | Foto::CameraOlhar
+        | Foto::CameraArrasta
+        | Foto::CameraClique
+        | Foto::CameraBorda
+        | Foto::CameraCanto
+        | Foto::CameraOlharArrasta => unreachable!("as fotos da câmera voltam antes"),
         Foto::PlayerParado => {
             plano.edicoes = vec![(player, uso(ph2d_editor_core::InspectorImageUse::Still))];
             plano.alvo = player;

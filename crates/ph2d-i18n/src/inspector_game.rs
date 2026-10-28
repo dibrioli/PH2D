@@ -572,6 +572,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "game_format.pico_8" => "PICO-8 \u{b7} 128 \u{d7} 128",
         "game_format.custom" => "Custom",
         "game.camera_frame.label" => "{NAME} \u{b7} {W} \u{d7} {H} {UNIT}",
+        "game.camera_frame.follows" => "follows {TARGET}",
+        "panel.inspector.camera.icon_size" => "Icon Size",
         "panel.inspector.camera.format" => "Game Format",
         "panel.inspector.camera.custom_size" => "Size",
         "panel.inspector.camera.frame" => "Frame",

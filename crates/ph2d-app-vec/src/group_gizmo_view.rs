@@ -82,6 +82,9 @@ fn publishes_its_own_handles(sim: &SimWorld, e: Entity) -> bool {
         // objecto vazio seria o segundo anel concêntrico do report de 06/09 — mais um disco a
         // disputar o clique com a alça que arrasta a corrente inteira.
         || w.get::<ph2d_skeleton_ecs::IkTarget>(e).is_some()
+        // ⭐ a **CÂMERA** tem o ícone, a moldura e as alças dela (`ph2d_app_game::moldura`, 17b A9): o anel e a
+        // caixa do vazio eram um segundo alvo do clique, de outro tamanho que o ícone pintado.
+        || w.get::<ph2d_ecs::GameCamera>(e).is_some()
 }
 
 /// ⭐ **«Este objeto é um VAZIO?»** — a pergunta que TODOS os consumidores fazem.

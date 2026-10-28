@@ -141,6 +141,21 @@ const LINHAS: &[(&str, &str)] = &[
 /// A classe de uma chamada por um dos seus ids — exacto, ou PREFIXO quando acaba em `_`.
 const POR_ID: &[(&str, Classe, &str)] = &[
     (
+        "INSP_CAMERA_CUSTOM_W",
+        NaoAnimavel,
+        "definição do PROJECTO (blob `jogo`, plano GEF 17/17b), não da cena: o formato do jogo, a moldura e o ícone no canvas não mudam no tempo",
+    ),
+    (
+        "INSP_CAMERA_FRAME_GROUP",
+        NaoAnimavel,
+        "definição do PROJECTO (blob `jogo`, plano GEF 17/17b), não da cena: o formato do jogo, a moldura e o ícone no canvas não mudam no tempo",
+    ),
+    (
+        "INSP_CAMERA_ICON_SIZE",
+        NaoAnimavel,
+        "definição do PROJECTO (blob `jogo`, plano GEF 17/17b), não da cena: o formato do jogo, a moldura e o ícone no canvas não mudam no tempo",
+    ),
+    (
         "INSP_IMAGE_USE",
         NaoAnimavel,
         "o seletor «Use» diz que componentes EXISTEM (animações, `TiledDraw`, repeat): acrescentar/tirar é estrutura, não um valor no tempo (plano GEF 15)",
@@ -254,6 +269,13 @@ const POR_ID: &[(&str, Classe, &str)] = &[
 /// canal). ⭐ `ficheiro.rs::fn` (F27 B2) nomeia UMA função e vale para todas as chamadas dela — o
 /// rótulo vem de uma tabela, mesmo com o id literal.
 const POR_FUNCAO: &[(&str, &str, Classe, &[&str], &str)] = &[
+    (
+        "ph2d-panel-inspector",
+        "sections/camera_format.rs::format_row",
+        NaoAnimavel,
+        &[],
+        "definição do PROJECTO (blob `jogo`, plano GEF 17/17b), não da cena: o formato do jogo, a moldura e o ícone no canvas não mudam no tempo",
+    ),
     (
         "ph2d-panel-inspector",
         "sections/action_trigger.rs::linha_da_aresta",
@@ -479,18 +501,6 @@ const POR_FUNCAO: &[(&str, &str, Classe, &[&str], &str)] = &[
             "component.field.path_follow_fields.10",
         ],
         "o rótulo do catálogo vem da tabela da secção (F27 B2)",
-    ),
-    (
-        "ph2d-panel-inspector",
-        "sections/anim_card.rs::character_rows",
-        Canal,
-        &[
-            "component.field.character_animations.0",
-            "component.field.character_animations.1",
-            "component.field.character_animations.2",
-            "component.field.character_animations.3",
-        ],
-        "o rótulo do catálogo chega por argumento (os quatro estados do `CharacterAnimations`)",
     ),
     (
         "ph2d-panel-inspector",

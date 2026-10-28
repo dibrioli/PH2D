@@ -103,7 +103,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "component.field.character_animations.4" => "Run From",
         "component.field.character_animations.5" => "Flip",
         "component.field.camera_fields.0" => "Height",
-        "component.field.camera_fields.1" => "Offset",
+        "component.field.camera_fields.1" => "View Offset",
         "component.field.camera_fields.2" => "Priority",
         "component.field.camera_fields.3" => "Active",
         "component.field.camera_fields.4" => "Cull Mask",
@@ -161,7 +161,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "component.field.follow_fields.1" => "Damping",
         "component.field.follow_fields.2" => "Dead Zone",
         "component.field.follow_fields.3" => "Lookahead",
-        "component.field.follow_fields.4" => "Offset",
+        "component.field.follow_fields.4" => "Follow Offset",
         "component.field.instance_of.1" => "Master",
         // As linhas da §11 (o cartão do corpo), pelo texto que o cartão pinta.
         "component.field.rigid_body.0" => "Body",

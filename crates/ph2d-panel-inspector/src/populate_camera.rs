@@ -83,6 +83,15 @@ const CUSTOM_H: (ph2d_a11y::NodeId, f64, f64, f64, f64) = (
     1.0, // LITERAL-PX-OK: passo de um píxel
 );
 
+/// O lado do ícone da câmera (17b), px de tela: a faixa é a do projecto, de 4 em 4.
+const ICON_SIZE: (ph2d_a11y::NodeId, f64, f64, f64, f64) = (
+    ids::INSP_CAMERA_ICON_SIZE,
+    ph2d_editor_core::game_format::CAMERA_ICON_PX as f64,
+    ph2d_editor_core::game_format::CAMERA_ICON_MIN_PX as f64,
+    ph2d_editor_core::game_format::CAMERA_ICON_MAX_PX as f64,
+    4.0, // LITERAL-PX-OK: passo de 4 px de tela
+);
+
 pub(crate) fn populate_camera(store: &mut WidgetStore) {
     // O formato do jogo (plano GEF 17): as entradas do seletor e a moldura são BOTÕES; só o chip é
     // `Dropdown`, e ele guarda o `open`, nunca a escolha (essa vem do snapshot).
@@ -121,7 +130,10 @@ pub(crate) fn populate_camera(store: &mut WidgetStore) {
             },
         );
     }
-    for (id, value, lo, hi, step) in NUMEROS.into_iter().chain([MAX_Y, CUSTOM_W, CUSTOM_H]) {
+    for (id, value, lo, hi, step) in NUMEROS
+        .into_iter()
+        .chain([MAX_Y, CUSTOM_W, CUSTOM_H, ICON_SIZE])
+    {
         store.register(
             id,
             InteractiveState::NumberInput {

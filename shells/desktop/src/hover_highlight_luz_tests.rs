@@ -19,6 +19,7 @@ fn pick(sim: &ph2d_ecs::SimWorld, tela: (f32, f32)) -> Vec<u64> {
         camera: &camera,
         window_size: janela,
         pixels_per_meter: 100.0,
+        camera_icon_px: ph2d_editor_core::game_format::CAMERA_ICON_PX,
     };
     pick_objects_at(
         &mut w,

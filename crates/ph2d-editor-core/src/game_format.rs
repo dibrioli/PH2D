@@ -146,6 +146,13 @@ impl GameFormat {
     }
 }
 
+/// O lado do ícone da câmera no canvas, em píxeis de tela: o dobro dos 22 da onda 17 (pedido do dono, 28/10).
+pub const CAMERA_ICON_PX: f32 = 44.0;
+/// A faixa do «Icon Size»: o piso é o de uma alça legível (`HANDLE_SIZE_PX` 12 + folga), o tecto é o de um
+/// ícone que ainda não tapa a moldura que ele marca (a moldura de um canvas de 720 px tem ~10 alturas disto).
+pub const CAMERA_ICON_MIN_PX: f32 = 16.0;
+pub const CAMERA_ICON_MAX_PX: f32 = 128.0;
+
 /// Quando a moldura da câmera se vê no canvas (D-V).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum CameraFrameShow {

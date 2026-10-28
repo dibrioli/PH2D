@@ -63,6 +63,7 @@ pub fn build_camera_info(
     selected_count: usize,
     format: GameFormat,
     frame: CameraFrameShow,
+    icon_px: f32,
     preview_on: bool,
 ) -> Option<InspectorCameraInfo> {
     let entity = Entity::from_bits(entity_bits);
@@ -117,6 +118,7 @@ pub fn build_camera_info(
         selected_count,
         format,
         frame,
+        icon_px,
     })
 }
 
@@ -176,7 +178,8 @@ pub fn apply_camera_edit(
         CameraFieldEdit::Preview(_)
         | CameraFieldEdit::Format(_)
         | CameraFieldEdit::CustomSize(_)
-        | CameraFieldEdit::Frame(_) => {}
+        | CameraFieldEdit::Frame(_)
+        | CameraFieldEdit::IconSize(_) => {}
 
         CameraFieldEdit::Height(_)
         | CameraFieldEdit::Offset(_)
@@ -238,13 +241,16 @@ pub fn apply_camera_edit(
             queue_set(queue, registry, entity_bits, FOLLOW, &f);
         }
 
-        CameraFieldEdit::LimitMin(_) | CameraFieldEdit::LimitMax(_) => {
+        CameraFieldEdit::LimitMin(_)
+        | CameraFieldEdit::LimitMax(_)
+        | CameraFieldEdit::Limits(..) => {
             let Some(mut l) = sim.world().get::<CameraLimits>(entity).cloned() else {
                 return;
             };
             match edit {
                 CameraFieldEdit::LimitMin(v) => l.min = *v,
                 CameraFieldEdit::LimitMax(v) => l.max = *v,
+                CameraFieldEdit::Limits(min, max) => (l.min, l.max) = (*min, *max),
                 _ => unreachable!("o braço externo já separou as variantes"),
             }
             // ⚠️ **A cerca invertida NÃO é recusada, e é deliberado:** arrastar o `min` para lá do

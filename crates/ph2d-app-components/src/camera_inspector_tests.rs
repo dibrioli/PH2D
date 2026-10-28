@@ -55,6 +55,7 @@ fn an_object_without_a_camera_has_no_section() {
             1,
             FORMATO,
             CameraFrameShow::Always,
+            ph2d_editor_core::game_format::CAMERA_ICON_PX,
             false
         )
         .is_none(),
@@ -90,6 +91,7 @@ fn the_snapshot_says_which_camera_commands() {
         1,
         FORMATO,
         CameraFrameShow::Always,
+        ph2d_editor_core::game_format::CAMERA_ICON_PX,
         false,
     )
     .unwrap();
@@ -101,6 +103,7 @@ fn the_snapshot_says_which_camera_commands() {
         1,
         FORMATO,
         CameraFrameShow::Always,
+        ph2d_editor_core::game_format::CAMERA_ICON_PX,
         false,
     )
     .unwrap();
@@ -127,6 +130,7 @@ fn an_empty_target_is_not_a_missing_one() {
         1,
         FORMATO,
         CameraFrameShow::Always,
+        ph2d_editor_core::game_format::CAMERA_ICON_PX,
         false,
     )
     .unwrap();
@@ -144,6 +148,7 @@ fn an_empty_target_is_not_a_missing_one() {
         1,
         FORMATO,
         CameraFrameShow::Always,
+        ph2d_editor_core::game_format::CAMERA_ICON_PX,
         false,
     )
     .unwrap();
@@ -163,6 +168,7 @@ fn an_empty_target_is_not_a_missing_one() {
         1,
         FORMATO,
         CameraFrameShow::Always,
+        ph2d_editor_core::game_format::CAMERA_ICON_PX,
         false,
     )
     .unwrap();
@@ -200,6 +206,7 @@ fn a_fence_narrower_than_the_window_is_named() {
         1,
         FORMATO,
         CameraFrameShow::Always,
+        ph2d_editor_core::game_format::CAMERA_ICON_PX,
         false,
     )
     .unwrap();
@@ -216,6 +223,7 @@ fn a_fence_narrower_than_the_window_is_named() {
         1,
         FORMATO,
         CameraFrameShow::Always,
+        ph2d_editor_core::game_format::CAMERA_ICON_PX,
         false,
     )
     .unwrap();
@@ -235,6 +243,7 @@ fn a_fence_narrower_than_the_window_is_named() {
         1,
         FORMATO,
         CameraFrameShow::Always,
+        ph2d_editor_core::game_format::CAMERA_ICON_PX,
         false,
     )
     .unwrap();
@@ -271,6 +280,7 @@ fn the_warning_agrees_with_where_the_law_actually_pins() {
         1,
         FORMATO,
         CameraFrameShow::Always,
+        ph2d_editor_core::game_format::CAMERA_ICON_PX,
         false,
     )
     .unwrap();
@@ -301,6 +311,7 @@ fn the_preview_flag_travels_in_the_snapshot() {
         1,
         FORMATO,
         CameraFrameShow::Always,
+        ph2d_editor_core::game_format::CAMERA_ICON_PX,
         false,
     )
     .unwrap();
@@ -310,6 +321,7 @@ fn the_preview_flag_travels_in_the_snapshot() {
         1,
         FORMATO,
         CameraFrameShow::Always,
+        ph2d_editor_core::game_format::CAMERA_ICON_PX,
         true,
     )
     .unwrap();

@@ -155,6 +155,15 @@ fn a_joint_publishes_no_box_so_its_dots_keep_the_click() {
         boxed(&sim, e).is_some(),
         "sem a junta a entidade continuou sem caixa — o gate estaria verde por outra razao"
     );
+    // ⭐ A CÂMERA também (17b A9): o dedo dela é o ícone, nunca o anel nem a caixa do vazio.
+    sim.world_mut()
+        .entity_mut(e)
+        .insert(ph2d_ecs::GameCamera::default());
+    assert!(
+        boxed(&sim, e).is_none(),
+        "a câmera publicou a caixa do vazio"
+    );
+    assert!(crate::group_gizmo_view::pick_empty_at_world(&sim, [0.0, 0.0], 100.0).is_empty());
 }
 
 // ───────────── O anel: o report de 2026-08-26 (2.ª volta) ─────────────

@@ -74,6 +74,8 @@ pub(crate) struct PickWorld<'a> {
     /// A régua do projeto — o anel de um objeto vazio é medido em pixels de arte
     /// ([`crate::group_gizmo_view::marker_world_radius`]).
     pub(crate) pixels_per_meter: f32,
+    /// O lado do ícone da câmera (px de tela) — o dedo é o ícone ([`ph2d_app_game::moldura_tinta::icones_em`]).
+    pub(crate) camera_icon_px: f32,
 }
 
 pub(crate) fn pick_objects_at(
@@ -95,6 +97,17 @@ pub(crate) fn pick_objects_at(
     );
     if !luzes.is_empty() {
         return luzes;
+    }
+    // …e o da CÂMERA também (17b A9): o dedo é o ícone pintado.
+    let cameras = ph2d_app_game::moldura_tinta::icones_em(
+        w.sim.world(),
+        pointer,
+        w.camera_icon_px,
+        w.camera,
+        w.window_size,
+    );
+    if !cameras.is_empty() {
+        return cameras;
     }
     let world = w.camera.screen_to_world(pointer, w.window_size);
     let stroke_r = ph2d_app_vec::vec_gizmo_view::stroke_hit_r(w.camera, w.window_size);
@@ -151,12 +164,13 @@ impl crate::App {
     /// cicla.
     pub(crate) fn pick_hovered_object(&mut self, pointer: (f32, f32)) -> Option<u64> {
         // Os dois factos do store, lidos antes de qualquer borrow mutável.
-        let (over_panel, hot, ppm) = {
+        let (over_panel, hot, ppm, icone) = {
             let hero = self.gfx.as_ref()?.hero_screen.as_ref()?;
             (
                 hero.chrome_panel_at(pointer.0, pointer.1).is_some(),
                 hero.store.hot_id(),
                 hero.project.pixels_per_meter,
+                hero.project.camera_icon_px,
             )
         };
         // Sobre um painel: a resposta é a LINHA, se for uma; nunca o canvas por baixo dele.
@@ -178,6 +192,7 @@ impl crate::App {
             present: &mut gfx.present,
             camera: &gfx.camera,
             pixels_per_meter: ppm,
+            camera_icon_px: icone,
         };
         pick_objects_at(
             &mut w,

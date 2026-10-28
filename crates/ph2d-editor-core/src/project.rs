@@ -305,6 +305,8 @@ pub struct ProjectSettings {
     pub game_format: crate::game_format::GameFormat,
     /// Quando a moldura da câmera se vê no canvas (plano GEF 17 D-V).
     pub camera_frame: crate::game_format::CameraFrameShow,
+    /// O lado do ícone da câmera no canvas, em píxeis de tela (onda 17b).
+    pub camera_icon_px: f32,
 }
 
 impl ProjectSettings {
@@ -329,6 +331,7 @@ impl Default for ProjectSettings {
             image_filter: ImageFilterMode::Smooth,
             game_format: crate::game_format::GameFormat::default(),
             camera_frame: crate::game_format::CameraFrameShow::Always,
+            camera_icon_px: crate::game_format::CAMERA_ICON_PX,
         }
     }
 }

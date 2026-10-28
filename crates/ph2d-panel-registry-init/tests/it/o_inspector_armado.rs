@@ -667,6 +667,7 @@ fn arma_o_top20() {
         selected_count: selecionados(),
         format: ph2d_editor_core::GameFormat::default(),
         frame: ph2d_editor_core::CameraFrameShow::Always,
+        icon_px: ph2d_editor_core::game_format::CAMERA_ICON_PX,
     }));
     insp::set_current_inspector_factory(Some(InspectorFactoryInfo {
         entity_bits: BITS,

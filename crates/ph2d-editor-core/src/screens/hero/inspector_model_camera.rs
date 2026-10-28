@@ -92,6 +92,8 @@ pub struct InspectorCameraInfo {
     pub format: crate::GameFormat,
     /// Quando a moldura da câmera aparece no canvas — definição do PROJECTO.
     pub frame: crate::CameraFrameShow,
+    /// O lado do ícone da câmera no canvas (px de tela) — definição do PROJECTO.
+    pub icon_px: f32,
 }
 
 /// Uma edição de um campo da secção CAMERA.
@@ -120,6 +122,11 @@ pub enum CameraFieldEdit {
     FollowOffset([f32; 2]),
     LimitMin([f32; 2]),
     LimitMax([f32; 2]),
+    /// Os dois lados da cerca numa só escrita `(min, max)` — o arrasto no canvas (onda 17b, A3): dois
+    /// `LimitMin`/`LimitMax` no mesmo quadro leem o componente antes da fila drenar e o 2.º apaga o 1.º.
+    Limits([f32; 2], [f32; 2]),
+    /// O lado do ícone da câmera no canvas, px de tela. ⚠️ Definição do PROJECTO.
+    IconSize(f32),
     /// O formato do jogo (plano GEF 17) — a tag é a posição em [`crate::GamePreset::ALL`].
     /// ⚠️ Definição do PROJECTO: não escreve componente nenhum.
     Format(u8),

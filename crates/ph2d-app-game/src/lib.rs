@@ -11,6 +11,7 @@ pub mod object_add;
 pub mod personagem;
 pub mod sessao;
 pub mod smoke;
+pub mod smoke_mao;
 
 pub use sessao::{Passo, Sessao, marca_a_copia};
 

@@ -118,6 +118,7 @@ pub(crate) fn sync_camera_fields(
             crate::ids::INSP_CAMERA_CUSTOM_H,
             f64::from(cam.format.custom[1]),
         ),
+        (crate::ids::INSP_CAMERA_ICON_SIZE, f64::from(cam.icon_px)),
     ];
     if let Some(f) = cam.follow.as_ref() {
         numeros.extend([

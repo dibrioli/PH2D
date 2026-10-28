@@ -110,6 +110,7 @@ fn the_project_scale_and_unit_survive_the_project_file() {
             custom: [1280, 720],
         },
         camera_frame: ph2d_editor_core::CameraFrameShow::Selected,
+        camera_icon_px: 64.0,
     };
     assert_ne!(
         authored,

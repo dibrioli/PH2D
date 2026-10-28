@@ -29,7 +29,8 @@
 - [ ] W3 fecho (lote E): catraca da shell 189086>189041 (MOVER); gancho «quer outro quadro» p/ front::cover::pending(); medir tecto de anexo; xdg-open duplicado → ph2d-app-host; fmt+clippy W3; revisor
 - [x] W4 lote V `1a59f46c7c` `2603d3023c` `13459e3837` (vista Affine, ganchos, Show/Place on board, menu, duas janelas, cena Quadro 30). app-board→app-kanban dep
 - [x] W4 lote V2 `e8eb96649e` `4cbbbb532e` `f29cef9136` (roda, IME, cursor, scroll_y; board FORMAT 19, PROTOCOL 13). W4 FEITA (falta fecho batched: fmt/clippy/revisor)
-- W6 lote G (UI): filtro, pesquisa, E, copiar/mover, modelos, espelhos, envelhecimento, atalhos — app-kanban
+- [x] W6 lote G `8d9871cba8` (cenas 5–6). DEFEITO: painel do filtro corta o topo (título/fechar/palavra) → J1. Falta teste no elemento do Quadro; limite 6 sugestões @/# por medir
+- LIGAÇÃO (app-kanban) em 3 lotes: J1 cabeçalho (seletor de vistas W7, Share/avatares/presença W5, filtro com cabeçalho fixo) · J2 verso+Butler (Scene object W11, botões de cartão, painel de automação, put_file_keyed, datepick) · J3 ganchos (react/run_scheduled/scripts, import/export W10, serve(hero), Convert to sticky note, crate ph2d-kanban-scenes + CODE_SMOKE 10)
 - F também cura: 2 desfazer seguidos no mesmo cartão (History::rebase × meta.version)
 - [x] W4 lote M `4f06569b3a` `36d3fd8c1e` (ElementKind::Kanban, FORMAT 18, PROTOCOL 12, ganchos KanbanPainter/KanbanElementInput, botão Kanban, Open in tab na barra)
   - pendente p/ lote V: ContextMenuKind::BoardKanban (types_menu.rs+menu_rows.rs); key_of→Key::from; paint.rs usar kanban_board_bg/kanban_list_colors; MEDIR limiar LOD; foto; desfazer inserir deixa doc vazio órfão (decidir: apagar se intocado); board_nav.rs=700

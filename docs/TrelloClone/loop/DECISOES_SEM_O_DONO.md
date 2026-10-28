@@ -62,3 +62,6 @@
 | W11 | Nota adesiva → cartão SUBSTITUI a nota (como o Miro); cartão → nota apaga o cartão; um passo de desfazer no Quadro; cartão editado depois nunca é apagado pelo desfazer | Miro | `notes_to_cards` |
 | W11 | Nota branca/cinza não ganha etiqueta; notas da mesma cor partilham uma etiqueta | cor → etiqueta mais próxima | idem |
 | W11 | Ligações do cartão (objecto, script, macro, trecho, Quadro) não entram na actividade | o Trello não regista Power-Ups | `ProjectLink` |
+| W6 | `E` num espelho abre o verso do original; `C` num espelho tira só o espelho; Ctrl+V cola por baixo do foco; copiar lista p/ outro Kanban põe-na no fim | Trello | `ph2d-app-kanban` W6 |
+| W6 | `D L M` e os itens da edição rápida abrem o verso com o popover (não um popover ancorado no menu) | um só sítio para cada editor | idem |
+| W6 | `W` abre o menu «…» do Kanban (não há barra lateral) | o equivalente mais próximo | idem |

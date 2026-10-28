@@ -3,7 +3,7 @@
 
 use crate::{
     app_components, app_flip, app_motion, app_painter, app_physics, app_vec, code_editor,
-    code_explain, code_help, kanban,
+    code_explain, code_help, kanban, kanban_back,
 };
 
 /// A tradução de uma chave destas famílias, ou `None` se ela não é de nenhuma.
@@ -18,4 +18,10 @@ pub(crate) fn tr(k: &str) -> Option<&'static str> {
         .or_else(|| code_explain::tr(k))
         .or_else(|| code_help::tr(k))
         .or_else(|| kanban::tr(k))
+        .or_else(|| kanban_back::tr(k))
+        .or_else(|| kanban_front::tr(k))
 }
+
+/// A frente do cartão do Kanban (W3) — declarada aqui, não no `lib.rs` (o tecto de LOC dele).
+#[path = "kanban_front.rs"]
+mod kanban_front;

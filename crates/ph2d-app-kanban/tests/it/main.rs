@@ -5,9 +5,12 @@
 
 mod arrastar;
 mod escrever;
+mod frente;
 mod teclado;
 mod teto;
 mod titulo;
+mod verso;
+mod verso_listas;
 mod vista;
 mod voo;
 

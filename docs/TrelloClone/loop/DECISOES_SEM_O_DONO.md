@@ -65,3 +65,4 @@
 | W6 | `E` num espelho abre o verso do original; `C` num espelho tira só o espelho; Ctrl+V cola por baixo do foco; copiar lista p/ outro Kanban põe-na no fim | Trello | `ph2d-app-kanban` W6 |
 | W6 | `D L M` e os itens da edição rápida abrem o verso com o popover (não um popover ancorado no menu) | um só sítio para cada editor | idem |
 | W6 | `W` abre o menu «…» do Kanban (não há barra lateral) | o equivalente mais próximo | idem |
+| W11 | «Convert to card» no Quadro: modal com busca, primeiro as listas dos Kanbans postos nesse Quadro; abrir objecto/trecho traz a aba da cena para a frente | o caminho mais curto | `board_note_card.rs` |

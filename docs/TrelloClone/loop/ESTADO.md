@@ -19,6 +19,7 @@
 - [ ] FIM — fecho da linha, handoff de integração, smoke final ao dono (PDF)
 
 ## Agentes em voo
+- J1 (cabeçalho/vistas/Share/presença/filtro) · J2 (verso+Butler) · J3 (ganchos, scripts, cenas, import/export, serve). [x] X1 `66fc6afca1`. Clippy crates estáveis LIMPO (`84e4debf44`, `6230d6c770`)
 - [x] W8 lote L `35373e3520` ph2d-kanban-script (ph2d.kanban.*). Falta: app-kanban chamar run/react + Butler após cada gesto; UI do Butler
 - [ ] W8 L2 (adiado p/ ligação): mover short_film/sky_png p/ crate baixa (ph2d-kanban-scenes, now por argumento); app correr scripts Kanban (Run/Ctrl+S → KanbanScripts::run; handlers on() activos); depois cena CODE_SMOKE=10 + foto
 - [x] W7 lote W `fb27d29542` `3be4ca777f` `7525ed9173` `b4349d438c` ph2d-kanban-views (+Dia/Agenda/semana horas). Falta: seletor de vistas no app-kanban; back/dates.rs → usar datepick.rs da views (uma lei)

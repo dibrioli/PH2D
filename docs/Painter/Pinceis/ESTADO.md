@@ -63,7 +63,11 @@
 
 0. ⭐ Dono 28/10: Oil/* de fábrica com o Real Oil LIGADO + `paper_depth` limpo (HANDOFF_W3b §Aberto 1, 6) — EM CURSO.
 1. Borda da mancha molhada ~10 px + traço de 200 px do filme (`exames/aguarela.md`): Wet Liner, Wet Wash, Mop — EM CURSO.
-2. Pontas cortadas a direito num dab redondo (`exames/pastel_carvao.md`): Square Hard, Soft Pastel, Charcoal, Wax Scrape — EM CURSO.
+2. ✅ Pontas a direito (`10eee50b0d` motor, `fd73b349ca` r2; [`J6_pontas_rectas.md`](J6_pontas_rectas.md)): **Soft Pastel
+   APROVADO** (cega r2: o revisor tomou o nosso pelo Rebelle nas 6 linhas). Square Hard curado não aprovado (r2: faixa
+   larga sólida «borda de régua», média). Charcoal/Wax Scrape: o Rebelle os acaba REDONDOS (curvatura 0,50/0,28) ⇒ não
+   é esta lacuna. Fila: o traço largo esbate-se ~100–150 px nas pontas; densidade/poeira que mudam com o tamanho.
+   Motor 1 (borda/filme, `8394f62eed` `5f6ae47051` `59f64037c1`): Mop REPROVADO (cega: média em tudo); Liner/Wash em r2.
 3. Orla do secador nos lados (Dry/Lift) · 4. misturador com grão perto da tinta (Blender Grainy) · 5. fio do arrasto
    (Smudge Finger) · 6. azul sobre vermelho molhado (Gouache Wash/Dry/Round) · 7. lâmina que gira (C38/L3: A-4, B-9,
    D-3, F-2, G-5..G-8, I-8; L16 depende) · 8. partículas · ondulação (Oil Bristle) · mip das pontas (Foliage, Noise Grit).

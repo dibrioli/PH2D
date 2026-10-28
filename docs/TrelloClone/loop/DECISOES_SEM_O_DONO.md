@@ -50,7 +50,7 @@
 | W4 | Zoom interno do Kanban no Quadro: sem gesto (Ctrl+roda é sempre o zoom do Quadro); a roda dentro do Kanban activo rola a lista sob o rato | o Trello não tem zoom; o idioma do Quadro manda | `canvas.rs` |
 | W9 | Uma aba «Planner» com três modos (Calendar · Planner · My cards) | a navegação Inbox · Planner · Quadros do Trello | `ph2d-app-planner` |
 | W9 | Inbox, blocos do Planner e «lidas» são pessoais e NÃO viajam; eventos viajam e numa sessão os calendários juntam-se | Trello: a Inbox é só tua | `table.rs` |
-| W9 | Arrastar uma ocorrência de evento recorrente move a série inteira | o mais simples e previsível; editar só uma ocorrência fica por fazer | `ph2d-app-planner` |
+| W9 | ~~Arrastar uma ocorrência de evento recorrente move a série inteira~~ REVOGADA pelo P2 (agora pergunta) | o mais simples e previsível; editar só uma ocorrência fica por fazer | `ph2d-app-planner` |
 | W9 | Desfazer do Planner é do Planner (não se desfaz na aba do Kanban) | cada aba tem a sua fila (ADR-0195 §5) | — |
 | W7 | Painel: anel só «por lista» e «por entrega» (por etiqueta/membro só barras — um cartão conta em vários); o excesso dobra-se em «Other (n)» | um anel tem de somar 100 % | `ph2d-kanban-views` |
 | W7 | «+» no calendário pergunta a lista (1.ª por omissão); o cartão novo vence ao meio-dia | Trello | idem |
@@ -77,3 +77,5 @@
 | W8 | Automação desligada «carimba» a ocorrência sem correr; ao religar não dispara o passado | Butler | `agenda.rs` |
 | W5 | Link de convite do Kanban é `ph2d-kanban://` (o do Quadro continua `ph2d-board://`); cada «Join» reconhece o outro tipo e encaminha | um link diz o que abre | `ph2d-board-net::invite` |
 | W5 | Convidado que cai volta sozinho: 250 ms a dobrar até 8 s, durante 60 s, com a pílula «Reconnecting…» | Miro/Figma | `share/` |
+| W9 | Evento recorrente: arrastar/editar/apagar pergunta «This event / This and following / All events»; Enter = «This event»; «All» desloca também as excepções | Google Calendar/Outlook | `ph2d-app-planner` |
+| W9 | Inbox «To Kanban»: popover com pesquisa, Kanban → lista → Topo/Fundo; abre na 1.ª lista do 1.º Kanban, no fundo | Trello | `dest_pop.rs` |

@@ -202,7 +202,20 @@ pub(crate) fn coube(
     max_width: f32,
     weight: FontWeight,
 ) -> bool {
-    let cabe = text_system.prefix_width_weighted(text, font_size, weight) <= max_width;
+    coube_tracked(text_system, text, font_size, max_width, (weight, 0.0))
+}
+
+/// [`coube`] com espaçamento entre letras `tracking_em` (`0.0` = a mesma resposta ao bit).
+#[must_use]
+#[track_caller]
+pub(crate) fn coube_tracked(
+    text_system: &mut TextSystem,
+    text: &str,
+    font_size: f32,
+    max_width: f32,
+    (weight, tracking_em): (FontWeight, f32),
+) -> bool {
+    let cabe = text_system.prefix_width_tracked(text, font_size, weight, tracking_em) <= max_width;
     if cabe {
         elisao::regista(text, text, max_width, font_size, weight);
     }
@@ -275,7 +288,21 @@ pub(crate) fn elide(
     max_width: f32,
     weight: FontWeight,
 ) -> Option<String> {
-    if largura_da_reticencia(text_system, font_size, weight) > max_width {
+    elide_tracked(text_system, text, font_size, max_width, (weight, 0.0))
+}
+
+/// [`elide`] com espaçamento entre letras `tracking_em` (`0.0` = o mesmo corte ao bit).
+#[must_use]
+#[track_caller]
+pub(crate) fn elide_tracked(
+    text_system: &mut TextSystem,
+    text: &str,
+    font_size: f32,
+    max_width: f32,
+    (weight, tracking_em): (FontWeight, f32),
+) -> Option<String> {
+    let reticencia = text_system.prefix_width_tracked(ELLIPSIS, font_size, weight, tracking_em);
+    if reticencia > max_width {
         // ⛔ O corte para NADA — nem a reticência cabe. É o pior dos dois, e entra no censo pela
         //    mesma porta: quem o leu na foto do dono leu uma fileira de `[…]`.
         elisao::regista(text, "", max_width, font_size, weight);
@@ -288,7 +315,8 @@ pub(crate) fn elide(
     while lo + 1 < hi {
         let mid = lo + (hi - lo) / 2;
         let candidate = corte(text, bounds[mid]);
-        if text_system.prefix_width_weighted(&candidate, font_size, weight) <= max_width {
+        if text_system.prefix_width_tracked(&candidate, font_size, weight, tracking_em) <= max_width
+        {
             lo = mid;
         } else {
             hi = mid;

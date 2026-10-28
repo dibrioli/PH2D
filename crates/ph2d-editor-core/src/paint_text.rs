@@ -14,7 +14,7 @@
 //! resultado.
 
 use super::{snap_x_apply, text_rendering};
-use crate::text_elide::elide;
+use crate::text_elide::elide_tracked;
 use ph2d_text::{FontWeight, PositionedLayoutItem, TextSystem};
 use ph2d_vector::{Affine, Color, Fill, Glyph, VectorScene};
 
@@ -222,6 +222,7 @@ pub(crate) fn paint_text_lines(
         weight,
         lines,
         &[],
+        0.0,
     )
 }
 
@@ -252,6 +253,7 @@ pub fn paint_text_block_spans(
         FontWeight::MEDIUM,
         Lines::Wrap,
         spans,
+        0.0,
     )
 }
 
@@ -276,6 +278,7 @@ fn paint_text_spans(
     weight: FontWeight,
     lines: Lines,
     spans: &[(std::ops::Range<usize>, Color)],
+    tracking_em: f32,
 ) -> f32 {
     // ⚠️ A elisão mede na espessura que ESTA função vai pintar, que é a lei que o `text_elide` já
     // pagou: cortar em `Medium` e pintar em `SemiBold` transborda na fronteira em que o corte
@@ -292,7 +295,14 @@ fn paint_text_spans(
         text
     };
     let rendering = text_rendering();
-    let layout = text_system.layout_for_rendering(text, font_size, max_width, weight, rendering);
+    let layout = text_system.layout_for_rendering_tracked(
+        text,
+        font_size,
+        max_width,
+        weight,
+        rendering,
+        tracking_em,
+    );
     let height = layout.height();
     let inner = scene.inner_mut();
     // Snap the text origin to integer pixels: hinting snaps stems to the
@@ -539,6 +549,7 @@ pub fn paint_text_elided(
         max_width,
         color,
         FontWeight::MEDIUM,
+        0.0,
     );
 }
 
@@ -571,6 +582,36 @@ pub fn paint_text_title_elided(
         max_width,
         color,
         FontWeight::SEMI_BOLD,
+        0.0,
+    );
+}
+
+/// [`paint_text_title_elided`] com espaçamento entre letras `tracking_em` (em `em`): mede e corta
+/// com o MESMO valor com que pinta. `0.0` pinta o mesmo, ao bit.
+#[allow(clippy::too_many_arguments)]
+#[track_caller]
+pub fn paint_text_title_elided_tracked(
+    text_system: &mut TextSystem,
+    scene: &mut VectorScene,
+    text: &str,
+    [x, y]: [f32; 2],
+    font_size: f32,
+    max_width: f32,
+    color: Color,
+    tracking_em: f32,
+) {
+    let (t, w) = (tracking_em, FontWeight::SEMI_BOLD);
+    paint_elided_weighted(
+        text_system,
+        scene,
+        text,
+        x,
+        y,
+        font_size,
+        max_width,
+        color,
+        w,
+        t,
     );
 }
 
@@ -585,6 +626,7 @@ fn paint_elided_weighted(
     max_width: f32,
     color: Color,
     weight: FontWeight,
+    tracking_em: f32,
 ) {
     // ⚠️⚠️ **O peso ATRAVESSA, não é escolhido por um `if`.** A 1.ª redacção ramificava em
     // `weight == SEMI_BOLD`, e uma auditoria adversarial mostrou que era **um braço só**:
@@ -592,7 +634,20 @@ fn paint_elided_weighted(
     // que este módulo existe para impedir. Três mutações sobreviveram a 1 100 testes por
     // causa dele. *Uma lista de pesos é uma lista que alguém esquece; um parâmetro não.*
     let paint = |ts: &mut TextSystem, sc: &mut VectorScene, t: &str| {
-        paint_text_weighted(ts, sc, t, x, y, font_size, f32::INFINITY, color, weight);
+        let (inf, wrap) = (f32::INFINITY, Lines::Wrap);
+        paint_text_spans(
+            ts,
+            sc,
+            t,
+            [x, y],
+            font_size,
+            inf,
+            color,
+            weight,
+            wrap,
+            &[],
+            tracking_em,
+        );
     };
     if max_width <= 0.0 {
         return;
@@ -603,13 +658,14 @@ fn paint_elided_weighted(
     // ⚠️ **A pergunta vai pela porta** ([`crate::text_elide::coube`]) e não por uma comparação
     // escrita aqui: é ela que o censo das elisões ouve, e um pintor que a repita à mão fica
     // invisível ao gate que pergunta *«e quando alguém traduzir?»*.
-    if crate::text_elide::coube(text_system, text, font_size, max_width, weight) {
+    let tracked = (weight, tracking_em);
+    if crate::text_elide::coube_tracked(text_system, text, font_size, max_width, tracked) {
         // `INFINITY`, not `max_width`: it fits, and passing the budget back would
         // let a sub-pixel measurement disagreement re-introduce the wrap.
         paint(text_system, scene, text);
         return;
     }
-    let Some(elided) = elide(text_system, text, font_size, max_width, weight) else {
+    let Some(elided) = elide_tracked(text_system, text, font_size, max_width, tracked) else {
         return;
     };
     paint(text_system, scene, &elided);
@@ -620,46 +676,5 @@ fn paint_elided_weighted(
 mod spans_tests;
 
 #[cfg(test)]
-mod elided_tests {
-    use super::*;
-
-    /// ⭐⭐ **E O QUE FOI PINTADO TEM O PESO QUE FOI MEDIDO** — a outra metade, que a
-    /// auditoria de 2026-08-30 também deixou sem gate (a mutação *"pinta sempre em Medium"*
-    /// sobrevivia a 1 100 testes).
-    ///
-    /// A régua é a TINTA, lida da cena emitida. ⚠️ **E ela custou duas tentativas:** contar
-    /// `n_paths` e `n_path_segments` dá **zero** nos dois (um glifo não entra na cena como
-    /// caminho, entra por `draw_glyphs`), e contar os glifos dá **17 nos dois** (é a mesma
-    /// string). O que separa os pesos é o **eixo normalizado da fonte VARIÁVEL** —
-    /// `resources.normalized_coords` —, que é literalmente onde o peso viaja.
-    /// ⛔ Não é comparar duas construções: é perguntar à saída.
-    #[test]
-    fn the_ink_carries_the_weight_that_was_measured() {
-        let axes = |bold: bool| {
-            let mut text = TextSystem::without_system_fonts();
-            let mut scene = VectorScene::new();
-            let name = "Tropism Direction";
-            let f = if bold {
-                paint_text_title_elided
-            } else {
-                paint_text_elided
-            };
-            f(
-                &mut text,
-                &mut scene,
-                name,
-                0.0,
-                0.0,
-                13.0,
-                f32::INFINITY,
-                Color::from_rgba8(255, 255, 255, 255),
-            );
-            scene.inner().encoding().resources.normalized_coords.clone()
-        };
-        assert_ne!(
-            axes(true),
-            axes(false),
-            "as duas portas pintaram a MESMA tinta — o peso nao chega ao pintor"
-        );
-    }
-}
+#[path = "paint_text_elided_tests.rs"]
+mod elided_tests;

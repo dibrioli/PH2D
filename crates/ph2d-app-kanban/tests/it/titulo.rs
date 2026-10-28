@@ -1,5 +1,6 @@
 //! O título das listas (dono 28/10: «maior e mais destacado», MAIÚSCULAS): pintado em maiúsculas,
-//! MEDIDO com o mesmo texto, tamanho e peso com que se pinta, e o texto guardado não muda.
+//! MEDIDO com o mesmo texto, tamanho, peso e espaçamento entre letras com que se pinta, e o texto
+//! guardado não muda.
 
 use crate::{Mesa, centro};
 use ph2d_text::FontWeight;
@@ -32,8 +33,9 @@ fn o_titulo_da_lista_e_pintado_em_maiusculas_medido_como_se_pinta_e_o_texto_guar
         .cloned()
         .expect("o título da Review");
     assert_eq!(texto, "REVIEW");
+    let em = ph2d_tokens::kanban::LIST_TITLE_TRACKING_EM;
     let pintada =
-        m.ts.prefix_width_weighted(&texto, px, FontWeight::new(peso))
+        m.ts.prefix_width_tracked(&texto, px, FontWeight::new(peso), em)
             .ceil();
     let medida = m.rect_lista(id, review).h - RECOLHIDA_SEM_TITULO;
     assert!(
@@ -41,9 +43,13 @@ fn o_titulo_da_lista_e_pintado_em_maiusculas_medido_como_se_pinta_e_o_texto_guar
         "medida {medida} == pintada {pintada}"
     );
     let minusculas =
-        m.ts.prefix_width_weighted("Review", px, FontWeight::new(peso))
+        m.ts.prefix_width_tracked("Review", px, FontWeight::new(peso), em)
             .ceil();
     assert!(pintada > minusculas, "a medida é a das maiúsculas");
+    let sem_espaco =
+        m.ts.prefix_width_weighted(&texto, px, FontWeight::new(peso))
+            .ceil();
+    assert!(pintada > sem_espaco, "e com o espaçamento entre letras");
 
     // Editar no lugar mostra o texto como foi escrito, e o documento não mudou.
     let backlog = m.lista(id, "Backlog");

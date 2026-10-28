@@ -374,7 +374,7 @@ fn the_playground_scene_moves_each_piece_by_its_behaviour() {
     passo(&mut sim, MOEDA[0], 0.3);
     let m = mundo(&sim, moeda).translation;
     assert_ne!([m.x, m.y], MOEDA, "o íman por baixo: treme");
-    assert!(IMA_Y < MOEDA[1]);
+    const { assert!(IMA_Y < MOEDA[1]) };
     let (l, p) = (mundo(&sim, lua), mundo(&sim, planeta));
     let r = (l.translation.x - p.translation.x).hypot(l.translation.y - p.translation.y);
     // O seno do `motion.orbit` é a parábola corrigida (~0,09 %): o raio oscila dentro disso.

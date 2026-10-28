@@ -24,7 +24,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.pixel.auto_select_layer" => "Auto Select Layer",
         "panel.pixel.shape_fill" => "Fill",
         "pixel.hint.transform" => {
-            "{tool}: drag a corner or side to scale · drag just outside a corner to rotate · drag inside to move · Enter applies, Esc cancels"
+            "{tool}: drag a corner or side to scale · drag just outside a corner to rotate, outside a side to skew · drag inside to move · Enter applies, Esc cancels"
         }
         "pixel.hint.marquee" => {
             "{tool}: drag to select · a click deselects · Shift adds, Alt+Shift subtracts, Ctrl+Shift intersects"
@@ -52,7 +52,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.pixel.resample.rotsprite" => "RotSprite",
         "panel.pixel.transform" => "Transform",
         "panel.pixel.transform_hint" => {
-            "Drag the handles to scale (Shift keeps the ratio, Ctrl from the center), just outside a corner to rotate, Skew in the field · Enter applies"
+            "Drag the handles to scale (Shift keeps the ratio, Ctrl from the center), just outside a corner to rotate, just outside a side to skew · Enter applies"
         }
         "panel.pixel.xform.x" => "X",
         "panel.pixel.xform.y" => "Y",

@@ -337,7 +337,7 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // do `ProjectFile`. A tripla NÃO vê este degrau.
         // ⚠️ **`205`..`207` em 2026-10-25** (`line/UIUX`, F30 §A1 · F31 §B · F32) — a identidade dos
         // itens (ver a escada); só o `206` muda a tripla (`VecScene` `24 → 25`, o `id` da pilha).
-        // ⚠️ **`208` em 2026-10-27** (`line/TrelloClone`, W1, ADR-0192) — os KANBANS: `kanbans: Vec<u8>`
+        // ⚠️ **`208` em 2026-10-27** (`line/TrelloClone`, W1, ADR-0195) — os KANBANS: `kanbans: Vec<u8>`
         // no fim do `ProjectFile`. A tripla NÃO vê este degrau.
         (208, 13, 25),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \

@@ -72,7 +72,7 @@ impl crate::App {
                 return;
             }
         };
-        // Os KANBANS (ADR-0192), pela mesma lei dos quadros: sem bytes, não se grava.
+        // Os KANBANS (ADR-0195), pela mesma lei dos quadros: sem bytes, não se grava.
         let kanbans = self
             .gfx
             .as_ref()

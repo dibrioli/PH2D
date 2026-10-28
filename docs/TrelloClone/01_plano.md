@@ -105,8 +105,8 @@ impede, nada o garante — o desenho abaixo torna-o uma garantia).
 
 ## 3 — A decisão central: UM documento, DUAS janelas
 
-> ADR a escrever na W1: **ADR-0192 — «O Kanban é um documento próprio do projeto; o Quadro
-> referencia-o e a aba abre-o»** (próximo livre conferido: 0191 é o último).
+> ADR a escrever na W1: **ADR-0195 — «O Kanban é um documento próprio do projeto; o Quadro
+> referencia-o e a aba abre-o»** — escrito na W1 como [0195](../architecture/decisions/0195-o-kanban-e-um-documento-do-projeto-o-quadro-referencia-o-e-a-aba-abre-o.md) (provisório: 0192–0194 estão em linhas por integrar).
 
 ### 3.1 O desenho
 - O Kanban é um **documento de primeira classe** (`KanbanId`), guardado num **conjunto próprio**
@@ -213,7 +213,7 @@ sem a maquete aprovada.
 
 | Onda | Entrega (o que o dono consegue FAZER) | Notas técnicas |
 |---|---|---|
-| **W1** | — (fundação) Modelo, guardar no projeto, desfazer, ADR-0192 | `ph2d-kanban-model`, blob no `.ph2dproj`, `ProjectState.kanbans`, testes de ida-e-volta; decisão `jiff` / `pulldown-cmark` por `stack-audit` + licença |
+| **W1** | — (fundação) Modelo, guardar no projeto, desfazer, ADR-0195 | `ph2d-kanban-model`, blob no `.ph2dproj`, desfazer por Kanban (não `ProjectState`, ADR-0195 §5), testes de ida-e-volta; decisão `jiff` / `pulldown-cmark` por `stack-audit` + licença |
 | **W1b** | Ver e aprovar a **maquete** | §5.1; tokens do Kanban |
 | **W2** | Abrir um Kanban **numa aba**, criar listas e cartões, arrastar com a sensação do Trello, cores e recolher listas, arquivo, atalhos de navegação | `DocumentSurface`, render, arrasto com mola, rolagem automática, `PH2D_KANBAN_SMOKE=1..` |
 | **W3** | O **verso do cartão** completo: descrição rica, etiquetas, membros, datas, checklists, anexos, capa, campos, comentários com menção, atividade | widgets novos: seletor de data + calendário + editor rico (no `editor-core`, com showcase) |

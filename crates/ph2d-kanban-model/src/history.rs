@@ -1,6 +1,6 @@
 //! **O desfazer de UM Kanban** — o molde do `History` do Quadro: cada gesto é um lote de
 //! [`KanbanOp`] e guarda-se o lote INVERSO, nunca o documento inteiro. Vive fora do
-//! [`crate::KanbanSet`]: o histórico é da sessão, não do ficheiro (ADR-0192 §5).
+//! [`crate::KanbanSet`]: o histórico é da sessão, não do ficheiro (ADR-0195 §5).
 //!
 //! A hora de cada passo vem de quem chama (o `undo_tick` único do editor), para o `Ctrl+Z` comparar
 //! pilhas de famílias diferentes sem este crate ter relógio próprio.

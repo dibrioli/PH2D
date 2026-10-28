@@ -34,7 +34,7 @@ pub mod team;
 #[derive(Debug, Default)]
 pub struct Documents {
     boards: BoardSet,
-    /// Os Kanbans do projecto (ADR-0192) — documento, não aba: as vistas apontam-lhes pelo id.
+    /// Os Kanbans do projecto (ADR-0195) — documento, não aba: as vistas apontam-lhes pelo id.
     kanbans: KanbanSet,
     /// `None` = a aba `Cena`.
     active: Option<BoardId>,

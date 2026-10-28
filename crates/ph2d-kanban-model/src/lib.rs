@@ -1,4 +1,4 @@
-//! **O documento Kanban** (TrelloClone, [ADR-0192]) — os Kanbans de um projecto e o que há dentro
+//! **O documento Kanban** (TrelloClone, [ADR-0195]) — os Kanbans de um projecto e o que há dentro
 //! deles.
 //!
 //! Um Kanban é um documento do PROJECTO, nunca de um quadro: a aba e o elemento do canvas do Quadro
@@ -8,7 +8,7 @@
 //! Muda-se só por [`KanbanOp`] e grava-se só por [`KanbanSet::to_bytes`]. Cada registo nasce com o que
 //! a colaboração ao vivo pede ([`Meta`]: versão, desempate, lápide) e a ordem é por [`FracKey`].
 //!
-//! [ADR-0192]: ../../../docs/architecture/decisions/0192-o-kanban-e-um-documento-do-projeto-o-quadro-referencia-o-e-a-aba-abre-o.md
+//! [ADR-0195]: ../../../docs/architecture/decisions/0195-o-kanban-e-um-documento-do-projeto-o-quadro-referencia-o-e-a-aba-abre-o.md
 
 mod color;
 mod history;

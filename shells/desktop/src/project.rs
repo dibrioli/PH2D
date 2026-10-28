@@ -189,7 +189,7 @@ pub(crate) struct ProjectFile {
     /// **A MESA DE SOM** (v204, F30 §B2) — `ph2d_audio::Mesa::to_bytes`, versão PRÓPRIA (vazio = a de
     /// fábrica). Fora do `ProjectState`: a mesa nunca teve undo.
     pub(crate) mesa: Vec<u8>,
-    /// **Os KANBANS** (v208, `line/TrelloClone`, ADR-0192) — `ph2d_kanban_model::KanbanSet::to_bytes`,
+    /// **Os KANBANS** (v208, `line/TrelloClone`, ADR-0195) — `ph2d_kanban_model::KanbanSet::to_bytes`,
     /// com versão PRÓPRIA. Fora do `ProjectState`: cada Kanban tem desfazer próprio (o do Quadro).
     /// ⚠️ **O último campo** — os braços `189`..`207` do load leem-no acrescentando o `0` deste `Vec`.
     pub(crate) kanbans: Vec<u8>,

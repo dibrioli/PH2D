@@ -1,4 +1,4 @@
-//! **Os KANBANS no arquivo** (TrelloClone W1, v194, ADR-0192): o blob atravessa o `.ph2dproj` igual,
+//! **Os KANBANS no arquivo** (TrelloClone W1, v194, ADR-0195): o blob atravessa o `.ph2dproj` igual,
 //! e um v193 (sem o campo) abre sem Kanbans.
 
 use super::*;

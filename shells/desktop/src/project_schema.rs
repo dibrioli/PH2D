@@ -494,7 +494,7 @@
 ///
 /// ⚠️ **A tripla NÃO vê este degrau** — nem a forma do `FlipDoc` nem a da `VecScene` mudam.
 ///
-/// # `198 → 199` — **a pilha de CONSTRAINTS** (`line/BlenderConstraints`, W1, ADR-0192, 2026-10-25)
+/// # `198 → 199` — **a pilha de CONSTRAINTS** (`line/BlenderConstraints`, W1, ADR-0195, 2026-10-25)
 ///
 /// `Constraints` REGISTADO (`ph2d-constraints-ecs`, ECS e espelhos `0`): um binário v198 descartaria a
 /// pilha. A forma do `ProjectFile` não muda: o `198` lê-se com o tipo vivo. A tripla NÃO vê este degrau.
@@ -539,7 +539,7 @@
 /// e o passe dá os ids. Desenho e porquê: `docs/UI_New_and_Simple/F30_plano.md` §A1, `F31_plano.md` §1,
 /// `F32_plano.md` §1. Gates: `project_itens_tests`. Registos de componentes: `0`.
 ///
-/// # `207 → 208` — **os Kanbans** (`line/TrelloClone`, W1, ADR-0192, 2026-10-27)
+/// # `207 → 208` — **os Kanbans** (`line/TrelloClone`, W1, ADR-0195, 2026-10-27)
 ///
 /// Campo novo no FIM do `ProjectFile`: `kanbans: Vec<u8>` — o `KanbanSet` com versão PRÓPRIA
 /// (`ph2d_kanban_model::FORMAT_VERSION`): o documento Kanban do projecto, que a aba e o elemento do

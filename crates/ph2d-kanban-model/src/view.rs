@@ -1,4 +1,4 @@
-//! ⭐ **Duas vistas, um documento** (ADR-0192 §3): a aba e o elemento do Quadro são cada um uma
+//! ⭐ **Duas vistas, um documento** (ADR-0195 §3): a aba e o elemento do Quadro são cada um uma
 //! [`KanbanView`] — a chave do Kanban e o que é SÓ DESSA vista. O que ela mostra é
 //! [`KanbanView::shown`], uma projecção pura do documento: duas vistas sobre o mesmo Kanban não
 //! sincronizam nada, leem o mesmo registo.

@@ -1,5 +1,5 @@
 //! **Ordem por índice fraccionário**, partilhada pelo Quadro (z dos elementos) e pelo Kanban (listas
-//! e cartões) — crate própria para os dois modelos não dependerem um do outro (ADR-0192).
+//! e cartões) — crate própria para os dois modelos não dependerem um do outro (ADR-0195).
 //!
 //! A posição em z de um elemento é uma chave que ordena
 //! lexicograficamente, e entre duas chaves cabe sempre uma terceira. Inserir entre vizinhos não

@@ -14,7 +14,7 @@
 - Toda tela passa pela maquete aprovada (W1b) — frente «bela aparência» (§5).
 
 ## A tarefa da W1 (plano §6)
-1. **ADR-0192** (próximo livre conferido: 0191 é o último) — a decisão do §3 com as recusas do §3.5.
+1. **ADR-0192** (próximo livre conferido: 0191 é o último — ⚠️ derrubado na W1: escrito como 0195) — a decisão do §3 com as recusas do §3.5.
 2. `crates/ph2d-kanban-model`: tipos do §4 (Kanban, List, Card, Label 30 cores por token, Checklist/
    CheckItem, Comment, Attachment por conteúdo ADR-0184, CustomField, datas como valor neutro até a
    crate de datas), `KanbanOp`, `FracKey` (reutilizar `ph2d-board-model/src/frac.rs` — mover para

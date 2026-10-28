@@ -1,5 +1,5 @@
 //! **Os registos** de um Kanban. Cada um é uma linha própria do documento, com [`Meta`]: dois colegas
-//! a comentar o MESMO cartão escrevem dois registos `Comment`, nunca o mesmo `Card` (ADR-0192 §3.4).
+//! a comentar o MESMO cartão escrevem dois registos `Comment`, nunca o mesmo `Card` (ADR-0195 §3.4).
 //! Os filhos apontam para o pai (`card`, `checklist`) e ordenam-se por [`FracKey`].
 
 use std::collections::BTreeMap;
@@ -33,7 +33,7 @@ ids! {
 }
 
 /// Um instante: milissegundos desde 1970-01-01 UTC. Valor NEUTRO — fusos, «hoje», «atrasado» e
-/// recorrência interpretam-se fora do documento (ADR-0192 §4, `jiff`).
+/// recorrência interpretam-se fora do documento (ADR-0195 §4, `jiff`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct Moment(pub i64);
 

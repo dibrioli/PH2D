@@ -417,11 +417,7 @@ fn click(docs: &mut KanbanDocs, id: u64, h: Hit, now_ns: u128) {
                 );
             }
         }
-        Hit::Card(c) => {
-            if let Some(t) = docs.tab_mut(id) {
-                t.focus = Some(c);
-            }
-        }
+        Hit::Card(c) => crate::back::open(docs, id, c),
         Hit::CardEdit(c) => {
             let title = docs_title(docs, id, c);
             if let Some(t) = docs.tab_mut(id) {

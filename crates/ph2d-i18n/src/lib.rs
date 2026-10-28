@@ -100,6 +100,7 @@ mod image_tools;
 mod input_map;
 /// O que o KANBAN diz (TrelloClone W2).
 mod kanban;
+mod kanban_back;
 /// As strings dos painéis do Motion (grafo, params) e dos editores ricos partilhados.
 mod motion_panels;
 /// O menu Add de OBJECTOS (o `+` da Hierarquia e o `Shift+A`).

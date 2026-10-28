@@ -97,7 +97,7 @@ pub(crate) struct Springs {
 }
 
 /// Uma aba de Kanban.
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub(crate) struct Tab {
     pub view: KanbanView,
     pub layout: Layout,
@@ -120,6 +120,8 @@ pub(crate) struct Tab {
     pub painted: std::cell::RefCell<Painted>,
     /// SMOKE 3: a lista a pôr na mão, e onde (o canto dela desde a origem das listas).
     pub smoke_hold: Option<(ListId, (f32, f32))>,
+    /// O verso do cartão aberto (o modal do Trello, W3).
+    pub back: Option<Box<crate::back::Back>>,
 }
 
 /// O registo do pintor num quadro.
@@ -149,6 +151,7 @@ impl Tab {
             landed: None,
             painted: std::cell::RefCell::default(),
             smoke_hold: None,
+            back: None,
         }
     }
 

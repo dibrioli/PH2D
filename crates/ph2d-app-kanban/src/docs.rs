@@ -35,6 +35,10 @@ pub struct KanbanDocs {
     pub(crate) area: Rect,
     /// O chrome do hero por cima da área (o HUD de baixo): as listas param acima dele.
     pub(crate) over: Option<Rect>,
+    /// Quem escreve (a identidade do Quadro; «Me» enquanto não há nenhuma) e as pessoas das equipas
+    /// dos quadros do projecto — os membros e as menções do verso.
+    pub(crate) me: ph2d_kanban_model::Member,
+    pub(crate) team: Vec<String>,
 }
 
 impl Default for KanbanDocs {
@@ -50,6 +54,8 @@ impl Default for KanbanDocs {
             law: Some(Spring::default()),
             area: Rect::new(0.0, 0.0, 0.0, 0.0),
             over: None,
+            me: ph2d_kanban_model::Member(ph2d_i18n::tr("kanban.back.me").to_owned()),
+            team: Vec::new(),
         }
     }
 }
@@ -253,6 +259,31 @@ impl KanbanDocs {
         };
         crate::paint::board(scene, ts, theme, k, tab, &mut looks);
         crate::overlay::paint(scene, ts, theme, k, tab);
+        crate::back::paint(
+            scene,
+            ts,
+            theme,
+            k,
+            tab,
+            &self.me,
+            &self.team,
+            crate::actions::now(),
+        );
+    }
+
+    /// Quem é «eu» (vazio = «Me») e as equipas dos quadros do projecto.
+    pub fn follow_people(&mut self, author: &str, mut team: Vec<String>) {
+        team.sort();
+        team.dedup();
+        self.team = team;
+        if !author.is_empty() {
+            self.me = ph2d_kanban_model::Member(author.to_owned());
+        }
+    }
+
+    /// Abre o verso do cartão `card` na aba `id` (o clique e o `Enter` no quadro).
+    pub fn open_back(&mut self, id: u64, card: CardId) {
+        crate::back::open(self, id, card);
     }
 
     pub(crate) fn kanban_of(&self, id: u64) -> Option<KanbanId> {
@@ -279,6 +310,9 @@ impl KanbanDocs {
             t.drag = None;
             t.hover = None;
             t.menu = None;
+            if let Some(b) = t.back.as_deref_mut() {
+                b.press = None;
+            }
         }
     }
 

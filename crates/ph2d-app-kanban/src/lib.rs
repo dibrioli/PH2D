@@ -12,6 +12,7 @@
 mod actions;
 mod anim;
 mod archive;
+mod back;
 mod docs;
 mod edit;
 mod frame;
@@ -33,7 +34,6 @@ mod surface;
 mod tab;
 
 pub use docs::KanbanDocs;
-pub use frame::frame;
 pub use surface::{CMD_HOME, CMD_NEW};
 
 /// O arranque da família: a superfície das abas Kanban no `Documents` e as cenas de smoke armadas.
@@ -41,6 +41,23 @@ pub fn install(hero: &mut ph2d_editor_core::screens::hero::HeroScreen) {
     hero.documents
         .install_surface(Box::new(KanbanDocs::default()));
     smoke::stage_armed_smokes(hero);
+}
+
+/// O quadro da família (a shell chama-o uma vez por quadro de imagem): o conjunto, o relógio, a aba
+/// activa — e quem é «eu» e as equipas dos quadros do projecto (os membros do verso).
+pub fn frame(hero: &mut ph2d_editor_core::screens::hero::HeroScreen) {
+    frame::frame(hero);
+    let author = hero.documents.author().trim().to_owned();
+    let team: Vec<String> = hero
+        .documents
+        .boards()
+        .boards()
+        .iter()
+        .flat_map(|b| b.team.people(&author, &[]))
+        .collect();
+    if let Some(docs) = hero.documents.surfaces_mut().find_mut::<KanbanDocs>() {
+        docs.follow_people(&author, team);
+    }
 }
 
 /// A declaração da família ao registo (`ph2d-app-registry-init`).

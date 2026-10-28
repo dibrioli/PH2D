@@ -19,6 +19,14 @@ ph2d-editor-core = { path = "../ph2d-editor-core" }
 ph2d-host = { path = "../ph2d-host" }
 ph2d-i18n = { path = "../ph2d-i18n" }
 ph2d-kanban-model = { path = "../ph2d-kanban-model" }
+# O verso do cartão (W3): a descrição em markdown ↔ documento rico e as datas no fuso.
+ph2d-kanban-md = { path = "../ph2d-kanban-md" }
+ph2d-richdoc = { path = "../ph2d-richdoc" }
+# W3 — a frente do cartão: o distintivo da entrega no fuso do sistema (`due_tone`, `due_label`).
+ph2d-kanban-dates = { path = "../ph2d-kanban-dates" }
+# W3 — a capa de IMAGEM descodifica-se pela MESMA porta que a cena e o Quadro usam
+# (`ph2d_asset::decode_image`, com os tectos e as recusas do registo `imageio`), fora do fio do desenho.
+ph2d-asset = { path = "../ph2d-asset" }
 # A mola do arrasto (a lei vem do `UiMotion` do hero: o carácter e o «movimento reduzido»).
 ph2d-spring = { path = "../ph2d-spring" }
 ph2d-text = { path = "../ph2d-text" }

@@ -13,6 +13,9 @@ fn foco_por_clique_j_desce_virgula_e_ponto_mudam_de_lista_e_c_arquiva() {
     let cs = m.cartoes(id, backlog);
     let r = m.rect_cartao(id, cs[0]);
     m.clica(pega(r));
+    // O clique abre o verso (W3); o Esc fecha-o e o foco fica no cartão.
+    assert!(m.tecla(BoardKey::Escape, Modifiers::default(), None));
+    m.quadro();
     assert_eq!(
         m.docs().probe_focus(id.0),
         Some(cs[0]),

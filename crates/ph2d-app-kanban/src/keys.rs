@@ -1,7 +1,7 @@
 //! ⭐ **O teclado na aba** — com um campo aberto, o campo; senão os atalhos do Trello (plano §1.7):
 //! setas e `j`/`k`/`h`/`l` andam pelos cartões, `Enter`/`E`/`T` editam o título, `N` cria um cartão
 //! por baixo, `C` arquiva, `,` `.` levam o cartão à lista vizinha (`<` `>` ao fundo dela), `\`
-//! recolhe a lista, `Esc` larga o foco. O verso do cartão (o `Enter` do Trello) chega com a W3.
+//! recolhe a lista, `Esc` larga o foco; `Enter` abre o verso do cartão (que toma o teclado).
 
 use crate::docs::KanbanDocs;
 use crate::edit::{Outcome, Target};
@@ -41,7 +41,15 @@ fn neighbour(l: &Layout, from: (usize, usize), dl: isize, dc: isize) -> Option<C
     cards.get(ci).map(|c| c.id)
 }
 
-pub(crate) fn key(docs: &mut KanbanDocs, id: u64, input: KeyInput<'_>) -> KeyOutcome {
+pub(crate) fn key(
+    docs: &mut KanbanDocs,
+    id: u64,
+    ts: &mut ph2d_text::TextSystem,
+    input: KeyInput<'_>,
+) -> KeyOutcome {
+    if crate::back::is_open(docs, id) {
+        return crate::back::key(docs, id, ts, &input);
+    }
     let Some(tab) = docs.tab_mut(id) else {
         return KeyOutcome::default();
     };
@@ -106,7 +114,13 @@ pub(crate) fn key(docs: &mut KanbanDocs, id: u64, input: KeyInput<'_>) -> KeyOut
                 copy: None,
             };
         }
-        (Key::Enter, _) | (_, Some('e' | 'E' | 't' | 'T')) => {
+        (Key::Enter, _) => {
+            let Some(c) = focus else {
+                return KeyOutcome::default();
+            };
+            crate::back::open(docs, id, c);
+        }
+        (_, Some('e' | 'E' | 't' | 'T')) => {
             let Some(c) = focus else {
                 return KeyOutcome::default();
             };

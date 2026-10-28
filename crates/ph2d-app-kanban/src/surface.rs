@@ -76,6 +76,13 @@ impl DocumentSurface for KanbanDocs {
         if id == HOME {
             return self.home_pointer(kind, x, y);
         }
+        if crate::back::is_open(self, id) {
+            return match kind {
+                PointerKind::Down => crate::back::down(self, id, input.text, x, y),
+                PointerKind::Up => crate::back::up(self, id, x, y),
+                PointerKind::Move => crate::back::moved(self, id, input.text, x, y),
+            };
+        }
         match kind {
             PointerKind::Down => crate::pointer::down(self, id, input.text, button, x, y),
             PointerKind::Up => crate::pointer::up(self, id, input.text, input.now_ns, x, y),
@@ -87,21 +94,30 @@ impl DocumentSurface for KanbanDocs {
         if id == HOME {
             return self.home_pointer(PointerKind::Move, x, y);
         }
+        if crate::back::is_open(self, id) {
+            return crate::back::moved(self, id, input.text, x, y);
+        }
         crate::pointer::moved(self, id, input.text, x, y)
     }
 
     fn wheel(&mut self, id: u64, x: f32, y: f32, dy: f32, shift: bool) -> bool {
+        if id != HOME && crate::back::is_open(self, id) {
+            return crate::back::wheel(self, id, dy);
+        }
         id != HOME && crate::pointer::wheel(self, id, x, y, dy, shift)
     }
 
-    fn key(&mut self, id: u64, _ts: &mut TextSystem, input: KeyInput<'_>) -> KeyOutcome {
+    fn key(&mut self, id: u64, ts: &mut TextSystem, input: KeyInput<'_>) -> KeyOutcome {
         if id == HOME {
             return KeyOutcome::default();
         }
-        crate::keys::key(self, id, input)
+        crate::keys::key(self, id, ts, input)
     }
 
     fn compose(&mut self, id: u64, c: Compose<'_>) -> bool {
+        if crate::back::is_open(self, id) {
+            return crate::back::compose(self, id, c);
+        }
         let Some(f) = self.tab_mut(id).and_then(|t| t.field.as_mut()) else {
             return false;
         };

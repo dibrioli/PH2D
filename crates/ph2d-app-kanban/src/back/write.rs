@@ -1,0 +1,455 @@
+//! ⭐ **O que o verso ESCREVE** — e só por aqui: cada gesto é um lote de `KanbanOp` aplicado com a
+//! atividade (`History::apply_logged`, em nome de «eu»), um passo de desfazer cada.
+
+use crate::actions::now;
+use crate::docs::KanbanDocs;
+use ph2d_editor_core::documents::undo_tick;
+use ph2d_kanban_model::{
+    Actor, Attachment, AttachmentId, Card, CardId, CheckItem, CheckItemId, Checklist, ChecklistId,
+    Comment, CommentId, Cover, FieldDef, FieldId, FieldKind, FieldValue, FracKey, Kanban, KanbanOp,
+    Label, LabelColor, LabelId, Link, ListId, Member, Meta, Moment, Reaction, Record, RecordId,
+};
+
+/// Aplica o lote que `f` monta sobre o Kanban da aba, com a atividade em nome de «eu». `true` = o
+/// documento mudou.
+pub(crate) fn logged(
+    docs: &mut KanbanDocs,
+    id: u64,
+    f: impl FnOnce(&Kanban) -> Option<Vec<KanbanOp>>,
+) -> bool {
+    let actor = Actor {
+        by: docs.me.clone(),
+        at: now(),
+    };
+    docs.with_doc(id, |_, doc| {
+        let Some(ops) = doc.kanban().and_then(f) else {
+            return false;
+        };
+        let Some(k) = doc.set.doc_mut(doc.id) else {
+            return false;
+        };
+        let before = doc.history.undo_at();
+        doc.history.apply_logged(k, ops, undo_tick(), &actor);
+        doc.history.undo_at() != before
+    })
+    .unwrap_or(false)
+}
+
+/// O cartão `c` mudado por `f` (nenhuma escrita se `f` o deixa igual).
+pub(crate) fn card(docs: &mut KanbanDocs, id: u64, c: CardId, f: impl FnOnce(&mut Card)) -> bool {
+    logged(docs, id, |k| {
+        let old = k.cards.get(&c)?;
+        let mut new = old.clone();
+        f(&mut new);
+        (new != *old).then(|| vec![KanbanOp::put(Record::Card(new))])
+    })
+}
+
+fn toggle<T: PartialEq + Clone>(v: &mut Vec<T>, x: &T) {
+    if let Some(i) = v.iter().position(|y| y == x) {
+        v.remove(i);
+    } else {
+        v.push(x.clone());
+    }
+}
+
+pub(crate) fn toggle_member(docs: &mut KanbanDocs, id: u64, c: CardId, m: &Member) -> bool {
+    card(docs, id, c, |c| toggle(&mut c.members, m))
+}
+
+pub(crate) fn toggle_label(docs: &mut KanbanDocs, id: u64, c: CardId, l: LabelId) -> bool {
+    card(docs, id, c, |c| toggle(&mut c.labels, &l))
+}
+
+pub(crate) fn toggle_watch(docs: &mut KanbanDocs, id: u64, c: CardId) -> bool {
+    let me = docs.me.clone();
+    card(docs, id, c, |c| toggle(&mut c.watchers, &me))
+}
+
+pub(crate) fn toggle_vote(docs: &mut KanbanDocs, id: u64, c: CardId) -> bool {
+    let me = docs.me.clone();
+    card(docs, id, c, |c| toggle(&mut c.votes, &me))
+}
+
+/// A posição depois da maior de `keys` (o fim de uma colecção ordenada).
+fn after<'a>(keys: impl Iterator<Item = &'a FracKey>) -> FracKey {
+    let last = keys.max();
+    FracKey::between(last, None)
+}
+
+/// Uma etiqueta nova (e posta no cartão, o idioma do Trello). Devolve-a.
+pub(crate) fn create_label(
+    docs: &mut KanbanDocs,
+    id: u64,
+    c: CardId,
+    name: String,
+    color: Option<LabelColor>,
+) -> Option<LabelId> {
+    let mut made = None;
+    logged(docs, id, |k| {
+        let mut card = k.cards.get(&c)?.clone();
+        let lid = LabelId(k.mint());
+        made = Some(lid);
+        card.labels.push(lid);
+        Some(vec![
+            KanbanOp::put(Record::Label(Label {
+                id: lid,
+                name,
+                color,
+                meta: Meta::default(),
+            })),
+            KanbanOp::put(Record::Card(card)),
+        ])
+    })
+    .then_some(made)
+    .flatten()
+}
+
+pub(crate) fn edit_label(
+    docs: &mut KanbanDocs,
+    id: u64,
+    l: LabelId,
+    name: String,
+    color: Option<LabelColor>,
+) -> bool {
+    logged(docs, id, |k| {
+        let mut lb = k.labels.get(&l)?.clone();
+        lb.name = name;
+        lb.color = color;
+        Some(vec![KanbanOp::put(Record::Label(lb))])
+    })
+}
+
+/// Apaga a etiqueta do Kanban e tira-a de todos os cartões — um passo.
+pub(crate) fn delete_label(docs: &mut KanbanDocs, id: u64, l: LabelId) -> bool {
+    logged(docs, id, |k| {
+        let mut ops: Vec<KanbanOp> = k
+            .cards
+            .values()
+            .filter(|c| c.labels.contains(&l))
+            .map(|c| {
+                let mut c = c.clone();
+                c.labels.retain(|x| *x != l);
+                KanbanOp::put(Record::Card(c))
+            })
+            .collect();
+        ops.push(KanbanOp::Delete(RecordId::Label(l)));
+        Some(ops)
+    })
+}
+
+pub(crate) fn add_checklist(docs: &mut KanbanDocs, id: u64, c: CardId, title: String) -> bool {
+    logged(docs, id, |k| {
+        let pos = after(
+            k.checklists
+                .values()
+                .filter(|x| x.card == c)
+                .map(|x| &x.pos),
+        );
+        Some(vec![KanbanOp::put(Record::Checklist(Checklist {
+            id: ChecklistId(k.mint()),
+            card: c,
+            pos,
+            title,
+            hide_checked: false,
+            meta: Meta::default(),
+        }))])
+    })
+}
+
+pub(crate) fn checklist(
+    docs: &mut KanbanDocs,
+    id: u64,
+    cl: ChecklistId,
+    f: impl FnOnce(&mut Checklist),
+) -> bool {
+    logged(docs, id, |k| {
+        let mut x = k.checklists.get(&cl)?.clone();
+        f(&mut x);
+        Some(vec![KanbanOp::put(Record::Checklist(x))])
+    })
+}
+
+/// Apaga a checklist e os itens dela — um passo.
+pub(crate) fn delete_checklist(docs: &mut KanbanDocs, id: u64, cl: ChecklistId) -> bool {
+    logged(docs, id, |k| {
+        let mut ops: Vec<KanbanOp> = k
+            .items
+            .values()
+            .filter(|i| i.checklist == cl && !i.meta.deleted)
+            .map(|i| KanbanOp::Delete(RecordId::CheckItem(i.id)))
+            .collect();
+        ops.push(KanbanOp::Delete(RecordId::Checklist(cl)));
+        Some(ops)
+    })
+}
+
+pub(crate) fn add_item(docs: &mut KanbanDocs, id: u64, cl: ChecklistId, text: String) -> bool {
+    logged(docs, id, |k| {
+        let pos = after(
+            k.items
+                .values()
+                .filter(|i| i.checklist == cl && !i.meta.deleted)
+                .map(|i| &i.pos),
+        );
+        Some(vec![KanbanOp::put(Record::CheckItem(CheckItem {
+            id: CheckItemId(k.mint()),
+            checklist: cl,
+            pos,
+            text,
+            done: false,
+            member: None,
+            due: None,
+            meta: Meta::default(),
+        }))])
+    })
+}
+
+pub(crate) fn item(
+    docs: &mut KanbanDocs,
+    id: u64,
+    it: CheckItemId,
+    f: impl FnOnce(&mut CheckItem),
+) -> bool {
+    logged(docs, id, |k| {
+        let old = k.items.get(&it)?;
+        let mut x = old.clone();
+        f(&mut x);
+        (x != *old).then(|| vec![KanbanOp::put(Record::CheckItem(x))])
+    })
+}
+
+pub(crate) fn delete(docs: &mut KanbanDocs, id: u64, r: RecordId) -> bool {
+    logged(docs, id, |_| Some(vec![KanbanOp::Delete(r)]))
+}
+
+pub(crate) fn convert(docs: &mut KanbanDocs, id: u64, it: CheckItemId) -> bool {
+    logged(docs, id, |k| {
+        ph2d_kanban_model::convert_item_to_card(k, it, now())
+    })
+}
+
+pub(crate) fn add_link(
+    docs: &mut KanbanDocs,
+    id: u64,
+    c: CardId,
+    url: String,
+    name: String,
+) -> bool {
+    logged(docs, id, |k| {
+        let pos = after(
+            k.attachments
+                .values()
+                .filter(|a| a.card == c && !a.meta.deleted)
+                .map(|a| &a.pos),
+        );
+        Some(vec![KanbanOp::put(Record::Attachment(Attachment {
+            id: AttachmentId(k.mint()),
+            card: c,
+            pos,
+            name,
+            link: Link::Url(url),
+            at: now(),
+            meta: Meta::default(),
+        }))])
+    })
+}
+
+pub(crate) fn set_cover(docs: &mut KanbanDocs, id: u64, c: CardId, cover: Option<Cover>) -> bool {
+    card(docs, id, c, |c| c.cover = cover)
+}
+
+/// Um comentário novo de «eu».
+pub(crate) fn add_comment(docs: &mut KanbanDocs, id: u64, c: CardId, text: String) -> bool {
+    let me = docs.me.clone();
+    logged(docs, id, |k| {
+        Some(vec![KanbanOp::put(Record::Comment(Comment {
+            id: CommentId(k.mint()),
+            card: c,
+            author: me,
+            at: now(),
+            text,
+            edited: None,
+            reactions: Vec::new(),
+            meta: Meta::default(),
+        }))])
+    })
+}
+
+pub(crate) fn comment(
+    docs: &mut KanbanDocs,
+    id: u64,
+    cm: CommentId,
+    f: impl FnOnce(&mut Comment),
+) -> bool {
+    logged(docs, id, |k| {
+        let old = k.comments.get(&cm)?;
+        let mut x = old.clone();
+        f(&mut x);
+        (x != *old).then(|| vec![KanbanOp::put(Record::Comment(x))])
+    })
+}
+
+pub(crate) fn edit_comment(docs: &mut KanbanDocs, id: u64, cm: CommentId, text: String) -> bool {
+    let at = now();
+    comment(docs, id, cm, |c| {
+        if c.text != text {
+            c.text = text;
+            c.edited = Some(at);
+        }
+    })
+}
+
+/// Alterna a reacção `emoji` de «eu» no comentário.
+pub(crate) fn react(docs: &mut KanbanDocs, id: u64, cm: CommentId, emoji: &str) -> bool {
+    let me = docs.me.clone();
+    comment(docs, id, cm, |c| {
+        match c.reactions.iter_mut().find(|r| r.emoji == emoji) {
+            Some(r) => toggle(&mut r.by, &me),
+            None => c.reactions.push(Reaction {
+                emoji: emoji.to_owned(),
+                by: vec![me],
+            }),
+        }
+        c.reactions.retain(|r| !r.by.is_empty());
+    })
+}
+
+/// Um campo personalizado novo (no fim).
+pub(crate) fn create_field(docs: &mut KanbanDocs, id: u64, name: String, kind: FieldKind) -> bool {
+    logged(docs, id, |k| {
+        let pos = after(
+            k.fields
+                .values()
+                .filter(|f| !f.meta.deleted)
+                .map(|f| &f.pos),
+        );
+        Some(vec![KanbanOp::put(Record::Field(FieldDef {
+            id: FieldId(k.mint()),
+            name,
+            kind,
+            on_front: false,
+            pos,
+            meta: Meta::default(),
+        }))])
+    })
+}
+
+pub(crate) fn field_front(docs: &mut KanbanDocs, id: u64, f: FieldId) -> bool {
+    logged(docs, id, |k| {
+        let mut d = k.fields.get(&f)?.clone();
+        d.on_front = !d.on_front;
+        Some(vec![KanbanOp::put(Record::Field(d))])
+    })
+}
+
+pub(crate) fn set_field(
+    docs: &mut KanbanDocs,
+    id: u64,
+    c: CardId,
+    f: FieldId,
+    v: Option<FieldValue>,
+) -> bool {
+    card(docs, id, c, |c| match v {
+        Some(v) => {
+            c.fields.insert(f, v);
+        }
+        None => {
+            c.fields.remove(&f);
+        }
+    })
+}
+
+/// Leva o cartão para o fim da lista `to` (o «Move» do Trello pelo verso).
+pub(crate) fn move_to(docs: &mut KanbanDocs, id: u64, c: CardId, to: ListId) -> bool {
+    logged(docs, id, |k| {
+        let mut card = k.cards.get(&c)?.clone();
+        if card.list == to {
+            return None;
+        }
+        card.list = to;
+        card.pos = k.pos_after_cards(to);
+        Some(vec![KanbanOp::put(Record::Card(card))])
+    })
+}
+
+/// Uma cópia do cartão logo abaixo dele, com as checklists e os itens. Devolve a cópia.
+pub(crate) fn copy(docs: &mut KanbanDocs, id: u64, c: CardId) -> Option<CardId> {
+    let mut made = None;
+    let at = now();
+    logged(docs, id, |k| {
+        let src = k.cards.get(&c)?;
+        let lists: Vec<&Checklist> = k
+            .checklists
+            .values()
+            .filter(|x| x.card == c && !x.meta.deleted)
+            .collect();
+        let items: Vec<&CheckItem> = k
+            .items
+            .values()
+            .filter(|i| !i.meta.deleted && lists.iter().any(|l| l.id == i.checklist))
+            .collect();
+        let mut ids = k.mint_n(1 + lists.len() + items.len()).into_iter();
+        let next = k
+            .cards_in(src.list)
+            .into_iter()
+            .map(|x| &x.pos)
+            .filter(|p| **p > src.pos)
+            .min();
+        let mut card = src.clone();
+        card.id = CardId(ids.next()?);
+        card.pos = FracKey::between(Some(&src.pos), next);
+        card.created = at;
+        card.meta = Meta::default();
+        card.watchers.clear();
+        card.votes.clear();
+        made = Some(card.id);
+        let mut ops = vec![KanbanOp::put(Record::Card(card))];
+        let mut map = std::collections::BTreeMap::new();
+        for l in &lists {
+            let mut n = (*l).clone();
+            n.id = ChecklistId(ids.next()?);
+            n.card = made?;
+            n.meta = Meta::default();
+            map.insert(l.id, n.id);
+            ops.push(KanbanOp::put(Record::Checklist(n)));
+        }
+        for i in &items {
+            let mut n = (*i).clone();
+            n.id = CheckItemId(ids.next()?);
+            n.checklist = *map.get(&i.checklist)?;
+            n.meta = Meta::default();
+            ops.push(KanbanOp::put(Record::CheckItem(n)));
+        }
+        Some(ops)
+    })
+    .then_some(made)
+    .flatten()
+}
+
+/// As datas do cartão: início, entrega (com o lembrete e o «concluída» que já tinha).
+pub(crate) fn set_dates(
+    docs: &mut KanbanDocs,
+    id: u64,
+    c: CardId,
+    start: Option<Moment>,
+    due: Option<(Moment, Option<u32>)>,
+) -> bool {
+    card(docs, id, c, |c| {
+        c.start = start;
+        let done = c.due.is_some_and(|d| d.done);
+        c.due = due.map(|(at, remind)| ph2d_kanban_model::Due {
+            at,
+            done,
+            remind_before_min: remind,
+        });
+    })
+}
+
+pub(crate) fn toggle_done(docs: &mut KanbanDocs, id: u64, c: CardId) -> bool {
+    card(docs, id, c, |c| {
+        if let Some(d) = c.due.as_mut() {
+            d.done = !d.done;
+        }
+    })
+}

@@ -218,7 +218,7 @@ pub(crate) struct SubstrateKey {
 /// `PaperCold` (*cold press*) é o papel de aquarela mais comum e o meio-termo dos três assados;
 /// deixar `None` faria o interruptor ligar e não mostrar nada, que é o controle morto que esta casa
 /// recusa.
-fn default_paper() -> TextureSettings {
+pub(super) fn default_paper() -> TextureSettings {
     TextureSettings {
         kind: TextureKind::PaperCold,
         mapping: TextureMapping::Tiled,

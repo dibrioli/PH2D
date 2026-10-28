@@ -8,6 +8,45 @@
 use super::super::impasto_shade::{MatShade, Rig};
 use super::super::substrate_relief::Substrate;
 
+/// U2 (auditoria W3b): o PISO da profundidade do papel NA tinta do Óleo Real — o Relief do Cold com que o Relevo do
+/// papel e o grão do vidro foram calibrados (`oraculo/README.md` §Transmission). Com o Relief do papel a 0 (a fábrica)
+/// o Paper Relief e a Transmission mostram a textura do papel a esta profundidade; acima dela, a do papel.
+pub(in crate::tool::paint) const RELIEF_NA_TINTA_MIN: f32 = 0.6;
+
+/// A profundidade do papel NA tinta: o Relief do papel com o piso [`RELIEF_NA_TINTA_MIN`].
+#[must_use]
+pub(in crate::tool::paint) fn relief_na_tinta(relief: f32) -> f32 {
+    relief.clamp(0.0, 1.0).max(RELIEF_NA_TINTA_MIN)
+}
+
+/// O papel que o filme transmissivo mostra: o do documento (a textura escolhida) ou, sem papel escolhido, o de
+/// fábrica (o Cold que o Relief arma), à profundidade [`relief_na_tinta`].
+pub(super) fn papel_do_filme<'a>(
+    tex: ph2d_painter_brush::texture::TextureSettings,
+    relief: f32,
+    rough: f32,
+    image: Option<ph2d_painter_brush::texture::ImageMask<'a>>,
+) -> Option<Substrate<'a>> {
+    let tex = if tex.is_active() {
+        tex
+    } else {
+        super::super::substrate_relief::default_paper()
+    };
+    Substrate::resolve(tex, relief_na_tinta(relief), rough, image)
+}
+
+/// (Testes) Desliga o grão assado — a régua do grão que o filme mostra (`material_do_pincel_tests`).
+#[cfg(test)]
+pub(in crate::tool::paint) mod sem_grao {
+    thread_local!(static S: std::cell::Cell<bool> = const { std::cell::Cell::new(false) });
+    pub(in crate::tool::paint) fn get() -> bool {
+        S.with(std::cell::Cell::get)
+    }
+    pub(in crate::tool::paint) fn set(v: bool) {
+        S.with(|s| s.set(v));
+    }
+}
+
 /// O papel e a luz do passe do relevo, resolvidos uma vez por composite.
 pub(super) struct GraoNoFilme<'a> {
     papel: Substrate<'a>,
@@ -18,12 +57,16 @@ pub(super) struct GraoNoFilme<'a> {
 }
 
 impl<'a> GraoNoFilme<'a> {
-    /// `None` sem papel (o dente) ou sem lâmpada acesa: não há grão que se veja em lado nenhum.
+    /// `None` sem papel ou sem lâmpada acesa: não há grão que se veja em lado nenhum.
     pub(super) fn de(
         papel: Option<Substrate<'a>>,
         rig: &super::super::impasto_rig::LightRig,
         (w, h): (usize, usize),
     ) -> Option<Self> {
+        #[cfg(test)]
+        if sem_grao::get() {
+            return None;
+        }
         let papel = papel?;
         let luz = Rig::new(rig)?;
         let mat = luz.resolve(ph2d_painter_brush::material::Material::NEUTRAL.to_bytes());

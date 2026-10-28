@@ -61,6 +61,44 @@ pub(super) fn premul_do_pixel(
 /// O raio do alisamento no máximo do slider, px (medido na prancha de 10/10, 05 §4b).
 pub(super) const RAIO_MAX: f32 = 6.0;
 
+/// (Testes) `true` = a lei de ANTES da D1 W3b: com o Óleo Real o Smooth Edges só amacia a cor (o `Suave` com a
+/// orla), o campo não o vê — a variante «antes» da folha e o controlo da prova de mutação, no MESMO processo.
+#[cfg(test)]
+pub(in crate::tool::paint) mod so_na_cor {
+    use std::cell::Cell;
+
+    thread_local! {
+        static D: Cell<bool> = const { Cell::new(false) };
+    }
+
+    pub(in crate::tool::paint) fn set(v: bool) {
+        D.with(|c| c.set(v));
+    }
+
+    pub(in crate::tool::paint) fn get() -> bool {
+        D.with(Cell::get)
+    }
+}
+
+/// (Testes) `true` = o composite sem o [`Suave`] dos píxeis (o campo do óleo continua a amaciar): a régua de que a
+/// orla da tinta com o Óleo Real é a do campo.
+#[cfg(test)]
+pub(in crate::tool::paint) mod sem_suave {
+    use std::cell::Cell;
+
+    thread_local! {
+        static D: Cell<bool> = const { Cell::new(false) };
+    }
+
+    pub(in crate::tool::paint) fn set(v: bool) {
+        D.with(|c| c.set(v));
+    }
+
+    pub(in crate::tool::paint) fn get() -> bool {
+        D.with(Cell::get)
+    }
+}
+
 /// Quantos px à volta de uma mudança um pixel do Smooth Edges pode mudar com `raio` — a tenda tem meia
 /// largura `raio`, e a orla anti-serrilhada mais um.
 #[must_use]
@@ -147,78 +185,10 @@ pub(super) struct Suave {
     /// A tinta da região (premultiplicada + `pa`) desfocada pela MESMA tenda que a mancha, nas linhas a
     /// `alcance + 1` da tinta (as que [`Suave::aplica`] lê, com o vizinho do declive); o resto não se lê.
     pbar: Vec<[f32; 4]>,
-    /// O Smooth Edges de cada pixel da região ÷ o da região (§BUG-bordas-W3b: é do TRAÇO, guardado na célula): a
-    /// força da tinta à volta, pela MESMA tenda que a mancha (`Σ tenda·mancha·s ÷ Σ tenda·mancha`). Vazio = todas as
-    /// células da região com o mesmo valor — o caminho de antes, ao byte.
-    forca: Vec<f32>,
-}
-
-/// O Smooth Edges guardado na célula (`grid::aparencia::suave`) numa janela de células: o da camada visível com
-/// tinta de maior valor; `0` no papel.
-pub(super) struct ForcaDaCelula {
-    cx0: usize,
-    cy0: usize,
-    cw: usize,
-    ch: usize,
-    rr: usize,
-    v: Vec<f32>,
-    /// O maior da janela (`0` = nenhum Smooth Edges).
-    pub(super) max: f32,
-    /// Toda célula pintada da janela tem o [`ForcaDaCelula::max`].
-    pub(super) uniforme: bool,
-}
-
-impl ForcaDaCelula {
-    /// A janela de células que cobre os pixels `(px0, py0, px1, py1)` com a margem que o [`Suave`] lê no raio máximo.
-    pub(super) fn de(
-        camadas: &[(&ph2d_wet_paint::grid::Grid, bool)],
-        ratio: u8,
-        (gw, gh): (usize, usize),
-        (px0, py0, px1, py1): (usize, usize, usize, usize),
-    ) -> Self {
-        let rr = usize::from(ratio).max(1);
-        let a = alcance(RAIO_MAX) * 2 + 1;
-        let (cx0, cy0) = (px0.saturating_sub(a) / rr, py0.saturating_sub(a) / rr);
-        let (cx1, cy1) = (((px1 + a) / rr).min(gw - 1), ((py1 + a) / rr).min(gh - 1));
-        let (cw, ch) = (cx1 + 1 - cx0, cy1 + 1 - cy0);
-        let mut v = vec![0f32; cw * ch];
-        let (mut max, mut min) = (0f32, f32::INFINITY);
-        for cy in cy0..=cy1 {
-            for cx in cx0..=cx1 {
-                let mut q: Option<f32> = None;
-                for &(g, visivel) in camadas {
-                    let i = (cx + 1) + (cy + 1) * g.s;
-                    if visivel && (g.sett[i] > 0.0 || g.susp[i] > 0.0) {
-                        let s = ph2d_wet_paint::grid::aparencia::da_celula(&g.aparencia, i).suave;
-                        q = Some(q.map_or(s, |q: f32| q.max(s)));
-                    }
-                }
-                if let Some(q) = q {
-                    v[(cx - cx0) + (cy - cy0) * cw] = q;
-                    max = max.max(q);
-                    min = min.min(q);
-                }
-            }
-        }
-        ForcaDaCelula {
-            cx0,
-            cy0,
-            cw,
-            ch,
-            rr,
-            v,
-            max,
-            uniforme: min >= max || min == f32::INFINITY,
-        }
-    }
-
-    /// A força do pixel `(x, y)` (a da célula dele).
-    #[inline]
-    fn em(&self, x: usize, y: usize) -> f32 {
-        let cx = (x / self.rr).clamp(self.cx0, self.cx0 + self.cw - 1) - self.cx0;
-        let cy = (y / self.rr).clamp(self.cy0, self.cy0 + self.ch - 1) - self.cy0;
-        self.v[cx + cy * self.cw]
-    }
+    /// `false` = a SILHUETA já veio amaciada do campo do Óleo Real (`oleo_real::CampoAltura`, D1 W3b: o relevo e a
+    /// cobertura seguem o mesmo contorno): aqui só os degraus e as linhas DENTRO da tinta, e o píxel SEM tinta do campo
+    /// (`pa < SS0`: a metade de fora da tenda, os vãos da orla rasgada) pela tinta desfocada.
+    orla: bool,
 }
 
 impl Suave {
@@ -231,7 +201,7 @@ impl Suave {
         (x0, y0, x1, y1): (usize, usize, usize, usize),
         raio: f32,
         linhas: Option<bool>,
-        forca: Option<&ForcaDaCelula>,
+        orla: bool,
     ) -> Self {
         let a = alcance(raio) * 2;
         let (rx0, ry0) = (x0.saturating_sub(a), y0.saturating_sub(a));
@@ -306,57 +276,6 @@ impl Suave {
                 *v = caixa(rh, hb, y, |j| t[j * rw + x]);
             }
         });
-        // A força de cada pixel (§BUG-bordas-W3b): a mancha × a força da célula ÷ a da região, pela MESMA tenda.
-        let forca = forca
-            .filter(|f| !f.uniforme && f.max > 0.0)
-            .map_or_else(Vec::new, |f| {
-                let mut sm: Vec<f32> = (0..rw * rh)
-                    .map(|k| {
-                        if m[k] {
-                            f.em(rx0 + k % rw, ry0 + k / rw) / f.max
-                        } else {
-                            0.0
-                        }
-                    })
-                    .collect();
-                let mut u = vec![0.0f32; rw * rh];
-                u.par_chunks_mut(rw).enumerate().for_each(|(y, l)| {
-                    if tem[y] {
-                        let fonte = &sm[y * rw..(y + 1) * rw];
-                        for (x, v) in l.iter_mut().enumerate() {
-                            *v = caixa(rw, hb, x, |i| fonte[i]);
-                        }
-                    }
-                });
-                sm.par_chunks_mut(rw).enumerate().for_each(|(y, l)| {
-                    if tem[y] {
-                        let fonte = &u[y * rw..(y + 1) * rw];
-                        for (x, v) in l.iter_mut().enumerate() {
-                            *v = caixa(rw, hb, x, |i| fonte[i]);
-                        }
-                    } else {
-                        l.fill(0.0);
-                    }
-                });
-                u.par_chunks_mut(rw).enumerate().for_each(|(y, l)| {
-                    if perto[y] {
-                        for (x, v) in l.iter_mut().enumerate() {
-                            *v = caixa(rh, hb, y, |j| sm[j * rw + x]);
-                        }
-                    }
-                });
-                sm.par_chunks_mut(rw).enumerate().for_each(|(y, l)| {
-                    if perto[y] {
-                        for (x, v) in l.iter_mut().enumerate() {
-                            *v = caixa(rh, hb, y, |j| u[j * rw + x]);
-                        }
-                    }
-                });
-                sm.iter()
-                    .zip(&b)
-                    .map(|(&s, &bb)| if bb > 0.0 { (s / bb).min(1.0) } else { 0.0 })
-                    .collect()
-            });
         // A tinta desfocada: duas caixas horizontais nas linhas onde a tinta foi lida (pre → tmp → pre) e
         // duas verticais nas que se leem (pre → tmp → pre).
         let lida = |y: usize| acc[(y + 2 * al + 1).min(rh)] > acc[y.saturating_sub(2 * al)];
@@ -402,7 +321,7 @@ impl Suave {
             raio,
             linhas,
             pbar: pre,
-            forca,
+            orla,
         }
     }
 
@@ -411,11 +330,26 @@ impl Suave {
     pub(super) fn aplica(&self, px: usize, py: usize, dele: ([f32; 3], f32)) -> ([f32; 3], f32) {
         let i = (py - self.y0) * self.rw + (px - self.x0);
         let b = self.b[i];
-        let mut peso = 4.0 * b * (1.0 - b);
+        let mut peso = if self.orla {
+            4.0 * b * (1.0 - b)
+        } else if dele.1 < SS0 {
+            // A silhueta é do campo; o píxel SEM tinta dele (a metade de fora da tenda e os vãos sem pigmento da orla
+            // rasgada) recebe a tinta desfocada — sem relevo: o relevo não sai do pigmento.
+            (2.0 * b).min(1.0)
+        } else {
+            0.0
+        };
         // Dentro da tinta: um DEGRAU de cor — a tinta desfocada a `r` px de cada lado do pixel (num
         // degrau os dois lados diferem; no grão, desfocado, são iguais) e a posição do pixel dentro dele
         // (`u`), com o peso em sino `4·u·(1−u)` como na orla com o papel.
-        let dentro = (2.0 * b - 1.0).clamp(0.0, 1.0);
+        let dentro = if self.orla {
+            (2.0 * b - 1.0).clamp(0.0, 1.0)
+        } else if b >= 1.0 - 1e-6 {
+            // A silhueta é do campo: só onde a tenda inteira é tinta.
+            1.0
+        } else {
+            0.0
+        };
         if dentro > 0.0 {
             let r = (self.raio.round() as usize).max(1);
             let altura = self.b.len() / self.rw;
@@ -475,9 +409,6 @@ impl Suave {
             let wl = ((linha - LINHA_MIN) / (LINHA_CHEIA - LINHA_MIN)).clamp(0.0, 1.0);
             melhor = melhor.max(wl * wl * (3.0 - 2.0 * wl));
             peso = peso.max(melhor * dentro);
-        }
-        if let Some(f) = self.forca.get(i) {
-            peso *= f;
         }
         if peso < 1e-3 {
             return dele;
@@ -608,7 +539,7 @@ mod linhas_tests {
             (0, 0, L, L),
             RAIO_MAX,
             linhas,
-            None,
+            true,
         );
         (0..L)
             .map(|x| {
@@ -805,4 +736,206 @@ mod diag_w3b {
             "{soltos} pontinhos escuros soltos na orla do Dabber"
         );
     }
+
+    /// A varredura do tick até fechar (a do painel, `oleo_no_quadro`).
+    fn varre(t: &mut PainterTool) -> usize {
+        let mut q = 0;
+        while t.oleo_por_compor() {
+            t.on_tick(0.0);
+            q += 1;
+            assert!(q < 10_000, "a varredura não fecha");
+        }
+        q
+    }
+
+    fn mexe(t: &mut PainterTool, v: f64) {
+        t.handle_panel_event(ph2d_editor_core::tool::PanelEvent::SetValue(
+            crate::ids::PAINTER_WETPAINT_SMOOTH_EDGES,
+            v,
+        ));
+    }
+
+    /// ⭐ D1 W3b (dono 27/10: «Smooth Edges deve ser para todo o papel, de todos os traços já pintados ou futuros»):
+    /// **o Smooth Edges é da TELA** — mexer nele muda a tinta JÁ pousada, com e sem o Óleo Real; os eventos do
+    /// arrasto não recompõem (a varredura corre no tick, 1×/quadro); voltar a `0` é a tela de antes, ao bit (o
+    /// raio está na chave do campo guardado).
+    #[test]
+    fn o_smooth_edges_e_da_tela_muda_a_tinta_antiga_no_quadro_e_volta_ao_bit() {
+        for oleo in [true, false] {
+            let mut t = um_traco("Dabber", false);
+            if !oleo {
+                t.set_wet_oleo_real_ligado(false);
+            }
+            let a = t.canvas_rgba.to_vec();
+            for v in [0.3, 0.6, 1.0] {
+                mexe(&mut t, v);
+            }
+            assert_eq!(t.canvas_rgba.to_vec(), a, "óleo {oleo}: o evento recompôs a tela");
+            assert!(t.oleo_por_compor(), "óleo {oleo}: o Smooth Edges não pediu a varredura");
+            let quadros = varre(&mut t);
+            let mudou = t.canvas_rgba.iter().zip(&a).filter(|(x, y)| x != y).count();
+            println!("[smooth da tela] óleo {oleo}: {mudou} bytes da tinta antiga em {quadros} quadros");
+            assert!(mudou > 0, "óleo {oleo}: o Smooth Edges não mudou a tinta já pousada");
+            mexe(&mut t, 0.0);
+            varre(&mut t);
+            let resto = t.canvas_rgba.iter().zip(&a).filter(|(x, y)| x != y).count();
+            assert_eq!(resto, 0, "óleo {oleo}: voltar a 0 deixou {resto} bytes diferentes");
+        }
+    }
+
+    /// ⭐ D1 W3b: **com o Óleo Real o Smooth Edges age no RELEVO** — a sombra que a tinta projecta no papel (que só o
+    /// campo de altura decide) muda com ele. Controlo: a lei de antes (`so_na_cor`, só a cor) não a muda.
+    #[test]
+    fn com_o_oleo_o_smooth_edges_muda_a_sombra_no_papel() {
+        for so_na_cor in [false, true] {
+            super::so_na_cor::set(so_na_cor);
+            let mut t = um_traco("Dabber", false);
+            let sombra = |t: &PainterTool| {
+                t.paint.wetpaint.session.as_ref().expect("sessão").sombra.clone()
+            };
+            let s0 = sombra(&t);
+            t.set_wet_smooth_edges(1.0);
+            let n = sombra(&t).iter().zip(&s0).filter(|(x, y)| x != y).count();
+            super::so_na_cor::set(false);
+            println!("[smooth no relevo] só na cor {so_na_cor}: {n} células da sombra no papel mudaram");
+            if so_na_cor {
+                assert_eq!(n, 0, "controlo: a lei só da cor mexeu na sombra");
+            } else {
+                assert!(n > 0, "o Smooth Edges não chegou ao relevo (a sombra no papel)");
+            }
+        }
+    }
+
+    /// Os VÃOS CLAROS do halo: píxeis de papel (azul `(B − R)/120 < 0,1`) a ≤ 6 px da tinta (azul ≥ ½) mais de 12
+    /// níveis acima da média 5×5 — o papel branco num buraco da orla amaciada (folha D1, `oraculo/README.md`).
+    fn vaos_claros(px: &[u8], (w, h): (usize, usize)) -> usize {
+        let at = |x: usize, y: usize| {
+            let p = &px[(x + y * w) * 4..(x + y * w) * 4 + 3];
+            let (r, g, b) = (f64::from(p[0]), f64::from(p[1]), f64::from(p[2]));
+            (((b - r) / 120.0).clamp(0.0, 1.0), (r + g + b) / 3.0)
+        };
+        let mut n = 0;
+        for y in 8..h - 8 {
+            for x in 8..w - 8 {
+                let (azul, lum) = at(x, y);
+                if azul >= 0.1 {
+                    continue;
+                }
+                let perto = (y - 6..=y + 6).any(|yy| (x - 6..=x + 6).any(|xx| at(xx, yy).0 >= 0.5));
+                if !perto {
+                    continue;
+                }
+                let media = (y - 2..=y + 2)
+                    .flat_map(|yy| (x - 2..=x + 2).map(move |xx| (xx, yy)))
+                    .map(|(xx, yy)| at(xx, yy).1)
+                    .sum::<f64>()
+                    / 25.0;
+                n += usize::from(lum > media + 12.0);
+            }
+        }
+        n
+    }
+
+    /// ⭐ D1 W3b: **com o Óleo Real o halo do Smooth Edges não tem VÃOS BRANCOS** — o campo amacia a silhueta da tinta
+    /// (cobertura e relevo), e o píxel sem pigmento da orla (a metade de fora da tenda, os vãos da orla rasgada) recebe
+    /// a tinta desfocada, sem relevo. Sem o enchimento (1.ª ronda) a folha mostrava 1 166 píxeis claros a Smooth 1
+    /// contra 5 da lei só da cor.
+    #[test]
+    fn com_o_oleo_o_halo_do_smooth_edges_nao_tem_vaos_brancos() {
+        let mut n = [0usize; 2];
+        for (k, so) in [false, true].into_iter().enumerate() {
+            super::so_na_cor::set(so);
+            let mut t = um_traco("Dabber", false);
+            t.set_wet_smooth_edges(1.0);
+            // A tela que se vê (com a luz do relevo): é nela que os vãos saltam.
+            let mut px = t.run_full().0;
+            t.apply_impasto_light(&mut px, crate::Region { x: 0, y: 0, w: W, h: H });
+            n[k] = vaos_claros(&px, (W as usize, H as usize));
+        }
+        super::so_na_cor::set(false);
+        println!("[vãos do halo] campo {} · só na cor {}", n[0], n[1]);
+        assert!(
+            n[0] <= n[1] + 10,
+            "o halo com o relevo tem {} vãos claros (a lei só da cor {})",
+            n[0],
+            n[1]
+        );
+    }
+
+    /// ⭐ D1 W3b: **com o Óleo Real a orla DA TINTA é a do campo** — o píxel com pigmento ao pé da orla (as 3×3 células
+    /// com alfa ≥ `SS0`, uma célula sem tinta a ≤ 2) mostra a cobertura que o campo lhe deu, a mesma do relevo: o
+    /// `Suave` dos píxeis não a amacia outra vez (só enche o papel e os degraus de cor longe da orla).
+    #[test]
+    fn com_o_oleo_a_orla_da_tinta_e_a_do_campo() {
+        let corre = |sem: bool| {
+            super::sem_suave::set(sem);
+            let mut t = um_traco("Dabber", false);
+            t.set_wet_smooth_edges(1.0);
+            super::sem_suave::set(false);
+            t
+        };
+        let (a, b) = (corre(false), corre(true));
+        let s = a.paint.wetpaint.session.as_ref().expect("sessão");
+        let (rr, (gw, gh)) = (usize::from(s.ratio), s.grid);
+        let alfa = |cx: isize, cy: isize| {
+            let (cx, cy) = (cx.clamp(0, gw as isize - 1) as usize, cy.clamp(0, gh as isize - 1) as usize);
+            s.pigment[(cy * gw + cx) * 4 + 3]
+        };
+        let ss0 = (crate::tool::paint::watercolor_render::SS0 * 255.0).ceil() as u8;
+        let (mut orla, mut mexidos) = (0, 0);
+        for y in 0..H as usize {
+            for x in 0..W as usize {
+                let (cx, cy) = ((x / rr) as isize, (y / rr) as isize);
+                let tinta = (-1..=1).all(|dy| (-1..=1).all(|dx| alfa(cx + dx, cy + dy) >= ss0));
+                let perto = (-2..=2).any(|dy| (-2..=2).any(|dx| alfa(cx + dx, cy + dy) == 0));
+                if tinta && perto {
+                    orla += 1;
+                    let o = (x + y * W as usize) * 4;
+                    mexidos += usize::from(a.canvas_rgba[o..o + 4] != b.canvas_rgba[o..o + 4]);
+                }
+            }
+        }
+        println!("[orla da tinta] {orla} píxeis com tinta ao pé da orla · {mexidos} amaciados de novo");
+        assert!(orla > 100, "controlo: a régua não achou a orla ({orla})");
+        assert_eq!(mexidos, 0, "o Suave amaciou de novo {mexidos} píxeis da orla do campo");
+    }
+
+    /// **Pegar um pincel não muda o Smooth Edges da tela** (D1 W3b: não viaja no preset de pincel).
+    #[test]
+    fn escolher_um_pincel_nao_muda_o_smooth_edges_da_tela() {
+        let mut t = PainterTool::default();
+        t.abre_a_sprite(vec![255u8; 64 * 64 * 4], 64, 64);
+        t.set_paint_media(PaintMedia::WetPaint);
+        t.set_wet_smooth_edges(0.7);
+        for nome in ["Dabber", "Knife Oily"] {
+            let p = crate::tool::paint::wetpaint_preset::de_fabrica_ou_candidato(nome);
+            assert!(t.wet_preset_aplicar(&p).is_empty());
+            assert_eq!(t.wet_smooth_edges(), 0.7, "o pincel {nome} trouxe o Smooth Edges");
+        }
+    }
+
+    /// A FOLHA D1 W3b: o traço do Dabber com o Óleo Real e o Smooth Edges 0 · 0,5 · 1, antes (só a cor) | depois (a
+    /// silhueta no campo). `PH2D_OLEO_PNG=<pasta>` ⇒ `se_<antes|depois>_<s>.ppm`.
+    #[test]
+    #[ignore = "medicao — corre-se à mão no perfil smoke"]
+    fn medida_smooth_edges_relevo_folha() {
+        let d = std::env::var("PH2D_OLEO_PNG").expect("PH2D_OLEO_PNG=<pasta>");
+        let (w, h) = (W, H);
+        for (nome, so) in [("antes", true), ("depois", false)] {
+            super::so_na_cor::set(so);
+            let mut t = um_traco("Dabber", false);
+            for s in [0.0f32, 0.5, 1.0] {
+                t.set_wet_smooth_edges(s);
+                let mut px = t.run_full().0;
+                t.apply_impasto_light(&mut px, crate::Region { x: 0, y: 0, w, h });
+                let mut ppm = format!("P6\n{w} {h}\n255\n").into_bytes();
+                for p in px.as_chunks::<4>().0 {
+                    ppm.extend_from_slice(&p[..3]);
+                }
+                std::fs::write(format!("{d}/se_{nome}_{s}.ppm"), ppm).expect("grava");
+            }
+        }
+        super::so_na_cor::set(false);
+    }
 }
+

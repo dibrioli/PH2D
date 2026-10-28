@@ -63,6 +63,34 @@ pub fn pousa(g: &mut Grid, i: usize, m_old: f64, novo: MaterialCelula, v: f64, t
     }
 }
 
+/// O alcance, em células, da orla virgem que o material veste ([`veste_virgens`]). MEDIDO no gate
+/// `o_material_veste_a_orla_virgem` (tool-painter): o pigmento que a água leva depois do rasto chega a 1–3 células
+/// da caixa: alcance 2 (o da aparência) · 3 · 4 → 131 · 39 · 1 das 8 408 células com tinta sem o material (a de 4 com
+/// massa 1e-23). Custo: o laço da caixa + 4 por janela, desprezável ao lado do depósito.
+pub const ORLA_VIRGEM: i32 = 4;
+
+/// A orla VIRGEM (sem tinta) à volta da caixa que o rasto acabou de pousar recebe o material `novo` — o par de
+/// [`super::aparencia::veste_virgens`] (auditoria W3b C4): a advecção não move este campo, e o pigmento que a água
+/// leva para fora do rasto chega a células virgens; sem isto elas mostravam o NEUTRO (um aro opaco à volta de um
+/// traço de vidro). Uma célula virgem não se desenha: nunca muda um byte do que já está na tela.
+pub fn veste_virgens(g: &mut Grid, (x0, y0, x1, y1): (i32, i32, i32, i32), novo: MaterialCelula) {
+    if g.material.is_empty() && novo == MaterialCelula::NEUTRO {
+        return;
+    }
+    let r = ORLA_VIRGEM;
+    let (x0, y0) = ((x0 - r).max(1), (y0 - r).max(1));
+    let (x1, y1) = ((x1 + r).min(g.w as i32), (y1 + r).min(g.h as i32));
+    garante(g);
+    for y in y0..=y1 {
+        let o = y as usize * g.s;
+        for i in o + x0 as usize..=o + x1 as usize {
+            if g.susp[i] <= 0.0 && g.sett[i] <= 0.0 {
+                g.material[i] = novo;
+            }
+        }
+    }
+}
+
 /// A média de `ms` pesada por `ws` (o material é linear: a mesma `mistura` em dobra). `None` sem peso.
 #[must_use]
 pub fn media(ms: impl IntoIterator<Item = (MaterialCelula, f64)>) -> Option<MaterialCelula> {

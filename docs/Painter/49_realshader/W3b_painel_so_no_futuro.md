@@ -2,8 +2,10 @@
 
 **Lei do dono (27/10):** «Uma vez que o traço foi feito, se o usuário muda as configurações no painel, não afeta a tinta
 já colocada no papel — passa a valer para os próximos traços.» Decisão do dono para os ambíguos: o dente do papel
-(Tooth / Paper depth) e a Texture on Paint são do PAPEL (tela inteira) e podem mudar tudo; o Smooth Edges passa a ser do
-traço e é do agente das BORDAS (fora deste item).
+(Tooth / Paper depth) e a Texture on Paint são do PAPEL (tela inteira) e podem mudar tudo. O Smooth Edges foi do traço
+numa ronda (`65d6a6a16d`) e o 2.º smoke do dono revogou-o (D1, 27/10: «para todo o papel, de todos os traços já pintados
+ou futuros»): é da TELA, mora no cartão **Paper**, não viaja no preset e não está no gate deste item
+(`oraculo/README.md` §Smooth Edges na tela).
 
 ## Censo (medido, não lido)
 
@@ -24,6 +26,7 @@ inteira recomposta, com e sem Óleo Real) correu ANTES da cura como censo explor
 | Paper contrast / fibres / grooves (`Rebuild::Paper`) | `rebake_paper` (só sem papel escolhido) | não ao compor (medido: com e sem óleo, sem papel escolhido, 0 bytes) | do papel — fora do gate, por nome (`os_knobs_do_papel_sao_os_que_refazem_a_folha`) |
 | Tooth / Paper depth (`brush.paper_depth` → `set_paper_tooth`) | `rebake_paper` → `Grid::paper` | só com papel impresso (Texture on Paint) — tela inteira, por decisão | mora no cartão **Paper** (`paint_paper_section`). Ronda 2: o preset de pincel deixou de o levar (`CAMPOS_DO_PINCEL` 38 → 37, `CAMPOS_FORA` `("paper_depth", DA_OBRA)`; a gravação tira-o também da base antiga; um preset antigo que o traga é lido e ignorado — os 65 de fábrica traziam todos `1.0`, a fábrica não muda) e o setter carimba-o em TODOS os slots (`set_paper_field`: antes pegar um pincel Digital devolvia o dente a 1,0) |
 | Texture on Paint (`PAINTER_WETPAINT_PAPER_VISUAL`) | `composite.rs` → `PigmentVisual::paper` | tela inteira, por decisão | já mora no cartão **Paper** — não mexido |
+| Smooth Edges (`PAINTER_WETPAINT_SMOOTH_EDGES`) | `composite.rs` → `oleo_real::amacia_a_silhueta` (com o óleo) e `smooth_edges::Suave` | tela inteira, por decisão (D1) | mudou-se para o cartão **Paper**; recompõe no tick |
 | os outros ~100 knobs (Paint, Water, Physics, Tools, Bristles, Stroke, WetEffects, Pen, Tilt…) | depósito, solver, secagem, mão | não ao compor (gate: 0 bytes) | — |
 | `km_mixing`, `borda_que_pesa`, `opacidade`, tilt | sim / depósito | não ao compor (gate) | — |
 
@@ -47,7 +50,7 @@ massa; viaja no instantâneo, no `GridPatch` (undo de janela), no `clear_canvas`
 
 ## Custo de memória
 
-`AparenciaCelula` = **16 B por célula** (12 + `suave` do Smooth Edges, W3b bordas ronda 2), só quando alocado (medido no gate: a grade retém 67,1 B/célula; +12 =
+`AparenciaCelula` = **12 B por célula** (papel · grão · vidrado; o `suave` da ronda 2 das bordas saiu quando o Smooth Edges voltou a ser da TELA — `grid/aparencia.rs`, gate `size_of == 12`), só quando alocado (medido no gate: a grade retém 67,1 B/célula; +12 =
 +18 %; 4096² com razão 1: +201 MB). A fábrica paga **0** (gate). `u8` quantizado (3 B) foi pesado e recusado: os
 valores dos presets (passo 0,01) deixavam de ser exactos (1/170 de passo) e a lei do vidrado `1` deixava de ser a de
 velatura ao bit; o idioma da crate (relevo, vela, material) é `f32`.
@@ -60,7 +63,7 @@ velatura ao bit; o idioma da crate (relevo, vela, material) é `f32`.
   antes fica ao byte (mesma história com e sem a mudança).
 - `o_vidrado_da_celula_e_a_lei_de_velatura_ao_bit` — uma tela pintada toda com o Glaze layering = a sessão cuja lei já
   é de velatura, ao byte, em toda célula pousada (secar, pintar por cima, ticks); ≤ 0,1 % de células só pela água.
-- `a_fabrica_nao_aloca_a_aparencia` — `NEUTRA` = `WetKnobs::DEFAULT`; a fábrica não aloca; o campo custa 16 B/célula;
+- `a_fabrica_nao_aloca_a_aparencia` — `NEUTRA` = `WetKnobs::DEFAULT`; a fábrica não aloca; o campo custa 12 B/célula;
   Live Water latente.
 - `os_knobs_do_papel_sao_os_que_refazem_a_folha` — a excepção do gate, nomeada.
 - `escolher_um_pincel_nao_muda_o_dente_da_tela` (ronda 2) — os 65 presets de fábrica e um antigo com `paper_depth`
@@ -88,6 +91,8 @@ velatura ao bit; o idioma da crate (relevo, vela, material) é `f32`.
 | P1 a gravação deixa o `paper_depth` da base | VERMELHO (`escolher_um_pincel_nao_muda_o_dente_da_tela`) |
 | P2 `paper_depth` de volta a `CAMPOS_DO_PINCEL` | VERMELHO |
 | P3 o setter do dente só no pincel vivo | VERMELHO |
+
+13 mutações vermelhas (M1–M10, P1–P3); a mensagem do commit `151cf87c10` dizia 16.
 
 ## Aberto
 

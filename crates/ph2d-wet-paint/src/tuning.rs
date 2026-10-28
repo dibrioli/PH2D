@@ -7,8 +7,9 @@
 //! (NaN falls back to the default, exactly like the JS free numeric input).
 //!
 //! The SPEC §17 gated extensions ship default-neutral; since 25/10 the ones that are ART live in the
-//! Tuning's advanced groups (`Bristles` · `Stroke` · `WetEffects` · `Look`). `Hidden` keeps only what
-//! another surface paints (card, Shape) and pure engine calibration.
+//! Tuning's advanced groups (`Bristles` · `Stroke` · `WetEffects`; the `Look` group left on 27/10 — its knobs are
+//! `Hidden`, read only by the unused `render::render_region`). `Hidden` keeps what another surface paints (card,
+//! Shape), pure engine calibration and those dead Look knobs.
 
 /// Every calibration knob. Discriminants are indices into [`KNOB_DEFS`] and
 /// the value array — the order below IS the table order.

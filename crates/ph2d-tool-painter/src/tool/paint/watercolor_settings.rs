@@ -402,6 +402,10 @@ impl PainterTool {
         self.paint.paper_image = None;
         self.paint.paper_image_version = self.paint.paper_image_version.wrapping_add(1);
         self.sync_paper_across_slots();
+        // O Smooth Edges do Wet Paint mora neste cartão (é da tela, D1 W3b).
+        if self.guarda_smooth_edges(0.0) {
+            self.wet_recomposite_full();
+        }
     }
 
     /// Set the **Paper** slot kind (`TextureKind` wire u8) + force canvas-anchored mapping, reset the

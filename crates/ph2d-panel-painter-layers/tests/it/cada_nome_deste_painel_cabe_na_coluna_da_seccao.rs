@@ -69,7 +69,8 @@ const ELIDEM_POR_LARGURA: &[(f32, usize)] = &[
     // ⚠️ 27/10 (Óleo Real W3 K9): os nomes do Blender do material (ordem do dono) punham `15` aqui e `2` a `245`
     //    («Coat Roughness», «Subsurface Radius»); os 13 de cima vêm da base `5a01640d94`. Cura: o nome do material
     //    que não cabe parte-se em DUAS linhas (`duas_linhas::partido`, a mesma pergunta que o pintor faz).
-    (220.0, 13),
+    // ⬇️ 13 → 12 em 2026-10-28 (W3b): Transmission/Transparency/Paper Relief saíram do cartão Real Oil (só no pincel).
+    (220.0, 12),
     (245.0, 1),
     // Amostra DATADA da largura do dono (lida em 2026-09-14).
     (273.3, 0),

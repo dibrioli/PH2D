@@ -99,12 +99,12 @@ pub struct Efectivo {
     pub relevo_papel: f64,
 }
 
-/// A ÚNICA regra de combinação célula × cartão: `max` nos de neutro `0` (Metallic, Coat, Sheen, Subsurface,
-/// Transparency, Transmission, Relevo do papel — o
+/// A ÚNICA regra de combinação célula × cartão: `max` nos de neutro `0` (Metallic, Coat, Sheen, Subsurface — o
 /// cartão põe verniz em toda a tinta, a célula metálica continua metálica); `cartão × célula / neutro` nos outros
 /// (Roughness, IOR Level, Coat Roughness, Subsurface Radius). Célula NEUTRA ⇒ o cartão; cartão no padrão ⇒ a célula
 /// (ao bit nos três de padrão = neutro, e na Roughness pelo factor de potência de 2 — gate
-/// `o_roughness_do_cartao_no_padrao_e_a_imagem_de_antes`).
+/// `o_roughness_do_cartao_no_padrao_e_a_imagem_de_antes`). A Transparency, a Transmission e o Relevo do papel são
+/// SÓ da célula (W3b ronda 3: saíram do cartão — o painel só vale para os traços seguintes): [`peso`].
 #[must_use]
 pub fn efectivo(c: &MaterialCelula, k: &MaterialCartao) -> Efectivo {
     let mx = |a: f32, b: f64| f64::from(a).max(b).clamp(0.0, 1.0);
@@ -132,17 +132,18 @@ pub fn efectivo(c: &MaterialCelula, k: &MaterialCartao) -> Efectivo {
             k.raio_subsuperficie,
             kn.raio_subsuperficie,
         ),
-        transparencia: transparencia(c.transparencia, k.transparencia),
-        transmissao: transparencia(c.transmissao, k.transmissao),
-        relevo_papel: transparencia(c.relevo_papel, k.relevo_papel),
+        transparencia: peso(c.transparencia),
+        transmissao: peso(c.transmissao),
+        relevo_papel: peso(c.relevo_papel),
     }
 }
 
-/// A Transparency EFECTIVA (célula × cartão, `max` presa a `0..1`) — a mesma regra de [`efectivo`], sem o resto.
+/// Um peso da CÉLULA (Transparency, Transmission, Relevo do papel) preso a `0..1` — só da tinta pousada, nenhum
+/// leitor de composição os lê do cartão (gate `o_cartao_nao_tem_os_pesos_da_tinta`).
 #[inline]
 #[must_use]
-pub fn transparencia(celula: f32, cartao: f64) -> f64 {
-    f64::from(celula).max(cartao).clamp(0.0, 1.0)
+pub fn peso(celula: f32) -> f64 {
+    f64::from(celula).clamp(0.0, 1.0)
 }
 
 /// ⭐ **A lei da Transparency** (dono 27/10, `1 − Alpha` do Principled): a cobertura de COMPOSIÇÃO `alfa` (a de
@@ -155,18 +156,35 @@ pub fn transparente(alfa: f64, t: f64) -> f64 {
     alfa * (1.0 - t)
 }
 
-/// ⭐ **A lei da Transmission** (W3b 27/10, o «Transmission Weight» do Principled; medida contra o Cycles em
-/// `docs/Painter/49_realshader/oraculo/README.md` §Transmission): o difuso LINEAR `base` de um canal de albedo
-/// `a` com o peso `w`. A luz atravessa o filme (tinge-se por `a`), bate no papel e volta (tinge-se outra vez):
-/// `a²` — sem o branco que o difuso de uma tinta opaca reflecte, por isso saturada. `d` é o difuso relativo da
-/// célula (a luz que chega, igual para o papel sob o filme fino). `w = 0` devolve `base` ao bit.
+/// A espessura óptica do filme TRANSMISSIVO por travessia, em unidades da tinta opaca (Beer–Lambert:
+/// `T = exp(−k·(−ln a)) = a^k`). Dono 27/10 (W3b ronda 3): a Transmission a 1 é um VIDRO COLORIDO CLARO — o papel
+/// bem claro, com o grão, só tingido. Medido em `oraculo/README.md` §Transmission «Ronda 3».
+pub const VIDRO_K: f64 = 0.2;
+
+/// ⭐ **A luz que atravessa o vidro de tinta** nas DUAS faces (entra, bate no papel, sai): `a^(2k)` por canal de
+/// albedo linear `a` ([`VIDRO_K`]). O mesmo filtro tinge o papel sob a tinta ([`transmite`]) e a luz que a tinta
+/// deixa passar para o papel nu ([`crate::oleo_real::transparencia_a_luz`]).
+#[inline]
+#[must_use]
+pub fn vidro(a: f64) -> f64 {
+    if a <= 0.0 {
+        0.0
+    } else {
+        libm::pow(a.min(1.0), 2.0 * VIDRO_K)
+    }
+}
+
+/// ⭐ **A lei da Transmission** (W3b, o «Transmission Weight» do Principled; `oraculo/README.md` §Transmission
+/// «Ronda 3»): o difuso LINEAR `base` de um canal de albedo `a` com o peso `w`. A luz atravessa o filme fino, bate
+/// no papel e volta, filtrada pelo [`vidro`] — claro e tingido, sem o branco que o difuso de uma tinta opaca
+/// reflecte. `d` é o difuso relativo do papel sob o filme (com a cor dele). `w = 0` devolve `base` ao bit.
 #[inline]
 #[must_use]
 pub fn transmite(base: f64, a: f64, d: f64, w: f64) -> f64 {
     if w <= 0.0 {
         return base;
     }
-    base * (1.0 - w) + w * a * a * d
+    base * (1.0 - w) + w * vidro(a) * d
 }
 
 #[cfg(test)]

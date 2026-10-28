@@ -134,12 +134,15 @@ fn a_edicao_da_heavy_edge_chega_a_ferramenta() {
 }
 
 /// O **Smooth Edges** é uma linha numérica desde 10/10 (dono: «ajustar a intensidade»): viva sob o
-/// ponteiro, a edição vira `SetValue`, e a ferramenta guarda a intensidade presa a `0..1`.
+/// ponteiro, a edição vira `SetValue`, e a ferramenta guarda a intensidade presa a `0..1`. Desde a W3b (D1) é da
+/// TELA e mora no cartão Paper (`seam_papel`).
 #[test]
 fn o_smooth_edges_e_um_slider_que_chega_a_ferramenta() {
     use ph2d_tool_painter::ids::PAINTER_WETPAINT_SMOOTH_EDGES as ID;
     let mut tool = molhado();
-    let (mut host, mut st, rects) = pinta(&tool);
+    let (mut host, mut st, _) = pinta(&tool);
+    host.open_all_sections();
+    let rects = host.paint::<PainterLayersPanel>(&mut st, viewport());
     let r = rect_de(&rects, ID).expect("Smooth Edges pintado");
     assert_eq!(
         host.hit_at(r.x + r.w * 0.5, r.y + r.h * 0.5),

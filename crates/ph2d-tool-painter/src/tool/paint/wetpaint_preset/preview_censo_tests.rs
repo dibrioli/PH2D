@@ -231,12 +231,20 @@ const WET_FORA_DO_PREVIEW: &[(&str, &str)] = &[
         "knobs_por_slot",
         "os das ferramentas FORA da mão: o preview pinta os da mão (`knobs`)",
     ),
+    (
+        "glaze_por_slot",
+        "o das ferramentas FORA da mão: o preview pinta o da mão (`km_glaze`)",
+    ),
     ("preset_pedido", UI),
     ("fita", SESSAO),
     ("ritmo", SESSAO),
     (
         "composta",
         "a marca da água na tela da OBRA (a macro): o preview mostra o pincel, não a obra",
+    ),
+    (
+        "varredura",
+        "a recomposição da tela da OBRA que o painel pediu e o tick varre (`oleo_no_quadro`): não é do pincel",
     ),
 ];
 

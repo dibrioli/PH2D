@@ -106,6 +106,8 @@ fn the_knob_rows_are_offered_only_while_armed() {
     for id in ph2d_tool_painter::ids::PAINTER_WETPAINT_FIELDS
         .into_iter()
         .filter(|id| !DA_FERRAMENTA.iter().any(|(i, _)| i == id))
+        // D1 W3b: o Smooth Edges é da TELA e mora no cartão Paper (presença e ausência: `seam_papel`).
+        .filter(|id| *id != ph2d_tool_painter::ids::PAINTER_WETPAINT_SMOOTH_EDGES)
     {
         assert!(
             has(&armed, id),
@@ -237,14 +239,14 @@ fn every_doc22_wet_widget_is_offered_only_while_armed() {
     wet.set_wetpaint_armed(true);
     let on = painted(&wet);
     let off = painted(&PainterTool::default());
-    let ids: [NodeId; 8] = [
+    // (O Smooth Edges saiu daqui na W3b — D1: é da tela, no cartão Paper, `seam_papel`.)
+    let ids: [NodeId; 7] = [
         ph2d_tool_painter::ids::PAINTER_WETPAINT_TILT_TOGGLE,
         ph2d_tool_painter::ids::PAINTER_WETPAINT_TILT_PAD,
         ph2d_tool_painter::ids::PAINTER_WETPAINT_WETCANVAS,
         ph2d_tool_painter::ids::PAINTER_WETPAINT_DRYCANVAS,
         ph2d_tool_painter::ids::PAINTER_WETPAINT_FASTDRY,
         ph2d_tool_painter::ids::PAINTER_WETPAINT_SHOWWET,
-        ph2d_tool_painter::ids::PAINTER_WETPAINT_SMOOTH_EDGES,
         ph2d_tool_painter::ids::PAINTER_WETPAINT_TUNING,
     ];
     for id in ids {

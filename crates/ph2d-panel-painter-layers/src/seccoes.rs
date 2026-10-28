@@ -314,6 +314,7 @@ pub(crate) const PAPER: &[&str] = &[
     "panel.painter_layers.paper.size",
     "panel.painter_layers.paper.tooth",
     "panel.painter_layers.paper.texture_on_paint",
+    "panel.painter_layers.wetpaint.smooth_edges",
     "panel.painter_layers.paper.relief",
     "panel.painter_layers.paper.roughness",
 ];
@@ -442,7 +443,6 @@ pub(crate) const WETPAINT_CARTAO: &[&str] = &[
     "panel.painter_wet_cartao.absorbency",
     "panel.painter_layers.wetpaint.erase_strength",
     "panel.painter_layers.wetpaint.heavy_edge",
-    "panel.painter_layers.wetpaint.smooth_edges",
     "panel.painter_layers.wetpaint.oleo_depth",
     "panel.painter_layers.wetpaint.oleo_shadow",
     "panel.painter_layers.wetpaint.oleo_gloss",
@@ -460,9 +460,6 @@ pub(crate) const WETPAINT_CARTAO: &[&str] = &[
     "panel.painter_layers.wetpaint.oleo_sheen",
     "panel.painter_layers.wetpaint.oleo_subsurface",
     "panel.painter_layers.wetpaint.oleo_subsurface_radius",
-    "panel.painter_layers.wetpaint.oleo_transparency",
-    "panel.painter_layers.wetpaint.oleo_transmission",
-    "panel.painter_layers.wetpaint.oleo_paper_relief",
 ];
 
 /// ⭐⭐ **A [`Seccao`] de uma declaração** — medida sobre os rótulos dela, no sistema de texto real.

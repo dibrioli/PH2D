@@ -25,6 +25,15 @@ fn tinta() -> Grid {
     g
 }
 
+/// A grade `g` com o material de cada célula mexido por `f` (o do pincel: o cartão não tem os três pesos).
+fn cel(g: &Grid, f: impl Fn(&mut crate::material::MaterialCelula)) -> Grid {
+    let mut g = g.clone();
+    for m in crate::grid::material::garante(&mut g) {
+        f(m);
+    }
+    g
+}
+
 fn oleo(f: impl Fn(&mut OleoReal)) -> OleoReal {
     let mut o = OleoReal::default();
     f(&mut o);
@@ -74,8 +83,8 @@ fn croma_no_miolo(px: &[u8]) -> f64 {
     soma / n
 }
 
-/// ⭐ Neutro AO BIT: a Transmission e o Relevo do papel a 0 — no campo da célula alocado (o ramo do pincel) e no
-/// cartão — dão os bytes da tinta de sempre; o dente que a tinta mostra é 0 em toda a célula.
+/// ⭐ Neutro AO BIT: a Transmission e o Relevo do papel a 0 no campo da célula alocado (o ramo do pincel) dão os bytes
+/// da tinta de sempre; o dente que a tinta mostra é 0 em toda a célula.
 #[test]
 fn a_transmissao_e_o_relevo_do_papel_a_zero_sao_a_imagem_de_antes() {
     let g = tinta();
@@ -83,7 +92,6 @@ fn a_transmissao_e_o_relevo_do_papel_a_zero_sao_a_imagem_de_antes() {
     crate::grid::material::garante(&mut com_campo);
     let antes = render(&g, &OleoReal::default());
     assert_eq!(antes, render(&com_campo, &OleoReal::default()));
-    assert_eq!(antes, render(&g, &oleo(|o| o.material.transmissao = 0.0)));
     let c = CampoAltura::de(&[(&com_campo, true)], &OleoReal::default(), 1, 1, 1, W, W);
     for y in 1..=W {
         for x in 1..=W {
@@ -99,36 +107,59 @@ fn a_transmissao_e_o_relevo_do_papel_a_zero_sao_a_imagem_de_antes() {
     );
 }
 
-/// ⭐ A Transmission é VIVA: à mesma força a tinta sobre o papel branco é mais saturada que a do Alpha (que a mistura
-/// com o branco) e que a opaca; a força 1 do Alpha some, a da Transmission continua cor. A da CÉLULA (o pincel) também.
+/// A luminância LINEAR média do miolo sobre o papel branco (o píxel por cima do branco pelo alfa), ÷ a do papel.
+fn luz_no_miolo(px: &[u8]) -> f64 {
+    let (mut soma, mut n) = (0.0, 0.0);
+    for y in 16..=32 {
+        for x in 16..=32 {
+            let p = &px[((y - 1) * W + x - 1) * 4..][..4];
+            let a = f64::from(p[3]) / 255.0;
+            let c = [0, 1, 2].map(|k| {
+                crate::colorops::transfer::srgb255_to_linear(f64::from(p[k]) * a + 255.0 * (1.0 - a))
+            });
+            soma += 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+            n += 1.0;
+        }
+    }
+    soma / n
+}
+
+/// ⭐ **A Transmission a 1 é um VIDRO COLORIDO CLARO** (dono 27/10, W3b ronda 3: «o papel bem claro, com o grão, só
+/// tingido pela cor»): o miolo sobre o papel branco sai claro (L ÷ papel ≥ 0,3; a opaca 0,1), com o MATIZ da tinta
+/// (a ordem dos canais) e mais saturado que o Alpha à MESMA luminância (o vidro multiplica, o Alpha mistura branco);
+/// sobe com o peso. A força 0,5 fica entre a opaca e o vidro.
 #[test]
-fn a_transmissao_e_mais_saturada_que_o_alfa() {
+fn a_transmissao_e_um_vidro_colorido_claro() {
     let g = tinta();
-    let opaca = croma_no_miolo(&render(&g, &OleoReal::default()).0);
-    for f in [0.5, 1.0] {
-        let tr = croma_no_miolo(&render(&g, &oleo(|o| o.material.transmissao = f)).0);
-        let al = croma_no_miolo(&render(&g, &oleo(|o| o.material.transparencia = f)).0);
-        println!(
-            "[transmission] força {f}: saturação transmissão {tr:.3} · alfa {al:.3} · opaca {opaca:.3}"
-        );
-        assert!(tr > al + 0.1, "força {f}: transmissão {tr} × alfa {al}");
-        assert!(tr >= opaca, "força {f}: transmissão {tr} × opaca {opaca}");
+    let (po, _) = render(&g, &OleoReal::default());
+    let (p1, _) = render(&cel(&g, |m| m.transmissao = 1.0), &OleoReal::default());
+    let (pm, _) = render(&cel(&g, |m| m.transmissao = 0.5), &OleoReal::default());
+    let (lo, l1, lm) = (luz_no_miolo(&po), luz_no_miolo(&p1), luz_no_miolo(&pm));
+    let s1 = croma_no_miolo(&p1);
+    // O Alpha da mesma luminância que o vidro (procura em passos de 0,05).
+    let (mut melhor, mut sa) = (f64::INFINITY, 0.0);
+    for k in 1..20 {
+        let (pa, _) = render(&cel(&g, |m| m.transparencia = k as f32 * 0.05), &OleoReal::default());
+        let d = (luz_no_miolo(&pa) - l1).abs();
+        if d < melhor {
+            (melhor, sa) = (d, croma_no_miolo(&pa));
+        }
     }
-    let mut cel = g.clone();
-    for m in crate::grid::material::garante(&mut cel) {
-        m.transmissao = 1.0;
-    }
-    // A do PINCEL (o material que se vê mistura-se com o papel pela cobertura, como o Metallic): a mesma direcção.
-    let pincel = croma_no_miolo(&render(&cel, &OleoReal::default()).0);
-    println!("[transmission] pincel 1: saturação {pincel:.3}");
+    println!(
+        "[transmission] vidro: L ÷ papel opaca {lo:.3} · 0,5 {lm:.3} · 1 {l1:.3}; saturação vidro {s1:.3} × Alpha da mesma L {sa:.3} (ΔL {melhor:.3})"
+    );
+    assert!(l1 >= 0.3, "o vidro é claro: {l1}");
+    assert!(lo < lm && lm < l1, "sobe com o peso: {lo} · {lm} · {l1}");
+    assert!(s1 > sa, "o vidro tinge, o Alpha lava: {s1} × {sa}");
+    let canal = |px: &[u8], k: usize| px[((24 - 1) * W + 23) * 4 + k];
     assert!(
-        pincel > opaca,
-        "a Transmission do pincel satura: {pincel} × {opaca}"
+        canal(&p1, 2) > canal(&p1, 1) && canal(&p1, 1) > canal(&p1, 0),
+        "o matiz da tinta (azul > verde > vermelho)"
     );
 }
 
-/// O dente que se vê ATRAVÉS da tinta é o da Transmission (célula ∘ cartão por `max`); o Relevo do papel não passa por
-/// aqui (vai na altura fina, `o_relevo_do_papel_assenta_a_tinta_no_dente`).
+/// O dente que se vê ATRAVÉS da tinta é o da Transmission da CÉLULA (o cartão não a tem); o Relevo do papel não passa
+/// por aqui (vai na altura fina, `o_relevo_do_papel_assenta_a_tinta_no_dente`).
 #[test]
 fn o_grao_do_papel_atraves_da_tinta_e_o_da_transmissao() {
     let mut g = tinta();
@@ -139,7 +170,11 @@ fn o_grao_do_papel_atraves_da_tinta_e_o_da_transmissao() {
     let c = CampoAltura::de(&[(&g, true)], &OleoReal::default(), 1, 1, 1, W, W);
     let d = |o: &OleoReal| grao_do_papel(o, &c, 24, 24);
     assert!((d(&OleoReal::default()) - 0.5).abs() < 1e-3);
-    assert!((d(&oleo(|o| o.material.transmissao = 0.8)) - 0.8).abs() < 1e-6);
+    let mut k = OleoReal::default();
+    for c in 0..crate::oleo_real::N_CAMPOS {
+        k.material.poe(c, 0.9);
+    }
+    assert!((d(&k) - 0.5).abs() < 1e-3, "o cartão não muda o dente que a tinta mostra");
 }
 
 /// Uma tinta LISA (massa constante: a única variação é a do papel) sobre um papel em ondas.
@@ -165,11 +200,12 @@ fn lisa_sobre_papel() -> Grid {
 
 /// ⭐ **O Relevo do papel assenta a tinta no dente** (dono 27/10: «a tinta era viva»): com o papel (`dente_papel`) e o
 /// Relevo do papel 1 a altura fina da tinta lisa segue o papel e o BRILHO do óleo varia com o grão; a 0 — ou sem
-/// papel — a altura e o brilho são os de antes ao bit; o papel nu continua plano; a do pincel vale como a do cartão.
+/// papel — a altura e o brilho são os de antes ao bit; o papel nu continua plano. Só a do PINCEL (célula).
 #[test]
 fn o_relevo_do_papel_assenta_a_tinta_no_dente() {
-    let g = lisa_sobre_papel();
-    let com = |f: &dyn Fn(&mut OleoReal)| {
+    let lisa = lisa_sobre_papel();
+    let com = |r: f32, f: &dyn Fn(&mut OleoReal)| {
+        let g = cel(&lisa, |m| m.relevo_papel = r);
         let o = oleo(|o| {
             o.dente_papel = 1.0;
             f(o);
@@ -190,9 +226,9 @@ fn o_relevo_do_papel_assenta_a_tinta_no_dente() {
         let mu = v.iter().sum::<f64>() / v.len() as f64;
         (v.iter().map(|x| (x - mu).powi(2)).sum::<f64>() / v.len() as f64).sqrt()
     };
-    let antes = com(&|o| o.dente_papel = 0.0);
-    let zero = com(&|_| {});
-    let um = com(&|o| o.material.relevo_papel = 1.0);
+    let antes = com(1.0, &|o| o.dente_papel = 0.0);
+    let zero = com(0.0, &|_| {});
+    let um = com(1.0, &|_| {});
     for y in 1..=W as isize {
         for x in 1..=W as isize {
             assert_eq!(
@@ -208,31 +244,18 @@ fn o_relevo_do_papel_assenta_a_tinta_no_dente() {
         "o Relevo do papel põe o grão no BRILHO: {s1} × {s0}"
     );
     assert_eq!(um.1.at_fina(2, 2), 0.0, "o papel nu continua plano");
-    let mut cel = g.clone();
-    for m in crate::grid::material::garante(&mut cel) {
-        m.relevo_papel = 1.0;
-    }
-    let o = oleo(|o| o.dente_papel = 1.0);
-    let c = CampoAltura::de(&[(&cel, true)], &o, 1, 1, 1, W, W);
-    assert!(
-        desvio(&espec(&(o, c))) > 5.0 * s0,
-        "o Relevo do papel do PINCEL"
-    );
 }
 
 /// ⭐ A Transmission tinge a cor REAL do papel: sobre um papel CREME a tinta lisa transmissiva sai, canal a canal, o
-/// papel × a do papel branco no canal da tinta (o difuso linear `w·a²·D·papel`), e não a do branco.
+/// papel × a do papel branco no canal da tinta (o difuso linear `w·vidro(a)·D·papel`), e não a do branco.
 #[test]
 fn a_transmissao_tinge_a_cor_do_papel() {
-    let g = lisa_sobre_papel();
+    let g = cel(&lisa_sobre_papel(), |m| m.transmissao = 1.0);
     let creme = [0.80, 0.70, 0.52];
     let cor = |p: [f64; 3]| {
         let (px, _) = render(
             &g,
-            &oleo(|o| {
-                o.material.transmissao = 1.0;
-                o.papel = p;
-            }),
+            &oleo(|o| o.papel = p),
         );
         let q = &px[((24 - 1) * W + 23) * 4..][..3];
         [0, 1, 2].map(|k| crate::colorops::transfer::srgb255_to_linear(f64::from(q[k])))
@@ -249,8 +272,8 @@ fn a_transmissao_tinge_a_cor_do_papel() {
     );
 }
 
-/// ⭐ O aberto da Transparency (27/10): a tinta transparente ou transmissiva SÓ do pincel (cartão a 0) projecta no
-/// papel NU uma sombra que atravessa — menor que a da opaca, `0` com a Transparency 1. Sem material, a do cartão.
+/// ⭐ O aberto da Transparency (27/10): a tinta transparente ou transmissiva do pincel projecta no papel NU uma sombra
+/// que atravessa — menor que a da opaca, `0` com a Transparency 1. Sem material, a opaca (`0`).
 #[test]
 fn a_sombra_da_tinta_do_pincel_atravessa_no_papel_nu() {
     let o = OleoReal::default();
@@ -291,22 +314,57 @@ fn a_sombra_da_tinta_do_pincel_atravessa_no_papel_nu() {
         "a Transmission atenua pela cor: {sw} × {s0}"
     );
     let c = CampoAltura::de(&[(&opaca, true)], &o, 1, 1, 1, W, W);
-    let k = oleo(|o| o.material.transparencia = 0.3);
-    assert_eq!(transparencia_de_quem_tapa(&k, &c, 40, 40), 0.3);
+    assert_eq!(transparencia_de_quem_tapa(&o, &c, 40, 40), 0.0);
 }
 
-/// O campo guardado (`oleo_cache`) não serve a altura fina de outro Relevo do papel do cartão nem de outro dente.
+/// O campo guardado (`oleo_cache`) não serve a altura fina de outro dente (o Relevo do papel é da célula: entra pela
+/// revisão das grades).
 #[test]
-fn a_chave_do_campo_le_o_relevo_do_papel_e_o_dente() {
+fn a_chave_do_campo_le_o_dente() {
     let g = lisa_sobre_papel();
     let k = |o: &OleoReal| crate::oleo_real::ChaveCampo::de(o, &[(&g, true)], 1);
     let base = oleo(|o| o.dente_papel = 1.0);
     assert_ne!(k(&base), k(&oleo(|o| o.dente_papel = 0.5)));
-    assert_ne!(
-        k(&base),
-        k(&oleo(|o| {
-            o.dente_papel = 1.0;
-            o.material.relevo_papel = 1.0;
-        }))
-    );
+}
+
+/// ⭐ **D3/C2 (dono 27/10): a Transmission, a Transparency e o Relevo do papel SAÍRAM do cartão Real Oil** — o cartão
+/// tem os 8 do Principled e nenhum destes nomes; um cartão com todos os campos mexidos não muda o peso que uma célula
+/// NEUTRA mostra (eles são só da tinta pousada).
+#[test]
+fn o_cartao_nao_tem_os_pesos_da_tinta() {
+    use crate::oleo_real::{MaterialCartao, N_CAMPOS};
+    assert_eq!(N_CAMPOS, 8);
+    for nome in ["transparencia", "transmissao", "relevo_papel"] {
+        assert!(!MaterialCartao::CAMPOS.contains(&nome), "{nome} no cartão");
+    }
+    let mut k = MaterialCartao::NEUTRO;
+    for c in 0..N_CAMPOS {
+        k.poe(c, 1.0);
+    }
+    let e = crate::material::efectivo(&crate::material::MaterialCelula::NEUTRO, &k);
+    assert_eq!((e.transparencia, e.transmissao, e.relevo_papel), (0.0, 0.0, 0.0));
+}
+
+/// ⭐ **C5: a sombra SOB a tinta e no papel NU usam a mesma conta da Transmission** (`transparencia_a_luz`): uma tinta
+/// só com Transmission 1 (Transparency 0) atenua a sombra que projecta na MESMA razão dos dois lados da orla — sob a
+/// orla parcial (o plano que o `render` escreve) e no papel nu ao lado (`transparencia_de_quem_tapa`).
+#[test]
+fn a_sombra_da_transmissao_casa_sob_a_tinta_e_no_papel_nu() {
+    let g = tinta();
+    let (po, so) = render(&g, &OleoReal::default());
+    let (_, sw) = render(&cel(&g, |m| m.transmissao = 1.0), &OleoReal::default());
+    let (mut sob, mut nu) = ([0.0f64; 2], [0.0f64; 2]);
+    for k in 0..W * W {
+        if so[k] < 16 {
+            continue;
+        }
+        let lado = if po[k * 4 + 3] > 0 { &mut sob } else { &mut nu };
+        lado[0] += f64::from(sw[k]);
+        lado[1] += f64::from(so[k]);
+    }
+    let (rs, rn) = (sob[0] / sob[1], nu[0] / nu[1]);
+    println!("[transmission] sombra Transmission 1 ÷ opaca: sob a tinta {rs:.3} · papel nu {rn:.3}");
+    assert!(sob[1] > 0.0 && nu[1] > 0.0, "controlo: sombra dos dois lados");
+    assert!(rn < 0.97, "o papel nu atenua: {rn}");
+    assert!((rs - rn).abs() < 0.1, "a costura: sob {rs} × nu {rn}");
 }

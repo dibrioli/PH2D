@@ -49,10 +49,9 @@ pub const WET_TUNING_RESIZE_HANDLE_BL: NodeId = hash_node_id("wet_tuning.resize_
 
 /// Collapsible group headers: Paint · Water · Physics · Tools · Experimental · Relief (o 6.º, append-only:
 /// o índice 4 é o Experimental). O PAPER saiu na W1e, F2 (o papel do Wet Paint é o da secção Paper do
-/// painel); o RELEVO da tinta voltou a 11/10 (dono: «tirou o relevo junto»), sem o papel. Os quatro
-/// grupos avançados (25/10: Bristles · Stroke · Wet effects · Look) eram os índices 6..10; o Material da tinta (W2 E3)
-/// o 11.º. O Look saiu a 27/10 (W3b): os seus 5 knobs só o `render::render_region` os lia, que nenhum caminho do
-/// produto chama — controlo morto não se mostra (os knobs ficam no `Hidden`).
+/// painel); o RELEVO da tinta voltou a 11/10 (dono: «tirou o relevo junto»), sem o papel. Os três grupos avançados
+/// (Bristles · Stroke · Wet effects) são os índices 6..=8 e o Material da tinta (W2 E3) o 9. O Look saiu a 27/10
+/// (W3b): só o `render::render_region` lia os seus knobs, e nenhum caminho do produto o chama (ficam no `Hidden`).
 pub const WET_TUNING_GROUP_HEADERS: [NodeId; 10] = [
     hash_node_id("wet_tuning.group_paint"),
     hash_node_id("wet_tuning.group_water"),

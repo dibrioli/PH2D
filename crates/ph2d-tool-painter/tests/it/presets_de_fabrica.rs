@@ -788,6 +788,37 @@ fn the_factory_presets_are_counted() {
     }
 }
 
+/// Os campos de topo (e as chaves de `engine`/`brush`) em que a receita e o ficheiro divergem — o veredito diz QUAL.
+fn campos_que_diferem(receita: &Parametros, ficheiro: &Parametros, texturas_iguais: bool) -> Vec<String> {
+    let (Value::Object(a), Value::Object(b)) = (
+        serde_json::to_value(receita).unwrap(),
+        serde_json::to_value(ficheiro).unwrap(),
+    ) else {
+        unreachable!("Parametros serializa como objecto")
+    };
+    let mut out = Vec::new();
+    for k in a.keys().chain(b.keys().filter(|k| !a.contains_key(*k))) {
+        let (x, y) = (a.get(k), b.get(k));
+        if x == y {
+            continue;
+        }
+        match (x, y) {
+            (Some(Value::Object(xm)), Some(Value::Object(ym))) => {
+                for c in xm.keys().chain(ym.keys().filter(|c| !xm.contains_key(*c))) {
+                    if xm.get(c) != ym.get(c) {
+                        out.push(format!("{k}.{c}: receita {:?} · ficheiro {:?}", xm.get(c), ym.get(c)));
+                    }
+                }
+            }
+            _ => out.push(format!("{k}: receita {x:?} · ficheiro {y:?}")),
+        }
+    }
+    if !texturas_iguais {
+        out.push("texturas".to_owned());
+    }
+    out
+}
+
 /// ⭐ **Cada preset de fábrica É a sua receita**: a receita de hoje, sem pintar, dá os parâmetros do ficheiro (no Wet,
 /// com a tabela de largura do ficheiro, que é medida; nos outros meios também as texturas) — mudar uma receita sem
 /// regerar acusa aqui (a miniatura acusa o motor; este, a receita).
@@ -814,8 +845,9 @@ fn cada_preset_de_fabrica_e_a_sua_receita() {
         let (p, t) = parametros_do_meio(r);
         assert!(
             p == f.parametros && t == f.texturas,
-            "{rel}: a receita mudou e o ficheiro não — regere (PH2D_REGERA_SO=\"{}\")",
-            r.nome
+            "{rel}: a receita mudou e o ficheiro não — regere (PH2D_REGERA_SO=\"{}\"); difere: {:?}",
+            r.nome,
+            campos_que_diferem(&p, &f.parametros, t == f.texturas)
         );
     }
 }

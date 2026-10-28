@@ -456,9 +456,6 @@ pub(crate) const MATERIAL: [&str; ph2d_tool_painter::ids::PAINTER_WETPAINT_OLEO_
     "panel.painter_layers.wetpaint.oleo_sheen",
     "panel.painter_layers.wetpaint.oleo_subsurface",
     "panel.painter_layers.wetpaint.oleo_subsurface_radius",
-    "panel.painter_layers.wetpaint.oleo_transparency",
-    "panel.painter_layers.wetpaint.oleo_transmission",
-    "panel.painter_layers.wetpaint.oleo_paper_relief",
 ];
 
 /// O **material** global do Real Oil (W3): os 8 controlos do Principled simplificado, com os nomes do Blender. O
@@ -562,21 +559,7 @@ fn paint_display_toggles(
         brush.wet_show_wet,
     );
     // (O «Paper» que morava aqui é a Texture on Paint da secção Paper desde a W1e: um papel, uma secção.)
-    // Smooth Edges — a intensidade do meio-tom na silhueta (a lei do Watercolor; `0` de fábrica).
-    y = card_row(
-        ctx,
-        theme,
-        x,
-        content_w,
-        y,
-        "panel.painter_layers.wetpaint.smooth_edges",
-        ph2d_tool_painter::ids::PAINTER_WETPAINT_SMOOTH_EDGES,
-        brush.wet_smooth_edges,
-        0.0,
-        1.0,
-        number_field::FINE_STEP,
-        2,
-    );
+    // (O Smooth Edges é da TELA desde a W3b — D1 do dono 27/10: mora no cartão Paper.)
     y = paint_oleo_real(ctx, theme, x, content_w, y, brush);
     // Live Water (W1g) — a água corre com o traço; desligada de fábrica (o custo está na dica).
     if brush.le(ph2d_tool_painter::LinhaDaFerramenta::AguaViva) {

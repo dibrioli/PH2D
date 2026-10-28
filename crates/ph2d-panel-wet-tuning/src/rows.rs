@@ -65,7 +65,7 @@ fn decimals_for_step(step: f64) -> usize {
 pub fn rows() -> &'static [TuneRow] {
     static ROWS: OnceLock<Vec<TuneRow>> = OnceLock::new();
     ROWS.get_or_init(|| {
-        KNOB_DEFS
+        let mut rows = KNOB_DEFS
             .iter()
             .enumerate()
             // O PAPER não tem linhas aqui (W1e, F2): o papel é o da secção Paper do painel — só o RELEVO.
@@ -88,7 +88,18 @@ pub fn rows() -> &'static [TuneRow] {
                 default: d.default,
                 decimals: decimals_for_step(d.step),
             })
-            .collect()
+            .collect::<Vec<_>>();
+        // U5 (auditoria W3b): no Material os PESOS ficam juntos e o «Lock material» no FIM do grupo — ordem de
+        // EXIBIÇÃO (o enum `Knob` é append-only: a Transmission e o Paper Relief nasceram depois do Lock).
+        if let Some(i) = rows.iter().position(|r| r.key == "lockMaterial") {
+            let lock = rows.remove(i);
+            let fim = rows
+                .iter()
+                .rposition(|r| r.group == KnobGroup::Material)
+                .map_or(rows.len(), |j| j + 1);
+            rows.insert(fim, lock);
+        }
+        rows
     })
 }
 
@@ -310,6 +321,34 @@ mod tests {
             .copied()
             .collect();
         assert_eq!(hidden, lista);
+    }
+
+    /// ⭐ U5 (auditoria W3b): o grupo Material mostra os 8 do Principled, os três PESOS da tinta juntos (Transparency ·
+    /// Transmission · Paper Relief) e o «Lock material» no FIM.
+    #[test]
+    fn a_ordem_do_material_junta_os_pesos_e_o_lock_no_fim() {
+        let m: Vec<&str> = rows()
+            .iter()
+            .filter(|r| r.group == KnobGroup::Material)
+            .map(|r| r.key)
+            .collect();
+        assert_eq!(
+            m,
+            [
+                "metallic",
+                "roughness",
+                "iorLevel",
+                "coat",
+                "coatRoughness",
+                "sheen",
+                "subsurface",
+                "subsurfaceRadius",
+                "transparency",
+                "transmission",
+                "paperRelief",
+                "lockMaterial",
+            ]
+        );
     }
 
     /// Cada secção repõe o grupo que pinta — a tabela da ferramenta e a do painel são a mesma.

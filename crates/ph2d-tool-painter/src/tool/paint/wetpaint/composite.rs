@@ -51,6 +51,9 @@ impl PainterTool {
             // O relevo da tinta é da tinta (dono 11/10): o knob Emboss decide, com ou sem papel.
             relevo: true,
         };
+        // O raio do Smooth Edges (o slider `0..1` × `RAIO_MAX`, px); `0` = desligado. É da TELA (D1 W3b).
+        let raio = self.paint.wetpaint.smooth_edges * super::smooth_edges::RAIO_MAX;
+        let suave = raio > 0.0;
         // As linhas que o Smooth Edges procura dentro da tinta: as da GRAVIDADE (o eixo mais perto dela).
         let wp = &self.paint.wetpaint;
         let linhas = (wp.tilt_on && wp.tilt_ring > 0).then(|| {
@@ -73,20 +76,25 @@ impl PainterTool {
             o.papel = self.papel.map_or([1.0; 3], |p| {
                 p.map(|c| ph2d_wet_paint::colorops::transfer::srgb255_to_linear(f64::from(c)))
             });
-            o.dente_papel = if self.paint.brush.paper.is_active() {
-                f64::from(
-                    self.paint.substrate_depth.clamp(0.0, 1.0)
-                        * super::super::substrate_relief::MAX_TOOTH_PX,
-                )
-            } else {
-                0.0
-            };
+            // D1 W3b: o Smooth Edges amacia a SILHUETA no campo — o relevo e a cobertura seguem o mesmo contorno.
+            o.suave_px = f64::from(raio);
+            #[cfg(test)]
+            if super::smooth_edges::so_na_cor::get() {
+                o.suave_px = 0.0;
+            }
+            // U2 W3b: o Paper Relief morde no estado de fábrica (Relief do papel 0) — a textura do papel na tinta tem
+            // o piso de profundidade [`super::grao_no_filme::RELIEF_NA_TINTA_MIN`].
+            o.dente_papel = f64::from(
+                super::grao_no_filme::relief_na_tinta(self.paint.substrate_depth)
+                    * super::super::substrate_relief::MAX_TOOTH_PX,
+            );
             o
         });
-        // W3b: o dente do papel que o Relevo do papel e a Transmission assam na tinta ([`super::grao_no_filme`]).
+        // W3b: o dente do papel que a Transmission assa na tinta ([`super::grao_no_filme`]); sem papel escolhido, o
+        // papel de fábrica (U2).
         let grao = oleo.and_then(|_| {
             super::grao_no_filme::GraoNoFilme::de(
-                super::super::substrate_relief::Substrate::resolve(
+                super::grao_no_filme::papel_do_filme(
                     self.paint.brush.paper,
                     self.paint.substrate_depth,
                     self.paint.substrate_rough,
@@ -108,14 +116,6 @@ impl PainterTool {
         // escreve — e que o `mark_dirty` publica — é em PIXELS.
         let ratio = sess.ratio;
         let (gw, gh) = sess.grid;
-        // O Smooth Edges é do TRAÇO (§BUG-bordas-W3b): o de cada célula (`grid::aparencia::suave`), nunca o slider de
-        // agora. Sem o campo em camada nenhuma, nenhum; com ele, o retângulo cresce pelo raio MÁXIMO.
-        let suave = sess
-            .engine
-            .layers
-            .iter()
-            .any(|l| l.visible && !l.grid.aparencia.is_empty());
-        let raio_max = super::smooth_edges::RAIO_MAX;
         let (cx0, cy0, cx1, cy1) = match sess.engine.take_dirty() {
             Dirty::Clean => return,
             Dirty::Full => (1, 1, gw, gh),
@@ -163,7 +163,7 @@ impl PainterTool {
         }
         // Smooth Edges: um pixel até ao alcance do raio também muda, logo o retângulo cresce por ele.
         let (px0, py0, px1, py1) = if suave {
-            let a = super::smooth_edges::alcance(raio_max);
+            let a = super::smooth_edges::alcance(raio);
             (
                 px0.saturating_sub(a),
                 py0.saturating_sub(a),
@@ -353,7 +353,7 @@ impl PainterTool {
                             continue;
                         }
                         // O papel nu: a sombra atravessa a tinta que a projecta (a Transparency e a Transmission
-                        // dela, célula ∘ cartão — W3b).
+                        // da célula: o cartão não as tem — W3b ronda 3).
                         let calcula = || {
                             ph2d_wet_paint::oleo_real::sombra_em_u8(
                                 ph2d_wet_paint::oleo_real::sombra_transparente(
@@ -511,34 +511,23 @@ impl PainterTool {
         // sorte numérica, por ser literalmente a mesma expressão.
         let sampler = grid_map::SampleU::new(ratio, gw, gh);
         let one_cell_per_pixel = sampler.is_identity();
-        let suavizada = suave
-            .then(|| {
-                let camadas: Vec<(&ph2d_wet_paint::grid::Grid, bool)> = sess
-                    .engine
-                    .layers
-                    .iter()
-                    .map(|l| (&l.grid, l.visible))
-                    .collect();
-                super::smooth_edges::ForcaDaCelula::de(
-                    &camadas,
-                    ratio,
-                    (gw, gh),
-                    (px0, py0, px1, py1),
-                )
-            })
-            .filter(|f| f.max > 0.0)
-            .map(|f| {
-                super::smooth_edges::Suave::nova(
-                    sampler,
-                    pigment,
-                    stride,
-                    (w, h),
-                    (px0, py0, px1, py1),
-                    f.max * super::smooth_edges::RAIO_MAX,
-                    linhas,
-                    Some(&f),
-                )
-            });
+        let orla = oleo.is_none();
+        #[cfg(test)]
+        let orla = orla || super::smooth_edges::so_na_cor::get();
+        #[cfg(test)]
+        let suave = suave && !super::smooth_edges::sem_suave::get();
+        let suavizada = suave.then(|| {
+            super::smooth_edges::Suave::nova(
+                sampler,
+                pigment,
+                stride,
+                (w, h),
+                (px0, py0, px1, py1),
+                raio,
+                linhas,
+                orla,
+            )
+        });
         canvas[py0 * stride..py1 * stride]
             .par_chunks_mut(stride)
             .zip(vlinhas.into_par_iter())

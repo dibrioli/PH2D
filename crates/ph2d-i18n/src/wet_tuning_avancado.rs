@@ -18,8 +18,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.wet_tuning.knob.sheen" => "Sheen",
         "panel.wet_tuning.knob.subsurface" => "Subsurface",
         "panel.wet_tuning.knob.subsurfaceRadius" => "Subsurface Radius",
-        // W3b: a Transparency é o Alpha do Principled (mistura de cobertura); a Transmission, a luz pelo filme.
-        "panel.wet_tuning.knob.transparency" => "Transparency (Alpha)",
+        // W3b: a Transparency é o `1 − Alpha` do Principled (mistura de cobertura); a Transmission, o vidro colorido.
+        "panel.wet_tuning.knob.transparency" => "Transparency",
         "panel.wet_tuning.knob.transmission" => "Transmission",
         "panel.wet_tuning.knob.paperRelief" => "Paper Relief",
         "panel.wet_tuning.knob.lockMaterial" => "Lock material (off · on)",

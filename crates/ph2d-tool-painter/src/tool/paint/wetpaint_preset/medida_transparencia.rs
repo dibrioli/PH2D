@@ -4,17 +4,30 @@
 
 use super::*;
 
-/// O cartão Real Oil com a Transparency `v` (a tela recompõe-se inteira).
+/// A tinta pousada com a Transparency `v` (a tela recompõe-se inteira).
 fn com_transparencia(t: &mut PainterTool, v: f64) {
     com_material(t, 8, v);
 }
 
-/// O cartão Real Oil com o campo `k` do material (`MaterialCartao::CAMPOS`) a `v`: 8 Transparency, 9 Transmission,
-/// 10 Relevo do papel.
-fn com_material(t: &mut PainterTool, k: usize, v: f64) {
-    let mut o = t.wet_oleo_real_valores();
-    o.material.poe(k, v);
-    t.set_wet_oleo_real(Some(o));
+/// A tinta POUSADA com o peso `k` do material da célula a `v` — 8 Transparency, 9 Transmission, 10 Relevo do papel —
+/// em todas as células de todas as camadas, e a tela recomposta: o mesmo traço como se o pincel o tivesse pintado com
+/// o knob (W3b ronda 3: os três saíram do cartão, são só do pincel; `material_do_pincel_tests` prova que o pincel os
+/// pousa). Assim as medidas comparam a MESMA tinta.
+pub(super) fn com_material(t: &mut PainterTool, k: usize, v: f64) {
+    let s = t.paint.wetpaint.session.as_mut().expect("sessão");
+    s.bring_home();
+    for l in &mut s.engine.layers {
+        for m in ph2d_wet_paint::grid::material::garante(&mut l.grid) {
+            let alvo = match k {
+                8 => &mut m.transparencia,
+                9 => &mut m.transmissao,
+                10 => &mut m.relevo_papel,
+                _ => panic!("peso {k}"),
+            };
+            *alvo = v as f32;
+        }
+    }
+    t.wet_recomposite_full();
 }
 
 /// O dente RELATIVO (Relief 0,6 − 0) nas amostras `m`: o desvio da luminância ÷ a luminância média — a luz do relevo
@@ -33,26 +46,46 @@ fn dente_relativo(rugoso: &[u8], liso: &[u8], m: &[bool]) -> f64 {
     dente_na_tela(rugoso, liso, m) / (s / n).max(1.0)
 }
 
+/// A tela final de `t` SEM o dente do papel na tinta (o grão assado do vidro desligado e o ganho do Paper Relief a
+/// 0) — a régua do grão que a tinta mostra: com o piso `RELIEF_NA_TINTA_MIN` (U2) a tela de Relief 0 também o tem.
+fn sem_o_dente_na_tinta(t: &mut PainterTool) -> Vec<u8> {
+    use crate::tool::paint::wetpaint::grao_no_filme::sem_grao;
+    let o = t.wet_oleo_real_valores();
+    let mut sem = o;
+    sem.af.papel_na_tinta = 0.0;
+    sem_grao::set(true);
+    t.set_wet_oleo_real(Some(sem));
+    t.wet_recomposite_full();
+    let px = tela_final(t);
+    sem_grao::set(false);
+    t.set_wet_oleo_real(Some(o));
+    t.wet_recomposite_full();
+    px
+}
+
 /// ⭐ **A Transmission e o Relevo do papel mostram o grão** (W3b, dono 27/10: «a tinta era viva»): o Dabber grosso
 /// sobre o papel Cold Relief 0,6. Com os dois a 0 a tinta tapa o grão (§BUG-papel); a 1, o dente RELATIVO no miolo
-/// é ≥ 60 % do do papel nu (a luz do relevo multiplica a cor da tinta); a 0,5, entre os dois.
+/// (a tela − a mesma sem o dente na tinta) é ≥ 60 % do do papel nu (Relief 0,6 − 0); a 0,5, entre os dois.
 #[test]
 fn a_transmissao_e_o_relevo_do_papel_mostram_o_grao() {
     let (mut liso, cob) = cena_papel_texturizado(true, 0.0, true);
     let (mut rugoso, _) = cena_papel_texturizado(true, 0.6, true);
     let (miolo, nu) = miolo_e_papel_nu(&cob);
+    let (a, b) = (tela_final(&mut liso), tela_final(&mut rugoso));
+    let n0 = dente_relativo(&b, &a, &nu);
+    let nu_abs = dente_na_tela(&b, &a, &nu);
     let mut dente = |k: usize, v: f64| {
-        com_material(&mut liso, k, v);
         com_material(&mut rugoso, k, v);
-        let (a, b) = (tela_final(&mut liso), tela_final(&mut rugoso));
-        (dente_relativo(&b, &a, &miolo), dente_relativo(&b, &a, &nu))
+        let com = tela_final(&mut rugoso);
+        let sem = sem_o_dente_na_tinta(&mut rugoso);
+        (dente_relativo(&com, &sem, &miolo), com, sem)
     };
-    let (d0, n0) = dente(9, 0.0);
-    let (wm, _) = dente(9, 0.5);
-    let (w1, _) = dente(9, 1.0);
+    let (d0, ..) = dente(9, 0.0);
+    let (wm, ..) = dente(9, 0.5);
+    let (w1, ..) = dente(9, 1.0);
     dente(9, 0.0);
-    let (rm, _) = dente(10, 0.5);
-    let (r1, _) = dente(10, 1.0);
+    let (rm, ..) = dente(10, 0.5);
+    let (r1, com, sem) = dente(10, 1.0);
     println!(
         "[transmission] dente relativo miolo ÷ nu ({n0:.4}): 0 {:.2} · Transmission 0,5 {:.2} · 1 {:.2} · Relevo do papel 0,5 {:.2} · 1 {:.2}",
         d0 / n0,
@@ -71,9 +104,8 @@ fn a_transmissao_e_o_relevo_do_papel_mostram_o_grao() {
     }
     // ⭐ O Relevo do papel 1 = a tela de antes de `ca26a7738a` na régua do §BUG-papel (o dente na tinta grossa ÷ no
     // papel nu, absoluto: 0,67 com o óleo ligado) — e o grão também nos BRILHOS da tinta.
-    let (a, b) = (tela_final(&mut liso), tela_final(&mut rugoso));
-    let abs = dente_na_tela(&b, &a, &miolo) / dente_na_tela(&b, &a, &nu);
-    let brilhos = dente_nos_brilhos(&b, &a, &miolo) / dente_na_tela(&b, &a, &nu);
+    let abs = dente_na_tela(&com, &sem, &miolo) / nu_abs;
+    let brilhos = dente_nos_brilhos(&com, &sem, &miolo) / nu_abs;
     println!(
         "[transmission] Relevo do papel 1: miolo ÷ nu {abs:.3} (antes de ca26a7738a 0,67) · nos brilhos {brilhos:.3}"
     );
@@ -240,9 +272,9 @@ fn medida_relevo_do_papel_calibra() {
     for g in [0.0, 1.0, 2.0, 4.0, 8.0, 16.0] {
         for t in [&mut liso, &mut rugoso] {
             let mut o = t.wet_oleo_real_valores();
-            o.material.relevo_papel = 1.0;
             o.af.papel_na_tinta = g;
             t.set_wet_oleo_real(Some(o));
+            com_material(t, 10, 1.0);
         }
         let (a, b) = (tela_final(&mut liso), tela_final(&mut rugoso));
         let (dm, dn) = (dente_na_tela(&b, &a, &miolo), dente_na_tela(&b, &a, &nu));
@@ -299,9 +331,10 @@ fn a_transmissao_tinge_o_papel_creme_do_documento() {
     let p = ph2d_wet_paint::colorops::transfer::srgb255_to_linear(f64::from(CREME[2]));
     let r = canal_linear(&creme, &miolo, 2) / canal_linear(&branco, &miolo, 2);
     println!("[transmission] papel creme: azul creme ÷ branco {r:.3} × papel {p:.3}");
-    // O brilho da superfície por cima não se tinge: a razão fica no papel ou um pouco acima (medido 0,517 × 0,456).
+    // O brilho da superfície e a luz do relevo por cima não se tingem: a razão fica no papel ou acima (medido: ronda 2
+    // 0,517; o vidro claro da ronda 3, 0,568 — a parte tingida encolheu face ao reflexo; × papel 0,456).
     assert!(
-        (p..=1.2 * p).contains(&r),
+        (p..=1.3 * p).contains(&r),
         "a Transmission tinge pelo papel: {r} × {p}"
     );
 }

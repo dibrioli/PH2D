@@ -98,6 +98,10 @@ pub struct CenaDoPreview {
     /// O que o pincel leva fora do `BrushSpec` e dos knobs (22/10: as Grain Colors, a ponta de N imagens, o
     /// dual de imagem e o Composite não chegavam ao preview).
     fora: ForaDoSpec,
+    /// O Óleo Real da obra (U4, auditoria W3b): sem ele os knobs do Material do pincel não davam retorno no preview
+    /// antes de pintar. Ligado ou não, e os valores do cartão.
+    oleo_real: Option<ph2d_wet_paint::oleo_real::OleoReal>,
+    oleo_real_valores: ph2d_wet_paint::oleo_real::OleoReal,
 }
 
 /// **O pincel fora do `BrushSpec`** — o que mora no estado do tool por ser pesado ou partilhado: a rampa
@@ -152,6 +156,8 @@ pub struct ChaveDoPreview {
     shape_color: (bool, bool, u64),
     borracha: bool,
     fora: ChaveForaDoSpec,
+    oleo_real: Option<ph2d_wet_paint::oleo_real::OleoReal>,
+    oleo_real_valores: ph2d_wet_paint::oleo_real::OleoReal,
 }
 
 impl PainterTool {
@@ -186,6 +192,8 @@ impl PainterTool {
             borracha: super::preview_borracha::e_a_borracha(self),
             modo: self.paint.paint_mode,
             fora: self.fora_do_spec(),
+            oleo_real: w.oleo_real,
+            oleo_real_valores: w.oleo_real_valores,
         }
     }
 
@@ -259,6 +267,8 @@ impl PainterTool {
                 paper_color: self.paint.paper_color,
                 dry_rate_per_s: self.paint.dry_rate_per_s,
             },
+            oleo_real: w.oleo_real,
+            oleo_real_valores: w.oleo_real_valores,
         }
     }
 
@@ -306,6 +316,8 @@ impl PainterTool {
         (w.agua_viva, w.borda_que_pesa) = c.opcoes;
         w.opacidade = c.opacidade;
         w.largura.clone_from(&c.largura);
+        w.oleo_real = c.oleo_real;
+        w.oleo_real_valores = c.oleo_real_valores;
         self.set_shape_color_estado(&c.shape_color);
         self.instalar_fora_do_spec(&c.fora);
         // A borracha só no preview VIVO, sobre a tela cheia; a miniatura mostra o que o pincel deposita.
@@ -590,6 +602,9 @@ pub(super) fn gesto_do_preview(
             emite(&r, LARGURA_DO_PREVIEW, ALTURA_DO_PREVIEW);
         }
     };
+    // U4 (auditoria W3b): o Óleo Real (o material do pincel) só no quadro FINAL, com a água assente — medido no gate
+    // `cada_knob_do_material_muda_o_preview` (perfil smoke): o óleo em cada quadro custava 85 s por preview × 0,7 s.
+    let oleo = t.paint.wetpaint.oleo_real.take();
     t.on_canvas_pointer(ponto(em(0.0), pressao(0.0), PointerPhase::Down));
     for k in 1..=n {
         if deve_parar() {
@@ -611,7 +626,11 @@ pub(super) fn gesto_do_preview(
         let parou = t.paint.wetpaint.session.as_mut().is_none_or(|s| {
             s.bring_home();
             !s.engine.active_grid().has_fluid
-        });
+        }) || k == AGUA_MAX_TICKS;
+        if parou && oleo.is_some() {
+            t.paint.wetpaint.oleo_real = oleo;
+            t.wet_recomposite_full();
+        }
         if parou || k % TICKS_POR_QUADRO_AGUA == 0 {
             emite_se(t);
         }

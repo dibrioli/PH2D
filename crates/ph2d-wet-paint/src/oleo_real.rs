@@ -59,6 +59,9 @@ pub struct OleoReal {
     /// W3b (não é knob, idem): a amplitude do dente do papel (px de relevo, `Relief × MAX_TOOTH_PX` do substrato) que
     /// o Relevo do papel põe na superfície da tinta; `0` sem papel.
     pub dente_papel: f64,
+    /// D1 W3b (não é knob, idem): o raio (px) do **Smooth Edges** da TELA — a silhueta amaciada antes do campo
+    /// ([`amacia_a_silhueta`]): a cobertura, as três alturas, a normal e a sombra seguem-na. `0` = desligado, ao bit.
+    pub suave_px: f64,
 }
 
 impl Default for OleoReal {
@@ -77,6 +80,7 @@ impl Default for OleoReal {
             af: Afinacao::default(),
             papel: [1.0; 3],
             dente_papel: 0.0,
+            suave_px: 0.0,
         }
     }
 }
@@ -174,7 +178,13 @@ pub fn alcance(o: &OleoReal) -> usize {
     } else {
         0
     };
-    MARGEM + 2 * o.af.raio_suave + 1 + sss
+    MARGEM + 2 * o.af.raio_suave + 1 + sss + alcance_do_suave(o.suave_px)
+}
+
+/// Quantas células o Smooth Edges de raio `r` (células; px é um tecto, `ratio ≥ 1`) espalha uma mudança: a tenda.
+#[must_use]
+fn alcance_do_suave(r: f64) -> usize {
+    if r > 0.0 { libm::ceil(r) as usize + 1 } else { 0 }
 }
 
 /// O [`alcance`] de uma mudança na região `(x0, y0, x1, y1)` também pela Subsurface das CÉLULAS (K4): a célula `q`
@@ -367,7 +377,9 @@ impl CampoAltura {
         // A janela leva a margem da marcha e as duas passagens do desfoque (e o alcance da Subsurface).
         let sss = oleo_material::raio_subsuperficie_max(camadas, o, ratio, (x0, y0, x1, y1))
             .map(|r| oleo_material::alcance_subsuperficie(r, ratio));
-        let m = MARGEM + 2 * af.raio_suave + sss.unwrap_or(0);
+        // D1 W3b: o raio do Smooth Edges em células.
+        let r_suave = o.suave_px / ratio.max(1) as f64;
+        let m = MARGEM + 2 * af.raio_suave + sss.unwrap_or(0) + alcance_do_suave(r_suave);
         let (ax0, ay0) = (x0.saturating_sub(m).max(1), y0.saturating_sub(m).max(1));
         let (ax1, ay1) = ((x1 + m).min(g.w), (y1 + m).min(g.h));
         let (w, h) = (ax1 + 1 - ax0, ay1 + 1 - ay0);
@@ -383,6 +395,8 @@ impl CampoAltura {
         });
         // §BUG-bordas: a cobertura com o contorno sub-célula — a parede e a cor caem no contorno LISO, não na escada.
         let borda = sem_entalhes(rep, &cob, borda_suave(rep, &cob, w, h), w, h);
+        // D1 W3b: o Smooth Edges da tela amacia ESSA silhueta antes do campo — a cor e o relevo seguem a mesma.
+        let borda = amacia_a_silhueta(rep, &cob, borda, (w, h), r_suave);
         // A massa (antes do desfoque: o ombro da forma também segue o contorno) e as três alturas vão com ela.
         for (c, b) in cob.iter_mut().zip(&borda) {
             *c *= f64::from(*b);
@@ -468,12 +482,8 @@ impl CampoAltura {
         // W3b: o Relevo do papel — a superfície da tinta assenta no dente do papel (`Grid::paper`, o mesmo papel do
         // substrato), pela cobertura; sem Relevo do papel (ou sem papel) a soma nem se faz (ao bit).
         let dente = o.dente_papel * af.papel_na_tinta / ratio.max(1) as f64;
-        let relevo_papel = |k: usize| {
-            let r = material.get(k).map_or(0.0, |m| m.relevo_papel);
-            crate::material::transparencia(r, o.material.relevo_papel)
-        };
-        let com_papel =
-            dente > 0.0 && !g.paper.is_empty() && (com_material || o.material.relevo_papel > 0.0);
+        let relevo_papel = |k: usize| crate::material::peso(material.get(k).map_or(0.0, |m| m.relevo_papel));
+        let com_papel = dente > 0.0 && !g.paper.is_empty() && com_material;
         let detalhe = plano_f32(rep, w, h, &|k| {
             let d = (af.grao * (massa_d[k] - suave[k]) * escala + fios_d[k] * k_fios) * cob[k];
             let r = if com_papel { relevo_papel(k) } else { 0.0 };
@@ -934,6 +944,89 @@ fn desfoca(rep: &impl Reparte, v: &[f64], w: usize, h: usize, r: usize) -> Vec<f
     out
 }
 
+/// Média móvel separável de meia largura FRACIONÁRIA `hh` (as pontas `⌊hh⌋ + 1` pesam `hh − ⌊hh⌋`, a `caixa` do
+/// Smooth Edges do composite), presa às bordas.
+fn desfoca_frac(rep: &impl Reparte, v: &[f64], w: usize, h: usize, hh: f64) -> Vec<f64> {
+    let k = libm::floor(hh) as isize;
+    let f = hh - k as f64;
+    let n = 2.0 * k as f64 + 1.0 + 2.0 * f;
+    let caixa = |ler: &dyn Fn(isize) -> f64| {
+        let mut s = 0.0;
+        for d in -k..=k {
+            s += ler(d);
+        }
+        if f > 0.0 {
+            s += f * (ler(-k - 1) + ler(k + 1));
+        }
+        s / n
+    };
+    let (wi, hi) = (w as isize - 1, h as isize - 1);
+    let mut tmp = vec![0f64; w * h];
+    por_linha(rep, w, &mut tmp, &|y, linha| {
+        for (x, q) in linha.iter_mut().enumerate() {
+            *q = caixa(&|d| v[(x as isize + d).clamp(0, wi) as usize + y * w]);
+        }
+    });
+    let mut out = vec![0f64; w * h];
+    por_linha(rep, w, &mut out, &|y, linha| {
+        for (x, q) in linha.iter_mut().enumerate() {
+            *q = caixa(&|d| tmp[x + (y as isize + d).clamp(0, hi) as usize * w]);
+        }
+    });
+    out
+}
+
+/// A cobertura a partir da qual a célula é SILHUETA no Smooth Edges: a da mancha do composite (`SS0`).
+pub(crate) const MANCHA_DA_SILHUETA: f64 = 0.12;
+/// A folga da faixa da orla (a tenda de uns que não soma `1` ao bit).
+const FOLGA_DA_ORLA: f64 = 1e-6;
+
+/// ⭐ **D1 W3b (smoke do dono 27/10: «Smooth Edges só atua na cor e não no relevo… deve ser para todo o papel»):
+/// o Smooth Edges da TELA amacia a SILHUETA antes do campo** (`oraculo/README.md` §Smooth Edges na tela). A
+/// cobertura depois do contorno sub-célula ([`borda_suave`], [`sem_entalhes`]) desfoca-se por uma tenda de raio `r`
+/// células (duas caixas de `r/2`, a lei do composite); na FAIXA da orla — onde a mancha (`≥ MANCHA_DA_SILHUETA`)
+/// desfocada pela mesma tenda não é nem `0` nem `1` — a célula COM pigmento cobre o desfocado. A cobertura e as três
+/// alturas vão × este factor, por isso a parede, a normal, os brilhos e a sombra no papel seguem a mesma silhueta que
+/// a cor. O miolo e o papel longe da orla ficam ao bit; o papel sem pigmento continua papel. `r = 0` = `borda`.
+fn amacia_a_silhueta(
+    rep: &impl Reparte,
+    cob: &[f64],
+    borda: Vec<f32>,
+    (w, h): (usize, usize),
+    r: f64,
+) -> Vec<f32> {
+    if r <= 0.0 {
+        return borda;
+    }
+    let depois: Vec<f64> = cob
+        .iter()
+        .enumerate()
+        .map(|(k, &c)| c * borda.get(k).map_or(1.0, |&b| f64::from(b)))
+        .collect();
+    let mancha: Vec<f64> = depois
+        .iter()
+        .map(|&c| if c >= MANCHA_DA_SILHUETA { 1.0 } else { 0.0 })
+        .collect();
+    let hh = 0.5 * r;
+    let tenda = |v: &[f64]| desfoca_frac(rep, &desfoca_frac(rep, v, w, h, hh), w, h, hh);
+    let (bm, bc) = (tenda(&mancha), tenda(&depois));
+    let mut f = if borda.is_empty() {
+        vec![1f32; w * h]
+    } else {
+        borda
+    };
+    for k in 0..w * h {
+        if cob[k] > 0.0 && bm[k] > FOLGA_DA_ORLA && bm[k] < 1.0 - FOLGA_DA_ORLA {
+            f[k] = (bc[k].min(1.0) / cob[k]) as f32;
+        }
+    }
+    if f.iter().all(|&q| q == 1.0) {
+        Vec::new()
+    } else {
+        f
+    }
+}
+
 /// O vector unitário PARA a luz (x direita, y baixo, z para fora da tela).
 fn para_a_luz(o: &OleoReal) -> [f64; 3] {
     let c = libm::cos(o.altitude);
@@ -1085,8 +1178,7 @@ fn cor_dos_termos(o: &OleoReal, t: &Termos, a: [f64; 3], cobertura: f64) -> [f64
             base = a[c] * (difuso(o, &t, a[c], c) + t.sss[c]);
         }
         if t.transmissao > 0.0 {
-            let a2 = a[c] * a[c];
-            let d = difuso(o, &t, a2, c) * o.papel[c];
+            let d = difuso(o, &t, crate::material::vidro(a[c]), c) * o.papel[c];
             base = crate::material::transmite(base, a[c], d, t.transmissao);
         }
         if t.metal > 0.0 || t.sob_verniz != 1.0 {
@@ -1351,10 +1443,7 @@ pub fn rebote_no_papel(o: &OleoReal, campo: &CampoAltura, cx: usize, cy: usize) 
         let a = campo.albedo[k];
         let l = 0.2126 * f64::from(a[0]) + 0.7152 * f64::from(a[1]) + 0.0722 * f64::from(a[2]);
         // A parede TRANSPARENTE (a Transparency) mostra o papel branco por trás: `1 − (1 − t)·(1 − A)`.
-        let t = crate::material::transparencia(
-            campo.material.get(k).map_or(0.0, |m| m.transparencia),
-            o.material.transparencia,
-        );
+        let t = crate::material::peso(campo.material.get(k).map_or(0.0, |m| m.transparencia));
         if t > 0.0 {
             1.0 - (1.0 - t) * (1.0 - l)
         } else {
@@ -1427,10 +1516,18 @@ pub fn sombra_dos_termos(o: &OleoReal, t: &Termos) -> f64 {
 /// `a·(1 − t)` por cima. `t = 0` devolve `s` ao bit; `t = 1`, `0` (o Alpha 0: a tinta não projecta nada).
 #[must_use]
 pub fn sombra_transparente(s: f64, a: f64, t: f64) -> f64 {
-    if t <= 0.0 {
+    sombra_transparente_a_luz(s, a, t, t)
+}
+
+/// A [`sombra_transparente`] com a luz que ATRAVESSA a tinta à parte (`t_luz`, a [`transparencia_a_luz`]: o Alpha e
+/// a Transmission) do que se VÊ do papel sob ela (`t`, só o Alpha — o papel visto pelo filme transmissivo já está na
+/// cor da tinta, [`crate::material::transmite`]). `t_luz = t` é a lei de antes ao bit.
+#[must_use]
+pub fn sombra_transparente_a_luz(s: f64, a: f64, t: f64, t_luz: f64) -> f64 {
+    if t_luz <= 0.0 {
         return s;
     }
-    let atravessa = s * (1.0 - t * t);
+    let atravessa = s * (1.0 - t_luz * t_luz);
     let deixa = 1.0 - a * (1.0 - t);
     if deixa <= 0.0 {
         return atravessa;
@@ -1438,16 +1535,28 @@ pub fn sombra_transparente(s: f64, a: f64, t: f64) -> f64 {
     (1.0 - (1.0 - atravessa) * (a * t * t + (1.0 - a)) / deixa).clamp(0.0, 1.0)
 }
 
-/// ⭐ **A transparência À LUZ da tinta que tapa o papel NU `(cx, cy)`** (W3b; o aberto da Transparency só do
-/// pincel, `oraculo/README.md` §Transmission): marcha para a luz como [`luz_directa`] e lê a tinta da célula mais
-/// alta no caminho — a Transparency `t` dela (célula ∘ cartão) e a Transmission `w` (a luz passa tingida pelas duas faces,
-/// `w·L(a²)`) — no `t` equivalente de [`sombra_transparente`]: `t² = 1 − (1 − t²)(1 − w·L(a²))`. Sem material em
-/// célula nenhuma e sem Transmission no cartão devolve a Transparency do cartão (a lei de antes, ao bit).
+/// ⭐ **A transparência À LUZ de uma tinta** de Transparency `t` e Transmission `w` com albedo linear `a` — o `t`
+/// equivalente que a [`sombra_transparente`] recebe, a MESMA conta sob a tinta (`render`) e no papel nu
+/// ([`transparencia_de_quem_tapa`]): a luz atravessa o Alpha (`t²`) ou passa tingida pelo [`crate::material::vidro`]
+/// (`w·L(vidro(a))`) — `t² = 1 − (1 − t²)(1 − w·L(vidro(a)))`. `w = 0` devolve `t` ao bit.
+#[must_use]
+pub fn transparencia_a_luz(t: f64, w: f64, a: [f64; 3]) -> f64 {
+    if w <= 0.0 {
+        return t;
+    }
+    let v = a.map(crate::material::vidro);
+    let passa = w * (0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2]);
+    libm::sqrt(1.0 - (1.0 - t * t) * (1.0 - passa))
+}
+
+/// ⭐ **A transparência À LUZ da tinta que tapa o papel NU `(cx, cy)`** (W3b, `oraculo/README.md` §Transmission):
+/// marcha para a luz como [`luz_directa`] e lê a tinta da célula mais alta no caminho — a Transparency e a
+/// Transmission DELA (só da célula: o cartão não as tem) — pela [`transparencia_a_luz`]. Sem o campo do material:
+/// `0` (a tinta opaca de sempre, ao bit).
 #[must_use]
 pub fn transparencia_de_quem_tapa(o: &OleoReal, campo: &CampoAltura, cx: usize, cy: usize) -> f64 {
-    let k = &o.material;
-    if campo.material.is_empty() && k.transmissao <= 0.0 {
-        return k.transparencia;
+    if campo.material.is_empty() {
+        return 0.0;
     }
     let (x, y) = (cx as f64, cy as f64);
     let l = para_a_luz(o);
@@ -1469,30 +1578,29 @@ pub fn transparencia_de_quem_tapa(o: &OleoReal, campo: &CampoAltura, cx: usize, 
         }
     }
     let m = campo.material_em(quem.0.max(0) as usize, quem.1.max(0) as usize);
-    let t = crate::material::transparencia(m.transparencia, k.transparencia);
-    let w = crate::material::transparencia(m.transmissao, k.transmissao);
-    if w <= 0.0 {
-        return t;
-    }
-    let a = if campo.albedo.is_empty() {
-        [1.0f32; 3]
-    } else {
-        campo.albedo[campo.idx(quem.0, quem.1)]
-    };
-    let passa = w
-        * (0.2126 * f64::from(a[0] * a[0])
-            + 0.7152 * f64::from(a[1] * a[1])
-            + 0.0722 * f64::from(a[2] * a[2]));
-    libm::sqrt(1.0 - (1.0 - t * t) * (1.0 - passa))
+    transparencia_a_luz(
+        crate::material::peso(m.transparencia),
+        crate::material::peso(m.transmissao),
+        albedo_em(campo, quem.0, quem.1),
+    )
 }
 
-/// W3b: quanto do DENTE do papel se vê ATRAVÉS da tinta da célula `(cx, cy)` (`0..1`): a Transmission `w` (o papel
-/// iluminado sob o filme), célula ∘ cartão. `0` na tinta de sempre — o dente fica enterrado (§BUG-papel). O Relevo do
-/// papel não passa por aqui: a SUPERFÍCIE da tinta segue o dente na altura fina do campo (luz e brilho do óleo).
+/// O albedo LINEAR da tinta da célula `(x, y)` guardado no campo (`1` sem o plano — sem rebote não se guarda).
 #[must_use]
-pub fn grao_do_papel(o: &OleoReal, campo: &CampoAltura, cx: usize, cy: usize) -> f64 {
-    let m = campo.material_em(cx, cy);
-    crate::material::transparencia(m.transmissao, o.material.transmissao)
+pub fn albedo_em(campo: &CampoAltura, x: isize, y: isize) -> [f64; 3] {
+    if campo.albedo.is_empty() {
+        [1.0; 3]
+    } else {
+        campo.albedo[campo.idx(x, y)].map(f64::from)
+    }
+}
+
+/// W3b: quanto do DENTE do papel se vê ATRAVÉS da tinta da célula `(cx, cy)` (`0..1`): a Transmission `w` da CÉLULA
+/// (o papel iluminado sob o filme). `0` na tinta de sempre — o dente fica enterrado (§BUG-papel). O Relevo do papel
+/// não passa por aqui: a SUPERFÍCIE da tinta segue o dente na altura fina do campo (luz e brilho do óleo).
+#[must_use]
+pub fn grao_do_papel(_o: &OleoReal, campo: &CampoAltura, cx: usize, cy: usize) -> f64 {
+    crate::material::peso(campo.material_em(cx, cy).transmissao)
 }
 
 /// Quantos níveis (`u8`) uma célula do plano da sombra tem de ficar ACIMA da mediana das 3×3 para ser um furo
@@ -1532,7 +1640,13 @@ pub fn sombra_sem_furo(plano: &[u8], (gw, gh): (usize, usize), (x, y): (usize, u
         *e = plano[xx + yy * gw];
     }
     v.sort_unstable();
-    if s - v[4] >= furo { v[4] } else { s }
+    // Só a célula MAIS ESCURA que a mediana (C1 da auditoria W3b: `s − mediana` com `s` mais clara estourava em dev e,
+    // em smoke/release, dava a volta e ESCURECIA a célula clara até à mediana).
+    if s.saturating_sub(v[4]) >= furo {
+        v[4]
+    } else {
+        s
+    }
 }
 
 /// A sombra no papel em `u8` (o plano que o composite guarda): a MESMA conversão nos dois caminhos. `s` é uma

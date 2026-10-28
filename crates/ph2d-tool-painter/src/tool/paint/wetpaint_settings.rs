@@ -561,11 +561,9 @@ impl PainterTool {
         let need_recomposite = w.show_wet
             || w.paper_visual
             || w.km_glaze
-            || w.smooth_edges > 0.0
             || w.oleo_real.is_some();
         w.show_wet = false;
         w.paper_visual = false;
-        w.smooth_edges = 0.0;
         w.oleo_real = None;
         w.oleo_real_valores = ph2d_wet_paint::oleo_real::OleoReal::default();
         w.km_glaze = false;
@@ -575,20 +573,24 @@ impl PainterTool {
         }
     }
 
-    /// A intensidade do **Smooth Edges** do Wet Paint (`0..1`; NaN = `0`): é do TRAÇO (dono 27/10, §BUG-bordas-W3b) —
-    /// vale para os traços seguintes (pousa na célula); a tinta já pousada não muda, logo nada se recompõe.
+    /// A intensidade do **Smooth Edges** do Wet Paint (`0..1`; NaN = `0`). É da TELA (dono 27/10, D1: «para todo o
+    /// papel, de todos os traços já pintados ou futuros»; mora no cartão Paper): mudá-la recompõe a tela inteira.
     pub fn set_wet_smooth_edges(&mut self, forca: f32) {
-        self.guarda_smooth_edges(forca);
+        if self.guarda_smooth_edges(forca) {
+            self.wet_recomposite_full();
+        }
     }
 
-    /// Guarda o Smooth Edges.
-    fn guarda_smooth_edges(&mut self, forca: f32) {
+    /// Guarda o Smooth Edges; `true` = mudou.
+    pub(super) fn guarda_smooth_edges(&mut self, forca: f32) -> bool {
         let forca = if forca.is_nan() {
             0.0
         } else {
             forca.clamp(0.0, 1.0)
         };
+        let muda = self.paint.wetpaint.smooth_edges != forca;
         self.paint.wetpaint.smooth_edges = forca;
+        muda
     }
 
     /// A intensidade do **Smooth Edges** do Wet Paint (`0` = desligado).
@@ -788,8 +790,10 @@ impl PainterTool {
             return true;
         }
         if id == crate::ids::PAINTER_WETPAINT_SMOOTH_EDGES {
-            // Do TRAÇO (§BUG-bordas-W3b): vale para os seguintes; a tela não se recompõe.
-            self.guarda_smooth_edges(v as f32);
+            // Da TELA (D1): a tinta pousada muda — a recomposição corre no tick, 1×/quadro (`oleo_no_quadro`).
+            if self.guarda_smooth_edges(v as f32) {
+                self.wet_recompoe_no_quadro();
+            }
             return true;
         }
         if id == crate::ids::PAINTER_WETPAINT_HEAVY_EDGE {
@@ -902,8 +906,8 @@ impl PainterTool {
                 true
             }
             PanelEvent::Click(id) if *id == crate::ids::WET_TUNING_KM_GLAZE => {
+                // Do TRAÇO (pousa na célula como `vidrado`): vale para os seguintes; a tela não se recompõe.
                 self.paint.wetpaint.km_glaze = !self.paint.wetpaint.km_glaze;
-                self.wet_recomposite_full();
                 true
             }
             PanelEvent::Click(id) => self.route_wet_tuning_click(*id),
@@ -993,3 +997,6 @@ fn wet_tuning_id_map() -> &'static std::collections::BTreeMap<ph2d_a11y::NodeId,
         m
     })
 }
+
+#[cfg(test)]
+mod pincel_nao_recompoe_tests; // U3 (auditoria W3b): controlo do pincel ⇒ o roteador não recompõe a tela

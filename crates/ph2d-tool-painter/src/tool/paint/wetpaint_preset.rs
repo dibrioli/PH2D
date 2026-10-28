@@ -38,6 +38,8 @@ mod shape_color_tests;
 mod sonda_custo_oleo;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod glaze_no_preset_tests;
 
 pub use ferramentas::{Gaveta, ferramenta_do_preset, nome_da_ferramenta};
 pub use meios::{MeioDesconhecido, campos_do_meio, meio_do_preset, motor_do_meio, nome_do_meio};
@@ -79,6 +81,9 @@ pub const MEIO_DO_PRESET: &str = "WetPaint";
 pub const MOTOR_DOS_PRESETS: &str = "WetPainter";
 /// A chave da borracha molhada no mapa `engine` (não é knob do registo: é o slider `erase` do motor).
 const CHAVE_ERASE: &str = "erase";
+/// O **Glaze layering (K-M)** no mapa `engine` (não é knob do registo: é do traço, `km_glaze`). Gravado só LIGADO
+/// (`1`): ausente = desligado, o de fábrica — nenhuma receita de fábrica o liga, e os ficheiros dela ficam ao byte.
+pub(super) const CHAVE_GLAZE: &str = "glazeLayering";
 const TEXTURA_FORMA: &str = "shape";
 const TEXTURA_GRAO: &str = "grain";
 /// A imagem do Flow da Ragged Edge («Use as Flow»): só a Aquarela a lê. O Paper NÃO viaja — é da obra
@@ -514,6 +519,8 @@ impl PainterTool {
             return falhas;
         }
         self.paint.wetpaint.knobs = k;
+        // O Glaze é do traço (U1, auditoria W3b): um preset é o pincel inteiro — ausente = o de fábrica (desligado).
+        self.paint.wetpaint.km_glaze = prm.engine.get(CHAVE_GLAZE).is_some_and(|v| *v >= 0.5);
 
         // A ferramenta do fluido é do Pincel; a Borracha já está na mão (`pegar_a_ferramenta_do_preset`).
         if let Some(m) = prm.paint_mode.as_deref()
@@ -631,6 +638,11 @@ impl PainterTool {
             p.engine.remove(KNOB_DEFS[kn as usize].key);
         }
         p.engine.insert(CHAVE_ERASE.to_owned(), k.erase);
+        if self.paint.wetpaint.km_glaze {
+            p.engine.insert(CHAVE_GLAZE.to_owned(), 1.0);
+        } else {
+            p.engine.remove(CHAVE_GLAZE);
+        }
         // As linhas da `Dynamics` sem knob só quando o pincel as mexe: o preset sem elas é o de antes, ao byte.
         for l in super::mao::linhas_da_dinamica_do_wet() {
             let v = super::mao::le(&self.paint.dynamics, &self.paint.brush.pen_tilt, l);

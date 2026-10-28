@@ -259,8 +259,9 @@ fn oleo_de_json(o: &mut ph2d_wet_paint::oleo_real::OleoReal, v: &Value) {
     }
 }
 
-/// A versão do material do cartão na macro: `2` = os valores absolutos da W3 (a Transparency, 27/10, entrou sem
-/// mudar a versão: ausente = o valor de agora, `0` num cartão novo).
+/// A versão do material do cartão na macro: `2` = os valores absolutos da W3. A Transparency (27/10), a Transmission e o
+/// Relevo do papel (W3b) entraram e SAÍRAM (W3b ronda 3: só do pincel) sem mudar a versão: as chaves antigas lêem-se e
+/// ignoram-se (o leitor percorre só `MaterialCartao::CAMPOS`).
 const MAT_V: u64 = 2;
 
 impl PainterTool {
@@ -318,6 +319,24 @@ mod oleo_json_tests {
         let mut o = gravado;
         oleo_de_json(&mut o, &antigo);
         assert_eq!(o.material, gravado.material);
+    }
+
+    /// ⭐ D3 (W3b ronda 3): a macro gravada quando o cartão ainda tinha a Transparency, a Transmission e o Relevo do
+    /// papel (`mat_v` 2, as chaves `mat_transparencia`/`mat_transmissao`/`mat_relevo_papel`) abre, os oito campos que
+    /// ficaram chegam e os três são IGNORADOS (são só do pincel: o cartão já não os tem).
+    #[test]
+    fn a_macro_com_os_pesos_que_sairam_do_cartao_abre_e_os_ignora() {
+        use ph2d_wet_paint::oleo_real::MaterialCartao;
+        let mut gravado = OleoReal::default();
+        gravado.material.poe(0, 0.4);
+        let mut v = oleo_para_json(&gravado);
+        for nome in ["transparencia", "transmissao", "relevo_papel"] {
+            assert!(!MaterialCartao::CAMPOS.contains(&nome), "{nome} no cartão");
+            v[format!("mat_{nome}")] = serde_json::json!(0.9);
+        }
+        let mut lido = OleoReal::default();
+        oleo_de_json(&mut lido, &v);
+        assert_eq!(lido, gravado);
     }
 
     /// ⭐ A macro de ANTES da W3 (sem `mat_v`, multiplicadores e os campos que saíram): o leitor tolerante

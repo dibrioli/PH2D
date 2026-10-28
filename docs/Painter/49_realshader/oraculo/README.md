@@ -758,7 +758,13 @@ O Smooth Edges não chega lá: desfoca a cor JÁ sombreada e a sombra do papel �
 - `borda_suave` só corta a BORDA: a fracção de «fora» pesada pela gaussiana da direcção ≥ `ORLA_FORA_MIN` = 0,20
   (recta ~0,45, canto interior ~0,25, furo de uma célula ~0,03).
 - `sombra_sem_furo` (a leitura do plano da sombra no composite): a célula ≥ `FURO_DA_SOMBRA` = 32 níveis mais escura
-  que a mediana das 3×3 lê a mediana. A faixa projectada contínua e a sombra larga não mudam.
+  que a mediana das 3×3 lê a mediana. A faixa projectada contínua e a sombra larga não mudam. ⚠️ C1 (auditoria W3b):
+  a 1.ª escrita fazia `s − mediana` em `u8` também com a célula MAIS CLARA — pânico em dev e, em smoke/release (sem
+  verificação de transbordo, onde os gates corriam), a volta escurecia a célula clara até à mediana. Lei certa:
+  `s.saturating_sub(mediana) ≥ 32` (gate `a_sombra_sem_furo_nao_escurece_a_celula_clara`; os três gates da orla e o
+  do painel verdes também em DEV). Régua refeita com a lei certa (smoke, `pontinhos_regua.py`): Dabber branco Smooth 0
+  **0 · 35** (igual: o 65 → 0 fica), Cold 0,6 10 · 68 (igual), Knife Oily 0 · 0 · 0 · 0, Oil Bristle 10 · 193 · 6 · 183
+  (iguais); fixtura `orla_dabber.bin` 0 · 0 nos dois perfis — a célula clara entre escuras é rara nestas cenas.
 
 **O Smooth Edges fica como o amaciador do artista** (o raio 0–6 px sobre o contorno já limpo); o «substituto
 profissional» é o contorno + as três leis, sempre ligados e sem slider. Smooth 0,5 já não tem pontinhos na orla (tabela).
@@ -802,7 +808,8 @@ com furos (fixtura e tela) · o alfa sem o enchimento (`render.rs`, fixtura) · 
 | `FURO_DA_SOMBRA` 96 / 64 / 48 | 2 · 1 · 1 soltos na fixtura (a baía de 3 células, 36 entre 95) |
 | A régua «p5 e 12 níveis abaixo das vizinhas» | o Rebelle dava 81 «pontinhos» (os salpicos da textura): a régua passou a «abaixo de METADE da mediana da tinta e 20 abaixo das vizinhas», e a orla EXTERNA (a ≤ 4 do papel aberto) |
 
-**Ronda 2 — o Smooth Edges é do TRAÇO** (dono 27/10). `AparenciaCelula::suave` (16 B/célula fora da fábrica,
+**Ronda 2 — o Smooth Edges é do TRAÇO** (dono 27/10) — ⛔ REVOGADA pelo 2.º smoke do dono (D1): ver
+[§Smooth Edges na tela (W3b)](#smooth-edges-na-tela-w3b). O que segue é história. `AparenciaCelula::suave` (16 B/célula fora da fábrica,
 preguiçoso, mistura pela massa; `Sim::suave` → `Params::suave` pelo facto `WetEngineFacts::suave`); o slider só
 guarda o valor (não recompõe). O composite (`smooth_edges::ForcaDaCelula`) lê o de cada célula: o `Suave` corre no raio
 MÁXIMO da região e cada pixel amacia por `Σ tenda·mancha·s ÷ Σ tenda·mancha ÷ máx` (a força da tinta à volta, pela
@@ -818,6 +825,65 @@ volta) visto pela tinta de massa média (1 866) na orla — a família do §BUG-
 espessura). Não curado: a lei é a do §BUG-papel/Paper Relief e não há Rebelle sobre papel texturizado.
 
 **Aberto.** Dabber em Cold 0,6: 10 px soltos na orla (acima). As fendas > 4 px do Dabber.
+
+## §Smooth Edges na tela (W3b)
+
+**Pedido do dono (2.º smoke, 27/10, D1):** «Smooth Edges só atua na cor e não no relevo. Smooth Edges deve ser para
+todo o papel, de todos os traços já pintados ou futuros.» Revoga a ronda 2 de cima (`65d6a6a16d`).
+
+**Onde mora.** Um número do cartão **Paper** (`paint_watercolor_paper.rs::paint_smooth_edges_row`, só com o Wet Paint;
+chave i18n e id de sempre, `PAINTER_WETPAINT_SMOOTH_EDGES`; o Reset do Paper zera-o, o do Wet Paint já não). Saiu do
+cartão Wet Paint. É da TELA: `WetPaintState::smooth_edges`, não viaja no preset de pincel (nunca viajou; gate
+`escolher_um_pincel_nao_muda_o_smooth_edges_da_tela`) nem na célula — `AparenciaCelula` volta a 12 B (papel · grão ·
+vidrado), sai `Params::suave`/`Sim::suave`/`WetEngineFacts::suave`/`ForcaDaCelula`. Mexer recompõe a tela pela
+varredura do tick (`wet_recompoe_no_quadro`, 1×/quadro, como os números do Real Oil); o setter directo recompõe já.
+Funciona sem o Óleo Real (o `Suave` de antes, ao byte).
+
+**A lei com o Óleo Real (o relevo).** `oleo_real::amacia_a_silhueta`, em `CampoAltura::de_com` logo depois do contorno
+sub-célula e do entalhe: a cobertura (`cob × borda`) desfoca-se por uma tenda de raio `r = Smooth × 6 px ÷ ratio`
+células (duas caixas de `r/2`, a `caixa` do composite); na FAIXA da orla — onde a mancha (`cob ≥ 0,12`, o `SS0`)
+desfocada pela mesma tenda não é nem 0 nem 1 — a célula COM pigmento cobre o desfocado (`borda = desfocado ÷ cob`). A
+cobertura e as três alturas já vão × `borda`, por isso a parede, a normal (o detalhe), os brilhos e a sombra no papel
+seguem a mesma silhueta que o alfa (`render.rs`: `pa × borda`). O composite com o óleo corre o `Suave` sem a orla
+(`orla: false`): só os degraus de cor dentro da tinta, e o píxel SEM tinta do campo (`pa < SS0`: a metade de fora da
+tenda e os vãos sem pigmento da orla rasgada) recebe a tinta desfocada com peso `min(1, 2B)` — cor sem relevo (o
+relevo não sai do pigmento). O raio entra na `ChaveCampo` (`oleo_cache.rs`) e no `alcance` (`ceil(r) + 1`).
+Neutro `0` = o campo de antes ao bit.
+
+| medida | antes (só a cor) | depois |
+|---|---|---|
+| fixtura `orla_dabber.bin`, Smooth 6 px: células da silhueta que mudam · com a forma/fina/sombra a mudar junto | 0 | 3 123 · 3 123 / 3 123 / 3 123 |
+| idem: cobertura mudada a > 8 células da orla · relevo fora do pigmento | — | 0 · 0 |
+| traço do Dabber: células da sombra no papel que mudam com Smooth 1 | **0** | 21 910 |
+| Dabber branco / Cold, pontinhos soltos na orla · todos, Smooth 0,5 | 0 · 24 / 0 · 31 | 0 · 20 / 0 · 28 |
+| idem Smooth 1 · largura 10–90 da orla | 0 · 23 · 6,20 px | 0 · 20 · 6,53 px |
+| Oil Bristle branco Smooth 1: soltos · largura | 0 · 4,29 px | 0 · 3,91 px |
+| vãos claros no halo (Smooth 1, tela com a luz, `vaos_claros`) | 5 | 2 (sem o enchimento do píxel sem tinta: 1 172 — a 1.ª versão) |
+| píxeis com tinta ao pé da orla que o `Suave` amacia outra vez | — | 0 de 2 528 (com a orla do `Suave` por cima: 2 528) |
+| custo do campo (fixtura 256 × 64, smoke, mínimo de 9): 0 · 3 · 6 px | — | 89,9 · 115,6 · 143,6 ns/célula (+29 % · +60 %; 0 a Smooth 0) |
+
+Folha [`../out/SmoothEdges_relevo_folha.jpg`](../out/SmoothEdges_relevo_folha.jpg) (Dabber, Óleo Real, 300 %; antes |
+depois × Smooth 0 · 0,5 · 1), olhada: a 0 ao bit; a 0,5 e 1 os torrões escuros da orla de baixo (a sombra da parede em
+escada sob a cor borrada) somem e a parede desce em rampa com a cor; sem vãos brancos no halo.
+
+**Gates.** `o_smooth_edges_da_tela_amacia_o_relevo_pela_mesma_silhueta` e `o_smooth_edges_zero_e_o_campo_de_antes_ao_bit`
+(ph2d-wet-paint); `o_smooth_edges_e_da_tela_muda_a_tinta_antiga_no_quadro_e_volta_ao_bit` (com e sem óleo: os eventos
+não recompõem, a varredura muda a tinta pousada, voltar a 0 = ao bit), `com_o_oleo_o_smooth_edges_muda_a_sombra_no_papel`
+(controlo `so_na_cor`), `com_o_oleo_o_halo_do_smooth_edges_nao_tem_vaos_brancos`,
+`com_o_oleo_a_orla_da_tinta_e_a_do_campo` (controlo `sem_suave`), `escolher_um_pincel_nao_muda_o_smooth_edges_da_tela`
+(ph2d-tool-painter); o painel: `seam_papel` (o Smooth Edges no
+cartão Paper e só no Wet Paint), `o_smooth_edges_e_um_slider_que_chega_a_ferramenta`; o gate do painel do pincel
+(`painel_so_no_futuro_tests.rs`) já não o lista (FACTOS 7 → 6, 16 → 12 B). **Mutações 9/10 vermelhas:** o campo
+sem amaciar · a faixa ignorada (cobertura mexida longe da orla) · a chave sem o raio (voltar a 0 deixa 88 911 bytes) ·
+recompor no evento (30 → 0 + 1 e «o evento recompôs») · não recompor · a sombra sem furos de volta ao `wrapping_sub`
+(C1) · sem o enchimento (1 172 vãos) · o `Suave` com a orla por cima do campo (2 528) · o enchimento também na tinta
+(2 528). Sobrevive (equivalente medido): o `alcance_do_suave` a 0
+— a margem do campo (`MARGEM + 2·raio_suave`) já cobre a tenda até 6 células e a varredura fica ao byte.
+
+| Recusada | medida |
+|---|---|
+| Só a cobertura do campo, sem encher o píxel sem tinta | folha: vãos brancos no halo (1 166 píxeis claros × 2) e a orla perde a metade de fora (Dabber Smooth 1 largura 4,58 px × 6,20 de antes; Oil Bristle 2,14 × 4,29) |
+| O `Suave` inteiro (com a orla) por cima do campo | a cor amacia duas vezes e fica mais larga que o relevo: o desencontro que o dono reportou, ao contrário |
 
 ## §Transparency — a tinta que deixa ver o papel (dono 27/10)
 
@@ -885,8 +951,9 @@ célula ∘ cartão por `max`, neutro 0 ao bit, preset/macro sem a chave = 0 (ma
   difuso relativo da célula com albedo `a²` (a luz que chega ao papel sob o filme). O brilho, o metal e o verniz por cima
   como sempre; a cobertura NÃO muda (não é Alpha). Espessura: o Principled do Cycles tinge na superfície, sem depender da
   espessura; a nossa espessura entra pela cobertura da massa (a orla fina deixa ver o papel) — ver a recusa abaixo.
-- O dente do papel na tinta (`oleo_real::grao_do_papel`): `d = 1 − (1 − r)(1 − w)` por célula (Relevo do papel `r`,
-  Transmission `w`). A tinta do Wet Paint vive em píxeis (a grade morre com a sessão) e a luz do relevo
+- O dente do papel na tinta (`oleo_real::grao_do_papel`): ronda 1 `d = 1 − (1 − r)(1 − w)` (Relevo do papel `r`,
+  Transmission `w`); desde a ronda 2 o código devolve `d = w` (o Relevo segue na altura fina do campo, abaixo) — lei
+  em revisão (D2, vidro colorido): ver Ronda 3. A tinta do Wet Paint vive em píxeis (a grade morre com a sessão) e a luz do relevo
   (`ReliefFields::papel_a_vista`) só lê o alfa: o grão ASSA-SE no píxel da tinta no composite
   (`wetpaint/grao_no_filme.rs`, plano `WetSession::grao`), pela MESMA óptica do passe do relevo (`Rig::shade` com o
   dente do substrato × `d`, `light_pixel`) — o grão sob a tinta casa com o do papel nu, e o passe do relevo, que vê a
@@ -989,6 +1056,92 @@ verdes por nome: `o_material_neutro_e_bit_identico_a_de_antes`, `a_fenda_neutra_
 **Aberto.** (1) A sombra projectada da tinta transmissiva (0,81–0,91 × Cycles 1,00). (2) O grão e a cor do papel não
 seguem depois de a sessão acabar. (3) No Cycles a Transmission sobre o creme fica mais clara e mais cinza que a nossa
 (L 0,187 × 0,118: a refracção pela malha alta mostra o papel com brilhos).
+
+**Ronda 3 (2.º smoke do dono 27/10 + auditoria W3b, `AUDITORIA_W3b.md` D2 · D3 · D4 · C2–C5 · U2 · U4 · U5).**
+
+- **A lei do VIDRO (D2).** O dono escolheu, entre «vidro colorido · igual ao Blender · controlo de espessura», o
+  **vidro colorido claro**: a Transmission a 1 = o papel bem claro, com o grão, só tingido pela cor. Filme FINO de
+  Beer–Lambert: por travessia `T = exp(−k·(−ln a)) = a^k`, ida e volta `vidro(a) = a^(2k)`, **`k = VIDRO_K = 0,2`**
+  (`material::vidro`); o difuso `base·(1 − w) + w·vidro(a)·D·papel` (`material::transmite`) — o reflexo da superfície
+  (brilho, metal, verniz) por cima como sempre; a cobertura não muda. A MESMA luz pelo vidro passa para o papel nu e
+  sob a orla (`oleo_real::transparencia_a_luz`: `t_luz² = 1 − (1 − t²)(1 − w·L(vidro(a)))`).
+- **Números** (régua `transmissao_regua.py`, papel creme Cold 0,6, Cycles = a saída da ronda 2 — a malha é a mesma;
+  [`regua_Transmission.txt`](regua_Transmission.txt) §Ronda 3; folha [`../out/Transmission_folha.jpg`](../out/Transmission_folha.jpg),
+  olhada: um vidro azul claro sobre o creme, o Cycles continua escuro):
+
+  | miolo do Dabber azul, creme | L ÷ papel nós · Cycles | saturação nós · Cycles | croma nós · Cycles | sombra ÷ T0 nós · Cycles |
+  |---|---|---|---|---|
+  | Transmission 0,5 | **0,362** · 0,257 | 0,556 · 0,709 | 117,5 · 138,6 | 0,85 · 1,01 |
+  | Transmission 1 | **0,460** · 0,187 (ronda 2: 0,118) | 0,385 · 0,577 | **72,1 · 70,8** | 0,70 · 1,00 |
+  | Alpha 1 (só da célula) | 1,000 · 0,996 | 0,189 · 0,130 | 42,1 · 27,7 | 0,20 · 0,06 |
+
+  Fixture do wet-paint (papel branco): L ÷ papel opaca 0,102 · Transmission 0,5 0,214 · 1 **0,324**; saturação do
+  vidro 0,435 × a do Alpha da MESMA luminância 0,389 (o vidro multiplica, o Alpha lava de branco). **Diferença
+  declarada:** o Cycles (Principled Transmission 1) dá a tinta ESCURA (0,187) — o alvo do dono é o vidro claro e a
+  referência do dono decide a lei (memória `feedback_the_owners_reference_product_decides_the_law`); o croma bate (72 ×
+  71), a luz não. A sombra da orla Alpha 1 (0,20 × 0,06): a orla parcial mistura o material com o papel pela
+  cobertura (antes, com o cartão a 1 em toda a parte, dava 0).
+- **D3 + C2: os três pesos SAÍRAM do cartão Real Oil.** `MaterialCartao` tem os 8 do Principled (`N_CAMPOS` 8; os
+  campos `transparencia`/`transmissao`/`relevo_papel` deixaram de existir no tipo — nenhum leitor de composição os
+  pode ler); `material::efectivo` toma-os SÓ da célula (`material::peso`); os ids do cartão encolhem (16 linhas). O
+  formato: o cartão só viaja na MACRO (`macro_estado`, `mat_v` 2) e o leitor percorre `MaterialCartao::CAMPOS` — a
+  macro antiga com `mat_transparencia`/`mat_transmissao`/`mat_relevo_papel` abre e os três são IGNORADOS (gate
+  `a_macro_com_os_pesos_que_sairam_do_cartao_abre_e_os_ignora`); preset e projecto nunca levaram o cartão. A chave
+  do campo guardado (`oleo_cache`) lê só o dente (o Relevo do papel vem com a revisão das grades).
+- **D4.** O rótulo do Tuning «Transparency (Alpha)» → «Transparency».
+- **C5: a sombra sob a tinta e no papel nu casam.** `sombra_transparente_a_luz(s, a, t, t_luz)`: a luz que ATRAVESSA
+  usa `t_luz` (Alpha + vidro), o papel VISTO sob a orla só o Alpha `t` (o papel sob o vidro já está na cor da tinta);
+  `t_luz = t` é a lei de antes ao bit. Sombra Transmission 1 ÷ opaca: sob a tinta **0,579** · papel nu **0,600**
+  (antes: sob 1,00 — a Transmission não entrava; com `t_luz` também na vista 1,479 — a orla escurecia).
+- **C4: o material veste a orla virgem** (`grid::material::veste_virgens`, o par da aparência, chamado no
+  `transfer`). Alcance MEDIDO (`o_material_veste_a_orla_virgem`, células com tinta e material NEUTRO): 2 (o da
+  aparência) · 3 · **4** → 131 · 39 · 1 das 8 408 (a de 4 com massa 1e-23) ⇒ `grid::material::ORLA_VIRGEM` 4.
+- **U2: o Paper Relief e o grão do vidro mordem na FÁBRICA** (papel não escolhido, Relief do papel 0): a textura do
+  papel na tinta tem o piso de profundidade `RELIEF_NA_TINTA_MIN` 0,6 (o Relief do Cold das calibrações:
+  `papel_na_tinta` 1,5 e o gate absoluto 0,55–0,80 ficam iguais) — `dente_papel = max(Relief, 0,6) × MAX_TOOTH_PX`; o
+  filme sem papel escolhido mostra o papel de fábrica (o Cold que o Relief arma, `grao_no_filme::papel_do_filme`). O
+  Wet Paint tem sempre o papel dele (`Grid::paper`, Cold de fábrica), por isso não há estado «sem papel» a dizer na
+  UI. Medido (`o_paper_relief_e_o_grao_do_vidro_mordem_na_fabrica`, desvio da luminância): fábrica Paper Relief
+  **9,16** · grão do vidro **4,55** × a cena Cold 0,6 6,39 · 3,85 (antes: 0 e 0).
+- **U4: o preview do pincel mostra o material.** `CenaDoPreview`/`ChaveDoPreview` levam o Óleo Real da obra
+  (`oleo_real`, `oleo_real_valores`); o óleo entra SÓ no quadro final (a água assente). Custo MEDIDO (perfil smoke,
+  `cada_knob_do_material_muda_o_preview`): o óleo em cada quadro **85,5 s** por preview × sem óleo 0,70 s ⇒ recusado;
+  só no fim **1,67 s** × 1,50 s. Os 11 knobs do grupo Material (tabela; o Lock fica de fora — não muda um traço sobre
+  papel limpo, é o gate C3 que o vê na tela) mudam a chave E o quadro final.
+- **U5.** No Tuning › Material: os 8 do Principled, os três pesos juntos (Transparency · Transmission · Paper
+  Relief) e o «Lock material» no FIM — ordem de EXIBIÇÃO em `rows()` (o enum é append-only). Gate
+  `a_ordem_do_material_junta_os_pesos_e_o_lock_no_fim`.
+- **C3.** `o_material_do_pincel_fica_na_tinta_pousada`: pintada com Transmission 0,8 · Transparency 0,4 · Paper
+  Relief 1 no PINCEL, o pincel a 0, recomposta com o Óleo Real e o papel → 0 bytes (controlo: a tela neutra difere).
+- **Gates novos.** wet-paint: `a_transmissao_e_um_vidro_colorido_claro` (substitui `…_mais_saturada_que_o_alfa`) ·
+  `a_sombra_da_transmissao_casa_sob_a_tinta_e_no_papel_nu` · `o_cartao_nao_tem_os_pesos_da_tinta` ·
+  `a_transparencia_mistura_pela_massa_e_e_so_da_celula`; tool-painter (`wetpaint/material_do_pincel_tests.rs`): os
+  quatro acima (C3 · C4 · U2 · U4) e o da macro; painter-layers: `o_cartao_real_oil_nao_mostra_os_pesos_da_tinta`;
+  wet-tuning: o da ordem. As medidas da tela (`medida_transparencia.rs`) põem os pesos na CÉLULA da tinta pousada
+  (`com_material`), a mesma tinta para cada variante.
+
+Mutações da ronda 3 (perfil dev, por troca de texto com assert e volta; 13/14 vermelhas, a que sobreviveu explicada):
+
+| mutação | gate que a vê vermelha |
+|---|---|
+| M1 `vidro(a) = a²` (a lei de antes) · M2 `transmite` ignora `w` | `a_transmissao_e_um_vidro_colorido_claro` |
+| M3 a sombra sob a tinta sem a Transmission · M4 o papel sob a orla visto por `t_luz` | `a_sombra_da_transmissao_casa_sob_a_tinta_e_no_papel_nu` |
+| M5 o papel nu sem a Transmission · M6 a luz pelo vidro sem o filtro (`a²`) | `transmissao_tests` (a costura) |
+| M7 sem vestir a orla do material · M8 a orla com o alcance da aparência (2) | `o_material_veste_a_orla_virgem` |
+| M9 o Paper Relief sem o piso · M10 o filme sem o papel de fábrica | `o_paper_relief_e_o_grao_do_vidro_mordem_na_fabrica` |
+| M12 o Lock na ordem do enum | `a_ordem_do_material_junta_os_pesos_e_o_lock_no_fim` |
+| M13 o `pousa` não grava o material | `grid::material` (`o_material_mistura_pela_massa`…) |
+| M14 o campo do óleo não lê a célula (só sobreviveu ao 1.º C3: o controlo era dos três JUNTOS — a Transparency escondia a Transmission morta; agora cada peso sozinho tem de morder) | `o_material_do_pincel_fica_na_tinta_pousada` |
+| M11 o `pousa` não grava — **sobrevive ao C3** | a orla virgem que o material veste vai À FRENTE do pincel (caixa + 4) e dá à célula o mesmo material; a lei do `pousa` é do M13 |
+
+| Recusada nesta ronda | porquê |
+|---|---|
+| A Transmission igual ao Cycles (Principled, tinge na superfície) | 0,187 de L ÷ papel no creme: a tinta escura que o dono rejeitou no smoke («ainda não é o suficiente») |
+| `k = 0,5` (uma travessia: `vidro(a) = a`) | a cor da própria tinta: L 0,096 no fixture branco — opaca, não vidro (calculado) |
+| A cor normalizada ao máximo (`a / max(a)`) | a tinta PRETA viraria vidro branco (`[1,1,1]`): o filtro tem de escurecer com o pigmento (Beer–Lambert) |
+| O óleo em cada quadro do preview | 85,5 s × 0,70 s por preview (medido, perfil smoke) |
+| A orla do material com o alcance da aparência (2) | 131 das 8 408 células com tinta ficavam NEUTRAS (medido) |
+| Um controlo de espessura | o dono escolheu o vidro claro; a massa já entrou recusada na ronda 1 (`a^8` = preto) |
 
 ## ⛔ Recusas MEDIDAS
 

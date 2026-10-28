@@ -1,6 +1,6 @@
 //! **O material no sombreado do Óleo Real** (filho de [`super`]): o Principled SIMPLIFICADO do Cycles sobre a
 //! tinta (W3: Metallic · Roughness · IOR Level · Coat · Coat Roughness · Sheen · Subsurface · Subsurface Radius ·
-//! Transparency · Transmission · Relevo do papel),
+//! e, só da célula, Transparency · Transmission · Relevo do papel),
 //! a partir do [`MaterialCelula`] da célula combinado com o ajuste GLOBAL do cartão Real Oil ([`MaterialCartao`],
 //! regra em [`crate::material::efectivo`]). Medido contra o Cycles em `docs/Painter/49_realshader/oraculo/`
 //! (README §E3-B). Com a célula NEUTRA e o cartão no padrão o sombreado é o de antes, bit a bit. O reflexo usa o
@@ -8,15 +8,15 @@
 
 use crate::material::MaterialCelula;
 
-/// O número de controlos do material do cartão (e do pincel): os 8 do Principled simplificado da W3 e a
-/// Transparency (27/10), a Transmission e o Relevo do papel (W3b), sempre no FIM (append-only: a ordem é a da UI e
-/// da macro).
-pub const N_CAMPOS: usize = 11;
+/// O número de controlos do material do CARTÃO: os 8 do Principled simplificado da W3 (a ordem é a da UI e da
+/// macro). A Transparency, a Transmission e o Relevo do papel SAÍRAM do cartão (W3b ronda 3, dono 27/10: «o painel
+/// só vale para os próximos traços») — são só do pincel, por célula; a macro antiga que os traga é lida e ignorada.
+pub const N_CAMPOS: usize = 8;
 
 /// A Roughness do cartão no PADRÃO: a `Afinacao::rugosidade` de antes da W3 (0,28, a régua M4) — a imagem de antes.
 pub const RUGOSIDADE_PADRAO: f64 = 0.28;
 
-/// O material GLOBAL do cartão Real Oil, os 11 controlos do Blender em valores ABSOLUTOS. [`Self::NEUTRO`] é o
+/// O material GLOBAL do cartão Real Oil, os 8 controlos do Blender em valores ABSOLUTOS. [`Self::NEUTRO`] é o
 /// padrão do cartão (= a imagem de antes). Conversão do cartão de antes da W3 (multiplicadores): Roughness =
 /// `0,28 × m`, IOR Level = `0,5 × s`, Coat Roughness = `0,03 × r`; Translucency → Subsurface
 /// ([`Self::poe_campo_antigo`]).
@@ -38,12 +38,6 @@ pub struct MaterialCartao {
     pub subsuperficie: f64,
     /// Subsurface Radius, px de tela.
     pub raio_subsuperficie: f64,
-    /// Transparency (`1 − Alpha`, `0..1`, max com a célula; [`crate::material::transparente`]).
-    pub transparencia: f64,
-    /// Transmission (`0..1`, max; [`crate::material::transmite`]).
-    pub transmissao: f64,
-    /// Relevo do papel na tinta (`0..1`, max).
-    pub relevo_papel: f64,
 }
 
 impl MaterialCartao {
@@ -57,9 +51,6 @@ impl MaterialCartao {
         veludo: 0.0,
         subsuperficie: 0.0,
         raio_subsuperficie: crate::material::RAIO_SUBSUPERFICIE_PADRAO as f64,
-        transparencia: 0.0,
-        transmissao: 0.0,
-        relevo_papel: 0.0,
     };
 
     /// Os campos, pela ordem da UI (`PAINTER_WETPAINT_OLEO_FIELDS[8..]`) e com os nomes da macro.
@@ -72,9 +63,6 @@ impl MaterialCartao {
         "veludo",
         "subsuperficie",
         "raio_subsuperficie",
-        "transparencia",
-        "transmissao",
-        "relevo_papel",
     ];
 
     /// Os valores de [`Self::CAMPOS`], pela mesma ordem.
@@ -89,9 +77,6 @@ impl MaterialCartao {
             self.veludo,
             self.subsuperficie,
             self.raio_subsuperficie,
-            self.transparencia,
-            self.transmissao,
-            self.relevo_papel,
         ]
     }
 
@@ -106,9 +91,6 @@ impl MaterialCartao {
             5 => &mut self.veludo,
             6 => &mut self.subsuperficie,
             7 => &mut self.raio_subsuperficie,
-            8 => &mut self.transparencia,
-            9 => &mut self.transmissao,
-            10 => &mut self.relevo_papel,
             _ => return,
         };
         *alvo = v;

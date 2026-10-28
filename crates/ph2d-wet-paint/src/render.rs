@@ -158,7 +158,7 @@ pub fn render_region(
                     sett_for_alpha = s_mass * (1.0 + valley * 3.0 * (0.5 - pap).max(0.0));
                 }
                 // A Transparency da tinta (dono 27/10): a cobertura de composição × (1 − T), a massa fica.
-                let t = transparencia_da_celula(lgrd, i, 0.0);
+                let t = transparencia_da_celula(lgrd, i);
                 let a_s = transparente(alpha_of_mass(sett_for_alpha) * op, t);
                 let a_f = transparente(alpha_of_mass(f_mass) * op, t);
                 let sc = lgrd.sett_rgb[i];
@@ -460,8 +460,6 @@ fn pigment_row(
     // desenha-se com ou sem papel escolhido, com o `Emboss` que a CÉLULA guardou ao receber a tinta
     // ([`Grid::relevo`], Bug #48), nunca o do pincel de agora; `0` = nenhum.
     let com_relevo = p.is_some() && (paper_on || visual.relevo);
-    // A Transparency do cartão Real Oil (a da célula combina-se por `max`, [`crate::material::transparencia`]).
-    let t_cartao = oleo.map_or(0.0, |(o, _)| o.material.transparencia);
     {
         let mut i = x0 + cy * s;
         let mut o = (x0 - 1) * 4;
@@ -539,7 +537,7 @@ fn pigment_row(
                 // A Transparency (dono 27/10): a cobertura de COMPOSIÇÃO da camada × (1 − T) — a cor dela e a
                 // massa ficam; `T = 0` ao bit. `pa_tinta` é a de sempre (o filme).
                 pa_tinta += la * (1.0 - pa_tinta);
-                let la = transparente(la, transparencia_da_celula(lg, i, t_cartao));
+                let la = transparente(la, transparencia_da_celula(lg, i));
                 // Over-composite onto the accumulator (premultiplied).
                 pr = pr * (1.0 - la) + cr * la;
                 pg = pg * (1.0 - la) + cg * la;
@@ -558,9 +556,16 @@ fn pigment_row(
                     Some((s, f)) => {
                         let (cor, sm) =
                             crate::oleo_real::ilumina_e_sombra(ol, campo, cx, cy, rgb, tinta);
-                        // A Transparency EQUIVALENTE da pilha (`pa = pa_tinta·(1 − t)`; `0` ao bit sem ela).
+                        // A Transparency EQUIVALENTE da pilha (`pa = pa_tinta·(1 − t)`; `0` ao bit sem ela) e a
+                        // Transmission da célula: a MESMA conta do papel nu (C5, `transparencia_a_luz`).
                         let t = if tinta > 0.0 { 1.0 - pa / tinta } else { 0.0 };
-                        let sm = crate::oleo_real::sombra_transparente(sm, tinta, t);
+                        let w = crate::material::peso(campo.material_em(cx, cy).transmissao);
+                        let t_luz = crate::oleo_real::transparencia_a_luz(
+                            t,
+                            w,
+                            crate::oleo_real::albedo_em(campo, cx as isize, cy as isize),
+                        );
+                        let sm = crate::oleo_real::sombra_transparente_a_luz(sm, tinta, t, t_luz);
                         s[cx - 1] = crate::oleo_real::sombra_em_u8(sm);
                         f[cx - 1] = true;
                         cor
@@ -588,11 +593,10 @@ fn pigment_row(
     }
 }
 
-/// A Transparency da tinta da célula `i` combinada com a do cartão (`max`): `0` sem o campo do material.
+/// A Transparency da tinta da célula `i` (só da célula: o cartão não a tem): `0` sem o campo do material.
 #[inline]
-fn transparencia_da_celula(g: &Grid, i: usize, cartao: f64) -> f64 {
-    match g.material.get(i) {
-        Some(m) => crate::material::transparencia(m.transparencia, cartao),
-        None => cartao,
-    }
+fn transparencia_da_celula(g: &Grid, i: usize) -> f64 {
+    g.material
+        .get(i)
+        .map_or(0.0, |m| crate::material::peso(m.transparencia))
 }

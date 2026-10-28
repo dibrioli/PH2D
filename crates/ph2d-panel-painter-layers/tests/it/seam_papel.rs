@@ -109,6 +109,12 @@ fn a_paint_texture_e_o_tooth_do_wet_paint_vivem_na_seccao_paper() {
             molhado,
             "meio {meio}: a Paint Texture é do Wet Paint, e só dele"
         );
+        // D1 W3b: o Smooth Edges do Wet Paint é da TELA — mora aqui, no cartão Paper.
+        assert_eq!(
+            achar(ph2d_tool_painter::ids::PAINTER_WETPAINT_SMOOTH_EDGES).is_some(),
+            molhado,
+            "meio {meio}: o Smooth Edges do Wet Paint mora no cartão Paper, e só no Wet Paint"
+        );
         if !molhado {
             continue;
         }

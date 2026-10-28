@@ -39,3 +39,20 @@ Relevo do papel 1    nós   : L/L_papel 0.258 · saturação 0.737 · croma 166.
 # Calibração (medida_relevo_do_papel_calibra, Dabber de fábrica, régua absoluta do §BUG-papel; alvo 0,67 = antes de ca26a7738a):
 #   ganho 0 · 1 · 2 · 4 · 8 · 16 → miolo ÷ nu 0,000 · 0,449 · 0,866 · 1,655 · 2,908 · 4,760; nos brilhos ÷ nu 0 · 1,05 · 2,03 · 3,81 · 6,11 · 7,66
 # Gate a 1,5: miolo ÷ nu 0,663 · nos brilhos 1,558. Creme: azul creme ÷ branco 0,517 × papel 0,456 (o brilho não se tinge).
+
+## Ronda 3 — o VIDRO COLORIDO (dono 27/10; VIDRO_K 0,2: a luz pelo filme a^(2k) = a^0,4), os três pesos só do pincel (célula), papel CREME, Cycles = a saída da ronda 2 (a malha não mudou)
+miolo 24952 células · sombra projectada (Cycles T 0) 19819 células
+grão relativo do papel sem tinta no miolo: 0.0146
+opaca                nós   : L/L_papel 0.257 · saturação 0.738 · croma 166.9 · grão corr -0.01 · sombra 0.053 (÷ T0 1.00)
+opaca                Cycles: L/L_papel 0.347 · saturação 0.730 · croma 172.1 · grão corr 0.00 · sombra 0.138 (÷ T0 1.00)
+Alpha 0,5            nós   : L/L_papel 0.332 · saturação 0.383 · croma  68.5 · grão corr 0.01 · sombra 0.040 (÷ T0 0.77)
+Alpha 0,5            Cycles: L/L_papel 0.444 · saturação 0.406 · croma  88.2 · grão corr 0.03 · sombra 0.106 (÷ T0 0.76)
+Alpha 1              nós   : L/L_papel 1.000 · saturação 0.189 · croma  42.1 · grão corr 1.00 · sombra 0.010 (÷ T0 0.20)
+Alpha 1              Cycles: L/L_papel 0.996 · saturação 0.130 · croma  27.7 · grão corr 0.60 · sombra 0.008 (÷ T0 0.06)
+Transmission 0,5     nós   : L/L_papel 0.362 · saturação 0.556 · croma 117.5 · grão corr 0.00 · sombra 0.045 (÷ T0 0.85)
+Transmission 0,5     Cycles: L/L_papel 0.257 · saturação 0.709 · croma 138.6 · grão corr 0.00 · sombra 0.139 (÷ T0 1.01)
+Transmission 1       nós   : L/L_papel 0.460 · saturação 0.385 · croma  72.1 · grão corr 0.02 · sombra 0.037 (÷ T0 0.70)
+Transmission 1       Cycles: L/L_papel 0.187 · saturação 0.577 · croma  70.8 · grão corr 0.00 · sombra 0.138 (÷ T0 1.00)
+Relevo do papel 0,5  nós   : L/L_papel 0.257 · saturação 0.737 · croma 166.9 · grão corr -0.01 · sombra 0.054 (÷ T0 1.02)
+Relevo do papel 1    nós   : L/L_papel 0.258 · saturação 0.737 · croma 166.8 · grão corr -0.01 · sombra 0.055 (÷ T0 1.05)
+# Folha: docs/Painter/49_realshader/out/Transmission_folha.jpg (olhada: a Transmission 1 é um vidro azul claro sobre o creme; o Cycles continua escuro).

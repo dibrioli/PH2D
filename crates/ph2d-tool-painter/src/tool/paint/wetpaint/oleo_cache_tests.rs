@@ -53,9 +53,9 @@ fn o_cache_do_campo_e_a_recomposicao_de_raiz_ao_byte() {
             true,
         ),
         (
-            "Transparency",
+            "Coat",
             base,
-            muda(base, &|o| o.material.transparencia = 0.5),
+            muda(base, &|o| o.material.verniz = 0.5),
             true,
         ),
         ("Depth", base, muda(base, &|o| o.profundidade = 1.6), false),

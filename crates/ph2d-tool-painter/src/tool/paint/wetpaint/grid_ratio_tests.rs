@@ -491,8 +491,8 @@ fn the_deposit_aa_adds_penumbra_where_saturation_does_not_eat_it() {
 /// **O Smooth Edges do Wet Paint só toca as BORDAS, e no zero é o `over` de antes ao byte.** `0` de fábrica;
 /// no máximo, os bytes que divergem do oráculo estão todos num pixel com mancha E papel (`pa ≥ SS0` e
 /// `< SS0`) — ou um degrau de cor maior que `DEGRAU_MIN` — a menos do
-/// [`alcance`](super::smooth_edges::alcance) do raio; o resto fica igual; e há divergência. Voltar a `0` depois do
-/// traço não muda a tela (é do traço, §BUG-bordas-W3b); o traço pintado com `0`: 0 bytes contra o oráculo.
+/// [`alcance`](super::smooth_edges::alcance) do raio; o resto fica igual; e há divergência. Voltar a `0` recompõe a
+/// tinta já pousada (é da TELA, D1 W3b): 0 bytes contra o oráculo.
 #[test]
 fn smooth_edges_so_toca_a_silhueta_e_desligado_e_o_over_de_antes() {
     use crate::tool::paint::watercolor_render::SS0;
@@ -562,22 +562,11 @@ fn smooth_edges_so_toca_a_silhueta_e_desligado_e_o_over_de_antes() {
         fora_da_silhueta, 0,
         "o Smooth Edges mexeu em {fora_da_silhueta} pixels longe da orla ({na_silhueta} nela)"
     );
-    // O Smooth Edges é do TRAÇO (dono 27/10, §BUG-bordas-W3b): o slider a 0 depois do traço não muda a tinta pousada…
-    let suavizada = t.canvas_rgba.to_vec();
     assert!(t.route_brush_wetpaint_event(&PanelEvent::SetValue(
         crate::ids::PAINTER_WETPAINT_SMOOTH_EDGES,
         0.0
     )));
     assert_eq!(t.paint.wetpaint.smooth_edges, 0.0, "o slider no zero");
-    composite_all(&mut t);
-    assert_eq!(
-        t.canvas_rgba.to_vec(),
-        suavizada,
-        "o slider mudou a tinta já pousada"
-    );
-    // …e o mesmo traço pintado com ele a 0 é o `over` de antes.
-    let mut t = wet_tool(1);
-    stroke(&mut t);
     composite_all(&mut t);
     let sess = t.paint.wetpaint.session.as_ref().expect("uma sessao viva");
     let (pig, base) = (&sess.pigment, &sess.base);

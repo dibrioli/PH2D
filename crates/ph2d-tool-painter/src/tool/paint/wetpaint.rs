@@ -120,7 +120,8 @@ pub(crate) struct WetPaintState {
     pub(super) paper_visual: bool,
     /// **Smooth Edges** (dono 09/10; intensidade `0..1` desde 10/10): a silhueta da mancha com meio-tom,
     /// pela lei do Watercolor ([`smooth_edges`]). `0` de fábrica = o composite de antes, ao byte; `1` = o
-    /// checkbox ligado de antes, ao byte; no meio, a cobertura da orla entre os dois.
+    /// checkbox ligado de antes, ao byte; no meio, a cobertura da orla entre os dois. É da TELA (D1 W3b, cartão
+    /// Paper); com o Óleo Real amacia a silhueta no campo de altura (`oleo_real::amacia_a_silhueta`).
     pub(super) smooth_edges: f32,
     /// **Óleo Real** (doc 49): a óptica do relevo sobre a mancha. `None` de fábrica = o composite de
     /// hoje, ao byte.
@@ -138,7 +139,8 @@ pub(crate) struct WetPaintState {
     pub(super) opacidade: f32,
     /// Experimental: K–M pigment mixing (`sim.km_mixing`).
     pub(super) km_mixing: bool,
-    /// Experimental: K–M glaze stacking in the composite.
+    /// O **Glaze layering (K-M)** do pincel: é do TRAÇO (pousa na célula como `vidrado`), logo viaja com o preset
+    /// e com a ferramenta ([`Self::glaze_por_slot`]), como os knobs.
     pub(super) km_glaze: bool,
     /// The Tuning side panel's visibility (the basic section's checkbox).
     pub(super) tuning_open: bool,
@@ -170,6 +172,8 @@ pub(crate) struct WetPaintState {
     pub(super) largura_por_slot: [Option<largura::LeiDaLargura>; super::SLOT_COUNT],
     /// Os knobs de cada slot do pincel; só os da mão ([`super::mao::knobs_da_mao`]) voltam com ele.
     pub(super) knobs_por_slot: [[f64; ph2d_wet_paint::tuning::KNOB_COUNT]; super::SLOT_COUNT],
+    /// O [`Self::km_glaze`] de cada slot do pincel (`switch_brush_slot`).
+    pub(super) glaze_por_slot: [bool; super::SLOT_COUNT],
     /// A fita da macro ([`fita`]) que cada sessão nova herda.
     pub(super) fita: Option<fita::FitaPartilhada>,
     /// O ritmo escrito do worker ([`fita::RitmoDaAgua`]) que cada sessão nova herda — só gates.
@@ -220,6 +224,7 @@ impl Default for WetPaintState {
             largura: Some(largura::LeiDaLargura::de_omissao()),
             largura_por_slot: std::array::from_fn(|_| Some(largura::LeiDaLargura::de_omissao())),
             knobs_por_slot: [super::WetKnobs::DEFAULT.knobs; super::SLOT_COUNT],
+            glaze_por_slot: [false; super::SLOT_COUNT],
             fita: None,
             ritmo: None,
             composta: None,
@@ -576,7 +581,7 @@ mod cauda; // a água depois do fim de um clipe (W14)
 pub(super) mod faixas; // as lanes de um traço guardado (W16)
 
 mod composite;
-mod grao_no_filme; // W3b: o dente do papel assado na tinta do Óleo Real (Relevo do papel, Transmission)
+pub(in crate::tool::paint) mod grao_no_filme; // W3b: o dente do papel assado na tinta do Óleo Real (Relevo do papel, Transmission)
 pub(in crate::tool::paint) mod oleo_no_quadro; // a recomposição do painel corre no tick, em faixas
 #[cfg(test)]
 mod oleo_arrasto_tests; // arrastar um número do Real Oil: uma faixa por quadro, a tela final ao byte
@@ -604,6 +609,9 @@ mod relevo_tests;
 #[cfg(test)]
 #[path = "wetpaint/painel_so_no_futuro_tests.rs"]
 mod painel_so_no_futuro_tests; // W3b item 3: o painel do pincel só vale para os traços seguintes
+#[cfg(test)]
+#[path = "wetpaint/material_do_pincel_tests.rs"]
+mod material_do_pincel_tests; // auditoria W3b C3/C4/U2/U4: o material do pincel fica na tinta e no preview
 #[path = "wetpaint/sil_memo.rs"]
 mod sil_memo; // a silhueta do dab guardada para o pente do relevo (W3b) // o Emboss do Tuning morde sem papel (dono 11/10)
 

@@ -30,7 +30,7 @@ use ph2d_ui_testkit::MockPanelHost;
 
 /// As dezasseis linhas por LITERAL (um gate que iterasse a lista sob teste encolheria com ela): as oito da
 /// óptica e as oito do material (W3).
-const LINHAS: [NodeId; 19] = [
+const LINHAS: [NodeId; 16] = [
     PAINTER_WETPAINT_OLEO_PROFUNDIDADE,
     PAINTER_WETPAINT_OLEO_SOMBRA,
     PAINTER_WETPAINT_OLEO_BRILHO,
@@ -47,9 +47,6 @@ const LINHAS: [NodeId; 19] = [
     PAINTER_WETPAINT_OLEO_MATERIAL[5],
     PAINTER_WETPAINT_OLEO_MATERIAL[6],
     PAINTER_WETPAINT_OLEO_MATERIAL[7],
-    PAINTER_WETPAINT_OLEO_MATERIAL[8],
-    PAINTER_WETPAINT_OLEO_MATERIAL[9],
-    PAINTER_WETPAINT_OLEO_MATERIAL[10],
 ];
 
 fn viewport() -> Rect {
@@ -375,7 +372,7 @@ fn o_material_do_cartao_chega_ao_oleo_real_e_sobrevive_a_religar() {
     let neutro = PAINTER_WETPAINT_OLEO_MATERIAL_NEUTRO;
     let mut tool = molhado();
     clica_na_caixa(&mut tool);
-    let f32s = |v: [f64; 11]| v.map(|x| x as f32);
+    let f32s = |v: [f64; 8]| v.map(|x| x as f32);
     assert_eq!(
         f32s(tool.wet_oleo_real().expect("ligado").material.valores()),
         neutro
@@ -477,4 +474,30 @@ fn a_220_os_nomes_do_material_partem_se_em_duas_linhas_e_nao_cortam() {
         y(6),
         y(7)
     );
+}
+
+/// ⭐ **D3/C2 (dono 27/10): o cartão Real Oil não tem a Transmission, a Transparency nem o Paper Relief** — eles são
+/// só do pincel (Tuning › Material), por célula: mexer no cartão mudava a tinta já pousada. O cartão pintado (com o
+/// óleo ligado) não mostra nenhum dos três nomes; o CONTROLO é o «Subsurface Radius», a última linha do material.
+#[test]
+fn o_cartao_real_oil_nao_mostra_os_pesos_da_tinta() {
+    use ph2d_editor_core::text_elide::elisao;
+    let mut tool = molhado();
+    tool.set_wet_oleo_real_ligado(true);
+    set_current_brush(Some(tool.brush_settings()));
+    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut st = PainterLayersPanelState;
+    let vp = viewport();
+    let (_, medidos) = elisao::medindo(|| host.paint::<PainterLayersPanel>(&mut st, vp));
+    let textos: Vec<&str> = medidos.iter().map(|m| m.texto.as_str()).collect();
+    assert!(
+        textos.contains(&"Subsurface Radius"),
+        "controlo: o material do cartão está pintado ({textos:?})"
+    );
+    for nome in ["Transparency", "Transmission", "Paper Relief"] {
+        assert!(
+            !textos.iter().any(|t| t.starts_with(nome)),
+            "«{nome}» no cartão Real Oil"
+        );
+    }
 }

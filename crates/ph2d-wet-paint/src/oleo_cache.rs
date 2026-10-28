@@ -21,8 +21,10 @@ pub struct ChaveCampo {
     sss: Option<(ChaveLuz, [f64; 4])>,
     ratio: usize,
     visiveis: Vec<bool>,
-    /// W3b: o Relevo do papel do cartão e o dente do papel (a altura fina lê-os).
-    papel: [f64; 2],
+    /// W3b: o dente do papel (a altura fina lê-o com o Relevo do papel de cada célula — este vem com a revisão).
+    papel: f64,
+    /// D1 W3b: o raio do Smooth Edges da tela (a silhueta do campo, `oleo_real::amacia_a_silhueta`).
+    suave_px: f64,
 }
 
 impl ChaveCampo {
@@ -47,7 +49,8 @@ impl ChaveCampo {
             }),
             ratio,
             visiveis: camadas.iter().map(|&(_, v)| v).collect(),
-            papel: [o.material.relevo_papel, o.dente_papel],
+            papel: o.dente_papel,
+            suave_px: o.suave_px,
         }
     }
 }

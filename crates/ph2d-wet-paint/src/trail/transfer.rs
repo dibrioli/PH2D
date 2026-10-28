@@ -397,6 +397,7 @@ impl Trail {
             return levantou;
         }
         crate::grid::aparencia::veste_virgens(g, (rx0, ry0, rx1, ry1), aparencia);
+        crate::grid::material::veste_virgens(g, (rx0, ry0, rx1, ry1), mat_pincel);
         g.expand_bbox(rx0 - 1, ry0 - 1, rx1 + 1, ry1 + 1);
         TouchedRect::union(
             Some(TouchedRect {

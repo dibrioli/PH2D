@@ -76,7 +76,7 @@ fn outro(def: &KnobDef, v: f64) -> f64 {
 
 /// Os controlos do painel do pincel que não são knobs do registo (os factos que a sessão reconcilia).
 type Muda = fn(&mut PainterTool);
-const FACTOS: [(&str, Muda, Muda); 7] = [
+const FACTOS: [(&str, Muda, Muda); 6] = [
     (
         "km_glaze",
         |t| t.paint.wetpaint.km_glaze ^= true,
@@ -106,12 +106,6 @@ const FACTOS: [(&str, Muda, Muda); 7] = [
         "tilt",
         |t| t.paint.wetpaint.tilt_spoke ^= 1,
         |t| t.paint.wetpaint.tilt_spoke ^= 1,
-    ),
-    // §BUG-bordas-W3b: o Smooth Edges é do TRAÇO (dono 27/10), guardado na célula.
-    (
-        "smooth_edges",
-        |t| t.set_wet_smooth_edges(1.0),
-        |t| t.set_wet_smooth_edges(0.0),
     ),
 ];
 
@@ -175,7 +169,7 @@ fn os_knobs_do_papel_sao_os_que_refazem_a_folha() {
 /// de antes fica ao byte.
 #[test]
 fn o_traco_seguinte_usa_o_valor_novo() {
-    let controlos: [(&str, Muda); 4] = [
+    let controlos: [(&str, Muda); 3] = [
         ("paperVisibility", |t| {
             t.paint.wetpaint.knobs.set(Knob::PaperVisibility, 0.2)
         }),
@@ -183,7 +177,6 @@ fn o_traco_seguinte_usa_o_valor_novo() {
             t.paint.wetpaint.knobs.set(Knob::VisualGrain, 2.5)
         }),
         ("km_glaze", |t| t.paint.wetpaint.km_glaze = true),
-        ("smooth_edges", |t| t.set_wet_smooth_edges(1.0)),
     ];
     // O seguinte cruza o primeiro (o vidrado só morde onde um filme cobre outra tinta).
     let seguinte = |t: &mut PainterTool| {
@@ -223,7 +216,6 @@ fn a_fabrica_nao_aloca_a_aparencia() {
     assert_eq!(f64::from(n.papel), d.get(Knob::PaperVisibility));
     assert_eq!(f64::from(n.grao), d.get(Knob::VisualGrain));
     assert_eq!(n.vidrado, 0.0);
-    assert_eq!(n.suave, 0.0);
     // A Live Water troca a velatura do filme que o ecrã lê da SESSÃO: hoje as duas são iguais. Se divergirem, a
     // velatura do filme passa a mudar a tinta pousada e tem de ir para a célula (`grid::aparencia`).
     assert_eq!(
@@ -243,8 +235,7 @@ fn a_fabrica_nao_aloca_a_aparencia() {
         "controlo: há tinta"
     );
     assert!(g.aparencia.is_empty(), "a fábrica alocou a aparência");
-    // O custo de quem sai da fábrica: 16 B por célula (com o Smooth Edges, §BUG-bordas-W3b), contra os bytes que a
-    // grade já retém por célula.
+    // O custo de quem sai da fábrica: 12 B por célula, contra os bytes que a grade já retém por célula.
     let base = g.bytes_retidos();
     let cells = g.cells;
     t.paint.wetpaint.knobs.set(Knob::PaperVisibility, 0.4);
@@ -259,14 +250,14 @@ fn a_fabrica_nao_aloca_a_aparencia() {
         .engine
         .layers[0]
         .grid;
-    assert_eq!(std::mem::size_of::<AparenciaCelula>(), 16);
+    assert_eq!(std::mem::size_of::<AparenciaCelula>(), 12);
     assert_eq!(
         g.bytes_retidos() - base,
-        16 * cells,
-        "o campo custa 16 B por célula"
+        12 * cells,
+        "o campo custa 12 B por célula"
     );
     eprintln!(
-        "APARENCIA: grade {} B/célula, campo +16 B/célula",
+        "APARENCIA: grade {} B/célula, campo +12 B/célula",
         base as f64 / cells as f64
     );
 }

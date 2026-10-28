@@ -23,8 +23,6 @@ pub(in crate::tool::paint) struct WetEngineFacts {
     /// As opções da W1g: a Água ao vivo e a Borda que pesa (`0..1`).
     pub(in crate::tool::paint) agua_viva: bool,
     pub(in crate::tool::paint) borda_que_pesa: f64,
-    /// O **Smooth Edges** (`0..1`): do TRAÇO (§BUG-bordas-W3b), pousa na célula (`grid::aparencia`).
-    pub(in crate::tool::paint) suave: f32,
 }
 
 impl WetEngineFacts {
@@ -40,7 +38,6 @@ impl WetEngineFacts {
         tooth: 1.0,
         agua_viva: false,
         borda_que_pesa: 0.0,
-        suave: 0.0,
     };
 }
 
@@ -257,9 +254,6 @@ impl WetSession {
             } else {
                 ph2d_wet_paint::colorops::VELATURA_DO_FILME
             };
-        }
-        if f.suave != a.suave {
-            e.sim.suave = f.suave;
         }
         if f.borda_que_pesa != a.borda_que_pesa {
             e.sim.sedimenta = f.borda_que_pesa * super::SEDIMENTA_DA_BORDA;

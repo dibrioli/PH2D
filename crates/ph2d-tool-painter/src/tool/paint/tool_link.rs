@@ -36,6 +36,8 @@ impl PainterTool {
         let nova = w.largura_por_slot[new].take();
         w.largura_por_slot[old] = std::mem::replace(&mut w.largura, nova);
         w.knobs_por_slot[old] = w.knobs.knobs;
+        w.glaze_por_slot[old] = w.km_glaze; // o Glaze é do traço: cada ferramenta tem o seu
+        w.km_glaze = w.glaze_por_slot[new];
         for k in super::mao::knobs_da_mao() {
             w.knobs.knobs[k as usize] = w.knobs_por_slot[new][k as usize];
         }
@@ -89,6 +91,7 @@ impl PainterTool {
             let w = &mut self.paint.wetpaint;
             w.largura_por_slot = std::array::from_fn(|_| w.largura.clone());
             w.knobs_por_slot.fill(w.knobs.knobs);
+            w.glaze_por_slot.fill(w.km_glaze);
         }
         // Linking needs no seeding: while linked, a mode switch keeps the live `brush`, so every tool
         // immediately shows this (the checked) panel's settings.

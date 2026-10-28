@@ -1,0 +1,22 @@
+[package]
+name = "ph2d-kanban-import"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+[dependencies]
+# Importar o JSON de exportação do Trello e exportar Trello-JSON, CSV e markdown (W10). PURO: lê
+# e escreve texto; o modelo entra e sai pela API pública do `ph2d-kanban-model`.
+ph2d-kanban-model = { path = "../ph2d-kanban-model" }
+# `float_roundtrip`: o `pos` do Trello é um `f64` e a ordem lê-se dele (sem a feature, até 1 ULP).
+serde_json = { version = "1", features = ["float_roundtrip"] }
+# As datas do Trello são RFC 3339 (`2026-10-28T12:00:00.000Z`); a mesma `jiff` 0.2 do `ph2d-kanban-dates`.
+jiff = { version = "0.2", default-features = false, features = ["std"] }
+
+[lints]
+workspace = true

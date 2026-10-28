@@ -1,0 +1,2157 @@
+{
+ "id": "6a96941000b0000000000001",
+ "name": "Produção do curta «Lua»",
+ "desc": "Quadro de produção do curta.",
+ "descData": null,
+ "closed": false,
+ "idOrganization": null,
+ "pinned": false,
+ "starred": true,
+ "url": "https://trello.com/b/bRd12345/lua",
+ "shortUrl": "https://trello.com/b/bRd12345",
+ "prefs": {
+  "permissionLevel": "private",
+  "voting": "members",
+  "comments": "members",
+  "background": "gradient-ocean",
+  "backgroundColor": "#00AECC",
+  "backgroundImage": null,
+  "backgroundTile": false,
+  "backgroundBrightness": "dark",
+  "cardCovers": true,
+  "calendarFeedEnabled": false
+ },
+ "labelNames": {
+  "green_light": "",
+  "yellow_light": "",
+  "orange_light": "",
+  "red_light": "",
+  "purple_light": "",
+  "blue_light": "",
+  "sky_light": "Ideia",
+  "lime_light": "",
+  "pink_light": "",
+  "black_light": "",
+  "green": "Pronto",
+  "yellow": "",
+  "orange": "",
+  "red": "Bug",
+  "purple": "Arte",
+  "blue": "Áudio",
+  "sky": "",
+  "lime": "",
+  "pink": "",
+  "black": "",
+  "green_dark": "",
+  "yellow_dark": "Urgente",
+  "orange_dark": "",
+  "red_dark": "",
+  "purple_dark": "",
+  "blue_dark": "",
+  "sky_dark": "",
+  "lime_dark": "",
+  "pink_dark": "",
+  "black_dark": ""
+ },
+ "actions": [
+  {
+   "id": "6abe4bb800ac000000000055",
+   "idMemberCreator": "6780efa000e0000000000004",
+   "data": {
+    "card": {
+     "id": "6a995a3800ca000000000037",
+     "name": "Animatic",
+     "idShort": 1,
+     "shortLink": "aBcD1234",
+     "desc": "x"
+    },
+    "old": {
+     "desc": ""
+    },
+    "board": {
+     "id": "6a96941000b0000000000001",
+     "name": "Produção do curta «Lua»",
+     "shortLink": "bRd12345"
+    }
+   },
+   "appCreator": null,
+   "type": "updateCard",
+   "date": "2026-10-01T12:02:00.000Z",
+   "limits": null,
+   "memberCreator": {
+    "id": "6780efa000e0000000000004",
+    "username": "carla",
+    "fullName": "Carla",
+    "activityBlocked": false,
+    "avatarHash": null,
+    "initials": "C"
+   }
+  },
+  {
+   "id": "6abe4b7c00ac000000000054",
+   "idMemberCreator": "6780efa000e0000000000004",
+   "data": {
+    "card": {
+     "id": "6a995a3800ca000000000037",
+     "name": "Animatic",
+     "idShort": 1,
+     "shortLink": "aBcD1234",
+     "pos": 32768
+    },
+    "old": {
+     "pos": 65536
+    },
+    "board": {
+     "id": "6a96941000b0000000000001",
+     "name": "Produção do curta «Lua»",
+     "shortLink": "bRd12345"
+    }
+   },
+   "appCreator": null,
+   "type": "updateCard",
+   "date": "2026-10-01T12:01:00.000Z",
+   "limits": null,
+   "memberCreator": {
+    "id": "6780efa000e0000000000004",
+    "username": "carla",
+    "fullName": "Carla",
+    "activityBlocked": false,
+    "avatarHash": null,
+    "initials": "C"
+   }
+  },
+  {
+   "id": "6abe4b4000ac000000000053",
+   "idMemberCreator": "6780efa000e0000000000004",
+   "data": {
+    "card": {
+     "id": "6a995a3800ca000000000037",
+     "name": "Animatic",
+     "idShort": 1,
+     "shortLink": "aBcD1234",
+     "dueComplete": true
+    },
+    "old": {
+     "dueComplete": false
+    },
+    "board": {
+     "id": "6a96941000b0000000000001",
+     "name": "Produção do curta «Lua»",
+     "shortLink": "bRd12345"
+    }
+   },
+   "appCreator": null,
+   "type": "updateCard",
+   "date": "2026-10-01T12:00:00.000Z",
+   "limits": null,
+   "memberCreator": {
+    "id": "6780efa000e0000000000004",
+    "username": "carla",
+    "fullName": "Carla",
+    "activityBlocked": false,
+    "avatarHash": null,
+    "initials": "C"
+   }
+  },
+  {
+   "id": "6aa5149000ac000000000064",
+   "idMemberCreator": "5f0000000000000000000001",
+   "data": {
+    "card": {
+     "id": "6a97f3a000ca000000000033",
+     "name": "Roteiro, versão \"final\"",
+     "idShort": 1,
+     "shortLink": "aBcD1234",
+     "closed": false
+    },
+    "old": {
+     "closed": true
+    },
+    "board": {
+     "id": "6a96941000b0000000000001",
+     "name": "Produção do curta «Lua»",
+     "shortLink": "bRd12345"
+    }
+   },
+   "appCreator": null,
+   "type": "updateCard",
+   "date": "2026-09-12T09:00:00.000Z",
+   "limits": null
+  },
+  {
+   "id": "6aa3c38800ac000000000061",
+   "idMemberCreator": "6780efa000e0000000000002",
+   "data": {
+    "board": {
+     "id": "6a96941000b0000000000001",
+     "name": "Produção do curta «Lua»",
+     "shortLink": "bRd12345"
+    },
+    "old": {
+     "name": "Curta"
+    }
+   },
+   "appCreator": null,
+   "type": "updateBoard",
+   "date": "2026-09-11T09:02:00.000Z",
+   "limits": null,
+   "memberCreator": {
+    "id": "6780efa000e0000000000002",
+    "username": "ana",
+    "fullName": "Ana",
+    "activityBlocked": false,
+    "avatarHash": null,
+    "initials": "A"
+   }
+  },
+  {
+   "id": "6aa3c34c00ac000000000060",
+   "idMemberCreator": "6780efa000e0000000000002",
+   "data": {
+    "list": {
+     "id": "6a96953c0011000000000025",
+     "name": "A fazer"
+    },
+    "old": {
+     "name": "To do"
+    },
+    "board": {
+     "id": "6a96941000b0000000000001",
+     "name": "Produção do curta «Lua»",
+     "shortLink": "bRd12345"
+    }
+   },
+   "appCreator": null,
+   "type": "updateList",
+   "date": "2026-09-11T09:01:00.000Z",
+   "limits": null,
+   "memberCreator": {
+    "id": "6780efa000e0000000000002",
+    "username": "ana",
+    "fullName": "Ana",
+    "activityBlocked": false,
+    "avatarHash": null,
+    "initials": "A"
+   }
+  },
+  {
+   "id": "6aa3c31000ac00000000005f",
+   "idMemberCreator": "6780efa000e0000000000002",
+   "data": {
+    "list": {
+     "id": "6a96953c0011000000000028",
+     "name": "Arquivo antigo",
+     "closed": true
+    },
+    "old": {
+     "closed": false
+    },
+    "board": {
+     "id": "6a96941000b0000000000001",
+     "name": "Produção do curta «Lua»",
+     "shortLink": "bRd12345"
+    }
+   },
+   "appCreator": null,
+   "type": "updateList",
+   "date": "2026-09-11T09:00:00.000Z",
+   "limits": null,
+   "memberCreator": {
+    "id": "6780efa000e0000000000002",
+    "username": "ana",
+    "fullName": "Ana",
+    "activityBlocked": false,
+    "avatarHash": null,
+    "initials": "A"
+   }
+  },
+  {
+   "id": "6aa2719000ac00000000005e",
+   "idMemberCreator": "6780efa000e0000000000003",
+   "data": {
+    "card": {
+     "id": "6aa2719000ca00000000003c",
+     "name": "Cena 4 (do item)",
+     "idShort": 1,
+     "shortLink": "aBcD1234"
+    },
+    "cardSource": {
+     "id": "6a97f3a000ca000000000033",
+     "name": "Roteiro, versão \"final\"",
+     "idShort": 1,
+     "shortLink": "aBcD1234"
+    },
+    "checklist": {
+     "id": "6a980fc000c700000000003e",
+     "name": "Cenas"
+    },
+    "list": {
+     "id": "6a96953c0011000000000025",
+     "name": "A fazer"
+    },
+    "board": {
+     "id": "6a96941000b0000000000001",
+     "name": "Produção do curta «Lua»",
+     "shortLink": "bRd12345"
+    }
+   },
+   "appCreator": null,
+   "type": "convertToCardFromCheckItem",
+   "date": "2026-09-10T09:00:00.000Z",
+   "limits": null,
+   "memberCreator": {
+    "id": "6780efa000e0000000000003",
+    "username": "bruno",
+    "fullName": "Bruno",
+    "activityBlocked": false,
+    "avatarHash": null,
+    "initials": "B"
+   }
+  },
+  {
+   "id": "6a9fce9000ac00000000005d",
+   "idMemberCreator": "6780efa000e0000000000003",
+   "data": {
+    "card": {
+     "id": "60000000000000000000f00d",
+     "idShort": 9
+    },
+    "list": {
+     "id": "6a96953c0011000000000025",
+     "name": "A fazer"
+    },
+    "board": {
+     "id": "6a96941000b0000000000001",
+     "name": "Produção do curta «Lua»",
+     "shortLink": "bRd12345"
+    }
+   },
+   "appCreator": null,
+   "type": "deleteCard",
+   "date": "2026-09-08T09:00:00.000Z",
+   "limits": null,
+   "memberCreator": {
+    "id": "6780efa000e0000000000003",
+    "username": "bruno",
+    "fullName": "Bruno",
+    "activityBlocked": false,
+    "avatarHash": null,
+    "initials": "B"
+   }
+  },
+  {
+   "id": "6a9e8b2000ac00000000005a",
+   "idMemberCreator": "6780efa000e0000000000002",
+   "data": {
+    "card": {
+     "id": "6a97f3a000ca000000000033",
+     "name": "Roteiro, versão \"final\"",
+     "idShort": 1,
+     "shortLink": "aBcD1234"
+    },
+    "checklist": {
+     "id": "6a980fc000c700000000003e",
+     "name": "Cenas"
+    },
+    "checkItem": {
+     "id": "6a980fc000c100000000003f",
+     "name": "Cena 1",
+     "state": "complete"
+    },
+    "board": {
+     "id": "6a96941000b0000000000001",
+     "name": "Produção do curta «Lua»",
+     "shortLink": "bRd12345"
+    }
+   },
+   "appCreator": null,
+   "type": "updateCheckItemStateOnCard",
+   "date": "2026-09-07T10:00:00.000Z",
+   "limits": null,
+   "memberCreator": {
+    "id": "6780efa000e0000000000002",
+    "username": "ana",
+    "fullName": "Ana",
+    "activityBlocked": false,
+    "avatarHash": null,
+    "initials": "A"
+   }
+  },
+  {
+   "id": "6a9d2bcc00ac000000000057",
+   "idMemberCreator": "6780efa000e0000000000002",
+   "data": {
+    "card": {
+     "id": "6a97f3a000ca000000000033",
+     "name": "Roteiro, versão \"final\"",
+     "idShort": 1,
+     "shortLink": "aBcD1234"
+    },
+    "idMember": "6780efa000e0000000000004",
+    "board": {
+     "id": "6a96941000b0000000000001",
+     "name": "Produção do curta «Lua»",
+     "shortLink": "bRd12345"
+    }
+   },
+   "appCreator": null,
+   "type": "removeMemberFromCard",
+   "date": "2026-09-06T09:01:00.000Z",
+   "limits": null,
+   "memberCreator": {
+    "id": "6780efa000e0000000000002",
+    "username": "ana",
+    "fullName": "Ana",
+    "activityBlocked": false,
+    "avatarHash": null,
+    "initials": "A"
+   }
+  },
+  {
+   "id": "6a9d2b9000ac000000000056",
+   "idMemberCreator": "6780efa000e0000000000002",
+   "data": {
+    "card": {
+     "id": "6a995a3800ca000000000037",
+     "name": "Animatic",
+     "idShort": 1,
+     "shortLink": "aBcD1234"
+    },
+    "idMember": "6780efa000e0000000000004",
+    "board": {
+     "id": "6a96941000b0000000000001",
+     "name": "Produção do curta «Lua»",
+     "shortLink": "bRd12345"
+    }
+   },
+   "appCreator": null,
+   "type": "addMemberToCard",
+   "date": "2026-09-06T09:00:00.000Z",
+   "limits": null,
+   "memberCreator": {
+    "id": "6780efa000e0000000000002",
+    "username": "ana",
+    "fullName": "Ana",
+    "activityBlocked": false,
+    "avatarHash": null,
+    "initials": "A"
+   },
+   "member": {
+    "id": "6780efa000e0000000000004",
+    "username": "carla",
+    "fullName": "Carla",
+    "activityBlocked": false,
+    "avatarHash": null,
+    "initials": "C"
+   }
+  },
+  {
+   "id": "6a9d1fd800ac000000000052",
+   "idMemberCreator": "6780efa000e0000000000002",
+   "data": {
+    "card": {
+     "id": "6a97f3a000ca000000000033",
+     "name": "Roteiro, versão \"final\"",
+     "idShort": 1,
+     "shortLink": "aBcD1234",
+     "due": "2026-10-30T15:00:00.000Z",
+     "start": "2026-09-05T00:00:00.000Z"
+    },
+    "old": {
+     "due": null,
+     "start": null
+    },
+    "board": {
+     "id": "6a96941000b0000000000001",
+     "name": "Produção do curta «Lua»",
+     "shortLink": "bRd12345"
+    }
+   },
+   "appCreator": null,
+   "type": "updateCard",
+   "date": "2026-09-06T08:10:00.000Z",
+   "limits": null,
+   "memberCreator": {
+    "id": "6780efa000e0000000000002",
+    "username": "ana",
+    "fullName": "Ana",
+    "activityBlocked": false,
+    "avatarHash": null,
+    "initials": "A"
+   }
+  },
+  {
+   "id": "6a9d1d8000ac000000000051",
+   "idMemberCreator": "6780efa000e0000000000002",
+   "data": {
+    "card": {
+     "id": "6a97f4cc00ca000000000034",
+     "name": "Rascunho descartado",
+     "idShort": 1,
+     "shortLink": "aBcD1234",
+     "closed": true
+    },
+    "old": {
+     "closed": false
+    },
+    "board": {
+     "id": "6a96941000b0000000000001",
+     "name": "Produção do curta «Lua»",
+     "shortLink": "bRd12345"
+    }
+   },
+   "appCreator": null,
+   "type": "updateCard",
+   "date": "2026-09-06T08:00:00.000Z",
+   "limits": null,
+   "memberCreator": {
+    "id": "6780efa000e0000000000002",
+    "username": "ana",
+    "fullName": "Ana",
+    "activityBlocked": false,
+    "avatarHash": null,
+    "initials": "A"
+   }
+  },
+  {
+   "id": "6a9bf75c00ac000000000050",
+   "idMemberCreator": "6780efa000e0000000000003",
+   "data": {
+    "text": "num cartão apagado",
+    "card": {
+     "id": "60000000000000000000f00d"
+    },
+    "board": {
+     "id": "6a96941000b0000000000001",
+     "name": "Produção do curta «Lua»",
+     "shortLink": "bRd12345"
+    }
+   },
+   "appCreator": null,
+   "type": "commentCard",
+   "date": "2026-09-05T11:05:00.000Z",
+   "limits": null,
+   "memberCreator": {
+    "id": "6780efa000e0000000000003",
+    "username": "bruno",
+    "fullName": "Bruno",
+    "activityBlocked": false,
+    "avatarHash": null,
+    "initials": "B"
+   }
+  },
+  {
+   "id": "6a9bf63000ac00000000004f",
+   "idMemberCreator": "6780efa000e0000000000003",
+   "data": {
+    "text": "Feito, @carla!",
+    "card": {
+     "id": "6a97f3a000ca000000000033",
+     "name": "Roteiro, versão \"final\"",
+     "idShort": 1,
+     "shortLink": "aBcD1234"
+    },
+    "board": {
+     "id": "6a96941000b0000000000001",
+     "name": "Produção do curta «Lua»",
+     "shortLink": "bRd12345"
+    }
+   },
+   "appCreator": null,
+   "type": "commentCard",
+   "date": "2026-09-05T11:00:00.000Z",
+   "limits": null,
+   "memberCreator": {
+    "id": "6780efa000e0000000000003",
+    "username": "bruno",
+    "fullName": "Bruno",
+    "activityBlocked": false,
+    "avatarHash": null,
+    "initials": "B"
+   }
+  },
+  {
+   "id": "6a9be82000ac00000000004e",
+   "idMemberCreator": "6780efa000e0000000000004",
+   "data": {
+    "text": "@bruno veja o **acto 3**, e @ana também.",
+    "card": {
+     "id": "6a97f3a000ca000000000033",
+     "name": "Roteiro, versão \"final\"",
+     "idShort": 1,
+     "shortLink": "aBcD1234"
+    },
+    "list": {
+     "id": "6a96953c0011000000000025",
+     "name": "A fazer"
+    },
+    "dateLastEdited": "2026-09-05T10:02:30.500Z",
+    "board": {
+     "id": "6a96941000b0000000000001",
+     "name": "Produção do curta «Lua»",
+     "shortLink": "bRd12345"
+    }
+   },
+   "appCreator": null,
+   "type": "commentCard",
+   "date": "2026-09-05T10:00:00.000Z",
+   "limits": null,
+   "memberCreator": {
+    "id": "6780efa000e0000000000004",
+    "username": "carla",
+    "fullName": "Carla",
+    "activityBlocked": false,
+    "avatarHash": null,
+    "initials": "C"
+   }
+  },
+  {
+   "id": "6a9a889000ac00000000005c",
+   "idMemberCreator": "6780efa000e0000000000002",
+   "data": {
+    "card": {
+     "id": "6a97f3a000ca000000000033",
+     "name": "Roteiro, versão \"final\"",
+     "idShort": 1,
+     "shortLink": "aBcD1234"
+    },
+    "attachment": {
+     "id": "60000000000000000000a77a",
+     "name": "velho.png"
+    },
+    "board": {
+     "id": "6a96941000b0000000000001",
+     "name": "Produção do curta «Lua»",
+     "shortLink": "bRd12345"
+    }
+   },
+   "appCreator": null,
+   "type": "deleteAttachmentFromCard",
+   "date": "2026-09-04T09:00:00.000Z",
+   "limits": null,
+   "memberCreator": {
+    "id": "6780efa000e0000000000002",
+    "username": "ana",
+    "fullName": "Ana",
+    "activityBlocked": false,
+    "avatarHash": null,
+    "initials": "A"
+   }
+  },
+  {
+   "id": "6a9a819700ac00000000005b",
+   "idMemberCreator": "6780efa000e0000000000002",
+   "data": {
+    "card": {
+     "id": "6a97f3a000ca000000000033",
+     "name": "Roteiro, versão \"final\"",
+     "idShort": 1,
+     "shortLink": "aBcD1234"
+    },
+    "attachment": {
+     "id": "6a9a819700a7000000000032",
+     "name": "storyboard.pdf",
+     "url": "https://trello.com/1/cards/x/attachments/y/download/storyboard.pdf"
+    },
+    "board": {
+     "id": "6a96941000b0000000000001",
+     "name": "Produção do curta «Lua»",
+     "shortLink": "bRd12345"
+    }
+   },
+   "appCreator": null,
+   "type": "addAttachmentToCard",
+   "date": "2026-09-04T08:30:15.250Z",
+   "limits": null,
+   "memberCreator": {
+    "id": "6780efa000e0000000000002",
+    "username": "ana",
+    "fullName": "Ana",
+    "activityBlocked": false,
+    "avatarHash": null,
+    "initials": "A"
+   }
+  },
+  {
+   "id": "6a995a7400ac00000000004d",
+   "idMemberCreator": "6780efa000e0000000000003",
+   "data": {
+    "card": {
+     "id": "6a995a3800ca000000000037",
+     "name": "Animatic",
+     "idShort": 1,
+     "shortLink": "aBcD1234",
+     "idList": "6a96953c0011000000000026"
+    },
+    "old": {
+     "idList": "6a96953c0011000000000025",
+     "name": "Animatic v0"
+    },
+    "listBefore": {
+     "id": "6a96953c0011000000000025",
+     "name": "A fazer"
+    },
+    "listAfter": {
+     "id": "6a96953c0011000000000026",
+     "name": "Fazendo"
+    },
+    "board": {
+     "id": "6a96941000b0000000000001",
+     "name": "Produção do curta «Lua»",
+     "shortLink": "bRd12345"
+    }
+   },
+   "appCreator": null,
+   "type": "updateCard",
+   "date": "2026-09-03T11:31:00.000Z",
+   "limits": null,
+   "memberCreator": {
+    "id": "6780efa000e0000000000003",
+    "username": "bruno",
+    "fullName": "Bruno",
+    "activityBlocked": false,
+    "avatarHash": null,
+    "initials": "B"
+   }
+  },
+  {
+   "id": "6a995a3800ac00000000004c",
+   "idMemberCreator": "6780efa000e0000000000003",
+   "data": {
+    "card": {
+     "id": "6a995a3800ca000000000037",
+     "name": "Animatic",
+     "idShort": 1,
+     "shortLink": "aBcD1234"
+    },
+    "list": {
+     "id": "6a96953c0011000000000025",
+     "name": "A fazer"
+    },
+    "board": {
+     "id": "6a96941000b0000000000001",
+     "name": "Produção do curta «Lua»",
+     "shortLink": "bRd12345"
+    }
+   },
+   "appCreator": null,
+   "type": "createCard",
+   "date": "2026-09-03T11:30:00.000Z",
+   "limits": null,
+   "memberCreator": {
+    "id": "6780efa000e0000000000003",
+    "username": "bruno",
+    "fullName": "Bruno",
+    "activityBlocked": false,
+    "avatarHash": null,
+    "initials": "B"
+   }
+  },
+  {
+   "id": "6a9816c800ac000000000059",
+   "idMemberCreator": "6780efa000e0000000000002",
+   "data": {
+    "card": {
+     "id": "6a97f3a000ca000000000033",
+     "name": "Roteiro, versão \"final\"",
+     "idShort": 1,
+     "shortLink": "aBcD1234"
+    },
+    "checklist": {
+     "id": "60000000000000000000c1c1",
+     "name": "Antiga"
+    },
+    "board": {
+     "id": "6a96941000b0000000000001",
+     "name": "Produção do curta «Lua»",
+     "shortLink": "bRd12345"
+    }
+   },
+   "appCreator": null,
+   "type": "removeChecklistFromCard",
+   "date": "2026-09-02T12:30:00.000Z",
+   "limits": null,
+   "memberCreator": {
+    "id": "6780efa000e0000000000002",
+    "username": "ana",
+    "fullName": "Ana",
+    "activityBlocked": false,
+    "avatarHash": null,
+    "initials": "A"
+   }
+  },
+  {
+   "id": "6a980fc000ac000000000058",
+   "idMemberCreator": "6780efa000e0000000000002",
+   "data": {
+    "card": {
+     "id": "6a97f3a000ca000000000033",
+     "name": "Roteiro, versão \"final\"",
+     "idShort": 1,
+     "shortLink": "aBcD1234"
+    },
+    "checklist": {
+     "id": "6a980fc000c700000000003e",
+     "name": "Cenas"
+    },
+    "board": {
+     "id": "6a96941000b0000000000001",
+     "name": "Produção do curta «Lua»",
+     "shortLink": "bRd12345"
+    }
+   },
+   "appCreator": null,
+   "type": "addChecklistToCard",
+   "date": "2026-09-02T12:00:00.000Z",
+   "limits": null,
+   "memberCreator": {
+    "id": "6780efa000e0000000000002",
+    "username": "ana",
+    "fullName": "Ana",
+    "activityBlocked": false,
+    "avatarHash": null,
+    "initials": "A"
+   }
+  },
+  {
+   "id": "6a97f3a000ac00000000004b",
+   "idMemberCreator": "6780efa000e0000000000002",
+   "data": {
+    "card": {
+     "id": "6a97f3a000ca000000000033",
+     "name": "Roteiro, versão \"final\"",
+     "idShort": 1,
+     "shortLink": "aBcD1234"
+    },
+    "list": {
+     "id": "6a96953c0011000000000025",
+     "name": "A fazer"
+    },
+    "board": {
+     "id": "6a96941000b0000000000001",
+     "name": "Produção do curta «Lua»",
+     "shortLink": "bRd12345"
+    }
+   },
+   "appCreator": null,
+   "type": "createCard",
+   "date": "2026-09-02T10:00:00.000Z",
+   "limits": null,
+   "memberCreator": {
+    "id": "6780efa000e0000000000002",
+    "username": "ana",
+    "fullName": "Ana",
+    "activityBlocked": false,
+    "avatarHash": null,
+    "initials": "A"
+   }
+  },
+  {
+   "id": "6a96953d00ac00000000004a",
+   "idMemberCreator": "6780efa000e0000000000002",
+   "data": {
+    "list": {
+     "id": "6a96953c0011000000000026",
+     "name": "Fazendo"
+    },
+    "board": {
+     "id": "6a96941000b0000000000001",
+     "name": "Produção do curta «Lua»",
+     "shortLink": "bRd12345"
+    }
+   },
+   "appCreator": null,
+   "type": "createList",
+   "date": "2026-09-01T09:05:01.000Z",
+   "limits": null,
+   "memberCreator": {
+    "id": "6780efa000e0000000000002",
+    "username": "ana",
+    "fullName": "Ana",
+    "activityBlocked": false,
+    "avatarHash": null,
+    "initials": "A"
+   }
+  },
+  {
+   "id": "6a96953c00ac000000000049",
+   "idMemberCreator": "6780efa000e0000000000002",
+   "data": {
+    "list": {
+     "id": "6a96953c0011000000000025",
+     "name": "A fazer"
+    },
+    "board": {
+     "id": "6a96941000b0000000000001",
+     "name": "Produção do curta «Lua»",
+     "shortLink": "bRd12345"
+    }
+   },
+   "appCreator": null,
+   "type": "createList",
+   "date": "2026-09-01T09:05:00.000Z",
+   "limits": null,
+   "memberCreator": {
+    "id": "6780efa000e0000000000002",
+    "username": "ana",
+    "fullName": "Ana",
+    "activityBlocked": false,
+    "avatarHash": null,
+    "initials": "A"
+   }
+  },
+  {
+   "id": "6a96941200ac000000000063",
+   "idMemberCreator": "6780efa000e0000000000002",
+   "data": {
+    "plugin": {
+     "id": "p"
+    },
+    "board": {
+     "id": "6a96941000b0000000000001",
+     "name": "Produção do curta «Lua»",
+     "shortLink": "bRd12345"
+    }
+   },
+   "appCreator": null,
+   "type": "enablePlugin",
+   "date": "2026-09-01T09:00:02.000Z",
+   "limits": null,
+   "memberCreator": {
+    "id": "6780efa000e0000000000002",
+    "username": "ana",
+    "fullName": "Ana",
+    "activityBlocked": false,
+    "avatarHash": null,
+    "initials": "A"
+   }
+  },
+  {
+   "id": "6a96941100ac000000000062",
+   "idMemberCreator": "6780efa000e0000000000002",
+   "data": {
+    "organization": {
+     "id": "x",
+     "name": "Estúdio"
+    },
+    "board": {
+     "id": "6a96941000b0000000000001",
+     "name": "Produção do curta «Lua»",
+     "shortLink": "bRd12345"
+    }
+   },
+   "appCreator": null,
+   "type": "addToOrganizationBoard",
+   "date": "2026-09-01T09:00:01.000Z",
+   "limits": null,
+   "memberCreator": {
+    "id": "6780efa000e0000000000002",
+    "username": "ana",
+    "fullName": "Ana",
+    "activityBlocked": false,
+    "avatarHash": null,
+    "initials": "A"
+   }
+  },
+  {
+   "id": "6a96941000ac000000000048",
+   "idMemberCreator": "6780efa000e0000000000002",
+   "data": {
+    "board": {
+     "id": "6a96941000b0000000000001",
+     "name": "Produção do curta «Lua»",
+     "shortLink": "bRd12345"
+    }
+   },
+   "appCreator": null,
+   "type": "createBoard",
+   "date": "2026-09-01T09:00:00.000Z",
+   "limits": null,
+   "memberCreator": {
+    "id": "6780efa000e0000000000002",
+    "username": "ana",
+    "fullName": "Ana",
+    "activityBlocked": false,
+    "avatarHash": null,
+    "initials": "A"
+   }
+  }
+ ],
+ "cards": [
+  {
+   "id": "6a97f3a000ca000000000033",
+   "badges": {
+    "votes": 0,
+    "comments": 0
+   },
+   "checkItemStates": [],
+   "closed": false,
+   "dueComplete": false,
+   "dateLastActivity": "2026-10-20T10:00:00.000Z",
+   "desc": "Revisar o **terceiro acto**.\n\n- cena 4\n- cena 7\n\nVer `notas.txt`, linha 3.",
+   "descData": {
+    "emoji": {}
+   },
+   "due": "2026-10-30T15:00:00.000Z",
+   "dueReminder": 1440,
+   "email": null,
+   "idBoard": "6a96941000b0000000000001",
+   "idChecklists": [],
+   "idList": "6a96953c0011000000000025",
+   "idMembersVoted": [
+    "6780efa000e0000000000002",
+    "5f0000000000000000000001"
+   ],
+   "idShort": 51,
+   "idAttachmentCover": null,
+   "idLabels": [
+    "6a969410001a000000000012",
+    "6a969410001a000000000013",
+    "6a969410001a00000000001a",
+    "6a969410001a000000000005",
+    "6a969410001a000000000023",
+    "6a969410001a000000000024",
+    "6a969410001a000000000012"
+   ],
+   "idMembers": [
+    "6780efa000e0000000000002",
+    "6780efa000e0000000000003",
+    "5f0000000000000000000001"
+   ],
+   "isTemplate": false,
+   "cardRole": null,
+   "name": "Roteiro, versão \"final\"",
+   "pos": 65535.5,
+   "shortLink": "aBcD1234",
+   "shortUrl": "https://trello.com/c/aBcD1234",
+   "start": "2026-09-05T00:00:00.000Z",
+   "subscribed": true,
+   "url": "https://trello.com/c/aBcD1234/1-x",
+   "cover": {
+    "idAttachment": null,
+    "color": "purple",
+    "idUploadedBackground": null,
+    "size": "normal",
+    "brightness": "dark",
+    "idPlugin": null
+   },
+   "locationName": "Estúdio 2, Lisboa",
+   "attachments": [
+    {
+     "id": "6a99614000a7000000000031",
+     "bytes": null,
+     "date": "2026-09-03T12:00:00.000Z",
+     "edgeColor": null,
+     "idMember": "6780efa000e0000000000002",
+     "isUpload": false,
+     "mimeType": "",
+     "name": "Referência de cor",
+     "previews": [],
+     "url": "https://example.com/paleta",
+     "pos": 16384,
+     "fileName": null
+    },
+    {
+     "id": "6a9a819700a7000000000032",
+     "bytes": 2048,
+     "date": "2026-09-04T08:30:15.250Z",
+     "edgeColor": null,
+     "idMember": "6780efa000e0000000000002",
+     "isUpload": true,
+     "mimeType": "application/pdf",
+     "name": "storyboard.pdf",
+     "previews": [],
+     "url": "https://trello.com/1/cards/x/attachments/y/download/storyboard.pdf",
+     "pos": 8192,
+     "fileName": "storyboard.pdf"
+    }
+   ],
+   "customFieldItems": [
+    {
+     "id": "x1",
+     "idCustomField": "6a96957800cf000000000029",
+     "idModel": "",
+     "modelType": "card",
+     "value": {
+      "text": "Canal Lua"
+     }
+    },
+    {
+     "id": "x2",
+     "idCustomField": "6a96957800cf00000000002a",
+     "idModel": "",
+     "modelType": "card",
+     "value": {
+      "number": "12.5"
+     }
+    },
+    {
+     "id": "x3",
+     "idCustomField": "6a96957800cf00000000002b",
+     "idModel": "",
+     "modelType": "card",
+     "value": {
+      "date": "2026-12-01T18:00:00.000Z"
+     }
+    },
+    {
+     "id": "x4",
+     "idCustomField": "6a96957800cf00000000002c",
+     "idModel": "",
+     "modelType": "card",
+     "value": {
+      "checked": "true"
+     }
+    },
+    {
+     "id": "x5",
+     "idCustomField": "6a96957800cf00000000002d",
+     "idModel": "",
+     "modelType": "card",
+     "idValue": "6a969578000f00000000002f"
+    },
+    {
+     "id": "x6",
+     "idCustomField": "6a96957800cf00000000002a0",
+     "idModel": "",
+     "modelType": "card",
+     "value": {
+      "number": "1"
+     }
+    }
+   ],
+   "pluginData": [],
+   "stickers": []
+  },
+  {
+   "id": "6a97f4cc00ca000000000034",
+   "badges": {
+    "votes": 0,
+    "comments": 0
+   },
+   "checkItemStates": [],
+   "closed": true,
+   "dueComplete": false,
+   "dateLastActivity": "2026-10-20T10:00:00.000Z",
+   "desc": "",
+   "descData": {
+    "emoji": {}
+   },
+   "due": null,
+   "dueReminder": null,
+   "email": null,
+   "idBoard": "6a96941000b0000000000001",
+   "idChecklists": [],
+   "idList": "6a96953c0011000000000025",
+   "idMembersVoted": [],
+   "idShort": 52,
+   "idAttachmentCover": null,
+   "idLabels": [
+    "6a969410001a00000000000e"
+   ],
+   "idMembers": [],
+   "isTemplate": false,
+   "cardRole": null,
+   "name": "Rascunho descartado",
+   "pos": 0.001,
+   "shortLink": "aBcD1234",
+   "shortUrl": "https://trello.com/c/aBcD1234",
+   "start": null,
+   "subscribed": false,
+   "url": "https://trello.com/c/aBcD1234/1-x",
+   "cover": {
+    "idAttachment": null,
+    "color": null,
+    "idUploadedBackground": null,
+    "size": "normal",
+    "brightness": "dark",
+    "idPlugin": null
+   },
+   "locationName": null,
+   "attachments": [],
+   "customFieldItems": [],
+   "pluginData": [],
+   "stickers": []
+  },
+  {
+   "id": "6a99533000ca000000000036",
+   "badges": {
+    "votes": 0,
+    "comments": 0
+   },
+   "checkItemStates": [],
+   "closed": false,
+   "dueComplete": false,
+   "dateLastActivity": "2026-10-20T10:00:00.000Z",
+   "desc": "",
+   "descData": {
+    "emoji": {}
+   },
+   "due": null,
+   "dueReminder": null,
+   "email": null,
+   "idBoard": "6a96941000b0000000000001",
+   "idChecklists": [],
+   "idList": "6a96953c0011000000000026",
+   "idMembersVoted": [],
+   "idShort": 54,
+   "idAttachmentCover": null,
+   "idLabels": [
+    "6a969410001a000000000015",
+    "6a969410001a000000000020",
+    "6a969410001a00000000000d"
+   ],
+   "idMembers": [],
+   "isTemplate": true,
+   "cardRole": null,
+   "name": "Modelo: cena nova",
+   "pos": 32768,
+   "shortLink": "aBcD1234",
+   "shortUrl": "https://trello.com/c/aBcD1234",
+   "start": null,
+   "subscribed": false,
+   "url": "https://trello.com/c/aBcD1234/1-x",
+   "cover": {
+    "idAttachment": "6a9d2b9000a7000000000035",
+    "color": null,
+    "idUploadedBackground": null,
+    "size": "full",
+    "brightness": "dark",
+    "idPlugin": null
+   },
+   "locationName": null,
+   "attachments": [
+    {
+     "id": "6a9d2b9000a7000000000035",
+     "bytes": 2048,
+     "date": "2026-09-06T09:00:00.000Z",
+     "edgeColor": null,
+     "idMember": "6780efa000e0000000000002",
+     "isUpload": true,
+     "mimeType": "image/png",
+     "name": "capa.png",
+     "previews": [],
+     "url": "https://trello.com/1/cards/x/attachments/z/download/capa.png",
+     "pos": 16384,
+     "fileName": "capa.png"
+    }
+   ],
+   "customFieldItems": [],
+   "pluginData": [],
+   "stickers": []
+  },
+  {
+   "id": "6a995a3800ca000000000037",
+   "badges": {
+    "votes": 0,
+    "comments": 0
+   },
+   "checkItemStates": [],
+   "closed": false,
+   "dueComplete": true,
+   "dateLastActivity": "2026-10-20T10:00:00.000Z",
+   "desc": "",
+   "descData": {
+    "emoji": {}
+   },
+   "due": "2026-10-01T12:00:00.000Z",
+   "dueReminder": null,
+   "email": null,
+   "idBoard": "6a96941000b0000000000001",
+   "idChecklists": [],
+   "idList": "6a96953c0011000000000026",
+   "idMembersVoted": [],
+   "idShort": 55,
+   "idAttachmentCover": null,
+   "idLabels": [
+    "6a969410001a000000000014",
+    "6a969410001a00000000001b"
+   ],
+   "idMembers": [
+    "6780efa000e0000000000004"
+   ],
+   "isTemplate": false,
+   "cardRole": null,
+   "name": "Animatic",
+   "pos": 32768,
+   "shortLink": "aBcD1234",
+   "shortUrl": "https://trello.com/c/aBcD1234",
+   "start": null,
+   "subscribed": false,
+   "url": "https://trello.com/c/aBcD1234/1-x",
+   "cover": {
+    "idAttachment": null,
+    "color": "green",
+    "idUploadedBackground": null,
+    "size": "full",
+    "brightness": "dark",
+    "idPlugin": null
+   },
+   "locationName": null,
+   "attachments": [],
+   "customFieldItems": [],
+   "pluginData": [],
+   "stickers": []
+  },
+  {
+   "id": "6a9acee000ca000000000038",
+   "badges": {
+    "votes": 0,
+    "comments": 0
+   },
+   "checkItemStates": [],
+   "closed": false,
+   "dueComplete": false,
+   "dateLastActivity": "2026-10-20T10:00:00.000Z",
+   "desc": "Linha com vírgula, e \"aspas\"\r\ne quebra CRLF.",
+   "descData": {
+    "emoji": {}
+   },
+   "due": null,
+   "dueReminder": null,
+   "email": null,
+   "idBoard": "6a96941000b0000000000001",
+   "idChecklists": [],
+   "idList": "6a96953c0011000000000027",
+   "idMembersVoted": [],
+   "idShort": 56,
+   "idAttachmentCover": null,
+   "idLabels": [
+    "6a969410001a000000000014",
+    "6a969410001a000000000010"
+   ],
+   "idMembers": [],
+   "isTemplate": false,
+   "cardRole": null,
+   "name": "Trilha sonora",
+   "pos": 1,
+   "shortLink": "aBcD1234",
+   "shortUrl": "https://trello.com/c/aBcD1234",
+   "start": null,
+   "subscribed": false,
+   "url": "https://trello.com/c/aBcD1234/1-x",
+   "cover": {
+    "idAttachment": null,
+    "color": null,
+    "idUploadedBackground": null,
+    "size": "normal",
+    "brightness": "dark",
+    "idPlugin": null
+   },
+   "locationName": null,
+   "attachments": [],
+   "customFieldItems": [
+    {
+     "id": "x7",
+     "idCustomField": "6a96957800cf00000000002a",
+     "value": {
+      "number": "muitas"
+     }
+    }
+   ],
+   "pluginData": [],
+   "stickers": []
+  },
+  {
+   "id": "6a9adcf000ca000000000039",
+   "badges": {
+    "votes": 0,
+    "comments": 0
+   },
+   "checkItemStates": [],
+   "closed": false,
+   "dueComplete": false,
+   "dateLastActivity": "2026-10-20T10:00:00.000Z",
+   "desc": "",
+   "descData": {
+    "emoji": {}
+   },
+   "due": null,
+   "dueReminder": null,
+   "email": null,
+   "idBoard": "6a96941000b0000000000001",
+   "idChecklists": [],
+   "idList": "6a96953c0011000000000028",
+   "idMembersVoted": [],
+   "idShort": 57,
+   "idAttachmentCover": null,
+   "idLabels": [],
+   "idMembers": [],
+   "isTemplate": false,
+   "cardRole": null,
+   "name": "Cartão de lista arquivada",
+   "pos": 5,
+   "shortLink": "aBcD1234",
+   "shortUrl": "https://trello.com/c/aBcD1234",
+   "start": null,
+   "subscribed": false,
+   "url": "https://trello.com/c/aBcD1234/1-x",
+   "cover": {
+    "idAttachment": null,
+    "color": null,
+    "idUploadedBackground": null,
+    "size": "normal",
+    "brightness": "dark",
+    "idPlugin": null
+   },
+   "locationName": null,
+   "attachments": [],
+   "customFieldItems": [],
+   "pluginData": [],
+   "stickers": []
+  },
+  {
+   "id": "6a9aeb0000ca00000000003a",
+   "badges": {
+    "votes": 0,
+    "comments": 0
+   },
+   "checkItemStates": [],
+   "closed": false,
+   "dueComplete": false,
+   "dateLastActivity": "2026-10-20T10:00:00.000Z",
+   "desc": "",
+   "descData": {
+    "emoji": {}
+   },
+   "due": null,
+   "dueReminder": null,
+   "email": null,
+   "idBoard": "6a96941000b0000000000001",
+   "idChecklists": [],
+   "idList": "60000000000000000000dead",
+   "idMembersVoted": [],
+   "idShort": 58,
+   "idAttachmentCover": null,
+   "idLabels": [],
+   "idMembers": [],
+   "isTemplate": false,
+   "cardRole": null,
+   "name": "Órfão sem lista",
+   "pos": 5,
+   "shortLink": "aBcD1234",
+   "shortUrl": "https://trello.com/c/aBcD1234",
+   "start": null,
+   "subscribed": false,
+   "url": "https://trello.com/c/aBcD1234/1-x",
+   "cover": {
+    "idAttachment": null,
+    "color": null,
+    "idUploadedBackground": null,
+    "size": "normal",
+    "brightness": "dark",
+    "idPlugin": null
+   },
+   "locationName": null,
+   "attachments": [],
+   "customFieldItems": [],
+   "pluginData": [],
+   "stickers": []
+  },
+  {
+   "id": "6a9af91000ca00000000003b",
+   "badges": {
+    "votes": 0,
+    "comments": 0
+   },
+   "checkItemStates": [],
+   "closed": false,
+   "dueComplete": false,
+   "dateLastActivity": "2026-10-20T10:00:00.000Z",
+   "desc": "",
+   "descData": {
+    "emoji": {}
+   },
+   "due": null,
+   "dueReminder": null,
+   "email": null,
+   "idBoard": "6a96941000b0000000000001",
+   "idChecklists": [],
+   "idList": "6a96953c0011000000000027",
+   "idMembersVoted": [],
+   "idShort": 59,
+   "idAttachmentCover": null,
+   "idLabels": [],
+   "idMembers": [],
+   "isTemplate": false,
+   "cardRole": "separator",
+   "name": "──── Separador ────",
+   "pos": 0.5,
+   "shortLink": "aBcD1234",
+   "shortUrl": "https://trello.com/c/aBcD1234",
+   "start": null,
+   "subscribed": false,
+   "url": "https://trello.com/c/aBcD1234/1-x",
+   "cover": {
+    "idAttachment": null,
+    "color": null,
+    "idUploadedBackground": null,
+    "size": "normal",
+    "brightness": "dark",
+    "idPlugin": null
+   },
+   "locationName": null,
+   "attachments": [],
+   "customFieldItems": [],
+   "pluginData": [
+    {
+     "id": "p1",
+     "idPlugin": "55a5d916446f517774210004",
+     "scope": "card",
+     "value": "{}"
+    }
+   ],
+   "stickers": []
+  },
+  {
+   "id": "6aa2719000ca00000000003c",
+   "badges": {
+    "votes": 0,
+    "comments": 0
+   },
+   "checkItemStates": [],
+   "closed": false,
+   "dueComplete": false,
+   "dateLastActivity": "2026-10-20T10:00:00.000Z",
+   "desc": "",
+   "descData": {
+    "emoji": {}
+   },
+   "due": null,
+   "dueReminder": null,
+   "email": null,
+   "idBoard": "6a96941000b0000000000001",
+   "idChecklists": [],
+   "idList": "6a96953c0011000000000025",
+   "idMembersVoted": [],
+   "idShort": 60,
+   "idAttachmentCover": null,
+   "idLabels": [],
+   "idMembers": [
+    "6780efa000e0000000000003"
+   ],
+   "isTemplate": false,
+   "cardRole": null,
+   "name": "Cena 4 (do item)",
+   "pos": 70000,
+   "shortLink": "aBcD1234",
+   "shortUrl": "https://trello.com/c/aBcD1234",
+   "start": null,
+   "subscribed": false,
+   "url": "https://trello.com/c/aBcD1234/1-x",
+   "cover": {
+    "idAttachment": null,
+    "color": null,
+    "idUploadedBackground": null,
+    "size": "normal",
+    "brightness": "dark",
+    "idPlugin": null
+   },
+   "locationName": null,
+   "attachments": [],
+   "customFieldItems": [],
+   "pluginData": [],
+   "stickers": []
+  },
+  {
+   "id": "6a9b072000ca00000000003d",
+   "badges": {
+    "votes": 0,
+    "comments": 0
+   },
+   "checkItemStates": [],
+   "closed": false,
+   "dueComplete": true,
+   "dateLastActivity": "2026-10-20T10:00:00.000Z",
+   "desc": "",
+   "descData": {
+    "emoji": {}
+   },
+   "due": null,
+   "dueReminder": -1,
+   "email": null,
+   "idBoard": "6a96941000b0000000000001",
+   "idChecklists": [],
+   "idList": "6a96953c0011000000000027",
+   "idMembersVoted": [
+    "6780efa000e0000000000003",
+    "6780efa000e0000000000004"
+   ],
+   "idShort": 61,
+   "idAttachmentCover": null,
+   "idLabels": [
+    "6a969410001a00000000000f",
+    "6a969410001a000000000008",
+    "6a969410001a000000000007",
+    "6a969410001a00000000001d",
+    "6a969410001a000000000009",
+    "6a969410001a00000000001e",
+    "6a969410001a00000000000a",
+    "6a969410001a00000000001f",
+    "6a969410001a000000000016",
+    "6a969410001a00000000000c",
+    "6a969410001a000000000017",
+    "6a969410001a000000000021",
+    "6a969410001a000000000018",
+    "6a969410001a000000000022",
+    "6a969410001a000000000019",
+    "6a969410001a000000000006",
+    "6a969410001a00000000001c",
+    "6a969410001a000000000011",
+    "6a969410001a00000000000b"
+   ],
+   "idMembers": [],
+   "isTemplate": false,
+   "cardRole": null,
+   "name": "Fundo da cena 7",
+   "pos": 2,
+   "shortLink": "aBcD1234",
+   "shortUrl": "https://trello.com/c/aBcD1234",
+   "start": null,
+   "subscribed": false,
+   "url": "https://trello.com/c/aBcD1234/1-x",
+   "cover": {
+    "idAttachment": null,
+    "color": null,
+    "idUploadedBackground": null,
+    "size": "normal",
+    "brightness": "dark",
+    "idPlugin": null
+   },
+   "locationName": null,
+   "attachments": [],
+   "customFieldItems": [],
+   "pluginData": [],
+   "stickers": []
+  }
+ ],
+ "labels": [
+  {
+   "id": "6a969410001a000000000005",
+   "idBoard": "6a96941000b0000000000001",
+   "name": "",
+   "color": "green_light",
+   "uses": 0
+  },
+  {
+   "id": "6a969410001a000000000006",
+   "idBoard": "6a96941000b0000000000001",
+   "name": "",
+   "color": "yellow_light",
+   "uses": 0
+  },
+  {
+   "id": "6a969410001a000000000007",
+   "idBoard": "6a96941000b0000000000001",
+   "name": "",
+   "color": "orange_light",
+   "uses": 0
+  },
+  {
+   "id": "6a969410001a000000000008",
+   "idBoard": "6a96941000b0000000000001",
+   "name": "",
+   "color": "red_light",
+   "uses": 0
+  },
+  {
+   "id": "6a969410001a000000000009",
+   "idBoard": "6a96941000b0000000000001",
+   "name": "",
+   "color": "purple_light",
+   "uses": 0
+  },
+  {
+   "id": "6a969410001a00000000000a",
+   "idBoard": "6a96941000b0000000000001",
+   "name": "",
+   "color": "blue_light",
+   "uses": 0
+  },
+  {
+   "id": "6a969410001a00000000000b",
+   "idBoard": "6a96941000b0000000000001",
+   "name": "Ideia",
+   "color": "sky_light",
+   "uses": 0
+  },
+  {
+   "id": "6a969410001a00000000000c",
+   "idBoard": "6a96941000b0000000000001",
+   "name": "",
+   "color": "lime_light",
+   "uses": 0
+  },
+  {
+   "id": "6a969410001a00000000000d",
+   "idBoard": "6a96941000b0000000000001",
+   "name": "",
+   "color": "pink_light",
+   "uses": 0
+  },
+  {
+   "id": "6a969410001a00000000000e",
+   "idBoard": "6a96941000b0000000000001",
+   "name": "",
+   "color": "black_light",
+   "uses": 0
+  },
+  {
+   "id": "6a969410001a00000000000f",
+   "idBoard": "6a96941000b0000000000001",
+   "name": "Pronto",
+   "color": "green",
+   "uses": 0
+  },
+  {
+   "id": "6a969410001a000000000010",
+   "idBoard": "6a96941000b0000000000001",
+   "name": "",
+   "color": "yellow",
+   "uses": 0
+  },
+  {
+   "id": "6a969410001a000000000011",
+   "idBoard": "6a96941000b0000000000001",
+   "name": "",
+   "color": "orange",
+   "uses": 0
+  },
+  {
+   "id": "6a969410001a000000000012",
+   "idBoard": "6a96941000b0000000000001",
+   "name": "Bug",
+   "color": "red",
+   "uses": 0
+  },
+  {
+   "id": "6a969410001a000000000013",
+   "idBoard": "6a96941000b0000000000001",
+   "name": "Arte",
+   "color": "purple",
+   "uses": 0
+  },
+  {
+   "id": "6a969410001a000000000014",
+   "idBoard": "6a96941000b0000000000001",
+   "name": "Áudio",
+   "color": "blue",
+   "uses": 0
+  },
+  {
+   "id": "6a969410001a000000000015",
+   "idBoard": "6a96941000b0000000000001",
+   "name": "",
+   "color": "sky",
+   "uses": 0
+  },
+  {
+   "id": "6a969410001a000000000016",
+   "idBoard": "6a96941000b0000000000001",
+   "name": "",
+   "color": "lime",
+   "uses": 0
+  },
+  {
+   "id": "6a969410001a000000000017",
+   "idBoard": "6a96941000b0000000000001",
+   "name": "",
+   "color": "pink",
+   "uses": 0
+  },
+  {
+   "id": "6a969410001a000000000018",
+   "idBoard": "6a96941000b0000000000001",
+   "name": "",
+   "color": "black",
+   "uses": 0
+  },
+  {
+   "id": "6a969410001a000000000019",
+   "idBoard": "6a96941000b0000000000001",
+   "name": "",
+   "color": "green_dark",
+   "uses": 0
+  },
+  {
+   "id": "6a969410001a00000000001a",
+   "idBoard": "6a96941000b0000000000001",
+   "name": "Urgente",
+   "color": "yellow_dark",
+   "uses": 0
+  },
+  {
+   "id": "6a969410001a00000000001b",
+   "idBoard": "6a96941000b0000000000001",
+   "name": "",
+   "color": "orange_dark",
+   "uses": 0
+  },
+  {
+   "id": "6a969410001a00000000001c",
+   "idBoard": "6a96941000b0000000000001",
+   "name": "",
+   "color": "red_dark",
+   "uses": 0
+  },
+  {
+   "id": "6a969410001a00000000001d",
+   "idBoard": "6a96941000b0000000000001",
+   "name": "",
+   "color": "purple_dark",
+   "uses": 0
+  },
+  {
+   "id": "6a969410001a00000000001e",
+   "idBoard": "6a96941000b0000000000001",
+   "name": "",
+   "color": "blue_dark",
+   "uses": 0
+  },
+  {
+   "id": "6a969410001a00000000001f",
+   "idBoard": "6a96941000b0000000000001",
+   "name": "",
+   "color": "sky_dark",
+   "uses": 0
+  },
+  {
+   "id": "6a969410001a000000000020",
+   "idBoard": "6a96941000b0000000000001",
+   "name": "",
+   "color": "lime_dark",
+   "uses": 0
+  },
+  {
+   "id": "6a969410001a000000000021",
+   "idBoard": "6a96941000b0000000000001",
+   "name": "",
+   "color": "pink_dark",
+   "uses": 0
+  },
+  {
+   "id": "6a969410001a000000000022",
+   "idBoard": "6a96941000b0000000000001",
+   "name": "",
+   "color": "black_dark",
+   "uses": 0
+  },
+  {
+   "id": "6a969410001a000000000023",
+   "idBoard": "6a96941000b0000000000001",
+   "name": "Sem cor",
+   "color": null,
+   "uses": 1
+  },
+  {
+   "id": "6a969410001a000000000024",
+   "idBoard": "6a96941000b0000000000001",
+   "name": "Cor estranha",
+   "color": "teal",
+   "uses": 0
+  }
+ ],
+ "lists": [
+  {
+   "id": "6a96953c0011000000000025",
+   "name": "A fazer",
+   "closed": false,
+   "idBoard": "6a96941000b0000000000001",
+   "pos": 16384,
+   "subscribed": false,
+   "softLimit": null,
+   "color": "sky",
+   "status": null
+  },
+  {
+   "id": "6a96953c0011000000000026",
+   "name": "Fazendo",
+   "closed": false,
+   "idBoard": "6a96941000b0000000000001",
+   "pos": 32768.5,
+   "subscribed": false,
+   "softLimit": "3",
+   "color": null,
+   "status": null
+  },
+  {
+   "id": "6a96953c0011000000000027",
+   "name": "Feito",
+   "closed": false,
+   "idBoard": "6a96941000b0000000000001",
+   "pos": 1000000000.0,
+   "subscribed": false,
+   "softLimit": null,
+   "color": null,
+   "status": null
+  },
+  {
+   "id": "6a96953c0011000000000028",
+   "name": "Arquivo antigo",
+   "closed": true,
+   "idBoard": "6a96941000b0000000000001",
+   "pos": 8192.25,
+   "subscribed": false,
+   "softLimit": null,
+   "color": null,
+   "status": null
+  }
+ ],
+ "members": [
+  {
+   "id": "6780efa000e0000000000002",
+   "username": "ana",
+   "fullName": "Ana Souza",
+   "initials": "A",
+   "avatarUrl": null,
+   "memberType": "normal"
+  },
+  {
+   "id": "6780efa000e0000000000003",
+   "username": "bruno",
+   "fullName": "Bruno Lima",
+   "initials": "B",
+   "avatarUrl": null,
+   "memberType": "normal"
+  },
+  {
+   "id": "6780efa000e0000000000004",
+   "username": "carla",
+   "fullName": "Carla Dias",
+   "initials": "C",
+   "avatarUrl": null,
+   "memberType": "normal"
+  }
+ ],
+ "checklists": [
+  {
+   "id": "6a980fc000c700000000003e",
+   "name": "Cenas",
+   "idBoard": "6a96941000b0000000000001",
+   "idCard": "6a97f3a000ca000000000033",
+   "pos": 32768,
+   "checkItems": [
+    {
+     "id": "6a980fc000c100000000003f",
+     "idChecklist": "6a980fc000c700000000003e",
+     "name": "Cena 1",
+     "nameData": {
+      "emoji": {}
+     },
+     "pos": 16384,
+     "state": "complete",
+     "idMember": "6780efa000e0000000000002",
+     "due": null,
+     "dueReminder": null
+    },
+    {
+     "id": "6a980fc000c1000000000040",
+     "idChecklist": "6a980fc000c700000000003e",
+     "name": "Cena 7",
+     "nameData": {
+      "emoji": {}
+     },
+     "pos": 50000.75,
+     "state": "incomplete",
+     "idMember": "6780efa000e0000000000003",
+     "due": "2026-10-15T09:00:00.000Z",
+     "dueReminder": null
+    },
+    {
+     "id": "6a980fc000c1000000000041",
+     "idChecklist": "6a980fc000c700000000003e",
+     "name": "Cena 3",
+     "nameData": {
+      "emoji": {}
+     },
+     "pos": 20000,
+     "state": "incomplete",
+     "idMember": "5f0000000000000000000001",
+     "due": null,
+     "dueReminder": null
+    }
+   ]
+  },
+  {
+   "id": "6a980fc000c7000000000042",
+   "name": "Revisão",
+   "idBoard": "6a96941000b0000000000001",
+   "idCard": "6a97f3a000ca000000000033",
+   "pos": 100,
+   "checkItems": [
+    {
+     "id": "6a980fc000c1000000000043",
+     "idChecklist": "6a980fc000c7000000000042",
+     "name": "Ler em voz alta",
+     "nameData": {
+      "emoji": {}
+     },
+     "pos": 1,
+     "state": "incomplete",
+     "idMember": null,
+     "due": null,
+     "dueReminder": null
+    }
+   ]
+  },
+  {
+   "id": "6a980fc000c7000000000044",
+   "name": "Mixagem",
+   "idBoard": "6a96941000b0000000000001",
+   "idCard": "6a9acee000ca000000000038",
+   "pos": 1,
+   "checkItems": [
+    {
+     "id": "6a980fc000c1000000000045",
+     "idChecklist": "6a980fc000c7000000000044",
+     "name": "Graves",
+     "nameData": {
+      "emoji": {}
+     },
+     "pos": 2,
+     "state": "complete",
+     "idMember": null,
+     "due": null,
+     "dueReminder": null
+    },
+    {
+     "id": "6a980fc000c1000000000046",
+     "idChecklist": "6a980fc000c7000000000044",
+     "name": "Agudos",
+     "nameData": {
+      "emoji": {}
+     },
+     "pos": 1,
+     "state": "complete",
+     "idMember": "6780efa000e0000000000004",
+     "due": "2026-11-01T10:00:00.000Z",
+     "dueReminder": null
+    }
+   ]
+  },
+  {
+   "id": "6a980fc000c7000000000047",
+   "name": "Órfã",
+   "idBoard": "6a96941000b0000000000001",
+   "idCard": "60000000000000000000beef",
+   "pos": 1,
+   "checkItems": []
+  }
+ ],
+ "customFields": [
+  {
+   "id": "6a96957800cf000000000029",
+   "idModel": "6a96941000b0000000000001",
+   "modelType": "board",
+   "fieldGroup": "x",
+   "display": {
+    "cardFront": true
+   },
+   "name": "Cliente",
+   "pos": 16384,
+   "type": "text",
+   "isSuggestedField": false
+  },
+  {
+   "id": "6a96957800cf00000000002a",
+   "idModel": "6a96941000b0000000000001",
+   "modelType": "board",
+   "fieldGroup": "x",
+   "display": {
+    "cardFront": true
+   },
+   "name": "Horas",
+   "pos": 32768,
+   "type": "number",
+   "isSuggestedField": false
+  },
+  {
+   "id": "6a96957800cf00000000002b",
+   "idModel": "6a96941000b0000000000001",
+   "modelType": "board",
+   "fieldGroup": "x",
+   "display": {
+    "cardFront": false
+   },
+   "name": "Entrega final",
+   "pos": 49152,
+   "type": "date",
+   "isSuggestedField": false
+  },
+  {
+   "id": "6a96957800cf00000000002c",
+   "idModel": "6a96941000b0000000000001",
+   "modelType": "board",
+   "fieldGroup": "x",
+   "display": {
+    "cardFront": true
+   },
+   "name": "Aprovado",
+   "pos": 65536,
+   "type": "checkbox",
+   "isSuggestedField": false
+  },
+  {
+   "id": "6a96957800cf00000000002d",
+   "idModel": "6a96941000b0000000000001",
+   "modelType": "board",
+   "fieldGroup": "x",
+   "display": {
+    "cardFront": true
+   },
+   "name": "Prioridade",
+   "pos": 8192,
+   "type": "list",
+   "isSuggestedField": false,
+   "options": [
+    {
+     "id": "6a969578000f00000000002e",
+     "idCustomField": "6a96957800cf00000000002d",
+     "value": {
+      "text": "Média"
+     },
+     "color": "yellow",
+     "pos": 32768
+    },
+    {
+     "id": "6a969578000f00000000002f",
+     "idCustomField": "6a96957800cf00000000002d",
+     "value": {
+      "text": "Alta"
+     },
+     "color": "red",
+     "pos": 16384
+    },
+    {
+     "id": "6a969578000f000000000030",
+     "idCustomField": "6a96957800cf00000000002d",
+     "value": {
+      "text": "Baixa"
+     },
+     "color": "none",
+     "pos": 49152
+    }
+   ]
+  }
+ ],
+ "memberships": [
+  {
+   "id": "ms1",
+   "idMember": "6780efa000e0000000000002",
+   "memberType": "admin",
+   "unconfirmed": false,
+   "deactivated": false
+  }
+ ],
+ "pluginData": [
+  {
+   "id": "pd1",
+   "idPlugin": "55a5d916446f517774210004",
+   "scope": "board",
+   "idModel": "6a96941000b0000000000001",
+   "value": "{\"aging\":\"regular\"}",
+   "access": "shared"
+  }
+ ],
+ "boardPlugins": []
+}

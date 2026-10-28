@@ -35,6 +35,9 @@ const BOARD_PAD: f64 = 12.0;
 const LIST_GAP: f64 = 12.0;
 const LIST_W: f64 = 272.0;
 const COLLAPSED_W: f64 = 44.0;
+/// A recolhida da aba, fora o título deitado (`10` + botão `28` + `6` + `6` + contagem `18` + `10`):
+/// ela tem a altura do título, nunca a do quadro.
+const COLLAPSED_BASE: f64 = 78.0;
 const LIST_RADIUS: f64 = 12.0;
 const LIST_HEAD: f64 = 36.0;
 const LIST_PAD: f64 = 14.0;
@@ -118,6 +121,14 @@ pub trait KanbanPainter {
 thread_local! {
     static SOURCE: RefCell<Option<KanbanSource>> = const { RefCell::new(None) };
     static PAINTER: RefCell<Option<Rc<RefCell<dyn KanbanPainter>>>> = const { RefCell::new(None) };
+    static FORCE: std::cell::Cell<Option<KanbanLod>> = const { std::cell::Cell::new(None) };
+}
+
+/// ⚠️ MEDIÇÃO: pinta todo Kanban deste fio no nível `lod` qualquer que seja o zoom (`None` = pelo
+/// zoom) — os níveis comparam-se no MESMO processo, à mesma escala (`docs/TrelloClone/loop/MEDICOES.md`).
+#[doc(hidden)]
+pub fn force_kanban_lod(lod: Option<KanbanLod>) {
+    FORCE.with(|f| f.set(lod));
 }
 
 /// Os Kanbans que o desenho deste fio lê (o editor instala o `Rc` do projecto).
@@ -244,7 +255,7 @@ pub(crate) fn paint(
     let lod = if cache.export.is_some() {
         KanbanLod::Mid
     } else {
-        KanbanLod::at(zoom * k.view.zoom)
+        FORCE.with(std::cell::Cell::get).unwrap_or_else(|| KanbanLod::at(zoom * k.view.zoom))
     };
     if cache.export.is_none() {
         cache.kanbans.theme = theme;
@@ -373,10 +384,14 @@ fn low(
     let screen = zoom * z;
     let head = Rect::new(0.0, 0.0, el.w, HEADER_H * z).to_path(0.1);
     scene.fill_path(&head, &Brush::Solid(token(T::KanbanHeaderBg, theme)), t);
-    let title_at = [HEADER_PAD * z, (HEADER_H - TITLE_PX * LINE_K) * z / 2.0];
+    // De longe o texto não encolhe abaixo da menor letra da interface (a maquete: «the lists at a
+    // glance», os títulos e as contagens legíveis): px LOCAIS que dão `TypeToken::Xs` no ecrã.
+    let glance = f64::from(TypeToken::Xs.px()) / zoom.max(f64::EPSILON);
+    let title_px = (TITLE_PX * z).max(glance).min(HEADER_H * z / LINE_K);
+    let title_at = [HEADER_PAD * z, (HEADER_H * z - title_px * LINE_K) / 2.0];
     let fg = token(T::KanbanHeaderFg, theme);
     let name = &kb.header.name;
-    text(scene, ts, cache, owner(board, el.id, 0), name, TITLE_PX * z, title_at, None, t, screen, fg);
+    text(scene, ts, cache, owner(board, el.id, 0), name, title_px, title_at, None, t, screen, fg);
     let top = (HEADER_H + BOARD_PAD) * z;
     let bottom = el.h - BOARD_PAD * z;
     let mut x = BOARD_PAD * z - view.scroll[0];
@@ -388,21 +403,28 @@ fn low(
         let w = if collapsed { COLLAPSED_W } else { LIST_W } * z;
         let cards = kb.cards_in(l.id).len();
         let tall = (LIST_HEAD + cards as f64 * CARD_STEP + LIST_FOOT) * z;
-        let h = if collapsed { bottom - top } else { tall.min(bottom - top) };
+        let shut = COLLAPSED_BASE + LIST_TITLE_PX * GREEK_ADVANCE * l.title.chars().count() as f64;
+        let h = if collapsed { shut * z } else { tall }.min(bottom - top);
         if x + w > 0.0 && h > 0.0 {
             let (fill, ink, meta) = kanban_list_colors(theme, l.color);
             let r = RoundedRect::new(x, top, x + w, top + h, LIST_RADIUS * z).to_path(0.1);
             scene.fill_path(&r, &Brush::Solid(fill), t);
             if !collapsed {
                 scene.push_layer_shape(VelloBlend::default(), 1.0, t, &r);
-                let (px, pad) = (LIST_TITLE_PX * z, LIST_PAD * z);
+                let pad = LIST_PAD * z;
+                let px = (LIST_TITLE_PX * z).max(glance);
                 let at = [x + pad, top + (LIST_HEAD - LIST_TITLE_PX * LINE_K) * z / 2.0];
                 let n = i as u64 * 2 + 1;
                 let up = l.title.to_uppercase();
                 text(scene, ts, cache, owner(board, el.id, n), &up, px, at, None, t, screen, ink);
                 let count = cards.to_string();
-                let right = Some(x + w - pad);
-                text(scene, ts, cache, owner(board, el.id, n + 1), &count, px, at, right, t, screen, meta);
+                // Ampliada, a contagem desce para a linha de baixo (ao lado não cabe na coluna).
+                let (cat, right) = if px > LIST_TITLE_PX * z {
+                    ([at[0], at[1] + px * LINE_K], None)
+                } else {
+                    (at, Some(x + w - pad))
+                };
+                text(scene, ts, cache, owner(board, el.id, n + 1), &count, px, cat, right, t, screen, meta);
                 scene.pop_layer();
             }
         }

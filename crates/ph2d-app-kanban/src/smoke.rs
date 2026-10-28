@@ -94,6 +94,13 @@ pub fn stage(hero: &mut HeroScreen, n: u8) -> Option<KanbanId> {
     Some(id)
 }
 
+/// ⭐ O Kanban da cena 1 («Short film — production») em `set`, e a «Review» (que a cena recolhe) — a
+/// cena 30 do Quadro põe-no no canvas.
+pub fn short_film_into(set: &mut KanbanSet) -> (KanbanId, Option<ListId>) {
+    let id = short_film(set);
+    (id, review_list(set, id))
+}
+
 /// SMOKE 3: põe na mão a lista pedida, assim que a disposição a tem (o arrasto como o do rato), presa
 /// à origem das listas a cada quadro (a janela que maximiza move-a) até o rato a mexer.
 pub(crate) fn hold(tab: &mut crate::tab::Tab) {

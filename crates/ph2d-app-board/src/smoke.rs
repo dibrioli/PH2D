@@ -58,6 +58,9 @@ mod w23_tabs;
 mod w23_text;
 #[path = "smoke_w24_bars.rs"]
 mod w24_bars;
+/// A cena 30 (TrelloClone W4), num ficheiro filho.
+#[path = "smoke_w4_kanban.rs"]
+mod w4_kanban;
 
 /// A cena 9 (W7), num ficheiro filho.
 #[path = "smoke_facilitate.rs"]
@@ -109,7 +112,7 @@ pub(crate) mod shots;
 /// O roteador desta família — o maior nível que o `match` de [`stage_armed_smokes`] responde.
 pub const ROUTERS: &[ph2d_app_host::SmokeRouter] = &[ph2d_app_host::SmokeRouter {
     env: "PH2D_BOARD_SMOKE",
-    max_level: 29,
+    max_level: 30,
 }];
 
 /// Encena o que o dono armou por variável de ambiente. Inerte sem ela.
@@ -150,7 +153,8 @@ pub fn stage_armed_smokes(hero: &mut HeroScreen) {
         27 => _ = w23_tabs::scene_tabs(hero),
         28 => _ = w23_block6::scene_block6(hero),
         29 => _ = w24_bars::scene_bars(hero),
-        _ => eprintln!("[board] PH2D_BOARD_SMOKE={level}: não há esta cena (1..=29)"),
+        30 => _ = w4_kanban::scene_w4_kanban(hero),
+        _ => eprintln!("[board] PH2D_BOARD_SMOKE={level}: não há esta cena (1..=30)"),
     }
 }
 

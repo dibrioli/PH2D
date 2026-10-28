@@ -5,6 +5,7 @@
 
 mod arrastar;
 mod duas_janelas;
+mod medida;
 mod escrever;
 mod frente;
 mod teclado;

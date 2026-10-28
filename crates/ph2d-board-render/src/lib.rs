@@ -35,7 +35,7 @@ pub use image::{Decode, Images, Pixels, Salvage, install_decoder, install_salvag
 pub use kanban::{
     HEADER_H as KANBAN_HEADER_H, KanbanFrames, KanbanLod, KanbanPaint, KanbanPainter,
     KanbanOver, KanbanPlacement, KanbanSource, install_kanban_painter, install_kanbans, kanban_board_bg,
-    kanban_list_colors, kanban_name, kanban_painter_installed,
+    force_kanban_lod, kanban_list_colors, kanban_name, kanban_painter_installed,
 };
 pub use overlay::paint_overlay;
 pub use theme_ink::ThemeInk;

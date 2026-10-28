@@ -59,3 +59,42 @@ grandeza): uma regra «quando entra em Done → comentar `{cardname}` e juntar-m
   = o último), por isso procurar mais atrás nunca acha ocorrência mais recente.
 - **Sugestões**: `SUGGEST_MIN = 3` (o exemplo do Butler: «3 vezes») e `SUGGEST_WINDOW_MS = 5 min`
   depois do movimento — parâmetros de PRODUTO (decisão sem o dono, devolvida ao coordenador).
+
+## W4 V — os níveis do Kanban no canvas do Quadro (28/10)
+
+**O que se decide:** a que escala de ecrã (px por unidade do Kanban = zoom da câmara × zoom interno)
+o elemento passa de BAIXO (blocos de cor por lista + contagem, pintados pelo `ph2d-board-render`) a
+MÉDIO (títulos, cartões só com título e capa) e a ALTO (o Kanban inteiro, interactivo).
+
+**Régua:** `crates/ph2d-app-kanban/tests/it/medida.rs` (`#[ignore]`) — `bash scripts/ph2d-run.sh cargo
+test -p ph2d-app-kanban --profile smoke --test it medida -- --ignored --nocapture`. A cena GRANDE do
+Kanban (8 listas × 250 cartões) num elemento de 1900×1000 no Quadro; o hero INTEIRO pintado
+(`paint_hero_screen`, janela 1366×1024, CPU: só a codificação da cena); os três níveis forçados à MESMA
+escala (`ph2d_board_render::force_kanban_lod`, no mesmo processo), aquecidos e intercalados em 12 rondas
+rodadas; o resumo é o MÍNIMO. Perfil `smoke` (herda `release`). ⚠️ `loadavg` 33,9 na corrida (máquina
+partilhada): o absoluto vale pouco, a diferença entre níveis intercalados é o número.
+
+| zoom | texto do cartão (px ecrã) | título de lista (px ecrã) | nível pelo zoom | Baixo ms | Médio ms | Alto ms |
+|---|---|---|---|---|---|---|
+| 0.15 | 2.1 | 2.2 | Low | 3.04 | 4.12 | 4.28 |
+| 0.25 | 3.5 | 3.8 | Low | 3.10 | 4.20 | 4.30 |
+| 0.4 | 5.6 | 6.0 | Mid | 3.13 | 4.21 | 4.40 |
+| 0.55 | 7.7 | 8.2 | Mid | 3.07 | 4.11 | 4.27 |
+| 0.7 | 9.8 | 10.5 | Mid | 3.17 | 4.26 | 4.44 |
+| 0.786 | 11.0 | 11.8 | High | 3.14 | 4.24 | 4.32 |
+| 0.9 | 12.6 | 13.5 | High | 3.11 | 4.19 | 4.35 |
+| 1 | 14.0 | 15.0 | High | 3.09 | 4.41 | 4.31 |
+| 1.5 | 21.0 | 22.5 | High | 3.13 | 4.24 | 4.36 |
+
+Com o elemento de nascença (677×381) a forma é a mesma: Baixo ~2,95 · Médio ~3,85 · Alto ~3,90 ms.
+
+**Leitura e limiares (os do lote M confirmados, agora com a tabela ao lado):**
+- **Médio → Alto: o recurso é a LEGIBILIDADE do texto que se edita.** Alto custa o mesmo que Médio
+  (+0,05 a 0,2 ms, dentro do ruído) — o custo NÃO decide. Decide ler o cartão que se arrasta e se
+  escreve: o texto do cartão (14 px na aba) chega à menor letra da interface, `TypeToken::Xs` = 11 px,
+  à escala **0,786**. Abaixo disso só se entra no Kanban a ver traços.
+- **Baixo → Médio: o recurso é a LEGIBILIDADE do título de lista** — 15 px × escala ≥ `READ_PX` = 6 px
+  (o limiar de leitura do Quadro, medido 06/10), escala **0,4**. Aqui o custo ajuda: o Baixo poupa
+  **~1,1 ms por Kanban grande** à vista (de longe cabem muitos); o Baixo não dispõe os 2 000 cartões.
+- O Baixo é legível de longe: o nome e os títulos de lista nunca encolhem abaixo de `TypeToken::Xs` no
+  ecrã, e a contagem desce para a linha de baixo (a maquete `Canvas.dc.html`, «the lists at a glance»).

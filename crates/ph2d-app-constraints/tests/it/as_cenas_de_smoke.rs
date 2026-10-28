@@ -511,4 +511,8 @@ fn the_hud_scene_keeps_the_coin_beside_and_shrinks_the_score_before_the_minimap(
         "a moeda não invade o minimapa"
     );
     assert_eq!(estreita[2], els[2].caixa, "o minimapa não cede");
+    assert!(
+        (estreita[1].w - 2.0 * r).abs() <= d && (estreita[1].h - 2.0 * r).abs() <= d,
+        "a moeda não muda de tamanho (só o texto encolhe): {estreita:?}"
+    );
 }

@@ -3,7 +3,7 @@
   "oraculo": "kiwisolver 1.5.1 (python-kiwisolver 1.5.1-1.1, BSD-3-Clause \u2014 `pacman -Qi`), corrido, nunca lido",
   "gerador": "docs/BlenderConstraints/ferramentas/oraculo_kiwisolver_hud.py",
   "comando": "python -I docs/BlenderConstraints/ferramentas/oraculo_kiwisolver_hud.py crates/ph2d-hud-layout/fixtures/kiwisolver_1_5_1_hud.json",
-  "sistema": "ADR-0194 / ph2d_hud_layout (doc do m\u00f3dulo): stays (0.125, 0.3125, 0.5, 0.6875, 1000000.0), edi\u00e7\u00e3o 1e+09, grelha 1/256, ordem fixa",
+  "sistema": "ADR-0194 / ph2d_hud_layout (doc do m\u00f3dulo): stays (0.125, 0.3125, 0.5, 0.6875, 1000000.0, 1000000.0), edi\u00e7\u00e3o 1e+09, grelha 1/256, ordem fixa",
   "data": "2026-10-27"
  },
  "casos": [

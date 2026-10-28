@@ -1,5 +1,5 @@
 //! **Kill-criterion do resto da W5** (`docs/BlenderConstraints/06_W5_resto.md` §5): 0,5 ms por quadro
-//! para 1 000 de cada peça, na MESMA rodada — variantes no mesmo processo, intercaladas em blocos,
+//! para 1 000 de cada peça (Valor, *behaviours*, HUD), na MESMA rodada — variantes no mesmo processo, intercaladas em blocos,
 //! resumo = o MÍNIMO (`docs/DevOps/MEDIR_VELOCIDADE.md`).
 //!
 //! `#[ignore]`: o relógio só vale sozinho e no perfil `smoke` —
@@ -14,6 +14,7 @@ use ph2d_constraints::comportamento::Perfil;
 use ph2d_constraints::{Kind, Valor};
 use ph2d_constraints_ecs::Constraints;
 use ph2d_ecs::{SimWorld, StableId, Transform};
+use ph2d_hud_layout::{Arranjo, Caixa, Elemento, Forca, Lado, Relacao};
 use ph2d_preview_drive::PreviewDrive;
 use ph2d_timeline::TimelineDoc;
 
@@ -67,6 +68,66 @@ fn sobe(sim: &mut SimWorld, alvo: Entity, f: u32) {
         .y = (f64::from(f % 48) / 47.0) as f32;
 }
 
+/// 1 000 elementos de HUD em 500 pares (a moeda AO LADO da pontuação, que tem a largura do texto) — o pior caso do
+/// arranjo vivo: TODAS as caixas e TODOS os conteúdos mudam a cada quadro.
+fn hud(n: usize) -> (Vec<Elemento>, Vec<(Relacao, Forca)>) {
+    let mut els = Vec::new();
+    let mut rel = Vec::new();
+    for i in 0..n / 2 {
+        #[expect(clippy::cast_precision_loss, reason = "índice pequeno")]
+        let y = (i % 40) as f64 * 9.0;
+        els.push(Elemento {
+            caixa: Caixa {
+                x: 10.0,
+                y,
+                w: 40.0,
+                h: 8.0,
+            },
+            conteudo: Some(40.0),
+        });
+        els.push(Elemento {
+            caixa: Caixa {
+                x: 52.0,
+                y,
+                w: 8.0,
+                h: 8.0,
+            },
+            conteudo: None,
+        });
+        rel.push((Relacao::LarguraDoConteudo { a: 2 * i }, Forca::Media));
+        rel.push((
+            Relacao::AoLado {
+                a: 2 * i + 1,
+                b: 2 * i,
+                lado: Lado::Direita,
+                folga: 2.0,
+            },
+            Forca::Requerida,
+        ));
+    }
+    (els, rel)
+}
+
+/// O quadro `f` do HUD: o texto de cada pontuação cresce e encolhe, a moeda vem do sítio antigo.
+fn hud_quadro(els: &mut [Elemento], f: u32) {
+    let w = 40.0 + f64::from(f % 16) * 1.5;
+    for (i, e) in els.iter_mut().enumerate() {
+        if i % 2 == 0 {
+            e.caixa.w = w;
+            e.conteudo = Some(w);
+        } else {
+            e.caixa.x = 52.0 + f64::from(f % 7);
+        }
+    }
+}
+
+const TELA: Caixa = Caixa {
+    x: 0.0,
+    y: 0.0,
+    w: 640.0,
+    h: 400.0,
+};
+
 #[test]
 #[ignore = "relógio: corre sozinho, --profile smoke"]
 fn w5_pieces_under_half_a_millisecond_per_thousand() {
@@ -81,6 +142,9 @@ fn w5_pieces_under_half_a_millisecond_per_thousand() {
     let (mut drive, mut drive_b) = (PreviewDrive::default(), PreviewDrive::default());
     let cena = ph2d_vec_scene::VecScene::new();
     let (mut valor, mut comportamento, mut base) = (Duration::MAX, Duration::MAX, Duration::MAX);
+    let (mut els, rel) = hud(N as usize);
+    let mut arranjo = Arranjo::new(TELA, &els, &rel);
+    let mut hud_t = Duration::MAX;
     let mut f = 0;
     for _bloco in 0..BLOCOS {
         for _ in 0..QUADROS {
@@ -105,12 +169,70 @@ fn w5_pieces_under_half_a_millisecond_per_thousand() {
             let t0 = Instant::now();
             ph2d_app_constraints::quadro(&mut sb, &mut cena, &mut drive_b, Some(r));
             base = base.min(t0.elapsed());
+            hud_quadro(&mut els, f);
+            let t0 = Instant::now();
+            std::hint::black_box(arranjo.atualiza_elementos(TELA, &els));
+            hud_t = hud_t.min(t0.elapsed());
         }
     }
     let peca = comportamento.saturating_sub(base);
     println!(
-        "kill: valor {valor:?} · comportamento {peca:?} (quadro {comportamento:?} − pilha {base:?}) / 1 000 itens (mínimo de {BLOCOS}×{QUADROS})"
+        "kill: valor {valor:?} · comportamento {peca:?} (quadro {comportamento:?} − pilha {base:?}) · HUD {hud_t:?} / 1 000 itens (mínimo de {BLOCOS}×{QUADROS})"
     );
     assert!(valor <= TECTO, "valor {valor:?} > {TECTO:?}");
     assert!(peca <= TECTO, "comportamento {peca:?} > {TECTO:?}");
+    assert!(hud_t <= TECTO, "HUD {hud_t:?} > {TECTO:?}");
+}
+
+/// Instrumento (não portão): o custo de UM grupo em cadeia (cada elemento ao lado do anterior) por tamanho — a tabela
+/// do tecto por grupo (ADR-0194 §custo). `new` uma vez, `atualiza` com tudo a mudar, o mínimo de 7×10.
+#[test]
+#[ignore = "relógio: corre sozinho, --profile smoke"]
+fn w5_hud_group_cost_by_size() {
+    for n in [8_usize, 16, 32, 64, 128] {
+        let mut els: Vec<Elemento> = (0..n)
+            .map(|i| {
+                #[expect(clippy::cast_precision_loss, reason = "índice pequeno")]
+                let x = i as f64 * 5.0;
+                Elemento {
+                    caixa: Caixa {
+                        x,
+                        y: 10.0,
+                        w: 4.0,
+                        h: 4.0,
+                    },
+                    conteudo: Some(4.0),
+                }
+            })
+            .collect();
+        let mut rel: Vec<_> = (1..n)
+            .map(|i| {
+                (
+                    Relacao::AoLado {
+                        a: i,
+                        b: i - 1,
+                        lado: Lado::Direita,
+                        folga: 1.0,
+                    },
+                    Forca::Requerida,
+                )
+            })
+            .collect();
+        rel.extend((0..n).map(|i| (Relacao::LarguraDoConteudo { a: i }, Forca::Media)));
+        let t0 = Instant::now();
+        let mut arr = Arranjo::new(TELA, &els, &rel);
+        let novo = t0.elapsed();
+        let mut melhor = Duration::MAX;
+        for f in 0..70_u32 {
+            let w = 4.0 + f64::from(f % 5) * 0.5;
+            for e in &mut els {
+                e.caixa.w = w;
+                e.conteudo = Some(w);
+            }
+            let t0 = Instant::now();
+            std::hint::black_box(arr.atualiza_elementos(TELA, &els));
+            melhor = melhor.min(t0.elapsed());
+        }
+        println!("grupo {n:>4}: new {novo:?} · atualiza {melhor:?}");
+    }
 }

@@ -322,9 +322,11 @@ impl Arranjo {
             .filter_map(|(r, f)| indices(r, n).map(|ab| (r, *f, ab)))
             .collect();
         let (mut entra, mut segue, mut ancora) = (vec![false; n], vec![false; n], vec![false; n]);
+        let mut texto = vec![false; n];
         let mut pai: Vec<usize> = (0..n).collect();
         for &(_, _, (a, b)) in &validas {
             entra[a] = true;
+            texto[a] |= b.is_none();
             if let Some(b) = b {
                 entra[b] = true;
                 segue[a] = true;
@@ -377,11 +379,17 @@ impl Arranjo {
                 (true, true) => (Strength::new(PESOS[2]), PESOS[3]),
                 (false, _) => (Strength::STRONG, PESOS[3]),
             };
+            // Só o TEXTO muda de tamanho (medido 27/10, W5.5: a moeda achatava-se antes de a pontuação encolher).
+            let pw = if texto[i] {
+                Strength::new(pw)
+            } else {
+                Strength::STRONG
+            };
             // O «fica onde foi desenhado» é EDIÇÃO (com a força do stay): a caixa muda sem remontar o sistema.
             for (var, k, s) in [
                 (v.x, c.x, pp),
                 (v.y, c.y, pp),
-                (v.w, c.w, Strength::new(pw)),
+                (v.w, c.w, pw),
                 (v.h, c.h, forte),
             ] {
                 gr.edicao_com(var, k, s);

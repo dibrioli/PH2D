@@ -30,7 +30,7 @@ use ph2d_vec_text::glyph::{
 /// A caixa de referência do canvas (`16:9`, centrada).
 pub const REF: [f32; 2] = [32.0, 18.0];
 /// O tamanho do texto da pontuação, em unidades do canvas.
-pub const TEXTO: f64 = 2.0;
+pub const TEXTO: f64 = 2.5;
 /// A borda esquerda da pontuação e a altura da linha de cima.
 pub const PONT_X: f32 = -15.0;
 pub const LINHA_Y: f32 = 7.0;
@@ -38,11 +38,14 @@ pub const LINHA_Y: f32 = 7.0;
 pub const FOLGA: f64 = 0.4;
 /// O raio da moeda; o minimapa (largura, altura) e a margem dele ao canto.
 pub const MOEDA_R: f64 = 0.7;
-pub const MAPA: [f64; 2] = [9.0, 5.0];
+pub const MAPA: [f64; 2] = [13.0, 5.0];
 pub const MARGEM: f32 = 1.0;
 /// O contador: quanto soma, de quanto em quanto tempo (µs).
-pub const SOMA: &str = "11";
-pub const TIQUE_US: u64 = 200_000;
+pub const SOMA: &str = "1009";
+/// Cada tique é um aviso «Signal» na tela (o motor avisa todo sinal): de 2 em 2 s, como a cena do HUD.
+pub const TIQUE_US: u64 = 2_000_000;
+/// A altura da vista do jogo: o HUD inteiro cabe na vista do editor.
+pub const CAMERA_M: f32 = 6.0;
 const PLACAR: &str = "Placar";
 const CONTADOR: &str = "Pontos";
 const SINAL: &str = "tique";
@@ -203,7 +206,10 @@ pub fn vestir(sim: &mut SimWorld) -> Option<Entity> {
         .id();
     w.spawn((
         Transform::default(),
-        GameCamera::default(),
+        GameCamera {
+            height_world: CAMERA_M,
+            ..GameCamera::default()
+        },
         Name::new("Câmera"),
     ));
     #[expect(clippy::cast_possible_truncation, reason = "o Transform da casa é f32")]

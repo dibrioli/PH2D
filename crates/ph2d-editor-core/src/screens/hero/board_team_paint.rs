@@ -66,7 +66,9 @@ pub fn paint(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &mu
     super::bubbles::paint(hero, area, scene, ts);
     paint_card(hero, area, scene, ts);
     super::panels::paint(hero, area, scene, ts);
-    paint_message(hero, area, scene, ts);
+    if let Some(r) = paint_told(hero, area, scene, ts) {
+        crate::screens::hero::board_nav::fit::float(&mut hero.documents.live.nav, r);
+    }
 }
 
 /// O alvo do cartão aberto em px de ecrã (a ponta da bolha), se há cartão.
@@ -627,14 +629,19 @@ pub(super) fn text_button(
     hit.register(id, r);
 }
 
-/// A frase de um pedido servido (`Exported to …`), no topo do quadro enquanto é fresca.
-fn paint_message(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &mut TextSystem) {
-    let Some((text, at)) = hero.documents.live.team.message.clone() else {
-        return;
-    };
+/// A frase de um pedido servido (`Exported to …`), no topo da aba activa enquanto é fresca — o
+/// Quadro E qualquer aba de família (o hero chama-a depois de a família se pintar). Devolve o
+/// balão pintado.
+pub fn paint_told(
+    hero: &mut HeroScreen,
+    area: Rect,
+    scene: &mut VectorScene,
+    ts: &mut TextSystem,
+) -> Option<Rect> {
+    let (text, at) = hero.documents.live.team.message.clone()?;
     if at.elapsed().as_secs_f32() >= crate::toast::Toast::DEFAULT_TTL_S {
         hero.documents.live.team.message = None;
-        return;
+        return None;
     }
     let theme = hero.theme;
     let font = TypeToken::Sm.px();
@@ -642,8 +649,8 @@ fn paint_message(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts:
     let h = Spacing::Xl2.px();
     let y = area.y + Spacing::Md.px() + h + Spacing::Xs.px();
     let r = Rect::new(area.x + (area.w - w) / 2.0, y, w, h);
-    crate::screens::hero::board_nav::fit::float(&mut hero.documents.live.nav, r);
     let radius = crate::paint::frame_radius(theme, Radius::Md.px());
     fill_rounded_rect(scene, r, radius, resolve(ColorToken::BgElev, theme));
     paint_text_centered(ts, scene, &text, r, font, resolve(ColorToken::Text1, theme));
+    Some(r)
 }

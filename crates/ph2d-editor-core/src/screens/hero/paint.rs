@@ -263,6 +263,8 @@ pub fn paint_hero_screen(
             family.chrome_over(id, hud);
             family.paint(id, r, scene, text_system, &theme);
         }
+        // O aviso de um pedido servido (`tell`) por cima da aba, como no Quadro.
+        let _ = super::board_nav::team::paint_told(hero, r, scene, text_system);
     } else if hero.documents.active().is_some() {
         // E a sessão de voto segue o quadro activo ANTES de ele se desenhar.
         super::board_nav::facilitate::follow(hero);

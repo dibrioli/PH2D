@@ -32,7 +32,7 @@ mod panels;
 pub mod show;
 
 pub use bubbles::{bubble_down, bubble_drag, bubble_rect, bubble_up};
-pub use paint::paint;
+pub use paint::{paint, paint_told};
 
 /// Um botão de tamanho fixo da equipa.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

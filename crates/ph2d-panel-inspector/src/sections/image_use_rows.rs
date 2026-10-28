@@ -1,7 +1,7 @@
 //! ⭐ **O uso da imagem à vista** ([plano GEF 15](../../../../docs/GameEngineFuncional/15_uso_da_imagem_a_vista_plano.md)
 //! D1/D2): logo abaixo da linha Image, o seletor «Use» (Still · Repeated · Animated) e, por baixo, só os campos do
-//! uso escolhido — parada: o quadro no ecrã e «‹ n / N ›»; repetida: Width/Height; animada: a folha com o corte e
-//! a secção Animation ali mesmo.
+//! uso escolhido — parada: o quadro no ecrã e «‹ n / N ›»; repetida: Width/Height; animada: H/V Frames e a
+//! secção Animation ali mesmo (sem a folha com as células, dono 27/10).
 
 use super::*;
 use ph2d_editor_core::screens::hero::InspectorAnimInfo;
@@ -81,7 +81,6 @@ pub(crate) fn paint_image_use(
             paint_size_rows(scene, text_system, theme, hit_index, store, x, w, y, info)
         }
         InspectorImageUse::Animated => {
-            y = super::sheet_thumb::paint_sheet_thumb(scene, text_system, theme, x, w, y, info);
             let sec = super::sprite_pose::seccao(text_system);
             y = super::sprite_pose::paint_sheet_grid_rows(
                 scene,

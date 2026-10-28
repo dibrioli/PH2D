@@ -32,6 +32,8 @@ fn escreve_os_estudos_da_aguarela() {
                 .chain(crate::familias::oleo_acrilica::EM_ESTUDO)
                 .chain(crate::familias::pastel_carvao::EM_ESTUDO)
                 .chain(crate::familias::caligrafia_marcadores::EM_ESTUDO_WET)
+                .chain(crate::familias::caligrafia_marcadores::EM_ESTUDO_J6_WET)
+                .chain(crate::familias::canetas::EM_ESTUDO_J6_WET)
                 .find(|r| r.nome == nome)
                 .expect("receita da família");
             let mut p = ph2d_brush_presets::Preset {

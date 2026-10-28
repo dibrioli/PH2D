@@ -1,0 +1,7 @@
+Chave da prancha cega J6w_Dry_Marker_cega.jpg (linha: imagem → quem)
+gestos_A: 1 = marker_dry (oraculo), 2 = Marker Bullet (d 1.723, limiar 0.591) (vizinho), 3 = Dry Marker D (escala 0.744) (nosso)
+gestos_B: 1 = Dry Marker D (escala 0.744) (nosso), 2 = Marker Bullet (d 1.723, limiar 0.591) (vizinho), 3 = marker_dry (oraculo)
+tamanhos_A: 1 = Marker Bullet (d 1.723, limiar 0.591) (vizinho), 2 = Dry Marker D (escala 0.744) (nosso), 3 = marker_dry (oraculo)
+tamanhos_B: 1 = Marker Bullet (d 1.723, limiar 0.591) (vizinho), 2 = marker_dry (oraculo), 3 = Dry Marker D (escala 0.744) (nosso)
+sobre_A: 1 = Marker Bullet (d 1.723, limiar 0.591) (vizinho), 2 = marker_dry (oraculo), 3 = Dry Marker D (escala 0.744) (nosso)
+sobre_B: 1 = marker_dry (oraculo), 2 = Dry Marker D (escala 0.744) (nosso), 3 = Marker Bullet (d 1.723, limiar 0.591) (vizinho)

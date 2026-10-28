@@ -84,6 +84,65 @@ pub const EM_ESTUDO_WET: &[Receita] = &[
     },
 ];
 
+/// J6w — os biséis do Wet Paint EM ESTUDO (fora da fábrica; o coordenador promove os aprovados): o Marker Chisel (E-3)
+/// e o Dry Marker (E-4) de volta ao Wet (a tinta do marcador que multiplica A MEIO é o glaze do Wet; os J3 Digitais
+/// reprovaram nela) com as pontas rectas/esbatidas da J6. Exame: `docs/Painter/Pinceis/exames/canetas_j6.md`.
+pub const EM_ESTUDO_J6_WET: &[Receita] = &[
+    // E-3 Marker › Marker › Marker Chisel (Rebelle `Marker/Chisel`): o bisel FIXO deitado (L3: 4°, L 0,94·D × T 0,37·D
+    // ⇒ achatado 0,61), a tinta do Marker Bullet (glaze 1), a pressão SÓ pela tinta, as pontas cortadas a direito que
+    // esbatem ao comprido.
+    Receita {
+        nome: "Marker Chisel",
+        hardness: 0.3,
+        achatado: Some((0.61, 4)),
+        extras: &[
+            ("glaze", 1.0),
+            ("tipClean", 1.0),
+            ("drag", 0.0),
+            ("pressureSize", 0.0),
+            ("pressureOpacity", 1.0),
+            ("pressureOpacityCurve", 3.0),
+        ],
+        pincel: &[
+            ("shape", SEM_FORMA),
+            ("dab_quina", "0.8"),
+            ("pontas_rectas", "true"),
+            ("pontas_alem", "0.3"),
+            ("pontas_esbate", "4.0"),
+        ],
+        nasce_de: Some("Marker Bullet"),
+        ..WET[0]
+    },
+    // E-4 Marker › Marker › Dry Marker (Rebelle `Marker/Dry`): o bisel de PÉ (L3: 100°), a tinta que ACABA de um lado
+    // (a rampa `Gradient` na pegada: cheia em cima), os carimbos que SOMAM (L8: k 2,66 — sem tecto por traço) e cujas
+    // juntas riscam a 200 px, a pressão pela tinta.
+    Receita {
+        nome: "Dry Marker",
+        water: 0.05,
+        // A rampa da forma só se vê abaixo da saturação: a 300 o traço saía chapado, a 40 sumia (cobertura 0,28; Rebelle
+        // 0,65), a 90 0,50.
+        pigment: 90.0,
+        hardness: 0.9,
+        achatado: Some((0.7, 100)),
+        extras: &[
+            ("glaze", 1.0),
+            ("tipClean", 1.0),
+            ("drag", 0.0),
+            ("pressureSize", 0.0),
+            ("pressureOpacity", 1.0),
+            ("pressureOpacityCurve", 2.5),
+            ("spacing", 3.0),
+        ],
+        pincel: &[
+            ("shape", PONTA_QUE_ACABA),
+            ("dab_quina", "0.8"),
+            ("pontas_rectas", "true"),
+        ],
+        nasce_de: Some("Marker Bullet"),
+        ..WET[0]
+    },
+];
+
 pub const MEIOS: &[ReceitaMeio] = &[
     // E-2 — o marcador de BISEL de borda firme (Rebelle `Marker/Liner`): a ponta fixa na tela (L3: eixo longo deitado — o
     // ajuste dá 4°, a régua prefere 0° —, L 0,94·D × T 0,37·D: achatado 0,55 com a borda macia, que alarga o lado fino; a

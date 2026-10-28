@@ -61,6 +61,98 @@ pub const MEIOS: &[ReceitaMeio] = &[
 /// `docs/Painter/Pinceis/exames/canetas.md`).
 pub const EM_ESTUDO: &[ReceitaMeio] = &[];
 
+/// J6w — as canetas do Wet Paint EM ESTUDO (fora da fábrica; o coordenador promove as aprovadas): a Reed Pen (C-9) e o
+/// Wood Stick (C-15), as receitas da J3 (`exames/tintas.md`) curadas na J6w. ⚠️ No Wet o dual (L6) DESFAZ o achatado
+/// (a pegada volta ao disco: Reed com dual w90 32 = w0 33; sem dual 24, Rebelle 23) — a Reed fica sem a serrilha, o Wood
+/// com os grumos e sem a elipse. Exame e fila: `docs/Painter/Pinceis/exames/canetas_j6.md`.
+pub const EM_ESTUDO_J6_WET: &[Receita] = &[
+    // C-9 Ink › Reed › Reed Pen (Rebelle `Pen/Reed Pen`): a cana cortada — a ponta CHATA fixa na tela (alta: o recto
+    // horizontal largo, o vertical ~0,7 dele), a borda lisa (a serrilha pelo dual apagava o achatado), o corte a esquadro.
+    Receita {
+        meio: "Ink",
+        grupo: "Reed",
+        nome: "Reed Pen",
+        water: 0.3,
+        opacity: 1.0,
+        pigment: 200.0,
+        pickup: 16.0,
+        gate: 0.6,
+        evaporation: 1.0,
+        edge: 0.0,
+        tilt: DIREITA,
+        bristle_size: 2.0,
+        bristle_count: 2000.0,
+        hardness: 0.9,
+        size_px: None,
+        extras: &[
+            ("glaze", 0.5),
+            ("tipClean", 0.05),
+            ("leveling", 0.5),
+            ("tipReservoir", 0.4),
+            ("pressureSizeCurve", 1.0),
+            ("pressureOpacity", 0.9),
+            ("pressureOpacityCurve", 2.5),
+        ],
+        grao: None,
+        achatado: Some((0.43, 90)),
+        pincel: &[
+            ("shape", SEM_FORMA_WET),
+            ("dab_quina", "0.8"),
+            ("size_max_px", "95"),
+        ],
+        nasce_de: Some("Dip Pen"),
+        real_oil: false,
+    },
+    // C-15 Ink › Wood › Wood Stick (Rebelle `Pen/Wood`): o pau mergulhado na tinta — redondo, a borda em grumos largos
+    // e moles (a 2.ª ponta maior e mais solta que a da cana), mais claro que o Dip Pen, a entrada que a pressão leve
+    // deixa transparente.
+    Receita {
+        meio: "Ink",
+        grupo: "Wood",
+        nome: "Wood Stick",
+        water: 0.5,
+        opacity: 1.0,
+        pigment: 60.0,
+        pickup: 16.0,
+        gate: 0.0,
+        evaporation: 1.0,
+        edge: 0.0,
+        tilt: DIREITA,
+        bristle_size: 2.0,
+        bristle_count: 2000.0,
+        hardness: 0.95,
+        size_px: None,
+        extras: &[
+            ("glaze", 0.6),
+            ("tipClean", 0.05),
+            ("leveling", 0.5),
+            ("tipReservoir", 0.3),
+            ("pressureSizeCurve", 1.0),
+            ("pressureOpacity", 0.7),
+            ("pressureOpacityCurve", 1.5),
+        ],
+        grao: None,
+        // O Rebelle é ~1,2× mais largo na vertical (36 contra 30): a elipse deitada — hoje sem efeito sob o dual.
+        achatado: Some((0.17, 0)),
+        pincel: &[
+            ("shape", SEM_FORMA_WET),
+            ("jitter_scale", "0.0"),
+            ("dual", GRUMOS_DO_PAU),
+            ("taper", r#"{"opacity": 0.6, "start": 1.5, "tip_start": 1.0}"#),
+            ("size_max_px", "97"),
+        ],
+        nasce_de: Some("Dip Pen"),
+        real_oil: false,
+    },
+];
+
+/// O Shape sem forma (nem cerdas) do Wet: a ponta é só a queda.
+const SEM_FORMA_WET: &str = r#"{"angle_deg": 0, "flow": false, "kind": "None", "mapping": "ViewPlane", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [1.0, 1.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
+
+/// Os grumos do pau: marcas de ruído (0,35 D) espalhadas pela orla, Multiply — a borda que incha e encolhe (a 0,6 D os
+/// grumos saíam bolhas maiores que as do Rebelle).
+const GRUMOS_DO_PAU: &str = r#"{"angulo": 0, "atraves": 0.3, "contagem": 3, "dureza": 0.0, "escala": 0.35, "espalhar": 0.25, "forma": {"angle_deg": 0, "flow": false, "kind": "Noise", "mapping": "Random", "offset": [0.0, 0.0], "params": [0.3, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [32.0, 32.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}, "modo": 0, "passo": 0.25, "rotacao": 0.0}"#;
+
 #[rustfmt::skip]
 pub const MIDIAS: &[Midia] = &[];
 

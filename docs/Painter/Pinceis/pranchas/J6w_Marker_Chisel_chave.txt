@@ -1,0 +1,7 @@
+Chave da prancha cega J6w_Marker_Chisel_cega.jpg (linha: imagem → quem)
+gestos_A: 1 = marker_chisel (oraculo), 2 = Marker Chisel C (escala 0.4) (nosso), 3 = Marker Bullet (d 1.072, limiar 0.591) (vizinho)
+gestos_B: 1 = marker_chisel (oraculo), 2 = Marker Bullet (d 1.072, limiar 0.591) (vizinho), 3 = Marker Chisel C (escala 0.4) (nosso)
+tamanhos_A: 1 = marker_chisel (oraculo), 2 = Marker Chisel C (escala 0.4) (nosso), 3 = Marker Bullet (d 1.072, limiar 0.591) (vizinho)
+tamanhos_B: 1 = Marker Bullet (d 1.072, limiar 0.591) (vizinho), 2 = marker_chisel (oraculo), 3 = Marker Chisel C (escala 0.4) (nosso)
+sobre_A: 1 = marker_chisel (oraculo), 2 = Marker Chisel C (escala 0.4) (nosso), 3 = Marker Bullet (d 1.072, limiar 0.591) (vizinho)
+sobre_B: 1 = Marker Chisel C (escala 0.4) (nosso), 2 = Marker Bullet (d 1.072, limiar 0.591) (vizinho), 3 = marker_chisel (oraculo)

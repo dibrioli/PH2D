@@ -1,0 +1,7 @@
+Chave da prancha cega J6w_Wood_Stick_cega.jpg (linha: imagem → quem)
+gestos_A: 1 = Wood Stick C (escala 1.429) (nosso), 2 = pen_wood (oraculo), 3 = Ink Brush (d 1.062, limiar 0.591) (vizinho)
+gestos_B: 1 = pen_wood (oraculo), 2 = Ink Brush (d 1.062, limiar 0.591) (vizinho), 3 = Wood Stick C (escala 1.429) (nosso)
+tamanhos_A: 1 = Ink Brush (d 1.062, limiar 0.591) (vizinho), 2 = Wood Stick C (escala 1.429) (nosso), 3 = pen_wood (oraculo)
+tamanhos_B: 1 = Wood Stick C (escala 1.429) (nosso), 2 = pen_wood (oraculo), 3 = Ink Brush (d 1.062, limiar 0.591) (vizinho)
+sobre_A: 1 = Ink Brush (d 1.062, limiar 0.591) (vizinho), 2 = pen_wood (oraculo), 3 = Wood Stick C (escala 1.429) (nosso)
+sobre_B: 1 = Ink Brush (d 1.062, limiar 0.591) (vizinho), 2 = Wood Stick C (escala 1.429) (nosso), 3 = pen_wood (oraculo)

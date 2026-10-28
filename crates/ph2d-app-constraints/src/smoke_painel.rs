@@ -11,7 +11,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use bevy_ecs::prelude::Resource;
 use ph2d_core::{Playhead, Vec2};
-use ph2d_ecs::hud_arranjo::{Forca, Lado, Relacao, UiArranjo};
+use ph2d_ecs::hud_arranjo::{Eixo, Forca, Lado, Relacao, UiArranjo};
 use ph2d_ecs::{
     ChildOf, Counter, CounterRuntime, Entity, Fit, GameCamera, LabelSource, Name, SignalAction,
     SignalActions, SignalFrom, SignalTarget, SignalVerb, SimWorld, StableId, Timer, TimerRuntime,
@@ -38,7 +38,7 @@ pub const LINHA_Y: f32 = 7.0;
 pub const FOLGA: f64 = 0.4;
 /// O raio da moeda; o minimapa (largura, altura) e a margem dele ao canto.
 pub const MOEDA_R: f64 = 0.7;
-pub const MAPA: [f64; 2] = [13.0, 5.0];
+pub const MAPA: [f64; 2] = [15.0, 5.0];
 pub const MARGEM: f32 = 1.0;
 /// O contador: quanto soma, de quanto em quanto tempo (µs).
 pub const SOMA: &str = "1009";
@@ -171,6 +171,15 @@ pub fn relacoes(
             Forca::Requerida,
         ),
         (Relacao::LarguraDoConteudo { a: pont }, Forca::Media),
+        // A moeda acompanha a pontuação também na ALTURA (a janela estreita sobe o que está preso ao topo).
+        (
+            Relacao::Centrado {
+                a: moeda,
+                b: pont,
+                eixo: Eixo::Y,
+            },
+            Forca::Forte,
+        ),
         (
             Relacao::NaoInvade {
                 a: moeda,

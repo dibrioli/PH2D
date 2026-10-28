@@ -496,7 +496,10 @@ fn the_hud_scene_keeps_the_coin_beside_and_shrinks_the_score_before_the_minimap(
     // Uma pontuação que cabe na janela larga e não em 16:9.
     let longa = f64::from(REF[0]) - 2.0 * f64::from(MARGEM) - MAPA[0] - 2.0 * folga - 2.0 * r + 3.0;
     let (_, larga) = corre(f64::from(REF[0]) + 10.0, longa);
-    assert!((larga[0].w - longa).abs() <= d, "na janela larga a pontuação cabe inteira");
+    assert!(
+        (larga[0].w - longa).abs() <= d,
+        "na janela larga a pontuação cabe inteira"
+    );
     let (els, estreita) = corre(f64::from(REF[0]), longa);
     assert!(
         estreita[0].w < longa - 1.0,
@@ -514,5 +517,20 @@ fn the_hud_scene_keeps_the_coin_beside_and_shrinks_the_score_before_the_minimap(
     assert!(
         (estreita[1].w - 2.0 * r).abs() <= d && (estreita[1].h - 2.0 * r).abs() <= d,
         "a moeda não muda de tamanho (só o texto encolhe): {estreita:?}"
+    );
+    // A janela estreita (Expand) sobe o que está preso ao topo: a moeda acompanha a pontuação na altura.
+    let mut alta = caixas(f64::from(REF[0]), largura);
+    alta[0].caixa.y += 2.0;
+    let t = Caixa {
+        x: -16.0,
+        y: -11.0,
+        w: 32.0,
+        h: 22.0,
+    };
+    let r2 = resolve(t, &alta, &rel);
+    let meio = |c: &Caixa| c.y + c.h / 2.0;
+    assert!(
+        (meio(&r2[1]) - meio(&r2[0])).abs() <= d,
+        "a moeda ficou para trás na altura: {r2:?}"
     );
 }

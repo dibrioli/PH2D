@@ -7,12 +7,24 @@ use ph2d_kanban_dates::{CalendarMonth, CivilDate, Weekday, Zone, day_of};
 use super::metrics as m;
 use crate::item::Item;
 
-/// Mês ou semana.
+/// Mês, semana e dia (os dois com a grelha de horas) ou a agenda (a lista dos próximos).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum Mode {
     #[default]
     Month,
     Week,
+    Day,
+    Agenda,
+}
+
+impl Mode {
+    pub const ALL: [Self; 4] = [Self::Month, Self::Week, Self::Day, Self::Agenda];
+
+    /// Semana e dia: a grelha de horas.
+    #[must_use]
+    pub fn hours(self) -> bool {
+        matches!(self, Self::Week | Self::Day)
+    }
 }
 
 /// Um dia à vista.
@@ -56,9 +68,13 @@ pub fn days(mode: Mode, anchor: CivilDate, today: CivilDate, ws: Weekday) -> Vec
             }
             v
         }
-        Mode::Week => {
-            let first = week_of(anchor, ws);
-            (0..7)
+        Mode::Week | Mode::Day | Mode::Agenda => {
+            let (first, n) = match mode {
+                Mode::Week => (week_of(anchor, ws), 7),
+                Mode::Day => (anchor, 1),
+                _ => (anchor, m::AGENDA_DAYS),
+            };
+            (0..n)
                 .map(|i| {
                     let date = first.add_days(i);
                     Day {

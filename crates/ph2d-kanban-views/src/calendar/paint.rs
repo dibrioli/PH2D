@@ -101,7 +101,11 @@ fn chevron(out: &mut VectorScene, r: Rect, dir: f32, color: Color) {
 
 fn title_text(mode: Mode, days: &[Day], anchor: CivilDate, today: CivilDate) -> String {
     match (mode, days.first(), days.last()) {
-        (Mode::Week, Some(a), Some(b)) => tr_with(
+        (Mode::Day, Some(a), _) => tr_with(
+            "kanban.views.calendar.day_title",
+            &[("wd", &weekday_name(a.date.weekday())), ("day", &day_text(a.date, today))],
+        ),
+        (Mode::Week | Mode::Agenda, Some(a), Some(b)) => tr_with(
             "kanban.views.calendar.week_title",
             &[("a", &day_text(a.date, today)), ("b", &day_text(b.date, today))],
         ),
@@ -112,9 +116,9 @@ fn title_text(mode: Mode, days: &[Day], anchor: CivilDate, today: CivilDate) -> 
     }
 }
 
-/// O cabeçalho: «Today ‹ › Outubro 2026» à esquerda, «Month | Week» à direita.
+/// O cabeçalho: «Today ‹ › Outubro 2026» à esquerda, «Month | Week | Day | Agenda» à direita.
 #[allow(clippy::too_many_arguments)]
-fn header(
+pub(crate) fn header(
     out: &mut VectorScene,
     ts: &mut TextSystem,
     theme: Theme,
@@ -139,20 +143,19 @@ fn header(
     let ty = text_top(ts, h.y, h.h, m::TITLE_PX);
     let fg = c(theme, T::KanbanListFg);
     paint_text_title_elided(ts, out, title, tx, ty, m::TITLE_PX, h.w / 2.0, fg);
-    let labels = [
-        (tr("kanban.views.calendar.month"), Mode::Month),
-        (tr("kanban.views.calendar.week"), Mode::Week),
-    ];
     let mut x = h.x + h.w;
-    for (text, mode) in labels.iter().rev() {
+    for mode in Mode::ALL.iter().rev() {
+        let text = tr(match mode {
+            Mode::Month => "kanban.views.calendar.month",
+            Mode::Week => "kanban.views.calendar.week",
+            Mode::Day => "kanban.views.calendar.day",
+            Mode::Agenda => "kanban.views.calendar.agenda",
+        });
         let w = ts.prefix_width(text, m::BUTTON_PX) + 2.0 * m::BUTTON_PAD_X;
         x -= w;
         let r = Rect::new(x, y, w, m::BUTTON_H);
         button(out, ts, theme, r, text, *mode == st_mode);
-        match mode {
-            Mode::Month => p.month = r,
-            Mode::Week => p.week = r,
-        }
+        p.modes.push((r, *mode));
         x -= m::BUTTON_GAP;
     }
 }
@@ -304,10 +307,29 @@ pub(crate) fn paint(
     let from = start_of_day(first.date, cx.zone).unwrap_or(cx.now.0);
     let to = start_of_day(last.date.add_days(1), cx.zone).unwrap_or(cx.now.0);
     let items = src.items(Moment(from), Moment(to));
-    let lane_h = match st.mode {
-        Mode::Month => m::LANE_H,
-        Mode::Week => m::LANE_H_WEEK,
-    };
+    if st.mode != Mode::Month {
+        let title = title_text(st.mode, &days, anchor, today);
+        let mut p = Painted {
+            anchor: Some(anchor),
+            ..Painted::default()
+        };
+        header(out, ts, theme, geo.header, st.mode, &title, &mut p);
+        let body = Rect::new(
+            geo.weekdays.x,
+            geo.weekdays.y,
+            geo.weekdays.w,
+            geo.grid.y + geo.grid.h - geo.weekdays.y,
+        );
+        if st.mode == Mode::Agenda {
+            super::agenda::paint(out, ts, theme, body, st, &mut p, items, cx);
+        } else {
+            super::hours_paint::paint(out, ts, theme, body, st, &mut p, &days, items, cx);
+        }
+        overlays(out, ts, theme, area, st, &mut p, today, cx);
+        st.painted = p;
+        return;
+    }
+    let lane_h = m::LANE_H;
     let placed = layout::place(&days, &items, cx.zone, geo.cell_h(), lane_h);
     let mut p = Painted {
         anchor: Some(anchor),
@@ -373,11 +395,26 @@ pub(crate) fn paint(
         let text = item_text(st.mode, &pr.item, false, cx);
         item(out, ts, theme, r, &pr.item, (false, true, true), &text);
     }
+    overlays(out, ts, theme, area, st, &mut p, today, cx);
+    st.painted = p;
+}
+
+/// Os popovers por cima de tudo: o compositor, ou a lista de um dia.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn overlays(
+    out: &mut VectorScene,
+    ts: &mut TextSystem,
+    theme: Theme,
+    area: Rect,
+    st: &CalendarState,
+    p: &mut Painted,
+    today: CivilDate,
+    cx: &Ctx<'_>,
+) {
     if let Some(comp) = st.composer.as_ref() {
         p.pop = pop::composer(out, ts, theme, area, &p.cells, comp);
     } else if let Some(day) = st.day_pop {
         let list = layout::on_day(&p.items, day, cx.zone);
         p.pop = pop::day(out, ts, theme, area, &p.cells, day, today, &list);
     }
-    st.painted = p;
 }

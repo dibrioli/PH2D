@@ -86,7 +86,10 @@ pub(crate) fn composer(
     comp: &Composer,
 ) -> PopRects {
     let h = 2.0 * m::POP_PAD + m::POP_TITLE_H + 2.0 * m::FIELD_H + 2.0 * m::POP_GAP + m::BUTTON_H;
-    let r = anchor(area, cells, comp.day, h);
+    let mut r = anchor(area, cells, comp.day, h);
+    if let Some(y) = comp.at_y {
+        r.y = y.min(area.y + area.h - m::PAD - h).max(area.y + m::PAD);
+    }
     panel(out, theme, r);
     let inner = Rect::new(r.x + m::POP_PAD, r.y + m::POP_PAD, r.w - 2.0 * m::POP_PAD, m::POP_TITLE_H);
     label(out, ts, theme, inner, tr("kanban.views.calendar.add"), T::KanbanCardFg);

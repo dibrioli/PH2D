@@ -32,8 +32,6 @@ pub(crate) const PLUS_ARM: f32 = 5.0;
 
 // ── Os itens ──
 pub(crate) const LANE_H: f32 = 22.0;
-/// Na semana as faixas são mais altas (a hora vai à frente do título).
-pub(crate) const LANE_H_WEEK: f32 = 26.0;
 pub(crate) const LANE_GAP: f32 = 3.0;
 pub(crate) const ITEM_PX: f32 = 12.0;
 pub(crate) const ITEM_RADIUS: f32 = 4.0;
@@ -68,3 +66,38 @@ pub(crate) const CARET_W: f32 = 1.5;
 pub(crate) const FOCUS_STROKE: f32 = 2.0;
 /// A hora de um cartão criado num dia: o meio-dia (a do seletor de datas por omissão).
 pub(crate) const NEW_DUE_HOUR: u8 = 12;
+
+// ── A grelha de horas (semana e dia) ──
+/// Uma hora: `48` (a do Google Calendar e do Trello Planner; meia hora = `24`, uma linha de título).
+pub(crate) const HOUR_H: f32 = 48.0;
+/// A coluna das horas à esquerda.
+pub(crate) const GUTTER_W: f32 = 56.0;
+pub(crate) const HOUR_PX: f32 = 11.0;
+/// O cabeçalho de cada dia: o nome por cima, o número (maior) por baixo.
+pub(crate) const DAY_HEAD_H: f32 = 52.0;
+pub(crate) const DAY_HEAD_NUM_PX: f32 = 18.0;
+pub(crate) const DAY_HEAD_R: f32 = 15.0;
+/// A faixa «dia inteiro» não passa desta fracção da altura das horas (o resto vira «+N more»).
+pub(crate) const ALLDAY_FRACTION: f32 = 0.25;
+/// O encaixe dos blocos, em minutos.
+pub(crate) const SNAP_MIN: i64 = 15;
+/// A faixa da borda de baixo de um bloco que estica o fim.
+pub(crate) const RESIZE_H: f32 = 6.0;
+pub(crate) const BLOCK_PAD: f32 = 4.0;
+/// Entre dois blocos lado a lado.
+pub(crate) const BLOCK_GAP: f32 = 2.0;
+/// A hora a que a grelha abre (se hoje não está à vista, ou é cedo).
+pub(crate) const OPEN_HOUR: f32 = 8.0;
+/// A linha da hora actual: a espessura e o ponto à esquerda.
+pub(crate) const NOW_STROKE: f32 = 2.0;
+pub(crate) const NOW_R: f32 = 5.0;
+
+// ── A agenda ──
+/// Os dias que a agenda mostra de cada vez (quatro semanas; ‹ › andam o mesmo).
+pub(crate) const AGENDA_DAYS: i64 = 28;
+pub(crate) const AGENDA_HEAD_H: f32 = 36.0;
+pub(crate) const AGENDA_ROW_H: f32 = 34.0;
+/// A coluna da hora no MÍNIMO (cresce até ao texto mais largo, medido).
+pub(crate) const AGENDA_TIME_W: f32 = 96.0;
+pub(crate) const AGENDA_PX: f32 = 14.0;
+pub(crate) const AGENDA_DOT_R: f32 = 5.0;

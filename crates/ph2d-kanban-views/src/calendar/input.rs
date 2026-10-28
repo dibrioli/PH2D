@@ -21,6 +21,8 @@ const COMPOSER_SALT: u64 = 0xCA1E_0000;
 pub(crate) fn step(st: &mut CalendarState, from: CivilDate, dir: i64) {
     let next = match st.mode {
         Mode::Week => from.add_days(7 * dir),
+        Mode::Day => from.add_days(dir),
+        Mode::Agenda => from.add_days(m::AGENDA_DAYS * dir),
         Mode::Month => {
             let months = i64::from(from.year) * 12 + i64::from(from.month) - 1 + dir;
             let (y, mo) = (months.div_euclid(12), months.rem_euclid(12) + 1);
@@ -39,7 +41,7 @@ fn shown(st: &CalendarState, cx: &Ctx<'_>) -> CivilDate {
     st.painted.anchor.unwrap_or_else(|| st.anchor_or_today(cx))
 }
 
-fn cell_at(st: &CalendarState, x: f32, y: f32) -> Option<CivilDate> {
+pub(crate) fn cell_at(st: &CalendarState, x: f32, y: f32) -> Option<CivilDate> {
     st.painted
         .cells
         .iter()
@@ -47,7 +49,15 @@ fn cell_at(st: &CalendarState, x: f32, y: f32) -> Option<CivilDate> {
         .map(|(_, d)| *d)
 }
 
-fn open_composer(st: &mut CalendarState, src: &dyn Source, day: CivilDate) {
+/// Abre o compositor do dia `day` (`span` = o início e a entrega do bloco, na grelha de horas;
+/// `at_y` = onde o painel abre).
+pub(crate) fn open_composer(
+    st: &mut CalendarState,
+    src: &dyn Source,
+    day: CivilDate,
+    span: (Option<Moment>, Option<Moment>),
+    at_y: Option<f32>,
+) {
     let targets = src.targets();
     let options = targets
         .iter()
@@ -67,20 +77,26 @@ fn open_composer(st: &mut CalendarState, src: &dyn Source, day: CivilDate) {
         field: LineField::default(),
         list,
         targets,
+        start: span.0,
+        due: span.1,
+        at_y,
     });
     st.day_pop = None;
 }
 
-/// O compositor confirmado: o cartão novo, com a entrega ao meio-dia do dia, na lista escolhida.
+/// O compositor confirmado: o cartão novo na lista escolhida, com a entrega ao meio-dia do dia (ou o
+/// bloco da grelha de horas).
 fn commit(st: &mut CalendarState, src: &dyn Source, cx: &Ctx<'_>) -> Reply {
     let Some(c) = st.composer.take() else {
         return Reply::default();
     };
     let target = c.list.selected.and_then(|i| c.targets.get(i));
-    let due = instant(c.day, m::NEW_DUE_HOUR, 0, cx.zone);
+    let due = c
+        .due
+        .or_else(|| instant(c.day, m::NEW_DUE_HOUR, 0, cx.zone).map(Moment));
     match (target, due) {
         (Some(t), Some(due)) if !c.field.text.trim().is_empty() => {
-            Reply::with_plan(src.create(t, &c.field.text, Moment(due)))
+            Reply::with_plan(src.create_span(t, &c.field.text, c.start, due))
         }
         _ => Reply::taken(),
     }
@@ -125,7 +141,7 @@ fn day_pop_down(st: &mut CalendarState, src: &dyn Source, x: f32, y: f32) -> Rep
     if let Some(day) = st.day_pop
         && r.add.contains(x, y)
     {
-        open_composer(st, src, day);
+        open_composer(st, src, day, (None, None), None);
         return Reply::taken();
     }
     st.day_pop = None;
@@ -153,17 +169,22 @@ fn down(st: &mut CalendarState, src: &dyn Source, cx: &Ctx<'_>, x: f32, y: f32) 
         st.anchor = None;
         return Reply::taken();
     }
-    for (r, mode) in [(p.month, Mode::Month), (p.week, Mode::Week)] {
-        if r.contains(x, y) {
-            st.mode = mode;
-            return Reply::taken();
-        }
+    if let Some((_, mode)) = p.modes.iter().find(|(r, _)| r.contains(x, y)) {
+        st.mode = *mode;
+        st.hold = None;
+        return Reply::taken();
     }
     if let Some((r, day)) = p.plus
         && r.contains(x, y)
     {
-        open_composer(st, src, day);
+        open_composer(st, src, day, (None, None), None);
         return Reply::taken();
+    }
+    if let Some((_, i)) = p.agenda.iter().find(|(r, _)| r.contains(x, y)) {
+        return match p.items.get(*i).map(|it| it.key) {
+            Some(ItemKey::Card(c)) => Reply::open(c),
+            _ => Reply::taken(),
+        };
     }
     if let Some((_, day, _)) = p.more.iter().find(|(r, _, _)| r.contains(x, y)) {
         st.day_pop = Some(*day);
@@ -182,11 +203,17 @@ fn down(st: &mut CalendarState, src: &dyn Source, cx: &Ctx<'_>, x: f32, y: f32) 
         });
         return Reply::taken();
     }
+    if st.mode.hours() {
+        return super::hours_input::down(st, x, y);
+    }
     Reply::default()
 }
 
 /// O arrasto largado: o item anda os dias entre a célula agarrada e a do rato, à MESMA hora.
 fn up(st: &mut CalendarState, src: &dyn Source, cx: &Ctx<'_>, x: f32, y: f32) -> Reply {
+    if st.hold.is_some() {
+        return super::hours_input::up(st, src, x, y);
+    }
     let Some(p) = st.press.take() else {
         return Reply::default();
     };
@@ -214,6 +241,12 @@ pub(crate) fn pointer(st: &mut CalendarState, src: &dyn Source, cx: &Ctx<'_>, p:
         PointerKind::Move => {
             let changed = st.hover != Some((p.x, p.y));
             st.hover = Some((p.x, p.y));
+            if let Some(h) = st.hold.as_mut() {
+                if (p.x - h.at.0).hypot(p.y - h.at.1) > m::DRAG_SLOP {
+                    h.moved = true;
+                }
+                return Reply::taken();
+            }
             if let Some(press) = st.press.as_mut() {
                 let (dx, dy) = (p.x - press.at.0, p.y - press.at.1);
                 if dx.hypot(dy) > m::DRAG_SLOP {
@@ -234,6 +267,17 @@ pub(crate) fn wheel(st: &mut CalendarState, dy: f32) -> Reply {
     let Some(from) = st.painted.anchor else {
         return Reply::default();
     };
+    match st.mode {
+        Mode::Week | Mode::Day => {
+            st.scroll = Some(st.scroll.unwrap_or_default() + dy);
+            return Reply::taken();
+        }
+        Mode::Agenda => {
+            st.agenda_scroll += dy;
+            return Reply::taken();
+        }
+        Mode::Month => {}
+    }
     st.wheel += dy;
     let mut dir = 0;
     while st.wheel >= m::WHEEL_STEP {

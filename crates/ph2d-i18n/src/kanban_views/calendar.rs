@@ -17,6 +17,14 @@ pub(crate) fn tr(rest: &str) -> Option<&'static str> {
         "placeholder" => "Enter a title for this card\u{2026}",
         "list" => "List",
         "at" => "{time} {title}",
+        "day" => "Day",
+        "agenda" => "Agenda",
+        "day_title" => "{wd}, {day}",
+        "span" => "{a} \u{2013} {b}",
+        "hour_am" => "{h} AM",
+        "hour_pm" => "{h} PM",
+        "all_day" => "All day",
+        "nothing" => "Nothing scheduled.",
         _ => return None,
     })
 }

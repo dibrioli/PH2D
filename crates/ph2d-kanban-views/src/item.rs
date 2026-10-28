@@ -58,6 +58,12 @@ pub trait Source {
     fn targets(&self) -> Vec<Target>;
     /// Um cartão novo com o título `title` e a entrega `due`, em `at`.
     fn create(&self, at: &Target, title: &str, due: Moment) -> Plan;
+    /// Um cartão novo com início E entrega (o bloco arrastado na grelha de horas). Por omissão,
+    /// só a entrega.
+    fn create_span(&self, at: &Target, title: &str, start: Option<Moment>, due: Moment) -> Plan {
+        let _ = start;
+        self.create(at, title, due)
+    }
 }
 
 /// A fonte de UM Kanban: os cartões à vista (o filtro da aba) com início ou entrega.
@@ -180,5 +186,34 @@ impl Source for KanbanSource<'_> {
         c.meta = Meta::default();
         plan.push(at.list.kanban, KanbanOp::put(Record::Card(c)));
         plan
+    }
+    fn create_span(&self, at: &Target, title: &str, start: Option<Moment>, due: Moment) -> Plan {
+        self.create_span_kanban(at, title, start, due)
+    }
+}
+
+impl KanbanSource<'_> {
+    /// O cartão de [`Source::create`] com o início `start` (a grelha de horas).
+    fn with_start(plan: Plan, start: Option<Moment>) -> Plan {
+        let mut out = Plan::default();
+        for (k, ops) in plan.into_steps() {
+            let ops = ops.into_iter().map(|op| match op {
+                KanbanOp::Put(r) => match *r {
+                    Record::Card(mut c) => {
+                        c.start = start.or(c.start);
+                        KanbanOp::put(Record::Card(c))
+                    }
+                    other => KanbanOp::put(other),
+                },
+                other => other,
+            });
+            out.extend(k, ops);
+        }
+        out
+    }
+
+    /// [`Source::create_span`] da fonte de um Kanban (chamada pela implementação do trait).
+    fn create_span_kanban(&self, at: &Target, title: &str, start: Option<Moment>, due: Moment) -> Plan {
+        Self::with_start(self.create(at, title, due), start.filter(|s| *s < due))
     }
 }

@@ -88,4 +88,12 @@ impl KanbanDocs {
         let ed = if desc { &b.desc } else { &b.comment };
         Some(ed.selected_text())
     }
+
+    /// ⚠️ SONDA: o texto inteiro no editor da descrição (`true`) ou do comentário.
+    #[must_use]
+    pub fn probe_back_text(&self, id: u64, desc: bool) -> Option<String> {
+        let b = self.back_of(id)?;
+        let ed = if desc { &b.desc } else { &b.comment };
+        Some(ph2d_kanban_md::render(ed.doc()).trim_end().to_owned())
+    }
 }

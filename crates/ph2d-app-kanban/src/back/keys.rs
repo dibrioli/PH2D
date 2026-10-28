@@ -227,12 +227,14 @@ pub(crate) fn compose(docs: &mut KanbanDocs, id: u64, c: Compose<'_>) -> bool {
     let Some(b) = back_mut(docs, id) else {
         return false;
     };
-    if b.desc.editing {
-        b.desc.compose(c);
-        return true;
-    }
-    if b.comment.editing {
-        b.comment.compose(c);
+    for ed in [&mut b.desc, &mut b.comment] {
+        if !ed.editing {
+            continue;
+        }
+        if let Compose::DeadKey(k) = c {
+            return ed.dead_key(k);
+        }
+        ed.compose(c);
         return true;
     }
     let Compose::Commit(ch) = c else {

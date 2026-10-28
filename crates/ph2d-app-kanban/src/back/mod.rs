@@ -61,6 +61,8 @@ pub(crate) enum BackHit {
     FieldValue(FieldId),
     DescEdit,
     DescArea,
+    /// O menu «Aa» aberto da descrição (pintado por cima do verso inteiro).
+    DescMenu,
     DescSave,
     DescCancel,
     ClTitle(ChecklistId),
@@ -84,6 +86,8 @@ pub(crate) enum BackHit {
     Location,
     Details,
     CommentArea,
+    /// O menu «Aa» aberto do comentário.
+    CommentMenu,
     CommentSave,
     CommentCancel,
     CommentEdit(CommentId),
@@ -360,12 +364,18 @@ impl Back {
     }
 
     /// O alvo do último quadro em `(x, y)` — o de cima.
+    /// O alvo sob `(x, y)`; o menu «Aa» de um editor responde como o editor (o editor reconhece a
+    /// opção pela geometria dele).
     pub(crate) fn hit(&self, x: f32, y: f32) -> Option<BackHit> {
         self.hits
             .iter()
             .rev()
             .find(|(r, _)| r.contains(x, y))
-            .map(|(_, h)| *h)
+            .map(|(_, h)| match h {
+                BackHit::DescMenu => BackHit::DescArea,
+                BackHit::CommentMenu => BackHit::CommentArea,
+                h => *h,
+            })
     }
 
     /// O rect pintado de um alvo.

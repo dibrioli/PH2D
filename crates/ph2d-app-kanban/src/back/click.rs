@@ -407,7 +407,12 @@ pub(crate) fn click(docs: &mut KanbanDocs, id: u64, h: BackHit) {
     }
     match h {
         BackHit::Scrim | BackHit::Close => super::close(docs, id),
-        BackHit::Inside | BackHit::EditField | BackHit::DescArea | BackHit::CommentArea => {}
+        BackHit::Inside
+        | BackHit::EditField
+        | BackHit::DescArea
+        | BackHit::DescMenu
+        | BackHit::CommentArea
+        | BackHit::CommentMenu => {}
         BackHit::Title => {
             let t = read(docs, id, |_, c| c.title.clone()).unwrap_or_default();
             edit(docs, id, EditAt::Title, &t);

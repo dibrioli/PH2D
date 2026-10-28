@@ -3,6 +3,7 @@
 
 use super::{RichEditor, RichEditorEvent, RichTool};
 use crate::doc_surface::{Compose, Key, KeyInput};
+use crate::ime::ComposeKey;
 use crate::zones::Rect;
 use parley::{Affinity, Cursor};
 use ph2d_a11y::NodeId;
@@ -261,15 +262,42 @@ impl RichEditor {
         match c {
             Compose::Preedit(s, _) => {
                 self.preedit = (!s.is_empty()).then(|| s.to_owned());
+                self.dead = false;
                 None
             }
             Compose::Commit(ch) => {
                 self.preedit = None;
+                self.dead = false;
                 let mut buf = [0u8; 4];
                 self.editor_mut().type_text(ch.encode_utf8(&mut buf));
                 Some(RichEditorEvent::Changed)
             }
-            Compose::DeadKey(_) => None,
+            Compose::DeadKey(k) => {
+                self.dead_key(k);
+                None
+            }
+        }
+    }
+
+    /// Uma tecla vista pela composição ANTES de ser tecla. `true` = é da composição (a tecla não
+    /// segue); toda outra tecla segue para [`Self::key`] — senão o editor engole o teclado.
+    pub fn dead_key(&mut self, k: ComposeKey) -> bool {
+        if !self.editing {
+            return false;
+        }
+        match k {
+            ComposeKey::Dead(ch) => {
+                self.preedit = Some(ch.to_string());
+                self.dead = true;
+                true
+            }
+            ComposeKey::Escape | ComposeKey::Other if self.dead => {
+                self.preedit = None;
+                self.dead = false;
+                k == ComposeKey::Escape
+            }
+            ComposeKey::Modifier => self.dead,
+            ComposeKey::Escape | ComposeKey::Other => false,
         }
     }
 }

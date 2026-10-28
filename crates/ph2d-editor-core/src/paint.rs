@@ -82,6 +82,7 @@ mod icons_paint;
 pub use icons_paint::{
     icon_glyph_side, icon_pad, icon_side_for_glyph, paint_icon, paint_icon_path, paint_icon_rotated,
 };
+pub(crate) use text::paint_text_weighted;
 pub use text::{
     label_column_width, paint_text, paint_text_block, paint_text_block_spans, paint_text_elided,
     paint_text_rotated_ccw, paint_text_title, paint_text_title_elided,

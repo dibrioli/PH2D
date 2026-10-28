@@ -135,23 +135,56 @@ pub(super) fn hit(bar: Rect, x: f32, y: f32) -> Option<ToolbarHit> {
         .map(ToolbarHit)
 }
 
-/// A caixa do menu «Aa» aberto e a de cada opção.
+/// A altura da opção do estilo `kind`: uma linha nesse estilo, nunca menos que uma linha de controlo.
+fn style_row_h(kind: &BlockKind) -> f32 {
+    let line = super::layout::font_px(kind) * super::layout::line_ratio();
+    (line + 2.0 * Spacing::Xs.px()).max(side())
+}
+
+/// A caixa do menu «Aa» aberto: tão larga quanto o rótulo mais largo, cada um medido no estilo que
+/// mostra (o «Heading 1» em `Xl` negrito), e tão alta quanto as linhas somadas.
 #[must_use]
-pub fn style_menu(bar: Rect) -> Rect {
+pub fn style_menu(bar: Rect, ts: &mut TextSystem, labels: &[String; TEXT_STYLES.len()]) -> Rect {
     let b = button(bar, 0);
-    let w = side() * TEXT_STYLES.len() as f32;
-    Rect::new(b.x, b.y + b.h, w, side() * TEXT_STYLES.len() as f32)
+    let pad = Spacing::Md.px();
+    let text_w = TEXT_STYLES
+        .iter()
+        .zip(labels)
+        .map(|(k, l)| {
+            ts.prefix_width_weighted(
+                l,
+                super::layout::font_px(k),
+                super::layout::font_weight(k),
+            )
+            .ceil()
+        })
+        .fold(0.0, f32::max);
+    let h = TEXT_STYLES.iter().map(style_row_h).sum();
+    Rect::new(b.x, b.y + b.h, text_w + 2.0 * pad, h)
 }
 
+/// A caixa da opção `i` do menu «Aa».
 #[must_use]
-pub fn style_option(bar: Rect, i: usize) -> Rect {
-    let m = style_menu(bar);
-    Rect::new(m.x, m.y + i as f32 * side(), m.w, side())
+pub fn style_option(
+    bar: Rect,
+    ts: &mut TextSystem,
+    labels: &[String; TEXT_STYLES.len()],
+    i: usize,
+) -> Rect {
+    let m = style_menu(bar, ts, labels);
+    let y: f32 = TEXT_STYLES[..i].iter().map(style_row_h).sum();
+    Rect::new(m.x, m.y + y, m.w, style_row_h(&TEXT_STYLES[i]))
 }
 
-pub(super) fn style_option_at(bar: Rect, x: f32, y: f32) -> Option<usize> {
+pub(super) fn style_option_at(
+    bar: Rect,
+    ts: &mut TextSystem,
+    labels: &[String; TEXT_STYLES.len()],
+    x: f32,
+    y: f32,
+) -> Option<usize> {
     (0..TEXT_STYLES.len()).find(|i| {
-        let r = style_option(bar, *i);
+        let r = style_option(bar, ts, labels, *i);
         x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h
     })
 }
@@ -202,8 +235,8 @@ pub(super) fn paint_style_menu(
     scene: &mut VectorScene,
     ts: &mut TextSystem,
     theme: Theme,
-) {
-    let m = style_menu(bar);
+) -> Rect {
+    let m = style_menu(bar, ts, &ed.labels.styles);
     paint_popover(
         &Popover::new(NodeId(ed.id.0.wrapping_add(2))),
         m,
@@ -212,21 +245,24 @@ pub(super) fn paint_style_menu(
     );
     let cur = current_kind(ed.doc(), ed.selection());
     for (i, kind) in TEXT_STYLES.iter().enumerate() {
-        let r = style_option(bar, i);
+        let r = style_option(bar, ts, &ed.labels.styles, i);
         if kind == cur {
             crate::widget::paint_popover_row_highlight(scene, r, theme);
         }
         let size = super::layout::font_px(kind);
+        let line = size * super::layout::line_ratio();
         let pad = Spacing::Md.px();
-        crate::paint::paint_text_title(
+        crate::paint::paint_text_weighted(
             ts,
             scene,
             &ed.labels.styles[i],
             r.x + pad,
-            r.y + (r.h - size) * 0.5,
+            r.y + (r.h - line) * 0.5,
             size,
-            r.w - pad * 2.0,
+            r.w - pad,
             resolve(ColorToken::Text1, theme),
+            super::layout::font_weight(kind),
         );
     }
+    m
 }

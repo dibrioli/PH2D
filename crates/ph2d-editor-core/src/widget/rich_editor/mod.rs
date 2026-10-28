@@ -11,8 +11,8 @@ mod paint;
 mod toolbar;
 
 pub use keys::{RichKeyOutcome, toolbar_node_id};
-pub use layout::{BlockBox, DocLayout, Ink, Marker};
-pub use paint::{area_node_id, paint_rich_editor};
+pub use layout::{BlockBox, DocLayout, Ink, Marker, font_px, font_weight};
+pub use paint::{area_node_id, paint_rich_editor, paint_rich_editor_menu};
 pub use toolbar::{RICH_TOOLS, RichTool, TEXT_STYLES, button as toolbar_button, style_option};
 
 use crate::zones::Rect;
@@ -65,6 +65,8 @@ pub struct RichEditor {
     pub editing: bool,
     /// A pré-edição do IME, mostrada no caret.
     pub preedit: Option<String>,
+    /// A pré-edição é o acento de uma tecla morta (o xkb compõe; a letra composta vem na tecla).
+    dead: bool,
     pub style_menu_open: bool,
     pub hover: Option<toolbar::ToolbarHit>,
     dragging: bool,
@@ -90,6 +92,7 @@ impl RichEditor {
             editor: Editor::new(doc),
             editing: false,
             preedit: None,
+            dead: false,
             style_menu_open: false,
             hover: None,
             dragging: false,
@@ -197,7 +200,7 @@ impl RichEditor {
         if self.style_menu_open {
             self.style_menu_open = false;
             if let Some(bar) = bar
-                && let Some(i) = toolbar::style_option_at(bar, x, y)
+                && let Some(i) = toolbar::style_option_at(bar, ts, &self.labels.styles, x, y)
             {
                 self.editor_mut().set_block_kind(TEXT_STYLES[i].clone());
                 return Some(self.changed());

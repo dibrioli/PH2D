@@ -204,6 +204,9 @@ fn a_aba_e_o_canvas_mostram_o_mesmo_kanban_nos_dois_sentidos() {
     for c in "Ideas".chars() {
         let k = BoardKey::Char(c.to_ascii_lowercase());
         let s = c.to_string();
+        if crate::compoe_primeiro(&mut d.hero, k, Modifiers::default()) {
+            continue;
+        }
         board_keys::key(
             &mut d.hero,
             &mut d.ts,

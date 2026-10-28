@@ -200,7 +200,15 @@ impl Mesa {
         self.quadro();
     }
 
+    /// Uma tecla pelo caminho da shell: a composição (tecla morta) vê-a primeiro.
     pub fn tecla(&mut self, k: BoardKey, text: Option<&str>) {
+        let ck = match k {
+            BoardKey::Escape => ph2d_editor_core::ime::ComposeKey::Escape,
+            _ => ph2d_editor_core::ime::ComposeKey::Other,
+        };
+        if self.hero.handle_compose_key(ck) {
+            return;
+        }
         let _ = board_keys::key(
             &mut self.hero,
             &mut self.ts,

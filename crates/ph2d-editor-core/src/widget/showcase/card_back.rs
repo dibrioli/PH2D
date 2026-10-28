@@ -6,7 +6,7 @@ use super::*;
 use crate::widget::{
     CALENDAR_CELLS, Calendar, CalendarCell, CalendarDate, CalendarLayout, DatePicker,
     DatePickerLabels, DatePickerLayout, DateSlot, Reminder, RichEditor, RichEditorLabels,
-    paint_calendar, paint_date_picker, paint_rich_editor,
+    paint_calendar, paint_date_picker, paint_rich_editor, paint_rich_editor_menu,
 };
 use ph2d_richdoc::{Block, BlockKind, Inline, Mark, RichDoc};
 use std::cell::RefCell;
@@ -177,7 +177,9 @@ pub(super) fn paint_card_back_widgets(
         let mut cell = cell.borrow_mut();
         let ed = cell.get_or_insert_with(|| demo_rich_editor(ids::INSP_SECTION_CARD));
         let eh = ed.preferred_height(text_system, w);
-        paint_rich_editor(ed, Rect::new(x, y, w, eh), scene, text_system, theme);
+        let r = Rect::new(x, y, w, eh);
+        paint_rich_editor(ed, r, scene, text_system, theme);
+        let _ = paint_rich_editor_menu(ed, r, scene, text_system, theme);
         y + eh
     })
 }

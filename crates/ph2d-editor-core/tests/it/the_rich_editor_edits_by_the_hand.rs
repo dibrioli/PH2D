@@ -5,6 +5,7 @@
 use ph2d_editor_core::doc_surface::{Compose, Key, KeyInput};
 use ph2d_editor_core::widget::{
     Marker, RICH_TOOLS, RichEditor, RichEditorEvent, RichEditorLabels, RichTool, paint_rich_editor,
+    paint_rich_editor_menu,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_host::Modifiers;
@@ -192,7 +193,7 @@ fn the_toolbar_buttons_and_the_style_menu_change_the_document() {
     let aa = ph2d_editor_core::widget::rich_editor_toolbar_button(bar, 0);
     ed.pointer_down(&mut ts, rect(), aa.x + 1.0, aa.y + 1.0, none(), 1);
     assert!(ed.style_menu_open);
-    let o = ph2d_editor_core::widget::rich_editor_style_option(bar, 2);
+    let o = ph2d_editor_core::widget::rich_editor_style_option(bar, &mut ts, &ed.labels.styles, 2);
     ed.pointer_down(&mut ts, rect(), o.x + o.w / 2.0, o.y + o.h / 2.0, none(), 1);
     assert_eq!(ed.doc().blocks()[0].kind, BlockKind::Heading(2));
     // Ctrl+K pede o link ao chamador.
@@ -268,9 +269,56 @@ fn every_block_and_mark_paints_in_every_theme_and_closes_its_clip() {
             assert!(h > 0.0);
             let mut scene = VectorScene::new();
             paint_rich_editor(&mut ed, rect(), &mut scene, &mut ts, theme);
+            let menu = paint_rich_editor_menu(&ed, rect(), &mut scene, &mut ts, theme);
+            assert_eq!(menu.is_some(), editing, "o menu «Aa» só aberto em edição");
             let enc = scene.inner().encoding();
             assert_eq!(enc.n_open_clips, 0, "{theme:?}");
             assert!(enc.n_paths > 0);
         }
+    }
+}
+
+/// Report do dono 28/10 («Não consigo escrever em Description»): a shell pergunta à composição por
+/// TODA tecla antes de a entregar; o editor só toma a tecla morta e o que a acompanha.
+#[test]
+fn the_dead_key_door_lets_every_other_key_through() {
+    use ph2d_editor_core::ime::ComposeKey;
+    let mut ed = editor(RichDoc::new());
+    ed.editing = true;
+    for k in [ComposeKey::Other, ComposeKey::Modifier, ComposeKey::Escape] {
+        assert!(!ed.dead_key(k), "{k:?} sem acento à espera segue para a tecla");
+    }
+    assert!(ed.dead_key(ComposeKey::Dead('´')));
+    assert_eq!(ed.preedit.as_deref(), Some("´"));
+    assert!(ed.dead_key(ComposeKey::Modifier), "o Shift não desfaz o acento");
+    assert!(!ed.dead_key(ComposeKey::Other), "a letra segue (o xkb compõe-na)");
+    assert_eq!(ed.preedit, None);
+    ed.editing = false;
+    assert!(!ed.dead_key(ComposeKey::Dead('´')), "fora de edição nada é tomado");
+}
+
+/// Report do dono 28/10 (menu «Aa» mal formatado): cada opção cabe o rótulo inteiro no estilo que
+/// mostra, e as linhas não se sobrepõem.
+#[test]
+fn the_style_menu_fits_each_label_in_its_own_style() {
+    use ph2d_editor_core::widget::{TEXT_STYLES, rich_editor_style_option};
+    let mut ts = TextSystem::without_system_fonts();
+    let mut ed = editor(RichDoc::new());
+    ed.labels.styles = ["Normal text", "Heading 1", "Heading 2", "Heading 3"].map(String::from);
+    ed.editing = true;
+    let bar = ed.regions(rect()).0.expect("barra em edição");
+    let mut prev_bottom = f32::MIN;
+    for (i, kind) in TEXT_STYLES.iter().enumerate() {
+        let o = rich_editor_style_option(bar, &mut ts, &ed.labels.styles, i);
+        let size = ph2d_editor_core::widget::rich_editor_font_px(kind);
+        let w = ts.prefix_width_weighted(
+            &ed.labels.styles[i],
+            size,
+            ph2d_editor_core::widget::rich_editor_font_weight(kind),
+        );
+        assert!(o.w >= w, "{}: {} < {w}", ed.labels.styles[i], o.w);
+        assert!(o.h >= size, "{}: a linha cabe a letra", ed.labels.styles[i]);
+        assert!(o.y >= prev_bottom, "as linhas não se sobrepõem");
+        prev_bottom = o.y + o.h;
     }
 }

@@ -550,6 +550,10 @@ pub(crate) fn key(
 
 /// A composição (IME, carácter confirmado) para a caixa com o teclado. `true` = tomada.
 pub(crate) fn compose(docs: &mut KanbanDocs, id: u64, c: &Compose<'_>) -> bool {
+    // A tecla morta compõe-se no xkb e a letra vem na tecla: tomá-la aqui engolia o teclado.
+    if matches!(c, Compose::DeadKey(_)) {
+        return false;
+    }
     let me = docs.me.clone();
     let set = docs.set();
     let Some(t) = docs.tab_mut(id) else {

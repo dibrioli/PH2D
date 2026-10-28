@@ -102,6 +102,10 @@ pub(crate) fn key(docs: &mut KanbanDocs, id: u64, input: &KeyInput<'_>) -> KeyOu
 
 /// A composição (IME, tecla morta) vai para a caixa aberta.
 pub(crate) fn compose(docs: &mut KanbanDocs, id: u64, c: Compose<'_>) -> bool {
+    // A tecla morta compõe-se no xkb e a letra vem na tecla: tomá-la aqui engolia o teclado.
+    if matches!(c, Compose::DeadKey(_)) {
+        return false;
+    }
     let Some(f) = panel_mut(docs, id)
         .and_then(|p| p.draft.as_mut())
         .and_then(|d| d.typed.as_mut())

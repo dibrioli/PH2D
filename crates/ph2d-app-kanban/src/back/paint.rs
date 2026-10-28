@@ -9,7 +9,7 @@ use crate::paint::label;
 use crate::tab::Tab;
 use ph2d_editor_core::IconId;
 use ph2d_editor_core::paint::{fill_rounded_rect, fill_rounded_rect_radii, rect_to_vello};
-use ph2d_editor_core::widget::paint_rich_editor;
+use ph2d_editor_core::widget::{paint_rich_editor, paint_rich_editor_menu};
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::{tr, tr_with};
 use ph2d_kanban_dates::DueTone;
@@ -137,10 +137,26 @@ fn card_back(
             hover: back.hover,
         };
         super::activity::mentions(&mut ui, back, &cx);
+        style_menus(&mut ui, back);
         super::pop::paint(&mut ui, back, &cx);
     }
     scene.pop_layer();
     back.hits = hits;
+}
+
+/// O menu «Aa» aberto da descrição ou do comentário, por cima do verso inteiro.
+fn style_menus(ui: &mut Ui<'_>, back: &Back) {
+    for (area, menu, ed) in [
+        (BackHit::DescArea, BackHit::DescMenu, &back.desc),
+        (BackHit::CommentArea, BackHit::CommentMenu, &back.comment),
+    ] {
+        let Some(r) = ui.hits.iter().rev().find(|h| h.1 == area).map(|h| h.0) else {
+            continue;
+        };
+        if let Some(m) = paint_rich_editor_menu(ed, r, ui.scene, ui.ts, ui.theme) {
+            ui.hit(m, menu);
+        }
+    }
 }
 
 /// Fora da edição, a descrição segue o documento (o desfazer, outra janela).

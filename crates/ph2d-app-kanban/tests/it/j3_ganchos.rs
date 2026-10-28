@@ -146,6 +146,10 @@ fn j3_a_aba_nao_mostra_convert_to_sticky_note() {
 /// Uma tecla pelo hero (premida e solta) e um quadro.
 fn tecla(d: &mut Duas, k: BoardKey, text: Option<&str>) {
     let mods = Modifiers::default();
+    if crate::compoe_primeiro(&mut d.hero, k, mods) {
+        d.quadro();
+        return;
+    }
     board_keys::key(&mut d.hero, &mut d.ts, k, mods, true, text, None);
     board_keys::key(&mut d.hero, &mut d.ts, k, mods, false, None, None);
     d.quadro();

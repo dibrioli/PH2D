@@ -10,6 +10,11 @@ use ph2d_tokens::Theme;
 use ph2d_vector::VectorScene;
 
 fn grava(nome: &str, scene: &VectorScene) {
+    grava_em("W8", nome, scene);
+}
+
+/// A foto da cena em `docs/TrelloClone/smoke/<pasta>/<nome>.png`.
+pub(crate) fn grava_em(pasta: &str, nome: &str, scene: &VectorScene) {
     #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
     let (w, h) = (AREA.w as u32, AREA.h as u32);
     let gpu =
@@ -20,7 +25,7 @@ fn grava(nome: &str, scene: &VectorScene) {
         .render_and_readback(&gpu, scene.inner(), (w, h))
         .expect("readback");
     let dir =
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../docs/TrelloClone/smoke/W8");
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../docs/TrelloClone/smoke").join(pasta);
     std::fs::create_dir_all(&dir).expect("pasta");
     let path = dir.join(format!("{nome}.png"));
     image::save_buffer(&path, &px, w, h, image::ExtendedColorType::Rgba8).expect("png");

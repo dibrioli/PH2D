@@ -29,6 +29,7 @@ mod teto;
 mod titulo;
 mod verso;
 mod verso_anexos;
+mod escrever_no_verso;
 mod verso_listas;
 mod vista;
 mod voo;
@@ -212,8 +213,13 @@ impl Mesa {
         }
     }
 
-    /// Uma tecla premida pela porta do hero (o `BoardKey` que a shell traduz, com o texto).
+    /// Uma tecla premida pelo caminho da shell (`on_keyboard_input`): a composição vê-a primeiro e,
+    /// se a tomou, o despacho pára; senão segue para a porta do hero (o `BoardKey`, com o texto).
+    /// Report do dono 28/10: sem este primeiro passo os testes escreviam na descrição e ele não.
     pub fn tecla(&mut self, k: BoardKey, mods: Modifiers, text: Option<&str>) -> bool {
+        if compoe_primeiro(&mut self.hero, k, mods) {
+            return true;
+        }
         let out = board_keys::key(&mut self.hero, &mut self.ts, k, mods, true, text, None);
         let _ = board_keys::key(&mut self.hero, &mut self.ts, k, mods, false, None, None);
         out.consumed
@@ -295,6 +301,20 @@ impl Mesa {
 }
 
 /// Um ponto do cartão que só agarra o cartão (longe do lápis e dos rótulos).
+/// O primeiro passo da shell para toda tecla premida: a composição (tecla morta) vê-a; o Ctrl de um
+/// acorde é um evento à parte, antes da letra. `true` = tomada pela composição.
+pub fn compoe_primeiro(hero: &mut HeroScreen, k: BoardKey, mods: Modifiers) -> bool {
+    use ph2d_editor_core::ime::ComposeKey;
+    if mods.ctrl || mods.shift {
+        let _ = hero.handle_compose_key(ComposeKey::Modifier);
+    }
+    let ck = match k {
+        BoardKey::Escape => ComposeKey::Escape,
+        _ => ComposeKey::Other,
+    };
+    hero.handle_compose_key(ck)
+}
+
 pub fn pega(r: Rect) -> (f32, f32) {
     (r.x + 20.0, r.y + r.h - 6.0)
 }

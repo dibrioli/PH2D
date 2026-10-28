@@ -60,6 +60,16 @@ thread_local! {
     static LCX: RefCell<LayoutContext<Ink>> = RefCell::new(LayoutContext::new());
 }
 
+/// O peso da letra de um tipo de bloco.
+#[must_use]
+pub fn font_weight(kind: &BlockKind) -> FontWeight {
+    if matches!(kind, BlockKind::Heading(_)) {
+        FontWeight::BOLD
+    } else {
+        FontWeight::MEDIUM
+    }
+}
+
 /// O tamanho da letra de um tipo de bloco.
 #[must_use]
 pub fn font_px(kind: &BlockKind) -> f32 {
@@ -73,7 +83,7 @@ pub fn font_px(kind: &BlockKind) -> f32 {
     ph2d_text::displayed_font_px(t.px())
 }
 
-fn line_ratio() -> f32 {
+pub(super) fn line_ratio() -> f32 {
     LineToken::Normal.ratio()
 }
 
@@ -92,12 +102,7 @@ fn shape(ts: &mut TextSystem, doc: &RichDoc, i: usize, max_w: f32) -> Layout<Ink
         let mut bld = lcx.ranged_builder(fcx, text, 1.0, true);
         bld.push_default(StyleProperty::FontFamily(FontFamily::Source(family)));
         bld.push_default(StyleProperty::FontSize(size));
-        let weight = if matches!(b.kind, BlockKind::Heading(_)) {
-            FontWeight::BOLD
-        } else {
-            FontWeight::MEDIUM
-        };
-        bld.push_default(StyleProperty::FontWeight(weight));
+        bld.push_default(StyleProperty::FontWeight(font_weight(&b.kind)));
         bld.push_default(StyleProperty::LineHeight(LineHeight::FontSizeRelative(
             line_ratio(),
         )));

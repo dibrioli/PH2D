@@ -255,11 +255,21 @@ pub fn paint_rich_editor(
         }
     }
     scene.pop_layer();
-    if let Some(bar) = bar
-        && ed.style_menu_open
-    {
-        toolbar::paint_style_menu(ed, bar, scene, ts, theme);
-    }
+}
+
+/// O menu «Aa» aberto, por CIMA de tudo o que o chamador pinta depois do editor (pinte-o no fim):
+/// devolve a caixa dele, que o chamador regista como alvo do editor — senão o clique numa opção
+/// que cai sobre um botão vizinho vai para o botão.
+pub fn paint_rich_editor_menu(
+    ed: &RichEditor,
+    rect: Rect,
+    scene: &mut VectorScene,
+    ts: &mut TextSystem,
+    theme: Theme,
+) -> Option<Rect> {
+    let (bar, _) = ed.regions(rect);
+    let bar = bar.filter(|_| ed.style_menu_open)?;
+    Some(toolbar::paint_style_menu(ed, bar, scene, ts, theme))
 }
 
 /// O id a11y da área do documento (para o chamador registar o alvo do clique).

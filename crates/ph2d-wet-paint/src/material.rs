@@ -45,6 +45,10 @@ pub struct MaterialCelula {
     /// vidro colorido claro). Mistura-se pela massa TRANSMISSIVA (`massa × transmissao`): a tinta sem Transmission
     /// não tem modo a dar; entre duas tintas sem Transmission, linear. A lei lê-o em [`filtro`].
     pub vidro_claro: f32,
+    /// **Paper Press** (dono 28/10, [`crate::tuning::Knob::PaperPress`]): `1` = a tinta amassa o dente do papel (a
+    /// de sempre); `0` = a superfície é o papel com o dente, na altura e na sombra, mais a tinta. A lei:
+    /// [`crate::oleo_real::CampoAltura`].
+    pub amassa_papel: f32,
 }
 
 impl MaterialCelula {
@@ -61,6 +65,7 @@ impl MaterialCelula {
         transmissao: 0.0,
         relevo_papel: 0.0,
         vidro_claro: 0.0,
+        amassa_papel: 1.0,
     };
 
     /// `a` misturado com `b` na fracção `t` de `b` (a mesma lei de massa do relevo).
@@ -79,6 +84,7 @@ impl MaterialCelula {
             transmissao: l(a.transmissao, b.transmissao),
             relevo_papel: l(a.relevo_papel, b.relevo_papel),
             vidro_claro: modo_pela_massa_transmissiva(a, b, t),
+            amassa_papel: l(a.amassa_papel, b.amassa_papel),
         }
     }
 }
@@ -237,3 +243,7 @@ mod transparencia_tests;
 #[cfg(test)]
 #[path = "transmissao_tests.rs"]
 mod transmissao_tests;
+
+#[cfg(test)]
+#[path = "paper_press_tests.rs"]
+mod paper_press_tests;

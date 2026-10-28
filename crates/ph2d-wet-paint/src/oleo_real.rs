@@ -125,6 +125,12 @@ pub struct Afinacao {
     /// W3b: o ganho do dente do papel na altura FINA da tinta com o Relevo do papel 1 (`oraculo/README.md`
     /// §Transmission, calibrado contra a tela de antes de `ca26a7738a`).
     pub papel_na_tinta: f64,
+    /// Paper Press (dono 28/10): o ganho do dente do papel na ALTURA BASE e na SOMBRA da tinta com o Paper Press 0
+    /// (`medida_paper_press_calibra`, Dabber, Cold Relief 1, o dente no miolo da tinta grossa ÷ o do papel nu, em
+    /// níveis: 0,23 · 0,44 · 0,65 · 0,86 · 1,04 a 0,5 · 1 · 1,5 · 2 · 2,5 — linear). `2,4` = o papel mexe na tinta
+    /// tantos níveis como no papel nu (o que o olho compara; o RELATIVO ÷ a luminância média daria 0,85, e na foto
+    /// `J6_paper_press.jpg` com 0,85 o dente quase não se via sob a tinta azul).
+    pub papel_na_base: f64,
 }
 
 impl Default for Afinacao {
@@ -147,6 +153,7 @@ impl Default for Afinacao {
             // `medida_relevo_do_papel_calibra`: miolo ÷ nu 0,449 · 0,866 a 1 · 2 (linear); 0,67 (a tela de antes de
             // `ca26a7738a`, Dabber de fábrica com o óleo) a 1,5.
             papel_na_tinta: 1.5,
+            papel_na_base: 2.4,
         }
     }
 }
@@ -546,17 +553,31 @@ impl CampoAltura {
         let k_fios = af.fios * o.profundidade;
         // §BUG-ressalto: o desfoque alisa DENTRO da tinta; a altura de cada escala vai com a cobertura da célula,
         // e no papel sem pigmento é 0 — a parede cai no contorno do pigmento, sem saia no papel.
-        let v = plano_f32(rep, w, h, &|k| (suave[k] * escala * cob[k]) as f32);
-        let (massa_d, fios_d) = match af.raio_detalhe {
-            0 => (massa.clone(), fios),
-            r => (d(&massa, r), d(&fios, r)),
-        };
         // W3b: o Relevo do papel — a superfície da tinta assenta no dente do papel (`Grid::paper`, o mesmo papel do
         // substrato), pela cobertura; sem Relevo do papel (ou sem papel) a soma nem se faz (ao bit).
         let dente = o.dente_papel * af.papel_na_tinta / ratio.max(1) as f64;
         let relevo_papel =
             |k: usize| crate::material::peso(material.get(k).map_or(0.0, |m| m.relevo_papel));
         let com_papel = dente > 0.0 && !g.paper.is_empty() && com_material;
+        // Paper Press (dono 28/10): `1 − amassa` da célula põe o dente do papel na ALTURA e na SOMBRA — a superfície
+        // é o substrato mais a tinta, como a tinta sobre tinta. Toda a célula a `1` (a omissão): nem se soma (ao bit).
+        let base = o.dente_papel * af.papel_na_base / ratio.max(1) as f64;
+        let substrato = (com_papel && material.iter().any(|m| m.amassa_papel < 1.0)).then(|| {
+            plano_f32(rep, w, h, &|k| {
+                let segue = 1.0 - crate::material::peso(material[k].amassa_papel);
+                let i = (ax0 + k % w) + (ay0 + k / w) * g.s;
+                (segue * base * f64::from(g.paper[i]) * cob[k]) as f32
+            })
+        });
+        let papel_em = |k: usize| substrato.as_ref().map_or(0.0, |s| s[k]);
+        let v = plano_f32(rep, w, h, &|k| match &substrato {
+            Some(s) => (suave[k] * escala * cob[k]) as f32 + s[k],
+            None => (suave[k] * escala * cob[k]) as f32,
+        });
+        let (massa_d, fios_d) = match af.raio_detalhe {
+            0 => (massa.clone(), fios),
+            r => (d(&massa, r), d(&fios, r)),
+        };
         let detalhe = plano_f32(rep, w, h, &|k| {
             let d = (af.grao * (massa_d[k] - suave[k]) * escala + fios_d[k] * k_fios) * cob[k];
             let r = if com_papel { relevo_papel(k) } else { 0.0 };
@@ -573,6 +594,7 @@ impl CampoAltura {
         };
         let sombra = plano_f32(rep, w, h, &|k| {
             let s = (alta[k] * escala * cob[k]) as f32;
+            let s = if substrato.is_some() { s + papel_em(k) } else { s };
             match &crista {
                 Some(c) => s + (c[k] * k_fios) as f32,
                 None => s,

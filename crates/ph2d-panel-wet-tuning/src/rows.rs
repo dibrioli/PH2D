@@ -115,6 +115,12 @@ pub fn rows() -> &'static [TuneRow] {
             let j = rows.iter().position(|r| r.key == "transmission").map_or(0, |j| j + 1);
             rows.insert(j, modo);
         }
+        // O Paper Press (dono 28/10) logo abaixo do Paper Relief: os dois dizem o que a tinta faz ao dente do papel.
+        if let Some(i) = rows.iter().position(|r| r.key == "paperPress") {
+            let press = rows.remove(i);
+            let j = rows.iter().position(|r| r.key == "paperRelief").map_or(rows.len(), |j| j + 1);
+            rows.insert(j, press);
+        }
         if let Some(i) = rows.iter().position(|r| r.key == "lockMaterial") {
             let lock = rows.remove(i);
             let fim = rows
@@ -292,9 +298,10 @@ mod tests {
     /// borda da mancha molhada no Wet effects (3 → 4). Mais 1 (J6): as tampas do filme no Stroke (12 → 13). Mais 1 (J6 mistura): o
     /// nível do secador no Tools (+1). Mais 1 (J6 mistura, lacuna 6): o alcance do misturador no Tools (+1). Mais 1 (J6 guache, lacuna 7): a tinta que cobre a molhada no
     /// Wet effects (4 → 5). Mais 1 (J6 cerdas): os fios que crescem com o pincel no Bristles (19 → 20).
+    /// Mais 1 a 28/10 (dono): o Paper Press no Material (15 → 16).
     #[test]
     fn every_visible_knob_has_a_row() {
-        assert_eq!(rows().len(), 97);
+        assert_eq!(rows().len(), 98);
         for g in [
             (KnobGroup::Paint, 24),
             (KnobGroup::Water, 7),
@@ -304,7 +311,7 @@ mod tests {
             (KnobGroup::Bristles, 20),
             (KnobGroup::Stroke, 13),
             (KnobGroup::WetEffects, 5),
-            (KnobGroup::Material, 15),
+            (KnobGroup::Material, 16),
         ] {
             let n = rows().iter().filter(|r| r.group == g.0).count();
             assert_eq!(n, g.1, "group {:?} row count", g.0);
@@ -404,6 +411,7 @@ mod tests {
                 "transmission",
                 "transmissionMode",
                 "paperRelief",
+                "paperPress",
                 "lockMaterial",
             ]
         );

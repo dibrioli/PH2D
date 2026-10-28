@@ -34,6 +34,7 @@ pub fn do_pincel(p: &Params) -> MaterialCelula {
         transmissao: k(Knob::Transmission),
         relevo_papel: k(Knob::PaperRelief),
         vidro_claro: k(Knob::TransmissionMode),
+        amassa_papel: k(Knob::PaperPress),
     }
 }
 

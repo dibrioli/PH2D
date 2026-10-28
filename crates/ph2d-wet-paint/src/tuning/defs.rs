@@ -327,4 +327,6 @@ pub const KNOB_DEFS: [KnobDef; KNOB_COUNT] = [
     k(Knob::WetCover, KnobGroup::WetEffects, "wetCover", 0.0, 1.0, 0.01, 0.0, None),
     // J6 (cerdas): os fios crescem com o diâmetro — neutro 0 = os px escritos, ao bit
     k(Knob::BristleLaneSizeExp, KnobGroup::Bristles, "bristleLaneSizeExp", 0.0, 1.5, 0.01, 0.0, None),
+    // Paper Press (dono 28/10): neutro 1 = o amassado de sempre, ao bit (o preset sem a chave)
+    k(Knob::PaperPress, KnobGroup::Material, "paperPress", 0.0, 1.0, 0.01, 1.0, None),
 ];

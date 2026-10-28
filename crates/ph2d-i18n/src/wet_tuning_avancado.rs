@@ -29,6 +29,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.wet_tuning.option.transmissionMode.0" => "Blender",
         "panel.wet_tuning.option.transmissionMode.1" => "Clear glass",
         "panel.wet_tuning.knob.paperRelief" => "Paper Relief",
+        // Dono 28/10 (PT-BR «Amassar o papel»): 1 = a tinta prensa o dente do papel; 0 = segue-o.
+        "panel.wet_tuning.knob.paperPress" => "Paper Press",
         "panel.wet_tuning.knob.lockMaterial" => "Lock material (off · on)",
         "panel.wet_tuning.knob.knifeRidge" => "Knife ridge",
         "panel.wet_tuning.knob.knifeLevel" => "Knife leveling",

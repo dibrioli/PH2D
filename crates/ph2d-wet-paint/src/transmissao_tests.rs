@@ -26,7 +26,7 @@ fn tinta() -> Grid {
 }
 
 /// A grade `g` com o material de cada célula mexido por `f` (o do pincel: o cartão não tem os três pesos).
-fn cel(g: &Grid, f: impl Fn(&mut crate::material::MaterialCelula)) -> Grid {
+pub(super) fn cel(g: &Grid, f: impl Fn(&mut crate::material::MaterialCelula)) -> Grid {
     let mut g = g.clone();
     for m in crate::grid::material::garante(&mut g) {
         f(m);
@@ -286,7 +286,7 @@ fn o_grao_do_papel_atraves_da_tinta_e_o_da_transmissao() {
 }
 
 /// Uma tinta LISA (massa constante: a única variação é a do papel) sobre um papel em ondas.
-fn lisa_sobre_papel() -> Grid {
+pub(super) fn lisa_sobre_papel() -> Grid {
     let mut g = Grid::new(W, W);
     for y in 0..g.h + 2 {
         for x in 0..g.s {

@@ -319,9 +319,14 @@ pub enum Knob {
     /// multiplicados por `(D ÷ textureSizeRef)^γ` (`D` = o diâmetro do pincel): a guache seca do Rebelle pinta faixas
     /// de ~2 px a 40 e de ~10 a 200. `0` = os px escritos a todo tamanho, ao bit.
     BristleLaneSizeExp,
+    /// ⭐ **Paper Press** («Amassar o papel», dono 28/10, `project-memory/project_paper_press_is_a_brush_control_2026_10_28.md`):
+    /// quanto a tinta deste pincel AMASSA o dente do papel sob o Óleo Real. `1` (omissão) = o amassado de sempre, ao
+    /// bit (o dente só no detalhe, pelo Paper Relief); `0` = a superfície é o papel com o dente — na altura e na
+    /// sombra — mais a espessura da tinta. Pousa na célula ([`crate::material::MaterialCelula::amassa_papel`]).
+    PaperPress,
 }
 
-pub const KNOB_COUNT: usize = 135;
+pub const KNOB_COUNT: usize = 136;
 
 /// O LEITOR TOLERANTE das chaves do material de antes da W3 (preset e macro gravados com elas): `(knob, valor)`
 /// na lei nova, `None` para uma chave que não é antiga. `roughnessMul` m → Roughness `0,5·m` (o neutro `1` → `0,5`,

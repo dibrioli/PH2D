@@ -88,6 +88,10 @@ pub struct InspectorCameraInfo {
     /// A vista está a ser conduzida pela câmera da cena AGORA? ⚠️ Estado de VISTA, não documento.
     pub preview_on: bool,
     pub selected_count: usize,
+    /// O formato do jogo — definição do PROJECTO (plano GEF 17), não do componente.
+    pub format: crate::GameFormat,
+    /// Quando a moldura da câmera aparece no canvas — definição do PROJECTO.
+    pub frame: crate::CameraFrameShow,
 }
 
 /// Uma edição de um campo da secção CAMERA.
@@ -116,4 +120,11 @@ pub enum CameraFieldEdit {
     FollowOffset([f32; 2]),
     LimitMin([f32; 2]),
     LimitMax([f32; 2]),
+    /// O formato do jogo (plano GEF 17) — a tag é a posição em [`crate::GamePreset::ALL`].
+    /// ⚠️ Definição do PROJECTO: não escreve componente nenhum.
+    Format(u8),
+    /// O tamanho do formato `Custom`, em píxeis. ⚠️ Definição do PROJECTO.
+    CustomSize([u32; 2]),
+    /// A moldura no canvas: `true` = só com a câmera selecionada. ⚠️ Definição do PROJECTO.
+    Frame(bool),
 }

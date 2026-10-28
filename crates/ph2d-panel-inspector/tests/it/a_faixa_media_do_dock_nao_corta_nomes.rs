@@ -73,6 +73,8 @@ fn camera() -> InspectorCameraInfo {
         is_active_camera: true,
         preview_on: false,
         selected_count: 1,
+        format: ph2d_editor_core::GameFormat::default(),
+        frame: ph2d_editor_core::CameraFrameShow::Always,
     }
 }
 

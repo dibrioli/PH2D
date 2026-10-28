@@ -183,6 +183,7 @@ impl crate::App {
         // pela escala do documento ANTERIOR, e nada na tela diria porquê.
         if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
             crate::project_settings::install(&mut hero.project, &file.settings);
+            crate::project_settings::install_jogo(&mut hero.project, &file.jogo);
         }
         // **A TIMELINE do documento anterior morre aqui** — a do arquivo entra no fim (W4.T6/B5).
         //

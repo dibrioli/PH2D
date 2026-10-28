@@ -171,6 +171,9 @@ impl crate::App {
         if self.collider_gizmo_move(self.last_pointer.0, self.last_pointer.1) {
             return true;
         }
+        if self.camera_frame_move(self.last_pointer.0, self.last_pointer.1) {
+            return true;
+        }
         if self.field_gizmo_move(self.last_pointer.0, self.last_pointer.1) {
             return true;
         }

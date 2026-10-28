@@ -239,6 +239,9 @@ pub(crate) fn paint_deferred_popovers(
         );
     }
 
+    // CAMERA — o seletor do FORMATO DO JOGO (plano GEF 17), no irmão, pelo tecto de 200 LOC.
+    camera_format_popover(scene, text_system, theme, hit_index, store, region);
+
     // ⭐⭐⭐ **OS DOIS SELECTORES DAS SECÇÕES DO TOP-20** — a CUTSCENE (#19) e a COMPARAÇÃO da
     // vigia do contador — no irmão, cortados pelo tecto de 200 LOC desta função (ela chegou a
     // `211` ao ganhar o segundo).
@@ -258,6 +261,36 @@ pub(crate) fn paint_deferred_popovers(
     // Os menus de uma REGRA do cartão «Animation» (plano GameEngineFuncional 08) — no irmão, pelo
     // tecto de 200 LOC desta função.
     anim_rule_popover(scene, text_system, theme, hit_index, store, region);
+}
+
+/// O menu aberto do FORMATO DO JOGO do cartão Camera, com a escolha atual vinda do slot.
+fn camera_format_popover(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: ph2d_tokens::Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    region: Rect,
+) {
+    if let Some((sel, chip)) = state_popovers::take_pending_camera_format_dd() {
+        let mut dd = Dropdown::new(
+            crate::ids::INSP_CAMERA_FORMAT_PICK,
+            "",
+            sections::camera_format::format_options(),
+        )
+        .open(true);
+        dd.select(sel);
+        paint_open_popover(
+            &dd,
+            chip,
+            region,
+            store,
+            scene,
+            text_system,
+            theme,
+            hit_index,
+        );
+    }
 }
 
 /// O menu aberto de uma REGRA do cartão «Animation»: as condições ou as animações da lista, com a

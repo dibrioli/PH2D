@@ -56,6 +56,7 @@ fn the_world_settings_survive_the_project_file() {
         boards: Vec::new(),
         scripts: Vec::new(),
         marcas_do_artista: Vec::new(),
+        jogo: Vec::new(),
     };
     let bytes = postcard::to_allocvec(&(PROJECT_SCHEMA, &file)).expect("serializa");
     std::fs::write(&path, bytes).expect("grava");
@@ -104,6 +105,11 @@ fn the_project_scale_and_unit_survive_the_project_file() {
         // ⚠️ `Radians` porque o default é `Degrees` — este teste atravessa o ARQUIVO INTEIRO
         // (não só o espelho), e um valor de fábrica passaria mesmo que o campo se perdesse.
         display_angle: ph2d_editor_core::project::DisplayAngle::Radians,
+        game_format: ph2d_editor_core::GameFormat {
+            preset: ph2d_editor_core::GamePreset::GameBoy,
+            custom: [1280, 720],
+        },
+        camera_frame: ph2d_editor_core::CameraFrameShow::Selected,
     };
     assert_ne!(
         authored,
@@ -127,6 +133,7 @@ fn the_project_scale_and_unit_survive_the_project_file() {
         boards: Vec::new(),
         scripts: Vec::new(),
         marcas_do_artista: Vec::new(),
+        jogo: crate::project_settings::collect_jogo(authored),
     };
     let bytes = postcard::to_allocvec(&(PROJECT_SCHEMA, &file)).expect("serializa");
     std::fs::write(&path, bytes).expect("grava");
@@ -136,6 +143,7 @@ fn the_project_scale_and_unit_survive_the_project_file() {
     assert_eq!(ver, PROJECT_SCHEMA);
     let mut loaded = ph2d_editor_core::project::ProjectSettings::default();
     crate::project_settings::install(&mut loaded, &back.settings);
+    crate::project_settings::install_jogo(&mut loaded, &back.jogo);
     assert_eq!(
         loaded, authored,
         "as settings do projeto nao sobreviveram ao arquivo"

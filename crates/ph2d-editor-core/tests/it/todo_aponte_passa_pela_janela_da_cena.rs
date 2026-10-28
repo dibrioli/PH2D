@@ -398,8 +398,8 @@ fn a_porta_delega_e_por_isso_herda_a_identidade_fora_do_split() {
 /// abaixo reprova a entrada que já não abriga nada.
 const A_JANELA_E_O_ASSUNTO: &[(&str, &str)] = &[(
     "render_loop/fase_game_camera.rs",
-    "a camera do JOGO (TOP-20 #7): o `aspect_of` mede o ecra' do jogador, nao a banda do chrome \
-     — e' outro assunto, e a regua larga apanha-o como falso positivo",
+    "a camera do JOGO (TOP-20 #7, plano GEF 17): a caixa do jogo mede-se dentro da janela, nao da banda do \
+     chrome — e' outro assunto, e a regua larga apanha-o como falso positivo",
 )];
 
 /// O nome e os argumentos da chamada que envolve a posição `pos`.

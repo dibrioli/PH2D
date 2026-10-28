@@ -246,7 +246,6 @@ pub(super) fn publish(
         catalogs,
         sheets,
         renderer,
-        window_size,
         game_camera_preview,
         preview_drive,
         clock_playing,

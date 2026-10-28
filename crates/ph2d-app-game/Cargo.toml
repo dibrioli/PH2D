@@ -34,6 +34,11 @@ ph2d-render = { path = "../ph2d-render" }
 ph2d-tokens = { path = "../ph2d-tokens" }
 # As moedas correm um script da biblioteca do projecto.
 ph2d-script = { path = "../ph2d-script" }
+# A moldura da câmera no canvas (plano GEF 17): a tinta, o rótulo, a janela.
+ph2d-vector = { path = "../ph2d-vector" }
+ph2d-text = { path = "../ph2d-text" }
+ph2d-i18n = { path = "../ph2d-i18n" }
+ph2d-host = { path = "../ph2d-host" }
 
 [dev-dependencies]
 # A vista do player nos gates da lei de animação.

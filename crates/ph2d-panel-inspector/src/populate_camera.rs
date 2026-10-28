@@ -15,7 +15,7 @@
 
 use crate::ids;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore, format_number};
-use ph2d_editor_core::widget::{CheckboxState, CheckboxValue, TextInputState};
+use ph2d_editor_core::widget::{CheckboxState, CheckboxValue, DropdownState, TextInputState};
 
 /// `(id, valor de partida, mínimo, máximo, passo)` — os campos numéricos da secção.
 ///
@@ -66,7 +66,36 @@ const NUMEROS: [(ph2d_a11y::NodeId, f64, f64, f64, f64); 16] = [
 const MAX_Y: (ph2d_a11y::NodeId, f64, f64, f64, f64) =
     (ids::INSP_CAMERA_MAX_Y, 10.0, -100_000.0, 100_000.0, 0.5); // LITERAL-PX-OK: metros
 
+/// O tamanho do formato `Custom` (plano GEF 17), em píxeis: a faixa é a do `GameFormat`.
+const CUSTOM_W: (ph2d_a11y::NodeId, f64, f64, f64, f64) = (
+    ids::INSP_CAMERA_CUSTOM_W,
+    1280.0, // LITERAL-PX-OK: largura de partida do `GameFormat::default()`
+    ph2d_editor_core::game_format::CUSTOM_MIN_PX as f64,
+    ph2d_editor_core::game_format::CUSTOM_MAX_PX as f64,
+    1.0, // LITERAL-PX-OK: passo de um píxel
+);
+/// …a altura.
+const CUSTOM_H: (ph2d_a11y::NodeId, f64, f64, f64, f64) = (
+    ids::INSP_CAMERA_CUSTOM_H,
+    720.0, // LITERAL-PX-OK: altura de partida do `GameFormat::default()`
+    ph2d_editor_core::game_format::CUSTOM_MIN_PX as f64,
+    ph2d_editor_core::game_format::CUSTOM_MAX_PX as f64,
+    1.0, // LITERAL-PX-OK: passo de um píxel
+);
+
 pub(crate) fn populate_camera(store: &mut WidgetStore) {
+    // O formato do jogo (plano GEF 17): as entradas do seletor e a moldura são BOTÕES; só o chip é
+    // `Dropdown`, e ele guarda o `open`, nunca a escolha (essa vem do snapshot).
+    crate::populate::register_button_ids(store, &ids::INSP_CAMERA_FORMAT_OPT);
+    crate::populate::register_button_ids(store, &ids::INSP_CAMERA_FRAME);
+    store.register(
+        ids::INSP_CAMERA_FORMAT_PICK,
+        InteractiveState::Dropdown {
+            state: DropdownState::Normal,
+            open: false,
+            selected_index: None,
+        },
+    );
     store.register(
         ids::INSP_CAMERA_TARGET,
         InteractiveState::TextInput {
@@ -92,7 +121,10 @@ pub(crate) fn populate_camera(store: &mut WidgetStore) {
             },
         );
     }
-    for (id, value, lo, hi, step) in NUMEROS.into_iter().chain(std::iter::once(MAX_Y)) {
+    for (id, value, lo, hi, step) in NUMEROS
+        .into_iter()
+        .chain([MAX_Y, CUSTOM_W, CUSTOM_H])
+    {
         store.register(
             id,
             InteractiveState::NumberInput {

@@ -240,6 +240,8 @@ mod input_map_drag;
 mod inspector_presence_tests;
 mod integration;
 mod janela_do_jogo;
+/// A câmera no canvas — o fio do ponteiro (plano GEF 17).
+mod camera_no_canvas;
 mod keymap;
 /// A cena de smoke do Knot (o entrelace celta over/under) — irmão de `build_smoke`.
 mod knot_smoke;
@@ -753,6 +755,7 @@ impl App {
             signal_smoke_done: false,
             components: crate::app_state::ComponentsShell::default(),
             game_camera_preview: false,
+            camera_no_canvas: Default::default(),
             ui_motion_smoke_done: false,
             timescale_smoke_done: false,
             stagger_smoke_done: false,

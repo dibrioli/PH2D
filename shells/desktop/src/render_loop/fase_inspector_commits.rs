@@ -259,6 +259,10 @@ impl crate::App {
                 self.game_camera_preview = *on;
                 continue;
             }
+            if ph2d_app_game::formato_do_jogo::aplica_formato(&mut hero.project, edit) {
+                self.title_dirty = true;
+                continue;
+            }
             ph2d_app_components::camera_inspector::apply_camera_edit(
                 sim,
                 *bits,

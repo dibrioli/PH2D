@@ -32,6 +32,10 @@ pub(crate) fn apply_camera_event(host: &mut dyn PanelHostInternal, ev: WidgetEve
     };
     let bits = info.entity_bits;
 
+    if let WidgetEvent::Click(id) = ev {
+        return format_click(host, bits, &info, id);
+    }
+
     if let WidgetEvent::Toggled(id) = ev {
         // ⭐ **A pré-visualização é a única que não escreve no documento** — ver o modelo.
         if id == crate::ids::INSP_CAMERA_PREVIEW {
@@ -117,12 +121,60 @@ pub(crate) fn apply_camera_event(host: &mut dyn PanelHostInternal, ev: WidgetEve
             crate::ids::INSP_CAMERA_MAX_Y => {
                 CameraFieldEdit::LimitMax([limits.map_or(0.0, |x| x.max[0]), f])
             }
+            // O par do `Custom` viaja junto, com o outro eixo lido do snapshot; o clamp é da shell.
+            #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+            crate::ids::INSP_CAMERA_CUSTOM_W => {
+                CameraFieldEdit::CustomSize([v.max(0.0).round() as u32, info.format.custom[1]])
+            }
+            #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+            crate::ids::INSP_CAMERA_CUSTOM_H => {
+                CameraFieldEdit::CustomSize([info.format.custom[0], v.max(0.0).round() as u32])
+            }
             _ => return false,
         };
         push(host, bits, edit);
         return true;
     }
     false
+}
+
+/// Os cliques do formato do jogo e da moldura (plano GEF 17). `true` = consumido.
+fn format_click(
+    host: &mut dyn PanelHostInternal,
+    bits: u64,
+    info: &ph2d_editor_core::screens::hero::InspectorCameraInfo,
+    id: ph2d_a11y::NodeId,
+) -> bool {
+    if let Some(i) = crate::ids::INSP_CAMERA_FORMAT_OPT
+        .iter()
+        .position(|&o| o == id)
+    {
+        // ⚠️ Fecha o popover e NÃO escreve o `selected_index` — a escolha é do snapshot.
+        if let Some(InteractiveState::Dropdown { open, .. }) =
+            host.store_mut().get_mut(crate::ids::INSP_CAMERA_FORMAT_PICK)
+        {
+            *open = false;
+        }
+        demote_button(host, id);
+        push(host, bits, CameraFieldEdit::Format(u8::try_from(i).unwrap_or(0)));
+        return true;
+    }
+    if let Some(i) = crate::ids::INSP_CAMERA_FRAME.iter().position(|&o| o == id) {
+        let so_selecionada = i == 1;
+        let agora = info.frame == ph2d_editor_core::CameraFrameShow::Selected;
+        if so_selecionada != agora {
+            push(host, bits, CameraFieldEdit::Frame(so_selecionada));
+        }
+        return true;
+    }
+    false
+}
+
+/// Repõe o visual de um botão momentâneo — senão ele fica `Pressed` depois do clique.
+fn demote_button(host: &mut dyn PanelHostInternal, id: ph2d_a11y::NodeId) {
+    if let Some(InteractiveState::Button { state }) = host.store_mut().get_mut(id) {
+        *state = ph2d_editor_core::widget::ButtonState::Normal;
+    }
 }
 
 fn push(host: &mut dyn PanelHostInternal, entity_bits: u64, edit: CameraFieldEdit) {

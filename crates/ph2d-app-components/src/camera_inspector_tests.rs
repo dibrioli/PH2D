@@ -10,8 +10,12 @@ use ph2d_ecs::{
 };
 
 use super::build_camera_info;
+use ph2d_editor_core::{CameraFrameShow, GameFormat, GamePreset};
 
-const ASPECT: f32 = 16.0 / 9.0;
+const FORMATO: GameFormat = GameFormat {
+    preset: GamePreset::Wide16x9,
+    custom: [1280, 720],
+};
 
 fn cena() -> SimWorld {
     SimWorld::default()
@@ -45,7 +49,7 @@ fn an_object_without_a_camera_has_no_section() {
         .id();
     assign_missing_stable_ids(sim.world_mut());
     assert!(
-        build_camera_info(sim.world_mut(), e.to_bits(), 1, ASPECT, false).is_none(),
+        build_camera_info(sim.world_mut(), e.to_bits(), 1, FORMATO, CameraFrameShow::Always, false).is_none(),
         "o Follow sozinho nao abre a seccao"
     );
 }
@@ -72,10 +76,10 @@ fn the_snapshot_says_which_camera_commands() {
             ..GameCamera::default()
         },
     );
-    let i = build_camera_info(sim.world_mut(), baixa.to_bits(), 1, ASPECT, false).unwrap();
+    let i = build_camera_info(sim.world_mut(), baixa.to_bits(), 1, FORMATO, CameraFrameShow::Always, false).unwrap();
     assert_eq!(i.camera_count, 2);
     assert!(!i.is_active_camera, "a de prioridade 1 NAO manda");
-    let i = build_camera_info(sim.world_mut(), alta.to_bits(), 1, ASPECT, false).unwrap();
+    let i = build_camera_info(sim.world_mut(), alta.to_bits(), 1, FORMATO, CameraFrameShow::Always, false).unwrap();
     assert!(i.is_active_camera, "a de prioridade 5 manda");
 }
 
@@ -93,7 +97,7 @@ fn an_empty_target_is_not_a_missing_one() {
     sim.world_mut()
         .entity_mut(cam)
         .insert(CameraFollow::default());
-    let i = build_camera_info(sim.world_mut(), cam.to_bits(), 1, ASPECT, false).unwrap();
+    let i = build_camera_info(sim.world_mut(), cam.to_bits(), 1, FORMATO, CameraFrameShow::Always, false).unwrap();
     assert!(!i.follow.as_ref().unwrap().target_found);
     assert!(i.follow.as_ref().unwrap().target.is_empty());
 
@@ -102,7 +106,7 @@ fn an_empty_target_is_not_a_missing_one() {
         target: "NaoExiste".into(),
         ..CameraFollow::default()
     });
-    let i = build_camera_info(sim.world_mut(), cam.to_bits(), 1, ASPECT, false).unwrap();
+    let i = build_camera_info(sim.world_mut(), cam.to_bits(), 1, FORMATO, CameraFrameShow::Always, false).unwrap();
     assert!(!i.follow.as_ref().unwrap().target_found, "nao existe");
 
     // Um nome que existe: ACHADO.
@@ -113,7 +117,7 @@ fn an_empty_target_is_not_a_missing_one() {
         target: "Heroi".into(),
         ..CameraFollow::default()
     });
-    let i = build_camera_info(sim.world_mut(), cam.to_bits(), 1, ASPECT, false).unwrap();
+    let i = build_camera_info(sim.world_mut(), cam.to_bits(), 1, FORMATO, CameraFrameShow::Always, false).unwrap();
     assert!(i.follow.as_ref().unwrap().target_found, "o Heroi existe");
 }
 
@@ -142,7 +146,7 @@ fn a_fence_narrower_than_the_window_is_named() {
         min: [-100.0, -100.0],
         max: [100.0, 100.0],
     });
-    let i = build_camera_info(sim.world_mut(), cam.to_bits(), 1, ASPECT, false).unwrap();
+    let i = build_camera_info(sim.world_mut(), cam.to_bits(), 1, FORMATO, CameraFrameShow::Always, false).unwrap();
     assert!(!i.limits.as_ref().unwrap().smaller_than_view);
 
     // Estreita SÓ em X (largura 10 < 17,78): tem de acusar.
@@ -150,7 +154,7 @@ fn a_fence_narrower_than_the_window_is_named() {
         min: [-5.0, -100.0],
         max: [5.0, 100.0],
     });
-    let i = build_camera_info(sim.world_mut(), cam.to_bits(), 1, ASPECT, false).unwrap();
+    let i = build_camera_info(sim.world_mut(), cam.to_bits(), 1, FORMATO, CameraFrameShow::Always, false).unwrap();
     assert!(
         i.limits.as_ref().unwrap().smaller_than_view,
         "estreita num eixo ja' e' estreita — a camera fixa-se no centro da caixa"
@@ -161,7 +165,7 @@ fn a_fence_narrower_than_the_window_is_named() {
         min: [-100.0, -4.0],
         max: [100.0, 4.0],
     });
-    let i = build_camera_info(sim.world_mut(), cam.to_bits(), 1, ASPECT, false).unwrap();
+    let i = build_camera_info(sim.world_mut(), cam.to_bits(), 1, FORMATO, CameraFrameShow::Always, false).unwrap();
     assert!(
         i.limits.as_ref().unwrap().smaller_than_view,
         "o eixo Y conta"
@@ -189,14 +193,14 @@ fn the_warning_agrees_with_where_the_law_actually_pins() {
         max: [5.0, 100.0],
     };
     sim.world_mut().entity_mut(cam).insert(lim.clone());
-    let i = build_camera_info(sim.world_mut(), cam.to_bits(), 1, ASPECT, false).unwrap();
+    let i = build_camera_info(sim.world_mut(), cam.to_bits(), 1, FORMATO, CameraFrameShow::Always, false).unwrap();
     assert!(
         i.limits.as_ref().unwrap().smaller_than_view,
         "o aviso acende"
     );
 
     // E a lei de facto FIXA no centro da caixa: (2 + 5)/2 = 3,5, qualquer que seja o alvo.
-    let half = ph2d_ecs::half_extent(10.0, ASPECT);
+    let half = ph2d_ecs::half_extent(10.0, FORMATO.aspect());
     for alvo in [-1000.0_f32, 0.0, 3.5, 1000.0] {
         let c = ph2d_ecs::clamp_axis_to_limits(alvo, half[0], lim.min[0], lim.max[0]);
         assert!(
@@ -211,8 +215,8 @@ fn the_warning_agrees_with_where_the_law_actually_pins() {
 fn the_preview_flag_travels_in_the_snapshot() {
     let mut sim = cena();
     let cam = camera(&mut sim, "Cam", GameCamera::default());
-    let off = build_camera_info(sim.world_mut(), cam.to_bits(), 1, ASPECT, false).unwrap();
-    let on = build_camera_info(sim.world_mut(), cam.to_bits(), 1, ASPECT, true).unwrap();
+    let off = build_camera_info(sim.world_mut(), cam.to_bits(), 1, FORMATO, CameraFrameShow::Always, false).unwrap();
+    let on = build_camera_info(sim.world_mut(), cam.to_bits(), 1, FORMATO, CameraFrameShow::Always, true).unwrap();
     assert!(!off.preview_on);
     assert!(on.preview_on);
 }

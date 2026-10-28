@@ -56,14 +56,22 @@ impl crate::App {
         let antigo = ver <= crate::project_schema::PROJECT_SCHEMA_TRACO_V22;
         let _traco_v22 = antigo.then(ph2d_vec_scene::StrokeLayoutV22::enter);
         let (mut file, migrated_counter) = match ver {
+            PROJECT_SCHEMA => match postcard::from_bytes::<(u32, ProjectFile)>(&bytes) {
+                Ok((_, f)) => (f, None),
+                Err(e) => {
+                    eprintln!("[proj] erro ao ler {path}: {e}");
+                    return None;
+                }
+            },
             // ⭐ **193 → … → 197: as animações do personagem, o `TiledDraw`, a memória do uso da imagem, o
-            // `ImageRegion`** — um componente novo cada, a mesma forma.
-            PROJECT_SCHEMA
+            // `ImageRegion`** — um componente novo cada, a mesma forma; falta-lhes só o `jogo` (198) no fim: o `0`
+            // do `Vec` vazio.
+            crate::project_schema::PROJECT_SCHEMA_SEM_FORMATO_DO_JOGO
             | crate::project_schema::PROJECT_SCHEMA_SEM_REGION
             | crate::project_schema::PROJECT_SCHEMA_SEM_MEMORIA_DO_USO
             | crate::project_schema::PROJECT_SCHEMA_SEM_TILED_DRAW
             | crate::project_schema::PROJECT_SCHEMA_SEM_ANIMACOES_DO_PERSONAGEM => {
-                match postcard::from_bytes::<(u32, ProjectFile)>(&bytes) {
+                match postcard::from_bytes::<(u32, ProjectFile)>(&[&bytes[..], &[0]].concat()) {
                     Ok((_, f)) => (f, None),
                     Err(e) => {
                         eprintln!("[proj] erro ao ler {path}: {e}");
@@ -149,7 +157,7 @@ impl crate::App {
             // `Vec` vazio acrescentado lê o v192 com o tipo vivo (os anteriores levam-no também). O `191`
             // tem a mesma forma; só o SIGNIFICADO da opacidade nas poses mudou (abaixo).
             192 | crate::project_schema::PROJECT_SCHEMA_OPACIDADE_FORA_DOS_ESTADOS => {
-                match postcard::from_bytes::<(u32, ProjectFile)>(&[&bytes[..], &[0]].concat()) {
+                match postcard::from_bytes::<(u32, ProjectFile)>(&[&bytes[..], &[0, 0]].concat()) {
                     Ok((_, f)) => (f, None),
                     Err(e) => {
                         eprintln!("[proj] v{ver} ilegivel: {e}");
@@ -162,7 +170,7 @@ impl crate::App {
                 use ph2d_app_components::script_project::read_before_scripts;
                 match read_before_scripts(
                     ver,
-                    &[&bytes[..], &[0]].concat(),
+                    &[&bytes[..], &[0, 0]].concat(),
                     |f: &mut ProjectFile| &mut f.state.world,
                     PROJECT_SCHEMA,
                 ) {

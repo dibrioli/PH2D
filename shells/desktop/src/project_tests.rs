@@ -427,6 +427,7 @@ fn project_file_round_trips_through_postcard() {
         boards: two_boards().to_bytes().unwrap(),
         scripts: Vec::new(),
         marcas_do_artista: Vec::new(),
+        jogo: Vec::new(),
     };
     let bytes = postcard::to_allocvec(&(PROJECT_SCHEMA, &file)).unwrap();
     let (ver, back): (u32, ProjectFile) = postcard::from_bytes(&bytes).unwrap();
@@ -585,6 +586,10 @@ mod scripts;
 /// **As MARCAS DO ARTISTA no arquivo** (Macros W9, v192) — filho pela mesma razão.
 #[path = "project_marcas_tests.rs"]
 mod marcas;
+
+/// **O FORMATO DO JOGO no arquivo** (plano GEF 17, v198) — filho pela mesma razão.
+#[path = "project_jogo_tests.rs"]
+mod jogo;
 
 /// **O que um load faz com a CORRIDA GRAVADA** (W17) — filho (`#[path]`) pelo
 /// teto de LOC do HR-18, e FILHO e não irmão porque as fixtures desta suíte

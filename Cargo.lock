@@ -5227,6 +5227,8 @@ dependencies = [
  "ph2d-core",
  "ph2d-ecs",
  "ph2d-editor-core",
+ "ph2d-host",
+ "ph2d-i18n",
  "ph2d-input",
  "ph2d-physics-ecs",
  "ph2d-platformer",
@@ -5234,8 +5236,10 @@ dependencies = [
  "ph2d-render",
  "ph2d-runtime",
  "ph2d-script",
+ "ph2d-text",
  "ph2d-tokens",
  "ph2d-vec-svg",
+ "ph2d-vector",
 ]
 
 [[package]]

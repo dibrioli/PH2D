@@ -107,8 +107,8 @@ fn a_vista_do_hud_vem_da_camera_do_jogo_e_nao_da_banda_do_chrome() {
     // nada é a catraca a virar licença, e a régua larga apanharia a câmera como falso positivo.
     let camera = include_str!("../../src/render_loop/fase_game_camera.rs");
     assert!(
-        camera.contains("aspect_of(surface.size())"),
-        "a camera do JOGO deixou de medir a janela — se isso foi deliberado, a entrada da \
+        camera.contains("surface.size()") && camera.contains("caixa_do_jogo("),
+        "a camera do JOGO deixou de medir a caixa do jogo na janela — se isso foi deliberado, a entrada da \
          particao `A_JANELA_E_O_ASSUNTO` ficou obsoleta e a premissa DESTE gate morreu com ela"
     );
 }

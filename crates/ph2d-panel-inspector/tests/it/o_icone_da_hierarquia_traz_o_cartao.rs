@@ -89,6 +89,8 @@ fn host() -> (MockPanelHost, InspectorState) {
         is_active_camera: true,
         preview_on: false,
         selected_count: 1,
+        format: ph2d_editor_core::GameFormat::default(),
+        frame: ph2d_editor_core::CameraFrameShow::Always,
     }));
     // ⚠️ O Inspector sabe QUEM pinta pelos retratos de identidade (nome/transform/visibilidade):
     // é o `last_entity` do sync, e é por ele que o pedido casa.

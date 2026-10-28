@@ -36,7 +36,7 @@ use ph2d_ecs::{
     GameCamera, SimWorld, World,
 };
 use ph2d_editor_core::{
-    CameraFieldEdit, InspectorCameraFollow, InspectorCameraInfo, InspectorCameraLimits,
+    CameraFieldEdit, CameraFrameShow, GameFormat, InspectorCameraFollow, InspectorCameraInfo, InspectorCameraLimits,
     InspectorGameCamera,
 };
 
@@ -61,12 +61,13 @@ pub fn build_camera_info(
     world: &mut World,
     entity_bits: u64,
     selected_count: usize,
-    aspect: f32,
+    format: GameFormat,
+    frame: CameraFrameShow,
     preview_on: bool,
 ) -> Option<InspectorCameraInfo> {
     let entity = Entity::from_bits(entity_bits);
     let cam = world.get::<GameCamera>(entity).cloned()?;
-    let half = ph2d_ecs::half_extent(cam.height_world, aspect);
+    let half = ph2d_ecs::half_extent(cam.height_world, format.aspect());
 
     let camera_count = ph2d_ecs::camera_count(world);
     let is_active_camera = ph2d_ecs::active_camera_of(world) == Some(entity);
@@ -114,6 +115,8 @@ pub fn build_camera_info(
         is_active_camera,
         preview_on,
         selected_count,
+        format,
+        frame,
     })
 }
 
@@ -169,7 +172,11 @@ pub fn apply_camera_edit(
 ) {
     let entity = Entity::from_bits(entity_bits);
     match edit {
-        CameraFieldEdit::Preview(_) => {}
+        // Gestos de VISTA e definições do PROJECTO: quem os serve é a shell.
+        CameraFieldEdit::Preview(_)
+        | CameraFieldEdit::Format(_)
+        | CameraFieldEdit::CustomSize(_)
+        | CameraFieldEdit::Frame(_) => {}
 
         CameraFieldEdit::Height(_)
         | CameraFieldEdit::Offset(_)

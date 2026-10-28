@@ -139,6 +139,13 @@ impl crate::App {
                     g.painter_macros.marcas_a_gravar(t.map(|t| &*t))
                 })
                 .unwrap_or_default(),
+            jogo: crate::project_settings::collect_jogo(
+                self.gfx
+                    .as_ref()
+                    .and_then(|g| g.hero_screen.as_ref())
+                    .map(|h| h.project)
+                    .unwrap_or_default(),
+            ),
             // ⚠️ **A taxonomia NÃO está aqui, e a ausência é a decisão** (v105): ela viaja dentro
             // do `state`, que é a unidade do undo — ver [`crate::project_library`]. Um campo aqui
             // seria a **segunda** resposta à mesma pergunta, e a que o load lesse ganharia sem

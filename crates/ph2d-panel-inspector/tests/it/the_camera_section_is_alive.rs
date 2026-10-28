@@ -62,6 +62,8 @@ fn info(
         is_active_camera: true,
         preview_on,
         selected_count: 1,
+        format: ph2d_editor_core::GameFormat::default(),
+        frame: ph2d_editor_core::CameraFrameShow::Always,
     }
 }
 
@@ -302,5 +304,73 @@ fn o_dolly_mostra_a_camera_e_chega_ao_barramento() {
         })
         .collect();
     assert_eq!(edits, vec![ph2d_editor_core::CameraFieldEdit::Dolly(0.25)]);
+    set_current_inspector_camera(None);
+}
+
+/// Carrega com um ponteiro real no centro de `id`, como pintado em `rects`, e devolve as edições da
+/// câmera que chegaram ao barramento.
+fn carrega(
+    h: &mut MockPanelHost,
+    st: &mut InspectorState,
+    rects: &[(ph2d_a11y::NodeId, Rect)],
+    id: ph2d_a11y::NodeId,
+    t: u128,
+) -> Vec<CameraFieldEdit> {
+    let (_, r) = rects
+        .iter()
+        .find(|(n, _)| *n == id)
+        .copied()
+        .expect("o controlo nao foi pintado");
+    let (cx, cy) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
+    let _ = h.drained_actions();
+    let mut evs = h.dispatch_pointer_event(pointer(PointerKind::Down, cx, cy, t));
+    evs.extend(h.dispatch_pointer_event(pointer(PointerKind::Up, cx, cy, t + SEC / 100)));
+    for ev in evs {
+        h.apply_panel_event::<InspectorPanel>(st, ev);
+    }
+    h.drained_actions()
+        .into_iter()
+        .filter_map(|a| match a {
+            EditorAction::InspectorCameraEdit { edit, .. } => Some(edit),
+            _ => None,
+        })
+        .collect()
+}
+
+/// ⭐⭐ **O formato do jogo e a moldura (plano GEF 17) estão vivos sob o dedo**: abrir o seletor e
+/// escolher Game Boy manda `Format(8)` (a posição em `GamePreset::ALL`), e «When Selected» manda
+/// `Frame(true)`.
+///
+/// **Mutações que devem sangrar:** tirar o registo das entradas no `populate_camera` · mapear a
+/// posição a outra tag · inverter o `i == 1` da moldura.
+#[test]
+fn o_formato_e_a_moldura_chegam_ao_barramento() {
+    let (mut h, mut st) = host(info(None, None, false));
+    let rects = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
+    let _ = carrega(
+        &mut h,
+        &mut st,
+        &rects,
+        ph2d_panel_inspector::ids::INSP_CAMERA_FORMAT_PICK,
+        SEC,
+    );
+    let rects = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
+    let edits = carrega(
+        &mut h,
+        &mut st,
+        &rects,
+        ph2d_panel_inspector::ids::INSP_CAMERA_FORMAT_OPT[8],
+        2 * SEC,
+    );
+    assert_eq!(edits, vec![CameraFieldEdit::Format(8)]);
+    let rects = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
+    let edits = carrega(
+        &mut h,
+        &mut st,
+        &rects,
+        ph2d_panel_inspector::ids::INSP_CAMERA_FRAME[1],
+        3 * SEC,
+    );
+    assert_eq!(edits, vec![CameraFieldEdit::Frame(true)]);
     set_current_inspector_camera(None);
 }

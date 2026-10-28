@@ -32,6 +32,7 @@
 //! carregue faz o teste falhar, em vez de deixar de persistir em silêncio.
 
 use ph2d_editor_core::project::{DisplayAngle, DisplayUnit, ImageFilterMode, ProjectSettings};
+use ph2d_editor_core::{CameraFrameShow, GameFormat, GamePreset};
 
 /// As settings do projeto, na forma que o arquivo guarda.
 ///
@@ -120,6 +121,38 @@ pub(crate) fn install(dst: &mut ProjectSettings, saved: &SavedSettings) {
     dst.display_angle = display_angle_from_u8(saved.display_angle);
 }
 
+/// A versão do blob do formato do jogo (v198, plano GEF 17).
+const JOGO_VERSAO: u8 = 1;
+
+/// O blob `jogo` do arquivo: `(versão, predefinição, largura, altura personalizadas, moldura)` em postcard.
+pub(crate) fn collect_jogo(p: ProjectSettings) -> Vec<u8> {
+    let f = p.game_format;
+    let moldura = u8::from(p.camera_frame == CameraFrameShow::Selected);
+    postcard::to_allocvec(&(JOGO_VERSAO, f.preset.to_u8(), f.custom, moldura)).unwrap_or_default()
+}
+
+/// Instala o formato do jogo do arquivo. Vazio (um projecto `<= 197`) ou ilegível = o de fábrica.
+pub(crate) fn install_jogo(dst: &mut ProjectSettings, bytes: &[u8]) {
+    let lido = postcard::from_bytes::<(u8, u8, [u32; 2], u8)>(bytes)
+        .ok()
+        .filter(|(v, ..)| *v == JOGO_VERSAO);
+    let fabrica = ProjectSettings::default();
+    let Some((_, preset, custom, moldura)) = lido else {
+        dst.game_format = fabrica.game_format;
+        dst.camera_frame = fabrica.camera_frame;
+        return;
+    };
+    dst.game_format = GameFormat {
+        preset: GamePreset::from_u8(preset),
+        custom,
+    };
+    dst.camera_frame = if moldura == 1 {
+        CameraFrameShow::Selected
+    } else {
+        CameraFrameShow::Always
+    };
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -144,6 +177,11 @@ mod tests {
             // ⚠️ **`Radians` de propósito**: o default é `Degrees`, e uma fixture igual ao
             // default não prova travessia nenhuma — é a lei que o `assert_ne!` abaixo defende.
             display_angle: DisplayAngle::Radians,
+            game_format: GameFormat {
+                preset: GamePreset::Custom,
+                custom: [400, 300],
+            },
+            camera_frame: CameraFrameShow::Selected,
         };
         assert_ne!(
             authored,
@@ -155,6 +193,7 @@ mod tests {
         let back: SavedSettings = postcard::from_bytes(&bytes).expect("desserializa");
         let mut loaded = ProjectSettings::default();
         install(&mut loaded, &back);
+        install_jogo(&mut loaded, &collect_jogo(authored));
 
         assert_eq!(
             loaded, authored,

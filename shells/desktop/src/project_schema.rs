@@ -524,7 +524,19 @@
 /// `Deserialize`). ⭐ **COM leitura dos anteriores:** um `196`…`193` lê-se com o tipo vivo. Registos: ecs `+1`.
 ///
 /// ⚠️ **A tripla NÃO vê este degrau** — nem a forma do `FlipDoc` nem a da `VecScene` mudam.
-pub(crate) const PROJECT_SCHEMA: u32 = 197;
+///
+/// # `197 → 198` — **o formato do jogo** (`line/GameEngineFuncional`, plano 17, 2026-10-27)
+///
+/// Campo novo no FIM do `ProjectFile`: `jogo: Vec<u8>` — a resolução que o jogo mostra e quando a moldura da
+/// câmera se vê (`crate::project_settings::collect_jogo`), blob com versão PRÓPRIA. ⭐ **COM leitura dos
+/// anteriores:** os braços `197`…`189` acrescentam o `0` do `Vec` vazio (= o formato de fábrica, 16:9). Gate:
+/// `project_jogo_tests`. Registos de componentes: `0`.
+///
+/// ⚠️ **A tripla NÃO vê este degrau** — nem a forma do `FlipDoc` nem a da `VecScene` mudam.
+pub(crate) const PROJECT_SCHEMA: u32 = 198;
+
+/// O último degrau sem o formato do jogo — o campo `jogo` falta no fim.
+pub(crate) const PROJECT_SCHEMA_SEM_FORMATO_DO_JOGO: u32 = 197;
 
 /// O último degrau sem o `ImageRegion` — a memória do uso com 3 lugares, que se lê com o tipo vivo.
 pub(crate) const PROJECT_SCHEMA_SEM_REGION: u32 = 196;

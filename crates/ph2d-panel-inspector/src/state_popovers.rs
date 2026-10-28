@@ -83,6 +83,11 @@ thread_local! {
         std::cell::Cell<Option<(u8, ph2d_editor_core::zones::Rect)>> =
         const { std::cell::Cell::new(None) };
 
+    /// CAMERA: `(formato escolhido, rect do chip)` do seletor do FORMATO DO JOGO (plano GEF 17).
+    pub(crate) static PENDING_CAMERA_FORMAT_DD:
+        std::cell::Cell<Option<(u8, ph2d_editor_core::zones::Rect)>> =
+        const { std::cell::Cell::new(None) };
+
     /// SEQUENCE: quando o selector da CUTSCENE está aberto, a secção guarda aqui o **rect do
     /// chip**. ⚠️ **Só o rect** — a lista de cutscenes e a escolha rederivam-se do snapshot
     /// (`current_inspector_sequence`) no passe diferido, que é a fonte delas. *Guardar o que não se
@@ -219,6 +224,14 @@ pub(crate) fn set_pending_audio_dd(chip: Option<(u8, ph2d_editor_core::zones::Re
 
 pub(crate) fn take_pending_audio_dd() -> Option<(u8, ph2d_editor_core::zones::Rect)> {
     PENDING_AUDIO_DD.with(|c| c.take())
+}
+
+pub(crate) fn set_pending_camera_format_dd(chip: Option<(u8, ph2d_editor_core::zones::Rect)>) {
+    PENDING_CAMERA_FORMAT_DD.with(|c| c.set(chip));
+}
+
+pub(crate) fn take_pending_camera_format_dd() -> Option<(u8, ph2d_editor_core::zones::Rect)> {
+    PENDING_CAMERA_FORMAT_DD.with(std::cell::Cell::take)
 }
 
 pub(crate) fn set_pending_seq_dd(chip: Option<ph2d_editor_core::zones::Rect>) {

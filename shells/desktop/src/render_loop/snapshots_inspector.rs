@@ -16,7 +16,6 @@ pub(super) fn publish(
     catalogs: &ph2d_asset_index::CatalogTree,
     sheets: &BTreeMap<u32, ph2d_sprite_sheet::AuthoredSheet>,
     renderer: &ph2d_render::SpriteRenderer,
-    window_size: WindowSize,
     game_camera_preview: bool,
     preview_drive: &ph2d_preview_drive::PreviewDrive,
     // ⭐ O relógio anda? — a secção FACTORY di-lo (TOP-20 #11).
@@ -149,7 +148,6 @@ pub(super) fn publish(
         sim,
         &inspector_selection,
         selected_count,
-        window_size,
         game_camera_preview,
         preview_drive,
         tags,
@@ -282,7 +280,6 @@ fn late(
     sim: &mut SimWorld,
     inspector_selection: &[u64],
     selected_count: usize,
-    window_size: WindowSize,
     game_camera_preview: bool,
     preview_drive: &ph2d_preview_drive::PreviewDrive,
     // ⭐ A árvore de tags (TOP-20 #9) — a secção SIGNAL ACTIONS mostra o CAMINHO da tag alvo.
@@ -328,14 +325,15 @@ fn late(
     });
     // ⭐ A secção CAMERA — `None` para quem não tem `GameCamera` (ADR-0166).
     //
-    // ⚠️ **Ela pede a PROPORÇÃO da janela**, e é a única da família: o aviso *«a cerca é mais
-    // estreita que a vista»* é geometria do ECRÃ, e não dos quatro números da cerca.
+    // ⚠️ **Ela pede a PROPORÇÃO do jogo** (o formato do projecto, plano GEF 17), e é a única da família: o aviso
+    // *«a cerca é mais estreita que a vista»* é geometria do ECRÃ, e não dos quatro números da cerca.
     let inspector_camera = hero.gizmo.selection.and_then(|b| {
         ph2d_app_components::camera_inspector::build_camera_info(
             sim.world_mut(),
             b,
             selected_count,
-            ph2d_app_components::camera_2d::aspect_of(window_size),
+            hero.project.game_format,
+            hero.project.camera_frame,
             game_camera_preview,
         )
     });

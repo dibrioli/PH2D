@@ -51,7 +51,7 @@ pub fn imagens_da_cena(nivel: u32) -> &'static [&'static str] {
 #[path = "smoke_foto.rs"]
 mod foto;
 pub use foto::{
-    CENTRO_DAS_FOTOS_13, CENTRO_DOS_USOS, Foto, ONDE_LARGA, PassoDoDono, PlanoDaFoto,
+    CENTRO_DAS_FOTOS_13, CENTRO_DOS_USOS, Foto, FotoDaCamera, ONDE_LARGA, PassoDoDono, PlanoDaFoto,
     QUADROS_POR_USO, estado_do_player, foto, plano_da_foto, uso_no_quadro, usos_do_dono,
 };
 

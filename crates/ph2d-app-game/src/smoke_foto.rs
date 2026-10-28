@@ -28,6 +28,14 @@ pub enum Foto {
     PlayerRepetido,
     Memoria,
     MemoriaRepetida,
+    /// Plano 17 (a câmera no canvas): selecionada; sem seleção (ténue); o canto arrastado (5 m); os limites à
+    /// vista; o formato Game Boy; e o «Look through» (a moldura = o que o jogo mostra).
+    Camera,
+    CameraLivre,
+    CameraZoom,
+    CameraLimites,
+    CameraRetro,
+    CameraOlhar,
 }
 
 #[must_use]
@@ -50,6 +58,12 @@ pub fn foto() -> Option<Foto> {
         "player_repetido" => Some(Foto::PlayerRepetido),
         "memoria" => Some(Foto::Memoria),
         "memoria_repetida" => Some(Foto::MemoriaRepetida),
+        "camera" => Some(Foto::Camera),
+        "camera_livre" => Some(Foto::CameraLivre),
+        "camera_zoom" => Some(Foto::CameraZoom),
+        "camera_limites" => Some(Foto::CameraLimites),
+        "camera_retro" => Some(Foto::CameraRetro),
+        "camera_olhar" => Some(Foto::CameraOlhar),
         _ => None,
     }
 }
@@ -64,7 +78,21 @@ impl Foto {
     /// Uma foto dos planos 13/14 (o bloco à vista e a secção Texture & Atlas aberta).
     #[must_use]
     pub const fn do_plano_13(self) -> bool {
-        !matches!(self, Self::Seletor | Self::Trocado)
+        !matches!(self, Self::Seletor | Self::Trocado) && !self.da_camera()
+    }
+
+    /// Uma foto do plano 17 (a câmera no canvas).
+    #[must_use]
+    pub const fn da_camera(self) -> bool {
+        matches!(
+            self,
+            Self::Camera
+                | Self::CameraLivre
+                | Self::CameraZoom
+                | Self::CameraLimites
+                | Self::CameraRetro
+                | Self::CameraOlhar
+        )
     }
 
     /// Uma foto do plano 15: o seletor «Use» à vista, as secções avançadas fechadas como o artista as encontra.
@@ -85,6 +113,18 @@ impl Foto {
     }
 }
 
+/// O que as fotos da câmera (plano 17) pedem ao editor: o formato do jogo, o «Look through» e a vista do editor
+/// (centro e altura, m).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct FotoDaCamera {
+    pub formato: ph2d_editor_core::GameFormat,
+    pub olhar: bool,
+    pub vista: ([f32; 2], f32),
+}
+
+/// A vista do editor nas fotos da câmera: a câmera do nível ao lado do vão, com margem à volta.
+const VISTA_DA_CAMERA: ([f32; 2], f32) = ([-6.0, 3.0], 15.0);
+
 /// O que a foto pede, já resolvido no mundo — os gestos que o shell executa pelas MESMAS portas da mão.
 #[derive(Clone, Debug, PartialEq)]
 pub struct PlanoDaFoto {
@@ -97,6 +137,8 @@ pub struct PlanoDaFoto {
     pub larga: Option<([u8; 32], [f32; 2], Option<u64>)>,
     /// Quem fica seleccionado (ou com o seletor aberto).
     pub alvo: u64,
+    /// As fotos da câmera no canvas (plano 17).
+    pub camera: Option<FotoDaCamera>,
 }
 
 /// `ids` são as imagens da cena pela ordem de [`IMAGENS_4`]; `fabrica` dá a imagem de fábrica de uma chave.
@@ -122,7 +164,30 @@ pub fn plano_da_foto(
         edicoes: Vec::new(),
         larga: None,
         alvo: alta,
+        camera: None,
     };
+    if foto.da_camera() {
+        let camara = por_nome(sim, "Camera")?;
+        let mut c = FotoDaCamera {
+            formato: ph2d_editor_core::GameFormat::default(),
+            olhar: foto == Foto::CameraOlhar,
+            vista: VISTA_DA_CAMERA,
+        };
+        plano.alvo = camara.to_bits();
+        match foto {
+            Foto::CameraLivre => plano.alvo = player,
+            Foto::CameraZoom => {
+                if let Some(mut g) = sim.world_mut().get_mut::<GameCamera>(camara) {
+                    g.height_world = 5.0;
+                }
+            }
+            Foto::CameraLimites => c.vista = ([2.0, 4.0], 27.0),
+            Foto::CameraRetro => c.formato.preset = ph2d_editor_core::GamePreset::GameBoy,
+            _ => {}
+        }
+        plano.camera = Some(c);
+        return Some(plano);
+    }
     match foto {
         Foto::Seletor => plano.alvo = hills,
         Foto::Trocado => {
@@ -144,6 +209,12 @@ pub fn plano_da_foto(
             plano.alvo = baixa;
         }
         Foto::UsoAnimada => plano.alvo = player,
+        Foto::Camera
+        | Foto::CameraLivre
+        | Foto::CameraZoom
+        | Foto::CameraLimites
+        | Foto::CameraRetro
+        | Foto::CameraOlhar => unreachable!("as fotos da câmera voltam antes"),
         Foto::PlayerParado => {
             plano.edicoes = vec![(player, uso(ph2d_editor_core::InspectorImageUse::Still))];
             plano.alvo = player;

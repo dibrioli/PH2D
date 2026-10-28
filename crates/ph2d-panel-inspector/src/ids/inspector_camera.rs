@@ -135,3 +135,41 @@ pub const INSP_CAMERA_CULL_HEADER: NodeId = hash_node_id("insp_camera_cull_heade
 pub const INSP_CAMERA_FOLLOW_GROUP: NodeId = hash_node_id("insp_camera_follow_group");
 /// …o da cerca.
 pub const INSP_CAMERA_LIMITS_GROUP: NodeId = hash_node_id("insp_camera_limits_group");
+
+/// **O formato do jogo — o CHIP do seletor** (plano GEF 17). As entradas são
+/// [`INSP_CAMERA_FORMAT_OPT`].
+pub const INSP_CAMERA_FORMAT_PICK: NodeId = hash_node_id("insp_camera_format_pick");
+
+/// **As entradas do seletor de formato**, uma por `GamePreset::ALL`. ⚠️ A posição é a tag gravada.
+pub const INSP_CAMERA_FORMAT_OPT: [NodeId; 15] = [
+    hash_node_id("insp_camera_format_wide_16_9"),
+    hash_node_id("insp_camera_format_wide_16_10"),
+    hash_node_id("insp_camera_format_classic_4_3"),
+    hash_node_id("insp_camera_format_photo_3_2"),
+    hash_node_id("insp_camera_format_cinema_21_9"),
+    hash_node_id("insp_camera_format_phone_9_16"),
+    hash_node_id("insp_camera_format_ipad_landscape"),
+    hash_node_id("insp_camera_format_ipad_portrait"),
+    hash_node_id("insp_camera_format_game_boy"),
+    hash_node_id("insp_camera_format_nes"),
+    hash_node_id("insp_camera_format_snes"),
+    hash_node_id("insp_camera_format_gba"),
+    hash_node_id("insp_camera_format_mega_drive"),
+    hash_node_id("insp_camera_format_pico_8"),
+    hash_node_id("insp_camera_format_custom"),
+];
+
+/// O tamanho do formato `Custom`, em píxeis — largura.
+pub const INSP_CAMERA_CUSTOM_W: NodeId = hash_node_id("insp_camera_custom_w");
+
+/// O tamanho do formato `Custom`, em píxeis — altura.
+pub const INSP_CAMERA_CUSTOM_H: NodeId = hash_node_id("insp_camera_custom_h");
+
+/// A fileira segmentada «Frame»: Always | When Selected.
+pub const INSP_CAMERA_FRAME_GROUP: NodeId = hash_node_id("insp_camera_frame_group");
+
+/// As duas opções da moldura — `[Always, When Selected]`.
+pub const INSP_CAMERA_FRAME: [NodeId; 2] = [
+    hash_node_id("insp_camera_frame_always"),
+    hash_node_id("insp_camera_frame_selected"),
+];

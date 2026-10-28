@@ -301,6 +301,10 @@ pub struct ProjectSettings {
     /// GPU sampler state and drives it via `EditorAction::SetImageFilter`
     /// then `SpriteRenderer::set_filter_mode`. Default **`Smooth`**.
     pub image_filter: ImageFilterMode,
+    /// ⭐ O formato do jogo (plano GEF 17 D-F): janela do jogo, moldura da câmera e «Look through».
+    pub game_format: crate::game_format::GameFormat,
+    /// Quando a moldura da câmera se vê no canvas (plano GEF 17 D-V).
+    pub camera_frame: crate::game_format::CameraFrameShow,
 }
 
 impl ProjectSettings {
@@ -323,6 +327,8 @@ impl Default for ProjectSettings {
             display_unit: DisplayUnit::Pixels,
             display_angle: DisplayAngle::Degrees,
             image_filter: ImageFilterMode::Smooth,
+            game_format: crate::game_format::GameFormat::default(),
+            camera_frame: crate::game_format::CameraFrameShow::Always,
         }
     }
 }

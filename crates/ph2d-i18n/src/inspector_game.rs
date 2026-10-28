@@ -555,6 +555,28 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.weapon.the_clock_is_stopped_u_a_weapon_only_fires_during_a_run" => {
             "The clock is stopped \u{2014} a weapon only fires during a run."
         }
+        // O formato do jogo e a moldura da câmera no canvas (plano GEF 17).
+        "game_format.wide_16_9" => "16:9 \u{b7} 1920 \u{d7} 1080",
+        "game_format.wide_16_10" => "16:10 \u{b7} 1920 \u{d7} 1200",
+        "game_format.classic_4_3" => "4:3 \u{b7} 1440 \u{d7} 1080",
+        "game_format.photo_3_2" => "3:2 \u{b7} 1620 \u{d7} 1080",
+        "game_format.cinema_21_9" => "21:9 Cinema \u{b7} 2520 \u{d7} 1080",
+        "game_format.phone_9_16" => "9:16 Phone \u{b7} 1080 \u{d7} 1920",
+        "game_format.ipad_landscape" => "iPad Landscape \u{b7} 2048 \u{d7} 1536",
+        "game_format.ipad_portrait" => "iPad Portrait \u{b7} 1536 \u{d7} 2048",
+        "game_format.game_boy" => "Game Boy \u{b7} 160 \u{d7} 144",
+        "game_format.nes" => "NES \u{b7} 256 \u{d7} 240",
+        "game_format.snes" => "SNES \u{b7} 256 \u{d7} 224",
+        "game_format.gba" => "Game Boy Advance \u{b7} 240 \u{d7} 160",
+        "game_format.mega_drive" => "Mega Drive \u{b7} 320 \u{d7} 224",
+        "game_format.pico_8" => "PICO-8 \u{b7} 128 \u{d7} 128",
+        "game_format.custom" => "Custom",
+        "game.camera_frame.label" => "{NAME} \u{b7} {W} \u{d7} {H} {UNIT}",
+        "panel.inspector.camera.format" => "Game Format",
+        "panel.inspector.camera.custom_size" => "Size",
+        "panel.inspector.camera.frame" => "Frame",
+        "panel.inspector.camera.frame_always" => "Always",
+        "panel.inspector.camera.frame_selected" => "When Selected",
         // ph2d-migrar-texto:end
         _ => return None,
     })

@@ -41,6 +41,8 @@ pub mod documents;
 /// A âmbar do REALCE do editor — uma cor, uma porta, fora do tema de propósito.
 pub mod editor_highlight;
 pub mod floating_panel;
+/// O formato do jogo (a resolução que o jogo mostra) — do projecto (plano GEF 17).
+pub mod game_format;
 pub mod frame_label;
 pub mod game_stage;
 pub mod gizmo;
@@ -221,6 +223,7 @@ pub use paint::{
 /// Um painel que preenche esse struct precisa de a nomear, e obrigá-lo a declarar uma dependência
 /// no `ph2d-color` só para isso seria uma aresta nova por um campo — a chrome fala com a chrome.
 pub use ph2d_color::Precision;
+pub use game_format::{CameraFrameShow, GameFormat, GamePreset};
 pub use progress::{Job, JobQueue, Progress};
 pub use project::{
     DEFAULT_PIXELS_PER_METER, DisplayAngle, DisplayUnit, ImageFilterMode, MAX_PIXELS_PER_METER,

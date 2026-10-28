@@ -122,7 +122,11 @@ fn camera_body(
     let seccao = ph2d_editor_core::property_row::Seccao::medida(
         text_system,
         2,
-        &linhas.iter().map(|t| t.0.tr()).collect::<Vec<_>>(),
+        &linhas
+            .iter()
+            .map(|t| t.0.tr())
+            .chain(super::camera_format::ROTULOS.map(tr))
+            .collect::<Vec<_>>(),
     );
     for (label, ids3, step, unit) in linhas {
         cur_y = super::rows::fields_row(
@@ -146,7 +150,7 @@ fn camera_body(
     //    está no doc da porta. ⚠️ A segunda é **o interruptor da PRÉ-VISUALIZAÇÃO**, e o
     //    `look_through` é o nome mais largo dos dez booleanos emparelhados do Inspector (`79,8 px`):
     //    é ele que decide quando esta fileira parte.
-    ph2d_editor_core::property_row::paint_check_rows(
+    cur_y = ph2d_editor_core::property_row::paint_check_rows(
         scene,
         text_system,
         theme,
@@ -168,6 +172,19 @@ fn camera_body(
                 info.preview_on,
             ),
         ],
+        seccao,
+    );
+    // O formato do jogo e a moldura (plano GEF 17) — definições do projecto, logo abaixo do Look Through.
+    super::camera_format::format_rows(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        cur_y,
+        info,
         seccao,
     )
 }

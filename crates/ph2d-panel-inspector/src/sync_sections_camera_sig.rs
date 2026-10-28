@@ -23,6 +23,8 @@ pub(crate) fn assinatura(cam: &InspectorCameraInfo) -> u64 {
     let mut h = std::hash::DefaultHasher::new();
     cam.entity_bits.hash(&mut h);
     cam.camera.priority.hash(&mut h);
+    cam.format.custom.hash(&mut h);
+    cam.format.preset.to_u8().hash(&mut h);
     let mut numeros = vec![
         cam.camera.height_world,
         cam.camera.offset[0],
@@ -108,6 +110,14 @@ pub(crate) fn sync_camera_fields(
             f64::from(cam.camera.priority),
         ),
         (crate::ids::INSP_CAMERA_DOLLY, f64::from(cam.camera.dolly)),
+        (
+            crate::ids::INSP_CAMERA_CUSTOM_W,
+            f64::from(cam.format.custom[0]),
+        ),
+        (
+            crate::ids::INSP_CAMERA_CUSTOM_H,
+            f64::from(cam.format.custom[1]),
+        ),
     ];
     if let Some(f) = cam.follow.as_ref() {
         numeros.extend([

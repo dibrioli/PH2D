@@ -181,6 +181,11 @@ pub(crate) struct ProjectFile {
     /// abrir o projeto tirava do Play tudo o que se pintou depois de gravar. ⚠️ **O último campo** — os
     /// braços `189`..`192` do load leem-no acrescentando o `0` deste `Vec` vazio.
     pub(crate) marcas_do_artista: Vec<u8>,
+    /// **O FORMATO DO JOGO** (v198, plano GEF 17 D-F/D-V) — a resolução que o jogo mostra e quando a moldura da
+    /// câmera se vê ([`crate::project_settings::collect_jogo`]), com versão PRÓPRIA. Fora do `ProjectState` como o
+    /// `settings`. ⚠️ **O último campo** — os braços `189`..`197` do load leem-no acrescentando o `0` deste `Vec`
+    /// vazio (= o formato de fábrica).
+    pub(crate) jogo: Vec<u8>,
 }
 
 /// Uma imagem de sprite embutida no projeto: os pixels RGBA + a célula de atlas que

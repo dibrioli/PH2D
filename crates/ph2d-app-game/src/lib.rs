@@ -4,6 +4,9 @@
 
 mod dicas;
 pub mod encaixe;
+pub mod formato_do_jogo;
+pub mod moldura;
+pub mod moldura_tinta;
 pub mod object_add;
 pub mod personagem;
 pub mod sessao;

@@ -66,6 +66,7 @@ pub(crate) mod anim_rules;
 /// ⭐⭐⭐ O SOM de um objecto (TOP-20 #4) — a fonte e as orelhas.
 pub(crate) mod audio;
 pub(crate) mod camera;
+pub(crate) mod camera_format;
 mod color_tint;
 pub(crate) mod counter_watch;
 /// A linha `Emissive` (plano `docs/Sprite_projeto/18` W8) — irmã do `render_source`, que está no

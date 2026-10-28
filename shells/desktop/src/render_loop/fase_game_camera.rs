@@ -28,8 +28,12 @@ impl crate::App {
             hero_screen,
             ..
         } = FrameGfx::of(gfx);
-        // O canvas VISÍVEL (entre os painéis; a janela inteira no palco): a câmara do jogo mede-se
-        // nele e encaixa-se nele (`ph2d_app_game::encaixe`).
+        // O canvas VISÍVEL (entre os painéis; a janela inteira no palco) e, dentro dele, a caixa do JOGO (o formato
+        // do projecto, plano GEF 17): a câmara do jogo mede-se e encaixa-se nela (`ph2d_app_game::encaixe`).
+        let formato = hero_screen
+            .as_ref()
+            .map(|h| h.project.game_format)
+            .unwrap_or_default();
         let (janela, canvas) = {
             let w = surface.size();
             let full = [0.0, 0.0, w.width as f32, w.height as f32];
@@ -37,9 +41,9 @@ impl crate::App {
             let c = c
                 .filter(|r| r.w > 0.0 && r.h > 0.0)
                 .map_or(full, |r| [r.x, r.y, r.w, r.h]);
-            ([full[2], full[3]], c)
+            ([full[2], full[3]], ph2d_app_game::encaixe::caixa_do_jogo(c, formato))
         };
-        let aspecto = ph2d_app_game::encaixe::aspecto(canvas);
+        let aspecto = formato.aspect();
 
         // ⭐ **O herói da cena de smoke da câmera anda AQUI**, imediatamente antes do passe dela —
         // ver o doc do [`ph2d_app_components::camera_2d_smoke`] sobre porque ele é movido pelo TECLADO e não pelo
@@ -114,6 +118,14 @@ impl crate::App {
                 ph2d_ecs::camera_2d::half_extent(v.height_world, aspecto),
             )
         });
+        // ⭐ **A câmera no canvas** (plano GEF 17): as molduras deste quadro, a activa com a MESMA vista.
+        let selecao = hero_screen.as_ref().and_then(|h| h.gizmo.selection);
+        self.camera_no_canvas.molduras = ph2d_app_game::moldura::molduras(
+            sim.world_mut(),
+            vista_da_cena.map(|v| v.center),
+            aspecto,
+            selecao,
+        );
         // ⚠️ **Fala uma vez por MUDANÇA, nunca por quadro** — a mesma lei da linha do som.
         if self.signal_readers.logging() && camera_report != self.last_camera_report {
             self.last_camera_report = camera_report.clone();

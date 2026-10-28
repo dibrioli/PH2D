@@ -142,6 +142,15 @@ impl crate::App {
         {
             return true;
         }
+        // A MOLDURA da câmera (plano GEF 17 A3/A4): os cantos, o miolo e os limites — a mesma guarda.
+        if kind == PointerKind::Down
+            && mapped_button == ph2d_host::PointerButton::Primary
+            && !menu_open_before
+            && on_canvas
+            && self.camera_frame_down(self.last_pointer.0, self.last_pointer.1)
+        {
+            return true;
+        }
         // O gizmo do COLISOR da forma (doc 109 §5): o mesmo agarre de mundo, a mesma guarda.
         if kind == PointerKind::Down
             && mapped_button == ph2d_host::PointerButton::Primary
@@ -333,7 +342,10 @@ impl crate::App {
         // undo (um arrasto = um passo, como um drag de nó).
         if kind == PointerKind::Up
             && mapped_button == ph2d_host::PointerButton::Primary
-            && (self.warp_gizmo_up() || self.collider_gizmo_up() || self.field_gizmo_up())
+            && (self.warp_gizmo_up()
+                || self.collider_gizmo_up()
+                || self.field_gizmo_up()
+                || self.camera_frame_up())
         {
             return true;
         }

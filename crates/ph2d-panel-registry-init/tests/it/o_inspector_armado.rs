@@ -665,6 +665,8 @@ fn arma_o_top20() {
         is_active_camera: true,
         preview_on: true,
         selected_count: selecionados(),
+        format: ph2d_editor_core::GameFormat::default(),
+        frame: ph2d_editor_core::CameraFrameShow::Always,
     }));
     insp::set_current_inspector_factory(Some(InspectorFactoryInfo {
         entity_bits: BITS,

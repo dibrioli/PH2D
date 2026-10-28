@@ -216,7 +216,7 @@ impl super::InspectorAnimRow {
         }
         #[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation)]
         let ms = (1000.0 / fps).round() as u32; // LITERAL-PX-OK: ms por segundo
-        ms.clamp(FRAME_MS_MIN, FRAME_MS_MAX)
+        ms.clamp(FRAME_MS_MIN, FRAME_MS_MAX) // CLAMP-OK: a faixa do frame_ms é a do motor
     }
 }
 

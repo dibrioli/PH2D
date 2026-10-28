@@ -27,9 +27,6 @@ pub(crate) struct JanelaDoJogo {
     editor_surface: ph2d_gpu::SurfaceContext,
 }
 
-/// O tamanho com que a janela do jogo abre (pontos lógicos, 16:9).
-const TAMANHO: winit::dpi::LogicalSize<u32> = winit::dpi::LogicalSize::new(1280, 720);
-
 impl crate::App {
     /// A entrada no palco escolhido no menu *Run*. `None` = no editor: nada muda.
     pub(crate) fn palco_entra(&mut self) -> Option<VistaAntes> {
@@ -202,9 +199,11 @@ impl crate::App {
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
+        let formato = gfx.hero_screen.as_ref().map(|h| h.project.game_format);
+        let [w, h] = ph2d_app_game::encaixe::tamanho_da_janela(formato.unwrap_or_default());
         let attrs = Window::default_attributes()
             .with_title(ph2d_i18n::tr("shell.janela_do_jogo.title"))
-            .with_inner_size(TAMANHO);
+            .with_inner_size(winit::dpi::LogicalSize::new(w, h));
         let gpu = gfx.surface.gpu().clone();
         let aberta = event_loop
             .create_window(attrs)

@@ -305,3 +305,11 @@ mínimo 1 (`ROW` 32, `PAD` 12, `LABEL_GAP` 4, campo 36 px; conta sobre as consta
 
 O Trello não foi corrido (sem oráculo instalado): de memória lista todos os que casam num popover que
 rola; aqui as linhas são limitadas só pelo espaço (os candidatos já filtram pelo prefixo).
+
+## J7 — a lei de voltar é UMA (28/10)
+
+As constantes do §J4 mudaram de casa: `ph2d_board_net::{RETRY_FIRST, RETRY_MAX, RECONNECT_FOR, backoff,
+Redial}` (`crates/ph2d-board-net/src/redial.rs`), chamadas pelo convidado do Quadro (antes: uma tentativa
+a cada 2 s fixos) e pelo do Kanban sozinho. Os mesmos números e o mesmo porquê; o relógio de uma queda
+medido no gate `a_redial_tries_at_the_doubling_waits_and_gives_up_after_the_minute`: tentativas aos
+250 / 750 / 1 750 / 3 750 ms, depois de 8 em 8 s — 11 no minuto (≤ 12).

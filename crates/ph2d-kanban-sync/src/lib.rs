@@ -18,6 +18,7 @@
 //! [ADR-0181]: ../../../docs/architecture/decisions/0181-o-quadro-ao-vivo-funde-por-campo-e-o-transporte-e-uma-porta.md
 
 mod msg;
+pub mod port;
 mod portrait;
 mod presence;
 mod replica;

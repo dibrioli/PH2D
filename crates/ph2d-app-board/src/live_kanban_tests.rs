@@ -34,7 +34,8 @@ fn until(h: &mut HeroScreen, mut done: impl FnMut(&mut HeroScreen) -> bool) -> b
 /// Um Kanban novo no projecto e o seu elemento no quadro `board`.
 fn place(h: &mut HeroScreen, board: BoardId, x: f64) -> KanbanId {
     let shared = h.documents.kanbans_shared();
-    let (k, _) = ph2d_app_kanban::smoke::short_film_into(&mut shared.borrow_mut());
+    let (k, _) =
+        ph2d_kanban_scenes::short_film_into(&mut shared.borrow_mut(), ph2d_kanban_model::Moment(0));
     let b = h.documents.board_mut(board).unwrap();
     let bk = BoardKanban::new(k, Style::new(None, None, Rgba([0, 0, 0, 255])));
     let el = Element::new_kanban(
@@ -203,29 +204,22 @@ fn j4_the_board_session_carries_its_kanbans_and_a_moved_card_arrives_inside_the_
     );
 }
 
-/// J4 — cada «Join» reconhece o convite da OUTRA sala: diz o que é e leva-o ao sítio certo (o do
-/// Kanban abre a sala do Kanban; o do Quadro, colado no Kanban, entra no Quadro).
+/// J4 — cada «Join» reconhece o convite da OUTRA sala: diz o que é e leva-o ao sítio certo pela
+/// porta das duas famílias (`ph2d_kanban_sync::port`): o do Kanban vai à família Kanban (que abre a
+/// sala dela — `j7_porta` no `ph2d-app-kanban`); o do Quadro, colado no Kanban, entra no Quadro.
 #[test]
 fn j4_a_link_of_the_other_kind_is_told_and_routed_to_its_place() {
     reset_for_tests();
     internet_local_for_tests();
+    ph2d_kanban_sync::port::reset_for_tests();
     let invite = net::Invite {
         key: net::InviteKey::random(),
         addrs: vec![],
     };
     let mut h = hero("Ana");
-    ph2d_app_kanban::install(&mut h);
-    let docs = |h: &mut HeroScreen| {
-        h.documents
-            .surfaces_mut()
-            .find_mut::<ph2d_app_kanban::KanbanDocs>()
-            .expect("a família Kanban")
-            .share_local_for_tests();
-    };
-    docs(&mut h);
-    h.documents.ask_live(LiveRequest::JoinLink {
-        link: invite.link_as(net::InviteKind::Kanban),
-    });
+    let link = invite.link_as(net::InviteKind::Kanban);
+    h.documents
+        .ask_live(LiveRequest::JoinLink { link: link.clone() });
     service(&mut h);
     assert_eq!(
         h.documents.told(),
@@ -236,32 +230,165 @@ fn j4_a_link_of_the_other_kind_is_told_and_routed_to_its_place() {
         LiveRole::Off,
         "o Quadro não entra"
     );
-    let role = |h: &mut HeroScreen| {
-        h.documents
-            .surfaces_mut()
-            .find_mut::<ph2d_app_kanban::KanbanDocs>()
-            .unwrap()
-            .probe_share(0)
-            .0
-    };
-    assert_eq!(role(&mut h), "Joining", "a sala do Kanban abre-se");
-    h.documents
-        .surfaces_mut()
-        .find_mut::<ph2d_app_kanban::KanbanDocs>()
-        .unwrap()
-        .share_shutdown();
-    // O contrário: o convite do Quadro colado no «Join» do Kanban.
-    h.documents
-        .surfaces_mut()
-        .find_mut::<ph2d_app_kanban::KanbanDocs>()
-        .unwrap()
-        .join_shared(&invite.link());
-    assert_eq!(role(&mut h), "Off", "a sala do Kanban não abre");
+    assert_eq!(
+        ph2d_kanban_sync::port::take_kanban_link(),
+        Some(link),
+        "vai à família Kanban"
+    );
+    // O contrário: o convite do Quadro que a família Kanban recusou.
+    ph2d_kanban_sync::port::post_board_link(invite.link());
     service(&mut h);
     assert_eq!(
         h.documents.live_view().role,
         LiveRole::Joining,
         "o Quadro entra"
+    );
+    reset_for_tests();
+}
+
+/// O que a sala do Quadro publica à família Kanban deste fio: quem tem o cartão `card` aberto no
+/// Kanban LOCAL `k`, e se a sala está a voltar.
+fn on_card(k: KanbanId, card: CardId) -> (Vec<String>, bool) {
+    ph2d_kanban_sync::port::with_room(|r| {
+        let Some(r) = r else {
+            return (Vec::new(), false);
+        };
+        let Some((wire, _)) = r.pairs.iter().find(|(_, l)| *l == k) else {
+            return (Vec::new(), r.reconnecting);
+        };
+        let who = r
+            .viewers
+            .on_card(*wire, card)
+            .into_iter()
+            .filter_map(|p| r.names.get(&p).cloned())
+            .collect();
+        (who, r.reconnecting)
+    })
+}
+
+/// ⭐ J7 — a presença do Kanban DENTRO da sala do Quadro (que cartão cada um tem aberto) e a queda:
+/// o fio da Bia cai, a sala dela diz que está a voltar, ela volta SOZINHA (o retrocesso partilhado
+/// com o Kanban) JUNTO com os Kanbans do quadro, e o que cada uma moveu enquanto ela estava fora
+/// chega à outra.
+#[test]
+fn j7_the_board_guest_drops_and_returns_with_its_kanbans_and_their_presence() {
+    reset_for_tests();
+    ph2d_kanban_sync::port::reset_for_tests();
+    let mut ana = hero("Ana");
+    let id = ana.documents.create("Retro".into());
+    ana.documents.activate(Some(id));
+    let _ = ana.documents.kanbans_shared().borrow_mut().create("Outro");
+    let k = place(&mut ana, id, 0.0);
+    let open: Vec<(CardId, String)> = {
+        let set = ana.documents.kanbans();
+        let kb = set.get(k).unwrap();
+        kb.cards
+            .values()
+            .filter(|c| kb.lists.get(&c.list).is_some_and(|l| l.title != "Done"))
+            .map(|c| (c.id, c.title.clone()))
+            .collect()
+    };
+    let ((ca, ta), (cb, tb)) = (open[0].clone(), open[1].clone());
+    // A Ana tem o cartão B aberto (o que a família Kanban diria pela porta).
+    ph2d_kanban_sync::port::set_here(Some((k, Some(cb), None)));
+    ana.documents.ask_live(LiveRequest::Host);
+    service(&mut ana);
+    let LiveRole::Hosting { code, addrs } = ana.documents.live_view().role.clone() else {
+        panic!("não abriu");
+    };
+    let port = addrs[0].parse::<SocketAddr>().unwrap().port();
+    let (tx, rx) = mpsc::channel::<&'static str>();
+    let (back_tx, back_rx) = mpsc::channel::<()>();
+    let (ta2, tb2) = (ta.clone(), tb.clone());
+    let bia = std::thread::spawn(move || {
+        ph2d_kanban_sync::port::reset_for_tests();
+        let mut g = hero("Bia");
+        let _ = g.documents.kanbans_shared().borrow_mut().create("Meu");
+        g.documents.ask_live(LiveRequest::Join {
+            addr: Some(format!("127.0.0.1:{port}")),
+            code,
+        });
+        let mut kb = KanbanId(0);
+        assert!(
+            until(&mut g, |g| {
+                if let Some((x, _, _)) = on_board(g).into_iter().find(|(_, _, n)| *n > 3) {
+                    kb = x;
+                }
+                kb != KanbanId(0) && on_card(kb, cb).0 == vec!["Ana".to_owned()]
+            }),
+            "a Bia não viu a Ana no cartão B: {:?}",
+            on_card(kb, cb)
+        );
+        // A Bia abre o cartão A no Kanban dela.
+        ph2d_kanban_sync::port::set_here(Some((kb, Some(ca), None)));
+        let _ = tx.send("vi");
+        assert!(
+            until(&mut g, |_| back_rx.try_recv().is_ok()),
+            "a Ana não me viu"
+        );
+        // Cai, e move o A FORA da sala.
+        super::drop_guest_for_tests();
+        move_card(&mut g, kb, &ta2, "Done");
+        let _ = tx.send("caí");
+        let mut voltando = false;
+        assert!(
+            until(&mut g, |g| {
+                voltando |= on_card(kb, cb).1;
+                voltando
+                    && !on_card(kb, cb).1
+                    && list_of(g, kb, &tb2).as_deref() == Some("Done")
+                    && list_of(g, kb, &ta2).as_deref() == Some("Done")
+                    && matches!(g.documents.live_view().role, LiveRole::Guest { .. })
+            }),
+            "a Bia não voltou com o Kanban (voltando={voltando}, B={:?})",
+            list_of(&g, kb, &tb2)
+        );
+        let _ = tx.send("voltei");
+        let _ = until(&mut g, |_| back_rx.try_recv().is_ok());
+        g.documents.ask_live(LiveRequest::Leave);
+        service(&mut g);
+    });
+    let go = |rx: &mpsc::Receiver<&'static str>, ana: &mut HeroScreen| {
+        let end = Instant::now() + Duration::from_secs(SECS);
+        loop {
+            if let Ok(m) = rx.try_recv() {
+                return m;
+            }
+            assert!(Instant::now() < end, "a Bia não respondeu");
+            service(ana);
+            std::thread::sleep(Duration::from_millis(5));
+        }
+    };
+    assert_eq!(go(&rx, &mut ana), "vi");
+    assert!(
+        until(&mut ana, |_| on_card(k, ca).0 == vec!["Bia".to_owned()]),
+        "a Ana não viu a Bia no cartão A"
+    );
+    let _ = back_tx.send(());
+    assert_eq!(go(&rx, &mut ana), "caí");
+    // Enquanto a Bia está fora, a Ana move o B.
+    move_card(&mut ana, k, &tb, "Done");
+    assert!(
+        until(&mut ana, |a| list_of(a, k, &ta).as_deref() == Some("Done")),
+        "o que a Bia moveu fora não chegou à Ana"
+    );
+    assert_eq!(go(&rx, &mut ana), "voltei");
+    assert!(
+        until(&mut ana, |_| on_card(k, ca).0 == vec!["Bia".to_owned()]),
+        "a presença da Bia não voltou"
+    );
+    let _ = back_tx.send(());
+    let end = Instant::now() + Duration::from_secs(SECS);
+    while !bia.is_finished() && Instant::now() < end {
+        service(&mut ana);
+        std::thread::sleep(Duration::from_millis(5));
+    }
+    bia.join().expect("a Bia falhou");
+    ana.documents.ask_live(LiveRequest::Leave);
+    service(&mut ana);
+    assert!(
+        ph2d_kanban_sync::port::with_room(|r| r.is_none()),
+        "a sala acabou: a presença dela some"
     );
     reset_for_tests();
 }

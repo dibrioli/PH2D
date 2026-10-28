@@ -21,11 +21,6 @@ use ph2d_editor_core::screens::HeroScreen;
 use ph2d_editor_core::screens::hero::document_tabs;
 use ph2d_i18n::{tr, tr_with};
 
-/// Quanto tempo se tenta voltar depois de a ligação cair (s): o Wi-Fi da casa que soluça volta em
-/// segundos; um anfitrião que fechou o portátil não.
-const RECONNECT_FOR: Duration = Duration::from_secs(60);
-/// De quanto em quanto se tenta voltar.
-const RECONNECT_EVERY: Duration = Duration::from_secs(2);
 /// O prazo de uma tentativa de ligar (ligação + aperto de mão), numa thread à parte.
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(4);
 /// A procura na rede pára sozinha se o painel deixar de a pedir.
@@ -46,9 +41,8 @@ enum Live {
         route: Route,
         /// Uma tentativa de ligar a decorrer (numa thread) e o seu resultado.
         dialing: Option<internet::Dialing>,
-        /// Desde quando está caída (`None` = ligada, ou a 1.ª entrada).
-        lost: Option<Instant>,
-        last_try: Option<Instant>,
+        /// Caída e a voltar, pela lei partilhada com o Kanban (`None` = ligada, ou a 1.ª entrada).
+        lost: Option<net::Redial>,
         k: Box<ph2d_kanban_sync::GuestRoom>,
     },
 }
@@ -104,7 +98,7 @@ fn waker() -> net::Waker {
 pub fn service(hero: &mut HeroScreen) {
     let now = now_ms();
     STATE.with_borrow_mut(|st| {
-        for req in kanban::board_links(hero)
+        for req in kanban::board_links()
             .into_iter()
             .chain(hero.documents.take_live())
         {
@@ -433,7 +427,6 @@ fn guest_tick(
         route,
         mut dialing,
         mut lost,
-        mut last_try,
         mut k,
     } = live
     else {
@@ -459,7 +452,7 @@ fn guest_tick(
                 return None;
             }
             // Acaba já, com a cópia (antes gastava o minuto e os códigos velhos travavam a sala nova).
-            Err(e) if room_is_gone(&e) => {
+            Err(e) if net::room_is_gone(&e) => {
                 hero.documents.tell(tr("board.live.host_left").to_owned());
                 return None;
             }
@@ -516,26 +509,28 @@ fn guest_tick(
             hero.documents.tell(tr("board.live.unreachable").to_owned());
             return None;
         }
-        lost = Some(Instant::now());
+        lost = Some(net::Redial::new(Instant::now()));
         hero.documents
             .tell(tr("board.live.reconnecting").to_owned());
     }
-    // Caída: tenta voltar de tempos a tempos, até desistir.
-    if let Some(t) = lost
+    // Caída: tenta voltar com o retrocesso (`net::Redial`), até desistir.
+    if let Some(r) = &mut lost
         && net.is_none()
         && dialing.is_none()
     {
-        if t.elapsed() > RECONNECT_FOR {
+        let now = Instant::now();
+        if r.expired(now) {
             hero.documents.tell(tr("board.live.host_left").to_owned());
             return None;
         }
-        if last_try.is_none_or(|l| l.elapsed() >= RECONNECT_EVERY) {
+        if r.due(now) {
             dialing = Some(dial(&route));
-            last_try = Some(Instant::now());
         }
     }
     if let Some(n) = &net {
         kanban::guest_step(hero, n, &mut s, board, &mut k, welcomed, now, armed);
+    } else if lost.is_some() {
+        kanban::guest_seen(&s, &k, now, true);
     }
     if let (Some(n), Some(id)) = (&net, board) {
         if let Some(p) = my_presence(hero, id) {
@@ -578,20 +573,8 @@ fn guest_tick(
         route,
         dialing,
         lost,
-        last_try,
         k,
     })
-}
-
-/// A voltar: a porta RECUSADA (a máquina responde, ninguém ouve — a sala fechou) ou um código
-/// errado/travado (ali abriu OUTRA sala) dizem que a sala já não é esta; o resto pode ser o Wi-Fi.
-fn room_is_gone(e: &net::JoinError) -> bool {
-    matches!(
-        e,
-        net::JoinError::WrongCode
-            | net::JoinError::Locked(_)
-            | net::JoinError::Unreachable(std::io::ErrorKind::ConnectionRefused)
-    )
 }
 
 fn join_error(e: &net::JoinError) -> String {
@@ -636,6 +619,19 @@ pub(crate) fn fake_firewall_for_tests(
         st.fw.env.subnets = Arc::new(move || subnets.clone());
         st.fw.env.run = Arc::new(|cmd| panic!("um teste pediu a senha: {cmd:?}"));
         st.fw.env.file = None;
+    });
+}
+
+/// Para os testes da família: o fio do convidado desta thread cai (como o Wi-Fi que soluça) — ele
+/// volta sozinho pela lei de [`net::Redial`].
+#[cfg(test)]
+pub(crate) fn drop_guest_for_tests() {
+    STATE.with_borrow_mut(|st| {
+        if let Some(Live::Guest { net: n, lost, .. }) = &mut st.live
+            && n.take().is_some()
+        {
+            *lost = Some(ph2d_board_net::Redial::new(Instant::now()));
+        }
     });
 }
 

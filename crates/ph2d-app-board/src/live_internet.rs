@@ -151,7 +151,6 @@ pub(super) fn join_by(st: &mut State, hero: &mut HeroScreen, route: Route) {
         dialing: Some(dial(&route)),
         route,
         lost: None,
-        last_try: Some(Instant::now()),
     });
     hero.documents.live_view_mut().role = LiveRole::Joining;
 }

@@ -10,6 +10,7 @@ pub(crate) mod smoke;
 
 use crate::docs::KanbanDocs;
 use ph2d_kanban_model::{CardId, KanbanId, Member};
+use ph2d_kanban_sync::{Viewers, port};
 use std::collections::BTreeMap;
 
 pub(crate) use net_io::{JoinRefusal, Session};
@@ -70,8 +71,8 @@ pub(crate) struct Share {
     pub local_only: bool,
     /// O link a pôr na área de transferência (servido pelo `frame` da família).
     pub copy: Option<String>,
-    /// J4 — um convite de QUADRO colado aqui: o Quadro leva-o ([`KanbanDocs::take_board_link`]).
-    pub board_link: Option<String>,
+    /// J7 — quem vê os Kanbans da sala do QUADRO (lida da [`port`]), somada ao [`Look`].
+    pub room: BTreeMap<KanbanId, Seen>,
 }
 
 impl std::fmt::Debug for Share {
@@ -92,6 +93,36 @@ pub(crate) fn now_ms() -> u64 {
             .as_millis(),
     )
     .unwrap_or(u64::MAX)
+}
+
+/// Quem vê cada Kanban de uma sala (`kanbans` = pares (sessão, local)): eu primeiro, depois os
+/// colegas, os cartões que têm abertos e os cursores.
+pub(crate) fn seen_of(
+    viewers: &Viewers,
+    names: &BTreeMap<u64, String>,
+    kanbans: &[(KanbanId, KanbanId)],
+    me: &Member,
+    now: u64,
+) -> BTreeMap<KanbanId, Seen> {
+    let mut out = BTreeMap::new();
+    for (wire, local) in kanbans {
+        let mut s = Seen {
+            people: vec![me.clone()],
+            ..Seen::default()
+        };
+        for peer in viewers.on_kanban(*wire) {
+            let who = Member(names.get(&peer).cloned().unwrap_or_default());
+            if let Some(c) = viewers.get(peer).and_then(|p| p.card) {
+                s.cards.entry(c).or_default().push(who.clone());
+            }
+            if let Some(at) = viewers.cursor(peer, now) {
+                s.cursors.push((who.clone(), at));
+            }
+            s.people.push(who);
+        }
+        out.insert(*local, s);
+    }
+    out
 }
 
 impl KanbanDocs {
@@ -134,7 +165,7 @@ impl KanbanDocs {
             Err(JoinRefusal::Board) => {
                 self.notices
                     .push(ph2d_i18n::tr("kanban.share.board_link").to_owned());
-                self.share.board_link = Some(text.to_owned());
+                port::post_board_link(text.to_owned());
             }
             Err(JoinRefusal::Bad) => self
                 .notices
@@ -148,11 +179,6 @@ impl KanbanDocs {
         self.share_join(link.trim());
     }
 
-    /// J4 — o convite de Quadro que alguém colou no «Join» do Kanban (o Quadro entra com ele).
-    pub fn take_board_link(&mut self) -> Option<String> {
-        self.share.board_link.take()
-    }
-
     /// Sai da sala (o anfitrião fecha-a para todos).
     pub(crate) fn share_stop(&mut self) {
         if let Some(s) = self.share.session.take() {
@@ -163,6 +189,11 @@ impl KanbanDocs {
 
     /// ⭐ A cada imagem: a rede, a minha presença e o [`Look`].
     pub(crate) fn share_tick(&mut self) {
+        port::set_here(self.here());
+        if let Some(link) = port::take_kanban_link() {
+            self.share_join(link.trim());
+        }
+        self.pull_room();
         let Some(mut s) = self.share.session.take() else {
             return;
         };
@@ -195,27 +226,61 @@ impl KanbanDocs {
         if out.ended {
             s.close(&mut set.borrow_mut());
             self.share.look = Look::default();
+            self.share.look.seen.extend(self.share.room.clone());
             return;
         }
         self.share.look.seen = s.seen(&self.me, now);
         for seen in self.share.look.seen.values_mut() {
             seen.reconnecting = out.reconnecting;
         }
+        self.share.look.seen.extend(self.share.room.clone());
         self.share.session = Some(s);
     }
 
-    /// Onde estou: o Kanban da sala à frente (a última aba pintada), o cartão aberto e o cursor.
+    /// Onde estou na sala do Kanban sozinho (o id da sessão).
     fn my_presence(&self, s: &Session) -> Option<(KanbanId, Option<CardId>, Option<[f64; 2]>)> {
+        let (local, card, cursor) = self.here()?;
+        Some((s.wire_of(local)?, card, cursor))
+    }
+
+    /// ⭐ J7 — onde estou: o Kanban à frente (id LOCAL; a última aba pintada), o cartão aberto e o
+    /// cursor no conteúdo. A sala do Kanban sozinho e a do Quadro traduzem-no para o id da sessão.
+    #[must_use]
+    pub fn here(&self) -> Option<(KanbanId, Option<CardId>, Option<[f64; 2]>)> {
         let id = self.active?;
         let t = self.tabs.iter().find(|t| t.id() == id)?;
-        let wire = s.wire_of(t.view.kanban)?;
         let card = t.back.as_ref().map(|b| b.card);
         let cursor = t
             .cursor
             .filter(|_| t.other.is_none() && t.back.is_none())
             .filter(|p| t.layout.board.contains(p.0, p.1))
             .map(|p| crate::presence::to_content(t, p));
-        Some((wire, card, cursor))
+        Some((t.view.kanban, card, cursor))
+    }
+
+    /// ⭐ J7 — a presença nos Kanbans da sala do QUADRO (a [`port::Room`]): os anéis, os avatares
+    /// no cartão e no cabeçalho pintam-se como na sala do Kanban sozinho; a voltar, esmaecidos.
+    fn pull_room(&mut self) {
+        let me = &self.me;
+        let seen = port::with_room(|r| {
+            r.map(|r| {
+                let mut seen = seen_of(&r.viewers, &r.names, &r.pairs, me, r.now);
+                for s in seen.values_mut() {
+                    s.reconnecting = r.reconnecting;
+                }
+                seen
+            })
+            .unwrap_or_default()
+        });
+        self.set_room(seen);
+    }
+
+    fn set_room(&mut self, seen: BTreeMap<KanbanId, Seen>) {
+        for k in std::mem::take(&mut self.share.room).into_keys() {
+            self.share.look.seen.remove(&k);
+        }
+        self.share.look.seen.extend(seen.clone());
+        self.share.room = seen;
     }
 
     /// ⚠️ SONDA (J1): `(papel, link, quem vê o Kanban da aba id)`.

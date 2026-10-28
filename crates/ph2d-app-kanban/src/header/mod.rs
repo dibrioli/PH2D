@@ -125,12 +125,17 @@ pub(crate) fn paint(
         c(theme, T::AccentFg),
     );
     hits.push((share, Act::ShareButton));
-    let people = look
-        .seen
-        .get(&kanban)
-        .map(|s| s.people.as_slice())
-        .unwrap_or_default();
-    let right = avatars(scene, ts, theme, share.x - m::HEADER_GAP, l.header, people);
+    let seen = look.seen.get(&kanban);
+    let people = seen.map(|s| s.people.as_slice()).unwrap_or_default();
+    let away = seen.is_some_and(|s| s.reconnecting);
+    let right = avatars(
+        scene,
+        ts,
+        theme,
+        (share.x - m::HEADER_GAP, l.header),
+        people,
+        away,
+    );
     // J5 — os botões de quadro do Butler à esquerda dos avatares (o clique: `Act::BoardButton`).
     let lit = match tab.w6.hover {
         Some(Act::BoardButton(a)) => Some(a),
@@ -156,14 +161,15 @@ pub(crate) fn paint(
 }
 
 /// A pilha de avatares que acaba em `right` (o 1.º à esquerda, os outros por baixo dele, como na
-/// maquete), com «+n» além de [`AVATARS_SHOWN`]. Devolve onde começa.
+/// maquete), com «+n» além de [`AVATARS_SHOWN`]. Devolve onde começa. J7 — `away` (a sala caiu e
+/// está a voltar): cada avatar fica esmaecido sob um véu do próprio fundo do cabeçalho.
 fn avatars(
     scene: &mut VectorScene,
     ts: &mut TextSystem,
     theme: Theme,
-    right: f32,
-    header: Rect,
+    (right, header): (f32, Rect),
     people: &[Member],
+    away: bool,
 ) -> f32 {
     if people.is_empty() {
         return right + m::HEADER_GAP;
@@ -211,6 +217,9 @@ fn avatars(
             }
             (None, None) => {}
         }
+        if away {
+            fill_rounded_rect(scene, Rect::new(x, y, AVATAR, AVATAR), AVATAR / 2.0, ring);
+        }
     }
     x0
 }
@@ -251,5 +260,60 @@ pub(crate) fn pick_view(docs: &mut crate::docs::KanbanDocs, id: u64, i: u8) {
         }
         t.drag = None;
         t.press = None;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ph2d_vector::record::DrawOp;
+    use ph2d_vector::{Brush, Color};
+
+    fn fills(away: bool) -> Vec<Color> {
+        let mut scene = VectorScene::new();
+        scene.record();
+        let mut ts = TextSystem::without_system_fonts();
+        let people: Vec<Member> = ["Ana", "Bia"].map(|n| Member(n.into())).to_vec();
+        let header = Rect::new(0.0, 0.0, 400.0, m::HEADER_H);
+        avatars(
+            &mut scene,
+            &mut ts,
+            Theme::default(),
+            (400.0, header),
+            &people,
+            away,
+        );
+        scene
+            .take_record()
+            .into_iter()
+            .filter_map(|op| match op {
+                DrawOp::Fill {
+                    brush: Brush::Solid(c),
+                    ..
+                } => Some(c),
+                _ => None,
+            })
+            .collect()
+    }
+
+    /// ⭐ J7 — a sala a voltar: cada avatar leva por cima um véu do fundo do cabeçalho (o token, sem
+    /// cor nova); ligada, nenhum.
+    #[test]
+    fn j7_reconnecting_dims_every_header_avatar_under_the_header_veil() {
+        let veil = c(Theme::default(), T::KanbanHeaderBg);
+        let on = fills(false);
+        let away = fills(true);
+        let veils = |f: &[Color]| f.iter().filter(|x| **x == veil).count();
+        assert_eq!(away.len(), on.len() + 2, "um véu por avatar");
+        assert_eq!(
+            (veils(&on), veils(&away)),
+            (2, 4),
+            "os halos e, a voltar, os véus"
+        );
+        for n in ["Ana", "Bia"] {
+            let col = crate::presence::color(Theme::default(), &Member(n.into()));
+            let i = away.iter().position(|x| *x == col).expect("o avatar");
+            assert_eq!(away.get(i + 1), Some(&veil), "{n} esmaecido por cima");
+        }
     }
 }

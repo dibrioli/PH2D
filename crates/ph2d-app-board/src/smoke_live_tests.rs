@@ -395,6 +395,11 @@ fn the_internet_scene_copies_a_link_and_a_second_window_joins_by_it() {
         "o ecrã reconhece o link pelo mesmo começo"
     );
     assert_eq!(
+        ph2d_editor_core::screens::hero::board_nav::team::live_board::KANBAN_LINK_SCHEME,
+        ph2d_board_net::KANBAN_SCHEME,
+        "e o do Kanban também"
+    );
+    assert_eq!(
         host.documents.live_view().internet,
         LiveInternet::Ready { link: link.clone() }
     );

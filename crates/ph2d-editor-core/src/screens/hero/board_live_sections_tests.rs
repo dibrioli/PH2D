@@ -168,3 +168,34 @@ fn a_guest_sees_the_way_it_came_in() {
     t.paint();
     assert_eq!(live_board::sections(&t.hero), vec![Network]);
 }
+
+/// ⭐ J7 — o convite de um KANBAN colado no «Join» do Quadro (campo do código ou do link) não é
+/// «not an invite link»: guarda as maiúsculas e vai inteiro à família, que o leva à aba Kanban.
+#[test]
+fn j7_a_kanban_link_in_the_boards_join_is_a_link() {
+    const LINK: NodeId = crate::ids::BOARD_LIVE_LINK_INPUT;
+    const CODE: NodeId = crate::ids::BOARD_LIVE_CODE_INPUT;
+    let link = "ph2d-kanban://v1/127.0.0.1:5000#AbCdEfGhIjKlMnOpQrStUv";
+    assert!(live_board::is_link(link));
+    assert!(live_board::is_link("  PH2D-KANBAN://x"));
+    assert!(!live_board::is_link("ph2d-kanbanx://x"));
+    let want = vec![LiveRequest::JoinLink { link: link.into() }];
+    for (field, button) in [(CODE, LiveButton::Join), (LINK, LiveButton::JoinLink)] {
+        let mut t = T::new();
+        t.open_live();
+        t.asked();
+        t.shell_click_id(field, "o campo");
+        assert!(crate::interaction::apply_clipboard_paste(
+            &mut t.hero.store,
+            field,
+            link
+        ));
+        t.hero.apply_event(WidgetEvent::TextChanged(field));
+        t.paint();
+        let shown = crate::screens::hero::board_nav::field_text_for_tests(&t.hero, field);
+        assert_eq!(shown, link, "o link colado passou a maiúsculas");
+        t.live_click(Hit::Button(button));
+        assert_eq!(t.asked(), want, "{button:?}");
+        assert_eq!(t.hero.documents.live.notice.map(|n| n.0), None);
+    }
+}

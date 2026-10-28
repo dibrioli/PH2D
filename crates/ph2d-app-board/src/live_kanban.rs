@@ -9,7 +9,10 @@ use ph2d_board_net as net;
 use ph2d_board_sync::{self as sync, KANBAN_WAITING, Msg, To};
 use ph2d_editor_core::screens::HeroScreen;
 use ph2d_kanban_model::{KanbanId, KanbanSet};
-use ph2d_kanban_sync::{GuestRoom, HostRoom, KMsg, KanbanReplica, Portrait};
+use ph2d_kanban_sync::{
+    GuestRoom, HostRoom, KMsg, KanbanPresence, KanbanReplica, Portrait, Viewers, port,
+};
+use std::collections::BTreeMap;
 use std::sync::mpsc;
 
 use super::send;
@@ -73,6 +76,36 @@ fn wrap(out: Vec<(To, KMsg)>) -> Vec<(To, Msg)> {
         .collect()
 }
 
+/// ⭐ J7 — onde estou (a família Kanban di-lo pela [`port`]), no id da SESSÃO (`kanban: None` =
+/// nenhum Kanban da sala à frente: os meus anéis somem nos outros).
+fn my_presence(r: Option<&KanbanReplica>) -> KanbanPresence {
+    let here = port::here();
+    let wire = here.and_then(|(l, ..)| r.and_then(|r| r.wire_id(l)));
+    KanbanPresence {
+        peer: 0,
+        kanban: wire,
+        card: wire.and(here.and_then(|h| h.1)),
+        cursor: wire.and(here.and_then(|h| h.2)),
+    }
+}
+
+/// J7 — o que a família Kanban pinta de quem está na sala do Quadro.
+fn tell_seen(
+    viewers: &Viewers,
+    names: BTreeMap<u64, String>,
+    pairs: Vec<(KanbanId, KanbanId)>,
+    now: u64,
+    reconnecting: bool,
+) {
+    port::set_room(Some(port::Room {
+        viewers: viewers.clone(),
+        names,
+        pairs,
+        now,
+        reconnecting,
+    }));
+}
+
 /// A sala do anfitrião, aberta com a do Quadro.
 pub(super) fn host_open(hero: &mut HeroScreen, s: &mut sync::Host, board: BoardId) -> KHost {
     let mut ids = referenced(hero, board);
@@ -112,7 +145,11 @@ pub(super) fn host_step(
     share_new(&mut room.replica, &set, &mine);
     big |= send::host(n, wrap(room.tick(&mut set, now)));
     drop(set);
+    let p = my_presence(Some(&room.replica));
+    big |= send::host(n, wrap(room.presence(now, p)));
     let pairs = room.replica.kanbans();
+    let names: BTreeMap<u64, String> = s.peers().iter().map(|p| (p.peer, p.name.clone())).collect();
+    tell_seen(&room.viewers, names, pairs.clone(), now, false);
     big |= portraits(n, k);
     if let Some(b) = hero.documents.board_mut(board) {
         s.map_kanbans(b, &pairs);
@@ -165,17 +202,35 @@ pub(super) fn guest_step(
         let _ = n.send(sync::Guest::kanban(m.encode()).encode());
     }
     drop(set);
+    let p = my_presence(room.replica.as_ref());
+    for m in room.presence(now, p) {
+        let _ = n.send(sync::Guest::kanban(m.encode()).encode());
+    }
     let pairs = room
         .replica
         .as_ref()
         .map(KanbanReplica::kanbans)
         .unwrap_or_default();
+    guest_seen(s, room, now, false);
     s.map_kanbans(board.and_then(|b| hero.documents.board_mut(b)), &pairs);
     *armed = pairs.into_iter().map(|(_, l)| l).collect();
 }
 
+/// ⭐ J7 — quem está nos Kanbans da sala do Quadro, visto pelo convidado; `reconnecting` = a sala
+/// caiu e está a voltar (os avatares esmaecem e o selo diz-o).
+pub(super) fn guest_seen(s: &sync::Guest, room: &GuestRoom, now: u64, reconnecting: bool) {
+    let pairs = room
+        .replica
+        .as_ref()
+        .map(KanbanReplica::kanbans)
+        .unwrap_or_default();
+    let names: BTreeMap<u64, String> = s.peers().iter().map(|p| (p.peer, p.name.clone())).collect();
+    tell_seen(&room.viewers, names, pairs, now, reconnecting);
+}
+
 /// A sala acabou: os Kanbans dela voltam ao contador local.
 pub(super) fn disarm(hero: &mut HeroScreen, armed: &mut Vec<KanbanId>) {
+    port::set_room(None);
     if armed.is_empty() {
         return;
     }
@@ -188,27 +243,17 @@ pub(super) fn disarm(hero: &mut HeroScreen, armed: &mut Vec<KanbanId>) {
     }
 }
 
-/// J4 — um convite de KANBAN colado no «Join» do Quadro: di-lo, e a sala abre-se numa aba Kanban.
+/// J4 — um convite de KANBAN colado no «Join» do Quadro: di-lo, e a sala abre-se numa aba Kanban
+/// (a família lê-o da [`port`]).
 pub(super) fn join_kanban_link(hero: &mut HeroScreen, link: &str) {
     hero.documents
         .tell(ph2d_i18n::tr("kanban.share.kanban_link").to_owned());
-    if let Some(docs) = hero
-        .documents
-        .surfaces_mut()
-        .find_mut::<ph2d_app_kanban::KanbanDocs>()
-    {
-        docs.join_shared(link);
-    }
+    port::post_kanban_link(link.to_owned());
 }
 
 /// J4 — os convites de QUADRO colados no «Join» do Kanban: entram como o «Join by link» do Quadro.
-pub(super) fn board_links(
-    hero: &mut HeroScreen,
-) -> Vec<ph2d_editor_core::documents::live::LiveRequest> {
-    hero.documents
-        .surfaces_mut()
-        .find_mut::<ph2d_app_kanban::KanbanDocs>()
-        .and_then(ph2d_app_kanban::KanbanDocs::take_board_link)
+pub(super) fn board_links() -> Vec<ph2d_editor_core::documents::live::LiveRequest> {
+    port::take_board_link()
         .map(|link| ph2d_editor_core::documents::live::LiveRequest::JoinLink { link })
         .into_iter()
         .collect()

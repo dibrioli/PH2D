@@ -30,8 +30,9 @@ ph2d-text = { path = "../ph2d-text" }
 ph2d-board-export = { path = "../ph2d-board-export", features = ["gpu"] }
 ph2d-board-excalidraw = { path = "../ph2d-board-excalidraw" }
 ph2d-board-render = { path = "../ph2d-board-render" }
-# Cena 30 (TrelloClone W4): o Kanban da cena 1 da família no canvas, ao lado das notas.
-ph2d-app-kanban = { path = "../ph2d-app-kanban" }
+# Cena 30 (TrelloClone W4): o Kanban da cena 1 no canvas, ao lado das notas — a cena como MODELO
+# (a família Kanban é outra família: o gate `no_dependency_climbs_a_layer`).
+ph2d-kanban-scenes = { path = "../ph2d-kanban-scenes" }
 # W18 (ADR-0185) — o vídeo: a lei (o link canónico) e o lado do mundo (a miniatura, o tocador no navegador
 # da pessoa); `ph2d-vector` para pôr os quadros dele no desenho.
 ph2d-board-embed = { path = "../ph2d-board-embed" }

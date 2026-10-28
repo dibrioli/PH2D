@@ -4,12 +4,17 @@
 //! ao meu. Uma referência a um Kanban que ainda não chegou fica no marcador [`KANBAN_WAITING`] — nunca
 //! no id de OUTRO Kanban meu — e volta ao certo quando a sala do Kanban o traz ([`Replica::map_kanbans`]).
 //! Desligada (nenhum `map_kanbans`), nada se traduz: a sala sem Kanbans fica como era.
+//! J7 — as VERSÕES do quadro (o histórico da equipa) levam o documento inteiro: as referências delas
+//! traduzem-se igual, ao sair, ao entrar e no retrato; a que espera um Kanban guarda os bytes da
+//! sessão e resolve-se quando ele chega. Um Kanban fora da sala sai como o marcador, nunca como o id
+//! local de quem a guardou (que no outro par é OUTRO Kanban).
 
 use std::collections::BTreeMap;
 
-use ph2d_board_model::{Board, BoardOp, Element, ElementId, Field, KanbanId};
+use ph2d_board_model::{Board, BoardOp, Element, ElementId, Field, KanbanId, Version, VersionId};
 
 use super::{Replica, Write};
+use crate::team::TeamWrite;
 
 /// A referência de um elemento cujo Kanban ainda não chegou: um id que nenhum contador alcança e
 /// que o sorteio da sessão (bit alto ligado) nunca dá.
@@ -23,6 +28,8 @@ pub(super) struct KanbanIds {
     wire: BTreeMap<KanbanId, KanbanId>,
     /// Os elementos no marcador, e o id da sessão por que esperam.
     waiting: BTreeMap<ElementId, KanbanId>,
+    /// J7 — as versões com um Kanban por chegar: os bytes delas no id da sessão.
+    versions: BTreeMap<VersionId, Vec<u8>>,
 }
 
 fn kanban_of(el: &Element) -> Option<KanbanId> {
@@ -35,7 +42,76 @@ fn set_kanban(el: &mut Element, id: KanbanId) {
     }
 }
 
+/// Os bytes de `v` com cada referência passada por `f`; `None` = nada muda (ou não se lê).
+fn retarget(v: &Version, mut f: impl FnMut(KanbanId) -> KanbanId) -> Option<Vec<u8>> {
+    let mut b = v.read().ok()?;
+    let fix: Vec<(ElementId, KanbanId)> = b
+        .doc
+        .live_with_hidden()
+        .filter_map(|e| {
+            let k = kanban_of(e)?;
+            let n = f(k);
+            (n != k).then_some((e.id, n))
+        })
+        .collect();
+    if fix.is_empty() {
+        return None;
+    }
+    for (id, k) in fix {
+        if let Some(mut el) = b.doc.get_any(id).cloned() {
+            set_kanban(&mut el, k);
+            let _ = BoardOp::Put(el).apply(&mut b.doc);
+        }
+    }
+    Some(b.version_bytes())
+}
+
 impl KanbanIds {
+    /// J7 — uma versão minha a sair: ids locais → da sessão; um Kanban fora da sala → o marcador.
+    fn version_out(&self, v: &mut Version) {
+        if let Some(bytes) = retarget(v, |l| {
+            if l == KANBAN_WAITING {
+                l
+            } else {
+                self.wire.get(&l).copied().unwrap_or(KANBAN_WAITING)
+            }
+        }) {
+            v.bytes = bytes;
+        }
+    }
+
+    /// J7 — uma versão que entrou (escrita ou retrato): ids da sessão → meus; o que ainda não chegou
+    /// fica no marcador e os bytes da sessão esperam por ele.
+    fn version_in(&mut self, v: &mut Version) {
+        let mut missing = false;
+        let wire = v.bytes.clone();
+        if let Some(bytes) = retarget(v, |w| match self.local.get(&w) {
+            Some(l) => *l,
+            None => {
+                missing |= w != KANBAN_WAITING;
+                KANBAN_WAITING
+            }
+        }) {
+            v.bytes = bytes;
+        }
+        if missing {
+            self.versions.insert(v.id, wire);
+        } else {
+            self.versions.remove(&v.id);
+        }
+    }
+
+    /// J7 — as versões do quadro que esperavam e cujo Kanban chegou.
+    fn versions_ready(&mut self, board: &mut Board) {
+        let waiting = std::mem::take(&mut self.versions);
+        for (id, wire) in waiting {
+            if let Some(v) = board.team.versions.iter_mut().find(|v| v.id == id) {
+                v.bytes = wire;
+                self.version_in(v);
+            }
+        }
+    }
+
     fn to_local(&mut self, el: ElementId, wire: KanbanId) -> KanbanId {
         match self.local.get(&wire) {
             Some(l) => {
@@ -75,6 +151,10 @@ impl KanbanIds {
                         *value = enc(self.to_wire(*id, l));
                     }
                 }
+                Write::Team {
+                    w: TeamWrite::Version(v),
+                    ..
+                } => self.version_out(v),
                 _ => {}
             }
         }
@@ -85,6 +165,10 @@ impl KanbanIds {
         let touches = |w: &Write| match w {
             Write::Born { el, .. } => el.kanban().is_some(),
             Write::Set { field, .. } => *field == Field::Kanban,
+            Write::Team {
+                w: TeamWrite::Version(_),
+                ..
+            } => true,
             _ => false,
         };
         if !self.on || !ws.iter().any(touches) {
@@ -106,6 +190,10 @@ impl KanbanIds {
                         *value = enc(self.to_local(*id, k));
                     }
                 }
+                Write::Team {
+                    w: TeamWrite::Version(v),
+                    ..
+                } => self.version_in(v),
                 _ => {}
             }
         }
@@ -126,7 +214,22 @@ impl KanbanIds {
                 (w != l).then_some((e.id, w))
             })
             .collect();
-        if change.is_empty() {
+        let versions: Vec<(usize, Vec<u8>)> = board
+            .team
+            .versions
+            .iter()
+            .enumerate()
+            .filter_map(|(i, v)| {
+                // A que ainda espera sai como chegou (no id da sessão).
+                if let Some(wire) = self.versions.get(&v.id) {
+                    return Some((i, wire.clone()));
+                }
+                let mut out = v.clone();
+                self.version_out(&mut out);
+                (out.bytes != v.bytes).then_some((i, out.bytes))
+            })
+            .collect();
+        if change.is_empty() && versions.is_empty() {
             return None;
         }
         let mut b = board.clone();
@@ -135,6 +238,9 @@ impl KanbanIds {
                 set_kanban(&mut el, w);
                 let _ = BoardOp::Put(el).apply(&mut b.doc);
             }
+        }
+        for (i, bytes) in versions {
+            b.team.versions[i].bytes = bytes;
         }
         Some(b)
     }
@@ -161,6 +267,7 @@ impl Replica {
             .filter_map(|(e, w)| self.kanbans.local.get(w).map(|l| (*e, *l)))
             .collect();
         self.relabel(board, &ready);
+        self.kanbans.versions_ready(board);
     }
 
     /// O quadro acabou de chegar no retrato (entrar ou voltar): as referências estão no id da sessão.
@@ -178,6 +285,9 @@ impl Replica {
             .map(|(e, w)| (e, self.kanbans.to_local(e, w)))
             .collect();
         self.relabel(board, &fix);
+        for v in &mut board.team.versions {
+            self.kanbans.version_in(v);
+        }
     }
 
     /// Liga a tradução sem pares (o convidado, antes do retrato do Quadro chegar).

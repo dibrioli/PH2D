@@ -305,17 +305,22 @@ fn field(hero: &HeroScreen, id: NodeId) -> String {
     super::super::field_text(&hero.store, id)
 }
 
-/// ADR-0187 — o texto é um link de convite (`ph2d-board://…`), não um código.
+/// ADR-0187 — o texto é um link de convite (`ph2d-board://…` ou, J7, o de um Kanban
+/// `ph2d-kanban://…`, que a família leva à aba Kanban), não um código.
 #[must_use]
 pub fn is_link(s: &str) -> bool {
-    s.trim_start()
-        .get(..LINK_SCHEME.len())
-        .is_some_and(|p| p.eq_ignore_ascii_case(LINK_SCHEME))
+    let s = s.trim_start();
+    [LINK_SCHEME, KANBAN_LINK_SCHEME].iter().any(|scheme| {
+        s.get(..scheme.len())
+            .is_some_and(|p| p.eq_ignore_ascii_case(scheme))
+    })
 }
 
 /// O começo de todo convite (o mesmo de `ph2d_board_net::SCHEME`, provado no teste da família: o
 /// ecrã não depende da rede).
 pub const LINK_SCHEME: &str = "ph2d-board://";
+/// O de um convite de Kanban (`ph2d_board_net::KANBAN_SCHEME`, provado no mesmo teste).
+pub const KANBAN_LINK_SCHEME: &str = "ph2d-kanban://";
 
 /// «Join by link»: o link do campo Link (ou, se lá não há nenhum, o colado no campo do código) vai
 /// inteiro à família (a chave distingue maiúsculas: nunca se normaliza).

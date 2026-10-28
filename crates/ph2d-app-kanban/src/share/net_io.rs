@@ -15,18 +15,6 @@ use std::time::{Duration, Instant};
 /// O prazo de ligar pela rede local (o do Quadro) e pelo link (a DHT leva segundos).
 const LAN_TIMEOUT: Duration = Duration::from_secs(4);
 const LINK_TIMEOUT: Duration = Duration::from_secs(30);
-/// J4 — a voltar depois de cair: a 1.ª tentativa logo, depois o dobro de cada vez até ao tecto; o
-/// minuto inteiro é o do Quadro (`ph2d-app-board::live::RECONNECT_FOR`). Porquê: `MEDICOES.md` §J4.
-const RETRY_FIRST: Duration = Duration::from_millis(250);
-const RETRY_MAX: Duration = Duration::from_secs(8);
-const RECONNECT_FOR: Duration = Duration::from_secs(60);
-
-/// A espera antes da tentativa `n` (0 = a primeira).
-pub(crate) fn backoff(n: u32) -> Duration {
-    RETRY_FIRST
-        .saturating_mul(1u32.checked_shl(n.min(16)).unwrap_or(u32::MAX))
-        .min(RETRY_MAX)
-}
 
 fn waker() -> net::Waker {
     // A app redesenha a cada imagem: não há nada a acordar.
@@ -99,10 +87,8 @@ pub(crate) struct GuestSide {
     g: KanbanGuest,
     route: Dial,
     local: bool,
-    /// Caída desde quando, quantas tentativas, e quando a próxima.
-    lost: Option<Instant>,
-    tries: u32,
-    next_try: Option<Instant>,
+    /// J4/J7 — caída: a lei de voltar do Quadro ([`net::Redial`]).
+    lost: Option<net::Redial>,
 }
 
 /// Porque o texto colado não abre a sala do Kanban.
@@ -221,8 +207,6 @@ impl Session {
             route,
             local,
             lost: None,
-            tries: 0,
-            next_try: None,
         })))
     }
 
@@ -322,25 +306,7 @@ impl Session {
                     .unwrap_or_default(),
             ),
         };
-        let mut out = BTreeMap::new();
-        for (wire, local) in kanbans {
-            let mut s = Seen {
-                people: vec![me.clone()],
-                ..Seen::default()
-            };
-            for peer in viewers.on_kanban(wire) {
-                let who = Member(names.get(&peer).cloned().unwrap_or_default());
-                if let Some(c) = viewers.get(peer).and_then(|p| p.card) {
-                    s.cards.entry(c).or_default().push(who.clone());
-                }
-                if let Some(at) = viewers.cursor(peer, now) {
-                    s.cursors.push((who.clone(), at));
-                }
-                s.people.push(who);
-            }
-            out.insert(local, s);
-        }
-        out
+        super::seen_of(viewers, &names, &kanbans, me, now)
     }
 }
 
@@ -408,9 +374,7 @@ impl GuestSide {
     /// Os testes: o fio cai (como o Wi-Fi que soluça) — o anfitrião vê a saída e eu volto sozinho.
     pub(crate) fn drop_link(&mut self) {
         if self.net.take().is_some() {
-            self.lost = Some(Instant::now());
-            self.tries = 0;
-            self.next_try = None;
+            self.lost = Some(net::Redial::new(Instant::now()));
         }
     }
 
@@ -428,11 +392,10 @@ impl GuestSide {
                     t.notices
                         .push(ph2d_i18n::tr("kanban.share.reconnected").to_owned());
                 }
-                self.tries = 0;
                 true
             }
             // A voltar: só a sala que já não está (a porta recusada, o código errado) acaba.
-            Ok(Err(e)) if self.lost.is_some() && !room_is_gone(&e) => {
+            Ok(Err(e)) if self.lost.is_some() && !net::room_is_gone(&e) => {
                 self.dialing = None;
                 true
             }
@@ -457,25 +420,22 @@ impl GuestSide {
 
     /// Caída: a próxima tentativa, com o retrocesso; passado o minuto, desiste.
     fn retry(&mut self, t: &mut Tick) {
-        let Some(since) = self.lost else {
+        let Some(r) = &mut self.lost else {
             return;
         };
         t.reconnecting = true;
         if self.net.is_some() || self.dialing.is_some() {
             return;
         }
-        if since.elapsed() > RECONNECT_FOR {
+        let now = Instant::now();
+        if r.expired(now) {
             t.notices
                 .push(ph2d_i18n::tr("kanban.share.lost").to_owned());
             t.ended = true;
             return;
         }
-        let now = Instant::now();
-        let due = *self.next_try.get_or_insert(now + backoff(self.tries));
-        if now >= due {
+        if r.due(now) {
             self.dialing = Some(dial(&self.route, self.local));
-            self.tries += 1;
-            self.next_try = Some(now + backoff(self.tries));
         }
     }
 
@@ -543,28 +503,5 @@ impl GuestSide {
         for m in self.g.presence(now, p) {
             let _ = n.send(m.encode());
         }
-    }
-}
-
-/// A voltar: a porta RECUSADA ou um código errado dizem que a sala já não é esta (a lei do Quadro).
-fn room_is_gone(e: &net::JoinError) -> bool {
-    matches!(
-        e,
-        net::JoinError::WrongCode
-            | net::JoinError::Locked(_)
-            | net::JoinError::Unreachable(std::io::ErrorKind::ConnectionRefused)
-    )
-}
-
-#[cfg(test)]
-mod tests {
-    /// J4 — o retrocesso: a 1.ª tentativa logo, depois o dobro, até ao tecto (e nunca transborda).
-    #[test]
-    fn the_backoff_doubles_up_to_its_ceiling() {
-        let ms = |n| super::backoff(n).as_millis();
-        assert_eq!(
-            [ms(0), ms(1), ms(3), ms(5), ms(40)],
-            [250, 500, 2000, 8000, 8000]
-        );
     }
 }

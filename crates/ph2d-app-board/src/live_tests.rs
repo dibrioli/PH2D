@@ -370,7 +370,7 @@ fn a_redial_ends_on_a_closed_or_replaced_room_and_retries_on_a_flaky_network() {
         net::JoinError::Locked(Duration::from_secs(30)),
         net::JoinError::Unreachable(ConnectionRefused),
     ] {
-        assert!(room_is_gone(&e), "{e:?}");
+        assert!(net::room_is_gone(&e), "{e:?}");
     }
     for e in [
         net::JoinError::Unreachable(TimedOut),
@@ -378,7 +378,7 @@ fn a_redial_ends_on_a_closed_or_replaced_room_and_retries_on_a_flaky_network() {
         net::JoinError::Unreachable(NetworkUnreachable),
         net::JoinError::Broken,
     ] {
-        assert!(!room_is_gone(&e), "{e:?}");
+        assert!(!net::room_is_gone(&e), "{e:?}");
     }
 }
 

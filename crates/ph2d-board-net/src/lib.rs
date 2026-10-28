@@ -22,6 +22,7 @@ mod host;
 mod invite;
 mod lan;
 mod link;
+mod redial;
 mod tcp;
 mod wire;
 
@@ -49,6 +50,7 @@ pub use invite::{
 };
 pub use lan::{is_lan, lan_addrs, lan_subnets};
 pub use link::{Door, Wire};
+pub use redial::{RECONNECT_FOR, RETRY_FIRST, RETRY_MAX, Redial, backoff, room_is_gone};
 pub use wire::MAX_FRAME;
 
 /// Um número ao acaso do sistema operativo (as identidades da sessão: quem sou, as sementes dos ids).

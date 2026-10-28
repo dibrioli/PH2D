@@ -159,7 +159,9 @@ pub fn short_film(set: &mut KanbanSet, now: Moment) -> KanbanId {
             c.start = Some(Moment(now + 6 * DAY));
             c.due = due(now + 12 * DAY + 7 * HOUR, false);
         });
-        s.card(backlog, "Voice casting", |c, _| c.labels = vec![audio, later]);
+        s.card(backlog, "Voice casting", |c, _| {
+            c.labels = vec![audio, later]
+        });
         s.card(todo, "Storyboard act 1", |c, now| {
             c.labels = vec![story, urgent];
             c.members = people(&["Rui", "Ana"]);
@@ -227,7 +229,9 @@ pub fn short_film(set: &mut KanbanSet, now: Moment) -> KanbanId {
             c.start = Some(Moment(now - 8 * DAY));
             c.due = due(now - 4 * DAY, true);
         });
-        s.card(done, "Pick the aspect ratio", |c, _| c.labels = vec![writing, later]);
+        s.card(done, "Pick the aspect ratio", |c, _| {
+            c.labels = vec![writing, later]
+        });
     })
 }
 
@@ -236,22 +240,28 @@ pub fn short_film(set: &mut KanbanSet, now: Moment) -> KanbanId {
 pub fn big(set: &mut KanbanSet, n: usize, now: Moment) -> KanbanId {
     write(set, "Big board", now, |s| {
         let tag = s.label("Shot", Hue::Purple, Shade::Normal);
-        let lists: Vec<ListId> = (0..8).map(|l| s.list(&format!("Sequence {}", l + 1), None, None)).collect();
+        let lists: Vec<ListId> = (0..8)
+            .map(|l| s.list(&format!("Sequence {}", l + 1), None, None))
+            .collect();
         for i in 0..n {
             let list = lists[i % lists.len()];
-            s.card(list, &format!("Shot {:05} \u{2014} layout, anim, light", i + 1), |c, now| {
-                if i % 3 == 0 {
-                    c.labels = vec![tag];
-                }
-                if i % 5 == 0 {
-                    c.members = people(&["Enio"]);
-                }
-                if i % 2 == 0 {
-                    let d = (i as i64 % 60) - 30;
-                    c.start = Some(Moment(now + d * DAY));
-                    c.due = due(now + (d + 3) * DAY, i % 7 == 0);
-                }
-            });
+            s.card(
+                list,
+                &format!("Shot {:05} \u{2014} layout, anim, light", i + 1),
+                |c, now| {
+                    if i % 3 == 0 {
+                        c.labels = vec![tag];
+                    }
+                    if i % 5 == 0 {
+                        c.members = people(&["Enio"]);
+                    }
+                    if i % 2 == 0 {
+                        let d = (i as i64 % 60) - 30;
+                        c.start = Some(Moment(now + d * DAY));
+                        c.due = due(now + (d + 3) * DAY, i % 7 == 0);
+                    }
+                },
+            );
         }
     })
 }

@@ -5,8 +5,8 @@ use ph2d_editor_core::widget::{Dropdown, DropdownOption};
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
 use ph2d_kanban_model::{
-    Card, CardId, Due, FieldId, FieldKind, FieldValue, Kanban, KanbanId, KanbanOp, LabelId,
-    ListId, Member, Moment, OptionId, Plan, Record,
+    Card, CardId, Due, FieldId, FieldKind, FieldValue, Kanban, KanbanId, KanbanOp, LabelId, ListId,
+    Member, Moment, OptionId, Plan, Record,
 };
 
 use super::metrics as m;

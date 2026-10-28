@@ -20,7 +20,12 @@ pub(crate) fn down(st: &mut CalendarState, x: f32, y: f32) -> Reply {
     if !g.body.contains(x, y) {
         return Reply::default();
     }
-    let hit = st.painted.blocks.iter().rev().find(|(r, _)| r.contains(x, y));
+    let hit = st
+        .painted
+        .blocks
+        .iter()
+        .rev()
+        .find(|(r, _)| r.contains(x, y));
     let drag = if let Some((r, b)) = hit {
         let Some(item) = st.painted.items.get(b.item).cloned() else {
             return Reply::default();
@@ -66,7 +71,9 @@ pub(crate) fn preview(st: &CalendarState) -> Option<(usize, f32, f32)> {
     #[allow(clippy::cast_precision_loss)]
     let f = |n: i64| n as f32;
     match &h.drag {
-        HourDrag::Move { item, top, grab, .. } => {
+        HourDrag::Move {
+            item, top, grab, ..
+        } => {
             let (col, _) = g.col_at(hx)?;
             let t = f(snap(g.min_of(hy) - grab));
             let dur = f((item.end.0 - top.0) / mins_ms(1));

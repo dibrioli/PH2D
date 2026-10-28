@@ -49,7 +49,12 @@ pub(crate) struct Composer {
 #[derive(Clone, Debug)]
 pub(crate) enum HourDrag {
     /// Mover um bloco: `grab` = os minutos entre o topo dele e o rato.
-    Move { item: Item, top: Moment, has_start: bool, grab: f32 },
+    Move {
+        item: Item,
+        top: Moment,
+        has_start: bool,
+        grab: f32,
+    },
     /// Esticar o fim (a borda de baixo); `top` fica.
     Resize { item: Item, top: Moment },
     /// Arrastar no vazio: um bloco novo desde `from` (minutos) no dia `day`.
@@ -143,8 +148,18 @@ impl CalendarState {
     #[must_use]
     pub fn item_rects(&self, key: ItemKey) -> Vec<Rect> {
         let is = |i: usize| self.painted.items.get(i).is_some_and(|it| it.key == key);
-        let segs = self.painted.segs.iter().filter(|(_, i)| is(*i)).map(|(r, _)| *r);
-        let blocks = self.painted.blocks.iter().filter(|(_, b)| is(b.item)).map(|(r, _)| *r);
+        let segs = self
+            .painted
+            .segs
+            .iter()
+            .filter(|(_, i)| is(*i))
+            .map(|(r, _)| *r);
+        let blocks = self
+            .painted
+            .blocks
+            .iter()
+            .filter(|(_, b)| is(b.item))
+            .map(|(r, _)| *r);
         segs.chain(blocks).collect()
     }
 
@@ -228,11 +243,6 @@ pub fn time_at(st: &CalendarState, x: f32, y: f32) -> Option<Moment> {
     st.time_at(x, y)
 }
 
-pub fn key(
-    st: &mut CalendarState,
-    src: &dyn Source,
-    cx: &Ctx<'_>,
-    input: &KeyInput<'_>,
-) -> Reply {
+pub fn key(st: &mut CalendarState, src: &dyn Source, cx: &Ctx<'_>, input: &KeyInput<'_>) -> Reply {
     input::key(st, src, cx, input)
 }

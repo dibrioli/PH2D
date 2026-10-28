@@ -181,7 +181,9 @@ pub fn lanes_fit(cell_h: f32, lane_h: f32, with_more: bool) -> usize {
     if with_more {
         avail -= m::MORE_H;
     }
-    ((avail + m::LANE_GAP) / (lane_h + m::LANE_GAP)).max(0.0).floor() as usize
+    ((avail + m::LANE_GAP) / (lane_h + m::LANE_GAP))
+        .max(0.0)
+        .floor() as usize
 }
 
 /// ⭐ Põe os itens nas faixas: por semana, os longos primeiro; um pedaço só se vê se a sua faixa

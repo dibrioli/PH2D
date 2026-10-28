@@ -101,10 +101,7 @@ pub fn visible_cards<'k>(k: &'k Kanban, cx: &Ctx<'_>) -> Vec<&'k Card> {
 /// O Kanban `id` de `set`, e a referência de um cartão dele.
 #[must_use]
 pub fn card_ref(kanban: KanbanId, c: &Card) -> CardRef {
-    CardRef {
-        kanban,
-        card: c.id,
-    }
+    CardRef { kanban, card: c.id }
 }
 
 /// O Kanban `id`, se vivo.

@@ -19,7 +19,16 @@ const AREA: Rect = Rect {
 
 fn paint(v: &mut Views, w: &World, ts: &mut TextSystem) {
     let mut s = VectorScene::new();
-    v.paint(&mut s, Affine::IDENTITY, AREA, &w.set, w.id, ts, Theme::Light, &w.cx());
+    v.paint(
+        &mut s,
+        Affine::IDENTITY,
+        AREA,
+        &w.set,
+        w.id,
+        ts,
+        Theme::Light,
+        &w.cx(),
+    );
 }
 
 fn setup() -> (Views, World, TextSystem) {
@@ -82,8 +91,16 @@ fn dashboard_counts_are_the_filters_counts() {
     assert_eq!(s.due(Bucket::Complete), filtered(&w, &complete));
     let per_list: usize = s.per_list.iter().map(|b| b.count).sum();
     let per_due: usize = s.per_due.iter().map(|b| b.count).sum();
-    assert_eq!((per_list, per_due), (s.total, s.total), "lista e entrega PARTEM os cartões");
-    assert_eq!(s.due(Bucket::Overdue), 2, "a cena 1: «Fox concept sheet» e «Animate shot 12»");
+    assert_eq!(
+        (per_list, per_due),
+        (s.total, s.total),
+        "lista e entrega PARTEM os cartões"
+    );
+    assert_eq!(
+        s.due(Bucket::Overdue),
+        2,
+        "a cena 1: «Fox concept sheet» e «Animate shot 12»"
+    );
 }
 
 #[test]
@@ -96,22 +113,25 @@ fn dashboard_follows_the_board_filter() {
     let k = w.set.get(w.id).expect("kanban");
     let s = stats(k, &w.cx());
     assert_eq!(s.total, filtered(&w, &w.filter.clone()));
-    let mia = s
-        .per_member
-        .iter()
-        .find(|b| b.name == "Mia")
-        .expect("Mia");
+    let mia = s.per_member.iter().find(|b| b.name == "Mia").expect("Mia");
     assert_eq!(mia.count, s.total, "só os cartões da Mia passam");
 }
 
 #[test]
 fn dashboard_hover_names_the_bar_and_its_exact_count() {
     let (mut v, w, mut ts) = setup();
-    let bars = v.dashboard.painted_bars(Chart::PerList).expect("barras").to_vec();
+    let bars = v
+        .dashboard
+        .painted_bars(Chart::PerList)
+        .expect("barras")
+        .to_vec();
     let doing = bars.iter().position(|b| b.name == "Doing").expect("Doing");
     let at = v.dashboard.bar_at(Chart::PerList, doing).expect("alvo");
     let r = v.pointer(&w.set, w.id, &w.cx(), PointerKind::Move, at.0, at.1);
-    assert!(r.redraw && r.plan.is_empty(), "pairar pede outro quadro, nunca muda o documento");
+    assert!(
+        r.redraw && r.plan.is_empty(),
+        "pairar pede outro quadro, nunca muda o documento"
+    );
     assert_eq!(v.dashboard.hover, Some((Chart::PerList, doing)));
     assert_eq!(bars[doing].count, 3);
     paint(&mut v, &w, &mut ts);
@@ -129,7 +149,11 @@ fn dashboard_ring_slice_is_hit_by_angle_and_the_form_toggles() {
         v.dashboard.toggle_at(Chart::PerLabel, Form::Ring).is_none(),
         "etiquetas não partem os cartões: sem anel"
     );
-    let bars = v.dashboard.painted_bars(Chart::PerDue).expect("fatias").to_vec();
+    let bars = v
+        .dashboard
+        .painted_bars(Chart::PerDue)
+        .expect("fatias")
+        .to_vec();
     let over = bars
         .iter()
         .position(|b| b.who == Who::Due(Bucket::Overdue))

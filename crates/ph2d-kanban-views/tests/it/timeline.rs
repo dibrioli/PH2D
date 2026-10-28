@@ -293,7 +293,16 @@ fn timeline_ctrl_wheel_zooms_and_plain_wheel_scrolls() {
     let mut ts = ph2d_text::TextSystem::without_system_fonts();
     let area = ph2d_editor_core::zones::Rect::new(0.0, 0.0, 1440.0, 900.0);
     let mut s = ph2d_vector::VectorScene::new();
-    v.paint(&mut s, ph2d_vector::Affine::IDENTITY, area, &w.set, w.id, &mut ts, ph2d_tokens::Theme::Light, &w.cx());
+    v.paint(
+        &mut s,
+        ph2d_vector::Affine::IDENTITY,
+        area,
+        &w.set,
+        w.id,
+        &mut ts,
+        ph2d_tokens::Theme::Light,
+        &w.cx(),
+    );
     let before = v.timeline.zoom;
     let r = v.wheel(&w.set, w.id, &w.cx(), (700.0, 500.0), -16.0, (false, true));
     assert!(r.taken && r.plan.is_empty());

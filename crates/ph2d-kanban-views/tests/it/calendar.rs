@@ -41,7 +41,16 @@ fn key_of(w: &World, title: &str) -> ItemKey {
 
 fn paint(v: &mut Views, w: &World, ts: &mut TextSystem, rect: Rect) {
     let mut scene = VectorScene::new();
-    v.paint(&mut scene, Affine::IDENTITY, rect, &w.set, w.id, ts, Theme::Light, &w.cx());
+    v.paint(
+        &mut scene,
+        Affine::IDENTITY,
+        rect,
+        &w.set,
+        w.id,
+        ts,
+        Theme::Light,
+        &w.cx(),
+    );
 }
 
 fn calendar_views() -> Views {
@@ -99,7 +108,11 @@ fn calendar_drag_moves_start_and_due_by_whole_days_keeping_the_hour() {
     };
     let (bd, ad) = (before.due.unwrap().at, after.due.unwrap().at);
     assert_eq!(two(ad).0, two(bd).0.add_days(2));
-    assert_eq!((two(ad).1, two(ad).2), (two(bd).1, two(bd).2), "a hora fica");
+    assert_eq!(
+        (two(ad).1, two(ad).2),
+        (two(bd).1, two(bd).2),
+        "a hora fica"
+    );
     assert_eq!(
         day_of(after.start.unwrap().0, &w.zone),
         day_of(before.start.unwrap().0, &w.zone).add_days(2)
@@ -113,7 +126,10 @@ fn calendar_shows_plus_n_more_when_the_cell_does_not_fit() {
     let mut v = calendar_views();
     let small = Rect::new(0.0, 0.0, 700.0, 420.0);
     paint(&mut v, &w, &mut ts, small);
-    let (r, n) = v.calendar.more_at(date(10, 28)).expect("«+N more» em 28/10");
+    let (r, n) = v
+        .calendar
+        .more_at(date(10, 28))
+        .expect("«+N more» em 28/10");
     let cell = v.calendar.cell_rect(date(10, 28)).unwrap();
     let shown = v
         .calendar
@@ -123,7 +139,14 @@ fn calendar_shows_plus_n_more_when_the_cell_does_not_fit() {
         .count();
     assert!(n >= 1 && n + shown <= 4, "n = {n}");
     let cx = w.cx();
-    let _ = v.pointer(&w.set, w.id, &cx, PointerKind::Down, center(r).0, center(r).1);
+    let _ = v.pointer(
+        &w.set,
+        w.id,
+        &cx,
+        PointerKind::Down,
+        center(r).0,
+        center(r).1,
+    );
     assert_eq!(v.calendar.day_popover(), Some(date(10, 28)));
     paint(&mut v, &w, &mut ts, BIG);
     assert!(
@@ -140,12 +163,33 @@ fn calendar_plus_and_enter_create_a_card_due_that_day_in_the_first_list() {
     paint(&mut v, &w, &mut ts, BIG);
     let cell = v.calendar.cell_rect(date(10, 30)).unwrap();
     let cx = w.cx();
-    let _ = v.pointer(&w.set, w.id, &cx, PointerKind::Move, center(cell).0, center(cell).1);
+    let _ = v.pointer(
+        &w.set,
+        w.id,
+        &cx,
+        PointerKind::Move,
+        center(cell).0,
+        center(cell).1,
+    );
     paint(&mut v, &w, &mut ts, BIG);
     let (plus, day) = v.calendar.plus_rect().expect("o «+» do dia sob o rato");
     assert_eq!(day, date(10, 30));
-    let _ = v.pointer(&w.set, w.id, &cx, PointerKind::Down, center(plus).0, center(plus).1);
-    let _ = v.pointer(&w.set, w.id, &cx, PointerKind::Up, center(plus).0, center(plus).1);
+    let _ = v.pointer(
+        &w.set,
+        w.id,
+        &cx,
+        PointerKind::Down,
+        center(plus).0,
+        center(plus).1,
+    );
+    let _ = v.pointer(
+        &w.set,
+        w.id,
+        &cx,
+        PointerKind::Up,
+        center(plus).0,
+        center(plus).1,
+    );
     assert_eq!(v.calendar.composing(), Some(date(10, 30)));
     paint(&mut v, &w, &mut ts, BIG);
     let mods = ph2d_host::Modifiers::default();
@@ -170,7 +214,11 @@ fn calendar_plus_and_enter_create_a_card_due_that_day_in_the_first_list() {
     let r = v.key(&w.set, w.id, &cx, &enter);
     w.apply(r.plan);
     let k = w.set.get(w.id).unwrap();
-    let c = k.cards.values().find(|c| c.title == "New shot").expect("criado");
+    let c = k
+        .cards
+        .values()
+        .find(|c| c.title == "New shot")
+        .expect("criado");
     let first = k.lists_in_order()[0].id;
     assert_eq!(c.list, first, "a primeira lista por omissão");
     let due = civil(c.due.unwrap().at.0, &w.zone);
@@ -240,7 +288,10 @@ fn with_blocks() -> World {
     for (title, d, h, mi) in [("Clean up shot 08", 28, 13, 0), ("Rain test", 30, 10, 30)] {
         let mut c = w.set.get(w.id).unwrap().cards[&card(&w, title)].clone();
         c.start = ph2d_kanban_dates::instant(date(10, d), h, mi, &zone).map(Moment);
-        plan.push(w.id, ph2d_kanban_model::KanbanOp::put(ph2d_kanban_model::Record::Card(c)));
+        plan.push(
+            w.id,
+            ph2d_kanban_model::KanbanOp::put(ph2d_kanban_model::Record::Card(c)),
+        );
     }
     w.apply(plan);
     w
@@ -277,7 +328,11 @@ fn calendar_hour_block_drag_moves_start_and_end_by_an_hour_and_a_half_snapped() 
     w.apply(reply.plan);
     let c = &w.set.get(w.id).unwrap().cards[&card(&w, "Clean up shot 08")];
     assert_eq!(at(&w, c.start.unwrap()), (date(10, 28), 14, 30));
-    assert_eq!(at(&w, c.due.unwrap().at), (date(10, 28), 16, 30), "a duração fica");
+    assert_eq!(
+        at(&w, c.due.unwrap().at),
+        (date(10, 28), 16, 30),
+        "a duração fica"
+    );
 }
 
 #[test]
@@ -288,10 +343,19 @@ fn calendar_hour_block_bottom_edge_changes_only_the_end() {
     paint(&mut v, &w, &mut ts, BIG);
     let r = v.calendar.item_rects(key_of(&w, "Clean up shot 08"))[0];
     let to = v.calendar.hour_y(16, 15).unwrap() + 3.0;
-    let reply = drag(&mut v, &w, (r.x + r.w / 2.0, r.y + r.h - 2.0), (r.x + r.w / 2.0, to));
+    let reply = drag(
+        &mut v,
+        &w,
+        (r.x + r.w / 2.0, r.y + r.h - 2.0),
+        (r.x + r.w / 2.0, to),
+    );
     w.apply(reply.plan);
     let c = &w.set.get(w.id).unwrap().cards[&card(&w, "Clean up shot 08")];
-    assert_eq!(at(&w, c.start.unwrap()), (date(10, 28), 13, 0), "o início fica");
+    assert_eq!(
+        at(&w, c.start.unwrap()),
+        (date(10, 28), 13, 0),
+        "o início fica"
+    );
     assert_eq!(at(&w, c.due.unwrap().at), (date(10, 28), 16, 15));
 }
 
@@ -303,7 +367,10 @@ fn calendar_drag_on_empty_hours_creates_a_card_from_that_time() {
     v.calendar.anchor = Some(date(10, 29));
     paint(&mut v, &w, &mut ts, BIG);
     let x = center(v.calendar.cell_rect(date(10, 29)).unwrap()).0;
-    let (a, b) = (v.calendar.hour_y(14, 0).unwrap(), v.calendar.hour_y(15, 30).unwrap());
+    let (a, b) = (
+        v.calendar.hour_y(14, 0).unwrap(),
+        v.calendar.hour_y(15, 30).unwrap(),
+    );
     let _ = drag(&mut v, &w, (x, a + 2.0), (x, b + 2.0));
     assert_eq!(v.calendar.composing(), Some(date(10, 29)));
     paint(&mut v, &w, &mut ts, BIG);
@@ -311,14 +378,30 @@ fn calendar_drag_on_empty_hours_creates_a_card_from_that_time() {
     let mods = ph2d_host::Modifiers::default();
     for ch in "Edit pass".chars() {
         let s = ch.to_string();
-        let k = KeyInput { key: Key::Char(ch), mods, pressed: true, text: Some(&s), paste: None };
+        let k = KeyInput {
+            key: Key::Char(ch),
+            mods,
+            pressed: true,
+            text: Some(&s),
+            paste: None,
+        };
         let _ = v.key(&w.set, w.id, &cx, &k);
     }
-    let enter = KeyInput { key: Key::Enter, mods, pressed: true, text: None, paste: None };
+    let enter = KeyInput {
+        key: Key::Enter,
+        mods,
+        pressed: true,
+        text: None,
+        paste: None,
+    };
     let r = v.key(&w.set, w.id, &cx, &enter);
     w.apply(r.plan);
     let k = w.set.get(w.id).unwrap();
-    let c = k.cards.values().find(|c| c.title == "Edit pass").expect("criado");
+    let c = k
+        .cards
+        .values()
+        .find(|c| c.title == "Edit pass")
+        .expect("criado");
     assert_eq!(c.list, k.lists_in_order()[0].id);
     assert_eq!(at(&w, c.start.unwrap()), (date(10, 29), 14, 0));
     assert_eq!(at(&w, c.due.unwrap().at), (date(10, 29), 15, 30));
@@ -334,13 +417,22 @@ fn calendar_agenda_lists_upcoming_items_in_due_order_and_opens_them() {
     assert!(rows.len() >= 5, "{} linhas", rows.len());
     let k = w.set.get(w.id).unwrap();
     let due = |key: &ItemKey| match key {
-        ItemKey::Card(c) => k.cards[&c.card].due.map(|d| d.at).or(k.cards[&c.card].start),
+        ItemKey::Card(c) => k.cards[&c.card]
+            .due
+            .map(|d| d.at)
+            .or(k.cards[&c.card].start),
         ItemKey::Event(_) => None,
     };
     let dues: Vec<Moment> = rows.iter().filter_map(|(_, key)| due(key)).collect();
-    assert!(dues.windows(2).all(|p| p[0] <= p[1]), "pela ordem da entrega");
+    assert!(
+        dues.windows(2).all(|p| p[0] <= p[1]),
+        "pela ordem da entrega"
+    );
     assert!(dues[0].0 >= ph2d_kanban_dates::start_of_day(date(10, 28), &w.zone).unwrap());
-    assert!(rows.windows(2).all(|p| p[0].0.y < p[1].0.y), "de cima para baixo");
+    assert!(
+        rows.windows(2).all(|p| p[0].0.y < p[1].0.y),
+        "de cima para baixo"
+    );
     let cx = w.cx();
     let (x, y) = center(rows[0].0);
     let r = v.pointer(&w.set, w.id, &cx, PointerKind::Down, x, y);
@@ -359,7 +451,11 @@ fn calendar_time_at_answers_the_snapped_instant_under_the_pointer() {
     assert_eq!(at(&w, t), (date(10, 30), 9, 45), "encaixe de 15 min");
     v.calendar.mode = Mode::Month;
     paint(&mut v, &w, &mut ts, BIG);
-    assert_eq!(calendar::time_at(&v.calendar, x, y), None, "o mês não tem horas");
+    assert_eq!(
+        calendar::time_at(&v.calendar, x, y),
+        None,
+        "o mês não tem horas"
+    );
 }
 
 /// Fotografa o calendário de `w` no modo `mode` (claro e escuro).

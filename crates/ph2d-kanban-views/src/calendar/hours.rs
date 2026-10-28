@@ -133,7 +133,12 @@ pub(crate) struct Block {
 
 /// ⭐ Divide os itens: os blocos (por coluna, lado a lado quando se tocam) e os de «dia inteiro».
 #[must_use]
-pub(crate) fn place(days: &[Day], items: &[Item], zone: &Zone, min_minutes: f32) -> (Vec<Block>, Vec<usize>) {
+pub(crate) fn place(
+    days: &[Day],
+    items: &[Item],
+    zone: &Zone,
+    min_minutes: f32,
+) -> (Vec<Block>, Vec<usize>) {
     let mut all_day = Vec::new();
     let mut blocks: Vec<Block> = Vec::new();
     for (i, it) in items.iter().enumerate() {
@@ -167,7 +172,11 @@ pub(crate) fn place(days: &[Day], items: &[Item], zone: &Zone, min_minutes: f32)
         (a.col, a.top_min)
             .partial_cmp(&(b.col, b.top_min))
             .unwrap_or(std::cmp::Ordering::Equal)
-            .then(b.bot_min.partial_cmp(&a.bot_min).unwrap_or(std::cmp::Ordering::Equal))
+            .then(
+                b.bot_min
+                    .partial_cmp(&a.bot_min)
+                    .unwrap_or(std::cmp::Ordering::Equal),
+            )
     });
     let mut start = 0;
     while start < blocks.len() {
@@ -175,9 +184,15 @@ pub(crate) fn place(days: &[Day], items: &[Item], zone: &Zone, min_minutes: f32)
         let mut ends: Vec<f32> = Vec::new();
         let mut reach = f32::NEG_INFINITY;
         let mut end = start;
-        while end < blocks.len() && blocks[end].col == col && (end == start || blocks[end].top_min < reach) {
+        while end < blocks.len()
+            && blocks[end].col == col
+            && (end == start || blocks[end].top_min < reach)
+        {
             let b = &mut blocks[end];
-            let lane = ends.iter().position(|e| *e <= b.top_min).unwrap_or(ends.len());
+            let lane = ends
+                .iter()
+                .position(|e| *e <= b.top_min)
+                .unwrap_or(ends.len());
             if lane == ends.len() {
                 ends.push(b.bot_min);
             } else {

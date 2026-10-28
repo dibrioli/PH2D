@@ -96,7 +96,9 @@ fn field_key(k: &Kanban, f: FieldId, c: &Card) -> Option<Key> {
         FieldValue::Checkbox(x) => Key::Int(i64::from(!*x)),
         FieldValue::Text(x) => Key::Text(normalize(x)),
         FieldValue::Option(o) => match k.fields.get(&f).map(|d| &d.kind) {
-            Some(FieldKind::Dropdown(opts)) => Key::Int(opts.iter().position(|p| p.id == *o)? as i64),
+            Some(FieldKind::Dropdown(opts)) => {
+                Key::Int(opts.iter().position(|p| p.id == *o)? as i64)
+            }
             _ => return None,
         },
     })
@@ -107,9 +109,17 @@ fn field_key(k: &Kanban, f: FieldId, c: &Card) -> Option<Key> {
 fn key(k: &Kanban, lists: &[ph2d_kanban_model::ListId], by: Column, c: &Card) -> Option<Key> {
     match by {
         Column::Card => Some(Key::Text(normalize(&c.title))),
-        Column::List => lists.iter().position(|l| *l == c.list).map(|i| Key::Int(i as i64)),
+        Column::List => lists
+            .iter()
+            .position(|l| *l == c.list)
+            .map(|i| Key::Int(i as i64)),
         Column::Labels => first_label(k, c).map(Key::Text),
-        Column::Members => c.members.iter().map(|m| normalize(&m.0)).min().map(Key::Text),
+        Column::Members => c
+            .members
+            .iter()
+            .map(|m| normalize(&m.0))
+            .min()
+            .map(Key::Text),
         Column::Due => c.due.map(|d| Key::Int(d.at.0)),
         Column::Field(f) => field_key(k, f, c),
     }
@@ -125,8 +135,10 @@ pub fn rows(k: &Kanban, cx: &Ctx<'_>, sort: Option<Sort>) -> Vec<CardId> {
         return cards.into_iter().map(|c| c.id).collect();
     };
     let lists: Vec<_> = k.lists_in_order().into_iter().map(|l| l.id).collect();
-    let mut keyed: Vec<(Option<Key>, CardId)> =
-        cards.into_iter().map(|c| (key(k, &lists, s.by, c), c.id)).collect();
+    let mut keyed: Vec<(Option<Key>, CardId)> = cards
+        .into_iter()
+        .map(|c| (key(k, &lists, s.by, c), c.id))
+        .collect();
     keyed.sort_by(|(a, _), (b, _)| match (a, b) {
         (Some(a), Some(b)) => {
             let o = a.order(b);

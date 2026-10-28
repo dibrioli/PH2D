@@ -31,4 +31,3 @@ pub fn photo(name: &str, kind: ViewKind, prep: impl Fn(&mut Views, &World)) {
         });
     }
 }
-

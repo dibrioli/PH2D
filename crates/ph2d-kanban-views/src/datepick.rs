@@ -248,9 +248,7 @@ impl Picker {
                 } else {
                     p.due
                 };
-                let d = parse_date(text, today)
-                    .map(cal_date)
-                    .or(keep);
+                let d = parse_date(text, today).map(cal_date).or(keep);
                 let txt = d.and_then(civil_date).map(date_field).unwrap_or_default();
                 p.set_date(slot, d, txt);
             }
@@ -288,7 +286,14 @@ mod tests {
         let d = CivilDate::new(2026, 10, 25).expect("data");
         let due = Moment(instant(d, 17, 30, &z).expect("instante"));
         let start = Moment(start_of_day(d.add_days(-3), &z).expect("início"));
-        let p = Picker::new(1, Some(start), Some((due, Some(60))), due, &z, Weekday::Monday);
+        let p = Picker::new(
+            1,
+            Some(start),
+            Some((due, Some(60))),
+            due,
+            &z,
+            Weekday::Monday,
+        );
         assert_eq!(p.read(&z), (Some(start), Some((due, Some(60)))));
     }
 

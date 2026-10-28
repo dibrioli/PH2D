@@ -148,9 +148,15 @@ impl Views {
         match self.kind {
             ViewKind::Table => table::wheel(&mut self.table, (x, y), dy, shift),
             ViewKind::Calendar => calendar::wheel(&mut self.calendar, (x, y), dy, shift),
-            ViewKind::Timeline => {
-                timeline::wheel(&mut self.timeline, set, kanban, cx, (x, y), dy, (shift, ctrl))
-            }
+            ViewKind::Timeline => timeline::wheel(
+                &mut self.timeline,
+                set,
+                kanban,
+                cx,
+                (x, y),
+                dy,
+                (shift, ctrl),
+            ),
             ViewKind::Dashboard => Reply::default(),
         }
     }

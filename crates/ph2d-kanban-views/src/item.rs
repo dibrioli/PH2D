@@ -213,7 +213,13 @@ impl KanbanSource<'_> {
     }
 
     /// [`Source::create_span`] da fonte de um Kanban (chamada pela implementação do trait).
-    fn create_span_kanban(&self, at: &Target, title: &str, start: Option<Moment>, due: Moment) -> Plan {
+    fn create_span_kanban(
+        &self,
+        at: &Target,
+        title: &str,
+        start: Option<Moment>,
+        due: Moment,
+    ) -> Plan {
         Self::with_start(self.create(at, title, due), start.filter(|s| *s < due))
     }
 }

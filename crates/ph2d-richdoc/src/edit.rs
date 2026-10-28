@@ -79,15 +79,10 @@ impl RichDoc {
         let c = self.clamp(c);
         let blocks = self.blocks_mut();
         let cur = &mut blocks[c.block];
-        if cur.kind == BlockKind::Heading(1)
-            || cur.kind == BlockKind::Heading(2)
-            || cur.kind == BlockKind::Heading(3)
-        {
-            if c.byte == 0 && !cur.inline.is_empty() {
-                let indent = cur.indent;
-                blocks.insert(c.block, Block::paragraph("").with_indent(indent));
-                return Caret::new(c.block + 1, 0);
-            }
+        if matches!(cur.kind, BlockKind::Heading(1..=3)) && c.byte == 0 && !cur.inline.is_empty() {
+            let indent = cur.indent;
+            blocks.insert(c.block, Block::paragraph("").with_indent(indent));
+            return Caret::new(c.block + 1, 0);
         }
         let tail = cur.inline.split_off(c.byte);
         let kind = match &cur.kind {

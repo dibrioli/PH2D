@@ -27,9 +27,16 @@ fn hm(ms: i64, cx: &Ctx<'_>) -> String {
 
 /// A coluna da hora: «10:00 AM – 11:30 AM», «3:00 PM», «Oct 27 – Nov 1» ou «All day».
 fn when(it: &Item, today: CivilDate, cx: &Ctx<'_>) -> String {
-    let span = |a: String, b: String| tr_with("kanban.views.calendar.span", &[("a", &a), ("b", &b)]);
+    let span =
+        |a: String, b: String| tr_with("kanban.views.calendar.span", &[("a", &a), ("b", &b)]);
     match (kind(it, cx.zone), it.start) {
-        (Kind::Timed { has_start: true, top }, _) => span(hm(top.0, cx), hm(it.end.0, cx)),
+        (
+            Kind::Timed {
+                has_start: true,
+                top,
+            },
+            _,
+        ) => span(hm(top.0, cx), hm(it.end.0, cx)),
         (Kind::Timed { .. }, _) => hm(it.end.0, cx),
         (Kind::AllDay, Some(s)) => span(
             day_text(day_of(s.0, cx.zone), today),
@@ -42,7 +49,9 @@ fn when(it: &Item, today: CivilDate, cx: &Ctx<'_>) -> String {
 /// Os índices dos itens da agenda, pela ordem (a entrega, depois o título), a partir de `from`.
 #[must_use]
 pub(crate) fn order(items: &[Item], from: i64) -> Vec<usize> {
-    let mut v: Vec<usize> = (0..items.len()).filter(|i| items[*i].end.0 >= from).collect();
+    let mut v: Vec<usize> = (0..items.len())
+        .filter(|i| items[*i].end.0 >= from)
+        .collect();
     v.sort_by(|a, b| {
         items[*a]
             .end
@@ -90,7 +99,16 @@ pub(crate) fn paint(
         let t = tr("kanban.views.calendar.nothing");
         let w = ts.prefix_width(t, m::AGENDA_PX);
         let y = text_top(ts, area.y, area.h, m::AGENDA_PX);
-        paint_text_elided(ts, out, t, area.x + (area.w - w) / 2.0, y, m::AGENDA_PX, area.w, c(theme, T::KanbanCardMeta));
+        paint_text_elided(
+            ts,
+            out,
+            t,
+            area.x + (area.w - w) / 2.0,
+            y,
+            m::AGENDA_PX,
+            area.w,
+            c(theme, T::KanbanCardMeta),
+        );
     }
     let whens: Vec<(usize, String)> = groups
         .iter()
@@ -109,7 +127,10 @@ pub(crate) fn paint(
         let head = Rect::new(x0, y, w, m::AGENDA_HEAD_H);
         let title = tr_with(
             "kanban.views.calendar.day_title",
-            &[("wd", &weekday_name(d.weekday())), ("day", &day_text(*d, today))],
+            &[
+                ("wd", &weekday_name(d.weekday())),
+                ("day", &day_text(*d, today)),
+            ],
         );
         let ink = if *d == today {
             c(theme, T::KanbanBlueBold)
@@ -118,14 +139,25 @@ pub(crate) fn paint(
         };
         let ty = text_top(ts, head.y, head.h, m::AGENDA_PX);
         paint_text_title_elided(ts, out, &title, head.x, ty, m::AGENDA_PX, w, ink);
-        out.fill_rect(rect_to_vello(Rect::new(head.x, head.y + head.h - m::GRID_LINE, w, m::GRID_LINE)), lc);
+        out.fill_rect(
+            rect_to_vello(Rect::new(
+                head.x,
+                head.y + head.h - m::GRID_LINE,
+                w,
+                m::GRID_LINE,
+            )),
+            lc,
+        );
         y += m::AGENDA_HEAD_H;
         for i in v {
             let it = &items[*i];
             let r = Rect::new(x0, y, w, m::AGENDA_ROW_H);
             let ty = text_top(ts, r.y, r.h, m::AGENDA_PX);
             let meta = c(theme, T::KanbanCardMeta);
-            let w_text = whens.iter().find(|(j, _)| j == i).map_or("", |(_, t)| t.as_str());
+            let w_text = whens
+                .iter()
+                .find(|(j, _)| j == i)
+                .map_or("", |(_, t)| t.as_str());
             paint_text_elided(ts, out, w_text, r.x, ty, m::AGENDA_PX, time_w, meta);
             let (dx, dy) = (r.x + time_w + m::AGENDA_DOT_R, r.y + r.h / 2.0);
             if it.done {
@@ -136,7 +168,11 @@ pub(crate) fn paint(
                 fill_circle(out, dx, dy, m::AGENDA_DOT_R, tone(theme, it.tone).strip);
             }
             let tx = dx + m::AGENDA_DOT_R + m::ITEM_PAD_X * 2.0;
-            let fg = if it.done { meta } else { c(theme, T::KanbanCardFg) };
+            let fg = if it.done {
+                meta
+            } else {
+                c(theme, T::KanbanCardFg)
+            };
             paint_text_elided(ts, out, &it.title, tx, ty, m::AGENDA_PX, r.x + r.w - tx, fg);
             if r.y + r.h > area.y && r.y < area.y + area.h {
                 p.agenda.push((r, *i));

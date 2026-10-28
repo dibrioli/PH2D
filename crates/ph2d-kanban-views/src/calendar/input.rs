@@ -110,7 +110,9 @@ fn composer_down(st: &mut CalendarState, src: &dyn Source, cx: &Ctx<'_>, x: f32,
     };
     if c.list.open {
         c.list.open = false;
-        if let Some(i) = (0..c.list.options.len()).find(|i| c.list.option_rect(r.chip, *i).contains(x, y)) {
+        if let Some(i) =
+            (0..c.list.options.len()).find(|i| c.list.option_rect(r.chip, *i).contains(x, y))
+        {
             c.list.select(i);
         }
         return Reply::taken();
@@ -235,7 +237,12 @@ fn up(st: &mut CalendarState, src: &dyn Source, cx: &Ctx<'_>, x: f32, y: f32) ->
     Reply::with_plan(src.reschedule(p.item.key, start, end))
 }
 
-pub(crate) fn pointer(st: &mut CalendarState, src: &dyn Source, cx: &Ctx<'_>, p: PointerAt) -> Reply {
+pub(crate) fn pointer(
+    st: &mut CalendarState,
+    src: &dyn Source,
+    cx: &Ctx<'_>,
+    p: PointerAt,
+) -> Reply {
     match p.kind {
         PointerKind::Down => down(st, src, cx, p.x, p.y),
         PointerKind::Move => {

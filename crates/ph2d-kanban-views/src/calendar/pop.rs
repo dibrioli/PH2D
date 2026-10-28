@@ -34,7 +34,10 @@ fn anchor(area: Rect, cells: &[(Rect, CivilDate)], day: CivilDate, h: f32) -> Re
         .find(|(_, d)| *d == day)
         .map_or(area, |(r, _)| *r);
     let w = m::POP_W.min(area.w - 2.0 * m::PAD);
-    let x = cell.x.min(area.x + area.w - m::PAD - w).max(area.x + m::PAD);
+    let x = cell
+        .x
+        .min(area.x + area.w - m::PAD - w)
+        .max(area.x + m::PAD);
     let mut y = cell.y + m::DAY_NUM_H;
     if y + h > area.y + area.h - m::PAD {
         y = (area.y + area.h - m::PAD - h).max(area.y + m::PAD);
@@ -72,7 +75,16 @@ fn text_button(
         T::KanbanCardMeta
     };
     let y = text_top(ts, r.y, r.h, m::BUTTON_PX);
-    paint_text_elided(ts, out, text, r.x + m::BUTTON_PAD_X, y, m::BUTTON_PX, w, c(theme, ink));
+    paint_text_elided(
+        ts,
+        out,
+        text,
+        r.x + m::BUTTON_PAD_X,
+        y,
+        m::BUTTON_PX,
+        w,
+        c(theme, ink),
+    );
     r
 }
 
@@ -91,28 +103,79 @@ pub(crate) fn composer(
         r.y = y.min(area.y + area.h - m::PAD - h).max(area.y + m::PAD);
     }
     panel(out, theme, r);
-    let inner = Rect::new(r.x + m::POP_PAD, r.y + m::POP_PAD, r.w - 2.0 * m::POP_PAD, m::POP_TITLE_H);
-    label(out, ts, theme, inner, tr("kanban.views.calendar.add"), T::KanbanCardFg);
+    let inner = Rect::new(
+        r.x + m::POP_PAD,
+        r.y + m::POP_PAD,
+        r.w - 2.0 * m::POP_PAD,
+        m::POP_TITLE_H,
+    );
+    label(
+        out,
+        ts,
+        theme,
+        inner,
+        tr("kanban.views.calendar.add"),
+        T::KanbanCardFg,
+    );
     let field = Rect::new(inner.x, inner.y + inner.h, inner.w, m::FIELD_H);
     fill_rounded_rect(out, field, m::BUTTON_RADIUS, c(theme, T::KanbanCard));
-    stroke_rounded_rect(out, field, m::BUTTON_RADIUS, m::FOCUS_STROKE, c(theme, T::FocusRing));
+    stroke_rounded_rect(
+        out,
+        field,
+        m::BUTTON_RADIUS,
+        m::FOCUS_STROKE,
+        c(theme, T::FocusRing),
+    );
     let tx = field.x + m::ITEM_PAD_X;
     let ty = text_top(ts, field.y, field.h, m::FIELD_PX);
     let tw = field.w - 2.0 * m::ITEM_PAD_X;
     if comp.field.text.is_empty() {
         let ph = tr("kanban.views.calendar.placeholder");
-        paint_text_elided(ts, out, ph, tx, ty, m::FIELD_PX, tw, c(theme, T::KanbanCardMeta));
+        paint_text_elided(
+            ts,
+            out,
+            ph,
+            tx,
+            ty,
+            m::FIELD_PX,
+            tw,
+            c(theme, T::KanbanCardMeta),
+        );
     } else {
         let t = &comp.field.text;
-        paint_text_elided(ts, out, t, tx, ty, m::FIELD_PX, tw, c(theme, T::KanbanCardFg));
+        paint_text_elided(
+            ts,
+            out,
+            t,
+            tx,
+            ty,
+            m::FIELD_PX,
+            tw,
+            c(theme, T::KanbanCardFg),
+        );
     }
     let pre = comp.field.text.get(..comp.field.caret).unwrap_or_default();
     let cx = tx + ts.prefix_width(pre, m::FIELD_PX);
-    let caret = Rect::new(cx, field.y + m::CELL_PAD, m::CARET_W, field.h - 2.0 * m::CELL_PAD);
-    out.fill_rect(ph2d_editor_core::paint::rect_to_vello(caret), c(theme, T::KanbanCardFg));
+    let caret = Rect::new(
+        cx,
+        field.y + m::CELL_PAD,
+        m::CARET_W,
+        field.h - 2.0 * m::CELL_PAD,
+    );
+    out.fill_rect(
+        ph2d_editor_core::paint::rect_to_vello(caret),
+        c(theme, T::KanbanCardFg),
+    );
     let chip = Rect::new(inner.x, field.y + field.h + m::POP_GAP, inner.w, m::FIELD_H);
     let by = chip.y + chip.h + m::POP_GAP;
-    let add = text_button(out, ts, theme, (inner.x, by), tr("kanban.views.calendar.add_card"), true);
+    let add = text_button(
+        out,
+        ts,
+        theme,
+        (inner.x, by),
+        tr("kanban.views.calendar.add_card"),
+        true,
+    );
     let cancel = text_button(
         out,
         ts,
@@ -152,8 +215,20 @@ pub(crate) fn day(
     let h = fixed + shown as f32 * pitch;
     let r = anchor(area, cells, date, h);
     panel(out, theme, r);
-    let inner = Rect::new(r.x + m::POP_PAD, r.y + m::POP_PAD, r.w - 2.0 * m::POP_PAD, m::POP_TITLE_H);
-    label(out, ts, theme, inner, &day_text(date, today), T::KanbanCardFg);
+    let inner = Rect::new(
+        r.x + m::POP_PAD,
+        r.y + m::POP_PAD,
+        r.w - 2.0 * m::POP_PAD,
+        m::POP_TITLE_H,
+    );
+    label(
+        out,
+        ts,
+        theme,
+        inner,
+        &day_text(date, today),
+        T::KanbanCardFg,
+    );
     let mut rows = Vec::new();
     let mut y = inner.y + inner.h;
     for it in items.iter().take(shown) {

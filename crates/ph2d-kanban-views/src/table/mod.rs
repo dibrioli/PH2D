@@ -13,8 +13,8 @@ pub use layout::{Column, Grid, Sort};
 
 use ph2d_editor_core::doc_surface::{Key, KeyInput};
 use ph2d_editor_core::widget::{
-    DatePickerEvent, DatePickerLayout, ScrollbarState,
-    scrollbar_delta_for_drag, scrollbar_thumb_rect, scrollbar_track_rect,
+    DatePickerEvent, DatePickerLayout, ScrollbarState, scrollbar_delta_for_drag,
+    scrollbar_thumb_rect, scrollbar_track_rect,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_kanban_dates::civil;
@@ -115,7 +115,10 @@ impl TableState {
     /// Clicar no cabeçalho de `col`: ascendente → descendente → a ordem do quadro.
     pub fn toggle_sort(&mut self, col: Column) {
         self.sort = match self.sort {
-            Some(s) if s.by == col && !s.desc => Some(Sort { by: col, desc: true }),
+            Some(s) if s.by == col && !s.desc => Some(Sort {
+                by: col,
+                desc: true,
+            }),
             Some(s) if s.by == col => None,
             _ => Some(Sort {
                 by: col,
@@ -192,7 +195,12 @@ fn press_cell(st: &mut TableState, k: &Kanban, cx: &Ctx<'_>, i: usize, col: Colu
     };
     let bounds = p.area;
     st.pop = match col {
-        Column::Card => return Reply::open(CardRef { kanban: k.id, card: id }),
+        Column::Card => {
+            return Reply::open(CardRef {
+                kanban: k.id,
+                card: id,
+            });
+        }
         Column::List => Some(Pop::List {
             card: id,
             dd: edit::list_dropdown(k, card),
@@ -230,13 +238,20 @@ fn press_cell(st: &mut TableState, k: &Kanban, cx: &Ctx<'_>, i: usize, col: Colu
                 let v = (!on).then_some(FieldValue::Checkbox(true));
                 return Reply::with_plan(edit::set_field(k, card, f, v));
             }
-            Some(FieldKind::Dropdown(_)) => edit::option_dropdown(k, card, f).map(|dd| Pop::Option {
-                card: id,
-                field: f,
-                dd,
-                chip: cell,
-            }),
-            _ => return Reply::open(CardRef { kanban: k.id, card: id }),
+            Some(FieldKind::Dropdown(_)) => {
+                edit::option_dropdown(k, card, f).map(|dd| Pop::Option {
+                    card: id,
+                    field: f,
+                    dd,
+                    chip: cell,
+                })
+            }
+            _ => {
+                return Reply::open(CardRef {
+                    kanban: k.id,
+                    card: id,
+                });
+            }
         },
     };
     Reply::taken()
@@ -261,11 +276,13 @@ fn picker_event(
         DatePickerEvent::Save => {
             let (start, due) = picker.read(cx.zone);
             st.pop = None;
-            return card_of(k, card).map_or_else(Plan::default, |c| edit::set_dates(k, c, start, due));
+            return card_of(k, card)
+                .map_or_else(Plan::default, |c| edit::set_dates(k, c, start, due));
         }
         DatePickerEvent::Remove => {
             st.pop = None;
-            return card_of(k, card).map_or_else(Plan::default, |c| edit::set_dates(k, c, None, None));
+            return card_of(k, card)
+                .map_or_else(Plan::default, |c| edit::set_dates(k, c, None, None));
         }
         DatePickerEvent::Close => st.pop = None,
         DatePickerEvent::Toggled { .. } | DatePickerEvent::Reminder(_) => {}
@@ -306,7 +323,9 @@ fn pointer_pop(st: &mut TableState, k: &Kanban, cx: &Ctx<'_>, p: PointerAt) -> O
                 return Some(reply);
             }
         }
-        Pop::Option { dd, chip, field, .. } => {
+        Pop::Option {
+            dd, chip, field, ..
+        } => {
             let hit = (0..dd.options.len()).find(|&i| dd.option_rect(*chip, i).contains(p.x, p.y));
             let (f, chosen) = (*field, hit.map(|i| dd.options[i].value));
             st.pop = None;
@@ -333,7 +352,8 @@ fn pointer_pop(st: &mut TableState, k: &Kanban, cx: &Ctx<'_>, p: PointerAt) -> O
                 return Some(reply);
             }
             let who = people(k, cx);
-            if let Some(i) = (0..who.len()).find(|&i| edit::pop_row(*at, i + 1).contains(p.x, p.y)) {
+            if let Some(i) = (0..who.len()).find(|&i| edit::pop_row(*at, i + 1).contains(p.x, p.y))
+            {
                 reply.plan = edit::toggle_member(k, c, &who[i]);
             }
         }

@@ -61,19 +61,9 @@ pub(crate) fn tone(theme: Theme, t: ItemTone) -> Tone {
 }
 
 /// Um botão do cabeçalho: o corpo, a moldura e o texto (ou nada, para as setas).
-fn button(
-    out: &mut VectorScene,
-    ts: &mut TextSystem,
-    theme: Theme,
-    r: Rect,
-    text: &str,
-    on: bool,
-) {
+fn button(out: &mut VectorScene, ts: &mut TextSystem, theme: Theme, r: Rect, text: &str, on: bool) {
     let (fill, ink) = if on {
-        (
-            c(theme, T::KanbanBlueBold),
-            c(theme, T::KanbanLabelInkBold),
-        )
+        (c(theme, T::KanbanBlueBold), c(theme, T::KanbanLabelInkBold))
     } else {
         (c(theme, T::KanbanCard), c(theme, T::KanbanCardFg))
     };
@@ -84,7 +74,16 @@ fn button(
     if !text.is_empty() {
         let w = ts.prefix_width(text, m::BUTTON_PX);
         let y = text_top(ts, r.y, r.h, m::BUTTON_PX);
-        paint_text_elided(ts, out, text, r.x + (r.w - w) / 2.0, y, m::BUTTON_PX, r.w, ink);
+        paint_text_elided(
+            ts,
+            out,
+            text,
+            r.x + (r.w - w) / 2.0,
+            y,
+            m::BUTTON_PX,
+            r.w,
+            ink,
+        );
     }
 }
 
@@ -103,15 +102,24 @@ fn title_text(mode: Mode, days: &[Day], anchor: CivilDate, today: CivilDate) -> 
     match (mode, days.first(), days.last()) {
         (Mode::Day, Some(a), _) => tr_with(
             "kanban.views.calendar.day_title",
-            &[("wd", &weekday_name(a.date.weekday())), ("day", &day_text(a.date, today))],
+            &[
+                ("wd", &weekday_name(a.date.weekday())),
+                ("day", &day_text(a.date, today)),
+            ],
         ),
         (Mode::Week | Mode::Agenda, Some(a), Some(b)) => tr_with(
             "kanban.views.calendar.week_title",
-            &[("a", &day_text(a.date, today)), ("b", &day_text(b.date, today))],
+            &[
+                ("a", &day_text(a.date, today)),
+                ("b", &day_text(b.date, today)),
+            ],
         ),
         _ => tr_with(
             "kanban.views.calendar.title",
-            &[("month", &month_name(anchor.month, true)), ("y", &anchor.year)],
+            &[
+                ("month", &month_name(anchor.month, true)),
+                ("y", &anchor.year),
+            ],
         ),
     }
 }
@@ -133,7 +141,12 @@ pub(crate) fn header(
     p.today = Rect::new(h.x, y, tw, m::BUTTON_H);
     button(out, ts, theme, p.today, today, false);
     p.prev = Rect::new(p.today.x + tw + m::BUTTON_GAP, y, m::ARROW_W, m::BUTTON_H);
-    p.next = Rect::new(p.prev.x + m::ARROW_W + m::BUTTON_GAP, y, m::ARROW_W, m::BUTTON_H);
+    p.next = Rect::new(
+        p.prev.x + m::ARROW_W + m::BUTTON_GAP,
+        y,
+        m::ARROW_W,
+        m::BUTTON_H,
+    );
     let ink = c(theme, T::KanbanCardFg);
     for (r, dir) in [(p.prev, 1.0), (p.next, -1.0)] {
         button(out, ts, theme, r, "", false);
@@ -197,7 +210,12 @@ pub(crate) fn item(
     } else {
         fill_rounded_rect(out, r, m::ITEM_RADIUS, t.soft);
         let strip = Rect::new(r.x, r.y, m::STRIP_W, r.h);
-        fill_rounded_rect_radii(out, strip, (m::ITEM_RADIUS, 0.0, 0.0, m::ITEM_RADIUS), t.strip);
+        fill_rounded_rect_radii(
+            out,
+            strip,
+            (m::ITEM_RADIUS, 0.0, 0.0, m::ITEM_RADIUS),
+            t.strip,
+        );
         t.soft_ink
     };
     if it.done && (!is_bar || starts) {
@@ -228,7 +246,14 @@ pub(crate) fn item_text(mode: Mode, it: &Item, is_bar: bool, cx: &Ctx<'_>) -> St
 }
 
 /// A grelha: o fundo, os dias fora do mês, as linhas, os números (hoje num círculo).
-fn grid(out: &mut VectorScene, ts: &mut TextSystem, theme: Theme, geo: &Geo, days: &[Day], p: &mut Painted) {
+fn grid(
+    out: &mut VectorScene,
+    ts: &mut TextSystem,
+    theme: Theme,
+    geo: &Geo,
+    days: &[Day],
+    p: &mut Painted,
+) {
     let g = geo.grid;
     fill_rounded_rect(out, g, m::GRID_RADIUS, c(theme, T::KanbanCard));
     out.push_clip(&RoundedRect::new(
@@ -245,17 +270,14 @@ fn grid(out: &mut VectorScene, ts: &mut TextSystem, theme: Theme, geo: &Geo, day
         if !d.in_month {
             out.fill_rect(rect_to_vello(r), c(theme, T::KanbanList));
         }
-        out.fill_rect(
-            rect_to_vello(Rect::new(r.x, r.y, r.w, m::GRID_LINE)),
-            line,
-        );
-        out.fill_rect(
-            rect_to_vello(Rect::new(r.x, r.y, m::GRID_LINE, r.h)),
-            line,
-        );
+        out.fill_rect(rect_to_vello(Rect::new(r.x, r.y, r.w, m::GRID_LINE)), line);
+        out.fill_rect(rect_to_vello(Rect::new(r.x, r.y, m::GRID_LINE, r.h)), line);
         let num = d.date.day.to_string();
         let w = ts.prefix_width(&num, m::DAY_NUM_PX);
-        let (nx, ny) = (r.x + r.w - m::CELL_PAD - m::TODAY_R, r.y + m::DAY_NUM_H / 2.0);
+        let (nx, ny) = (
+            r.x + r.w - m::CELL_PAD - m::TODAY_R,
+            r.y + m::DAY_NUM_H / 2.0,
+        );
         let ink = if d.today {
             fill_circle(out, nx, ny, m::TODAY_R, c(theme, T::KanbanBlueBold));
             c(theme, T::KanbanLabelInkBold)
@@ -282,8 +304,18 @@ fn plus(out: &mut VectorScene, theme: Theme, cell: Rect) -> Rect {
     fill_rounded_rect(out, r, m::ITEM_RADIUS, c(theme, T::KanbanSlot));
     let (cx, cy) = (r.x + r.w / 2.0, r.y + r.h / 2.0);
     let ink = c(theme, T::KanbanCardFg);
-    stroke_polyline(out, &[(cx - m::PLUS_ARM, cy), (cx + m::PLUS_ARM, cy)], m::CHEVRON_STROKE, ink);
-    stroke_polyline(out, &[(cx, cy - m::PLUS_ARM), (cx, cy + m::PLUS_ARM)], m::CHEVRON_STROKE, ink);
+    stroke_polyline(
+        out,
+        &[(cx - m::PLUS_ARM, cy), (cx + m::PLUS_ARM, cy)],
+        m::CHEVRON_STROKE,
+        ink,
+    );
+    stroke_polyline(
+        out,
+        &[(cx, cy - m::PLUS_ARM), (cx, cy + m::PLUS_ARM)],
+        m::CHEVRON_STROKE,
+        ink,
+    );
     r
 }
 
@@ -345,15 +377,22 @@ pub(crate) fn paint(
         let w = ts.prefix_width(name, m::WEEKDAY_PX);
         let y = text_top(ts, wd.y, wd.h, m::WEEKDAY_PX);
         let x = wd.x + i as f32 * cw + (cw - w) / 2.0;
-        paint_text_elided(ts, out, name, x, y, m::WEEKDAY_PX, cw, c(theme, T::KanbanListMeta));
+        paint_text_elided(
+            ts,
+            out,
+            name,
+            x,
+            y,
+            m::WEEKDAY_PX,
+            cw,
+            c(theme, T::KanbanListMeta),
+        );
     }
     grid(out, ts, theme, &geo, &days, &mut p);
     let dragging = st.press.as_ref().filter(|pr| pr.moved);
-    let hover_cell = st.hover.and_then(|(x, y)| {
-        p.cells
-            .iter()
-            .position(|(r, _)| r.contains(x, y))
-    });
+    let hover_cell = st
+        .hover
+        .and_then(|(x, y)| p.cells.iter().position(|(r, _)| r.contains(x, y)));
     if let (Some(_), Some(i)) = (dragging, hover_cell) {
         let r = geo.cell(i);
         out.fill_rect(rect_to_vello(r), c(theme, T::KanbanSlot));
@@ -384,7 +423,16 @@ pub(crate) fn paint(
         );
         let text = tr_with("kanban.views.calendar.more", &[("n", n)]);
         let y = text_top(ts, r.y, r.h, m::ITEM_PX);
-        paint_text_elided(ts, out, &text, r.x + m::ITEM_PAD_X, y, m::ITEM_PX, r.w, c(theme, T::KanbanCardMeta));
+        paint_text_elided(
+            ts,
+            out,
+            &text,
+            r.x + m::ITEM_PAD_X,
+            y,
+            m::ITEM_PX,
+            r.w,
+            c(theme, T::KanbanCardMeta),
+        );
         p.more.push((r, days[*i].date, *n));
     }
     p.items = items;

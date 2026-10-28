@@ -105,25 +105,66 @@ fn contains(r: Rect, x: f32, y: f32) -> bool {
 
 /// Um número da fila de cima: o rótulo (com a marca de ESTADO, se é um) e o valor.
 #[allow(clippy::too_many_arguments)]
-fn tile(out: &mut VectorScene, ts: &mut TextSystem, theme: Theme, r: Rect, label: &str, value: usize, mark: Option<T>) {
+fn tile(
+    out: &mut VectorScene,
+    ts: &mut TextSystem,
+    theme: Theme,
+    r: Rect,
+    label: &str,
+    value: usize,
+    mark: Option<T>,
+) {
     fill_rounded_rect(out, r, m::RADIUS, c(theme, T::KanbanCard));
     let mut x = r.x + m::CARD_PAD;
     let y = r.y + m::CARD_PAD;
     let lh = m::TILE_LABEL_PX * m::LINE_RATIO;
     if let Some(t) = mark {
         let my = y + (lh - m::TILE_MARK) / 2.0;
-        fill_rounded_rect(out, Rect::new(x, my, m::TILE_MARK, m::TILE_MARK), m::TILE_MARK / 2.0, c(theme, t));
+        fill_rounded_rect(
+            out,
+            Rect::new(x, my, m::TILE_MARK, m::TILE_MARK),
+            m::TILE_MARK / 2.0,
+            c(theme, t),
+        );
         x += m::TILE_MARK + m::TILE_MARK_GAP;
     }
     let ty = text_top(ts, y, lh, m::TILE_LABEL_PX);
-    paint_text_elided(ts, out, label, x, ty, m::TILE_LABEL_PX, r.x + r.w - x - m::CARD_PAD, c(theme, T::KanbanCardMeta));
+    paint_text_elided(
+        ts,
+        out,
+        label,
+        x,
+        ty,
+        m::TILE_LABEL_PX,
+        r.x + r.w - x - m::CARD_PAD,
+        c(theme, T::KanbanCardMeta),
+    );
     let vy = y + lh + m::TILE_MARK_GAP;
-    paint_text_title(ts, out, &value.to_string(), r.x + m::CARD_PAD, vy, m::TILE_VALUE_PX, r.w - 2.0 * m::CARD_PAD, c(theme, T::KanbanCardFg));
+    paint_text_title(
+        ts,
+        out,
+        &value.to_string(),
+        r.x + m::CARD_PAD,
+        vy,
+        m::TILE_VALUE_PX,
+        r.w - 2.0 * m::CARD_PAD,
+        c(theme, T::KanbanCardFg),
+    );
 }
 
 /// O seletor Barras | Anel do cabeçalho de um gráfico (direita); devolve os dois botões.
-fn toggle(out: &mut VectorScene, ts: &mut TextSystem, theme: Theme, right: f32, y: f32, form: Form) -> [Rect; 2] {
-    let names = [tr("kanban.views.dashboard.bars"), tr("kanban.views.dashboard.ring")];
+fn toggle(
+    out: &mut VectorScene,
+    ts: &mut TextSystem,
+    theme: Theme,
+    right: f32,
+    y: f32,
+    form: Form,
+) -> [Rect; 2] {
+    let names = [
+        tr("kanban.views.dashboard.bars"),
+        tr("kanban.views.dashboard.ring"),
+    ];
     let ws = names.map(|n| ts.prefix_width(n, m::SEG_PX) + 2.0 * m::SEG_PAD_X);
     let mut x = right - ws[0] - ws[1];
     let mut rects = [Rect::new(0.0, 0.0, 0.0, 0.0); 2];
@@ -135,7 +176,11 @@ fn toggle(out: &mut VectorScene, ts: &mut TextSystem, theme: Theme, right: f32, 
         if on {
             fill_rounded_rect(out, r, m::SEG_RADIUS, c(theme, T::KanbanBlueBold));
         }
-        let ink = if on { c(theme, T::KanbanLabelInkBold) } else { c(theme, T::KanbanCardFg) };
+        let ink = if on {
+            c(theme, T::KanbanLabelInkBold)
+        } else {
+            c(theme, T::KanbanCardFg)
+        };
         let ty = text_top(ts, y, m::SEG_H, m::SEG_PX);
         paint_text_elided(ts, out, n, x + m::SEG_PAD_X, ty, m::SEG_PX, ws[i], ink);
         rects[i] = r;
@@ -145,14 +190,25 @@ fn toggle(out: &mut VectorScene, ts: &mut TextSystem, theme: Theme, right: f32, 
 }
 
 /// A dica sob o rato: a chave de linha na cor da série, o VALOR em destaque e o nome por baixo.
-fn tip(out: &mut VectorScene, ts: &mut TextSystem, theme: Theme, area: Rect, at: (f32, f32), bar: &Bar, total: Option<usize>) {
+fn tip(
+    out: &mut VectorScene,
+    ts: &mut TextSystem,
+    theme: Theme,
+    area: Rect,
+    at: (f32, f32),
+    bar: &Bar,
+    total: Option<usize>,
+) {
     let one = if bar.count == 1 { "_one" } else { "" };
     let value = match total.filter(|t| *t > 0) {
         Some(t) => tr_with(
             &format!("kanban.views.dashboard.tip_share{one}"),
             &[("n", &bar.count), ("p", &((bar.count * 100 + t / 2) / t))],
         ),
-        None => tr_with(&format!("kanban.views.dashboard.tip{one}"), &[("n", &bar.count)]),
+        None => tr_with(
+            &format!("kanban.views.dashboard.tip{one}"),
+            &[("n", &bar.count)],
+        ),
     };
     let vw = ts.prefix_width_weighted(&value, m::TIP_VALUE_PX, FontWeight::SEMI_BOLD);
     let nw = ts.prefix_width(&bar.name, m::SMALL_PX);
@@ -170,15 +226,38 @@ fn tip(out: &mut VectorScene, ts: &mut TextSystem, theme: Theme, area: Rect, at:
     let shadow = Rect::new(r.x, r.y + m::TIP_SHADOW_DY, r.w, r.h);
     fill_rounded_rect(out, shadow, m::TIP_RADIUS, c(theme, T::KanbanShadowHover));
     fill_rounded_rect(out, r, m::TIP_RADIUS, c(theme, T::KanbanCard));
-    let key = Rect::new(r.x + m::TIP_PAD, r.y + m::TIP_PAD + m::TIP_VALUE_PX * m::TIP_KEY_RISE, m::TIP_KEY_W, m::TIP_KEY_H);
+    let key = Rect::new(
+        r.x + m::TIP_PAD,
+        r.y + m::TIP_PAD + m::TIP_VALUE_PX * m::TIP_KEY_RISE,
+        m::TIP_KEY_W,
+        m::TIP_KEY_H,
+    );
     let color = match &bar.who {
         Who::Label(_, Some(l)) => crate::common::label_colors(theme, *l).0,
         who => c(theme, who.token(theme)),
     };
     fill_rounded_rect(out, key, m::TIP_KEY_H / 2.0, color);
     let tx = key.x + m::TIP_KEY_W + m::TIP_PAD;
-    paint_text_title(ts, out, &value, tx, r.y + m::TIP_PAD, m::TIP_VALUE_PX, w, c(theme, T::KanbanCardFg));
-    paint_text_elided(ts, out, &bar.name, tx, r.y + m::TIP_PAD + m::TIP_VALUE_PX * m::LINE_RATIO, m::SMALL_PX, nw + m::TIP_PAD, c(theme, T::KanbanCardMeta));
+    paint_text_title(
+        ts,
+        out,
+        &value,
+        tx,
+        r.y + m::TIP_PAD,
+        m::TIP_VALUE_PX,
+        w,
+        c(theme, T::KanbanCardFg),
+    );
+    paint_text_elided(
+        ts,
+        out,
+        &bar.name,
+        tx,
+        r.y + m::TIP_PAD + m::TIP_VALUE_PX * m::LINE_RATIO,
+        m::SMALL_PX,
+        nw + m::TIP_PAD,
+        c(theme, T::KanbanCardMeta),
+    );
 }
 
 /// ⭐ Pinta o painel em `area`.
@@ -199,12 +278,29 @@ pub fn paint(
         return;
     };
     let s = stats(k, cx);
-    let inner = Rect::new(area.x + m::PAD, area.y + m::PAD, area.w - 2.0 * m::PAD, area.h - 2.0 * m::PAD);
+    let inner = Rect::new(
+        area.x + m::PAD,
+        area.y + m::PAD,
+        area.w - 2.0 * m::PAD,
+        area.h - 2.0 * m::PAD,
+    );
     let tiles = [
         ("kanban.views.dashboard.kpi.cards", s.total, None),
-        ("kanban.views.dashboard.due.overdue", s.due(Bucket::Overdue), Some(Bucket::Overdue.token())),
-        ("kanban.views.dashboard.due.next_day", s.due(Bucket::NextDay), Some(Bucket::NextDay.token())),
-        ("kanban.views.dashboard.due.complete", s.due(Bucket::Complete), Some(Bucket::Complete.token())),
+        (
+            "kanban.views.dashboard.due.overdue",
+            s.due(Bucket::Overdue),
+            Some(Bucket::Overdue.token()),
+        ),
+        (
+            "kanban.views.dashboard.due.next_day",
+            s.due(Bucket::NextDay),
+            Some(Bucket::NextDay.token()),
+        ),
+        (
+            "kanban.views.dashboard.due.complete",
+            s.due(Bucket::Complete),
+            Some(Bucket::Complete.token()),
+        ),
     ];
     #[allow(clippy::cast_precision_loss)]
     let tw = (inner.w - m::GAP * (tiles.len() - 1) as f32) / tiles.len() as f32;
@@ -230,13 +326,33 @@ pub fn paint(
         let ty = text_top(ts, hy, m::HEAD_H, m::TITLE_PX);
         let form = st.form(chart);
         let toggles = if chart.partitions() {
-            toggle(out, ts, theme, card.x + card.w - m::CARD_PAD, hy + (m::HEAD_H - m::SEG_H) / 2.0, form)
+            toggle(
+                out,
+                ts,
+                theme,
+                card.x + card.w - m::CARD_PAD,
+                hy + (m::HEAD_H - m::SEG_H) / 2.0,
+                form,
+            )
         } else {
             [Rect::new(0.0, 0.0, 0.0, 0.0); 2]
         };
         let title_w = toggles[0].x.max(hx) - hx;
-        let title_w = if chart.partitions() { title_w } else { card.w - 2.0 * m::CARD_PAD };
-        paint_text_title(ts, out, tr(chart.title_key()), hx, ty, m::TITLE_PX, title_w, c(theme, T::KanbanCardFg));
+        let title_w = if chart.partitions() {
+            title_w
+        } else {
+            card.w - 2.0 * m::CARD_PAD
+        };
+        paint_text_title(
+            ts,
+            out,
+            tr(chart.title_key()),
+            hx,
+            ty,
+            m::TITLE_PX,
+            title_w,
+            c(theme, T::KanbanCardFg),
+        );
         let body = Rect::new(
             hx,
             hy + m::HEAD_H + m::HEAD_GAP,
@@ -247,7 +363,16 @@ pub fn paint(
         let bars = s.bars(chart);
         let painted = if s.total == 0 && form == Form::Bars && bars.iter().all(|b| b.count == 0) {
             let y = text_top(ts, body.y, body.h, m::BODY_PX);
-            paint_text_elided(ts, out, tr("kanban.views.no_cards"), body.x, y, m::BODY_PX, body.w, c(theme, T::KanbanCardMeta));
+            paint_text_elided(
+                ts,
+                out,
+                tr("kanban.views.no_cards"),
+                body.x,
+                y,
+                m::BODY_PX,
+                body.w,
+                c(theme, T::KanbanCardMeta),
+            );
             chart::Painted::default()
         } else if form == Form::Ring {
             chart::ring(out, ts, theme, body, bars, hover)

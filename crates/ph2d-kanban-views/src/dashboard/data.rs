@@ -39,7 +39,8 @@ impl Who {
                 // As listas COM cor vestem o `normal`; a série veste o `bold` no claro, e no escuro
                 // também quando o matiz já é de uma lista com cor.
                 let shade = if theme.is_dark() && !taken { 1 } else { 2 };
-                ph2d_tokens::kanban::LABELS[shade][Hue::ALL.iter().position(|x| *x == h).unwrap_or(0)]
+                ph2d_tokens::kanban::LABELS[shade]
+                    [Hue::ALL.iter().position(|x| *x == h).unwrap_or(0)]
             }),
             Self::Label(_, Some(c)) => crate::common::label_token(*c),
             Self::Label(_, None) | Self::None | Self::Other => T::KanbanBlackSubtle,
@@ -219,7 +220,11 @@ pub fn stats(k: &Kanban, cx: &Ctx<'_>) -> Stats {
         })
         .collect();
     per_label.sort_by(|a, b| b.count.cmp(&a.count));
-    push_none(&mut per_label, cards.iter().filter(|c| c.labels.is_empty()).count(), "kanban.views.dashboard.no_label");
+    push_none(
+        &mut per_label,
+        cards.iter().filter(|c| c.labels.is_empty()).count(),
+        "kanban.views.dashboard.no_label",
+    );
     let mut per_member: Vec<Bar> = crate::common::people(k, cx)
         .into_iter()
         .map(|m| Bar {
@@ -229,7 +234,11 @@ pub fn stats(k: &Kanban, cx: &Ctx<'_>) -> Stats {
         })
         .collect();
     per_member.sort_by(|a, b| b.count.cmp(&a.count));
-    push_none(&mut per_member, cards.iter().filter(|c| c.members.is_empty()).count(), "kanban.views.dashboard.no_member");
+    push_none(
+        &mut per_member,
+        cards.iter().filter(|c| c.members.is_empty()).count(),
+        "kanban.views.dashboard.no_member",
+    );
     let per_due = Bucket::ALL
         .into_iter()
         .map(|b| Bar {

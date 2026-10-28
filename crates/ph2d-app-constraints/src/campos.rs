@@ -584,7 +584,9 @@ pub fn chave_no_item(k: &Kind, campo: u16) -> Option<&'static str> {
         (Kind::Valor(_), MOLA_LIGADA) => "kind/Valor/mola",
         (Kind::Valor(_), DURACAO) => "kind/Valor/mola/duracao",
         (Kind::Valor(_), RESSALTO) => "kind/Valor/mola/ressalto",
-        (Kind::Comportamento(_), campo) => return crate::campos_comportamento::chave_no_item(campo),
+        (Kind::Comportamento(_), campo) => {
+            return crate::campos_comportamento::chave_no_item(campo);
+        }
         _ => return None,
     })
 }

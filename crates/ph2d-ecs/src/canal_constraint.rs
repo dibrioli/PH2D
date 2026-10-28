@@ -337,7 +337,11 @@ pub fn info(campo: u16) -> Option<CampoInfo> {
             Especie::Opcoes(NAO_SIM),
         ),
         PESO_RAIO => c("canal.constraint.peso_raio", campo, Especie::Continuo),
-        PESO_CURVA => c("canal.constraint.peso_curva", campo, Especie::Opcoes(CURVAS)),
+        PESO_CURVA => c(
+            "canal.constraint.peso_curva",
+            campo,
+            Especie::Opcoes(CURVAS),
+        ),
         PESO_INVERTE => c(
             "canal.constraint.peso_inverte",
             campo,

@@ -22,9 +22,9 @@ pub mod smoke_antena;
 pub mod smoke_braco;
 pub mod smoke_caixa;
 pub mod smoke_mostrador;
+pub mod smoke_painel;
 pub mod smoke_pega;
 pub mod smoke_recreio;
-pub mod smoke_painel;
 pub mod smoke_regua;
 pub mod valor;
 

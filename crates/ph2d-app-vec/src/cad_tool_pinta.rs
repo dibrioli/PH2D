@@ -24,7 +24,13 @@ fn pincel(t: ColorToken, theme: Theme) -> Brush {
     Brush::Solid(VelloColor::from_rgba8(c.r, c.g, c.b, c.a))
 }
 
-pub(crate) fn linha(target: &mut VectorScene, pts: &[[f64; 2]], w: f64, cor: ColorToken, theme: Theme) {
+pub(crate) fn linha(
+    target: &mut VectorScene,
+    pts: &[[f64; 2]],
+    w: f64,
+    cor: ColorToken,
+    theme: Theme,
+) {
     let mut l = BezPath::new();
     for (i, q) in pts.iter().enumerate() {
         if i == 0 {
@@ -54,7 +60,13 @@ pub(crate) fn disco(target: &mut VectorScene, c: [f64; 2], r: f64, cor: ColorTok
 }
 
 /// A ponta de uma seta em `p`, a apontar para `d` (unitário).
-pub(crate) fn seta(target: &mut VectorScene, p: [f64; 2], d: [f64; 2], cor: ColorToken, theme: Theme) {
+pub(crate) fn seta(
+    target: &mut VectorScene,
+    p: [f64; 2],
+    d: [f64; 2],
+    cor: ColorToken,
+    theme: Theme,
+) {
     let l = f64::from(Spacing::Sm.px());
     let n = [-d[1], d[0]];
     let base = [p[0] - d[0] * l, p[1] - d[1] * l];

@@ -446,8 +446,7 @@ pub struct ShapeHandleInput {
     /// O último press numa alça (instante, alça, forma) — o par do duplo-clique: o canvas não
     /// emite `DoubleClick` (é evento de widget), então ele conta-se aqui.
     last: Option<(u128, usize, VecPathId)>,
-    /// Quantos soltares do botão houve (a ferramenta do HUD fecha a seta no quadro seguinte a um).
-    soltos: u32,
+    pub(crate) soltos: u32, // os soltares do botão: a ferramenta do HUD fecha a seta no quadro a seguir
 }
 
 /// O mundo que as portas tocam (a shell parte o `gfx`; o resto vem do `VecState`).
@@ -510,12 +509,6 @@ impl ShapeHandleInput {
     pub fn release(&mut self) -> bool {
         self.soltos = self.soltos.wrapping_add(1);
         self.grab.take().is_some()
-    }
-
-    /// O contador de soltares (ver o campo).
-    #[must_use]
-    pub fn soltos(&self) -> u32 {
-        self.soltos
     }
 
     /// O `Esc` a meio do arrasto: os campos voltam aos do press e o arrasto acaba. `true` =
@@ -636,12 +629,11 @@ pub mod on {
         px_to_world: f64,
         now_ns: u128,
     ) -> bool {
-        // A tool Regras (W4.6) recebe o press por esta porta, que a shell chama em todo modo.
-        if vec.draw_config.mode == ph2d_tool_vector::DrawMode::Rules {
-            return crate::cad_tool::press(vec, w);
-        }
-        if vec.draw_config.mode == ph2d_tool_vector::DrawMode::HudLayout {
-            return crate::hud_tool::press(vec, w);
+        // As tools Regras (W4.6) e HUD Layout (W5.5) recebem o press por esta porta (a shell chama-a em todo modo).
+        match vec.draw_config.mode {
+            ph2d_tool_vector::DrawMode::Rules => return crate::cad_tool::press(vec, w),
+            ph2d_tool_vector::DrawMode::HudLayout => return crate::hud_tool::press(vec, w),
+            _ => {}
         }
         let (input, world) = split(vec, sim, scene);
         input.press(world, w, px_to_world, now_ns)
@@ -665,11 +657,10 @@ pub mod on {
 
     /// [`super::ShapeHandleInput::escape`].
     pub fn escape(vec: &mut VecState, sim: &mut SimWorld, scene: &mut VecScene) -> bool {
-        if vec.draw_config.mode == ph2d_tool_vector::DrawMode::Rules {
-            return crate::cad_tool::escape(vec);
-        }
-        if vec.draw_config.mode == ph2d_tool_vector::DrawMode::HudLayout {
-            return crate::hud_tool::escape(vec);
+        match vec.draw_config.mode {
+            ph2d_tool_vector::DrawMode::Rules => return crate::cad_tool::escape(vec),
+            ph2d_tool_vector::DrawMode::HudLayout => return crate::hud_tool::escape(vec),
+            _ => {}
         }
         let (input, world) = split(vec, sim, scene);
         input.escape(world)

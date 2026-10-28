@@ -46,9 +46,11 @@ fn desenha(vec: &VecState) {
 /// O gesto inteiro de `de` a `para` (mundo), e o quadro que o fecha.
 fn puxa(sim: &mut SimWorld, vec: &mut VecState, de: [f64; 2], para: [f64; 2]) {
     assert!(press(vec, de), "o press é sempre da ferramenta");
-    assert!(
+    let puxou = vec.hud_tool.puxada.is_some();
+    assert_eq!(
         super::drag(vec, para),
-        "com uma seta puxada o arrasto é dela"
+        puxou,
+        "o arrasto é da ferramenta só com uma seta puxada"
     );
     vec.shape_handles.release();
     frame(sim, vec);

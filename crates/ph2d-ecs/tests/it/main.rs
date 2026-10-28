@@ -9,7 +9,6 @@
 //! globais não cabem num binário, e um contador global veria as alocações dos vizinhos): fica em `tests/`.
 
 mod anchor_mount_hierarchy;
-mod o_arranjo_do_hud;
 mod end_to_end_m14;
 mod generate_transform_v1_fixtures;
 mod measure_incremental_capture;
@@ -22,6 +21,7 @@ mod mede_o_que_a_composicao_ja_da_ao_pingpong;
 mod named_anchor_caps;
 mod nesting_sorts_as_a_block;
 mod no_untracked_writes_in_the_sim_crates;
+mod o_arranjo_do_hud;
 mod only_the_door_reads_tags;
 mod rewind_runtime;
 mod sim_present_flow;

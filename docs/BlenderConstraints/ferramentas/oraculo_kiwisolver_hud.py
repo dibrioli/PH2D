@@ -21,7 +21,8 @@ REQ, STRONG, MEDIUM, WEAK = (kiwi.strength.required, kiwi.strength.strong, kiwi.
 FORCA = {"Requerida": REQ, "Forte": STRONG, "Media": MEDIUM, "Fraca": WEAK}
 EDICAO = 1.0e9
 # (posição de quem segue, largura de quem segue, posição de âncora, largura de âncora) — o desempate do lib.rs.
-PESOS = (0.125, 0.3125, 0.5, 0.6875, 1_000_000.0, 1_000_000.0)  # + a posição de quem só é âncora: STRONG (W5.5)
+FIXO = 2_000_000.0  # acima do STRONG do «dentro do canvas»: o que o artista e as âncoras fixam manda (W5.5)
+PESOS = (0.125, 0.3125, 0.5, 0.6875, FIXO, FIXO)  # + a posição de quem só é âncora e o tamanho do que não é texto
 PESOS_TUDO_WEAK = (1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
 CAMPOS = ("x", "y", "w", "h")
 GRELHA = 256.0
@@ -103,7 +104,7 @@ class Arranjo:
             if i not in texto:
                 pw = pesos[5]  # só o texto muda de tamanho (W5.5)
             for cn in ((v["x"] == c["x"]) | pp, (v["y"] == c["y"]) | pp, (v["w"] == c["w"]) | pw,
-                       (v["h"] == c["h"]) | STRONG, (v["w"] >= 0) | REQ, (v["h"] >= 0) | REQ,
+                       (v["h"] == c["h"]) | (FIXO if pesos is PESOS else STRONG), (v["w"] >= 0) | REQ, (v["h"] >= 0) | REQ,
                        (v["x"] >= cv["x"]) | STRONG, (v["y"] >= cv["y"]) | STRONG,
                        (v["x"] + v["w"] <= cv["x"] + cv["w"]) | STRONG,
                        (v["y"] + v["h"] <= cv["y"] + cv["h"]) | STRONG):

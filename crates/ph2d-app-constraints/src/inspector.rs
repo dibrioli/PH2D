@@ -179,7 +179,8 @@ pub fn info(
 pub(crate) fn armar(sim: &mut SimWorld, alvo: Option<(u64, u32)>) {
     if alvo.is_some() {
         crate::cola::armar(sim, None);
-        sim.world_mut().insert_resource(crate::peso::PesoArmado(None));
+        sim.world_mut()
+            .insert_resource(crate::peso::PesoArmado(None));
     }
     sim.world_mut().insert_resource(AlvoArmado(alvo));
 }

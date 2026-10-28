@@ -212,14 +212,14 @@ pub mod cad_cores;
 /// A tool Regras (W4.6): a escolha, as regras possíveis, o quadro, o press, o Delete.
 pub mod cad_tool;
 mod cad_tool_pinta;
-pub mod hud_tool;
-mod hud_tool_pinta;
 /// Os gizmos das regras: o plano (o que se pinta é o que se acerta) e o desenho.
 pub mod cad_tool_plano;
 pub mod edit_marks;
 /// ⚠️ **Atrás da mesma feature que a guardava na shell** — a pré-visualização de fonte
 /// usa `ph2d_panel_vector::FontPreview`, logo ela não existe num build sem painel vectorial.
 pub mod font_preview;
+pub mod hud_tool;
+mod hud_tool_pinta;
 pub mod overlay;
 pub mod overlay_diag;
 pub mod paint_stack;

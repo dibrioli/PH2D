@@ -415,7 +415,7 @@ fn aplica(t: &mut HudTool, sim: &mut SimWorld, visto: &[Visto], pedido: PedidoHu
 /// pedidos da ④, a escolhida que deixou de existir (undo), e a publicação da ④ e da dica.
 pub fn frame(sim: &mut SimWorld, vec: &mut VecState) {
     let ativa = vec.draw_config.mode == DrawMode::HudLayout;
-    let soltos = vec.shape_handles.soltos();
+    let soltos = vec.shape_handles.soltos;
     let VecState {
         hud_tool: t,
         hud_visto: visto,

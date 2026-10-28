@@ -466,7 +466,10 @@ mod tests {
         let mut input = InputState::new();
         f.quadro(&mut input, CORRE);
         assert!(!f.clique(&mut input, CORRE, Middle, true, true), "o pan");
-        assert!(input.mouse.held(ph2d_input::MouseButton::Middle), "e o jogo vê-o");
+        assert!(
+            input.mouse.held(ph2d_input::MouseButton::Middle),
+            "e o jogo vê-o"
+        );
         assert!(!f.clique(&mut input, CORRE, Middle, false, true));
     }
 

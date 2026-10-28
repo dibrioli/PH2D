@@ -72,8 +72,16 @@ pub fn drena() -> Vec<PedidoHud> {
 
 const BOTOES: [(NodeId, IconId, &str); 4] = [
     (VECTOR_HUD_BESIDE, IconId::Link, "panel.vector.hud.beside"),
-    (VECTOR_HUD_APART, IconId::DistributeH, "panel.vector.hud.apart"),
-    (VECTOR_HUD_CENTRE, IconId::AlignMiddle, "panel.vector.hud.centre"),
+    (
+        VECTOR_HUD_APART,
+        IconId::DistributeH,
+        "panel.vector.hud.apart",
+    ),
+    (
+        VECTOR_HUD_CENTRE,
+        IconId::AlignMiddle,
+        "panel.vector.hud.centre",
+    ),
     (VECTOR_HUD_DELETE, IconId::Trash, "panel.vector.hud.delete"),
 ];
 

@@ -159,6 +159,11 @@ fn g(x: f64) -> f64 {
 /// pesos de âncora: a `STRONG` empatava com a âncora de cima (ótimo não único no oráculo).
 pub const PESOS: [f64; 4] = [0.125, 0.3125, 0.5, 0.6875];
 
+/// O que o artista e as âncoras FIXAM (a posição de quem só é âncora, o tamanho do que não é texto, a altura):
+/// acima do `STRONG` do «dentro do canvas» — iguais, empatavam e a resposta mudava com a ordem do hash (medido
+/// 27/10, W5.5: `the_arrangement_reads_the_anchored_box` dava −1 ou 5 conforme a corrida).
+pub const FIXO: f64 = 2.0e6;
+
 fn forca(f: Forca) -> Strength {
     match f {
         Forca::Requerida => Strength::REQUIRED,
@@ -377,20 +382,20 @@ impl Arranjo {
             let (pp, pw) = match (segue[i], ancora[i]) {
                 (true, false) => (Strength::new(PESOS[0]), PESOS[1]),
                 (true, true) => (Strength::new(PESOS[2]), PESOS[3]),
-                (false, _) => (Strength::STRONG, PESOS[3]),
+                (false, _) => (Strength::new(FIXO), PESOS[3]),
             };
             // Só o TEXTO muda de tamanho (medido 27/10, W5.5: a moeda achatava-se antes de a pontuação encolher).
             let pw = if texto[i] {
                 Strength::new(pw)
             } else {
-                Strength::STRONG
+                Strength::new(FIXO)
             };
             // O «fica onde foi desenhado» é EDIÇÃO (com a força do stay): a caixa muda sem remontar o sistema.
             for (var, k, s) in [
                 (v.x, c.x, pp),
                 (v.y, c.y, pp),
                 (v.w, c.w, pw),
-                (v.h, c.h, forte),
+                (v.h, c.h, Strength::new(FIXO)),
             ] {
                 gr.edicao_com(var, k, s);
             }

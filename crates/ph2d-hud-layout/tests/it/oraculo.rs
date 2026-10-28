@@ -65,7 +65,7 @@ fn the_layout_matches_kiwisolver_case_by_case() {
                     (n.w - o.w).abs(),
                     (n.h - o.h).abs(),
                 ];
-                if d.iter().any(|d| !(*d <= TOLERANCIA)) {
+                if d.iter().any(|d| d.is_nan() || *d > TOLERANCIA) {
                     falhas.push(format!(
                         "{} q{q} e{i}: nosso {n:?} oráculo {o:?}",
                         caso.nome

@@ -18,6 +18,7 @@
 //! [ADR-0181]: ../../../docs/architecture/decisions/0181-o-quadro-ao-vivo-funde-por-campo-e-o-transporte-e-uma-porta.md
 
 mod msg;
+mod portrait;
 mod presence;
 mod replica;
 mod room;
@@ -29,6 +30,7 @@ mod table;
 mod test_support;
 
 pub use msg::{KMsg, KSnapshot, KWrite, Target};
+pub use portrait::Portrait;
 pub use presence::{KanbanPresence, Viewers};
 pub use replica::KanbanReplica;
 pub use room::{GuestRoom, HostRoom, KEvent};

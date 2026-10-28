@@ -1,12 +1,21 @@
 //! W5 — os Kanbans que o quadro referencia viajam na MESMA sessão (ADR-0195 §3): o anfitrião e o
 //! convidado só guardam as mensagens [`Msg::Kanban`]; quem as lê e responde é a `ph2d-kanban-sync`.
 
+use ph2d_board_model::{Board, KanbanId};
+
 use super::{ConnId, Guest, Host, Msg, PeerId};
+use crate::Replica;
 
 impl Host {
     /// O que chegou para o Kanban: `(ligação, quem, bytes)`. A resposta vai como `Msg::Kanban`.
     pub fn take_kanban(&mut self) -> Vec<(ConnId, PeerId, Vec<u8>)> {
         std::mem::take(&mut self.kanban_in)
+    }
+
+    /// J4 — os Kanbans da sala `(id da sessão, meu)`: a referência dos elementos traduz-se
+    /// ([`Replica::map_kanbans`]).
+    pub fn map_kanbans(&mut self, board: &mut Board, pairs: &[(KanbanId, KanbanId)]) {
+        self.replica.map_kanbans(board, pairs);
     }
 }
 
@@ -14,6 +23,28 @@ impl Guest {
     /// O que chegou do anfitrião para o Kanban.
     pub fn take_kanban(&mut self) -> Vec<Vec<u8>> {
         std::mem::take(&mut self.kanban_in)
+    }
+
+    /// O meu id na sala (o da sala do Kanban é o mesmo).
+    #[must_use]
+    pub fn peer(&self) -> PeerId {
+        self.peer
+    }
+
+    /// J4 — os Kanbans da sala `(id da sessão, meu)`; antes do quadro chegar (`board = None`) só liga
+    /// a tradução: o retrato do Quadro entra com as referências no marcador até o Kanban chegar.
+    pub fn map_kanbans(&mut self, board: Option<&mut Board>, pairs: &[(KanbanId, KanbanId)]) {
+        self.kanbans = true;
+        if let (Some(r), Some(b)) = (&mut self.replica, board) {
+            r.map_kanbans(b, pairs);
+        }
+    }
+
+    pub(super) fn kanbans_join(&self, r: &mut Replica, b: &mut Board) {
+        if self.kanbans {
+            r.kanbans_on();
+            r.kanbans_arrived(b);
+        }
     }
 
     /// Embrulha bytes do Kanban para o anfitrião.

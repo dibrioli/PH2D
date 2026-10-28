@@ -36,6 +36,8 @@ enum Live {
         net: net::Host,
         s: sync::Host,
         board: BoardId,
+        /// J4 — a sala dos Kanbans do quadro (`live_kanban.rs`).
+        k: Box<kanban::KHost>,
     },
     Guest {
         net: Option<net::Guest>,
@@ -47,8 +49,12 @@ enum Live {
         /// Desde quando está caída (`None` = ligada, ou a 1.ª entrada).
         lost: Option<Instant>,
         last_try: Option<Instant>,
+        k: Box<ph2d_kanban_sync::GuestRoom>,
     },
 }
+
+#[path = "live_kanban.rs"]
+mod kanban;
 
 #[path = "live_firewall.rs"]
 mod firewall;
@@ -71,6 +77,8 @@ struct State {
     internet: Internet,
     /// Os testes: a entrada pela internet sem STUN nem DHT (só os endereços desta máquina).
     internet_local: bool,
+    /// J4 — os Kanbans (ids locais) armados pela sala: voltam ao contador quando ela acaba.
+    kanban_armed: Vec<ph2d_kanban_model::KanbanId>,
 }
 
 thread_local! {
@@ -96,15 +104,22 @@ fn waker() -> net::Waker {
 pub fn service(hero: &mut HeroScreen) {
     let now = now_ms();
     STATE.with_borrow_mut(|st| {
-        for req in hero.documents.take_live() {
+        for req in kanban::board_links(hero)
+            .into_iter()
+            .chain(hero.documents.take_live())
+        {
             request(st, hero, req);
         }
         discover(st, hero);
         st.fw.service(hero);
+        let armed = &mut st.kanban_armed;
         match st.live.take() {
-            Some(Live::Host { net, s, board }) => st.live = host_tick(hero, net, s, board, now),
-            Some(g @ Live::Guest { .. }) => st.live = guest_tick(hero, g, now),
+            Some(h @ Live::Host { .. }) => st.live = host_tick(hero, h, now, armed),
+            Some(g @ Live::Guest { .. }) => st.live = guest_tick(hero, g, now, armed),
             None => {}
+        }
+        if st.live.is_none() {
+            kanban::disarm(hero, &mut st.kanban_armed);
         }
         internet_tick(st, hero);
         if st.live.is_none() && hero.documents.live_view().role != LiveRole::Off {
@@ -146,7 +161,8 @@ fn request(st: &mut State, hero: &mut HeroScreen, req: LiveRequest) {
             let Some(board) = hero.documents.board_mut(id) else {
                 return;
             };
-            let s = sync::Host::open(random(), me, board, random());
+            let mut s = sync::Host::open(random(), me, board, random());
+            let k = Box::new(kanban::host_open(hero, &mut s, id));
             let code = n.code();
             let addrs = n.addrs().iter().map(SocketAddr::to_string).collect();
             let v = hero.documents.live_view_mut();
@@ -163,6 +179,7 @@ fn request(st: &mut State, hero: &mut HeroScreen, req: LiveRequest) {
                 net: n,
                 s,
                 board: id,
+                k,
             });
         }
         LiveRequest::Join { addr, code } => {
@@ -191,6 +208,10 @@ fn request(st: &mut State, hero: &mut HeroScreen, req: LiveRequest) {
                     let guest = ph2d_board_internet::LinkGuest::new(invite);
                     join_by(st, hero, Route::Link { guest, local });
                 }
+                // J4 — o convite de um Kanban: di-lo e abre-o onde ele vive (uma aba Kanban).
+                Err(net::InviteError::OtherKind(net::InviteKind::Kanban)) => {
+                    kanban::join_kanban_link(hero, &link);
+                }
                 Err(_) => hero.documents.tell(tr("board.live.link_bad").to_owned()),
             }
         }
@@ -215,7 +236,7 @@ fn request(st: &mut State, hero: &mut HeroScreen, req: LiveRequest) {
             }
         }
         LiveRequest::Summon => match &mut st.live {
-            Some(Live::Host { net, s, board }) => {
+            Some(Live::Host { net, s, board, .. }) => {
                 if let Some(b) = hero.documents.boards().get(*board) {
                     let cam = b.camera;
                     send_host(net, s.summon(cam));
@@ -244,7 +265,9 @@ fn request(st: &mut State, hero: &mut HeroScreen, req: LiveRequest) {
 fn leave(st: &mut State, hero: &mut HeroScreen) -> Option<net::Host> {
     let mut parting = hero.documents.take_parting();
     let out = match st.live.take() {
-        Some(Live::Host { net, mut s, board }) => {
+        Some(Live::Host {
+            net, mut s, board, ..
+        }) => {
             let b = match parting.as_mut().filter(|p| p.id == board) {
                 Some(p) => Some(p),
                 None => hero.documents.board_mut(board),
@@ -302,6 +325,10 @@ fn discover(st: &mut State, hero: &mut HeroScreen) {
         .collect();
 }
 
+#[path = "live_view.rs"]
+mod look;
+use look::{event, view};
+
 #[path = "live_send.rs"]
 mod send;
 use send::{host as send_host, tell_too_big};
@@ -325,11 +352,19 @@ fn my_presence(hero: &HeroScreen, board: BoardId) -> Option<Presence> {
 
 fn host_tick(
     hero: &mut HeroScreen,
-    net: net::Host,
-    mut s: sync::Host,
-    board: BoardId,
+    live: Live,
     now: u64,
+    armed: &mut Vec<ph2d_kanban_model::KanbanId>,
 ) -> Option<Live> {
+    let Live::Host {
+        net,
+        mut s,
+        board,
+        mut k,
+    } = live
+    else {
+        return Some(live);
+    };
     let names = |s: &sync::Host| -> Vec<(u64, String)> {
         s.peers().iter().map(|p| (p.peer, p.name.clone())).collect()
     };
@@ -349,6 +384,7 @@ fn host_tick(
                 for (_, m) in &out {
                     if let Msg::Left(p) = m {
                         event(hero, board, Event::Left(*p), &before);
+                        kanban::host_left(&net, &mut k, *p);
                     }
                 }
                 send_host(&net, out);
@@ -358,10 +394,11 @@ fn host_tick(
     }
     let p = my_presence(hero, board)?;
     send_host(&net, s.presence(now, p));
+    let kbig = kanban::host_step(hero, &net, &mut s, board, &mut k, now, armed);
     let b = hero.documents.board_mut(board)?;
     // W13 — o fim de uma votação da sala data-se pelo relógio de parede do anfitrião.
     s.set_wall(ph2d_editor_core::screens::hero::board_nav::team::now_unix());
-    let big = send_host(&net, s.tick(b, now));
+    let big = send_host(&net, s.tick(b, now)) | kbig;
     let me = s.me.peer;
     let mut peers: Vec<LivePeer> = s
         .peers()
@@ -379,11 +416,16 @@ fn host_tick(
     let fac = fac_view(&room, me, me, s.my_sealed(), &peers);
     announce(hero, fac);
     view(hero, board, &peers, |p| s.seen(p), now);
-    Some(Live::Host { net, s, board })
+    Some(Live::Host { net, s, board, k })
 }
 
 #[allow(clippy::too_many_lines)]
-fn guest_tick(hero: &mut HeroScreen, live: Live, now: u64) -> Option<Live> {
+fn guest_tick(
+    hero: &mut HeroScreen,
+    live: Live,
+    now: u64,
+    armed: &mut Vec<ph2d_kanban_model::KanbanId>,
+) -> Option<Live> {
     let Live::Guest {
         mut net,
         mut s,
@@ -392,6 +434,7 @@ fn guest_tick(hero: &mut HeroScreen, live: Live, now: u64) -> Option<Live> {
         mut dialing,
         mut lost,
         mut last_try,
+        mut k,
     } = live
     else {
         return Some(live);
@@ -425,6 +468,7 @@ fn guest_tick(hero: &mut HeroScreen, live: Live, now: u64) -> Option<Live> {
         }
     }
     let mut dropped = false;
+    let mut welcomed = false;
     if let Some(n) = &net {
         for ev in n.poll() {
             match ev {
@@ -447,6 +491,7 @@ fn guest_tick(hero: &mut HeroScreen, live: Live, now: u64) -> Option<Live> {
                                 hero.documents.tell(tr("board.live.refused").to_owned());
                                 return None;
                             }
+                            Event::Welcomed => welcomed = true,
                             // Fechou de propósito: a cópia fica, sem o minuto a tentar voltar.
                             Event::Ended => {
                                 hero.documents.tell(tr("board.live.host_left").to_owned());
@@ -488,6 +533,9 @@ fn guest_tick(hero: &mut HeroScreen, live: Live, now: u64) -> Option<Live> {
             dialing = Some(dial(&route));
             last_try = Some(Instant::now());
         }
+    }
+    if let Some(n) = &net {
+        kanban::guest_step(hero, n, &mut s, board, &mut k, welcomed, now, armed);
     }
     if let (Some(n), Some(id)) = (&net, board) {
         if let Some(p) = my_presence(hero, id) {
@@ -531,6 +579,7 @@ fn guest_tick(hero: &mut HeroScreen, live: Live, now: u64) -> Option<Live> {
         dialing,
         lost,
         last_try,
+        k,
     })
 }
 
@@ -556,92 +605,6 @@ fn join_error(e: &net::JoinError) -> String {
         ),
         net::JoinError::Incompatible => tr("board.live.refused").to_owned(),
         _ => tr("board.live.unreachable").to_owned(),
-    }
-}
-
-/// Um aviso da sessão, e «trazer todos».
-fn event(hero: &mut HeroScreen, board: BoardId, e: Event, names: &[(u64, String)]) {
-    let name = |p: u64| {
-        names
-            .iter()
-            .find(|(q, _)| *q == p)
-            .map(|(_, n)| n.clone())
-            .unwrap_or_default()
-    };
-    match e {
-        Event::Joined(p) => {
-            let n = fac::someone(hero, p.name);
-            hero.documents
-                .tell(tr_with("board.live.joined", &[("name", &n)]));
-        }
-        Event::Left(p) => {
-            let n = fac::someone(hero, name(p));
-            hero.documents
-                .tell(tr_with("board.live.left", &[("name", &n)]));
-        }
-        Event::Summoned { from, camera } => {
-            if let Some(b) = hero.documents.board_mut(board) {
-                b.camera = camera;
-            }
-            hero.documents.activate(Some(board));
-            hero.documents.live_view_mut().following = None;
-            let n = fac::someone(hero, name(from));
-            hero.documents
-                .tell(tr_with("board.live.summoned", &[("name", &n)]));
-        }
-        Event::Denied(r) => hero.documents.tell(tr(refusal_key(r)).to_owned()),
-        Event::Welcomed | Event::Refused { .. } | Event::Arrived(_) | Event::Ended => {}
-    }
-}
-
-/// O que o ecrã desenha: as pessoas, os outros (cursor interpolado e selecção), e a câmara de quem
-/// sigo.
-fn view<'a>(
-    hero: &mut HeroScreen,
-    board: BoardId,
-    peers: &[LivePeer],
-    seen: impl Fn(u64) -> Option<&'a sync::Seen>,
-    now: u64,
-) {
-    // W12 — «Make names anonymous»: o nome nem chega ao ecrã, e ninguém se segue.
-    let anon = hero
-        .documents
-        .live_view()
-        .fac
-        .private
-        .as_ref()
-        .is_some_and(|p| p.anonymous);
-    let others: Vec<LiveOther> = peers
-        .iter()
-        .filter(|p| !p.me)
-        .map(|p| {
-            let s = seen(p.peer);
-            LiveOther {
-                peer: p.peer,
-                name: if anon { String::new() } else { p.name.clone() },
-                anonymous: anon,
-                color: p.color,
-                cursor: s.and_then(|s| s.cursor_at(now)),
-                selection: s
-                    .and_then(|s| s.last.as_ref())
-                    .map(|l| l.selection.clone())
-                    .unwrap_or_default(),
-            }
-        })
-        .collect();
-    let follow = hero.documents.live_view().following.filter(|_| !anon);
-    let camera = follow.and_then(&seen).and_then(|s| s.camera_at(now));
-    let v = hero.documents.live_view_mut();
-    v.board = Some(board);
-    v.peers = peers.to_vec();
-    v.others = others;
-    if anon || follow.is_some_and(|p| !peers.iter().any(|q| q.peer == p)) {
-        v.following = None;
-    }
-    if let Some(cam) = camera
-        && let Some(b) = hero.documents.board_mut(board)
-    {
-        b.camera = cam;
     }
 }
 
@@ -691,3 +654,7 @@ pub fn internet_local_for_tests() {
 #[cfg(test)]
 #[path = "live_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "live_kanban_tests.rs"]
+mod kanban_tests;

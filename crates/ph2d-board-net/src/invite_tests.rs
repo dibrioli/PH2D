@@ -82,3 +82,28 @@ fn a_chave_nao_aparece_no_debug() {
     assert!(!format!("{inv:?}").contains("MDEy"));
     assert!(!format!("{:?}", inv.key).contains("0123"));
 }
+
+/// J4 — o link de um Kanban tem esquema próprio; cada «Join» reconhece o da OUTRA sala e di-lo
+/// (nunca o lê como um link estragado nem entra na sala errada).
+#[test]
+fn o_link_do_kanban_tem_esquema_proprio_e_cada_sala_reconhece_o_da_outra() {
+    let k = sample().link_as(InviteKind::Kanban);
+    assert!(k.starts_with(KANBAN_SCHEME), "{k}");
+    assert_eq!(Invite::parse_as(&k, InviteKind::Kanban), Ok(sample()));
+    assert_eq!(
+        Invite::parse(&k),
+        Err(InviteError::OtherKind(InviteKind::Kanban))
+    );
+    assert_eq!(
+        Invite::parse_as(&sample().link(), InviteKind::Kanban),
+        Err(InviteError::OtherKind(InviteKind::Board))
+    );
+    assert_eq!(
+        Invite::parse_any(&k.replacen("ph2d-kanban", "PH2D-KANBAN", 1)),
+        Ok((InviteKind::Kanban, sample()))
+    );
+    assert_eq!(
+        Invite::parse_any("ph2d-other://v1/#x"),
+        Err(InviteError::NotALink)
+    );
+}

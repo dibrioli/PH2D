@@ -133,13 +133,18 @@ pub struct Replica {
     sealed: Sealed,
     /// W14 — os ficheiros de imagem que este par já mandou ou recebeu.
     files: BTreeSet<ph2d_board_model::FileId>,
+    /// J4 — a referência do elemento Kanban: id da sessão ↔ meu (`replica_kanban.rs`).
+    kanbans: kanban::KanbanIds,
 }
 
 #[path = "replica_files.rs"]
 mod files;
+#[path = "replica_kanban.rs"]
+mod kanban;
 #[path = "replica_sealed.rs"]
 mod sealed;
 pub use files::by_file;
+pub use kanban::KANBAN_WAITING;
 pub(crate) use sealed::sealed_field;
 use sealed::{Seal, Sealed};
 
@@ -160,6 +165,7 @@ impl Replica {
             team_shadow: Shadow::of(&board.team),
             sealed: Sealed::default(),
             files: board.files.keys().copied().collect(),
+            kanbans: kanban::KanbanIds::default(),
         }
     }
 
@@ -204,9 +210,11 @@ impl Replica {
             outbox: std::mem::take(&mut self.outbox),
             clock: self.clock,
             sealed: std::mem::take(&mut self.sealed),
+            kanbans: std::mem::take(&mut self.kanbans),
             ..Self::blank(self.peer, board)
         };
         self.adopt(snap);
+        self.kanbans_arrived(board);
         self.receive(board, &mine);
         // O que era selado volta ao cofre, nunca a todos.
         let (sealed, public): (Vec<Write>, Vec<Write>) = mine.into_iter().partition(|w| {
@@ -247,12 +255,14 @@ impl Replica {
     #[must_use]
     pub fn snapshot(&self, board: &Board) -> Snapshot {
         let mut stamps = self.stamps.clone();
-        let bytes = match self.masked(board) {
-            None => BoardSet::board_bytes_lean(board),
-            Some((b, at)) => {
-                stamps.extend(at);
-                BoardSet::board_bytes_lean(&b)
-            }
+        let masked = self.masked(board).map(|(b, at)| {
+            stamps.extend(at);
+            b
+        });
+        let mine = masked.as_ref().unwrap_or(board);
+        let bytes = match self.kanbans.wired(mine) {
+            Some(b) => BoardSet::board_bytes_lean(&b),
+            None => BoardSet::board_bytes_lean(mine),
         };
         Snapshot {
             board: bytes,
@@ -433,6 +443,7 @@ impl Replica {
         for id in ids {
             self.mark(board, id);
         }
+        self.kanbans.outgoing(&mut out);
         for w in out.iter().chain(&sealed) {
             self.remember(w);
         }
@@ -448,9 +459,15 @@ impl Replica {
         let writes = if writes.iter().all(|w| crate::lww::sane(w.at())) {
             writes
         } else {
-            sane = writes.iter().filter(|w| crate::lww::sane(w.at())).cloned().collect();
+            sane = writes
+                .iter()
+                .filter(|w| crate::lww::sane(w.at()))
+                .cloned()
+                .collect();
             &sane
         };
+        let ours = self.kanbans.incoming(writes);
+        let writes = ours.as_deref().unwrap_or(writes);
         let mine = self.local(board);
         self.outgoing.extend(mine);
         let mut cache: BTreeMap<ElementId, Element> = BTreeMap::new();

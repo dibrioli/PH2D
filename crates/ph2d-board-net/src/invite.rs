@@ -16,8 +16,28 @@ use rand_core::{OsRng, RngCore};
 
 /// 128 bits.
 pub const KEY_LEN: usize = 16;
-/// O começo de todo convite.
+/// O começo de todo convite de um Quadro.
 pub const SCHEME: &str = "ph2d-board://";
+/// J4 — o começo do convite de um Kanban partilhado SOZINHO (a sala fala outra língua: colado no
+/// «Join» do Quadro, ele tem de se dizer).
+pub const KANBAN_SCHEME: &str = "ph2d-kanban://";
+
+/// O que um convite abre: a sala de um Quadro ou a de um Kanban.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum InviteKind {
+    Board,
+    Kanban,
+}
+
+impl InviteKind {
+    #[must_use]
+    pub fn scheme(self) -> &'static str {
+        match self {
+            Self::Board => SCHEME,
+            Self::Kanban => KANBAN_SCHEME,
+        }
+    }
+}
 const V1: &str = "v1";
 /// Os candidatos de um anfitrião são as suas interfaces e o endereço visto de fora (uns 4 numa casa);
 /// o tecto é o de pacotes que um convidado manda por tentativa a endereços tirados de um texto colado.
@@ -64,6 +84,8 @@ pub enum InviteError {
     BadKey,
     /// Um endereço ilegível, ou mais de [`MAX_ADDRS`].
     BadAddr,
+    /// Um convite certo, mas para a OUTRA sala (um Kanban no «Join» do Quadro, ou o contrário).
+    OtherKind(InviteKind),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -77,6 +99,12 @@ impl Invite {
     /// O link a copiar.
     #[must_use]
     pub fn link(&self) -> String {
+        self.link_as(InviteKind::Board)
+    }
+
+    /// O link a copiar, para a sala `kind`.
+    #[must_use]
+    pub fn link_as(&self, kind: InviteKind) -> String {
         let addrs: Vec<String> = self
             .addrs
             .iter()
@@ -84,7 +112,8 @@ impl Invite {
             .map(ToString::to_string)
             .collect();
         format!(
-            "{SCHEME}{V1}/{}#{}",
+            "{}{V1}/{}#{}",
+            kind.scheme(),
             addrs.join(","),
             URL_SAFE_NO_PAD.encode(self.key.0)
         )
@@ -95,12 +124,38 @@ impl Invite {
     /// # Errors
     /// Ver [`InviteError`].
     pub fn parse(text: &str) -> Result<Self, InviteError> {
+        Self::parse_as(text, InviteKind::Board)
+    }
+
+    /// Um convite para a sala `kind`; o da outra sala é [`InviteError::OtherKind`].
+    ///
+    /// # Errors
+    /// Ver [`InviteError`].
+    pub fn parse_as(text: &str, kind: InviteKind) -> Result<Self, InviteError> {
+        let (got, inv) = Self::parse_any(text)?;
+        if got == kind {
+            Ok(inv)
+        } else {
+            Err(InviteError::OtherKind(got))
+        }
+    }
+
+    /// Um convite de qualquer sala, e qual.
+    ///
+    /// # Errors
+    /// Ver [`InviteError`].
+    pub fn parse_any(text: &str) -> Result<(InviteKind, Self), InviteError> {
         let text: String = text.chars().filter(|c| !c.is_whitespace()).collect();
         // O esquema não distingue maiúsculas (um link escrito à mão); a chave sim.
-        let rest = text
-            .get(..SCHEME.len())
-            .filter(|p| p.eq_ignore_ascii_case(SCHEME))
-            .and_then(|_| text.get(SCHEME.len()..))
+        let (kind, rest) = [InviteKind::Board, InviteKind::Kanban]
+            .into_iter()
+            .find_map(|k| {
+                let sch = k.scheme();
+                text.get(..sch.len())
+                    .filter(|p| p.eq_ignore_ascii_case(sch))
+                    .and_then(|_| text.get(sch.len()..))
+                    .map(|r| (k, r))
+            })
             .ok_or(InviteError::NotALink)?;
         let (path, key) = rest.split_once('#').ok_or(InviteError::NotALink)?;
         let (version, addrs) = path.split_once('/').unwrap_or((path, ""));
@@ -120,10 +175,13 @@ impl Invite {
         if addrs.len() > MAX_ADDRS {
             return Err(InviteError::BadAddr);
         }
-        Ok(Self {
-            key: InviteKey(key),
-            addrs,
-        })
+        Ok((
+            kind,
+            Self {
+                key: InviteKey(key),
+                addrs,
+            },
+        ))
     }
 }
 

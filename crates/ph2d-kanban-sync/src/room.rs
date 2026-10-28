@@ -80,6 +80,9 @@ pub struct HostRoom {
     pub replica: KanbanReplica,
     pub viewers: Viewers,
     pace: Pace,
+    /// J4 — o retrato de quem entra sai da janela ([`Self::portraits_off_window`]).
+    off_window: bool,
+    portraits: Vec<crate::Portrait>,
 }
 
 impl HostRoom {
@@ -89,7 +92,20 @@ impl HostRoom {
             replica,
             viewers: Viewers::default(),
             pace: Pace::default(),
+            off_window: false,
+            portraits: Vec::new(),
         }
+    }
+
+    /// ⭐ J4 — daqui em diante o `welcome` só COPIA o retrato ([`crate::Portrait`]); quem compõe tira-o
+    /// por [`Self::take_portraits`], corre [`crate::Portrait::messages`] num fio e manda-as à ligação.
+    pub fn portraits_off_window(&mut self) {
+        self.off_window = true;
+    }
+
+    /// Os retratos por fazer (fora da janela).
+    pub fn take_portraits(&mut self) -> Vec<crate::Portrait> {
+        std::mem::take(&mut self.portraits)
     }
 
     /// Quem entra (`conn`): o que eu tinha por enviar vai aos outros; a ele o retrato, os ficheiros
@@ -99,12 +115,16 @@ impl HostRoom {
             .into_iter()
             .map(|m| (To::AllBut(conn), m))
             .collect();
-        let snap = self.replica.snapshot(set);
-        out.extend(
-            crate::snapshot::messages(snap, crate::SNAPSHOT_BLOCK)
-                .into_iter()
-                .map(|m| (To::One(conn), m)),
-        );
+        if self.off_window {
+            self.portraits.push(self.replica.portrait(set, conn));
+        } else {
+            let snap = self.replica.snapshot(set);
+            out.extend(
+                crate::snapshot::messages(snap, crate::SNAPSHOT_BLOCK)
+                    .into_iter()
+                    .map(|m| (To::One(conn), m)),
+            );
+        }
         for m in by_file(self.replica.all_files(set)) {
             out.push((To::One(conn), m));
         }
@@ -214,6 +234,9 @@ pub struct GuestRoom {
     /// O retrato em blocos a chegar, e as escritas que chegaram no meio (aplicam-se depois dele).
     parts: crate::snapshot::Parts,
     held: Vec<KWrite>,
+    /// J4 — pedi um retrato e ele ainda não chegou: as escritas esperam por ele (o retrato pode vir
+    /// de um fio, DEPOIS de escritas mais novas do que ele).
+    pub(crate) awaiting: bool,
 }
 
 impl GuestRoom {
@@ -228,7 +251,21 @@ impl GuestRoom {
             pace: Pace::default(),
             parts: crate::snapshot::Parts::default(),
             held: Vec::new(),
+            awaiting: true,
         }
+    }
+
+    /// Pede os Kanbans (ou volta a pedi-los ao voltar): até o retrato chegar, as escritas esperam.
+    pub fn ask(&mut self) -> KMsg {
+        self.entered();
+        KMsg::Want
+    }
+
+    /// Entrei (ou voltei) na sala: o retrato vem a seguir, e a minha presença sai outra vez inteira
+    /// (o anfitrião esqueceu-a quando caí).
+    pub(crate) fn entered(&mut self) {
+        self.awaiting = true;
+        self.pace = Pace::default();
     }
 
     /// Na sala de um Quadro, depois do `Welcome` dela: pede os Kanbans.
@@ -253,7 +290,10 @@ impl GuestRoom {
                     self.snapshot(set, &snap, now_ms, &mut out, &mut events);
                 }
             }
-            KMsg::Writes(ws) if self.parts.busy() => self.held.extend(ws),
+            KMsg::Writes(ws) if self.parts.busy() || self.awaiting => {
+                self.held.extend(ws);
+                crate::replica::cap_writes(&mut self.held);
+            }
             KMsg::Writes(ws) => {
                 if let Some(r) = &mut self.replica {
                     let before = r.kanbans();
@@ -293,6 +333,7 @@ impl GuestRoom {
                 events.push(KEvent::Arrived(ids));
             }
         }
+        self.awaiting = false;
         let held = std::mem::take(&mut self.held);
         if let Some(r) = &mut self.replica
             && !held.is_empty()

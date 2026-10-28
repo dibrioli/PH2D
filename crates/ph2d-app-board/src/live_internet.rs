@@ -142,9 +142,11 @@ pub(super) fn join_by(st: &mut State, hero: &mut HeroScreen, route: Route) {
         by_link: matches!(route, Route::Link { .. }),
         ..LiveLink::default()
     };
+    let k = Box::new(super::kanban::guest_new(&mut s));
     st.live = Some(Live::Guest {
         net: None,
         s,
+        k,
         board: None,
         dialing: Some(dial(&route)),
         route,

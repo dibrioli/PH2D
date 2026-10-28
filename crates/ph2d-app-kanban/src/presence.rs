@@ -104,6 +104,9 @@ pub(crate) fn paint(
             avatar(scene, ts, theme, a, p);
         }
     }
+    if seen.reconnecting {
+        reconnecting(scene, ts, theme, tab.layout.board);
+    }
     if tab.other.is_some() {
         return;
     }
@@ -150,5 +153,29 @@ fn cursor(
         m::SMALL_PX,
         w,
         c(theme, T::KanbanAvatarInk),
+    );
+}
+
+/// J4 — o selo «Reconnecting…» no canto do quadro: a sala caiu e está a voltar sozinha.
+fn reconnecting(scene: &mut VectorScene, ts: &mut TextSystem, theme: Theme, board: Rect) {
+    let t = ph2d_i18n::tr("kanban.share.reconnecting_badge");
+    let w = crate::docs::title_width(ts, t, m::SMALL_PX) + 2.0 * NAME_PAD * 2.0;
+    let r = Rect::new(
+        board.x + board.w - w - m::HEADER_GAP,
+        board.y + m::HEADER_GAP,
+        w,
+        m::COUNT_H,
+    );
+    fill_rounded_rect(scene, r, r.h / 2.0, c(theme, T::KanbanHeaderBtnOn));
+    let ty = text_top(ts, r.y, r.h, m::SMALL_PX);
+    paint_text_title_elided(
+        ts,
+        scene,
+        t,
+        r.x + NAME_PAD * 2.0,
+        ty,
+        m::SMALL_PX,
+        w,
+        c(theme, T::KanbanBtnOnFg),
     );
 }

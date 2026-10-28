@@ -461,6 +461,8 @@ pub struct Guest {
     /// O meu último boletim (reenvia-se ao voltar de uma queda).
     ballot: Option<Ballot>,
     kanban_in: Vec<Vec<u8>>,
+    /// J4 — a sala leva Kanbans: as referências traduzem-se (`Guest::map_kanbans`).
+    kanbans: bool,
 }
 
 impl Guest {
@@ -478,6 +480,7 @@ impl Guest {
             fac: (Fac::default(), 0),
             ballot: None,
             kanban_in: Vec::new(),
+            kanbans: false,
         }
     }
 
@@ -569,9 +572,10 @@ impl Guest {
                         out.extend(self.tick(b, now_ms));
                     }
                     _ => {
-                        let Ok((r, mut b)) = Replica::join(self.peer, &snapshot, seed) else {
+                        let Ok((mut r, mut b)) = Replica::join(self.peer, &snapshot, seed) else {
                             return (out, events);
                         };
+                        self.kanbans_join(&mut r, &mut b);
                         self.replica = Some(r);
                         events.push(Event::Welcomed);
                         out.extend(self.tick(&mut b, now_ms));

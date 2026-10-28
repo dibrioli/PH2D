@@ -33,7 +33,11 @@ fn a_board_write_from_the_far_future_is_refused_and_the_clock_never_overflows() 
         }
     }
     h.receive(&mut host, &ws);
-    assert_ne!(host.doc.get(x).unwrap().style().fill, Some(RED), "o forjado não entra");
+    assert_ne!(
+        host.doc.get(x).unwrap().style().fill,
+        Some(RED),
+        "o forjado não entra"
+    );
     assert!(h.clock <= crate::lww::MAX_STAMP, "o relógio não salta");
     let mut el = host.doc.get(x).unwrap().clone();
     el.style_mut().fill = Some(Rgba([0, 0, 200, 255]));

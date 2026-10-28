@@ -7,7 +7,7 @@ use super::KanbanReplica;
 use crate::msg::{KSnapshot, KWrite};
 
 /// Os bytes de `k` para a sessão: sem os registos pessoais (W9 — a Inbox é só de quem a escreveu).
-fn bytes_of(k: &Kanban, wire: KanbanId) -> Vec<u8> {
+pub(crate) fn bytes_of(k: &Kanban, wire: KanbanId) -> Vec<u8> {
     let mut k = k.without_personal();
     k.id = wire;
     postcard::to_allocvec(&k).expect("postcard escreve o Kanban")

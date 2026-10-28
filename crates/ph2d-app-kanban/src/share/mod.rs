@@ -12,7 +12,7 @@ use crate::docs::KanbanDocs;
 use ph2d_kanban_model::{CardId, KanbanId, Member};
 use std::collections::BTreeMap;
 
-pub(crate) use net_io::Session;
+pub(crate) use net_io::{JoinRefusal, Session};
 
 /// Um alvo do popover «Share».
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -50,6 +50,8 @@ pub(crate) struct Seen {
     pub people: Vec<Member>,
     pub cards: BTreeMap<CardId, Vec<Member>>,
     pub cursors: Vec<(Member, [f64; 2])>,
+    /// J4 — o fio caiu e a sala está a voltar (o selo «Reconnecting…»).
+    pub reconnecting: bool,
 }
 
 /// O que se pinta da partilha neste quadro.
@@ -68,6 +70,8 @@ pub(crate) struct Share {
     pub local_only: bool,
     /// O link a pôr na área de transferência (servido pelo `frame` da família).
     pub copy: Option<String>,
+    /// J4 — um convite de QUADRO colado aqui: o Quadro leva-o ([`KanbanDocs::take_board_link`]).
+    pub board_link: Option<String>,
 }
 
 impl std::fmt::Debug for Share {
@@ -127,10 +131,26 @@ impl KanbanDocs {
                 self.share.session = Some(s);
                 self.share.look.role = Role::Joining;
             }
-            Err(()) => self
+            Err(JoinRefusal::Board) => {
+                self.notices
+                    .push(ph2d_i18n::tr("kanban.share.board_link").to_owned());
+                self.share.board_link = Some(text.to_owned());
+            }
+            Err(JoinRefusal::Bad) => self
                 .notices
                 .push(ph2d_i18n::tr("kanban.share.link_bad").to_owned()),
         }
+    }
+
+    /// ⭐ J4 — entra na sala de um Kanban por um link colado NOUTRO sítio (o «Join» do Quadro):
+    /// o Kanban chega numa aba, como pelo popover.
+    pub fn join_shared(&mut self, link: &str) {
+        self.share_join(link.trim());
+    }
+
+    /// J4 — o convite de Quadro que alguém colou no «Join» do Kanban (o Quadro entra com ele).
+    pub fn take_board_link(&mut self) -> Option<String> {
+        self.share.board_link.take()
     }
 
     /// Sai da sala (o anfitrião fecha-a para todos).
@@ -178,6 +198,9 @@ impl KanbanDocs {
             return;
         }
         self.share.look.seen = s.seen(&self.me, now);
+        for seen in self.share.look.seen.values_mut() {
+            seen.reconnecting = out.reconnecting;
+        }
         self.share.session = Some(s);
     }
 
@@ -232,6 +255,21 @@ impl KanbanDocs {
                 .collect(),
             s.cursors.iter().map(|(m, p)| (m.0.clone(), *p)).collect(),
         )
+    }
+
+    /// Os testes: o fio da sala cai (o convidado volta sozinho).
+    pub fn share_drop_for_tests(&mut self) {
+        if let Some(s) = &mut self.share.session {
+            s.drop_link();
+        }
+    }
+
+    /// ⚠️ SONDA (J4): a sala do Kanban da aba `id` está a voltar depois de cair.
+    #[must_use]
+    pub fn probe_reconnecting(&self, id: u64) -> bool {
+        self.kanban_of(id)
+            .and_then(|k| self.share.look.seen.get(&k))
+            .is_some_and(|s| s.reconnecting)
     }
 
     /// Os testes: a partilha só nesta máquina.

@@ -45,6 +45,9 @@ ph2d-board-sync = { path = "../ph2d-board-sync" }
 ph2d-board-net = { path = "../ph2d-board-net" }
 # ADR-0187 — o quadro ao vivo pela internet (convidar por link, entrar por link).
 ph2d-board-internet = { path = "../ph2d-board-internet" }
+# J4 (TrelloClone W5) — os Kanbans que o quadro referencia viajam na MESMA sala (`live_kanban.rs`).
+ph2d-kanban-sync = { path = "../ph2d-kanban-sync" }
+ph2d-kanban-model = { path = "../ph2d-kanban-model" }
 # W14 — as imagens entram pela descodificação da cena (`decode_image`); o que o navegador não mostra
 # vira PNG (a mesma versão do `png` que o `image` já traz no lock).
 ph2d-asset = { path = "../ph2d-asset" }

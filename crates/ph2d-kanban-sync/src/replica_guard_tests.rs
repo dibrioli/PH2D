@@ -27,7 +27,11 @@ fn a_stamp_from_the_far_future_is_refused_and_the_clock_never_overflows() {
     }
     let before = kanban(&net.sets[0]).cards[&c].title.clone();
     net.reps[0].receive(&mut net.sets[0], &ws);
-    assert_eq!(kanban(&net.sets[0]).cards[&c].title, before, "o forjado não entra");
+    assert_eq!(
+        kanban(&net.sets[0]).cards[&c].title,
+        before,
+        "o forjado não entra"
+    );
     assert!(net.reps[0].clock.n <= MAX_STAMP, "o relógio não salta");
     edit_card(&mut net.sets[0], c, |x| x.title = "meu".into());
     let mine = net.reps[0].local(&mut net.sets[0]);
@@ -35,7 +39,10 @@ fn a_stamp_from_the_far_future_is_refused_and_the_clock_never_overflows() {
     // No limite do tecto, o relógio satura em vez de transbordar.
     net.reps[0].clock.n = u64::MAX;
     let _ = net.reps[0].clock.tick();
-    let ok = Lamport { n: MAX_STAMP, peer: 9 };
+    let ok = Lamport {
+        n: MAX_STAMP,
+        peer: 9,
+    };
     net.reps[0].clock.see(ok);
 }
 
@@ -59,7 +66,12 @@ fn writes_for_a_kanban_that_never_arrives_are_capped() {
         net.reps[0].receive(&mut net.sets[0], chunk);
     }
     assert_eq!(net.reps[0].pending(), crate::replica::PENDING_MAX);
-    let oldest = net.reps[0].pending.iter().filter_map(KWrite::at).map(|a| a.n).min();
+    let oldest = net.reps[0]
+        .pending
+        .iter()
+        .filter_map(KWrite::at)
+        .map(|a| a.n)
+        .min();
     assert_eq!(oldest, Some(501), "ficam as mais novas");
     let _ = doc(&mut net.sets[0]);
 }

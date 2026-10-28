@@ -75,6 +75,19 @@ fn write_fields(k: &mut Kanban, t: Target, changes: &[(&str, &[u8])]) {
     }
 }
 
+/// Acima de [`PENDING_MAX`], saem as escritas mais velhas (pelo carimbo), com aviso.
+pub(crate) fn cap_writes(ws: &mut Vec<KWrite>) {
+    let over = ws.len().saturating_sub(PENDING_MAX);
+    if over == 0 {
+        return;
+    }
+    ws.sort_by_key(KWrite::at);
+    ws.drain(..over);
+    eprintln!(
+        "ph2d-kanban-sync: {over} escrita(s) à espera de algo que nunca chegou, descartada(s)"
+    );
+}
+
 impl KanbanReplica {
     pub(crate) fn blank(peer: PeerId, seed: u64, host: bool) -> Self {
         Self {
@@ -466,17 +479,8 @@ impl KanbanReplica {
         }
     }
 
-    /// Acima de [`PENDING_MAX`], saem as escritas mais velhas (pelo carimbo).
     fn cap_pending(&mut self) {
-        let over = self.pending.len().saturating_sub(PENDING_MAX);
-        if over == 0 {
-            return;
-        }
-        self.pending.sort_by_key(KWrite::at);
-        self.pending.drain(..over);
-        eprintln!(
-            "ph2d-kanban-sync: {over} escrita(s) à espera de um registo que nunca chegou, descartada(s)"
-        );
+        cap_writes(&mut self.pending);
     }
 
     fn has_elems(&self, wire: KanbanId, t: Target, ix: u8) -> bool {
@@ -651,6 +655,7 @@ impl KanbanReplica {
 
 #[path = "replica_join.rs"]
 mod join;
+pub(crate) use join::bytes_of;
 
 #[cfg(test)]
 #[path = "replica_tests.rs"]

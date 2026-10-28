@@ -254,3 +254,37 @@ O `keep` é o MESMO linha a linha (`the_fast_sort_keeps_exactly_the_rows_the_qua
 `sorting_a_reversed_list_grows_n_log_n_not_n_squared` (2 000 → 16 000: antes ×65,6, tecto ×24;
 chave nova ≤ 12). As chaves em fila («logo acima da anterior») cresciam um carácter a cada ~6 —
 a bissecção entre os dois vizinhos que ficam dá log(n).
+
+## J4 — o retrato do anfitrião fora da janela (28/10)
+
+Régua: `snapshot_tests::sonda_retrato_no_fio` (ignorada; `bash scripts/ph2d-run.sh cargo test -p
+ph2d-kanban-sync --profile smoke --lib -- --ignored sonda_retrato_no_fio --nocapture`). 20 000 cartões
+nascidos na sessão (o `hosted` do W5 S2), as variantes no MESMO processo, 7 blocos intercalados, o
+MÍNIMO. ⚠️ `loadavg` 39,7 (máquina partilhada): vale a razão.
+
+| O quê (20 000 cartões) | tempo |
+|---|---|
+| (a) hoje: retrato + blocos + bytes, tudo na janela | 39,0 ms |
+| (b) na janela: clonar o Kanban + os mapas de carimbos | 9,4 ms |
+|   — só o Kanban | 4,0 ms |
+| no fio: o Kanban → postcard | 5,3 ms |
+| no fio: os carimbos → `pack` | 23,5 ms |
+
+**Decisão:** (b) — a janela paga 9,4 ms em vez de 39 (4,1×); o `pack` (o maior) e os bytes correm no
+fio `kanban-portrait`. API aditiva: `HostRoom::portraits_off_window` + `take_portraits` →
+`Portrait::messages` (no fio); o mesmo retrato byte a byte (gate
+`a_portrait_off_the_window_is_the_same_snapshot_and_writes_before_it_wait`). A ordem entre o fio e a
+janela deixa de importar: quem entra (`GuestRoom`) guarda as escritas desde o pedido até o retrato
+chegar (antes, só durante os blocos). Usado nas duas salas (a do Quadro e a do Kanban sozinho).
+Recusado: retrato incremental por blocos ao longo de vários quadros — a cópia continuaria a ser
+precisa para um retrato coerente, e partir o `pack` exigiria um cursor sobre mapas que mudam entre
+quadros. Os 9,4 ms que restam são a cópia; descê-los pede estruturas persistentes (partilha
+estrutural do `Kanban`), uma mudança do modelo fora do âmbito desta linha.
+
+## J4 — a reconexão do Kanban partilhado (28/10)
+
+`share::net_io::{RETRY_FIRST = 250 ms, RETRY_MAX = 8 s, RECONNECT_FOR = 60 s}` — o minuto é o do
+Quadro (`ph2d-app-board::live::RECONNECT_FOR`: o Wi-Fi que soluça volta em segundos; o portátil
+fechado não). A 1.ª tentativa a 250 ms (um soluço de rede local reabre em < 1 RTT de TCP + aperto),
+dobrando até 8 s: no minuto são ≤ 12 tentativas; cada uma custa um fio e, por link, até 30 s de
+prazo (`LINK_TIMEOUT`), por isso o tecto não desce. Gate `the_backoff_doubles_up_to_its_ceiling`.

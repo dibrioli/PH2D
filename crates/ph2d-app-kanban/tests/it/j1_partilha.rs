@@ -100,7 +100,7 @@ fn j1_dois_herois_partilham_um_kanban_por_link_o_cartao_movido_chega_e_os_avatar
         a.docs().probe_share(id.0).1.is_some()
     });
     let link = a.docs().probe_share(id.0).1.expect("link");
-    assert!(link.starts_with("ph2d-board://"), "{link}");
+    assert!(link.starts_with("ph2d-kanban://"), "{link}");
     // A Bia: Share → cola o link → Enter.
     toca(&mut b, vazio, "ShareButton");
     toca(&mut b, vazio, "Share(LinkBox)");

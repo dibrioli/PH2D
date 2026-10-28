@@ -239,6 +239,8 @@ impl KanbanGuest {
         };
         match msg {
             SoloMsg::Welcome { you, peers } => {
+                // O retrato vem a seguir (talvez de um fio): até lá as escritas esperam.
+                self.room.entered();
                 self.me = Some(you);
                 self.peers = peers.into_iter().map(|p| (p.peer, p)).collect();
                 events.push(KEvent::Welcomed);

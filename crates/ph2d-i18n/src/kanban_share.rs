@@ -31,6 +31,11 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "refused" => "That Kanban is shared by another version of PH2D.",
         "ended" => "The host stopped sharing the Kanban.",
         "lost" => "The connection to the shared Kanban was lost.",
+        "reconnecting" => "Connection lost \u{2014} reconnecting\u{2026}",
+        "reconnected" => "Reconnected to the shared Kanban.",
+        "reconnecting_badge" => "Reconnecting\u{2026}",
+        "board_link" => "That is a Board invite \u{2014} joining the Board.",
+        "kanban_link" => "That is a Kanban invite \u{2014} opening it as a Kanban.",
         _ => return None,
     })
 }

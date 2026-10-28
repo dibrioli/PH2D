@@ -179,3 +179,51 @@ fn sonda_retrato() {
         );
     }
 }
+
+/// J4 — o retrato fora da janela compensa? Na janela, (a) hoje: retrato + blocos + bytes; (b) só o
+/// que um fio de fundo exigiria na janela: CLONAR o Kanban e os mapas de carimbos. E as partes que
+/// iriam para o fio. 20 000 cartões, 7 blocos intercalados no MESMO processo, o MÍNIMO.
+/// `bash scripts/ph2d-run.sh cargo test -p ph2d-kanban-sync --profile smoke --lib -- --ignored
+/// sonda_retrato_no_fio --nocapture`.
+#[test]
+#[ignore = "sonda de medição"]
+fn sonda_retrato_no_fio() {
+    let (hs, host) = hosted(20_000);
+    let r = &host.replica;
+    let mut best = [f64::MAX; 5];
+    let mut sink = 0usize;
+    let ms = |t: Instant| t.elapsed().as_secs_f64() * 1e3;
+    for _ in 0..7 {
+        let t = Instant::now();
+        let enc: Vec<Vec<u8>> = messages(r.snapshot(&hs), SNAPSHOT_BLOCK)
+            .iter()
+            .map(KMsg::encode)
+            .collect();
+        best[0] = best[0].min(ms(t));
+        sink += enc.len();
+        let t = Instant::now();
+        let k = kanban(&hs).clone();
+        let maps = (r.stamps.clone(), r.elems.clone(), r.tops.clone());
+        best[1] = best[1].min(ms(t));
+        sink += k.cards.len() + maps.0.len();
+        let t = Instant::now();
+        let kb = postcard::to_allocvec(&k.without_personal()).unwrap();
+        best[2] = best[2].min(ms(t));
+        let t = Instant::now();
+        let p = pack(&maps.0, &maps.1, &maps.2);
+        best[3] = best[3].min(ms(t));
+        let t = Instant::now();
+        let k2 = kanban(&hs).clone();
+        best[4] = best[4].min(ms(t));
+        sink += kb.len() + postcard::to_allocvec(&p).unwrap().len() + k2.cards.len();
+    }
+    println!("| (a) hoje, tudo na janela | {:.1} ms |", best[0]);
+    println!(
+        "| (b) na janela: clonar Kanban + carimbos | {:.1} ms |",
+        best[1]
+    );
+    println!("|   — só o Kanban | {:.1} ms |", best[4]);
+    println!("| no fio: Kanban → postcard | {:.1} ms |", best[2]);
+    println!("| no fio: carimbos → pack | {:.1} ms |", best[3]);
+    assert!(sink > 0);
+}

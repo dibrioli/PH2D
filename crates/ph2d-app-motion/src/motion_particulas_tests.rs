@@ -14,6 +14,11 @@ use ph2d_nodegraph::graph::{Edge, Graph};
 const DT: f64 = 1.0 / 60.0;
 const OBJETO: u64 = 5;
 
+/// O pedido de `OBJETO` por todos os ids que estas cenas emitem (ordinais `< 2¹⁴`).
+fn todos() -> ParticulasPedidas {
+    ParticulasPedidas([(StableId(OBJETO), (0..1 << 14).collect())].into())
+}
+
 /// `emitter → integrate → output` do objecto `OBJETO` (vivo, visível), com vida curta: morrem
 /// partículas.
 fn cena(gpu: bool) -> (MotionState, World) {
@@ -54,7 +59,7 @@ fn cena(gpu: bool) -> (MotionState, World) {
     // Sem a lei «só com forma» o gizmo de pontos não pede o sink: a tomada medida é a do pino.
     m.pump.define_a_lei(false);
     let mut w = World::new();
-    w.insert_resource(ParticulasPedidas([StableId(OBJETO)].into()));
+    w.insert_resource(todos());
     // O 1.º quadro só lê o pedido: as tomadas armam-se no cozimento seguinte.
     publica(&mut m, &mut w);
     (m, w)
@@ -170,7 +175,7 @@ fn a_pin_armed_while_paused_reads_without_moving_the_simulation() {
     p.pause();
     assert!(w.get_resource::<Particulas>().is_none(), "sem pedido, nada");
     // O pedido chega com a cena parada: a tomada sai no quadro seguinte, no MESMO tique.
-    w.insert_resource(ParticulasPedidas([StableId(OBJETO)].into()));
+    w.insert_resource(todos());
     quadro(&mut m, &mut w, None, &p);
     let lido = quadro(&mut m, &mut w, None, &p);
     let certo = quadro(&mut referencia.0, &mut referencia.1, None, &p);
@@ -198,16 +203,16 @@ fn the_first_sink_with_an_id_column_answers() {
     let b = Stream::new(1)
         .with("P", Column::Vec2(vec![[5.0, 5.0]]))
         .with("id", Column::Scalar(vec![7.0]));
-    let m = do_objeto([Some(&sem_id), Some(&a), Some(&b)], None).unwrap();
+    let m = do_objeto([Some(&sem_id), Some(&a), Some(&b)], &[7, 16_777_215].into()).unwrap();
     assert_eq!(
         m,
         BTreeMap::from([(7, [1.0, 2.0]), (16_777_215, [3.0, 4.0])])
     );
-    assert!(do_objeto([Some(&sem_id)], None).is_none());
+    assert!(do_objeto([Some(&sem_id)], &[1, 2, 7].into()).is_none());
     // Só os ids pedidos.
     let so = BTreeSet::from([16_777_215]);
     assert_eq!(
-        do_objeto([Some(&a)], Some(&so)).unwrap(),
+        do_objeto([Some(&a)], &so).unwrap(),
         BTreeMap::from([(16_777_215, [3.0, 4.0])])
     );
 }
@@ -221,9 +226,9 @@ fn a_sink_whose_tap_has_not_arrived_is_not_replaced_by_the_next_one() {
     let b = Stream::new(1)
         .with("P", Column::Vec2(vec![[5.0, 5.0]]))
         .with("id", Column::Scalar(vec![7.0]));
-    assert!(do_objeto([None, Some(&b)], None).is_none());
-    assert!(do_objeto([Some(&sem_id), None, Some(&b)], None).is_none());
-    assert!(do_objeto([Some(&sem_id), Some(&b), None], None).is_some());
+    assert!(do_objeto([None, Some(&b)], &[1, 2, 7].into()).is_none());
+    assert!(do_objeto([Some(&sem_id), None, Some(&b)], &[1, 2, 7].into()).is_none());
+    assert!(do_objeto([Some(&sem_id), Some(&b), None], &[1, 2, 7].into()).is_some());
 }
 
 /// Coluna `id` sem `P` Vec2 (ausente ou de outro tipo): sem alvo, nunca a origem.
@@ -231,17 +236,16 @@ fn a_sink_whose_tap_has_not_arrived_is_not_replaced_by_the_next_one() {
 fn an_id_without_a_position_is_no_target_never_the_origin() {
     use ph2d_nodegraph::attr::Column;
     let sem_p = Stream::new(2).with("id", Column::Scalar(vec![1.0, 2.0]));
-    assert!(do_objeto([Some(&sem_p)], None).is_none());
+    assert!(do_objeto([Some(&sem_p)], &[1, 2, 7].into()).is_none());
     let p_escalar = Stream::new(2)
         .with("P", Column::Scalar(vec![4.0, 4.0]))
         .with("id", Column::Scalar(vec![1.0, 2.0]));
-    assert!(do_objeto([Some(&p_escalar)], None).is_none());
+    assert!(do_objeto([Some(&p_escalar)], &[1, 2, 7].into()).is_none());
 }
 
 /// A pilha pede o id `k`: a leitura traz só esse; um quadro parado sem cozimento não lê nada.
 #[test]
 fn only_the_pinned_ids_are_read_and_a_still_frame_reads_nothing() {
-    use ph2d_ecs::motion_generator::IdsPedidos;
     let (mut m, mut w) = cena(false);
     let mut p = ph2d_core::Playhead::new(DT);
     p.play();
@@ -251,7 +255,7 @@ fn only_the_pinned_ids_are_read_and_a_still_frame_reads_nothing() {
         todas = quadro(&mut m, &mut w, None, &p);
     }
     let &id = todas.keys().nth(1).expect("vivas");
-    w.insert_resource(IdsPedidos([(StableId(OBJETO), [id].into())].into()));
+    w.insert_resource(ParticulasPedidas([(StableId(OBJETO), [id].into())].into()));
     p.pause();
     em(&mut p, 5);
     let (_, so, _) = quadro_inteiro(&mut m, &mut w, None, &p);
@@ -268,13 +272,13 @@ fn a_pin_armed_while_playing_does_not_repeat_the_tick() {
     publica(&mut m, &mut w);
     m.particulas.tocando = true;
     let antes = m.pump.sujidades();
-    w.insert_resource(ParticulasPedidas([StableId(OBJETO)].into()));
+    w.insert_resource(todos());
     publica(&mut m, &mut w);
     assert_eq!(m.pump.sujidades(), antes, "a tocar: sem re-simulação");
     w.remove_resource::<ParticulasPedidas>();
     publica(&mut m, &mut w);
     m.particulas.tocando = false;
-    w.insert_resource(ParticulasPedidas([StableId(OBJETO)].into()));
+    w.insert_resource(todos());
     publica(&mut m, &mut w);
     assert_eq!(m.pump.sujidades(), antes + 1, "parada: o tique repete-se");
 }
@@ -346,20 +350,21 @@ fn mede_a_leitura_das_particulas() {
             .with("P", Column::Vec2((0..n).map(|i| [i as f32, 0.5]).collect()))
             .with("id", Column::Scalar((0..n).map(|i| i as f32).collect()));
         let quer = BTreeSet::from([u32::try_from(n / 2).unwrap()]);
+        let inteira: BTreeSet<u32> = (0..u32::try_from(n).unwrap()).collect();
         let (mut toda, mut so) = (f64::MAX, f64::MAX);
         for r in 0..9 {
-            let mut corre = |ids: Option<&BTreeSet<u32>>| {
+            let mut corre = |ids: &BTreeSet<u32>| {
                 let t = std::time::Instant::now();
                 let m = do_objeto([Some(&s)], ids);
                 std::hint::black_box(m);
                 t.elapsed().as_secs_f64() * 1e3
             };
             if r % 2 == 0 {
-                toda = toda.min(corre(None));
-                so = so.min(corre(Some(&quer)));
+                toda = toda.min(corre(&inteira));
+                so = so.min(corre(&quer));
             } else {
-                so = so.min(corre(Some(&quer)));
-                toda = toda.min(corre(None));
+                so = so.min(corre(&quer));
+                toda = toda.min(corre(&inteira));
             }
         }
         eprintln!("n = {n}: corrente inteira {toda:.3} ms · só o id pedido {so:.3} ms");

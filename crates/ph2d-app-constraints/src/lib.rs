@@ -16,6 +16,7 @@ pub mod gizmo;
 pub mod inspector;
 pub mod marcas;
 mod particulas;
+pub use particulas::depois_do_motion;
 mod peso;
 pub mod relogio;
 pub mod smoke;

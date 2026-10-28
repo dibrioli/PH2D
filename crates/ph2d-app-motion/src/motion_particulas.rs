@@ -1,7 +1,7 @@
 //! ⭐ **As PARTÍCULAS que a pilha de constraints prende** — o ponto de simulação
 //! (`docs/BlenderConstraints/07_W6_pontas.md` §5 e §3).
 //!
-//! A constraint pede um objecto Motion e os `id` dele (`ParticulasPedidas` + `IdsPedidos`); o Motion
+//! A constraint pede um objecto Motion e os `id` dele (`ParticulasPedidas`); o Motion
 //! arma a TOMADA dos sinks dele — a mesma porta dos gizmos, que cavalga as duas rotas (CPU: a
 //! corrente separada do sink; placa: a leitura sem espera, `motion_bridge_gpu_tomadas.rs`) — e
 //! devolve, do último cozimento, `id → P` no espaço do objecto (`Particulas`), só dos ids pedidos.
@@ -18,7 +18,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use ph2d_ecs::World;
-use ph2d_ecs::motion_generator::{IdsPedidos, Particulas, ParticulasPedidas};
+use ph2d_ecs::motion_generator::{Particulas, ParticulasPedidas};
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::graph::NodeId;
 
@@ -29,8 +29,8 @@ use crate::motion_state::MotionState;
 pub struct Leitura {
     /// A cena toca? (a shell escreve-o antes de [`publica`].)
     pub tocando: bool,
-    /// O que a última publicação leu: a geração das tomadas, os objectos e os ids pedidos.
-    vista: Option<(u64, BTreeSet<u64>, Option<IdsPedidos>)>,
+    /// O que a última publicação leu: a geração das tomadas e o pedido.
+    vista: Option<(u64, ParticulasPedidas)>,
     /// Os sinks que só a pilha pede (nenhum gizmo nem sinal): a placa devolve-os em [`COLUNAS_DO_PINO`].
     pub(crate) so_colunas: Vec<NodeId>,
 }
@@ -57,13 +57,12 @@ pub fn taps_for(motion: &MotionState) -> Vec<NodeId> {
         .collect()
 }
 
-/// `id → P` do 1.º sink (pela ordem dada) cuja corrente traz a coluna `id`, só dos `ids` (`None` =
-/// todos). `None` na lista = a tomada desse sink não chegou: antes do que responde, a resposta é
+/// `id → P` do 1.º sink (pela ordem dada) cuja corrente traz a coluna `id`, só dos `ids`. `None` na lista = a tomada desse sink não chegou: antes do que responde, a resposta é
 /// desconhecida.
 #[must_use]
 pub fn do_objeto<'a>(
     correntes: impl IntoIterator<Item = Option<&'a Stream>>,
-    ids: Option<&BTreeSet<u32>>,
+    ids: &BTreeSet<u32>,
 ) -> Option<BTreeMap<u32, [f64; 2]>> {
     for c in correntes {
         let s = c?;
@@ -81,10 +80,10 @@ pub fn do_objeto<'a>(
                 reason = "o id é um inteiro ≥ 0 e < 2²⁴, exacto no f32"
             )]
             let id = id as u32;
-            if ids.is_none_or(|w| w.contains(&id)) {
+            if ids.contains(&id) {
                 m.insert(id, [f64::from(q[0]), f64::from(q[1])]);
                 // Os ids são únicos na corrente: achados todos, o resto não se lê.
-                if ids.is_some_and(|w| w.len() == m.len()) {
+                if ids.len() == m.len() {
                     break;
                 }
             }
@@ -98,10 +97,11 @@ pub fn do_objeto<'a>(
 /// e publica as do último) e DEPOIS do cozimento (as deste quadro). Devolve se republicou: sem
 /// escrita nas tomadas nem pedido novo, não lê nada.
 pub fn publica(motion: &mut MotionState, world: &mut World) -> bool {
-    let pedidas: BTreeSet<u64> = world
+    let pedido = world
         .get_resource::<ParticulasPedidas>()
-        .map(|p| p.0.iter().map(|s| s.0).collect())
+        .cloned()
         .unwrap_or_default();
+    let pedidas: BTreeSet<u64> = pedido.0.keys().map(|s| s.0).collect();
     if pedidas != motion.objeto.pinos {
         // Parada, a tomada nova tem de sair sem o relógio: o tique repete-se pelo scrub. A tocar, o
         // cozimento deste quadro já a coze.
@@ -114,12 +114,7 @@ pub fn publica(motion: &mut MotionState, world: &mut World) -> bool {
         motion.particulas.vista = None;
         return world.remove_resource::<Particulas>().is_some();
     }
-    let ids = world.get_resource::<IdsPedidos>().cloned();
-    let chave = (
-        motion.pump.tomadas_geracao(),
-        motion.objeto.pinos.clone(),
-        ids,
-    );
+    let chave = (motion.pump.tomadas_geracao(), pedido);
     if world.contains_resource::<Particulas>() && motion.particulas.vista.as_ref() == Some(&chave) {
         return false;
     }
@@ -132,11 +127,10 @@ pub fn publica(motion: &mut MotionState, world: &mut World) -> bool {
             .iter()
             .filter(|&&n| motion.doc.owner_of(n) == Some(o))
             .map(|n| tomadas.iter().find(|(t, _)| t == n).map(|(_, c)| c));
-        let quer = chave
-            .2
-            .as_ref()
-            .map(|i| i.0.get(&s).cloned().unwrap_or_default());
-        if let Some(m) = do_objeto(correntes, quer.as_ref()) {
+        let Some(quer) = chave.1.0.get(&s) else {
+            continue;
+        };
+        if let Some(m) = do_objeto(correntes, quer) {
             por_objeto.insert(s, m);
         }
     }

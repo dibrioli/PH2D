@@ -584,7 +584,10 @@ fn the_particle_scene_pins_the_ball_to_the_fountain_particle() {
     assert_eq!(item.target, Some(s));
     let mut vcena = ph2d_vec_scene::VecScene::new();
     ph2d_app_constraints::quadro(&mut sim, &mut vcena, &mut drive, None);
-    assert_eq!(sim.world().resource::<ParticulasPedidas>().0, [s].into());
+    assert_eq!(
+        sim.world().resource::<ParticulasPedidas>().0,
+        [(s, [PARTICULA].into())].into()
+    );
     let pose = |sim: &SimWorld| {
         let t = mundo(sim, bola);
         [t.translation.x, t.translation.y]
@@ -678,4 +681,22 @@ fn the_particle_scene_tip_springs_when_the_body_is_dragged_with_the_time_stopped
         (fim - (x0 + 1.5)).abs() < 1e-3,
         "a ponta não assentou: {x0} → {fim}"
     );
+}
+
+/// ⭐ Cena 12: o nome da Fonte e a partícula da Bola são escritos dos dois lados (o Motion monta o grafo
+/// pelo nome; nenhuma das famílias depende da outra) — o gate lê-os no fonte do Motion e compara.
+#[test]
+fn the_fountain_name_and_particle_are_the_same_in_motion_and_constraints() {
+    use ph2d_app_constraints::smoke_particula::{FONTE, PARTICULA};
+    let lido = |fonte: &str, prefixo: &str| -> String {
+        let l = fonte
+            .lines()
+            .find_map(|l| l.trim().strip_prefix(prefixo))
+            .unwrap_or_else(|| panic!("`{prefixo}` sumiu do fonte do Motion"));
+        l.trim_end_matches(';').trim_matches('"').to_owned()
+    };
+    let cena = include_str!("../../../ph2d-app-motion/src/motion_objeto_smoke_particula.rs");
+    assert_eq!(lido(cena, "pub const FONTE: &str = "), FONTE);
+    let gate = include_str!("../../../ph2d-app-motion/src/motion_objeto_smoke_particula_tests.rs");
+    assert_eq!(lido(gate, "const PARTICULA: u32 = "), PARTICULA.to_string());
 }

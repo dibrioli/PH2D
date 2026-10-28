@@ -31,8 +31,7 @@ pub(super) fn sprite(
     let p = gt.translation();
     // ADR-0070-amendment-4: the FULL 2x2 world basis (rotation + scale + skew, column-major:
     // col0 = basis.xy, col1 = basis.zw); `size`/`anchor` stay LOCAL.
-    let affine = gt.affine();
-    let basis = [affine[0], affine[1], affine[2], affine[3]];
+    let (world_pos, basis) = RenderInstance::pose_de(&gt);
     // M14.5 C: branch on the sprite source. Atlas
     // sprites resolve UV via `region_uv`; individual
     // sprites use the full (0..1) UV rect and carry
@@ -149,7 +148,7 @@ pub(super) fn sprite(
         sprite_sheet_subrect(atlas_uv, grid.hframes, grid.vframes, grid.frame)
     };
     let base = RenderInstance {
-        world_pos: [p.x, p.y],
+        world_pos,
         // LOCAL size — the basis applies world scale. ⚠️ Numa folha sob
         // pré-visualização isto é o quad DESDOBRADO (ver acima).
         size: quad_size,

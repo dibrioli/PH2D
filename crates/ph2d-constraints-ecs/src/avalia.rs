@@ -380,8 +380,8 @@ pub struct Avaliadas(pub Vec<Entity>);
 ///
 /// ⚠️ A regra do ciclo: quem lê um dono preso (o Motion pelas entradas dele, outra pilha que o tem
 /// por alvo) lê o 1.º passe — a partícula do quadro anterior. Função de `(autorado, partículas)`
-/// só: tocar e arrastar dão o mesmo bit. Devolve quantos moveu.
-pub fn depois_do_motion(sim: &mut SimWorld, preview: &mut PreviewDrive) -> usize {
+/// só: tocar e arrastar dão o mesmo bit. Devolve os donos que moveu (quem já os extraiu repõe-nos).
+pub fn depois_do_motion(sim: &mut SimWorld, preview: &mut PreviewDrive) -> Vec<Entity> {
     let presos: Vec<Entity> = sim
         .world()
         .get_resource::<Avaliadas>()
@@ -398,7 +398,7 @@ pub fn depois_do_motion(sim: &mut SimWorld, preview: &mut PreviewDrive) -> usize
         })
         .collect();
     if presos.is_empty() {
-        return 0;
+        return Vec::new();
     }
     let idx = indice(sim.world());
     let mut avaliadas: std::collections::BTreeSet<u64> = sim
@@ -409,10 +409,10 @@ pub fn depois_do_motion(sim: &mut SimWorld, preview: &mut PreviewDrive) -> usize
         .map(|e| e.to_bits())
         .collect();
     let mut estados = Vec::new();
-    let mut movidas = 0;
+    let mut movidas = Vec::new();
     for &e in &presos {
         if avalia_uma(sim, preview, &idx, e, &mut estados, &mut avaliadas) {
-            movidas += 1;
+            movidas.push(e);
         }
     }
     let mut todos = sim

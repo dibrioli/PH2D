@@ -6,8 +6,11 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use ph2d_constraints::Kind;
 use ph2d_constraints_ecs::Constraints;
-use ph2d_ecs::SimWorld;
-use ph2d_ecs::motion_generator::{IdsPedidos, ParticulasPedidas};
+use ph2d_ecs::motion_generator::ParticulasPedidas;
+use ph2d_ecs::{PresentWorld, SimWorld};
+use ph2d_editor_core::GizmoView;
+use ph2d_editor_core::screens::hero::GizmoStateGroup;
+use ph2d_preview_drive::PreviewDrive;
 
 /// Reescreve o pedido (só quando muda: o Motion arma as tomadas pela diferença).
 pub(crate) fn pedir(sim: &mut SimWorld) {
@@ -22,11 +25,62 @@ pub(crate) fn pedir(sim: &mut SimWorld) {
             ids.entry(s).or_default().insert(p.id);
         }
     }
-    let pedidas: BTreeSet<_> = ids.keys().copied().collect();
-    if w.get_resource::<ParticulasPedidas>().map(|p| &p.0) != Some(&pedidas) {
-        sim.world_mut().insert_resource(ParticulasPedidas(pedidas));
+    if w.get_resource::<ParticulasPedidas>().map(|p| &p.0) != Some(&ids) {
+        sim.world_mut().insert_resource(ParticulasPedidas(ids));
     }
-    if sim.world().get_resource::<IdsPedidos>().map(|p| &p.0) != Some(&ids) {
-        sim.world_mut().insert_resource(IdsPedidos(ids));
+}
+
+/// ⭐ **O passe DEPOIS do cozimento, inteiro** (§3): a pilha relê os donos presos às partículas deste
+/// cozimento ([`ph2d_constraints_ecs::depois_do_motion`]) e quem já os desenhou neste quadro segue-os
+/// — o espelho e as instâncias no `present` (o extract correu antes) e a caixa do gizmo da selecção
+/// (publicada antes, do espelho). Devolve quantos donos moveu; nenhum ⇒ nada mais se lê.
+pub fn depois_do_motion(
+    sim: &mut SimWorld,
+    present: &mut PresentWorld,
+    preview: &mut PreviewDrive,
+    gizmo: Option<&mut GizmoStateGroup>,
+) -> usize {
+    let movidos = ph2d_constraints_ecs::depois_do_motion(sim, preview);
+    if movidos.is_empty() {
+        return 0;
+    }
+    let repostos = ph2d_render::repoe_no_presente(sim.world(), present.world_mut(), &movidos);
+    if let Some(g) = gizmo {
+        for (e, antes, depois) in &repostos {
+            // Só translação: uma base que mudou (rodou, escalou) não se repõe por deslocamento.
+            if antes.affine()[..4] != depois.affine()[..4] {
+                continue;
+            }
+            let d = depois.translation() - antes.translation();
+            let bits = e.to_bits();
+            if g.selection == Some(bits)
+                && let Some(v) = g.view.as_mut()
+            {
+                desloca(v, [d.x, d.y]);
+            }
+            for (b, v) in &mut g.extra_views {
+                if *b == bits {
+                    desloca(v, [d.x, d.y]);
+                }
+            }
+        }
+    }
+    movidos.len()
+}
+
+/// A caixa inteira por `d` de mundo: pela translação do `model` (sob a qual vivem caixa e pivô).
+fn desloca(v: &mut GizmoView, d: [f32; 2]) {
+    if v.model == ph2d_editor_core::gizmo::MODEL_IDENTITY {
+        for p in [
+            &mut v.bbox_min_world,
+            &mut v.bbox_max_world,
+            &mut v.pivot_world,
+        ] {
+            p[0] += d[0];
+            p[1] += d[1];
+        }
+    } else {
+        v.model[4] += d[0];
+        v.model[5] += d[1];
     }
 }

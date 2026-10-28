@@ -298,6 +298,16 @@ impl RenderInstance {
     /// `GlobalTransform`.
     pub const IDENTITY_BASIS: [f32; 4] = [1.0, 0.0, 0.0, 1.0];
 
+    /// A pose de mundo da instância (`world_pos`, `basis`) do `GlobalTransform` do espelho — a
+    /// MESMA conta para o extract e para quem repõe um dono depois do cozimento
+    /// ([`crate::repoe_no_presente`]).
+    #[must_use]
+    pub fn pose_de(gt: &ph2d_ecs::GlobalTransform) -> ([f32; 2], [f32; 4]) {
+        let p = gt.translation();
+        let a = gt.affine();
+        ([p.x, p.y], [a[0], a[1], a[2], a[3]])
+    }
+
     // ─── `flip_uv` packed-flags bit layout (ADR-0070-amendment-3) ─────
     //
     // `flip_uv` is a general per-instance flags word, not flip-only. The

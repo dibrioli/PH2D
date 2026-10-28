@@ -100,6 +100,9 @@ pub mod sprite_mesh_skin;
 mod sprite_mesh_skin_gpu;
 mod sprite_mesh_warp;
 pub use sprite_mesh_warp::MeshWarp;
+/// Repor no presente os donos movidos depois do extract — ver o cabeçalho.
+mod sprite_repoe;
+pub use sprite_repoe::repoe_no_presente;
 /// Sprite Inspector v2 — W0 frozen (schema v3 baseline). The W1
 /// schema bump v3→v4 + ABI changes live behind this module. See
 /// [`docs/HANDOFF_sprite_inspector_v2.md`](../../../docs/HANDOFF_sprite_inspector_v2.md)

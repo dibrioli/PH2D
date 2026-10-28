@@ -71,16 +71,11 @@ pub fn assign_motion_templates(world: &mut bevy_ecs::world::World) -> bool {
     touched
 }
 
-/// Os objectos Motion a que algum item da pilha se prende por uma partícula (`StableId`). Quem o
-/// escreve é a família das constraints; quem o lê é o Motion, que arma as tomadas dos sinks deles.
+/// O pedido da pilha ao Motion: os objectos a que algum item se prende por uma partícula
+/// (`StableId`) e os `id` que lê de cada um. Quem o escreve é a família das constraints; quem o lê é
+/// o Motion, que arma as tomadas dos sinks deles e só procura estes ids (nunca indexa a corrente).
 #[derive(bevy_ecs::prelude::Resource, Clone, Debug, Default, PartialEq, Eq)]
-pub struct ParticulasPedidas(pub std::collections::BTreeSet<crate::StableId>);
-
-/// Os `id` que a pilha lê de cada objecto pedido, escritos com o [`ParticulasPedidas`]: o Motion só
-/// procura estes na corrente (nunca a indexa inteira). ⚠️ Ausente = todos os ids (quem pede sem
-/// pilha: uma sonda, um teste).
-#[derive(bevy_ecs::prelude::Resource, Clone, Debug, Default, PartialEq, Eq)]
-pub struct IdsPedidos(
+pub struct ParticulasPedidas(
     pub std::collections::BTreeMap<crate::StableId, std::collections::BTreeSet<u32>>,
 );
 

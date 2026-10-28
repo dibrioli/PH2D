@@ -373,7 +373,12 @@ impl crate::App {
             ph2d_app_macros::com(|m| m.depois_do_motion(&mut gfx.motion));
             // Zero atraso do Copy Particle: as partículas DESTE cozimento relidas pelos donos presos.
             if ph2d_app_motion::motion_particulas::publica(&mut gfx.motion, gfx.sim.world_mut()) {
-                ph2d_constraints_ecs::depois_do_motion(&mut gfx.sim, &mut self.preview_drive);
+                ph2d_app_constraints::depois_do_motion(
+                    &mut gfx.sim,
+                    &mut gfx.present,
+                    &mut self.preview_drive,
+                    gfx.hero_screen.as_mut().map(|h| &mut h.gizmo),
+                );
             }
         }
         {

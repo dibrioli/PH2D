@@ -31,7 +31,10 @@ fn the_fountain_particle_the_ball_rides_is_born_moves_and_dies_inside_the_loop()
     );
     m.gpu_enabled = false;
     let mut w = World::new();
-    w.insert_resource(ParticulasPedidas([StableId(OBJETO)].into()));
+    // Todos os ids que a Fonte emite no laço (ordinais `< 2¹⁴`): o gate conta as vivas.
+    w.insert_resource(ParticulasPedidas(
+        [(StableId(OBJETO), (0..1 << 14).collect())].into(),
+    ));
     crate::motion_particulas::publica(&mut m, &mut w);
     let mut p = ph2d_core::Playhead::new(DT);
     p.play();

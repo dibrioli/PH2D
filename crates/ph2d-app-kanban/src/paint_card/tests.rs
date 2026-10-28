@@ -107,6 +107,7 @@ fn with_image(bytes: Vec<u8>, size: [u32; 2], full: bool) -> (KanbanSet, KanbanI
             meta: Meta::default(),
             watchers: Vec::new(),
             origin: None,
+            template: false,
         })),
     ];
     set.apply(id, ops);

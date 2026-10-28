@@ -49,6 +49,7 @@ fn card(id: u64, list: u64, pos: &FracKey) -> KanbanOp {
         meta: Meta::default(),
         watchers: Vec::new(),
         origin: None,
+        template: false,
     })))
 }
 

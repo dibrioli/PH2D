@@ -43,6 +43,7 @@ fn card(id: CardId, list: ListId, pos: FracKey, title: String, created: Moment) 
         meta: Meta::default(),
         watchers: Vec::new(),
         origin: None,
+        template: false,
     }
 }
 

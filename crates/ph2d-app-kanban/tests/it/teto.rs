@@ -85,6 +85,7 @@ fn monta(n: usize, listas: usize) -> (Mesa, KanbanId) {
                 meta: Meta::default(),
                 watchers: Vec::new(),
                 origin: None,
+                template: false,
             })));
         }
         ph2d_kanban_model::apply_batch(k, ops);

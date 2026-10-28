@@ -44,15 +44,15 @@ fn glyph(scene: &mut VectorScene, at: Rect, color: ph2d_vector::Color) {
 }
 
 /// ⭐ Os botões do cabeçalho, da direita para a esquerda a partir de `right` (à esquerda do «Share» e
-/// dos avatares): «Clear all» (com escolhas), «Filters», a pesquisa. Devolve as âncoras
-/// `(filtro, pesquisa)` dos painéis.
+/// dos avatares): «Clear all» (com escolhas), «Filters», a pesquisa. Devolve o filtro e a caixa da
+/// pesquisa, se coube (sem ela, a pesquisa ancora-se no filtro e o painel traz a caixa).
 pub(crate) fn header(
     scene: &mut VectorScene,
     ts: &mut TextSystem,
     theme: Theme,
     tab: &Tab,
     (left, right): (f32, f32),
-) -> (Rect, Rect) {
+) -> (Rect, Option<Rect>) {
     let l = &tab.layout;
     let w6 = &tab.w6;
     let n = w6.filter.selected();
@@ -184,8 +184,7 @@ pub(crate) fn header(
         hits.push((search, Act::SearchBox));
     }
     tab.w6.hits.borrow_mut().extend(hits);
-    let anchor_search = if search.x > left { search } else { filter };
-    (filter, anchor_search)
+    (filter, (search.x > left).then_some(search))
 }
 
 const DUES: [(DueWindow, &str, T, T); 5] = [

@@ -67,3 +67,23 @@ fn d9_os_botoes_da_edicao_rapida_tapam_as_listas_por_baixo() {
     let ponta = |r: Rect| px(&img, r.x + r.w - 3.0, r.y + r.h / 2.0);
     assert_eq!(ponta(abrir), ponta(arquivar), "a lista vê-se através do botão");
 }
+
+/// 4.2 — a pesquisa tem UMA caixa de edição: a do cabeçalho; o painel dos resultados só os mostra
+/// (o texto não aparece duas vezes).
+#[test]
+fn d9_a_pesquisa_tem_uma_so_caixa_de_edicao() {
+    let (mut m, id) = Mesa::cena1();
+    tecla(&mut m, '/');
+    m.escreve("#Animation");
+    m.quadros(2);
+    let caixas: Vec<Rect> = m
+        .docs()
+        .probe_w6_hits(id.0)
+        .into_iter()
+        .filter(|(n, _)| n == "SearchBox")
+        .map(|(_, r)| r)
+        .collect();
+    assert_eq!(caixas.len(), 1, "uma só caixa: {caixas:?}");
+    let topo = m.docs().probe_rect(id.0, "menu").expect("o «…» do cabeçalho");
+    assert!((caixas[0].y - topo.y).abs() < 1.0, "e é a do cabeçalho");
+}

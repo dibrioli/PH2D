@@ -318,7 +318,11 @@ pub(crate) fn paint(
     if let Some(over) = tab.w6.over {
         let (sheet, anchor, right) = match over {
             Over::Filter => (filter_bar::sheet(k, tab, team), anchors.0, true),
-            Over::Search => (search::sheet(tab, set), anchors.1, true),
+            Over::Search => (
+                search::sheet(tab, set, anchors.1.is_none()),
+                anchors.1.unwrap_or(anchors.0),
+                true,
+            ),
             Over::Help => (help::sheet(), help::anchor(tab.layout.area), false),
             Over::Views => (crate::header::views_sheet(tab), head.views, false),
             Over::Share => (crate::share::sheet::sheet(tab, look), head.share, true),

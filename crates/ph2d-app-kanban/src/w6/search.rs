@@ -22,23 +22,26 @@ const HELP: [&str; 6] = [
     "kanban.w6.search.op_not",
 ];
 
-/// ⭐ A folha dos resultados (o grupo «Kanban · Lista» por cima dos cartões dele).
-pub(crate) fn sheet(tab: &Tab, set: &ph2d_kanban_model::KanbanSet) -> Sheet {
+/// ⭐ A folha dos resultados (o grupo «Kanban · Lista» por cima dos cartões dele). A caixa de edição
+/// é UMA: a do cabeçalho; a folha só a traz (`with_box`) quando o cabeçalho não a coube.
+pub(crate) fn sheet(tab: &Tab, set: &ph2d_kanban_model::KanbanSet, with_box: bool) -> Sheet {
     let w = &tab.w6;
     let mut s = Sheet::new(sheet::WIDE);
     s.title("kanban.w6.search.title");
-    let field = match &w.input {
-        Some((Boxed::Query, f)) => Some(f.clone()),
-        _ => None,
-    };
-    s.push(
-        Item::Input {
-            field,
-            text: w.query.clone(),
-            placeholder: tr("kanban.w6.search").to_owned(),
-        },
-        Act::SearchBox,
-    );
+    if with_box {
+        let field = match &w.input {
+            Some((Boxed::Query, f)) => Some(f.clone()),
+            _ => None,
+        };
+        s.push(
+            Item::Input {
+                field,
+                text: w.query.clone(),
+                placeholder: tr("kanban.w6.search").to_owned(),
+            },
+            Act::SearchBox,
+        );
+    }
     if w.query.trim().is_empty() {
         s.caption("kanban.w6.search.ops");
         for k in HELP {

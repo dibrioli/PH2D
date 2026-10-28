@@ -33,6 +33,7 @@
 - [Prompt Deck](reference_prompt_deck_app.md) · [~/Apps invisíveis ao cachy-update](reference_manual_apps_in_home_apps_are_invisible_to_cachy_update.md) · [atalho global Plasma 6](reference_kde_plasma6_global_shortcut.md)
 - [HISTÓRICO: aquarela/wash (19)](reference_topic_watercolor_historical.md)
 - HISTÓRICO: 3D (saiu do PH2D, ADR-0179; código em `b1a6f9b07`) — [campo implícito/SDF (24)](reference_topic_implicit_field_laws.md) · [quad remesh (20)](reference_topic_quad_remesh_rulers.md) · [MagicaCSG](reference_magicacsg_installed_under_wine.md) · [viés NDC](feedback_a_depth_bias_constant_in_ndc_is_not_constant_in_the_world.md) · [BSDF×albedo](feedback_a_per_texel_albedo_is_the_base_color_never_a_factor_at_the_end.md)
+- ⭐ [Dono 28/10: a tinta que AMASSA o relevo do papel é um efeito a guardar — controlo do pincel (0 segue o papel · 1 amassa), nunca apagar](project_paper_press_is_a_brush_control_2026_10_28.md)
 
 ## Comunicação & decisão
 - ⭐ [Decisões TÉCNICAS são delegadas (padrão-ouro); produto e envio são do Enio](feedback_architecture_decisions_are_delegated_to_the_gold_standard.md)

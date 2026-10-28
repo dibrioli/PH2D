@@ -24,3 +24,15 @@
 | W3 | Azul de acções do verso = `kanban-blue-bold` (o acento do tema PH2D é magenta) | a maquete é azul-Trello | tokens |
 | W3 | Frente: sem distintivo de lembrete; capa de imagem metade = faixa fixa de 128 px; título sobre capa inteira de imagem com véu medido a 4,5:1 | Trello / maquete | `front.rs`, `paint_card.rs` |
 | W3 | Menção com espaço grava-se `[@Ana Silva](mention:Ana%20Silva)`; sem espaço, `@Ana` | ida-e-volta sem perder o nome e legível em qualquer leitor de markdown | `ph2d-kanban-md` |
+| W6 | Palavra do filtro procura no título, campos, nomes de etiquetas e de membros (não na descrição nem comentários); a pesquisa global `/` procura em tudo | ajuda do Trello + maquete | `ph2d-kanban-filter::matches` |
+| W6 | Categorias do filtro: «qualquer correspondência» = basta uma; «exacta» = todas | ajuda do Trello | `Filter.mode` |
+| W6 | Envelhecimento: níveis aos 7, 14 e 28 dias sem actividade | a Atlassian não publica os limiares; iguais às janelas de actividade do filtro | `age_level` |
+| W6 | Mover/copiar para outro Kanban casa etiquetas e campos por nome+cor/tipo, criando os que faltam; a história fica no Kanban de origem | Trello | `move_card`/`copy_card` |
+| W6 | Arquivar/apagar o original remove todos os espelhos; desfazer devolve-os | Trello | `remove_card` |
+| W10 | Pessoa importada = `username` do Trello (as @menções casam sem tradução) | Trello | `ph2d-kanban-import` |
+| W10 | Cores do Trello: `x_light` = subtil, `x` = normal, `x_dark` = forte | paleta de 30 do plano | `trello.rs` |
+| W10 | Export CSV/markdown com cabeçalhos em inglês, como o do Trello; arquivados sob `## Archived`; checkbox do markdown = entrega concluída | formato do Trello | `export_*` |
+| W10 | Células do CSV NÃO são protegidas contra injeção de fórmulas de folha de cálculo (iguais ao Trello) | paridade com o Trello; REVER: proteger (prefixo `'`) é mais seguro | `export_csv` |
+| W10 | Anexos que o Trello não guarda (ficheiro do projecto, cartão, Kanban) saem como links `ph2d://` e voltam iguais | ida-e-volta sem perda | `export_json.rs` |
+| W3 | A 1.ª imagem anexada a um cartão sem capa vira capa (no mesmo desfazer) | Trello | `back/` anexos |
+| W3 | Link sem esquema abre como `https://`; `file:`/`javascript:` recusados | Trello + segurança | `back/` links |

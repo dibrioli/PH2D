@@ -7566,6 +7566,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-kanban-import"
+version = "0.0.0"
+dependencies = [
+ "jiff",
+ "ph2d-kanban-model",
+ "serde_json",
+]
+
+[[package]]
 name = "ph2d-kanban-md"
 version = "0.0.0"
 dependencies = [

@@ -21,11 +21,16 @@
 ## Agentes em voo
 - [x] W3 lote C `3e5dd5b05a` modelo v2 · `6b4ff2373e` tracking no ph2d-text (falta ligar paint_text.rs/text_elide.rs + list_title → D2). ADR-0195 desactualizado (v1, ImageFile) → documentador
 - [x] W3 lote D1 `251b2d2652` `59d6c6828b` verso + cena 4
-- W3 lote D3 (pontas: anexo de ficheiro, abrir link, copy link, duplo clique) — back/**, surface, docs, pointer
+- [x] W3 lote D3 `da79404217` ligações D2 · `ea80f10a4a` anexos/links/copy/cliques
+- [ ] W3 fecho (lote E): catraca da shell 189086>189041 (MOVER); gancho «quer outro quadro» p/ front::cover::pending(); medir tecto de anexo; xdg-open duplicado → ph2d-app-host; fmt+clippy W3; revisor
+- W4 lote V: app-kanban vista com Affine + LOD + ganchos no app-board
 - F também cura: 2 desfazer seguidos no mesmo cartão (History::rebase × meta.version)
 - [x] W4 lote M `4f06569b3a` `36d3fd8c1e` (ElementKind::Kanban, FORMAT 18, PROTOCOL 12, ganchos KanbanPainter/KanbanElementInput, botão Kanban, Open in tab na barra)
   - pendente p/ lote V: ContextMenuKind::BoardKanban (types_menu.rs+menu_rows.rs); key_of→Key::from; paint.rs usar kanban_board_bg/kanban_list_colors; MEDIR limiar LOD; foto; desfazer inserir deixa doc vazio órfão (decidir: apagar se intocado); board_nav.rs=700
-- W6 lote F (puro): ph2d-kanban-filter + ops do modelo (modelos, espelhos, copiar/mover)
+- [x] W10 lote I `c1d6f02b14` ph2d-kanban-import (UI File→Import/Export por fazer). Cargo.lock por comitar quando D3 acabar
+- W5 lote S (rede): crate ph2d-kanban-sync, loopback 2 processos
+- [x] W6 lote F `50426ea408` desfazer · `0efbd1ed18` modelo v3 · `65f3ea9fed` ph2d-kanban-filter (UI da W6 por fazer)
+- W8 lote U (puro): crate ph2d-kanban-auto
 - [x] W3 lote A `f94679ce9c` richdoc · `ba73d150f5` kanban-md · `4771ddc2a5` kanban-dates
 - [x] W3 lote D2 `b011d604b1` menção · `3033008f8f` tracking · `553bf822e3` frente · `d31a89fb33` fotos (4 ligações → D3)
 - [x] W3 lote B `97de715bf7` (calendar, date_picker, rich_editor; Cargo.lock por comitar com o lote A)

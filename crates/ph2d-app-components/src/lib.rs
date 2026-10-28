@@ -116,6 +116,7 @@ pub mod factory_smoke;
 pub mod health_bar_bridge;
 /// ⭐ TOP-20 #16 — a ponte dos scripts do artista (o quadro, o ledger e o rebobinar).
 pub mod hud_anchors;
+pub mod hud_arranjo;
 pub mod hud_bridge;
 pub mod hud_inspector;
 pub mod hud_smoke_anchors;

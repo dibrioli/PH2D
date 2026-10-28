@@ -15,7 +15,8 @@
 //!
 //! **Desempate (medido):** com os quatro stays a `WEAK`, como na espec, 10 de 20 casos do oráculo têm ótimo NÃO único
 //! (a resposta muda com a ordem de inserção) — a moeda e a pontuação empatam em quem anda. Por isso quem é o `a` de
-//! uma relação (o que SEGUE) cede primeiro, e mexer a posição custa menos que mexer a largura.
+//! uma relação (o que SEGUE) e não é âncora de ninguém cede primeiro, e mexer a posição custa menos que mexer a
+//! largura. (Medido 27/10, W5.5: a pontuação que segue o minimapa E é a âncora da moeda andava com a moeda.)
 //!
 //! # Regras de robustez
 //! Índice fora da lista ou `a == b` ⇒ a relação é ignorada. `REQUIRED` impossível que o solver recusa ⇒ essa
@@ -141,7 +142,10 @@ fn g(x: f64) -> f64 {
 }
 
 /// Pesos do «fica onde foi desenhado» (unidades de `WEAK`): posição e largura de quem SEGUE, posição e largura de
-/// quem é âncora. Diádicos e sem somas pequenas iguais entre si — o desempate do ótimo.
+/// quem é âncora. Diádicos e sem somas pequenas iguais entre si — o desempate do ótimo. A posição de quem SÓ é âncora
+/// (não segue ninguém) é `STRONG`: é onde o artista e as âncoras o puseram (medido 27/10, W5.5: a `0,5` o minimapa
+/// era empurrado até à borda antes de a pontuação encolher). Quem segue E é âncora (o meio de uma pilha) fica nos
+/// pesos de âncora: a `STRONG` empatava com a âncora de cima (ótimo não único no oráculo).
 pub const PESOS: [f64; 4] = [0.125, 0.3125, 0.5, 0.6875];
 
 fn forca(f: Forca) -> Strength {
@@ -306,13 +310,14 @@ impl Arranjo {
             .iter()
             .filter_map(|(r, f)| indices(r, n).map(|ab| (r, *f, ab)))
             .collect();
-        let (mut entra, mut segue) = (vec![false; n], vec![false; n]);
+        let (mut entra, mut segue, mut ancora) = (vec![false; n], vec![false; n], vec![false; n]);
         let mut pai: Vec<usize> = (0..n).collect();
         for &(_, _, (a, b)) in &validas {
             entra[a] = true;
             if let Some(b) = b {
                 entra[b] = true;
                 segue[a] = true;
+                ancora[b] = true;
                 let (ra, rb) = (raiz(&mut pai, a), raiz(&mut pai, b));
                 pai[ra.max(rb)] = ra.min(rb);
             }
@@ -356,15 +361,15 @@ impl Arranjo {
                 w: Variable::new(),
                 h: Variable::new(),
             };
-            let (pp, pw) = if segue[i] {
-                (PESOS[0], PESOS[1])
-            } else {
-                (PESOS[2], PESOS[3])
+            let (pp, pw) = match (segue[i], ancora[i]) {
+                (true, false) => (Strength::new(PESOS[0]), PESOS[1]),
+                (true, true) => (Strength::new(PESOS[2]), PESOS[3]),
+                (false, _) => (Strength::STRONG, PESOS[3]),
             };
             // O «fica onde foi desenhado» é EDIÇÃO (com a força do stay): a caixa muda sem remontar o sistema.
             for (var, k, s) in [
-                (v.x, c.x, Strength::new(pp)),
-                (v.y, c.y, Strength::new(pp)),
+                (v.x, c.x, pp),
+                (v.y, c.y, pp),
                 (v.w, c.w, Strength::new(pw)),
                 (v.h, c.h, forte),
             ] {

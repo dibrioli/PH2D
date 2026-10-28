@@ -21,8 +21,8 @@ REQ, STRONG, MEDIUM, WEAK = (kiwi.strength.required, kiwi.strength.strong, kiwi.
 FORCA = {"Requerida": REQ, "Forte": STRONG, "Media": MEDIUM, "Fraca": WEAK}
 EDICAO = 1.0e9
 # (posição de quem segue, largura de quem segue, posição de âncora, largura de âncora) — o desempate do lib.rs.
-PESOS = (0.125, 0.3125, 0.5, 0.6875)
-PESOS_TUDO_WEAK = (1.0, 1.0, 1.0, 1.0)
+PESOS = (0.125, 0.3125, 0.5, 0.6875, 1_000_000.0)  # + a posição de quem só é âncora: STRONG (W5.5)
+PESOS_TUDO_WEAK = (1.0, 1.0, 1.0, 1.0, 1.0)
 CAMPOS = ("x", "y", "w", "h")
 GRELHA = 256.0
 
@@ -73,12 +73,14 @@ class Arranjo:
         self.s = s = kiwi.Solver()
         self.caixas = [e["caixa"] for e in elementos]
         rels = validas(len(elementos), relacoes)
-        part, segue = set(), set()
+        part, segue, ancora = set(), set(), set()
         for tipo, d, _ in rels:
             part.add(d["a"])
             if "b" in d:
                 part.add(d["b"])
                 segue.add(d["a"])
+                ancora.add(d["b"])
+        # Três degraus (W5.5): só segue (cede primeiro) · segue e é âncora · só âncora (fica onde a âncora o pôs).
         self.v = {}
         self.larguras = []
         if not part:
@@ -92,7 +94,10 @@ class Arranjo:
         for i in ordem:
             c = {k: g(x) for k, x in elementos[i]["caixa"].items()}
             v = self.v[i] = {k: kiwi.Variable("e%d.%s" % (i, k)) for k in CAMPOS}
-            pp, pw = (pesos[0], pesos[1]) if i in segue else (pesos[2], pesos[3])
+            if i in segue:
+                pp, pw = (pesos[0], pesos[1]) if i not in ancora else (pesos[2], pesos[3])
+            else:
+                pp, pw = pesos[4], pesos[3]
             for cn in ((v["x"] == c["x"]) | pp, (v["y"] == c["y"]) | pp, (v["w"] == c["w"]) | pw,
                        (v["h"] == c["h"]) | STRONG, (v["w"] >= 0) | REQ, (v["h"] >= 0) | REQ,
                        (v["x"] >= cv["x"]) | STRONG, (v["y"] >= cv["y"]) | STRONG,

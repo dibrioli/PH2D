@@ -99,6 +99,8 @@ ph2d-panel-asset-browser = { path = "../ph2d-panel-asset-browser" }
 ph2d-preview-drive = { path = "../ph2d-preview-drive" }
 # A lei do canvas do HUD (TOP-20 #20) — a ponte pergunta-lhe onde a caixa de referencia cai.
 ph2d-hud = { path = "../ph2d-hud" }
+# O arranjo do HUD (ADR-0194): o solver que corre depois das âncoras.
+ph2d-hud-layout = { path = "../ph2d-hud-layout" }
 # ⭐ **Os scripts do artista** (TOP-20 #16): a ponte (`script_bridge`) e a cena de smoke falam com o
 # `ScriptHost` e anexam o `LuauScript`. ⚠️ A VM (`mlua` + Luau) já é compilada pela shell, logo esta
 # aresta não acrescenta uma unidade à build do binário — só à dos testes desta crate.

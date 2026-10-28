@@ -60,13 +60,14 @@ fn a_narrow_screen_shrinks_the_score_before_it_overlaps() {
             Forca::Requerida,
         ),
     ];
-    let els = [
-        el(16.0, 312.0, 100.0, 32.0, Some(200.0)),
-        el(504.0, 240.0, 120.0, 104.0, Some(120.0)),
-    ];
     let mut encolheu = false;
     for largura in [640.0, 400.0, 300.0, 250.0] {
         let tela = caixa(0.0, 0.0, largura, 360.0);
+        // O minimapa vem colado à direita pela ÂNCORA (corre antes do arranjo); quem só é âncora fica onde ela o pôs.
+        let els = [
+            el(16.0, 312.0, 100.0, 32.0, Some(200.0)),
+            el(largura - 136.0, 240.0, 120.0, 104.0, Some(120.0)),
+        ];
         let r = resolve(tela, &els, &rel);
         let (pont, mapa) = (r[0], r[1]);
         assert!(
@@ -74,7 +75,7 @@ fn a_narrow_screen_shrinks_the_score_before_it_overlaps() {
             "tela {largura}: a pontuação invadiu o minimapa: {r:?}"
         );
         assert!(
-            mapa.x + mapa.w <= largura + 1e-9 && mapa.w == 120.0,
+            mapa == els[1].caixa,
             "tela {largura}: o minimapa é que cedeu: {r:?}"
         );
         assert!(pont.w <= 200.0, "nunca maior que o texto");

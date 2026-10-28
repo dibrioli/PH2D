@@ -1,0 +1,7 @@
+Chave da prancha cega J6d_Rough_Sketch_cega.jpg (linha: imagem → quem)
+gestos_A: 1 = Soft Pastel (d 1.205, limiar 0.591) (vizinho), 2 = Sketch_1 (oraculo), 3 = Rough Sketch (escala 1.306) (nosso)
+gestos_B: 1 = Sketch_1 (oraculo), 2 = Soft Pastel (d 1.205, limiar 0.591) (vizinho), 3 = Rough Sketch (escala 1.306) (nosso)
+tamanhos_A: 1 = Soft Pastel (d 1.205, limiar 0.591) (vizinho), 2 = Sketch_1 (oraculo), 3 = Rough Sketch (escala 1.306) (nosso)
+tamanhos_B: 1 = Rough Sketch (escala 1.306) (nosso), 2 = Soft Pastel (d 1.205, limiar 0.591) (vizinho), 3 = Sketch_1 (oraculo)
+sobre_A: 1 = Sketch_1 (oraculo), 2 = Rough Sketch (escala 1.306) (nosso), 3 = Soft Pastel (d 1.205, limiar 0.591) (vizinho)
+sobre_B: 1 = Sketch_1 (oraculo), 2 = Soft Pastel (d 1.205, limiar 0.591) (vizinho), 3 = Rough Sketch (escala 1.306) (nosso)

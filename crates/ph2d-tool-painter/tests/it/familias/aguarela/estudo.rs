@@ -48,8 +48,9 @@ fn escreve_os_estudos_da_aguarela() {
             p
         } else if let Some(nome) = e["receita_meio"].as_str() {
             // J6 L3: um reprovado de outro meio (Digital/Watercolor/Impasto) como o gerador o faz.
-            let r = crate::familias::lapis::EM_ESTUDO
+            let r = crate::familias::lapis::EM_ESTUDO_J6
                 .iter()
+                .chain(crate::familias::lapis::EM_ESTUDO)
                 .chain(crate::familias::caligrafia_marcadores::EM_ESTUDO)
                 .find(|r| r.nome == nome)
                 .expect("receita de meio em estudo");

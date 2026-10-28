@@ -170,6 +170,71 @@ pub const EM_ESTUDO: &[ReceitaMeio] = &[
     },
 ];
 
+/// J6 (Digital + 1 Watercolor, `docs/Painter/Pinceis/exames/digital_j6.md`): os examinados só por VALORES, fora da fábrica
+/// (o coordenador promove os aprovados de uma vez). Mesmo nome que uma receita antiga = esta ganha no gerador de estudos.
+pub const EM_ESTUDO_J6: &[ReceitaMeio] = &[
+    // B-7 — o esboço do MyPaint `ramon/Sketch_1`: dabs quase duros (0,8) espalhados ao acaso pela pressão (0,2 D: a 0,5
+    // a linha desfazia-se em bolhas soltas), o raio sorteado (log-random 0,88 no .myb ⇒ ± 0,85), 3,5 dabs por raio
+    // (passo 0,14), tinta translúcida (0,6) que SOMA. Régua 284 → 382 de 454.
+    ReceitaMeio {
+        pincel: &[
+            ("hardness", "0.8"),
+            ("jitter", "0.2"),
+            ("jitter_scale", "0.85"),
+            ("spacing", "0.14"),
+            ("accumulate", "true"),
+            ("flow", "0.6"),
+        ],
+        mao: &[
+            ("pressureSize", 0.0),
+            ("pressureOpacity", 1.0),
+            ("pressureJitter", 1.0),
+        ],
+        opacity: Some(1.0),
+        ..ReceitaMeio::digital("Pencil", "Sketch", "Rough Sketch")
+    },
+    // K-1 — as nuvens do MyPaint `ramon/Clouds`: massas macias (dureza 0,2) soltas 0,25 D, o raio sorteado ± 0,4, dabs
+    // densos (0,1) a meia tinta (0,35) que somam; a pressão leva a tinta. Régua 296 → 364; CURADO NÃO APROVADO: as massas
+    // do MyPaint crescem com a VELOCIDADE até encher a tela (`exames/digital_j6.md`).
+    ReceitaMeio {
+        pincel: &[
+            ("hardness", "0.2"),
+            ("jitter", "0.25"),
+            ("jitter_scale", "0.4"),
+            ("spacing", "0.1"),
+            ("accumulate", "true"),
+            ("flow", "0.35"),
+        ],
+        mao: &[
+            ("pressureSize", 0.0),
+            ("pressureOpacity", 1.0),
+            ("pressureJitter", 1.0),
+        ],
+        opacity: Some(1.0),
+        ..ReceitaMeio::digital("Texture", "Clouds", "Clouds")
+    },
+    // L-5 — o «Blender Blur» do Krita PUXA a tinta (língua macia de ~50 px) e clareia-a numa largura de ~24 px: é um
+    // borrador, não o Blur (simétrico, quase invisível). O Smear macio puxa uma língua DURA sem clarear — falta motor.
+    ReceitaMeio {
+        pincel: &[("hardness", "0.0")],
+        size_px: Some(24.0),
+        opacity: Some(0.7),
+        ferramenta: Some("Smear"),
+        ..ReceitaMeio::digital("Basic", "Smear", "Blur")
+    },
+    // I-12 — a aguarela ÓPTICA (Krita `j) Waterpaint Soft Edges`): o miolo vazio e a ORLA (sem fluido). Régua 168 → 210
+    // de 272 (a orla 2,0 × 8 px: 172).
+    ReceitaMeio {
+        pincel: &[
+            ("fill", "0.0"),
+            ("edge_gain", "1.5"),
+            ("edge_spread", "5.0"),
+            ("warp", "1.0"),
+        ],
+        ..ReceitaMeio::aquarela("Watercolor", "Basic", "Optical Wash")
+    },
+];
+
 /// A rampa do lápis deitado: Gradient `ViewPlane` de lado 0,25 deslocado 0,5 (UMA rampa através da pegada, sem a
 /// costura do `frac` no meio), contraste 0,7, brilho 0,55, virada 180° (a aresta densa do lado para onde a caneta se
 /// deita, como a do Krita). Os 2 primeiros `params` são o tom (contraste, brilho): a 0 a forma apagava o dab.

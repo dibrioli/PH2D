@@ -1,0 +1,7 @@
+Chave da prancha cega J6d_Optical_Wash_cega.jpg (linha: imagem → quem)
+gestos_A: 1 = Optical Wash (escala 1.114) (nosso), 2 = Glaze Round (d 2.411, limiar 0.591) (vizinho), 3 = j__Waterpaint_Soft_Edges (oraculo)
+gestos_B: 1 = Optical Wash (escala 1.114) (nosso), 2 = j__Waterpaint_Soft_Edges (oraculo), 3 = Glaze Round (d 2.411, limiar 0.591) (vizinho)
+tamanhos_A: 1 = Glaze Round (d 2.411, limiar 0.591) (vizinho), 2 = Optical Wash (escala 1.114) (nosso), 3 = j__Waterpaint_Soft_Edges (oraculo)
+tamanhos_B: 1 = j__Waterpaint_Soft_Edges (oraculo), 2 = Glaze Round (d 2.411, limiar 0.591) (vizinho), 3 = Optical Wash (escala 1.114) (nosso)
+sobre_A: 1 = j__Waterpaint_Soft_Edges (oraculo), 2 = Glaze Round (d 2.411, limiar 0.591) (vizinho), 3 = Optical Wash (escala 1.114) (nosso)
+sobre_B: 1 = Glaze Round (d 2.411, limiar 0.591) (vizinho), 2 = j__Waterpaint_Soft_Edges (oraculo), 3 = Optical Wash (escala 1.114) (nosso)

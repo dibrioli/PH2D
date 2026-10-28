@@ -1,0 +1,3 @@
+Chave da prancha cega J6_Smudge_Finger_cega.jpg (ordem sorteada POR LINHA; linha: imagem → quem)
+sobre_A: 1 = Smudge Finger (escala 1) (nosso), 2 = Smear Soft (d 2.798, limiar 0.591) (vizinho), 3 = default_soft (oraculo)
+sobre_B: 1 = default_soft (oraculo), 2 = Smudge Finger (escala 1) (nosso), 3 = Smear Soft (d 2.798, limiar 0.591) (vizinho)

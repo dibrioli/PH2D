@@ -13,7 +13,7 @@ ferramentas, motor, medições completas): o detalhe está em `ea4e3c5a07` (esta
 | L-6 Water Brush | **curado, não aprovado** (2 rondas) | a base pálida e o «U» na faixa seca raso |
 | L-2 Blender Grainy | **curado, não aprovado** (1 ronda + cura sem efeito) | motor: o alcance do misturador e os grumos |
 | L-7 Dry/Lift | J6: motor `dryerLevel` + 2 rondas (cega por fazer) | o cruzamento liso; falta a linha escura dos lados |
-| L-3 Smudge Finger | reprovado (J4) | motor: o fio do arrasto |
+| L-3 Smudge Finger | J6: motor `smear_fio` (Fine Thread) + 2 rondas (cega por fazer) | o fio contínuo mas pálido; a língua sob a faixa de baixo oca |
 | L-5 Blur | reprovado (J4) | falta um oráculo em que o desfoque se veja |
 | L-4 Smudge Spiky | fundido com Smudge Finger | — |
 
@@ -129,12 +129,53 @@ ferramentas, motor, medições completas): o detalhe está em `ea4e3c5a07` (esta
 - **Water Brush**: NÃO é o mesmo mecanismo (a ferramenta Wet e o `waterPush`; o que falta é a base pálida e o «U» na
   faixa seca) — fica.
 
+## J6 — L-3 Smudge Finger — motor `smear_fio` (Fine Thread) + 2 rondas (cega por fazer)
+
+- **O que o fio é** (medido na foto `rebelle_mistura/SMUDGE/default_soft_sobre_B`, massa = Σ (248 − verde)/248 em x0 ± 12,
+  igual nos três cruzamentos): da faixa de cima o V desce (17,3 px a y 180 → 5,0 a y 290); o traço «papel» corta-o em
+  y 305–312 e puxa um rasto horizontal (1,61 a +30 px · 0,27 a +100 · ~0 a +200); por baixo, o fio CONTÍNUO até à faixa
+  de baixo (y 322..440: 0/118 linhas vazias), pálido (verde mín 59 → 147), a massa a decair 3,66 → 0,97 (média 2,14).
+  Nosso (J4, o ponto): 35/118 linhas vazias — o fio em contas soltas, o rasto horizontal partido (198/225 colunas vazias).
+- **Mecanismo** (medido): o mapa do campo é LISO por texel ao longo do gesto, mas atravessado ele salta dezenas de px
+  entre o eixo (a corrente levou o início do traço) e o texel ao lado; a faixa cabe numa lasca sub-píxel e o re-amostrar
+  num ponto acerta-a ou falha-a. ⛔ Não é o campo re-amostrado a cada pingo (o diagnóstico da J4): o passo é ao longo do
+  gesto e não difunde na transversal.
+- **Lei** (`BrushSpec::smear_fio`, «Fine Thread» no Smear do Digital; `warp::session::reamostra_por_area`; `false` = ao
+  bit, rota separada): cada texel é a média do `pre` sobre a pegada do texel levada para trás pelo mapa (grelha nx × ny
+  pelo salto do `disp` aos vizinhos, só onde ele passa de 1 px). Teto 64 por eixo (convergência contra 256: 0 px com
+  |Δ| > 8; 32 → 1 px, 16 → 81). Custo da cena inteira na sonda (load ~24, indicativo): 0,24 s (ponto) → 1,37 s.
+  Portão `familias::mistura::o_fio_do_arrasto_do_dedo_e_continuo` (0/118 vazias em x 250 · 500 · 750, massa 0,6..4,
+  controlo sem o fio ≥ 10 vazias); mutações M1 lei desligada · M2 teto 1 · M3 só o eixo do gesto · M4 amostras no
+  centro · M5 o preset não lê — todas VERMELHAS. Fábrica e censos: verdes (a miniatura vermelha da corrida é a do óleo,
+  agente paralelo — só Oil/*).
+- **Rondas** (sonda `sonda_o_fio_do_arrasto`, `PH2D_SONDA_BRUSH`): |Δ massa| médio por linha contra o Rebelle (acima ·
+  abaixo do «papel») e o V a y 130 · 140 · 160 (Rebelle 21 · 15 · 11):
+  | variante | acima | abaixo | V | rasto horiz. +30 · +100 |
+  |---|---|---|---|---|
+  | **Smooth (a receita J4) + fio** | 2,94 | 0,80 | **22 · 18 · 12** | 0,41 · 0,04 |
+  | Root + fio | 2,28 | **0,50** | 34 · 28 · 22 | 1,20 · 0,39 |
+  | InvSquare + fio | 2,98 | 0,48 | 30 · 26 · 22 | 0,64 · 0,12 |
+  | Sphere + fio | 5,39 | 0,56 | — | 0,62 · 0,28 |
+  | dureza 0,3 | 5,68 | 1,02 | — | 0,10 · 0 |
+  | Linear + fio | 2,13 | 2,02 (fio some) | — | 0,22 · 0 |
+  As quedas cheias dão a massa do fio mas abrem o V a 34 px (o «largura» da identidade cai): fica a Smooth.
+- Receita (`pranchas/mistura/presets/smudge_finger.ph2d-brush.png`, EM_ESTUDO): a J4 + **`smear_fio`**. Régua J4
+  94/146 → **134/186** (`exames/smudge_finger_J6_regua.txt`; a cena `papel` passou a ter tinta). Vizinho Smear Soft
+  d **2,798** (≥ 0,591). Pranchas `pranchas/J6_Smudge_Finger.jpg` · cega `J6_Smudge_Finger_cega.jpg` +
+  `J6_Smudge_Finger_chave.txt`.
+- O que a prancha ainda MOSTRA: o fio nosso é mais pálido e fino (massa 1,25 × 2,14, plana em vez de decair); abaixo da
+  faixa de baixo o Rebelle leva uma língua CHEIA de vermelho, a nossa é um «U» oco (o eixo relaia sem tecto e traz o
+  papel do início do traço — o tecto medido e recusado do `smear_field`); as faixas do Rebelle têm estrias.
+- **L-5 Blur**: NÃO é o mesmo Smear (rota Blur, outro código) e o que lhe falta é um oráculo em que o desfoque se veja —
+  fica.
+
 ## Fila (motor, com a medição acima)
 
 1. **Dry/Lift** — a linha escura nos LADOS do secador (1,09 · 1,04 × Rebelle 1,31 · 1,35) sem o claro de fora: o anel
   do `dryerEdge` tira a tinta de fora; a do Rebelle vem de dentro ou da água ao lado (por medir).
 2. **Blender Grainy** — o alcance do Blend com grão limitado à tinta (52–66 px × 28) e os grumos opacos.
-3. **Smudge Finger** — o fio do arrasto (J4: o campo re-amostrado a cada pingo perde o traço sub-píxel).
+3. **Smudge Finger** — o fio já é contínuo (J6); falta a MASSA dele (1,25 × 2,14 px) sem abrir o V, e a língua cheia
+  abaixo da faixa de baixo (o eixo relaia sem tecto e traz o papel do início do traço).
 4. **Bancada**: uma base Wet mais carregada para as ferramentas de água (`presets/base_escura`), antes de rever de novo
    o Water Brush. O vermelho que cobre mais que o azul (alpha-over em sRGB, J4) continua medido e não curado.
 

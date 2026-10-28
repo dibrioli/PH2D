@@ -188,6 +188,213 @@ pub const EM_ESTUDO: &[ReceitaMeio] = &[
     },
 ];
 
+/// ⭐ **J6 — em ESTUDO** (`docs/Painter/Pinceis/exames/aguarela_texturas_j6.md`), fora da fábrica até à revisão cega.
+/// I-10 a FRANJA do Krita «j) Watercolor Fringe»: um carimbo OPACO de folha serrilhada ([`franja`], desenho nosso),
+/// rodado ao acaso a cada dab — chapado, a tinta nova tapa a de baixo, sem água: o Digital, não o Wet.
+pub const EM_ESTUDO_J6: &[ReceitaMeio] = &[
+    ReceitaMeio {
+        pincel: &[
+            ("hardness", "1.0"),
+            ("falloff", "\"Constant\""),
+            ("borda_px", "0.0"),
+            ("shape", IMAGEM),
+            ("spacing", "0.2"),
+            ("jitter_rotate", "1.0"),
+        ],
+        mao: &[("pressureSize", 0.0), ("pressureOpacity", 1.0)],
+        size_px: None,
+        opacity: Some(1.0),
+        texturas: &[("shape", franja)],
+        ..ReceitaMeio::digital("Stamp", "Stamp", "Fringe Bloom")
+    },
+    ReceitaMeio {
+        pincel: &[
+            ("hardness", "1.0"),
+            ("falloff", "\"Constant\""),
+            ("borda_px", "0.0"),
+            ("shape", IMAGEM),
+            ("spacing", "0.12"),
+            ("jitter_rotate", "1.0"),
+            ("jitter_scale", "0.25"),
+        ],
+        mao: &[
+            ("pressureSize", 0.3),
+            ("pressureOpacity", 1.0),
+            ("pressureOpacityCurve", 1.5),
+        ],
+        size_px: None,
+        opacity: Some(1.0),
+        texturas: &[("shape", franja)],
+        ..ReceitaMeio::digital("Stamp", "Stamp", "Fringe Bloom B")
+    },
+    // r2 (r1: a do Krita tem LÓBULOS de ponta redonda, folhas de tamanhos vários; a nossa dentes agudos e iguais).
+    ReceitaMeio {
+        pincel: &[
+            ("hardness", "1.0"),
+            ("falloff", "\"Constant\""),
+            ("borda_px", "0.0"),
+            ("shape", IMAGEM),
+            ("spacing", "0.2"),
+            ("jitter_rotate", "1.0"),
+        ],
+        mao: &[("pressureSize", 0.0), ("pressureOpacity", 1.0)],
+        size_px: None,
+        opacity: Some(1.0),
+        texturas: &[("shape", franja_redonda)],
+        ..ReceitaMeio::digital("Stamp", "Stamp", "Fringe Bloom C")
+    },
+    ReceitaMeio {
+        pincel: &[
+            ("hardness", "1.0"),
+            ("falloff", "\"Constant\""),
+            ("borda_px", "0.0"),
+            ("shape", IMAGEM),
+            ("spacing", "0.2"),
+            ("jitter_rotate", "1.0"),
+            ("jitter_scale", "0.3"),
+        ],
+        mao: &[("pressureSize", 0.0), ("pressureOpacity", 1.0)],
+        size_px: None,
+        opacity: Some(1.0),
+        texturas: &[("shape", franja_redonda)],
+        ..ReceitaMeio::digital("Stamp", "Stamp", "Fringe Bloom D")
+    },
+];
+
+/// K-9 o GRUNGE do Rebelle («Oil › Grunge › Grunge»): riscas de cerda densas ao comprido com falhas rasgadas e a borda
+/// esfiapada em traços curtos — as cerdas do Express Oil mais cheias e a 2.ª ponta (L6) que rasga a borda.
+pub const EM_ESTUDO_J6_WET: &[Receita] = &[GRUNGE, Receita {
+    nome: "Grunge B",
+    bristle_count: 300.0,
+    extras: &[
+        ("felt", 0.0),
+        ("bristleStrength", 3.0),
+        ("bristlePressure", 3.0),
+        ("bristleLaneWidth", 3.0),
+        ("bristleLift", 0.45),
+        ("bristleNoiseLength", 150.0),
+        ("pressureSizeCurve", 0.5),
+        ("pressureOpacity", 0.5),
+    ],
+    pincel: &[("dual", RASGOS_FORTES)],
+    ..GRUNGE
+}, GRUNGE_C, Receita {
+    nome: "Grunge D",
+    extras: &[
+        ("felt", 0.0),
+        ("bristleStrength", 3.0),
+        ("bristlePressure", 2.5),
+        ("bristleLaneWidth", 2.0),
+        ("bristleLift", 0.4),
+        ("bristleNoiseLength", 300.0),
+        ("bristleStreak", 0.9),
+        ("bristleStreakCut", 0.6),
+        ("bristleStreakLength", 120.0),
+        ("bristleTipRagged", 1.0),
+        ("pressureSizeCurve", 0.5),
+        ("pressureOpacity", 0.5),
+    ],
+    ..GRUNGE_C
+}];
+/// r2: a 2.ª ponta mordia a borda em DENTADAS (r1, prancha) — sai; as falhas são as das cerdas (riscas cortadas ao
+/// comprido e a ponta esfiapada).
+const GRUNGE_C: Receita = Receita {
+    nome: "Grunge C",
+    extras: &[
+        ("felt", 0.0),
+        ("bristleStrength", 2.5),
+        ("bristlePressure", 2.5),
+        ("bristleLaneWidth", 2.0),
+        ("bristleLift", 0.3),
+        ("bristleNoiseLength", 300.0),
+        ("bristleStreak", 0.6),
+        ("bristleStreakCut", 0.5),
+        ("bristleStreakLength", 200.0),
+        ("bristleTipRagged", 0.6),
+        ("pressureSizeCurve", 0.5),
+        ("pressureOpacity", 0.5),
+    ],
+    pincel: &[],
+    ..GRUNGE
+};
+const GRUNGE: Receita = Receita {
+    meio: "ExpressOil",
+    grupo: "Grain",
+    nome: "Grunge",
+    water: 0.0,
+    opacity: 1.0,
+    pigment: 120.0,
+    pickup: 1.0,
+    gate: 0.3,
+    evaporation: 1.0,
+    edge: 0.0,
+    tilt: DIREITA,
+    bristle_size: 3.0,
+    bristle_count: 600.0,
+    hardness: 0.9,
+    size_px: None,
+    extras: &[
+        ("felt", 0.0),
+        ("bristleStrength", 2.5),
+        ("bristlePressure", 2.5),
+        ("bristleLaneWidth", 2.0),
+        ("bristleLift", 0.3),
+        ("bristleNoiseLength", 300.0),
+        ("pressureSizeCurve", 0.5),
+        ("pressureOpacity", 0.5),
+    ],
+    grao: None,
+    achatado: None,
+    pincel: &[("dual", RASGOS)],
+    nasce_de: Some("Express Oil"),
+    real_oil: false,
+};
+/// Os rasgos da borda do Grunge: a 2.ª ponta (Multiply) pequena e muito espalhada através.
+const RASGOS: &str = r#"{"angulo": 0, "atraves": 0.9, "contagem": 3, "dureza": 0.6, "escala": 0.5, "espalhar": 0.8, "forma": {"angle_deg": 0, "flow": false, "kind": "None", "mapping": "ViewPlane", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [1.0, 1.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}, "modo": 0, "passo": 0.25, "rotacao": 0.0}"#;
+const RASGOS_FORTES: &str = r#"{"angulo": 0, "atraves": 1.0, "contagem": 4, "dureza": 0.8, "escala": 0.35, "espalhar": 1.0, "forma": {"angle_deg": 0, "flow": false, "kind": "None", "mapping": "ViewPlane", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [1.0, 1.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}, "modo": 0, "passo": 0.15, "rotacao": 0.0}"#;
+
+/// A FRANJA (I-10): uma folha de 11 dentes agudos de comprimentos sorteados (gerador inteiro), o miolo cheio.
+fn franja() -> Vec<u8> {
+    folha_de_lobulos(11, 1.6)
+}
+
+/// A franja r2: 9 LÓBULOS de ponta redonda (o expoente < 1 enche o lóbulo até perto da ponta).
+fn franja_redonda() -> Vec<u8> {
+    folha_de_lobulos(9, 0.5)
+}
+
+/// Uma folha de `n` lóbulos de comprimentos sorteados; `forma` > 1 aguça, < 1 arredonda.
+fn folha_de_lobulos(n: usize, forma: f64) -> Vec<u8> {
+    let mut e = 0x00F4_A1A5_u64;
+    let mut u = move || {
+        e = e
+            .wrapping_mul(6_364_136_223_846_793_005)
+            .wrapping_add(1_442_695_040_888_963_407);
+        (e >> 40) as f64 / (1u64 << 24) as f64
+    };
+    let dentes: Vec<f64> = (0..n).map(|_| 0.45 + 0.5 * u()).collect();
+    mascara(|x, y| {
+        let r = (x * x + y * y).sqrt();
+        if r < 0.42 {
+            return 1.0;
+        }
+        // O ângulo «diamante» (0..4, sem trigonometria: o mesmo byte em toda máquina).
+        let losango = if y >= 0.0 {
+            if x >= 0.0 { y / (x + y) } else { 1.0 - x / (-x + y) }
+        } else if x < 0.0 {
+            2.0 - y / (-x - y)
+        } else {
+            3.0 + x / (x - y)
+        };
+        let a = losango / 4.0 * n as f64;
+        let (i, f) = (a.floor() as usize % n, a.fract());
+        // O dente: triângulo agudo do vale (0,42) à ponta (o comprimento sorteado).
+        let t = 1.0 - (f - 0.5).abs() * 2.0;
+        let borda = 0.42 + (dentes[i] - 0.42) * t.powf(forma);
+        if r <= borda { 1.0 } else { 0.0 }
+    })
+}
+
 #[rustfmt::skip]
 pub const MIDIAS: &[Midia] = &[];
 
@@ -710,7 +917,7 @@ fn cada_carimbo_se_reconhece_pela_foto() {
 fn os_em_estudo_nao_estao_na_fabrica() {
     use crate::presets_de_fabrica::{parametros_do_meio, relativo_do_meio};
     let raiz = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes");
-    for r in EM_ESTUDO.iter().chain(super::aerografo::EM_ESTUDO) {
+    for r in EM_ESTUDO.iter().chain(EM_ESTUDO_J6).chain(super::aerografo::EM_ESTUDO) {
         let rel = relativo_do_meio(r);
         assert!(
             !raiz.join(&rel).exists(),
@@ -805,7 +1012,7 @@ fn escreve_os_em_estudo() {
     let dir = std::path::PathBuf::from(std::env::var("PH2D_EXAME_DIR").expect("PH2D_EXAME_DIR"))
         .join("estudo");
     let so = std::env::var("PH2D_REGERA_SO").ok();
-    for r in EM_ESTUDO.iter().chain(super::aerografo::EM_ESTUDO) {
+    for r in EM_ESTUDO.iter().chain(EM_ESTUDO_J6).chain(super::aerografo::EM_ESTUDO) {
         if so
             .as_deref()
             .is_some_and(|s| !s.split(',').any(|n| n == r.nome))

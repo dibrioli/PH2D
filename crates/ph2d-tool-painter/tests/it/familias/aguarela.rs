@@ -339,6 +339,177 @@ pub const EM_ESTUDO: &[Receita] = &[
     },
 ];
 
+/// ⭐ **J6 — em ESTUDO** (`docs/Painter/Pinceis/exames/aguarela_texturas_j6.md`): a aguarela que só se exprime em
+/// VALORES — o grão do papel (I-9) e os salpicos (I-11). Fora da fábrica até à revisão cega (o coordenador promove);
+/// a bancada escreve o estudo com `"receita": "<nome>"` (`estudo.rs`).
+pub const EM_ESTUDO_J6: &[Receita] = &[
+    // I-9 `Watercolor › Granulation › Granulation` do Rebelle: pálido, o pigmento só nos VALES do papel (pontos de
+    // 1–2 px, sem miolo cheio), a borda macia; a rampa afina e esmaece.
+    GRANULACAO,
+    Receita {
+        nome: "Granulation B",
+        pigment: 40.0,
+        gate: 1.5,
+        extras: &[
+            ("pressureSize", 0.7),
+            ("pressureSizeCurve", 0.6),
+            ("pressureOpacity", 1.0),
+            ("pressureOpacityCurve", 1.0),
+            ("extGranulation", 1.0),
+            ("extValleyGran", 1.0),
+            ("extGrainDither", 3.0),
+            VIDRADO,
+            PAREDE,
+        ],
+        ..GRANULACAO
+    },
+    // I-11 `Watercolor › Spatter › Spatter` do Rebelle: a 5–40 px um véu pálido e esfiapado; a 200 px gotas soltas de
+    // 2–8 px espalhadas numa nuvem larga, algumas fundidas. Gotas = o spray do carimbo (L4) com água.
+    SALPICO,
+    // r2: o spray do carimbo no Wet espalha as gotas pela tela inteira (r1, prancha) e a variante a jitter 0,8 matou o
+    // gerador por memória (OOM a 24 G) — as gotas passam a ser o PÓ do Wet (`dust`, a gota `dustDrop`) sobre a água.
+    Receita {
+        nome: "Spatter Watercolor C",
+        pigment: 30.0,
+        hardness: 0.0,
+        edge: 0.0,
+        extras: &[
+            ("pressureSize", 0.5),
+            ("pressureOpacity", 1.0),
+            ("pressureOpacityCurve", 1.0),
+            ("dust", 0.95),
+            ("dustDrop", 4.0),
+            VIDRADO,
+        ],
+        pincel: &[],
+        ..SALPICO
+    },
+    Receita {
+        nome: "Spatter Watercolor D",
+        pigment: 30.0,
+        hardness: 0.0,
+        edge: 0.0,
+        extras: &[
+            ("pressureSize", 0.5),
+            ("pressureOpacity", 1.0),
+            ("pressureOpacityCurve", 1.0),
+            ("dust", 0.95),
+            ("dustDrop", 3.0),
+            VIDRADO,
+        ],
+        pincel: &[("jitter", "0.5")],
+        ..SALPICO
+    },
+    // r2 da Granulation: r1 (papel 1,2–1,5) saiu pálido sem pontos e de orla escura — menos portão, mais pigmento,
+    // sem orla, e os pontos pelo pontilhado do render (C) ou pelo pó (D).
+    Receita {
+        nome: "Granulation C",
+        pigment: 120.0,
+        gate: 0.8,
+        edge: 0.0,
+        extras: &[
+            ("pressureSize", 0.7),
+            ("pressureSizeCurve", 0.6),
+            ("pressureOpacity", 1.0),
+            ("pressureOpacityCurve", 1.0),
+            ("extGranulation", 1.0),
+            ("extValleyGran", 1.0),
+            ("extGrainDither", 6.0),
+            VIDRADO,
+            PAREDE,
+        ],
+        ..GRANULACAO
+    },
+    Receita {
+        nome: "Granulation D",
+        pigment: 80.0,
+        gate: 0.4,
+        edge: 0.0,
+        extras: &[
+            ("pressureSize", 0.7),
+            ("pressureSizeCurve", 0.6),
+            ("pressureOpacity", 1.0),
+            ("pressureOpacityCurve", 1.0),
+            ("extGranulation", 1.0),
+            ("dust", 0.8),
+            ("dustDrop", 1.5),
+            VIDRADO,
+            PAREDE,
+        ],
+        ..GRANULACAO
+    },
+];
+const GRANULACAO: Receita = Receita {
+    meio: "Watercolor",
+    grupo: "Grain",
+    nome: "Granulation",
+    water: 1.0,
+    opacity: 1.0,
+    pigment: 25.0,
+    pickup: 0.0,
+    gate: 1.2,
+    evaporation: 1.0,
+    edge: 12.0,
+    tilt: DIREITA,
+    bristle_size: 2.0,
+    bristle_count: 2000.0,
+    hardness: 0.3,
+    size_px: None,
+    extras: &[
+        ("pressureSize", 0.7),
+        ("pressureSizeCurve", 0.6),
+        ("pressureOpacity", 1.0),
+        ("pressureOpacityCurve", 1.0),
+        ("extGranulation", 1.0),
+        ("extValleyGran", 1.0),
+        VIDRADO,
+        PAREDE,
+    ],
+    grao: None,
+    achatado: None,
+    pincel: &[],
+    nasce_de: Some("Wet Round"),
+    real_oil: false,
+};
+const SALPICO: Receita = Receita {
+    meio: "Watercolor",
+    grupo: "Splatter",
+    nome: "Spatter Watercolor",
+    water: 1.0,
+    opacity: 1.0,
+    pigment: 40.0,
+    pickup: 0.0,
+    gate: 0.2,
+    evaporation: 1.0,
+    edge: 30.0,
+    tilt: DIREITA,
+    bristle_size: 2.0,
+    bristle_count: 2000.0,
+    hardness: 0.6,
+    size_px: None,
+    extras: &[
+        ("pressureSize", 0.5),
+        ("pressureOpacity", 1.0),
+        ("pressureOpacityCurve", 1.0),
+        VIDRADO,
+    ],
+    grao: None,
+    achatado: None,
+    pincel: &[
+        ("spray_count", "6"),
+        ("spacing", "0.5"),
+        ("jitter", "0.7"),
+        ("jitter_scale", "0.9"),
+        ("continuous_spacing", "false"),
+        (
+            "dab_jitter",
+            r#"{"across": 0.6, "angle_per_stroke": 0.0, "count": 0.6, "flip_x": 0.0, "flip_y": 0.0, "opacity": 0.5, "particle": 0.04, "roundness": 0.0}"#,
+        ),
+    ],
+    nasce_de: Some("Wet Round"),
+    real_oil: false,
+};
+
 /// A Aquarela básica (dono, 23/10): o pincel de fábrica do meio — os números do painel dele
 /// (`state_default::aquarela_de_fabrica`), capturados sem nada por cima — o mesmo nome e o mesmo pincel
 /// do preset de fábrica «Watercolor Basic».

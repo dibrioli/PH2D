@@ -1,0 +1,19 @@
+prancha cega J6a — fringe_bloom (ordem aleatória por linha; colunas 1 · 2 · 3)
+linha 1 (gestos_A) 1 = vizinho da biblioteca · Mapping Pen (d 1.011, limiar 0.591)
+linha 1 (gestos_A) 2 = nosso · Fringe Bloom (receita «Fringe Bloom», Digital)
+linha 1 (gestos_A) 3 = Krita j) Watercolor Fringe
+linha 2 (gestos_B) 1 = vizinho da biblioteca · Mapping Pen (d 1.011, limiar 0.591)
+linha 2 (gestos_B) 2 = nosso · Fringe Bloom (receita «Fringe Bloom», Digital)
+linha 2 (gestos_B) 3 = Krita j) Watercolor Fringe
+linha 3 (tamanhos_A) 1 = vizinho da biblioteca · Mapping Pen (d 1.011, limiar 0.591)
+linha 3 (tamanhos_A) 2 = nosso · Fringe Bloom (receita «Fringe Bloom», Digital)
+linha 3 (tamanhos_A) 3 = Krita j) Watercolor Fringe
+linha 4 (tamanhos_B) 1 = nosso · Fringe Bloom (receita «Fringe Bloom», Digital)
+linha 4 (tamanhos_B) 2 = vizinho da biblioteca · Mapping Pen (d 1.011, limiar 0.591)
+linha 4 (tamanhos_B) 3 = Krita j) Watercolor Fringe
+linha 5 (sobre_A) 1 = nosso · Fringe Bloom (receita «Fringe Bloom», Digital)
+linha 5 (sobre_A) 2 = Krita j) Watercolor Fringe
+linha 5 (sobre_A) 3 = vizinho da biblioteca · Mapping Pen (d 1.011, limiar 0.591)
+linha 6 (sobre_B) 1 = Krita j) Watercolor Fringe
+linha 6 (sobre_B) 2 = nosso · Fringe Bloom (receita «Fringe Bloom», Digital)
+linha 6 (sobre_B) 3 = vizinho da biblioteca · Mapping Pen (d 1.011, limiar 0.591)

@@ -1,0 +1,19 @@
+prancha cega J6a — wax_crayon (ordem aleatória por linha; colunas 1 · 2 · 3)
+linha 1 (gestos_A) 1 = vizinho da biblioteca · Graphite 8B (d 0.783, limiar 0.591)
+linha 1 (gestos_A) 2 = nosso · Wax Crayon (receita «Wax Crayon J6 D», Wet)
+linha 1 (gestos_A) 3 = Rebelle Pastel Oil/Wax Pencil
+linha 2 (gestos_B) 1 = vizinho da biblioteca · Graphite 8B (d 0.783, limiar 0.591)
+linha 2 (gestos_B) 2 = Rebelle Pastel Oil/Wax Pencil
+linha 2 (gestos_B) 3 = nosso · Wax Crayon (receita «Wax Crayon J6 D», Wet)
+linha 3 (tamanhos_A) 1 = nosso · Wax Crayon (receita «Wax Crayon J6 D», Wet)
+linha 3 (tamanhos_A) 2 = vizinho da biblioteca · Graphite 8B (d 0.783, limiar 0.591)
+linha 3 (tamanhos_A) 3 = Rebelle Pastel Oil/Wax Pencil
+linha 4 (tamanhos_B) 1 = vizinho da biblioteca · Graphite 8B (d 0.783, limiar 0.591)
+linha 4 (tamanhos_B) 2 = nosso · Wax Crayon (receita «Wax Crayon J6 D», Wet)
+linha 4 (tamanhos_B) 3 = Rebelle Pastel Oil/Wax Pencil
+linha 5 (sobre_A) 1 = nosso · Wax Crayon (receita «Wax Crayon J6 D», Wet)
+linha 5 (sobre_A) 2 = vizinho da biblioteca · Graphite 8B (d 0.783, limiar 0.591)
+linha 5 (sobre_A) 3 = Rebelle Pastel Oil/Wax Pencil
+linha 6 (sobre_B) 1 = vizinho da biblioteca · Graphite 8B (d 0.783, limiar 0.591)
+linha 6 (sobre_B) 2 = nosso · Wax Crayon (receita «Wax Crayon J6 D», Wet)
+linha 6 (sobre_B) 3 = Rebelle Pastel Oil/Wax Pencil

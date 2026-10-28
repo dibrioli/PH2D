@@ -326,6 +326,102 @@ pub const EM_ESTUDO: &[Receita] = &[
     },
 ];
 
+/// ⭐ **J6 — o Wax Crayon em ESTUDO** (`docs/Painter/Pinceis/exames/aguarela_texturas_j6.md`): o `Wax Pencil` do Rebelle
+/// é uma corrente de CARIMBOS densos e lisos (a 40 px blocos que se vêem), a borda em festões, as pontas REDONDAS
+/// (curvatura 0,93/1,07 — sem pontas rectas); o da J4 tinha o grão do papel e lia-se Graphite 8B.
+pub const EM_ESTUDO_J6: &[Receita] = &[
+    Receita {
+        nome: "Wax Crayon J6",
+        pigment: 300.0,
+        gate: 0.15,
+        hardness: 0.5,
+        size_px: None,
+        extras: &[
+            ("felt", 0.0),
+            ("drag", 0.05),
+            MAIS_PERTO,
+            ("pressureSizeCurve", 1.0),
+            ("pressureOpacity", 0.9),
+            ("pressureOpacityCurve", 3.5),
+        ],
+        grao: None,
+        pincel: &[
+            ("jitter", "0.05"),
+            ("spacing", "0.25"),
+            ("shape", SEM_SHAPE),
+            ("dual", ORLA_DA_CERA),
+            ("size_max_px", "140"),
+        ],
+        nasce_de: Some("Oil Pastel"),
+        ..OIL_PASTEL
+    },
+    Receita {
+        nome: "Wax Crayon J6 B",
+        pigment: 300.0,
+        gate: 0.15,
+        hardness: 0.6,
+        size_px: None,
+        extras: &[
+            ("felt", 0.0),
+            ("drag", 0.05),
+            MAIS_PERTO,
+            ("pressureSizeCurve", 1.0),
+            ("pressureOpacity", 0.9),
+            ("pressureOpacityCurve", 3.5),
+        ],
+        grao: None,
+        pincel: &[
+            ("jitter", "0.05"),
+            ("spacing", "0.3"),
+            ("dab_quina", "0.6"),
+            ("shape", SEM_SHAPE),
+            ("dual", ORLA_DA_CERA),
+            ("size_max_px", "140"),
+        ],
+        nasce_de: Some("Oil Pastel"),
+        ..OIL_PASTEL
+    },
+    // r2 (r1: o nosso chapado e de borda dura, a rampa AFINA; o Rebelle mosqueado e nebuloso, translúcido, a rampa
+    // ESMAECE com a largura quase igual): a pressão na opacidade, dureza 0,3, as manchas da cera de volta.
+    WAX_C,
+    Receita {
+        nome: "Wax Crayon J6 D",
+        pincel: &[
+            ("jitter", "0.12"),
+            ("spacing", "0.25"),
+            ("shape", MANCHAS_DA_CERA),
+            ("size_max_px", "140"),
+        ],
+        ..WAX_C
+    },
+];
+const WAX_C: Receita = Receita {
+    nome: "Wax Crayon J6 C",
+    pigment: 200.0,
+    gate: 0.15,
+    hardness: 0.3,
+    size_px: None,
+    extras: &[
+        ("felt", 0.0),
+        ("drag", 0.05),
+        MAIS_PERTO,
+        ("pressureSize", 0.2),
+        ("pressureSizeCurve", 1.0),
+        ("pressureOpacity", 1.0),
+        ("pressureOpacityCurve", 1.5),
+    ],
+    grao: None,
+    pincel: &[
+        ("jitter", "0.05"),
+        ("spacing", "0.25"),
+        ("shape", MANCHAS_DA_CERA),
+        ("dual", ORLA_DA_CERA),
+        ("size_max_px", "140"),
+    ],
+    nasce_de: Some("Oil Pastel"),
+    ..OIL_PASTEL
+};
+
 pub const MEIOS: &[ReceitaMeio] = &[];
 
 // O Cruzamento do Wax Scrape não entra (0,166 do controlo, abaixo de 3× o ruído desta régua); o raio do Wax por grelha.

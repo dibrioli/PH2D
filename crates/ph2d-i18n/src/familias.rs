@@ -20,8 +20,13 @@ pub(crate) fn tr(k: &str) -> Option<&'static str> {
         .or_else(|| kanban::tr(k))
         .or_else(|| kanban_back::tr(k))
         .or_else(|| kanban_front::tr(k))
+        .or_else(|| kanban_views::tr(k))
 }
 
 /// A frente do cartão do Kanban (W3) — declarada aqui, não no `lib.rs` (o tecto de LOC dele).
 #[path = "kanban_front.rs"]
 mod kanban_front;
+
+/// As vistas do Kanban (W7): Tabela, Calendário, Linha do tempo e Painel.
+#[path = "kanban_views.rs"]
+mod kanban_views;

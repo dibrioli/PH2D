@@ -1,0 +1,41 @@
+[package]
+name = "ph2d-app-planner"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+[dependencies]
+# A família PESSOAL do Kanban (TrelloClone W9, plano §8.1): o Calendário do projecto, o Planner com a
+# Inbox, «My cards» e as notificações — uma aba (`DocumentSurface`) sobre a agenda do `KanbanSet`.
+ph2d-a11y = { path = "../ph2d-a11y" }
+ph2d-app-host = { path = "../ph2d-app-host" }
+ph2d-editor-core = { path = "../ph2d-editor-core" }
+ph2d-host = { path = "../ph2d-host" }
+ph2d-i18n = { path = "../ph2d-i18n" }
+ph2d-kanban-dates = { path = "../ph2d-kanban-dates" }
+ph2d-kanban-filter = { path = "../ph2d-kanban-filter" }
+ph2d-kanban-model = { path = "../ph2d-kanban-model" }
+# A grelha do calendário e o seletor de datas são os da W7 (a MESMA vista, outra `Source`).
+ph2d-kanban-views = { path = "../ph2d-kanban-views" }
+ph2d-text = { path = "../ph2d-text" }
+ph2d-tokens = { path = "../ph2d-tokens" }
+ph2d-tool-registry = { path = "../ph2d-tool-registry" }
+ph2d-vector = { path = "../ph2d-vector" }
+# A cena de smoke parte da cena 1 do Kanban (a mesma «Short film — production»).
+ph2d-app-kanban = { path = "../ph2d-app-kanban" }
+# «Export .ics»: o diálogo de gravar pela porta `ph2d_app_host::modal::save_file` (a mesma do Kanban).
+rfd = "0.17"
+
+[dev-dependencies]
+# As fotos da aba (`#[ignore]`: a placa pinta e o PNG grava-se em `docs/TrelloClone/smoke/W9/`).
+ph2d-gpu = { path = "../ph2d-gpu" }
+ph2d-render = { path = "../ph2d-render" }
+image = { version = "0.25", default-features = false, features = ["png"] }
+
+[lints]
+workspace = true

@@ -21,7 +21,12 @@ pub(crate) fn tr(k: &str) -> Option<&'static str> {
         .or_else(|| kanban_back::tr(k))
         .or_else(|| kanban_front::tr(k))
         .or_else(|| kanban_views::tr(k))
+        .or_else(|| planner::tr(k))
 }
+
+/// A família pessoal do Kanban (W9): Calendário, Planner, «My cards», notificações.
+#[path = "planner.rs"]
+mod planner;
 
 /// A frente do cartão do Kanban (W3) — declarada aqui, não no `lib.rs` (o tecto de LOC dele).
 #[path = "kanban_front.rs"]

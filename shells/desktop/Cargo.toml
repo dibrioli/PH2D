@@ -64,6 +64,7 @@ ph2d-app-code = { path = "../../crates/ph2d-app-code" }
 ph2d-app-game = { path = "../../crates/ph2d-app-game" }
 # ⭐ A família do KANBAN (TrelloClone): instalada no arranque, um `frame` por quadro.
 ph2d-app-kanban = { path = "../../crates/ph2d-app-kanban" }
+ph2d-app-planner = { path = "../../crates/ph2d-app-planner" }
 # ⭐ **A árvore de tags do projecto** (TOP-20 #9) — a shell guarda a ÁRVORE VIVA no `AppGfx` e os
 # BYTES dela no `ProjectState`; o formato e a cache vivem na família (`ph2d_app_components::tags_doc`).
 ph2d-tags = { path = "../../crates/ph2d-tags" }

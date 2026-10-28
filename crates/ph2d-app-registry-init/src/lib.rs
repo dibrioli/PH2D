@@ -84,6 +84,8 @@ reg.push(ph2d_app_light2d::FAMILY);
     reg.push(ph2d_app_painter::FAMILY);
     #[cfg(feature = "app-physics")]
     reg.push(ph2d_app_physics::FAMILY);
+    #[cfg(feature = "app-planner")]
+    reg.push(ph2d_app_planner::FAMILY);
     #[cfg(feature = "app-skeleton")]
     reg.push(ph2d_app_skeleton::FAMILY);
     #[cfg(feature = "app-sprite-anim")]

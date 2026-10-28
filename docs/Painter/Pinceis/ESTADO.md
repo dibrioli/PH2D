@@ -45,6 +45,10 @@
 
 [`04_BANCADA.md`](04_BANCADA.md) §«Notas da bancada» (exame.sh, PH2D_EXAME_*, fábrica, custo).
 
+11. ✅ Tampas esbatem ao comprido (`5b8c03e2ca` `93fd2137d6`, `pontas_esbate`; erro das pontas Square Hard 0,224 → 0,123,
+   Wet Wash 0,182 → 0,096; Liner não muda): cega — Square Hard (pontas arredondadas, média) e Wet Wash (contorno de
+   cápsula, quadrados nos cruzamentos, média) seguem curados não aprovados; Square Hard de fábrica já com a lei.
+
 ## J6 passo 3 — pincel a pincel (censo: 16 examináveis só por valores; 16 travados por motor; 7 sem oráculo)
 
 - Digital (B-6, B-7, C-4, C-6, K-1, L-5, M-7, I-12) — EM CURSO, receitas em `EM_ESTUDO_J6`.

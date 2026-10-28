@@ -29,6 +29,7 @@ mod mind_font;
 mod mind_hover;
 mod mindmap;
 mod mindmap_drop;
+mod note_card;
 mod notes;
 mod notes_layout;
 mod organize;

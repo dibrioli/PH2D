@@ -53,6 +53,8 @@ ph2d-input            = { path = "../ph2d-input" }
 ph2d-board-model      = { path = "../ph2d-board-model" }
 # O documento Kanban do projecto (ADR-0195): a aba e o elemento do Quadro leem o MESMO.
 ph2d-kanban-model     = { path = "../ph2d-kanban-model" }
+# W11 — os «Power-Ups» do Kanban: resolver as ligações do cartão e a nota ↔ cartão.
+ph2d-kanban-links     = { path = "../ph2d-kanban-links" }
 ph2d-board-render     = { path = "../ph2d-board-render" }
 # W18 — a lei do vídeo do quadro (que link é um vídeo; o tamanho de nascença) — ADR-0185.
 ph2d-board-embed      = { path = "../ph2d-board-embed" }

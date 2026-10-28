@@ -28,6 +28,23 @@ pub struct Catalog {
     pub boards: BTreeMap<u64, BoardEntry>,
 }
 
+impl Catalog {
+    /// Os Quadros do projecto, com os elementos vivos de cada um.
+    pub fn set_boards(&mut self, boards: &ph2d_board_model::BoardSet) {
+        self.boards = boards
+            .boards()
+            .iter()
+            .map(|b| {
+                let entry = BoardEntry {
+                    name: b.name.clone(),
+                    elements: b.doc.live().map(|e| e.id.0).collect(),
+                };
+                (b.id.0, entry)
+            })
+            .collect();
+    }
+}
+
 /// O tipo de uma ligação (o verso escolhe o ícone por ele).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Kind {

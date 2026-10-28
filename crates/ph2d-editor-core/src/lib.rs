@@ -39,6 +39,7 @@ pub mod aviso_da_placa;
 pub mod doc_surface;
 /// Os documentos do projecto além da cena — os quadros (MiroClone).
 pub mod documents;
+pub mod kanban_links;
 /// A âmbar do REALCE do editor — uma cor, uma porta, fora do tema de propósito.
 pub mod editor_highlight;
 pub mod floating_panel;

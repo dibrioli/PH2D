@@ -22,7 +22,12 @@ pub(crate) fn tr(k: &str) -> Option<&'static str> {
         .or_else(|| kanban_front::tr(k))
         .or_else(|| kanban_views::tr(k))
         .or_else(|| planner::tr(k))
+        .or_else(|| kanban_links::tr(k))
 }
+
+/// Os «Power-Ups» do Kanban (W11): as ligações do cartão e a nota ↔ cartão.
+#[path = "kanban_links.rs"]
+mod kanban_links;
 
 /// A família pessoal do Kanban (W9): Calendário, Planner, «My cards», notificações.
 #[path = "planner.rs"]

@@ -10,12 +10,15 @@ use std::path::PathBuf;
 
 pub(crate) fn dabber() -> Preset {
     let raiz = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes");
-    Biblioteca::carregar(&raiz, None)
-        .entradas
-        .into_iter()
-        .find(|e| e.preset.parametros.name == "Dabber")
-        .expect("o Dabber de fábrica")
-        .preset
+    // As leis da textura e das cerdas, sem a luz do Real Oil (J6: o Dabber de fábrica liga-o).
+    super::presets_de_fabrica::sem_real_oil(
+        Biblioteca::carregar(&raiz, None)
+            .entradas
+            .into_iter()
+            .find(|e| e.preset.parametros.name == "Dabber")
+            .expect("o Dabber de fábrica")
+            .preset,
+    )
 }
 
 /// O Dabber com o grão Stucci `Tiled` (o do candidato Dabber 3), ao diâmetro `d` e com o expoente `gama`.

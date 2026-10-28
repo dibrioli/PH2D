@@ -1139,7 +1139,7 @@ struct Veios {
 }
 
 fn mede_veios(p: &crate::exame_bancada::Pincel) -> Veios {
-    use crate::exame_bancada::{bateria, pinta_cena};
+    use crate::exame_bancada::{Fases, Oleo, bateria, pinta_cena_oleo};
     let bat = bateria();
     let tela = [0, 1].map(|i| bat["tela"][i].as_u64().unwrap() as u32);
     let papel = [0, 1, 2].map(|i| bat["papel"][i].as_u64().unwrap() as u8);
@@ -1150,7 +1150,9 @@ fn mede_veios(p: &crate::exame_bancada::Pincel) -> Veios {
         .find(|c| c["nome"] == "tamanhos")
         .unwrap()
         .clone();
-    let (_, g) = pinta_cena(p, None, &cena, tela, papel, 0);
+    // O veio é do PIGMENTO (`Knob::BristleStreak`): sem a luz do Real Oil do candidato (J6, triagem (a)).
+    let mut f = Fases::default();
+    let (_, g) = pinta_cena_oleo(p, None, &cena, tela, papel, 0, false, Oleo::Desligado, &mut f);
     let w = tela[0] as usize;
     const K: usize = 7;
     let (mut escuros, mut claros, mut n) = (0usize, 0usize, 0usize);

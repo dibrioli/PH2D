@@ -43,13 +43,17 @@ fn pinta(p: &Pincel, cena: &str, nomes: &[&str]) -> (Vec<u8>, Vec<Value>) {
         json!({"op": "foto", "nome": "A"}),
     ]);
     let tela = [0, 1].map(|i| bat["tela"][i].as_u64().unwrap() as u32);
-    let (_, px) = pinta_cena(
+    // As leis sistémicas são do pigmento: sem o Real Oil dos `Oil/*` (J6, triagem (a)).
+    let (_, px) = super::exame_bancada::pinta_cena_oleo(
         p,
         None,
         &json!({"nome": cena, "ops": ops}),
         tela,
         [255; 3],
         0,
+        false,
+        super::exame_bancada::Oleo::Desligado,
+        &mut super::exame_bancada::Fases::default(),
     );
     (px, tracos)
 }

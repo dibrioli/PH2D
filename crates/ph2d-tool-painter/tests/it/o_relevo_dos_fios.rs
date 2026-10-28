@@ -346,7 +346,8 @@ fn sonda_a_escada() {
 
 /// O Oil Bristle de fábrica: o relevo de cada fio sem escada (W3b, `bristleHeight` 0,75, doc 50_medicao).
 fn com_relevo() -> ph2d_brush_presets::Preset {
-    de_fabrica("Oil Bristle")
+    // A lei do relevo dos fios (o emboss), sem a luz do Real Oil (J6: o candidato liga-o).
+    super::presets_de_fabrica::sem_real_oil(de_fabrica("Oil Bristle"))
 }
 
 /// O controlo da W3: o preset sem o relevo de cada fio e com o emboss de antes (0,7) — e sem as leis de escala da
@@ -357,7 +358,7 @@ fn sem_relevo(nome: &str) -> ph2d_brush_presets::Preset {
     // … e sem o VEIO dos fios (J4 óleo, `Knob::BristleStreak`): os troços escuros e claros também são contraste, e o
     // controlo é o óleo de antes do relevo de cada fio (8,7), não o do veio sozinho (11,5 — colado ao Rebelle).
     com_knobs(
-        de_fabrica(nome),
+        super::presets_de_fabrica::sem_real_oil(de_fabrica(nome)),
         "-bristleHeight,-bristleRemove,emboss=0.7,-embossSizeExp,-embossSizeRef,-levelingOwnStroke,-bristleTipRagged,b.dab_quina=0,-bristleStreak,-bristleStreakLight",
     )
 }

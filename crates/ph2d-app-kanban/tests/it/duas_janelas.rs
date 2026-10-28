@@ -354,3 +354,50 @@ fn no_nivel_medio_o_cartao_perde_os_distintivos() {
         "sem rótulos nem distintivos o cartão encolhe"
     );
 }
+
+/// D9 (11.4) — «Convert to sticky note» no verso, com a ABA do Kanban activa: a nota nasce no Quadro
+/// onde o Kanban está posto (à direita dele), esse Quadro fica activo e a nota seleccionada; o cartão
+/// sai do Kanban. Nunca deitado fora em silêncio.
+#[test]
+fn converter_em_nota_na_aba_vai_ao_quadro_onde_o_kanban_esta() {
+    let (mut d, id, el) = Duas::new();
+    let quadro = link::placements(&d.hero.documents, id)[0].board;
+    let c = d.hero.documents.kanbans().get(id).unwrap().cards.values()
+        .find(|c| c.title == "Write the logline").unwrap().id;
+    d.docs().open(id);
+    d.quadros(2);
+    assert!(d.hero.documents.surface_active().is_some(), "a aba do Kanban activa");
+    d.docs().open_back(id.0, c);
+    d.quadros(2);
+    let r = d.docs().probe_back_hits(id.0).into_iter().rev()
+        .find(|(n, _)| n == "Side(ToNote)").expect("«Convert to sticky note»").1;
+    d.clica((r.x + r.w / 2.0, r.y + r.h / 2.0));
+    d.quadros(2);
+    assert_eq!(d.hero.documents.active(), Some(quadro), "o Quadro onde o Kanban está fica activo");
+    let k = d.hero.documents.kanbans().get(id).unwrap().cards.get(&c).is_some_and(|x| !x.meta.deleted);
+    assert!(!k, "o cartão saiu do Kanban");
+    let sel = d.hero.documents.active_selection();
+    assert_eq!(sel.len(), 1, "a nota nova seleccionada: {sel:?}");
+    let b = d.hero.documents.active_board().unwrap();
+    let nota = b.doc.get(sel[0]).expect("a nota");
+    let texto = nota.shape().expect("forma").text.as_str().to_owned();
+    assert!(texto.contains("Write the logline"), "{texto}");
+    let kb_el = b.doc.get(el).unwrap();
+    assert!(nota.x >= kb_el.x + kb_el.w, "à direita do Kanban, não por cima dele");
+}
+
+/// …e um Kanban que não está em nenhum Quadro avisa (o pedido nunca se perde calado).
+#[test]
+fn converter_em_nota_sem_quadro_avisa() {
+    ph2d_editor_core::test_support::ensure_panel_registry();
+    let mut hero = HeroScreen::new(NodeId(1));
+    ph2d_app_kanban::install(&mut hero);
+    let mut d = Duas { hero, ts: TextSystem::without_system_fonts(), agora: 1_000_000_000_000 };
+    let id = ph2d_app_kanban::smoke::stage(&mut d.hero, 1).expect("cena 1");
+    d.quadros(2);
+    let card = d.hero.documents.kanbans().get(id).unwrap().cards.values().next().unwrap().id;
+    ph2d_editor_core::kanban_links::request_card_to_note(ph2d_kanban_model::CardRef { kanban: id, card });
+    d.quadros(2);
+    assert_eq!(d.hero.documents.told(), Some(ph2d_i18n::tr("kanban.links.to_note_no_board")));
+    assert!(d.hero.documents.kanbans().get(id).unwrap().cards.get(&card).is_some_and(|x| !x.meta.deleted));
+}

@@ -47,6 +47,13 @@ thread_local! {
     static LAST_BOARD: Cell<Option<BoardId>> = const { Cell::new(None) };
 }
 
+/// O último quadro que esteve activo (ainda vivo) — a escolha de «o da última vez».
+pub(crate) fn last_board(docs: &Documents) -> Option<BoardId> {
+    LAST_BOARD
+        .with(Cell::get)
+        .filter(|b| docs.boards().get(*b).is_some())
+}
+
 /// A aba pede algo ao quadro (servido no quadro seguinte por [`serve`]).
 pub fn request(r: BoardRequest) {
     REQUESTS.with(|q| q.borrow_mut().push(r));

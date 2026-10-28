@@ -210,8 +210,34 @@ pub fn request_card_to_note(card: CardRef) {
     TO_NOTE.with(|q| q.borrow_mut().push(card));
 }
 
-/// O cartão `r` vira uma nota no centro da vista do Quadro activo (cor da 1.ª etiqueta, texto =
-/// título e descrição) e sai do Kanban — um passo de desfazer no Quadro.
+/// Onde a nota nasce: no Quadro activo, no centro da vista; sem Quadro activo (pedido da aba do
+/// Kanban), no Quadro onde o Kanban está posto — o da última vez, ou o primeiro —, que passa a ser o
+/// activo, à direita da referência. `None` = o Kanban não está em nenhum Quadro (avisa-se).
+fn note_place(hero: &mut HeroScreen, kanban: KanbanId, nth: usize) -> Option<[f64; 2]> {
+    let side = ph2d_board_model::STICKY_SIDE;
+    let step = side * 1.1 * nth as f64;
+    if let Some(b) = hero.documents.active_board() {
+        return Some([b.camera.center_x + step, b.camera.center_y]);
+    }
+    use crate::screens::hero::board_video::kanban::link;
+    let all = link::placements(&hero.documents, kanban);
+    let last = link::last_board(&hero.documents);
+    let Some(p) = all.iter().find(|p| Some(p.board) == last).or(all.first()) else {
+        hero.documents
+            .tell(ph2d_i18n::tr("kanban.links.to_note_no_board").to_owned());
+        return None;
+    };
+    hero.documents.activate(Some(p.board));
+    let b = hero.documents.active_board_mut()?;
+    let el = b.doc.get(p.element)?;
+    let centre = [el.x + el.w + side * 0.6 + step, el.y + side / 2.0];
+    b.camera.center_x = centre[0];
+    b.camera.center_y = centre[1];
+    Some(centre)
+}
+
+/// O cartão `r` vira uma nota (cor da 1.ª etiqueta, texto = título e descrição) no sítio de
+/// [`note_place`] e sai do Kanban — um passo de desfazer no Quadro.
 fn card_to_note(
     hero: &mut HeroScreen,
     ts: &mut TextSystem,
@@ -230,10 +256,9 @@ fn card_to_note(
             note_from_card(&c.title, &c.description),
         )
     };
+    let centre = note_place(hero, r.kanban, nth)?;
     let (board, live) = hero.documents.active_parts()?;
     let ed = editor(&mut live.editor, theme);
-    let step = ph2d_board_model::STICKY_SIDE * 1.1 * nth as f64;
-    let centre = [board.camera.center_x + step, board.camera.center_y];
     let el = ed.note_for_card(&mut board.doc, ts, fill, text, centre);
     let id = el.id;
     let history = live.histories.entry(board.id).or_default();

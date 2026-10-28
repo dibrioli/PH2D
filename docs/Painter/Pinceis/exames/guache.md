@@ -71,8 +71,19 @@ Nossa Flat 0,36 → **0,10** (1,0) / 0,13 (0,5); Round 0,61 → 0,17 (0,15) / 0,
   Fica: a 200 px o Rebelle são faixas sólidas largas, o nosso uma nuvem de pontilhado (o tapete das cerdas — motor 2).
 - **Gouache Round** — NÃO refeito: a lei dá o resto (0,05–0,15 já o passa de 0,33), mas o que a reprovou fica — o vermelho
   empurrado (anel 1,20 contra 1,11) e as pontas em cápsula.
-- **Gouache Flat** (fábrica, não aprovada): `wetCover` 0,5–1 casa-a com o Rebelle (0,10–0,13 contra 0,11) — candidata a cura
-  quando o coordenador a reabrir (regerar o preset e os portões dela).
+- **Gouache Flat** (fábrica, não aprovada) — J6 r1, `wetCover` na receita: **NÃO entra** (receita e preset ficam ao bit).
+  Exame (biblioteca fixa `j6_wet`): régua base **404** → wc 1,0 **424**/454 (wc 0,5: 424); vizinho Wet Flat 0,763 →
+  **1,081** (0,5: 1,017); d ao Rebelle na matriz 1,111 → **0,710** (0,5: 0,743); `vermelho_em_cima` molhado 0,32 → 0,03
+  (0,5: 0,06; Rebelle 0,12). Escolhido 1,0. Prancha `pranchas/J6_Gouache_Flat{,_cega}.jpg` + chave; régua
+  `guache/gouache_flat_J6_regua.txt`.
+  ⛔ **O bloqueio não é o `wetCover`**: o caminho oficial (`PH2D_REGERA_SO`) REMEDE a tabela de largura, e o motor de hoje
+  pinta os raios 1,5–1,8 a 3 px (a do ficheiro, medida em P44 e copiada desde então, diz 0). O recto de 5 px cai do lado
+  pálido do degrau (raio 2,0 em vez de 2,05): cobertura 0,59 → **0,23**, e `o_traco_fino_pesa_por_area_o_que_o_largo_pesa`
+  fica VERMELHO (0,41 contra o Rebelle 1,13, piso 0,93). Sonda (`cena_com` tamanhos): `wetCover` 0 / 0,5 / 1 dão o MESMO
+  recto de 5 px nas duas tabelas (0,514 na antiga, 0,224 na nova) — a lei não toca num traço de uma só cor. A deriva vem
+  de algum dos ~219 commits de motor desde 19/10; o Wet Flat (a mesma ponta) tem a tabela antiga e provavelmente o mesmo
+  degrau. Cura: motor/lei da largura (medir a largura do fino pela cobertura útil, não pelo fio pálido), depois regerar.
+  Fica à vista na prancha: o recto de 5 px pálido; as bordas lisas e a espiral fechada do J5.
 
 ## Portão
 `os_reprovados_do_guache_nao_estao_na_fabrica` (os três de `EM_ESTUDO` sem ficheiro; mutação J4: a Round renomeada

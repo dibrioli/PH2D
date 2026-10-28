@@ -317,4 +317,6 @@ pub const KNOB_DEFS: [KnobDef; KNOB_COUNT] = [
     k(Knob::WetOpenEdge, KnobGroup::WetEffects, "wetOpenEdge", 0.0, 80.0, 0.5, 0.0, None),
     k(Knob::StrokeFilmDome, KnobGroup::Stroke, "strokeFilmDome", 0.0, 1.0, 0.01, 0.0, None),
     k(Knob::StrokeFilmEnds, KnobGroup::Stroke, "strokeFilmEnds", 0.0, 1.0, 0.01, 0.0, None),
+    // J6 (mistura, lacuna 5): o secador seca a tinta já nivelada (raio da caixa ÷ o do dab) — neutro 0 = o de sempre, ao bit
+    k(Knob::DryerLevel, KnobGroup::Tools, "dryerLevel", 0.0, 2.0, 0.01, 0.0, None),
 ];

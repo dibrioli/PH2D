@@ -349,6 +349,7 @@ pub(crate) const CORPO_DA_AGUA: [(WetTool, &[Knob]); 5] = [
             CERDAS[4],
             CERDAS[5],
             Knob::DryerEdge,
+            Knob::DryerLevel,
         ],
     ),
     (

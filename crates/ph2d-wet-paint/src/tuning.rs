@@ -299,9 +299,14 @@ pub enum Knob {
     /// … e as TAMPAS do filme largo esbatem ao longo do traço (`1 − p·(1 − R0/r)·u∥²` no 1.º e no último dab): o recto de
     /// 200 px do Rebelle clareia ~0,6 nas pontas. `0` = a tampa de sempre, ao bit.
     StrokeFilmEnds,
+    /// ⭐ **O secador seca a tinta JÁ NIVELADA** (J6, lacuna 5, `docs/Painter/Pinceis/exames/mistura.md` «Motor J6»): o
+    /// raio (÷ o do dab) da caixa com que a ferramenta Dry nivela o pigmento suspenso de cada célula que toca pela 1.ª vez
+    /// ([`crate::tools::apply_dry_level`]) — sem ele o secador congelava os sulcos das cerdas da tinta fresca (bandas
+    /// 0,35 · 1,6 · 0,35 no cruzamento, contra a mancha lisa do Rebelle). `0` = o secador de sempre, ao bit.
+    DryerLevel,
 }
 
-pub const KNOB_COUNT: usize = 131;
+pub const KNOB_COUNT: usize = 132;
 
 /// O LEITOR TOLERANTE das chaves do material de antes da W3 (preset e macro gravados com elas): `(knob, valor)`
 /// na lei nova, `None` para uma chave que não é antiga. `roughnessMul` m → Roughness `0,5·m` (o neutro `1` → `0,5`,

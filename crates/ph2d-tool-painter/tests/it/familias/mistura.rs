@@ -6,6 +6,7 @@
 use super::prelude::*;
 
 mod motor;
+mod secador;
 mod sonda_agua;
 
 pub const WET: &[Receita] = &[];

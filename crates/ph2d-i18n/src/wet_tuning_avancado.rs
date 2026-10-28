@@ -77,6 +77,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // Tools — a água e o secador.
         "panel.wet_tuning.knob.waterPush" => "Water pushes pigment",
         "panel.wet_tuning.knob.dryerEdge" => "Dryer leaves an edge",
+        "panel.wet_tuning.knob.dryerLevel" => "Dryer evens the paint (brush radii)",
         _ => return None,
     })
 }

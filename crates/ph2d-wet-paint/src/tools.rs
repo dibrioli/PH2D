@@ -16,6 +16,8 @@ use crate::tuning::Knob;
 mod bordas; // a frente da água que empurra e a orla do secador — filho por LOC
 pub use bordas::{apply_dry_edge, apply_wet_push};
 mod marca; // o Smear leva a marca do nivelado (K9)
+mod secador; // o secador seca a tinta já nivelada (J6) — filho por LOC
+pub use secador::apply_dry_level;
 
 /// Doc 23: the shared active-lift gain — `wetLift · stainingMultiplier`.
 /// Every active rewetter (Wet dissolve, wet Smear, wet Blend) derives its

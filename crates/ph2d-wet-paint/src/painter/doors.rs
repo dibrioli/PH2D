@@ -356,9 +356,21 @@ impl Engine {
                 }
             }
             Tool::Dry => {
-                // O secador que assenta e deixa orla ([`Knob::DryerEdge`]; `0` = nada a fazer, ao byte) — ANTES de selar.
+                // O secador seca a tinta já nivelada ([`Knob::DryerLevel`]) e deixa orla ([`Knob::DryerEdge`]) —
+                // ANTES de selar; `0` = nada a fazer, ao byte.
+                let nivela =
+                    prev.and_then(|pv| crate::tools::apply_dry_level(&mut layer.grid, &p, &dab, pv));
                 let orla =
                     prev.and_then(|pv| crate::tools::apply_dry_edge(&mut layer.grid, &p, &dab, pv));
+                let orla = match (nivela, orla) {
+                    (Some(a), Some(b)) => Some(crate::trail::TouchedRect {
+                        x0: a.x0.min(b.x0),
+                        y0: a.y0.min(b.y0),
+                        x1: a.x1.max(b.x1),
+                        y1: a.y1.max(b.y1),
+                    }),
+                    (a, b) => a.or(b),
+                };
                 let seca = apply_dry(&mut layer.grid, &p, &tex, &dab);
                 match (orla, seca) {
                     (Some(a), Some(b)) => Some(crate::trail::TouchedRect {

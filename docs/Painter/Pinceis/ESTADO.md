@@ -44,3 +44,10 @@
 ## Bancada
 
 [`04_BANCADA.md`](04_BANCADA.md) §«Notas da bancada» (exame.sh, PH2D_EXAME_*, fábrica, custo).
+
+## J6 passo 3 — pincel a pincel (censo: 16 examináveis só por valores; 16 travados por motor; 7 sem oráculo)
+
+- Digital (B-6, B-7, C-4, C-6, K-1, L-5, M-7, I-12) — EM CURSO, receitas em `EM_ESTUDO_J6`.
+- Wet canetas/marcadores (C-9, C-15, E-3, E-4) · Wet aguarela/texturas (I-9, I-10, I-11, K-9, F-10) — A SEGUIR.
+- Aprovados pela cega sobem à fábrica num lote único no fim (uma regeração). Sem oráculo: C-13, C-14, D-2, D-4,
+  G-13, J-4, M-5 (só doc. Procreate/ArtRage). Motor: CAP-19 cerdas que esgotam (C-11, G-9, G-11, I-13), L17, L15, L20, L10.

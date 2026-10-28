@@ -114,7 +114,7 @@ impl History {
         self.redo.clear();
     }
 
-    /// Desfaz o último gesto. `false` = nada a desfazer.
+    /// Desfaz o último gesto (saltando os passos que os colegas esvaziaram). `false` = nada a desfazer.
     pub fn undo(&mut self, k: &mut Kanban, at: u64) -> bool {
         Self::swap(&mut self.undo, &mut self.redo, k, at, None)
     }
@@ -141,17 +141,25 @@ impl History {
         at: u64,
         actor: Option<&Actor>,
     ) -> bool {
-        let Some((_, step)) = from.pop() else {
-            return false;
-        };
-        let ops = rebase(k, step);
-        let inverse = match actor {
-            Some(a) => apply_logged(k, ops, a),
-            None => apply_batch(k, ops),
-        };
-        let after = after(k, &inverse);
-        to.push((at, Step { inverse, after }));
-        true
+        // Um passo que os colegas esvaziaram (mexeram em todos os seus campos) descarta-se e o gesto
+        // passa ao anterior — nunca conta como feito nem deixa um passo vazio na outra pilha.
+        while let Some((_, step)) = from.pop() {
+            let ops = rebase(k, step);
+            if ops.is_empty() {
+                continue;
+            }
+            let inverse = match actor {
+                Some(a) => apply_logged(k, ops, a),
+                None => apply_batch(k, ops),
+            };
+            if inverse.is_empty() {
+                continue;
+            }
+            let after = after(k, &inverse);
+            to.push((at, Step { inverse, after }));
+            return true;
+        }
+        false
     }
 
     #[must_use]

@@ -103,3 +103,34 @@ fn undo_of_a_creation_is_the_tombstone_field() {
     assert!(h.undo(&mut k, 2));
     assert!(k.cards[&id].meta.deleted);
 }
+
+/// R1 — um passo cujos campos um colega mexeu TODOS ficou vazio: o desfazer DESCARTA-O e desfaz o
+/// anterior (o idioma dos editores colaborativos), sem refazer vazio. Só vazios ⇒ `false`.
+#[test]
+fn an_undo_step_left_empty_by_a_colleague_is_skipped_not_counted() {
+    let mut k = sample();
+    let id = k.cards.keys().copied().next().unwrap();
+    let mut h = History::default();
+    let first = edit(&k, id, |c| c.description = "first".into());
+    h.apply(&mut k, vec![first], 1);
+    let second = edit(&k, id, |c| c.title = "mine".into());
+    h.apply(&mut k, vec![second], 2);
+    let theirs = edit(&k, id, |c| c.title = "theirs".into());
+    apply_batch(&mut k, vec![theirs]);
+    assert!(h.undo(&mut k, 3), "desfaz o passo de antes");
+    let c = card_of(&k, id);
+    assert_eq!(c.title, "theirs", "o título do colega fica");
+    assert_ne!(c.description, "first", "o passo anterior foi desfeito");
+    assert!(!h.can_undo());
+    assert!(h.redo(&mut k, 4));
+    assert_eq!(card_of(&k, id).description, "first");
+    assert!(!h.can_redo(), "nenhum refazer vazio ficou na pilha");
+
+    let mut h = History::default();
+    let mine = edit(&k, id, |c| c.title = "mine again".into());
+    h.apply(&mut k, vec![mine], 5);
+    let theirs = edit(&k, id, |c| c.title = "theirs again".into());
+    apply_batch(&mut k, vec![theirs]);
+    assert!(!h.undo(&mut k, 6), "só havia um passo vazio: nada a desfazer");
+    assert!(!h.can_redo(), "sem refazer vazio");
+}

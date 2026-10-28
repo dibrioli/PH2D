@@ -60,6 +60,10 @@ impl DocumentSurface for KanbanDocs {
         self.paint_tab(id, area, scene, text, *theme);
     }
 
+    fn chrome_over(&mut self, _id: u64, over: Option<Rect>) {
+        self.over = over;
+    }
+
     fn pointer(
         &mut self,
         id: u64,

@@ -45,20 +45,12 @@ mod opacidade;
 #[path = "project_test_writer.rs"]
 mod writer;
 use writer::{
-    bare_file, write_project, write_project_art, write_project_boards, write_project_with,
+    bare_file, two_boards, write_project, write_project_art, write_project_boards,
+    write_project_with,
 };
 
 /// O documento de uma animação: uma track em `hero`, com o `wire_id` (a identidade do objeto)
 /// carimbado como o save carimba. Devolve os bytes que o arquivo de projeto carregaria.
-/// Dois quadros com nome e um com a vista mexida — o fixture dos QUADROS (v185).
-fn two_boards() -> ph2d_editor_core::documents::BoardSet {
-    let mut set = ph2d_editor_core::documents::BoardSet::default();
-    let a = set.create("Retro".into());
-    set.create("Ideas".into());
-    set.get_mut(a).expect("acabou de nascer").camera.zoom = 2.5;
-    set
-}
-
 fn animation_of_hero() -> Vec<u8> {
     use ph2d_ecs::{Name, SimWorld};
     let mut sim = SimWorld::new();

@@ -253,7 +253,12 @@ pub fn paint_hero_screen(
         hero.last_canvas = r;
         hero.last_content = r;
         let theme = hero.theme;
+        // O HUD de baixo pinta-se por cima da aba (o mesmo `if` do fim deste ficheiro).
+        let hud = (hero.view.stats_visible
+            || super::bottom_hud::module_hint(&hero.store).is_some())
+        .then_some(layout.bottom_hud);
         if let Some((family, id)) = hero.documents.active_surface_mut() {
+            family.chrome_over(id, hud);
             family.paint(id, r, scene, text_system, &theme);
         }
     } else if hero.documents.active().is_some() {

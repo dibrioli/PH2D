@@ -40,6 +40,8 @@ pub(crate) struct ListBox {
     pub add: Rect,
     pub close: Option<Rect>,
     pub count: usize,
+    /// A pílula «n / limite» entre o título e os botões, se a lista tem limite de cartões.
+    pub limit: Option<Rect>,
 }
 
 /// O quadro inteiro.
@@ -92,6 +94,13 @@ pub(crate) trait Heights {
     fn field(&mut self, text: &str, width: f32) -> f32;
     /// A largura de um título de lista numa linha.
     fn title_w(&mut self, text: &str) -> f32;
+    /// A largura da pílula do limite com `text` (o respiro incluído).
+    fn limit_w(&mut self, text: &str) -> f32;
+}
+
+/// O texto da pílula do limite: «3 / 3».
+pub(crate) fn limit_text(count: usize, limit: u32) -> String {
+    ph2d_i18n::tr_with("kanban.list_limit", &[("n", &count), ("max", &limit)])
 }
 
 /// O cabeçalho: o título à esquerda, a estrela, o menu à direita.
@@ -125,13 +134,14 @@ fn foot_h() -> f32 {
 }
 
 /// ⭐ Onde cada lista e cartão DEVE estar, no espaço do CONTEÚDO (sem rolagem: `x` desde o início
-/// das listas, `y` desde o topo do corpo de cada lista). `title_w` = a largura do título medida.
+/// das listas, `y` desde o topo do corpo de cada lista). `head` = a largura do título do Kanban
+/// medida e o chão do chrome por cima da área (o topo do HUD de baixo): as listas param acima dele.
 #[allow(clippy::too_many_lines)]
 pub(crate) fn targets(
     k: &Kanban,
     view: &KanbanView,
     area: Rect,
-    title_w: f32,
+    (title_w, floor): (f32, Option<f32>),
     field: Option<&Field>,
     lifted: Option<Lifted>,
     heights: &mut dyn Heights,
@@ -144,7 +154,8 @@ pub(crate) fn targets(
         (area.h - m::HEADER_H).max(0.0),
     );
     let top = board.y + m::BOARD_PAD;
-    let max_h = (board.h - 2.0 * m::BOARD_PAD).max(head_h() + foot_h());
+    let bottom = floor.map_or(board.y + board.h, |f| f.min(board.y + board.h));
+    let max_h = (bottom - m::BOARD_PAD - top).max(head_h() + foot_h());
     let mut lists = Vec::new();
     let mut x = 0.0_f32;
     let lifted_list = match lifted {
@@ -199,6 +210,7 @@ pub(crate) fn targets(
                 add: Rect::new(0.0, 0.0, 0.0, 0.0),
                 close: None,
                 count,
+                limit: None,
             });
             x += m::COLLAPSED_W + m::LIST_GAP;
             continue;
@@ -210,16 +222,27 @@ pub(crate) fn targets(
             m::LIST_ICON_BTN,
             m::LIST_ICON_BTN,
         );
+        // A fila da cabeça: título, pílula do limite, recolher, menu — `6` entre cada um.
         let collapse = Rect::new(
-            menu.x - m::LIST_ICON_BTN,
+            menu.x - m::LIST_ICON_GAP - m::LIST_ICON_BTN,
             menu.y,
             m::LIST_ICON_BTN,
             m::LIST_ICON_BTN,
         );
+        let limit = l.card_limit.map(|n| {
+            let w = heights.limit_w(&limit_text(count, n));
+            Rect::new(
+                collapse.x - m::LIST_ICON_GAP - w,
+                top + m::LIST_HEAD_TOP + (m::LINE_H - m::COUNT_H) / 2.0,
+                w,
+                m::COUNT_H,
+            )
+        });
+        let title_end = limit.map_or(collapse.x, |p| p.x);
         let title = Rect::new(
             x + m::LIST_HEAD_LEFT,
             top + m::LIST_HEAD_TOP,
-            (collapse.x - m::LIST_ICON_GAP - x - m::LIST_HEAD_LEFT).max(0.0),
+            (title_end - m::LIST_ICON_GAP - x - m::LIST_HEAD_LEFT).max(0.0),
             m::LINE_H,
         );
         // Os cartões, um a seguir ao outro, com o espaço do arrasto e o compositor no meio.
@@ -321,6 +344,7 @@ pub(crate) fn targets(
             add,
             close,
             count,
+            limit,
         });
         x += m::LIST_W + m::LIST_GAP;
     }

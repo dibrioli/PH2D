@@ -92,7 +92,7 @@ pub(crate) fn flight_shadow(scene: &mut VectorScene, theme: Theme, r: Rect) {
         scene,
         r,
         m::CARD_RADIUS,
-        c(theme, T::KanbanShadowFlightNear),
+        c(theme, T::KanbanFlightNear),
         m::SHADOW_FLIGHT_NEAR,
     );
 }
@@ -300,7 +300,7 @@ fn badges(
         *x += w + m::BADGE_GAP;
     };
     if f.description {
-        badge(scene, ts, &mut x, IconId::Text, None, None);
+        badge(scene, ts, &mut x, IconId::Menu, None, None);
     }
     if f.comments > 0 {
         badge(

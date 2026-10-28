@@ -193,6 +193,7 @@ pub(crate) fn place(tab: &mut Tab, target: Layout, dt: f64, law: Option<Spring>)
             add: shift(lb.add, dx, 0.0),
             close: lb.close.map(|r| shift(r, dx, 0.0)),
             count: lb.count,
+            limit: lb.limit.map(|r| shift(r, dx, 0.0)),
         });
     }
     // O que já não está na disposição larga a mola (um cartão arquivado não volta a voar de lá).

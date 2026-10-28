@@ -14,6 +14,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "kanban.add_card_button" => "Add card",
         "kanban.add_list" => "Add another list",
         "kanban.add_list_button" => "Add list",
+        "kanban.list_limit" => "{n} / {max}",
         "kanban.menu.list_title" => "List actions",
         "kanban.menu.board_title" => "Menu",
         "kanban.menu.add_card" => "Add card",

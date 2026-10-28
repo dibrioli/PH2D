@@ -85,6 +85,8 @@ mod code_help;
 /// ⭐⭐ **As palavras do MOTOR DA CENA** (`ph2d-ecs`) — a 7.ª fatia da fronteira dos motores, e a
 /// primeira achada por um instrumento.
 mod ecs_scene;
+/// O fim da cadeia do `tr_ingles`: as famílias `ph2d-app-*`, o editor de scripts e o Kanban.
+mod familias;
 /// As strings dos dois painéis do Flip (o painel e a tira de quadros).
 mod flip;
 /// As strings do painel Grid Settings.
@@ -601,16 +603,7 @@ fn tr_ingles(key: &str) -> &'static str {
             .or_else(|| chrome_reach::tr(k))
             .or_else(|| shell::tr(k))
             .or_else(|| shell_media::tr(k))
-            .or_else(|| app_components::tr(k))
-            .or_else(|| app_flip::tr(k))
-            .or_else(|| app_painter::tr(k))
-            .or_else(|| app_physics::tr(k))
-            .or_else(|| app_motion::tr(k))
-            .or_else(|| app_vec::tr(k))
-            .or_else(|| code_editor::tr(k))
-            .or_else(|| code_explain::tr(k))
-            .or_else(|| code_help::tr(k))
-            .or_else(|| kanban::tr(k))
+            .or_else(|| familias::tr(k))
             .unwrap_or_else(|| leak_key(k)),
     }
 }

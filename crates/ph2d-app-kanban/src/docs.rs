@@ -33,6 +33,8 @@ pub struct KanbanDocs {
     pub(crate) law: Option<Spring>,
     /// A área da aba no último quadro.
     pub(crate) area: Rect,
+    /// O chrome do hero por cima da área (o HUD de baixo): as listas param acima dele.
+    pub(crate) over: Option<Rect>,
 }
 
 impl Default for KanbanDocs {
@@ -47,6 +49,7 @@ impl Default for KanbanDocs {
             clock: (0, 0),
             law: Some(Spring::default()),
             area: Rect::new(0.0, 0.0, 0.0, 0.0),
+            over: None,
         }
     }
 }
@@ -72,8 +75,20 @@ impl Heights for Measure<'_> {
     }
 
     fn title_w(&mut self, text: &str) -> f32 {
-        self.ts.prefix_width(text, m::LIST_TITLE_PX)
+        title_width(self.ts, text, m::LIST_TITLE_PX)
     }
+
+    fn limit_w(&mut self, text: &str) -> f32 {
+        title_width(self.ts, text, m::SMALL_PX) + 2.0 * m::COUNT_PAD_X
+    }
+}
+
+/// A largura de um texto pintado em `SemiBold` (os títulos e a pílula do limite), medida no MESMO
+/// peso em que o pintor o pinta: medir em `Medium` cortava «Short film — producti…» na fronteira.
+/// Arredondada para cima, para a reticência nunca nascer de uma fracção.
+pub(crate) fn title_width(ts: &mut TextSystem, text: &str, px: f32) -> f32 {
+    ts.prefix_width_weighted(text, px, ph2d_text::FontWeight::SEMI_BOLD)
+        .ceil()
 }
 
 impl KanbanDocs {
@@ -201,7 +216,8 @@ impl KanbanDocs {
         };
         edge_scroll(tab, dt);
         let counts = Counts::of(k);
-        let title_w = ts.prefix_width(&k.header.name, m::HEADER_TITLE_PX) + 2.0 * m::FIELD_PAD_X;
+        let title_w = title_width(ts, &k.header.name, m::HEADER_TITLE_PX) + 2.0 * m::FIELD_PAD_X;
+        let floor = self.over.map(|o| o.y);
         let lifted = lifted(tab, &counts, k, ts);
         let mut cache = std::mem::take(&mut tab.heights);
         let target = {
@@ -215,7 +231,7 @@ impl KanbanDocs {
                 k,
                 &tab.view,
                 area,
-                title_w,
+                (title_w, floor),
                 tab.field.as_ref(),
                 lifted,
                 &mut measure,

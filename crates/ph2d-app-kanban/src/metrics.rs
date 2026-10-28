@@ -45,6 +45,21 @@ pub(crate) const COUNT_RADIUS: f32 = 10.0;
 pub(crate) const COUNT_PAD_X: f32 = 6.0;
 pub(crate) const COUNT_H: f32 = 18.0;
 pub(crate) const SMALL_PX: f32 = 12.0;
+/// A pílula do limite de cartões («3 / 3») tem cantos de `4` (a contagem da recolhida, de `10`).
+pub(crate) const LIMIT_RADIUS: f32 = 4.0;
+/// O glifo de recolher: duas setas na grelha `24` dos ícones — `‹›` na lista aberta (afastam-se),
+/// `›‹` na recolhida (juntam-se). Os pontos da maquete (`M9 6l-4 6 4 6M15 6l4 6-4 6`).
+pub(crate) const ICON_GRID: f64 = 24.0;
+pub(crate) const COLLAPSE_OPEN: [[(f64, f64); 3]; 2] = [
+    [(9.0, 6.0), (5.0, 12.0), (9.0, 18.0)],
+    [(15.0, 6.0), (19.0, 12.0), (15.0, 18.0)],
+];
+pub(crate) const COLLAPSE_SHUT: [[(f64, f64); 3]; 2] = [
+    [(5.0, 6.0), (9.0, 12.0), (5.0, 18.0)],
+    [(19.0, 6.0), (15.0, 12.0), (19.0, 18.0)],
+];
+/// O traço do glifo, na grelha `24` (o `stroke-width="1.8"` da maquete).
+pub(crate) const GLYPH_STROKE: f64 = 1.8;
 
 // ── O cartão (a frente) ──
 pub(crate) const CARD_W: f32 = 256.0;

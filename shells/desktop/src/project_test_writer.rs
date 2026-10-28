@@ -74,3 +74,12 @@ pub(super) fn bare_file(state: ProjectState) -> ProjectFile {
 pub(super) fn write_project(path: &std::path::Path, schema: u32) {
     write_project_with(path, schema, Vec::new());
 }
+
+/// Dois quadros com nome e um com a vista mexida — o fixture dos QUADROS (v185).
+pub(super) fn two_boards() -> ph2d_editor_core::documents::BoardSet {
+    let mut set = ph2d_editor_core::documents::BoardSet::default();
+    let a = set.create("Retro".into());
+    set.create("Ideas".into());
+    set.get_mut(a).expect("acabou de nascer").camera.zoom = 2.5;
+    set
+}

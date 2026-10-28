@@ -1,11 +1,12 @@
-//! ⭐ **O quadro pintado** — o fundo, o cabeçalho, as listas, os compositores e o que voa. A frente
-//! do cartão mora em [`crate::paint_card`]; os menus e o arquivo nos módulos deles. Tudo pelas cores
-//! `kanban-*` e pelas medidas da maquete ([`crate::metrics`]).
+//! ⭐ **O quadro pintado** — o fundo, o cabeçalho, os campos de texto e o que voa. As listas moram
+//! em [`crate::paint_list`], a frente do cartão em [`crate::paint_card`]; os menus e o arquivo nos
+//! módulos deles. Tudo pelas cores `kanban-*` e pelas medidas da maquete ([`crate::metrics`]).
 
 use crate::edit::{Field, Target};
 use crate::layout::ListBox;
 use crate::metrics as m;
 use crate::paint_card::{self, CardLook, Ink};
+use crate::paint_list;
 use crate::tab::{Hit, Lift, Tab};
 use ph2d_editor_core::IconId;
 use ph2d_editor_core::paint::{
@@ -40,7 +41,7 @@ pub(crate) fn label(theme: Theme, l: LabelColor) -> (Color, Color) {
 }
 
 /// Uma lista com cor usa a intensidade SUTIL do matiz (a paleta do Trello) e a tinta das etiquetas.
-fn list_colors(theme: Theme, hue: Option<Hue>) -> (Color, Color, Color) {
+pub(crate) fn list_colors(theme: Theme, hue: Option<Hue>) -> (Color, Color, Color) {
     match hue {
         None => (
             c(theme, T::KanbanList),
@@ -87,7 +88,7 @@ pub(crate) fn text_top(ts: &mut TextSystem, y: f32, row_h: f32, px: f32) -> f32 
     y + ((row_h - h) / 2.0).max(0.0)
 }
 
-fn icon(scene: &mut VectorScene, id: IconId, around: Rect, color: Color) {
+pub(crate) fn icon(scene: &mut VectorScene, id: IconId, around: Rect, color: Color) {
     let r = Rect::new(
         around.x + (around.w - m::ICON_PX) / 2.0,
         around.y + (around.h - m::ICON_PX) / 2.0,
@@ -98,7 +99,7 @@ fn icon(scene: &mut VectorScene, id: IconId, around: Rect, color: Color) {
 }
 
 /// O fundo de um botão do cabeçalho ou da lista, quando paira.
-fn hover_fill(scene: &mut VectorScene, r: Rect, on: bool, theme: Theme, radius: f32) {
+pub(crate) fn hover_fill(scene: &mut VectorScene, r: Rect, on: bool, theme: Theme, radius: f32) {
     if on {
         fill_rounded_rect(scene, r, radius, c(theme, T::KanbanSlot));
     }
@@ -119,12 +120,12 @@ pub(crate) fn board(
     scene.push_clip(&rect_to_vello(l.board));
     for lb in &l.lists {
         if lb.collapsed {
-            collapsed(scene, ts, theme, k, tab, lb);
+            paint_list::collapsed(scene, ts, theme, k, tab, lb);
         } else {
-            list(scene, ts, theme, k, tab, lb, looks);
+            paint_list::list(scene, ts, theme, k, tab, lb, looks);
         }
     }
-    add_list(scene, ts, theme, tab);
+    paint_list::add_list(scene, ts, theme, tab);
     scene.pop_layer();
     flying(scene, ts, theme, k, tab, looks);
 }
@@ -212,298 +213,15 @@ fn star(scene: &mut VectorScene, r: Rect, on: bool, theme: Theme) {
     }
 }
 
-/// Uma lista aberta.
-#[allow(clippy::too_many_arguments)]
-fn list(
-    scene: &mut VectorScene,
-    ts: &mut TextSystem,
-    theme: Theme,
-    k: &Kanban,
-    tab: &Tab,
-    lb: &ListBox,
-    looks: &mut dyn FnMut(ph2d_kanban_model::CardId) -> Option<CardLook>,
-) {
-    let color = k.lists.get(&lb.id).and_then(|l| l.color);
-    let (bg, fg, meta) = list_colors(theme, color);
-    shadow(
-        scene,
-        lb.rect,
-        m::LIST_RADIUS,
-        c(theme, T::KanbanListShadow),
-        m::SHADOW_NEAR,
-    );
-    fill_rounded_rect(scene, lb.rect, m::LIST_RADIUS, bg);
-    let title = k.lists.get(&lb.id).map_or("", |l| l.title.as_str());
-    match tab
-        .field
-        .as_ref()
-        .filter(|f| f.target == Target::ListTitle(lb.id))
-    {
-        Some(f) => field_box(scene, ts, theme, f, lb.title, m::LIST_TITLE_PX),
-        None => {
-            let y = text_top(ts, lb.title.y, lb.title.h, m::LIST_TITLE_PX);
-            paint_text_title_elided(
-                ts,
-                scene,
-                title,
-                lb.title.x,
-                y,
-                m::LIST_TITLE_PX,
-                lb.title.w,
-                fg,
-            );
-        }
-    }
-    hover_fill(
-        scene,
-        lb.collapse,
-        tab.hover == Some(Hit::Collapse(lb.id)),
-        theme,
-        m::BUTTON_RADIUS,
-    );
-    icon(scene, IconId::ChevronLeft, lb.collapse, meta);
-    hover_fill(
-        scene,
-        lb.menu,
-        tab.hover == Some(Hit::ListMenu(lb.id)),
-        theme,
-        m::BUTTON_RADIUS,
-    );
-    icon(scene, IconId::MoreHorizontal, lb.menu, meta);
-    // Os cartões, recortados ao corpo: só os que se vêem são pintados (milhares cabem).
-    scene.push_clip(&rect_to_vello(lb.body));
-    let ink = Ink::of(theme);
-    let lifted = match tab.drag.map(|d| d.lift) {
-        Some(Lift::Card(id)) => Some(id),
-        _ => None,
-    };
-    if let Some(s) = lb.slot {
-        fill_rounded_rect(scene, s, m::CARD_RADIUS, c(theme, T::KanbanSlot));
-    }
-    for cb in &lb.cards {
-        if cb.rect.y > lb.body.y + lb.body.h || cb.rect.y + cb.rect.h < lb.body.y {
-            continue;
-        }
-        if Some(cb.id) == lifted {
-            continue;
-        }
-        let Some(mut look) = looks(cb.id) else {
-            continue;
-        };
-        look.hover = tab.hover == Some(Hit::Card(cb.id)) || tab.hover == Some(Hit::CardEdit(cb.id));
-        look.focus = tab.focus == Some(cb.id);
-        match tab
-            .field
-            .as_ref()
-            .filter(|f| f.target == Target::CardTitle(cb.id))
-        {
-            Some(f) => editing_card(scene, ts, theme, f, cb.rect),
-            None => paint_card::card(scene, ts, theme, &ink, &look, cb.rect, tab.label_text),
-        }
-    }
-    if let (Some(r), Some(f)) = (lb.composer, tab.field.as_ref()) {
-        editing_card(scene, ts, theme, f, r);
-    }
-    scene.pop_layer();
-    // O pé: «Add a card», ou os botões do compositor.
-    match lb.close {
-        Some(close) => composer_buttons(
-            scene,
-            ts,
-            theme,
-            lb.add,
-            close,
-            "kanban.add_card_button",
-            meta,
-            tab,
-        ),
-        None => {
-            hover_fill(
-                scene,
-                lb.add,
-                tab.hover == Some(Hit::AddCard(lb.id)),
-                theme,
-                m::ADD_RADIUS,
-            );
-            let ir = Rect::new(lb.add.x + m::ADD_PAD_X, lb.add.y, m::ICON_PX, lb.add.h);
-            icon(scene, IconId::Plus, ir, meta);
-            let x = ir.x + m::ICON_PX + m::LIST_ICON_GAP;
-            let y = text_top(ts, lb.add.y, lb.add.h, m::BUTTON_TEXT_PX);
-            paint_text_elided(
-                ts,
-                scene,
-                tr("kanban.add_card"),
-                x,
-                y,
-                m::BUTTON_TEXT_PX,
-                lb.add.w - (x - lb.add.x),
-                meta,
-            );
-        }
-    }
-}
-
-/// Uma lista recolhida: o botão, o título na vertical e a contagem.
-fn collapsed(
-    scene: &mut VectorScene,
-    ts: &mut TextSystem,
-    theme: Theme,
-    k: &Kanban,
-    tab: &Tab,
-    lb: &ListBox,
-) {
-    let color = k.lists.get(&lb.id).and_then(|l| l.color);
-    let (bg, fg, meta) = list_colors(theme, color);
-    shadow(
-        scene,
-        lb.rect,
-        m::LIST_RADIUS,
-        c(theme, T::KanbanListShadow),
-        m::SHADOW_NEAR,
-    );
-    fill_rounded_rect(scene, lb.rect, m::LIST_RADIUS, bg);
-    hover_fill(
-        scene,
-        lb.collapse,
-        tab.hover == Some(Hit::Collapse(lb.id)),
-        theme,
-        m::BUTTON_RADIUS,
-    );
-    icon(scene, IconId::ChevronRight, lb.collapse, meta);
-    let title = k.lists.get(&lb.id).map_or("", |l| l.title.as_str());
-    let top = lb.collapse.y + lb.collapse.h + m::LIST_ICON_GAP;
-    let room =
-        (lb.rect.y + lb.rect.h - top - m::COUNT_H - m::LIST_HEAD_TOP - m::LIST_ICON_GAP).max(0.0);
-    // O título deitado, rodado 90° no sentido do relógio (o `writing-mode: vertical-rl` da maquete).
-    let mut s = VectorScene::new();
-    paint_text_title_elided(ts, &mut s, title, 0.0, 0.0, m::LIST_TITLE_PX, room, fg);
-    let x = f64::from(lb.rect.x + (lb.rect.w + m::LINE_H) / 2.0);
-    let t = Affine::translate((x, f64::from(top))) * Affine::rotate(std::f64::consts::FRAC_PI_2);
-    scene.append_transformed(&s, t);
-    let n = lb.count.to_string();
-    let w = ts.prefix_width(&n, m::SMALL_PX) + 2.0 * m::COUNT_PAD_X;
-    let pill = Rect::new(
-        lb.rect.x + (lb.rect.w - w) / 2.0,
-        top + room + m::LIST_ICON_GAP,
-        w,
-        m::COUNT_H,
-    );
-    fill_rounded_rect(scene, pill, m::COUNT_RADIUS, c(theme, T::KanbanSlot));
-    let y = text_top(ts, pill.y, pill.h, m::SMALL_PX);
-    paint_text_elided(
-        ts,
-        scene,
-        &n,
-        pill.x + m::COUNT_PAD_X,
-        y,
-        m::SMALL_PX,
-        w,
-        fg,
-    );
-}
-
-/// «Add another list» — ou o compositor de lista.
-fn add_list(scene: &mut VectorScene, ts: &mut TextSystem, theme: Theme, tab: &Tab) {
-    let l = &tab.layout;
-    let fg = c(theme, T::KanbanHeaderFg);
-    match (l.add_list_field, l.add_list_close, tab.field.as_ref()) {
-        (Some(fr), Some(close), Some(f)) => {
-            let bottom = l.add_list.y + l.add_list.h + m::LIST_FOOT_BOTTOM;
-            let back = Rect::new(
-                fr.x - m::LIST_BODY_X,
-                fr.y - m::LIST_BODY_X,
-                m::LIST_W,
-                bottom - fr.y + m::LIST_BODY_X,
-            );
-            fill_rounded_rect(scene, back, m::LIST_RADIUS, c(theme, T::KanbanList));
-            field_box(scene, ts, theme, f, fr, m::LIST_TITLE_PX);
-            let meta = c(theme, T::KanbanListMeta);
-            composer_buttons(
-                scene,
-                ts,
-                theme,
-                l.add_list,
-                close,
-                "kanban.add_list_button",
-                meta,
-                tab,
-            );
-        }
-        _ => {
-            let on = tab.hover == Some(Hit::AddList);
-            let fill = if on {
-                T::KanbanHeaderBtn
-            } else {
-                T::KanbanNewList
-            };
-            fill_rounded_rect(scene, l.add_list, m::LIST_RADIUS, c(theme, fill));
-            let ir = Rect::new(
-                l.add_list.x + m::NEW_LIST_PAD_X,
-                l.add_list.y,
-                m::ICON_PX,
-                l.add_list.h,
-            );
-            icon(scene, IconId::Plus, ir, fg);
-            let x = ir.x + m::ICON_PX + m::HEADER_GAP;
-            let y = text_top(ts, l.add_list.y, l.add_list.h, m::BUTTON_TEXT_PX);
-            paint_text_elided(
-                ts,
-                scene,
-                tr("kanban.add_list"),
-                x,
-                y,
-                m::BUTTON_TEXT_PX,
-                l.add_list.w - (x - l.add_list.x),
-                fg,
-            );
-        }
-    }
-}
-
-/// O botão azul de um compositor («Add card» / «Add list») e o «×».
-#[allow(clippy::too_many_arguments)]
-fn composer_buttons(
-    scene: &mut VectorScene,
-    ts: &mut TextSystem,
-    theme: Theme,
-    add: Rect,
-    close: Rect,
-    key: &str,
-    meta: Color,
-    tab: &Tab,
-) {
-    let fill = if tab.hover == Some(Hit::FieldAdd) {
-        T::AccentHover
-    } else {
-        T::Accent
-    };
-    fill_rounded_rect(scene, add, m::BUTTON_RADIUS, c(theme, fill));
-    let y = text_top(ts, add.y, add.h, m::BUTTON_TEXT_PX);
-    let label = tr(key);
-    let w = ts.prefix_width(label, m::BUTTON_TEXT_PX);
-    paint_text_title_elided(
-        ts,
-        scene,
-        label,
-        add.x + ((add.w - w) / 2.0).max(m::BUTTON_PAD_X),
-        y,
-        m::BUTTON_TEXT_PX,
-        add.w,
-        c(theme, T::AccentFg),
-    );
-    hover_fill(
-        scene,
-        close,
-        tab.hover == Some(Hit::FieldClose),
-        theme,
-        m::BUTTON_RADIUS,
-    );
-    icon(scene, IconId::Close, close, meta);
-}
-
 /// Um cartão a ser escrito (o título no lugar, ou o compositor): a caixa do cartão com o texto, o
 /// cursor e a selecção.
-fn editing_card(scene: &mut VectorScene, ts: &mut TextSystem, theme: Theme, f: &Field, r: Rect) {
+pub(crate) fn editing_card(
+    scene: &mut VectorScene,
+    ts: &mut TextSystem,
+    theme: Theme,
+    f: &Field,
+    r: Rect,
+) {
     shadow(
         scene,
         r,
@@ -523,7 +241,7 @@ fn editing_card(scene: &mut VectorScene, ts: &mut TextSystem, theme: Theme, f: &
 }
 
 /// Um campo de uma linha (o título do Kanban ou de uma lista, o nome da lista nova).
-fn field_box(
+pub(crate) fn field_box(
     scene: &mut VectorScene,
     ts: &mut TextSystem,
     theme: Theme,
@@ -685,7 +403,7 @@ fn flying(
             let mut t = tab.clone();
             t.drag = None;
             t.field = None;
-            list(&mut s, ts, theme, k, &t, &moved, looks);
+            paint_list::list(&mut s, ts, theme, k, &t, &moved, looks);
         }
         Lift::Pan { .. } => return,
     }
@@ -722,6 +440,7 @@ fn shifted(lb: &ListBox, dx: f32, dy: f32) -> ListBox {
         add: s(lb.add),
         close: None,
         count: lb.count,
+        limit: lb.limit.map(s),
     }
 }
 

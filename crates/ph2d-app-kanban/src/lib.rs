@@ -24,6 +24,7 @@ mod metrics;
 mod overlay;
 mod paint;
 mod paint_card;
+mod paint_list;
 mod pointer;
 pub mod project;
 pub mod smoke;

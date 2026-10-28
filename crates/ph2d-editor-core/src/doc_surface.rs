@@ -179,6 +179,11 @@ pub trait DocumentSurface: Any {
         text: &mut TextSystem,
         theme: &Theme,
     );
+    /// O chrome do hero pintado POR CIMA da área (a faixa do HUD de baixo), dito antes de cada
+    /// [`Self::paint`]; `None` = nada a tapa. Quem tem conteúdo junto ao fundo pára acima dele.
+    fn chrome_over(&mut self, id: u64, over: Option<Rect>) {
+        let _ = (id, over);
+    }
     /// Carregar/largar dentro da área. `true` = tomado.
     fn pointer(
         &mut self,

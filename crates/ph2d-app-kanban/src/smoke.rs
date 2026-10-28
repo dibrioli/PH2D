@@ -2,7 +2,9 @@
 //! numa aba. Roteador PRÓPRIO (o do Quadro é o `PH2D_BOARD_SMOKE`); a próxima cena é a `CENAS + 1`.
 //!
 //! - **1** — o quadro da maquete aprovada (27/10): «Short film — production», cinco listas, a
-//!   «Doing» azul, a «Review» recolhida, e cartões com todas as variantes da frente que a W2 pinta.
+//!   «Doing» azul e cheia (limite `3 / 3`), a «Review» recolhida, e cartões com todas as variantes
+//!   da frente que a W2 pinta. ⚠️ É a maquete SEM o que chega depois: prazos, capas de imagem e
+//!   campos personalizados (W3) e o cartão envelhecido (W6) — esses cartões aparecem sem eles.
 //! - **2** — um quadro grande (8 listas × 250 cartões) para sentir o arrasto a 60 fps.
 
 use crate::docs::KanbanDocs;

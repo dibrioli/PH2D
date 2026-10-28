@@ -149,7 +149,7 @@ impl ColorToken {
             | T::KanbanLabelInk
             | T::KanbanLabelInkBold
             | T::KanbanHeaderFg
-            | T::KanbanHeaderBtnOnFg
+            | T::KanbanBtnOnFg
             | T::KanbanListFg
             | T::KanbanCardFg
             | T::KanbanDueSoonFg
@@ -228,34 +228,34 @@ impl ColorToken {
             | T::CodeComment
             // O Kanban: as etiquetas, os prazos, a estrela e as sombras são DADO.
             | T::KanbanGreenSubtle
-            | T::KanbanGreenNormal
+            | T::KanbanGreen
             | T::KanbanGreenBold
             | T::KanbanYellowSubtle
-            | T::KanbanYellowNormal
+            | T::KanbanYellow
             | T::KanbanYellowBold
             | T::KanbanOrangeSubtle
-            | T::KanbanOrangeNormal
+            | T::KanbanOrange
             | T::KanbanOrangeBold
             | T::KanbanRedSubtle
-            | T::KanbanRedNormal
+            | T::KanbanRed
             | T::KanbanRedBold
             | T::KanbanPurpleSubtle
-            | T::KanbanPurpleNormal
+            | T::KanbanPurple
             | T::KanbanPurpleBold
             | T::KanbanBlueSubtle
-            | T::KanbanBlueNormal
+            | T::KanbanBlue
             | T::KanbanBlueBold
             | T::KanbanSkySubtle
-            | T::KanbanSkyNormal
+            | T::KanbanSky
             | T::KanbanSkyBold
             | T::KanbanLimeSubtle
-            | T::KanbanLimeNormal
+            | T::KanbanLime
             | T::KanbanLimeBold
             | T::KanbanPinkSubtle
-            | T::KanbanPinkNormal
+            | T::KanbanPink
             | T::KanbanPinkBold
             | T::KanbanBlackSubtle
-            | T::KanbanBlackNormal
+            | T::KanbanBlack
             | T::KanbanBlackBold
             | T::KanbanDueSoon
             | T::KanbanDueOver
@@ -266,7 +266,7 @@ impl ColorToken {
             | T::KanbanShadowRim
             | T::KanbanShadowHover
             | T::KanbanShadowFlight
-            | T::KanbanShadowFlightNear => Role::Graphic,
+            | T::KanbanFlightNear => Role::Graphic,
         }
     }
 }

@@ -519,27 +519,29 @@ color_tokens! {
 
     // ── O Kanban (TrelloClone) ─────────────────────────────────────
     // A paleta do Trello: só depende de escuro × claro (os temas derivados emprestam Forge ou
-    // Sunstone). 30 etiquetas `kanban-<matiz>-<subtle|normal|bold>` (índice em [`crate::kanban`]),
-    // depois as superfícies, tintas, sombras e prazos. Os pares medidos: `contrast.rs`.
-    KanbanGreenSubtle => "kanban-green-subtle", KanbanGreenNormal => "kanban-green-normal",
+    // Sunstone). 30 etiquetas `kanban-<matiz>-subtle`, `kanban-<matiz>` (o tom normal) e
+    // `kanban-<matiz>-bold` (índice em [`crate::kanban`]), depois as superfícies, tintas, sombras e
+    // prazos. Os pares medidos: `contrast.rs`. Cada nome cabe nos 132 px do painel Tokens no degrau
+    // estreito (medido 28/10: `kanban-orange-normal` e os de 23+ letras cortavam).
+    KanbanGreenSubtle => "kanban-green-subtle", KanbanGreen => "kanban-green",
     KanbanGreenBold => "kanban-green-bold", KanbanYellowSubtle => "kanban-yellow-subtle",
-    KanbanYellowNormal => "kanban-yellow-normal", KanbanYellowBold => "kanban-yellow-bold",
-    KanbanOrangeSubtle => "kanban-orange-subtle", KanbanOrangeNormal => "kanban-orange-normal",
+    KanbanYellow => "kanban-yellow", KanbanYellowBold => "kanban-yellow-bold",
+    KanbanOrangeSubtle => "kanban-orange-subtle", KanbanOrange => "kanban-orange",
     KanbanOrangeBold => "kanban-orange-bold", KanbanRedSubtle => "kanban-red-subtle",
-    KanbanRedNormal => "kanban-red-normal", KanbanRedBold => "kanban-red-bold",
-    KanbanPurpleSubtle => "kanban-purple-subtle", KanbanPurpleNormal => "kanban-purple-normal",
+    KanbanRed => "kanban-red", KanbanRedBold => "kanban-red-bold",
+    KanbanPurpleSubtle => "kanban-purple-subtle", KanbanPurple => "kanban-purple",
     KanbanPurpleBold => "kanban-purple-bold", KanbanBlueSubtle => "kanban-blue-subtle",
-    KanbanBlueNormal => "kanban-blue-normal", KanbanBlueBold => "kanban-blue-bold",
-    KanbanSkySubtle => "kanban-sky-subtle", KanbanSkyNormal => "kanban-sky-normal",
+    KanbanBlue => "kanban-blue", KanbanBlueBold => "kanban-blue-bold",
+    KanbanSkySubtle => "kanban-sky-subtle", KanbanSky => "kanban-sky",
     KanbanSkyBold => "kanban-sky-bold", KanbanLimeSubtle => "kanban-lime-subtle",
-    KanbanLimeNormal => "kanban-lime-normal", KanbanLimeBold => "kanban-lime-bold",
-    KanbanPinkSubtle => "kanban-pink-subtle", KanbanPinkNormal => "kanban-pink-normal",
+    KanbanLime => "kanban-lime", KanbanLimeBold => "kanban-lime-bold",
+    KanbanPinkSubtle => "kanban-pink-subtle", KanbanPink => "kanban-pink",
     KanbanPinkBold => "kanban-pink-bold", KanbanBlackSubtle => "kanban-black-subtle",
-    KanbanBlackNormal => "kanban-black-normal", KanbanBlackBold => "kanban-black-bold",
+    KanbanBlack => "kanban-black", KanbanBlackBold => "kanban-black-bold",
     KanbanLabelInk => "kanban-label-ink", KanbanLabelInkBold => "kanban-label-ink-bold",
     KanbanBoardBg => "kanban-board-bg", KanbanHeaderBg => "kanban-header-bg",
     KanbanHeaderFg => "kanban-header-fg", KanbanHeaderBtn => "kanban-header-btn",
-    KanbanHeaderBtnOn => "kanban-header-btn-on", KanbanHeaderBtnOnFg => "kanban-header-btn-on-fg",
+    KanbanHeaderBtnOn => "kanban-header-btn-on", KanbanBtnOnFg => "kanban-btn-on-fg",
     KanbanList => "kanban-list", KanbanListFg => "kanban-list-fg",
     KanbanListMeta => "kanban-list-meta", KanbanTintedMeta => "kanban-tinted-meta",
     KanbanSlot => "kanban-slot", KanbanNewList => "kanban-new-list",
@@ -548,12 +550,12 @@ color_tokens! {
     KanbanListShadow => "kanban-list-shadow", KanbanShadowNear => "kanban-shadow-near",
     KanbanShadowRim => "kanban-shadow-rim", KanbanShadowHover => "kanban-shadow-hover",
     KanbanShadowFlight => "kanban-shadow-flight",
-    KanbanShadowFlightNear => "kanban-shadow-flight-near", KanbanDueSoon => "kanban-due-soon",
+    KanbanFlightNear => "kanban-flight-near", KanbanDueSoon => "kanban-due-soon",
     KanbanDueSoonFg => "kanban-due-soon-fg", KanbanDueOver => "kanban-due-over",
     KanbanDueOverFg => "kanban-due-over-fg", KanbanDueDone => "kanban-due-done",
     KanbanDueDoneFg => "kanban-due-done-fg", KanbanStar => "kanban-star",
     // O avatar de um membro: a inicial sobre a etiqueta `normal` (no escuro, MEDIDO: o navy do
-    // claro lia-se a 2,5:1 — subiu em L até 4,52:1 sobre `kanban-black-normal`).
+    // claro lia-se a 2,5:1 — subiu em L até 4,52:1 sobre `kanban-black`).
     KanbanAvatarInk => "kanban-avatar-ink",
 }
 

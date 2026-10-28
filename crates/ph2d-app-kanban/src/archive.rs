@@ -188,11 +188,7 @@ pub(crate) fn paint(
         let label = tr(key);
         let w = ts.prefix_width(label, m::BUTTON_TEXT_PX);
         let ty = text_top(ts, r.y, r.h, m::BUTTON_TEXT_PX);
-        let ink = if on {
-            c(theme, T::KanbanHeaderBtnOnFg)
-        } else {
-            fg
-        };
+        let ink = if on { c(theme, T::KanbanBtnOnFg) } else { fg };
         paint_text_elided(
             ts,
             scene,

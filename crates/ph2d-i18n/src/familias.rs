@@ -1,0 +1,21 @@
+//! O fim da cadeia do `tr_ingles`, pela MESMA ordem: as famílias `ph2d-app-*`, o editor de scripts
+//! e o Kanban. Mora aqui porque o `lib.rs` bate no tecto de LOC (cura por corte, nunca isenção).
+
+use crate::{
+    app_components, app_flip, app_motion, app_painter, app_physics, app_vec, code_editor,
+    code_explain, code_help, kanban,
+};
+
+/// A tradução de uma chave destas famílias, ou `None` se ela não é de nenhuma.
+pub(crate) fn tr(k: &str) -> Option<&'static str> {
+    app_components::tr(k)
+        .or_else(|| app_flip::tr(k))
+        .or_else(|| app_painter::tr(k))
+        .or_else(|| app_physics::tr(k))
+        .or_else(|| app_motion::tr(k))
+        .or_else(|| app_vec::tr(k))
+        .or_else(|| code_editor::tr(k))
+        .or_else(|| code_explain::tr(k))
+        .or_else(|| code_help::tr(k))
+        .or_else(|| kanban::tr(k))
+}

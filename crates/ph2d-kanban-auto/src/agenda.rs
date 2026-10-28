@@ -91,72 +91,87 @@ pub fn due_moment(when: DueWhen, due: Moment, zone: &Zone) -> Option<Moment> {
     }))
 }
 
-/// Os comandos de calendário e de prazo de todos os Kanbans que têm disparo em `(last_run, now]`.
-#[must_use]
-pub fn due_commands(set: &KanbanSet, now: Moment, zone: &Zone) -> Vec<Firing> {
+/// O disparo de `spec` em `(last, now]`, ligada ou não.
+fn pending(
+    set: &KanbanSet,
+    k: &ph2d_kanban_model::Kanban,
+    id: AutomationId,
+    spec: &crate::spec::Spec,
+    last: Moment,
+    now: Moment,
+    zone: &Zone,
+) -> Option<Firing> {
+    match &spec.kind {
+        Kind::Calendar { every, at, .. } => {
+            latest_occurrence(*every, *at, last, now, zone).map(|t| Firing {
+                kanban: k.id,
+                automation: id,
+                at: t,
+                cards: Vec::new(),
+            })
+        }
+        Kind::DueDate { when, scope } => {
+            let cx = Cx {
+                now,
+                zone,
+                me: spec.owner.clone(),
+            };
+            let mut cards = Vec::new();
+            let mut at = last;
+            for c in scope_cards(set, k.id, scope, &cx) {
+                let Some(due) = k.cards.get(&c).and_then(|c| c.due) else {
+                    continue;
+                };
+                if let Some(t) = due_moment(*when, due.at, zone)
+                    && last < t
+                    && t <= now
+                {
+                    cards.push(c);
+                    at = at.max(t);
+                }
+            }
+            (!cards.is_empty()).then_some(Firing {
+                kanban: k.id,
+                automation: id,
+                at,
+                cards,
+            })
+        }
+        _ => None,
+    }
+}
+
+/// Os disparos em `(last_run, now]`: os das ligadas (`enabled`) e os das desligadas (`!enabled`).
+fn pending_all(set: &KanbanSet, now: Moment, zone: &Zone, enabled: bool) -> Vec<Firing> {
     let mut out = Vec::new();
     for k in set.iter() {
         for (id, spec) in specs(k) {
             let Some(last) = k.automations.get(&id).and_then(|a| a.last_run) else {
                 continue;
             };
-            if !spec.enabled {
-                continue;
-            }
-            let cx = Cx {
-                now,
-                zone,
-                me: spec.owner.clone(),
-            };
-            match &spec.kind {
-                Kind::Calendar { every, at, .. } => {
-                    if let Some(t) = latest_occurrence(*every, *at, last, now, zone) {
-                        out.push(Firing {
-                            kanban: k.id,
-                            automation: id,
-                            at: t,
-                            cards: Vec::new(),
-                        });
-                    }
-                }
-                Kind::DueDate { when, scope } => {
-                    let mut cards = Vec::new();
-                    let mut at = last;
-                    for c in scope_cards(set, k.id, scope, &cx) {
-                        let Some(due) = k.cards.get(&c).and_then(|c| c.due) else {
-                            continue;
-                        };
-                        if let Some(t) = due_moment(*when, due.at, zone)
-                            && last < t
-                            && t <= now
-                        {
-                            cards.push(c);
-                            at = at.max(t);
-                        }
-                    }
-                    if !cards.is_empty() {
-                        out.push(Firing {
-                            kanban: k.id,
-                            automation: id,
-                            at,
-                            cards,
-                        });
-                    }
-                }
-                _ => {}
+            if spec.enabled == enabled {
+                out.extend(pending(set, k, id, &spec, last, now, zone));
             }
         }
     }
     out
 }
 
+/// Os comandos de calendário e de prazo de todos os Kanbans que têm disparo em `(last_run, now]`.
+#[must_use]
+pub fn due_commands(set: &KanbanSet, now: Moment, zone: &Zone) -> Vec<Firing> {
+    pending_all(set, now, zone, true)
+}
+
 /// Corre a agenda: arma as automações agendadas sem `last_run`, corre cada [`Firing`] e carimba
-/// `now` nas que correram (no mesmo plano). Aplique o plano com o autor Butler e FORA do desfazer
+/// `now` nas que correram (no mesmo plano). Uma DESLIGADA cuja ocorrência chegou é carimbada sem
+/// correr: o que caiu enquanto estava desligada nunca corre ao religar. Aplique o plano com o autor Butler e FORA do desfazer
 /// da pessoa — desfazer um carimbo faria o disparo repetir.
 #[must_use]
 pub fn run_scheduled(set: &KanbanSet, now: Moment, zone: &Zone) -> Outcome {
     let mut en = Engine::new(set, now, zone);
     let firings = due_commands(set, now, zone);
+    let skipped = pending_all(set, now, zone, false);
     for k in set.iter() {
         for (id, spec) in specs(k) {
             let scheduled = matches!(spec.kind, Kind::Calendar { .. } | Kind::DueDate { .. });
@@ -166,7 +181,10 @@ pub fn run_scheduled(set: &KanbanSet, now: Moment, zone: &Zone) -> Outcome {
             let fired = firings
                 .iter()
                 .find(|f| f.kanban == k.id && f.automation == id);
-            if !scheduled || (a.last_run.is_some() && fired.is_none()) {
+            let swallowed = skipped
+                .iter()
+                .any(|f| f.kanban == k.id && f.automation == id);
+            if !scheduled || (a.last_run.is_some() && fired.is_none() && !swallowed) {
                 continue;
             }
             let mut stamp = a.clone();

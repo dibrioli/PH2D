@@ -124,3 +124,57 @@ fn days_past_the_end_of_the_month_fall_on_its_last_day() {
     assert!(is_day(Every::Weekdays(mon_fri), d(2026, 10, 28)), "quarta");
     assert!(!is_day(Every::Weekdays(mon_fri), d(2026, 10, 31)), "sábado");
 }
+
+/// Liga ou desliga a automação `id` (o interruptor do painel: troca só o corpo).
+fn set_enabled(s: &mut Scene, id: AutomationId, on: bool) {
+    let a = s.set.get(s.k).unwrap().automations[&id].clone();
+    let mut spec = Spec::from_bytes(&a.body).unwrap();
+    spec.enabled = on;
+    let op = spec.update(&a);
+    s.set.apply(s.k, vec![op]);
+}
+
+/// R1 — desligar uma automação uma semana e religá-la NÃO dispara o passado: o que caiu enquanto
+/// estava desligada consome-se sem correr (calendário e prazos, estes em massa).
+#[test]
+fn a_command_switched_off_for_a_week_does_not_fire_the_past_when_switched_back_on() {
+    let mut s = Scene::new();
+    let daily = s.add(&command(
+        Kind::Calendar {
+            every: Every::Day,
+            at: TimeOfDay { hour: 9, minute: 0 },
+            scope: Scope::default(),
+        },
+        vec![Action::Comment("bom dia".into())],
+    ));
+    let on_due = s.add(&command(
+        Kind::DueDate {
+            when: DueWhen::After {
+                n: 1,
+                unit: Unit::Hours,
+            },
+            scope: Scope::default(),
+        },
+        vec![Action::JoinMe],
+    ));
+    for d in 1..=5 {
+        s.card(s.todo, "Atrasado", |c| c.due = due(NOW.0 - d * DAY));
+    }
+    let week_ago = Moment(NOW.0 - 7 * DAY);
+    for id in [daily, on_due] {
+        last_run(&mut s, id, Some(week_ago));
+        set_enabled(&mut s, id, false);
+    }
+    let o = run_scheduled(&s.set, NOW, &utc());
+    assert!(o.fired.is_empty(), "desligada não corre");
+    s.butler(o);
+    for id in [daily, on_due] {
+        set_enabled(&mut s, id, true);
+    }
+    assert!(
+        due_commands(&s.set, NOW, &utc()).is_empty(),
+        "religar não dispara o que caiu enquanto desligada"
+    );
+    let tomorrow = Moment(NOW.0 + DAY);
+    assert_eq!(due_commands(&s.set, tomorrow, &utc()).len(), 1, "a próxima ocorrência corre");
+}

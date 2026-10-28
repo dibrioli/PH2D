@@ -42,13 +42,14 @@ pub const MAPA: [f64; 2] = [15.0, 5.0];
 pub const MARGEM: f32 = 1.0;
 /// O contador: quanto soma, de quanto em quanto tempo (µs).
 pub const SOMA: &str = "1009";
-/// Cada tique é um aviso «Signal» na tela (o motor avisa todo sinal): de 2 em 2 s, como a cena do HUD.
+/// O período do relógio que soma ao placar: de 2 em 2 s, SEM aviso «Signal» (o «Show notice» desligado).
 pub const TIQUE_US: u64 = 2_000_000;
 /// A altura da vista do jogo: o HUD inteiro cabe na vista do editor.
 pub const CAMERA_M: f32 = 6.0;
 const PLACAR: &str = "Placar";
 const CONTADOR: &str = "Pontos";
-const SINAL: &str = "tique";
+/// O sinal do relógio, que o placar ouve.
+pub const SINAL: &str = "tique";
 
 /// O documento pedido (o `encenar` não tem a cena vetorial).
 #[derive(Resource)]
@@ -282,6 +283,8 @@ pub fn vestir(sim: &mut SimWorld) -> Option<Entity> {
     w.spawn((
         Transform::default(),
         Timers(vec![relogio]),
+        // O relógio conduz o placar: sem o aviso «Signal: tique» a cada 2 s (W6).
+        ph2d_ecs::timer::TimersQuiet(vec![true]),
         TimerRuntime(vec![estado]),
         Name::new("Relógio"),
     ));

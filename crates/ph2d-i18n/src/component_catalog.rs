@@ -165,6 +165,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "component.field.follow_fields.3" => "Lookahead",
         "component.field.follow_fields.4" => "Follow Offset",
         "component.field.instance_of.1" => "Master",
+        "component.field.ui_arranjo.1" => "Relations",
         // As linhas da §11 (o cartão do corpo), pelo texto que o cartão pinta.
         "component.field.rigid_body.0" => "Body",
         "component.field.collider.0" => "Shape",
@@ -630,6 +631,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "component.texture_filter.name" => "Texture Filter",
         "component.texture_repeat.name" => "Texture Repeat",
         "component.timers.name" => "Timers",
+        "component.timers_quiet.name" => "Timer Notices",
         "component.top_down_player.name" => "Top-Down Player",
         "component.top_level.name" => "Top Level",
         "component.transform.name" => "Transform",

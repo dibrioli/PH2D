@@ -248,6 +248,7 @@ fn sync_timer_fields(
     for (id, on) in [
         (crate::ids::INSP_TIMER_REPEAT, row.repeat),
         (crate::ids::INSP_TIMER_AUTOSTART, row.autostart),
+        (crate::ids::INSP_TIMER_NOTICE, row.notice),
     ] {
         if let Some(InteractiveState::Checkbox { value, .. }) = host.store_mut().get_mut(id) {
             *value = if on {

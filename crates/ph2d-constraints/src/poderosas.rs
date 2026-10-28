@@ -129,6 +129,15 @@ pub struct PontoDeForma {
     pub vert: ph2d_vec_scene::VertId,
 }
 
+/// Copy Location de uma PARTÍCULA do objecto Motion alvo, pelo `id` dela (a coluna `id` do
+/// `motion.emitter`: o ordinal de emissão, `< ID_WRAP = 2²⁴`, exacto no `f32` da corrente). Lê o
+/// 1.º sink do objecto que traz a coluna `id`; partícula ausente (por nascer ou morta) ⇒ sem alvo,
+/// o dono fica na pose dele. Doc `docs/BlenderConstraints/07_W6_pontas.md` §5.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PontoDeSimulacao {
+    pub id: u32,
+}
+
 impl Pivot {
     pub(crate) fn resolve(&self, ctx: &Ctx) -> Pose2 {
         let o = ctx.owner;

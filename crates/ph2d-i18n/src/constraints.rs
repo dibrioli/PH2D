@@ -26,6 +26,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.constraint.glue_rigid" => "Glue · Rigid",
         "panel.inspector.constraint.glue_pin" => "Glue · Pin",
         "panel.inspector.constraint.value" => "Follow Value",
+        "panel.inspector.constraint.copy_particle" => "Copy Particle",
+        "panel.inspector.constraint.particle_id" => "Particle ID",
         "panel.inspector.constraint.behaviours" => "Behaviours ▸",
         "panel.inspector.constraint.behaviour.shake" => "Shake",
         "panel.inspector.constraint.behaviour.float" => "Float",

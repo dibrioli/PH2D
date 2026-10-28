@@ -25,8 +25,8 @@ use ph2d_affine::Xform;
 pub use ph2d_skeleton::BendSide;
 pub use ph2d_skeleton::{blend_angle, clamp_to_limit, wrap_pi};
 pub use poderosas::{
-    Action, Ajuste, Canal, EixoDoChao, Floor, Pivot, PontoDeForma, SplineIk, Spring,
-    Transformation, lay_on_curve,
+    Action, Ajuste, Canal, EixoDoChao, Floor, Pivot, PontoDeForma, PontoDeSimulacao, SplineIk,
+    Spring, Transformation, lay_on_curve,
 };
 use serde::{Deserialize, Serialize};
 pub use valor::{Mola, Prop, Valor, faixa};

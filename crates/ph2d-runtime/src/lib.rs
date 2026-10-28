@@ -134,6 +134,9 @@ pub enum SignalOrigin {
         source: EntityBits,
         /// Quantos períodos fecharam neste tique (sempre ≥ 1 — zero não publica).
         fires: u32,
+        /// O editor ANUNCIA-o («Signal: …»)? `false` = o timer conduz o jogo e não fala ao artista
+        /// (o «Show notice» do cartão). ⚠️ O sinal publica-se na mesma: só o aviso cala.
+        notice: bool,
     },
     /// ⭐⭐⭐ **Uma FÁBRICA pôs cópias na cena** (TOP-20 #11, 2026-09-14).
     ///
@@ -389,14 +392,21 @@ impl Signal {
     /// ⚠️ **`fires` é sempre ≥ 1**: zero não publica, e é o chamador que o garante — publicar um
     /// evento que diz *«aconteceu zero vezes»* é ruído com cara de facto.
     #[must_use]
-    pub fn from_timer(name: &str, source: u64, fires: u32) -> Self {
+    pub fn from_timer(name: &str, source: u64, fires: u32, notice: bool) -> Self {
         Self {
             name: Arc::from(name),
             origin: SignalOrigin::Timer {
                 source: EntityBits(source),
                 fires,
+                notice,
             },
         }
+    }
+
+    /// O editor anuncia este sinal? Só um timer com o «Show notice» desligado diz que não.
+    #[must_use]
+    pub fn shows_notice(&self) -> bool {
+        !matches!(self.origin, SignalOrigin::Timer { notice: false, .. })
     }
 
     /// **Um objecto entrou ou saiu de um estado** ([`SignalOrigin::StateMachine`]).
@@ -568,6 +578,14 @@ impl SignalOutbox {
         let skip = usize::try_from(reader.seen - first).unwrap_or(usize::MAX);
         reader.seen = self.published;
         self.older.iter().chain(self.newer.iter()).skip(skip)
+    }
+
+    /// O [`Self::read`] dos AVISOS do editor: só os sinais que [`Signal::shows_notice`].
+    pub fn read_notices<'a>(
+        &'a self,
+        reader: &mut SignalReader,
+    ) -> impl Iterator<Item = &'a Signal> + 'a {
+        self.read(reader).filter(|s| s.shows_notice())
     }
 
     /// Quantos sinais já foram publicados desde sempre. Um leitor novo começa daqui — ele não

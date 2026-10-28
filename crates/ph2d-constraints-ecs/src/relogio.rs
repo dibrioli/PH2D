@@ -391,4 +391,64 @@ pub struct Valores {
 pub struct Molas {
     pub sims: BTreeMap<(u64, u32), Simulador>,
     pub atrasos: BTreeMap<(u64, u32), [f64; 3]>,
+    /// ⭐ A mola AO VIVO com o tempo parado (W6, o idioma do Spine 4.2): só as que ainda balançam.
+    pub vivas: BTreeMap<(u64, u32), AoVivo>,
+    /// O quadro anterior de cada mola com o tempo parado: `(entrada mostrada, posição mostrada)`.
+    pub vistos: BTreeMap<(u64, u32), ([f64; 3], [f64; 3])>,
+    /// O instante da vista e o relógio de PAREDE (s) do quadro anterior.
+    pub parede: Option<(u64, f64)>,
+}
+
+/// O sub-passo fixo da mola ao vivo (s): o relógio de parede anda aos saltos do ecrã, a lei não.
+pub const SUBPASSO_AO_VIVO: f64 = 1.0 / 240.0;
+
+/// Abaixo disto (m, rad, e por segundo) a mola ao vivo assentou e sai: o caminho puro volta a mandar.
+pub const REPOUSO_AO_VIVO: f32 = 1e-5;
+
+/// ⭐ **A mola ao vivo de um item** — preview, nunca documento: persegue a pose MOSTRADA (o gizmo) mais
+/// o atraso determinístico do quadro, à lei da [`Lei`], em sub-passos fixos de relógio de parede.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct AoVivo {
+    s: Passo<3>,
+    resto: f64,
+}
+
+impl AoVivo {
+    /// Nasce parada onde o ecrã a mostrava no quadro anterior.
+    #[must_use]
+    pub fn nasce(posicao: [f64; 3]) -> Self {
+        Self {
+            s: repouso(posicao),
+            resto: 0.0,
+        }
+    }
+
+    /// Anda `dt` segundos de parede atrás de `alvo`. `true` = assentou (larga-se; vale o `alvo`).
+    pub fn anda(&mut self, lei: Lei<3>, alvo: [f64; 3], dt: f64) -> bool {
+        #[expect(clippy::cast_possible_truncation, reason = "a lei da mola é f32")]
+        let h = SUBPASSO_AO_VIVO as f32;
+        self.resto += dt.max(0.0);
+        while self.resto >= SUBPASSO_AO_VIVO {
+            self.resto -= SUBPASSO_AO_VIVO;
+            self.s = lei.passo(self.s, alvo, h);
+            if self.assentou(lei, alvo) {
+                return true;
+            }
+        }
+        self.assentou(lei, alvo)
+    }
+
+    fn assentou(&self, lei: Lei<3>, alvo: [f64; 3]) -> bool {
+        (0..3).all(|c| {
+            let d = f64::from(self.s.valor[c]) - alvo[c];
+            let d = if lei.angular[c] { wrap_pi(d) } else { d };
+            d.abs() <= f64::from(REPOUSO_AO_VIVO) && self.s.vel[c].abs() <= REPOUSO_AO_VIVO
+        })
+    }
+
+    /// A posição de agora.
+    #[must_use]
+    pub fn posicao(&self) -> [f64; 3] {
+        self.s.valor.map(f64::from)
+    }
 }

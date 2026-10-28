@@ -36,6 +36,8 @@ pub mod lei_da_aparencia;
 pub mod macro_track;
 /// ⭐⭐ O Motion como OBJECTO (doc ObjectsAndComponents 01 §13, F5).
 pub mod motion_objeto;
+/// ⭐ As partículas que a pilha de constraints prende (o ponto de simulação).
+pub mod motion_particulas;
 /// O mundo da 1.ª cópia da placa para `PH2D_PAN_DIAG` (doc 123 §8).
 pub mod pan_diag_tap;
 pub mod ponto_gizmo;

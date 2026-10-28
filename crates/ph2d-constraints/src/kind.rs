@@ -177,6 +177,8 @@ pub enum Kind {
     Spring(Spring),
     Valor(crate::Valor),
     Comportamento(crate::Comportamento),
+    /// Em append: o postcard grava o índice da variante.
+    PontoDeSimulacao(crate::PontoDeSimulacao),
 }
 
 impl Kind {
@@ -249,6 +251,7 @@ impl Kind {
             | Self::Transformation(_)
             | Self::SplineIk(_)
             | Self::PontoDeForma(_)
+            | Self::PontoDeSimulacao(_)
             | Self::Action(_)
             | Self::Spring(_)
             | Self::Valor(_)
@@ -279,7 +282,7 @@ impl Kind {
             Self::Pivot(p) => Ok(p.resolve(ctx)),
             Self::Floor(f) => f.resolve(ctx),
             Self::Transformation(t) => t.resolve(ctx),
-            Self::PontoDeForma(_) => {
+            Self::PontoDeForma(_) | Self::PontoDeSimulacao(_) => {
                 let t = ctx.target.ok_or(Inerte::SemAlvo)?;
                 Ok(Pose2 {
                     x: t.x,

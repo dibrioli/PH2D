@@ -1,5 +1,5 @@
 //! ⭐⭐⭐ **A secção TIMERS** (TOP-20 #2, W3) — o snapshot que a secção lê e o commit que ela
-//! escreve. Irmão do [`ph2d_app_sprite_anim::inspector`], pela mesma razão dele.
+//! escreve (desceu da shell na W6 das constraints, com o «Show notice»).
 //!
 //! # ⚠️ A conversão da DURAÇÃO mora aqui, nas duas pontas
 //!
@@ -23,6 +23,7 @@
 //! à pergunta que a [`ph2d_ecs::timer_reconcile`] já responde.*
 
 use ph2d_ecs::scene::{ComponentRegistry, EditorCommandQueue};
+use ph2d_ecs::timer::TimersQuiet;
 use ph2d_ecs::{Entity, SimWorld, TIMER_MAX_US, TIMERS_MAX, Timer, Timers, World};
 use ph2d_editor_core::{InspectorTimerInfo, InspectorTimerRow, TimerFieldEdit, Toast};
 use ph2d_i18n::{tr, tr_with};
@@ -30,28 +31,32 @@ use ph2d_i18n::{tr, tr_with};
 use ph2d_inspector_ordering::queue_set;
 
 const TIMERS: &str = "ph2d::ecs::Timers";
+const QUIET: &str = "ph2d::ecs::TimersQuiet";
 
 /// Um segundo em microssegundos — a unidade da conversão, escrita uma vez.
 const US_PER_S: f32 = 1_000_000.0;
 
 /// O snapshot da secção, ou `None` quando o objecto não tem `Timers`.
-pub(super) fn build_timer_info(
+pub fn build_timer_info(
     world: &World,
     entity_bits: u64,
     selected_count: usize,
 ) -> Option<InspectorTimerInfo> {
     let entity = Entity::from_bits(entity_bits);
     let timers = world.get::<Timers>(entity)?;
+    let quiet = world.get::<TimersQuiet>(entity);
     let rows = timers
         .0
         .iter()
-        .map(|t| InspectorTimerRow {
+        .enumerate()
+        .map(|(i, t)| InspectorTimerRow {
             name: t.name.clone(),
             #[allow(clippy::cast_precision_loss)]
             duration_s: t.duration_us as f32 / US_PER_S,
             repeat: t.repeat,
             autostart: t.autostart,
             signal: t.signal.clone(),
+            notice: quiet.is_none_or(|q| q.shows_notice(i)),
         })
         .collect();
     Some(InspectorTimerInfo {
@@ -81,7 +86,7 @@ fn next_free_name(timers: &Timers) -> String {
 /// ⚠️ **Ler-modificar-escrever sobre o componente inteiro**, como a §11: o `Timers` é um vector e
 /// o comando do editor põe o componente todo. Reconstruí-lo do snapshot perderia o que outra
 /// edição do mesmo quadro escreveu.
-pub(super) fn apply_timer_edit(
+pub fn apply_timer_edit(
     sim: &SimWorld,
     entity_bits: u64,
     edit: &TimerFieldEdit,
@@ -90,6 +95,7 @@ pub(super) fn apply_timer_edit(
 ) -> Option<Toast> {
     let entity = Entity::from_bits(entity_bits);
     let mut timers = sim.world().get::<Timers>(entity).cloned()?;
+    let quiet = sim.world().get::<TimersQuiet>(entity).cloned();
 
     match edit {
         TimerFieldEdit::Add => {
@@ -115,6 +121,11 @@ pub(super) fn apply_timer_edit(
                 return None;
             }
             timers.0.remove(i);
+            // O aviso viaja com o timer: os de trás sobem com o seu.
+            if let Some(mut q) = quiet {
+                q.remove(i);
+                queue_set(queue, registry, entity_bits, QUIET, &q);
+            }
         }
         TimerFieldEdit::Rename(i, name) => {
             let t = timers.0.get_mut(usize::from(*i))?;
@@ -150,12 +161,22 @@ pub(super) fn apply_timer_edit(
             // o período e cala-se. Quem avisa que ele está mudo é o painel, que o mostra.
             t.signal = name.trim().to_string();
         }
+        TimerFieldEdit::Notice(i, on) => {
+            let i = usize::from(*i);
+            if i >= timers.0.len() {
+                return None;
+            }
+            let mut q = quiet.unwrap_or_default();
+            q.set_notice(i, *on);
+            queue_set(queue, registry, entity_bits, QUIET, &q);
+            return None;
+        }
     }
     queue_set(queue, registry, entity_bits, TIMERS, &timers);
     None
 }
 
-/// Os gates desta secção — módulo irmão, pelo teto de 600 LOC da shell.
+/// Os gates desta secção — módulo irmão.
 #[cfg(test)]
-#[path = "inspector_timer_tests.rs"]
+#[path = "timer_inspector_tests.rs"]
 mod tests;

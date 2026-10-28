@@ -29,6 +29,7 @@ pub(crate) fn populate_timer(store: &mut WidgetStore) {
     for id in [
         crate::ids::INSP_TIMER_REPEAT,
         crate::ids::INSP_TIMER_AUTOSTART,
+        crate::ids::INSP_TIMER_NOTICE,
     ] {
         store.register(
             id,

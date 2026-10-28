@@ -357,7 +357,7 @@ fn drain_section_edits(
     // vazio ou o tecto atingido têm de dizer porquê, senão o artista escreve e vê a lista não
     // mudar.
     for (entity_bits, edit) in timer_edits {
-        if let Some(t) = super::inspector_timer::apply_timer_edit(
+        if let Some(t) = ph2d_app_components::timer_inspector::apply_timer_edit(
             sim,
             *entity_bits,
             edit,

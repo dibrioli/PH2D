@@ -45,6 +45,7 @@ pub const INSP_CONSTRAINT_TIPO: [NodeId; TIPOS.len()] = [
     hash_node_id("insp_constraint_tipo_22"),
     hash_node_id("insp_constraint_tipo_23"),
     hash_node_id("insp_constraint_tipo_24"),
+    hash_node_id("insp_constraint_tipo_25"),
 ];
 
 /// O «Behaviours ▸» da lista do «Add Constraint» — abre e fecha o submenu dos *behaviours*.

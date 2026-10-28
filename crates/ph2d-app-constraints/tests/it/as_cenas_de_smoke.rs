@@ -391,6 +391,25 @@ fn the_playground_scene_moves_each_piece_by_its_behaviour() {
     );
 }
 
+/// ⭐ Cena 11 (W6): o relógio que conduz o placar dispara e NÃO pede o aviso «Signal: tique» — o
+/// toast a cada 2 s era ruído de um relógio de jogo. O sinal publica-se na mesma (o placar ouve-o).
+#[test]
+fn the_hud_scene_timer_fires_without_a_notice() {
+    use ph2d_app_constraints::smoke_painel::{TIQUE_US, vestir};
+    let mut sim = SimWorld::new();
+    assert!(smoke::encenar(sim.world_mut(), 11));
+    let mut cena = ph2d_vec_scene::VecScene::new();
+    ph2d_app_constraints::quadro(&mut sim, &mut cena, &mut PreviewDrive::default(), None);
+    let mut map = ph2d_vec_entities::entities::VecEntityMap::new();
+    ph2d_vec_entities::entities::sync(&mut sim, &mut cena, &mut map);
+    vestir(&mut sim).expect("veste");
+    ph2d_ecs::reconcile_timers(sim.world_mut());
+    let disparos = ph2d_ecs::timer::fire_all(sim.world_mut(), TIQUE_US);
+    assert_eq!(disparos.len(), 1, "o relógio da cena não disparou");
+    assert_eq!(disparos[0].name, ph2d_app_constraints::smoke_painel::SINAL);
+    assert!(!disparos[0].notice, "o relógio da cena 11 pediu o aviso a cada tique");
+}
+
 /// ⭐ Cena 11 (o HUD que se arruma): montada de verdade (semear → as entidades nascem → vestir), a fiação está lá
 /// e os números da cena contam a história — na janela LARGA a pontuação longa cabe; em `16:9` ela encolhe e a moeda
 /// fica colada sem invadir o minimapa; com o «Score: 0» nada se mexe.

@@ -1,4 +1,4 @@
-//! **Os gates da costura da secção TIMERS** — irmão de [`crate::render_loop::inspector_timer`] por CAP de LOC.
+//! **Os gates da costura da secção TIMERS** — irmão de [`super`].
 //!
 //! ⚠️ **Só a shell vê as duas metades**: o painel é chrome e não depende do motor, e a lei do
 //! relógio vive no `ph2d-ecs`. É aqui que se prova que o snapshot diz o que a cena tem e que o
@@ -306,4 +306,24 @@ fn the_timer_duration_range_is_the_engines() {
         PANEL_MAX_S,
         "o teto do painel e o do motor discordam"
     );
+}
+
+/// ⭐ **O «Show notice» do cartão** (W6): nasce ligado, a caixa cala-o, e o aviso viaja com o timer
+/// quando um da frente sai (o índice casa com o do `Timers`).
+#[test]
+fn the_notice_box_quiets_one_timer_and_travels_with_it() {
+    let reg = registry();
+    let mut sim = SimWorld::default();
+    let e = objecto(&mut sim, vec![um("a", 1, "x"), um("b", 1, "y"), um("c", 1, "z")]);
+    assert!(info(&sim, e).rows.iter().all(|r| r.notice), "um timer novo nasce a avisar");
+    assert!(sim.world().get::<TimersQuiet>(e).is_none(), "sem gesto, sem componente");
+    edit(&mut sim, e, &reg, TimerFieldEdit::Notice(2, false));
+    let avisos: Vec<bool> = info(&sim, e).rows.iter().map(|r| r.notice).collect();
+    assert_eq!(avisos, [true, true, false], "a caixa calou outro timer");
+    edit(&mut sim, e, &reg, TimerFieldEdit::Remove(0));
+    let avisos: Vec<bool> = info(&sim, e).rows.iter().map(|r| r.notice).collect();
+    assert_eq!(avisos, [true, false], "o aviso nao subiu com o timer «c»");
+    edit(&mut sim, e, &reg, TimerFieldEdit::Notice(1, true));
+    assert!(info(&sim, e).rows.iter().all(|r| r.notice));
+    assert_eq!(sim.world().get::<TimersQuiet>(e), Some(&TimersQuiet::default()));
 }

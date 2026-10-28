@@ -570,6 +570,8 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     // isso que faz o replay reproduzir o mesmo instante de disparo -- e e por isso que ele passa
     // pelo ledger do `preview_drive` em vez de virar um passo de undo por quadro.
     reg.register_default::<crate::Timers>("ph2d::ecs::Timers");
+    // O «Show notice» por timer (W6): irmão do `Timers`, não campo dele — o postcard é posicional.
+    reg.register_default::<crate::timer::TimersQuiet>("ph2d::ecs::TimersQuiet");
     // ⭐⭐⭐ **O TWEEN** (suplente #22, 2026-09-19) — «esta propriedade vai de A a B». Ele é CONFIG
     // inteira; sem o registo o artista autora o canal, os dois extremos e a curva, grava, reabre, e
     // o objecto volta PARADO: nada some da tela e nada dá erro.

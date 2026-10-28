@@ -28,6 +28,15 @@ impl MotionCookPump {
         self.re_sim_pendente = true;
     }
 
+    /// **O próximo cozimento repete o tique em que a bomba está pela porta do SCRUB** (o checkpoint
+    /// do anel, que fica) — para quem arma uma tomada nova com a cena parada (o ponto de simulação,
+    /// `docs/BlenderConstraints/07_W6_pontas.md` §5). ⛔ Re-cozer pela porta da frente avançaria o
+    /// `pre` de novo: a simulação andaria um passo sem o relógio.
+    pub fn repete_o_tique(&mut self) {
+        self.mark_dirty_keeping_ring();
+        self.re_sim_pendente = true;
+    }
+
     /// Scrub to `target_tick`: render the exact simulation state of that frame
     /// even when it is BEHIND the current playhead (plan §1.4, M2.N2). A plain
     /// forward cook would read the marching-future `pre` state; this restores the

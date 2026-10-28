@@ -28,6 +28,8 @@ pub struct InspectorTimerRow {
     pub autostart: bool,
     /// O nome do sinal publicado a cada disparo. **Vazio = calado.**
     pub signal: String,
+    /// O editor anuncia cada disparo («Signal: …»)? Desligado = o relógio conduz o jogo em silêncio.
+    pub notice: bool,
 }
 
 impl InspectorTimerRow {
@@ -86,6 +88,8 @@ pub enum TimerFieldEdit {
     DurationSecs(u8, f32),
     Repeat(u8, bool),
     Autostart(u8, bool),
+    /// `(timer, mostra o aviso)` — o `ph2d_ecs::timer::TimersQuiet`.
+    Notice(u8, bool),
     /// `(timer, nome do sinal)` — vazio cala o timer.
     Signal(u8, String),
 }

@@ -475,6 +475,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.timers.duration_seconds" => "Duration",
         "panel.inspector.timers.repeat" => "Repeat",
         "panel.inspector.timers.autostart" => "Autostart",
+        "panel.inspector.timers.notice" => "Show notice",
         "panel.inspector.timers.signal_name_empty_mute" => "signal_name (empty = mute)",
         "panel.inspector.timers.this_timer_never_fires_duration" => {
             "This timer never fires: duration is zero."

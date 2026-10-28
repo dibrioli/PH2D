@@ -536,6 +536,9 @@ fn avalia_uma(
             parent: pose(&parent),
             target: match (&it.kind, alvo, it.target) {
                 (Kind::PontoDeForma(p), Some(a), Some(s)) => ponto_no_mundo(sim, a, s, p.vert),
+                (Kind::PontoDeSimulacao(p), Some(a), Some(s)) => {
+                    crate::particula::no_mundo(sim, a, s, p.id)
+                }
                 _ => alvo
                     .and_then(|t| do_alvo(w, &mut visto, t).0)
                     .map(|t| pose(&t)),

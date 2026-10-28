@@ -555,7 +555,9 @@
 /// `ProjectFile` não muda: o `200` lê-se com o tipo vivo. A tripla NÃO vê este degrau.
 ///
 /// # `201 → 202` — **o arranjo do HUD** (W5.5, ADR-0194, 27/10): `UiArranjo` REGISTADO, como a cola.
-pub(crate) const PROJECT_SCHEMA: u32 = 202;
+///
+/// # `202 → 203` — **o «Show notice» por timer** (W6, 28/10): `TimersQuiet` REGISTADO, como a cola.
+pub(crate) const PROJECT_SCHEMA: u32 = 203;
 
 /// O último degrau cuja geometria do vetor é a v23 (vértices sem id).
 pub(crate) const PROJECT_SCHEMA_GEOMETRIA_V23: u32 = 199;

@@ -595,6 +595,7 @@ fn arma_o_top20() {
             repeat: true,
             autostart: true,
             signal: "respawn_done".to_string(),
+            notice: true,
         }],
         selected_count: selecionados(),
     }));

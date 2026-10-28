@@ -240,6 +240,8 @@ pub mod statemachine_smoke;
 pub mod tags_doc;
 /// ⭐⭐⭐ As duas cenas do TOP-20 #9 (`PH2D_TAGS_SMOKE=1|2`) — ver o cabeçalho do módulo.
 pub mod tags_smoke;
+/// A secção TIMERS do Inspector: o snapshot e o commit (desceu da shell).
+pub mod timer_inspector;
 pub mod timer_smoke;
 /// ⭐⭐⭐ **A ponte do `Timer`** (TOP-20 #2) — o tique no passo fixo e o sinal que sai dele.
 /// Desceu de `shells/desktop/src/render_loop/` em 2026-10-25.

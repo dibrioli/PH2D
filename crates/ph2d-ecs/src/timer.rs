@@ -380,6 +380,72 @@ pub fn step_ticks(fixed_dt: f64) -> u64 {
     (fixed_dt * 1_000_000.0).round().max(0.0) as u64
 }
 
+/// **Os timers CALADOS de uma entidade** — `quiet[i]` cala o aviso («Signal: …») do timer `i`.
+///
+/// ⚠️ Irmão e não campo do [`Timer`]: o blob é postcard POSICIONAL e um campo novo partia todo
+/// ficheiro com timers (o molde do `VecPatternRotation`). O índice casa com o do [`Timers`], como o
+/// [`TimerRuntime`]; índice ausente ou componente ausente = AVISA (o comportamento de sempre). O
+/// sinal publica-se SEMPRE — calar é só o editor não o anunciar (um relógio que conduz o jogo).
+#[derive(Component, Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TimersQuiet(pub Vec<bool>);
+
+impl TimersQuiet {
+    /// O timer `i` mostra o aviso?
+    #[must_use]
+    pub fn shows_notice(&self, i: usize) -> bool {
+        !self.0.get(i).copied().unwrap_or(false)
+    }
+
+    /// Escreve o aviso do timer `i`; ⚠️ encolhe a cauda que só diz «avisa» (o vazio é o de sempre).
+    pub fn set_notice(&mut self, i: usize, shows: bool) {
+        if self.0.len() <= i {
+            self.0.resize(i + 1, false);
+        }
+        self.0[i] = !shows;
+        while self.0.last() == Some(&false) {
+            self.0.pop();
+        }
+    }
+
+    /// O timer `i` saiu da lista: os de trás sobem um lugar, com o seu aviso.
+    pub fn remove(&mut self, i: usize) {
+        if i < self.0.len() {
+            self.0.remove(i);
+        }
+    }
+}
+
+/// Um disparo de timer com nome, pronto a virar sinal.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct TimerFired {
+    /// O dono do timer.
+    pub entity: Entity,
+    /// O nome do SINAL (nunca vazio).
+    pub name: String,
+    /// Quantos períodos este tique fechou (≥ 1).
+    pub fires: u32,
+    /// O editor anuncia-o? ([`TimersQuiet`]).
+    pub notice: bool,
+}
+
+/// **Avança todos os timers** por `dt_us` e devolve os disparos com nome — a travessia que vivia
+/// na shell. ⚠️ Não arma relógios: quem chama corre o [`reconcile_timers`] antes.
+pub fn fire_all(world: &mut World, dt_us: u64) -> Vec<TimerFired> {
+    let mut out = Vec::new();
+    let mut q = world.query::<(Entity, &Timers, &mut TimerRuntime, Option<&TimersQuiet>)>();
+    for (entity, timers, mut rt, quiet) in q.iter_mut(world) {
+        for (i, (t, s)) in timers.0.iter().zip(rt.0.iter_mut()).enumerate() {
+            let fires = advance(t, s, dt_us).fires;
+            if fires > 0 && !t.signal.is_empty() {
+                let notice = quiet.is_none_or(|q| q.shows_notice(i));
+                let name = t.signal.clone();
+                out.push(TimerFired { entity, name, fires, notice });
+            }
+        }
+    }
+    out
+}
+
 #[cfg(test)]
 #[path = "timer_tests.rs"]
 mod tests;

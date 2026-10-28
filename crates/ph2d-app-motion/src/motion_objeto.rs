@@ -90,6 +90,8 @@ pub struct ObjetoState {
     pub cemiterio: ph2d_ecs::Graveyard<ph2d_motion_doc::MotionDoc>,
     /// ⭐ Os passos dos aplicar de macro ([`atados`]): o undo global que tira o objecto Macro tira-os.
     pub atados: atados::Atados,
+    /// ⭐ Os objectos de que a pilha de constraints lê partículas ([`crate::motion_particulas`]).
+    pub pinos: BTreeSet<u64>,
 }
 
 impl ObjetoState {

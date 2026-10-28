@@ -12,6 +12,7 @@ mod ik;
 pub mod ik_item;
 mod ik_novo;
 mod ordem;
+mod particula;
 pub mod relogio;
 
 pub use avalia::pose;

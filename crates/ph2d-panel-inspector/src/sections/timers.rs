@@ -340,6 +340,11 @@ fn editor(
                 tr("panel.inspector.timers.autostart"),
                 row.autostart,
             ),
+            (
+                ids::INSP_TIMER_NOTICE,
+                tr("panel.inspector.timers.notice"),
+                row.notice,
+            ),
         ],
         sec,
     );

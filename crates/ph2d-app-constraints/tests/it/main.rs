@@ -4,6 +4,8 @@ mod a_antena;
 mod a_caixa_com_tampa; // W4.6: a cena 7 — o ângulo animado da tampa
 mod a_cola; // W5: a cola no cartão, no gizmo e na cena 8
 mod a_forca_animada;
+mod a_mola_ao_vivo; // W6: a mola com o tempo parado (Spine 4.2)
+mod a_particula; // W6.5: o ponto de simulação (Copy Particle)
 mod a_regua_de_desenho;
 mod as_cenas_de_smoke;
 mod every_word_this_family_shows_comes_from_the_string_table;

@@ -120,7 +120,6 @@ mod inspector_slice;
 /// ⭐⭐⭐ **A secção TAGS** (TOP-20 #9) — o snapshot e o commit, que é o único a tocar em DOIS
 /// documentos (o mundo e a árvore de tags).
 mod inspector_tags;
-mod inspector_timer;
 mod inspector_topdown;
 /// ⭐⭐⭐ O painel TAGS (TOP-20 #9, W4) — o instantâneo da ÁRVORE e os gestos sobre ela.
 mod tags_panel;

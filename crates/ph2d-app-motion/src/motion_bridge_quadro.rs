@@ -65,6 +65,8 @@ pub(crate) fn o_quadro(
         // está a ser arrastado AGORA — a forma e o sink dela, e só durante o gesto. ⚠️ Ele pede o
         // sink ELE PRÓPRIO: o irmão acima deixou de pedir os que a placa já desenhou.
         .chain(crate::pivot_gizmo::taps_for(motion, mao.arrasto))
+        // ⭐ E os sinks dos objectos de que a pilha de constraints lê partículas.
+        .chain(crate::motion_particulas::taps_for(motion))
     {
         if !taps.contains(&n) {
             taps.push(n);

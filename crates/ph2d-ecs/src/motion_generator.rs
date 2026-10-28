@@ -71,6 +71,19 @@ pub fn assign_motion_templates(world: &mut bevy_ecs::world::World) -> bool {
     touched
 }
 
+/// Os objectos Motion a que algum item da pilha se prende por uma partícula (`StableId`). Quem o
+/// escreve é a família das constraints; quem o lê é o Motion, que arma as tomadas dos sinks deles.
+#[derive(bevy_ecs::prelude::Resource, Clone, Debug, Default, PartialEq, Eq)]
+pub struct ParticulasPedidas(pub std::collections::BTreeSet<crate::StableId>);
+
+/// As partículas vivas de cada objecto Motion pedido, no espaço do OBJECTO (o `P` do sink, antes da
+/// origem), por `id` — do último cozimento do Motion (um quadro atrás da pilha, que corre antes
+/// dele). Quem as lê leva-as ao mundo com o afim do objecto NA HORA. Objecto ausente ⇒ sem leitura.
+#[derive(bevy_ecs::prelude::Resource, Clone, Debug, Default, PartialEq)]
+pub struct Particulas(
+    pub std::collections::BTreeMap<crate::StableId, std::collections::BTreeMap<u32, [f64; 2]>>,
+);
+
 #[cfg(test)]
 mod tests {
     use super::*;

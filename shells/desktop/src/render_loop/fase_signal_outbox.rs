@@ -96,6 +96,7 @@ impl crate::App {
                 &sig.name,
                 sig.entity.to_bits(),
                 sig.fires,
+                sig.notice,
             ));
         }
         // ⭐ **A árvore vai junto** (TOP-20 #9, W3c): o `SignalTagFilter` de uma armadilha decide
@@ -142,7 +143,7 @@ impl crate::App {
         // `&mut` no PRÓPRIO estado enquanto lê — é isso que um barramento de handlers boxeados
         // não permite, e provavelmente por que o `ph2d-script::messaging` tem zero consumidores
         // desde que nasceu.
-        for sig in self.signals.read(&mut self.signal_readers.toast) {
+        for sig in self.signals.read_notices(&mut self.signal_readers.toast) {
             toasts.push(Toast::info(tr_with(
                 "shell.fase_signal_outbox.signal",
                 &[("sig", &(sig.name))],

@@ -50,7 +50,16 @@ pub(super) fn pede(motion: &mut MotionState, gpu: &ph2d_gpu::GpuContext) -> Vec<
         .copied()
         .filter(|n| !motion.signal_taps.contains(n))
         .collect();
-    let pedidas: Vec<_> = gizmos.iter().map(|&n| (n, TECTO_DA_TOMADA)).collect();
+    // A tomada de um ponto de simulação lê a corrente INTEIRA: uma amostra perderia o id pedido.
+    let pinos = crate::motion_particulas::taps_for(motion);
+    let tecto = |n| {
+        if pinos.contains(&n) {
+            u32::MAX
+        } else {
+            TECTO_DA_TOMADA
+        }
+    };
+    let pedidas: Vec<_> = gizmos.iter().map(|&n| (n, tecto(n))).collect();
     motion.gpu_cook.pede_as_tomadas(gpu, &pedidas);
     gizmos
 }

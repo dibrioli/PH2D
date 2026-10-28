@@ -303,7 +303,7 @@ fn late(
     }
     // ⭐ A secção TIMERS — `None` para quem não tem o componente (ADR-0166).
     let inspector_timer = hero.gizmo.selection.and_then(|b| {
-        crate::render_loop::inspector_timer::build_timer_info(sim.world(), b, selected_count)
+        ph2d_app_components::timer_inspector::build_timer_info(sim.world(), b, selected_count)
     });
     // ⭐ A secção SIGNAL ACTIONS — `None` para quem não tem o componente (ADR-0166).
     let inspector_action = hero.gizmo.selection.and_then(|b| {

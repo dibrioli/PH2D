@@ -24,7 +24,7 @@ fn todas() -> Vec<(&'static str, Signal)> {
         ("control", Signal::from_control("a")),
         ("motion", Signal::from_motion("a", 3, 4)),
         ("animation", Signal::from_animation("a", 33, 1)),
-        ("timer", Signal::from_timer("a", 44, 1)),
+        ("timer", Signal::from_timer("a", 44, 1, true)),
         ("state_machine", Signal::from_state_machine("a", 55)),
         ("particles", Signal::from_particles("a", 66)),
         ("counter_watch", Signal::from_counter_watch("a", 77, 0)),
@@ -91,7 +91,7 @@ fn so_o_contacto_tem_o_outro_lado_e_os_dois_nao_se_trocam() {
 /// **Mutação que deve sangrar:** `Some(*source).filter(|b| b.0 != 0)`.
 #[test]
 fn a_porta_nao_julga_os_bits_que_devolve() {
-    let s = Signal::from_timer("a", 0, 1);
+    let s = Signal::from_timer("a", 0, 1, true);
     assert_eq!(s.origin.quem(), Some(EntityBits(0)));
 }
 
@@ -102,4 +102,19 @@ fn a_porta_e_const() {
     const S: SignalOrigin = SignalOrigin::Control;
     const Q: Option<EntityBits> = S.quem();
     assert!(Q.is_none());
+}
+
+/// ⭐ **O aviso do editor** (W6): um timer com o «Show notice» desligado publica e é LIDO por todo
+/// consumidor — só o leitor dos avisos (o toast) o salta; todo outro sinal continua a avisar.
+#[test]
+fn a_quiet_timer_reaches_every_reader_but_the_notices() {
+    use ph2d_runtime::{SignalOutbox, SignalReader};
+    let mut out = SignalOutbox::default();
+    let (mut avisos, mut jogo) = (SignalReader::new(), SignalReader::new());
+    out.publish(Signal::from_timer("tique", 7, 1, false));
+    out.publish(Signal::from_timer("batida", 7, 1, true));
+    out.publish(Signal::from_control("botao"));
+    let lidos: Vec<&str> = out.read_notices(&mut avisos).map(|s| &*s.name).collect();
+    assert_eq!(lidos, ["batida", "botao"], "o timer calado avisou (ou o falante calou-se)");
+    assert_eq!(out.read(&mut jogo).count(), 3, "calar o aviso calou o SINAL");
 }

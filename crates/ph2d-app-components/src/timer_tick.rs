@@ -27,15 +27,10 @@
 //! mão do artista.
 
 use ph2d_ecs::timer::step_ticks;
-use ph2d_ecs::{Entity, SimWorld, Timers};
+use ph2d_ecs::SimWorld;
 
-/// Um sinal que um timer produziu neste tique.
-pub struct TimerSignal {
-    pub entity: Entity,
-    pub name: String,
-    /// Quantos períodos fecharam. **Sempre ≥ 1** — zero não chega a virar um destes.
-    pub fires: u32,
-}
+/// Um sinal que um timer produziu neste tique (a lei e a travessia: [`ph2d_ecs::timer::fire_all`]).
+pub use ph2d_ecs::timer::TimerFired as TimerSignal;
 
 /// Avança todo timer da cena em `ticks` passos fixos e devolve o que eles têm a dizer.
 ///
@@ -44,39 +39,18 @@ pub struct TimerSignal {
 /// atrasado. Um atraso de um quadro é invisível num toast e deixa de o ser quando o consumidor for
 /// **som**.
 pub fn tick_timers(sim: &mut SimWorld, ticks: u32, fixed_dt: f64) -> Vec<TimerSignal> {
-    let mut out = Vec::new();
     // ⚠️ **ANTES do `ticks == 0`, e de propósito:** um quadro sem passo fixo ainda tem de
     // reconciliar. Senão um `Timers` anexado pela paleta ficaria por armar até calhar um quadro
     // com tique, e o sintoma seria *«às vezes o timer não começa»*.
     start_autostart_timers(sim);
     if ticks == 0 {
-        return out;
+        return Vec::new();
     }
     let dt = step_ticks(fixed_dt) * u64::from(ticks);
     if dt == 0 {
-        return out;
+        return Vec::new();
     }
-    let world = sim.world_mut();
-    let mut q = world.query::<(Entity, &Timers, &mut ph2d_ecs::TimerRuntime)>();
-    for (entity, timers, mut rt) in q.iter_mut(world) {
-        // ⚠️ **O `zip` é a reconciliação já feita** — quem põe os dois vectores do mesmo tamanho é
-        // o `start_autostart_timers` acima, porque redimensionar aqui daria um slot **por armar**
-        // (o defeito que fazia o `autostart` não valer para nada fora do load).
-        for (t, s) in timers.0.iter().zip(rt.0.iter_mut()) {
-            let outcome = ph2d_ecs::timer_advance(t, s, dt);
-            // ⚠️ **Vazio = calado**, e o teste é do NOME do sinal, não do disparo: um timer sem
-            // nome cumpre o período e não fala. É a lei da §11 — *um produtor sem nome não fala,
-            // em vez de falar com um nome vazio.*
-            if outcome.fires > 0 && !t.signal.is_empty() {
-                out.push(TimerSignal {
-                    entity,
-                    name: t.signal.clone(),
-                    fires: outcome.fires,
-                });
-            }
-        }
-    }
-    out
+    ph2d_ecs::timer::fire_all(sim.world_mut(), dt)
 }
 
 /// ⭐⭐⭐ **O `autostart` a fazer o que promete** — para toda entidade da cena, todo quadro.

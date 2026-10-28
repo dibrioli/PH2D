@@ -64,7 +64,13 @@ impl Cena {
 
     /// O mesmo no instante `t` (segundos) — o ecrã desenha a 60 Hz, entre os quadros da timeline.
     fn em_t(&mut self, t: f64) -> ([f32; 2], [f32; 2]) {
+        self.em_t_com(t, |_| {})
+    }
+
+    /// [`Self::em_t`] com uma mão que mexe na cena depois da curva (o gizmo a arrastar).
+    fn em_t_com(&mut self, t: f64, mao: impl FnOnce(&mut SimWorld)) -> ([f32; 2], [f32; 2]) {
         apply_from_doc(self.sim.world_mut(), &mut self.tl.doc, t);
+        mao(&mut self.sim);
         let relogio = Relogio {
             doc: &self.tl.doc,
             t,
@@ -125,6 +131,37 @@ fn a_cena_5_toca_e_arrasta_igual() {
             tocar[q as usize]
         );
     }
+}
+
+/// ⭐ (W6) Um episódio AO VIVO com o tempo parado (o corpo arrastado no quadro 30, a mola a balançar)
+/// não deixa rasto: tocar e arrastar o tempo depois dele dão o bit de quem nunca o teve.
+#[test]
+fn a_live_episode_leaves_play_and_scrub_bit_identical() {
+    use ph2d_app_constraints::relogio::Parede;
+    let mut limpo = Cena::nova();
+    let tocar: Vec<[f32; 2]> = (0..=72).map(|q| limpo.em(q).0).collect();
+    let mut c = Cena::nova();
+    for q in 0..=30 {
+        c.em(q);
+    }
+    let t30 = 30.0 / c.tl.doc.fps_display;
+    let corpo = c.corpo;
+    let (mut vivo, mut parede) = (false, 0.0);
+    for i in 0..40 {
+        parede += 1.0 / 60.0;
+        c.sim.world_mut().insert_resource(Parede(parede));
+        let dx = if i < 20 { 0.03 * f32::from(u8::try_from(i).unwrap()) } else { 0.0 };
+        c.em_t_com(t30, |sim| {
+            sim.world_mut().get_mut::<ph2d_ecs::Transform>(corpo).unwrap().translation.x += dx;
+        });
+        vivo |= !c.sim.world().resource::<ph2d_constraints_ecs::Molas>().vivas.is_empty();
+    }
+    assert!(vivo, "o episódio não ligou a mola ao vivo — o gate não mede nada");
+    for q in (31..=40).chain([12, 72, 30, 5, 47]) {
+        let got = c.em(q).0;
+        assert_eq!(got.map(f32::to_bits), tocar[q as usize].map(f32::to_bits), "quadro {q}");
+    }
+    assert!(c.sim.world().resource::<ph2d_constraints_ecs::Molas>().vivas.is_empty());
 }
 
 /// ⭐ O ecrã desenha a 60 Hz e a timeline tem 24 quadros por segundo: entre dois quadros o corpo anda

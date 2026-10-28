@@ -131,6 +131,7 @@ fn mede_o_que_a_composicao_ja_da_ao_abanao() {
             SignalOrigin::Timer {
                 source: ph2d_runtime::EntityBits(bomba.to_bits()),
                 fires: 1,
+                notice: true,
             },
         ),
     ];

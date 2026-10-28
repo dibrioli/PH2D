@@ -43,7 +43,7 @@ impl crate::App {
                             sig.name, source.0
                         );
                     }
-                    ph2d_runtime::SignalOrigin::Timer { source, fires } => {
+                    ph2d_runtime::SignalOrigin::Timer { source, fires, .. } => {
                         eprintln!(
                             "[signal] {} <- timer do objecto {}, {fires} periodo(s)",
                             sig.name, source.0

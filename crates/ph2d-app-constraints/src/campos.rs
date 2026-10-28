@@ -34,7 +34,7 @@ pub fn numeros(k: &Kind) -> &'static [u16] {
         Kind::Floor(_) => &[DESVIO],
         Kind::Transformation(_) => &[DE_MIN, DE_MAX, PARA_MIN, PARA_MAX],
         Kind::SplineIk(_) => &[CORRENTE],
-        Kind::PontoDeForma(_) => &[PONTO],
+        Kind::PontoDeForma(_) | Kind::PontoDeSimulacao(_) => &[PONTO],
         Kind::Action(_) => &[DE_MIN, DE_MAX, CLIP, INSTANTE_DE, INSTANTE_ATE],
         Kind::Spring(_) => &[DURACAO, RESSALTO],
         // Duration e Bounce só com mola.
@@ -219,7 +219,10 @@ pub fn ajustes(k: &Kind) -> (Vec<AjusteNumero>, Vec<AjusteEscolha>) {
         .filter_map(|&campo| {
             Some(AjusteNumero {
                 campo,
-                rotulo: rotulo(campo),
+                rotulo: match (k, campo) {
+                    (Kind::PontoDeSimulacao(_), PONTO) => "panel.inspector.constraint.particle_id",
+                    _ => rotulo(campo),
+                },
                 valor: ler(k, campo)?,
                 unidade: unidade(k, campo),
             })
@@ -304,6 +307,8 @@ pub fn ler(k: &Kind, campo: u16) -> Option<f32> {
         (Kind::SplineIk(sp), CORRENTE) => sp.chain as f32,
         (Kind::SplineIk(sp), AJUSTE) => indice(&AJUSTES_DO_TIPO, &sp.ajuste),
         (Kind::PontoDeForma(p), PONTO) => p.vert.0 as f32,
+        // O id é < `ID_WRAP` = 2²⁴: exacto no f32 do cartão.
+        (Kind::PontoDeSimulacao(p), PONTO) => p.id as f32,
         (Kind::Action(a), DE) => indice(&CANAIS_DO_TIPO, &a.canal),
         (Kind::Action(a), DE_MIN) => no_cartao(a.canal, a.faixa[0]),
         (Kind::Action(a), DE_MAX) => no_cartao(a.canal, a.faixa[1]),
@@ -445,6 +450,12 @@ pub fn escrever(k: &mut Kind, campo: u16, v: f32) -> bool {
         (Kind::PontoDeForma(p), PONTO) => {
             p.vert = ph2d_vec_scene::VertId(v.round().max(0.0) as u32)
         }
+        #[expect(
+            clippy::cast_possible_truncation,
+            clippy::cast_sign_loss,
+            reason = "≥ 0, arredondado"
+        )]
+        (Kind::PontoDeSimulacao(p), PONTO) => p.id = v.round().max(0.0) as u32,
         (Kind::Action(a), DE) => a.canal = CANAIS_DO_TIPO[opcao(5)],
         (Kind::Action(a), DE_MIN) => a.faixa[0] = do_cartao(a.canal, v),
         (Kind::Action(a), DE_MAX) => a.faixa[1] = do_cartao(a.canal, v),
@@ -566,6 +577,7 @@ pub fn chave_no_item(k: &Kind, campo: u16) -> Option<&'static str> {
         (Kind::SplineIk(_), CORRENTE) => "kind/SplineIk/chain",
         (Kind::SplineIk(_), AJUSTE) => "kind/SplineIk/ajuste",
         (Kind::PontoDeForma(_), PONTO) => "kind/PontoDeForma/vert",
+        (Kind::PontoDeSimulacao(_), PONTO) => "kind/PontoDeSimulacao/id",
         (Kind::Action(_), DE) => "kind/Action/canal",
         (Kind::Action(_), DE_MIN) => "kind/Action/faixa[0]",
         (Kind::Action(_), DE_MAX) => "kind/Action/faixa[1]",

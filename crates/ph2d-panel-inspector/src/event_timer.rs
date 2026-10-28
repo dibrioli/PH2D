@@ -65,13 +65,16 @@ pub(crate) fn apply_timer_event(
         && !info.rows.is_empty()
         && matches!(
             id,
-            crate::ids::INSP_TIMER_REPEAT | crate::ids::INSP_TIMER_AUTOSTART
+            crate::ids::INSP_TIMER_REPEAT
+                | crate::ids::INSP_TIMER_AUTOSTART
+                | crate::ids::INSP_TIMER_NOTICE
         )
     {
-        let edit = if id == crate::ids::INSP_TIMER_REPEAT {
-            TimerFieldEdit::Repeat(sel_u8, !info.rows[sel].repeat)
-        } else {
-            TimerFieldEdit::Autostart(sel_u8, !info.rows[sel].autostart)
+        let r = &info.rows[sel];
+        let edit = match id {
+            crate::ids::INSP_TIMER_REPEAT => TimerFieldEdit::Repeat(sel_u8, !r.repeat),
+            crate::ids::INSP_TIMER_AUTOSTART => TimerFieldEdit::Autostart(sel_u8, !r.autostart),
+            _ => TimerFieldEdit::Notice(sel_u8, !r.notice),
         };
         push(host, info.entity_bits, edit);
         return true;

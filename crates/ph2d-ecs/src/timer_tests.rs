@@ -436,3 +436,36 @@ fn the_fixed_step_conversion_rounds_instead_of_truncating() {
     assert_eq!(super::step_ticks(1.0 / 120.0), 8_333);
     assert_eq!(super::step_ticks(0.0), 0);
 }
+
+/// ⭐ **O «Show notice» por timer** (W6): o disparo de um timer calado chega com `notice == false`,
+/// o do irmão sem entrada e o de uma entidade sem `TimersQuiet` com `true` (o de sempre).
+#[test]
+fn a_quiet_timer_fires_without_asking_for_a_notice() {
+    let mut world = World::new();
+    let t = |s: &str| Timer {
+        signal: s.into(),
+        repeat: true,
+        ..Timer::default()
+    };
+    let a = world
+        .spawn((Timers(vec![t("calado"), t("falante")]), TimersQuiet(vec![true])))
+        .id();
+    let b = world.spawn(Timers(vec![t("velho")])).id();
+    reconcile_timers(&mut world);
+    let mut f = fire_all(&mut world, 1_000_000);
+    f.sort_by(|x, y| x.name.cmp(&y.name));
+    let vistos: Vec<(&str, Entity, bool)> =
+        f.iter().map(|d| (d.name.as_str(), d.entity, d.notice)).collect();
+    assert_eq!(vistos, [("calado", a, false), ("falante", a, true), ("velho", b, true)]);
+}
+
+/// A cauda que só diz «avisa» não se guarda: ligar de volta devolve o componente vazio.
+#[test]
+fn turning_the_notice_back_on_leaves_no_tail() {
+    let mut q = TimersQuiet::default();
+    q.set_notice(3, false);
+    assert_eq!(q.0, [false, false, false, true]);
+    assert!(q.shows_notice(0) && !q.shows_notice(3) && q.shows_notice(9));
+    q.set_notice(3, true);
+    assert!(q.0.is_empty());
+}

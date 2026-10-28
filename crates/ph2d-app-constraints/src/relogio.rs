@@ -75,6 +75,61 @@ fn amostra(doc: &TimelineDoc, dono: u64, posicao: u32) -> Option<Amostra> {
     }))
 }
 
+/// O relógio de PAREDE (s) que a mola ao vivo lê; sem ele, o monotónico do processo. Os gates põem-no.
+#[derive(bevy_ecs::prelude::Resource, Clone, Copy, Debug)]
+pub struct Parede(pub f64);
+
+fn agora(w: &bevy_ecs::world::World) -> f64 {
+    static ZERO: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
+    w.get_resource::<Parede>()
+        .map_or_else(|| ZERO.get_or_init(std::time::Instant::now).elapsed().as_secs_f64(), |p| p.0)
+}
+
+/// A pose MOSTRADA do dono (antes da pilha): a do gizmo durante um arrasto, não a da animação.
+fn mostrada(w: &bevy_ecs::world::World, e: Entity) -> Option<[f64; 3]> {
+    let t = ph2d_ecs::world_transform(w, e)?;
+    Some([t.translation.x, t.translation.y, t.rotation].map(f64::from))
+}
+
+fn soma(a: [f64; 3], b: [f64; 3]) -> [f64; 3] {
+    std::array::from_fn(|c| a[c] + b[c])
+}
+
+/// ⭐ A mola com o tempo parado: nasce quando a pose mostrada se mexe (no sítio onde o ecrã a tinha),
+/// persegue `mostrada + atraso puro` e larga-se ao assentar. Devolve o atraso a somar à pose.
+fn ao_vivo(
+    molas: &mut Molas,
+    k: (u64, u32),
+    mostrada: Option<[f64; 3]>,
+    (puro, dt): ([f64; 3], f64),
+    lei: ph2d_constraints_ecs::Lei<3>,
+) -> [f64; 3] {
+    let Some(m) = mostrada else {
+        molas.vivas.remove(&k);
+        return puro;
+    };
+    if let Some(&(antes, ecra)) = molas.vistos.get(&k)
+        && antes != m
+    {
+        molas
+            .vivas
+            .entry(k)
+            .or_insert_with(|| ph2d_constraints_ecs::relogio::AoVivo::nasce(ecra));
+    }
+    let alvo = soma(m, puro);
+    let viva = molas.vivas.get_mut(&k).map(|v| (v.anda(lei, alvo, dt), v.posicao()));
+    let atraso = match viva {
+        Some((false, p)) => [p[0] - m[0], p[1] - m[1], ph2d_constraints::wrap_pi(p[2] - m[2])],
+        Some((true, _)) => {
+            molas.vivas.remove(&k);
+            puro
+        }
+        None => puro,
+    };
+    molas.vistos.insert(k, (m, soma(m, atraso)));
+    atraso
+}
+
 /// Instala o clip de cada Action ([`Accoes`]) e o atraso de cada Spring ([`Molas`]) deste quadro.
 pub(crate) fn preparar(sim: &mut SimWorld, relogio: Relogio<'_>) {
     let itens = itens(sim);
@@ -97,6 +152,19 @@ pub(crate) fn preparar(sim: &mut SimWorld, relogio: Relogio<'_>) {
         .map(|&(e, id, _)| (e.to_bits(), id))
         .collect();
     molas.sims.retain(|k, _| vivas.contains(k));
+    molas.vivas.retain(|k, _| vivas.contains(k));
+    molas.vistos.retain(|k, _| vivas.contains(k));
+    // ⭐ O tempo PARADO (o instante da vista igual ao do quadro anterior) liga a mola ao vivo; tocar ou
+    // arrastar o tempo larga-a e o caminho puro `(doc, t)` manda sozinho.
+    let parede = agora(w);
+    let antes = molas.parede.replace((relogio.t.to_bits(), parede));
+    let dt = match antes {
+        Some((t, p)) if t == relogio.t.to_bits() => Some(parede - p),
+        _ => {
+            molas.vivas.clear();
+            None
+        }
+    };
     if fps > 0.0 {
         for &(e, id, k) in &itens {
             let Kind::Spring(mola) = k else { continue };
@@ -114,7 +182,12 @@ pub(crate) fn preparar(sim: &mut SimWorld, relogio: Relogio<'_>) {
             };
             let sim = molas.sims.entry((dono, id)).or_default();
             let q = relogio.t * fps;
-            let atraso = sim.atraso_no_laco(q, relogio.laco, &mola, fps, &mut entrada);
+            let mut atraso = sim.atraso_no_laco(q, relogio.laco, &mola, fps, &mut entrada);
+            if let Some(dt) = dt {
+                atraso = ao_vivo(&mut molas, (dono, id), mostrada(w, e), (atraso, dt), (&mola).into());
+            } else if let Some(m) = mostrada(w, e) {
+                molas.vistos.insert((dono, id), (m, soma(m, atraso)));
+            }
             molas.atrasos.insert((dono, id), atraso);
         }
     }

@@ -41,6 +41,9 @@ pub const INSP_TIMER_REPEAT: NodeId = hash_node_id("insp_timer_repeat");
 /// é estado vivo e nem sequer chega ao Inspector.
 pub const INSP_TIMER_AUTOSTART: NodeId = hash_node_id("insp_timer_autostart");
 
+/// O editor anuncia cada disparo («Signal: …»)? Desligado = o relógio conduz o jogo em silêncio.
+pub const INSP_TIMER_NOTICE: NodeId = hash_node_id("insp_timer_notice");
+
 /// O nome do sinal publicado a cada disparo. **Vazio = calado.**
 pub const INSP_TIMER_SIGNAL: NodeId = hash_node_id("insp_timer_signal");
 

@@ -1,5 +1,5 @@
 //! ⭐⭐⭐ **A secção AUDIO** (TOP-20 #4, W3) — o snapshot que a secção lê e o commit que ela
-//! escreve. Irmão do [`super::inspector_timer`], pela mesma razão dele.
+//! escreve. Irmão do `ph2d_app_components::timer_inspector`, pela mesma razão dele.
 //!
 //! # ⚠️ O snapshot só existe para quem TEM a fonte, as orelhas, ou as duas
 //!

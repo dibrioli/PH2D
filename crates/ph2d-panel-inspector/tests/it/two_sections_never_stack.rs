@@ -73,6 +73,7 @@ fn timers() -> InspectorTimerInfo {
             repeat: false,
             autostart: true,
             signal: "abre".into(),
+            notice: true,
         }],
         selected_count: 1,
     }

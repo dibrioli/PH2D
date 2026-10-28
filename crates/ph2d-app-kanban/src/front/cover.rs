@@ -119,13 +119,10 @@ pub(crate) fn decode(bytes: &[u8]) -> Option<Thumb> {
     while w >= 2 * TEXELS_W && h >= 2 {
         (w, h, px) = halve(w, h, &px);
     }
-    let row_max = (0..h as usize)
-        .map(|y| {
-            px[y * w as usize * 4..(y + 1) * w as usize * 4]
-                .chunks_exact(4)
-                .map(luminance)
-                .fold(0.0_f32, f32::max)
-        })
+    let row_max = px
+        .chunks_exact(w as usize * 4)
+        .take(h as usize)
+        .map(|row| row.chunks_exact(4).map(luminance).fold(0.0_f32, f32::max))
         .collect();
     Some(Thumb {
         size: [w, h],

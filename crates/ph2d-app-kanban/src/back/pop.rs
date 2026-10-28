@@ -132,11 +132,8 @@ fn content(ui: &mut Ui<'_>, back: &Back, cx: &Ctx<'_>, x: f32, y: f32) -> f32 {
     let meta = ui.meta();
     ui.strong(
         t,
-        x + (u::POP_W - tw) / 2.0,
-        y + p / 2.0,
-        ROW,
+        u::Band::new(x + (u::POP_W - tw) / 2.0, y + p / 2.0, u::POP_W, ROW),
         u::BODY_PX,
-        u::POP_W,
         meta,
     );
     let bg = ui.c(T::KanbanCard);
@@ -182,11 +179,8 @@ fn content(ui: &mut Ui<'_>, back: &Back, cx: &Ctx<'_>, x: f32, y: f32) -> f32 {
                 let fg = ui.fg();
                 ui.line(
                     &who.0,
-                    ix + ROW + u::GAP + u::SMALL_GAP,
-                    yy,
-                    row.h,
+                    u::Band::new(ix + ROW + u::GAP + u::SMALL_GAP, yy, iw - 2.0 * ROW, row.h),
                     u::BODY_PX,
-                    iw - 2.0 * ROW,
                     fg,
                 );
                 if current.contains(who) {
@@ -216,11 +210,8 @@ fn content(ui: &mut Ui<'_>, back: &Back, cx: &Ctx<'_>, x: f32, y: f32) -> f32 {
                 fill_rounded_rect(ui.scene, chip, m::LABEL_RADIUS, fill);
                 ui.strong(
                     &l.name,
-                    cx0 + m::CARD_PAD_X,
-                    yy,
-                    ROW,
+                    u::Band::new(cx0 + m::CARD_PAD_X, yy, cw - m::CARD_PAD_X, ROW),
                     u::BODY_PX,
-                    cw - m::CARD_PAD_X,
                     ink,
                 );
                 ui.hit(
@@ -253,11 +244,8 @@ fn content(ui: &mut Ui<'_>, back: &Back, cx: &Ctx<'_>, x: f32, y: f32) -> f32 {
             fill_rounded_rect(ui.scene, preview, m::LABEL_RADIUS, fill);
             ui.strong(
                 &name.text,
-                ix + m::CARD_PAD_X,
-                yy,
-                preview.h,
+                u::Band::new(ix + m::CARD_PAD_X, yy, iw, preview.h),
                 u::BODY_PX,
-                iw,
                 ink,
             );
             yy += preview.h + u::GAP;
@@ -368,7 +356,12 @@ fn content(ui: &mut Ui<'_>, back: &Back, cx: &Ctx<'_>, x: f32, y: f32) -> f32 {
             defs.sort_by(|a, b| a.pos.cmp(&b.pos));
             for f in defs {
                 let fg = ui.fg();
-                ui.strong(&f.name, ix, yy, ROW, u::BODY_PX, iw - 2.0 * ROW, fg);
+                ui.strong(
+                    &f.name,
+                    u::Band::new(ix, yy, iw - 2.0 * ROW, ROW),
+                    u::BODY_PX,
+                    fg,
+                );
                 let b = Rect::new(
                     ix + iw - 2.0 * ROW,
                     yy + (ROW - u::CHECK) / 2.0,
@@ -392,7 +385,17 @@ fn content(ui: &mut Ui<'_>, back: &Back, cx: &Ctx<'_>, x: f32, y: f32) -> f32 {
             }
             let meta = ui.meta();
             // Explicação: quebra em linhas, nunca se elide.
-            yy += ui.text(tr("kanban.back.on_front_hint"), ix, yy, u::SMALL_PX, iw, meta).max(u::META_LINE) + u::GAP;
+            yy += ui
+                .text(
+                    tr("kanban.back.on_front_hint"),
+                    ix,
+                    yy,
+                    u::SMALL_PX,
+                    iw,
+                    meta,
+                )
+                .max(u::META_LINE)
+                + u::GAP;
             yy = input_focus(
                 ui,
                 ix,
@@ -470,7 +473,9 @@ fn content(ui: &mut Ui<'_>, back: &Back, cx: &Ctx<'_>, x: f32, y: f32) -> f32 {
             yy += ROW + u::SMALL_GAP;
             let meta = ui.meta();
             // Explicação: quebra em linhas, nunca se elide.
-            yy += ui.text(tr("kanban.back.share_hint"), ix, yy, u::SMALL_PX, iw, meta).max(u::META_LINE);
+            yy += ui
+                .text(tr("kanban.back.share_hint"), ix, yy, u::SMALL_PX, iw, meta)
+                .max(u::META_LINE);
         }
         Pop::Dates(..) => {}
         Pop::Scene(f) => yy = super::scene::pop(ui, back, cx, f, ix, yy, iw),
@@ -482,7 +487,12 @@ fn danger(ui: &mut Ui<'_>, r: Rect, s: &str, h: PopHit) {
     let (bg, ink) = (ui.c(T::KanbanDueOver), ui.c(T::KanbanDueOverFg));
     fill_rounded_rect(ui.scene, r, m::LABEL_RADIUS, bg);
     let w = ui.width(s, u::BODY_PX);
-    ui.strong(s, r.x + (r.w - w) / 2.0, r.y, r.h, u::BODY_PX, r.w, ink);
+    ui.strong(
+        s,
+        u::Band::new(r.x + (r.w - w) / 2.0, r.y, r.w, r.h),
+        u::BODY_PX,
+        ink,
+    );
     ui.hit(r, BackHit::Pop(h));
 }
 
@@ -520,11 +530,8 @@ fn input_focus(
         let fg = ui.fg();
         ui.line(
             &f.text,
-            r.x + m::FIELD_PAD_X,
-            r.y,
-            r.h,
+            u::Band::new(r.x + m::FIELD_PAD_X, r.y, r.w - 2.0 * m::FIELD_PAD_X, r.h),
             u::BODY_PX,
-            r.w - 2.0 * m::FIELD_PAD_X,
             fg,
         );
     }
@@ -631,11 +638,8 @@ fn cover(ui: &mut Ui<'_>, cx: &Ctx<'_>, x: f32, y: f32, w: f32) -> f32 {
         let meta = ui.meta();
         ui.line(
             tr("kanban.back.no_images"),
-            x,
-            y,
-            u::META_LINE,
+            u::Band::new(x, y, w, u::META_LINE),
             u::SMALL_PX,
-            w,
             meta,
         );
         y += u::META_LINE;

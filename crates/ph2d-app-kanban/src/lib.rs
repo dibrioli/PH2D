@@ -49,6 +49,7 @@ mod w6;
 pub use back::outside::{Outside, Served, System, World};
 pub use docs::{CanvasProbe, KanbanDocs};
 pub use hooks::CanvasW6;
+pub use share::SeenProbe;
 pub use surface::{CMD_FROM, CMD_HOME, CMD_NEW};
 
 /// O arranque da família: a superfície das abas Kanban no `Documents` e as cenas de smoke armadas.

@@ -121,11 +121,8 @@ fn modal_body(ui: &mut Ui<'_>, p: &mut Panel, cx: &Cx<'_>, x: f32, top: f32, w: 
     ph2d_editor_core::paint::paint_icon(ui.scene, IconId::Bolt, ir, fg, StrokeToken::Default.px());
     ui.strong(
         tr("kanban.auto.ui.title"),
-        ix + m::ICON_PX + u::GAP,
-        y,
-        u::CLOSE,
+        u::Band::new(ix + m::ICON_PX + u::GAP, y, iw - u::CLOSE, u::CLOSE),
         u::TITLE_PX,
-        iw - u::CLOSE,
         fg,
     );
     y += u::CLOSE + u::GAP;
@@ -249,7 +246,12 @@ fn list(ui: &mut Ui<'_>, p: &mut Panel, cx: &Cx<'_>, x: f32, y: f32, w: f32) -> 
         StrokeToken::Default.px(),
     );
     let tx = r.x + m::BUTTON_PAD_X + m::ICON_PX + u::GAP;
-    ui.strong(create, tx, r.y, r.h, u::BODY_PX, r.x + r.w - tx, ink);
+    ui.strong(
+        create,
+        u::Band::new(tx, r.y, r.x + r.w - tx, r.h),
+        u::BODY_PX,
+        ink,
+    );
     ui.hit(r, A(AutoHit::Create));
     r.y + r.h
 }
@@ -418,11 +420,8 @@ fn flow(
                 }
                 ui.line(
                     &text,
-                    r.x + m::LABEL_PAD_X,
-                    cy,
-                    line,
+                    u::Band::new(r.x + m::LABEL_PAD_X, cy, tw - m::LABEL_PAD_X, line),
                     u::BODY_PX,
-                    tw - m::LABEL_PAD_X,
                     fg,
                 );
                 if live.is_some() {
@@ -436,7 +435,7 @@ fn flow(
                     if cx + ww > x + w && cx > x {
                         (cx, cy) = (x, cy + line);
                     }
-                    ui.line(word, cx, cy, line, u::BODY_PX, ww + space, fg);
+                    ui.line(word, u::Band::new(cx, cy, ww + space, line), u::BODY_PX, fg);
                     cx += ww + space;
                 }
             }
@@ -521,11 +520,8 @@ fn chooser(ui: &mut Ui<'_>, p: &mut Panel, cx: &Cx<'_>, area: Rect) {
         };
         ui.line(
             &text,
-            rr.x + m::MENU_PAD / 2.0,
-            rr.y,
-            rr.h,
+            u::Band::new(rr.x + m::MENU_PAD / 2.0, rr.y, rr.w - m::MENU_PAD, rr.h),
             u::BODY_PX,
-            rr.w - m::MENU_PAD,
             ink,
         );
         ui.hit(rr, hit);

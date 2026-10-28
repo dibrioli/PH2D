@@ -166,11 +166,8 @@ fn checklist_body(
     let meta = ui.meta();
     ui.line(
         &tr_with("kanban.back.percent", &[("n", &pct)]),
-        x - u::MAIN_INDENT,
-        y,
-        u::META_LINE,
+        u::Band::new(x - u::MAIN_INDENT, y, u::PERCENT_W, u::META_LINE),
         u::SMALL_PX,
-        u::PERCENT_W,
         meta,
     );
     let bar = Rect::new(x, y + (u::META_LINE - u::BAR_H) / 2.0, w, u::BAR_H);
@@ -287,7 +284,12 @@ fn item(ui: &mut Ui<'_>, back: &Back, cx: &Ctx<'_>, it: &CheckItem, x: f32, y: f
         let slot_c = ui.c(T::KanbanSlot);
         fill_rounded_rect(ui.scene, chip, m::LABEL_RADIUS - u::HAIR / 2.0, slot_c);
         let fg = ui.fg();
-        ui.line(&t, chip.x + u::GAP, chip.y, chip.h, u::SMALL_PX, tw, fg);
+        ui.line(
+            &t,
+            u::Band::new(chip.x + u::GAP, chip.y, tw, chip.h),
+            u::SMALL_PX,
+            fg,
+        );
         ui.hit(chip, BackHit::ItemDue(id));
     }
     let tw = (rx - x).max(0.0);
@@ -361,7 +363,12 @@ pub(crate) fn attachments(ui: &mut Ui<'_>, cx: &Ctx<'_>, x: f32, y: f32, w: f32)
                     let kw = ui.width(&k, u::SMALL_PX);
                     let ky = thumb.y + (thumb.h - u::META_LINE) / 2.0;
                     let kx = thumb.x + ((thumb.w - kw) / 2.0).max(0.0);
-                    ui.strong(&k, kx, ky, u::META_LINE, u::SMALL_PX, thumb.w, meta);
+                    ui.strong(
+                        &k,
+                        u::Band::new(kx, ky, thumb.w, u::META_LINE),
+                        u::SMALL_PX,
+                        meta,
+                    );
                 }
                 None => crate::paint::icon(ui.scene, kind_icon(a), thumb, meta),
             }
@@ -370,7 +377,12 @@ pub(crate) fn attachments(ui: &mut Ui<'_>, cx: &Ctx<'_>, x: f32, y: f32, w: f32)
         let tx = x + u::THUMB_W + u::GAP;
         let tw = (w - u::THUMB_W - u::GAP).max(0.0);
         let fg = ui.fg();
-        ui.strong(&a.name, tx, y, u::META_LINE, u::BODY_PX, tw, fg);
+        ui.strong(
+            &a.name,
+            u::Band::new(tx, y, tw, u::META_LINE),
+            u::BODY_PX,
+            fg,
+        );
         let nw = ui.width(&a.name, u::BODY_PX).min(tw);
         ui.hit(Rect::new(tx, y, nw, u::META_LINE), BackHit::AttOpen(a.id));
         let mut added = tr_with(
@@ -388,11 +400,8 @@ pub(crate) fn attachments(ui: &mut Ui<'_>, cx: &Ctx<'_>, x: f32, y: f32, w: f32)
         }
         ui.line(
             &added,
-            tx,
-            y + u::META_LINE,
-            u::META_LINE,
+            u::Band::new(tx, y + u::META_LINE, tw, u::META_LINE),
             u::SMALL_PX,
-            tw,
             meta,
         );
         let mut bx = tx;
@@ -405,13 +414,13 @@ pub(crate) fn attachments(ui: &mut Ui<'_>, cx: &Ctx<'_>, x: f32, y: f32, w: f32)
                 "kanban.back.make_cover"
             });
             let sw = ui.width(s, u::SMALL_PX);
-            ui.line(s, bx, by, u::META_LINE, u::SMALL_PX, sw, meta);
+            ui.line(s, u::Band::new(bx, by, sw, u::META_LINE), u::SMALL_PX, meta);
             ui.hit(Rect::new(bx, by, sw, u::META_LINE), BackHit::AttCover(a.id));
             bx += sw + u::GAP;
         }
         let s = tr("kanban.back.delete");
         let sw = ui.width(s, u::SMALL_PX);
-        ui.line(s, bx, by, u::META_LINE, u::SMALL_PX, sw, meta);
+        ui.line(s, u::Band::new(bx, by, sw, u::META_LINE), u::SMALL_PX, meta);
         ui.hit(
             Rect::new(bx, by, sw, u::META_LINE),
             BackHit::AttDelete(a.id),

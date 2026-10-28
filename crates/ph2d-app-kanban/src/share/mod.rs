@@ -125,6 +125,9 @@ pub(crate) fn seen_of(
     out
 }
 
+/// A sonda da presença: os cartões abertos por colegas (com quem) e os cursores deles.
+pub type SeenProbe = (Vec<(CardId, Vec<String>)>, Vec<(String, [f64; 2])>);
+
 impl KanbanDocs {
     /// ⭐ Abre a sala do Kanban da aba `id` (o anfitrião). Já numa sala: nada.
     pub(crate) fn share_start(&mut self, id: u64) {
@@ -306,7 +309,7 @@ impl KanbanDocs {
 
     /// ⚠️ SONDA (J1): os cartões abertos por colegas e os cursores deles, no Kanban da aba `id`.
     #[must_use]
-    pub fn probe_seen(&self, id: u64) -> (Vec<(CardId, Vec<String>)>, Vec<(String, [f64; 2])>) {
+    pub fn probe_seen(&self, id: u64) -> SeenProbe {
         let Some(s) = self
             .kanban_of(id)
             .and_then(|k| self.share.look.seen.get(&k))

@@ -72,14 +72,13 @@ pub(crate) fn sheet(tab: &Tab, set: &ph2d_kanban_model::KanbanSet, with_box: boo
     s
 }
 
-/// Os resultados agrupados: `(«Kanban · Lista», [(índice no resultado, cartão, título)])`, os
-/// grupos pela ordem do melhor resultado de cada.
-fn groups(
-    tab: &Tab,
-    set: &ph2d_kanban_model::KanbanSet,
-) -> Vec<(String, Vec<(usize, CardRef, String)>)> {
+/// Um grupo de resultados: `(«Kanban · Lista», [(índice no resultado, cartão, título)])`.
+type Group = (String, Vec<(usize, CardRef, String)>);
+
+/// Os resultados agrupados, os grupos pela ordem do melhor resultado de cada.
+fn groups(tab: &Tab, set: &ph2d_kanban_model::KanbanSet) -> Vec<Group> {
     let names = names(set, &tab.w6.found);
-    let mut out: Vec<(String, Vec<(usize, CardRef, String)>)> = Vec::new();
+    let mut out: Vec<Group> = Vec::new();
     for (i, h) in tab.w6.found.iter().enumerate() {
         let Some((group, title)) = names.get(&h.card) else {
             continue;

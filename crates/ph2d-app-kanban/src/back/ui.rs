@@ -56,6 +56,22 @@ pub(crate) const POP_PAD: f32 = 12.0;
 pub(crate) const HAIR: f32 = 2.0;
 /// O botão «Cover» fica a `56` da borda direita da capa (deixa o fechar à vista).
 pub(crate) const COVER_BTN_RIGHT: f32 = 56.0;
+/// A faixa de uma linha de texto: o canto `(x, y)`, a largura `w` e a altura `row` (o texto
+/// centra-se nela).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) struct Band {
+    pub x: f32,
+    pub y: f32,
+    pub w: f32,
+    pub row: f32,
+}
+
+impl Band {
+    pub const fn new(x: f32, y: f32, w: f32, row: f32) -> Self {
+        Self { x, y, w, row }
+    }
+}
+
 /// A lista do `@`.
 pub(crate) const MENTION_W: f32 = 228.0;
 
@@ -107,15 +123,16 @@ impl Ui<'_> {
         h
     }
 
-    /// Uma linha numa faixa de `row` de altura (centrada), cortada com reticências.
-    pub fn line(&mut self, s: &str, x: f32, y: f32, row: f32, px: f32, w: f32, color: Color) {
-        let ty = text_top(self.ts, y, row, px);
-        paint_text_elided(self.ts, self.scene, s, x, ty, px, w, color);
+    /// Uma linha na faixa `b` (centrada na altura dela), cortada com reticências.
+    pub fn line(&mut self, s: &str, b: Band, px: f32, color: Color) {
+        let ty = text_top(self.ts, b.y, b.row, px);
+        paint_text_elided(self.ts, self.scene, s, b.x, ty, px, b.w, color);
     }
 
-    pub fn strong(&mut self, s: &str, x: f32, y: f32, row: f32, px: f32, w: f32, color: Color) {
-        let ty = text_top(self.ts, y, row, px);
-        paint_text_title_elided(self.ts, self.scene, s, x, ty, px, w, color);
+    /// [`Self::line`] em SemiBold.
+    pub fn strong(&mut self, s: &str, b: Band, px: f32, color: Color) {
+        let ty = text_top(self.ts, b.y, b.row, px);
+        paint_text_title_elided(self.ts, self.scene, s, b.x, ty, px, b.w, color);
     }
 
     pub fn width(&mut self, s: &str, px: f32) -> f32 {
@@ -125,13 +142,13 @@ impl Ui<'_> {
     /// O título de uma secção («Description», «Activity»).
     pub fn heading(&mut self, s: &str, x: f32, y: f32, w: f32) {
         let fg = self.fg();
-        self.strong(s, x, y, super::ROW, HEADING_PX, w, fg);
+        self.strong(s, Band::new(x, y, w, super::ROW), HEADING_PX, fg);
     }
 
     /// O rótulo pequeno por cima de um grupo («Members», «Labels»).
     pub fn caption(&mut self, s: &str, x: f32, y: f32, w: f32) {
         let meta = self.meta();
-        self.strong(s, x, y, META_LINE, SMALL_PX, w, meta);
+        self.strong(s, Band::new(x, y, w, META_LINE), SMALL_PX, meta);
     }
 
     /// A largura de um botão com este texto (e ícone).
@@ -165,11 +182,8 @@ impl Ui<'_> {
         }
         self.line(
             s,
-            x,
-            r.y,
-            r.h,
+            Band::new(x, r.y, r.x + r.w - x - m::BUTTON_PAD_X / 2.0, r.h),
             BODY_PX,
-            r.x + r.w - x - m::BUTTON_PAD_X / 2.0,
             ink,
         );
         self.hit(r, h);
@@ -180,7 +194,12 @@ impl Ui<'_> {
         fill_rounded_rect(self.scene, r, m::LABEL_RADIUS, self.accent());
         let w = self.width(s, BODY_PX);
         let ink = self.c(T::KanbanLabelInkBold);
-        self.strong(s, r.x + (r.w - w) / 2.0, r.y, r.h, BODY_PX, r.w, ink);
+        self.strong(
+            s,
+            Band::new(r.x + (r.w - w) / 2.0, r.y, r.w, r.h),
+            BODY_PX,
+            ink,
+        );
         self.hit(r, h);
     }
 
@@ -211,7 +230,12 @@ impl Ui<'_> {
         let w = (self.width(name, BODY_PX) + 2.0 * m::CARD_PAD_X).max(m::LABEL_MIN_W);
         let r = Rect::new(x, y, w, super::ROW);
         fill_rounded_rect(self.scene, r, m::LABEL_RADIUS, fill);
-        self.strong(name, x + m::CARD_PAD_X, y, super::ROW, BODY_PX, w, ink);
+        self.strong(
+            name,
+            Band::new(x + m::CARD_PAD_X, y, w, super::ROW),
+            BODY_PX,
+            ink,
+        );
         w
     }
 
@@ -230,7 +254,7 @@ impl Ui<'_> {
         let px = if d < AVATAR { m::AVATAR_PX } else { SMALL_PX };
         let w = self.width(&ini, px);
         let ink = self.c(T::KanbanAvatarInk);
-        self.strong(&ini, x + (d - w) / 2.0, y, d, px, d, ink);
+        self.strong(&ini, Band::new(x + (d - w) / 2.0, y, d, d), px, ink);
     }
 
     /// A caixa de marcar (16) numa faixa.
@@ -265,10 +289,10 @@ impl Ui<'_> {
         let w = r.w - 2.0 * m::FIELD_PAD_X;
         if f.text.is_empty() {
             let meta = self.meta();
-            self.line(placeholder, x, r.y, r.h, BODY_PX, w, meta);
+            self.line(placeholder, Band::new(x, r.y, w, r.h), BODY_PX, meta);
         } else {
             let fg = self.fg();
-            self.line(&f.text, x, r.y, r.h, BODY_PX, w, fg);
+            self.line(&f.text, Band::new(x, r.y, w, r.h), BODY_PX, fg);
         }
         let cx = x + self
             .ts

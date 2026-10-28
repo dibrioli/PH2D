@@ -151,16 +151,16 @@ pub(crate) fn paint(
             rows: &tab.rows,
             label_text: tab.label_text,
         };
-        layout::targets(
+        let ask = layout::Arrange {
             k,
-            &tab.rows,
-            &tab.view,
+            rows: &tab.rows,
+            view: &tab.view,
             area,
-            (title_w, cx.floor),
-            tab.field.as_ref(),
+            head: (title_w, cx.floor),
+            field: tab.field.as_ref(),
             lifted,
-            &mut measure,
-        )
+        };
+        layout::targets(&ask, &mut measure)
     };
     tab.heights = cache;
     clamp_scroll(tab, &target);

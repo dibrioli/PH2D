@@ -230,7 +230,12 @@ fn comment(
     let bw = (w - u::AVATAR - u::GAP - u::HAIR).max(0.0);
     let fg = ui.fg();
     let nw = ui.width(&c.author.0, u::BODY_PX);
-    ui.strong(&c.author.0, bx, y, u::META_LINE, u::BODY_PX, bw, fg);
+    ui.strong(
+        &c.author.0,
+        u::Band::new(bx, y, bw, u::META_LINE),
+        u::BODY_PX,
+        fg,
+    );
     let mut when = super::dates::ago(c.at, cx.now);
     if c.edited.is_some() {
         when = tr_with("kanban.back.when_edited", &[("when", &when)]);
@@ -238,11 +243,8 @@ fn comment(
     let meta = ui.meta();
     ui.line(
         &tr_with("kanban.back.dot", &[("t", &when)]),
-        bx + nw + u::SMALL_GAP,
-        y,
-        u::META_LINE,
+        u::Band::new(bx + nw + u::SMALL_GAP, y, bw - nw, u::META_LINE),
         u::SMALL_PX,
-        bw - nw,
         meta,
     );
     let mut y = y + u::META_LINE + u::SMALL_GAP;
@@ -295,7 +297,12 @@ fn comment(
             let accent = ui.accent();
             stroke_rounded_rect(ui.scene, r, chip_h / 2.0, StrokeToken::Default.px(), accent);
         }
-        ui.line(&label, rx + u::GAP, y, chip_h, u::SMALL_PX, cw, fg);
+        ui.line(
+            &label,
+            u::Band::new(rx + u::GAP, y, cw, chip_h),
+            u::SMALL_PX,
+            fg,
+        );
         #[allow(clippy::cast_possible_truncation)]
         ui.hit(r, BackHit::React(c.id, i as u8));
         rx += cw + u::SMALL_GAP;
@@ -308,7 +315,7 @@ fn comment(
         ] {
             let s = tr(key);
             let sw = ui.width(s, u::SMALL_PX);
-            ui.line(s, rx, y, chip_h, u::SMALL_PX, sw, meta);
+            ui.line(s, u::Band::new(rx, y, sw, chip_h), u::SMALL_PX, meta);
             ui.hit(Rect::new(rx, y, sw, chip_h), h);
             rx += sw + u::GAP;
         }
@@ -338,11 +345,8 @@ fn done(
     let meta = ui.meta();
     ui.line(
         &super::dates::ago(a.at, cx.now),
-        bx,
-        y + h,
-        u::META_LINE,
+        u::Band::new(bx, y + h, bw, u::META_LINE),
         u::SMALL_PX,
-        bw,
         meta,
     );
     y + (h + u::META_LINE).max(u::AVATAR)
@@ -397,7 +401,12 @@ pub(crate) fn mentions(ui: &mut Ui<'_>, back: &mut Back, cx: &Ctx<'_>) {
         );
         let fg = ui.fg();
         let tx = row.x + 2.0 * u::GAP + u::AVATAR_SMALL;
-        ui.line(&who.0, tx, row.y, ROW, u::BODY_PX, row.w - tx + row.x, fg);
+        ui.line(
+            &who.0,
+            u::Band::new(tx, row.y, row.w - tx + row.x, ROW),
+            u::BODY_PX,
+            fg,
+        );
         #[allow(clippy::cast_possible_truncation)]
         ui.hit(row, BackHit::Mention(i as u8));
     }

@@ -84,6 +84,19 @@ impl Layout {
     }
 }
 
+/// O pedido de uma disposição ([`targets`]): o Kanban, as linhas que o filtro deixa, a vista, a
+/// área, a cabeça (`(largura do título, chão do chrome)`), o campo aberto e o arrasto em curso.
+#[derive(Clone, Copy)]
+pub(crate) struct Arrange<'a> {
+    pub k: &'a Kanban,
+    pub rows: &'a crate::rows::Rows,
+    pub view: &'a KanbanView,
+    pub area: Rect,
+    pub head: (f32, Option<f32>),
+    pub field: Option<&'a Field>,
+    pub lifted: Option<Lifted>,
+}
+
 /// O que o arrasto em curso pede à disposição.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) enum Lifted {
@@ -156,16 +169,16 @@ fn foot_h() -> f32 {
 /// das listas, `y` desde o topo do corpo de cada lista). `head` = a largura do título do Kanban
 /// medida e o chão do chrome por cima da área (o topo do HUD de baixo): as listas param acima dele.
 #[allow(clippy::too_many_lines)]
-pub(crate) fn targets(
-    k: &Kanban,
-    rows: &crate::rows::Rows,
-    view: &KanbanView,
-    area: Rect,
-    (title_w, floor): (f32, Option<f32>),
-    field: Option<&Field>,
-    lifted: Option<Lifted>,
-    heights: &mut dyn Heights,
-) -> Layout {
+pub(crate) fn targets(ask: &Arrange<'_>, heights: &mut dyn Heights) -> Layout {
+    let Arrange {
+        k,
+        rows,
+        view,
+        area,
+        head: (title_w, floor),
+        field,
+        lifted,
+    } = *ask;
     let (hdr, title, star, board_menu) = header(area, title_w);
     let board = Rect::new(
         area.x,

@@ -231,11 +231,8 @@ fn archived_banner(ui: &mut Ui<'_>, x: f32, y: f32, w: f32) -> f32 {
     crate::paint::icon(ui.scene, IconId::Warning, Rect::new(x, y, ROW, ROW), fg);
     ui.strong(
         tr("kanban.back.archived"),
-        x + ROW,
-        y,
-        ROW,
+        u::Band::new(x + ROW, y, w - ROW, ROW),
         u::BODY_PX,
-        w - ROW,
         fg,
     );
     y + ROW + u::GAP
@@ -285,20 +282,27 @@ fn header(ui: &mut Ui<'_>, back: &Back, cx: &Ctx<'_>, x: f32, y: f32, w: f32, cl
             .map_or("", |l| l.title.as_str());
     let pre = tr("kanban.back.in_list");
     let pw = ui.width(pre, u::BODY_PX) + u::SMALL_GAP;
-    ui.line(pre, tx, yy, u::META_LINE, u::BODY_PX, tw, meta);
+    ui.line(
+        pre,
+        u::Band::new(tx, yy, tw, u::META_LINE),
+        u::BODY_PX,
+        meta,
+    );
     let lw = ui.width(list, u::BODY_PX);
     let fg = ui.fg();
-    ui.strong(list, tx + pw, yy, u::META_LINE, u::BODY_PX, tw - pw, fg);
+    ui.strong(
+        list,
+        u::Band::new(tx + pw, yy, tw - pw, u::META_LINE),
+        u::BODY_PX,
+        fg,
+    );
     ui.hit(Rect::new(tx + pw, yy, lw, u::META_LINE), BackHit::ListLink);
     let rest = tr_with("kanban.back.in_kanban", &[("k", &cx.k.header.name)]);
     let rx = tx + pw + lw + u::SMALL_GAP;
     ui.line(
         &rest,
-        rx,
-        yy,
-        u::META_LINE,
+        u::Band::new(rx, yy, (tx + tw - rx).max(0.0), u::META_LINE),
         u::BODY_PX,
-        (tx + tw - rx).max(0.0),
         fg,
     );
     yy += u::META_LINE;
@@ -432,7 +436,12 @@ fn chips(ui: &mut Ui<'_>, cx: &Ctx<'_>, x: f32, y: f32, w: f32) -> f32 {
                     tx += u::CHECK + u::GAP;
                 }
                 let fg = ui.fg();
-                ui.line(&dates, tx, cy, ROW, u::BODY_PX, r.x + r.w - tx, fg);
+                ui.line(
+                    &dates,
+                    u::Band::new(tx, cy, r.x + r.w - tx, ROW),
+                    u::BODY_PX,
+                    fg,
+                );
                 if let Some((text, bg, ink)) = badge.take() {
                     let tw = ui.width(&text, u::SMALL_PX);
                     let bx = tx + ui.width(&dates, u::BODY_PX) + u::GAP;
@@ -446,11 +455,8 @@ fn chips(ui: &mut Ui<'_>, cx: &Ctx<'_>, x: f32, y: f32, w: f32) -> f32 {
                     fill_rounded_rect(ui.scene, br, m::LABEL_RADIUS - u::HAIR / 2.0, bg);
                     ui.strong(
                         &text,
-                        br.x + (br.w - tw) / 2.0,
-                        br.y,
-                        br.h,
+                        u::Band::new(br.x + (br.w - tw) / 2.0, br.y, br.w, br.h),
                         u::SMALL_PX,
-                        br.w,
                         ink,
                     );
                 }
@@ -587,7 +593,12 @@ fn fields(ui: &mut Ui<'_>, back: &Back, cx: &Ctx<'_>, x: f32, y: f32, w: f32) ->
                         u::META_LINE - u::HAIR,
                     );
                     fill_rounded_rect(ui.scene, chip, m::LABEL_RADIUS - u::HAIR / 2.0, bg);
-                    ui.line(&opt.text, tx + u::GAP, chip.y, chip.h, u::SMALL_PX, tw, ink);
+                    ui.line(
+                        &opt.text,
+                        u::Band::new(tx + u::GAP, chip.y, tw, chip.h),
+                        u::SMALL_PX,
+                        ink,
+                    );
                 }
             }
             (kind, v) => {
@@ -595,11 +606,8 @@ fn fields(ui: &mut Ui<'_>, back: &Back, cx: &Ctx<'_>, x: f32, y: f32, w: f32) ->
                 let fg = ui.fg();
                 ui.line(
                     &t,
-                    tx,
-                    r.y,
-                    ROW,
+                    u::Band::new(tx, r.y, r.w - 2.0 * m::BUTTON_PAD_X, ROW),
                     u::BODY_PX,
-                    r.w - 2.0 * m::BUTTON_PAD_X,
                     fg,
                 );
             }
@@ -632,7 +640,12 @@ fn location(ui: &mut Ui<'_>, back: &Back, cx: &Ctx<'_>, x: f32, y: f32, w: f32) 
             (cx.card.location.clone(), ui.fg())
         };
         let tx = r.x + m::BUTTON_PAD_X + m::ICON_PX + u::GAP;
-        ui.line(&t, tx, r.y, ROW, u::BODY_PX, r.x + r.w - tx, ink);
+        ui.line(
+            &t,
+            u::Band::new(tx, r.y, r.x + r.w - tx, ROW),
+            u::BODY_PX,
+            ink,
+        );
     }
     r.y + r.h + u::SECTION_GAP
 }

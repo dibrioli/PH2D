@@ -110,14 +110,16 @@ pub(crate) fn links(ui: &mut Ui<'_>, back: &Back, cx: &Ctx<'_>, x: f32, y: f32, 
         let kw = ui.width(kind, u::SMALL_PX);
         let tx = ir.x + m::ICON_PX + u::GAP;
         let tw = (row.x + row.w - tx - kw - u::GAP).max(0.0);
-        ui.strong(&name, tx, y, ROW, u::BODY_PX, tw, ink);
+        ui.strong(&name, u::Band::new(tx, y, tw, ROW), u::BODY_PX, ink);
         ui.line(
             kind,
-            row.x + row.w - kw - m::BUTTON_PAD_X / 2.0,
-            y,
-            ROW,
+            u::Band::new(
+                row.x + row.w - kw - m::BUTTON_PAD_X / 2.0,
+                y,
+                kw + u::GAP,
+                ROW,
+            ),
             u::SMALL_PX,
-            kw + u::GAP,
             meta,
         );
         ui.hit(row, BackHit::LinkOpen(l.id));
@@ -220,7 +222,7 @@ pub(crate) fn pop(
             StrokeToken::Default.px(),
         );
         let tx = ir.x + m::ICON_PX + u::GAP;
-        ui.line(&name, tx, y, ROW, u::BODY_PX, x + w - tx, fg);
+        ui.line(&name, u::Band::new(tx, y, x + w - tx, ROW), u::BODY_PX, fg);
         ui.hit(row, h);
         y += ROW;
     }

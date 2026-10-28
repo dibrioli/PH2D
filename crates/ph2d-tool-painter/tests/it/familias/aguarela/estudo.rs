@@ -70,6 +70,12 @@ fn escreve_os_estudos_da_aguarela() {
             for (k, v) in *knobs {
                 p.parametros.engine.insert((*k).to_owned(), *v);
             }
+            let pincel = super::CURAS_J6_PINCEL.iter().find(|(n, _)| *n == nome);
+            for (k, v) in pincel.into_iter().flat_map(|(_, c)| c.iter()) {
+                p.parametros
+                    .brush
+                    .insert((*k).to_owned(), serde_json::from_str(v).unwrap());
+            }
         }
         p.parametros.name = e["nome"].as_str().unwrap().to_owned();
         if let Some(g) = e["grupo"].as_str() {

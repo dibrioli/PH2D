@@ -117,6 +117,10 @@ pub const WET: &[Receita] = &[
             // J6: as pontas RECTAS (Rebelle: curva 0,03 · 0,06; o corte passa 12 px do 1.º ponto a 40).
             ("pontas_rectas", "true"),
             ("pontas_alem", "0.7"),
+            // J6t: as pontas ESBATEM ao comprido (o Rebelle a 200 px: 0,36 no corte → 0,76 no 1.º centro → cheio a
+            // ~0,6 D; `docs/Painter/Pinceis/J6t_pontas_esbatem.md`). Medido 1,5 · 2 · 3 · 4: o RMS dos perfis das pontas
+            // (40 e 200) ao Rebelle 0,224 → 0,136 · 0,123 · 0,161 · 0,204; régua 428 → 430/454.
+            ("pontas_esbate", "2.0"),
         ],
         nasce_de: Some("Soft Pastel"),
         ..SOFT_PASTEL

@@ -1,0 +1,7 @@
+Chave da prancha cega J6t_square_hard_cega.jpg (linha: imagem → quem)
+gestos_A: 1 = Square Hard (escala 0.8) (nosso), 2 = Oil Pastel (d 0.764, limiar 0.591) (vizinho), 3 = pastel_dry_square_hard (oraculo)
+gestos_B: 1 = pastel_dry_square_hard (oraculo), 2 = Square Hard (escala 0.8) (nosso), 3 = Oil Pastel (d 0.764, limiar 0.591) (vizinho)
+tamanhos_A: 1 = Square Hard (escala 0.8) (nosso), 2 = pastel_dry_square_hard (oraculo), 3 = Oil Pastel (d 0.764, limiar 0.591) (vizinho)
+tamanhos_B: 1 = Oil Pastel (d 0.764, limiar 0.591) (vizinho), 2 = pastel_dry_square_hard (oraculo), 3 = Square Hard (escala 0.8) (nosso)
+sobre_A: 1 = pastel_dry_square_hard (oraculo), 2 = Oil Pastel (d 0.764, limiar 0.591) (vizinho), 3 = Square Hard (escala 0.8) (nosso)
+sobre_B: 1 = pastel_dry_square_hard (oraculo), 2 = Oil Pastel (d 0.764, limiar 0.591) (vizinho), 3 = Square Hard (escala 0.8) (nosso)

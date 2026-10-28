@@ -1,0 +1,7 @@
+Chave da prancha cega J6t_wet_liner_cega.jpg (linha: imagem → quem)
+gestos_A: 1 = Wet Liner (escala 0.95) (nosso), 2 = Soft Pastel (d 0.858, limiar 0.591) (vizinho), 3 = watercolor_liner (oraculo)
+gestos_B: 1 = Wet Liner (escala 0.95) (nosso), 2 = Soft Pastel (d 0.858, limiar 0.591) (vizinho), 3 = watercolor_liner (oraculo)
+tamanhos_A: 1 = Soft Pastel (d 0.858, limiar 0.591) (vizinho), 2 = watercolor_liner (oraculo), 3 = Wet Liner (escala 0.95) (nosso)
+tamanhos_B: 1 = Soft Pastel (d 0.858, limiar 0.591) (vizinho), 2 = Wet Liner (escala 0.95) (nosso), 3 = watercolor_liner (oraculo)
+sobre_A: 1 = Soft Pastel (d 0.858, limiar 0.591) (vizinho), 2 = Wet Liner (escala 0.95) (nosso), 3 = watercolor_liner (oraculo)
+sobre_B: 1 = Soft Pastel (d 0.858, limiar 0.591) (vizinho), 2 = watercolor_liner (oraculo), 3 = Wet Liner (escala 0.95) (nosso)

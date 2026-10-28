@@ -244,11 +244,30 @@ impl PainterTool {
             })
             .collect();
         let copia = super::copias::copia_de_cada_dab(dabs, brush, &groups);
+        // As PONTAS RECTAS (J6, [`super::tampa`]): só o pincel que pinta; desligadas, nada abaixo muda.
+        let pontas = brush.pontas_rectas && !erasing && wet_tool == WetTool::Paint;
+        let alem = self.alem_no_motor(brush);
+        let virtual_ = !sess.fecho.is_empty();
+        let lote = match (virtual_, sess.abrindo) {
+            (false, _) => super::tampa::Lote::Mao,
+            (true, true) => super::tampa::Lote::Abertura,
+            (true, false) => super::tampa::Lote::Fecho,
+        };
+        if pontas && !virtual_ {
+            sess.pincel_do_fecho = Some(*brush);
+        }
         for (didx, sub_k, passo, d) in sub_dabs.iter().map(|(i, k, p, d)| (*i, *k, *p, d)) {
             let [x, y] = d.center;
             // A lane do dab ([`super::rota_da_lane::casa_a_lane`]); a borracha não tem lanes.
             let (li, lane_born) = if erasing {
                 (0, false)
+            } else if let Some(&li) = sess.fecho.get(didx) {
+                // Um dab virtual das pontas rectas: a lane é a que ele continua ([`super::tampa`]).
+                let p = sess.lanes[li].pos;
+                let corda = (x - p[0]).hypot(y - p[1]);
+                let caminho = super::tampa::passo_virtual(&sess.lanes[li]);
+                super::rota_da_lane::anda_a_lane(sess, li, corda, caminho, wet_tool);
+                (li, false)
             } else {
                 super::rota_da_lane::casa_a_lane(sess, d, brush, copia[didx], wet_tool)
             };
@@ -256,6 +275,19 @@ impl PainterTool {
             // direct tools' displacement source; a born lane has none, and
             // the eraser has no lanes at all.
             let lane_prev: Option<[f32; 2]> = (!erasing && !lane_born).then(|| sess.lanes[li].pos);
+            // `Some(None)` = o dab sem rumo com as pontas rectas: não pousa (a lane anda na mesma).
+            // O caminho desde o dab anterior da lane: o de um dab virtual é o passo dela (a abertura anda para trás).
+            let caminho = if lane_prev.is_none() {
+                0.0
+            } else if virtual_ {
+                super::tampa::passo_virtual(&sess.lanes[li])
+            } else {
+                (d.arc_len - sess.lanes[li].arco).max(0.0)
+            };
+            let tampa = pontas.then(|| {
+                super::tampa::Tampa::do_dab(d, &mut sess.lanes[li], lote, alem)
+            });
+            let corte = tampa.flatten();
             // Per-dab fresh ink (Randomize): reload the lane's trail — a
             // brush dipped in new paint (see `Trail::set_base_color`).
             if !erasing && wet_tool == WetTool::Paint && d.color != sess.lanes[li].ink {
@@ -279,8 +311,7 @@ impl PainterTool {
             let peso = lane_prev
                 .filter(|_| passo_do_pigmento > 0.0)
                 .map_or(1.0, |_| {
-                    let c = (d.arc_len - sess.lanes[li].arco).max(0.0);
-                    let w = c / brush.passo_ao_longo_px(passo_do_pigmento, d.dir);
+                    let w = caminho / brush.passo_ao_longo_px(passo_do_pigmento, d.dir);
                     // O passo do PRÓPRIO Spacing de afinação é o dab inteiro, ao byte (a corda sai dos centros em f32).
                     if (w - 1.0).abs() < 1e-3 {
                         1.0
@@ -293,7 +324,7 @@ impl PainterTool {
             // O pente do relevo também é por comprimento: as células de caminho desde o dab anterior da lane (a
             // borracha, sem lanes, pelo sub-passo da cápsula).
             let passos_do_pente = lane_prev.map_or(1.0, |_| {
-                let n = f64::from((d.arc_len - sess.lanes[li].arco).max(0.0)) / f64::from(ratio);
+                let n = f64::from(caminho) / f64::from(ratio);
                 if (n - 1.0).abs() < 1e-3 { 1.0 } else { n }
             });
             let fp = spec.dab_footprint_of(d);
@@ -398,7 +429,7 @@ impl PainterTool {
                         let sx = grid_map::cell_subsample_px(cx, ratio, i, aa_step);
                         let t = fp_raio
                             .falloff_t((sx - d.center[0]) * inv_r, (sy - d.center[1]) * inv_r);
-                        acc += ph2d_painter_brush::dab::silhouette_at(
+                        let v = ph2d_painter_brush::dab::silhouette_at(
                             &spec,
                             sil_input,
                             t,
@@ -407,6 +438,10 @@ impl PainterTool {
                             d.center,
                             d.radius_px,
                         );
+                        acc += match corte {
+                            Some(c) => v * c.cobre(sx, sy),
+                            None => v,
+                        };
                     }
                 }
                 f64::from(acc * aa_inv)
@@ -637,6 +672,27 @@ impl PainterTool {
             let padrao_arg = pad
                 .as_ref()
                 .map_or(padrao_arg, |p| Some(p as ph2d_wet_paint::brush::CellFn<'_>));
+            // As pontas rectas: metade dos dabs cobre cada célula — a soma volta pelo padrão (depois do portão), e a
+            // cor da queda lê a de sempre. O filme (o máximo) não soma: fica.
+            let k_tampa = super::tampa::COMPENSA;
+            let compensa = corte.is_some() && !filme_liso;
+            let padrao_tampa = compensa.then(|| {
+                move |cx: i32, cy: i32| -> f64 { k_tampa * padrao_arg.map_or(1.0, |p| p(cx, cy)) }
+            });
+            let padrao_arg = padrao_tampa
+                .as_ref()
+                .map_or(padrao_arg, |p| Some(p as ph2d_wet_paint::brush::CellFn<'_>));
+            let cor_tampa = cor_arg.filter(|_| compensa).map(|c| {
+                move |cx: i32, cy: i32, queda: f64| -> [f32; 4] { c(cx, cy, queda / k_tampa) }
+            });
+            let cor_arg = cor_tampa
+                .as_ref()
+                .map_or(cor_arg, |c| Some(c as ph2d_wet_paint::brush::ColorFn<'_>));
+            if matches!(tampa, Some(None)) {
+                sess.lanes[li].pos = d.center;
+                sess.lanes[li].arco = d.arc_len;
+                continue;
+            }
             if erasing {
                 // W2.6: the same §9 mapping, routed to the engine's ERASER —
                 // silhouette and grain shape the erase exactly as they shape
@@ -739,7 +795,8 @@ impl PainterTool {
             sess.lanes[li].arco = d.arc_len;
         }
         // O PÓ SOLTO (J4 `pastel_carvao`): os grãos do lote, À PARTE do rasto ([`super::po`]); `po = 0`, nada.
-        if !erasing {
+        // Os dabs virtuais das pontas rectas não deixam pó: são o traço que NÃO houve.
+        if !erasing && !virtual_ {
             self.pousa_o_po_do_lote(sess, dabs, &copia, brush, opacidade_da_pressao, strength);
         }
         let deposit_ms = t_dep.elapsed().as_secs_f32() * 1e3;
@@ -747,5 +804,9 @@ impl PainterTool {
         let t_comp = std::time::Instant::now();
         self.wetpaint_composite();
         crate::wet_diag::note_stamp(dabs.len(), deposit_ms, t_comp.elapsed().as_secs_f32() * 1e3);
+        // A ABERTURA das pontas rectas: as lanes que conheceram o 1.º rumo neste lote ([`super::tampa`]).
+        if pontas && !virtual_ {
+            self.abre_as_pontas_rectas(brush);
+        }
     }
 }

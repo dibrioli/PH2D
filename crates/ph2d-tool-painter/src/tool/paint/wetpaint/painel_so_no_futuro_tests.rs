@@ -76,7 +76,7 @@ fn outro(def: &KnobDef, v: f64) -> f64 {
 
 /// Os controlos do painel do pincel que não são knobs do registo (os factos que a sessão reconcilia).
 type Muda = fn(&mut PainterTool);
-const FACTOS: [(&str, Muda, Muda); 8] = [
+const FACTOS: [(&str, Muda, Muda); 10] = [
     (
         "km_glaze",
         |t| t.paint.wetpaint.km_glaze ^= true,
@@ -119,6 +119,17 @@ const FACTOS: [(&str, Muda, Muda); 8] = [
         "real_oil",
         |t| t.set_wet_oleo_real_ligado(t.wet_oleo_real().is_none()),
         |t| t.set_wet_oleo_real_ligado(t.wet_oleo_real().is_none()),
+    ),
+    // As pontas rectas (J6) são do TRAÇO: o corte e o além pousam com ele.
+    (
+        "pontas_rectas",
+        |t| t.toggle_brush_pontas_rectas(),
+        |t| t.toggle_brush_pontas_rectas(),
+    ),
+    (
+        "pontas_alem",
+        |t| t.set_brush_pontas_alem(0.8),
+        |t| t.set_brush_pontas_alem(0.0),
     ),
 ];
 

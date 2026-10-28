@@ -398,6 +398,10 @@ pub struct BrushSettings {
     pub dab_angle_deg: u16,
     /// **Square tip** (`0..1`; `0` = round) — the corner of the footprint (prompt 44).
     pub dab_quina: f32,
+    /// **Flat ends** (J6; `false` = the round ends of the dab) — `BrushSpec::pontas_rectas`.
+    pub pontas_rectas: bool,
+    /// How far the flat cut passes the end centres, in dab radii — `BrushSpec::pontas_alem`.
+    pub pontas_alem: f32,
     /// The **live orientation of the dab footprint** as a unit rotor `[cos, sin]` — the brush's own
     /// `dab_angle_deg` composed with the **stroke-follow** rotation when a slot follows the stroke
     /// (Shape Rake / Flow, Grain Rake) and the stroke is in flight. `[1, 0]` at Angle 0 with nothing

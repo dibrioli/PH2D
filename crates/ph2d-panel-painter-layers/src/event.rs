@@ -418,6 +418,7 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
                 || id == ph2d_tool_painter::ids::PAINTER_DUAL_IMAGE
                 || id == ph2d_tool_painter::ids::PAINTER_SHAPE_PER_LAYER_COLOR
                 || id == ph2d_tool_painter::ids::PAINTER_SHAPE_ALPHA_FROM_IMAGE
+                || id == ph2d_tool_painter::ids::PAINTER_BRUSH_PONTAS_RECTAS
                 || ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RAMP_BUTTONS.contains(&id)
                 || ph2d_tool_painter::ids::PAINTER_SHAPE_RAMP_BUTTONS.contains(&id)
                 || ph2d_tool_painter::ids::PAINTER_SHAPE_COLOR_BUTTONS.contains(&id)

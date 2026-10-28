@@ -222,6 +222,14 @@ pub const PAINTER_BRUSH_DAB_FLATTEN: NodeId = hash_node_id("painter_brush.dab_fl
 /// Dab **Square tip** value sink (`0..1`, prompt 44). `SetValue` → `set_brush_dab_quina`.
 pub const PAINTER_BRUSH_DAB_QUINA: NodeId = hash_node_id("painter_brush.dab_quina");
 
+/// **Flat ends** checkbox (J6). `Click` → `toggle_brush_pontas_rectas`.
+pub const PAINTER_BRUSH_PONTAS_RECTAS: NodeId = hash_node_id("painter_brush.pontas_rectas");
+
+/// **Flat ends → Beyond** value sink (`0..1` radii, J6). `SetValue` → `set_brush_pontas_alem`.
+pub const PAINTER_BRUSH_PONTAS_ALEM: NodeId = hash_node_id("painter_brush.pontas_alem");
+/// O tecto do campo de [`PAINTER_BRUSH_PONTAS_ALEM`] (a faixa do produto, `ph2d_painter_brush::PONTAS_ALEM_MAX`).
+pub const PAINTER_BRUSH_PONTAS_ALEM_MAX: f32 = ph2d_painter_brush::PONTAS_ALEM_MAX;
+
 /// Dab **rotation** value sink (whole degrees). `SetValue` → `set_brush_dab_angle`.
 pub const PAINTER_BRUSH_DAB_ANGLE: NodeId = hash_node_id("painter_brush.dab_angle");
 

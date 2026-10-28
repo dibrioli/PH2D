@@ -208,3 +208,29 @@ fn the_square_tip_row_lands_on_the_tool() {
         "`Square tip` não pousou no tool; leu {q}"
     );
 }
+
+/// **As «Flat ends» POUSAM no tool** (J6): a caixa do Wet Paint liga as pontas rectas, e só então a row «Ends beyond»
+/// aparece e escreve o além do corte.
+///
+/// **Mutações que têm de sangrar:** tirar o `PAINTER_BRUSH_PONTAS_RECTAS` da rota da pegada (`stencil.rs`); tirar o
+/// `PAINTER_BRUSH_PONTAS_ALEM` do `is_param_field`.
+#[test]
+fn the_flat_ends_rows_land_on_the_tool() {
+    let mut tool = digital();
+    tool.set_paint_media(PaintMedia::WetPaint);
+    let caixa = ph2d_tool_painter::ids::PAINTER_BRUSH_PONTAS_RECTAS;
+    let alem = ph2d_tool_painter::ids::PAINTER_BRUSH_PONTAS_ALEM;
+    let (mut host, mut st, rects) = painted(&tool);
+    assert!(rect_of(&rects, caixa).is_some(), "a caixa `Flat ends` não foi pintada no Wet Paint");
+    assert!(rect_of(&rects, alem).is_none(), "`Ends beyond` só com as pontas rectas ligadas");
+    host.apply_panel_event::<PainterLayersPanel>(&mut st, WidgetEvent::Click(caixa));
+    pump(&mut host, &mut tool);
+    assert!(tool.brush_settings().pontas_rectas, "`Flat ends` não ligou as pontas rectas");
+    let (mut host, mut st, rects) = painted(&tool);
+    assert!(rect_of(&rects, alem).is_some(), "a row `Ends beyond` não foi pintada com a caixa ligada");
+    host.store_mut().set_number_value(alem, 0.4);
+    host.apply_panel_event::<PainterLayersPanel>(&mut st, WidgetEvent::ValueChanged(alem));
+    pump(&mut host, &mut tool);
+    let a = tool.brush_settings().pontas_alem;
+    assert!((a - 0.4).abs() < 1e-3, "`Ends beyond` não pousou no tool; leu {a}");
+}

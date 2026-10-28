@@ -32,6 +32,10 @@ pub const AIRBRUSH_RATE_MAX_S: f32 = 1.0;
 /// *«limites de tooth de 0 a 2»*), not a resource cap. The wash reads it as `1 + (h − 0.5)·tooth`,
 /// floored at `0`, so `2` lets a paper valley empty the pigment entirely.
 pub const PAPER_TOOTH_MAX: f32 = 2.0;
+/// Tecto de [`BrushSpec::pontas_alem`] — uma FAIXA do produto, não um recurso: `0` = o corte no centro (o *butt*
+/// do SVG), `1` = meia largura além (o *square cap*). Medido no Rebelle (o recto de 40 px, J6): o corte passa
+/// 0,42–0,85 da meia-largura vista; além de `1` a ponta seria um bloco que nenhum oráculo pinta.
+pub const PONTAS_ALEM_MAX: f32 = 1.0;
 /// **Flow Size** range — a multiple of the Classic's scale of detail (`1` = the Classic's; the pattern
 /// is normalized to it). `4×` either way spans a wash's edge from one slow meander to a fine fray; past
 /// it a feature is either wider than any stroke or finer than the AA's sub-texel taps.
@@ -345,6 +349,14 @@ pub struct BrushSpec {
     /// ([`crate::footprint::FootprintDeform::with_quina`]) — `0` o disco de sempre, `1` o quadrado no
     /// referencial do Flatten/Angle. Medido e porquê: `docs/Painter/NewFeaturesWetPaint/44_medicao_as_formas.md`.
     pub dab_quina: f32,
+    /// ⭐ **As PONTAS RECTAS do traço** (J6, `docs/Painter/Pinceis/J6_pontas_rectas.md`): o traço começa e acaba
+    /// cortado a direito, perpendicular ao rumo, como uma fita — o pastel e o carvão do Rebelle — em vez da meia-lua de
+    /// um dab redondo. Não muda a pegada (a [`Self::dab_quina`] é a quina de CADA dab); só o Wet Paint a lê. `false` =
+    /// o traço de sempre, ao bit.
+    pub pontas_rectas: bool,
+    /// Quanto o corte das [`Self::pontas_rectas`] passa do 1.º e do último centro, em raios do dab (`0..1,5`): `0` o
+    /// corte no centro, `1` a fita que passa meia largura (o *square cap*). Sem as pontas rectas não se lê.
+    pub pontas_alem: f32,
     /// ⭐⭐⭐ **A CURVATURA da arte debaixo do dab** — os graus `2` e `3` da pegada
     /// ([`crate::FootprintCurve`]). ⛔ **NÃO é um knob do artista**: ela é DERIVADA da malha que a
     /// sprite desenha, e quem a escreve é o [`crate::canvas_warp::warped_dab`], pela mesma porta

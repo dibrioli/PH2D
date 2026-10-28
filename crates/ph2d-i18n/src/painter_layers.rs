@@ -467,6 +467,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_layers.shape.size" => "Size",
         "panel.painter_layers.shape.flatten_and_rotate" => "Flatten & Rotate",
         "panel.painter_layers.shape.square_tip" => "Square tip",
+        "panel.painter_layers.shape.flat_ends" => "Flat ends",
+        "panel.painter_layers.shape.flat_ends_beyond" => "Ends beyond",
         "panel.painter_layers.shape.use_document_layers" => "Use Document Layers",
         "panel.painter_layers.shape.alpha_from_image" => "Alpha From Image",
         "panel.painter_layers.shape.use_texture_colors" => "Use Texture Colors",

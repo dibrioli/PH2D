@@ -159,6 +159,35 @@ pub(crate) fn paint_shape_section(
             2,
             sec,
         );
+        // As pontas RECTAS do traço (J6): o início e o fim cortados a direito — a fita do pastel, não a meia-lua.
+        y = crate::paint_brush_top::paint_checkbox_row(
+            ctx,
+            theme,
+            x,
+            content_w,
+            y,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_PONTAS_RECTAS,
+            "panel.painter_layers.shape.flat_ends",
+            brush.pontas_rectas,
+        );
+        // Quanto o corte passa do 1.º e do último centro (em raios): só com as pontas rectas.
+        if brush.pontas_rectas {
+            y = crate::number_field::paint_num_row(
+                ctx,
+                theme,
+                x,
+                content_w,
+                y,
+                tr("panel.painter_layers.shape.flat_ends_beyond"),
+                ph2d_tool_painter::ids::PAINTER_BRUSH_PONTAS_ALEM,
+                brush.pontas_alem,
+                0.0,
+                ph2d_tool_painter::ids::PAINTER_BRUSH_PONTAS_ALEM_MAX,
+                crate::number_field::FINE_STEP,
+                2,
+                sec,
+            );
+        }
     }
 
     // ── Texture source picker (None / procedural kinds / Image) — the same kinds as the Grain. Picking

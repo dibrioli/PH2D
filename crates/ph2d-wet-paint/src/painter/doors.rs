@@ -423,6 +423,27 @@ impl Engine {
         });
     }
 
+    /// ⭐ **A janela que sobra POUSA** nas `lanes` (as PONTAS RECTAS do anfitrião, J6): o traço cortado a direito
+    /// acaba cheio até ao corte — com a janela caída, o último pedaço (até `window_size` dabs) esmaecia. Chama-se
+    /// antes de [`Self::end_direct_stroke`]; quem não a chama vê o traço de sempre, ao bit.
+    pub fn land_direct_remainders(&mut self, lanes: &[usize]) {
+        let mut p = self
+            .sim
+            .gather_params(&self.tuning)
+            .com_pigmento(self.sliders.pigmento);
+        p.agua_do_dab = self.agua_do_dab;
+        let layer = &mut self.layers[self.active_layer];
+        let mut rect = None;
+        for &i in lanes {
+            if let Some(t) = self.lane_trails.get_mut(i) {
+                rect = TouchedRect::union(rect, t.transfer_paint(&mut layer.grid, &p));
+            }
+        }
+        if let Some(rc) = rect {
+            self.merge_dirty(rc.x0, rc.y0, rc.x1, rc.y1);
+        }
+    }
+
     /// End a real-dab stroke: every lane's tip remainder is dropped by
     /// design, mirroring the tail of the engine's `end_stroke`. The lane pool
     /// stays allocated for the next stroke of the session.

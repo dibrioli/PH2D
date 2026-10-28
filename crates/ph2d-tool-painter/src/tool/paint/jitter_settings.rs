@@ -438,6 +438,8 @@ impl PainterTool {
         self.paint.brush.dab_flatten = d.dab_flatten;
         self.paint.brush.dab_angle_deg = d.dab_angle_deg;
         self.paint.brush.dab_quina = d.dab_quina;
+        self.paint.brush.pontas_rectas = d.pontas_rectas;
+        self.paint.brush.pontas_alem = d.pontas_alem;
     }
 
     /// Reset the **Stroke** section to defaults (method / spacing / Adjust-Strength / jitter group /

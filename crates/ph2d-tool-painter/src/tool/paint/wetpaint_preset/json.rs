@@ -381,6 +381,8 @@ fn ler_campo(b: &BrushSpec, campo: &str) -> Value {
         "dab_flatten" => num(b.dab_flatten),
         "dab_angle_deg" => json!(b.dab_angle_deg),
         "dab_quina" => num(b.dab_quina),
+        "pontas_rectas" => json!(b.pontas_rectas),
+        "pontas_alem" => num(b.pontas_alem),
         "dab_curve" => pegada_para_json(b.dab_curve),
         "color_jitter_enabled" => json!(b.color_jitter_enabled),
         "continuous_spacing" => json!(b.continuous_spacing),
@@ -554,6 +556,11 @@ fn escrever_campo(b: &mut BrushSpec, campo: &str, v: Option<&Value>) {
         "dab_flatten" => b.dab_flatten = f(v, b.dab_flatten),
         "dab_angle_deg" => b.dab_angle_deg = inteiro(v, b.dab_angle_deg),
         "dab_quina" => b.dab_quina = f(v, b.dab_quina).clamp(0.0, 1.0),
+        // Ausente = desligadas (a de fábrica), como a lei espectral: o preset de antes lê o traço de antes.
+        "pontas_rectas" => b.pontas_rectas = booleano(v, false),
+        "pontas_alem" => {
+            b.pontas_alem = f(v, 0.0).clamp(0.0, ph2d_painter_brush::PONTAS_ALEM_MAX);
+        }
         "dab_curve" => b.dab_curve = pegada_de_json(v, b.dab_curve),
         "color_jitter_enabled" => b.color_jitter_enabled = booleano(v, b.color_jitter_enabled),
         "continuous_spacing" => b.continuous_spacing = booleano(v, b.continuous_spacing),
@@ -609,6 +616,9 @@ pub(crate) fn pincel_para_json(b: &BrushSpec, campos: &[&str]) -> BTreeMap<Strin
         .filter(|&&c| !(c == "wire_cordas" && b.wire_cordas == 0))
         // A lei espectral do pigmento (J4 efeitos) só ligada: idem.
         .filter(|&&c| !(c == "pigment_espectral" && !b.pigment_espectral))
+        // As pontas rectas (J6) só ligadas: idem.
+        .filter(|&&c| !(c == "pontas_rectas" && !b.pontas_rectas))
+        .filter(|&&c| !(c == "pontas_alem" && b.pontas_alem <= 0.0))
         .map(|&c| ((*c).to_owned(), ler_campo(b, c)))
         .collect()
 }

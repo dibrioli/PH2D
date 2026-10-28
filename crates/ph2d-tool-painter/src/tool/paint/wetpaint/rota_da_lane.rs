@@ -69,14 +69,8 @@ pub(super) fn casa_a_lane(
     }
     match lane {
         Some(i) => {
-            if wet_tool.uses_lanes() {
-                // A janela do rasto anda pela CORDA entre centros: pelo sub-passo antes de arredondar, o
-                // dab do resto pesava um sub-passo inteiro — a escada do Oil Bristle a 103 px (doc 51 §4).
-                let chord = grid_map::px_len_to_cell(f64::from(best.sqrt()), ratio);
-                let arco = (d.arc_len - sess.lanes[i].arco).max(0.0);
-                let caminho = grid_map::px_len_to_cell(f64::from(arco), ratio);
-                sess.engine.direct_segment_no_caminho(i, chord, caminho);
-            }
+            let caminho = (d.arc_len - sess.lanes[i].arco).max(0.0);
+            anda_a_lane(sess, i, best.sqrt(), caminho, wet_tool);
             (i, false)
         }
         None => {
@@ -97,9 +91,35 @@ pub(super) fn casa_a_lane(
                 ink: d.color,
                 arco: d.arc_len,
                 copia,
+                inicio: d.center,
+                arco0: d.arc_len,
+                rumo0: [0.0; 2],
+                ultimo: None,
+                passo: 0.0,
+                raio0: d.radius_px,
+                aberta: false,
             });
             (i, true)
         }
+    }
+}
+
+/// Um dab anda a lane `i` (já casada; `corda` = a distância ao centro anterior dela, `caminho` = o caminho desde ele,
+/// px).
+pub(super) fn anda_a_lane(
+    sess: &mut WetSession,
+    i: usize,
+    corda: f32,
+    caminho: f32,
+    wet_tool: WetTool,
+) {
+    if wet_tool.uses_lanes() {
+        // A janela do rasto anda pela CORDA entre centros: pelo sub-passo antes de arredondar, o
+        // dab do resto pesava um sub-passo inteiro — a escada do Oil Bristle a 103 px (doc 51 §4).
+        let ratio = sess.ratio;
+        let chord = grid_map::px_len_to_cell(f64::from(corda), ratio);
+        let caminho = grid_map::px_len_to_cell(f64::from(caminho), ratio);
+        sess.engine.direct_segment_no_caminho(i, chord, caminho);
     }
 }
 

@@ -152,6 +152,13 @@ pub(in crate::tool::paint) struct WetSession {
     /// mesma rota, pela ordem, no tick seguinte (ou no lote seguinte, ou no fim do traço). Moram na
     /// sessão porque descrevem a água DELA.
     pub(super) adiados: Vec<LoteAdiado>,
+    /// O FECHO das pontas rectas ([`super::tampa`]): a lane de cada dab do lote que continua o traço além do fim
+    /// (vazio = um lote da mão, o de sempre).
+    pub(super) fecho: Vec<usize>,
+    /// O lote de [`Self::fecho`] é a ABERTURA (antes do 1.º centro), não o fim.
+    pub(super) abrindo: bool,
+    /// O pincel do último lote com as pontas rectas: o fecho pousa com ELE (o resolvido, não o do painel).
+    pub(super) pincel_do_fecho: Option<ph2d_painter_brush::BrushSpec>,
     /// A fita da macro ([`super::fita`]), herdada do tool no nascimento: grava as respostas do worker,
     /// ou responde por ele ao tocar. `None` = nem uma coisa nem outra (custo zero).
     pub(super) fita: Option<super::fita::FitaPartilhada>,
@@ -308,6 +315,9 @@ impl Clone for WetSession {
             applied,
             preview,
             adiados,
+            fecho,
+            abrindo,
+            pincel_do_fecho,
             fita,
             roteiro_teve_worker,
             ritmo,
@@ -339,6 +349,9 @@ impl Clone for WetSession {
             applied: *applied,
             preview: preview.clone(),
             adiados: adiados.clone(),
+            fecho: fecho.clone(),
+            abrindo: *abrindo,
+            pincel_do_fecho: *pincel_do_fecho,
             fita: fita.clone(),
             roteiro_teve_worker: *roteiro_teve_worker,
             ritmo: ritmo.clone(),
@@ -406,4 +419,15 @@ pub(super) struct Lane {
     pub(super) arco: f32,
     /// A cópia cujos dabs a lane recebe ([`super::copias`]): só um dab da MESMA cópia casa com ela.
     pub(super) copia: u32,
+    /// O centro e o comprimento de caminho do 1.º dab da lane: a tampa do INÍCIO ([`super::tampa`]) corta aí.
+    pub(super) inicio: [f32; 2],
+    pub(super) arco0: f32,
+    /// O 1.º rumo que a lane conheceu (`[0, 0]` = ainda nenhum): a normal da tampa do início.
+    pub(super) rumo0: [f32; 2],
+    /// O último dab COM rumo da lane e o passo de caminho que o trouxe: o fecho da tampa do FIM continua-o.
+    pub(super) ultimo: Option<ph2d_painter_brush::Dab>,
+    pub(super) passo: f32,
+    /// O raio do 1.º dab (o corte do início passa `pontas_alem` dele) e se a ABERTURA já pousou.
+    pub(super) raio0: f32,
+    pub(super) aberta: bool,
 }

@@ -350,6 +350,8 @@ pub(crate) const SHAPE: &[&str] = &[
     "panel.painter_layers.shape.angle",
     "panel.painter_layers.shape.offset",
     "panel.painter_layers.shape.size",
+    "panel.painter_layers.shape.flat_ends",
+    "panel.painter_layers.shape.flat_ends_beyond",
 ];
 /// *Stencil*.
 pub(crate) const STENCIL: &[&str] = &[

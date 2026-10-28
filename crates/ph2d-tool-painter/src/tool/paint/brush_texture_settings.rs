@@ -208,6 +208,22 @@ impl PainterTool {
         self.paint.brush.dab_quina = v.clamp(0.0, 1.0);
     }
 
+    /// **Flat ends** on/off (J6) — the stroke starts and ends cut straight across its heading
+    /// ([`ph2d_painter_brush::BrushSpec::pontas_rectas`]; only the Wet Paint reads it).
+    pub fn toggle_brush_pontas_rectas(&mut self) {
+        self.paint.brush.pontas_rectas = !self.paint.brush.pontas_rectas;
+    }
+
+    /// Set how far the **Flat ends** cut passes the first and last dab centre, in dab radii
+    /// (`0..PONTAS_ALEM_MAX`, clamped; J6).
+    pub fn set_brush_pontas_alem(&mut self, v: f32) {
+        self.paint.brush.pontas_alem = if v.is_nan() {
+            0.0
+        } else {
+            v.clamp(0.0, ph2d_painter_brush::PONTAS_ALEM_MAX)
+        };
+    }
+
     /// Set the **Dab rotation** of the flatten/rotate gizmo in whole **degrees**.
     pub fn set_brush_dab_angle(&mut self, deg: f32) {
         self.paint.brush.dab_angle_deg =

@@ -375,6 +375,10 @@ impl PainterTool {
             if self.route_stroke_shape_button(id) {
                 return true;
             }
+            if *id == crate::ids::PAINTER_BRUSH_PONTAS_RECTAS {
+                self.toggle_brush_pontas_rectas();
+                return true;
+            }
             if *id == crate::ids::PAINTER_BRUSH_OFFSET_TRIM {
                 self.toggle_offset_trim();
                 return true;
@@ -396,6 +400,7 @@ impl PainterTool {
             x if x == crate::ids::PAINTER_BRUSH_DAB_FLATTEN => self.set_brush_dab_flatten(v),
             x if x == crate::ids::PAINTER_BRUSH_DAB_ANGLE => self.set_brush_dab_angle(v),
             x if x == crate::ids::PAINTER_BRUSH_DAB_QUINA => self.set_brush_dab_quina(v),
+            x if x == crate::ids::PAINTER_BRUSH_PONTAS_ALEM => self.set_brush_pontas_alem(v),
             x if x == crate::ids::PAINTER_TAPER_START => self.set_brush_taper_start(v),
             x if x == crate::ids::PAINTER_TAPER_TIP_START => self.set_brush_taper_tip_start(v),
             x if x == crate::ids::PAINTER_TAPER_OPACITY => self.set_brush_taper_opacity(v),

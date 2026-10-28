@@ -350,6 +350,9 @@ pub(super) mod largura; // a LARGURA PROMETIDA (W2): o raio do motor sai da tabe
 mod lote; // o papel e o sub-passo da cápsula de cada lote — filho de dab_route por LOC
 mod po; // o PÓ SOLTO pousado à parte do rasto (J4 pastel_carvao) — filho de dab_route por LOC
 mod ponta_das_cerdas; // a ponta RECTA e DESFIADA das cerdas (J2 §7 c) — filho de dab_route por LOC
+mod tampa; // as PONTAS RECTAS do traço (J6) — filho de dab_route por LOC
+#[cfg(test)]
+mod tampa_tests;
 mod rota_da_lane; // a lane de cada dab, a tinta do motor e o b/opacidade — filho de dab_route por LOC
 mod session; // what a wet SESSION is (data model) — child file (LOC cap)
 use session::{Lane, PaperKey};
@@ -415,6 +418,8 @@ impl PainterTool {
     pub(super) fn wetpaint_stroke_end(&mut self) {
         // A fila pousa ANTES de o gesto deixar de ser vivo (a rota recusa um lote de um gesto morto).
         self.wetpaint_pousa_adiados();
+        // As pontas rectas fecham o fim com o gesto ainda vivo ([`tampa`]).
+        self.fecha_as_pontas_rectas();
         self.paint.wetpaint.live_gesture = false;
         if self.paint.tracos_fora > 0 {
             return; // a água é dos traços abertos: o último fecha-a (W16)

@@ -14,8 +14,7 @@
   biblioteca (matriz, custo) e tutorial PDF; fecho até `b74b608d0e`. **Total: 18 aprovados, fábrica 45.**
 
 - **Óleo Real W2 E4** (27/10, [`W2_Knife_E4.md`](W2_Knife_E4.md)): **+4 facas aprovadas** — Knife Smooth 3, Oily, Grainy,
-  Dry. **Total: 22 aprovados, fábrica 49** (Wet 33, Digital 16). Os 13 curados não aprovados da W2 (6 facas, 4 Dabber,
-  3 Metallic) ficam fora da fábrica com a receita (`EM_ESTUDO_W2`).
+  Dry. **Total: 22 aprovados, fábrica 49.**
 
 - **Óleo Real W3 P** (27/10, [`W3_P_Knife.md`](W3_P_Knife.md) · [`W3_P_Dabber.md`](W3_P_Dabber.md) ·
   [`W3_P_Metallic.md`](W3_P_Metallic.md)): **+5 aprovados** — Knife Textured, Knife Stain, Dabber 4, Metallic Flat,

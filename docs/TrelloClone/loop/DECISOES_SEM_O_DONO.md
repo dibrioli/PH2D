@@ -55,3 +55,7 @@
 | W7 | Painel: anel só «por lista» e «por entrega» (por etiqueta/membro só barras — um cartão conta em vários); o excesso dobra-se em «Other (n)» | um anel tem de somar 100 % | `ph2d-kanban-views` |
 | W7 | «+» no calendário pergunta a lista (1.ª por omissão); o cartão novo vence ao meio-dia | Trello | idem |
 | W7 | Linha do tempo agrupada por lista: largar a barra noutra faixa muda a lista do cartão | Trello Timeline | idem |
+| W8 | API Luau em snake_case (`add_list`, `add_card`, `press_button`); eventos `card_created`, `card_moved`… | o idioma da API `ph2d` existente | `ph2d-kanban-script` |
+| W8 | Etiqueta desconhecida num script é erro que lista as existentes (o script não a cria) | erro visível > criação silenciosa | idem |
+| W8 | Um script falhado não deixa NADA (corre numa cópia); uma execução = um passo de desfazer | a regra do `ph2d.set` | idem |
+| W10 | CSV protegido contra injecção de fórmulas (prefixo `'`, OWASP) — revoga a linha «NÃO são protegidas» | segurança > paridade com o Trello | `export_csv` (`56b1bb9ce6`) |

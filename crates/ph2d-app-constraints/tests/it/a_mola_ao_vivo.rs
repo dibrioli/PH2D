@@ -20,9 +20,17 @@ fn quadro_parado(c: &mut Cena, parede: f64) -> f32 {
         t: 1.0,
         laco: None,
     };
-    quadro(&mut c.sim, &mut ph2d_vec_scene::VecScene::new(), &mut c.drive, Some(r));
+    quadro(
+        &mut c.sim,
+        &mut ph2d_vec_scene::VecScene::new(),
+        &mut c.drive,
+        Some(r),
+    );
     c.drive.settle();
-    world_transform(c.sim.world(), c.dono).unwrap().translation.x
+    world_transform(c.sim.world(), c.dono)
+        .unwrap()
+        .translation
+        .x
 }
 
 struct Cena {
@@ -42,7 +50,10 @@ fn cena() -> Cena {
         }),
         None,
     );
-    let dono = sim.world_mut().spawn((StableId(1), Transform::default(), c)).id();
+    let dono = sim
+        .world_mut()
+        .spawn((StableId(1), Transform::default(), c))
+        .id();
     Cena {
         sim,
         drive: PreviewDrive::default(),
@@ -52,7 +63,9 @@ fn cena() -> Cena {
 }
 
 fn vivas(sim: &SimWorld) -> usize {
-    sim.world().get_resource::<Molas>().map_or(0, |m| m.vivas.len())
+    sim.world()
+        .get_resource::<Molas>()
+        .map_or(0, |m| m.vivas.len())
 }
 
 /// (a) Parado, o corpo arrastado 1 m: a mola fica para trás nos quadros seguintes e assenta de volta
@@ -67,15 +80,28 @@ fn a_dragged_body_with_the_timeline_stopped_shakes_the_spring_and_it_settles() {
         parede += dt;
     }
     let dono = c.dono;
-    c.sim.world_mut().get_mut::<Transform>(dono).unwrap().translation.x = 1.0;
+    c.sim
+        .world_mut()
+        .get_mut::<Transform>(dono)
+        .unwrap()
+        .translation
+        .x = 1.0;
     let mut xs = Vec::new();
     for _ in 0..600 {
         xs.push(quadro_parado(&mut c, parede));
         parede += dt;
     }
     assert!(xs[0] < 0.9, "a mola não ficou para trás: {}", xs[0]);
-    assert!(xs[1] > xs[0], "a mola não anda no relógio de parede: {:?}", &xs[..3]);
-    assert_eq!(*xs.last().unwrap(), 1.0, "a mola não assentou no determinístico");
+    assert!(
+        xs[1] > xs[0],
+        "a mola não anda no relógio de parede: {:?}",
+        &xs[..3]
+    );
+    assert_eq!(
+        *xs.last().unwrap(),
+        1.0,
+        "a mola não assentou no determinístico"
+    );
     assert_eq!(vivas(&c.sim), 0, "o estado ao vivo sobreviveu ao repouso");
 }
 
@@ -85,6 +111,10 @@ fn a_still_scene_with_the_timeline_stopped_creates_no_live_spring() {
     let mut c = cena();
     for i in 0..120 {
         assert_eq!(quadro_parado(&mut c, f64::from(i) / 60.0), 0.0);
-        assert_eq!(vivas(&c.sim), 0, "uma mola ao vivo nasceu sem nada se mexer (quadro {i})");
+        assert_eq!(
+            vivas(&c.sim),
+            0,
+            "uma mola ao vivo nasceu sem nada se mexer (quadro {i})"
+        );
     }
 }

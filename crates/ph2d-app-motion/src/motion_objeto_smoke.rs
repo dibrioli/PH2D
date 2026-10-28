@@ -78,6 +78,7 @@ fn enxame(g: &mut Graph) -> Vec<NodeId> {
 
 /// Ver o cabeçalho do módulo.
 pub fn motion_objeto_smoke(cx: &mut crate::motion_scene_ctx::MotionSceneCtx<'_>) {
+    super::smoke_particula::cena_12(cx);
     let Some(nivel) = std::env::var("PH2D_MOTION_OBJETO_SMOKE").ok() else {
         return;
     };

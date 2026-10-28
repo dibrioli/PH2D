@@ -5,7 +5,7 @@ use ph2d_app_constraints::inspector::{apply_all, info};
 use ph2d_constraints::{Kind, PontoDeSimulacao};
 use ph2d_constraints_ecs::Constraints;
 use ph2d_ecs::canal_constraint::PONTO;
-use ph2d_ecs::motion_generator::{Particulas, ParticulasPedidas};
+use ph2d_ecs::motion_generator::{IdsPedidos, Particulas, ParticulasPedidas};
 use ph2d_ecs::{SimWorld, StableId, Transform, world_transform};
 use ph2d_editor_core::constraint_edits::{ConstraintFieldEdit as E, TIPO_PARTICULA, TIPOS};
 use ph2d_preview_drive::PreviewDrive;
@@ -74,6 +74,11 @@ fn the_frame_asks_motion_for_the_target_and_follows_its_particle() {
         sim.world().resource::<ParticulasPedidas>().0,
         [StableId(5)].into(),
         "o pedido nomeia o objecto Motion alvo"
+    );
+    assert_eq!(
+        sim.world().resource::<IdsPedidos>().0,
+        [(StableId(5), [3].into())].into(),
+        "e o id da partícula: o Motion só procura esse"
     );
     assert_eq!(
         world_transform(sim.world(), dono).unwrap(),

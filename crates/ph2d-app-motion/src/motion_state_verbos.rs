@@ -111,6 +111,7 @@ impl MotionState {
             queixa_da_historia: None,
             piscada: None,
             objeto: Default::default(),
+            particulas: Default::default(),
             macro_gravacao: None,
             ao_painel: Default::default(),
             mundo: Default::default(),

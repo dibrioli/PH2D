@@ -40,6 +40,9 @@ pub mod entradas;
 /// `PH2D_MOTION_OBJETO_SMOKE=1|2` — a cena do smoke do dono.
 #[path = "motion_objeto_smoke.rs"]
 pub mod smoke;
+/// `PH2D_CONSTRAINT_SMOKE=12` — o grafo da Fonte da cena das constraints.
+#[path = "motion_objeto_smoke_particula.rs"]
+pub mod smoke_particula;
 /// ⭐ O editor de nós mostra o grafo do objecto em edição.
 #[cfg(feature = "panel-motion-graph")]
 #[path = "motion_objeto_view.rs"]

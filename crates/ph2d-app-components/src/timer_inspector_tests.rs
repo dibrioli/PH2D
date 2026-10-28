@@ -314,9 +314,18 @@ fn the_timer_duration_range_is_the_engines() {
 fn the_notice_box_quiets_one_timer_and_travels_with_it() {
     let reg = registry();
     let mut sim = SimWorld::default();
-    let e = objecto(&mut sim, vec![um("a", 1, "x"), um("b", 1, "y"), um("c", 1, "z")]);
-    assert!(info(&sim, e).rows.iter().all(|r| r.notice), "um timer novo nasce a avisar");
-    assert!(sim.world().get::<TimersQuiet>(e).is_none(), "sem gesto, sem componente");
+    let e = objecto(
+        &mut sim,
+        vec![um("a", 1, "x"), um("b", 1, "y"), um("c", 1, "z")],
+    );
+    assert!(
+        info(&sim, e).rows.iter().all(|r| r.notice),
+        "um timer novo nasce a avisar"
+    );
+    assert!(
+        sim.world().get::<TimersQuiet>(e).is_none(),
+        "sem gesto, sem componente"
+    );
     edit(&mut sim, e, &reg, TimerFieldEdit::Notice(2, false));
     let avisos: Vec<bool> = info(&sim, e).rows.iter().map(|r| r.notice).collect();
     assert_eq!(avisos, [true, true, false], "a caixa calou outro timer");
@@ -325,5 +334,8 @@ fn the_notice_box_quiets_one_timer_and_travels_with_it() {
     assert_eq!(avisos, [true, false], "o aviso nao subiu com o timer «c»");
     edit(&mut sim, e, &reg, TimerFieldEdit::Notice(1, true));
     assert!(info(&sim, e).rows.iter().all(|r| r.notice));
-    assert_eq!(sim.world().get::<TimersQuiet>(e), Some(&TimersQuiet::default()));
+    assert_eq!(
+        sim.world().get::<TimersQuiet>(e),
+        Some(&TimersQuiet::default())
+    );
 }

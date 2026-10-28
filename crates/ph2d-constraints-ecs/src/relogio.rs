@@ -402,6 +402,12 @@ pub struct Molas {
 /// O sub-passo fixo da mola ao vivo (s): o relógio de parede anda aos saltos do ecrã, a lei não.
 pub const SUBPASSO_AO_VIVO: f64 = 1.0 / 240.0;
 
+/// O maior salto de parede (s) que um quadro dá à mola ao vivo — tecto do ORÇAMENTO DO QUADRO:
+/// `0,1 s / SUBPASSO_AO_VIVO` = 24 sub-passos por mola. Um quadro mais longo é uma paragem (janela
+/// minimizada, suspensão), não tempo que o artista viu: a mola continua de onde estava. Uma mola que
+/// nunca assenta (ressalto alto) continua a balançar como no Spine, a ≤ 24 sub-passos por quadro.
+pub const MAX_DT_AO_VIVO: f64 = 0.1;
+
 /// Abaixo disto (m, rad, e por segundo) a mola ao vivo assentou e sai: o caminho puro volta a mandar.
 pub const REPOUSO_AO_VIVO: f32 = 1e-5;
 
@@ -427,7 +433,7 @@ impl AoVivo {
     pub fn anda(&mut self, lei: Lei<3>, alvo: [f64; 3], dt: f64) -> bool {
         #[expect(clippy::cast_possible_truncation, reason = "a lei da mola é f32")]
         let h = SUBPASSO_AO_VIVO as f32;
-        self.resto += dt.max(0.0);
+        self.resto += dt.clamp(0.0, MAX_DT_AO_VIVO);
         while self.resto >= SUBPASSO_AO_VIVO {
             self.resto -= SUBPASSO_AO_VIVO;
             self.s = lei.passo(self.s, alvo, h);

@@ -15,8 +15,8 @@
 //! devolve `None` para um tipo que existe.
 
 use crate::{
-    ComponentCategory as C, ComponentDesc, ComponentDesc as D, FieldDesc, FieldKind as K,
-    Hidden, ObjectKinds as O, Propagation, RefKind,
+    ComponentCategory as C, ComponentDesc, ComponentDesc as D, FieldDesc, FieldKind as K, Hidden,
+    ObjectKinds as O, Propagation, RefKind,
 };
 
 /// **`UiArranjo`** — as relações citam os filhos do canvas pelo `StableId`: `RefKind::Object`, remapeador

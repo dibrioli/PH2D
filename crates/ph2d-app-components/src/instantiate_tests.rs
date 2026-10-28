@@ -626,7 +626,10 @@ fn duplicating_a_hud_canvas_brings_its_arrangement_bound_to_its_own_children() {
 
     let copy = duplicate(&mut sim, &r, canvas).expect("duplicado");
     let id_de = |e| sim.world().get::<StableId>(e).copied().expect("id");
-    let (ca, cb) = (id_de(piece(&sim, copy, "Pontos")), id_de(piece(&sim, copy, "Moeda")));
+    let (ca, cb) = (
+        id_de(piece(&sim, copy, "Pontos")),
+        id_de(piece(&sim, copy, "Moeda")),
+    );
     assert!(ca != a && cb != b, "os filhos da copia tem ids proprios");
     assert_eq!(
         sim.world().get::<UiArranjo>(copy),

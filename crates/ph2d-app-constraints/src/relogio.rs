@@ -81,8 +81,14 @@ pub struct Parede(pub f64);
 
 fn agora(w: &bevy_ecs::world::World) -> f64 {
     static ZERO: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
-    w.get_resource::<Parede>()
-        .map_or_else(|| ZERO.get_or_init(std::time::Instant::now).elapsed().as_secs_f64(), |p| p.0)
+    w.get_resource::<Parede>().map_or_else(
+        || {
+            ZERO.get_or_init(std::time::Instant::now)
+                .elapsed()
+                .as_secs_f64()
+        },
+        |p| p.0,
+    )
 }
 
 /// A pose MOSTRADA do dono (antes da pilha): a do gizmo durante um arrasto, não a da animação.
@@ -117,9 +123,16 @@ fn ao_vivo(
             .or_insert_with(|| ph2d_constraints_ecs::relogio::AoVivo::nasce(ecra));
     }
     let alvo = soma(m, puro);
-    let viva = molas.vivas.get_mut(&k).map(|v| (v.anda(lei, alvo, dt), v.posicao()));
+    let viva = molas
+        .vivas
+        .get_mut(&k)
+        .map(|v| (v.anda(lei, alvo, dt), v.posicao()));
     let atraso = match viva {
-        Some((false, p)) => [p[0] - m[0], p[1] - m[1], ph2d_constraints::wrap_pi(p[2] - m[2])],
+        Some((false, p)) => [
+            p[0] - m[0],
+            p[1] - m[1],
+            ph2d_constraints::wrap_pi(p[2] - m[2]),
+        ],
         Some((true, _)) => {
             molas.vivas.remove(&k);
             puro
@@ -184,7 +197,13 @@ pub(crate) fn preparar(sim: &mut SimWorld, relogio: Relogio<'_>) {
             let q = relogio.t * fps;
             let mut atraso = sim.atraso_no_laco(q, relogio.laco, &mola, fps, &mut entrada);
             if let Some(dt) = dt {
-                atraso = ao_vivo(&mut molas, (dono, id), mostrada(w, e), (atraso, dt), (&mola).into());
+                atraso = ao_vivo(
+                    &mut molas,
+                    (dono, id),
+                    mostrada(w, e),
+                    (atraso, dt),
+                    (&mola).into(),
+                );
             } else if let Some(m) = mostrada(w, e) {
                 molas.vistos.insert((dono, id), (m, soma(m, atraso)));
             }

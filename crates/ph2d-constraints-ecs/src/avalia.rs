@@ -364,6 +364,65 @@ pub fn evaluate(sim: &mut SimWorld, preview: &mut PreviewDrive) -> usize {
     }
     sim.world_mut()
         .insert_resource(Estados(estados.into_iter().collect()));
+    sim.world_mut().insert_resource(Avaliadas(ordem));
+    movidas
+}
+
+/// A ordem que a [`evaluate`] deste quadro avaliou (sem os de ciclo e os adoptados) — o
+/// [`depois_do_motion`] relê só os presos a partículas, pela mesma ordem.
+#[derive(Resource, Default, Debug)]
+pub struct Avaliadas(pub Vec<Entity>);
+
+/// ⭐ **O passe DEPOIS do cozimento do Motion** (`docs/BlenderConstraints/07_W6_pontas.md` §3): a
+/// pilha corre antes do cozimento (o Motion lê o mundo), então o dono preso a uma partícula leria a
+/// do quadro anterior. Aqui só os donos com um `PontoDeSimulacao` se re-avaliam, da pose AUTORADA,
+/// com as `Particulas` deste cozimento; os outros ficam com o resultado do 1.º passe.
+///
+/// ⚠️ A regra do ciclo: quem lê um dono preso (o Motion pelas entradas dele, outra pilha que o tem
+/// por alvo) lê o 1.º passe — a partícula do quadro anterior. Função de `(autorado, partículas)`
+/// só: tocar e arrastar dão o mesmo bit. Devolve quantos moveu.
+pub fn depois_do_motion(sim: &mut SimWorld, preview: &mut PreviewDrive) -> usize {
+    let presos: Vec<Entity> = sim
+        .world()
+        .get_resource::<Avaliadas>()
+        .map(|a| a.0.as_slice())
+        .unwrap_or_default()
+        .iter()
+        .copied()
+        .filter(|&e| {
+            sim.world().get::<Constraints>(e).is_some_and(|c| {
+                c.items
+                    .iter()
+                    .any(|it| matches!(it.kind, Kind::PontoDeSimulacao(_)))
+            })
+        })
+        .collect();
+    if presos.is_empty() {
+        return 0;
+    }
+    let idx = indice(sim.world());
+    let mut avaliadas: std::collections::BTreeSet<u64> = sim
+        .world()
+        .resource::<Avaliadas>()
+        .0
+        .iter()
+        .map(|e| e.to_bits())
+        .collect();
+    let mut estados = Vec::new();
+    let mut movidas = 0;
+    for &e in &presos {
+        if avalia_uma(sim, preview, &idx, e, &mut estados, &mut avaliadas) {
+            movidas += 1;
+        }
+    }
+    let mut todos = sim
+        .world_mut()
+        .remove_resource::<Estados>()
+        .unwrap_or_default();
+    let bits: std::collections::BTreeSet<u64> = presos.iter().map(|e| e.to_bits()).collect();
+    todos.0.retain(|(e, _), _| !bits.contains(e));
+    todos.0.extend(estados);
+    sim.world_mut().insert_resource(todos);
     movidas
 }
 
@@ -454,7 +513,14 @@ fn avalia_uma(
             continue;
         }
         if let Kind::Comportamento(c) = &it.kind {
-            match crate::comportamento::na_pilha(sim, idx, (e, it.id), (c, alvo), dono, it.influence) {
+            match crate::comportamento::na_pilha(
+                sim,
+                idx,
+                (e, it.id),
+                (c, alvo),
+                dono,
+                it.influence,
+            ) {
                 Ok(p) => {
                     dono = p;
                     marca(it.id, Estado::Activa);

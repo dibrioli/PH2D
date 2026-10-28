@@ -76,9 +76,18 @@ pub fn assign_motion_templates(world: &mut bevy_ecs::world::World) -> bool {
 #[derive(bevy_ecs::prelude::Resource, Clone, Debug, Default, PartialEq, Eq)]
 pub struct ParticulasPedidas(pub std::collections::BTreeSet<crate::StableId>);
 
+/// Os `id` que a pilha lê de cada objecto pedido, escritos com o [`ParticulasPedidas`]: o Motion só
+/// procura estes na corrente (nunca a indexa inteira). ⚠️ Ausente = todos os ids (quem pede sem
+/// pilha: uma sonda, um teste).
+#[derive(bevy_ecs::prelude::Resource, Clone, Debug, Default, PartialEq, Eq)]
+pub struct IdsPedidos(
+    pub std::collections::BTreeMap<crate::StableId, std::collections::BTreeSet<u32>>,
+);
+
 /// As partículas vivas de cada objecto Motion pedido, no espaço do OBJECTO (o `P` do sink, antes da
-/// origem), por `id` — do último cozimento do Motion (um quadro atrás da pilha, que corre antes
-/// dele). Quem as lê leva-as ao mundo com o afim do objecto NA HORA. Objecto ausente ⇒ sem leitura.
+/// origem), por `id` — do último cozimento do Motion (a pilha relê-as no passe depois do cozimento,
+/// `ph2d_constraints_ecs::depois_do_motion`). Quem as lê leva-as ao mundo com o afim do objecto NA
+/// HORA. Objecto ausente ⇒ sem leitura.
 #[derive(bevy_ecs::prelude::Resource, Clone, Debug, Default, PartialEq)]
 pub struct Particulas(
     pub std::collections::BTreeMap<crate::StableId, std::collections::BTreeMap<u32, [f64; 2]>>,

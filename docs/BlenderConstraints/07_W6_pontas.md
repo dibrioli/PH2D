@@ -58,3 +58,25 @@ na coluna «antes»):
 ⇒ juntar uma regra a 200 pontos cabe no quadro em que a guia acende, abaixo do critério de 2 ms do arrasto. ⚠️ O misto
 mede 0,87 ms numa sonda e 1,28 ms na outra (binários e ordem de corrida diferentes; o `a_mais` cru acompanha a porta do
 editor, então a diferença não é do editor).
+
+## 3. Auditoria e correções (28/10)
+
+| # | Defeito | Cura | Gate (red → green) |
+|---|---|---|---|
+| 1 | Tirar o `Timers` deixava o `TimersQuiet`: o `Timers` re-anexado nascia calado | hook `on_remove` do `Timers` (`ph2d-ecs/src/timer.rs`) leva o irmão — a porta por onde toda remoção passa (comando, sync de instâncias, registo); substituir (`insert`) não o toca; o undo respawna os dois do snapshot | `removing_the_timers_takes_their_quiet_notices_with_them` |
+| 2 | Mola ao vivo: `dt` de parede sem tecto (minimizada/suspensa ⇒ milhares de sub-passos num quadro) | `MAX_DT_AO_VIVO = 0,1 s` em `AoVivo::anda` — tecto do orçamento do quadro (24 sub-passos de 1/240 s por mola); uma mola que nunca assenta continua a balançar (Spine), ao custo do tecto | `a_stalled_frame_runs_no_more_live_substeps_than_the_clamp` |
+| 3 | `publica` indexava a corrente inteira a cada quadro com pino (até parada) | o pedido leva os ids (`IdsPedidos`, irmão do `ParticulasPedidas`; ausente = todos, para sondas/testes); só se procuram esses (pára ao achá-los); `MotionCookPump::tomadas_geracao` (toda escrita nas tomadas a sobe) ⇒ sem escrita nem pedido novo, nada se lê. Placa: o sink que só a pilha pede lê-se só em `P`+`id` (`Tomada` com colunas no `ph2d-gpu-cook`: 44 → 12 B por linha) | `only_the_pinned_ids_are_read_and_a_still_frame_reads_nothing`; `the_particle_ids_are_the_same_on_the_device_and_the_cpu` (placa) vê só `P`/`id` |
+| 4 | Escolha do sink pela chegada da tomada (seguia B, saltava para A) | ordem dos sinks do objecto; tomada que não chegou antes do que responde ⇒ desconhecido, sem alvo no quadro; `id` sem `P` Vec2 ⇒ sem alvo (nunca `[0, 0]`) | `a_sink_whose_tap_has_not_arrived_is_not_replaced_by_the_next_one`, `an_id_without_a_position_is_no_target_never_the_origin` |
+| 5 | `repete_o_tique` ao armar um pino a TOCAR (re-simulação, soluço) | `Leitura::tocando` (a shell escreve-o): só parada | `a_pin_armed_while_playing_does_not_repeat_the_tick` |
+| 6 | Copy Particle 1 quadro atrás (CPU) | passe depois do cozimento: `publica` de novo + `ph2d_constraints_ecs::depois_do_motion` (2 linhas na `fase_hero_frame`, só se republicou) — re-avalia, pela ordem do 1.º passe (`Avaliadas`), só os donos com `PontoDeSimulacao`, da pose autorada; os outros guardam o 1.º passe | `a_pinned_object_follows_its_particle_and_play_equals_scrub` (quadro do produto: a pilha lê `k − 1`, o dono fica em `k`), `a_particle_keeps_its_id_and_play_equals_scrub` (antes da pilha `k − 1`, depois do cozimento `k`) |
+
+**Regra do ciclo (6):** quem LÊ um dono preso — o Motion pelas entradas dele (`publica_o_mundo` corre antes do
+cozimento), outra pilha que o tenha por alvo — lê o 1.º passe: a partícula do quadro anterior. **Placa:** continua
+um quadro atrás (a leitura sem espera); não há leitura síncrona. ⚠️ **Aberto:** as SPRITES são extraídas na
+`fase_sim_extract`, antes do Motion — uma sprite presa mostra no ecrã o 1.º passe (1 quadro); formas e o mundo já
+estão no quadro certo (o `fase_entity_sync` corre depois).
+
+**Medido (3)** — `mede_a_leitura_das_particulas`, perfil `smoke`, mínimo de 9 intercaladas, `loadavg` 58 (outras
+linhas): corrente de 10 k: inteira 0,60 ms × só o id 0,02 ms; 100 k: 9,10 ms × 0,20 ms. Leitura da placa (contada,
+não cronometrada): o emissor dá 11 floats por linha (`P`, `vel`, `size`, `age`, `life`, `id`, `Index`, `Count`)
+= 0,44 MB a 10 k e 4,4 MB a 100 k por quadro; só `P`+`id`, 0,12 MB e 1,2 MB.

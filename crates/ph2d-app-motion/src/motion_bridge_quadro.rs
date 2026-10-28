@@ -65,13 +65,20 @@ pub(crate) fn o_quadro(
         // está a ser arrastado AGORA — a forma e o sink dela, e só durante o gesto. ⚠️ Ele pede o
         // sink ELE PRÓPRIO: o irmão acima deixou de pedir os que a placa já desenhou.
         .chain(crate::pivot_gizmo::taps_for(motion, mao.arrasto))
-        // ⭐ E os sinks dos objectos de que a pilha de constraints lê partículas.
-        .chain(crate::motion_particulas::taps_for(motion))
     {
         if !taps.contains(&n) {
             taps.push(n);
         }
     }
+    // ⭐ E os sinks dos objectos de que a pilha de constraints lê partículas; os que só ela pede
+    // leem-se da placa só nas colunas dela.
+    let pinos = crate::motion_particulas::taps_for(motion);
+    motion.particulas.so_colunas = pinos
+        .iter()
+        .copied()
+        .filter(|n| !taps.contains(n))
+        .collect();
+    taps.extend(motion.particulas.so_colunas.iter().copied());
     motion.pump.set_taps(&taps);
     // Só as dos sinais cozem em todo tique; as dos gizmos, só no tique desenhado.
     motion.pump.set_taps_por_tique(motion.signal_taps.len());

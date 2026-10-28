@@ -371,6 +371,10 @@ impl crate::App {
         self.fase_motion_bridge(vec_xf_ops);
         if let Some(gfx) = self.gfx.as_mut() {
             ph2d_app_macros::com(|m| m.depois_do_motion(&mut gfx.motion));
+            // Zero atraso do Copy Particle: as partículas DESTE cozimento relidas pelos donos presos.
+            if ph2d_app_motion::motion_particulas::publica(&mut gfx.motion, gfx.sim.world_mut()) {
+                ph2d_constraints_ecs::depois_do_motion(&mut gfx.sim, &mut self.preview_drive);
+            }
         }
         {
             let us = motion_t0.elapsed().as_micros() as u64;

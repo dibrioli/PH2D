@@ -13,6 +13,7 @@
 //! | 9 | **Mostrador** — a BÓIA sobe e desce (curva da timeline); o PONTEIRO segue a altura dela com mola (Follow Value → rotação) e a LÂMPADA acende com ela (Follow Value → opacidade) (`smoke_mostrador`) |
 //! | 10 | **Recreio** — os *behaviours*: o ÍMAN vai e volta (curva da timeline) e a LIMALHA é atraída por ele (Attract); a MOEDA treme mais quando o íman passa perto (Shake com Weight By); o BALÃO flutua (Float); a LUA orbita o PLANETA (Orbit) (`smoke_recreio`) |
 //! | 11 | **Painel do jogo** — o HUD que se arruma: a PONTUAÇÃO sobe com o Play e a MOEDA fica colada ao lado; estreite a janela e a pontuação ENCOLHE antes de a moeda invadir o MINIMAPA; a ferramenta **HUD Layout** do Vetor mostra e edita as setas (`smoke_painel`) |
+//! | 12 | **Partículas e mola** — a BOLA anda montada numa partícula da FONTE (Motion: formas, gravidade e um redemoinho; Copy Particle) e fica na pose dela quando a partícula morre; com a timeline PARADA, arraste o CORPO da antena e a PONTA balança e assenta (a mola ao vivo) (`smoke_particula`) |
 
 use bevy_ecs::entity::Entity;
 use bevy_ecs::prelude::Resource;
@@ -27,7 +28,7 @@ use ph2d_render::{DISC_TILE_KEY, Sprite, WHITE_TILE_KEY};
 /// O roteador desta família — o maior nível que [`encenar`] responde.
 pub const ROUTERS: &[ph2d_app_host::SmokeRouter] = &[ph2d_app_host::SmokeRouter {
     env: "PH2D_CONSTRAINT_SMOKE",
-    max_level: 11,
+    max_level: 12,
 }];
 
 /// O raio do olho da cena 2 e a folga da pupila dentro dele (o número que a sonda mede).
@@ -71,6 +72,7 @@ pub fn encenar(world: &mut World, nivel: u32) -> bool {
         8 => crate::smoke_braco::braco_articulado(world),
         9 => crate::smoke_mostrador::mostrador(world),
         10 => crate::smoke_recreio::recreio(world),
+        12 => crate::smoke_particula::particulas_e_mola(world),
         _ => return false,
     };
     world.insert_resource(Escolher(sujeito.to_bits()));
@@ -92,6 +94,7 @@ pub fn passo(
         .or_else(|| crate::smoke_mostrador::step(sim, hero, tl, ph))
         .or_else(|| crate::smoke_recreio::step(sim, hero, tl, ph))
         .or_else(|| crate::smoke_painel::step(sim, hero, tl, ph))
+        .or_else(|| crate::smoke_particula::step(sim, hero, tl, ph))
 }
 
 /// A cena abre com o sujeito escolhido e o cartão Constraints à vista — uma vez só.
@@ -443,6 +446,11 @@ pub const CORPO: [(i64, f32, f32); 5] = [
 /// antena não estica, dobra. A HASTE olha a ponta. Abre com a ponta escolhida.
 fn antena(world: &mut World) -> Entity {
     let (_, x, y) = CORPO[0];
+    antena_em(world, [x, y]).1
+}
+
+/// A antena com o corpo em `[x, y]`: devolve `(corpo, ponta)` (a cena 12 reusa-a parada).
+pub(crate) fn antena_em(world: &mut World, [x, y]: [f32; 2]) -> (Entity, Entity) {
     let corpo = peca(
         world,
         "Corpo",
@@ -511,5 +519,5 @@ fn antena(world: &mut World) -> Entity {
         haste,
         &[(Kind::LookAt(LookAt::default()), Some(ponta), 1.0)],
     );
-    ponta
+    (corpo, ponta)
 }

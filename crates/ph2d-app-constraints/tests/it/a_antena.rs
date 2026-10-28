@@ -150,18 +150,44 @@ fn a_live_episode_leaves_play_and_scrub_bit_identical() {
     for i in 0..40 {
         parede += 1.0 / 60.0;
         c.sim.world_mut().insert_resource(Parede(parede));
-        let dx = if i < 20 { 0.03 * f32::from(u8::try_from(i).unwrap()) } else { 0.0 };
+        let dx = if i < 20 {
+            0.03 * f32::from(u8::try_from(i).unwrap())
+        } else {
+            0.0
+        };
         c.em_t_com(t30, |sim| {
-            sim.world_mut().get_mut::<ph2d_ecs::Transform>(corpo).unwrap().translation.x += dx;
+            sim.world_mut()
+                .get_mut::<ph2d_ecs::Transform>(corpo)
+                .unwrap()
+                .translation
+                .x += dx;
         });
-        vivo |= !c.sim.world().resource::<ph2d_constraints_ecs::Molas>().vivas.is_empty();
+        vivo |= !c
+            .sim
+            .world()
+            .resource::<ph2d_constraints_ecs::Molas>()
+            .vivas
+            .is_empty();
     }
-    assert!(vivo, "o episódio não ligou a mola ao vivo — o gate não mede nada");
+    assert!(
+        vivo,
+        "o episódio não ligou a mola ao vivo — o gate não mede nada"
+    );
     for q in (31..=40).chain([12, 72, 30, 5, 47]) {
         let got = c.em(q).0;
-        assert_eq!(got.map(f32::to_bits), tocar[q as usize].map(f32::to_bits), "quadro {q}");
+        assert_eq!(
+            got.map(f32::to_bits),
+            tocar[q as usize].map(f32::to_bits),
+            "quadro {q}"
+        );
     }
-    assert!(c.sim.world().resource::<ph2d_constraints_ecs::Molas>().vivas.is_empty());
+    assert!(
+        c.sim
+            .world()
+            .resource::<ph2d_constraints_ecs::Molas>()
+            .vivas
+            .is_empty()
+    );
 }
 
 /// ⭐ O ecrã desenha a 60 Hz e a timeline tem 24 quadros por segundo: entre dois quadros o corpo anda

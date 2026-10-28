@@ -448,15 +448,57 @@ fn a_quiet_timer_fires_without_asking_for_a_notice() {
         ..Timer::default()
     };
     let a = world
-        .spawn((Timers(vec![t("calado"), t("falante")]), TimersQuiet(vec![true])))
+        .spawn((
+            Timers(vec![t("calado"), t("falante")]),
+            TimersQuiet(vec![true]),
+        ))
         .id();
     let b = world.spawn(Timers(vec![t("velho")])).id();
     reconcile_timers(&mut world);
     let mut f = fire_all(&mut world, 1_000_000);
     f.sort_by(|x, y| x.name.cmp(&y.name));
-    let vistos: Vec<(&str, Entity, bool)> =
-        f.iter().map(|d| (d.name.as_str(), d.entity, d.notice)).collect();
-    assert_eq!(vistos, [("calado", a, false), ("falante", a, true), ("velho", b, true)]);
+    let vistos: Vec<(&str, Entity, bool)> = f
+        .iter()
+        .map(|d| (d.name.as_str(), d.entity, d.notice))
+        .collect();
+    assert_eq!(
+        vistos,
+        [
+            ("calado", a, false),
+            ("falante", a, true),
+            ("velho", b, true)
+        ]
+    );
+}
+
+/// Tirar o `Timers` leva o `TimersQuiet`: re-anexado, o timer novo avisa. Substituir o `Timers`
+/// (a edição do cartão) guarda-o; tirá-lo com a entidade a morrer não falha.
+#[test]
+fn removing_the_timers_takes_their_quiet_notices_with_them() {
+    let mut world = World::new();
+    let t = Timer {
+        signal: "s".into(),
+        repeat: true,
+        ..Timer::default()
+    };
+    let e = world
+        .spawn((Timers(vec![t.clone()]), TimersQuiet(vec![true])))
+        .id();
+    world
+        .entity_mut(e)
+        .insert(Timers(vec![t.clone(), t.clone()]));
+    assert!(
+        world.get::<TimersQuiet>(e).is_some(),
+        "substituir não é tirar"
+    );
+    world.entity_mut(e).remove::<Timers>();
+    assert!(world.get::<TimersQuiet>(e).is_none(), "o irmão sai com ele");
+    world.entity_mut(e).insert(Timers(vec![t.clone()]));
+    reconcile_timers(&mut world);
+    let f = fire_all(&mut world, 1_000_000);
+    assert!(f.len() == 1 && f[0].notice, "o timer novo avisa: {f:?}");
+    let d = world.spawn((Timers(vec![t]), TimersQuiet(vec![true]))).id();
+    world.despawn(d);
 }
 
 /// A cauda que só diz «avisa» não se guarda: ligar de volta devolve o componente vazio.

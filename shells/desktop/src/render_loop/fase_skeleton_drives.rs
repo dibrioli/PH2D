@@ -36,6 +36,7 @@ impl crate::App {
         };
         let (sim, cena) = (&mut gfx.sim, &mut gfx.vec_scene);
         crate::skeleton_smart::drive(sim, &self.timeline.doc, &mut self.preview_drive);
+        gfx.motion.particulas.tocando = self.playhead.is_playing();
         ph2d_app_motion::motion_particulas::publica(&mut gfx.motion, sim.world_mut());
         let relogios = [
             &self.playhead,

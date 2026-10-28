@@ -226,6 +226,27 @@ fn action_picks_the_clip_time_from_the_target_channel() {
     }
 }
 
+/// A mola ao vivo depois de um quadro parado mil segundos (janela minimizada, suspensão) anda o
+/// MESMO que num quadro do tecto: o custo do quadro tem tecto, e a mais saltitante não o fura.
+#[test]
+fn a_stalled_frame_runs_no_more_live_substeps_than_the_clamp() {
+    use ph2d_constraints_ecs::relogio::{AoVivo, MAX_DT_AO_VIVO};
+    let mola = Spring {
+        ressalto: 0.99,
+        ..Spring::default()
+    };
+    let lei: ph2d_constraints_ecs::Lei<3> = (&mola).into();
+    let alvo = [1.0, -2.0, 0.5];
+    let (mut parado, mut tecto) = (AoVivo::nasce([0.0; 3]), AoVivo::nasce([0.0; 3]));
+    let assentou = parado.anda(lei, alvo, 1000.0);
+    assert_eq!(assentou, tecto.anda(lei, alvo, MAX_DT_AO_VIVO));
+    assert_eq!(parado, tecto, "mil segundos de parede = um quadro do tecto");
+    assert!(
+        !assentou,
+        "a mola saltitante ainda balança: o tecto não a larga"
+    );
+}
+
 /// A entrada da cena 5: o corpo sobe de 0 a 3 entre os quadros 5 e 15 e pára.
 fn salto(k: i64) -> [f64; 3] {
     let u = ((k as f64 - 5.0) / 10.0).clamp(0.0, 1.0);

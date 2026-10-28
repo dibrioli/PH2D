@@ -664,7 +664,10 @@ fn every_behaviour_setting_has_a_label_a_channel_and_round_trips() {
             let todos = campos::numeros(&k).iter().chain(campos::escolhas(&k));
             for &campo in todos {
                 let quem = format!("{perfil:?} campo {campo}");
-                assert!(CAMPOS.contains(&campo) && info(campo).is_some(), "{quem}: sem canal");
+                assert!(
+                    CAMPOS.contains(&campo) && info(campo).is_some(),
+                    "{quem}: sem canal"
+                );
                 // Sem rótulo daqui, o cartão pinta «Mix»; a mola tem os do Spring.
                 let da_mola = [MOLA_LIGADA, DURACAO, RESSALTO].contains(&campo);
                 assert!(cc::rotulo(campo).is_some() || da_mola, "{quem}: sem rótulo");
@@ -675,13 +678,23 @@ fn every_behaviour_setting_has_a_label_a_channel_and_round_trips() {
                     "{quem}: {chave} não existe no item gravado"
                 );
                 let mut k2 = k;
-                let x = if campos::escolhas(&k).contains(&campo) { 1.0 } else { 0.75 };
+                let x = if campos::escolhas(&k).contains(&campo) {
+                    1.0
+                } else {
+                    0.75
+                };
                 let _ = campos::escrever(&mut k2, campo, x);
                 assert_eq!(campos::ler(&k2, campo), Some(x), "{quem}: não volta");
             }
         }
     }
     let atrair = Kind::Comportamento(Perfil::Atrair.numeros());
-    assert!(campos::numeros(&atrair).contains(&PICO), "o Atrair esconde o Peak");
-    assert_eq!(cc::unidade(&Perfil::Atrair.numeros(), PICO), Unidade::Metros);
+    assert!(
+        campos::numeros(&atrair).contains(&PICO),
+        "o Atrair esconde o Peak"
+    );
+    assert_eq!(
+        cc::unidade(&Perfil::Atrair.numeros(), PICO),
+        Unidade::Metros
+    );
 }

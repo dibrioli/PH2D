@@ -407,7 +407,10 @@ fn the_hud_scene_timer_fires_without_a_notice() {
     let disparos = ph2d_ecs::timer::fire_all(sim.world_mut(), TIQUE_US);
     assert_eq!(disparos.len(), 1, "o relógio da cena não disparou");
     assert_eq!(disparos[0].name, ph2d_app_constraints::smoke_painel::SINAL);
-    assert!(!disparos[0].notice, "o relógio da cena 11 pediu o aviso a cada tique");
+    assert!(
+        !disparos[0].notice,
+        "o relógio da cena 11 pediu o aviso a cada tique"
+    );
 }
 
 /// ⭐ Cena 11 (o HUD que se arruma): montada de verdade (semear → as entidades nascem → vestir), a fiação está lá
@@ -551,5 +554,128 @@ fn the_hud_scene_keeps_the_coin_beside_and_shrinks_the_score_before_the_minimap(
     assert!(
         (meio(&r2[1]) - meio(&r2[0])).abs() <= d,
         "a moeda ficou para trás na altura: {r2:?}"
+    );
+}
+
+/// ⭐ Cena 12 (W6): a Bola tem o Copy Particle na partícula da Fonte; com a partícula viva ela fica onde a
+/// partícula está NO MUNDO (o afim da Fonte), e sem ela volta à pose dela. (O nascer e morrer da partícula
+/// pelo cozimento real é o gate irmão no Motion, `the_fountain_particle_the_ball_rides_…`.)
+#[test]
+fn the_particle_scene_pins_the_ball_to_the_fountain_particle() {
+    use ph2d_app_constraints::smoke_particula::{BOLA_EM, FONTE, FONTE_EM, PARTICULA};
+    use ph2d_constraints::{Kind, PontoDeSimulacao};
+    use ph2d_constraints_ecs::Constraints;
+    use ph2d_ecs::StableId;
+    use ph2d_ecs::motion_generator::{Particulas, ParticulasPedidas};
+    let (mut sim, mut drive) = cena(12);
+    let fonte = chamada(&mut sim, FONTE);
+    let bola = chamada(&mut sim, "Bola");
+    assert!(
+        sim.world()
+            .get::<ph2d_ecs::MotionGenerator>(fonte)
+            .is_some()
+    );
+    let s = *sim.world().get::<StableId>(fonte).expect("id da Fonte");
+    let item = sim.world().get::<Constraints>(bola).expect("pilha").items[0];
+    assert_eq!(
+        item.kind,
+        Kind::PontoDeSimulacao(PontoDeSimulacao { id: PARTICULA })
+    );
+    assert_eq!(item.target, Some(s));
+    let mut vcena = ph2d_vec_scene::VecScene::new();
+    ph2d_app_constraints::quadro(&mut sim, &mut vcena, &mut drive, None);
+    assert_eq!(sim.world().resource::<ParticulasPedidas>().0, [s].into());
+    let pose = |sim: &SimWorld| {
+        let t = mundo(sim, bola);
+        [t.translation.x, t.translation.y]
+    };
+    assert_eq!(pose(&sim), BOLA_EM, "sem partículas: a pose da Bola");
+    for (k, q) in [[0.0, 0.5], [0.4, 1.6], [-0.7, 2.9]]
+        .into_iter()
+        .enumerate()
+    {
+        let outra = PARTICULA + 1 + u32::try_from(k).unwrap();
+        sim.world_mut().insert_resource(Particulas(
+            [(s, [(PARTICULA, q), (outra, [9.0, 9.0])].into())].into(),
+        ));
+        ph2d_app_constraints::quadro(&mut sim, &mut vcena, &mut drive, None);
+        drive.settle();
+        #[expect(clippy::cast_possible_truncation, reason = "o Transform é f32")]
+        let certo = [FONTE_EM[0] + q[0] as f32, FONTE_EM[1] + q[1] as f32];
+        let p = pose(&sim);
+        assert!(
+            (p[0] - certo[0]).abs() < 1e-5 && (p[1] - certo[1]).abs() < 1e-5,
+            "quadro {k}: a Bola em {p:?}, a partícula em {certo:?}"
+        );
+    }
+    sim.world_mut().insert_resource(Particulas(
+        [(s, [(PARTICULA + 9, [1.0, 1.0])].into())].into(),
+    ));
+    ph2d_app_constraints::quadro(&mut sim, &mut vcena, &mut drive, None);
+    drive.settle();
+    assert_eq!(
+        pose(&sim),
+        BOLA_EM,
+        "a partícula morreu: a Bola volta à pose dela"
+    );
+}
+
+/// ⭐ Cena 12 (W6): a Ponta tem a mola, e com a timeline PARADA arrastar o Corpo faz a ponta ficar para trás
+/// e assentar (a mola ao vivo).
+#[test]
+fn the_particle_scene_tip_springs_when_the_body_is_dragged_with_the_time_stopped() {
+    use ph2d_app_constraints::relogio::{Parede, Relogio};
+    use ph2d_constraints::Kind;
+    use ph2d_constraints_ecs::Constraints;
+    let (mut sim, mut drive) = cena(12);
+    let corpo = chamada(&mut sim, "Corpo");
+    let ponta = chamada(&mut sim, "Ponta");
+    let pilha = sim
+        .world()
+        .get::<Constraints>(ponta)
+        .expect("pilha da ponta");
+    assert!(
+        pilha
+            .items
+            .iter()
+            .any(|it| matches!(it.kind, Kind::Spring(_))),
+        "a ponta não tem mola"
+    );
+    let doc = ph2d_timeline::TimelineDoc::default();
+    let mut vcena = ph2d_vec_scene::VecScene::new();
+    let mut parede = 0.0;
+    let mut passo = |sim: &mut SimWorld, drive: &mut PreviewDrive, parede: &mut f64| {
+        sim.world_mut().insert_resource(Parede(*parede));
+        let r = Relogio {
+            doc: &doc,
+            t: 0.0,
+            laco: None,
+        };
+        ph2d_app_constraints::quadro(sim, &mut vcena, drive, Some(r));
+        drive.settle();
+        *parede += 1.0 / 60.0;
+        mundo(sim, ponta).translation.x
+    };
+    let x0 = (0..3)
+        .map(|_| passo(&mut sim, &mut drive, &mut parede))
+        .last()
+        .unwrap();
+    sim.world_mut()
+        .get_mut::<Transform>(corpo)
+        .unwrap()
+        .translation
+        .x += 1.5;
+    let xs: Vec<f32> = (0..600)
+        .map(|_| passo(&mut sim, &mut drive, &mut parede))
+        .collect();
+    assert!(
+        xs[0] - x0 < 1.4,
+        "a ponta não ficou para trás: {x0} → {}",
+        xs[0]
+    );
+    let fim = *xs.last().unwrap();
+    assert!(
+        (fim - (x0 + 1.5)).abs() < 1e-3,
+        "a ponta não assentou: {x0} → {fim}"
     );
 }

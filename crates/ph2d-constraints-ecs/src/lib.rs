@@ -16,15 +16,17 @@ mod particula;
 pub mod relogio;
 
 pub use avalia::pose;
-pub use avalia::{Adotar, Caminhos, Estado, Estados, Pontos, com_autorado, evaluate};
+pub use avalia::{
+    Adotar, Avaliadas, Caminhos, Estado, Estados, Pontos, com_autorado, depois_do_motion, evaluate,
+};
 pub use cola::{COLAS_TYPE_NAME, Colas, EstadosDaCola, colar};
+pub use comportamento::Comportamentos;
 pub use ik_item::{
     Ancora, ancora_de, ancoras, com_ancora, com_ik, converter_ik_de_um_osso, converter_ik_goals,
     ik_de, iks, por_ik, tirar_ancora, tirar_ik,
 };
 pub use ik_novo::{add_ik, add_look_at, aponta};
 pub use ordem::ordem;
-pub use comportamento::Comportamentos;
 pub use relogio::{Accoes, Amostra, Dinamica, Laco, Lei, Molas, Simulador, Valores};
 
 use bevy_ecs::component::Component;

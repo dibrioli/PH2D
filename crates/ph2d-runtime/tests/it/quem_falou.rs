@@ -115,6 +115,14 @@ fn a_quiet_timer_reaches_every_reader_but_the_notices() {
     out.publish(Signal::from_timer("batida", 7, 1, true));
     out.publish(Signal::from_control("botao"));
     let lidos: Vec<&str> = out.read_notices(&mut avisos).map(|s| &*s.name).collect();
-    assert_eq!(lidos, ["batida", "botao"], "o timer calado avisou (ou o falante calou-se)");
-    assert_eq!(out.read(&mut jogo).count(), 3, "calar o aviso calou o SINAL");
+    assert_eq!(
+        lidos,
+        ["batida", "botao"],
+        "o timer calado avisou (ou o falante calou-se)"
+    );
+    assert_eq!(
+        out.read(&mut jogo).count(),
+        3,
+        "calar o aviso calou o SINAL"
+    );
 }

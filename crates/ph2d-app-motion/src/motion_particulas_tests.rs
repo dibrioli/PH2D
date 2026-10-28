@@ -60,24 +60,42 @@ fn cena(gpu: bool) -> (MotionState, World) {
     (m, w)
 }
 
+fn lidas(w: &World) -> BTreeMap<u32, [f64; 2]> {
+    w.get_resource::<Particulas>()
+        .and_then(|p| p.0.get(&StableId(OBJETO)).cloned())
+        .unwrap_or_default()
+}
+
+/// O quadro do PRODUTO: a publicação antes da pilha (o cozimento anterior), o cozimento, e a de
+/// depois dele (a deste tique). Devolve `(antes, depois, republicou depois)`.
+fn quadro_inteiro(
+    m: &mut MotionState,
+    w: &mut World,
+    gpu: Option<&ph2d_gpu::GpuContext>,
+    p: &ph2d_core::Playhead,
+) -> (BTreeMap<u32, [f64; 2]>, BTreeMap<u32, [f64; 2]>, bool) {
+    let mao = MaoDoEditor {
+        selecionado: None,
+        arrasto: None,
+    };
+    m.particulas.tocando = p.is_playing();
+    publica(m, w);
+    let antes = lidas(w);
+    o_quadro(m, gpu, p, DT, mao);
+    if let Some(gpu) = gpu {
+        crate::motion_bridge::gpu::espera_as_tomadas(m, gpu);
+    }
+    let fresco = publica(m, w);
+    (antes, lidas(w), fresco)
+}
+
 fn quadro(
     m: &mut MotionState,
     w: &mut World,
     gpu: Option<&ph2d_gpu::GpuContext>,
     p: &ph2d_core::Playhead,
 ) -> BTreeMap<u32, [f64; 2]> {
-    let mao = MaoDoEditor {
-        selecionado: None,
-        arrasto: None,
-    };
-    o_quadro(m, gpu, p, DT, mao);
-    if let Some(gpu) = gpu {
-        crate::motion_bridge::gpu::espera_as_tomadas(m, gpu);
-    }
-    publica(m, w);
-    w.get_resource::<Particulas>()
-        .and_then(|p| p.0.get(&StableId(OBJETO)).cloned())
-        .unwrap_or_default()
+    quadro_inteiro(m, w, gpu, p).1
 }
 
 #[expect(clippy::cast_precision_loss, reason = "tiques")]
@@ -93,7 +111,25 @@ fn a_particle_keeps_its_id_and_play_equals_scrub() {
     let mut tocado = Vec::new();
     for t in 0..=40 {
         em(&mut p, t);
-        tocado.push(quadro(&mut m, &mut w, None, &p));
+        let (antes, depois, fresco) = quadro_inteiro(&mut m, &mut w, None, &p);
+        // ⭐ ZERO atraso na CPU: antes da pilha lê-se o tique anterior; depois do cozimento, ESTE.
+        assert!(
+            fresco,
+            "tique {t}: o cozimento escreveu as tomadas e a leitura republicou-se"
+        );
+        assert_eq!(
+            m.pump.last_cooked_tick(),
+            Some(t),
+            "tique {t}: a leitura é deste cozimento"
+        );
+        if t > 0 {
+            assert_eq!(
+                antes,
+                tocado[t as usize - 1],
+                "tique {t}: antes da pilha, o anterior"
+            );
+        }
+        tocado.push(depois);
     }
     assert!(
         !tocado[1].is_empty(),
@@ -162,12 +198,85 @@ fn the_first_sink_with_an_id_column_answers() {
     let b = Stream::new(1)
         .with("P", Column::Vec2(vec![[5.0, 5.0]]))
         .with("id", Column::Scalar(vec![7.0]));
-    let m = do_objeto([&sem_id, &a, &b]).unwrap();
+    let m = do_objeto([Some(&sem_id), Some(&a), Some(&b)], None).unwrap();
     assert_eq!(
         m,
         BTreeMap::from([(7, [1.0, 2.0]), (16_777_215, [3.0, 4.0])])
     );
-    assert!(do_objeto([&sem_id]).is_none());
+    assert!(do_objeto([Some(&sem_id)], None).is_none());
+    // Só os ids pedidos.
+    let so = BTreeSet::from([16_777_215]);
+    assert_eq!(
+        do_objeto([Some(&a)], Some(&so)).unwrap(),
+        BTreeMap::from([(16_777_215, [3.0, 4.0])])
+    );
+}
+
+/// A tomada do 1.º sink não chegou: a resposta é desconhecida — nunca o sink seguinte (que faria o
+/// dono saltar quando a primeira chegasse).
+#[test]
+fn a_sink_whose_tap_has_not_arrived_is_not_replaced_by_the_next_one() {
+    use ph2d_nodegraph::attr::Column;
+    let sem_id = Stream::new(1).with("P", Column::Vec2(vec![[9.0, 9.0]]));
+    let b = Stream::new(1)
+        .with("P", Column::Vec2(vec![[5.0, 5.0]]))
+        .with("id", Column::Scalar(vec![7.0]));
+    assert!(do_objeto([None, Some(&b)], None).is_none());
+    assert!(do_objeto([Some(&sem_id), None, Some(&b)], None).is_none());
+    assert!(do_objeto([Some(&sem_id), Some(&b), None], None).is_some());
+}
+
+/// Coluna `id` sem `P` Vec2 (ausente ou de outro tipo): sem alvo, nunca a origem.
+#[test]
+fn an_id_without_a_position_is_no_target_never_the_origin() {
+    use ph2d_nodegraph::attr::Column;
+    let sem_p = Stream::new(2).with("id", Column::Scalar(vec![1.0, 2.0]));
+    assert!(do_objeto([Some(&sem_p)], None).is_none());
+    let p_escalar = Stream::new(2)
+        .with("P", Column::Scalar(vec![4.0, 4.0]))
+        .with("id", Column::Scalar(vec![1.0, 2.0]));
+    assert!(do_objeto([Some(&p_escalar)], None).is_none());
+}
+
+/// A pilha pede o id `k`: a leitura traz só esse; um quadro parado sem cozimento não lê nada.
+#[test]
+fn only_the_pinned_ids_are_read_and_a_still_frame_reads_nothing() {
+    use ph2d_ecs::motion_generator::IdsPedidos;
+    let (mut m, mut w) = cena(false);
+    let mut p = ph2d_core::Playhead::new(DT);
+    p.play();
+    let mut todas = BTreeMap::new();
+    for t in 0..=5 {
+        em(&mut p, t);
+        todas = quadro(&mut m, &mut w, None, &p);
+    }
+    let &id = todas.keys().nth(1).expect("vivas");
+    w.insert_resource(IdsPedidos([(StableId(OBJETO), [id].into())].into()));
+    p.pause();
+    em(&mut p, 5);
+    let (_, so, _) = quadro_inteiro(&mut m, &mut w, None, &p);
+    assert_eq!(so, BTreeMap::from([(id, todas[&id])]), "só o id pedido");
+    let (_, _, fresco) = quadro_inteiro(&mut m, &mut w, None, &p);
+    assert!(!fresco, "parado e sem cozimento: nada a reler");
+}
+
+/// Uma tomada nova a TOCAR não repete o tique (o cozimento do quadro já a coze); parada, repete.
+#[test]
+fn a_pin_armed_while_playing_does_not_repeat_the_tick() {
+    let (mut m, mut w) = cena(false);
+    w.remove_resource::<ParticulasPedidas>();
+    publica(&mut m, &mut w);
+    m.particulas.tocando = true;
+    let antes = m.pump.sujidades();
+    w.insert_resource(ParticulasPedidas([StableId(OBJETO)].into()));
+    publica(&mut m, &mut w);
+    assert_eq!(m.pump.sujidades(), antes, "a tocar: sem re-simulação");
+    w.remove_resource::<ParticulasPedidas>();
+    publica(&mut m, &mut w);
+    m.particulas.tocando = false;
+    w.insert_resource(ParticulasPedidas([StableId(OBJETO)].into()));
+    publica(&mut m, &mut w);
+    assert_eq!(m.pump.sujidades(), antes + 1, "parada: o tique repete-se");
 }
 
 fn adaptador() -> Option<ph2d_gpu::GpuContext> {
@@ -198,6 +307,17 @@ fn the_particle_ids_are_the_same_on_the_device_and_the_cpu() {
             continue;
         }
         assert!(!c.is_empty(), "tique {t}: há partículas");
+        assert!(
+            placa
+                .0
+                .pump
+                .tap_streams()
+                .iter()
+                .all(|(_, s)| s.get("P").is_some()
+                    && s.get("id").is_some()
+                    && s.get("vel").is_none()),
+            "tique {t}: a placa devolve só `P` e `id` do sink que só a pilha pede"
+        );
         assert_eq!(
             c.keys().collect::<Vec<_>>(),
             g.keys().collect::<Vec<_>>(),
@@ -211,5 +331,37 @@ fn the_particle_ids_are_the_same_on_the_device_and_the_cpu() {
                 "tique {t}, id {id}: {q:?} ≠ {d:?}"
             );
         }
+    }
+}
+
+/// Sonda (07_W6 §3): o custo da leitura por quadro, toda a corrente indexada × só o id pedido.
+/// `cargo test -p ph2d-app-motion --profile smoke --lib -- --ignored --nocapture mede_a_leitura`
+#[test]
+#[ignore = "sonda de medição"]
+fn mede_a_leitura_das_particulas() {
+    use ph2d_nodegraph::attr::Column;
+    for n in [10_000usize, 100_000] {
+        #[expect(clippy::cast_precision_loss, reason = "sonda")]
+        let s = Stream::new(n)
+            .with("P", Column::Vec2((0..n).map(|i| [i as f32, 0.5]).collect()))
+            .with("id", Column::Scalar((0..n).map(|i| i as f32).collect()));
+        let quer = BTreeSet::from([u32::try_from(n / 2).unwrap()]);
+        let (mut toda, mut so) = (f64::MAX, f64::MAX);
+        for r in 0..9 {
+            let mut corre = |ids: Option<&BTreeSet<u32>>| {
+                let t = std::time::Instant::now();
+                let m = do_objeto([Some(&s)], ids);
+                std::hint::black_box(m);
+                t.elapsed().as_secs_f64() * 1e3
+            };
+            if r % 2 == 0 {
+                toda = toda.min(corre(None));
+                so = so.min(corre(Some(&quer)));
+            } else {
+                so = so.min(corre(Some(&quer)));
+                toda = toda.min(corre(None));
+            }
+        }
+        eprintln!("n = {n}: corrente inteira {toda:.3} ms · só o id pedido {so:.3} ms");
     }
 }

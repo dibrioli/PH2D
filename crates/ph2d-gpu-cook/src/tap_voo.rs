@@ -118,7 +118,7 @@ impl GpuCook {
     /// `submit`, junto dos cartões, e a leitura recolhe-se no quadro seguinte ([`Self::tomadas`]).
     /// ⚠️ Recolhe a leitura anterior AQUI, antes do cozimento, para o pedido deste quadro poder
     /// partir — senão o gizmo andaria a meio ritmo. Lista vazia = sem tomadas.
-    pub fn pede_as_tomadas(&mut self, gpu: &GpuContext, tomadas: &[(NodeId, u32)]) {
+    pub fn pede_as_tomadas(&mut self, gpu: &GpuContext, tomadas: &[crate::tap::Tomada]) {
         self.recolhe(gpu);
         self.tap_voo.pedido.tomadas.clear();
         self.tap_voo.pedido.tomadas.extend_from_slice(tomadas);

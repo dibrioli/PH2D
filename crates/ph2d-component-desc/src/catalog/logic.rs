@@ -549,7 +549,11 @@ pub const DESCS: &[ComponentDesc] = &[
     )
     .hidden(Hidden::List),
     // O «Show notice» por timer (W6): máquina — muda só pela caixa do cartão do `Timers`.
-    D::machinery("ph2d::ecs::TimersQuiet", "component.timers_quiet.name", C::Logic),
+    D::machinery(
+        "ph2d::ecs::TimersQuiet",
+        "component.timers_quiet.name",
+        C::Logic,
+    ),
     // ⚠️ **DEPOIS do `Timers`, e isso NÃO é estilo:** a lista é procurada por busca binária, e fora
     // de ordem o descritor devolve `None` para um tipo que existe — *um descritor que não é
     // encontrado lê-se exactamente como um que não existe*.

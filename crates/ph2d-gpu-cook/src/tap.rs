@@ -112,12 +112,16 @@ pub(crate) struct Slot {
 }
 
 /// **O que uma leitura encomenda**: a amostra dos cartões (todo nó encenado, `cartoes` linhas) e
-/// as TOMADAS (os nós que o host pediu por nome, cada um com o seu tecto de linhas) — as dos
+/// as TOMADAS (os nós que o host pediu por nome, cada um com o seu tecto de linhas e, se só lhe
+/// servem algumas, as colunas: o ponto de simulação lê `P` e `id` da corrente inteira) — as dos
 /// gizmos de um quadro feito inteiro na placa (Bug #20), num gather só.
+/// Uma tomada pedida: o nó, o tecto de linhas e as colunas (`None` = todas).
+pub type Tomada = (NodeId, u32, Option<&'static [&'static str]>);
+
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub(crate) struct Pedido {
     pub(crate) cartoes: Option<u32>,
-    pub(crate) tomadas: Vec<(NodeId, u32)>,
+    pub(crate) tomadas: Vec<Tomada>,
 }
 
 impl Pedido {
@@ -279,20 +283,24 @@ impl GpuCook {
         let cartoes = pedido
             .cartoes
             .into_iter()
-            .flat_map(|n| streams.iter().map(move |(node, s)| (*node, *s, n, false)));
-        let tomadas = pedido.tomadas.iter().filter_map(|&(node, tecto)| {
+            .flat_map(|n| streams.iter().map(move |(node, s)| (*node, *s, n, None)));
+        let tomadas = pedido.tomadas.iter().filter_map(|&(node, tecto, colunas)| {
             streams
                 .iter()
                 .find(|(n, _)| *n == node)
-                .map(|(_, s)| (node, *s, tecto, true))
+                .map(|(_, s)| (node, *s, tecto, Some(colunas)))
         });
-        for (node, stream, samples, tomada) in cartoes.chain(tomadas) {
+        for (node, stream, samples, colunas) in cartoes.chain(tomadas) {
+            let tomada = colunas.is_some();
             if stream.count == 0 {
                 continue;
             }
             let take = samples.min(stream.count);
             for (name, col) in &stream.cols {
-                if !cabe_numa_coluna(col.dim) {
+                let fora = colunas
+                    .flatten()
+                    .is_some_and(|c| !c.contains(&name.as_str()));
+                if fora || !cabe_numa_coluna(col.dim) {
                     continue;
                 }
                 let lanes = crate::stream::element_stride(col.dim) as u32 / 4;

@@ -148,7 +148,7 @@ pub struct MotionCookPump {
     /// CPU→GPU e é validado contra `plan.boundaries`; este é o que um consumidor do
     /// host lê para saber que algo aconteceu no grafo. Um nome, um significado — os
     /// dois numa lista só obrigariam todo leitor a perguntar de qual metade veio.
-    tap_streams: Vec<(NodeId, Stream)>,
+    tap_streams: taps::Tomadas,
     /// **As TOMADAS são estado da BOMBA, não argumento de chamada:** como argumento só existiam
     /// na porta que o chamador lembrasse (a rota **híbrida** ficava MUDA, com os gates verdes).
     /// Aqui a tomada cavalga QUALQUER marcha, e uma rota nova nasce coberta.
@@ -251,7 +251,7 @@ impl MotionCookPump {
             pulsos: entradas::Pulsos::default(),
             a_tocar: true,
             boundary_streams: Vec::new(),
-            tap_streams: Vec::new(),
+            tap_streams: taps::Tomadas::default(),
             taps: Vec::new(),
             armadas: taps::Armadas::default(),
             tap_fires: Vec::new(),

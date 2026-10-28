@@ -22,7 +22,53 @@ pub(crate) struct Armadas {
     sinks_do_desenho: Vec<NodeId>,
 }
 
+/// A lista das tomadas com a sua GERAÇÃO: toda escrita (`clear`, `push`, `retain`) a sobe, por
+/// isso quem lê pode saltar um quadro em que nada se escreveu (a bomba parada) sem lembrar porta.
+#[derive(Default)]
+pub(crate) struct Tomadas {
+    lista: Vec<(NodeId, Stream)>,
+    geracao: u64,
+}
+
+impl Tomadas {
+    pub(crate) fn clear(&mut self) {
+        self.geracao += 1;
+        self.lista.clear();
+    }
+
+    pub(crate) fn push(&mut self, t: (NodeId, Stream)) {
+        self.geracao += 1;
+        self.lista.push(t);
+    }
+
+    pub(crate) fn retain(&mut self, f: impl FnMut(&(NodeId, Stream)) -> bool) {
+        self.geracao += 1;
+        self.lista.retain(f);
+    }
+}
+
+impl std::ops::Deref for Tomadas {
+    type Target = [(NodeId, Stream)];
+    fn deref(&self) -> &Self::Target {
+        &self.lista
+    }
+}
+
+impl<'a> IntoIterator for &'a Tomadas {
+    type Item = &'a (NodeId, Stream);
+    type IntoIter = std::slice::Iter<'a, (NodeId, Stream)>;
+    fn into_iter(self) -> Self::IntoIter {
+        self.lista.iter()
+    }
+}
+
 impl MotionCookPump {
+    /// A geração das [`Self::tap_streams`]: igual entre duas leituras ⇒ as tomadas são as mesmas.
+    #[must_use]
+    pub fn tomadas_geracao(&self) -> u64 {
+        self.tap_streams.geracao
+    }
+
     /// **As SAÍDAS deste quadro**, para as rotas cuja marcha não as recebe (a híbrida e a da placa
     /// inteira, doc 130): uma tomada num sink vê a corrente SEPARADA, como na porta de sinks.
     pub fn set_sinks_do_desenho(&mut self, sinks: &[NodeId]) {

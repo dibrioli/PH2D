@@ -2,7 +2,7 @@
 //! partícula `id` do objecto Motion; morta, ele volta à pose dele; renascida, volta a segui-la.
 
 use ph2d_constraints::{Kind, PontoDeSimulacao};
-use ph2d_constraints_ecs::{Constraints, Estado, Estados, evaluate};
+use ph2d_constraints_ecs::{Constraints, Estado, Estados, depois_do_motion, evaluate};
 use ph2d_ecs::motion_generator::Particulas;
 use ph2d_ecs::{SimWorld, StableId, Transform};
 use ph2d_preview_drive::PreviewDrive;
@@ -62,20 +62,42 @@ fn no_mundo(p: [f64; 2]) -> [f64; 2] {
     ]
 }
 
+/// O quadro do PRODUTO: a pilha lê as partículas do cozimento ANTERIOR (`antes`), o Motion coze
+/// (`agora`), e o passe depois do cozimento relê o dono preso.
+fn quadro_do_produto(
+    sim: &mut SimWorld,
+    drive: &mut PreviewDrive,
+    antes: Option<std::collections::BTreeMap<u32, [f64; 2]>>,
+    agora: std::collections::BTreeMap<u32, [f64; 2]>,
+) {
+    match antes {
+        Some(m) => publica(sim, m),
+        None => {
+            sim.world_mut().remove_resource::<Particulas>();
+        }
+    }
+    evaluate(sim, drive);
+    publica(sim, agora);
+    depois_do_motion(sim, drive);
+    drive.settle();
+}
+
+/// ⭐ ZERO atraso (CPU): no quadro `k` o dono está na partícula do cozimento `k`, embora a pilha
+/// tenha corrido antes dele com a do `k − 1`; por scrub, o mesmo bit.
 #[test]
 fn a_pinned_object_follows_its_particle_and_play_equals_scrub() {
     let (mut sim, dono, item) = cena();
     let mut drive = PreviewDrive::default();
     let mut tocado = Vec::new();
-    for k in 0..12 {
-        publica(&mut sim, corrente(k));
-        quadro(&mut sim, &mut drive);
+    for k in 0..12u32 {
+        let antes = k.checked_sub(1).map(corrente);
+        quadro_do_produto(&mut sim, &mut drive, antes, corrente(k));
         let t = *sim.world().get::<Transform>(dono).unwrap();
         let want = no_mundo(corrente(k)[&7]);
         assert!(
             (f64::from(t.translation.x) - want[0]).abs() < 1e-4
                 && (f64::from(t.translation.y) - want[1]).abs() < 1e-4,
-            "tique {k}: {:?} ≠ {want:?}",
+            "tique {k}: {:?} ≠ {want:?} (atraso de um quadro?)",
             t.translation
         );
         assert_eq!(
@@ -84,12 +106,13 @@ fn a_pinned_object_follows_its_particle_and_play_equals_scrub() {
         );
         tocado.push(t);
     }
-    // O scrub: os mesmos tiques por ordem salteada dão o MESMO bit.
+    // O scrub: os mesmos tiques por ordem salteada (a pilha lê o tique visitado antes) dão o MESMO bit.
     let (mut sim, dono, _) = cena();
     let mut drive = PreviewDrive::default();
+    let mut antes = None;
     for k in [9, 2, 11, 0, 5, 5, 3, 10, 1, 7, 4, 8, 6] {
-        publica(&mut sim, corrente(k));
-        quadro(&mut sim, &mut drive);
+        quadro_do_produto(&mut sim, &mut drive, antes, corrente(k));
+        antes = Some(corrente(k));
         let t = *sim.world().get::<Transform>(dono).unwrap();
         assert_eq!(t, tocado[k as usize], "tique {k} por scrub ≠ a tocar");
     }

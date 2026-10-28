@@ -178,8 +178,23 @@ impl Timer {
 ///
 /// ⚠️ **Uma LISTA, porque a spec diz «N por instância»** e um componente ECS é único por entidade.
 /// É o mesmo molde do [`crate::SpriteAnimations`] e do `NamedAnchorList`.
+///
+/// ⚠️ Tirá-lo leva o irmão [`TimersQuiet`] (o hook `on_remove`, a porta por onde TODA remoção
+/// passa): senão o `Timers` re-anexado herdava os avisos calados do antigo. Substituir (`insert`
+/// por cima) não é remoção e não o toca; o undo repõe os dois do snapshot.
 #[derive(Component, Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[component(on_remove = leva_os_calados)]
 pub struct Timers(pub Vec<Timer>);
+
+fn leva_os_calados(
+    mut world: bevy_ecs::world::DeferredWorld,
+    ctx: bevy_ecs::lifecycle::HookContext,
+) {
+    world
+        .commands()
+        .entity(ctx.entity)
+        .try_remove::<TimersQuiet>();
+}
 
 /// O que um tique produziu num timer.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -439,7 +454,12 @@ pub fn fire_all(world: &mut World, dt_us: u64) -> Vec<TimerFired> {
             if fires > 0 && !t.signal.is_empty() {
                 let notice = quiet.is_none_or(|q| q.shows_notice(i));
                 let name = t.signal.clone();
-                out.push(TimerFired { entity, name, fires, notice });
+                out.push(TimerFired {
+                    entity,
+                    name,
+                    fires,
+                    notice,
+                });
             }
         }
     }

@@ -119,6 +119,18 @@ pub fn can_open_tabs() -> bool {
     OPENER.with(Cell::get)
 }
 
+/// Onde o Kanban `id` do quadro activo ficou no último desenho (as sondas e os testes clicam aí).
+#[must_use]
+pub fn placement(hero: &HeroScreen, id: ElementId) -> Option<ph2d_board_render::KanbanPlacement> {
+    hero.documents.live.render_cache.kanbans.on_screen.get(&id).copied()
+}
+
+/// O Kanban activo do quadro (o rato e as teclas são dele).
+#[must_use]
+pub fn active(hero: &HeroScreen) -> Option<ElementId> {
+    hero.documents.live.render_cache.kanbans.active
+}
+
 /// A frase quando não há quem abra a aba.
 pub(crate) const NO_TAB: &str = "board.kanban.no_tab";
 

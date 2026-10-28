@@ -37,7 +37,7 @@ mod tab;
 mod view;
 
 pub use back::outside::{Outside, Served, System, World};
-pub use docs::KanbanDocs;
+pub use docs::{CanvasProbe, KanbanDocs};
 pub use surface::{CMD_HOME, CMD_NEW};
 
 /// O arranque da família: a superfície das abas Kanban no `Documents` e as cenas de smoke armadas.

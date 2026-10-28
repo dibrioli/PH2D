@@ -13,6 +13,17 @@ use ph2d_tokens::Theme;
 use ph2d_vector::VectorScene;
 use std::collections::BTreeMap;
 
+/// ⚠️ SONDA (W4): o que a vista de um elemento do Quadro mostrou no último desenho.
+#[derive(Clone, Debug, Default)]
+pub struct CanvasProbe {
+    /// Os títulos de lista pintados (como se pintam: MAIÚSCULAS).
+    pub titles: Vec<String>,
+    pub cards: Vec<(CardId, Rect)>,
+    pub lists: Vec<(ListId, Rect)>,
+    /// O cartão com o verso aberto.
+    pub back: Option<CardId>,
+}
+
 /// O id da aba «Kanbans» (o início): nenhum `KanbanId` chega lá (contam de 1).
 pub(crate) const HOME: u64 = u64::MAX;
 
@@ -300,6 +311,20 @@ impl KanbanDocs {
     pub fn probe_list_buttons(&self, id: u64, list: ListId) -> Option<(Rect, Rect, Rect)> {
         let l = self.tabs.iter().find(|t| t.id() == id)?.layout.list(list)?;
         Some((l.add, l.collapse, l.menu))
+    }
+
+    /// ⚠️ SONDA (W4): a vista do elemento `el` do Quadro — os títulos que pintou e os rects dos
+    /// cartões e das listas, em px da VISTA.
+    #[must_use]
+    pub fn probe_canvas(&self, el: u64) -> Option<CanvasProbe> {
+        let c = self.canvas.borrow();
+        let t = c.tabs.get(&ph2d_board_model::ElementId(el))?;
+        Some(CanvasProbe {
+            titles: t.painted.borrow().titles.iter().map(|x| x.1.clone()).collect(),
+            cards: t.layout.lists.iter().flat_map(|l| l.cards.iter().map(|c| (c.id, c.rect))).collect(),
+            lists: t.layout.lists.iter().map(|l| (l.id, l.rect)).collect(),
+            back: t.back.as_ref().map(|b| b.card),
+        })
     }
 
     /// ⚠️ SONDA: as molas ainda se mexem?

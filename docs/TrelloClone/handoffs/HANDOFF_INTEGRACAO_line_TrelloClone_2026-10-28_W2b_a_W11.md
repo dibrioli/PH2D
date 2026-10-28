@@ -20,17 +20,17 @@ Leitor: o agente integrador e a próxima LLM. Plano: [`../01_plano.md`](../01_pl
 | W0–W1 (pré) | pesquisa/plano, decisões do dono, `ph2d-kanban-model` + `FracKey`, `PROJECT_SCHEMA 193→194`, ADR-0195, maquete | `622f11da11` `b30313cebb` `86ab320490` `da655e8075` `a09c623648` `bf893b2729` |
 | W2 | tokens `kanban-*`, `ph2d-app-kanban` (aba), seam tests, fecho/fidelidade | `86a83f07d1` `0deede112f` `c644b6d738` `e0cc013232` `a227acc576` |
 | W2b | títulos de lista em MAIÚSC. 15 px, lista em voo | `b7b46b7555` |
-| W3 | richdoc, kanban-md, kanban-dates (A) · widgets calendar/date_picker/rich_editor (B) · modelo v2 + tracking de letras (C) · verso do cartão + frente + menção + ligações + anexos (D1–D3) · catraca/wants_frame/anexos grandes/`ph2d_app_host::open` (E) | `f94679ce9c` `ba73d150f5` `4771ddc2a5` · `97de715bf7` · `3e5dd5b05a` `6b4ff2373e` · `251b2d2652` `59d6c6828b` `b011d604b1` `3033008f8f` `553bf822e3` `da79404217` `ea80f10a4a` · `2403db62e1` `a0a562322b` `5961b5f80a` `6a80664997` |
-| W4 | `ElementKind::Kanban` no Quadro (Quadro v18, PROTOCOL 12), vista numa `Affine`, Show/Place on board, Open in tab, roda/IME/cursor (v19, PROTOCOL 13), cena 30 | `4f06569b3a` `36d3fd8c1e` `1a59f46c7c` `2603d3023c` `13459e3837` `e8eb96649e` `4cbbbb532e` `f29cef9136` |
+| W3 | richdoc, kanban-md, kanban-dates (A) · widgets calendar/date_picker/rich_editor (B) · modelo v2 + tracking de letras (C) · verso do cartão + frente + menção + ligações + anexos (D1–D3) · catraca/wants_frame/anexos grandes/`ph2d_app_host::open` (E) | `f94679ce9c`(A) `97de715bf7`(B) `3e5dd5b05a`(C) `ea80f10a4a`(D3) `6a80664997`(E) |
+| W4 | `ElementKind::Kanban` no Quadro (Quadro v18, PROTOCOL 12), vista numa `Affine`, Show/Place on board, Open in tab, roda/IME/cursor (v19, PROTOCOL 13), cena 30 | `4f06569b3a` `1a59f46c7c` `13459e3837` `f29cef9136` |
 | W5 | `ph2d-kanban-sync` (LAN+QUIC, loopback 2 processos), `set_session`, retrato em blocos | `258968e864` `7871d1c4a6` `d9e9b202b3` |
-| W6 | desfazer (F), modelo v3 (modelos/cópia/espelhos), `ph2d-kanban-filter`, UI (filtro, `/`, `E`, atalhos), cenas 5–6 | `50426ea408` `0efbd1ed18` `65f3ea9fed` `c6db55359b` `8d9871cba8` |
-| W7 | `ph2d-kanban-views` (Tabela, Calendário mês/semana/Dia/Agenda, Linha do tempo, Painel) | `fb27d29542` `3be4ca777f` `7525ed9173` `b4349d438c` |
+| W6 | desfazer (F), modelo v3 (modelos/cópia/espelhos), `ph2d-kanban-filter`, UI (filtro, `/`, `E`, atalhos), cenas 5–6 | `0efbd1ed18` `65f3ea9fed` `8d9871cba8` |
+| W7 | `ph2d-kanban-views` (Tabela, Calendário mês/semana/Dia/Agenda, Linha do tempo, Painel) | `fb27d29542` `b4349d438c` |
 | W8 | Butler `ph2d-kanban-auto` (modelo v4), `ph2d.kanban.*` Luau (`ph2d-kanban-script`) | `d8ed63cb74` `35373e3520` |
 | W9 | agenda no `KanbanSet` v5, `ph2d-app-planner`, Inbox/My cards/sino/.ics; «To Kanban», séries recorrentes (v7); Planner sem dep. de app-kanban | `1fd42be44d` `b74e72502f` `97f371f9de` `29427ab3c6` |
 | W10 | `ph2d-kanban-import` (Trello JSON, CSV, markdown); `export_csv` anti-injecção de fórmulas | `c1d6f02b14` `56b1bb9ce6` |
-| W11 | `KanbanSet` v6 `ProjectLink`, `ph2d-kanban-links`, canal `ph2d_editor_core::kanban_links`, nota adesiva ↔ cartão | `53883fefd8` `246d58ecfe` `66fc6afca1` `b98af4d1a6` |
-| Ligação J1–J6 | cabeçalho (vistas, Share, presença, filtro fixo), verso+Butler, `ph2d-kanban-hooks` (porta única do gesto), `ph2d-kanban-scenes` + `PH2D_CODE_SMOKE=10`, Import/Export no menu File, sala do Quadro leva Kanbans (`ph2d-kanban://`, reconexão) | `d38bee1f6c` `9c088afccc` `ec4784635d` `efd1e1ac7d` `55ffc8a654` `3d2401eed4` `07051c5317` `a1861d1992` `590f1c8ae6` `02039c9c7a` |
-| R1 (revisor) | `FracKey` só válida, desfazer esvaziado salta, agenda nunca-dispara recusada, religar não dispara o passado, ordenar O(n log n) | `9b23dfbd98` `f2a1692477` `033d8da3eb` `d8fa198708` `df078a6f5b` `7fddaf74ac` `b89fb8d42c` |
+| W11 | `KanbanSet` v6 `ProjectLink`, `ph2d-kanban-links`, canal `ph2d_editor_core::kanban_links`, nota adesiva ↔ cartão | `53883fefd8` `246d58ecfe` `66fc6afca1` |
+| Ligação J1–J6 | cabeçalho (vistas, Share, presença, filtro fixo), verso+Butler, `ph2d-kanban-hooks` (porta única do gesto), `ph2d-kanban-scenes` + `PH2D_CODE_SMOKE=10`, Import/Export no menu File, sala do Quadro leva Kanbans (`ph2d-kanban://`, reconexão) | `d38bee1f6c` `9c088afccc` `efd1e1ac7d` `07051c5317` `590f1c8ae6` `02039c9c7a` |
+| R1 (revisor) | `FracKey` só válida, desfazer esvaziado salta, agenda nunca-dispara recusada, religar não dispara o passado, ordenar O(n log n) | `9b23dfbd98`…`37b83a8c1e` |
 | Fecho/docs | clippy/fmt, ADR-0195 segue o construído, tutorial PDF, T1 (seam do pedido de abrir cartão; sugestões `@`/`#` sem tecto fixo) | `84e4debf44` `6230d6c770` `9bdce8b5bf` `e11d1eb99c` `aa75d50ab1` `00401bbc49` |
 
 ## 3. Crates NOVAS — 16 (contagem por `git diff --name-status c3662cd8e4..HEAD -- 'crates/*/Cargo.toml'`, `A`)
@@ -76,13 +76,12 @@ Leitor: o agente integrador e a próxima LLM. Plano: [`../01_plano.md`](../01_pl
 |---|---|---|---|
 | `jiff` (+`jiff-core`, `jiff-static`, `jiff-tzdb`, `jiff-tzdb-platform`) | 0.2.38 | Unlicense OR MIT | `ph2d-kanban-dates` (e `-views`/`-sync` com `std`); features `tz-system`, `tzdb-zoneinfo`, `tzdb-bundle-platform` |
 | `pulldown-cmark` (+`unicase`) | 0.13.5 | MIT | `ph2d-kanban-md` |
-| `defmt` 1.2.0 / `defmt-macros` / `defmt-parser` | — | MIT OR Apache-2.0 | transitiva (entrou no lock com o `jiff`); confirme a origem |
 | `sha2` 0.10 | já no lock | MIT OR Apache-2.0 | `ph2d-kanban-model` (ids de ficheiro por conteúdo) |
 | `parley` 0.11.1 | já no workspace | Apache-2.0 OR MIT | `ph2d-editor-core` (rich_editor); só o `Cargo.lock` mexeu |
 
 ## 6. Superfície de colisão (ficheiros que outras linhas também tocam)
 
-`Cargo.lock` · `crates/ph2d-i18n/src/{lib,familias,shell_media}.rs` · `crates/ph2d-tokens/src/{color,derive,lib,skin_body}.rs` · `crates/ph2d-editor-core` (55 ficheiros: `documents.rs` `SharedKanbans`, `DocumentSurface::{family_commands,family_command,chrome_over,wants_frame}`, widgets `calendar`/`date_picker`/`rich_editor`, `kanban_links`, `board_live.rs`) · `shells/desktop` (18 ficheiros: `project_schema.rs`, `project.rs`, `render_loop/fase_*`, testes `it/`) · `crates/ph2d-board-{model,sync,net,render,edit,excalidraw,video,geom}` · `crates/ph2d-app-board` · `crates/ph2d-app-code` · `crates/ph2d-script` + `runtime/luau` (binding `ph2d.kanban`) · `crates/ph2d-app-{components,macros,host}` · `ph2d-panel-{macros,tokens,registry-init}` · `ph2d-text` (espaçamento entre letras, `6b4ff2373e`) · `ph2d-code-help`.
+`Cargo.lock` · `crates/ph2d-i18n/src/{lib,familias,shell_media}.rs` · `crates/ph2d-tokens/src/{color,derive,lib,skin_body}.rs` · `crates/ph2d-editor-core` (55 ficheiros: `documents.rs` `SharedKanbans`, `DocumentSurface::{family_commands,family_command,chrome_over,wants_frame}`, widgets `calendar`/`date_picker`/`rich_editor`, `kanban_links`, `board_live.rs`) · `shells/desktop` (18 ficheiros: `project_schema.rs`, `project.rs`, `render_loop/fase_*`, testes `it/`) · `crates/ph2d-board-{model,sync,net,render,edit,excalidraw,video,geom}` · `crates/ph2d-app-board` · `crates/ph2d-app-code` · `crates/ph2d-script` + `runtime/luau` (binding `ph2d.kanban`) · `crates/ph2d-app-{components,macros,host}` · `ph2d-panel-{macros,tokens,registry-init}` · `ph2d-text` · `ph2d-code-help`.
 
 O que um merge pode partir:
 - **Quadro** (MiroClone W24+): `FORMAT_VERSION`/`PROTOCOL`/`ElementKind` — a variante `Kanban` entra no enum; um segundo merge de variante exige renumerar os dois e as fixtures de bytes.
@@ -99,7 +98,7 @@ O que um merge pode partir:
 - **A suíte COMPLETA NÃO foi corrida na linha** (ordem do dono 23/10): só testes por NOME, clippy das crates estáveis (`84e4debf44`, `6230d6c770`) e fmt. `nextest-impacted` + clippy `--all-targets` + `ship.sh` são do integrador. Precisam de `PH2D_SUITE="motivo: crate NOVA …"` ou `fecho`.
 - **Flakes de carga conhecidos** (confirme com `loadavg` antes de culpar um commit; [FLAKES_DE_CARGA](../../DevOps/FLAKES_DE_CARGA.md)): profundidade da timeline, traço de máscara, timeout do painter (fora do Kanban; herdados do W2). Medições da linha tomadas a `load` 28–33 são cota SUPERIOR.
 - **Portões vermelhos conhecidos** no HEAD (23/25 UI/arquitectura verdes): `app-board → app-kanban` (família → família, cura = J7/porta no `ph2d-kanban-sync`, §9). O `ph2d-app-planner` já não depende do `ph2d-app-kanban` (`29427ab3c6`).
-- **Memória/docs**: dono 28/10 — W2b..W11 em loop autónomo, smoke só no fim (`project_kanban_autonomous_loop_owner_order_2026_10_28`). Decisões de PRODUTO tomadas sem o dono (para rever no smoke): [`DECISOES_SEM_O_DONO.md`](../loop/DECISOES_SEM_O_DONO.md). Medições (`MAX_*` e tectos): [`MEDICOES.md`](../loop/MEDICOES.md).
+- **Docs**: decisões de PRODUTO tomadas sem o dono (para rever no smoke): [`DECISOES_SEM_O_DONO.md`](../loop/DECISOES_SEM_O_DONO.md). Medições (`MAX_*` e tectos): [`MEDICOES.md`](../loop/MEDICOES.md).
 
 ## 8. Prova de fecho e smokes
 
@@ -122,11 +121,7 @@ Errado = tela vazia, cartão sem título, ou o quadro vazio ao abrir um projecto
 - J4: `is_link` do Join do Quadro aceitar `KANBAN_SCHEME` (editor-core `board_live.rs`); avatares esmaecidos ao reconectar; Quadro convidado com retrocesso exponencial; presença do Kanban dentro da sessão do Quadro; histórico de versões do Quadro guarda ids locais.
 - W8 L2: mover `short_film`/`sky_png` para crate baixa (feito em `ph2d-kanban-scenes`); app correr scripts Kanban com handlers `on()` activos; UI do Butler completa.
 - W11: fiação por fazer — `frame.rs` `serve(hero)`; menu do Quadro «Convert to card»; shell `publish_scene` + drenar `take(Scene/Timeline)`; app-code `take(Script)→CodeDocs::open`; Macros `take(Macro)`; secção «Scene object» no verso; nota nova do cartão no tamanho do texto.
-- W7: `back/dates.rs` deve usar o `datepick.rs` das views (uma lei).
-- W2b: tracking das maiúsculas (ligar `paint_text.rs`/`text_elide.rs`/`list_title`).
-- W4: desfazer «inserir Kanban» deixa o documento vazio órfão (decidir: apagar se intocado); medir limiar do LOD (feito na cena 30; reconferir); `board_nav.rs` = 700 linhas (no tecto).
-- W6: teste no elemento do Quadro; painel do filtro cortava o topo (J1 curou — reconferir em foto).
-- W3: gancho «quer outro quadro» para `front::cover::pending()`.
+- W4: desfazer «inserir Kanban» deixa o documento vazio órfão (decidir); `board_nav.rs` = 700 linhas (no tecto). Menores: tracking das maiúsculas nos títulos; `back/dates.rs` → `datepick.rs` das views; gancho `front::cover::pending()`.
 - Fecho batched por fazer: `cargo fmt`/clippy `--all-targets` sobre as crates novas de W7–W11 + revisor final.
 - Smoke FINAL do dono: do PDF; decisões sem o dono (tabela acima) por rever.
 

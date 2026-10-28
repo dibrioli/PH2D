@@ -39,7 +39,18 @@ pub(super) fn format_rows(
     info: &InspectorCameraInfo,
     seccao: ph2d_editor_core::property_row::Seccao,
 ) -> f32 {
-    let mut cur_y = format_row(scene, text_system, theme, hit_index, store, x, w, y, info, seccao);
+    let mut cur_y = format_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        y,
+        info,
+        seccao,
+    );
     if info.format.preset == GamePreset::Custom {
         cur_y = super::rows::fields_row(
             scene,

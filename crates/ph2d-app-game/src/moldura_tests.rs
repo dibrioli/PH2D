@@ -122,10 +122,7 @@ fn as_alcas_dos_limites_nunca_invertem() {
     let (min, max) = m.limites.expect("limites");
     let longe = 1000.0;
     for (i, c) in cantos(min, max).into_iter().enumerate() {
-        assert_eq!(
-            alca_em(&m, c, 0.1, false),
-            Some(Alca::LimiteCanto(i as u8))
-        );
+        assert_eq!(alca_em(&m, c, 0.1, false), Some(Alca::LimiteCanto(i as u8)));
         let a = Arrasto::novo(&m, Alca::LimiteCanto(i as u8), c, 1.0, m.pose);
         let alvo = [
             if c[0] == min[0] { longe } else { -longe },
@@ -135,7 +132,10 @@ fn as_alcas_dos_limites_nunca_invertem() {
             panic!("o canto dos limites escreve os limites");
         };
         for e in 0..2 {
-            assert!(hi[e] - lo[e] >= LIMITE_VAO_MIN - 1e-4, "canto {i}: {lo:?} {hi:?}");
+            assert!(
+                hi[e] - lo[e] >= LIMITE_VAO_MIN - 1e-4,
+                "canto {i}: {lo:?} {hi:?}"
+            );
         }
     }
     let bordas = [
@@ -145,16 +145,16 @@ fn as_alcas_dos_limites_nunca_invertem() {
         ([0.0, max[1]], [0.0, -longe]),
     ];
     for (i, (p, d)) in bordas.into_iter().enumerate() {
-        assert_eq!(
-            alca_em(&m, p, 0.1, false),
-            Some(Alca::LimiteBorda(i as u8))
-        );
+        assert_eq!(alca_em(&m, p, 0.1, false), Some(Alca::LimiteBorda(i as u8)));
         let a = Arrasto::novo(&m, Alca::LimiteBorda(i as u8), p, 1.0, m.pose);
         let Escrita::Limites(lo, hi) = arrastar(&a, [p[0] + d[0], p[1] + d[1]]) else {
             panic!("a borda escreve os limites");
         };
         for e in 0..2 {
-            assert!(hi[e] - lo[e] >= LIMITE_VAO_MIN - 1e-4, "borda {i}: {lo:?} {hi:?}");
+            assert!(
+                hi[e] - lo[e] >= LIMITE_VAO_MIN - 1e-4,
+                "borda {i}: {lo:?} {hi:?}"
+            );
         }
     }
     let meio = [5.0, 5.0];

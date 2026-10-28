@@ -292,8 +292,6 @@ pub(crate) struct App {
     /// ⚠️ **Ligado, ele toma o pan E o zoom** — uma câmera de jogo é dona do enquadramento inteiro,
     /// e ficar só com o centro deixaria a roda a lutar contra ela todo quadro.
     pub(crate) game_camera_preview: bool,
-    /// A câmera no canvas (plano GEF 17): as molduras do quadro e o arrasto em curso.
-    pub(crate) camera_no_canvas: ph2d_app_game::moldura::CameraNoCanvas,
     /// O smoke da UI viva já montou (`PH2D_UI_MOTION_SMOKE`).
     pub(crate) ui_motion_smoke_done: bool,
     /// O smoke do time-scale de seleção (joias §4) já rodou. `PH2D_TIMESCALE_SMOKE=1`.

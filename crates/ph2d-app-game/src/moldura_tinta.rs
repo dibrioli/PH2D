@@ -134,12 +134,7 @@ fn retangulo(a: (f64, f64), b: (f64, f64)) -> ph2d_vector::Rect {
 }
 
 fn alca(cena: &mut VectorScene, c: (f64, f64), dentro: Color, borda: Color) {
-    let r = ph2d_vector::Rect::new(
-        c.0 - ALCA_PX,
-        c.1 - ALCA_PX,
-        c.0 + ALCA_PX,
-        c.1 + ALCA_PX,
-    );
+    let r = ph2d_vector::Rect::new(c.0 - ALCA_PX, c.1 - ALCA_PX, c.0 + ALCA_PX, c.1 + ALCA_PX);
     let s = cena.inner_mut();
     s.fill(Fill::NonZero, Affine::IDENTITY, dentro, None, &r);
     s.stroke(&Stroke::new(TRACO_PX[0]), Affine::IDENTITY, borda, None, &r);

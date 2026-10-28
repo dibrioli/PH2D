@@ -121,10 +121,7 @@ pub(crate) fn populate_camera(store: &mut WidgetStore) {
             },
         );
     }
-    for (id, value, lo, hi, step) in NUMEROS
-        .into_iter()
-        .chain([MAX_Y, CUSTOM_W, CUSTOM_H])
-    {
+    for (id, value, lo, hi, step) in NUMEROS.into_iter().chain([MAX_Y, CUSTOM_W, CUSTOM_H]) {
         store.register(
             id,
             InteractiveState::NumberInput {

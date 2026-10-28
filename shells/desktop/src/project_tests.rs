@@ -15,9 +15,8 @@ use ph2d_vec_scene::{VecScene, rectangle};
 /// `App::new()` é headless por construção: no winit 0.30 a janela nasce no `resumed`, então
 /// `window`/`host`/`gfx` começam em `None` e é assim que o app roda o seu primeiro frame de
 /// verdade. Todo passo do load que precisa de `gfx` (mundo, atlas, Painter, grafo) já degrada
-/// para no-op — de propósito, desde que foi escrito. O que sobra é exatamente a decisão de
-/// SESSÃO, que é o que estes gates observam.
-fn headless_app() -> crate::App {
+/// para no-op, de propósito. O que sobra é a decisão de SESSÃO, que é o que estes gates observam.
+pub(super) fn headless_app() -> crate::App {
     let app = crate::App::new();
     assert!(
         app.gfx.is_none() && app.window.is_none(),
@@ -586,10 +585,6 @@ mod scripts;
 /// **As MARCAS DO ARTISTA no arquivo** (Macros W9, v192) — filho pela mesma razão.
 #[path = "project_marcas_tests.rs"]
 mod marcas;
-
-/// **O FORMATO DO JOGO no arquivo** (plano GEF 17, v198) — filho pela mesma razão.
-#[path = "project_jogo_tests.rs"]
-mod jogo;
 
 /// **O que um load faz com a CORRIDA GRAVADA** (W17) — filho (`#[path]`) pelo
 /// teto de LOC do HR-18, e FILHO e não irmão porque as fixtures desta suíte

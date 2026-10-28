@@ -12,15 +12,7 @@ impl crate::App {
         viewport: EditorRect,
     ) {
         if self.no_palco() {
-            // As tarjas do formato do jogo (plano GEF 17): no palco o canvas é a janela inteira.
-            if let Some(gfx) = self.gfx.as_mut()
-                && let Some(hero) = gfx.hero_screen.as_ref()
-            {
-                let w = gfx.surface.size();
-                let canvas = [0.0, 0.0, w.width as f32, w.height as f32];
-                let caixa = ph2d_app_game::encaixe::caixa_do_jogo(canvas, hero.project.game_format);
-                ph2d_app_game::moldura_tinta::tarjas(&mut gfx.vector_scene, canvas, caixa, gfx.theme);
-            }
+            self.tarjas_do_palco();
             return;
         }
         // O `gfx` re-derivado; os guardas do quadro já correram na `fase_chrome_clock`.
@@ -157,7 +149,7 @@ impl crate::App {
             );
             // ⭐ **A CÂMERA no canvas** (plano GEF 17): o ícone, a moldura do jogo, o rótulo, os cantos e os limites.
             ph2d_app_game::moldura_tinta::desenhar(
-                &self.camera_no_canvas.molduras,
+                &self.undo.camera_no_canvas.molduras,
                 hero.project.camera_frame,
                 hero.project.display_unit,
                 hero.project.pixels_per_meter,

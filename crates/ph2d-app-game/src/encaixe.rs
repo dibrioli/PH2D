@@ -11,7 +11,7 @@
 #[must_use]
 pub fn caixa_do_jogo(canvas: [f32; 4], formato: ph2d_editor_core::GameFormat) -> [f32; 4] {
     let a = formato.aspect();
-    if canvas[2] <= 0.0 || canvas[3] <= 0.0 || !(a > 0.0) {
+    if canvas[2] <= 0.0 || canvas[3] <= 0.0 || a.is_nan() || a <= 0.0 {
         return canvas;
     }
     let (w, h) = if canvas[2] / canvas[3] > a {

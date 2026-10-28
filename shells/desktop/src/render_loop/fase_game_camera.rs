@@ -41,7 +41,10 @@ impl crate::App {
             let c = c
                 .filter(|r| r.w > 0.0 && r.h > 0.0)
                 .map_or(full, |r| [r.x, r.y, r.w, r.h]);
-            ([full[2], full[3]], ph2d_app_game::encaixe::caixa_do_jogo(c, formato))
+            (
+                [full[2], full[3]],
+                ph2d_app_game::encaixe::caixa_do_jogo(c, formato),
+            )
         };
         let aspecto = formato.aspect();
 
@@ -120,7 +123,7 @@ impl crate::App {
         });
         // ⭐ **A câmera no canvas** (plano GEF 17): as molduras deste quadro, a activa com a MESMA vista.
         let selecao = hero_screen.as_ref().and_then(|h| h.gizmo.selection);
-        self.camera_no_canvas.molduras = ph2d_app_game::moldura::molduras(
+        self.undo.camera_no_canvas.molduras = ph2d_app_game::moldura::molduras(
             sim.world_mut(),
             vista_da_cena.map(|v| v.center),
             aspecto,

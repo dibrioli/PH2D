@@ -170,6 +170,11 @@ fn the_load_installs_the_project_settings_from_the_file() {
         "o install tem de receber as settings do ARQUIVO, nao um default — \
          instalar um default e o mesmo que nao instalar, com mais linhas"
     );
+    assert!(
+        src.contains("project_settings::install_jogo(&mut hero.project, &file.jogo)"),
+        "o load precisa instalar o FORMATO DO JOGO do arquivo (plano GEF 17) — sem isto o \
+         projecto Game Boy reabre em 16:9"
+    );
 }
 
 /// **O load instala as settings DEPOIS do `rebuild()` — arch-gate sobre o fonte.**
@@ -203,3 +208,7 @@ fn the_load_installs_the_world_settings_after_the_rebuild() {
          anterior, em silencio"
     );
 }
+
+/// **O FORMATO DO JOGO no arquivo** (plano GEF 17, v198) — filho pelo tecto de LOC do pai.
+#[path = "project_jogo_tests.rs"]
+mod jogo;

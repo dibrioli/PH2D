@@ -208,6 +208,7 @@ pub(crate) use ph2d_app_vec::group_gizmo_view;
 // cena com componentes de OUTRA família (`ph2d_app_components`), e uma família a depender de outra
 // família é o que o `architecture_no_dependency_climbs_a_layer` proíbe. *O sujeito é do vector; a
 // pergunta que os testes fazem é de COMPOSIÇÃO, e composição mora na shell.*
+mod camera_no_canvas;
 #[cfg(test)]
 #[path = "group_gizmo_view_tests.rs"]
 mod group_gizmo_view_tests;
@@ -240,8 +241,6 @@ mod input_map_drag;
 mod inspector_presence_tests;
 mod integration;
 mod janela_do_jogo;
-/// A câmera no canvas — o fio do ponteiro (plano GEF 17).
-mod camera_no_canvas;
 mod keymap;
 /// A cena de smoke do Knot (o entrelace celta over/under) — irmão de `build_smoke`.
 mod knot_smoke;
@@ -755,7 +754,6 @@ impl App {
             signal_smoke_done: false,
             components: crate::app_state::ComponentsShell::default(),
             game_camera_preview: false,
-            camera_no_canvas: Default::default(),
             ui_motion_smoke_done: false,
             timescale_smoke_done: false,
             stagger_smoke_done: false,

@@ -133,8 +133,7 @@ impl GameFormat {
     #[must_use]
     pub fn resolution(self) -> [u32; 2] {
         self.preset.resolution().unwrap_or_else(|| {
-            self.custom
-                .map(|v| v.clamp(CUSTOM_MIN_PX, CUSTOM_MAX_PX)) // CLAMP-OK: tecto = textura do wgpu
+            self.custom.map(|v| v.clamp(CUSTOM_MIN_PX, CUSTOM_MAX_PX)) // CLAMP-OK: tecto = textura do wgpu
         })
     }
 

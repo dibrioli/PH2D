@@ -36,8 +36,8 @@ use ph2d_ecs::{
     GameCamera, SimWorld, World,
 };
 use ph2d_editor_core::{
-    CameraFieldEdit, CameraFrameShow, GameFormat, InspectorCameraFollow, InspectorCameraInfo, InspectorCameraLimits,
-    InspectorGameCamera,
+    CameraFieldEdit, CameraFrameShow, GameFormat, InspectorCameraFollow, InspectorCameraInfo,
+    InspectorCameraLimits, InspectorGameCamera,
 };
 
 use ph2d_inspector_ordering::queue_set;

@@ -150,13 +150,18 @@ fn format_click(
         .position(|&o| o == id)
     {
         // ⚠️ Fecha o popover e NÃO escreve o `selected_index` — a escolha é do snapshot.
-        if let Some(InteractiveState::Dropdown { open, .. }) =
-            host.store_mut().get_mut(crate::ids::INSP_CAMERA_FORMAT_PICK)
+        if let Some(InteractiveState::Dropdown { open, .. }) = host
+            .store_mut()
+            .get_mut(crate::ids::INSP_CAMERA_FORMAT_PICK)
         {
             *open = false;
         }
         demote_button(host, id);
-        push(host, bits, CameraFieldEdit::Format(u8::try_from(i).unwrap_or(0)));
+        push(
+            host,
+            bits,
+            CameraFieldEdit::Format(u8::try_from(i).unwrap_or(0)),
+        );
         return true;
     }
     if let Some(i) = crate::ids::INSP_CAMERA_FRAME.iter().position(|&o| o == id) {

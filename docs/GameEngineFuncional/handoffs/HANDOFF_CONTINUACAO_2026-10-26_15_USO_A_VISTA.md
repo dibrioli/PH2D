@@ -272,3 +272,10 @@ metros ⇒ 2 vermelhos · Width escrita em metros ⇒ vermelho · memória ignor
 Fotos (`fotos_15/`): `volta_do_dono_campos` (as linhas Use/Width/Height da rajada: Repeated 1 × 1 → Still →
 Animated → Repeated 1 × 1), `volta_do_dono_passo4`, `player_repetido` e `memoria_repetida` (Width 3 · Height 1 =
 três cópias da folha) refeitas.
+
+## Dono 27/10: a animada sem a folha com as células · **smoke OK** (cópias + animada)
+
+`paint_sheet_thumb` removido (`156b239447`): em Animated só H/V Frames, Show Sheet e a secção Animation. Foto
+`uso_animada` refeita. **Smoke do dono 27/10: OK** (Repeated 1 × 1 → Width 3 → Still → Animated → Repeated
+Width 3; a animada sem a grelha). PRÓXIMO: o 4.º uso **Region** — [plano 16](../16_uso_region_plano.md)
+(decisões do dono lá dentro).

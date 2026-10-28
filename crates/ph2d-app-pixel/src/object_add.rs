@@ -5,7 +5,7 @@
 use ph2d_ecs::SimWorld;
 use ph2d_editor_core::object_add::{AddEntry, AddGroup};
 use ph2d_editor_core::pixel_panel::{NewSpriteBackground, NewSpriteChoice, NewSpriteMode};
-use ph2d_pixel_core::{Background, ColorMode, NewSprite};
+use ph2d_pixel_core::{Background, ColorMode, NewSprite, Op, Patch, Rect, apply};
 
 use crate::PixelApp;
 
@@ -54,6 +54,48 @@ pub fn new_sprite(c: NewSpriteChoice) -> NewSprite {
     }
 }
 
+/// **Paste as New Sprite**: drena o recorte pedido e nasce um objecto do tamanho dele, com o modo
+/// e a paleta dele, fundo transparente e o recorte em (0, 0) — `None` sem pedido. O documento novo
+/// nasce sem passos de desfazer (é o conteúdo do nascimento, como o do Aseprite).
+pub fn born_from_paste(
+    sim: &mut SimWorld,
+    app: &mut PixelApp,
+    spawn_root: impl FnOnce(&mut SimWorld, &str) -> u64,
+) -> Option<Result<u64, &'static str>> {
+    let c = app.nasce.take()?;
+    let spec = NewSprite {
+        width: c.rect.w,
+        height: c.rect.h,
+        mode: c.mode,
+        background: Background::Transparent,
+    };
+    let Ok(key) = app.create(spec) else {
+        return Some(Err(ph2d_i18n::tr("object_add.not_born")));
+    };
+    if let Some(doc) = app.docs.get_mut(&key) {
+        let s = &mut doc.sprite;
+        let (layer, frame) = (s.layers()[0].id, s.frames()[0].id);
+        let r = Rect::new(0, 0, c.rect.w, c.rect.h);
+        let palette = Op::Palette {
+            colors: c.palette,
+            transparent: c.transparent,
+        };
+        let patch = Op::Patch(Patch {
+            layer,
+            frame,
+            bbox: Some(r),
+            rect: r,
+            pixels: c.data,
+        });
+        let paleta_ok = c.mode != ColorMode::Indexed || apply(s, palette).is_ok();
+        if !paleta_ok || apply(s, patch).is_err() {
+            app.docs.remove(&key);
+            return Some(Err(ph2d_i18n::tr("object_add.not_born")));
+        }
+    }
+    Some(spawn_doc(sim, app, key, spawn_root))
+}
+
 /// Cria o objecto desta entrada com os valores por omissão, sem diálogo (o caminho dos testes e do
 /// smoke) — `None` se a entrada não é desta família.
 pub fn add(
@@ -78,6 +120,16 @@ pub fn spawn(
     let Ok(key) = app.create(spec) else {
         return Err(ph2d_i18n::tr("object_add.not_born"));
     };
+    spawn_doc(sim, app, key, spawn_root)
+}
+
+/// O objecto do documento `key` já criado; pede o Draw para ele.
+fn spawn_doc(
+    sim: &mut SimWorld,
+    app: &mut PixelApp,
+    key: u32,
+    spawn_root: impl FnOnce(&mut SimWorld, &str) -> u64,
+) -> Result<u64, &'static str> {
     let bits = spawn_root(sim, PIXEL_SPRITE.key.tr());
     let ent =
         ph2d_ecs::Entity::try_from_bits(bits).and_then(|e| sim.world_mut().get_entity_mut(e).ok());

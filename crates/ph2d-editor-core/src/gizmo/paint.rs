@@ -4,7 +4,7 @@
 
 use super::drag::{GizmoDragKind, GizmoHit, GizmoTarget};
 use super::hit::{gizmo_kind_for_id, ids};
-use super::paint_geom::{corners_screen, midpoint, paint_oriented_bbox, rotate_rects};
+use super::paint_geom::{corners_screen, midpoint, paint_oriented_bbox, rotate_rects, skew_rects};
 use crate::interaction::HitIndex;
 use crate::paint::{fill_rounded_rect, resolve, stroke_rounded_rect};
 use crate::zones::Rect;
@@ -177,17 +177,31 @@ pub fn paint_sprite_gizmo(
 /// ⭐ **A alça do gizmo de sprite sob o ponto de ecrã `(x, y)`** — a de [`paint_sprite_gizmo_with`]
 /// por ELE próprio (os mesmos rects, a mesma ordem): para quem tem o próprio despacho do ponteiro
 /// (o Pixel Art, ADR-0192 §12) e não regista no `HitIndex` do chrome.
+/// `skew` = com as zonas de inclinar ([`paint_sprite_gizmo_skewing`]).
 #[must_use]
-pub fn sprite_gizmo_hit_at(view: &GizmoView, body: bool, x: f32, y: f32) -> Option<NodeId> {
+pub fn sprite_gizmo_hit_at(
+    view: &GizmoView,
+    body: bool,
+    skew: bool,
+    x: f32,
+    y: f32,
+) -> Option<NodeId> {
     let mut hits = HitIndex::new();
-    paint_sprite_gizmo_with(
-        &mut VectorScene::new(),
-        view,
-        Theme::default(),
-        &mut hits,
-        body,
-    );
+    let mut scene = VectorScene::new();
+    paint_box(&mut scene, view, Theme::default(), &mut hits, body, skew);
     hits.hit(x, y)
+}
+
+/// [`paint_sprite_gizmo_with`] com as 4 zonas de INCLINAR fora do meio de cada lado (o Pixel Art):
+/// com o cursor numa delas a alça do lado pinta-se losango, como a do canto vira círculo ao rodar.
+pub fn paint_sprite_gizmo_skewing(
+    scene: &mut VectorScene,
+    view: &GizmoView,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    body: bool,
+) {
+    paint_box(scene, view, theme, hit_index, body, true);
 }
 
 /// [`paint_sprite_gizmo`] com o CORPO opcional: `body = false` (F10, o modo Forma da ferramenta
@@ -199,6 +213,17 @@ pub fn paint_sprite_gizmo_with(
     theme: Theme,
     hit_index: &mut HitIndex,
     body: bool,
+) {
+    paint_box(scene, view, theme, hit_index, body, false);
+}
+
+fn paint_box(
+    scene: &mut VectorScene,
+    view: &GizmoView,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    body: bool,
+    skew: bool,
 ) {
     // The 4 corners rotated around the bbox center and projected (`paint_geom`).
     let corners_s = corners_screen(view);
@@ -226,6 +251,19 @@ pub fn paint_sprite_gizmo_with(
         1.5,
         resolve(ColorToken::Selection, theme),
     );
+
+    // As zonas de inclinar antes das de rodar: numa caixa pequena, onde se tocam, roda-se.
+    let skew_rects = skew.then(|| skew_rects(view, corners_s));
+    for (id, r) in skew_rects.iter().flatten() {
+        hit_index.register(*id, *r);
+    }
+    let over_skew = view.cursor_screen.and_then(|(cx, cy)| {
+        let r = skew_rects
+            .iter()
+            .flatten()
+            .find(|(_, r)| r.contains(cx, cy));
+        r.map(|(id, _)| *id)
+    });
 
     // 4 rotate-hover hit rects, registered BEFORE the corner handle
     // so the corner handle's hit takes priority on overlap — each sits
@@ -256,10 +294,10 @@ pub fn paint_sprite_gizmo_with(
         (ids::GIZMO_HANDLE_BR, br[0], br[1]),
     ];
     let edges = [
-        (ids::GIZMO_HANDLE_T, mid_top[0], mid_top[1]),
-        (ids::GIZMO_HANDLE_R, mid_right[0], mid_right[1]),
-        (ids::GIZMO_HANDLE_B, mid_bottom[0], mid_bottom[1]),
-        (ids::GIZMO_HANDLE_L, mid_left[0], mid_left[1]),
+        (ids::GIZMO_HANDLE_T, ids::GIZMO_SKEW_T, mid_top),
+        (ids::GIZMO_HANDLE_R, ids::GIZMO_SKEW_R, mid_right),
+        (ids::GIZMO_HANDLE_B, ids::GIZMO_SKEW_B, mid_bottom),
+        (ids::GIZMO_HANDLE_L, ids::GIZMO_SKEW_L, mid_left),
     ];
     let handle_fill = resolve(ColorToken::Accent, theme);
     let handle_stroke = resolve(ColorToken::BorderEmph, theme);
@@ -304,10 +342,14 @@ pub fn paint_sprite_gizmo_with(
             stroke_rounded_rect(scene, r, 2.0, 1.0, handle_stroke);
         }
     }
-    // Edge midpoints stay as squares — scale-only, never rotate.
-    for (id, cx, cy) in edges.iter() {
+    // Edge midpoints stay as squares (scale) — a diamond when the cursor is in their skew zone.
+    for (id, skew_id, [cx, cy]) in edges {
         let r = Rect::new(cx - half, cy - half, HANDLE_SIZE_PX, HANDLE_SIZE_PX);
-        hit_index.register(*id, r);
+        hit_index.register(id, r);
+        if over_skew == Some(skew_id) {
+            paint_diamond(scene, [cx, cy], half, handle_fill, handle_stroke);
+            continue;
+        }
         fill_rounded_rect(scene, r, 2.0, handle_fill);
         // FRAME-RAW-OK: as ALCAS de um gizmo sobre o CANVAS: o contorno e' o que as separa da imagem por baixo
         stroke_rounded_rect(scene, r, 2.0, 1.0, handle_stroke);
@@ -367,6 +409,30 @@ pub fn paint_sprite_gizmo_with(
             &pivot_circle,
         );
     }
+}
+
+/// A alça de lado em losango: a deixa de «vais inclinar».
+fn paint_diamond(
+    scene: &mut VectorScene,
+    c: [f32; 2],
+    half: f32,
+    fill: VelloColor,
+    stroke: VelloColor,
+) {
+    let (x, y, h) = (f64::from(c[0]), f64::from(c[1]), f64::from(half));
+    let mut path = ph2d_vector::BezPath::new();
+    path.move_to((x, y - h));
+    path.line_to((x + h, y));
+    path.line_to((x, y + h));
+    path.line_to((x - h, y));
+    path.close_path();
+    let a = ph2d_vector::Affine::IDENTITY;
+    scene
+        .inner_mut()
+        .fill(ph2d_vector::Fill::NonZero, a, fill, None, &path);
+    scene
+        .inner_mut()
+        .stroke(&ph2d_vector::Stroke::new(1.0), a, stroke, None, &path);
 }
 
 /// Onda 2: paint a non-interactive gizmo outline — just the rotated

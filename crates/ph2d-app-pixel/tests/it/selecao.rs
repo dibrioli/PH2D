@@ -48,18 +48,18 @@ const CTRL: Mods = Mods {
     ctrl: true,
 };
 
-struct Palco {
-    app: PixelApp,
-    sim: SimWorld,
-    cam: Camera2d,
-    hero: HeroScreen,
-    toasts: ToastQueue,
-    bits: u64,
-    key: u32,
+pub(crate) struct Palco {
+    pub(crate) app: PixelApp,
+    pub(crate) sim: SimWorld,
+    pub(crate) cam: Camera2d,
+    pub(crate) hero: HeroScreen,
+    pub(crate) toasts: ToastQueue,
+    pub(crate) bits: u64,
+    pub(crate) key: u32,
 }
 
 impl Palco {
-    fn novo() -> Self {
+    pub(crate) fn novo() -> Self {
         let mut app = PixelApp::default();
         let mut sim = SimWorld::new();
         assert!(
@@ -85,13 +85,13 @@ impl Palco {
     }
 
     /// A cena 9 sem selecção nem história (um palco limpo para um gesto).
-    fn limpo() -> Self {
+    pub(crate) fn limpo() -> Self {
         let mut p = Self::novo();
         p.pede(PixelRequest::Select(S::Deselect));
         p
     }
 
-    fn quadro(&mut self) -> PixelPanelInfo {
+    pub(crate) fn quadro(&mut self) -> PixelPanelInfo {
         panel::frame(
             &mut self.app,
             self.sim.world(),
@@ -100,12 +100,12 @@ impl Palco {
         )
     }
 
-    fn pede(&mut self, r: PixelRequest) -> PixelPanelInfo {
+    pub(crate) fn pede(&mut self, r: PixelRequest) -> PixelPanelInfo {
         self.app.pede(r);
         self.quadro()
     }
 
-    fn tecla_com(&mut self, k: KeyCode, ctrl: bool, shift: bool) -> Option<KeyAnswer> {
+    pub(crate) fn tecla_com(&mut self, k: KeyCode, ctrl: bool, shift: bool) -> Option<KeyAnswer> {
         let a = input::key(
             &mut self.app,
             self.sim.world(),
@@ -118,32 +118,32 @@ impl Palco {
         a
     }
 
-    fn tecla(&mut self, k: KeyCode, ctrl: bool, shift: bool) {
+    pub(crate) fn tecla(&mut self, k: KeyCode, ctrl: bool, shift: bool) {
         assert!(
             self.tecla_com(k, ctrl, shift).is_some(),
             "{k:?} é da família"
         );
     }
 
-    fn sprite(&self) -> &Sprite {
+    pub(crate) fn sprite(&self) -> &Sprite {
         &self.app.doc(self.key).expect("doc").sprite
     }
 
-    fn passos(&self) -> usize {
+    pub(crate) fn passos(&self) -> usize {
         self.app.doc(self.key).expect("doc").history.undo_len()
     }
 
-    fn rgba(&self, x: i32, y: i32) -> [u8; 4] {
+    pub(crate) fn rgba(&self, x: i32, y: i32) -> [u8; 4] {
         let d = self.app.doc(self.key).expect("doc");
         d.sprite
             .rgba_of_value(d.sprite.value_at((d.layer, d.frame), x, y))
     }
 
-    fn mascara(&self) -> Option<Mask> {
+    pub(crate) fn mascara(&self) -> Option<Mask> {
         self.sprite().mask().cloned()
     }
 
-    fn press(&mut self, c: (i32, i32), m: Mods) {
+    pub(crate) fn press(&mut self, c: (i32, i32), m: Mods) {
         let p = at(&self.app, &self.sim, &self.cam, self.bits, c.0, c.1);
         let r = input::press(
             &mut self.app,
@@ -155,7 +155,7 @@ impl Palco {
         assert_eq!(r, Press::Done);
     }
 
-    fn move_to(&mut self, c: (i32, i32), m: Mods) {
+    pub(crate) fn move_to(&mut self, c: (i32, i32), m: Mods) {
         let p = at(&self.app, &self.sim, &self.cam, self.bits, c.0, c.1);
         assert!(input::moved(
             &mut self.app,
@@ -165,30 +165,30 @@ impl Palco {
         ));
     }
 
-    fn release(&mut self) {
+    pub(crate) fn release(&mut self) {
         // (um premir que acabou no próprio premir — a varinha, o clique que assenta — larga em vazio)
         let _ = input::release(&mut self.app);
         self.quadro();
     }
 
-    fn arrasta(&mut self, a: (i32, i32), b: (i32, i32), m: Mods) {
+    pub(crate) fn arrasta(&mut self, a: (i32, i32), b: (i32, i32), m: Mods) {
         self.press(a, m);
         self.move_to(b, m);
         self.release();
     }
 
-    fn ferramenta(&mut self, t: Tool) {
+    pub(crate) fn ferramenta(&mut self, t: Tool) {
         self.pede(PixelRequest::Tool(t));
     }
 
-    fn opcoes(&mut self, f: impl FnOnce(&mut PixelOptions)) {
+    pub(crate) fn opcoes(&mut self, f: impl FnOnce(&mut PixelOptions)) {
         let mut o = self.app.options;
         f(&mut o);
         self.pede(PixelRequest::Options(Box::new(o)));
     }
 
     /// UM passo, e o Ctrl+Z devolve o documento de antes (células E selecção).
-    fn um_passo_que_desfaz(&mut self, o_que: &str, f: impl FnOnce(&mut Self)) {
+    pub(crate) fn um_passo_que_desfaz(&mut self, o_que: &str, f: impl FnOnce(&mut Self)) {
         let antes = self.sprite().clone();
         let n = self.passos();
         f(self);
@@ -760,7 +760,7 @@ fn the_canvas_size_dialog_anchor_law_is_the_cores() {
 
 impl Palco {
     /// O ponto de ecrã do CANTO `(x, y)` das células (não o centro).
-    fn canto(&self, x: f64, y: f64) -> (f32, f32) {
+    pub(crate) fn canto(&self, x: f64, y: f64) -> (f32, f32) {
         let d = self.app.doc(self.key).expect("doc");
         let m =
             input::to_screen(self.sim.world(), self.bits, d, &self.cam, WINDOW, PPM).expect("afim");
@@ -768,7 +768,7 @@ impl Palco {
         (p.x as f32, p.y as f32)
     }
 
-    fn arrasta_ecra(&mut self, a: (f32, f32), b: (f32, f32), m: Mods) {
+    pub(crate) fn arrasta_ecra(&mut self, a: (f32, f32), b: (f32, f32), m: Mods) {
         let c = canvas(&self.sim, &self.cam, self.bits);
         assert_eq!(
             input::press(&mut self.app, &c, a, Button::Primary, m),

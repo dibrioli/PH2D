@@ -252,6 +252,7 @@ pub(crate) fn caixa(o: &mut PixelOptions, id: NodeId) -> Option<&mut bool> {
         ids::PIXEL_PERFECT => &mut o.pixel_perfect,
         ids::CONTIGUOUS => &mut o.contiguous,
         ids::WAND_CONTIGUOUS => &mut o.wand_contiguous,
+        ids::AUTO_SELECT_LAYER => &mut o.auto_select_layer,
         ids::SYM_H => &mut o.sym_h,
         ids::SYM_V => &mut o.sym_v,
         ids::SYM_D1 => &mut o.sym_d1,
@@ -280,6 +281,8 @@ fn com_segmento(mut o: PixelOptions, id: NodeId) -> Option<PixelOptions> {
         ids::SAMPLE_VISIBLE => o.sample_visible = true,
         ids::WAND_CONNECT_4 => o.wand_eight = false,
         ids::WAND_CONNECT_8 => o.wand_eight = true,
+        ids::WAND_SAMPLE_LAYER => o.wand_sample_visible = false,
+        ids::WAND_SAMPLE_VISIBLE => o.wand_sample_visible = true,
         _ => {
             return crate::seam_selecao::com_segmento(o, id)
                 .or_else(|| crate::seam_formas::com_opcao(o, id));

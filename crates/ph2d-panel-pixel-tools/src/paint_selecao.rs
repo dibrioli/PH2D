@@ -82,6 +82,27 @@ impl Corpo<'_> {
                 ),
             ];
             y = self.escolha(tr("panel.pixel.connectivity"), &conn, sec, y);
+            let amostra = [
+                (
+                    tr("panel.pixel.sample.layer"),
+                    !o.wand_sample_visible,
+                    ids::WAND_SAMPLE_LAYER,
+                ),
+                (
+                    tr("panel.pixel.sample.visible"),
+                    o.wand_sample_visible,
+                    ids::WAND_SAMPLE_VISIBLE,
+                ),
+            ];
+            y = self.escolha(tr("panel.pixel.sample"), &amostra, sec, y);
+        }
+        if t == PixelTool::Transform {
+            let cx = [(
+                ids::AUTO_SELECT_LAYER,
+                tr("panel.pixel.auto_select_layer"),
+                o.auto_select_layer,
+            )];
+            y = self.caixas(&cx, sec, y);
         }
         // Com células levantadas a amostragem mora nos campos da moldura (nunca duas vezes).
         if t == PixelTool::Transform && info.transform.is_none() {

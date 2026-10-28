@@ -8,11 +8,15 @@ use ph2d_editor_core::pixel_panel::{
 };
 use ph2d_tool_registry::hash_node_id;
 
-/// A varinha: tolerância, contígua, conectividade 4 · 8.
+/// A varinha: tolerância, contígua, conectividade 4 · 8, amostra camada · visíveis.
 pub const WAND_TOLERANCE: NodeId = hash_node_id("pixel.opt.wand_tolerance");
 pub const WAND_CONTIGUOUS: NodeId = hash_node_id("pixel.opt.wand_contiguous");
 pub const WAND_CONNECT_4: NodeId = hash_node_id("pixel.opt.wand_connect4");
 pub const WAND_CONNECT_8: NodeId = hash_node_id("pixel.opt.wand_connect8");
+pub const WAND_SAMPLE_LAYER: NodeId = hash_node_id("pixel.opt.wand_sample_layer");
+pub const WAND_SAMPLE_VISIBLE: NodeId = hash_node_id("pixel.opt.wand_sample_visible");
+/// O Transform: *Auto Select Layer*.
+pub const AUTO_SELECT_LAYER: NodeId = hash_node_id("pixel.opt.auto_select_layer");
 
 /// Os quatro modos de juntar (pintar, registar e despachar leem a MESMA tabela).
 pub const SELECT_MODES: [(PixelSelectMode, NodeId); 4] = [

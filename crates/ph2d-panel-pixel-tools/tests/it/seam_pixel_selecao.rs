@@ -141,8 +141,21 @@ fn a_varinha_tem_tolerancia_contigua_e_conectividade() {
     );
     let mut p = Palco::novo(info(PixelTool::MagicWand, false));
     so(&p.carrega(ids::WAND_CONNECT_4), quer(|_| {}));
+    let mut p = Palco::novo(info(PixelTool::MagicWand, false));
+    so(
+        &p.carrega(ids::WAND_SAMPLE_VISIBLE),
+        quer(|o| o.wand_sample_visible = true),
+    );
+    let mut p = Palco::novo(info(PixelTool::MagicWand, false));
+    so(&p.carrega(ids::WAND_SAMPLE_LAYER), quer(|_| {}));
+    let p = Palco::novo(info(PixelTool::MagicWand, false));
+    assert!(
+        p.rect(ids::SAMPLE_VISIBLE).is_none(),
+        "a amostra do balde não é a da varinha"
+    );
     let p = Palco::novo(info(PixelTool::RectMarquee, false));
     assert!(p.rect(ids::WAND_TOLERANCE).is_none(), "só a varinha");
+    assert!(p.rect(ids::WAND_SAMPLE_VISIBLE).is_none(), "só a varinha");
 }
 
 #[test]

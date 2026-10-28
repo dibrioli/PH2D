@@ -151,4 +151,12 @@ pub mod ids {
     /// [`RopeStops`]: https://docs.rs/ph2d-physics-ecs
     pub const GIZMO_ROPE_STOP_A: NodeId = NodeId(972);
     pub const GIZMO_ROPE_STOP_B: NodeId = NodeId(973);
+
+    /// As 4 zonas de INCLINAR, logo fora do meio de cada lado (como as de rodar fora dos cantos).
+    /// Só as regista quem as pede ([`super::super::paint::paint_sprite_gizmo_skewing`]): o gizmo
+    /// dos sprites da casa não inclina por arrasto.
+    pub const GIZMO_SKEW_T: NodeId = NodeId(974);
+    pub const GIZMO_SKEW_R: NodeId = NodeId(975);
+    pub const GIZMO_SKEW_B: NodeId = NodeId(976);
+    pub const GIZMO_SKEW_L: NodeId = NodeId(977);
 }

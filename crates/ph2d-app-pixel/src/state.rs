@@ -154,6 +154,8 @@ pub struct PixelApp {
     pub(crate) abre_color_mode: Option<ph2d_editor_core::pixel_panel::ColorModeChoice>,
     /// A imagem copiada (Edit ▸ Copy), de qualquer sprite.
     pub(crate) clip: Option<crate::edicao::Prancheta>,
+    /// *Paste as New Sprite*: o recorte à espera de que a shell nasça o objecto dele.
+    pub(crate) nasce: Option<ph2d_pixel_core::layers::Clip>,
     /// O gesto de selecção em curso (marquee, laços).
     pub(crate) laco: Option<crate::selecao::Laco>,
     /// A moldura solta (Transform, Ctrl+arrasto com uma selecção, Paste): as células levantadas até
@@ -214,6 +216,7 @@ impl Default for PixelApp {
             avisos: Vec::new(),
             abre_color_mode: None,
             clip: None,
+            nasce: None,
             laco: None,
             solta: None,
             largada: None,

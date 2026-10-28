@@ -49,6 +49,7 @@ impl Corpo<'_> {
         }
         if info.has_clip {
             y = self.botoes(&fila(11, 12), y);
+            y = self.botoes(&[(a[13].0, a[13].2)], y);
         }
         y
     }

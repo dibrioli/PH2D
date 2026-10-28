@@ -53,12 +53,14 @@ impl crate::App {
             hero.store.set_hot(Some(id));
         }
         // O OK do diálogo New Sprite (aberto por um pick anterior) nasce o Pixel Sprite.
+        let raiz = ph2d_app_components::object_add::spawn_empty_root;
         let dialog = ph2d_app_pixel::object_add::born_from_dialog(
             &mut hero.store,
             sim,
             &mut self.pixel,
-            ph2d_app_components::object_add::spawn_empty_root,
-        );
+            raiz,
+        )
+        .or_else(|| ph2d_app_pixel::object_add::born_from_paste(sim, &mut self.pixel, raiz));
         if let Some(r) = dialog {
             let born = r.map(Born::Entity).map_err(String::from);
             return self.object_born(ph2d_app_pixel::object_add::PIXEL_SPRITE, born);

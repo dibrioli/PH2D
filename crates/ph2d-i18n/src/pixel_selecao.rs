@@ -21,6 +21,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // O comprimento na etiqueta do arrasto da forma viva: um píxel do Vector é uma célula.
         "pixel.shape.length" => "{n} px",
         "panel.pixel.shape_options" => "Shape",
+        "panel.pixel.auto_select_layer" => "Auto Select Layer",
         "panel.pixel.shape_fill" => "Fill",
         "pixel.hint.transform" => {
             "{tool}: drag a corner or side to scale · drag just outside a corner to rotate · drag inside to move · Enter applies, Esc cancels"

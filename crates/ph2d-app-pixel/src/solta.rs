@@ -40,6 +40,15 @@ fn alca(id: NodeId) -> Option<Handle> {
     if let Some(&(_, (a, b))) = escala.iter().find(|(i, _)| *i == id) {
         return Some(Handle::Scale(a, b));
     }
+    let inclina = [
+        (g::GIZMO_SKEW_T, (1, 2)),
+        (g::GIZMO_SKEW_B, (1, 0)),
+        (g::GIZMO_SKEW_L, (0, 1)),
+        (g::GIZMO_SKEW_R, (2, 1)),
+    ];
+    if let Some(&(_, (a, b))) = inclina.iter().find(|(i, _)| *i == id) {
+        return Some(Handle::Skew(a, b));
+    }
     let giro = [
         g::GIZMO_ROTATE_TL,
         g::GIZMO_ROTATE_TR,
@@ -267,7 +276,7 @@ pub fn gizmo_of(
 /// A alça do núcleo sob o ponto de ecrã `p` no gizmo `view` (`None` = fora).
 #[must_use]
 pub fn hit_of(view: &GizmoView, p: (f32, f32)) -> Option<Handle> {
-    sprite_gizmo_hit_at(view, true, p.0, p.1).and_then(alca)
+    sprite_gizmo_hit_at(view, true, true, p.0, p.1).and_then(alca)
 }
 
 impl PixelApp {

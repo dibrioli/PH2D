@@ -94,6 +94,11 @@ pub struct PixelOptions {
     pub wand_tolerance: u8,
     pub wand_contiguous: bool,
     pub wand_eight: bool,
+    /// A varinha compara o que se VÊ (como a `sample_visible` do balde, mas dela).
+    pub wand_sample_visible: bool,
+    /// O *Auto Select Layer* do Move do Aseprite, no Transform: premir escolhe a camada visível
+    /// de cima com uma célula pintada ali.
+    pub auto_select_layer: bool,
     pub resample: PixelResample,
 }
 
@@ -295,6 +300,8 @@ impl Default for PixelOptions {
             wand_tolerance: 0,
             wand_contiguous: true,
             wand_eight: false,
+            wand_sample_visible: false,
+            auto_select_layer: false,
             resample: PixelResample::Fast,
         }
     }

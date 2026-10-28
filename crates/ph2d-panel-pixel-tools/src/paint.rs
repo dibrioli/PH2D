@@ -209,7 +209,7 @@ impl Corpo<'_> {
     fn opcoes(&mut self, info: &PixelPanelInfo, y: f32) -> f32 {
         let (o, t) = (info.options, info.tool);
         let nomes = [
-            tr("panel.pixel.shape"),
+            tr("panel.pixel.tip"),
             tr("panel.pixel.size"),
             tr("panel.pixel.angle"),
             tr("panel.pixel.tolerance"),
@@ -229,7 +229,7 @@ impl Corpo<'_> {
                 .iter()
                 .map(|&(s, id)| (tr(s.label_key()), s == o.shape, id))
                 .collect();
-            y = self.escolha(tr("panel.pixel.shape"), &formas, sec, y);
+            y = self.escolha(tr("panel.pixel.tip"), &formas, sec, y);
             y = self.campo(tr("panel.pixel.size"), ids::SIZE, sec, y);
             if o.shape != PixelBrushShape::Circle {
                 y = self.campo(tr("panel.pixel.angle"), ids::ANGLE, sec, y);

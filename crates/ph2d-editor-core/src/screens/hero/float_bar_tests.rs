@@ -311,3 +311,27 @@ fn with_no_room_by_the_selection_the_strip_takes_the_nearest_free_height() {
         "junto da seleção, não no bordo da janela: y {y0}"
     );
 }
+
+#[test]
+fn o_flyout_nunca_deixa_um_botao_sozinho_na_ultima_linha() {
+    assert_eq!(flyout_cols(4), 4, "as 4 selecções do Pixel numa linha");
+    assert_eq!(flyout_cols(5), 3, "as 5 formas do Painter: 3+2");
+    assert_eq!(
+        flyout_cols(18),
+        3,
+        "as 18 formas do Quadro: 6 linhas cheias"
+    );
+    assert_eq!(
+        flyout_cols(49),
+        5,
+        "o catálogo do Vector (e do Pixel): 3 e 4 deixariam 1"
+    );
+    for n in 1..=60 {
+        let c = flyout_cols(n);
+        assert!((1..=5).contains(&c));
+        assert!(
+            n <= c || n % c != 1 || (3..=5).all(|k| n % k == 1),
+            "{n} em {c}"
+        );
+    }
+}

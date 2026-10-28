@@ -46,11 +46,13 @@ pub(super) fn anchor(area: Rect, item: Item) -> Option<Rect> {
         .map(|(_, r)| Rect::new(right, r.y, r.w, r.h))
 }
 
-/// A grelha de todas as formas, à direita do botão «mais formas» (três colunas).
+/// A grelha de todas as formas, à direita do botão «mais formas».
 #[must_use]
 pub fn shapes_rects(area: Rect) -> Vec<(Item, Rect)> {
+    use super::super::float_bar::{flyout_cols, grid_rects};
     let more = anchor(area, Item::MoreShapes).expect("a barra tem o «mais formas»");
-    let grid = super::super::float_bar::grid_rects(area, more, ShapeType::ALL.len(), 3);
+    let n = ShapeType::ALL.len();
+    let grid = grid_rects(area, more, n, flyout_cols(n));
     ShapeType::ALL
         .iter()
         .map(|t| Item::Pick(*t))

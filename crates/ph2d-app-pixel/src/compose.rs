@@ -132,20 +132,13 @@ impl PixelApp {
 
     /// As teclas do Draw (B, E, I, H, X, Espaço, Ctrl+Z…). A shell já descartou o campo de texto
     /// com o foco. `true` = consumida.
-    pub fn keyboard(
-        &mut self,
-        v: &mut View<'_>,
-        key: PhysicalKey,
-        pressed: bool,
-        ctrl: bool,
-        shift: bool,
-    ) -> bool {
+    pub fn keyboard(&mut self, v: &mut View<'_>, key: PhysicalKey, pressed: bool, m: Mods) -> bool {
         let PhysicalKey::Code(code) = key else {
             return false;
         };
         if diag() {
             eprintln!(
-                "[pixel-diag] tecla {code:?} premida={pressed} ctrl={ctrl} shift={shift} draw={} gesto={}",
+                "[pixel-diag] tecla {code:?} premida={pressed} {m:?} draw={} gesto={}",
                 v.editing.is_some(),
                 self.stroking()
             );
@@ -156,7 +149,7 @@ impl PixelApp {
         if !pressed {
             return false;
         }
-        let Some(answer) = input::key(self, v.world, v.editing, code, ctrl, shift) else {
+        let Some(answer) = input::key_with(self, v.world, v.editing, code, m) else {
             return false;
         };
         if let KeyAnswer::Toast(t) = answer {

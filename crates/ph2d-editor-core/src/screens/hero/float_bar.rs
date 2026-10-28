@@ -126,6 +126,16 @@ pub fn panel_of(rects: impl IntoIterator<Item = Rect>) -> Option<Rect> {
     ))
 }
 
+/// As colunas da grelha de um flyout de `n` botões: até 4 numa linha só; depois a menor de 3–5
+/// cuja última linha não fica com UM botão sozinho (4 em 3+1 lia-se como um grupo à parte).
+#[must_use]
+pub fn flyout_cols(n: usize) -> usize {
+    if n <= 4 {
+        return n.max(1);
+    }
+    (3..=5).find(|c| n % c != 1).unwrap_or(3)
+}
+
 /// ⭐ **A grelha de um flyout**, à direita de `anchor` (o botão da coluna que a abre), `cols`
 /// colunas, alinhada pelo topo dele. ⚠️ Presa dentro de `area`: a grelha que passasse do fundo
 /// da área ficaria cortada pelo recorte da área e os botões dela inalcançáveis.

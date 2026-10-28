@@ -102,7 +102,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         "pixel.hint.axis" => "Drag the symmetry axis · it snaps to whole and half pixels",
         "panel.pixel.brush" => "Brush",
-        "panel.pixel.shape" => "Shape",
+        "panel.pixel.tip" => "Tip",
         "panel.pixel.shape.circle" => "Circle",
         "panel.pixel.shape.square" => "Square",
         "panel.pixel.shape.line" => "Line",
@@ -248,6 +248,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.pixel.layer.via_cut" => "Layer via Cut",
         "panel.pixel.layer.paste" => "Paste as New Layer",
         "panel.pixel.layer.paste_reference" => "Paste as Reference",
+        "panel.pixel.layer.paste_sprite" => "Paste as New Sprite",
         "panel.pixel.layer.group_mode" => {
             "A group has only a name: its layers show with their own mode and opacity"
         }

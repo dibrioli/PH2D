@@ -131,4 +131,6 @@ pub enum PixelLayerAction {
     ViaCut,
     PasteAsLayer,
     PasteAsReference,
+    /// *Paste as New Sprite*: o recorte num objecto novo do tamanho dele (não muda este documento).
+    PasteAsSprite,
 }

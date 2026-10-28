@@ -107,8 +107,9 @@ pub const NUMBERS: [(NodeId, (f64, f64, f64)); 7] = [
 ];
 
 /// As caixas de marcar.
-pub const CHECKS: [NodeId; 9] = [
+pub const CHECKS: [NodeId; 10] = [
     WAND_CONTIGUOUS,
+    AUTO_SELECT_LAYER,
     PIXEL_PERFECT,
     CONTIGUOUS,
     SYM_H,
@@ -120,13 +121,15 @@ pub const CHECKS: [NodeId; 9] = [
 ];
 
 /// Os segmentos que não são a forma.
-pub const SEGMENTS: [NodeId; 6] = [
+pub const SEGMENTS: [NodeId; 8] = [
     CONNECT_4,
     CONNECT_8,
     SAMPLE_LAYER,
     SAMPLE_VISIBLE,
     WAND_CONNECT_4,
     WAND_CONNECT_8,
+    WAND_SAMPLE_LAYER,
+    WAND_SAMPLE_VISIBLE,
 ];
 
 /// **A célula `i` da paleta** — o clique esquerdo (cor de frente). A população é a paleta, sem tecto.
@@ -262,7 +265,7 @@ pub fn blend_option_id(i: usize) -> NodeId {
 }
 
 /// Os botões do menu Layer: o id, a acção e o rótulo, nas filas em que se pintam.
-pub const LAYER_ACTIONS: [(NodeId, PixelLayerAction, &str); 13] = [
+pub const LAYER_ACTIONS: [(NodeId, PixelLayerAction, &str); 14] = [
     (
         hash_node_id("pixel.layer.new"),
         PixelLayerAction::NewLayer,
@@ -327,6 +330,11 @@ pub const LAYER_ACTIONS: [(NodeId, PixelLayerAction, &str); 13] = [
         hash_node_id("pixel.layer.paste_reference"),
         PixelLayerAction::PasteAsReference,
         "panel.pixel.layer.paste_reference",
+    ),
+    (
+        hash_node_id("pixel.layer.paste_sprite"),
+        PixelLayerAction::PasteAsSprite,
+        "panel.pixel.layer.paste_sprite",
     ),
 ];
 

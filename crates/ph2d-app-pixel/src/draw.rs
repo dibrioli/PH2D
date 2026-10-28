@@ -224,7 +224,7 @@ fn selecao(
         #[expect(clippy::cast_precision_loss, reason = "tamanho de janela")]
         let janela = (window.width as f32, window.height as f32);
         let view = so.gizmo(m, janela, so.cursor);
-        ph2d_editor_core::gizmo::paint_sprite_gizmo_with(
+        ph2d_editor_core::gizmo::paint_sprite_gizmo_skewing(
             scene,
             &view,
             theme,

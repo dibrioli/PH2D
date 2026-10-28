@@ -39,17 +39,48 @@ pub(super) fn corners_screen(view: &GizmoView) -> [[f32; 2]; 4] {
 /// projectadas — sob cisalhamento os dois eixos deixam de ser perpendiculares.
 pub(super) fn rotate_rects(view: &GizmoView, c: [[f32; 2]; 4]) -> [(NodeId, Rect); 4] {
     let [tl, tr, bl, br] = c;
-    let (ux, uy) = if view.model == MODEL_IDENTITY {
-        rotation_axes(view.rotation)
-    } else {
-        edge_axes(tl, tr, bl).unwrap_or_else(|| rotation_axes(view.rotation))
-    };
+    let (ux, uy) = local_axes(view, c);
     [
         (ids::GIZMO_ROTATE_TL, outer_rect(tl, ux, uy, -1.0, 1.0)),
         (ids::GIZMO_ROTATE_TR, outer_rect(tr, ux, uy, 1.0, 1.0)),
         (ids::GIZMO_ROTATE_BL, outer_rect(bl, ux, uy, -1.0, -1.0)),
         (ids::GIZMO_ROTATE_BR, outer_rect(br, ux, uy, 1.0, -1.0)),
     ]
+}
+
+/// As quatro zonas de inclinar `(id, rect)`: a mesma lei das de rodar, empurradas para fora do
+/// MEIO de cada lado.
+pub(super) fn skew_rects(view: &GizmoView, c: [[f32; 2]; 4]) -> [(NodeId, Rect); 4] {
+    let [tl, tr, bl, br] = c;
+    let (ux, uy) = local_axes(view, c);
+    [
+        (
+            ids::GIZMO_SKEW_T,
+            outer_rect(midpoint(tl, tr), ux, uy, 0.0, 1.0),
+        ),
+        (
+            ids::GIZMO_SKEW_R,
+            outer_rect(midpoint(tr, br), ux, uy, 1.0, 0.0),
+        ),
+        (
+            ids::GIZMO_SKEW_B,
+            outer_rect(midpoint(br, bl), ux, uy, 0.0, -1.0),
+        ),
+        (
+            ids::GIZMO_SKEW_L,
+            outer_rect(midpoint(bl, tl), ux, uy, -1.0, 0.0),
+        ),
+    ]
+}
+
+/// Os eixos locais da caixa no ecrã: sem pai, da rotação; com pai, das arestas projectadas.
+fn local_axes(view: &GizmoView, c: [[f32; 2]; 4]) -> ((f32, f32), (f32, f32)) {
+    let [tl, tr, bl, _] = c;
+    if view.model == MODEL_IDENTITY {
+        rotation_axes(view.rotation)
+    } else {
+        edge_axes(tl, tr, bl).unwrap_or_else(|| rotation_axes(view.rotation))
+    }
 }
 
 /// Os eixos locais `(+X, +Y)` no ecrã de uma caixa rodada por `rotation`. O `world_to_screen`

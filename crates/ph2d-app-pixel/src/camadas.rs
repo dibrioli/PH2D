@@ -167,6 +167,15 @@ impl PixelApp {
                 ));
                 None
             }
+            PixelRequest::LayerAction(PixelLayerAction::PasteAsSprite) => {
+                match self.clip.as_ref() {
+                    Some(p) => self.nasce = Some(p.clip.clone()),
+                    None => self
+                        .avisos
+                        .push((true, ph2d_i18n::tr("pixel.layer.refuse.action").to_owned())),
+                }
+                None
+            }
             PixelRequest::LayerAction(a) => {
                 let bg = s.value_of_rgba(self.bg);
                 let clip = self.clip.as_ref().map(|p| &p.clip);
@@ -305,6 +314,7 @@ fn acao(
                 None => (None, None),
             }
         }
+        PixelLayerAction::PasteAsSprite => (None, None),
     }
 }
 
@@ -349,4 +359,31 @@ fn via_selection(
         None => op,
     };
     Some((op, id))
+}
+
+/// O *Auto Select Layer*: a camada activa passa a ser a de cima, visível e de imagem, com uma
+/// célula pintada em `at` neste frame; sem nenhuma, fica a que estava.
+pub(crate) fn escolhe_sob(app: &mut PixelApp, key: u32, at: (i32, i32)) {
+    let Some(doc) = app.docs.get_mut(&key) else {
+        return;
+    };
+    let s = &doc.sprite;
+    let vazio = s.transparent_value();
+    let pintada = |l: LayerId| {
+        let v = s.value_at((l, doc.frame), at.0, at.1);
+        match s.mode() {
+            ph2d_pixel_core::ColorMode::Indexed => v != vazio,
+            _ => s.rgba_of_value(v)[3] != 0,
+        }
+    };
+    let sob = s
+        .layers()
+        .iter()
+        .rev()
+        .filter(|l| !l.is_group() && s.is_shown(l.id))
+        .map(|l| l.id)
+        .find(|&l| s.bounds().contains(at.0, at.1) && pintada(l));
+    if let Some(l) = sob {
+        doc.layer = l;
+    }
 }

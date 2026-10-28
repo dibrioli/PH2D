@@ -161,7 +161,11 @@ pub(crate) fn press(app: &mut PixelApp, key: u32, at: Cell, m: Mods) -> bool {
                 tolerance: o.wand_tolerance,
                 contiguous: o.wand_contiguous,
                 eight: o.wand_eight,
-                sample: BucketSample::Layer,
+                sample: if o.wand_sample_visible {
+                    BucketSample::Visible
+                } else {
+                    BucketSample::Layer
+                },
             };
             let mask = selection::wand(&doc.sprite, (doc.layer, doc.frame), at, opt);
             app.junta(key, &mask, mode);

@@ -581,7 +581,7 @@ pub(crate) fn draw(
     if v.outline_only() {
         ph2d_editor_core::gizmo::paint_gizmo_outline(scene, &view, theme, CONTORNO_PX);
     } else {
-        ph2d_editor_core::gizmo::paint_sprite_gizmo_with(
+        ph2d_editor_core::gizmo::paint_sprite_gizmo_skewing(
             scene,
             &view,
             theme,

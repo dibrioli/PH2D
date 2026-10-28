@@ -55,10 +55,7 @@ impl crate::App {
         if self.surface_owns_the_keyboard() {
             return false;
         }
-        let m = self.modifiers;
-        let (ctrl, shift) = (m.control_key() || m.super_key(), m.shift_key());
-        let pressed = s == ElementState::Pressed;
-        (self.pixel_view())
-            .is_some_and(|(app, mut v)| app.keyboard(&mut v, key, pressed, ctrl, shift))
+        let (m, pressed) = (Mods::of(self.modifiers), s == ElementState::Pressed);
+        (self.pixel_view()).is_some_and(|(app, mut v)| app.keyboard(&mut v, key, pressed, m))
     }
 }

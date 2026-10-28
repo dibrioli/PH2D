@@ -7,8 +7,8 @@
 //! a única casa do Arrange e do Alinhar.
 
 use super::{
-    column_rects, grid_rects, inner, paint_button, paint_panel, paint_swatch, pinned_strip_rows,
-    strip_rows_at,
+    column_rects, flyout_cols, grid_rects, inner, paint_button, paint_panel, paint_swatch,
+    pinned_strip_rows, strip_rows_at,
 };
 use crate::icons::IconId;
 use crate::ids;
@@ -56,12 +56,12 @@ pub fn placed(
         out.push((b.clone(), r));
     }
     if let (Some((_, items)), Some(a)) = (&bars.flyout, anchor) {
-        out.extend(
-            items
-                .iter()
-                .cloned()
-                .zip(grid_rects(area, a, items.len(), 3)),
-        );
+        out.extend(items.iter().cloned().zip(grid_rects(
+            area,
+            a,
+            items.len(),
+            flyout_cols(items.len()),
+        )));
     }
     if left_handed {
         for (_, r) in &mut out {

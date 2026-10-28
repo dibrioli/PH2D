@@ -74,7 +74,11 @@ impl IndividualTextureStore {
     }
 
     /// Uma escrita de pixels inteira numa entrada recusada passa a ser a sua fonte.
-    pub(crate) fn anota_pixels_recusados(&mut self, id: u32, rgba: &[u8]) {
+    pub(crate) fn anota_pixels_recusados(
+        &mut self,
+        id: u32,
+        rgba: &[u8], // COLOR-RAW-OK: os bytes de upload tal e qual (8 ou 16 bits por canal)
+    ) {
         if let Some(e) = self.entries.get_mut(&id)
             && e.fonte.is_some()
         {

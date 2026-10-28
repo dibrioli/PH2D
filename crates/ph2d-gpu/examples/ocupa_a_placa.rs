@@ -28,6 +28,7 @@ fn main() {
         backends: wgpu::Backends::VULKAN,
         ..wgpu::InstanceDescriptor::new_without_display_handle_from_env()
     });
+    ph2d_gpu::vez_da_placa();
     let adapter = pollster::block_on(inst.request_adapter(&wgpu::RequestAdapterOptions {
         power_preference: wgpu::PowerPreference::HighPerformance,
         compatible_surface: None,

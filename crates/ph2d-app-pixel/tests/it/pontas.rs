@@ -224,3 +224,46 @@ fn auto_select_layer_picks_the_top_painted_layer_under_the_press() {
         "premir na figura escolhe a camada dela"
     );
 }
+
+#[test]
+fn scene_15_shows_a_skewed_frame_two_layers_a_clip_and_the_flyout_in_one_row() {
+    use ph2d_app_pixel::smoke_pontas as c15;
+    let mut app = ph2d_app_pixel::PixelApp::default();
+    let mut sim = ph2d_ecs::SimWorld::new();
+    assert!(ph2d_app_pixel::smoke::stage(
+        &mut app, &mut sim, 15, spawn_root
+    ));
+    let (bits, key) = mode::sprites(sim.world())[0];
+    let mut hero = ph2d_editor_core::screens::hero::HeroScreen::new(ph2d_editor_core::NodeId(1));
+    hero.gizmo
+        .mode
+        .enter(bits, ph2d_editor_core::object_mode::ObjectMode::Draw);
+    let mut cam = ph2d_render::Camera2d::default();
+    let (w, ppm) = (crate::edit::WINDOW, crate::edit::PPM);
+    app.frame(&mut sim, &mut cam, w, ppm, Some(bits), spawn_root);
+    let mut toasts = ph2d_editor_core::ToastQueue::new();
+    let info = ph2d_app_pixel::panel::frame(&mut app, sim.world(), &mut hero, &mut toasts);
+    let t = info.transform.expect("a moldura solta");
+    assert_eq!((t.skew, t.angle), (c15::SKEW, 0), "{t:?}");
+    assert!(info.has_clip, "o «F» copiado acende o Paste as New Sprite");
+    assert_eq!(
+        info.tool,
+        ph2d_editor_core::pixel_panel::PixelTool::Transform
+    );
+    assert!(info.options.auto_select_layer && info.options.wand_sample_visible);
+    let s = &app.doc(key).expect("doc").sprite;
+    assert_eq!(s.layers().len(), 2);
+    assert_eq!(s.layers()[0].name, c15::NAME);
+    assert_eq!(
+        app.doc(key).expect("doc").layer,
+        s.layers()[0].id,
+        "Figures activa"
+    );
+    // As 4 numa linha: a lei é `float_bar::flyout_cols` (o teste dela, no editor-core).
+    let aberto = ph2d_editor_core::pixel_panel::PixelToolGroup::Select;
+    assert_eq!(
+        info.groups.open,
+        Some(aberto),
+        "o flyout das selecções aberto"
+    );
+}

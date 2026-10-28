@@ -26,7 +26,7 @@ pub struct Prancheta {
 }
 
 impl Prancheta {
-    fn de(s: &Sprite, f: Floating) -> Self {
+    pub(crate) fn de(s: &Sprite, f: Floating) -> Self {
         Self {
             clip: Clip {
                 mode: s.mode(),

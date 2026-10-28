@@ -40,6 +40,9 @@
 //! família (as abertas em traço) e uma engrenagem viva com as alças.
 //! 14 — P6f, a forma viva até ao fim ([`crate::smoke_ajustes`]): uma estrela viva girada com a
 //! etiqueta das pontas, a barra da moldura, um ajuste para o `Ctrl+Z` desfazer, e gravar assenta.
+//! 15 — P6g, as pontas soltas ([`crate::smoke_pontas`]): uma moldura solta inclinada pelo gizmo,
+//! duas camadas para a varinha «Visible» e o Auto Select Layer, o «Paste as New Sprite» e o flyout
+//! das selecções numa linha.
 
 use ph2d_ecs::SimWorld;
 use ph2d_pixel_core::{NewSprite, Paint, Stroke};
@@ -51,7 +54,7 @@ use ph2d_editor_core::pixel_panel::{
 
 pub const ROUTERS: &[ph2d_app_host::SmokeRouter] = &[ph2d_app_host::SmokeRouter {
     env: "PH2D_PIXEL_SMOKE",
-    max_level: 14,
+    max_level: 15,
 }];
 
 /// O nível armado em `PH2D_PIXEL_SMOKE`.
@@ -119,6 +122,7 @@ pub fn stage(
         12 => crate::smoke_viva::stage(app, sim, spawn_root).is_some(),
         13 => crate::smoke_catalogo::stage(app, sim, spawn_root).is_some(),
         14 => crate::smoke_ajustes::stage(app, sim, spawn_root).is_some(),
+        15 => crate::smoke_pontas::stage(app, sim, spawn_root).is_some(),
         _ => false,
     }
 }

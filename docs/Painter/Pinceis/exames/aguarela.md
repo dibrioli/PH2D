@@ -100,6 +100,12 @@ chave `J6_<nome>_chave.txt`.
 - **Custo** (200 px, bateria, smoke) só sob load 18–35: p95 Liner 60 · 17 ms contra o de fábrica 54 · 56 na MESMA
   ronda intercalada — sem diferença mensurável; RSS 102 MiB. O relógio calmo fica por medir (J5: 4,7 ms).
 
+**2.ª ronda (cega sonnet: o Rebelle achado nos tamanhos, «borda esfumada; a imitação chapada, contorno duro»):** a pena
+não entra num traço sobre papel; através o domo já casava; o que diferia era a TAMPA → `Knob::StrokeFilmEnds` (`5cd611289a`):
+Wash 200 px ponta 0,94 → 0,83 do meio (Rebelle ~0,5), o corpo igual; no Liner quase nada (a tinta dele satura). Receitas
+Liner + tampas 0,8 (régua 429), Wash domo + tampas 0,8 (384). Fica: o fio da orla 100 do Wash (orla 1,6 contra 1,15) e a
+rampa da ponta que no Rebelle entra ~60 px no corpo. Pranchas cegas refeitas (nova ordem e chave). Mop: REPROVADO.
+
 ## Para a fila (coordenador)
 
 1. As pontas do traço de 200 px do filme: o Rebelle esbate 60–120 px nas DUAS pontas (Liner 0,70 → 0,99 do meio); a de

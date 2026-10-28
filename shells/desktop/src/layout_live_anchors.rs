@@ -1,36 +1,6 @@
-//! **AS ÂNCORAS, vivas** — a segunda metade do passe de layout (plano UI/UX W3).
-//!
-//! Módulo FILHO do [`super`], e a razão não é o teto de LOC: é a **lei da porta única**. O plano
-//! diz que um filho de moldura *"ou está num fluxo ou está ancorado, nunca os dois"*, e um segundo
-//! passe teria uma segunda opinião sobre a pose derivada. Aqui o dono da tabela de poses continua
-//! a ser UM ([`super::LayoutLive`]), e este ficheiro é só o outro braço dele.
-//!
-//! # O que uma âncora responde, e o fluxo não
-//!
-//! O fluxo empilha: ele decide a posição de TODOS os filhos a partir de uma regra do pai. A âncora
-//! é o oposto — o filho está onde o artista o pôs, e a regra diz apenas **o que acontece quando a
-//! moldura muda de tamanho**. É o HUD: a vida no canto de cima, a pontuação colada no canto
-//! oposto, a barra que estica no meio.
-//!
-//! # A régua é LOCAL, e o resto é uma razão
-//!
-//! [`ph2d_ecs::VecAnchors::delta_local`] devolve o deslocamento em unidades **locais** da moldura.
-//! Para o levar ao mundo este passe usa a **razão entre a caixa de mundo e a caixa local da própria
-//! moldura** — e essa razão traz consigo, de graça, tudo o que estiver entre as duas: a pose do
-//! ancestral, a escala do `Transform`, e até a colocação que o fluxo acabou de dar à moldura, se
-//! ela própria for um item de fluxo.
-//!
-//! ⚠️ **Ela é exacta enquanto o mapa local→mundo for alinhado aos eixos, e aproximada sob
-//! ROTAÇÃO** — a caixa de mundo de um retângulo rodado é maior que ele. É a mesma aproximação
-//! declarada que a caixa do gizmo carrega ([`ph2d_app_vec::vec_gizmo_view::fold_layout_pose`]), e pela
-//! mesma razão: o que se compara são caixas alinhadas aos eixos, e um retângulo rodado não é uma.
-//!
-//! # O neutro é EXACTO, não *"quase zero"*
-//!
-//! Moldura do tamanho da régua ⇒ `delta_local` dá `0.0` nos dois eixos por subtracção de iguais ⇒
-//! a caixa-alvo é a caixa de agora ⇒ o afim é a identidade ⇒ o passe **nem paga a cópia da
-//! geometria**. Um documento sem `VecAnchors` é byte-idêntico ao de antes desta wave; um COM
-//! âncoras e sem redimensionamento também.
+//! **AS ÂNCORAS, vivas** — a segunda metade do passe de layout (plano UI/UX W3), e o ARRANJO do HUD
+//! depois delas (ADR-0194). Filho do [`super`] pela lei da porta única. O porquê (régua local, rotação
+//! aproximada, neutro exacto): [`as_ancoras_vivas_porque.md`](../../../docs/UI_New_and_Simple/medicoes/as_ancoras_vivas_porque.md).
 
 use ph2d_ecs::{Children, Entity, SimWorld, VecAnchors, VecFrame, VecLayout};
 use ph2d_vec_render::LiveGeometry;
@@ -179,11 +149,26 @@ impl LayoutLive {
             [lo[0] + dmin[0] * s[0], lo[1] + dmin[1] * s[1]],
             [hi[0] + dmax[0] * s[0], hi[1] + dmax[1] * s[1]],
         );
-        let x = super::fit((lo, hi), target);
-        if super::is_identity(&x) {
-            return; // moldura do tamanho da régua: nada a fazer, nem a cópia
+        if self.move_subtree(scene, xforms, live, &paths, (lo, hi), target) {
+            self.anchored += 1;
         }
-        for &id in &paths {
+    }
+
+    /// A sub-árvore de `(lo, hi)` para `target`; `false` = identidade (moldura do tamanho da régua: nem a cópia).
+    fn move_subtree(
+        &mut self,
+        scene: &VecScene,
+        xforms: &VecXforms,
+        live: &mut LiveGeometry,
+        paths: &[VecPathId],
+        from: super::Box2,
+        target: super::Box2,
+    ) -> bool {
+        let x = super::fit(from, target);
+        if super::is_identity(&x) {
+            return false;
+        }
+        for &id in paths {
             let mut items = super::world_of(scene, xforms, live, id);
             for p in &mut items {
                 bake_xform(p, &x);
@@ -191,7 +176,7 @@ impl LayoutLive {
             live.insert(id, items);
             self.add_pose(id, x);
         }
-        self.anchored += 1;
+        true
     }
 }
 
@@ -226,20 +211,10 @@ mod tests;
 #[path = "layout_live_anchors_canvas_tests.rs"]
 mod canvas_tests;
 
-/// ⭐⭐⭐ **O CANVAS DO HUD ancora como uma moldura** (TOP-20 #20) — e a lei do filho é a **mesma**:
-/// [`LayoutLive::anchor_kid`], sem uma linha nova.
-///
-/// ⚠️ **A SELECÇÃO mora na crate da família** ([`ph2d_app_components::hud_anchors::ancorados`]):
-/// *«quem ancora quem, e contra que rectângulo»* responde-se com o mundo e o mapa, sem cena e sem
-/// device, logo com gates baratos. O que fica aqui é publicar a pose — a maquinaria que o passe das
-/// molduras já tem.
-///
-/// ⭐ **O neutro é EXACTO**: no aspecto da própria caixa não há banda, a efectiva É a de referência,
-/// e o `anchor_kid` sai no `is_identity` **sem pagar a cópia da geometria**.
+/// O canvas do HUD ancora pela MESMA lei do filho ([`LayoutLive::anchor_kid`]); a selecção mora em
+/// [`ph2d_app_components::hud_anchors::ancorados`]. Porquê: o doc do cabeçalho.
 impl LayoutLive {
-    /// Todos os canvas de HUD que ancoram alguém. A ordem entre este passe e o das molduras não
-    /// importa: as populações são **disjuntas por construção** (um filho tem UM pai, e ele ou tem
-    /// `VecFrame` ou tem `UiCanvas`).
+    /// Todos os canvas de HUD que ancoram alguém (disjuntos das molduras: um filho tem UM pai).
     pub(super) fn anchor_canvases(
         &mut self,
         scene: &VecScene,
@@ -254,6 +229,25 @@ impl LayoutLive {
                 scale: a.scale,
             };
             self.anchor_kid(scene, sim, xforms, live, a.kid, m);
+        }
+    }
+}
+
+/// O arranjo dos irmãos (ADR-0194): a SELECÇÃO e o solver moram em `ph2d_app_components::hud_arranjo`; aqui só se
+/// publica a pose, pelo mesmo braço das âncoras.
+impl LayoutLive {
+    pub(super) fn arrange_canvases(
+        &mut self,
+        scene: &VecScene,
+        sim: &SimWorld,
+        map: &VecEntityMap,
+        xforms: &VecXforms,
+        live: &mut LiveGeometry,
+    ) {
+        let subtree = |kid| ph2d_vec_entities::entities::subtree_paths(sim, scene, kid);
+        let caixa = |kid| super::bbox_of(&super::world_of_all(scene, xforms, live, &subtree(kid)));
+        for m in self.arranjos.arranja(sim, map, self.vista, caixa) {
+            self.move_subtree(scene, xforms, live, &subtree(m.kid), m.de, m.para);
         }
     }
 }

@@ -1,13 +1,5 @@
-//! Os gates das ÂNCORAS de um **canvas de HUD** (TOP-20 #20).
-//!
-//! ⚠️ A aritmética da regra já está provada no `ph2d_ecs::vec_anchors`, e a da caixa efectiva no
-//! `ph2d_hud`. O que só se pode afirmar AQUI é a COSTURA: que a moldura de um filho de canvas é a
-//! caixa **efectiva** (e não a de referência), que sem banda o mapa fica **byte-intocado**, que sem
-//! câmera nada ancora.
-//!
-//! ⚠️ **A SELECÇÃO não se prova aqui** — *quem* um canvas ancora e *contra que rectângulo* vive em
-//! [`ph2d_app_components::hud_anchors`], com gates próprios que não precisam de cena nem de device.
-//! Estes medem o que se DESENHA, que é a metade que só a shell tem.
+//! Os gates das ÂNCORAS de um canvas de HUD (TOP-20 #20) — só a COSTURA (o que se DESENHA: caixa efectiva, neutro
+//! intocado, sem câmera nada ancora) e o ARRANJO depois delas; a SELECÇÃO prova-se em `ph2d_app_components`.
 
 use super::*;
 use crate::layout_live::{bbox_of, world_of};
@@ -185,5 +177,43 @@ fn com_a_raiz_a_escalar_o_deslocamento_atravessa_a_escala() {
         "com escala 2 o filho desenhou em [{}, {}] e a conta pede [10, 20]",
         lo[0],
         hi[0]
+    );
+}
+
+/// O arranjo (ADR-0194) corre DEPOIS das âncoras: a moeda cola-se à caixa ANCORADA da pontuação, não à autorada.
+#[test]
+fn the_arrangement_reads_the_anchored_box() {
+    use ph2d_ecs::hud_arranjo::{Forca, Lado, Relacao};
+    let (mut sim, scene, map, root, kids) = canvas_com_filhos(2);
+    prende(&mut sim, &map, kids[0], [1.0, 1.0], [1.0, 1.0]);
+    let id = |i: u64| ph2d_ecs::StableId(20 + i);
+    for (i, k) in (0..).zip(&kids) {
+        sim.world_mut()
+            .entity_mut(Entity::from_bits(map[k]))
+            .insert(id(i));
+    }
+    let lado = Relacao::AoLado {
+        a: id(1),
+        b: id(0),
+        lado: Lado::Direita,
+        folga: 2.0,
+    };
+    let lacos = vec![(lado, Forca::Requerida)];
+    sim.world_mut()
+        .entity_mut(root)
+        .insert(ph2d_ecs::UiArranjo { lacos });
+    let mut live = LiveGeometry::default();
+    corre(&sim, &scene, &map, &mut live, Some(vista(21.0, 9.0)));
+    let (pont, moeda) = (
+        desenhado(&live, &scene, kids[0]),
+        desenhado(&live, &scene, kids[1]),
+    );
+    assert!(
+        (pont.1[0] - 15.0).abs() < 0.01,
+        "a âncora não correu: {pont:?}"
+    );
+    assert!(
+        (moeda.0[0] - 17.0).abs() < 0.01,
+        "a moeda não está colada à pontuação ancorada: {moeda:?}"
     );
 }

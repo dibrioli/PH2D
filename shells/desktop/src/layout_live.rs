@@ -150,6 +150,8 @@ pub(crate) struct LayoutLive {
     /// para conduzir a raiz — nunca uma segunda leitura da câmera. `None` = sem câmera de jogo ⇒
     /// nenhum canvas ancora, que é a mesma lei que a raiz obedece.
     pub(crate) vista: Option<ph2d_app_components::hud_bridge::View>,
+    /// O arranjo dos irmãos do HUD (ADR-0194): um solver vivo por canvas, entre quadros.
+    arranjos: ph2d_app_components::hud_arranjo::Arranjos,
     /// Quantos filhos ANCORADOS o último passe moveu (o braço do W3).
     anchored: usize,
     /// **Quanto o conteúdo passa da moldura**, por moldura que flui — MEDIDO por este passe, em
@@ -253,21 +255,11 @@ impl LayoutLive {
         for frame in outermost_flowing_frames(scene, sim, map) {
             self.lay_out(scene, sim, xforms, live, frame, tok);
         }
-        // ⚠️ **As âncoras DEPOIS do fluxo, e a ordem é load-bearing pela MEDIÇÃO** (plano UI/UX
-        // W3). A âncora lê a caixa da moldura; o fluxo DECIDE essa caixa. Ao contrário, o fluxo
-        // mediria a moldura pela sub-árvore que a âncora acabou de colocar — e a âncora colocou-a
-        // lendo a caixa que o fluxo ainda ia decidir: um laço.
-        //
-        // ⚠️ E a razão NÃO é a que parece: para uma colocação que é `translate ∘ scale`, as duas
-        // ordens dão o MESMO ponto (`S·(x+d) + t` contra `S·x + t + S·d` — a mesma expressão), e
-        // a primeira versão do gate ficou verde sobre a ordem trocada por causa disso. O que
-        // discrimina é só o tamanho MEDIDO do nó, e é exactamente isso que o gate
-        // `the_anchor_does_not_feed_back_into_the_flows_measurement` afirma.
+        // Fluxo → âncoras → arranjo: a ordem é a da MEDIÇÃO (porquê e gates:
+        // `docs/UI_New_and_Simple/medicoes/as_ancoras_vivas_porque.md`).
         self.anchor_all(scene, sim, map, xforms, live);
-        // ⭐⭐⭐ **E os canvas de HUD ancoram pela MESMA lei** — ver `anchor_canvases`. A ordem
-        // entre os dois não importa: as populações são disjuntas por construção (um filho tem UM
-        // pai, e ele ou tem `VecFrame` ou tem `UiCanvas`).
         self.anchor_canvases(scene, sim, map, xforms, live);
+        self.arrange_canvases(scene, sim, map, xforms, live);
     }
 
     /// Uma moldura (e tudo o que flui dentro dela).

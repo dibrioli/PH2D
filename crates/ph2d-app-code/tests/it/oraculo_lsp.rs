@@ -377,10 +377,15 @@ fn o_assistente_fixado_completa_a_api() {
         m.pede(*id);
     }
     let mut l = abre(&mut m, ids[0], "ph2d.");
-    let mut api: Vec<&str> = ph2d_script::api_table::API
-        .iter()
+    // As funções de `ph2d` e as tabelas filhas (`ph2d.kanban`), pelas portas da tabela.
+    let mut api: Vec<&str> = ph2d_script::api_table::api()
         .filter(|e| e.table == "ph2d")
         .map(|e| e.ident)
+        .chain(
+            ph2d_script::api_table::API_GLOBALS
+                .iter()
+                .filter_map(|g| g.ident.strip_prefix("ph2d.")),
+        )
         .collect();
     l.sort_unstable();
     api.sort_unstable();
@@ -828,10 +833,20 @@ fn a_assinatura_da_pagina_e_a_do_assistente() {
     let cfg =
         ServerConfig::new(bin).with_definitions("@ph2d", repo().join("runtime/luau/ph2d.d.luau"));
     let mut c = LspClient::start(cfg).expect("luau-lsp arranca");
-    const NOSSAS: [&str; 4] = ["ph2d", "motion", "types", "hooks"];
+    // As NOSSAS páginas saem da `api_table` (que também gera o `ph2d.d.luau`): os globais
+    // (`ph2d`, `motion`, `ph2d.kanban`), as classes (`KanbanCard`), os tipos e os ganchos.
+    let nossa = |id: &str| {
+        ["types", "hooks"].contains(&id)
+            || ph2d_script::api_table::API_GLOBALS
+                .iter()
+                .any(|g| g.ident == id)
+            || ph2d_script::api_table_kanban::KANBAN_CLASSES
+                .iter()
+                .any(|c| c.ident == id)
+    };
     let mut texto = String::new();
     let mut sitios = Vec::new();
-    for p in catalog().iter().filter(|p| !NOSSAS.contains(&p.id)) {
+    for p in catalog().iter().filter(|p| !nossa(p.id)) {
         for m in p.members.iter().filter(|m| m.kind == Kind::Function) {
             let lib = if p.id == "globals" {
                 String::new()

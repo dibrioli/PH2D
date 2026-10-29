@@ -207,7 +207,15 @@ pub fn stage(hero: &mut HeroScreen, n: u8) -> Option<KanbanId> {
         return None;
     }
     let me = me_of(hero);
-    let now = crate::wall_clock().0;
+    // O MESMO relógio que o `frame` dá às vistas (`pinned` ou o de parede): datas da cena e «hoje»
+    // da vista nunca se separam.
+    let now = hero
+        .documents
+        .surfaces_mut()
+        .find_mut::<PlannerDocs>()
+        .and_then(|d| d.pinned)
+        .unwrap_or_else(crate::wall_clock)
+        .0;
     let k = {
         let shared = hero.documents.kanbans_shared();
         let mut set = shared.borrow_mut();

@@ -55,9 +55,10 @@ impl Mesa {
             agora: 1_000_000_000_000,
             toasts: ToastQueue::new(),
         };
-        let now = ph2d_app_planner::wall_clock();
+        // Uma data FIXA a meio do mês (quarta 14/10/2026, 12:00 UTC): o relógio de parede punha a
+        // entrega da cena no último dia da grelha do mês (28/10 → 01/11) e o dia seguinte fora.
         let d = m.docs();
-        d.pinned = Some(now);
+        d.pinned = Some(Moment(1_791_979_200_000));
         d.set_zone(Zone::utc());
         m
     }

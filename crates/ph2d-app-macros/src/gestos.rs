@@ -189,6 +189,11 @@ impl Macros {
     }
 
     fn ficheiro_da_biblioteca(&mut self, nome: &str) -> Result<Ficheiro, ErroDaMacroView> {
+        // O frame lê a biblioteca logo no 1.º quadro (as ligações do Kanban): um nome que a cache não
+        // tem relê o disco uma vez — o ficheiro posto lá por fora depois dessa leitura também conta.
+        if self.lida().0.procura(nome).is_none() {
+            self.biblioteca.lida = None;
+        }
         self.lida()
             .0
             .procura(nome)

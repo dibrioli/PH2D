@@ -1,6 +1,6 @@
 # ESTADO da missão Pincéis — MISSÃO 2 — linha FECHADA 29/10, integração por ordem do dono (≤ 8 KB)
 
-> **Handoff de integração:** [`HANDOFF_INTEGRACAO_line_PainterWatercolor_2026-10-29_PINCEIS2.md`](../handoffs/HANDOFF_INTEGRACAO_line_PainterWatercolor_2026-10-29_PINCEIS2.md) — o que mudou, abertos e smoke. Abaixo, o registo da J6 (28/10).
+> **Handoff de integração:** [`HANDOFF_INTEGRACAO_line_PainterWatercolor_2026-10-29_PINCEIS2.md`](../handoffs/HANDOFF_INTEGRACAO_line_PainterWatercolor_2026-10-29_PINCEIS2.md) (mudanças, abertos, smoke). Abaixo: J6 (28/10).
 
 > Missão 1 encerrada na J5 (18 aprovados; [integração](../handoffs/HANDOFF_INTEGRACAO_line_PainterWatercolor_2026-10-22_PINCEIS.md)). Contrato: [`00_MISSAO.md`](00_MISSAO.md) · [custo](REGRAS_DE_CUSTO.md) · `HANDOFF_JANELA_<n>.md` · `exames/<família>.md`. Handoff da J6: [`HANDOFF_JANELA_6.md`](HANDOFF_JANELA_6.md).
 
@@ -39,16 +39,12 @@ aprovados mantêm ou sobem. **METODOLOGIA** (dono 28/10): [`REGRAS_DE_CUSTO.md`]
 
 ## J6 — pedidos do dono no smoke (28/10)
 
-- Wax Crayon na fábrica (`a5e727f203`). Paper Press 0..1 (`b17f8d64c3`). Same as Paper no Grain (`1d0ccb1524`). Exame do
-  óleo 10× mais rápido (`eabfc63ccd`). Tudo fechado e curado no fecho 29/10 — ver o handoff de integração acima.
+Wax Crayon na fábrica `a5e727f203` · Paper Press `b17f8d64c3` · Same as Paper `1d0ccb1524` · exame do óleo 10× `eabfc63ccd`: fechados 29/10.
 
 ## J6 passo 3 — pincel a pincel (16 só por valores; 16 travados por motor; 7 sem oráculo)
 
 - Digital ✅ (`8a9703db68` `07c644af37` `c8d4ad953d`, [`exames/digital_j6.md`](exames/digital_j6.md)): C-4 Studio Pen (Hard Round 0,283) e C-6 Technical Pen (Pixel 1px 0,330) FUNDEM; K-1 Clouds curado não aprovado; motor B-6 (rampa sob o tecto), L-5 (blur puxa o papel); M-7 sem oráculo. **Cega Digital: B-7 Rough Sketch e I-12 Optical Wash curados NÃO aprovados** (porquê: HANDOFF_JANELA_6 §1). ⚠️ Biblioteca `j6_wet` incompleta (28/66) ⇒ d antigos suspeitos.
-- Canetas/marcadores Wet ✅ (`221fb75e43`, `EM_ESTUDO_J6_WET`, [`exames/canetas_j6.md`](exames/canetas_j6.md)): Reed Pen,
-  Wood Stick, Marker Chisel, Dry Marker curados não aprovados (diferenças medidas e conhecidas — cega não gasta). Fila:
-  ✅ dual compõe com a ponta achatada (`9dfb735b24` `095a508bfa`; Reed Pen w0·w90 34·21, Rebelle 34·23; Wood Stick
-  régua 392, larguras do Rebelle) — ambos curados não aprovados (pontas redondas a 200 px, espiral cheia) · tamanho em pé · velocidade→tamanho no Wet · riscas do carimbo.
+- Canetas/marcadores Wet ✅ (`221fb75e43`, [`exames/canetas_j6.md`](exames/canetas_j6.md)): Reed Pen, Wood Stick, Marker Chisel, Dry Marker curados não aprovados. Dual na ponta achatada (`9dfb735b24` `095a508bfa`; Reed Pen w0·w90 34·21, Rebelle 34·23; Wood Stick régua 392) — pontas redondas a 200 px, espiral cheia. Fila: tamanho em pé · velocidade→tamanho no Wet · riscas do carimbo.
 - Aguarela/texturas ✅ (`6999f3ec3d`, [`exames/aguarela_texturas_j6.md`](exames/aguarela_texturas_j6.md)): **F-10 Wax Crayon
   APROVADO** (cega: o Rebelle nunca achado — chamado «imitação» nas 6 linhas; o nosso tomado pela referência em 3,
   média/alta; régua 436, Graphite 8B d 0,783) ⇒ sobe no lote. I-10 Fringe Bloom curado não aprovado (achado em todas).

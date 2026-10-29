@@ -40,7 +40,7 @@ fn refina_a_promessa(p: &mut Preset) {
                 continue;
             }
             let k = t.partition_point(|&[r0, _]| r0 < m);
-            t.insert(k, [format!("{motor}").parse().unwrap(), f64::from(l)]);
+            t.insert(k, [format!("{motor}").parse().unwrap(), format!("{l}").parse().unwrap()]);
             mudou = true;
         }
         if !mudou {

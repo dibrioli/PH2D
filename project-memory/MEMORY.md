@@ -21,7 +21,6 @@
 - ⭐ [Dono decidiu (06/10): o PH2D TERÁ versão no navegador, mas NÃO agora — 1.º degrau: AVIF fora do `wasm32`](project_web_shell_decided_by_owner_2026_10_06.md)
 - ⭐ [Editor de scripts Luau (15/10): script DENTRO do projeto · `luau-lsp` empacotado · IA só no FIM · arrastar objetos para o código](project_code_editor_owner_decisions_2026_10_15.md)
 - ⭐ [Biblioteca de macros (23/10): a macro é um OBJECTO (Add ▸ Macro) · por cima = tamanho original onde o gizmo está · mundo = W19](project_macro_library_owner_decisions_2026_10_23.md)
-- ⭐ [Constraints (25/10): a IK corre na POSIÇÃO da pilha, não por último como no Blender (dono delegou)](project_constraints_ik_runs_at_its_stack_position_2026_10_25.md)
 - [Onde mora cada coisa — tabela verificada](reference_canonical_files.md)
 - [GPU tests headless (evidência velha Mac/Metal)](reference_gpu_tests_run_headless_metal.md)
 - [transcripts medem o agente — agent-loop-profile.sh](reference_session_transcripts_are_a_measurable_instrument.md)
@@ -130,7 +129,7 @@
 - ⛔⛔ [Consumidor que escolhe o relógio à mão escreve um 4.º palpite](feedback_a_consumer_that_picks_among_clocks_by_hand_is_the_answer_that_ages.md)
 - ⛔⛔ [Duas guardas que se EXCLUEM desligam um recurso sem o dizer](feedback_two_guards_that_exclude_each_other_disable_a_feature_silently.md)
 - [Registro de painel — (5) sítios](reference_topic_panel_registration.md) · [Gotchas de código (36)](reference_topic_code_gotchas.md)
-- 📚 [Padrões de código (gotchas silenciosos): mais (49) lições, uma linha cada, verbatim](reference_topic_code_pattern_gotchas.md)
+- 📚 [Padrões de código (gotchas silenciosos): mais (48) lições, uma linha cada, verbatim](reference_topic_code_pattern_gotchas.md)
 
 ## Arquitetura / norte / perf
 - ⛔ [REGRA DO DONO: editar pixels ou tamanho/margem = imagem SEM a dobra (exceto Liquify, cor, filtros); tamanho/margem SOLTA dos ossos](project_pixel_tools_flatten_bone_bound_art.md)

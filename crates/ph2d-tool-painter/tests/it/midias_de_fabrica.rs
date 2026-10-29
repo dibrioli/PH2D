@@ -395,10 +395,14 @@ fn cada_preset_parece_a_sua_midia() {
     let mut raios: Vec<f32> = MIDIAS.iter().map(|m| m.raio).collect();
     raios.sort_by(f32::total_cmp);
     raios.dedup();
+    // ⛔ SEM o Real Oil: as fotos do Rebelle (`fixtures/rebelle/{oil,dabber}.png`) são tinta chapada, sem a luz do
+    // relevo nem a sombra no papel — com a caixa ligada (Oil/*, dono 28/10) a luz escurecia a orla e a borda
+    // (Dabber orla 10 × 5, Oil Bristle borda 0,618 × 0,872). A luz do óleo mede-se no EXAME, não aqui.
+    let sem_oleo = |nome| super::presets_de_fabrica::sem_real_oil(de_fabrica(nome));
     let (medidas, controlos): (Vec<_>, Vec<_>) = std::thread::scope(|s| {
         let a: Vec<_> = MIDIAS
             .iter()
-            .map(|m| s.spawn(|| cena_seca(&de_fabrica(m.preset), m.raio, &[m.preset.to_owned()])))
+            .map(|m| s.spawn(|| cena_seca(&sem_oleo(m.preset), m.raio, &[m.preset.to_owned()])))
             .collect();
         let b: Vec<_> = raios
             .iter()

@@ -34,7 +34,9 @@ const CENAS: [(&str, bool, u64); 20] = [
     // pela curva da pressão no tamanho que casa as pontas do Rebelle (ordem do dono 19/10).
     // J2 (03_MOTORES §7 a): a pressão de cada preset passou a ser a da sua origem no Rebelle (a cena tem a rampa).
     // Oil Bristle: candidato fora da fábrica (`78e69511ab`, lido pelo `candidato`), regerado com o Real Oil em `e314e58cec`.
-    ("Oil Bristle", false, 0xd7258ae210c35e61), // J6 Real Oil (era 0xd5dc7c77cb4a281b)
+    // J6 fecho: a luz do Real Oil das curas do óleo da linha (o grão de 1 px sobrevive, `9fba4165d8`; a luz só na foto,
+    // `eabfc63ccd`); com a cura do motor (`07b41f2a5a`) revertida o fnv é o mesmo (era 0xd7258ae210c35e61; antes 0xd5dc7c77cb4a281b).
+    ("Oil Bristle", false, 0x0681f53db1cde201),
     // J4 oleo_acrilica 2.ª ronda: a Acrylic Round (0xb6475854432e61f0) saiu da fábrica — fundida no Hard Round.
     ("Express Oil", false, 0x324fcd3206cecaff), // J4 oleo_acrilica: os tufos (cerdas 7 × 300, faixa 4 px, pigmento 75) (era 0x6ae408041d1e042f)
     ("Graphite 8B", false, 0xa30d19aed297aa0d), // J3 3.ª ronda: a 2.ª ponta à frente (no arco), a orla 0,8 × 1, os tufos, a carga 280 e o papel 0,4 (era 0x0aed0cb29386b748)

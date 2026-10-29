@@ -149,7 +149,7 @@ fn paint_top_basics(
     brush: BrushSettings,
 ) -> f32 {
     let mut y = top_y;
-    use crate::paint_brush_top::{paint_checkbox_row, paint_slider_chip_row};
+    use crate::paint_brush_top::paint_slider_chip_row;
     // ── TOP basics (no section), reordered (Enio 2026-06-24):
     //    Blend · Color · Size · Strength · Accumulate · Falloff ──
 
@@ -288,69 +288,8 @@ fn paint_top_basics(
         y = crate::paint_composite::paint_composite_card(ctx, theme, x, content_w, y, brush);
     }
 
-    // 5. Accumulate (checkbox — caps the stroke at Strength when off). Hidden in Smear/Blur (neither uses
-    //    the paint-side Strength cap) and, since 2026-07-12 (Enio), under the **optical wash**: the
-    //    watercolor path short-circuits before the stamp routing, and `accumulate` is read ONLY there
-    //    (`accumulate_cap`), so the checkbox was painted-but-inert — dead UI, exactly like the Composite
-    //    card hidden above for the same reason. It is also redundant by construction: the wash's coverage
-    //    is MAX-blended (an envelope), which IS "no build-up within a stroke". Note this keys off
-    //    `watercolor_active`, not the checkbox: in Eraser/Mask/Inpaint the plain deposit runs again and
-    //    Accumulate goes back to meaning something. **Strength stays** — the engine bakes it into
-    //    `Dab.coverage` and the wash reads it as the deposit peak (`coverage × (1 − Dilution)`).
-    //    Escondido também com **IMPASTO** ligado (Enio 2026-07-18, depois do smoke): ali ele governa
-    //    só metade da tinta. O relevo é um ENVELOPE por traço — uma passada de um pincel carregado
-    //    deixa uma espessura — então marcar Accumulate acumularia a opacidade e deixaria o CORPO
-    //    onde estava: as duas metades da mesma tinta discordando sobre o que uma segunda passada
-    //    significa. Estender o acúmulo ao relevo foi construído e **reprovado no smoke**, então a
-    //    resposta honesta é não oferecer o controle onde ele só faz metade do que promete.
-    //    ⚠️ **A MÁSCARA fica na lista dos que MOSTRAM** (2026-07-25): por algumas horas ela escondeu esta
-    //    row, quando a cobertura da máscara tinha lei própria (o envelope Wash) e o campo não era lido.
-    //    Aquela lei foi **reprovada na tela** (doc 25 §13.10) e a máscara voltou a pintar exactamente como
-    //    o brush digital — então `accumulate` volta a significar ali o que significa aqui, e esconder a
-    //    row passaria a ser o controle FALTANDO em vez do morto. A frase acima ("em Eraser/Mask/Inpaint o
-    //    Accumulate volta a significar algo") está correta como está.
-    //    E escondido no **Wet Paint** (doc 46 §1): o fluido não tem Strength para o tecto e conserva a
-    //    massa — a porta é a `accumulate_offered`, a mesma que o traço pergunta.
-    if brush.accumulate_offered() {
-        y = paint_checkbox_row(
-            ctx,
-            theme,
-            x,
-            content_w,
-            y,
-            ph2d_tool_painter::ids::PAINTER_BRUSH_ACCUMULATE,
-            "panel.painter_layers.brush.accumulate",
-            brush.accumulate,
-        );
-        // O Wash (25/10): a lei do Accumulate desligado em que o traço pára no maior dab.
-        y = paint_checkbox_row(
-            ctx,
-            theme,
-            x,
-            content_w,
-            y,
-            ph2d_tool_painter::ids::PAINTER_BRUSH_WASH,
-            "panel.painter_layers.brush.wash",
-            brush.wash,
-        );
-    }
-    // O fio do arrasto (J6): o Smear do Digital resolve-se por área (`BrushSpec::smear_fio`). Só o Smear lê o campo,
-    // e o preset que o leva é o do Digital.
-    if brush.ferramenta() == ph2d_tool_painter::FerramentaDoPincel::Smear
-        && ph2d_tool_painter::PaintMedia::from_u8(brush.media)
-            == ph2d_tool_painter::PaintMedia::Digital
-    {
-        y = paint_checkbox_row(
-            ctx,
-            theme,
-            x,
-            content_w,
-            y,
-            ph2d_tool_painter::ids::PAINTER_BRUSH_SMEAR_FIO,
-            "panel.painter_layers.brush.smear_fine_thread",
-            brush.smear_fio,
-        );
-    }
+    // 5. Accumulate, Wash e o fio do Smear — [`crate::paint_brush_top::paint_accumulate_e_fio`].
+    y = crate::paint_brush_top::paint_accumulate_e_fio(ctx, theme, x, content_w, y, &brush);
     y
 }
 

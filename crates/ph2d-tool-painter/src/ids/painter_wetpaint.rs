@@ -156,6 +156,27 @@ pub const PAINTER_WETPAINT_OLEO_FAIXAS: [(f64, f64); 14] = [
     (0.0, ph2d_wet_paint::material::RAIO_SUBSUPERFICIE_MAX as f64),
 ];
 
+/// Os valores de FÁBRICA da luz do Real Oil nas unidades do painel (`OleoReal::default()`, GRAUS e a mistura do
+/// ambiente) — o espelho que o painel pinta antes do 1.º instantâneo (`brush_fallback`); a igualdade com a
+/// ferramenta tem teste (`a_luz_de_fabrica_do_painel_e_a_do_oleo`).
+pub const PAINTER_WETPAINT_OLEO_ALTITUDE_DE_FABRICA: f32 = 42.0;
+/// Ver [`PAINTER_WETPAINT_OLEO_ALTITUDE_DE_FABRICA`] (`225°` = topo-esquerda).
+pub const PAINTER_WETPAINT_OLEO_AZIMUTE_DE_FABRICA: f32 = 225.0;
+/// Ver [`PAINTER_WETPAINT_OLEO_ALTITUDE_DE_FABRICA`] (`oleo_real::FORCA_AMBIENTE_FABRICA`).
+pub const PAINTER_WETPAINT_OLEO_FORCA_AMBIENTE_DE_FABRICA: f32 =
+    ph2d_wet_paint::oleo_real::FORCA_AMBIENTE_FABRICA as f32;
+
+#[cfg(test)]
+#[test]
+fn a_luz_de_fabrica_do_painel_e_a_do_oleo() {
+    let o = ph2d_wet_paint::oleo_real::OleoReal::default();
+    assert!((o.altitude.to_degrees() as f32 - PAINTER_WETPAINT_OLEO_ALTITUDE_DE_FABRICA).abs() < 1e-4);
+    assert!((o.azimute.to_degrees() as f32 - PAINTER_WETPAINT_OLEO_AZIMUTE_DE_FABRICA).abs() < 1e-4);
+    assert!(
+        (o.forca_ambiente as f32 - PAINTER_WETPAINT_OLEO_FORCA_AMBIENTE_DE_FABRICA).abs() < 1e-6
+    );
+}
+
 /// **Environment** chip do **Real Oil** (W1c): o céu que a tinta reflecte (`OleoReal::ambiente`; wire = o
 /// índice em `Ambiente::TODOS`). Pintado abaixo de [`PAINTER_WETPAINT_OLEO_FIELDS`], só com a caixa ligada.
 pub const PAINTER_WETPAINT_OLEO_AMBIENTE: NodeId =

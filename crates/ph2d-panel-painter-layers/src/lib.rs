@@ -90,6 +90,7 @@ mod paint_selection;
 mod paint_shape;
 mod paint_shape_dab;
 mod paint_shape_layers;
+mod paint_shape_pontas; // as pontas do traço do Wet Paint na Shape (Square tip, Flat ends, Ends fade)
 mod paint_shape_previa; // a cor da prévia da ponta pelas camadas do Shape Color (prompt 38)
 mod paint_shape_ramp;
 mod paint_stencil;
@@ -112,6 +113,7 @@ mod populate;
 mod populate_brush_chips;
 mod populate_composite_chips;
 mod populate_deform;
+mod populate_dropdowns; // os chips de menu do populate (o tecto de 600 LOC)
 /// The Grid Stamp card's widgets (its four sliders + chips and the Show Grid checkbox).
 mod populate_grid_stamp;
 mod populate_sculpt;

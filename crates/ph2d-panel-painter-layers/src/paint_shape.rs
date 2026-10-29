@@ -24,7 +24,7 @@ use ph2d_vector::ImageQuality;
 /// ⛔ Report do dono, 2026-09-15: *«a caixa recua quando na verdade o nome deveria criar as
 /// colunas»*. ⛔⛔ E até 2026-09-16 esta lista era a SEGUNDA resposta da mesma secção — as caixas
 /// de marcar e os chips dela não a conheciam. *Duas derivações da mesma coluna são duas colunas.*
-fn seccao_da_forma(ctx: &mut PaintCtx) -> ph2d_editor_core::property_row::Seccao {
+pub(crate) fn seccao_da_forma(ctx: &mut PaintCtx) -> ph2d_editor_core::property_row::Seccao {
     crate::seccoes::seccao_da_chave(ctx.text_system, "panel.painter_layers.shape.angle")
 }
 
@@ -142,69 +142,7 @@ pub(crate) fn paint_shape_section(
     }
     // ── A ponta RETA (prompt 44): a quina da mesma pegada, logo abaixo do gizmo que a desenha. Só no Wet
     //    Paint (a ordem de 07/10: só ele evolui; o device do Digital não a carimba). ──
-    if brush.wetpaint && brush.le(ph2d_tool_painter::LinhaDaFerramenta::DepositoMolhado) {
-        let sec = seccao_da_forma(ctx);
-        y = crate::number_field::paint_num_row(
-            ctx,
-            theme,
-            x,
-            content_w,
-            y,
-            tr("panel.painter_layers.shape.square_tip"),
-            ph2d_tool_painter::ids::PAINTER_BRUSH_DAB_QUINA,
-            brush.dab_quina,
-            0.0,
-            1.0,
-            crate::number_field::FINE_STEP,
-            2,
-            sec,
-        );
-        // As pontas RECTAS do traço (J6): o início e o fim cortados a direito — a fita do pastel, não a meia-lua.
-        y = crate::paint_brush_top::paint_checkbox_row(
-            ctx,
-            theme,
-            x,
-            content_w,
-            y,
-            ph2d_tool_painter::ids::PAINTER_BRUSH_PONTAS_RECTAS,
-            "panel.painter_layers.shape.flat_ends",
-            brush.pontas_rectas,
-        );
-        // Quanto o corte passa do 1.º e do último centro (em raios): só com as pontas rectas.
-        if brush.pontas_rectas {
-            y = crate::number_field::paint_num_row(
-                ctx,
-                theme,
-                x,
-                content_w,
-                y,
-                tr("panel.painter_layers.shape.flat_ends_beyond"),
-                ph2d_tool_painter::ids::PAINTER_BRUSH_PONTAS_ALEM,
-                brush.pontas_alem,
-                0.0,
-                ph2d_tool_painter::ids::PAINTER_BRUSH_PONTAS_ALEM_MAX,
-                crate::number_field::FINE_STEP,
-                2,
-                sec,
-            );
-        }
-        // As pontas que ESBATEM ao comprido (J6t): o depósito cai para as duas pontas ao longo de uma pegada.
-        y = crate::number_field::paint_num_row(
-            ctx,
-            theme,
-            x,
-            content_w,
-            y,
-            tr("panel.painter_layers.shape.ends_fade"),
-            ph2d_tool_painter::ids::PAINTER_BRUSH_PONTAS_ESBATE,
-            brush.pontas_esbate,
-            0.0,
-            ph2d_tool_painter::ids::PAINTER_BRUSH_PONTAS_ESBATE_MAX,
-            crate::number_field::FINE_STEP,
-            2,
-            sec,
-        );
-    }
+    y = crate::paint_shape_pontas::paint_pontas_do_molhado(ctx, theme, x, content_w, y, &brush);
 
     // ── Texture source picker (None / procedural kinds / Image) — the same kinds as the Grain. Picking
     //    Image opens a file pick (or use the Hierarchy "Use as Brush Shape"); None reverts to the bare

@@ -10,6 +10,7 @@ use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::screens::hero::float_bar::tool_bars::placed;
+use ph2d_editor_core::screens::hero::left_rail::no_trilho;
 use ph2d_editor_core::screens::hero::{
     HERO_VIEWPORT_H, HERO_VIEWPORT_W, paint_hero_screen, tool_bar,
 };
@@ -47,22 +48,27 @@ fn clica(hero: &mut HeroScreen, r: Rect) -> Vec<WidgetEvent> {
     ev
 }
 
-/// As ferramentas da coluna: as do trilho, com a Máscara e a Seleção em dois botões no lugar do grupo delas (dono
-/// 24/10: «temos espaço para ambos»).
-fn na_coluna_esperada() -> Vec<NodeId> {
+/// As ferramentas da coluna: as do trilho QUE ESTE MEIO OFERECE ([`no_trilho`]: as da água só com o Wet Paint, e
+/// no lugar do Smear e do Blur do Digital — dono 25/10), com a Máscara e a Seleção em dois botões no lugar do grupo
+/// delas (dono 24/10: «temos espaço para ambos»).
+fn na_coluna_esperada(wet: bool) -> Vec<NodeId> {
     ids::PAINTER_RAIL_TOOL_IDS
         .into_iter()
-        .filter(|i| *i != ids::PAINTER_RAIL_MASK_GROUP)
+        .filter(|i| *i != ids::PAINTER_RAIL_MASK_GROUP && no_trilho(*i, wet))
         .chain(ids::PAINTER_RAIL_MASK_SUB_IDS)
         .collect()
 }
 
-fn pintor() -> (HeroScreen, ph2d_text::TextSystem) {
+/// Os dois meios que mudam a coluna: o Digital (sem as da água) e o Wet Paint (com elas).
+const MEIOS: [bool; 2] = [false, true];
+
+fn pintor(wet: bool) -> (HeroScreen, ph2d_text::TextSystem) {
     let _ = ph2d_panel_registry_init::register_all_panels();
     let mut hero = HeroScreen::new(NodeId(1));
     hero.view.legacy_chrome = false;
     hero.image_edit.mode_on = true;
     hero.image_edit.active_tool_id = Some("painter");
+    hero.store.set_painter_rail_wet(wet);
     let mut ts = ph2d_text::TextSystem::without_system_fonts();
     pinta(&mut hero, &mut ts);
     pinta(&mut hero, &mut ts);
@@ -83,7 +89,13 @@ fn fio(hero: &mut HeroScreen) -> Option<String> {
 
 #[test]
 fn the_painter_tools_are_the_column_and_not_the_row() {
-    let (hero, mut ts) = pintor();
+    for wet in MEIOS {
+        a_coluna_e_nao_a_fila(wet);
+    }
+}
+
+fn a_coluna_e_nao_a_fila(wet: bool) {
+    let (hero, mut ts) = pintor(wet);
     let bars = hero
         .store
         .tool_bars()
@@ -91,15 +103,15 @@ fn the_painter_tools_are_the_column_and_not_the_row() {
         .expect("o pintor publicou a coluna");
     assert!(bars.painter_rail);
     let na_coluna: Vec<NodeId> = bars.column.iter().flatten().map(|b| b.id).collect();
-    for id in na_coluna_esperada() {
+    for id in na_coluna_esperada(wet) {
         assert!(
             na_coluna.contains(&id),
-            "{id:?}: a ferramenta não está na coluna"
+            "{id:?} (wet {wet}): a ferramenta não está na coluna"
         );
     }
     assert_eq!(
         na_coluna.len(),
-        na_coluna_esperada().len(),
+        na_coluna_esperada(wet).len(),
         "a coluna tem intrusos"
     );
     let fila = tool_bar::bar_rail(&hero.store, &mut ts, true, true);
@@ -143,10 +155,16 @@ fn the_painter_tools_are_the_column_and_not_the_row() {
 /// A MESMA porta do vetor: cada botão do pintor é registado no rectângulo que o `placed` do vetor dá.
 #[test]
 fn the_painter_column_is_painted_by_the_vector_door() {
-    let (hero, _) = pintor();
-    let bars = hero.store.tool_bars().cloned().expect("publicada");
-    let postos = placed(&bars, hero.last_content, false, false);
-    assert_eq!(postos.len(), na_coluna_esperada().len());
+    for wet in MEIOS {
+        let (hero, _) = pintor(wet);
+        let bars = hero.store.tool_bars().cloned().expect("publicada");
+        let postos = placed(&bars, hero.last_content, false, false);
+        assert_eq!(postos.len(), na_coluna_esperada(wet).len(), "wet {wet}");
+        a_porta_do_vetor(&hero, postos);
+    }
+}
+
+fn a_porta_do_vetor(hero: &HeroScreen, postos: Vec<(ph2d_editor_core::interaction::BarButton, Rect)>) {
     for (b, r) in postos {
         assert_eq!(
             hero.hit_index.rect_for(b.id),
@@ -159,7 +177,13 @@ fn the_painter_column_is_painted_by_the_vector_door() {
 
 #[test]
 fn every_painter_column_button_answers_a_real_pointer() {
-    let (mut hero, mut ts) = pintor();
+    for wet in MEIOS {
+        cada_botao_responde(wet);
+    }
+}
+
+fn cada_botao_responde(wet: bool) {
+    let (mut hero, mut ts) = pintor(wet);
     let mut medidos = 0;
     let bars = hero.store.tool_bars().cloned().expect("publicada");
     for (b, r) in placed(&bars, hero.last_content, false, false) {
@@ -223,14 +247,14 @@ fn every_painter_column_button_answers_a_real_pointer() {
     }
     assert_eq!(
         medidos,
-        na_coluna_esperada().len(),
-        "controlo: botões medidos"
+        na_coluna_esperada(wet).len(),
+        "controlo: botões medidos (wet {wet})"
     );
 }
 
 #[test]
 fn a_flyout_item_answers_and_leaving_the_painter_clears_the_column() {
-    let (mut hero, mut ts) = pintor();
+    let (mut hero, mut ts) = pintor(false);
     let bars = hero.store.tool_bars().cloned().expect("publicada");
     let (_, shapes) = placed(&bars, hero.last_content, false, false)
         .into_iter()

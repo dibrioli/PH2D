@@ -48,8 +48,9 @@ pub struct DatePickerLayout {
 fn pad() -> f32 {
     Spacing::Md.px()
 }
+/// O vão entre dois controlos do painel — a porta do ritmo, nunca um degrau escolhido aqui.
 fn gap() -> f32 {
-    Spacing::Sm.px()
+    ph2d_tokens::control_gap_px()
 }
 fn label_h() -> f32 {
     Density::Compact.row_h_px()
@@ -114,7 +115,7 @@ impl DatePickerLayout {
         let reminder = Rect::new(x, y, w, row);
         y += row + p;
         let save = Rect::new(x, y, w, row);
-        y += row + Spacing::Xs.px();
+        y += row + g;
         let remove = Rect::new(x, y, w, row);
         Self {
             title,

@@ -1478,12 +1478,9 @@ const PAINEIS_QUE_NAO_SAO_CHROME: &[(&str, &str)] = &[
          traduzir a regua. Decisao do dono, ja' registada para o `widget_lab` e para o \
          `Geometry Offset`.",
     ),
-    (
-        "widget_lab",
-        "idem — e mais: metade do texto dele NOMEIA a medicao que ele faz (`1 · THE FOUR DESIGNS`, \
-         `LIVE BOX — drag it`, `row 22`). O `Geometry Offset` ja' e' isencao NOMEADA no censo das \
-         elisoes deste mesmo ficheiro, pela mesma razao.",
-    ),
+    // `widget_lab` saiu em 28/10 (TrelloClone, fecho): toda palavra que ele pinta passou a ser
+    // produzível pela tabela — a isenção já não abrigava nada
+    // (`nenhum_painel_isento_deixou_de_abrigar_uma_palavra_escrita_a_mao`).
     // `authored` saiu em 20/10 (W23 bloco 6): o `Design` do quadro entrou na tabela, e as três
     // palavras do painel (`Design`/`Preview`/`Code`) passaram todas a ser produzíveis — a isenção já
     // não abrigava nada (`nenhum_painel_isento_deixou_de_abrigar_uma_palavra_escrita_a_mao`).

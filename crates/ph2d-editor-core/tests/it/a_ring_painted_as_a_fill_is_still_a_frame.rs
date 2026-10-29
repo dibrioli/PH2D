@@ -97,6 +97,20 @@ const DECLARED: &[(&str, &str, Kind, &str)] = &[
         "os divisores entre o corpo, o cabecalho e o rodape do cartao",
     ),
     (
+        "widget/rich_editor/paint.rs",
+        "fill_rounded_rect(scene, bar, 0.0, resolve(ColorToken::BorderStrong, theme));",
+        Divider,
+        "a BARRA vertical à esquerda de uma CITAÇÃO no texto rico — marca do bloco autorado, \
+         só de um lado; nada é pintado por cima dela",
+    ),
+    (
+        "widget/rich_editor/paint.rs",
+        "scene.fill_rect(rect_to_vello(line), resolve(ColorToken::Border, theme));",
+        Divider,
+        "a RÉGUA horizontal (`BlockKind::Rule`) que o autor pôs no texto rico — uma linha entre \
+         dois blocos",
+    ),
+    (
         "widget/radio_group.rs",
         "scene.fill_rect(rect_to_vello(rect), resolve(ColorToken::Border, theme));",
         Track,

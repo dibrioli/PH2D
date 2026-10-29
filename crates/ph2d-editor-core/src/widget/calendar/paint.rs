@@ -225,9 +225,11 @@ pub fn paint_calendar(
             fill_rounded_rect(scene, c, radius, hover_fill);
         }
         if cell.is_today && !selected {
+            // FRAME-RAW-OK: o anel de HOJE — o contorno de acento é a marca do dia, não moldura
             stroke_rounded_rect(scene, c, radius, stroke, resolve(ColorToken::Accent, theme));
         }
         if cal.focused && cal.focus == Some(d) {
+            // FRAME-RAW-OK: o ANEL DE FOCO do teclado na célula — vê-se em qualquer pele
             stroke_rounded_rect(
                 scene,
                 r,

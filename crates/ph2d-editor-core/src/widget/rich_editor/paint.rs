@@ -128,6 +128,7 @@ fn paint_marker(scene: &mut VectorScene, ts: &mut TextSystem, b: &BlockBox, them
                     StrokeToken::Default.px() * 2.0,
                 );
             } else {
+                // FRAME-RAW-OK: a caixa VAZIA de uma checklist do DOCUMENTO — o contorno é o glifo
                 stroke_rounded_rect(
                     scene,
                     bx,

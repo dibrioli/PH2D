@@ -87,7 +87,7 @@ fn tracking_measures_and_cuts_with_the_value_it_paints() {
     let plain_w = ts.prefix_width_tracked(name, px, FontWeight::SEMI_BOLD, 0.0);
     assert!(
         w - 1.0 > plain_w,
-        "o espaçamento abre o texto ({plain_w} → {w})"
+        "o espaçamento abre o texto (de {plain_w} para {w})"
     );
     let glyphs = |max_w: f32| {
         let mut ts = TextSystem::without_system_fonts();

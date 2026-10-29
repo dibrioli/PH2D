@@ -44,10 +44,12 @@ impl BrushSettings {
     }
 
     /// O meio oferece o Grain **«Same as Paper»** do pincel (dono 28/10)? Todos menos a Aquarela, que tem o
-    /// seu (`granulation_use_paper`). A mesma pergunta que `PainterTool::grao_e_o_papel` faz.
+    /// seu (`granulation_use_paper`) — a mesma pergunta que `PainterTool::grao_e_o_papel` faz —, e só à ferramenta
+    /// que recebe o grão ([`crate::LinhaDaFerramenta::GraoDoPapel`]).
     #[must_use]
     pub fn oferece_grain_same_as_paper(&self) -> bool {
         super::PaintMedia::from_u8(self.media) != super::PaintMedia::Watercolor
+            && self.le(crate::LinhaDaFerramenta::GraoDoPapel)
     }
 
     /// O grão do pincel É o papel do documento (o «Same as Paper» do Grain, fora da Aquarela): o painel

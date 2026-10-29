@@ -86,6 +86,7 @@ fn ids_da(l: LinhaDaFerramenta) -> &'static [NodeId] {
         LinhaDaFerramenta::Orientacao => &[PAINTER_SHAPE_FOLLOW, PAINTER_PEN_ROTATION],
         LinhaDaFerramenta::OpacidadePelaVelocidade => &[PAINTER_PEN_SPEED_OPACITY],
         LinhaDaFerramenta::AguaViva => &[PAINTER_WETPAINT_LIVE_WATER],
+        LinhaDaFerramenta::GraoDoPapel => &[PAINTER_BRUSH_GRAIN_SAME_AS_PAPER],
     }
 }
 

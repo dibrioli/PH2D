@@ -99,6 +99,10 @@ pub enum LinhaDaFerramenta {
     OpacidadePelaVelocidade,
     /// O Live Water do Wet Paint (a água corre com o traço aberto).
     AguaViva,
+    /// O «Same as Paper» do Grain fora da Aquarela (o papel feito grão do pincel): das ferramentas da água só o Blend
+    /// recebe o grão (`wetpaint/dab_route.rs`); no Smear, Wet, Dry e Blow ele pinta 0 texels (censo
+    /// `cada_ferramenta_da_agua_so_ve_o_que_le`, 29/10).
+    GraoDoPapel,
 }
 
 use FerramentaDoPincel as F;
@@ -115,7 +119,7 @@ const CURA: [L; 5] = [L::Blend, L::Cor, L::Randomize, L::Composite, L::Flow];
 /// e o Speed → Opacity: o carimbo achatado que sopra gira com o gesto e a opacidade do dab é a força do sopro — medido
 /// pelo `o_carimbo_das_ferramentas_da_agua` desde o 3.º traço do censo (as pontas dentro da tela, 8a19f601f8).
 /// O Per-Layer Color sai com a [`L::Forma`] (mora na parte da Shape que a textura arma).
-const DA_AGUA: [L; 11] = [
+const DA_AGUA: [L; 12] = [
     L::Blend,
     L::Cor,
     L::Randomize,
@@ -127,6 +131,23 @@ const DA_AGUA: [L; 11] = [
     L::DepositoMolhado,
     L::Flow,
     L::Forma,
+    L::GraoDoPapel,
+];
+/// O Smear e o Dry da água: sem o Water do topo e sem o grão (só o Blend o recebe).
+const DA_AGUA_SEM_AGUA_SEM_GRAO: [L; 13] = [
+    L::Blend,
+    L::Cor,
+    L::Randomize,
+    L::Composite,
+    L::Solido,
+    L::TracoComoCamada,
+    L::Aguada,
+    L::Preview,
+    L::DepositoMolhado,
+    L::Flow,
+    L::Forma,
+    L::AguaDoVolume,
+    L::GraoDoPapel,
 ];
 const DA_AGUA_SEM_AGUA: [L; 12] = [
     L::Blend,
@@ -142,7 +163,7 @@ const DA_AGUA_SEM_AGUA: [L; 12] = [
     L::Forma,
     L::AguaDoVolume,
 ];
-const SOPRO: [L; 13] = [
+const SOPRO: [L; 14] = [
     L::Blend,
     L::Cor,
     L::Randomize,
@@ -156,6 +177,7 @@ const SOPRO: [L; 13] = [
     L::Forma,
     L::AguaDoVolume,
     L::AguaViva,
+    L::GraoDoPapel,
 ];
 
 /// ⭐ A tabela.
@@ -237,10 +259,10 @@ pub const NAO_LE: [(FerramentaDoPincel, &[LinhaDaFerramenta]); 14] = [
     (F::Escultura, &SEM_COR),
     // Dono 24/10: «sem preview no painel» — a amostra vive ao lado do cursor.
     (F::ContaGotas, &[L::Preview]),
-    (F::SmearMolhado, &DA_AGUA_SEM_AGUA),
+    (F::SmearMolhado, &DA_AGUA_SEM_AGUA_SEM_GRAO),
     (F::BlendMolhado, &DA_AGUA_SEM_AGUA),
     (F::Molhar, &DA_AGUA),
-    (F::Secar, &DA_AGUA_SEM_AGUA),
+    (F::Secar, &DA_AGUA_SEM_AGUA_SEM_GRAO),
     (F::Soprar, &SOPRO),
 ];
 

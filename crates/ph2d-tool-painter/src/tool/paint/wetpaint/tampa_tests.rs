@@ -151,3 +151,77 @@ fn pontas(c: &[f64]) -> [f64; 4] {
         ultima(0.1) - ultima(0.9),
     ]
 }
+
+/// O recto LARGO (400 px, além 1) das pontas rectas que anda 180 px e solta; com `parada` o último dab da mão chega
+/// PARADO (caminho `0` desde o anterior — a mão que pára antes de levantar). Devolve os dabs do FECHO, o tempo do
+/// soltar e a tela.
+fn fecho_largo(parada: bool) -> (usize, std::time::Duration, Vec<u8>) {
+    const LW: usize = 900;
+    const LH: usize = 500;
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; LW * LH * 4], LW as u32, LH as u32);
+    t.set_paint_tool_mode("wetpaint");
+    t.set_wet_relogio_fixo(true);
+    t.set_brush_size_px(400.0);
+    t.set_brush_color_srgb8([30, 60, 200]);
+    t.toggle_brush_pontas_rectas();
+    t.set_brush_pontas_alem(1.0);
+    let p = |x: f32, phase| CanvasPointer {
+        pos: [x, 250.0],
+        pressure: 1.0,
+        tilt: [0.0, 0.0],
+        phase,
+    };
+    let mut x = 250.0;
+    t.on_canvas_pointer(p(x, PointerPhase::Down));
+    for _ in 0..60 {
+        x += 3.0;
+        t.on_canvas_pointer(p(x, PointerPhase::Move));
+        t.on_tick(8.0);
+    }
+    let brush = t.paint.wetpaint.session.as_ref().and_then(|s| s.pincel_do_fecho).expect("o traço vivo");
+    let alem = t.alem_no_motor(&brush);
+    let sess = t.paint.wetpaint.session.as_mut().expect("o traço vivo");
+    if parada {
+        // O último dab da mão chega PARADO: o mesmo dab, com caminho `0` desde o anterior (o lote da mão).
+        for l in &mut sess.lanes {
+            if let Some(mut u) = l.ultimo {
+                u.arc_len = l.arco;
+                let _ = super::tampa::Tampa::do_dab(&u, l, super::tampa::Lote::Mao, alem);
+            }
+        }
+    }
+    let n: usize = sess
+        .lanes
+        .iter()
+        .filter_map(|l| {
+            let u = l.ultimo?;
+            Some(super::tampa::quantos_do_fecho(l, &brush, u.radius_px.max(u.stroke_radius_px), alem))
+        })
+        .sum();
+    let t0 = std::time::Instant::now();
+    t.on_canvas_pointer(p(x, PointerPhase::Up));
+    let dt = t0.elapsed();
+    t.on_tick(1000.0 / 60.0);
+    (n, dt, t.canvas_rgba.to_vec())
+}
+
+/// ⭐ O FECHO não depende de a mão PARAR antes de soltar: o passo dos dabs do fecho é o do Spacing do pincel (o dos
+/// dabs do corpo), não o caminho do último dab da mão — com ele, um último dab parado pedia `⌈2,05·raio ÷ 0,5⌉`
+/// dabs O(área) síncronos no soltar (raio 200: 820, medido 2,1 s × 0,33 s em `--profile smoke`). O traço da mão
+/// que solta a andar é o mesmo dos dois lados, e o fecho pousa dabs (controlo).
+#[test]
+fn o_fecho_das_pontas_rectas_nao_depende_de_a_mao_parar() {
+    let (anda, t_anda, tela_anda) = fecho_largo(false);
+    if let Ok(f) = std::env::var("PH2D_TELA_FECHO") {
+        std::fs::write(f, &tela_anda).unwrap();
+    }
+    let (para, t_para, tela_para) = fecho_largo(true);
+    eprintln!("fecho: mão a andar {anda} dabs em {t_anda:?} · último dab parado {para} dabs em {t_para:?}");
+    assert!(anda > 0, "controlo: o fecho pousa dabs");
+    assert_eq!(
+        anda, para,
+        "o fecho não pode depender de a mão parar antes de soltar ({t_anda:?} × {t_para:?})"
+    );
+    assert!(tela_anda == tela_para, "o traço da mão parada é o da mão que solta a andar");
+}

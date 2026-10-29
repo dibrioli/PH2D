@@ -471,6 +471,7 @@ impl Trail {
                     p.k(Knob::StrokeFilmDome),
                     p.k(Knob::StrokeFilmEnds),
                     dab.r,
+                    p.px_por_celula,
                     self.filme.passo(dab.x, dab.y),
                 ),
             )

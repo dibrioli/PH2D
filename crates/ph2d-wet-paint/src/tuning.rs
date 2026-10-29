@@ -289,7 +289,7 @@ pub enum Knob {
     /// … **Gloss** do Óleo Real: a força do brilho especular da tinta que este pincel pousa (`1` = o de sempre).
     OilGloss,
     /// ⭐ **A borda da mancha molhada ESBATE** (J6, `docs/Painter/Pinceis/exames/aguarela.md` «Motor J6»): a largura
-    /// (células) do degradê na fronteira da mancha do [`Knob::WetOpen`] — a tinta esticada e a levantada repartem-se
+    /// (**px** de tela, convertida pela razão da grade: [`crate::sim::Params::px_por_celula`]) do degradê na fronteira da mancha do [`Knob::WetOpen`] — a tinta esticada e a levantada repartem-se
     /// pela mesma rampa, sem o aro das duas somadas. `0` = a borda de sempre, ao bit (só com [`Knob::WetOpen`]).
     WetOpenEdge,
     /// ⭐ **O filme LARGO tem miolo carregado e borda em degradê** (J6, «Motor J6»): o alvo do filme de cada dab cai

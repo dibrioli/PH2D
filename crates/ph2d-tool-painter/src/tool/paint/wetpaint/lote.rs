@@ -127,9 +127,11 @@ pub(super) fn acerta_o_lote(
     engine: &mut ph2d_wet_paint::painter::Engine,
     brush: &BrushSpec,
     fino: f32,
+    ratio: u8,
 ) {
     use ph2d_wet_paint::tuning::Knob;
     engine.agua_do_dab = f64::from(fino).recip();
+    engine.sim.px_por_celula = f64::from(ratio.max(1));
     let gama = engine.tuning.get(Knob::EmbossSizeExp);
     engine.sim.relevo_do_tamanho = if gama > 0.0 {
         let d = 2.0 * f64::from(brush.clamped_radius()).max(0.5);

@@ -316,7 +316,7 @@ impl Trail {
             return None;
         }
         // A caixa de saída: a de entrada + o alcance do tubo em volta do caminho.
-        let esbate = p.k(Knob::WetOpenEdge);
+        let esbate = p.k(Knob::WetOpenEdge) / p.px_por_celula;
         let alcance = pts
             .iter()
             .map(|q| q.r * (1.0 + q.abre[0].max(q.abre[1])) * (1.0 + BORDA) + 2.0 + esbate)
@@ -562,7 +562,7 @@ impl Trail {
         // A caixa da cápsula dos dabs desta janela, em células do grid (não a da janela: a ponta redonda passa dela).
         // A pena (J6, [`Knob::WetOpenEdge`]): a rampa do levantar alarga-se com a do esticão — as duas tintas repartem a
         // fronteira em vez de se somarem num aro.
-        let pena = p.k(Knob::WetOpenEdge);
+        let pena = p.k(Knob::WetOpenEdge) / p.px_por_celula;
         let (mut x0, mut y0, mut x1, mut y1) = (f64::MAX, f64::MAX, f64::MIN, f64::MIN);
         for q in &pts[pts.len() - m..] {
             let a = q.r * (1.0 + q.abre[0].max(q.abre[1])) * (1.0 + BORDA) + 1.0 + pena;

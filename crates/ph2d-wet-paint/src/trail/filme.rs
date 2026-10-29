@@ -102,7 +102,7 @@ pub(crate) fn espessura(capsula: f64, agua_do_dab: f64) -> f64 {
     agua_do_dab / capsula.max(1e-3)
 }
 
-/// O raio (células) até ao qual o filme é CHATO: o Rebelle `Liner`/`Wash Round` a 40 px pousa um perfil plano através
+/// O raio (**px** de tela, [`crate::sim::Params::px_por_celula`]) até ao qual o filme é CHATO: o Rebelle `Liner`/`Wash Round` a 40 px pousa um perfil plano através
 /// do traço (o miolo ±1 % da borda a 1 px dela), a 200 px um domo (`Liner` 0,89 a 5 % da largura, 0,94 a 20 %, 1 no meio).
 pub(crate) const DOMO_R0: f64 = 20.0;
 
@@ -122,8 +122,10 @@ pub(crate) struct Forma {
 
 impl Forma {
     #[must_use]
-    pub(crate) fn nova(lado: f64, ponta: f64, r: f64, tangente: Option<(f64, f64)>) -> Self {
-        let g = if r <= DOMO_R0 { 0.0 } else { 1.0 - DOMO_R0 / r };
+    /// `r` em células, `px` os px de uma célula: o domo mede o raio em px ([`DOMO_R0`]).
+    pub(crate) fn nova(lado: f64, ponta: f64, r: f64, px: f64, tangente: Option<(f64, f64)>) -> Self {
+        let r_px = r * px;
+        let g = if r_px <= DOMO_R0 { 0.0 } else { 1.0 - DOMO_R0 / r_px };
         Self {
             lado: lado * g,
             ponta: ponta * g,
@@ -164,11 +166,11 @@ mod tests {
     /// crescem com o raio; ao longo a tampa cai mais que o lado.
     #[test]
     fn a_forma_so_cresce_acima_do_raio_chato() {
-        assert!(Forma::nova(0.0, 0.0, 100.0, None).chata());
-        assert!(Forma::nova(0.5, 0.5, DOMO_R0, None).chata());
-        let borda = |r: f64| 1.0 - Forma::nova(0.3, 0.0, r, Some((1.0, 0.0))).fator(0.0, r);
+        assert!(Forma::nova(0.0, 0.0, 100.0, 1.0, None).chata());
+        assert!(Forma::nova(0.5, 0.5, DOMO_R0, 1.0, None).chata());
+        let borda = |r: f64| 1.0 - Forma::nova(0.3, 0.0, r, 1.0, Some((1.0, 0.0))).fator(0.0, r);
         assert!(borda(40.0) > 0.0 && borda(40.0) < borda(100.0) && borda(100.0) < 0.3);
-        let f = Forma::nova(0.3, 0.6, 100.0, Some((1.0, 0.0)));
+        let f = Forma::nova(0.3, 0.6, 100.0, 1.0, Some((1.0, 0.0)));
         assert!(
             f.fator(90.0, 0.0) < f.fator(0.0, 90.0),
             "a tampa cai mais que o lado"
@@ -204,4 +206,23 @@ mod tests {
         assert_eq!(espessura(0.025, 1.0), 40.0);
         assert_eq!(espessura(0.025, 0.25), 10.0);
     }
+}
+
+/// ⭐ O domo fala em PX ([`DOMO_R0`], calibrado no Rebelle): o mesmo pincel (raio 100 px) a razão 1 (100 células) e 2
+/// (50 células) dá o MESMO perfil em px — através e ao longo, em 21 pontos do centro à borda; tolerância `1e-12`
+/// (medido: `0`, a conta é a mesma em px). Com o domo em células a razão 2 dava `1 − 20/50` contra `1 − 20/100`.
+#[cfg(test)]
+#[test]
+fn o_domo_do_filme_e_o_mesmo_em_px_a_toda_a_razao() {
+    let (rpx, lado, ponta) = (100.0, 0.4, 0.6);
+    let a = Forma::nova(lado, ponta, rpx, 1.0, Some((1.0, 0.0)));
+    let b = Forma::nova(lado, ponta, rpx / 2.0, 2.0, Some((1.0, 0.0)));
+    for k in 0..=20 {
+        let s = rpx * f64::from(k) / 20.0;
+        for (dx, dy) in [(0.0, s), (s, 0.0)] {
+            let (fa, fb) = (a.fator(dx, dy), b.fator(dx / 2.0, dy / 2.0));
+            assert!((fa - fb).abs() <= 1e-12, "a {s} px: razão 1 {fa} × razão 2 {fb}");
+        }
+    }
+    assert!(a.fator(0.0, rpx) < 0.9, "controlo: a 100 px o filme é um domo");
 }

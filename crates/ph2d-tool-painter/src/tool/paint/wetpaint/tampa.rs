@@ -36,8 +36,8 @@ const ALCANCE_DO_INICIO: f32 = 1.5;
 /// Os dabs virtuais vão até `raio × (alem + isto)` além da ponta (os mais longe não chegam atrás do corte).
 const ALCANCE_DO_FIM: f32 = 1.05;
 
-/// O passo mínimo dos dabs virtuais (px): um traço parado não pode pedir dabs sem fim.
-const PASSO_MINIMO: f32 = 0.5;
+/// O dab da mão que anda menos que isto × o passo anterior chega PARADO e não redefine o passo do fecho.
+const PARADO: f32 = 0.5;
 
 /// De que lote é o dab: da mão, da abertura (antes do 1.º centro) ou do fecho (além do último).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -90,7 +90,12 @@ impl Tampa {
                 if lane.rumo0 == [0.0; 2] {
                     lane.rumo0 = rumo;
                 }
-                lane.passo = d.arc_len - lane.arco;
+                // O passo do traço é o do dab que ANDOU: o que chega parado (menos de metade do anterior — a mão
+                // que pára antes de levantar) não o redefine.
+                let passo = d.arc_len - lane.arco;
+                if passo >= PARADO * lane.passo {
+                    lane.passo = passo;
+                }
                 lane.ultimo = Some(*d);
                 None
             }
@@ -122,9 +127,16 @@ impl Tampa {
     }
 }
 
-/// O passo de caminho de um dab virtual da lane (o do último dab da mão; nunca abaixo de [`PASSO_MINIMO`]).
-pub(super) fn passo_virtual(lane: &Lane) -> f32 {
-    lane.passo.max(PASSO_MINIMO)
+/// O passo de caminho de um dab virtual da lane: o do último dab da mão que ANDOU ([`PARADO`]) — o dos dabs do corpo
+/// —, ou, sem nenhum, o do **Spacing** do pincel pelo rumo dela. Antes o último dab parado dava `0` e o fecho pedia
+/// `⌈2,05·raio ÷ 0,5⌉` dabs O(área) síncronos no soltar (400 px, além 1: 2 451 dabs, 51 s em `--profile smoke`;
+/// gate `o_fecho_das_pontas_rectas_nao_depende_de_a_mao_parar`).
+pub(super) fn passo_virtual(lane: &Lane, brush: &BrushSpec) -> f32 {
+    if lane.passo > 0.0 {
+        return lane.passo;
+    }
+    let rumo = lane.ultimo.and_then(|u| unitario(u.dir)).unwrap_or(lane.rumo0);
+    brush.passo_ao_longo_px(brush.spacing, rumo)
 }
 
 /// Os dabs virtuais de um lote, por ponto do caminho e as lanes pela ordem (como as cópias de um ponto chegam):
@@ -161,6 +173,11 @@ fn virtuais(vivas: &[(usize, Dab, [f32; 2], f32, usize)], sentido: f32) -> (Vec<
 
 fn quantos(raio: f32, alem: f32, passo: f32) -> usize {
     ((alem + ALCANCE_DO_FIM) * raio / passo).ceil() as usize
+}
+
+/// Quantos dabs o FECHO pousa na lane `l` (raio `raio` px).
+pub(super) fn quantos_do_fecho(l: &Lane, brush: &BrushSpec, raio: f32, alem: f32) -> usize {
+    quantos(raio, alem, passo_virtual(l, brush))
 }
 
 impl PainterTool {
@@ -206,7 +223,7 @@ impl PainterTool {
             let Some(u) = l.ultimo.filter(|_| alem > 0.0) else {
                 continue;
             };
-            let passo = passo_virtual(l);
+            let passo = passo_virtual(l, brush);
             let mut modelo = u;
             modelo.center = l.inicio;
             modelo.arc_len = l.arco0;
@@ -259,9 +276,8 @@ impl PainterTool {
             .filter_map(|(i, l)| {
                 let u = l.ultimo?;
                 let r = unitario(u.dir)?;
-                let passo = passo_virtual(l);
                 let raio = u.radius_px.max(u.stroke_radius_px);
-                Some((i, u, r, passo, quantos(raio, alem, passo)))
+                Some((i, u, r, passo_virtual(l, &brush), quantos_do_fecho(l, &brush, raio, alem)))
             })
             .collect();
         if vivas.is_empty() {

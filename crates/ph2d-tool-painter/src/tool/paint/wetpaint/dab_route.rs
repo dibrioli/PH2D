@@ -244,7 +244,7 @@ impl PainterTool {
         // `k` conta os sub-dabs de trás para a frente (`0` = o dab); `passo` = o sub-passo, com cápsula (`lote`).
         let sub = super::lote::sub_passo_do_lote(&sess.engine.tuning, brush, ratio);
         let fino = super::lote::peso_do_passo_fino(brush, ratio);
-        super::lote::acerta_o_lote(&mut sess.engine, brush, fino);
+        super::lote::acerta_o_lote(&mut sess.engine, brush, fino, ratio);
         let esmaece_fino = super::rota_da_lane::esmaece_fino(&sess.engine, brush);
         let escala_tex = super::lote::escala_da_textura(&sess.engine, brush);
         let grao_e_o_papel = self.grao_e_o_papel_do(brush);
@@ -292,7 +292,7 @@ impl PainterTool {
                 // Um dab virtual das pontas rectas: a lane é a que ele continua ([`super::tampa`]).
                 let p = sess.lanes[li].pos;
                 let corda = (x - p[0]).hypot(y - p[1]);
-                let caminho = super::tampa::passo_virtual(&sess.lanes[li]);
+                let caminho = super::tampa::passo_virtual(&sess.lanes[li], brush);
                 super::rota_da_lane::anda_a_lane(sess, li, corda, caminho, wet_tool);
                 (li, false)
             } else {
@@ -307,7 +307,7 @@ impl PainterTool {
             let caminho = if lane_prev.is_none() {
                 0.0
             } else if virtual_ {
-                super::tampa::passo_virtual(&sess.lanes[li])
+                super::tampa::passo_virtual(&sess.lanes[li], brush)
             } else {
                 (d.arc_len - sess.lanes[li].arco).max(0.0)
             };

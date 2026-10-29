@@ -60,6 +60,8 @@ pub struct Params {
     pub semente_do_po: u32,
     /// [`Sim::relevo_do_tamanho`].
     pub relevo_do_tamanho: f64,
+    /// [`Sim::px_por_celula`].
+    pub px_por_celula: f64,
     /// [`Sim::traco_actual`].
     pub traco_actual: u32,
     /// [`Sim::paredes`].
@@ -159,6 +161,10 @@ pub struct Sim {
     /// **O relevo pelo diâmetro do traço** ([`Knob::EmbossSizeExp`]): o factor que o hospedeiro põe por lote e que
     /// multiplica o `Emboss` que a célula guarda ao receber a tinta. `1` = o de antes, ao bit.
     pub relevo_do_tamanho: f64,
+    /// **Os px de tela de uma célula** (a razão da grade do hospedeiro): as leis calibradas em px (o domo do filme, a
+    /// pena do [`Knob::WetOpenEdge`]) convertem-se por ela, para o mesmo pincel dar o mesmo traço a toda a razão. `1` =
+    /// a razão de fábrica, ao bit.
+    pub px_por_celula: f64,
     /// **O traço de agora** ([`Knob::LevelingOwnStroke`]): o número que cada célula pintada guarda
     /// ([`crate::grid::Grid::traco`]); `0` = nenhum. Muda a cada traço ([`crate::painter::Engine::begin_direct_stroke`]).
     pub traco_actual: u32,
@@ -247,6 +253,7 @@ impl Default for Sim {
             oleo: false,
             semente_do_po: 0,
             relevo_do_tamanho: 1.0,
+            px_por_celula: 1.0,
             traco_actual: 0,
             paredes: true,
             ext_bypass: false,
@@ -349,6 +356,7 @@ impl Sim {
             oleo: if self.oleo { 1.0 } else { 0.0 },
             semente_do_po: self.semente_do_po,
             relevo_do_tamanho: self.relevo_do_tamanho,
+            px_por_celula: self.px_por_celula,
             traco_actual: self.traco_actual,
             paredes: self.paredes,
             agua_do_dab: 1.0,

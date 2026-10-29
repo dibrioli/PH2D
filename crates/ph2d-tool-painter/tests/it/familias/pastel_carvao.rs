@@ -183,11 +183,13 @@ pub const WET: &[Receita] = &[
     // ✅ APROVADO J6 (revisão cega: o Rebelle nunca achado; prancha `pranchas/J6a_wax_crayon.jpg`) — era «Wax Crayon J6 D»
     // do [`EM_ESTUDO_J6`] (exame 436/454, Graphite 8B 0,783: `exames/aguarela_texturas_j6.md`).
     // ⭐ F-10 `Pastel › Pastel Oil › Wax Pencil`: o [`WAX_C`] sem o dual, as manchas da cera e jitter 0,12.
+    // ⚠️ Na fábrica com a REGRA do Spacing (0,1 + Continuous, `a_regra_do_spacing_da_fabrica`): o 0,25 da D vinha do
+    // estudo (WAX_C) e não é identidade — o giz de cera é faixa contínua, não carimbo espaçado (o exame: a nossa borda
+    // é «faixa lisa» mesmo a 0,25).
     Receita {
         nome: "Wax Crayon",
         pincel: &[
             ("jitter", "0.12"),
-            ("spacing", "0.25"),
             ("shape", MANCHAS_DA_CERA),
             ("size_max_px", "140"),
         ],

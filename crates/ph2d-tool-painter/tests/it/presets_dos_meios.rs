@@ -307,6 +307,18 @@ fn a_porta_dos_quatro_meios_e_a_do_wet_no_wet() {
         }
         let mut a = PainterTool::default();
         a.set_paint_media(PaintMedia::WetPaint);
+        // ⚠️ A porta do Wet pede a FERRAMENTA já na mão (o trilho a pega antes dela); a dos quatro meios pega-a
+        // sozinha (`pegar_a_ferramenta_do_preset`). Sem isto todo preset de ferramenta da água (`paint_mode`
+        // «Blend», «Smear»…, desde `a70d46b9b6`) comparava a ferramenta com o Pincel e não a porta.
+        match ph2d_tool_painter::ferramenta_do_preset(&p.parametros) {
+            ph2d_tool_painter::FerramentaDoPincel::Pincel => {}
+            ph2d_tool_painter::FerramentaDoPincel::Borracha => a.set_paint_tool_mode("eraser"),
+            f => a.set_paint_tool_mode(
+                f.ferramenta_da_agua()
+                    .unwrap_or_else(|| panic!("{}: {f:?} no Wet", e.relativo))
+                    .fio(),
+            ),
+        }
         let fa = a.wet_preset_aplicar(p);
         let mut b = PainterTool::default();
         assert_eq!(b.preset_aplicar(p), Ok(fa), "{}", e.relativo);

@@ -365,7 +365,12 @@ fn a_cor_sobrevive_a_agua_nos_pinceis_de_fabrica() {
         let razao = |pr: &ph2d_brush_presets::Preset| {
             desvio(pr, Some((true, false))) / desvio(pr, None).max(0.1)
         };
+        // Sem o Real Oil que os Oil/* de fábrica ligam desde `e314e58cec` (dono): a luz do óleo não muda a tinta, e a régua
+        // é a da tinta (com ela o Dabber lia ×2,1 — bisseção 29/10: verde em 10eee50b0d, vermelho em e314e58cec).
         let mut pr = e.preset.clone();
+        pr.parametros
+            .engine
+            .remove(crate::tool::paint::wetpaint_preset::CHAVE_OLEO);
         if pr
             .parametros
             .engine

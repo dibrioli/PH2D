@@ -436,7 +436,9 @@ fn fnv(px: &[u8]) -> u64 {
 /// Weight, a mesma malha; `oraculo/README.md` §Transmission «Ronda 4»): L ÷ papel e saturação no miolo dentro da
 /// tolerância MEDIDA — o Cycles lido NESTE miolo (`miolo_produto.pgm`; 0,5: 0,205 · 0,744; 1: 0,144 · 0,631).
 /// **Clear glass** = a tela de `ad16f60b75` AO BYTE
-/// (o hash da tela que o binário de `ad16f60b75` escreveu — `nos_tr1.ppm`/`nos_tr05.ppm` md5 iguais aos do modo 1).
+/// (o hash da tela que o binário de `ad16f60b75` escreveu — `nos_tr1.ppm`/`nos_tr05.ppm` md5 iguais aos do modo 1), com o
+/// contorno sub-célula de `9fba4165d8` (só o meio plano é escada; a lei do vidro ao bit continua em `ph2d-wet-paint`
+/// `o_clear_glass_e_a_lei_de_antes_ao_bit`).
 #[test]
 fn o_modo_blender_casa_com_o_cycles_e_o_clear_glass_e_o_de_antes() {
     crate::tool::paint::wetpaint::oleo_no_quadro::no_evento(true);
@@ -488,10 +490,12 @@ fn o_modo_blender_casa_com_o_cycles_e_o_clear_glass_e_o_de_antes() {
     assert_eq!(
         (fnv(&v05), fnv(&v1)),
         (CLEAR_GLASS_05, CLEAR_GLASS_1),
-        "Clear glass ≠ a tela de ad16f60b75"
+        "Clear glass ≠ a tela de ad16f60b75 (+ o contorno de 9fba4165d8)"
     );
 }
 
-/// O hash da tela de `ad16f60b75` (a lei do vidro claro) na cena de [`o_modo_blender_casa_com_o_cycles_e_o_clear_glass_e_o_de_antes`].
-const CLEAR_GLASS_05: u64 = 0x41f2_e6a6_379b_7fa6;
-const CLEAR_GLASS_1: u64 = 0xaa52_ebb1_0843_041c;
+/// O hash da tela de `ad16f60b75` (a lei do vidro claro) na cena de [`o_modo_blender_casa_com_o_cycles_e_o_clear_glass_e_o_de_antes`],
+/// repintado em `9fba4165d8` (o contorno sub-célula só alisa a escada de um meio plano; antes `0x41f2_e6a6_379b_7fa6` ·
+/// `0xaa52_ebb1_0843_041c`, bisseção 29/10: `9fba4165d8~1` dá os de antes, `9fba4165d8` e o HEAD da J6 estes).
+const CLEAR_GLASS_05: u64 = 0x23f9_aa15_b4a8_9263;
+const CLEAR_GLASS_1: u64 = 0xc6ec_682c_aa7f_01a2;

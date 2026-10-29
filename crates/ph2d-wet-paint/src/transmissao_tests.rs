@@ -519,10 +519,21 @@ fn o_cartao_nao_tem_os_pesos_da_tinta() {
 /// só com Transmission 1 (Transparency 0) atenua a sombra que projecta na MESMA razão dos dois lados da orla — sob a
 /// orla parcial (o plano que o `render` escreve) e no papel nu ao lado (`transparencia_de_quem_tapa`). A sombra SEGUE
 /// O MODO (dono 28/10): Clear glass atenua (0,579 · 0,600 em `ad16f60b75`); Blender = a da opaca nos dois lados, ao
-/// byte (o Cycles: Transmission 1 ÷ opaca 1,00).
+/// byte (o Cycles: Transmission 1 ÷ opaca 1,00). A mancha é um DISCO: a orla curva é a escada que o contorno
+/// sub-célula corta a cobertura zero (o papel nu com sombra); o quadrado de [`tinta`] só tinha os 4 cantos, e desde
+/// `9fba4165d8` (só o meio plano é escada) nem esses — 0,573 · 0,581 com o disco.
 #[test]
 fn a_sombra_da_transmissao_casa_sob_a_tinta_e_no_papel_nu() {
-    let g = tinta();
+    let mut g = tinta();
+    for y in 0..W {
+        for x in 0..W {
+            let (dx, dy) = (x as f32 - 24.0, y as f32 - 24.0);
+            if dx * dx + dy * dy > 13.0 * 13.0 {
+                let i = x + y * g.s;
+                g.sett[i] = 0.0;
+            }
+        }
+    }
     let (po, so) = render(&g, &OleoReal::default());
     let razao = |claro: f32| {
         let (_, sw) = render(

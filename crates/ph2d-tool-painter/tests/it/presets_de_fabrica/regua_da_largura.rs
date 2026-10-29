@@ -32,17 +32,19 @@ pub(super) fn sementes_da_largura(p: &Preset) -> &'static [u64] {
 }
 
 /// O raio do MOTOR (lei crua — não depende da tabela, a mesma antes e depois de regerar) da prova de
-/// [`a_semente_move_a_largura`]. Medido 29/10 (`sonda_sensibilidade_a_semente`, 44 presets do Wet, raios 13 e 55,
-/// sementes 0‥2, dispersão = máx − mín): a 13 nenhum passa da tolerância (Smear Shattered 1,41 px ≤ 2); a 55 passam
-/// Smear Shattered 5,04 px (4,3 %), Blender Textured 2,49 (3,1 %), Blender Dots 1,64 (2,5 %) e Graphite 8B 3 px (3,6 %).
-/// Todos os outros: 0 ou ≤ 2 px (a quantização de 1 px da régua dos pincéis: Oil Pastel, Colored 4B, Graphite 2H).
-const RAIO_DA_PROVA_DA_SEMENTE: f32 = 55.0;
+/// [`a_semente_move_a_largura`]: onde o piso de 2 px da promessa e o píxel inteiro da régua dos pincéis já pesam menos
+/// que os 2 %. Medido 29/10 (`sonda_sensibilidade_a_semente`, 44 presets do Wet, sementes 0‥2, dispersão = (máx − mín)
+/// ÷ mediana): a 150 — Smear Shattered 7,7 %, Blender Dots 2,8 %, Blender Textured 2,2 %; os grafites e o Charcoal
+/// 2,4–6,4 % (já do grão); Scratch 3,2 %; os outros pincéis ≤ 1,9 % (Dip Pen 1,93, Oil Pastel 1,80) e as outras 6
+/// ferramentas 0. ⛔ Recusa MEDIDA: a 55 com o piso de 2 px o Blender Dots ficava de fora (1,64 px, 2,5 %) e a semente
+/// 7 levava-o a −5,0 % a raio 300 (mutação (i)); a 13 nenhum passava.
+const RAIO_DA_PROVA_DA_SEMENTE: f32 = 150.0;
 
-/// ⭐ **A semente MOVE a largura de `p` além da tolerância da promessa** — MEDIDO, não lido da receita: a lei crua a
-/// [`RAIO_DA_PROVA_DA_SEMENTE`] com cada uma das [`SEMENTES_DO_SORTEIO`]; a dispersão (máx − mín) passa de
-/// `max(TOLERANCIA_PX, TOLERANCIA_REL · mediana)`. Uma régua não mede mais fino que o seu próprio ruído: o pincel ou a
-/// ferramenta assim é da classe do GRÃO ([`tolerancia_da_largura`]) e, se for ferramenta, mede várias sementes
-/// ([`sementes_da_largura`]). Uma medição por preset e por processo (a tabela e a promessa leem a mesma).
+/// ⭐ **A semente MOVE a largura de `p` além da tolerância fina** — MEDIDO, não lido da receita: a lei crua a
+/// [`RAIO_DA_PROVA_DA_SEMENTE`] com cada uma das [`SEMENTES_DO_SORTEIO`]; a dispersão (máx − mín) ÷ mediana passa de
+/// `TOLERANCIA_REL`. Uma régua não mede mais fino que o seu próprio ruído: o pincel ou a ferramenta assim é da classe
+/// do GRÃO ([`tolerancia_da_largura`]) e, se for ferramenta, mede várias sementes ([`sementes_da_largura`]). Uma
+/// medição por preset e por processo (a tabela e a promessa leem a mesma).
 pub(super) fn a_semente_move_a_largura(p: &Preset) -> bool {
     use std::sync::{Arc, Mutex, OnceLock};
     static MEDIDAS: Mutex<BTreeMap<String, Arc<OnceLock<bool>>>> = Mutex::new(BTreeMap::new());
@@ -74,7 +76,7 @@ pub(super) fn a_semente_move_a_largura(p: &Preset) -> bool {
         let (lo, hi) = ls
             .iter()
             .fold((f32::MAX, f32::MIN), |(a, b), &v| (a.min(v), b.max(v)));
-        hi - lo > TOLERANCIA_PX.max(TOLERANCIA_REL * mediana(ls))
+        hi - lo > TOLERANCIA_REL * mediana(ls)
     })
 }
 

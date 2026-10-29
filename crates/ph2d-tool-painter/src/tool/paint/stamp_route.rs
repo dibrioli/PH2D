@@ -303,12 +303,9 @@ impl PainterTool {
                 // target alpha is fractional at full strength, because overlapping dabs would build
                 // the rim right back to a hard edge (measured: 0.64 -> 0.94).
                 || brush.film_aa_wanted(brush.shape.is_active())
-                // O Grain PRESO À TELA (Tiled, Stencil): o tecto do texel é `g·tecto` (`cover_add`), fraccionário à
-                // Strength 1 — sem ele os dabs saturam e o grão deixa de morder (Texture Eraser 159 ± 45 a 0,99 →
-                // 255 ± 0 a 1). O grão preso à ponta (View, Random) muda de `g` a cada dab: é o «cada ponta» — e
-                // também o de PROFUNDIDADE por dab (`varia_por_dab`: o Height/Linear Height pela pressão, cuja
-                // pressão cheia ENCHE o grão pela soma dos dabs, cv 0,46 → 0,14 como o lápis do Rebelle; com o tecto
-                // ficava 0,43, `o_height_abre_o_grao_com_a_pressao`).
+                // O Grain PRESO À TELA (Tiled, Stencil): o tecto do texel `g·tecto` (`cover_add`) morde também à Strength
+                // 1 (Texture Eraser 159 ± 45 a 0,99 → 255 ± 0 a 1 sem ele). O preso à ponta (View, Random) ou de
+                // profundidade por dab (o Height: a cheia enche) muda de `g` a cada dab — é o «cada ponta».
                 || (brush.texture.is_active()
                     && !brush.texture.lei.varia_por_dab()
                     && matches!(

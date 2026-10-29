@@ -75,16 +75,6 @@ pub(in crate::tool::paint) fn de_fabrica_ou_candidato(nome: &str) -> Preset {
         .unwrap_or_else(|| panic!("o preset {nome:?}: nem na fábrica nem candidato"))
 }
 
-/// (Testes) [`de_fabrica_ou_candidato`] SEM a caixa Real Oil (J6, triagem (a) de `105f28791d`): o portão que mede uma
-/// lei do pigmento ou do Emboss com o Oil Bristle como instrumento — desde `e314e58cec` (dono) o candidato liga o óleo,
-/// cuja luz substitui o Emboss e soma-se à tinta. O óleo mede-se nos portões dele e no EXAME.
-#[cfg(test)]
-pub(in crate::tool::paint) fn de_fabrica_sem_oleo(nome: &str) -> Preset {
-    let mut p = de_fabrica_ou_candidato(nome);
-    p.parametros.engine.remove(CHAVE_OLEO);
-    p
-}
-
 /// O meio-alvo de todo preset desta família (o `media` do JSON).
 pub const MEIO_DO_PRESET: &str = "WetPaint";
 /// A pasta-raiz da família em `assets/brushes/` e em `~/.local/share/ph2d/brushes/`.

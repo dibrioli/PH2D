@@ -169,3 +169,22 @@ desvio do Child Of não é animável (W1d 3); o bake avalia só curva→canais�
 - rustfmt/hook reformata ao gravar: âncoras de UMA linha em edições por script.
 - Grelha do HUD: compare saídas do solver com `PARADA`, nunca `==`; `FIXO` = 2e6 (empate STRONG dependia do hash).
 - Nunca a palavra «kill» na mensagem de commit.
+
+## 8. Integração no main (29/10, ordem do dono, depois da GameEngineFuncional)
+
+- Rebase sobre `23765c4475` (GEF no main): 11 commits conflitaram, resolvidos por estágios; cada commit comparado com o original
+  (multiconjunto ±). Mergiraf largou o `mod constraints;` do `ph2d-i18n` e disse «Solved» — reposto. Tip antigo em `backup/BC-pre-rebase`.
+- **Contados sobre o main do dia:** `PROJECT_SCHEMA` **198 → 203** (199 pilha · 200 id por vértice · 201 cola · 202 `UiArranjo` ·
+  203 `TimersQuiet`; tripla `(203, 13, 24)`; `GEOMETRIA_V23` = 199, `SEM_CONSTRAINTS` = 198; 193–197 continuam no braço da GEF).
+  Registo `ph2d-ecs` 113 + 2 = **115**; espelhos `ph2d-render`/`ph2d-script` 114 + 2 = **116**. Censo de comandos do Inspector
+  92 + 8 = **100**. ADR 0192–0194 (o main acaba em 0191).
+- **6 vermelhos da combinação** (cada lado verde sozinho), curados em `540b42e278`: o «Run From» da GEF entra na porta px/m; os
+  testes da câmera e do Run From escrevem no seletor m/px; o v197 da GEF leva a cena vetorial v23; `ph2d-i18n/lib.rs` 703 → 700;
+  `contradicao` do `ph2d-hud-layout` era 6/12 pela ordem interna do solver (agora 12/12); a cena 4 do CodeEditor = carga.
+  Antes: `fase_snapshots_publish` 201 → 198 (o cartão publica por `ph2d_app_constraints::inspector::publica`).
+- **Suíte (`nextest-impacted`, BASE=main, fecho):** 22 245 testes, **22 244 verdes**; o único vermelho, `a_cena_3_conduzida_passo_a_passo`
+  (ph2d-host-code-scenes), passa sozinho (`loadavg` 19) — flake de carga já listado pela GEF. `cargo check --workspace
+  --all-targets` com warnings negados limpo; registos sincronizados; censos da árvore combinada 122/122.
+- `project-memory/MEMORY.md` fica igual ao do main (o primário tem mudanças vivas de outras sessões); os ponteiros desta linha
+  entraram na cópia viva do primário, e a lição W4.6 do Auto Key voltou ao tópico com o `(49)`.
+- `docs/PixelArt/` (não rastreado, de outra sessão) ficou intocado no primário; os passos do `foundational-integrate.sh` correram à mão.

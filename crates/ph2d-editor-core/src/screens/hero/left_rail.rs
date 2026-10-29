@@ -33,8 +33,8 @@ use ph2d_vector::VectorScene;
 
 /// As tabelas do rail (ferramentas e flyouts), partidas daqui pelo tecto de tamanho.
 mod tools;
-pub(super) use tools::{PAINTER_MASK_SUBS, PAINTER_SHAPES, RailTool};
 use tools::PAINTER_TOOLS;
+pub(super) use tools::{PAINTER_MASK_SUBS, PAINTER_SHAPES, RailTool};
 
 /// Register every LeftRail widget (both faces) into the [`WidgetStore`].
 /// Translate is the default-pressed object tool; Brush is the default-pressed

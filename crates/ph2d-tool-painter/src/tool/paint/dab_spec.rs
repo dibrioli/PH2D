@@ -117,7 +117,14 @@ impl PainterTool {
     /// nos picos). Tooth 0 = o traço de antes, ao byte. Com um Grain escolhido, ele é a textura do traço.
     #[must_use]
     pub(crate) fn papel_como_grain(&self) -> bool {
-        self.grao_e_o_papel() || (self.papel_pode_ser_grain() && self.paint.brush.paper_depth > 0.0)
+        self.papel_como_grain_do(&self.paint.brush)
+    }
+
+    /// [`Self::papel_como_grain`] com o «Same as Paper» do pincel do LOTE ([`Self::grao_e_o_papel_do`]).
+    #[must_use]
+    pub(crate) fn papel_como_grain_do(&self, brush: &ph2d_painter_brush::BrushSpec) -> bool {
+        self.grao_e_o_papel_do(brush)
+            || (self.papel_pode_ser_grain() && self.paint.brush.paper_depth > 0.0)
     }
 
     /// ⭐ **Grain «Same as Paper»** fora da Aquarela (dono 28/10: *«habilite o mesmo para todos os modos de
@@ -125,8 +132,14 @@ impl PainterTool {
     /// tela pela lei do slot do papel. A Aquarela tem a sua (`granulation_use_paper`, a granulação).
     #[must_use]
     pub(crate) fn grao_e_o_papel(&self) -> bool {
-        self.paint.brush.grain_same_as_paper
-            && self.paint_media() != super::media::PaintMedia::Watercolor
+        self.grao_e_o_papel_do(&self.paint.brush)
+    }
+
+    /// [`Self::grao_e_o_papel`] de um pincel dado — o do LOTE (o adiado, o `pincel_do_fecho`), que leva o «Same as
+    /// Paper» do instante dos seus dabs, e não o do pincel vivo (que o artista pode ter alternado a meio do traço).
+    #[must_use]
+    pub(crate) fn grao_e_o_papel_do(&self, brush: &ph2d_painter_brush::BrushSpec) -> bool {
+        brush.grain_same_as_paper && self.paint_media() != super::media::PaintMedia::Watercolor
     }
 
     /// O Digital está em condições de pôr o papel como Grain (o Relief ligado com um papel, sem Grain

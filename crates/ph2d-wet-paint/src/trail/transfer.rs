@@ -547,6 +547,8 @@ impl Trail {
             },
         };
         let local = perto::Local::nova(self, g, p.k(Knob::BlendReach) * raio);
+        // O material e a marca seguem a MESMA vizinhança da cor ([`perto::LocalMat`]).
+        let local_mat = perto::LocalMat::nova(self, g, local.as_ref(), marca);
         let mat_media = crate::grid::material::media(mats);
         let marca_media = (marca && w_marca > 0.0).then(|| s_marca / w_marca);
         // Pass 2: relax every masked cell toward the window mix.
@@ -573,6 +575,8 @@ impl Trail {
                 }
                 let i = cx as usize + cy as usize * s;
                 let m = local.as_ref().map_or(janela, |l| l.media(lx, ly));
+                let (mat_media, marca_media) =
+                    local_mat.as_ref().map_or((mat_media, marca_media), |l| l.media(lx, ly));
                 let [a_r, a_g, a_b] = m.a;
                 let [b_r, b_g, b_b] = m.b;
                 let (avg_susp, avg_sett, avg_film, avg_wet) = (m.susp, m.sett, m.film, m.wet);

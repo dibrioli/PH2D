@@ -219,15 +219,16 @@ impl PainterTool {
 
     /// ⭐ **O lote em CORRIDAS da mesma imagem**: cada corrida é carimbada com a sua imagem no lugar da Shape.
     pub(super) fn stamp_dabs_mangueira(&mut self, dabs: &[Dab]) {
-        self.stamp_dabs_mangueira_com(dabs, |t, corrida| t.stamp_dabs_dispatch(corrida));
+        self.stamp_dabs_mangueira_com(dabs, |t, _, corrida| t.stamp_dabs_dispatch(corrida));
     }
 
     /// [`Self::stamp_dabs_mangueira`] com o carimbo `f` de cada corrida — o Wet carimba por aqui também o lote
-    /// ADIADO, que pousa no tique, fora da porta do lote (`wetpaint::dab_route`).
+    /// ADIADO, que pousa no tique, fora da porta do lote (`wetpaint::dab_route`). `f` recebe também o índice, no lote,
+    /// do 1.º dab da corrida (o que lê uma lista paralela ao lote — o fecho das pontas rectas — usa-o).
     pub(super) fn stamp_dabs_mangueira_com(
         &mut self,
         dabs: &[Dab],
-        mut f: impl FnMut(&mut Self, &[Dab]),
+        mut f: impl FnMut(&mut Self, usize, &[Dab]),
     ) {
         let n = self.brush_shape_hose_count();
         let k_de = |d: &Dab| d.tilt.map_or(0, |t| usize::from(t.imagem)).min(n - 1);
@@ -238,7 +239,7 @@ impl PainterTool {
             let j = (i..dabs.len())
                 .find(|&j| k_de(&dabs[j]) != k)
                 .unwrap_or(dabs.len());
-            self.com_imagem(k, |t| f(t, &dabs[i..j]));
+            self.com_imagem(k, |t| f(t, i, &dabs[i..j]));
             i = j;
         }
         self.paint.mangueira.dentro = false;
@@ -354,4 +355,34 @@ impl PainterTool {
         }
         self.sincroniza_a_mangueira();
     }
+}
+
+/// ⭐ **Cada corrida da mangueira sabe ONDE está no lote** (auditoria J6, motor 3): o fecho das pontas rectas lê uma
+/// lista paralela ao lote (a lane de cada dab); a corrida que recomeçasse em `0` dava à 2.ª as lanes da 1.ª.
+#[cfg(test)]
+#[test]
+fn cada_corrida_da_mangueira_leva_o_indice_global_do_lote() {
+    use ph2d_painter_brush::{BrushSpec, DabTilt, Dynamics, Stroke, StrokePoint};
+    let mut t = PainterTool::default();
+    let img = vec![255u8; 8 * 8 * 4];
+    t.set_brush_shape_image_rgba(&img, 8, 8, None);
+    t.add_brush_shape_hose_image_rgba(bytemuck::cast_slice(&img), 8, 8);
+    assert_eq!(t.brush_shape_hose_count(), 2);
+    let mut s = Stroke::new(BrushSpec { radius_px: 4.0, ..Default::default() }, Dynamics::default(), 1);
+    let mut dabs = Vec::new();
+    s.begin(StrokePoint { pos: [4.0, 8.0], pressure: 1.0 }, &mut dabs);
+    s.extend(StrokePoint { pos: [60.0, 8.0], pressure: 1.0 }, &mut dabs);
+    assert!(dabs.len() >= 6, "{}", dabs.len());
+    // As imagens alternam a cada dois dabs: corridas de 2.
+    for (k, d) in dabs.iter_mut().enumerate() {
+        d.tilt = Some(DabTilt { imagem: ((k / 2) % 2) as u8, ..d.tilt.unwrap_or(DabTilt::NEUTRA) });
+    }
+    let mut vistos = Vec::new();
+    t.stamp_dabs_mangueira_com(&dabs, |_, i, corrida| vistos.push((i, corrida.len())));
+    let mut esperado = 0;
+    for &(i, n) in &vistos {
+        assert_eq!(i, esperado, "a corrida não leva o índice do lote: {vistos:?}");
+        esperado += n;
+    }
+    assert!(vistos.len() > 1 && esperado == dabs.len(), "{vistos:?}");
 }

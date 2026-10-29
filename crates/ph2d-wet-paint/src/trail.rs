@@ -104,6 +104,9 @@ pub struct Trail {
     lx1: i32,
     ly1: i32,
     mode: TrailMode,
+    /// O raio (células) do último dab do misturador nesta janela — o de [`Self::transfer_blend`] quando a janela
+    /// POUSA fora da porta do dab ([`Self::land_remainder`], a gota do spray).
+    raio_blend: f64,
     /// A meia-largura VIVA da janela — `self.half` é só o piso dela.
     half: i32,
     /// `half * 2 + 1`, guardado porque é o stride de todo índice local.
@@ -234,6 +237,7 @@ impl Default for Trail {
             lx1: -1,
             ly1: -1,
             mode: TrailMode::Paint,
+            raio_blend: 0.0,
             half: TRAIL_HALF,
             size: TRAIL_SIZE,
             spacing: 6.0,
@@ -571,6 +575,7 @@ impl Trail {
         grain: Option<CellFn<'_>>,
     ) -> bool {
         // A janela do Blend também é medida pelo pincel (ela não era: raio 100 esfregava ± 61).
+        self.raio_blend = dab.r;
         self.anchor_first_dab(dab);
         self.ensure_fits(dab);
         let gate = p.k(Knob::PaperGate);
@@ -648,5 +653,25 @@ impl Trail {
     /// emitted the fade-out; landing it would double the ending).
     pub fn drop_remainder(&mut self) {
         self.roll_window();
+    }
+
+    /// O modo da janela (o do `start_stroke`).
+    #[must_use]
+    pub fn mode(&self) -> TrailMode {
+        self.mode
+    }
+
+    /// A janela que sobra POUSA já, pela lei do SEU modo: a da tinta ([`Self::transfer_paint`]) ou a do misturador
+    /// ([`Self::transfer_blend`], ao raio do último dab dela) — uma janela de Blend nunca pousa pigmento.
+    pub fn land_remainder(
+        &mut self,
+        g: &mut Grid,
+        p_tinta: &Params,
+        p_mistura: &Params,
+    ) -> Option<TouchedRect> {
+        match self.mode {
+            TrailMode::Paint => self.transfer_paint(g, p_tinta),
+            TrailMode::Blend => self.transfer_blend(g, p_mistura, self.raio_blend),
+        }
     }
 }

@@ -279,3 +279,47 @@ fn same_as_paper_acompanha_cada_controlo_do_cartao_paper() {
     }
     assert!(falhas.is_empty(), "{}", falhas.join("\n"));
 }
+
+/// O recto do Wet com as pontas rectas e o «Same as Paper» ligado; `desliga_antes_de_soltar` alterna a opção do
+/// pincel VIVO depois do último dab da mão e antes de soltar — o FECHO pousa com o pincel do lote.
+fn recto_com_fecho(desliga_antes_de_soltar: bool) -> Vec<u8> {
+    let mut t = tool(LADO as u32, PaintMedia::WetPaint, 22.0);
+    t.set_wet_relogio_fixo(true);
+    t.set_brush_color_srgb8([30, 60, 220]);
+    t.set_brush_texture_kind(TextureKind::Noise.to_u8());
+    t.set_paper_field(|b| b.paper = papel());
+    t.toggle_brush_grain_same_as_paper();
+    t.toggle_brush_pontas_rectas();
+    t.set_brush_pontas_alem(1.0);
+    t.set_substrate_roughness(0.2);
+    // O grão do pincel cresce com ele (`escala_da_textura` ≠ 1): o «Same as Paper» é o que NÃO cresce.
+    t.paint.wetpaint.knobs.set(ph2d_wet_paint::tuning::Knob::TextureSizeExp, 1.0);
+    t.on_canvas_pointer(cp([16.0, 64.0], PointerPhase::Down));
+    t.on_tick(1000.0 / 60.0);
+    for k in 1..=16u8 {
+        t.on_canvas_pointer(cp([16.0 + 4.0 * f32::from(k), 64.0], PointerPhase::Move));
+        t.on_tick(1000.0 / 60.0);
+    }
+    if desliga_antes_de_soltar {
+        t.toggle_brush_grain_same_as_paper();
+    }
+    t.on_canvas_pointer(cp([80.0, 64.0], PointerPhase::Up));
+    for _ in 0..4 {
+        t.on_tick(1000.0 / 60.0);
+    }
+    t.canvas_rgba.to_vec()
+}
+
+/// ⭐ **O lote pinta com o «Same as Paper» do SEU pincel** (auditoria J6, motor 7): o fecho das pontas rectas (e o
+/// lote adiado) leva o pincel do instante dos seus dabs; alternar a opção do pincel vivo antes de soltar não muda a
+/// imagem do grão nem a escala dele no que esse lote pousa.
+#[test]
+fn o_lote_pinta_com_o_same_as_paper_do_seu_pincel() {
+    let fica = recto_com_fecho(false);
+    let alterna = recto_com_fecho(true);
+    let difere = fica.chunks(4).zip(alterna.chunks(4)).filter(|(a, b)| a != b).count();
+    let tinta = fica.chunks(4).filter(|p| p[0] < 250 || p[2] < 250).count();
+    println!("[same as paper · fecho] texels com tinta {tinta} · diferentes ao alternar antes de soltar {difere}");
+    assert!(tinta > 400, "o recto não pintou: {tinta}");
+    assert_eq!(difere, 0, "o fecho leu o «Same as Paper» do pincel vivo: {difere} texels mudaram");
+}

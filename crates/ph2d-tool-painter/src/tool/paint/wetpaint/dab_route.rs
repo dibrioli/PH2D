@@ -24,8 +24,21 @@ impl PainterTool {
     pub(in crate::tool::paint) fn stamp_dabs_wetpaint(&mut self, dabs: &[Dab], brush: &BrushSpec) {
         // A ponta de N imagens (L19): também o lote ADIADO (pousado no tique) carimba cada corrida com a sua imagem.
         if self.mangueira_viva() {
-            return self.stamp_dabs_mangueira_com(dabs, |t, corrida| {
-                t.stamp_dabs_wetpaint(corrida, brush)
+            // O lote VIRTUAL (as pontas rectas) leva a lane de cada dab em `fecho`, paralela ao lote: cada corrida lê a
+            // sua fatia (recomeçar o índice em 0 dava à 2.ª corrida as lanes da 1.ª).
+            let fecho = self.paint.wetpaint.session.as_ref().map(|s| s.fecho.clone()).unwrap_or_default();
+            return self.stamp_dabs_mangueira_com(dabs, |t, i, corrida| {
+                if !fecho.is_empty()
+                    && let Some(s) = t.paint.wetpaint.session.as_mut()
+                {
+                    s.fecho = fecho[i..i + corrida.len()].to_vec();
+                }
+                t.stamp_dabs_wetpaint(corrida, brush);
+                if !fecho.is_empty()
+                    && let Some(s) = t.paint.wetpaint.session.as_mut()
+                {
+                    s.fecho.clone_from(&fecho);
+                }
             });
         }
         let (w, h) = self.source_size;
@@ -196,7 +209,7 @@ impl PainterTool {
         // texture. The per-pixel law is `dab::grain_at`, the same single
         // door the colour route and the impasto height kernel call.
         // A imagem do slot que faz de Grain: a do PAPEL quando ele o é (`papel_como_grain`, como o carimbo).
-        let grain_image = if self.papel_como_grain() {
+        let grain_image = if self.papel_como_grain_do(brush) {
             &self.paint.paper_image
         } else {
             &self.paint.texture_image
@@ -234,7 +247,7 @@ impl PainterTool {
         super::lote::acerta_o_lote(&mut sess.engine, brush, fino);
         let esmaece_fino = super::rota_da_lane::esmaece_fino(&sess.engine, brush);
         let escala_tex = super::lote::escala_da_textura(&sess.engine, brush);
-        let grao_e_o_papel = self.grao_e_o_papel();
+        let grao_e_o_papel = self.grao_e_o_papel_do(brush);
         let pigmento_da_marca = if marca_do_spray {
             super::lote::pigmento_da_marca(brush)
         } else {

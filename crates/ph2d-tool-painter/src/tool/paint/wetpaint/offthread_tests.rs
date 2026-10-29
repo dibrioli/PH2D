@@ -644,3 +644,19 @@ fn the_authoring_pause_stops_the_sim_and_not_merely_the_display() {
          permanente"
     );
 }
+
+/// **Adiar a óptica do óleo não traz o motor do worker** (auditoria J6, motor 6): só o DESLIGAR (`era && !adiado`)
+/// pergunta à tela se tem óleo; ligar, ou repetir o mesmo valor, deixa a água a correr na outra thread.
+#[test]
+fn adiar_o_oleo_nao_traz_o_motor_para_casa() {
+    let mut t = small_puddle();
+    t.paint_tick(1.0 / 60.0);
+    let longe = |t: &PainterTool| {
+        !matches!(t.paint.wetpaint.session.as_ref().expect("sessao").engine, EngineSlot::Here(_))
+    };
+    assert!(longe(&t), "CONTROLO: o tick deixou o motor em casa — a régua não discrimina");
+    t.set_wet_oleo_adiado(true);
+    assert!(longe(&t), "ligar o adiamento trouxe o motor do worker");
+    t.set_wet_oleo_adiado(true);
+    assert!(longe(&t), "repetir o adiamento trouxe o motor do worker");
+}

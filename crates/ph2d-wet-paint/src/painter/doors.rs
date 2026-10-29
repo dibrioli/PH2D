@@ -444,11 +444,13 @@ impl Engine {
             .gather_params(&self.tuning)
             .com_pigmento(self.sliders.pigmento);
         p.agua_do_dab = self.agua_do_dab;
+        // A janela do misturador pousa pela SUA lei, com os parâmetros da porta dele (`dispatch_pressure_dab_lane_blend_grao`).
+        let p_mistura = self.sim.gather_params(&self.tuning);
         let layer = &mut self.layers[self.active_layer];
         let mut rect = None;
         for &i in lanes {
             if let Some(t) = self.lane_trails.get_mut(i) {
-                rect = TouchedRect::union(rect, t.transfer_paint(&mut layer.grid, &p));
+                rect = TouchedRect::union(rect, t.land_remainder(&mut layer.grid, &p, &p_mistura));
             }
         }
         if let Some(rc) = rect {

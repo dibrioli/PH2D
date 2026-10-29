@@ -616,11 +616,14 @@ impl PainterTool {
     #[doc(hidden)]
     pub fn set_wet_oleo_adiado(&mut self, adiado: bool) {
         let era = std::mem::replace(&mut self.paint.wetpaint.oleo_adiado, adiado);
-        let tem_oleo = self.paint.wetpaint.session.as_mut().is_some_and(|s| {
-            s.bring_home();
-            s.engine.layers.iter().any(|l| l.visible && !l.grid.oleo.is_empty())
-        });
-        if era && !adiado && tem_oleo {
+        // Só o desligar pergunta à tela (e traz o motor do worker): ligar, ou repetir, não toca na sessão.
+        let tem_oleo = era
+            && !adiado
+            && self.paint.wetpaint.session.as_mut().is_some_and(|s| {
+                s.bring_home();
+                s.engine.layers.iter().any(|l| l.visible && !l.grid.oleo.is_empty())
+            });
+        if tem_oleo {
             self.wet_recomposite_full();
         }
     }

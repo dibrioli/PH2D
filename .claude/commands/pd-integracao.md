@@ -44,6 +44,9 @@ Você é o agente integrador. Munição: o handoff de cada linha.
    do main, renumera o degrau da linha para `main+1` e sobe a tripla do ficheiro irmão). ⚠️ Cada
    passo tem `assert` — a 1.ª redacção supôs que a âncora era igual dos dois lados (verdade na
    escada, **falso na tripla**, que CONTÉM o número) e parou alto em vez de escrever lixo.
+   ⭐ **Os outros números (D, comissão 29/10):** depois de cada rebase, `python3 scripts/recontar.py`
+   (ADR duplicado, registos ecs/render/script, cenas de smoke × CLAUDE.md §5.1, e o schema; 1,5 s,
+   sem compilar). `--proximo` dá o próximo ADR livre e a próxima cena. O `ship.sh` corre-o e reprova.
 4b. ⛔ **Tecto de LOC vermelho: dimensione o corte pela MEDIÇÃO, não pela generosidade.** A catraca
    imprime o excesso. Em 17/09 ela pedia **711** linhas e o corte levou **4 470** — seis vezes mais,
    e o excesso custou **uma corrida inteira de portão a mais** (arrastou um gate que lia um ficheiro

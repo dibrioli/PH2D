@@ -17,7 +17,9 @@ O essencial:
 - Conflito resolve-se pelos estágios `:1`/`:2`/`:3`, nunca pelos marcadores; `Cargo.lock` =
   `git checkout main -- Cargo.lock` e regenerar; registros gerados = re-correr o sync.
 - Números que SOMAM entre linhas contam-se como DELTA sobre o `main`; o degrau do schema reconta-se
-  por `python3 scripts/schema-recount.py`.
+  por `python3 scripts/schema-recount.py`; depois de CADA rebase, `python3 scripts/recontar.py` confere
+  todos (ADR duplicado, registos ecs/render/script, cenas de smoke × CLAUDE.md §5.1, schema) e
+  `--proximo` dá o próximo ADR livre e a próxima cena de cada família.
 - Rebase sem conflito não é prova: compare cada commit rebaseado com o original (multiconjunto `+/-`
   por ficheiro) e varra marcadores, incluindo `|||||||`.
 - Tecto de LOC vermelho cura-se por **corte por responsabilidade** do tamanho que a catraca imprime,

@@ -99,6 +99,9 @@ run "pacotes citados pelos workflows existem" bash scripts/check-workflow-packag
 # Cada regra nova dos portões (o salto da suíte, os níveis de teste, o hook do commit, as recontagens)
 # tem a sua linha vista vermelha em `scripts/processo.prova.d/`. Sem compilar, < 5 s.
 run "provas das regras de processo" bash scripts/processo.prova.sh
+# ⭐ D (comissão 29/10): os números que SOMAM entre linhas (ADR, registos ecs/render/script, cenas de
+# smoke, PROJECT_SCHEMA) contados na fonte e comparados com onde estão escritos.
+run "recontagens (ADR · registos · cenas · schema)" python3 scripts/recontar.py
 
 # ── índices DERIVADOS: em dia? ──────────────────────────────────────────
 # ⚠️ Estes índices existem porque a alternativa (lista mantida à mão) envelhece na

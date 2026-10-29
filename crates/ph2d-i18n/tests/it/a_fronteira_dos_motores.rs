@@ -275,6 +275,24 @@ serve a nota que o importador escreve sobre o que o ficheiro traz e nos nao honr
 do `Preset.label` do L-System. ⚠️ Apenas TRES dos dezoito sao acusados — os outros quinze ja' sao \
 texto de chegada de uma chave desta tabela, logo a ponte reconhece-os.",
     ),
+    (
+        "ph2d-kanban-scenes",
+        "lib.rs",
+        "e' o DOCUMENTO de uma cena de smoke: o `Scene` escreve `Record`s num `KanbanSet` como o \
+artista os teria escrito, e o `Checklist.title` (\"Checklist\") e' CONTEUDO renomeavel do cartao — \
+o mesmo que o app grava quando o artista aceita o titulo sugerido (`kanban.back.checklist_default`). \
+Nenhum painel o publica como rotulo: a vista pinta o que esta' no documento. Os nomes de cartoes, \
+listas e etiquetas da mesma cena passam por argumento e a regua nao os ve' — e' a mesma familia. \
+Traduzi-lo faria a cena (e as fotos que dela saem) mudar de documento conforme a lingua.",
+    ),
+    (
+        "ph2d-kanban-views",
+        "fixture.rs",
+        "e' o DOCUMENTO da cena 1 para os testes e as fotos das vistas: o `FieldOption.text` (\"High\") \
+e' a opcao de um campo personalizado que o ARTISTA criou (conteudo gravado no `KanbanSet`), nao um \
+rotulo da vista — a tabela pinta o texto que o documento traz. Mesma familia do \
+`ph2d-kanban-scenes/lib.rs`: o resto da cena (\"Priority\", \"Urgent\"…) entra por argumento.",
+    ),
 ];
 
 fn repo() -> PathBuf {

@@ -423,10 +423,24 @@ pub(super) fn largura_de(p: &Preset, raio: f32, crua: bool) -> f32 {
     largura_de_com(p, raio, crua, Relogio::PorQuadro)
 }
 
+/// As sementes dos traços da régua da largura — a MESMA lista na tabela (o gerador) e na promessa (o portão); a largura
+/// é a mediana delas. Hoje só `0` (a do `PainterTool::default`, neutra ao byte). Medido 29/10 (`sonda_sorteio_da_largura`,
+/// 9 sementes): o Jitter do Smear Shattered move a largura no MESMO raio (13: 21–26 px; 120: 214–267) — a tabela e a
+/// promessa já tinham a mesma semente, mas o sorteio cai noutros sítios a outro raio; o do Blender Textured não (26: 60–62)
+/// — o 62/52 dele é um DEGRAU da lei (motor 27,75 → 41 px, 27,99 → 60), não sorteio.
+const SEMENTES_DA_LARGURA: [u64; 1] = [0];
+
 /// [`largura_de`] pelo relógio `r` da água.
 fn largura_de_com(p: &Preset, raio: f32, crua: bool, r: Relogio) -> f32 {
-    let (px, w, h, regua) = imagem_da_largura(p, raio, crua, r);
-    regua(&px, w, h)
+    mediana(
+        SEMENTES_DA_LARGURA
+            .iter()
+            .map(|&semente| {
+                let (px, w, h, regua) = imagem_da_largura(p, raio, crua, r, semente);
+                regua(&px, w, h)
+            })
+            .collect(),
+    )
 }
 
 std::thread_local! {
@@ -487,7 +501,7 @@ fn sonda_largura_sem_oleo() {
     for raio in [18.5, 98.9] {
         let img = |com: bool| {
             LEI_COM_OLEO.set(com);
-            imagem_da_largura(&p, raio, true, Relogio::PorQuadro).0
+            imagem_da_largura(&p, raio, true, Relogio::PorQuadro, 0).0
         };
         let (sem, com) = (img(false), img(true));
         let papel = |px: &[u8; 4]| px[..3] == [255; 3];
@@ -510,7 +524,13 @@ fn sonda_largura_sem_oleo() {
 /// A imagem que [`largura_de`] mede, e a régua com que a mede. ⛔ Com o Real Oil DESLIGADO (J6, REGRAS_DE_CUSTO
 /// §METODOLOGIA 4): a luz não muda onde a tinta está, e com ela cada raio pagava o campo de altura a cada passo.
 type Regua = fn(&[u8], u32, u32) -> f32;
-fn imagem_da_largura(p: &Preset, raio: f32, crua: bool, r: Relogio) -> (Vec<u8>, u32, u32, Regua) {
+fn imagem_da_largura(
+    p: &Preset,
+    raio: f32,
+    crua: bool,
+    r: Relogio,
+    semente: u64,
+) -> (Vec<u8>, u32, u32, Regua) {
     let sem;
     let p = if LEI_COM_OLEO.get() {
         p
@@ -519,7 +539,7 @@ fn imagem_da_largura(p: &Preset, raio: f32, crua: bool, r: Relogio) -> (Vec<u8>,
         &sem
     };
     if let Some(modo) = p.parametros.paint_mode.as_deref().filter(|m| *m != "Paint") {
-        let (px, w, h) = imagem_da_ferramenta(p, modo, raio, crua, r);
+        let (px, w, h) = imagem_da_ferramenta(p, modo, raio, crua, r, semente);
         let regua: Regua = if modo == "Smear" {
             largura_do_rasto
         } else {
@@ -530,6 +550,7 @@ fn imagem_da_largura(p: &Preset, raio: f32, crua: bool, r: Relogio) -> (Vec<u8>,
     let escala = if crua { (raio / 500.0).max(1.0) } else { 1.0 };
     let (px, w, h) = traco_recto_alto_com(raio / escala, raio, QUADROS_DA_LEI, r, |t| {
         t.set_wet_relogio_fixo(true);
+        t.set_semente_dos_tracos(semente);
         assert!(t.wet_preset_aplicar(&direito(p)).is_empty());
         if crua {
             t.set_wet_largura_crua(escala);
@@ -568,6 +589,7 @@ fn imagem_da_ferramenta(
     raio: f32,
     crua: bool,
     r: Relogio,
+    semente: u64,
 ) -> (Vec<u8>, u32, u32) {
     use ph2d_editor_core::tool::RasterEditTool;
     let base = super::midias_de_fabrica::de_fabrica(base_da_ferramenta(modo));
@@ -609,6 +631,7 @@ fn imagem_da_ferramenta(
         let mut t = PainterTool::default();
         t.set_source(vec![255u8; (w * h * 4) as usize], w, h);
         t.set_wet_relogio_fixo(true);
+        t.set_semente_dos_tracos(semente);
         assert!(t.wet_preset_aplicar(&direito(&base)).is_empty());
         t.set_brush_size_px(raio_da_base);
         t.set_brush_color_srgb8([191, 0, 18]);
@@ -1495,7 +1518,7 @@ fn o_tempo_de_uma_vez_e_o_por_quadro() {
                         let (nome, a, b) = match *c {
                             Cena::Largura(i, r, crua) => {
                                 let (rel, p) = &presets[i];
-                                let f = |rl| imagem_da_largura(p, r, crua, rl).0;
+                                let f = |rl| imagem_da_largura(p, r, crua, rl, 0).0;
                                 (
                                     format!("largura {rel} raio {r} crua {crua}"),
                                     f(Relogio::PorQuadro),
@@ -1590,6 +1613,35 @@ fn sonda_custo_da_miniatura() {
             })
             .fold(f64::INFINITY, f64::min);
         println!("[custo] {rel:<60} {min:7.1} ms");
+    }
+}
+
+/// **Sonda do SORTEIO da largura**: o preset `PH2D_SONDA_PRESET` a cada raio da promessa, com a tabela dele, uma
+/// largura por semente dos traços (0‥8) — quanto o sorteio (o Jitter) move a largura no MESMO raio.
+#[test]
+#[ignore = "sonda: a largura por semente"]
+fn sonda_sorteio_da_largura() {
+    let nome = std::env::var("PH2D_SONDA_PRESET").unwrap_or_else(|_| "Blender Textured".into());
+    let p = super::midias_de_fabrica::de_fabrica(&nome);
+    for &r in &RAIOS_DA_PROMESSA {
+        let ls: Vec<f32> = std::thread::scope(|s| {
+            let h: Vec<_> = (0..9u64)
+                .map(|k| {
+                    let p = &p;
+                    s.spawn(move || {
+                        let (px, w, h, regua) =
+                            imagem_da_largura(p, r, false, Relogio::DeUmaVez, k);
+                        regua(&px, w, h)
+                    })
+                })
+                .collect();
+            h.into_iter().map(|h| h.join().unwrap()).collect()
+        });
+        println!(
+            "[sorteio] {nome} raio {r} pedido {} → {ls:?} mediana {}",
+            2.0 * r,
+            mediana(ls.clone())
+        );
     }
 }
 

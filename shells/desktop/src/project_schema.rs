@@ -18,13 +18,14 @@
 
 /// Versão do formato de arquivo de projeto. Bump ⇒ migração ou hard-break.
 ///
-/// ⚠️ **Os degraus de v2 a v160 estão ARQUIVADOS**, verbatim, em SEIS arquivos por faixa:
+/// ⚠️ **Os degraus de v2 a v162 estão ARQUIVADOS**, verbatim, em SETE arquivos por faixa:
 /// `project_schema_history` (`v2`..`v82`, ARQUIVADO verbatim em `docs/archive/project-schema/escada_v2_a_v82.md`), [`super::project_schema_history_v83`]
 /// (`v83`..`v98`), [`super::project_schema_history_v99`] (`v99`..`v111`),
 /// [`super::project_schema_history_v112`] (`v112`..`v128`),
 /// [`super::project_schema_history_v128`] (`v128`..`v144`) e
-/// [`super::project_schema_history_v144`] (`v144`..`v160`). O corte é por IDADE e o tecto de 600
-/// LOC do HR-18 é quem o pede — seis vezes até hoje, e a de 2026-09-17 foi a primeira em que o
+/// [`super::project_schema_history_v144`] (`v144`..`v160`) e
+/// [`super::project_schema_history_v160`] (`v160`..`v162`). O corte é por IDADE e o tecto de 600
+/// LOC do HR-18 é quem o pede — sete vezes até hoje, e a de 2026-09-17 foi a primeira em que o
 /// gatilho não foi uma linha mas a ACUMULAÇÃO de uma rodada: seis linhas puseram dezasseis degraus,
 /// e nenhuma estoura o tecto sozinha.
 ///
@@ -33,47 +34,6 @@
 /// FECHADAS e acima está o que alguém a contar o próximo degrau precisa de ver.
 /// O que se lê para contar o próximo degrau é a ponta, e a ponta é o que ficou aqui.
 ///
-/// # `160 → 161` — o CONTADOR que ATRAVESSA um recomeco (*«outra vida, mesma pontuacao»*)
-///
-/// O `ph2d_ecs::Counter` ganhou `keep_on_restart: bool` **apendado no fim**. Mesmo mecanismo dos
-/// degraus `109`/`110`: o postcard e' POSICIONAL, logo um blob v160 tem dois campos onde este
-/// binario pede tres — e um `bool` a ser lido de bytes que acabaram nao desalinha so' a partir
-/// dali, ele **falha a desserializar** o componente inteiro.
-///
-/// ⭐⭐⭐ **A grandeza e' NOVA e nao existia em forma nenhuma:** ate' aqui as duas travessias do
-/// zero — o *Rewind* do transporte e o `SignalVerb::RestartRun` — eram **a mesma funcao sem
-/// parametro**, e nada na casa as distinguia. O campo e' o primeiro sitio onde elas discordam, e
-/// por isso o motivo passou a entrar na **assinatura** da
-/// `ph2d_ecs::rewind_runtime::rewind_runtime_state` (`Renascimento`), onde esquece^-lo e' erro de
-/// compilacao.
-///
-/// ⚠️ **O valor de fabrica e' `false` = o comportamento de sempre**, logo toda cena ja' gravada se
-/// comporta exactamente como antes depois de migrada.
-///
-/// ⚠️ **A tripla NAO ve^ este degrau** — o `Counter` viaja dentro de um `ComponentBlob`, como os
-/// cinco anteriores do material.
-///
-/// ⛔ **Sem degrau de migração**, pela decisão do Enio de 26/08 — um v160 e' recusado em voz alta.
-/// # `161 → 162` — a vida POR INIMIGO: a vigia ganha ÂMBITO
-///
-/// O `ph2d_ecs::CounterWatchRow` ganhou `scope: CounterScope` **apendado no fim**, e o postcard e'
-/// POSICIONAL: um blob v161 tem cinco campos onde este binario pede seis.
-///
-/// ⭐⭐⭐ **A grandeza e' NOVA:** ate' aqui a porta `counter::soma` respondia SEMPRE pela cena
-/// inteira, logo dez inimigos com a mesma vigia sobre `vida` liam a soma dos dez e **morriam todos
-/// juntos**. Com `CounterScope::Own` cada um julga o contador que vive nele.
-///
-/// ⚠️ **O valor de fabrica e' `World` = o comportamento de sempre**, logo toda cena ja' gravada se
-/// comporta exactamente como antes depois de migrada.
-///
-/// ⭐ **E o mesmo degrau apagou a SEGUNDA copia da lei:** a arma lia o pente dela com
-/// `mundo.get::<Counter>(e)` a` mao e passou a entrar pela porta — o que CUROU um defeito latente
-/// (um pente por estrear dava municao INFINITA, porque a leitura a` mao exigia o `CounterRuntime`
-/// e caia no `Municao::default()`).
-///
-/// ⚠️ **A tripla NAO ve^ este degrau** — o `CounterWatch` viaja num `ComponentBlob`.
-///
-/// ⛔ **Sem degrau de migração**, pela decisão do Enio de 26/08 — um v161 e' recusado em voz alta.
 /// # `162 → 163` — a MUNIÇÃO DE RESERVA: a arma ganha um DEPÓSITO
 ///
 /// O `ph2d_ecs::WeaponFire` ganhou `reserve_counter: String` **apendado no fim**, e o postcard e'

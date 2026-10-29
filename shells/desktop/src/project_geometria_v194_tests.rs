@@ -52,17 +52,17 @@ fn a_v194_project_opens_with_vertex_ids_in_order() {
 #[test]
 fn the_same_bytes_under_todays_header_do_not_open_the_same() {
     let mut hoje = V194.to_vec();
-    // `194` e `203` são varints de dois bytes (`0xC2 0x01` / `0xCB 0x01`); o `0` final é o `jogo` vazio que
-    // o braço do `194` acrescenta sozinho — assim só o FIO difere entre o certo e o torto.
+    // `194` e `207` são varints de dois bytes (`0xC2 0x01` / `0xCF 0x01`); os dois `0` finais são o `jogo` e a
+    // `mesa` vazios que o braço do `194` acrescenta sozinho — assim só o FIO difere entre o certo e o torto.
     assert_eq!(&hoje[..2], &[0xC2, 0x01], "o fixture é um v194");
-    const { assert!(PROJECT_SCHEMA == 203) };
-    hoje[0] = 0xCB;
-    hoje.push(0);
+    const { assert!(PROJECT_SCHEMA == 207) };
+    hoje[0] = 0xCF;
+    hoje.extend_from_slice(&[0, 0]);
     let certo = le(V194, "geometria_v194_certo").expect("um v194 abre");
     let torto = le(&hoje, "geometria_v194_torto");
     assert!(
         torto.is_none_or(|f| f.state.vec != certo.state.vec),
-        "lido como v203, o v194 deu a mesma cena — o gate de cima é cego"
+        "lido como v207, o v194 deu a mesma cena — o gate de cima é cego"
     );
 }
 

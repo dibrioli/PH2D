@@ -353,11 +353,11 @@ mod project_migrate;
 mod project_migrate_sprite;
 mod project_painter;
 mod project_schema;
-/// A metade ARQUIVADA da escada do `PROJECT_SCHEMA` (v2..v79) — irmã por LOC (HR-18).
 mod project_schema_history_v112;
 mod project_schema_history_v128;
 /// A escada arquivada de `v144` a `v160` — a sexta faixa (integração de 2026-09-25).
 mod project_schema_history_v144;
+mod project_schema_history_v160;
 /// A escada arquivada de `v83` a `v98` — o corte por idade, a 2.ª vez (ver o cabeçalho dela).
 mod project_schema_history_v83;
 mod project_schema_history_v99;
@@ -894,9 +894,7 @@ impl App {
         // O ponteiro de uma aba muda sem o rato mexer (o Ctrl, uma resposta do assistente).
         self.update_eyedropper_cursor();
         self.flip_edit_refresh();
-        // Depois do frame, com `self` livre do render loop: o undo do quadro por diff de estado
-        // ([`crate::undo_app`]). ⭐ O SYNC das instâncias (ADR-0164) vem ANTES da captura (senão a
-        // escrita do sync vira um passo de undo que ninguém deu).
+        // Depois do frame: o undo por diff ([`crate::undo_app`]); o SYNC das instâncias vem ANTES da captura.
         self.sync_instances();
         // ⭐⭐⭐ A SAÍDA da sessão de receita, ANTES do `post_frame_undo`: um cancelamento é uma
         // mudança do documento como outra qualquer ([`ph2d_app_components::prefab_stage`]).

@@ -268,7 +268,10 @@ mod tests {
     #[test]
     fn cada_unidade_nomeia_uma_linha_visivel() {
         for (k, u) in UNIDADES {
-            let r = rows().iter().find(|r| r.key == k).expect("a chave é de uma linha visível");
+            let r = rows()
+                .iter()
+                .find(|r| r.key == k)
+                .expect("a chave é de uma linha visível");
             assert_eq!(r.unit, Some(u));
         }
     }

@@ -491,7 +491,15 @@ fn checkbox_row(
 fn note_text(ctx: &mut PaintCtx, theme: Theme, x: f32, w: f32, y: f32, note: &str) -> f32 {
     let color = ph2d_editor_core::paint::resolve(ph2d_tokens::ColorToken::Text2, theme);
     let size = ph2d_tokens::TypeToken::Xs.px();
-    let alta =
-        ph2d_editor_core::paint::paint_text_block(ctx.text_system, ctx.scene, note, x, y, size, w, color);
+    let alta = ph2d_editor_core::paint::paint_text_block(
+        ctx.text_system,
+        ctx.scene,
+        note,
+        x,
+        y,
+        size,
+        w,
+        color,
+    );
     y + alta.max(size) + ph2d_tokens::control_gap_px()
 }

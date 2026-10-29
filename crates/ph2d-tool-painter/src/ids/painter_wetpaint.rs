@@ -170,8 +170,12 @@ pub const PAINTER_WETPAINT_OLEO_FORCA_AMBIENTE_DE_FABRICA: f32 =
 #[test]
 fn a_luz_de_fabrica_do_painel_e_a_do_oleo() {
     let o = ph2d_wet_paint::oleo_real::OleoReal::default();
-    assert!((o.altitude.to_degrees() as f32 - PAINTER_WETPAINT_OLEO_ALTITUDE_DE_FABRICA).abs() < 1e-4);
-    assert!((o.azimute.to_degrees() as f32 - PAINTER_WETPAINT_OLEO_AZIMUTE_DE_FABRICA).abs() < 1e-4);
+    assert!(
+        (o.altitude.to_degrees() as f32 - PAINTER_WETPAINT_OLEO_ALTITUDE_DE_FABRICA).abs() < 1e-4
+    );
+    assert!(
+        (o.azimute.to_degrees() as f32 - PAINTER_WETPAINT_OLEO_AZIMUTE_DE_FABRICA).abs() < 1e-4
+    );
     assert!(
         (o.forca_ambiente as f32 - PAINTER_WETPAINT_OLEO_FORCA_AMBIENTE_DE_FABRICA).abs() < 1e-6
     );

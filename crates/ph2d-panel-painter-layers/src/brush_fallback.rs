@@ -315,7 +315,8 @@ pub const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     // O alcance de fábrica é o tecto da faixa (o horizonte de antes).
     wet_oleo_alcance_fenda: ph2d_tool_painter::ids::PAINTER_WETPAINT_OLEO_FAIXAS[4].1 as f32,
     // `oleo_real::FORCA_AMBIENTE_FABRICA` (a mistura céu × lâmpada de antes da W2 E2).
-    wet_oleo_forca_ambiente: ph2d_tool_painter::ids::PAINTER_WETPAINT_OLEO_FORCA_AMBIENTE_DE_FABRICA,
+    wet_oleo_forca_ambiente:
+        ph2d_tool_painter::ids::PAINTER_WETPAINT_OLEO_FORCA_AMBIENTE_DE_FABRICA,
     wet_oleo_ambiente: 1,
     // O material do cartão no PADRÃO: a imagem de antes.
     wet_oleo_material: ph2d_tool_painter::ids::PAINTER_WETPAINT_OLEO_MATERIAL_NEUTRO,

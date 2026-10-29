@@ -164,7 +164,10 @@ fn the_painter_column_is_painted_by_the_vector_door() {
     }
 }
 
-fn a_porta_do_vetor(hero: &HeroScreen, postos: Vec<(ph2d_editor_core::interaction::BarButton, Rect)>) {
+fn a_porta_do_vetor(
+    hero: &HeroScreen,
+    postos: Vec<(ph2d_editor_core::interaction::BarButton, Rect)>,
+) {
     for (b, r) in postos {
         assert_eq!(
             hero.hit_index.rect_for(b.id),

@@ -20,14 +20,12 @@ use crate::texture::TextureSettings;
 /// caps the bbox, not the artist's intent (the value is clamped, not rejected).
 pub const MAX_BRUSH_RADIUS_PX: f32 = 4096.0;
 
-/// Airbrush **Rate** (timer period, seconds) soft-range floor — the fastest spray the UI slider
-/// reaches (~100 Hz). Blender's `rate` `ui_range` is `0.01..1.0` s (default `0.1`); the hard RNA
-/// range is wider, but the reference's property declarations are not in the vendored checkout, so
-/// this is the well-known Blender soft range, not an in-tree-verified value. The default `0.1` IS
-/// verified in-tree. See [`crate::Stroke::tick`].
-pub const AIRBRUSH_RATE_MIN_S: f32 = 0.01;
-/// Airbrush **Rate** soft-range ceiling (slowest spray, ~1 Hz). See [`AIRBRUSH_RATE_MIN_S`].
-pub const AIRBRUSH_RATE_MAX_S: f32 = 1.0;
+/// As FAIXAS do Airbrush Rate e do Flow (filho por LOC).
+mod faixas;
+pub use faixas::{
+    AIRBRUSH_RATE_MAX_S, AIRBRUSH_RATE_MIN_S, FLOW_KINDS, FLOW_SIZE_MAX, FLOW_SIZE_MIN,
+};
+
 /// Ceiling of the Paper **Tooth** ([`BrushSpec::paper_depth`]) — a product range (Enio, 2026-10-02:
 /// *«limites de tooth de 0 a 2»*), not a resource cap. The wash reads it as `1 + (h − 0.5)·tooth`,
 /// floored at `0`, so `2` lets a paper valley empty the pigment entirely.
@@ -39,28 +37,6 @@ pub const PONTAS_ALEM_MAX: f32 = 1.0;
 /// Tecto de [`BrushSpec::pontas_esbate`] — uma FAIXA do produto: a `8` a ponta esvazia no seu centro (`1 − e/8`) e
 /// enche até um raio para dentro; acima o traço acabaria antes do último centro, que nenhum oráculo pinta.
 pub const PONTAS_ESBATE_MAX: f32 = 8.0;
-/// **Flow Size** range — a multiple of the Classic's scale of detail (`1` = the Classic's; the pattern
-/// is normalized to it). `4×` either way spans a wash's edge from one slow meander to a fine fray; past
-/// it a feature is either wider than any stroke or finer than the AA's sub-texel taps.
-pub const FLOW_SIZE_MIN: f32 = 0.25;
-/// See [`FLOW_SIZE_MIN`].
-pub const FLOW_SIZE_MAX: f32 = 4.0;
-/// The patterns the watercolor **Flow** dropdown offers, in menu order. `None` is **Classic**. The
-/// organic procedurals only: a lattice pattern (Bricks, Grid, Dots…) is a drawing, not a way water runs.
-pub const FLOW_KINDS: [crate::texture::TextureKind; 9] = {
-    use crate::texture::TextureKind as K;
-    [
-        K::None,
-        K::Clouds,
-        K::Noise,
-        K::Marble,
-        K::Wood,
-        K::Voronoi,
-        K::DistortedNoise,
-        K::Musgrave,
-        K::Stucci,
-    ]
-};
 
 /// Parameters of a single brush. Cheap to copy; the stroke engine reads it per dab.
 #[derive(Clone, Copy, Debug, PartialEq)]

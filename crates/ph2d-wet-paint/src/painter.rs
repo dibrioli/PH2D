@@ -586,60 +586,6 @@ impl Engine {
     }
 
     // -----------------------------------------------------------------------
-    // History (SPEC §15): per-layer undo/redo ring, depth 6.
-    // -----------------------------------------------------------------------
-
-    pub fn capture_history(&mut self) {
-        self.drain_step();
-        let layer = &mut self.layers[self.active_layer];
-        layer.undo.push(snapshot_grid(&layer.grid));
-        if layer.undo.len() > HISTORY_DEPTH {
-            layer.undo.remove(0);
-        }
-        layer.redo.clear();
-    }
-
-    pub fn can_undo(&self) -> bool {
-        !self.layers[self.active_layer].undo.is_empty()
-    }
-
-    pub fn can_redo(&self) -> bool {
-        !self.layers[self.active_layer].redo.is_empty()
-    }
-
-    pub fn undo(&mut self) -> bool {
-        self.drain_step();
-        let layer = &mut self.layers[self.active_layer];
-        let Some(snap) = layer.undo.pop() else {
-            return false;
-        };
-        layer.redo.push(snapshot_grid(&layer.grid));
-        self.apply_snapshot(snap);
-        true
-    }
-
-    pub fn redo(&mut self) -> bool {
-        let layer = &mut self.layers[self.active_layer];
-        let Some(snap) = layer.redo.pop() else {
-            return false;
-        };
-        layer.undo.push(snapshot_grid(&layer.grid));
-        self.apply_snapshot(snap);
-        true
-    }
-
-    fn apply_snapshot(&mut self, snap: GridSnapshot) {
-        let layer = &mut self.layers[self.active_layer];
-        let paper_changed = restore_grid(&mut layer.grid, &snap);
-        if paper_changed {
-            self.paper_preset = layer.grid.paper_preset;
-            self.paper_sheet = layer.grid.paper_sheet;
-            self.rebake_paper();
-        }
-        self.mark_dirty_full();
-    }
-
-    // -----------------------------------------------------------------------
     // Dirty-rect bookkeeping (cell coords, [1..W] x [1..H])
     // -----------------------------------------------------------------------
 
@@ -703,6 +649,7 @@ impl Engine {
 }
 
 mod doors; // the product-facing LANE doors (host-driven strokes) — LOC-cap split
+mod historia; // o desfazer/refazer POR CAMADA (SPEC §15) — filho por LOC
 mod instantaneo; // `Clone`: a cópia do motor para os instantâneos de uma macro
 mod knobs; // como o motor REAGE a um knob (o `onChange` do JS) — filho por LOC
 mod mascara; // a porta da MÁSCARA: uma região pousada de uma vez (o Solid e os fios do Painter)

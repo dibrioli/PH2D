@@ -9,6 +9,9 @@
 use super::*;
 use crate::interaction::types::{GestureMods, GraphGesture, GraphHitKind, GraphKey, GraphZoom};
 
+/// W24 B14 — onde um rótulo está num texto: os `[início, fim)` em bytes (quem arma decide a lei).
+pub type WordFinder = fn(&str, &str) -> Vec<(usize, usize)>;
+
 impl WidgetStore {
     // ── Pointer gestures ─────────────────────────────────────────────────
     /// Stash one graph pointer gesture (dispatch → panel).

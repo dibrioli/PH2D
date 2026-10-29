@@ -30,6 +30,7 @@ pub use kinds::{InteractiveState, NamedPalette};
 mod asset_drag_ops;
 mod dock_width_ops;
 mod graph_ops;
+pub use graph_ops::WordFinder;
 mod hier_rows_ops;
 pub use hier_rows_ops::InspectorReveal;
 mod notes_ops;
@@ -67,9 +68,6 @@ use crate::widget::{
     ButtonState, CheckboxState, DropdownState, TagState, TextInputState, ToggleState,
 };
 use crate::zones::Rect;
-
-/// W24 B14 — onde um rótulo está num texto: os `[início, fim)` em bytes (quem arma decide a lei).
-pub type WordFinder = fn(&str, &str) -> Vec<(usize, usize)>;
 
 #[derive(Debug, Default)]
 pub struct WidgetStore {

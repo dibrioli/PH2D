@@ -171,7 +171,7 @@ pub(super) fn pousa_o_dab(
     });
     let fp = spec.dab_footprint_of(d);
     let dab_index = didx;
-    let tex_rng = dab_rng.enter(&groups, dab_index);
+    let tex_rng = dab_rng.enter(groups, dab_index);
     // Cada sub-dab da cápsula tira o SEU sorteio (a posição da textura, o pó) do do dab: repetido, os `n`
     // sub-dabs pousavam a mesma textura e o traço ganhava o período do Spacing (doc 51 §3, `os_fios`). O
     // `k = 0` é o próprio dab, o último: o fluxo segue para o próximo dab como sem a cápsula.

@@ -10,17 +10,6 @@ use super::composite_contagem as contagem;
 use ph2d_wet_paint::render::{RenderLayer, render_pigment_row_visual};
 use rayon::prelude::*;
 
-/// Show-wet veil (doc 22 §2.7 — the model's damp overlay, adapted from an
-/// opaque sheet to a LAYER): a cool translucent slate composited over the
-/// result wherever the sheet is damp, so wetness reads over paint AND over
-/// nothing; the meniscus glint keeps the model's rim law. Display-only —
-/// the end-session door recomposites clean, so none of this ever bakes.
-const WET_VEIL_ALPHA: f64 = 0.18;
-const WET_VEIL_RGB: [f64; 3] = [56.0, 80.0, 104.0];
-/// The model's light direction (top-left) for the meniscus glint.
-const WET_LIGHT_X: f64 = -std::f64::consts::FRAC_1_SQRT_2;
-const WET_LIGHT_Y: f64 = -std::f64::consts::FRAC_1_SQRT_2;
-
 impl PainterTool {
     /// Composite the engine's dirty rect: pigment (straight alpha) OVER the
     /// frozen base, written into `canvas_rgba`, preview marked.
@@ -72,44 +61,7 @@ impl PainterTool {
             && camada.is_none_or(|c| !self.vidros.contains_key(&c))
             && self.preview_layer_stack_is_trivial()
             && !self.papel_atravessa_vidro();
-        // O Real Oil é do TRAÇO (dono 28/10): a óptica corre quando ALGUMA camada visível tem tinta com óleo (o campo
-        // `grid::oleo` existe), com os números da TELA do cartão — nunca pela caixa de agora.
-        let tem_oleo = !self.paint.wetpaint.oleo_adiado
-            && self.paint.wetpaint.session.as_mut().is_some_and(|s| {
-                s.bring_home();
-                s.engine
-                    .layers
-                    .iter()
-                    .any(|l| l.visible && !l.grid.oleo.is_empty())
-            });
-        #[cfg(test)]
-        let tem_oleo = if super::oleo_plano::lei_da_caixa::get() {
-            self.paint.wetpaint.oleo_real.is_some()
-        } else {
-            tem_oleo
-        };
-        self.paint.wetpaint.oleo_na_tela = tem_oleo;
-        // W3b: o papel do documento sob a tinta (a cor que a Transmission tinge) e o dente dele (o Relevo do papel).
-        let oleo = tem_oleo
-            .then_some(self.paint.wetpaint.oleo_real_valores)
-            .map(|mut o| {
-                o.papel = self.papel.map_or([1.0; 3], |p| {
-                    p.map(|c| ph2d_wet_paint::colorops::transfer::srgb255_to_linear(f64::from(c)))
-                });
-                // D1 W3b: o Smooth Edges amacia a SILHUETA no campo — o relevo e a cobertura seguem o mesmo contorno.
-                o.suave_px = f64::from(raio);
-                #[cfg(test)]
-                if super::smooth_edges::so_na_cor::get() {
-                    o.suave_px = 0.0;
-                }
-                // U2 W3b: o Paper Relief morde no estado de fábrica (Relief do papel 0) — a textura do papel na tinta tem
-                // o piso de profundidade [`super::grao_no_filme::RELIEF_NA_TINTA_MIN`].
-                o.dente_papel = f64::from(
-                    super::grao_no_filme::relief_na_tinta(self.paint.substrate_depth)
-                        * super::super::substrate_relief::MAX_TOOTH_PX,
-                );
-                o
-            });
+        let oleo = self.oleo_do_composite(raio);
         // W3b: o dente do papel que a Transmission assa na tinta ([`super::grao_no_filme`]); sem papel escolhido, o
         // papel de fábrica (U2).
         let grao = oleo.and_then(|_| {
@@ -349,112 +301,17 @@ impl PainterTool {
         let t_pig = t_pig.elapsed();
         #[cfg(test)]
         let t_som = std::time::Instant::now();
-        // A sombra do Óleo Real no PAPEL: a luz que a tinta à volta lhe tira — também por BAIXO da orla fina,
-        // que se compõe sobre o papel já sombreado (cortada em «alfa 0» a orla ficava um aro claro entre a
-        // tinta e a sombra). Fica num plano à parte — o alfa do pigmento continua a ser só cobertura.
-        if let Some((o, c)) = &campo {
-            // O papel LISO (campo a zero até ao alcance da óptica) dá a mesma sombra em toda a parte: calcula-se
-            // uma vez por linha ([`super::oleo_plano`]) — na água parada a região é a caixa molhada inteira.
-            #[cfg(test)]
-            let atalho = !super::oleo_plano::desligado::get();
-            #[cfg(not(test))]
-            let atalho = true;
-            let plano =
-                atalho.then(|| super::oleo_plano::PapelLiso::de(c, (cx0, cy0, cx1, cy1), (gw, gh)));
-            sess.sombra[(cy0 - 1) * gw..cy1 * gw]
-                .par_chunks_mut(gw)
-                .enumerate()
-                .for_each(|(k, row)| {
-                    let cy = cy0 + k;
-                    let feita = feita.get(k * gw..(k + 1) * gw);
-                    let mut liso: Option<u8> = None;
-                    for cx in cx0..=cx1 {
-                        if feita.is_some_and(|f| f[cx - 1]) {
-                            continue;
-                        }
-                        // O papel nu: a sombra atravessa a tinta que a projecta (a Transparency e a Transmission
-                        // da célula: o cartão não as tem — W3b ronda 3).
-                        let calcula = || {
-                            ph2d_wet_paint::oleo_real::sombra_em_u8(
-                                ph2d_wet_paint::oleo_real::sombra_transparente(
-                                    ph2d_wet_paint::oleo_real::sombra_no_papel(o, c, cx, cy),
-                                    0.0,
-                                    ph2d_wet_paint::oleo_real::transparencia_de_quem_tapa(
-                                        o, c, cx, cy,
-                                    ),
-                                ),
-                            )
-                        };
-                        row[cx - 1] = if plano.as_ref().is_some_and(|p| p.liso(cx, cy)) {
-                            *liso.get_or_insert_with(calcula)
-                        } else {
-                            calcula()
-                        };
-                    }
-                });
-        } else if !sess.sombra.is_empty() {
-            sess.sombra = Vec::new();
-        }
-        // W3b: o dente que a tinta de cada célula mostra — o píxel lê-o depois da fronteira do motor.
-        match (&campo, &grao) {
-            (Some((o, c)), Some(_)) => {
-                if sess.grao.len() != gw * gh {
-                    sess.grao = vec![0u8; gw * gh];
-                }
-                for cy in cy0..=cy1 {
-                    for cx in cx0..=cx1 {
-                        // A tinta sem óleo não mostra o dente do papel do óleo (a fracção dela).
-                        let d = ph2d_wet_paint::oleo_real::grao_do_papel(o, c, cx, cy)
-                            * c.oleo_em(cx, cy);
-                        sess.grao[(cy - 1) * gw + cx - 1] =
-                            (d.clamp(0.0, 1.0) * 255.0).round() as u8;
-                    }
-                }
-            }
-            _ if !sess.grao.is_empty() => sess.grao = Vec::new(),
-            _ => {}
-        }
-        // O Smooth Edges numa tela com óleo (dono 28/10): a silhueta amaciada pelo campo é a da tinta COM óleo; a tinta
-        // SEM ele (e o papel à volta só dela) guarda a orla de sempre do Smooth Edges — a tinta sem óleo não muda por
-        // haver óleo noutro sítio. `(cx0, cy0, largura, célula sem óleo)`.
-        let sem_oleo = match (&campo, suave) {
-            (Some((_, c)), true) => {
-                let tinta = |i: usize| {
-                    sess.engine
-                        .layers
-                        .iter()
-                        .any(|l| l.visible && l.grid.sett[i] + l.grid.susp[i] > 0.0)
-                };
-                let s = sess.engine.layers[0].grid.s;
-                let r = (raio / f32::from(ratio)).ceil() as usize + 1;
-                let cw = cx1 + 1 - cx0;
-                let mut v = vec![false; cw * (cy1 + 1 - cy0)];
-                for cy in cy0..=cy1 {
-                    for cx in cx0..=cx1 {
-                        v[(cy - cy0) * cw + cx - cx0] = if tinta(cx + cy * s) {
-                            c.oleo_em(cx, cy) < 0.5
-                        } else {
-                            // O papel segue a tinta à volta: só sem óleo se nenhuma tinta com óleo o rodeia.
-                            let (mut com, mut sem) = (false, false);
-                            for y in cy.saturating_sub(r).max(1)..=(cy + r).min(gh) {
-                                for x in cx.saturating_sub(r).max(1)..=(cx + r).min(gw) {
-                                    if tinta(x + y * s) {
-                                        if c.oleo_em(x, y) < 0.5 {
-                                            sem = true;
-                                        } else {
-                                            com = true;
-                                        }
-                                    }
-                                }
-                            }
-                            sem && !com
-                        };
-                    }
-                }
-                Some((cx0, cy0, cw, v))
-            }
-            _ => None,
-        };
+        let caixa = (cx0, cy0, cx1, cy1);
+        super::composite_oleo::sombra_do_papel(&mut sess.sombra, &campo, &feita, caixa, (gw, gh));
+        super::composite_oleo::grao_das_celulas(&mut sess.grao, &campo, &grao, caixa, (gw, gh));
+        let sem_oleo = super::composite_oleo::tinta_sem_oleo(
+            &sess.engine,
+            &campo,
+            (suave, raio),
+            ratio,
+            caixa,
+            (gw, gh),
+        );
         if oleo.is_none() {
             // Sem tinta com óleo na tela o campo guardado só ocupava memória (~28 B por célula, 230 MB a 4K).
             sess.campo_cache = None;
@@ -762,62 +619,9 @@ impl PainterTool {
         #[cfg(test)]
         split::note_pixel(t_pixel.elapsed());
         if veil {
-            // Show-wet: the damp overlay, display-only (never baked). Reads
-            // the ACTIVE grid's wetness byte + film exactly like the model;
-            // the veil is composited OVER the finished pixel so it shows on
-            // painted and unpainted texels alike (an inspection overlay may
-            // override the alpha-lock's look — the bake never carries it).
             let g = sess.engine.active_grid();
-            let sg = g.s;
-            // ⚠️ O véu percorre PIXELS e resolve a célula pelo vizinho mais
-            // próximo — deliberadamente SEM o bilinear do pigmento. O menisco
-            // é um gradiente do filme MEDIDO na grade (`film[i±1]`), e
-            // interpolá-lo desenharia uma crista que o solver não tem: o véu
-            // é uma anotação de *"aqui está molhado"*, não uma medição de cor.
-            // Na razão 1 cada pixel É a sua célula e isto é byte-idêntico.
-            let rr = usize::from(ratio);
-            for py in py0..py1 {
-                let cy = (py / rr + 1).min(gh);
-                for px in px0..px1 {
-                    let cx = (px / rr + 1).min(gw);
-                    let i = cx + cy * sg;
-                    let film = f64::from(g.film[i]);
-                    let mut wet_sig = f64::from(g.wet[i]) / 255.0;
-                    if film > 0.02 {
-                        let t = (film / 2.5).min(1.0);
-                        let sv = t * t * (3.0 - 2.0 * t);
-                        if sv > wet_sig {
-                            wet_sig = sv;
-                        }
-                    }
-                    if wet_sig <= 0.01 {
-                        continue;
-                    }
-                    let o = (py * w + px) * 4;
-                    let a_v = WET_VEIL_ALPHA * wet_sig;
-                    let ca = f64::from(canvas[o + 3]) / 255.0;
-                    let oa = a_v + ca * (1.0 - a_v);
-                    // Meniscus glint — the model's rim shine, additive.
-                    let gx = (f64::from(g.film[i + 1]) - f64::from(g.film[i - 1])) * 0.5;
-                    let gy = (f64::from(g.film[i + sg]) - f64::from(g.film[i - sg])) * 0.5;
-                    let mag = (gx * gx + gy * gy).sqrt();
-                    let shine = if mag > 0.01 {
-                        let rim = (mag * 0.7).min(1.0);
-                        18.3 * rim
-                            * rim
-                            * (0.5 + 0.5 * ((gx / mag) * WET_LIGHT_X + (gy / mag) * WET_LIGHT_Y))
-                    } else {
-                        0.0
-                    };
-                    for ch in 0..3 {
-                        let cc = f64::from(canvas[o + ch]);
-                        let mixed =
-                            (WET_VEIL_RGB[ch] * a_v + cc * ca * (1.0 - a_v)) / oa.max(1e-6) + shine;
-                        canvas[o + ch] = mixed.round().clamp(0.0, 255.0) as u8;
-                    }
-                    canvas[o + 3] = (oa * 255.0).round().clamp(0.0, 255.0) as u8;
-                }
-            }
+            let caixa = (px0, py0, px1, py1);
+            super::veu::pinta_o_veu(g, canvas, (w, usize::from(ratio)), (gw, gh), caixa);
         }
         // Re-arm the guard with the allocation our own make_mut may have
         // re-seated (weak — [`WetSession::canvas`]).
@@ -863,27 +667,4 @@ impl PainterTool {
 /// dois blocos já são separados pela fronteira do motor, e o relógio só diz de que
 /// lado dela o tempo caiu.
 #[cfg(test)]
-pub(in crate::tool::paint) mod split {
-    use std::cell::Cell;
-    use std::time::Duration;
-
-    thread_local! {
-        static ENGINE_US: Cell<u64> = const { Cell::new(0) };
-        static PIXEL_US: Cell<u64> = const { Cell::new(0) };
-    }
-
-    pub(in crate::tool::paint) fn note_engine(d: Duration) {
-        ENGINE_US.with(|c| c.set(c.get() + d.as_micros() as u64));
-    }
-
-    pub(in crate::tool::paint) fn note_pixel(d: Duration) {
-        PIXEL_US.with(|c| c.set(c.get() + d.as_micros() as u64));
-    }
-
-    /// Drena os dois baldes em milissegundos — `(precisa do motor, não precisa)`.
-    pub(in crate::tool::paint) fn take() -> (f64, f64) {
-        let e = ENGINE_US.with(Cell::take);
-        let p = PIXEL_US.with(Cell::take);
-        (e as f64 / 1000.0, p as f64 / 1000.0)
-    }
-}
+pub(in crate::tool::paint) mod split;

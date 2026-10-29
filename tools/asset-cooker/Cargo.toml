@@ -45,7 +45,7 @@ clap = { version = "4", features = ["derive"] }
 #     bc7enc-rdo; demais formatos pelo Intel ISPC. Omitir feature elimina
 #     ~1944 LOC sub-crate ctt-compressonator + zero exposure ao bug.
 # Audit deliverable: docs/audits/ctt-source-audit-2026-05-27-CONSOLIDATED.md
-ctt = { version = "0.5", default-features = false, features = [
+ctt = { version = "0.6", default-features = false, features = [
     "encoder-bc7enc",
     "encoder-astcenc",
     "encoder-etcpak",

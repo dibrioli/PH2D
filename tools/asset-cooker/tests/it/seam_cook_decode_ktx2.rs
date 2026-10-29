@@ -81,21 +81,17 @@ fn assert_dims_and_base(img: &ph2d_asset_ktx2::Ktx2Image, tier: Tier, class: Ass
 
 // ── BC7 (Desktop sprite color) ──────────────────────────────────────────
 
-/// O seam mais crítico: o encoder bc7enc grava `BC7_*_BLOCK` e o decoder
-/// precisa reconhecer esse VkFormat (não cair em `Unsupported`). UNORM vs SRGB
-/// é decisão interna do ctt em função do `color_space`, então aceitamos
-/// qualquer variante BC7 — o que importa é que NÃO é `Unsupported` e que
-/// `is_compressed()` confirma a família.
+/// O seam mais crítico: o encoder bc7enc grava `BC7_SRGB_BLOCK` e o decoder
+/// precisa reconhecer esse VkFormat (não cair em `Unsupported`). Desde o ctt
+/// 0.6 o espaço de cor está NO formato da matriz (não é decisão interna do
+/// ctt): sprite é cor ⇒ exatamente a variante sRGB.
 #[test]
 fn desktop_sprite_color_round_trips_as_bc7() {
     let img = cook_then_decode(Tier::Desktop, AssetClass::SpriteColor);
     assert_dims_and_base(&img, Tier::Desktop, AssetClass::SpriteColor);
     assert!(
-        matches!(
-            img.format,
-            Ktx2Format::Bc7RgbaUnorm | Ktx2Format::Bc7RgbaUnormSrgb
-        ),
-        "expected a BC7 variant from the bc7enc encoder, got {:?} \
+        matches!(img.format, Ktx2Format::Bc7RgbaUnormSrgb),
+        "expected BC7 sRGB (colour input) from the bc7enc encoder, got {:?} \
          (Unsupported means the ctt VkFormat diverged from ktx2::Format)",
         img.format
     );
@@ -137,11 +133,9 @@ fn mobile_sprite_color_round_trips_as_astc() {
     let img = cook_then_decode(Tier::Mobile, AssetClass::SpriteColor);
     assert_dims_and_base(&img, Tier::Mobile, AssetClass::SpriteColor);
     assert!(
-        matches!(
-            img.format,
-            Ktx2Format::Astc6x6RgbaUnorm | Ktx2Format::Astc6x6RgbaUnormSrgb
-        ),
-        "expected ASTC 6×6 from the astcenc encoder, got {:?}",
+        // VkFormat agora diz sRGB porque a entrada é cor (ctt 0.6).
+        matches!(img.format, Ktx2Format::Astc6x6RgbaUnormSrgb),
+        "expected ASTC 6×6 sRGB (colour input) from the astcenc encoder, got {:?}",
         img.format
     );
     assert!(img.format.is_compressed());
@@ -154,11 +148,9 @@ fn lowend_sprite_color_round_trips_as_etc2() {
     let img = cook_then_decode(Tier::LowEnd, AssetClass::SpriteColor);
     assert_dims_and_base(&img, Tier::LowEnd, AssetClass::SpriteColor);
     assert!(
-        matches!(
-            img.format,
-            Ktx2Format::Etc2Rgba8Unorm | Ktx2Format::Etc2Rgba8UnormSrgb
-        ),
-        "expected ETC2 RGBA8 from the etcpak encoder, got {:?}",
+        // VkFormat agora diz sRGB porque a entrada é cor (ctt 0.6).
+        matches!(img.format, Ktx2Format::Etc2Rgba8UnormSrgb),
+        "expected ETC2 RGBA8 sRGB (colour input) from the etcpak encoder, got {:?}",
         img.format
     );
     assert!(img.format.is_compressed());
@@ -166,7 +158,8 @@ fn lowend_sprite_color_round_trips_as_etc2() {
 
 // ── Uncompressed passthrough (Constrained tier) ─────────────────────────
 
-/// `Tier::Constrained` faz passthrough `TargetFormat::Uncompressed(R8G8B8A8)`.
+/// `Tier::Constrained` faz passthrough `TargetFormat::Uncompressed(R8G8B8A8_SRGB)`
+/// para cor — o mesmo `Rgba8UnormSrgb` que o runtime usa para sprites.
 /// O seam aqui prova que mesmo o caminho NÃO-comprimido emite um container
 /// válido cujo VkFormat o parser reconhece como RGBA8 (e que
 /// `is_compressed()` corretamente reporta `false`).
@@ -175,17 +168,51 @@ fn constrained_round_trips_as_uncompressed_rgba8() {
     let img = cook_then_decode(Tier::Constrained, AssetClass::SpriteColor);
     assert_dims_and_base(&img, Tier::Constrained, AssetClass::SpriteColor);
     assert!(
-        matches!(
-            img.format,
-            Ktx2Format::Rgba8Unorm | Ktx2Format::Rgba8UnormSrgb
-        ),
-        "expected uncompressed RGBA8 passthrough, got {:?}",
+        // VkFormat agora diz sRGB porque a entrada é cor (ctt 0.6).
+        matches!(img.format, Ktx2Format::Rgba8UnormSrgb),
+        "expected uncompressed RGBA8 sRGB passthrough (colour input), got {:?}",
         img.format
     );
     assert!(
         !img.format.is_compressed(),
         "Constrained passthrough must NOT report as compressed"
     );
+}
+
+// ── Espaço de cor por classe (ctt 0.6) ──────────────────────────────────
+
+/// Do outro lado do seam, o espaço de cor por classe: cor (`CriticalUi`) sai
+/// sRGB; dados (`SingleChannel`/`NormalMap`) saem UNORM em todo tier que tem
+/// variante sRGB — o amostrador não pode «decodificar gamma» numa máscara.
+#[test]
+fn color_space_per_class_reaches_the_decoded_format() {
+    let cases = [
+        (
+            Tier::Mobile,
+            AssetClass::CriticalUi,
+            Ktx2Format::Astc4x4RgbaUnormSrgb,
+        ),
+        (
+            Tier::Mobile,
+            AssetClass::NormalMap,
+            Ktx2Format::Astc6x6RgbaUnorm,
+        ),
+        (
+            Tier::LowEnd,
+            AssetClass::SingleChannel,
+            Ktx2Format::Etc2Rgba8Unorm,
+        ),
+        (
+            Tier::Constrained,
+            AssetClass::SingleChannel,
+            Ktx2Format::Rgba8Unorm,
+        ),
+    ];
+    for (tier, class, expected) in cases {
+        let img = cook_then_decode(tier, class);
+        assert_dims_and_base(&img, tier, class);
+        assert_eq!(img.format, expected, "{tier:?}/{class:?}");
+    }
 }
 
 // ── Full matrix via cook_all (W1.T6) ────────────────────────────────────

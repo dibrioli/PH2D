@@ -15,12 +15,14 @@
 //! até T3 + D2 ambos materializados.
 
 use ctt::{
-    AlphaMode, ColorSpace, Container, ConvertSettings, Image, PipelineOutput, Surface, TextureKind,
-    convert,
+    AlphaMode, ColorSpace, Container, ConvertSettings, FormatDesc, FormatExt, Image,
+    PipelineOutput, Surface, TextureKind, convert,
 };
 use image::ImageReader;
 
-use super::target_matrix::{AssetClass, Tier, default_color_space_for, target_for};
+use super::target_matrix::{
+    AssetClass, Tier, default_color_space_for, stored_color_space, target_for,
+};
 
 /// W1.T15 audit Lente ο-O1 — teto explícito de dimensão do source. Espelha
 /// `ph2d_asset_ktx2::MAX_DIMENSION` (8192) **sem** criar dep de produção em
@@ -176,25 +178,33 @@ pub fn cook(source_bytes: &[u8], options: CookOptions) -> Result<Vec<u8>, Textur
         depth: 1,
         stride,
         slice_stride: 0,
-        format: ctt::Format::R8G8B8A8_UNORM,
-        color_space: options.color_space,
-        alpha: options.alpha,
     };
+    // ctt 0.6: o espaço de cor da ENTRADA vai no formato (`R8G8B8A8_SRGB` para
+    // pixels sRGB, `_UNORM` para dados lineares).
     let image = Image {
         surfaces: vec![vec![surface]],
         kind: TextureKind::Texture2D,
+        desc: FormatDesc {
+            format: ctt::Format::R8G8B8A8_UNORM.with_color_space(options.color_space),
+            color_space: options.color_space,
+            alpha: options.alpha,
+        },
     };
 
     // Step 3: lookup target format (W1.T3 γ-H1 fix: agora retorna TargetFormat direto).
     let target = target_for(options.tier, options.asset_class);
+    // O espaço gravado é o do FORMATO do alvo; se a entrada declara outro, o
+    // ctt converte os valores (nunca re-rotula bytes).
+    let output_color_space = stored_color_space(&target);
 
     // Step 4: convert via ctt (encoder vendored ISPC offline; produces KTX2 bytes).
     let settings = ConvertSettings {
         format: Some(target),
         container: Container::ktx2(),
+        output_color_space: Some(output_color_space),
         ..Default::default()
     };
-    let output = convert(image, settings)?;
+    let output = convert(image.to_ref(), settings)?;
 
     // Container::ktx2() sempre produz Encoded path; Raw path só ocorre com
     // Container::Raw (não usado por este cooker). Pattern match defensivo
@@ -435,7 +445,7 @@ mod tests {
     }
 
     /// W1.T6 — HR-6: artefatos de tiers com targets DISTINTOS têm AssetIds
-    /// distintos. NB: Mobile e Web compartilham `ASTC_6x6_UNORM`+`Astcenc` para
+    /// distintos. NB: Mobile e Web compartilham `ASTC_6x6_SRGB`+`Astcenc` para
     /// SpriteColor (design intencional — Web roda mesmo ladder que Mobile),
     /// então os 5 tiers produzem **4** AssetIds únicos: {BC7-desktop,
     /// ASTC-mobile/web, ETC2-lowend, RGBA8-constrained}. Foundational pra

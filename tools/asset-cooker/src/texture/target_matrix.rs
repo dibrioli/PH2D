@@ -14,7 +14,7 @@
 //! lookup puro; W1.T6 + W1.T4 (`LogicalTextureId`) orquestram multi-emit.
 
 use ctt::encoders::{Encoder, astcenc, bc7enc, etcpak, ispc};
-use ctt::{Format, TargetFormat};
+use ctt::{Format, FormatExt, TargetFormat};
 
 /// Newtype shadow de `ph2d_asset::TierIndex` (W1.T4, ainda vapor). Mapping
 /// numérico u8 alinhado com ADR-0053 `DeviceTier` (5 variants FROZEN; ainda
@@ -63,36 +63,31 @@ pub enum AssetClass {
 /// Audit W1.T3 γ-H1 fix: retorna `TargetFormat` direto (não `Option`). Match é
 /// exaustivo sobre Tier × AssetClass — todas as combinações têm format definido
 /// (HDR W4+ vai adicionar variants OU outra função `target_for_hdr`).
+///
+/// **O espaço de cor está NO formato** (`ctt` 0.6, 30/10): classe de cor
+/// (`SpriteColor`/`CriticalUi`) → variante `*_SRGB` (o amostrador da placa
+/// decodifica sRGB → linear antes do filtro); classe de dados
+/// (`SingleChannel`/`NormalMap`) → `*_UNORM` (BC4/BC5 não têm variante sRGB).
+/// O espaço gravado é `stored_color_space(target_for(..))`, e coincide com
+/// [`default_color_space_for`] (teste `matrix_color_space_agrees_with_class`).
 #[must_use]
 pub fn target_for(tier: Tier, asset_class: AssetClass) -> TargetFormat {
     use AssetClass::*;
     use Tier::*;
-    // NB: encoders (bc7enc/astcenc/etcpak/intel) só aceitam variantes UNORM dos
-    // formats compactados em `supported_formats()`. SRGB metadata é portado via
-    // `Surface.color_space = ColorSpace::Srgb` — ctt grava no KTX2 container o
-    // flag color-space apropriado. Passar `*_SRGB_BLOCK` aqui falharia o
-    // `UnsupportedFormat` check do ctt (bc7enc.rs: `&[BC7_UNORM_BLOCK]`).
-    //
-    // Tier::Constrained early-return via `TargetFormat::Uncompressed(...)` —
-    // W1.T6 fix: Encoder::Auto NÃO é passthrough; ctt::convert com
-    // (Compressed{R8G8B8A8_UNORM, Auto}) retorna `UnsupportedFormat("no
-    // compiled-in encoder supports R8G8B8A8_UNORM")`. Uncompressed variant
-    // pula encoder dispatch direto.
-    if matches!(tier, Tier::Constrained) {
-        return TargetFormat::Uncompressed(Format::R8G8B8A8_UNORM);
-    }
-
+    // Tier::Constrained via `TargetFormat::Uncompressed(...)` — W1.T6 fix:
+    // Encoder::Auto NÃO é passthrough; `Compressed{R8G8B8A8_*, Auto}` dá
+    // `UnsupportedFormat`. Uncompressed pula o dispatch de encoder.
     let (format, encoder) = match (tier, asset_class) {
         // Desktop: BC family
-        (Desktop, SpriteColor) => (Format::BC7_UNORM_BLOCK, bc7enc_encoder()),
-        (Desktop, CriticalUi) => (Format::BC7_UNORM_BLOCK, bc7enc_encoder()),
+        (Desktop, SpriteColor) => (Format::BC7_SRGB_BLOCK, bc7enc_encoder()),
+        (Desktop, CriticalUi) => (Format::BC7_SRGB_BLOCK, bc7enc_encoder()),
         (Desktop, SingleChannel) => (Format::BC4_UNORM_BLOCK, intel_encoder()),
         (Desktop, NormalMap) => (Format::BC5_UNORM_BLOCK, intel_encoder()),
 
         // Mobile: ASTC family (cooker pode emitir BC7 ALÉM disto em multi-tier
         // para Apple7+/M1+ via runtime feature query — W1.T6).
-        (Mobile, SpriteColor) => (Format::ASTC_6x6_UNORM_BLOCK, astcenc_encoder()),
-        (Mobile, CriticalUi) => (Format::ASTC_4x4_UNORM_BLOCK, astcenc_encoder()),
+        (Mobile, SpriteColor) => (Format::ASTC_6x6_SRGB_BLOCK, astcenc_encoder()),
+        (Mobile, CriticalUi) => (Format::ASTC_4x4_SRGB_BLOCK, astcenc_encoder()),
         (Mobile, SingleChannel) => (Format::ASTC_6x6_UNORM_BLOCK, astcenc_encoder()),
         (Mobile, NormalMap) => (Format::ASTC_6x6_UNORM_BLOCK, astcenc_encoder()),
 
@@ -100,23 +95,38 @@ pub fn target_for(tier: Tier, asset_class: AssetClass) -> TargetFormat {
         // (BC → ASTC → ETC2 → RGBA8) é resolvida pelo renderer com base nas
         // features expostas pelo wgpu::Adapter; cooker emite ASTC como
         // primary cooked artifact pro tier Web.
-        (Web, SpriteColor) => (Format::ASTC_6x6_UNORM_BLOCK, astcenc_encoder()),
-        (Web, CriticalUi) => (Format::ASTC_4x4_UNORM_BLOCK, astcenc_encoder()),
+        (Web, SpriteColor) => (Format::ASTC_6x6_SRGB_BLOCK, astcenc_encoder()),
+        (Web, CriticalUi) => (Format::ASTC_4x4_SRGB_BLOCK, astcenc_encoder()),
         (Web, SingleChannel) => (Format::ASTC_6x6_UNORM_BLOCK, astcenc_encoder()),
         (Web, NormalMap) => (Format::ASTC_6x6_UNORM_BLOCK, astcenc_encoder()),
 
         // LowEnd: ETC2 fallback
-        (LowEnd, SpriteColor) => (Format::ETC2_R8G8B8A8_UNORM_BLOCK, etcpak_encoder()),
-        (LowEnd, CriticalUi) => (Format::ETC2_R8G8B8A8_UNORM_BLOCK, etcpak_encoder()),
+        (LowEnd, SpriteColor) => (Format::ETC2_R8G8B8A8_SRGB_BLOCK, etcpak_encoder()),
+        (LowEnd, CriticalUi) => (Format::ETC2_R8G8B8A8_SRGB_BLOCK, etcpak_encoder()),
         (LowEnd, SingleChannel) => (Format::ETC2_R8G8B8A8_UNORM_BLOCK, etcpak_encoder()),
         (LowEnd, NormalMap) => (Format::ETC2_R8G8B8A8_UNORM_BLOCK, etcpak_encoder()),
 
-        // Tier::Constrained tratado via early-return acima (TargetFormat::Uncompressed).
-        // Match exhaustivo: 4 tiers × 4 asset classes = 16 combos restantes acima.
-        (Constrained, _) => unreachable!("Constrained handled by early-return above"),
+        // Constrained: RGBA8 cru, sem encoder.
+        (Constrained, SpriteColor | CriticalUi) => {
+            return TargetFormat::Uncompressed(Format::R8G8B8A8_SRGB);
+        }
+        (Constrained, SingleChannel | NormalMap) => {
+            return TargetFormat::Uncompressed(Format::R8G8B8A8_UNORM);
+        }
     };
 
     TargetFormat::Compressed { format, encoder }
+}
+
+/// Espaço de cor que o `target` GRAVA no KTX2: `Srgb` para uma variante
+/// `*_SRGB`, `Linear` para o resto. É o `output_color_space` que o cook passa
+/// ao `ctt` — o `ctt` 0.6 exige que formato e espaço concordem.
+#[must_use]
+pub fn stored_color_space(target: &TargetFormat) -> ctt::ColorSpace {
+    let format = match target {
+        TargetFormat::Compressed { format, .. } | TargetFormat::Uncompressed(format) => *format,
+    };
+    format.normalize().1
 }
 
 /// Default `ColorSpace` semanticamente correto para um asset class.
@@ -199,7 +209,8 @@ mod tests {
     #[test]
     fn desktop_sprite_color_uses_bc7_bc7enc() {
         let (format, kind) = extract(target_for(Tier::Desktop, AssetClass::SpriteColor));
-        assert_eq!(format, Format::BC7_UNORM_BLOCK);
+        // SRGB (ctt 0.6): a entrada é cor, o espaço de cor vai no formato.
+        assert_eq!(format, Format::BC7_SRGB_BLOCK);
         assert_eq!(kind, "Bc7enc");
     }
 
@@ -220,7 +231,11 @@ mod tests {
     #[test]
     fn constrained_falls_back_uncompressed() {
         let (format, kind) = extract(target_for(Tier::Constrained, AssetClass::SpriteColor));
-        assert_eq!(format, Format::R8G8B8A8_UNORM);
+        // SRGB (ctt 0.6): a entrada é cor, o espaço de cor vai no formato.
+        assert_eq!(format, Format::R8G8B8A8_SRGB);
+        // Dados (máscara) continuam UNORM no mesmo tier.
+        let (data_format, _) = extract(target_for(Tier::Constrained, AssetClass::SingleChannel));
+        assert_eq!(data_format, Format::R8G8B8A8_UNORM);
         // W1.T6 fix: Tier::Constrained agora retorna TargetFormat::Uncompressed
         // (não Compressed+Encoder::Auto que falhava com UnsupportedFormat).
         assert_eq!(kind, "Uncompressed");
@@ -229,7 +244,8 @@ mod tests {
     #[test]
     fn lowend_uses_etc2_etcpak() {
         let (format, kind) = extract(target_for(Tier::LowEnd, AssetClass::SpriteColor));
-        assert_eq!(format, Format::ETC2_R8G8B8A8_UNORM_BLOCK);
+        // SRGB (ctt 0.6): a entrada é cor, o espaço de cor vai no formato.
+        assert_eq!(format, Format::ETC2_R8G8B8A8_SRGB_BLOCK);
         assert_eq!(kind, "Etcpak");
     }
 
@@ -298,12 +314,41 @@ mod tests {
                 AssetClass::NormalMap,
             ] {
                 let (format, kind) = extract(target_for(tier, class));
-                if matches!(format, Format::BC7_UNORM_BLOCK) {
+                // As DUAS variantes: com ctt 0.6 as classes de cor usam BC7_SRGB,
+                // e um guarda só sobre BC7_UNORM deixaria de ver o caminho real.
+                if matches!(format, Format::BC7_UNORM_BLOCK | Format::BC7_SRGB_BLOCK) {
                     assert_eq!(
                         kind, "Bc7enc",
                         "D3 violation: BC7 format dispatched via {kind} for ({tier:?}, {class:?}); MUST be Bc7enc"
                     );
                 }
+            }
+        }
+    }
+
+    /// ctt 0.6: o espaço de cor vive no formato. Em TODAS as 20 células, o
+    /// espaço que o formato grava é o da classe — cor → `*_SRGB`, dados →
+    /// UNORM. Uma célula de cor esquecida em UNORM (ou máscara em SRGB) reprova.
+    #[test]
+    fn matrix_color_space_agrees_with_class() {
+        for tier in [
+            Tier::Desktop,
+            Tier::Mobile,
+            Tier::Web,
+            Tier::LowEnd,
+            Tier::Constrained,
+        ] {
+            for class in [
+                AssetClass::SpriteColor,
+                AssetClass::CriticalUi,
+                AssetClass::SingleChannel,
+                AssetClass::NormalMap,
+            ] {
+                assert_eq!(
+                    stored_color_space(&target_for(tier, class)),
+                    default_color_space_for(class),
+                    "({tier:?}, {class:?}): o formato do alvo grava o espaço de cor errado"
+                );
             }
         }
     }

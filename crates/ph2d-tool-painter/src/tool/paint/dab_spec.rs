@@ -69,12 +69,6 @@ impl PainterTool {
         // MOMENTO em que um dab pousa muda a tinta — medido, 3 093 px num pincel guardado.
         if matches!(self.paint.paint_mode, super::PaintMode::WetPaint) {
             brush.impasto_push = 0.0;
-            // A mesma lei para o Follow SEM LADO (`Dependente::FollowSemNada`, a linha esmaecida): nada roda,
-            // mas o Rake/Flow armava o aquecimento — medido 24/10, 1 273 px na Borracha de ponta redonda.
-            if self.inercias().inerte(super::Dependente::FollowSemNada) {
-                brush.shape.rake = false;
-                brush.shape.flow = false;
-            }
             // O Wet Paint não lê a Strength (a Opacity dele é o pigmento): o carimbo só a usava para
             // recuperar a pressão (`cobertura ÷ strength`), e essa divisão não volta exata — com o carimbo
             // da W2 o último bit mudava 1 px entre o pincel e o mesmo pincel guardado (que não leva a
@@ -87,26 +81,58 @@ impl PainterTool {
                 brush.radius_px = lei.raio_do_motor(brush.radius_px);
             }
         }
-        if self.grao_e_o_papel() {
-            // «Same as Paper» (dono 28/10): o papel do documento, preso à tela, como o papel VISÍVEL o mostra —
-            // a Roughness do cartão é o contraste do dente e o Relief a profundidade (com o piso do papel na tinta,
-            // `relief_na_tinta`), × a Depth do próprio Grain (smoke 28/10: «corresponde parcialmente»).
-            brush.texture = super::substrate_relief::papel_do_documento(brush.paper);
-            brush.texture.lei.contraste =
-                super::substrate_relief::ganho_do_dente(self.paint.substrate_rough);
-            brush.grain_depth = (brush.grain_depth
-                * super::wetpaint::grao_no_filme::relief_na_tinta(self.paint.substrate_depth))
-            .clamp(0.0, 1.0);
-        } else if self.papel_como_grain() {
-            brush.texture = brush.paper;
-            brush.grain_depth =
-                (brush.paper_depth / ph2d_painter_brush::PAPER_TOOTH_MAX).clamp(0.0, 1.0);
+        // O Follow SEM LADO (`Dependente::FollowSemNada`, a linha esmaecida) não roda nada, em todo meio: no Wet o
+        // Rake/Flow armava o aquecimento (medido 24/10, 1 273 px na Borracha de ponta redonda); nos outros rodar a
+        // pegada redonda só mudava o arredondamento (Digital com Grain Noise: 1 texel, censo do esmaecido 28/10).
+        if self.inercias().inerte(super::Dependente::FollowSemNada) {
+            brush.shape.rake = false;
+            brush.shape.flow = false;
         }
+        self.poe_o_papel_como_grain(&mut brush);
         if brush.stroke_method == ph2d_painter_brush::StrokeMethod::GridStamp {
             brush.as_grid_stamp(self.shape_silhouette_active())
         } else {
             brush
         }
+    }
+
+    /// ⭐ **O grão com que o motor PINTA** quando o papel faz de Grain — a porta ÚNICA: o [`Self::authored_spec`] e a
+    /// pergunta «a linha age?» (`inercia.rs`) passam por ela. Perguntar ao pincel cru esmaecia o Accumulate, a
+    /// Roughness e o Source Grain que agiam (censo do esmaecido, 28/10).
+    pub(crate) fn poe_o_papel_como_grain(&self, brush: &mut ph2d_painter_brush::BrushSpec) {
+        if self.grao_e_o_papel_do(brush) {
+            // «Same as Paper» (dono 28/10): o papel do documento, preso à tela, como o papel VISÍVEL o mostra —
+            // a Roughness do cartão é o contraste do dente e o Relief a profundidade (com o piso do papel na tinta,
+            // `relief_na_tinta`), × a Depth do próprio Grain (smoke 28/10: «corresponde parcialmente»). A lei do
+            // grão («Grain behaviour», que o painel mostra com a caixa ligada) continua a do pincel.
+            let lei = brush.texture.lei;
+            brush.texture = super::substrate_relief::papel_do_documento(brush.paper);
+            brush.texture.lei = ph2d_painter_brush::texture::GrainLaw {
+                contraste: super::substrate_relief::ganho_do_dente(self.paint.substrate_rough),
+                ..lei
+            };
+            brush.grain_depth = (brush.grain_depth
+                * super::wetpaint::grao_no_filme::relief_na_tinta(self.paint.substrate_depth))
+            .clamp(0.0, 1.0);
+        } else if self.papel_como_grain_do(brush) {
+            brush.texture = brush.paper;
+            brush.grain_depth =
+                (brush.paper_depth / ph2d_painter_brush::PAPER_TOOTH_MAX).clamp(0.0, 1.0);
+        }
+    }
+
+    /// O pincel de AGORA com o grão com que o motor pinta ([`Self::poe_o_papel_como_grain`]) e se esse grão tem
+    /// imagem (a do papel quando ele faz de Grain, como a rota do Wet escolhe) — para quem pergunta «o grão amostra?».
+    #[must_use]
+    pub(crate) fn grao_que_pinta(&self) -> (ph2d_painter_brush::BrushSpec, bool) {
+        let mut b = self.paint.brush;
+        self.poe_o_papel_como_grain(&mut b);
+        let imagem = if self.papel_como_grain() {
+            self.paint.paper_image.is_some()
+        } else {
+            self.paint.texture_image.is_some()
+        };
+        (b, imagem)
     }
 
     /// **No Digital a tinta ENTRA no dente do papel** (dono, 2026-10-05: *«digital realmente cobre o

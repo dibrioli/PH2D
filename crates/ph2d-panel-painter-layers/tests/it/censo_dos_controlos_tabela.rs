@@ -512,6 +512,17 @@ fn pre_condicoes() -> Vec<Linha> {
             false,
         ));
     }
+    // O «Same as Paper» do Grain fora da Aquarela (dono 28/10): o grão do pincel é o papel do documento; o grão
+    // próprio sai da tela e fica a Depth (com as linhas da lei do grão e a rampa).
+    for m in [Digital, Impasto, WetPaint] {
+        v.push((
+            m,
+            "Same as Paper do Grain ligado (o grão é o papel)",
+            vec![Gesto::Clique(PAINTER_BRUSH_GRAIN_SAME_AS_PAPER)],
+            vec![Alvo::Id(PAINTER_BRUSH_GRAIN_DEPTH)],
+            false,
+        ));
+    }
     v.push((
         Watercolor,
         "Charge 0,4 (o pincel volta a apanhar)",

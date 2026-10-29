@@ -97,14 +97,8 @@ fn inertes_com_motivo() -> Vec<Inerte> {
     // ⛔ A velocidade→opacidade (L12) no Wet SAIU daqui (J3 canetas 2.ª onda): a L12 lê a velocidade da MÃO, não a do
     // traço atrasado pelo estabilizador, e o traço do censo já passa dos 300 px/s — a linha age.
     v.push((Watercolor, PAINTER_BRUSH_JITTER_ROTATE_CHIP, rodar));
-    v.push((
-        Impasto,
-        painter_line_type_option_id(2),
-        "age, mas não na FÁBRICA: o Reach de fábrica (1 diâmetro) costura dentro do próprio rastro, e o \
-         rastro do Impasto é tinta OPACA da mesma cor (1 352 de 1 919 texels puros) — um fio por cima não \
-         muda um byte; com Reach 3 ele sai do rastro e pinta (208 texels). O «só com Solid» de 2026-10-03 \
-         era a corda do Solid a estragar o traço (curado: `a_corda_nao_deixa_rasto_nos_acumuladores_do_traco`)",
-    ));
+    // ⛔ O tipo de linha do Impasto (`painter_line_type_option_id(2)`) SAIU a 28/10: o 3.º traço do censo (as duas
+    // pontas dentro da tela) dá ao fio do Reach de fábrica onde sair do rastro — a linha age.
     // Saíram a 23/10 (a fábrica da Aquarela passou a ser a do painel do dono: Rewet 0,5, Bleed 4, Charge
     // 0,5…): o Automatic, o Spread e a teia (Sketchy) passaram a mudar a tinta da fábrica.
     for modo in [6u8, 7] {

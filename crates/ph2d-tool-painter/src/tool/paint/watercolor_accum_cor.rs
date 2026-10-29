@@ -366,7 +366,9 @@ impl PainterTool {
     pub(super) fn grao_que_a_aguada_le(&self) -> bool {
         let b = &self.paint.brush;
         if matches!(self.paint.paint_mode, PaintMode::WetPaint) {
-            b.grain_samples(self.paint.texture_image.is_some())
+            // O grão com que a rota pinta: com o «Same as Paper» é o papel (`grao_que_pinta`).
+            let (g, imagem) = self.grao_que_pinta();
+            g.grain_samples(imagem)
         } else {
             !b.granulation_use_paper && b.texture.is_active()
         }

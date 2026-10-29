@@ -473,23 +473,23 @@ impl PainterTool {
         let b = &self.paint.brush;
         let aquarela = self.watercolor_render_active();
         let agua = self.paint.wetpaint.armed;
+        // O grão com que o motor PINTA (o papel quando ele faz de Grain, `poe_o_papel_como_grain`): as perguntas do grão
+        // fazem-se a ele, não ao pincel cru — que não tem grão e esmaecia o que agia.
+        let (efetivo, imagem_do_grao) = self.grao_que_pinta();
+        let g = &efetivo;
         // O Follow roda a pegada INTEIRA do dab (`BrushSpec::dab_rotor`): sem textura no Shape, sem ponta achatada
         // e sem um Grain preso ao dab, a ponta redonda não tem ângulo para mostrar.
         let sem_lado = !b.shape_silhouette_active(self.paint.shape_image.is_some())
             && b.shape.kind != ph2d_painter_brush::TextureKind::Bristles
             && !b.pegada_anisotropica()
-            && !(b.grain_samples(self.paint.texture_image.is_some())
+            && !(g.grain_samples(imagem_do_grao)
                 && matches!(
-                    b.texture.mapping,
+                    g.texture.mapping,
                     ph2d_painter_brush::TextureMapping::ViewPlane
                         | ph2d_painter_brush::TextureMapping::Random
-                ))
-            // A profundidade do grão POR DAB (L9) leva o dab à rota por dab (`DabTilt::grao`, `any_tilted`), que roda a
-            // pegada pelo rotor: a tinta muda pelo arredondamento (a razão do Jitter Rotate, `o_censo_so_encolhe`). O
-            // Impasto não: a altura e a cor dele não rodam a pegada redonda (medido pelo gate do esmaecido, 20/10).
-            && !(b.texture.lei.varia_por_dab()
-                && b.texture.is_active()
-                && !matches!(self.paint_media(), super::media::PaintMedia::Impasto));
+                ));
+        // ⛔ A profundidade do grão por dab NÃO dá lado: rodar a pegada redonda só mudava o arredondamento (lia
+        // vivo a 20/10, morto a 28/10 — 0 texels); sem lado o `authored_spec` desliga o Follow, ao bit, em todo meio.
         let leis = [
             // A ponta de píxel (L18) é binária: o grão, a Shape e as N imagens tornariam o píxel fraccionário.
             (Dependente::ForaDaPontaDePixel, self.pixel_vivo(b)),
@@ -501,7 +501,7 @@ impl PainterTool {
                 Dependente::Accumulate,
                 !self.cobertura_tapada(&BrushSpec {
                     accumulate: false,
-                    ..*b
+                    ..*g
                 }) && !(b.space_attenuation
                     && BrushSpec {
                         accumulate: true,
@@ -512,10 +512,15 @@ impl PainterTool {
             (Dependente::SpaceAttenuation, !b.space_attenuation_reaches()),
             (Dependente::JitterUnit, !b.jitter_unit_matters()),
             (Dependente::DashLength, !b.dash_length_matters()),
-            (Dependente::PaperRoughness, self.substrate().is_none()),
+            // O «Same as Paper» lê a Roughness como o contraste do grão (`ganho_do_dente`), com ou sem relevo à vista.
+            (
+                Dependente::PaperRoughness,
+                self.substrate().is_none() && !self.grao_e_o_papel(),
+            ),
+            // Com o «Same as Paper» o papel escolhido É o grão do pincel, com ou sem relevo à vista.
             (
                 Dependente::Paper,
-                !aquarela && !agua && self.paint.substrate_depth <= 0.0,
+                !aquarela && !agua && self.paint.substrate_depth <= 0.0 && !self.grao_e_o_papel(),
             ),
             // Na água o depósito (Paint), a borracha e o Blend (a máscara dele, J4 mistura L-2) recebem o Grain:
             // Smear, Wet, Dry e Blow ignoram-no de propósito (`wetpaint/dab_route.rs`).
@@ -528,7 +533,7 @@ impl PainterTool {
                     ),
             ),
             (Dependente::Pull, aquarela && !self.wet_mixer_active()),
-            (Dependente::DepthSourceGrain, !b.texture.is_active()),
+            (Dependente::DepthSourceGrain, !g.texture.is_active()),
             (Dependente::EraseDaAgua, agua && !self.paint.eraser),
             // No Digital o Tooth é a profundidade do papel feito Grain (`papel_como_grain`).
             (
@@ -552,7 +557,7 @@ impl PainterTool {
             (
                 Dependente::CerdasDaAgua,
                 agua && b.shape.kind == ph2d_painter_brush::TextureKind::Bristles
-                    && (b.grain_samples(self.paint.texture_image.is_some())
+                    && (g.grain_samples(imagem_do_grao)
                         || (!self.paint.eraser
                             && self.paint.wetpaint.tool != super::WetTool::Paint)),
             ),

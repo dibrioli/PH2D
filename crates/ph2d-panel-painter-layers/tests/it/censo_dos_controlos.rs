@@ -383,6 +383,21 @@ pub(crate) fn risca(t: &mut PainterTool) -> Vec<u8> {
         [1.0, 0.4],
         [0.4, -0.3],
     );
+    // ⭐ O 3.º traço tem as DUAS PONTAS dentro da tela (a 40 e 88 px, o raio de fábrica é 25): os dois de cima
+    // começam e acabam fora dela, e o censo era cego a todo controlo que só muda as pontas (Ends beyond lia
+    // morto, 0 texels — auditoria UI 2, 28/10). Outra cor, para a ponta se ver sobre a tinta de antes.
+    for _ in 0..4 {
+        tique(t, &mut ultima);
+    }
+    t.set_brush_color_srgb8([60, 170, 90]);
+    traco(
+        t,
+        &mut ultima,
+        [40.0, 92.0],
+        [88.0, 92.0],
+        [1.0, 0.6],
+        [0.0, 0.0],
+    );
     for _ in 0..30 {
         tique(t, &mut ultima);
     }

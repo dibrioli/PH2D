@@ -352,7 +352,8 @@ fn ryb_de_rgb(f: [f64; 3], antes: Params) -> Params {
 /// **A imagem do quadro**, `lado × lado` RGBA de alfa reto (fora do disco: transparente, ou o fundo
 /// do Normal map).
 #[must_use]
-pub fn imagem_do_quadro(m: PixelSelector, p: Params, lado: u32) -> Vec<u8> {
+pub fn imagem_do_quadro(m: PixelSelector, p: Params, lado: u32) -> Vec<u8> /* COLOR-RAW-OK: textura RGBA8 de alfa reto para o GPU */
+{
     let n = f64::from(lado.max(1));
     let mut out = Vec::with_capacity((lado * lado * 4) as usize);
     for y in 0..lado {
@@ -390,7 +391,8 @@ pub fn imagem_do_quadro(m: PixelSelector, p: Params, lado: u32) -> Vec<u8> {
 
 /// **A imagem da barra** do modo, `largura × 1`.
 #[must_use]
-pub fn imagem_da_barra(m: PixelSelector, p: Params, largura: u32) -> Vec<u8> {
+pub fn imagem_da_barra(m: PixelSelector, p: Params, largura: u32) -> Vec<u8> /* COLOR-RAW-OK: textura RGBA8 de alfa reto para o GPU */
+{
     let n = f64::from(largura.max(1));
     (0..largura)
         .flat_map(|x| {
@@ -402,7 +404,8 @@ pub fn imagem_da_barra(m: PixelSelector, p: Params, largura: u32) -> Vec<u8> {
 
 /// **A imagem da barra de alfa**: a cor `c` de transparente a opaca, `largura × 1`.
 #[must_use]
-pub fn imagem_do_alfa(c: [u8; 3], largura: u32) -> Vec<u8> {
+pub fn imagem_do_alfa(c: [u8; 3], largura: u32) -> Vec<u8> /* COLOR-RAW-OK: textura RGBA8 de alfa reto para o GPU */
+{
     let n = f64::from(largura.max(1));
     (0..largura)
         .flat_map(|x| [c[0], c[1], c[2], byte((f64::from(x) + 0.5) / n)])

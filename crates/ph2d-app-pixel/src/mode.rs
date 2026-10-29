@@ -55,7 +55,7 @@ impl ModeFamily for Family<'_> {
     fn leave(&mut self, _: ObjectMode, entity: u64, _: &mut ToolRegistry) {
         let minha = |g: &crate::state::Gesture| g.entity == entity;
         if self.app.gesture.as_ref().is_some_and(minha) {
-            crate::viva::assenta(&mut self.app);
+            crate::viva::assenta(self.app);
         }
         if self
             .app

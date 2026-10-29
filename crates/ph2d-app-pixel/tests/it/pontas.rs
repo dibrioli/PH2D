@@ -271,11 +271,14 @@ fn scene_15_shows_a_skewed_frame_two_layers_a_clip_and_the_flyout_in_one_row() {
 #[test]
 fn save_to_msk_and_load_it_back_restores_the_selection_as_one_step() {
     let mut p = Palco::limpo();
-    assert!(p.app.msk_de(p.key).is_none(), "sem selecção não há ficheiro");
+    assert!(
+        p.app.msk_de(p.key).is_none(),
+        "sem selecção não há ficheiro"
+    );
     p.ferramenta(Tool::EllipseMarquee);
     p.arrasta((5, 7), (30, 20), Mods::default());
     let antes = p.mascara().expect("selecção");
-    let bytes = p.app.msk_de(p.key).expect("o .msk");
+    let bytes = p.app.msk_de(p.key).expect("o .msk").expect("cabe");
     assert_eq!(
         ph2d_pixel_io::msk::read_msk(&bytes)
             .expect("lê-se")

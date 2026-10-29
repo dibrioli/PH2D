@@ -132,9 +132,16 @@ impl PixelApp {
                 return true;
             }
             S::SaveMsk => {
-                let Some(bytes) = self.msk_de(key) else {
-                    self.recusa("pixel.select.refuse.none");
-                    return true;
+                let bytes = match self.msk_de(key) {
+                    Some(Ok(b)) => b,
+                    Some(Err(e)) => {
+                        self.falha_msk(&e);
+                        return true;
+                    }
+                    None => {
+                        self.recusa("pixel.select.refuse.none");
+                        return true;
+                    }
                 };
                 let d = rfd::FileDialog::new()
                     .add_filter(tr("pixel.select.msk_kind"), &["msk"])
@@ -177,11 +184,12 @@ impl PixelApp {
             .push((false, tr("pixel.select.msk_loaded").to_owned()));
     }
 
-    /// Os bytes do *Save to MSK file* da selecção do documento `key` (`None` = sem selecção).
+    /// Os bytes do *Save to MSK file* da selecção do documento `key` (`None` = sem selecção; `Err`
+    /// = a caixa não cabe no formato).
     #[must_use]
-    pub fn msk_de(&self, key: u32) -> Option<Vec<u8>> {
+    pub fn msk_de(&self, key: u32) -> Option<Result<Vec<u8>, String>> {
         let m = self.docs.get(&key)?.sprite.mask()?;
-        Some(msk::write_msk(&msk::MaskFile::from_selection(m)?))
+        Some(msk::write_msk(&msk::MaskFile::from_selection(m)?).map_err(|e| format!("{e:?}")))
     }
 
     fn falha_msk(&mut self, e: &str) {

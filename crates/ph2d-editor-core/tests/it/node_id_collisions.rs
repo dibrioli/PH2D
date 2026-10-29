@@ -70,6 +70,12 @@ const SLUGS_REPETIDOS_TOLERADOS: &[(&str, usize, &str)] = &[];
 /// obriga a reescrevê-la — é essa a prova de que alguém olhou para a forma no sítio novo.
 const FORMAS_NAO_LITERAIS: &[(&str, &str, Especie, &str)] = &[
     (
+        "crates/ph2d-panel-pixel-tools/src/ids.rs",
+        "?",
+        Especie::HashDeExpressao,
+        "ferramenta do Pixel = hash da CHAVE i18n dela (`label_key`) ou de `pixel.tool.shape.<discriminante>` do catálogo do Vector, num `LazyLock` (a função envolvente não tem nome); a tabela é a MESMA que pinta, regista e despacha (seam_pixel_*)",
+    ),
+    (
         "crates/ph2d-app-components/src/component_palette.rs",
         "item_id",
         Especie::HashDeExpressao,

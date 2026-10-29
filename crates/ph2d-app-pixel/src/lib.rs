@@ -18,6 +18,7 @@ pub mod formas;
 mod frame;
 mod gesture;
 pub mod input;
+mod input_teclas;
 pub mod mode;
 pub mod object_add;
 pub mod paleta;

@@ -188,6 +188,10 @@ fn the_hint_teaches_the_handles_while_a_shape_is_live() {
         viva,
         ph2d_i18n::tr_with("pixel.hint.live_shape", &[("tool", &nome)])
     );
+    // Fecho 28/10: sobre o eixo da simetria a dica é a do eixo (a chave não tinha leitor).
+    info.live_shape = false;
+    info.on_axis = true;
+    assert_eq!(hint(&info), ph2d_i18n::tr("pixel.hint.axis"));
 }
 
 /// P6e: o flyout das formas é o catálogo do Vector — as mesmas formas, na MESMA ordem, cada uma com

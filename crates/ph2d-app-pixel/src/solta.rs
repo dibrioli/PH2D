@@ -148,7 +148,8 @@ impl Solta {
             .as_ref()
             .is_some_and(|(m, r, ..)| *m == self.m && *r == method);
         if !fresh {
-            let f = edit::transform(&self.src, &self.m.settle(), method, s.transparent_value());
+            let (t, bg_t) = (self.m.settle(), s.transparent_value());
+            let f = edit::transform_within(&self.src, &t, method, bg_t, s.bounds());
             let key = (self.layer, self.frame);
             let op = f.as_ref().and_then(|f| match &self.original {
                 Some(o) => edit::commit(s, key, o, f, bg),

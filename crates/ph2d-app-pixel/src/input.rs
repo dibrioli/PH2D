@@ -87,6 +87,17 @@ fn image_point(m: Affine, p: (f32, f32)) -> Point {
     m.inverse() * Point::new(f64::from(p.0), f64::from(p.1))
 }
 
+/// Premir em `p` agarraria um eixo da simetria (a dica do rodapé diz que se arrasta).
+fn eixo_sob(app: &PixelApp, c: &Canvas<'_>, bits: u64, p: (f32, f32)) -> bool {
+    let Some(doc) = key_of(c.world, bits).and_then(|k| app.docs.get(&k)) else {
+        return false;
+    };
+    app.tool.paints()
+        && to_screen(c.world, bits, doc, c.camera, c.window, c.ppm)
+            .and_then(|m| axis_under(&app.options, doc, m, p))
+            .is_some()
+}
+
 /// O eixo da simetria sob o ponto `p`, se há (vertical = o do espelho H).
 fn axis_under(o: &crate::Options, doc: &Doc, m: Affine, p: (f32, f32)) -> Option<bool> {
     if !(o.sym_h || o.sym_v) {
@@ -334,6 +345,7 @@ pub fn moved(app: &mut PixelApp, c: &Canvas<'_>, p: (f32, f32), m: Mods) -> bool
             let key = key_of(c.world, bits)?;
             cell(app, c, bits, key, p).map(|xy| (bits, xy))
         });
+        app.sobre_eixo = c.editing.is_some_and(|bits| eixo_sob(app, c, bits, p));
         return false;
     };
     let Some((x, y)) = cell(app, c, bits, key, p) else {
@@ -551,6 +563,4 @@ pub fn space(
     true
 }
 
-#[path = "input_teclas.rs"]
-mod teclas;
-pub use teclas::{key, key_with};
+pub use crate::input_teclas::{key, key_with};

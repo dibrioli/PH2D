@@ -3,11 +3,17 @@
 //! Mudados VERBATIM (`line/input-dispatch`, 2026-09-13); os privados passam a `pub(super)`.
 
 impl crate::App {
+    /// Com o canvas de outra família (o Pixel), o Vector está escondido e não age.
     pub(crate) fn vector_tool_active(&self) -> bool {
         self.gfx.as_ref().is_some_and(|g| {
-            g.tools
-                .active()
-                .is_some_and(|t| t.id() == ph2d_editor_core::ToolId::new("vector"))
+            let alheio = g
+                .hero_screen
+                .as_ref()
+                .is_some_and(|h| h.store.family_owns_canvas());
+            !alheio
+                && g.tools
+                    .active()
+                    .is_some_and(|t| t.id() == ph2d_editor_core::ToolId::new("vector"))
         })
     }
 

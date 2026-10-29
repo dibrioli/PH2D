@@ -71,6 +71,7 @@ impl PixelApp {
                 self.gesture = None;
             }
             self.hover = None;
+            self.sobre_eixo = false;
             self.space = false;
             self.panning = false;
             self.fit = None;

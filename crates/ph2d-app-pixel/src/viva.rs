@@ -246,13 +246,12 @@ impl Viva {
     }
 }
 
+/// As pegas em local e no ecrã (`None` = a pega não existe para estes valores).
+type Pegas = (Vec<Option<[f64; 2]>>, Vec<Option<Point>>);
+
 /// A geometria, as pegas (local) e onde cada uma cai no ECRÃ (`screen` = imagem → ecrã) — a conta
 /// única do desenho, do clique e da sonda.
-fn pegas(
-    v: &Viva,
-    screen: ph2d_vector::Affine,
-    values: &ShapeValues,
-) -> (Geo, Vec<Option<[f64; 2]>>, Vec<Option<Point>>) {
+fn pegas(v: &Viva, screen: ph2d_vector::Affine, values: &ShapeValues) -> (Geo, Pegas) {
     let g = v.geo();
     let grips = v.grips(&g, values, 1.0 / px_per_cell(screen));
     let k = screen * g.xf;
@@ -260,7 +259,7 @@ fn pegas(
         .iter()
         .map(|q| q.map(|q| k * Point::new(q[0], q[1])))
         .collect();
-    (g, grips, em_ecra)
+    (g, (grips, em_ecra))
 }
 
 /// As alças da forma viva do documento `key` em píxeis de ECRÃ, pela ordem da lei do Vector
@@ -271,7 +270,7 @@ pub fn handles_on_screen(app: &PixelApp, c: &Canvas<'_>, key: u32) -> Vec<Option
     let Some((v, screen)) = alvo(app, c, key) else {
         return Vec::new();
     };
-    let (.., em_ecra) = pegas(v, screen, &valores(app, v.forma));
+    let (_, (_, em_ecra)) = pegas(v, screen, &valores(app, v.forma));
     em_ecra
         .into_iter()
         .map(|p| p.map(|p| (p.x as f32, p.y as f32)))
@@ -396,7 +395,7 @@ pub(crate) fn press(app: &mut PixelApp, c: &Canvas<'_>, key: u32, p: (f32, f32))
         return None;
     };
     let values = valores(app, v.forma);
-    let (g, grips, em_ecra) = pegas(v, screen, &values);
+    let (g, (grips, em_ecra)) = pegas(v, screen, &values);
     let local = |p: (f32, f32)| {
         let q = (screen * g.xf).inverse() * Point::new(f64::from(p.0), f64::from(p.1));
         [q.x, q.y]
@@ -590,7 +589,7 @@ pub(crate) fn draw(
         );
     }
     let values = valores(app, v.forma);
-    let (g, grips, em_ecra) = pegas(v, screen, &values);
+    let (g, (grips, em_ecra)) = pegas(v, screen, &values);
     let (kind, forma, half) = (v.forma.kind(), v.forma, g.half);
     let k = screen * g.xf;
     let quente = agarrada.or_else(|| v.cursor.and_then(|p| hit(&em_ecra, p)).or(v.mostra));

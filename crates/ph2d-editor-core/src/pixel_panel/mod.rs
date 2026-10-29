@@ -354,6 +354,8 @@ pub struct PixelPanelInfo {
     pub groups: PixelGroups,
     /// P6d: há uma forma VIVA à espera do `Enter` (a dica ensina as alças).
     pub live_shape: bool,
+    /// O cursor está sobre um eixo da simetria (ou arrasta-o): a dica ensina a arrastá-lo.
+    pub on_axis: bool,
 }
 
 /// Um gesto do painel PIXEL (`EditorAction::Pixel`).

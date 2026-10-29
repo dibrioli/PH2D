@@ -169,6 +169,7 @@ pub fn hint(info: &PixelPanelInfo) -> String {
         && info.tool != PixelTool::Eraser;
     let key = match info.tool {
         _ if info.live_shape => "pixel.hint.live_shape",
+        _ if info.on_axis => "pixel.hint.axis",
         _ if shading => "pixel.hint.shading",
         PixelTool::RectMarquee | PixelTool::EllipseMarquee => "pixel.hint.marquee",
         PixelTool::Lasso => "pixel.hint.lasso",

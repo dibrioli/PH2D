@@ -208,6 +208,10 @@ pub fn frame(
         presets: app.predefinicoes().to_vec(),
         groups: app.groups,
         live_shape: app.live_shape().is_some(),
+        on_axis: app.sobre_eixo
+            || app.gesture.as_ref().is_some_and(|g| {
+                Some(g.key) == app.chave && matches!(g.kind, crate::gesture::Kind::Axis { .. })
+            }),
     }
 }
 

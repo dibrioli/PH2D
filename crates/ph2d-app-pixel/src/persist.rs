@@ -56,6 +56,14 @@ pub fn install(app: &mut PixelApp, loaded: Loaded) {
         docs.insert(key, doc);
     }
     app.docs = docs;
+    // As células levantadas e o laço eram do projecto que saiu: assentá-los escreveria no novo.
     app.gesture = None;
+    app.solta = None;
+    app.laco = None;
+    app.chave = None;
+    app.was_editing = None;
+    app.pressed = false;
+    app.panning = false;
+    app.sobre_eixo = false;
     app.hover = None;
 }

@@ -101,6 +101,11 @@ pub struct PixelApp {
     pub(crate) space: bool,
     /// Um arrasto da mão em curso (a shell move a câmera; ao largar, as células realinham).
     pub(crate) panning: bool,
+    /// O premir em curso foi DESTA família: só o largar dele é dela, e só com ele o mover é consumido
+    /// (o polígono ou a curva à espera não comem o clique do chrome nem o pan do botão do meio).
+    pub(crate) pressed: bool,
+    /// O cursor está sobre um eixo da simetria que o premir agarraria.
+    pub(crate) sobre_eixo: bool,
     pub(crate) hover: Option<(u64, (i32, i32))>,
     pub(crate) next_stamp: u64,
     /// O objecto que nasceu e pede o modo Draw (uma vez).
@@ -191,6 +196,8 @@ impl Default for PixelApp {
             gesture: None,
             space: false,
             panning: false,
+            pressed: false,
+            sobre_eixo: false,
             hover: None,
             next_stamp: 1,
             wants_edit: None,

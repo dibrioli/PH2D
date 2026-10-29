@@ -641,6 +641,9 @@ fn every_widget_file_wires_a11y() {
 ///
 /// `(nome da porta, crate dona, ficheiro que a define, ficheiro do salto seguinte)`.
 const PORTAS_DE_CRATE_VERIFICADAS: &[(&str, &str, &str, &str)] = &[
+    // ⭐ 2026-10-28 (PixelArt P6b): as opções da forma (`paint_formas.rs`) pintam-se pelos campos,
+    //    escolhas e caixas do `Corpo` do painel, que delegam na `property_row` da casa.
+    ("escolha", "ph2d-panel-pixel-tools", "src/paint.rs", ""),
     (
         "fileira_de_param",
         "ph2d-panel-audio-editor",

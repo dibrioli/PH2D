@@ -48,6 +48,8 @@ pub enum MskError {
     SizeMismatch,
     /// Um bloco que não avança ou um resto partido — o oráculo fica parado; aqui é erro.
     BadChunk,
+    /// Gravar: a caixa passa de `u16` de lado ou a origem sai de `i16` (o formato não a guarda).
+    OutOfRange,
 }
 
 impl MaskFile {
@@ -160,29 +162,30 @@ pub fn read_msk(bytes: &[u8]) -> Result<MaskFile, MskError> {
     Ok(MaskFile {
         x,
         y,
-        mask: mask.unwrap_or_else(|| Mask::empty(w, h)),
+        // Vazia sem caixa: a caixa do cabeçalho não aloca nada que ninguém vá ler.
+        mask: mask.unwrap_or_else(|| Mask::empty(0, 0)),
     })
 }
 
 /// Escreve o `.msk` byte a byte como o oráculo (enchimento a `1`).
 ///
-/// # Panics
-/// Caixa maior que `u16` de lado ou origem fora de `i16` (o formato não a guarda).
-#[must_use]
-pub fn write_msk(file: &MaskFile) -> Vec<u8> {
+/// # Errors
+/// [`MskError::OutOfRange`] com a caixa maior que `u16` de lado ou a origem fora de `i16`.
+pub fn write_msk(file: &MaskFile) -> Result<Vec<u8>, MskError> {
     let (w, h) = (file.mask.width(), file.mask.height());
-    let side = |v: u32| u16::try_from(v).expect("lado do .msk cabe em u16");
-    let pos = |v: i32| i16::try_from(v).expect("origem do .msk cabe em i16");
+    let side = |v: u32| u16::try_from(v).map_err(|_| MskError::OutOfRange);
+    let pos = |v: i32| i16::try_from(v).map_err(|_| MskError::OutOfRange);
+    let (w16, h16, x16, y16) = (side(w)?, side(h)?, pos(file.x)?, pos(file.y)?);
     let stride = w.div_ceil(8) as usize;
     let data_len = stride * h as usize;
     let total = HEADER_LEN + CHUNK_HEAD + data_len;
     let mut out = Vec::with_capacity(total);
     out.extend_from_slice(&u32::try_from(total).expect("cabe em u32").to_le_bytes());
     out.extend_from_slice(&MAGIC.to_le_bytes());
-    out.extend_from_slice(&side(w).to_le_bytes());
-    out.extend_from_slice(&side(h).to_le_bytes());
-    out.extend_from_slice(&pos(file.x).to_le_bytes());
-    out.extend_from_slice(&pos(file.y).to_le_bytes());
+    out.extend_from_slice(&w16.to_le_bytes());
+    out.extend_from_slice(&h16.to_le_bytes());
+    out.extend_from_slice(&x16.to_le_bytes());
+    out.extend_from_slice(&y16.to_le_bytes());
     out.resize(HEADER_LEN, 0);
     out[18] = 1;
     out.extend_from_slice(
@@ -200,5 +203,5 @@ pub fn write_msk(file: &MaskFile) -> Vec<u8> {
         }
         out.extend_from_slice(&row);
     }
-    out
+    Ok(out)
 }

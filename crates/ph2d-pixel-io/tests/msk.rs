@@ -88,11 +88,11 @@ fn msk_writing_is_byte_exact_against_every_oracle_file() {
             continue;
         };
         let file = read_msk(&bytes).expect("lê");
-        assert_eq!(write_msk(&file), bytes, "regravar {}", name(&c));
+        assert_eq!(write_msk(&file), Ok(bytes.clone()), "regravar {}", name(&c));
         let (w, h) = canvas(&c);
         if !is_defect(&c) && file.bounds().intersect(Rect::new(0, 0, w, h)) == file.bounds() {
             let sel = MaskFile::from_selection(&cleared(&c)).expect("há selecção");
-            assert_eq!(write_msk(&sel), bytes, "da tela {}", name(&c));
+            assert_eq!(write_msk(&sel), Ok(bytes.clone()), "da tela {}", name(&c));
             from_canvas += 1;
         }
     }
@@ -131,7 +131,11 @@ fn msk_crafted_inputs_load_like_the_oracle() {
                     y: file.y + m.y,
                     mask: m.mask,
                 });
-                assert_eq!(tight.map(|t| write_msk(&t)), Some(resaved), "regravado {n}");
+                assert_eq!(
+                    tight.map(|t| write_msk(&t)),
+                    Some(Ok(resaved)),
+                    "regravado {n}"
+                );
             }
             // Sem selecção o Save do oráculo dá erro (e o Clear apaga a tela toda).
             None => assert!(file.mask.is_empty(), "{n}: sem regravação só se vazio"),
@@ -156,7 +160,7 @@ fn msk_legacy_8000_reads_from_the_origin_not_six_bytes_ahead() {
         let input = hex(c["input_msk_hex"].as_str().unwrap());
         let file = read_msk(&input).expect("legado");
         assert_eq!((file.x, file.y), (0, 0));
-        let ours = write_msk(&file);
+        let ours = write_msk(&file).expect("grava");
         assert_eq!(
             &ours[70..],
             &input[..],
@@ -186,7 +190,16 @@ fn msk_round_trip_keeps_offset_holes_and_odd_widths() {
         y: 9,
         mask: m,
     };
-    assert_eq!(read_msk(&write_msk(&f)), Ok(f.clone()));
+    assert_eq!(read_msk(&write_msk(&f).expect("grava")), Ok(f.clone()));
+    let longe = MaskFile {
+        x: 35_000,
+        ..f.clone()
+    };
+    assert_eq!(
+        write_msk(&longe),
+        Err(MskError::OutOfRange),
+        "origem fora de i16"
+    );
     let canvas = f.to_selection(20, 20);
     assert_eq!(canvas.count(), 4, "as duas da coluna 0 caem fora da tela");
 }

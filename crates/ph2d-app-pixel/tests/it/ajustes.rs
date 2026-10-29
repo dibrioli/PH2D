@@ -5,7 +5,7 @@
 use ph2d_app_pixel::compose::Mods;
 use ph2d_app_pixel::input::{self, KeyAnswer};
 use ph2d_app_pixel::smoke_ajustes::{POINTS, SETTLED, STAR, points_handle};
-use ph2d_app_pixel::{Tool, mode, panel, persist, viva};
+use ph2d_app_pixel::{Tool, panel, persist, viva};
 use ph2d_editor_core::ToastQueue;
 use ph2d_editor_core::object_mode::ObjectMode;
 use ph2d_editor_core::pixel_panel::{

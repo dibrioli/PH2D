@@ -134,6 +134,7 @@ fn spawn_doc(
     let ent =
         ph2d_ecs::Entity::try_from_bits(bits).and_then(|e| sim.world_mut().get_entity_mut(e).ok());
     let Some(mut ent) = ent else {
+        app.docs.remove(&key);
         return Err(ph2d_i18n::tr("object_add.not_born"));
     };
     ent.insert(ph2d_ecs::PixelSprite(key));

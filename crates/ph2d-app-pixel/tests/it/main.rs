@@ -3,6 +3,7 @@ mod camadas;
 mod catalogo;
 mod desenho;
 mod edit;
+mod fecho;
 mod formas;
 mod painel_e_dialogo;
 mod paleta;

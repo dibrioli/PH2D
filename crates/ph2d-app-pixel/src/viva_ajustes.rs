@@ -202,7 +202,7 @@ pub(crate) fn agarra_para_a_foto(app: &mut PixelApp, k: usize) -> Option<()> {
 pub fn readout(app: &PixelApp, c: &Canvas<'_>, key: u32) -> Option<(String, (f32, f32))> {
     let (v, screen) = alvo(app, c, key)?;
     let values = valores(app, v.forma);
-    let (.., em_ecra) = pegas(v, screen, &values);
+    let (_, (_, em_ecra)) = pegas(v, screen, &values);
     let k = match v.agarra {
         Some(Agarra::Alca(d)) => Some(d.handle),
         Some(Agarra::Caixa { .. }) => None,

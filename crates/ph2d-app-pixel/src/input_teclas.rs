@@ -1,12 +1,12 @@
-//! **As teclas do Draw** (filho de [`super`]): os atalhos do Aseprite, com o Alt nos que o levam.
+//! **As teclas do Draw** (de [`crate::input`]): os atalhos do Aseprite, com o Alt nos que o levam.
 
 use ph2d_editor_core::pixel_panel::{
     PixelFrameAction, PixelLayerAction, PixelRequest, PixelSpriteAction,
 };
 use winit::keyboard::KeyCode;
 
-use super::{KeyAnswer, cancel, finish, key_of, set_tool};
 use crate::gesture::Mods;
+use crate::input::{KeyAnswer, cancel, finish, key_of, set_tool};
 use crate::{PixelApp, Tool};
 
 /// As teclas do modo Draw (só ao premir; a shell já descartou o caso de um campo de texto com o

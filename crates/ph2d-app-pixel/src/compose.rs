@@ -82,7 +82,11 @@ impl PixelApp {
     ) -> Pointer {
         if kind == PointerKind::Up {
             if input::release_pan(self, v.world, v.camera, v.window, v.ppm, v.editing) {
+                self.pressed = false;
                 return Pointer::PanEnd;
+            }
+            if !std::mem::take(&mut self.pressed) {
+                return Pointer::NotMine;
             }
             return if input::release(self) {
                 Pointer::Done
@@ -98,16 +102,18 @@ impl PixelApp {
         if kind != PointerKind::Down || !free {
             return Pointer::NotMine;
         }
-        match input::press(self, &v.canvas(), p, button, mods) {
+        let r = match input::press(self, &v.canvas(), p, button, mods) {
             Press::Pan => Pointer::PanStart,
             Press::Done => Pointer::Done,
             Press::NotMine => Pointer::NotMine,
-        }
+        };
+        self.pressed = r != Pointer::NotMine;
+        r
     }
 
     /// Mover: o traço em curso continua (consumido); sem traço, só a célula sob o cursor.
     pub fn pointer_moved(&mut self, v: &View<'_>, p: (f32, f32), mods: Mods) -> bool {
-        input::moved(self, &v.canvas(), p, mods)
+        input::moved(self, &v.canvas(), p, mods) && self.pressed
     }
 
     /// A roda sobre o canvas (`on_canvas`) em Draw: zoom inteiro, sem aviso (o degrau lê-se no
@@ -149,7 +155,7 @@ impl PixelApp {
         if !pressed {
             return false;
         }
-        let Some(answer) = input::key_with(self, v.world, v.editing, code, m) else {
+        let Some(answer) = crate::input_teclas::key_with(self, v.world, v.editing, code, m) else {
             return false;
         };
         if let KeyAnswer::Toast(t) = answer {

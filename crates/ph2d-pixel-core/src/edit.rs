@@ -130,14 +130,37 @@ pub fn scale_fields(f: &Floating, w: u32, h: u32) -> Floating {
 /// documento; `t` leva o canto ↖ de `f` à sua posição). `None` = espelha ou degenerou.
 #[must_use]
 pub fn transform(f: &Floating, t: &Affine, method: Resample, transparent: u32) -> Option<Floating> {
-    let (r, image) = transform_image(&f.image, t, method, transparent, None)?;
+    transform_clipped(f, t, method, transparent, None)
+}
+
+/// [`transform`] só dentro de `clip` (a tela: o assentar corta-lhe tudo o resto). A caixa da
+/// moldura pode crescer sem tecto (W/H até 65535, inclinação de 89°); o que se aloca é o recorte.
+#[must_use]
+pub fn transform_within(
+    f: &Floating,
+    t: &Affine,
+    method: Resample,
+    transparent: u32,
+    clip: Rect,
+) -> Option<Floating> {
+    transform_clipped(f, t, method, transparent, Some(clip))
+}
+
+fn transform_clipped(
+    f: &Floating,
+    t: &Affine,
+    method: Resample,
+    transparent: u32,
+    clip: Option<Rect>,
+) -> Option<Floating> {
+    let (r, image) = transform_image(&f.image, t, method, transparent, clip)?;
     let keep_img = Image::from_values(
         f.image.w,
         f.image.h,
         1,
         &f.keep.iter().map(|&k| u32::from(k)).collect::<Vec<_>>(),
     );
-    let (_, keep) = transform_image(&keep_img, t, method, 0, None)?;
+    let (_, keep) = transform_image(&keep_img, t, method, 0, clip)?;
     Some(Floating {
         x: r.x,
         y: r.y,

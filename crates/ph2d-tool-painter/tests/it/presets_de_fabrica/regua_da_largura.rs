@@ -13,27 +13,78 @@ const SEMENTE_UNICA: [u64; 1] = [0];
 /// também (≤ 4 %) — 5 não compra precisão e custa 5/3 do gerador (cada semente repinta a lei inteira).
 const SEMENTES_DO_SORTEIO: [u64; 3] = [0, 1, 2];
 
-/// As sementes da régua da largura de `p` — a MESMA lista na tabela e na promessa. Uma ferramenta (o modo ≠ Paint) com
-/// `jitter` > 0 na receita sorteia ONDE cada dab cai, e o rasto de uma semente só muda de largura conforme o sorteio
-/// (medido 29/10, `sonda_sorteio_da_largura`, 9 sementes: Smear Shattered a raio 13 → 21–26 px, a 120 → 214–267): a
-/// largura é a mediana de [`SEMENTES_DO_SORTEIO`]. Os pincéis (modo Paint) medem a mediana das colunas de um traço
-/// longo, onde o sorteio já se média ao longo dele: uma semente.
+/// As sementes da régua da largura de `p` — a MESMA lista na tabela e na promessa. Uma ferramenta (o modo ≠ Paint) cuja
+/// largura a semente MOVE ([`a_semente_move_a_largura`] — o Jitter, e também a textura que a semente desloca: o Blender
+/// Textured tem jitter 0) mede a mediana de [`SEMENTES_DO_SORTEIO`] (Smear Shattered a raio 13 → 21–26 px, a 120 →
+/// 214–267 conforme a semente; `sonda_sorteio_da_largura`, 29/10). Os pincéis (modo Paint) medem a mediana das colunas
+/// de um traço longo, onde o sorteio já se média ao longo dele: uma semente.
 pub(super) fn sementes_da_largura(p: &Preset) -> &'static [u64] {
     let ferramenta = p
         .parametros
         .paint_mode
         .as_deref()
         .is_some_and(|m| m != "Paint");
-    let sorteia = p
-        .parametros
-        .brush
-        .get("jitter")
-        .and_then(Value::as_f64)
-        .is_some_and(|j| j > 0.0);
-    if ferramenta && sorteia {
+    if ferramenta && a_semente_move_a_largura(p) {
         &SEMENTES_DO_SORTEIO
     } else {
         &SEMENTE_UNICA
+    }
+}
+
+/// O raio do MOTOR (lei crua — não depende da tabela, a mesma antes e depois de regerar) da prova de
+/// [`a_semente_move_a_largura`]. Medido 29/10 (`sonda_sensibilidade_a_semente`, 44 presets do Wet, raios 13 e 55,
+/// sementes 0‥2, dispersão = máx − mín): a 13 nenhum passa da tolerância (Smear Shattered 1,41 px ≤ 2); a 55 passam
+/// Smear Shattered 5,04 px (4,3 %), Blender Textured 2,49 (3,1 %), Blender Dots 1,64 (2,5 %) e Graphite 8B 3 px (3,6 %).
+/// Todos os outros: 0 ou ≤ 2 px (a quantização de 1 px da régua dos pincéis: Oil Pastel, Colored 4B, Graphite 2H).
+const RAIO_DA_PROVA_DA_SEMENTE: f32 = 55.0;
+
+/// ⭐ **A semente MOVE a largura de `p` além da tolerância da promessa** — MEDIDO, não lido da receita: a lei crua a
+/// [`RAIO_DA_PROVA_DA_SEMENTE`] com cada uma das [`SEMENTES_DO_SORTEIO`]; a dispersão (máx − mín) passa de
+/// `max(TOLERANCIA_PX, TOLERANCIA_REL · mediana)`. Uma régua não mede mais fino que o seu próprio ruído: o pincel ou a
+/// ferramenta assim é da classe do GRÃO ([`tolerancia_da_largura`]) e, se for ferramenta, mede várias sementes
+/// ([`sementes_da_largura`]). Uma medição por preset e por processo (a tabela e a promessa leem a mesma).
+pub(super) fn a_semente_move_a_largura(p: &Preset) -> bool {
+    use std::sync::{Arc, Mutex, OnceLock};
+    static MEDIDAS: Mutex<BTreeMap<String, Arc<OnceLock<bool>>>> = Mutex::new(BTreeMap::new());
+    let celula = MEDIDAS
+        .lock()
+        .unwrap()
+        .entry(p.parametros.name.clone())
+        .or_default()
+        .clone();
+    *celula.get_or_init(|| {
+        let ls: Vec<f32> = std::thread::scope(|s| {
+            let h: Vec<_> = SEMENTES_DO_SORTEIO
+                .iter()
+                .map(|&semente| {
+                    s.spawn(move || {
+                        let (px, w, h, regua) = imagem_da_largura(
+                            p,
+                            RAIO_DA_PROVA_DA_SEMENTE,
+                            true,
+                            Relogio::DeUmaVez,
+                            semente,
+                        );
+                        regua(&px, w, h)
+                    })
+                })
+                .collect();
+            h.into_iter().map(|h| h.join().unwrap()).collect()
+        });
+        let (lo, hi) = ls
+            .iter()
+            .fold((f32::MAX, f32::MIN), |(a, b), &v| (a.min(v), b.max(v)));
+        hi - lo > TOLERANCIA_PX.max(TOLERANCIA_REL * mediana(ls))
+    })
+}
+
+/// A tolerância da promessa de `p`: a do GRÃO quando a borda varia com ONDE o traço cai ([`borda_ruidosa`]) ou com a
+/// semente ([`a_semente_move_a_largura`]); a fina nos outros.
+pub(super) fn tolerancia_da_largura(p: &Preset) -> f32 {
+    if borda_ruidosa(p) || a_semente_move_a_largura(p) {
+        TOLERANCIA_REL_GRAO
+    } else {
+        TOLERANCIA_REL
     }
 }
 

@@ -36,6 +36,7 @@ use ph2d_tool_painter::{
 use ph2d_wet_paint::tuning::Knob;
 use regua_da_largura::{
     imagem_da_ferramenta, largura_do_misturador, largura_do_rasto, sementes_da_largura,
+    tolerancia_da_largura,
 };
 use serde_json::Value;
 use std::collections::BTreeMap;
@@ -637,7 +638,9 @@ const TOLERANCIA_REL: f32 = 0.02;
 /// ⚠️ **Os pincéis com GRÃO (o slot Grain armado: grafite, carvão, os pastéis) — ± 10 %**: o grão e o
 /// papel têm estrutura, e a largura a ¼ do máximo varia com ONDE o traço cai (medido 11/10,
 /// `sonda_ruido_da_largura`, o traço a descer 30 px de cada vez: até 7,7 % no Graphite e 9,6 % no Charcoal
-/// a 52 px; 3,8 % a 240). A cura é um grão sem estrutura grande, não a tabela (05 §4b).
+/// a 52 px; 3,8 % a 240). A cura é um grão sem estrutura grande, não a tabela (05 §4b). A mesma classe vale para quem a
+/// SEMENTE move além da tolerância fina — medido, [`regua_da_largura::a_semente_move_a_largura`] (a mediana de 3 sementes
+/// ainda erra ±4 %: Smear Shattered 231,7 × 240 a raio 120, 622,4 × 600 a 300).
 const TOLERANCIA_REL_GRAO: f32 = 0.10;
 
 /// A borda que varia com ONDE o traço cai — e por isso a [`TOLERANCIA_REL_GRAO`]: o slot Grain armado. (As partículas

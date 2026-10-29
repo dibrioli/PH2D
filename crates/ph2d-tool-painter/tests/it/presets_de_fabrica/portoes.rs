@@ -9,11 +9,7 @@ use super::*;
 /// [`RAIOS_DA_PROMESSA`]; onde passa de ¾ da tolerância, o ponto MEDIDO (raio do motor → largura que o slider deu) entra
 /// na tabela, no seu lugar, e repete-se (≤ 3 rondas). Tabela que já cumpre fica como está.
 fn refina_a_promessa(p: &mut Preset) {
-    let rel = if borda_ruidosa(p) {
-        TOLERANCIA_REL_GRAO
-    } else {
-        TOLERANCIA_REL
-    };
+    let rel = tolerancia_da_largura(p);
     for _ in 0..3 {
         let medidas: Vec<(f32, f32, f32)> = std::thread::scope(|s| {
             let h: Vec<_> = RAIOS_DA_PROMESSA
@@ -534,11 +530,7 @@ fn a_largura_e_a_prometida() {
     let medidos = medidos.into_iter().map(Option::unwrap);
     for ((rel, _), (p, larguras, crua)) in ficheiros.iter().zip(medidos) {
         println!("[largura] {rel}: {larguras:?} (pedidas {RAIOS_DA_PROMESSA:?} × 2)");
-        let tol = if borda_ruidosa(&p) {
-            TOLERANCIA_REL_GRAO
-        } else {
-            TOLERANCIA_REL
-        };
+        let tol = tolerancia_da_largura(&p);
         let tecto = p
             .parametros
             .brush

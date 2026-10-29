@@ -254,6 +254,65 @@ fn sonda_sorteio_da_largura() {
     }
 }
 
+/// **Sonda da SENSIBILIDADE À SEMENTE**: cada preset do Wet (ou só `PH2D_SONDA_PRESET="A,B"`), a lei CRUA nos raios do
+/// motor `PH2D_SONDA_RAIOS` («13,55»), as sementes 0‥2 — a dispersão (máx − mín) ÷ mediana de cada um.
+#[test]
+#[ignore = "sonda: a largura de cada preset por semente"]
+fn sonda_sensibilidade_a_semente() {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    let var = |k: &str| std::env::var(k).ok();
+    let raios: Vec<f32> = var("PH2D_SONDA_RAIOS").map_or(vec![13.0, 55.0], |v| {
+        v.split(',').map(|r| r.parse().unwrap()).collect()
+    });
+    let fios: usize = var("PH2D_LEI_FIOS").map_or(8, |v| v.parse().unwrap());
+    let so = var("PH2D_SONDA_PRESET");
+    let presets: Vec<Preset> = ficheiros_do_wet()
+        .into_iter()
+        .map(|(_, b)| ler(&b).unwrap())
+        .filter(|p| {
+            so.as_deref()
+                .is_none_or(|s| s.split(',').any(|n| n == p.parametros.name))
+        })
+        .collect();
+    let cenas: Vec<(usize, usize, u64)> = (0..presets.len())
+        .flat_map(|k| (0..raios.len()).flat_map(move |i| (0..3u64).map(move |s| (k, i, s))))
+        .collect();
+    let proxima = AtomicUsize::new(0);
+    let mut l = vec![vec![[0.0f32; 3]; raios.len()]; presets.len()];
+    std::thread::scope(|s| {
+        let h: Vec<_> = (0..fios)
+            .map(|_| {
+                s.spawn(|| {
+                    let mut feitas = Vec::new();
+                    while let Some(&(k, i, sm)) = cenas.get(proxima.fetch_add(1, Ordering::Relaxed))
+                    {
+                        let (px, w, h, regua) =
+                            imagem_da_largura(&presets[k], raios[i], true, Relogio::DeUmaVez, sm);
+                        feitas.push((k, i, sm, regua(&px, w, h)));
+                    }
+                    feitas
+                })
+            })
+            .collect();
+        for (k, i, sm, v) in h.into_iter().flat_map(|h| h.join().unwrap()) {
+            l[k][i][sm as usize] = v;
+        }
+    });
+    for (p, l) in presets.iter().zip(&l) {
+        for (r, ls) in raios.iter().zip(l) {
+            let (lo, hi) = ls
+                .iter()
+                .fold((f32::MAX, f32::MIN), |(a, b), &v| (a.min(v), b.max(v)));
+            println!(
+                "[semente] {:<18} {:<6} raio {r:>5} → {ls:?} dispersão {:.4}",
+                p.parametros.name,
+                p.parametros.paint_mode.as_deref().unwrap_or("-"),
+                (hi - lo) / mediana(ls.to_vec()).max(1e-6)
+            );
+        }
+    }
+}
+
 /// **Sonda do RUÍDO da largura** (W2): o mesmo pincel ao mesmo raio prometido, cinco traços que só
 /// diferem na posição vertical (a tela cresce 60 px de cada vez; o traço desce 30) — o quanto a largura de um traço varia
 /// por si. É o chão de qualquer promessa: nenhuma tabela a acerta melhor do que isto.

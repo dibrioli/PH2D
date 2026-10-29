@@ -236,9 +236,25 @@ cura custou um agente de **2 h 50** — três vezes a mesma conta. Vermelho no p
 ([`FLAKES_DE_CARGA.md`](../DevOps/FLAKES_DE_CARGA.md)); (c) lei mudada de propósito → os testes
 mudam NA MESMA linha que mudou a lei. Nenhum dos três funde vermelho.
 
-**Rodada de várias linhas (13/09):** o integrador rebaseia-as em cadeia num ramo `integ/<rodada>`, corre
-o gate da árvore combinada no tip e só então avança o `main` por `--ff-only`. Três regras que só a rodada
-pagou: (a) um `dead_code` que só existe na fusão cura-se **no commit rebaseado em que o último uso
+**Rodada de várias linhas (13/09; script desde 29/10):** `scripts/integrar-rodada.sh`, num worktree
+`integ/<rodada>` com target próprio. Medido em 29/10: cinco linhas uma a uma = ~9 h e 11 suítes de
+21–31 min, a 1.ª de cada linha sempre vermelha, a 2.ª só a confirmar 1–7 curas. O fluxo:
+
+1. `cadeia <rodada> <linha>…` — rebase em cadeia na ordem medida; depois de CADA linha `cargo check
+   --workspace --all-targets`, censos da árvore combinada e `recontar.py`, com o tip e os tempos gravados
+   por linha (estado no git-dir do worktree, fora da árvore). Vermelho aqui é da linha desse tip.
+2. `suite` — UMA `suite-completa.sh` no tip (sem fail-fast).
+3. `falhas [--bisecar]` — o vermelho nasce no 1.º tip em que falha, e só pode mudar num tip cujo diff
+   alcança o binário dele (a lei do `impacto-preciso.py`): uma `nextest list` por linha dá os candidatos;
+   um candidato = é dele; zero = carga/main (§3d do `/pd-integracao`); vários = `--bisecar` corre só esses
+   testes nos tips candidatos, por ordem. As curas vão num BLOCO.
+4. `b2` — as falhas por nome + `nextest-impacted` desde o tip da suíte (`PH2D_NIVEL=tudo`) + os portões
+   que varrem a árvore (censos, `architecture_*`, recontar), cada um a provar que correu. Verde ⇒ a árvore
+   curada entra no registo das suítes verdes («B2 desde <árvore>») e o `ship.sh` salta a 2.ª suíte: fora
+   do impacto das curas o binário é o mesmo, logo o veredito também.
+5. `ff` — imprime o `--ff-only` do `main`; `--aplicar` só por ordem do Enio.
+
+Três regras que só a rodada pagou: (a) um `dead_code` que só existe na fusão cura-se **no commit rebaseado em que o último uso
 morre** (edit-rebase), para o `bisect` nunca atravessar árvore vermelha; (b) cada commit rebaseado
 compara-se com o original (§1.5.5); (c) os **registos** da rodada — blocos de abertura, briefings,
 handoffs de integração, estado, auditorias — vivem em

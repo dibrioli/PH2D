@@ -27,8 +27,16 @@ Você é o agente integrador. Munição: o handoff de cada linha.
    por ficheiro, num ficheiro `bash` com controlo positivo). O Mergiraf largou 2 remoções em
    130 commits e disse «Solved» (13/09). Grave a saída inteira do rebase; nunca a filtre só
    por `CONFLICT`.
-3c. **Rodada de várias linhas:** rebase em cadeia num `integ/<rodada>`, gate da árvore
-   combinada no tip, `--ff-only` do `main` no fim. Um `dead_code` que só nasce na fusão cura-se
+3c. ⭐ **Rodada de várias linhas = `scripts/integrar-rodada.sh`** (item A+B2, comissão 29/10: 5 linhas
+   em série eram ~9 h e 11 suítes; agora UMA). No worktree `git worktree add <dir> -b integ/<rodada> main`
+   (target próprio — nunca o do primário):
+   `cadeia <rodada> <linha>…` (na ordem MEDIDA do passo 1: rebase de cada uma sobre a anterior, e por
+   linha `check --workspace --all-targets` + censos + `recontar.py`; vermelho ⇒ é da linha cujo tip o
+   mostra, cure NO commit dela e re-corra) → `suite` (UMA `suite-completa.sh`) → `falhas [--bisecar]`
+   (cada vermelho → a linha cujo diff alcança o binário dele; vários candidatos ⇒ só esses testes nos
+   tips candidatos) → curas num BLOCO → `b2` (as falhas por nome + `nextest-impacted` desde o tip da
+   suíte com `PH2D_NIVEL=tudo` + censos + `architecture_*` + recontar; verde ⇒ regista a árvore para o
+   `ship.sh` saltar) → `ff` (imprime o `--ff-only`; `--aplicar` só por ordem do Enio). Um `dead_code` que só nasce na fusão cura-se
    NO commit rebaseado em que o último uso morre (edit-rebase) — o `bisect` não pode atravessar
    árvore vermelha. Duas linhas que fizeram a MESMA coisa de formas diferentes: fica um nome e
    um corpo. Mover corpos prova-se com `scripts/moved-proof.py`.

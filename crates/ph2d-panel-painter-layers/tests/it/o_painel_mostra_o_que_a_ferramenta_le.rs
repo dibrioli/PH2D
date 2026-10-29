@@ -425,7 +425,14 @@ const DA_AGUA: [(&str, FerramentaDoPincel); 5] = [
 /// antes da ferramenta (sair do Wet Paint é o bake), a base de um gesto que a encerra por lei (o Blend com tinta
 /// viva, `set_blend`).
 fn bancada_da_agua(fio: &str, no_pincel: &Gesto, bake: bool) -> Bancada {
-    let mut b = bancada_com("eraser", &ARMAR, &Gesto::Nenhum);
+    bancada_da_agua_com(&ARMAR, fio, no_pincel, bake)
+}
+
+/// A ponta REDONDA (o Sync sem a ponta de imagem do [`ARMAR`]): a de `o_carimbo_das_ferramentas_da_agua`.
+const PONTA_REDONDA: [Gesto; 1] = [Gesto::Clique(PAINTER_BRUSH_SYNC)];
+
+fn bancada_da_agua_com(armar: &[Gesto], fio: &str, no_pincel: &Gesto, bake: bool) -> Bancada {
+    let mut b = bancada_com("eraser", armar, &Gesto::Nenhum);
     b.tool.set_paint_media(PaintMedia::WetPaint);
     b.no_modo("wet_paint");
     super::censo_ferramenta_x_linha::riscas(&mut b);
@@ -447,17 +454,23 @@ fn bancada_da_agua(fio: &str, no_pincel: &Gesto, bake: bool) -> Bancada {
 
 /// À vista das ferramentas da água, inerte nesta bancada (o carimbo de fábrica não é achatado) e com razão: o giro da
 /// pega e o Reset da Shape (que repõe o Flatten e o giro) agem nelas com o carimbo achatado
-/// (`o_carimbo_das_ferramentas_da_agua`). E o Speed → Opacity no Blow: o sopro é FRACO (`apply_blow`) e com a ponta de
-/// imagem desta bancada não chega a um texel; sem ela muda 329 texels (|Δ| ≤ 2, o mesmo padrão de liga/desliga do Wet
-/// Smear, 8 851 texels — sonda 29/10), e o carimbo das ferramentas da água exige que aja.
-fn inerte_da_agua_com_motivo(fio: &str, id: NodeId) -> bool {
-    id == PAINTER_SHAPE_RESET
-        || id == painter_brush_dab_handle_id(1)
-        || (fio == "wet_blow" && id == PAINTER_PEN_SPEED_OPACITY)
+/// (`o_carimbo_das_ferramentas_da_agua`).
+fn inerte_da_agua_com_motivo(id: NodeId) -> bool {
+    id == PAINTER_SHAPE_RESET || id == painter_brush_dab_handle_id(1)
 }
 
 fn ensaio_da_agua(fio: &str, no_pincel: &Gesto, na_ferramenta: &Gesto, bake: bool) -> Vec<u8> {
-    let mut b = bancada_da_agua(fio, no_pincel, bake);
+    ensaio_da_agua_com(&ARMAR, fio, no_pincel, na_ferramenta, bake)
+}
+
+fn ensaio_da_agua_com(
+    armar: &[Gesto],
+    fio: &str,
+    no_pincel: &Gesto,
+    na_ferramenta: &Gesto,
+    bake: bool,
+) -> Vec<u8> {
+    let mut b = bancada_da_agua_com(armar, fio, no_pincel, bake);
     b.aplica(
         na_ferramenta,
         &mut super::censo_dos_controlos::Entrega::default(),
@@ -529,12 +542,29 @@ fn cada_ferramenta_da_agua_so_ve_o_que_le() {
             e.1.push(g);
             medidas += 1;
         }
+        // A ponta de IMAGEM da bancada é uma régua parcial: o sopro do Blow é fraco (`apply_blow`) e, por ela, o
+        // Speed → Opacity não chega a um texel (pela redonda, 329 — sonda 29/10). O inerte pela imagem mede-se de novo
+        // com a ponta que o mostra; só o inerte nas DUAS é inerte.
+        let base_redonda = std::sync::OnceLock::new();
         for (id, (age, gs_dele)) in por_controlo {
             if age {
                 continue;
             }
             let n = nome(&nomes, id);
-            if inerte_da_agua_com_motivo(fio, id) {
+            if inerte_da_agua_com_motivo(id) {
+                continue;
+            }
+            let base_r = base_redonda.get_or_init(|| {
+                ensaio_da_agua_com(&PONTA_REDONDA, fio, &Gesto::Nenhum, &Gesto::Nenhum, false)
+            });
+            let age_redonda = em_paralelo(&gs_dele, |g| {
+                diferenca(
+                    base_r,
+                    &ensaio_da_agua_com(&PONTA_REDONDA, fio, &Gesto::Nenhum, g, false),
+                )
+                .0 > 0
+            });
+            if age_redonda.contains(&true) {
                 continue;
             }
             if !pincel.iter().any(|p| chave(p) == Some(id)) {

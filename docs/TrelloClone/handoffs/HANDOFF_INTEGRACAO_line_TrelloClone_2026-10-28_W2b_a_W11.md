@@ -1,6 +1,6 @@
 # Handoff de INTEGRAÇÃO — `line/TrelloClone` W2b → W11 + ligação J1–J6 (28/10/2026)
 
-> ✅ **Smoke do dono APROVADO (28/10, «Smoke OK»), e ele ORDENOU a integração no main (28/10).**
+> ✅ **Smoke do dono APROVADO (28/10, «Smoke OK»).** ⛔ **NÃO integrar por conta própria: o dono (28/10) mandou «apenas prepare o handoff. Aguarde sua vez»** — a linha espera a ordem dele e a vez na fila do integrador.
 >
 > ⛔ **Suíte completa NÃO corrida na linha (dono 23/10) — é do integrador.** Só testes por NOME, clippy `--all-targets` e fmt (LIMPOS em toda a linha: `96ffa55c9b` `d871ad7f54` `61488e56c3` `91e1ddad42`), portões de UI/arquitectura 25/25 por nome depois do J7/P2.
 

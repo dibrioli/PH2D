@@ -17,12 +17,14 @@ ph2d-app-board = { path = "../ph2d-app-board", optional = true }
 ph2d-app-code = { path = "../ph2d-app-code", optional = true }
 ph2d-app-components = { path = "../ph2d-app-components", optional = true }
 ph2d-app-flip = { path = "../ph2d-app-flip", optional = true }
+ph2d-app-game = { path = "../ph2d-app-game", optional = true }
 ph2d-app-light2d = { path = "../ph2d-app-light2d", optional = true }
 ph2d-app-macros = { path = "../ph2d-app-macros", optional = true }
 ph2d-app-motion = { path = "../ph2d-app-motion", optional = true }
 ph2d-app-painter = { path = "../ph2d-app-painter", optional = true }
 ph2d-app-physics = { path = "../ph2d-app-physics", optional = true }
 ph2d-app-skeleton = { path = "../ph2d-app-skeleton", optional = true }
+ph2d-app-sprite-anim = { path = "../ph2d-app-sprite-anim", optional = true }
 ph2d-app-vec = { path = "../ph2d-app-vec", optional = true }
 # <ph2d-app-sync:deps:end>
 
@@ -38,12 +40,14 @@ default = [
     "app-code",
     "app-components",
     "app-flip",
+    "app-game",
     "app-light2d",
     "app-macros",
     "app-motion",
     "app-painter",
     "app-physics",
     "app-skeleton",
+    "app-sprite-anim",
     "app-vec",
 # <ph2d-app-sync:default:end>
 ]
@@ -55,12 +59,14 @@ app-board = ["dep:ph2d-app-board"]
 app-code = ["dep:ph2d-app-code"]
 app-components = ["dep:ph2d-app-components"]
 app-flip = ["dep:ph2d-app-flip"]
+app-game = ["dep:ph2d-app-game"]
 app-light2d = ["dep:ph2d-app-light2d"]
 app-macros = ["dep:ph2d-app-macros"]
 app-motion = ["dep:ph2d-app-motion"]
 app-painter = ["dep:ph2d-app-painter"]
 app-physics = ["dep:ph2d-app-physics"]
 app-skeleton = ["dep:ph2d-app-skeleton"]
+app-sprite-anim = ["dep:ph2d-app-sprite-anim"]
 app-vec = ["dep:ph2d-app-vec"]
 # <ph2d-app-sync:features:end>
 

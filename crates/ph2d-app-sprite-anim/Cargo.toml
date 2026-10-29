@@ -28,6 +28,7 @@ ph2d-asset = { path = "../ph2d-asset" }
 # Largar uma imagem no canvas nasce a sprite pela mesma porta da troca (`image_choice::place_library_image`).
 ph2d-core = { path = "../ph2d-core" }
 ph2d-image-import = { path = "../ph2d-image-import" }
+ph2d-app-host = { path = "../ph2d-app-host" }
 ph2d-host = { path = "../ph2d-host" }
 ph2d-sprite-sheet = { path = "../ph2d-sprite-sheet" }
 ph2d-text = { path = "../ph2d-text" }

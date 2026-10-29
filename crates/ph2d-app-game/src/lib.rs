@@ -13,6 +13,12 @@ pub mod sessao;
 pub mod smoke;
 pub mod smoke_mao;
 
+/// A declaração da família à shell.
+pub const FAMILY: ph2d_app_host::AppFamily = ph2d_app_host::AppFamily {
+    key: "game",
+    routers: smoke::ROUTERS,
+};
+
 pub use sessao::{Passo, Sessao, marca_a_copia};
 
 /// O registo que os gates da família usam: os registadores que os objectos do menu Add tocam.

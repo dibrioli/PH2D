@@ -68,6 +68,8 @@ pub fn register_all_app_families() -> AppFamilyRegistry {
     reg.push(ph2d_app_components::FAMILY);
     #[cfg(feature = "app-flip")]
     reg.push(ph2d_app_flip::FAMILY);
+    #[cfg(feature = "app-game")]
+    reg.push(ph2d_app_game::FAMILY);
     #[cfg(feature = "app-light2d")]
     reg.push(ph2d_app_light2d::FAMILY);
     #[cfg(feature = "app-macros")]
@@ -80,6 +82,8 @@ pub fn register_all_app_families() -> AppFamilyRegistry {
     reg.push(ph2d_app_physics::FAMILY);
     #[cfg(feature = "app-skeleton")]
     reg.push(ph2d_app_skeleton::FAMILY);
+    #[cfg(feature = "app-sprite-anim")]
+    reg.push(ph2d_app_sprite_anim::FAMILY);
     #[cfg(feature = "app-vec")]
     reg.push(ph2d_app_vec::FAMILY);
     // <ph2d-app-sync:end>
@@ -167,8 +171,10 @@ mod tests {
     /// diz *quem* não tem roteador **e** *quem o tem em seu lugar*, e o gate confirma que essa
     /// segunda família existe e declara mesmo aquela env. ⇒ apagar o roteador do lado de lá reprova
     /// aqui, e dar um roteador próprio ao esqueleto também.
-    const FAMILIAS_CUJA_CENA_VIVE_NUMA_CRATE_IRMA: &[(&str, &str)] =
-        &[("skeleton", "PH2D_VEC_BONE_SMOKE")];
+    const FAMILIAS_CUJA_CENA_VIVE_NUMA_CRATE_IRMA: &[(&str, &str)] = &[
+        ("skeleton", "PH2D_VEC_BONE_SMOKE"),
+        ("sprite-anim", "PH2D_GAME_SMOKE"),
+    ];
 
     /// ⚠️ **Uma família registada tem de declarar pelo menos um roteador, e todo roteador tem de ter
     /// nível.** Sem esta metade, uma família que se registasse com `routers: &[]` passaria no gate

@@ -10,3 +10,10 @@ pub mod region;
 pub mod sheet;
 pub mod tick;
 pub mod tiled;
+
+/// A declaração da família à shell. Sem roteador: as cenas dela (usos da imagem, Region, a animação
+/// do Player) monta-as a `game` (`PH2D_GAME_SMOKE`) — quem possui a cena é quem a constrói.
+pub const FAMILY: ph2d_app_host::AppFamily = ph2d_app_host::AppFamily {
+    key: "sprite-anim",
+    routers: &[],
+};

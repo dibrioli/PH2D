@@ -29,7 +29,14 @@ pub struct TuneRow {
     /// ⭐ A row painted as a CHOICE (a segmented group, not a slider): one `(i18n key, id)` per option `i`, whose
     /// click forwards `SetValue(slider, i)` — the tool's route stays the slider's. `None` = slider + chip.
     pub options: Option<[(String, NodeId); 2]>,
+    /// A unidade do valor, colada ao número dentro do chip ([`UNIDADES`]); o rótulo nunca a leva (spec
+    /// `03_a_linha_de_propriedade.md` §7).
+    pub unit: Option<ph2d_editor_core::widget::Unit>,
 }
+
+/// Os knobs com grandeza física, pela chave do registo; os outros são fracções, ganhos ou expoentes sem unidade.
+pub const UNIDADES: [(&str, ph2d_editor_core::widget::Unit); 1] =
+    [("textureSizeRef", ph2d_editor_core::widget::Unit::Px)];
 
 /// The knobs painted as a 2-way CHOICE (dono 28/10: the Transmission mode — Blender · Clear glass — is a selector,
 /// never a slider nor a checkbox). Each is `0..1` with step `1` in the registry.
@@ -105,6 +112,7 @@ pub fn rows() -> &'static [TuneRow] {
                 step: d.step,
                 default: d.default,
                 decimals: decimals_for_step(d.step),
+                unit: UNIDADES.iter().find(|(k, _)| *k == d.key).map(|&(_, u)| u),
                 options: CHOICES.contains(&d.key).then(|| {
                     [0, 1].map(|i| {
                         (
@@ -255,6 +263,15 @@ mod tests {
     use super::*;
     use ph2d_editor_core::ids;
     use std::collections::BTreeSet;
+
+    /// Cada unidade nomeia uma linha VISÍVEL — uma chave com erro de grafia deixava o número sem unidade.
+    #[test]
+    fn cada_unidade_nomeia_uma_linha_visivel() {
+        for (k, u) in UNIDADES {
+            let r = rows().iter().find(|r| r.key == k).expect("a chave é de uma linha visível");
+            assert_eq!(r.unit, Some(u));
+        }
+    }
 
     /// The dynamic id family cannot collide — across faces, across knobs,
     /// and against the section's static ids (the hand table in

@@ -66,7 +66,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.wet_tuning.knob.strokeFilmEnds" => "Wash body: soft ends",
         "panel.wet_tuning.knob.dustDrop" => "Dust grain size",
         "panel.wet_tuning.knob.textureSizeExp" => "Texture follows brush size",
-        "panel.wet_tuning.knob.textureSizeRef" => "Texture size reference (px)",
+        "panel.wet_tuning.knob.textureSizeRef" => "Texture size reference",
         "panel.wet_tuning.knob.textureSizeExpAcross" => "Texture follows size across",
         // Wet effects — o que a água faz depois.
         "panel.wet_tuning.knob.extDiffusion" => "Pigment diffusion",

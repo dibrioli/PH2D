@@ -351,7 +351,10 @@ fn paint_row(
         used = Some(fim - y - ph2d_tokens::control_gap_px());
     }
     let track = row.track_of(value);
-    let text = format!("{value:.*}", row.decimals);
+    let text = match row.unit {
+        Some(u) => format!("{value:.*} {}", row.decimals, u.suffix()),
+        None => format!("{value:.*}", row.decimals),
+    };
     let label = tr(row.label.as_str());
     // Returns the row HEIGHT used (the physics panel's convention).
     let used = if let Some(u) = used {
@@ -481,41 +484,14 @@ fn checkbox_row(
     y + ph2d_tokens::row_pitch_px()
 }
 
-/// The Experimental card's explanatory note — short lines, wrapped by hand
-/// (the note is two fixed sentences; `paint_text` clips at `max_width`, so
-/// the wrap estimate only decides where the second line starts).
+/// The Experimental card's explanatory note — a paragraph, wrapped by the MEASURED text block
+/// ([`ph2d_editor_core::paint::paint_text_block`], which returns the height it used). ⛔ The old hand wrap
+/// guessed a mean glyph advance and, when the note grew (`ad16f60b75`), one line overflowed and was cut
+/// with an ellipsis at the owner's narrow width (`as_letras_perdidas_no_degrau_estreito_so_encolhem`).
 fn note_text(ctx: &mut PaintCtx, theme: Theme, x: f32, w: f32, y: f32, note: &str) -> f32 {
     let color = ph2d_editor_core::paint::resolve(ph2d_tokens::ColorToken::Text2, theme);
     let size = ph2d_tokens::TypeToken::Xs.px();
-    let line_h = ROW_H_PX * 0.7; // LITERAL-PX-OK: caption line height fraction of a row
-    let approx_chars = ((w / (size * 0.52)).max(8.0)) as usize; // LITERAL-PX-OK: mean glyph advance fraction for wrap estimate
-    let mut cur = String::new();
-    let mut yy = y;
-    let emit = |line: &str, yy: &mut f32, ctx: &mut PaintCtx| {
-        ph2d_editor_core::paint::paint_text(
-            ctx.text_system,
-            ctx.scene,
-            line,
-            x,
-            *yy + line_h,
-            size,
-            w,
-            color,
-        );
-        *yy += line_h;
-    };
-    for word in note.split_whitespace() {
-        if !cur.is_empty() && cur.len() + 1 + word.len() > approx_chars {
-            emit(&cur, &mut yy, ctx);
-            cur.clear();
-        }
-        if !cur.is_empty() {
-            cur.push(' ');
-        }
-        cur.push_str(word);
-    }
-    if !cur.is_empty() {
-        emit(&cur, &mut yy, ctx);
-    }
-    yy + ph2d_tokens::control_gap_px()
+    let alta =
+        ph2d_editor_core::paint::paint_text_block(ctx.text_system, ctx.scene, note, x, y, size, w, color);
+    y + alta.max(size) + ph2d_tokens::control_gap_px()
 }

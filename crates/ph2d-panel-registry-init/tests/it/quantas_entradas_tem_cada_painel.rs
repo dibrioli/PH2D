@@ -2199,7 +2199,10 @@ const ALTURA_DE_ABERTURA: &[(&str, f32)] = &[
     //    o número do main.
     // ⬇️ `1 570 → 1 568` em 2026-10-28 (W3b: a Paint Texture no cartão Wet Paint, o Depth/Gloss fora do cartão Real
     //    Oil): MEDIDO pela catraca; só encolhe.
-    ("painter_layers", 1568.0),
+    // ⬆️ `1 568 → 1 593` em 2026-10-29 (J6 fecho), e NÃO é uma secção a nascer aberta: é a fileira **Same as Paper**
+    //    do Grain (pedido do dono 28/10, commit `1d0ccb1524`; age no Digital — 3 724 texels no censo), `ROW_H_PX (25)`
+    //    exactos, medidos pela porta deste gate. ⚠️ Recolher o Grain esconderia o controlo que o dono pediu.
+    ("painter_layers", 1593.0),
     // ⬆️ `2 866 → 3 091` em 2026-10-10 (MiroClone W11), e NÃO é uma secção a nascer aberta: o painel
     //    é UMA LISTA, uma fileira por `ColorToken::ALL` (sem secções a recolher), e a W11 acrescentou
     //    nove cores (`person-0`…`person-7` + `person-ink`, as das pessoas do quadro ao vivo):

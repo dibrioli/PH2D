@@ -95,6 +95,16 @@ pub struct Pincel {
 }
 
 impl Pincel {
+    /// O mesmo pincel SEM a caixa Real Oil ([`super::presets_de_fabrica::sem_real_oil`]): o portão que mede uma lei do
+    /// pigmento/relevo com um `Oil/*` (ou o candidato Oil Bristle) como instrumento (J6, triagem (a)).
+    #[must_use]
+    pub fn sem_real_oil(mut self) -> Self {
+        if let Fonte::Preset { preset, .. } = &mut self.fonte {
+            **preset = super::presets_de_fabrica::sem_real_oil((**preset).clone());
+        }
+        self
+    }
+
     pub fn slug(&self) -> String {
         self.nome
             .chars()

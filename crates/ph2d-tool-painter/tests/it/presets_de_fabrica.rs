@@ -1690,7 +1690,16 @@ fn memoria_num_filho(raio: f32) -> (f64, usize) {
 /// |---|---|---|---|---|
 /// | 300  | 152 | 270 | 309 (2 lanes) | 290 |
 /// | 1000 | 940 | 1 513 | 2 029 (2 lanes) | 1 800 |
-const TECTO_DA_MEMORIA_MIB: [(f32, f64); 2] = [(300.0, 290.0), (1000.0, 1800.0)];
+///
+/// ⚠️ Essa tabela é do perfil `smoke`; o portão corre no `ci-test` (`nextest-impacted.sh`), onde o MESMO código pesa mais
+/// (em `d94e19a57e`, o commit do tecto 290: 303 MiB — o portão nasceu vermelho no perfil dele). Medido 29/10 no HEAD da
+/// J6 (RAM do pico do gesto, um processo por raio):
+///
+/// | raio | ci-test sem óleo | ci-test com óleo | smoke com óleo | mutante (limiar `r`) ci-test | tecto |
+/// |---|---|---|---|---|---|
+/// | 300  | 165 | 295 | 286 | 322 (2 lanes) | 310 |
+/// | 1000 | 968 | 1 563 | 1 497 | 2 058 (2 lanes) | 1 800 |
+const TECTO_DA_MEMORIA_MIB: [(f32, f64); 2] = [(300.0, 310.0), (1000.0, 1800.0)];
 
 /// ⭐ **A MEMÓRIA do Dabber cabe** (L13, EXAME §3.6): o Jitter espalha UMA ponta — o traço inteiro numa lane — e o
 /// pico do gesto a raio 300 e 1000 fica abaixo do tecto medido. Mutação: o limiar da lane sem o Jitter

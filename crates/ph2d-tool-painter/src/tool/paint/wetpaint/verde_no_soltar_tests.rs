@@ -162,10 +162,10 @@ pub(super) fn sem_os_fios(t: &mut PainterTool) {
     }
 }
 
-/// A tela do Oil Bristle SEM relevo nem fios (o realce do Emboss e a cor de cada fio não são desta régua) com o
+/// A tela do Oil Bristle SEM relevo, fios nem Real Oil (o realce do Emboss, a cor de cada fio e a luz do óleo não são desta régua) com o
 /// claro seco e, se `escuro`, o escuro a `forca` × o pigmento por cima (soltado).
 fn tela(claro: [u8; 3], escuro: Option<([u8; 3], f64)>) -> PainterTool {
-    let e = &crate::tool::paint::wetpaint_preset::de_fabrica_ou_candidato("Oil Bristle");
+    let e = &crate::tool::paint::wetpaint_preset::de_fabrica_sem_oleo("Oil Bristle");
     let mut t = PainterTool::default();
     t.set_source(vec![255u8; W * H * 4], W as u32, H as u32);
     t.set_paint_tool_mode("wetpaint");

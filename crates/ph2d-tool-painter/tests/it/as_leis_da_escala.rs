@@ -443,7 +443,9 @@ pub(super) fn tamanhos(p: &Pincel) -> Vec<u8> {
 /// da lei o nosso CRESCIA: 15 → 17 (1,13), o «tubo» de estrias claras da revisão cega.
 #[test]
 fn o_relevo_nao_cresce_com_o_pincel() {
-    let px = tamanhos(&pinceis("Oil Bristle").remove(0));
+    // A lei é do EMBOSS (`Knob::EmbossSizeExp`): sem a luz do Real Oil que o candidato liga desde `e314e58cec` (com ela
+    // 26,4 → 29,8, razão 1,13; triagem (a) de `105f28791d`).
+    let px = tamanhos(&pinceis("Oil Bristle").remove(0).sem_real_oil());
     let ((a40, _), (a200, _)) = (recto(&px, 190, 70), recto(&px, 440, 130));
     let fam = [
         "bristle_bristle_flat",

@@ -179,7 +179,7 @@ pub(super) const KNOBS_DOS_FIOS: [&str; 12] = [
 ];
 
 fn sem_fios(nome: &str) -> ph2d_brush_presets::Preset {
-    let mut p = de_fabrica(nome);
+    let mut p = sem_oleo(nome);
     // … e sem o RELEVO deles (W3): a altura de cada fio também é dos fios.
     for k in KNOBS_DOS_FIOS
         .into_iter()
@@ -188,6 +188,13 @@ fn sem_fios(nome: &str) -> ph2d_brush_presets::Preset {
         p.parametros.engine.remove(k);
     }
     p
+}
+
+/// O preset de fábrica SEM o Real Oil (J6, triagem (a) de `105f28791d`): os fios e os carris são do PIGMENTO; desde
+/// `e314e58cec` (dono: os `Oil/*` e o candidato Oil Bristle ligam o óleo) a luz do óleo somava-se a eles (carris 3,1 → 10,1,
+/// CV 0,027). O óleo mede-se no EXAME.
+fn sem_oleo(nome: &str) -> ph2d_brush_presets::Preset {
+    super::presets_de_fabrica::sem_real_oil(de_fabrica(nome))
 }
 
 /// `n` do lado do Rebelle `r` do ponto médio entre ele e o controlo `c`, e o controlo longe dele (3× o ruído).
@@ -225,7 +232,7 @@ fn os_oleos_tem_fios_e_nao_carris() {
             .iter()
             .map(|&(n, r)| {
                 s.spawn(move || {
-                    let com = cena_seca_com_rampa(&de_fabrica(n), r, &format!("fios_{n}_{r}"));
+                    let com = cena_seca_com_rampa(&sem_oleo(n), r, &format!("fios_{n}_{r}"));
                     let sem = cena_seca_com_rampa(&sem_fios(n), r, &format!("fios_{n}@sem_{r}"));
                     (com, sem)
                 })

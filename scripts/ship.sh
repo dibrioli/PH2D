@@ -154,6 +154,8 @@ if command -v cargo-nextest >/dev/null 2>&1; then
     # (−25–35 min por envio); qualquer byte diferente é outra chave e corre.
     run "suíte completa (nextest --workspace, ci-test; salta se a árvore já passou)" \
         bash scripts/suite-completa.sh
+    # ⭐ G (comissão 29/10): nenhum teste ≥ 60 s do junit da suíte fica sem nível (`.config/testes-lentos.tsv`).
+    run "nenhum teste lento sem nível" python3 scripts/testes-lentos.py --confere target/nextest/default/junit.xml
 else
     run "cargo test --workspace (ci-test)" \
         env CARGO_INCREMENTAL=0 cargo test --workspace --profile ci-test

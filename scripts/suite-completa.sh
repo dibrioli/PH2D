@@ -29,7 +29,11 @@ suite_arvore() {
   local idx arv
   idx="$(mktemp)"
   cp "$(git rev-parse --git-dir)/index" "$idx" 2>/dev/null
-  arv="$(GIT_INDEX_FILE="$idx" git add -A -- "$_raiz" 2>/dev/null && GIT_INDEX_FILE="$idx" git write-tree 2>/dev/null)"
+  # A lista do nível lento sai da chave: esta suíte corre TODOS os níveis, a lista não muda o veredito
+  # (e é ela própria que a regera — dentro da chave, cada verde mudaria a árvore que acabou de passar).
+  arv="$(GIT_INDEX_FILE="$idx" git add -A -- "$_raiz" 2>/dev/null \
+    && GIT_INDEX_FILE="$idx" git rm --cached -q --ignore-unmatch -- .config/testes-lentos.tsv >/dev/null 2>&1 \
+    && GIT_INDEX_FILE="$idx" git write-tree 2>/dev/null)"
   rm -f "$idx"
   printf '%s' "$arv"
 }
@@ -74,5 +78,14 @@ if [ "$_saida" = 0 ] && [ -n "$_arvore" ] && [ "$(suite_arvore)" = "$_arvore" ];
   echo "[suite-completa] ✓ verde — árvore $_arvore registada em $_registo"
 elif [ "$_saida" = 0 ]; then
   echo "[suite-completa] ⚠ verde, mas a árvore mudou durante a corrida — NÃO registada"
+fi
+# ⭐ Item G: a lista do nível lento acompanha a ÚLTIMA suíte verde (o junit que esta corrida escreveu).
+_lista=.config/testes-lentos.tsv
+_junit="${CARGO_TARGET_DIR:-target}/nextest/default/junit.xml"
+if [ "$_saida" = 0 ] && [ -f "$_junit" ]; then
+  _antes="$(grep -v '^#' "$_lista" 2>/dev/null | cut -f1,2)"
+  python3 scripts/testes-lentos.py --regerar "$_junit"
+  [ "$(grep -v '^#' "$_lista" | cut -f1,2)" != "$_antes" ] \
+    && echo "[suite-completa] ⚠ o nível lento MUDOU — comite $_lista"
 fi
 exit "$_saida"

@@ -1,0 +1,60 @@
+# GERADO por scripts/testes-lentos.py --regerar — NÃO edite à mão.
+# limiar: 60 s (o slow-timeout do .config/nextest.toml)
+# fonte: 10a6ea63-c546-4114-910a-ff95ecd33dfe 2026-10-29T16:28:33.111-03:00 (27883 testes)
+# 55 testes, 9335 s somados
+# binary_id<TAB>nome<TAB>segundos
+ph2d-app-light2d::it	o_interior_do_opaco::o_interior_do_opaco_nao_depende_da_posicao_na_grade	101.521
+ph2d-app-macros::it	tutorial_painter::mudar_a_macro_a_meio_da_medicao_larga_a_versao_velha	72.940
+ph2d-app-macros::it	tutorial_painter::uma_versao_nova_prepara_se_fora_do_quadro	136.672
+ph2d-app-motion	motion_demo_legend::enquadra::a_cena_abre_inteira_100_a_max	67.195
+ph2d-app-painter	macro_track::palcos_arrasto_tests::arrastar_a_timeline_deixa_a_ranhura_igual_a_tela_inteira_em_cada_meio	61.359
+ph2d-app-painter	macro_track::palcos_tests::fim_tests::cobertura_tests::a_pincelada_nova_a_cruzar_as_gravadas_nao_deixa_resquicio	161.778
+ph2d-panel-painter-layers::it	censo_dos_controlos::a_linha_esmaecida_e_a_que_nao_age	600.023
+ph2d-panel-painter-layers::it	macro_estado_inicial::cada_controlo_mexido_a_gravar_reproduz_se	391.566
+ph2d-panel-painter-layers::it	macro_estado_inicial::o_estado_inicial_leva_as_ferramentas_do_trilho	213.980
+ph2d-panel-painter-layers::it	macro_estado_inicial::o_estado_inicial_leva_cada_controlo_de_cada_meio	386.786
+ph2d-panel-painter-layers::it	o_censo_so_encolhe::o_censo_dos_controlos_so_encolhe	180.026
+ph2d-panel-painter-layers::it	o_flow_a_vista_e_o_flow_que_age::o_flow_esta_a_vista_onde_age_e_so_ai	61.113
+ph2d-panel-painter-layers::it	o_painel_mostra_o_que_a_ferramenta_le::cada_ferramenta_da_agua_so_ve_o_que_le	600.090
+ph2d-panel-painter-layers::it	o_painel_mostra_o_que_a_ferramenta_le::cada_linha_visivel_age_na_ferramenta_ou_diz_porque_nao	104.261
+ph2d-panel-painter-layers::it	seam_estado_escondido::cada_interruptor_que_neutraliza_pinta_como_o_pincel_limpo	600.094
+ph2d-panel-registry-init::it	the_palette_reaches_the_vector_bars::every_bar_command_in_the_palette_lands_and_flashes_where_it_lives	65.715
+ph2d-skeleton-live	skin_desenho::tests::zona::dobra::densidade::o_braco_nao_tem_dentes_a_densidade_nenhuma	138.345
+ph2d-skeleton-live	skin_live::carrega::tests::uma_forma_ja_cozida_com_pilha_nova_coze_outra_vez	125.137
+ph2d-skeleton-live	skinned_mesh::rive_sondas_tests::diag_d_o_preco_do_segundo_corpo	112.720
+ph2d-tool-painter	macro_track::tutorial::tests::a_mao_torta_cumpre_o_pincel_fino_e_o_nada_nao	456.826
+ph2d-tool-painter	macro_track::tutorial::tests::cada_pincelada_so_se_cumpre_feita_e_o_desfazer_a_volta	200.136
+ph2d-tool-painter	macro_track::tutorial::tests::o_aluno_exacto_cumpre_no_quadro_do_up	406.153
+ph2d-tool-painter	macro_track::tutorial::tests::o_mostra_me_cumpre_a_fatia_fina	73.915
+ph2d-tool-painter	macro_track::tutorial::tests::pular_a_pincelada_e_esperar_nao_cumpre_nenhuma	600.097
+ph2d-tool-painter	tool::paint::wetpaint::material_do_pincel_tests::cada_knob_do_material_muda_o_preview	180.009
+ph2d-tool-painter	tool::paint::wetpaint::mistura_camadas_tests::o_traco_nao_muda_de_tom_ao_secar	103.384
+ph2d-tool-painter	tool::paint::wetpaint::mistura_wet_drip_tests::sem_celulas_soltas	65.377
+ph2d-tool-painter	tool::paint::wetpaint::mistura_wet_drip_tests::uma_mistura_nunca_e_mais_clara_que_as_tintas	124.588
+ph2d-tool-painter	tool::paint::wetpaint::oleo_arrasto_tests::oleo_cache_tests::o_cache_do_campo_e_a_recomposicao_de_raiz_ao_byte	102.987
+ph2d-tool-painter	tool::paint::wetpaint::oleo_por_traco_tests::o_traco_seguinte_usa_o_depth_o_gloss_e_a_caixa_novos	63.600
+ph2d-tool-painter	tool::paint::wetpaint::opcoes_tests::a_borda_de_um_traco_sobre_tinta_tambem_amacia	69.557
+ph2d-tool-painter	tool::paint::wetpaint::opcoes_tests::a_heavy_edge_a_meio_pesa_na_orla_de_baixo_como_no_rebelle	132.913
+ph2d-tool-painter	tool::paint::wetpaint::opcoes_tests::com_as_opcoes_desligadas_o_s_e_a_bancada_sao_os_de_hoje_ao_byte	122.207
+ph2d-tool-painter	tool::paint::wetpaint::shape_color_tests::a_cor_sobrevive_a_agua_nos_pinceis_de_fabrica	129.420
+ph2d-tool-painter	tool::paint::wetpaint_preset::corpo_da_agua_tests::o_corpo_de_cada_ferramenta_da_agua_e_o_que_ela_le	180.023
+ph2d-tool-painter	tool::paint::wetpaint_preset::medida_oleo_real::medida_oleo_real_fenda::a_fenda_forte_nao_volta_aos_pontos_pretos_na_cena_do_dono	180.024
+ph2d-tool-painter	tool::paint::wetpaint_preset::medida_oleo_real::medida_oleo_real_fenda::o_dente_do_papel_nao_atravessa_a_tinta_grossa	129.417
+ph2d-tool-painter	tool::paint::wetpaint_preset::medida_oleo_real::medida_oleo_real_fenda::o_papel_nos_vaos_entre_lascas_nao_fica_preto	73.490
+ph2d-tool-painter	tool::paint::wetpaint_preset::medida_oleo_real::transparencia::a_transmissao_e_o_relevo_do_papel_mostram_o_grao	139.352
+ph2d-tool-painter	tool::paint::wetpaint_preset::medida_oleo_real::transparencia::a_transmissao_tinge_o_papel_creme_do_documento	69.509
+ph2d-tool-painter	tool::paint::wetpaint_preset::medida_oleo_real::transparencia::a_transparencia_deixa_ver_o_grao_e_a_cor_do_papel	136.690
+ph2d-tool-painter	tool::paint::wetpaint_preset::medida_oleo_real::transparencia::o_grao_assado_segue_a_lampada_depois_do_traco	71.999
+ph2d-tool-painter	tool::paint::wetpaint_preset::medida_oleo_real::transparencia::o_modo_blender_casa_com_o_cycles_e_o_clear_glass_e_o_de_antes	75.374
+ph2d-tool-painter	tool::paint::wetpaint_preset::preview::paridade_tests::o_preview_pinta_cada_capacidade_nova_como_a_tela	266.071
+ph2d-tool-painter	tool::paint::wetpaint_preset::preview::tests::a_chave_muda_com_cada_parametro_e_o_traco_tambem	114.886
+ph2d-tool-painter	tool::paint::wetpaint_preset::preview::tests::o_preview_mostra_a_shape_color	87.716
+ph2d-tool-painter::it	a_lei_da_tinta::a_terceira_camada_da_mesma_tinta_nao_clareia	146.100
+ph2d-tool-painter::it	a_lei_da_tinta::o_primeiro_toque_nao_assenta_o_proprio_traco_com_agua_viva	88.274
+ph2d-tool-painter::it	a_lei_da_tinta::o_traco_sozinho_nao_muda_com_o_glaze	85.584
+ph2d-tool-painter::it	familias::caligrafia_marcadores::cada_letra_e_marcador_tem_a_sua_identidade	70.308
+ph2d-tool-painter::it	familias::mistura::cada_preset_da_agua_cai_na_foto_do_seu_rebelle	83.057
+ph2d-tool-painter::it	familias::tintas::o_borrao_da_tinta_transborda_a_faixa	66.410
+ph2d-tool-painter::it	midias_de_fabrica::cada_preset_parece_a_sua_midia	101.528
+ph2d-tool-painter::it	presets_de_fabrica::memoria::a_memoria_do_dabber_cabe	61.687
+ph2d-tool-painter::it	presets_de_fabrica::portoes::a_largura_e_a_prometida	94.796

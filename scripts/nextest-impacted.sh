@@ -167,6 +167,30 @@ EXPR="$EXPR + test(/^architecture_workspace_file_loc_cap::/) + test(/^file_loc_c
 # ZERO é um gate verde que não correu.
 EXPR="$EXPR + test(/^architecture_the_shell_only_shrinks::/) + test(/^architecture_no_orphan_source_file::/)"
 
+# ⭐ DOIS NÍVEIS (item G, comissão 29/10): os testes que MEDEM ≥ 60 s na última suíte verde
+# (`.config/testes-lentos.tsv`, gerado por `scripts/testes-lentos.py`) são o nível «lento» — 55 testes,
+# ~56 % do tempo somado da suíte — e correm na suíte completa (`suite-completa.sh`, integração e ship).
+#   PH2D_NIVEL=rapido (omissão) — exclui-os · PH2D_NIVEL=tudo — não exclui.
+# ⛔ As redes obrigatórias acima NUNCA saem: o `--menos-prefixo` devolve-as ao nível rápido (e diz).
+# A lista do controlo abaixo usa a expressão SEM o corte: um vigia cujos testes são todos lentos não
+# é um filtro que casa zero. `PH2D_NIVEL` entra na chave do selo (é `PH2D_*`; exportado para entrar sempre).
+export PH2D_NIVEL="${PH2D_NIVEL:-rapido}"
+_expr_lista="$EXPR"
+_lentos_py="$(dirname "${BASH_SOURCE[0]}")/testes-lentos.py"
+case "$PH2D_NIVEL" in
+    rapido)
+        _lento="$(python3 "$_lentos_py" --filtro --menos-prefixo transform_determinism:: \
+            --menos-prefixo architecture_workspace_file_loc_cap:: --menos-prefixo file_loc_caps:: \
+            --menos-prefixo architecture_the_shell_only_shrinks:: --menos-prefixo architecture_no_orphan_source_file::)" \
+            || { echo "[nextest-impacted] ✗ a lista do nível lento não se lê (.config/testes-lentos.tsv)" >&2; exit 2; }
+        if [ -n "$_lento" ]; then
+            EXPR="($EXPR) - ($_lento)"
+            echo "[nextest-impacted] nível rápido: $(grep -o 'binary_id(' <<<"$_lento" | wc -l) testes lentos fora (correm na suíte completa; PH2D_NIVEL=tudo inclui-os)"
+        fi ;;
+    tudo) echo "[nextest-impacted] nível: tudo (os lentos incluídos)" ;;
+    *) echo "[nextest-impacted] ✗ PH2D_NIVEL=$PH2D_NIVEL (rapido|tudo)" >&2; exit 2 ;;
+esac
+
 echo "[nextest-impacted] changed: $(echo "$CHANGED" | tr '\n' ' ')"
 echo "[nextest-impacted] -E '$EXPR'"
 # If a changed dir name is not a real package, the filterset errors out (non-zero)
@@ -235,7 +259,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/tempos-teste-lib.sh"
 _tt="$(mktemp)"; _t0="$(tt_agora)"; _l0="$(tt_load)"
 if [ "${PH2D_IMPACTO:-preciso}" = "preciso" ]; then
     # shellcheck disable=SC2086
-    cargo nextest list -E "$EXPR" --cargo-profile ci-test --message-format json 2> >(tee -a "$_tt" >&2) \
+    cargo nextest list -E "$_expr_lista" --cargo-profile ci-test --message-format json 2> >(tee -a "$_tt" >&2) \
         | python3 "$_seletor" --confere - $CHANGED \
         || { echo "[nextest-impacted] ✗ um filtro de vigia casa ZERO testes (ou a lista falhou)" >&2; exit 2; }
 fi

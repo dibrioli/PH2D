@@ -35,7 +35,6 @@ fn um_projecto_antigo_abre_com_a_mesa_no_padrao() {
     for ver in [193u32, 192] {
         let f = bare_file(empty_state());
         let ate_aos_scripts = (
-            &f.state,
             &f.assets,
             &f.painted,
             &f.motion,
@@ -52,13 +51,20 @@ fn um_projecto_antigo_abre_com_a_mesa_no_padrao() {
             &f.scripts,
         );
         let marcas = vec![1u8, 2, 3];
-        let bytes = if ver == 193 {
-            postcard::to_allocvec(&(ver, ate_aos_scripts, &marcas))
-        } else {
-            postcard::to_allocvec(&(ver, ate_aos_scripts))
-        };
+        // A cena vetorial de um ficheiro destes é a v23 (sem as regras de CAD, que nasceram no 200): a vazia
+        // viva acaba nos dois zeros das regras.
+        let st = &f.state;
+        let vec_vivo = postcard::to_allocvec(&*st.vec).expect("serializa");
+        let mut bytes = postcard::to_allocvec(&(ver, &st.world)).expect("serializa");
+        bytes.extend_from_slice(&vec_vivo[..vec_vivo.len() - 2]);
+        let resto = (&st.flip, &st.guides, &st.ui_states, &st.library, &st.tags);
+        bytes.extend(postcard::to_allocvec(&resto).expect("serializa"));
+        bytes.extend(postcard::to_allocvec(&ate_aos_scripts).expect("serializa"));
+        if ver == 193 {
+            bytes.extend(postcard::to_allocvec(&marcas).expect("serializa"));
+        }
         let path = tmp_path(&format!("mesa_v{ver}"));
-        std::fs::write(&path, bytes.expect("serializa")).expect("grava");
+        std::fs::write(&path, bytes).expect("grava");
         let lido = headless_app().read_project_file(&path.to_string_lossy());
         let _ = std::fs::remove_file(&path);
         let (back, _) = lido.expect("um projecto antigo é recusado");

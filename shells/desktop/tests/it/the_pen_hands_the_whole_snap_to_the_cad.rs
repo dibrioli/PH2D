@@ -6,7 +6,7 @@
 fn the_pen_press_and_drag_take_the_snap_result() {
     let src = crate::input_text::dispatch();
     assert!(
-        src.contains("let click = self.vec.pen.on_press_encaixe("),
+        src.contains("self.vec.pen.on_press_encaixe(sc, pt, pxw, alt, &mut snap)"),
         "o press"
     );
     assert!(

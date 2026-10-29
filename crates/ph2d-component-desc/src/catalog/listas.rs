@@ -270,7 +270,12 @@ pub const LISTAS: &[ListaDesc] = &[
 /// ⛔ As listas do catálogo SEM canal (o censo `toda_lista_do_catalogo_tem_codigo`). O porquê:
 /// - `SpriteAnimations` — as tags são intervalos de quadros da folha, o parâmetro da própria
 ///   animação (plano 35 §8), não um valor dela.
-pub const SEM_CANAL: &[&str] = &["ph2d::ecs::SpriteAnimations"];
+/// - `Constraints` — a pilha tem a família própria `CONSTRAINT` (`ph2d_ecs::canal_constraint`,
+///   `i:j` = o `Item::id` dela), anterior ao `ItemId` genérico das listas.
+pub const SEM_CANAL: &[&str] = &[
+    "ph2d::ecs::SpriteAnimations",
+    "ph2d::constraints::Constraints",
+];
 
 /// As listas que o catálogo esconde do script por terem secção própria (`Hidden::OwnSection`).
 pub const DE_SECCAO: &[(&str, &str)] = &[("ph2d::physics::Health", "resistances")];

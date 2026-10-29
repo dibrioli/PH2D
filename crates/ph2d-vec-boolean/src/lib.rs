@@ -176,8 +176,7 @@ pub fn apply_chain_checked(
     folds: &[(&VecPath, BoolOp)],
 ) -> Result<Vec<VecPath>, SweepFailed> {
     if folds.is_empty() {
-        // Menos de duas entradas: não há operação nenhuma a fazer, e o vazio é a resposta —
-        // exatamente como quando esta porta recebia um `paths` de um só.
+        // Menos de duas entradas: não há operação a fazer, e o vazio é a resposta.
         return Ok(Vec::new());
     }
     let style = doador(base, folds);

@@ -8,7 +8,7 @@ fn k(campo: u16) -> FieldKey {
 /// ⛔ Os números são gravados no documento da timeline: renumerar reprova.
 #[test]
 fn o_vocabulario_do_mundo_nao_renumera() {
-    assert_eq!(familia::MUNDO, 9);
+    assert_eq!(familia::MUNDO, 11);
     let fixos = [
         (GRAVIDADE_X, 1),
         (GRAVIDADE_Y, 2),

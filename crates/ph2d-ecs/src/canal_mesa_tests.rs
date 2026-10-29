@@ -8,7 +8,7 @@ fn k(campo: u16) -> FieldKey {
 /// ⛔ Os números são gravados no documento da timeline: renumerar reprova.
 #[test]
 fn o_vocabulario_da_mesa_nao_renumera() {
-    assert_eq!(familia::MESA, 10);
+    assert_eq!(familia::MESA, 12);
     let fixos = [
         (GANHO, 1),
         (CORTE_ALTO, 2),

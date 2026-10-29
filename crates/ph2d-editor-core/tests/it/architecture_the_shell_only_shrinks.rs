@@ -192,3 +192,124 @@ fn the_shell_only_shrinks() {
         loc + FOLGA_DE_COMPOSICAO
     );
 }
+
+/// ⭐ **Toda `ph2d-app-*` também só encolhe** (item M da comissão de velocidade, 29/10,
+/// `docs/DevOps/COMISSAO_VELOCIDADE_2026-10-29.md`). Tirar a família da shell só mudou a unidade
+/// lenta de sítio: `ph2d-app-motion` tem 193 644 linhas — mais que a shell inteira. O tecto é por
+/// CRATE porque a crate é a unidade que o compilador constrói (o mesmo argumento do topo).
+///
+/// Cada linha: o tecto = o MEDIDO pela mesma [`conta`] (o diretório da crate inteiro: `src`,
+/// `tests`, `benches`) + [`folga_da_crate`]. Medido 2026-10-29 no `a0fcfc1f19`, árvore limpa nas
+/// `crates/ph2d-app-*`; o medido está no comentário de cada linha.
+///
+/// ⛔ É um número que SOMA entre linhas: quem o reconta é o integrador, sobre a árvore combinada.
+/// `ph2d-app-host` fica de fora: é o substrato (`Folha` em
+/// `architecture_no_dependency_climbs_a_layer.rs`), não uma família.
+const TETOS_DAS_CRATES_APP: &[(&str, usize)] = &[
+    ("ph2d-app-audio", 10_547),       // 10_341
+    ("ph2d-app-board", 15_600),       // 15_295
+    ("ph2d-app-code", 26_628),        // 26_106
+    ("ph2d-app-components", 80_869),  // 79_284
+    ("ph2d-app-constraints", 10_526), // 10_320
+    ("ph2d-app-flip", 28_960),        // 28_393
+    ("ph2d-app-game", 3_202),         // 3_102
+    ("ph2d-app-kanban", 32_175),      // 31_545
+    ("ph2d-app-light2d", 25_523),     // 25_023
+    ("ph2d-app-macros", 14_630),      // 14_344
+    ("ph2d-app-motion", 197_516),     // 193_644
+    ("ph2d-app-painter", 24_429),     // 23_950
+    ("ph2d-app-physics", 55_515),     // 54_427
+    ("ph2d-app-pixel", 13_424),       // 13_161
+    ("ph2d-app-planner", 5_824),      // 5_710
+    ("ph2d-app-registry-init", 799),  // 699
+    ("ph2d-app-skeleton", 11_263),    // 11_043
+    ("ph2d-app-sprite-anim", 8_352),  // 8_189
+    ("ph2d-app-vec", 93_637),         // 91_801
+];
+
+/// A folga de uma crate: **2 %** do medido, piso de 100 linhas. É a razão da shell
+/// (`FOLGA_DE_COMPOSICAO` 4 000 sobre 185 041 medidas = 2,2 %): o bastante para compor, longe do
+/// bastante para uma família caber. O piso existe porque 2 % de 699 linhas são 13 — uma
+/// formatação moveria o gate.
+fn folga_da_crate(medido: usize) -> usize {
+    (medido / 50).max(100)
+}
+
+/// O censo de obsolescência de uma crate: **5× a folga** (10 % do tecto, piso 500) — a mesma razão
+/// da shell (`CENSO_OBSOLETO_ACIMA_DE` 20 000 = 5 × 4 000). Apanha uma onda que partiu a crate e
+/// deixou o tecto para trás, não uma limpeza de dez linhas.
+fn censo_da_crate(teto: usize) -> usize {
+    (teto / 10).max(500)
+}
+
+#[test]
+fn the_shell_only_shrinks_and_every_app_crate_too() {
+    let crates_dir = shell_dir()
+        .parent()
+        .and_then(Path::parent)
+        .expect("shells/desktop tem dois pais")
+        .join("crates");
+    let mut no_disco: Vec<String> = fs::read_dir(&crates_dir)
+        .expect("crates/ legível")
+        .flatten()
+        .filter(|e| e.path().is_dir())
+        .filter_map(|e| e.file_name().into_string().ok())
+        .filter(|n| n.starts_with("ph2d-app-") && n != "ph2d-app-host")
+        .collect();
+    no_disco.sort();
+
+    // ⛔ Controlo positivo: a varredura das crates tem de achar a população inteira.
+    assert!(
+        no_disco.len() >= 10,
+        "controlo positivo: só {} crates `ph2d-app-*` em {} — o caminho mudou e o gate mede o nada",
+        no_disco.len(),
+        crates_dir.display()
+    );
+
+    let mut erros = Vec::new();
+    for nome in &no_disco {
+        if !TETOS_DAS_CRATES_APP.iter().any(|(n, _)| n == nome) {
+            erros.push(format!(
+                "`{nome}` existe e não tem linha em `TETOS_DAS_CRATES_APP` — crate nova entra com o \
+                 seu número MEDIDO por `conta()` + `folga_da_crate`"
+            ));
+        }
+    }
+    for &(nome, teto) in TETOS_DAS_CRATES_APP {
+        if !no_disco.iter().any(|n| n == nome) {
+            erros.push(format!(
+                "`{nome}` tem linha em `TETOS_DAS_CRATES_APP` e a crate já não existe — apague a \
+                 linha (e conte a crate para onde o código foi)"
+            ));
+            continue;
+        }
+        let (mut loc, mut ficheiros) = (0usize, 0usize);
+        conta(&crates_dir.join(nome), &mut loc, &mut ficheiros);
+        if ficheiros == 0 {
+            erros.push(format!(
+                "controlo positivo: `{nome}` varreu ZERO ficheiros `.rs` — o gate mediria o nada"
+            ));
+            continue;
+        }
+        if loc > teto {
+            erros.push(format!(
+                "`{nome}` CRESCEU: {loc} linhas contra o tecto de {teto} ({ficheiros} ficheiros). \
+                 A cura é MOVER/cortar (para uma crate da família, ou apagar o morto), nunca subir \
+                 o número (CLAUDE.md §2)."
+            ));
+        } else if loc + censo_da_crate(teto) < teto {
+            erros.push(format!(
+                "a catraca de `{nome}` está OBSOLETA: {loc} linhas e o tecto ainda diz {teto}. \
+                 Uma catraca que não desce vira LICENÇA (CLAUDE.md §5.0): reescreva-o como {} \
+                 (o medido + `folga_da_crate`).",
+                loc + folga_da_crate(loc)
+            ));
+        }
+    }
+    assert!(
+        erros.is_empty(),
+        "{} crate(s) `ph2d-app-*` fora da catraca:\n  {}",
+        erros.len(),
+        erros.join("\n  ")
+    );
+}

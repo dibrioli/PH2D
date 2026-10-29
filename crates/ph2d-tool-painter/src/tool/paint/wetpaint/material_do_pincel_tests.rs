@@ -56,15 +56,7 @@ fn recompoe(t: &mut PainterTool) -> Vec<u8> {
     t.wet_recomposite_full();
     let mut px = t.canvas_rgba.to_vec();
     let (w, h) = (W as u32, H as u32);
-    t.apply_impasto_light(
-        &mut px,
-        crate::Region {
-            x: 0,
-            y: 0,
-            w,
-            h,
-        },
-    );
+    t.apply_impasto_light(&mut px, crate::Region { x: 0, y: 0, w, h });
     px
 }
 
@@ -95,7 +87,10 @@ fn o_material_do_pincel_fica_na_tinta_pousada() {
     }
     let depois = recompoe(&mut t);
     let mudou = pintada.iter().zip(&depois).filter(|(a, b)| a != b).count();
-    assert_eq!(mudou, 0, "o pincel a 0 mudou {mudou} bytes da tinta pousada");
+    assert_eq!(
+        mudou, 0,
+        "o pincel a 0 mudou {mudou} bytes da tinta pousada"
+    );
 }
 
 /// ⭐ **O MODO da Transmission fica na tinta pousada** (dono 28/10: o seletor Blender · Clear glass é do pincel): pintada
@@ -112,7 +107,10 @@ fn o_modo_da_transmissao_fica_na_tinta_pousada() {
     t.paint.wetpaint.knobs.set(Knob::TransmissionMode, 0.0);
     let depois = recompoe(&mut t);
     let mudou = vidro.iter().zip(&depois).filter(|(a, b)| a != b).count();
-    assert_eq!(mudou, 0, "o seletor do pincel mudou {mudou} bytes da tinta pousada");
+    assert_eq!(
+        mudou, 0,
+        "o seletor do pincel mudou {mudou} bytes da tinta pousada"
+    );
 }
 
 /// ⭐ **C4: o material veste a orla VIRGEM** (o par de `aparencia::veste_virgens`): pintado com a Transmission, o censo
@@ -145,9 +143,8 @@ fn o_material_veste_a_orla_virgem() {
 
 /// O DENTE entre duas telas nas células pintadas: o desvio-padrão da diferença de luminância.
 fn dente(a: &[u8], b: &[u8]) -> f64 {
-    let l = |p: &[u8]| {
-        0.2126 * f64::from(p[0]) + 0.7152 * f64::from(p[1]) + 0.0722 * f64::from(p[2])
-    };
+    let l =
+        |p: &[u8]| 0.2126 * f64::from(p[0]) + 0.7152 * f64::from(p[1]) + 0.0722 * f64::from(p[2]);
     let d: Vec<f64> = a
         .chunks(4)
         .zip(b.chunks(4))
@@ -180,9 +177,15 @@ fn o_paper_relief_e_o_grao_do_vidro_mordem_na_fabrica() {
     eprintln!(
         "FÁBRICA: Paper Relief {rp0:.2} (Cold 0,6: {rp6:.2}) · grão do vidro {gr0:.2} (Cold 0,6: {gr6:.2})"
     );
-    assert!(rp6 > 0.3 && gr6 > 0.3, "controlo: a cena calibrada mostra o grão");
+    assert!(
+        rp6 > 0.3 && gr6 > 0.3,
+        "controlo: a cena calibrada mostra o grão"
+    );
     assert!(rp0 >= 0.5 * rp6, "o Paper Relief na fábrica: {rp0} × {rp6}");
-    assert!(gr0 >= 0.5 * gr6, "o grão do vidro na fábrica: {gr0} × {gr6}");
+    assert!(
+        gr0 >= 0.5 * gr6,
+        "o grão do vidro na fábrica: {gr0} × {gr6}"
+    );
 }
 
 /// ⭐ **U4: cada knob do Material do pincel muda o PREVIEW** (o retorno antes de pintar) — derivado da tabela (todo
@@ -203,7 +206,10 @@ fn cada_knob_do_material_muda_o_preview() {
         .filter(|d| d.group == KnobGroup::Material && d.knob != Knob::LockMaterial)
         .collect();
     for d in &defs {
-        t.paint.wetpaint.knobs.set(d.knob, d.min + 0.5 * (d.max - d.min));
+        t.paint
+            .wetpaint
+            .knobs
+            .set(d.knob, d.min + 0.5 * (d.max - d.min));
     }
     let preview = |t: &PainterTool| {
         let mut ultimo = Vec::new();
@@ -220,7 +226,10 @@ fn cada_knob_do_material_muda_o_preview() {
     for d in &defs {
         let v = t.paint.wetpaint.knobs.get(d.knob);
         let chave = t.wet_preview_chave();
-        t.paint.wetpaint.knobs.set(d.knob, if v > d.min { d.min } else { d.max });
+        t.paint
+            .wetpaint
+            .knobs
+            .set(d.knob, if v > d.min { d.min } else { d.max });
         assert_ne!(chave, t.wet_preview_chave(), "{}: a chave não viu", d.key);
         if preview(&t).0 == base {
             mortos.push(d.key);
@@ -233,6 +242,13 @@ fn cada_knob_do_material_muda_o_preview() {
         "PREVIEW: {} knobs do Material; custo com o Óleo Real {custo_oleo:?} · sem {custo_sem:?}",
         defs.len()
     );
-    assert!(defs.len() >= 11, "controlo: a tabela do Material ({})", defs.len());
-    assert!(mortos.is_empty(), "knobs do Material sem retorno no preview: {mortos:?}");
+    assert!(
+        defs.len() >= 11,
+        "controlo: a tabela do Material ({})",
+        defs.len()
+    );
+    assert!(
+        mortos.is_empty(),
+        "knobs do Material sem retorno no preview: {mortos:?}"
+    );
 }

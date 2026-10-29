@@ -232,14 +232,21 @@ fn sonda_cada_controlo_do_grao_com_same_as_paper() {
 #[test]
 fn o_same_as_paper_do_grain_aceita_o_clique_real_nos_tres_meios() {
     let caixa = PAINTER_BRUSH_GRAIN_SAME_AS_PAPER;
-    for meio in [PaintMedia::Digital, PaintMedia::Impasto, PaintMedia::WetPaint] {
+    for meio in [
+        PaintMedia::Digital,
+        PaintMedia::Impasto,
+        PaintMedia::WetPaint,
+    ] {
         let antes = Bancada::nova(meio, &[]);
         assert!(
             antes.rects().iter().any(|(i, _)| *i == caixa),
             "{meio:?}: a caixa «Same as Paper» não foi pintada no Grain"
         );
         assert!(
-            antes.rects().iter().any(|(i, _)| *i == PAINTER_BRUSH_TEXTURE_KIND),
+            antes
+                .rects()
+                .iter()
+                .any(|(i, _)| *i == PAINTER_BRUSH_TEXTURE_KIND),
             "{meio:?}: o grão próprio já está escondido antes do clique"
         );
         let (base, _) = ensaio(meio, &[], &Gesto::Nenhum);
@@ -255,7 +262,10 @@ fn o_same_as_paper_do_grain_aceita_o_clique_real_nos_tres_meios() {
             "{meio:?}: a ferramenta não ligou o «Same as Paper»"
         );
         assert!(
-            !marcada.rects().iter().any(|(i, _)| *i == PAINTER_BRUSH_TEXTURE_KIND),
+            !marcada
+                .rects()
+                .iter()
+                .any(|(i, _)| *i == PAINTER_BRUSH_TEXTURE_KIND),
             "{meio:?}: o painel re-pintado não mostra a caixa marcada (o grão próprio continua)"
         );
         let n = diferenca(&base, &com).0;

@@ -631,8 +631,8 @@ pub fn apply_smear(
                             mix,
                             p.glaze,
                             p.ecra
-                            .com_vela(vela[i])
-                            .com_vidrado(crate::grid::aparencia::vidrado(aparencia, i)),
+                                .com_vela(vela[i])
+                                .com_vidrado(crate::grid::aparencia::vidrado(aparencia, i)),
                             &mut out,
                         );
                     }

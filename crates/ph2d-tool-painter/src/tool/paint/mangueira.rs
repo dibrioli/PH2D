@@ -368,20 +368,45 @@ fn cada_corrida_da_mangueira_leva_o_indice_global_do_lote() {
     t.set_brush_shape_image_rgba(&img, 8, 8, None);
     t.add_brush_shape_hose_image_rgba(bytemuck::cast_slice(&img), 8, 8);
     assert_eq!(t.brush_shape_hose_count(), 2);
-    let mut s = Stroke::new(BrushSpec { radius_px: 4.0, ..Default::default() }, Dynamics::default(), 1);
+    let mut s = Stroke::new(
+        BrushSpec {
+            radius_px: 4.0,
+            ..Default::default()
+        },
+        Dynamics::default(),
+        1,
+    );
     let mut dabs = Vec::new();
-    s.begin(StrokePoint { pos: [4.0, 8.0], pressure: 1.0 }, &mut dabs);
-    s.extend(StrokePoint { pos: [60.0, 8.0], pressure: 1.0 }, &mut dabs);
+    s.begin(
+        StrokePoint {
+            pos: [4.0, 8.0],
+            pressure: 1.0,
+        },
+        &mut dabs,
+    );
+    s.extend(
+        StrokePoint {
+            pos: [60.0, 8.0],
+            pressure: 1.0,
+        },
+        &mut dabs,
+    );
     assert!(dabs.len() >= 6, "{}", dabs.len());
     // As imagens alternam a cada dois dabs: corridas de 2.
     for (k, d) in dabs.iter_mut().enumerate() {
-        d.tilt = Some(DabTilt { imagem: ((k / 2) % 2) as u8, ..d.tilt.unwrap_or(DabTilt::NEUTRA) });
+        d.tilt = Some(DabTilt {
+            imagem: ((k / 2) % 2) as u8,
+            ..d.tilt.unwrap_or(DabTilt::NEUTRA)
+        });
     }
     let mut vistos = Vec::new();
     t.stamp_dabs_mangueira_com(&dabs, |_, i, corrida| vistos.push((i, corrida.len())));
     let mut esperado = 0;
     for &(i, n) in &vistos {
-        assert_eq!(i, esperado, "a corrida não leva o índice do lote: {vistos:?}");
+        assert_eq!(
+            i, esperado,
+            "a corrida não leva o índice do lote: {vistos:?}"
+        );
         esperado += n;
     }
     assert!(vistos.len() > 1 && esperado == dabs.len(), "{vistos:?}");

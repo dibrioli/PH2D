@@ -65,11 +65,19 @@ fn recto(caso: Caso, e: f32) -> Vec<f64> {
 const PASSOS: [f32; 5] = [0.0, 0.25, 0.5, 1.0, 1.5];
 
 fn perfil(c: &[f64], r#ref: &[f64]) -> ([[f64; 5]; 2], f64) {
-    let col = |c: &[f64], x: usize| (Y as usize - 8..=Y as usize + 8).map(|y| c[y * W + x]).sum::<f64>() / 17.0;
+    let col = |c: &[f64], x: usize| {
+        (Y as usize - 8..=Y as usize + 8)
+            .map(|y| c[y * W + x])
+            .sum::<f64>()
+            / 17.0
+    };
     let meio_de = |c: &[f64]| (220..300).map(|x| col(c, x)).sum::<f64>() / 80.0;
     let m_ref = meio_de(r#ref);
     let p0 = (0..W).find(|&x| col(r#ref, x) >= 0.5 * m_ref).unwrap() as f32;
-    let p1 = (0..W).rev().find(|&x| col(r#ref, x) >= 0.5 * m_ref).unwrap() as f32;
+    let p1 = (0..W)
+        .rev()
+        .find(|&x| col(r#ref, x) >= 0.5 * m_ref)
+        .unwrap() as f32;
     let meio = meio_de(c);
     let q = [
         PASSOS.map(|k| col(c, (p0 + k * R).round() as usize) / meio),
@@ -94,9 +102,14 @@ fn as_pontas_esbatem_ao_comprido_e_o_miolo_pousa_a_mesma_tinta() {
         // A queda mínima perto da ponta: cresce com `e` (a escuridão satura: o depósito a 0,8 lê ~0,93).
         for (e, minima) in [(1.6f32, 0.06), (4.0, 0.14)] {
             let (q, t) = perfil(&recto(caso, e), &c0);
-            eprintln!("{caso:?} e {e}: sem {q0:.3?} · com {q:.3?}; tinta {:.4}", t / t0);
+            eprintln!(
+                "{caso:?} e {e}: sem {q0:.3?} · com {q:.3?}; tinta {:.4}",
+                t / t0
+            );
             for (lado, ponta) in [(0, "início"), (1, "fim")] {
-                let queda = (0..3).map(|k| q0[lado][k] - q[lado][k]).fold(f64::MIN, f64::max);
+                let queda = (0..3)
+                    .map(|k| q0[lado][k] - q[lado][k])
+                    .fold(f64::MIN, f64::max);
                 assert!(
                     queda >= minima,
                     "{caso:?} e {e}: a ponta do {ponta} tem de esbater: queda {queda:.3} ({:.3?} contra {:.3?})",
@@ -130,9 +143,17 @@ fn as_contas_do_esbate_fecham() {
         for a in [0.0f32, 0.3, 0.7] {
             let m = 2000;
             let f: f32 = (0..m)
-                .map(|i| carga_do_fecho(e, (1.0 - a) * (i as f32 + 0.5) / m as f32, 1.0) * (1.0 - a) / m as f32)
+                .map(|i| {
+                    carga_do_fecho(e, (1.0 - a) * (i as f32 + 0.5) / m as f32, 1.0) * (1.0 - a)
+                        / m as f32
+                })
                 .sum();
-            assert!((a + f - alvo(e, a)).abs() < 1e-3, "e {e} a {a}: {} contra {}", a + f, alvo(e, a));
+            assert!(
+                (a + f - alvo(e, a)).abs() < 1e-3,
+                "e {e} a {a}: {} contra {}",
+                a + f,
+                alvo(e, a)
+            );
         }
     }
 }

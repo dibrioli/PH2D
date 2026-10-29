@@ -76,7 +76,9 @@ pub(super) fn parametros(r: &Receita) -> Parametros {
         }
         // Um candidato SEM vizinho (o Oil Bristle, fora da fábrica desde o smoke do dono 27/10): o ficheiro dele.
         Err(_) if r.nasce_de.is_none() && super::midias_de_fabrica::candidato(r.nome).is_some() => {
-            super::midias_de_fabrica::candidato(r.nome).unwrap().parametros
+            super::midias_de_fabrica::candidato(r.nome)
+                .unwrap()
+                .parametros
         }
         // Os do prompt 53 nascem do ficheiro do vizinho, como a sonda do doc 52 os mediu.
         Err(_) if r.nasce_de.is_some() => {
@@ -468,9 +470,19 @@ fn sonda_largura_sem_oleo() {
         t_sem += ts;
         t_com += tc;
     }
-    println!("[sonda] {nome}: soma com óleo {t_com:.1} s → sem {t_sem:.1} s ({:.2}×)", t_com / t_sem);
-    let mudam: Vec<_> = medidas.iter().filter(|(_, [(a, _), (b, _)])| a != b).collect();
-    println!("[sonda] {} de {} larguras mudam sem o óleo", mudam.len(), medidas.len());
+    println!(
+        "[sonda] {nome}: soma com óleo {t_com:.1} s → sem {t_sem:.1} s ({:.2}×)",
+        t_com / t_sem
+    );
+    let mudam: Vec<_> = medidas
+        .iter()
+        .filter(|(_, [(a, _), (b, _)])| a != b)
+        .collect();
+    println!(
+        "[sonda] {} de {} larguras mudam sem o óleo",
+        mudam.len(),
+        medidas.len()
+    );
     // ONDE mudam: o píxel que é papel sem o óleo e não é com ele (a luz/sombra fora da tinta), e o contrário.
     for raio in [18.5, 98.9] {
         let img = |com: bool| {
@@ -518,7 +530,16 @@ fn imagem_da_largura(p: &Preset, raio: f32, crua: bool, r: Relogio) -> (Vec<u8>,
             t.set_wet_largura_crua(escala);
         }
     });
-    (px, w, h, if espalha(p) { largura_da_nuvem } else { largura_que_se_ve })
+    (
+        px,
+        w,
+        h,
+        if espalha(p) {
+            largura_da_nuvem
+        } else {
+            largura_que_se_ve
+        },
+    )
 }
 
 /// O pincel ESPALHA marcas (o spray, `spray_count` > 1): a largura que se vê é a da nuvem
@@ -930,7 +951,11 @@ fn os_oleos_de_fabrica_vem_com_o_real_oil() {
 }
 
 /// Os campos de topo (e as chaves de `engine`/`brush`) em que a receita e o ficheiro divergem — o veredito diz QUAL.
-fn campos_que_diferem(receita: &Parametros, ficheiro: &Parametros, texturas_iguais: bool) -> Vec<String> {
+fn campos_que_diferem(
+    receita: &Parametros,
+    ficheiro: &Parametros,
+    texturas_iguais: bool,
+) -> Vec<String> {
     let (Value::Object(a), Value::Object(b)) = (
         serde_json::to_value(receita).unwrap(),
         serde_json::to_value(ficheiro).unwrap(),
@@ -947,7 +972,11 @@ fn campos_que_diferem(receita: &Parametros, ficheiro: &Parametros, texturas_igua
             (Some(Value::Object(xm)), Some(Value::Object(ym))) => {
                 for c in xm.keys().chain(ym.keys().filter(|c| !xm.contains_key(*c))) {
                     if xm.get(c) != ym.get(c) {
-                        out.push(format!("{k}.{c}: receita {:?} · ficheiro {:?}", xm.get(c), ym.get(c)));
+                        out.push(format!(
+                            "{k}.{c}: receita {:?} · ficheiro {:?}",
+                            xm.get(c),
+                            ym.get(c)
+                        ));
                     }
                 }
             }

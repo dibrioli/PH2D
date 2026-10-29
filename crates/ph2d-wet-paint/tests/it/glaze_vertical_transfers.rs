@@ -19,10 +19,10 @@
 //! mede-se pela lei dele: dab a dab, onde a caixa NÃO prendeu, o ecrã fica; e o traço inteiro tem tecto.
 
 use ph2d_wet_paint::assenta::{Lei, sobre_branco};
-use ph2d_wet_paint::grid::aparencia::{AparenciaCelula, vidrado};
 use ph2d_wet_paint::colorops::{
     TINTA_ESCONDE, TINTA_MOLHADA_ESCURECE, VELATURA_DO_FILME, VELATURA_MEDIDA,
 };
+use ph2d_wet_paint::grid::aparencia::{AparenciaCelula, vidrado};
 use ph2d_wet_paint::opacity::alpha_of_mass;
 use ph2d_wet_paint::painter::{Engine, Tool};
 
@@ -108,7 +108,8 @@ fn ecra_seco(e: &Engine) -> Vec<[f64; 3]> {
         for x in 1..=W {
             let i = x + y * g.s;
             v.push(sobre_branco(
-                lei.com_vela(g.vela[i]).com_vidrado(vidrado(&g.aparencia, i)),
+                lei.com_vela(g.vela[i])
+                    .com_vidrado(vidrado(&g.aparencia, i)),
                 g.sett_rgb[i].map(f64::from),
                 g.susp_rgb[i].map(f64::from),
                 alpha_of_mass(g.sett[i] as f64),

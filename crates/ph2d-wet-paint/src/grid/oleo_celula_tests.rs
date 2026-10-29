@@ -31,7 +31,11 @@ fn perfis(a: OleoCelula, b: OleoCelula) -> (Vec<f64>, Vec<f64>) {
     let mut neutra = g.clone();
     for c in &mut neutra.oleo {
         if c.oleo > 0.0 {
-            *c = OleoCelula { oleo: 1.0, profundidade: 1.0, brilho: c.brilho };
+            *c = OleoCelula {
+                oleo: 1.0,
+                profundidade: 1.0,
+                brilho: c.brilho,
+            };
         }
     }
     let liso = CampoAltura::de(&[(&neutra, true)], &o, 1, 1, 1, W, H);
@@ -46,7 +50,10 @@ fn perfis(a: OleoCelula, b: OleoCelula) -> (Vec<f64>, Vec<f64>) {
 /// O maior salto entre células vizinhas na fronteira (x `50..=70`) e se o perfil é MONÓTONO ali (sem ressalto).
 fn parede(v: &[f64]) -> (f64, bool) {
     let z = &v[49..70];
-    let salto = z.windows(2).map(|p| (p[1] - p[0]).abs()).fold(0.0, f64::max);
+    let salto = z
+        .windows(2)
+        .map(|p| (p[1] - p[0]).abs())
+        .fold(0.0, f64::max);
     let sobe = z.windows(2).all(|p| p[1] >= p[0] - 1e-9);
     let desce = z.windows(2).all(|p| p[1] <= p[0] + 1e-9);
     (salto, sobe || desce)
@@ -57,17 +64,32 @@ fn parede(v: &[f64]) -> (f64, bool) {
 /// desfoque faz um degrau de uma célula do tamanho da diferença (medido e impresso).
 #[test]
 fn a_parede_entre_traços_de_depth_diferentes_e_uma_rampa_sem_degrau() {
-    let um = OleoCelula { oleo: 1.0, profundidade: 1.0, brilho: 1.0 };
+    let um = OleoCelula {
+        oleo: 1.0,
+        profundidade: 1.0,
+        brilho: 1.0,
+    };
     for (nome, b) in [
-        ("Depth 1 | 3", OleoCelula { profundidade: 3.0, ..um }),
+        (
+            "Depth 1 | 3",
+            OleoCelula {
+                profundidade: 3.0,
+                ..um
+            },
+        ),
         ("óleo | sem óleo", OleoCelula::NEUTRA),
     ] {
         let (antes, depois) = perfis(um, b);
         let (sa, ma) = parede(&antes);
         let (sd, _) = parede(&depois);
-        eprintln!("PAREDE {nome}: antes do desfoque salto {sa:.3} px monótona {ma} · depois do desfoque salto {sd:.3} px");
+        eprintln!(
+            "PAREDE {nome}: antes do desfoque salto {sa:.3} px monótona {ma} · depois do desfoque salto {sd:.3} px"
+        );
         assert!(ma, "{nome}: a parede tem ressalto");
-        assert!(sa * 3.0 < sd, "{nome}: a rampa ({sa}) não é mais suave que o degrau ({sd})");
+        assert!(
+            sa * 3.0 < sd,
+            "{nome}: a rampa ({sa}) não é mais suave que o degrau ({sd})"
+        );
     }
 }
 
@@ -75,7 +97,11 @@ fn a_parede_entre_traços_de_depth_diferentes_e_uma_rampa_sem_degrau() {
 /// (sem o campo: toda a tinta é óleo de Depth 1).
 #[test]
 fn o_oleo_de_fabrica_e_o_campo_de_antes_ao_bit() {
-    let um = OleoCelula { oleo: 1.0, profundidade: 1.0, brilho: 1.0 };
+    let um = OleoCelula {
+        oleo: 1.0,
+        profundidade: 1.0,
+        brilho: 1.0,
+    };
     let g = duas(um, um);
     let mut antes = g.clone();
     antes.oleo = Vec::new();
@@ -84,11 +110,21 @@ fn o_oleo_de_fabrica_e_o_campo_de_antes_ao_bit() {
     let d = CampoAltura::de(&[(&antes, true)], &o, 1, 1, 1, W, H);
     for y in 1..=H as isize {
         for x in 1..=W as isize {
-            for (a, b) in [(c.at(x, y), d.at(x, y)), (c.at_fina(x, y), d.at_fina(x, y)), (c.at_sombra(x, y), d.at_sombra(x, y))] {
+            for (a, b) in [
+                (c.at(x, y), d.at(x, y)),
+                (c.at_fina(x, y), d.at_fina(x, y)),
+                (c.at_sombra(x, y), d.at_sombra(x, y)),
+            ] {
                 assert_eq!(a.to_bits(), b.to_bits(), "({x}, {y})");
             }
             if g.sett[x as usize + y as usize * g.s] > 0.0 {
-                assert_eq!((c.brilho_em(x as usize, y as usize), c.oleo_em(x as usize, y as usize)), (1.0, 1.0));
+                assert_eq!(
+                    (
+                        c.brilho_em(x as usize, y as usize),
+                        c.oleo_em(x as usize, y as usize)
+                    ),
+                    (1.0, 1.0)
+                );
             }
         }
     }
@@ -103,13 +139,20 @@ fn o_campo_nasce_com_o_oleo_mistura_se_e_larga_se_sem_ele() {
     let i = 10 + 10 * g.s;
     pousa(&mut g, i, 0.0, OleoCelula::NEUTRA, 5.0);
     assert!(g.oleo.is_empty(), "a tinta sem óleo alocou o campo");
-    let fundo = OleoCelula { oleo: 1.0, profundidade: 3.0, brilho: 0.0 };
+    let fundo = OleoCelula {
+        oleo: 1.0,
+        profundidade: 3.0,
+        brilho: 0.0,
+    };
     pousa(&mut g, i, 0.0, fundo, 5.0);
     g.sett[i] = 5.0;
     assert_eq!(da_celula(&g.oleo, i), fundo);
     pousa(&mut g, i, 5.0, OleoCelula::NEUTRA, 5.0);
     let m = da_celula(&g.oleo, i);
-    assert!((m.oleo - 0.5).abs() < 1e-6 && (m.profundidade - 2.0).abs() < 1e-6, "{m:?}");
+    assert!(
+        (m.oleo - 0.5).abs() < 1e-6 && (m.profundidade - 2.0).abs() < 1e-6,
+        "{m:?}"
+    );
     veste_virgens(&mut g, (10, 10, 10, 10), fundo);
     assert_eq!(da_celula(&g.oleo, i + 1), fundo, "a orla virgem");
     assert_eq!(da_celula(&g.oleo, i), m, "a célula pintada não se veste");

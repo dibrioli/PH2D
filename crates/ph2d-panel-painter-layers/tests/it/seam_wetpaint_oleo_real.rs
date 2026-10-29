@@ -20,8 +20,9 @@ use ph2d_tool_painter::PainterTool;
 use ph2d_tool_painter::ids::{
     PAINTER_WETPAINT_OLEO_ALCANCE_FENDA, PAINTER_WETPAINT_OLEO_ALTITUDE,
     PAINTER_WETPAINT_OLEO_AMBIENTE, PAINTER_WETPAINT_OLEO_AZIMUTE, PAINTER_WETPAINT_OLEO_FAIXAS,
-    PAINTER_WETPAINT_OLEO_FENDA, PAINTER_WETPAINT_OLEO_FORCA_AMBIENTE, PAINTER_WETPAINT_OLEO_MATERIAL,
-    PAINTER_WETPAINT_OLEO_MATERIAL_NEUTRO, PAINTER_WETPAINT_OLEO_REAL, PAINTER_WETPAINT_OLEO_SOMBRA,
+    PAINTER_WETPAINT_OLEO_FENDA, PAINTER_WETPAINT_OLEO_FORCA_AMBIENTE,
+    PAINTER_WETPAINT_OLEO_MATERIAL, PAINTER_WETPAINT_OLEO_MATERIAL_NEUTRO,
+    PAINTER_WETPAINT_OLEO_REAL, PAINTER_WETPAINT_OLEO_SOMBRA,
     painter_wetpaint_oleo_ambiente_option_id,
 };
 use ph2d_ui_testkit::MockPanelHost;
@@ -505,7 +506,13 @@ fn o_cartao_real_oil_nao_mostra_os_pesos_da_tinta() {
         textos.contains(&"Subsurface Radius") && textos.contains(&"Shadow"),
         "controlo: a óptica e o material do cartão estão pintados ({textos:?})"
     );
-    for nome in ["Transparency", "Transmission", "Paper Relief", "Depth", "Gloss"] {
+    for nome in [
+        "Transparency",
+        "Transmission",
+        "Paper Relief",
+        "Depth",
+        "Gloss",
+    ] {
         assert!(
             !textos.iter().any(|t| t.starts_with(nome)),
             "«{nome}» no cartão Real Oil"

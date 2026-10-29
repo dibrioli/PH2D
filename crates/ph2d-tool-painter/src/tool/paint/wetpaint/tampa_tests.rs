@@ -102,10 +102,14 @@ fn mede(c: &[f64]) -> ([f64; 2], f64) {
 fn as_pontas_rectas_cortam_o_traco_a_direito_e_pousam_a_mesma_tinta() {
     let (redondo, tinta_r) = mede(&recto(false));
     let (rectas, tinta_q) = mede(&recto(true));
-    eprintln!("curva ini·fim: redondo {redondo:.3?} · rectas {rectas:.3?}; tinta {tinta_r:.1} · {tinta_q:.1}");
+    eprintln!(
+        "curva ini·fim: redondo {redondo:.3?} · rectas {rectas:.3?}; tinta {tinta_r:.1} · {tinta_q:.1}"
+    );
     let (q, r) = (pontas(&recto(true)), pontas(&recto(false)));
     let alem = pontas(&recto_alem(true, 0.5));
-    eprintln!("pontas [início, fim, rampa ini, rampa fim]: rectas {q:?} · redondo {r:?} · além 0,5 {alem:?}");
+    eprintln!(
+        "pontas [início, fim, rampa ini, rampa fim]: rectas {q:?} · redondo {r:?} · além 0,5 {alem:?}"
+    );
     assert!(
         redondo.iter().all(|&k| k >= 0.2),
         "controlo: o redondo acaba em meia-lua ({redondo:?})"
@@ -120,7 +124,10 @@ fn as_pontas_rectas_cortam_o_traco_a_direito_e_pousam_a_mesma_tinta() {
         "o miolo pousa a tinta do redondo: {razao:.3}"
     );
     // As pontas CHEIAS até ao corte: a rampa de 10 → 90 % do miolo, ao longo do eixo.
-    assert!(r[2] >= 40.0 && r[3] >= 40.0, "controlo: o redondo esmaece num raio ({r:?})");
+    assert!(
+        r[2] >= 40.0 && r[3] >= 40.0,
+        "controlo: o redondo esmaece num raio ({r:?})"
+    );
     // O Rebelle (a mesma régua no recto de 40 da bateria, `docs/Painter/Pinceis/J6_pontas_rectas.md`): 11–35 px.
     assert!(
         q[2] <= 0.35 * r[2] && q[3] <= 0.35 * r[3],
@@ -140,8 +147,14 @@ fn as_pontas_rectas_cortam_o_traco_a_direito_e_pousam_a_mesma_tinta() {
 /// `[início, fim, rampa do início, rampa do fim]` (px) pela tinta do miolo (± 8 px do eixo), coluna a coluna: a ponta é
 /// onde passa metade da do meio; a rampa, a distância de 10 % a 90 % dela.
 fn pontas(c: &[f64]) -> [f64; 4] {
-    let col = |x: usize| (Y as usize - 8..=Y as usize + 8).map(|y| c[y * W + x]).sum::<f64>() / 17.0;
-    let meio = (X0 as usize + 60..X1 as usize - 60).map(col).sum::<f64>() / (X1 - X0 - 120.0) as f64;
+    let col = |x: usize| {
+        (Y as usize - 8..=Y as usize + 8)
+            .map(|y| c[y * W + x])
+            .sum::<f64>()
+            / 17.0
+    };
+    let meio =
+        (X0 as usize + 60..X1 as usize - 60).map(col).sum::<f64>() / (X1 - X0 - 120.0) as f64;
     let primeira = |k: f64| (0..W).find(|&x| col(x) >= k * meio).unwrap_or(W) as f64;
     let ultima = |k: f64| (0..W).rev().find(|&x| col(x) >= k * meio).unwrap_or(0) as f64;
     [
@@ -179,7 +192,13 @@ fn fecho_largo(parada: bool) -> (usize, std::time::Duration, Vec<u8>) {
         t.on_canvas_pointer(p(x, PointerPhase::Move));
         t.on_tick(8.0);
     }
-    let brush = t.paint.wetpaint.session.as_ref().and_then(|s| s.pincel_do_fecho).expect("o traço vivo");
+    let brush = t
+        .paint
+        .wetpaint
+        .session
+        .as_ref()
+        .and_then(|s| s.pincel_do_fecho)
+        .expect("o traço vivo");
     let alem = t.alem_no_motor(&brush);
     let sess = t.paint.wetpaint.session.as_mut().expect("o traço vivo");
     if parada {
@@ -196,7 +215,12 @@ fn fecho_largo(parada: bool) -> (usize, std::time::Duration, Vec<u8>) {
         .iter()
         .filter_map(|l| {
             let u = l.ultimo?;
-            Some(super::tampa::quantos_do_fecho(l, &brush, u.radius_px.max(u.stroke_radius_px), alem))
+            Some(super::tampa::quantos_do_fecho(
+                l,
+                &brush,
+                u.radius_px.max(u.stroke_radius_px),
+                alem,
+            ))
         })
         .sum();
     let t0 = std::time::Instant::now();
@@ -217,11 +241,16 @@ fn o_fecho_das_pontas_rectas_nao_depende_de_a_mao_parar() {
         std::fs::write(f, &tela_anda).unwrap();
     }
     let (para, t_para, tela_para) = fecho_largo(true);
-    eprintln!("fecho: mão a andar {anda} dabs em {t_anda:?} · último dab parado {para} dabs em {t_para:?}");
+    eprintln!(
+        "fecho: mão a andar {anda} dabs em {t_anda:?} · último dab parado {para} dabs em {t_para:?}"
+    );
     assert!(anda > 0, "controlo: o fecho pousa dabs");
     assert_eq!(
         anda, para,
         "o fecho não pode depender de a mão parar antes de soltar ({t_anda:?} × {t_para:?})"
     );
-    assert!(tela_anda == tela_para, "o traço da mão parada é o da mão que solta a andar");
+    assert!(
+        tela_anda == tela_para,
+        "o traço da mão parada é o da mão que solta a andar"
+    );
 }

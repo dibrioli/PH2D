@@ -25,16 +25,16 @@ pub use scratch::{AdvCell, SolverScratch};
 
 #[path = "grid/altura.rs"]
 pub mod altura;
+#[path = "grid/aparencia.rs"]
+pub mod aparencia;
 #[path = "grid/crista.rs"]
 pub mod crista;
-#[path = "grid/nivelado.rs"]
-pub mod nivelado;
 #[path = "grid/espessura.rs"]
 pub mod espessura;
 #[path = "grid/material.rs"]
 pub mod material;
-#[path = "grid/aparencia.rs"]
-pub mod aparencia;
+#[path = "grid/nivelado.rs"]
+pub mod nivelado;
 #[path = "grid/oleo_celula.rs"]
 pub mod oleo_celula;
 #[path = "grid/patch.rs"]

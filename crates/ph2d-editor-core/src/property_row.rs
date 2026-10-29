@@ -28,10 +28,10 @@ pub use crate::widget::{Seccao, colunas_da_linha};
 
 /// ⭐ O BOTÃO de acção numa lista de propriedades — ver [`botao::caixa_do_botao`].
 mod botao;
-/// O alfa da linha ESMAECIDA, partilhado pelos painéis que esmaecem.
-pub mod inativa;
 /// ⭐ A linha de ESCOLHA — ver [`escolha`].
 pub mod escolha;
+/// O alfa da linha ESMAECIDA, partilhado pelos painéis que esmaecem.
+pub mod inativa;
 use crate::zones::Rect;
 pub use botao::{abaixo_do_botao, caixa_do_botao};
 mod casas;

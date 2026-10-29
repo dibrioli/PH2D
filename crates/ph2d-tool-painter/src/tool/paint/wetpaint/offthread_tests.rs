@@ -652,9 +652,15 @@ fn adiar_o_oleo_nao_traz_o_motor_para_casa() {
     let mut t = small_puddle();
     t.paint_tick(1.0 / 60.0);
     let longe = |t: &PainterTool| {
-        !matches!(t.paint.wetpaint.session.as_ref().expect("sessao").engine, EngineSlot::Here(_))
+        !matches!(
+            t.paint.wetpaint.session.as_ref().expect("sessao").engine,
+            EngineSlot::Here(_)
+        )
     };
-    assert!(longe(&t), "CONTROLO: o tick deixou o motor em casa — a régua não discrimina");
+    assert!(
+        longe(&t),
+        "CONTROLO: o tick deixou o motor em casa — a régua não discrimina"
+    );
     t.set_wet_oleo_adiado(true);
     assert!(longe(&t), "ligar o adiamento trouxe o motor do worker");
     t.set_wet_oleo_adiado(true);

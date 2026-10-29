@@ -333,7 +333,10 @@ fn foto_do_smooth_edges() {
     let p = &b
         .entradas
         .iter()
-        .find(|e| e.relativo.ends_with("WetPainter/Oil/Dabber/Dabber.ph2d-brush.png"))
+        .find(|e| {
+            e.relativo
+                .ends_with("WetPainter/Oil/Dabber/Dabber.ph2d-brush.png")
+        })
         .expect("o Dabber de fábrica")
         .preset;
     let mut t = PainterTool::default();

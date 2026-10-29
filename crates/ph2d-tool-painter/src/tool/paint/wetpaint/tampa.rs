@@ -135,7 +135,10 @@ pub(super) fn passo_virtual(lane: &Lane, brush: &BrushSpec) -> f32 {
     if lane.passo > 0.0 {
         return lane.passo;
     }
-    let rumo = lane.ultimo.and_then(|u| unitario(u.dir)).unwrap_or(lane.rumo0);
+    let rumo = lane
+        .ultimo
+        .and_then(|u| unitario(u.dir))
+        .unwrap_or(lane.rumo0);
     brush.passo_ao_longo_px(brush.spacing, rumo)
 }
 
@@ -237,8 +240,10 @@ impl PainterTool {
             return;
         }
         // A lane volta onde estava: o dab seguinte da mão anda desde o SEU anterior (o peso, a janela do rasto).
-        let onde: Vec<(usize, [f32; 2], f32)> =
-            vivas.iter().map(|v| (v.0, sess.lanes[v.0].pos, sess.lanes[v.0].arco)).collect();
+        let onde: Vec<(usize, [f32; 2], f32)> = vivas
+            .iter()
+            .map(|v| (v.0, sess.lanes[v.0].pos, sess.lanes[v.0].arco))
+            .collect();
         let (dabs, de) = virtuais(&vivas, -1.0);
         self.pousa_virtuais(&dabs, de, true, brush);
         if let Some(sess) = self.paint.wetpaint.session.as_mut() {
@@ -277,7 +282,13 @@ impl PainterTool {
                 let u = l.ultimo?;
                 let r = unitario(u.dir)?;
                 let raio = u.radius_px.max(u.stroke_radius_px);
-                Some((i, u, r, passo_virtual(l, &brush), quantos_do_fecho(l, &brush, raio, alem)))
+                Some((
+                    i,
+                    u,
+                    r,
+                    passo_virtual(l, &brush),
+                    quantos_do_fecho(l, &brush, raio, alem),
+                ))
             })
             .collect();
         if vivas.is_empty() {

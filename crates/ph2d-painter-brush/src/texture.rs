@@ -470,7 +470,10 @@ pub fn sample(
     if s.lei.contraste != 1.0 {
         let mut cru = *s;
         cru.lei.contraste = 1.0;
-        return contrasta(sample(&cru, b, px, py, center, radius, image), s.lei.contraste);
+        return contrasta(
+            sample(&cru, b, px, py, center, radius, image),
+            s.lei.contraste,
+        );
     }
     if !s.is_active() {
         return 1.0;

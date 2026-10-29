@@ -25,8 +25,17 @@ fn tela(rel: &str, press: f64) -> Vec<u8> {
         let s = t.paint.wetpaint.session.as_mut().expect("sessão");
         s.bring_home();
         let g = s.engine.active_grid();
-        let v: Vec<f32> = g.material.iter().map(|m| m.amassa_papel).filter(|&a| a < 1.0).collect();
-        println!("[paper press] {rel} {press}: {} células com amassa < 1 (de {})", v.len(), g.material.len());
+        let v: Vec<f32> = g
+            .material
+            .iter()
+            .map(|m| m.amassa_papel)
+            .filter(|&a| a < 1.0)
+            .collect();
+        println!(
+            "[paper press] {rel} {press}: {} células com amassa < 1 (de {})",
+            v.len(),
+            g.material.len()
+        );
     }
     let mut px = t.run_full().0;
     t.apply_impasto_light(
@@ -91,9 +100,20 @@ fn medida_paper_press_calibra() {
     let um = super::tela_final(&mut t);
     // A luz MULTIPLICA a cor: o mesmo relevo mexe menos níveis sob a tinta escura — o dente RELATIVO (÷ a média).
     let media = |px: &[u8], m: &[bool]| {
-        let (s, n) = px.as_chunks::<4>().0.iter().zip(m).filter(|(_, v)| **v).fold((0.0, 0.0), |(s, n), (q, _)| {
-            (s + 0.2126 * f64::from(q[0]) + 0.7152 * f64::from(q[1]) + 0.0722 * f64::from(q[2]), n + 1.0)
-        });
+        let (s, n) = px
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .zip(m)
+            .filter(|(_, v)| **v)
+            .fold((0.0, 0.0), |(s, n), (q, _)| {
+                (
+                    s + 0.2126 * f64::from(q[0])
+                        + 0.7152 * f64::from(q[1])
+                        + 0.0722 * f64::from(q[2]),
+                    n + 1.0,
+                )
+            });
         s / n
     };
     let (lm, ln) = (media(&um, &miolo), media(&nu_px, &nu));

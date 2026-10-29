@@ -594,7 +594,11 @@ impl CampoAltura {
         };
         let sombra = plano_f32(rep, w, h, &|k| {
             let s = (alta[k] * escala * cob[k]) as f32;
-            let s = if substrato.is_some() { s + papel_em(k) } else { s };
+            let s = if substrato.is_some() {
+                s + papel_em(k)
+            } else {
+                s
+            };
             match &crista {
                 Some(c) => s + (c[k] * k_fios) as f32,
                 None => s,

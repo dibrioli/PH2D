@@ -89,8 +89,8 @@ impl Esbate {
         }
         let raio = d.radius_px.max(1e-3);
         let raio0 = lane.raio0.max(1e-3);
-        let perto = lote == Lote::Abertura
-            || d.arc_len - lane.arco0 < raio0 + ALCANCE_DA_ENTRADA * raio;
+        let perto =
+            lote == Lote::Abertura || d.arc_len - lane.arco0 < raio0 + ALCANCE_DA_ENTRADA * raio;
         let carga = match (lote, lane.ultimo) {
             (Lote::Fecho, Some(u)) => carga_do_fecho(e, d.arc_len - u.arc_len, u.radius_px),
             _ => 1.0,

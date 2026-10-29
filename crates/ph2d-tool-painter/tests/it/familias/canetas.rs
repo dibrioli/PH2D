@@ -139,7 +139,10 @@ pub const EM_ESTUDO_J6_WET: &[Receita] = &[
             ("shape", SEM_FORMA_WET),
             ("jitter_scale", "0.0"),
             ("dual", GRUMOS_DO_PAU),
-            ("taper", r#"{"opacity": 0.6, "start": 1.5, "tip_start": 1.0}"#),
+            (
+                "taper",
+                r#"{"opacity": 0.6, "start": 1.5, "tip_start": 1.0}"#,
+            ),
             ("size_max_px", "97"),
         ],
         nasce_de: Some("Dip Pen"),

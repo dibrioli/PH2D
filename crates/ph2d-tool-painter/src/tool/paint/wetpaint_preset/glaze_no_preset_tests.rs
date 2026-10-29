@@ -91,7 +91,10 @@ fn a_paint_texture_viaja_com_o_preset_e_com_a_ferramenta() {
     t.wet_preset_aplicar(&a);
     assert!(t.paint.wetpaint.paper_visual, "A liga");
     t.wet_preset_aplicar(&b);
-    assert!(!t.paint.wetpaint.paper_visual, "B (sem a chave) = a de fábrica");
+    assert!(
+        !t.paint.wetpaint.paper_visual,
+        "B (sem a chave) = a de fábrica"
+    );
     t.wet_preset_aplicar(&a);
     assert!(t.paint.wetpaint.paper_visual, "A de novo liga");
 
@@ -99,7 +102,10 @@ fn a_paint_texture_viaja_com_o_preset_e_com_a_ferramenta() {
     t.set_paint_tool_mode("wetpaint");
     t.paint.wetpaint.paper_visual = true;
     t.set_paint_tool_mode("mask");
-    assert!(!t.paint.wetpaint.paper_visual, "a outra ferramenta tem a sua");
+    assert!(
+        !t.paint.wetpaint.paper_visual,
+        "a outra ferramenta tem a sua"
+    );
     t.set_paint_tool_mode("wetpaint");
     assert!(t.paint.wetpaint.paper_visual, "volta a do pincel");
 }

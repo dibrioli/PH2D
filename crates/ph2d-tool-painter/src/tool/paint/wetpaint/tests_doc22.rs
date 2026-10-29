@@ -605,7 +605,10 @@ fn paper_visual_prints_grain_into_the_paint_and_bakes() {
             click(&mut t, crate::ids::PAINTER_WETPAINT_PAPER_VISUAL);
             assert!(t.paint.wetpaint.paper_visual);
         }
-        assert_eq!(antes, *t.canvas_rgba, "the toggle must not touch the laid paint");
+        assert_eq!(
+            antes, *t.canvas_rgba,
+            "the toggle must not touch the laid paint"
+        );
         stroke(&mut t, 85.0);
         t
     };
@@ -645,7 +648,10 @@ fn km_flags_reach_the_sim_and_the_composite() {
         if glaze {
             click(&mut t, crate::ids::WET_TUNING_KM_GLAZE);
         }
-        assert_eq!(before, *t.canvas_rgba, "the flag must not touch the laid paint");
+        assert_eq!(
+            before, *t.canvas_rgba,
+            "the flag must not touch the laid paint"
+        );
         t.set_brush_color_srgb8([30, 60, 210]);
         stroke(&mut t, 60.0);
         t

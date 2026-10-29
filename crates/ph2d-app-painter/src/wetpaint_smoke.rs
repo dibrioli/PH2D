@@ -144,7 +144,8 @@ fn oil_bristle() -> Option<(ph2d_brush_presets::Preset, ph2d_brush_presets::Pres
         .find(|e| e.preset.parametros.name == "Oil Bristle")
         .map(|e| e.preset)
         .or_else(|| {
-            let f = raiz.join("docs/Painter/Pinceis/W2_Bristle_candidatos/Oil Bristle.ph2d-brush.png");
+            let f =
+                raiz.join("docs/Painter/Pinceis/W2_Bristle_candidatos/Oil Bristle.ph2d-brush.png");
             ph2d_brush_presets::ler(&std::fs::read(f).ok()?).ok()
         })?;
     let mut ontem = hoje.clone();

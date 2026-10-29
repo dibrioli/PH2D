@@ -205,7 +205,12 @@ fn medida_oleo_real_transparencia() {
     let (mut so_papel, _) = cena_papel_texturizado(true, 0.6, false);
     // O miolo que os gates do produto medem (`miolo_e_papel_nu`): a régua dos modos lê também o Cycles nele.
     let mut pgm = format!("P5\n{OW} {OH}\n255\n").into_bytes();
-    pgm.extend(miolo_e_papel_nu(&cob).0.iter().map(|&m| if m { 255u8 } else { 0 }));
+    pgm.extend(
+        miolo_e_papel_nu(&cob)
+            .0
+            .iter()
+            .map(|&m| if m { 255u8 } else { 0 }),
+    );
     std::fs::write(dir.join("miolo_produto.pgm"), pgm).expect("grava");
     // W3b: `PH2D_OLEO_CREME=1` = o papel creme do smoke do dono (o Cycles lê-o no `papel.ppm`).
     if std::env::var_os("PH2D_OLEO_CREME").is_some() {
@@ -245,7 +250,10 @@ fn medida_oleo_real_transparencia() {
     // A varredura da calibração do modo Blender (`PH2D_OLEO_MODOS=0.1,0.2,…`): o modo intermédio `m` dá o filtro
     // `a^(2k)` com `k = K_BLENDER + (VIDRO_K − K_BLENDER)·m` — as variantes no MESMO processo.
     if let Ok(lista) = std::env::var("PH2D_OLEO_MODOS") {
-        for m in lista.split(',').filter_map(|x| x.trim().parse::<f64>().ok()) {
+        for m in lista
+            .split(',')
+            .filter_map(|x| x.trim().parse::<f64>().ok())
+        {
             com_material(&mut t, 11, m);
             for (nome, v) in [("05", 0.5), ("1", 1.0)] {
                 com_material(&mut t, 9, v);
@@ -464,10 +472,19 @@ fn o_modo_blender_casa_com_o_cycles_e_o_clear_glass_e_o_de_antes() {
         ("0,5", lb05, sb05, (0.205, 0.744), (0.08, 0.08)),
         ("1", lb1, sb1, (0.144, 0.631), (0.25, 0.10)),
     ] {
-        assert!((l / lc - 1.0).abs() <= tl, "Blender {nome}: L {l} × Cycles {lc}");
-        assert!((s / sc - 1.0).abs() <= ts, "Blender {nome}: saturação {s} × Cycles {sc}");
+        assert!(
+            (l / lc - 1.0).abs() <= tl,
+            "Blender {nome}: L {l} × Cycles {lc}"
+        );
+        assert!(
+            (s / sc - 1.0).abs() <= ts,
+            "Blender {nome}: saturação {s} × Cycles {sc}"
+        );
     }
-    assert!(lb1 < 0.6 * lv1, "Blender mais escuro que o Clear glass: {lb1} × {lv1}");
+    assert!(
+        lb1 < 0.6 * lv1,
+        "Blender mais escuro que o Clear glass: {lb1} × {lv1}"
+    );
     assert_eq!(
         (fnv(&v05), fnv(&v1)),
         (CLEAR_GLASS_05, CLEAR_GLASS_1),

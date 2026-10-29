@@ -56,7 +56,8 @@ pub const CURAS_J6: &[(&str, &[(&str, f64)])] = &[
 /// (`docs/Painter/Pinceis/J6t_pontas_esbatem.md`) — o Wash a 1 (RMS dos perfis das pontas ao Rebelle 0,182 → 0,096; 1,3 ·
 /// 2: 0,135 · 0,214; régua 384 = 384). ⛔ O Liner NÃO: 0,5 · 1 · 1,6 → 0,086 · 0,102 · 0,196 contra 0,084 sem (a 40 px o
 /// Rebelle Liner é cheio até à tampa; régua 429 → 426).
-pub const CURAS_J6_PINCEL: &[(&str, &[(&str, &str)])] = &[("Wet Wash", &[("pontas_esbate", "1.0")])];
+pub const CURAS_J6_PINCEL: &[(&str, &[(&str, &str)])] =
+    &[("Wet Wash", &[("pontas_esbate", "1.0")])];
 
 pub const WET: &[Receita] = &[
     // J4 3.ª ronda (`exames/aguarela.md`): CURADO, NÃO aprovado — o FILME (o miolo mosqueado e a orla oca que dois revisores

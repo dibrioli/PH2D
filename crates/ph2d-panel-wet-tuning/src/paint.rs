@@ -201,7 +201,10 @@ fn paint_group(
         return y;
     };
     let mut inner = y;
-    for row in rows::rows().iter().filter(|r| r.group == section.group && r.na_mao(brush)) {
+    for row in rows::rows()
+        .iter()
+        .filter(|r| r.group == section.group && r.na_mao(brush))
+    {
         let value = brush.wet_knobs.knobs[row.knob];
         let topo = inner;
         inner = paint_row(ctx, row, value, x, w, inner, theme);
@@ -225,9 +228,9 @@ fn esmaece_se_inerte(
     for id in [row.slider, row.chip] {
         match dica {
             Some(chave) => store.set_tooltip(id, tr(chave)),
-            None if store
-                .tooltip_for(id)
-                .is_some_and(|t| t == tr(ph2d_tool_painter::Dependente::MaterialSemOleo.dica())) =>
+            None if store.tooltip_for(id).is_some_and(|t| {
+                t == tr(ph2d_tool_painter::Dependente::MaterialSemOleo.dica())
+            }) =>
             {
                 store.set_tooltip(id, "");
             }

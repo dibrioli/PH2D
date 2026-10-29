@@ -4,9 +4,9 @@
 
 use super::*;
 
-mod perto; // o misturador PERTO da tinta (Knob::BlendReach): a média local, não a da janela
 #[cfg(test)]
-mod cobre_tests; // a lei da tinta que cobre (Knob::WetCover)
+mod cobre_tests;
+mod perto; // o misturador PERTO da tinta (Knob::BlendReach): a média local, não a da janela // a lei da tinta que cobre (Knob::WetCover)
 
 /// O piso de água de uma célula que recebeu tinta (`transfer_paint_impl`, «the wet map must know»): até
 /// ele a célula está SECA.
@@ -575,8 +575,9 @@ impl Trail {
                 }
                 let i = cx as usize + cy as usize * s;
                 let m = local.as_ref().map_or(janela, |l| l.media(lx, ly));
-                let (mat_media, marca_media) =
-                    local_mat.as_ref().map_or((mat_media, marca_media), |l| l.media(lx, ly));
+                let (mat_media, marca_media) = local_mat
+                    .as_ref()
+                    .map_or((mat_media, marca_media), |l| l.media(lx, ly));
                 let [a_r, a_g, a_b] = m.a;
                 let [b_r, b_g, b_b] = m.b;
                 let (avg_susp, avg_sett, avg_film, avg_wet) = (m.susp, m.sett, m.film, m.wet);

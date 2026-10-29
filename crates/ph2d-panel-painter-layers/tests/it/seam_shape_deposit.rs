@@ -221,16 +221,31 @@ fn the_flat_ends_rows_land_on_the_tool() {
     let caixa = ph2d_tool_painter::ids::PAINTER_BRUSH_PONTAS_RECTAS;
     let alem = ph2d_tool_painter::ids::PAINTER_BRUSH_PONTAS_ALEM;
     let (mut host, mut st, rects) = painted(&tool);
-    assert!(rect_of(&rects, caixa).is_some(), "a caixa `Flat ends` não foi pintada no Wet Paint");
-    assert!(rect_of(&rects, alem).is_none(), "`Ends beyond` só com as pontas rectas ligadas");
+    assert!(
+        rect_of(&rects, caixa).is_some(),
+        "a caixa `Flat ends` não foi pintada no Wet Paint"
+    );
+    assert!(
+        rect_of(&rects, alem).is_none(),
+        "`Ends beyond` só com as pontas rectas ligadas"
+    );
     host.apply_panel_event::<PainterLayersPanel>(&mut st, WidgetEvent::Click(caixa));
     pump(&mut host, &mut tool);
-    assert!(tool.brush_settings().pontas_rectas, "`Flat ends` não ligou as pontas rectas");
+    assert!(
+        tool.brush_settings().pontas_rectas,
+        "`Flat ends` não ligou as pontas rectas"
+    );
     let (mut host, mut st, rects) = painted(&tool);
-    assert!(rect_of(&rects, alem).is_some(), "a row `Ends beyond` não foi pintada com a caixa ligada");
+    assert!(
+        rect_of(&rects, alem).is_some(),
+        "a row `Ends beyond` não foi pintada com a caixa ligada"
+    );
     host.store_mut().set_number_value(alem, 0.4);
     host.apply_panel_event::<PainterLayersPanel>(&mut st, WidgetEvent::ValueChanged(alem));
     pump(&mut host, &mut tool);
     let a = tool.brush_settings().pontas_alem;
-    assert!((a - 0.4).abs() < 1e-3, "`Ends beyond` não pousou no tool; leu {a}");
+    assert!(
+        (a - 0.4).abs() < 1e-3,
+        "`Ends beyond` não pousou no tool; leu {a}"
+    );
 }

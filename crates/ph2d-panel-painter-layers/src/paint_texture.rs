@@ -101,8 +101,12 @@ pub(crate) fn paint_texture_section(
             brush.grain_same_as_paper,
         );
         if brush.grain_e_o_papel() {
-            y = crate::paint_texture_tiling::paint_grain_depth_row(ctx, theme, x, content_w, y, &brush);
-            y = crate::ponta_linhas::paint_comportamento_do_grao(ctx, theme, x, content_w, y, &brush);
+            y = crate::paint_texture_tiling::paint_grain_depth_row(
+                ctx, theme, x, content_w, y, &brush,
+            );
+            y = crate::ponta_linhas::paint_comportamento_do_grao(
+                ctx, theme, x, content_w, y, &brush,
+            );
             let out = paint_texture_params_and_ramp(
                 ctx,
                 theme,

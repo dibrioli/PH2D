@@ -183,7 +183,11 @@ fn os_reprovados_do_guache_nao_estao_na_fabrica() {
 fn sobre_com(nome: &str, engine: &[(&str, f64)]) -> (Vec<u8>, usize) {
     use crate::exame_bancada::{Fonte, Pincel, bateria, pinceis, pinta_cena};
     let p = pinceis(nome).remove(0);
-    let Fonte::Preset { mut preset, relativo } = p.fonte else {
+    let Fonte::Preset {
+        mut preset,
+        relativo,
+    } = p.fonte
+    else {
         unreachable!()
     };
     for (k, v) in engine {
@@ -203,7 +207,10 @@ fn sobre_com(nome: &str, engine: &[(&str, f64)]) -> (Vec<u8>, usize) {
         .clone();
     let tela = [0, 1].map(|i| bat["tela"][i].as_u64().unwrap() as u32);
     let papel = [0, 1, 2].map(|i| bat["papel"][i].as_u64().unwrap() as u8);
-    (pinta_cena(&p, None, &cena, tela, papel, 0).1, tela[0] as usize)
+    (
+        pinta_cena(&p, None, &cena, tela, papel, 0).1,
+        tela[0] as usize,
+    )
 }
 
 /// O RESTO do vermelho molhado sob o azul (cena `sobre` A, cruzamentos x 250 e 500 na faixa molhada y 150): a distância
@@ -245,9 +252,17 @@ fn o_azul_da_guache_cobre_o_vermelho_molhado() {
         [a.join().unwrap(), b.join().unwrap()]
     });
     let ((rc, lc), (rs, ls)) = (resto(&com, w), resto(&sem, w));
-    println!("[cobre] Gouache Flat: resto {rc:.3} com a lei · {rs:.3} sem (Rebelle 0,11) · longe {lc:?} · {ls:?}");
-    assert!(rs > 0.28, "o controlo (a mistura de sempre) já cobre: resto {rs:.3}");
-    assert!(rc < 0.18, "o azul não cobre o vermelho molhado: resto {rc:.3} (Rebelle 0,11)");
+    println!(
+        "[cobre] Gouache Flat: resto {rc:.3} com a lei · {rs:.3} sem (Rebelle 0,11) · longe {lc:?} · {ls:?}"
+    );
+    assert!(
+        rs > 0.28,
+        "o controlo (a mistura de sempre) já cobre: resto {rs:.3}"
+    );
+    assert!(
+        rc < 0.18,
+        "o azul não cobre o vermelho molhado: resto {rc:.3} (Rebelle 0,11)"
+    );
     assert!(
         (0..3).all(|k| (lc[k] - ls[k]).abs() < 2.0),
         "a lei mexeu na faixa longe do azul: {lc:?} contra {ls:?}"
@@ -280,7 +295,9 @@ fn rectos_da_guache_seca(engine: &[(&str, f64)]) -> (Vec<u8>, usize) {
         },
     };
     let recto = |y: f64| -> Vec<serde_json::Value> {
-        (0..294).map(|i| serde_json::json!([60.0 + 3.0 * f64::from(i), y, 1.0])).collect()
+        (0..294)
+            .map(|i| serde_json::json!([60.0 + 3.0 * f64::from(i), y, 1.0]))
+            .collect()
     };
     let cena = serde_json::json!({"nome": "fios", "ops": [
         {"op": "pincel", "quem": "preset"},
@@ -290,7 +307,10 @@ fn rectos_da_guache_seca(engine: &[(&str, f64)]) -> (Vec<u8>, usize) {
         {"op": "simula", "quadros": 60},
         {"op": "foto", "nome": "A"},
     ]});
-    (pinta_cena(&p, None, &cena, [1000, 640], [255; 3], 0).1, 1000)
+    (
+        pinta_cena(&p, None, &cena, [1000, 640], [255; 3], 0).1,
+        1000,
+    )
 }
 
 /// A LARGURA das riscas ao comprido de um traço horizontal (miolo x 300..700, linhas `y ± meia`): o 1.º zero da
@@ -331,13 +351,24 @@ fn os_fios_da_guache_seca_crescem_com_o_pincel() {
         [a.join().unwrap(), b.join().unwrap()]
     });
     let razao = |px: &[u8]| {
-        let (a, b) = (largura_das_riscas(px, w, 80, 40), largura_das_riscas(px, w, 400, 200));
+        let (a, b) = (
+            largura_das_riscas(px, w, 80, 40),
+            largura_das_riscas(px, w, 400, 200),
+        );
         (a, b, b as f64 / a.max(1) as f64)
     };
     let ((c40, c320, rc), (s40, s320, rs)) = (razao(&com), razao(&sem));
-    println!("[fios] riscas 40 → 320 px: com a lei {c40} → {c320} ({rc:.2}×) · sem {s40} → {s320} ({rs:.2}×)");
+    println!(
+        "[fios] riscas 40 → 320 px: com a lei {c40} → {c320} ({rc:.2}×) · sem {s40} → {s320} ({rs:.2}×)"
+    );
     // A lei = o diâmetro 8× → a risca ~8× (medido 9,3×); sem ela os fios ficam em 3 px e só a queda da borda alarga o
     // perfil (4,7×).
-    assert!(rs < 6.0, "o controlo (fios em px fixos) já cresce: {s40} → {s320}");
-    assert!(rc > 7.0, "os fios não crescem com o pincel: {c40} → {c320} ({rc:.2}×, sem a lei {rs:.2}×)");
+    assert!(
+        rs < 6.0,
+        "o controlo (fios em px fixos) já cresce: {s40} → {s320}"
+    );
+    assert!(
+        rc > 7.0,
+        "os fios não crescem com o pincel: {c40} → {c320} ({rc:.2}×, sem a lei {rs:.2}×)"
+    );
 }

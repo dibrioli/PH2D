@@ -782,16 +782,31 @@ mod diag_w3b {
             for v in [0.3, 0.6, 1.0] {
                 mexe(&mut t, v);
             }
-            assert_eq!(t.canvas_rgba.to_vec(), a, "óleo {oleo}: o evento recompôs a tela");
-            assert!(t.oleo_por_compor(), "óleo {oleo}: o Smooth Edges não pediu a varredura");
+            assert_eq!(
+                t.canvas_rgba.to_vec(),
+                a,
+                "óleo {oleo}: o evento recompôs a tela"
+            );
+            assert!(
+                t.oleo_por_compor(),
+                "óleo {oleo}: o Smooth Edges não pediu a varredura"
+            );
             let quadros = varre(&mut t);
             let mudou = t.canvas_rgba.iter().zip(&a).filter(|(x, y)| x != y).count();
-            println!("[smooth da tela] óleo {oleo}: {mudou} bytes da tinta antiga em {quadros} quadros");
-            assert!(mudou > 0, "óleo {oleo}: o Smooth Edges não mudou a tinta já pousada");
+            println!(
+                "[smooth da tela] óleo {oleo}: {mudou} bytes da tinta antiga em {quadros} quadros"
+            );
+            assert!(
+                mudou > 0,
+                "óleo {oleo}: o Smooth Edges não mudou a tinta já pousada"
+            );
             mexe(&mut t, 0.0);
             varre(&mut t);
             let resto = t.canvas_rgba.iter().zip(&a).filter(|(x, y)| x != y).count();
-            assert_eq!(resto, 0, "óleo {oleo}: voltar a 0 deixou {resto} bytes diferentes");
+            assert_eq!(
+                resto, 0,
+                "óleo {oleo}: voltar a 0 deixou {resto} bytes diferentes"
+            );
         }
     }
 
@@ -803,17 +818,28 @@ mod diag_w3b {
             super::so_na_cor::set(so_na_cor);
             let mut t = um_traco("Dabber", false);
             let sombra = |t: &PainterTool| {
-                t.paint.wetpaint.session.as_ref().expect("sessão").sombra.clone()
+                t.paint
+                    .wetpaint
+                    .session
+                    .as_ref()
+                    .expect("sessão")
+                    .sombra
+                    .clone()
             };
             let s0 = sombra(&t);
             t.set_wet_smooth_edges(1.0);
             let n = sombra(&t).iter().zip(&s0).filter(|(x, y)| x != y).count();
             super::so_na_cor::set(false);
-            println!("[smooth no relevo] só na cor {so_na_cor}: {n} células da sombra no papel mudaram");
+            println!(
+                "[smooth no relevo] só na cor {so_na_cor}: {n} células da sombra no papel mudaram"
+            );
             if so_na_cor {
                 assert_eq!(n, 0, "controlo: a lei só da cor mexeu na sombra");
             } else {
-                assert!(n > 0, "o Smooth Edges não chegou ao relevo (a sombra no papel)");
+                assert!(
+                    n > 0,
+                    "o Smooth Edges não chegou ao relevo (a sombra no papel)"
+                );
             }
         }
     }
@@ -861,7 +887,15 @@ mod diag_w3b {
             t.set_wet_smooth_edges(1.0);
             // A tela que se vê (com a luz do relevo): é nela que os vãos saltam.
             let mut px = t.run_full().0;
-            t.apply_impasto_light(&mut px, crate::Region { x: 0, y: 0, w: W, h: H });
+            t.apply_impasto_light(
+                &mut px,
+                crate::Region {
+                    x: 0,
+                    y: 0,
+                    w: W,
+                    h: H,
+                },
+            );
             n[k] = vaos_claros(&px, (W as usize, H as usize));
         }
         super::so_na_cor::set(false);
@@ -890,7 +924,10 @@ mod diag_w3b {
         let s = a.paint.wetpaint.session.as_ref().expect("sessão");
         let (rr, (gw, gh)) = (usize::from(s.ratio), s.grid);
         let alfa = |cx: isize, cy: isize| {
-            let (cx, cy) = (cx.clamp(0, gw as isize - 1) as usize, cy.clamp(0, gh as isize - 1) as usize);
+            let (cx, cy) = (
+                cx.clamp(0, gw as isize - 1) as usize,
+                cy.clamp(0, gh as isize - 1) as usize,
+            );
             s.pigment[(cy * gw + cx) * 4 + 3]
         };
         let ss0 = (crate::tool::paint::watercolor_render::SS0 * 255.0).ceil() as u8;
@@ -907,9 +944,14 @@ mod diag_w3b {
                 }
             }
         }
-        println!("[orla da tinta] {orla} píxeis com tinta ao pé da orla · {mexidos} amaciados de novo");
+        println!(
+            "[orla da tinta] {orla} píxeis com tinta ao pé da orla · {mexidos} amaciados de novo"
+        );
         assert!(orla > 100, "controlo: a régua não achou a orla ({orla})");
-        assert_eq!(mexidos, 0, "o Suave amaciou de novo {mexidos} píxeis da orla do campo");
+        assert_eq!(
+            mexidos, 0,
+            "o Suave amaciou de novo {mexidos} píxeis da orla do campo"
+        );
     }
 
     /// **Pegar um pincel não muda o Smooth Edges da tela** (D1 W3b: não viaja no preset de pincel).
@@ -922,7 +964,11 @@ mod diag_w3b {
         for nome in ["Dabber", "Knife Oily"] {
             let p = crate::tool::paint::wetpaint_preset::de_fabrica_ou_candidato(nome);
             assert!(t.wet_preset_aplicar(&p).is_empty());
-            assert_eq!(t.wet_smooth_edges(), 0.7, "o pincel {nome} trouxe o Smooth Edges");
+            assert_eq!(
+                t.wet_smooth_edges(),
+                0.7,
+                "o pincel {nome} trouxe o Smooth Edges"
+            );
         }
     }
 
@@ -950,4 +996,3 @@ mod diag_w3b {
         super::so_na_cor::set(false);
     }
 }
-

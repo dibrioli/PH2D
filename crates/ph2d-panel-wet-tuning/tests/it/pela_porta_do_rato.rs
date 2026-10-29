@@ -8,10 +8,10 @@
 //! Paper Press) esmaece com a dica enquanto ele está desligado.
 
 use ph2d_a11y::NodeId;
-use ph2d_editor_core::action_bus::EditorAction;
-use ph2d_editor_core::tool::PanelEvent;
 use ph2d_editor_core::Tool;
+use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::panel::{Panel, PanelHostInternal};
+use ph2d_editor_core::tool::PanelEvent;
 use ph2d_editor_core::zones::Rect;
 use ph2d_panel_wet_tuning::{WetTuningPanel, rows, set_current_brush, state};
 use ph2d_tool_painter::{PaintMedia, PainterTool, WetKnobs, WetTool};
@@ -30,7 +30,11 @@ fn ferramenta(ferramenta: WetTool, oleo: bool) -> PainterTool {
         ph2d_editor_core::ids::PAINTER_PAINT_MODE,
         ferramenta.fio().to_owned(),
     ));
-    assert_eq!(t.brush_settings().wet_tool, ferramenta, "a ferramenta não ficou na mão");
+    assert_eq!(
+        t.brush_settings().wet_tool,
+        ferramenta,
+        "a ferramenta não ficou na mão"
+    );
     t
 }
 
@@ -62,9 +66,15 @@ impl Mesa {
     }
 
     /// Os eventos do gesto pelo painel, o barramento à ferramenta e o painel re-pintado (um quadro do app).
-    fn entrega(&mut self, eventos: Vec<ph2d_editor_core::interaction::WidgetEvent>, t: &mut PainterTool) -> usize {
+    fn entrega(
+        &mut self,
+        eventos: Vec<ph2d_editor_core::interaction::WidgetEvent>,
+        t: &mut PainterTool,
+    ) -> usize {
         for ev in eventos {
-            let _ = self.host.apply_panel_event::<WetTuningPanel>(&mut self.st, ev);
+            let _ = self
+                .host
+                .apply_panel_event::<WetTuningPanel>(&mut self.st, ev);
         }
         let mut n = 0;
         for a in self.host.drained_actions() {
@@ -97,21 +107,34 @@ fn cada_linha_do_tuning_aceita_o_rato_e_o_valor_chega_a_ferramenta() {
             mesa.host.click_at(r.x + r.w * 0.5, r.y + r.h * 0.5)
         } else {
             let Some(r) = mesa.rect(row.slider) else {
-                falhas.push(format!("{}: o slider não foi pintado com {dona:?} na mão", row.key));
+                falhas.push(format!(
+                    "{}: o slider não foi pintado com {dona:?} na mão",
+                    row.key
+                ));
                 continue;
             };
             // Do meio da trilha para a ponta mais longe do valor de agora.
             let (x0, y) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
-            let x1 = if row.track_of(antes) < 0.5 { r.x + r.w * 0.95 } else { r.x + r.w * 0.05 };
+            let x1 = if row.track_of(antes) < 0.5 {
+                r.x + r.w * 0.95
+            } else {
+                r.x + r.w * 0.05
+            };
             mesa.host.drag_at(x0, y, x1, y)
         };
         if mesa.entrega(eventos, &mut t) == 0 {
-            falhas.push(format!("{}: o gesto do rato não chegou à ferramenta", row.key));
+            falhas.push(format!(
+                "{}: o gesto do rato não chegou à ferramenta",
+                row.key
+            ));
             continue;
         }
         let depois = t.brush_settings().wet_knobs.knobs[row.knob];
         if (depois - antes).abs() < row.step.max(1e-9) * 0.5 {
-            falhas.push(format!("{}: o knob não mudou ({antes} → {depois})", row.key));
+            falhas.push(format!(
+                "{}: o knob não mudou ({antes} → {depois})",
+                row.key
+            ));
             continue;
         }
         if row.options.is_none() {
@@ -126,7 +149,12 @@ fn cada_linha_do_tuning_aceita_o_rato_e_o_valor_chega_a_ferramenta() {
         }
     }
     set_current_brush(None);
-    assert!(falhas.is_empty(), "{} linha(s):\n{}", falhas.len(), falhas.join("\n"));
+    assert!(
+        falhas.is_empty(),
+        "{} linha(s):\n{}",
+        falhas.len(),
+        falhas.join("\n")
+    );
 }
 
 /// A linha de um knob que só UMA ferramenta da água lê só aparece com ELA na mão — com o Pincel (ou outra) o slider
@@ -140,9 +168,19 @@ fn a_linha_de_uma_ferramenta_so_aparece_com_ela_na_mao() {
         })
         .collect();
     for chave in ["dryerLevel", "dryerEdge", "blendReach", "waterPush"] {
-        assert!(deles.iter().any(|(r, _)| r.key == chave), "{chave} devia ser de uma ferramenta só");
+        assert!(
+            deles.iter().any(|(r, _)| r.key == chave),
+            "{chave} devia ser de uma ferramenta só"
+        );
     }
-    for na_mao in [WetTool::Paint, WetTool::Smear, WetTool::Blend, WetTool::Wet, WetTool::Dry, WetTool::Blow] {
+    for na_mao in [
+        WetTool::Paint,
+        WetTool::Smear,
+        WetTool::Blend,
+        WetTool::Wet,
+        WetTool::Dry,
+        WetTool::Blow,
+    ] {
         let mesa = Mesa::nova(&ferramenta(na_mao, true));
         for (row, dona) in &deles {
             assert_eq!(
@@ -163,7 +201,10 @@ fn o_material_do_oleo_esmaece_sem_o_real_oil() {
     for (oleo, esperado) in [(false, true), (true, false)] {
         let mesa = Mesa::nova(&ferramenta(WetTool::Paint, oleo));
         for chave in ["oilDepth", "oilGloss", "paperPress"] {
-            let row = rows::rows().iter().find(|r| r.key == chave).expect("a linha existe");
+            let row = rows::rows()
+                .iter()
+                .find(|r| r.key == chave)
+                .expect("a linha existe");
             assert!(mesa.rect(row.slider).is_some(), "{chave} pintada");
             for id in [row.slider, row.chip] {
                 assert_eq!(

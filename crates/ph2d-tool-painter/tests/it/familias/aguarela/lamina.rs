@@ -14,10 +14,34 @@ use serde_json::{Value, json};
 /// régua do EXAME à escala do oráculo (`J6_lamina.md` §2).
 type Lamina = (&'static str, &'static str, u32, f64, Option<[f64; 2]>);
 const ORACULO: &[Lamina] = &[
-    ("Flat Block-in", "Rebelle Digital/Flat", 40, 0.436, Some([0.907, 0.986])),
-    ("Craft Flat", "Rebelle Graphite Pencil/Craft Flat", 40, 1.429, None),
-    ("Broad Nib", "MyPaint classic/calligraphy", 40, 0.944, Some([0.241, 1.291])),
-    ("Bristle Watercolor", "Rebelle Watercolor/Bristle Flat", 40, 0.348, None),
+    (
+        "Flat Block-in",
+        "Rebelle Digital/Flat",
+        40,
+        0.436,
+        Some([0.907, 0.986]),
+    ),
+    (
+        "Craft Flat",
+        "Rebelle Graphite Pencil/Craft Flat",
+        40,
+        1.429,
+        None,
+    ),
+    (
+        "Broad Nib",
+        "MyPaint classic/calligraphy",
+        40,
+        0.944,
+        Some([0.241, 1.291]),
+    ),
+    (
+        "Bristle Watercolor",
+        "Rebelle Watercolor/Bristle Flat",
+        40,
+        0.348,
+        None,
+    ),
 ];
 /// A folga relativa de cada razão: o ruído do oráculo (recto lento × rápido) é 0–1 px em 15–46 px, e o ajuste da
 /// lâmina fixa tem rms 0,7–2,9 px.
@@ -32,7 +56,9 @@ const RECTOS: [([f64; 2], [f64; 2]); 4] = [
 ];
 
 fn pincel(nome: &str, rotacao: Option<f64>) -> Pincel {
-    let lapis = crate::familias::lapis::EM_ESTUDO.iter().find(|r| r.nome == nome);
+    let lapis = crate::familias::lapis::EM_ESTUDO
+        .iter()
+        .find(|r| r.nome == nome);
     let wet = super::EM_ESTUDO
         .iter()
         .chain(crate::familias::pastel_carvao::EM_ESTUDO)
@@ -95,7 +121,12 @@ fn larguras(p: &Pincel, tamanho: u32) -> [f64; 4] {
     if let Ok(d) = std::env::var("PH2D_LAMINA_FOTOS") {
         let f = std::path::Path::new(&d).join(format!("{}.ppm", p.nome.replace(' ', "_")));
         let mut ppm = b"P6\n1000 640\n255\n".to_vec();
-        ppm.extend(px.as_chunks::<4>().0.iter().flat_map(|c| [c[0], c[1], c[2]]));
+        ppm.extend(
+            px.as_chunks::<4>()
+                .0
+                .iter()
+                .flat_map(|c| [c[0], c[1], c[2]]),
+        );
         std::fs::write(f, ppm).unwrap();
     }
     let cob = |x: f64, y: f64| -> f64 {
@@ -104,11 +135,17 @@ fn larguras(p: &Pincel, tamanho: u32) -> [f64; 4] {
             return 0.0;
         }
         let i = (yi as usize * 1000 + xi as usize) * 4;
-        (0..3).map(|k| 255.0 - f64::from(px[i + k])).fold(0.0, f64::max) / 255.0
+        (0..3)
+            .map(|k| 255.0 - f64::from(px[i + k]))
+            .fold(0.0, f64::max)
+            / 255.0
     };
     RECTOS.map(|(a, b)| {
         let l = (b[0] - a[0]).hypot(b[1] - a[1]);
-        let (t, n) = ([(b[0] - a[0]) / l, (b[1] - a[1]) / l], [-(b[1] - a[1]) / l, (b[0] - a[0]) / l]);
+        let (t, n) = (
+            [(b[0] - a[0]) / l, (b[1] - a[1]) / l],
+            [-(b[1] - a[1]) / l, (b[0] - a[0]) / l],
+        );
         let perfis: Vec<Vec<f64>> = (0..=40)
             .map(|i| {
                 let s = l * (0.3 + 0.4 * f64::from(i) / 40.0);
@@ -121,14 +158,19 @@ fn larguras(p: &Pincel, tamanho: u32) -> [f64; 4] {
                     .collect()
             })
             .collect();
-        let mut picos: Vec<f64> = perfis.iter().map(|v| v.iter().copied().fold(0.0, f64::max)).collect();
+        let mut picos: Vec<f64> = perfis
+            .iter()
+            .map(|v| v.iter().copied().fold(0.0, f64::max))
+            .collect();
         picos.sort_by(f64::total_cmp);
         let lim = (0.25 * picos[(picos.len() - 1) * 9 / 10]).max(1e-3);
         let mut w: Vec<f64> = perfis
             .iter()
             .map(|v| {
                 let dentro: Vec<usize> = (0..v.len()).filter(|&j| v[j] >= lim).collect();
-                dentro.last().map_or(0.0, |u| (u - dentro[0] + 1) as f64 * 0.5)
+                dentro
+                    .last()
+                    .map_or(0.0, |u| (u - dentro[0] + 1) as f64 * 0.5)
             })
             .collect();
         w.sort_by(f64::total_cmp);
@@ -154,7 +196,12 @@ fn a_lamina_de_cada_preset_e_a_do_oraculo() {
         let hs: Vec<_> = ORACULO
             .iter()
             .map(|&(nome, _, t, ..)| {
-                s.spawn(move || (larguras(&pincel(nome, None), t), larguras(&pincel(nome, Some(1.0)), t)))
+                s.spawn(move || {
+                    (
+                        larguras(&pincel(nome, None), t),
+                        larguras(&pincel(nome, Some(1.0)), t),
+                    )
+                })
             })
             .collect();
         hs.into_iter().map(|h| h.join().unwrap()).collect()

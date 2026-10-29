@@ -236,7 +236,11 @@ pub(super) fn default_paper() -> TextureSettings {
 /// grão do pincel (`PainterTool::papel_como_grain`).
 #[must_use]
 pub(super) fn papel_do_documento(tex: TextureSettings) -> TextureSettings {
-    if tex.is_active() { tex } else { default_paper() }
+    if tex.is_active() {
+        tex
+    } else {
+        default_paper()
+    }
 }
 
 impl crate::tool::PainterTool {

@@ -337,7 +337,8 @@ fn paint_top_basics(
     // O fio do arrasto (J6): o Smear do Digital resolve-se por área (`BrushSpec::smear_fio`). Só o Smear lê o campo,
     // e o preset que o leva é o do Digital.
     if brush.ferramenta() == ph2d_tool_painter::FerramentaDoPincel::Smear
-        && ph2d_tool_painter::PaintMedia::from_u8(brush.media) == ph2d_tool_painter::PaintMedia::Digital
+        && ph2d_tool_painter::PaintMedia::from_u8(brush.media)
+            == ph2d_tool_painter::PaintMedia::Digital
     {
         y = paint_checkbox_row(
             ctx,

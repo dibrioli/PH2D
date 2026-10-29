@@ -23,7 +23,10 @@ fn o_que_a_tinta_nova_esconde_sai_da_celula() {
     let (mut g, i) = celula(VERMELHO, m);
     let q = cobre_a_outra(&mut g, i, 1.0, in_a, AZUL);
     let peso = in_a / (alpha_of_mass(f64::from(m)) * (1.0 - in_a) + in_a);
-    assert!(q > 0.9, "o vermelho não é OUTRA tinta para o azul: q {q:.3}");
+    assert!(
+        q > 0.9,
+        "o vermelho não é OUTRA tinta para o azul: q {q:.3}"
+    );
     let esperado = f64::from(m) * (1.0 - q * peso);
     assert!(
         (f64::from(g.susp[i]) - esperado).abs() < 1e-3 && f64::from(g.susp[i]) < f64::from(m) * 0.8,

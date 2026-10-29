@@ -1171,7 +1171,17 @@ fn mede_veios(p: &crate::exame_bancada::Pincel) -> Veios {
         .clone();
     // O veio é do PIGMENTO (`Knob::BristleStreak`): sem a luz do Real Oil do candidato (J6, triagem (a)).
     let mut f = Fases::default();
-    let (_, g) = pinta_cena_oleo(p, None, &cena, tela, papel, 0, false, Oleo::Desligado, &mut f);
+    let (_, g) = pinta_cena_oleo(
+        p,
+        None,
+        &cena,
+        tela,
+        papel,
+        0,
+        false,
+        Oleo::Desligado,
+        &mut f,
+    );
     let w = tela[0] as usize;
     const K: usize = 7;
     let (mut escuros, mut claros, mut n) = (0usize, 0usize, 0usize);

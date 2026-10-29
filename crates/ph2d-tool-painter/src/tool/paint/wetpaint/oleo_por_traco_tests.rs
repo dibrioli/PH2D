@@ -80,11 +80,21 @@ fn o_traco_seguinte_usa_o_depth_o_gloss_e_a_caixa_novos() {
     // `(nome, a tela tem óleo, Smooth Edges da tela, a mudança)`: o Smooth Edges da TELA lê a orla — numa tela que
     // passa a ter óleo, a tinta sem óleo guarda a orla de sempre.
     let controlos: [(&str, bool, f32, Muda); 5] = [
-        ("oilDepth", true, 0.0, |t| t.paint.wetpaint.knobs.set(Knob::OilDepth, 2.6)),
-        ("oilGloss", true, 0.0, |t| t.paint.wetpaint.knobs.set(Knob::OilGloss, 0.1)),
-        ("realOil desligado", true, 0.0, |t| t.set_wet_oleo_real_ligado(false)),
-        ("realOil ligado", false, 0.0, |t| t.set_wet_oleo_real_ligado(true)),
-        ("realOil ligado com Smooth Edges", false, 0.5, |t| t.set_wet_oleo_real_ligado(true)),
+        ("oilDepth", true, 0.0, |t| {
+            t.paint.wetpaint.knobs.set(Knob::OilDepth, 2.6)
+        }),
+        ("oilGloss", true, 0.0, |t| {
+            t.paint.wetpaint.knobs.set(Knob::OilGloss, 0.1)
+        }),
+        ("realOil desligado", true, 0.0, |t| {
+            t.set_wet_oleo_real_ligado(false)
+        }),
+        ("realOil ligado", false, 0.0, |t| {
+            t.set_wet_oleo_real_ligado(true)
+        }),
+        ("realOil ligado com Smooth Edges", false, 0.5, |t| {
+            t.set_wet_oleo_real_ligado(true)
+        }),
     ];
     let seguinte = |t: &mut PainterTool| {
         t.wetpaint_dry_canvas();
@@ -106,13 +116,22 @@ fn o_traco_seguinte_usa_o_depth_o_gloss_e_a_caixa_novos() {
         let mudam: Vec<(usize, usize)> = ANTIGOS
             .filter_map(|y| {
                 let n = (0..W)
-                    .filter(|&x| pousada[y * W + x] && com[(y * W + x) * 4..][..4] != sem[(y * W + x) * 4..][..4])
+                    .filter(|&x| {
+                        pousada[y * W + x]
+                            && com[(y * W + x) * 4..][..4] != sem[(y * W + x) * 4..][..4]
+                    })
                     .count();
                 (n > 0).then_some((y, n))
             })
             .collect();
-        assert!(pousada.iter().filter(|p| **p).count() > 3000, "{nome}: controlo: há tinta pousada");
-        assert!(mudam.is_empty(), "{nome}: a tinta de antes mudou (linha, píxeis): {mudam:?}");
+        assert!(
+            pousada.iter().filter(|p| **p).count() > 3000,
+            "{nome}: controlo: há tinta pousada"
+        );
+        assert!(
+            mudam.is_empty(),
+            "{nome}: a tinta de antes mudou (linha, píxeis): {mudam:?}"
+        );
         assert_ne!(
             linhas(&com, SEGUINTE),
             linhas(&sem, SEGUINTE),
@@ -128,7 +147,10 @@ fn pintar_tudo_com_o_real_oil_e_a_imagem_de_antes_ao_byte() {
     super::oleo_plano::sem_cache_do_campo::set(true);
     let mut t = tela(true);
     let nova = recompoe(&mut t);
-    assert!(grades(&mut t).iter().any(|l| !l.grid.oleo.is_empty()), "controlo: o campo existe");
+    assert!(
+        grades(&mut t).iter().any(|l| !l.grid.oleo.is_empty()),
+        "controlo: o campo existe"
+    );
     for l in grades(&mut t).iter_mut() {
         l.grid.oleo = Vec::new();
     }
@@ -136,15 +158,32 @@ fn pintar_tudo_com_o_real_oil_e_a_imagem_de_antes_ao_byte() {
     let antes = recompoe(&mut t);
     super::oleo_plano::lei_da_caixa::set(false);
     super::oleo_plano::sem_cache_do_campo::set(false);
-    let difs = nova.chunks(4).zip(antes.chunks(4)).filter(|(a, b)| a != b).count();
-    assert!(nova.chunks(4).any(|p| p != [255, 255, 255, 255]), "controlo: há tinta");
-    assert_eq!(difs, 0, "a tela toda com óleo difere da lei de antes em {difs} píxeis");
+    let difs = nova
+        .chunks(4)
+        .zip(antes.chunks(4))
+        .filter(|(a, b)| a != b)
+        .count();
+    assert!(
+        nova.chunks(4).any(|p| p != [255, 255, 255, 255]),
+        "controlo: há tinta"
+    );
+    assert_eq!(
+        difs, 0,
+        "a tela toda com óleo difere da lei de antes em {difs} píxeis"
+    );
     let mut t = tela(false);
     let _ = recompoe(&mut t);
-    assert!(grades(&mut t).iter().all(|l| l.grid.oleo.is_empty()), "sem óleo, o campo nasceu");
+    assert!(
+        grades(&mut t).iter().all(|l| l.grid.oleo.is_empty()),
+        "sem óleo, o campo nasceu"
+    );
     assert!(!t.brush_settings().wet_oleo_na_tela);
     assert!(
-        t.paint.wetpaint.session.as_ref().is_some_and(|s| s.campo_cache.is_none()),
+        t.paint
+            .wetpaint
+            .session
+            .as_ref()
+            .is_some_and(|s| s.campo_cache.is_none()),
         "sem óleo na tela, o cache do campo ficou"
     );
 }
@@ -156,19 +195,33 @@ fn o_cartao_segue_a_tinta_com_oleo_na_tela() {
     let mut t = tela(true);
     t.set_wet_oleo_real_ligado(false);
     let antes = recompoe(&mut t);
-    assert!(t.brush_settings().wet_oleo_na_tela, "a tela tem óleo e o cartão não sabe");
     assert!(
-        t.paint.wetpaint.session.as_ref().is_some_and(|s| s.campo_cache.is_some()),
+        t.brush_settings().wet_oleo_na_tela,
+        "a tela tem óleo e o cartão não sabe"
+    );
+    assert!(
+        t.paint
+            .wetpaint
+            .session
+            .as_ref()
+            .is_some_and(|s| s.campo_cache.is_some()),
         "a caixa desligada largou o campo da tinta com óleo"
     );
-    t.handle_panel_event(PanelEvent::SetValue(crate::ids::PAINTER_WETPAINT_OLEO_SOMBRA, 0.2));
+    t.handle_panel_event(PanelEvent::SetValue(
+        crate::ids::PAINTER_WETPAINT_OLEO_SOMBRA,
+        0.2,
+    ));
     for _ in 0..400 {
         t.on_tick(0.0);
         if !t.oleo_por_compor() {
             break;
         }
     }
-    assert_ne!(t.canvas_rgba.to_vec(), antes, "a Shadow do cartão não chegou à tinta com óleo");
+    assert_ne!(
+        t.canvas_rgba.to_vec(),
+        antes,
+        "a Shadow do cartão não chegou à tinta com óleo"
+    );
 }
 
 /// O Real Oil viaja com o PRESET (gravado só ligado: os ficheiros de fábrica ficam ao byte) e com a FERRAMENTA.
@@ -183,17 +236,30 @@ fn o_real_oil_viaja_no_preset_e_por_ferramenta() {
     assert_eq!(com.engine.get(CHAVE_OLEO), Some(&1.0));
     t.set_wet_oleo_real_ligado(false);
     let sem = t.wet_preset_capturar(&base).0;
-    assert!(!sem.engine.contains_key(CHAVE_OLEO), "desligado gravou a chave");
+    assert!(
+        !sem.engine.contains_key(CHAVE_OLEO),
+        "desligado gravou a chave"
+    );
     let preset = |p| ph2d_brush_presets::Preset {
         parametros: p,
         origem: Default::default(),
-        miniatura: ph2d_brush_presets::Miniatura { largura: 1, altura: 1, rgba: vec![0; 4] },
+        miniatura: ph2d_brush_presets::Miniatura {
+            largura: 1,
+            altura: 1,
+            rgba: vec![0; 4],
+        },
         texturas: Default::default(),
     };
     t.wet_preset_aplicar(&preset(com));
-    assert!(t.wet_oleo_real().is_some(), "o preset com o Real Oil não o ligou");
+    assert!(
+        t.wet_oleo_real().is_some(),
+        "o preset com o Real Oil não o ligou"
+    );
     t.wet_preset_aplicar(&preset(sem));
-    assert!(t.wet_oleo_real().is_none(), "o preset sem o Real Oil não o desligou");
+    assert!(
+        t.wet_oleo_real().is_none(),
+        "o preset sem o Real Oil não o desligou"
+    );
     // Por ferramenta (`tool_link`, o idioma do Glaze): ligado no pincel, a Máscara não o herda, voltar devolve-o.
     t.set_wet_oleo_real_ligado(true);
     t.set_paint_tool_mode("mask");
@@ -217,16 +283,28 @@ fn a_macro_com_o_depth_e_o_gloss_no_cartao_passa_os_ao_pincel() {
     eng.remove("oilDepth");
     eng.remove("oilGloss");
     let mut a = PainterTool::default();
-    a.macro_estado_aplica(&antigo.to_string(), tex.clone()).expect("aplica");
+    a.macro_estado_aplica(&antigo.to_string(), tex.clone())
+        .expect("aplica");
     assert_eq!(
-        (a.paint.wetpaint.knobs.get(Knob::OilDepth), a.paint.wetpaint.knobs.get(Knob::OilGloss)),
+        (
+            a.paint.wetpaint.knobs.get(Knob::OilDepth),
+            a.paint.wetpaint.knobs.get(Knob::OilGloss)
+        ),
         (2.2, 0.3),
         "o Depth/Gloss do cartão antigo não chegou ao pincel"
     );
-    assert_eq!(a.wet_oleo_real_valores().profundidade, 1.0, "o ganho global do motor ficou com o cartão");
+    assert_eq!(
+        a.wet_oleo_real_valores().profundidade,
+        1.0,
+        "o ganho global do motor ficou com o cartão"
+    );
     let mut b = PainterTool::default();
     b.macro_estado_aplica(&v.to_string(), tex).expect("aplica");
-    assert_eq!(b.paint.wetpaint.knobs.get(Knob::OilDepth), 1.0, "com a chave no preset, o preset manda");
+    assert_eq!(
+        b.paint.wetpaint.knobs.get(Knob::OilDepth),
+        1.0,
+        "com a chave no preset, o preset manda"
+    );
 }
 
 /// A FOLHA (`PH2D_OLEO_PNG=<pasta>`, `--ignored`): `depth_gloss.ppm` — dois traços sobrepostos com o Real Oil, o de
@@ -234,7 +312,8 @@ fn a_macro_com_o_depth_e_o_gloss_no_cartao_passa_os_ao_pincel() {
 #[test]
 #[ignore = "folha: PH2D_OLEO_PNG=<pasta>"]
 fn folha_depth_gloss_e_real_oil_por_traco() {
-    let pasta = std::path::PathBuf::from(std::env::var("PH2D_OLEO_PNG").expect("PH2D_OLEO_PNG=<pasta>"));
+    let pasta =
+        std::path::PathBuf::from(std::env::var("PH2D_OLEO_PNG").expect("PH2D_OLEO_PNG=<pasta>"));
     std::fs::create_dir_all(&pasta).expect("pasta");
     let grava = |nome: &str, c: &[u8]| {
         let mut ppm = format!("P6\n{W} {H}\n255\n").into_bytes();

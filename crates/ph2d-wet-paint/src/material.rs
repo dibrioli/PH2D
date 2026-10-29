@@ -92,7 +92,10 @@ impl MaterialCelula {
 /// O [`MaterialCelula::vidro_claro`] de `a` misturado com `b` na fracção `t`: a média pesada pela massa que
 /// TRANSMITE. Os dois no mesmo modo dão esse modo ao bit (numerador = denominador); nenhum a transmitir, linear.
 fn modo_pela_massa_transmissiva(a: MaterialCelula, b: MaterialCelula, t: f32) -> f32 {
-    let (pa, pb) = (a.transmissao.max(0.0) * (1.0 - t), b.transmissao.max(0.0) * t);
+    let (pa, pb) = (
+        a.transmissao.max(0.0) * (1.0 - t),
+        b.transmissao.max(0.0) * t,
+    );
     let den = pa + pb;
     if den > 0.0 {
         ((a.vidro_claro * pa + b.vidro_claro * pb) / den).clamp(0.0, 1.0)

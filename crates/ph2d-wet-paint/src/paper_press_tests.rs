@@ -40,8 +40,16 @@ fn o_paper_press_poe_o_dente_do_papel_na_altura_e_na_sombra() {
     let (um, meio, zero) = (com(1.0), com(0.5), com(0.0));
     for y in 1..=W as isize {
         for x in 1..=W as isize {
-            assert_eq!(hoje.at_fina(x, y).to_bits(), um.at_fina(x, y).to_bits(), "1 = hoje: altura ({x},{y})");
-            assert_eq!(hoje.at_sombra(x, y).to_bits(), um.at_sombra(x, y).to_bits(), "1 = hoje: sombra ({x},{y})");
+            assert_eq!(
+                hoje.at_fina(x, y).to_bits(),
+                um.at_fina(x, y).to_bits(),
+                "1 = hoje: altura ({x},{y})"
+            );
+            assert_eq!(
+                hoje.at_sombra(x, y).to_bits(),
+                um.at_sombra(x, y).to_bits(),
+                "1 = hoje: sombra ({x},{y})"
+            );
         }
     }
     let (mut papel, mut fina0, mut sombra0, mut sombra_meio) = (vec![], vec![], vec![], vec![]);
@@ -54,12 +62,22 @@ fn o_paper_press_poe_o_dente_do_papel_na_altura_e_na_sombra() {
         }
     }
     let (cf, cs) = (correlacao(&papel, &fina0), correlacao(&papel, &sombra0));
-    let amp = |v: &[f64]| v.iter().cloned().fold(f64::MIN, f64::max) - v.iter().cloned().fold(f64::MAX, f64::min);
+    let amp = |v: &[f64]| {
+        v.iter().cloned().fold(f64::MIN, f64::max) - v.iter().cloned().fold(f64::MAX, f64::min)
+    };
     let (a0, am) = (amp(&sombra0), amp(&sombra_meio));
-    println!("[paper press] correlação com o papel: altura {cf:.4} · sombra {cs:.4}; amplitude 0 {a0:.4} · ½ {am:.4}");
-    assert!(cf > 0.99 && cs > 0.99, "com 0 o dente do papel está na altura e na sombra: {cf} · {cs}");
+    println!(
+        "[paper press] correlação com o papel: altura {cf:.4} · sombra {cs:.4}; amplitude 0 {a0:.4} · ½ {am:.4}"
+    );
+    assert!(
+        cf > 0.99 && cs > 0.99,
+        "com 0 o dente do papel está na altura e na sombra: {cf} · {cs}"
+    );
     assert!(a0 > 0.4, "com 0 o dente tem a amplitude do papel: {a0}");
-    assert!((am / a0 - 0.5).abs() < 0.02, "½ é metade do caminho: {am} ÷ {a0}");
+    assert!(
+        (am / a0 - 0.5).abs() < 0.02,
+        "½ é metade do caminho: {am} ÷ {a0}"
+    );
     assert_eq!(zero.at_fina(2, 2), 0.0, "o papel nu continua plano");
 }
 
@@ -118,7 +136,15 @@ fn o_paper_press_e_o_mesmo_em_px_a_toda_a_razao() {
             amp = amp.max(a.0.abs()).max(a.1.abs());
         }
     }
-    println!("[paper press px] maior diferença razão 1 × 2: {pior:.2e} px; maior dente {amp:.4} px");
-    assert!(amp > 0.1, "controlo: o Paper Press 0 põe o dente na altura ({amp})");
-    assert!(pior <= 1e-5, "o dente em px: razão 1 × razão 2 diferem {pior}");
+    println!(
+        "[paper press px] maior diferença razão 1 × 2: {pior:.2e} px; maior dente {amp:.4} px"
+    );
+    assert!(
+        amp > 0.1,
+        "controlo: o Paper Press 0 põe o dente na altura ({amp})"
+    );
+    assert!(
+        pior <= 1e-5,
+        "o dente em px: razão 1 × razão 2 diferem {pior}"
+    );
 }

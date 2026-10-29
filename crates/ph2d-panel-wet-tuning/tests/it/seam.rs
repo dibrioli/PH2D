@@ -45,8 +45,14 @@ fn every_row_slider_and_reset_forwards() {
             // A CHOICE row (28/10): each option forwards the row's slider at its index.
             for (i, (_, id)) in opts.iter().enumerate() {
                 let (mut host, mut st) = host();
-                let out = host.apply_panel_event::<WetTuningPanel>(&mut st, WidgetEvent::Click(*id));
-                assert_eq!(out, EventOutcome::Consumed, "option {i} of {} ignored", row.key);
+                let out =
+                    host.apply_panel_event::<WetTuningPanel>(&mut st, WidgetEvent::Click(*id));
+                assert_eq!(
+                    out,
+                    EventOutcome::Consumed,
+                    "option {i} of {} ignored",
+                    row.key
+                );
                 assert_eq!(
                     drained_setvalue(&host.drained_actions(), row.slider),
                     Some(i as f64),
@@ -55,7 +61,8 @@ fn every_row_slider_and_reset_forwards() {
                 );
             }
             let (mut host, mut st) = self::host();
-            let out = host.apply_panel_event::<WetTuningPanel>(&mut st, WidgetEvent::Click(row.reset));
+            let out =
+                host.apply_panel_event::<WetTuningPanel>(&mut st, WidgetEvent::Click(row.reset));
             assert_eq!(out, EventOutcome::Consumed, "reset {} ignored", row.key);
             continue;
         }
@@ -239,7 +246,11 @@ fn paint_offers_the_table_and_no_paper_row_lives_here() {
                 for (_, id) in opts {
                     assert!(has(&plain, *id), "row {} option missing", row.key);
                 }
-                assert!(!has(&plain, row.slider), "row {} is a choice: no slider", row.key);
+                assert!(
+                    !has(&plain, row.slider),
+                    "row {} is a choice: no slider",
+                    row.key
+                );
             }
             None => assert!(has(&plain, row.slider), "row {} slider missing", row.key),
         }

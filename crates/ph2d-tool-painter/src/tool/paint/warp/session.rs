@@ -369,7 +369,13 @@ fn reamostra_por_area(
                     .max(salto(d, viz((dx + 1).min(wu - 1), dy)));
                 let sy = salto(d, viz(dx, dy.saturating_sub(1)))
                     .max(salto(d, viz(dx, (dy + 1).min(h as usize - 1))));
-                let n = |s: f32| if s > 1.0 { (s.ceil() as u32).min(teto) } else { 1 };
+                let n = |s: f32| {
+                    if s > 1.0 {
+                        (s.ceil() as u32).min(teto)
+                    } else {
+                        1
+                    }
+                };
                 let (nx, ny) = (n(sx), n(sy));
                 let px = if nx == 1 && ny == 1 {
                     super::apply::bilinear_clamped(src, w, h, dx as f32 - d[0], dy as f32 - d[1])

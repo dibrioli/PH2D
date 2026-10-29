@@ -978,11 +978,25 @@ fn exame_oleo_adiado() {
             let t0 = Instant::now();
             let px = pinta_com_luz(a_meio, || {
                 let mut f = Fases::default();
-                pinta_cena_oleo(&pincel, base.as_ref(), cena, tela, papel, foto, false, Oleo::DoPreset, &mut f).1
+                pinta_cena_oleo(
+                    &pincel,
+                    base.as_ref(),
+                    cena,
+                    tela,
+                    papel,
+                    foto,
+                    false,
+                    Oleo::DoPreset,
+                    &mut f,
+                )
+                .1
             });
             let s = t0.elapsed().as_secs_f64();
             let h = fnv1a(&px);
-            println!("[adiado] ronda {r} luz a meio {a_meio}: {s:.2} s · fnv {h:#018x} (load {})", carga());
+            println!(
+                "[adiado] ronda {r} luz a meio {a_meio}: {s:.2} s · fnv {h:#018x} (load {})",
+                carga()
+            );
             let i = usize::from(a_meio);
             minimo[i] = minimo[i].min(s);
             fotos[i] = Some(h);
@@ -1021,7 +1035,10 @@ fn a_luz_do_oleo_so_na_foto_e_a_de_cada_passo() {
                 so_na_foto == pinta(true, Oleo::DoPreset),
                 "{cand} foto {foto}: a luz do óleo só na foto saiu outra"
             );
-            assert!(so_na_foto != pinta(false, Oleo::Desligado), "{cand} foto {foto}: controlo — sem óleo, igual");
+            assert!(
+                so_na_foto != pinta(false, Oleo::Desligado),
+                "{cand} foto {foto}: controlo — sem óleo, igual"
+            );
         }
     }
 }

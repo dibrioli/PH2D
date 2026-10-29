@@ -344,20 +344,20 @@ impl PainterTool {
 
 mod copias; // a lane por (cópia, ponta): spray, Rough e simetria (L13) — filho de dab_route por LOC
 mod dab_route; // a ROTA DO DAB (pincel -> fluido) — filho por LOC
+mod esbate; // as pontas que ESBATEM ao comprido (J6t)
+#[cfg(test)]
+mod esbate_tests;
 pub(crate) mod fita; // a FITA do worker: a água de uma macro idêntica à gravada
 pub(super) mod grid_map; // a grade do fluido != a grade de PIXELS — filho por LOC
 pub(super) mod largura; // a LARGURA PROMETIDA (W2): o raio do motor sai da tabela do preset
 mod lote; // o papel e o sub-passo da cápsula de cada lote — filho de dab_route por LOC
 mod po; // o PÓ SOLTO pousado à parte do rasto (J4 pastel_carvao) — filho de dab_route por LOC
 mod ponta_das_cerdas; // a ponta RECTA e DESFIADA das cerdas (J2 §7 c) — filho de dab_route por LOC
-mod tampa; // as PONTAS RECTAS do traço (J6) — filho de dab_route por LOC
-mod esbate; // as pontas que ESBATEM ao comprido (J6t)
-#[cfg(test)]
-mod esbate_tests;
-#[cfg(test)]
-mod tampa_tests;
 mod rota_da_lane; // a lane de cada dab, a tinta do motor e o b/opacidade — filho de dab_route por LOC
-mod session; // what a wet SESSION is (data model) — child file (LOC cap)
+mod session;
+mod tampa; // as PONTAS RECTAS do traço (J6) — filho de dab_route por LOC
+#[cfg(test)]
+mod tampa_tests; // what a wet SESSION is (data model) — child file (LOC cap)
 use session::{Lane, PaperKey};
 pub(super) use session::{WetEngineFacts, WetSession};
 
@@ -603,9 +603,9 @@ pub(super) mod faixas; // as lanes de um traço guardado (W16)
 
 mod composite;
 pub(in crate::tool::paint) mod grao_no_filme; // W3b: o dente do papel assado na tinta do Óleo Real (Relevo do papel, Transmission)
-pub(in crate::tool::paint) mod oleo_no_quadro; // a recomposição do painel corre no tick, em faixas
 #[cfg(test)]
 mod oleo_arrasto_tests; // arrastar um número do Real Oil: uma faixa por quadro, a tela final ao byte
+pub(in crate::tool::paint) mod oleo_no_quadro; // a recomposição do painel corre no tick, em faixas
 mod oleo_plano; // o papel liso da sombra do Óleo Real: uma conta por linha, não por célula
 #[cfg(test)]
 pub(in crate::tool::paint) use oleo_plano::{
@@ -625,17 +625,17 @@ mod offthread_ritmo; // o worker RITMADO dos gates (W7) — filho por LOC
 #[path = "wetpaint/grid_ratio_tests.rs"]
 mod grid_ratio_tests; // os gates de PRODUTO da razão da grade
 #[cfg(test)]
-#[path = "wetpaint/relevo_tests.rs"]
-mod relevo_tests;
-#[cfg(test)]
-#[path = "wetpaint/painel_so_no_futuro_tests.rs"]
-mod painel_so_no_futuro_tests;
+#[path = "wetpaint/material_do_pincel_tests.rs"]
+mod material_do_pincel_tests; // auditoria W3b C3/C4/U2/U4: o material do pincel fica na tinta e no preview
 #[cfg(test)]
 #[path = "wetpaint/oleo_por_traco_tests.rs"]
 mod oleo_por_traco_tests; // dono 28/10: Depth, Gloss e a caixa Real Oil são do traço // W3b item 3: o painel do pincel só vale para os traços seguintes
 #[cfg(test)]
-#[path = "wetpaint/material_do_pincel_tests.rs"]
-mod material_do_pincel_tests; // auditoria W3b C3/C4/U2/U4: o material do pincel fica na tinta e no preview
+#[path = "wetpaint/painel_so_no_futuro_tests.rs"]
+mod painel_so_no_futuro_tests;
+#[cfg(test)]
+#[path = "wetpaint/relevo_tests.rs"]
+mod relevo_tests;
 #[path = "wetpaint/sil_memo.rs"]
 mod sil_memo; // a silhueta do dab guardada para o pente do relevo (W3b) // o Emboss do Tuning morde sem papel (dono 11/10)
 

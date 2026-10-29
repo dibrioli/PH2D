@@ -19,7 +19,11 @@ use ph2d_painter_brush::{TextureKind, TextureMapping};
 const LADO: usize = 128;
 
 /// Os meios que ganharam a opção (a Aquarela tem a sua, `granulation_use_paper`).
-const MEIOS: [PaintMedia; 3] = [PaintMedia::Digital, PaintMedia::Impasto, PaintMedia::WetPaint];
+const MEIOS: [PaintMedia; 3] = [
+    PaintMedia::Digital,
+    PaintMedia::Impasto,
+    PaintMedia::WetPaint,
+];
 
 /// O papel do documento da régua: um xadrez preso à tela, de casas grandes o bastante para o carimbo as ver.
 fn papel() -> TextureSettings {
@@ -102,7 +106,9 @@ fn correlacao(px: &[u8], tex: &TextureSettings) -> (f64, usize) {
     if n < 2.0 {
         return (0.0, pares.len());
     }
-    let (ma, mb) = pares.iter().fold((0.0, 0.0), |(a, b), (x, y)| (a + x / n, b + y / n));
+    let (ma, mb) = pares
+        .iter()
+        .fold((0.0, 0.0), |(a, b), (x, y)| (a + x / n, b + y / n));
     let (mut sab, mut saa, mut sbb) = (0.0, 0.0, 0.0);
     for (a, b) in &pares {
         sab += (a - ma) * (b - mb);
@@ -122,10 +128,14 @@ fn same_as_paper_o_grao_do_traco_segue_o_papel_em_cada_meio() {
         let (sem, ns) = correlacao(&pinta(m, Some(tex), false).canvas_rgba, &tex);
         let (com, nc) = correlacao(&pinta(m, Some(tex), true).canvas_rgba, &tex);
         if nc < 400 || com < 0.8 {
-            falhas.push(format!("{m:?}: ligado, o grão não segue o papel (r = {com:.3}, {nc} texels)"));
+            falhas.push(format!(
+                "{m:?}: ligado, o grão não segue o papel (r = {com:.3}, {nc} texels)"
+            ));
         }
         if ns < 400 || sem.abs() > 0.5 {
-            falhas.push(format!("{m:?}: desligado, o grão já seguia o papel (r = {sem:.3}, {ns} texels)"));
+            falhas.push(format!(
+                "{m:?}: desligado, o grão já seguia o papel (r = {sem:.3}, {ns} texels)"
+            ));
         }
     }
     assert!(falhas.is_empty(), "{}", falhas.join("\n"));
@@ -140,7 +150,9 @@ fn same_as_paper_sem_papel_escolhido_le_o_papel_de_fabrica() {
     for m in MEIOS {
         let (r, n) = correlacao(&pinta(m, None, true).canvas_rgba, &fabrica);
         if n < 400 || r < 0.6 {
-            falhas.push(format!("{m:?}: o grão não segue o papel de fábrica (r = {r:.3}, {n} texels)"));
+            falhas.push(format!(
+                "{m:?}: o grão não segue o papel de fábrica (r = {r:.3}, {n} texels)"
+            ));
         }
     }
     assert!(falhas.is_empty(), "{}", falhas.join("\n"));
@@ -152,13 +164,18 @@ fn same_as_paper_dos_outros_meios_nao_toca_a_aquarela() {
     let t = pinta(PaintMedia::Watercolor, Some(papel()), false);
     assert!(!t.grao_e_o_papel());
     let l = pinta(PaintMedia::Watercolor, Some(papel()), true);
-    assert!(!l.grao_e_o_papel(), "a Aquarela leu o Same as Paper dos outros meios");
+    assert!(
+        !l.grao_e_o_papel(),
+        "a Aquarela leu o Same as Paper dos outros meios"
+    );
     assert_eq!(t.canvas_rgba.to_vec(), l.canvas_rgba.to_vec());
 }
 
 /// O papel VISÍVEL no texel: o dente do substrato que a luz do relevo sombreia (Relief ligado), em cargas.
 fn visivel(t: &PainterTool, x: usize, y: usize) -> f32 {
-    t.substrate().expect("o Relief está ligado").tooth_loads(x as i64, y as i64)
+    t.substrate()
+        .expect("o Relief está ligado")
+        .tooth_loads(x as i64, y as i64)
 }
 
 /// Os pares (grão que a tinta mostra, papel visível) no miolo do traço, e o desvio-padrão de cada lado.
@@ -176,7 +193,9 @@ fn grao_e_visivel(t: &PainterTool) -> (f64, f64, f64, usize) {
         }
     }
     let n = pares.len().max(1) as f64;
-    let (ma, mb) = pares.iter().fold((0.0, 0.0), |(a, b), (x, y)| (a + x / n, b + y / n));
+    let (ma, mb) = pares
+        .iter()
+        .fold((0.0, 0.0), |(a, b), (x, y)| (a + x / n, b + y / n));
     let (mut sab, mut saa, mut sbb) = (0.0, 0.0, 0.0);
     for (a, b) in &pares {
         sab += (a - ma) * (b - mb);
@@ -188,7 +207,12 @@ fn grao_e_visivel(t: &PainterTool) -> (f64, f64, f64, usize) {
 }
 
 /// O traço com o papel do cartão Paper montado como o dono o monta: um papel de fábrica (Cold), Relief e Roughness.
-fn pinta_com_o_cartao(media: PaintMedia, papel: TextureSettings, relief: f32, rough: f32) -> PainterTool {
+fn pinta_com_o_cartao(
+    media: PaintMedia,
+    papel: TextureSettings,
+    relief: f32,
+    rough: f32,
+) -> PainterTool {
     let mut t = tool(LADO as u32, media, 22.0);
     t.set_paper_field(|b| b.paper = papel);
     t.set_substrate_depth(relief);
@@ -235,9 +259,33 @@ fn same_as_paper_acompanha_cada_controlo_do_cartao_paper() {
     let casos: [(&str, TextureSettings, f32, f32); 5] = [
         ("Cold, Roughness 0,1", cold, 1.0, 0.1),
         ("Cold, Roughness 0,9", cold, 1.0, 0.9),
-        ("Cold, Size 0,5", TextureSettings { size: [0.5, 0.5], ..cold }, 1.0, 0.5),
-        ("Cold, Angle 45", TextureSettings { angle_deg: 45, ..cold }, 1.0, 0.5),
-        ("Rough", TextureSettings { kind: TextureKind::PaperRough, ..cold }, 0.8, 0.5),
+        (
+            "Cold, Size 0,5",
+            TextureSettings {
+                size: [0.5, 0.5],
+                ..cold
+            },
+            1.0,
+            0.5,
+        ),
+        (
+            "Cold, Angle 45",
+            TextureSettings {
+                angle_deg: 45,
+                ..cold
+            },
+            1.0,
+            0.5,
+        ),
+        (
+            "Rough",
+            TextureSettings {
+                kind: TextureKind::PaperRough,
+                ..cold
+            },
+            0.8,
+            0.5,
+        ),
     ];
     let mut falhas = Vec::new();
     for m in MEIOS {
@@ -247,14 +295,19 @@ fn same_as_paper_acompanha_cada_controlo_do_cartao_paper() {
             let (r, sg, sv, n) = grao_e_visivel(&t);
             eprintln!("{m:?} {nome}: r = {r:.3}, σ grão {sg:.4}, σ visível {sv:.4}, {n} texels");
             if n < 400 || r < 0.8 {
-                falhas.push(format!("{m:?} {nome}: o grão não desenha o papel visível (r = {r:.3}, {n})"));
+                falhas.push(format!(
+                    "{m:?} {nome}: o grão não desenha o papel visível (r = {r:.3}, {n})"
+                ));
             }
             desvios.push((sg, sv));
             // O spec do traço leva o Relief e a Roughness do cartão (a profundidade e o contraste do dente).
             let s = t.stroke_spec();
             let ganho = super::substrate_relief::ganho_do_dente(rough);
             if (s.texture.lei.contraste - ganho).abs() > 1e-6 {
-                falhas.push(format!("{m:?} {nome}: contraste {} ≠ o do papel {ganho}", s.texture.lei.contraste));
+                falhas.push(format!(
+                    "{m:?} {nome}: contraste {} ≠ o do papel {ganho}",
+                    s.texture.lei.contraste
+                ));
             }
         }
         // A Roughness: o papel visível ganha contraste de 0,1 para 0,9 — o grão tem de ganhar na mesma ordem.
@@ -262,7 +315,9 @@ fn same_as_paper_acompanha_cada_controlo_do_cartao_paper() {
         let (g1, v1) = desvios[1];
         let (rv, rg) = (v1 / v0.max(1e-9), g1 / g0.max(1e-9));
         if rg < 1.0 + 0.5 * (rv - 1.0) {
-            falhas.push(format!("{m:?}: Roughness — o papel visível ×{rv:.2}, o grão ×{rg:.2}"));
+            falhas.push(format!(
+                "{m:?}: Roughness — o papel visível ×{rv:.2}, o grão ×{rg:.2}"
+            ));
         }
         // O Relief: a profundidade do grão segue-o (0,6 → 1 com a Depth do Grain inteira).
         let d = |relief| {
@@ -274,7 +329,9 @@ fn same_as_paper_acompanha_cada_controlo_do_cartao_paper() {
         };
         let (d6, d10) = (d(0.6), d(1.0));
         if d10 <= d6 * 1.3 {
-            falhas.push(format!("{m:?}: Relief 0,6 → 1 não aprofunda o grão ({d6} → {d10})"));
+            falhas.push(format!(
+                "{m:?}: Relief 0,6 → 1 não aprofunda o grão ({d6} → {d10})"
+            ));
         }
     }
     assert!(falhas.is_empty(), "{}", falhas.join("\n"));
@@ -293,7 +350,10 @@ fn recto_com_fecho(desliga_antes_de_soltar: bool) -> Vec<u8> {
     t.set_brush_pontas_alem(1.0);
     t.set_substrate_roughness(0.2);
     // O grão do pincel cresce com ele (`escala_da_textura` ≠ 1): o «Same as Paper» é o que NÃO cresce.
-    t.paint.wetpaint.knobs.set(ph2d_wet_paint::tuning::Knob::TextureSizeExp, 1.0);
+    t.paint
+        .wetpaint
+        .knobs
+        .set(ph2d_wet_paint::tuning::Knob::TextureSizeExp, 1.0);
     t.on_canvas_pointer(cp([16.0, 64.0], PointerPhase::Down));
     t.on_tick(1000.0 / 60.0);
     for k in 1..=16u8 {
@@ -317,9 +377,18 @@ fn recto_com_fecho(desliga_antes_de_soltar: bool) -> Vec<u8> {
 fn o_lote_pinta_com_o_same_as_paper_do_seu_pincel() {
     let fica = recto_com_fecho(false);
     let alterna = recto_com_fecho(true);
-    let difere = fica.chunks(4).zip(alterna.chunks(4)).filter(|(a, b)| a != b).count();
+    let difere = fica
+        .chunks(4)
+        .zip(alterna.chunks(4))
+        .filter(|(a, b)| a != b)
+        .count();
     let tinta = fica.chunks(4).filter(|p| p[0] < 250 || p[2] < 250).count();
-    println!("[same as paper · fecho] texels com tinta {tinta} · diferentes ao alternar antes de soltar {difere}");
+    println!(
+        "[same as paper · fecho] texels com tinta {tinta} · diferentes ao alternar antes de soltar {difere}"
+    );
     assert!(tinta > 400, "o recto não pintou: {tinta}");
-    assert_eq!(difere, 0, "o fecho leu o «Same as Paper» do pincel vivo: {difere} texels mudaram");
+    assert_eq!(
+        difere, 0,
+        "o fecho leu o «Same as Paper» do pincel vivo: {difere} texels mudaram"
+    );
 }

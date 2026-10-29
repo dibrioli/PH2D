@@ -428,7 +428,10 @@ pub(crate) fn ensaio(media: PaintMedia, armar: &[Gesto], gesto: &Gesto) -> (Vec<
         .filter(|i| !pintados.contains(i))
         .collect();
     let agora = bancada.ids();
-    entrega.escondidos = pintados.into_iter().filter(|i| !agora.contains(i)).collect();
+    entrega.escondidos = pintados
+        .into_iter()
+        .filter(|i| !agora.contains(i))
+        .collect();
     (risca(&mut bancada.tool), entrega)
 }
 

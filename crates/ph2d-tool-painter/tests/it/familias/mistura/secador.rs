@@ -82,10 +82,14 @@ fn o_secador_seca_a_tinta_ja_nivelada() {
     );
     let mut falhas = Vec::new();
     if d0 < 0.4 {
-        falhas.push(format!("a cena não tem sulcos: desvio sem o knob {d0:.3} < 0,4"));
+        falhas.push(format!(
+            "a cena não tem sulcos: desvio sem o knob {d0:.3} < 0,4"
+        ));
     }
     if d1 > 0.1 {
-        falhas.push(format!("o cruzamento não nivelou: desvio {d1:.3} > 0,1 (sem o knob {d0:.3})"));
+        falhas.push(format!(
+            "o cruzamento não nivelou: desvio {d1:.3} > 0,1 (sem o knob {d0:.3})"
+        ));
     }
     if (m1 / m0 - 1.0).abs() > 0.1 {
         falhas.push(format!("a massa da faixa mudou: {m1:.1} contra {m0:.1}"));

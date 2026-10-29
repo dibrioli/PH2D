@@ -617,15 +617,27 @@ fn a_marca_abaixo_de_meio_pixel_pousa_pela_area() {
     let mut tinta = (0.0f64, 0.0f64);
     for (a, b) in sem.iter().zip(&com_area) {
         assert_eq!((a.center, a.radius_px), (b.center, b.radius_px));
-        assert!((a.radius_px - DabJitter::RAIO_MIN_PX).abs() < 1e-6, "raio {}", a.radius_px);
+        assert!(
+            (a.radius_px - DabJitter::RAIO_MIN_PX).abs() < 1e-6,
+            "raio {}",
+            a.radius_px
+        );
         let k = f64::from(b.coverage) / f64::from(a.coverage);
-        assert!((k - 0.16).abs() < 1e-4, "cobertura × {k}, a lei pede (0,2 ÷ 0,5)² = 0,16");
+        assert!(
+            (k - 0.16).abs() < 1e-4,
+            "cobertura × {k}, a lei pede (0,2 ÷ 0,5)² = 0,16"
+        );
         tinta.0 += f64::from(a.coverage) * 0.25;
         tinta.1 += f64::from(b.coverage) * 0.25;
     }
     // A tinta pousada é a do disco PEDIDO (`cobertura × 0,2²`), não a do mínimo.
     let pedida: f64 = sem.iter().map(|a| f64::from(a.coverage) * 0.04).sum();
-    assert!((tinta.1 / pedida - 1.0).abs() < 1e-3, "tinta {} × pedida {pedida} (sem a lei {})", tinta.1, tinta.0);
+    assert!(
+        (tinta.1 / pedida - 1.0).abs() < 1e-3,
+        "tinta {} × pedida {pedida} (sem a lei {})",
+        tinta.1,
+        tinta.0
+    );
     // Acima de meio píxel: ao bit.
     assert_eq!(gotas(20.0, 0.5, false), gotas(20.0, 0.5, true));
 }

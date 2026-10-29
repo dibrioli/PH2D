@@ -18,6 +18,7 @@ mod a_ponta_de_n_imagens;
 mod a_ponta_de_pixel;
 mod as_formas;
 mod as_leis_da_escala; // 03_MOTORES §7 c, d, b-resto: o relevo, a ponta das cerdas, a lente, o grão fino
+mod cerda_e_marca;
 mod exame_bancada;
 mod familias; // J3: as receitas da fábrica, um ficheiro por família (familias/mod.rs as lista todas)
 mod leis_sistemicas;
@@ -40,9 +41,9 @@ mod o_grao_do_lapis; // 03_MOTORES §7.2: o grão é o papel (o mesmo a todo tam
 mod o_modo_do_grao;
 mod o_pigmento_por_comprimento;
 mod o_po_do_aerografo;
-mod o_spray_do_wet; // J6 I-11: as marcas do spray do Wet perto do traço, e a memória do preset com jitter alto
 mod o_preset_nao_herda; // o preset escolhido depois de sujar o pincel é o preset (a família do estado escondido)
 mod o_relevo_dos_fios;
+mod o_spray_do_wet; // J6 I-11: as marcas do spray do Wet perto do traço, e a memória do preset com jitter alto
 mod o_wash; // o Wash: o traço pára no maior dab (dono 25/10)
 mod os_fios;
 mod os_outros_meios_nao_mudam;
@@ -66,5 +67,4 @@ mod sonda_spacing_continuo;
 mod sonda_tilt_do_preset;
 mod sonda_traco_rapido;
 mod sonda_tracos_por_meio;
-mod textura_do_tamanho; // W3 K2: a textura acompanha o tamanho do pincel e a marca do spray pousa
-mod cerda_e_marca; // W3 K3b: as cerdas crescem com o pincel e a ponta esfarela pelo grão
+mod textura_do_tamanho; // W3 K2: a textura acompanha o tamanho do pincel e a marca do spray pousa // W3 K3b: as cerdas crescem com o pincel e a ponta esfarela pelo grão

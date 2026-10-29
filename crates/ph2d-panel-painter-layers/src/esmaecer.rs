@@ -76,8 +76,12 @@ pub(crate) fn esmaecido<R>(
         0.0,
     );
     let normal = VelloBlend::new(Mix::Normal, Compose::SrcOver);
-    ctx.scene
-        .push_layer_shape(normal, ph2d_editor_core::property_row::inativa::alfa_inativo(theme), Affine::IDENTITY, &forma);
+    ctx.scene.push_layer_shape(
+        normal,
+        ph2d_editor_core::property_row::inativa::alfa_inativo(theme),
+        Affine::IDENTITY,
+        &forma,
+    );
     let r = pintar(ctx);
     ctx.scene.pop_layer();
     r

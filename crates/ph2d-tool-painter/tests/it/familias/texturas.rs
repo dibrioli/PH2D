@@ -263,39 +263,44 @@ pub const EM_ESTUDO_J6: &[ReceitaMeio] = &[
 
 /// K-9 o GRUNGE do Rebelle («Oil › Grunge › Grunge»): riscas de cerda densas ao comprido com falhas rasgadas e a borda
 /// esfiapada em traços curtos — as cerdas do Express Oil mais cheias e a 2.ª ponta (L6) que rasga a borda.
-pub const EM_ESTUDO_J6_WET: &[Receita] = &[GRUNGE, Receita {
-    nome: "Grunge B",
-    bristle_count: 300.0,
-    extras: &[
-        ("felt", 0.0),
-        ("bristleStrength", 3.0),
-        ("bristlePressure", 3.0),
-        ("bristleLaneWidth", 3.0),
-        ("bristleLift", 0.45),
-        ("bristleNoiseLength", 150.0),
-        ("pressureSizeCurve", 0.5),
-        ("pressureOpacity", 0.5),
-    ],
-    pincel: &[("dual", RASGOS_FORTES)],
-    ..GRUNGE
-}, GRUNGE_C, Receita {
-    nome: "Grunge D",
-    extras: &[
-        ("felt", 0.0),
-        ("bristleStrength", 3.0),
-        ("bristlePressure", 2.5),
-        ("bristleLaneWidth", 2.0),
-        ("bristleLift", 0.4),
-        ("bristleNoiseLength", 300.0),
-        ("bristleStreak", 0.9),
-        ("bristleStreakCut", 0.6),
-        ("bristleStreakLength", 120.0),
-        ("bristleTipRagged", 1.0),
-        ("pressureSizeCurve", 0.5),
-        ("pressureOpacity", 0.5),
-    ],
-    ..GRUNGE_C
-}];
+pub const EM_ESTUDO_J6_WET: &[Receita] = &[
+    GRUNGE,
+    Receita {
+        nome: "Grunge B",
+        bristle_count: 300.0,
+        extras: &[
+            ("felt", 0.0),
+            ("bristleStrength", 3.0),
+            ("bristlePressure", 3.0),
+            ("bristleLaneWidth", 3.0),
+            ("bristleLift", 0.45),
+            ("bristleNoiseLength", 150.0),
+            ("pressureSizeCurve", 0.5),
+            ("pressureOpacity", 0.5),
+        ],
+        pincel: &[("dual", RASGOS_FORTES)],
+        ..GRUNGE
+    },
+    GRUNGE_C,
+    Receita {
+        nome: "Grunge D",
+        extras: &[
+            ("felt", 0.0),
+            ("bristleStrength", 3.0),
+            ("bristlePressure", 2.5),
+            ("bristleLaneWidth", 2.0),
+            ("bristleLift", 0.4),
+            ("bristleNoiseLength", 300.0),
+            ("bristleStreak", 0.9),
+            ("bristleStreakCut", 0.6),
+            ("bristleStreakLength", 120.0),
+            ("bristleTipRagged", 1.0),
+            ("pressureSizeCurve", 0.5),
+            ("pressureOpacity", 0.5),
+        ],
+        ..GRUNGE_C
+    },
+];
 /// r2: a 2.ª ponta mordia a borda em DENTADAS (r1, prancha) — sai; as falhas são as das cerdas (riscas cortadas ao
 /// comprido e a ponta esfiapada).
 const GRUNGE_C: Receita = Receita {
@@ -380,7 +385,11 @@ fn folha_de_lobulos(n: usize, forma: f64) -> Vec<u8> {
         }
         // O ângulo «diamante» (0..4, sem trigonometria: o mesmo byte em toda máquina).
         let losango = if y >= 0.0 {
-            if x >= 0.0 { y / (x + y) } else { 1.0 - x / (-x + y) }
+            if x >= 0.0 {
+                y / (x + y)
+            } else {
+                1.0 - x / (-x + y)
+            }
         } else if x < 0.0 {
             2.0 - y / (-x - y)
         } else {
@@ -917,7 +926,11 @@ fn cada_carimbo_se_reconhece_pela_foto() {
 fn os_em_estudo_nao_estao_na_fabrica() {
     use crate::presets_de_fabrica::{parametros_do_meio, relativo_do_meio};
     let raiz = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes");
-    for r in EM_ESTUDO.iter().chain(EM_ESTUDO_J6).chain(super::aerografo::EM_ESTUDO) {
+    for r in EM_ESTUDO
+        .iter()
+        .chain(EM_ESTUDO_J6)
+        .chain(super::aerografo::EM_ESTUDO)
+    {
         let rel = relativo_do_meio(r);
         assert!(
             !raiz.join(&rel).exists(),
@@ -1012,7 +1025,11 @@ fn escreve_os_em_estudo() {
     let dir = std::path::PathBuf::from(std::env::var("PH2D_EXAME_DIR").expect("PH2D_EXAME_DIR"))
         .join("estudo");
     let so = std::env::var("PH2D_REGERA_SO").ok();
-    for r in EM_ESTUDO.iter().chain(EM_ESTUDO_J6).chain(super::aerografo::EM_ESTUDO) {
+    for r in EM_ESTUDO
+        .iter()
+        .chain(EM_ESTUDO_J6)
+        .chain(super::aerografo::EM_ESTUDO)
+    {
         if so
             .as_deref()
             .is_some_and(|s| !s.split(',').any(|n| n == r.nome))

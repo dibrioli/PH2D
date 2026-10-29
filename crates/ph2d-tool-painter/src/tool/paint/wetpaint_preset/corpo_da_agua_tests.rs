@@ -81,10 +81,7 @@ fn ensaio(tool: WetTool, mexe: Option<(Knob, f64)>, traca: bool) -> Vec<u8> {
 fn da_tela(g: KnobGroup) -> bool {
     matches!(
         g,
-        KnobGroup::Water
-            | KnobGroup::Physics
-            | KnobGroup::Paper
-            | KnobGroup::WetEffects
+        KnobGroup::Water | KnobGroup::Physics | KnobGroup::Paper | KnobGroup::WetEffects
     )
 }
 

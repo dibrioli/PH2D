@@ -131,8 +131,16 @@ impl Local {
             wet: v[4] / n,
             tem_susp: ws > 0.0,
             tem_sett: wt > 0.0,
-            a: if ws > 0.0 { [v[5] / ws, v[6] / ws, v[7] / ws] } else { [0.0; 3] },
-            b: if wt > 0.0 { [v[8] / wt, v[9] / wt, v[10] / wt] } else { [0.0; 3] },
+            a: if ws > 0.0 {
+                [v[5] / ws, v[6] / ws, v[7] / ws]
+            } else {
+                [0.0; 3]
+            },
+            b: if wt > 0.0 {
+                [v[8] / wt, v[9] / wt, v[10] / wt]
+            } else {
+                [0.0; 3]
+            },
         }
     }
 }
@@ -165,7 +173,12 @@ pub(super) struct LocalMat {
 
 impl LocalMat {
     /// `None` sem o [`Local`] (a média da janela, ao bit) ou sem material nem marca a misturar.
-    pub(super) fn nova(t: &Trail, g: &Grid, local: Option<&Local>, marca: bool) -> Option<LocalMat> {
+    pub(super) fn nova(
+        t: &Trail,
+        g: &Grid,
+        local: Option<&Local>,
+        marca: bool,
+    ) -> Option<LocalMat> {
         let local = local?;
         let material = !g.material.is_empty();
         if !material && !marca {
@@ -207,7 +220,8 @@ impl LocalMat {
                                 v[1 + k] = f64::from(x) * m;
                             }
                             v[13] = f64::from(c.vidro_claro) * m;
-                            v[14] = f64::from(c.vidro_claro) * f64::from(c.transmissao.max(0.0)) * m;
+                            v[14] =
+                                f64::from(c.vidro_claro) * f64::from(c.transmissao.max(0.0)) * m;
                         }
                         if marca {
                             v[15] = f64::from(g.nivelado[i]) * m;
@@ -218,17 +232,33 @@ impl LocalMat {
                     }
                 }
                 let tx = (lx - t.lx0 + 1) as usize;
-                let (cima, aqui) = (((ty - 1) * tw + tx) * CANAIS_MAT, (ty * tw + tx) * CANAIS_MAT);
+                let (cima, aqui) = (
+                    ((ty - 1) * tw + tx) * CANAIS_MAT,
+                    (ty * tw + tx) * CANAIS_MAT,
+                );
                 for c in 0..CANAIS_MAT {
                     somas[aqui + c] = somas[cima + c] + linha[c];
                 }
             }
         }
-        Some(LocalMat { somas, lx0: local.lx0, ly0: local.ly0, tw, th, r: local.r, material, marca })
+        Some(LocalMat {
+            somas,
+            lx0: local.lx0,
+            ly0: local.ly0,
+            tw,
+            th,
+            r: local.r,
+            material,
+            marca,
+        })
     }
 
     /// O material e a marca PERTO da célula local `(lx, ly)` (`None` onde a vizinhança não tem tinta, ou sem o campo).
-    pub(super) fn media(&self, lx: i32, ly: i32) -> (Option<crate::material::MaterialCelula>, Option<f64>) {
+    pub(super) fn media(
+        &self,
+        lx: i32,
+        ly: i32,
+    ) -> (Option<crate::material::MaterialCelula>, Option<f64>) {
         let x = lx - self.lx0;
         let y = ly - self.ly0;
         let x0 = (x - self.r).max(0) as usize;

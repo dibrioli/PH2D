@@ -24,7 +24,11 @@ fn centro(b: &Bancada, id: NodeId, nome: &str) -> (f32, f32) {
         .map(|(_, r)| *r)
         .unwrap_or_else(|| panic!("«{nome}» não foi pintado"));
     let (x, y) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
-    assert_eq!(b.host.hit_at(x, y), Some(id), "o ponteiro no centro de «{nome}» aterra noutro sítio");
+    assert_eq!(
+        b.host.hit_at(x, y),
+        Some(id),
+        "o ponteiro no centro de «{nome}» aterra noutro sítio"
+    );
     (x, y)
 }
 
@@ -57,7 +61,14 @@ fn arrasta(b: &mut Bancada, id: NodeId, nome: &str, dx: f32) -> Vec<WidgetEvent>
 /// o «Ends beyond» lia-se morto) que atravessa o bloco de cor (o Smear tem o que arrastar), e meio segundo de quadros.
 fn traco_com_pontas(t: &mut ph2d_tool_painter::PainterTool) -> Vec<u8> {
     let mut ultima = None;
-    traco(t, &mut ultima, [24.0, 40.0], [100.0, 92.0], [0.8, 0.8], [0.0, 0.0]);
+    traco(
+        t,
+        &mut ultima,
+        [24.0, 40.0],
+        [100.0, 92.0],
+        [0.8, 0.8],
+        [0.0, 0.0],
+    );
     for _ in 0..30 {
         tique(t, &mut ultima);
     }
@@ -114,8 +125,16 @@ fn as_pontas_e_o_fio_aceitam_o_rato_e_o_traco_muda() {
         let mut base = Bancada::nova(c.meio, &c.armar);
         let traco_antes = traco_com_pontas(&mut base.tool);
         // O controlo do ruído: o mesmo traço numa bancada igual, sem gesto, sai igual ao bit.
-        let ruido = diferenca(&traco_antes, &traco_com_pontas(&mut Bancada::nova(c.meio, &c.armar).tool)).0;
-        assert_eq!(ruido, 0, "{}: o traço sem gesto já difere (n={ruido}) — a régua é ruído", c.nome);
+        let ruido = diferenca(
+            &traco_antes,
+            &traco_com_pontas(&mut Bancada::nova(c.meio, &c.armar).tool),
+        )
+        .0;
+        assert_eq!(
+            ruido, 0,
+            "{}: o traço sem gesto já difere (n={ruido}) — a régua é ruído",
+            c.nome
+        );
         let mut b = Bancada::nova(c.meio, &c.armar);
         let antes = (c.le)(&b.tool.brush_settings());
         let tela_antes = b.geometria();
@@ -138,10 +157,16 @@ fn as_pontas_e_o_fio_aceitam_o_rato_e_o_traco_muda() {
         if c.numero {
             let visto = b.host.store().number_value(c.id);
             if visto.is_none_or(|v| (v - depois).abs() > 1e-3) {
-                falhas.push(format!("{}: o painel não redesenha o valor ({visto:?} vs {depois})", c.nome));
+                falhas.push(format!(
+                    "{}: o painel não redesenha o valor ({visto:?} vs {depois})",
+                    c.nome
+                ));
             }
         } else if b.geometria() == tela_antes {
-            falhas.push(format!("{}: o painel re-pintado desenha a caixa como antes", c.nome));
+            falhas.push(format!(
+                "{}: o painel re-pintado desenha a caixa como antes",
+                c.nome
+            ));
         }
         let n = diferenca(&traco_antes, &traco_com_pontas(&mut b.tool)).0;
         eprintln!("PONTAS-RATO\t{}\t{antes} → {depois}\tn={n}", c.nome);
@@ -149,5 +174,10 @@ fn as_pontas_e_o_fio_aceitam_o_rato_e_o_traco_muda() {
             falhas.push(format!("{}: o traço saiu igual ao de antes", c.nome));
         }
     }
-    assert!(falhas.is_empty(), "{} controlo(s):\n{}", falhas.len(), falhas.join("\n"));
+    assert!(
+        falhas.is_empty(),
+        "{} controlo(s):\n{}",
+        falhas.len(),
+        falhas.join("\n")
+    );
 }

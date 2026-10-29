@@ -585,7 +585,8 @@ impl PainterTool {
         // O Real Oil é do traço (28/10): só os números do cartão, que são da tela, mudam a tinta com óleo pousada.
         let need_recomposite = w.show_wet
             || w.km_glaze
-            || (w.oleo_na_tela && w.oleo_real_valores != ph2d_wet_paint::oleo_real::OleoReal::default());
+            || (w.oleo_na_tela
+                && w.oleo_real_valores != ph2d_wet_paint::oleo_real::OleoReal::default());
         w.show_wet = false;
         w.paper_visual = false;
         w.oleo_real = None;
@@ -643,7 +644,10 @@ impl PainterTool {
             && !adiado
             && self.paint.wetpaint.session.as_mut().is_some_and(|s| {
                 s.bring_home();
-                s.engine.layers.iter().any(|l| l.visible && !l.grid.oleo.is_empty())
+                s.engine
+                    .layers
+                    .iter()
+                    .any(|l| l.visible && !l.grid.oleo.is_empty())
             });
         if tem_oleo {
             self.wet_recomposite_full();

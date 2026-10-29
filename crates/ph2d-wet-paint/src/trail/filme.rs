@@ -123,9 +123,19 @@ pub(crate) struct Forma {
 impl Forma {
     #[must_use]
     /// `r` em células, `px` os px de uma célula: o domo mede o raio em px ([`DOMO_R0`]).
-    pub(crate) fn nova(lado: f64, ponta: f64, r: f64, px: f64, tangente: Option<(f64, f64)>) -> Self {
+    pub(crate) fn nova(
+        lado: f64,
+        ponta: f64,
+        r: f64,
+        px: f64,
+        tangente: Option<(f64, f64)>,
+    ) -> Self {
         let r_px = r * px;
-        let g = if r_px <= DOMO_R0 { 0.0 } else { 1.0 - DOMO_R0 / r_px };
+        let g = if r_px <= DOMO_R0 {
+            0.0
+        } else {
+            1.0 - DOMO_R0 / r_px
+        };
         Self {
             lado: lado * g,
             ponta: ponta * g,
@@ -221,8 +231,14 @@ fn o_domo_do_filme_e_o_mesmo_em_px_a_toda_a_razao() {
         let s = rpx * f64::from(k) / 20.0;
         for (dx, dy) in [(0.0, s), (s, 0.0)] {
             let (fa, fb) = (a.fator(dx, dy), b.fator(dx / 2.0, dy / 2.0));
-            assert!((fa - fb).abs() <= 1e-12, "a {s} px: razão 1 {fa} × razão 2 {fb}");
+            assert!(
+                (fa - fb).abs() <= 1e-12,
+                "a {s} px: razão 1 {fa} × razão 2 {fb}"
+            );
         }
     }
-    assert!(a.fator(0.0, rpx) < 0.9, "controlo: a 100 px o filme é um domo");
+    assert!(
+        a.fator(0.0, rpx) < 0.9,
+        "controlo: a 100 px o filme é um domo"
+    );
 }

@@ -76,12 +76,12 @@ impl PainterTool {
         // `grid::oleo` existe), com os números da TELA do cartão — nunca pela caixa de agora.
         let tem_oleo = !self.paint.wetpaint.oleo_adiado
             && self.paint.wetpaint.session.as_mut().is_some_and(|s| {
-            s.bring_home();
-            s.engine
-                .layers
-                .iter()
-                .any(|l| l.visible && !l.grid.oleo.is_empty())
-        });
+                s.bring_home();
+                s.engine
+                    .layers
+                    .iter()
+                    .any(|l| l.visible && !l.grid.oleo.is_empty())
+            });
         #[cfg(test)]
         let tem_oleo = if super::oleo_plano::lei_da_caixa::get() {
             self.paint.wetpaint.oleo_real.is_some()
@@ -90,24 +90,26 @@ impl PainterTool {
         };
         self.paint.wetpaint.oleo_na_tela = tem_oleo;
         // W3b: o papel do documento sob a tinta (a cor que a Transmission tinge) e o dente dele (o Relevo do papel).
-        let oleo = tem_oleo.then_some(self.paint.wetpaint.oleo_real_valores).map(|mut o| {
-            o.papel = self.papel.map_or([1.0; 3], |p| {
-                p.map(|c| ph2d_wet_paint::colorops::transfer::srgb255_to_linear(f64::from(c)))
+        let oleo = tem_oleo
+            .then_some(self.paint.wetpaint.oleo_real_valores)
+            .map(|mut o| {
+                o.papel = self.papel.map_or([1.0; 3], |p| {
+                    p.map(|c| ph2d_wet_paint::colorops::transfer::srgb255_to_linear(f64::from(c)))
+                });
+                // D1 W3b: o Smooth Edges amacia a SILHUETA no campo — o relevo e a cobertura seguem o mesmo contorno.
+                o.suave_px = f64::from(raio);
+                #[cfg(test)]
+                if super::smooth_edges::so_na_cor::get() {
+                    o.suave_px = 0.0;
+                }
+                // U2 W3b: o Paper Relief morde no estado de fábrica (Relief do papel 0) — a textura do papel na tinta tem
+                // o piso de profundidade [`super::grao_no_filme::RELIEF_NA_TINTA_MIN`].
+                o.dente_papel = f64::from(
+                    super::grao_no_filme::relief_na_tinta(self.paint.substrate_depth)
+                        * super::super::substrate_relief::MAX_TOOTH_PX,
+                );
+                o
             });
-            // D1 W3b: o Smooth Edges amacia a SILHUETA no campo — o relevo e a cobertura seguem o mesmo contorno.
-            o.suave_px = f64::from(raio);
-            #[cfg(test)]
-            if super::smooth_edges::so_na_cor::get() {
-                o.suave_px = 0.0;
-            }
-            // U2 W3b: o Paper Relief morde no estado de fábrica (Relief do papel 0) — a textura do papel na tinta tem
-            // o piso de profundidade [`super::grao_no_filme::RELIEF_NA_TINTA_MIN`].
-            o.dente_papel = f64::from(
-                super::grao_no_filme::relief_na_tinta(self.paint.substrate_depth)
-                    * super::super::substrate_relief::MAX_TOOTH_PX,
-            );
-            o
-        });
         // W3b: o dente do papel que a Transmission assa na tinta ([`super::grao_no_filme`]); sem papel escolhido, o
         // papel de fábrica (U2).
         let grao = oleo.and_then(|_| {

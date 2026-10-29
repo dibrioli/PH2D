@@ -228,7 +228,10 @@ fn the_paper_visual_prints_the_tooth_into_the_pigment_alpha_intact() {
         let layers = layers_of(&sem);
         render_pigment_only_region(&layers, 1, 1, W, H, &mut off);
         render_pigment_region_visual(Some(&params), &layers, paper_on, 1, 1, W, H, &mut on);
-        assert_eq!(off, on, "tinta pousada sem a Paint Texture imprimiu o papel");
+        assert_eq!(
+            off, on,
+            "tinta pousada sem a Paint Texture imprimiu o papel"
+        );
     }
     let mut e = seeded_engine_textura([220.0, 45.0, 40.0], true);
     let params = e.sim.gather_params(&e.tuning);

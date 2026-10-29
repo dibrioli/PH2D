@@ -162,7 +162,11 @@ impl PainterTool {
         if let Some(on) = wv["oleo_real"].as_bool() {
             w.oleo_real = on.then_some(w.oleo_real_valores);
         }
-        cartao_antigo_no_pincel(&mut w.knobs, &wv["oleo_real_valores"], &v["preset"]["engine"]);
+        cartao_antigo_no_pincel(
+            &mut w.knobs,
+            &wv["oleo_real_valores"],
+            &v["preset"]["engine"],
+        );
         if let Some(x) = wv["opacidade"].as_f64() {
             w.opacidade = x as f32;
         }

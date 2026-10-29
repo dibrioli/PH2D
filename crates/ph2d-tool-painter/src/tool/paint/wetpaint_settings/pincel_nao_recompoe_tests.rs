@@ -147,12 +147,24 @@ fn um_controlo_do_pincel_nao_recompoe(oleo: bool) {
     // Os do cartão da FORMA que só o Wet Paint lê (J6, as pontas rectas): a rota da pegada.
     use crate::ids as i;
     for (nome, e) in [
-        ("pontas_rectas", PanelEvent::Click(i::PAINTER_BRUSH_PONTAS_RECTAS)),
-        ("pontas_alem", PanelEvent::SetValue(i::PAINTER_BRUSH_PONTAS_ALEM, 0.6)),
-        ("pontas_esbate", PanelEvent::SetValue(i::PAINTER_BRUSH_PONTAS_ESBATE, 1.2)),
+        (
+            "pontas_rectas",
+            PanelEvent::Click(i::PAINTER_BRUSH_PONTAS_RECTAS),
+        ),
+        (
+            "pontas_alem",
+            PanelEvent::SetValue(i::PAINTER_BRUSH_PONTAS_ALEM, 0.6),
+        ),
+        (
+            "pontas_esbate",
+            PanelEvent::SetValue(i::PAINTER_BRUSH_PONTAS_ESBATE, 1.2),
+        ),
     ] {
         envenena(&mut t);
-        assert!(t.route_brush_dab_event(&e), "{nome}: a rota da pegada não consumiu o evento");
+        assert!(
+            t.route_brush_dab_event(&e),
+            "{nome}: a rota da pegada não consumiu o evento"
+        );
         if !envenenada(&t) {
             recompoem.push(nome.to_owned());
         }

@@ -939,7 +939,9 @@ fn fio_do_arrasto(px: &[u8], x0: usize, ys: std::ops::Range<usize>) -> (usize, f
 fn o_fio_do_arrasto_do_dedo_e_continuo() {
     use serde_json::json;
     let mut sem = preset_da_receita("Smudge Finger");
-    sem.parametros.brush.insert("smear_fio".to_owned(), json!(false));
+    sem.parametros
+        .brush
+        .insert("smear_fio".to_owned(), json!(false));
     let (com, sem) = std::thread::scope(|s| {
         let a = s.spawn(|| sobre_de("Smudge Finger", None));
         let b = s.spawn(move || sobre_de("Smudge Finger", Some(sem)));
@@ -949,12 +951,18 @@ fn o_fio_do_arrasto_do_dedo_e_continuo() {
     for x0 in [250, 500, 750] {
         let (vazias, massa) = fio_do_arrasto(&com, x0, 322..440);
         let (vazias_sem, _) = fio_do_arrasto(&sem, x0, 322..440);
-        println!("[fio] x {x0}: com o fio {vazias} vazias, massa {massa:.3} · sem {vazias_sem} vazias");
+        println!(
+            "[fio] x {x0}: com o fio {vazias} vazias, massa {massa:.3} · sem {vazias_sem} vazias"
+        );
         if vazias > 0 {
-            falhas.push(format!("x {x0}: o fio parte-se ({vazias}/118 linhas vazias)"));
+            falhas.push(format!(
+                "x {x0}: o fio parte-se ({vazias}/118 linhas vazias)"
+            ));
         }
         if !(0.6..=4.0).contains(&massa) {
-            falhas.push(format!("x {x0}: massa do fio {massa:.3} fora de 0,6..4 (Rebelle 2,14)"));
+            falhas.push(format!(
+                "x {x0}: massa do fio {massa:.3} fora de 0,6..4 (Rebelle 2,14)"
+            ));
         }
         if vazias_sem < 10 {
             falhas.push(format!(

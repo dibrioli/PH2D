@@ -194,7 +194,8 @@ fn o_censo_dos_controlos_so_encolhe() {
                 && entrega.revelados.is_empty()
                 && entrega.escondidos.is_empty()
                 && !entrega.dobrou
-                && entrega.outras.is_empty() {
+                && entrega.outras.is_empty()
+            {
                 // A PEGA de uma secção: o gesto dela é o ARRASTO (`as_seccoes_arrastam_e_tem_tema`), o clique parado
                 // não faz nada por desenho.
                 let pega = ph2d_editor_core::ids::section_of_grip(a.0).is_some()
@@ -205,7 +206,10 @@ fn o_censo_dos_controlos_so_encolhe() {
                 if pega {
                     continue;
                 }
-                if lista_muda.iter().any(|(m, id, _)| *m == media && *id == a.0) {
+                if lista_muda
+                    .iter()
+                    .any(|(m, id, _)| *m == media && *id == a.0)
+                {
                     mudos.push(a);
                 } else {
                     out.push(format!(

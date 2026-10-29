@@ -123,13 +123,19 @@ pub fn rows() -> &'static [TuneRow] {
             rows.iter().position(|r| r.key == "transmission"),
         ) {
             let modo = rows.remove(i);
-            let j = rows.iter().position(|r| r.key == "transmission").map_or(0, |j| j + 1);
+            let j = rows
+                .iter()
+                .position(|r| r.key == "transmission")
+                .map_or(0, |j| j + 1);
             rows.insert(j, modo);
         }
         // O Paper Press (dono 28/10) logo abaixo do Paper Relief: os dois dizem o que a tinta faz ao dente do papel.
         if let Some(i) = rows.iter().position(|r| r.key == "paperPress") {
             let press = rows.remove(i);
-            let j = rows.iter().position(|r| r.key == "paperRelief").map_or(rows.len(), |j| j + 1);
+            let j = rows
+                .iter()
+                .position(|r| r.key == "paperRelief")
+                .map_or(rows.len(), |j| j + 1);
             rows.insert(j, press);
         }
         if let Some(i) = rows.iter().position(|r| r.key == "lockMaterial") {
@@ -426,11 +432,19 @@ mod tests {
                 "lockMaterial",
             ]
         );
-        let escolhas: Vec<&str> = rows().iter().filter(|r| r.options.is_some()).map(|r| r.key).collect();
+        let escolhas: Vec<&str> = rows()
+            .iter()
+            .filter(|r| r.options.is_some())
+            .map(|r| r.key)
+            .collect();
         assert_eq!(escolhas, CHOICES, "só o modo da Transmission é um seletor");
         for k in CHOICES {
             let d = KNOB_DEFS.iter().find(|d| d.key == k).expect("knob");
-            assert_eq!((d.min, d.max, d.step), (0.0, 1.0, 1.0), "{k}: um seletor de 2 é 0..1 de passo 1");
+            assert_eq!(
+                (d.min, d.max, d.step),
+                (0.0, 1.0, 1.0),
+                "{k}: um seletor de 2 é 0..1 de passo 1"
+            );
         }
     }
 

@@ -2065,9 +2065,9 @@ fn medida_oleo_real_bordas() {
     }
 }
 
-#[path = "medida_transparencia.rs"]
-mod transparencia;
 #[path = "medida_bordas_w3b.rs"]
 mod bordas_w3b;
 #[path = "medida_paper_press.rs"]
 mod paper_press;
+#[path = "medida_transparencia.rs"]
+mod transparencia;

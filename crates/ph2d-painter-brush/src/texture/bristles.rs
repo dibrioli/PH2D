@@ -2,9 +2,7 @@
 //! generator from the slot's four sliders and sampled exactly as the engine samples it — nearest texel,
 //! wrapped, in canvas pixels from the dab centre (`ph2d_wet_paint::brush::sample_bristle`).
 
-use super::{
-    MAX_TEX_PARAMS, TEX_SIZE_MAX, TexDabBasis, TextureMapping, TextureSettings,
-};
+use super::{MAX_TEX_PARAMS, TEX_SIZE_MAX, TexDabBasis, TextureMapping, TextureSettings};
 use ph2d_wet_paint::brush::{BRISTLE_SIZE, BristleKnobs, build_bristle_texture, sample_bristle};
 use std::cell::RefCell;
 use std::rc::Rc;

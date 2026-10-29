@@ -81,9 +81,16 @@ fn o_misturador_so_leva_a_tinta_perto() {
         (pa as f64) <= ja as f64 - RAIO / 3.0,
         "o misturador perto leva a tinta tão longe como a janela: {pa} × {ja}"
     );
-    assert!(ca < pa, "o alcance não segue o BlendReach: {ca} ({}) × {pa} ({ALCANCE})", ALCANCE / 2.0);
+    assert!(
+        ca < pa,
+        "o alcance não segue o BlendReach: {ca} ({}) × {pa} ({ALCANCE})",
+        ALCANCE / 2.0
+    );
     // … e continua a MISTURAR perto: a tinta sai da faixa dos dois lados.
-    assert!(ca.min(cb) >= 4, "o misturador perto não mistura: {ca} · {cb}");
+    assert!(
+        ca.min(cb) >= 4,
+        "o misturador perto não mistura: {ca} · {cb}"
+    );
     // Para a frente a caixa local arrasta o que a janela arrasta (± 6 px), nem menos nem MAIS (uma caixa torta — só
     // para trás — leva a mistura mais longe à frente: a prova de mutação M2).
     assert!(
@@ -147,9 +154,15 @@ fn o_material_do_misturador_segue_a_vizinhanca_da_cor() {
         (com_metal, com_marca, com_tinta_e_metal)
     };
     let (pm, pk, pt) = corre(ALCANCE);
-    println!("[mistura] células sem tinta com Metallic · marca, perto: {pm} · {pk}; com tinta e Metallic {pt}");
+    println!(
+        "[mistura] células sem tinta com Metallic · marca, perto: {pm} · {pk}; com tinta e Metallic {pt}"
+    );
     // A régua discrimina pela mutação (o material pela média da janela: 517 · 517 células sem tinta, 28/10).
-    assert_eq!((pm, pk), (0, 0), "o material ou a marca viajaram onde a cor não mistura: {pm} · {pk}");
+    assert_eq!(
+        (pm, pk),
+        (0, 0),
+        "o material ou a marca viajaram onde a cor não mistura: {pm} · {pk}"
+    );
     // … e o material continua com a tinta que o misturador leva (a faixa tem 261 × 31 = 8 091 células).
     assert!(pt > 261 * 31, "o material perto não seguiu a tinta: {pt}");
 }
@@ -185,7 +198,15 @@ fn a_gota_do_misturador_pousa_pela_lei_do_misturador() {
         .flat_map(|y| (X - 10..=X + 10).map(move |x| (x, y)))
         .filter(|&(x, y)| g.susp[x + 1 + (y + 1) * g.s] > 1.0)
         .count();
-    println!("[gota do Blend] susp antes {antes:.1} · depois {depois:.1}; células acima da faixa com tinta {fora}");
-    assert!(fora > 0, "a gota do misturador não misturou: a tinta não saiu da faixa");
-    assert!(depois <= antes * 1.001, "a gota do misturador POUSOU pigmento: {antes} → {depois}");
+    println!(
+        "[gota do Blend] susp antes {antes:.1} · depois {depois:.1}; células acima da faixa com tinta {fora}"
+    );
+    assert!(
+        fora > 0,
+        "a gota do misturador não misturou: a tinta não saiu da faixa"
+    );
+    assert!(
+        depois <= antes * 1.001,
+        "a gota do misturador POUSOU pigmento: {antes} → {depois}"
+    );
 }

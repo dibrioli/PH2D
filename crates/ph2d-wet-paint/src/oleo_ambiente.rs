@@ -188,7 +188,10 @@ impl Mapa {
         let fx = u * w as f64 - 0.5;
         let fy_bruto = (1.0 - v) * h as f64 - 0.5;
         let fy = fy_bruto.clamp(0.0, (h - 1) as f64);
-        let (x0, y0) = (crate::oleo_real::exato::floor(fx), crate::oleo_real::exato::floor(fy));
+        let (x0, y0) = (
+            crate::oleo_real::exato::floor(fx),
+            crate::oleo_real::exato::floor(fy),
+        );
         let (tx, ty) = (fx - x0, fy - y0);
         let xi = |k: f64| (k as isize).rem_euclid(w as isize) as usize;
         let (xa, xb) = (xi(x0), xi(x0 + 1.0));

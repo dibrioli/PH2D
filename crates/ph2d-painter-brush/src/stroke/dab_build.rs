@@ -136,8 +136,8 @@ impl Stroke {
             rotation = crate::heading::rotate(rotation, self.por_traco.rotor);
         }
         // O raio PEDIDO (sem o mínimo de 0,5 px): o que a marca abaixo de meio píxel pousa pela área (J6).
-        let livre =
-            (self.spec.clamped_radius() * self.dynamics.radius_scale(pressure) * scale).min(MAX_BRUSH_RADIUS_PX);
+        let livre = (self.spec.clamped_radius() * self.dynamics.radius_scale(pressure) * scale)
+            .min(MAX_BRUSH_RADIUS_PX);
         let radius = livre.clamp(0.5, MAX_BRUSH_RADIUS_PX);
         let coverage =
             (self.spec.strength * self.dynamics.coverage_scale(pressure) * overlap).clamp(0.0, 1.0);

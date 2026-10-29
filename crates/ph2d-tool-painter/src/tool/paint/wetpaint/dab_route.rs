@@ -26,7 +26,13 @@ impl PainterTool {
         if self.mangueira_viva() {
             // O lote VIRTUAL (as pontas rectas) leva a lane de cada dab em `fecho`, paralela ao lote: cada corrida lê a
             // sua fatia (recomeçar o índice em 0 dava à 2.ª corrida as lanes da 1.ª).
-            let fecho = self.paint.wetpaint.session.as_ref().map(|s| s.fecho.clone()).unwrap_or_default();
+            let fecho = self
+                .paint
+                .wetpaint
+                .session
+                .as_ref()
+                .map(|s| s.fecho.clone())
+                .unwrap_or_default();
             return self.stamp_dabs_mangueira_com(dabs, |t, i, corrida| {
                 if !fecho.is_empty()
                     && let Some(s) = t.paint.wetpaint.session.as_mut()
@@ -253,7 +259,10 @@ impl PainterTool {
         } else {
             1.0
         };
-        let escala_cerdas = [escala_tex, super::lote::escala_atraves(&sess.engine, brush, escala_tex)];
+        let escala_cerdas = [
+            escala_tex,
+            super::lote::escala_atraves(&sess.engine, brush, escala_tex),
+        ];
         let sub_dabs: Vec<(usize, u64, Option<f32>, Dab)> = dabs
             .iter()
             .enumerate()
@@ -271,7 +280,11 @@ impl PainterTool {
         let pontas = brush.pontas_rectas && !erasing && wet_tool == WetTool::Paint;
         let alem = self.alem_no_motor(brush);
         // As pontas que ESBATEM (J6t, [`super::esbate`]): só o pincel que pinta; a 0, nada abaixo muda.
-        let esbate_e = if !erasing && wet_tool == WetTool::Paint { brush.pontas_esbate } else { 0.0 };
+        let esbate_e = if !erasing && wet_tool == WetTool::Paint {
+            brush.pontas_esbate
+        } else {
+            0.0
+        };
         let virtual_ = !sess.fecho.is_empty();
         let lote = match (virtual_, sess.abrindo) {
             (false, _) => super::tampa::Lote::Mao,
@@ -311,12 +324,18 @@ impl PainterTool {
             } else {
                 (d.arc_len - sess.lanes[li].arco).max(0.0)
             };
-            let tampa = pontas.then(|| {
-                super::tampa::Tampa::do_dab(d, &mut sess.lanes[li], lote, alem)
-            });
+            let tampa =
+                pontas.then(|| super::tampa::Tampa::do_dab(d, &mut sess.lanes[li], lote, alem));
             let corte = tampa.flatten();
             let esbate = (esbate_e > 0.0).then(|| {
-                super::esbate::Esbate::do_dab(d, &mut sess.lanes[li], lote, esbate_e, pontas, filme_liso)
+                super::esbate::Esbate::do_dab(
+                    d,
+                    &mut sess.lanes[li],
+                    lote,
+                    esbate_e,
+                    pontas,
+                    filme_liso,
+                )
             });
             let peso_esbate = esbate.flatten().filter(|w| !w.trivial());
             // Per-dab fresh ink (Randomize): reload the lane's trail — a

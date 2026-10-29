@@ -271,7 +271,11 @@ fn a_sombra_sem_furo_nao_escurece_a_celula_clara() {
         p[4] = centro;
         sombra_sem_furo(&p, (3, 3), (1, 1))
     };
-    assert_eq!(com(40, 200), 40, "a célula clara (s ≥ 32) entre vizinhas escuras escureceu");
+    assert_eq!(
+        com(40, 200),
+        40,
+        "a célula clara (s ≥ 32) entre vizinhas escuras escureceu"
+    );
     assert_eq!(com(FURO_DA_SOMBRA, 255), FURO_DA_SOMBRA, "no limiar");
     assert_eq!(com(200, 40), 40, "o furo escuro não foi cheio");
     assert_eq!(com(60, 40), 60, "abaixo do furo fica");
@@ -320,7 +324,9 @@ fn o_smooth_edges_da_tela_amacia_o_relevo_pela_mesma_silhueta() {
             if cob(x, y) <= 0.0 && (c6.at(xi, yi) != 0.0 || c6.at_fina(xi, yi) != 0.0) {
                 fora += 1;
             }
-            if cob(x, y) <= 0.0 && sombra_no_papel(&oleo_suave(0.0), &c0, x, y) != sombra_no_papel(&oleo_suave(6.0), &c6, x, y)
+            if cob(x, y) <= 0.0
+                && sombra_no_papel(&oleo_suave(0.0), &c0, x, y)
+                    != sombra_no_papel(&oleo_suave(6.0), &c6, x, y)
             {
                 papel_sombra += 1;
             }
@@ -329,8 +335,15 @@ fn o_smooth_edges_da_tela_amacia_o_relevo_pela_mesma_silhueta() {
     println!(
         "[smooth no campo] borda {borda} · altura {altura} · fina {fina} · sombra {sombra} · longe {longe} · relevo fora {fora} · sombra no papel {papel_sombra}"
     );
-    assert!(borda > 100, "o Smooth Edges não mexeu na silhueta ({borda} células)");
-    for (nome, n) in [("forma", altura), ("fina (a normal)", fina), ("sombra", sombra)] {
+    assert!(
+        borda > 100,
+        "o Smooth Edges não mexeu na silhueta ({borda} células)"
+    );
+    for (nome, n) in [
+        ("forma", altura),
+        ("fina (a normal)", fina),
+        ("sombra", sombra),
+    ] {
         assert!(
             n * 10 >= borda * 9,
             "a altura da {nome} só seguiu {n} das {borda} células da silhueta amaciada"
@@ -338,7 +351,10 @@ fn o_smooth_edges_da_tela_amacia_o_relevo_pela_mesma_silhueta() {
     }
     assert_eq!(longe, 0, "a cobertura mudou longe da orla");
     assert_eq!(fora, 0, "o relevo saiu do pigmento");
-    assert!(papel_sombra > 0, "a sombra no papel não seguiu a silhueta amaciada");
+    assert!(
+        papel_sombra > 0,
+        "a sombra no papel não seguiu a silhueta amaciada"
+    );
 }
 
 /// ⭐ D1 W3b: **o neutro `0` é o campo de antes, ao bit** (as alturas, a cobertura e o alcance), e o raio entra na
@@ -354,11 +370,28 @@ fn o_smooth_edges_zero_e_o_campo_de_antes_ao_bit() {
     let cob: Vec<f64> = (0..a.w * a.h)
         .map(|k| cobertura_da_celula(&[(&g, true)], (a.x0 + k % a.w) + (a.y0 + k / a.w) * g.s))
         .collect();
-    let antes = sem_entalhes(&EmSerie, &cob, borda_suave(&EmSerie, &cob, a.w, a.h), a.w, a.h);
-    assert_eq!(a.borda, antes, "a cobertura da borda com o Smooth Edges 0 não é a de antes");
-    assert_eq!(alcance(&o), MARGEM + 2 * o.af.raio_suave + 1, "o alcance de fábrica mudou");
+    let antes = sem_entalhes(
+        &EmSerie,
+        &cob,
+        borda_suave(&EmSerie, &cob, a.w, a.h),
+        a.w,
+        a.h,
+    );
+    assert_eq!(
+        a.borda, antes,
+        "a cobertura da borda com o Smooth Edges 0 não é a de antes"
+    );
+    assert_eq!(
+        alcance(&o),
+        MARGEM + 2 * o.af.raio_suave + 1,
+        "o alcance de fábrica mudou"
+    );
     let com = |px: f64| ChaveCampo::de(&oleo_suave(px), &[(&g, true)], 1);
-    assert_ne!(com(0.0), com(3.0), "o raio do Smooth Edges não está na chave do campo");
+    assert_ne!(
+        com(0.0),
+        com(3.0),
+        "o raio do Smooth Edges não está na chave do campo"
+    );
 }
 
 /// O CUSTO do Smooth Edges no campo (fixtura do Dabber, 256 × 64, mínimo de 9 intercalado): o campo inteiro a 0, a

@@ -22,6 +22,8 @@ pub const OPACIDADE_DE_FABRICA: f32 = 1.0;
 #[cfg(test)]
 mod corpo_da_agua_tests;
 mod ferramentas;
+#[cfg(test)]
+mod glaze_no_preset_tests;
 pub(in crate::tool::paint) mod json;
 #[cfg(test)]
 mod medida_oleo_real;
@@ -38,8 +40,6 @@ mod shape_color_tests;
 mod sonda_custo_oleo;
 #[cfg(test)]
 mod tests;
-#[cfg(test)]
-mod glaze_no_preset_tests;
 
 pub use ferramentas::{Gaveta, ferramenta_do_preset, nome_da_ferramenta};
 pub use meios::{MeioDesconhecido, campos_do_meio, meio_do_preset, motor_do_meio, nome_do_meio};

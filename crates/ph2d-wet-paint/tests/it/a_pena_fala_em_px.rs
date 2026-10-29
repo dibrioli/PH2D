@@ -80,8 +80,19 @@ fn rampa_px(v: &[f64], razao: f64) -> f64 {
 fn a_pena_da_mancha_molhada_e_a_mesma_em_px_a_toda_a_razao() {
     let (um, dois) = (levantado(1.0, PENA_PX), levantado(2.0, PENA_PX));
     let (r1, r2) = (rampa_px(&um, 1.0), rampa_px(&dois, 2.0));
-    let (s1, s2) = (rampa_px(&levantado(1.0, 0.0), 1.0), rampa_px(&levantado(2.0, 0.0), 2.0));
-    println!("[pena px] rampa: razão 1 {r1:.2} px · razão 2 {r2:.2} px; sem pena {s1:.2} · {s2:.2}");
-    assert!(r1 - s1 >= 0.5 * PENA_PX, "controlo: a pena alarga a rampa ({s1} → {r1})");
-    assert!((r1 - r2).abs() <= 1.0, "a pena em px: razão 1 {r1} px × razão 2 {r2} px");
+    let (s1, s2) = (
+        rampa_px(&levantado(1.0, 0.0), 1.0),
+        rampa_px(&levantado(2.0, 0.0), 2.0),
+    );
+    println!(
+        "[pena px] rampa: razão 1 {r1:.2} px · razão 2 {r2:.2} px; sem pena {s1:.2} · {s2:.2}"
+    );
+    assert!(
+        r1 - s1 >= 0.5 * PENA_PX,
+        "controlo: a pena alarga a rampa ({s1} → {r1})"
+    );
+    assert!(
+        (r1 - r2).abs() <= 1.0,
+        "a pena em px: razão 1 {r1} px × razão 2 {r2} px"
+    );
 }

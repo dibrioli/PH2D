@@ -1,5 +1,7 @@
 # Handoff de INTEGRAÇÃO — `line/TrelloClone` W2b → W11 + ligação J1–J6 (28/10/2026)
 
+> ✅ **Smoke do dono APROVADO (28/10, «Smoke OK»), e ele ORDENOU a integração no main (28/10).**
+>
 > ⛔ **Suíte completa NÃO corrida na linha (dono 23/10) — é do integrador.** Só testes por NOME, clippy `--all-targets` e fmt (LIMPOS em toda a linha: `96ffa55c9b` `d871ad7f54` `61488e56c3` `91e1ddad42`), portões de UI/arquitectura 25/25 por nome depois do J7/P2.
 
 Leitor: o integrador e a próxima LLM. Plano [`01_plano`](../01_plano.md) · ADR [0195](../../architecture/decisions/0195-o-kanban-e-um-documento-do-projeto-o-quadro-referencia-o-e-a-aba-abre-o.md) (provisório) · loop [`loop/`](../loop/) (`ESTADO`, `MEDICOES`, `BLOQUEIOS`, `DECISOES_SEM_O_DONO`) · antecessor [W2→W3](HANDOFF_CONTINUACAO_W2_para_W3_2026-10-28.md).
@@ -7,7 +9,7 @@ Leitor: o integrador e a próxima LLM. Plano [`01_plano`](../01_plano.md) · ADR
 ## 1. Base e HEAD
 
 - Branch `line/TrelloClone` (`Worktrees/line-TrelloClone`) · base = merge-base `c3662cd8e4` (main em 28/10, 0 atrás; **leia o main no ficheiro**, `collision-surface.sh` pelo caminho absoluto).
-- **Código até `8ef6bdf648`** (smoke do dono 28/10; os commits seguintes são só docs): 126 commits desde a base, 793 ficheiros, +96 271 / −860. Árvore: só `Cargo.lock` `M` (4 linhas — `app-board`/`app-*` deixam `ph2d-app-kanban`, ganham `ph2d-kanban-scenes`; consequência do corte J7; o coordenador comita; se faltar, `cargo check` regenera).
+- **HEAD de código `6fdc67ca7f`** (o último do smoke do dono 28/10; o commit deste handoff vem a seguir, só docs): 129 commits desde a base, 810 ficheiros, +96 480 / −860. Árvore LIMPA.
 
 ## 2. Commits por onda (hashes = os que fecham cada lote)
 
@@ -82,11 +84,13 @@ O que um merge pode partir:
 - **Portões**: UI/arquitectura 25/25 verdes por nome depois do J7 (reconfirme na suíte). Nenhum vermelho conhecido.
 - **Docs**: decisões de PRODUTO tomadas sem o dono (para rever no smoke): [`DECISOES_SEM_O_DONO.md`](../loop/DECISOES_SEM_O_DONO.md). Medições (`MAX_*` e tectos): [`MEDICOES.md`](../loop/MEDICOES.md).
 
-## 7b. Smoke do dono 28/10 (`6739befe3b`, `8ef6bdf648`) — mecanismo em [SMOKE_DONO_2026-10-28_D10_a_D12.md](SMOKE_DONO_2026-10-28_D10_a_D12.md)
+## 7b. Smoke do dono 28/10 (`6739befe3b`, `8ef6bdf648`, `f5d9dbcde6`, `6fdc67ca7f`) — mecanismo em [SMOKE_DONO_2026-10-28_D10_a_D12.md](SMOKE_DONO_2026-10-28_D10_a_D12.md)
 
 - **D10**: o teclado era engolido (o verso, o filtro e a automação respondiam «tomada» à tecla morta); a Mesa agora passa pela composição como a shell (`escrever_no_verso.rs`; mutação: 4+3+2 vermelhos). Menu «Aa» medido e por cima.
 - **D12**: capa por upload («Upload a cover image»), Attachments com estado vazio, largar imagem = capa (`verso_capa.rs`).
 - **D11**: fundo do quadro (cores, degradês, 8 padrões, imagem; `bg/`, `background.rs`, `kanban_bg.rs`; `d11_fundo.rs`, `d11_fotos.rs`); `KanbanSet` v8, `PROTOCOL` 15.
+- **Vistas sobre o fundo** (`6fdc67ca7f`): as quatro vistas escrevem com a tinta das listas e eram pintadas sobre o fundo do quadro (ilegíveis num fundo claro); agora `header::other` pinta-as num painel `KanbanList` inset `BOARD_PAD` (o mesmo rect serve o rato); Tabela e Painel deixam de pintar `KanbanBoardBg`. Fotos `D11/vista_*`.
+- Fecho depois do smoke: fmt + clippy `--all-targets -D warnings` limpos nas crates tocadas; censo de i18n do `ph2d-editor-core` verde (o `Debug` do `RichEditor` sem literal); `the_shell_only_shrinks` e `no_dependency_climbs_a_layer` verdes; `censos-da-arvore-combinada.sh` deu 120/121 antes de `f5d9dbcde6` (o único vermelho, o censo de i18n, re-corrido por nome e verde depois); ⛔ o integrador re-corre os censos inteiros.
 - Merge pode partir: esses dois números; `ph2d-i18n/src/kanban{,_back}.rs`; `ph2d-board-render/src/lib.rs`; `export_json.rs`.
 
 ## 8. Prova de fecho e smokes

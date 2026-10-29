@@ -218,10 +218,8 @@ impl crate::App {
         );
         let filed = self.project_path.is_some();
         ph2d_app_code::frame(sim, script.as_mut(), hero, toasts, filed);
-        let (tl, intents) = (&self.timeline.doc, &mut self.timeline_intents);
-        ph2d_app_components::kanban_scene::frame(sim, hero, tl, intents);
-        ph2d_app_kanban::frame(hero);
-        ph2d_app_planner::frame(hero, toasts);
+        let tl = (&self.timeline.doc, &mut self.timeline_intents);
+        kanban_families(sim, hero, tl, toasts);
         // ⭐ **A LUZ** (Luz 2D): a secção do Inspector e a recusa do solver, que sobe como aviso.
         let sel = (hero.gizmo.selection, hero.gizmo.selected_len());
         let (info, corpo, recusa) = luz2d.publicar(hero.view.luz2d, sim.world(), sel);
@@ -241,4 +239,20 @@ impl crate::App {
         );
         Some(tool_preview_bits)
     }
+}
+
+/// As famílias do Kanban no quadro (o catálogo da cena para os cartões, o Kanban, o Planner) — à parte
+/// pelo tecto de função da `fase_snapshots_publish`.
+fn kanban_families(
+    sim: &mut ph2d_ecs::SimWorld,
+    hero: &mut ph2d_editor_core::screens::hero::HeroScreen,
+    (tl, intents): (
+        &ph2d_timeline::TimelineDoc,
+        &mut Vec<ph2d_timeline::TimelineIntent>,
+    ),
+    toasts: &mut ph2d_editor_core::ToastQueue,
+) {
+    ph2d_app_components::kanban_scene::frame(sim, hero, tl, intents);
+    ph2d_app_kanban::frame(hero);
+    ph2d_app_planner::frame(hero, toasts);
 }

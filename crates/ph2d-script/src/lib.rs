@@ -23,8 +23,8 @@
 
 /// O texto da página de ajuda de cada linha da `api_table`.
 pub mod api_help;
-mod api_help_life;
 mod api_help_kanban;
+mod api_help_life;
 mod api_help_props;
 /// A API Luau como tabela — a fonte única do `ph2d.d.luau`.
 pub mod api_table;

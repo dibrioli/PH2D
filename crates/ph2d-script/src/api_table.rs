@@ -103,6 +103,17 @@ pub fn api() -> impl Iterator<Item = &'static ApiEntry> {
     API.iter().chain(crate::api_table_kanban::KANBAN_API)
 }
 
+/// ⭐ O que a lista do `ph2d.` mostra: as funções da tabela `ph2d` e as tabelas filhas dela
+/// (`ph2d.kanban`). A pergunta tem UM sítio: dois leitores que a montavam à mão desencontraram-se
+/// quando a `ph2d.kanban` chegou.
+pub fn ph2d_members() -> impl Iterator<Item = &'static str> {
+    api().filter(|e| e.table == "ph2d").map(|e| e.ident).chain(
+        API_GLOBALS
+            .iter()
+            .filter_map(|g| g.ident.strip_prefix("ph2d.")),
+    )
+}
+
 /// Todos os tipos exportados.
 pub fn api_types() -> impl Iterator<Item = &'static ApiType> {
     API_TYPES

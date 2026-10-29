@@ -377,16 +377,7 @@ fn o_assistente_fixado_completa_a_api() {
         m.pede(*id);
     }
     let mut l = abre(&mut m, ids[0], "ph2d.");
-    // As funções de `ph2d` e as tabelas filhas (`ph2d.kanban`), pelas portas da tabela.
-    let mut api: Vec<&str> = ph2d_script::api_table::api()
-        .filter(|e| e.table == "ph2d")
-        .map(|e| e.ident)
-        .chain(
-            ph2d_script::api_table::API_GLOBALS
-                .iter()
-                .filter_map(|g| g.ident.strip_prefix("ph2d.")),
-        )
-        .collect();
+    let mut api: Vec<&str> = ph2d_script::api_table::ph2d_members().collect();
     l.sort_unstable();
     api.sort_unstable();
     assert_eq!(l, api);

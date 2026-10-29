@@ -213,9 +213,14 @@ pub fn request_card_to_note(card: CardRef) {
 /// Onde a nota nasce: no Quadro activo, no centro da vista; sem Quadro activo (pedido da aba do
 /// Kanban), no Quadro onde o Kanban está posto — o da última vez, ou o primeiro —, que passa a ser o
 /// activo, à direita da referência. `None` = o Kanban não está em nenhum Quadro (avisa-se).
+/// O passo entre duas notas convertidas de seguida, em lados de nota (unidades do MUNDO do Quadro).
+const NOTE_PITCH: f64 = 1.1; // LITERAL-PX-OK: fracção do lado da nota, no mundo do Quadro
+/// O vão da referência do Kanban à primeira nota, em lados de nota.
+const NOTE_MARGIN: f64 = 0.6; // LITERAL-PX-OK: fracção do lado da nota, no mundo do Quadro
+
 fn note_place(hero: &mut HeroScreen, kanban: KanbanId, nth: usize) -> Option<[f64; 2]> {
     let side = ph2d_board_model::STICKY_SIDE;
-    let step = side * 1.1 * nth as f64;
+    let step = side * NOTE_PITCH * nth as f64;
     if let Some(b) = hero.documents.active_board() {
         return Some([b.camera.center_x + step, b.camera.center_y]);
     }
@@ -230,7 +235,7 @@ fn note_place(hero: &mut HeroScreen, kanban: KanbanId, nth: usize) -> Option<[f6
     hero.documents.activate(Some(p.board));
     let b = hero.documents.active_board_mut()?;
     let el = b.doc.get(p.element)?;
-    let centre = [el.x + el.w + side * 0.6 + step, el.y + side / 2.0];
+    let centre = [el.x + el.w + side * NOTE_MARGIN + step, el.y + side / 2.0];
     b.camera.center_x = centre[0];
     b.camera.center_y = centre[1];
     Some(centre)

@@ -178,11 +178,7 @@ fn confere(p: &mut Palco, passo: usize) {
         }
         3 => {
             let (lista, _) = p.docs().completion_of(id).expect("a lista abriu");
-            let mut api: Vec<&str> = ph2d_script::api_table::API
-                .iter()
-                .filter(|e| e.table == "ph2d")
-                .map(|e| e.ident)
-                .collect();
+            let mut api: Vec<&str> = ph2d_script::api_table::ph2d_members().collect();
             let mut vista: Vec<&str> = lista.iter().map(String::as_str).collect();
             api.sort_unstable();
             vista.sort_unstable();

@@ -79,8 +79,8 @@ impl crate::App {
         };
         // A meio do Play o documento é a fotografia (`undo::jogo`): o que o jogo mudou não se grava.
         let Some(state) = self.documento_do_jogo().or_else(|| self.capture_project()) else {
-        return;
-    };
+            return;
+        };
         let file = ProjectFile {
             state,
             assets,

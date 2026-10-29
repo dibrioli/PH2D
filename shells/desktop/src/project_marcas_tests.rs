@@ -43,7 +43,11 @@ fn as_marcas_do_artista_atravessam_o_arquivo() {
 fn um_v191_um_v192_e_um_v193_abrem_sem_kanbans() {
     let marcas = vec![3u8, 1, 4];
     let mut v193 = V192.to_vec();
-    assert_eq!(&v193[..2], &[0xC0, 0x01], "o fixture v192 começa pela versão 192");
+    assert_eq!(
+        &v193[..2],
+        &[0xC0, 0x01],
+        "o fixture v192 começa pela versão 192"
+    );
     v193[0] = 0xC1;
     v193.extend(postcard::to_allocvec(&marcas).expect("serializa"));
     for (ver, bytes) in [(191u32, V191.to_vec()), (192, V192.to_vec()), (193, v193)] {

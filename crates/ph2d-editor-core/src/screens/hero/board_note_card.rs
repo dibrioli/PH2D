@@ -6,12 +6,12 @@
 //! ⚠️ A lista que se PINTA e a que o CLIQUE resolve saem da mesma [`visible`].
 
 use super::HeroScreen;
+use super::board_kanban_notes::{Choice, choices, notes_to_cards};
 use super::context_menu_overlay::{ROW_H, pad_y};
 use crate::ids;
 use crate::interaction::{
     ContextMenuKind, ContextMenuRequest, InteractiveState, WidgetEvent, WidgetStore,
 };
-use super::board_kanban_notes::{Choice, choices, notes_to_cards};
 use crate::paint::{fill_rounded_rect, paint_text, resolve};
 use crate::widget::{ButtonState, TextInput, TextInputState, paint_text_input_with_buffer};
 use crate::zones::Rect;

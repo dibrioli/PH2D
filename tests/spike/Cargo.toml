@@ -76,7 +76,15 @@ mlua = { version = "0.12", features = ["luau"] }
 flate2 = "1.1.9"
 bevy_ecs = { version = "0.19", optional = true }
 flecs_ecs = { version = "0.2", optional = true }
-wasmtime = "48"
+# Ship 29/10: os defaults do wasmtime MENOS `cache` — a cache de compilação em disco (nunca ligada
+# aqui: nenhum `cache_config_load`) era quem trazia o `zstd` 0.13 das RUSTSEC-2026-0391/0398/0403/0410,
+# e até o wasmtime 50 o pede (`^0.13`, sem versão corrigida).
+wasmtime = { version = "48", default-features = false, features = [
+    "anyhow", "async", "backtrace", "gc", "gc-copying", "gc-drc", "gc-null", "wat", "profiling",
+    "parallel-compilation", "cranelift", "pooling-allocator", "demangle", "addr2line", "coredump",
+    "debug-builtins", "runtime", "component-model", "component-model-async", "threads",
+    "stack-switching", "std", "debug", "compile-time-builtins", "wit-parser",
+] }
 postcard = "1.1.3"
 blake3 = "1.8.5"
 serde = { version = "1.0.228", features = ["derive"] }

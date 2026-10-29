@@ -29,7 +29,7 @@ rustix = { version = "1", features = ["event", "fs", "pipe"] }
 
 [dev-dependencies]
 # O oráculo (`tests/oraculo_libinput.rs`) lê o `.zst` gravado tal como está; já no lock (`ctt`).
-zstd = { version = "0.13", default-features = false }
+zstd = { version = "0.14", default-features = false }
 
 [lints.rust]
 # ⚠️ NÃO herda `[lints] workspace = true`: excepção nomeada do gate

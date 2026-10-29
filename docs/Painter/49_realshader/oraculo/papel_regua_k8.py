@@ -6,7 +6,7 @@ Uso: python3 -I papel_regua_k8.py <entrada da sonda> <saida cycles h_fina> [<sai
 import sys, numpy as np
 from PIL import Image
 import OpenImageIO as oiio
-ent=sys.argv[1]; sais=sys.argv[2:]
+ent=sys.argv[1]; saidas=sys.argv[2:]
 GW,GH=700,460
 X0,X1=150,500
 lin=lambda s: np.where(s/255<=0.04045,(s/255)/12.92,((s/255+0.055)/1.055)**2.4)
@@ -23,6 +23,6 @@ def prof(L):
     return [round(float(srgb(min(1,np.median(L[y,X0:X1])/ref)))) for y in rows]
 print("rows ", rows)
 print("nosso", prof(nosso(ent)))
-for s in sais:
+for s in saidas:
     for luz in ("studio_sol10","sol10"):
         print(s.split('/')[-1], luz, prof(cyc(s,luz)))

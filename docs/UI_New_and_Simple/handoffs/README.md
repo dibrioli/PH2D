@@ -11,7 +11,7 @@
 > um doc descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**100 arquivos** · **1** citados pelo `CLAUDE.md` (marcados **◆**) · **100** são handoffs (registro **morto**).
+**102 arquivos** · **1** citados pelo `CLAUDE.md` (marcados **◆**) · **102** são handoffs (registro **morto**).
 
 | Data | | Arquivo | Papel | Assunto |
 |---|---|---|---|---|
@@ -105,7 +105,7 @@
 | 2026-10-24 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-24_F27_E.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-24_F27_E.md) | ⚠️ handoff (morto) | HANDOFF DE CONTINUAÇÃO — `line/UIUX`, 24/10 — F27 Bloco E: fonte do HUD, ficheiro do script e props do script … |
 | 2026-10-24 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-24_F27_F.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-24_F27_F.md) | ⚠️ handoff (morto) | HANDOFF DE CONTINUAÇÃO — `line/UIUX`, 24/10 — F27 Bloco F: a palavra de uma escolha, um losango por canal, uma… |
 | 2026-10-24 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-24_F28.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-24_F28.md) | ⚠️ handoff (morto) | HANDOFF DE CONTINUAÇÃO — `line/UIUX`, 24/10 — F28: um valor discreto fora do vocabulário do campo |
-| 2026-10-24 | ◆ | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-24_F27.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-24_F27.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-24 — F27 (todo campo do Inspector é um canal; a palavra de uma es… |
+| 2026-10-24 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-24_F27.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-24_F27.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-24 — F27 (todo campo do Inspector é um canal; a palavra de uma es… |
 | 2026-10-25 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-25_F29.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-25_F29.md) | ⚠️ handoff (morto) | HANDOFF DE CONTINUAÇÃO — `line/UIUX`, 25/10 — F29: o composto do balde tem um z só, a booleana veste a cor, o … |
 | 2026-10-25 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-25_F30.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-25_F30.md) | ⚠️ handoff (morto) | HANDOFF DE CONTINUAÇÃO — `line/UIUX`, 25/10 — F30: a lista FORA do Auto Key — itens com identidade, a Cena e a… |
 | 2026-10-25 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-25_F31.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-25_F31.md) | ⚠️ handoff (morto) | HANDOFF de CONTINUAÇÃO — line/UIUX, onda F31 (25/10): a identidade das camadas do Vetor |
@@ -115,6 +115,8 @@
 | 2026-10-26 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-26_F35.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-26_F35.md) | ⚠️ handoff (morto) | HANDOFF de continuação — line/UIUX, onda F35 (memória da placa: o FX devolve; placa cheia avisa e volta), 26/1… |
 | 2026-10-27 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-27_F36.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-27_F36.md) | ⚠️ handoff (morto) | HANDOFF de continuação — line/UIUX, onda F36 (o que nasce sob a placa cheia renasce; arranque espera a placa; … |
 | 2026-10-27 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-27_F37.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-27_F37.md) | ⚠️ handoff (morto) | HANDOFF de continuação — line/UIUX, onda F37 (o editor cabe numa placa com ~950 MiB livres: átlas sob demanda,… |
+| 2026-10-27 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-27_F38.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-27_F38.md) | ⚠️ handoff (morto) | HANDOFF de continuação — line/UIUX, onda F38 (a família «memória da placa» fechada), 27/10 |
+| 2026-10-28 | ◆ | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-28_F28_A_F39.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-28_F28_A_F39.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-28 — F28 a F39 (vocabulário do discreto · composto do balde · a l… |
 
 ---
 

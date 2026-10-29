@@ -167,6 +167,19 @@ ignore = [
     # already waits for. (Integração rodada 04, 2026-10-02 — advisory landed the
     # day of the ship.)
     "RUSTSEC-2026-0319",
+    # `zstd` 0.13.3 / `zstd-safe` 7.2.4 (RUSTSEC-2026-0391/0398/0403, publicadas 16/10, chegaram ao
+    # advisory-db depois do ship de 24/10). Ship 29/10: o que tinha correcção foi CORRIGIDO — o
+    # `ph2d-pen` sobe ao `zstd` 0.14.3, o `zstd-sys` ao 2.1.2 (a 0410), e o `wasmtime` do `tests/spike`
+    # larga a feature `cache` (o `wasmtime-internal-cache` pede `^0.13` até ao 50.0.1). Sobra UM
+    # caminho: `ctt` 0.5 <- `tools/asset-cooker` (ferramenta offline, dev-dependency do `ph2d-ecs`).
+    # O cooker chama `Container::ktx2()` sem supercompressão e lê PNG pelo `image` — o `zstd` do
+    # `ctt` (compressão `ktx2_zstd`, descompressão de KTX2 de ENTRADA) não é chamado. A saída é o
+    # `ctt` 0.6.1 (`zstd ^0.14`), TENTADO no ship: o 0.6 põe o espaço de cor no FORMATO (sRGB exige
+    # `BC7_SRGB_BLOCK`/`ASTC_*_SRGB`), o que muda o VkFormat do KTX2 cozinhado e a matriz de alvos —
+    # 13 testes do cooker vermelhos; é trabalho próprio (formato gravado), não um bump. Revisitar aí.
+    "RUSTSEC-2026-0391",
+    "RUSTSEC-2026-0398",
+    "RUSTSEC-2026-0403",
 ]
 
 # ----------------------------------------------------------------------------

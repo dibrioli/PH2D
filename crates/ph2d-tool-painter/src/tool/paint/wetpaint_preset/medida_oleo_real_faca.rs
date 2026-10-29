@@ -278,7 +278,7 @@ fn medida_oleo_real_faca_candidatas() {
         let por_lin: Vec<f64> = (lo.max(2)..=hi.min(gh - 1))
             .map(|cy| (c0..c1).map(|cx| m(cx, cy)).sum::<f64>() / (c1 - c0) as f64)
             .collect();
-        let (ond_x, ond_y) = (100.0 * dp(&por_col) / plat, 100.0 * dp(&por_lin) / plat);
+        let (ondula_x, ondula_y) = (100.0 * dp(&por_col) / plat, 100.0 * dp(&por_lin) / plat);
         let nr = ruido.len().max(1) as f64;
         let mu = ruido.iter().sum::<f64>() / nr;
         let sd = (ruido.iter().map(|v| (v - mu) * (v - mu)).sum::<f64>() / nr).sqrt();
@@ -330,7 +330,7 @@ fn medida_oleo_real_faca_candidatas() {
             .map(|d| format!("{:.2}", mediana(perfil_topo.iter().map(|p| p[d]).collect())))
             .collect();
         println!(
-            "{:<20} {:>5} {:>7.1} {:>7.1} {:>7.1} {:>8.1} {:>8.1} {:>7.1} {:>6.2} {:>6.2}  {}  (ondX {:.1}% ondY {:.1}%, n rampa {}/{}, água {} ticks)",
+            "{:<20} {:>5} {:>7.1} {:>7.1} {:>7.1} {:>8.1} {:>8.1} {:>7.1} {:>6.2} {:>6.2}  {}  (ondulaX {:.1}% ondulaY {:.1}%, n rampa {}/{}, água {} ticks)",
             nome,
             r,
             mediana(larg),
@@ -342,8 +342,8 @@ fn medida_oleo_real_faca_candidatas() {
             mediana(ot),
             mediana(ob),
             perfil.join(" "),
-            ond_x,
-            ond_y,
+            ondula_x,
+            ondula_y,
             rt.len(),
             cols.len(),
             ticks

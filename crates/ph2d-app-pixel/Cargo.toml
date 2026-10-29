@@ -25,7 +25,6 @@ ph2d-host = { path = "../ph2d-host" }
 ph2d-i18n = { path = "../ph2d-i18n" }
 ph2d-render = { path = "../ph2d-render" }
 ph2d-tokens = { path = "../ph2d-tokens" }
-ph2d-unique-name = { path = "../ph2d-unique-name" }
 ph2d-vector = { path = "../ph2d-vector" }
 # As formas do Vector no Pixel (P6b): o `cook` do catálogo — a mesma porta do editor vetorial.
 ph2d-vec-scene = { path = "../ph2d-vec-scene" }

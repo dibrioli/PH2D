@@ -43,4 +43,9 @@ ignore = [
     "RUSTSEC-2026-0195",
     "RUSTSEC-2026-0217",
     "RUSTSEC-2026-0319",
+    # zstd 0.13.3 / zstd-safe 7.2.4 só pelo `ctt` 0.5 do asset-cooker offline (caminho do zstd não
+    # chamado); o resto do grafo CORRIGIDO no ship 29/10. Justificação inteira no deny.toml.
+    "RUSTSEC-2026-0391",
+    "RUSTSEC-2026-0398",
+    "RUSTSEC-2026-0403",
 ]

@@ -505,7 +505,7 @@ impl GpuCook {
             .expect("map_async callback ran")
             .expect("compaction count map succeeded");
         let (scan_last, flag_last) = {
-            let data = slice.get_mapped_range();
+            let data = slice.get_mapped_range().expect("mapped range");
             (
                 u32::from_le_bytes(data[0..4].try_into().expect("4 bytes")),
                 f32::from_le_bytes(data[4..8].try_into().expect("4 bytes")),

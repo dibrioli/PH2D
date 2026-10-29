@@ -34,7 +34,7 @@ ph2d-text = { path = "../ph2d-text" }
 ph2d-tokens = { path = "../ph2d-tokens" }
 ph2d-vector = { path = "../ph2d-vector" }
 # `#[derive(Resource)]` da cache das folhas e dos pedidos de abrir o editor.
-bevy_ecs = "0.19"
+bevy_ecs = "0.20"
 
 [dev-dependencies]
 ph2d-a11y = { path = "../ph2d-a11y" }

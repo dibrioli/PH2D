@@ -66,7 +66,8 @@ fn gpu_scan(gpu: &GpuContext, input: &[u32]) -> Vec<u32> {
     rx.recv()
         .expect("map_async callback ran")
         .expect("readback map succeeded");
-    let out: Vec<u32> = bytemuck::cast_slice(&slice.get_mapped_range()).to_vec();
+    let out: Vec<u32> =
+        bytemuck::cast_slice(&slice.get_mapped_range().expect("mapped range")).to_vec();
     staging.unmap();
     // `scratch` drops here — after the GPU has finished (we polled to completion).
     out

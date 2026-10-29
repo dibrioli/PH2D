@@ -104,7 +104,7 @@ fn readback(gpu: &GpuContext, tex: &wgpu::Texture, w: u32, h: u32) -> Vec<u8> {
     });
     let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
     rx.recv().expect("recv").expect("map");
-    let mapped = staging.slice(..).get_mapped_range();
+    let mapped = staging.slice(..).get_mapped_range().expect("mapped range");
     let mut out = Vec::with_capacity((unpadded as usize) * (h as usize));
     for row in 0..h as usize {
         let start = row * padded as usize;

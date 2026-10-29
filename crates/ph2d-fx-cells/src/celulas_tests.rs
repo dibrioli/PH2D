@@ -97,8 +97,9 @@ fn the_device_relocation_is_the_cpu_sum() {
     l.slice(..).map_async(wgpu::MapMode::Read, |_| {});
     let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
     #[expect(clippy::cast_possible_truncation, reason = "188 B")]
-    let lida: RenderInstance =
-        *bytemuck::from_bytes(&l.slice(..).get_mapped_range()[..tam as usize]);
+    let lida: RenderInstance = *bytemuck::from_bytes(
+        &l.slice(..).get_mapped_range().expect("mapped range")[..tam as usize],
+    );
     let mut esperada = r;
     esperada.world_pos = [r.world_pos[0] + delta[0], r.world_pos[1] + delta[1]];
     assert_eq!(bytemuck::bytes_of(&lida), bytemuck::bytes_of(&esperada));

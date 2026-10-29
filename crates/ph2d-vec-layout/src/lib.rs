@@ -469,12 +469,12 @@ fn style_of(n: &Node) -> Style {
     };
     // O alinhamento transversal diz a MESMA coisa nos dois motores — *onde o filho senta na
     // travessa* —, então ele é resolvido uma vez, antes do ramo.
-    s.align_items = Some(match f.align {
+    s.align_items = match f.align {
         Align::Start => AlignItems::FLEX_START,
         Align::Center => AlignItems::CENTER,
         Align::End => AlignItems::FLEX_END,
         Align::Stretch => AlignItems::STRETCH,
-    });
+    };
     // ⚠️ **O `align_content` ESPELHA o `align`, e sem esta linha o CSS governa por omissão.**
     //
     // As duas propriedades respondem perguntas diferentes — `align_items` diz *onde o filho senta
@@ -508,12 +508,12 @@ fn style_of(n: &Node) -> Style {
     // ⚠️ Corolário, para quem for tentado a expor as duas: **um controlo separado de
     // `align_content` faria um wrap de faixa única passar a obedecê-lo e a ignorar o `align`** —
     // o artista veria o controlo que ele conhece deixar de responder, sem nada na tela a explicar.
-    s.align_content = Some(match f.align {
+    s.align_content = match f.align {
         Align::Start => AlignContent::FLEX_START,
         Align::Center => AlignContent::CENTER,
         Align::End => AlignContent::FLEX_END,
         Align::Stretch => AlignContent::STRETCH,
-    });
+    };
     if let Dir::Grid { columns } = f.dir {
         s.display = Display::Grid;
         // ⚠️ **`max(1)` e não uma recusa.** Uma grade de zero colunas é um degenerado com UMA
@@ -531,11 +531,11 @@ fn style_of(n: &Node) -> Style {
         // de uma caixa), então caem em `Start`. O painel **não as oferece** na grade; o que sobra é
         // o documento que já as trazia de um `Row` anterior, e ele é PRESERVADO de propósito — o
         // valor volta intacto quando o artista volta ao `Row`, como o vão e o recuo já voltam.
-        s.justify_items = Some(match f.justify {
+        s.justify_items = match f.justify {
             Justify::Center => AlignItems::CENTER,
             Justify::End => AlignItems::FLEX_END,
             Justify::Start | Justify::SpaceBetween | Justify::SpaceAround => AlignItems::FLEX_START,
-        });
+        };
         return s;
     }
     s.display = Display::Flex;
@@ -546,13 +546,13 @@ fn style_of(n: &Node) -> Style {
     };
     s.flex_direction = dirn;
     s.flex_wrap = wrap;
-    s.justify_content = Some(match f.justify {
+    s.justify_content = match f.justify {
         Justify::Start => JustifyContent::FLEX_START,
         Justify::Center => JustifyContent::CENTER,
         Justify::End => JustifyContent::FLEX_END,
         Justify::SpaceBetween => JustifyContent::SPACE_BETWEEN,
         Justify::SpaceAround => JustifyContent::SPACE_AROUND,
-    });
+    };
     s
 }
 

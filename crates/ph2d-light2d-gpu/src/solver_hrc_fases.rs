@@ -138,14 +138,15 @@ impl Holografica {
             r.expect("map das fases da holográfica")
         });
         gpu.device.poll(wgpu::PollType::wait_indefinitely()).ok()?;
-        let ts: Vec<u64> = fatia
-            .get_mapped_range()
-            .as_chunks::<8>()
-            .0
-            .iter()
-            .map(|b| u64::from_le_bytes(*b))
-            .collect();
+        let ts: Option<Vec<u64>> = fatia.get_mapped_range().ok().map(|v| {
+            v.as_chunks::<8>()
+                .0
+                .iter()
+                .map(|b| u64::from_le_bytes(*b))
+                .collect()
+        });
         f.leitura.unmap();
+        let ts = ts?;
         let mut out: Vec<FaseHrc> = Vec::new();
         for k in 0..f.feitas.get() as usize {
             for (i, (etapa, _, _, fatia)) in self.passos.iter().enumerate() {

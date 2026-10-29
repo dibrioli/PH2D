@@ -135,7 +135,7 @@ pub(crate) fn le(
         if a.is_none() && b.is_none() {
             continue;
         }
-        for m in &par.manifolds {
+        for m in par.manifolds() {
             let n = m.data.normal;
             let f = -n;
             let t = Vector::new(-f.y, f.x);

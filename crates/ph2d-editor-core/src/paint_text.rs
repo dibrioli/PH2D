@@ -326,6 +326,7 @@ fn paint_text_spans(
             let run = glyph_run.run();
             let font = run.font();
             let run_font_size = run.font_size();
+            let coords = ph2d_text::run_coord_bits(run);
             // Os trechos: o byte de cada glifo pela ordem do `positioned_glyphs` (os clusters
             // visuais); a elisão muda o texto, logo só no `Wrap`. Um corte do run (`glyph_start`
             // privado) deixa as contas diferentes: pinta-se de uma cor, nunca a cor de outro glifo.
@@ -357,7 +358,7 @@ fn paint_text_spans(
                         .draw_glyphs(font)
                         .font_size(run_font_size)
                         .hint(hint)
-                        .normalized_coords(run.normalized_coords())
+                        .normalized_coords(&coords)
                         .brush(chunk[0].1)
                         .transform(translate)
                         .draw(Fill::NonZero, chunk.iter().map(|(g, _)| *g));
@@ -378,10 +379,10 @@ fn paint_text_spans(
                 // Vello rasterizes glyphs with the font's default
                 // axis values — Inter Variable falls back to ~Regular
                 // 400 regardless of which weight stop was selected,
-                // so Crisp Heavy looks identical to Crisp. The slice
-                // is `&[i16]` on both sides (parley + vello typedef
-                // NormalizedCoord = i16), so no conversion needed.
-                .normalized_coords(run.normalized_coords())
+                // so Crisp Heavy looks identical to Crisp. parley 0.12
+                // hands `NormalizedCoord` and vello takes the F2Dot14
+                // bits (`i16`): `run_coord_bits` converts them.
+                .normalized_coords(&coords)
                 .brush(color)
                 .transform(translate)
                 .draw(
@@ -467,6 +468,7 @@ pub fn paint_text_rotated_ccw(
             let run = glyph_run.run();
             let font = run.font();
             let run_font_size = run.font_size();
+            let coords = ph2d_text::run_coord_bits(run);
             inner
                 .draw_glyphs(font)
                 .font_size(run_font_size)
@@ -478,7 +480,7 @@ pub fn paint_text_rotated_ccw(
                 // Forward parley's per-run variation coords (wght +
                 // opsz). See `paint_text_weighted` for why this is
                 // critical — without it Vello ignores the weight stop.
-                .normalized_coords(run.normalized_coords())
+                .normalized_coords(&coords)
                 .brush(color)
                 .transform(transform)
                 .draw(

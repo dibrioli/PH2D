@@ -7,7 +7,7 @@
 //! §"Plano de conformidade HR-3".
 //!
 //! `NodeId` is the AccessKit-canonical identity (re-exported from
-//! `ph2d_a11y`) so the store and the `accesskit::Tree` share keys
+//! `ph2d_a11y`) so the store and the `accesskit::TreeInfo` share keys
 //! without translation.
 //!
 //! Note on `BTreeMap` over `HashMap`: workspace clippy bans

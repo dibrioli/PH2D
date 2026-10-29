@@ -37,7 +37,7 @@ ph2d-hud-layout = { path = "../ph2d-hud-layout" }
 # campos do `CameraShake` e portanto viajam no documento, e a faixa do expoente que o painel pinta
 # tem de ser alcançável a partir do componente — `CameraShake::lei()` é a porta ÚNICA.
 ph2d-shake = { path = "../ph2d-shake" }
-bevy_ecs = "0.19"
+bevy_ecs = "0.20"
 # ADR-0072 §2.1: o `NamedAnchor` guarda a lista inline (4 âncoras cobrem ~99% dos sprites) e o
 # `AnchorData::Dict` guarda os pares ordenados inline (8). ⚠️ NÃO é dependência nova no projeto —
 # a `ph2d-vector-doc`, a `-font` e a `ph2d-editor-core` já a usam, com a mesma versão e a mesma

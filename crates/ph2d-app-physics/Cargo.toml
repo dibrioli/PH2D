@@ -23,7 +23,7 @@ ph2d-app-host = { path = "../ph2d-app-host" }
 # `shells/desktop` — o ponto inteiro da W2 (auditoria de velocidade §4-C2).
 # ⚠️ Versão LITERAL, como as irmãs (`ph2d-ecs`, `ph2d-physics-ecs`): este
 # workspace **não tem** `[workspace.dependencies]`, e herdar dele não compila.
-bevy_ecs = "0.19"
+bevy_ecs = "0.20"
 ph2d-core = { path = "../ph2d-core" }
 ph2d-ecs = { path = "../ph2d-ecs" }
 ph2d-physics-ecs = { path = "../ph2d-physics-ecs" }

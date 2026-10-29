@@ -429,7 +429,8 @@ fn sonda(@builtin(global_invocation_id) id: vec3<u32>) {{
     });
     device.poll(wgpu::PollType::wait_indefinitely()).unwrap();
     rx.recv().unwrap().unwrap();
-    let got: Vec<[u32; 4]> = bytemuck::cast_slice(&slice.get_mapped_range()).to_vec();
+    let got: Vec<[u32; 4]> =
+        bytemuck::cast_slice(&slice.get_mapped_range().expect("mapped range")).to_vec();
     for i in 0..N {
         let cel = [(i % 16) as i32 - 8, (i / 16) as i32 - 8];
         let semente = 4_000_000_000u32.wrapping_add(i.wrapping_mul(7919));

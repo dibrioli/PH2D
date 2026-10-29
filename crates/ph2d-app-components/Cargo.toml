@@ -125,7 +125,7 @@ serde = { version = "1", features = ["derive"] }
 # real só se lê depois de a crate existir): o `bevy_ecs` porque o
 # `instance_structure` faz consultas com o vocabulário cru do ECS, e o
 # `postcard` porque o `instance_docs` compara documentos pelos BYTES.
-bevy_ecs = "0.19"
+bevy_ecs = "0.20"
 postcard = { version = "1", default-features = false, features = ["use-std"] }
 
 # ⚠️⚠️ **Esta entra pelo REGISTO DE COMPONENTES, não pelo código.** Nenhum
@@ -166,7 +166,7 @@ ph2d-nav = { path = "../ph2d-nav" }
 # 📏 A sonda das barras do `=` (`tests/it/mede_as_duas_barras_do_igual.rs`, CodeEditor 15/10): a
 # placa para o `VelloPass` e o construtor do parley para moldar a pilha mono. Já estão no grafo.
 ph2d-gpu = { path = "../ph2d-gpu" }
-parley = "0.11.1"
+parley = "0.12.0"
 
 [features]
 # ⚠️⚠️ **Um `#[cfg(test)]` da família é INVISÍVEL do outro lado da fronteira**

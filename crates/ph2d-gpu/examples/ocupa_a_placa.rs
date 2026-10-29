@@ -49,6 +49,7 @@ fn main() {
         power_preference: wgpu::PowerPreference::HighPerformance,
         compatible_surface: None,
         force_fallback_adapter: false,
+        apply_limit_buckets: false,
     }))
     .expect("placa");
     let mut limits = wgpu::Limits::default();

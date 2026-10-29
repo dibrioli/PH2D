@@ -237,7 +237,9 @@ impl WalkPass {
         });
         let _ = device.poll(wgpu::PollType::wait_indefinitely());
         let _ = rx.recv();
-        let bytes = slice.get_mapped_range();
+        let bytes = slice
+            .get_mapped_range()
+            .expect("walk readback mapped range");
         let mut px = Vec::with_capacity(job.pixels());
         for y in 0..h {
             let base = (y * row) as usize;

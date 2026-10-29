@@ -20,7 +20,7 @@ ph2d-motion-kit = { path = "../ph2d-motion-kit" }
 # medido no oráculo, os MESMOS bits com 1, 4 e 16 fios E os da build sem ele (`4 096`: `eb8392c1…`
 # nos quatro), e `2,0 → 0,95` ms a `4 096` · `9,3 → 3,1` a `16 384`. ⚠️ Ele chega também à
 # `ph2d-physics` (unificação): os gates de replay dela correram verdes com ele (handoff §14).
-rapier2d = { version = "0.35", default-features = false, features = ["dim2", "f32", "std", "enhanced-determinism", "parallel"] }
+rapier2d = { version = "0.36", default-features = false, features = ["dim2", "f32", "std", "enhanced-determinism", "parallel"] }
 
 [dev-dependencies]
 # O alocador que conta — a conta dos bytes do mundo (`tests/it`), como os gates HR-3 da casa.

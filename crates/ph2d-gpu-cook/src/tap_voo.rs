@@ -99,8 +99,13 @@ impl GpuCook {
             match voo.pronto.try_recv() {
                 Ok(Ok(())) => {
                     let voo = self.tap_voo.em_voo.take().expect("acabou de ser lido");
-                    self.tap_voo.ultimo = Some(le_tap(&voo.staging, &voo.slots));
-                    self.tap_voo.nova_para_os_cartoes = true;
+                    if let Some(leitura) = le_tap(&voo.staging, &voo.slots) {
+                        self.tap_voo.ultimo = Some(leitura);
+                        self.tap_voo.nova_para_os_cartoes = true;
+                    } else {
+                        // Vista mapeada recusada: igual a um mapeamento recusado.
+                        self.solta_a_leitura_guardada();
+                    }
                 }
                 // A placa recusou o mapeamento (ou o pedido morreu): esquece-o e encomenda outro.
                 Ok(Err(_)) | Err(TryRecvError::Disconnected) => {

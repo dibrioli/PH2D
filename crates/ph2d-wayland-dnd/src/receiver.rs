@@ -17,21 +17,17 @@ use smithay_client_toolkit::data_device_manager::DataDeviceManagerState;
 use smithay_client_toolkit::data_device_manager::data_device::{
     DataDevice, DataDeviceData, DataDeviceHandler,
 };
-use smithay_client_toolkit::data_device_manager::data_offer::{
-    DataOfferData, DataOfferHandler, DragOffer,
-};
-use smithay_client_toolkit::globals::GlobalData;
+use smithay_client_toolkit::data_device_manager::data_offer::{DataOfferHandler, DragOffer};
 use smithay_client_toolkit::registry::{ProvidesRegistryState, RegistryState};
 use smithay_client_toolkit::seat::{Capability, SeatHandler, SeatState};
-use smithay_client_toolkit::{delegate_registry, delegate_seat, registry_handlers};
+use smithay_client_toolkit::{delegate_dispatch2, delegate_registry, registry_handlers};
 use wayland_backend::client::{Backend, ObjectId, WaylandError};
 use wayland_client::globals::registry_queue_init;
 use wayland_client::protocol::wl_data_device::WlDataDevice;
-use wayland_client::protocol::wl_data_device_manager::{DndAction, WlDataDeviceManager};
-use wayland_client::protocol::wl_data_offer::WlDataOffer;
+use wayland_client::protocol::wl_data_device_manager::DndAction;
 use wayland_client::protocol::wl_seat::WlSeat;
 use wayland_client::protocol::wl_surface::WlSurface;
-use wayland_client::{Connection, EventQueue, Proxy, QueueHandle, delegate_dispatch};
+use wayland_client::{Connection, EventQueue, Proxy, QueueHandle};
 
 use crate::URI_LIST_MIME;
 use crate::session::{DndEvent, Effect, Session, Token};
@@ -466,8 +462,6 @@ impl ProvidesRegistryState for Worker {
 }
 
 delegate_registry!(Worker);
-delegate_seat!(Worker);
-// O `delegate_data_device!` do sctk traz também a `wl_data_source`; este receptor nunca a cria.
-delegate_dispatch!(Worker: [WlDataDeviceManager: GlobalData] => DataDeviceManagerState);
-delegate_dispatch!(Worker: [WlDataOffer: DataOfferData] => DataDeviceManagerState);
-delegate_dispatch!(Worker: [WlDataDevice: DataDeviceData] => DataDeviceManagerState);
+// O sctk 0.21 despacha pelo dado do objecto (`Dispatch2`): só se despacham os objectos que este
+// receptor cria — seat, gestor, dispositivo e oferta; nunca uma `wl_data_source`.
+delegate_dispatch2!(Worker);

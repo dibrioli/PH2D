@@ -68,7 +68,7 @@ pub use shape::{CAPSULE_CAP_SEGS, ELLIPSE_SEGS, ShapeDesc, capsule_vertices, ell
 use crate::rmath::{Pose, Vector};
 use rapier2d::dynamics::{
     CCDSolver, ImpulseJointSet, IntegrationParameters, IslandManager, MultibodyJointSet, RigidBody,
-    RigidBodyHandle, RigidBodySet, RigidBodyType,
+    RigidBodyHandle, RigidBodySet, RigidBodyType, SoftBodySet,
 };
 use rapier2d::geometry::{BroadPhaseBvh, ColliderHandle, ColliderSet, NarrowPhase};
 use rapier2d::pipeline::PhysicsPipeline;
@@ -78,6 +78,9 @@ pub struct PhysicsWorld {
     colliders: ColliderSet,
     impulse_joints: ImpulseJointSet,
     multibody_joints: MultibodyJointSet,
+    /// rapier 0.36 threads it through `step`/`remove`; PH2D creates no soft body, so it
+    /// stays empty — kept as state (and checkpointed) so it can never go stale.
+    soft_bodies: SoftBodySet,
     ccd_solver: CCDSolver,
     physics_pipeline: PhysicsPipeline,
     integration_parameters: IntegrationParameters,
@@ -319,6 +322,7 @@ impl PhysicsWorld {
             colliders: ColliderSet::new(),
             impulse_joints: ImpulseJointSet::new(),
             multibody_joints: MultibodyJointSet::new(),
+            soft_bodies: SoftBodySet::default(),
             ccd_solver: CCDSolver::new(),
             physics_pipeline: PhysicsPipeline::new(),
             integration_parameters,
@@ -492,6 +496,7 @@ impl PhysicsWorld {
             &mut self.colliders,
             &mut self.impulse_joints,
             &mut self.multibody_joints,
+            &mut self.soft_bodies,
             true,
         );
     }

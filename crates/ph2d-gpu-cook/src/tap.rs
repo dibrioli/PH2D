@@ -236,7 +236,7 @@ impl GpuCook {
         });
         let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
         rx.recv().ok()?.ok()?;
-        Some(le_tap(&staging, &slots).cartoes)
+        Some(le_tap(&staging, &slots)?.cartoes)
     }
 
     /// **A metade que ENCOMENDA** — codifica o gather num encoder SEU e submete-o. Partilhada pelo
@@ -426,10 +426,16 @@ fn cabe_numa_coluna(dim: Dim) -> bool {
     matches!(dim, Dim::Scalar | Dim::Vec2 | Dim::Vec3 | Dim::Vec4)
 }
 
-/// **A metade que LÊ** — um `staging` já MAPEADO de volta em streams, e desmapeia-o.
-pub(crate) fn le_tap(staging: &wgpu::Buffer, slots: &[Slot]) -> Leitura {
-    let flat: Vec<f32> = bytemuck::cast_slice(&staging.slice(..).get_mapped_range()).to_vec();
+/// **A metade que LÊ** — um `staging` já MAPEADO de volta em streams, e desmapeia-o. `None` se a
+/// vista mapeada for recusada (o staging desmapeia-se na mesma).
+pub(crate) fn le_tap(staging: &wgpu::Buffer, slots: &[Slot]) -> Option<Leitura> {
+    let flat: Option<Vec<f32>> = staging
+        .slice(..)
+        .get_mapped_range()
+        .ok()
+        .map(|v| bytemuck::cast_slice(&v).to_vec());
     staging.unmap();
+    let flat = flat?;
     let mut leitura = Leitura::default();
     for slot in slots {
         let lanes = crate::stream::element_stride(slot.dim) as usize / 4;
@@ -470,5 +476,5 @@ pub(crate) fn le_tap(staging: &wgpu::Buffer, slots: &[Slot]) -> Leitura {
             .or_insert_with(|| Stream::new(n))
             .set(slot.column.clone(), col);
     }
-    leitura
+    Some(leitura)
 }

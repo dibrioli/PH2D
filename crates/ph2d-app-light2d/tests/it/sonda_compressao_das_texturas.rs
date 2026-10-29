@@ -353,7 +353,7 @@ impl Regua {
         fatia.map_async(wgpu::MapMode::Read, |_| {});
         let _ = self.device.poll(wgpu::PollType::wait_indefinitely());
         let ticks = {
-            let v = fatia.get_mapped_range();
+            let v = fatia.get_mapped_range().expect("mapa lido");
             let t0 = u64::from_le_bytes(v[..8].try_into().unwrap_or_default());
             let t1 = u64::from_le_bytes(v[8..16].try_into().unwrap_or_default());
             t1.saturating_sub(t0)

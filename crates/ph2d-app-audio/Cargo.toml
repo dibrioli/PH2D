@@ -39,7 +39,7 @@ ph2d-panel-audio-editor = { path = "../ph2d-panel-audio-editor", optional = true
 ph2d-panel-audio-mixer = { path = "../ph2d-panel-audio-mixer" }
 ph2d-timeline = { path = "../ph2d-timeline" }
 # O `#[derive(Resource)]` do `MesaDoc` (a mesma versão da `ph2d-ecs`).
-bevy_ecs = "0.19"
+bevy_ecs = "0.20"
 ph2d-tokens = { path = "../ph2d-tokens" }
 # A cena vetorial em que o overlay do Audio Editor pinta as costuras e o espectrograma.
 ph2d-vector = { path = "../ph2d-vector" }

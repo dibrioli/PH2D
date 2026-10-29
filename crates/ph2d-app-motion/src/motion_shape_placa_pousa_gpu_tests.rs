@@ -61,7 +61,7 @@ fn le_colunas(gpu: &GpuContext, mundo: &WorldRt) -> [i32; 4] {
     gpu.queue.submit(Some(enc.finish()));
     buf.slice(..).map_async(wgpu::MapMode::Read, |_| {});
     let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
-    let px = buf.slice(..).get_mapped_range();
+    let px = buf.slice(..).get_mapped_range().expect("mapa lido");
     let linha = (H / 2 * alinhado) as usize;
     // Cinzentos: a ordem `BGRA` do mundo não importa.
     COLUNAS.map(|x| i32::from(px[linha + x as usize * 4]))

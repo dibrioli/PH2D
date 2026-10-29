@@ -400,7 +400,7 @@ fn visiveis(gpu: &GpuContext, f: Option<&(wgpu::Buffer, u32)>) -> usize {
     s.slice(..).map_async(wgpu::MapMode::Read, |_| {});
     let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
     let linhas: Vec<ph2d_render::RenderInstance> =
-        bytemuck::cast_slice(&s.slice(..).get_mapped_range()).to_vec();
+        bytemuck::cast_slice(&s.slice(..).get_mapped_range().expect("mapa lido")).to_vec();
     linhas
         .iter()
         .filter(|r| r.size != [0.0, 0.0] && r.opacity > 0.0)

@@ -90,7 +90,7 @@ pub(super) fn readback(gpu: &ph2d_gpu::GpuContext, t: &wgpu::Texture, w: u32, h:
     gpu.queue.submit([enc.finish()]);
     buf.slice(..).map_async(wgpu::MapMode::Read, |_| {});
     gpu.device.poll(wgpu::PollType::wait_indefinitely()).ok();
-    let data = buf.slice(..).get_mapped_range();
+    let data = buf.slice(..).get_mapped_range().expect("mapa lido");
     let mut out = Vec::with_capacity((w * h * 4) as usize);
     for y in 0..h {
         let o = (y * row) as usize;

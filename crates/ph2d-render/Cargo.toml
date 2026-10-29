@@ -30,8 +30,8 @@ ph2d-asset = { path = "../ph2d-asset" }
 # A arte de fábrica do jogo de plataforma (`atlas/fabrica.rs`) é SVG rasterizado no arranque. Já estava no
 # grafo de release desta crate (via ph2d-asset → ph2d-imageio-registry-init): a aresta não traz nada novo.
 ph2d-imageio-svg = { path = "../ph2d-imageio-svg" }
-bevy_ecs = "0.19"
-wgpu = "29.0.4"
+bevy_ecs = "0.20"
+wgpu = "30.0.1"
 bytemuck = { version = "1", features = ["derive", "extern_crate_alloc"] }
 # Typed color wrapper (SrgbRgba) — Wave 11 migration (ADR-0042 §6 #2):
 # `SpriteImage::new` takes `Vec<SrgbRgba>` instead of `Vec<u8>`.
@@ -51,7 +51,7 @@ ph2d-ease = { path = "../ph2d-ease" }
 # `bash scripts/stack-audit.sh --tetos`. VelloPass takes
 # `&vello::Scene` directly so we don't need ph2d-vector here; the
 # editor builds the Scene via ph2d-vector and passes it through.
-vello = "0.10.0"
+vello = "0.11.0"
 # serde derives on `Sprite` so it can be carried by `PrefabDoc` /
 # `SceneDoc` through the postcard pipeline (M14.3). HR-14 mitigation
 # until `#[derive(Saveable)]` lands.
@@ -116,7 +116,7 @@ criterion = { version = "0.8", default-features = false }
 # rotation→basis ABI change, ADR-0070-amendment-4) is caught before it
 # reaches a GPU pipeline build. Mirrors ph2d-painter-brush's stamp.wgsl
 # naga gate. `wgsl-in` feature for the WGSL front-end.
-naga = { version = "29.0.4", features = ["wgsl-in"] }
+naga = { version = "30.0.1", features = ["wgsl-in"] }
 # O G7 (luz 2D) escreve a fluência sintética em `Rgba16Float` — o formato que o solver entrega.
 half = "2"
 # Painter W3 Block 2: the blend math source-of-truth `apply_blend` + `BlendMode`

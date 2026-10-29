@@ -397,8 +397,8 @@ impl Contorno {
     fn colhe(&mut self) {
         match self.estado.load(Ordering::Acquire) {
             PRONTO => {
-                {
-                    let dados = self.leitura_total.slice(..).get_mapped_range();
+                // Um mapa recusado perde esta leitura; a próxima cópia volta a medir.
+                if let Ok(dados) = self.leitura_total.slice(..).get_mapped_range() {
                     let total: u32 = bytemuck::pod_read_unaligned(&dados[..4]);
                     let total_m: u32 = bytemuck::pod_read_unaligned(&dados[4..8]);
                     self.total_visto = self.total_visto.max(u64::from(total));

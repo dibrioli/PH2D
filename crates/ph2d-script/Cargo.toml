@@ -35,7 +35,7 @@ ph2d-input = { path = "../ph2d-input" }
 # expands to absolute paths into `bevy_ecs::*`. ph2d-ecs re-exports
 # don't satisfy the macro lookup. Same pattern documented in
 # shells/desktop/Cargo.toml.
-bevy_ecs = "0.19"
+bevy_ecs = "0.20"
 # serde derives on LuauScript + PodValue so they round-trip through
 # the postcard pipeline that PrefabDoc/SceneDoc consume in M14.3.
 serde = { version = "1", features = ["derive"] }

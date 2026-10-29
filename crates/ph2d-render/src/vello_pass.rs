@@ -380,7 +380,9 @@ impl VelloPass {
         rx.recv()
             .map_err(|e| format!("fx readback recv: {e}"))?
             .map_err(|e| format!("fx readback map: {e}"))?;
-        let view = slice.get_mapped_range();
+        let view = slice
+            .get_mapped_range()
+            .map_err(|e| format!("fx readback mapped range: {e}"))?;
         // Strip the per-row padding into a tightly-packed straight-RGBA8 buffer.
         let mut out = Vec::with_capacity((unpadded as usize) * (h as usize));
         for row in 0..h as usize {

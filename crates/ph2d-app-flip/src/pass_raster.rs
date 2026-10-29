@@ -232,7 +232,7 @@ fn read_rgba8(gpu: &GpuContext, tex: &wgpu::Texture, w: u32, h: u32) -> Option<V
     });
     gpu.device.poll(wgpu::PollType::wait_indefinitely()).ok()?;
     rx.recv().ok()?.ok()?;
-    let mapped = buf.slice(..).get_mapped_range();
+    let mapped = buf.slice(..).get_mapped_range().ok()?;
     let mut out = Vec::with_capacity((row * h) as usize);
     for r in mapped.chunks(padded as usize).take(h as usize) {
         out.extend_from_slice(&r[..row as usize]);

@@ -175,7 +175,7 @@ impl PhysicsHooks for OneWayHooks<'_> {
     /// contacts COMPUTED (that is how we learn which side the body is on) — it is the
     /// solver contacts that get cleared, one manifold at a time, below.
     fn filter_contact_pair(&self, _context: &PairFilterContext) -> Option<SolverFlags> {
-        Some(SolverFlags::COMPUTE_IMPULSES)
+        Some(SolverFlags::COMPUTE_RIGID_IMPULSES)
     }
 
     fn modify_solver_contacts(&self, context: &mut ContactModificationContext) {
@@ -240,11 +240,15 @@ impl PhysicsHooks for OneWayHooks<'_> {
         // PEGARIA o corpo, então o bit é a única coisa a impedi-la, e a descida
         // ainda está a fazer trabalho. Ler o cone sem chamar
         // `update_as_oneway_platform` é deliberado — ver [`DropLedger`].
+        // rapier 0.36: the manifold sits behind `rigid_mut()`, `None` only for a pair of
+        // two soft surfaces — this world creates no soft body, so it is always `Some`.
         if dropping {
-            if context.manifold.local_n1.dot(allowed_local_n1) >= ALLOWED_COS {
-                self.ledger.note(other);
+            if let Some(rigid) = context.rigid_mut() {
+                if rigid.manifold.local_n1.dot(allowed_local_n1) >= ALLOWED_COS {
+                    self.ledger.note(other);
+                }
+                rigid.solver_contacts.clear();
             }
-            context.solver_contacts.clear();
             return;
         }
 

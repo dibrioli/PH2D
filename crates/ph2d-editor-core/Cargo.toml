@@ -87,7 +87,7 @@ ph2d-macro            = { path = "../ph2d-macro" }
 ph2d-richdoc          = { path = "../ph2d-richdoc" }
 # O `rich_editor` molda texto com estilos por intervalo (negrito, itálico, código, link) e acha o
 # caret pelo MESMO layout — o `ph2d-text` só re-exporta o layout, não os estilos nem o cursor.
-parley                = "0.11.1"
+parley                = "0.12.0"
 smallvec             = "1"
 bumpalo               = { version = "3", features = ["collections"] }
 

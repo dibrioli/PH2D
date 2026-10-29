@@ -76,7 +76,7 @@ fn gpu_once(gpu: &GpuContext, reduce: &Reduce, data: &wgpu::Buffer, n: u32) -> f
     let slice = readback.slice(..);
     slice.map_async(wgpu::MapMode::Read, |_| {});
     let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
-    let v = bytemuck::cast_slice::<u8, f32>(&slice.get_mapped_range())[0];
+    let v = bytemuck::cast_slice::<u8, f32>(&slice.get_mapped_range().expect("mapped range"))[0];
     readback.unmap();
     v
 }

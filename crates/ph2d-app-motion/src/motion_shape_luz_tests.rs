@@ -109,7 +109,7 @@ fn alfa_desenhado(gpu: &GpuContext, o: &mut OclusaoDoMotion<'_>, quem: &[u64]) -
     gpu.device
         .poll(wgpu::PollType::wait_indefinitely())
         .expect("poll");
-    let alfa = buf.slice(..).get_mapped_range()[..]
+    let alfa = buf.slice(..).get_mapped_range().expect("mapa lido")[..]
         .as_chunks::<4>()
         .0
         .iter()

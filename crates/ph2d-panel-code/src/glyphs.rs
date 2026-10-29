@@ -72,6 +72,7 @@ impl CodeView {
                 let base = line.metrics().baseline;
                 let mut off = line.metrics().offset;
                 for run in line.runs() {
+                    let coords = ph2d_text::run_coord_bits(&run);
                     let mut last: Option<(Ink, usize)> = None;
                     for c in run.visual_clusters() {
                         if x + off > right {
@@ -81,16 +82,10 @@ impl CodeView {
                             off += c.advance();
                             continue;
                         }
-                        let ink = c.first_style().brush;
+                        let ink = c.style().brush;
                         let i = match last {
                             Some((k, i)) if k == ink => i,
-                            _ => batch(
-                                &mut batches,
-                                run.font(),
-                                run.font_size(),
-                                run.normalized_coords(),
-                                ink,
-                            ),
+                            _ => batch(&mut batches, run.font(), run.font_size(), &coords, ink),
                         };
                         last = Some((ink, i));
                         for g in c.glyphs() {
@@ -254,17 +249,12 @@ pub(crate) fn paint_mono(
     'line: for line in layout.lines() {
         let base = line.metrics().baseline;
         for run in line.runs() {
+            let coords = ph2d_text::run_coord_bits(&run);
             for c in run.visual_clusters() {
                 if x + off + c.advance() > right {
                     break 'line;
                 }
-                let i = batch(
-                    &mut batches,
-                    run.font(),
-                    run.font_size(),
-                    run.normalized_coords(),
-                    ink,
-                );
+                let i = batch(&mut batches, run.font(), run.font_size(), &coords, ink);
                 for g in c.glyphs() {
                     batches[i].glyphs.push(Glyph {
                         id: g.id,

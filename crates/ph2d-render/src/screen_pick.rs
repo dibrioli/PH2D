@@ -90,7 +90,7 @@ pub fn read_texel(gpu: &GpuContext, texture: &wgpu::Texture, x: u32, y: u32) -> 
     });
     gpu.device.poll(wgpu::PollType::wait_indefinitely()).ok()?;
     rx.recv().ok()?.ok()?;
-    let view = slice.get_mapped_range();
+    let view = slice.get_mapped_range().ok()?;
     let texel = [view[0], view[1], view[2], view[3]];
     drop(view);
     buffer.unmap();

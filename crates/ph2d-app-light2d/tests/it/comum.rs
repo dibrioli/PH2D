@@ -240,7 +240,7 @@ pub fn ler(gpu: &GpuContext, t: &wgpu::Texture, bpp: u32) -> Vec<u8> {
     gpu.device
         .poll(wgpu::PollType::wait_indefinitely())
         .expect("poll");
-    let m = fatia.get_mapped_range();
+    let m = fatia.get_mapped_range().expect("mapa lido");
     let mut out = Vec::new();
     for y in 0..h as usize {
         out.extend_from_slice(&m[y * padded as usize..][..(w * bpp) as usize]);

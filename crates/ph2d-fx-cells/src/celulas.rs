@@ -334,7 +334,14 @@ impl Celulas {
             || e.imagens.as_ref().map_or(&[][..], |i| i.corridas),
             |f| f.corridas,
         );
-        let cruas = self.caixas(gpu, s_buf, n_s, afim, e.formas, das_imagens);
+        let Some(cruas) = self.caixas(gpu, s_buf, n_s, afim, e.formas, das_imagens) else {
+            // A placa recusou a leitura: o quadro fica com a camada limpa, sem caixas velhas.
+            self.ordem.clear();
+            self.ultimas_caixas.clear();
+            self.ultimas_paginas.clear();
+            fecha(gpu, relogio);
+            return;
+        };
         let n_f = e.formas.map_or(0, |f| f.n);
         self.ordem = ordem_das_linhas(n_s, n_f, das_imagens.map_or(0, |i| i.1), corridas);
         self.ultimas_caixas = self.ordem.iter().map(|&r| cruas[r as usize]).collect();

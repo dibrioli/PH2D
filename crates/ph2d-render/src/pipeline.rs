@@ -176,7 +176,7 @@ struct Variant<'a> {
     label: &'a str,
     vs_entry: &'a str,
     fs_entry: &'a str,
-    buffers: &'a [wgpu::VertexBufferLayout<'a>],
+    buffers: &'a [Option<wgpu::VertexBufferLayout<'a>>],
     color_write: wgpu::ColorWrites,
     blend: Option<wgpu::BlendState>,
     depth_stencil: Option<wgpu::DepthStencilState>,
@@ -276,7 +276,10 @@ impl SpritePipeline {
             });
 
         // Normal-pass vertex buffers: quad + the 12-attr instance layout.
-        let normal_buffers = [QuadVertex::buffer_layout(), RenderInstance::buffer_layout()];
+        let normal_buffers = [
+            Some(QuadVertex::buffer_layout()),
+            Some(RenderInstance::buffer_layout()),
+        ];
 
         // Mark-pass instance layout. The 16-attribute device limit
         // (`@location` 0..15) is already FULL (quad 0..1 + instance 2..15),
@@ -331,12 +334,12 @@ impl SpritePipeline {
             },
         ];
         let mark_buffers = [
-            QuadVertex::buffer_layout(),
-            wgpu::VertexBufferLayout {
+            Some(QuadVertex::buffer_layout()),
+            Some(wgpu::VertexBufferLayout {
                 array_stride: std::mem::size_of::<RenderInstance>() as wgpu::BufferAddress,
                 step_mode: wgpu::VertexStepMode::Instance,
                 attributes: &mark_attrs,
-            },
+            }),
         ];
 
         // Stencil mark: write `ref` (Replace) wherever the fragment survives

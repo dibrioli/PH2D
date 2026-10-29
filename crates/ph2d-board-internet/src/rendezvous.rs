@@ -66,7 +66,7 @@ fn keys(invite: &InviteKey) -> Keys {
     Keys {
         host: SigningKey::from_bytes(&get(b"sign host")),
         guest: SigningKey::from_bytes(&get(b"sign guest")),
-        seal: ChaCha20Poly1305::new(Key::from_slice(&get(b"seal"))),
+        seal: ChaCha20Poly1305::new(&Key::from(get(b"seal"))),
     }
 }
 
@@ -122,7 +122,7 @@ fn seal(k: &Keys, role: Role, addrs: &[SocketAddr]) -> Vec<u8> {
     let body = k
         .seal
         .encrypt(
-            Nonce::from_slice(&nonce),
+            &Nonce::from(nonce),
             Payload {
                 msg: &plain,
                 aad: &[role.tag()],
@@ -137,7 +137,7 @@ fn open(k: &Keys, role: Role, value: &[u8]) -> Option<Vec<SocketAddr>> {
     let plain = k
         .seal
         .decrypt(
-            Nonce::from_slice(nonce),
+            &Nonce::try_from(nonce).ok()?,
             Payload {
                 msg: &value[NONCE..],
                 aad: &[role.tag()],

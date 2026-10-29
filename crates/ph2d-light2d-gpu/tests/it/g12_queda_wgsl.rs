@@ -82,7 +82,8 @@ fn avaliar_na_placa(gpu: &ph2d_gpu::GpuContext, pontos: &[[f32; 2]]) -> Vec<f32>
     let fatia = leitura.slice(..);
     fatia.map_async(wgpu::MapMode::Read, |r| r.expect("map"));
     d.poll(wgpu::PollType::wait_indefinitely()).expect("poll");
-    let v = bytemuck::cast_slice::<u8, f32>(&fatia.get_mapped_range()).to_vec();
+    let v =
+        bytemuck::cast_slice::<u8, f32>(&fatia.get_mapped_range().expect("mapped range")).to_vec();
     leitura.unmap();
     v
 }

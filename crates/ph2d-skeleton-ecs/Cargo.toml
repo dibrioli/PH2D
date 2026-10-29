@@ -20,7 +20,7 @@ ph2d-ecs = { path = "../ph2d-ecs" }
 # álgebra) e não fecha ciclo; a alternativa era declarar o mesmo enum aqui e converter no meio, que
 # é a *segunda porta* que o cabeçalho do `skeleton_goal` proíbe por escrito.
 ph2d-skeleton = { path = "../ph2d-skeleton" }
-bevy_ecs = "0.19"
+bevy_ecs = "0.20"
 serde = { version = "1", features = ["derive"] }
 
 [lints]

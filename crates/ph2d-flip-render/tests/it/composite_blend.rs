@@ -134,7 +134,7 @@ pub(super) fn readback(gpu: &GpuContext, tex: &wgpu::Texture) -> Vec<f32> {
     gpu.device
         .poll(wgpu::PollType::wait_indefinitely())
         .expect("poll");
-    let data = buf.slice(..).get_mapped_range();
+    let data = buf.slice(..).get_mapped_range().expect("mapped range");
     let halves: &[u16] = bytemuck::cast_slice(&data[..]);
     halves.iter().map(|&h| half_to_f32(h)).collect()
 }
@@ -377,7 +377,10 @@ fn readback_slice(gpu: &GpuContext, tex: &wgpu::Texture) -> Vec<u8> {
     gpu.device
         .poll(wgpu::PollType::wait_indefinitely())
         .expect("poll");
-    buf.slice(..).get_mapped_range().to_vec()
+    buf.slice(..)
+        .get_mapped_range()
+        .expect("mapped range")
+        .to_vec()
 }
 
 /// 🔴 **O GATE DA FIAÇÃO** — com o motor novo armado, a fatia que o `stage_layer` entrega ao

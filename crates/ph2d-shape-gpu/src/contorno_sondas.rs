@@ -22,7 +22,10 @@ impl Contorno {
         gpu.queue.submit([enc.finish()]);
         leitura.slice(..).map_async(wgpu::MapMode::Read, |_| {});
         let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
-        let dados = leitura.slice(..).get_mapped_range();
+        let dados = leitura
+            .slice(..)
+            .get_mapped_range()
+            .expect("sonda: mapa lido");
         let copias: &[[u32; 4]] = bytemuck::cast_slice(&dados[..(u64::from(n) * 48) as usize]);
         // O 1.º de cada trio: blocos do preenchimento, das marcas e do contorno.
         let com = copias
@@ -55,7 +58,10 @@ impl Contorno {
         gpu.queue.submit([enc.finish()]);
         leitura.slice(..).map_async(wgpu::MapMode::Read, |_| {});
         let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
-        let dados = leitura.slice(..).get_mapped_range();
+        let dados = leitura
+            .slice(..)
+            .get_mapped_range()
+            .expect("sonda: mapa lido");
         let reservadas: u32 = bytemuck::pod_read_unaligned(&dados[..4]);
         let copias: &[[u32; 4]] = bytemuck::cast_slice(&dados[16..]);
         let por_bloco = crate::SEGS_POR_BLOCO as u64;
@@ -91,7 +97,10 @@ impl Contorno {
         gpu.queue.submit([enc.finish()]);
         leitura.slice(..).map_async(wgpu::MapMode::Read, |_| {});
         let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
-        let dados = leitura.slice(..).get_mapped_range();
+        let dados = leitura
+            .slice(..)
+            .get_mapped_range()
+            .expect("sonda: mapa lido");
         let pedido: u32 = bytemuck::pod_read_unaligned(&dados[..4]);
         (u64::from(pedido), self.cap_celulas)
     }
@@ -118,7 +127,10 @@ impl Contorno {
         gpu.queue.submit([enc.finish()]);
         leitura.slice(..).map_async(wgpu::MapMode::Read, |_| {});
         let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
-        let dados = leitura.slice(..).get_mapped_range();
+        let dados = leitura
+            .slice(..)
+            .get_mapped_range()
+            .expect("sonda: mapa lido");
         let w: &[u32] = bytemuck::cast_slice(&dados);
         (w[1], w[5])
     }
@@ -146,7 +158,10 @@ impl Contorno {
         gpu.queue.submit([enc.finish()]);
         leitura.slice(..).map_async(wgpu::MapMode::Read, |_| {});
         let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
-        let dados = leitura.slice(..).get_mapped_range();
+        let dados = leitura
+            .slice(..)
+            .get_mapped_range()
+            .expect("sonda: mapa lido");
         let palavras: &[u32] = bytemuck::cast_slice(&dados);
         let px = usize::try_from(PIXELS_DA_CELULA).unwrap_or(32);
         let tocadas = palavras

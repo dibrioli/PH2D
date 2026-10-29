@@ -24,6 +24,7 @@ fn profiler_round_trip_zero_validation_errors() {
         power_preference: wgpu::PowerPreference::HighPerformance,
         compatible_surface: None,
         force_fallback_adapter: false,
+        apply_limit_buckets: false,
     })) else {
         return; // no adapter on this machine — nothing to assert
     };

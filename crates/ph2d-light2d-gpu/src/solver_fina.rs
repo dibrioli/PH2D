@@ -249,7 +249,11 @@ fn ler_buffer(gpu: &GpuContext, b: &wgpu::Buffer) -> Vec<u8> {
     gpu.queue.submit([enc.finish()]);
     d.slice(..).map_async(wgpu::MapMode::Read, |_| {});
     let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
-    let v = d.slice(..).get_mapped_range().to_vec();
+    let v = d
+        .slice(..)
+        .get_mapped_range()
+        .expect("mapped range")
+        .to_vec();
     d.unmap();
     v
 }
@@ -282,7 +286,7 @@ fn ler_textura(gpu: &GpuContext, t: &wgpu::Texture) -> Vec<u8> {
     gpu.queue.submit([enc.finish()]);
     d.slice(..).map_async(wgpu::MapMode::Read, |_| {});
     let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
-    let m = d.slice(..).get_mapped_range();
+    let m = d.slice(..).get_mapped_range().expect("mapped range");
     let mut v = Vec::with_capacity((8 * w * h) as usize);
     for j in 0..h {
         let o = (j * linha) as usize;

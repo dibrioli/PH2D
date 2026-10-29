@@ -76,8 +76,13 @@ impl PhysicsWorld {
     /// massa dele, e um corpo dormindo não recomputaria nada.
     pub fn detach_part(&mut self, handle: ColliderHandle) {
         let owner = self.colliders.get(handle).and_then(|c| c.parent());
-        self.colliders
-            .remove(handle, &mut self.island_manager, &mut self.bodies, true);
+        self.colliders.remove(
+            handle,
+            &mut self.island_manager,
+            &mut self.bodies,
+            &mut self.soft_bodies,
+            true,
+        );
         // ⚠️ **rapier NÃO recomputa a massa no `remove`, e o gate mediu:** o corpo
         // ficava em 1,6000 kg depois de perder uma peça de 0,8 — a massa da peça
         // que já não existe. Um corpo pesando o que ele não tem mais é a classe de

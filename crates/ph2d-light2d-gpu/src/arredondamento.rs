@@ -115,7 +115,7 @@ fn medir(gpu: &GpuContext) -> Option<bool> {
     if rx.try_recv() != Ok(true) {
         return None;
     }
-    let p: Vec<u32> = bytemuck::cast_slice(&f.get_mapped_range()).to_vec();
+    let p: Vec<u32> = bytemuck::cast_slice(&f.get_mapped_range().ok()?).to_vec();
     Some(
         EXPOENTES
             .iter()

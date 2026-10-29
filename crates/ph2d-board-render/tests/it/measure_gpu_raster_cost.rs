@@ -123,6 +123,7 @@ impl Stamps {
             .expect("poll");
         let ts: Vec<u64> = slice
             .get_mapped_range()
+            .expect("mapa lido")
             .as_chunks::<8>()
             .0
             .iter()

@@ -26,9 +26,9 @@ if-addrs = "0.15"
 # `block_on` na nossa thread. Verificado 14/10 com `cargo tree`: a árvore NÃO tem `tokio`.
 mainline = { version = "8.0.1", default-features = false, features = ["async"] }
 futures-lite = "2.6"
-chacha20poly1305 = "0.10"
-hkdf = "0.12"
-sha2 = "0.10"
+chacha20poly1305 = "0.11"
+hkdf = "0.13"
+sha2 = "0.11"
 
 [lints]
 workspace = true

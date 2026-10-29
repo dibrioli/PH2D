@@ -218,7 +218,11 @@ pub(super) fn bytes_de_textura(gpu: &GpuContext, tex: &wgpu::Texture, px: u32) -
     gpu.queue.submit(Some(enc.finish()));
     buf.slice(..).map_async(wgpu::MapMode::Read, |_| {});
     let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
-    let v = buf.slice(..).get_mapped_range().to_vec();
+    let v = buf
+        .slice(..)
+        .get_mapped_range()
+        .expect("mapa lido")
+        .to_vec();
     buf.unmap();
     v
 }

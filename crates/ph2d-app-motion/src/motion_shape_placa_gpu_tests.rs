@@ -175,7 +175,11 @@ pub(crate) fn le_a_camada(gpu: &GpuContext, p: &PlacaDeFormas) -> Vec<u8> {
     gpu.queue.submit(Some(enc.finish()));
     buf.slice(..).map_async(wgpu::MapMode::Read, |_| {});
     let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
-    let v = buf.slice(..).get_mapped_range().to_vec();
+    let v = buf
+        .slice(..)
+        .get_mapped_range()
+        .expect("mapa lido")
+        .to_vec();
     buf.unmap();
     let q = |x: f32| {
         #[expect(clippy::cast_possible_truncation, reason = "já limitado a um byte")]

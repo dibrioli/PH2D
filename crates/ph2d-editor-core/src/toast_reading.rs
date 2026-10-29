@@ -83,7 +83,7 @@ pub fn lines_needed(ts: &mut TextSystem, message: &str) -> (usize, bool) {
     let l = layout(ts, message);
     let larga = l
         .lines()
-        .any(|ln| ln.metrics().advance - ln.metrics().trailing_whitespace > budget + 0.5);
+        .any(|ln| ln.metrics().advance - ln.metrics().hanging_advance > budget + 0.5);
     (l.len().max(1), larga)
 }
 

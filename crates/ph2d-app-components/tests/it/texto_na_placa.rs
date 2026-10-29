@@ -124,7 +124,7 @@ fn emite_mono(ts: &mut TextSystem, cena: &mut VectorScene, texto: &str, px: f32,
                 .draw_glyphs(run.font())
                 .font_size(run.font_size())
                 .hint(hint)
-                .normalized_coords(run.normalized_coords())
+                .normalized_coords(&ph2d_text::run_coord_bits(run))
                 .brush(Color::WHITE)
                 .transform(t)
                 .draw(

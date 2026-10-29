@@ -13,7 +13,7 @@ authors.workspace = true
 [lib]
 
 [dependencies]
-bevy_ecs = "0.19"
+bevy_ecs = "0.20"
 ph2d-core = { path = "../ph2d-core" }
 ph2d-ecs = { path = "../ph2d-ecs" }
 ph2d-physics-ecs = { path = "../ph2d-physics-ecs" }

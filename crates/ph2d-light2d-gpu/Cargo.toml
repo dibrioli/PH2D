@@ -14,7 +14,7 @@ authors.workspace = true
 ph2d-gpu = { path = "../ph2d-gpu" }
 # A `CenaDeLuz` — a ÚNICA entrada da GPU (plano `docs/Luz2D/01_plano.md` §2.2).
 ph2d-light2d-ecs = { path = "../ph2d-light2d-ecs" }
-wgpu = "29.0.4"
+wgpu = "30.0.1"
 bytemuck = { version = "1", features = ["derive"] }
 # O escopo de erro da memória ao nascer (`pop` é um futuro; já no `Cargo.lock`, via `ph2d-gpu`).
 pollster = "0.4.0"

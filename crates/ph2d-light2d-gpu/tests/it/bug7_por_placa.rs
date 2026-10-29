@@ -161,7 +161,7 @@ fn main(@builtin(global_invocation_id) g: vec3<u32>) {
     let f = leitura.slice(..);
     f.map_async(wgpu::MapMode::Read, |r| r.expect("map"));
     d.poll(wgpu::PollType::wait_indefinitely()).expect("poll");
-    let p: Vec<u32> = bytemuck::cast_slice(&f.get_mapped_range()).to_vec();
+    let p: Vec<u32> = bytemuck::cast_slice(&f.get_mapped_range().expect("mapped range")).to_vec();
     let t = ler_bytes(gpu, &tex);
     let mut cont = [[0usize; 3]; 4]; // [pack ¾, pack ½, textura ¾, textura ½] × [mais próximo, para zero, outro]
     for (i, &xi) in x.iter().enumerate() {

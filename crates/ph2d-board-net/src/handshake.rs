@@ -13,7 +13,7 @@ use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
 use hkdf::Hkdf;
-use hmac::{Hmac, Mac};
+use hmac::{Hmac, KeyInit, Mac};
 use sha2::Sha256;
 use spake2::{Ed25519Group, Identity, Password, Spake2};
 
@@ -64,7 +64,7 @@ fn derive(k: &[u8]) -> Derived {
 
 fn mac(key: &[u8; 32], transcript: &[u8]) -> Hmac<Sha256> {
     // O HMAC aceita chaves de qualquer tamanho: `new_from_slice` nunca falha aqui.
-    let mut m = <Hmac<Sha256> as Mac>::new_from_slice(key).unwrap_or_else(|_| unreachable!());
+    let mut m = <Hmac<Sha256> as KeyInit>::new_from_slice(key).unwrap_or_else(|_| unreachable!());
     m.update(transcript);
     m
 }

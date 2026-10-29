@@ -33,6 +33,7 @@ fn device() -> Option<(wgpu::Device, wgpu::Queue)> {
         power_preference: wgpu::PowerPreference::HighPerformance,
         compatible_surface: None,
         force_fallback_adapter: false,
+        apply_limit_buckets: false,
     }))
     .ok()?;
     let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
@@ -182,7 +183,7 @@ fn readback(
     device.poll(wgpu::PollType::wait_indefinitely()).unwrap();
     rx.recv().unwrap().unwrap();
 
-    let mapped = slice.get_mapped_range();
+    let mapped = slice.get_mapped_range().expect("mapped range");
     let mut out = Vec::with_capacity((unpadded as usize) * (h as usize));
     for row in 0..h as usize {
         let start = row * padded as usize;

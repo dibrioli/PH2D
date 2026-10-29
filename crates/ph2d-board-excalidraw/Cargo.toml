@@ -23,7 +23,7 @@ ph2d-vector = { path = "../ph2d-vector" }
 # caneta voltava 498.885670559028 → 498.88567055902803) — a ida e volta é AO BIT.
 serde_json = { version = "1", features = ["float_roundtrip"] }
 # A cena EMBEBIDA num `.png` (um `tEXt`) ou num `.svg` (base64 em `<metadata>`), comprimida com zlib.
-base64 = "0.22"
+base64 = "0.23"
 flate2 = "1"
 png = "0.18"
 

@@ -156,7 +156,7 @@ fn le_de(gpu: &GpuContext, tex: &wgpu::Texture, w: u32, h: u32) -> Vec<u8> {
     let fatia = buf.slice(..);
     fatia.map_async(wgpu::MapMode::Read, |_| {});
     let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
-    let dados = fatia.get_mapped_range();
+    let dados = fatia.get_mapped_range().expect("mapped range");
     let mut out = Vec::with_capacity((w * h * 4) as usize);
     for y in 0..h {
         let o = (y * linha) as usize;

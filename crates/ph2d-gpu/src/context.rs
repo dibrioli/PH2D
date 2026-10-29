@@ -96,6 +96,7 @@ impl GpuContext {
                     power_preference: wgpu::PowerPreference::HighPerformance,
                     compatible_surface,
                     force_fallback_adapter: false,
+                    apply_limit_buckets: false,
                 }))
                 .map_err(|e| GpuError::NoAdapter(format!("{e:?}")))?
             }

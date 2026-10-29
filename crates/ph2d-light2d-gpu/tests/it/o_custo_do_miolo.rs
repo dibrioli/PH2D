@@ -157,7 +157,8 @@ fn custo_de_despachos_ms(gpu: &ph2d_gpu::GpuContext, n: [usize; 2]) -> [f64; 2] 
         let f = leitura.slice(..);
         f.map_async(wgpu::MapMode::Read, |r| r.expect("map"));
         d.poll(wgpu::PollType::wait_indefinitely()).expect("poll");
-        let t: [u64; 2] = bytemuck::pod_read_unaligned(&f.get_mapped_range());
+        let t: [u64; 2] =
+            bytemuck::pod_read_unaligned(&f.get_mapped_range().expect("mapped range"));
         leitura.unmap();
         t[1].saturating_sub(t[0]) as f64 * periodo * 1e-6
     };

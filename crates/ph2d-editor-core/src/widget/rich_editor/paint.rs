@@ -43,10 +43,11 @@ fn paint_glyphs(scene: &mut VectorScene, b: &BlockBox, text: &str, theme: Theme)
                 .synthesis()
                 .skew()
                 .map(|deg| Affine::skew(f64::from(deg).to_radians().tan(), 0.0));
+            let coords = ph2d_text::run_coord_bits(r);
             let gs = GlyphStyle {
                 font: r.font(),
                 size: r.font_size(),
-                coords: r.normalized_coords(),
+                coords: &coords,
                 skew,
                 brush: color,
                 transform,
@@ -60,7 +61,7 @@ fn paint_glyphs(scene: &mut VectorScene, b: &BlockBox, text: &str, theme: Theme)
                     y: g.y,
                 }),
             );
-            let m = r.metrics();
+            let m = r.font_metrics();
             let x0 = b.text_x + run.offset();
             let w = run.advance();
             let mut bar = |offset: f32, size: f32| {

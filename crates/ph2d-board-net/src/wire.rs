@@ -4,7 +4,7 @@
 
 use std::io::{self, Read};
 
-use chacha20poly1305::aead::{AeadInPlace, KeyInit};
+use chacha20poly1305::aead::{AeadInOut, KeyInit};
 use chacha20poly1305::{ChaCha20Poly1305, Key, Nonce, Tag};
 
 /// O maior quadro (decifrado) — tecto de RAM do RECEPTOR, que guarda o quadro inteiro antes de o
@@ -64,7 +64,7 @@ fn nonce(n: u64) -> Nonce {
     // sobe e esgota-se (fecha a ligação) antes de dar a volta — 2⁶⁴ quadros nunca chegam.
     let mut b = [0u8; 12];
     b[..8].copy_from_slice(&n.to_le_bytes());
-    *Nonce::from_slice(&b)
+    Nonce::from(b)
 }
 
 /// Cifra numa direcção.
@@ -76,7 +76,7 @@ pub(crate) struct Seal {
 impl Seal {
     pub(crate) fn new(key: &[u8; 32]) -> Self {
         Self {
-            aead: ChaCha20Poly1305::new(Key::from_slice(key)),
+            aead: ChaCha20Poly1305::new(&Key::from(*key)),
             n: 0,
         }
     }
@@ -95,7 +95,7 @@ impl Seal {
         out.extend_from_slice(plain);
         let tag = self
             .aead
-            .encrypt_in_place_detached(&nonce(n), b"", &mut out[4..])
+            .encrypt_inout_detached(&nonce(n), b"", (&mut out[4..]).into())
             .map_err(|_| invalid("cifra"))?;
         out.extend_from_slice(&tag);
         Ok(out)
@@ -116,7 +116,7 @@ pub(crate) struct Open {
 impl Open {
     pub(crate) fn new(key: &[u8; 32]) -> Self {
         Self {
-            aead: ChaCha20Poly1305::new(Key::from_slice(key)),
+            aead: ChaCha20Poly1305::new(&Key::from(*key)),
             n: 0,
         }
     }
@@ -135,10 +135,10 @@ impl Open {
         self.n = n
             .checked_add(1)
             .ok_or_else(|| invalid("nonces esgotados"))?;
-        let tag = Tag::clone_from_slice(&wire[body..]);
+        let tag = Tag::try_from(&wire[body..]).map_err(|_| invalid("quadro sem etiqueta"))?;
         wire.truncate(body);
         self.aead
-            .decrypt_in_place_detached(&nonce(n), b"", &mut wire, &tag)
+            .decrypt_inout_detached(&nonce(n), b"", wire.as_mut_slice().into(), &tag)
             .map_err(|_| invalid("quadro adulterado"))?;
         Ok(wire)
     }

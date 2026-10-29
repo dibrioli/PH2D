@@ -20,7 +20,7 @@ authors.workspace = true
 # documento da folha não pode passar a conhecer o mundo nem o `Sprite`.
 [dependencies]
 # Os `Children` da folha (a hierarquia é a do bevy, que o `ph2d-ecs` re-usa).
-bevy_ecs = "0.19"
+bevy_ecs = "0.20"
 ph2d-core = { path = "../ph2d-core" }
 ph2d-ecs = { path = "../ph2d-ecs" }
 ph2d-render = { path = "../ph2d-render" }

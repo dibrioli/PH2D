@@ -274,6 +274,8 @@ fn traduz_blend(b: usvg::BlendMode) -> Option<BlendMode> {
         usvg::BlendMode::Saturation => BlendMode::Saturation,
         usvg::BlendMode::Color => BlendMode::Color,
         usvg::BlendMode::Luminosity => BlendMode::Luminosity,
+        // `plus-lighter` = `min(1, Cs + Cb)`: a soma do Linear Dodge (igual sobre camada opaca).
+        usvg::BlendMode::PlusLighter => BlendMode::Add,
     })
 }
 

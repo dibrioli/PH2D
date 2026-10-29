@@ -229,7 +229,7 @@ pub(super) fn readback_into(
         Ok(Err(e)) => panic!("readback map_async failed: {e}"),
         Err(_) => panic!("readback channel closed"),
     }
-    let data = slice.get_mapped_range();
+    let data = slice.get_mapped_range().expect("readback mapped range");
     for y in 0..h as usize {
         let src_off = y * padded_bpr as usize;
         let dst_off = y * unpadded_bpr as usize;

@@ -448,7 +448,9 @@ pub fn read_sums(gpu: &GpuContext, sums_readback: &wgpu::Buffer) -> [u32; 4] {
         Ok(Err(e)) => panic!("sums readback failed: {e}"),
         Err(_) => panic!("sums readback channel closed"),
     }
-    let bytes = slice.get_mapped_range();
+    let bytes = slice
+        .get_mapped_range()
+        .expect("sums readback mapped range");
     let sums: [u32; 4] = bytemuck::cast_slice(&bytes)[..4].try_into().unwrap();
     drop(bytes);
     sums_readback.unmap();

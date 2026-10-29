@@ -168,7 +168,9 @@ pub(super) fn readback_atlas_texture(
         .expect("atlas readback channel")
         .expect("atlas readback map");
 
-    let mapped = slice.get_mapped_range();
+    let mapped = slice
+        .get_mapped_range()
+        .expect("atlas readback mapped range");
     let mut out = Vec::with_capacity((unpadded_bpr as usize) * (height as usize));
     for row in 0..height as usize {
         let start = row * padded_bpr as usize;

@@ -28,7 +28,8 @@ pub(crate) struct Elem<'a, 'i> {
 pub(crate) struct Run {
     pub font: parley::FontData,
     pub size: f32,
-    pub coords: Vec<i16>,
+    /// As coordenadas de variação, já no tipo do `skrifa` que desenha o contorno.
+    pub coords: Vec<skrifa::instance::NormalizedCoord>,
     /// A inclinação do itálico SINTÉTICO (tangente), 0 sem ela.
     pub skew: f32,
     /// (glifo, origem na linha de base, elemento dono).
@@ -276,7 +277,11 @@ fn shape(
             let mut out = Run {
                 font: run.font().clone(),
                 size: run.font_size(),
-                coords: run.normalized_coords().to_vec(),
+                coords: run
+                    .normalized_coords()
+                    .iter()
+                    .map(|c| skrifa::instance::NormalizedCoord::from_bits(c.to_bits()))
+                    .collect(),
                 skew: syn.skew().map_or(0.0, |d| d.to_radians().tan()),
                 glyphs: Vec::new(),
             };

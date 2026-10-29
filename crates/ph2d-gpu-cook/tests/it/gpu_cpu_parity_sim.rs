@@ -2728,7 +2728,8 @@ fn read_head(
     });
     let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
     rx.recv().expect("callback").expect("map");
-    let out: Vec<RenderInstance> = bytemuck::cast_slice(&slice.get_mapped_range()).to_vec();
+    let out: Vec<RenderInstance> =
+        bytemuck::cast_slice(&slice.get_mapped_range().expect("mapped range")).to_vec();
     staging.unmap();
     out
 }

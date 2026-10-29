@@ -21,7 +21,7 @@ ureq = { version = "3", default-features = false, features = ["rustls-no-provide
 rustls-native-certs = "0.8"
 # O protocolo do navegador (CDP): JSON em mensagens separadas por NUL no tubo; os quadros em JPEG/base64.
 serde_json = "1"
-base64 = "0.22"
+base64 = "0.23"
 zune-jpeg = "0.5"
 zune-core = "0.5"
 

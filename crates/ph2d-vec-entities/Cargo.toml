@@ -28,7 +28,7 @@ ph2d-render = { path = "../ph2d-render" }
 ph2d-vec-edit = { path = "../ph2d-vec-edit" }
 # A medida animada (W4.5, `medida`) resolve a folha com o solver da caneta.
 ph2d-vec-constraints = { path = "../ph2d-vec-constraints" }
-bevy_ecs = "0.19"
+bevy_ecs = "0.20"
 # E a quinta: o `settle_origins` salta uma forma PRESA a um osso (o `SkinBind`).
 ph2d-skeleton-ecs = { path = "../ph2d-skeleton-ecs" }
 

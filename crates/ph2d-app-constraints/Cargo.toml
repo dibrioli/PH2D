@@ -44,7 +44,7 @@ ph2d-tokens = { path = "../ph2d-tokens" }
 ph2d-vector = { path = "../ph2d-vector" }
 # As cenas de smoke: sprites de quadrado e de disco.
 ph2d-render = { path = "../ph2d-render" }
-bevy_ecs = "0.19"
+bevy_ecs = "0.20"
 # O valor do campo que a curva escreve, pelo ledger `fields` do `PreviewDrive`.
 serde_json = "1"
 

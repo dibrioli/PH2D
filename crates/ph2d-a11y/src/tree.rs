@@ -13,7 +13,7 @@
 //! so we honor the workspace ban defensively.
 
 use crate::node::NodeId;
-use accesskit::{Node, Tree as AkTree, TreeId, TreeUpdate};
+use accesskit::{Node, TreeId, TreeInfo, TreeUpdate};
 use std::collections::BTreeMap;
 
 pub struct Tree {
@@ -103,7 +103,7 @@ impl Tree {
     /// Drain the dirty set into a `TreeUpdate` ready for the OS
     /// adapter. After this call, `dirty` is empty.
     ///
-    /// Includes the full AccessKit `Tree` metadata (root + app name)
+    /// Includes the full AccessKit `TreeInfo` metadata (root + app name)
     /// only on the first call (or when root changed); subsequent
     /// calls send incremental updates.
     pub fn take_update(&mut self) -> TreeUpdate {
@@ -119,7 +119,7 @@ impl Tree {
 
         TreeUpdate {
             nodes,
-            tree: Some(AkTree::new(self.root.into())),
+            tree: Some(TreeInfo::new(self.root.into())),
             tree_id: TreeId::ROOT,
             focus: self
                 .focus

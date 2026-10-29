@@ -390,15 +390,21 @@ impl GpuCook {
         if let Some((staging, pronto, pecas)) = &self.passe.leitura {
             match pronto.try_recv() {
                 Ok(Ok(())) => {
-                    let c: Vec<u32> =
-                        bytemuck::pod_collect_to_vec(&staging.slice(..).get_mapped_range());
+                    // Vista recusada: perde-se esta amostra, o relatório anterior fica.
+                    let c: Option<Vec<u32>> = staging
+                        .slice(..)
+                        .get_mapped_range()
+                        .ok()
+                        .map(|v| bytemuck::pod_collect_to_vec(&v));
                     staging.unmap();
-                    self.passe.ultimo = Some(ph2d_contact::passe::Relatorio {
-                        varreduras: c[3] as usize,
-                        pecas: *pecas as usize,
-                        candidatos: c[4] as usize,
-                        ..Default::default()
-                    });
+                    if let Some(c) = c {
+                        self.passe.ultimo = Some(ph2d_contact::passe::Relatorio {
+                            varreduras: c[3] as usize,
+                            pecas: *pecas as usize,
+                            candidatos: c[4] as usize,
+                            ..Default::default()
+                        });
+                    }
                     self.passe.leitura = None;
                 }
                 Ok(Err(_)) | Err(std::sync::mpsc::TryRecvError::Disconnected) => {
@@ -615,7 +621,7 @@ impl GpuCook {
     }
 }
 
-fn le_bytes(gpu: &GpuContext, buf: &wgpu::Buffer, bytes: u64) -> Vec<u8> {
+fn le_bytes(gpu: &GpuContext, buf: &wgpu::Buffer, bytes: u64) -> Option<Vec<u8>> {
     let staging = gpu.device.create_buffer(&wgpu::BufferDescriptor {
         label: Some("ph2d-passe leitura"),
         size: bytes.max(4),
@@ -628,11 +634,15 @@ fn le_bytes(gpu: &GpuContext, buf: &wgpu::Buffer, bytes: u64) -> Vec<u8> {
     enc.copy_buffer_to_buffer(buf, 0, &staging, 0, bytes.max(4));
     gpu.queue.submit(Some(enc.finish()));
     let slice = staging.slice(..);
-    slice.map_async(wgpu::MapMode::Read, |_| {});
-    let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
-    let out = slice.get_mapped_range()[..bytes as usize].to_vec();
+    let (tx, rx) = std::sync::mpsc::channel();
+    slice.map_async(wgpu::MapMode::Read, move |r| {
+        let _ = tx.send(r);
+    });
+    gpu.device.poll(wgpu::PollType::wait_indefinitely()).ok()?;
+    rx.recv().ok()?.ok()?;
+    let out = slice.get_mapped_range().ok()?[..bytes as usize].to_vec();
     staging.unmap();
-    out
+    Some(out)
 }
 
 /// O que o gate lê de volta de um passe: `P`, `rot` e as varreduras que correram.
@@ -658,9 +668,9 @@ impl GpuCook {
         let out = self.separa_na_placa(gpu, &mut enc, &up, varreduras, repouso)?;
         gpu.queue.submit(Some(enc.finish()));
         let n = u64::from(up.count);
-        let p = le_bytes(gpu, &out.cols["P"].buffer, n * 8);
-        let r = le_bytes(gpu, &out.cols["rot"].buffer, n * 4);
-        let c = le_bytes(gpu, self.passe.ctrl.as_ref()?, 16);
+        let p = le_bytes(gpu, &out.cols["P"].buffer, n * 8)?;
+        let r = le_bytes(gpu, &out.cols["rot"].buffer, n * 4)?;
+        let c = le_bytes(gpu, self.passe.ctrl.as_ref()?, 16)?;
         let p: Vec<f32> = bytemuck::pod_collect_to_vec(&p);
         let c: Vec<u32> = bytemuck::pod_collect_to_vec(&c);
         Some((

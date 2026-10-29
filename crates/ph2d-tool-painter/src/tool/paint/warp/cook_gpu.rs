@@ -242,7 +242,9 @@ fn cook(
     let slice = stage.slice(..);
     slice.map_async(wgpu::MapMode::Read, |_| {});
     let _ = device.poll(wgpu::PollType::wait_indefinitely());
-    let field = bytemuck::cast_slice::<u8, [f32; 2]>(&slice.get_mapped_range()).to_vec();
+    let field =
+        bytemuck::cast_slice::<u8, [f32; 2]>(&slice.get_mapped_range().expect("warp: mapa lido"))
+            .to_vec();
     stage.unmap();
     (field, ms)
 }

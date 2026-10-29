@@ -414,7 +414,7 @@ fn read_rt(gpu: &ph2d_gpu::GpuContext, rt: &crate::GameRt, size: (u32, u32)) -> 
     });
     gpu.device.poll(wgpu::PollType::wait_indefinitely()).ok();
     rx.recv().expect("chan").expect("map");
-    let mapped = slice.get_mapped_range();
+    let mapped = slice.get_mapped_range().expect("mapped range");
     let mut out = Vec::with_capacity((unpadded as usize) * (size.1 as usize));
     for row in 0..size.1 as usize {
         let s = row * padded as usize;

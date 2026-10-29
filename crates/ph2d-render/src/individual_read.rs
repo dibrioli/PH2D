@@ -363,7 +363,9 @@ fn readback_texture(
         .map_err(|e| IndividualTextureError::ReadbackFailed(format!("channel: {e}")))?
         .map_err(|e| IndividualTextureError::ReadbackFailed(format!("map_async: {e}")))?;
 
-    let mapped = slice.get_mapped_range();
+    let mapped = slice
+        .get_mapped_range()
+        .map_err(|e| IndividualTextureError::ReadbackFailed(format!("mapped range: {e}")))?;
     let mut out = Vec::with_capacity((unpadded_bpr as usize) * (height as usize));
     for row in 0..height as usize {
         let start = row * padded_bpr as usize;

@@ -31,7 +31,7 @@ ph2d-label-fold = { path = "../ph2d-label-fold" }
 # in the bridge — building the query fresh every frame allocates; the
 # cached state is the zero-alloc idiom (mirrors `TransformPropagationState`
 # in ph2d-ecs). Not a determinism-risk dep.
-bevy_ecs = "0.19"
+bevy_ecs = "0.20"
 # The rapier2d wrapper — the ONLY crate that touches rapier + owns the
 # `enhanced-determinism` feature pin. This bridge stays rapier-free
 # (holds only the re-exported handle types), so determinism is guarded

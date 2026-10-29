@@ -67,7 +67,10 @@ pub(super) fn readback_rgba8(
         _ => return Vec::new(),
     }
 
-    let mapped = staging.slice(..).get_mapped_range();
+    let Ok(mapped) = staging.slice(..).get_mapped_range() else {
+        staging.unmap();
+        return Vec::new();
+    };
     let mut out = Vec::with_capacity((unpadded_bpr as usize) * (height as usize));
     for row in 0..height as usize {
         let start = row * padded_bpr as usize;

@@ -381,7 +381,7 @@ ph2d-text = { path = "../../crates/ph2d-text" }
 # bevy_ecs is required as a direct dep so `#[derive(Component)]` can
 # resolve its `::bevy_ecs::*` absolute paths. The shell is the
 # application layer and is the only place we tolerate this leak.
-bevy_ecs = "0.19"
+bevy_ecs = "0.20"
 # image: shell uses for procedural-PNG-fixture generation at first
 # launch (so M6 has real files to consume). Same dep ph2d-asset
 # pulls — workspace Cargo.lock unifies version.
@@ -398,7 +398,7 @@ postcard = { version = "1", features = ["alloc"] }
 # PARTILHAR a cena vetorial entre passos de undo sem mover um byte do formato — o mesmo argumento
 # que o `WorldSnapshot` já fez com `Arc` por linha (ADR-0164 F2).
 serde = { version = "1", features = ["rc"] }
-wgpu = "29.0.4"
+wgpu = "30.0.1"
 winit = "0.30"
 gilrs = "0.11"
 # Phase 2.1 audio wiring. `cpal` owns the OS output device (HR-1: the platform

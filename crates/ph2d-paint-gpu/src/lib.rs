@@ -269,7 +269,7 @@ impl StampPass {
         });
         let _ = self.device.poll(wgpu::PollType::wait_indefinitely());
         let out = match rx.recv() {
-            Ok(Ok(())) => Some(slice.get_mapped_range().to_vec()),
+            Ok(Ok(())) => slice.get_mapped_range().ok().map(|v| v.to_vec()),
             _ => None,
         };
         read.unmap();

@@ -60,7 +60,9 @@ impl Contorno {
         {
             return;
         }
-        let dados = leitura.slice(..).get_mapped_range();
+        let Ok(dados) = leitura.slice(..).get_mapped_range() else {
+            return;
+        };
         let total: u32 = bytemuck::pod_read_unaligned(&dados[..4]);
         let total_m: u32 = bytemuck::pod_read_unaligned(&dados[4..8]);
         self.total_visto = self.total_visto.max(u64::from(total));

@@ -94,7 +94,7 @@ fn digit_font(layout: &Layout<Ink>) -> Option<DigitFont> {
     Some(DigitFont {
         font: run.font().clone(),
         size: run.font_size(),
-        coords: run.normalized_coords().to_vec(),
+        coords: ph2d_text::run_coord_bits(run),
         glyphs,
     })
 }

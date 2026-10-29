@@ -8,7 +8,7 @@
 //!
 //! ## What is state and what is workspace
 //!
-//! The eight sets below are exactly the fields of [`PhysicsWorld`] that
+//! The nine sets below are exactly the fields of [`PhysicsWorld`] that
 //! rapier makes `Clone`, and that is not a coincidence: `PhysicsPipeline` —
 //! the one field `step()` takes `&mut` that is **not** `Clone` — is scratch
 //! (per-step manifold/constraint index buffers + profiling counters), which
@@ -24,7 +24,7 @@
 use std::collections::VecDeque;
 
 use rapier2d::dynamics::{
-    CCDSolver, ImpulseJointSet, IslandManager, MultibodyJointSet, RigidBodySet,
+    CCDSolver, ImpulseJointSet, IslandManager, MultibodyJointSet, RigidBodySet, SoftBodySet,
 };
 use rapier2d::geometry::{BroadPhaseBvh, ColliderSet, NarrowPhase};
 
@@ -51,12 +51,13 @@ pub struct PhysicsCheckpoint {
     colliders: ColliderSet,
     impulse_joints: ImpulseJointSet,
     multibody_joints: MultibodyJointSet,
+    soft_bodies: SoftBodySet,
     ccd_solver: CCDSolver,
     island_manager: IslandManager,
     broad_phase: BroadPhaseBvh,
     narrow_phase: NarrowPhase,
     step_count: u64,
-    /// **Quanto cada guincho já recolheu** (W2) — o nono campo, e o único que não
+    /// **Quanto cada guincho já recolheu** (W2) — o décimo campo, e o primeiro que não
     /// veio do rapier.
     ///
     /// ⚠️ A regra do módulo acima (*"config não é capturada"*) o **inclui**, e
@@ -119,6 +120,7 @@ impl PhysicsWorld {
             colliders: self.colliders.clone(),
             impulse_joints: self.impulse_joints.clone(),
             multibody_joints: self.multibody_joints.clone(),
+            soft_bodies: self.soft_bodies.clone(),
             ccd_solver: self.ccd_solver.clone(),
             island_manager: self.island_manager.clone(),
             broad_phase: self.broad_phase.clone(),
@@ -140,6 +142,7 @@ impl PhysicsWorld {
         self.colliders = cp.colliders.clone();
         self.impulse_joints = cp.impulse_joints.clone();
         self.multibody_joints = cp.multibody_joints.clone();
+        self.soft_bodies = cp.soft_bodies.clone();
         self.ccd_solver = cp.ccd_solver.clone();
         self.island_manager = cp.island_manager.clone();
         self.broad_phase = cp.broad_phase.clone();

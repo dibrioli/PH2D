@@ -17,7 +17,7 @@ ph2d-render = { path = "../ph2d-render" }
 ph2d-shape-gpu = { path = "../ph2d-shape-gpu" }
 ph2d-gpu = { path = "../ph2d-gpu" }
 ph2d-host = { path = "../ph2d-host" }
-wgpu = "29.0.4"
+wgpu = "30.0.1"
 bytemuck = { version = "1", features = ["derive"] }
 
 [dev-dependencies]

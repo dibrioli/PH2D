@@ -234,7 +234,7 @@ impl GpuInpainter {
             .poll(wgpu::PollType::wait_indefinitely())
             .expect("poll inpaint readback");
         rx.recv().expect("readback channel").expect("map_async");
-        let data = slice.get_mapped_range();
+        let data = slice.get_mapped_range().expect("mapped range");
         let floats: &[f32] = bytemuck::cast_slice(&data);
         for i in 0..n {
             let o = i * 4;

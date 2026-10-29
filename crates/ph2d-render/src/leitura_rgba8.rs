@@ -37,7 +37,12 @@ fn fs(@builtin(position) p: vec4<f32>) -> @location(0) vec4<f32> {
 
 /// **Lê `vista` (`w × h`, o nível 0) em RGBA de 8 bits CODIFICADO**, linha a linha sem folga — pela
 /// placa, à espera dela (uma leitura de ferramenta, nunca do quadro).
-fn le_rgba8_codificado(gpu: &GpuContext, vista: &wgpu::TextureView, w: u32, h: u32) -> Vec<u8> {
+fn le_rgba8_codificado(
+    gpu: &GpuContext,
+    vista: &wgpu::TextureView,
+    w: u32,
+    h: u32,
+) -> Option<Vec<u8>> {
     let device = &gpu.device;
     let modulo = device.create_shader_module(wgpu::ShaderModuleDescriptor {
         label: Some("ph2d-render leitura rgba8"),
@@ -157,9 +162,13 @@ fn le_rgba8_codificado(gpu: &GpuContext, vista: &wgpu::TextureView, w: u32, h: u
         },
     );
     gpu.queue.submit(Some(enc.finish()));
-    leitura.slice(..).map_async(wgpu::MapMode::Read, |_| {});
-    let _ = device.poll(wgpu::PollType::wait_indefinitely());
-    let bytes = leitura.slice(..).get_mapped_range();
+    let (tx, rx) = std::sync::mpsc::channel();
+    leitura.slice(..).map_async(wgpu::MapMode::Read, move |r| {
+        let _ = tx.send(r);
+    });
+    device.poll(wgpu::PollType::wait_indefinitely()).ok()?;
+    rx.recv().ok()?.ok()?;
+    let bytes = leitura.slice(..).get_mapped_range().ok()?;
     let mut out = Vec::with_capacity((w * h * 4) as usize);
     for y in 0..h {
         let ini = (y * linha) as usize;
@@ -167,7 +176,7 @@ fn le_rgba8_codificado(gpu: &GpuContext, vista: &wgpu::TextureView, w: u32, h: u
     }
     drop(bytes);
     leitura.unmap();
-    out
+    Some(out)
 }
 
 impl crate::SpriteRenderer {
@@ -181,7 +190,7 @@ impl crate::SpriteRenderer {
         }
         if crate::RenderInstance::is_cooked_texture_id(texture_id) {
             let (vista, w, h) = self.texture_view_and_dims(texture_id)?;
-            return Some((w, h, le_rgba8_codificado(gpu, vista, w, h)));
+            return Some((w, h, le_rgba8_codificado(gpu, vista, w, h)?));
         }
         self.individual().readback_rgba8(gpu, texture_id).ok()
     }

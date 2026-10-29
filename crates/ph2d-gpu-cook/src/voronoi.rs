@@ -592,7 +592,8 @@ pub fn jfa_assignment(
     let slice = staging.slice(..);
     slice.map_async(wgpu::MapMode::Read, |_| {});
     let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
-    let keys: Vec<u32> = bytemuck::cast_slice(&slice.get_mapped_range()).to_vec();
+    let keys: Vec<u32> =
+        bytemuck::cast_slice(&slice.get_mapped_range().expect("mapped range")).to_vec();
     staging.unmap();
     keys.iter()
         .map(|&k| if k == 0 { u32::MAX } else { n - k })

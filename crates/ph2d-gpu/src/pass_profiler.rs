@@ -333,7 +333,12 @@ fn collect_ready(prof: &Prof, inner: &mut Inner) {
             continue;
         }
         slot.in_flight = false;
-        let data = slot.staging.slice(..).get_mapped_range();
+        // O `ready` só sobe no callback do `map_async`; um mapa recusado perde a amostra, nunca o anel.
+        let Ok(data) = slot.staging.slice(..).get_mapped_range() else {
+            slot.staging.unmap();
+            slot.scopes.clear();
+            continue;
+        };
         let tick = |i: u32| -> u64 {
             let o = i as usize * 8;
             u64::from_le_bytes(data[o..o + 8].try_into().unwrap_or([0; 8]))

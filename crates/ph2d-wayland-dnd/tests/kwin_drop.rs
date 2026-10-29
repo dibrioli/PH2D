@@ -32,10 +32,7 @@ use smithay_client_toolkit::shell::wlr_layer::{
 };
 use smithay_client_toolkit::shm::slot::SlotPool;
 use smithay_client_toolkit::shm::{Shm, ShmHandler};
-use smithay_client_toolkit::{
-    delegate_compositor, delegate_data_device, delegate_layer, delegate_output, delegate_pointer,
-    delegate_registry, delegate_seat, delegate_shm, registry_handlers,
-};
+use smithay_client_toolkit::{delegate_dispatch2, delegate_registry, registry_handlers};
 use wayland_client::globals::{GlobalList, registry_queue_init};
 use wayland_client::protocol::wl_data_device::WlDataDevice;
 use wayland_client::protocol::wl_data_device_manager::DndAction;
@@ -614,11 +611,5 @@ impl Dispatch<OrgKdeKwinFakeInput, ()> for Client {
     }
 }
 
-delegate_compositor!(Client);
-delegate_output!(Client);
-delegate_layer!(Client);
-delegate_shm!(Client);
-delegate_seat!(Client);
-delegate_pointer!(Client);
-delegate_data_device!(Client);
+delegate_dispatch2!(Client);
 delegate_registry!(Client);

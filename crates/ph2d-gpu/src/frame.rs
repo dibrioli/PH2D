@@ -76,7 +76,7 @@ impl FrameTarget {
     /// no-op. Drop also presents if not already done.
     pub fn present(mut self) {
         if let Some(tex) = self.texture.take() {
-            tex.present();
+            self.gpu.queue.present(tex);
         }
     }
 }
@@ -84,7 +84,7 @@ impl FrameTarget {
 impl Drop for FrameTarget {
     fn drop(&mut self) {
         if let Some(tex) = self.texture.take() {
-            tex.present();
+            self.gpu.queue.present(tex);
         }
     }
 }

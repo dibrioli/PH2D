@@ -122,7 +122,7 @@ fn ler(gpu: &GpuContext, t: &wgpu::Texture) -> Vec<u8> {
     gpu.device
         .poll(wgpu::PollType::wait_indefinitely())
         .expect("poll");
-    let m = fatia.get_mapped_range();
+    let m = fatia.get_mapped_range().expect("mapped range");
     let mut out = Vec::new();
     for y in 0..H as usize {
         out.extend_from_slice(&m[y * padded as usize..][..(W * 4) as usize]);
@@ -437,7 +437,7 @@ fn ler_bytes(gpu: &GpuContext, t: &wgpu::Texture, bpp: u32) -> Vec<u8> {
     gpu.device
         .poll(wgpu::PollType::wait_indefinitely())
         .expect("poll");
-    let m = fatia.get_mapped_range();
+    let m = fatia.get_mapped_range().expect("mapped range");
     (0..h as usize)
         .flat_map(|y| m[y * padded as usize..][..(w * bpp) as usize].to_vec())
         .collect()

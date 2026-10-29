@@ -9,7 +9,7 @@
 //!
 //! ### What this crate exposes
 //!
-//! - [`Tree`] — light wrapper around `accesskit::Tree` + node store.
+//! - [`Tree`] — light wrapper around `accesskit::TreeInfo` + node store.
 //!   Insert, update, remove nodes by [`NodeId`]; serialize to a
 //!   `TreeUpdate` for the shell adapter.
 //! - [`NodeBuilder`] — convenience builder around `accesskit::Node`

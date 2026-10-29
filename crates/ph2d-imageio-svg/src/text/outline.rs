@@ -3,7 +3,7 @@
 
 use std::fmt::Write as _;
 
-use skrifa::instance::{LocationRef, NormalizedCoord, Size};
+use skrifa::instance::{LocationRef, Size};
 use skrifa::outline::{DrawSettings, OutlinePen};
 use skrifa::{FontRef, GlyphId, MetadataProvider as _};
 
@@ -17,14 +17,9 @@ pub(crate) fn append(run: &Run, d: &mut [String]) {
     let Ok(font) = FontRef::from_index(run.font.data.as_ref(), run.font.index) else {
         return;
     };
-    let coords: Vec<NormalizedCoord> = run
-        .coords
-        .iter()
-        .map(|c| NormalizedCoord::from_bits(*c))
-        .collect();
     let outlines = font.outline_glyphs();
     for &(id, at, owner) in &run.glyphs {
-        let settings = DrawSettings::unhinted(Size::new(run.size), LocationRef::new(&coords));
+        let settings = DrawSettings::unhinted(Size::new(run.size), LocationRef::new(&run.coords));
         let Some(g) = outlines.get(GlyphId::new(id)) else {
             continue;
         };

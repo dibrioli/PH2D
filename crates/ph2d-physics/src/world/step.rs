@@ -134,6 +134,7 @@ impl PhysicsWorld {
                 &mut self.colliders,
                 &mut self.impulse_joints,
                 &mut self.multibody_joints,
+                &mut self.soft_bodies,
                 &mut self.ccd_solver,
                 &physics_hooks,
                 &event_handler,

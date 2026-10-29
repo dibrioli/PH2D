@@ -126,7 +126,7 @@ fn alfa_desenhado(gpu: &GpuContext, o: &mut OclusaoDoFlip<'_>, quem: &[u64]) -> 
     gpu.device
         .poll(wgpu::PollType::wait_indefinitely())
         .expect("poll");
-    let alfa = buf.slice(..).get_mapped_range()[..]
+    let alfa = buf.slice(..).get_mapped_range().expect("mapa lido")[..]
         .as_chunks::<4>()
         .0
         .iter()
@@ -234,7 +234,11 @@ fn centros_lidos(gpu: &GpuContext, rt: &ph2d_render::GameRt) -> [f64; 2] {
     gpu.device
         .poll(wgpu::PollType::wait_indefinitely())
         .expect("poll");
-    let px = buf.slice(..).get_mapped_range().to_vec();
+    let px = buf
+        .slice(..)
+        .get_mapped_range()
+        .expect("mapa lido")
+        .to_vec();
     DISCOS.map(|(c, _)| {
         let (x, y) = ((c[0] - MUNDO[0]) * 80.0, (MUNDO[3] - c[1]) * 80.0);
         let i = (y as u32 * linha + x as u32 * 8) as usize;

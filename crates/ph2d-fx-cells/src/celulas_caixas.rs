@@ -11,7 +11,7 @@ use crate::plano::Caixa;
 
 impl Celulas {
     /// As caixas no ecrã, sprites ++ formas — dois passes e UMA leitura (à espera da própria
-    /// submissão).
+    /// submissão). `None` se a placa recusar a leitura.
     pub(super) fn caixas(
         &self,
         gpu: &GpuContext,
@@ -20,12 +20,12 @@ impl Celulas {
         afim: [f64; 6],
         formas: Option<Formas<'_>>,
         imagens: Option<(&wgpu::Buffer, u32, ShapeView)>,
-    ) -> Vec<Caixa> {
+    ) -> Option<Vec<Caixa>> {
         let n_f = formas.map_or(0, |f| f.n);
         let n_i = imagens.map_or(0, |i| i.1);
         let n = u64::from(n_s + n_f + n_i);
         if n == 0 {
-            return Vec::new();
+            return Some(Vec::new());
         }
         let tam = std::mem::size_of::<Caixa>() as u64;
         let uso = wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC;
@@ -104,12 +104,21 @@ impl Celulas {
         enc.copy_buffer_to_buffer(&ci, 0, &leitura, base_i, u64::from(n_i) * tam);
         let sub = gpu.queue.submit([enc.finish()]);
         let fatia = leitura.slice(..n * tam);
-        fatia.map_async(wgpu::MapMode::Read, |_| {});
-        let _ = gpu.device.poll(wgpu::PollType::Wait {
-            submission_index: Some(sub),
-            timeout: None,
+        let (tx, rx) = std::sync::mpsc::channel();
+        fatia.map_async(wgpu::MapMode::Read, move |r| {
+            let _ = tx.send(r);
         });
-        let caixas = bytemuck::cast_slice::<u8, Caixa>(&fatia.get_mapped_range()).to_vec();
+        gpu.device
+            .poll(wgpu::PollType::Wait {
+                submission_index: Some(sub),
+                timeout: None,
+            })
+            .ok()?;
+        rx.recv().ok()?.ok()?;
+        let caixas = fatia
+            .get_mapped_range()
+            .ok()
+            .map(|v| bytemuck::cast_slice::<u8, Caixa>(&v).to_vec());
         leitura.unmap();
         caixas
     }

@@ -173,7 +173,7 @@ impl FlipRenderer {
                 module: &fill_shader,
                 entry_point: Some("vs_main"),
                 compilation_options: wgpu::PipelineCompilationOptions::default(),
-                buffers: &[wgpu::VertexBufferLayout {
+                buffers: &[Some(wgpu::VertexBufferLayout {
                     array_stride: std::mem::size_of::<FillVertex>() as u64,
                     step_mode: wgpu::VertexStepMode::Vertex,
                     // pos @0 (offset 0), depth @1 (offset 8), color @2 (offset 16);
@@ -195,7 +195,7 @@ impl FlipRenderer {
                             shader_location: 2,
                         },
                     ],
-                }],
+                })],
             },
             fragment: Some(wgpu::FragmentState {
                 module: &fill_shader,

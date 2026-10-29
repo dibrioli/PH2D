@@ -88,7 +88,7 @@ ph2d-color = { path = "../ph2d-color" }
 # (`PH2D_FX_DUMP`): ele le uma textura de volta da GPU, logo fala `wgpu` directamente.
 ph2d-gpu = { path = "../ph2d-gpu" }
 ph2d-painter-effects = { path = "../ph2d-painter-effects" }
-wgpu = "29.0.4"
+wgpu = "30.0.1"
 ph2d-vec-connect = { path = "../ph2d-vec-connect" }
 # ⚠️ A 15a invisivel: a grelha de ladrilhos da estampa (`TileKind`, `HEX_ROW_RATIO`).
 ph2d-vec-pattern = { path = "../ph2d-vec-pattern" }

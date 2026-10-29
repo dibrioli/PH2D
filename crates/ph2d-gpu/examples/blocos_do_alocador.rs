@@ -143,6 +143,7 @@ fn main() {
         power_preference: wgpu::PowerPreference::HighPerformance,
         compatible_surface: None,
         force_fallback_adapter: false,
+        apply_limit_buckets: false,
     }))
     .expect("placa");
     println!("[blocos] placa: {}", adapter.get_info().name);

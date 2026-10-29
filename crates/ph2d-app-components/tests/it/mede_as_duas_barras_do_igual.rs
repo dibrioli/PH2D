@@ -187,7 +187,7 @@ fn emite_mono(cena: &mut VectorScene, layout: &ph2d_text::Layout<()>, preset: Te
                 .draw_glyphs(run.font())
                 .font_size(run.font_size())
                 .hint(hint)
-                .normalized_coords(run.normalized_coords())
+                .normalized_coords(&ph2d_text::run_coord_bits(run))
                 .brush(Color::WHITE)
                 .transform(t)
                 .draw(

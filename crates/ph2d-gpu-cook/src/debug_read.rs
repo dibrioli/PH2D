@@ -128,7 +128,7 @@ impl GpuCook {
         let slice = staging.slice(..);
         slice.map_async(wgpu::MapMode::Read, |_| {});
         let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
-        let data = slice.get_mapped_range();
+        let data = slice.get_mapped_range().ok()?;
         let out = bytemuck::cast_slice::<u8, f32>(&data)[..n].to_vec();
         drop(data);
         staging.unmap();
@@ -183,7 +183,7 @@ fn le_linhas(gpu: &GpuContext, buffer: &wgpu::Buffer, n: u32) -> Vec<ph2d_render
         .expect("map_async callback ran")
         .expect("readback map succeeded");
     let out: Vec<ph2d_render::RenderInstance> =
-        bytemuck::cast_slice(&slice.get_mapped_range()).to_vec();
+        bytemuck::cast_slice(&slice.get_mapped_range().expect("mapped range")).to_vec();
     staging.unmap();
     out
 }
@@ -217,7 +217,8 @@ pub fn read_formas(gpu: &GpuContext, formas: &crate::GpuFormas) -> Vec<u32> {
     rx.recv()
         .expect("map_async callback ran")
         .expect("readback map succeeded");
-    let out: Vec<u32> = bytemuck::cast_slice(&slice.get_mapped_range()).to_vec();
+    let out: Vec<u32> =
+        bytemuck::cast_slice(&slice.get_mapped_range().expect("mapped range")).to_vec();
     staging.unmap();
     out
 }

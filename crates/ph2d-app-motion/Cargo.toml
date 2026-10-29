@@ -88,7 +88,7 @@ ph2d-vec-entities = { path = "../ph2d-vec-entities" }
 ph2d-vector = { path = "../ph2d-vector" }
 ph2d-vector-font = { path = "../ph2d-vector-font" }
 rfd = "0.17"
-wgpu = "29.0.4"
+wgpu = "30.0.1"
 
 ph2d-app-host = { path = "../ph2d-app-host" }
 ph2d-gpu = { path = "../ph2d-gpu" }
@@ -145,7 +145,7 @@ ph2d-tokens = { path = "../ph2d-tokens" }
 ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }
 bytemuck = { version = "1", features = ["extern_crate_alloc"] }
 # P4: o gate que valida o WGSL das imagens da placa sem adaptador.
-naga = { version = "29.0.4", features = ["wgsl-in"] }
+naga = { version = "30.0.1", features = ["wgsl-in"] }
 # P4: o gate da textura ASSADA monta um KTX2 sem compressão (a porta do produto que a carrega).
 ph2d-asset-ktx2 = { path = "../ph2d-asset-ktx2" }
 # ⚠️ Só para o gate do roteiro da cena `=125`, que deriva o nome do cartão dos OSSOS do

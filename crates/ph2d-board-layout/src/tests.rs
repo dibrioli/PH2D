@@ -70,7 +70,7 @@ fn bold_is_a_real_weight_and_italic_a_skew() {
                 let r = g.run();
                 seen.push((
                     r.text_range(),
-                    r.normalized_coords().iter().any(|c| *c != 0),
+                    r.normalized_coords().iter().any(|c| c.to_bits() != 0),
                     r.synthesis().skew(),
                 ));
             }

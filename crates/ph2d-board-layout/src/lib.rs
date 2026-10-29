@@ -157,10 +157,11 @@ pub fn paint(
                 .synthesis()
                 .skew()
                 .map(|deg| Affine::skew(f64::from(deg).to_radians().tan(), 0.0));
+            let coords = ph2d_text::run_coord_bits(r);
             let gs = GlyphStyle {
                 font: r.font(),
                 size: r.font_size(),
-                coords: r.normalized_coords(),
+                coords: &coords,
                 skew,
                 brush: color,
                 transform,
@@ -174,7 +175,7 @@ pub fn paint(
                     y: g.y,
                 }),
             );
-            let m = r.metrics();
+            let m = r.font_metrics();
             let (x0, x1) = (run.offset(), run.offset() + run.advance());
             let mut bar = |offset: f32, size: f32| {
                 let y = run.baseline() - offset;
@@ -224,12 +225,13 @@ pub fn paint_along(
                 .synthesis()
                 .skew()
                 .map(|deg| Affine::skew(f64::from(deg).to_radians().tan(), 0.0));
+            let coords = ph2d_text::run_coord_bits(r);
             for g in run.positioned_glyphs() {
                 let half = g.advance / 2.0;
                 let gs = GlyphStyle {
                     font: r.font(),
                     size: r.font_size(),
-                    coords: r.normalized_coords(),
+                    coords: &coords,
                     skew,
                     brush: color,
                     transform: place(f64::from(g.x + half), f64::from(g.y)),
@@ -254,9 +256,16 @@ pub fn line_bar_rects(layout: &Layout<Ink>) -> Vec<[f64; 4]> {
         .filter_map(|line| {
             let m = line.metrics();
             let x0 = f64::from(m.offset);
-            let w = f64::from(m.advance - m.trailing_whitespace);
+            let w = f64::from(m.advance - m.hanging_advance);
             let y1 = f64::from(m.baseline);
-            (w > 0.0).then(|| [x0, y1 - f64::from(m.ascent) * 0.6, x0 + w, y1])
+            (w > 0.0).then(|| {
+                [
+                    x0,
+                    y1 - f64::from(m.baseline - m.content_block_min_coord) * 0.6,
+                    x0 + w,
+                    y1,
+                ]
+            })
         })
         .collect()
 }
@@ -269,9 +278,9 @@ pub fn line_bars(layout: &Layout<Ink>) -> BezPath {
     for line in layout.lines() {
         let m = line.metrics();
         let x0 = f64::from(m.offset);
-        let w = f64::from(m.advance - m.trailing_whitespace);
+        let w = f64::from(m.advance - m.hanging_advance);
         let y1 = f64::from(m.baseline);
-        let y0 = y1 - f64::from(m.ascent) * 0.6;
+        let y0 = y1 - f64::from(m.baseline - m.content_block_min_coord) * 0.6;
         if w > 0.0 {
             p.extend(Rect::new(x0, y0, x0 + w, y1).path_elements(0.1));
         }

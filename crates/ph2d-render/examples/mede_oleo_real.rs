@@ -482,7 +482,7 @@ fn main() {
                     .map_async(wgpu::MapMode::Read, |r| r.expect("map"));
                 let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
                 let soma: u64 = {
-                    let d = leitura.slice(..).get_mapped_range();
+                    let d = leitura.slice(..).get_mapped_range().expect("mapped range");
                     let ts: &[u64] = bytemuck::cast_slice(&d);
                     (0..BLOCO as usize)
                         .map(|i| ts[2 * i + 1].saturating_sub(ts[2 * i]))

@@ -203,7 +203,11 @@ fn pelo_passe(gpu: &GpuContext, cs: &[ShapeInstance], corridas: &[Corrida]) -> V
     gpu.queue.submit(Some(enc.finish()));
     leitura.slice(..).map_async(wgpu::MapMode::Read, |_| {});
     let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
-    let v = leitura.slice(..).get_mapped_range().to_vec();
+    let v = leitura
+        .slice(..)
+        .get_mapped_range()
+        .expect("mapa lido")
+        .to_vec();
     let linha = (LADO / 2 * bpr) as usize;
     v[linha..linha + bpr as usize]
         .as_chunks::<8>()

@@ -53,7 +53,8 @@ fn readback_u32(gpu: &GpuContext, buf: &wgpu::Buffer, count: u32) -> Vec<u32> {
     });
     let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
     rx.recv().unwrap().unwrap();
-    let out: Vec<u32> = bytemuck::cast_slice(&slice.get_mapped_range()).to_vec();
+    let out: Vec<u32> =
+        bytemuck::cast_slice(&slice.get_mapped_range().expect("mapped range")).to_vec();
     staging.unmap();
     out
 }

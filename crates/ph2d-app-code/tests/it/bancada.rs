@@ -194,7 +194,7 @@ impl Placa {
         });
         self.espera();
         rx.recv().expect("recv").expect("map");
-        let view = slice.get_mapped_range();
+        let view = slice.get_mapped_range().expect("mapa lido");
         let mut out = Vec::with_capacity((unpadded * h) as usize);
         for r in 0..h as usize {
             let a = r * padded as usize;

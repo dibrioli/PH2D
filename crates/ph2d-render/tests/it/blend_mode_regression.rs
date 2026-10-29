@@ -108,7 +108,7 @@ fn readback(gpu: &GpuContext, texture: &wgpu::Texture) -> Vec<u8> {
         .poll(wgpu::PollType::wait_indefinitely())
         .expect("poll");
     rx.recv().expect("map channel").expect("map ok");
-    let mapped = slice.get_mapped_range();
+    let mapped = slice.get_mapped_range().expect("mapped range");
     let mut out = Vec::with_capacity((unpadded * H) as usize);
     for row in 0..H as usize {
         let start = row * padded as usize;

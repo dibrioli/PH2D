@@ -31,3 +31,13 @@ pub use bundled::{
 pub use layout_cache::LAYOUT_CACHE_CAP;
 pub use parley::{FontContext, FontWeight, Layout, LayoutContext, PositionedLayoutItem};
 pub use system::{TextSystem, active_text_rendering, set_active_text_rendering};
+
+/// As coordenadas de variação de uma corrida (o eixo `wght` incluído) nos bits F2Dot14 que o
+/// desenho (`vello`, `skrifa`) recebe. Vazio — sem alocar — numa fonte sem variações.
+#[must_use]
+pub fn run_coord_bits<B: parley::Brush>(run: &parley::Run<'_, B>) -> Vec<i16> {
+    run.normalized_coords()
+        .iter()
+        .map(|c| c.to_bits())
+        .collect()
+}

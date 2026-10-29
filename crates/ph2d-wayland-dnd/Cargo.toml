@@ -19,7 +19,7 @@ percent-encoding = "2.3"
 raw-window-handle = "0.6"
 # ⛔ TETO — o `winit 0.30.13` segura o `smithay-client-toolkit` em 0.19 e o `wayland-backend` com
 # `client_system`; a mesma versão aqui reusa o que já é compilado. Reconfira com o winit 0.31.
-smithay-client-toolkit = { version = "0.19.2", default-features = false }
+smithay-client-toolkit = { version = "0.21.1", default-features = false }
 wayland-client = "0.31"
 wayland-backend = { version = "0.3", features = ["client_system"] }
 rustix = { version = "1", features = ["event", "fs", "pipe"] }

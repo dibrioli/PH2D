@@ -68,14 +68,15 @@ impl DoMiolo {
         let fatia = f.leitura.slice(..);
         fatia.map_async(wgpu::MapMode::Read, |r| r.expect("map das fases do miolo"));
         gpu.device.poll(wgpu::PollType::wait_indefinitely()).ok()?;
-        let ts: Vec<u64> = fatia
-            .get_mapped_range()
-            .as_chunks::<8>()
-            .0
-            .iter()
-            .map(|b| u64::from_le_bytes(*b))
-            .collect();
+        let ts: Option<Vec<u64>> = fatia.get_mapped_range().ok().map(|v| {
+            v.as_chunks::<8>()
+                .0
+                .iter()
+                .map(|b| u64::from_le_bytes(*b))
+                .collect()
+        });
         f.leitura.unmap();
+        let ts = ts?;
         let mut out: Vec<(&'static str, f64, usize)> = FASES.iter().map(|&n| (n, 0.0, 0)).collect();
         for (c, (fase, r)) in f.corridas.iter().enumerate() {
             let ns = ts[2 * c + 1].wrapping_sub(ts[2 * c]) as f64 * f.periodo_ns;

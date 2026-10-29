@@ -50,7 +50,7 @@ skeleton = ["dep:ph2d-skeleton-ecs", "dep:ph2d-constraints-ecs"]
 [dependencies]
 # bevy_ecs for the #[derive(Component)] on SpriteAnimation (same direct-dep
 # convention as ph2d-render's RenderInstance).
-bevy_ecs = "0.19"
+bevy_ecs = "0.20"
 # Timeline data (Clip / Track / AnimValue / AnimTarget) sampled at the playhead.
 ph2d-anim = { path = "../ph2d-anim" }
 # Transform (the animated target), SimComponent marker, and World for the apply pass.

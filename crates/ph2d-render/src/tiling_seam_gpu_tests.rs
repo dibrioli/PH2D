@@ -43,7 +43,7 @@ fn ler(gpu: &ph2d_gpu::GpuContext, t: &wgpu::Texture) -> Vec<[f32; 4]> {
     gpu.device
         .poll(wgpu::PollType::wait_indefinitely())
         .expect("poll");
-    let dados = buf.slice(..).get_mapped_range();
+    let dados = buf.slice(..).get_mapped_range().expect("mapped range");
     (0..h)
         .flat_map(|y| (0..w).map(move |x| (x, y)))
         .map(|(x, y)| {

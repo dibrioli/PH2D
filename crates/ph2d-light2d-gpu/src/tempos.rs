@@ -161,17 +161,16 @@ impl Tempos {
             return None;
         }
         self.pedido = None;
-        let ts: Vec<u64> = self
-            .leitura
-            .slice(..)
-            .get_mapped_range()
-            .as_chunks::<8>()
-            .0
-            .iter()
-            .map(|b| u64::from_le_bytes(*b))
-            .collect();
+        // Vista recusada: perde-se esta amostra; desmapeia para o próximo pedido.
+        let ts: Option<Vec<u64>> = self.leitura.slice(..).get_mapped_range().ok().map(|v| {
+            v.as_chunks::<8>()
+                .0
+                .iter()
+                .map(|b| u64::from_le_bytes(*b))
+                .collect()
+        });
         self.leitura.unmap();
-        Some(self.em_ms(&ts))
+        Some(self.em_ms(&ts?))
     }
 
     fn em_ms(&self, ts: &[u64]) -> TemposMs {
@@ -208,14 +207,15 @@ impl Tempos {
         let fatia = self.leitura.slice(..);
         fatia.map_async(wgpu::MapMode::Read, |r| r.expect("map dos carimbos"));
         device.poll(wgpu::PollType::wait_indefinitely()).ok()?;
-        let ts: Vec<u64> = fatia
-            .get_mapped_range()
-            .as_chunks::<8>()
-            .0
-            .iter()
-            .map(|b| u64::from_le_bytes(*b))
-            .collect();
+        let ts: Option<Vec<u64>> = fatia.get_mapped_range().ok().map(|v| {
+            v.as_chunks::<8>()
+                .0
+                .iter()
+                .map(|b| u64::from_le_bytes(*b))
+                .collect()
+        });
         self.leitura.unmap();
+        let ts = ts?;
         Some(self.em_ms(&ts))
     }
 }

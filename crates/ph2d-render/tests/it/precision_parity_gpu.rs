@@ -258,7 +258,7 @@ fn sample_through_the_shader(
         .expect("o map devia responder")
         .expect("o map devia ter sucesso");
 
-    let data = slice.get_mapped_range();
+    let data = slice.get_mapped_range().expect("mapped range");
     let mut out = Vec::with_capacity((W * H * 4) as usize);
     for row in 0..H as usize {
         let start = row * padded;

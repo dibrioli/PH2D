@@ -113,7 +113,12 @@ impl PhysicsHooks for Saltos<'_> {
         else {
             return;
         };
-        *ctx.restitution = e.max(peca.restitution());
+        let salto = e.max(peca.restitution());
+        // rapier 0.36: o manifold vive atrás de `rigid_mut()` (`None` só entre duas superfícies
+        // moles, que este mundo não cria).
+        if let Some(r) = ctx.rigid_mut() {
+            *r.restitution = salto;
+        }
     }
 }
 
@@ -126,6 +131,8 @@ pub struct Mundo {
     narrow: NarrowPhase,
     juntas: ImpulseJointSet,
     multi: MultibodyJointSet,
+    /// Exigido pela rapier 0.36 em `step`/`remove`; nenhum corpo mole nasce aqui, fica vazio.
+    moles: SoftBodySet,
     ccd: CCDSolver,
     /// Só memória de trabalho do rapier — fora da cópia (a `ph2d-physics` também a deixa fora do
     /// ponto de recuo dela, e o recuo exacto tem gate lá e aqui).
@@ -150,6 +157,7 @@ impl Clone for Mundo {
             narrow: self.narrow.clone(),
             juntas: self.juntas.clone(),
             multi: self.multi.clone(),
+            moles: self.moles.clone(),
             ccd: self.ccd.clone(),
             pipeline: PhysicsPipeline::new(),
             corpos: self.corpos.clone(),
@@ -176,7 +184,7 @@ impl ph2d_nodegraph::cook::Memo for Mundo {
             .contact_pairs()
             .map(|p| {
                 size_of::<ContactPair>()
-                    + p.manifolds
+                    + p.manifolds()
                         .iter()
                         .map(|m| {
                             size_of::<ContactManifold>() + m.points.len() * size_of::<Contact>()
@@ -200,6 +208,7 @@ impl Mundo {
             narrow: NarrowPhase::new(),
             juntas: ImpulseJointSet::new(),
             multi: MultibodyJointSet::new(),
+            moles: SoftBodySet::default(),
             ccd: CCDSolver::new(),
             pipeline: PhysicsPipeline::new(),
             corpos: Vec::new(),
@@ -384,6 +393,7 @@ pub fn passo(
             &mut m.colliders,
             &mut m.juntas,
             &mut m.multi,
+            &mut m.moles,
             &mut m.ccd,
             &Saltos {
                 fixos: &m.fixos,
@@ -495,6 +505,7 @@ fn realinha(m: &mut Mundo, ids: &[u32], specs: &[Option<peca::Spec>]) {
                 &mut m.colliders,
                 &mut m.juntas,
                 &mut m.multi,
+                &mut m.moles,
                 true,
             );
         }
@@ -509,6 +520,7 @@ fn realinha(m: &mut Mundo, ids: &[u32], specs: &[Option<peca::Spec>]) {
                 &mut m.colliders,
                 &mut m.juntas,
                 &mut m.multi,
+                &mut m.moles,
                 true,
             );
         }
@@ -524,8 +536,13 @@ fn escreve(m: &mut Mundo, i: usize, id: u32, spec: &peca::Spec, e: &Estado<'_>, 
         if c.spec != *spec {
             c.presa = false;
             let (tipo, massa, travada) = peca::tipo_e_massa(spec);
-            m.colliders
-                .remove(c.colisor, &mut m.islands, &mut m.bodies, false);
+            m.colliders.remove(
+                c.colisor,
+                &mut m.islands,
+                &mut m.bodies,
+                &mut m.moles,
+                false,
+            );
             c.colisor = m.colliders.insert_with_parent(
                 peca::colisor(spec, etiqueta(id, spec)),
                 c.corpo,
@@ -617,7 +634,8 @@ fn sincroniza_fixos(m: &mut Mundo, declarados: &[(u32, obstaculo::Obstaculo)]) {
     for k in saem {
         if let Some(f) = m.fixos.remove(&k) {
             for c in f.colisores {
-                m.colliders.remove(c, &mut m.islands, &mut m.bodies, false);
+                m.colliders
+                    .remove(c, &mut m.islands, &mut m.bodies, &mut m.moles, false);
             }
         }
     }
@@ -637,7 +655,8 @@ fn sincroniza_fixos(m: &mut Mundo, declarados: &[(u32, obstaculo::Obstaculo)]) {
         let varia = o.salto.iter().any(|x| x.to_bits() != salto.to_bits());
         if let Some(f) = m.fixos.remove(k) {
             for c in f.colisores {
-                m.colliders.remove(c, &mut m.islands, &mut m.bodies, false);
+                m.colliders
+                    .remove(c, &mut m.islands, &mut m.bodies, &mut m.moles, false);
             }
         }
         let colisores = fixo::colisores(o.forma, o.atrito, salto, FIXO | u128::from(*k))

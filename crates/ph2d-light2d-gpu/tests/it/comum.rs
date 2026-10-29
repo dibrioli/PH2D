@@ -50,7 +50,7 @@ pub fn ler_bytes(gpu: &GpuContext, tex: &wgpu::Texture) -> Vec<u8> {
     gpu.device
         .poll(wgpu::PollType::wait_indefinitely())
         .expect("poll");
-    let dados = fatia.get_mapped_range();
+    let dados = fatia.get_mapped_range().expect("mapped range");
     let util = (w * bpp) as usize;
     let mut out = Vec::with_capacity(util * h as usize);
     for j in 0..h as usize {

@@ -85,7 +85,7 @@ fn gpu_reduce(gpu: &GpuContext, op: ReduceOp, input: &[f32]) -> f32 {
     let slice = readback.slice(..);
     slice.map_async(wgpu::MapMode::Read, |_| {});
     let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
-    let v = bytemuck::cast_slice::<u8, f32>(&slice.get_mapped_range())[0];
+    let v = bytemuck::cast_slice::<u8, f32>(&slice.get_mapped_range().expect("mapped range"))[0];
     readback.unmap();
     v
 }
@@ -225,7 +225,7 @@ fn an_empty_stream_leaves_the_callers_slot_untouched() {
     let slice = readback.slice(..);
     slice.map_async(wgpu::MapMode::Read, |_| {});
     let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
-    let v = bytemuck::cast_slice::<u8, f32>(&slice.get_mapped_range())[0];
+    let v = bytemuck::cast_slice::<u8, f32>(&slice.get_mapped_range().expect("mapped range"))[0];
     readback.unmap();
     assert_eq!(v, sentinel, "an empty reduction must not write");
 }

@@ -55,7 +55,7 @@ ph2d-tokens = { path = "../ph2d-tokens" }
 ph2d-tool-runtime = { path = "../ph2d-tool-runtime" }
 image = { version = "0.25", default-features = false, features = ["png"] }
 # O passe de carimbo no device fala `wgpu` directamente.
-wgpu = "29.0.4"
+wgpu = "30.0.1"
 # O diálogo de ficheiro do despejo de diagnóstico (`PH2D_PREVIEW_DUMP`).
 rfd = "0.17"
 

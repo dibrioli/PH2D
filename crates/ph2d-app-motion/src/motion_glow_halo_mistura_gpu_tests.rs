@@ -86,7 +86,7 @@ fn o_mais_denso(gpu: &GpuContext, t: &wgpu::Texture, (w, h): (u32, u32)) -> [f32
     gpu.queue.submit(Some(enc.finish()));
     buf.slice(..).map_async(wgpu::MapMode::Read, |_| {});
     let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
-    let px = buf.slice(..).get_mapped_range();
+    let px = buf.slice(..).get_mapped_range().expect("mapa lido");
     let mut melhor = [0.0f32; 4];
     for y in 0..h {
         for x in 0..w {

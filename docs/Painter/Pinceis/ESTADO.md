@@ -38,6 +38,15 @@ orla Oil Bristle 0,618 × 0,872) · `a_largura_e_a_prometida` (K. Smooth 3 a tam
 **METODOLOGIA NOVA** (dono 28/10, `REGRAS_DE_CUSTO.md`): folha do dono para os ~25 «quase» — EM CURSO; acelerar o
 exame/gerador do óleo (largura sem óleo, luz só na foto) — EM CURSO, prazo 45 min.
 
+## J6 — pedidos do dono no smoke (28/10)
+
+- Wax Crayon na fábrica (`a5e727f203`, PASTEL ▸ Oil). Paper Press 0..1 (`b17f8d64c3`, Tuning ▸ Material; 1 = hoje =
+  omissão; o padrão escolhe-o o dono no app — a foto `J6_paper_press.jpg` mostra pouca diferença). Same as Paper no
+  Grain do Digital/Impasto/Wet (`1d0ccb1524`). Exame/gerador do óleo 10× mais rápido (`eabfc63ccd`; Oil/* por regerar no
+  fecho). ABERTOS p/ o fecho: `censo_dos_controlos::a_linha_esmaecida_e_a_que_nao_age` vermelho (Accumulate/Shape
+  Follow no Digital — confirmar se é pré-existente) · linha do Same as Paper em `censo_dos_controlos_tabela.rs` ·
+  `cada_preset_parece_a_sua_midia` / `a_largura_e_a_prometida` (óleo) · regerar Oil/* · folha do dono (25 «quase»).
+
 ## J6 passo 3 — pincel a pincel (16 só por valores; 16 travados por motor; 7 sem oráculo)
 
 - Digital ✅ (`8a9703db68` `07c644af37` `c8d4ad953d`, [`exames/digital_j6.md`](exames/digital_j6.md)): C-4 Studio Pen (Hard Round 0,283) e C-6 Technical Pen (Pixel 1px 0,330) FUNDEM; K-1 Clouds curado não aprovado; motor B-6 (rampa sob o tecto), L-5 (blur puxa o papel); M-7 sem oráculo. **Cega Digital: B-7 Rough Sketch e I-12 Optical Wash curados NÃO aprovados** (Rough Sketch: o revisor tomou o NOSSO pelo pincel de fora em todas as linhas — discos nítidos onde o MyPaint tem grão de pontos e pontas rectas; Optical Wash: achado em todas as linhas, média em 2 — contorno forte e contínuo, o Krita tem franja fraca irregular). ⚠️ Biblioteca `j6_wet` incompleta (28/66) ⇒ d antigos suspeitos; usar `/tmp/claude-1000/j6_digital/biblioteca`.

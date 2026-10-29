@@ -98,7 +98,10 @@ impl PartialEq for SheetImage {
 
 impl std::fmt::Debug for SheetImage {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "SheetImage({}×{})", self.w, self.h)
+        f.debug_struct("SheetImage")
+            .field("w", &self.w)
+            .field("h", &self.h)
+            .finish_non_exhaustive()
     }
 }
 

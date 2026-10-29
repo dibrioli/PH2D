@@ -125,7 +125,9 @@ pub(crate) fn rule_rows(
     }
     let gap = ph2d_tokens::control_gap_px();
     let font = TypeToken::Sm.px();
-    let chip_w = ((w - 3.0 * ROW_H - 4.0 * gap) * 0.5).max(0.0); // LITERAL-PX-OK: 3 células e 4 vãos, metade para cada chip
+    // A coluna do losango (a lista não é animável: o ponto só reserva o MESMO `x` das outras linhas).
+    let (control_w, _) = ph2d_editor_core::widget::form_row_columns(x, w, y, ROW_H);
+    let chip_w = ((control_w - 3.0 * ROW_H - 4.0 * gap) * 0.5).max(0.0); // LITERAL-PX-OK: 3 células e 4 vãos, metade para cada chip
     let options = info.card.when_options();
     let mut cur_y = y;
     let mut grips = Vec::new();
@@ -208,11 +210,13 @@ pub(crate) fn rule_rows(
             theme,
             hit_index,
             store,
-            Rect::new(x + w - ROW_H, cur_y, ROW_H, ROW_H),
+            Rect::new(x + control_w - ROW_H, cur_y, ROW_H, ROW_H),
             ids::INSP_ANIM_RULE_DEL[i],
             IconId::Close,
             tr("panel.inspector.anim_card.rule_del_tip"),
         );
+        let (_, dot) = ph2d_editor_core::widget::form_row_columns(x, w, cur_y, ROW_H);
+        ph2d_editor_core::widget::paint_decorator_dot(scene, theme, dot);
         cur_y += ph2d_tokens::row_pitch_px();
     }
     paint_drop_bar(scene, theme, store, x, w, &grips);

@@ -44,5 +44,10 @@ ph2d-a11y = { path = "../ph2d-a11y" }
 ph2d-app-game = { path = "../ph2d-app-game" }
 ph2d-preview-drive = { path = "../ph2d-preview-drive", features = ["test-support"] }
 
+[package.metadata.cargo-machete]
+# O `#[derive(Resource)]` vem por `ph2d_ecs::Resource` e expande para caminhos `bevy_ecs::` — o
+# código nunca escreve o nome, e a heurística do machete não liga o pacote à macro.
+ignored = ["bevy_ecs"]
+
 [lints]
 workspace = true

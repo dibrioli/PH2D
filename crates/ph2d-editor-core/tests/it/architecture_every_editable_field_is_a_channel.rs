@@ -278,6 +278,13 @@ const POR_FUNCAO: &[(&str, &str, Classe, &[&str], &str)] = &[
     ),
     (
         "ph2d-panel-inspector",
+        "sections/anim_rules.rs::rule_rows",
+        NaoAnimavel,
+        &[],
+        "a LISTA de regras «quando → toca» do cartão Animation (GEF 08) é a lógica que ESCOLHE o clip a cada quadro — animá-la seria uma regra a decidir outra",
+    ),
+    (
+        "ph2d-panel-inspector",
         "sections/action_trigger.rs::linha_da_aresta",
         Divida,
         &[],

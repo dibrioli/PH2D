@@ -63,6 +63,12 @@ const NOT_LANGUAGE: &[(&str, &str)] = &[(
 /// `ph2d_label_census::gate::excecoes_mortas`.
 const NOT_LANGUAGE_TEXT: &[ph2d_label_census::gate::Excecao] = &[
     (
+        "screens/hero/inspector_model_anim_card.rs",
+        "SheetImage",
+        "o nome do TIPO no `impl Debug` à mão (o blob de 4,7 MB não se imprime) — `{:?}` de \
+         programador, nunca ecrã",
+    ),
+    (
         "interaction/dispatch/hierarchy.rs",
         "LINHA DA HIERARQUIA",
         "diagnóstico de consola (`diag_down`, só com a variável de ambiente ligada) — sai por \

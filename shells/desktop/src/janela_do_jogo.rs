@@ -187,7 +187,7 @@ impl crate::App {
             i + 1,
             s::estado_do_player(&mut gfx.sim)
         );
-        let (Some(&passo), Some(p)) = (usos.get(i), s::por_nome(&mut gfx.sim, "Player")) else {
+        let (Some(&passo), Some(p)) = (usos.get(i), s::player(&mut gfx.sim)) else {
             return;
         };
         let Some(hero) = gfx.hero_screen.as_mut() else {

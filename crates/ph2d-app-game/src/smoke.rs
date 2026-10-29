@@ -55,6 +55,12 @@ pub use foto::{
     QUADROS_POR_USO, estado_do_player, foto, plano_da_foto, uso_no_quadro, usos_do_dono,
 };
 
+/// O herói das cenas de smoke — nome de objecto da cena, não texto da interface.
+#[must_use]
+pub fn player(sim: &mut SimWorld) -> Option<Entity> {
+    por_nome(sim, "Player")
+}
+
 /// O objecto da raiz com este nome.
 #[must_use]
 pub fn por_nome(sim: &mut SimWorld, nome: &str) -> Option<Entity> {

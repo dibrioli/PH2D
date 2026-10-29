@@ -96,7 +96,7 @@ const TEXTURA_GRAO: &str = "grain";
 const TEXTURA_FLUXO: &str = "flow";
 
 /// Os campos do `BrushSpec` que o preset leva, pelo nome do campo.
-pub const CAMPOS_DO_PINCEL: [&str; 40] = [
+pub const CAMPOS_DO_PINCEL: [&str; 41] = [
     // O tecto de tamanho (J3, decisão 8): os quatro meios; gravado só quando o preset o fixa.
     "size_max_px",
     "hardness",
@@ -120,6 +120,8 @@ pub const CAMPOS_DO_PINCEL: [&str; 40] = [
     "taper",
     "texture",
     "grain_depth",
+    // O Grain «Same as Paper» fora da Aquarela (28/10): gravado só ligado.
+    "grain_same_as_paper",
     "shape",
     "dab_flatten",
     "dab_angle_deg",

@@ -619,6 +619,8 @@ pub struct BrushSettings {
     /// **Granulation "Same as Paper"** — when true the granulation settles into the paper's own tooth
     /// (the Grain slot texture is ignored). Shown in the Grain section in watercolor mode.
     pub granulation_use_paper: bool,
+    /// **Grain «Same as Paper»** fora da Aquarela — `BrushSpec::grain_same_as_paper`.
+    pub grain_same_as_paper: bool,
     /// Document **paper colour** (straight sRGB `0..1`) — the ground the watercolor optics see where
     /// the backdrop under the active layer is transparent. Tool-global (`PaintState`), not per-brush.
     pub paper_color: [f32; 3],

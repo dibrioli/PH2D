@@ -69,21 +69,34 @@ pub(crate) fn paint_texture_tiling(
 
     // ── Depth — how strongly the Grain bites (brush only; a Texture-LAYER is full-cover). ──
     if !compact {
-        y = crate::number_field::paint_num_row(
-            ctx,
-            theme,
-            x,
-            content_w,
-            y,
-            tr("panel.painter_layers.grain.depth"),
-            ph2d_tool_painter::ids::PAINTER_BRUSH_GRAIN_DEPTH,
-            brush.grain_depth.clamp(0.0, 1.0),
-            0.0,
-            1.0,
-            crate::number_field::FINE_STEP,
-            2,
-            sec,
-        );
+        y = paint_grain_depth_row(ctx, theme, x, content_w, y, &brush);
     }
     y
+}
+
+/// A linha **Depth** do Grain (do pincel) — também a única do grão próprio que fica com «Same as Paper».
+pub(crate) fn paint_grain_depth_row(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    content_w: f32,
+    y: f32,
+    brush: &BrushSettings,
+) -> f32 {
+    let sec = seccao_do_grao(ctx);
+    crate::number_field::paint_num_row(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        tr("panel.painter_layers.grain.depth"),
+        ph2d_tool_painter::ids::PAINTER_BRUSH_GRAIN_DEPTH,
+        brush.grain_depth.clamp(0.0, 1.0),
+        0.0,
+        1.0,
+        crate::number_field::FINE_STEP,
+        2,
+        sec,
+    )
 }

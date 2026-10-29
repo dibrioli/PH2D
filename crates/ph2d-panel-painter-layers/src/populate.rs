@@ -490,6 +490,8 @@ fn register_toggles_and_dropdowns(store: &mut WidgetStore) {
         ph2d_tool_painter::ids::PAINTER_SHAPE_WATERCOLOR_AUTO,
         ph2d_tool_painter::ids::PAINTER_WATERCOLOR_RESET,
         ph2d_tool_painter::ids::PAINTER_WATERCOLOR_GRAN_SAME,
+        // O mesmo «Same as Paper» no Grain dos outros meios (dono 28/10).
+        ph2d_tool_painter::ids::PAINTER_BRUSH_GRAIN_SAME_AS_PAPER,
         // Wash card's "Smooth Edges" toggle (BUGS #16 — screen-space AA of the silhouette).
         ph2d_tool_painter::ids::PAINTER_WATERCOLOR_SMOOTH_EDGES,
         ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PAPER_RESET,

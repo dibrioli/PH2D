@@ -43,6 +43,20 @@ impl BrushSettings {
         self.watercolor_active && self.granulation_use_paper
     }
 
+    /// O meio oferece o Grain **«Same as Paper»** do pincel (dono 28/10)? Todos menos a Aquarela, que tem o
+    /// seu (`granulation_use_paper`). A mesma pergunta que `PainterTool::grao_e_o_papel` faz.
+    #[must_use]
+    pub fn oferece_grain_same_as_paper(&self) -> bool {
+        super::PaintMedia::from_u8(self.media) != super::PaintMedia::Watercolor
+    }
+
+    /// O grão do pincel É o papel do documento (o «Same as Paper» do Grain, fora da Aquarela): o painel
+    /// esconde o grão próprio (a textura, a miniatura, o mapeamento, o tamanho); fica a Depth.
+    #[must_use]
+    pub fn grain_e_o_papel(&self) -> bool {
+        self.oferece_grain_same_as_paper() && self.grain_same_as_paper
+    }
+
     /// **O meio OFERECE o Accumulate (e com ele o Space Attenuation)?** — a porta única da linha do
     /// painel e do traço ([`crate::tool::PainterTool::authored_spec`]).
     ///
@@ -518,6 +532,7 @@ impl PainterTool {
             paper_depth: b.paper_depth,
             paper_params: b.paper.params,
             granulation_use_paper: b.granulation_use_paper,
+            grain_same_as_paper: b.grain_same_as_paper,
             paper_color: self.paint.paper_color,
             substrate_relief: self.paint.substrate_depth,
             substrate_roughness: self.paint.substrate_rough,

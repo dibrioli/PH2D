@@ -187,6 +187,7 @@ impl Default for BrushSpec {
             // granulation follows the paper's tooth until the artist points it at the Grain slot map.
             paper: TextureSettings::default(),
             granulation_use_paper: true,
+            grain_same_as_paper: false,
             paper_depth: 1.0,
             watercolor_shape_auto: true, // built-in feather silhouette (byte-identical default)
             // Impasto: the `impasto` gate (OFF) is what guarantees the byte-identical default — the

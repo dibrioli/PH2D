@@ -87,7 +87,10 @@ impl PainterTool {
                 brush.radius_px = lei.raio_do_motor(brush.radius_px);
             }
         }
-        if self.papel_como_grain() {
+        if self.grao_e_o_papel() {
+            // «Same as Paper» (dono 28/10): o papel do documento, preso à tela, à Depth do próprio Grain.
+            brush.texture = super::substrate_relief::papel_do_documento(brush.paper);
+        } else if self.papel_como_grain() {
             brush.texture = brush.paper;
             brush.grain_depth =
                 (brush.paper_depth / ph2d_painter_brush::PAPER_TOOTH_MAX).clamp(0.0, 1.0);
@@ -107,7 +110,16 @@ impl PainterTool {
     /// nos picos). Tooth 0 = o traço de antes, ao byte. Com um Grain escolhido, ele é a textura do traço.
     #[must_use]
     pub(crate) fn papel_como_grain(&self) -> bool {
-        self.papel_pode_ser_grain() && self.paint.brush.paper_depth > 0.0
+        self.grao_e_o_papel() || (self.papel_pode_ser_grain() && self.paint.brush.paper_depth > 0.0)
+    }
+
+    /// ⭐ **Grain «Same as Paper»** fora da Aquarela (dono 28/10: *«habilite o mesmo para todos os modos de
+    /// pintura»*): o grão do pincel É o papel do documento (`substrate_relief::papel_do_documento`), preso à
+    /// tela pela lei do slot do papel. A Aquarela tem a sua (`granulation_use_paper`, a granulação).
+    #[must_use]
+    pub(crate) fn grao_e_o_papel(&self) -> bool {
+        self.paint.brush.grain_same_as_paper
+            && self.paint_media() != super::media::PaintMedia::Watercolor
     }
 
     /// O Digital está em condições de pôr o papel como Grain (o Relief ligado com um papel, sem Grain

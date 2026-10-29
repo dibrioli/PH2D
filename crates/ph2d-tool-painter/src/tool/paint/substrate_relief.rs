@@ -226,6 +226,14 @@ pub(super) fn default_paper() -> TextureSettings {
     }
 }
 
+/// ⭐ **O papel do documento** — o escolhido (`BrushSpec::paper`) ou, sem nenhum, o de fábrica
+/// ([`default_paper`]). A porta ÚNICA: o filme do Wet Paint mostra-o e o «Same as Paper» do Grain faz dele o
+/// grão do pincel (`PainterTool::papel_como_grain`).
+#[must_use]
+pub(super) fn papel_do_documento(tex: TextureSettings) -> TextureSettings {
+    if tex.is_active() { tex } else { default_paper() }
+}
+
 impl crate::tool::PainterTool {
     /// O SUBSTRATO vigente — o dente do papel como superfície, ou `None` quando desligado.
     ///

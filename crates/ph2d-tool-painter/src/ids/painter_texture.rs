@@ -30,6 +30,11 @@ pub const PAINTER_BRUSH_TEXTURE_ANGLE: NodeId = hash_node_id("painter_brush.text
 /// (A random per-dab spin is the Stroke Jitter Rotate; the per-slot "Random Angle" was retired 2026-07-19.)
 pub const PAINTER_BRUSH_TEXTURE_RAKE: NodeId = hash_node_id("painter_brush.texture_rake");
 
+/// Grain **«Same as Paper»** fora da Aquarela (Digital · Impasto · Wet Paint, dono 28/10) — o grão do pincel
+/// é o papel do documento. `Click` → `toggle_brush_grain_same_as_paper`.
+pub const PAINTER_BRUSH_GRAIN_SAME_AS_PAPER: NodeId =
+    hash_node_id("painter_brush.grain_same_as_paper");
+
 /// Brush texture **Offset X** slider (`0..1` track → `−1..1` tile). `SetValue` →
 /// `set_brush_texture_offset_norm(0, ..)`.
 pub const PAINTER_BRUSH_TEXTURE_OFFSET_X: NodeId = hash_node_id("painter_brush.texture_offset_x");

@@ -422,7 +422,9 @@ impl PainterTool {
     /// Reset the **Texture** section to defaults — clears the assigned texture and its modulation
     /// (mapping / angle / Rake / Random / offset / size / params). The Color Ramp has its own reset.
     pub fn reset_brush_texture(&mut self) {
-        self.paint.brush.texture = self.spec_de_fabrica().texture;
+        let d = self.spec_de_fabrica();
+        self.paint.brush.texture = d.texture;
+        self.paint.brush.grain_same_as_paper = d.grain_same_as_paper;
     }
 
     /// Reset the **Shape** section: clear the Shape image (the silhouette reverts to the falloff) and

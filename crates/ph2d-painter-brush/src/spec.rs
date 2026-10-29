@@ -562,6 +562,11 @@ pub struct BrushSpec {
     /// ignored and only the [`Self::granulation`] amount applies. False → the Grain slot IS the granulation
     /// map. (Shown in the Grain section only in watercolor mode.)
     pub granulation_use_paper: bool,
+    /// **Grain «Same as Paper»** fora da Aquarela (Digital · Impasto · Wet Paint, dono 28/10): `true` = o
+    /// grão do pincel É o papel do documento ([`Self::paper`], ou o de fábrica sem papel escolhido) —
+    /// preso à tela, à [`Self::grain_depth`] do pincel. `false` (omissão) = o Grain do pincel, ao bit.
+    /// A Aquarela tem a sua ([`Self::granulation_use_paper`]); a porta é `PainterTool::papel_como_grain`.
+    pub grain_same_as_paper: bool,
     /// **Paper Depth** (the panel's *Tooth*), `0..=`[`PAPER_TOOTH_MAX`]: how strongly the
     /// [`Self::paper`] tooth textures the wash (the paper's substrate bite, independent of the
     /// granulation amount). `0` = a flat wash; `1` = the historical full tooth.

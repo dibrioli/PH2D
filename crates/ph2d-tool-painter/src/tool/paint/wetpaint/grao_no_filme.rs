@@ -27,11 +27,7 @@ pub(super) fn papel_do_filme<'a>(
     rough: f32,
     image: Option<ph2d_painter_brush::texture::ImageMask<'a>>,
 ) -> Option<Substrate<'a>> {
-    let tex = if tex.is_active() {
-        tex
-    } else {
-        super::super::substrate_relief::default_paper()
-    };
+    let tex = super::super::substrate_relief::papel_do_documento(tex);
     Substrate::resolve(tex, relief_na_tinta(relief), rough, image)
 }
 

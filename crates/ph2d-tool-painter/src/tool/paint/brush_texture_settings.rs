@@ -214,6 +214,12 @@ impl PainterTool {
         self.paint.brush.pontas_rectas = !self.paint.brush.pontas_rectas;
     }
 
+    /// Grain **«Same as Paper»** on/off fora da Aquarela (dono 28/10) — o grão do pincel passa a ser o papel
+    /// do documento ([`ph2d_painter_brush::BrushSpec::grain_same_as_paper`], `PainterTool::papel_como_grain`).
+    pub fn toggle_brush_grain_same_as_paper(&mut self) {
+        self.paint.brush.grain_same_as_paper = !self.paint.brush.grain_same_as_paper;
+    }
+
     /// Set how far the **Flat ends** cut passes the first and last dab centre, in dab radii
     /// (`0..PONTAS_ALEM_MAX`, clamped; J6).
     pub fn set_brush_pontas_alem(&mut self, v: f32) {

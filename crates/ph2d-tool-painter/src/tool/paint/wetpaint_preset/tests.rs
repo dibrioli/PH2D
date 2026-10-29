@@ -259,6 +259,7 @@ fn pincel_mexido() -> BrushSpec {
         wet_dilution: 0.6,
         wet_pull: 0.7,
         granulation_use_paper: !d.granulation_use_paper,
+        grain_same_as_paper: !d.grain_same_as_paper,
         watercolor_shape_auto: !d.watercolor_shape_auto,
         impasto_smooth_edges: !d.impasto_smooth_edges,
         impasto_depth: 0.8,

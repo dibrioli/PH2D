@@ -363,6 +363,7 @@ pub const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     paper_depth: 1.0,       // LITERAL-PX-OK: default paper tooth depth
     paper_params: [0.5; 6], // LITERAL-PX-OK: neutral texture params
     granulation_use_paper: true,
+    grain_same_as_paper: false,
     paper_color: [1.0, 1.0, 1.0], // white ground (mirrors PaintState default)
     substrate_relief: 0.0,        // OFF — o neutro byte-idêntico (mirrors PaintState default)
     substrate_roughness: 0.5,

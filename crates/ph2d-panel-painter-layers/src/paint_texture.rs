@@ -88,6 +88,34 @@ pub(crate) fn paint_texture_section(
             return close(ctx, fold, y);
         }
     }
+    // Os outros meios: o MESMO «Same as Paper» (dono 28/10) — o grão do pincel é o papel do documento.
+    if brush.oferece_grain_same_as_paper() && !compact {
+        y = crate::paint_brush_top::paint_checkbox_row(
+            ctx,
+            theme,
+            x,
+            content_w,
+            y,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_GRAIN_SAME_AS_PAPER,
+            "panel.painter_layers.paper.same_as_paper",
+            brush.grain_same_as_paper,
+        );
+        if brush.grain_e_o_papel() {
+            y = crate::paint_texture_tiling::paint_grain_depth_row(ctx, theme, x, content_w, y, &brush);
+            y = crate::ponta_linhas::paint_comportamento_do_grao(ctx, theme, x, content_w, y, &brush);
+            let out = paint_texture_params_and_ramp(
+                ctx,
+                theme,
+                x,
+                content_w,
+                y,
+                brush,
+                TextureKind::None,
+                layer_alpha,
+            );
+            return close(ctx, fold, out);
+        }
+    }
     let kind = TextureKind::from_u8(brush.texture_kind);
     let mapping = TextureMapping::from_u8(brush.texture_mapping);
     // Under the Stencil mapping the rect placement (Size / Offset / Rotation) lives in its OWN card

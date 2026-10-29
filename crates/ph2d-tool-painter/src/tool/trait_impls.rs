@@ -182,6 +182,9 @@ impl PainterTool {
             PanelEvent::Click(id) if id == crate::ids::PAINTER_BRUSH_TEXTURE_RAKE => {
                 self.toggle_brush_texture_rake();
             }
+            PanelEvent::Click(id) if id == crate::ids::PAINTER_BRUSH_GRAIN_SAME_AS_PAPER => {
+                self.toggle_brush_grain_same_as_paper();
+            }
             PanelEvent::Click(id) if id == crate::ids::PAINTER_BRUSH_TEXTURE_NEW => {
                 self.new_brush_texture();
             }

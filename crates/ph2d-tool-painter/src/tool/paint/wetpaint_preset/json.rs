@@ -385,6 +385,7 @@ fn ler_campo(b: &BrushSpec, campo: &str) -> Value {
         "taper" => taper_para_json(&b.taper),
         "texture" => textura_para_json(&b.texture),
         "grain_depth" => num(b.grain_depth),
+        "grain_same_as_paper" => json!(b.grain_same_as_paper),
         "shape" => textura_para_json(&b.shape),
         "dab_flatten" => num(b.dab_flatten),
         "dab_angle_deg" => json!(b.dab_angle_deg),
@@ -561,6 +562,8 @@ fn escrever_campo(b: &mut BrushSpec, campo: &str, v: Option<&Value>) {
         }
         "texture" => b.texture = textura_de_json(v, b.texture),
         "grain_depth" => b.grain_depth = f(v, b.grain_depth),
+        // Ausente = desligado (a de fábrica): o preset de antes lê o grão de antes.
+        "grain_same_as_paper" => b.grain_same_as_paper = booleano(v, false),
         "shape" => b.shape = textura_de_json(v, b.shape),
         "dab_flatten" => b.dab_flatten = f(v, b.dab_flatten),
         "dab_angle_deg" => b.dab_angle_deg = inteiro(v, b.dab_angle_deg),
@@ -631,6 +634,7 @@ pub(crate) fn pincel_para_json(b: &BrushSpec, campos: &[&str]) -> BTreeMap<Strin
         .filter(|&&c| !(c == "pigment_espectral" && !b.pigment_espectral))
         // As pontas rectas (J6) só ligadas: idem.
         .filter(|&&c| !(c == "pontas_rectas" && !b.pontas_rectas))
+        .filter(|&&c| !(c == "grain_same_as_paper" && !b.grain_same_as_paper))
         .filter(|&&c| !(c == "pontas_alem" && b.pontas_alem <= 0.0))
         .filter(|&&c| !(c == "pontas_esbate" && b.pontas_esbate <= 0.0))
         .map(|&c| ((*c).to_owned(), ler_campo(b, c)))

@@ -95,6 +95,11 @@ run "crates com dependência opcional compilam sozinhas" bash scripts/check-stan
 # 13. Os membros saem do `cargo metadata`, os nomes saem dos workflows, com piso nas duas pontas.
 run "pacotes citados pelos workflows existem" bash scripts/check-workflow-packages.sh
 
+# ── as regras de PROCESSO (comissão 29/10) têm prova? ───────────────────
+# Cada regra nova dos portões (o salto da suíte, os níveis de teste, o hook do commit, as recontagens)
+# tem a sua linha vista vermelha em `scripts/processo.prova.d/`. Sem compilar, < 5 s.
+run "provas das regras de processo" bash scripts/processo.prova.sh
+
 # ── índices DERIVADOS: em dia? ──────────────────────────────────────────
 # ⚠️ Estes índices existem porque a alternativa (lista mantida à mão) envelhece na
 # primeira semana — foi o que aconteceu com a tabela "Estado por-wave" do tracker
@@ -141,13 +146,11 @@ if [ -n "${NO_FAIL_FAST:-}" ]; then
     FAIL_MODE=(--no-fail-fast)
 fi
 if command -v cargo-nextest >/dev/null 2>&1; then
-    # ⛔ Cada termo dos `filter =` do nextest.toml casa ≥ 1 teste real (29/10: um ficheiro partido mudou o nome
-    # de um teste, o prazo de 10 min deixou de se lhe aplicar e ele morreu aos 180 s). A lista reaproveita a
-    # compilação do `ci-test` que a corrida a seguir usa.
-    run "nextest.toml: cada filtro casa um teste" \
-        bash -c 'set -o pipefail; CARGO_INCREMENTAL=0 cargo nextest list --workspace --cargo-profile ci-test --message-format json | python3 scripts/nextest-filtros-casam.py -'
-    run "nextest run --workspace (ci-test)" \
-        env CARGO_INCREMENTAL=0 cargo nextest run --workspace --cargo-profile ci-test "${FAIL_MODE[@]}"
+    # ⭐ B1 (comissão 29/10): a suíte é a do `suite-completa.sh` — o filtro-casa do nextest.toml, a corrida
+    # e o REGISTO da árvore verde. Se o integrador já passou esta MESMA árvore, isto não corre de novo
+    # (−25–35 min por envio); qualquer byte diferente é outra chave e corre.
+    run "suíte completa (nextest --workspace, ci-test; salta se a árvore já passou)" \
+        bash scripts/suite-completa.sh
 else
     run "cargo test --workspace (ci-test)" \
         env CARGO_INCREMENTAL=0 cargo test --workspace --profile ci-test

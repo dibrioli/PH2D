@@ -85,12 +85,13 @@ fn digital_e_impasto_pintam_com_a_ponta_de_cerdas() {
     }
 }
 
-/// HR-15: o nome de CADA tipo do dropdown (agora 30) e os rótulos dos parâmetros dele vêm da tabela —
-/// nenhuma chave crua no ecrã.
+/// HR-15: o nome de CADA tipo do dropdown (agora 31: as Flakes da W3 K5, `63a2629361`) e os rótulos dos parâmetros
+/// dele vêm da tabela — nenhuma chave crua no ecrã.
 #[test]
 fn cada_tipo_e_cada_parametro_tem_texto() {
-    assert_eq!(TextureKind::COUNT, 30);
+    assert_eq!(TextureKind::COUNT, 31);
     assert_eq!(TextureKind::from_u8(29), TextureKind::Bristles);
+    assert_eq!(TextureKind::from_u8(30), TextureKind::Flakes);
     for k in (0..TextureKind::COUNT).map(TextureKind::from_u8) {
         assert_eq!(TextureKind::from_u8(k.to_u8()), k);
         let chaves = std::iter::once(k.name_key())

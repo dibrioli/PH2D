@@ -74,6 +74,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "paint_brush.pattern_param.edges" => "Edges",
         "paint_brush.pattern_param.elongation" => "Elongation",
         "paint_brush.pattern_param.felt" => "Felt",
+        // O comprimento da lasca (Flakes, W3 K5): «Size» era o segundo Size da secção Shape.
+        "paint_brush.pattern_param.flake_length" => "Flake Length",
         "paint_brush.pattern_param.frequency" => "Frequency",
         "paint_brush.pattern_param.gap" => "Gap",
         "paint_brush.pattern_param.invert" => "Invert",
@@ -87,7 +89,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "paint_brush.pattern_param.ripple" => "Ripple",
         "paint_brush.pattern_param.roughness" => "Roughness",
         "paint_brush.pattern_param.sharpness" => "Sharpness",
-        "paint_brush.pattern_param.size" => "Size",
         "paint_brush.pattern_param.smoothness" => "Smoothness",
         "paint_brush.pattern_param.softness" => "Softness",
         "paint_brush.pattern_param.thickness" => "Thickness",

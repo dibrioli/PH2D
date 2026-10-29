@@ -204,7 +204,7 @@ pub fn param_specs(kind: TextureKind) -> &'static [ParamSpec] {
         Flakes => &[
             CONTRAST,
             BRIGHTNESS,
-            p!("paint_brush.pattern_param.size", 0.5),
+            p!("paint_brush.pattern_param.flake_length", 0.5),
             p!("paint_brush.pattern_param.elongation", 0.5),
             p!("paint_brush.pattern_param.irregularity", 0.5),
             p!("paint_brush.pattern_param.invert", 0.0),

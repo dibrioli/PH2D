@@ -893,8 +893,8 @@ fn cada_ferramenta_tem_os_seus_presets_de_fabrica() {
     }
 }
 
-/// Sonda (à mão): a cena `sobre` do Smudge Finger em `PH2D_SONDA_OUT/<nome>.ppm` — o fio do arrasto medido por
-/// `mede_fio.py` contra `fixtures/rebelle_mistura/SMUDGE/default_soft_sobre_B.png`.
+/// Sonda (à mão): a cena `sobre` do Smudge Finger em `PH2D_SONDA_OUT/<nome>.ppm` — o fio do arrasto medido pela
+/// régua de [`fio_do_arrasto`] contra `fixtures/rebelle_mistura/SMUDGE/default_soft_sobre_B.png`.
 #[test]
 #[ignore = "sonda: o fio do arrasto; corre-se à mão"]
 fn sonda_o_fio_do_arrasto() {
@@ -915,7 +915,7 @@ fn sonda_o_fio_do_arrasto() {
 }
 
 /// O FIO do arrasto na cena `sobre` (foto A, 1000 px de largura), por cruzamento `x0`: por linha `y` de `ys`, a
-/// massa de tinta em `x0 ± 12` (`(248 − verde)/248`, a de `mede_fio.py`). Devolve (linhas vazias < 0,05, massa média).
+/// massa de tinta em `x0 ± 12` (`(248 − verde)/248`, o verde do papel da foto). Devolve (linhas vazias < 0,05, massa média).
 fn fio_do_arrasto(px: &[u8], x0: usize, ys: std::ops::Range<usize>) -> (usize, f64) {
     let massa = |y: usize| -> f64 {
         (x0 - 12..=x0 + 12)

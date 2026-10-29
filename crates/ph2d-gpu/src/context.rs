@@ -44,7 +44,29 @@ impl GpuContext {
         instance: wgpu::Instance,
         compatible_surface: Option<&wgpu::Surface<'_>>,
     ) -> Result<Self, GpuError> {
-        Self::new_com_espera(instance, compatible_surface, std::time::Duration::ZERO)
+        Self::new_com_espera(
+            instance,
+            compatible_surface,
+            std::time::Duration::ZERO,
+            None,
+        )
+    }
+
+    /// O [`Self::new`] com os blocos do alocador ESCOLHIDOS (`"desempenho"` = os grandes; ver
+    /// `blocos_do_alocador`), sem passar pela variável de ambiente. Os gates de memória da Luz 2D
+    /// (`os_tetos_da_placa`) foram calibrados com os blocos grandes: a placa que recusa com blocos
+    /// pequenos recusa noutro sítio, e o que se mede ali é o recuo da luz, não o alocador.
+    pub fn new_com_blocos(
+        instance: wgpu::Instance,
+        compatible_surface: Option<&wgpu::Surface<'_>>,
+        blocos: &str,
+    ) -> Result<Self, GpuError> {
+        Self::new_com_espera(
+            instance,
+            compatible_surface,
+            std::time::Duration::ZERO,
+            Some(blocos),
+        )
     }
 
     /// O [`Self::new`] do EDITOR (F36, smoke do dono 27/10: com a placa cheia o arranque caía em
@@ -58,6 +80,7 @@ impl GpuContext {
             instance,
             compatible_surface,
             crate::memoria::ESPERA_MAXIMA_NO_ARRANQUE,
+            None,
         )
     }
 
@@ -65,6 +88,7 @@ impl GpuContext {
         instance: wgpu::Instance,
         compatible_surface: Option<&wgpu::Surface<'_>>,
         espera_maxima: std::time::Duration,
+        blocos: Option<&str>,
     ) -> Result<Self, GpuError> {
         let adapter = match crate::vez_da_placa_ou_a_de_testes() {
             crate::Placa::Principal => {
@@ -171,7 +195,12 @@ impl GpuContext {
             required_features: compression_features,
             required_limits,
             experimental_features: wgpu::ExperimentalFeatures::default(),
-            memory_hints: blocos_do_alocador(std::env::var("PH2D_GPU_BLOCOS").ok().as_deref()),
+            memory_hints: blocos_do_alocador(
+                blocos
+                    .map(str::to_owned)
+                    .or_else(|| std::env::var("PH2D_GPU_BLOCOS").ok())
+                    .as_deref(),
+            ),
             trace: wgpu::Trace::Off,
         };
         let (device, queue) = crate::memoria::tenta_enquanto_falta_memoria(

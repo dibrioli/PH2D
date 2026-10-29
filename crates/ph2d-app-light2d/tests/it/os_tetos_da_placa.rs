@@ -423,7 +423,7 @@ fn placa_com_limiar(t: u8) -> Option<GpuContext> {
         },
         ..wgpu::InstanceDescriptor::new_without_display_handle_from_env()
     });
-    let gpu = GpuContext::new(instancia, None).ok()?;
+    let gpu = GpuContext::new_com_blocos(instancia, None, "desempenho").ok()?;
     let escopo = gpu.device.push_error_scope(wgpu::ErrorFilter::OutOfMemory);
     let t64 = gpu.device.create_texture(&wgpu::TextureDescriptor {
         label: Some("tetos/64MB"),

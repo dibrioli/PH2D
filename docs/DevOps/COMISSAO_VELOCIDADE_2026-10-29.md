@@ -61,3 +61,59 @@ Subir o tecto de CPU de 50 % por linha (custa ~3 %, `project_agent_time_split_20
 partilhar `CARGO_TARGET_DIR` entre worktrees (troca os `.rlib`) · `-Zshare-generics` · sccache no CI (HTTP 400,
 run 25840452466) · clippy a meio da linha · suíte completa na linha · baixar o `opt-level` do `ci-test`
 («baixar é silenciar o portão»). Recusado pelo DONO em 30/10: C e J.
+
+## Implementado (janela «Velocidade 2», 29/10)
+
+> Cada item: o que mudou · SHA · antes → depois MEDIDO · gate e mutação. As provas de processo vivem em
+> `scripts/processo.prova.d/<item>.sh` e correm juntas em `bash scripts/processo.prova.sh` (< 5 s, sem
+> compilar), que o `ship.sh` corre.
+
+### K — compilar × correr × load por corrida (`39c4570912`)
+
+- `cargo-test-narrow.sh` e `nextest-impacted.sh` (e o `suite-completa.sh` do B1) gravam cada corrida em
+  `$(git rev-parse --git-common-dir)/ph2d-tempos-teste.tsv`: check, compilar (soma dos `Finished … in` do
+  cargo), correr (o resto do relógio), `loadavg` no início e no fim, exit. Agregar:
+  `python3 scripts/tempos-teste.py [--desde AAAA-MM-DD]` (separa as corridas com load > 5).
+- **Medido, 5 corridas reais por nome, load 0,7–3,5:** compilar **106 s** (check 46 s + build de teste 60 s),
+  correr **3 s** ⇒ **97 % compilar**. Detalhe: num crate recém-mexido o `check` da porta e o build de teste
+  NÃO partilham artefactos (`ph2d-timeline`: check 24,4 s + build 25,1 s; `ph2d-ecs`: 18,1 + 30,6 s).
+- **Histórico (transcrições 22–29/10, 7 322 corridas, 74 h):** só 4 % das saídas trazem o `Finished` (a
+  porta filtra-o) ⇒ a divisão de 22–29/10 não se reconstrói: piso 12 % compilar (809 corridas = 8,0 h
+  nunca passaram da compilação), central estimada ~35–40 %, confiança baixa. O log novo responde daqui
+  para a frente.
+- **Decide L e M:** nas corridas por nome — que são o grosso das 71 h — o relógio é quase todo compilar ⇒
+  L (toolchain) e M (partir a maior unidade de compilação) atacam a parte que pesa.
+- Prova `K.sh` (5 linhas); mutação «os minutos do `1m 05s` ignorados» vista vermelha (17,5 em vez de 77,5).
+
+### B1 — o `ship.sh` salta a suíte com a MESMA árvore (`b92bccfe62`)
+
+- `scripts/suite-completa.sh` = filtro-casa do `nextest.toml` + `nextest run --workspace` (ci-test) + registo
+  da CHAVE verde em `$(git-common-dir)/ph2d-suites-verdes.tsv`. Chave = árvore inteira (commitada + por
+  commitar + por rastrear, índice temporário) + `rustc -vV` + argumentos + `PH2D_*`/`CARGO_*` (fora: os botões
+  de recurso). A árvore é relida no fim: mudou durante a corrida ⇒ não regista. O `ship.sh` usa-o.
+- **Antes → depois:** o envio corria outra suíte sobre a árvore que o integrador acabara de passar
+  (+25–35 min); com a mesma árvore registada, **0,07 s** (o cálculo da chave).
+- Prova `B1.sh` (8 linhas: mesmo conteúdo com outro SHA salta; um byte por comitar, uma `PH2D_*` nova ou
+  outra árvore correm; `PH2D_PORTAO_FORCAR` fora da chave). Mutação «chave sem a árvore» vista vermelha. A
+  prova apanhou um defeito real da 1.ª versão (o caminho do registo dentro da chave ⇒ nunca saltava).
+
+### E — a suíte (e o impactado) saem do fecho da LINHA (`a2dd377341`)
+
+- `/pd-linha-fechar`, `/pd-onda-fechar`, `/pd-gate-fechamento`, agente `verificador`, MODELO_ABERTURA_LINHA
+  item E, DIRETRIZ §6.1/§6.2/§6.6.A: na linha, até no fecho, testes do item e portões tocados POR NOME,
+  mutação, fmt/clippy das crates tocadas 1×, auditoria; `nextest-impacted` e `suite-completa.sh` são do
+  integrador (ordem do dono 23/10 e 25/10, que o `/pd-linha-fechar` ainda contradizia).
+- **Antes → depois:** o fecho corria o `nextest-impacted` (1 544 s no fecho da PainterWatercolor) e às vezes a
+  suíte de novo com `motivo:`; depois, 0 s de suíte no fecho.
+- Prova `E.sh`: toda linha desses protocolos que nomeia o impactado/a suíte diz que é do integrador ou
+  proíbe-a. Mutação «o `pd-gate-fechamento.md` antigo» vista vermelha.
+
+### D — recontagens automáticas (`b877f0d7d1`)
+
+- `python3 scripts/recontar.py [--proximo]`: ADR duplicado (+ `adr-index --check`), os `reg.register*` do
+  `register_ecs_components` contra o `assert` da `ph2d-ecs` e os `+N` de render/script, o `max_level` de cada
+  `SmokeRouter` das `ph2d-app-*` contra o CLAUDE.md §5.1, e o `PROJECT_SCHEMA` pelo `schema-recount.py`
+  (importado). 1,5 s, sem compilar. No `ship.sh` (reprova), no `/pd-integracao` passo 4 e no agente integrador.
+- **Achado na 1.ª corrida:** o CLAUDE.md dizia `PH2D_CODE_SMOKE=1..9`; o roteador tem `CENAS = 10` — corrigido.
+- Prova `D.sh` (fixturas: ADR duplicado, registo +1, cena 31 sobre 30 = vermelho); mutação «detecção de
+  duplicado desligada» vista vermelha.

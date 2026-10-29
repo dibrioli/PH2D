@@ -125,3 +125,19 @@ Depois da integração, os mesmos comandos a partir do checkout principal (`cd /
 5. Herdados de F18–F26/F27 (não re-verificados): F25 §6 itens 2–9 e 11.
 6. Registos de componentes não recontados (§2); suíte completa e gates da árvore combinada por correr (§5).
 7. Integrar e push só por ordem EXPLÍCITA do Enio.
+
+## 9 — Integração (29/10, ordem do dono; depois da GEF e da BlenderConstraints)
+
+Rebase sobre `5228501c26` (ramo `integ/UIUX-2026-10-29`; o original fica em `backup/UIUX-pre-integ-2026-10-29`), conflitos
+por estágio, 19/96 commits com diff diferente do original — todos explicados pelas resoluções, nenhuma linha perdida.
+Recontado: `PROJECT_SCHEMA` 203 → **207** (degraus da linha 204 mesa · 205 itens · 206 filtros/pilha · 207 relógios/poses),
+tripla **(207, 13, 25)**, `VEC_SCENE_SCHEMA` 24 → **25** (o 24 do main é o id do vértice), famílias de canal **LISTA 10 · MUNDO 11 ·
+MESA 12** (o main tem CONSTRAINT 8 · CAD 9); registos 115/116/116 intocados; escada v160–v162 arquivada (629 → 589).
+Portões sobre a ponta: clippy `--workspace --all-targets` ✓ · censos 122/122 ✓ · `nextest-impacted` BASE=main **22 970/22 973**,
+os 3 vermelhos flakes de carga listados e verdes sozinhos.
+Cura de produto achada aqui: o UBO «luz desligada» (`ph2d-render/luz_recebida.rs`) já não nasce mapeado — com os blocos
+pequenos da F37 a recusa de memória era um panic. O recuo da luz sob blocos pequenos fica ABERTO para a Luz 2D
+([BUGS_luz2d §8](../../Luz2D/BUGS_luz2d.md)); o gate dela pede os blocos `desempenho`.
+Abertos da integração: falta uma gravação real do `VecScene` v24 (o braço `V24` só por construção); os planos F30–F32 citam
+ainda os números antigos (LISTA 8 · MUNDO 9 · MESA 10 · degraus 194–197); os commits entre o 2.º conflito e as curas de
+compilação não compilam sozinhos (o `bisect` salta-os).

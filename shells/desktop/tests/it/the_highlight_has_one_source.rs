@@ -69,9 +69,14 @@ fn both_consumers_read_the_one_field() {
     // `self.hovered_object = hovered` — a linha exacta que existia — e expirou no mesmo dia, ao
     // estender o realce a todos os objectos. *Uma âncora que copia a implementação de uma lei
     // expira sempre que a lei se muda de casa; a que nomeia a porta sobrevive.*
+    // ⚠️ A ESCRITA é a instrução inteira (até ao `;`): com o palco aberto ela não pergunta (GEF 28/10), mas a
+    // resposta, quando há, continua a ser a da porta.
+    let escrita = frame
+        .find("self.hovered_object = ")
+        .map(|i| &frame[i..i + frame[i..].find(';').unwrap_or(frame.len() - i)]);
     assert!(
-        frame.contains("self.hovered_object = self.pick_hovered_object("),
-        "o campo do quadro deixou de ser escrito pela porta — sem ele não há fonte única a ler"
+        escrita.is_some_and(|e| e.contains("self.pick_hovered_object(")),
+        "o campo do quadro deixou de ser escrito pela porta — sem ele não há fonte única a ler: {escrita:?}"
     );
     // ⭐ E a GEOMETRIA é resolvida com o objecto, no mesmo sítio: resolvê-la no sítio de desenho
     // seria escolher o objecto duas vezes.
@@ -241,7 +246,14 @@ fn only_the_listed_gestures_arm_a_sound() {
              Morph States · o interruptor da preview do Morph · os três verbos de mundo dele · a \
              forma do QuickShape que nasce de a MÃO segurar (F7)",
         ),
-        (DISPATCH, 2, "as duas recusas da trava do Painter"),
+        // ⛔ −2 (GEF W1, dono 24/10, `e0334a4b88`): o cadeado do modo saiu — escolher OUTRO objecto num modo
+        // (pick e laço) já não é recusado, sai para Object (`mode_drive::chosen`/`lasso_chosen`). Fica a 0 e
+        // LISTADO: um som novo no despacho tem de entrar aqui com o que confirma.
+        (
+            DISPATCH,
+            0,
+            "nenhum — as duas recusas da trava saíram com o cadeado do modo",
+        ),
     ];
     // ⚠️ **O DESPACHO do clique conta-se INTEIRO, pela lei do quadro** (`line/input-dispatch`, 2026-09-13): o
     // `on_mouse_input` parte-se em ramos (`input_dispatch/despacho_*.rs`), e as duas recusas da trava mudam de casa com

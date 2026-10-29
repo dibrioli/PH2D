@@ -31,12 +31,22 @@ fn the_node_arm_hands_a_miss_to_the_pick_of_another_kind() {
         src[press..press + call].contains("if node_missed {"),
         "a escolha corre sem o falhanco"
     );
-    let def = src
-        .find("fn vetor_node_escolhe_outro_tipo(")
-        .expect("a porta do pick de outro tipo sumiu");
-    let body = &src[def..];
-    let end = body.find("\n    }\n").expect("o corpo acaba");
-    let body = &body[..end];
+    // A porta delega (GEF W1b, dono 24/10: o clique curto da Shape/Frame/Pencil partilha a lei) a dois
+    // ajudantes — o pick do de CIMA e a escolha; o corpo afirmado é a porta + os dois.
+    let corpo = |nome: &str| {
+        let def = src
+            .find(&format!("fn {nome}("))
+            .unwrap_or_else(|| panic!("`fn {nome}` sumiu"));
+        let body = &src[def..];
+        body[..body.find("\n    }\n").expect("o corpo acaba")].to_string()
+    };
+    let porta = corpo("vetor_node_escolhe_outro_tipo");
+    assert!(
+        porta.contains("self.vetor_outro_tipo_no_topo()")
+            && porta.contains("self.vetor_escolhe_outro_tipo("),
+        "a porta do pick de outro tipo deixou de passar pelos dois ajudantes:\n{porta}"
+    );
+    let body = &(corpo("vetor_outro_tipo_no_topo") + &corpo("vetor_escolhe_outro_tipo"));
     assert!(
         body.contains("crate::hover_highlight::pick_objects_at("),
         "nao e a porta unica do pick"

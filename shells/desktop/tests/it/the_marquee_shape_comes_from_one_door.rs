@@ -53,11 +53,14 @@ fn both_press_arms_ask_the_one_door_for_the_shape() {
         .match_indices("crate::vec_marquee::VecMarquee::open(")
         .map(|(i, _)| i)
         .collect();
+    // ⭐ +1 (GEF W1b, dono 24/10): o press SEGURO sobre um objecto de outro tipo (`vetor_segura_o_clique`) que vira
+    // arrasto é REPOSTO no `vetor_arrasto_solta_o_clique` pela MESMA cadeia (`ramo_vetor_premido_cadeia`) — a emenda
+    // mostra-a duas vezes; é o mesmo braço sem Shift, adiado até o movimento provar o arrasto.
     assert_eq!(
         opens.len(),
-        2,
-        "esperava DOIS sitios a abrir o gesto (o braco com Shift e o sem) e achei {} — se um \
-         braco novo nasceu, ele tambem tem de perguntar a porta",
+        3,
+        "esperava TRES sitios a abrir o gesto (o braco com Shift, o sem, e o sem reposto pelo press seguro) e \
+         achei {} — se um braco novo nasceu, ele tambem tem de perguntar a porta",
         opens.len()
     );
     for i in opens {

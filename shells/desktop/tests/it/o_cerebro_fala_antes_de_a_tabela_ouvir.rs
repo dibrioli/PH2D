@@ -205,15 +205,22 @@ fn as_particulas_desenham_se_com_qualquer_ferramenta() {
 ///
 /// ⚠️ A lente é o FICHEIRO do motor, por `include_str!` (falha a COMPILAR se alguém o mover).
 ///
+/// ⚠️ Sem espaço em branco: o `rustfmt` parte `signals\n.read(reader)` quando o `map` cresce (GEF, 28/10).
+///
 /// **Mutação que deve sangrar:** ler o cursor depois de chamar a ponte.
 #[test]
 fn cada_motor_ouve_antes_de_andar() {
-    let src = include_str!("../../../../crates/ph2d-app-components/src/motores.rs");
+    let src: String = include_str!("../../../../crates/ph2d-app-components/src/motores.rs")
+        .split_whitespace()
+        .collect();
     for (motor, ponte) in [
         ("fn scripts(", "script_bridge::frame("),
         ("fn particulas(", "particles.frame("),
     ] {
-        let corpo = &src[src.find(motor).unwrap_or_else(|| panic!("falta `{motor}`"))..];
+        let sem_espaco = motor.replace(' ', "");
+        let corpo = &src[src
+            .find(&sem_espaco)
+            .unwrap_or_else(|| panic!("falta `{motor}`"))..];
         let leitura = corpo.find("signals.read(reader)").unwrap_or_else(|| {
             panic!("`{motor}` nao le' o cursor — os sinais deste quadro nao chegam")
         });

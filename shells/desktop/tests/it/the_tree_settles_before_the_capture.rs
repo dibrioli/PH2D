@@ -47,10 +47,11 @@ fn at(src: &str, needle: &str, onde: &str) -> usize {
 /// ou de volta para o `render_frame`.
 #[test]
 fn the_tree_settles_before_the_capture() {
-    let supressao = at(
-        UNDO,
-        "let motivo = if self.held_button.is_some()",
-        "undo_app.rs",
+    // A cabeça do bloco da supressão (o 1.º motivo é hoje o jogo a correr, GEF 28/10 — e o do botão vem a seguir).
+    let supressao = at(UNDO, "let motivo = if ", "undo_app.rs");
+    assert!(
+        UNDO[supressao..].contains("self.held_button.is_some()"),
+        "o motivo do botão em baixo sumiu do bloco da supressão"
     );
     let settle = at(
         &UNDO[supressao..],

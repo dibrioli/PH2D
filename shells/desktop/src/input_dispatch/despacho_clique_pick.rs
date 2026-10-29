@@ -428,14 +428,11 @@ impl crate::App {
             let bare_click = !(self.modifiers.shift_key()
                 || self.modifiers.super_key()
                 || self.modifiers.control_key());
-            // Num modo de criação só o de CIMA: nem o ciclo nem a preferência pela seleção.
-            if ph2d_editor_core::screens::hero::mode_drive::picks_only_the_top(hero) {
-                self.cycle_pick_hits.clear();
-                let picked = hits.first().copied();
-                self.ramo_gizmo_pick_selecao(evt, picked, world_pos);
-                return;
-            }
-            let cycle_start = if bare_click {
+            // Num modo de criação só o de CIMA: nem o ciclo nem a preferência pela seleção. ⚠️ Cai na MESMA
+            // chamada da seleção abaixo — uma 2.ª copiava o arrasto, a mão e a pose (gates «UMA porta, UM sítio»).
+            let so_o_de_cima =
+                ph2d_editor_core::screens::hero::mode_drive::picks_only_the_top(hero);
+            let cycle_start = if bare_click && !so_o_de_cima {
                 crate::pick_order::start_on_selection(
                     &mut hits,
                     hero.gizmo.selection,
@@ -451,7 +448,9 @@ impl crate::App {
             let same_list = !hits.is_empty()
                 && hits == self.cycle_pick_hits
                 && hero.gizmo.selection == self.cycle_pick_selection;
-            if !same_list {
+            if so_o_de_cima {
+                self.cycle_pick_hits.clear();
+            } else if !same_list {
                 self.cycle_pick_world = Some(world_pos);
                 self.cycle_pick_hits = hits.clone();
                 self.cycle_pick_idx = cycle_start;
@@ -464,10 +463,9 @@ impl crate::App {
                     self.cycle_pick_idx = (self.cycle_pick_idx + 1) % hits.len();
                 }
             }
-            let picked = if hits.is_empty() {
-                // No sprite under the cursor. (The old vector-scene
-                // object pick fell back here; retired with ADR-0108.)
-                None
+            // No sprite under the cursor ⇒ None (the old vector-scene fallback retired with ADR-0108).
+            let picked = if so_o_de_cima {
+                hits.first().copied()
             } else {
                 hits.get(self.cycle_pick_idx).copied()
             };

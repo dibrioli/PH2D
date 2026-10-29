@@ -129,7 +129,7 @@ cd /home/enio/Documentos/Projetos/PH2D; env PH2D_CONSTRAINT_SMOKE=<n> cargo run 
 | 11 | **Painel do jogo** (HUD): a pontuação sobe no Play e a moeda fica colada ao lado; estreite a janela e a pontuação encolhe antes de a moeda invadir o minimapa. Ao dar «Show notice» ao Timer o aviso não aparece a cada tique. **Ctrl+D mantém o arranjo** — teste apagando o HUD original (o HUD é colado ao ecrã, não se arrasta) |
 | 12 | **Partículas e mola**: a Bola anda montada na partícula 1 da Fonte (Copy Particle) e fica na pose dela quando morre; com a timeline PARADA, arraste o corpo da antena e a ponta balança e assenta |
 
-`PH2D_CONSTRAINT_SMOKE_TOCA=1` é um interruptor só para fotografar (toca a cena 5/12 sozinha) — não é o caminho do dono.
+`PH2D_CONSTRAINT_SMOKE_TOCA=1` é um interruptor só para fotografar (abre a cena 12 a tocar, `smoke_particula.rs`) — não é o caminho do dono.
 
 ## 6. ⚠ Abertos (honestos)
 

@@ -1,0 +1,184 @@
+diff --git a/crates/ph2d-tool-painter/tests/it/presets_de_fabrica.rs b/crates/ph2d-tool-painter/tests/it/presets_de_fabrica.rs
+index 25d0e4d3fa..9b9bd4a6c9 100644
+--- a/crates/ph2d-tool-painter/tests/it/presets_de_fabrica.rs
++++ b/crates/ph2d-tool-painter/tests/it/presets_de_fabrica.rs
+@@ -478,14 +478,18 @@ fn imagem_da_largura(
+         return (px, w, h, regua);
+     }
+     let escala = if crua { (raio / 500.0).max(1.0) } else { 1.0 };
+-    let (px, w, h) = traco_recto_alto_com(raio / escala, raio, QUADROS_DA_LEI, r, |t| {
++    let prepara = |t: &mut PainterTool| {
+         t.set_wet_relogio_fixo(true);
+         t.set_semente_dos_tracos(semente);
+         assert!(t.wet_preset_aplicar(&direito(p)).is_empty());
+         if crua {
+             t.set_wet_largura_crua(escala);
+         }
+-    });
++    };
++    let (px, w, h) = match janela_da_largura() {
++        None => traco_recto_alto_com(raio / escala, raio, QUADROS_DA_LEI, r, prepara),
++        Some(j) => traco_da_janela(raio / escala, raio, j, r, prepara),
++    };
+     (
+         px,
+         w,
+@@ -498,6 +502,58 @@ fn imagem_da_largura(
+     )
+ }
+ 
++/// ⭐ **O comprimento da JANELA da largura** (px, comissão de velocidade 29/10 item H): o traço RECTO que a régua lê
++/// (o dos pincéis e o vão dos misturadores) tem este comprimento a todo o raio, e a tela só a altura que o raio pede —
++/// o custo cresce com `r`, não com `r²` (a de antes: tela de 1 000 px e misturador `800 + 2·(m + 100)`). A largura é a
++/// MESMA: medida no doc da comissão §H. `PH2D_JANELA_DA_LARGURA=<px>` muda-a, `=antiga` volta à cena de antes (as
++/// variantes no MESMO binário, MEDIR_VELOCIDADE).
++const JANELA_DA_LARGURA: f32 = 200.0;
++/// A margem de cada lado da janela: o traço nasce e acaba nela (a ponta redonda fica fora das colunas lidas).
++const MARGEM_DA_JANELA: f32 = 100.0;
++
++/// A janela em vigor: `None` = a cena antiga.
++fn janela_da_largura() -> Option<f32> {
++    static J: std::sync::OnceLock<Option<f32>> = std::sync::OnceLock::new();
++    *J.get_or_init(|| match std::env::var("PH2D_JANELA_DA_LARGURA").as_deref() {
++        // ⛔ 29/10: a janela de 200 px NÃO bate com a cena antiga (20 raios fora no portão, os misturadores e as
++        // espátulas a raio ≥ 55) — a antiga fica por omissão; `=janela` liga a de 200, `=<px>` outra.
++        Ok("janela") => Some(JANELA_DA_LARGURA),
++        Ok(v) => Some(v.parse().expect("PH2D_JANELA_DA_LARGURA: px, «janela» ou nada")),
++        Err(_) => None,
++    })
++}
++
++/// O traço de [`traco_recto_alto_com`] numa tela de `janela + 2·margem` de largura, e a imagem RECORTADA às colunas da
++/// janela (as da recta: a ponta redonda e o seu sino ficam de fora).
++fn traco_da_janela(
++    size: f32,
++    alto: f32,
++    janela: f32,
++    r: Relogio,
++    prepara: impl FnOnce(&mut PainterTool),
++) -> (Vec<u8>, u32, u32) {
++    use ph2d_editor_core::tool::RasterEditTool;
++    let (m, j) = (MARGEM_DA_JANELA as u32, janela as u32);
++    let w = j + 2 * m;
++    let h = ((alto * 6.0) as u32 + 80).max(120);
++    let cy = h as f32 * 0.5;
++    let mut t = PainterTool::default();
++    t.set_source(vec![255u8; (w * h * 4) as usize], w, h);
++    prepara(&mut t);
++    t.set_brush_size_px(size);
++    t.set_brush_color_srgb8(crate::sonda_gestos::AZUL);
++    crate::sonda_gestos::gesto(&mut t, &[[m as f32, cy], [(m + j) as f32, cy]], 3.0, |_| 1.0);
++    passa_o_tempo(&mut t, QUADROS_DA_LEI, r);
++    let (px, w, h) = t.run_full();
++    let recorte = (0..h)
++        .flat_map(|y| {
++            let i = ((y * w + m) * 4) as usize;
++            px[i..i + (j * 4) as usize].to_vec()
++        })
++        .collect();
++    (recorte, j, h)
++}
++
+ /// O pincel ESPALHA marcas (o spray, `spray_count` > 1): a largura que se vê é a da nuvem
+ /// ([`super::sonda_gestos::largura_da_nuvem`]). Nenhum preset de fábrica do Wet espalha.
+ fn espalha(p: &Preset) -> bool {
+diff --git a/crates/ph2d-tool-painter/tests/it/presets_de_fabrica/regua_da_largura.rs b/crates/ph2d-tool-painter/tests/it/presets_de_fabrica/regua_da_largura.rs
+index 304a9f3ff1..9b72194dea 100644
+--- a/crates/ph2d-tool-painter/tests/it/presets_de_fabrica/regua_da_largura.rs
++++ b/crates/ph2d-tool-painter/tests/it/presets_de_fabrica/regua_da_largura.rs
+@@ -132,8 +132,9 @@ pub(super) fn imagem_da_ferramenta(
+         )
+     } else {
+         let h = ((motor * 6.0) as u32 + 80).max(120);
+-        let (cy, margem) = (h as f32 * 0.5, MARGEM_DO_MISTURADOR.max(motor + 100.0));
+-        let w = (VAO_DO_MISTURADOR + 2.0 * margem) as u32;
++        let (vao, margem) = vao_e_margem(motor);
++        let cy = h as f32 * 0.5;
++        let w = (vao + 2.0 * margem) as u32;
+         (
+             w,
+             h,
+@@ -186,6 +187,15 @@ pub(super) fn imagem_da_ferramenta(
+ const VAO_DO_MISTURADOR: f32 = 800.0;
+ const MARGEM_DO_MISTURADOR: f32 = 100.0;
+ 
++/// O vão e a margem do misturador ao raio `motor`: os de antes ([`VAO_DO_MISTURADOR`], a margem a crescer com o raio) ou
++/// a JANELA de comprimento fixo ([`janela_da_largura`]) com a margem fixa — a tela deixa de crescer com `r²`.
++fn vao_e_margem(motor: f32) -> (f32, f32) {
++    match janela_da_largura() {
++        None => (VAO_DO_MISTURADOR, MARGEM_DO_MISTURADOR.max(motor + 100.0)),
++        Some(j) => (j, MARGEM_DA_JANELA),
++    }
++}
++
+ /// Os traços que pintam a faixa da base: o raio de cada um é `raio_da_base` até ao `maximo` do Size da base (o slider
+ /// pára em 512, `raio_maximo`), e acima dele empilham-se traços para DENTRO da orla, cada um a 1,5 raios do anterior,
+ /// até a faixa ter `2·raio_da_base`. ⛔ Medido 29/10: com UM traço a faixa ficava presa a 1 024 px e a orla dela fugia
+@@ -238,9 +248,10 @@ pub(crate) fn largura_equivalente(px: &[u8], w: u32, h: u32, x: u32) -> Option<f
+ /// muda os DOIS lados dela (a tinta que se mistura com o papel e a que vai para o papel); a largura é a mediana das
+ /// [`largura_equivalente`] das colunas — o lado mais fraco pesa o que muda.
+ pub(super) fn largura_do_misturador(px: &[u8], w: u32, h: u32) -> f32 {
+-    let x0 = ((w as f32 - VAO_DO_MISTURADOR) * 0.5) as u32;
++    let vao = janela_da_largura().unwrap_or(VAO_DO_MISTURADOR);
++    let x0 = ((w as f32 - vao) * 0.5) as u32;
+     mediana(
+-        (x0..(x0 + VAO_DO_MISTURADOR as u32).min(w))
++        (x0..(x0 + vao as u32).min(w))
+             .filter_map(|x| largura_equivalente(px, w, h, x))
+             .collect(),
+     )
+@@ -363,3 +374,54 @@ fn sonda_monotonia_da_largura() {
+     println!("[monotonia] raios {raios:?}");
+     assert!(falhas.is_empty(), "a lei salta:\n{}", falhas.join("\n"));
+ }
++
++/// O raio GRANDE (do motor, um ponto de [`raios_da_lei`]) onde a régua de antes do [`faixas_da_base`] mentia: a lei crua
++/// do Blender Soft caía de 248 px (723,6) a 0 (990,6) com a base presa a 1 024 px. A janela de comprimento fixo
++/// ([`janela_da_largura`]) não pode esconder um defeito só de raio grande: este portão mede-o.
++const RAIO_GRANDE_DA_REGUA: f32 = 990.6;
++
++/// ⭐ **A régua dos misturadores vale no raio GRANDE** (comissão 29/10 item H): a lei crua de cada misturador de fábrica
++/// (toda ferramenta menos o Smear, as da [`faixas_da_base`]) a [`RAIO_GRANDE_DA_REGUA`] é a da TABELA gravada nesse raio,
++/// na tolerância da promessa — e não é 0. Com a base de UM traço (a régua que mentia) o Blender Soft lê 0.
++#[test]
++fn a_regua_dos_misturadores_vale_no_raio_grande() {
++    let presets: Vec<Preset> = ficheiros_do_wet()
++        .into_iter()
++        .map(|(_, b)| ler(&b).unwrap())
++        .filter(|p| {
++            p.parametros
++                .paint_mode
++                .as_deref()
++                .is_some_and(|m| m != "Paint" && m != "Smear")
++        })
++        .collect();
++    assert!(
++        presets.len() >= 4,
++        "os misturadores de fábrica: {}",
++        presets.len()
++    );
++    let medidas: Vec<f32> = std::thread::scope(|s| {
++        let h: Vec<_> = presets
++            .iter()
++            .map(|p| s.spawn(move || largura_de_com(p, RAIO_GRANDE_DA_REGUA, true, Relogio::PorQuadro)))
++            .collect();
++        h.into_iter().map(|h| h.join().unwrap()).collect()
++    });
++    let mut falhas = Vec::new();
++    for (p, l) in presets.iter().zip(medidas) {
++        let nome = &p.parametros.name;
++        let gravada = p
++            .parametros
++            .width_table
++            .iter()
++            .find(|[r, _]| (*r - f64::from(RAIO_GRANDE_DA_REGUA)).abs() < 0.05)
++            .map(|&[_, l]| l as f32)
++            .unwrap_or_else(|| panic!("{nome}: a tabela sem o raio {RAIO_GRANDE_DA_REGUA}"));
++        let tol = TOLERANCIA_PX.max(tolerancia_da_largura(p) * gravada);
++        println!("[raio grande] {nome:<17} {l:.1} px · tabela {gravada} (± {tol:.1})");
++        if l <= 0.0 || (l - gravada).abs() > tol {
++            falhas.push(format!("{nome}: {l} px a {RAIO_GRANDE_DA_REGUA}, a tabela diz {gravada}"));
++        }
++    }
++    assert!(falhas.is_empty(), "a régua não vale no raio grande:\n{}", falhas.join("\n"));
++}

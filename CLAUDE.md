@@ -125,19 +125,20 @@ contexto*. As alavancas, por ordem:
   prazo 30 min; a placa: a VEZ pede-se sozinha, `PH2D_GPU=1` só para medir —
   [A_VEZ_DA_PLACA.md](docs/DevOps/A_VEZ_DA_PLACA.md)). O guarda recusa vigia de fundo sem prazo.
   Tectos e porquê: [TETOS_DE_RECURSO_POR_LINHA.md](docs/DevOps/TETOS_DE_RECURSO_POR_LINHA.md).
-- ⛔⛔ **Dono 23/10: a suíte COMPLETA só corre ANTES DA INTEGRAÇÃO** (quem a corre é o integrador) — na
-  linha, até no fecho, só testes por NOME e provas de mutação; sem `motivo:` para a contornar
-  (memória `feedback_full_suite_only_before_integration`).
-- **Gate batched no fim do módulo:** `scripts/nextest-impacted.sh` + clippy `--all-targets` + auditoria,
-  **1× sobre o diff acumulado**. ⛔ **clippy só no fecho** (`PH2D_SUITE=fecho …`; o guarda R7 recusa o
-  resto — medido 14/10: 1 161 corridas a meio, 8 h/semana). ⛔ **A suíte tem CADÊNCIA, no script** (dono 13/10: *«a cada mínima
-  implementação 10 min de testes, nunca acabaremos»*; 14/10: *«a cada 10 commits na linha ou quando
-  forem de facto essenciais»*): ela RECUSA antes de **10** commits desde a última verde, salvo
-  `PH2D_SUITE=fecho` (o fecho, a integração) ou `PH2D_SUITE="motivo: …"`. ⛔ **No meio do trabalho,
-  teste POR NOME** — o guarda (R5) recusa a crate INTEIRA sem nome (medido 14/10: 17 h/semana, o dobro
-  da suíte). **Imprescindível** (o único `motivo:` válido): contrato §6 ou crate de que muitas dependem ·
-  formato gravado · deps/features de `Cargo.toml` · código movido entre crates · crate NOVA · gate de
-  registo de tool/node/painel · prova de mutação ([DIRETRIZ §6.2](docs/IntegracaoMultiAgente/DIRETRIZ.md)). Ao fechar a linha: `bash scripts/agent-loop-profile.sh` (as réguas deste
+- ⛔⛔ **Dono 23/10: a suíte COMPLETA e o `nextest-impacted` só correm na INTEGRAÇÃO** (o integrador) — na
+  linha, até no fecho, testes do item e portões tocados por NOME, provas de mutação, fmt/clippy das crates
+  tocadas 1× (`PH2D_SUITE=fecho`; o guarda R7 recusa clippy a meio) e auditoria; sem `motivo:` para a contornar.
+  ⛔ **No meio do trabalho, teste POR NOME** — o guarda (R5) recusa a crate INTEIRA sem nome. **Imprescindível**
+  (o único `motivo:` válido, para a crate inteira): contrato §6 · formato gravado · deps/features ·
+  código movido entre crates · crate NOVA · registo de tool/node/painel · mutação ([DIRETRIZ §6.2](docs/IntegracaoMultiAgente/DIRETRIZ.md)).
+- ⭐ **Comissão de velocidade 29/10** ([doc](docs/DevOps/COMISSAO_VELOCIDADE_2026-10-29.md), provas em
+  `bash scripts/processo.prova.sh`): o **commit** passa pelo hook `commit-barato` (tectos, fmt, HR-15; ~60 ms) ·
+  um **subagente** tem 45 min IMPOSTOS (hook `prazo-do-agente`; aviso aos 40) e o pesado de verdade vai à
+  `scripts/fila-pesada.sh` (régua congelada) · a **integração** é em lote (`scripts/integrar-rodada.sh`: cadeia
+  com check + censos + `recontar.py` por linha, UMA `suite-completa.sh`, curas num bloco, B2, `--ff-only`) ·
+  o **ship** salta a suíte se a árvore do HEAD já passou · os testes ≥ 60 s são o nível lento
+  (`.config/testes-lentos.tsv`, gerado) · cada corrida grava compilar × correr (`python3 scripts/tempos-teste.py`).
+  Ao fechar a linha: `bash scripts/agent-loop-profile.sh` (as réguas deste
   §2, com o alvo de cada uma) e `rm -rf target/*/incremental`.
 - **Comentário de código curto.** O porquê histórico (o que foi medido, o que foi recusado) vive no doc
   ou no handoff, com link; o código diz a lei. Medido: 29 % das linhas `.rs` são comentário, e cada

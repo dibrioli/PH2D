@@ -117,3 +117,82 @@ run 25840452466) · clippy a meio da linha · suíte completa na linha · baixar
 - **Achado na 1.ª corrida:** o CLAUDE.md dizia `PH2D_CODE_SMOKE=1..9`; o roteador tem `CENAS = 10` — corrigido.
 - Prova `D.sh` (fixturas: ADR duplicado, registo +1, cena 31 sobre 30 = vermelho); mutação «detecção de
   duplicado desligada» vista vermelha.
+
+### G — dois níveis de teste (`8e47af360e`)
+
+- `scripts/testes-lentos.py` gera `.config/testes-lentos.tsv` do `junit.xml` do nextest (máximo por teste;
+  < 60 s sai; timeout conta); `--filtro` = a expressão do nível lento; `--confere` reprova um teste ≥ 60 s sem
+  nível (linha do `ship.sh`). `nextest-impacted`: `PH2D_NIVEL=rapido` (omissão) subtrai o nível lento, as 5
+  redes obrigatórias nunca saem; `PH2D_NIVEL=tudo` não corta. `suite-completa.sh` regera a lista a cada verde.
+- Lista real (junit da integração 29/10): **55 testes, 9 335 s de 16 616 s** somados.
+- **Antes → depois** (segundos de teste somados no junit, diffs reais): tool-painter+wet-paint 16 215 → 6 880
+  (−58 %); pixel/kanban 14 887 → 5 803; ecs+timeline 16 276 → 6 941; app-constraints 192 → 192.
+- Prova `G.sh` (13); mutação «limiar 60 → 6000» vista vermelha.
+
+### F — verificações baratas no commit (`6a9583fef1`, fix `1e1a487362`)
+
+- `scripts/commit-barato.sh` + hook `.claude/hooks/commit-barato.sh` (PreToolUse): tectos de ficheiro
+  (workspace/painel/widget/shell, congelados só encolhem), de função, `rustfmt --check`, HR-15 (cor, número,
+  texto fixo), termos novos do `nextest.toml` — os números lidos dos `.rs` dos gates (o gate continua a lei;
+  forma mudada ⇒ «espelho partido»). `PH2D_COMMIT_BARATO=0` desliga.
+- **Medido:** mediana **48–67 ms**, máximo 103 ms por commit (alvo < 5 s); zero ✗ sobre 4 894 `.rs` reais.
+- Prova `F.sh` (11: 701 linhas recusado, 700 aceite, hex recusado, o hook nega, traceback do espelho passa);
+  mutação «tecto lido → 7000» vista vermelha. O 1.º dia achou um falso positivo (heredoc com `git -C "$v" …
+  commit` ⇒ traceback ⇒ negava) — curado em `1e1a487362`.
+
+### B1 (cont.) — o envio olha para o que ENVIA (`1e1a487362`)
+
+- O primário vive com `project-memory/` por comitar ⇒ a chave da pasta nunca casava a árvore do integrador
+  (achado no ensaio do A). `suite-completa.sh --enviar` (o `ship.sh`) aceita também a chave do `HEAD^{tree}`.
+  Prova `B1b.sh`; mutação «`--enviar` desligado» vista vermelha.
+
+### I — prazo de 45 min IMPOSTO + fila do pesado (`a0fcfc1f19`)
+
+- `.claude/hooks/prazo-do-agente.sh` (SubagentStart · PostToolUse · PreToolUse, por `agent_id`; a janela
+  principal fica de fora): aviso a cada chamada depois dos 40 min; comando pesado cujo prazo passa do que falta
+  é recusado com o `PH2D_PRAZO=<resto>` a pôr à frente (o `ph2d-run.sh` corta-o aí); depois dos 45 todo pesado
+  é recusado; `PH2D_REGERA_*`/bancada nunca correm num subagente ⇒ `scripts/fila-pesada.sh pôr` (fila POR
+  LINHA — a global, J, foi recusada), que o coordenador corre 1× só com a régua congelada (sha256).
+- **Visto a funcionar no mesmo dia:** os agentes de H e A pararam e devolveram «onde cheguei» no prazo.
+- **Por medir:** um dia inteiro contra 28/10 (16 % estouravam, 67 % das horas) — `agent-time-split.py` amanhã.
+- Prova `I.sh` (15); mutação «aviso desligado» vista vermelha.
+
+### A + B2 — integração em lote (`958c906677`)
+
+- `scripts/integrar-rodada.sh [-C wt] cadeia|suite|falhas [--bisecar]|b2|ff [--aplicar]`; `/pd-integracao` 3c e
+  DIRETRIZ §1.5.3 reescritos. Atribuição de um vermelho: a linha cujo diff (tip anterior → tip) alcança o
+  binário dele (`impacto-preciso`, `nextest list` sem compilar); vários candidatos ⇒ `--bisecar` (≤ k−1
+  corridas só desses testes). B2 regista a árvore curada («B2 desde …») só com falhas + impactados
+  (`PH2D_NIVEL=tudo`) + censos que provam ter corrido + `architecture_*` + recontar verdes.
+- **Ensaio a seco** (worktree `integ-ensaio`, base `c3662cd8e4`, GameEngineFuncional + BlenderConstraints
+  reconstruídas, load ~15): GEF check 76 s frio + censos 123 s; BC check 48 s + censos 93 s **vermelho** —
+  `const assert PROJECT_SCHEMA == 198`, o mesmo que o integrador curou à mão em `4c8f7c6049`, atribuído à
+  linha certa em ~2 min em vez de numa suíte de 25 min. Nota: o `check --all-targets` não avalia um `const {
+  assert! }` dentro de fn; só o build de teste dos censos o apanha.
+- **Estimativa da rodada de 5 linhas:** ~9 h → cadeia ~5 × 3 min + 1 suíte ~25 min + curas + B2 ~5 min.
+  **Por medir:** a `suite`/`falhas`/`b2` reais do ensaio (comandos no handoff).
+- Prova `A.sh` (14); mutação «atribui sempre à última linha» vista vermelha.
+
+### H — régua da largura mais barata: janela fixa RECUSADA por medição (sem commit)
+
+- Tentativa: medir numa janela de comprimento fixo de 200 px (patch em
+  `docs/DevOps/patches/H_janela_fixa_200px_recusada_2026-10-29.patch`). Portão 873,9 s (antigo, PASS) → 310,1 s
+  (janela, **FAIL**), load 4–32 (relógio sem valor de veredito). **20 raios fora da promessa, todos r ≥ 55**:
+  misturadores a r = 300 leem 366–520 px para 600; Knife 98/110 a r = 55; Dabber 504/600; no raio 990,6 os
+  misturadores leem ~metade (Blender Soft 717 × 1 398). Causa: o traço tem de ser mais longo que o diâmetro
+  para o misturador e a água chegarem ao regime — a janela tem de crescer com o raio, o que tira o ganho.
+- ⛔ **Medido e recusado:** janela de comprimento fixo menor que o diâmetro para a régua da largura.
+- O que já tirou o custo da linha: o portão (599–874 s) está no nível lento do G ⇒ só corre na suíte.
+- **Aberto:** (a) raios > 300 só no gerador e no nível lento (o r = 300 é 83–93 % do portão); (b) janela de
+  2–3 diâmetros só nos misturadores/espátulas; ambos com a prova do Blender Soft (r > 723) vermelha.
+
+### M — parte 1: catraca de toda `ph2d-app-*` + o plano (`99f00989c3`)
+
+- `the_shell_only_shrinks_and_every_app_crate_too`: tecto por crate (19; medido + 2 %, piso 100), censo de
+  obsolescência a 5× a folga, crate sem linha reprova. Motion 193 644 (tecto 197 516). 0,05 s. Mutações
+  (tecto abaixo, linha apagada, tecto obsoleto) vistas vermelhas.
+- `docs/DevOps/PLANO_PARTIR_APP_MOTION.md`: o núcleo tem CICLOS (`motion_state` ↔ `motion_bridge`, ↔ shape/
+  objeto/macro_track/partículas/mundo) ⇒ a onda 0 corta o núcleo antes de mover; ondas 1–4 e critério verde.
+- **Aberto:** as ondas 0–4 (1–3 dias, janelas seguintes); a suíte completa 1× no fim.
+- ⚠️ Consequência a ter presente: uma família que cresça > 2 % reprova — a cura é uma crate nova
+  (drop-crate, ADR-0075), nunca subir o número.

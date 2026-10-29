@@ -62,3 +62,63 @@ fn o_paper_press_poe_o_dente_do_papel_na_altura_e_na_sombra() {
     assert!((am / a0 - 0.5).abs() < 0.02, "½ é metade do caminho: {am} ÷ {a0}");
     assert_eq!(zero.at_fina(2, 2), 0.0, "o papel nu continua plano");
 }
+
+/// A tinta lisa sobre um papel liso em PX (`0,5 + 0,5·sin(0,13·px)·cos(0,07·py)`), numa grade de `48 ÷ razao` células.
+fn lisa_em_px(razao: usize) -> Grid {
+    let n = W / razao;
+    let mut g = Grid::new(n, n);
+    for y in 0..g.h + 2 {
+        for x in 0..g.s {
+            let i = x + y * g.s;
+            if i < g.paper.len() {
+                let (px, py) = ((x * razao) as f32, (y * razao) as f32);
+                g.paper[i] = 0.5 + 0.5 * (px * 0.13).sin() * (py * 0.07).cos();
+            }
+        }
+    }
+    for y in 2..=n - 1 {
+        for x in 2..=n - 1 {
+            let i = x + y * g.s;
+            g.sett[i] = 6000.0;
+            g.sett_rgb[i] = [40.0, 70.0, 200.0];
+        }
+    }
+    g
+}
+
+/// ⭐ O Paper Press fala em PX (a altura em unidades de célula, como a [`OleoReal::profundidade`]): o dente que o
+/// Paper Press 0 põe na altura e na sombra, o mesmo papel em px, a razão 1 e 2, é o MESMO em px (a altura da célula ×
+/// a razão) em todo o miolo; tolerância `1e-5` (medido: `0`, dente máximo `1,83` px). Sem a divisão pela
+/// razão a razão 2 dava o DOBRO.
+#[test]
+fn o_paper_press_e_o_mesmo_em_px_a_toda_a_razao() {
+    let o = OleoReal {
+        dente_papel: 1.0,
+        ..OleoReal::default()
+    };
+    let dente = |razao: usize| {
+        let lisa = lisa_em_px(razao);
+        let n = W / razao;
+        let campo = |g: &Grid| CampoAltura::de(&[(g, true)], &o, razao, 1, 1, n, n);
+        let (hoje, zero) = (campo(&lisa), campo(&cel(&lisa, |m| m.amassa_papel = 0.0)));
+        move |x: isize, y: isize| {
+            let r = razao as f64;
+            (
+                (zero.at_fina(x, y) - hoje.at_fina(x, y)) * r,
+                (zero.at_sombra(x, y) - hoje.at_sombra(x, y)) * r,
+            )
+        }
+    };
+    let (um, dois) = (dente(1), dente(2));
+    let (mut pior, mut amp) = (0.0f64, 0.0f64);
+    for y in 8..=16isize {
+        for x in 8..=16isize {
+            let (a, b) = (um(2 * x, 2 * y), dois(x, y));
+            pior = pior.max((a.0 - b.0).abs()).max((a.1 - b.1).abs());
+            amp = amp.max(a.0.abs()).max(a.1.abs());
+        }
+    }
+    println!("[paper press px] maior diferença razão 1 × 2: {pior:.2e} px; maior dente {amp:.4} px");
+    assert!(amp > 0.1, "controlo: o Paper Press 0 põe o dente na altura ({amp})");
+    assert!(pior <= 1e-5, "o dente em px: razão 1 × razão 2 diferem {pior}");
+}

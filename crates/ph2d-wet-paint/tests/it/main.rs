@@ -14,6 +14,7 @@ mod a_aparencia_da_tinta;
 mod a_lei_do_glaze;
 mod a_lei_do_po;
 mod a_opacidade_do_dab;
+mod a_pena_fala_em_px;
 mod acceptance;
 mod acceptance_budget;
 mod cor_por_celula;

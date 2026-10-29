@@ -37,7 +37,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.constraint.frequency" => "Frequency (Hz)",
         "panel.inspector.constraint.seed" => "Seed",
         "panel.inspector.constraint.phase" => "Phase",
-        "panel.inspector.constraint.speed" => "Speed (°/s)",
+        "panel.inspector.constraint.speed" => "Speed",
         "panel.inspector.constraint.radius" => "Radius",
         "panel.inspector.constraint.peak" => "Peak",
         "panel.inspector.constraint.strength" => "Strength",

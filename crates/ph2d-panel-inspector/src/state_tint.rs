@@ -52,3 +52,41 @@ pub(crate) fn cor_para_o_script(c: [u8; 4]) -> [f64; 4] {
         f64::from(f[3]),
     ]
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{tint_f32_to_u8, tint_u8_to_f32};
+
+    /// The convergence invariant `sync.rs` relies on: once a picked
+    /// byte color is committed (→ `f32` channel) and the snapshot comes
+    /// back, re-packing it must yield the SAME byte — otherwise the
+    /// "picked != committed" guard never settles and the bus spins
+    /// every frame. Must hold for ALL 256 levels on every channel.
+    #[test]
+    fn u8_to_f32_round_trips_exactly_for_every_level() {
+        for b in 0u8..=255 {
+            let rgba = [b, b, b, b];
+            assert_eq!(
+                tint_f32_to_u8(tint_u8_to_f32(rgba)),
+                rgba,
+                "level {b} did not round-trip"
+            );
+        }
+    }
+
+    #[test]
+    fn f32_to_u8_clamps_out_of_unit_range() {
+        assert_eq!(tint_f32_to_u8([2.0, -0.5, 1.0, 0.0]), [255, 0, 255, 0]);
+    }
+
+    #[test]
+    fn white_default_maps_to_opaque_white() {
+        assert_eq!(tint_f32_to_u8([1.0, 1.0, 1.0, 1.0]), [255, 255, 255, 255]);
+    }
+
+    #[test]
+    fn f32_to_u8_rounds_to_nearest_not_truncating() {
+        // 0.5 · 255 = 127.5 → rounds up to 128 (truncation would give 127).
+        assert_eq!(tint_f32_to_u8([0.5, 0.5, 0.5, 0.5]), [128, 128, 128, 128]);
+    }
+}

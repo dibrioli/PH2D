@@ -80,7 +80,7 @@ pub fn unidade(c: &Comportamento, campo: u16) -> Unidade {
     match campo {
         AMPLITUDE if c.onde == Onde::Rot => Unidade::Graus,
         AMPLITUDE | RAIO | PICO | PESO_RAIO => Unidade::Metros,
-        VELOCIDADE => Unidade::Graus,
+        VELOCIDADE => Unidade::GrausPorSegundo,
         DURACAO => Unidade::Segundos,
         RESSALTO => Unidade::Porcento,
         _ => Unidade::Nenhuma,

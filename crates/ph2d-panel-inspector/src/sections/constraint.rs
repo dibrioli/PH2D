@@ -8,9 +8,8 @@
 
 use super::*;
 use crate::plano::{Plano, emoldurada};
-use crate::state::MenuAdd;
 use ph2d_editor_core::constraint_edits::{
-    InspectorConstraintRow, InspectorConstraintsInfo, Peca, TIPO_BEHAVIOUR, TIPOS,
+    InspectorConstraintRow, InspectorConstraintsInfo, Peca, TIPOS,
 };
 use ph2d_editor_core::property_row::{
     Seccao, abaixo_do_botao, caixa_do_botao, paint_check_row, paint_choice_row, paint_label_row,
@@ -423,99 +422,6 @@ fn item(
     cur_y + ph2d_tokens::control_gap_px()
 }
 
-/// O «Bake» (com itens) e o «Add Constraint» e, aberta, a lista dos tipos. Cheio, a frase do tecto
-/// em vez do «Add».
-#[allow(clippy::too_many_arguments)]
-fn acrescentar(
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: Theme,
-    hit_index: &mut HitIndex,
-    store: &WidgetStore,
-    (x, w, y): (f32, f32, f32),
-    i: &InspectorConstraintsInfo,
-    aberta: crate::state::MenuAdd,
-) -> f32 {
-    let mut y = y;
-    if !i.rows.is_empty() {
-        let id = ids::INSP_CONSTRAINT_BAKE;
-        let rotulo = tr("panel.inspector.constraint.bake");
-        let caixa = caixa_do_botao(text_system, x, w, y, rotulo);
-        hit_index.register(id, caixa);
-        let botao = Button::new(id, rotulo).kind(ButtonKind::Default);
-        paint_button(
-            &botao.visual(store.button_visual(id)),
-            caixa,
-            scene,
-            text_system,
-            theme,
-        );
-        y = abaixo_do_botao(caixa);
-    }
-    if i.rows.len() >= ids::INSP_CONSTRAINT_FORCA.len() {
-        return super::rows::aviso(
-            scene,
-            text_system,
-            theme,
-            x,
-            w,
-            y,
-            tr("panel.inspector.constraint.full"),
-            ColorToken::Text3,
-        );
-    }
-    let id = ids::INSP_CONSTRAINT_ADD;
-    let rotulo = tr("panel.inspector.constraint.add");
-    let caixa = caixa_do_botao(text_system, x, w, y, rotulo);
-    hit_index.register(id, caixa);
-    let botao = Button::new(id, rotulo).kind(ButtonKind::Default);
-    let botao = if aberta != MenuAdd::Fechado {
-        botao.state(ButtonState::Pressed)
-    } else {
-        botao.visual(store.button_visual(id))
-    };
-    paint_button(&botao, caixa, scene, text_system, theme);
-    let mut cur_y = abaixo_do_botao(caixa);
-    if aberta == MenuAdd::Fechado {
-        return cur_y;
-    }
-    let mut botao = |id, rotulo: &str, x: f32, w: f32, cur_y: f32, premido: bool| {
-        let caixa = caixa_do_botao(text_system, x, w, cur_y, rotulo);
-        hit_index.register(id, caixa);
-        let b = Button::new(id, rotulo).kind(ButtonKind::Default);
-        let b = if premido {
-            b.state(ButtonState::Pressed)
-        } else {
-            b.visual(store.button_visual(id))
-        };
-        paint_button(&b, caixa, scene, text_system, theme);
-        abaixo_do_botao(caixa)
-    };
-    let (tipos, behaviours) = ids::INSP_CONSTRAINT_TIPO.split_at(usize::from(TIPO_BEHAVIOUR));
-    for (&id, chave) in tipos.iter().zip(TIPOS) {
-        cur_y = botao(id, tr(chave), x, w, cur_y, false);
-    }
-    // O submenu (decisão do dono 27/10): um botão que abre os *behaviours* por baixo, recuados.
-    let sub = aberta == MenuAdd::Behaviours;
-    let id = ids::INSP_CONSTRAINT_BEHAVIOURS;
-    cur_y = botao(
-        id,
-        tr("panel.inspector.constraint.behaviours"),
-        x,
-        w,
-        cur_y,
-        sub,
-    );
-    if sub {
-        let recuo = ph2d_tokens::list_indent_px();
-        let chaves = &TIPOS[usize::from(TIPO_BEHAVIOUR)..];
-        for (&id, chave) in behaviours.iter().zip(chaves) {
-            cur_y = botao(id, tr(chave), x + recuo, w - recuo, cur_y, false);
-        }
-    }
-    cur_y
-}
-
 /// Pinta o cartão. Devolve o `y` seguinte.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn paint_constraints_section(
@@ -598,7 +504,7 @@ pub(crate) fn paint_constraints_section(
         (x, w, cur_y),
         i,
     );
-    cur_y = acrescentar(
+    cur_y = super::constraint_add::acrescentar(
         scene,
         text_system,
         theme,

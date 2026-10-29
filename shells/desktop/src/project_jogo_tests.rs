@@ -51,7 +51,6 @@ fn o_formato_do_jogo_atravessa_o_arquivo() {
 fn um_v197_abre_com_o_formato_de_fabrica() {
     let f = arquivo(Vec::new());
     let v197 = (
-        &f.state,
         &f.assets,
         &f.painted,
         &f.motion,
@@ -69,7 +68,20 @@ fn um_v197_abre_com_o_formato_de_fabrica() {
         &f.marcas_do_artista,
     );
     let path = tmp_path("jogo_v197");
-    let bytes = postcard::to_allocvec(&(197u32, v197)).expect("serializa");
+    // A cena vetorial de um v197 é a v23 (sem as regras de CAD, que nasceram no 201): o postcard é a
+    // concatenação dos campos, e a vazia viva acaba nos dois zeros das regras.
+    let st = &f.state;
+    let vec_vivo = postcard::to_allocvec(&*st.vec).expect("serializa");
+    assert_eq!(
+        &vec_vivo[vec_vivo.len() - 2..],
+        &[0, 0],
+        "a cena vazia acaba nas regras vazias"
+    );
+    let mut bytes = postcard::to_allocvec(&(197u32, &st.world)).expect("serializa");
+    bytes.extend_from_slice(&vec_vivo[..vec_vivo.len() - 2]);
+    let resto = (&st.flip, &st.guides, &st.ui_states, &st.library, &st.tags);
+    bytes.extend(postcard::to_allocvec(&resto).expect("serializa"));
+    bytes.extend(postcard::to_allocvec(&v197).expect("serializa"));
     std::fs::write(&path, bytes).expect("grava");
     let lido = headless_app().read_project_file(&path.to_string_lossy());
     let _ = std::fs::remove_file(&path);

@@ -215,11 +215,16 @@ fn o_menu_play_lista_as_animacoes_e_segue_o_renomear() {
 
 #[test]
 fn run_from_e_flip_escrevem_o_personagem() {
+    // O «Run From» é uma velocidade do mundo: o campo mostra-a no seletor m/px (a porta `unidade_mundo`).
+    let p = ph2d_editor_core::ProjectSettings::default();
+    let no_ecra = ph2d_panel_inspector::unidade_mundo::guardada(ids::INSP_ANIM_RUN_FROM)
+        .expect("de mundo")
+        .no_ecra(1.5, p.display_unit, p.pixels_per_meter);
     assert_eq!(
         edits(&commit(
             with_character(anim(false, false)),
             ids::INSP_ANIM_RUN_FROM,
-            1.5
+            no_ecra
         )),
         [AnimFieldEdit::CharacterRunFrom(1.5)]
     );

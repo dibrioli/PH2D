@@ -122,10 +122,8 @@ mod constraints;
 //    seguinte descreve o vizinho errado), e voltou para o irmão a que pertence.
 mod factory;
 mod inspector;
-/// ⭐ **As secções de JOGO do Inspector** (TOP-20 #9..#18 — tags, fábrica, ciclo de vida, mover de
-/// vista de cima, projéctil, máquina de estados, script, partículas). ⚠️ Tabela IRMÃ e não o fim
-/// da `inspector.rs`: com os 151 braços destes lá dentro ela passava o tecto de 700 LOC do HR-18,
-/// e um corte por ASSUNTO é o que esse tecto pede.
+/// ⭐ **As secções de JOGO do Inspector** (TOP-20 #9..#18) — tabela IRMÃ da `inspector.rs`: com os 151
+/// braços destes lá dentro ela passava o tecto de 700 LOC do HR-18; o corte é por ASSUNTO.
 mod inspector_game;
 mod inspector_macro;
 mod inspector_motion_input;
@@ -166,9 +164,8 @@ mod painter_preview;
 mod quatro_motores;
 /// ⭐ **As strings do painel TAGS** (TOP-20 #9) — irmão de tabela, por assunto.
 mod tags;
-/// ⭐⭐ **As cinco recusas da ÁRVORE de tags**, publicadas pela folha `ph2d-tags`.
-///
-/// ⚠️ Tabela IRMÃ da [`tags`] de propósito: aquela são as palavras que o PAINEL escreve, estas são
+/// ⭐⭐ **As cinco recusas da ÁRVORE de tags**, publicadas pela folha `ph2d-tags`. ⚠️ Tabela IRMÃ da
+/// [`tags`] de propósito: aquela são as palavras que o PAINEL escreve, estas são
 /// as que a LEI produz. Juntá-las esconderia qual das duas uma fatia futura está a mexer.
 mod tags_engine;
 /// ⭐⭐ **As palavras do DESIGN SYSTEM** — temas, desenhos de slider, recusas de fórmula.

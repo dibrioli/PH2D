@@ -150,7 +150,7 @@ const FIXOS: [(NodeId, Grandeza); 52] = {
 };
 
 /// A segunda metade da tabela fixa (o tecto de um literal legível).
-const FIXOS_2: [(NodeId, Grandeza); 21] = {
+const FIXOS_2: [(NodeId, Grandeza); 22] = {
     use Grandeza::{Aceleracao as A, Comprimento as L, Velocidade as V};
     [
         (i::INSP_SHAKE_AMPLITUDE, L),
@@ -175,6 +175,8 @@ const FIXOS_2: [(NodeId, Grandeza); 21] = {
         (i::INSP_SLICE_SIZE[1], L),
         (i::INSP_JOINT_REST_LENGTH, L),
         (i::INSP_JOINT_MAX_LENGTH, L),
+        // O «Run From» do modo «The Character» (GameEngineFuncional 07): uma velocidade do corpo.
+        (i::INSP_ANIM_RUN_FROM, V),
     ]
 };
 

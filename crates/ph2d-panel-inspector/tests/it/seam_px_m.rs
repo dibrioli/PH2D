@@ -53,6 +53,7 @@ fn limpa() {
     set_current_inspector_slice(None);
     set_current_inspector_anchor(None);
     set_current_inspector_tween(None);
+    ph2d_panel_inspector::set_current_inspector_anim(None);
 }
 
 fn fabrica() -> InspectorFactoryInfo {
@@ -336,6 +337,14 @@ fn fixturas() -> Vec<Fixtura> {
                 set_current_inspector_anchor(Some(crate::inspector_regression_anchors::info()))
             }),
         ),
+        (
+            "anim_personagem",
+            Box::new(|| {
+                let info =
+                    crate::seam_anim_card::with_character(crate::seam_anim::anim(false, false));
+                ph2d_panel_inspector::set_current_inspector_anim(Some(info));
+            }),
+        ),
     ]
 }
 
@@ -493,7 +502,8 @@ fn a_faixa_de_um_numero_de_mundo_segue_o_seletor() {
 /// As secções que declaram uma unidade de mundo (`m`, `m/s`, `m/s2`) e que a varredura acima
 /// cobre com uma fixtura — mais as duas que passam pela porta do cartão Constraints
 /// (`sync_constraint::unidade_e_passo`): o Transform e o HUD.
-const SECCOES_DE_MUNDO: [&str; 31] = [
+const SECCOES_DE_MUNDO: [&str; 32] = [
+    "anim_rules.rs",
     "audio.rs",
     "camera.rs",
     "factory.rs",

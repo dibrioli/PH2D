@@ -54,7 +54,7 @@ pub(crate) fn apply_card_event(
     if let WidgetEvent::ValueChanged(id) = ev
         && id == crate::ids::INSP_ANIM_RUN_FROM
     {
-        let v = host.store().number_value(id).unwrap_or(0.0);
+        let v = crate::unidade_mundo::le(host, id).unwrap_or(0.0);
         if info.card.character.is_some() {
             #[allow(clippy::cast_possible_truncation)]
             push(

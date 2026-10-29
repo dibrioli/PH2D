@@ -12,6 +12,7 @@
 //! entregar — até este ficheiro existir, o único botão daquele motor era uma variável de ambiente.
 
 use ph2d_editor_core::action_bus::EditorAction;
+use ph2d_editor_core::panel::PanelHost;
 use ph2d_editor_core::screens::hero::{
     CameraFieldEdit, InspectorCameraFollow, InspectorCameraInfo, InspectorCameraLimits,
     InspectorGameCamera,
@@ -423,7 +424,11 @@ fn o_icone_e_os_dois_offset_chegam_ao_barramento() {
             CameraFieldEdit::FollowOffset([seguidor().offset[0], 2.0]),
         ),
     ] {
-        h.store_mut().set_number_value(id, v);
+        // O campo mostra o número no seletor m/px: escreve-se o que o artista ESCREVERIA para guardar `v`.
+        let p = h.project();
+        let no_ecra = ph2d_panel_inspector::unidade_mundo::guardada(id)
+            .map_or(v, |g| g.no_ecra(v, p.display_unit, p.pixels_per_meter));
+        h.store_mut().set_number_value(id, no_ecra);
         let _ = h.apply_panel_event::<InspectorPanel>(&mut st, WidgetEvent::ValueChanged(id));
         let edits: Vec<_> = h
             .drained_actions()

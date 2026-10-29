@@ -31,12 +31,20 @@ fn the_solver_silently_accepts_opposite_required_sides() {
             Forca::Requerida,
         ),
     ];
+    // A resposta que ele dá depende da ordem interna do solver (medido 29/10: 6 em 12 corridas cada): ora viola
+    // uma das duas, ora cumpre as duas DEFORMANDO a caixa (largura negativa). As duas são «aceitou calado».
     let r = resolve(caixa(0.0, 0.0, 640.0, 360.0), &els, &rel);
+    assert_eq!(
+        r.len(),
+        2,
+        "o solver não recusa: devolve uma caixa por elemento"
+    );
     let antes = r[0].x + r[0].w + 8.0 <= r[1].x;
     let depois = r[0].x >= r[1].x + r[1].w + 8.0;
+    let deformada = r.iter().any(|c| c.w <= 0.0);
     assert!(
-        !(antes && depois),
-        "as duas não cabem juntas — e o solver devolveu uma resposta na mesma: {r:?}"
+        !(antes && depois) || deformada,
+        "as duas não cabem juntas numa caixa sã — e o solver devolveu uma resposta na mesma: {r:?}"
     );
 }
 

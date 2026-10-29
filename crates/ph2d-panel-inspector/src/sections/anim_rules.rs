@@ -329,7 +329,7 @@ fn character_rows(
         TextKey::new("component.field.character_animations.4"),
         &[ids::INSP_ANIM_RUN_FROM],
         0.1, // LITERAL-PX-OK: passo de scrub em m/s, não em pixels
-        None,
+        Some(ph2d_editor_core::widget::Unit::MetersPerSecond),
         sec,
     );
     ph2d_editor_core::property_row::paint_check_row(

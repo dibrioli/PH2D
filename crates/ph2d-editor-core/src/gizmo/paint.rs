@@ -176,7 +176,7 @@ pub fn paint_sprite_gizmo(
 
 /// ⭐ **A alça do gizmo de sprite sob o ponto de ecrã `(x, y)`** — a de [`paint_sprite_gizmo_with`]
 /// por ELE próprio (os mesmos rects, a mesma ordem): para quem tem o próprio despacho do ponteiro
-/// (o Pixel Art, ADR-0192 §12) e não regista no `HitIndex` do chrome.
+/// (o Pixel Art, ADR-0196 §12) e não regista no `HitIndex` do chrome.
 /// `skew` = com as zonas de inclinar ([`paint_sprite_gizmo_skewing`]).
 #[must_use]
 pub fn sprite_gizmo_hit_at(

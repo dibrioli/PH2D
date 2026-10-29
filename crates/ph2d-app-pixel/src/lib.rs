@@ -1,4 +1,4 @@
-//! **A família Pixel Art** (ADR-0192, `docs/PixelArt/02_plano_modulo.md`).
+//! **A família Pixel Art** (ADR-0196, `docs/PixelArt/02_plano_modulo.md`).
 //!
 //! O objecto **Pixel Sprite** nasce no menu Add (o marcador [`ph2d_ecs::PixelSprite`] guarda a chave
 //! do documento) e edita-se no modo Draw, no viewport, com as ferramentas e os atalhos do Aseprite:

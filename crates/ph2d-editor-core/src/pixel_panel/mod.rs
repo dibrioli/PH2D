@@ -1,4 +1,4 @@
-//! **O vocabulário do PIXEL ART que o chrome fala** (ADR-0192): o instantâneo do painel PIXEL, os
+//! **O vocabulário do PIXEL ART que o chrome fala** (ADR-0196): o instantâneo do painel PIXEL, os
 //! pedidos que ele faz e as escolhas do diálogo *New Sprite*. O painel e o diálogo não veem a família
 //! (`ph2d-app-pixel`) nem o documento (`ph2d-pixel-core`); a família traduz.
 

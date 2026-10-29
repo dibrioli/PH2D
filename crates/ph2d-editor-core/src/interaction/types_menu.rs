@@ -230,7 +230,7 @@ pub enum ContextMenuKind {
     /// encaixa DENTRO da resolução escolhida, e o que não couber acende a moldura — vide
     /// `sheet_bounds::health`.
     SheetSizeDialog,
-    /// **O diálogo New Sprite** (Add ▸ Pixel Sprite, ADR-0192): Width/Height, Color Mode, Background,
+    /// **O diálogo New Sprite** (Add ▸ Pixel Sprite, ADR-0196): Width/Height, Color Mode, Background,
     /// OK/Cancel; o OK arma o pedido que a shell drena, fora ou Esc/Cancel não arma nada.
     NewSpriteDialog,
     /// **O diálogo Color Mode** do Pixel Art (Sprite ▸ Color Mode ▸ More Options): o alvo, o dither

@@ -56,7 +56,7 @@ default = [
     "panel-skeleton",
     "panel-tags",
     "panel-macros",
-    # O painel PIXEL (ADR-0192): abre no Pixel Sprite ▸ Edit.
+    # O painel PIXEL (ADR-0196): abre no Pixel Sprite ▸ Edit.
     "panel-pixel-tools",
     # A linha do tempo do Pixel (P4): a banda de baixo em Pixel Sprite ▸ Draw.
     "panel-pixel-timeline",

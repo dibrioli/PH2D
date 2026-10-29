@@ -185,7 +185,7 @@ pub fn dispatch(
     // onde ele já existe.
     texpat_tiles: &ph2d_vec_render::PatternTiles,
 ) -> VectorDrawConfig {
-    // Com um Pixel Sprite activo o canvas é dele (ADR-0192): o vetor larga as barras e o painel.
+    // Com um Pixel Sprite activo o canvas é dele (ADR-0196): o vetor larga as barras e o painel.
     let vector_active = !hero.store.family_owns_canvas()
         && tools
             .active()

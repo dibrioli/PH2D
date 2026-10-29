@@ -206,7 +206,7 @@ ph2d-constraints-ecs = { path = "../../crates/ph2d-constraints-ecs" }
 ph2d-app-constraints = { path = "../../crates/ph2d-app-constraints" }
 # ⭐ A FAMÍLIA da luz 2D (W3): a composição no quadro — a shell guarda uma `LuzDoQuadro` e chama-a.
 ph2d-app-light2d = { path = "../../crates/ph2d-app-light2d" }
-# A FAMÍLIA Pixel Art (ADR-0192): o objecto Pixel Sprite, as ferramentas e o blob do projecto.
+# A FAMÍLIA Pixel Art (ADR-0196): o objecto Pixel Sprite, as ferramentas e o blob do projecto.
 ph2d-app-pixel = { path = "../../crates/ph2d-app-pixel" }
 ph2d-tool-vector = { path = "../../crates/ph2d-tool-vector" }
 # ⭐ O verbo do osso e o pincel de peso (A14: sairam da ferramenta Vector).
@@ -585,7 +585,7 @@ panel-tags           = ["ph2d-panel-registry-init/panel-tags", "dep:ph2d-panel-t
 # O painel MACROS (ADR-0186, W5d): a shell publica-lhe o instantâneo (`set_current_macros`) e drena
 # os gestos pelo barramento até à `ph2d-app-macros`.
 panel-macros         = ["ph2d-panel-registry-init/panel-macros", "dep:ph2d-panel-macros"]
-# O painel PIXEL (ADR-0192): a shell publica-lhe o instantâneo (`set_current_pixel`) e drena os
+# O painel PIXEL (ADR-0196): a shell publica-lhe o instantâneo (`set_current_pixel`) e drena os
 # gestos pelo barramento até à `ph2d-app-pixel`.
 panel-pixel-tools    = ["ph2d-panel-registry-init/panel-pixel-tools", "dep:ph2d-panel-pixel-tools"]
 panel-pixel-timeline = ["ph2d-panel-registry-init/panel-pixel-timeline", "dep:ph2d-panel-pixel-timeline"]

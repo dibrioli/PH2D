@@ -138,7 +138,7 @@ mod tests {
             hero.store.tool_bars().is_some(),
             "o vetor inactivo apagou a coluna do pintor"
         );
-        // A coluna do Pixel Sprite ▸ Draw (ADR-0192) também é de família, não do vetor.
+        // A coluna do Pixel Sprite ▸ Draw (ADR-0196) também é de família, não do vetor.
         hero.store.set_tool_bars(Some(ToolBars {
             pixel_rail: true,
             ..ToolBars::default()

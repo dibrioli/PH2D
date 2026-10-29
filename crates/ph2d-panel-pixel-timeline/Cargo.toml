@@ -9,7 +9,7 @@ authors.workspace = true
 
 [lib]
 
-# A LINHA DO TEMPO do Pixel Art (P4, ADR-0192): camadas × frames na banda de baixo, no idioma do
+# A LINHA DO TEMPO do Pixel Art (P4, ADR-0196): camadas × frames na banda de baixo, no idioma do
 # Aseprite. Não vê a família (`ph2d-app-pixel`): o instantâneo e os pedidos são o vocabulário
 # `ph2d_editor_core::pixel_panel`, o mesmo do painel PIXEL.
 [dependencies]

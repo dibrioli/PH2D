@@ -136,7 +136,10 @@ impl PanelRowFamily {
     /// meio em `Before` / `After`.
     #[must_use]
     pub fn aninha(self) -> bool {
-        !matches!(self, Self::PainterPreset | Self::AnimRule | Self::PixelPalette)
+        !matches!(
+            self,
+            Self::PainterPreset | Self::AnimRule | Self::PixelPalette
+        )
     }
 
     /// As «linhas» são células de uma grelha: o alvo da queda é a célula sob o cursor (x E y), e

@@ -1,7 +1,7 @@
 # HANDOFF DE INTEGRAÇÃO — linha Pixel Art (P0..P6g) — 2026-10-28
 
 > Leitor: o agente integrador e a próxima LLM. A linha **fecha e PARA**: não integra, não faz push.
-> Lei do módulo: [ADR-0192](../../architecture/decisions/0192-o-pixel-art-e-um-modulo-proprio-com-documento-inteiro-e-desfazer-por-sprite.md) · [plano](../02_plano_modulo.md) · [estudo](../01_estudo_aseprite.md) · handoffs de onda: `HANDOFF_CONTINUACAO_line_PixelArt_*` nesta pasta (P0..P6g; cada um tem §«ABERTO»).
+> Lei do módulo: [ADR-0196](../../architecture/decisions/0196-o-pixel-art-e-um-modulo-proprio-com-documento-inteiro-e-desfazer-por-sprite.md) · [plano](../02_plano_modulo.md) · [estudo](../01_estudo_aseprite.md) · handoffs de onda: `HANDOFF_CONTINUACAO_line_PixelArt_*` nesta pasta (P0..P6g; cada um tem §«ABERTO»).
 
 ## 1. Identidade
 
@@ -20,7 +20,7 @@ Pontos que a auditoria verificou:
 - **Gizmo de sprite**: 4 zonas de inclinar `GIZMO_SKEW_T/R/B/L = NodeId(974..977)` (`ph2d-editor-core/src/gizmo/hit.rs`), só REGISTADAS pelo Pixel (`paint_sprite_gizmo_with`); quem não as regista não as vê. Teste de colisão de ids: `node_id_collisions` (+6).
 - ⚠️ **MUDANÇA VISÍVEL para outras famílias — `flyout_cols`** (`screens/hero/float_bar.rs:132`): muda o layout de TODOS os flyouts (nunca um botão sozinho na última linha; 4 → 1 linha; o grid de formas do Vector/Quadro passa a 5 ou 4 colunas). Testes posicionais que assumam 3 colunas fixas podem mudar na árvore combinada.
 - **`vector_tool_active`** (shell) passa a ser falso quando outra família possui o canvas (Vector escondido mas activo com Pixel Sprite seleccionado).
-- `PixelPanelInfo`/`PixelOptions` ganharam campos (com `Default`); `ph2d-tool-vector` expõe `shape_handles*`/`shape_thumbs` ao Pixel (formas vivas do Vector, ADR-0192 §12); o catálogo de contornos das formas (`shape_outlines.rs` do `ph2d-panel-vector`) **MOVEU** para `ph2d-tool-vector/src/shape_thumbs.rs` (o Pixel precisa dele; o flyout do Vector passa a chamá-lo de lá) e `nomes_do_motor::forma` virou `pub` (era `pub(crate)`); `BarFace`/barras ganharam os campos `grouped`/`pixel_rail` (default vazio/falso).
+- `PixelPanelInfo`/`PixelOptions` ganharam campos (com `Default`); `ph2d-tool-vector` expõe `shape_handles*`/`shape_thumbs` ao Pixel (formas vivas do Vector, ADR-0196 §12); o catálogo de contornos das formas (`shape_outlines.rs` do `ph2d-panel-vector`) **MOVEU** para `ph2d-tool-vector/src/shape_thumbs.rs` (o Pixel precisa dele; o flyout do Vector passa a chamá-lo de lá) e `nomes_do_motor::forma` virou `pub` (era `pub(crate)`); `BarFace`/barras ganharam os campos `grouped`/`pixel_rail` (default vazio/falso).
 - **MOVIDO (a shell encolheu)**: `physics/bridge_tests.rs` (−257) → `ph2d-app-physics`; testes de áudio (`render_loop/audio_overlay.rs`) → `ph2d-app-audio`. `app_state.rs` 920 e `main.rs` 1058 linhas (tecto 600 do aviso do script) já excediam antes: aqui só ENCOLHEM (`the_shell_only_shrinks` ✓).
 - Shell: `input_dispatch/despacho_pixel.rs` (novo), `keyboard_palette.rs`, `render_loop/fase_pixel_panel.rs`, `fase_object_add.rs` (+21), `snapshots.rs` (+37), `project*.rs` (§5).
 
@@ -48,7 +48,7 @@ $ git diff c3662cd8e4..HEAD -- crates | grep -E "^\+.*(impl .*(Tool|NodeOp|OpRes
 ▸ LOC        ✗ 920/600 app_state.rs · ✗ 1058/600 main.rs (pré-existentes; a linha só os encolhe)
 ```
 
-Formato gravado (ADR-0192): `PROJECT_SCHEMA 193 → 194` (`shells/desktop/src/project_schema.rs`), campo `pixel_sprites: Vec<u8>` no FIM do `ProjectFile` (blob `PH2DPIXEL`, versão própria em `ph2d_pixel_core::codec`); os braços de leitura 193/192/191/190/189 acrescentam zeros (postcard posicional); migrações v95/v128 preenchem `Vec::new()`. Tripla `(194, 13, 23)` em `project_schema_tests.rs` (a tripla NÃO vê este degrau). Componente `PixelSprite` registado por nome (`ph2d::ecs::PixelSprite`) em `ph2d-ecs` `scene/registry.rs`. Gate: `project_pixel_tests`.
+Formato gravado (ADR-0196): `PROJECT_SCHEMA 193 → 194` (`shells/desktop/src/project_schema.rs`), campo `pixel_sprites: Vec<u8>` no FIM do `ProjectFile` (blob `PH2DPIXEL`, versão própria em `ph2d_pixel_core::codec`); os braços de leitura 193/192/191/190/189 acrescentam zeros (postcard posicional); migrações v95/v128 preenchem `Vec::new()`. Tripla `(194, 13, 23)` em `project_schema_tests.rs` (a tripla NÃO vê este degrau). Componente `PixelSprite` registado por nome (`ph2d::ecs::PixelSprite`) em `ph2d-ecs` `scene/registry.rs`. Gate: `project_pixel_tests`.
 ⚠️ **O degrau é NÚMERO QUE SOMA entre linhas**: se outra linha integrada antes também subiu o schema ou os registos de componentes, reconte (`python3 scripts/schema-recount.py`; registos nos três sítios) e renumere o do Pixel para o seguinte (o comentário `# 193 → 194` e o braço de leitura acompanham).
 
 ## 6. Registos (também somam)
@@ -96,3 +96,14 @@ Fotos de cada cena em `docs/PixelArt/handoffs/smoke_*.png`.
 4. `bash scripts/censos-da-arvore-combinada.sh`, `cargo machete`, `scripts/check-standalone-optional.sh`.
 5. A suíte completa ANTES do merge (é do integrador). Atenção a testes posicionais de flyouts (`flyout_cols`, §3) em Vector/Quadro.
 6. Smoke e push só por ordem do Enio.
+
+## 12. Reposto sobre o `main` de 29/10 (rebase FINAL, `037a8d877a`, com a TrelloClone dentro)
+
+Os números de §5 e §6 acima são os do fecho de 28/10; **valem estes** (contados contra o `main` `037a8d877a`):
+
+- `PROJECT_SCHEMA` **208 → 209** (era 193 → 194; o Kanban ficou com o 208); tripla `(209, 13, 25)`; `PROJECT_SCHEMA_SEM_PIXEL = 208`. `pixel_sprites` é o ÚLTIMO campo (depois de `kanbans`). Leitura dos antigos (`falta_no_fim`): `209` nenhum; `208` +1 zero; `204..=207` +2; `198..=203` +3; `<=197` +4; os braços `192/191` e `190/189` levam 5 zeros. O braço `193` do Pixel não existe (o `193` é da GEF) e a chave de toast `project_refused_format_193` saiu.
+- Registos: `ph2d-ecs` **116** (main 115 + 1), espelhos `ph2d-render`/`ph2d-script` **117** (main 116 + 1). O Kanban não registou componentes.
+- ADR do módulo: **0196** (o `main` tem 0192..0195: BlenderConstraints e Kanban); o ficheiro e as referências do Pixel foram renumerados; os `0192` e `0195` do resto ficam com os donos deles. Índice regenerado (201 ADRs).
+- Tectos de LOC (cura por corte, nenhum tecto subiu): a escada (`project_schema.rs`) cedeu o degrau `162 → 163` a `project_schema_history_v160.rs`; `fase_snapshots_publish` 199; `interaction/state/mod.rs` 699 (o modal da folha virou UM campo, `SheetModal`); `main.rs` 1031. `CLAUDE.md` §5: a entrada do Pixel perdeu o link do ADR para o §5 caber nos 14 000 bytes (a soma com o Kanban passava).
+- `type_icon` (UIUX) é exaustivo sobre `ObjectKind`: o `PixelSprite` usa `IconId::LayoutGrid` (o glifo do painel PIXEL) — **escolha cosmética, o dono pode trocar**.
+- Sync regenerado (`ph2d-app-sync`: o Pixel entra antes do Planner), `Cargo.lock` só ganha as 6 crates do Pixel.

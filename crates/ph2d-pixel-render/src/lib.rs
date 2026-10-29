@@ -1,4 +1,4 @@
-//! **Pixel Art — a vista** (ADR-0192).
+//! **Pixel Art — a vista** (ADR-0196).
 //!
 //! O sprite desenha-se como UMA imagem composta, amostrada por vizinho mais próximo
 //! (`ImageQuality::Low`), pelo afim `pixel da imagem → ecrã` que a família calcula com a câmera e o

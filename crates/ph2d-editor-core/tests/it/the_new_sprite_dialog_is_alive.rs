@@ -1,4 +1,4 @@
-//! **O diálogo New Sprite (Add ▸ Pixel Sprite, ADR-0192), do rato e do teclado ao pedido** — pelo
+//! **O diálogo New Sprite (Add ▸ Pixel Sprite, ADR-0196), do rato e do teclado ao pedido** — pelo
 //! caminho REAL do ecrã: o hero pinta, o ponteiro carrega no meio do que se pintou, as teclas entram
 //! pelo `handle_key`/`handle_text_input`, e cada evento passa pelo `apply_event`.
 //!

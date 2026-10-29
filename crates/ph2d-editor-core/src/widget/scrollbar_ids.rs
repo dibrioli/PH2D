@@ -187,7 +187,7 @@ pub const LAB_SCROLLBAR_ID: NodeId = NodeId(846);
 pub const TAGS_SCROLLBAR_ID: NodeId = NodeId(847);
 /// O painel MACROS (ADR-0186, W5d) — uma gravação longa tem centenas de etapas.
 pub const MACROS_SCROLLBAR_ID: NodeId = NodeId(851);
-/// O painel PIXEL (ADR-0192) — uma paleta indexada tem até 256 cores.
+/// O painel PIXEL (ADR-0196) — uma paleta indexada tem até 256 cores.
 pub const PIXEL_SCROLLBAR_ID: NodeId = NodeId(852);
 /// A linha do tempo do Pixel (P4) — as filas das camadas rolam quando passam da banda.
 pub const PIXEL_TIMELINE_SCROLLBAR_ID: NodeId = NodeId(853);

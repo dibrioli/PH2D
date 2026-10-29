@@ -18,13 +18,13 @@
 
 /// Versão do formato de arquivo de projeto. Bump ⇒ migração ou hard-break.
 ///
-/// ⚠️ **Os degraus de v2 a v162 estão ARQUIVADOS**, verbatim, em SETE arquivos por faixa:
+/// ⚠️ **Os degraus de v2 a v163 estão ARQUIVADOS**, verbatim, em SETE arquivos por faixa:
 /// `project_schema_history` (`v2`..`v82`, ARQUIVADO verbatim em `docs/archive/project-schema/escada_v2_a_v82.md`), [`super::project_schema_history_v83`]
 /// (`v83`..`v98`), [`super::project_schema_history_v99`] (`v99`..`v111`),
 /// [`super::project_schema_history_v112`] (`v112`..`v128`),
 /// [`super::project_schema_history_v128`] (`v128`..`v144`) e
 /// [`super::project_schema_history_v144`] (`v144`..`v160`) e
-/// [`super::project_schema_history_v160`] (`v160`..`v162`). O corte é por IDADE e o tecto de 600
+/// [`super::project_schema_history_v160`] (`v160`..`v163`). O corte é por IDADE e o tecto de 600
 /// LOC do HR-18 é quem o pede — sete vezes até hoje, e a de 2026-09-17 foi a primeira em que o
 /// gatilho não foi uma linha mas a ACUMULAÇÃO de uma rodada: seis linhas puseram dezasseis degraus,
 /// e nenhuma estoura o tecto sozinha.
@@ -34,28 +34,6 @@
 /// FECHADAS e acima está o que alguém a contar o próximo degrau precisa de ver.
 /// O que se lê para contar o próximo degrau é a ponta, e a ponta é o que ficou aqui.
 ///
-/// # `162 → 163` — a MUNIÇÃO DE RESERVA: a arma ganha um DEPÓSITO
-///
-/// O `ph2d_ecs::WeaponFire` ganhou `reserve_counter: String` **apendado no fim**, e o postcard e'
-/// POSICIONAL: um blob v162 tem oito campos onde este binario pede nove.
-///
-/// ⭐⭐⭐ **A grandeza e' NOVA e foi MEDIDA antes da 1.ª linha** (a sonda
-/// `mede_o_que_a_composicao_ja_da_a_reserva`): ate' aqui a recarga repunha o pente ao `start` sem
-/// tirar de sitio nenhum — **275 balas em 10 s de um deposito que nao existe**. E a composicao nao
-/// a exprimia: o `AddToCounter` soma um DELTA FIXO e a `CounterWatch` fala num limiar; nenhum dos
-/// dois sabe *«tirar o que FALTA, ate' ao que HA'»*, que e' a lei inteira de uma reserva.
-///
-/// ⚠️ **O valor de fabrica e' VAZIO = reserva INFINITA**, logo toda cena ja' gravada se comporta
-/// exactamente como antes depois de migrada (ha' gate: um deposito FARTO e' indistinguivel de nao
-/// ter deposito).
-///
-/// ⚠️⚠️ **O deposito NAO vive na arma**, e nao por gosto: uma entidade tem **um** `Counter` e o
-/// pente ja' o ocupa ⇒ ele e' um contador NOMEADO em qualquer sitio da cena, resolvido pela porta
-/// nova `counter::dono_unico`. ⛔ **Um nome que DOIS objectos carregam e' recusado** — somar dez
-/// depositos e' exacto, *tirar cinco a dez nao e'*, e escolher um por ordem de varredura faria a
-/// bala sair de um sitio que o artista nao escolheu.
-///
-/// ⛔ **Sem degrau de migração**, pela decisão do Enio de 26/08 — um v162 e' recusado em voz alta.
 /// # `163 → 164` — a PARALAXE: um objecto guarda uma FRACÇÃO do movimento do mundo
 ///
 /// O `ph2d_ecs::ScrollFactor` e' um componente REGISTADO novo (plano 24, W1) ⇒ os tres contadores

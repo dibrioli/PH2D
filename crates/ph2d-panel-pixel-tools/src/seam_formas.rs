@@ -1,4 +1,4 @@
-//! A costura das FORMAS do Vector no painel PIXEL (P6b, ADR-0192 §12): os campos de cada forma são
+//! A costura das FORMAS do Vector no painel PIXEL (P6b, ADR-0196 §12): os campos de cada forma são
 //! os do catálogo do Vector ([`ph2d_tool_vector::shapes::SHAPES`]) — o mesmo rótulo, a mesma faixa,
 //! a mesma unidade (os píxeis do Vector são células aqui) — e cada um escreve o seu valor nas
 //! opções (filho de [`crate::seam`]).

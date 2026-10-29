@@ -3,7 +3,7 @@
 > Leitor: a próxima LLM que assume a linha numa janela nova. A P6b está **fechada**; o smoke do dono
 > (26/10, após as fotos) deu **3 correcções novas — são a próxima onda, P6c (§3)**. A **linha continua**
 > (`/pd-linha-fechar` NÃO foi corrido). Nada integrado, nada pushado. Lei do módulo:
-> [ADR-0192](../../architecture/decisions/0192-o-pixel-art-e-um-modulo-proprio-com-documento-inteiro-e-desfazer-por-sprite.md) (§12, emenda P6b)
+> [ADR-0196](../../architecture/decisions/0196-o-pixel-art-e-um-modulo-proprio-com-documento-inteiro-e-desfazer-por-sprite.md) (§12, emenda P6b)
 > · [plano](../02_plano_modulo.md) (§5 P6) · anterior: [P6](HANDOFF_CONTINUACAO_line_PixelArt_2026-10-26_P6.md) (§4 e §6 continuam valendo) · [P4](HANDOFF_CONTINUACAO_line_PixelArt_2026-10-26_P4.md).
 
 ## 1. Identidade

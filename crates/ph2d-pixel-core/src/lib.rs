@@ -1,4 +1,4 @@
-//! **Pixel Art — o documento e as leis** (ADR-0192, `docs/PixelArt/02_plano_modulo.md`).
+//! **Pixel Art — o documento e as leis** (ADR-0196, `docs/PixelArt/02_plano_modulo.md`).
 //!
 //! Um [`Sprite`] é a grelha de células de um objecto Pixel Sprite: modo de cor (RGBA ou Indexed),
 //! paleta, camadas, frames e cels esparsos. Toda mutação passa por [`apply`], que devolve o inverso

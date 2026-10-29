@@ -3,7 +3,7 @@
 > Leitor: a próxima LLM que assume a linha numa janela nova. A onda P0 está **fechada**; a **linha
 > continua** (a bateria `/pd-linha-fechar` NÃO foi corrida). Nada integrado, nada pushado.
 > Antes de ler: `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-PixelArt && pwd && git branch --show-current`
-> (tem de dizer `line/PixelArt`). Lei do módulo: [ADR-0192](../../architecture/decisions/0192-o-pixel-art-e-um-modulo-proprio-com-documento-inteiro-e-desfazer-por-sprite.md) ·
+> (tem de dizer `line/PixelArt`). Lei do módulo: [ADR-0196](../../architecture/decisions/0196-o-pixel-art-e-um-modulo-proprio-com-documento-inteiro-e-desfazer-por-sprite.md) ·
 > [plano](../02_plano_modulo.md) (§5 ondas, §6 ordem, §7 licença) · [estudo do Aseprite](../01_estudo_aseprite.md) · [README](../README.md).
 
 ## 1. Identidade
@@ -12,7 +12,7 @@
 - 18 commits, do `f58df7d684` ao `d523ad759f` (`git log --oneline c3662cd8e4..HEAD`).
 - Última correção: `d523ad759f` (seis gates da shell que a onda acordou). Antes: `c2ca97bd69` (clippy), `eabb3c93e9` (fmt).
 
-## 2. O que existe (ADR-0192)
+## 2. O que existe (ADR-0196)
 
 **`ph2d-pixel-core`** — sem dependências (gate `the_pixel_core_declares_no_dependency` + censo de
 relógio/SO/hash, em `tests/it/pure_core.rs`).

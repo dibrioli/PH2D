@@ -89,7 +89,7 @@ pub mod painted_doc;
 /// ⭐⭐⭐ **O emissor de partículas de um objecto** (TOP-20 #18) — só CONFIG; a lei é do
 /// `ph2d-particles`.
 pub mod particle_emitter;
-/// O objecto Pixel Sprite (ADR-0192).
+/// O objecto Pixel Sprite (ADR-0196).
 pub mod pixel_sprite;
 pub use motion_input::{MotionInput, MotionSource};
 pub mod motion_inputs;

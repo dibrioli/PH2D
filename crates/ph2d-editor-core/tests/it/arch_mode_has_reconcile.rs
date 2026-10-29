@@ -58,12 +58,12 @@ const BENIGN_SET_MODE: &[(&str, &str)] = &[
     ),
     (
         "set_new_sprite_mode",
-        "o modo de cor ESCOLHIDO no diálogo New Sprite (ADR-0192): uma escrita na escolha, que o \
+        "o modo de cor ESCOLHIDO no diálogo New Sprite (ADR-0196): uma escrita na escolha, que o \
          pintor do diálogo lê a cada quadro e o OK copia para o pedido. Nada derivado dela.",
     ),
     (
         "set_color_mode_target",
-        "o modo ALVO escolhido no diálogo Color Mode (ADR-0192 §P2), irmão do \
+        "o modo ALVO escolhido no diálogo Color Mode (ADR-0196 §P2), irmão do \
          `set_new_sprite_mode`: uma escrita na escolha, lida pelo pintor a cada quadro e copiada \
          pelo OK para o pedido. Nada derivado.",
     ),

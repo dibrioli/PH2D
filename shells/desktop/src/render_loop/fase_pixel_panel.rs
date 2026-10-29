@@ -1,4 +1,4 @@
-//! Fase do quadro: **o painel PIXEL e a coluna da esquerda** (ADR-0192) — composição só; a lei vive
+//! Fase do quadro: **o painel PIXEL e a coluna da esquerda** (ADR-0196) — composição só; a lei vive
 //! na `ph2d_app_pixel::panel` (pedidos, abrir/fechar no Draw, o instantâneo, as barras).
 
 impl crate::App {

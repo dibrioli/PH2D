@@ -1,7 +1,7 @@
 //! **A moldura solta** (P6, a ferramenta Transform `V`/`Ctrl+T`, Ctrl+arrasto com uma selecção e o
 //! Paste): as células
 //! levantadas viajam numa matriz afim com pivô (`ph2d_pixel_core::affine`). O gizmo é o do SPRITE da
-//! casa (dono 26/10, ADR-0192 §12): a mesma pintura, as mesmas alças, as zonas de giro fora dos
+//! casa (dono 26/10, ADR-0196 §12): a mesma pintura, as mesmas alças, as zonas de giro fora dos
 //! cantos e o pivô ([`ph2d_editor_core::gizmo`]); a conta do arrasto é a do núcleo, que assenta em
 //! células inteiras; a inclinação é pelo campo Skew. O
 //! documento NÃO muda até ao `Enter` (ou um clique fora): aí o assentar é UM passo

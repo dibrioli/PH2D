@@ -2,7 +2,7 @@
 
 > Leitor: a próxima LLM que assume a linha numa janela nova. A onda P0b está **fechada e com o smoke do
 > dono APROVADO (25/10)**; a **linha continua** (`/pd-linha-fechar` NÃO foi corrido). Nada integrado,
-> nada pushado. Lei do módulo: [ADR-0192](../../architecture/decisions/0192-o-pixel-art-e-um-modulo-proprio-com-documento-inteiro-e-desfazer-por-sprite.md)
+> nada pushado. Lei do módulo: [ADR-0196](../../architecture/decisions/0196-o-pixel-art-e-um-modulo-proprio-com-documento-inteiro-e-desfazer-por-sprite.md)
 > (emenda 9, 25/10) · [plano](../02_plano_modulo.md) · [handoff P0](HANDOFF_CONTINUACAO_line_PixelArt_2026-10-25_P0.md) (§§1–8 = a P0; §9 = o report do dono; §10 = esta onda em resumo).
 
 ## 1. Identidade
@@ -10,7 +10,7 @@
 - Entrada: `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-PixelArt && pwd && git branch --show-current` (tem de dizer `line/PixelArt`).
 - Branch `line/PixelArt`, worktree `Worktrees/line-PixelArt`, merge-base `c3662cd8e4`.
 - **23 commits** na linha (`git log --oneline c3662cd8e4..HEAD`); HEAD `b246313c6c`.
-- Desta onda: `5ed4562176` (a cura: Draw no topo, coluna à esquerda, zoom sem avisos) · `afd19d87fd` (handoff §10 + ADR-0192 emenda 9) · `b246313c6c` (2.ª volta do smoke: o vetor ainda cobria o sprite com layout Vector gravado). Antes (docs): `b6ee59351e`, `6304c7144a`.
+- Desta onda: `5ed4562176` (a cura: Draw no topo, coluna à esquerda, zoom sem avisos) · `afd19d87fd` (handoff §10 + ADR-0196 emenda 9) · `b246313c6c` (2.ª volta do smoke: o vetor ainda cobria o sprite com layout Vector gravado). Antes (docs): `b6ee59351e`, `6304c7144a`.
 - `git diff --stat b6ee59351e..HEAD`: 38 ficheiros, +917/−161.
 
 ## 2. Estado do módulo

@@ -1,4 +1,4 @@
-//! **O painel PIXEL e o diálogo New Sprite do lado da família** (ADR-0192): o OK do diálogo nasce o
+//! **O painel PIXEL e o diálogo New Sprite do lado da família** (ADR-0196): o OK do diálogo nasce o
 //! objecto com AS escolhas, sem OK não nasce nada; os pedidos do painel mudam a ferramenta e as
 //! cores; o painel abre no flanco do Draw e fecha ao sair; o instantâneo leva a paleta do sprite.
 

@@ -1,4 +1,4 @@
-//! O núcleo não lê relógio, aleatoriedade, SO nem itera por hash (ADR-0192).
+//! O núcleo não lê relógio, aleatoriedade, SO nem itera por hash (ADR-0196).
 
 const FORBIDDEN: &[&str] = &[
     "std::time",

@@ -1,4 +1,4 @@
-//! **As palavras do PIXEL ART** (ADR-0192) — o menu Add, as ferramentas e os avisos da família
+//! **As palavras do PIXEL ART** (ADR-0196) — o menu Add, as ferramentas e os avisos da família
 //! `ph2d-app-pixel`. Os nomes das ferramentas e os atalhos são os do Aseprite.
 
 /// A tradução de uma chave `object_add.pixel_sprite` / `pixel.*`, ou `None` se ela não é daqui.

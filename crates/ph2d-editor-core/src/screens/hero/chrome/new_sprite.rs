@@ -1,5 +1,5 @@
 // ph2d-chrome-sync:z=176 (dispatch priority, ADR-0107; lower = earlier)
-//! **O diálogo New Sprite** (ADR-0192): os modos e os fundos guardam a escolha; o OK arma o pedido e
+//! **O diálogo New Sprite** (ADR-0196): os modos e os fundos guardam a escolha; o OK arma o pedido e
 //! fecha; o Cancel só fecha. A shell drena `take_new_sprite_request` e cria o Pixel Sprite.
 //!
 //! ⚠️ Irmão do [`super::sheet_size`] e logo a seguir na `z`: nenhum id partilhado, e ambos ANTES do

@@ -44,7 +44,7 @@ pub const PANEL_Z_ORDER_FALLBACK: &[ph2d_a11y::NodeId] = &[
     ids::TAGS_PANEL,
     // O painel MACROS (`ph2d-panel-macros`, ADR-0186 W5d): coluna da direita, nasce fechado.
     ids::MACROS_PANEL,
-    // O painel PIXEL (`ph2d-panel-pixel-tools`, ADR-0192): abre no Pixel Sprite ▸ Edit.
+    // O painel PIXEL (`ph2d-panel-pixel-tools`, ADR-0196): abre no Pixel Sprite ▸ Edit.
     ids::PIXEL_PANEL,
     // A linha do tempo do Pixel (`ph2d-panel-pixel-timeline`, P4): a banda de baixo em Draw.
     ids::PIXEL_TIMELINE_PANEL,

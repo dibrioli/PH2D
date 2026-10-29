@@ -449,7 +449,7 @@ impl crate::App {
                 && hits == self.cycle_pick.hits
                 && hero.gizmo.selection == self.cycle_pick.selection;
             if so_o_de_cima {
-                self.cycle_pick_hits.clear();
+                self.cycle_pick.hits.clear();
             } else if !same_list {
                 self.cycle_pick.hits = hits.clone();
                 self.cycle_pick.idx = cycle_start;

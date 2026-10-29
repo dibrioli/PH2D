@@ -1,4 +1,4 @@
-//! **As formas do Vector em células** (P6b, ADR-0192 §12): a geometria é a do Vector
+//! **As formas do Vector em células** (P6b, ADR-0196 §12): a geometria é a do Vector
 //! ([`ph2d_vec_scene::cook`], a mesma porta que o editor vetorial usa) sobre a caixa do gesto em
 //! células, achatada em vértices de célula inteira; o contorno e o interior são a lei do polígono do
 //! núcleo ([`polygon_cells`]: Bresenham entre vértices, par-ímpar nos centros), com os furos em

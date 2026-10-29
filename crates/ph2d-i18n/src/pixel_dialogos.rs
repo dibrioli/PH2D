@@ -1,4 +1,4 @@
-//! **As palavras do PIXEL ART, P6** (ADR-0192) — os nomes do Aseprite.
+//! **As palavras do PIXEL ART, P6** (ADR-0196) — os nomes do Aseprite.
 
 /// A tradução de uma chave daqui, ou `None`.
 pub(crate) fn tr(key: &str) -> Option<&'static str> {

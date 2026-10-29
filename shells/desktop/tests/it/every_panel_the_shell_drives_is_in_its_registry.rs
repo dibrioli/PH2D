@@ -46,7 +46,7 @@ const SHELL_DRIVEN_PANELS: &[(&str, &str)] = &[
     // O painel AUTORADO (plano UI/UX W8b.2): o chip *Show as Panel* da seção Frame escreve a
     // visibilidade dele, que é exactamente a forma de falha que este gate existe para pegar.
     ("authored", "panel-authored"),
-    // O painel PIXEL (ADR-0192): a família escreve a visibilidade dele ao entrar em Pixel Sprite ▸ Edit.
+    // O painel PIXEL (ADR-0196): a família escreve a visibilidade dele ao entrar em Pixel Sprite ▸ Edit.
     ("pixel_tools", "panel-pixel-tools"),
     ("pixel_timeline", "panel-pixel-timeline"),
     // ⚠️ O gate protege contra uma lista esquecida (`[features] default`) com OUTRA lista escrita

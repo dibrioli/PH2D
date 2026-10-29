@@ -365,10 +365,8 @@ pub struct WidgetStore {
     /// Set by the modal's Create button — `Some((size_px, bg))` the shell polls + clears to spawn a
     /// blank canvas. Decouples the editor-core modal from the shell's `spawn_blank_canvas` (no I/O here).
     pub(super) new_image_request: Option<(u32, u8)>,
-    /// Resolução escolhida no modal da folha, em pixels de lado.
-    pub(super) sheet_size: u32,
-    /// Pedido pendente de criação de folha, em pixels de lado — a shell drena-o.
-    pub(super) sheet_size_request: Option<u32>,
+    /// O modal da resolução da folha: a escolha e o pedido pendente (a shell drena-o).
+    pub(super) sheet: chrome_ops::SheetModal,
     pub(super) pixel: crate::pixel_panel::PixelDialogs,
     /// Fill (Bucket) "Fill adjust" floating modal: `Some((x, y))` = the card's top-left in screen px
     /// (open); `None` = closed. Opened at the ColorDrop release point by the shell; dragging the title

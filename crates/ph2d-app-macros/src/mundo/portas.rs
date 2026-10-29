@@ -73,7 +73,7 @@ pub const PORTAS: &[(&str, Porta)] = &[
     ("ph2d::ecs::PaintedDoc", SoDaFamilia(Painter)),
     ("ph2d::ecs::ParticleEmitter", Gravado),
     ("ph2d::ecs::PathFollow", Recusado(DO_PROJECTO)),
-    // O documento do Pixel Sprite vive no blob do projecto (ADR-0192); o componente só o nomeia.
+    // O documento do Pixel Sprite vive no blob do projecto (ADR-0196); o componente só o nomeia.
     ("ph2d::ecs::PixelSprite", Recusado(DO_PROJECTO)),
     ("ph2d::ecs::RootOrder", DoAplicar),
     ("ph2d::ecs::ScrollFactor", Gravado),

@@ -633,7 +633,7 @@ pub enum EditorAction {
     },
     /// O painel MACROS e a linha de etapas da Timeline (ADR-0186, W5d).
     Macro(crate::macro_edits::MacroRequest),
-    /// O painel PIXEL (ADR-0192): ferramenta, cores, trocar.
+    /// O painel PIXEL (ADR-0196): ferramenta, cores, trocar.
     Pixel(crate::pixel_panel::PixelRequest),
 }
 

@@ -72,7 +72,7 @@ pub const TABELA: &[Armacao] = &[
         arma: |_| arma_as_macros(),
         desarma: desarma_as_macros,
     },
-    // O painel PIXEL (ADR-0192) com um sprite em Edit: as quatro ferramentas, as duas cores, o
+    // O painel PIXEL (ADR-0196) com um sprite em Edit: as quatro ferramentas, as duas cores, o
     // Trocar e a paleta.
     #[cfg(feature = "panel-pixel-tools")]
     Armacao {

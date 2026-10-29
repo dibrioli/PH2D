@@ -251,9 +251,9 @@ fn register_ecs_components_populates_registry() {
     //   configuração, line/GameEngineFuncional plano 15). Quem integrar conta o DELTA, nunca o literal.
     // ⚠️ **2026-10-27: `112` -> `113`, delta +1** -- o `ImageRegion` (o uso Region, line/GameEngineFuncional
     //   plano 16). Quem integrar conta o DELTA, nunca o literal.
-// ⚠️ **2026-10-28: `113` -> `115`, delta +2** -- o `UiArranjo` (ADR-0194) e o `TimersQuiet`
+    // ⚠️ **2026-10-28: `113` -> `115`, delta +2** -- o `UiArranjo` (ADR-0194) e o `TimersQuiet`
     //   (line/BlenderConstraints W5.5/W6; DELTA sobre o `113` do main, que já traz os +5 da GEF). Quem integrar conta o DELTA, nunca o literal.
-    // ⚠️ **2026-10-25: `115` -> `116`, delta +1** -- o `PixelSprite` (ADR-0192, line/PixelArt P0).
+    // ⚠️ **2026-10-25: `115` -> `116`, delta +1** -- o `PixelSprite` (ADR-0196, line/PixelArt P0).
     //   DELTA sobre o `115` do main. Quem integrar conta o DELTA, nunca o literal.
     assert_eq!(reg.len(), 116);
     assert!(reg.get_by_name("ph2d::ecs::PixelSprite").is_some());

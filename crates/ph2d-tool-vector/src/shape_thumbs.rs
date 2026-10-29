@@ -1,6 +1,6 @@
 //! O **catálogo de formas** cozido: o contorno de cada forma num quadrado unitário — a cara do
 //! botão dela no flyout das formas, do Vector (D10, `docs/UI_New_and_Simple/vetor_nova_ui/`) e do
-//! Pixel (P6e, ADR-0192 §12): uma só cara por forma, nunca um 2.º desenho.
+//! Pixel (P6e, ADR-0196 §12): uma só cara por forma, nunca um 2.º desenho.
 //!
 //! ⚠️ A forma é cozida pela MESMA porta que o canvas usa (`vec_scene::cook` →
 //! `vec_render::build_bezpath`): um segundo desenho divergiria dela no primeiro ajuste.

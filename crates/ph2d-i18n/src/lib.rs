@@ -167,7 +167,7 @@ mod painter_marca;
 mod painter_ponta;
 /// A dica do pino da preview do pincel — irmã da `painter_layers`.
 mod painter_preview;
-/// O PIXEL ART (ADR-0192): o menu Add, as ferramentas e os avisos da família.
+/// O PIXEL ART (ADR-0196): o menu Add, as ferramentas e os avisos da família.
 mod pixel;
 /// O PIXEL ART, P6: os diálogos Color Range, Modify, Canvas Size e Sprite Size.
 mod pixel_dialogos;

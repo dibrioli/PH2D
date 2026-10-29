@@ -9,7 +9,7 @@ authors.workspace = true
 
 [lib]
 
-# Entrada e saída do Pixel Art (ADR-0192): `.ase` ler/escrever, folha + JSON, GIF/APNG/PNG, paletas.
+# Entrada e saída do Pixel Art (ADR-0196): `.ase` ler/escrever, folha + JSON, GIF/APNG/PNG, paletas.
 # Nasce vazia na P0 (o documento grava-se pelo `ph2d-pixel-core::codec`); a P9 enche-a.
 [dependencies]
 ph2d-pixel-core = { path = "../ph2d-pixel-core" }

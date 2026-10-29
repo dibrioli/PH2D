@@ -1,4 +1,4 @@
-//! `PixelSprite` — a entidade é um objecto **Pixel Sprite** (ADR-0192): o marcador do tipo
+//! `PixelSprite` — a entidade é um objecto **Pixel Sprite** (ADR-0196): o marcador do tipo
 //! `ObjectKind::PixelSprite` e a identidade estável do documento de pixels dela.
 //!
 //! O documento (camadas, frames, cels, paleta) vive na família `ph2d-app-pixel`, chaveado por este

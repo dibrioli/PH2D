@@ -99,7 +99,7 @@ impl crate::App {
             // ⛔⛔ Os gizmos de NÓ vivem na `fase_vector_overlays` (doc 109 §6): esta fase corre ANTES
             // da arte das formas do Motion, e no Vello quem pinta primeiro fica por BAIXO. O gate
             // `the_collider_outline_is_painted_after_the_shape_art` prende a ordem.
-            // ⭐ Os Pixel Sprites (ADR-0192) — antes das marcas, para elas ficarem por cima.
+            // ⭐ Os Pixel Sprites (ADR-0196) — antes das marcas, para elas ficarem por cima.
             let window = crate::scene_mapping::janela(hero.view.center_split, surface.size());
             let cena = (&mut *vector_scene, &mut *paint_ctx.text);
             self.pixel.draw_of(sim.world(), camera, window, hero, cena);

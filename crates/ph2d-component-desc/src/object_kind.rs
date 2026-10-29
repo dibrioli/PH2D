@@ -30,7 +30,7 @@ pub enum ObjectKind {
     /// ⭐ Um gerador do Motion Nodes (`ph2d::ecs::MotionGenerator`): os nós são dele, os moldes são
     /// os filhos (doc ObjectsAndComponents 01 §13, F5).
     Motion,
-    /// ⭐ Um sprite de pixel art (`ph2d::ecs::PixelSprite`, ADR-0192): o documento de pixels vive na
+    /// ⭐ Um sprite de pixel art (`ph2d::ecs::PixelSprite`, ADR-0196): o documento de pixels vive na
     /// família `ph2d-app-pixel`, o objecto só o liga.
     PixelSprite,
 }

@@ -1,4 +1,4 @@
-//! **`ph2d-panel-pixel-timeline`** — a LINHA DO TEMPO do Pixel Art (P4, ADR-0192), `Panel<State>`
+//! **`ph2d-panel-pixel-timeline`** — a LINHA DO TEMPO do Pixel Art (P4, ADR-0196), `Panel<State>`
 //! tipado (ADR-0029), no idioma do Aseprite 1.3: camadas em linhas × frames em colunas, na banda de
 //! baixo.
 //!

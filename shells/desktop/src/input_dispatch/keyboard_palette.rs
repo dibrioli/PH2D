@@ -81,7 +81,7 @@ impl App {
         true
     }
 
-    /// **O diálogo New Sprite é MODAL pela mesma lei** (ADR-0192): aberto, toda tecla vai SÓ para
+    /// **O diálogo New Sprite é MODAL pela mesma lei** (ADR-0196): aberto, toda tecla vai SÓ para
     /// ele (algarismos, Enter = OK, Esc = Cancel) e nenhum atalho por baixo a vê.
     pub(crate) fn new_sprite_dialog_keys(
         &mut self,

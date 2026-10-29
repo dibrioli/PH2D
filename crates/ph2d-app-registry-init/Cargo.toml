@@ -25,8 +25,8 @@ ph2d-app-macros = { path = "../ph2d-app-macros", optional = true }
 ph2d-app-motion = { path = "../ph2d-app-motion", optional = true }
 ph2d-app-painter = { path = "../ph2d-app-painter", optional = true }
 ph2d-app-physics = { path = "../ph2d-app-physics", optional = true }
-ph2d-app-planner = { path = "../ph2d-app-planner", optional = true }
 ph2d-app-pixel = { path = "../ph2d-app-pixel", optional = true }
+ph2d-app-planner = { path = "../ph2d-app-planner", optional = true }
 ph2d-app-skeleton = { path = "../ph2d-app-skeleton", optional = true }
 ph2d-app-sprite-anim = { path = "../ph2d-app-sprite-anim", optional = true }
 ph2d-app-vec = { path = "../ph2d-app-vec", optional = true }
@@ -52,8 +52,8 @@ default = [
     "app-motion",
     "app-painter",
     "app-physics",
-    "app-planner",
     "app-pixel",
+    "app-planner",
     "app-skeleton",
     "app-sprite-anim",
     "app-vec",
@@ -75,8 +75,8 @@ app-macros = ["dep:ph2d-app-macros"]
 app-motion = ["dep:ph2d-app-motion"]
 app-painter = ["dep:ph2d-app-painter"]
 app-physics = ["dep:ph2d-app-physics"]
-app-planner = ["dep:ph2d-app-planner"]
 app-pixel = ["dep:ph2d-app-pixel"]
+app-planner = ["dep:ph2d-app-planner"]
 app-skeleton = ["dep:ph2d-app-skeleton"]
 app-sprite-anim = ["dep:ph2d-app-sprite-anim"]
 app-vec = ["dep:ph2d-app-vec"]

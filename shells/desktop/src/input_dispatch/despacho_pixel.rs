@@ -1,4 +1,4 @@
-//! **O Pixel Sprite ▸ Draw** (ADR-0192) — composição só: o ponteiro, a roda e o teclado chegam à
+//! **O Pixel Sprite ▸ Draw** (ADR-0196) — composição só: o ponteiro, a roda e o teclado chegam à
 //! `ph2d_app_pixel::compose`, que decide. `true` = consumido.
 
 use super::*;

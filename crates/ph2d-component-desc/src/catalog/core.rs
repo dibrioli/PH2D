@@ -407,7 +407,7 @@ pub const DESCS: &[D] = &[
     )
     .coded("order_in_layer")
     .row_of("ph2d::ecs::Transform"),
-    // ⭐ O objecto Pixel Sprite (ADR-0192) — chega com Add ▸ Pixel Sprite, que cria o documento;
+    // ⭐ O objecto Pixel Sprite (ADR-0196) — chega com Add ▸ Pixel Sprite, que cria o documento;
     // anexá-lo pela paleta faria um objecto sem pixels. ⚠️ Em ordem: o `desc_for` é busca binária.
     D::intrinsic(
         "ph2d::ecs::PixelSprite",

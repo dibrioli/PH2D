@@ -6011,6 +6011,31 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-app-pixel"
+version = "0.0.0"
+dependencies = [
+ "ph2d-app-host",
+ "ph2d-component-desc",
+ "ph2d-ecs",
+ "ph2d-editor-core",
+ "ph2d-host",
+ "ph2d-i18n",
+ "ph2d-pixel-core",
+ "ph2d-pixel-io",
+ "ph2d-pixel-render",
+ "ph2d-render",
+ "ph2d-text",
+ "ph2d-tokens",
+ "ph2d-tool-vector",
+ "ph2d-unique-name",
+ "ph2d-vec-render",
+ "ph2d-vec-scene",
+ "ph2d-vector",
+ "rfd",
+ "winit",
+]
+
+[[package]]
 name = "ph2d-app-planner"
 version = "0.0.0"
 dependencies = [
@@ -6053,6 +6078,7 @@ dependencies = [
  "ph2d-app-motion",
  "ph2d-app-painter",
  "ph2d-app-physics",
+ "ph2d-app-pixel",
  "ph2d-app-planner",
  "ph2d-app-skeleton",
  "ph2d-app-sprite-anim",
@@ -6829,6 +6855,7 @@ dependencies = [
  "ph2d-tool-trim-transparency",
  "ph2d-tool-vector",
  "ph2d-tween",
+ "ph2d-vec-scene",
  "ph2d-vector",
  "ph2d-widget-sync",
  "smallvec",
@@ -7167,6 +7194,7 @@ dependencies = [
  "ph2d-app-motion",
  "ph2d-app-painter",
  "ph2d-app-physics",
+ "ph2d-app-pixel",
  "ph2d-app-planner",
  "ph2d-app-skeleton",
  "ph2d-app-sprite-anim",
@@ -9646,7 +9674,9 @@ dependencies = [
  "ph2d-text",
  "ph2d-tokens",
  "ph2d-tool-registry",
+ "ph2d-tool-vector",
  "ph2d-ui-testkit",
+ "ph2d-vec-scene",
  "ph2d-vector",
 ]
 
@@ -9973,6 +10003,22 @@ name = "ph2d-pixel-core"
 version = "0.0.0"
 dependencies = [
  "serde_json",
+]
+
+[[package]]
+name = "ph2d-pixel-io"
+version = "0.0.0"
+dependencies = [
+ "ph2d-pixel-core",
+ "serde_json",
+]
+
+[[package]]
+name = "ph2d-pixel-render"
+version = "0.0.0"
+dependencies = [
+ "ph2d-pixel-core",
+ "ph2d-vector",
 ]
 
 [[package]]

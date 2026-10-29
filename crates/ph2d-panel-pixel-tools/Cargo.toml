@@ -9,7 +9,7 @@ authors.workspace = true
 
 [lib]
 
-# O painel PIXEL (ADR-0192): ferramentas, cores e a paleta do sprite em edição. Não vê a família
+# O painel PIXEL (ADR-0196): ferramentas, cores e a paleta do sprite em edição. Não vê a família
 # (`ph2d-app-pixel`): o instantâneo e os pedidos são o vocabulário `ph2d_editor_core::pixel_panel`.
 [dependencies]
 ph2d-editor-core = { path = "../ph2d-editor-core" }

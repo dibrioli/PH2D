@@ -61,7 +61,7 @@ const RAMOS: &[&str] = &[
     // ⭐ O 5.º (A14, 05/10): a ferramenta de OSSO saiu de dentro da vectorial e tem ramo próprio —
     // é uma ferramenta que autora, logo ENTRA na condição da caixa (`"bone"` em `AUTORAS`).
     "ramo_ferramenta_osso(",
-    // ⭐ O 7.º, o PIXEL SPRITE ▸ Edit (ADR-0192, 2026-10-25): autora no canvas inteiro (o lápis), logo
+    // ⭐ O 7.º, o PIXEL SPRITE ▸ Edit (ADR-0196, 2026-10-25): autora no canvas inteiro (o lápis), logo
     // ENTRA na condição da caixa — mas pelo MODO do objecto, não por um `ToolId` (as ferramentas são
     // da família, sem id no registo): `!pixel_edit` (`ph2d_app_pixel::mode::editing`) no
     // `fase_snapshots_publish`, e por isso não está em `AUTORAS`. Gate:

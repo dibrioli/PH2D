@@ -2,7 +2,7 @@
 
 > Leitor: a próxima LLM que assume a linha. A P6f está **feita**; o smoke do dono (cena 14) está
 > **POR FAZER**. A **linha continua** (`/pd-linha-fechar` NÃO foi corrido). Nada integrado, nada pushado.
-> Lei: [ADR-0192](../../architecture/decisions/0192-o-pixel-art-e-um-modulo-proprio-com-documento-inteiro-e-desfazer-por-sprite.md) §12 (emenda P6f)
+> Lei: [ADR-0196](../../architecture/decisions/0196-o-pixel-art-e-um-modulo-proprio-com-documento-inteiro-e-desfazer-por-sprite.md) §12 (emenda P6f)
 > · anterior: [P6e](HANDOFF_CONTINUACAO_line_PixelArt_2026-10-27_P6e.md) (smoke OK) · [P6d](HANDOFF_CONTINUACAO_line_PixelArt_2026-10-27_P6d.md) (§6: os abertos que esta onda fecha).
 
 ## 1. Identidade

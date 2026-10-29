@@ -9,7 +9,7 @@ authors.workspace = true
 
 [lib]
 
-# A vista do Pixel Art (ADR-0192): o sprite composto com amostragem nearest, o xadrez, a grelha de
+# A vista do Pixel Art (ADR-0196): o sprite composto com amostragem nearest, o xadrez, a grelha de
 # pixels e o mapa ecrã↔célula. Sem ECS e sem câmera: o afim `pixel → ecrã` chega de quem chama.
 [dependencies]
 ph2d-pixel-core = { path = "../ph2d-pixel-core" }

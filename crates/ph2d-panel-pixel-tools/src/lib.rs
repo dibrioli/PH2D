@@ -1,4 +1,4 @@
-//! **`ph2d-panel-pixel-tools`** — o painel PIXEL (ADR-0192, `docs/PixelArt/02_plano_modulo.md`),
+//! **`ph2d-panel-pixel-tools`** — o painel PIXEL (ADR-0196, `docs/PixelArt/02_plano_modulo.md`),
 //! `Panel<State>` tipado (ADR-0029): a barra de cores e de ferramentas do Aseprite.
 //!
 //! As cores de frente e de fundo com o hex e o trocar (`X`), e a grelha da PALETA do sprite em

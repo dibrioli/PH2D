@@ -91,8 +91,6 @@ impl crate::App {
         // ⭐ O editor de animações (plano GEF 07), ANTES dos snapshots: descodifica as folhas do cartão.
         let (db, at, reg) = (&*asset_db, &*atlas_asset_map, &*component_registry);
         anim_editor(sim, hero, db, at, reg, toasts);
-        // Pixel Sprite ▸ Edit autora no canvas inteiro (o `ramo_pixel`) — sem caixa, como o Flip.
-        let pixel_edit = ph2d_app_pixel::mode::editing(sim.world(), hero).is_some();
         // A publicação dos snapshots (`snapshots.rs`, HR-8 / ADR-0021: o paint só lê o HeroScreen).
         snapshots::publish(
             hero,
@@ -124,7 +122,7 @@ impl crate::App {
             &tool_preview_bits,
             vec_scene,
             // ⭐⭐⭐ **A caixa de objecto só existe quando NENHUMA ferramenta autora no canvas**
-            // (ADR-0112) — a vectorial fora do Select e do modo Forma (lá, só alças: F10), **e a do Flip sempre**.
+            // (ADR-0112) — a vectorial fora do Select e do modo Forma (lá, só alças: F10), **a do Flip sempre, e o Pixel Sprite ▸ Edit** (o `ramo_pixel`).
             // As alças registam hit-rects, e os dois ramos de canvas (`ramo_ferramenta_vetorial` e
             // `ramo_flip_premidos`) exigem o MESMO `on_canvas`: uma caixa sobre um canvas de
             // autoria é um ladrão de cliques, seja qual for a família do objecto que a publica.
@@ -141,7 +139,7 @@ impl crate::App {
                 && !tools
                     .active()
                     .is_some_and(|t| t.id() == ph2d_editor_core::ToolId::new("bone"))
-                && !pixel_edit
+                && ph2d_app_pixel::mode::editing(sim.world(), hero).is_none()
                 && !self.ui_preview.is_on(),
             // As poses que o último desenho derivou — sem elas a caixa do gizmo de um filho
             // colocado aparece onde a forma foi AUTORADA.

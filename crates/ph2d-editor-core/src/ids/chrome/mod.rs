@@ -36,7 +36,7 @@ mod padding;
 mod painter;
 mod painter_fill;
 mod physics;
-/// Os ids do Pixel Art no chrome: o painel PIXEL e o diálogo New Sprite (ADR-0192).
+/// Os ids do Pixel Art no chrome: o painel PIXEL e o diálogo New Sprite (ADR-0196).
 mod pixel;
 /// Os quatro diálogos do Pixel P6 (Color Range, Modify, Canvas Size, Sprite Size).
 mod pixel_edit;

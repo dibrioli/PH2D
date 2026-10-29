@@ -19,7 +19,7 @@ pub(super) fn default_panel_visibility() -> std::collections::BTreeMap<&'static 
     map.insert("tags", false);
     // O painel MACROS (W5d) nasce FECHADO: a porta é o *Window → Macros*.
     map.insert("macros", false);
-    // O painel PIXEL (ADR-0192) nasce FECHADO: abre ao entrar em Pixel Sprite ▸ Edit.
+    // O painel PIXEL (ADR-0196) nasce FECHADO: abre ao entrar em Pixel Sprite ▸ Edit.
     map.insert(PANEL_PIXEL, false);
     // A linha do tempo do Pixel (P4) também: abre e fecha com o Draw, como o PIXEL.
     map.insert(PANEL_PIXEL_TIMELINE, false);
@@ -37,7 +37,7 @@ pub const PANEL_MOTION_GRAPH: &str = "motion_graph";
 pub const PANEL_TIMELINE: &str = "timeline";
 /// O painel do MUNDO físico — o cartão do componente *World physics* da Cena ([`crate::hier_rows`]).
 pub const PANEL_PHYSICS: &str = "physics";
-/// O painel PIXEL (ADR-0192) — o `Panel::ID` da `ph2d-panel-pixel-tools`, e a chave que a família
+/// O painel PIXEL (ADR-0196) — o `Panel::ID` da `ph2d-panel-pixel-tools`, e a chave que a família
 /// Pixel Art, o botão do chrome e o menu escrevem/leem. Segue o nome da crate (o censo do binário).
 pub const PANEL_PIXEL: &str = "pixel_tools";
 /// A linha do tempo do Pixel (camadas × frames, P4) — o `Panel::ID` da `ph2d-panel-pixel-timeline`.

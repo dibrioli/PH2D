@@ -247,7 +247,7 @@ pub(super) const MENU_BAR_WINDOW_ROWS: &[MenuRow] = &[
     menu_row(ids::TOPBAR_TAGS, "chrome.menu.tags"),
     // As MACROS (ADR-0186, W5d): a única porta do painel, que nasce fechado.
     menu_row(ids::TOPBAR_MACROS, "chrome.menu.macros"),
-    // O PIXEL (ADR-0192): abre sozinho no Pixel Sprite ▸ Edit; esta é a porta fora dele.
+    // O PIXEL (ADR-0196): abre sozinho no Pixel Sprite ▸ Edit; esta é a porta fora dele.
     menu_row(ids::TOPBAR_PIXEL, "chrome.menu.pixel"),
     // ⭐⭐⭐ **OS OSSOS** (ordem do dono, 2026-09-09: *«o Menu Windows deve receber a opção
     // de Bones»*). ⚠️ Vizinho da Física porque os dois são painéis de MUNDO — e é a única

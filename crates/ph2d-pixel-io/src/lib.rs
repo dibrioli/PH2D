@@ -1,4 +1,4 @@
-//! **Pixel Art — entrada e saída** (ADR-0192, onda P9 do `docs/PixelArt/02_plano_modulo.md`).
+//! **Pixel Art — entrada e saída** (ADR-0196, onda P9 do `docs/PixelArt/02_plano_modulo.md`).
 //!
 //! `.ase`/`.aseprite` ler e escrever pela spec pública, folha + JSON compatível com o Aseprite,
 //! GIF/APNG/PNG/sequência pelos `ph2d-imageio-*`, paletas `.gpl .pal .hex .act`. Na P0 só existe a

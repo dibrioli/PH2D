@@ -9,7 +9,7 @@ authors.workspace = true
 
 [lib]
 
-# O documento do Pixel Art e as suas leis (ADR-0192) — PURO e sem dependências: sem ECS, sem UI,
+# O documento do Pixel Art e as suas leis (ADR-0196) — PURO e sem dependências: sem ECS, sem UI,
 # sem relógio, sem `rand`, sem SO. Kernels inteiros; ops com inverso; formato byte-determinístico.
 [dependencies]
 

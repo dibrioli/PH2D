@@ -73,8 +73,10 @@ impl WidgetStore {
             new_image_request: None,
             // ⚠️ Semeado no `open_sheet_size_dialog` com o que o empacotador SUGERE para aquelas
             // peças; este valor é só o que aparece antes de haver sugestão nenhuma.
-            sheet_size: 1024,
-            sheet_size_request: None,
+            sheet: super::chrome_ops::SheetModal {
+                size: 1024,
+                request: None,
+            },
             pixel: crate::pixel_panel::PixelDialogs::default(),
             fill_modal: None,
             input_map_window: None,

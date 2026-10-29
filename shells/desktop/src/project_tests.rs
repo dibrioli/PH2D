@@ -406,8 +406,7 @@ fn project_file_round_trips_through_postcard() {
         input_map: super::input_map_tests::authored_input_map(),
         // NÃO-vazio pela razão do `input_map` acima: dois quadros com nome.
         boards: two_boards().to_bytes().unwrap(),
-        ..bare_file(state.clone()),
-        pixel_sprites: Vec::new(),
+        ..bare_file(state.clone())
     };
     let bytes = postcard::to_allocvec(&(PROJECT_SCHEMA, &file)).unwrap();
     let (ver, back): (u32, ProjectFile) = postcard::from_bytes(&bytes).unwrap();
@@ -550,7 +549,7 @@ fn an_unreadable_animation_refuses_the_whole_file_and_leaves_the_session_alone()
 // Cada blob do arquivo num filho (`#[path]`) pelo teto de LOC do HR-18, e FILHO pela razão do `tape`
 // de baixo: as fixtures desta suíte (`headless_app`, `write_project_art`, `tmp_path`) são as portas
 // dele. A arte dos padrões (plano 33, W8) · os quadros (MiroClone, v185) · a macro aplicada · os
-// scripts (CodeEditor T7, v190) · as marcas do artista (Macros W9, v192) · os Pixel Sprites (v194).
+// scripts (CodeEditor T7, v190) · as marcas do artista (Macros W9, v192) · os Pixel Sprites (v209).
 #[path = "project_boards_tests.rs"]
 mod boards;
 #[path = "project_macro_aplicada_tests.rs"]

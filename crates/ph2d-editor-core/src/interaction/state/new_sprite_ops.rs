@@ -1,4 +1,4 @@
-//! **O diálogo New Sprite** no `WidgetStore` (ADR-0192) — filho do [`super`] pelo tecto de LOC: a
+//! **O diálogo New Sprite** no `WidgetStore` (ADR-0196) — filho do [`super`] pelo tecto de LOC: a
 //! escolha lembrada na sessão, os widgets do diálogo e o pedido do OK que a shell drena.
 
 use super::super::WidgetStore;

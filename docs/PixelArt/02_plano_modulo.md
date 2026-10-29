@@ -16,7 +16,7 @@
 3. **O que nos diferencia vem depois da paridade-base** (§P13): rampas, luz na rampa, dither,
    cycling, linter (do MVP) e os pedidos que o Aseprite não atende (áudio, tween, auto-outline).
 
-## §1 — Arquitetura (ADR a abrir: o próximo número livre, hoje `0192`)
+## §1 — Arquitetura (ADR a abrir: o próximo número livre, hoje `0192`; reposto como `0195` na integração de 29/10)
 
 | Crate | Papel | Dependências |
 |---|---|---|
@@ -112,7 +112,7 @@ Background, normal, **grupo** (colapsar, blend e opacidade de grupo), **referên
 visível/lock/**solo**, opacidade, **19 blend modes** no shader, renomear, duplicar, Merge Down,
 Flatten, Flatten Visible, Layer via Copy/Cut, Paste as New Layer/Reference. **Gates:** cada blend
 contra uma tabela-fixtura (Pillow/oráculo), grupo pass-through vs isolado. **Smoke 4.**
-> **Medido na P3 (25/10, Trial observado, ADR-0192 §10):** o grupo do Aseprite 1.3.18 é
+> **Medido na P3 (25/10, Trial observado, ADR-0196 §10):** o grupo do Aseprite 1.3.18 é
 > pass-through e **não tem modo nem opacidade** (o diálogo dele só tem o Nome; a tela ignora os do
 > ficheiro) — o «blend e opacidade de grupo» acima não existe no produto de referência. Copy e
 > *Layer via Copy/Cut* pedem selecção (Select All até a P6). *Reference from file* fica para a P9
@@ -126,7 +126,7 @@ vermelho/azul), Playback (velocidades, Play Once, Rewind on Stop), Preview flutu
 Frame Rate, Reverse Frames. **Gates:** cel linkado editado muda todos; playback determinístico
 (relógio do host passado ao core). **Smoke 5.**
 
-> **Feito na P4 (25/10, ADR-0192 §11):** frames com duração, cels com opacidade/z/ligação, a
+> **Feito na P4 (25/10, ADR-0196 §11):** frames com duração, cels com opacidade/z/ligação, a
 > linha do tempo (painel `pixel_timeline`, Tab), New/Empty/Duplicate Linked/Delete/mover/Reverse,
 > continuous, navegação, papel vegetal (F3, vermelho/azul), Enter toca — e, a pedido do dono, as
 > tags com as 4 direcções e as passadas (a sequência medida no Trial). Ficam para a P5: subtags,
@@ -147,7 +147,7 @@ Paste Special · Crop/Trim · **Canvas Size** e **Sprite Size** (interpolações
 **Gates:** RotSprite@90 == rot90 byte a byte; flip 2× = identidade; pintar fora da seleção = no-op.
 **Smoke 7.** ⇒ **Marco P0–P6.**
 
-> **Feito na P6 (26/10, ADR-0192 §12):** marquee/elipse/laço/polígono/varinha (M, Shift+M, Q,
+> **Feito na P6 (26/10, ADR-0196 §12):** marquee/elipse/laço/polígono/varinha (M, Shift+M, Q,
 > Shift+Q, W) com os 4 modos, All/Deselect/Reselect/Inverse, Color Range, Modify
 > Expand/Contract/Border, Move (V), Transform (Ctrl+T: alças, giro, skew, pivô, campos,
 > Fast/RotSprite), Flip/Rotate/Shift, Copy/Copy Merged/Paste, Canvas Size, Sprite Size, Crop, Trim,

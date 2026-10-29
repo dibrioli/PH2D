@@ -565,7 +565,7 @@ pub(crate) struct App {
     /// voo, arrastos, hover, a tira de quadros, o espelho do estilo da tool. Um é o que se grava,
     /// o outro morre com a sessão.
     pub(crate) flip_state: ph2d_app_flip::state::FlipState,
-    /// A família Pixel Art (ADR-0192): os documentos dos Pixel Sprites e o estado das ferramentas.
+    /// A família Pixel Art (ADR-0196): os documentos dos Pixel Sprites e o estado das ferramentas.
     pub(crate) pixel: ph2d_app_pixel::PixelApp,
     /// **Alguma transição de ESTADO de UI está em voo** (plano UI/UX W7).
     ///

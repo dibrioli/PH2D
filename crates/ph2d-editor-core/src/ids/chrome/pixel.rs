@@ -1,4 +1,4 @@
-//! **Os ids do Pixel Art que o chrome lê** (ADR-0192): o rect do painel PIXEL, o abridor dele no menu
+//! **Os ids do Pixel Art que o chrome lê** (ADR-0196): o rect do painel PIXEL, o abridor dele no menu
 //! *Window* e os controlos do diálogo *New Sprite* (o chrome pinta-o e despacha-o).
 //!
 //! ⚠️ APPEND-ONLY: um id é o hash de uma STRING.

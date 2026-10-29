@@ -9,7 +9,7 @@ authors.workspace = true
 
 [lib]
 
-# A família Pixel Art (ADR-0192): o objecto Pixel Sprite (Add, modo Edit), as ferramentas internas
+# A família Pixel Art (ADR-0196): o objecto Pixel Sprite (Add, modo Edit), as ferramentas internas
 # (lápis, borracha, conta-gotas), o desfazer de cada sprite, a vista e o blob do projecto.
 # ⛔ Nunca `ph2d-app-painter` nem o contrato `Tool=12`: as ferramentas são da família.
 [dependencies]

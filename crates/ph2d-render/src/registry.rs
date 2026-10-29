@@ -126,7 +126,7 @@ mod tests {
         // ⚠️ **2026-10-28: `114` -> `116`, delta +2** -- o `UiArranjo` (ADR-0194) e o `TimersQuiet`
         //   (line/BlenderConstraints W5.5/W6), registados no ECS (`ph2d-ecs` 113 -> 115). DELTA sobre o `114` do
         //   main (GEF). Quem integrar conta o DELTA, nunca o literal.
-        // ⚠️ **2026-10-25: `116` -> `117`, delta +1** -- o `PixelSprite` (ADR-0192), registado no
+        // ⚠️ **2026-10-25: `116` -> `117`, delta +1** -- o `PixelSprite` (ADR-0196), registado no
         //   ECS (`ph2d-ecs` 115 -> 116). DELTA sobre o `116` do main. Quem integrar conta o DELTA, nunca o literal.
         assert_eq!(reg.len(), 117);
         assert!(reg.get_by_name("ph2d::render::Sprite").is_some());

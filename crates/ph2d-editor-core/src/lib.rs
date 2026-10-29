@@ -182,7 +182,7 @@ pub mod particles_edits;
 pub mod path_follow_edits;
 /// A linha de uma camada do Pixel Art — pintada pelo painel PIXEL e pela linha do tempo do Pixel.
 pub mod pixel_layer_row;
-/// O vocabulário do Pixel Art no chrome: o painel PIXEL e o diálogo New Sprite (ADR-0192).
+/// O vocabulário do Pixel Art no chrome: o painel PIXEL e o diálogo New Sprite (ADR-0196).
 pub mod pixel_panel;
 /// ⭐⭐⭐ **O vocabulário do MOVER DE VISTA DE CIMA** (TOP-20 #13) — ver o cabeçalho dele.
 pub mod projectile_edits;

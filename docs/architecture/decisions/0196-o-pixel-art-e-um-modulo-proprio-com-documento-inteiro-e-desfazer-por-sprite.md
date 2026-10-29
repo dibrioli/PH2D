@@ -1,4 +1,4 @@
-# ADR-0195 — O Pixel Art é um módulo próprio, com documento inteiro e desfazer por sprite
+# ADR-0196 — O Pixel Art é um módulo próprio, com documento inteiro e desfazer por sprite
 
 - **Status:** Accepted — o PRODUTO é decisão do DONO (25/10: módulo NOVO e autocontido, sem Painter; o
   Aseprite é a espinha das etapas); o desenho técnico é delegado.

@@ -84,12 +84,12 @@ pub fn register_all_app_families() -> AppFamilyRegistry {
     reg.push(ph2d_app_painter::FAMILY);
     #[cfg(feature = "app-physics")]
     reg.push(ph2d_app_physics::FAMILY);
-    #[cfg(feature = "app-planner")]
-    reg.push(ph2d_app_planner::FAMILY);
     #[cfg(feature = "app-pixel")]
     reg.push(ph2d_app_pixel::FAMILY);
+    #[cfg(feature = "app-planner")]
+    reg.push(ph2d_app_planner::FAMILY);
     #[cfg(feature = "app-skeleton")]
-reg.push(ph2d_app_skeleton::FAMILY);
+    reg.push(ph2d_app_skeleton::FAMILY);
     #[cfg(feature = "app-sprite-anim")]
     reg.push(ph2d_app_sprite_anim::FAMILY);
     #[cfg(feature = "app-vec")]

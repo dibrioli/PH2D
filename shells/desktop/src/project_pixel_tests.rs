@@ -1,4 +1,4 @@
-//! **Os PIXEL SPRITES no arquivo** (v194, ADR-0192): o blob atravessa o `.ph2dproj` igual, um v193
+//! **Os PIXEL SPRITES no arquivo** (v209, ADR-0196): o blob atravessa o `.ph2dproj` igual, um v208
 //! (sem o campo) abre sem eles, e um blob ilegível recusa o projecto inteiro.
 
 use super::*;
@@ -44,28 +44,28 @@ fn the_pixel_sprites_cross_the_file_byte_for_byte() {
         pixel_sprites: blob.clone(),
         ..bare_file(empty_state())
     };
-    let path = written("pixel_v194", &(PROJECT_SCHEMA, &file));
+    let path = written("pixel_v209", &(PROJECT_SCHEMA, &file));
     let lido = headless_app().read_project_file(&path.to_string_lossy());
     let _ = std::fs::remove_file(&path);
     assert_eq!(lido.expect("aceite").0.pixel_sprites, blob);
 }
 
-/// ⚠️ Os bytes do v193 são escritos campo a campo (a forma de então, sem o campo) — não a partir do
-/// tipo vivo, senão o teste provaria o braço com a hipótese dele.
+/// ⚠️ Os bytes do v208 (o degrau anterior) são escritos campo a campo (a forma de então, sem o campo) — não a
+/// partir do tipo vivo, senão o teste provaria o braço com a hipótese dele.
 #[test]
-fn a_v193_opens_without_pixel_sprites() {
+fn a_v208_opens_without_pixel_sprites() {
     let f = bare_file(empty_state());
-    let v193 = (
+    let v208 = (
         (&f.state, &f.assets, &f.painted, &f.motion),
         (&f.timeline, &f.physics, &f.tokens, &f.settings),
         (&f.player_tape, &f.sprite_pixels, &f.stable_id_counter),
         (&f.input_map, &f.pattern_art, &f.boards, &f.scripts),
-        &f.marcas_do_artista,
+        (&f.marcas_do_artista, &f.jogo, &f.mesa, &f.kanbans),
     );
-    let path = written("pixel_v193", &(193u32, v193));
+    let path = written("pixel_v208", &(208u32, v208));
     let lido = headless_app().read_project_file(&path.to_string_lossy());
     let _ = std::fs::remove_file(&path);
-    assert!(lido.expect("um v193 é recusado").0.pixel_sprites.is_empty());
+    assert!(lido.expect("um v208 é recusado").0.pixel_sprites.is_empty());
 }
 
 #[test]

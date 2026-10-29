@@ -250,7 +250,7 @@ impl crate::App {
             // O painel MACROS e a linha de etapas (W5d): a família guarda o pedido e aplica-o na
             // `fase_macros`, depois de o Painter consumir a entrada do quadro.
             EditorAction::Macro(r) => ph2d_app_macros::com(|m| m.pede(r)),
-            // O painel PIXEL (ADR-0192): a família aplica-o na `fase_pixel_panel`.
+            // O painel PIXEL (ADR-0196): a família aplica-o na `fase_pixel_panel`.
             EditorAction::Pixel(r) => self.pixel.pede(r),
             // ⭐ **O `+` do Inspector** (ADR-0166 / F3) — o painel PEDE e a shell abre,
             // porque só ela sabe o tipo do objeto, o que ele já tem, e o que o registo

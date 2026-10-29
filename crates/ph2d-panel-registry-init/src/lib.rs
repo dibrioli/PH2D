@@ -169,7 +169,7 @@ mod tests {
         {
             n += 1;
         }
-        // O painel PIXEL (ADR-0192).
+        // O painel PIXEL (ADR-0196).
         #[cfg(feature = "panel-pixel-tools")]
         {
             n += 1;

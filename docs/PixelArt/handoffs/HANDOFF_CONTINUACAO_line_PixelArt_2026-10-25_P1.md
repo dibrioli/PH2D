@@ -2,7 +2,7 @@
 
 > Leitor: a próxima LLM que assume a linha numa janela nova. A onda P1 está **fechada e com o smoke do
 > dono APROVADO (25/10: «smoke OK»)**; a **linha continua** (`/pd-linha-fechar` NÃO foi corrido). Nada
-> integrado, nada pushado. Lei do módulo: [ADR-0192](../../architecture/decisions/0192-o-pixel-art-e-um-modulo-proprio-com-documento-inteiro-e-desfazer-por-sprite.md)
+> integrado, nada pushado. Lei do módulo: [ADR-0196](../../architecture/decisions/0196-o-pixel-art-e-um-modulo-proprio-com-documento-inteiro-e-desfazer-por-sprite.md)
 > · [plano](../02_plano_modulo.md) · [handoff P0b](HANDOFF_CONTINUACAO_line_PixelArt_2026-10-25_P0b.md) · [handoff P0](HANDOFF_CONTINUACAO_line_PixelArt_2026-10-25_P0.md).
 
 ## 1. Identidade

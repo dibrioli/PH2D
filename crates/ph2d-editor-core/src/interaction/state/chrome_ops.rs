@@ -14,6 +14,13 @@ use crate::interaction::InteractiveState;
 use crate::widget::{ButtonState, SliderOrientation, SliderState};
 use ph2d_a11y::NodeId;
 
+/// A resolução escolhida no modal da folha (px de lado) e o pedido pendente de criação de folha.
+#[derive(Debug, Clone, Copy, Default)]
+pub(in crate::interaction) struct SheetModal {
+    pub(super) size: u32,
+    pub(super) request: Option<u32>,
+}
+
 #[path = "color_mode_ops.rs"]
 mod color_mode_ops;
 #[path = "new_sprite_ops.rs"]
@@ -167,7 +174,7 @@ impl WidgetStore {
     /// caminho certo (aceitar o que o app propõe) ser o errado. `suggested` já vem arredondado
     /// para a resolução oferecida imediatamente acima do que o encaixe pede — cabe sempre.
     pub fn open_sheet_size_dialog(&mut self, suggested: u32) {
-        self.sheet_size = suggested;
+        self.sheet.size = suggested;
         self.context_menu = Some(ContextMenuRequest {
             x: 0.0,
             y: 0.0,
@@ -177,17 +184,17 @@ impl WidgetStore {
 
     /// A resolução escolhida no modal da folha, em pixels de lado.
     pub fn sheet_size(&self) -> u32 {
-        self.sheet_size
+        self.sheet.size
     }
 
     /// Escolhe a resolução do modal da folha.
     pub fn set_sheet_size(&mut self, px: u32) {
-        self.sheet_size = px;
+        self.sheet.size = px;
     }
 
     /// Confirma o modal: arma o pedido que a shell drena e fecha o modal.
     pub fn request_sheet(&mut self) {
-        self.sheet_size_request = Some(self.sheet_size);
+        self.sheet.request = Some(self.sheet.size);
         self.close_context_menu();
     }
 
@@ -198,7 +205,7 @@ impl WidgetStore {
     /// shell tinha reservado são largadas. *Cancelar tem de ser a ausência de um pedido, não um
     /// pedido com um sinalizador de cancelamento.*
     pub fn take_sheet_size_request(&mut self) -> Option<u32> {
-        self.sheet_size_request.take()
+        self.sheet.request.take()
     }
 
     /// Open the Fill (Bucket) "Fill adjust" floating modal with its top-left at `(x, y)` (screen px),

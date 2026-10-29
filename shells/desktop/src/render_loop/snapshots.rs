@@ -399,7 +399,7 @@ fn publish_gizmo(
                     pivot_tool_active,
                 );
             }
-            // O Pixel Sprite (ADR-0192): a caixa da grelha à régua do projecto, com o `Transform`.
+            // O Pixel Sprite (ADR-0196): a caixa da grelha à régua do projecto, com o `Transform`.
             if let Some(half) = ph2d_app_pixel::draw::half_extents(bits, gizmo_ppm) {
                 return Some(ph2d_app_vec::vec_gizmo_view::gizmo_view_from(
                     [0.0, 0.0],

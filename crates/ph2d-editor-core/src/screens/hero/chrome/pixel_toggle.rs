@@ -1,5 +1,5 @@
 // ph2d-chrome-sync:z=74 (dispatch priority, ADR-0107; lower = earlier)
-//! **A linha *Pixel* do menu Window** (ADR-0192) — o abridor do painel PIXEL, que também abre sozinho
+//! **A linha *Pixel* do menu Window** (ADR-0196) — o abridor do painel PIXEL, que também abre sozinho
 //! ao entrar em Pixel Sprite ▸ Edit. A MESMA visibilidade que o painel escreve (chave [`PANEL_PIXEL`](crate::screens::hero::PANEL_PIXEL)).
 
 use crate::ids;

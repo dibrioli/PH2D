@@ -1,4 +1,4 @@
-//! **O diálogo New Sprite** (Add ▸ Pixel Sprite, ADR-0192; o *File ▸ New* do Aseprite) — filho do
+//! **O diálogo New Sprite** (Add ▸ Pixel Sprite, ADR-0196; o *File ▸ New* do Aseprite) — filho do
 //! [`super`] pelo tecto de LOC e irmão do *New Image* na forma: caixa centrada, filas de escolha,
 //! CTA acentuado. Width e Height são os campos numéricos da casa; os modos e os fundos saem das
 //! tabelas `ids::NEW_SPRITE_MODES`/`NEW_SPRITE_BGS`, as mesmas que o despacho e o registo leem.

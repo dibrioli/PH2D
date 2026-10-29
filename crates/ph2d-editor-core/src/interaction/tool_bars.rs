@@ -105,7 +105,7 @@ pub struct ToolBars {
     /// ([`crate::screens::hero::painter_column`]), e não as de um módulo. Um módulo que larga a mão só
     /// limpa as SUAS: sem esta marca, o vetor inactivo apagaria a coluna do pintor em todo quadro.
     pub painter_rail: bool,
-    /// ⭐ Estas barras são as do PIXEL SPRITE ▸ Draw (ADR-0192), publicadas pela família: como as do
+    /// ⭐ Estas barras são as do PIXEL SPRITE ▸ Draw (ADR-0196), publicadas pela família: como as do
     /// pintor, não são de um módulo com barra de controle — a fila guarda o seletor de modo, e um
     /// módulo que larga a mão não as limpa.
     pub pixel_rail: bool,
@@ -160,6 +160,6 @@ pub struct ToolBarsSlot {
     /// pinta por baixo do chip (o painel pinta antes da fila, logo lê o quadro anterior).
     pub(crate) row_slots: Vec<(NodeId, crate::zones::Rect)>,
     /// O objecto activo é de uma FAMÍLIA que não usa a ferramenta da mão (o Pixel Sprite,
-    /// ADR-0192): o vetor larga as barras e o painel mesmo com a ferramenta dele na mão.
+    /// ADR-0196): o vetor larga as barras e o painel mesmo com a ferramenta dele na mão.
     pub(crate) family_owns_canvas: bool,
 }

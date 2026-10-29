@@ -1,4 +1,4 @@
-//! **As palavras do PIXEL ART, P6** (ADR-0192): as ferramentas de selecção, a moldura solta e os
+//! **As palavras do PIXEL ART, P6** (ADR-0196): as ferramentas de selecção, a moldura solta e os
 //! menus Select, Edit e Sprite do painel PIXEL — os nomes do Aseprite.
 
 /// A tradução de uma chave daqui, ou `None`.

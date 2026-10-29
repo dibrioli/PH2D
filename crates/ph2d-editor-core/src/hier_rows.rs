@@ -130,6 +130,8 @@ pub fn type_icon(
         K::Painted => IconId::Painter,
         K::Skeleton => IconId::Bone,
         K::Motion => IconId::MotionNodes,
+        // A grelha: o glifo da família Pixel (o painel PIXEL usa o mesmo).
+        K::PixelSprite => IconId::LayoutGrid,
         K::Empty => [ComponentCategory::Camera, ComponentCategory::Light]
             .into_iter()
             .find(|c| categories.contains(c))
@@ -155,6 +157,7 @@ mod tests {
         assert_eq!(type_icon(K::Empty, &[]), IconId::Cube);
         assert_eq!(type_icon(K::Image, &cam), IconId::Sprite);
         assert_eq!(type_icon(K::Vector, &[]), IconId::Vector);
+        assert_eq!(type_icon(K::PixelSprite, &cam), IconId::LayoutGrid);
     }
 
     #[test]

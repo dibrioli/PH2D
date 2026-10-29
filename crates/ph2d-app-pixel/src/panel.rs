@@ -1,4 +1,4 @@
-//! **O painel PIXEL do lado da família** (ADR-0192): os pedidos dele chegam pelo barramento
+//! **O painel PIXEL do lado da família** (ADR-0196): os pedidos dele chegam pelo barramento
 //! ([`PixelApp::pede`]) e aplicam-se aqui; o instantâneo que ele pinta sai daqui; e ele ABRE ao
 //! entrar em Pixel Sprite ▸ Draw e FECHA ao sair (no flanco — entre os dois, o *Window → Pixel*
 //! manda). A coluna da esquerda ([`publish_bars`]) e as amostras de cor dela também passam aqui.

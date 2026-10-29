@@ -11,7 +11,7 @@ impl crate::App {
         // sub-rectângulo e a projecção MUDA (ver [`crate::scene_mapping`]). Fora do split é a
         // janela inteira, bit a bit.
         let janela_da_cena = gfx.scene_window();
-        // Com um Pixel Sprite activo as barras e o canvas são do Pixel (ADR-0192).
+        // Com um Pixel Sprite activo as barras e o canvas são do Pixel (ADR-0196).
         let pixel = (gfx.hero_screen.as_ref()).is_some_and(|h| h.store.family_owns_canvas());
         let FrameGfx { camera, tools, .. } = FrameGfx::of(gfx);
         // ADR-0108 cutover: the Vector drawing tool. `AppGfx.vec_scene` is

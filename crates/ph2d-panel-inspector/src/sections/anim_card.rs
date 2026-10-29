@@ -268,6 +268,12 @@ pub(crate) fn paint_chooser(
         AnimChooser::Script => "panel.inspector.anim_card.script_hint",
         AnimChooser::Rules => "panel.inspector.anim_card.rules_hint",
     };
+    // «Me» é a propriedade `animator.autoplay`: o nome dela à frente da dica.
+    let texto = if chosen == AnimChooser::Me {
+        format!("{} · {}", tr("component.field.sprite_animator.2"), tr(key))
+    } else {
+        tr(key).to_string()
+    };
     cur_y = hint(
         scene,
         text_system,
@@ -275,7 +281,7 @@ pub(crate) fn paint_chooser(
         x,
         w,
         cur_y,
-        tr(key),
+        &texto,
         ColorToken::Text3,
     );
     if chosen == AnimChooser::Rules {

@@ -154,7 +154,13 @@ fn populate_anim_card(store: &mut WidgetStore) {
         .into_iter()
         .chain([crate::ids::INSP_ANIM_PLAYING])
     {
-        store.set_tooltip(id, tr("panel.inspector.anim_card.play_tip"));
+        // O nome da propriedade à frente: é o que o script escreve (`animator.playing`).
+        let tip = format!(
+            "{} · {}",
+            tr("component.field.sprite_animator.1"),
+            tr("panel.inspector.anim_card.play_tip")
+        );
+        store.set_tooltip(id, tip);
     }
     store.set_tooltip(
         crate::ids::INSP_ANIM_REWIND,

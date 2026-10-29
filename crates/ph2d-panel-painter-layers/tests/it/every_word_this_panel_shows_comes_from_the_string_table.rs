@@ -28,6 +28,8 @@ use ph2d_label_census::{keys, language_literals};
 
 const PREFIX: &str = "panel.painter_layers.";
 const TABLE: &str = "crates/ph2d-i18n/src/painter_layers.rs";
+/// As tabelas do prefixo: a [`TABLE`] e as irmãs partidas dela por secção (tecto de tamanho).
+const TABLES: &[&str] = &[TABLE, "crates/ph2d-i18n/src/painter_layers/inerte.rs"];
 
 /// ⭐ As excepções, **com o mecanismo** — `(ficheiro relativo a src/, texto exacto, porquê)`.
 ///
@@ -101,8 +103,8 @@ fn every_named_exception_still_shelters_a_real_literal() {
 #[test]
 fn every_painter_key_exists_on_both_sides() {
     let repo = repo_root();
-    let used = keys::keys_used(&repo, PREFIX, &[TABLE]);
-    let declared = keys::keys_declared(&repo, &[TABLE], PREFIX);
+    let used = keys::keys_used(&repo, PREFIX, TABLES);
+    let declared = keys::keys_declared(&repo, TABLES, PREFIX);
     // ⛔ Controlo de vacuidade: um caminho errado dá dois conjuntos vazios, que concordam. O piso
     //    é o vocabulário medido na migração de 2026-09-13 menos folga para o painel encolher.
     assert!(

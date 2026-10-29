@@ -134,6 +134,11 @@ impl crate::App {
             .map_or(ph2d_editor_core::project::DEFAULT_PIXELS_PER_METER, |h| {
                 h.project.pixels_per_meter
             });
+        let biblioteca = ph2d_app_components::library_names::session_library(
+            &mut gfx.sim,
+            &gfx.asset_db,
+            &gfx.atlas_asset_map,
+        );
         let renderer = &mut gfx.renderer;
         let placed = ph2d_app_sprite_anim::image_choice::place_library_image(
             &mut gfx.sim,
@@ -146,6 +151,7 @@ impl crate::App {
             &gfx.atlas_asset_map,
             ppm,
             world,
+            &biblioteca,
             tr("shell.asset_drop_apply.image"),
             AssetId::from_digest(asset),
         );

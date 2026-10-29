@@ -8,6 +8,10 @@
 //! nem painel. Deixá-los lá prenderia 18 cenas à shell por causa de uma função de
 //! vinte linhas: *o que decide onde uma função mora é o que ela TOCA, nunca o
 //! ficheiro em que foi escrita*.
+//!
+//! ⭐ E por isso desceram da `ph2d-app-physics` (`common.rs`) para esta folha em 2026-10-28: o nível 1
+//! do jogo (`ph2d_app_game::smoke`) põe os MESMOS blocos e o MESMO jogador, e uma família não chama
+//! outra (gate `architecture_no_dependency_climbs_a_layer`).
 
 use bevy_ecs::world::World;
 use ph2d_core::Vec2;

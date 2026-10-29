@@ -33,6 +33,7 @@ pub mod compressed_pipeline;
 /// [`docs/plans/2026-05-texture-compression-waves.md`](../../../docs/plans/2026-05-texture-compression-waves.md).
 pub mod cooked_texture;
 pub mod draw_bands;
+pub mod factory_images;
 pub mod frost;
 pub mod fx_atlas;
 pub mod fx_stack;
@@ -173,7 +174,10 @@ pub use preview_premul::PreviewPremul;
 pub use registry::register_render_components;
 pub use renderer::SpriteRenderer;
 pub use screen_pick::{compose_screen_bytes, read_texel, screen_color, world_source};
-pub use sprite::{GpuTexRun, QuadVertex, RenderInstance, SourceCells, Sprite, SpriteSource};
+pub use sprite::{
+    GpuTexRun, OverrideLaw, QuadVertex, RenderInstance, SourceCells, Sprite, SpriteSource,
+    texture_of,
+};
 pub use sprite_collect::sort_render_order;
 pub use sprite_mesh::{LiftedInstances, SpriteMesh};
 pub use sprite_mesh_skin::{OSSOS_POR_VERTICE, SEM_PELE, SpriteMeshSkin};

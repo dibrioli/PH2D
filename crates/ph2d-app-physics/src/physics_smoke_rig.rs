@@ -128,7 +128,7 @@ pub fn build_rig_doll(world: &mut World) -> Entity {
 /// **Cena 67 (W-Rig).** Um boneco de sprites, sem física nenhuma — e um
 /// clique que o transforma num ragdoll.
 pub fn physics_smoke_rig(ctx: &mut crate::SceneCtx<'_>) {
-    crate::common::spawn_floor(ctx.world);
+    ph2d_physics_scene::spawn_floor(ctx.world);
     let torso = build_rig_doll(ctx.world);
     ctx.want.camera_center = Some(CAMERA_CENTRE);
     ctx.want.camera_height_world = Some(CAMERA_HEIGHT);

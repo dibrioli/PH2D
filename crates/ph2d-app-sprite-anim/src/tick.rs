@@ -34,10 +34,6 @@ pub struct AnimSignal {
     pub cycles: u32,
 }
 
-/// Quantos microssegundos vale um passo fixo — a MESMA conversão do tique do `Timer`, que a
-/// guarda (o porquê do `round` está lá).
-pub use ph2d_app_components::timer_tick::step_ticks;
-
 /// Avança toda sprite animada em `ticks` passos fixos.
 ///
 /// ⚠️ **`ticks × dt` numa chamada só, e a razão é uma MEDIÇÃO.** A primeira versão disto corria um
@@ -64,7 +60,7 @@ pub fn tick_sprite_animations(
     if ticks == 0 {
         return out;
     }
-    let dt = step_ticks(fixed_dt);
+    let dt = ph2d_ecs::timer::step_ticks(fixed_dt);
     if dt == 0 {
         return out;
     }

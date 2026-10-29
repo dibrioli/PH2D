@@ -5221,9 +5221,7 @@ name = "ph2d-app-game"
 version = "0.0.0"
 dependencies = [
  "bevy_ecs",
- "ph2d-app-components",
  "ph2d-app-host",
- "ph2d-app-physics",
  "ph2d-core",
  "ph2d-ecs",
  "ph2d-editor-core",
@@ -5231,8 +5229,7 @@ dependencies = [
  "ph2d-i18n",
  "ph2d-input",
  "ph2d-physics-ecs",
- "ph2d-platformer",
- "ph2d-preview-drive",
+ "ph2d-physics-scene",
  "ph2d-render",
  "ph2d-runtime",
  "ph2d-script",
@@ -5469,6 +5466,7 @@ dependencies = [
  "ph2d-panel-inspector",
  "ph2d-panel-physics",
  "ph2d-physics-ecs",
+ "ph2d-physics-scene",
  "ph2d-preview-drive",
  "ph2d-render",
  "ph2d-tags",
@@ -5540,8 +5538,6 @@ version = "0.0.0"
 dependencies = [
  "bevy_ecs",
  "ph2d-a11y",
- "ph2d-app-components",
- "ph2d-app-game",
  "ph2d-app-host",
  "ph2d-asset",
  "ph2d-core",
@@ -6675,6 +6671,31 @@ dependencies = [
  "serde",
  "wgpu",
  "winit",
+]
+
+[[package]]
+name = "ph2d-host-game-scenes"
+version = "0.0.0"
+dependencies = [
+ "ph2d-a11y",
+ "ph2d-app-components",
+ "ph2d-app-game",
+ "ph2d-app-physics",
+ "ph2d-app-sprite-anim",
+ "ph2d-asset",
+ "ph2d-core",
+ "ph2d-ecs",
+ "ph2d-editor-core",
+ "ph2d-host",
+ "ph2d-i18n",
+ "ph2d-physics-ecs",
+ "ph2d-preview-drive",
+ "ph2d-render",
+ "ph2d-runtime",
+ "ph2d-script",
+ "ph2d-text",
+ "ph2d-tokens",
+ "ph2d-vector",
 ]
 
 [[package]]
@@ -9107,6 +9128,17 @@ dependencies = [
  "postcard",
  "rayon",
  "serde",
+]
+
+[[package]]
+name = "ph2d-physics-scene"
+version = "0.0.0"
+dependencies = [
+ "bevy_ecs",
+ "ph2d-core",
+ "ph2d-ecs",
+ "ph2d-physics-ecs",
+ "ph2d-render",
 ]
 
 [[package]]

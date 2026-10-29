@@ -1,7 +1,7 @@
 //! **Os pixels da folha de uma sprite, descodificados UMA vez** — para as miniaturas do cartão
 //! «Animation», a grelha do editor e a grelha proposta (plano GameEngineFuncional 07).
 //!
-//! Duas fontes, as mesmas que o retrato do cartão de asset resolve (`asset_index_build::texture_of`):
+//! Duas fontes, as mesmas que o retrato do cartão de asset resolve (`ph2d_render::texture_of`):
 //! a arte de FÁBRICA (`ph2d_render::atlas::fabrica`, rasterizada do SVG e já em cache estática) e a
 //! imagem importada (`SpritePixels` ou a célula do átlas → `AssetId` → `AssetDb::image_rgba8`). Uma
 //! textura `Individual` sem `SpritePixels` não tem pixels em memória: fica sem folha (e sem miniatura).

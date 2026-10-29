@@ -1,9 +1,14 @@
 //! Os gates do J4 (`docs/GameEngineFuncional/11_camara_e_parallax_plano.md`): a câmara do nível 2 não mostra
 //! fora dos limites, e o fundo anda a fracção autorada dela sem deixar buraco.
 
-use super::*;
 use ph2d_app_components::camera_2d;
+use ph2d_app_game::smoke::*;
+use ph2d_core::Vec2;
+use ph2d_ecs::{
+    CameraLimits, Entity, Name, ScrollFactor, SimWorld, SpriteGrid, Transform, ZIndexOverride,
+};
 use ph2d_preview_drive::PreviewDrive;
+use ph2d_render::{HILLS_TILE, Sprite};
 
 const DT: f64 = 1.0 / 60.0;
 /// As janelas medidas: 16:9, 4:3 e 21:9, em pixéis.
@@ -45,7 +50,7 @@ fn pior_fuga(com_limites: bool) -> f32 {
     let mut pior = f32::MIN;
     for janela in JANELAS {
         let mut sim = SimWorld::new();
-        let jogador = montar(&mut sim, &crate::registo_de_teste(), 2);
+        let jogador = crate::comp::montar(&mut sim, 2);
         let camara = por_nome(&mut sim, "Camera");
         let l = sim
             .world()
@@ -95,7 +100,7 @@ fn a_camara_do_nivel_2_nao_mostra_fora_dos_limites() {
         c[0] + lado * m[0]
     };
     let mut sim = SimWorld::new();
-    montar(&mut sim, &crate::registo_de_teste(), 2);
+    crate::comp::montar(&mut sim, 2);
     let camara = por_nome(&mut sim, "Camera");
     let l = sim
         .world()
@@ -127,7 +132,7 @@ fn a_camara_do_nivel_2_nao_mostra_fora_dos_limites() {
 #[test]
 fn o_fundo_anda_a_fraccao_autorada_e_cobre_a_vista() {
     let mut sim = SimWorld::new();
-    let jogador = montar(&mut sim, &crate::registo_de_teste(), 2);
+    let jogador = crate::comp::montar(&mut sim, 2);
     let camadas: Vec<(Entity, f32, Option<f32>, [f32; 2])> = ["Sky", "Clouds", "Hills"]
         .into_iter()
         .map(|n| {
@@ -204,24 +209,18 @@ fn o_fundo_anda_a_fraccao_autorada_e_cobre_a_vista() {
 }
 
 /// Os montes são a única camada que tem de tapar a borda de baixo da vista (o céu e as nuvens ficam acima).
-const CAMADA_MONTES: f32 = crate::object_add::CAMADA_K;
+const CAMADA_MONTES: f32 = ph2d_app_game::object_add::CAMADA_K;
 
 /// A Background Layer do menu: os montes, a fracção e a repetição do ladrilho, atrás do mundo.
 #[test]
 fn a_camada_de_fundo_do_menu_nasce_pronta() {
     let mut sim = SimWorld::new();
-    let reg = crate::registo_de_teste();
-    let bits = crate::object_add::add(
-        crate::object_add::BACKGROUND_LAYER,
-        &mut sim,
-        &reg,
-        ph2d_app_physics::physics_seed::COMPONENT_SEEDS,
-    )
-    .expect("da família")
-    .expect("nasce");
+    let bits = crate::comp::menu(ph2d_app_game::object_add::BACKGROUND_LAYER, &mut sim)
+        .expect("da família")
+        .expect("nasce");
     let e = Entity::from_bits(bits);
     let w = sim.world();
-    let lado = crate::object_add::ladrilho_m(HILLS_TILE);
+    let lado = ph2d_app_game::object_add::ladrilho_m(HILLS_TILE);
     assert_eq!(lado, [8.0, 6.0]);
     assert_eq!(
         w.get::<ScrollFactor>(e).map(|f| f.k),
@@ -240,11 +239,14 @@ fn a_camada_de_fundo_do_menu_nasce_pronta() {
     );
     assert_eq!(
         s.size,
-        [lado[0] * crate::object_add::CAMADA_LADRILHOS, lado[1]]
+        [
+            lado[0] * ph2d_app_game::object_add::CAMADA_LADRILHOS,
+            lado[1]
+        ]
     );
     assert_eq!(
         w.get::<ph2d_ecs::UvTransform>(e).map(|u| u.scale),
-        Some([crate::object_add::CAMADA_LADRILHOS, 1.0])
+        Some([ph2d_app_game::object_add::CAMADA_LADRILHOS, 1.0])
     );
     assert!(
         w.get::<SpriteGrid>(e).is_none(),
@@ -252,7 +254,7 @@ fn a_camada_de_fundo_do_menu_nasce_pronta() {
     );
     assert_eq!(w.get::<ZIndexOverride>(e).map(|z| z.0), Some(-1));
     assert!(
-        crate::object_add::BACKGROUND_LAYER
+        ph2d_app_game::object_add::BACKGROUND_LAYER
             .tip
             .is_some_and(|t| !t.picture.is_empty()),
         "a dica tem desenho"

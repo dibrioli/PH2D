@@ -18,7 +18,7 @@ use ph2d_physics_ecs::{
 };
 use ph2d_render::{Sprite, WHITE_TILE_KEY};
 
-use crate::common::spawn_floor;
+use ph2d_physics_scene::spawn_floor;
 
 /// **Scene 19 (W-Mass).** Two lanes prove mass MATTERS. Each lane has a bowling
 /// ball launched into a row of five light pins. The TOP lane's ball is HEAVY (a

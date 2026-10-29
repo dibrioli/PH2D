@@ -5,8 +5,7 @@
 //! chama-a.
 
 use ph2d_ecs::{
-    MaskInteraction, SPEED_MAX_Q16, SliceNine, SpriteAnimator, SpriteEmissive, SpriteGrid,
-    SpriteRegion, ZIndexOverride,
+    MaskInteraction, SliceNine, SpriteEmissive, SpriteGrid, SpriteRegion, ZIndexOverride,
 };
 use ph2d_render::Sprite;
 
@@ -38,11 +37,6 @@ pub fn sanitize_sprite_editables(s: &mut Sprite, g: &mut SpriteGrid, r: Option<&
     if let Some(r) = r {
         sanitize_sprite_region(r);
     }
-}
-
-/// A velocidade da §11 Animation: a faixa do motor (±100×).
-pub fn sanitize_sprite_animator(p: &mut SpriteAnimator) {
-    p.speed_q16 = p.speed_q16.clamp(-SPEED_MAX_Q16, SPEED_MAX_Q16);
 }
 
 /// A §5 9-Slice: [`SliceNine::sanitized`] (bordas e tamanho finitos e não-negativos, cantos fixos).

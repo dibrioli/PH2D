@@ -147,7 +147,7 @@ pub(crate) fn build_initial_state(
 
     // A arte de fábrica é imagem da biblioteca (plano GEF 12).
     let mut atlas_asset_map = BTreeMap::new();
-    ph2d_app_components::factory_images::register(&asset_db, &mut atlas_asset_map);
+    ph2d_render::factory_images::register(&asset_db, &mut atlas_asset_map);
     let gfx = AppGfx {
         surface,
         cursor_shown: Default::default(),

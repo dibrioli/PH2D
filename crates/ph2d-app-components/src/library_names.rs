@@ -5,10 +5,11 @@
 //! e `door (2)`, pela ordem (nome, caminho, blake3) — a mesma em toda sessão, porque nenhum dos três
 //! muda. ⛔ Até ao d4 era o `file_name()` com a extensão, e dois ficheiros iguais colidiam.
 
-use crate::asset_index_build::{TextureLibrary, texture_of};
+use crate::asset_index_build::TextureLibrary;
 use ph2d_asset::{AssetDb, AssetId};
 use ph2d_asset_index::AssetRef;
 use ph2d_ecs::{Entity, Name, SimWorld, SpritePixels, StableId};
+use ph2d_render::texture_of;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 

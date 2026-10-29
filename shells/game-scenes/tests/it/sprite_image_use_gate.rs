@@ -1,12 +1,19 @@
 //! Os gates do plano GEF 13 sobre o nível do jogo como o dono o viu: os três defeitos do doc 13 e a mesma
 //! imagem pelas portas todas.
 
-use super::*;
-use crate::image_choice::{choose_library_image, image_facts, place_library_image};
-use ph2d_app_components::test_support::registo;
+use crate::comp::registo;
+use ph2d_app_sprite_anim::image_choice::ImageFacts;
+use ph2d_app_sprite_anim::image_choice::{choose_library_image, image_facts, place_library_image};
+use ph2d_app_sprite_anim::image_use::*;
 use ph2d_asset::{AssetDb, AssetId};
 use ph2d_ecs::scene::{WorldSnapshot, snapshot_to_world, world_to_snapshot};
-use ph2d_ecs::{Name, SimWorld, SpriteAnimator, SpriteGrid, SpritePixels, UvTransform};
+use ph2d_ecs::{
+    Entity, RepeatMode, ScrollRepeat, SpriteAnimations, SpriteAnimator, SpriteGrid, SpritePixels,
+    TextureRepeat, UvTransform,
+};
+use ph2d_ecs::{Name, SimWorld};
+use ph2d_editor_core::{ImageUseEdit, InspectorImageUse};
+use ph2d_render::Sprite;
 use ph2d_render::{FLAG_SHEET_KEY, PLATFORM_TILE, PLATFORM_TILE_KEY, SpriteSource, WHITE_TILE_KEY};
 use std::collections::BTreeMap;
 
@@ -34,7 +41,7 @@ impl Biblioteca {
 fn biblioteca() -> Biblioteca {
     let db = AssetDb::new();
     let mut atlas = BTreeMap::new();
-    ph2d_app_components::factory_images::register(&db, &mut atlas);
+    ph2d_render::factory_images::register(&db, &mut atlas);
     let importada = db
         .load_png_path(std::path::Path::new(MONTES_POR_DO_SOL))
         .expect("a arte do smoke abre");
@@ -53,7 +60,7 @@ fn registo_do_jogo() -> ph2d_ecs::scene::ComponentRegistry {
 
 fn nivel(n: u32) -> SimWorld {
     let mut sim = SimWorld::new();
-    ph2d_app_game::smoke::montar(&mut sim, &registo_do_jogo(), n);
+    crate::comp::montar(&mut sim, n);
     sim
 }
 
@@ -108,6 +115,7 @@ fn o_bloco_de_fabrica_e_um_azulejo_sem_quadros() {
 fn largar_platform_no_canvas_e_a_mesma_imagem() {
     let b = biblioteca();
     let mut sim = SimWorld::new();
+    let nomes = ph2d_app_components::library_names::session_library(&mut sim, &b.db, &b.atlas);
     let e = place_library_image(
         &mut sim,
         &mut sem_placa,
@@ -115,6 +123,7 @@ fn largar_platform_no_canvas_e_a_mesma_imagem() {
         &b.atlas,
         PPM,
         [2.0, 1.0],
+        &nomes,
         "Platform",
         b.de(PLATFORM_TILE_KEY),
     )
@@ -228,9 +237,15 @@ fn a_mesma_imagem_pelas_portas_todas() {
         let mut sim = SimWorld::new();
         // O script decide sobre a sprite ANTES da troca (o override não toca no documento).
         let pelo_script = parada(&mut sim);
-        let lei =
-            crate::image_choice::override_law(sim.world(), pelo_script, id, &b.db, &b.atlas, PPM)
-                .expect("script");
+        let lei = ph2d_app_sprite_anim::image_choice::override_law(
+            sim.world(),
+            pelo_script,
+            id,
+            &b.db,
+            &b.atlas,
+            PPM,
+        )
+        .expect("script");
         let pela_linha = parada(&mut sim);
         choose_library_image(
             &mut sim,
@@ -242,6 +257,7 @@ fn a_mesma_imagem_pelas_portas_todas() {
             id,
         )
         .expect("linha");
+        let nomes = ph2d_app_components::library_names::session_library(&mut sim, &b.db, &b.atlas);
         let pelo_canvas = place_library_image(
             &mut sim,
             &mut sem_placa,
@@ -249,6 +265,7 @@ fn a_mesma_imagem_pelas_portas_todas() {
             &b.atlas,
             PPM,
             [0.0; 2],
+            &nomes,
             "x",
             id,
         )
@@ -301,7 +318,7 @@ fn um_bloco_gravado_antes_abre_com_o_mesmo_desenho() {
     let mut aberto = SimWorld::new();
     snapshot_to_world(aberto.world_mut(), &gravado, &registo_do_jogo()).expect("abre");
     assert_eq!(
-        ph2d_app_components::factory_images::forget_extrusion_grids(aberto.world_mut()),
+        ph2d_render::factory_images::forget_extrusion_grids(aberto.world_mut()),
         1
     );
     let b2 = por_nome(&mut aberto, "Platform High");
@@ -352,6 +369,7 @@ fn re_cortar_um_re_corta_todos_os_que_mostram_a_imagem() {
         "o quadrado branco não mostra a imagem"
     );
     // A porta já sabe o corte: um terceiro objecto recebe a imagem cortada.
+    let nomes = ph2d_app_components::library_names::session_library(&mut sim, &b.db, &b.atlas);
     let novo = place_library_image(
         &mut sim,
         &mut sem_placa,
@@ -359,6 +377,7 @@ fn re_cortar_um_re_corta_todos_os_que_mostram_a_imagem() {
         &b.atlas,
         PPM,
         [0.0; 2],
+        &nomes,
         "n",
         id,
     )
@@ -388,7 +407,7 @@ fn re_cortar_um_re_corta_todos_os_que_mostram_a_imagem() {
         "a biblioteca sozinha não guarda o corte (D3)"
     );
     assert_eq!(
-        crate::image_choice::library_facts(sim.world(), id, &b.db, &b.atlas, PPM)
+        ph2d_app_sprite_anim::image_choice::library_facts(sim.world(), id, &b.db, &b.atlas, PPM)
             .and_then(|f| f.slicing)
             .map(|s| s.grid),
         Some([4, 2])

@@ -57,7 +57,7 @@ use ph2d_ecs::{Name, Transform};
 use ph2d_physics_ecs::{BodyKind, Collider, ColliderShape, OneWayPlatform, RigidBody};
 use ph2d_render::{Sprite, WHITE_TILE_KEY};
 
-use crate::common::{slab, spawn_player};
+use ph2d_physics_scene::{slab, spawn_player};
 
 /// A distância entre os andares — ver o aviso do módulo.
 const RISE: f32 = 2.0;

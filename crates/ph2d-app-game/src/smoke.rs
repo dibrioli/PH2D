@@ -13,7 +13,6 @@
 //!   «Low Ceiling» (← e ↓), a soltar ↓ lá debaixo e a sair para a direita.
 
 use ph2d_core::Vec2;
-use ph2d_ecs::scene::ComponentRegistry;
 use ph2d_ecs::{
     AnimationTag, CameraFollow, CameraLimits, ChildOf, Entity, GameCamera, Name, ScrollFactor,
     SimWorld, SpriteAnimations, SpriteAnimator, SpriteGrid, TiledDraw, Transform, ZIndexOverride,
@@ -236,7 +235,7 @@ const BLOCOS: [(&str, [f32; 2], [f32; 2]); 6] = [
     ("Wall Right", [17.5, 3.0], [0.5, 4.0]),
 ];
 
-const MOEDAS: [[f32; 2]; 5] = [
+pub const MOEDAS: [[f32; 2]; 5] = [
     [-4.0, 0.7],
     [-1.5, 0.7],
     [3.5, 2.4],
@@ -248,12 +247,21 @@ const CHAO: [f32; 4] = [0.35, 0.35, 0.40, 1.0];
 const OURO: [f32; 4] = [0.98, 0.80, 0.18, 1.0];
 const META: [f32; 4] = [0.30, 0.80, 0.40, 1.0];
 
+/// As portas que o nível pede à COMPOSIÇÃO: as do menu desta família ([`crate::object_add::Portas`]) e a
+/// *Camera* do menu Add, que é de outra família (`ph2d_app_components::object_add::CAMERA`).
+#[derive(Clone, Copy)]
+pub struct Portas<'a> {
+    pub menu: crate::object_add::Portas<'a>,
+    /// Cria a *Camera* pela porta do menu dela; devolve os bits.
+    pub camera: &'a dyn Fn(&mut SimWorld) -> Result<u64, String>,
+}
+
 /// Monta o nível `nivel` no mundo. Devolve o jogador.
-pub fn montar(sim: &mut SimWorld, registry: &ComponentRegistry, nivel: u32) -> Entity {
+pub fn montar(sim: &mut SimWorld, portas: Portas<'_>, nivel: u32) -> Entity {
     match nivel {
-        2 => nivel_2(sim, registry),
+        2 => nivel_2(sim, portas),
         3 => {
-            let jogador = nivel_2(sim, registry);
+            let jogador = nivel_2(sim, portas);
             println!(
                 "[game-smoke] =3 o nível 2 com o condutor do agachar (plano 10): com ↓ e ← o boneco \
                  anda agachado («crouch_walk») sob o tecto baixo da esquerda, solta ↓ lá debaixo e \
@@ -262,7 +270,7 @@ pub fn montar(sim: &mut SimWorld, registry: &ComponentRegistry, nivel: u32) -> E
             jogador
         }
         4 => {
-            let jogador = nivel_2(sim, registry);
+            let jogador = nivel_2(sim, portas);
             println!(
                 "[game-smoke] =4 o nível 2 com «heroi_azul» e «montes_por_do_sol» na biblioteca (plano 12): \
                  escolha a imagem dos montes e a folha do Player pela ranhura Image do Inspector."
@@ -275,7 +283,7 @@ pub fn montar(sim: &mut SimWorld, registry: &ComponentRegistry, nivel: u32) -> E
 
 fn nivel_1(world: &mut ph2d_ecs::World) -> Entity {
     for (nome, c, h) in BLOCOS {
-        ph2d_app_physics::common::slab(world, nome, Vec2::new(c[0], c[1]), h, 0.0, CHAO);
+        ph2d_physics_scene::slab(world, nome, Vec2::new(c[0], c[1]), h, 0.0, CHAO);
     }
     world.spawn((
         Name::new("Goal"),
@@ -293,7 +301,7 @@ fn nivel_1(world: &mut ph2d_ecs::World) -> Entity {
             LuauScript::library(moeda),
         ));
     }
-    let jogador = ph2d_app_physics::common::spawn_player(world, Vec2::new(-8.0, 1.5));
+    let jogador = ph2d_physics_scene::spawn_player(world, Vec2::new(-8.0, 1.5));
     world.spawn((
         Transform::from_translation(Vec2::new(-8.0, 2.0)),
         Name::new("Camera"),
@@ -319,16 +327,14 @@ fn nivel_1(world: &mut ph2d_ecs::World) -> Entity {
     jogador
 }
 
-/// Um objecto do menu Add, pela porta do menu (as sementes do app incluídas).
+/// Um objecto do menu Add desta família, pela porta do menu (as sementes do app incluídas).
 fn do_menu(
     sim: &mut SimWorld,
-    registry: &ComponentRegistry,
+    portas: Portas<'_>,
     entry: ph2d_editor_core::object_add::AddEntry,
 ) -> Entity {
-    let seeds = ph2d_app_physics::physics_seed::COMPONENT_SEEDS;
-    let bits = crate::object_add::add(entry, sim, registry, seeds)
-        .or_else(|| ph2d_app_components::object_add::add(entry, sim, registry, seeds))
-        .expect("a entrada é de uma família do menu")
+    let bits = crate::object_add::add(entry, sim, portas.menu)
+        .expect("a entrada é desta família")
         .unwrap_or_else(|e| panic!("{}: {e}", entry.key.key()));
     Entity::from_bits(bits)
 }
@@ -441,11 +447,11 @@ fn folha(sim: &mut SimWorld, e: Entity, art: FactoryArt, tag: &str, ms: u32) {
 }
 
 /// O nível 2 — ver o cabeçalho do módulo.
-fn nivel_2(sim: &mut SimWorld, registry: &ComponentRegistry) -> Entity {
+fn nivel_2(sim: &mut SimWorld, portas: Portas<'_>) -> Entity {
     use crate::object_add::{ANIMATED_SPRITE, CHARACTER, COLLISION_SHAPE, SPRITE, STATIC_BODY};
     let mut chao_direito = None;
     for (nome, c, h) in BLOCOS_2 {
-        let e = do_menu(sim, registry, STATIC_BODY);
+        let e = do_menu(sim, portas, STATIC_BODY);
         arruma(sim, e, nome, c, [1.0, 1.0]);
         azulejo(sim, e, nome, h);
         if nome == "Ground Right" {
@@ -454,7 +460,7 @@ fn nivel_2(sim: &mut SimWorld, registry: &ComponentRegistry) -> Entity {
     }
     // A parede do fim: uma forma DENTRO do chão, de escala 1 — o tamanho é a caixa do collider.
     let (chao, c, _) = chao_direito.expect("o chão da direita");
-    let parede = do_menu(sim, registry, COLLISION_SHAPE);
+    let parede = do_menu(sim, portas, COLLISION_SHAPE);
     let ([px, py], meia) = PAREDE_INVISIVEL;
     arruma(
         sim,
@@ -467,7 +473,7 @@ fn nivel_2(sim: &mut SimWorld, registry: &ComponentRegistry) -> Entity {
     caixa(w, parede, meia);
     w.entity_mut(parede).insert(ChildOf(chao));
     // O céu é uma Sprite com a Parallax a 0 (parada no ecrã); as nuvens e os montes são Background Layers.
-    let ceu = do_menu(sim, registry, SPRITE);
+    let ceu = do_menu(sim, portas, SPRITE);
     arruma(sim, ceu, "Sky", [0.0, 0.0], CEU_TAMANHO);
     sim.world_mut()
         .entity_mut(ceu)
@@ -476,7 +482,7 @@ fn nivel_2(sim: &mut SimWorld, registry: &ComponentRegistry) -> Entity {
         s.tint = CEU_COR;
     }
     for (nome, k, no_mundo, ordem) in CAMADAS_2 {
-        let e = do_menu(sim, registry, crate::object_add::BACKGROUND_LAYER);
+        let e = do_menu(sim, portas, crate::object_add::BACKGROUND_LAYER);
         arruma(sim, e, nome, autorada(no_mundo, k), [1.0, 1.0]);
         let art = if nome == "Clouds" {
             CLOUDS_TILE
@@ -487,7 +493,7 @@ fn nivel_2(sim: &mut SimWorld, registry: &ComponentRegistry) -> Entity {
         crate::object_add::veste_camada(w, e, art, crate::object_add::CAMADA_LADRILHOS, k);
         w.entity_mut(e).insert(ZIndexOverride(ordem));
     }
-    let meta = do_menu(sim, registry, ANIMATED_SPRITE);
+    let meta = do_menu(sim, portas, ANIMATED_SPRITE);
     arruma(sim, meta, "Goal", [15.5, 1.0], [1.0, 2.0]);
     folha(sim, meta, FLAG_SHEET, "wave", FLAG_FRAME_MS);
     let moeda = sim
@@ -495,16 +501,16 @@ fn nivel_2(sim: &mut SimWorld, registry: &ComponentRegistry) -> Entity {
         .get_resource_or_init::<ProjectScripts>()
         .insert(MOEDA_NAME, MOEDA_LUAU);
     for (i, at) in MOEDAS_2.into_iter().enumerate() {
-        let e = do_menu(sim, registry, ANIMATED_SPRITE);
+        let e = do_menu(sim, portas, ANIMATED_SPRITE);
         arruma(sim, e, &format!("Coin {}", i + 1), at, [0.5, 0.5]);
         folha(sim, e, COIN_SHEET, "spin", COIN_FRAME_MS);
         sim.world_mut()
             .entity_mut(e)
             .insert(LuauScript::library(moeda));
     }
-    let jogador = do_menu(sim, registry, CHARACTER);
+    let jogador = do_menu(sim, portas, CHARACTER);
     arruma(sim, jogador, "Player", [-8.0, 1.5], [1.0, 1.0]);
-    let camara = do_menu(sim, registry, ph2d_app_components::object_add::CAMERA);
+    let camara = Entity::from_bits((portas.camera)(sim).unwrap_or_else(|e| panic!("Camera: {e}")));
     arruma(sim, camara, "Camera", [-8.0, 2.0], [1.0, 1.0]);
     // Mais perto que os 10 m de fábrica: o boneco desenhado lê-se (~110 px de altura numa janela de 900).
     if let Some(mut c) = sim.world_mut().get_mut::<GameCamera>(camara) {
@@ -539,7 +545,3 @@ fn nivel_2(sim: &mut SimWorld, registry: &ComponentRegistry) -> Entity {
 #[cfg(test)]
 #[path = "smoke_tests.rs"]
 mod tests;
-
-#[cfg(test)]
-#[path = "camara_tests.rs"]
-mod camara_tests;

@@ -7,7 +7,7 @@ use ph2d_physics_ecs::PhysicsBridge;
 /// Monta a cena e simula `secs` segundos pela PORTA REAL (a ponte).
 fn run(secs: f32) -> SimWorld {
     let mut sim = SimWorld::new();
-    crate::common::spawn_floor(sim.world_mut());
+    ph2d_physics_scene::spawn_floor(sim.world_mut());
     build_keys(sim.world_mut());
     ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     let mut bridge = PhysicsBridge::new();

@@ -1,9 +1,11 @@
 //! Os gates da câmera no canvas sobre a cena 4 REAL (onda 17b, auditoria A1–A3, A6, A7): o céu cobre a
 //! moldura, a câmera segue o Player e tem limites, e cada quadro corre `camera_2d::update` como o app.
 
-use super::*;
+use ph2d_app_game::moldura::*;
+use ph2d_ecs::CameraFollow;
+use ph2d_ecs::Entity;
 use ph2d_ecs::scene::{EditorCommandQueue, apply_editor_commands};
-use ph2d_ecs::{CameraFollow, CameraRuntime, SimWorld, Transform};
+use ph2d_ecs::{CameraRuntime, SimWorld, Transform};
 
 const DT: f64 = 1.0 / 60.0;
 const ASPECTO: f32 = 16.0 / 9.0;
@@ -11,8 +13,8 @@ const ASPECTO: f32 = 16.0 / 9.0;
 /// A cena 4 (= o nível 2) com a câmera selecionada.
 fn cena() -> (SimWorld, Entity) {
     let mut sim = SimWorld::new();
-    let _ = crate::smoke::montar(&mut sim, &crate::registo_de_teste(), 4);
-    let cam = crate::smoke::por_nome(&mut sim, "Camera").expect("a cena 4 tem câmera");
+    let _ = crate::comp::montar(&mut sim, 4);
+    let cam = ph2d_app_game::smoke::por_nome(&mut sim, "Camera").expect("a cena 4 tem câmera");
     (sim, cam)
 }
 
@@ -39,7 +41,7 @@ fn escreve(sim: &mut SimWorld, cam: Entity, e: Escrita) {
         t.translation.x = xy[0];
         t.translation.y = xy[1];
     }
-    let reg = crate::registo_de_teste();
+    let reg = crate::comp::registo();
     let fila = EditorCommandQueue::new();
     if let Some(edit) = edicoes(e) {
         ph2d_app_components::camera_inspector::apply_camera_edit(
@@ -167,7 +169,7 @@ fn os_dois_offset_tem_nomes_distintos() {
 /// quadrado do lado do projecto e não fora dele; com o dobro do lado pega onde antes falhava.
 #[test]
 fn o_icone_pega_no_centro_e_a_camera_escondida_some() {
-    use crate::moldura_tinta::icones_em;
+    use ph2d_app_game::moldura_tinta::icones_em;
     let (mut sim, cam) = cena();
     if let Some(mut t) = sim.world_mut().get_mut::<Transform>(cam) {
         t.translation.x = 20.0;

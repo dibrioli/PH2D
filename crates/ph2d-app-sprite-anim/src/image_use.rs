@@ -5,7 +5,6 @@
 //! possa escrever.
 
 use crate::image_choice::{ImageFacts, Slicing, library_facts};
-use ph2d_app_components::asset_index_build::texture_of;
 use ph2d_asset::{AssetDb, AssetId};
 use ph2d_ecs::{
     AnimationTag, Entity, ImageRegion, ImageUseLook, ImageUseMemory, ImageUseState, RegionLook,
@@ -15,6 +14,7 @@ use ph2d_ecs::{
 };
 use ph2d_editor_core::{ImageUseEdit, InspectorDraw, InspectorImageUse};
 use ph2d_render::Sprite;
+use ph2d_render::texture_of;
 use std::collections::BTreeMap;
 
 /// Para que serve a imagem neste objecto.
@@ -179,7 +179,7 @@ pub fn proposed_grid(rgba: &[u8], w: u32, h: u32) -> Option<[u32; 2]> {
 }
 
 /// Os factos de uma sprite sem imagem da biblioteca (uma pintura, um recorte): a grelha dela e o tamanho.
-fn own_facts(world: &World, e: Entity) -> Option<ImageFacts> {
+pub fn own_facts(world: &World, e: Entity) -> Option<ImageFacts> {
     let size = world.get::<Sprite>(e)?.size;
     let g = world
         .get::<SpriteGrid>(e)
@@ -452,7 +452,7 @@ fn shown_id(world: &World, e: Entity, atlas: &BTreeMap<u32, AssetId>) -> Option<
 }
 
 /// A imagem da biblioteca que `e` mostra e os factos dela (o corte dos utilizadores incluído).
-fn shown_facts(
+pub fn shown_facts(
     world: &World,
     e: Entity,
     db: &AssetDb,
@@ -667,11 +667,3 @@ pub fn recut_users(world: &mut World, e: Entity) -> usize {
     }
     outros.len()
 }
-
-#[cfg(test)]
-#[path = "image_use_gate_tests.rs"]
-mod gate_tests;
-
-#[cfg(test)]
-#[path = "image_use_15_tests.rs"]
-mod uso_15_tests;

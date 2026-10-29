@@ -1,11 +1,13 @@
 //! ⭐ **Os objectos do jogo de plataforma no menu Add** (`docs/GameEngineFuncional/05_N1_plano.md` §1).
 //!
 //! Cada um é um vazio com um conjunto FIXO de componentes que já existem. O que tem `Default` entra pela
-//! porta do `+` do Inspector ([`ph2d_app_components::component_attach::attach_by_name`]: cascata e semente);
+//! porta do `+` do Inspector (`ph2d_app_components::component_attach::attach_by_name`: cascata e semente);
 //! a `Sprite` (sem `Default`) e os valores próprios do papel entram antes, para as sementes os lerem.
+//!
+//! ⚠️ As duas portas — o vazio na raiz e o `+` — são de OUTRA família e chegam por [`Portas`], entregues
+//! pela composição (ADR-0075: uma família não chama outra; o precedente é o `spawn_empty_root` que o Motion e
+//! as Macros recebem).
 
-use ph2d_app_components::component_seed::SeedTable;
-use ph2d_ecs::scene::ComponentRegistry;
 use ph2d_ecs::{
     Entity, RepeatMode, ScrollFactor, ScrollRepeat, SimWorld, SpriteAnimations, SpriteAnimator,
     SpriteGrid, TextureRepeat, UvTransform, ZIndexOverride,
@@ -132,22 +134,25 @@ fn anima(world: &mut ph2d_ecs::World, e: Entity) -> Result<(), String> {
     Ok(())
 }
 
+/// As portas de OUTRA família que o menu usa, entregues pela composição.
+#[derive(Clone, Copy)]
+pub struct Portas<'a> {
+    /// O vazio na raiz com o nome dado (tornado único) — `ph2d_app_components::object_add::spawn_empty_root`.
+    pub raiz: fn(&mut SimWorld, &str) -> u64,
+    /// O `+` do Inspector: anexa pelo nome canónico, com a cascata e a semente da família dona
+    /// (`ph2d_app_components::component_attach::attach_by_name` sobre o registo e as sementes do app).
+    pub anexa: &'a dyn Fn(&mut SimWorld, u64, &str) -> Result<(), String>,
+}
+
 /// ⭐ **Cria o objecto** desta entrada — `None` se a entrada não é desta família. Se um componente não
 /// entra, o objecto sai (um *«Character»* sem personagem seria um nome que mente).
-pub fn add(
-    entry: AddEntry,
-    sim: &mut SimWorld,
-    registry: &ComponentRegistry,
-    seeds: SeedTable<'_>,
-) -> Option<Result<u64, String>> {
+pub fn add(entry: AddEntry, sim: &mut SimWorld, portas: Portas<'_>) -> Option<Result<u64, String>> {
     if !ENTRIES.contains(&entry) {
         return None;
     }
-    let bits = ph2d_app_components::object_add::spawn_empty_root(sim, entry.key.tr());
+    let bits = (portas.raiz)(sim, entry.key.tr());
     let e = Entity::from_bits(bits);
-    let attach = |sim: &mut SimWorld, name: &str| {
-        ph2d_app_components::component_attach::attach_by_name(sim, registry, seeds, bits, name)
-    };
+    let attach = |sim: &mut SimWorld, name: &str| (portas.anexa)(sim, bits, name);
     let r = (|| -> Result<(), String> {
         let world = sim.world_mut();
         if entry == SPRITE {
@@ -205,7 +210,3 @@ pub fn add(
         }
     })
 }
-
-#[cfg(test)]
-#[path = "object_add_tests.rs"]
-mod tests;

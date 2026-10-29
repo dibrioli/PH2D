@@ -15,6 +15,7 @@
 //! PresentWorld consumer.
 
 mod component;
+mod image_of;
 mod instance;
 /// ⭐ **ONDE a sprite lê os pixels** — a célula da folha como RECTÂNGULO (o irmão devolve a UV;
 /// este devolve os pixels), com o terceiro leitor: quem prende a imagem ao esqueleto.
@@ -28,6 +29,7 @@ mod vertex;
 mod tests;
 
 pub use component::{Sprite, SpriteSource};
+pub use image_of::{OverrideLaw, texture_of};
 pub use instance::{GpuTexRun, RenderInstance};
 pub use source_cells::SourceCells;
 pub use subrect::{region_subrect, sprite_sheet_subrect};

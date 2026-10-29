@@ -34,7 +34,7 @@ fn world_y(sim: &mut SimWorld, name: &str) -> f32 {
 #[test]
 fn narrowing_the_part_lets_the_wide_key_through() {
     let mut sim = SimWorld::new();
-    crate::common::spawn_floor(sim.world_mut());
+    ph2d_physics_scene::spawn_floor(sim.world_mut());
     build_keys(sim.world_mut());
     ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     let bit = entity(&mut sim, "Wide Bit");
@@ -60,7 +60,7 @@ fn narrowing_the_part_lets_the_wide_key_through() {
 #[test]
 fn removing_the_part_also_lets_the_wide_key_through() {
     let mut sim = SimWorld::new();
-    crate::common::spawn_floor(sim.world_mut());
+    ph2d_physics_scene::spawn_floor(sim.world_mut());
     build_keys(sim.world_mut());
     ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     let bit = entity(&mut sim, "Wide Bit");

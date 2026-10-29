@@ -29,7 +29,7 @@ use ph2d_core::Vec2;
 use ph2d_ecs::Transform;
 use ph2d_physics_ecs::PlatformPlayer;
 
-use crate::common::{slab, spawn_player};
+use ph2d_physics_scene::{slab, spawn_player};
 
 /// A altura das paredes de cada estação.
 const WALL_TOP: f32 = 9.0;

@@ -124,7 +124,6 @@ impl<'w> SceneCtx<'w> {
 // continua a ser a ÚNICA fonte de QUE nível corre o quê (CLAUDE.md §5.0) —
 // aqui só se declara que o ficheiro existe.
 // ─────────────────────────────────────────────────────────────────────────
-pub mod common;
 pub mod physics_smoke_authoring;
 pub mod physics_smoke_blast;
 pub mod physics_smoke_brake;

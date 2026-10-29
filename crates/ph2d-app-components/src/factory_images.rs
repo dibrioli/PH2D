@@ -1,69 +1,9 @@
-//! ⭐ **A arte de fábrica é imagem da biblioteca** ([plano GEF 12](../../../docs/GameEngineFuncional/12_imagem_como_asset_plano.md)):
-//! os pixels de cada `FACTORY_ART` entram no `AssetDb` e a célula reservada entra no mapa
-//! `chave → AssetId` do projecto, como uma imagem importada — o índice, o seletor, o *Select users* e as
-//! ferramentas de imagem passam a vê-la pela mesma porta ([`crate::asset_index_build::texture_of`]).
-//!
-//! ⚠️ O programa traz estes pixels: o save NÃO os grava ([`is_factory_key`]) e a célula nunca se devolve
-//! ao atlas.
+//! O nome traduzido de cada imagem de fábrica — a lei da fábrica no atlas mora na folha
+//! ([`ph2d_render::factory_images`]); o nome é texto da interface (`ph2d-i18n`) e fica com o índice.
 
-use ph2d_asset::{AssetDb, AssetId};
-use ph2d_render::{FACTORY_ART, FactoryArt};
+use ph2d_asset::AssetId;
+use ph2d_render::factory_images::art_of_key;
 use std::collections::BTreeMap;
-
-/// Mete a arte de fábrica no `db` e no mapa do atlas. Idempotente (o id é o blake3 dos pixels).
-pub fn register(db: &AssetDb, atlas: &mut BTreeMap<u32, AssetId>) {
-    for art in &FACTORY_ART {
-        // A IMAGEM (um azulejo é um azulejo); as cópias à volta dele são só do atlas (plano GEF 13 D1).
-        let [w, h] = art.image_px();
-        let id = db.insert_image_rgba8(w, h, ph2d_render::factory_image(art).to_vec());
-        atlas.insert(art.key, id);
-    }
-}
-
-/// A arte de fábrica desta célula do atlas.
-#[must_use]
-pub fn art_of_key(key: u32) -> Option<&'static FactoryArt> {
-    FACTORY_ART.iter().find(|a| a.key == key)
-}
-
-/// A célula é de fábrica (os pixels vêm do programa, não do ficheiro).
-#[must_use]
-pub fn is_factory_key(key: u32) -> bool {
-    art_of_key(key).is_some()
-}
-
-/// ⭐ **Ficheiro antigo** (plano GEF 13 D2): até à onda 13 um objecto dizia «o azulejo» com a grelha das cópias
-/// (`SpriteGrid` = `art.grid`, a célula do meio); hoje a região da chave JÁ é a cópia do meio. Tira essa grelha
-/// de toda sprite de azulejo de fábrica e devolve quantas mudaram. Idempotente; as folhas animadas ficam.
-pub fn forget_extrusion_grids(world: &mut ph2d_ecs::World) -> usize {
-    let mut q = world.query::<(
-        ph2d_ecs::Entity,
-        &ph2d_render::Sprite,
-        &ph2d_ecs::SpriteGrid,
-    )>();
-    let antigas: Vec<ph2d_ecs::Entity> = q
-        .iter(world)
-        .filter(|(_, s, g)| match s.source {
-            ph2d_render::SpriteSource::Atlas { key } => art_of_key(key).is_some_and(|a| {
-                a.tile && [g.hframes, g.vframes] == a.grid && g.frame == a.middle_frame()
-            }),
-            _ => false,
-        })
-        .map(|(e, ..)| e)
-        .collect();
-    for e in &antigas {
-        world.entity_mut(*e).remove::<ph2d_ecs::SpriteGrid>();
-    }
-    antigas.len()
-}
-
-/// ⭐ As células cujos píxeis o ficheiro do projecto grava: as que o projecto trouxe, nunca a fábrica.
-pub fn saved_by_project(atlas: &BTreeMap<u32, AssetId>) -> impl Iterator<Item = (u32, &AssetId)> {
-    atlas
-        .iter()
-        .filter(|(k, _)| !is_factory_key(**k))
-        .map(|(k, id)| (*k, id))
-}
 
 /// O nome traduzido de cada imagem de fábrica presente no mapa.
 #[must_use]
@@ -89,7 +29,7 @@ mod tests {
     fn a_biblioteca_oferece_a_fabrica_pelo_nome_mesmo_sem_uso() {
         let db = AssetDb::new();
         let mut atlas = BTreeMap::new();
-        super::register(&db, &mut atlas);
+        ph2d_render::factory_images::register(&db, &mut atlas);
         let solta = db.insert_image_rgba8(2, 2, vec![9; 16]);
         atlas.insert(ph2d_render::FIRST_IMPORT_KEY, solta);
         let mut sim = SimWorld::new();

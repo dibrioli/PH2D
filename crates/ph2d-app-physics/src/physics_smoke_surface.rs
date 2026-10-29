@@ -34,8 +34,8 @@ use ph2d_core::Vec2;
 use ph2d_ecs::{Entity, Name};
 use ph2d_physics_ecs::{PlatformPlayer, WalkSurface};
 
-use crate::common::{slab, spawn_player};
 use crate::physics_smoke_brake::{DECK_END, DECK_START, DECK_TOP, FLOAT, MARK_X, PIT_TOP};
+use ph2d_physics_scene::{slab, spawn_player};
 
 /// A velocidade de cruzeiro desta cena, m/s — a da irmã 114.
 pub const RUN_SPEED: f32 = 8.0;

@@ -11,12 +11,12 @@
 //! - ⭐ A MESMA lei da troca no editor (plano GEF 13 D6): quem chama o [`upload`] dá a [`OverrideLaw`] — a
 //!   célula do atlas (sem subir cópia), o tamanho e o corte da imagem. Sem lei, a imagem inteira no quad autorado.
 
-use crate::asset_index_build::texture_of;
 use bevy_ecs::prelude::{Component, World};
 use ph2d_asset::{AssetDb, AssetId};
 use ph2d_component_desc::FieldKind;
 use ph2d_ecs::scene::property::PropertyError;
 use ph2d_ecs::{Entity, SimWorld, SpriteGrid, SpritePixels, SpriteRegion};
+use ph2d_render::{OverrideLaw, texture_of};
 use ph2d_render::{Sprite, SpriteRenderer};
 use serde_json::Value;
 use std::cell::RefCell;
@@ -42,17 +42,6 @@ impl ImageOverride {
     pub fn ready(&self) -> bool {
         self.texture_id != 0 || self.law.is_some_and(|l| l.atlas_key.is_some())
     }
-}
-
-/// ⭐ A decisão da porta da troca (`ph2d_app_sprite_anim::image_choice::override_law`) para um override.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct OverrideLaw {
-    /// A célula do atlas que já tem a imagem — sem cópia.
-    pub atlas_key: Option<u32>,
-    /// O tamanho do quad (a escala do objecto fica, o tamanho segue a imagem).
-    pub size: [f32; 2],
-    /// O corte da imagem e a célula a mostrar.
-    pub grid: SpriteGrid,
 }
 
 /// Quem decide a lei de um override: o mundo, a sprite, a imagem.

@@ -6,10 +6,10 @@
 //! SOLVER does the right thing, and these prove an EDIT gesture on the canvas
 //! does. The first of them is the joint-anchor point gizmo.
 
-use crate::common::spawn_floor;
 use ph2d_core::Vec2;
 use ph2d_ecs::{Name, Transform, stable_name_id};
 use ph2d_physics_ecs::{BodyKind, Collider, ColliderShape, PhysicsJoint, RigidBody};
+use ph2d_physics_scene::spawn_floor;
 use ph2d_render::{Sprite, WHITE_TILE_KEY};
 
 /// **Scene 38 (W-JointAnchor).** A pendulum, PAUSED, so the artist can drag

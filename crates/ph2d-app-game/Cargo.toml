@@ -14,10 +14,9 @@ authors.workspace = true
 [dependencies]
 # O roteador do smoke (`SmokeRouter`).
 ph2d-app-host = { path = "../ph2d-app-host" }
-# A porta do `+` do Inspector e o vazio na raiz (os objectos do menu Add nascem por elas).
-ph2d-app-components = { path = "../ph2d-app-components" }
-# Os blocos e o jogador de plataforma do nível (`common::slab`, `common::spawn_player`).
-ph2d-app-physics = { path = "../ph2d-app-physics" }
+# Os blocos e o jogador de plataforma do nível 1 (`slab`, `spawn_player`) — a folha partilhada com as cenas
+# da física. A porta do `+` e o vazio na raiz são de outra família e chegam injectados (`object_add::Portas`).
+ph2d-physics-scene = { path = "../ph2d-physics-scene" }
 ph2d-core = { path = "../ph2d-core" }
 ph2d-ecs = { path = "../ph2d-ecs" }
 # Onde o jogo se mostra (`game_stage::GameStage`, a escolha do menu *Run*).
@@ -41,12 +40,8 @@ ph2d-i18n = { path = "../ph2d-i18n" }
 ph2d-host = { path = "../ph2d-host" }
 
 [dev-dependencies]
-# A vista do player nos gates da lei de animação.
-ph2d-platformer = { path = "../ph2d-platformer" }
 # A arte de fábrica abre como vetor editável (`arte_tests.rs`).
 ph2d-vec-svg = { path = "../ph2d-vec-svg" }
-# O ledger que a ponte da paralaxe pede, nos gates do fundo do nível 2 (`camara_tests.rs`).
-ph2d-preview-drive = { path = "../ph2d-preview-drive" }
 
 [lints]
 workspace = true

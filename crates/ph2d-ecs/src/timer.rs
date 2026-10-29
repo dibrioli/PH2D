@@ -366,6 +366,20 @@ pub fn reconcile_timers(world: &mut World) {
     }
 }
 
+/// Quantos microssegundos vale um passo fixo. Convertido **uma vez**, a partir de uma constante.
+///
+/// ⚠️ `round`, e não `as u64`: a 60 Hz o passo é `16666,66…` µs, e truncar perderia 0,66 µs por
+/// tique — 40 µs por segundo, 2,4 ms por minuto. Invisível num quadro, e uma animação longa
+/// dessincronizaria de um relógio que não trunca.
+///
+/// ⚠️ Os dois tiques do passo fixo (o do `Timer` em `ph2d_app_components::timer_tick` e o das sprites
+/// em `ph2d_app_sprite_anim::tick`) partilham a MESMA conversão; desceu para esta folha em 2026-10-28
+/// porque uma família não chama outra (gate `architecture_no_dependency_climbs_a_layer`).
+#[must_use]
+pub fn step_ticks(fixed_dt: f64) -> u64 {
+    (fixed_dt * 1_000_000.0).round().max(0.0) as u64
+}
+
 #[cfg(test)]
 #[path = "timer_tests.rs"]
 mod tests;

@@ -26,6 +26,7 @@
 use ph2d_asset::{AssetDb, AssetId};
 use ph2d_asset_index::{AssetEntry, AssetIndex, AssetRef};
 use ph2d_i18n::{tr, tr_with};
+use ph2d_render::texture_of;
 // ⚠️ **A memória do que um cartão DESENHA** mudou-se para o irmão `asset_card_art` — ver o
 // cabeçalho de lá. Re-exportada para os gates e os chamadores a nomearem como sempre.
 pub(crate) use crate::asset_card_art::{CardArt, dimensions, swatch_for, thumb_for};
@@ -541,39 +542,6 @@ fn texture_entry(
     }
     entry.thumb = thumb_for(db, id, swatches, budget);
     entry
-}
-
-/// ⭐⭐⭐ **QUE TEXTURA esta entidade referencia** — e a resposta tem DUAS formas.
-///
-/// ⛔⛔ **É a porta que faltava, e a ausência dela custou o report do Enio de 2026-08-30**
-/// (*«as imagens não aparecem no painel nem importando nem criando as imagens no app»*): eu
-/// escrevi *«uma textura é um asset quando uma entidade a referencia»* e implementei só metade
-/// disso — o `SpritePixels`, que é o carimbo da MINORIA.
-///
-/// | forma | quem a tem |
-/// |---|---|
-/// | `SpritePixels(id)` | só o que não coube no átlas (16 bits, sobredimensionado) ou foi promovido |
-/// | célula de átlas + `atlas_asset_map` | o caminho NORMAL de todo import e de todo canvas novo |
-///
-/// ⚠️ **O `atlas_assets` é o que separa proveniência de presença:** ele é preenchido pelo import,
-/// pelo canvas novo e pelo load do projecto, e ⛔ **nunca pelo arranque** — as 16 do átlas de
-/// demonstração ficam de fora sem um caso especial.
-///
-/// ⚠️ **UMA porta, dois leitores** — o índice (*«que assets existem?»*) e o
-/// [`crate::asset_card_verbs::users_of`] (*«quem usa isto?»*). A 1.ª versão respondia a segunda
-/// pergunta com a metade errada, e o *Select users* numa imagem importada devolvia **zero**.
-pub fn texture_of(
-    pixels: Option<&SpritePixels>,
-    sprite: Option<&ph2d_render::Sprite>,
-    atlas_assets: &BTreeMap<u32, AssetId>,
-) -> Option<AssetId> {
-    if let Some(p) = pixels {
-        return Some(p.0);
-    }
-    match sprite?.source {
-        ph2d_render::SpriteSource::Atlas { key } => atlas_assets.get(&key).copied(),
-        _ => None,
-    }
 }
 
 /// A raiz **e toda a descendência** — a mesma definição de «peça» do `assign_master_pieces`.

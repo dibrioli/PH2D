@@ -83,7 +83,3 @@ pub(crate) fn follow_auto_collider(
 fn same(a: f32, b: f32) -> bool {
     (a - b).abs() <= 1e-4 * b.abs().max(1.0)
 }
-
-#[cfg(test)]
-#[path = "tiled_tests.rs"]
-mod tests;

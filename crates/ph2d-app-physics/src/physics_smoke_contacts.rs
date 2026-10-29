@@ -14,7 +14,7 @@ use ph2d_physics_ecs::{
 };
 use ph2d_render::{Sprite, WHITE_TILE_KEY};
 
-use crate::common::spawn_floor;
+use ph2d_physics_scene::spawn_floor;
 
 /// **Scene 25 (W-Contacts).** Where bodies touch, and how hard they press.
 ///

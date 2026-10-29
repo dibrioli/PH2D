@@ -67,7 +67,7 @@ struct Placed {
 /// isso: um objecto vazio com três texturas por baixo.
 ///
 /// ⚠️ **O ficheiro vizinho já tinha pago isto duas vezes** e escreveu-o no doc do
-/// [`crate::asset_index_build::texture_of`]: *«UMA porta, dois leitores»*. Eu fiz-me o **terceiro
+/// [`ph2d_render::texture_of`]: *«UMA porta, dois leitores»*. Eu fiz-me o **terceiro
 /// leitor, com a metade errada** — e o sintoma foi o mesmo dos dois anteriores.
 ///
 /// ⇒ o retrato deixou de saber **como** uma peça aponta para os pixels. Quem resolve é o chamador,

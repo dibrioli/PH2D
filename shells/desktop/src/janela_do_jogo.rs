@@ -84,7 +84,23 @@ impl crate::App {
             return;
         }
         if let Some(cx) = self.components_ctx() {
-            let jogador = ph2d_app_game::smoke::montar(cx.sim, cx.registry, nivel).to_bits();
+            use ph2d_app_components::{component_attach, object_add};
+            let (reg, seeds) = (cx.registry, ph2d_app_physics::physics_seed::COMPONENT_SEEDS);
+            let anexa = |s: &mut ph2d_ecs::SimWorld, b, n: &str| {
+                component_attach::attach_by_name(s, reg, seeds, b, n)
+            };
+            let camera = |s: &mut ph2d_ecs::SimWorld| {
+                object_add::add(object_add::CAMERA, s, reg, seeds).expect("é dos componentes")
+            };
+            let menu = ph2d_app_game::object_add::Portas {
+                raiz: object_add::spawn_empty_root,
+                anexa: &anexa,
+            };
+            let portas = ph2d_app_game::smoke::Portas {
+                menu,
+                camera: &camera,
+            };
+            let jogador = ph2d_app_game::smoke::montar(cx.sim, portas, nivel).to_bits();
             if let Some(hero) = cx.hero_screen.filter(|_| matches!(nivel, 2 | 4)) {
                 hero.gizmo.replace_selection(Some(jogador)); // o Inspector abre no personagem
                 hero.store

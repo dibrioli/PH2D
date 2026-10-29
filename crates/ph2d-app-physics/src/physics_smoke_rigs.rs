@@ -8,10 +8,10 @@
 //! here needs a SECOND thing to be meaningful — a joint needs two bodies, a bake
 //! needs the timeline, a parented body needs an ancestor.
 
-use crate::common::spawn_floor;
 use ph2d_core::Vec2;
 use ph2d_ecs::{Name, Transform, stable_name_id};
 use ph2d_physics_ecs::{BodyKind, Collider, ColliderShape, JointKind, PhysicsJoint, RigidBody};
+use ph2d_physics_scene::spawn_floor;
 use ph2d_render::{Sprite, WHITE_TILE_KEY};
 
 /// Scene 8's rigs: `(x, extra depth, rotation, label)`.

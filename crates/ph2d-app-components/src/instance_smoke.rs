@@ -362,7 +362,7 @@ pub fn instance_smoke_vector(cx: &mut crate::scene_ctx::SceneCtx) {
 
 /// Cena 1 — ver o cabeçalho do módulo.
 pub fn instance_smoke_ragdoll(cx: &mut crate::scene_ctx::SceneCtx) {
-    // O chão da cena — o MESMO que as cenas de física põem (`ph2d_app_physics::common::spawn_floor`),
+    // O chão da cena — o MESMO que as cenas de física põem (`ph2d_physics_scene::spawn_floor`),
     // escrito aqui porque uma família não chama outra (auditoria de arquitectura A1, 2026-09-12). É
     // conteúdo de uma cena de demonstração, não uma lei.
     cx.sim.world_mut().spawn((

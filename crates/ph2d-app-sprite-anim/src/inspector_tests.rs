@@ -346,17 +346,6 @@ fn autoplay_starts_only_at_load_time() {
     assert!(info(&sim, e).playing, "o load tem de comecar");
 }
 
-/// **A conversão do passo fixo ARREDONDA.**
-///
-/// ⚠️ A 60 Hz o passo é `16666,66…` µs; truncar perderia 0,66 µs por tique — 2,4 ms por minuto.
-/// Invisível num quadro, e uma animação longa dessincronizaria de um relógio que não trunca.
-#[test]
-fn the_fixed_step_conversion_rounds_instead_of_truncating() {
-    assert_eq!(crate::tick::step_ticks(1.0 / 60.0), 16_667);
-    assert_eq!(crate::tick::step_ticks(1.0 / 120.0), 8_333);
-    assert_eq!(crate::tick::step_ticks(0.0), 0);
-}
-
 /// **Recuperar um engasgo numa chamada dá o MESMO que recuperar passo a passo.**
 ///
 /// ⚠️ **Este gate existe porque uma mutação derrubou uma afirmação minha.** O tique corria um laço

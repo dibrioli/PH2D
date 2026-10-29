@@ -3,7 +3,7 @@
 //! o jogo mostra, o canto que dá zoom, o miolo que move e as alças dos limites.
 //!
 //! A moldura da câmera activa é a vista que o passe da câmera calculou neste quadro (`camera_2d::update`); as
-//! outras saem da MESMA lei ([`ph2d_app_components::camera_2d::enquadra`]) sobre a mira parada. A proporção é a do
+//! outras saem da MESMA lei ([`ph2d_ecs::camera_2d::enquadra`]) sobre a mira parada. A proporção é a do
 //! formato do jogo ([`ph2d_editor_core::GameFormat::aspect`]).
 //!
 //! ⭐ **O miolo é um clique PENDENTE** (17b A1): o `Down` dentro da moldura da câmera selecionada fica seguro;
@@ -13,8 +13,8 @@
 
 use bevy_ecs::entity::Entity;
 use bevy_ecs::world::World;
-use ph2d_app_components::camera_2d::{alvo_do_follow, enquadra, mira_parada};
 use ph2d_ecs::{CameraFollow, CameraLimits, GameCamera};
+use ph2d_ecs::{alvo_do_follow, enquadra, mira_parada};
 use ph2d_editor_core::CameraFieldEdit;
 use ph2d_editor_core::interaction::drag::DRAG_THRESHOLD_PX;
 
@@ -385,7 +385,3 @@ fn altura_do_canto(a: &Arrasto, i: u8, p: [f32; 2]) -> f32 {
 #[cfg(test)]
 #[path = "moldura_tests.rs"]
 mod tests;
-
-#[cfg(test)]
-#[path = "moldura_ponteiro_tests.rs"]
-mod ponteiro_tests;

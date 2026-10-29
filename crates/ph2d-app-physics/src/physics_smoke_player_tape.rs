@@ -12,7 +12,7 @@
 
 use ph2d_core::Vec2;
 
-use crate::common::{slab, spawn_player};
+use ph2d_physics_scene::{slab, spawn_player};
 
 /// **A corrida se REPETE quando a régua volta.**
 ///

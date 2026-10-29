@@ -175,8 +175,9 @@ pub use audio_2d::{
 };
 pub use camera_2d::{
     CAMERA_MAX_HEIGHT_WORLD, CAMERA_MIN_HEIGHT_WORLD, CameraFollow, CameraLimits, CameraRuntime,
-    GameCamera, active_camera_of, aim_at, camera_count, clamp_axis_to_limits, damp_axis,
-    dead_zone_goal, follow_step, half_extent, sample_velocity, smooth_velocity,
+    GameCamera, active_camera_of, aim_at, alvo_do_follow, camera_count, camera_position_of,
+    clamp_axis_to_limits, damp_axis, dead_zone_goal, enquadra, follow_step, follow_target,
+    half_extent, mira_parada, sample_velocity, smooth_velocity,
 };
 pub use camera_shake::{
     CameraShake, CameraShakeRuntime, SHAKE_EMITTERS_MAX, ShakeEmitter, ShakeSource,

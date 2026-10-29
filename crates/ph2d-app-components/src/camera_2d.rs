@@ -39,9 +39,7 @@
 //! [`ph2d_ecs::CameraRuntime::settled`] responde *«esta câmera já foi posta alguma vez?»* — e no
 //! quadro em que ela nasce a lei é saltada e o centro é o alvo. É o `reset_smoothing()` do oráculo.
 
-use ph2d_ecs::{
-    CameraFollow, CameraLimits, CameraRuntime, Entity, GameCamera, SimWorld, StableId, World,
-};
+use ph2d_ecs::{CameraFollow, CameraLimits, CameraRuntime, Entity, GameCamera, SimWorld, World};
 
 /// O que a câmera de cena quer que a vista seja.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -112,26 +110,6 @@ pub fn aspect_of(size: ph2d_host::WindowSize) -> f32 {
     size.width.max(1) as f32 / size.height.max(1) as f32
 }
 
-/// A posição de mundo de uma entidade.
-fn position_of(world: &World, e: Entity) -> Option<[f32; 2]> {
-    let t = ph2d_ecs::world_transform(world, e)?;
-    Some([t.translation.x, t.translation.y])
-}
-
-/// **Quem o `follow` procura** — pelo NOME, como toda referência durável desta casa.
-///
-/// ⚠️ **Devolve `None` quando o nome não casa**, e o chamador transforma isso numa coluna do
-/// relatório em vez de num silêncio: *«segue ninguém»* e *«segue alguém que está parado»* dão
-/// exactamente a mesma câmera imóvel, e só uma delas é um defeito da cena.
-fn follow_target(world: &mut World, name: &str) -> Option<Entity> {
-    let name = name.trim();
-    if name.is_empty() {
-        return None;
-    }
-    let id = ph2d_ecs::stable_id_for_name(world, name);
-    ph2d_ecs::entity_of_stable_id(world, StableId(id))
-}
-
 /// Um passo da câmera de cena. Devolve o que a vista devia ser, ou `None` quando a cena não tem
 /// câmera activa — e nesse caso o editor fica com o enquadramento dele, que é o de hoje.
 ///
@@ -169,14 +147,14 @@ pub fn update(
 
     // **Para onde ela olha.** Sem `follow`, é a pose autorada da própria câmera — que é o que faz
     // uma câmera fixa ser uma câmera fixa, sem componente nenhum a mais.
-    let pose = position_of(world, cam_e).unwrap_or([0.0, 0.0]);
+    let pose = ph2d_ecs::camera_position_of(world, cam_e).unwrap_or([0.0, 0.0]);
     let alvo = match follow.as_ref() {
         Some(f) => {
             report.target_name = f.target.trim().to_string();
-            match follow_target(world, &f.target) {
+            match ph2d_ecs::follow_target(world, &f.target) {
                 Some(t) => {
                     report.target_found = true;
-                    position_of(world, t).unwrap_or(pose)
+                    ph2d_ecs::camera_position_of(world, t).unwrap_or(pose)
                 }
                 // ⚠️ **Alvo por achar ⇒ a câmera fica na pose dela**, e o relatório diz porquê.
                 None => pose,
@@ -243,7 +221,7 @@ pub fn update(
     // tique deixaria o amortecimento a puxar para fora e a cerca a puxar de volta, que é o tremor
     // clássico na borda do nível. Ela é idempotente, então uma vez por quadro dá o mesmo sítio.
     let antes = rt.center;
-    rt.center = enquadra(rt.center, half, limits.as_ref());
+    rt.center = ph2d_ecs::enquadra(rt.center, half, limits.as_ref());
     report.limited = rt.center != antes;
 
     report.center = rt.center;
@@ -270,40 +248,6 @@ pub fn update(
         ent.insert(rt);
     }
     (Some(vista), report)
-}
-
-/// ⭐ **A cerca**, eixo a eixo: o centro `mira` com a meia-janela `half` preso aos limites. A porta única — o
-/// passe da câmera e a moldura do canvas (`ph2d_app_game::moldura`) leem-na.
-#[must_use]
-pub fn enquadra(mira: [f32; 2], half: [f32; 2], limits: Option<&CameraLimits>) -> [f32; 2] {
-    let Some(l) = limits else {
-        return mira;
-    };
-    std::array::from_fn(|i| ph2d_ecs::clamp_axis_to_limits(mira[i], half[i], l.min[i], l.max[i]))
-}
-
-/// A mira de uma câmera parada (sem velocidade): o alvo do `follow` + o offset dele, ou a pose. É onde ela
-/// renasce em cada quadro do editor parado (o rebobinar tira o estado vivo).
-#[must_use]
-pub fn mira_parada(world: &mut World, cam: Entity) -> [f32; 2] {
-    let pose = position_of(world, cam).unwrap_or([0.0, 0.0]);
-    match world.get::<CameraFollow>(cam).cloned() {
-        Some(f) => {
-            let alvo = follow_target(world, &f.target)
-                .and_then(|t| position_of(world, t))
-                .unwrap_or(pose);
-            ph2d_ecs::aim_at(alvo, [0.0, 0.0], &f)
-        }
-        None => pose,
-    }
-}
-
-/// O alvo do `follow` de `cam`, se o achar: `(nome, onde está)`.
-#[must_use]
-pub fn alvo_do_follow(world: &mut World, cam: Entity) -> Option<(String, [f32; 2])> {
-    let f = world.get::<CameraFollow>(cam)?.target.trim().to_string();
-    let t = follow_target(world, &f)?;
-    Some((f, position_of(world, t)?))
 }
 
 /// O `follow` neutro, para a mira do nascimento quando não há nenhum.

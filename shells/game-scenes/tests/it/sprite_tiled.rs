@@ -1,11 +1,15 @@
 //! Os gates do Draw Mode Tiled (plano GEF 14): pelo nível do jogo e pela porta do Inspector (`apply_edit`).
 
-use super::*;
-use crate::image_choice::choose_library_image;
-use crate::image_use::{ImageUse, apply_edit, image_use};
+use ph2d_app_sprite_anim::image_choice::choose_library_image;
+use ph2d_app_sprite_anim::image_use::{ImageUse, apply_edit, image_use};
+use ph2d_app_sprite_anim::tiled::*;
 use ph2d_asset::{AssetDb, AssetId};
+use ph2d_ecs::{Entity, TiledDraw};
 use ph2d_ecs::{Name, SimWorld, TextureRepeat, UvTransform};
 use ph2d_editor_core::ImageUseEdit;
+use ph2d_editor_core::InspectorDraw;
+use ph2d_physics_ecs::{Collider, ColliderShape};
+use ph2d_render::Sprite;
 use ph2d_render::{GROUND_TILE, GROUND_TILE_KEY, PLATFORM_TILE, PLATFORM_TILE_KEY, WHITE_TILE_KEY};
 use std::collections::BTreeMap;
 
@@ -14,7 +18,7 @@ const PPM: f32 = 100.0;
 fn biblioteca() -> (AssetDb, BTreeMap<u32, AssetId>) {
     let db = AssetDb::new();
     let mut atlas = BTreeMap::new();
-    ph2d_app_components::factory_images::register(&db, &mut atlas);
+    ph2d_render::factory_images::register(&db, &mut atlas);
     (db, atlas)
 }
 
@@ -25,7 +29,7 @@ fn sem_placa(_: u32, _: u32, _: &[u8]) -> Result<u32, String> {
 /// O nível 2 e a sua Platform Low (Tiled 2,4 × 0,5, ladrilho 1 × 0,5, collider automático).
 fn platform_low() -> (SimWorld, Entity) {
     let mut sim = SimWorld::new();
-    ph2d_app_game::smoke::montar(&mut sim, &ph2d_app_components::test_support::registo(), 2);
+    crate::comp::montar(&mut sim, 2);
     let w = sim.world_mut();
     let mut q = w.query::<(Entity, &Name)>();
     let e = q

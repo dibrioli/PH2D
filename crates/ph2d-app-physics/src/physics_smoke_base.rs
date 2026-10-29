@@ -9,10 +9,10 @@
 //! CENAS. ⭐ As cinco são também as próximas candidatas a sair para a crate — elas
 //! só continuam aqui porque o `physics_smoke_author` mexe no Inspector.
 
-use crate::common::spawn_floor;
 use ph2d_core::Vec2;
 use ph2d_ecs::{Name, Transform};
 use ph2d_physics_ecs::{BodyKind, Collider, ColliderShape, RigidBody};
+use ph2d_physics_scene::spawn_floor;
 use ph2d_render::{Sprite, WHITE_TILE_KEY};
 
 /// **Scene 1 (W1).** One falling body, one floor. Approved 2026-07-18.

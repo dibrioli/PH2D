@@ -331,6 +331,12 @@ pub struct SpriteAnimator {
     pub repeat_count: u32,
 }
 
+/// A velocidade da §11 Animation: a faixa do motor (±100×). A lei do cartão Animation (`ph2d_app_sprite_anim`) e do
+/// `ph2d.set` (`ph2d_app_components::property_laws`) — desceu para esta folha em 2026-10-28.
+pub fn sanitize_sprite_animator(p: &mut SpriteAnimator) {
+    p.speed_q16 = p.speed_q16.clamp(-SPEED_MAX_Q16, SPEED_MAX_Q16);
+}
+
 impl SpriteAnimator {
     /// Um animador parado na tag dada, à velocidade normal.
     pub fn new(current: impl Into<String>) -> Self {

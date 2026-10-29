@@ -34,7 +34,7 @@ use ph2d_core::Vec2;
 use ph2d_ecs::{Entity, Name};
 use ph2d_physics_ecs::PlatformPlayer;
 
-use crate::common::{slab, spawn_player};
+use ph2d_physics_scene::{slab, spawn_player};
 
 /// A altura de flutuação das cenas de player.
 pub const FLOAT: f32 = 0.9;

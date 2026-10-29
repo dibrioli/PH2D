@@ -1,10 +1,17 @@
 //! Os gates do plano GEF 12 pela PORTA (`choose_library_image`), com a biblioteca de verdade: a fábrica
 //! registada como o app a regista e a imagem do smoke trazida do ficheiro.
 
-use super::*;
+use ph2d_app_sprite_anim::image_choice::*;
+use ph2d_asset::{AssetDb, AssetId};
 use ph2d_ecs::scene::{WorldSnapshot, snapshot_to_world, world_to_snapshot};
+use ph2d_ecs::{
+    Entity, RepeatMode, ScrollRepeat, SimWorld, SpriteAnimations, SpriteGrid, SpritePixels,
+    TextureRepeat, UvTransform,
+};
 use ph2d_ecs::{ScrollFactor, Transform};
+use ph2d_render::Sprite;
 use ph2d_render::{BACKGROUND_TEXELS_PER_M, CLOUDS_TILE, HILLS_TILE};
+use std::collections::BTreeMap;
 
 const PPM: f32 = 100.0;
 const MONTES_POR_DO_SOL: &str = concat!(
@@ -21,7 +28,7 @@ struct Biblioteca {
 fn biblioteca() -> Biblioteca {
     let db = AssetDb::new();
     let mut atlas = BTreeMap::new();
-    ph2d_app_components::factory_images::register(&db, &mut atlas);
+    ph2d_render::factory_images::register(&db, &mut atlas);
     let por_do_sol = db
         .load_png_path(std::path::Path::new(MONTES_POR_DO_SOL))
         .expect("a arte do smoke abre");
@@ -60,12 +67,8 @@ fn camada(sim: &mut SimWorld, nome: &str) -> Entity {
 /// referenciada (pela chave do atlas ou pelo `SpritePixels`), a célula da grelha, a repetição do UV.
 fn texel(sim: &SimWorld, e: Entity, b: &Biblioteca, quv: [f32; 2]) -> [u8; 4] {
     let w = sim.world();
-    let id = ph2d_app_components::asset_index_build::texture_of(
-        w.get::<SpritePixels>(e),
-        w.get::<Sprite>(e),
-        &b.atlas,
-    )
-    .expect("a sprite mostra uma imagem da biblioteca");
+    let id = ph2d_render::texture_of(w.get::<SpritePixels>(e), w.get::<Sprite>(e), &b.atlas)
+        .expect("a sprite mostra uma imagem da biblioteca");
     let asset = b.db.get(&id).expect("no db");
     let (iw, ih, px) = asset.image_rgba8().expect("imagem");
     let g = w
@@ -187,14 +190,14 @@ fn o_ladrilho_de_fabrica_e_o_de_antes() {
 #[test]
 fn a_fabrica_entra_na_biblioteca_e_fica_fora_do_ficheiro() {
     let b = biblioteca();
-    let gravadas: Vec<u32> = ph2d_app_components::factory_images::saved_by_project(&b.atlas)
+    let gravadas: Vec<u32> = ph2d_render::factory_images::saved_by_project(&b.atlas)
         .map(|(k, _)| k)
         .collect();
     assert_eq!(gravadas, vec![ph2d_render::FIRST_IMPORT_KEY]);
     assert_eq!(b.atlas.len(), ph2d_render::FACTORY_ART.len() + 1);
     // Idempotente: registar outra vez não muda nada.
     let mut outra = b.atlas.clone();
-    ph2d_app_components::factory_images::register(&b.db, &mut outra);
+    ph2d_render::factory_images::register(&b.db, &mut outra);
     assert_eq!(outra, b.atlas);
 }
 

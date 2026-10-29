@@ -29,7 +29,7 @@ use ph2d_physics_ecs::{
 };
 use ph2d_render::{Sprite, WHITE_TILE_KEY};
 
-use crate::common::slab;
+use ph2d_physics_scene::slab;
 
 /// A altura de flutuação da cena — a das outras cenas de player.
 pub const FLOAT: f32 = 0.9;

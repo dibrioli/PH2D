@@ -11,7 +11,7 @@ use ph2d_ecs::{Name, Transform};
 use ph2d_physics_ecs::{BodyKind, Collider, ColliderShape, RigidBody};
 use ph2d_render::{Sprite, WHITE_TILE_KEY};
 
-use crate::common::spawn_floor;
+use ph2d_physics_scene::spawn_floor;
 
 /// **Scene 9 (W6).** The world scale reaches the collider. Four balls drop
 /// onto the floor, each authored as a `Ball` but scaled differently — the

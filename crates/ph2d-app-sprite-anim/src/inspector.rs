@@ -279,7 +279,7 @@ pub fn apply_anim_edit(
             PlayerEdit::Autoplay(on) => p.autoplay = *on,
             PlayerEdit::Speed(v) => {
                 p.speed_q16 = (v * SPEED_ONE_Q16 as f32) as i32;
-                ph2d_app_components::sprite_inspector::sanitize_sprite_animator(&mut p);
+                ph2d_ecs::sprite_anim::sanitize_sprite_animator(&mut p);
             }
             PlayerEdit::DirectionOverride(tag) => {
                 p.direction_override = (*tag > 0).then(|| AnimDirection::from_tag(tag - 1));

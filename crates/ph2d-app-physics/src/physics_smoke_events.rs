@@ -12,7 +12,7 @@ use ph2d_physics_ecs::{
 };
 use ph2d_render::{Sprite, WHITE_TILE_KEY};
 
-use crate::common::spawn_floor;
+use ph2d_physics_scene::spawn_floor;
 
 /// **Cena 29 (W-ContactEvents).** Três leituras da mesma coisa, lado a lado.
 ///

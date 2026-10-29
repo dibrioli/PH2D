@@ -395,6 +395,61 @@ pub fn aim_at(target: [f32; 2], velocity: [f32; 2], follow: &CameraFollow) -> [f
     ]
 }
 
+/// A posição de mundo de uma entidade.
+#[must_use]
+pub fn camera_position_of(world: &World, e: Entity) -> Option<[f32; 2]> {
+    let t = crate::world_transform(world, e)?;
+    Some([t.translation.x, t.translation.y])
+}
+
+/// **Quem o `follow` procura** — pelo NOME, como toda referência durável desta casa.
+///
+/// ⚠️ **Devolve `None` quando o nome não casa**, e o chamador transforma isso numa coluna do
+/// relatório em vez de num silêncio: *«segue ninguém»* e *«segue alguém que está parado»* dão
+/// exactamente a mesma câmera imóvel, e só uma delas é um defeito da cena.
+pub fn follow_target(world: &mut World, name: &str) -> Option<Entity> {
+    let name = name.trim();
+    if name.is_empty() {
+        return None;
+    }
+    let id = crate::stable_id_for_name(world, name);
+    crate::entity_of_stable_id(world, crate::StableId(id))
+}
+
+/// ⭐ **A cerca**, eixo a eixo: o centro `mira` com a meia-janela `half` preso aos limites. A porta única — o
+/// passe da câmera (`ph2d_app_components::camera_2d`) e a moldura do canvas (`ph2d_app_game::moldura`) leem-na.
+#[must_use]
+pub fn enquadra(mira: [f32; 2], half: [f32; 2], limits: Option<&CameraLimits>) -> [f32; 2] {
+    let Some(l) = limits else {
+        return mira;
+    };
+    std::array::from_fn(|i| clamp_axis_to_limits(mira[i], half[i], l.min[i], l.max[i]))
+}
+
+/// A mira de uma câmera parada (sem velocidade): o alvo do `follow` + o offset dele, ou a pose. É onde ela
+/// renasce em cada quadro do editor parado (o rebobinar tira o estado vivo).
+#[must_use]
+pub fn mira_parada(world: &mut World, cam: Entity) -> [f32; 2] {
+    let pose = camera_position_of(world, cam).unwrap_or([0.0, 0.0]);
+    match world.get::<CameraFollow>(cam).cloned() {
+        Some(f) => {
+            let alvo = follow_target(world, &f.target)
+                .and_then(|t| camera_position_of(world, t))
+                .unwrap_or(pose);
+            aim_at(alvo, [0.0, 0.0], &f)
+        }
+        None => pose,
+    }
+}
+
+/// O alvo do `follow` de `cam`, se o achar: `(nome, onde está)`.
+#[must_use]
+pub fn alvo_do_follow(world: &mut World, cam: Entity) -> Option<(String, [f32; 2])> {
+    let f = world.get::<CameraFollow>(cam)?.target.trim().to_string();
+    let t = follow_target(world, &f)?;
+    Some((f, camera_position_of(world, t)?))
+}
+
 /// ⭐ **A câmera que MANDA** — maior prioridade, desempate pelo [`crate::StableId`].
 ///
 /// ⚠️ **Ela não recusa várias**, pela mesma razão do [`crate::listener_of`]: recusar obrigaria a

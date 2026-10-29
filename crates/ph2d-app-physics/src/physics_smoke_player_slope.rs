@@ -24,7 +24,7 @@
 
 use ph2d_core::Vec2;
 
-use crate::common::{slab, spawn_player};
+use ph2d_physics_scene::{slab, spawn_player};
 
 /// **A ladeira** — 40° de um lado, 50° do outro, o limite autorado no meio.
 pub fn physics_smoke_slope(ctx: &mut crate::SceneCtx<'_>) {

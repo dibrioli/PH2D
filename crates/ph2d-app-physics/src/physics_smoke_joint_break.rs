@@ -15,12 +15,12 @@
 //! Os números abaixo saíram de uma sonda headless sobre esta mesma armação,
 //! rodada ANTES desta mensagem ser escrita.
 
-use crate::common::spawn_floor;
 use ph2d_core::Vec2;
 use ph2d_ecs::{Name, Transform, stable_name_id};
 use ph2d_physics_ecs::{
     BodyKind, Collider, ColliderShape, JointKind, MassOverride, PhysicsJoint, RigidBody,
 };
+use ph2d_physics_scene::spawn_floor;
 use ph2d_render::{Sprite, WHITE_TILE_KEY};
 
 /// O que toda corda desta cena aguenta, newtons. Escolhido pela MEDIÇÃO: uma

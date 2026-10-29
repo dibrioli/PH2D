@@ -27,10 +27,10 @@
 //! Os números da mensagem saíram da sonda `probe_smoke_51` (`joint_rig_drag`),
 //! rodada sobre ESTAS armações antes de a mensagem ser escrita.
 
-use crate::common::spawn_floor;
 use ph2d_core::Vec2;
 use ph2d_ecs::{Name, Transform, World, stable_name_id};
 use ph2d_physics_ecs::{BodyKind, Collider, ColliderShape, PhysicsJoint, RigidBody};
+use ph2d_physics_scene::spawn_floor;
 use ph2d_render::{Sprite, WHITE_TILE_KEY};
 
 /// As três armações, sem chão e sem mensagem — a MESMA construção que a sonda

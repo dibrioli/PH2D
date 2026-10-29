@@ -1,0 +1,23 @@
+[package]
+name = "ph2d-physics-scene"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+# ⭐ Os povoadores partilhados das cenas de física — o chão, o personagem e a laje estática. Folha:
+# as cenas da família da física (`ph2d-app-physics`) e o nível 1 do jogo (`ph2d-app-game`) põem os
+# MESMOS corpos, e uma família não chama outra (ADR-0075, gate `architecture_no_dependency_climbs_a_layer`).
+[lib]
+
+[dependencies]
+bevy_ecs = "0.19"
+ph2d-core = { path = "../ph2d-core" }
+ph2d-ecs = { path = "../ph2d-ecs" }
+ph2d-physics-ecs = { path = "../ph2d-physics-ecs" }
+ph2d-render = { path = "../ph2d-render" }
+
+[lints]
+workspace = true

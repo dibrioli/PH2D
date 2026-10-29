@@ -37,7 +37,7 @@ pub(crate) const LEIS: &[(&str, Lei)] = &[
     ("ph2d::ecs::SortingLayer", None),
     (
         "ph2d::ecs::SpriteAnimator",
-        Some(|w, e| em(w, e, crate::sprite_inspector::sanitize_sprite_animator)),
+        Some(|w, e| em(w, e, ph2d_ecs::sprite_anim::sanitize_sprite_animator)),
     ),
     ("ph2d::ecs::SpriteCornerTint", None),
     (

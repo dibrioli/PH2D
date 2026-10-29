@@ -1,16 +1,14 @@
-use super::*;
-use crate::registo_de_teste as registo;
+use ph2d_app_game::object_add::*;
+use ph2d_ecs::{Entity, SimWorld, SpriteAnimations, SpriteAnimator, SpriteGrid};
+use ph2d_editor_core::object_add::AddEntry;
+use ph2d_physics_ecs::{BodyKind, CharacterAnimations, Collider, ColliderShape, RigidBody};
 use ph2d_physics_ecs::{LockRotation, PlatformPlayer};
+use ph2d_render::{HERO_SHEET_TAGS, Sprite};
 
 fn nasce(entry: AddEntry, sim: &mut SimWorld) -> Entity {
-    let bits = add(
-        entry,
-        sim,
-        &registo(),
-        ph2d_app_physics::physics_seed::COMPONENT_SEEDS,
-    )
-    .expect("a entrada é desta família")
-    .unwrap_or_else(|e| panic!("{}: {e}", entry.key.key()));
+    let bits = crate::comp::menu(entry, sim)
+        .expect("a entrada é desta família")
+        .unwrap_or_else(|e| panic!("{}: {e}", entry.key.key()));
     Entity::from_bits(bits)
 }
 
@@ -116,14 +114,6 @@ fn o_personagem_tem_capsula_e_as_quatro_animacoes() {
 fn entrada_alheia_nao_cria_nada() {
     let mut sim = SimWorld::new();
     let antes = sim.world().entities().len();
-    assert!(
-        add(
-            ph2d_editor_core::object_add::EMPTY,
-            &mut sim,
-            &registo(),
-            &[]
-        )
-        .is_none()
-    );
+    assert!(crate::comp::menu(ph2d_editor_core::object_add::EMPTY, &mut sim).is_none());
     assert_eq!(sim.world().entities().len(), antes);
 }

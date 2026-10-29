@@ -26,6 +26,7 @@
 //! foi recusada no desenho**: o nome é editável a meio, e o relógio saltaria de timer debaixo da
 //! mão do artista.
 
+use ph2d_ecs::timer::step_ticks;
 use ph2d_ecs::{Entity, SimWorld, Timers};
 
 /// Um sinal que um timer produziu neste tique.
@@ -34,19 +35,6 @@ pub struct TimerSignal {
     pub name: String,
     /// Quantos períodos fecharam. **Sempre ≥ 1** — zero não chega a virar um destes.
     pub fires: u32,
-}
-
-/// Quantos microssegundos vale um passo fixo. Convertido **uma vez**, a partir de uma constante.
-///
-/// ⚠️ `round`, e não `as u64`: a 60 Hz o passo é `16666,66…` µs, e truncar perderia 0,66 µs por
-/// tique — 40 µs por segundo, 2,4 ms por minuto. Invisível num quadro, e uma animação longa
-/// dessincronizaria de um relógio que não trunca.
-///
-/// ⚠️ Desceu da `sprite_anim_tick` da shell com esta ponte (2026-10-25): os dois tiques do passo
-/// fixo partilham a MESMA conversão, e a shell reexporta-a daqui.
-#[must_use]
-pub fn step_ticks(fixed_dt: f64) -> u64 {
-    (fixed_dt * 1_000_000.0).round().max(0.0) as u64
 }
 
 /// Avança todo timer da cena em `ticks` passos fixos e devolve o que eles têm a dizer.

@@ -1,0 +1,42 @@
+[package]
+name = "ph2d-host-game-scenes"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+# ⭐ Os gates do JOGO e da ANIMAÇÃO DE SPRITE sobre o nível MONTADO (`PH2D_GAME_SMOKE`): o nível nasce pelo menu
+# Add (`ph2d-app-game`), cujas portas — o vazio na raiz, o `+` do Inspector, a Camera — são da família dos
+# componentes, com as sementes da física; a troca de imagem (`ph2d-app-sprite-anim`) grava e repõe com o
+# catálogo do produto. Família → família reprova a lei das camadas (`architecture_no_dependency_climbs_a_layer`),
+# e só a COMPOSIÇÃO (`shells/`) as vê juntas. Moram aqui e não em `shells/desktop` porque a catraca
+# `the_shell_only_shrinks` conta cada linha de lá — o precedente é `shells/code-scenes`.
+
+[lib]
+path = "src/lib.rs"
+
+[dev-dependencies]
+ph2d-app-components = { path = "../../crates/ph2d-app-components", features = ["test-support"] }
+ph2d-app-game = { path = "../../crates/ph2d-app-game" }
+ph2d-app-physics = { path = "../../crates/ph2d-app-physics" }
+ph2d-app-sprite-anim = { path = "../../crates/ph2d-app-sprite-anim" }
+ph2d-a11y = { path = "../../crates/ph2d-a11y" }
+ph2d-asset = { path = "../../crates/ph2d-asset" }
+ph2d-core = { path = "../../crates/ph2d-core" }
+ph2d-ecs = { path = "../../crates/ph2d-ecs" }
+ph2d-editor-core = { path = "../../crates/ph2d-editor-core" }
+ph2d-host = { path = "../../crates/ph2d-host" }
+ph2d-i18n = { path = "../../crates/ph2d-i18n" }
+ph2d-physics-ecs = { path = "../../crates/ph2d-physics-ecs" }
+ph2d-preview-drive = { path = "../../crates/ph2d-preview-drive", features = ["test-support"] }
+ph2d-render = { path = "../../crates/ph2d-render" }
+ph2d-runtime = { path = "../../crates/ph2d-runtime" }
+ph2d-script = { path = "../../crates/ph2d-script" }
+ph2d-text = { path = "../../crates/ph2d-text" }
+ph2d-tokens = { path = "../../crates/ph2d-tokens" }
+ph2d-vector = { path = "../../crates/ph2d-vector" }
+
+[lints]
+workspace = true

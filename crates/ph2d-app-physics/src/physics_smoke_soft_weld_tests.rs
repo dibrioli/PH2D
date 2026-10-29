@@ -9,7 +9,7 @@ use ph2d_physics_ecs::PhysicsBridge;
 /// vê, e não uma re-encenação em `ph2d-physics`.
 fn run(secs: f32) -> SimWorld {
     let mut sim = SimWorld::new();
-    crate::common::spawn_floor(sim.world_mut());
+    ph2d_physics_scene::spawn_floor(sim.world_mut());
     build_soft_weld(sim.world_mut());
     ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     let mut bridge = PhysicsBridge::new();
@@ -60,7 +60,7 @@ fn probe_smoke_68() {
     // O pico do impacto tem de ser amostrado ENQUANTO a bola está em cima, então
     // a varredura roda tick a tick em vez de medir só o fim.
     let mut sim = SimWorld::new();
-    crate::common::spawn_floor(sim.world_mut());
+    ph2d_physics_scene::spawn_floor(sim.world_mut());
     build_soft_weld(sim.world_mut());
     ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     let mut bridge = PhysicsBridge::new();
@@ -130,7 +130,7 @@ fn the_rigid_lane_is_the_control_and_the_stiffness_orders_the_rest() {
 #[test]
 fn the_impact_lane_bends_far_and_springs_back() {
     let mut sim = SimWorld::new();
-    crate::common::spawn_floor(sim.world_mut());
+    ph2d_physics_scene::spawn_floor(sim.world_mut());
     build_soft_weld(sim.world_mut());
     ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     let mut bridge = PhysicsBridge::new();

@@ -183,9 +183,7 @@ pub fn cut_of_users(world: &World, id: AssetId, atlas: &BTreeMap<u32, AssetId>) 
     let mut q = world.try_query::<(Option<&SpritePixels>, &Sprite, &SpriteGrid)>()?;
     q.iter(world)
         .filter(|(_, _, g)| g.hframes.max(1) * g.vframes.max(1) > 1)
-        .find(|(px, s, _)| {
-            ph2d_app_components::asset_index_build::texture_of(*px, Some(*s), atlas) == Some(id)
-        })
+        .find(|(px, s, _)| ph2d_render::texture_of(*px, Some(*s), atlas) == Some(id))
         .map(|(_, _, g)| Slicing {
             grid: [g.hframes.max(1), g.vframes.max(1)],
             still_frame: 0,
@@ -218,7 +216,7 @@ pub fn image_facts(
     if let Some(art) = atlas
         .iter()
         .find(|(_, a)| **a == id)
-        .and_then(|(k, _)| ph2d_app_components::factory_images::art_of_key(*k))
+        .and_then(|(k, _)| ph2d_render::factory_images::art_of_key(*k))
     {
         return Some(factory_facts(art));
     }
@@ -238,7 +236,7 @@ pub fn library_facts(
     let mut f = image_facts(id, db, atlas, ppm)?;
     let fabrica = atlas
         .iter()
-        .any(|(k, a)| *a == id && ph2d_app_components::factory_images::is_factory_key(*k));
+        .any(|(k, a)| *a == id && ph2d_render::factory_images::is_factory_key(*k));
     if f.slicing.is_none() && !fabrica {
         f.slicing = cut_of_users(world, id, atlas);
     }
@@ -264,12 +262,8 @@ pub fn choose_library_image(
     let no_image = || ph2d_i18n::tr("app.sprite_anim.image_choice.not_an_image").to_owned();
     let new = library_facts(sim.world(), id, db, atlas, ppm).ok_or_else(no_image)?;
     let w = sim.world();
-    let old = ph2d_app_components::asset_index_build::texture_of(
-        w.get::<SpritePixels>(e),
-        w.get::<Sprite>(e),
-        atlas,
-    )
-    .and_then(|old| image_facts(old, db, atlas, ppm));
+    let old = ph2d_render::texture_of(w.get::<SpritePixels>(e), w.get::<Sprite>(e), atlas)
+        .and_then(|old| image_facts(old, db, atlas, ppm));
     let source = match atlas.iter().find(|(_, a)| **a == id) {
         Some((key, _)) => ImageSource::Atlas { key: *key },
         None => {
@@ -300,15 +294,11 @@ pub fn override_law(
     db: &AssetDb,
     atlas: &BTreeMap<u32, AssetId>,
     ppm: f32,
-) -> Option<ph2d_app_components::script_image::OverrideLaw> {
+) -> Option<ph2d_render::OverrideLaw> {
     let new = library_facts(world, id, db, atlas, ppm)?;
     let sprite = *world.get::<Sprite>(e)?;
-    let old = ph2d_app_components::asset_index_build::texture_of(
-        world.get::<SpritePixels>(e),
-        Some(&sprite),
-        atlas,
-    )
-    .and_then(|old| image_facts(old, db, atlas, ppm));
+    let old = ph2d_render::texture_of(world.get::<SpritePixels>(e), Some(&sprite), atlas)
+        .and_then(|old| image_facts(old, db, atlas, ppm));
     let mut copia = World::new();
     let c = copia.spawn(sprite).id();
     let mut ce = copia.entity_mut(c);
@@ -338,7 +328,7 @@ pub fn override_law(
     choose_image(&mut copia, c, old, source, new);
     let repete =
         crate::image_use::image_use(world, e) == Some(crate::image_use::ImageUse::Repeated);
-    Some(ph2d_app_components::script_image::OverrideLaw {
+    Some(ph2d_render::OverrideLaw {
         atlas_key,
         size: if repete {
             sprite.size
@@ -357,6 +347,9 @@ pub fn override_law(
 ///
 /// # Errors
 /// O texto para o artista se `id` não é uma imagem, ou a placa recusa a textura (a sprite não fica).
+///
+/// `biblioteca` são os nomes da biblioteca da sessão (`ph2d_app_components::library_names::session_library`),
+/// entregues pela composição — uma família não chama outra.
 #[allow(clippy::too_many_arguments)]
 pub fn place_library_image(
     sim: &mut SimWorld,
@@ -365,12 +358,14 @@ pub fn place_library_image(
     atlas: &BTreeMap<u32, AssetId>,
     ppm: f32,
     at: [f32; 2],
+    biblioteca: &BTreeMap<AssetId, String>,
     base: &str,
     id: AssetId,
 ) -> Result<Entity, String> {
     // O objecto chama-se como a imagem na biblioteca (a Unity faz o mesmo); `base` se ela não tem nome.
-    let nome = ph2d_app_components::library_names::session_library(sim, db, atlas)
-        .remove(&id)
+    let nome = biblioteca
+        .get(&id)
+        .cloned()
         .unwrap_or_else(|| base.to_owned());
     let (_, bits) = ph2d_image_import::spawn_sprite(
         sim,
@@ -440,7 +435,3 @@ pub fn bring_into_library(
 #[cfg(test)]
 #[path = "image_choice_tests.rs"]
 mod tests;
-
-#[cfg(test)]
-#[path = "image_choice_gate_tests.rs"]
-mod gate_tests;

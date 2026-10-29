@@ -42,7 +42,7 @@ use ph2d_core::Vec2;
 use ph2d_ecs::{Entity, Name};
 use ph2d_physics_ecs::PlatformPlayer;
 
-use crate::common::{slab, spawn_player};
+use ph2d_physics_scene::{slab, spawn_player};
 
 /// O topo do patamar BAIXO — ⚠️ **1,0 e não 1,5**, e o número vem do pulo
 /// COLADO À PAREDE: os pés dele chegam a **1,145 m** (medido), então um degrau

@@ -27,6 +27,8 @@ bevy_ecs = "0.19"
 ph2d-core = { path = "../ph2d-core" }
 ph2d-ecs = { path = "../ph2d-ecs" }
 ph2d-physics-ecs = { path = "../ph2d-physics-ecs" }
+# O chão, o personagem e a laje das cenas (`common.rs` desceu para esta folha, partilhada com o jogo).
+ph2d-physics-scene = { path = "../ph2d-physics-scene" }
 # ⭐ A árvore de tags (TOP-20 #9, W3c) — o caminho do filtro na row *Only for tag*.
 ph2d-tags = { path = "../ph2d-tags" }
 ph2d-render = { path = "../ph2d-render" }

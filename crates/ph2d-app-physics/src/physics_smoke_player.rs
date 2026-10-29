@@ -15,7 +15,6 @@
 //! cápsula daqui (`0,3` / `0,2`) o mínimo já é `0,5` **no plano** — ou seja, o
 //! ponto de partida a deixa TANGENTE, e ela deixa de pairar na primeira rampa.
 
-use crate::common::{slab, spawn_player};
 use ph2d_anim::{AnimValue, Interp, RationalTime};
 use ph2d_core::Vec2;
 use ph2d_ecs::stable_name_id;
@@ -24,6 +23,7 @@ use ph2d_physics_ecs::{
     BodyKind, Collider, ColliderShape, JointKind, LockRotation, PhysicsJoint, PlatformPlayer,
     RigidBody,
 };
+use ph2d_physics_scene::{slab, spawn_player};
 use ph2d_render::{Sprite, WHITE_TILE_KEY};
 use ph2d_timeline::{PropKind, TimelineDoc};
 

@@ -30,16 +30,6 @@ const NOT_LANGUAGE: &[Excecao] = &[
          como a ponte reencontra a junta depois do respawn do undo",
     ),
     (
-        "common.rs",
-        "Floor",
-        "o nome do chão que as cenas de física montam — dado da cena",
-    ),
-    (
-        "common.rs",
-        "Player",
-        "o nome do jogador que as cenas de física montam — dado da cena",
-    ),
-    (
         "joint.rs",
         "Body",
         "o nome por omissão de um corpo sem `Name`, na porta que baptiza — identidade durável",

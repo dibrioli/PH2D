@@ -2,13 +2,23 @@
 //! corte propõe a grelha pelas calhas transparentes (sem calhas: 1 × 1, nada inventado), e os níveis gravados
 //! abrem com o uso certo.
 
-use super::*;
-use crate::image_choice::choose_library_image;
-use ph2d_app_components::test_support::registo;
+use crate::comp::registo;
+use ph2d_app_sprite_anim::image_choice::ImageFacts;
+use ph2d_app_sprite_anim::image_choice::choose_library_image;
+use ph2d_app_sprite_anim::image_use::*;
+use ph2d_asset::{AssetDb, AssetId};
 use ph2d_ecs::scene::{WorldSnapshot, snapshot_to_world, world_to_snapshot};
+use ph2d_ecs::{
+    AnimationTag, Entity, ImageRegion, ImageUseMemory, ScrollRepeat, SpriteAnimCursor,
+    SpriteAnimFrames, SpriteAnimations, SpriteAnimator, SpriteGrid, SpriteRegion, TextureRepeat,
+    TiledDraw, UvTransform,
+};
 use ph2d_ecs::{Name, SimWorld};
+use ph2d_editor_core::{ImageUseEdit, InspectorDraw, InspectorImageUse};
 use ph2d_physics_ecs::{AnimRules, CharacterAnimations, Collider, ColliderShape};
+use ph2d_render::Sprite;
 use ph2d_render::WHITE_TILE_KEY;
+use std::collections::BTreeMap;
 
 const PPM: f32 = 100.0;
 const HEROI_KEY: u32 = ph2d_render::FIRST_IMPORT_KEY;
@@ -23,7 +33,7 @@ fn arte(nome: &str) -> std::path::PathBuf {
 fn biblioteca() -> (AssetDb, BTreeMap<u32, AssetId>) {
     let db = AssetDb::new();
     let mut atlas = BTreeMap::new();
-    ph2d_app_components::factory_images::register(&db, &mut atlas);
+    ph2d_render::factory_images::register(&db, &mut atlas);
     for (key, nome) in [
         (HEROI_KEY, "heroi_azul.png"),
         (MONTES_KEY, "montes_por_do_sol.png"),
@@ -121,7 +131,7 @@ fn trocar_o_uso_e_desfazer_devolve_tudo() {
     ] {
         for to in idas {
             let mut sim = SimWorld::new();
-            ph2d_app_game::smoke::montar(&mut sim, &registo(), 4);
+            crate::comp::montar(&mut sim, 4);
             let e = por_nome(&mut sim, nome);
             let antes = estado(&sim, e);
             assert!(
@@ -218,7 +228,7 @@ fn os_niveis_gravados_abrem_com_o_uso_certo() {
         (2, "Goal", ImageUse::Animated),
     ] {
         let mut sim = SimWorld::new();
-        ph2d_app_game::smoke::montar(&mut sim, &registo(), n);
+        crate::comp::montar(&mut sim, n);
         let e = por_nome(&mut sim, nome);
         assert_eq!(image_use(sim.world(), e), Some(quer), "{n} {nome}");
         let mut aberto = reaberto(&instantaneo(&mut sim));
@@ -235,7 +245,7 @@ fn os_niveis_gravados_abrem_com_o_uso_certo() {
 #[test]
 fn a_camada_de_fundo_nao_troca_de_uso() {
     let mut sim = SimWorld::new();
-    ph2d_app_game::smoke::montar(&mut sim, &registo(), 2);
+    crate::comp::montar(&mut sim, 2);
     let e = por_nome(&mut sim, "Sky");
     if sim.world().get::<ScrollRepeat>(e).is_none() {
         sim.world_mut()
@@ -252,7 +262,7 @@ fn a_camada_de_fundo_nao_troca_de_uso() {
 #[test]
 fn parada_de_um_bloco_mostra_um_ladrilho() {
     let mut sim = SimWorld::new();
-    ph2d_app_game::smoke::montar(&mut sim, &registo(), 4);
+    crate::comp::montar(&mut sim, 4);
     let e = por_nome(&mut sim, "Platform Low");
     let tile = sim
         .world()
@@ -268,7 +278,7 @@ fn parada_de_um_bloco_mostra_um_ladrilho() {
 #[test]
 fn parada_mostra_a_imagem_inteira() {
     let mut sim = SimWorld::new();
-    ph2d_app_game::smoke::montar(&mut sim, &registo(), 4);
+    crate::comp::montar(&mut sim, 4);
     let e = por_nome(&mut sim, "Player");
     let g = sim.world().get::<SpriteGrid>(e).copied().expect("folha");
     let celula = sim
@@ -293,9 +303,10 @@ fn parada_mostra_a_imagem_inteira() {
 fn repetida_de_uma_parada_inteira_nao_achata() {
     let (db, atlas) = biblioteca();
     let bandeira = atlas[&ph2d_render::FLAG_SHEET_KEY];
-    let factos = crate::image_choice::image_facts(bandeira, &db, &atlas, PPM).expect("factos");
+    let factos = ph2d_app_sprite_anim::image_choice::image_facts(bandeira, &db, &atlas, PPM)
+        .expect("factos");
     let mut sim = SimWorld::new();
-    ph2d_app_game::smoke::montar(&mut sim, &registo(), 4);
+    crate::comp::montar(&mut sim, 4);
     let e = por_nome(&mut sim, "Platform High");
     choose_library_image(&mut sim, &mut sem_placa, &db, &atlas, PPM, e, bandeira).expect("escolhe");
     for to in [InspectorImageUse::Still, InspectorImageUse::Repeated] {
@@ -338,7 +349,7 @@ fn nenhuma_troca_de_uso_muda_a_escala() {
             for b in InspectorImageUse::ALL {
                 for c in InspectorImageUse::ALL {
                     let mut sim = SimWorld::new();
-                    ph2d_app_game::smoke::montar(&mut sim, &registo(), nivel);
+                    crate::comp::montar(&mut sim, nivel);
                     let e = por_nome(&mut sim, nome);
                     if let Some(key) = imagem {
                         choose_library_image(
@@ -474,7 +485,7 @@ fn completo(sim: &SimWorld, e: Entity) -> Completo {
 #[test]
 fn cada_uso_guarda_a_sua_configuracao() {
     let mut sim = SimWorld::new();
-    ph2d_app_game::smoke::montar(&mut sim, &registo(), 4);
+    crate::comp::montar(&mut sim, 4);
     let e = por_nome(&mut sim, "Player");
     assert_eq!(image_use(sim.world(), e), Some(ImageUse::Animated));
     {
@@ -533,7 +544,7 @@ fn cada_uso_guarda_a_sua_configuracao() {
 fn trocar_a_imagem_guarda_as_animacoes_e_esquece_o_aspecto() {
     let (db, atlas) = biblioteca();
     let mut sim = SimWorld::new();
-    ph2d_app_game::smoke::montar(&mut sim, &registo(), 4);
+    crate::comp::montar(&mut sim, 4);
     let e = por_nome(&mut sim, "Player");
     let tags = sim.world().get::<SpriteAnimations>(e).cloned();
     assert!(usa(&mut sim, e, InspectorImageUse::Still));
@@ -564,7 +575,7 @@ fn trocar_a_imagem_guarda_as_animacoes_e_esquece_o_aspecto() {
 #[test]
 fn o_collider_automatico_segue_o_uso() {
     let mut sim = SimWorld::new();
-    ph2d_app_game::smoke::montar(&mut sim, &registo(), 4);
+    crate::comp::montar(&mut sim, 4);
     let e = por_nome(&mut sim, "Platform High");
     let caixa = |sim: &SimWorld| match sim.world().get::<Collider>(e).map(|c| c.shape) {
         Some(ColliderShape::Cuboid { half_x, half_y }) => [half_x * 2.0, half_y * 2.0],
@@ -608,7 +619,7 @@ fn um_bloco_que_repete_recebe_a_imagem_inteira() {
     let (db, atlas) = biblioteca();
     for key in [ph2d_render::FLAG_SHEET_KEY, HEROI_KEY] {
         let mut sim = SimWorld::new();
-        ph2d_app_game::smoke::montar(&mut sim, &registo(), 4);
+        crate::comp::montar(&mut sim, 4);
         let e = por_nome(&mut sim, "Platform High");
         let w = sim.world();
         assert_eq!(image_use(w, e), Some(ImageUse::Repeated), "a premissa");
@@ -618,7 +629,8 @@ fn um_bloco_que_repete_recebe_a_imagem_inteira() {
         );
         choose_library_image(&mut sim, &mut sem_placa, &db, &atlas, PPM, e, atlas[&key])
             .expect("escolhe");
-        let f = crate::image_choice::image_facts(atlas[&key], &db, &atlas, PPM).expect("factos");
+        let f = ph2d_app_sprite_anim::image_choice::image_facts(atlas[&key], &db, &atlas, PPM)
+            .expect("factos");
         let w = sim.world();
         let tile = w.get::<TiledDraw>(e).map(|t| t.tile).expect("Tiled");
         assert!(w.get::<SpriteGrid>(e).is_none(), "{key}: corte num bloco");
@@ -639,8 +651,8 @@ fn um_bloco_que_repete_recebe_a_imagem_inteira() {
     }
 }
 
-#[path = "image_use_copias_tests.rs"]
+#[path = "sprite_image_use_copias.rs"]
 mod copias;
 
-#[path = "image_use_region_tests.rs"]
+#[path = "sprite_image_use_region.rs"]
 mod region;

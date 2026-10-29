@@ -27,7 +27,7 @@ use ph2d_core::Vec2;
 use ph2d_ecs::Transform;
 use ph2d_physics_ecs::PlatformPlayer;
 
-use crate::common::{slab, spawn_player};
+use ph2d_physics_scene::{slab, spawn_player};
 
 /// O vão livre entre as duas paredes — ver o aviso do módulo.
 const GAP: f32 = 2.4;

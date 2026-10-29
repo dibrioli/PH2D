@@ -41,7 +41,7 @@ fn perto(a: [f32; 2], b: [f32; 2]) -> bool {
 #[test]
 fn a_volta_do_dono_devolve_o_repeated_do_passo_1() {
     let mut sim = SimWorld::new();
-    ph2d_app_game::smoke::montar(&mut sim, &registo(), 4);
+    crate::comp::montar(&mut sim, 4);
     let e = por_nome(&mut sim, "Player");
     assert!(usa(&mut sim, e, InspectorImageUse::Repeated));
     let passo_1 = copias(&sim, e).expect("Width/Height à vista");
@@ -81,7 +81,7 @@ fn cada_troca_ida_e_volta_devolve_o_uso_como_estava() {
         ("Platform High", true),
     ] {
         let mut sim = SimWorld::new();
-        ph2d_app_game::smoke::montar(&mut sim, &registo(), 4);
+        crate::comp::montar(&mut sim, 4);
         let mut e = por_nome(&mut sim, nome);
         let mut deixado: BTreeMap<u8, Completo> = BTreeMap::new();
         let chave = |u: ImageUse| u as u8;

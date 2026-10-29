@@ -22,7 +22,7 @@
 
 use ph2d_core::Vec2;
 
-use crate::common::{slab, spawn_player};
+use ph2d_physics_scene::{slab, spawn_player};
 
 /// **A corrida sobrevive ao arquivo** — jogar, salvar, fechar, reabrir, assar.
 pub fn physics_smoke_recorded_run(ctx: &mut crate::SceneCtx<'_>) {

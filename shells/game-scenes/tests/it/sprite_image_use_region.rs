@@ -40,7 +40,7 @@ fn perto(a: [f32; 2], b: [f32; 2]) -> bool {
 #[test]
 fn a_area_escolhida_mostra_so_a_celula_a_mesma_escala() {
     let mut sim = SimWorld::new();
-    ph2d_app_game::smoke::montar(&mut sim, &registo(), 4);
+    crate::comp::montar(&mut sim, 4);
     let e = por_nome(&mut sim, "Player");
     let f = factos(&sim, e);
     let k0 = display_scale(sim.world(), e, f);
@@ -88,7 +88,7 @@ fn a_area_escolhida_mostra_so_a_celula_a_mesma_escala() {
 #[test]
 fn o_collider_automatico_segue_a_area() {
     let mut sim = SimWorld::new();
-    ph2d_app_game::smoke::montar(&mut sim, &registo(), 4);
+    crate::comp::montar(&mut sim, 4);
     let e = por_nome(&mut sim, "Platform High");
     assert!(usa(&mut sim, e, InspectorImageUse::Region));
     let [pw, ph] = factos(&sim, e).px;
@@ -111,7 +111,7 @@ fn o_collider_automatico_segue_a_area() {
 #[test]
 fn o_render_amostra_so_a_area() {
     let mut sim = SimWorld::new();
-    ph2d_app_game::smoke::montar(&mut sim, &registo(), 4);
+    crate::comp::montar(&mut sim, 4);
     let e = por_nome(&mut sim, "Player");
     assert!(usa(&mut sim, e, InspectorImageUse::Region));
     let [pw, ph] = factos(&sim, e).px;
@@ -138,7 +138,7 @@ fn o_render_amostra_so_a_area() {
 #[test]
 fn a_area_nunca_sai_da_imagem() {
     let mut sim = SimWorld::new();
-    ph2d_app_game::smoke::montar(&mut sim, &registo(), 4);
+    crate::comp::montar(&mut sim, 4);
     let e = por_nome(&mut sim, "Player");
     assert!(usa(&mut sim, e, InspectorImageUse::Region));
     let [pw, ph] = factos(&sim, e).px;
@@ -163,7 +163,7 @@ fn a_area_nunca_sai_da_imagem() {
 fn o_editor_pede_se_so_em_region() {
     let (db, atlas) = biblioteca();
     let mut sim = SimWorld::new();
-    ph2d_app_game::smoke::montar(&mut sim, &registo(), 4);
+    crate::comp::montar(&mut sim, 4);
     let e = por_nome(&mut sim, "Player");
     let editar = |sim: &mut SimWorld| {
         apply_edit(
@@ -200,7 +200,7 @@ fn o_editor_pede_se_so_em_region() {
 fn trocar_a_imagem_esquece_a_area() {
     let (db, atlas) = biblioteca();
     let mut sim = SimWorld::new();
-    ph2d_app_game::smoke::montar(&mut sim, &registo(), 4);
+    crate::comp::montar(&mut sim, 4);
     let e = por_nome(&mut sim, "Player");
     assert!(usa(&mut sim, e, InspectorImageUse::Region));
     let [pw, ph] = factos(&sim, e).px;
@@ -237,7 +237,7 @@ fn sair_de_uma_area_nao_muda_a_escala() {
         InspectorImageUse::Animated,
     ] {
         let mut sim = SimWorld::new();
-        ph2d_app_game::smoke::montar(&mut sim, &registo(), 4);
+        crate::comp::montar(&mut sim, 4);
         let e = por_nome(&mut sim, "Player");
         sim.world_mut().entity_mut(e).remove::<ImageUseMemory>();
         let f = factos(&sim, e);

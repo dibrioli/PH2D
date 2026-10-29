@@ -21,9 +21,7 @@ impl crate::App {
             return Vec::new();
         };
         let mut out = Vec::new();
-        for (key, asset_id) in
-            ph2d_app_components::factory_images::saved_by_project(&gfx.atlas_asset_map)
-        {
+        for (key, asset_id) in ph2d_render::factory_images::saved_by_project(&gfx.atlas_asset_map) {
             // PRECISION-BYPASS: caminho de ESCRITA — não passa pela porta `Asset::image_rgba8`, e
             // é deliberado (plano `docs/Sprite_projeto/18`, auditoria da W2).
             //

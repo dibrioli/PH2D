@@ -15,13 +15,13 @@
 //! Os números abaixo saíram da sonda `probe_smoke_79`, rodada ANTES desta
 //! mensagem ser escrita.
 
-use crate::common::spawn_floor;
 use ph2d_core::Vec2;
 use ph2d_ecs::{Entity, Name, Transform, World, stable_name_id};
 use ph2d_physics_ecs::{
     AxisMode, AxisSpec, BodyKind, Collider, ColliderShape, CustomAxis, JointKind, MotorMode,
     PhysicsJoint, RigidBody,
 };
+use ph2d_physics_scene::spawn_floor;
 use ph2d_render::{Sprite, WHITE_TILE_KEY};
 
 const GREY: [f32; 4] = [0.75, 0.75, 0.8, 1.0];

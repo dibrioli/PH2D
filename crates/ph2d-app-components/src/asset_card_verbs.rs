@@ -51,7 +51,7 @@ pub(crate) fn users_of(
                 .collect::<Vec<_>>()
         }
         DragPayload::Image { asset } => {
-            // ⚠️ **Pela MESMA porta que o índice usa** ([`crate::asset_index_build::texture_of`]) —
+            // ⚠️ **Pela MESMA porta que o índice usa** ([`ph2d_render::texture_of`]) —
             // uma sprite de átlas não carrega `SpritePixels`, e perguntar só por ele fazia o
             // *Select users* devolver **zero** sobre toda imagem importada. *A pergunta «que
             // textura é esta?» tem um dono, e ele não é este ficheiro.*
@@ -61,7 +61,7 @@ pub(crate) fn users_of(
                     .query::<(Entity, Option<&SpritePixels>, Option<&ph2d_render::Sprite>)>();
             q.iter(sim.world())
                 .filter(|(_, px, spr)| {
-                    crate::asset_index_build::texture_of(*px, *spr, atlas_assets) == Some(wanted)
+                    ph2d_render::texture_of(*px, *spr, atlas_assets) == Some(wanted)
                 })
                 .map(|(e, _, _)| e)
                 .collect::<Vec<_>>()
@@ -114,7 +114,7 @@ pub fn drain(
     toasts: &mut ph2d_editor_core::ToastQueue,
     docs: &mut crate::instance_docs::OwnedDocs<'_>,
     place_step: [f32; 2],
-    // ⭐ `célula do átlas → AssetId` — ver [`crate::asset_index_build::texture_of`].
+    // ⭐ `célula do átlas → AssetId` — ver [`ph2d_render::texture_of`].
     atlas_assets: &std::collections::BTreeMap<u32, ph2d_asset::AssetId>,
     select_out: &mut Option<u64>,
 ) -> bool {

@@ -34,7 +34,7 @@ use ph2d_physics_ecs::{
 };
 use ph2d_render::{Sprite, WHITE_TILE_KEY};
 
-use crate::common::{slab, spawn_player};
+use ph2d_physics_scene::{slab, spawn_player};
 
 /// O vão da chaminé — o número da tabela do topo do módulo.
 const GAP: f32 = 0.6;

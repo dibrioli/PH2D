@@ -6,10 +6,10 @@
 //! scene proves that selecting ONE link bakes the entire articulated group
 //! (`ph2d_physics_ecs::jointed_group`, walked from the joint graph).
 
-use crate::common::spawn_floor;
 use ph2d_core::Vec2;
 use ph2d_ecs::{Name, Transform, stable_name_id};
 use ph2d_physics_ecs::{BodyKind, Collider, ColliderShape, JointKind, PhysicsJoint, RigidBody};
+use ph2d_physics_scene::spawn_floor;
 use ph2d_render::{Sprite, WHITE_TILE_KEY};
 
 /// **Scene 39 (bake a joint).** A three-link chain hung SIDEWAYS from a

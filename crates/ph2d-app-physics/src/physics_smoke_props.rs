@@ -15,7 +15,7 @@ use ph2d_physics_ecs::{
 };
 use ph2d_render::{Sprite, WHITE_TILE_KEY};
 
-use crate::common::spawn_floor;
+use ph2d_physics_scene::spawn_floor;
 
 /// **Scene 13 (capsule).** A capsule and a box, identical in every way that
 /// matters, run at the same stair. The box catches on a step; the capsule

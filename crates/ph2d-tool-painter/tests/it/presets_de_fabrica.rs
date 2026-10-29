@@ -520,7 +520,12 @@ fn imagem_da_largura(p: &Preset, raio: f32, crua: bool, r: Relogio) -> (Vec<u8>,
     };
     if let Some(modo) = p.parametros.paint_mode.as_deref().filter(|m| *m != "Paint") {
         let (px, w, h) = imagem_da_ferramenta(p, modo, raio, crua, r);
-        return (px, w, h, super::sonda_gestos::largura_mediana);
+        let regua: Regua = if modo == "Smear" {
+            largura_do_rasto
+        } else {
+            largura_dos_dois_lados
+        };
+        return (px, w, h, regua);
     }
     let escala = if crua { (raio / 500.0).max(1.0) } else { 1.0 };
     let (px, w, h) = traco_recto_alto_com(raio / escala, raio, QUADROS_DA_LEI, r, |t| {
@@ -632,9 +637,89 @@ fn imagem_da_ferramenta(
             [255 - d, 255 - d, 255 - d, 255]
         })
         .collect();
-    // A meia altura (a mediana de [`largura_mediana`]): o efeito de um misturador cai devagar da pegada para fora, e a
-    // ¼ do máximo a franja dele dobrava a largura num degrau (Blender Soft: 36 px no raio 38,5 → 75 no 42,8).
+    // A régua é a de [`largura_dos_dois_lados`] (o Smear: [`largura_do_rasto`]) — cada lado da orla à meia altura do
+    // SEU máximo: a meia altura da coluna inteira (e antes, ¼ dela) dobrava a largura num degrau conforme o lado de dentro
+    // passava o limiar (Blender Soft: 36 px no raio 38,5 → 75 no 42,8 a ¼; 236 no 254 → 481 no 282 a ½).
     (diferenca, w, h)
+}
+
+/// A diferença de uma coluna `x` da imagem de [`imagem_da_ferramenta`] (`0` = igual, `1` = o máximo).
+fn mudanca(px: &[u8], w: u32, x: u32, y: u32) -> f32 {
+    let i = ((y * w + x) * 4) as usize;
+    f32::from(255 - px[i]) / 255.0
+}
+
+/// A mediana de `v` (`0` sem nenhuma).
+fn mediana(mut v: Vec<f32>) -> f32 {
+    if v.is_empty() {
+        return 0.0;
+    }
+    v.sort_by(f32::total_cmp);
+    let n = v.len();
+    if n % 2 == 1 {
+        v[n / 2]
+    } else {
+        0.5 * (v[n / 2 - 1] + v[n / 2])
+    }
+}
+
+/// ⭐ **A largura de um misturador (Blend, Wet, Dry… — toda ferramenta menos o Smear)**: a pegada sobre a orla da base
+/// (`cy` = meia altura) muda DOIS lados — dentro da faixa (a tinta que se mistura com o papel) e fora dela (a tinta
+/// que vai para o papel) —, cada um com a sua força. Por coluna, cada LADO mede-se a ½ do máximo DELE (piso 0,08, o de
+/// [`super::sonda_gestos::largura_mediana`]) a partir da orla, e a largura é a soma; a mediana das colunas.
+///
+/// ⛔ A régua de antes (a ½ do máximo da COLUNA inteira) era BIMODAL: o lado de dentro (≈ ½ do de fora no Blender)
+/// entrava ou não conforme o raio — a tabela do Blender Soft lia 0,9·r até ao raio 254 e 1,7·r a 282 (e 131 px a 587,
+/// quando o de dentro passava a ser o máximo); a lei raio → largura não era monotónica e o afinador não convergia
+/// (`a_largura_e_a_prometida` vermelho no Blender Soft/Textured em `bfa866b7ea` e depois da regeração `eccc78829e`). O
+/// slider do misturador mudava de lei aos 240 px: abaixo a pegada era ~2× o número do painel, acima ~1×.
+fn largura_dos_dois_lados(px: &[u8], w: u32, h: u32) -> f32 {
+    let cy = h / 2;
+    let lado = |x: u32, ys: &mut dyn Iterator<Item = u32>| -> f32 {
+        let ys: Vec<u32> = ys.collect();
+        let m = ys
+            .iter()
+            .map(|&y| mudanca(px, w, x, y))
+            .fold(0.0f32, f32::max);
+        if m < 0.08 {
+            return 0.0;
+        }
+        ys.iter()
+            .rposition(|&y| mudanca(px, w, x, y) >= 0.5 * m)
+            .map_or(0.0, |k| (k + 1) as f32)
+    };
+    mediana(
+        (0..w)
+            .map(|x| lado(x, &mut (0..cy).rev()) + lado(x, &mut (cy..h)))
+            .filter(|&l| l > 0.0)
+            .collect(),
+    )
+}
+
+/// ⭐ **A largura do rasto do Smear**: a faixa de pé tem a orla direita em `cx` e o traço atravessa-a de `cx − m` a
+/// `cx + 1,5·m` ([`imagem_da_ferramenta`]); o rasto que ele PUXA mede-se nas colunas por onde o CENTRO passou sobre o
+/// papel (`cx … cx + 1,5·m`) — a ponta que se esvai depois dele e a orla esquerda da faixa (que a pegada do 1.º dab
+/// toca) ficam de fora. Por coluna, a de [`super::sonda_gestos::largura_mediana`] (½ do máximo); a mediana.
+///
+/// ⛔ Antes a mediana corria sobre TODAS as colunas: a ponta (metade de um disco a esvair-se) pesava conforme o
+/// comprimento do rasto, e o Smear Shattered (Jitter 0,25) lia 597 px ao raio 253,9 e 470 ao 255,4.
+fn largura_do_rasto(px: &[u8], w: u32, h: u32) -> f32 {
+    // A cena: `w = 4,5·m + 160`, `cx = 80 + 2·m` ([`imagem_da_ferramenta`]).
+    let m = (w as f32 - 160.0) / 4.5;
+    let (x0, x1) = ((80.0 + 2.0 * m) as u32, ((80.0 + 3.5 * m) as u32).min(w));
+    mediana(
+        (x0..x1)
+            .filter_map(|x| {
+                let c = |y: u32| mudanca(px, w, x, y);
+                let mx = (0..h).map(c).fold(0.0f32, f32::max);
+                if mx < 0.08 {
+                    return None;
+                }
+                let ys: Vec<u32> = (0..h).filter(|&y| c(y) >= 0.5 * mx).collect();
+                Some((ys[ys.len() - 1] - ys[0] + 1) as f32)
+            })
+            .collect(),
+    )
 }
 
 /// O raio do motor de `raio` pela tabela de largura de um preset — a conta de `LeiDaLargura::raio_do_motor`

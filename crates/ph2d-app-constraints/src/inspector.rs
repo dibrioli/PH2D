@@ -122,6 +122,13 @@ fn estado(e: Estado) -> EstadoDaConstraint {
     }
 }
 
+/// ⭐ Publica o snapshot do cartão no painel do Inspector (a shell chama-a uma vez por quadro, com a
+/// selecção): é a [`info`] da entidade escolhida, ou `None` sem selecção.
+pub fn publica(sim: &SimWorld, escolhido: Option<u64>, selected_count: usize) {
+    let pilha = escolhido.and_then(|b| info(sim, b, selected_count));
+    ph2d_panel_inspector::set_current_inspector_constraints(pilha);
+}
+
 /// ⭐ O snapshot do cartão. `None` = a entidade não tem pilha nem cola (o cartão não aparece). A cola
 /// aparece nos DOIS objectos que cola.
 #[must_use]

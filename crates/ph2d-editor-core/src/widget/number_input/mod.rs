@@ -491,25 +491,8 @@ pub fn format_number(v: f64) -> String {
     }
 }
 
-/// [`format_number`] com as casas pedidas: `Some(0)` = inteiro, `Some(n)` = `n` casas fixas.
-#[must_use]
-pub fn format_number_com_casas(v: f64, casas: Option<usize>) -> String {
-    match casas {
-        Some(n) if v.is_finite() => {
-            let s = format!("{v:.n$}");
-            // `-0.00` não tem sinal que se leia.
-            if s.parse::<f64>().is_ok_and(|x| x == 0.0) {
-                s.trim_start_matches('-').to_owned()
-            } else {
-                s
-            }
-        }
-        _ => format_number(v),
-    }
-}
-
 mod casas;
-pub use casas::numero_que_cabe;
+pub use casas::{format_number_com_casas, numero_que_cabe};
 
 #[cfg(test)]
 mod tests;

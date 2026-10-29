@@ -80,3 +80,20 @@ fn decimal(texto: &str) -> Option<(usize, usize, usize)> {
 #[cfg(test)]
 #[path = "casas_tests.rs"]
 mod tests;
+
+/// [`format_number`] com as casas pedidas: `Some(0)` = inteiro, `Some(n)` = `n` casas fixas.
+#[must_use]
+pub fn format_number_com_casas(v: f64, casas: Option<usize>) -> String {
+    match casas {
+        Some(n) if v.is_finite() => {
+            let s = format!("{v:.n$}");
+            // `-0.00` não tem sinal que se leia.
+            if s.parse::<f64>().is_ok_and(|x| x == 0.0) {
+                s.trim_start_matches('-').to_owned()
+            } else {
+                s
+            }
+        }
+        _ => super::format_number(v),
+    }
+}

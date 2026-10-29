@@ -282,7 +282,7 @@ fn card_to_note(
 }
 
 /// Converte os cartões pedidos em notas (na pintura do Quadro activo, com o moldador).
-pub(super) fn run_pending(hero: &mut HeroScreen, ts: &mut TextSystem) -> bool {
+pub(crate) fn run_pending(hero: &mut HeroScreen, ts: &mut TextSystem) -> bool {
     let asks = TO_NOTE.with(|q| std::mem::take(&mut *q.borrow_mut()));
     let mut any = false;
     for (i, r) in asks.into_iter().enumerate() {
@@ -292,7 +292,7 @@ pub(super) fn run_pending(hero: &mut HeroScreen, ts: &mut TextSystem) -> bool {
 }
 
 /// Acompanha, no Kanban, o desfazer/refazer das conversões.
-pub(super) fn serve(hero: &mut HeroScreen) -> bool {
+pub(crate) fn serve(hero: &mut HeroScreen) -> bool {
     let mut any = false;
     let shared = hero.documents.kanbans_shared();
     let boards = hero.documents.boards();

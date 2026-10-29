@@ -246,8 +246,9 @@ pub fn paint_hero_screen(
     //    nada do que é da cena (réguas, gizmos, selecção) chega a ser pintado ou clicável.
     // W7 — os cronómetros dos quadros andam com QUALQUER aba activa (a Cena incluída: F1).
     super::board_nav::facilitate::tick(hero, std::time::Instant::now());
-    // W11 do Kanban — o cartão que vira nota (com o moldador) e a macro que abre o painel dela.
-    crate::kanban_links::run_pending(hero, text_system);
+    // W11 do Kanban — o cartão que vira nota (com o moldador); a macro abre o painel em
+    // `kanban_links::serve`.
+    super::board_kanban_notes::run_pending(hero, text_system);
     if hero.documents.surface_active().is_some() {
         // ⭐ Um documento de FAMÍLIA (o editor de scripts) é dono da área como o quadro: a cena fica
         //    por baixo, sem réguas, gizmos nem barras. Pintar e agarrar leem o MESMO rect.

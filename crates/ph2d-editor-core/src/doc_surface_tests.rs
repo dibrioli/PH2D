@@ -1,7 +1,6 @@
 //! «Quer outro quadro»: uma família com trabalho de fundo diz-o, e o conjunto responde por ela.
 
 use super::*;
-use crate::documents::Documents;
 
 /// Uma família mínima: `Busy` tem uma capa a caminho; `Quiet` fica com o `wants_frame` do contrato.
 macro_rules! family {
@@ -60,19 +59,13 @@ family!(Busy {
 /// ⭐ Uma família com trabalho de fundo pede outro quadro pelo conjunto; sem ela, ninguém o pede.
 #[test]
 fn a_family_with_background_work_asks_for_another_frame() {
-    let mut docs = Documents::default();
+    let mut surfaces = Surfaces::default();
+    assert!(!surfaces.wants_frame(), "sem famílias, nenhum quadro extra");
+    surfaces.families.push(Box::new(Quiet));
+    assert!(!surfaces.wants_frame(), "o contrato, por omissão, não pede");
+    surfaces.families.push(Box::new(Busy));
     assert!(
-        !docs.surfaces().wants_frame(),
-        "sem famílias, nenhum quadro extra"
-    );
-    docs.install_surface(Box::new(Quiet));
-    assert!(
-        !docs.surfaces().wants_frame(),
-        "o contrato, por omissão, não pede"
-    );
-    docs.install_surface(Box::new(Busy));
-    assert!(
-        docs.surfaces().wants_frame(),
+        surfaces.wants_frame(),
         "a família ocupada pede, mesmo sem aba activa"
     );
 }

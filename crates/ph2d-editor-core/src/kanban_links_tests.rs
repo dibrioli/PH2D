@@ -321,6 +321,7 @@ fn a_macro_asked_by_a_card_opens_the_macros_panel() {
     );
     publish_macros(["Walk".to_owned()].into());
     open(&Target::Macro("Walk".into()));
+    assert!(serve(&mut t.hero), "a família serve-o a cada imagem");
     t.paint();
     assert!(t.hero.is_panel_visible("macros"));
     assert!(pending(Family::Macro), "quem drena é o painel");

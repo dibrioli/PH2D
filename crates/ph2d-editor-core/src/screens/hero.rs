@@ -63,6 +63,7 @@ pub mod board_images;
 pub mod board_keys;
 mod board_menu;
 pub mod board_nav;
+pub(crate) mod board_kanban_notes;
 mod board_note_card;
 pub(crate) mod board_send;
 pub mod board_video;

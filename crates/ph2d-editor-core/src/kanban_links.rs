@@ -16,15 +16,15 @@ use std::collections::BTreeSet;
 use ph2d_board_model::{BoardId, ElementId};
 pub use ph2d_kanban_links::Catalog;
 pub use ph2d_kanban_model::Target;
-use ph2d_text::TextSystem;
 
 use crate::documents::Documents;
 use crate::screens::hero::HeroScreen;
 use crate::screens::hero::board_video::kanban::link::{BoardRequest, request as board_request};
 
-#[path = "kanban_links_notes.rs"]
-mod notes;
-pub use notes::{Choice, choices, notes_to_cards, request_card_to_note, selected_notes};
+// A nota ↔ cartão mexe no Quadro do hero: mora com ele (`screens::hero::board_kanban_notes`).
+pub use crate::screens::hero::board_kanban_notes::{
+    Choice, choices, notes_to_cards, request_card_to_note, selected_notes,
+};
 
 /// Quem serve um pedido «abrir» fora do editor.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -115,7 +115,7 @@ pub fn catalog(docs: &Documents) -> Catalog {
 }
 
 /// ⭐ Serve o que é do editor (a família chama-o a cada imagem, ao lado do `board_kanban_link::serve`):
-/// activa o Quadro pedido sem elemento, converte os cartões pedidos em notas e acompanha, no Kanban,
+/// activa o Quadro pedido sem elemento, abre o painel Macros a uma macro pedida e acompanha, no Kanban,
 /// o desfazer/refazer das conversões. `true` = mudou algo.
 pub fn serve(hero: &mut HeroScreen) -> bool {
     let boards = BOARDS.with(|q| std::mem::take(&mut *q.borrow_mut()));
@@ -125,14 +125,8 @@ pub fn serve(hero: &mut HeroScreen) -> bool {
             hero.documents.activate(Some(b));
         }
     }
-    any |= notes::serve(hero);
-    any
-}
-
-/// Na pintura, a cada imagem: os cartões pedidos viram notas (medidas pelo moldador) e um pedido
-/// de macro abre o painel Macros, que o drena ao pintar (`ph2d-panel-macros`). `true` = mudou algo.
-pub(crate) fn run_pending(hero: &mut HeroScreen, ts: &mut TextSystem) -> bool {
-    let mut any = notes::run_pending(hero, ts);
+    any |= crate::screens::hero::board_kanban_notes::serve(hero);
+    // Uma macro pedida abre o painel Macros, que a drena ao pintar (`ph2d-panel-macros`).
     if pending(Family::Macro) {
         let node = crate::ids::MACROS_PANEL;
         hero.panel_visibility.insert("macros", true);

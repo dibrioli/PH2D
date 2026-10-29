@@ -1,6 +1,6 @@
 //! W11 do Kanban — **«Convert to card»**: a linha do menu de uma nota adesiva abre este modal, que
-//! escolhe o Kanban e a lista ([`crate::kanban_links::choices`], primeiro as dos Kanbans postos no
-//! Quadro); a linha clicada converte as notas seleccionadas ([`crate::kanban_links::notes_to_cards`],
+//! escolhe o Kanban e a lista ([`super::board_kanban_notes::choices`], primeiro as dos Kanbans postos no
+//! Quadro); a linha clicada converte as notas seleccionadas ([`super::board_kanban_notes::notes_to_cards`],
 //! um passo de desfazer do Quadro).
 //!
 //! ⚠️ A lista que se PINTA e a que o CLIQUE resolve saem da mesma [`visible`].
@@ -11,7 +11,7 @@ use crate::ids;
 use crate::interaction::{
     ContextMenuKind, ContextMenuRequest, InteractiveState, WidgetEvent, WidgetStore,
 };
-use crate::kanban_links::{Choice, choices, notes_to_cards};
+use super::board_kanban_notes::{Choice, choices, notes_to_cards};
 use crate::paint::{fill_rounded_rect, paint_text, resolve};
 use crate::widget::{ButtonState, TextInput, TextInputState, paint_text_input_with_buffer};
 use crate::zones::Rect;

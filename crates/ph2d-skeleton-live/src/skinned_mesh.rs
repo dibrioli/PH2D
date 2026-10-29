@@ -238,11 +238,9 @@ fn regrava_fontes(mundo: &mut ph2d_ecs::scene::WorldSnapshot, fio: Option<u32>) 
                     })
                 })
         };
-        ph2d_vec_scene::with_pilha_layout_v23(|| {
-            match fio {
-                Some(f) => ph2d_vec_scene::with_wire_layout(f, le),
-                None => le(),
-            }
+        ph2d_vec_scene::with_pilha_layout_v23(|| match fio {
+            Some(f) => ph2d_vec_scene::with_wire_layout(f, le),
+            None => le(),
         })
     };
     mundo.rewrite_component_blobs(ph2d_skeleton_ecs::SKIN_TYPE_NAME, |blob| {

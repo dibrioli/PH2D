@@ -110,9 +110,13 @@ impl crate::App {
                     let corte = self.vec.draw_config.mode == ph2d_tool_vector::DrawMode::Cut;
                     let (sc, pt) = (&mut gfx.vec_scene, [w[0] as f64, w[1] as f64]);
                     let click = if corte {
-                        self.vec.pen.on_press_blade(sc, pt, px_to_world, &mut snap)
+                        self.vec
+                            .pen
+                            .on_press_blade(sc, pt, px_to_world, &mut |q| snap(q).apply(q))
                     } else {
-                        self.vec.pen.on_press_encaixe(sc, pt, px_to_world, alt, &mut snap)
+                        self.vec
+                            .pen
+                            .on_press_encaixe(sc, pt, px_to_world, alt, &mut snap)
                     };
                     if corte
                         && click == ph2d_vec_edit::PenClick::Started

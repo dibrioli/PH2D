@@ -24,6 +24,7 @@ fn arquivo(jogo: Vec<u8>) -> ProjectFile {
         scripts: Vec::new(),
         marcas_do_artista: Vec::new(),
         jogo,
+        mesa: Vec::new(),
     }
 }
 

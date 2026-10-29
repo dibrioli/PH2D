@@ -179,10 +179,10 @@ const POR_ID: &[(&str, Classe, &str)] = &[
         "o desenho dos colisores é debug da vista (§8)",
     ),
     (
-    "INSP_SCRIPT_SOURCE",
-    Canal,
-    "o mesmo canal que o seletor `INSP_SCRIPT_PICK` (o `ScriptId`), que leva o losango: um canal, um losango; o caminho por importar não é valor de canal (F27 F)",
-),
+        "INSP_SCRIPT_SOURCE",
+        Canal,
+        "o mesmo canal que o seletor `INSP_SCRIPT_PICK` (o `ScriptId`), que leva o losango: um canal, um losango; o caminho por importar não é valor de canal (F27 F)",
+    ),
     (
         "INSP_VIS_ON_SCREEN",
         NaoAnimavel,

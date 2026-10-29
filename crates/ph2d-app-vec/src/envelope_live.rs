@@ -524,11 +524,9 @@ fn regrava_fontes(mundo: &mut ph2d_ecs::scene::WorldSnapshot, fio: Option<u32>) 
                 Ok((p, [])) => Some(p),
                 _ => None,
             };
-            let fonte = ph2d_vec_scene::with_pilha_layout_v23(|| {
-                match fio {
-                    Some(f) => ph2d_vec_scene::with_wire_layout(f, le),
-                    None => le(),
-                }
+            let fonte = ph2d_vec_scene::with_pilha_layout_v23(|| match fio {
+                Some(f) => ph2d_vec_scene::with_wire_layout(f, le),
+                None => le(),
             });
             if let Some(bytes) = fonte.and_then(|p| postcard::to_allocvec(&p).ok()) {
                 mudou |= bytes != filho.source;

@@ -76,18 +76,18 @@ impl crate::App {
         );
         ph2d_app_constraints::chaves::do_quadro(&mut self.timeline, sim, pd, ph, inst, painel, ak);
         autokey_pass::run(
-        &mut self.timeline,
-        autokey_clock,
-        &mut self.autokey,
-        toasts,
-        hero,
-        sim,
-        vec_scene,
-        &self.preview_drive,
-        // ⭐ A SEGUNDA mão: a ferramenta Bone a posar um osso é um arrasto como o do gizmo, e é
-        // isso que faz o gesto inteiro ser UM passo de undo (ver `autokey_pass::run`).
-        &self.skeleton,
-    );
+            &mut self.timeline,
+            autokey_clock,
+            &mut self.autokey,
+            toasts,
+            hero,
+            sim,
+            vec_scene,
+            &self.preview_drive,
+            // ⭐ A SEGUNDA mão: a ferramenta Bone a posar um osso é um arrasto como o do gizmo, e é
+            // isso que faz o gesto inteiro ser UM passo de undo (ver `autokey_pass::run`).
+            &self.skeleton,
+        );
         // ⭐ O LOSANGO ao lado de cada campo (plano 35 §5): o clique desde o último quadro, depois o
         // estado de cada canal no instante do autor para a pintura deste quadro.
         let mundo = timeline_bridge::Mundo::com_vetor(sim.world(), vec_scene);

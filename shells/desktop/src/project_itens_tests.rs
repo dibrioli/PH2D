@@ -50,7 +50,7 @@ fn um_projecto_v194_abre_com_os_itens_na_forma_nova() {
     );
     let back = abre(
         "itens_v194",
-        &postcard::to_allocvec(&(194u32, &f)).expect("serializa"),
+        &postcard::to_allocvec(&(204u32, &f)).expect("serializa"),
     );
     let t: ph2d_ecs::Timers = componente(&back, 0);
     assert_eq!(t.0[1].duration_us, 3_000_000);
@@ -75,7 +75,7 @@ fn o_projeto_195_le_o_vec_filter_sem_ids() {
     );
     let back = abre(
         "vec_filter_v195",
-        &postcard::to_allocvec(&(195u32, &f)).expect("serializa"),
+        &postcard::to_allocvec(&(205u32, &f)).expect("serializa"),
     );
     let filtro: ph2d_ecs::VecFilter = componente(&back, 0);
     assert_eq!(filtro.ops(), v195.0.as_slice());
@@ -90,7 +90,7 @@ fn o_projeto_195_le_o_vec_filter_sem_ids() {
 /// forma v23 (os bytes gravados pelo código v23, `vec_scene_v23_pilha.bin`) abre com as mesmas
 /// tintas e efeitos e os ids por atribuir. Sem o âmbito `PilhaLayoutV23` o ficheiro não se lê igual.
 #[test]
-fn o_projeto_195_le_a_pilha_do_vetor_sem_ids() {
+fn o_projeto_199_le_a_pilha_do_vetor_sem_ids() {
     const V23: &[u8] =
         include_bytes!("../../../crates/ph2d-vec-scene/tests/it/fixtures/vec_scene_v23_pilha.bin");
     let cena = ph2d_vec_scene::VecScene::from_bytes(V23).expect("a fixtura v23 abre");
@@ -98,7 +98,7 @@ fn o_projeto_195_le_a_pilha_do_vetor_sem_ids() {
     st.vec = std::sync::Arc::new(cena.clone());
     let f = bare_file(st);
     // A cena VIVA dentro do ficheiro troca-se pelos bytes v23 (o mesmo valor, a forma antiga).
-    let vivo = postcard::to_allocvec(&(195u32, &f)).expect("serializa");
+    let vivo = postcard::to_allocvec(&(199u32, &f)).expect("serializa");
     let cena_viva = postcard::to_allocvec(&cena).expect("serializa");
     let iguais = |w: &&[u8]| *w == cena_viva.as_slice();
     assert_eq!(vivo.windows(cena_viva.len()).filter(iguais).count(), 1);
@@ -107,7 +107,7 @@ fn o_projeto_195_le_a_pilha_do_vetor_sem_ids() {
         .position(|w| iguais(&w))
         .expect("a cena está lá");
     let back = abre(
-        "pilha_v195",
+        "pilha_v199",
         &[&vivo[..at], &V23[1..], &vivo[at + cena_viva.len()..]].concat(),
     );
     assert_eq!(
@@ -160,7 +160,7 @@ fn o_projeto_196_le_os_relogios_e_as_poses_sem_ids() {
         components,
     );
     let v196 = ph2d_ui_state::PoseLayoutV196::enter();
-    let bytes = postcard::to_allocvec(&(196u32, &f)).expect("serializa");
+    let bytes = postcard::to_allocvec(&(206u32, &f)).expect("serializa");
     drop(v196);
     let back = abre("relogios_v196", &bytes);
     assert_eq!(componente::<ph2d_ecs::Tweens>(&back, 0), tw);

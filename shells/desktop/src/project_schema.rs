@@ -583,9 +583,6 @@ pub(crate) const PROJECT_SCHEMA: u32 = 207;
 /// O último degrau com o relógio dos tweens/seguidores e os filtros das poses por POSIÇÃO (F32).
 pub(crate) const PROJECT_SCHEMA_RELOGIO_POR_POSICAO: u32 = 206;
 
-/// O último degrau em que os itens das listas não tinham `item` (F30 §A1).
-pub(crate) const PROJECT_SCHEMA_ITENS_SEM_ID: u32 = 204;
-
 /// O último degrau em que os degraus do `VecFilter` não tinham id (F31 §B2); os itens das listas
 /// da F30 §A1 já o tinham desde o `205` (`ph2d_ecs::item_id::Passe::ate` diz qual).
 pub(crate) const PROJECT_SCHEMA_FILTROS_SEM_ID: u32 = 205;

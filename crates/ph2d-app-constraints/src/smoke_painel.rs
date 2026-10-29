@@ -269,6 +269,7 @@ pub fn vestir(sim: &mut SimWorld) -> Option<Entity> {
             arg: SOMA.to_owned(),
             target_by: SignalTarget::Named,
             from: SignalFrom::Anyone,
+            item: Default::default(),
         }]),
         Name::new(PLACAR),
     ));
@@ -278,6 +279,7 @@ pub fn vestir(sim: &mut SimWorld) -> Option<Entity> {
         repeat: true,
         autostart: true,
         signal: SINAL.to_owned(),
+        item: Default::default(),
     };
     let estado: TimerState = ph2d_ecs::timer::born(&relogio);
     w.spawn((

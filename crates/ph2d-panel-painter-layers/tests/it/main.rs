@@ -22,6 +22,7 @@ mod o_flow_a_vista_e_o_flow_que_age; // o Flow à vista ⟺ a ferramenta no meio
 mod o_painel_de_cada_meio_da_ferramenta; // o meio é da ferramenta na mão: só as linhas dela (24/10)
 mod o_painel_mostra_o_que_a_ferramenta_le; // a ferramenta na mão × o painel: os dois lados (23/10)
 mod o_seletor_fechado_nao_fica_fixado; // fechar o seletor de cor desafixa-o, por qualquer porta (24/10)
+mod pontas_e_fio_pelo_rato; // Fine Thread, Flat ends, Ends beyond, Ends fade pelo clique e arrasto reais (J6)
 mod seam;
 mod seam_accumulate_por_meio; // o Accumulate e o Space Attenuation só onde o meio os oferece
 mod seam_color_inativo; // Bug #51: o Color inativo em Per-Layer Color (12/10)

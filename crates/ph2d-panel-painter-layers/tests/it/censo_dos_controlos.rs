@@ -492,6 +492,20 @@ impl Bancada {
         &self.rects
     }
 
+    /// `(glifos, segmentos)` do painel re-pintado com o pincel de agora — o que a tela DESENHA (o visto de uma caixa
+    /// vem do pincel, não do store).
+    pub(crate) fn geometria(&mut self) -> (u32, u32) {
+        set_current_brush(Some(self.tool.brush_settings()));
+        let g = self
+            .host
+            .paint_and_count_geometry::<PainterLayersPanel>(&mut self.st, viewport());
+        self.rects = vivos(
+            self.host
+                .paint::<PainterLayersPanel>(&mut self.st, viewport()),
+        );
+        g
+    }
+
     /// A ferramenta do trilho `modo` pelo botão do trilho (a porta gravada do painel), e o painel
     /// re-pintado com as secções dela.
     pub(crate) fn no_modo(&mut self, modo: &str) {
@@ -514,6 +528,12 @@ impl Bancada {
             entrega.ao_tool += 1;
         }
         let eventos = conduz(&mut self.host, &mut self.st, &self.rects, gesto);
+        self.aplica_eventos(eventos, entrega);
+    }
+
+    /// Os eventos que um gesto do RATO já emitiu (o chamador conduziu o ponteiro), dois quadros do app e o painel
+    /// re-pintado — a metade do [`Self::aplica`] depois da porta.
+    pub(crate) fn aplica_eventos(&mut self, eventos: Vec<WidgetEvent>, entrega: &mut Entrega) {
         for ev in eventos {
             let _ = self
                 .host

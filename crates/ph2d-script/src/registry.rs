@@ -133,7 +133,10 @@ mod tests {
         // ⚠️ **2026-10-28: `111` -> `114`, delta +3** -- `TiledDraw` + `ImageUseMemory` + `ImageRegion`
         //   (line/GameEngineFuncional planos 14–16), registados no ECS (`ph2d-ecs` 108 -> 113 = +5).
         //   Quem integrar conta o DELTA, nunca o literal.
-        assert_eq!(reg.len(), 114);
+        // ⚠️ **2026-10-28: `114` -> `116`, delta +2** -- o `UiArranjo` (ADR-0194) e o `TimersQuiet`
+        //   (line/BlenderConstraints W5.5/W6), registados no ECS (`ph2d-ecs` 113 -> 115). DELTA sobre o `114` do
+        //   main (GEF). Quem integrar conta o DELTA, nunca o literal.
+        assert_eq!(reg.len(), 116);
         assert!(reg.get_by_name("ph2d::script::LuauScript").is_some());
     }
 }

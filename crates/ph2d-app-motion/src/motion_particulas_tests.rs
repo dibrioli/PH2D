@@ -344,7 +344,7 @@ fn the_particle_ids_are_the_same_on_the_device_and_the_cpu() {
 /// Sonda (07_W6 §3): o custo da leitura por quadro, toda a corrente indexada × só o id pedido.
 /// `cargo test -p ph2d-app-motion --profile smoke --lib -- --ignored --nocapture mede_a_leitura`
 #[test]
-#[ignore = "sonda de medição"]
+#[ignore = "sonda: medição da leitura por quadro"]
 fn mede_a_leitura_das_particulas() {
     use ph2d_nodegraph::attr::Column;
     for n in [10_000usize, 100_000] {

@@ -39,7 +39,7 @@ const ORDER: &[(&str, &str)] = &[
         "a FÍSICA publica o que se tocou",
     ),
     (
-        "self.signals.read(&mut self.signal_readers.toast)",
+        "self.signals.read_notices(&mut self.signal_readers.toast)",
         "o DRENO: os consumidores leem, depois dos dois",
     ),
 ];

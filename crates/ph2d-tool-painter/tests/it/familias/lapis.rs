@@ -142,8 +142,10 @@ pub const EM_ESTUDO: &[ReceitaMeio] = &[
         ..ReceitaMeio::digital("Pencil", "Craft", "Craft Flat")
     },
     // B-7 — o rascunho do Krita «c) Pencil-4 Soft» (o CSP Rough pencil): muito grão em FIBRAS ao comprido, a borda que
-    // treme, do claro ao escuro pela pressão — na rampa 0 → 1 a pressão 0,4 pousa 0,54 da tinta e 0,25 da largura da
-    // cheia (Krita 0,51 · 0,33; com o S inteiro e a tinta em recta 0,23 · 0,04: entrava tarde demais). A ponta quase
+    // treme, do claro ao escuro pela pressão — na rampa 0 → 1 a pressão 0,4 pousa 0,50 da tinta e 0,28 da largura da
+    // cheia (Krita 0,51 · 0,33; com o S inteiro e a tinta em recta 0,23 · 0,04: entrava tarde demais). A curva da tinta
+    // 0,3 → 0,5 desde `86ca0e7df0` (o grão Tiled morde também à Strength 1, a cheia deixou de saturar: 0,604 a 0,3;
+    // varrido 0,3 · 0,4 · 0,5 · 0,6 · 0,8 = 0,604 · 0,552 · 0,504 · 0,460 · 0,384). A ponta quase
     // QUADRADA que segue o traço (a célula de grão do Krita, rodada pelo ângulo do traço): a 200 px a faixa tem a borda
     // direita dele, e não os festões de dabs redondos. Tamanho = o do preset (128 px × 0,125).
     ReceitaMeio {
@@ -161,7 +163,7 @@ pub const EM_ESTUDO: &[ReceitaMeio] = &[
             ("pressureSize", 0.9),
             ("pressureSCurve", 0.4),
             ("pressureOpacity", 1.0),
-            ("pressureOpacityCurve", 0.3),
+            ("pressureOpacityCurve", 0.5),
             ("dabRotation", 1.0),
         ],
         size_px: Some(16.0),

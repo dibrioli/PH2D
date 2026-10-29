@@ -305,8 +305,12 @@ impl PainterTool {
                 || brush.film_aa_wanted(brush.shape.is_active())
                 // O Grain PRESO À TELA (Tiled, Stencil): o tecto do texel é `g·tecto` (`cover_add`), fraccionário à
                 // Strength 1 — sem ele os dabs saturam e o grão deixa de morder (Texture Eraser 159 ± 45 a 0,99 →
-                // 255 ± 0 a 1). O grão preso à ponta (View, Random) muda de `g` a cada dab: é o «cada ponta».
+                // 255 ± 0 a 1). O grão preso à ponta (View, Random) muda de `g` a cada dab: é o «cada ponta» — e
+                // também o de PROFUNDIDADE por dab (`varia_por_dab`: o Height/Linear Height pela pressão, cuja
+                // pressão cheia ENCHE o grão pela soma dos dabs, cv 0,46 → 0,14 como o lápis do Rebelle; com o tecto
+                // ficava 0,43, `o_height_abre_o_grao_com_a_pressao`).
                 || (brush.texture.is_active()
+                    && !brush.texture.lei.varia_por_dab()
                     && matches!(
                         brush.texture.mapping,
                         ph2d_painter_brush::TextureMapping::Tiled

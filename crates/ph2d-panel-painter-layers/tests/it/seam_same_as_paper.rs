@@ -220,3 +220,46 @@ fn sonda_cada_controlo_do_grao_com_same_as_paper() {
         );
     }
 }
+
+/// **O «Same as Paper» do Grain dos outros meios (Digital · Impasto · Wet Paint) aceita o clique REAL** (smoke do dono
+/// 28/10: *«o checkbox não aceitou ser checado»*). O clique vai pela porta do ponteiro (`click_at` no centro do
+/// rectângulo pintado), o painel encaminha-o ao barramento, a ferramenta liga o campo, o painel re-pintado mostra a
+/// caixa marcada (o grão PRÓPRIO — o menu da textura — sai da tela, só com a caixa ligada) e o traço muda.
+///
+/// Mecanismo do defeito: o id faltava na lista de cliques que o `try_apply_brush_event` encaminha (`event.rs`) — o
+/// clique era engolido no painel; os portões antigos chamavam o `toggle_*` da ferramenta direto, ou mediam só o da
+/// Aquarela. **Mutação que sangra:** tirar `PAINTER_BRUSH_GRAIN_SAME_AS_PAPER` dessa lista.
+#[test]
+fn o_same_as_paper_do_grain_aceita_o_clique_real_nos_tres_meios() {
+    let caixa = PAINTER_BRUSH_GRAIN_SAME_AS_PAPER;
+    for meio in [PaintMedia::Digital, PaintMedia::Impasto, PaintMedia::WetPaint] {
+        let antes = Bancada::nova(meio, &[]);
+        assert!(
+            antes.rects().iter().any(|(i, _)| *i == caixa),
+            "{meio:?}: a caixa «Same as Paper» não foi pintada no Grain"
+        );
+        assert!(
+            antes.rects().iter().any(|(i, _)| *i == PAINTER_BRUSH_TEXTURE_KIND),
+            "{meio:?}: o grão próprio já está escondido antes do clique"
+        );
+        let (base, _) = ensaio(meio, &[], &Gesto::Nenhum);
+        let (com, entrega) = ensaio(meio, &[], &Gesto::Clique(caixa));
+        assert!(
+            entrega.ao_tool > 0 && entrega.ajuste_mudou,
+            "{meio:?}: o clique na caixa não chegou à ferramenta (ao_tool={})",
+            entrega.ao_tool
+        );
+        let marcada = Bancada::nova(meio, &[Gesto::Clique(caixa)]);
+        assert!(
+            marcada.tool.brush_settings().grain_same_as_paper,
+            "{meio:?}: a ferramenta não ligou o «Same as Paper»"
+        );
+        assert!(
+            !marcada.rects().iter().any(|(i, _)| *i == PAINTER_BRUSH_TEXTURE_KIND),
+            "{meio:?}: o painel re-pintado não mostra a caixa marcada (o grão próprio continua)"
+        );
+        let n = diferenca(&base, &com).0;
+        assert!(n > 0, "{meio:?}: o traço não mudou com o papel como grão");
+        eprintln!("SAP-CLIQUE\t{meio:?}\tn={n}");
+    }
+}

@@ -411,6 +411,7 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
                 || id == ph2d_tool_painter::ids::PAINTER_BRUSH_EDGE_TO_EDGE
                 || id == ph2d_tool_painter::ids::PAINTER_BRUSH_GRID_SHOW
                 || id == ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RAKE
+                || id == ph2d_tool_painter::ids::PAINTER_BRUSH_GRAIN_SAME_AS_PAPER
                 || id == ph2d_tool_painter::ids::PAINTER_SHAPE_WATERCOLOR_AUTO
                 || id == ph2d_tool_painter::ids::PAINTER_SHAPE_RESET
                 || id == ph2d_tool_painter::ids::PAINTER_SHAPE_USE_LAYERS

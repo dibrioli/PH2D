@@ -33,7 +33,6 @@
 - [Prompt Deck](reference_prompt_deck_app.md) · [~/Apps invisíveis ao cachy-update](reference_manual_apps_in_home_apps_are_invisible_to_cachy_update.md) · [atalho global Plasma 6](reference_kde_plasma6_global_shortcut.md)
 - [HISTÓRICO: aquarela/wash (19)](reference_topic_watercolor_historical.md)
 - HISTÓRICO: 3D (saiu do PH2D, ADR-0179; código em `b1a6f9b07`) — [campo implícito/SDF (24)](reference_topic_implicit_field_laws.md) · [quad remesh (20)](reference_topic_quad_remesh_rulers.md) · [MagicaCSG](reference_magicacsg_installed_under_wine.md) · [viés NDC](feedback_a_depth_bias_constant_in_ndc_is_not_constant_in_the_world.md) · [BSDF×albedo](feedback_a_per_texel_albedo_is_the_base_color_never_a_factor_at_the_end.md)
-- ⭐ [Dono 28/10: a tinta que AMASSA o relevo do papel é um efeito a guardar — controlo do pincel (0 segue o papel · 1 amassa), nunca apagar](project_paper_press_is_a_brush_control_2026_10_28.md)
 
 ## Comunicação & decisão
 - ⭐ [Decisões TÉCNICAS são delegadas (padrão-ouro); produto e envio são do Enio](feedback_architecture_decisions_are_delegated_to_the_gold_standard.md)
@@ -48,12 +47,10 @@
 - ⛔ [Tilemap (TOP-20 #17) é do projeto `docs/Tilling`, não da line/components — o dono mandou pular (16/09)](project_tilemap_belongs_to_the_tiling_project.md)
 - ⛔ [Painel lateral de params do Motion VAI SAIR (params só no cartão) — não invista nele (19/09)](project_o_painel_lateral_dos_params_do_motion_vai_sair.md)
 - ⛔ [Só o Wet Paint evolui (07/10): Digital/Impasto/Watercolor ficam; prompt da linha em NewFeaturesWetPaint/04](project_wet_paint_is_the_only_painter_mode_to_evolve_2026_10_07.md)
-- ⭐ [Óleo Real (26/10): o mais importante é relevo, shader, luz e sombra realistas — as espátulas servem isso](project_oleo_real_priority_relief_shader_light_2026_10_26.md)
 - ⛔⛔ [Um SELO é texto E chave da COR — traduzi-lo apaga o tom](feedback_a_badge_is_painted_text_and_the_key_of_its_own_colour.md)
 - ⛔ **Nada armengado: SILENCIAR um diagnóstico é armengo mesmo com a ferramenta defeituosa** ([§SUPRESSÃO, 29/08](feedback_perfection_no_deferrals.md)) — e meio-feito é pior que não começar
 - ⭐⭐ [Máximo AMOSTRADO que vira limite de segurança erra sempre PARA BAIXO](feedback_a_sampled_maximum_that_becomes_a_safety_bound_errs_only_downwards.md)
 - 📚 [Comunicação & decisão: mais (72) lições, uma linha cada, verbatim](reference_topic_communication_and_decision_lessons.md)
-- ⛔⛔ [Missão de pincéis (dono 28/10): o DONO faz a triagem, SIMULA-SE o conserto antes de construir, 45 min/agente, pesado 1× no fim (J6: 25 h → 2 pincéis)](feedback_brush_method_owner_triage_and_simulate_before_building.md)
 
 ## Git & colisão multi-agente
 - [Perigos de git/edição (15)](reference_topic_git_hazards.md)

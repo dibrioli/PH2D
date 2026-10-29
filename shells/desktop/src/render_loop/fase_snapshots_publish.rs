@@ -92,7 +92,6 @@ impl crate::App {
         let (db, at, reg) = (&*asset_db, &*atlas_asset_map, &*component_registry);
         anim_editor(sim, hero, db, at, reg, toasts);
         let pixel_edit = ph2d_app_pixel::mode::editing(sim.world(), hero).is_some();
-        // A publicação dos snapshots (`snapshots.rs`, HR-8 / ADR-0021: o paint só lê o HeroScreen).
         snapshots::publish(
             hero,
             hero_live,

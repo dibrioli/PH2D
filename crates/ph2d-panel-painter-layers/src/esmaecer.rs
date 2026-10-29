@@ -18,22 +18,6 @@ use ph2d_i18n::tr;
 use ph2d_tokens::{ColorToken, Theme};
 use ph2d_vector::{Affine, Compose, Mix, RoundedRect, VelloBlend};
 
-/// **O alfa da linha inativa — DERIVADO, não escolhido**: a fração que leva o `Text1` sobre a
-/// superfície do painel (`Bg2`) à luminância do `TextDisabled`, o tom com que a casa já desenha um
-/// texto desabilitado. Um tema que mude um dos três tokens muda o esmaecido com ele.
-fn alfa_inativo(theme: Theme) -> f32 {
-    let l = |t: ColorToken| t.resolve(theme).relative_luminance();
-    let (fundo, texto, apagado) = (
-        l(ColorToken::Bg2),
-        l(ColorToken::Text1),
-        l(ColorToken::TextDisabled),
-    );
-    if (texto - fundo).abs() < f64::EPSILON {
-        return 1.0;
-    }
-    (((apagado - fundo) / (texto - fundo)) as f32).clamp(0.0, 1.0)
-}
-
 /// A dica do primeiro dos `ids` que a ferramenta diz inerte, com o instantâneo publicado AGORA.
 fn dica(ids: &[NodeId]) -> Option<&'static str> {
     let inercias = crate::state::current_inercias();
@@ -93,7 +77,7 @@ pub(crate) fn esmaecido<R>(
     );
     let normal = VelloBlend::new(Mix::Normal, Compose::SrcOver);
     ctx.scene
-        .push_layer_shape(normal, alfa_inativo(theme), Affine::IDENTITY, &forma);
+        .push_layer_shape(normal, ph2d_editor_core::property_row::inativa::alfa_inativo(theme), Affine::IDENTITY, &forma);
     let r = pintar(ctx);
     ctx.scene.pop_layer();
     r
@@ -105,7 +89,7 @@ pub(crate) fn esmaecido<R>(
 /// [`talvez_esmaecido`] — a mesma linha esmaecida por duas portas que concordam ao byte.
 pub(crate) fn opcoes_esmaecidas(ctx: &mut PaintCtx, theme: Theme, ids: &[NodeId]) {
     let inercias = crate::state::current_inercias();
-    let alfa = alfa_inativo(theme);
+    let alfa = ph2d_editor_core::property_row::inativa::alfa_inativo(theme);
     for id in ids {
         let dica = inercias.dica_de(*id);
         let store = ctx.host.store_mut();

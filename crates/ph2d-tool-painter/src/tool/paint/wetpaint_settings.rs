@@ -273,6 +273,19 @@ impl WetKnobs {
             .collect()
     }
 
+    /// ⭐ **A ferramenta da água que é a ÚNICA a ler `knob`** — `None` = o Pincel também o lê. O slot dela guarda-o
+    /// ([`Self::do_corpo`]) e trocar para ela recarrega-o: editado com OUTRA na mão, o valor voltava atrás sozinho
+    /// (auditoria J6, 28/10). O Tuning só mostra a linha com a dona na mão.
+    #[must_use]
+    pub fn dona_do_knob(knob: Knob) -> Option<WetTool> {
+        KNOBS_DA_FERRAMENTA
+            .iter()
+            .map(|&(_, k, t, _)| (k, t))
+            .chain(LIDOS_SO_PELA_FERRAMENTA)
+            .find(|(k, _)| *k == knob)
+            .map(|(_, t)| t)
+    }
+
     /// Os knobs que só o leitor de `tool` lê — o que um preset dela escreve (os outros são do Pincel da água).
     pub(crate) fn so_da_ferramenta(tool: WetTool) -> impl Iterator<Item = Knob> {
         KNOBS_DA_FERRAMENTA
@@ -359,6 +372,15 @@ pub(crate) const CORPO_DA_AGUA: [(WetTool, &[Knob]); 5] = [
             CERDAS[0], CERDAS[1], CERDAS[2], CERDAS[3], CERDAS[4], CERDAS[5],
         ],
     ),
+];
+
+/// Os knobs do [`CORPO_DA_AGUA`] que só o leitor de UMA ferramenta lê (`tools/secador.rs`, `tools/bordas.rs`,
+/// `trail/transfer/perto.rs`) — os outros do corpo o Pincel também os lê.
+const LIDOS_SO_PELA_FERRAMENTA: [(Knob, WetTool); 4] = [
+    (Knob::BlendReach, WetTool::Blend),
+    (Knob::WaterPush, WetTool::Wet),
+    (Knob::DryerEdge, WetTool::Dry),
+    (Knob::DryerLevel, WetTool::Dry),
 ];
 
 /// O carimbo de cerdas e a tinta que ele leva: o que as cinco lêem.

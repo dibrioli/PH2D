@@ -343,6 +343,7 @@ fn tr_ingles(key: &str) -> &'static str {
         "panel.wet_tuning.knob.tiltSmooth" => "Tilt smooths the grain",
         "panel.wet_tuning.knob.tiltLag" => "Tilt lag",
         "panel.wet_tuning.km_mixing" => "Pigment mixing (K-M)",
+        "panel.wet_tuning.inerte.real_oil_on" => "Acts when Real Oil is on",
         "panel.wet_tuning.km_glaze" => "Glaze layering (K-M)",
         "panel.wet_tuning.note" => {
             "These two boxes (Kubelka-Munk subtractive color) apply to the next strokes: paint already on the canvas keeps how it was made. Pigment mixing changes how wet paints mix; Glaze layering makes a new film filter the paint below, and is saved with the brush preset. Brush glaze (Paint) is saved with the brush too and acts on top of them. The advanced groups (Bristles, Stroke, Wet effects) start folded: they are for building new brush presets."

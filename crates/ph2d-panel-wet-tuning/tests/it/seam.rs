@@ -229,7 +229,10 @@ fn paint_offers_the_table_and_no_paper_row_lives_here() {
             .any(|(w, r)| *w == id && r.w > 0.0 && r.h > 0.0)
     };
     let plain = paint_with(PainterTool::default().brush_settings());
-    for row in rows::rows() {
+    // A linha de um knob que só outra ferramenta da água lê não aparece com o Pincel na mão
+    // (`pela_porta_do_rato::a_linha_de_uma_ferramenta_so_aparece_com_ela_na_mao`).
+    let pincel = PainterTool::default().brush_settings();
+    for row in rows::rows().iter().filter(|r| r.na_mao(&pincel)) {
         match &row.options {
             // A CHOICE row paints its options and NO slider (a selector, never a slider, dono 28/10).
             Some(opts) => {

@@ -137,6 +137,14 @@ fn inertes_com_motivo() -> Vec<Inerte> {
     v
 }
 
+/// Os controlos DESENHADOS cujo gesto não chega a ninguém (nem à ferramenta, nem à shell, nem muda a tela)
+/// — cada um com o porquê. Fora desta lista, um clique assim é o clique MORTO (o «Same as Paper», 28/10).
+fn nao_chegam_com_motivo() -> Vec<Inerte> {
+    // Vazia: hoje todo gesto desenhado chega a alguém (ferramenta, shell) ou muda a própria tela (revela, esconde,
+    // dobra a gaveta, abre o seletor de cor; a pega da secção arrasta).
+    Vec::new()
+}
+
 /// O controlo de um gesto e, quando é a opção de um menu, o id da opção.
 fn alvo(g: &Gesto) -> Option<(NodeId, Option<NodeId>)> {
     match g {
@@ -149,6 +157,7 @@ fn alvo(g: &Gesto) -> Option<(NodeId, Option<NodeId>)> {
 fn o_censo_dos_controlos_so_encolhe() {
     let nomes = nomes();
     let lista = inertes_com_motivo();
+    let lista_muda = nao_chegam_com_motivo();
     let meios = [
         PaintMedia::Digital,
         PaintMedia::Watercolor,
@@ -172,6 +181,7 @@ fn o_censo_dos_controlos_so_encolhe() {
         let mut out = Vec::new();
         let mut inertes: Vec<(NodeId, Option<NodeId>)> = Vec::new();
         let mut vivos: Vec<(NodeId, Option<NodeId>)> = Vec::new();
+        let mut mudos: Vec<(NodeId, Option<NodeId>)> = Vec::new();
         for (g, medida) in oferta.iter().zip(medidas) {
             let Some(a) = alvo(g) else { continue };
             let rotulo = match (g, a.1) {
@@ -184,8 +194,34 @@ fn o_censo_dos_controlos_so_encolhe() {
                 out.push(format!("{media:?} {rotulo}: o gesto RENTOU (pânico)"));
                 continue;
             };
+            // ⛔ Um gesto numa caixa DESENHADA que não chega a ninguém (nem à ferramenta nem à shell) é o
+            // clique morto — foi assim que o «Same as Paper» ficou verde (28/10). Só passa com o porquê.
+            if entrega.ao_tool == 0
+                && entrega.revelados.is_empty()
+                && entrega.escondidos.is_empty()
+                && !entrega.dobrou
+                && entrega.outras.is_empty() {
+                // A PEGA de uma secção: o gesto dela é o ARRASTO (`as_seccoes_arrastam_e_tem_tema`), o clique parado
+                // não faz nada por desenho.
+                let pega = ph2d_editor_core::ids::section_of_grip(a.0).is_some()
+                    || bancada
+                        .ids()
+                        .into_iter()
+                        .any(|s| ph2d_editor_core::ids::grip_de(s) == a.0);
+                if pega {
+                    continue;
+                }
+                if lista_muda.iter().any(|(m, id, _)| *m == media && *id == a.0) {
+                    mudos.push(a);
+                } else {
+                    out.push(format!(
+                        "{media:?} {rotulo}: o gesto na caixa desenhada NÃO chega à ferramenta, sem motivo na lista"
+                    ));
+                }
+                continue;
+            }
             if !entrega.ajuste_mudou || entrega.ao_tool == 0 {
-                continue; // não-pixel por desenho, ou a opção já escolhida
+                continue; // a opção já escolhida, ou um gesto da própria tela (abre secção, chama a shell)
             }
             if diferenca(&base, &px).0 > 0 {
                 vivos.push(a);
@@ -211,6 +247,14 @@ fn o_censo_dos_controlos_so_encolhe() {
             } else if !inertes.iter().any(casa) {
                 out.push(format!(
                     "{m:?} {rotulo}: saiu da tela (ou deixou de mudar o ajuste) — apague a linha da lista («{motivo}»)"
+                ));
+            }
+        }
+        for (m, id, motivo) in lista_muda.iter().filter(|(m, ..)| *m == media) {
+            if !mudos.iter().any(|a| a.0 == *id) {
+                out.push(format!(
+                    "{m:?} {}: AGORA CHEGA À FERRAMENTA (ou saiu da tela) — apague a linha da lista dos mudos («{motivo}»)",
+                    nome(&nomes, *id)
                 ));
             }
         }

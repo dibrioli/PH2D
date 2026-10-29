@@ -208,8 +208,14 @@ pub(crate) struct Entrega {
     /// O instantâneo do pincel (`BrushSettings`) mudou com o gesto.
     pub(crate) ajuste_mudou: bool,
     /// Os ids que o gesto fez APARECER no painel — um estado novo que o censo visita a seguir.
-    revelados: Vec<NodeId>,
-    outras: Vec<String>,
+    pub(crate) revelados: Vec<NodeId>,
+    /// Os ids que o gesto fez SUMIR do painel (fechar uma secção é um gesto da própria tela).
+    pub(crate) escondidos: Vec<NodeId>,
+    /// O gesto abriu ou fechou a gaveta de uma secção (o cabeçalho) ou o seletor de cor partilhado (uma amostra) —
+    /// um gesto da própria tela.
+    pub(crate) dobrou: bool,
+    /// As ações que não são da ferramenta (são da shell), pelo nome curto.
+    pub(crate) outras: Vec<String>,
 }
 
 /// Entrega o barramento à ferramenta, publica o instantâneo e pinta de novo — um QUADRO do app.
@@ -390,7 +396,15 @@ pub(crate) fn ensaio(media: PaintMedia, armar: &[Gesto], gesto: &Gesto) -> (Vec<
     let antes = format!("{:?}", bancada.tool.brush_settings());
     let pintados: Vec<NodeId> = bancada.rects.iter().map(|(i, _)| *i).collect();
     let mut entrega = Entrega::default();
+    let gaveta = |b: &Bancada| {
+        (
+            gesto.id().map(|id| b.host.store().is_collapsed(id)),
+            b.host.store().picker_target(),
+        )
+    };
+    let gaveta_antes = gaveta(&bancada);
     bancada.aplica(gesto, &mut entrega);
+    entrega.dobrou = gaveta(&bancada) != gaveta_antes;
     entrega.ajuste_mudou = format!("{:?}", bancada.tool.brush_settings()) != antes;
     entrega.revelados = bancada
         .rects
@@ -398,6 +412,8 @@ pub(crate) fn ensaio(media: PaintMedia, armar: &[Gesto], gesto: &Gesto) -> (Vec<
         .map(|(i, _)| *i)
         .filter(|i| !pintados.contains(i))
         .collect();
+    let agora = bancada.ids();
+    entrega.escondidos = pintados.into_iter().filter(|i| !agora.contains(i)).collect();
     (risca(&mut bancada.tool), entrega)
 }
 

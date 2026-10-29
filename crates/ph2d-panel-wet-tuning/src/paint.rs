@@ -201,11 +201,46 @@ fn paint_group(
         return y;
     };
     let mut inner = y;
-    for row in rows::rows().iter().filter(|r| r.group == section.group) {
+    for row in rows::rows().iter().filter(|r| r.group == section.group && r.na_mao(brush)) {
         let value = brush.wet_knobs.knobs[row.knob];
+        let topo = inner;
         inner = paint_row(ctx, row, value, x, w, inner, theme);
+        esmaece_se_inerte(ctx, theme, brush, row, Rect::new(x, topo, w, inner - topo));
     }
     close_fold(ctx, scope, inner)
+}
+
+/// ⭐ **A linha ESMAECIDA** (a lei `Inercias` da ferramenta, a mesma do painel do pincel): o véu do fundo do painel a
+/// `1 − α` POR CIMA da linha pintada — sobre o fundo liso é a camada a `α` do `esmaecer` do pincel —, e a dica (o que
+/// a liga) no slider e no chip. Continua editável: o artista prepara o valor antes de ligar o que o acorda.
+fn esmaece_se_inerte(
+    ctx: &mut PaintCtx,
+    theme: Theme,
+    brush: &BrushSettings,
+    row: &rows::TuneRow,
+    area: Rect,
+) {
+    let dica = brush.inercias.dica_de(row.slider);
+    let store = ctx.host.store_mut();
+    for id in [row.slider, row.chip] {
+        match dica {
+            Some(chave) => store.set_tooltip(id, tr(chave)),
+            None if store
+                .tooltip_for(id)
+                .is_some_and(|t| t == tr(ph2d_tool_painter::Dependente::MaterialSemOleo.dica())) =>
+            {
+                store.set_tooltip(id, "");
+            }
+            None => {}
+        }
+    }
+    if dica.is_none() {
+        return;
+    }
+    let alfa = ph2d_editor_core::property_row::inativa::alfa_inativo(theme);
+    let veu = ph2d_editor_core::paint::resolve(ph2d_tokens::ColorToken::Bg2, theme)
+        .multiply_alpha(1.0 - alfa);
+    ph2d_editor_core::paint::fill_rounded_rect(ctx.scene, area, 0.0, veu);
 }
 
 /// EXPERIMENTAL — the two K–M checkboxes + the note, in the section's theme.

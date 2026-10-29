@@ -65,10 +65,13 @@ pub enum Dependente {
     MaciezSemDureza,
     // O Wash é a lei do Accumulate DESLIGADO (`stroke_cover::cover_max`).
     WashComAccumulate,
+    // O material do Real Oil no Tuning (Depth, Gloss, Paper Press): sem o Real Oil a célula é NEUTRA
+    // (`grid/oleo_celula.rs::do_pincel`) e o relevo do papel na tinta nem se soma (`oleo_real.rs`).
+    MaterialSemOleo,
 }
 
 impl Dependente {
-    pub const TODOS: [Dependente; 43] = [
+    pub const TODOS: [Dependente; 44] = [
         Dependente::ForaDaPontaDePixel,
         Dependente::TaperTip,
         Dependente::TaperOpacity,
@@ -112,6 +115,7 @@ impl Dependente {
         Dependente::AtrasoSemVelocidade,
         Dependente::MaciezSemDureza,
         Dependente::WashComAccumulate,
+        Dependente::MaterialSemOleo,
     ];
 
     /// Os ids que o painel pinta para este controlo.
@@ -215,6 +219,7 @@ impl Dependente {
             }
             // «Speed lag», pela ordem de `LINHAS_DA_MAO`.
             Dependente::AtrasoSemVelocidade => &[ids::PAINTER_PEN_FIELDS[20]],
+            Dependente::MaterialSemOleo => material_do_oleo(),
         }
     }
 
@@ -270,6 +275,7 @@ impl Dependente {
             Dependente::DualForaDoDigital => "panel.painter_ponta.inerte.dual_medium",
             Dependente::DualForaDoTraco => "panel.painter_layers.inerte.freehand_paint_stroke",
             Dependente::AtrasoSemVelocidade => "panel.painter_layers.inerte.speed_on",
+            Dependente::MaterialSemOleo => "panel.wet_tuning.inerte.real_oil_on",
         }
     }
 
@@ -300,6 +306,20 @@ impl Dependente {
         1 << (self as u64)
     }
 }
+
+/// As linhas do Tuning que só o Real Oil lê: o slider e o chip de cada (os ids do Tuning hasheiam-se em execução).
+fn material_do_oleo() -> &'static [NodeId] {
+    static IDS: std::sync::OnceLock<Vec<NodeId>> = std::sync::OnceLock::new();
+    IDS.get_or_init(|| {
+        MATERIAL_DO_OLEO
+            .iter()
+            .flat_map(|k| [ids::wet_tuning_slider_id(k), ids::wet_tuning_chip_id(k)])
+            .collect()
+    })
+}
+
+/// As chaves do Tuning que só o Real Oil lê ([`Dependente::MaterialSemOleo`]).
+pub const MATERIAL_DO_OLEO: [&str; 3] = ["oilDepth", "oilGloss", "paperPress"];
 
 /// As duas espécies de linha esmaecida (prompt 35).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -597,6 +617,10 @@ impl PainterTool {
             }),
             (Dependente::MaciezSemDureza, !agua && b.hardness <= 0.0),
             (Dependente::WashComAccumulate, b.accumulate),
+            (
+                Dependente::MaterialSemOleo,
+                agua && self.paint.wetpaint.oleo_real.is_none(),
+            ),
             // A Watercolor com a Shape «Automatic» não lê a pegada deitada (`inclinacao_dos_antigos`).
             (
                 Dependente::PegadaDaAutomatica,

@@ -36,6 +36,17 @@ pub struct TuneRow {
 pub const CHOICES: [&str; 1] = ["transmissionMode"];
 
 impl TuneRow {
+    /// ⭐ **A linha é da ferramenta na MÃO?** — a de um knob que só uma ferramenta da água lê
+    /// ([`ph2d_tool_painter::WetKnobs::dona_do_knob`]) só aparece com ela: o slot dela guarda o valor, e editado com
+    /// outra na mão ele voltava atrás sozinho ao trocar para ela (auditoria J6, 28/10).
+    #[must_use]
+    pub fn na_mao(&self, brush: &ph2d_tool_painter::BrushSettings) -> bool {
+        ph2d_wet_paint::tuning::KNOB_DEFS
+            .get(self.knob)
+            .and_then(|d| ph2d_tool_painter::WetKnobs::dona_do_knob(d.knob))
+            .is_none_or(|dona| dona == brush.wet_tool && !brush.eraser)
+    }
+
     /// Slider track (`0..=1`) → the value it means.
     pub fn value_of(&self, track: f32) -> f64 {
         self.min + f64::from(track) * (self.max - self.min)

@@ -369,6 +369,14 @@ fn traco_um(t: &mut PainterTool, ultima: &mut Option<Vec<u8>>) {
 /// ⚠️ **A segunda cor é a régua dos controlos que MISTURAM.** Com os dois traços da mesma cor, o
 /// Pickup do Wet Paint apanhava azul de cima de azul e lia-se «morto» (2026-10-03).
 pub(crate) fn risca(t: &mut PainterTool) -> Vec<u8> {
+    risca_ou_nada(t).expect("os traços sujaram a pré-visualização")
+}
+
+/// O [`risca`] que diz quando os traços NÃO sujaram a tela: `None` = nenhuma pré-visualização saiu, a tela ficou
+/// como a bancada a deixou. ⚠️ Não é um rebentamento: o Smear com a corda (Pulled string) mais comprida que os três
+/// traços não sai do sítio e não mexe em nada — e isso É o controlo a agir (medido 29/10: 30 e 120 px mudam
+/// 3 198 e 3 798 texels; 240 px, o alvo do censo, não pousa nada).
+pub(crate) fn risca_ou_nada(t: &mut PainterTool) -> Option<Vec<u8>> {
     let mut ultima = None;
     traco_um(t, &mut ultima);
     for _ in 0..4 {
@@ -401,7 +409,7 @@ pub(crate) fn risca(t: &mut PainterTool) -> Vec<u8> {
     for _ in 0..30 {
         tique(t, &mut ultima);
     }
-    ultima.expect("os traços sujaram a pré-visualização")
+    ultima
 }
 
 /// Um ENSAIO: ferramenta nova no meio, painel novo, o gesto pela porta do ponteiro, dois quadros, os

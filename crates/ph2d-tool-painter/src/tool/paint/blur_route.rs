@@ -32,7 +32,9 @@ impl PainterTool {
         if dabs.is_empty() {
             return;
         }
-        let base = self.paint.brush;
+        // O grão com que o motor PINTA (o «Same as Paper» troca-o pelo papel, como no traço) e a imagem dele.
+        let (base, _) = self.grao_que_pinta();
+        let papel = self.papel_como_grain();
         let has_shape_image = self.paint.shape_image.is_some();
         let textured = base.shape_silhouette_active(has_shape_image)
             || base.texture.is_active()
@@ -70,7 +72,15 @@ impl PainterTool {
             .then(|| self.paint.stamp_cache.as_ref().map(|(m, _)| m))
             .flatten();
         let grain_img = want_grain
-            .then(|| self.paint.texture_image.as_ref().map(|i| i.as_mask()))
+            .then(|| {
+                if papel {
+                    &self.paint.paper_image
+                } else {
+                    &self.paint.texture_image
+                }
+                .as_ref()
+                .map(|i| i.as_mask())
+            })
             .flatten();
         let shape_img = want_grain
             .then(|| self.paint.shape_image.as_ref().map(|i| i.as_mask()))

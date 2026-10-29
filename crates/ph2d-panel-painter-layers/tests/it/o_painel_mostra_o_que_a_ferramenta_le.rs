@@ -8,7 +8,7 @@
 //!    ferramenta — e o controlo: no Pincel ela muda o traço (senão o gate mediria o vazio).
 
 use super::censo_dos_controlos::{
-    Bancada, Gesto, diferenca, em_paralelo, gestos_da, nome, nomes, risca,
+    Bancada, Gesto, diferenca, em_paralelo, gestos_da, nome, nomes, risca, risca_ou_nada,
 };
 use super::censo_ferramenta_x_linha::bancada_com;
 use ph2d_a11y::NodeId;
@@ -42,12 +42,17 @@ const FERRAMENTAS: [(&str, FerramentaDoPincel); 5] = [
 ];
 
 fn ensaio(modo: &str, no_pincel: &Gesto, na_ferramenta: &Gesto) -> Vec<u8> {
+    ensaio_ou_nada(modo, no_pincel, na_ferramenta).expect("os traços sujaram a pré-visualização")
+}
+
+/// O [`ensaio`] que devolve `None` quando os traços não sujaram a tela ([`risca_ou_nada`]).
+fn ensaio_ou_nada(modo: &str, no_pincel: &Gesto, na_ferramenta: &Gesto) -> Option<Vec<u8>> {
     let mut b = bancada_com(modo, &ARMAR, no_pincel);
     b.aplica(
         na_ferramenta,
         &mut super::censo_dos_controlos::Entrega::default(),
     );
-    risca(&mut b.tool)
+    risca_ou_nada(&mut b.tool)
 }
 
 /// O id que identifica o gesto na tabela: o do MENU, numa opção.
@@ -164,10 +169,11 @@ fn cada_linha_visivel_age_na_ferramenta_ou_diz_porque_nao() {
                     .all(|i| inercias.dica_de(i).is_none())
             })
             .collect();
-        // Um ensaio que rebenta (o traço não sujou a tela) conta como falha com o nome, nunca some.
+        // Um ensaio que rebenta conta como falha com o nome, nunca some. Os traços que NÃO sujam a tela não são um
+        // rebentamento: a base sujou-a, o gesto deixou-a como estava — o controlo AGE ([`risca_ou_nada`]).
         let agem = em_paralelo(&gs, |g| {
             std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                diferenca(&base, &ensaio(modo, &Gesto::Nenhum, g)).0 > 0
+                ensaio_ou_nada(modo, &Gesto::Nenhum, g).is_none_or(|px| diferenca(&base, &px).0 > 0)
             }))
         });
         // Por CONTROLO (as opções de um menu são um controlo só): age se algum gesto dele age.
@@ -440,9 +446,13 @@ fn bancada_da_agua(fio: &str, no_pincel: &Gesto, bake: bool) -> Bancada {
 
 /// À vista das ferramentas da água, inerte nesta bancada (o carimbo de fábrica não é achatado) e com razão: o giro da
 /// pega e o Reset da Shape (que repõe o Flatten e o giro) agem nelas com o carimbo achatado
-/// (`o_carimbo_das_ferramentas_da_agua`).
-fn inerte_da_agua_com_motivo(id: NodeId) -> bool {
-    id == PAINTER_SHAPE_RESET || id == painter_brush_dab_handle_id(1)
+/// (`o_carimbo_das_ferramentas_da_agua`). E o Speed → Opacity no Blow: o sopro é FRACO (`apply_blow`) e com a ponta de
+/// imagem desta bancada não chega a um texel; sem ela muda 329 texels (|Δ| ≤ 2, o mesmo padrão de liga/desliga do Wet
+/// Smear, 8 851 texels — sonda 29/10), e o carimbo das ferramentas da água exige que aja.
+fn inerte_da_agua_com_motivo(fio: &str, id: NodeId) -> bool {
+    id == PAINTER_SHAPE_RESET
+        || id == painter_brush_dab_handle_id(1)
+        || (fio == "wet_blow" && id == PAINTER_PEN_SPEED_OPACITY)
 }
 
 fn ensaio_da_agua(fio: &str, no_pincel: &Gesto, na_ferramenta: &Gesto, bake: bool) -> Vec<u8> {
@@ -523,7 +533,7 @@ fn cada_ferramenta_da_agua_so_ve_o_que_le() {
                 continue;
             }
             let n = nome(&nomes, id);
-            if inerte_da_agua_com_motivo(id) {
+            if inerte_da_agua_com_motivo(fio, id) {
                 continue;
             }
             if !pincel.iter().any(|p| chave(p) == Some(id)) {

@@ -100,7 +100,9 @@ impl PainterTool {
         // second transport. Re-read every batch so the slider stays live within a stroke.
         self.paint.warp.relief_disp_scale =
             self.paint.brush.effective_impasto_plow().clamp(0.0, 1.0);
-        let base = self.paint.brush;
+        // O grão com que o motor PINTA (o «Same as Paper» troca-o pelo papel, como no traço) e a imagem dele.
+        let (base, _) = self.grao_que_pinta();
+        let papel = self.papel_como_grain();
         // The Smear's fold has never included Flow (`amount = strength · coverage`), and `walk_dab` folds
         // `coverage × flow × strength`. Neutralising Flow here keeps the knife's response to its sliders
         // exactly what it has always been — turning an inert slider live is not this fix's business.
@@ -112,7 +114,11 @@ impl PainterTool {
         // ⚠️ Imagens por `Arc` (clonar é um contador): o trabalho pode correr noutra thread enquanto
         // a pilha acumula as outras camadas com a MESMA imagem.
         let shape_image = self.paint.shape_image.clone();
-        let grain_image = self.paint.texture_image.clone();
+        let grain_image = if papel {
+            self.paint.paper_image.clone()
+        } else {
+            self.paint.texture_image.clone()
+        };
         let shape_ramp_lut = self
             .shape_tom_ativo()
             .then_some(self.paint.shape_ramp_lut.clone());

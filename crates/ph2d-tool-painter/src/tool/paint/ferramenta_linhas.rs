@@ -110,8 +110,10 @@ const SEM_COR: [L; 4] = [L::Blend, L::Cor, L::Randomize, L::Composite];
 /// A cura: sem cor e sem Flow.
 const CURA: [L; 5] = [L::Blend, L::Cor, L::Randomize, L::Composite, L::Flow];
 
-/// As ferramentas da água não pousam cor nem tinta nem lêem a forma; o Water do topo só a Wet lê, e o Blow sopra pelo
-/// gesto: sem rotação, sem opacidade, a água já corre (lido pelo censo `cada_ferramenta_da_agua_so_ve_o_que_le`).
+/// As ferramentas da água não pousam cor nem tinta nem lêem a forma; o Water do topo só a Wet lê, e no Blow a água já
+/// corre (lido pelo censo `cada_ferramenta_da_agua_so_ve_o_que_le`). ⚠️ O Blow LÊ a orientação (Follow, Dab rotation)
+/// e o Speed → Opacity: o carimbo achatado que sopra gira com o gesto e a opacidade do dab é a força do sopro — medido
+/// pelo `o_carimbo_das_ferramentas_da_agua` desde o 3.º traço do censo (as pontas dentro da tela, 8a19f601f8).
 /// O Per-Layer Color sai com a [`L::Forma`] (mora na parte da Shape que a textura arma).
 const DA_AGUA: [L; 11] = [
     L::Blend,
@@ -140,7 +142,7 @@ const DA_AGUA_SEM_AGUA: [L; 12] = [
     L::Forma,
     L::AguaDoVolume,
 ];
-const SOPRO: [L; 15] = [
+const SOPRO: [L; 13] = [
     L::Blend,
     L::Cor,
     L::Randomize,
@@ -153,8 +155,6 @@ const SOPRO: [L; 15] = [
     L::Flow,
     L::Forma,
     L::AguaDoVolume,
-    L::Orientacao,
-    L::OpacidadePelaVelocidade,
     L::AguaViva,
 ];
 

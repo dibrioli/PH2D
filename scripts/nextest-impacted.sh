@@ -229,14 +229,22 @@ esac
 # ⛔ CONTROLO: cada filtro de vigia (um ficheiro, não um pacote) casa ≥ 1 teste na lista REAL. Um filtro
 # que casa zero — o módulo mudou de nome, o `mod` saiu — é um portão verde que não correu. A lista usa o
 # mesmo perfil, logo a compilação é a mesma que a corrida a seguir reaproveita.
+# ⏱ compilar × correr × load (item K, comissão 29/10): a lista compila; a corrida reaproveita e corre.
+# shellcheck source=scripts/tempos-teste-lib.sh
+source "$(dirname "${BASH_SOURCE[0]}")/tempos-teste-lib.sh"
+_tt="$(mktemp)"; _t0="$(tt_agora)"; _l0="$(tt_load)"
 if [ "${PH2D_IMPACTO:-preciso}" = "preciso" ]; then
     # shellcheck disable=SC2086
-    cargo nextest list -E "$EXPR" --cargo-profile ci-test --message-format json \
+    cargo nextest list -E "$EXPR" --cargo-profile ci-test --message-format json 2> >(tee -a "$_tt" >&2) \
         | python3 "$_seletor" --confere - $CHANGED \
         || { echo "[nextest-impacted] ✗ um filtro de vigia casa ZERO testes (ou a lista falhou)" >&2; exit 2; }
 fi
-cargo nextest run "${FAIL_MODE[@]}" -E "$EXPR" --cargo-profile ci-test "$@"
+cargo nextest run "${FAIL_MODE[@]}" -E "$EXPR" --cargo-profile ci-test "$@" 2> >(tee -a "$_tt" >&2)
 _saida=$?
+# compilar = os `Finished` do cargo (lista + corrida); o resto do relógio é correr (e listar).
+tt_registar nextest-impacted "$(echo "$CHANGED" | tr '\n' ' ')" 0 "$(tt_compilar_de "$_tt")" \
+    "$(tt_dif "$_t0" "$(tt_agora)")" "$_l0" "$_saida"
+rm -f "$_tt"
 if [ "$_saida" = 0 ] && [ -n "$_arvore" ]; then
     mkdir -p "$_selos" && date '+%Y-%m-%d %H:%M' > "$_selos/$_chave"
     git rev-parse HEAD > "$_marca" 2>/dev/null

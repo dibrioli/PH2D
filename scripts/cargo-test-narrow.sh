@@ -64,6 +64,11 @@ shift || true
 orig=("$@")
 
 command -v jq >/dev/null 2>&1 || { echo "✗ jq não encontrado (o script depende dele)"; exit 2; }
+# ⏱ compilar × correr × load, por corrida (item K da comissão 29/10) — `python3 scripts/tempos-teste.py`.
+# shellcheck source=scripts/tempos-teste-lib.sh
+source "$(dirname "${BASH_SOURCE[0]}")/tempos-teste-lib.sh"
+_alvo="$crate ${orig[*]}"
+_t0="$(tt_agora)"; _l0="$(tt_load)"; _check=0
 
 # --- A PORTA: compila? ---------------------------------------------------------
 # ⚠️ Só é honesta porque devolve o exit code REAL. Um `cargo check | head` reporta
@@ -92,12 +97,14 @@ if [ "${PH2D_SKIP_CHECK:-0}" != "1" ]; then
   # falha exato que esta porta existe para impedir.
   cargo check -p "$crate" --all-targets --message-format=json "${opts[@]}" >"$chk" 2>"$chk.err"
   crc=$?
+  _check="$(tt_dif "$_t0" "$(tt_agora)")"
   nerr=$(jq -rs '[ .[] | select(.reason=="compiler-message") | .message
                        | select(.level=="error") ] | length' "$chk" 2>/dev/null || echo 0)
   if [ "$crc" -ne 0 ] && [ "${nerr:-0}" -eq 0 ]; then
     echo "✗ o check não correu (exit $crc) — nenhum teste correu:"
     grep -E "^error" "$chk.err" | head -3
     rm -f "$chk.err"
+    tt_registar cargo-test-narrow "$_alvo" "$_check" 0 0 "$_l0" 2
     exit 2
   fi
   rm -f "$chk.err"
@@ -106,6 +113,7 @@ if [ "${PH2D_SKIP_CHECK:-0}" != "1" ]; then
     jq -rs '[ .[] | select(.reason=="compiler-message") | .message
                   | select(.level=="error") | .rendered ] | .[0:3] | .[]' "$chk"
     [ "$nerr" -gt 3 ] && echo "... (${nerr} erros no total; mostrando os 3 primeiros)"
+    tt_registar cargo-test-narrow "$_alvo" "$_check" 0 0 "$_l0" 2
     exit 2
   fi
 fi
@@ -162,6 +170,7 @@ fi
 # `PH2D_TEST_TIMEOUT` afina-o (segundos); `0` desliga.
 tempo="${PH2D_TEST_TIMEOUT:-900}"
 out="$(mktemp)"
+_t1="$(tt_agora)"
 trap 'rm -f "${chk:-}" "$out"' EXIT
 if [ "$tempo" = "0" ]; then
   cargo test -p "$crate" "$@" >"$out" 2>&1
@@ -170,6 +179,8 @@ else
   timeout --kill-after=10s "$tempo" cargo test -p "$crate" "$@" >"$out" 2>&1
   rc=$?
 fi
+_comp="$(tt_compilar_de "$out")"
+tt_registar cargo-test-narrow "$_alvo" "$_check" "$_comp" "$(tt_dif "$_t1" "$(tt_agora)")" "$_l0" "$rc"
 if [ "$rc" -eq 124 ] || [ "$rc" -eq 137 ]; then
   echo "✗ $crate — PENDUROU (nenhum teste terminou em ${tempo}s)"
   echo

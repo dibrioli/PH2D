@@ -194,7 +194,7 @@ fn medida_quem_sao_os_pontinhos() {
                     println!("  ({x},{y}) {dy:+} {}", v.join(" "));
                 }
             }
-            if l < 45.0 && y >= 25 && y < 40 && x <= 110 {
+            if l < 45.0 && (25..40).contains(&y) && x <= 110 {
                 let m = |dx: isize, dy: isize| {
                     g.sett[(x as isize + dx) as usize + (y as isize + dy) as usize * g.s]
                 };

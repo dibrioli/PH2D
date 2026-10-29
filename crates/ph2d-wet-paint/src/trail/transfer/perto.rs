@@ -59,7 +59,7 @@ impl Local {
             let mut linha = [0.0f64; CANAIS];
             for lx in t.lx0..=t.lx1 {
                 let cx = t.anchor_x + (lx - t.half);
-                let dentro = cy >= 2 && cy <= h - 1 && cx >= 2 && cx <= w - 1;
+                let dentro = cy >= 2 && cy < h && cx >= 2 && cx < w;
                 if dentro && t.mask[(lx + ly * t.size) as usize] > 0.0 {
                     let i = cx as usize + cy as usize * s;
                     let (su, se) = (g.susp[i] as f64, g.sett[i] as f64);
@@ -193,7 +193,7 @@ impl LocalMat {
             let mut linha = [0.0f64; CANAIS_MAT];
             for lx in t.lx0..=t.lx1 {
                 let cx = t.anchor_x + (lx - t.half);
-                let dentro = cy >= 2 && cy <= h - 1 && cx >= 2 && cx <= w - 1;
+                let dentro = cy >= 2 && cy < h && cx >= 2 && cx < w;
                 if dentro && t.mask[(lx + ly * t.size) as usize] > 0.0 {
                     let i = cx as usize + cy as usize * s;
                     let m = f64::from(g.susp[i]) + f64::from(g.sett[i]);

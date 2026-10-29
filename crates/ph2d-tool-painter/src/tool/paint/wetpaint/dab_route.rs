@@ -732,8 +732,8 @@ impl PainterTool {
             // cor da queda lê a de sempre. O filme (o máximo) não soma: fica.
             let k_tampa = super::tampa::COMPENSA;
             let compensa = corte.is_some() && !filme_liso;
-            let padrao_tampa = compensa.then(|| {
-                move |cx: i32, cy: i32| -> f64 { k_tampa * padrao_arg.map_or(1.0, |p| p(cx, cy)) }
+            let padrao_tampa = compensa.then_some(move |cx: i32, cy: i32| -> f64 {
+                k_tampa * padrao_arg.map_or(1.0, |p| p(cx, cy))
             });
             let padrao_arg = padrao_tampa
                 .as_ref()

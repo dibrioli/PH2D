@@ -582,8 +582,7 @@ impl PainterTool {
         let suavizada = suave.then(|| {
             super::smooth_edges::Suave::nova(
                 sampler,
-                pigment,
-                stride,
+                (pigment, stride),
                 (w, h),
                 (px0, py0, px1, py1),
                 raio,

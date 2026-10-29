@@ -198,7 +198,12 @@ fn sonda() {
             d.last().copied().unwrap_or(0.0)
         );
         let mut ppm = format!("P6 {w} {h} 255\n").into_bytes();
-        ppm.extend(px.chunks_exact(4).flat_map(|c| [c[0], c[1], c[2]]));
+        ppm.extend(
+            px.as_chunks::<4>()
+                .0
+                .iter()
+                .flat_map(|c| [c[0], c[1], c[2]]),
+        );
         std::fs::write(format!("{out}/spray_wet_{raio}.ppm"), ppm).unwrap();
     }
 }

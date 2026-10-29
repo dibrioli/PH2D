@@ -1262,6 +1262,9 @@ fn fora_da_promessa(larguras: &[f32], rel: f32, tecto: f32) -> Vec<String> {
 /// **A LARGURA PROMETIDA (W2)**: em cada preset de fábrica, o traço a raio `r` mede `2·r ± 2 px` (± 2 %
 /// acima de 100 px), de 2 a 300 — raios fora da tabela do preset. CONTROLO dentro: a lei CRUA (o raio direto ao motor, a de antes
 /// da W2) reprova no mesmo pincel.
+/// Um preset medido pelo [`a_largura_e_a_prometida`]: o ficheiro, as larguras com a promessa e (só o Wet Round) as crus.
+type Medido = (Preset, Vec<f32>, Option<Vec<f32>>);
+
 #[test]
 fn a_largura_e_a_prometida() {
     let mut falhas = Vec::new();
@@ -1274,8 +1277,7 @@ fn a_largura_e_a_prometida() {
     let de_cada_vez = std::thread::available_parallelism()
         .map_or(4, |n| (n.get() / RAIOS_DA_PROMESSA.len()).max(1));
     let proximo = std::sync::atomic::AtomicUsize::new(0);
-    let mut medidos: Vec<Option<(Preset, Vec<f32>, Option<Vec<f32>>)>> =
-        (0..ficheiros.len()).map(|_| None).collect();
+    let mut medidos: Vec<Option<Medido>> = (0..ficheiros.len()).map(|_| None).collect();
     std::thread::scope(|s| {
         let h: Vec<_> = (0..de_cada_vez)
             .map(|_| {

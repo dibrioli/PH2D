@@ -195,8 +195,7 @@ impl Suave {
     /// Monta a mancha e o alisado da região `(x0, y0, x1, y1)` (px) com a margem que o raio lê.
     pub(super) fn nova(
         sampler: SampleU,
-        pigment: &[u8],
-        stride: usize,
+        (pigment, stride): (&[u8], usize),
         (w, h): (usize, usize),
         (x0, y0, x1, y1): (usize, usize, usize, usize),
         raio: f32,
@@ -545,8 +544,7 @@ mod linhas_tests {
         let sampler = SampleU::new(1, L, L);
         let s = Suave::nova(
             sampler,
-            &p,
-            L * 4,
+            (&p, L * 4),
             (L, L),
             (0, 0, L, L),
             RAIO_MAX,

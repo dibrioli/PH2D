@@ -124,7 +124,7 @@ const MAX_WAVES: i32 = 4;
 /// ⚠️ **Nada de compatibilidade se parte:** o `waves` nasce a `1`, e nesse caso o [`sea_at`]
 /// devolve a expressão literal do nó de sempre **por RAMO**. Só um grafo que peça `waves > 1`
 /// vê esta constante, e em 2026-08-25 existia exactamente um.
-const WAVE_LACUNARITY: f32 = 1.618_034;
+const WAVE_LACUNARITY: f32 = std::f32::consts::GOLDEN_RATIO;
 /// Cada onda seguinte é **metade da altura** da anterior (o `roughness` da referência).
 const WAVE_GAIN: f32 = 0.5;
 

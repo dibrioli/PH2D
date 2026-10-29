@@ -90,7 +90,14 @@ _tt="$(mktemp)"; _t0="$(tt_agora)"; _l0="$(tt_load)"
 # compilação do `ci-test` que a corrida a seguir usa.
 set -o pipefail
 cargo nextest list --workspace --cargo-profile ci-test --message-format json 2> >(tee -a "$_tt" >&2) \
-  | python3 scripts/nextest-filtros-casam.py - || { echo "[suite-completa] ✗ um filtro do nextest.toml casa zero testes" >&2; rm -f "$_tt"; exit 1; }
+  | python3 scripts/nextest-filtros-casam.py -
+_lst=("${PIPESTATUS[@]}")
+if [ "${_lst[0]}" != 0 ]; then
+  echo "[suite-completa] ✗ a workspace NÃO COMPILOU no ci-test (nextest list exit ${_lst[0]}) — nenhum teste correu" >&2
+  tt_registar suite-completa workspace 0 "$(tt_compilar_de "$_tt")" "$(tt_dif "$_t0" "$(tt_agora)")" "$_l0" 2
+  rm -f "$_tt"; exit 2
+fi
+[ "${_lst[1]}" = 0 ] || { echo "[suite-completa] ✗ um filtro do nextest.toml casa zero testes" >&2; rm -f "$_tt"; exit 1; }
 cargo nextest run --workspace --cargo-profile ci-test "$@" 2> >(tee -a "$_tt" >&2)
 _saida=$?
 tt_registar suite-completa workspace 0 "$(tt_compilar_de "$_tt")" "$(tt_dif "$_t0" "$(tt_agora)")" "$_l0" "$_saida"

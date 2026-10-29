@@ -346,14 +346,14 @@ fn sync_anim_fields(
     // ⇒ Deixá-lo numa aresta punha-o a mentir a quem o lê pela acessibilidade no instante em que o
     // MOTOR muda o facto (uma animação de uma volta pára-se sozinha). *Um valor que ninguém usa
     // para decidir tem de acompanhar quem decide, senão é só um segundo estado a envelhecer.*
-    for (id, on) in [(crate::ids::INSP_ANIM_AUTOPLAY, an.autoplay)] {
-        if let Some(InteractiveState::Checkbox { value, .. }) = host.store_mut().get_mut(id) {
-            *value = if on {
-                CheckboxValue::Checked
-            } else {
-                CheckboxValue::Unchecked
-            };
-        }
+    if let Some(InteractiveState::Checkbox { value, .. }) =
+        host.store_mut().get_mut(crate::ids::INSP_ANIM_AUTOPLAY)
+    {
+        *value = if an.autoplay {
+            CheckboxValue::Checked
+        } else {
+            CheckboxValue::Unchecked
+        };
     }
     if let Some(row) = an.rows.get(selected) {
         put(host, crate::ids::INSP_ANIM_FROM, f64::from(row.from));

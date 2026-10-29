@@ -389,7 +389,7 @@ pub fn dispatch(
         };
         let will_change = sel_ids
             .iter()
-            .any(|&id| scene.path(id).is_some_and(&differs));
+            .any(|&id| scene.path(id).is_some_and(differs));
         if will_change {
             if !stroke_campos.is_empty() {
                 restyle_selected_fields(scene, &sel_ids, &stroke_style, new_w, stroke_campos);

@@ -530,7 +530,7 @@ where
     I: IntoIterator<Item = &'a f32>,
 {
     let mut index = 0;
-    let mut high = std::f32::MIN;
+    let mut high = f32::MIN;
     vals.into_iter().enumerate().for_each(|(i, v)| {
         if v > &high {
             high = *v;
@@ -545,7 +545,7 @@ where
     I: IntoIterator<Item = &'a f32>,
 {
     let mut index = 0;
-    let mut high = std::f32::MIN;
+    let mut high = f32::MIN;
     vals.into_iter().enumerate().for_each(|(i, v)| {
         if v > &high {
             high = v.abs();

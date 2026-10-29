@@ -38,10 +38,11 @@ edition = "2024"
 # `crates/ph2d-editor-core/tests/it/architecture_msrv_is_the_pinned_toolchain.rs`
 # (o caminho `tests/…` que esta nota citava nunca existiu na raiz).
 #
-# 1.95 → 1.98 em 2026-08-29 (`docs/Atualizar Stack/`, bloco A). O piso volta a ser
+# 1.95 → 1.98 em 2026-08-29 (`docs/Atualizar Stack/`, bloco A); 1.98 → 1.99 em 2026-10-29 (comissão de
+# velocidade, item L). O piso volta a ser
 # o pin por construção; se alguém quiser de facto suportar compilador mais velho,
 # é aquele gate que fica vermelho e obriga a decisão a ser tomada de propósito.
-rust-version = "1.98"
+rust-version = "1.99"
 publish = false
 license = "LicenseRef-Proprietary"
 authors = ["Enio Oliveira Dias Brito <dibrioli@gmail.com>"]

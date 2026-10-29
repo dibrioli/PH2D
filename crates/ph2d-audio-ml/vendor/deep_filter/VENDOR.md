@@ -22,7 +22,7 @@ would put CI at the mercy of GitHub. Vendoring is the same pattern
 
 ## What was changed from upstream
 
-Only the manifest and one path — **no source logic was touched**:
+Only the manifest, one path and one deprecation spelling — **no source logic was touched**:
 
 - `Cargo.toml` trimmed to the `tract` + `default-model` runner path (plus the
   `transforms`/`logging` they pull). Dropped: the `dataset`/`bin`/`vorbis`/`flac`/
@@ -33,6 +33,8 @@ Only the manifest and one path — **no source logic was touched**:
 - `src/tract.rs`: the model `include_bytes!` path `../../models/…` → `../models/…`,
   because the model now lives inside this crate directory rather than at the
   DeepFilterNet repo root.
+- `src/lib.rs` (`argmax`, `argmax_abs`): `std::f32::MIN` → `f32::MIN` (Rust 1.99 deprecates
+  the module constant; same value bit for bit, so no behaviour change).
 
 The `src/*.rs` files for the dropped features (`dataset.rs`, `dataloader.rs`,
 `augmentations.rs`, `hdf5_key_cache.rs`, `capi.rs`, `util.rs`, `wav_utils.rs`) are
@@ -41,5 +43,5 @@ kept for completeness but are `cfg`'d out and never compiled with our feature se
 ## Updating
 
 Re-vendor from a new tag by copying `libDF/src/*.rs` + `models/DeepFilterNet3_onnx.tar.gz`
-+ the two `LICENSE-*` files, then re-applying the two changes above. Confirm the
++ the two `LICENSE-*` files, then re-applying the changes above. Confirm the
 parity gate (`crates/ph2d-audio-ml/tests/it/parity_with_reference_cli.rs`) still holds.

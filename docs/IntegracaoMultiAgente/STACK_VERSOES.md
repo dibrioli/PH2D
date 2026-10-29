@@ -11,7 +11,7 @@
 
 | | versão | onde é a fonte |
 |---|---|---|
-| **Rust (toolchain)** | **1.98** | `rust-toolchain.toml` — e é **também o MSRV** (`rust-version` no `Cargo.toml`) |
+| **Rust (toolchain)** | **1.99** (1.99.1; 29/10: rebuild da `ph2d-app-motion` 7,4 → 7,0 s, ABBA, mínimo) | `rust-toolchain.toml` — e é **também o MSRV** (`rust-version` no `Cargo.toml`) |
 | **edition** | **2024** | `Cargo.toml` `[workspace.package]` |
 | **wgpu** / naga | **29.0.4** | teto: o `vello` pede `^29.0.3` |
 | **vello** | **0.10.0** | |

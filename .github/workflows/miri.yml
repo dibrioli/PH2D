@@ -42,8 +42,8 @@ env:
   # O MECANISMO: `dtolnay/rust-toolchain@nightly` instala a nightly e põe-na
   # como *default*, mas a precedência do rustup é
   #     +toolchain  >  RUSTUP_TOOLCHAIN  >  override de dir  >  rust-toolchain.toml  >  default
-  # e o `rust-toolchain.toml` da raiz fixa `channel = "1.98"`. Ele ganha ao
-  # default, logo TODO `cargo` do job voltava para a 1.98 — canal estável, onde
+  # e o `rust-toolchain.toml` da raiz fixa `channel = "1.99"`. Ele ganha ao
+  # default, logo TODO `cargo` do job voltava para a 1.99 — canal estável, onde
   # o componente `miri` não existe. O passo de instalação passava (a nightly
   # ficava instalada, com miri), e o passo seguinte usava a outra toolchain.
   #

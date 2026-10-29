@@ -6610,6 +6610,7 @@ dependencies = [
  "ph2d-fx-op",
  "ph2d-hud",
  "ph2d-hud-layout",
+ "ph2d-item-id",
  "ph2d-morph-machine",
  "ph2d-render",
  "ph2d-shake",
@@ -7412,6 +7413,14 @@ dependencies = [
  "ph2d-core",
  "ph2d-ecs",
  "ph2d-editor-core",
+ "postcard",
+ "serde",
+]
+
+[[package]]
+name = "ph2d-item-id"
+version = "0.0.0"
+dependencies = [
  "postcard",
  "serde",
 ]
@@ -9948,6 +9957,7 @@ dependencies = [
  "libm",
  "ph2d-anim",
  "ph2d-arclen",
+ "ph2d-board-model",
  "ph2d-constraints",
  "ph2d-constraints-ecs",
  "ph2d-core",
@@ -10317,6 +10327,7 @@ version = "0.0.0"
 dependencies = [
  "ph2d-anim",
  "ph2d-color",
+ "ph2d-item-id",
  "serde",
 ]
 

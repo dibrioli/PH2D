@@ -26,8 +26,8 @@
 //! foi recusada no desenho**: o nome é editável a meio, e o relógio saltaria de timer debaixo da
 //! mão do artista.
 
-use ph2d_ecs::timer::step_ticks;
 use ph2d_ecs::SimWorld;
+use ph2d_ecs::timer::step_ticks;
 
 /// Um sinal que um timer produziu neste tique (a lei e a travessia: [`ph2d_ecs::timer::fire_all`]).
 pub use ph2d_ecs::timer::TimerFired as TimerSignal;

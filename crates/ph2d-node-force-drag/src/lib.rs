@@ -148,7 +148,12 @@ impl NodeOp for ForceDrag {
             // Pure per-instance map → parallel above the threshold
             // (bit-identical, no reduction). GPU/M5 Fase 0.
             let contrib: Vec<[f32; 2]> = par_build(input.count(), |i| {
-                arrasto(vec2_at(input, "vel", i, [0.0, 0.0]), k, falloff_at(input, i), [sx, sy])
+                arrasto(
+                    vec2_at(input, "vel", i, [0.0, 0.0]),
+                    k,
+                    falloff_at(input, i),
+                    [sx, sy],
+                )
             });
             add_accel(input, &contrib)
         };

@@ -169,14 +169,14 @@ mod painter_pen;
 mod painter_ponta;
 /// A dica do pino da preview do pincel — irmã da `painter_layers`.
 mod painter_preview;
+/// Os knobs do motor que o cartão Wet Paint também mostra — irmã da `painter_layers`.
+mod painter_wet_cartao;
 /// O PIXEL ART (ADR-0196): o menu Add, as ferramentas e os avisos da família.
 mod pixel;
 /// O PIXEL ART, P6: os diálogos Color Range, Modify, Canvas Size e Sprite Size.
 mod pixel_dialogos;
 /// O PIXEL ART, P6: a selecção, a moldura solta e os menus Select/Edit/Sprite do painel.
 mod pixel_selecao;
-/// Os knobs do motor que o cartão Wet Paint também mostra — irmã da `painter_layers`.
-mod painter_wet_cartao;
 /// ⭐⭐ **A COR, a CURVA, o COMANDO e as RECUSAS da timeline** — quatro motores numa fatia.
 mod quatro_motores;
 /// ⭐ **As strings do painel TAGS** (TOP-20 #9) — irmão de tabela, por assunto.

@@ -5,12 +5,11 @@
 
 mod view;
 
-use super::{Act, Boxed, Dlg, Pick};
+use super::{Boxed, Dlg, Pick};
 use crate::docs::KanbanDocs;
-use crate::edit::Field;
 use ph2d_editor_core::doc_surface::{Key, KeyInput, KeyOutcome};
 use ph2d_editor_core::zones::Rect;
-use ph2d_i18n::{tr, tr_with};
+use ph2d_i18n::tr_with;
 use ph2d_kanban_filter::SortBy;
 use ph2d_kanban_model::{
     Aging, CardId, CardRef, CopyKeep, Entry, FracKey, KanbanId, KanbanOp, KanbanSet, ListId,

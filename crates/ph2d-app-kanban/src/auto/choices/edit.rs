@@ -5,10 +5,9 @@ use super::{Pick, Typed};
 use crate::auto::sentence::conditions_mut;
 use crate::auto::{Sec, Slot};
 use ph2d_kanban_auto::{
-    Action, Added, Condition, DateRule, Dest, DueIn, DueWhen, End, Every, FieldTest, Kind, Part,
-    Sort, Spec, Test, TimeOfDay, Trigger, Unit, Word,
+    Action, Condition, DueIn, DueWhen, End, Every, FieldTest, Kind, Sort, Spec, Test, TimeOfDay,
+    Trigger, Unit,
 };
-use ph2d_kanban_model::{FieldId, LabelId, ListId, Member};
 
 fn sec_index(sec: Sec) -> Option<usize> {
     match sec {

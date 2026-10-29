@@ -5,12 +5,12 @@
 
 mod edit;
 
-use super::sentence::{Seg, conditions_mut};
+use super::sentence::Seg;
 use super::{Sec, Slot};
 pub(crate) use edit::{apply, toggle_word, write};
 use ph2d_kanban_auto::{
-    Action, Added, Condition, DateRule, Dest, DueIn, DueWhen, End, Every, FieldTest, Kind, Part,
-    Sort, Spec, Test, TimeOfDay, Trigger, Unit, Word, describe,
+    Action, Added, Condition, DateRule, Dest, DueIn, DueWhen, End, Every, Kind, Part, Sort, Spec,
+    Test, TimeOfDay, Trigger, Unit, Word, describe,
 };
 use ph2d_kanban_model::{FieldId, Kanban, LabelId, ListId, Member};
 

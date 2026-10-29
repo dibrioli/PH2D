@@ -155,6 +155,45 @@ fn sonda_ferramentas_da_agua() {
     });
 }
 
+/// A largura do rasto na cena ([`super::largura_do_rasto_na_cena`]) e o fundo de cada ferramenta do Smear de fábrica a
+/// cada escala de `SONDA_ESCALAS` (por vírgulas): a escala do exame é a que iguala o rasto da foto do Rebelle.
+#[test]
+#[ignore = "sonda: o rasto do Smear na cena a várias escalas"]
+fn sonda_escala_do_rasto() {
+    let escalas: Vec<f64> = std::env::var("SONDA_ESCALAS")
+        .unwrap_or_else(|_| "0.4,0.45,0.5,0.55,0.6".to_owned())
+        .split(',')
+        .map(|e| e.parse().unwrap())
+        .collect();
+    let nomes = [
+        "Smear Soft",
+        "Smear Spikey",
+        "Smear Flat",
+        "Smear Shattered",
+        "Smear Wet",
+    ];
+    let casos: Vec<(&str, f64)> = nomes
+        .iter()
+        .flat_map(|&n| escalas.iter().map(move |&e| (n, e)))
+        .collect();
+    std::thread::scope(|s| {
+        let hs: Vec<_> = casos
+            .iter()
+            .map(|&(nome, escala)| {
+                s.spawn(move || {
+                    let px = sobre_a_escala(nome, None, escala);
+                    let i = Identidade::de(&px, 1000);
+                    (nome, escala, super::largura_do_rasto_na_cena(&px, 1000), i)
+                })
+            })
+            .collect();
+        for h in hs {
+            let (nome, escala, rasto, i) = h.join().unwrap();
+            println!("[sonda rasto] {nome} escala {escala}: rasto {rasto:.2} · {i:?}");
+        }
+    });
+}
+
 #[test]
 #[ignore = "sonda: o estado depois de aplicar o Blender Soft sobre o Ink Brush"]
 fn sonda_estado_do_blend() {

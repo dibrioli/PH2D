@@ -101,7 +101,7 @@ pub const WET_FERRAMENTAS: &[ReceitaFerramenta] = &[
         },
         modo: "Blend",
     },
-    // O Smear da água (o SMUDGE do Rebelle), à escala 0,5 da cena: «Default/Soft» — a pressão leva a força, não o tamanho.
+    // O Smear da água (o SMUDGE do Rebelle), à escala do exame (`ESCALA_DO_EXAME`, 0,59 desde 29/10): «Default/Soft» — a pressão leva a força, não o tamanho.
     // O arrasto casa (fundo 110 contra 119); o canal LIMPO do Rebelle (resto 0,09 em 15 px) o motor não abre a nenhuma
     // escala ou força (o rasto só leva pigmento: a 0,6–0,7 o resto desce a 0,95–0,81, a largura sobe a 12–41).
     ReceitaFerramenta {
@@ -403,6 +403,41 @@ impl Identidade {
     }
 }
 
+/// ⭐ **A largura do RASTO na cena `sobre`, pela régua da tabela** (`regua_da_largura::largura_equivalente`): em cada
+/// linha `y` do papel abaixo da faixa molhada (181..=300 — o `papel` a y 310 fica de fora), a mudança em x 420..=580
+/// contra a mesma linha intacta (a mediana de x 60..200, como `mistura_foto.py`); a largura equivalente de cada linha,
+/// a mediana. A MESMA conta na foto do Rebelle (`mistura_foto.py`, `rasto`) e no nosso — é ela que dá a escala do exame.
+pub(crate) fn largura_do_rasto_na_cena(px: &[u8], w: usize) -> f64 {
+    use crate::presets_de_fabrica::regua_da_largura::largura_equivalente;
+    let (linhas, xs) = (181..301usize, 420..581usize);
+    let (tw, th) = (linhas.len() as u32, xs.len() as u32);
+    // A imagem TRANSPOSTA (a coluna k é a linha 181 + k): a régua mede por coluna.
+    let mut d = vec![255u8; (tw * th * 4) as usize];
+    for (k, y) in linhas.enumerate() {
+        let canal = |x: usize, c: usize| px[(y * w + x) * 4 + c];
+        let refe = [0, 1, 2].map(|c| {
+            let mut v: Vec<u8> = (60..200).map(|x| canal(x, c)).collect();
+            v.sort_unstable();
+            v[v.len() / 2]
+        });
+        for (j, x) in xs.clone().enumerate() {
+            let dif = (0..3)
+                .map(|c| canal(x, c).abs_diff(refe[c]))
+                .max()
+                .unwrap_or(0);
+            d[(j * tw as usize + k) * 4] = 255 - dif;
+        }
+    }
+    let mut v: Vec<f32> = (0..tw)
+        .filter_map(|k| largura_equivalente(&d, tw, th, k))
+        .collect();
+    if v.is_empty() {
+        return 0.0;
+    }
+    v.sort_by(f32::total_cmp);
+    f64::from(v[v.len() / 2])
+}
+
 /// As FOTOS (a cena `sobre`, A), medidas por `mistura_foto.py` (21/10): o Rebelle refeito com o SET_BRUSH repetido na
 /// troca (`fixtures/rebelle_mistura/`), o Krita onde o Rebelle não tem a ferramenta.
 #[rustfmt::skip]
@@ -415,16 +450,32 @@ const FOTOS: [(&str, &str, Identidade); 5] = [
 ];
 
 /// A escala da ferramenta na cena (a do exame: a largura medida igual à do oráculo; as faixas da base à escala 1).
+///
+/// O Smear (29/10): a escala é a que iguala o RASTO da foto do Rebelle pela régua da tabela
+/// ([`largura_do_rasto_na_cena`], [`RASTO_DA_FOTO`]) — não uma constante da régua antiga (a 0,5 de antes dava 20 de
+/// Size, que a tabela nova leva ao raio de motor 14,6 em vez de 15,4: rasto 7,08 e fundo 92 contra 119 ± 25).
+/// Medido (`sonda_escala_do_rasto`, load ~6): Soft = Spikey 0,5 → 7,08 · 0,55 → 7,69 · 0,58 → 8,22 · **0,59 → 8,39**
+/// (foto 8,39; fundo 104) · 0,6 → 8,47; Flat (rasto não monotónico até 0,62: 6,8 · 6,6 · 6,3) 0,7 → 8,34 · 0,75 → 10,75 ·
+/// **0,76 → 11,34** (foto 11,33; fundo 102) · 0,77 → 12,09. O Shattered quase não arrasta (a foto: 3 linhas de rasto) —
+/// não há rasto a igualar, fica 0,5. O Smear Wet (sem foto: é nosso) à escala do Soft, a comparação dele.
 const ESCALA_DO_EXAME: [(&str, f64); 9] = [
     ("Blender Soft", 0.45),
     ("Blender Textured", 0.45),
     ("Blender Dots", 0.45),
     ("Blender Hard", 0.45),
-    ("Smear Soft", 0.5),
-    ("Smear Spikey", 0.5),
-    ("Smear Flat", 0.5),
+    ("Smear Soft", 0.59),
+    ("Smear Spikey", 0.59),
+    ("Smear Flat", 0.76),
     ("Smear Shattered", 0.5),
-    ("Smear Wet", 0.5),
+    ("Smear Wet", 0.59),
+];
+
+/// O rasto da foto `sobre_A` do Rebelle ([`largura_do_rasto_na_cena`]; `exames/mistura_foto.py`, `rasto`) — a régua
+/// da escala do Smear: o nosso cai a `0,5 + 10 %` dele (a 0,5 o Soft lia 7,08 contra 8,39 ± 1,34).
+const RASTO_DA_FOTO: [(&str, f64); 3] = [
+    ("Smear Soft", 8.39),
+    ("Smear Spikey", 8.39),
+    ("Smear Flat", 11.33),
 ];
 
 /// O que faz a identidade de cada uma.
@@ -617,15 +668,35 @@ fn cada_preset_da_agua_cai_na_foto_do_seu_rebelle() {
         .map(|f| f.0)
         .chain(["Smear Wet"])
         .collect();
-    let medidas: Vec<(&str, Identidade)> = std::thread::scope(|s| {
+    let medidas: Vec<(&str, Identidade, f64)> = std::thread::scope(|s| {
         let hs: Vec<_> = nomes
             .iter()
-            .map(|&nome| s.spawn(move || (nome, Identidade::de(&sobre_de(nome, None), 1000))))
+            .map(|&nome| {
+                s.spawn(move || {
+                    let px = sobre_de(nome, None);
+                    (
+                        nome,
+                        Identidade::de(&px, 1000),
+                        largura_do_rasto_na_cena(&px, 1000),
+                    )
+                })
+            })
             .collect();
         hs.into_iter().map(|h| h.join().unwrap()).collect()
     });
     let de = |n: &str| medidas.iter().find(|m| m.0 == n).unwrap().1;
     let mut falhas = Vec::new();
+    // A escala do exame é a da foto: o rasto pela régua da tabela.
+    for (nome, foto) in RASTO_DA_FOTO {
+        let eu = medidas.iter().find(|m| m.0 == nome).unwrap().2;
+        println!("[agua] {nome}: rasto {eu:.2} · foto {foto:.2}");
+        if (eu - foto).abs() > 0.5 + 0.1 * foto {
+            falhas.push(format!(
+                "{nome}: rasto {eu:.2} fora da foto {foto:.2} ± {:.2} — a escala do exame",
+                0.5 + 0.1 * foto
+            ));
+        }
+    }
     for (nome, oraculo, foto, ms) in &FOTOS_DA_AGUA {
         let eu = de(nome);
         println!("[agua] {nome}: {eu:?}\n       foto {oraculo}: {foto:?}");

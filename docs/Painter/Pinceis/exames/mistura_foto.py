@@ -33,6 +33,14 @@ def identidade(f):
             return float(((col > 0.1) & (col < 0.9)).sum())
         orla_v = orla(500) - orla(200)
         out.append(dict(resto=round(resto, 3), largura=largura, borda=borda, fundo=fundo, orla_v=orla_v))
+    # rasto — a largura EQUIVALENTE (área ÷ pico, a régua da tabela) de cada linha y 181..300 em x 420..580 contra a
+    # linha intacta (x 60..200), a mediana; `largura_do_rasto_na_cena` em mistura.rs (a escala do exame do Smear)
+    ws = []
+    for y in range(181, 301):
+        d = np.abs(a[y, 420:581] - np.median(a[y, 60:200], axis=0)).max(axis=1) / 255.0
+        if d.max() >= 0.08:
+            ws.append(d.sum() / d.max())
+    out.append(dict(rasto=round(float(np.median(ws)), 2) if ws else 0.0))
     return out
 
 

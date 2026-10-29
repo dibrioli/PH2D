@@ -227,7 +227,7 @@ const PISO_DA_COLUNA: f32 = 0.08;
 /// entrava ou não: Blender Soft 236 px a 254 → 481 a 282), cada lado à ½ do seu pico com piso 0,08 (o lado ligava num
 /// degrau: Blender Textured motor 27,75 → 41 px, 27,99 → 60) e a 1.ª à última linha acima de ½ do pico no Smear (o
 /// espalhar da água cruzava o limiar: Smear Wet 3,41 → 13, 3,5 → 27, 3,8 → 14).
-fn largura_equivalente(px: &[u8], w: u32, h: u32, x: u32) -> Option<f32> {
+pub(crate) fn largura_equivalente(px: &[u8], w: u32, h: u32, x: u32) -> Option<f32> {
     let (soma, pico) = (0..h)
         .map(|y| mudanca(px, w, x, y))
         .fold((0.0f32, 0.0f32), |(s, m), c| (s + c, m.max(c)));

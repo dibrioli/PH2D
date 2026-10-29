@@ -115,10 +115,16 @@ impl CodeDoc {
         }
         if let Some(ch) = last {
             let head = self.buffer.selection().primary().head;
-            let code = self.syntax.in_code(self.buffer.text(), head);
+            // A assinatura pergunta NA tecla: o `(`/`,` pede a árvore exacta, como o Enter.
+            if matches!(ch, '(' | ',') {
+                self.syntax.fresh(self.buffer.text());
+            }
+            // A árvore velha não sabe se o que acabou de entrar é código (`Completer::typed`).
+            let code =
+                (!self.syntax.is_stale()).then(|| self.syntax.in_code(self.buffer.text(), head));
             self.complete
                 .typed(self.buffer.text(), head, ch, code, self.last_input_ns);
-            self.hints.typed(ch, code);
+            self.hints.typed(ch, code.unwrap_or(false));
         }
     }
 

@@ -209,6 +209,7 @@ impl Intel {
             for d in docs.iter_mut() {
                 d.lsp.edits.clear();
                 d.assist.clear();
+                d.complete.settle(&mut d.syntax, d.buffer.text(), now_ns);
                 let (t, syn) = (d.buffer.text(), &d.syntax);
                 d.complete
                     .offline(|s| crate::skeleton::local_items(t, syn, s), now_ns);
@@ -545,10 +546,11 @@ impl Intel {
             return;
         };
         for d in docs.iter_mut() {
+            d.complete.settle(&mut d.syntax, d.buffer.text(), now_ns);
             let Some(s) = d.complete.session.as_mut() else {
                 continue;
             };
-            if s.ticket.is_some() || s.due_ns > now_ns {
+            if s.ticket.is_some() || s.due_ns > now_ns || s.unsure.is_some() {
                 continue;
             }
             if !ready {

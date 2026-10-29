@@ -326,6 +326,9 @@ pub(crate) struct Session {
     pub top: usize,
     /// O que estava escrito da última vez que a seleção foi posta (escrever volta-a ao topo).
     typed: String,
+    /// Aberta sobre a árvore VELHA: o «fora de strings e comentários» confere-se na primeira árvore
+    /// nova ([`Completer::settle`]), no byte `anchor + unsure`; até lá não pergunta nem abre.
+    pub unsure: Option<usize>,
 }
 
 /// A lista de uma aba.
@@ -352,8 +355,10 @@ impl Completer {
 
     /// Depois de escrever `ch` com o cursor em `head`: a sessão continua se a palavra é a mesma; uma
     /// letra de palavra, `.`/`:` ou uma aspa abrem uma nova (`code` = o cursor não está numa string
-    /// nem num comentário).
-    pub fn typed(&mut self, text: &Text, head: usize, ch: char, code: bool, now_ns: u128) {
+    /// nem num comentário; `None` = a árvore está velha e não o sabe — a sessão abre à condição).
+    /// ⚠️ A árvore velha só DESLOCA os nós: um texto escrito logo a seguir a um comentário fica
+    /// dentro dele até o reparse chegar, e o `.` de `ph2d.` lia-se como comentário (cena 3, 29/10).
+    pub fn typed(&mut self, text: &Text, head: usize, ch: char, code: Option<bool>, now_ns: u128) {
         let w = word_at(text, head);
         if let (Some(s), Some(w)) = (&self.session, &w)
             && s.anchor == w.start
@@ -363,10 +368,12 @@ impl Completer {
         }
         self.session = None;
         let Some(w) = w else { return };
+        let quote = matches!(ch, '"' | '\'');
+        let in_code = code.unwrap_or(true);
         let opens = match ch {
-            '.' | ':' => code && w.qualifier.is_some(),
-            '"' | '\'' => w.quote,
-            c => code && is_word(c) && w.start < head,
+            '.' | ':' => in_code && w.qualifier.is_some(),
+            _ if quote => w.quote,
+            c => in_code && is_word(c) && w.start < head,
         };
         if opens {
             self.session = Some(Session {
@@ -378,7 +385,34 @@ impl Completer {
                 selected: 0,
                 top: 0,
                 typed: String::new(),
+                unsure: (code.is_none() && !quote).then(|| head - w.start),
             });
+        }
+    }
+
+    /// A sessão aberta à condição confirma-se se o carácter que a abriu é código, ou fecha. Espera a
+    /// árvore do worker até à pausa; passada ela sem árvore nova, reparsa já (uma vez por sessão,
+    /// nunca na tecla).
+    pub fn settle(&mut self, syntax: &mut ph2d_code_syntax::Syntax, text: &Text, now_ns: u128) {
+        let Some((at, due)) = self
+            .session
+            .as_ref()
+            .and_then(|s| s.unsure.map(|o| (s.anchor + o, s.due_ns)))
+        else {
+            return;
+        };
+        if syntax.is_stale() {
+            if due > now_ns {
+                return;
+            }
+            syntax.fresh(text);
+        }
+        if syntax.in_code(text, text.floor_char(at.min(text.len()))) {
+            if let Some(s) = self.session.as_mut() {
+                s.unsure = None;
+            }
+        } else {
+            self.session = None;
         }
     }
 
@@ -391,6 +425,7 @@ impl Completer {
         };
         if let Some(s) = self.session.as_mut().filter(|s| s.anchor == w.start) {
             s.due_ns = s.due_ns.min(now_ns);
+            s.unsure = None;
             return;
         }
         self.session = Some(Session {
@@ -402,6 +437,7 @@ impl Completer {
             selected: 0,
             top: 0,
             typed: String::new(),
+            unsure: None,
         });
     }
 
@@ -536,7 +572,7 @@ impl Completer {
         let Some(s) = self.session.as_mut() else {
             return;
         };
-        if s.items.is_some() || s.due_ns > now_ns {
+        if s.items.is_some() || s.due_ns > now_ns || s.unsure.is_some() {
             return;
         }
         let l = local(s);

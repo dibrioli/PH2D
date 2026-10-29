@@ -278,6 +278,25 @@ fn numa_string_ou_comentario_a_lista_nao_abre() {
     assert_eq!(visto.lock().unwrap().pedidos, 0, "nem chegou a perguntar");
 }
 
+/// ⭐ Na linha nova logo a seguir a um comentário, `ph2d.` escrito sem quadro pelo meio (a árvore
+/// VELHA, que estica o comentário sobre o texto novo): a lista abre. Era o vermelho intermitente da
+/// cena 3 do editor (29/10): o `.` lia-se como comentário e a sessão nunca abria.
+#[test]
+fn depois_de_um_comentario_a_arvore_velha_nao_fecha_a_lista() {
+    let (mut m, ids, _) = mesa(&[("a.luau", "function update(self)\n  -- 2) aqui\nend\n")]);
+    let id = ids[0];
+    m.pede(id);
+    tecla(&mut m, id, Key::Down, Modifiers::default(), None, "");
+    tecla(&mut m, id, Key::End, Modifiers::default(), None, "");
+    tecla(&mut m, id, Key::Enter, Modifiers::default(), Some("\r"), "");
+    let l = abre(&mut m, id, "ph2d.");
+    assert!(l.iter().any(|x| x == "set"), "{l:?}");
+    assert_eq!(
+        m.docs().text_of(id).as_deref(),
+        Some("function update(self)\n  -- 2) aqui\n  ph2d.\nend\n")
+    );
+}
+
 /// Depois de `self.` entram as propriedades `ph2d.property` do script (o servidor só conhece os
 /// campos atribuídos).
 #[test]

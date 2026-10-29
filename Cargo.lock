@@ -7042,7 +7042,6 @@ dependencies = [
  "ph2d-pan-diag",
  "ph2d-panel-asset-browser",
  "ph2d-panel-audio-editor",
- "ph2d-panel-audio-mixer",
  "ph2d-panel-authored",
  "ph2d-panel-bgremoval",
  "ph2d-panel-color-equalization",

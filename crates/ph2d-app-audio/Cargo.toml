@@ -65,5 +65,9 @@ ph2d-audio-encode = { path = "../ph2d-audio-encode" }
 # A régua lexical do HR-15, para o gate por crate (`tests/it/`).
 ph2d-label-census = { path = "../ph2d-label-census" }
 
+[package.metadata.cargo-machete]
+# `bevy_ecs` só é alcançado pela expansão do `#[derive(Resource)]` do `MesaDoc`.
+ignored = ["bevy_ecs"]
+
 [lints]
 workspace = true

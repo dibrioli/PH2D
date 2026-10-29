@@ -279,9 +279,6 @@ ph2d-editor-core = { path = "../../crates/ph2d-editor-core" }
 ph2d-panel-inspector = { path = "../../crates/ph2d-panel-inspector", optional = true }
 # ⭐ O NAVEGADOR DE ASSETS (plano `docs/Components/07`) — o shell publica-lhe o índice do quadro.
 ph2d-panel-asset-browser = { path = "../../crates/ph2d-panel-asset-browser" }
-# Audio Mixer panel (Phase 2.3c) — the render_loop bridge publishes live
-# levels via `set_snapshot` + reads `master_muted` to drive the master gain.
-ph2d-panel-audio-mixer = { path = "../../crates/ph2d-panel-audio-mixer", optional = true }
 # Audio Editor panel (docs/Audio/, W1) — the render_loop editor bridge reads the
 # transport intents + drives the preview engine + publishes position back.
 ph2d-panel-audio-editor = { path = "../../crates/ph2d-panel-audio-editor", optional = true }
@@ -587,7 +584,7 @@ panel-flip-frames    = ["ph2d-panel-registry-init/panel-flip-frames", "ph2d-app-
 panel-grid-snap      = ["ph2d-panel-registry-init/panel-grid-snap"]
 # Direct dep too: the render_loop bridge publishes live levels via
 # `set_snapshot` + reads `master_muted` to drive the engine's master gain.
-panel-audio-mixer    = ["ph2d-panel-registry-init/panel-audio-mixer", "dep:ph2d-panel-audio-mixer"]
+panel-audio-mixer    = ["ph2d-panel-registry-init/panel-audio-mixer"]
 # General timeline docked panel. `ph2d-panel-timeline` is already a non-optional
 # direct dep (render_loop publishes its snapshot via `set_current_timeline`), so
 # this only needs to flip the registry-init feature that compiles in the

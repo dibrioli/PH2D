@@ -141,6 +141,11 @@ if [ -n "${NO_FAIL_FAST:-}" ]; then
     FAIL_MODE=(--no-fail-fast)
 fi
 if command -v cargo-nextest >/dev/null 2>&1; then
+    # ⛔ Cada termo dos `filter =` do nextest.toml casa ≥ 1 teste real (29/10: um ficheiro partido mudou o nome
+    # de um teste, o prazo de 10 min deixou de se lhe aplicar e ele morreu aos 180 s). A lista reaproveita a
+    # compilação do `ci-test` que a corrida a seguir usa.
+    run "nextest.toml: cada filtro casa um teste" \
+        bash -c 'set -o pipefail; CARGO_INCREMENTAL=0 cargo nextest list --workspace --cargo-profile ci-test --message-format json | python3 scripts/nextest-filtros-casam.py -'
     run "nextest run --workspace (ci-test)" \
         env CARGO_INCREMENTAL=0 cargo nextest run --workspace --cargo-profile ci-test "${FAIL_MODE[@]}"
 else

@@ -1291,6 +1291,12 @@ const PANEL_A11Y_DELEGATE_OK: &[(&str, &str)] = &[
         "ph2d-panel-painter-layers/src/paint_ramp_leitura.rs",
         "a leitura viva do selector de cor de uma rampa (empurra o SelectOption da caixa que o widget ja' registou); nao pinta nem regista um id — 0 ocorrencias de NodeId / hit_index. / register(",
     ),
+    // As pontas do Wet Paint, movidas de `paint_shape.rs` pelo tecto de LOC (`65ceebba40`, só mover): as linhas
+    // delegam no `number_field::paint_num_row` e no `paint_checkbox_row` (os dois a11y-wired), como no pai.
+    (
+        "ph2d-panel-painter-layers/src/paint_shape_pontas.rs",
+        "Square tip / Ends rows delegate to number_field::paint_num_row and paint_checkbox_row (a11y-wired); registers no id itself",
+    ),
     (
         "ph2d-panel-painter-layers/src/paint_shape_previa.rs",
         "a COR da previa da ponta pelas camadas do Shape Color (uma conta sobre o snapshot, devolve RGBA por texel); nao pinta nem regista um id — quem pinta e regista e' o `paint_shape_preview`",

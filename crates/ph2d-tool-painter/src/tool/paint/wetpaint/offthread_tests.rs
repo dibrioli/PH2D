@@ -163,7 +163,7 @@ fn frame_at(t: &mut PainterTool, period: Duration) -> f32 {
 /// **menciona** (senão o gate passaria por o scanner estar quebrado).
 #[test]
 fn the_frame_does_not_run_a_sim_stage() {
-    let src = include_str!("../wetpaint.rs");
+    let src = include_str!("ciclo.rs");
     let i = src
         .find("fn wetpaint_tick")
         .expect("o tick mora neste arquivo");

@@ -3,7 +3,7 @@
 
 use super::doc::{AnimDoc, DragPaint, Field};
 use ph2d_editor_core::paint::{
-    fill_rounded_rect, paint_text, paint_text_centered, resolve, stroke_rect,
+    fill_rounded_rect, frame_radius, paint_text, paint_text_centered, resolve, stroke_rect,
 };
 use ph2d_editor_core::widget::paint_card_ghost;
 use ph2d_editor_core::widget::sheet_cell::paint_sheet_cell;
@@ -11,7 +11,7 @@ use ph2d_editor_core::zones::Rect;
 use ph2d_editor_core::{AnimCycleMode, InspectorAnimInfo};
 use ph2d_i18n::{tr, tr_with};
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, Radius, StrokeToken, Theme, TypeToken};
+use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken};
 use ph2d_vector::{ImageQuality, VectorScene};
 
 pub(crate) fn button(
@@ -32,7 +32,12 @@ pub(crate) fn button(
     } else {
         ColorToken::Text1
     };
-    fill_rounded_rect(scene, r, Radius::Sm.px(), resolve(bg, theme));
+    fill_rounded_rect(
+        scene,
+        r,
+        frame_radius(theme, Radius::Sm.px()),
+        resolve(bg, theme),
+    );
     paint_text_centered(
         text,
         scene,
@@ -51,7 +56,12 @@ pub(crate) fn field(
     shown: &str,
     editing: Option<&str>,
 ) {
-    fill_rounded_rect(scene, r, Radius::Sm.px(), resolve(ColorToken::Bg2, theme));
+    fill_rounded_rect(
+        scene,
+        r,
+        frame_radius(theme, Radius::Sm.px()),
+        resolve(ColorToken::Bg2, theme),
+    );
     match editing {
         Some(buf) => {
             stroke_rect(
@@ -149,7 +159,12 @@ pub fn paint_doc(
         editing(doc, &Field::Rows),
     );
     if let (Some((t, use_)), Some(g)) = (l.banner, doc.proposal()) {
-        fill_rounded_rect(scene, t, Radius::Sm.px(), resolve(ColorToken::Bg2, theme));
+        fill_rounded_rect(
+            scene,
+            t,
+            frame_radius(theme, Radius::Sm.px()),
+            resolve(ColorToken::Bg2, theme),
+        );
         let msg = tr_with(
             "anim_editor.looks_like",
             &[("cols", &g.cols), ("rows", &g.rows)],
@@ -158,7 +173,7 @@ pub fn paint_doc(
             text,
             scene,
             &msg,
-            t.x + Radius::Sm.px(),
+            t.x + Spacing::Sm.px(),
             t.y,
             font,
             t.w,
@@ -216,7 +231,7 @@ pub fn paint_doc(
                     text,
                     scene,
                     &s,
-                    r.x + Radius::Sm.px(),
+                    r.x + Spacing::Sm.px(),
                     r.y,
                     font,
                     r.w,
@@ -252,7 +267,7 @@ fn paint_list(
     fill_rounded_rect(
         scene,
         l.list,
-        Radius::Sm.px(),
+        frame_radius(theme, Radius::Sm.px()),
         resolve(ColorToken::Bg1, theme),
     );
     let rows = info.map(|i| i.rows.as_slice()).unwrap_or_default();
@@ -261,7 +276,7 @@ fn paint_list(
             text,
             scene,
             tr("anim_editor.no_animations"),
-            l.list.x + Radius::Sm.px(),
+            l.list.x + Spacing::Sm.px(),
             l.list.y,
             font,
             l.list.w,
@@ -270,7 +285,12 @@ fn paint_list(
     }
     for (i, (r, row)) in l.list_rows.iter().zip(rows).enumerate() {
         if i == doc.selected {
-            fill_rounded_rect(scene, *r, Radius::Sm.px(), resolve(ColorToken::Bg3, theme));
+            fill_rounded_rect(
+                scene,
+                *r,
+                frame_radius(theme, Radius::Sm.px()),
+                resolve(ColorToken::Bg3, theme),
+            );
         }
         if let Some(buf) = editing(doc, &Field::Name(i)) {
             field(scene, text, theme, *r, "", Some(buf));
@@ -291,7 +311,7 @@ fn paint_list(
             text,
             scene,
             &label,
-            r.x + Radius::Sm.px(),
+            r.x + Spacing::Sm.px(),
             r.y,
             font,
             r.w,
@@ -324,7 +344,7 @@ fn paint_strip(
     fill_rounded_rect(
         scene,
         l.strip,
-        Radius::Sm.px(),
+        frame_radius(theme, Radius::Sm.px()),
         resolve(ColorToken::Bg1, theme),
     );
     if frames.is_empty() {
@@ -332,7 +352,7 @@ fn paint_strip(
             text,
             scene,
             tr("anim_editor.strip_hint"),
-            l.strip.x + Radius::Sm.px(),
+            l.strip.x + Spacing::Sm.px(),
             l.strip.y,
             font,
             l.strip.w,
@@ -357,7 +377,7 @@ fn paint_strip(
         fill_rounded_rect(
             scene,
             *thumb,
-            Radius::Sm.px(),
+            frame_radius(theme, Radius::Sm.px()),
             resolve(ColorToken::Bg2, theme),
         );
         if let Some(sheet) = &doc.snap.sheet {
@@ -375,7 +395,7 @@ fn paint_strip(
             fill_rounded_rect(
                 scene,
                 *thumb,
-                Radius::Sm.px(),
+                frame_radius(theme, Radius::Sm.px()),
                 resolve(ColorToken::BgScrim, theme),
             );
         }
@@ -391,7 +411,7 @@ fn paint_strip(
             text,
             scene,
             &(i + 1).to_string(),
-            thumb.x + Radius::Sm.px(),
+            thumb.x + Spacing::Sm.px(),
             thumb.y,
             font,
             thumb.w,
@@ -423,7 +443,7 @@ fn paint_strip(
         fill_rounded_rect(
             scene,
             bar,
-            Radius::Sm.px(),
+            frame_radius(theme, Radius::Sm.px()),
             resolve(ColorToken::Accent, theme),
         );
         painted.marker = Some(gap);
@@ -454,7 +474,7 @@ fn paint_strip(
             scene,
             &content,
             thumb,
-            Radius::Sm.px(),
+            frame_radius(theme, Radius::Sm.px()),
             Some(resolve(ColorToken::Bg2, theme)),
             d.grab,
             d.at,

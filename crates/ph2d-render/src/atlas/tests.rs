@@ -554,7 +554,9 @@ fn a_regiao_do_azulejo_e_a_celula_do_meio() {
         .expect("regrow");
     vizinhas_sao_a_imagem(&atlas);
     // CONTROLO: uma escrita simples da mesma chave é a imagem inteira, sem cópias.
-    let tira = wrap_image(&imagem, [w, h], [3, 1]);
-    let r = atlas.insert(&gpu, 9, w * 3, h, &tira).expect("cabe");
+    let tira = wrap_image(bytemuck::cast_slice(&imagem), [w, h], [3, 1]);
+    let r = atlas
+        .insert(&gpu, 9, w * 3, h, bytemuck::cast_slice(&tira))
+        .expect("cabe");
     assert_eq!(atlas.region(9), Some(r));
 }

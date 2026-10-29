@@ -2,9 +2,46 @@
 //! e os quadros do editor de animações (plano GameEngineFuncional 07). A célula encaixa-se na caixa sem
 //! deformar, centrada; o resto da folha fica de fora pelo recorte.
 
-use crate::SheetImage;
 use crate::zones::Rect;
 use ph2d_vector::{Affine, ImageQuality, VectorScene};
+use std::sync::Arc;
+
+/// Os pixels da folha da sprite (RGBA reto), para miniaturas e para a grelha do editor.
+///
+/// ⚠️ Leva o [`ph2d_vector::StableImage`] já feito: o Vello guarda a imagem pelo id do blob, e um
+/// `draw_image_rgba` por quadro voltaria a subi-la à placa em cada pintura.
+#[derive(Clone)]
+pub struct SheetImage {
+    pub rgba: Arc<Vec<u8>>,
+    pub w: u32,
+    pub h: u32,
+    pub image: ph2d_vector::StableImage,
+}
+
+impl SheetImage {
+    /// `None` se `rgba` não tem `w × h × 4` bytes.
+    #[must_use]
+    pub fn new(rgba: Arc<Vec<u8>>, w: u32, h: u32) -> Option<Self> {
+        let image = ph2d_vector::StableImage::from_rgba(rgba.clone(), w, h)?;
+        Some(Self { rgba, w, h, image })
+    }
+}
+
+impl PartialEq for SheetImage {
+    /// A MESMA folha (o mesmo blob), não pixels iguais: comparar 4,7 MB por quadro seria o custo todo.
+    fn eq(&self, other: &Self) -> bool {
+        Arc::ptr_eq(&self.rgba, &other.rgba) && self.w == other.w && self.h == other.h
+    }
+}
+
+impl std::fmt::Debug for SheetImage {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SheetImage")
+            .field("w", &self.w)
+            .field("h", &self.h)
+            .finish_non_exhaustive()
+    }
+}
 
 /// A caixa onde a célula `cell` de uma grelha `hframes × vframes` cai dentro de `dest`, e a escala.
 #[must_use]
@@ -65,7 +102,6 @@ pub fn paint_sheet_cell(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Arc;
 
     #[test]
     fn a_celula_encaixa_sem_deformar_e_centrada() {

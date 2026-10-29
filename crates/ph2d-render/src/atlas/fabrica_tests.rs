@@ -149,7 +149,11 @@ fn a_imagem_de_um_azulejo_e_uma_celula_e_o_atlas_a_envolve() {
             assert_eq!([w, h], art.cell_px());
             assert_eq!(art.frames(), [1, 1]);
             assert_eq!(
-                crate::atlas::wrap_image(factory_image(art), [w, h], art.grid),
+                bytemuck::cast_slice::<_, u8>(&crate::atlas::wrap_image(
+                    bytemuck::cast_slice(factory_image(art)),
+                    [w, h],
+                    art.grid
+                )),
                 factory_pixels(art)
             );
         } else {

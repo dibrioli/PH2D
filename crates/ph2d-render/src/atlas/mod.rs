@@ -82,16 +82,20 @@ pub use fabrica::{
     PLATFORM_TILE, PLATFORM_TILE_KEY, factory_image, factory_pixels,
 };
 
-/// A imagem `size` (RGBA8) repetida `copies` (`[colunas, linhas]`) vezes, lado a lado — o que
+/// A imagem `size` repetida `copies` (`[colunas, linhas]`) vezes, lado a lado — o que
 /// [`TextureAtlas::insert_wrapped`] guarda à volta de uma imagem que repete.
 #[must_use]
-pub fn wrap_image(rgba: &[u8], size: [u32; 2], copies: [u32; 2]) -> Vec<u8> {
+pub fn wrap_image(
+    texels: &[ph2d_color::SrgbRgba],
+    size: [u32; 2],
+    copies: [u32; 2],
+) -> Vec<ph2d_color::SrgbRgba> {
     let [w, h] = size.map(|v| v as usize);
     let [cx, cy] = copies.map(|c| c.max(1) as usize);
-    let linha = w * 4;
+    let linha = w;
     let mut out = Vec::with_capacity(linha * cx * h * cy);
     for y in 0..h * cy {
-        let fonte = &rgba[(y % h) * linha..(y % h + 1) * linha];
+        let fonte = &texels[(y % h) * linha..(y % h + 1) * linha];
         for _ in 0..cx {
             out.extend_from_slice(fonte);
         }
@@ -394,8 +398,8 @@ impl TextureAtlas {
         copies: [u32; 2],
     ) -> Result<AtlasRegion, AtlasInsertError> {
         let [cx, cy] = copies.map(|c| c.max(1));
-        let tira = wrap_image(rgba, [w, h], [cx, cy]);
-        let fora = self.insert(gpu, key, w * cx, h * cy, &tira)?;
+        let tira = wrap_image(bytemuck::cast_slice(rgba), [w, h], [cx, cy]);
+        let fora = self.insert(gpu, key, w * cx, h * cy, bytemuck::cast_slice(&tira))?;
         let dentro = AtlasRegion {
             x: fora.x + w * (cx / 2),
             y: fora.y + h * (cy / 2),

@@ -130,7 +130,10 @@ mod tests {
         //   Quem integrar conta o DELTA, nunca o literal.
         // ⚠️ **2026-10-25: `109` -> `111`, delta +2** -- `SpriteAnimFrames` + `SpriteAnimCursor` (a lista de
         //   quadros, line/GameEngineFuncional plano 07). Quem integrar conta o DELTA, nunca o literal.
-        assert_eq!(reg.len(), 111);
+        // ⚠️ **2026-10-28: `111` -> `114`, delta +3** -- `TiledDraw` + `ImageUseMemory` + `ImageRegion`
+        //   (line/GameEngineFuncional planos 14–16), registados no ECS (`ph2d-ecs` 108 -> 113 = +5).
+        //   Quem integrar conta o DELTA, nunca o literal.
+        assert_eq!(reg.len(), 114);
         assert!(reg.get_by_name("ph2d::script::LuauScript").is_some());
     }
 }

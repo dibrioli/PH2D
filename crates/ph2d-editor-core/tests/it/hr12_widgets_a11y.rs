@@ -90,6 +90,18 @@ const A11Y_OPT_OUT: &[(&str, &str)] = &[
         "dropdown/geometria.rs",
         "geometria de chip: o no' e' do Dropdown, que vive no mod.rs ao lado",
     ),
+    (
+        "dropdown/largura.rs",
+        "largura medida da lista aberta: o no' e' do Dropdown, que vive no mod.rs ao lado",
+    ),
+    (
+        "sheet_cell.rs",
+        "pixels de uma celula da folha: o nome e' do cartao/linha que a pousa, nao da imagem",
+    ),
+    (
+        "illustration.rs",
+        "desenho da dica (command_palette/tip.rs): o texto da dica e' que fala, a figura e' decoracao",
+    ),
     // ⚠️ **E o TEXTO do nome também não** (2026-09-15, quando o tecto de LOC partiu o `row.rs` em
     //    dois): o `label.rs` mede, trunca e pousa o texto do nome. Esse texto **já é** o `label` do
     //    nó do controlo — o `NumberInput`/`PropertyBox` leva-o no `NodeBuilder::label`. *Um nó

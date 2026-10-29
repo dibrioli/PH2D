@@ -102,6 +102,8 @@ pub(crate) fn paint_list(
         let cells = row_cells(row, info.cells);
         let mut text_x = x + Spacing::Sm.px();
         if let Some(sheet) = info.card.sheet.as_ref() {
+            // A miniatura é um quadrado do lado da linha; o texto anda na HORIZONTAL, não é um passo.
+            let thumb = Rect::new(x, cur_y, ROW_H, ROW_H);
             if let Some(&first) = cells.first() {
                 paint_sheet_cell(
                     scene,
@@ -109,10 +111,10 @@ pub(crate) fn paint_list(
                     info.card.hframes,
                     info.card.vframes,
                     first,
-                    Rect::new(x, cur_y, ROW_H, ROW_H),
+                    thumb,
                 );
             }
-            text_x = x + ROW_H + Spacing::Sm.px();
+            text_x = thumb.x + thumb.w + Spacing::Sm.px();
         }
         let color = if info.current == row.name {
             resolve(ColorToken::Accent, theme)

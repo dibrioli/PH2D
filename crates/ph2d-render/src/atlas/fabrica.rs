@@ -200,13 +200,18 @@ pub fn factory_image(art: &FactoryArt) -> &'static [u8] {
 /// ([`super::wrap_image`]).
 #[must_use]
 pub fn factory_pixels(art: &FactoryArt) -> &'static [u8] {
-    static CACHE: [OnceLock<Vec<u8>>; FACTORY_ART.len()] =
+    static CACHE: [OnceLock<Vec<ph2d_color::SrgbRgba>>; FACTORY_ART.len()] =
         [const { OnceLock::new() }; FACTORY_ART.len()];
     if !art.tile {
         return factory_image(art);
     }
-    CACHE[indice(art)]
-        .get_or_init(|| super::wrap_image(factory_image(art), art.cell_px(), art.grid))
+    bytemuck::cast_slice(CACHE[indice(art)].get_or_init(|| {
+        super::wrap_image(
+            bytemuck::cast_slice(factory_image(art)),
+            art.cell_px(),
+            art.grid,
+        )
+    }))
 }
 
 #[cfg(test)]

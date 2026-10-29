@@ -512,7 +512,7 @@ pub enum EditorAction {
     /// Tiled, Width/Height.
     ImageUseEdit {
         entity_bits: u64,
-        edit: crate::ImageUseEdit,
+        edit: crate::image_use_edits::ImageUseEdit,
     },
 
     InspectorSwapVariant {

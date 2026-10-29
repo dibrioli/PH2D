@@ -107,6 +107,7 @@ pub mod tool;
 pub mod tool_activation;
 pub mod undo_link;
 pub mod widget;
+pub use widget::sheet_cell::SheetImage;
 pub mod zen;
 pub mod zones;
 
@@ -155,6 +156,9 @@ pub mod factory_edits;
 /// ⭐⭐⭐ **A secção PARTICLES do Inspector** (TOP-20 #18) — ver o cabeçalho do módulo.
 /// ⭐⭐⭐ **O vocabulário da secção HUD** (TOP-20 #20).
 pub mod hud_edits;
+/// ⭐ O vocabulário do USO DA IMAGEM (GEF 13–16) — abaixo do `action_bus` (catraca do DAG).
+pub mod image_use_edits;
+pub use image_use_edits::{ImageUseEdit, InspectorImageUse};
 /// ⭐ **O vocabulário da secção LUZ** (Luz 2D, W4) — ver o cabeçalho dele.
 pub mod luz_edits;
 /// O vocabulário da secção MACRO e do painel MACROS (ADR-0186).
@@ -232,21 +236,21 @@ pub use project::{
 pub use screens::{
     ActionFieldEdit, AnchorFieldEdit, AnimCardInfo, AnimCharacterInfo, AnimChooser, AnimCycleMode,
     AnimFieldEdit, AnimRuleInfo, AnimWhenInfo, AudioFieldEdit, BlendFieldEdit, BottomHudStats,
-    CameraFieldEdit, EMISSIVE_MAX_UI, FactoryFieldEdit, HeroScreen, HeroSelection, ImageUseEdit,
+    CameraFieldEdit, EMISSIVE_MAX_UI, FactoryFieldEdit, HeroScreen, HeroSelection,
     InspectorActionInfo, InspectorActionRow, InspectorAnchorInfo, InspectorAnchorRow,
     InspectorAnimInfo, InspectorAnimRow, InspectorAudioInfo, InspectorAudioSource,
     InspectorBlendInfo, InspectorBlendMixed, InspectorCameraFollow, InspectorCameraInfo,
     InspectorCameraLimits, InspectorDraw, InspectorFactory, InspectorFactoryInfo,
-    InspectorGameCamera, InspectorImageUse, InspectorJointInfo, InspectorLifecycle,
-    InspectorNameInfo, InspectorOrderingInfo, InspectorOrderingMixed, InspectorPhysicsInfo,
-    InspectorPlayerInfo, InspectorSamplingInfo, InspectorSamplingMixed, InspectorSliceInfo,
-    InspectorSliceMixed, InspectorSpawnWhere, InspectorSpriteInfo, InspectorSpriteMixed,
-    InspectorSpriteSource, InspectorTagRow, InspectorTagsInfo, InspectorTimerInfo,
-    InspectorTimerRow, InspectorTransformInfo, InspectorVisibilityInfo, InspectorVisibilityMixed,
+    InspectorGameCamera, InspectorJointInfo, InspectorLifecycle, InspectorNameInfo,
+    InspectorOrderingInfo, InspectorOrderingMixed, InspectorPhysicsInfo, InspectorPlayerInfo,
+    InspectorSamplingInfo, InspectorSamplingMixed, InspectorSliceInfo, InspectorSliceMixed,
+    InspectorSpawnWhere, InspectorSpriteInfo, InspectorSpriteMixed, InspectorSpriteSource,
+    InspectorTagRow, InspectorTagsInfo, InspectorTimerInfo, InspectorTimerRow,
+    InspectorTransformInfo, InspectorVisibilityInfo, InspectorVisibilityMixed,
     InspectorVisibilitySectionInfo, InspectorWheelInfo, JointFieldEdit, OrderingFieldEdit,
-    PhysicsFieldEdit, PlayerFieldEdit, RequestedSpriteStrategy, SamplingFieldEdit, SheetImage,
-    SliceFieldEdit, SpriteFieldEdit, TimerFieldEdit, ViewFocusKind, VisibilityFieldEdit,
-    WheelFieldEdit, paint_hero_screen, row_cells,
+    PhysicsFieldEdit, PlayerFieldEdit, RequestedSpriteStrategy, SamplingFieldEdit, SliceFieldEdit,
+    SpriteFieldEdit, TimerFieldEdit, ViewFocusKind, VisibilityFieldEdit, WheelFieldEdit,
+    paint_hero_screen, row_cells,
 };
 pub use tags_edits::{TagTreeEdit, TagsFieldEdit, TagsPanelInfo, TagsPanelRow};
 pub use toast::{Toast, ToastQueue, ToastSeverity};

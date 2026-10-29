@@ -367,7 +367,8 @@ pub fn paint(
     }
 
     // ⭐ A dica do item sob o rato, por cima de tudo o que a paleta pinta — e sem alvo.
-    let _ = tip::paint_tip(scene, ts, theme, hit_index, model, store.hot_id(), viewport);
+    let rect_for = |id| hit_index.rect_for(id);
+    let _ = tip::paint_tip(scene, ts, theme, rect_for, model, store.hot_id(), viewport);
 
     // Close-X last (wins its rect inside the card).
     hit_index.register(CMD_PALETTE_CLOSE, close_rect);

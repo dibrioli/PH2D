@@ -1,10 +1,10 @@
 //! Gates da dica ilustrada — pela PORTA da paleta inteira (`paint`), com o rato sobre o item.
 
 use super::super::{
-    PaletteGroup, PaletteItem, PaletteModel, PaletteSub, PaletteTip, paint as paint_palette,
+    HitIndex, PaletteGroup, PaletteItem, PaletteModel, PaletteSub, PaletteTip, WidgetStore,
+    paint as paint_palette,
 };
 use super::*;
-use crate::interaction::WidgetStore;
 use crate::widget::illustration::Mark;
 use ph2d_tool_registry::hash_node_id;
 
@@ -127,7 +127,7 @@ fn the_card_sits_beside_the_item_inside_the_viewport() {
         &mut scene,
         &mut ts,
         Theme::default(),
-        &index,
+        |id| index.rect_for(id),
         &model(),
         Some(with_tip()),
         VP,
@@ -152,7 +152,7 @@ fn the_card_sits_beside_the_item_inside_the_viewport() {
             &mut scene,
             &mut ts,
             Theme::default(),
-            &index,
+            |id| index.rect_for(id),
             &model(),
             Some(without_tip()),
             VP

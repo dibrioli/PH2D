@@ -9,7 +9,6 @@
 //! facto ocupou) e só depois o fundo, do tamanho certo — medir e pintar são a mesma passada de layout.
 
 use super::{PaletteModel, PaletteTip};
-use crate::interaction::HitIndex;
 use crate::paint::{fill_rounded_rect, paint_text_block, resolve};
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
@@ -22,19 +21,20 @@ const TIP_W: f32 = 320.0; // LITERAL-PX-OK: largura do cartão da dica (geometri
 /// A altura da moldura do desenho, em fracção da largura útil (uma moldura 2:1).
 const PICTURE_ASPECT: f32 = 0.5;
 
-/// ⭐ **Pinta a dica do item `hot`**, se ele tiver uma e estiver registado neste quadro. Devolve o cartão.
+/// ⭐ **Pinta a dica do item `hot`**, se ele tiver uma e estiver registado neste quadro (`rect_for`, o
+/// rect do item no índice de alvos de quem chama). Devolve o cartão.
 pub(super) fn paint_tip(
     scene: &mut VectorScene,
     ts: &mut TextSystem,
     theme: Theme,
-    hit_index: &HitIndex,
+    rect_for: impl Fn(NodeId) -> Option<Rect>,
     model: &PaletteModel,
     hot: Option<NodeId>,
     viewport: Rect,
 ) -> Option<Rect> {
     let hot = hot?;
     let tip = model.tips.iter().find(|t| t.id == hot)?;
-    let item = hit_index.rect_for(hot)?;
+    let item = rect_for(hot)?;
     Some(paint_card(scene, ts, theme, tip, item, viewport))
 }
 

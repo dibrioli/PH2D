@@ -89,7 +89,7 @@ pub struct InspectorSpriteInfo {
     /// Active sheet frame index (`< hframes*vframes`).
     pub frame: u32,
     /// ⭐ **Para que serve a imagem neste objecto** (plano GEF 13 D4): o painel mostra só os campos do uso.
-    pub image_use: InspectorImageUse,
+    pub image_use: crate::image_use_edits::InspectorImageUse,
     /// Quantas células tem a IMAGEM (o corte é dela, plano GEF 13 D3) — `> 1` num bloco que repete é o aviso
     /// «Make it Animated».
     pub image_cells: u32,
@@ -396,25 +396,6 @@ pub enum VisibilityFieldEdit {
     RectH(f32),
 }
 
-/// ⭐ O USO da imagem num objecto (plano GEF 13 D4; a lei é `ph2d_app_sprite_anim::image_use`).
-#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
-pub enum InspectorImageUse {
-    /// Uma imagem (ou uma célula dela) parada: o corte da imagem e a célula a mostrar.
-    #[default]
-    Still,
-    /// A imagem repete-se (bloco, fundo): nenhum campo de quadros.
-    Repeated,
-    /// As células tocam: a secção Animation abre sob o seletor.
-    Animated,
-    /// Só uma área da imagem, escolhida no editor de Region (plano GEF 16).
-    Region,
-}
-
-impl InspectorImageUse {
-    /// A ordem do seletor «Use».
-    pub const ALL: [Self; 4] = [Self::Still, Self::Repeated, Self::Animated, Self::Region];
-}
-
 /// ⭐ Como a sprite enche o seu tamanho (plano GEF 14 D5): a linha **Tiled** e, ligada, Width/Height.
 #[derive(Copy, Clone, Debug, Default, PartialEq)]
 pub enum InspectorDraw {
@@ -427,23 +408,6 @@ pub enum InspectorDraw {
     Tiled { copies: [f32; 2] },
     /// Só uma área da imagem: o tamanho dela em píxeis da imagem (plano GEF 16).
     Region { px: [u32; 2] },
-}
-
-/// ⭐ **Uma edição do USO da imagem** (planos GEF 14 D5 e 15 D3): o seletor «Use» sob a linha Image e o
-/// tamanho de uma sprite que repete.
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub enum ImageUseEdit {
-    /// O seletor **Still | Repeated | Animated | Region**.
-    Use(InspectorImageUse),
-    /// **Edit Region**: abre o editor da área (plano GEF 16 D2).
-    EditRegion,
-    /// O **OK** do editor de Region: a área `rect` (`[x, y, w, h]` em px da imagem) e a grelha de snap `grid`
-    /// (colunas × linhas).
-    SetRegion { rect: [u32; 4], grid: [u32; 2] },
-    /// **Width** de uma sprite que repete, em cópias da imagem.
-    Width(f32),
-    /// **Height** de uma sprite que repete, em cópias da imagem.
-    Height(f32),
 }
 
 /// Mirror of `ph2d_render::SpriteSource` that doesn't depend on

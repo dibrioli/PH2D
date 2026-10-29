@@ -195,7 +195,14 @@ impl PainterTool {
         // double-darken, and everywhere else in the app the Grain is THE
         // texture. The per-pixel law is `dab::grain_at`, the same single
         // door the colour route and the impasto height kernel call.
-        let grain_image = self.paint.texture_image.as_ref().map(|i| i.as_mask());
+        // A imagem do slot que faz de Grain: a do PAPEL quando ele o é (`papel_como_grain`, como o carimbo).
+        let grain_image = if self.papel_como_grain() {
+            &self.paint.paper_image
+        } else {
+            &self.paint.texture_image
+        }
+        .as_ref()
+        .map(|i| i.as_mask());
         // Só o Grain que AMOSTRA alguma coisa toma o lugar das cerdas (um Image sem imagem não).
         let grain_active = brush.grain_samples(grain_image.is_some());
         let groups = self.paint.dab_groups.clone();
@@ -227,6 +234,7 @@ impl PainterTool {
         super::lote::acerta_o_lote(&mut sess.engine, brush, fino);
         let esmaece_fino = super::rota_da_lane::esmaece_fino(&sess.engine, brush);
         let escala_tex = super::lote::escala_da_textura(&sess.engine, brush);
+        let grao_e_o_papel = self.grao_e_o_papel();
         let pigmento_da_marca = if marca_do_spray {
             super::lote::pigmento_da_marca(brush)
         } else {
@@ -316,7 +324,10 @@ impl PainterTool {
             // (spec at the dab's radius → rotor → footprint → Shape basis in
             // the stroke frame), evaluated per engine cell (cell − 1 = px).
             let mut spec = brush.at_dab(d);
-            super::lote::escala_o_grao(&mut spec.texture, escala_tex);
+            // O papel não cresce com o pincel: o «Same as Paper» fica à escala do papel visível.
+            if !grao_e_o_papel {
+                super::lote::escala_o_grao(&mut spec.texture, escala_tex);
+            }
             super::lote::escala_as_cerdas(&mut spec.shape, escala_cerdas);
             let peso = lane_prev
                 .filter(|_| passo_do_pigmento > 0.0)

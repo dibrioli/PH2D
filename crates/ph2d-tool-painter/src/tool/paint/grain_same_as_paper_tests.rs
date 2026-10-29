@@ -65,6 +65,9 @@ fn pinta(media: PaintMedia, papel: Option<TextureSettings>, ligado: bool) -> Pai
     if ligado {
         t.toggle_brush_grain_same_as_paper();
     }
+    // A Roughness de ganho 1 (o contraste do papel visível, `ganho_do_dente`): o xadrez da régua vive em
+    // `0,05..0,25`, e o ganho de omissão (1,75) achata-o — no papel visível e, desde 28/10, no grão.
+    t.set_substrate_roughness(0.2);
     t.on_canvas_pointer(cp([16.0, 64.0], PointerPhase::Down));
     t.on_tick(1000.0 / 60.0);
     for k in 1..=24u8 {
@@ -151,4 +154,128 @@ fn same_as_paper_dos_outros_meios_nao_toca_a_aquarela() {
     let l = pinta(PaintMedia::Watercolor, Some(papel()), true);
     assert!(!l.grao_e_o_papel(), "a Aquarela leu o Same as Paper dos outros meios");
     assert_eq!(t.canvas_rgba.to_vec(), l.canvas_rgba.to_vec());
+}
+
+/// O papel VISÍVEL no texel: o dente do substrato que a luz do relevo sombreia (Relief ligado), em cargas.
+fn visivel(t: &PainterTool, x: usize, y: usize) -> f32 {
+    t.substrate().expect("o Relief está ligado").tooth_loads(x as i64, y as i64)
+}
+
+/// Os pares (grão que a tinta mostra, papel visível) no miolo do traço, e o desvio-padrão de cada lado.
+fn grao_e_visivel(t: &PainterTool) -> (f64, f64, f64, usize) {
+    let px = &t.canvas_rgba;
+    let mut pares = Vec::new();
+    for y in 52..76 {
+        for x in 24..104 {
+            let p = &px[(y * LADO + x) * 4..][..4];
+            let (r, g) = (f64::from(p[0]), f64::from(p[1]));
+            if p[3] < 64 || r + g < 60.0 || f64::from(p[2]) > 160.0 {
+                continue;
+            }
+            pares.push((r / (r + g), f64::from(visivel(t, x, y))));
+        }
+    }
+    let n = pares.len().max(1) as f64;
+    let (ma, mb) = pares.iter().fold((0.0, 0.0), |(a, b), (x, y)| (a + x / n, b + y / n));
+    let (mut sab, mut saa, mut sbb) = (0.0, 0.0, 0.0);
+    for (a, b) in &pares {
+        sab += (a - ma) * (b - mb);
+        saa += (a - ma) * (a - ma);
+        sbb += (b - mb) * (b - mb);
+    }
+    let r = sab / (saa * sbb).sqrt().max(1e-12);
+    (r, (saa / n).sqrt(), (sbb / n).sqrt(), pares.len())
+}
+
+/// O traço com o papel do cartão Paper montado como o dono o monta: um papel de fábrica (Cold), Relief e Roughness.
+fn pinta_com_o_cartao(media: PaintMedia, papel: TextureSettings, relief: f32, rough: f32) -> PainterTool {
+    let mut t = tool(LADO as u32, media, 22.0);
+    t.set_paper_field(|b| b.paper = papel);
+    t.set_substrate_depth(relief);
+    t.set_substrate_roughness(rough);
+    let mut t = {
+        // O resto do traço é o da régua de cima (o grão pela rampa verde → vermelho).
+        let _ = &mut t;
+        t
+    };
+    t.set_wet_relogio_fixo(true);
+    t.set_brush_color_srgb8([30, 60, 220]);
+    t.set_brush_texture_kind(TextureKind::Noise.to_u8());
+    t.set_texture_ramp(ColorRamp::new(
+        vec![
+            RampStop::new(0.0, [0.0, 1.0, 0.0, 1.0]),
+            RampStop::new(1.0, [1.0, 0.0, 0.0, 1.0]),
+        ],
+        RampColorMode::Rgb,
+        RampInterp::Linear,
+    ));
+    t.set_texture_ramp_enabled(true);
+    t.toggle_brush_grain_same_as_paper();
+    t.on_canvas_pointer(cp([16.0, 64.0], PointerPhase::Down));
+    t.on_tick(1000.0 / 60.0);
+    for k in 1..=24u8 {
+        t.on_canvas_pointer(cp([16.0 + 4.0 * f32::from(k), 64.0], PointerPhase::Move));
+        t.on_tick(1000.0 / 60.0);
+    }
+    t.on_canvas_pointer(cp([112.0, 64.0], PointerPhase::Up));
+    for _ in 0..4 {
+        t.on_tick(1000.0 / 60.0);
+    }
+    t
+}
+
+/// ⭐ **Smoke do dono 28/10: «corresponde PARCIALMENTE, mas não em todas as propriedades».** A régua mede contra o
+/// papel VISÍVEL (o dente que o Relief sombreia, com a Roughness do cartão), não contra a altura crua: com cada
+/// controlo do cartão Paper mexido (tipo, Size, Angle, Roughness), o grão do traço continua a desenhar o papel que se
+/// vê (`r ≥ 0,8`), e a Roughness muda o CONTRASTE dos dois na mesma direcção. Mais: o Relief e a Roughness chegam ao
+/// spec do traço como chegam ao papel visível (a profundidade e o ganho do dente).
+#[test]
+fn same_as_paper_acompanha_cada_controlo_do_cartao_paper() {
+    let cold = super::substrate_relief::default_paper();
+    let casos: [(&str, TextureSettings, f32, f32); 5] = [
+        ("Cold, Roughness 0,1", cold, 1.0, 0.1),
+        ("Cold, Roughness 0,9", cold, 1.0, 0.9),
+        ("Cold, Size 0,5", TextureSettings { size: [0.5, 0.5], ..cold }, 1.0, 0.5),
+        ("Cold, Angle 45", TextureSettings { angle_deg: 45, ..cold }, 1.0, 0.5),
+        ("Rough", TextureSettings { kind: TextureKind::PaperRough, ..cold }, 0.8, 0.5),
+    ];
+    let mut falhas = Vec::new();
+    for m in MEIOS {
+        let mut desvios = Vec::new();
+        for (nome, papel, relief, rough) in casos {
+            let t = pinta_com_o_cartao(m, papel, relief, rough);
+            let (r, sg, sv, n) = grao_e_visivel(&t);
+            eprintln!("{m:?} {nome}: r = {r:.3}, σ grão {sg:.4}, σ visível {sv:.4}, {n} texels");
+            if n < 400 || r < 0.8 {
+                falhas.push(format!("{m:?} {nome}: o grão não desenha o papel visível (r = {r:.3}, {n})"));
+            }
+            desvios.push((sg, sv));
+            // O spec do traço leva o Relief e a Roughness do cartão (a profundidade e o contraste do dente).
+            let s = t.stroke_spec();
+            let ganho = super::substrate_relief::ganho_do_dente(rough);
+            if (s.texture.lei.contraste - ganho).abs() > 1e-6 {
+                falhas.push(format!("{m:?} {nome}: contraste {} ≠ o do papel {ganho}", s.texture.lei.contraste));
+            }
+        }
+        // A Roughness: o papel visível ganha contraste de 0,1 para 0,9 — o grão tem de ganhar na mesma ordem.
+        let (g0, v0) = desvios[0];
+        let (g1, v1) = desvios[1];
+        let (rv, rg) = (v1 / v0.max(1e-9), g1 / g0.max(1e-9));
+        if rg < 1.0 + 0.5 * (rv - 1.0) {
+            falhas.push(format!("{m:?}: Roughness — o papel visível ×{rv:.2}, o grão ×{rg:.2}"));
+        }
+        // O Relief: a profundidade do grão segue-o (0,6 → 1 com a Depth do Grain inteira).
+        let d = |relief| {
+            let mut t = tool(LADO as u32, m, 22.0);
+            t.set_paper_field(|b| b.paper = cold);
+            t.set_substrate_depth(relief);
+            t.toggle_brush_grain_same_as_paper();
+            t.stroke_spec().grain_depth
+        };
+        let (d6, d10) = (d(0.6), d(1.0));
+        if d10 <= d6 * 1.3 {
+            falhas.push(format!("{m:?}: Relief 0,6 → 1 não aprofunda o grão ({d6} → {d10})"));
+        }
+    }
+    assert!(falhas.is_empty(), "{}", falhas.join("\n"));
 }

@@ -84,6 +84,7 @@ fn pincel_mexido() -> BrushSpec {
             depth_jitter: 0.7,
             depth_pressure: true,
             area: true,
+            contraste: 1.0,
         },
     };
     let curva = FalloffCurve::from_points(&[

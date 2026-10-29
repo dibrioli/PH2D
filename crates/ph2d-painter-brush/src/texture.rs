@@ -448,6 +448,13 @@ pub fn granulation_gate(sample: f32, granulation: f32) -> f32 {
     }
 }
 
+/// ⭐ **O contraste do dente** — `0,5 + (t − 0,5)·ganho`, recortado a `0..1`: a lei ÚNICA do papel visível
+/// (a Roughness do cartão Paper, `substrate_relief`) e do grão «Same as Paper» ([`GrainLaw::contraste`]).
+#[must_use]
+pub fn contrasta(t: f32, ganho: f32) -> f32 {
+    (0.5 + (t - 0.5) * ganho).clamp(0.0, 1.0)
+}
+
 /// Sample the texture at canvas pixel `(px, py)` for a dab centred at `center` with `radius`. Returns the
 /// coverage multiplier in `[0, 1]`; `1.0` when no texture is assigned (so the dab is unchanged).
 #[must_use]
@@ -460,6 +467,11 @@ pub fn sample(
     radius: f32,
     image: Option<&ImageMask>,
 ) -> f32 {
+    if s.lei.contraste != 1.0 {
+        let mut cru = *s;
+        cru.lei.contraste = 1.0;
+        return contrasta(sample(&cru, b, px, py, center, radius, image), s.lei.contraste);
+    }
     if !s.is_active() {
         return 1.0;
     }

@@ -88,8 +88,15 @@ impl PainterTool {
             }
         }
         if self.grao_e_o_papel() {
-            // «Same as Paper» (dono 28/10): o papel do documento, preso à tela, à Depth do próprio Grain.
+            // «Same as Paper» (dono 28/10): o papel do documento, preso à tela, como o papel VISÍVEL o mostra —
+            // a Roughness do cartão é o contraste do dente e o Relief a profundidade (com o piso do papel na tinta,
+            // `relief_na_tinta`), × a Depth do próprio Grain (smoke 28/10: «corresponde parcialmente»).
             brush.texture = super::substrate_relief::papel_do_documento(brush.paper);
+            brush.texture.lei.contraste =
+                super::substrate_relief::ganho_do_dente(self.paint.substrate_rough);
+            brush.grain_depth = (brush.grain_depth
+                * super::wetpaint::grao_no_filme::relief_na_tinta(self.paint.substrate_depth))
+            .clamp(0.0, 1.0);
         } else if self.papel_como_grain() {
             brush.texture = brush.paper;
             brush.grain_depth =

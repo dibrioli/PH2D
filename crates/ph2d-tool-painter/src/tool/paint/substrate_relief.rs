@@ -168,9 +168,7 @@ impl<'a> Substrate<'a> {
         // paint strokes more"*) — em nenhum dos dois é um expoente de brilho. Um papel áspero tem
         // paredes íngremes e platôs; um satinado ondula de leve. O recorte nos extremos é a feature,
         // não um defeito: é o que faz picos e poços chatos.
-        let gain = 0.5 + self.rough * 2.5;
-        let t = (0.5 + (t - 0.5) * gain).clamp(0.0, 1.0);
-        t * self.amp_px
+        texture::contrasta(t, ganho_do_dente(self.rough)) * self.amp_px
     }
 
     /// A altura do dente **na unidade do plano de relevo da TINTA** — cargas, não pixels.
@@ -212,6 +210,13 @@ pub(crate) struct SubstrateKey {
     depth: f32,
     rough: f32,
     image: u64,
+}
+
+/// ⭐ O ganho de contraste da **Roughness** do papel (`0..1` → `0,5..3`): a lei do dente visível
+/// ([`Substrate`]) e a do grão «Same as Paper» (`PainterTool::dab_spec`), uma só.
+#[must_use]
+pub(super) fn ganho_do_dente(rough: f32) -> f32 {
+    0.5 + rough.clamp(0.0, 1.0) * 2.5
 }
 
 /// O dente default de um papel — o que o artista arma ao ligar o relevo sem ter escolhido um papel.

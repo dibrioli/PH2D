@@ -88,6 +88,9 @@ pub struct GrainLaw {
     /// máscara em cache, pela pirâmide); ligada, este campo só obriga a rota POR PÍXEL (a área exacta do píxel da
     /// tela em vez do nível da pirâmide) — `dab_mask_cacheable` e o roteador colorido. Ver [`super::shape::sample_shape`].
     pub area: bool,
+    /// ⭐ O CONTRASTE do valor amostrado em torno do meio ([`super::contrasta`]; `1` = o de sempre, ao bit). Não se
+    /// grava: é o que o «Same as Paper» copia do papel visível (a Roughness do cartão Paper, dono 28/10).
+    pub contraste: f32,
 }
 
 impl Default for GrainLaw {
@@ -104,6 +107,7 @@ impl GrainLaw {
         depth_jitter: 0.0,
         depth_pressure: false,
         area: false,
+        contraste: 1.0,
     };
 
     /// A profundidade varia por dab (o dab leva o multiplicador na pegada, [`crate::DabTilt::grao`]).

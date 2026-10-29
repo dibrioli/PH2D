@@ -132,6 +132,7 @@ fn lei_de_json(v: Option<&Value>) -> GrainLaw {
         depth_jitter: f(o.get("depth_jitter"), n.depth_jitter),
         depth_pressure: booleano(o.get("depth_pressure"), n.depth_pressure),
         area: booleano(o.get("area"), n.area),
+        contraste: n.contraste,
     }
 }
 

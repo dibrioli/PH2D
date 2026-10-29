@@ -7,6 +7,7 @@
 //! escurece o que for preciso para o texto se ler a 4,5:1 sobre a imagem real ([`veil_alpha`]).
 
 use ph2d_kanban_model::FileId;
+use ph2d_vector::StableImage;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::rc::Rc;
@@ -22,12 +23,20 @@ pub(crate) const TEXELS_W: u32 = 512;
 /// de memória (≤ 2048 × 2048 × 4 = 16 MB no atlas); medição em `MEDICOES.md` §D11.
 pub(crate) const BG_TEXELS_W: u32 = 2048;
 
-/// Uma capa pronta a desenhar: RGBA reto e a luminância máxima (linear) de cada linha.
-#[derive(Debug)]
+/// Uma capa pronta a desenhar: a imagem ESTÁVEL (o atlas do Vello reusa-a entre quadros) e a
+/// luminância máxima (linear) de cada linha.
 pub(crate) struct Thumb {
     pub size: [u32; 2],
-    pub rgba: Arc<Vec<u8>>,
+    pub image: StableImage,
     pub row_max: Vec<f32>,
+}
+
+impl std::fmt::Debug for Thumb {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Thumb")
+            .field("size", &self.size)
+            .finish_non_exhaustive()
+    }
 }
 
 /// Uma capa partilhada; duas frentes são iguais se apontam a MESMA miniatura.
@@ -154,7 +163,7 @@ pub(crate) fn decode_to(bytes: &[u8], texels_w: u32) -> Option<Thumb> {
         .collect();
     Some(Thumb {
         size: [w, h],
-        rgba: Arc::new(px),
+        image: StableImage::from_rgba(Arc::new(px), w, h)?,
         row_max,
     })
 }

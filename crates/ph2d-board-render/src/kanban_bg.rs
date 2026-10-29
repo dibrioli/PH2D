@@ -12,13 +12,12 @@
 //! ([`kanban_floor_is_light`]) troca o botão translúcido pelo da lista.
 
 use std::f64::consts::SQRT_2;
-use std::sync::Arc;
 
 use ph2d_kanban_model::{Background, Hue, Pattern, PatternKind, Shade, Tint};
 use ph2d_tokens::{ColorToken as T, Spacing, Theme};
 use ph2d_vector::{
-    Affine, BezPath, Brush, Circle, Color, Gradient, ImageQuality, Point, Rect, Shape, VectorScene,
-    VelloBlend,
+    Affine, BezPath, Brush, Circle, Color, Gradient, ImageQuality, Point, Rect, Shape, StableImage,
+    VectorScene, VelloBlend,
 };
 
 use crate::token;
@@ -57,15 +56,26 @@ pub const GRADIENTS: [&[T]; 9] = [
     &[T::KanbanBlackBold, T::KanbanRedBold],
 ];
 
-/// Uma imagem de fundo já descodificada (RGBA reto) e a luminância mais clara que tem.
-#[derive(Clone, Copy, Debug)]
+/// Uma imagem de fundo já descodificada e a luminância mais clara que tem. ESTÁVEL: o atlas do
+/// Vello reusa-a entre quadros, e a porta que a desenha grava (o export do Quadro vê-a).
+#[derive(Clone, Copy)]
 pub struct BgImage<'a> {
-    pub rgba: &'a Arc<Vec<u8>>,
+    pub image: &'a StableImage,
     pub size: [u32; 2],
     /// A luminância relativa (WCAG) mais clara da parte que importa (a faixa do cabeçalho), `0..=1`.
     pub brightest: f32,
     /// A luminância média da imagem.
     pub mean: f32,
+}
+
+impl std::fmt::Debug for BgImage<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("BgImage")
+            .field("size", &self.size)
+            .field("brightest", &self.brightest)
+            .field("mean", &self.mean)
+            .finish_non_exhaustive()
+    }
 }
 
 /// O que pintar e onde.
@@ -291,12 +301,11 @@ pub fn paint_kanban_bg(scene: &mut VectorScene, theme: Theme, p: &KanbanBg<'_>) 
                     p.to_scene,
                 );
                 scene.push_layer_shape(VelloBlend::default(), 1.0, p.to_scene, &r);
-                scene.draw_image_rgba_transformed(
-                    img.rgba,
-                    img.size[0],
-                    img.size[1],
+                scene.draw_recorded_image(
+                    img.image,
                     p.to_scene * cover(img.size, r),
                     ImageQuality::Medium,
+                    None,
                 );
                 scene.pop_layer();
             }

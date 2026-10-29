@@ -49,7 +49,7 @@ pub(crate) fn draw(
         f64::from(d.x + d.w),
         f64::from(d.y + d.h),
     );
-    scene.draw_image_rgba(&t.rgba, t.size[0], t.size[1], dest, ImageQuality::Medium);
+    scene.draw_stable_image(&t.image, dest, ImageQuality::Medium);
     scene.pop_layer();
     true
 }

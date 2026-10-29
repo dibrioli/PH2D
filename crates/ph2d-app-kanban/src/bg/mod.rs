@@ -62,7 +62,7 @@ impl Look {
         #[allow(clippy::cast_precision_loss)]
         let mean = rows.iter().sum::<f32>() / n.max(1.0);
         Some(BgImage {
-            rgba: &t.rgba,
+            image: &t.image,
             size: t.size,
             brightest: rows[a..b.max(a)].iter().copied().fold(0.0, f32::max),
             mean,

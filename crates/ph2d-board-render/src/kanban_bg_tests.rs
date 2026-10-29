@@ -4,6 +4,7 @@
 use super::*;
 use ph2d_kanban_model::{FileId, Rgb};
 use ph2d_vector::DrawOp;
+use std::sync::Arc;
 
 fn record(bg: Background, scale: f64, image: Option<BgImage<'_>>) -> Vec<DrawOp> {
     let mut scene = VectorScene::new();
@@ -33,9 +34,9 @@ fn pattern(kind: PatternKind) -> Background {
 
 #[test]
 fn every_background_kind_paints_something_different() {
-    let px = Arc::new(vec![255_u8; 4 * 4 * 4]);
+    let px = StableImage::from_rgba(Arc::new(vec![255_u8; 4 * 4 * 4]), 4, 4).unwrap();
     let img = BgImage {
-        rgba: &px,
+        image: &px,
         size: [4, 4],
         brightest: 1.0,
         mean: 1.0,
@@ -123,9 +124,9 @@ fn a_light_background_darkens_the_header_until_white_reads() {
     );
     assert!(kanban_floor_is_light(th, white));
     // A imagem: a parte mais clara dela decide.
-    let px = Arc::new(Vec::new());
+    let px = StableImage::from_rgba(Arc::new(vec![255_u8; 4]), 1, 1).unwrap();
     let bright = BgImage {
-        rgba: &px,
+        image: &px,
         size: [1, 1],
         brightest: 1.0,
         mean: 1.0,

@@ -586,19 +586,15 @@ mod scripts;
 #[path = "project_marcas_tests.rs"]
 mod marcas;
 
-/// **O que um load faz com a CORRIDA GRAVADA** (W17) — filho (`#[path]`) pelo
-/// teto de LOC do HR-18, e FILHO e não irmão porque as fixtures desta suíte
-/// (`headless_app`, `write_project`, `tmp_path`, `empty_state`) são as portas dele:
-/// copiá-las seria um segundo escritor de arquivo de projeto, e ele divergiria no
-/// próximo bump.
+/// **O que um load faz com a CORRIDA GRAVADA** (W17) — FILHO e não irmão porque as fixtures desta suíte
+/// (`headless_app`, `write_project`, `tmp_path`, `empty_state`) são as portas dele: copiá-las seria um
+/// segundo escritor de arquivo de projeto, e ele divergiria no próximo bump.
 #[path = "project_tape_tests.rs"]
 mod tape;
 
-/// **Um projecto v189 abre com o mesmo traço** (F16c) — filho pela razão dos de cima: as fixtures
-/// (`headless_app`, `tmp_path`) são as portas dele.
-#[path = "project_traco_v189_tests.rs"]
-mod traco_v189;
-
-/// **Um projecto v194 abre com a geometria numerada** (W4.2) — filho pela mesma razão.
 #[path = "project_geometria_v194_tests.rs"]
 mod geometria_v194;
+/// **Projectos v189 (F16c, o mesmo traço) e v194 (W4.2, a geometria numerada) abrem iguais** — filhos
+/// pela razão dos de cima.
+#[path = "project_traco_v189_tests.rs"]
+mod traco_v189;

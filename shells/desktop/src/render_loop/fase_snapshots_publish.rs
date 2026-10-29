@@ -148,11 +148,8 @@ impl crate::App {
             // avariada»* de *«a fábrica está à espera»*. Resolvido AQUI porque é a shell que tem o
             // relógio, como o `bake_range` logo abaixo.
             self.playhead.is_playing(),
-            // W4: the range the §11 Bake button covers, resolved HERE
-            // because the shell owns both the document and the clock, and
-            // shown on the button so the artist never has to guess it.
-            // Two numbers now — the loop's start is honoured (W-BakeRange),
-            // so a `[2s, 5s]` loop bakes `[2s, 5s]` and the button says so.
+            // W4/W-BakeRange: the `[start, end]` the §11 Bake button covers, resolved HERE (the shell owns
+            // the document and the clock) and shown on the button.
             {
                 let (bs, be) =
                     ph2d_app_physics::bake::bake_range(&self.timeline.doc, &self.playhead);

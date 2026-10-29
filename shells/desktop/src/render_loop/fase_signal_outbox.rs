@@ -139,10 +139,8 @@ impl crate::App {
         // o consumidor for SOM. (A saída ainda guarda o quadro anterior, então um consumidor
         // futuro que rode cedo demais recebe atrasado em vez de nunca — a rede, não a licença.)
         //
-        // ⚠️ **Cada consumidor tem cursor próprio e lê a saída com `&self`**, então ele segura
-        // `&mut` no PRÓPRIO estado enquanto lê — é isso que um barramento de handlers boxeados
-        // não permite, e provavelmente por que o `ph2d-script::messaging` tem zero consumidores
-        // desde que nasceu.
+        // ⚠️ **Cada consumidor tem cursor próprio e lê a saída com `&self`**, então segura `&mut` no
+        // PRÓPRIO estado enquanto lê — o que um barramento de handlers boxeados não permite.
         for sig in self.signals.read_notices(&mut self.signal_readers.toast) {
             toasts.push(Toast::info(tr_with(
                 "shell.fase_signal_outbox.signal",

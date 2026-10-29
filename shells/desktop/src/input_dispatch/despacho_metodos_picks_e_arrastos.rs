@@ -252,21 +252,6 @@ impl crate::App {
         )
     }
 
-    /// O gizmo das constraints no palco: premir uma pega, arrastá-la, largá-la.
-    pub(super) fn constraint_gizmo(
-        &mut self,
-        g: ph2d_app_constraints::gizmo::Gesto,
-        tela: (f32, f32),
-    ) -> bool {
-        let mundo = self.vec_world_at(tela);
-        let Some(x) = self.gfx.as_mut() else {
-            return false;
-        };
-        let sel = x.hero_screen.as_ref().and_then(|h| h.gizmo.selection);
-        let w = x.scene_window();
-        ph2d_app_constraints::gizmo::gesto(&mut x.sim, g, sel, tela, mundo, &x.camera, w)
-    }
-
     pub(super) fn vec_envelope_corner_move(&mut self, x: f32, y: f32) -> bool {
         let Some(active) = self.vec.envelope_drag else {
             return false;

@@ -73,6 +73,7 @@ mod despacho_clique_select;
 mod despacho_clique_vetor;
 mod despacho_clique_vetor_premido;
 mod despacho_clique_vetor_solto;
+mod despacho_constraints;
 mod despacho_metodos_janela_e_vetor;
 mod despacho_metodos_modos_e_alcas;
 mod despacho_metodos_picks_e_arrastos;

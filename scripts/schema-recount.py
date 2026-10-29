@@ -27,6 +27,7 @@ re-contados para `140->144`, e os dois primeiros custaram uma volta a` mao cada 
 script existir. Ver `docs/archive/integracao-jornadas/ANATOMIA_DE_UMA_RODADA_2026-09-17.md` §5.2.
 """
 import subprocess
+import re
 import sys
 
 LADDER = "shells/desktop/src/project_schema.rs"
@@ -81,19 +82,32 @@ def resolve_ladder(m_novo):
     return b_val, t_val
 
 
+def tuple_line(text, project):
+    """A linha `        (<project>, <flip>, <vec>),` da tripla, com os dois números irmãos COMO ESTÃO
+    nesse lado. ⚠️ Até 29/10 eles iam escritos à mão (`13, 22`); o main subiu o vetor para 23 e
+    o script parou na tripla — o irmão é do ficheiro, nunca do script."""
+    m = re.search(rf"^        \({project}, \d+, \d+\),$", text or "", re.M)
+    return m.group(0) if m else None
+
+
 def resolve_triple(m_novo, b_val, t_val):
     base, ours, theirs = (stage(n, TRIPLE) for n in (1, 2, 3))
     if base is None or theirs is None or theirs == ours:
         return False
-    ancora = f"        ({b_val}, 13, 22),"
-    if ancora not in base:
+    ancora = tuple_line(base, b_val)
+    if ancora is None:
         return False
-    bloco = novo_bloco(base, theirs, ancora, f"        ({t_val}, 13, 22),")
+    ancora_t = tuple_line(theirs, t_val)
+    assert ancora_t is not None, f"a tripla da linha nao tem o degrau {t_val}"
+    bloco = novo_bloco(base, theirs, ancora, ancora_t)
     bloco = bloco.replace(f"PROJECT {b_val}→{t_val}:", f"PROJECT {m_novo - 1}→{m_novo}:", 1)
     assert f"PROJECT {b_val}→{t_val}:" not in bloco, "o titulo da tripla nao foi re-numerado"
-    velho = f"        ({m_novo - 1}, 13, 22),\n"
-    assert ours.count(velho) == 1, f"a tripla do main nao esta' em {m_novo - 1}"
-    out = ours.replace(velho, bloco + f"        ({m_novo}, 13, 22),\n", 1)
+    velho = tuple_line(ours, m_novo - 1)
+    assert velho is not None and ours.count(velho + "\n") == 1, \
+        f"a tripla do main nao esta' em {m_novo - 1}"
+    # O degrau novo leva os irmãos do MAIN (o Flip e o vetor do dia) e o número recontado.
+    novo = velho.replace(f"({m_novo - 1},", f"({m_novo},", 1)
+    out = ours.replace(velho + "\n", bloco + novo + "\n", 1)
     open(TRIPLE, "w", encoding="utf-8").write(out)
     return True
 

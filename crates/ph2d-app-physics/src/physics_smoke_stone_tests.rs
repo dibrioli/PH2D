@@ -14,7 +14,7 @@
 //! (`ph2d-physics-ecs/tests/it/platform_headroom_sweep.rs`).
 
 use super::{CROUCH_HEIGHT, NARROW_HALF, NARROW_X, STONE_BOTTOM, WIDE_X, build_stone_scene};
-use ph2d_ecs::{Name, SimWorld, Transform};
+use ph2d_ecs::{Entity, Name, SimWorld, Transform};
 use ph2d_physics_ecs::{PhysicsBridge, PlayerInput};
 
 /// Meia-altura da caixa do personagem das cenas (`half_height + radius`).
@@ -60,18 +60,18 @@ fn crouch_and_release_at(x: f32) -> f32 {
         tick += 1;
         bridge.dispatch(&mut sim, true, tick);
     }
-    top_of(&sim)
+    top_of(&sim, &bridge)
 }
 
-fn top_of(sim: &SimWorld) -> f32 {
-    let mut found = None;
-    let mut q = sim.world().try_query::<(&Name, &Transform)>().unwrap();
-    for (n, tr) in q.iter(sim.world()) {
-        if n.as_str() == "Player" {
-            found = Some(tr.translation.y + BODY_HALF);
-        }
-    }
-    found.expect("o player tem de existir")
+/// O topo da caixa do SOLVER — desde o plano GEF 09 o agachar encolhe a forma por cima e o centro
+/// fica, então `translation.y + BODY_HALF` lia sempre o topo de pé.
+fn top_of(sim: &SimWorld, bridge: &PhysicsBridge) -> f32 {
+    let mut q = sim.world().try_query::<(Entity, &Name)>().unwrap();
+    let player = q
+        .iter(sim.world())
+        .find_map(|(e, n)| (n.as_str() == "Player").then_some(e))
+        .expect("o player tem de existir");
+    bridge.body_extent(player).expect("o player tem corpo").1[1]
 }
 
 /// **A cena entrega os números que a mensagem dela imprime.**

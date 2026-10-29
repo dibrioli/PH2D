@@ -328,7 +328,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.render_source.storage" => "Storage",
         // ⭐ A linha da imagem no topo do Inspector (plano GEF 12).
         "panel.inspector.image" => "Image",
-        "panel.inspector.image.none" => "None \u{2014} click to choose",
+        // «Image  None» lê-se ao lado do nome da linha; «None — click to choose» cortava na ranhura
+        // (114,6 px, «None — click to c…») e «None (Image)» no degrau estreito do dock.
+        "panel.inspector.image.none" => "None",
         // ⭐ O seletor «Use» sob a linha Image (plano GEF 15).
         "panel.inspector.image.use" => "Use",
         "panel.inspector.image.use_still" => "Still",

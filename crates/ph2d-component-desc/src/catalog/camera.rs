@@ -50,13 +50,15 @@ const FOLLOW_FIELDS: &[FieldDesc] = &[
     f(1, "component.field.follow_fields.1", K::Vec2).named("damping"),
     f(2, "component.field.follow_fields.2", K::Vec2).named("dead_zone"),
     f(3, "component.field.follow_fields.3", K::Vec2).named("lookahead"),
-    f(4, "component.field.follow_fields.4", K::Vec2).named("offset"),
+    // O nome segue o rótulo «Follow Offset» (dono 17b); a chave serde fica `offset`: o projecto
+    // gravado não muda um byte, e `camera_follow.offset` num script erra alto com «quis dizer».
+    f(4, "component.field.follow_fields.4", K::Vec2).named_as("follow_offset", "offset"),
 ];
 
 /// Os campos da câmera.
 const CAMERA_FIELDS: &[FieldDesc] = &[
     f(0, "component.field.camera_fields.0", K::Scalar).named_as("height", "height_world"),
-    f(1, "component.field.camera_fields.1", K::Vec2).named("offset"),
+    f(1, "component.field.camera_fields.1", K::Vec2).named_as("view_offset", "offset"),
     f(2, "component.field.camera_fields.2", K::Int).named("priority"),
     f(3, "component.field.camera_fields.3", K::Toggle).named("active"),
     f(4, "component.field.camera_fields.4", K::Int).named("cull_mask"),

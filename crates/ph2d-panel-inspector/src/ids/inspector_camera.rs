@@ -168,10 +168,10 @@ pub const INSP_CAMERA_CUSTOM_H: NodeId = hash_node_id("insp_camera_custom_h");
 /// O lado do ícone da câmera no canvas, em píxeis de tela (17b).
 pub const INSP_CAMERA_ICON_SIZE: NodeId = hash_node_id("insp_camera_icon_size");
 
-/// A fileira segmentada «Frame»: Always | When Selected.
+/// A fileira segmentada «Frame»: Always | Selected.
 pub const INSP_CAMERA_FRAME_GROUP: NodeId = hash_node_id("insp_camera_frame_group");
 
-/// As duas opções da moldura — `[Always, When Selected]`.
+/// As duas opções da moldura — `[Always, Selected]`.
 pub const INSP_CAMERA_FRAME: [NodeId; 2] = [
     hash_node_id("insp_camera_frame_always"),
     hash_node_id("insp_camera_frame_selected"),

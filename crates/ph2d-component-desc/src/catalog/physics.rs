@@ -207,7 +207,9 @@ pub const DESCS: &[D] = &[
         "component.character_animations.name",
         CHARACTER_ANIMATIONS,
     )
-    .coded("character_animations")
+    // O nome de código é o rótulo «Auto Animate» em `snake` (gate `o_nome_de_codigo_e_o_rotulo`);
+    // nasceu nesta linha, então nenhum script gravado o chamou pelo nome da struct.
+    .coded("auto_animate")
     .row_of("ph2d::physics::PlatformPlayer"),
     // ⭐⭐ **A forma do corpo — e ela CHEGA COM ELE** (ordem do dono, 2026-09-14). Todas as opções
     // dela (forma, meias-extensões, offset, densidade, quique, atrito, camada, Solid|Sensor) são

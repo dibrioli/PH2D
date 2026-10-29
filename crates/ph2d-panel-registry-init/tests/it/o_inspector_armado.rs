@@ -103,6 +103,8 @@ thread_local! {
     /// `selected_count > 1`, e com a fixtura pregada em `1` nenhuma régua desta casa jamais as
     /// via: *uma fixtura que não contém o fenómeno não afirma nada sobre ele*.
     static SELECIONADOS: std::cell::Cell<usize> = const { std::cell::Cell::new(1) };
+    /// Se a porta da sprite está armada — a porta da animação lê-o para devolver a imagem a Parada.
+    static A_SPRITE_ARMADA: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
 }
 
 /// Quantos a fixtura declara agora.
@@ -113,6 +115,47 @@ pub fn selecionados() -> usize {
 /// ⚠️ Escreve-se ANTES do `arma_tudo` — os snapshots são construídos ali, de uma vez.
 pub fn com_seleccao_de(n: usize) {
     SELECIONADOS.set(n);
+}
+
+/// ⭐ **A sprite, no USO que o produto lhe dá** (`ph2d_app_sprite_anim::image_use::image_use`): com
+/// um `SpriteAnimator` ela é SEMPRE Animated — e é nesse uso que o Inspector pinta a grelha, o «Show
+/// Sheet» e a secção Animation sob a Image (plano GEF 15). Armar o animador sobre uma sprite Parada
+/// era um objecto que o produto não monta, e a Animation não se pintava em sítio nenhum.
+fn arma_a_sprite(uso: ph2d_editor_core::InspectorImageUse) {
+    A_SPRITE_ARMADA.set(true);
+    insp::set_current_inspector_sprite(Some(InspectorSpriteInfo {
+        entity_bits: BITS,
+        world_size: [1.0, 1.0],
+        source_kind: InspectorSpriteSource::HandPacked {
+            sheet: 1,
+            region: 2,
+        },
+        source_precision: None,
+        emissive: 0.0,
+        sheet_label: Some("hero · idle_0".to_string()),
+        source_pixels: Some((64, 64)),
+        can_reimport: true,
+        flip_x: false,
+        flip_y: false,
+        opacity: 1.0,
+        tint_fill: false,
+        hframes: 4,
+        vframes: 2,
+        image_use: uso,
+        image_cells: 1,
+        draw: ph2d_editor_core::InspectorDraw::Fixed,
+        frame: 1,
+        tint: [1.0, 1.0, 1.0, 1.0],
+        self_tint: [1.0, 1.0, 1.0, 1.0],
+        per_corner_tint: [[1.0, 1.0, 1.0, 1.0]; 4],
+        region_enabled: true,
+        region_rect: [0.0, 0.0, 32.0, 32.0],
+        region_filter_clip: true,
+        centered: true,
+        offset: [0.0, 0.0],
+        selected_count: selecionados(),
+        mixed: ph2d_editor_core::screens::hero::InspectorSpriteMixed::default(),
+    }));
 }
 
 /// **Arma as 29 portas condicionais do Inspector.**
@@ -140,39 +183,7 @@ pub fn arma_tudo() {
         visible: true,
         mixed: false,
     }));
-    insp::set_current_inspector_sprite(Some(InspectorSpriteInfo {
-        entity_bits: BITS,
-        world_size: [1.0, 1.0],
-        source_kind: InspectorSpriteSource::HandPacked {
-            sheet: 1,
-            region: 2,
-        },
-        source_precision: None,
-        emissive: 0.0,
-        sheet_label: Some("hero · idle_0".to_string()),
-        source_pixels: Some((64, 64)),
-        can_reimport: true,
-        flip_x: false,
-        flip_y: false,
-        opacity: 1.0,
-        tint_fill: false,
-        hframes: 4,
-        vframes: 2,
-        image_use: ph2d_editor_core::InspectorImageUse::Still,
-        image_cells: 1,
-        draw: ph2d_editor_core::InspectorDraw::Fixed,
-        frame: 1,
-        tint: [1.0, 1.0, 1.0, 1.0],
-        self_tint: [1.0, 1.0, 1.0, 1.0],
-        per_corner_tint: [[1.0, 1.0, 1.0, 1.0]; 4],
-        region_enabled: true,
-        region_rect: [0.0, 0.0, 32.0, 32.0],
-        region_filter_clip: true,
-        centered: true,
-        offset: [0.0, 0.0],
-        selected_count: selecionados(),
-        mixed: ph2d_editor_core::screens::hero::InspectorSpriteMixed::default(),
-    }));
+    arma_a_sprite(ph2d_editor_core::InspectorImageUse::Animated);
     insp::set_current_inspector_sampling(Some(InspectorSamplingInfo {
         entity_bits: BITS,
         filter_tag: 1,
@@ -1278,6 +1289,7 @@ pub fn desarma_tudo() {
     insp::set_current_inspector_name(None);
     insp::set_current_inspector_transform(None);
     insp::set_current_inspector_visibility(None);
+    A_SPRITE_ARMADA.set(false);
     insp::set_current_inspector_sprite(None);
     insp::set_current_inspector_sampling(None);
     insp::set_current_inspector_blend(None);
@@ -1342,7 +1354,10 @@ pub const PORTAS: &[(&str, fn())] = &[
     ("visibility", || {
         insp::set_current_inspector_visibility(None)
     }),
-    ("sprite", || insp::set_current_inspector_sprite(None)),
+    ("sprite", || {
+        A_SPRITE_ARMADA.set(false);
+        insp::set_current_inspector_sprite(None);
+    }),
     ("sampling", || insp::set_current_inspector_sampling(None)),
     ("blend", || insp::set_current_inspector_blend(None)),
     ("visibility_section", || {
@@ -1351,7 +1366,14 @@ pub const PORTAS: &[(&str, fn())] = &[
     ("ordering", || insp::set_current_inspector_ordering(None)),
     ("slice", || insp::set_current_inspector_slice(None)),
     ("anchor", || insp::set_current_inspector_anchor(None)),
-    ("anim", || insp::set_current_inspector_anim(None)),
+    // Sem animador a imagem é Parada (a lei do produto) — senão a sprite pintava a grelha de uma
+    // animada sem a secção Animation.
+    ("anim", || {
+        insp::set_current_inspector_anim(None);
+        if A_SPRITE_ARMADA.get() {
+            arma_a_sprite(ph2d_editor_core::InspectorImageUse::Still);
+        }
+    }),
     ("instance", || insp::set_current_inspector_instance(None)),
     ("properties", || {
         insp::set_current_inspector_properties(None)

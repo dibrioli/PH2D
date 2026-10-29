@@ -578,7 +578,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.camera.custom_size" => "Size",
         "panel.inspector.camera.frame" => "Frame",
         "panel.inspector.camera.frame_always" => "Always",
-        "panel.inspector.camera.frame_selected" => "When Selected",
+        // «When Selected» cortava no degrau estreito do dock (o par reparte a coluna); «Frame:
+        // Always | Selected» diz o mesmo.
+        "panel.inspector.camera.frame_selected" => "Selected",
         // ph2d-migrar-texto:end
         _ => return None,
     })

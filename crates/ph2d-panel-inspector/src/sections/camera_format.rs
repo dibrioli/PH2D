@@ -1,5 +1,5 @@
 //! **O formato do jogo e a moldura** no cartão Camera (plano GEF 17): o seletor das 15 predefinições,
-//! o tamanho do `Custom` e «Frame: Always | When Selected». São definições do PROJECTO que o snapshot
+//! o tamanho do `Custom` e «Frame: Always | Selected». São definições do PROJECTO que o snapshot
 //! da câmera traz; irmão de [`super::camera`] pelo tecto de LOC.
 
 use super::*;
@@ -120,18 +120,52 @@ fn format_row(
     info: &InspectorCameraInfo,
     seccao: ph2d_editor_core::property_row::Seccao,
 ) -> f32 {
-    let linha = ph2d_editor_core::property_row::paint_label_row(
-        scene,
-        text_system,
-        theme,
-        x,
-        w,
-        y,
-        ROW_H_PX,
-        tr(ROTULOS[0]),
-        seccao,
-    );
-    let rect = linha.control;
+    // ⭐ A forma sai da LISTA (o doc de `dropdown_label_budget`): se o nome mais largo das 15 não cabe
+    // no chip ao lado do nome, é PALETA — o nome por cima e o chip a toda a largura (a lei da
+    // `paint_choice_row`). Ao lado, «16:9 · 1920 × 1080» saía «16:9 · 192…» (76,6 px, dock de 1366).
+    let lado = ph2d_editor_core::property_row::caixa_do_controlo(x, w, y, seccao);
+    let mais_largo = format_options()
+        .iter()
+        .map(|o| text_system.prefix_width(&o.label, TypeToken::Base.px()))
+        .fold(0.0_f32, f32::max);
+    let cabe_ao_lado =
+        ph2d_editor_core::widget::dropdown_chip_width_for(mais_largo, ROW_H_PX) <= lado.w;
+    let (rect, dot, fim) = if cabe_ao_lado {
+        let linha = ph2d_editor_core::property_row::paint_label_row(
+            scene,
+            text_system,
+            theme,
+            x,
+            w,
+            y,
+            ROW_H_PX,
+            tr(ROTULOS[0]),
+            seccao,
+        );
+        (
+            linha.control,
+            Some(linha.dot),
+            y + ph2d_tokens::row_pitch_px(),
+        )
+    } else {
+        let font = TypeToken::Sm.px();
+        paint_text(
+            text_system,
+            scene,
+            tr(ROTULOS[0]),
+            x,
+            y,
+            font,
+            w,
+            resolve(ColorToken::Text2, theme),
+        );
+        let gy = y + font + SECTION_LABEL_TO_CONTROL_PX;
+        (
+            Rect::new(x, gy, w, ROW_H_PX),
+            None,
+            gy + ph2d_tokens::row_pitch_px(),
+        )
+    };
     hit_index.register(ids::INSP_CAMERA_FORMAT_PICK, rect);
     let open = matches!(
         store.get(ids::INSP_CAMERA_FORMAT_PICK),
@@ -148,6 +182,8 @@ fn format_row(
     if open {
         crate::state_popovers::set_pending_camera_format_dd(Some((sel, rect)));
     }
-    ph2d_editor_core::widget::paint_decorator_dot(scene, theme, linha.dot);
-    y + ph2d_tokens::row_pitch_px()
+    if let Some(dot) = dot {
+        ph2d_editor_core::widget::paint_decorator_dot(scene, theme, dot);
+    }
+    fim
 }

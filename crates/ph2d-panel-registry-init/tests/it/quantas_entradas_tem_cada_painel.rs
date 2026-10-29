@@ -1101,7 +1101,12 @@ const CARGA_DE_COMANDOS: &[(&str, usize)] = &[
     //    declarada e não conta. (Somado ao `88` do main, que traz o seletor de scripts do CodeEditor.)
     // ⬇️ `89 → 85` em 2026-10-26 (GEF 15): saíram o aviso «imagem animada num bloco», o «Make it Animated» e a
     //    caixa Tiled — o seletor «Use» é UMA escolha declarada no lugar dos três.
-    ("inspector", 85),
+    // ⬆️ `85 → 92` em 2026-10-28 (integração GEF) — **capacidade nova, e a que o `85` não via**: a fixtura
+    //    armava o animador sobre uma sprite PARADA, um objecto que o produto não monta (com animador o uso é
+    //    sempre Animated, `image_use::image_use`), e o cartão Animation (GEF 07, aprovado pelo dono) não se
+    //    pintava. Com a sprite Animated ele conta os seus 7 comandos (`diag_de_quem_sao_as_entradas_do_inspector`):
+    //    a linha da lista, o ▶ da linha, ▶/⏸, ⏮, «Edit Animations…», `+` e `−`. Medido sozinho.
+    ("inspector", 92),
     // ⛔⛔ `110` botões, **`4`** comandos: fechar · importar · exportar · e o *elo*, que é pintado
     //    uma vez por linha por decisão escrita no pintor. O painel é uma LISTA, não uma dívida.
     ("tokens", 4),
@@ -1814,6 +1819,13 @@ fn diag_a_mascara_de_cull_da_camera_abre() {
 #[test]
 fn o_inspector_abre_dentro_da_dobra() {
     let todas: Vec<&str> = SECCOES_POR_NOME.to_vec();
+    // ⚠️ **A coluna do painel só CRESCE enquanto ele vive** (`coluna_do_painel`), logo cada medida
+    //    depende do que ele já pintou. Todas as medidas daqui partilham a MESMA memória: a de quem já
+    //    viu tudo aberto. Num processo novo o «chão» (o 1.º a pintar) lia a coluna de quem só viu o
+    //    sprite — o seletor «Use» em paleta, os quatro campos da Visibility um por fileira — e media
+    //    `729` contra `587`, ACIMA da abertura (`684`) do mesmo objecto (medido 2026-10-28).
+    let maior = CENARIOS_REAIS[CENARIOS_REAIS.len() - 1].1;
+    let _ = altura_do_inspector_dobrando_tudo_menos(maior, &todas);
     let chao = altura_do_inspector_dobrando_tudo_menos(CENARIOS_REAIS[0].1, &[]);
     for (nome, ligadas) in CENARIOS_REAIS {
         let abre = altura_do_inspector_com(ligadas);
@@ -1825,8 +1837,11 @@ fn o_inspector_abre_dentro_da_dobra() {
              menos a Transform."
         );
         let tudo_aberto = altura_do_inspector_dobrando_tudo_menos(ligadas, &todas);
+        // ⚠️ O controlo é o que a mensagem diz — com tudo aberto NÃO cabe. Era `> 2 × DOBRA`, folga
+        // sem medição por trás (o «sprite simples» media 2,5 dobras); em 2026-10-28 a secção «Sprite
+        // Sheet» saiu (GEF 07) e ele mede `1 753 px` = 1,99 dobras — continua a não caber.
         assert!(
-            tudo_aberto > DOBRA * 2.0,
+            tudo_aberto > DOBRA,
             "o CONTROLO falhou: com TUDO aberto «{nome}» mede {tudo_aberto:.0} px, e este gate \
              precisa que esse estado NÃO caiba — senão ele fica verde sobre um painel que caberia \
              de qualquer maneira."
@@ -2120,7 +2135,13 @@ const ALTURA_DE_ABERTURA: &[(&str, f32)] = &[
     //    linha Image (GEF 12, que ficou por escrever) · `+48` o seletor «Use» e a miniatura da folha · `+148`
     //    a Animation a nascer ABERTA sob a Image (com ela recolhida: `904`). ⚠️ Uma secção a nascer aberta é o
     //    modo de falha que esta régua guarda — esta é decisão do dono, e o smoke dele pode devolvê-la a `904`.
-    ("inspector", 1052.0),
+    // ⬆️ `1 052 → 1 485` em 2026-10-28 (integração GEF): a fixtura armava o animador sobre uma sprite
+    //    PARADA (impossível no produto: com animador o uso é Animated) e a Animation não se pintava — o
+    //    mesmo arnês lia `929`. Com a sprite Animated: `+556` = H/V Frames + «Show Sheet» e a Animation
+    //    a nascer ABERTA sob a Image (decisão do dono, GEF 15 D2; o cartão GEF 07/08). ⚠️ Medido SOZINHO
+    //    (um processo por teste, como o nextest): no `cargo test` de um processo só o registo partilhado
+    //    herda o estado de outros testes e leu `1 656`.
+    ("inspector", 1485.0),
     // ⭐ `2 709 → 1 529`: as quatro secções que chegaram DEPOIS da decisão do dono nascem
     //    recolhidas. ⛔ Ele não cabe, e o que falta é DECISÃO: o `Texture` (`450`) e o `Stroke`
     //    (`368`) são dele, e com tudo recolhido o painel mediria `736`.
@@ -2156,7 +2177,11 @@ const ALTURA_DE_ABERTURA: &[(&str, f32)] = &[
     //    esconderia o controlo que o dono pediu.
     // ⬆️ `1 570 → 1 620` em 2026-10-26 (GEF 15): a Animation nasce aberta (`pre_populate`, a mesma decisão do
     //    Inspector acima); recolhida mede `1 570`.
-    ("painter_layers", 1620.0),
+    // ⬇️ `1 620 → 1 570` em 2026-10-28 (integração GEF): o `1 620` foi lido com `cargo test` num processo só,
+    //    sobre o estado que outro teste deixou no registo partilhado — nenhum ficheiro do painel do Painter
+    //    nem a fixtura dele mudou na linha. Medido SOZINHO (um processo por teste, como o nextest): `1 570`,
+    //    o número do main.
+    ("painter_layers", 1570.0),
     // ⬆️ `2 866 → 3 091` em 2026-10-10 (MiroClone W11), e NÃO é uma secção a nascer aberta: o painel
     //    é UMA LISTA, uma fileira por `ColorToken::ALL` (sem secções a recolher), e a W11 acrescentou
     //    nove cores (`person-0`…`person-7` + `person-ink`, as das pessoas do quadro ao vivo):

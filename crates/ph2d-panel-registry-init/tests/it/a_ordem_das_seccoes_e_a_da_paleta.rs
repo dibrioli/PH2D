@@ -31,7 +31,8 @@ use super::quantas_entradas_tem_cada_painel::{VIEWPORT, abre_tudo};
 const SECCAO_E_COMPONENTE: &[(&str, &str)] = &[
     ("insp_live_tags_section", "ph2d::ecs::Tags"),
     ("insp_live_particles_section", "ph2d::ecs::ParticleEmitter"),
-    ("insp_live_anim_section", "ph2d::ecs::SpriteAnimations"),
+    // ⛔ Sem a Animation: numa sprite ela abre sob a linha Image, DENTRO do bloco fixo do Render
+    // (plano GEF 15 D2, ordem do dono) — deixou de ser uma secção opcional ordenada por família.
     ("insp_live_macro_section", "ph2d::ecs::Macro"),
     ("insp_live_anchor_section", "ph2d::ecs::NamedAnchorList"),
     ("insp_live_topdown_section", "ph2d::physics::TopDownPlayer"),
@@ -147,7 +148,7 @@ fn as_seccoes_opcionais_saem_por_familia_na_ordem_da_paleta() {
         seq.len(),
         SECCAO_E_COMPONENTE.len(),
         "a tabela declara {} secções opcionais e a pintura mostrou {} — ou uma secção nova não \
-         entrou na tabela, ou uma da tabela deixou de ser pintada",
+         entrou na tabela, ou uma da tabela deixou de ser pintada\n  pintadas: {pintadas:?}",
         SECCAO_E_COMPONENTE.len(),
         seq.len()
     );

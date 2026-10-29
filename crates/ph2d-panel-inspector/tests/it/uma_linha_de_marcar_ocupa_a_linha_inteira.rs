@@ -68,7 +68,8 @@ fn sprite() -> InspectorSpriteInfo {
         tint_fill: false,
         hframes: 4,
         vframes: 2,
-        image_use: ph2d_editor_core::InspectorImageUse::Still,
+        // Desde o plano GEF 15 a grelha e o «Show Sheet» só se pintam no uso Animated.
+        image_use: ph2d_editor_core::InspectorImageUse::Animated,
         image_cells: 1,
         draw: ph2d_editor_core::InspectorDraw::Fixed,
         frame: 3,
@@ -101,9 +102,12 @@ fn rects_a(painel_w: f32) -> Vec<(ph2d_a11y::NodeId, Rect)> {
     };
     let mut host = MockPanelHost::with_panel::<InspectorPanel>();
     let mut state = InspectorState::default();
+    // A grelha e o «Show Sheet» moram sob a linha Image, na Visibility (plano GEF 15).
+    crate::seam_image_use::publish_visibility(ENTITY);
     set_current_inspector_sprite(Some(sprite()));
     let r = host.paint_with_layout::<InspectorPanel>(&mut state, layout, viewport);
     set_current_inspector_sprite(None);
+    ph2d_panel_inspector::set_current_inspector_visibility(None);
     r
 }
 

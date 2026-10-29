@@ -39,6 +39,8 @@ fn painted_with_grid(hf: u32, vf: u32) -> (MockPanelHost, Vec<(ph2d_a11y::NodeId
     //    toda secção com chevron DOBRADA menos a Transform. Sem esta linha ele mede a política de
     //    dobra e queixa-se de que o id não foi pintado.
     host.open_all_sections();
+    // A grelha mora sob a linha Image, na Visibility (plano GEF 15) — a shell publica as duas.
+    crate::seam_image_use::publish_visibility(0x5EED_0777);
     set_current_inspector_sprite(Some(InspectorSpriteInfo {
         entity_bits: 0x5EED_0777,
         world_size: [1.0, 1.0],
@@ -54,7 +56,9 @@ fn painted_with_grid(hf: u32, vf: u32) -> (MockPanelHost, Vec<(ph2d_a11y::NodeId
         tint_fill: false,
         hframes: hf,
         vframes: vf,
-        image_use: ph2d_editor_core::InspectorImageUse::Still,
+        // Desde o plano GEF 15 a grelha e a caixa só se oferecem no uso Animated (a parada mostra o
+        // quadro no ecrã e «‹ n / N ›»); a lei «só onde há grelha» mede-se onde a caixa mora.
+        image_use: ph2d_editor_core::InspectorImageUse::Animated,
         image_cells: 1,
         draw: ph2d_editor_core::InspectorDraw::Fixed,
         frame: 0,
@@ -71,6 +75,7 @@ fn painted_with_grid(hf: u32, vf: u32) -> (MockPanelHost, Vec<(ph2d_a11y::NodeId
     }));
     let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
     set_current_inspector_sprite(None);
+    ph2d_panel_inspector::set_current_inspector_visibility(None);
     (host, rects)
 }
 

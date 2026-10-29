@@ -238,7 +238,12 @@ fn sonda_monotonia_da_largura() {
     let presets: Vec<Preset> = ficheiros_do_wet()
         .into_iter()
         .map(|(_, b)| ler(&b).unwrap())
-        .filter(|p| p.parametros.paint_mode.as_deref().is_some_and(|m| m != "Paint"))
+        .filter(|p| {
+            p.parametros
+                .paint_mode
+                .as_deref()
+                .is_some_and(|m| m != "Paint")
+        })
         .filter(|p| {
             so.as_deref()
                 .is_none_or(|s| s.split(',').any(|n| n == p.parametros.name))

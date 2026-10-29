@@ -600,7 +600,12 @@ pub(super) fn tabela_de_largura(p: &Preset) -> Vec<[f64; 2]> {
         .zip(larguras)
         // O raio e a largura pelo menor texto que volta ao mesmo f32 (7.8, não 7.800000190734863): a largura equivalente
         // não é inteira, e o f64 de um f32 com 16 casas nem sempre volta igual do JSON (o gravar recusa-o).
-        .map(|(&r, l)| [format!("{r}").parse().unwrap(), format!("{l}").parse().unwrap()])
+        .map(|(&r, l)| {
+            [
+                format!("{r}").parse().unwrap(),
+                format!("{l}").parse().unwrap(),
+            ]
+        })
         .collect()
 }
 

@@ -196,3 +196,15 @@ run 25840452466) · clippy a meio da linha · suíte completa na linha · baixar
 - **Aberto:** as ondas 0–4 (1–3 dias, janelas seguintes); a suíte completa 1× no fim.
 - ⚠️ Consequência a ter presente: uma família que cresça > 2 % reprova — a cura é uma crate nova
   (drop-crate, ADR-0075), nunca subir o número.
+
+### L — Rust 1.98 → 1.99.1 (`3276451e5a`) · 1.º degrau do «atualizar TUDO» (adendo do dono 30/10)
+
+- Pins (`rust-toolchain.toml`, `rust-version`, `spike.yml` ×4, `miri.yml`, STACK_VERSOES). Avisos novos curados
+  sem `allow`: `std::f32::MIN` ×2 (`deep_filter`), `approx_constant` (GOLDEN_RATIO, mesmo bit),
+  `single_element_loop`, `needless_borrows_for_generic_args`. check `--workspace --all-targets` (warnings
+  negados) e clippy `-D warnings` (features do CI) verdes.
+- **Medido ABBA** (rebuild da `ph2d-app-motion`, perfil smoke, sem sccache, mínimo de 4): 7,4 s → 7,0 s
+  (**−5 %**; o load caía 27 → 14 do próprio aquecimento — indicação, de acordo com os −4,5 % de ciclos da
+  auditoria de 10/09).
+- **Aberto:** a suíte completa do 1.99 corre UMA vez com a subida do vello 0.11 + wgpu 30 (adendo do dono 30/10:
+  «uma suíte para todas as subidas»). Próxima janela: o prompt de continuação está no handoff.

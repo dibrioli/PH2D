@@ -103,8 +103,22 @@ id 0,02 ms. Números do critério de morte da W5 (Valor 0,468 · behaviours 0,40
 tocados · clippy do `ph2d-host-desktop` verde depois da correcção de fecho · `file_loc_caps` (4/4), `fn_loc_caps`,
 `the_shell_only_shrinks`, `a_altura_de_abertura_de_um_painel_so_encolhe`.
 
-**Suíte completa: <a preencher pelo integrador>** — obrigatória (dono 23/10): mudaram crates de que muitas dependem
-(`ph2d-ecs`, `ph2d-editor-core`, `ph2d-app-vec`, `ph2d-timeline`, `ph2d-render`, `ph2d-runtime`).
+**Suíte completa — PARCIAL (28/10):** uma corrida de `foundational-integrate.sh` iniciada por engano foi parada pelo dono
+(«não integre, aguarde sua vez») a **18 756 / 21 978** testes (o main NÃO foi tocado; `docs/PixelArt/` do primário, sujo de
+outra linha, foi posto de lado e devolvido com sha256 idêntico). Ela achou **9 vermelhos, todos desta linha**, curados por nome:
+
+| Vermelho | Causa | Cura (commit) |
+|---|---|---|
+| `register_ecs_components_populates_registry` (ecs), `registers_sprite_alongside_ecs` (render), `registers_luau_script_alongside_ecs` (script) | `UiArranjo` + `TimersQuiet` | 108 → **110** · 109 → **111**, delta +2 anotado (`d3f7df06cd`) |
+| `the_shell_turns_the_signal_frame_before…`, `the_authored_intent_queue_has_a_drain…` (shell) | o dreno virou `read_notices` | as agulhas seguem-no (`d3f7df06cd`) |
+| `every_ignore_in_the_motion_crate_names_its_class` | `#[ignore]` da sonda sem classe | `sonda: …` (`d3f7df06cd`) |
+| `panel_files_under_loc_cap` | `sections/constraint.rs` 641, `state.rs` 616 | menu «Add» → `constraint_add.rs` (548); testes da tinta → `state_tint.rs` (576) (`45f47c853d`) |
+| `panel_functions_under_loc_cap` | `ph2d-panel-vector::apply_event` 201 | os dois eventos desta linha num `if` (198) (`45f47c853d`) |
+| `no_row_label_carries_its_own_unit` | «Speed (°/s)» | «Speed»; o campo leva `deg/s` por `Unidade::GrausPorSegundo` (guardado em graus, sem conversão; não segue o ângulo do projecto em radianos) (`45f47c853d`) |
+
+⇒ **Ao integrador:** a suíte INTEIRA continua obrigatória (dono 23/10) — **3 222 testes nunca correram** e os 9 curados só
+correram por nome. Mudaram crates de que muitas dependem (`ph2d-ecs`, `ph2d-editor-core`, `ph2d-app-vec`, `ph2d-timeline`,
+`ph2d-render`, `ph2d-runtime`).
 
 ## 5. Smokes (todos aprovados pelo dono)
 
@@ -139,6 +153,7 @@ os números do Inspector. A via de **placa** do Copy Particle fica 1 quadro atr�
 do `UiArranjo` é reescrita pelo mestre (mesma regra das juntas de física). O custo do re-posicionamento (`depois_do_motion`) NÃO foi
 medido. A mola ao vivo arrastada e a ferramenta HUD por cliques NÃO se fotografam (eventos sintéticos não chegam ao Xwayland) —
 provadas só por portões de costura.
+«Frequency (Hz)» do cartão também traz a unidade no rótulo — o portão não a vê (`Hz` fora da lista) e não há unidade Hz para o campo.
 
 **Herdados das ondas anteriores e ainda abertos (conferir ao integrar):** o Bake não dá feedback nem pede confirmação (W1d 2); o
 desvio do Child Of não é animável (W1d 3); o bake avalia só curva→canais→pilha, sem física/motion (W1d 5); `bind_on_create` com

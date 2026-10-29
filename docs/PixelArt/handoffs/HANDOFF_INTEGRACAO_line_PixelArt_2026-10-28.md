@@ -107,3 +107,22 @@ Os números de §5 e §6 acima são os do fecho de 28/10; **valem estes** (conta
 - Tectos de LOC (cura por corte, nenhum tecto subiu): a escada (`project_schema.rs`) cedeu o degrau `162 → 163` a `project_schema_history_v160.rs`; `fase_snapshots_publish` 199; `interaction/state/mod.rs` 699 (o modal da folha virou UM campo, `SheetModal`); `main.rs` 1031. `CLAUDE.md` §5: a entrada do Pixel perdeu o link do ADR para o §5 caber nos 14 000 bytes (a soma com o Kanban passava).
 - `type_icon` (UIUX) é exaustivo sobre `ObjectKind`: o `PixelSprite` usa `IconId::LayoutGrid` (o glifo do painel PIXEL) — **escolha cosmética, o dono pode trocar**.
 - Sync regenerado (`ph2d-app-sync`: o Pixel entra antes do Planner), `Cargo.lock` só ganha as 6 crates do Pixel.
+
+## 13. Integrado no `main` (29/10, ordem do dono, depois da TrelloClone) — `main` = `33dbe89510`
+
+- `scripts/foundational-integrate.sh` (via `ph2d-run`, `PH2D_SUITE=fecho`) sobre o tip rebaseado em `037a8d877a`,
+  ff-only no primário. 3 iterações do gate da árvore combinada (`nextest-impacted`, 20 775 testes):
+  1. 2 vermelhos: `architecture_no_authoring_tool_shares_the_canvas_with_a_box::the_object_box_condition_names_the_pixel_edit_mode`
+     — o corte de LOC do rebase escrevera a condição em linha; o gate lê `&& !pixel_edit` (cura `cbe5b1504b`) —
+     e `a_cena_3_conduzida_passo_a_passo` (abaixo).
+  2. 2 vermelhos: `fn_loc_caps::shell_functions_respect_their_ceiling` (`fase_snapshots_publish` 201/200 pela
+     variável devolvida; cura por corte de um comentário redundante, `33dbe89510`) e a cena 3 outra vez.
+  3. As curas re-corridas por NOME, verdes: `fn_loc_caps`, `file_loc_caps`, `the_shell_only_shrinks`, o gate da
+     caixa; `CARGO_BUILD_WARNINGS=deny cargo check` da shell verde. Os outros 20 773 da corrida 2 verdes.
+- ⚠️ `ph2d-host-code-scenes a_cena_3_conduzida_passo_a_passo` (espera de 30 s pela lista do `luau-lsp`) é o
+  defeito ABERTO do CodeEditor já na tabela de [FLAKES_DE_CARGA](../../DevOps/FLAKES_DE_CARGA.md) (reproduz no
+  próprio main em calma; faixa isolada). Zero ficheiros desta linha em `code-scenes`/`ph2d-code-lsp`; verde
+  isolado a `load` 18. Não é desta integração e não foi «curado» aqui.
+- O primário tinha `docs/PixelArt/` POR RASTREAR (as cópias de 25/10 do estudo e do plano — 14 iguais às da linha,
+  2 mais antigas): movidas para o scratchpad da sessão antes do ff (o ff recusaria sobrescrevê-las).
+- Push: NÃO feito (só por ordem do dono, CLAUDE.md §0.7). A próxima a integrar: `line/PainterWatercolor`.

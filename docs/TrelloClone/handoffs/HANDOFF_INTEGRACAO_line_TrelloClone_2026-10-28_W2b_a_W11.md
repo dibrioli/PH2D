@@ -1,6 +1,6 @@
 # Handoff de INTEGRAÇÃO — `line/TrelloClone` W2b → W11 + ligação J1–J6 (28/10/2026)
 
-> ✅ **Smoke do dono APROVADO (28/10, «Smoke OK»).** ⛔ **NÃO integrar por conta própria: o dono (28/10) mandou «apenas prepare o handoff. Aguarde sua vez»** — a linha espera a ordem dele e a vez na fila do integrador.
+> ✅ **INTEGRADO NO MAIN em 29/10** (ordem do dono: «na sua vez integre sem pedir permissões», depois da UIUX), por `--ff-only` sobre `be35cb386a` (GameEngineFuncional + BlenderConstraints + UIUX). Smoke do dono aprovado 28/10. Ver §10.
 >
 > ⛔ **Suíte completa NÃO corrida na linha (dono 23/10) — é do integrador.** Só testes por NOME, clippy `--all-targets` e fmt (LIMPOS em toda a linha: `96ffa55c9b` `d871ad7f54` `61488e56c3` `91e1ddad42`), portões de UI/arquitectura 25/25 por nome depois do J7/P2.
 
@@ -123,3 +123,13 @@ Errado = tela vazia, cartão sem título, ou o quadro vazio ao abrir um projecto
 ## Entrada §5.1 proposta (≤ 700 bytes; o integrador aplica)
 
 - **Kanban (TrelloClone)** — o Kanban é um documento do projeto ([ADR-0195](docs/architecture/decisions/0195-o-kanban-e-um-documento-do-projeto-o-quadro-referencia-o-e-a-aba-abre-o.md)): aba como no Trello (verso, vistas, fundo e padrões, Butler, `ph2d.kanban` Luau), o mesmo no Quadro, ao vivo, import do Trello, Planner; `ph2d-kanban-*` + `ph2d-app-kanban`/`-planner`. Smoke `PH2D_KANBAN_SMOKE=1..9` · `PH2D_BOARD_SMOKE=30`; tutorial PDF. Último: [W2b–W11, 28/10](docs/TrelloClone/handoffs/HANDOFF_INTEGRACAO_line_TrelloClone_2026-10-28_W2b_a_W11.md) · [plano](docs/TrelloClone/01_plano.md) · [docs](docs/TrelloClone/README.md)
+
+## 10. A integração (29/10)
+
+- **Antes do rebase** (suíte completa na linha, 28/10): 16 vermelhos desta linha, todos curados na linha (`15f03dbab4` `83d734fa7d` `e492145fd5` `890fb5ceb5` `213dc3b510` `1e9a99416f` `80e1764cc4`): tectos de LOC (`copy_move`, `choices`), o fundo de imagem pela porta que grava, conteúdo de cena declarado, oráculo do LSP com `ph2d.kanban`, biblioteca de macros relê o disco, Planner da cena no relógio injectado, widgets novos pelos censos da fundação, DAG da fundação.
+- **Rebase** sobre `be35cb386a` (+401): 137 commits (o `3a266d3a70` caiu, já no upstream) + curas da combinação; conflitos pelos estágios (`Cargo.lock` só adições; `project*.rs` com `jogo`/`mesa` do main e `kanbans` por último; README dos ADR 0192–0195; registry-init regenerado). Comparação commit a commit (multiconjunto ±, controlo positivo): 126 idênticos, 11 = conflitos resolvidos.
+- **Recontagem**: `PROJECT_SCHEMA` 207 → **208** (tripla `(208, 13, 25)`; `PROJECT_SCHEMA_SEM_KANBANS = 207`); PROTOCOL 15, board FORMAT 19, BOARD smoke 30, CODE smoke 10, `KanbanSet` 8 (o main não os tinha mexido); ADR 0195 livre.
+- **Suíte combinada** (2 corridas, 20 211 testes): 1.ª — 3 vermelhos da combinação curados em `cd71958f24` (`board_kanban_notes` nomeia as fracções; `fase_snapshots_publish` 201 > 200 → `kanban_families`; a lista do `ph2d.` num sítio só, `api_table::ph2d_members`) + `schema-recount.py` lê os irmãos da tripla (`049da68afb`). 2.ª — 20 209/20 211: `a_cena_3_conduzida_passo_a_passo` = o defeito BIMODAL aberto do CodeEditor (FLAKES_DE_CARGA, «NÃO é carga»; 3/3 verde sozinho a load ~16) e `um_print_longo_…` = orçamento de relógio de 16,7 ms sob carga (sozinho verde) → promovido. Flakes promovidas (tabela + faixa isolada): `as_bordas_nao_esbranquicam_…`, `o_estado_inicial_leva_as_ferramentas_do_trilho`, `um_print_longo_…`.
+- `CARGO_BUILD_WARNINGS=deny cargo check --workspace --all-targets` verde; censos da árvore combinada 122/122; `the_shell_only_shrinks`, `fn_loc_caps`, `workspace_src_files_under_loc_cap` verdes.
+- `docs/PixelArt/` por rastrear no checkout primário (cópias dos docs da `line/PixelArt`, 2 com diferenças) — NÃO é desta linha; deixado intacto, e por isso o `foundational-integrate.sh` (que recusa primário sujo) foi corrido passo a passo.
+- §5.1 do CLAUDE.md: entrada **Kanban (TrelloClone)** nova; Quadro passa a `PH2D_BOARD_SMOKE=1..30`.

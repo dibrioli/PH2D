@@ -7,9 +7,11 @@ use super::*;
 /// As sementes dos traços da régua para um pincel SEM sorteio — `0`, a do `PainterTool::default` (neutra ao byte).
 const SEMENTE_UNICA: [u64; 1] = [0];
 
-/// As sementes de uma FERRAMENTA com Jitter: a largura é a mediana delas (a medição de N está em
-/// [`sonda_monotonia_da_largura`] e no doc-comment de [`sementes_da_largura`]).
-const SEMENTES_DO_SORTEIO: [u64; 5] = [0, 1, 2, 3, 4];
+/// As sementes de uma FERRAMENTA com Jitter: a largura é a mediana delas. N = 3, medido 29/10 (`sonda_sorteio_da_largura`,
+/// Smear Shattered, nova régua, 9 sementes, raios da promessa 2…300): UMA semente cai até ±10 % da mediana das 9; a
+/// mediana das 3 primeiras fica a ≤ 4 % dela (26: 48,6 × 46,8; 13: 22,2 × 21,7; 300: 492 × 490), a das 5 primeiras
+/// também (≤ 4 %) — 5 não compra precisão e custa 5/3 do gerador (cada semente repinta a lei inteira).
+const SEMENTES_DO_SORTEIO: [u64; 3] = [0, 1, 2];
 
 /// As sementes da régua da largura de `p` — a MESMA lista na tabela e na promessa. Uma ferramenta (o modo ≠ Paint) com
 /// `jitter` > 0 na receita sorteia ONDE cada dab cai, e o rasto de uma semente só muda de largura conforme o sorteio
@@ -63,24 +65,28 @@ pub(super) fn imagem_da_ferramenta(
     // ao longo dela. O SMEAR arrasta no sentido do traço — ao longo da orla não muda quase nada (a tabela saía ~1 px a
     // todo o raio, janela 15) —: a faixa dele fica de PÉ (2m de largura, a orla direita em `cx`) e o traço dela ATRAVESSA
     // a orla para fora; a largura é a do rasto que ele puxa, de novo por coluna.
-    let (w, h, faixa, ferramenta, raio_da_base) = if modo == "Smear" {
+    // A ORLA da base: os dois pontos dela, a normal para DENTRO da faixa e o raio da faixa (a largura é o dobro).
+    let (w, h, orla, dentro, ferramenta, raio_da_base) = if modo == "Smear" {
         let (w, h) = ((motor * 4.5) as u32 + 160, (motor * 3.0) as u32 + 120);
         let (cx, cy) = (80.0 + 2.0 * motor, h as f32 * 0.5);
         (
             w,
             h,
-            [[cx - motor, 20.0], [cx - motor, h as f32 - 20.0]],
+            [[cx, 20.0], [cx, h as f32 - 20.0]],
+            [-1.0, 0.0],
             [[cx - motor, cy], [cx + 1.5 * motor, cy]],
             motor,
         )
     } else {
         let h = ((motor * 6.0) as u32 + 80).max(120);
-        let cy = h as f32 * 0.5;
+        let (cy, margem) = (h as f32 * 0.5, MARGEM_DO_MISTURADOR.max(motor + 100.0));
+        let w = (VAO_DO_MISTURADOR + 2.0 * margem) as u32;
         (
-            crate::sonda_gestos::W,
+            w,
             h,
-            [[60.0, cy - 1.5 * motor], [940.0, cy - 1.5 * motor]],
-            [[100.0, cy], [900.0, cy]],
+            [[margem - 40.0, cy], [w as f32 - margem + 40.0, cy]],
+            [0.0, -1.0],
+            [[margem, cy], [w as f32 - margem, cy]],
             1.5 * motor,
         )
     };
@@ -90,9 +96,11 @@ pub(super) fn imagem_da_ferramenta(
         t.set_wet_relogio_fixo(true);
         t.set_semente_dos_tracos(semente);
         assert!(t.wet_preset_aplicar(&direito(&base)).is_empty());
-        t.set_brush_size_px(raio_da_base);
         t.set_brush_color_srgb8([191, 0, 18]);
-        crate::sonda_gestos::gesto(&mut t, &faixa, 3.0, |_| 1.0);
+        for faixa in faixas_da_base(orla, dentro, raio_da_base, t.raio_maximo()) {
+            t.set_brush_size_px(faixa.1);
+            crate::sonda_gestos::gesto(&mut t, &faixa.0, 3.0, |_| 1.0);
+        }
         // Pela porta do navegador: ela põe a ferramenta do preset na mão (a interna escreve-o no slot dela e deixa o
         // Pincel na mão — a régua media o traço do Ink Brush).
         assert!(t.preset_aplicar(&direito(p)).unwrap().is_empty());
@@ -118,6 +126,34 @@ pub(super) fn imagem_da_ferramenta(
         })
         .collect();
     (diferenca, w, h)
+}
+
+/// O vão RECTO do traço do misturador (px) e a margem mínima de cada lado: a 1000 px de tela (a `sonda_gestos::W` de
+/// antes) os raios ≥ 400 eram só pontas. A margem cresce com o raio (`m + 100`), e a régua só lê as colunas do vão.
+const VAO_DO_MISTURADOR: f32 = 800.0;
+const MARGEM_DO_MISTURADOR: f32 = 100.0;
+
+/// Os traços que pintam a faixa da base: o raio de cada um é `raio_da_base` até ao `maximo` do Size da base (o slider
+/// pára em 512, `raio_maximo`), e acima dele empilham-se traços para DENTRO da orla, cada um a 1,5 raios do anterior,
+/// até a faixa ter `2·raio_da_base`. ⛔ Medido 29/10: com UM traço a faixa ficava presa a 1 024 px e a orla dela fugia
+/// da linha do traço — a lei crua do Blender Soft caía de 248 px a 0 entre o raio 723 e o 990 (a régua mentia).
+fn faixas_da_base(
+    orla: [[f32; 2]; 2],
+    dentro: [f32; 2],
+    raio_da_base: f32,
+    maximo: f32,
+) -> Vec<([[f32; 2]; 2], f32)> {
+    let rb = raio_da_base.min(maximo);
+    let mut d = rb;
+    let mut v = Vec::new();
+    loop {
+        let em = |q: [f32; 2]| [q[0] + dentro[0] * d, q[1] + dentro[1] * d];
+        v.push(([em(orla[0]), em(orla[1])], rb));
+        if d + rb >= 2.0 * raio_da_base - 0.5 {
+            break v;
+        }
+        d += 1.5 * rb;
+    }
 }
 
 /// A diferença de uma coluna `x` da imagem de [`imagem_da_ferramenta`] (`0` = igual, `1` = o máximo).
@@ -149,8 +185,9 @@ fn largura_equivalente(px: &[u8], w: u32, h: u32, x: u32) -> Option<f32> {
 /// muda os DOIS lados dela (a tinta que se mistura com o papel e a que vai para o papel); a largura é a mediana das
 /// [`largura_equivalente`] das colunas — o lado mais fraco pesa o que muda.
 pub(super) fn largura_do_misturador(px: &[u8], w: u32, h: u32) -> f32 {
+    let x0 = ((w as f32 - VAO_DO_MISTURADOR) * 0.5) as u32;
     mediana(
-        (0..w)
+        (x0..(x0 + VAO_DO_MISTURADOR as u32).min(w))
             .filter_map(|x| largura_equivalente(px, w, h, x))
             .collect(),
     )

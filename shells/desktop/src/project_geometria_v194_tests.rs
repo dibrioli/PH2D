@@ -1,8 +1,10 @@
 //! ⭐⭐ **Um projecto gravado ANTES do id por vértice abre igual, já numerado** (W4.2, `PROJECT_SCHEMA`
-//! `194 → 195`).
+//! `199 → 200` depois da integração com a GEF; a linha escreveu `194 → 195` sobre o `193`).
 //!
 //! `tests/fixtures/projecto_v194_geometria.ph2dproj` foi gravado pelo código v194 (commit `db09f4bd45`,
-//! numa worktree temporária) — ⛔ **nunca o regenere**. Dentro: a cena de `ph2d-vec-scene/tests/it/
+//! numa worktree temporária) — ⛔ **nunca o regenere**. ⚠️ Na escada INTEGRADA o `194` é o degrau da GEF
+//! (`SEM_TILED_DRAW`): os mesmos bytes (cabeçalho `194`, sem o campo `jogo`, vértices sem id) leem-se pelo braço dele,
+//! que acrescenta o `0` do `jogo` e abre o âmbito do fio `23` — o que o gate prova. Dentro: a cena de `ph2d-vec-scene/tests/it/
 //! fixtures/vec_scene_v23_geometria.bin` e um estado Hover na «caixa» cuja pose leva a geometria dos
 //! «dentes».
 
@@ -50,15 +52,17 @@ fn a_v194_project_opens_with_vertex_ids_in_order() {
 #[test]
 fn the_same_bytes_under_todays_header_do_not_open_the_same() {
     let mut hoje = V194.to_vec();
-    // `194` e `198` são varints de dois bytes (`0xC2 0x01` / `0xC6 0x01`).
+    // `194` e `203` são varints de dois bytes (`0xC2 0x01` / `0xCB 0x01`); o `0` final é o `jogo` vazio que
+    // o braço do `194` acrescenta sozinho — assim só o FIO difere entre o certo e o torto.
     assert_eq!(&hoje[..2], &[0xC2, 0x01], "o fixture é um v194");
-    const { assert!(PROJECT_SCHEMA == 198) };
-    hoje[0] = 0xC6;
+    const { assert!(PROJECT_SCHEMA == 203) };
+    hoje[0] = 0xCB;
+    hoje.push(0);
     let certo = le(V194, "geometria_v194_certo").expect("um v194 abre");
     let torto = le(&hoje, "geometria_v194_torto");
     assert!(
         torto.is_none_or(|f| f.state.vec != certo.state.vec),
-        "lido como v198, o v194 deu a mesma cena — o gate de cima é cego"
+        "lido como v203, o v194 deu a mesma cena — o gate de cima é cego"
     );
 }
 
@@ -69,5 +73,7 @@ fn each_project_version_reads_the_vector_wire_it_wrote() {
     assert_eq!(fio_do_projeto(189), Some(22));
     assert_eq!(fio_do_projeto(190), Some(23));
     assert_eq!(fio_do_projeto(194), Some(23));
+    assert_eq!(fio_do_projeto(199), Some(23));
+    assert_eq!(fio_do_projeto(200), None);
     assert_eq!(fio_do_projeto(PROJECT_SCHEMA), None);
 }

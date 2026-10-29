@@ -153,7 +153,7 @@ if command -v cargo-nextest >/dev/null 2>&1; then
     # e o REGISTO da árvore verde. Se o integrador já passou esta MESMA árvore, isto não corre de novo
     # (−25–35 min por envio); qualquer byte diferente é outra chave e corre.
     run "suíte completa (nextest --workspace, ci-test; salta se a árvore já passou)" \
-        bash scripts/suite-completa.sh
+        bash scripts/suite-completa.sh --enviar
     # ⭐ G (comissão 29/10): nenhum teste ≥ 60 s do junit da suíte fica sem nível (`.config/testes-lentos.tsv`).
     run "nenhum teste lento sem nível" python3 scripts/testes-lentos.py --confere target/nextest/default/junit.xml
 else

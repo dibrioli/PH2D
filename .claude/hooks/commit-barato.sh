@@ -22,6 +22,10 @@ top="$(git -C "$dir" rev-parse --show-toplevel 2>/dev/null)" || exit 0
 
 saida="$(cd "$dir" && PH2D_COMMIT_BARATO_CWD="$dir" timeout 9 bash "$top/scripts/commit-barato.sh" --comando "$cmd" 2>&1)"
 [ $? -eq 1 ] || exit 0
+# Um ✗ do espelho é uma linha `✗ ficheiro:linha`; um traceback (o comando trazia `git … commit` num texto
+# que o parser não entende — heredoc, `-C "$var"`) também sai 1 e é erro do espelho ⇒ passa.
+printf '%s\n' "$saida" | grep -q '^Traceback' && exit 0
+printf '%s\n' "$saida" | grep -qE '(^|[[:space:]])✗ ' || exit 0
 
 jq -n --arg r "⛔ O commit leva o que a suíte do fecho vai reprovar (scripts/commit-barato.sh, sem compilar):
 

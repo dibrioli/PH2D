@@ -37,6 +37,19 @@ suite_arvore() {
   rm -f "$idx"
   printf '%s' "$arv"
 }
+# ⭐ O que o PUSH envia é a árvore do HEAD, não a pasta: o primário do dono vive com `project-memory/` por
+# comitar (outras sessões), e com a chave só da pasta o envio nunca reconhecia a árvore que o integrador
+# passou num worktree limpo (medido no ensaio do A, 29/10). `--enviar` (o ship.sh) aceita também a chave
+# do HEAD — o por comitar não vai no push. Uma corrida, quando acontece, continua a testar a pasta.
+suite_arvore_head() {
+  local idx arv
+  idx="$(mktemp)"
+  arv="$(GIT_INDEX_FILE="$idx" git read-tree HEAD 2>/dev/null \
+    && GIT_INDEX_FILE="$idx" git rm --cached -q --ignore-unmatch -- .config/testes-lentos.tsv >/dev/null 2>&1 \
+    && GIT_INDEX_FILE="$idx" git write-tree 2>/dev/null)"
+  rm -f "$idx"
+  printf '%s' "$arv"
+}
 # ⚠️ Fora da chave só os botões de RECURSO da porta e o próprio forçar (o mesmo corte do nextest-impacted).
 suite_chave() {
   printf '%s\n%s\n%s\n%s\n' "$1" "$(rustc -vV 2>/dev/null)" "$2" \
@@ -45,11 +58,22 @@ suite_chave() {
 }
 _registo="${PH2D_SUITES_VERDES:-$(git rev-parse --git-common-dir)/ph2d-suites-verdes.tsv}"
 
-_so_chave=0
+_so_chave=0; _enviar=0
 [ "${1:-}" = "--chave" ] && { _so_chave=1; shift; }
+[ "${1:-}" = "--enviar" ] && { _enviar=1; shift; }
 _arvore="$(suite_arvore)"
 _chave="$(suite_chave "$_arvore" "$*")"
 [ "$_so_chave" = 1 ] && { echo "$_chave"; exit 0; }
+if [ "$_enviar" = 1 ]; then
+  _arv_head="$(suite_arvore_head)"
+  _chave_head="$(suite_chave "$_arv_head" "$*")"
+  if [ -n "$_arv_head" ] && [ "${PH2D_PORTAO_FORCAR:-0}" != "1" ] && grep -q "^$_chave_head	" "$_registo" 2>/dev/null; then
+    echo "[suite-completa] ✓ a árvore que o push ENVIA (HEAD, $_arv_head) JÁ PASSOU a suíte completa:"
+    grep "^$_chave_head	" "$_registo" | tail -1 | cut -f3- | sed 's/^/[suite-completa]   /'
+    [ "$_arv_head" != "$_arvore" ] && echo "[suite-completa]   (o que está por comitar nesta pasta não vai no push e não foi testado)"
+    exit 0
+  fi
+fi
 
 if [ -n "$_arvore" ] && [ "${PH2D_PORTAO_FORCAR:-0}" != "1" ] && grep -q "^$_chave	" "$_registo" 2>/dev/null; then
   echo "[suite-completa] ✓ esta árvore ($_arvore) JÁ PASSOU a suíte completa:"

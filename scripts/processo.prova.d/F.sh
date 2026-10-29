@@ -53,3 +53,7 @@ sed -i 's/const FILE_LOC_CAP: usize = 700;/const FILE_CAP: usize = 700;/' \
   "$_f/crates/ph2d-editor-core/tests/it/architecture_workspace_file_loc_cap.rs"
 case "$(_cb crates/ph2d-zz/src/novo.rs)" in *"espelho partido"*) ok "gate que muda de forma = espelho partido" ;;
   *) ko "gate que mudou de forma NÃO partiu o espelho" ;; esac
+# Regressão 29/10: um `git -C "$var" … commit` dentro de um texto/heredoc fazia o espelho rebentar (traceback,
+# exit 1) e o hook NEGAVA um comando que nem era um commit. Erro do espelho ⇒ passa.
+_f_tb="$(jq -n --arg c 'x=1; git -C "$_dir_que_nao_existe" -c user.email=p@p commit -q -m h' '{tool_name:"Bash",tool_input:{command:$c}}' | bash .claude/hooks/commit-barato.sh)"
+igual "um traceback do espelho não nega o comando" "$_f_tb" ""

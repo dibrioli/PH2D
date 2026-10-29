@@ -1,8 +1,10 @@
-# ESTADO da missão Pincéis — MISSÃO 2 EM CURSO (J6, 2026-10-28) (≤ 8 KB)
+# ESTADO da missão Pincéis — MISSÃO 2 — linha FECHADA 29/10, integração por ordem do dono (≤ 8 KB)
+
+> **Handoff de integração:** [`HANDOFF_INTEGRACAO_line_PainterWatercolor_2026-10-29_PINCEIS2.md`](../handoffs/HANDOFF_INTEGRACAO_line_PainterWatercolor_2026-10-29_PINCEIS2.md) — o que mudou, abertos e smoke. Abaixo, o registo da J6 (28/10).
 
 > Missão 1 encerrada na J5 (18 aprovados; [integração](../handoffs/HANDOFF_INTEGRACAO_line_PainterWatercolor_2026-10-22_PINCEIS.md)). Contrato: [`00_MISSAO.md`](00_MISSAO.md) · [custo](REGRAS_DE_CUSTO.md) · `HANDOFF_JANELA_<n>.md` · `exames/<família>.md`. Handoff da J6: [`HANDOFF_JANELA_6.md`](HANDOFF_JANELA_6.md).
 
-**Total: 26 aprovados (+ Soft Pastel na J6), fábrica 64 PNG medidos em `assets/brushes/{WetPainter,Digital}` (52 declarados; conferir por `the_factory_presets_are_counted`).**
+**Total: 28 aprovados (26 + Soft Pastel + Wax Crayon), fábrica 66 PNG em `assets/brushes` (WetPainter 45 · Digital 20 · Watercolor 1; contagem oficial: `the_factory_presets_are_counted`).**
 
 ## Feito
 
@@ -30,26 +32,19 @@
 
 ## J6 — óleo, grão fino (`9fba4165d8` `37529e35de` `b00ee7cbdc`)
 
-`borda_suave` tratava o grão de 1 px como degrau e apagava-o; agora só suaviza borda RECTA (`ESCADA_ERRO_MAX` 0,10;
-gate `o_grao_de_um_px_sobrevive_ao_oleo`). Régua (sem óleo / antes / depois): K. Stain 336/194/322 · Dabber 4
-344/302/318 · K. Grainy 274/222/226 (`sem_entalhes` enche o grão — fila) · Metallic Flat 373/335/335. Os 5 mantêm
-ou sobem (K. Smooth 3 356 → 378). Vermelhos do óleo, motor: `cada_preset_parece_a_sua_midia` (orla Dabber 10 × 5,
-orla Oil Bristle 0,618 × 0,872) · `a_largura_e_a_prometida` (K. Smooth 3 a tamanho 2: 7 × 4 px). Regerar 10 Oil/* = 4,5 h.
-**METODOLOGIA NOVA** (dono 28/10, `REGRAS_DE_CUSTO.md`): folha do dono para os ~25 «quase» — EM CURSO; acelerar o
-exame/gerador do óleo (largura sem óleo, luz só na foto) — EM CURSO, prazo 45 min.
+`borda_suave` só suaviza borda RECTA (`ESCADA_ERRO_MAX` 0,10; gate `o_grao_de_um_px_sobrevive_ao_oleo`). Régua (sem óleo /
+antes / depois): K. Stain 336/194/322 · Dabber 4 344/302/318 · K. Grainy 274/222/226 · Metallic Flat 373/335/335; os 5
+aprovados mantêm ou sobem. **METODOLOGIA** (dono 28/10): [`REGRAS_DE_CUSTO.md`](REGRAS_DE_CUSTO.md); folha do dono feita
+(`tutorial/J6_folha_do_dono.html`); exame do óleo 10× mais rápido e Oil/* regerados (fecho 29/10).
 
 ## J6 — pedidos do dono no smoke (28/10)
 
-- Wax Crayon na fábrica (`a5e727f203`, PASTEL ▸ Oil). Paper Press 0..1 (`b17f8d64c3`, Tuning ▸ Material; 1 = hoje =
-  omissão; o padrão escolhe-o o dono no app — a foto `J6_paper_press.jpg` mostra pouca diferença). Same as Paper no
-  Grain do Digital/Impasto/Wet (`1d0ccb1524`). Exame/gerador do óleo 10× mais rápido (`eabfc63ccd`; Oil/* por regerar no
-  fecho). ABERTOS p/ o fecho: `censo_dos_controlos::a_linha_esmaecida_e_a_que_nao_age` vermelho (Accumulate/Shape
-  Follow no Digital — confirmar se é pré-existente) · linha do Same as Paper em `censo_dos_controlos_tabela.rs` ·
-  `cada_preset_parece_a_sua_midia` / `a_largura_e_a_prometida` (óleo) · regerar Oil/* · folha do dono (25 «quase»).
+- Wax Crayon na fábrica (`a5e727f203`). Paper Press 0..1 (`b17f8d64c3`). Same as Paper no Grain (`1d0ccb1524`). Exame do
+  óleo 10× mais rápido (`eabfc63ccd`). Tudo fechado e curado no fecho 29/10 — ver o handoff de integração acima.
 
 ## J6 passo 3 — pincel a pincel (16 só por valores; 16 travados por motor; 7 sem oráculo)
 
-- Digital ✅ (`8a9703db68` `07c644af37` `c8d4ad953d`, [`exames/digital_j6.md`](exames/digital_j6.md)): C-4 Studio Pen (Hard Round 0,283) e C-6 Technical Pen (Pixel 1px 0,330) FUNDEM; K-1 Clouds curado não aprovado; motor B-6 (rampa sob o tecto), L-5 (blur puxa o papel); M-7 sem oráculo. **Cega Digital: B-7 Rough Sketch e I-12 Optical Wash curados NÃO aprovados** (Rough Sketch: o revisor tomou o NOSSO pelo pincel de fora em todas as linhas — discos nítidos onde o MyPaint tem grão de pontos e pontas rectas; Optical Wash: achado em todas as linhas, média em 2 — contorno forte e contínuo, o Krita tem franja fraca irregular). ⚠️ Biblioteca `j6_wet` incompleta (28/66) ⇒ d antigos suspeitos; usar `/tmp/claude-1000/j6_digital/biblioteca`.
+- Digital ✅ (`8a9703db68` `07c644af37` `c8d4ad953d`, [`exames/digital_j6.md`](exames/digital_j6.md)): C-4 Studio Pen (Hard Round 0,283) e C-6 Technical Pen (Pixel 1px 0,330) FUNDEM; K-1 Clouds curado não aprovado; motor B-6 (rampa sob o tecto), L-5 (blur puxa o papel); M-7 sem oráculo. **Cega Digital: B-7 Rough Sketch e I-12 Optical Wash curados NÃO aprovados** (porquê: HANDOFF_JANELA_6 §1). ⚠️ Biblioteca `j6_wet` incompleta (28/66) ⇒ d antigos suspeitos.
 - Canetas/marcadores Wet ✅ (`221fb75e43`, `EM_ESTUDO_J6_WET`, [`exames/canetas_j6.md`](exames/canetas_j6.md)): Reed Pen,
   Wood Stick, Marker Chisel, Dry Marker curados não aprovados (diferenças medidas e conhecidas — cega não gasta). Fila:
   ✅ dual compõe com a ponta achatada (`9dfb735b24` `095a508bfa`; Reed Pen w0·w90 34·21, Rebelle 34·23; Wood Stick

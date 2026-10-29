@@ -10,10 +10,8 @@ Fim de ONDA (a linha continua) não é isto: `/pd-onda-fechar`.
 2. `PH2D_SUITE=fecho bash scripts/ph2d-run.sh cargo clippy --workspace --all-targets -- -D warnings` + features
    (sem o `PH2D_SUITE=fecho` o guarda recusa — clippy é só do fecho, dono 14/10)
 3. `shells/desktop/tests/it/file_loc_caps.rs` + `arch_safe_clamp_only`
-4. `PH2D_SUITE=fecho bash scripts/nextest-impacted.sh` (sem o `PH2D_SUITE=fecho` a CADÊNCIA recusa antes de 10
-   commits desde a última suíte verde — dono 13/10 e 14/10; o perfil `ci-test` tem `incremental = false` e o
-   `.config/nextest.toml` tem tecto global de 180 s e `fail-fast = false` desde 10/09 —
-   os prefixos `CARGO_INCREMENTAL=0` e `--no-fail-fast` deixaram de ser necessários)
+4. os testes do item e os portões que a mudança toca, **por nome** (`cargo-test-narrow.sh <crate> <nome>`).
+   ⛔ Nem `nextest-impacted.sh` nem `suite-completa.sh`/`ship.sh`: são do integrador (`/pd-integracao`).
 5. auditoria ≥2 lentes
 
 Para reconferir durante o conserto, use `bash scripts/cargo-test-narrow.sh

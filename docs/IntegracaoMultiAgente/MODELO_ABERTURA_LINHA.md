@@ -105,11 +105,14 @@ E. Fim de ONDA (o dono faz o smoke, a janela troca, a linha continua) = `/pd-ond
    fmt + clippy das crates da onda + os testes da onda por nome + smoke compilado + handoff de
    continuação — **sem** a bateria (medido 14–17/10: fechar cada onda com ela deu 14 fechos por linha
    em 3 dias). Fechamento do MÓDULO, antes de integrar = `/pd-linha-fechar` (DIRETRIZ §1.5.9): gate
-   batched 1×, **o barato primeiro e a suíte por último** — `cargo fmt` · `PH2D_SUITE=fecho` clippy
+   batched 1×, **o barato primeiro e os testes por nome por último** — `cargo fmt` · `PH2D_SUITE=fecho` clippy
    `--workspace --all-targets -- -D warnings` (já é o check do workspace) · `cargo machete` ·
    `bash scripts/check-standalone-optional.sh` · `bash scripts/check-workflow-packages.sh` · por
-   último `PH2D_SUITE=fecho BASE=$(git merge-base main HEAD) bash scripts/nextest-impacted.sh` ·
-   auditoria ≥2 lentes + DIRETIVA §3-§5. Depois de um conserto, só o que falhou, por nome. Então PARE — NÃO integre nem faça ship por conta própria. Quem funde
+   último os testes do item e os portões tocados, por nome (`cargo-test-narrow.sh`) ·
+   auditoria ≥2 lentes + DIRETIVA §3-§5. Depois de um conserto, só o que falhou, por nome. A suíte
+   COMPLETA (`suite-completa.sh`, `--workspace`, `ship.sh`, «bateria por crate») e o `nextest-impacted.sh`
+   NÃO são da linha, nem no fecho: são do integrador, antes de integrar (dono 23/10 e 25/10); o handoff
+   diz «impactados e suíte completa ficam para a integração». Então PARE — NÃO integre nem faça ship por conta própria. Quem funde
    as linhas é um AGENTE INTEGRADOR DEDICADO, e só por ORDEM EXPLÍCITA
    do Enio (DIRETRIZ §1.5.3–1.5.4). Você NÃO roda foundational-integrate.sh.
 F. Ship (ship.sh + push + babysit CI): NUNCA por conta própria. É ordem

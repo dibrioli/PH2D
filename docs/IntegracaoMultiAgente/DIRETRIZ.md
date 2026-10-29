@@ -822,7 +822,7 @@ Algumas tarefas não cabem em §3.A-D porque tocam múltiplos crates por naturez
 > "Você toca tests em vários crates conforme os achados. Exceção autorizada à regra de uma pasta isolada (DIRETRIZ §1.4). Cada commit ainda fica T1 single-crate sempre que possível."
 
 **Regras:**
-1. Cada commit valida-se sozinho: `cargo-check-narrow.sh <crate>` verde e os testes que o commit toca, **por nome** (`cargo-test-narrow.sh <crate> <nome>`). A crate inteira e a suíte seguem a cadência do §6.2 (dono 14/10).
+1. Cada commit valida-se sozinho: `cargo-check-narrow.sh <crate>` verde e os testes que o commit toca, **por nome** (`cargo-test-narrow.sh <crate> <nome>`). A crate inteira segue o §6.2; a suíte completa só na integração (dono 23/10 e 25/10).
 2. Não tocar production code de foundational sem motivo claro — em audit de tests, só `tests/` + `#[cfg(test)]`.
 3. Documentar risk surface no relatório final.
 
@@ -975,10 +975,10 @@ Faltou → **bounce pro Implementador antes de mergear.** Não "vou abrir exceç
 | Quer a crate INTEIRA | só se for **imprescindível** (lista abaixo): `PH2D_SUITE="motivo: <porquê>" bash scripts/cargo-test-narrow.sh <crate>` — sem o motivo o guarda recusa | 5-75s |
 | Teste PESADO (malha, campo, física) | `bash scripts/ph2d-run.sh cargo nextest run -p <crate> --cargo-profile ci-test -E 'test(<nome>)'` — no `dev` uma suíte custou 55 min | — |
 | Sonda otimizada (GPU, números, bits) | `cargo test -p <crate> --profile smoke -- --ignored <nome>` — **nunca `--release`**: remontar custa 114 s × 3,1 s (17/10); o guarda R8 recusa. Só mede o RELÓGIO da CPU? `PH2D_RELEASE="mede velocidade"` | 3 s a remontar |
-| A suíte do diff | `bash scripts/nextest-impacted.sh` — corre a cada **10 commits** da linha; antes disso recusa | 1-20 min |
+| Os pacotes impactados / a suíte completa | `nextest-impacted.sh` · `bash scripts/suite-completa.sh` — **só o integrador** (§6.2); na linha, nem no fecho | 1-20 min |
 | Editou foundational, quer ver downstream | `cargo check --workspace` | 30-60s warm |
 | Vai commitar | **nada** — não há hook de commit (conferido 14/10: nenhum `pre-commit` instalado); a validação é a cadência do §6.2 | 0s |
-| **Antes do push (obrigatório)** | `./scripts/ship.sh` | 3-8min warm |
+| **Antes do push (obrigatório; só o integrador/ship, nunca a linha)** | `./scripts/ship.sh` | 3-8min warm |
 | Só mudou `.md` | **nada** — hook é T0 (skip) | 0s |
 
 ### 6.2 LOC threshold (não interrompa o editing burst)
@@ -998,10 +998,10 @@ de facto essenciais depois de uma implementação»*)** — e ela está nos scri
 | Quando | O quê | Quem o faz valer |
 |---|---|---|
 | No meio do trabalho | os testes do item, **por nome** | o guarda (`.claude/hooks/tecto-de-recursos.sh`, R5) recusa a crate inteira sem nome |
-| A cada **10 commits** da linha | `bash scripts/nextest-impacted.sh` (a suíte do diff) | o script recusa antes disso (exit 3, em ~2 s) |
-| Imprescindível | crate inteira ou suíte com `PH2D_SUITE="motivo: <porquê>"` | o motivo fica no comando e no `.git/ph2d-suite-motivos.log` |
-| Fim de ONDA (smoke do dono, janela nova; a linha continua) | fmt + clippy das crates da onda + testes da onda por nome; a suíte só se a cadência mandar (`PH2D_SUITE=onda`) | `/pd-onda-fechar` |
-| Fecho da LINHA (antes de integrar) · integração | `PH2D_SUITE=fecho …`, o barato primeiro e a suíte por último; depois de um conserto, só o que falhou | `/pd-linha-fechar`, `/pd-gate-fechamento`, `foundational-integrate.sh` |
+| Imprescindível | a crate inteira com `PH2D_SUITE="motivo: <porquê>"` (nunca a suíte completa) | o motivo fica no comando e no `.git/ph2d-suite-motivos.log` |
+| Fim de ONDA (smoke do dono, janela nova; a linha continua) | fmt + clippy das crates da onda + testes da onda por nome; nenhuma suíte | `/pd-onda-fechar` |
+| Fecho da LINHA (antes de integrar) | fmt + clippy (`PH2D_SUITE=fecho`) das crates tocadas 1×, o barato primeiro; testes do item e portões tocados por NOME; mutação; auditoria; depois de um conserto, só o que falhou. ⛔ **Nem suíte completa nem `nextest-impacted`** (dono 23/10 e 25/10); o handoff diz «impactados e suíte completa ficam para a integração» | `/pd-linha-fechar`, `/pd-gate-fechamento` |
+| Integração (só o integrador) | `nextest-impacted.sh` + a suíte COMPLETA (`bash scripts/suite-completa.sh`) sobre a árvore combinada + `ship.sh` | `/pd-integracao`, `foundational-integrate.sh` |
 
 **Imprescindível é só isto:** mexeu num contrato congelado (CLAUDE.md §6) ou numa crate de que muitas
 dependem · mudou um formato gravado (schema, blob com versão) · mudou dependências/features de um
@@ -1009,7 +1009,7 @@ dependem · mudou um formato gravado (schema, blob com versão) · mudou depend�
 registo de uma tool/node/painel nova · prova de mutação (`/pd-mutacao`: ela confere que SÓ o gate certo
 sangra, e isso pede a crate inteira). Esta é a fonte da lista; o CLAUDE.md §2 e o guarda resumem-na.
 «Para confirmar», «antes de entregar» e «para ver se está tudo
-bem» não são motivo — é para isso que existe o passo de 10 e o fecho.
+bem» não são motivo — é para isso que existe a integração (impactados e suíte completa).
 Medido em 14/10 (7 dias, ~900 sessões): a crate inteira sem nome custou **17 h** de espera, a suíte
 **8,7 h**; o teste por nome, **1–5 s**.
 
@@ -1082,14 +1082,14 @@ por-agente**. Norte: [ADR-0075](../architecture/decisions/0075-multiagent-parall
 1. **Inner loop = SÓ `cargo check -p <crate>`** (ou `scripts/cargo-check-narrow.sh`
    p/ cortar payload de erro). ZERO test/clippy/auditor **por task**.
 2. **Validação pesada BATCHED 1× no fechamento do módulo** (não por task): auditoria
-   ≥2 lentes rotacionadas + `nextest` + `clippy --all-targets` + smoke, sobre o diff
+   ≥2 lentes rotacionadas + testes do item por nome (impactados e suíte completa são do integrador) + `clippy --all-targets` + smoke, sobre o diff
    ACUMULADO. Padrão-ouro é preservado **no gate**, não repetido a cada commit.
 3. **Slot warm por CoW:** `bash scripts/slot-seed.sh <slot>` (clone APFS, ~1s, 0 bytes)
    → **prefixe cada cargo** com o `CARGO_TARGET_DIR` impresso (Bash-tool não persiste
    env). **Não use o `target/` default.** Coordenador rebuilda `target-slots/base`
    (SOZINHO, RAM-heavy) só quando `Cargo.lock`/toolchain muda.
-4. **Teste de módulo:** `scripts/nextest-impacted.sh` (só `rdeps()` do que mudou +
-   força o golden de determinismo). Gate final = `./scripts/ship.sh`.
+4. **Teste de módulo:** por nome (`cargo-test-narrow.sh`). `scripts/nextest-impacted.sh` (só `rdeps()` do que mudou +
+   força o golden de determinismo) e o gate final `./scripts/ship.sh` são do integrador, não da linha.
 5. **Concorrência:** **≤3 `cargo` simultâneos** — Coordenador escalona via
    SESSION_ACTIVE (§1.1). CoW barateia criar slots, NÃO levanta esse teto.
 
@@ -1130,7 +1130,7 @@ fechado**, não por micro-task (vide §6.6.A.2).
    lista de 22 635 testes idêntica antes e depois — check frio do workspace **93 → 51 s**, gate após uma linha
    foundational **93 → 60 s**. Logo: (a) **teste de integração novo = módulo em
    `tests/it/`** (§6.3); (b) teste pesado corre em `--profile ci-test` — `cargo-test-narrow.sh` para um crate,
-   `nextest-impacted.sh` para o diff — e nunca `cargo test` cru no `dev` (55 min numa suíte, medido).
+   `nextest-impacted.sh` para o diff (integrador) — e nunca `cargo test` cru no `dev` (55 min numa suíte, medido).
 4. **Todo teste tem tecto** (`.config/nextest.toml`: 60 s avisa, 180 s mata) e a suíte **não cancela** no
    1.º ✗. Precisa de mais? `[[profile.default.overrides]]` com o número medido. Gate de relógio/alocação
    novo entra na **lane** pelo nome (§6.5) — a barra fica.

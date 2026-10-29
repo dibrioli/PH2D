@@ -6,8 +6,13 @@ Feche a linha `$1` — **só antes de INTEGRAR**. Fim de uma onda (o dono faz o 
 a linha continua) é `/pd-onda-fechar`, sem esta bateria: medido 14–17/10, fechar cada onda assim deu
 14 fechos por linha em 3 dias, metade repetidos.
 
-1. Gate batched, 1× sobre o diff acumulado (nunca por task), **NESTA ORDEM — o barato primeiro, a
-   suíte por último** (medido 14–17/10: a suíte corria primeiro, o fmt/clippy reprovava depois, e a
+⛔ **A suíte COMPLETA (`suite-completa.sh`, `nextest --workspace`, `ship.sh`, a «bateria por crate») NÃO é da linha, nem no
+fecho** (dono 23/10 e 25/10): é do integrador, antes de integrar (`/pd-integracao`). Aqui: testes por
+NOME, provas de mutação, os portões que a mudança toca (por nome) e clippy/fmt das crates tocadas.
+`nextest-impacted.sh` e `bash scripts/suite-completa.sh` também são do integrador.
+
+1. Gate batched, 1× sobre o diff acumulado (nunca por task), **NESTA ORDEM — o barato primeiro, os
+   testes por nome por último** (medido 14–17/10: a suíte corria primeiro, o fmt/clippy reprovava depois, e a
    suíte corria de novo — «second pass», «round 3»). Um ✗ num portão barato: conserte ANTES de seguir.
    - `cargo fmt --all`
    - `PH2D_SUITE=fecho bash scripts/ph2d-run.sh cargo clippy --workspace --all-targets -- -D warnings`
@@ -22,15 +27,14 @@ a linha continua) é `/pd-onda-fechar`, sem esta bateria: medido 14–17/10, fec
    - `cargo machete` — ⚠️ **obrigatório se a linha MOVEU código**: mudar código de casa não muda a linha do `Cargo.toml`, nada disso falha a compilar, e o CI reprova. Medido na W2 (12/09): **79** dependências mortas deixadas pelas mudanças de casa, que nenhuma linha correu ao fechar (HOWTO §2.18)
    - `shells/desktop/tests/it/file_loc_caps.rs` (o gate da shell; o workspace_file_loc_cap
      cobre só crates/ — essa lacuna já deixou vermelho latente 2×)
-   - `arch_safe_clamp_only` e os arch-gates de shell (só correm na varredura impactada)
-   - **por último, a suíte:** `PH2D_SUITE=fecho BASE=$(git merge-base main HEAD) bash scripts/nextest-impacted.sh`
-     — a régua é o merge-base; o default `origin/main` mede também o que ainda não foi enviado. Ele já
-     força os gates GLOBAIS (tectos de ficheiro, o tecto da shell, o censo de órfãos)
+   - `arch_safe_clamp_only` e os arch-gates de shell que a mudança toca: por NOME (`cargo-test-narrow.sh <crate> <nome>`, descobertos por grep)
+   - **por último, os testes do item e os portões que a mudança toca, por NOME** — ⛔ NÃO o
+     `nextest-impacted.sh` nem a suíte completa: ficam para a integração (`/pd-integracao`)
    - auditoria com ≥2 lentes
 2. Corrija TODO ✗. Não escreva o handoff sobre árvore vermelha. ⭐ **Depois do conserto, re-corra SÓ
-   o que falhou, por nome** (`cargo-test-narrow.sh <crate> <nome>`) — a suíte inteira volta sobre a
-   árvore COMBINADA no portão do integrador (`foundational-integrate.sh`), que é a que entra no `main`.
-   Só se o conserto mexeu numa crate de que muitas dependem: a suíte de novo, com `motivo:`. ⛔ Mudou a LEI de propósito? Os
+   o que falhou, por nome** (`cargo-test-narrow.sh <crate> <nome>`) — a suíte inteira é do integrador,
+   sobre a árvore COMBINADA (`foundational-integrate.sh`, `ship.sh`), que é a que entra no `main`.
+   Nunca a suíte nem o impactado de novo na linha, nem com `motivo:`; diga no handoff «impactados e suíte completa ficam para a integração». ⛔ Mudou a LEI de propósito? Os
    testes da lei antiga mudam NESTA linha — um vermelho «aberto no handoff» não entra no `main`
    (DIRETRIZ §1.5.3) e volta para cá.
 2-bis. ⭐⭐⭐ **O que só a ÁRVORE COMBINADA pega — e é VOCÊ quem o cura** (DIRETRIZ §1.5.9 item 5-bis):

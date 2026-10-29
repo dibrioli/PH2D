@@ -109,17 +109,19 @@ impl GrupoDeLuz {
         bgl: &wgpu::BindGroupLayout,
         extra: &[wgpu::BindGroupEntry<'_>],
     ) -> Self {
-        use wgpu::util::DeviceExt as _;
         let uniforme = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("ph2d-render luz recebida ubo"),
             size: size_of::<LuzUniforme>() as u64,
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
-        let desligada = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        // Zeros = `LuzUniforme::zeroed()` (a placa entrega o buffer zerado). Nunca mapeado ao nascer:
+        // recusado pela placa cheia, o mapeamento seria um panic em vez de um erro de escopo.
+        let desligada = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("ph2d-render luz desligada ubo"),
-            contents: bytemuck::bytes_of(&LuzUniforme::zeroed()),
+            size: size_of::<LuzUniforme>() as u64,
             usage: wgpu::BufferUsages::UNIFORM,
+            mapped_at_creation: false,
         });
         let amostra = device.create_sampler(&wgpu::SamplerDescriptor {
             label: Some("ph2d-render luz recebida sampler"),

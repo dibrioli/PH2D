@@ -252,3 +252,17 @@
 - **Robustez (fecho, `883324c3ac`):** `o_pack_da_placa_trunca` deixou de dar pânico — falha da medição (placa perdida,
   leitura recusada) responde «trunca» (paga a correção, o mesmo bit onde a placa arredonda) num âmbito de erro
   próprio, que não se lê como recusa da montagem; `paga_o_mais_proximo` saiu do `solver.rs` (701 → 699).
+
+## 8. «Com os blocos pequenos do alocador a luz não recua depois da 1.ª recusa» (29/10, integração da `line/UIUX`) — ABERTO
+
+A F37 da UIUX passou o omisso do alocador da placa a blocos de 8–64 MiB (`PH2D_GPU_BLOCOS`, `ph2d-gpu::blocos_do_alocador`).
+Com eles o gate `a_luz_recua_quando_a_placa_recusa_a_memoria` (`os_tetos_da_placa.rs`) reprova 3/3 sozinho:
+
+1. **Curado:** `GrupoDeLuz::novo` (`ph2d-render/src/luz_recebida.rs`) criava o UBO «luz desligada» por `create_buffer_init`
+   (mapeado ao nascer); recusado pela placa, o `get_mapped_range` era um **panic** do wgpu. Agora nasce sem mapear (zerado pela placa).
+2. **Aberto (desta família):** depois da 1.ª recusa (`SemMemoria { bytes: 1155891825 }`, 2160p) a montagem seguinte com a fina
+   engrossada falha SÓ por validação — `Texture::create_view` sobre `luz2d/tex/emissao` inválida — sem erro no escopo
+   `OutOfMemory` nem no `Internal` (sondados). `Solver::novo_com` lê isso como `ConfigInvalida` e o governador nunca vê a 2.ª
+   recusa: a luz apaga sem recuar. A criação da textura falha sem que o erro chegue a nenhum dos dois escopos — o mecanismo é por medir.
+   Até lá o gate pede os blocos de `desempenho` (`GpuContext::new_com_blocos`), a calibração em que nasceu — mede o recuo da luz,
+   não o alocador; o editor corre com os pequenos.

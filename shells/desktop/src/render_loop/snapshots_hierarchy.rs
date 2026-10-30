@@ -67,12 +67,11 @@ pub(super) fn publish_hierarchy(
             .collect();
         entries.retain(|id, _| !hidden_rows.contains(id));
         // ⭐ As linhas que podem ir para um quadro (W15, «Send to board…»): o menu só as oferece a elas.
-        let to_board = ordered.iter().copied().filter(|id| {
-            live.bridge.entity_for(*id).is_some_and(|bits| {
-                let e = ph2d_ecs::Entity::from_bits(bits);
-                let kind = ph2d_app_components::component_attach::kind_of(sim.world(), e);
-                ph2d_editor_core::screens::hero::send_to_board::goes_to_board(kind)
-            })
+        let to_board = ordered.iter().copied().filter_map(|id| {
+            let e = ph2d_ecs::Entity::from_bits(live.bridge.entity_for(id)?);
+            let kind = ph2d_app_components::component_attach::kind_of(sim.world(), e);
+            ph2d_editor_core::screens::hero::send_to_board::goes_to_board(kind)
+                .then_some((id, kind))
         });
         hero.store.set_hierarchy_board_rows(to_board.collect());
         // ⭐ Os ícones de componente e o conteúdo de cada objecto (doc 01 §7).

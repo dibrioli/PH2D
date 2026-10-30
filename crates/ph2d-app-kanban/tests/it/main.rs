@@ -7,6 +7,7 @@ mod arrastar;
 mod canvas_entrada;
 mod d11_fotos;
 mod d11_fundo;
+mod d13_fundo_da_cena;
 mod d9;
 mod duas_janelas;
 mod escrever;

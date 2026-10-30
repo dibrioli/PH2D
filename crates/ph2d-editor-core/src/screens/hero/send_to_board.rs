@@ -42,9 +42,21 @@ pub const fn goes_to_board(kind: ObjectKind) -> bool {
     )
 }
 
+/// ⭐ Kanban D13 — **que objectos podem ser o fundo de um Kanban**: os que têm PÍXEIS (a sprite e o
+/// quadro actual do Flip). O vector fica de fora: o fundo do Kanban é uma imagem descodificada.
+#[must_use]
+pub const fn goes_to_kanban_background(kind: ObjectKind) -> bool {
+    matches!(kind, ObjectKind::Image | ObjectKind::Flip)
+}
+
 /// Abre o modal para a linha `row`: a busca limpa e com o teclado.
 pub fn open(store: &mut WidgetStore, row: NodeId) {
     open_kind(store, ContextMenuKind::SendToBoard { row });
+}
+
+/// ⭐ Kanban D13 — o MESMO modal a escolher o Kanban cujo fundo passa a ser a imagem da linha `row`.
+pub fn open_kanban_background(store: &mut WidgetStore, row: NodeId) {
+    open_kind(store, ContextMenuKind::KanbanBackground { row });
 }
 
 /// ⭐ W23 B15 — o MESMO modal para a selecção do quadro `from` (`keep` = copiar, senão mover).
@@ -98,19 +110,65 @@ pub fn visible(docs: &Documents, query: &str, except: Option<BoardId>) -> (Vec<B
     (all.into_iter().take(cap).collect(), more)
 }
 
-/// O que o modal aberto vai mandar: o conteúdo de uma linha da Hierarquia, ou a selecção de um quadro.
+/// ⭐ Os Kanbans que o modal mostra (D13), pela ordem do projecto — os que contêm a busca — até
+/// [`ids::CTX_SEND_BOARD_ROWS`], e quantos ficaram de fora.
+#[must_use]
+pub fn visible_kanbans(docs: &Documents, query: &str) -> (Vec<(u64, String)>, usize) {
+    let q = query.trim().to_lowercase();
+    let set = docs.kanbans();
+    let all: Vec<(u64, String)> = set
+        .iter()
+        .filter(|k| q.is_empty() || k.header.name.to_lowercase().contains(&q))
+        .map(|k| (k.id.0, k.header.name.clone()))
+        .collect();
+    let cap = ids::CTX_SEND_BOARD_ROWS.len();
+    let more = all.len().saturating_sub(cap);
+    (all.into_iter().take(cap).collect(), more)
+}
+
+/// O que o modal aberto vai mandar: o conteúdo de uma linha da Hierarquia (para um quadro, ou para o
+/// fundo de um Kanban), ou a selecção de um quadro.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Source {
     Row(NodeId),
     Selection { from: BoardId, keep: bool },
+    Kanban(NodeId),
 }
 
 impl Source {
     /// O quadro que a lista esconde (o de onde a selecção sai).
     fn except(self) -> Option<BoardId> {
         match self {
-            Self::Row(_) => None,
+            Self::Row(_) | Self::Kanban(_) => None,
             Self::Selection { from, .. } => Some(from),
+        }
+    }
+
+    /// A lista que o modal mostra e o clique resolve (`id`, nome), e quantos casaram e ficaram de fora.
+    fn items(self, docs: &Documents, query: &str) -> (Vec<(u64, String)>, usize) {
+        if matches!(self, Self::Kanban(_)) {
+            return visible_kanbans(docs, query);
+        }
+        let (boards, more) = visible(docs, query, self.except());
+        let named = boards
+            .into_iter()
+            .map(|b| {
+                (
+                    b.0,
+                    docs.boards()
+                        .get(b)
+                        .map_or_else(String::new, |d| d.name.clone()),
+                )
+            })
+            .collect();
+        (named, more)
+    }
+
+    /// A busca e a linha «novo» (as chaves).
+    fn search_and_new(self) -> (&'static str, &'static str) {
+        match self {
+            Self::Kanban(_) => ("kanban.bg.pick_search", "kanban.bg.pick_new"),
+            _ => ("board.send.search", "board.send.new_board"),
         }
     }
 
@@ -119,6 +177,7 @@ impl Source {
             Self::Row(_) => "board.send.title",
             Self::Selection { keep: true, .. } => "board.send.copy_title",
             Self::Selection { keep: false, .. } => "board.send.move_title",
+            Self::Kanban(_) => "kanban.bg.pick_title",
         }
     }
 }
@@ -132,13 +191,16 @@ pub fn source(store: &WidgetStore) -> Option<Source> {
             from: BoardId(from),
             keep,
         }),
+        ContextMenuKind::KanbanBackground { row } => Some(Source::Kanban(row)),
         _ => None,
     }
 }
 
-/// O quadro escolhido (`None` = um novo): a linha da Hierarquia segue para a shell; a selecção de um
-/// quadro vai na pintura seguinte (`board_send::run_pending`, com o moldador). O modal fecha.
-fn choose(hero: &mut HeroScreen, src: Source, board: Option<BoardId>) {
+/// O quadro (ou o Kanban) escolhido (`None` = um novo): a linha da Hierarquia segue para a shell; a
+/// selecção de um quadro vai na pintura seguinte (`board_send::run_pending`, com o moldador). O modal
+/// fecha.
+fn choose(hero: &mut HeroScreen, src: Source, chosen: Option<u64>) {
+    let board = chosen.map(BoardId);
     hero.store.close_context_menu();
     hero.store.consume_last_context_menu();
     hero.store.set_focus(None);
@@ -157,6 +219,12 @@ fn choose(hero: &mut HeroScreen, src: Source, board: Option<BoardId>) {
                 keep,
             });
         }
+        Source::Kanban(row) => hero.bus.push(EditorAction::Hierarchy(
+            HierRequest::KanbanBackgroundChosen {
+                row,
+                kanban: chosen,
+            },
+        )),
     }
 }
 
@@ -167,10 +235,10 @@ pub(super) fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         return false;
     };
     let pick = |hero: &HeroScreen, slot: usize| {
-        visible(&hero.documents, query(&hero.store), src.except())
+        src.items(&hero.documents, query(&hero.store))
             .0
             .get(slot)
-            .copied()
+            .map(|(id, _)| *id)
     };
     match event {
         WidgetEvent::Click(id) if id == ids::CTX_SEND_BOARD_NEW => choose(hero, src, None),
@@ -207,7 +275,11 @@ pub(super) fn populate(store: &mut WidgetStore) {
             selection_anchor: None,
         },
     );
-    let buttons = [ids::CTX_MENU_HIER_SEND_TO_BOARD, ids::CTX_SEND_BOARD_NEW];
+    let buttons = [
+        ids::CTX_MENU_HIER_SEND_TO_BOARD,
+        ids::CTX_MENU_HIER_KANBAN_BACKGROUND,
+        ids::CTX_SEND_BOARD_NEW,
+    ];
     for id in buttons.into_iter().chain(ids::CTX_SEND_BOARD_ROWS) {
         store.register(
             id,
@@ -241,7 +313,8 @@ pub fn paint(
         }) => (text.as_str(), *caret, *selection_anchor, *state),
         _ => ("", 0, None, TextInputState::Normal),
     };
-    let (boards, more) = visible(docs, query, src.except());
+    let (boards, more) = src.items(docs, query);
+    let (search_key, new_key) = src.search_and_new();
     let gap = Spacing::Xs.px();
     // título · busca · quadros (≥ 1: a frase «nada casa») · «mais N» · risco · «New board».
     let list_rows = boards.len().max(1) + usize::from(more > 0);
@@ -288,7 +361,7 @@ pub fn paint(
     let search = Rect::new(x, y, inner_w, ROW_H);
     hit_index.register(ids::CTX_SEND_BOARD_SEARCH, search);
     let ti = TextInput::new(ids::CTX_SEND_BOARD_SEARCH, "")
-        .placeholder(tr("board.send.search"))
+        .placeholder(tr(search_key))
         .visual((ti_state, store.hover_live(ids::CTX_SEND_BOARD_SEARCH)));
     paint_text_input_with_buffer(
         &ti,
@@ -301,7 +374,7 @@ pub fn paint(
         theme,
     );
     y += ROW_H + gap;
-    let active = docs.active();
+    let active = docs.active().filter(|_| !matches!(src, Source::Kanban(_)));
     let hot = |id: NodeId, r: Rect, scene: &mut VectorScene| {
         if Some(id) == store.hot_id() {
             let rr = crate::paint::frame_radius(theme, Radius::Sm.px());
@@ -309,12 +382,12 @@ pub fn paint(
         }
     };
     let dot_col = pad_x + INLINE_ICON_PX;
-    for (i, b) in boards.iter().enumerate() {
+    for (i, (b, name)) in boards.iter().enumerate() {
         let id = ids::CTX_SEND_BOARD_ROWS[i];
         let r = Rect::new(x, y, inner_w, ROW_H);
         hit_index.register(id, r);
         hot(id, r, scene);
-        if Some(*b) == active {
+        if Some(BoardId(*b)) == active {
             // O quadro activo leva o ponto do acento, como a lista de cenas.
             let c = ph2d_vector::Circle::new(
                 ph2d_vector::Point::new(f64::from(r.x + pad_x), f64::from(r.y + r.h * 0.5)),
@@ -328,7 +401,6 @@ pub fn paint(
                 &c,
             );
         }
-        let name = docs.boards().get(*b).map_or("", |d| d.name.as_str());
         paint_text(
             text_system,
             scene,
@@ -392,7 +464,7 @@ pub fn paint(
         ink(ColorToken::Text2),
         StrokeToken::Default.px(),
     );
-    let new = tr("board.send.new_board");
+    let new = tr(new_key);
     paint_text(
         text_system,
         scene,

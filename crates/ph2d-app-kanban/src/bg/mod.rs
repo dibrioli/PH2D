@@ -6,6 +6,7 @@
 
 mod paint;
 mod place;
+pub(crate) mod scene;
 
 use crate::docs::KanbanDocs;
 use crate::front::cover::{self, ThumbRef};

@@ -144,7 +144,7 @@ fn the_send_row_exists_only_for_a_row_that_goes_to_a_board() {
         "«Send to board…» pintado para um objecto que um quadro não recebe"
     );
     hero.store
-        .set_hierarchy_board_rows(std::iter::once(SENT_ROW).collect());
+        .set_hierarchy_board_rows(std::iter::once((SENT_ROW, ObjectKind::Image)).collect());
     repaint(&mut hero, &mut text);
     assert!(
         locate(&hero, ids::CTX_MENU_HIER_SEND_TO_BOARD).is_some(),
@@ -237,4 +237,64 @@ fn an_image_lands_in_a_board_that_was_never_drawn() {
     assert_eq!([img.w, img.h], [300.0, 120.0]);
     let c = img.center();
     assert!((c[0] - b.camera.center_x).abs() < 1e-9 && (c[1] - b.camera.center_y).abs() < 1e-9);
+}
+
+/// ⭐ D13 — «Use as Kanban background…»: a linha só se pinta para um objecto com PÍXEIS (a imagem
+/// sim, o vector não, que vai para um quadro mas não é fundo); o modal lista os Kanbans do projecto,
+/// a busca filtra, e o clique de verdade levanta a escolha DESSE Kanban; «New Kanban» levanta `None`.
+#[test]
+fn the_kanban_background_row_and_modal_list_the_kanbans() {
+    let (mut hero, mut text) = painted();
+    let menu = ContextMenuRequest {
+        x: 200.0,
+        y: 120.0,
+        kind: ContextMenuKind::HierarchyRow { row: SENT_ROW },
+    };
+    for (kind, shown) in [(ObjectKind::Vector, false), (ObjectKind::Image, true)] {
+        hero.store
+            .set_hierarchy_board_rows(std::iter::once((SENT_ROW, kind)).collect());
+        hero.store.open_context_menu(menu);
+        repaint(&mut hero, &mut text);
+        assert_eq!(
+            locate(&hero, ids::CTX_MENU_HIER_KANBAN_BACKGROUND).is_some(),
+            shown,
+            "{kind:?}"
+        );
+    }
+    assert!(goes_to_kanban_background(ObjectKind::Flip));
+    let k: Vec<u64> = ["Short film", "Game jam"]
+        .into_iter()
+        .map(|n| hero.documents.kanbans_shared().borrow_mut().create(n).0)
+        .collect();
+    hero.store.close_context_menu();
+    let raised = |hero: &mut HeroScreen| -> Vec<Option<u64>> {
+        hero.bus
+            .drain()
+            .filter_map(|a| match a {
+                EditorAction::Hierarchy(HierRequest::KanbanBackgroundChosen { row, kanban }) => {
+                    assert_eq!(row, SENT_ROW);
+                    Some(kanban)
+                }
+                _ => None,
+            })
+            .collect()
+    };
+    open_kanban_background(&mut hero.store, SENT_ROW);
+    repaint(&mut hero, &mut text);
+    assert!(
+        locate(&hero, ids::CTX_SEND_BOARD_ROWS[2]).is_none(),
+        "dois Kanbans, duas linhas"
+    );
+    click(&mut hero, ids::CTX_SEND_BOARD_ROWS[1]);
+    assert_eq!(raised(&mut hero), vec![Some(k[1])]);
+    assert!(hero.store.context_menu().is_none(), "o modal ficou aberto");
+    open_kanban_background(&mut hero.store, SENT_ROW);
+    repaint(&mut hero, &mut text);
+    type_text(&mut hero, "film");
+    key(&mut hero, KEY_ENTER);
+    assert_eq!(raised(&mut hero), vec![Some(k[0])]);
+    open_kanban_background(&mut hero.store, SENT_ROW);
+    repaint(&mut hero, &mut text);
+    click(&mut hero, ids::CTX_SEND_BOARD_NEW);
+    assert_eq!(raised(&mut hero), vec![None]);
 }

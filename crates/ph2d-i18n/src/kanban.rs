@@ -26,6 +26,12 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "kanban.menu.archived" => "Archived items",
         "kanban.menu.background" => "Change background",
         "kanban.bg.title" => "Change background",
+        // D13 — «Use as Kanban background…» da Hierarquia: o modal e os avisos.
+        "kanban.bg.pick_title" => "Use as Kanban background",
+        "kanban.bg.pick_search" => "Search Kanbans",
+        "kanban.bg.pick_new" => "New Kanban",
+        "kanban.bg.pick_wrong_kind" => "Only pictures and Flip drawings can be a Kanban background",
+        "kanban.bg.pick_gone" => "That Kanban was deleted before the picture arrived",
         "kanban.bg.photos" => "Photos",
         "kanban.bg.upload" => "Upload…",
         "kanban.bg.upload_title" => "Choose a background image",

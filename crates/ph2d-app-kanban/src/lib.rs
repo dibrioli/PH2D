@@ -48,6 +48,7 @@ mod view;
 mod w6;
 
 pub use back::outside::{Outside, Served, System, World};
+pub use bg::scene::{ask_background, scene_background};
 pub use docs::{CanvasProbe, KanbanDocs};
 pub use hooks::CanvasW6;
 pub use share::SeenProbe;

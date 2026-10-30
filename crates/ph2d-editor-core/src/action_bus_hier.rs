@@ -274,4 +274,15 @@ pub enum HierRequest {
         row: ph2d_a11y::NodeId,
         board: Option<u64>,
     },
+
+    /// ⭐ **«Use as Kanban background…»** (Kanban D13): a linha pede o modal que escolhe o Kanban. A
+    /// shell confere o TIPO (só Image · Flip) e abre-o — ou diz porque não.
+    KanbanBackground { row: ph2d_a11y::NodeId },
+
+    /// A escolha do modal: `kanban` = o `KanbanId.0`, `None` = um Kanban NOVO. A shell lê os píxeis
+    /// do objecto e a família do Kanban põe-nos como fundo (`ph2d_app_kanban::scene_background`).
+    KanbanBackgroundChosen {
+        row: ph2d_a11y::NodeId,
+        kanban: Option<u64>,
+    },
 }

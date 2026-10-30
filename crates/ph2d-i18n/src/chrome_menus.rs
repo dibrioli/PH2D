@@ -234,6 +234,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "chrome.menu.export_sheet" => "Export Sheet",
         "chrome.menu.export_image" => "Export Image\u{2026}",
         "chrome.menu.send_to_board" => "Send to board\u{2026}",
+        "chrome.menu.kanban_background" => "Use as Kanban background\u{2026}",
         "chrome.menu.remove_from_sheet" => "Remove from Sheet",
         "chrome.menu.use_as_brush_shape" => "Use as Brush Shape",
         "chrome.menu.use_as_brush_grain" => "Use as Brush Grain",

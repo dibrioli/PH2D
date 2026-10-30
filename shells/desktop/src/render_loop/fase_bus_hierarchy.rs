@@ -222,12 +222,22 @@ impl crate::App {
             EditorAction::Hierarchy(ph2d_editor_core::action_bus::HierRequest::SendToBoard {
                 row,
             }) => {
-                pd.send_to_board_ask.get_or_insert(row);
+                pd.send_to_board_ask.get_or_insert((row, false));
             }
             EditorAction::Hierarchy(
                 ph2d_editor_core::action_bus::HierRequest::SendToBoardChosen { row, board },
             ) => {
-                pd.send_to_board.get_or_insert((row, board));
+                pd.send_to_board.get_or_insert((row, board, false));
+            }
+            EditorAction::Hierarchy(
+                ph2d_editor_core::action_bus::HierRequest::KanbanBackground { row },
+            ) => {
+                pd.send_to_board_ask.get_or_insert((row, true));
+            }
+            EditorAction::Hierarchy(
+                ph2d_editor_core::action_bus::HierRequest::KanbanBackgroundChosen { row, kanban },
+            ) => {
+                pd.send_to_board.get_or_insert((row, kanban, true));
             }
             EditorAction::Hierarchy(
                 ph2d_editor_core::action_bus::HierRequest::RemoveFromSheet { row },

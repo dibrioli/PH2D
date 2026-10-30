@@ -33,11 +33,20 @@ fn the_two_requests_reach_the_phase() {
     for (req, slot) in [
         (
             "HierRequest::SendToBoard {",
-            "pd.send_to_board_ask.get_or_insert(row)",
+            "pd.send_to_board_ask.get_or_insert((row, false))",
         ),
         (
             "HierRequest::SendToBoardChosen { row, board }",
-            "pd.send_to_board.get_or_insert((row, board))",
+            "pd.send_to_board.get_or_insert((row, board, false))",
+        ),
+        // Kanban D13: o fundo de um Kanban pelo MESMO caminho, marcado `true`.
+        (
+            "HierRequest::KanbanBackground {",
+            "pd.send_to_board_ask.get_or_insert((row, true))",
+        ),
+        (
+            "HierRequest::KanbanBackgroundChosen { row, kanban }",
+            "pd.send_to_board.get_or_insert((row, kanban, true))",
         ),
     ] {
         let at = BUS

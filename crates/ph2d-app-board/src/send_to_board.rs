@@ -32,8 +32,9 @@ impl Content {
         Self::Pixels(Pixels { size, rgba })
     }
 
-    /// Os bytes do ficheiro que o quadro guarda.
-    fn bytes(self) -> Option<Vec<u8>> {
+    /// Os bytes do ficheiro que o quadro guarda (PNG ou SVG) — também o fundo de um Kanban.
+    #[must_use]
+    pub fn bytes(self) -> Option<Vec<u8>> {
         match self {
             Self::Pixels(px) => crate::images::encode_png(&px),
             Self::Svg(s) => Some(s.into_bytes()),

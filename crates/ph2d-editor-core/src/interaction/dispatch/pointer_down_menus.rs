@@ -333,7 +333,9 @@ pub(super) fn click_belongs_to_the_open_menu(
                     .iter()
                     .any(|(_, b)| *b == id)
         }
-        ContextMenuKind::SendToBoard { .. } | ContextMenuKind::SendSelection { .. } => {
+        ContextMenuKind::SendToBoard { .. }
+        | ContextMenuKind::SendSelection { .. }
+        | ContextMenuKind::KanbanBackground { .. } => {
             id == crate::ids::CTX_SEND_BOARD_SEARCH
                 || id == crate::ids::CTX_SEND_BOARD_NEW
                 || crate::ids::CTX_SEND_BOARD_ROWS.contains(&id)

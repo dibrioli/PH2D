@@ -79,8 +79,9 @@ impl T {
             &[PICTURE, BONES],
             entries.into_iter().collect(),
         );
-        hero.store
-            .set_hierarchy_board_rows(std::iter::once(PICTURE).collect());
+        hero.store.set_hierarchy_board_rows(
+            std::iter::once((PICTURE, ph2d_component_desc::ObjectKind::Image)).collect(),
+        );
         let mut t = Self {
             hero,
             text: TextSystem::without_system_fonts(),
@@ -189,5 +190,28 @@ fn the_row_menu_the_modal_and_the_pick_by_real_clicks() {
     assert!(
         t.hero.store.context_menu().is_none(),
         "o modal ficou aberto"
+    );
+}
+
+/// ⭐ D13 — «Use as Kanban background…»: o esqueleto não a tem, a imagem sim, e o clique nela chega ao
+/// painel ⇒ o pedido.
+#[test]
+fn the_kanban_background_row_raises_its_request_by_a_real_click() {
+    let mut t = T::new();
+    t.press(BONES, PointerButton::Secondary);
+    assert!(
+        t.locate(ids::CTX_MENU_HIER_KANBAN_BACKGROUND).is_none(),
+        "oferecido a um esqueleto"
+    );
+    t.hero.store.close_context_menu();
+    t.paint();
+    t.press(PICTURE, PointerButton::Secondary);
+    t.press(ids::CTX_MENU_HIER_KANBAN_BACKGROUND, PointerButton::Primary);
+    let asked: Vec<_> = t.hero.bus.drain().collect();
+    assert!(
+        asked.contains(&EditorAction::Hierarchy(HierRequest::KanbanBackground {
+            row: PICTURE
+        })),
+        "{asked:?}"
     );
 }

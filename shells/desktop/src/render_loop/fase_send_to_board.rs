@@ -9,15 +9,15 @@
 use super::*;
 use ph2d_app_board::send_to_board::{Content, Sent, ask, deliver, gather, posed_sprite};
 use ph2d_component_desc::ObjectKind;
-use ph2d_editor_core::screens::hero::send_to_board::goes_to_board;
+use ph2d_editor_core::screens::hero::send_to_board::{goes_to_board, goes_to_kanban_background};
 use ph2d_i18n::tr;
 
 impl crate::App {
     /// Ver o cabeçalho do módulo.
     pub(super) fn fase_send_to_board(
         &mut self,
-        asked: Option<NodeId>,
-        chosen: Option<(NodeId, Option<u64>)>,
+        asked: Option<(NodeId, bool)>,
+        chosen: Option<(NodeId, Option<u64>, bool)>,
     ) {
         if asked.is_none() && chosen.is_none() {
             return;
@@ -35,13 +35,23 @@ impl crate::App {
             world.get_entity(e).is_ok().then_some(e)
         };
         let kind = |e| ph2d_app_components::component_attach::kind_of(world, e);
-        if let Some(row) = asked {
-            let goes = entity(row).is_some_and(|e| goes_to_board(kind(e)));
+        if let Some((row, to_kanban)) = asked {
+            let law = if to_kanban {
+                goes_to_kanban_background
+            } else {
+                goes_to_board
+            };
+            let goes = entity(row).is_some_and(|e| law(kind(e)));
+            let ask = if to_kanban {
+                ph2d_app_kanban::ask_background
+            } else {
+                ask
+            };
             if let Some(t) = ask(hero, row, goes) {
                 gfx.toasts.push(t);
             }
         }
-        let Some((row, board)) = chosen else {
+        let Some((row, board, to_kanban)) = chosen else {
             return;
         };
         let Some(clicked) = entity(row) else {
@@ -49,7 +59,8 @@ impl crate::App {
             return;
         };
         // W16 — a linha clicada DENTRO da selecção leva a selecção inteira (a ordem dela).
-        let selected: Vec<u64> = hero.gizmo.iter_selected().collect();
+        // D13: o fundo de um Kanban é UMA imagem — só a linha clicada.
+        let selected: Vec<u64> = hero.gizmo.iter_selected().filter(|_| !to_kanban).collect();
         let ppm = hero.project.pixels_per_meter;
         let por = ph2d_app_painter::painter_bridge_queries::por_assar(&mut gfx.tools);
         let items = gather(world, clicked.to_bits(), &selected, kind, |e, k, name| {
@@ -130,7 +141,15 @@ impl crate::App {
                 _ => Sent::missing(name, "board.send.wrong_kind"),
             }
         });
-        if let Ok((_, Some(t))) | Err(t) = deliver(hero, board, items) {
+        if to_kanban {
+            let s = items.into_iter().next();
+            let (name, file) = s.map_or((String::new(), Err("board.send.gone")), |s| {
+                (s.name, s.content.map(Content::bytes))
+            });
+            if let Some(t) = ph2d_app_kanban::scene_background(hero, board, &name, file) {
+                gfx.toasts.push(t);
+            }
+        } else if let Ok((_, Some(t))) | Err(t) = deliver(hero, board, items) {
             gfx.toasts.push(t);
         }
     }

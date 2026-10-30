@@ -386,6 +386,10 @@ pub enum ContextMenuKind {
         from: u64,
         keep: bool,
     },
+    /// ⭐ Kanban D13 — o MESMO modal a escolher o Kanban cujo fundo passa a ser a imagem da linha.
+    KanbanBackground {
+        row: NodeId,
+    },
 }
 
 impl ContextMenuKind {
@@ -506,5 +510,6 @@ impl ContextMenuKind {
             from: 0,
             keep: true,
         },
+        Self::KanbanBackground { row: NodeId(1) },
     ];
 }

@@ -169,21 +169,24 @@ impl WidgetStore {
         self.hierarchy_row_ids.contains(&id)
     }
 
-    /// ⭐ Publica as linhas cujo objecto pode ir para um quadro (Image · Vector · Flip — a lei é
-    /// [`crate::screens::hero::send_to_board::goes_to_board`]). Por quadro, inteiro, vazio incluído.
-    pub fn set_hierarchy_board_rows(&mut self, rows: std::collections::BTreeSet<NodeId>) {
+    /// ⭐ Publica o TIPO de cada linha cujo objecto pode ir para um quadro (Image · Vector · Flip — a
+    /// lei é [`crate::screens::hero::send_to_board::goes_to_board`]). Por quadro, inteiro.
+    pub fn set_hierarchy_board_rows(
+        &mut self,
+        rows: std::collections::BTreeMap<NodeId, ph2d_component_desc::ObjectKind>,
+    ) {
         self.hierarchy_board_rows = rows;
     }
 
     /// A linha `row` pode ir para um quadro?
     #[must_use]
     pub fn hierarchy_row_goes_to_board(&self, row: NodeId) -> bool {
-        self.hierarchy_board_rows.contains(&row)
+        self.hierarchy_board_rows.contains_key(&row)
     }
 
     /// ⭐ **Esta linha do menu `kind` não vale para o alvo dele?** O pintor salta-a — e por isso o
-    /// `hit_index` também: a lista que se vê é a que o clique acerta. Hoje só o «Send to board…»,
-    /// que só existe para os objectos que um quadro recebe.
+    /// `hit_index` também: a lista que se vê é a que o clique acerta. O «Send to board…» só existe
+    /// para os objectos que um quadro recebe; o «Use as Kanban background…» só para os com píxeis.
     #[must_use]
     pub fn menu_row_is_hidden(
         &self,
@@ -192,8 +195,12 @@ impl WidgetStore {
     ) -> bool {
         match kind {
             crate::interaction::ContextMenuKind::HierarchyRow { row } => {
-                id == crate::ids::CTX_MENU_HIER_SEND_TO_BOARD
-                    && !self.hierarchy_row_goes_to_board(row)
+                let of = self.hierarchy_board_rows.get(&row).copied();
+                (id == crate::ids::CTX_MENU_HIER_SEND_TO_BOARD && of.is_none())
+                    || (id == crate::ids::CTX_MENU_HIER_KANBAN_BACKGROUND
+                        && !of.is_some_and(
+                            crate::screens::hero::send_to_board::goes_to_kanban_background,
+                        ))
             }
             _ => false,
         }

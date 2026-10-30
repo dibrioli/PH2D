@@ -115,7 +115,7 @@ impl WidgetStore {
             hier_rows: Default::default(),
             hierarchy_drag: None,
             hierarchy_row_ids: std::collections::BTreeSet::new(),
-            hierarchy_board_rows: std::collections::BTreeSet::new(),
+            hierarchy_board_rows: std::collections::BTreeMap::new(),
             multiline_text_ids: std::collections::BTreeSet::new(),
             cancel_on_escape_ids: std::collections::BTreeSet::new(),
             mixed_numbers: std::collections::BTreeSet::new(),

@@ -496,6 +496,11 @@ pub(super) const HIERARCHY_ROW_ROWS: &[MenuRow] = &[
         ids::CTX_MENU_HIER_SEND_TO_BOARD,
         "chrome.menu.send_to_board",
     ),
+    // Só para Image · Flip (os que têm píxeis): o pintor esconde-a nas outras.
+    menu_row(
+        ids::CTX_MENU_HIER_KANBAN_BACKGROUND,
+        "chrome.menu.kanban_background",
+    ),
     menu_row(
         ids::CTX_MENU_HIER_REMOVE_FROM_SHEET,
         "chrome.menu.remove_from_sheet",

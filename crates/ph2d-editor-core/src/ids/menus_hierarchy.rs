@@ -120,6 +120,10 @@ pub const CTX_MENU_HIER_EXPORT_IMAGE: NodeId = hash_node_id("ctx_menu_hier_expor
 /// linha vão para um QUADRO escolhido no modal ([`CTX_SEND_BOARD_SEARCH`] e vizinhos). A linha só se
 /// pinta para esses três tipos ([`crate::screens::hero::send_to_board::goes_to_board`]).
 pub const CTX_MENU_HIER_SEND_TO_BOARD: NodeId = hash_node_id("ctx_menu_hier_send_to_board");
+/// ⭐ **«Use as Kanban background…»** (Kanban D13, dono 30/10) — a imagem ou o Flip da linha vira o
+/// fundo de um Kanban escolhido no MESMO modal do «Send to board» (a lista são os Kanbans). Só para
+/// os tipos de [`crate::screens::hero::send_to_board::goes_to_kanban_background`].
+pub const CTX_MENU_HIER_KANBAN_BACKGROUND: NodeId = hash_node_id("ctx_menu_hier_kanban_background");
 /// O campo de busca do modal «Send to board».
 pub const CTX_SEND_BOARD_SEARCH: NodeId = hash_node_id("ctx_send_board_search");
 /// A linha «New board» do modal: um quadro novo com o nome por omissão das abas.

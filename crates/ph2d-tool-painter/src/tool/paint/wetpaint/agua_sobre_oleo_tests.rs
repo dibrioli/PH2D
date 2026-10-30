@@ -596,3 +596,28 @@ fn diag_a_agua_sobe_a_ladeira_de_lado() {
         ));
     }
 }
+
+/// SONDA — a aguada amarela POR CIMA do óleo azul (dono 30/10, depois da ladeira: «a aguada lava a tinta do relevo e
+/// deixa o relevo sem cor»): a imagem a meio e assentada.
+#[test]
+#[ignore = "diagnóstico"]
+fn diag_aguada_por_cima_do_oleo() {
+    let mut t = com_oleo();
+    t.preset_aplicar(&preset("Watercolor/Fluid/Wet Flat.ph2d-brush.png"))
+        .expect("o meio");
+    t.set_brush_size_px(40.0);
+    t.set_brush_color_srgb8([220, 200, 40]);
+    t.on_canvas_pointer(ponteiro(120.0, 30.0, PointerPhase::Down));
+    for k in 1..=40 {
+        t.on_canvas_pointer(ponteiro(120.0, 30.0 + 2.8 * k as f32, PointerPhase::Move));
+        t.on_tick(1000.0 / 60.0);
+    }
+    let meio = mostrada(&mut t);
+    t.on_canvas_pointer(ponteiro(120.0, 142.0, PointerPhase::Up));
+    for _ in 0..600 {
+        t.on_tick(1000.0 / 60.0);
+    }
+    let fim = mostrada(&mut t);
+    grava("p_meio", &meio);
+    grava("p_fim", &fim);
+}

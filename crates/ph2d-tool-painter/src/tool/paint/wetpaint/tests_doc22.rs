@@ -521,3 +521,36 @@ fn trocar_de_ferramenta_da_agua_nao_seca_a_tinta() {
         );
     }
 }
+
+/// ⭐ **Re-wet e Solubility no cartão do pincel** (dono 30/10, J10: «no Inspector, não no Tuning»): cada linha chega ao
+/// knob do motor EXACTA pelo `SetValue` do painel, e nenhum dos dois se repete no Tuning (Hidden).
+#[test]
+fn rewet_e_solubility_do_cartao_chegam_ao_knob() {
+    use ph2d_wet_paint::tuning::{KNOB_DEFS, Knob, KnobGroup};
+    for (id, knob, v) in [
+        (crate::ids::PAINTER_WETPAINT_REWET, Knob::Dissolve, 0.37),
+        (
+            crate::ids::PAINTER_WETPAINT_SOLUBILITY,
+            Knob::Solubility,
+            0.62,
+        ),
+    ] {
+        let mut t = wet_tool_fixture();
+        assert_eq!(
+            t.paint.wetpaint.knobs.get(knob),
+            0.0,
+            "{knob:?}: a omissão é 0"
+        );
+        set(&mut t, id, v);
+        assert_eq!(
+            t.paint.wetpaint.knobs.get(knob),
+            v,
+            "{knob:?}: o cartão não chegou ao motor"
+        );
+        assert_eq!(
+            KNOB_DEFS[knob as usize].group,
+            KnobGroup::Hidden,
+            "{knob:?} no Tuning"
+        );
+    }
+}

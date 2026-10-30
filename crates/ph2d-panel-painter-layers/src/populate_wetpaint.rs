@@ -58,6 +58,14 @@ pub(crate) fn register_wetpaint(store: &mut WidgetStore) {
             ph2d_tool_painter::ids::PAINTER_WETPAINT_TIP_PICKUP,
             "panel.painter_wet_cartao.tip_pickup_tip",
         ),
+        (
+            ph2d_tool_painter::ids::PAINTER_WETPAINT_REWET,
+            "panel.painter_wet_cartao.rewet_tip",
+        ),
+        (
+            ph2d_tool_painter::ids::PAINTER_WETPAINT_SOLUBILITY,
+            "panel.painter_wet_cartao.solubility_tip",
+        ),
     ] {
         store.set_tooltip(id, tr(dica));
     }

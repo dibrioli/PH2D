@@ -307,6 +307,13 @@ pub const PAINTER_WETPAINT_WET_BLOOM: NodeId = hash_node_id("painter_brush.wetpa
 /// **Tip pickup** — o reservatório da ponta que leva a cor de baixo (knob `tipReservoir`; saiu do Tuning, dono 25/10).
 pub const PAINTER_WETPAINT_TIP_PICKUP: NodeId = hash_node_id("painter_brush.wetpaint_tip_pickup");
 
+/// **Re-wet** — quanto a água deste pincel dissolve a tinta solúvel debaixo dela (knob `rewetPaint`; dono 30/10, J10).
+pub const PAINTER_WETPAINT_REWET: NodeId = hash_node_id("painter_brush.wetpaint_rewet");
+
+/// **Solubility** — quanto a tinta deste pincel, já pousada, se dissolve sob a água de um traço seguinte (knob
+/// `solubility`; dono 30/10, J10).
+pub const PAINTER_WETPAINT_SOLUBILITY: NodeId = hash_node_id("painter_brush.wetpaint_solubility");
+
 /// **Erase Strength** — the wet eraser's lift per pass (engine `sliders.erase`, boot `0.4`).
 pub const PAINTER_WETPAINT_ERASE: NodeId = hash_node_id("painter_brush.wetpaint_erase");
 
@@ -329,7 +336,7 @@ pub const PAINTER_WETPAINT_BLOW_STRENGTH: NodeId =
 
 /// The Wet Paint **number-field** ids — ONE membership list for the panel's `SetValue` forward
 /// (`number_field::is_param_field`), the populate loop, and the tool's routing match.
-pub const PAINTER_WETPAINT_FIELDS: [NodeId; 28] = [
+pub const PAINTER_WETPAINT_FIELDS: [NodeId; 30] = [
     PAINTER_WETPAINT_GRID,
     PAINTER_WETPAINT_FLOW,
     PAINTER_WETPAINT_WATER,
@@ -348,6 +355,8 @@ pub const PAINTER_WETPAINT_FIELDS: [NodeId; 28] = [
     PAINTER_WETPAINT_DIFFUSION,
     PAINTER_WETPAINT_WET_BLOOM,
     PAINTER_WETPAINT_TIP_PICKUP,
+    PAINTER_WETPAINT_REWET,
+    PAINTER_WETPAINT_SOLUBILITY,
     PAINTER_WETPAINT_ERASE,
     PAINTER_WETPAINT_SMEAR_STRENGTH,
     PAINTER_WETPAINT_SMEAR_WATER,

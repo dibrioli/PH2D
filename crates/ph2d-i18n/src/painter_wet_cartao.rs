@@ -20,6 +20,15 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_wet_cartao.tip_pickup_tip" => {
             "Only acts when the brush enters WET paint of another colour: the tip picks it up and carries it along."
         }
+        // A água que re-molha e a tinta que se deixa dissolver (dono 30/10, J10).
+        "panel.painter_wet_cartao.rewet" => "Re-wet",
+        "panel.painter_wet_cartao.rewet_tip" => {
+            "How much this brush's water dissolves soluble paint under it"
+        }
+        "panel.painter_wet_cartao.solubility" => "Solubility",
+        "panel.painter_wet_cartao.solubility_tip" => {
+            "How much this paint, once laid, dissolves under later water"
+        }
         // A linha da ferramenta da água na mão (dono 25/10, o painel do Rebelle).
         "panel.painter_wet_cartao.strength" => "Strength",
         "panel.painter_wet_cartao.smear_water" => "Water",

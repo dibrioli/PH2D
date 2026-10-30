@@ -29,16 +29,11 @@
   branco nem preto (`776a9ff173`). **Smoke do dono: a versão ATUAL fica.** Próxima: A arrasto do óleo pela aguada durante o
   traço · B mistura molhada pela média das consistências, borda com transição · C New Image «papel texturizado».
 
-## J10 (30/10): C feito `7d343a9de4` (botão «Textured Paper»). A+B: retoque
-[`aguada_arrasta_oleo_simula.py`](../NewFeaturesWetPaint/ferramentas/aguada_arrasta_oleo_simula.py); pranchas `J10_simula_AB_*`
-(arrasto + mistura KM) **não serve** («não re-molhou o azul»); `J10_remolha_*` **dono: «re-molha médio»** (35 % do azul sob a
-aguada dissolve e viaja na água, σ 10; o óleo que fica mistura 0,35 com o amarelo, borda esbatida). Ordem: parâmetros de
-RE-MOLHAR e de SOLUBILIDADE/mistura de uma tinta na outra no INSPECTOR (não no Tuning).
-- `84df135c02` motor `Knob::Dissolve`×`Knob::Solubility` (`trail/transfer/remolha.rs`; gates `remolha_tests`: neutro ao bit,
-  0,35×1 ⇒ −36 % azul sob a aguada, +53 % fora) · `84ed24c8fc` sliders Re-wet/Solubility no cartão Wet Paint (após Tip
-  pickup). Fábrica ainda 0/0. EM SMOKE do dono (pintando). Aberto: água tingida azul-ardósia (não verde), o óleo restante
-  não esverdeia, pontos amarelos sob o óleo a meio do traço; censo `o_painel_mostra_o_que_a_ferramenta_le` NÃO corrido
-  (morto aos 900 s sob carga) — correr no fecho.
+## J10 (30/10): C `7d343a9de4` («Textured Paper»). A+B: retoque [`aguada_arrasta_oleo_simula.py`](../NewFeaturesWetPaint/ferramentas/aguada_arrasta_oleo_simula.py),
+dono escolhe `J10_remolha_*` «re-molha médio», ajustes no INSPECTOR. `84df135c02` motor `Dissolve`×`Solubility`
+(`trail/transfer/remolha.rs`; `remolha_tests`: neutro ao bit, 0,35×1 ⇒ −36 % azul sob a aguada) · `84ed24c8fc` sliders
+após Tip pickup. Fábrica 0/0. EM SMOKE. Aberto: água azul-ardósia (não verde), óleo não esverdeia, pontos amarelos a meio
+do traço; censo `o_painel_mostra_o_que_a_ferramenta_le` por correr (morto aos 900 s sob carga).
 
 ## J6 ([`JANELA_6.md`](JANELA_6.md)): a fila
 

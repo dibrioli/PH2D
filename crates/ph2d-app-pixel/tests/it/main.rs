@@ -5,6 +5,7 @@ mod desenho;
 mod edit;
 mod fecho;
 mod formas;
+mod intervalo;
 mod painel_e_dialogo;
 mod paleta;
 mod pontas;

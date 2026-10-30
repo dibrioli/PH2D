@@ -141,8 +141,11 @@ impl PixelApp {
                 self.acao(key, *a);
                 true
             }
+            // Com intervalo, todos os quadros dele e só eles (o 3 fica intacto em {2,4}).
             PixelRequest::FrameDuration(ms) => {
-                self.faz(key, |s, f, _| frames::set_duration(s, &[f], *ms))
+                let ids = self.docs.get(&key).map(crate::state::Doc::alvo_quadros);
+                let ids = ids.unwrap_or_default();
+                self.faz(key, |s, _, _| frames::set_duration(s, &ids, *ms))
             }
             PixelRequest::ConstantFrameRate(ms) => self.faz(key, |s, _, _| {
                 let ids: Vec<FrameId> = s.frames().iter().map(|f| f.id).collect();
@@ -163,8 +166,12 @@ impl PixelApp {
             PixelRequest::TagRepeat { index, repeat } => self.faz(key, |s, _, _| {
                 frames::edit_tag(s, *index, |t| t.repeat = *repeat)
             }),
+            // A lei do diálogo do Trial: `to < from` → `to = from` (sem troca); ambos presos ao último.
             PixelRequest::TagRange { index, from, to } => self.faz(key, |s, _, _| {
-                frames::edit_tag(s, *index, |t| (t.from, t.to) = (*from, *to))
+                let last = u32::try_from(s.frames().len().saturating_sub(1)).unwrap_or(u32::MAX);
+                let from = (*from).min(last);
+                let to = (*to).max(from).min(last);
+                frames::edit_tag(s, *index, |t| (t.from, t.to) = (from, to))
             }),
             PixelRequest::TagRename { index, name } if !name.trim().is_empty() => self
                 .faz(key, |s, _, _| {
@@ -172,9 +179,6 @@ impl PixelApp {
                 }),
             PixelRequest::TagRename { .. } => true,
             PixelRequest::TagDelete(i) => self.faz(key, |s, _, _| frames::delete_tag(s, *i)),
-            PixelRequest::LayerContinuous(id) => self.faz(key, |s, _, _| {
-                layers::edit(s, LayerId(*id), |l| l.continuous = !l.continuous)
-            }),
             _ => false,
         }
     }
@@ -219,6 +223,8 @@ impl PixelApp {
         doc.play = None;
         let (f, l) = (doc.frame, doc.layer);
         let i = doc.sprite.frame_index(f).unwrap_or(0);
+        let (alvo, span, keys) = (doc.alvo_quadros(), doc.range_span(), doc.range_keys());
+        let picks = doc.range_frames().len();
         let s = &mut doc.sprite;
         let novo = |s: &mut Sprite, k| frames::new_frame(s, f, k);
         let (op, vai_para) = match a {
@@ -229,12 +235,14 @@ impl PixelApp {
             A::DuplicateLinked => novo(s, NewFrame::Linked)
                 .map(|(o, id)| (o, Some(id)))
                 .unzip(),
-            A::Delete => (frames::delete(s, &[f]), None),
+            A::Delete => (frames::delete(s, &alvo), None),
             A::MoveLeft => (
                 i.checked_sub(1).and_then(|j| frames::move_to(s, f, j)),
                 None,
             ),
             A::MoveRight => (frames::move_to(s, f, i + 1), None),
+            // Com intervalo: o dele (cels e durações juntos); um quadro só ou soltos = cinzento.
+            A::Reverse if picks > 0 => (span.and_then(|(a, b)| frames::reverse(s, a, b)), None),
             A::Reverse => {
                 let (a, b) = ph2d_pixel_core::play::tag_at(s.tags(), i)
                     .map_or((0, s.frames().len() - 1), |t| {
@@ -242,6 +250,8 @@ impl PixelApp {
                     });
                 (frames::reverse(s, a, b), None)
             }
+            // Link Cels sobre o intervalo: um cel ligado por camada.
+            A::LinkPrevious if picks >= 2 => (link_range(s, &keys), None),
             A::LinkPrevious => {
                 let prev = i.checked_sub(1).map(|j| s.frames()[j].id);
                 (prev.and_then(|p| frames::link(s, l, &[p, f])), None)
@@ -257,4 +267,18 @@ impl PixelApp {
             }
         }
     }
+}
+
+/// Cel ▸ Link Cels sobre um intervalo: os cels de cada camada passam a um só ligado (um passo).
+fn link_range(s: &Sprite, keys: &[ph2d_pixel_core::CelKey]) -> Option<Op> {
+    let mut camadas: Vec<LayerId> = keys.iter().map(|k| k.0).collect();
+    camadas.dedup();
+    let ops: Vec<Op> = camadas
+        .into_iter()
+        .filter_map(|l| {
+            let fs: Vec<FrameId> = keys.iter().filter(|k| k.0 == l).map(|k| k.1).collect();
+            frames::link(s, l, &fs)
+        })
+        .collect();
+    (!ops.is_empty()).then_some(Op::Batch(ops))
 }

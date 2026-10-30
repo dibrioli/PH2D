@@ -193,6 +193,7 @@ fn pedido_camada(id: NodeId) -> Option<PixelRequest> {
                     W::Lock => PixelRequest::LayerLocked(r.id),
                     W::Solo => PixelRequest::LayerSolo(r.id),
                     W::Collapse => PixelRequest::LayerCollapsed(r.id),
+                    W::Continuous => PixelRequest::LayerContinuous(r.id),
                 })
             })
         })

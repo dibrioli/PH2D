@@ -24,10 +24,21 @@ pub enum PixelLayerWidget {
     Solo,
     /// O triângulo do grupo.
     Collapse,
+    /// Só na linha do tempo: dois pontos = descontínua, barra = contínua (o 3.º ícone do Aseprite).
+    Continuous,
 }
 
 impl PixelLayerWidget {
     pub const ALL: [Self; 5] = [Self::Row, Self::Eye, Self::Lock, Self::Solo, Self::Collapse];
+    /// As da linha do tempo (as de [`Self::ALL`] e a contínua).
+    pub const TIMELINE: [Self; 6] = [
+        Self::Row,
+        Self::Eye,
+        Self::Lock,
+        Self::Solo,
+        Self::Collapse,
+        Self::Continuous,
+    ];
 
     /// O sufixo do id (cada painel prefixa o seu).
     #[must_use]
@@ -38,6 +49,7 @@ impl PixelLayerWidget {
             Self::Lock => "lock",
             Self::Solo => "solo",
             Self::Collapse => "collapse",
+            Self::Continuous => "continuous",
         }
     }
 
@@ -50,6 +62,7 @@ impl PixelLayerWidget {
             Self::Lock => Some("panel.pixel.layer.lock"),
             Self::Solo => Some("panel.pixel.layer.solo"),
             Self::Collapse => Some("panel.pixel.layer.collapse"),
+            Self::Continuous => Some("panel.pixel.layer.continuous"),
         }
     }
 }
@@ -61,6 +74,8 @@ pub struct LayerRowPainter<'a> {
     pub store: &'a WidgetStore,
     pub hit_index: &'a mut HitIndex,
     pub theme: Theme,
+    /// Pinta o ícone da contínua depois do cadeado (só a linha do tempo).
+    pub continuous: bool,
 }
 
 impl LayerRowPainter<'_> {
@@ -133,6 +148,16 @@ impl LayerRowPainter<'_> {
             row.locked,
         );
         x += h + gap;
+        if self.continuous && !row.group {
+            let icon = if row.continuous {
+                IconId::Minus
+            } else {
+                IconId::MoreHorizontal
+            };
+            let id = id_of(PixelLayerWidget::Continuous);
+            self.icone(id, icon, quadrado(x), row.continuous);
+            x += h + gap;
+        }
         let solo_x = x0 + w - h;
         self.icone(
             id_of(PixelLayerWidget::Solo),

@@ -9,7 +9,7 @@ use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::pixel_panel::{PixelCel, PixelDirection, PixelPanelInfo};
 use ph2d_editor_core::property_row;
 use ph2d_editor_core::widget::{
-    Button, Dropdown, DropdownOption, Seccao, Unit, paint_button, paint_dropdown_chip,
+    Button, ButtonKind, Dropdown, DropdownOption, Seccao, Unit, paint_button, paint_dropdown_chip,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::{tr, tr_with};
@@ -36,6 +36,43 @@ pub(crate) fn cel_activo(info: &PixelPanelInfo) -> Option<PixelCel> {
         .iter()
         .find(|c| c.layer == l && c.frame == f)
         .copied()
+}
+
+/// O quadro cuja duração o campo mostra: o 1.º do sprite com *Constant Frame Rate* aberto, o 1.º
+/// do intervalo (as durações diferentes não se assinalam — lei do Trial), senão o activo.
+pub(crate) fn quadro_da_duracao(info: &PixelPanelInfo, constante: bool) -> Option<usize> {
+    if constante {
+        return (!info.frames.is_empty()).then_some(0);
+    }
+    let primeiro = info
+        .frames
+        .iter()
+        .position(|f| info.range.frames.contains(&f.id));
+    primeiro.or_else(|| event::activo(info))
+}
+
+/// O título de Frame Properties: «Frame n», «Frames [a...b]» (contíguo) ou «Multiple Frames».
+fn titulo_do_quadro(info: &PixelPanelInfo, pos: usize, constante: bool) -> String {
+    let posicoes: Vec<usize> = (0..info.frames.len())
+        .filter(|&i| info.range.frames.contains(&info.frames[i].id))
+        .collect();
+    let (a, b) = match (constante, posicoes.first(), posicoes.last()) {
+        (true, ..) => (1, info.frames.len()),
+        (false, Some(&a), Some(&b)) if posicoes.len() >= 2 => {
+            if b - a + 1 != posicoes.len() {
+                return tr("panel.pixel.timeline.frame_props_multiple").to_owned();
+            }
+            (a + 1, b + 1)
+        }
+        _ => {
+            let num = (pos + 1).to_string();
+            return tr_with("panel.pixel.timeline.frame_props", &[("n", &num)]);
+        }
+    };
+    tr_with(
+        "panel.pixel.timeline.frame_props_range",
+        &[("a", &a.to_string()), ("b", &b.to_string())],
+    )
 }
 
 /// Quantas colunas de propriedades cabem em `w` (cada uma com a largura mínima de um painel).
@@ -77,6 +114,8 @@ pub(crate) fn paint(
         tr("panel.pixel.timeline.z"),
         tr("panel.pixel.timeline.direction"),
         tr("panel.pixel.timeline.repeat"),
+        tr("panel.pixel.timeline.tag_from"),
+        tr("panel.pixel.timeline.tag_to"),
     ];
     let sec = Seccao::medida(ctx.text_system, 1, &nomes);
     let gap = Spacing::Md.px();
@@ -102,14 +141,11 @@ pub(crate) fn paint(
     };
 
     let (k, c) = proxima(&mut ys);
-    let num = (pos + 1).to_string();
-    let y = linha(
-        ctx,
-        c,
-        &tr_with("panel.pixel.timeline.frame_props", &[("n", &num)]),
-        c.y,
-    );
-    ys[k] = campo(ctx, c, nomes[0], ids::FRAME_DURATION, sec, y);
+    let constante = st.constante.is_some();
+    let y = linha(ctx, c, &titulo_do_quadro(info, pos, constante), c.y);
+    let y = campo(ctx, c, nomes[0], ids::FRAME_DURATION, sec, y);
+    let rotulo = tr("panel.pixel.timeline.constant_rate");
+    ys[k] = botao(ctx, c, ids::CONSTANT_RATE, rotulo, constante, y);
     if tem_cel {
         let (k, c) = proxima(&mut ys);
         let y = linha(ctx, c, tr("panel.pixel.timeline.cel_props"), c.y);
@@ -123,16 +159,36 @@ pub(crate) fn paint(
         let y = linha(ctx, c, &titulo, c.y);
         let y = direcao(st, ctx, c, nomes[3], tag.direction, y);
         let y = campo(ctx, c, nomes[4], ids::TAG_REPEAT, sec, y);
+        let y = campo(ctx, c, nomes[5], ids::TAG_FROM, sec, y);
+        let y = campo(ctx, c, nomes[6], ids::TAG_TO, sec, y);
         let rotulo = tr("panel.pixel.timeline.tag_delete");
-        let r = property_row::caixa_do_botao(ctx.text_system, c.x, c.w, y, rotulo);
-        let theme = ctx.host.theme();
-        let visual = ctx.host.store().button_visual(ids::TAG_DELETE);
-        let b = Button::new(ids::TAG_DELETE, rotulo).visual(visual);
-        paint_button(&b, r, ctx.scene, ctx.text_system, theme);
-        ctx.host.hit_index_mut().register(ids::TAG_DELETE, r);
+        let _ = botao(ctx, c, ids::TAG_DELETE, rotulo, false, y);
     }
     ctx.host.hit_index_mut().pop_clip();
     ctx.scene.pop_layer();
+}
+
+/// Um botão de coluna inteira (`on` = aceso: o *Constant Frame Rate* aberto); devolve o `y` abaixo.
+fn botao(
+    ctx: &mut PaintCtx,
+    c: Rect,
+    id: ph2d_a11y::NodeId,
+    rotulo: &str,
+    on: bool,
+    y: f32,
+) -> f32 {
+    let r = property_row::caixa_do_botao(ctx.text_system, c.x, c.w, y, rotulo);
+    let theme = ctx.host.theme();
+    let visual = ctx.host.store().button_visual(id);
+    let kind = if on {
+        ButtonKind::Accent
+    } else {
+        ButtonKind::Default
+    };
+    let b = Button::new(id, rotulo).visual(visual).kind(kind);
+    paint_button(&b, r, ctx.scene, ctx.text_system, theme);
+    ctx.host.hit_index_mut().register(id, r);
+    r.y + r.h + ph2d_tokens::control_gap_px()
 }
 
 fn linha(ctx: &mut PaintCtx, area: Rect, texto: &str, y: f32) -> f32 {

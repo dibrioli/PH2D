@@ -690,9 +690,9 @@ pub struct WidgetStore {
     /// `dispatch_wheel` can tell when the cursor is over the dope-sheet (mirror
     /// of `graph_canvas`). Cleared while the panel is hidden.
     pub(super) timeline_canvas: BTreeMap<NodeId, Rect>,
-    /// O canal da **tira do Flip** (gestos + a folga do arrasto), agrupado num campo só —
-    /// os métodos e o porquê vivem em [`super::flip_strip`].
+    /// Os canais da tira do Flip e da linha do tempo do Pixel ([`super::flip_strip`]).
     pub(super) flip_strip: super::flip_strip::FlipStripChannel,
+    pub(super) pixel_timeline: super::pixel_timeline_surface::PixelTimelineChannel,
     /// Latest Alt modifier state, mirror of [`Self::shift_held`]/[`Self::cmd_held`].
     /// Pushed by the shell on `ModifiersChanged`; folded into `GestureMods.alt`.
     pub(super) alt_held: bool,

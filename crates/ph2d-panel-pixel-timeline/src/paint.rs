@@ -51,7 +51,15 @@ pub(crate) fn paint(st: &mut PixelTimelinePanelState, ctx: &mut PaintCtx) {
     let info = current_pixel();
     event::register_frame(ctx.host.store_mut(), &info);
     event::seed_renames(st, ctx.host.store_mut());
-    espelha_campos(ctx, &info);
+    crate::gestos::drena(st, ctx, &info);
+    if st
+        .constante
+        .as_ref()
+        .is_some_and(|(a, r)| *a != info.active_frame || *r != info.range)
+    {
+        st.constante = None;
+    }
+    espelha_campos(ctx, &info, st.constante.is_some());
 
     // ⭐ A barra mora na linha do TÍTULO, à direita dele (a banda de fábrica tem 240 px: cada linha
     // de barra a menos é uma camada a mais à vista); só o que não cabe desce para a linha seguinte.
@@ -123,16 +131,18 @@ pub(crate) fn paint(st: &mut PixelTimelinePanelState, ctx: &mut PaintCtx) {
 }
 
 /// Os campos mostram o MODELO (o instantâneo); a edição em curso de um campo com foco fica.
-fn espelha_campos(ctx: &mut PaintCtx, info: &PixelPanelInfo) {
-    let pos = event::activo(info);
-    let dur = pos.map(|p| info.frames[p].duration_ms);
+fn espelha_campos(ctx: &mut PaintCtx, info: &PixelPanelInfo, constante: bool) {
+    let dur =
+        crate::paint_props::quadro_da_duracao(info, constante).map(|p| info.frames[p].duration_ms);
     let cel = crate::paint_props::cel_activo(info);
-    let tag = event::tag_activa(info).map(|t| info.tags[t].repeat);
+    let tag = event::tag_activa(info).map(|t| &info.tags[t]);
     let valores = [
         (ids::FRAME_DURATION, dur.map(f64::from)),
         (ids::CEL_OPACITY, cel.map(|c| f64::from(c.opacity))),
         (ids::CEL_Z, cel.map(|c| f64::from(c.z))),
-        (ids::TAG_REPEAT, tag.map(f64::from)),
+        (ids::TAG_REPEAT, tag.map(|t| f64::from(t.repeat))),
+        (ids::TAG_FROM, tag.map(|t| f64::from(t.from) + 1.0)),
+        (ids::TAG_TO, tag.map(|t| f64::from(t.to) + 1.0)),
     ];
     let store = ctx.host.store_mut();
     let foco = store.focus_id();

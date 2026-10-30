@@ -61,6 +61,7 @@ impl Corpo<'_> {
             store: self.store,
             hit_index: self.hit_index,
             theme: self.theme,
+            continuous: false,
         };
         let rename = renaming.then_some(ids::LAYER_RENAME);
         p.paint(row, (self.x, y, self.w), active, rename, &|w| {

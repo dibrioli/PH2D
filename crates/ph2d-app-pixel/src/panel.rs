@@ -31,6 +31,7 @@ impl PixelApp {
         if self.aplica_selecao(&r)
             || self.aplica_edicao(&r)
             || self.aplica_camada(&r)
+            || self.aplica_intervalo(&r)
             || self.aplica_quadro(&r)
             || self.aplica_paleta(r.clone())
         {
@@ -177,6 +178,7 @@ pub fn frame(
         active_frame: doc.map(|d| d.frame.0),
         cels,
         tags,
+        range: doc.map(crate::state::Doc::range_info).unwrap_or_default(),
         playing: doc.is_some_and(|d| d.play.is_some()),
         onion: app.onion_on,
         onion_tint: app.onion.tint,

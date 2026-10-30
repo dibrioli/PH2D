@@ -9,10 +9,14 @@ use crate::ids;
 use crate::state::with_current;
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::action_bus::EditorAction;
-use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent, WidgetStore};
+use ph2d_editor_core::interaction::{
+    InteractiveState, PixelTimelineHitKind as H, WidgetEvent, WidgetStore,
+};
 use ph2d_editor_core::panel::{EventOutcome, Panel, PanelHostInternal};
 use ph2d_editor_core::pixel_layer_row::PixelLayerWidget as W;
-use ph2d_editor_core::pixel_panel::{PixelDirection, PixelPanelInfo, PixelRequest};
+use ph2d_editor_core::pixel_panel::{
+    PixelDirection, PixelPanelInfo, PixelRange, PixelRangeKind, PixelRequest,
+};
 use ph2d_editor_core::widget::{ButtonState, DropdownState, TextInputState};
 use ph2d_i18n::tr;
 
@@ -35,6 +39,14 @@ pub(crate) fn populate(store: &mut WidgetStore) {
         store.set_tooltip(id, tr(dica));
     }
     botao(store, ids::TAG_DELETE);
+    botao(store, ids::CONSTANT_RATE);
+    store.set_tooltip(
+        ids::CONSTANT_RATE,
+        tr("panel.pixel.timeline.constant_rate_tip"),
+    );
+    for id in ids::RANGE_EDGES {
+        superficie(store, id, H::RangeOutline);
+    }
     for (id, (min, max, step)) in ids::NUMBERS {
         let value = min.max(0.0);
         store.register(
@@ -63,10 +75,16 @@ pub(crate) fn populate(store: &mut WidgetStore) {
     }
 }
 
-/// O registo POR QUADRO dos ids que derivam da linha do tempo.
+fn superficie(store: &mut WidgetStore, id: NodeId, kind: H) {
+    let parent = ph2d_editor_core::ids::PIXEL_TIMELINE_PANEL;
+    store.register_if_absent(id, InteractiveState::PixelTimelineSurface { parent, kind });
+}
+
+/// O registo POR QUADRO dos ids que derivam da linha do tempo (cabeçalhos, cels e pontas de tag
+/// são superfícies de arrasto: [`crate::gestos`]).
 pub(crate) fn register_frame(store: &mut WidgetStore, info: &PixelPanelInfo) {
     for r in &info.layers {
-        for w in W::ALL {
+        for w in W::TIMELINE {
             let id = ids::layer_widget_id(r.id, w);
             let state = ButtonState::Normal;
             store.register_if_absent(id, InteractiveState::Button { state });
@@ -75,14 +93,26 @@ pub(crate) fn register_frame(store: &mut WidgetStore, info: &PixelPanelInfo) {
             }
         }
         for f in &info.frames {
-            store.register_if_absent(ids::cell_id(r.id, f.id), InteractiveState::Plain);
+            let kind = H::Cel {
+                layer: r.id,
+                frame: f.id,
+            };
+            superficie(store, ids::cell_id(r.id, f.id), kind);
         }
     }
     for f in &info.frames {
-        store.register_if_absent(ids::header_id(f.id), InteractiveState::Plain);
+        superficie(store, ids::header_id(f.id), H::Header { frame: f.id });
     }
     for i in 0..info.tags.len() {
         store.register_if_absent(ids::tag_id(i), InteractiveState::Plain);
+        let index = u16::try_from(i).unwrap_or(u16::MAX);
+        for right in [false, true] {
+            superficie(
+                store,
+                ids::tag_edge_id(i, right),
+                H::TagEdge { index, right },
+            );
+        }
     }
 }
 
@@ -155,9 +185,6 @@ fn pedido(id: NodeId) -> Option<PixelRequest> {
         if id == ids::TAG_DELETE {
             return tag_activa(info).map(PixelRequest::TagDelete);
         }
-        if let Some(f) = info.frames.iter().find(|f| ids::header_id(f.id) == id) {
-            return Some(PixelRequest::FrameSelect(f.id));
-        }
         if let Some(i) = (0..info.tags.len()).find(|&i| ids::tag_id(i) == id) {
             let pos = usize::try_from(info.tags[i].from).ok()?;
             return info
@@ -166,7 +193,7 @@ fn pedido(id: NodeId) -> Option<PixelRequest> {
                 .map(|f| PixelRequest::FrameSelect(f.id));
         }
         for r in &info.layers {
-            for w in W::ALL {
+            for w in W::TIMELINE {
                 if ids::layer_widget_id(r.id, w) == id {
                     return Some(match w {
                         W::Row => PixelRequest::LayerSelect(r.id),
@@ -174,14 +201,9 @@ fn pedido(id: NodeId) -> Option<PixelRequest> {
                         W::Lock => PixelRequest::LayerLocked(r.id),
                         W::Solo => PixelRequest::LayerSolo(r.id),
                         W::Collapse => PixelRequest::LayerCollapsed(r.id),
+                        W::Continuous => PixelRequest::LayerContinuous(r.id),
                     });
                 }
-            }
-            if let Some(f) = info.frames.iter().find(|f| ids::cell_id(r.id, f.id) == id) {
-                return Some(PixelRequest::CelSelect {
-                    layer: r.id,
-                    frame: f.id,
-                });
             }
         }
         None
@@ -202,14 +224,29 @@ fn inteiro(host: &dyn PanelHostInternal, id: NodeId) -> Option<i64> {
     Some(ph2d_editor_core::math::safe_clamp_f64(v.round(), min, max) as i64)
 }
 
-fn numero(host: &dyn PanelHostInternal, id: NodeId) -> Option<PixelRequest> {
+fn numero(host: &dyn PanelHostInternal, id: NodeId, constante: bool) -> Option<PixelRequest> {
     let v = inteiro(host, id)?;
     with_current(|info| {
         if !info.editing {
             return None;
         }
         match id {
+            ids::FRAME_DURATION if constante => {
+                u32::try_from(v).ok().map(PixelRequest::ConstantFrameRate)
+            }
             ids::FRAME_DURATION => u32::try_from(v).ok().map(PixelRequest::FrameDuration),
+            // From/To do diálogo são base 1; a família prende-os (to < from → to = from).
+            ids::TAG_FROM | ids::TAG_TO => {
+                let index = tag_activa(info)?;
+                let t = info.tags.get(index)?;
+                let v = u32::try_from(v - 1).ok()?;
+                let (from, to) = if id == ids::TAG_FROM {
+                    (v, t.to)
+                } else {
+                    (t.from, v)
+                };
+                Some(PixelRequest::TagRange { index, from, to })
+            }
             ids::CEL_OPACITY => u8::try_from(v).ok().map(PixelRequest::CelOpacity),
             ids::CEL_Z => i16::try_from(v).ok().map(PixelRequest::CelZ),
             ids::TAG_REPEAT => {
@@ -286,8 +323,25 @@ pub(crate) fn apply_event(
             EventOutcome::Consumed
         }
         WidgetEvent::ValueChanged(id) if ids::NUMBERS.iter().any(|(n, _)| *n == id) => {
-            let pedido = numero(host, id);
+            let pedido = numero(host, id, st.constante.is_some());
             empurra(host, pedido)
+        }
+        WidgetEvent::Click(id) if id == ids::CONSTANT_RATE => {
+            st.constante = with_current(|i| i.editing.then(|| (i.active_frame, i.range.clone())));
+            EventOutcome::Consumed
+        }
+        // O nome da camada: activa, e a fila inteira passa a ser o intervalo.
+        WidgetEvent::Click(id) if fila_de(id).is_some() => {
+            let Some(layer) = fila_de(id) else {
+                return EventOutcome::Ignored;
+            };
+            let range = PixelRange {
+                kind: PixelRangeKind::Layers,
+                layers: vec![layer],
+                frames: Vec::new(),
+            };
+            let _ = empurra(host, Some(PixelRequest::LayerSelect(layer)));
+            empurra(host, Some(PixelRequest::Range(range)))
         }
         WidgetEvent::Click(id) if id == ids::CLOSE => {
             host.set_panel_visible(crate::PixelTimelinePanel::ID, false);
@@ -319,6 +373,17 @@ pub(crate) fn apply_event(
         WidgetEvent::Click(id) => empurra(host, pedido(id)),
         _ => EventOutcome::Ignored,
     }
+}
+
+/// A camada cujo NOME é `id` (com sprite em edição).
+fn fila_de(id: NodeId) -> Option<u32> {
+    with_current(|i| {
+        i.layers
+            .iter()
+            .find(|r| ids::layer_widget_id(r.id, W::Row) == id)
+            .map(|r| r.id)
+            .filter(|_| i.editing)
+    })
 }
 
 fn empurra(host: &mut dyn PanelHostInternal, pedido: Option<PixelRequest>) -> EventOutcome {

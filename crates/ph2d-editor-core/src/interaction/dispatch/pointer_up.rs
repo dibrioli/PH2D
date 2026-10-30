@@ -314,6 +314,9 @@ pub(super) fn dispatch_up<'frame>(
             store.set_active_rect(None);
             return;
         }
+        if store.pixel_timeline_up(active, &event) {
+            return;
+        }
         // A tira do Flip: `End` se arrastou, senão `Click` (um toque). Sem
         // `apply_click`/foco — a semântica é do painel. **Sem `DoubleClick`**, de
         // propósito: nada na tira quer o segundo toque hoje, e a lista de quem quer

@@ -188,6 +188,12 @@ pub enum InteractiveState {
         parent: NodeId,
         kind: FlipStripHitKind,
     },
+    /// Um alvo da linha do tempo do Pixel (cabeçalho, cel, ponta de tag, moldura do intervalo):
+    /// [`super::super::pixel_timeline_surface`].
+    PixelTimelineSurface {
+        parent: NodeId,
+        kind: super::super::pixel_timeline_surface::PixelTimelineHitKind,
+    },
     Modal {
         // Open/closed lives on the host; store only tracks ESC->dismiss intent.
         dismissing: bool,

@@ -27,6 +27,8 @@ pub struct Doc {
     pub(crate) last_point: Option<(i32, i32)>,
     /// A animação a tocar (o frame activo segue-a).
     pub(crate) play: Option<ph2d_pixel_core::play::Play>,
+    /// O intervalo escolhido na linha do tempo ([`crate::intervalo`]).
+    pub(crate) range: ph2d_editor_core::pixel_panel::PixelRange,
 }
 
 impl Doc {
@@ -44,6 +46,7 @@ impl Doc {
             axis2: None,
             last_point: None,
             play: None,
+            range: ph2d_editor_core::pixel_panel::PixelRange::default(),
         }
     }
 

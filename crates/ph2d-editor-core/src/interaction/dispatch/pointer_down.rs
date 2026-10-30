@@ -40,11 +40,9 @@ pub(super) fn dispatch_down<'frame>(
     // press. Without this the click was captured as a graph box-select and the palette never saw it
     // (Enio smoke: *"nenhum botão funciona e o botão fechar não funciona"*).
     if store.command_palette_model().is_some() {
-        if let Some((id, rect)) = hit_index.hit_with_rect_where(event.x, event.y, |id| {
-            store.graph_surface_at_id(id).is_none()
-                && store.timeline_surface_at_id(id).is_none()
-                && store.flip_strip_surface_at_id(id).is_none()
-        }) {
+        if let Some((id, rect)) =
+            hit_index.hit_with_rect_where(event.x, event.y, |id| !store.is_pointer_surface(id))
+        {
             store.set_active(Some(id));
             store.set_active_rect(Some(rect));
         }
@@ -117,9 +115,7 @@ pub(super) fn dispatch_down<'frame>(
     if store.context_menu().is_some()
         && event.button != ph2d_host::PointerButton::Secondary
         && let Some((id, _)) = hit
-        && (store.graph_surface_at_id(id).is_some()
-            || store.timeline_surface_at_id(id).is_some()
-            || store.flip_strip_surface_at_id(id).is_some())
+        && store.is_pointer_surface(id)
     {
         store.close_context_menu();
         return;
@@ -185,6 +181,9 @@ pub(super) fn dispatch_down<'frame>(
         return;
     }
 
+    if store.pixel_timeline_down(hit, &event) {
+        return;
+    }
     // A tira de frames do Flip captura pelo MESMO caminho (uma célula ou a borda
     // que define o hold); o painel decide selecionar / mover a chave / esticar a
     // exposição a partir do fluxo de gestos.

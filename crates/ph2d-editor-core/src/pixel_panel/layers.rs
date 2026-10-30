@@ -12,6 +12,8 @@ pub struct PixelLayerRow {
     pub collapsed: bool,
     pub visible: bool,
     pub locked: bool,
+    /// Alt+N liga o cel novo ao anterior em vez de o copiar.
+    pub continuous: bool,
     pub reference: bool,
     pub background: bool,
     pub opacity: u8,

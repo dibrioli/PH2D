@@ -1,7 +1,7 @@
 //! O estado do painel: o da VISTA (os renomear abertos, a primeira coluna à vista, o menu da
 //! direcção aberto); o do DOCUMENTO chega por thread-local, publicado pela shell antes de pintar.
 
-use ph2d_editor_core::pixel_panel::{PixelDirection, PixelPanelInfo};
+use ph2d_editor_core::pixel_panel::{PixelDirection, PixelPanelInfo, PixelRange};
 use ph2d_editor_core::zones::Rect;
 
 #[derive(Clone, Debug, Default)]
@@ -14,6 +14,12 @@ pub struct PixelTimelinePanelState {
     pub(crate) first_col: usize,
     /// O menu da direcção aberto: o chip e a direcção actual (pinta-se por cima, no fim).
     pub(crate) direction_open: Option<(Rect, PixelDirection)>,
+    /// *Constant Frame Rate* aberto: o activo e o intervalo de quando abriu (mudar um fecha-o).
+    pub(crate) constante: Option<(Option<u32>, PixelRange)>,
+    /// O arrasto em curso na grelha ([`crate::gestos`]).
+    pub(crate) arrasto: Option<crate::gestos::Arrasto>,
+    /// A geometria da grelha do último quadro pintado (as posições dos gestos lêem-na).
+    pub(crate) geo: Option<crate::gestos::Geo>,
 }
 
 impl PixelTimelinePanelState {

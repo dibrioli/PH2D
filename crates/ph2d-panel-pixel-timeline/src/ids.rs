@@ -154,6 +154,23 @@ pub fn layer_widget_id(layer: u32, w: PixelLayerWidget) -> NodeId {
     hash_node_id_runtime(&format!("pixel_timeline.layer.{layer}.{}", w.tag()))
 }
 
+/// A ponta esquerda (`right = false`) ou direita da barra da tag `i` (arrastar muda o intervalo).
+#[must_use]
+pub fn tag_edge_id(i: usize, right: bool) -> NodeId {
+    hash_node_id_runtime(&format!("pixel_timeline.tag.{i}.edge.{right}"))
+}
+
+/// Os quatro lados da moldura do intervalo escolhido (arrastar move os quadros dele).
+pub const RANGE_EDGES: [NodeId; 4] = [
+    hash_node_id("pixel_timeline.range.edge.top"),
+    hash_node_id("pixel_timeline.range.edge.right"),
+    hash_node_id("pixel_timeline.range.edge.bottom"),
+    hash_node_id("pixel_timeline.range.edge.left"),
+];
+
+/// Frame ▸ Constant Frame Rate: a duração passa a valer para TODOS os quadros.
+pub const CONSTANT_RATE: NodeId = hash_node_id("pixel_timeline.frame.constant_rate");
+
 /// O campo do renomear da camada (duplo clique no nome).
 pub const RENAME_LAYER: NodeId = hash_node_id("pixel_timeline.layer.rename");
 /// O campo do renomear da tag (duplo clique na barra dela).
@@ -168,13 +185,18 @@ pub const CEL_Z: NodeId = hash_node_id("pixel_timeline.cel.z");
 pub const TAG_DIRECTION: NodeId = hash_node_id("pixel_timeline.tag.direction");
 pub const TAG_REPEAT: NodeId = hash_node_id("pixel_timeline.tag.repeat");
 pub const TAG_DELETE: NodeId = hash_node_id("pixel_timeline.tag.delete");
+/// Tag Properties ▸ From / To (base 1, como o diálogo do Aseprite).
+pub const TAG_FROM: NodeId = hash_node_id("pixel_timeline.tag.from");
+pub const TAG_TO: NodeId = hash_node_id("pixel_timeline.tag.to");
 
 /// Os campos numéricos: id, faixa `(min, max, passo)`.
-pub const NUMBERS: [(NodeId, (f64, f64, f64)); 4] = [
+pub const NUMBERS: [(NodeId, (f64, f64, f64)); 6] = [
     (FRAME_DURATION, (1.0, u16::MAX as f64, 1.0)),
     (CEL_OPACITY, (0.0, u8::MAX as f64, 1.0)),
     (CEL_Z, (i16::MIN as f64, i16::MAX as f64, 1.0)),
     (TAG_REPEAT, (0.0, u16::MAX as f64, 1.0)),
+    (TAG_FROM, (1.0, u16::MAX as f64, 1.0)),
+    (TAG_TO, (1.0, u16::MAX as f64, 1.0)),
 ];
 
 /// A opção `i` do menu da direcção (a ordem de [`PixelDirection::ALL`]).

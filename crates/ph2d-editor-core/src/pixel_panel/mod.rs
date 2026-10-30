@@ -341,6 +341,7 @@ pub struct PixelPanelInfo {
     pub active_frame: Option<u32>,
     pub cels: Vec<PixelCel>,
     pub tags: Vec<PixelTagInfo>,
+    pub range: PixelRange,
     /// A animação está a tocar / o papel vegetal está ligado (e com a tinta vermelha/azul).
     pub playing: bool,
     pub onion: bool,
@@ -423,8 +424,15 @@ pub enum PixelRequest {
         id: u32,
         name: String,
     },
-    /// Layer Properties ▸ Continuous.
+    /// O 3.º ícone da fila na linha do tempo (dois pontos / barra): não é passo do desfazer.
     LayerContinuous(u32),
+    /// O intervalo novo da linha do tempo (vazio = Esc).
+    Range(PixelRange),
+    /// Largar o intervalo de quadros arrastado pela moldura: `before` = a posição (na ordem de
+    /// agora) da fronteira onde cai.
+    RangeMove {
+        before: u32,
+    },
     /// Clique num cabeçalho de frame / num cel: o frame activo (e a camada activa).
     FrameSelect(u32),
     CelSelect {

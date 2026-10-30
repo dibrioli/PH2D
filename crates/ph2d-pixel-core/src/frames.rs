@@ -194,6 +194,46 @@ pub fn move_to(s: &Sprite, id: FrameId, to: usize) -> Option<Op> {
     Some(op(frames, Vec::new(), s.tags().to_vec()))
 }
 
+/// Largar o bloco `ids` (na ordem da linha do tempo) na fronteira `before` (posição de agora,
+/// `0..=n`): os quadros levam cels e durações; as tags não mexem.
+#[must_use]
+pub fn move_block(s: &Sprite, ids: &[FrameId], before: usize) -> Option<Op> {
+    let all = s.frames();
+    let before = before.min(all.len());
+    let block: Vec<Frame> = all
+        .iter()
+        .filter(|f| ids.contains(&f.id))
+        .copied()
+        .collect();
+    if block.is_empty() || block.len() == all.len() {
+        return None;
+    }
+    let at = before - all[..before].iter().filter(|f| ids.contains(&f.id)).count();
+    let mut frames: Vec<Frame> = all
+        .iter()
+        .filter(|f| !ids.contains(&f.id))
+        .copied()
+        .collect();
+    frames.splice(at..at, block);
+    (frames != all).then(|| op(frames, Vec::new(), s.tags().to_vec()))
+}
+
+/// A tecla Delete sobre um intervalo de cels: os cels saem, os quadros ficam.
+#[must_use]
+pub fn clear(s: &Sprite, keys: &[CelKey]) -> Option<Op> {
+    let mut cels: Vec<(CelKey, Option<Cel>)> = s
+        .entries()
+        .filter(|(k, _)| keys.contains(k))
+        .map(|(k, _)| (*k, None))
+        .collect();
+    if cels.is_empty() {
+        return None;
+    }
+    let order: Vec<FrameId> = s.frames().iter().map(|f| f.id).collect();
+    cels.extend(rehome(s, &|k: CelKey| keys.contains(&k), &order));
+    Some(op(s.frames().to_vec(), cels, s.tags().to_vec()))
+}
+
 /// Frame ▸ Reverse Frames: as posições `from..=to` ao contrário.
 #[must_use]
 pub fn reverse(s: &Sprite, from: usize, to: usize) -> Option<Op> {

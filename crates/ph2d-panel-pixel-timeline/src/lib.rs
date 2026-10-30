@@ -14,6 +14,7 @@
 #![forbid(unsafe_code)]
 
 mod event;
+mod gestos;
 pub mod ids;
 mod paint;
 mod paint_grid;

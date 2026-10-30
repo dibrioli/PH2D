@@ -53,6 +53,36 @@ pub struct PixelTagInfo {
     pub color: [u8; 4],
 }
 
+/// O que um intervalo da linha do tempo escolhe (o *range* do Aseprite).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum PixelRangeKind {
+    #[default]
+    None,
+    /// Quadros inteiros (todas as camadas): clique / arrasto nos cabeçalhos.
+    Frames,
+    /// Cels: as camadas × os quadros (arrasto sobre os cels).
+    Cels,
+    /// Filas inteiras de camadas (clique no nome).
+    Layers,
+}
+
+/// O intervalo escolhido na linha do tempo: ids estáveis, os quadros na ordem da linha do tempo.
+/// Shift/Ctrl+clique ACRESCENTAM um quadro solto (nunca preenchem o vão); Esc limpa
+/// (`docs/PixelArt/ferramentas/oraculo_timeline.md`).
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct PixelRange {
+    pub kind: PixelRangeKind,
+    pub layers: Vec<u32>,
+    pub frames: Vec<u32>,
+}
+
+impl PixelRange {
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.kind == PixelRangeKind::None
+    }
+}
+
 /// As acções do menu Frame / dos botões da linha do tempo.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PixelFrameAction {

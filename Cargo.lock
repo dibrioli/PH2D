@@ -6110,6 +6110,7 @@ dependencies = [
  "ph2d-vec-scene",
  "ph2d-vector",
  "rfd",
+ "serde_json",
  "winit",
 ]
 

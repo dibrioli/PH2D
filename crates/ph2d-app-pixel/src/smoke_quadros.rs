@@ -48,7 +48,7 @@ pub const FRAME_MS: u32 = 120;
 pub const HOLD_MS: u32 = 480;
 pub const HOLD_INDEX: usize = 3;
 
-fn patch(
+pub(crate) fn patch(
     app: &mut PixelApp,
     key: u32,
     layer: LayerId,
@@ -76,7 +76,7 @@ fn patch(
 }
 
 /// Um passo construído sobre o sprite de agora (`None` do construtor = nada a fazer).
-fn passo(
+pub(crate) fn passo(
     app: &mut PixelApp,
     key: u32,
     f: impl FnOnce(&mut ph2d_pixel_core::Sprite) -> Option<Op>,
@@ -88,7 +88,7 @@ fn passo(
     }
 }
 
-fn camada(app: &mut PixelApp, key: u32, above: LayerId, name: &str) -> Option<LayerId> {
+pub(crate) fn camada(app: &mut PixelApp, key: u32, above: LayerId, name: &str) -> Option<LayerId> {
     let (op, id) = layers::new_layer(&mut app.docs.get_mut(&key)?.sprite, above)?;
     app.commit(key, op).ok()?;
     passo(app, key, |s| {

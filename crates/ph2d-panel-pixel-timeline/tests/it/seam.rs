@@ -3,10 +3,11 @@
 
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::interaction::WidgetEvent;
+use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::pixel_layer_row::PixelLayerWidget;
 use ph2d_editor_core::pixel_panel::{
     PixelCel, PixelDirection, PixelFrameAction, PixelFrameCol, PixelLayerRow, PixelPanelInfo,
-    PixelRequest, PixelTagInfo,
+    PixelRange, PixelRangeKind as K, PixelRequest, PixelTagInfo,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_panel_pixel_timeline::{
@@ -30,6 +31,7 @@ fn camada(id: u32, name: &str) -> PixelLayerRow {
         collapsed: false,
         visible: true,
         locked: false,
+        continuous: false,
         reference: false,
         background: false,
         opacity: 255,
@@ -129,6 +131,54 @@ impl Palco {
     }
 }
 
+impl Palco {
+    /// Um clique numa superfície da grelha (cabeçalho, cel): os gestos drenam-se no quadro seguinte.
+    fn toca(&mut self, id: ph2d_a11y::NodeId) -> Vec<EditorAction> {
+        let r = self
+            .rect(id)
+            .unwrap_or_else(|| panic!("o painel nunca pintou {id:?}"));
+        let ev = self.host.click_at(r.x + r.w * 0.5, r.y + r.h * 0.5);
+        assert!(ev.is_empty(), "a superfície captura o clique: {ev:?}");
+        self.rects = self
+            .host
+            .paint::<PixelTimelinePanel>(&mut self.st, VIEWPORT);
+        self.host.drained_actions()
+    }
+
+    /// Arrasta do meio de `id` até `(x, y)`.
+    fn arrasta(&mut self, id: ph2d_a11y::NodeId, (x, y): (f32, f32)) -> Vec<EditorAction> {
+        let r = self
+            .rect(id)
+            .unwrap_or_else(|| panic!("o painel nunca pintou {id:?}"));
+        let _ = self.host.drag_at(r.x + r.w * 0.5, r.y + r.h * 0.5, x, y);
+        self.rects = self
+            .host
+            .paint::<PixelTimelinePanel>(&mut self.st, VIEWPORT);
+        self.host.drained_actions()
+    }
+
+    fn meio(&self, id: ph2d_a11y::NodeId) -> (f32, f32) {
+        let r = self.rect(id).expect("pintado");
+        (r.x + r.w * 0.5, r.y + r.h * 0.5)
+    }
+}
+
+fn faixa(kind: K, layers: Vec<u32>, frames: Vec<u32>) -> PixelRange {
+    PixelRange {
+        kind,
+        layers,
+        frames,
+    }
+}
+
+/// O último intervalo empurrado (um arrasto empurra um por passo).
+fn ultimo(a: &[EditorAction]) -> Option<PixelRange> {
+    a.iter().rev().find_map(|e| match e {
+        EditorAction::Pixel(PixelRequest::Range(r)) => Some(r.clone()),
+        _ => None,
+    })
+}
+
 fn so(a: &[EditorAction], r: PixelRequest) {
     assert_eq!(a, [EditorAction::Pixel(r)]);
 }
@@ -138,16 +188,23 @@ fn so(a: &[EditorAction], r: PixelRequest) {
 #[test]
 fn a_celula_e_o_cabecalho_chegam_ao_barramento_pelos_ids_do_frame() {
     let mut p = Palco::novo(info());
-    so(
-        &p.carrega(ids::cell_id(1, 12)),
-        PixelRequest::CelSelect {
-            layer: 1,
-            frame: 12,
-        },
+    let pede = |r| EditorAction::Pixel(r);
+    assert_eq!(
+        p.toca(ids::cell_id(1, 12)),
+        [
+            pede(PixelRequest::CelSelect {
+                layer: 1,
+                frame: 12,
+            }),
+            pede(PixelRequest::Range(faixa(K::Cels, vec![1], vec![12]))),
+        ]
     );
-    so(
-        &p.carrega(ids::header_id(11)),
-        PixelRequest::FrameSelect(11),
+    assert_eq!(
+        p.toca(ids::header_id(11)),
+        [
+            pede(PixelRequest::FrameSelect(11)),
+            pede(PixelRequest::Range(faixa(K::Frames, vec![], vec![11]))),
+        ]
     );
     // A tag leva ao primeiro frame dela.
     so(&p.carrega(ids::tag_id(0)), PixelRequest::FrameSelect(10));
@@ -174,9 +231,17 @@ fn a_barra_e_a_coluna_das_camadas_chegam_ao_barramento() {
         &p.carrega(ids::layer_widget_id(1, PixelLayerWidget::Eye)),
         PixelRequest::LayerVisible(1),
     );
+    assert_eq!(
+        p.carrega(ids::layer_widget_id(1, PixelLayerWidget::Row)),
+        [
+            EditorAction::Pixel(PixelRequest::LayerSelect(1)),
+            EditorAction::Pixel(PixelRequest::Range(faixa(K::Layers, vec![1], vec![]))),
+        ],
+        "o nome escolhe a fila inteira"
+    );
     so(
-        &p.carrega(ids::layer_widget_id(1, PixelLayerWidget::Row)),
-        PixelRequest::LayerSelect(1),
+        &p.carrega(ids::layer_widget_id(1, PixelLayerWidget::Continuous)),
+        PixelRequest::LayerContinuous(1),
     );
     // A tag sob o frame activo mostra o apagar, e ele apaga ESSA tag.
     so(&p.carrega(ids::TAG_DELETE), PixelRequest::TagDelete(0));
@@ -237,5 +302,89 @@ fn as_filas_a_mais_rolam_com_a_roda() {
     assert!(
         depois.is_some(),
         "a última camada nunca chegou à vista depois da roda"
+    );
+}
+
+/// Shift (ou Ctrl) + clique ACRESCENTA o quadro solto, sem preencher o vão (lei do Trial).
+#[test]
+fn shift_click_adds_one_frame_and_never_fills_the_gap() {
+    let mut i = info();
+    i.range = faixa(K::Frames, vec![], vec![10]);
+    let mut p = Palco::novo(i);
+    p.host.store_mut().set_shift_held(true);
+    let a = p.toca(ids::header_id(12));
+    assert_eq!(ultimo(&a), Some(faixa(K::Frames, vec![], vec![10, 12])));
+}
+
+/// Arrastar pelos cabeçalhos escolhe o intervalo contíguo; pelos cels, o rectângulo.
+#[test]
+fn dragging_headers_picks_a_span_and_dragging_cels_a_rectangle() {
+    let mut p = Palco::novo(info());
+    let fim = p.meio(ids::header_id(12));
+    let a = p.arrasta(ids::header_id(10), fim);
+    assert_eq!(ultimo(&a), Some(faixa(K::Frames, vec![], vec![10, 11, 12])));
+    let fim = p.meio(ids::cell_id(1, 11));
+    let a = p.arrasta(ids::cell_id(2, 10), fim);
+    assert_eq!(ultimo(&a), Some(faixa(K::Cels, vec![2, 1], vec![10, 11])));
+}
+
+/// A ponta direita da tag larga-se no quadro debaixo do cursor.
+#[test]
+fn dragging_the_right_end_of_a_tag_drops_it_on_the_frame_under_the_cursor() {
+    let mut p = Palco::novo(info());
+    let (x, _) = p.meio(ids::header_id(12));
+    let (_, y) = p.meio(ids::tag_id(0));
+    let a = p.arrasta(ids::tag_edge_id(0, true), (x, y));
+    so(
+        &a,
+        PixelRequest::TagRange {
+            index: 0,
+            from: 0,
+            to: 2,
+        },
+    );
+}
+
+/// A moldura do intervalo escolhido arrasta-se e larga o bloco na fronteira mais próxima.
+#[test]
+fn dragging_the_range_outline_drops_the_block_at_the_nearest_boundary() {
+    let mut i = info();
+    i.range = faixa(K::Frames, vec![], vec![10]);
+    let mut p = Palco::novo(i);
+    let h = p.rect(ids::header_id(12)).expect("pintado");
+    let (_, y) = p.meio(ids::RANGE_EDGES[1]);
+    let a = p.arrasta(ids::RANGE_EDGES[1], (h.x + h.w, y));
+    so(&a, PixelRequest::RangeMove { before: 3 });
+}
+
+/// *Constant Frame Rate* abre: o campo da duração passa a valer para todos (o 1.º quadro), e as
+/// pontas da tag editam-se em base 1.
+#[test]
+fn constant_frame_rate_turns_the_duration_into_all_frames_and_tag_ends_are_base_one() {
+    let mut p = Palco::novo(info());
+    let _ = p.carrega(ids::CONSTANT_RATE);
+    p.rects = p.host.paint::<PixelTimelinePanel>(&mut p.st, VIEWPORT);
+    p.host
+        .store_mut()
+        .set_number_value(ids::FRAME_DURATION, 70.0);
+    let _ = p.host.apply_panel_event::<PixelTimelinePanel>(
+        &mut p.st,
+        WidgetEvent::ValueChanged(ids::FRAME_DURATION),
+    );
+    so(
+        &p.host.drained_actions(),
+        PixelRequest::ConstantFrameRate(70),
+    );
+    p.host.store_mut().set_number_value(ids::TAG_TO, 3.0);
+    let _ = p
+        .host
+        .apply_panel_event::<PixelTimelinePanel>(&mut p.st, WidgetEvent::ValueChanged(ids::TAG_TO));
+    so(
+        &p.host.drained_actions(),
+        PixelRequest::TagRange {
+            index: 0,
+            from: 0,
+            to: 2,
+        },
     );
 }

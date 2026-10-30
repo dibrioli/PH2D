@@ -323,6 +323,7 @@ fn arma_a_linha_do_tempo() {
         collapsed: false,
         visible: true,
         locked: false,
+        continuous: false,
         reference: false,
         background: false,
         opacity: 255,

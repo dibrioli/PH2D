@@ -5,8 +5,8 @@
 //! passo do desfazer do sprite (`ph2d_pixel_core::selection`).
 
 use ph2d_editor_core::pixel_panel::{
-    PixelDialogKind, PixelEditAction as E, PixelRequest, PixelSelectAction as S, PixelSelectMode,
-    PixelSpriteAction as Sp,
+    PixelDialogKind, PixelEditAction as E, PixelRange, PixelRequest, PixelSelectAction as S,
+    PixelSelectMode, PixelSpriteAction as Sp,
 };
 use ph2d_i18n::tr;
 use ph2d_pixel_core::fill::BucketSample;
@@ -365,6 +365,10 @@ pub(crate) fn key(
         .docs
         .get(&key)
         .is_some_and(|d| d.sprite.mask().is_some());
+    let intervalo = app
+        .docs
+        .get(&key)
+        .is_some_and(|d| !d.range_info().is_empty());
     Some(match (code, ctrl, shift) {
         (KeyCode::KeyM, false, false) => ferramenta(app, Tool::RectMarquee),
         (KeyCode::KeyM, false, true) => ferramenta(app, Tool::EllipseMarquee),
@@ -384,6 +388,9 @@ pub(crate) fn key(
         (KeyCode::Escape, _, _) if laco => {
             app.laco = None;
             KeyAnswer::Quiet
+        }
+        (KeyCode::Escape, _, _) if intervalo => {
+            pede(app, PixelRequest::Range(PixelRange::default()))
         }
         (KeyCode::Escape, _, _) if mascara => pede(app, PixelRequest::Select(S::Deselect)),
         (KeyCode::Enter | KeyCode::NumpadEnter, false, _) if solta => {

@@ -347,6 +347,9 @@ pub(super) fn dispatch_move<'frame>(
             });
             return;
         }
+        if store.pixel_timeline_move(active, &event) {
+            return;
+        }
         // A tira do Flip, pela mesma lei: o Update continua mesmo com o ponteiro
         // FORA do retângulo da célula — arrastar uma chave três células adiante é o
         // gesto, não um escape.

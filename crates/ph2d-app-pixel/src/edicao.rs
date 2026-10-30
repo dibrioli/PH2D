@@ -212,6 +212,11 @@ impl PixelApp {
                 };
                 edit::shift(s, ck, dx, dy, bg)
             }
+            // A tecla Delete sem selecção sobre um intervalo da linha do tempo: os cels saem, os
+            // quadros ficam.
+            E::Clear if s.mask().is_none() && !doc.range_keys().is_empty() => {
+                ph2d_pixel_core::frames::clear(s, &doc.range_keys())
+            }
             E::Clear => {
                 let m = s
                     .mask()

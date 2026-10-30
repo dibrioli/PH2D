@@ -58,6 +58,14 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.pixel.timeline.glyph.ping_pong_reverse" => "><",
         "panel.pixel.timeline.z_mark" => "z",
         "panel.pixel.timeline.frame_props" => "Frame {n}",
+        "panel.pixel.timeline.frame_props_range" => "Frames [{a}...{b}]",
+        "panel.pixel.timeline.frame_props_multiple" => "Multiple Frames",
+        "panel.pixel.timeline.constant_rate" => "Constant Frame Rate",
+        "panel.pixel.timeline.constant_rate_tip" => {
+            "The duration starts at frame 1's and goes to every frame"
+        }
+        "panel.pixel.timeline.tag_from" => "From",
+        "panel.pixel.timeline.tag_to" => "To",
         "panel.pixel.timeline.duration" => "Duration",
         "panel.pixel.timeline.cel_props" => "Cel",
         "panel.pixel.timeline.opacity" => "Opacity",
@@ -234,6 +242,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.pixel.layer.lock" => "Lock or unlock",
         "panel.pixel.layer.solo" => "Solo: only this layer",
         "panel.pixel.layer.collapse" => "Collapse or expand the group",
+        "panel.pixel.layer.continuous" => {
+            "Continuous: a new frame links the cel instead of copying it"
+        }
         "panel.pixel.layer.reference" => "{name} (reference)",
         "panel.pixel.layer.new" => "New Layer",
         "panel.pixel.layer.new_group" => "New Group",

@@ -12,7 +12,7 @@ use ph2d_editor_core::paint::{
 };
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::pixel_layer_row::LayerRowPainter;
-use ph2d_editor_core::pixel_panel::{PixelCel, PixelPanelInfo, PixelTagInfo};
+use ph2d_editor_core::pixel_panel::{PixelCel, PixelPanelInfo, PixelRangeKind as K, PixelTagInfo};
 use ph2d_editor_core::widget::{TextInput, TextInputState, paint_text_input_with_buffer};
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::{tr, tr_with};
@@ -103,7 +103,13 @@ pub(crate) fn paint(
     cabecalhos(ctx, info, &g, &duracoes);
     let rename_tag = st.rename_tag.map(|(t, _)| t);
     for (i, t) in info.tags.iter().enumerate() {
-        tag(ctx, &g, i, t, rename_tag == Some(i));
+        let (from, to) = crate::gestos::tag_previsto(st, i, t.from, t.to);
+        let t = PixelTagInfo {
+            from,
+            to,
+            ..t.clone()
+        };
+        tag(ctx, &g, i, &t, rename_tag == Some(i));
     }
     ctx.host.hit_index_mut().pop_clip();
     ctx.scene.pop_layer();
@@ -118,9 +124,34 @@ pub(crate) fn paint(
         corpo,
     );
     g.rows_y = rolagem.top();
+    st.geo = Some(crate::gestos::Geo {
+        gx,
+        col_w,
+        first: g.first,
+        rows_y: g.rows_y,
+        pitch: ph2d_tokens::row_pitch_px(),
+    });
     ctx.scene.push_clip(&rect_to_vello(colunas));
     ctx.host.hit_index_mut().push_clip(colunas);
     celulas(ctx, info, &g);
+    moldura(ctx, info, &g);
+    if let Some(crate::gestos::Arrasto::Bloco { alvo }) = st.arrasto
+        && (g.first..=g.end).contains(&alvo)
+    {
+        let traco = StrokeToken::Thick.px();
+        let r = Rect::new(
+            g.x(alvo) - traco * 0.5,
+            g.head_y,
+            traco,
+            g.bottom - g.head_y,
+        );
+        fill_rounded_rect(
+            ctx.scene,
+            r,
+            0.0,
+            resolve(ColorToken::Accent, ctx.host.theme()),
+        );
+    }
     ctx.host.hit_index_mut().pop_clip();
     ctx.scene.pop_layer();
 
@@ -134,6 +165,7 @@ pub(crate) fn paint(
         store,
         hit_index,
         theme,
+        continuous: true,
     };
     let mut y = g.rows_y;
     for row in &info.layers {
@@ -156,7 +188,9 @@ fn cabecalhos(ctx: &mut PaintCtx, info: &PixelPanelInfo, g: &Grelha, duracoes: &
     for (c, duracao) in duracoes.iter().enumerate().take(g.end).skip(g.first) {
         let f = info.frames[c];
         let r = Rect::new(g.x(c), g.head_y, g.col_w, alto);
-        if info.active_frame == Some(f.id) {
+        let no_intervalo =
+            matches!(info.range.kind, K::Frames | K::Cels) && info.range.frames.contains(&f.id);
+        if info.active_frame == Some(f.id) || no_intervalo {
             fill_rounded_rect(ctx.scene, r, radius, resolve(ColorToken::AccentSoft, theme));
         }
         let numero = (c + 1).to_string();
@@ -280,6 +314,74 @@ fn tag(ctx: &mut PaintCtx, g: &Grelha, i: usize, t: &PixelTagInfo, renaming: boo
         resolve(ColorToken::Text1, theme),
     );
     ctx.host.hit_index_mut().register(ids::tag_id(i), r);
+    // As pontas, por cima do corpo (o último registo vence): só a que está à vista.
+    let ponta = Spacing::Sm.px();
+    for (right, visivel, x) in [
+        (false, from >= g.first, r.x),
+        (true, to < g.end, r.x + r.w - ponta),
+    ] {
+        if visivel {
+            let pr = Rect::new(x, r.y, ponta, r.h);
+            ctx.host
+                .hit_index_mut()
+                .register(ids::tag_edge_id(i, right), pr);
+        }
+    }
+}
+
+/// O cel `(camada, quadro)` está no intervalo escolhido.
+fn no_intervalo(info: &PixelPanelInfo, layer: u32, frame: u32) -> bool {
+    let r = &info.range;
+    r.frames.contains(&frame)
+        && match r.kind {
+            K::None => false,
+            K::Frames => true,
+            K::Cels | K::Layers => r.layers.contains(&layer),
+        }
+}
+
+/// A moldura do intervalo (a caixa à volta dele, também com quadros soltos) e os seus quatro lados
+/// como alças de mover — registados depois dos cels, para ganharem na borda.
+fn moldura(ctx: &mut PaintCtx, info: &PixelPanelInfo, g: &Grelha) {
+    let r = &info.range;
+    let cols: Vec<usize> = (g.first..g.end)
+        .filter(|&c| r.frames.contains(&info.frames[c].id))
+        .collect();
+    let filas: Vec<usize> = (0..info.layers.len())
+        .filter(|&i| r.kind == K::Frames || r.layers.contains(&info.layers[i].id))
+        .collect();
+    let (Some(&c0), Some(&c1), Some(&f0), Some(&f1)) =
+        (cols.first(), cols.last(), filas.first(), filas.last())
+    else {
+        return;
+    };
+    let pitch = ph2d_tokens::row_pitch_px();
+    #[expect(clippy::cast_precision_loss, reason = "uma fila à vista")]
+    let (y0, y1) = (
+        g.rows_y + f0 as f32 * pitch,
+        g.rows_y + f1 as f32 * pitch + ROW_H_PX,
+    );
+    let caixa = Rect::new(g.x(c0), y0, g.x(c1) + g.col_w - g.x(c0), y1 - y0);
+    let theme = ctx.host.theme();
+    let traco = StrokeToken::Thick.px();
+    let radius = ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px());
+    stroke_rounded_rect(
+        ctx.scene,
+        caixa,
+        radius,
+        traco,
+        resolve(ColorToken::Accent, theme),
+    ); // FRAME-RAW-OK: a moldura do intervalo é a marca dele
+    let e = Spacing::Xs.px();
+    let lados = [
+        Rect::new(caixa.x, caixa.y - e * 0.5, caixa.w, e),
+        Rect::new(caixa.x + caixa.w - e * 0.5, caixa.y, e, caixa.h),
+        Rect::new(caixa.x, caixa.y + caixa.h - e * 0.5, caixa.w, e),
+        Rect::new(caixa.x - e * 0.5, caixa.y, e, caixa.h),
+    ];
+    for (id, lado) in ids::RANGE_EDGES.into_iter().zip(lados) {
+        ctx.host.hit_index_mut().register(id, lado);
+    }
 }
 
 /// Os cels de cada camada (os grupos não têm): o cel activo aceso, os ligados numa pílula.
@@ -325,7 +427,8 @@ fn celulas(ctx: &mut PaintCtx, info: &PixelPanelInfo, g: &Grelha) {
         for c in g.first..g.end {
             let f = info.frames[c].id;
             let r = Rect::new(g.x(c), y, g.col_w, h);
-            if info.active_layer == Some(row.id) && info.active_frame == Some(f) {
+            let activo = info.active_layer == Some(row.id) && info.active_frame == Some(f);
+            if activo || no_intervalo(info, row.id, f) {
                 fill_rounded_rect(ctx.scene, r, radius, resolve(ColorToken::AccentSoft, theme));
             }
             ponto(ctx, r, cel(c));

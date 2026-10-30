@@ -129,6 +129,7 @@ impl crate::App {
                     Some(sel),
                     self.vec.grad_selected,
                     ph2d_vec_render::path_to_screen(&vec_xf, sel, cam_affine),
+                    hero.theme,
                     vector_scene,
                 );
             }
@@ -140,6 +141,7 @@ impl crate::App {
                         ph2d_vec_render::draw_marquee(
                             [f64::from(m.start.0), f64::from(m.start.1)],
                             [f64::from(m.cur.0), f64::from(m.cur.1)],
+                            hero.theme,
                             vector_scene,
                         );
                     }
@@ -149,7 +151,7 @@ impl crate::App {
                             .into_iter()
                             .map(|(x, y)| (f64::from(x), f64::from(y)))
                             .collect();
-                        ph2d_vec_render::draw_lasso(&pts, vector_scene);
+                        ph2d_vec_render::draw_lasso(&pts, hero.theme, vector_scene);
                     }
                 }
             }

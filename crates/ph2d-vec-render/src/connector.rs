@@ -15,17 +15,21 @@
 //! **azul** = o usuário a pregou naquele ponto. Sem a distinção não há como saber, olhando, se
 //! aquela linha ainda vai se reorganizar sozinha ou não.
 
-use ph2d_vector::{Affine, BezPath, Brush, Circle, Color, Fill, Point, Stroke, VectorScene};
+use ph2d_tokens::{ColorToken, Theme};
+use ph2d_vector::{Affine, BezPath, Brush, Circle, Fill, Point, Stroke, VectorScene};
+
+use crate::token_ink;
 
 /// O raio do círculo da alça, em PIXELS de tela. Em pixels e não em mundo: uma alça que
 /// encolhesse com o zoom-out ficaria impegável exatamente quando o diagrama fica grande.
 pub const HANDLE_R_PX: f64 = 7.0;
 
 /// A ponta **automática** (o lado é re-escolhido a cada frame conforme a outra forma se move).
-const FLOATING: Color = Color::from_rgba8(90, 210, 130, 255);
+const FLOATING: ColorToken = ColorToken::Success;
 /// A ponta **fixada** pelo usuário num ponto da forma.
-const PINNED: Color = Color::from_rgba8(90, 160, 240, 255);
-const RING: Color = Color::from_rgba8(255, 255, 255, 255);
+const PINNED: ColorToken = ColorToken::Info;
+/// O anel que destaca a alça de qualquer fundo — o texto primário do tema.
+const RING: ColorToken = ColorToken::Text1;
 
 /// Desenha as alças. `points` = `(ponto de MUNDO, está fixada?)`; `transform` leva mundo→tela.
 ///
@@ -34,6 +38,7 @@ const RING: Color = Color::from_rgba8(255, 255, 255, 255);
 pub fn draw_connector_handles(
     points: &[([f64; 2], bool)],
     transform: Affine,
+    theme: Theme,
     target: &mut VectorScene,
 ) {
     for &(w, pinned) in points {
@@ -42,7 +47,7 @@ pub fn draw_connector_handles(
         target.inner_mut().fill(
             Fill::NonZero,
             Affine::IDENTITY,
-            &Brush::Solid(if pinned { PINNED } else { FLOATING }),
+            &Brush::Solid(token_ink(if pinned { PINNED } else { FLOATING }, theme)),
             None,
             &c,
         );
@@ -51,7 +56,7 @@ pub fn draw_connector_handles(
         target.inner_mut().stroke(
             &Stroke::new(1.5),
             Affine::IDENTITY,
-            &Brush::Solid(RING),
+            &Brush::Solid(token_ink(RING, theme)),
             None,
             &c,
         );
@@ -63,10 +68,15 @@ pub fn draw_connector_handles(
 /// A forma carrega o significado: um círculo é uma ponta (ela se prende a alguma coisa), um
 /// quadrado é um ponto fincado no espaço. Distinguir só pela cor obrigaria o usuário a lembrar
 /// qual é qual; pela forma, ele não precisa lembrar de nada.
-const WAYPOINT: Color = Color::from_rgba8(245, 190, 90, 255);
+const WAYPOINT: ColorToken = ColorToken::Warn;
 
 /// Desenha os pontos de passagem, em MUNDO.
-pub fn draw_connector_waypoints(points: &[[f64; 2]], transform: Affine, target: &mut VectorScene) {
+pub fn draw_connector_waypoints(
+    points: &[[f64; 2]],
+    transform: Affine,
+    theme: Theme,
+    target: &mut VectorScene,
+) {
     let h = HANDLE_R_PX * 0.85; // meia-aresta: um quadrado de mesma área "pesa" mais que o círculo
     for &w in points {
         let p = transform * Point::new(w[0], w[1]);
@@ -79,14 +89,14 @@ pub fn draw_connector_waypoints(points: &[[f64; 2]], transform: Affine, target: 
         target.inner_mut().fill(
             Fill::NonZero,
             Affine::IDENTITY,
-            &Brush::Solid(WAYPOINT),
+            &Brush::Solid(token_ink(WAYPOINT, theme)),
             None,
             &sq,
         );
         target.inner_mut().stroke(
             &Stroke::new(1.5),
             Affine::IDENTITY,
-            &Brush::Solid(RING),
+            &Brush::Solid(token_ink(RING, theme)),
             None,
             &sq,
         );
@@ -98,7 +108,7 @@ pub fn draw_connector_waypoints(points: &[[f64; 2]], transform: Affine, target: 
 /// ⚠️ **VERDE e OCA, e as duas coisas carregam significado:** a cor é a das pontas flutuantes (algo
 /// que ainda não existe), e o miolo vazio diz que ali **não há** nó — um disco cheio leria-se como
 /// uma âncora já posta, que é a coisa que o artista está a tentar distinguir.
-const PREVIA: Color = Color::from_rgba8(90, 210, 130, 255);
+const PREVIA: ColorToken = ColorToken::Success;
 
 /// ⭐⭐⭐ **Desenha a prévia de inserção da caneta**, num ponto de MUNDO.
 ///
@@ -106,21 +116,26 @@ const PREVIA: Color = Color::from_rgba8(90, 210, 130, 255);
 /// criar um ponto»*. ⚠️ O raio é constante em PÍXEIS (o ponto sobe pelo afim e o raio não), como nas
 /// alças ao lado — um realce que encolhe com o zoom desaparece exactamente quando se aproxima para
 /// acertar.
-pub fn draw_insert_preview(world: [f64; 2], transform: Affine, target: &mut VectorScene) {
+pub fn draw_insert_preview(
+    world: [f64; 2],
+    transform: Affine,
+    theme: Theme,
+    target: &mut VectorScene,
+) {
     let p = transform * Point::new(world[0], world[1]);
     let c = Circle::new(p, HANDLE_R_PX);
     // O anel branco por baixo destaca de qualquer fundo — a própria linha da forma passa por ali.
     target.inner_mut().stroke(
         &Stroke::new(3.0),
         Affine::IDENTITY,
-        &Brush::Solid(RING),
+        &Brush::Solid(token_ink(RING, theme)),
         None,
         &c,
     );
     target.inner_mut().stroke(
         &Stroke::new(1.5),
         Affine::IDENTITY,
-        &Brush::Solid(PREVIA),
+        &Brush::Solid(token_ink(PREVIA, theme)),
         None,
         &c,
     );
@@ -136,7 +151,7 @@ pub fn draw_insert_preview(world: [f64; 2], transform: Affine, target: &mut Vect
         target.inner_mut().stroke(
             &Stroke::new(1.5),
             Affine::IDENTITY,
-            &Brush::Solid(PREVIA),
+            &Brush::Solid(token_ink(PREVIA, theme)),
             None,
             &l,
         );

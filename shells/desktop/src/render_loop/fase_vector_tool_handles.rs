@@ -43,7 +43,7 @@ impl crate::App {
                 &self.vec.entities,
                 self.vec.pen.selected_paths(),
             );
-            ph2d_vec_render::draw_connector_handles(&handles, cam_affine, vector_scene);
+            ph2d_vec_render::draw_connector_handles(&handles, cam_affine, hero.theme, vector_scene);
             // Os pontos de passagem — QUADRADOS, por cima das bolinhas: quando um waypoint
             // é arrastado até uma ponta, é ele que está sob o dedo.
             let ways = crate::connector_handles::waypoint_view(
@@ -51,7 +51,7 @@ impl crate::App {
                 &self.vec.entities,
                 self.vec.pen.selected_paths(),
             );
-            ph2d_vec_render::draw_connector_waypoints(&ways, cam_affine, vector_scene);
+            ph2d_vec_render::draw_connector_waypoints(&ways, cam_affine, hero.theme, vector_scene);
         }
         // **A alça do TEXTO EM CAMINHO** (W5) — FORA do `overlay.edit`, pela MESMA razão das
         // alças do conector logo acima: ela é do modo **Select**, onde `overlay.edit` é FALSO
@@ -145,7 +145,7 @@ impl crate::App {
         // Cursor de texto (modo Text): na ponta da última linha em edição. Lê só o
         // campo `vec_text_edit` (fn livre), pra não colidir com o borrow de gfx.
         if let Some((a, b)) = crate::vec_text::caret_of(self.vec.text_edit.as_ref()) {
-            ph2d_vec_render::draw_text_caret(a, b, cam_affine, vector_scene);
+            ph2d_vec_render::draw_text_caret(a, b, cam_affine, hero.theme, vector_scene);
         }
         // Drain the Painter Falloff right-click handle menu choice (chrome
         // parked the HandleType wire u8 in `pending_falloff_point_handle`) →

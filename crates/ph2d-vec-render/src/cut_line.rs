@@ -18,14 +18,17 @@
 //! overlay deste editor é tracejado a dois tons). A **tesoura** senta na ponta FINAL e aponta
 //! para onde a linha ia — é ela que diz *"isto corta"* sem uma palavra.
 
+use ph2d_tokens::{ColorToken, Theme};
 use ph2d_vector::{Affine, BezPath, Brush, Color, PathEl, Point, Shape, Stroke, VectorScene};
+
+use crate::token_ink;
 
 /// O casing: quase preto, translúcido. Ele é 2 px mais largo que a hachura de propósito — é o
 /// contorno que a faz existir sobre qualquer fundo.
-const CASING: Color = Color::from_rgba8(20, 22, 26, 190);
+const CASING: ColorToken = ColorToken::BgScrim;
 /// A hachura: âmbar. A cor de "ferramenta armada" deste editor (as fichas do Pattern, os anéis
 /// de âncora da física), e não o ciano dos overlays de seleção — a lâmina não é uma seleção.
-const BLADE: Color = Color::from_rgba8(255, 186, 80, 235);
+const BLADE: ColorToken = ColorToken::Warn;
 
 /// Largura da hachura, em px de tela.
 const BLADE_W: f64 = 1.6;
@@ -42,7 +45,8 @@ const SCISSOR_RING_PX: f64 = 2.6;
 ///
 /// `path` é a geometria **cozida** — o que o artista vê é o que a lâmina corta, e re-derivar a
 /// curva aqui seria uma segunda resposta a *"por onde passa este corte?"*.
-pub fn draw_cut_line(path: &BezPath, camera: Affine, target: &mut VectorScene) {
+pub fn draw_cut_line(path: &BezPath, camera: Affine, theme: Theme, target: &mut VectorScene) {
+    let (casing, blade) = (token_ink(CASING, theme), token_ink(BLADE, theme));
     let screen = camera * path.clone();
     if screen.elements().is_empty() {
         return;
@@ -50,19 +54,19 @@ pub fn draw_cut_line(path: &BezPath, camera: Affine, target: &mut VectorScene) {
     target.inner_mut().stroke(
         &Stroke::new(BLADE_W + 2.0),
         Affine::IDENTITY,
-        &Brush::Solid(CASING),
+        &Brush::Solid(casing),
         None,
         &screen,
     );
     target.inner_mut().stroke(
         &Stroke::new(BLADE_W).with_dashes(0.0, DASH),
         Affine::IDENTITY,
-        &Brush::Solid(BLADE),
+        &Brush::Solid(blade),
         None,
         &screen,
     );
     if let Some((tip, dir)) = tip_and_direction(&screen) {
-        draw_scissors(tip, dir, target);
+        draw_scissors(tip, dir, casing, blade, target);
     }
 }
 
@@ -128,7 +132,13 @@ fn tip_and_direction(screen: &BezPath) -> Option<([f64; 2], [f64; 2])> {
 /// Ela é desenhada em px de TELA, com o eixo em `dir` — girada para a direção em que a linha
 /// chega. Um glifo fixo apontaria sempre para o mesmo lado e leria como um ícone colado, não
 /// como a ponta da ferramenta.
-fn draw_scissors(tip: [f64; 2], dir: [f64; 2], target: &mut VectorScene) {
+fn draw_scissors(
+    tip: [f64; 2],
+    dir: [f64; 2],
+    casing: Color,
+    blade: Color,
+    target: &mut VectorScene,
+) {
     let perp = [-dir[1], dir[0]];
     // O pivô fica ATRÁS da ponta: a ponta da linha é onde o corte acaba, e as lâminas abrem para
     // lá dela (é assim que uma tesoura de verdade se apoia no traço).
@@ -150,14 +160,14 @@ fn draw_scissors(tip: [f64; 2], dir: [f64; 2], target: &mut VectorScene) {
     target.inner_mut().stroke(
         &Stroke::new(BLADE_W + 2.0),
         Affine::IDENTITY,
-        &Brush::Solid(CASING),
+        &Brush::Solid(casing),
         None,
         &blades,
     );
     target.inner_mut().stroke(
         &Stroke::new(BLADE_W),
         Affine::IDENTITY,
-        &Brush::Solid(BLADE),
+        &Brush::Solid(blade),
         None,
         &blades,
     );
@@ -168,7 +178,7 @@ fn draw_scissors(tip: [f64; 2], dir: [f64; 2], target: &mut VectorScene) {
         target.inner_mut().stroke(
             &Stroke::new(BLADE_W),
             Affine::IDENTITY,
-            &Brush::Solid(BLADE),
+            &Brush::Solid(blade),
             None,
             &ring,
         );

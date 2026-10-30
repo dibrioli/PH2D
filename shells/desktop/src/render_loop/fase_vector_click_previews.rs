@@ -47,7 +47,7 @@ impl crate::App {
         // acenderia a marca num sítio em que o clique já não insere — o defeito que o realce do Trim
         // e o do Balde nomeiam por escrito, logo acima.
         if let Some(p) = self.vec.previa_insercao {
-            ph2d_vec_render::draw_insert_preview(p, cam_affine, vector_scene);
+            ph2d_vec_render::draw_insert_preview(p, cam_affine, theme, vector_scene);
         }
         Some(())
     }

@@ -6,6 +6,7 @@
 //! hit-test / drag / draw helpers (the shell owns the camera + screen math).
 
 use crate::color;
+use ph2d_tokens::{ColorToken, Theme};
 use ph2d_vec_scene::{GradientPoint, Paint, VecPath, VecPathId, VecScene};
 use ph2d_vector::{
     Affine, BezPath, Brush, Circle, Color, Fill, ImageQuality, Point, Stroke, VectorScene,
@@ -230,14 +231,16 @@ pub fn draw_gradient_handles(
     selected: Option<VecPathId>,
     active: Option<GradHandle>,
     transform: Affine,
+    theme: Theme,
     target: &mut VectorScene,
 ) {
     let Some(sel) = selected else { return };
     let Some(path) = scene.paths().iter().find(|p| p.id == sel) else {
         return;
     };
-    let purple = Color::from_rgba8(180, 120, 235, 255); // Cavalry purple
-    let white = Color::from_rgba8(255, 255, 255, 255);
+    // A alça de PARÂMETRO (a mesma família das da forma, nunca a cor da caixa); o anel activo no texto.
+    let purple = crate::token_ink(ColorToken::ShapeHandle, theme);
+    let white = crate::token_ink(ColorToken::Text1, theme);
     // A ringed colour-swatch dot; a white ring marks the active handle.
     let dot = |target: &mut VectorScene, c: Point, fill: Color, is_active: bool| {
         target.inner_mut().fill(

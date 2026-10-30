@@ -49,6 +49,7 @@ impl crate::App {
                 ph2d_vec_render::draw_cut_line(
                     &ph2d_vec_render::build_bezpath(p),
                     ph2d_vec_render::path_to_screen(&vec_xf, id, cam_affine),
+                    hero.theme,
                     vector_scene,
                 );
             }
@@ -70,9 +71,15 @@ impl crate::App {
                 &doc_guides.iter().copied().collect::<Vec<_>>(),
                 [0.0, 0.0, f64::from(sw), f64::from(sh)],
                 cam_affine,
+                hero.theme,
                 vector_scene,
             );
-            ph2d_vec_render::draw_snap_guides(&self.vec.snap_guides, cam_affine, vector_scene);
+            ph2d_vec_render::draw_snap_guides(
+                &self.vec.snap_guides,
+                cam_affine,
+                hero.theme,
+                vector_scene,
+            );
             // **O NÚMERO da guia** — depois do traço dela, porque a cena tem de estar
             // livre para o renderizador de texto (a mesma ordem do readout de joint).
             // O zoom sai do MESMO afim que acabou de desenhar o segmento: a precisão
@@ -166,6 +173,7 @@ impl crate::App {
                     &axes,
                     [0.0, 0.0, f64::from(sw), f64::from(sh)],
                     cam_affine,
+                    hero.theme,
                     vector_scene,
                 );
             }

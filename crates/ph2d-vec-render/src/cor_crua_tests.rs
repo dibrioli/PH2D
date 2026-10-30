@@ -8,15 +8,9 @@
 use std::fs;
 use std::path::Path;
 
-/// A dívida medida em 25/10 (F30 §E). Fora daqui, zero.
-const DIVIDA: &[(&str, usize)] = &[
-    ("connector.rs", 5),
-    ("cut_line.rs", 2),
-    ("gradient.rs", 2),
-    ("guides.rs", 2),
-    ("marquee.rs", 4),
-    ("symmetry_overlay.rs", 1),
-];
+/// A dívida medida em 25/10 (F30 §E: connector 5 · cut_line 2 · gradient 2 · guides 2 · marquee 4
+/// · symmetry_overlay 1) foi paga em 29/10 (F40): todo overlay lê o tema por `token_ink`.
+const DIVIDA: &[(&str, usize)] = &[];
 
 fn cruas(src: &str) -> usize {
     let agulha = "from_rgba8(";

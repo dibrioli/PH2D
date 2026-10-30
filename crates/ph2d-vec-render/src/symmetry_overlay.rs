@@ -15,6 +15,7 @@
 //! dele), uma rosácea tem um CENTRO e as fatias que saem dele. Desenhar a rosácea como uma linha
 //! só a faria parecer um espelho que não funciona.
 
+use ph2d_tokens::{ColorToken, Theme};
 use ph2d_vector::{Affine, BezPath, Brush, Color, Point, Stroke, VectorScene};
 
 use crate::guides::clip_line_to_rect;
@@ -22,7 +23,7 @@ use crate::guides::clip_line_to_rect;
 /// Âmbar apagado — a cor de um eixo AUTORADO que atravessa a tela. Distinta do ciano das guias
 /// (aquelas são do documento e valem para tudo; esta pertence a UMA forma) e do realce de
 /// selecção, que já ocupa a silhueta.
-const AXIS: Color = Color::from_rgba8(235, 175, 90, 190);
+const AXIS: ColorToken = ColorToken::Warn;
 
 /// O raio, em px de TELA, dos raios de uma rosácea. Eles não atravessam a tela como um espelho:
 /// uma rosácea tem um alcance, e desenhá-la infinita esconderia onde ela de facto está.
@@ -48,9 +49,11 @@ pub fn draw_symmetry_axes(
     axes: &[SymmetryAxis],
     canvas: [f64; 4],
     transform: Affine,
+    theme: Theme,
     target: &mut VectorScene,
 ) {
     let thin = Stroke::new(1.0);
+    let ink = crate::token_ink(AXIS, theme);
     for ax in axes {
         // O ponto sobe pela câmera; a DIREÇÃO sobe pelo mesmo afim mas sem a translação — levar
         // uma direção como ponto é o erro clássico, e aqui ele deixaria toda linha apontando
@@ -63,7 +66,7 @@ pub fn draw_symmetry_axes(
                 let Some((s, e)) = clip_line_to_rect(a, d, canvas) else {
                     continue;
                 };
-                stroke_seg(target, &thin, s, e);
+                stroke_seg(target, &thin, ink, s, e);
             }
             Some(n) => {
                 // A rosácea: `n` raios a partir do centro, o primeiro sobre a direcção autorada.
@@ -81,6 +84,7 @@ pub fn draw_symmetry_axes(
                     stroke_seg(
                         target,
                         &thin,
+                        ink,
                         a,
                         Point::new(a.x + rx * SPOKE_PX, a.y + ry * SPOKE_PX),
                     );
@@ -90,11 +94,11 @@ pub fn draw_symmetry_axes(
     }
 }
 
-fn stroke_seg(target: &mut VectorScene, stroke: &Stroke, s: Point, e: Point) {
+fn stroke_seg(target: &mut VectorScene, stroke: &Stroke, ink: Color, s: Point, e: Point) {
     let mut line = BezPath::new();
     line.move_to(s);
     line.line_to(e);
     target
         .inner_mut()
-        .stroke(stroke, Affine::IDENTITY, &Brush::Solid(AXIS), None, &line);
+        .stroke(stroke, Affine::IDENTITY, &Brush::Solid(ink), None, &line);
 }

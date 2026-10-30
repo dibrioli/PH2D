@@ -12,7 +12,8 @@
 //! (`ph2d_editor_core::grid_snap::render`), com nove tipos de grade. Este módulo só
 //! explica o encaixe.
 
-use ph2d_vector::{Affine, BezPath, Brush, Color, Point, Stroke, VectorScene};
+use ph2d_tokens::{ColorToken, Theme};
+use ph2d_vector::{Affine, BezPath, Brush, Point, Stroke, VectorScene};
 
 /// O que a guia está DIZENDO. As quatro espécies são afirmações diferentes, então têm marcas
 /// diferentes — uma marca só para todas obrigaria o artista a adivinhar por que o ponto parou
@@ -46,11 +47,11 @@ pub struct Guide {
 }
 
 /// Ciano das guias — mesmo tom dos vértices selecionados nos overlays.
-const GUIDE: Color = Color::from_rgba8(90, 200, 235, 230);
+const GUIDE: ColorToken = ColorToken::Accent;
 /// A guia do DOCUMENTO: o mesmo ciano, mais apagado. Ela é permanente e atravessa a tela, então
 /// no brilho da guia de snap competiria com o desenho; recuar o alfa a põe atrás da arte sem
 /// mudar a família de cor — as duas são a mesma espécie de afirmação (*alinhe-se aqui*).
-const DOC_GUIDE: Color = Color::from_rgba8(90, 200, 235, 150);
+const DOC_GUIDE: ColorToken = ColorToken::FocusRing;
 /// Meia-aresta da cruz que marca a ponta de uma guia, em pixels de tela.
 const TICK_PX: f64 = 4.0;
 /// Raio do anel que marca um pouso SOBRE a curva, em pixels de tela.
@@ -58,7 +59,13 @@ const RING_PX: f64 = 4.5;
 
 /// Cursor de texto (modo Text): um segmento vertical SÓLIDO no ponto de inserção,
 /// screen-space via `transform`. `a`/`b` são as pontas em world (base e topo).
-pub fn draw_text_caret(a: [f64; 2], b: [f64; 2], transform: Affine, target: &mut VectorScene) {
+pub fn draw_text_caret(
+    a: [f64; 2],
+    b: [f64; 2],
+    transform: Affine,
+    theme: Theme,
+    target: &mut VectorScene,
+) {
     let pa = transform * Point::new(a[0], a[1]);
     let pb = transform * Point::new(b[0], b[1]);
     let mut line = BezPath::new();
@@ -67,14 +74,20 @@ pub fn draw_text_caret(a: [f64; 2], b: [f64; 2], transform: Affine, target: &mut
     target.inner_mut().stroke(
         &Stroke::new(1.5),
         Affine::IDENTITY,
-        &Brush::Solid(GUIDE),
+        &Brush::Solid(crate::token_ink(GUIDE, theme)),
         None,
         &line,
     );
 }
 
 /// Desenha as guias de snap ativas neste frame (screen-space, via `transform`).
-pub fn draw_snap_guides(guides: &[Guide], transform: Affine, target: &mut VectorScene) {
+pub fn draw_snap_guides(
+    guides: &[Guide],
+    transform: Affine,
+    theme: Theme,
+    target: &mut VectorScene,
+) {
+    let guide = crate::token_ink(GUIDE, theme);
     let dashed = Stroke::new(1.0).with_dashes(0.0, [4.0, 3.0]);
     let pen = Stroke::new(1.5);
     for g in guides {
@@ -83,7 +96,7 @@ pub fn draw_snap_guides(guides: &[Guide], transform: Affine, target: &mut Vector
         let mut ink = |p: &BezPath, s: &Stroke| {
             target
                 .inner_mut()
-                .stroke(s, Affine::IDENTITY, &Brush::Solid(GUIDE), None, p);
+                .stroke(s, Affine::IDENTITY, &Brush::Solid(guide), None, p);
         };
         if g.kind == GuideKind::Align {
             let mut line = BezPath::new();
@@ -178,9 +191,11 @@ pub fn draw_document_guides(
     guides: &[ph2d_guides::Guide],
     canvas: [f64; 4],
     transform: Affine,
+    theme: Theme,
     target: &mut VectorScene,
 ) {
     let thin = Stroke::new(1.0);
+    let doc_guide = crate::token_ink(DOC_GUIDE, theme);
     for g in guides {
         // Um ponto QUALQUER da guia, e um segundo deslocado ao longo dela.
         let (p0, p1) = match g.axis {
@@ -198,7 +213,7 @@ pub fn draw_document_guides(
         target.inner_mut().stroke(
             &thin,
             Affine::IDENTITY,
-            &Brush::Solid(DOC_GUIDE),
+            &Brush::Solid(doc_guide),
             None,
             &line,
         );

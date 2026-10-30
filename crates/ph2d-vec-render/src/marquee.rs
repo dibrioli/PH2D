@@ -8,7 +8,15 @@
 //! largura, e é o que já transformou o realce do Flip num borrão: uma espessura de 1,0 sob o afim
 //! mundo→tela é 1,0 unidade de MUNDO.
 
-use ph2d_vector::{Affine, BezPath, Brush, Color, Fill, Point, Rect, Stroke, VectorScene};
+use ph2d_tokens::{ColorToken, Theme};
+use ph2d_vector::{Affine, BezPath, Brush, Fill, Point, Rect, Stroke, VectorScene};
+
+use crate::token_ink;
+
+/// O miolo da região — a banda do selector de caixa do grafo (translúcida por contrato).
+const BAND: ColorToken = ColorToken::GraphMarquee;
+/// O contorno da região — o acento, como a borda da banda do grafo.
+const EDGE: ColorToken = ColorToken::Accent;
 
 /// Desenha a **caixa** da região em px de tela (o shell passa cantos de tela): preenchimento
 /// translúcido + contorno.
@@ -17,14 +25,14 @@ use ph2d_vector::{Affine, BezPath, Brush, Color, Fill, Point, Rect, Stroke, Vect
 /// (o retângulo deixou de exigir Shift; ele é o modificador de ADIÇÃO) e duplamente falso desde o
 /// laço (ela é UMA das duas formas). Um comentário que contradiz o código shipado é pior que
 /// comentário nenhum.
-pub fn draw_marquee(min: [f64; 2], max: [f64; 2], target: &mut VectorScene) {
+pub fn draw_marquee(min: [f64; 2], max: [f64; 2], theme: Theme, target: &mut VectorScene) {
     let (x0, x1) = (min[0].min(max[0]), min[0].max(max[0]));
     let (y0, y1) = (min[1].min(max[1]), min[1].max(max[1]));
     let rect = Rect::new(x0, y0, x1, y1);
     target.inner_mut().fill(
         Fill::NonZero,
         Affine::IDENTITY,
-        &Brush::Solid(Color::from_rgba8(90, 200, 235, 40)),
+        &Brush::Solid(token_ink(BAND, theme)),
         None,
         &rect,
     );
@@ -37,7 +45,7 @@ pub fn draw_marquee(min: [f64; 2], max: [f64; 2], target: &mut VectorScene) {
     target.inner_mut().stroke(
         &Stroke::new(1.0),
         Affine::IDENTITY,
-        &Brush::Solid(Color::from_rgba8(90, 200, 235, 200)),
+        &Brush::Solid(token_ink(EDGE, theme)),
         None,
         &outline,
     );
@@ -55,7 +63,7 @@ pub fn draw_marquee(min: [f64; 2], max: [f64; 2], target: &mut VectorScene) {
 /// MESMA regra que o selecciona (`NonZero` desenha, `even-odd` selecciona — em laço simples são
 /// a mesma região; num laço que se cruza o miolo pintado é mais generoso que o apanhado, e é o
 /// preço honesto de o Vello não expor even-odd por aqui).
-pub fn draw_lasso(points: &[(f64, f64)], target: &mut VectorScene) {
+pub fn draw_lasso(points: &[(f64, f64)], theme: Theme, target: &mut VectorScene) {
     if points.len() < 2 {
         return;
     }
@@ -68,14 +76,14 @@ pub fn draw_lasso(points: &[(f64, f64)], target: &mut VectorScene) {
     target.inner_mut().fill(
         Fill::NonZero,
         Affine::IDENTITY,
-        &Brush::Solid(Color::from_rgba8(90, 200, 235, 40)),
+        &Brush::Solid(token_ink(BAND, theme)),
         None,
         &path,
     );
     target.inner_mut().stroke(
         &Stroke::new(1.0),
         Affine::IDENTITY,
-        &Brush::Solid(Color::from_rgba8(90, 200, 235, 200)),
+        &Brush::Solid(token_ink(EDGE, theme)),
         None,
         &path,
     );

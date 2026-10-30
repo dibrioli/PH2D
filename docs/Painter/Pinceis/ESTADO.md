@@ -15,12 +15,13 @@
 
 1–18 em [`HANDOFF_JANELA_5.md`](HANDOFF_JANELA_5.md#decisões-de-produto-movidas-do-estado-em-2810-j6). Valem: (1) lâmina FIXA no eixo — confirmado na J6; (2) matriz é triagem, veredito = prancha + cega; (12) «diferença visível» = confiança média/alta. Pendentes do dono: 5 (cauda do taper), 8 (tecto de tamanho), no PDF.
 
-## J7 — bugs do smoke do dono (30/10), linha reaberta sobre o main `422fec2027`
+## J7 (30/10, [handoff](HANDOFF_JANELA_7.md)): papel fora do Desfazer `0d18a1e9ad` · #53 `cd07881b37` · censo do papel de cor `b1b0cdb513` (ABERTO #54 Marker Bullet) · #55 ladeira do óleo `9318d76827`.
 
-- **Bug 3** cor do papel fora do Desfazer `0d18a1e9ad` (só a separação do branco é passo; o resto do cartão Paper já não entrava).
-- **Bug 1** manchas brancas do molhado sobre tinta fina num papel de cor `cd07881b37` (BUGS #53, `na_caixa_das_tintas`; 11 miniaturas ≤ 2 níveis).
-- **Família** `b1b0cdb513`: censo `nenhum_pincel_de_fabrica_clareia_o_papel_de_cor` (66 presets, ~2 s). ABERTO #54: Marker Bullet assentado guarda branco opaco; cura simulada muda 25 miniaturas até 10 níveis ⇒ decisão do dono. Grain Colors: medido, o claro é a rampa RGB (OKLCH resolve).
-- **Bug 2** a água não sobe o óleo `9318d76827` (BUGS #55, `solver::ladeira_do_oleo`; massa no miolo 1 003 372 → 40 511; fábrica ao bit).
+## J8 (30/10)
+
+- **Dívida da J7** `1a7c1aa31c`: o #53 mudou 2 portões ao byte que a J7 não correu (`shape_color_tests` cena 6, `opcoes_tests` S inclinado); sobre o branco ≤ 2 níveis ⇒ regravados.
+- **Item 2 OKLCH** `3c283ce666`: `layers::rampa_nova()` (Grain Colors, Shape Color, camada de textura, Reset); `ColorRamp::default()` fica RGB; preset/projeto antigo traz o modo gravado.
+- **Item 1 aguada sobre o óleo — SIMULADO, à espera do «serve» do dono** ([prancha](pranchas/J8_aguada_sobre_oleo_4_variantes.jpg)). Sonda `diag_aguada_por_cima_do_oleo` com o seletor `assenta::SONDA_MISTURA` (NÃO comitado; 0 = hoje): A = Glaze total (azul-petróleo) · B = o tapar extra pinta a mistura K-M das duas tintas em vez da diluída em branco (verde; ao secar, pontos castanho-escuros na orla de baixo) · C = B + Glaze 0,5. Em todas a ladeira fica; ao secar a água escorre e o óleo volta quase azul.
 
 ## J6 ([`JANELA_6.md`](JANELA_6.md)): a fila
 

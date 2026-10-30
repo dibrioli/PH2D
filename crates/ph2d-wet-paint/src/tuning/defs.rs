@@ -333,4 +333,5 @@ pub const KNOB_DEFS: [KnobDef; KNOB_COUNT] = [
     // neutro 0 = a tinta de sempre, ao bit
     k(Knob::Dissolve, KnobGroup::Hidden, "rewetPaint", 0.0, 1.0, 0.01, 0.0, None),
     k(Knob::Solubility, KnobGroup::Hidden, "solubility", 0.0, 1.0, 0.01, 0.0, None),
+    k(Knob::RewetDrag, KnobGroup::Hidden, "rewetDrag", 0.0, 1.0, 0.01, 0.0, None),
 ];

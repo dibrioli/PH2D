@@ -204,9 +204,16 @@ impl Engine {
         } else {
             None
         };
+        // A água que re-molha arrasta a tinta solúvel do dab anterior (J10); `0` = nada, ao bit.
+        let arrasto = match trail.ultimo_dab.replace([dab.x, dab.y]) {
+            Some([px, py]) if p.k(crate::tuning::Knob::RewetDrag) > 0.0 => {
+                crate::tools::apply_remolha_arrasto(&mut layer.grid, &p, &tex, &dab, px, py)
+            }
+            _ => None,
+        };
         // As DUAS escritas do dab: o carimbo de umidade (todo dab) e o pigmento
         // pousado (quando a janela enche). Ver [`crate::trail::Accumulated`].
-        let rect = TouchedRect::union(acc.wrote, landed);
+        let rect = TouchedRect::union(TouchedRect::union(acc.wrote, landed), arrasto);
         self.brush_tex = Some(tex);
         if let Some(rc) = rect {
             self.merge_dirty(rc.x0, rc.y0, rc.x1, rc.y1);

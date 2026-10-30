@@ -307,9 +307,22 @@ impl Engine {
                 } else {
                     None
                 };
+                // A água que re-molha arrasta a tinta solúvel do dab anterior (J10); `0` = nada, ao bit.
+                let arrasto = if self.has_prev_dab && p.k(crate::tuning::Knob::RewetDrag) > 0.0 {
+                    crate::tools::apply_remolha_arrasto(
+                        &mut layer.grid,
+                        &p,
+                        &tex,
+                        &dab,
+                        self.prev_dab_x,
+                        self.prev_dab_y,
+                    )
+                } else {
+                    None
+                };
                 // As DUAS escritas do dab: o carimbo de umidade (todo dab) e o
                 // pigmento pousado (quando a janela enche).
-                TouchedRect::union(acc.wrote, landed)
+                TouchedRect::union(TouchedRect::union(acc.wrote, landed), arrasto)
             }
             Tool::Blend => {
                 // Blend is a tool (fixed hardness 4.8, intensity clamped to 3)

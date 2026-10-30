@@ -25,6 +25,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_wet_cartao.rewet_tip" => {
             "How much this brush's water dissolves soluble paint under it"
         }
+        "panel.painter_wet_cartao.rewet_drag" => "Drag",
+        "panel.painter_wet_cartao.rewet_drag_tip" => {
+            "How much this brush's water drags soluble paint along the stroke, like Smear"
+        }
         "panel.painter_wet_cartao.solubility" => "Solubility",
         "panel.painter_wet_cartao.solubility_tip" => {
             "How much this paint, once laid, dissolves under later water"

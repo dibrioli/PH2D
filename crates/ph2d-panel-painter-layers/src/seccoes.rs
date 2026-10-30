@@ -442,6 +442,7 @@ pub(crate) const WETPAINT_CARTAO: &[&str] = &[
     "panel.painter_wet_cartao.wet_bloom",
     "panel.painter_wet_cartao.tip_pickup",
     "panel.painter_wet_cartao.rewet",
+    "panel.painter_wet_cartao.rewet_drag",
     "panel.painter_wet_cartao.solubility",
     "panel.painter_wet_cartao.strength",
     "panel.painter_wet_cartao.smear_water",

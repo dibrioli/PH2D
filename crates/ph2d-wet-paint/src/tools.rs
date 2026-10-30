@@ -19,7 +19,7 @@ mod marca; // o Smear leva a marca do nivelado (K9)
 mod secador; // o secador seca a tinta já nivelada (J6) — filho por LOC
 pub use secador::apply_dry_level;
 mod smear; // o Smear: arrasta a tinta do dab anterior (Doc 23 P2) — filho por LOC
-pub use smear::apply_smear;
+pub use smear::{apply_remolha_arrasto, apply_smear};
 
 /// Doc 23: the shared active-lift gain — `wetLift · stainingMultiplier`.
 /// Every active rewetter (Wet dissolve, wet Smear, wet Blend) derives its

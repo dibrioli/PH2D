@@ -332,9 +332,13 @@ pub enum Knob {
     /// traço seguinte ([`Knob::Dissolve`]). Pousa na célula ([`crate::grid::oleo_celula::OleoCelula::soluvel`]).
     /// `0` (omissão) = insolúvel a esta lei, ao bit.
     Solubility,
+    /// ⭐ **Drag** (dono 30/10, J10: «Smear parece mais com o que eu quero»): quanto a água deste pincel ARRASTA a tinta
+    /// solúvel debaixo dela ao longo do traço — o arrasto do Smear com a força `Drag × Solubility`
+    /// ([`crate::tools::apply_remolha_arrasto`]). `0` (omissão) = a tinta de sempre, ao bit.
+    RewetDrag,
 }
 
-pub const KNOB_COUNT: usize = 138;
+pub const KNOB_COUNT: usize = 139;
 
 /// O LEITOR TOLERANTE das chaves do material de antes da W3 (preset e macro gravados com elas): `(knob, valor)`
 /// na lei nova, `None` para uma chave que não é antiga. `roughnessMul` m → Roughness `0,5·m` (o neutro `1` → `0,5`,

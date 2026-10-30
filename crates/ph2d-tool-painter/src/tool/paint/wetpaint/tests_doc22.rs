@@ -530,6 +530,11 @@ fn rewet_e_solubility_do_cartao_chegam_ao_knob() {
     for (id, knob, v) in [
         (crate::ids::PAINTER_WETPAINT_REWET, Knob::Dissolve, 0.37),
         (
+            crate::ids::PAINTER_WETPAINT_REWET_DRAG,
+            Knob::RewetDrag,
+            0.48,
+        ),
+        (
             crate::ids::PAINTER_WETPAINT_SOLUBILITY,
             Knob::Solubility,
             0.62,

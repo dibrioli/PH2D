@@ -63,6 +63,10 @@ pub(crate) fn register_wetpaint(store: &mut WidgetStore) {
             "panel.painter_wet_cartao.rewet_tip",
         ),
         (
+            ph2d_tool_painter::ids::PAINTER_WETPAINT_REWET_DRAG,
+            "panel.painter_wet_cartao.rewet_drag_tip",
+        ),
+        (
             ph2d_tool_painter::ids::PAINTER_WETPAINT_SOLUBILITY,
             "panel.painter_wet_cartao.solubility_tip",
         ),

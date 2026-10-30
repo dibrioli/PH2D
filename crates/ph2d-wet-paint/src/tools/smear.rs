@@ -23,7 +23,50 @@ pub fn apply_smear(
     prev_x: f64,
     prev_y: f64,
 ) -> Option<TouchedRect> {
-    let force = p.k(Knob::Smear);
+    smear_com(g, p, tex, dab, prev_x, prev_y, Arrasto::Ferramenta)
+}
+
+/// ⭐ **O arrasto da água que RE-MOLHA** (dono 30/10, J10: «o pincel molhado não consegue mobilizar a tinta do Dabber»;
+/// o Smear e o Blend mobilizam-na porque LEVAM a tinta do dab anterior para o atual — a água sozinha quase não corre
+/// sobre o óleo): o pincel com [`Knob::RewetDrag`] arrasta o SUSPENSO e a água do Smear com a força
+/// `Drag × Solubility` (a solubilidade da célula ou da origem, a maior: a tinta solúvel sai do óleo para o papel), o
+/// assentado incluído como no Smear (dono 30/10: «Smear parece mais com o que eu quero»).
+pub fn apply_remolha_arrasto(
+    g: &mut Grid,
+    p: &Params,
+    tex: &[f32],
+    dab: &Dab,
+    prev_x: f64,
+    prev_y: f64,
+) -> Option<TouchedRect> {
+    if g.oleo.is_empty() {
+        return None;
+    }
+    smear_com(g, p, tex, dab, prev_x, prev_y, Arrasto::Remolha)
+}
+
+/// Quem arrasta: a ferramenta Smear (a força do [`Knob::Smear`], o assentado incluído) ou a água que re-molha.
+#[derive(Clone, Copy, PartialEq)]
+enum Arrasto {
+    Ferramenta,
+    Remolha,
+}
+
+fn smear_com(
+    g: &mut Grid,
+    p: &Params,
+    tex: &[f32],
+    dab: &Dab,
+    prev_x: f64,
+    prev_y: f64,
+    quem: Arrasto,
+) -> Option<TouchedRect> {
+    let remolha = quem == Arrasto::Remolha;
+    let force = if remolha {
+        p.k(Knob::RewetDrag)
+    } else {
+        p.k(Knob::Smear)
+    };
     // A água do Smear ([`Knob::SmearWater`]): até ao meio, quanto da água o rasto arrasta; acima, quanto molha.
     let agua = p.k(Knob::SmearWater);
     let arrasta_agua = (2.0 * agua).min(1.0);
@@ -105,8 +148,7 @@ pub fn apply_smear(
             if stamp > 1.0 {
                 stamp = 1.0;
             }
-            let u = (stamp * force).min(1.0);
-            if u <= 0.0 {
+            if stamp * force <= 0.0 {
                 return;
             }
             // Clamp the sample offset to the snapshot pad.
@@ -126,6 +168,17 @@ pub fn apply_smear(
             }
             let x0 = fx.floor() as i32;
             let y0 = fy.floor() as i32;
+            let u = if remolha {
+                let sol =
+                    |k: usize| f64::from(crate::grid::oleo_celula::da_celula(oleo, k).soluvel);
+                let origem = (fx.round() as usize) + (fy.round() as usize) * *s;
+                (stamp * force * sol(i).max(sol(origem))).min(1.0)
+            } else {
+                (stamp * force).min(1.0)
+            };
+            if u <= 0.0 {
+                return;
+            }
             let tx = fx - x0 as f64;
             let ty = fy - y0 as f64;
             let l00 = (x0 - r.x0) as usize + (y0 - r.y0) as usize * snap_w;

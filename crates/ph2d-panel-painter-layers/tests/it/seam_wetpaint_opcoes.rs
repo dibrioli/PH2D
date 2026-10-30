@@ -209,8 +209,8 @@ fn as_dicas_das_opcoes() {
 #[test]
 fn as_dicas_dos_knobs_do_pincel() {
     use ph2d_tool_painter::ids::{
-        PAINTER_WETPAINT_DIFFUSION, PAINTER_WETPAINT_REWET, PAINTER_WETPAINT_SOLUBILITY,
-        PAINTER_WETPAINT_TIP_PICKUP, PAINTER_WETPAINT_WET_BLOOM,
+        PAINTER_WETPAINT_DIFFUSION, PAINTER_WETPAINT_REWET, PAINTER_WETPAINT_REWET_DRAG,
+        PAINTER_WETPAINT_SOLUBILITY, PAINTER_WETPAINT_TIP_PICKUP, PAINTER_WETPAINT_WET_BLOOM,
     };
     let (host, _, _) = pinta(&molhado());
     for (id, chave) in [
@@ -228,6 +228,10 @@ fn as_dicas_dos_knobs_do_pincel() {
         ),
         // O Re-wet e a Solubility (dono 30/10, J10).
         (PAINTER_WETPAINT_REWET, "panel.painter_wet_cartao.rewet_tip"),
+        (
+            PAINTER_WETPAINT_REWET_DRAG,
+            "panel.painter_wet_cartao.rewet_drag_tip",
+        ),
         (
             PAINTER_WETPAINT_SOLUBILITY,
             "panel.painter_wet_cartao.solubility_tip",

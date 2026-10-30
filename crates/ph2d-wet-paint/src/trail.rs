@@ -148,6 +148,8 @@ pub struct Trail {
     mat_base: crate::material::MaterialCelula,
     /// O assentado de cada célula no primeiro toque do traço que re-molha ([`Knob::Dissolve`], J10).
     remolha_inicio: transfer::remolha::Inicio,
+    /// O centro do dab anterior DESTE traço: o arrasto da água que re-molha ([`crate::tools::apply_remolha_arrasto`]).
+    pub(crate) ultimo_dab: Option<[f64; 2]>,
 }
 
 /// Canvas rect touched by a transfer (cell coords, inclusive).
@@ -252,6 +254,7 @@ impl Default for Trail {
             por_assentar: Vec::new(),
             por_assentar_pendente: false,
             remolha_inicio: transfer::remolha::Inicio::default(),
+            ultimo_dab: None,
             filme: filme::Filme::default(),
             molhado: molhado::Molhado::default(),
             mat_ponta: Vec::new(),
@@ -272,6 +275,7 @@ impl Trail {
         self.mat_ponta.clear();
         self.por_assentar_pendente = true;
         self.remolha_inicio.traco_novo();
+        self.ultimo_dab = None;
         self.base_r = color[0];
         self.base_g = color[1];
         self.base_b = color[2];

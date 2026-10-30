@@ -314,6 +314,10 @@ pub const PAINTER_WETPAINT_REWET: NodeId = hash_node_id("painter_brush.wetpaint_
 /// `solubility`; dono 30/10, J10).
 pub const PAINTER_WETPAINT_SOLUBILITY: NodeId = hash_node_id("painter_brush.wetpaint_solubility");
 
+/// **Drag** — quanto a água deste pincel arrasta a tinta solúvel ao longo do traço, como o Smear (knob `rewetDrag`;
+/// dono 30/10, J10).
+pub const PAINTER_WETPAINT_REWET_DRAG: NodeId = hash_node_id("painter_brush.wetpaint_rewet_drag");
+
 /// **Erase Strength** — the wet eraser's lift per pass (engine `sliders.erase`, boot `0.4`).
 pub const PAINTER_WETPAINT_ERASE: NodeId = hash_node_id("painter_brush.wetpaint_erase");
 
@@ -336,7 +340,7 @@ pub const PAINTER_WETPAINT_BLOW_STRENGTH: NodeId =
 
 /// The Wet Paint **number-field** ids — ONE membership list for the panel's `SetValue` forward
 /// (`number_field::is_param_field`), the populate loop, and the tool's routing match.
-pub const PAINTER_WETPAINT_FIELDS: [NodeId; 30] = [
+pub const PAINTER_WETPAINT_FIELDS: [NodeId; 31] = [
     PAINTER_WETPAINT_GRID,
     PAINTER_WETPAINT_FLOW,
     PAINTER_WETPAINT_WATER,
@@ -356,6 +360,7 @@ pub const PAINTER_WETPAINT_FIELDS: [NodeId; 30] = [
     PAINTER_WETPAINT_WET_BLOOM,
     PAINTER_WETPAINT_TIP_PICKUP,
     PAINTER_WETPAINT_REWET,
+    PAINTER_WETPAINT_REWET_DRAG,
     PAINTER_WETPAINT_SOLUBILITY,
     PAINTER_WETPAINT_ERASE,
     PAINTER_WETPAINT_SMEAR_STRENGTH,

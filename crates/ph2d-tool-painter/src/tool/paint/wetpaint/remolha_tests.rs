@@ -8,8 +8,8 @@ use ph2d_editor_core::Tool;
 use ph2d_editor_core::tool::{CanvasPaintTool, PanelEvent, PointerPhase};
 use ph2d_wet_paint::tuning::Knob;
 
-/// O óleo azul (Solubility `soluvel`) e, por cima, a aguada amarela (Re-wet `dissolve`), assentada.
-fn cena(papel: [u8; 3], soluvel: f64, dissolve: f64) -> PainterTool {
+/// O óleo azul (Solubility `soluvel`) e, por cima, a aguada amarela (Re-wet `dissolve`, Drag `arrasto`), a meio.
+fn cena(papel: [u8; 3], soluvel: f64, dissolve: f64, arrasto: f64) -> PainterTool {
     let mut t = PainterTool::default();
     t.abre_a_sprite(vec![255u8; W * H * 4], W as u32, H as u32);
     t.set_paint_tool_mode("wetpaint");
@@ -35,6 +35,7 @@ fn cena(papel: [u8; 3], soluvel: f64, dissolve: f64) -> PainterTool {
     t.preset_aplicar(&preset("Watercolor/Fluid/Wet Flat.ph2d-brush.png"))
         .expect("o meio");
     t.paint.wetpaint.knobs.set(Knob::Dissolve, dissolve);
+    t.paint.wetpaint.knobs.set(Knob::RewetDrag, arrasto);
     t.set_brush_size_px(40.0);
     t.set_brush_color_srgb8([220, 200, 40]);
     t.on_canvas_pointer(ponteiro(120.0, 30.0, PointerPhase::Down));
@@ -94,16 +95,16 @@ fn medidas(t: &mut PainterTool) -> (f64, f64) {
 #[test]
 fn sem_re_molhar_a_aguada_sobre_o_oleo_e_a_de_sempre() {
     let hoje = {
-        let mut t = cena(PAPEL, 0.0, 0.0);
+        let mut t = cena(PAPEL, 0.0, 0.0, 0.0);
         assenta(&mut t);
         mostrada(&mut t)
     };
-    for (soluvel, dissolve) in [(1.0, 0.0), (0.0, 0.35)] {
-        let mut t = cena(PAPEL, soluvel, dissolve);
+    for (soluvel, dissolve, arrasto) in [(1.0, 0.0, 0.0), (0.0, 0.35, 0.5)] {
+        let mut t = cena(PAPEL, soluvel, dissolve, arrasto);
         assenta(&mut t);
         assert!(
             mostrada(&mut t) == hoje,
-            "Solubility {soluvel} × Re-wet {dissolve} mudou a imagem"
+            "Solubility {soluvel} × Re-wet {dissolve} × Drag {arrasto} mudou a imagem"
         );
     }
 }
@@ -113,11 +114,11 @@ fn sem_re_molhar_a_aguada_sobre_o_oleo_e_a_de_sempre() {
 #[test]
 fn a_aguada_re_molha_o_oleo_soluvel() {
     let (oleo0, fora0) = {
-        let mut t = cena(PAPEL, 0.0, 0.0);
+        let mut t = cena(PAPEL, 0.0, 0.0, 0.0);
         assenta(&mut t);
         medidas(&mut t)
     };
-    let mut t = cena(PAPEL, 1.0, 0.35);
+    let mut t = cena(PAPEL, 1.0, 0.35, 0.0);
     assenta(&mut t);
     let (oleo, fora) = medidas(&mut t);
     let caiu = 1.0 - oleo / oleo0;
@@ -131,25 +132,25 @@ fn a_aguada_re_molha_o_oleo_soluvel() {
     );
 }
 
-/// SONDA — a cena a meio e assentada com Re-wet 0 · 0,2 · 0,35 · 0,55 (Solubility 1), no bege (`p`) e no branco (`b`).
+/// SONDA — a cena a meio e assentada com Re-wet 0,35 e Drag 0 · 0,15 · 0,3 · 0,5 (Solubility 1; `rw00` = hoje, sem
+/// nada), no bege (`p`) e no branco (`b`).
 #[test]
 #[ignore = "diagnóstico"]
 fn diag_a_aguada_re_molha_o_oleo() {
     for (pre, papel) in [("p", PAPEL), ("b", [255; 3])] {
-        for d in [0.0, 0.2, 0.35, 0.55] {
-            let mut t = cena(papel, 1.0, d);
-            grava(
-                &format!("{pre}_rw{:02}_meio", (d * 100.0) as u32),
-                &mostrada(&mut t),
-            );
+        for (nome, d, a) in [
+            ("00", 0.0, 0.0),
+            ("15", 0.35, 0.15),
+            ("30", 0.35, 0.3),
+            ("50", 0.35, 0.5),
+        ] {
+            let mut t = cena(papel, 1.0, d, a);
+            grava(&format!("{pre}_rw{nome}_meio"), &mostrada(&mut t));
             assenta(&mut t);
-            grava(
-                &format!("{pre}_rw{:02}_fim", (d * 100.0) as u32),
-                &mostrada(&mut t),
-            );
+            grava(&format!("{pre}_rw{nome}_fim"), &mostrada(&mut t));
             let (oleo, fora) = medidas(&mut t);
             relato(format!(
-                "{pre} Re-wet {d}: azul sob a aguada {oleo:.0} · azul fora do óleo {fora:.0}"
+                "{pre} Re-wet {d} Drag {a}: azul sob a aguada {oleo:.0} · azul fora do óleo {fora:.0}"
             ));
         }
     }

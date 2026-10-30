@@ -127,7 +127,7 @@ pub(crate) fn hit(tab: &Tab, k: &Kanban, ts: &mut TextSystem, x: f32, y: f32) ->
             let Some(top) = front::labels_top(&f).map(|t| cb.rect.y + t) else {
                 return Some(Hit::Card(cb.id));
             };
-            if (top..top + front::labels_h(ts, &f, tab.label_text)).contains(&y) {
+            if (top..top + front::labels_h(ts, &f, tab.label_text, cb.rect.w)).contains(&y) {
                 return Some(Hit::CardLabel(cb.id));
             }
         }

@@ -79,8 +79,8 @@ fn d14_the_dropdown_opens_the_whole_list_scrolls_and_picks() {
         pintados(&mut m, id, "Pop(Choice(").contains(&"Pop(Choice(40))".to_owned()),
         "a roda chega ao fim da lista"
     );
-    // O polegar arrastado até ao topo da calha volta ao princípio.
-    let fundo = (barra.x + barra.w / 2.0, barra.y + barra.h - 2.0);
+    // O polegar (no fundo, logo acima da seta ▼ — D16) arrastado até ao topo volta ao princípio.
+    let fundo = (barra.x + barra.w / 2.0, barra.y + barra.h - 20.0);
     m.arrasta(fundo, (barra.x + barra.w / 2.0, barra.y - 400.0), 4);
     m.quadro();
     assert!(

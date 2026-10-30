@@ -175,17 +175,19 @@ pub(super) fn paint_card_back_widgets(
 
     // As barras de um eixo: a da lista suspensa (vertical) e a do quadro do Kanban (horizontal).
     let row = ph2d_tokens::ROW_H_PX;
-    let body = Rect::new(x, y, w, 3.0 * row);
+    let body = Rect::new(x, y, w, 3.0 * row); // LITERAL-PX-OK: vitrine, três linhas à vista
     let mut list = ScrollList::default();
-    list.set(body, 9.0 * row);
+    list.set(body, 9.0 * row); // LITERAL-PX-OK: vitrine, nove linhas de conteúdo
     list.scroll_by(2.0 * row);
     let _ = list.paint_bar(body, false, scene, theme);
     y += body.h + gap;
     let bar = AxisBar {
         track: Rect::new(x, y, w, Spacing::Sm.px()),
         horizontal: true,
-        content: 3.0 * w,
+        content: 3.0 * w, // LITERAL-PX-OK: vitrine, conteúdo de três larguras
         visible: w,
+        arrows: true,
+        step: row,
     };
     let colors = (
         crate::paint::resolve(ColorToken::Bg3, theme),

@@ -129,7 +129,7 @@ fn paint(set: &KanbanSet, id: KanbanId, card: CardId) -> (probe::Painted, f32) {
     assert!(f.cover_px.is_some(), "a capa descodificou em 2 s");
     assert!(!cover::pending());
     let mut ts = TextSystem::without_system_fonts();
-    let h = measure(&mut ts, &f, true);
+    let h = measure(&mut ts, &f, true, m::CARD_W);
     crate::docs::KanbanDocs::default().probe_arm_fronts();
     let theme = Theme::Dark;
     let look = CardLook {
@@ -289,7 +289,10 @@ fn medir_capas() {
             .filter_map(|c| front::front(kk, counts, *c))
             .collect();
         let t_front = t.elapsed();
-        let hs: Vec<f32> = fronts.iter().map(|f| measure(&mut ts, f, true)).collect();
+        let hs: Vec<f32> = fronts
+            .iter()
+            .map(|f| measure(&mut ts, f, true, m::CARD_W))
+            .collect();
         let t_measure = t.elapsed() - t_front;
         for (f, h) in fronts.into_iter().zip(hs) {
             let look = CardLook {

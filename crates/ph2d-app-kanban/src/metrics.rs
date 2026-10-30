@@ -18,8 +18,14 @@ pub(crate) const ICON_PX: f32 = 16.0;
 
 // ── O quadro e as listas ──
 pub(crate) const BOARD_PAD: f32 = 12.0;
-/// A espessura das barras de rolagem: cabe na margem de baixo do quadro e na direita da lista.
+/// A espessura da barra do quadro: cabe na margem de baixo, por baixo das listas.
 pub(crate) const SCROLL_BAR: f32 = 6.0;
+/// ⭐ A barra da lista (D16), medida na captura do Trello do dono (`smoke/D16`): polegar de `9`,
+/// numa margem própria de `23` à direita dos cartões (7 + 9 + 7); o cartão perde `15` (256 → 241).
+pub(crate) const LIST_BAR: f32 = 9.0;
+pub(crate) const LIST_GUTTER: f32 = 23.0;
+/// O passo de uma seta da barra: o do Chrome, onde o dono usa o Trello.
+pub(crate) const SCROLL_STEP: f32 = 40.0;
 pub(crate) const LIST_GAP: f32 = 12.0;
 pub(crate) const LIST_W: f32 = 272.0;
 pub(crate) const LIST_RADIUS: f32 = 12.0;
@@ -68,6 +74,8 @@ pub(crate) const GLYPH_STROKE: f64 = 1.8;
 
 // ── O cartão (a frente) ──
 pub(crate) const CARD_W: f32 = 256.0;
+/// O cartão numa lista que rola: a margem direita é a da barra ([`LIST_GUTTER`]).
+pub(crate) const CARD_W_SCROLLING: f32 = LIST_W - LIST_BODY_X - LIST_GUTTER;
 pub(crate) const CARD_RADIUS: f32 = 8.0;
 pub(crate) const CARD_PAD_X: f32 = 12.0;
 pub(crate) const CARD_PAD_Y: f32 = 8.0;

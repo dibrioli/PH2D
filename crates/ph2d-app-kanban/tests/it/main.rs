@@ -9,6 +9,7 @@ mod d11_fotos;
 mod d11_fundo;
 mod d13_fundo_da_cena;
 mod d14_campos;
+mod d16_barra;
 mod d9;
 mod duas_janelas;
 mod escrever;

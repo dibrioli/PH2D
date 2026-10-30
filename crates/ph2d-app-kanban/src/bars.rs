@@ -1,6 +1,7 @@
 //! ⭐ **As barras de rolagem** (smoke do dono 30/10): a do quadro, por baixo das listas, e a de cada
-//! lista, na margem direita do corpo. A calha sai da disposição; as contas são as da [`AxisBar`];
-//! carregar na calha leva o polegar lá e agarra-o, e o arrasto segue até largar.
+//! lista, numa margem própria à direita (D16: a lista que rola estreita os cartões, como o Trello).
+//! A calha sai da disposição; as contas são as da [`AxisBar`]; as setas rolam um passo; carregar na
+//! calha leva o polegar lá e agarra-o, e o arrasto segue até largar.
 
 use crate::layout::{Layout, ListBox};
 use crate::metrics as m;
@@ -12,12 +13,14 @@ use ph2d_kanban_model::ListId;
 use ph2d_tokens::{ColorToken as T, Theme};
 use ph2d_vector::VectorScene;
 
-/// Uma barra agarrada: a de uma lista (`None` = a do quadro), onde agarrou e a rolagem de então.
+/// Uma barra agarrada: a de uma lista (`None` = a do quadro), onde agarrou e a rolagem de então;
+/// `arrow` = carregou-se numa seta (o arrasto não mexe; o largar é da barra).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) struct Grab {
     pub list: Option<ListId>,
     pub from: (f32, f32),
     pub s0: f32,
+    pub arrow: bool,
 }
 
 /// A calha do quadro: na margem de baixo, por baixo das listas.
@@ -37,18 +40,22 @@ fn of_board(l: &Layout) -> AxisBar {
         horizontal: true,
         content: l.content_w,
         visible: l.board.w,
+        arrows: true,
+        step: m::SCROLL_STEP,
     }
 }
 
 fn of_list(lb: &ListBox) -> AxisBar {
     let b = lb.body;
     let h = (b.h - m::LIST_BODY_TOP - m::LIST_BODY_BOTTOM).max(0.0);
-    let x = b.x + b.w - m::LIST_BODY_X + (m::LIST_BODY_X - m::SCROLL_BAR) / 2.0;
+    let x = b.x + b.w - m::LIST_GUTTER + (m::LIST_GUTTER - m::LIST_BAR) / 2.0;
     AxisBar {
-        track: Rect::new(x, b.y + m::LIST_BODY_TOP, m::SCROLL_BAR, h),
+        track: Rect::new(x, b.y + m::LIST_BODY_TOP, m::LIST_BAR, h),
         horizontal: false,
         content: lb.content_h,
         visible: h,
+        arrows: true,
+        step: m::SCROLL_STEP,
     }
 }
 
@@ -82,7 +89,7 @@ pub(crate) fn probe(tab: &Tab, list: Option<ListId>) -> Option<(Rect, Rect)> {
     Some((b.track, b.thumb(scroll(tab, list))))
 }
 
-/// A barra em `(x, y)` — o alvo é a margem inteira (a calha é fina).
+/// A barra em `(x, y)` — o alvo é a margem inteira, não só o polegar.
 pub(crate) fn hit(l: &Layout, x: f32, y: f32) -> Option<Hit> {
     if let Some(b) = bar(l, None) {
         let pad = (m::BOARD_PAD - m::SCROLL_BAR) / 2.0;
@@ -93,14 +100,15 @@ pub(crate) fn hit(l: &Layout, x: f32, y: f32) -> Option<Hit> {
     }
     l.lists.iter().find_map(|lb| {
         let t = bar(l, Some(lb.id))?.track;
-        let edge = lb.body.x + lb.body.w - m::LIST_BODY_X;
-        Rect::new(edge, t.y, m::LIST_BODY_X, t.h)
+        let edge = lb.body.x + lb.body.w - m::LIST_GUTTER;
+        Rect::new(edge, t.y, m::LIST_GUTTER, t.h)
             .contains(x, y)
             .then_some(Hit::Bar(Some(lb.id)))
     })
 }
 
-/// Carregar numa barra agarra-a (na calha, o polegar salta lá primeiro). `false` = não era barra.
+/// Carregar numa barra: na seta rola um passo; senão agarra-a (na calha, o polegar salta lá
+/// primeiro). `false` = não era barra.
 pub(crate) fn press(tab: &mut Tab, h: Hit, p: (f32, f32)) -> bool {
     let Hit::Bar(list) = h else {
         return false;
@@ -114,6 +122,7 @@ pub(crate) fn press(tab: &mut Tab, h: Hit, p: (f32, f32)) -> bool {
         list,
         from: p,
         s0: s,
+        arrow: b.arrow_at(p).is_some(),
     });
     true
 }
@@ -123,7 +132,7 @@ pub(crate) fn drag(tab: &mut Tab, p: (f32, f32)) -> bool {
     let Some(g) = tab.bar else {
         return false;
     };
-    if let Some(b) = bar(&tab.layout, g.list) {
+    if let Some(b) = bar(&tab.layout, g.list).filter(|_| !g.arrow) {
         set(tab, g.list, b.drag(g.from, g.s0, p));
     }
     true

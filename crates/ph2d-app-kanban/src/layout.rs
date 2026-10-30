@@ -119,7 +119,8 @@ pub(crate) enum Lifted {
 
 /// A altura de cada cartão (o pintor mede-a e guarda-a) e a do texto do campo aberto.
 pub(crate) trait Heights {
-    fn card(&mut self, k: &Kanban, id: CardId) -> f32;
+    /// A altura do cartão `id` à largura `w`.
+    fn card(&mut self, k: &Kanban, id: CardId, w: f32) -> f32;
     fn field(&mut self, text: &str, width: f32) -> f32;
     /// A largura de um título de lista numa linha.
     fn title_w(&mut self, text: &str) -> f32;
@@ -279,11 +280,8 @@ pub(crate) fn targets(ask: &Arrange<'_>, heights: &mut dyn Heights) -> Layout {
 }
 
 /// A caixa do compositor de cartão para `text`.
-fn composer_h(heights: &mut dyn Heights, text: &str) -> f32 {
-    (heights
-        .field(text, m::CARD_W - 2.0 * m::CARD_PAD_X)
-        .max(m::LINE_H)
-        + 2.0 * m::CARD_PAD_Y)
+fn composer_h(heights: &mut dyn Heights, text: &str, cw: f32) -> f32 {
+    (heights.field(text, cw - 2.0 * m::CARD_PAD_X).max(m::LINE_H) + 2.0 * m::CARD_PAD_Y)
         .max(m::COMPOSER_MIN_H)
 }
 
@@ -309,6 +307,110 @@ pub(crate) fn max_scroll_y(lb: &ListBox) -> f32 {
         return 0.0;
     }
     (lb.content_h - (lb.body.h - m::LIST_BODY_TOP - m::LIST_BODY_BOTTOM)).max(0.0)
+}
+
+/// A folga da pergunta «o conteúdo cabe?» — a mesma do `is_needed` da barra.
+const SCROLL_EPS: f32 = 0.5;
+
+/// O que a fila dos cartões de uma lista precisa para correr a uma largura.
+struct Flow<'a> {
+    k: &'a Kanban,
+    cards_all: &'a [CardId],
+    field: Option<&'a Field>,
+    composing: Option<(Option<CardId>, &'a str)>,
+    lifted: Option<Lifted>,
+    list: ListId,
+    /// Com o filtro, a lista sem nada diz porquê numa linha.
+    empty_note: bool,
+    inner_x: f32,
+}
+
+/// Os cartões dispostos, o espaço do arrasto, o compositor e a altura do conteúdo.
+struct Flowed {
+    cards: Vec<CardBox>,
+    slot: Option<Rect>,
+    composer: Option<Rect>,
+    content_h: f32,
+}
+
+impl Flow<'_> {
+    /// A fila com cartões de largura `cw`.
+    fn run(&self, heights: &mut dyn Heights, cw: f32) -> Flowed {
+        let (k, inner_x, composing) = (self.k, self.inner_x, self.composing);
+        let mut y = 0.0_f32;
+        let mut cards = Vec::new();
+        let mut slot = None;
+        let mut composer = None;
+        let lifted_card = match self.lifted {
+            Some(Lifted::Card { id, .. }) => Some(id),
+            _ => None,
+        };
+        let drop_at = match self.lifted {
+            Some(Lifted::Card {
+                to: Some((list, i)),
+                h,
+                ..
+            }) if list == self.list => Some((i, h)),
+            _ => None,
+        };
+        let push_gap = |y: &mut f32, h: f32| {
+            let r = Rect::new(inner_x, *y, cw, h);
+            *y += h + m::CARD_GAP;
+            r
+        };
+        let mut shown = 0usize;
+        for &id in self.cards_all {
+            if Some(id) == lifted_card {
+                continue;
+            }
+            if let Some((i, h)) = drop_at
+                && i == shown
+            {
+                slot = Some(push_gap(&mut y, h));
+            }
+            let editing = self
+                .field
+                .is_some_and(|f| f.target == Target::CardTitle(id));
+            let h = if editing {
+                let f = self.field.map_or("", |f| f.text.as_str());
+                (heights.field(f, cw - 2.0 * m::CARD_PAD_X) + 2.0 * m::CARD_PAD_Y)
+                    .max(heights.card(k, id, cw))
+            } else {
+                heights.card(k, id, cw)
+            };
+            cards.push(CardBox {
+                id,
+                rect: Rect::new(inner_x, y, cw, h),
+            });
+            y += h + m::CARD_GAP;
+            shown += 1;
+            if let Some((Some(after), text)) = composing
+                && after == id
+            {
+                let h = composer_h(heights, text, cw);
+                composer = Some(push_gap(&mut y, h));
+            }
+        }
+        if let Some((i, h)) = drop_at
+            && i >= shown
+        {
+            slot = Some(push_gap(&mut y, h));
+        }
+        if let Some((None, text)) = composing {
+            let h = composer_h(heights, text, cw);
+            composer = Some(push_gap(&mut y, h));
+        }
+        // Com o filtro, a lista que ficou sem nada diz porquê (a maquete: «No cards match the filter.»).
+        if self.empty_note && shown == 0 && composer.is_none() && slot.is_none() {
+            y = m::LINE_H + m::CARD_GAP;
+        }
+        Flowed {
+            cards,
+            slot,
+            composer,
+            content_h: (y - m::CARD_GAP).max(0.0),
+        }
+    }
 }
 
 /// O que todas as listas de uma disposição partilham.
@@ -411,77 +513,33 @@ fn list_box(
         m::LINE_H,
     );
     // Os cartões, um a seguir ao outro, com o espaço do arrasto e o compositor no meio.
-    let mut y = 0.0_f32;
-    let mut cards = Vec::new();
-    let mut slot = None;
-    let mut composer = None;
     let composing = field.and_then(|f| match f.target {
         Target::NewCard { list, after } if list == l.id => Some((after, f.text.as_str())),
         _ => None,
     });
-    let lifted_card = match lifted {
-        Some(Lifted::Card { id, .. }) => Some(id),
-        _ => None,
+    let flow = Flow {
+        k,
+        cards_all,
+        field,
+        composing,
+        lifted,
+        list: l.id,
+        empty_note: total.is_some(),
+        inner_x,
     };
-    let drop_at = match lifted {
-        Some(Lifted::Card {
-            to: Some((list, i)),
-            h,
-            ..
-        }) if list == l.id => Some((i, h)),
-        _ => None,
-    };
-    let push_gap = |y: &mut f32, h: f32| {
-        let r = Rect::new(inner_x, *y, m::CARD_W, h);
-        *y += h + m::CARD_GAP;
-        r
-    };
-    let mut shown = 0usize;
-    for &id in cards_all {
-        if Some(id) == lifted_card {
-            continue;
-        }
-        if let Some((i, h)) = drop_at
-            && i == shown
-        {
-            slot = Some(push_gap(&mut y, h));
-        }
-        let editing = field.is_some_and(|f| f.target == Target::CardTitle(id));
-        let h = if editing {
-            let f = field.map_or("", |f| f.text.as_str());
-            (heights.field(f, m::CARD_W - 2.0 * m::CARD_PAD_X) + 2.0 * m::CARD_PAD_Y)
-                .max(heights.card(k, id))
-        } else {
-            heights.card(k, id)
-        };
-        cards.push(CardBox {
-            id,
-            rect: Rect::new(inner_x, y, m::CARD_W, h),
-        });
-        y += h + m::CARD_GAP;
-        shown += 1;
-        if let Some((Some(after), text)) = composing
-            && after == id
-        {
-            let h = composer_h(heights, text);
-            composer = Some(push_gap(&mut y, h));
-        }
-    }
-    if let Some((i, h)) = drop_at
-        && i >= shown
-    {
-        slot = Some(push_gap(&mut y, h));
-    }
-    if let Some((None, text)) = composing {
-        let h = composer_h(heights, text);
-        composer = Some(push_gap(&mut y, h));
-    }
-    // Com o filtro, a lista que ficou sem nada diz porquê (a maquete: «No cards match the filter.»).
-    if total.is_some() && shown == 0 && composer.is_none() && slot.is_none() {
-        y = m::LINE_H + m::CARD_GAP;
-    }
-    let content_h = (y - m::CARD_GAP).max(0.0);
+    // ⭐ A lista que rola dá a margem direita à barra (D16, o Trello): os cartões estreitam e a
+    // altura deles volta a medir-se — mais estreito nunca é mais baixo, logo a decisão não oscila.
     let body_room = (max_h - head_h() - foot_h()).max(0.0);
+    let mut f = flow.run(heights, m::CARD_W);
+    if f.content_h > body_room + SCROLL_EPS {
+        f = flow.run(heights, m::CARD_W_SCROLLING);
+    }
+    let Flowed {
+        cards,
+        slot,
+        composer,
+        content_h,
+    } = f;
     let body_h = content_h.min(body_room) + m::LIST_BODY_TOP + m::LIST_BODY_BOTTOM;
     let body = Rect::new(x, top + head_h(), m::LIST_W, body_h);
     let foot_y = body.y + body.h + m::LIST_FOOT_TOP;

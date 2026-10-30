@@ -4,12 +4,12 @@
 //! [`place`] leva a disposição-alvo ([`crate::layout::targets`]) ao ecrã: mira as molas, avança-as e
 //! grava a disposição VISTA, que o clique seguinte lê.
 
-use crate::anim::Follow;
 use crate::edit::Field;
 use crate::layout::{CardBox, Layout, ListBox};
 use crate::metrics as m;
 use ph2d_editor_core::zones::Rect;
 use ph2d_kanban_model::{CardId, KanbanId, KanbanView, ListId};
+use ph2d_spring::Follow;
 use ph2d_spring::Spring;
 use std::collections::BTreeMap;
 
@@ -129,7 +129,7 @@ pub(crate) struct Tab {
     pub label_text: bool,
     pub springs: Springs,
     /// As alturas medidas: `(impressão do que pesa na altura, altura)`.
-    pub heights: BTreeMap<CardId, (u64, f32)>,
+    pub heights: crate::front::HeightCache,
     /// O cartão largado agora: parte de onde a mão o deixou (ecrã).
     pub landed: Option<(CardId, f32, f32)>,
     /// O que o último quadro PINTOU (as sondas leem-no).

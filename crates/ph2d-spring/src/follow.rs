@@ -1,10 +1,11 @@
-//! ⭐ **A mola que segue um alvo** — o espaço que abre, o cartão que assenta, a lista que recolhe.
+//! ⭐ **A mola que segue um alvo** — o espaço que abre, o cartão que assenta, a lista que recolhe
+//! (nasceu na `ph2d-app-kanban`; mora aqui com as outras leis de mola).
 //!
 //! A LEI (rigidez, amortecimento, ou nenhuma) é a do hero: `UiMotion::law(Role::Travel)` — o
 //! carácter que o artista escolheu e o «movimento reduzido», que a anula (tudo chega no quadro).
 //! Mudar o alvo a meio herda a velocidade: um cartão que se mexe e volta a mexer não dá saltos.
 
-use ph2d_spring::Spring;
+use crate::Spring;
 
 /// O passo de integração (o da `ph2d-spring`).
 const STEP: f64 = 1.0 / 240.0;
@@ -12,7 +13,7 @@ const STEP: f64 = 1.0 / 240.0;
 const SETTLE: f64 = 0.05;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub(crate) struct Follow {
+pub struct Follow {
     pub pos: f64,
     pub vel: f64,
     pub target: f64,

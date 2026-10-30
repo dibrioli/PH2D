@@ -10,7 +10,6 @@
 //! [ADR-0195]: ../../../docs/architecture/decisions/0195-o-kanban-e-um-documento-do-projeto-o-quadro-referencia-o-e-a-aba-abre-o.md
 
 mod actions;
-mod anim;
 mod archive;
 mod auto;
 mod back;

@@ -244,16 +244,16 @@ pub(crate) fn paint(
 /// O medidor de alturas que a disposição pede, sobre o texto e a cache da aba.
 struct Measure<'a> {
     ts: &'a mut TextSystem,
-    cache: &'a mut BTreeMap<CardId, (u64, f32)>,
+    cache: &'a mut front::HeightCache,
     fronts: &'a Fronts<'a>,
     rows: &'a crate::rows::Rows,
     label_text: bool,
 }
 
 impl Heights for Measure<'_> {
-    fn card(&mut self, _k: &Kanban, id: CardId) -> f32 {
+    fn card(&mut self, _k: &Kanban, id: CardId, w: f32) -> f32 {
         self.fronts.get(self.rows, id).map_or(m::LINE_H, |f| {
-            front::height(self.ts, self.cache, id, &f, self.label_text)
+            front::height(self.ts, self.cache, id, &f, self.label_text, w)
         })
     }
 
@@ -277,7 +277,7 @@ fn lifted(tab: &mut Tab, fronts: &Fronts<'_>, ts: &mut TextSystem) -> Option<Lif
     match d.lift {
         Lift::Card(id) => {
             let h = fronts.get(&tab.rows, id).map_or(d.size.1, |f| {
-                front::height(ts, &mut tab.heights, id, &f, tab.label_text)
+                front::height(ts, &mut tab.heights, id, &f, tab.label_text, d.size.0)
             });
             Some(Lifted::Card {
                 id,

@@ -114,7 +114,7 @@ pub(super) fn full(
     seen: &mut Painted,
 ) -> f32 {
     let k = m::CARD_RADIUS;
-    let h = front::full_h(ts, &f.title);
+    let h = front::full_h(ts, &f.title, r.w);
     let area = Rect::new(r.x, r.y, r.w, h);
     paint_fill(scene, theme, f, area, (k, k, k, k), seen);
     let inner = r.w - 2.0 * m::CARD_PAD_X;

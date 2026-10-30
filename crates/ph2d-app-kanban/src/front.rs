@@ -421,8 +421,8 @@ pub(crate) fn title_lines(ts: &mut TextSystem, title: &str, width: f32) -> usize
 
 /// A altura da capa inteira: o título por cima, nunca menos que [`FULL_MIN_H`].
 #[allow(clippy::cast_precision_loss)]
-pub(crate) fn full_h(ts: &mut TextSystem, title: &str) -> f32 {
-    let inner = m::CARD_W - 2.0 * m::CARD_PAD_X;
+pub(crate) fn full_h(ts: &mut TextSystem, title: &str, w: f32) -> f32 {
+    let inner = w - 2.0 * m::CARD_PAD_X;
     let n = lines(ts, title, FULL_TITLE_PX, FULL_TITLE_WEIGHT, inner) as f32;
     (FULL_PAD_TOP + n * m::LINE_H + FULL_PAD_BOTTOM).max(FULL_MIN_H)
 }
@@ -444,10 +444,10 @@ fn print(f: &Front, label_text: bool) -> u64 {
     h.finish()
 }
 
-/// A altura da faixa dos rótulos (chips com texto, ou barras).
+/// A altura da faixa dos rótulos (chips com texto, ou barras) num cartão de largura `w`.
 #[allow(clippy::cast_precision_loss)]
-pub(crate) fn labels_h(ts: &mut TextSystem, f: &Front, label_text: bool) -> f32 {
-    let inner = m::CARD_W - 2.0 * m::CARD_PAD_X;
+pub(crate) fn labels_h(ts: &mut TextSystem, f: &Front, label_text: bool, w: f32) -> f32 {
+    let inner = w - 2.0 * m::CARD_PAD_X;
     let rows = if label_text {
         let w: Vec<f32> = f.labels.iter().map(|(_, n)| chip_w(ts, n)).collect();
         chip_rows(&w, inner)
@@ -462,16 +462,16 @@ pub(crate) fn labels_h(ts: &mut TextSystem, f: &Front, label_text: bool) -> f32 
     rows as f32 * row_h + rows.saturating_sub(1) as f32 * m::LABEL_GAP
 }
 
-/// ⭐ A altura do cartão, pela MESMA conta que o pintor percorre.
+/// ⭐ A altura do cartão de largura `w`, pela MESMA conta que o pintor percorre.
 #[allow(clippy::cast_precision_loss)]
-pub(crate) fn measure(ts: &mut TextSystem, f: &Front, label_text: bool) -> f32 {
+pub(crate) fn measure(ts: &mut TextSystem, f: &Front, label_text: bool, w: f32) -> f32 {
     if f.full() {
-        return full_h(ts, &f.title);
+        return full_h(ts, &f.title, w);
     }
-    let inner = m::CARD_W - 2.0 * m::CARD_PAD_X;
+    let inner = w - 2.0 * m::CARD_PAD_X;
     let mut h = 2.0 * m::CARD_PAD_Y + cover_h(f);
     if !f.labels.is_empty() {
-        h += labels_h(ts, f, label_text) + m::CARD_ROW_GAP;
+        h += labels_h(ts, f, label_text, w) + m::CARD_ROW_GAP;
     }
     h += title_lines(ts, &f.title, inner) as f32 * m::LINE_H;
     if !f.fields.is_empty() {
@@ -484,22 +484,27 @@ pub(crate) fn measure(ts: &mut TextSystem, f: &Front, label_text: bool) -> f32 {
     h
 }
 
-/// ⭐ A altura do cartão (guardada em `cache` até mudar o que pesa nela).
+/// As alturas medidas, por cartão E largura (a lista que rola estreita os cartões — D16 — e a
+/// disposição pergunta as duas no mesmo quadro: uma entrada só faria-as medir de novo a cada quadro).
+pub(crate) type HeightCache = BTreeMap<(CardId, u32), (u64, f32)>;
+
+/// ⭐ A altura do cartão de largura `w` (guardada em `cache` até mudar o que pesa nela).
 pub(crate) fn height(
     ts: &mut TextSystem,
-    cache: &mut BTreeMap<CardId, (u64, f32)>,
+    cache: &mut HeightCache,
     id: CardId,
     f: &Front,
     label_text: bool,
+    w: f32,
 ) -> f32 {
     let key = print(f, label_text);
-    if let Some((k, h)) = cache.get(&id)
+    if let Some((k, h)) = cache.get(&(id, w.to_bits()))
         && *k == key
     {
         return *h;
     }
-    let h = measure(ts, f, label_text);
-    cache.insert(id, (key, h));
+    let h = measure(ts, f, label_text, w);
+    cache.insert((id, w.to_bits()), (key, h));
     h
 }
 

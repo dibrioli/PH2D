@@ -1,5 +1,13 @@
 # F30 — a lista FORA do Auto Key (plano, 25/10)
 
+> ⚠️ **Números renumerados na integração de 29/10** (conferidos no código do main de 30/10): famílias de canal
+> **LISTA 10 · MUNDO 11 · MESA 12** (`ph2d-ecs/src/canal.rs`; o main já tinha CONSTRAINT 8 e CAD 9) · degraus do `PROJECT_SCHEMA`
+> desta linha **203 → 207** (o texto abaixo diz 193 → 197): mesa `203 → 204` · itens das listas `205` · filtros e pilha `206` ·
+> relógios e poses `207` (`project_schema.rs`, `PROJECT_SCHEMA_SEM_MESA = 203`, `PROJECT_SCHEMA_FILTROS_SEM_ID = 205`,
+> `PROJECT_SCHEMA_RELOGIO_POR_POSICAO = 206`) · `VEC_SCENE_SCHEMA` **24 → 25** (o 24 do main é o id do vértice; o texto diz
+> 23 → 24). Os ficheiros congelados mantêm o nome antigo (`item_id_v194.rs`, `health_v194.rs`, `item_id_v196.rs`,
+> `vec_filter_v195.rs`). O resto da escada antiga (189–192) também mudou: leia-a no `project_load_read.rs`, não aqui.
+
 Fila: [F29 §6.1](handoffs/HANDOFF_CONTINUACAO_line_UIUX_2026-10-25_F29.md) — ordem do dono (25/10): *«Smoke OK. Vamos voltar
 ao plano antes dos consertos realizados»*; lei: [o Auto Key grava ABSOLUTAMENTE tudo](../../project-memory/project_autokey_records_everything_2026_10_19.md).
 Base `c3662cd8e4` (ponta da linha `8042c8862a`).
@@ -51,7 +59,7 @@ ordem de `StableId` do dono fica). Criação de itens: o Inspector de cada compo
    logo uma chave órfã nunca «acorda» noutro item. Redo devolve o item com o MESMO id (o undo guarda o estado).
 2. **Atribuição** num passe idempotente gémeo de `assign_missing_stable_ids`, que **reconcilia o contador contra os ids de
    item** antes de alocar. Documento antigo: os itens recebem ids na ordem da lista (determinístico).
-3. **Família nova `LISTA = 8`**: `campo = lista << 10 | membro << 2 | faixa` (`lista` ≤ 63 = código DECLARADO, append-only,
+3. **Família nova `LISTA = 10`**: `campo = lista << 10 | membro << 2 | faixa` (`lista` ≤ 63 = código DECLARADO, append-only,
    da lista — Timers, Tweens, estados, setas, regras, acções, fontes de shake, resistências, âncoras; `membro` ≤ 255 = o
    `field_id` do item no catálogo); `i:j` = o `ItemId` (32 bits). A entidade é a do binding. Item apagado ⇒ chave órfã
    (a lei existente dos órfãos).
@@ -93,7 +101,7 @@ Feito (a pilha do Vetor é a A2). Dez listas, não oito: **o gatilho (`SignalOnA
   `<= 194` passa os blobs pela forma congelada (`item_id_v194.rs`, `health_v194.rs`) em `project_load_read.rs:238`. ⚠️ A
   leitura exige o ÚLTIMO byte (`item_id.rs:107`): a migração `v128` já reescreve a tabela de acções com o tipo VIVO, e o
   postcard ignora a cauda — sem a leitura exacta duas acções sairiam desalinhadas (`um_blob_ja_na_forma_nova_passa_intacto`).
-- **Família `LISTA = 8`** (não 11: o `canal.rs` já a reservava e o plano dizia 8; 9 e 10 são MUNDO e MESA). O vocabulário mora
+- **Família `LISTA = 10`** (era 8 no plano; na integração de 29/10 o main já tinha CONSTRAINT 8 e CAD 9, e as três subiram para 10 · 11 · 12). O vocabulário mora
   na folha (`ph2d_component_desc::lista`, `catalog/listas.rs:248`), para o painel calcular a chave sem ver o ECS
   (`lista::chaves`, `lista.rs:89`). A lei das faixas passou a UMA (`FieldDesc::faixas_de_canal`, a do COMPONENTE). As escolhas
   dos itens (canal, curva, verbo, aresta, de quem, alvo por…) ganharam `options!`; as setas, as resistências e as âncoras
@@ -189,14 +197,14 @@ cujas faixas estão em clips de dono `None` (`animation_view.rs:162-177`). A pop
    binding dela tem `wire_id` normal: resolução, cura e persistência são as que existem. A população do Auto Key inclui-a
    sempre (poucos campos). A chave de um campo da Cena cai num clip da Cena (dono `None`) — o caminho a medir no
    `autokey_campos`/`upsert_key`.
-2. **Família `MUNDO = 9`** sobre a entidade CENA: os campos de `PhysicsSettings` (`settings.rs:~175`: gravidade X/Y,
+2. **Família `MUNDO = 11`** sobre a entidade CENA: os campos de `PhysicsSettings` (`settings.rs:~175`: gravidade X/Y,
    substeps, iterações, contact_hz, amortecimento linear/angular, sono, ar; a matriz de camadas é discreta). ⛔ `set_settings`
    limpa o ring de checkpoints (`bridge/settings.rs:38-50`): a escrita da CURVA é um caminho próprio, só quando o valor
    muda, que reafina o mundo sem limpar (gémeo do `retune_body`). O valor AUTORADO (o que o save e o undo vêem) fica à
    parte, como a `ConducaoFisica` dos corpos: a curva é pré-visualização.
 3. **Mesa de som vira documento**: `MixerDoc` (os ~50 campos de `snapshot.rs`) no `.ph2dproj` pelo caminho do `physics`
    (`project_save.rs:88`, `project_load.rs:173`, `project_migrate.rs`), fora do `ProjectState` como ele; o painel lê/escreve
-   o documento; família `MESA = 10`. ⚠️ **muda o produto**: a mesa passa a ser guardada com o projeto (hoje volta ao
+   o documento; família `MESA = 12`. ⚠️ **muda o produto**: a mesa passa a ser guardada com o projeto (hoje volta ao
    padrão em cada sessão) — é o que a lei pede; dito ao dono no smoke.
 4. O gate tira `ph2d-panel-physics` e `ph2d-panel-audio-mixer` de `NaoAnimavel`.
 
@@ -212,7 +220,7 @@ cujas faixas estão em clips de dono `None` (`animation_view.rs:162-177`). A pop
   cura): é a função de identidade que a shell chama a cada quadro (`timeline_bridge::run`), e pô-la ali torna IMPOSSÍVEL a
   purga apagar a binding da gravidade num quadro em que a Cena ainda não voltou. Resolução/cura/persistência sem caso
   especial (`a_binding_da_cena_atravessa_o_ficheiro_e_recola`: `wire_id == StableId::CENA`, recola num mundo novo).
-- **Família `MUNDO = 9`** (`8` fica para a `LISTA` da §A): `canal_mundo.rs`, 11 campos (gravidade X/Y num grupo,
+- **Família `MUNDO = 11`** (a `LISTA` da §A é a 10): `canal_mundo.rs`, 11 campos (gravidade X/Y num grupo,
   sub-passos e iterações `Numero`, contacto, amortecimentos, ar, sono velocidade/demora, «Bodies Sleep» `Ligado`).
   Matches tocados: `canal.rs` `info` e `FieldKey::membro` (os dois únicos `match familia`), + `FieldKey::da_cena`.
   ⛔ A matriz de camadas fica fora (36 células sem controlo de campo; `NaoAnimavel` implícito — o gate não a vê).
@@ -258,7 +266,7 @@ cujas faixas estão em clips de dono `None` (`animation_view.rs:162-177`). A pop
 - **O quadro** `mesa_doc::quadro` (`mesa_doc.rs:50`, chamado em `fase_audio_panels.rs:19`, com ou sem a feature do painel):
   a edição tomada entra no autorado, o painel recebe os dois retratos, o motor ouve o vivo (`aplicar_ao_motor`, o corpo que
   era `fase_audio_mixer.rs` na shell — −90 linhas lá).
-- **Família `MESA = 10`** (`ph2d-ecs/src/canal_mesa.rs`): 19 campos do master + `bus(b, f) = 32 + 16·b + f` (9 por
+- **Família `MESA = 12`** (`ph2d-ecs/src/canal_mesa.rs`): 19 campos do master + `bus(b, f) = 32 + 16·b + f` (9 por
   barramento, o barramento no NÚMERO para cada um ter o seu rótulo — `por_i` poria «Gain 1» no SFX). Espécies: `Continuo`
   (ganhos, pans, Hz, envios), `Ligado` (mute/solo/on), `Opcoes` (a chave do ducking, os nomes dos barramentos).
   `da_cena()` passa a valer para MUNDO e MESA (a guarda `SceneNotInView` do §B1 serve as duas).

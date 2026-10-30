@@ -1,5 +1,13 @@
 # F32 — o que ainda endereça POR POSIÇÃO e o resto da identidade (plano, 25/10)
 
+> ⚠️ **Números renumerados na integração de 29/10** (conferidos no código do main de 30/10): famílias de canal
+> **LISTA 10 · MUNDO 11 · MESA 12** (`ph2d-ecs/src/canal.rs`; o main já tinha CONSTRAINT 8 e CAD 9) · degraus do `PROJECT_SCHEMA`
+> desta linha **203 → 207** (o texto abaixo diz 193 → 197): mesa `203 → 204` · itens das listas `205` · filtros e pilha `206` ·
+> relógios e poses `207` (`project_schema.rs`, `PROJECT_SCHEMA_SEM_MESA = 203`, `PROJECT_SCHEMA_FILTROS_SEM_ID = 205`,
+> `PROJECT_SCHEMA_RELOGIO_POR_POSICAO = 206`) · `VEC_SCENE_SCHEMA` **24 → 25** (o 24 do main é o id do vértice; o texto diz
+> 23 → 24). Os ficheiros congelados mantêm o nome antigo (`item_id_v194.rs`, `health_v194.rs`, `item_id_v196.rs`,
+> `vec_filter_v195.rs`). O resto da escada antiga (189–192) também mudou: leia-a no `project_load_read.rs`, não aqui.
+
 Fila: [F31 handoff §6](handoffs/HANDOFF_CONTINUACAO_line_UIUX_2026-10-25_F31.md) · desenho herdado (não reabrir):
 [F31_plano §1](F31_plano.md) · leis do dono: camada apagada leva a linha e o Desfazer devolve as duas (25/10); o Auto Key
 grava tudo (19/10). Base: ponta `8477e1511b` sobre o main `c3662cd8e4` (o main não andou).

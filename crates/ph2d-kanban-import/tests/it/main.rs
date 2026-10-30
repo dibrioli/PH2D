@@ -4,6 +4,7 @@ mod csv;
 mod fixture;
 mod fuzz;
 mod markdown;
+mod real;
 mod round_trip;
 
 use ph2d_kanban_import::{Imported, import_trello};

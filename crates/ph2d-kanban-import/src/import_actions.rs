@@ -108,6 +108,19 @@ fn updates<'a>(d: &'a Value, obj: &str) -> Vec<Hap<'a>> {
     out
 }
 
+/// A chave da perda: o tipo e, numa `updateX`, os campos de `data.old` (`updateCard.pos`) — sem eles
+/// o relatório não diz o QUÊ ficou de fora (o JSON real do dono: 29 `updateCard` eram `pos`/`idLabels`/
+/// `dueReminder`).
+fn unsupported_key(t: &str, d: &Value) -> String {
+    match d.get("old").and_then(Value::as_object) {
+        Some(old) if t.starts_with("update") && !old.is_empty() => {
+            let keys: Vec<&str> = old.keys().map(String::as_str).collect();
+            format!("{t}.{}", keys.join("+"))
+        }
+        _ => t.to_owned(),
+    }
+}
+
 fn member_of(cx: &Ctx, a: &Value, d: &Value) -> Option<Member> {
     a.get("member")
         .and_then(|m| s(m, "username"))
@@ -254,8 +267,19 @@ pub(crate) fn actions(cx: &mut Ctx, board: &Value) {
         } else {
             match parse(cx, t, a, d) {
                 Some((sub, haps)) if !haps.is_empty() => Some((sub, haps)),
+                _ if t.ends_with("MemberToCard") && member_of(cx, a, d).is_none() => {
+                    let who = d
+                        .get("member")
+                        .and_then(|m| s(m, "name"))
+                        .filter(|n| !n.is_empty());
+                    cx.report.lose(
+                        LossKind::UnknownMember,
+                        who.or(s(d, "idMember")).unwrap_or(tid),
+                    );
+                    continue;
+                }
                 _ => {
-                    *unsupported.entry(t.to_owned()).or_default() += 1;
+                    *unsupported.entry(unsupported_key(t, d)).or_default() += 1;
                     continue;
                 }
             }

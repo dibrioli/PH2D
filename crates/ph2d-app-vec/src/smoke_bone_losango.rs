@@ -10,8 +10,9 @@
 //! | **A animação já gravada** | *Length* tem chave no quadro 0 (o comprimento desenhado), no 24 (1,5×) e no 48 (volta): no Play o osso azul do meio cresce e encolhe |
 //!
 //! ⚠️ **Fotografado (F40):** no Play o osso do meio cresce e o número *Length* anda (2,133 → 2,969
-//! no quadro 29), mas o osso filho NÃO anda junto e a barra não estica — o *Length* animado não
-//! move o filho nem reposiciona a pele. A cena di-lo ao dono; o defeito fica no handoff.
+//! no quadro 29); o filho e a barra ficam. É a LEI e não um defeito: a edição à MÃO do *Length*
+//! (`fase_skeleton_verbs` → `knobs::apply`) só escreve `Bone.length`, e a curva
+//! (`canais_osso::escrever`) chama a MESMA `knobs::apply` — o Auto Key repete o que a mão faz.
 //!
 //! ⚠️ O osso do meio nasce com 4 segmentos: com 1 a curva é inerte e o painel esconde as alças
 //! (`section_campos`), e a cena não as mostraria.
@@ -87,8 +88,9 @@ pub(crate) fn bind(
          [vec-bone-smoke] 1) Ao lado de «Length» o losango esta' CHEIO: ha' chave neste quadro \
          (0). «Segments» e as 4 alcas da curva tem o losango VAZIO: sem animacao.\n\
          [vec-bone-smoke] 2) Carregue Play na Timeline: o osso azul do meio cresce ate' 1,5x no \
-         quadro 24 e volta no 48 (o osso seguinte e a barra NAO acompanham -- isto e' sabido); \
-         entre chaves o losango de «Length» fica so' com o contorno.\n\
+         quadro 24 e volta no 48 -- e' so' o osso que muda de tamanho (o seguinte e a barra ficam, \
+         igual a escrever o numero a' mao); entre chaves o losango de «Length» fica so' com o \
+         contorno.\n\
          [vec-bone-smoke] 3) Pare num quadro sem chave, clique no losango vazio de «Segments»: ele \
          enche (chave nova)."
     );

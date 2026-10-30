@@ -424,3 +424,38 @@ fn sonda_o_custo_da_lei_do_rebelle() {
     mede("assenta", &|x| assenta(e, x.0, x.1, x.2, x.3, x.4, x.5)[0]);
     mede("levanta", &|x| levanta(e, x.0, x.1, x.4, x.5, x.2, x.3)[0]);
 }
+
+/// ⭐ **A caixa das tintas na cor que se compõe** (smoke do dono 30/10): a célula medida no traço do dono (azul fino
+/// assentado sob laranja em suspensão) dava a cor `[239,194,168]`, mais clara que as duas tintas — o branco embutido
+/// que o papel de cor mostra. Re-exprimida, cada canal fica `≤` a mais clara das duas, e sobre o BRANCO o píxel é o
+/// mesmo (`≤ 1e-9`).
+#[test]
+fn a_cor_composta_fica_na_caixa_das_tintas_e_o_branco_nao_muda() {
+    let e = Ecra::Cobre {
+        filme: 0.0,
+        esconde: 2.0,
+        molhada: 1.0,
+        vela: 0.0,
+    };
+    let sc = [34.9, 96.7, 241.1];
+    let uc = [240.0, 130.0, 60.0];
+    let (a_s, a_f) = (
+        crate::opacity::alpha_of_mass(184.0),
+        crate::opacity::alpha_of_mass(265.0),
+    );
+    let antes = cor_e_alfa(e, sc, uc, a_s, a_f);
+    assert!(
+        (0..3).any(|k| antes.0[k] > sc[k].max(uc[k]) + 1.0),
+        "a cena não reproduz a cor fora da caixa: {antes:?}"
+    );
+    let (c, la) = na_caixa_das_tintas(e, antes, sc, uc, a_s, a_f);
+    for k in 0..3 {
+        assert!(c[k] <= sc[k].max(uc[k]) + 1e-9, "canal {k}: {c:?}");
+        let branco = |c: [f64; 3], la: f64| 255.0 * (1.0 - la) + c[k] * la;
+        assert!((branco(c, la) - branco(antes.0, antes.1)).abs() < 1e-9);
+    }
+    assert!(la < antes.1, "o branco que sai da cor vira transparência");
+    // Sem as duas camadas, ou numa lei que compõe dentro das tintas, nada muda.
+    assert_eq!(na_caixa_das_tintas(e, antes, sc, uc, 0.0, a_f), antes);
+    assert_eq!(na_caixa_das_tintas(Ecra::Porto, antes, sc, uc, a_s, a_f), antes);
+}

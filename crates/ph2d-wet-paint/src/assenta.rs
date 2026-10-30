@@ -198,6 +198,7 @@ fn cor_e_alfa_tapando(
     // cobrir o escuro como no Rebelle, mas onde o filme é mais ESCURO o branco clareava o ponto além das duas
     // tintas (a orla esbranquiçada). Cada canal pára na mais clara das duas: o Rebelle nunca passa dela (as
     // bordas do óleo sobre o azul seco, `fixtures/rebelle/{oil,express}.png`).
+    // ⚠️ Isto prende o ponto SOBRE O BRANCO; a COR que se compõe prende-se em [`na_caixa_das_tintas`] (o render).
     let mut r = [0, 1, 2].map(|k| t_s[k] * (1.0 - a_e) + c_eff[k] * a_e);
     velatura(&mut r, a_e, filme, 1.0, t_s, c_eff);
     // O GLAZE do pincel: o filme FILTRA o assentado — a fracção `m` do ponto é o produto das duas camadas sobre o
@@ -212,6 +213,39 @@ fn cor_e_alfa_tapando(
     let r = [0, 1, 2].map(|k| r[k].min(t_s[k].max(uc[k])));
     let la = a_s + a_e * (1.0 - a_s);
     molha(r, la)
+}
+
+/// ⭐ **A caixa das tintas na COR que se compõe** (smoke do dono 30/10: as manchas brancas do molhado sobre tinta fina,
+/// num papel de COR). A [`Ecra::Cobre`] decide o ponto SOBRE O BRANCO e devolve-o como `(cor, la)`; a caixa de
+/// [`cor_e_alfa`] prende o ponto sobre o branco, mas a cor que sai do `molha` ainda passava da mais clara das duas
+/// tintas (azul fino sob laranja: `[239,194,168]`, o laranja é `[240,130,60]`) — o branco que a conta embutiu na COR,
+/// que só o papel branco esconde. Re-exprime o MESMO ponto sobre o branco com a cobertura que põe cada canal na caixa
+/// (`≤` a mais clara das duas): o resto do branco passa a ser transparência, e o papel de cor aparece por ela.
+/// Sobre o branco, o mesmo píxel; uma célula sem as duas camadas não muda.
+#[inline]
+#[must_use]
+pub fn na_caixa_das_tintas(
+    e: Ecra,
+    (c, la): ([f64; 3], f64),
+    sc: [f64; 3],
+    uc: [f64; 3],
+    a_s: f64,
+    a_f: f64,
+) -> ([f64; 3], f64) {
+    if !matches!(e, Ecra::Cobre { .. }) || a_s <= 0.0 || a_f <= 0.0 || la <= 0.0 {
+        return (c, la);
+    }
+    let mut a = la;
+    for k in 0..3 {
+        let teto = sc[k].max(uc[k]);
+        if c[k] > teto && teto < 255.0 {
+            a = a.min(la * (255.0 - c[k]) / (255.0 - teto));
+        }
+    }
+    if a >= la || a <= 0.0 {
+        return (c, la);
+    }
+    (c.map(|v| (255.0 - la * (255.0 - v) / a).clamp(0.0, 255.0)), a)
 }
 
 /// O que a célula mostra sobre o papel branco — o que assentar e re-molhar preservam.

@@ -489,9 +489,17 @@ fn pigment_row(
                 }
                 let sc = lg.sett_rgb[i];
                 let uc = lg.susp_rgb[i];
-                let ([mut cr, mut cg, mut cb], la) = crate::assenta::cor_e_alfa(
+                let ([cr, cg, cb], la) = crate::assenta::cor_e_alfa(
                     lei.com_vela(lg.vela[i])
                         .com_vidrado(crate::grid::aparencia::vidrado(&lg.aparencia, i)),
+                    sc.map(f64::from),
+                    uc.map(f64::from),
+                    a_s,
+                    a_f,
+                );
+                let ([mut cr, mut cg, mut cb], la) = crate::assenta::na_caixa_das_tintas(
+                    lei,
+                    ([cr, cg, cb], la),
                     sc.map(f64::from),
                     uc.map(f64::from),
                     a_s,

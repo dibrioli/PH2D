@@ -466,6 +466,20 @@ app no instante em que o retângulo aparecer**. Então:
 
 ---
 
+## Bug #53 (fechado 30/10) — manchas BRANCAS do molhado sobre tinta fina, num papel de COR, só durante o traço
+
+Smoke do dono 30/10: Wet Flat sobre a orla de um Oil ▸ Dabber, papel bege — faixas brancas em escada que somem ao
+assentar. **A causa enganava:** parecia o brilho do Óleo Real ou um buffer a branco; medido (`diag_a_agua_sobre_o_oleo_a_meio_do_traco`),
+a célula sem a óptica do óleo já saía `[239,194,168]` (azul fino `184` sob laranja `265` em suspensão) — mais clara
+que as duas tintas. A lei `Cobre` decide o ponto SOBRE O BRANCO e a caixa das tintas prendia esse ponto, nunca a COR
+que o `molha` devolve: o branco ficava embutido na cor, invisível no papel branco. Ao assentar, susp → sett e a célula
+deixa de ser «duas camadas». ⛔ Hipótese medida e caída: re-exprimir com a cobertura da massa toda (ela não é maior).
+Cura: `assenta::na_caixa_das_tintas` (render) — o mesmo ponto sobre o branco, com a cobertura que põe cada canal ≤ a
+mais clara das duas tintas. Imagem a meio: 476 → 65 píxeis mais claros que óleo/papel/fim (os 65 são reflexos do óleo).
+Gate verde que não via: todos os portões e a fábrica pintam sobre BRANCO. Gates `o_molhado_sobre_tinta_fina_nao_clareia_alem_das_tintas`,
+`a_cor_composta_fica_na_caixa_das_tintas_e_o_branco_nao_muda`. 11 miniaturas regeradas, uma a uma: ≤ 2 níveis sobre
+o branco cada (`sonda_miniatura_antiga_e_de_hoje`).
+
 ## Como adicionar um bug aqui
 
 Uma seção `## Bug #N — <título>` + linha na tabela (o fim do pedaço [#41–#46](BUGS_painter_fechados_41_a_46.md)). Foque nos bugs cuja **causa enganou** (vários rounds

@@ -670,3 +670,52 @@ fn sonda_o_portao_da_largura_com_o_piso_de_tempo() {
     let la = std::fs::read_to_string("/proc/loadavg").unwrap_or_default();
     println!("  loadavg fim: {}", la.trim());
 }
+
+/// **A miniatura antiga × a de hoje, sobre o branco e sobre um papel de cor** (dono 30/10: a caixa das tintas na cor
+/// que se compõe). Grava `PH2D_SONDA_DIR/<nome>.ppm` (as quatro lado a lado) e a maior diferença sobre o branco.
+#[test]
+#[ignore = "sonda: compara as miniaturas que mudaram; corre-se à mão"]
+fn sonda_miniatura_antiga_e_de_hoje() {
+    let dir = std::env::var("PH2D_SONDA_DIR").expect("PH2D_SONDA_DIR");
+    let sobre = |px: &[u8], p: [u8; 3]| -> [u8; 3] {
+        let a = u32::from(px[3]);
+        [0, 1, 2].map(|k| ((u32::from(px[k]) * a + u32::from(p[k]) * (255 - a) + 127) / 255) as u8)
+    };
+    let mut relato = String::new();
+    for (rel, b) in ficheiros_de_fabrica() {
+        let p = ler(&b).unwrap();
+        let hoje = miniatura_do_preset(&p);
+        if hoje == p.miniatura {
+            continue;
+        }
+        let (w, h) = (hoje.largura as usize, hoje.altura as usize);
+        let mut v = format!("P6\n{} {h}\n255\n", w * 4).into_bytes();
+        let mut pior = 0i32;
+        for y in 0..h {
+            for (img, papel) in [
+                (&p.miniatura.rgba, [255, 255, 255]),
+                (&hoje.rgba, [255, 255, 255]),
+                (&p.miniatura.rgba, [150, 130, 100]),
+                (&hoje.rgba, [150, 130, 100]),
+            ] {
+                for x in 0..w {
+                    v.extend_from_slice(&sobre(&img[(y * w + x) * 4..(y * w + x) * 4 + 4], papel));
+                }
+            }
+            for x in 0..w {
+                let i = (y * w + x) * 4;
+                let (a, b) = (
+                    sobre(&p.miniatura.rgba[i..i + 4], [255; 3]),
+                    sobre(&hoje.rgba[i..i + 4], [255; 3]),
+                );
+                for k in 0..3 {
+                    pior = pior.max((i32::from(a[k]) - i32::from(b[k])).abs());
+                }
+            }
+        }
+        let nome = rel.rsplit('/').next().unwrap().replace(".ph2d-brush.png", "");
+        std::fs::write(format!("{dir}/{nome}.ppm"), v).unwrap();
+        relato += &format!("{nome}: sobre o branco, a maior diferença {pior} níveis\n");
+    }
+    std::fs::write(format!("{dir}/relato.txt"), relato).unwrap();
+}

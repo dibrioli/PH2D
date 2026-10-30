@@ -421,6 +421,8 @@ mod verde_no_soltar_tests; // azul sobre azul não fica verde no soltar (Bug #49
 
 // o veu do Show Wet e VIVO (report do Enio, 2026-08-07)
 #[cfg(test)]
+mod agua_sobre_oleo_tests; // smoke do dono 30/10: o molhado sobre o óleo com papel de cor
+#[cfg(test)]
 mod achatamento_tests; // o escorrimento não se corta em rectângulos (W1f)
 #[cfg(test)]
 mod controlos_medidos_tests; // Color, Solid, Type e On empty medidos num traço de fábrica

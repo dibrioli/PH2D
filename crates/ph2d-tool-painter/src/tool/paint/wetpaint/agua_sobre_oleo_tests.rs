@@ -1,0 +1,373 @@
+//! **A água sobre o óleo** (smoke do dono 30/10): o pincel molhado pintado sobre óleo com papel de COR.
+
+use super::*;
+use ph2d_editor_core::Tool;
+use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PanelEvent, PointerPhase};
+
+pub(super) const W: usize = 240;
+pub(super) const H: usize = 160;
+pub(super) const PAPEL: [u8; 3] = [150, 130, 100];
+
+pub(super) fn preset(rel: &str) -> ph2d_brush_presets::Preset {
+    let p = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../assets/brushes/WetPainter")
+        .join(rel);
+    ph2d_brush_presets::ler(&std::fs::read(&p).expect("o preset")).expect("o preset lê-se")
+}
+
+pub(super) fn ponteiro(x: f32, y: f32, phase: PointerPhase) -> CanvasPointer {
+    CanvasPointer {
+        pos: [x, y],
+        pressure: 1.0,
+        tilt: [0.0, 0.0],
+        phase,
+    }
+}
+
+/// A tela: papel de cor, um traço de óleo (Dabber) em `y = 90`, assentado.
+pub(super) fn com_oleo() -> PainterTool {
+    let mut t = PainterTool::default();
+    t.abre_a_sprite(vec![255u8; W * H * 4], W as u32, H as u32);
+    t.set_paint_tool_mode("wetpaint");
+    t.set_wet_relogio_fixo(true);
+    t.handle_panel_event(PanelEvent::SelectOption(
+        crate::ids::PAINTER_WATERCOLOR_PAPER_COLOR_THUMB,
+        format!("{},{},{}", PAPEL[0], PAPEL[1], PAPEL[2]),
+    ));
+    t.preset_aplicar(&preset("Oil/Dabber/Dabber.ph2d-brush.png"))
+        .expect("o meio");
+    t.set_brush_size_px(30.0);
+    t.set_brush_color_srgb8([40, 90, 220]);
+    t.on_canvas_pointer(ponteiro(40.0, 90.0, PointerPhase::Down));
+    for k in 1..=40 {
+        t.on_canvas_pointer(ponteiro(40.0 + 4.0 * k as f32, 90.0, PointerPhase::Move));
+        t.on_tick(1000.0 / 60.0);
+    }
+    t.on_canvas_pointer(ponteiro(200.0, 90.0, PointerPhase::Up));
+    for _ in 0..120 {
+        t.on_tick(1000.0 / 60.0);
+    }
+    t
+}
+
+/// A imagem MOSTRADA (camadas sobre o papel, com a luz).
+pub(super) fn mostrada(t: &mut PainterTool) -> Vec<u8> {
+    t.invalidate_composite();
+    let (px, _, _) = t.take_preview_arc().expect("a imagem mostrada");
+    px.to_vec()
+}
+
+fn grava(nome: &str, px: &[u8]) {
+    let dir = std::env::var("PH2D_SONDA_DIR").unwrap_or_default();
+    if dir.is_empty() {
+        return;
+    }
+    let mut v = format!("P6\n{W} {H}\n255\n").into_bytes();
+    for p in px.chunks(4) {
+        v.extend_from_slice(&p[..3]);
+    }
+    std::fs::write(format!("{dir}/{nome}.ppm"), v).unwrap();
+}
+
+pub(super) fn relato(l: String) {
+    eprintln!("{l}");
+    let dir = std::env::var("PH2D_SONDA_DIR").unwrap_or_default();
+    if !dir.is_empty() {
+        use std::io::Write;
+        let mut f = std::fs::OpenOptions::new().create(true).append(true).open(format!("{dir}/relato.txt")).unwrap();
+        writeln!(f, "{l}").unwrap();
+    }
+}
+
+fn despeja(t: &mut PainterTool, x: usize, y: usize, mostrada: &[u8]) {
+    t.wet_bring_home();
+    let camada = t.canvas_rgba[(y * W + x) * 4..(y * W + x) * 4 + 4].to_vec();
+    let s = t.paint.wetpaint.session.as_ref().expect("a sessão");
+    let r = usize::from(s.ratio);
+    let (gw, _) = s.grid;
+    let (cx, cy) = (x / r + 1, y / r + 1);
+    let pg = (cy - 1) * gw * 4 + (cx - 1) * 4;
+    let base = s.base[(y * W + x) * 4..(y * W + x) * 4 + 4].to_vec();
+    relato(format!(
+        "({x},{y}) razão {r} célula ({cx},{cy}): mostrada {:?} camada {:?} base {:?} pigmento {:?} sombra {}",
+        &mostrada[(y * W + x) * 4..(y * W + x) * 4 + 4],
+        camada,
+        base,
+        &s.pigment[pg..pg + 4],
+        s.sombra.get((cy - 1) * gw + cx - 1).copied().unwrap_or(0)
+    ));
+    {
+        let layers: Vec<ph2d_wet_paint::render::RenderLayer<'_>> = s
+            .engine
+            .layers
+            .iter()
+            .map(|l| ph2d_wet_paint::render::RenderLayer {
+                grid: &l.grid,
+                opacity: l.opacity,
+                visible: l.visible,
+            })
+            .collect();
+        let params = s.engine.sim.gather_params(&s.engine.tuning);
+        let mut row = vec![0u8; gw * 4];
+        ph2d_wet_paint::render::render_pigment_row_visual(
+            Some(&params),
+            &layers,
+            ph2d_wet_paint::render::PigmentVisual {
+                paper: true,
+                relevo: true,
+            },
+            cy,
+            cx,
+            cx,
+            &mut row,
+        );
+        relato(format!(
+            "   sem a óptica do óleo: {:?}",
+            &row[(cx - 1) * 4..cx * 4]
+        ));
+    }
+    for (k, l) in s.engine.layers.iter().enumerate() {
+        let g = &l.grid;
+        let i = cx + cy * g.s;
+        relato(format!(
+            "   camada {k} vis {} op {}: sett {:.0} {:?} susp {:.0} {:?} film {:.3} wet {} óleo {:?}",
+            l.visible,
+            l.opacity,
+            g.sett[i],
+            g.sett_rgb[i],
+            g.susp[i],
+            g.susp_rgb[i],
+            g.film[i],
+            g.wet.get(i).copied().unwrap_or(0),
+            g.oleo.get(i).map(|o| o.oleo)
+        ));
+    }
+}
+
+fn lum(p: &[u8]) -> f32 {
+    0.2126 * f32::from(p[0]) + 0.7152 * f32::from(p[1]) + 0.0722 * f32::from(p[2])
+}
+
+/// O Wet Flat a meio do traço sobre o óleo de [`com_oleo`] (`k` passos do rato, sem soltar).
+pub(super) fn molhado_a_meio(t: &mut PainterTool, k: usize) {
+    t.preset_aplicar(&preset("Watercolor/Fluid/Wet Flat.ph2d-brush.png"))
+        .expect("o meio");
+    t.set_brush_size_px(30.0);
+    t.set_brush_color_srgb8([240, 130, 60]);
+    t.on_canvas_pointer(ponteiro(20.0, 70.0, PointerPhase::Down));
+    for j in 1..=k {
+        t.on_canvas_pointer(ponteiro(20.0 + 4.0 * j as f32, 70.0, PointerPhase::Move));
+        t.on_tick(1000.0 / 60.0);
+    }
+}
+
+/// ⭐ **O molhado sobre tinta fina não clareia além das tintas** (smoke do dono 30/10: manchas brancas do Wet Flat
+/// sobre a orla do óleo, num papel de COR, que somem ao assentar). Mecanismo: a lei `Cobre` decide o ponto sobre o
+/// BRANCO e a cor que saía para a tela passava da mais clara das duas tintas (`[239,194,168]` de azul fino sob
+/// laranja); só o papel branco escondia o branco embutido. A meio do traço, cada célula com tinta assentada E água
+/// tem a cor da camada (sem a óptica do óleo) dentro da caixa das duas tintas, canal a canal. Medido antes da cura:
+/// 476 píxeis da imagem a meio mais claros que o óleo, o papel e o fim (+20); depois, 65 (os reflexos do óleo).
+#[test]
+fn o_molhado_sobre_tinta_fina_nao_clareia_alem_das_tintas() {
+    let mut t = com_oleo();
+    molhado_a_meio(&mut t, 30);
+    t.wet_bring_home();
+    let s = t.paint.wetpaint.session.as_ref().expect("a sessão");
+    let (gw, gh) = s.grid;
+    let layers: Vec<ph2d_wet_paint::render::RenderLayer<'_>> = s
+        .engine
+        .layers
+        .iter()
+        .map(|l| ph2d_wet_paint::render::RenderLayer {
+            grid: &l.grid,
+            opacity: l.opacity,
+            visible: l.visible,
+        })
+        .collect();
+    assert_eq!(layers.len(), 1, "a cena é de uma camada do motor");
+    let params = s.engine.sim.gather_params(&s.engine.tuning);
+    assert!(
+        matches!(params.ecra, ph2d_wet_paint::assenta::Ecra::Cobre { .. }),
+        "o Wet Flat pinta pela lei Cobre"
+    );
+    let g = layers[0].grid;
+    let (mut mistas, mut fora, mut pior) = (0, 0, (0.0f32, 0, 0));
+    let mut row = vec![0u8; gw * 4];
+    for cy in 1..=gh {
+        ph2d_wet_paint::render::render_pigment_row_visual(
+            Some(&params),
+            &layers,
+            ph2d_wet_paint::render::PigmentVisual {
+                paper: true,
+                relevo: false,
+            },
+            cy,
+            1,
+            gw,
+            &mut row,
+        );
+        for cx in 1..=gw {
+            let i = cx + cy * g.s;
+            if g.sett[i] <= 0.0 || g.susp[i] <= 0.0 {
+                continue;
+            }
+            mistas += 1;
+            let px = &row[(cx - 1) * 4..cx * 4];
+            for k in 0..3 {
+                let excesso = f32::from(px[k]) - g.sett_rgb[i][k].max(g.susp_rgb[i][k]);
+                if excesso > 1.0 {
+                    fora += 1;
+                    if excesso > pior.0 {
+                        pior = (excesso, cx, cy);
+                    }
+                    break;
+                }
+            }
+        }
+    }
+    assert!(mistas > 500, "a cena tem só {mistas} células assentado + água");
+    assert_eq!(
+        fora, 0,
+        "{fora} de {mistas} células com a cor mais clara que as duas tintas (pior +{:.0} em {:?})",
+        pior.0,
+        (pior.1, pior.2)
+    );
+}
+
+/// SONDA — o Wet Flat sobre o óleo: a imagem a meio do traço contra a assentada.
+#[test]
+#[ignore = "diagnóstico"]
+fn diag_a_agua_sobre_o_oleo_a_meio_do_traco() {
+    let mut t = com_oleo();
+    let oleo = mostrada(&mut t);
+    grava("0_oleo", &oleo);
+    t.preset_aplicar(&preset("Watercolor/Fluid/Wet Flat.ph2d-brush.png"))
+        .expect("o meio");
+    t.set_brush_size_px(30.0);
+    t.set_brush_color_srgb8([240, 130, 60]);
+    t.on_canvas_pointer(ponteiro(20.0, 70.0, PointerPhase::Down));
+    let mut meio = Vec::new();
+    for k in 1..=40 {
+        t.on_canvas_pointer(ponteiro(20.0 + 4.0 * k as f32, 70.0, PointerPhase::Move));
+        t.on_tick(1000.0 / 60.0);
+        if k == 30 {
+            meio = mostrada(&mut t);
+            for (x, y) in [(82usize, 97usize), (130, 57)] {
+                despeja(&mut t, x, y, &meio);
+            }
+        }
+    }
+    let antes_do_soltar = mostrada(&mut t);
+    t.on_canvas_pointer(ponteiro(180.0, 70.0, PointerPhase::Up));
+    for _ in 0..600 {
+        t.on_tick(1000.0 / 60.0);
+    }
+    let fim = mostrada(&mut t);
+    grava("1_meio", &meio);
+    grava("2_antes_do_soltar", &antes_do_soltar);
+    grava("3_fim", &fim);
+    let papel = lum(&[PAPEL[0], PAPEL[1], PAPEL[2]]);
+    for (nome, img) in [("meio", &meio), ("antes do soltar", &antes_do_soltar)] {
+        let mut n = 0;
+        let mut pior = (0.0f32, 0, 0);
+        for i in 0..W * H {
+            let m = lum(&img[i * 4..i * 4 + 4]);
+            let teto = lum(&fim[i * 4..i * 4 + 4]).max(lum(&oleo[i * 4..i * 4 + 4])).max(papel);
+            if m > teto + 20.0 {
+                n += 1;
+                if m - teto > pior.0 {
+                    pior = (m - teto, i % W, i / W);
+                }
+            }
+        }
+        let (x, y) = (pior.1, pior.2);
+        let i = (y * W + x) * 4;
+        relato(format!(
+            "{nome}: {n} píxeis mais claros que o fim/óleo/papel (+20); pior +{:.0} em ({x},{y}): {:?} fim {:?} óleo {:?}",
+            pior.0,
+            &img[i..i + 4],
+            &fim[i..i + 4],
+            &oleo[i..i + 4]
+        ));
+    }
+}
+
+/// SONDA — as Grain Colors (azul → amarelo, Clouds) no Wet Flat sobre o papel de cor (dono 30/10: «a pintura também
+/// fica esbranquiçada»): dois traços que se cruzam, a imagem a meio do 2.º e assentada.
+#[test]
+#[ignore = "diagnóstico"]
+fn diag_grain_colors_no_papel_de_cor() {
+    let mut t = PainterTool::default();
+    t.abre_a_sprite(vec![255u8; W * H * 4], W as u32, H as u32);
+    t.set_paint_tool_mode("wetpaint");
+    t.set_wet_relogio_fixo(true);
+    t.handle_panel_event(PanelEvent::SelectOption(
+        crate::ids::PAINTER_WATERCOLOR_PAPER_COLOR_THUMB,
+        format!("{},{},{}", PAPEL[0], PAPEL[1], PAPEL[2]),
+    ));
+    t.preset_aplicar(&preset("Watercolor/Fluid/Wet Flat.ph2d-brush.png"))
+        .expect("o meio");
+    t.set_brush_size_px(40.0);
+    t.set_brush_color_srgb8([40, 120, 230]);
+    t.set_brush_texture_kind(ph2d_painter_brush::TextureKind::Clouds.to_u8());
+    t.set_texture_ramp(ph2d_color::ColorRamp::new(
+        vec![
+            // As cores do dono (sRGB [40,120,230] e [250,220,40]) em LINEAR, como o seletor as guarda.
+            ph2d_color::RampStop::new(0.0, [0.021, 0.188, 0.791, 1.0]),
+            ph2d_color::RampStop::new(0.304, [0.955, 0.716, 0.021, 1.0]),
+        ],
+        ph2d_color::RampColorMode::Rgb,
+        ph2d_color::RampInterp::Linear,
+    ));
+    t.set_texture_ramp_enabled(std::env::var("PH2D_SONDA_SEM_RAMPA").is_err());
+    if let Some(r) = t.rampa_da_aguada() {
+        for g in [0.0f32, 0.25, 0.5, 0.75, 1.0] {
+            relato(format!("rampa no grão {g}: {:?}", r.cor(None, Some(g), 1.0)));
+        }
+    }
+    let traco = |t: &mut PainterTool, y0: f32, y1: f32, ate: usize| {
+        t.on_canvas_pointer(ponteiro(30.0, y0, PointerPhase::Down));
+        for k in 1..=ate {
+            let f = k as f32 / 40.0;
+            t.on_canvas_pointer(ponteiro(30.0 + 180.0 * f, y0 + (y1 - y0) * f, PointerPhase::Move));
+            t.on_tick(1000.0 / 60.0);
+        }
+    };
+    traco(&mut t, 60.0, 100.0, 40);
+    t.on_canvas_pointer(ponteiro(210.0, 100.0, PointerPhase::Up));
+    for _ in 0..60 {
+        t.on_tick(1000.0 / 60.0);
+    }
+    traco(&mut t, 100.0, 60.0, 30);
+    let meio = mostrada(&mut t);
+    {
+        t.wet_bring_home();
+        let s = t.paint.wetpaint.session.as_ref().expect("a sessão");
+        let g = &s.engine.layers[0].grid;
+        for (x, y) in [(60usize, 75usize), (100, 80), (140, 85), (180, 80)] {
+            let i = (x + 1) + (y + 1) * g.s;
+            relato(format!(
+                "({x},{y}) susp {:.0} {:?} sett {:.0} {:?} camada {:?}",
+                g.susp[i],
+                g.susp_rgb[i],
+                g.sett[i],
+                g.sett_rgb[i],
+                &t.canvas_rgba[(y * W + x) * 4..(y * W + x) * 4 + 4]
+            ));
+        }
+    }
+    t.on_canvas_pointer(ponteiro(165.0, 70.0, PointerPhase::Up));
+    for _ in 0..600 {
+        t.on_tick(1000.0 / 60.0);
+    }
+    let fim = mostrada(&mut t);
+    grava("g_meio", &meio);
+    grava("g_fim", &fim);
+    let papel = lum(&[PAPEL[0], PAPEL[1], PAPEL[2]]);
+    let claros = |img: &[u8]| (0..W * H).filter(|&i| lum(&img[i * 4..i * 4 + 4]) > papel + 40.0).count();
+    relato(format!(
+        "grain colors: píxeis mais claros que o papel (+40) — a meio {} · assentado {}",
+        claros(&meio),
+        claros(&fim)
+    ));
+}

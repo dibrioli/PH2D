@@ -35,6 +35,7 @@ pub(super) fn empty_state() -> ProjectState {
         ui_states: ph2d_ui_state::StateSets::default(),
         library: crate::project_library::LibraryDoc::default(),
         tags: Vec::new(),
+        regras: Default::default(),
     }
 }
 
@@ -340,6 +341,7 @@ fn the_ui_states_travel_in_the_file() {
         ui_states: states.clone(),
         library: crate::project_library::LibraryDoc::default(),
         tags: Vec::new(),
+        regras: Default::default(),
     };
     let bytes = postcard::to_allocvec(&state).unwrap();
     let back: ProjectState = postcard::from_bytes(&bytes).unwrap();
@@ -387,6 +389,7 @@ fn project_file_round_trips_through_postcard() {
         ui_states: ph2d_ui_state::StateSets::default(),
         library: crate::project_library::LibraryDoc::default(),
         tags: Vec::new(),
+        regras: Default::default(),
     };
     // O grafo de Motion viaja como TEXTO canônico — a forma real que o `MotionDoc`
     // serializa (doc 56), não uma string inventada: se o formato mudar, o teste viaja

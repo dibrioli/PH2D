@@ -241,7 +241,7 @@ impl crate::App {
     fn project_install_accepted(
         &mut self,
         path: &str,
-        file: ProjectFile,
+        mut file: ProjectFile,
         migrated_counter: Option<u64>,
         sprite_pixels: Vec<ph2d_sprite_sheet::SpritePixelDoc>,
         sprite_sheets: Vec<ph2d_sprite_sheet::AuthoredSheet>,
@@ -255,6 +255,12 @@ impl crate::App {
         let stable_id_seed = migrated_counter.unwrap_or(file.stable_id_counter);
         self.materialize_assets(&file.assets);
         self.undo.jogo.esquece();
+        // As regras do ficheiro, que o estado não grava (`ProjectState::regras`): sem elas o
+        // `apply_project` repunha as de fábrica por cima das que o load acabou de instalar.
+        file.state.regras = crate::undo::Regras {
+            physics: file.physics,
+            mesa: ph2d_audio::Mesa::from_bytes(&file.mesa).unwrap_or_default(),
+        };
         self.apply_project(&file.state);
         // ⚠️ **A semente do contador entra AQUI, logo depois de o mundo existir** (ADR-0164
         // F1). Antes do `apply_project` não haveria mundo onde a pôr; muito depois, uma

@@ -129,6 +129,7 @@ fn push_undo_then_undo_redo_alternate() {
         ui_states: ph2d_ui_state::StateSets::default(),
         library: crate::project_library::LibraryDoc::default(),
         tags: Vec::new(),
+        regras: Default::default(),
     };
     // ⭐⭐ **A marca da SELEÇÃO viaja com o passo** (2026-09-04) — duas diferentes, para o gate
     // poder dizer qual voltou. Ver [`crate::undo::SelectionMark`].
@@ -468,6 +469,10 @@ mod tags_tests;
 
 #[path = "undo_library_tests.rs"]
 mod library;
+
+/// ⭐ **As regras do mundo e da mesa no undo** (F41) — irmão por assunto, ver o cabeçalho de lá.
+#[path = "undo_regras_tests.rs"]
+mod regras_tests;
 
 /// ⭐ O cemitério (doc ObjectsAndComponents 01 §14, item 3) é tão fundo como este undo: mais fundo, o
 /// undo global já não devolve o objecto e a cova nunca abriria; mais raso, um objecto apagado há

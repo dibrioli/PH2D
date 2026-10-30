@@ -13,6 +13,9 @@ impl super::ProjectState {
         use std::hash::{Hash, Hasher};
         let mut h = std::hash::DefaultHasher::new();
         postcard::to_allocvec(self).unwrap_or_default().hash(&mut h);
+        // As regras não vão no estado gravado (`skip`): entram no resumo à parte.
+        let r = &self.regras;
+        (postcard::to_allocvec(&(r.physics, r.mesa)).unwrap_or_default()).hash(&mut h);
         h.finish()
     }
 }

@@ -83,7 +83,7 @@ impl crate::App {
         let vivo_flip = camadas.substituir(&gfx.sim, &mut gfx.flip);
         let corpos = &self.physics.conducao;
         let vivo_corpos = corpos.substituir(&mut gfx.sim, &gfx.component_registry);
-        let foto = ProjectState::capture(
+        let mut foto = ProjectState::capture(
             drive,
             &mut gfx.sim,
             &gfx.vec_scene,
@@ -102,6 +102,7 @@ impl crate::App {
         conducao.repor(&mut gfx.sim, &mut gfx.vec_scene, vivo);
         camadas.repor(&gfx.sim, &mut gfx.flip, vivo_flip);
         corpos.repor(&mut gfx.sim, &gfx.component_registry, vivo_corpos);
+        foto.regras = crate::undo::Regras::de(&gfx.physics, &gfx.sim);
         Some(foto)
     }
 
@@ -187,6 +188,10 @@ impl crate::App {
         gfx.flip = flip;
         gfx.guides = state.guides.clone();
         gfx.ui_states = state.ui_states.clone();
+        // ⭐ As regras do mundo e da mesa voltam (F41); a física, sem a condução da curva do passo.
+        if state.regras.repor(&mut gfx.physics, &mut gfx.sim) {
+            self.physics.mundo = Default::default();
+        }
         // ⭐ A seleção que não é caminho volta com os bits NOVOS, depois de o mundo ter sido reconstruído.
         let field_back = field_selection_back(gfx.sim.world_mut(), &was_field);
         // ⭐⭐⭐ **A biblioteca volta** — a taxonomia e as lápides (Enio, 2026-08-30).

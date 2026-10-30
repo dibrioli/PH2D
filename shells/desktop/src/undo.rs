@@ -96,6 +96,47 @@ pub(crate) struct ProjectState {
     /// ⚠️ Bytes e não a árvore: a [`ph2d_tags::TagTree`] vive numa folha sem `serde`, de propósito.
     /// Eles são codificados uma vez por mutação pela [`crate::app_state_gfx::AppGfx::tags_cache`].
     pub(crate) tags: Vec<u8>,
+    /// ⭐ **As regras do mundo e da mesa** (F30 §6 item 8, F41): vivem fora do mundo ECS (na ponte da
+    /// física e no recurso da mesa), então entram aqui — mudar a gravidade ou um bus é autoria e
+    /// desfaz-se. ⚠️ `skip`: o ficheiro leva-as nos campos `physics` e `mesa` do `ProjectFile` (o load
+    /// põe-nas aqui antes do `apply_project`), e a forma gravada do estado não muda.
+    #[serde(skip)]
+    pub(crate) regras: Regras,
+}
+
+/// O AUTORADO das regras do mundo (`PhysicsBridge::settings`) e da mesa (`mesa_doc::autorado`) — a
+/// curva que as conduz é pré-visualização.
+#[derive(Clone, Copy, PartialEq, Debug, Default)]
+pub(crate) struct Regras {
+    pub(crate) physics: ph2d_physics_ecs::PhysicsSettings,
+    pub(crate) mesa: ph2d_audio::Mesa,
+}
+
+impl Regras {
+    /// As regras autoradas de agora.
+    pub(crate) fn de(ponte: &ph2d_physics_ecs::PhysicsBridge, sim: &SimWorld) -> Self {
+        Self {
+            physics: ponte.settings(),
+            mesa: ph2d_app_audio::mesa_doc::autorado(sim),
+        }
+    }
+
+    /// Repõe estas regras — só o que mudou: instalar é o load da mesa (esquece a mão pendente do
+    /// painel). Devolve se a física mudou (quem chama esquece a condução da curva do mundo).
+    pub(crate) fn repor(
+        &self,
+        ponte: &mut ph2d_physics_ecs::PhysicsBridge,
+        sim: &mut SimWorld,
+    ) -> bool {
+        if ph2d_app_audio::mesa_doc::autorado(sim) != self.mesa {
+            ph2d_app_audio::mesa_doc::instalar(sim, self.mesa);
+        }
+        let fisica = ponte.settings() != self.physics;
+        if fisica {
+            ponte.set_settings(self.physics);
+        }
+        fisica
+    }
 }
 
 /// O `Macro` de cada objecto, para a edição de etapa que espera (W14, `ph2d_app_macros::espera`).
@@ -193,6 +234,8 @@ impl ProjectState {
             // ⚠️ **Um `clone` de bytes já codificados**, pela mesma razão da biblioteca: quem
             // codifica é a `TagsCache`, uma vez por mutação da árvore.
             tags: tags.to_vec(),
+            // As regras vêm da ponte e do recurso, fora do mundo: põe-nas quem as tem (`undo_app`).
+            regras: Regras::default(),
         }
     }
 
@@ -266,6 +309,9 @@ impl ProjectState {
         }
         if self.tags != other.tags {
             v.push("tags");
+        }
+        if self.regras != other.regras {
+            v.push("regras");
         }
         v
     }

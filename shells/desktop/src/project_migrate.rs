@@ -161,6 +161,7 @@ pub(crate) fn migrate_v95_to_v96(old: ProjectFileV95) -> MigratedV95 {
                 // ⚠️ **VAZIA, e o vazio é a resposta certa:** um ficheiro v95 foi gravado por um
                 // build sem tags nenhumas, logo ele não tem árvore a declarar. Ver o degrau 129.
                 tags: Vec::new(),
+                regras: Default::default(),
             },
             assets: old.assets,
             painted: old.painted.into_iter().map(Into::into).collect(),
@@ -261,6 +262,7 @@ pub(crate) fn migrate_v128_to_v129(old: ProjectFileV128) -> MigratedV128 {
         // ⚠️ **VAZIA:** o build que gravou este ficheiro não tinha tags. Um blob vazio abre uma
         // árvore vazia, calado — ver `ph2d_app_components::tags_doc::restore`.
         tags: Vec::new(),
+        regras: Default::default(),
     };
     let actions = migrate_signal_action_blobs(&mut state.world);
     let cameras = migrate_game_camera_blobs(&mut state.world);

@@ -27,7 +27,10 @@ fn tintas(pinta: impl FnOnce(&mut VectorScene)) -> Vec<Color> {
         .collect()
 }
 
-fn pintores() -> Vec<(&'static str, Box<dyn Fn(Theme, &mut VectorScene)>)> {
+/// Um pintor de overlay sob um tema.
+type Pintor = Box<dyn Fn(Theme, &mut VectorScene)>;
+
+fn pintores() -> Vec<(&'static str, Pintor)> {
     vec![
         (
             "caixa",

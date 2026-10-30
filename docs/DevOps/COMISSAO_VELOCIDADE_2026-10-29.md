@@ -208,3 +208,17 @@ run 25840452466) · clippy a meio da linha · suíte completa na linha · baixar
   auditoria de 10/09).
 - **Aberto:** a suíte completa do 1.99 corre UMA vez com a subida do vello 0.11 + wgpu 30 (adendo do dono 30/10:
   «uma suíte para todas as subidas»). Próxima janela: o prompt de continuação está no handoff.
+
+#### L — atualizar TUDO (30/10)
+
+Registo completo: [§26 do registro](../Atualizar%20Stack/04_registro.md).
+
+- Commits: `0341c1704d` (vello 0.11 + wgpu/naga 30 + parley 0.12 + rapier 0.36 + bevy_ecs 0.20 + … + `cargo update`, zero
+  avisos, sem `allow`) · `3182310de4` (ctt 0.6.1; curou sprites gravados UNORM e lidos como sRGB) · `37fa006f8c` ·
+  `e1500b7386`.
+- Suíte única (`ci-test`): 30 555 corridos, 8 vermelhos + 8 timeouts; todos curados em `37fa006f8c` (backport do
+  wgpu-core #10160 vendorizado, Ctrl+Backspace, Inspector 1 485 → 1 488, tecto de LOC, linha do Rust).
+- B2: censos 12/12, clippy `-D warnings`, fmt, deny, audit verdes.
+- Velocidade (ABBA, mínimo, smoke): pior quadro do splash do Painter 30,2 → 28,0 ms; Luz 2D dentro do ruído.
+- Compilação da `ph2d-shape-gpu` (smoke, sem sccache, ABBAAB, mínimo): limpa 13,9 → 14,6 s (+5 %), incremental 0,2 → 0,3 s.
+- Aberto: apagar o vendor quando #10160 sair publicado; ver §26.7.

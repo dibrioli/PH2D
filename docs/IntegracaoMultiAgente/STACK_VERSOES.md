@@ -38,7 +38,7 @@
    medida** — [registo §15](../Atualizar%20Stack/04_registro.md). Não «arrume» isto.
 3. ⛔ **O que não subiu ficou por MEDIÇÃO** (30/10): `skrifa`/`read-fonts` (tecto do `vello`/`usvg`/
    `fontique`), `ndarray` 0.15 (`deep_filter`), `pollster` 0.4 (`rfd`), `sha2`/`hkdf`/`rand_core` dentro
-   do `spake2`. Registo e recusas: [`docs/Atualizar Stack/04_registro.md`](../Atualizar%20Stack/04_registro.md) §20.
+   do `spake2`. Registo e recusas: [`docs/Atualizar Stack/04_registro.md`](../Atualizar%20Stack/04_registro.md) §26.
 
 ## O que a subida de 30/10 mudou no CÓDIGO (e morde quem não souber)
 

@@ -1116,6 +1116,121 @@ produz ruído, mas é qualidade de borda por resolver e vale a nota.
 - ⚠️ **O que falta para fechar** é **um** dado que só o Enio tem: qual preset de texto estava activo,
   e se o ruído aparece com o `Default`. Sem isso, A e B ficam os dois em aberto.
 
+## §26 — «Atualizar TUDO» (2026-10-30, adendo do dono)
+
+Uma subida, uma suíte (`nextest ci-test`, 1× em `3182310de4`). Rust 1.99.1 foi o 1.º degrau
+([COMISSÃO L](../DevOps/COMISSAO_VELOCIDADE_2026-10-29.md)).
+
+### §26.1 — De/para
+
+| crate | de | para | nota |
+|---|---|---|---|
+| wgpu / naga | 29.0.4 | **30.0.1** | + backport vendorizado do wgpu-core (§26.4) |
+| vello / vello_encoding | 0.10 | **0.11** | = wgpu 30 + correção de colocação `sbix` (sem `sbix` nos nossos goldens) |
+| parley / fontique | 0.11.1 | **0.12.0** | |
+| accesskit | 0.24.1 | **0.25.2** | `TreeInfo` |
+| usvg / resvg | 0.48 | **0.49** | `BlendMode::PlusLighter` → o nosso Add |
+| bevy_ecs | 0.19.1 | **0.20.1** | zero mudança de código |
+| rapier2d / parry2d / glamx | 0.35.3 / 0.30.2 / 0.3 | **0.36.1 / 0.31.1 / 0.3.1** | |
+| taffy | 0.14 | **0.15.1** | `align` sem `Option` |
+| smithay-client-toolkit | 0.19.2 | **0.21.1** | só em `ph2d-wayland-dnd` (`delegate_dispatch2!`) |
+| wasmtime | 48 | **50** | testes/spike |
+| base64 | 0.22 | **0.23** | |
+| chacha20poly1305 | 0.10 | **0.11** | aead 0.6: `AeadInOut`, `KeyInit::new_from_slice`, `Array` |
+| hkdf / hmac | 0.12 | **0.13** | |
+| sha2 | 0.10 | **0.11** | nas nossas crates |
+| similar | 2.7 | **3.2** | |
+| ctt | 0.5 | **0.6.1** | `asset-cooker` (§26.3) |
+| resto | — | `cargo update` | ~70 menores |
+
+`wgpu-profiler` 0.28: não é dependência nossa (feature opcional do vello) — nada a fazer. Pacotes 1356 → 1360.
+
+### §26.2 — Commits (main)
+
+| commit | o quê |
+|---|---|
+| `0341c1704d` | todas as subidas + portes; `check --all-targets` verde, zero avisos, nenhum `#[allow]` |
+| `3182310de4` | `asset-cooker` no ctt 0.6.1 (§26.3); `zstd` 0.13 / `zstd-safe` 7 saem do grafo |
+| `37fa006f8c` | curas da suíte (§26.4) |
+| `e1500b7386` | o gate `a_vez_da_placa` não varre `vendor/` |
+
+### §26.3 — O que mordeu no código
+
+- **wgpu 30:** `get_mapped_range` → `Result` (~95 sítios: `?`/`ok()?` onde a fn devolve `Option`/`Result`; anéis
+  que não podem entrar em pânico largam a amostra e fazem `unmap`; sondas/testes `.expect`) · `VertexState.buffers`
+  `Some(..)` · `Queue::present` · `SurfaceColorSpace::Auto` · `apply_limit_buckets: false`. Os 3 `@location` inteiros
+  de `sprite.wgsl` são ENTRADAS de vértice ⇒ sem `@interpolate(flat)` (validado pelos testes de placa).
+- **parley 0.12:** coordenadas normalizadas ⇒ uma só porta `ph2d_text::run_coord_bits` · `Run::font_metrics` ·
+  `LineMetrics.hanging_advance`.
+- **rapier 0.36:** `SoftBodySet` (vazio; também no checkpoint) · `ctx.rigid_mut()` · `COMPUTE_RIGID_IMPULSES` ·
+  `manifolds()`. Determinismo/sleep/checkpoint verdes — comparam corrida × corrida, **não** contra trajetórias da 0.35.
+  CHANGELOG: lista de colisores fixos obsoleta no CCD corrigida; ray-cast de cápsula analítico.
+- **ctt 0.6.1 (`3182310de4`):** o espaço de cor vai no `VkFormat` (classes de cor → `*_SRGB`, dados → `*_UNORM`);
+  `stored_color_space` + gate `matrix_color_space_agrees_with_class`. ⚠️ **Curou um defeito:** o cooker gravava sprites
+  UNORM e `ph2d-asset-ktx2` / `ph2d-render::ktx2_format` / `ktx2_smoke` liam-nos como sRGB. Sai a isenção de
+  RUSTSEC-2026-0391/0398/0403.
+
+### §26.4 — A suíte: 30 555 · 30 539 verdes · 8 vermelhos · 8 timeouts (2 206 s)
+
+1. **wgpu-hal 30 / wgpu-core 30.0.1:** o `Drop` do `DescriptorAllocator` (Vulkan) afirma que todos os BGL foram
+   desregistados; `Device::new` a falhar por OOM larga o device com `empty_bgl` registado ⇒ pânico em vez de
+   `RequestDeviceError` (`os_tetos_da_placa::a_luz_recua_quando_a_placa_recusa_a_memoria`). Cura upstream
+   gfx-rs/wgpu#10160 (`818586c4d1`, 2026-09-01), **não publicada** ⇒ backport vendorizado em
+   `crates/ph2d-gpu/vendor/wgpu-core` (`VENDOR.md`: quando apagar) + `[patch.crates-io]` + exclusão da workspace +
+   `unfulfilled_lint_expectations = "allow"` no manifesto dele (o `CARGO_BUILD_WARNINGS=deny` do CI vê deps por
+   caminho). O `commit-barato` passa a ler o `rustfmt.toml` MAIS PRÓXIMO.
+2. **parley 0.12:** `Cursor::previous_logical_word` no FIM do texto salta DUAS palavras ⇒ Ctrl+Backspace do Quadro
+   usa `inicio_da_palavra_anterior` (UAX #29, `unicode-segmentation`), como o navegador.
+3. **parley 0.12 com quantize** arredonda ascent/descent/leading antes de somar (Inter 12 px: 14,53 → 15): abertura
+   do Inspector 1 484,58 → 1 488, medida retângulo a retângulo contra a árvore de antes (163 widgets; x/w/h iguais,
+   só os y viram inteiros) ⇒ gate 1 485 → 1 488.
+4. `ph2d-fx-cells/src/celulas.rs` 706 > 700 ⇒ a projeção foi para `celulas_afim.rs` (666).
+5. Linha «Rust» do STACK_VERSOES «ambígua» (vermelha desde `3276451e5a`) ⇒ corrigida.
+
+Não nossos: contagens do índice de memória (sessões alheias); timeouts do Painter (já 180/600 s em
+`.config/testes-lentos.tsv`); o módulo `os_tetos_da_placa` falha num `cargo test` de um só processo TAMBÉM na
+árvore de antes (interferência de orçamento na mesma placa).
+
+**B2 depois das curas:** 8/8 verdes; `nextest-impacted` ~19 000 de 19 373 (único vermelho novo: `a_vez_da_placa` a
+varrer `vendor/`, curado em `e1500b7386`; o resto, timeouts conhecidos do Painter); censos 12/12; `check` com
+`CARGO_BUILD_WARNINGS=deny`, clippy `--all-targets -D warnings`, fmt, `cargo deny`, `cargo audit` (só `memmap2` 0.5
+permitido) verdes. Nenhum golden/fnv mudou; só o gate de altura do Inspector foi re-fixado. Testes de placa de
+render/gpu-cook/light2d/flip/fx-cells/shape-gpu verdes por nome.
+
+### §26.5 — Medido (ABBA intercalado, mínimo, mesma sonda, perfil smoke; worktree `Worktrees/stack-antes` @`4c69e12c58` × main)
+
+| medição | antes → depois |
+|---|---|
+| Painter, pior quadro do splash (`sonda_o_quadro_mais_caro_do_splash`) | 30,2 → **28,0 ms** (A: 51,3\*/31,9/30,2 · B: 29,6/30,6/28,0; \* 1.ª corrida fria) |
+| Luz 2D `medida_luz2d`, base RC | 1,4843 → 1,4774 ms |
+| Luz 2D, céu e vidro | 3,8452 → 3,8772 ms (ruído) |
+| compilação limpa / incremental da ph2d-shape-gpu (smoke, sem sccache, ABBAAB, mínimo) | limpa **13,9 → 14,6 s** (+5 %; A 14,1/13,9/14,0 · B 14,7/14,7/14,6) · incremental **0,2 → 0,3 s** (igual). ⚠️ A 1.ª rodada leu +42 %: a fatia de CPU do main tinha o `nextest-impacted` do B2 a correr — as peças que NÃO mudaram (glam, ash, read-fonts) subiam os mesmos +35 %; régua com fatias desiguais não decide |
+
+### §26.6 — ⛔ Recusas MEDIDAS (ficam atrás de propósito)
+
+| o quê | porquê não |
+|---|---|
+| `glam` ×4 | HR-5 e §15 deste registo |
+| `ndarray` 0.15 | `deep_filter` vendorizado o fixa |
+| `pollster` 0.4 | `rfd` o fixa |
+| `miniz_oxide` 0.8 | `exr`/`png` o fixam |
+| `skrifa` 0.44 / `read-fonts` 0.41 / `harfrust` 0.12 | vello, usvg e fontique os fixam |
+| `sha2` 0.10 / `hkdf` 0.12 / `rand_core` 0.6 | dentro de `spake2` 0.4 |
+| `core-graphics` | winit 0.31 (beta) |
+| `thiserror` 1 | `psd` |
+
+Cópias duplicadas novas, aceites (tipos não cruzam as nossas crates): `hkdf`/`hmac` 0.12 só em `spake2`; `similar`
+2.7 só em `insta`; `sctk` 0.19 só em `winit`.
+
+### §26.7 — ABERTO
+
+1. Apagar o vendor do wgpu-core quando o crates.io publicar #10160 (30.0.2 ou 31).
+2. O bug de `previous_logical_word` do parley 0.12 pode ser reportado a montante (decisão do dono: é externo).
+3. Exceções de licença sem correspondência no `deny.toml` (`r-efi`, `webpki-roots`) são anteriores a esta subida.
+4. Sondas `#[ignore]` `celulas_gpu` do fx-cells partilham um conjunto global de queries do profiler entre devices
+   se correrem em paralelo (anterior) — correr uma de cada vez.
+5. Remover `Worktrees/stack-antes` depois das medições.
+
 ## §16 — O bloco G, e o que fica ABERTO (2026-08-29)
 
 ### §16.1 — Feito

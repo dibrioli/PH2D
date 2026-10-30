@@ -70,6 +70,22 @@ pub(crate) fn register_wetpaint(store: &mut WidgetStore) {
             ph2d_tool_painter::ids::PAINTER_WETPAINT_SOLUBILITY,
             "panel.painter_wet_cartao.solubility_tip",
         ),
+        (
+            ph2d_tool_painter::ids::PAINTER_WETPAINT_STAINING,
+            "panel.painter_wet_cartao.staining_tip",
+        ),
+        (
+            ph2d_tool_painter::ids::PAINTER_WETPAINT_GLAZE,
+            "panel.painter_wet_cartao.glaze_tip",
+        ),
+        (
+            ph2d_tool_painter::ids::PAINTER_WETPAINT_COVER,
+            "panel.painter_wet_cartao.cover_tip",
+        ),
+        (
+            ph2d_tool_painter::ids::PAINTER_WETPAINT_WET_SOFTEN,
+            "panel.painter_wet_cartao.wet_soften_tip",
+        ),
     ] {
         store.set_tooltip(id, tr(dica));
     }

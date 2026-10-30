@@ -118,7 +118,7 @@ pub(super) const KNOBS_DA_FERRAMENTA: [(ph2d_a11y::NodeId, Knob, WetTool, &str);
 /// o preset; o Pigment diffusion pedido no smoke) saíram também do Tuning: o que está no cartão não se repete lá
 /// (R3). O `ExtDryBrush` ficou de fora: o `dry_gate` é 0 nos 29 presets de fábrica (medido 25/10); só a cobertura
 /// que cai (a velocidade → opacidade) o abre (`o_extdrybrush_so_mexe_com_dry_gate_positivo`).
-pub(super) const KNOBS_NO_CARTAO: [(ph2d_a11y::NodeId, Knob); 13] = [
+pub(super) const KNOBS_NO_CARTAO: [(ph2d_a11y::NodeId, Knob); 17] = [
     (crate::ids::PAINTER_WETPAINT_LEVELING, Knob::Leveling),
     (crate::ids::PAINTER_WETPAINT_LEVEL_CLAMP, Knob::LevelClamp),
     (crate::ids::PAINTER_WETPAINT_CAPILLARY, Knob::Capillary),
@@ -136,4 +136,10 @@ pub(super) const KNOBS_NO_CARTAO: [(ph2d_a11y::NodeId, Knob); 13] = [
     (crate::ids::PAINTER_WETPAINT_REWET, Knob::Dissolve),
     (crate::ids::PAINTER_WETPAINT_REWET_DRAG, Knob::RewetDrag),
     (crate::ids::PAINTER_WETPAINT_SOLUBILITY, Knob::Solubility),
+    // Como a tinta se dá com a de baixo (dono 30/10: «outros parâmetros essenciais… no Inspector»): resiste ao
+    // re-molhar, filtra, tapa, amacia a orla no molhado.
+    (crate::ids::PAINTER_WETPAINT_STAINING, Knob::ExtStaining),
+    (crate::ids::PAINTER_WETPAINT_GLAZE, Knob::Glaze),
+    (crate::ids::PAINTER_WETPAINT_COVER, Knob::WetCover),
+    (crate::ids::PAINTER_WETPAINT_WET_SOFTEN, Knob::ExtWetSoften),
 ];

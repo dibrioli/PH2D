@@ -33,6 +33,23 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_wet_cartao.solubility_tip" => {
             "How much this paint, once laid, dissolves under later water"
         }
+        // Como a tinta se dá com a de baixo (dono 30/10).
+        "panel.painter_wet_cartao.staining" => "Staining",
+        "panel.painter_wet_cartao.staining_tip" => {
+            "How much this paint stains the paper: a staining paint resists being lifted by later water, Smear or Blend"
+        }
+        "panel.painter_wet_cartao.glaze" => "Glaze",
+        "panel.painter_wet_cartao.glaze_tip" => {
+            "How much this paint filters the colour under it like a transparent layer, instead of covering it"
+        }
+        "panel.painter_wet_cartao.cover" => "Cover",
+        "panel.painter_wet_cartao.cover_tip" => {
+            "How much this paint hides WET paint of another colour under it instead of mixing with it, like gouache"
+        }
+        "panel.painter_wet_cartao.wet_soften" => "Wet soften",
+        "panel.painter_wet_cartao.wet_soften_tip" => {
+            "How much the edge of the stroke softens on wet paper"
+        }
         // A linha da ferramenta da água na mão (dono 25/10, o painel do Rebelle).
         "panel.painter_wet_cartao.strength" => "Strength",
         "panel.painter_wet_cartao.smear_water" => "Water",

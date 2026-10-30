@@ -127,7 +127,7 @@ const AGUADA: [NodeId; 6] = [
 ];
 
 /// Os ids do que o pincel do Wet Paint pousa.
-const DEPOSITO_MOLHADO: [NodeId; 15] = [
+const DEPOSITO_MOLHADO: [NodeId; 18] = [
     PAINTER_BRUSH_DAB_QUINA,
     // As pontas rectas (J6): o corte do traço que o pincel pousa.
     PAINTER_BRUSH_PONTAS_RECTAS,
@@ -146,6 +146,10 @@ const DEPOSITO_MOLHADO: [NodeId; 15] = [
     PAINTER_WETPAINT_REWET,
     PAINTER_WETPAINT_REWET_DRAG,
     PAINTER_WETPAINT_SOLUBILITY,
+    // A tinta que filtra, tapa e amacia no molhado (dono 30/10): lidas no pouso.
+    PAINTER_WETPAINT_GLAZE,
+    PAINTER_WETPAINT_COVER,
+    PAINTER_WETPAINT_WET_SOFTEN,
 ];
 
 #[test]

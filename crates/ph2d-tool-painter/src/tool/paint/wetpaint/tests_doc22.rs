@@ -559,3 +559,43 @@ fn rewet_e_solubility_do_cartao_chegam_ao_knob() {
         );
     }
 }
+
+/// ⭐ **Staining, Glaze, Cover e Wet soften no cartão do pincel** (dono 30/10: «outros parâmetros essenciais… no
+/// Inspector»): a tinta que resiste ao re-molhar, a que filtra a de baixo, a que a tapa e a orla que amacia no molhado
+/// chegam ao knob do motor EXACTAS pelo `SetValue` do painel, e nenhuma se repete no Tuning (Hidden).
+#[test]
+fn mistura_do_cartao_chega_ao_knob() {
+    use ph2d_wet_paint::tuning::{KNOB_DEFS, Knob, KnobGroup};
+    for (id, knob, v) in [
+        (
+            crate::ids::PAINTER_WETPAINT_STAINING,
+            Knob::ExtStaining,
+            0.83,
+        ),
+        (crate::ids::PAINTER_WETPAINT_GLAZE, Knob::Glaze, 0.41),
+        (crate::ids::PAINTER_WETPAINT_COVER, Knob::WetCover, 0.57),
+        (
+            crate::ids::PAINTER_WETPAINT_WET_SOFTEN,
+            Knob::ExtWetSoften,
+            0.66,
+        ),
+    ] {
+        let mut t = wet_tool_fixture();
+        assert_ne!(
+            t.paint.wetpaint.knobs.get(knob),
+            v,
+            "{knob:?}: a fixtura já tem o valor"
+        );
+        set(&mut t, id, v);
+        assert_eq!(
+            t.paint.wetpaint.knobs.get(knob),
+            v,
+            "{knob:?}: o cartão não chegou ao motor"
+        );
+        assert_eq!(
+            KNOB_DEFS[knob as usize].group,
+            KnobGroup::Hidden,
+            "{knob:?} no Tuning"
+        );
+    }
+}

@@ -206,9 +206,9 @@ pub const KNOB_DEFS: [KnobDef; KNOB_COUNT] = [
     // permanent is dried paint" (0 = lifts freely, 1 = pinned down; the 0.5
     // default is the exact multiplier-1 neutral point, so promoting the
     // group changes NO number).
-    k(Knob::ExtStaining, KnobGroup::Paint, "extStaining", 0.0, 1.0, 0.01, 0.5, None),
+    k(Knob::ExtStaining, KnobGroup::Hidden, "extStaining", 0.0, 1.0, 0.01, 0.5, None),
     k(Knob::ExtDryBrush, KnobGroup::Stroke, "extDryBrush", 0.0, 1.0, 0.01, 0.0, None),
-    k(Knob::ExtWetSoften, KnobGroup::Stroke, "extWetSoften", 0.0, 1.0, 0.01, 0.0, None),
+    k(Knob::ExtWetSoften, KnobGroup::Hidden, "extWetSoften", 0.0, 1.0, 0.01, 0.0, None),
     k(Knob::ExtRakeLight, KnobGroup::Hidden, "extRakeLight", 0.0, 3.0, 0.05, 0.0, Some(Rebuild::Render)),
     k(Knob::ExtValleyGran, KnobGroup::Hidden, "extValleyGran", 0.0, 1.0, 0.01, 0.0, Some(Rebuild::Render)),
     k(Knob::ExtWetSheen, KnobGroup::Hidden, "extWetSheen", 0.0, 2.0, 0.05, 0.0, Some(Rebuild::Render)),
@@ -219,7 +219,7 @@ pub const KNOB_DEFS: [KnobDef; KNOB_COUNT] = [
     // pigment); default 0.25 is calibrated by the reactivation gate: three
     // full-stamp Wet dabs dissolve over half of a dried stroke.
     k(Knob::WetLift, KnobGroup::Tools, "wetLift", 0.0, 1.0, 0.01, 0.25, None),
-    k(Knob::Glaze, KnobGroup::Paint, "glaze", 0.0, 1.0, 0.01, 0.0, None),
+    k(Knob::Glaze, KnobGroup::Hidden, "glaze", 0.0, 1.0, 0.01, 0.0, None),
     k(
         Knob::Dust,
         KnobGroup::Hidden, // no cartão Wet Paint do painel do Painter, abaixo do Brake (dono 19/10)
@@ -324,7 +324,7 @@ pub const KNOB_DEFS: [KnobDef; KNOB_COUNT] = [
     // censo `o_corpo_de_cada_ferramenta_da_agua_e_o_que_ela_le` a 4 raios não via diferença nenhuma)
     k(Knob::BlendReach, KnobGroup::Tools, "blendReach", 0.0, 1.0, 0.01, 0.0, None),
     // J6 (guache, lacuna 7): a tinta nova cobre a molhada de outra cor — neutro 0 = a mistura de sempre, ao bit
-    k(Knob::WetCover, KnobGroup::WetEffects, "wetCover", 0.0, 1.0, 0.01, 0.0, None),
+    k(Knob::WetCover, KnobGroup::Hidden, "wetCover", 0.0, 1.0, 0.01, 0.0, None),
     // J6 (cerdas): os fios crescem com o diâmetro — neutro 0 = os px escritos, ao bit
     k(Knob::BristleLaneSizeExp, KnobGroup::Bristles, "bristleLaneSizeExp", 0.0, 1.5, 0.01, 0.0, None),
     // Paper Press (dono 28/10): neutro 1 = o amassado de sempre, ao bit (o preset sem a chave)

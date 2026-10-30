@@ -318,6 +318,21 @@ pub const PAINTER_WETPAINT_SOLUBILITY: NodeId = hash_node_id("painter_brush.wetp
 /// dono 30/10, J10).
 pub const PAINTER_WETPAINT_REWET_DRAG: NodeId = hash_node_id("painter_brush.wetpaint_rewet_drag");
 
+/// **Staining** — quanto a tinta pousada TINGE o papel e resiste a ser levantada pela água de depois (knob `extStaining`;
+/// saiu do Tuning, dono 30/10).
+pub const PAINTER_WETPAINT_STAINING: NodeId = hash_node_id("painter_brush.wetpaint_staining");
+
+/// **Glaze** — a fracção da tinta deste pincel que FILTRA a de baixo, em vez de a cobrir (knob `glaze`; saiu do Tuning,
+/// dono 30/10).
+pub const PAINTER_WETPAINT_GLAZE: NodeId = hash_node_id("painter_brush.wetpaint_glaze");
+
+/// **Cover** — quanto a tinta nova TAPA a molhada de outra cor em vez de se misturar (knob `wetCover`; saiu do Tuning,
+/// dono 30/10).
+pub const PAINTER_WETPAINT_COVER: NodeId = hash_node_id("painter_brush.wetpaint_cover");
+
+/// **Wet soften** — a orla do traço amacia sobre o papel molhado (knob `extWetSoften`; saiu do Tuning, dono 30/10).
+pub const PAINTER_WETPAINT_WET_SOFTEN: NodeId = hash_node_id("painter_brush.wetpaint_wet_soften");
+
 /// **Erase Strength** — the wet eraser's lift per pass (engine `sliders.erase`, boot `0.4`).
 pub const PAINTER_WETPAINT_ERASE: NodeId = hash_node_id("painter_brush.wetpaint_erase");
 
@@ -340,7 +355,7 @@ pub const PAINTER_WETPAINT_BLOW_STRENGTH: NodeId =
 
 /// The Wet Paint **number-field** ids — ONE membership list for the panel's `SetValue` forward
 /// (`number_field::is_param_field`), the populate loop, and the tool's routing match.
-pub const PAINTER_WETPAINT_FIELDS: [NodeId; 31] = [
+pub const PAINTER_WETPAINT_FIELDS: [NodeId; 35] = [
     PAINTER_WETPAINT_GRID,
     PAINTER_WETPAINT_FLOW,
     PAINTER_WETPAINT_WATER,
@@ -362,6 +377,10 @@ pub const PAINTER_WETPAINT_FIELDS: [NodeId; 31] = [
     PAINTER_WETPAINT_REWET,
     PAINTER_WETPAINT_REWET_DRAG,
     PAINTER_WETPAINT_SOLUBILITY,
+    PAINTER_WETPAINT_STAINING,
+    PAINTER_WETPAINT_GLAZE,
+    PAINTER_WETPAINT_COVER,
+    PAINTER_WETPAINT_WET_SOFTEN,
     PAINTER_WETPAINT_ERASE,
     PAINTER_WETPAINT_SMEAR_STRENGTH,
     PAINTER_WETPAINT_SMEAR_WATER,

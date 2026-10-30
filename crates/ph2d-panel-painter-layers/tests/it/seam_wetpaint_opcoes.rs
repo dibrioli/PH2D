@@ -209,8 +209,10 @@ fn as_dicas_das_opcoes() {
 #[test]
 fn as_dicas_dos_knobs_do_pincel() {
     use ph2d_tool_painter::ids::{
-        PAINTER_WETPAINT_DIFFUSION, PAINTER_WETPAINT_REWET, PAINTER_WETPAINT_REWET_DRAG,
-        PAINTER_WETPAINT_SOLUBILITY, PAINTER_WETPAINT_TIP_PICKUP, PAINTER_WETPAINT_WET_BLOOM,
+        PAINTER_WETPAINT_COVER, PAINTER_WETPAINT_DIFFUSION, PAINTER_WETPAINT_GLAZE,
+        PAINTER_WETPAINT_REWET, PAINTER_WETPAINT_REWET_DRAG, PAINTER_WETPAINT_SOLUBILITY,
+        PAINTER_WETPAINT_STAINING, PAINTER_WETPAINT_TIP_PICKUP, PAINTER_WETPAINT_WET_BLOOM,
+        PAINTER_WETPAINT_WET_SOFTEN,
     };
     let (host, _, _) = pinta(&molhado());
     for (id, chave) in [
@@ -235,6 +237,17 @@ fn as_dicas_dos_knobs_do_pincel() {
         (
             PAINTER_WETPAINT_SOLUBILITY,
             "panel.painter_wet_cartao.solubility_tip",
+        ),
+        // Staining, Glaze, Cover e Wet soften (dono 30/10).
+        (
+            PAINTER_WETPAINT_STAINING,
+            "panel.painter_wet_cartao.staining_tip",
+        ),
+        (PAINTER_WETPAINT_GLAZE, "panel.painter_wet_cartao.glaze_tip"),
+        (PAINTER_WETPAINT_COVER, "panel.painter_wet_cartao.cover_tip"),
+        (
+            PAINTER_WETPAINT_WET_SOFTEN,
+            "panel.painter_wet_cartao.wet_soften_tip",
         ),
     ] {
         let dica = ph2d_i18n::tr(chave);

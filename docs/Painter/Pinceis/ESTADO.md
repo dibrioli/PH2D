@@ -29,11 +29,10 @@
   branco nem preto (`776a9ff173`). **Smoke do dono: a versão ATUAL fica.** Próxima: A arrasto do óleo pela aguada durante o
   traço · B mistura molhada pela média das consistências, borda com transição · C New Image «papel texturizado».
 
-## J10 (30/10): C `7d343a9de4` («Textured Paper»). A+B: retoque [`aguada_arrasta_oleo_simula.py`](../NewFeaturesWetPaint/ferramentas/aguada_arrasta_oleo_simula.py),
-dono escolhe `J10_remolha_*` «re-molha médio», ajustes no INSPECTOR. `84df135c02` motor `Dissolve`×`Solubility`
-(`trail/transfer/remolha.rs`; `remolha_tests`: neutro ao bit, 0,35×1 ⇒ −36 % azul sob a aguada) · `84ed24c8fc` sliders
-após Tip pickup. Fábrica 0/0. EM SMOKE. Aberto: água azul-ardósia (não verde), óleo não esverdeia, pontos amarelos a meio
-do traço; censo `o_painel_mostra_o_que_a_ferramenta_le` por correr (morto aos 900 s sob carga).
+## J10 (30/10, [handoff](HANDOFF_JANELA_10.md)): Textured Paper `7d343a9de4` · Re-wet×Solubility `84df135c02` `84ed24c8fc` ·
+Drag (arrasto do Smear) `6c243555f0` · undo não mata a tinta viva `7bb6110ac5` · ladeira com Real Oil `f70ea44cd9` · Staining/Glaze/
+Cover/Wet soften no cartão `e42174cc5a`. Fábrica 0/0/0, smoke do dono PENDENTE. Aberto: queda pela diluição, undo (aguarela 13 B,
+redo, memória), cor da água tingida, censos sob carga, fecho.
 
 ## J6 ([`JANELA_6.md`](JANELA_6.md)): a fila
 

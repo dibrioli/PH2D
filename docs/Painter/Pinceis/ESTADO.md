@@ -29,6 +29,12 @@
   branco nem preto (`776a9ff173`). **Smoke do dono: a versão ATUAL fica.** Próxima: A arrasto do óleo pela aguada durante o
   traço · B mistura molhada pela média das consistências, borda com transição · C New Image «papel texturizado».
 
+## J10 (30/10): C feito `7d343a9de4` (botão «Textured Paper»). A+B: retoque
+[`aguada_arrasta_oleo_simula.py`](../NewFeaturesWetPaint/ferramentas/aguada_arrasta_oleo_simula.py); pranchas `J10_simula_AB_*`
+(arrasto + mistura KM) **não serve** («não re-molhou o azul»); `J10_remolha_*` **dono: «re-molha médio»** (35 % do azul sob a
+aguada dissolve e viaja na água, σ 10; o óleo que fica mistura 0,35 com o amarelo, borda esbatida). Ordem: parâmetros de
+RE-MOLHAR e de SOLUBILIDADE/mistura de uma tinta na outra no INSPECTOR (não no Tuning). EM CURSO: mapa do motor.
+
 ## J6 ([`JANELA_6.md`](JANELA_6.md)): a fila
 
 - **0 Óleo** ⭐ dono 28/10: Oil/* com Real Oil (`e314e58cec` `d94e19a57e` `105f28791d` `78fb8c7c77` `5470ce0969`): 2× mais rápido ao bit; bancada fotografa o óleo do traço. Cega (9 óleos) Rebelle achado 11/27 (acaso 9): seguem aprovados Filbert 396 · K. Textured 374 · K. Dry 362 · K. Smooth 3 352 · K. Oily 342. EM CURSO (motor: o óleo derrete o grão fino): K. Stain 162 · K. Grainy 226 · Dabber 4 322 · Metallic Flat 326. OOM = paralelismo + 19 GB de /tmp órfão.

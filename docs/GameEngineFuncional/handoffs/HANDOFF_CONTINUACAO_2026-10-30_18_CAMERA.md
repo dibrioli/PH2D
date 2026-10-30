@@ -54,8 +54,9 @@ gate batched §1.5.9 nem handoff de integração): continua com a miniatura.
   compositor) assume UMA câmera e alvos do tamanho da janela. Meia-miniatura só com `render_with_streams` (sprites)
   mentiria (sem vetor/Flip/luz). A fileira «Preview» foi retirada (botão morto). Mapa do explorador: porta
   reaproveitável `renderer.render_with_streams(GameRt::view(), …)` + `GameRt::new(gpu, size)` + `Compositor`;
-  risco: estado da luz 2D/`vista` derivado da câmera do editor. A mesma capacidade falta ao retrato do asset
-  (`asset_card_portrait.rs:11-14`).
+  risco: estado da luz 2D/`vista` derivado da câmera do editor. ~~A mesma capacidade falta ao retrato do asset~~
+  (corrigido 30/10: `asset_card_portrait.rs:11-14` compõe em CPU sobre pixels — esta capacidade não o serve;
+  plano da A6 em [18](../18_miniatura_da_camera_plano.md)).
 - **Pausado a meio (t > 0) a moldura não anda com o arrasto** — é a vista daquele instante da corrida (o passe
   com `ticks == 0` não renasce fora do zero); o arrasto muda a mira (cruz) e a zona vai com ela; as chaves gravam
   a mudança. No zero a moldura renasce e anda. O dono perguntou no smoke (passo 6) e aceitou.

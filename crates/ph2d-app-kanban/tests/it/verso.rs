@@ -113,7 +113,7 @@ fn a_descricao_editada_grava_markdown() {
 }
 
 /// A célula do dia `dia` do mês mostrado no seletor aberto.
-fn celula(m: &mut Mesa, id: KanbanId, ano: i16, mes: u8, dia: u8) -> (f32, f32) {
+pub(crate) fn celula(m: &mut Mesa, id: KanbanId, ano: i16, mes: u8, dia: u8) -> (f32, f32) {
     let r = alvo(m, id, "Pop(Picker)");
     let cal = CalendarLayout::of(DatePickerLayout::of(r).calendar);
     let grelha =
@@ -161,7 +161,7 @@ fn as_datas_pelo_seletor_mudam_a_entrega() {
     );
 }
 
-fn now() -> i64 {
+pub(crate) fn now() -> i64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map_or(0, |d| i64::try_from(d.as_millis()).unwrap_or(0))

@@ -10,14 +10,6 @@ use ph2d_editor_core::screens::hero::board_keys::BoardKey;
 use ph2d_host::Modifiers;
 use ph2d_kanban_model::KanbanId;
 use ph2d_tokens::Theme;
-use ph2d_vector::VectorScene;
-
-fn cena(m: &mut Mesa) -> VectorScene {
-    m.quadro();
-    let mut s = VectorScene::new();
-    m.pinta(&mut s);
-    s
-}
 
 fn fecha(m: &mut Mesa) {
     m.tecla(BoardKey::Escape, Modifiers::default(), None);
@@ -42,11 +34,11 @@ fn d11_foto_gaveta_e_fundos() {
         toca(&mut m, id, "Pattern(Dots)");
         toca(&mut m, id, "Tint(Base, Purple)");
         toca(&mut m, id, "Tint(Ink, Pink)");
-        grava_em("D11", &format!("gaveta_padrao_{tag}"), &cena(&mut m));
+        grava_em("D11", &format!("gaveta_padrao_{tag}"), &m.cena());
         toca(&mut m, id, "Custom(Ink)");
-        grava_em("D11", &format!("gaveta_cor_livre_{tag}"), &cena(&mut m));
+        grava_em("D11", &format!("gaveta_cor_livre_{tag}"), &m.cena());
         fecha(&mut m);
-        grava_em("D11", &format!("quadro_padrao_pontos_{tag}"), &cena(&mut m));
+        grava_em("D11", &format!("quadro_padrao_pontos_{tag}"), &m.cena());
         for (alvo, nome) in [
             ("Pattern(Diagonal)", "quadro_padrao_diagonal"),
             ("Pattern(Waves)", "quadro_padrao_ondas"),
@@ -54,7 +46,7 @@ fn d11_foto_gaveta_e_fundos() {
             abre(&mut m, id);
             toca(&mut m, id, alvo);
             fecha(&mut m);
-            grava_em("D11", &format!("{nome}_{tag}"), &cena(&mut m));
+            grava_em("D11", &format!("{nome}_{tag}"), &m.cena());
         }
         for (alvo, nome) in [
             ("Color(Green)", "quadro_cor"),
@@ -64,7 +56,7 @@ fn d11_foto_gaveta_e_fundos() {
             abre(&mut m, id);
             toca(&mut m, id, alvo);
             fecha(&mut m);
-            grava_em("D11", &format!("{nome}_{tag}"), &cena(&mut m));
+            grava_em("D11", &format!("{nome}_{tag}"), &m.cena());
         }
         abre(&mut m, id);
         let avisos = sobe(&mut m, id, ficheiro("d11f", "ceu.png", &foto(1600, 1000)));
@@ -74,9 +66,9 @@ fn d11_foto_gaveta_e_fundos() {
             std::thread::sleep(std::time::Duration::from_millis(20));
             m.quadro();
         }
-        grava_em("D11", &format!("gaveta_imagem_{tag}"), &cena(&mut m));
+        grava_em("D11", &format!("gaveta_imagem_{tag}"), &m.cena());
         fecha(&mut m);
-        grava_em("D11", &format!("quadro_imagem_{tag}"), &cena(&mut m));
+        grava_em("D11", &format!("quadro_imagem_{tag}"), &m.cena());
     }
 }
 
@@ -103,7 +95,7 @@ fn d11_mede_o_fundo_na_placa() {
         abre(&mut m, id);
         toca(&mut m, id, alvo);
         fecha(&mut m);
-        cenas.push((alvo, cena(&mut m)));
+        cenas.push((alvo, m.cena()));
     }
     let mut best = vec![f64::MAX; cenas.len()];
     for _ in 0..15 {
@@ -142,7 +134,7 @@ fn d11_foto_vistas_sobre_fundo_claro() {
                 (4, "painel"),
             ] {
                 crate::j1_vistas::vista(&mut m, id, i);
-                grava_em("D11", &format!("vista_{nome}_{fundo}_{tag}"), &cena(&mut m));
+                grava_em("D11", &format!("vista_{nome}_{fundo}_{tag}"), &m.cena());
             }
         }
     }

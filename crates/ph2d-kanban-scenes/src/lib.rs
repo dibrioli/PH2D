@@ -5,6 +5,8 @@
 pub mod script;
 mod sky;
 
+mod rich;
+pub use rich::{big, rich_back};
 pub use sky::sky_png;
 
 use ph2d_kanban_model::{

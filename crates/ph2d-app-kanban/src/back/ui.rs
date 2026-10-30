@@ -151,6 +151,32 @@ impl Ui<'_> {
         self.strong(s, Band::new(x, y, w, META_LINE), SMALL_PX, meta);
     }
 
+    /// ⭐ A altura do rótulo `s` a `w`: uma linha se cabe, senão as linhas dele (o nome de um
+    /// campo não se corta — dono 30/10).
+    pub fn caption_h(&mut self, s: &str, w: f32) -> f32 {
+        if self
+            .ts
+            .prefix_width_weighted(s, SMALL_PX, ph2d_text::FontWeight::SEMI_BOLD)
+            <= w
+        {
+            return META_LINE;
+        }
+        let n = crate::front::lines(self.ts, s, SMALL_PX, ph2d_text::FontWeight::SEMI_BOLD, w);
+        #[allow(clippy::cast_precision_loss)]
+        let extra = n.saturating_sub(1) as f32 * line_of(SMALL_PX);
+        META_LINE + extra
+    }
+
+    /// [`Self::caption`] que QUEBRA em linhas quando não cabe a `w` (a altura é [`Self::caption_h`]).
+    pub fn caption_wrapped(&mut self, s: &str, x: f32, y: f32, w: f32) {
+        if self.caption_h(s, w) <= META_LINE {
+            return self.caption(s, x, y, w);
+        }
+        let meta = self.meta();
+        let ty = text_top(self.ts, y, META_LINE, SMALL_PX);
+        ph2d_editor_core::paint::paint_text_title(self.ts, self.scene, s, x, ty, SMALL_PX, w, meta);
+    }
+
     /// A largura de um botão com este texto (e ícone).
     pub fn button_w(&mut self, s: &str, icon: bool) -> f32 {
         let icon_w = if icon { m::ICON_PX + GAP } else { 0.0 };

@@ -119,6 +119,11 @@ pub(crate) fn down(
                 let _ = b.comment.pointer_down(ts, r, x, y, mods, n);
             }
         }
+        Some(BackHit::Pop(PopHit::ChoiceBar)) => {
+            if let Some(Pop::Choice(c)) = b.pop.as_mut() {
+                c.s.press_bar(y);
+            }
+        }
         Some(BackHit::Pop(PopHit::Picker)) => {
             let r = b.rect_of(BackHit::Pop(PopHit::Picker));
             let events = match (&mut b.pop, r) {
@@ -140,6 +145,12 @@ pub(crate) fn moved(docs: &mut KanbanDocs, id: u64, ts: &mut TextSystem, x: f32,
     let Some(b) = back_mut(docs, id) else {
         return false;
     };
+    // O polegar da lista suspensa segue o rato mesmo fora da aba (o idioma de uma barra).
+    if let (Some(BackHit::Pop(PopHit::ChoiceBar)), Some(Pop::Choice(c))) = (b.press, b.pop.as_mut())
+    {
+        c.s.drag_bar(y);
+        return true;
+    }
     if !b.area.contains(x, y) {
         return false;
     }
@@ -177,6 +188,9 @@ pub(crate) fn up(docs: &mut KanbanDocs, id: u64, x: f32, y: f32) -> bool {
     };
     b.desc.pointer_up();
     b.comment.pointer_up();
+    if let Some(Pop::Choice(c)) = b.pop.as_mut() {
+        c.s.grab = None;
+    }
     let press = b.press.take();
     let now = b.hit(x, y);
     if press.is_some()
@@ -190,13 +204,20 @@ pub(crate) fn up(docs: &mut KanbanDocs, id: u64, x: f32, y: f32) -> bool {
 
 /// A roda rola o verso inteiro (o modal anda com a página, o Trello): `dy` px de ecrã, positivo =
 /// ver mais abaixo ([`crate::pointer::wheel_px`] converte a roda).
-pub(crate) fn wheel(docs: &mut KanbanDocs, id: u64, dy: f32) -> bool {
+pub(crate) fn wheel(docs: &mut KanbanDocs, id: u64, (x, y): (f32, f32), dy: f32) -> bool {
     if crate::auto::is_open(docs, id) {
         return crate::auto::wheel(docs, id, dy);
     }
     let Some(b) = back_mut(docs, id) else {
         return false;
     };
+    // A roda sobre a lista suspensa aberta rola-a (e não o verso).
+    if let Some(Pop::Choice(c)) = b.pop.as_mut()
+        && c.s.view.contains(x, y)
+    {
+        c.s.scroll_by(dy);
+        return true;
+    }
     let max = (b.content_h + 2.0 * super::ui::MODAL_TOP - b.area.h).max(0.0);
     b.scroll = (b.scroll + dy).clamp(0.0, max);
     true
@@ -223,19 +244,24 @@ fn edit(docs: &mut KanbanDocs, id: u64, at: EditAt, text: &str) {
     }
 }
 
-/// O seletor de datas do cartão (`None`) ou de um item.
-pub(crate) fn dates_pop(
-    docs: &mut KanbanDocs,
-    id: u64,
-    item: Option<ph2d_kanban_model::CheckItemId>,
-) {
+/// O seletor de datas do cartão, de um item ou de um campo de data.
+pub(crate) fn dates_pop(docs: &mut KanbanDocs, id: u64, item: super::DatesFor) {
+    use super::DatesFor as D;
     let now = crate::actions::now();
     let Some((card, start, due)) = read(docs, id, |k, c| match item {
-        None => (c.id, c.start, c.due.map(|d| (d.at, d.remind_before_min))),
-        Some(i) => (
+        D::Card => (c.id, c.start, c.due.map(|d| (d.at, d.remind_before_min))),
+        D::Item(i) => (
             c.id,
             None,
             k.items.get(&i).and_then(|i| i.due).map(|d| (d, None)),
+        ),
+        D::Field(f) => (
+            c.id,
+            None,
+            match c.fields.get(&f) {
+                Some(FieldValue::Date(d)) => Some((*d, None)),
+                _ => None,
+            },
         ),
     }) else {
         return;
@@ -267,11 +293,15 @@ pub(crate) fn picker_events(docs: &mut KanbanDocs, id: u64, events: Vec<DatePick
                 };
                 b.pop = None;
                 match item {
-                    None => {
+                    super::DatesFor::Card => {
                         write::set_dates(docs, id, card, start, due);
                     }
-                    Some(i) => {
+                    super::DatesFor::Item(i) => {
                         write::item(docs, id, i, |it| it.due = due.map(|d| d.0));
+                    }
+                    super::DatesFor::Field(f) => {
+                        let v = due.map(|d| FieldValue::Date(d.0));
+                        write::set_field(docs, id, card, f, v);
                     }
                 }
             }
@@ -370,15 +400,8 @@ fn field_click(docs: &mut KanbanDocs, id: u64, card: CardId, f: ph2d_kanban_mode
             write::set_field(docs, id, card, f, Some(FieldValue::Checkbox(!on)));
         }
         Some(FieldKind::Dropdown(opts)) => {
-            // O próximo da lista; depois do último, nenhum.
-            let at = match cur {
-                Some(FieldValue::Option(o)) => {
-                    opts.iter().position(|x| x.id == o).map_or(0, |i| i + 1)
-                }
-                _ => 0,
-            };
-            let v = opts.get(at).map(|o| FieldValue::Option(o.id));
-            write::set_field(docs, id, card, f, v);
+            let at = super::choice::row_of(&opts, cur.as_ref());
+            open_pop(docs, id, Pop::Choice(super::choice::Choice::new(f, at)));
         }
         Some(_) => {
             let t = field_text(docs, id, f);
@@ -427,11 +450,12 @@ pub(crate) fn click(docs: &mut KanbanDocs, id: u64, h: BackHit) {
         BackHit::CoverButton | BackHit::Side(Side::Cover) => open_pop(docs, id, Pop::Cover),
         BackHit::MemberAdd | BackHit::Side(Side::Members) => open_pop(docs, id, Pop::Members(None)),
         BackHit::LabelAdd | BackHit::Side(Side::Labels) => open_pop(docs, id, Pop::Labels),
-        BackHit::Dates | BackHit::Side(Side::Dates) => dates_pop(docs, id, None),
+        BackHit::Dates | BackHit::Side(Side::Dates) => dates_pop(docs, id, super::DatesFor::Card),
         BackHit::DueDone => {
             write::toggle_done(docs, id, card);
         }
         BackHit::FieldValue(f) => field_click(docs, id, card, f),
+        BackHit::FieldDate(f) => dates_pop(docs, id, super::DatesFor::Field(f)),
         BackHit::DescEdit => {
             if let Some(b) = back_mut(docs, id) {
                 b.desc.editing = true;
@@ -465,7 +489,7 @@ pub(crate) fn click(docs: &mut KanbanDocs, id: u64, h: BackHit) {
             edit(docs, id, EditAt::Item(i), &t);
         }
         BackHit::ItemMember(i) => open_pop(docs, id, Pop::Members(Some(i))),
-        BackHit::ItemDue(i) => dates_pop(docs, id, Some(i)),
+        BackHit::ItemDue(i) => dates_pop(docs, id, super::DatesFor::Item(i)),
         BackHit::ItemConvert(i) => {
             write::convert(docs, id, i);
         }

@@ -71,6 +71,10 @@ pub(crate) fn paint(ui: &mut Ui<'_>, back: &mut Back, cx: &Ctx<'_>) {
         ui.hit(r, BackHit::Pop(PopHit::Picker));
         return;
     }
+    if matches!(back.pop, Some(Pop::Choice(_))) {
+        super::choice::paint(ui, back, cx, anchor);
+        return;
+    }
     // O conteúdo mede-se numa passagem à parte (sem alvos); a 2.ª pinta no sítio.
     let mut scratch = VectorScene::new();
     let mut none = Vec::new();
@@ -108,7 +112,7 @@ fn title_key(pop: &Pop) -> &'static str {
         Pop::Label(None, ..) => "kanban.back.pop.label_new",
         Pop::Label(Some(_), ..) => "kanban.back.pop.label_edit",
         Pop::Checklist(_) => "kanban.back.pop.checklist",
-        Pop::Dates(..) => "kanban.back.pop.dates",
+        Pop::Dates(..) | Pop::Choice(_) => "kanban.back.pop.dates",
         Pop::Attach(..) => "kanban.back.pop.attach",
         Pop::Cover => "kanban.back.pop.cover",
         Pop::Fields(..) => "kanban.back.pop.fields",
@@ -477,7 +481,7 @@ fn content(ui: &mut Ui<'_>, back: &Back, cx: &Ctx<'_>, x: f32, y: f32) -> f32 {
                 .text(tr("kanban.back.share_hint"), ix, yy, u::SMALL_PX, iw, meta)
                 .max(u::META_LINE);
         }
-        Pop::Dates(..) => {}
+        Pop::Dates(..) | Pop::Choice(_) => {}
         Pop::Scene(f) => yy = super::scene::pop(ui, back, cx, f, ix, yy, iw),
     }
     yy + p - y

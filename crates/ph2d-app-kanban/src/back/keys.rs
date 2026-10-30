@@ -64,6 +64,11 @@ pub(crate) fn key(
             copy: link,
         };
     }
+    // A lista suspensa: as setas andam, `Enter` escolhe, `Esc` fecha.
+    if matches!(b.pop, Some(Pop::Choice(_))) {
+        choice_key(docs, id, input.key);
+        return taken();
+    }
     if let Some(f) = pop_field(b) {
         return match input.key {
             Key::Escape => {
@@ -324,13 +329,47 @@ fn options(text: &str, first_id: u64) -> Vec<FieldOption> {
 
 /// ⭐ Um clique dentro de um popover.
 #[allow(clippy::too_many_lines)]
+fn choice_key(docs: &mut KanbanDocs, id: u64, key: Key) {
+    let field = match back_mut(docs, id).and_then(|b| b.pop.as_ref()) {
+        Some(Pop::Choice(c)) => c.field,
+        _ => return,
+    };
+    let rows = read(docs, id, |k, _| super::choice::options(k, field).len() + 1).unwrap_or(1);
+    let Some(b) = back_mut(docs, id) else {
+        return;
+    };
+    let card = b.card;
+    let Some(Pop::Choice(c)) = b.pop.as_mut() else {
+        return;
+    };
+    match key {
+        Key::Down => c.step(1, rows),
+        Key::Up => c.step(-1, rows),
+        Key::Enter => {
+            let i = u16::try_from(c.cursor).unwrap_or(u16::MAX);
+            pop_click(docs, id, card, PopHit::Choice(i));
+        }
+        Key::Escape => b.pop = None,
+        _ => {}
+    }
+}
+
 pub(crate) fn pop_click(docs: &mut KanbanDocs, id: u64, card: CardId, p: PopHit) {
     let people = people(docs, id);
     let Some(b) = back_mut(docs, id) else {
         return;
     };
     match p {
-        PopHit::Inside | PopHit::Picker => {}
+        PopHit::Inside | PopHit::Picker | PopHit::ChoiceBar => {}
+        PopHit::Choice(i) => {
+            if let Some(Pop::Choice(c)) = b.pop.take() {
+                let v = read(docs, id, |k, _| {
+                    super::choice::value_at(super::choice::options(k, c.field), usize::from(i))
+                })
+                .flatten();
+                write::set_field(docs, id, card, c.field, v);
+            }
+        }
         PopHit::Close => b.pop = None,
         PopHit::Input => b.pop_focus = false,
         PopHit::Input2 => b.pop_focus = true,

@@ -33,13 +33,6 @@ pub(crate) fn grava_em(pasta: &str, nome: &str, scene: &VectorScene) {
     println!("foto: {}", path.display());
 }
 
-fn cena(m: &mut Mesa) -> VectorScene {
-    m.quadro();
-    let mut s = VectorScene::new();
-    m.pinta(&mut s);
-    s
-}
-
 fn cena8(theme: Theme) -> (Mesa, KanbanId) {
     let mut m = Mesa::new();
     m.hero.theme = theme;
@@ -58,17 +51,17 @@ fn j2_foto_verso_painel_e_construtor() {
         for _ in 0..8 {
             m.roda(AREA.w / 2.0, AREA.h / 2.0, -16.0);
         }
-        let s = cena(&mut m);
+        let s = m.cena();
         grava(&format!("verso_botoes_e_ligacoes_{tag}"), &s);
         // O painel nas regras: duas regras e a sugestão.
         toca_v(&mut m, id, "Side(AddButton)");
         toca_auto(&mut m, id, "Auto(Tab(Rule))");
-        let s = cena(&mut m);
+        let s = m.cena();
         grava(&format!("painel_regras_{tag}"), &s);
         // O construtor: editar uma regra, com o menu da acção aberto.
         toca_auto(&mut m, id, "Auto(Edit(");
         toca_auto(&mut m, id, "Auto(Chip(Head(Action(0))))");
-        let s = cena(&mut m);
+        let s = m.cena();
         grava(&format!("construtor_{tag}"), &s);
     }
 }

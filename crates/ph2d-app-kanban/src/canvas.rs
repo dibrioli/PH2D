@@ -300,10 +300,10 @@ impl KanbanElementInput for Input {
             #[allow(clippy::cast_possible_truncation)]
             match w {
                 KanbanWheel::Wheel { dy, .. } if modal => {
-                    crate::back::wheel(docs, id, crate::pointer::wheel_px(dy))
+                    crate::back::wheel(docs, id, (x, y), crate::pointer::wheel_px(dy))
                 }
                 KanbanWheel::Pan { screen, .. } if modal => {
-                    crate::back::wheel(docs, id, -screen[1] as f32)
+                    crate::back::wheel(docs, id, (x, y), -screen[1] as f32)
                 }
                 KanbanWheel::Wheel { dy, shift } => {
                     crate::pointer::wheel(docs, id, x, y, dy, shift)

@@ -3,7 +3,7 @@
 //! direita da última. A ALTURA do cartão e a PINTURA passam pela MESMA [`place`]: a medida nunca
 //! diverge do que se pinta.
 
-use super::{Front, chip_rows};
+use super::Front;
 use crate::metrics as m;
 use ph2d_editor_core::IconId;
 use ph2d_editor_core::zones::Rect;
@@ -150,24 +150,75 @@ pub(crate) fn place(ts: &mut TextSystem, f: &Front, width: f32) -> Placed {
     out
 }
 
-/// A largura de um campo personalizado na frente (o visto da caixa marcada à esquerda).
-pub(crate) fn field_w(ts: &mut TextSystem, text: &str, check: bool, max: f32) -> f32 {
-    let icon = if check {
+/// O recuo do texto de um campo à esquerda (o visto da caixa marcada, quando há).
+fn field_icon(check: bool) -> f32 {
+    if check {
         m::BADGE_ICON + m::BADGE_PAD
     } else {
         0.0
-    };
-    (ts.prefix_width(text, m::SMALL_PX) + icon + 2.0 * FIELD_PAD_X).min(max)
+    }
+}
+
+/// A altura do texto de um campo QUEBRADO a `room` — pela pintura de verdade (numa cena à parte),
+/// para a medida ser a do pintor.
+fn wrapped_h(ts: &mut TextSystem, text: &str, room: f32) -> f32 {
+    let mut scratch = ph2d_vector::VectorScene::new();
+    let ink = ph2d_vector::Color::TRANSPARENT;
+    ph2d_editor_core::paint::paint_text_block(
+        ts,
+        &mut scratch,
+        text,
+        0.0,
+        0.0,
+        m::SMALL_PX,
+        room,
+        ink,
+    )
+}
+
+/// Um campo posto: o chip (relativo à faixa) e se o texto quebra em linhas.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) struct FieldAt {
+    pub rect: Rect,
+    pub wraps: bool,
+}
+
+/// ⭐ **Onde cai cada campo personalizado da frente** (a ALTURA e a PINTURA passam por aqui). O
+/// nome e o valor NUNCA se cortam enquanto couberem no cartão (dono 30/10: *«evitar cortar nomes
+/// sempre que possível»*): o chip tem a largura do texto; o que não cabe numa linha ocupa a largura
+/// do cartão e QUEBRA em linhas. Devolve os chips e a altura da faixa.
+pub(crate) fn place_fields(ts: &mut TextSystem, f: &Front, width: f32) -> (Vec<FieldAt>, f32) {
+    let (mut x, mut y, mut row_h) = (0.0_f32, 0.0_f32, 0.0_f32);
+    let mut out = Vec::with_capacity(f.fields.len());
+    for c in &f.fields {
+        let pad = field_icon(c.check) + 2.0 * FIELD_PAD_X;
+        let one = ts.prefix_width(&c.text, m::SMALL_PX) + pad;
+        let wraps = one > width;
+        let (w, h) = if wraps {
+            let room = (width - pad).max(0.0);
+            let line = wrapped_h(ts, "M", room);
+            let text = wrapped_h(ts, &c.text, room);
+            (width, FIELD_H + (text - line).max(0.0))
+        } else {
+            (one, FIELD_H)
+        };
+        if x > 0.0 && x + w > width {
+            x = 0.0;
+            y += row_h + m::LABEL_GAP;
+            row_h = 0.0;
+        }
+        out.push(FieldAt {
+            rect: Rect::new(x, y, w, h),
+            wraps,
+        });
+        row_h = row_h.max(h);
+        x += w + m::LABEL_GAP;
+    }
+    let h = if out.is_empty() { 0.0 } else { y + row_h };
+    (out, h)
 }
 
 /// A altura da faixa dos campos personalizados a `width`.
-#[allow(clippy::cast_precision_loss)]
 pub(crate) fn fields_h(ts: &mut TextSystem, f: &Front, width: f32) -> f32 {
-    let w: Vec<f32> = f
-        .fields
-        .iter()
-        .map(|c| field_w(ts, &c.text, c.check, width))
-        .collect();
-    let rows = chip_rows(&w, width);
-    rows as f32 * FIELD_H + rows.saturating_sub(1) as f32 * m::LABEL_GAP
+    place_fields(ts, f, width).1
 }

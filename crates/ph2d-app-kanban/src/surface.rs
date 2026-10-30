@@ -349,7 +349,7 @@ impl KanbanDocs {
             return true;
         }
         if id != HOME && crate::back::is_open(self, id) {
-            return crate::back::wheel(self, id, crate::pointer::wheel_px(dy));
+            return crate::back::wheel(self, id, (x, y), crate::pointer::wheel_px(dy));
         }
         id != HOME && crate::pointer::wheel(self, id, x, y, dy, shift)
     }

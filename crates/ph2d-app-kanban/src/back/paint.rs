@@ -556,6 +556,30 @@ fn field_text(cx: &Ctx<'_>, kind: &FieldKind, v: Option<&FieldValue>) -> String 
     }
 }
 
+/// A opção de uma lista suspensa como no Trello: o texto numa pastilha da cor dela, centrada na
+/// faixa de uma linha que começa em `y` (o valor do campo e as linhas da lista aberta).
+pub(crate) fn option_chip(ui: &mut Ui<'_>, opt: &ph2d_kanban_model::FieldOption, x: f32, y: f32) {
+    let col = opt.color.map(|hue| LabelColor {
+        hue,
+        shade: Shade::Subtle,
+    });
+    let (bg, ink) = col.map_or((ui.c(T::KanbanSlot), ui.fg()), |c| label(ui.theme, c));
+    let tw = ui.width(&opt.text, u::SMALL_PX) + 2.0 * u::GAP;
+    let chip = Rect::new(
+        x,
+        y + (ROW - u::META_LINE) / 2.0,
+        tw,
+        u::META_LINE - u::HAIR,
+    );
+    fill_rounded_rect(ui.scene, chip, m::LABEL_RADIUS - u::HAIR / 2.0, bg);
+    ui.line(
+        &opt.text,
+        u::Band::new(x + u::GAP, chip.y, tw, chip.h),
+        u::SMALL_PX,
+        ink,
+    );
+}
+
 /// Os campos personalizados: uma grelha de três, o nome por cima e o valor numa caixa.
 fn fields(ui: &mut Ui<'_>, back: &Back, cx: &Ctx<'_>, x: f32, y: f32, w: f32) -> f32 {
     let mut defs: Vec<_> = cx.k.fields.values().filter(|f| !f.meta.deleted).collect();
@@ -567,19 +591,40 @@ fn fields(ui: &mut Ui<'_>, back: &Back, cx: &Ctx<'_>, x: f32, y: f32, w: f32) ->
     let y0 = y + ROW + u::GAP;
     #[allow(clippy::cast_precision_loss)]
     let cw = (w - u::GAP * (u::FIELD_COLS as f32 - 1.0)) / u::FIELD_COLS as f32;
-    let cell_h = u::META_LINE + u::SMALL_GAP + ROW;
+    // Cada fila tem a altura do nome mais alto dela: os nomes quebram, nunca se cortam.
+    let caps: Vec<f32> = defs.iter().map(|f| ui.caption_h(&f.name, cw)).collect();
+    let mut tops = Vec::new();
+    let mut top = y0;
+    for row in caps.chunks(u::FIELD_COLS) {
+        tops.push(top);
+        let cap = row.iter().copied().fold(u::META_LINE, f32::max);
+        top += cap + u::SMALL_GAP + ROW + u::GAP;
+    }
     let mut bottom = y0;
     for (i, f) in defs.iter().enumerate() {
         #[allow(clippy::cast_precision_loss)]
-        let (col, row) = ((i % u::FIELD_COLS) as f32, (i / u::FIELD_COLS) as f32);
+        let col = (i % u::FIELD_COLS) as f32;
         let fx = x + col * (cw + u::GAP);
-        let fy = y0 + row * (cell_h + u::GAP);
-        ui.caption(&f.name, fx, fy, cw);
-        let r = Rect::new(fx, fy + u::META_LINE + u::SMALL_GAP, cw, ROW);
+        let fy = tops[i / u::FIELD_COLS];
+        let cap = caps[i / u::FIELD_COLS * u::FIELD_COLS..]
+            .iter()
+            .take(u::FIELD_COLS)
+            .copied()
+            .fold(u::META_LINE, f32::max);
+        ui.caption_wrapped(&f.name, fx, fy, cw);
+        let r = Rect::new(fx, fy + cap + u::SMALL_GAP, cw, ROW);
         bottom = r.y + r.h;
+        // O calendário no canto de um campo de data: escolher além de escrever (dono 30/10).
+        let calendar = matches!(f.kind, FieldKind::Date).then(|| {
+            let bg = ui.c(T::KanbanSlot);
+            (Rect::new(r.x + r.w - ROW, r.y, ROW, ROW), bg)
+        });
         if let Some(e) = back.edit.as_ref().filter(|e| e.at == EditAt::Field(f.id)) {
             ui.field(r, &e.field, "");
             ui.hit(r, BackHit::EditField);
+            if let Some((c, bg)) = calendar {
+                ui.icon_button(c, IconId::Timer, BackHit::FieldDate(f.id), false, bg);
+            }
             continue;
         }
         ui.button(r, "", None, BackHit::FieldValue(f.id), false);
@@ -595,26 +640,7 @@ fn fields(ui: &mut Ui<'_>, back: &Back, cx: &Ctx<'_>, x: f32, y: f32, w: f32) ->
             }
             (FieldKind::Dropdown(opts), Some(FieldValue::Option(o))) => {
                 if let Some(opt) = opts.iter().find(|x| x.id == *o) {
-                    let col = opt.color.map(|hue| LabelColor {
-                        hue,
-                        shade: Shade::Subtle,
-                    });
-                    let (bg, ink) =
-                        col.map_or((ui.c(T::KanbanSlot), ui.fg()), |c| label(ui.theme, c));
-                    let tw = ui.width(&opt.text, u::SMALL_PX) + 2.0 * u::GAP;
-                    let chip = Rect::new(
-                        tx,
-                        r.y + (ROW - u::META_LINE) / 2.0,
-                        tw,
-                        u::META_LINE - u::HAIR,
-                    );
-                    fill_rounded_rect(ui.scene, chip, m::LABEL_RADIUS - u::HAIR / 2.0, bg);
-                    ui.line(
-                        &opt.text,
-                        u::Band::new(tx + u::GAP, chip.y, tw, chip.h),
-                        u::SMALL_PX,
-                        ink,
-                    );
+                    option_chip(ui, opt, tx, r.y);
                 }
             }
             (kind, v) => {
@@ -622,11 +648,14 @@ fn fields(ui: &mut Ui<'_>, back: &Back, cx: &Ctx<'_>, x: f32, y: f32, w: f32) ->
                 let fg = ui.fg();
                 ui.line(
                     &t,
-                    u::Band::new(tx, r.y, r.w - 2.0 * m::BUTTON_PAD_X, ROW),
+                    u::Band::new(tx, r.y, r.w - 2.0 * m::BUTTON_PAD_X - ROW, ROW),
                     u::BODY_PX,
                     fg,
                 );
             }
+        }
+        if let Some((c, bg)) = calendar {
+            ui.icon_button(c, IconId::Timer, BackHit::FieldDate(f.id), false, bg);
         }
         if matches!(f.kind, FieldKind::Dropdown(_)) {
             let meta = ui.meta();

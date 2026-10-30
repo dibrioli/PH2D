@@ -8,6 +8,7 @@ mod canvas_entrada;
 mod d11_fotos;
 mod d11_fundo;
 mod d13_fundo_da_cena;
+mod d14_campos;
 mod d9;
 mod duas_janelas;
 mod escrever;
@@ -110,6 +111,14 @@ impl Mesa {
     }
 
     /// A pintura da aba activa no rect que o hero lhe dá (`hero/paint.rs`).
+    /// Um quadro e a aba pintada numa cena nova (a das fotos).
+    pub fn cena(&mut self) -> VectorScene {
+        self.quadro();
+        let mut s = VectorScene::new();
+        self.pinta(&mut s);
+        s
+    }
+
     pub fn pinta(&mut self, scene: &mut VectorScene) {
         let theme = self.hero.theme;
         if let Some((f, id)) = self.hero.documents.active_surface_mut() {

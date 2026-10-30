@@ -48,6 +48,7 @@ mod radio_group;
 mod rect2_editor;
 mod rich_editor;
 pub mod scroll_area;
+mod scroll_list;
 mod scrollbar;
 mod scrollbar_ids;
 pub mod section_cards;
@@ -192,6 +193,7 @@ pub use rich_editor::{
     paint_rich_editor_menu, style_option as rich_editor_style_option,
     toolbar_button as rich_editor_toolbar_button, toolbar_node_id as rich_toolbar_node_id,
 };
+pub use scroll_list::ScrollList;
 pub use scrollbar::{
     SCROLLBAR_W, ScrollbarState, delta_for_drag as scrollbar_delta_for_drag,
     is_needed as scrollbar_is_needed, paint_scrollbar, thumb_color as scrollbar_thumb_color,

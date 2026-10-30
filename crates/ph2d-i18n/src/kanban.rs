@@ -26,6 +26,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "kanban.menu.archived" => "Archived items",
         "kanban.menu.background" => "Change background",
         "kanban.bg.title" => "Change background",
+        "kanban.back.field_none" => "None",
         // D13 — «Use as Kanban background…» da Hierarquia: o modal e os avisos.
         "kanban.bg.pick_title" => "Use as Kanban background",
         "kanban.bg.pick_search" => "Search Kanbans",

@@ -9,6 +9,7 @@
 
 mod activity;
 pub(crate) mod attach;
+pub(crate) mod choice;
 mod click;
 pub(crate) mod cover_pop;
 pub(crate) mod dates;
@@ -60,6 +61,8 @@ pub(crate) enum BackHit {
     Dates,
     DueDone,
     FieldValue(FieldId),
+    /// O calendário no canto de um campo de data (escolher além de escrever).
+    FieldDate(FieldId),
     DescEdit,
     DescArea,
     /// O menu «Aa» aberto da descrição (pintado por cima do verso inteiro).
@@ -172,6 +175,9 @@ pub(crate) enum PopHit {
     CopyLink,
     /// J2 — a linha `n` do catálogo do projecto no popover «Scene object».
     Scene(u16),
+    /// A linha `n` da lista suspensa aberta (`0` = nenhum) e a barra dela.
+    Choice(u16),
+    ChoiceBar,
 }
 
 /// As reacções que se oferecem (o Trello abre o seletor inteiro; estas são as mais usadas).
@@ -211,10 +217,7 @@ pub(crate) enum Pop {
     Label(Option<LabelId>, LineField, Option<LabelColor>),
     Checklist(LineField),
     /// As datas do cartão (`None`) ou de um item.
-    Dates(
-        Option<CheckItemId>,
-        Box<ph2d_kanban_views::datepick::Picker>,
-    ),
+    Dates(DatesFor, Box<ph2d_kanban_views::datepick::Picker>),
     /// Anexar um link: o endereço e o nome.
     Attach(LineField, LineField),
     Cover,
@@ -224,6 +227,17 @@ pub(crate) enum Pop {
     Share,
     /// J2 — «Scene object»: a pesquisa no catálogo do projecto.
     Scene(LineField),
+    /// A lista suspensa de um campo «Dropdown», aberta por baixo do valor.
+    Choice(choice::Choice),
+}
+
+/// De quem são as datas do seletor aberto.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum DatesFor {
+    Card,
+    Item(CheckItemId),
+    /// Um campo personalizado de data (só a entrega: o valor do campo).
+    Field(FieldId),
 }
 
 impl Pop {
@@ -235,8 +249,10 @@ impl Pop {
             Pop::Members(None) => BackHit::Side(Side::Members),
             Pop::Labels | Pop::Label(..) => BackHit::Side(Side::Labels),
             Pop::Checklist(_) => BackHit::Side(Side::Checklist),
-            Pop::Dates(Some(i), ..) => BackHit::ItemDue(*i),
-            Pop::Dates(None, ..) => BackHit::Side(Side::Dates),
+            Pop::Dates(DatesFor::Item(i), ..) => BackHit::ItemDue(*i),
+            Pop::Dates(DatesFor::Card, ..) => BackHit::Side(Side::Dates),
+            Pop::Dates(DatesFor::Field(f), ..) => BackHit::FieldDate(*f),
+            Pop::Choice(c) => BackHit::FieldValue(c.field),
             Pop::Attach(..) => BackHit::Side(Side::Attachment),
             Pop::Cover => BackHit::Side(Side::Cover),
             Pop::Fields(..) => BackHit::Side(Side::Fields),

@@ -266,13 +266,9 @@ fn fields(
     width: f32,
     seen: &mut probe::Painted,
 ) -> f32 {
-    let (mut x, mut y) = (x0, y0);
-    for chip in &f.fields {
-        let w = badges::field_w(ts, &chip.text, chip.check, width);
-        if x > x0 && x + w > x0 + width {
-            x = x0;
-            y += badges::FIELD_H + m::LABEL_GAP;
-        }
+    let (placed, h) = badges::place_fields(ts, f, width);
+    for (chip, at) in f.fields.iter().zip(placed) {
+        let r = Rect::new(x0 + at.rect.x, y0 + at.rect.y, at.rect.w, at.rect.h);
         let hue = chip.hue.unwrap_or(Hue::Black);
         let (fill, fg) = label(
             theme,
@@ -281,29 +277,27 @@ fn fields(
                 shade: Shade::Subtle,
             },
         );
-        fill_rounded_rect(
-            scene,
-            Rect::new(x, y, w, badges::FIELD_H),
-            m::LABEL_RADIUS,
-            fill,
-        );
-        let mut tx = x + badges::FIELD_PAD_X;
+        fill_rounded_rect(scene, r, m::LABEL_RADIUS, fill);
+        let mut tx = r.x + badges::FIELD_PAD_X;
         if chip.check {
             icon(
                 scene,
                 IconId::Check,
-                Rect::new(tx, y, m::BADGE_ICON, badges::FIELD_H),
+                Rect::new(tx, r.y, m::BADGE_ICON, badges::FIELD_H),
                 fg,
             );
             tx += m::BADGE_ICON + m::BADGE_PAD;
         }
-        let ty = text_top(ts, y, badges::FIELD_H, m::SMALL_PX);
-        let room = x + w - badges::FIELD_PAD_X - tx;
-        paint_text_elided(ts, scene, &chip.text, tx, ty, m::SMALL_PX, room, fg);
+        let ty = text_top(ts, r.y, badges::FIELD_H, m::SMALL_PX);
+        let room = r.x + r.w - badges::FIELD_PAD_X - tx;
+        if at.wraps {
+            paint_text_block(ts, scene, &chip.text, tx, ty, m::SMALL_PX, room, fg);
+        } else {
+            paint_text_elided(ts, scene, &chip.text, tx, ty, m::SMALL_PX, room, fg);
+        }
         seen.fields.push(chip.text.clone());
-        x += w + m::LABEL_GAP;
     }
-    y + badges::FIELD_H
+    y0 + h
 }
 
 /// Os distintivos já partidos em filas ([`badges::place`]) e os avatares à direita.

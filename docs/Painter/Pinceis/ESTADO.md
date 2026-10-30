@@ -38,8 +38,8 @@
   do tapar extra vira transparência (o papel aparece; no branco o mesmo píxel). Gates `o_tapar_extra_fica_no_segmento_das_tintas`,
   `sobre_o_oleo_assentar_preserva_o_ecra_seco`, `o_tapar_extra_nao_pinta_branco_no_papel_de_cor` (célula medida, +31 → ≤ 2).
   Cena bege: claros 2 972 → 186 a meio (brilhos do óleo), 447 → 0 assentada. Barras do Rebelle verdes. [Prancha](pranchas/J9_main_sem_branco.jpg).
-  **FALTA** (depois do «serve»): regravar 11 miniaturas (1 nível no branco) e 2 impressões ao byte (`opcoes_tests` S·bancada,
-  `shape_color_tests` secção desligada), mutação das 2 curas, censo do papel de cor (#54), BUGS #54, smoke.
+  **Smoke do dono 30/10: a versão ATUAL fica (melhor que o main); pedidos A (arrasto durante o traço), B (mistura
+  molhada pela média das consistências, borda com transição) e C (New Image: papel texturizado)** ⇒ [handoff J9](HANDOFF_JANELA_9.md).
 
 ## J6 ([`JANELA_6.md`](JANELA_6.md)): a fila
 

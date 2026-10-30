@@ -503,6 +503,10 @@ no retorno do `assenta`): o censo vai a 0, mas 25 miniaturas mudam até 10 níve
 Knife Stain 7, Dabber 4 6, Knife Smooth 3 6, Knife Textured 6…) e reprovam `assentar_guarda_o_ecra_com_o_glaze` e
 `com_o_glaze_assentar_guarda_o_ecra_seco` — mexe em aprovados, logo é do dono pela foto. Revertida; o censo é catraca
 (`ABERTOS`) até lá. Sondas: `diag_a_celula_mais_clara_do_censo`, `sonda_miniatura_antiga_e_de_hoje`.
+J8 (30/10): o **Over Oil** (`1e9a32d0af`) cura a mesma conta SÓ sobre óleo (`OleoCelula::aguada`): a aguada mistura
+pela K-M em vez de tapar com branco. NÃO cura o #54: o Marker Bullet e a faixa fina abaixo de um óleo onde a tinta
+escorreu sem ele (`oleo` 0) seguem a lei da obra — continuam creme no papel de cor
+([prancha](Pinceis/pranchas/J8_over_oil_tint_mix_blend.jpg)). Estender a lei a toda a tinta é a decisão pendente.
 
 ## Grain Colors esbranquiçadas (smoke 30/10) — medido: NÃO é defeito do motor
 

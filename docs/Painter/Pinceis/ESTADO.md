@@ -21,7 +21,7 @@
 
 - **Dívida da J7** `1a7c1aa31c`: o #53 mudou 2 portões ao byte que a J7 não correu (`shape_color_tests` cena 6, `opcoes_tests` S inclinado); sobre o branco ≤ 2 níveis ⇒ regravados.
 - **Item 2 OKLCH** `3c283ce666`: `layers::rampa_nova()` (Grain Colors, Shape Color, camada de textura, Reset); `ColorRamp::default()` fica RGB; preset/projeto antigo traz o modo gravado.
-- **Item 1 aguada sobre o óleo — SIMULADO, à espera do «serve» do dono** ([prancha](pranchas/J8_aguada_sobre_oleo_4_variantes.jpg)). Sonda `diag_aguada_por_cima_do_oleo` com o seletor `assenta::SONDA_MISTURA` (NÃO comitado; 0 = hoje): A = Glaze total (azul-petróleo) · B = o tapar extra pinta a mistura K-M das duas tintas em vez da diluída em branco (verde; ao secar, pontos castanho-escuros na orla de baixo) · C = B + Glaze 0,5. Em todas a ladeira fica; ao secar a água escorre e o óleo volta quase azul.
+- **Item 1 Over Oil** `1e9a32d0af` (dono: «A, B e C viram um dropdown»; [simulação](pranchas/J8_aguada_sobre_oleo_4_variantes.jpg) → [construído](pranchas/J8_over_oil_tint_mix_blend.jpg)): Tint · **Mix** (fábrica, verde) · Blend; a escolha mora em `OleoCelula::aguada` (só sobre óleo). ABERTO #54: a faixa fina abaixo do óleo onde a tinta escorreu SEM óleo segue creme.
 
 ## J6 ([`JANELA_6.md`](JANELA_6.md)): a fila
 

@@ -425,6 +425,8 @@ mod achatamento_tests; // o escorrimento não se corta em rectângulos (W1f)
 #[cfg(test)]
 mod agua_sobre_oleo_tests; // smoke do dono 30/10: o molhado sobre o óleo com papel de cor
 #[cfg(test)]
+mod remolha_tests; // J10 (dono 30/10): a aguada re-molha o óleo solúvel (Re-wet × Solubility)
+#[cfg(test)]
 mod controlos_medidos_tests; // Color, Solid, Type e On empty medidos num traço de fábrica
 #[cfg(test)]
 mod dry_brush_tests; // o Dry brush só age com o portão seco aberto (a cobertura que cai)

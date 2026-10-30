@@ -77,7 +77,7 @@ pub(super) fn mostrada(t: &mut PainterTool) -> Vec<u8> {
     px.to_vec()
 }
 
-fn grava(nome: &str, px: &[u8]) {
+pub(super) fn grava(nome: &str, px: &[u8]) {
     let dir = std::env::var("PH2D_SONDA_DIR").unwrap_or_default();
     if dir.is_empty() {
         return;

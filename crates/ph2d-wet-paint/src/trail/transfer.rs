@@ -6,7 +6,8 @@ use super::*;
 
 #[cfg(test)]
 mod cobre_tests;
-mod perto; // o misturador PERTO da tinta (Knob::BlendReach): a média local, não a da janela // a lei da tinta que cobre (Knob::WetCover)
+mod perto;
+pub(crate) mod remolha; // a água que re-molha a tinta solúvel debaixo dela (Knob::Dissolve, J10) // o misturador PERTO da tinta (Knob::BlendReach): a média local, não a da janela // a lei da tinta que cobre (Knob::WetCover)
 
 /// O piso de água de uma célula que recebeu tinta (`transfer_paint_impl`, «the wet map must know»): até
 /// ele a célula está SECA.
@@ -141,6 +142,8 @@ impl Trail {
         }
         let vela = p.k(Knob::Glaze) as f32;
         let cobre = p.k(Knob::WetCover);
+        // A água que RE-MOLHA (J10): `0` = nenhuma célula é tocada, ao bit.
+        let dissolve = p.k(Knob::Dissolve);
         // O MATERIAL da tinta (W2 E3): o da ponta (suja do que apanhou) ou, sem ela, o do pincel; Lock = não muda o pousado.
         let (mat_pincel, mat_trava) = (
             crate::grid::material::do_pincel(p),
@@ -229,6 +232,18 @@ impl Trail {
                     }
                 } else {
                     let in_a = alpha_of_mass(v);
+                    if dissolve > 0.0 {
+                        remolha::remolha(
+                            g,
+                            i,
+                            dissolve,
+                            in_a,
+                            &mut self.remolha_inicio,
+                            mix,
+                            p.glaze,
+                            &mut out,
+                        );
+                    }
                     // ⭐ **O GLAZE do pincel** (prompt 42): a tinta de OUTRO pigmento que estava molhada aqui
                     // assenta — a fracção Glaze × [`crate::colorops::outra_tinta`], pela lei do ecrã (o que se vê não
                     // muda) — e a nova pousa por cima, numa camada que a filtra. A multiplicação é UMA por camada

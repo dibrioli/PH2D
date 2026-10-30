@@ -324,9 +324,17 @@ pub enum Knob {
     /// bit (o dente só no detalhe, pelo Paper Relief); `0` = a superfície é o papel com o dente — na altura e na
     /// sombra — mais a espessura da tinta. Pousa na célula ([`crate::material::MaterialCelula::amassa_papel`]).
     PaperPress,
+    /// ⭐ **Re-wet** (dono 30/10, J10): quanto a ÁGUA deste pincel dissolve da tinta solúvel debaixo dela durante o
+    /// traço — a fracção dissolvida é `Re-wet × Solubility` da célula ([`Knob::Solubility`]); o dissolvido vai para o
+    /// suspenso, mistura-se com a tinta nova e viaja com a água. `0` (omissão) = a tinta de sempre, ao bit.
+    Dissolve,
+    /// ⭐ **Solubility** (dono 30/10, J10): quanto a tinta DESTE pincel, já pousada, se deixa dissolver pela água de um
+    /// traço seguinte ([`Knob::Dissolve`]). Pousa na célula ([`crate::grid::oleo_celula::OleoCelula::soluvel`]).
+    /// `0` (omissão) = insolúvel a esta lei, ao bit.
+    Solubility,
 }
 
-pub const KNOB_COUNT: usize = 136;
+pub const KNOB_COUNT: usize = 138;
 
 /// O LEITOR TOLERANTE das chaves do material de antes da W3 (preset e macro gravados com elas): `(knob, valor)`
 /// na lei nova, `None` para uma chave que não é antiga. `roughnessMul` m → Roughness `0,5·m` (o neutro `1` → `0,5`,

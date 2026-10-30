@@ -10,7 +10,8 @@ use super::Grid;
 use crate::sim::Params;
 use crate::tuning::Knob;
 
-/// O óleo da tinta de uma célula (12 B).
+/// O óleo da tinta de uma célula (16 B) — e a SOLUBILIDADE dela (J10), que viaja pela mesma porta (pousa pela massa,
+/// desfaz-se com a janela).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct OleoCelula {
     /// A fracção da tinta pousada com o **Real Oil** ligado (`1` = toda; mistura-se pela massa).
@@ -19,6 +20,8 @@ pub struct OleoCelula {
     pub profundidade: f32,
     /// [`Knob::OilGloss`]: a força do brilho especular desta tinta.
     pub brilho: f32,
+    /// [`Knob::Solubility`] (dono 30/10, J10): quanto a água de um traço seguinte dissolve desta tinta (`0` = nada).
+    pub soluvel: f32,
 }
 
 impl OleoCelula {
@@ -27,6 +30,7 @@ impl OleoCelula {
         oleo: 0.0,
         profundidade: 1.0,
         brilho: 1.0,
+        soluvel: 0.0,
     };
 }
 
@@ -39,13 +43,18 @@ impl Default for OleoCelula {
 /// O que o pincel pousa agora: sem o Real Oil, a NEUTRA (o Depth e o Gloss só existem com ele).
 #[must_use]
 pub fn do_pincel(p: &Params) -> OleoCelula {
+    let soluvel = p.k(Knob::Solubility) as f32;
     if p.oleo <= 0.0 {
-        return OleoCelula::NEUTRA;
+        return OleoCelula {
+            soluvel,
+            ..OleoCelula::NEUTRA
+        };
     }
     OleoCelula {
         oleo: p.oleo,
         profundidade: p.k(Knob::OilDepth) as f32,
         brilho: p.k(Knob::OilGloss) as f32,
+        soluvel,
     }
 }
 
@@ -82,6 +91,7 @@ pub fn pousa(g: &mut Grid, i: usize, m_old: f64, nova: OleoCelula, v: f64) {
                 oleo: m(a.oleo, nova.oleo),
                 profundidade: m(a.profundidade, nova.profundidade),
                 brilho: m(a.brilho, nova.brilho),
+                soluvel: m(a.soluvel, nova.soluvel),
             }
         } else {
             nova
@@ -119,7 +129,7 @@ pub fn veste_virgens(g: &mut Grid, (x0, y0, x1, y1): (i32, i32, i32, i32), nova:
 pub fn restaura_janela(g: &mut Grid, janela: (i32, i32, i32, i32), linhas: &[OleoCelula]) {
     let (n, s) = (g.cells, g.s);
     super::altura::restaura_campo(&mut g.oleo, n, s, janela, linhas, OleoCelula::NEUTRA);
-    if linhas.is_empty() && g.oleo.iter().all(|c| c.oleo <= 0.0) {
+    if linhas.is_empty() && g.oleo.iter().all(|c| c.oleo <= 0.0 && c.soluvel <= 0.0) {
         g.oleo = Vec::new();
     }
 }

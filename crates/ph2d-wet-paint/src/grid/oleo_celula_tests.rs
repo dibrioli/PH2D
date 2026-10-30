@@ -35,6 +35,7 @@ fn perfis(a: OleoCelula, b: OleoCelula) -> (Vec<f64>, Vec<f64>) {
                 oleo: 1.0,
                 profundidade: 1.0,
                 brilho: c.brilho,
+                soluvel: 0.0,
             };
         }
     }
@@ -68,6 +69,7 @@ fn a_parede_entre_traços_de_depth_diferentes_e_uma_rampa_sem_degrau() {
         oleo: 1.0,
         profundidade: 1.0,
         brilho: 1.0,
+        soluvel: 0.0,
     };
     for (nome, b) in [
         (
@@ -101,6 +103,7 @@ fn o_oleo_de_fabrica_e_o_campo_de_antes_ao_bit() {
         oleo: 1.0,
         profundidade: 1.0,
         brilho: 1.0,
+        soluvel: 0.0,
     };
     let g = duas(um, um);
     let mut antes = g.clone();
@@ -143,6 +146,7 @@ fn o_campo_nasce_com_o_oleo_mistura_se_e_larga_se_sem_ele() {
         oleo: 1.0,
         profundidade: 3.0,
         brilho: 0.0,
+        soluvel: 0.0,
     };
     pousa(&mut g, i, 0.0, fundo, 5.0);
     g.sett[i] = 5.0;

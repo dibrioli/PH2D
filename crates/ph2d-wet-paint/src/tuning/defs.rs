@@ -329,4 +329,8 @@ pub const KNOB_DEFS: [KnobDef; KNOB_COUNT] = [
     k(Knob::BristleLaneSizeExp, KnobGroup::Bristles, "bristleLaneSizeExp", 0.0, 1.5, 0.01, 0.0, None),
     // Paper Press (dono 28/10): neutro 1 = o amassado de sempre, ao bit (o preset sem a chave)
     k(Knob::PaperPress, KnobGroup::Material, "paperPress", 0.0, 1.0, 0.01, 1.0, None),
+    // J10 (dono 30/10): a água que re-molha e a tinta que se deixa dissolver — no Inspector, não no Tuning (Hidden);
+    // neutro 0 = a tinta de sempre, ao bit
+    k(Knob::Dissolve, KnobGroup::Hidden, "rewetPaint", 0.0, 1.0, 0.01, 0.0, None),
+    k(Knob::Solubility, KnobGroup::Hidden, "solubility", 0.0, 1.0, 0.01, 0.0, None),
 ];

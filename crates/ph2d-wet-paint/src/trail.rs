@@ -146,6 +146,8 @@ pub struct Trail {
     mat_ponta: Vec<crate::material::MaterialCelula>,
     /// O material limpo do pincel (o alvo da auto-limpeza e o enchimento de um texel novo).
     mat_base: crate::material::MaterialCelula,
+    /// O assentado de cada célula no primeiro toque do traço que re-molha ([`Knob::Dissolve`], J10).
+    remolha_inicio: transfer::remolha::Inicio,
 }
 
 /// Canvas rect touched by a transfer (cell coords, inclusive).
@@ -249,6 +251,7 @@ impl Default for Trail {
             tinta_na_janela: false,
             por_assentar: Vec::new(),
             por_assentar_pendente: false,
+            remolha_inicio: transfer::remolha::Inicio::default(),
             filme: filme::Filme::default(),
             molhado: molhado::Molhado::default(),
             mat_ponta: Vec::new(),
@@ -268,6 +271,7 @@ impl Trail {
         self.limpo.fill(1.0);
         self.mat_ponta.clear();
         self.por_assentar_pendente = true;
+        self.remolha_inicio.traco_novo();
         self.base_r = color[0];
         self.base_g = color[1];
         self.base_b = color[2];

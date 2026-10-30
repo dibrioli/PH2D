@@ -38,6 +38,8 @@ use gradient::fill_multipoint;
 pub mod pattern;
 
 #[cfg(test)]
+mod acento_tests;
+#[cfg(test)]
 #[path = "pattern_stroke_tests.rs"]
 mod pattern_stroke_tests;
 #[cfg(test)]

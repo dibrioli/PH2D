@@ -66,6 +66,41 @@ fn todo_numero_do_osso_tem_canal() {
     assert_eq!(alca, Some(PropKind::BoneBendOutY));
 }
 
+/// O que o clique no losango `no` AUTORA (entidade, canal), com os campos que o osso PUBLICA (o
+/// `campos_lidos` da shell): sem eles um campo não tem membro, e o clique só abre e fecha a edição.
+fn autorado(sim: &SimWorld, sel: &[u64], no: NodeId) -> Vec<(u64, PropKind)> {
+    let inst = Instante {
+        t_cut: 0.0,
+        solo: false,
+    };
+    let lidos = |e: u64| -> Vec<FieldKey> {
+        let l = sim.world().get_resource::<CanaisLidos>();
+        (CAMPOS.iter())
+            .filter_map(|&(p, _)| match p {
+                PropKind::Field(k) if l.is_some_and(|l| l.valor(e, k).is_some()) => Some(k),
+                _ => None,
+            })
+            .collect()
+    };
+    let visto = std::cell::RefCell::new(Vec::new());
+    let autorar = |e: u64, p: PropKind| {
+        visto.borrow_mut().push((e, p));
+        Some(TimelineIntent::BeginEdit)
+    };
+    let doc = TimelineDoc::new();
+    let _ = clique(
+        &doc,
+        &[no],
+        sim,
+        sel,
+        inst,
+        lidos,
+        |_, _| Some(1.0),
+        autorar,
+    );
+    visto.into_inner()
+}
+
 /// ⭐ O clique grava sobre o OSSO escolhido; sem osso na selecção, nada.
 #[test]
 fn o_clique_grava_no_osso_escolhido() {
@@ -76,25 +111,14 @@ fn o_clique_grava_no_osso_escolhido() {
     let doc = TimelineDoc::new();
     let (mut sim, osso) = cena();
     let outro = sim.world_mut().spawn_empty().id().to_bits();
-    let clica = |sel: &[u64]| {
-        let autorar = |_: u64, _: PropKind| Some(TimelineIntent::BeginEdit);
-        let campo = [painel::VECTOR_BONE_LENGTH];
-        clique(
-            &doc,
-            &campo,
-            &sim,
-            sel,
-            inst,
-            |_| Vec::new(),
-            |_, _| Some(1.0),
-            autorar,
-        )
-    };
-    assert!(
-        !clica(&[outro, osso]).is_empty(),
+    publicar(&mut sim, &[osso, outro]);
+    let comp = PropKind::Field(k(o::COMPRIMENTO));
+    assert_eq!(
+        autorado(&sim, &[outro, osso], painel::VECTOR_BONE_LENGTH),
+        [(osso, comp)],
         "controlo: com osso grava"
     );
-    assert!(clica(&[outro]).is_empty());
+    assert!(autorado(&sim, &[outro], painel::VECTOR_BONE_LENGTH).is_empty());
     let mix = |sim: &SimWorld| {
         let autorar = |_: u64, _: PropKind| Some(TimelineIntent::BeginEdit);
         let campo = [painel::VECTOR_BONE_IK_MIX];
@@ -116,6 +140,18 @@ fn o_clique_grava_no_osso_escolhido() {
     assert!(!mix(&sim).is_empty(), "a âncora grava no item {id}");
     let m = marcas(&doc, &sim, &[osso], inst, |_, _| Some(1.0));
     assert_eq!(m.len(), CAMPOS.len() + ANCORA.len());
+}
+
+/// ⭐ O losango de **Segments** grava a chave dos SEGMENTOS do osso (F41; o de cima usa Length).
+#[test]
+fn o_clique_em_segments_grava_os_segmentos() {
+    let (mut sim, osso) = cena();
+    publicar(&mut sim, &[osso]);
+    let seg = PropKind::Field(k(o::SEGMENTOS));
+    assert_eq!(
+        autorado(&sim, &[osso], painel::VECTOR_BONE_SEGMENTS),
+        [(osso, seg)]
+    );
 }
 
 /// ⭐⭐ **A curva é pré-visualização** (F40): com o comprimento (OSSO) e uma alça (`BoneBend`)

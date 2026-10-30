@@ -31,11 +31,10 @@ pub fn stroke_screen(screen: &BezPath, ink: Color, px: f64, target: &mut VectorS
     if screen.elements().is_empty() {
         return;
     }
-    target.inner_mut().stroke(
+    target.stroke_path(
         &Stroke::new(px),
         Affine::IDENTITY,
         &Brush::Solid(ink),
-        None,
         screen,
     );
 }

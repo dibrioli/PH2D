@@ -107,27 +107,24 @@ pub fn draw_overlays(
                     // Ghost stubs are dimmer + hollow so the user reads them as
                     // "suggested, not yet affecting the curve".
                     let line_ink = if is_ghost { soft } else { accent };
-                    target.inner_mut().stroke(
+                    target.stroke_path(
                         &Stroke::new(1.0),
                         Affine::IDENTITY,
                         &Brush::Solid(line_ink),
-                        None,
                         &line,
                     );
                     if is_ghost {
-                        target.inner_mut().stroke(
+                        target.stroke_path(
                             &Stroke::new(1.2),
                             Affine::IDENTITY,
                             &Brush::Solid(accent),
-                            None,
                             &Circle::new(hp, 3.5),
                         );
                     } else {
-                        target.inner_mut().fill(
+                        target.fill_shape(
                             Fill::NonZero,
                             Affine::IDENTITY,
                             &Brush::Solid(accent),
-                            None,
                             &Circle::new(hp, 3.5),
                         );
                     }

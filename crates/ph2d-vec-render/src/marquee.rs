@@ -29,11 +29,10 @@ pub fn draw_marquee(min: [f64; 2], max: [f64; 2], theme: Theme, target: &mut Vec
     let (x0, x1) = (min[0].min(max[0]), min[0].max(max[0]));
     let (y0, y1) = (min[1].min(max[1]), min[1].max(max[1]));
     let rect = Rect::new(x0, y0, x1, y1);
-    target.inner_mut().fill(
+    target.fill_shape(
         Fill::NonZero,
         Affine::IDENTITY,
         &Brush::Solid(token_ink(BAND, theme)),
-        None,
         &rect,
     );
     let mut outline = BezPath::new();
@@ -42,11 +41,10 @@ pub fn draw_marquee(min: [f64; 2], max: [f64; 2], theme: Theme, target: &mut Vec
     outline.line_to(Point::new(x1, y1));
     outline.line_to(Point::new(x0, y1));
     outline.close_path();
-    target.inner_mut().stroke(
+    target.stroke_path(
         &Stroke::new(1.0),
         Affine::IDENTITY,
         &Brush::Solid(token_ink(EDGE, theme)),
-        None,
         &outline,
     );
 }
@@ -73,18 +71,16 @@ pub fn draw_lasso(points: &[(f64, f64)], theme: Theme, target: &mut VectorScene)
         path.line_to(Point::new(p.0, p.1));
     }
     path.close_path();
-    target.inner_mut().fill(
+    target.fill_shape(
         Fill::NonZero,
         Affine::IDENTITY,
         &Brush::Solid(token_ink(BAND, theme)),
-        None,
         &path,
     );
-    target.inner_mut().stroke(
+    target.stroke_path(
         &Stroke::new(1.0),
         Affine::IDENTITY,
         &Brush::Solid(token_ink(EDGE, theme)),
-        None,
         &path,
     );
 }

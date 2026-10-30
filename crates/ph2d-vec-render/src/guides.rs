@@ -71,11 +71,10 @@ pub fn draw_text_caret(
     let mut line = BezPath::new();
     line.move_to(pa);
     line.line_to(pb);
-    target.inner_mut().stroke(
+    target.stroke_path(
         &Stroke::new(1.5),
         Affine::IDENTITY,
         &Brush::Solid(crate::token_ink(GUIDE, theme)),
-        None,
         &line,
     );
 }
@@ -94,9 +93,7 @@ pub fn draw_snap_guides(
         let a = transform * Point::new(g.a[0], g.a[1]);
         let b = transform * Point::new(g.b[0], g.b[1]);
         let mut ink = |p: &BezPath, s: &Stroke| {
-            target
-                .inner_mut()
-                .stroke(s, Affine::IDENTITY, &Brush::Solid(guide), None, p);
+            target.stroke_path(s, Affine::IDENTITY, &Brush::Solid(guide), p);
         };
         if g.kind == GuideKind::Align {
             let mut line = BezPath::new();
@@ -210,13 +207,7 @@ pub fn draw_document_guides(
         let mut line = BezPath::new();
         line.move_to(s);
         line.line_to(e);
-        target.inner_mut().stroke(
-            &thin,
-            Affine::IDENTITY,
-            &Brush::Solid(doc_guide),
-            None,
-            &line,
-        );
+        target.stroke_path(&thin, Affine::IDENTITY, &Brush::Solid(doc_guide), &line);
     }
 }
 

@@ -28,6 +28,7 @@ impl crate::App {
             flip,
             text_system,
             hero_screen,
+            miniatura,
             ..
         } = FrameGfx::of(gfx);
         // O bloco do quadro só chama esta fase com o `HeroScreen` vivo.
@@ -151,6 +152,17 @@ impl crate::App {
                 vector_scene,
                 paint_ctx.text,
             );
+            // ⭐ E a miniatura do que a câmera seleccionada vê (A6), no canto, por cima das molduras.
+            if let Some((retrato, caixa)) = miniatura.retrato() {
+                let ponteiro = self.last_pointer;
+                ph2d_app_game::miniatura::desenhar(
+                    vector_scene,
+                    retrato,
+                    caixa,
+                    ponteiro,
+                    hero.theme,
+                );
+            }
             // ⭐ **O GIZMO DA LUZ** (Luz 2D): a lâmpada no tamanho real, os raios e o alcance.
             ph2d_app_light2d::gizmo::desenhar(
                 sim.world(),

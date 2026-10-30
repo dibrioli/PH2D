@@ -444,15 +444,15 @@ fn o_icone_e_os_dois_offset_chegam_ao_barramento() {
     set_current_inspector_camera(None);
 }
 
-/// ⭐ **As duas fileiras de VISTA estão vivas sob o dedo** (onda 18): «Outside · Dimmed» e «Editor View · Follows»
-/// mandam a sua edição; com o snapshot já ligado, o mesmo clique não pede nada e o «off» manda
+/// ⭐ **As fileiras de VISTA estão vivas sob o dedo** (onda 18 e A6): «Outside · Dimmed», «Editor View · Follows»
+/// e «Preview · On» mandam a sua edição; com o snapshot já ligado, o mesmo clique não pede nada e o «off» manda
 /// desligar.
 ///
 /// **Mutações que devem sangrar:** tirar uma fileira do `VISTA` · o registo no `populate_camera` · ler o store em vez
 /// do snapshot (`(i == 1) != agora`).
 #[test]
 fn as_tres_vistas_chegam_ao_barramento() {
-    use ph2d_panel_inspector::ids::{INSP_CAMERA_OUTSIDE, INSP_CAMERA_VIEW};
+    use ph2d_panel_inspector::ids::{INSP_CAMERA_OUTSIDE, INSP_CAMERA_THUMB, INSP_CAMERA_VIEW};
     let casos = [
         (
             INSP_CAMERA_OUTSIDE,
@@ -464,16 +464,30 @@ fn as_tres_vistas_chegam_ao_barramento() {
             CameraFieldEdit::ViewFollows(true),
             CameraFieldEdit::ViewFollows(false),
         ),
+        (
+            INSP_CAMERA_THUMB,
+            CameraFieldEdit::Thumbnail(true),
+            CameraFieldEdit::Thumbnail(false),
+        ),
     ];
+    let nada = ph2d_editor_core::CameraCanvasView {
+        dim_outside: false,
+        follows: false,
+        preview: false,
+    };
     let mut t = SEC;
     for (ids, liga, desliga) in casos {
-        let (mut h, mut st) = host(info(None, None, false));
+        let (mut h, mut st) = host(InspectorCameraInfo {
+            canvas: nada,
+            ..info(None, None, false)
+        });
         let rects = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
         assert_eq!(carrega(&mut h, &mut st, &rects, ids[1], t), vec![liga]);
         assert_eq!(carrega(&mut h, &mut st, &rects, ids[0], t + SEC), vec![]);
         let tudo = ph2d_editor_core::CameraCanvasView {
             dim_outside: true,
             follows: true,
+            preview: true,
         };
         let (mut h, mut st) = host(InspectorCameraInfo {
             canvas: tudo,

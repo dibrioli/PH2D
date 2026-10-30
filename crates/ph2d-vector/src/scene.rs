@@ -56,6 +56,13 @@ pub struct StableImage {
 }
 
 impl StableImage {
+    /// O handle de uma textura REGISTADA no Vello (`VelloPass::register_texture`): cada render lê-a da placa, sem
+    /// passar pela CPU (a miniatura da câmera, `docs/GameEngineFuncional/18_miniatura_da_camera_plano.md`).
+    #[must_use]
+    pub fn from_registered(data: ImageData) -> Self {
+        Self { data }
+    }
+
     /// Constrói a partir de RGBA **reta** (`width*height*4` bytes). `None` se as dimensões não
     /// batem. Consome o `Arc` (o handle passa a ser o dono do id estável).
     #[must_use]

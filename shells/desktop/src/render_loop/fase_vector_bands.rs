@@ -49,6 +49,7 @@ impl crate::App {
             luz2d,
             surface,
             flip,
+            miniatura,
             ..
         } = FrameGfx::of(gfx);
         let paint_ctx = PaintCtx {
@@ -120,14 +121,15 @@ impl crate::App {
         // ⭐⭐⭐ **AS FORMAS DO MOTION NA PLACA?** (doc 121 W2/W3, B5) — decidido antes de o documento
         // ser codificado (com elas na placa ele vai às FAIXAS); no DISPOSITIVO o buffer é o dele.
         let por_ordem = ph2d_app_motion::motion_shape_placa::por_ordem();
+        let ligadas_do_motion = (
+            motion_tool_active && por_ordem,
+            motion_tool_active && !*frosting && por_ordem,
+        );
         let placa = ph2d_app_motion::motion_shape_placa::decide_o_quadro(
             &mut self.motion_shell.placa,
             surface.gpu(),
             motion,
-            (
-                motion_tool_active && por_ordem,
-                motion_tool_active && !*frosting && por_ordem,
-            ),
+            ligadas_do_motion,
             cam_affine,
         );
         // ⭐ E a placa de cada palco de uma macro em cena (ADR-0186), pela MESMA porta.
@@ -141,30 +143,37 @@ impl crate::App {
         let luz_acesa = luz2d.codificar(sim.world_mut(), surface, cam_affine, docs);
         let doc_bands =
             ph2d_render::draw_bands::doc_bands_of(frame_order, placa || palcos || luz_acesa);
-        for band in &doc_bands {
-            let keep = frame_order.vector_ids_in(*band);
-            let mut band_view = vec_view.clone();
-            for path in vec_scene.paths() {
-                if !keep.contains(&path.id) {
-                    band_view.hidden.push(path.id);
+        // O documento por faixa, com a câmera e as peles de QUEM o vê (o editor e a vista da câmera, A6).
+        let faixas = |bands: &[ph2d_render::draw_bands::Band],
+                      skins: &ph2d_vec_render::WidgetSkins,
+                      cam: ph2d_vector::Affine,
+                      cenas: &mut Vec<ph2d_vector::VectorScene>| {
+            for band in bands {
+                let keep = frame_order.vector_ids_in(*band);
+                let mut band_view = vec_view.clone();
+                for path in vec_scene.paths() {
+                    if !keep.contains(&path.id) {
+                        band_view.hidden.push(path.id);
+                    }
                 }
+                let mut target = ph2d_vector::VectorScene::new();
+                ph2d_vec_render::dispatch(
+                    vec_scene,
+                    &band_view,
+                    &vec_xf,
+                    &vec_live,
+                    vec_fx,
+                    skins,
+                    vec_patterns,
+                    brush_arts,
+                    self.paint_dilate_live.out(),
+                    cam,
+                    &mut target,
+                );
+                cenas.push(target);
             }
-            let mut target = ph2d_vector::VectorScene::new();
-            ph2d_vec_render::dispatch(
-                vec_scene,
-                &band_view,
-                &vec_xf,
-                &vec_live,
-                vec_fx,
-                &vec_skins,
-                vec_patterns,
-                brush_arts,
-                self.paint_dilate_live.out(),
-                cam_affine,
-                &mut target,
-            );
-            band_doc_scenes.push(target);
-        }
+        };
+        faixas(&doc_bands, &vec_skins, cam_affine, band_doc_scenes);
         // Com faixas o documento já foi codificado nelas — a cena do chrome fica só com o chrome.
         if doc_bands.is_empty() {
             // ⭐⭐⭐ **COM O VIDRO, o documento sai da cena do CHROME.** Ele tem de aterrar no
@@ -207,6 +216,55 @@ impl crate::App {
             cam_affine,
             frost_front_scene,
         );
+        // ⭐ A VISTA DA CÂMERA (A6): o mesmo documento, a luz e a placa do Motion com a câmera dela, nas cenas dela —
+        // sempre em faixas (o mundo dela acaba no acumulador). A receita aberta vai por cima, na última faixa.
+        let t0 = std::time::Instant::now();
+        if let Some(v) = miniatura.pedida() {
+            let (cam, janela) = (v.afim(), v.janela());
+            // O mesmo nível da luz que o editor escolheu (o «Automático» governa cada vista por si).
+            v.luz2d.preferir(hero_screen.as_ref()?.view.luz2d);
+            let gpu = surface.gpu();
+            let alvo = (janela.width, janela.height);
+            v.luz2d
+                .codificar_no_alvo(sim.world(), gpu, alvo, cam, (vec_scene, &vec_xf));
+            ph2d_app_motion::motion_shape_placa::decide_o_quadro(
+                &mut v.placa,
+                gpu,
+                motion,
+                ligadas_do_motion,
+                cam,
+            );
+            let skins = crate::widget_live::build(
+                vec_scene,
+                sim,
+                &self.vec.entities,
+                &vec_xf,
+                &vec_live,
+                &vec_view,
+                cam,
+                paint_ctx.text,
+                hero_screen.as_ref()?.theme,
+            );
+            v.band_doc_scenes.clear();
+            let bands = ph2d_render::draw_bands::doc_bands_of(frame_order, true);
+            faixas(&bands, &skins, cam, &mut v.band_doc_scenes);
+            if let Some(topo) = v.band_doc_scenes.last_mut() {
+                ph2d_vec_render::dispatch_isolated(
+                    vec_scene,
+                    &vec_view,
+                    &vec_xf,
+                    &vec_live,
+                    vec_fx,
+                    &skins,
+                    vec_patterns,
+                    brush_arts,
+                    self.paint_dilate_live.out(),
+                    cam,
+                    topo,
+                );
+            }
+        }
+        miniatura.cpu_codifica = t0.elapsed().as_secs_f64() * 1000.0;
         // ⚠️ **O mapa que foi DESENHADO fica guardado, e é ele que o PICK lê.**
         //
         // O `vec_gizmo_pick` declara no próprio doc que a pergunta *"o que está desenhado

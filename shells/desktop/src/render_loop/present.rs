@@ -114,6 +114,7 @@ impl crate::App {
             Ok(frame) => {
                 let after_acquire = Instant::now();
                 super::note_acquire_wait(after_acquire.duration_since(acquire_t0));
+                self.present_vista_da_camera(r, g, b, motion_draws);
                 let Some((plan, banded)) = self.present_world_sprites(
                     r,
                     g,
@@ -163,7 +164,7 @@ impl crate::App {
     /// O passe 1 do quadro adquirido: o stream do Motion e os fantasmas do onion no slot `extra`, as faixas de baixo,
     /// o passe de sprites (com as peças da receita aberta retidas) e a sonda do drift. Devolve o plano das faixas.
     #[allow(clippy::too_many_arguments)]
-    fn present_world_sprites(
+    pub(super) fn present_world_sprites(
         &mut self,
         r: f64,
         g: f64,
@@ -177,6 +178,7 @@ impl crate::App {
         bgremoval_tint: &ph2d_render::LiftedInstances,
     ) -> Option<(super::present_bands::FramePlan, bool)> {
         self.present_luz();
+        let na_vista = self.na_vista_da_camera;
         let gfx = self.gfx.as_mut()?;
         let AppGfx {
             surface,
@@ -296,10 +298,12 @@ impl crate::App {
         // ⭐⭐ **A GRADE ATRÁS DOS OBJECTOS força o quadro em CAMADAS** (report do dono de
         //    2026-09-24): é o acumulador do mundo que sabe pôr alguma coisa por baixo dos sprites.
         //    ⚠️ Sem intercalação e sem `Behind`, nada muda — o quadro de sempre, byte a byte.
-        let grid_behind = hero_screen.as_ref().is_some_and(|h| {
-            ph2d_editor_core::screens::hero::grid_layer::paint_behind(h, grid_behind_scene)
-        });
-        plan.banded |= grid_behind;
+        let grid_behind = !na_vista
+            && hero_screen.as_ref().is_some_and(|h| {
+                ph2d_editor_core::screens::hero::grid_layer::paint_behind(h, grid_behind_scene)
+            });
+        // A vista da câmera (A6) acaba SEMPRE no acumulador: é ele que se pousa no canto do canvas.
+        plan.banded |= grid_behind || na_vista;
         // ⭐⭐⭐ E AS FORMAS NA PLACA (doc 121, W2): a camada delas cola-se no acumulador do mundo.
         plan.banded |= self.motion_shell.placa.ativa();
         // ⭐ E A LUZ 2D (W3): a MESMA decisão que pôs o documento nas faixas (`preparar`, na
@@ -357,25 +361,28 @@ impl crate::App {
         // DEPOIS do passe, de propósito: o que ela tem de imprimir é o sub-retângulo
         // que ele APLICOU, e esse só existe depois de ele decidir (o `.filter` do
         // clip/máscara é por conteúdo do quadro).
-        ph2d_pan_diag::frame(
-            camera,
-            window_size,
-            motion_active,
-            scene_viewport,
-            renderer.applied_subrect(),
-        );
+        if !na_vista {
+            ph2d_pan_diag::frame(
+                camera,
+                window_size,
+                motion_active,
+                scene_viewport,
+                renderer.applied_subrect(),
+            );
+        }
         Some((plan, banded))
     }
 
     /// Os passes 1b a 1c do quadro adquirido: o Flip composto por camada (com os fantasmas e o *peek*), as formas
     /// do Motion pela placa, e os passes de luz (a sprite emissiva e o glow do Motion).
-    fn present_flip_fx(
+    pub(super) fn present_flip_fx(
         &mut self,
         window_size: ph2d_host::WindowSize,
         scene_viewport: Option<[f32; 4]>,
         motion_active: bool,
         flip_preview: &Option<ph2d_flip_render::FlipGpuData>,
     ) {
+        let na_vista = self.na_vista_da_camera;
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
@@ -409,18 +416,19 @@ impl crate::App {
         // O PEEK (F1/F2/F3 presos): uma folha vizinha na mão — os fantasmas
         // somem JUNTO (a folha na mão não é uma pilha translúcida) e não há
         // peek no play (o relógio já está folheando por conta própria).
-        let peek = if self.flip_state.active && !self.playhead.is_playing() {
+        // Os fantasmas e o peek são chrome de autoria: a vista da câmera (A6) mostra o jogo.
+        let autoria = self.flip_state.active && !na_vista;
+        let peek = if autoria && !self.playhead.is_playing() {
             self.flip_state.peek
         } else {
             None
         };
-        let ghost_selection = (self.flip_state.active && peek.is_none()).then(|| {
-            ph2d_app_flip::pass_ghosts::GhostSources {
+        let ghost_selection =
+            (autoria && peek.is_none()).then(|| ph2d_app_flip::pass_ghosts::GhostSources {
                 selected: self.flip_state.strip.selected_keys(),
                 pinned: self.flip_state.strip.pinned_keys(),
                 trace: Some(&self.flip_state.strip.trace),
-            }
-        });
+            });
         ph2d_app_flip::pass::render(
             flip,
             flip_render,
@@ -451,7 +459,9 @@ impl crate::App {
             placa, gpu, tamanho, motion, renderer, filtro,
         );
         let palcos = &mut self.motion_shell.palcos;
-        palcos.desenha(gpu, tamanho, renderer, filtro);
+        if !na_vista {
+            palcos.desenha(gpu, tamanho, renderer, filtro);
+        }
         // Passes 1b-bis e 1c: **OS PASSES DE LUZ** — a sprite emissiva e o glow do
         // Motion. Cortados para o irmão [`super::present_fx`] pelo tecto de LOC, e o
         // corte é por RESPONSABILIDADE: os dois somam luz sobre o `game_rt` antes do

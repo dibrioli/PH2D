@@ -99,6 +99,7 @@ pub(crate) fn populate_camera(store: &mut WidgetStore) {
     crate::populate::register_button_ids(store, &ids::INSP_CAMERA_FRAME);
     crate::populate::register_button_ids(store, &ids::INSP_CAMERA_OUTSIDE);
     crate::populate::register_button_ids(store, &ids::INSP_CAMERA_VIEW);
+    crate::populate::register_button_ids(store, &ids::INSP_CAMERA_THUMB);
     store.register(
         ids::INSP_CAMERA_FORMAT_PICK,
         InteractiveState::Dropdown {

@@ -186,6 +186,11 @@ fn format_click(
             c.follows,
             CameraFieldEdit::ViewFollows,
         ),
+        (
+            crate::ids::INSP_CAMERA_THUMB,
+            c.preview,
+            CameraFieldEdit::Thumbnail,
+        ),
     ] {
         if let Some(i) = opcoes.iter().position(|&o| o == id) {
             if (i == 1) != agora {

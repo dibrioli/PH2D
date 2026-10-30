@@ -119,6 +119,8 @@ pub(crate) struct AppGfx {
     /// ⭐ A LUZ 2D do quadro (`ph2d-app-light2d`): a codificação decide se acende (`preparar`); o
     /// presente grava o solver e liga os receptores.
     pub(crate) luz2d: ph2d_app_light2d::LuzDoQuadro,
+    /// ⭐ A miniatura do que a câmera vê (GEF 18 A6) — a vista dela, criada no primeiro pedido.
+    pub(crate) miniatura: crate::render_loop::vista_da_camera::Miniatura,
     /// As macros do Painter em cena (ADR-0186): as ranhuras de textura delas são do `renderer`, e
     /// vivem e morrem com ele.
     pub(crate) painter_macros: ph2d_app_painter::macro_track::PalcosDoPainter,

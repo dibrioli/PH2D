@@ -140,4 +140,6 @@ pub enum CameraFieldEdit {
     DimOutside(bool),
     /// A vista do editor segue a câmera do jogo (onda 18). ⚠️ Gesto do EDITOR.
     ViewFollows(bool),
+    /// A miniatura do que a câmera vê (A6). ⚠️ Gesto do EDITOR.
+    Thumbnail(bool),
 }

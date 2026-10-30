@@ -95,6 +95,9 @@ pub struct SpriteRenderer {
     /// group — scenes with no clip never pay for it (zero-regression).
     /// Re-created when the target size changes.
     clip_stencil: Option<ClipStencil>,
+    /// O stencil do OUTRO tamanho: com a miniatura da câmera (GEF 18 A6) o passe alterna dois alvos por quadro, e
+    /// recriar a cada troca seriam duas alocações por quadro.
+    clip_stencil_outro: Option<ClipStencil>,
     /// **O sub-retângulo que o último `draw_scratch` REALMENTE aplicou** — não o que lhe
     /// pediram. Os dois divergem quando o quadro tem clip/máscara
     /// (`scene_viewport.filter(|_| !has_clip && !has_mask)`), e a divergência é decidida por
@@ -210,6 +213,7 @@ impl SpriteRenderer {
             runs: Vec::with_capacity(16),
             // Allocated lazily on the first clipped frame.
             clip_stencil: None,
+            clip_stencil_outro: None,
             applied_subrect: None,
             mesh_frame: crate::sprite_mesh::MeshFrame::default(),
             skin_buffers,
@@ -562,6 +566,10 @@ impl SpriteRenderer {
     /// it on first use or a size change (HR-3: reused otherwise). The
     /// `TextureView` keeps the texture alive, so the texture handle can drop.
     fn ensure_clip_stencil(&mut self, size: (u32, u32)) {
+        if self.clip_stencil.as_ref().map(|s| s.size) == Some(size) {
+            return;
+        }
+        std::mem::swap(&mut self.clip_stencil, &mut self.clip_stencil_outro);
         if self.clip_stencil.as_ref().map(|s| s.size) == Some(size) {
             return;
         }

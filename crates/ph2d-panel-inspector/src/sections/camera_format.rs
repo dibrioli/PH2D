@@ -10,17 +10,18 @@ use ph2d_i18n::TextKey;
 use ph2d_i18n::tr;
 
 /// Os rótulos das fileiras — entram na medição da coluna da secção.
-pub(crate) const ROTULOS: [&str; 6] = [
+pub(crate) const ROTULOS: [&str; 7] = [
     "panel.inspector.camera.format",
     "panel.inspector.camera.custom_size",
     "panel.inspector.camera.frame",
     "panel.inspector.camera.icon_size",
     "panel.inspector.camera.outside",
     "panel.inspector.camera.view",
+    "panel.inspector.camera.preview",
 ];
 
-/// As duas fileiras de VISTA (onda 18), cada uma `(rótulo, grupo, opções, [chave off, chave on])`.
-const VISTA: [(usize, ph2d_a11y::NodeId, [ph2d_a11y::NodeId; 2], [&str; 2]); 2] = [
+/// As fileiras de VISTA (onda 18 e a miniatura, A6), cada uma `(rótulo, grupo, opções, [chave off, chave on])`.
+const VISTA: [(usize, ph2d_a11y::NodeId, [ph2d_a11y::NodeId; 2], [&str; 2]); 3] = [
     (
         4,
         ids::INSP_CAMERA_OUTSIDE_GROUP,
@@ -37,6 +38,15 @@ const VISTA: [(usize, ph2d_a11y::NodeId, [ph2d_a11y::NodeId; 2], [&str; 2]); 2] 
         [
             "panel.inspector.camera.view_free",
             "panel.inspector.camera.view_follows",
+        ],
+    ),
+    (
+        6,
+        ids::INSP_CAMERA_THUMB_GROUP,
+        ids::INSP_CAMERA_THUMB,
+        [
+            "panel.inspector.camera.preview_off",
+            "panel.inspector.camera.preview_on",
         ],
     ),
 ];
@@ -128,7 +138,11 @@ pub(super) fn format_rows(
         Some(ph2d_editor_core::widget::Unit::Px),
         seccao,
     );
-    let ligado = [info.canvas.dim_outside, info.canvas.follows];
+    let ligado = [
+        info.canvas.dim_outside,
+        info.canvas.follows,
+        info.canvas.preview,
+    ];
     for ((rotulo, grupo, opcoes, chaves), on) in VISTA.iter().zip(ligado) {
         let labels = chaves.map(tr);
         cur_y = super::rows::seg_row(

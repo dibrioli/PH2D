@@ -194,3 +194,12 @@ pub const INSP_CAMERA_VIEW: [NodeId; 2] = [
     hash_node_id("insp_camera_view_free"),
     hash_node_id("insp_camera_view_follows"),
 ];
+
+/// A fileira «Preview» (A6): Off | On — a miniatura do que a câmera vê.
+pub const INSP_CAMERA_THUMB_GROUP: NodeId = hash_node_id("insp_camera_thumb_group");
+
+/// As duas opções da miniatura — `[Off, On]`.
+pub const INSP_CAMERA_THUMB: [NodeId; 2] = [
+    hash_node_id("insp_camera_thumb_off"),
+    hash_node_id("insp_camera_thumb_on"),
+];

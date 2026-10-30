@@ -7,21 +7,16 @@
 use super::*;
 
 impl crate::App {
-    /// Os passes 2 a 4 do quadro adquirido: o tonemap, as faixas de cima, o vidro, o chrome do Vello e o compositor para
-    /// o ecrã, com o fim de quadro do perfilador de passes.
-    #[allow(clippy::too_many_arguments)]
-    pub(super) fn present_chrome_and_composite(
+    /// O MUNDO por cima dos sprites, até à última escrita dele: o tonemap, as faixas de cima, a camada do Motion, os
+    /// palcos e a lente. Corre também na vista da câmera (A6, [`super::vista_da_camera`]), que pára aqui.
+    pub(in crate::render_loop) fn present_mundo_por_cima(
         &mut self,
-        frame: &ph2d_gpu::FrameTarget,
         window_size: ph2d_host::WindowSize,
         scene_viewport: Option<[f32; 4]>,
-        plan: crate::render_loop::present_bands::FramePlan,
+        plan: &crate::render_loop::present_bands::FramePlan,
         banded: bool,
-        frosting: bool,
-        r: f64,
-        g: f64,
-        b: f64,
     ) {
+        let na_vista = self.na_vista_da_camera;
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
@@ -29,23 +24,11 @@ impl crate::App {
             surface,
             renderer,
             camera,
-            game_rt,
-            compositor,
             tonemap,
             vello_pass,
-            vector_scene,
-            // ADR-0154 Fase 2 — o acumulador do mundo, a colagem de faixa, as cenas do documento
-            // por faixa (codificadas no `run_render_frame`) e o modo do compositor.
             world_rt,
             band_blit,
             band_doc_scenes,
-            compositor_reads_world,
-            // ⭐⭐⭐ **O VIDRO JATEADO do *Edit Prefab*** (2026-09-07) — o passe, as duas cenas que
-            // ele separa (o mundo sem a receita · a receita sozinha) e o interruptor do quadro,
-            // que a codificação lá em cima escreveu. Ver [`crate::render_loop::present_frost`].
-            frost,
-            frost_doc_scene,
-            frost_front_scene,
             motion,
             hero_screen,
             ..
@@ -53,31 +36,11 @@ impl crate::App {
         // Pass 2: AgX tonemap
         //   target: `tonemap.output_view()` (Bgra8UnormSrgb LDR)
         tonemap.run(surface.gpu());
-        // Pass 3: Vello chrome
-        //   target: `vello_pass.intermediate_view()`
-        //   ↳ TRANSPARENT clear so any pixel the editor scene
-        //   doesn't paint stays α=0 and the compositor reveals
-        //   `game_rt_ldr` through it.
-        //
-        // ⛔ **O shell NÃO escolhe o anti-aliasing deste passe, e
-        // nunca mais o lê de uma preferência de texto.** Até
-        // 2026-08-30 esta linha era
-        // `text_rendering().params().prefer_msaa`, e ia direita
-        // para `render_to_intermediate`. O `AaConfig` do Vello é
-        // por PASSE, e este passe carrega o chrome **e** a arte
-        // vectorial do documento no mesmo `Scene` — logo o preset
-        // de tipografia escolhia a rasterização das formas do
-        // artista. `Msaa16` stippla traços finos (1-1,5 px) em
-        // ângulos quase-axiais: «manchas animadas parecendo TV
-        // antiga» (`docs/Atualizar Stack/04_registro.md` §22.2).
-        // A decisão vive agora dentro do `ph2d-render`, é
-        // `AaConfig::Area` e não é parametrizável. Dois passes
-        // (chrome / documento) seria arquitectura, não uma flag.
         // ⭐ A metade de CIMA das faixas — ver o cabeçalho do `present_bands`.
         if banded {
             crate::render_loop::present_bands::draw_upper_bands(
                 surface.gpu(),
-                &plan,
+                plan,
                 crate::render_loop::present_bands::UpperGear {
                     world_rt,
                     window_size,
@@ -92,7 +55,6 @@ impl crate::App {
         // documento, já no acumulador) e por baixo dos gizmos e do chrome, que vêm na cena Vello.
         // A camada foi DESENHADA antes do halo (`present.rs`, doc 121 §9.14); cola-se aqui.
         // ⭐ Com `fx.filter` no fio a placa entra na CAMADA filtrada (ciclo 20 W3), colada aqui.
-        let tamanho = (window_size.width, window_size.height);
         let placa = &self.motion_shell.placa;
         let filtrada = motion.filtra_a_camada(ph2d_app_motion::motion_filter::Engrenagem {
             gpu: surface.gpu(),
@@ -110,22 +72,73 @@ impl crate::App {
             ph2d_app_motion::motion_shape_placa::cola_no_mundo(placa, gpu, band_blit, alvo);
         }
         // ⭐ E cada palco de uma macro em cena pousa a sua camada (ADR-0186), por cima da do editor.
+        // ⚠️ Não na vista da câmera: a placa de cada palco é codificada com a câmera do editor (ver o plano 18).
         let palcos = &mut self.motion_shell.palcos;
-        palcos.pousa(ph2d_app_motion::macro_track::palcos::Colagem {
-            gpu: surface.gpu(),
-            renderer,
-            camera,
-            window: window_size,
-            scene_viewport,
-            mundo: world_rt,
-            band_blit,
-        });
+        if !na_vista {
+            palcos.pousa(ph2d_app_motion::macro_track::palcos::Colagem {
+                gpu: surface.gpu(),
+                renderer,
+                camera,
+                window: window_size,
+                scene_viewport,
+                mundo: world_rt,
+                band_blit,
+            });
+        }
         // ⭐ **A LENTE** (ciclo 20) — depois da última escrita do mundo, antes do vidro e do chrome.
         let cena = hero_screen
             .as_ref()
+            .filter(|_| !na_vista)
             .and_then(|h| h.cena_visivel(scene_viewport));
         motion.lente.aplica(surface.gpu(), world_rt, cena);
-        palcos.lentes(surface.gpu(), world_rt, cena);
+        if !na_vista {
+            palcos.lentes(surface.gpu(), world_rt, cena);
+        }
+    }
+
+    /// Os passes 2 a 4 do quadro adquirido: o mundo por cima ([`Self::present_mundo_por_cima`]), o vidro, o chrome
+    /// do Vello e o compositor para o ecrã, com o fim de quadro do perfilador de passes.
+    #[allow(clippy::too_many_arguments)]
+    pub(super) fn present_chrome_and_composite(
+        &mut self,
+        frame: &ph2d_gpu::FrameTarget,
+        window_size: ph2d_host::WindowSize,
+        scene_viewport: Option<[f32; 4]>,
+        plan: crate::render_loop::present_bands::FramePlan,
+        banded: bool,
+        frosting: bool,
+        r: f64,
+        g: f64,
+        b: f64,
+    ) {
+        self.present_mundo_por_cima(window_size, scene_viewport, &plan, banded);
+        let Some(gfx) = self.gfx.as_mut() else {
+            return;
+        };
+        let AppGfx {
+            surface,
+            renderer,
+            camera,
+            game_rt,
+            compositor,
+            tonemap,
+            vello_pass,
+            vector_scene,
+            world_rt,
+            band_blit,
+            compositor_reads_world,
+            // ⭐⭐⭐ **O VIDRO JATEADO do *Edit Prefab*** (2026-09-07) — o passe, as duas cenas que
+            // ele separa (o mundo sem a receita · a receita sozinha) e o interruptor do quadro,
+            // que a codificação lá em cima escreveu. Ver [`crate::render_loop::present_frost`].
+            frost,
+            frost_doc_scene,
+            frost_front_scene,
+            ..
+        } = gfx;
+        let tamanho = (window_size.width, window_size.height);
+        // Pass 3: Vello chrome — `vello_pass.intermediate_view()`, TRANSPARENT clear (o compositor revela o mundo
+        // por baixo). ⛔ O shell NÃO escolhe o anti-aliasing deste passe: é `AaConfig::Area` dentro do `ph2d-render`
+        // (o chrome e a arte do documento partilham o `Scene`; `docs/Atualizar Stack/04_registro.md` §22.2).
         // ⭐⭐⭐ **O VIDRO** — entre o mundo e a receita, e ANTES da cena de chrome de
         // propósito: os painéis entram pelo compositor, acima de tudo, e é isso que os
         // deixa nítidos sem uma máscara os nomear. Ver [`crate::render_loop::present_frost`].

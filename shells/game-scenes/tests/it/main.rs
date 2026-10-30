@@ -3,6 +3,8 @@
 
 mod comp;
 mod jogo_camara;
+mod jogo_encaixe;
+mod jogo_miniatura;
 mod jogo_moldura;
 mod jogo_moldura_lei;
 mod jogo_moldura_ponteiro;

@@ -26,6 +26,8 @@ impl crate::App {
             sim,
             camera,
             hero_screen,
+            vello_pass,
+            miniatura,
             ..
         } = FrameGfx::of(gfx);
         // O canvas VISÍVEL (entre os painéis; a janela inteira no palco) e, dentro dele, a caixa do JOGO (o formato
@@ -34,7 +36,7 @@ impl crate::App {
             .as_ref()
             .map(|h| h.project.game_format)
             .unwrap_or_default();
-        let (janela, canvas) = {
+        let (janela, canvas, visivel) = {
             let w = surface.size();
             let full = [0.0, 0.0, w.width as f32, w.height as f32];
             let c = hero_screen.as_ref().map(|h| h.last_canvas);
@@ -44,6 +46,7 @@ impl crate::App {
             (
                 [full[2], full[3]],
                 ph2d_app_game::encaixe::caixa_do_jogo(c, formato),
+                c,
             )
         };
         let aspecto = formato.aspect();
@@ -143,6 +146,22 @@ impl crate::App {
         // As alças com o relógio PARADO, em qualquer instante (onda 18, medido no app real): a tocar a moldura é o
         // jogo (17b A8); pausado a meio é onde o Auto Key anima — presas ao zero, o arrasto ia para a seleção.
         self.undo.camera_no_canvas.em_edicao = !self.playhead.is_playing();
+        // ⭐ A miniatura (A6): o que a câmera seleccionada vê, no canto do canvas, com «Preview» ligado e fora do palco.
+        let preview = hero_screen
+            .as_ref()
+            .is_some_and(|h| h.view.camera_canvas.preview && !h.view.palco_do_jogo);
+        let chao = hero_screen
+            .as_ref()
+            .and_then(|h| h.last_layout.as_ref())
+            .map_or(f32::INFINITY, |l| l.bottom_hud.y);
+        let pedido = preview
+            .then(|| ph2d_app_game::miniatura::escolhida(&self.undo.camera_no_canvas.molduras))
+            .flatten()
+            .and_then(|m| {
+                let caixa = ph2d_app_game::miniatura::caixa(visivel, aspecto, chao)?;
+                Some((ph2d_app_game::miniatura::vista(sim.world(), m), caixa))
+            });
+        miniatura.pede(surface.gpu(), vello_pass, pedido);
         // ⚠️ **Fala uma vez por MUDANÇA, nunca por quadro** — a mesma lei da linha do som.
         if self.signal_readers.logging() && camera_report != self.last_camera_report {
             self.last_camera_report = camera_report.clone();

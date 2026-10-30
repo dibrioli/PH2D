@@ -33,6 +33,8 @@ mod entorno;
 mod leituras;
 #[path = "quadro_renasce.rs"]
 mod renasce;
+#[path = "quadro_vista.rs"]
+mod vista;
 
 /// A chave de que a fina dos tetos depende: a janela, o degrau base e os tetos.
 type ChaveDosTetos = ((u32, u32), Degrau, crate::teto::Tetos);
@@ -242,47 +244,6 @@ impl LuzDoQuadro {
             self.sem_luz.extend(self.cena.nao_recebem.iter().copied());
         }
         self.grade.is_some()
-    }
-
-    /// ⭐ **As portas 1 e 1b numa chamada** — o que a codificação da shell faz por quadro: encena a
-    /// cena de smoke armada (uma vez), prepara e desenha os vetores que bloqueiam. Devolve se a luz
-    /// está acesa (a shell força então o documento às faixas).
-    pub fn codificar(
-        &mut self,
-        world: &mut World,
-        superficie: &ph2d_gpu::SurfaceContext,
-        mundo_para_tela: Affine,
-        (vetores, xforms, flip): (
-            &mut ph2d_vec_scene::VecScene,
-            &ph2d_vec_scene::VecXforms,
-            &mut ph2d_flip::FlipDoc,
-        ),
-    ) -> bool {
-        let vetores = (vetores, xforms);
-        if !self.smoke_encenado {
-            self.smoke_encenado = true;
-            if let Some(n) = crate::smoke::nivel_armado() {
-                crate::smoke::encenar(world, n);
-                self.semeadas = crate::smoke::semear_documento(vetores.0, n);
-                self.semeado_flip = crate::smoke::semear_flip(flip, n);
-                self.motion_por_marcar = n == 8;
-            }
-        }
-        if self.motion_por_marcar {
-            self.motion_por_marcar = crate::smoke::marcar_motion(world) == 0;
-        }
-        if let Some(id) = self.semeado_flip {
-            self.semeado_flip = crate::smoke::marcar_flip(world, flip, id);
-        }
-        if !self.semeadas.is_empty() {
-            let pendentes = std::mem::take(&mut self.semeadas);
-            self.semeadas = crate::smoke::marcar_semeadas(world, vetores.0, pendentes);
-        }
-        let alvo = superficie.size();
-        self.lado_max = superficie.gpu().device.limits().max_texture_dimension_2d;
-        let acesa = self.preparar(world, mundo_para_tela, (alvo.width, alvo.height));
-        self.desenhar_vetores(superficie.gpu(), vetores.0, vetores.1);
-        acesa
     }
 
     /// **Porta 1b** — desenha na grade os caminhos VETORIAIS que bloqueiam (os afins `xforms` do

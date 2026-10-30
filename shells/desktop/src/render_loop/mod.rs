@@ -147,6 +147,8 @@ mod present_bands;
 mod present_frost;
 /// ⭐⭐ Os passes de LUZ do quadro (a sprite emissiva e o glow do Motion).
 mod present_fx;
+/// ⭐ A miniatura do que a câmera vê (GEF 18 A6): a vista da câmera troca-se com a do editor.
+pub(crate) mod vista_da_camera;
 /// ⭐⭐⭐ **A ponte do `Timer`** (TOP-20 #2) — mora em [`ph2d_app_components::timer_tick`] desde
 /// 2026-10-25; o nome fica ligado aqui para as fases do quadro.
 use ph2d_app_components::timer_tick;

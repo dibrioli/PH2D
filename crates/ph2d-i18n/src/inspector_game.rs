@@ -587,6 +587,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.camera.view" => "Editor View",
         "panel.inspector.camera.view_free" => "Free",
         "panel.inspector.camera.view_follows" => "Follows",
+        "panel.inspector.camera.preview" => "Preview",
+        "panel.inspector.camera.preview_off" => "Off",
+        "panel.inspector.camera.preview_on" => "On",
         // ph2d-migrar-texto:end
         _ => return None,
     })

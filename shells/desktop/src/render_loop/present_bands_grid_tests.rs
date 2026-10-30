@@ -16,7 +16,7 @@
 fn a_grade_atras_entra_no_acumulador_antes_de_toda_faixa() {
     let present = include_str!("present.rs");
     assert!(
-        present.contains("plan.banded |= grid_behind;"),
+        present.contains("plan.banded |= grid_behind || na_vista;"),
         "o `Behind` deixou de forcar o quadro em camadas: sem intercalacao a grade de tras e' \
          pintada numa cena que ninguem desenha"
     );

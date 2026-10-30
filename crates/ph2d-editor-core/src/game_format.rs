@@ -165,12 +165,24 @@ pub enum CameraFrameShow {
 
 /// ⭐ **Como o canvas mostra a câmera do jogo** (onda 18) — gestos do EDITOR, como o «Look through»: não são
 /// documento, não gravam nem desfazem.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct CameraCanvasView {
     /// Escurece o que fica fora da moldura (A7).
     pub dim_outside: bool,
     /// A vista do editor segue o centro da câmera do jogo e guarda o zoom do artista.
     pub follows: bool,
+    /// A miniatura do que a câmera seleccionada vê, num canto do canvas (A6). Ligada por omissão.
+    pub preview: bool,
+}
+
+impl Default for CameraCanvasView {
+    fn default() -> Self {
+        Self {
+            dim_outside: false,
+            follows: false,
+            preview: true,
+        }
+    }
 }
 
 impl CameraCanvasView {
@@ -179,6 +191,7 @@ impl CameraCanvasView {
         match *e {
             crate::CameraFieldEdit::DimOutside(on) => self.dim_outside = on,
             crate::CameraFieldEdit::ViewFollows(on) => self.follows = on,
+            crate::CameraFieldEdit::Thumbnail(on) => self.preview = on,
             _ => return false,
         }
         true
@@ -216,7 +229,8 @@ mod tests {
             v,
             CameraCanvasView {
                 dim_outside: true,
-                follows: false
+                follows: false,
+                preview: true,
             }
         );
         assert!(v.aplica(&E::ViewFollows(true)));
@@ -225,7 +239,17 @@ mod tests {
             v,
             CameraCanvasView {
                 dim_outside: false,
-                follows: true
+                follows: true,
+                preview: true,
+            }
+        );
+        assert!(v.aplica(&E::Thumbnail(false)));
+        assert_eq!(
+            v,
+            CameraCanvasView {
+                dim_outside: false,
+                follows: true,
+                preview: false,
             }
         );
         assert!(!v.aplica(&E::Preview(true)));

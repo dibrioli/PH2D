@@ -54,6 +54,8 @@ pub enum Foto {
     CameraFora,
     /// Onda 18: «Editor View: Follows» com a vista afastada (30 m) — a câmera do jogo no meio do canvas.
     CameraSegue,
+    /// A6: «Preview: Off» — a câmera selecionada sem a miniatura no canto (a `camera` mostra-a ligada).
+    CameraSemPrevia,
 }
 
 #[must_use]
@@ -91,6 +93,7 @@ pub fn foto() -> Option<Foto> {
         "camera_desfaz" => Some(Foto::CameraDesfaz),
         "camera_fora" => Some(Foto::CameraFora),
         "camera_segue" => Some(Foto::CameraSegue),
+        "camera_sem_previa" => Some(Foto::CameraSemPrevia),
         _ => None,
     }
 }
@@ -137,6 +140,7 @@ impl Foto {
                 | Self::CameraDesfaz
                 | Self::CameraFora
                 | Self::CameraSegue
+                | Self::CameraSemPrevia
         )
     }
 
@@ -222,6 +226,7 @@ pub fn plano_da_foto(
             canvas: ph2d_editor_core::CameraCanvasView {
                 dim_outside: foto == Foto::CameraFora,
                 follows: foto == Foto::CameraSegue,
+                preview: foto != Foto::CameraSemPrevia,
             },
         };
         plano.alvo = camara.to_bits();
@@ -279,7 +284,8 @@ pub fn plano_da_foto(
         | Foto::CameraChave
         | Foto::CameraDesfaz
         | Foto::CameraFora
-        | Foto::CameraSegue => unreachable!("as fotos da câmera voltam antes"),
+        | Foto::CameraSegue
+        | Foto::CameraSemPrevia => unreachable!("as fotos da câmera voltam antes"),
         Foto::PlayerParado => {
             plano.edicoes = vec![(player, uso(ph2d_editor_core::InspectorImageUse::Still))];
             plano.alvo = player;

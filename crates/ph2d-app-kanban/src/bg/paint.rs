@@ -173,11 +173,6 @@ pub(crate) fn paint(
                 let look = Look::of(set, bg);
                 look.paint(scene, theme, *r, 1.0);
             }
-            (Row::Project(i), _) => {
-                if let Some(img) = d.project.get(usize::from(i)) {
-                    super::project::paint_tile(scene, img, *r);
-                }
-            }
             (_, Some(b)) => Look::flat(b).paint(scene, theme, *r, 1.0),
             (Row::Upload, _) => {
                 fill_rounded_rect(scene, *r, m::BUTTON_RADIUS, c(theme, T::KanbanSlot));
@@ -215,11 +210,7 @@ pub(crate) fn paint(
             _ => {}
         }
         scene.pop_layer();
-        let mine = match *row {
-            Row::Project(i) => d.project.get(usize::from(i)).map(|p| p.asset) == d.current,
-            _ => false,
-        };
-        if mine || current(bg, *row) || d.custom.is_some_and(|t| *row == Row::Custom(t)) {
+        if current(bg, *row) || d.custom.is_some_and(|t| *row == Row::Custom(t)) {
             stroke_rounded_rect(scene, *r, m::BUTTON_RADIUS, m::FOCUS_RING, ring);
         } else if d.hover == Some(*row) {
             stroke_rounded_rect(scene, *r, m::BUTTON_RADIUS, m::FOCUS_RING, meta);

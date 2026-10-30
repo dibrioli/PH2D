@@ -45,7 +45,7 @@ fn importa(m: &mut Mesa, respostas: Vec<Option<PathBuf>>) -> Option<KanbanId> {
 /// Dois quadros e a fila do mundo (os avisos chegam ao topo pelo `service`, como na shell).
 fn serve(m: &mut Mesa) {
     m.quadros(2);
-    ph2d_app_kanban::service(&mut m.hero, &ph2d_asset::AssetDb::new());
+    ph2d_app_kanban::service(&mut m.hero);
 }
 
 fn relatorio(m: &mut Mesa, id: KanbanId) -> Option<Vec<String>> {

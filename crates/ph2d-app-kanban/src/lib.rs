@@ -88,32 +88,6 @@ pub fn frame(hero: &mut ph2d_editor_core::screens::hero::HeroScreen) {
     }
     if let Some(docs) = hero.documents.surfaces_mut().find_mut::<KanbanDocs>() {
         docs.follow_people(&author, team);
-        if docs.tabs.iter().any(|t| t.bg.is_some()) {
-            let images = ph2d_panel_asset_browser::published_images();
-            let shown: Vec<Option<[u8; 32]>> = docs
-                .tabs
-                .iter()
-                .map(|t| {
-                    match docs
-                        .set
-                        .borrow()
-                        .get(t.view.kanban)
-                        .map(|k| k.header.background)
-                    {
-                        Some(ph2d_kanban_model::Background::Image(f)) => {
-                            docs.from_project.get(&f).copied()
-                        }
-                        _ => None,
-                    }
-                })
-                .collect();
-            for (t, current) in docs.tabs.iter_mut().zip(shown) {
-                if let Some(d) = t.bg.as_deref_mut() {
-                    bg::project::refresh(d, &images);
-                    d.current = current;
-                }
-            }
-        }
         // J1 — a sala ao vivo: a rede, a presença. O link e os avisos saem por [`service`].
         docs.share_tick();
     }
@@ -121,21 +95,8 @@ pub fn frame(hero: &mut ph2d_editor_core::screens::hero::HeroScreen) {
 
 /// ⭐ A fila do Kanban para o MUNDO (a shell chama-a uma vez por imagem, ao lado do `io::service` do
 /// Quadro): o diálogo «Choose a file», os links e os anexos a abrir, o link copiado e os avisos.
-pub fn service(
-    hero: &mut ph2d_editor_core::screens::hero::HeroScreen,
-    assets: &ph2d_asset::AssetDb,
-) {
-    service_with(hero, &mut System(Some(assets)));
-}
-
-/// ⭐ A gaveta do fundo está aberta numa aba: a shell publica o índice de assets também para ela
-/// (as imagens do projecto da secção «Photos»).
-#[must_use]
-pub fn wants_project_images(hero: &ph2d_editor_core::screens::hero::HeroScreen) -> bool {
-    hero.documents
-        .surfaces()
-        .find::<KanbanDocs>()
-        .is_some_and(|d| d.tabs.iter().any(|t| t.bg.is_some()))
+pub fn service(hero: &mut ph2d_editor_core::screens::hero::HeroScreen) {
+    service_with(hero, &mut System);
 }
 
 /// [`service`] por outro mundo (um teste responde no lugar do diálogo e do navegador).

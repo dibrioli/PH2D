@@ -6,7 +6,6 @@
 
 mod paint;
 mod place;
-pub(crate) mod project;
 
 use crate::docs::KanbanDocs;
 use crate::front::cover::{self, ThumbRef};
@@ -109,8 +108,6 @@ pub(crate) enum Row {
     Upload,
     /// A fotografia actual (já escolhida).
     Photo,
-    /// A `n`-ésima imagem do projecto ([`Drawer::project`]).
-    Project(u16),
     Color(Hue),
     Gradient(u16),
     Pattern(PatternKind),
@@ -141,12 +138,6 @@ pub(crate) struct Drawer {
     pub hover: Option<Row>,
     /// «Upload…» pedido: a fila serve-o ([`KanbanDocs::serve_background`]).
     pub pick: bool,
-    /// As imagens do projecto (relidas a cada quadro com a gaveta aberta).
-    pub project: Vec<project::ProjectImage>,
-    /// A imagem do projecto escolhida, por servir (o ficheiro vem do mundo).
-    pub take: Option<[u8; 32]>,
-    /// A imagem do projecto que o fundo actual é (`None` = outro fundo, ou uma subida).
-    pub current: Option<[u8; 32]>,
     /// O tema do último quadro pintado (a cor de um matiz, para o seletor partir dela).
     pub theme: Theme,
 }
@@ -253,26 +244,13 @@ impl KanbanDocs {
         let ids: Vec<u64> = self
             .tabs
             .iter()
-            .filter(|t| t.bg.as_ref().is_some_and(|d| d.pick || d.take.is_some()))
+            .filter(|t| t.bg.as_ref().is_some_and(|d| d.pick))
             .map(crate::tab::Tab::id)
             .collect();
         let mut notices = Vec::new();
         for id in ids {
-            let Some(d) = self.tab_mut(id).and_then(|t| t.bg.as_deref_mut()) else {
-                continue;
-            };
-            let pick = std::mem::take(&mut d.pick);
-            if let Some(asset) = d.take.take() {
-                let bytes = world.project_image(asset);
-                let size = bytes.as_deref().and_then(crate::back::attach::image_size);
-                if let (Some(b), Some(sz)) = (bytes, size) {
-                    let f = self.set.borrow_mut().put_file(b, Some(sz));
-                    self.from_project.insert(f, asset);
-                    self.set_background(id, Background::Image(f));
-                }
-            }
-            if !pick {
-                continue;
+            if let Some(d) = self.tab_mut(id).and_then(|t| t.bg.as_deref_mut()) {
+                d.pick = false;
             }
             let Some(path) = world.pick_background() else {
                 continue;
@@ -392,11 +370,6 @@ fn act(docs: &mut KanbanDocs, id: u64, row: Row) {
         Row::Upload => {
             if let Some(d) = docs.tab_mut(id).and_then(|t| t.bg.as_deref_mut()) {
                 d.pick = true;
-            }
-        }
-        Row::Project(i) => {
-            if let Some(d) = docs.tab_mut(id).and_then(|t| t.bg.as_deref_mut()) {
-                d.take = d.project.get(usize::from(i)).map(|p| p.asset);
             }
         }
         Row::Custom(target) => {

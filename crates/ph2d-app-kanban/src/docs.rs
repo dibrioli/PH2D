@@ -60,8 +60,6 @@ pub struct KanbanDocs {
     pub(crate) share: crate::share::Share,
     /// W10 — o relatório da importação aberto sobre a aba do Kanban importado.
     pub(crate) import_report: Option<crate::io::ImportReportView>,
-    /// O ficheiro de cada imagem do projecto já escolhida como fundo (a gaveta marca-a na lista).
-    pub(crate) from_project: BTreeMap<ph2d_kanban_model::FileId, [u8; 32]>,
 }
 
 impl Default for KanbanDocs {
@@ -80,7 +78,6 @@ impl Default for KanbanDocs {
             me: ph2d_kanban_model::Member(ph2d_i18n::tr("kanban.back.me").to_owned()),
             team: Vec::new(),
             notices: Vec::new(),
-            from_project: BTreeMap::new(),
             canvas: crate::canvas::SharedCanvas::default(),
             clip: None,
             active: None,
